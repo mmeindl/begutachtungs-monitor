@@ -180,7 +180,7 @@ const { webcalUrl, googleCalUrl, icsDisplayUrl } = useFeedUrls()
          report. -->
     <ProseSection id="about-status" heading="Status">
       <p>
-        Stand: September 2026. Der Monitor läuft im Dauerbetrieb; was er
+        Stand: Oktober 2026. Der Monitor läuft im Dauerbetrieb; was er
         zeigt, stammt unverändert aus der amtlichen Schnittstelle und ist
         bei jeder Angabe dorthin verlinkt. Drei Grenzen sind derzeit
         bekannt:
@@ -188,9 +188,11 @@ const { webcalUrl, googleCalUrl, icsDisplayUrl } = useFeedUrls()
       <ul>
         <li>
           Der Textvergleich ist eine Ableitung, keine amtliche Fassung. Bei
-          Novellen vergleicht er die Änderungs<em>anweisungen</em>, nicht
-          den Gesetzestext, wie er danach lautet. Im Zweifel gilt das
-          verlinkte Original.
+          Novellen vergleicht er die Änderungs<em>anweisungen</em>; wie das
+          Gesetz danach lautet, zeigt die
+          <NuxtLink to="/so-funktionierts#lesefassung" class="link-inline">Lesefassung</NuxtLink>
+          nur für die Paragraphen, die die Textgegenüberstellung des
+          Ministeriums bestätigt. Im Zweifel gilt das verlinkte Original.
         </li>
         <li>
           Benachrichtigungen gibt es nur als Feed und Kalender, nicht per

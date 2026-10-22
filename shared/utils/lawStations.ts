@@ -83,10 +83,24 @@ export const UPSTREAM_PLENUM_TITLE = 'Geändert im Plenum'
  * where the comparison itself renumbered the paragraph it points at — and
  * because the Textgegenüberstellung aligns two columns of ONE paragraph, it
  * establishes no renumbering at all, so there the condition is never met.
- * The sentence holds for both comparisons, which is what it is for.
+ * The sentence holds for both comparisons, which is what it is for. Since
+ * 22.10.2026 it is the definition under the term „redaktionell“ on
+ * /so-funktionierts, not a sentence of the running text — so it no longer
+ * names the term itself.
+ *
+ * **And since the same day it says what the rule forgives.** It read „nur
+ * Zahlen, Daten oder Satzzeichen …, kein einziges Wort", and the rule
+ * (`isEditorialChange`) was wider and narrower at once. Wider: it forgives
+ * articles, „in"/„im" and citation words („Abs.", „Nr.", „Hauptstück" →
+ * „Abschnitt") — 44 of the 68 editorial Begründungen of GP XXVI–XXVIII
+ * change such a word. Narrower: a number or a date only where it is the
+ * same date written differently, a placeholder getting its number, or a
+ * reference following this comparison's renumbering; „6 Wochen" → „4
+ * Wochen" was never editorial, though the sentence said „Zahlen". The rule
+ * stayed, the sentence follows it.
  */
-export const EDITORIAL_BADGE_SENTENCE =
-  '„Redaktionell“ heißt: Es haben sich nur Zahlen, Daten oder Satzzeichen geändert, kein einziges Wort – und Verweise nur dort, wo sie einer Umnummerierung in diesem Vergleich folgen.'
+export const EDITORIAL_BADGE_DEFINITION =
+  'Kein Wort mit eigener Bedeutung ist anders. Geändert haben sich nur Satzzeichen, Artikel, „in“ und „im“, Verweiswörter wie „Abs.“ oder „Nr.“, ein Datum, das bloß anders geschrieben ist, oder ein Platzhalter wie „xx“, der seine Zahl bekommt – und Verweisnummern nur dort, wo sie einer Umnummerierung in diesem Vergleich folgen.'
 
 const UPSTREAM_STATION_TITLES: Readonly<Record<string, LawStationId>> = {
   // `mapTextEvolution` renames upstream's "Gesetzestext" to the station

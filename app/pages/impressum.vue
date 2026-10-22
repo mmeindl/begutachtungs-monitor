@@ -201,7 +201,7 @@ usePageSeo({
       </p>
       <dl>
         <div>
-          <dt class="font-medium text-ink">
+          <dt>
             Rechtsinformationssystem des Bundes (Bundeskanzleramt)
           </dt>
           <dd>
@@ -215,7 +215,7 @@ usePageSeo({
           </dd>
         </div>
         <div>
-          <dt class="font-medium text-ink">
+          <dt>
             Parlamentsdirektion, Stationen nach der Begutachtung
           </dt>
           <dd>
@@ -233,7 +233,7 @@ usePageSeo({
           </dd>
         </div>
         <div>
-          <dt class="font-medium text-ink">
+          <dt>
             Parlamentsdirektion, Stellungnahmen zu Regierungsvorlagen
           </dt>
           <dd>
@@ -248,7 +248,7 @@ usePageSeo({
           </dd>
         </div>
         <div>
-          <dt class="font-medium text-ink">
+          <dt>
             Parlamentsdirektion, Begutachtungsverfahren
           </dt>
           <dd>

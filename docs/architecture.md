@@ -11308,6 +11308,17 @@ Offen und nicht gebaut: eine Eins-zu-eins-Regel je Periode (19 Nummern
 werden von zwei Entwürfen beansprucht, sieben davon einmal zu Unrecht), und
 ob ein Gleichstand „keine Kundmachung gefunden" oder „unbekannt" heißen soll.
 
+**Nachgemessen 22.10.2026, nach beiden Nachträgen** (`pnpm corpus:bgbl2`,
+Fristende ab 2024, live): **251 von 294 Entwürfen gefunden (85,4 %)**, bei
+Fristen von vor über einem Jahr 163 von 179 (91,1 %); 31–90 Tage 28,6 %,
+91–180 Tage 81,6 %, 181–365 Tage 88,3 %. Fristende → Ausgabedatum: Median
+57 Tage, p10 21, p90 179, Maximum 538. Mit dem 19.09. nicht Zeile für Zeile
+vergleichbar — drei Entwürfe sind dazugekommen, und ältere sind in den
+Jahreskorb gerückt. `/so-funktionierts` (Station „Bundesgesetzblatt II")
+nennt seither diese Zahlen; das Neuntel „mehr als ein halbes Jahr" hielt
+nicht mehr (p90 179 Tage) und heißt dort jetzt „rund ein halbes Jahr oder
+länger".
+
 ### 12.33 Die BGBl-Station — gebaut, und die fünf falschen Unterschiede, die sie aufgedeckt hat
 
 Die Stationsleiste des §-Vergleichs endet bei der Plenarfassung (§12.18). Die

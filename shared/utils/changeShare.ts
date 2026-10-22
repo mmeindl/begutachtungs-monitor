@@ -15,8 +15,8 @@
  * p75 77 % in XXVII (75 % until §12.40 counted dropped laws, 03.10.2026), and the spread is wide enough to say something about a
  * single draft.
  *
- * Changes the page marks as merely editorial (citations, numbers, dates,
- * punctuation — `EDITORIAL_BADGE_SENTENCE` in lawStations.ts) are not counted: they
+ * Changes the page marks as merely editorial (punctuation, articles, citation
+ * words, a date written differently — `EDITORIAL_BADGE_DEFINITION` in lawStations.ts) are not counted: they
  * are no change of wording in the sense a reader means.
  */
 

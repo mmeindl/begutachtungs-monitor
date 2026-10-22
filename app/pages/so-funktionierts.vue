@@ -27,12 +27,14 @@
  * ANCHORS. `#gegenueberstellung` is linked from `TextComparisonSection` and
  * must stay; so are `#lesefassung` (its disclosures) and `#vergleich`
  * (`LawDiffSection`), both since 30.09.2026; `#wartezeit` (the waiting
- * station's credit line) since 05.10.2026. `#leiste` is gone — a legend for a UI element on another page,
+ * station's credit line) since 05.10.2026; `#stationen` (the Frist credit
+ * on the Ministerialentwurf page), `#wege` and `#ohne-stellungnahmen` (the
+ * Verordnung page). `#leiste` is gone — a legend for a UI element on another page,
  * reached by no link at all, and stale within a day of the third comparison
  * („die beiden Fragen in der Leiste"). The rail says its own state in words
  * instead.
  */
-import { EDITORIAL_BADGE_SENTENCE } from '#shared/utils/lawStations'
+import { EDITORIAL_BADGE_DEFINITION } from '#shared/utils/lawStations'
 import { SECOND_ROUND_WINDOW } from '~/utils/spine'
 import { RV_LATENCY_CONTEXT_DAYS } from '~/utils/deadlines'
 import { rvBaseRateFor } from '~/utils/outcomes'
@@ -70,7 +72,7 @@ const sharedSteps: Step[] = [
     /* The Regelfall and its source stand here since 30.09.2026 — they stood
        under every draft's „Die Begutachtung" before, where the page now keeps
        the draft's Frist drawn against the Regelfall (`FristBar`). */
-    text: 'Mehrere Wochen lang kann jede und jeder eine Stellungnahme abgeben – Privatpersonen genauso wie Kammern, Vereine und Unternehmen. Die Frist setzt das Ministerium; im Regelfall vorgesehen sind sechs Wochen (§ 9 Abs. 3 WFA-Grundsatz-Verordnung). Der Monitor nennt eine Frist ab sechs Wochen „voll“ und unter drei Wochen „kurz“; zum Vergleich zeigt er den Median der Gesetzgebungsperiode, in der die Frist begann – seit 2013 in jeder Periode vier Wochen. Gemessen wird ein Entwurf an der Praxis der Regierung, die ihn verschickt hat.',
+    text: 'Mehrere Wochen lang kann jede und jeder eine Stellungnahme abgeben – Privatpersonen genauso wie Kammern, Vereine und Unternehmen. Die Frist setzt das Ministerium; im Regelfall vorgesehen sind sechs Wochen (§ 9 Abs. 3 WFA-Grundsatz-Verordnung). Der Monitor nennt eine Frist ab sechs Wochen „voll“ und unter drei Wochen „kurz“; zum Vergleich zeigt er den Median der Gesetzgebungsperiode, in der die Frist begann – seit 2013 in jeder Periode rund vier Wochen. Gemessen wird ein Entwurf an der Praxis der Gesetzgebungsperiode, in der seine Frist begann.',
     monitor:
       'Die Frist. Dazu, wo das Parlament den Entwurf führt, die Zahl der Stellungnahmen und wer sie abgegeben hat – Organisationen mit Namen, Privatpersonen ohne.',
     link: {
@@ -97,7 +99,7 @@ const paths: { id: string; name: string; count: string; lede: string; steps: Ste
         name: 'Regierungsvorlage',
         text: 'Die Regierung beschließt den überarbeiteten Entwurf als Vorlage an den Nationalrat. Manche Entwürfe kommen nie so weit – auch das zeigt der Monitor. Endet die Gesetzgebungsperiode vorher, wird ein Entwurf nur selten noch eingebracht; meist beginnt die nächste Regierung mit einer neuen Begutachtung.',
         monitor:
-          'Ob und wann eine Regierungsvorlage kam, und was sich gegenüber dem Entwurf geändert hat, Paragraph für Paragraph. Kam keine, steht auch das da.',
+          'Ob und wann eine Regierungsvorlage kam, und was sich gegenüber dem Entwurf geändert hat – Änderung für Änderung, bei einem neuen Gesetz Paragraph für Paragraph. Kam keine, steht auch das da.',
       },
       {
         id: 'parlament',
@@ -144,13 +146,14 @@ const paths: { id: string; name: string; count: string; lede: string; steps: Ste
            before anything is published … a row for it would be an empty
            promise." Between Fristende and Kundmachung nothing is visible from
            outside, and two rows saying „Im Monitor: nichts" in a row would be
-           a wall of absence. When the Verordnung bar arrives (TODO) it thus
-           has three rows, each of which can show something. */
+           a wall of absence. The Verordnung bar (`regulationStations` in
+           `app/utils/spine.ts`, since 26.09.2026) thus has three rows, each
+           of which can show something. */
         id: 'bundesgesetzblatt-ii',
         name: 'Bundesgesetzblatt II',
         text: 'Das Ministerium erlässt die überarbeitete Verordnung und macht sie im Bundesgesetzblatt Teil II kund – erst damit gilt sie. Eine Regierungsvorlage und einen Beschluss des Nationalrats gibt es hier nicht; zwischen Fristende und Kundmachung ist von außen nichts zu sehen.',
         monitor:
-          'Die Kundmachung selbst: „Kundgemacht als BGBl. II Nr. 410/2024, 44 Tage nach Ende der Begutachtungsfrist“ – auf der Seite des Entwurfs und als Stand in der Liste. Gefunden wird sie über Titel, Ressort und Datum, also nicht lückenlos: Über 291 Verordnungsentwürfe seit 2024 gemessen findet der Abgleich 84,2\u00a0% der Kundmachungen, bei Fristen von vor mehr als einem Jahr 92,3\u00a0%. Zwischen Fristende und Kundmachung liegen im Median 57 Tage, in einem von zehn Fällen mehr als ein halbes Jahr.',
+          'Die Kundmachung selbst – Nummer und Datum, etwa „BGBl. II Nr. 410/2024“, „44 Tage nach Fristende“ – auf der Seite des Entwurfs und als Stand in der Liste. Gefunden wird sie über Titel, Ressort und Datum, also nicht lückenlos: Über 294 Verordnungsentwürfe seit 2024 gemessen (Oktober 2026) findet der Abgleich 85,4\u00a0% der Kundmachungen, bei Fristen von vor mehr als einem Jahr 91,1\u00a0%. Zwischen Fristende und Kundmachung liegen im Median 57 Tage, in einem von zehn Fällen rund ein halbes Jahr oder länger.',
         link: {
           to: 'https://www.ris.bka.gv.at/Bgbl-Auth/',
           label: 'Bundesgesetzblatt II im RIS',
@@ -231,7 +234,7 @@ const waitMonths = Math.round(RV_LATENCY_CONTEXT_DAYS / 30.44)
       <p>
         Rechtzeitig erfahren lässt sich das auf drei Wegen, alle ohne Konto:
         <NuxtLink
-          to="/entwuerfe?status=open"
+          to="/entwuerfe?status=open&station=begutachtung"
           class="link-inline font-medium"
         >die Liste der offenen Begutachtungen</NuxtLink>, der
         <ExternalLink
@@ -276,8 +279,7 @@ const waitMonths = Math.round(RV_LATENCY_CONTEXT_DAYS / 30.44)
 
       <p>
         Genau das zeigt der Monitor. Wo es die Fassungen gibt, stellt er sie
-        nebeneinander und markiert, was sich Paragraph für Paragraph geändert
-        hat. Und er zeigt die Entwürfe, aus denen nichts wurde: Ein Teil
+        nebeneinander und markiert, was sich Stelle für Stelle geändert hat. Und er zeigt die Entwürfe, aus denen nichts wurde: Ein Teil
         erreicht das Parlament nie, und eine Pflicht, das zu begründen, gibt
         es nicht.
       </p>
@@ -471,42 +473,52 @@ const waitMonths = Math.round(RV_LATENCY_CONTEXT_DAYS / 30.44)
 
       <p>
         Zu den meisten Entwürfen legt das Ministerium eine
-        <strong class="font-medium text-ink">Textgegenüberstellung</strong> bei:
+        Textgegenüberstellung bei:
         links die geltende Fassung, rechts die vorgeschlagene, in der Form, die
         ein Rundschreiben des Bundeskanzleramts vom 27.03.2002 vorschreibt. Der
         Text auf unserer Seite stammt aus diesem
-        Dokument des Ministeriums, Wort für Wort. Verpflichtend ist die
-        Gegenüberstellung nicht, und ein Entwurf, der ein neues Gesetz schafft,
-        hat nichts gegenüberzustellen – fehlt sie, steht auf der Seite nur,
-        dass es keine gibt.
+        Dokument des Ministeriums, Wort für Wort. Verlangt wird die
+        Gegenüberstellung, wo ein Entwurf geltendes Recht ändert (Rundschreiben
+        des Verfassungsdienstes vom 10.12.2015); ein Entwurf, der ein neues
+        Gesetz schafft, hat nichts gegenüberzustellen. Fehlt sie, steht auf
+        der Seite nur, dass es keine gibt.
       </p>
 
       <p>
-        Von uns stammt die <strong class="font-medium text-ink">Markierung</strong>:
+        Von uns stammt die Markierung:
         Wir vergleichen die beiden Spalten Wort für Wort und heben hervor, was
         wegfällt und was dazukommt. Dieselbe Markierung und dieselben Abzeichen
         trägt der Vergleich nach der Begutachtung, Entwurf gegen
-        Regierungsvorlage – auch er verlinkt hierher.
-        {{ EDITORIAL_BADGE_SENTENCE }}
-        Die Gegenüberstellung hält zwei Spalten desselben Paragraphen
-        nebeneinander und kann deshalb keine Umnummerierung feststellen; hier
-        zählt jeder geänderte Verweis als Änderung.
+        Regierungsvorlage; wie er zählt, erklärt ein
+        <NuxtLink to="#vergleich" class="link-inline">eigener Abschnitt</NuxtLink>.
       </p>
+
+      <dl>
+        <div>
+          <dt>„redaktionell“</dt>
+          <dd>
+            {{ EDITORIAL_BADGE_DEFINITION }}
+            Die Gegenüberstellung hält zwei Spalten desselben Paragraphen
+            nebeneinander und kann deshalb keine Umnummerierung feststellen;
+            hier zählt jeder geänderte Verweis als Änderung.
+          </dd>
+        </div>
+      </dl>
 
       <p>
         Die linke Spalte behauptet, das geltende Recht zu sein – und das lässt
         sich nachsehen. Wir halten sie gegen den Text im
-        <strong class="font-medium text-ink">RIS Bundesrecht</strong>, und zwar
+        RIS Bundesrecht, und zwar
         zum Beginn der Begutachtungsfrist: das ist der Stand, den das
         Ministerium beim Schreiben vor sich hatte.
       </p>
 
       <p>
         Auch die rechte Spalte prüfen wir: Was dort als
-        <strong class="font-medium text-ink">neu</strong> markiert ist, darf im
+        neu markiert ist, darf im
         geltenden Paragraphen nicht schon stehen – sonst fehlt links Text, und
         der Entwurf wirkt umfangreicher, als er ist. Und es muss in den
-        <strong class="font-medium text-ink">Novellierungsanordnungen</strong>
+        Novellierungsanordnungen
         vorkommen, die der Entwurf für diesen Paragraphen trifft.
       </p>
 
@@ -520,10 +532,10 @@ const waitMonths = Math.round(RV_LATENCY_CONTEXT_DAYS / 30.44)
 
       <dl>
         <div>
-          <dt class="font-medium text-ink">„nicht gezeigt“</dt>
+          <dt>„nicht gezeigt“</dt>
           <dd>
             Eine der drei Prüfungen ist nicht aufgegangen: Die Zeile gehört
-            nicht zu ihrem Paragraphen, oder die Beilage legt einen älteren
+            nicht zu ihrem Paragraphen, oder die Beilage legt einen anderen
             Stand des Gesetzes zugrunde. Wir zeigen dort keinen Vergleich statt
             eines falschen; an seiner Stelle steht, welche Prüfung es war. Was
             sich ändert, sagt die Beilage des Ministeriums, die unter der
@@ -531,15 +543,19 @@ const waitMonths = Math.round(RV_LATENCY_CONTEXT_DAYS / 30.44)
           </dd>
         </div>
         <div>
-          <dt class="font-medium text-ink">„nicht geprüft“</dt>
+          <dt>„nicht geprüft“</dt>
           <dd>
-            Die Änderung betrifft geltendes Recht, aber wir finden nichts, wogegen
-            sich prüfen ließe: Das RIS führt den Paragraphen nicht oder gliedert
-            ihn so, dass sich seine Absätze nicht auseinanderhalten lassen, das
-            geänderte Gesetz lässt sich im RIS nicht finden, oder die Beilage
-            grenzt ihre Gesetze nicht ab. Das ist kein Befund über den Entwurf,
-            sondern einer über die Prüfbarkeit. Lief die Prüfung für einen
-            ganzen Entwurf nicht, steht der Grund über der Gegenüberstellung.
+            Die Änderung betrifft geltendes Recht, aber die Prüfung ließ sich
+            nicht durchführen. Entweder fehlt das Gegenstück im RIS: Es führt
+            den Paragraphen nicht oder gliedert ihn so, dass sich seine Absätze
+            nicht auseinanderhalten lassen, oder das geänderte Gesetz lässt
+            sich dort nicht finden. Oder die Beilage selbst gibt zu wenig her:
+            zu wenig Text für einen Abgleich, keine Bezeichnung als Paragraph,
+            eine Änderung, die für den Vergleich Wort für Wort zu lang ist.
+            Das ist kein Befund über den Entwurf, sondern einer über die
+            Prüfbarkeit. Welcher Grund es war, steht beim Gesetz unter seinem
+            „nicht geprüft“; lassen sich die Gesetze der Beilage nicht
+            voneinander abgrenzen, steht das über der Gegenüberstellung.
           </dd>
         </div>
       </dl>
@@ -551,13 +567,13 @@ const waitMonths = Math.round(RV_LATENCY_CONTEXT_DAYS / 30.44)
         zu welcher Zeile rechts gehört. Der Text ist auch dort der des
         Ministeriums – die Zuordnung ist unsere, und sie kann danebenliegen.
         Auf solchen Seiten nennt die Quellenzeile das:
-        „Zeilenzuordnung: Begutachtungs-Monitor“. Ein „nicht gezeigt“ kann dort
+        „Zeilenzuordnung und Markierung: Begutachtungs-Monitor“. Ein „nicht gezeigt“ kann dort
         auch an unserer Zuordnung liegen.
       </p>
 
       <!-- Since 30.09.2026 the only place the Lesefassung explains itself:
-           each disclosure on a draft page says „Nicht amtliche Lesefassung"
-           and links here. -->
+           each disclosure on a draft page („Ganzer Paragraph danach (nicht
+           amtlich)") links here as „Wie diese Lesefassung entsteht". -->
       <h3 id="lesefassung" class="mt-8 scroll-mt-6 text-base font-semibold text-ink">Die Lesefassung</h3>
       <p class="mt-2">
         Bei manchen Paragraphen lässt sich aufklappen, wie die Bestimmung nach
@@ -592,8 +608,9 @@ const waitMonths = Math.round(RV_LATENCY_CONTEXT_DAYS / 30.44)
         Übermittlung.
       </p>
       <p>
-        An diesen beiden Marken zeigt der Balken bei einem Entwurf ohne
-        Regierungsvorlage, wie lange er schon wartet. Ein Urteil ist das
+        An diesen beiden Marken zeigt der Balken bei einem Entwurf, der in der
+        laufenden Gesetzgebungsperiode noch auf seine Regierungsvorlage
+        wartet, wie lange er schon wartet. Ein Urteil ist das
         nicht: Auch nach {{ waitMonths }} Monaten kommt noch etwa jede zehnte
         Vorlage.
       </p>
@@ -606,9 +623,12 @@ const waitMonths = Math.round(RV_LATENCY_CONTEXT_DAYS / 30.44)
          and its method sentence stood on every draft page instead. -->
     <ProseSection id="vergleich" heading="Wie wir Entwurf und Regierungsvorlage vergleichen">
       <p>
-        Nach der Begutachtung vergleichen wir die Texte selbst: den Entwurf mit
-        der Regierungsvorlage, und weiter mit den Fassungen aus Ausschuss,
-        Plenum und Bundesgesetzblatt. Ein Gesetz, das ein bestehendes ändert,
+        Nach der Begutachtung vergleichen wir die Texte selbst, Schritt für
+        Schritt: den Entwurf mit der Regierungsvorlage, im Parlament die
+        Regierungsvorlage mit der Fassung des Ausschusses und diese mit der
+        des Plenums – so steht bei jedem Vergleich fest, wer geändert hat.
+        Beim Bundesgesetzblatt halten wir den ganzen Weg gegeneinander, vom
+        Entwurf bis zum kundgemachten Gesetz. Ein Gesetz, das ein bestehendes ändert,
         besteht aus nummerierten Änderungsanordnungen (Z&nbsp;1, Z&nbsp;2&nbsp;…) – verglichen
         wird dann Anordnung für Anordnung. Ein neues Gesetz vergleichen wir
         Paragraph für Paragraph.
@@ -618,7 +638,15 @@ const waitMonths = Math.round(RV_LATENCY_CONTEXT_DAYS / 30.44)
         den Einheiten des Entwurfs – Änderungsanordnungen, auf der Seite kurz
         „Änderungen“, oder Paragraphen: wie viele davon sie umgeschrieben oder
         gestrichen hat. Was sie neu hinzufügt, zählt nicht mit, redaktionelle
-        Änderungen auch nicht. {{ EDITORIAL_BADGE_SENTENCE }}
+        Änderungen auch nicht:
+      </p>
+      <dl>
+        <div>
+          <dt>„redaktionell“</dt>
+          <dd>{{ EDITORIAL_BADGE_DEFINITION }}</dd>
+        </div>
+      </dl>
+      <p>
         Verglichen wird dieser Anteil mit den Entwürfen einer abgeschlossenen
         Gesetzgebungsperiode – welcher, steht am Balken; „üblich“ heißt die
         mittlere Hälfte von ihnen, ein Viertel lag darunter, ein Viertel
@@ -628,9 +656,10 @@ const waitMonths = Math.round(RV_LATENCY_CONTEXT_DAYS / 30.44)
       <p>
         Auch die Erläuterungen beider Fassungen halten wir gegeneinander.
         Gezählt werden nur Begründungen, die in beiden Fassungen zur selben
-        Änderung stehen, und davon die, in denen das Ressort Wörter geändert
-        hat – schon ein einziges zählt, Satzzeichen, Leerzeichen und
-        Bindestriche nicht. Ob
+        Änderung stehen, und davon die, in denen das Ressort etwas geändert
+        hat – anders als oben zählt hier jede Änderung an Wörtern, Zahlen oder
+        Daten, auch an Artikeln und Verweiswörtern; nur Satzzeichen,
+        Leerzeichen und Bindestriche nicht. Ob
         eine Änderung auf eine Stellungnahme zurückgeht, sagt keiner der
         beiden Vergleiche.
       </p>

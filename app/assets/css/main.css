@@ -511,6 +511,15 @@
   :where(& > dl > * + *) {
     margin-top: calc(var(--spacing) * 3);
   }
+
+  /* A defined term reads as a small headline over its definition — the
+     weight and colour of the h3 on these pages (22.10.2026). It is the one
+     way a term is marked; each <dt> carried `font-medium text-ink` before,
+     a weight that read as emphasis inside the text, not as a heading. */
+  :where(& > dl dt) {
+    font-weight: var(--font-weight-semibold);
+    color: var(--color-ink);
+  }
 }
 
 /*
