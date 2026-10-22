@@ -8,7 +8,7 @@ import type {
   LaenderResponse,
   RisConsultationsResponse,
 } from '#shared/types'
-import { LAND_NAME } from '#shared/utils/laender'
+import { LAND_NAME, landCoverageDe } from '#shared/utils/laender'
 import { HOME_LIST_LENGTH, compareRowsByFrist, draftRows } from '#shared/utils/draftOrder'
 import { viewOfDraft, viewOfOutcome, viewOfRow, viewOfVorlage } from '~/utils/entryView'
 import { gpWindow } from '#shared/utils/gp'
@@ -476,9 +476,6 @@ function submitSearch() {
              state where its gloss below the list was suppressed — the
              gloss only rendered when such a row was present, and this line
              only renders when none is. -->
-        <!-- Where the list's rows come from (`SourceChips`): directly under the
-             heading, above everything the choice changes. -->
-        <SourceChips class="mt-3" />
         <!-- A chosen Land that could not be read, said like the RIS half
              below: its rows are missing, and the list must not read as if
              that Land had nothing open. -->
@@ -505,24 +502,42 @@ function submitSearch() {
         <ListSkeleton v-if="(bund && loading(risStatus)) || (chosenLaender.length > 0 && loading(laenderStatus))" class="mt-4">
           Offene Entwürfe werden geladen …
         </ListSkeleton>
-        <EntryList v-else-if="visibleOpenRows.length" :entries="visibleOpenRows" class="mt-4" />
-        <div v-else-if="risOnly" class="mt-4">
-          <!-- The no-open moment is exactly the moment to subscribe. Said
-               only when BOTH halves are known to be empty — with the RIS
-               half missing this would be a claim the page cannot make. -->
-          <EmptyState
-            title="Derzeit ist keine Begutachtung offen"
-            description="Neue Entwürfe erscheinen hier, sobald sie zur Begutachtung aufliegen – Ministerialentwürfe aus dem Parlament und Verordnungsentwürfe aus dem RIS."
-          >
-            <!-- The header's own links (`SubscribeLinks`) rather than a
-                 second set built here: one wording for the same three ways
-                 to follow, wherever they stand. `leading-7` for the header's
-                 reason, the links are `tap-target` boxes in the line. -->
-            <p class="text-sm leading-7 text-ink-secondary">
-              <SubscribeLinks />
+        <!-- Always the box, since the chips moved into its head (22.10.2026):
+             a list that vanished when empty would take the control that
+             could fill it with it. -->
+        <EntryList v-else :entries="visibleOpenRows" class="mt-4">
+          <!-- Where the rows come from (`SourceChips`), in the box's head
+               like every list's controls. -->
+          <template #header>
+            <SourceChips />
+          </template>
+          <template #empty>
+            <!-- The no-open moment is exactly the moment to subscribe. Said
+                 only when every chosen half is known to be empty — with the
+                 RIS half missing this would be a claim the page cannot make. -->
+            <div v-if="!bund || risOnly" class="p-4">
+              <EmptyState
+                title="Derzeit ist keine Begutachtung offen"
+                description="Neue Entwürfe erscheinen hier, sobald sie zur Begutachtung aufliegen."
+              >
+                <!-- The header's own links (`SubscribeLinks`) rather than a
+                     second set built here: one wording for the same three ways
+                     to follow, wherever they stand. `leading-7` for the header's
+                     reason, the links are `tap-target` boxes in the line. -->
+                <p class="text-sm leading-7 text-ink-secondary">
+                  <SubscribeLinks />
+                </p>
+              </EmptyState>
+            </div>
+          </template>
+          <!-- The coverage, where a Land's rows are: the monitor reads some
+               of nine, and the list must not read as if the rest were quiet. -->
+          <template v-if="chosenLaender.length" #foot>
+            <p class="border-t border-hairline px-4 py-3 text-sm text-ink-muted">
+              Länder: {{ landCoverageDe() }}
             </p>
-          </EmptyState>
-        </div>
+          </template>
+        </EntryList>
 
         <!-- NO second link under the list since 18.09.2026: what sits
              behind the cap is the number in the link above („Alle 13

@@ -84,11 +84,11 @@ export function isDefaultSources(codes: readonly SourceCode[]): boolean {
   return formatSourceList(codes) === formatSourceList(DEFAULT_SOURCES)
 }
 
-/** „Salzburg – 1 von 9 Ländern", the line that keeps the list from claiming more. */
+/** „Oberösterreich, Salzburg und Wien – 3 von 9", after „Länder:": the line that keeps a list from claiming more. */
 export function landCoverageDe(): string {
   const names = LAND_CODES.map((code) => LAND_NAME[code])
   const list = names.length > 1 ? `${names.slice(0, -1).join(', ')} und ${names.at(-1)}` : names[0]
-  return `${list} – ${LAND_CODES.length} von ${LAENDER_TOTAL} Ländern`
+  return `${list} – ${LAND_CODES.length} von ${LAENDER_TOTAL}`
 }
 
 /**

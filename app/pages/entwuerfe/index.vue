@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import type { DashboardSecondRound, DraftStation, LandCode } from '#shared/types'
-import { LAND_CODES, LAND_NAME } from '#shared/utils/laender'
+import { LAND_CODES, LAND_NAME, landCoverageDe } from '#shared/utils/laender'
 import {
   compareRowsByFrist,
   compareRowsByStatements,
@@ -273,7 +273,7 @@ const sourceUnavailable = computed(() =>
   Object.fromEntries(LAND_CODES.map((land) => [land, landUnavailableFor(land)])))
 const sourceNote = computed(() =>
   chosenLaender.value.length
-    ? 'Länder: nach Beginn der Begutachtung im Zeitraum der gewählten Gesetzgebungsperiode.'
+    ? `Länder: ${landCoverageDe()}; einer Gesetzgebungsperiode zugeordnet nach dem Beginn ihrer Begutachtung.`
     : null)
 
 /* The halves the sources and `art` ask for, the gate over them, the period

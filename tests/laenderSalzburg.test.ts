@@ -90,7 +90,7 @@ describe('the reader’s choice of sources', () => {
   })
 
   it('states the coverage', () => {
-    expect(landCoverageDe()).toBe('Oberösterreich, Salzburg und Wien – 3 von 9 Ländern')
+    expect(landCoverageDe()).toBe('Oberösterreich, Salzburg und Wien – 3 von 9')
   })
 })
 
