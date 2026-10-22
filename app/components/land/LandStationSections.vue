@@ -213,10 +213,13 @@ const reportName = computed(() => {
         Änderung treffen.
       </p>
     </div>
-    <!-- What became of the draft, § by § — only where the Land itself names
-         the Kundmachung (`landLawDiffService`): against a Kundmachung of
-         our own finding, a wrong match would report a whole law rewritten. -->
-    <div v-if="kundmachung.via !== 'suche' && land && number" class="mt-8">
+    <!-- What became of the draft, § by § — only where the Kundmachung is
+         certain (`landLawDiffService`): named by the Land, or for
+         Salzburg's Gesetze found by us and confirmed by both texts'
+         promulgation clauses. Which, the server decides after reading, and
+         says so where it does not compare; against a wrong match the
+         comparison would report a whole law rewritten. -->
+    <div v-if="(kundmachung.via !== 'suche' || (land === 'sbg' && draft.kind === 'gesetz')) && land && number" class="mt-8">
       <LandLawDiffSection :land="land" :number="number" from="entwurf" to="lgbl" />
     </div>
   </section>

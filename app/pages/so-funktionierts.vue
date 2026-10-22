@@ -532,8 +532,13 @@ const waitMonths = Math.round(RV_LATENCY_CONTEXT_DAYS / 30.44)
         noch für die Veröffentlichung bearbeitet („Hektar“ wird „ha“) – darum
         vergleicht der Monitor den Ausschuss mit der Vorlage und nicht mit dem
         Gesetz. Gegen eine Kundmachung, die nur unsere Suche
-        gefunden hat, vergleicht er nicht: Ein falscher Treffer würde ein ganzes
-        Gesetz als umgeschrieben zeigen.
+        gefunden hat, vergleicht er grundsätzlich nicht: Ein falscher Treffer
+        würde ein ganzes Gesetz als umgeschrieben zeigen. Eine Ausnahme sind
+        Salzburgs Gesetze – dort vergleicht er, wenn beide Texte dieselbe
+        letzte Änderung des Gesetzes nennen („zuletzt geändert durch …“) oder
+        die Suche nur einen einzigen Treffer hatte. Geprüft haben wir das an
+        den Regierungsvorlagen, deren Text der Entwurf ist und die das
+        Rechtsinformationssystem mit ihrem Landesgesetzblatt verknüpft.
       </p>
       <p>
         Was ein Entwurf am geltenden Recht ändern würde, zeigt Oberösterreich

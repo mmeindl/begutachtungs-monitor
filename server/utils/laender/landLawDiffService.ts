@@ -20,14 +20,17 @@
  * NOT `rv → lgbl` for the Landtag: it would mix the committee's changes with
  * that editing, which is not the committee's.
  *
- * ONLY THE LAND'S OWN RECORD NAMES THE TEXTS — Oberösterreich's Landtag. A
- * Kundmachung the monitor found by title (`matchLgbl`) is wrong about two
- * times in a hundred, and held against the wrong law a comparison would
- * report a whole draft rewritten: the one error this layer must not make.
- * Not even the search's single candidates (`LandStage.unique`): 57 of 57 were
- * right against Oberösterreich's oracle, but Salzburg, which has none, holds
- * a draft of 2022 matched to the one amendment of the same law in 2024
- * (sbg-27156, §12.44 Nachtrag 6).
+ * THE KUNDMACHUNG MUST BE CERTAIN. Named by the Land's own record
+ * (Oberösterreich's Landtag) — or, for Salzburg's Gesetze, found by our title
+ * search AND confirmed by the two texts' promulgation clauses (`followsOn`).
+ * The title search alone is wrong about two times in a hundred, a single
+ * candidate included (sbg-27156: a draft of 2022 matched to the 2024
+ * amendment of the same law), and held against the wrong law a comparison
+ * would report a whole draft rewritten: the one error this layer must not
+ * make. Measured against an oracle that never looks at a title — the
+ * Regierungsvorlage whose text the draft is, linked to its Landesgesetzblatt
+ * in RIS's own metadata (§12.47). Salzburg's Verordnungen have no such
+ * oracle and stay out.
  *
  * And a comparison in which not one unit pairs is no comparison: a draft and
  * its own Kundmachung share at least the law they amend. Shown, it would read
@@ -42,6 +45,7 @@ import type { LawUnit } from '../lawtext/lawUnits'
 import { upstreamBytes, upstreamText, type UpstreamPolicy } from '../upstream/fetch'
 import { diffLandDraft, landDraftUnits, lgblUnits, packageChanges } from './landLawDiff'
 import { lgblXmlUrl } from './lgblIndex'
+import { amendmentChain, followsOn } from './amendmentChain'
 import { compareTgu } from './landTguService'
 import { draftsSharingKundmachung } from './sources'
 
@@ -56,6 +60,8 @@ export const LAND_TEXT_PAIRS: readonly (readonly [LandTextStation, LandTextStati
   ['entwurf', 'lgbl'],
 ]
 
+const NOT_CERTAIN = 'Diese Kundmachung hat der Monitor selbst über den Titel gefunden, und die beiden Texte bestätigen sie nicht sicher — er vergleicht hier deshalb nicht.'
+
 const NOTHING_PAIRS = 'Die beiden Texte haben keinen einzigen Teil gemeinsam — der Monitor zeigt hier keinen Vergleich, statt alles als neu zu melden.'
 
 const emptyStats = { total: 0, unchanged: 0, changed: 0, editorial: 0, inserted: 0, removed: 0 }
@@ -69,7 +75,10 @@ function unavailable(from: LandTextStation, to: LandTextStation, reason: string,
 
 interface Source {
   document: LandTextDocument
-  read: () => Promise<LawUnit[] | null>
+  /** The units, and the text they were read from — the promulgation clause is checked on it. */
+  read: () => Promise<{ units: LawUnit[] | null; text: string }>
+  /** A Kundmachung of our own finding, which must pass `followsOn` before it is compared. */
+  searched?: { unique: boolean }
 }
 
 async function pdfPages(url: string): Promise<string[]> {
@@ -81,7 +90,10 @@ async function pdfPages(url: string): Promise<string[]> {
 
 const pdfSource = (label: string, url: string, publisher: string): Source => ({
   document: { label, url, publisher },
-  read: async () => landDraftUnits(await pdfPages(url)),
+  read: async () => {
+    const pages = await pdfPages(url)
+    return { units: landDraftUnits(pages), text: pages.join('\n') }
+  },
 })
 
 /** Where each text of the draft is, by the Land's own record; null where there is none. */
@@ -110,14 +122,20 @@ function sourceOf(land: LandCode, detail: LandDraftDetail, station: LandTextStat
     }
     case 'lgbl': {
       const stage = detail.draft.stage
-      if (!stage || stage === 'unknown' || stage.station !== 'bgbl' || stage.via === 'suche' || !stage.detail) return null
+      if (!stage || stage === 'unknown' || stage.station !== 'bgbl' || !stage.detail) return null
+      // Our own find only for Salzburg's Gesetze, the class the oracle
+      // measured (§12.47); it is then held to `followsOn` after reading.
+      if (stage.via === 'suche' && !(land === 'sbg' && detail.draft.kind === 'gesetz')) return null
       const nr = stage.detail
       return {
         document: { label: nr, url: stage.url ?? null, publisher: 'RIS (CC BY 4.0)' },
         read: async () => {
           const xmlUrl = await lgblXmlUrl(land, nr)
-          return xmlUrl ? lgblUnits(await upstreamText(xmlUrl, POLICY)) : null
+          if (!xmlUrl) return { units: null, text: '' }
+          const xml = await upstreamText(xmlUrl, POLICY)
+          return { units: lgblUnits(xml), text: xml.replace(/<[^>]+>/g, ' ') }
         },
+        ...(stage.via === 'suche' ? { searched: { unique: stage.unique === true } } : {}),
       }
     }
   }
@@ -134,11 +152,16 @@ export async function compareLandTexts(
   const b = sourceOf(land, detail, to)
   if (!a || !b) {
     return unavailable(from, to, to === 'lgbl' && !b
-      ? 'Verglichen wird nur, wo das Land selbst die Kundmachung nennt.'
+      ? 'Verglichen wird nur, wo die Kundmachung feststeht.'
       : 'Das Land hat einen der beiden Texte nicht veröffentlicht.', { fromDocument: a?.document ?? null, toDocument: b?.document ?? null })
   }
   const docs = { fromDocument: a.document, toDocument: b.document }
-  const [x, y] = await Promise.all([a.read(), b.read()])
+  const [ra, rb] = await Promise.all([a.read(), b.read()])
+  const x = ra.units
+  const y = rb.units
+  if (b.searched && !followsOn(amendmentChain(ra.text, rb.text), b.searched.unique)) {
+    return unavailable(from, to, NOT_CERTAIN, docs)
+  }
   if (!x?.length || !y?.length) {
     return unavailable(from, to, `Im ${!x?.length ? a.document.label : b.document.label} fand der Monitor keinen Gesetzestext, den er Paragraph für Paragraph lesen kann.`, docs)
   }
