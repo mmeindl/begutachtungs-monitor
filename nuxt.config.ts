@@ -50,10 +50,27 @@ export default defineNuxtConfig({
   // page reads (and LRU keeps those, being read on every request). `max`
   // lifts the driver's default of 1000 entries: `statement-document` alone
   // writes one tiny entry per Stellungnahme, hundreds per draft.
+  //
+  // `cache:nuxt:icon` is @nuxt/icon's, mounted apart so it cannot reach the
+  // documents (22.10.2026). Its endpoint, /api/_nuxt_icon/:collection, is a
+  // cached handler without a `base`, so its entries fell into `cache` — under
+  // a key the request names, `<collection>_<first>_<count>_<hash>`. One
+  // request of 12 KB asking for 968 lucide names stored 287 KB there, and
+  // about 220 of them evicted every document fetched. The page itself asks
+  // the endpoint for the four icons outside the client bundle, ~1 KB a
+  // set; the longer mount point wins over `cache` (unstorage picks the
+  // longest), so a flood of icon lists now evicts icon lists and nothing
+  // else. Dev mounts it as well — `devStorage` is merged over `storage`
+  // and names no such key — which only means icon lists stay in memory
+  // there. Removing the endpoint instead (`icon.provider: 'none'`) was the
+  // other way, and it fails silently: an icon added in dev stays blank
+  // until a restart, because the bundle is scanned once at startup, and a
+  // name assembled at runtime would be missing in production alone.
   nitro: {
     storage: {
       cache: { driver: 'lru-cache', maxSize: 64 * 1024 * 1024, max: 20_000 },
       derived: { driver: 'lru-cache', maxSize: 48 * 1024 * 1024, max: 20_000 },
+      'cache:nuxt:icon': { driver: 'lru-cache', maxSize: 1024 * 1024, max: 100 },
     },
     devStorage: { derived: { driver: 'memory' } },
   },
