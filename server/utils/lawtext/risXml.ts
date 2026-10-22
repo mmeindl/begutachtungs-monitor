@@ -68,7 +68,7 @@ const RIS_GLD_RE = /<gldsym>([\s\S]*?)<\/gldsym>/
 const N_AT_DASH_RE = /<\/n>((?:<\/?(?:i|b|u|em|strong|span|font)\b[^>]*>)*)(?=<gdash\s*\/>)|(<gdash\s*\/>(?:<\/?(?:i|b|u|em|strong|span|font)\b[^>]*>)*)<n>/g
 
 function risText(inner: string): string {
-  return stripTags(inner.replace(N_AT_DASH_RE, '$1$2').replace(/<gdash\s*\/>/g, '-').replace(/<nbsp\s*\/>/g, ' '))
+  return stripTags(inner.replace(N_AT_DASH_RE, '$1$2').replace(/<gdash\s*\/>/g, '-').replace(/<nbsp\s*\/>/g, ' ').replace(/<amp\s*\/>/g, '&amp;'))
 }
 
 /**

@@ -102,6 +102,7 @@ import { normalizeText } from '../../server/utils/lawtext/normalize'
 import { explanationParaId } from '../../shared/utils/explanationKey'
 import { diffUnitKey } from '../../shared/utils/diffKey'
 import { pct, quantile } from '../lib/fmt'
+import { installFetchCache } from '../lib/harnessCache'
 
 const SCRIPT = 'corpus/aenderungsrate'
 const CONCURRENCY = 4
@@ -577,6 +578,11 @@ async function measure(rows: unknown[][], inr: number, citation: string, title: 
 // ---------------------------------------------------------------------------
 // Run
 // ---------------------------------------------------------------------------
+
+// `--cache` (22.10.2026): every upstream answer from and into the harness
+// cache, as `harness/me.ts` does — so a before/after run of a parser change
+// reads the same documents twice and only the code differs.
+if (argFlag('cache')) installFetchCache(process.env.HARNESS_CACHE ?? '.harness-cache')
 
 const rows = await listRows()
 const byInr = new Map<number, { citation: string; title: string }>()

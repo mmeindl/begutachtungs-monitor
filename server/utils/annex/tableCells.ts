@@ -45,6 +45,7 @@ export function cellText(html: string): string {
       stripMarkup(
         html
           .replace(/<nbsp\s*\/>/g, ' ')
+          .replace(/<amp\s*\/>/g, '&amp;')
           .replace(/<gdash\s*\/>/g, '-')
           .replace(/<br\s*\/?>/gi, ' ')
           // A designation and the text behind it are separate words even

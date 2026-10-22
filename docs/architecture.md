@@ -12915,7 +12915,9 @@ Leserartefakte fand sie, beide auf der XML-Seite und behoben: die
 Unterschriften („Der Erste Präsident des Oö. Landtags: / Der
 Landeshauptmann:") hingen an der letzten Einheit, und RIS setzt „&" als
 Element `<amp />`, das der gemeinsame Parser mit den Tags streicht (für den
-Bund offen, `TODO.md`).
+Bund behoben am selben Tag, nach eigener Alt-gegen-neu-Messung: §-Vergleich
+eine Einheit besser — XXVII 58/ME —, Textgegenüberstellung unverändert,
+Konsolidierung 843 → 844 identische §§, keine schlechter).
 
 Und sie korrigiert eine Lesart vom Vormittag: 16113 hatte nicht „neun Gesetze
 im Entwurf, fünfzehn im Landesgesetzblatt" — der Entwurf hat fünfzehn

@@ -101,9 +101,9 @@ export function lgblUnits(xml: string): LawUnit[] {
     // A sub-instruction („2.2. Im Abs 2 lautet …", Salzburg) is part of its
     // instruction: as plain text it joins it, as the PDF side reads it.
     .replace(/<absatz typ="novao[12]"([^>]*)>(\s*(?:<[^>]+>\s*)*\d+\.\s?\d+\.\s)/g, '<absatz typ="abs"$1>$2')
-    // RIS writes „&" as an element (`Land<amp />Forst`), which the shared
-    // parser drops with the other tags; the federal fix waits for its own
-    // old-against-new run (TODO.md).
+    // RIS writes „&" as an element (`Land<amp />Forst`). The shared reader
+    // keeps it too since 22.10.2026 (`risXml.ts`); this pass is older and
+    // harmless twice.
     .replace(/<amp\s*\/>/g, '&'))
 }
 

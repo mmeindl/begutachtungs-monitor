@@ -132,7 +132,8 @@ function text(inner: string): string {
         inner
           .replace(ANNOTATION_RE, ' ')
           .replace(/<gdash\s*\/>/g, '-')
-          .replace(/<nbsp\s*\/>/g, ' '),
+          .replace(/<nbsp\s*\/>/g, ' ')
+          .replace(/<amp\s*\/>/g, '&amp;'),
       ),
     ),
   )
