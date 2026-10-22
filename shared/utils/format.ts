@@ -20,9 +20,16 @@ const DATE_WEEKDAY_FORMAT = new Intl.DateTimeFormat('de-AT', {
   month: '2-digit',
   year: 'numeric',
 })
+/* The one formatter with a zone, because it prints an instant: a time of
+ * day exists only in some zone, and the process's is the VPS's UTC on the
+ * server and the reader's in the browser — two clocks for one timestamp,
+ * and from 22:00 UTC (23:00 in winter) to midnight two dates. The
+ * date-only ones above need none, and must not get one: they print local
+ * noon of a calendar day, which only the local zone keeps on that day. */
 const DATE_TIME_FORMAT = new Intl.DateTimeFormat('de-AT', {
   dateStyle: 'medium',
   timeStyle: 'short',
+  timeZone: 'Europe/Vienna',
 })
 const NUMBER_FORMAT = new Intl.NumberFormat('de-AT')
 
@@ -43,7 +50,7 @@ export function formatDateWeekdayDe(iso: string | null | undefined): string {
   return DATE_WEEKDAY_FORMAT.format(d)
 }
 
-/** ISO timestamp → "24.08.2026, 14:30" (de-AT) */
+/** ISO timestamp → "24.08.2026, 14:30" (de-AT), on Vienna's clock wherever it runs */
 export function formatDateTimeDe(iso: string | null | undefined): string {
   if (!iso) return '–'
   const d = new Date(iso)

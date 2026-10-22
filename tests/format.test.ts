@@ -1,4 +1,4 @@
-import { describe, expect, it } from 'vitest'
+import { afterEach, describe, expect, it, vi } from 'vitest'
 import { bgblLong, bgblShort, daysUntil, endorsementUnit, formatNumberDe, fristLabel, moreLabelDe, shownLabelDe, todayIso } from '../shared/utils/format'
 
 describe('shownLabelDe', () => {
@@ -87,6 +87,45 @@ describe('daysUntil', () => {
     expect(daysUntil('2026-09-20', now)).toBe(-1)
     expect(daysUntil(null, now)).toBeNull()
     expect(daysUntil('kaputt', now)).toBeNull()
+  })
+})
+
+/**
+ * „Stand der Liste: …" is rendered twice: on the server, which runs in UTC,
+ * and in the reader's browser. Both must print Vienna's clock, or they
+ * disagree by an hour or two — between 22:00 and 24:00 UTC on the date too.
+ *
+ * The formatters are built at module load, in whatever zone the process has
+ * then, so each case stubs the zone and imports a fresh copy of the module:
+ * on a laptop in Vienna the bug cannot show otherwise.
+ */
+describe('the process’s time zone', () => {
+  afterEach(() => {
+    vi.unstubAllEnvs()
+  })
+
+  async function formatIn(zone: string) {
+    vi.stubEnv('TZ', zone)
+    vi.resetModules()
+    return import('../shared/utils/format')
+  }
+
+  it('leaves formatDateTimeDe on Vienna’s clock in a UTC process', async () => {
+    const { formatDateTimeDe } = await formatIn('UTC')
+    expect(formatDateTimeDe('2026-10-21T21:30:00Z')).toBe('21.10.2026, 23:30')
+    // Past 22:00 UTC in summer it is already the next day in Vienna.
+    expect(formatDateTimeDe('2026-10-21T22:30:00Z')).toBe('22.10.2026, 00:30')
+    // CET in winter: one hour, not two.
+    expect(formatDateTimeDe('2026-01-15T22:30:00Z')).toBe('15.01.2026, 23:30')
+  })
+
+  it('keeps a calendar date on its day in any zone', async () => {
+    // A date-only value is read as local noon and printed in the local zone,
+    // so it never moves. Printed in Vienna, noon at UTC−11 would be the
+    // next day there.
+    const { formatDateDe, formatDateWeekdayDe } = await formatIn('Pacific/Pago_Pago')
+    expect(formatDateDe('2026-08-24')).toBe('24.08.2026')
+    expect(formatDateWeekdayDe('2026-08-24')).toBe('Mo., 24.08.2026')
   })
 })
 
