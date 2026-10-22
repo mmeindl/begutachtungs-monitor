@@ -132,6 +132,53 @@ export interface ReasoningComparison {
 type Texts = ReadonlyMap<string, string>
 
 /**
+ * What the comparison reads off a unit's instruction — read once per unit
+ * and side for one call of `compareReasoning` or `compareReasoningByParagraph`,
+ * and thrown away with it (22.10.2026).
+ *
+ * Both readings run the Novellierungsanordnungen grammar over the whole
+ * instruction, payload included (`parseInstruction`), and the joins asked them
+ * again for every passage, key and unit they held against each other: the
+ * guard of `fitting`, the scope of `cover`, `sameLaw`, every `sideKeys`.
+ * Profiled on XXVI 75/ME, 4,7 s of one synchronous call were 4,2 s of
+ * re-parsing the same lines — on the one Node process that serves every
+ * visitor. Read once, the three slowest drafts of the offline corpus take
+ * 5.053 → 593, 949 → 185 and 896 → 176 ms (XXVI 75/ME, XXVII 264/ME,
+ * XXVIII 61/ME, each in a fresh process), and the output of all 353 drafts
+ * of GP XXVI–XXVIII with Erläuterungen on both sides is byte for byte the
+ * same. What is left of the 593 ms is mostly the grammar reading each
+ * instruction those few times.
+ *
+ * Scoped to the call rather than kept in the module: nothing outlives the
+ * comparison it was read for, so nothing has to be bounded or invalidated.
+ */
+interface Readings {
+  /** `addressedParagraphOf`. */
+  addressed: (unit: LawDiffUnit) => string | null
+  /** `unitParagraphIds`. */
+  paragraphIds: (unit: LawDiffUnit, side: Side) => ReadonlySet<string>
+}
+
+function readings(): Readings {
+  const addressed = new Map<LawDiffUnit, string | null>()
+  const ids: Record<Side, Map<LawDiffUnit, ReadonlySet<string>>> = { before: new Map(), after: new Map() }
+  return {
+    addressed: (unit) => {
+      const known = addressed.get(unit)
+      if (known !== undefined) return known
+      const para = addressedParagraphOf(unit)
+      addressed.set(unit, para)
+      return para
+    },
+    paragraphIds: (unit, side) => {
+      let known = ids[side].get(unit)
+      if (!known) ids[side].set(unit, (known = unitParagraphIds(unit, side)))
+      return known
+    },
+  }
+}
+
+/**
  * The Paragraph numbers occurring in more than one Artikel of the draft — see
  * the file header. Computed over all units, the unchanged ones included:
  * whether a number is given out twice does not depend on what changed between
@@ -144,11 +191,11 @@ type Texts = ReadonlyMap<string, string>
  * ElWG's „Zu § 32 (Besondere Bestimmungen für die Auffangversorgung …):" at
  * the E-Control-Gesetz's instructions.
  */
-function ambiguousParagraphs(units: readonly LawDiffUnit[]): Set<string> {
+function ambiguousParagraphs(units: readonly LawDiffUnit[], read: Readings): Set<string> {
   const articles = new Map<string, Set<string>>()
   for (const unit of units) {
     const own = isParagraphUnit(unit) ? paragraphOfId(unit.id) ?? paragraphOfId(unit.fromId) : null
-    const para = own ? `§ ${own}` : addressedParagraphOf(unit)
+    const para = own ? `§ ${own}` : read.addressed(unit)
     if (!para) continue
     const seen = articles.get(para) ?? new Set<string>()
     seen.add(unit.article ?? '')
@@ -243,9 +290,9 @@ function fill(f: Filling, unit: LawDiffUnit, key: string, make: () => EntryInput
  * unique in the draft, by Artikel and § where it is not, and where not even
  * that holds, nothing.
  */
-function joinAtParagraph(f: Filling, units: readonly LawDiffUnit[], ambiguous: ReadonlySet<string>, before: Texts, after: Texts, byArticle: { before: Texts; after: Texts } | null): void {
+function joinAtParagraph(f: Filling, units: readonly LawDiffUnit[], ambiguous: ReadonlySet<string>, before: Texts, after: Texts, byArticle: { before: Texts; after: Texts } | null, read: Readings): void {
   for (const unit of units) {
-    const para = addressedParagraphOf(unit)
+    const para = read.addressed(unit)
     const id = explanationParaId(para)
     if (!para || !id) continue
     if (!ambiguous.has(para)) {
@@ -274,15 +321,16 @@ function joinAtParagraph(f: Filling, units: readonly LawDiffUnit[], ambiguous: R
  * „geändert" would be wrong.
  */
 export function compareReasoningByParagraph(units: readonly LawDiffUnit[], before: Texts, after: Texts, byArticle: { before: Texts; after: Texts } | null = null): ReasoningComparison {
-  const ambiguous = ambiguousParagraphs(units)
+  const read = readings()
+  const ambiguous = ambiguousParagraphs(units, read)
   const f: Filling = { out: { units: {}, entries: {}, stats: { compared: 0, changed: 0, uncompared: 0 } }, skipped: new Set() }
   // Two passes: every unique number first, the Artikel-keyed ones after. The
   // ceiling counts entries, and in unit order an Artikel-keyed § early in a
   // long Sammelgesetz took the place of a unique one that had been shown
   // before the second key existed — measured, 43, 202 and 230/ME of GP XXVII
   // would have lost Begründungen they have today.
-  const isAmbiguous = (u: LawDiffUnit) => ambiguous.has(addressedParagraphOf(u) ?? '')
-  joinAtParagraph(f, [...units.filter((u) => !isAmbiguous(u)), ...units.filter(isAmbiguous)], ambiguous, before, after, byArticle)
+  const isAmbiguous = (u: LawDiffUnit) => ambiguous.has(read.addressed(u) ?? '')
+  joinAtParagraph(f, [...units.filter((u) => !isAmbiguous(u)), ...units.filter(isAmbiguous)], ambiguous, before, after, byArticle, read)
   return finish(f.out)
 }
 
@@ -453,7 +501,7 @@ function existsOn(unit: LawDiffUnit, side: Side): boolean {
  * numbering (`foreignNumbered`) — by this side's Artikel heading and the
  * other side's Artikel and Ziffer. None on the side where it does not exist.
  */
-function sideKeys(unit: LawDiffUnit, side: Side, mode: ArticleMode, ambiguous: ReadonlySet<string>): string[] {
+function sideKeys(unit: LawDiffUnit, side: Side, mode: ArticleMode, ambiguous: ReadonlySet<string>, read: Readings): string[] {
   const { ziffer, article } = unitZiffer(unit, side)
   if (!ziffer) return []
   if (mode === 'single') return [zifferKey(null, ziffer)]
@@ -462,7 +510,7 @@ function sideKeys(unit: LawDiffUnit, side: Side, mode: ArticleMode, ambiguous: R
     return title ? [titleZifferKey(title, ziffer)] : []
   }
   const keys = article ? [zifferKey(article, ziffer)] : []
-  const para = addressedParagraphOf(unit)
+  const para = read.addressed(unit)
   const id = explanationParaId(para)
   if (para && id && !ambiguous.has(para)) keys.push(paragraphZifferKey(id, ziffer))
   const other = unitZiffer(unit, side === 'after' ? 'before' : 'after')
@@ -574,7 +622,7 @@ function titledLaws(units: readonly LawDiffUnit[], doc: HtmlExplanations, side: 
 }
 
 /** One side of the Ziffer join, out of the units and that side's document. */
-function zifferSide(units: readonly LawDiffUnit[], doc: HtmlExplanations, side: Side, ambiguous: ReadonlySet<string>): ZifferSide {
+function zifferSide(units: readonly LawDiffUnit[], doc: HtmlExplanations, side: Side, ambiguous: ReadonlySet<string>, read: Readings): ZifferSide {
   const unitArticles = new Set(units.filter((u) => unitZiffer(u, side).ziffer).map((u) => unitZiffer(u, side).article ?? ''))
   const passageArticles = new Set(doc.special.flatMap((p) => p.ziffern.map((z) => z.article ?? '')))
   const titled = titledLaws(units.filter((u) => unitZiffer(u, side).ziffer), doc, side)
@@ -582,8 +630,8 @@ function zifferSide(units: readonly LawDiffUnit[], doc: HtmlExplanations, side: 
   const map = new Map<string, LawDiffUnit[]>()
   const byParagraph = new Map<string, LawDiffUnit[]>()
   for (const u of units) {
-    for (const key of sideKeys(u, side, mode, ambiguous)) map.set(key, [...(map.get(key) ?? []), u])
-    const id = explanationParaId(addressedParagraphOf(u))
+    for (const key of sideKeys(u, side, mode, ambiguous, read)) map.set(key, [...(map.get(key) ?? []), u])
+    const id = explanationParaId(read.addressed(u))
     if (id && existsOn(u, side)) byParagraph.set(id, [...(byParagraph.get(id) ?? []), u])
   }
   const byZiffer = new Map<string, number[]>()
@@ -607,12 +655,12 @@ function zifferSide(units: readonly LawDiffUnit[], doc: HtmlExplanations, side: 
  * rule: a § number no second Artikel of the draft addresses is the unit's,
  * a shared one only under the unit's Artikel.
  */
-function sameLaw(side: ZifferSide, passage: HtmlPassage, unit: LawDiffUnit, ambiguous: ReadonlySet<string>): boolean {
+function sameLaw(side: ZifferSide, passage: HtmlPassage, unit: LawDiffUnit, ambiguous: ReadonlySet<string>, read: Readings): boolean {
   if (side.mode === 'title') {
     const title = unitTitle(unit, side.side)
     return passage.law !== null && title !== null && lawTitleKey(passage.law) === lawTitleKey(title)
   }
-  if (side.mode === 'single' || !ambiguous.has(addressedParagraphOf(unit) ?? '')) return true
+  if (side.mode === 'single' || !ambiguous.has(read.addressed(unit) ?? '')) return true
   return passage.article !== null && passage.article === unitZiffer(unit, side.side).article
 }
 
@@ -622,13 +670,13 @@ function sameLaw(side: ZifferSide, passage: HtmlPassage, unit: LawDiffUnit, ambi
  * Abs. 1b und 2):" (48/ME XXVIII). A passage that belongs to a Ziffer is not
  * among them: it is that Ziffer's, not every change's to the same §.
  */
-function paragraphPassages(side: ZifferSide, unit: LawDiffUnit, ambiguous: ReadonlySet<string>): number[] {
-  const id = explanationParaId(addressedParagraphOf(unit))
+function paragraphPassages(side: ZifferSide, unit: LawDiffUnit, ambiguous: ReadonlySet<string>, read: Readings): number[] {
+  const id = explanationParaId(read.addressed(unit))
   if (!id) return []
   const out: number[] = []
   side.doc.special.forEach((p, i) => {
     if (side.owned.has(i) || p.ziffern.length > 0) return
-    if (p.paragraphs.some((x) => explanationParaId(x) === id) && sameLaw(side, p, unit, ambiguous)) out.push(i)
+    if (p.paragraphs.some((x) => explanationParaId(x) === id) && sameLaw(side, p, unit, ambiguous, read)) out.push(i)
   })
   return out
 }
@@ -664,9 +712,9 @@ function unitParagraphIds(unit: LawDiffUnit, side: Side): Set<string> {
  * no §, or a unit whose § cannot be read (a table of contents, an inserted
  * §), is not judged.
  */
-function fitsParagraphs(passage: HtmlPassage, unit: LawDiffUnit, side: Side): boolean {
+function fitsParagraphs(passage: HtmlPassage, unit: LawDiffUnit, side: Side, read: Readings): boolean {
   if (passage.paragraphs.length === 0) return true
-  const own = unitParagraphIds(unit, side)
+  const own = read.paragraphIds(unit, side)
   if (own.size === 0) return true
   return passage.paragraphs.some((p) => own.has(explanationParaId(p) ?? ''))
 }
@@ -701,9 +749,9 @@ interface FoundPassages {
  * same §§ on both sides, so our reading of it is not what differs; and the
  * other side's passages all name a § it does amend.
  */
-function misnumbered(unit: LawDiffUnit, me: FoundPassages, rv: FoundPassages): boolean {
-  const own = unitParagraphIds(unit, 'before')
-  const ownAfter = unitParagraphIds(unit, 'after')
+function misnumbered(unit: LawDiffUnit, me: FoundPassages, rv: FoundPassages, read: Readings): boolean {
+  const own = read.paragraphIds(unit, 'before')
+  const ownAfter = read.paragraphIds(unit, 'after')
   if (own.size === 0 || own.size !== ownAfter.size || [...own].some((x) => !ownAfter.has(x))) return false
   const bases = new Set([...own].map(paragraphBase))
   // A slip drops a letter („§ 124" for § 124b); one that adds a letter to
@@ -714,9 +762,9 @@ function misnumbered(unit: LawDiffUnit, me: FoundPassages, rv: FoundPassages): b
   const misfit = (f: FoundPassages, side: Side) => {
     if (f.byParagraph || f.passages.length !== 1) return false
     const p = f.doc.special[f.passages[0]!]!
-    return p.ziffern.length === 1 && p.paragraphs.length > 0 && !fitsParagraphs(p, unit, side) && !p.paragraphs.some((x) => slip(explanationParaId(x) ?? ''))
+    return p.ziffern.length === 1 && p.paragraphs.length > 0 && !fitsParagraphs(p, unit, side, read) && !p.paragraphs.some((x) => slip(explanationParaId(x) ?? ''))
   }
-  const fits = (f: FoundPassages, side: Side) => !f.byParagraph && f.passages.every((i) => f.doc.special[i]!.paragraphs.length > 0 && fitsParagraphs(f.doc.special[i]!, unit, side))
+  const fits = (f: FoundPassages, side: Side) => !f.byParagraph && f.passages.every((i) => f.doc.special[i]!.paragraphs.length > 0 && fitsParagraphs(f.doc.special[i]!, unit, side, read))
   return (misfit(me, 'before') && fits(rv, 'after')) || (misfit(rv, 'after') && fits(me, 'before'))
 }
 
@@ -767,12 +815,13 @@ export interface ReasoningComparisonAtZiffer extends ReasoningComparison {
  *     take the ceiling from an entry the layer showed before.
  */
 export function compareReasoning(units: readonly LawDiffUnit[], before: HtmlExplanations, after: HtmlExplanations): ReasoningComparisonAtZiffer {
-  const ambiguous = ambiguousParagraphs(units)
+  const read = readings()
+  const ambiguous = ambiguousParagraphs(units, read)
   const f: Filling = { out: { units: {}, entries: {}, stats: { compared: 0, changed: 0, uncompared: 0 } }, skipped: new Set() }
   const fallbacks: Record<string, ZifferFallback> = {}
 
   const titled = before.special.some((p) => p.ziffern.length > 0) && after.special.some((p) => p.ziffern.length > 0)
-  const z = titled ? { before: zifferSide(units, before, 'before', ambiguous), after: zifferSide(units, after, 'after', ambiguous) } : null
+  const z = titled ? { before: zifferSide(units, before, 'before', ambiguous, read), after: zifferSide(units, after, 'after', ambiguous, read) } : null
 
   const guarded = new Map<string, { unit: string; side: Side; heading: string }>()
   const scopes: { unit: string; before: string[]; after: string[] }[] = []
@@ -797,7 +846,7 @@ export function compareReasoning(units: readonly LawDiffUnit[], before: HtmlExpl
     // alone: its number was read past the Artikel heading it stands under,
     // and the § is the second witness that it is this unit's law.
     if (found.length < 2 && !key.startsWith('F')) return found
-    const fits = found.filter((i) => fitsParagraphs(side.doc.special[i]!, unit, side.side))
+    const fits = found.filter((i) => fitsParagraphs(side.doc.special[i]!, unit, side.side, read))
     for (const i of found) {
       if (fits.includes(i)) continue
       guarded.set(`${diffUnitKey(unit)}|${side.side}|${i}`, { unit: diffUnitKey(unit), side: side.side, heading: side.doc.special[i]!.heading })
@@ -807,7 +856,7 @@ export function compareReasoning(units: readonly LawDiffUnit[], before: HtmlExpl
   /** `diffUnitKey|side` of every unit a side found through the other document's numbering (`foreignNumbered`). */
   const viaForeign = new Set<string>()
   const lookup = (side: ZifferSide, unit: LawDiffUnit): number[] => {
-    for (const key of sideKeys(unit, side.side, side.mode, ambiguous)) {
+    for (const key of sideKeys(unit, side.side, side.mode, ambiguous, read)) {
       if ((side.units.get(key)?.length ?? 0) !== 1) continue
       const found = fitting(side, key, unit)
       if (found.length && key.startsWith('F')) viaForeign.add(`${diffUnitKey(unit)}|${side.side}`)
@@ -837,7 +886,7 @@ export function compareReasoning(units: readonly LawDiffUnit[], before: HtmlExpl
       // A change the side explains under its own Ziffer is not this passage's.
       for (const para of passage.paragraphs) {
         for (const u of side.byParagraph.get(explanationParaId(para) ?? '') ?? []) {
-          if (sameLaw(side, passage, u, ambiguous) && !lookup(side, u).length) out.add(diffUnitKey(u))
+          if (sameLaw(side, passage, u, ambiguous, read) && !lookup(side, u).length) out.add(diffUnitKey(u))
         }
       }
     }
@@ -846,7 +895,7 @@ export function compareReasoning(units: readonly LawDiffUnit[], before: HtmlExpl
   /** The unit's passages on a side: its Ziffer's, else those titled by its § alone. */
   const passagesOf = (side: ZifferSide, unit: LawDiffUnit): { passages: number[]; byParagraph: boolean } => {
     const own = lookup(side, unit)
-    return own.length ? { passages: own, byParagraph: false } : { passages: paragraphPassages(side, unit, ambiguous), byParagraph: true }
+    return own.length ? { passages: own, byParagraph: false } : { passages: paragraphPassages(side, unit, ambiguous, read), byParagraph: true }
   }
   const sorted = (xs: readonly number[]) => [...xs].sort((a, b) => a - b)
   const headingsOf = (doc: HtmlExplanations, passages: readonly number[]) =>
@@ -889,14 +938,14 @@ export function compareReasoning(units: readonly LawDiffUnit[], before: HtmlExpl
     // passage to Z 48 would have been held against the draft's wrong one.
     if (
       (viaForeign.has(`${diffUnitKey(unit)}|before`) || viaForeign.has(`${diffUnitKey(unit)}|after`)) &&
-      !(me.passages.every((i) => fitsParagraphs(before.special[i]!, unit, 'before')) && rv.passages.every((i) => fitsParagraphs(after.special[i]!, unit, 'after')))
+      !(me.passages.every((i) => fitsParagraphs(before.special[i]!, unit, 'before', read)) && rv.passages.every((i) => fitsParagraphs(after.special[i]!, unit, 'after', read)))
     ) {
       fallbacks[diffUnitKey(unit)] = 'none'
       continue
     }
     // One side's own passage is about another § than the other side's: that
     // document numbers its Ziffern off its own text (`misnumbered`).
-    if (misnumbered(unit, { doc: before, ...me }, { doc: after, ...rv })) {
+    if (misnumbered(unit, { doc: before, ...me }, { doc: after, ...rv }, read)) {
       fallbacks[diffUnitKey(unit)] = 'misnumbered'
       continue
     }
@@ -920,7 +969,7 @@ export function compareReasoning(units: readonly LawDiffUnit[], before: HtmlExpl
     const byParagraphOnly = me.byParagraph && rv.byParagraph
     fill(f, unit, key, () => ({
       basis: byParagraphOnly ? 'paragraph' : 'ziffer',
-      label: byParagraphOnly ? (addressedParagraphOf(unit) ?? '') : headingsOf(after, rv.passages),
+      label: byParagraphOnly ? (read.addressed(unit) ?? '') : headingsOf(after, rv.passages),
       a: textOf(before, me.passages),
       b: textOf(after, rv.passages),
     }))
@@ -931,15 +980,15 @@ export function compareReasoning(units: readonly LawDiffUnit[], before: HtmlExpl
 
   // The § join, unique numbers first (see `compareReasoningByParagraph`):
   // the units it always served, and the inserted and removed ones.
-  const isAmbiguous = (u: LawDiffUnit) => ambiguous.has(addressedParagraphOf(u) ?? '')
+  const isAmbiguous = (u: LawDiffUnit) => ambiguous.has(read.addressed(u) ?? '')
   const rest = [...atParagraph, ...oneSided]
   const texts = (doc: HtmlExplanations) => ({ all: ownedTexts(doc, passagesByParagraph(doc)), byArticle: ownedTexts(doc, passagesByArticleParagraph(doc)) })
   const me = texts(before)
   const rv = texts(after)
-  joinAtParagraph(f, [...rest.filter((u) => !isAmbiguous(u)), ...rest.filter(isAmbiguous)], ambiguous, me.all, rv.all, { before: me.byArticle, after: rv.byArticle })
+  joinAtParagraph(f, [...rest.filter((u) => !isAmbiguous(u)), ...rest.filter(isAmbiguous)], ambiguous, me.all, rv.all, { before: me.byArticle, after: rv.byArticle }, read)
   // Last, so a new law's §§ never take the ceiling from an entry the layer
   // showed before they had one.
-  joinOwnParagraph(f, units, ownParagraph, before, after)
+  joinOwnParagraph(f, units, ownParagraph, before, after, read)
   return { ...finish(f.out), fallbacks, routes: { ziffer: zifferRoute, paragraph: atParagraph.length, ownParagraph: ownParagraph.length }, guarded: [...guarded.values()], scopes }
 }
 
@@ -998,7 +1047,7 @@ function titledParagraphs(passage: HtmlPassage): string[] {
  * a passage under another law's Artikel. Two units of one key on a side (a
  * duplicate number) are both refused.
  */
-function ownSide(units: readonly LawDiffUnit[], doc: HtmlExplanations, side: Side): OwnSide {
+function ownSide(units: readonly LawDiffUnit[], doc: HtmlExplanations, side: Side, read: Readings): OwnSide {
   const present = units.filter((u) => existsOn(u, side))
   const articleOf = (u: LawDiffUnit) => (side === 'after' ? u.articleKey : u.fromArticleKey)
   const unitArticles = new Set(present.map((u) => articleOf(u) ?? ''))
@@ -1013,7 +1062,7 @@ function ownSide(units: readonly LawDiffUnit[], doc: HtmlExplanations, side: Sid
   for (const u of present) {
     const law = articleOf(u) ?? ''
     if (!isParagraphUnit(u)) {
-      for (const para of unitParagraphIds(u, side)) addLaw(para, law)
+      for (const para of read.paragraphIds(u, side)) addLaw(para, law)
       continue
     }
     const { para } = unitParagraph(u, side)
@@ -1071,10 +1120,10 @@ function ownSide(units: readonly LawDiffUnit[], doc: HtmlExplanations, side: Sid
  * for a § present on both sides: an inserted or removed one has no passage
  * on the other side to be held against.
  */
-function joinOwnParagraph(f: Filling, units: readonly LawDiffUnit[], candidates: readonly LawDiffUnit[], before: HtmlExplanations, after: HtmlExplanations): void {
+function joinOwnParagraph(f: Filling, units: readonly LawDiffUnit[], candidates: readonly LawDiffUnit[], before: HtmlExplanations, after: HtmlExplanations, read: Readings): void {
   if (!candidates.some(isPaired)) return
-  const me = ownSide(units, before, 'before')
-  const rv = ownSide(units, after, 'after')
+  const me = ownSide(units, before, 'before', read)
+  const rv = ownSide(units, after, 'after', read)
   const cover = (side: OwnSide, passages: readonly number[]) => new Set(passages.flatMap((i) => [...(side.covers.get(i) ?? [])]))
   const sorted = (xs: readonly number[]) => [...xs].sort((a, b) => a - b)
   const headingsOf = (doc: HtmlExplanations, passages: readonly number[]) =>

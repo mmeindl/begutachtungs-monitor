@@ -194,6 +194,33 @@ describe('compareReasoning — die Begründung an der Ziffer (01.10.2026)', () =
     expect(out.entries[out.units['Gesetz|Z5|changed']!]).toMatchObject({ basis: 'ziffer', label: 'Zu Z 5 (§ 7):', changed: false })
   })
 
+  // XXVI 75/ME took 4,7 s of one synchronous call: every passage, key and
+  // scope the joins held against a unit parsed its instruction again
+  // (22.10.2026). Counted at the unit's text, which every reading starts
+  // from: three readings per unit — the § it addresses, the §§ it amends on
+  // each side — however many passages there are. Before: 2.070 reads for
+  // these 30 units, growing with the square of their number.
+  it('liest jede Anweisung einmal je Vergleich, nicht einmal je Passage', () => {
+    let reads = 0
+    const n = 30
+    const units = Array.from({ length: n }, (_, i) => {
+      const counted = z(`Z${i + 1}`, `Z${i + 1}`, `In § ${i + 1} Abs. 1 wird das Wort "kann" durch das Wort "darf" ersetzt.`)
+      const { fromText, toText } = counted
+      return Object.defineProperties(counted, {
+        fromText: { get: () => (reads++, fromText) },
+        toText: { get: () => (reads++, toText) },
+      })
+    })
+    // Each Ziffer's own passage, and one over all of them: every unit's key
+    // then finds two passages, and the scope of the collective one covers all.
+    const doc = (extra: string) => erl(...units.flatMap((_, i) => [`Zu Z ${i + 1} (§ ${i + 1} Abs. 1):`, `Begründung ${i + 1}${extra}.`]), `Zu Z 1 bis ${n}:`, `Allgemein${extra}.`)
+
+    const out = compareReasoning(units, doc(''), doc(' ergänzt'))
+
+    expect(out.stats.compared).toBe(n)
+    expect(reads).toBeLessThanOrEqual(3 * n)
+  })
+
   it('zählt eine Passage über mehrere Ziffern einmal und zeigt sie an jeder', () => {
     const units = [z('Z1', 'Z1', 'In § 1 wird "a" durch "b" ersetzt.'), z('Z2', 'Z2', 'In § 2 wird "a" durch "b" ersetzt.'), z('Z3', 'Z3', 'In § 3 wird "a" durch "b" ersetzt.')]
     const before = erl('Zu Z 1 bis 3:', 'Die Ressortbezeichnung wird angepasst.')

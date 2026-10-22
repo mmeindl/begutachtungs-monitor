@@ -29,7 +29,7 @@ import { articleNameTokens, jaccardSimilarity } from '../lawtext/lawNames'
 import { bareParaId, leadingArticleKey } from '../text/designation'
 import { sameStammnormCited, type BgblCitation } from '../lawtext/bgblCitation'
 import { instructionParagraphs } from '../lawtext/instructionAddress'
-import { diffTokens, isAddressOnlyDifference, isEditorialChange, tokenSimilarity, type TokenDiff } from './wordDiff'
+import { compareWords, diffTokens, isAddressOnlyDifference, isEditorialChange, tokenSimilarity, type TokenDiff } from './wordDiff'
 
 // ---------------------------------------------------------------------------
 // Article pairing
@@ -480,6 +480,14 @@ export function alignUnits(fromUnits: readonly LawUnit[], to: readonly LawUnit[]
     pairedFrom.add(a)
     pairedTo.add(b)
   }
+  // Steps 2 and 3 score a unit against every candidate of its Artikel, so its
+  // words are read once here rather than once per pair (`tokenSimilarity`).
+  const tokens = new Map<LawUnit, string[]>()
+  const wordsOf = (u: LawUnit): string[] => {
+    let known = tokens.get(u)
+    if (!known) tokens.set(u, (known = compareWords(u.text)))
+    return known
+  }
 
   // 1. heading
   const toByHeading = uniqueIndex(to, headingKey)
@@ -500,7 +508,7 @@ export function alignUnits(fromUnits: readonly LawUnit[], to: readonly LawUnit[]
     if (u.heading && partner.heading) continue // both headed, headings differ → not the same §
     // Units the heading could not decide renumber too: the same id must also
     // look alike, else step 3 decides by similarity.
-    if (tokenSimilarity(u.text, partner.text, 0.5) < 0.5) continue
+    if (tokenSimilarity(wordsOf(u), wordsOf(partner), 0.5) < 0.5) continue
     if (addressOnlyPair(u, partner)) continue
     pair(u, partner)
   }
@@ -512,7 +520,7 @@ export function alignUnits(fromUnits: readonly LawUnit[], to: readonly LawUnit[]
   for (const a of restFrom) {
     for (const b of restTo) {
       if ((a.article ?? '') !== (b.article ?? '')) continue
-      const s = tokenSimilarity(a.text, b.text, 0.6)
+      const s = tokenSimilarity(wordsOf(a), wordsOf(b), 0.6)
       if (s >= 0.6) candidates.push({ from: a, to: b, s })
     }
   }

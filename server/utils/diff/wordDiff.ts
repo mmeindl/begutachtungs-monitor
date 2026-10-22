@@ -49,6 +49,15 @@ function words(t: string): Words {
   return { display, compare: display.map(compareToken) }
 }
 
+/**
+ * A text's words in the form the alignment reads — the `compare` array of
+ * `diffTokens` — for a caller that scores one text against many and would
+ * otherwise tokenize it again for every pair (`alignUnits`, 22.10.2026).
+ */
+export function compareWords(text: string): string[] {
+  return words(text).compare
+}
+
 export interface TokenDiff {
   similarity: number
   segments: LawDiffSegment[] | null
@@ -102,9 +111,17 @@ export function diffTokens(aText: string, bText: string): TokenDiff {
  * The similarity alone, without building the segment list — the answer two
  * of the three alignment steps want.
  *
- * Identical to `diffTokens(a, b).similarity` in every case, including the
- * `MAX_DP_CELLS` fallback; it computes the LCS over a rolling row instead of
- * the full matrix, because nothing is backtracked.
+ * Identical to `diffTokens(aText, bText).similarity` for `a =
+ * compareWords(aText)` and `b = compareWords(bText)` in every case,
+ * including the `MAX_DP_CELLS` fallback; it computes the LCS over a rolling
+ * row instead of the full matrix, because nothing is backtracked.
+ *
+ * It takes the words, not the texts, since 22.10.2026: step 3 scores every
+ * pair of the remaining units of an Artikel, and tokenizing both texts again
+ * for each pair was 730 of the 1.021 ms `diffLawPackage` took on XXVII 77/ME.
+ * The caller tokenizes each unit once (`alignUnits`): 1.014 → 194 ms there,
+ * 492 → 134 on XXVII 297/ME, 300 → 88 on XXVIII 108/ME, and every one of the
+ * 485 ME→RV comparisons of GP XXVI–XXVIII byte for byte as before.
  *
  * `minimum` is a caller's threshold, and it is exact rather than an
  * approximation: `bagSimilarity` is `2·|multiset ∩|/(n+m)` and an LCS can
@@ -116,9 +133,7 @@ export function diffTokens(aText: string, bText: string): TokenDiff {
  * threshold. Measured cause: step 3 ran a full LCS per remaining pair, 240×240
  * units = 2,0 s (`docs/refactor-plan.md` §6.3).
  */
-export function tokenSimilarity(aText: string, bText: string, minimum = 0): number {
-  const a = words(aText).compare
-  const b = words(bText).compare
+export function tokenSimilarity(a: readonly string[], b: readonly string[], minimum = 0): number {
   const n = a.length
   const m = b.length
   if (n === 0 && m === 0) return 1
@@ -147,7 +162,7 @@ function lcsLength(a: readonly string[], b: readonly string[]): number {
   return next[0]!
 }
 
-export function bagSimilarity(a: string[], b: string[]): number {
+export function bagSimilarity(a: readonly string[], b: readonly string[]): number {
   const count = new Map<string, number>()
   for (const t of a) count.set(t, (count.get(t) ?? 0) + 1)
   let common = 0

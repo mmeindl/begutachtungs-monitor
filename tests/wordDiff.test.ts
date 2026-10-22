@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { diffTokens, isAddressOnlyDifference, isEditorialChange } from '../server/utils/diff/wordDiff'
+import { compareWords, diffTokens, isAddressOnlyDifference, isEditorialChange, tokenSimilarity } from '../server/utils/diff/wordDiff'
 
 describe('diffTokens', () => {
   it('finds word-level changes and a similarity', () => {
@@ -26,6 +26,32 @@ describe('diffTokens', () => {
     expect(diffTokens('die E-Mail-Adresse nach dem E-GoVG', 'die EMailAdresse nach dem EGoVG').similarity).toBe(1)
     // A dash BETWEEN words is not a hyphen inside one and stays a token.
     expect(diffTokens('Wien - Graz', 'Wien Graz').similarity).toBeLessThan(1)
+  })
+})
+
+// The alignment tokenizes each unit once and scores the words (22.10.2026);
+// the score has to stay the one `diffTokens` gives the two texts.
+describe('tokenSimilarity über die Wörter', () => {
+  const pairs: [string, string][] = [
+    ['Die Frist beträgt sechs Wochen.', 'Die Frist beträgt acht Wochen.'],
+    ['der Bundes-Vergabekontrollkommission', 'der BundesVergabekontrollkommission'],
+    ['', ''],
+    ['a b c', ''],
+    // Above `MAX_DP_CELLS` (1.700 × 1.700): both fall back to the bag.
+    [Array.from({ length: 1700 }, (_, i) => `wort${i}`).join(' '), Array.from({ length: 1700 }, (_, i) => (i % 10 === 0 ? `neu${i}` : `wort${i}`)).join(' ')],
+  ]
+
+  it('gibt für die Wörter beider Texte dieselbe Ähnlichkeit wie diffTokens', () => {
+    for (const [a, b] of pairs) expect(tokenSimilarity(compareWords(a), compareWords(b))).toBe(diffTokens(a, b).similarity)
+  })
+
+  it('gibt unter der Schwelle die Obergrenze des Wortbeutels zurück, die unter der Schwelle bleibt', () => {
+    // Two shared words in swapped order: the bag counts both (0,4), the LCS one (0,2).
+    const a = 'eins zwei drei vier fünf'
+    const b = 'zwei eins sechs sieben acht'
+    expect(diffTokens(a, b).similarity).toBe(0.2)
+    expect(tokenSimilarity(compareWords(a), compareWords(b))).toBe(0.2)
+    expect(tokenSimilarity(compareWords(a), compareWords(b), 0.6)).toBe(0.4)
   })
 })
 
