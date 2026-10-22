@@ -32,6 +32,28 @@ describe('insertedStretches', () => {
   })
 })
 
+// A changed row too long for the word diff shows the rules no new word —
+// silence that is not a pass (22.10.2026, AußWG 2011 § 1).
+describe('rightColumnCheck — Zeilen ohne Wortvergleich', () => {
+  it('zählt die geänderten Zeilen, die keinen Wortvergleich tragen', () => {
+    const [foreign] = foreignRows()
+    const rows = [
+      { ...foreign!, segments: null },
+      row({ change: 'inserted', current: '', proposed: 'ein ganz neuer Absatz', segments: null }),
+      row({ change: 'changed', current: '(2) bis (4) …', proposed: '(2) bis (5) …', elided: true, segments: null }),
+      row({ change: 'unchanged', current: PROSE, proposed: PROSE, segments: null }),
+    ]
+    const check = rightColumnCheck(rows, STANDING, bag(''))
+    expect(check.undiffed).toBe(1)
+    // …and they really saw nothing of it: only the inserted row's words.
+    expect(check.newWords).toBe(4)
+  })
+
+  it('zählt keine, wo jede Zeile ihren Wortvergleich hat', () => {
+    expect(rightColumnCheck(foreignRows(), STANDING, bag('')).undiffed).toBe(0)
+  })
+})
+
 describe('rightColumnCheck — „bereits geltend"', () => {
   it('catches a lost sentence the diff paints as an addition', () => {
     // The fault the one-sided gate could not see: 93,6 % of injected losses

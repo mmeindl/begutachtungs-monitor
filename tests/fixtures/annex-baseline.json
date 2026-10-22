@@ -1,28 +1,8 @@
 {
-  "at": "2026-10-06T14:15:22.429Z",
+  "at": "2026-10-22T07:40:33.877Z",
   "gp": "XXVIII",
   "paths": {
     "xml": {
-      "BEGUT_5EC9F7AA_6595_404D_8FF9_9A21544D71F8": {
-        "cite": "Mehrstimmrechtsaktien-Gesetz",
-        "note": null,
-        "checked": 1,
-        "clean": 1,
-        "substantial": 0,
-        "substantialClean": 0,
-        "noLaw": 0,
-        "droppedPages": 0,
-        "ran": true,
-        "notRunReason": "der Entwurf fügt diese Paragraphen erst ein — im geltenden Recht gibt es sie noch nicht; die gezeigten Änderungen tragen zu wenig Text für einen Abgleich; die Beilage zeigt an diesen Stellen keinen geltenden Text, der sich vergleichen ließe",
-        "verifiedParas": 0,
-        "withheldParas": 0,
-        "withheldStanding": 0,
-        "withheldAlreadyStanding": 0,
-        "withheldNotInDraft": 0,
-        "uncheckedParas": 3,
-        "rowsNoPara": 0,
-        "changeRowsNoPara": 0
-      },
       "BEGUT_E811DCEF_7477_4213_9E06_D51ABE13740A": {
         "cite": "Änderung des Audiovisuelle Mediend",
         "note": null,
@@ -2802,6 +2782,26 @@
         "uncheckedParas": 1,
         "rowsNoPara": 0,
         "changeRowsNoPara": 0
+      },
+      "BEGUT_883D1763_5311_464A_A8D7_9441D52F5ADE": {
+        "cite": "Eisenbahngesetznovelle",
+        "note": null,
+        "checked": 0,
+        "clean": 0,
+        "substantial": 0,
+        "substantialClean": 0,
+        "noLaw": 0,
+        "droppedPages": 0,
+        "ran": false,
+        "notRunReason": "im Entwurf steht keine Fundstelle im Bundesgesetzblatt, über die sich das geltende Recht auffinden ließe",
+        "verifiedParas": 0,
+        "withheldParas": 0,
+        "withheldStanding": 0,
+        "withheldAlreadyStanding": 0,
+        "withheldNotInDraft": 0,
+        "uncheckedParas": 54,
+        "rowsNoPara": 0,
+        "changeRowsNoPara": 0
       }
     },
     "pdf": {
@@ -3316,12 +3316,12 @@
         "droppedPages": 0,
         "ran": true,
         "notRunReason": null,
-        "verifiedParas": 77,
+        "verifiedParas": 76,
         "withheldParas": 7,
         "withheldStanding": 6,
         "withheldAlreadyStanding": 1,
         "withheldNotInDraft": 0,
-        "uncheckedParas": 15,
+        "uncheckedParas": 16,
         "rowsNoPara": 0,
         "changeRowsNoPara": 0
       },

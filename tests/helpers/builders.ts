@@ -18,6 +18,7 @@
  * reason `annexGolden.test.ts` gives at the top of itself.
  */
 import type { ComparisonRow } from '../../server/utils/annex/comparisonRows'
+import { diffTokens } from '../../server/utils/diff/wordDiff'
 import type { DraftArticle } from '../../server/utils/lawtext/draftArticles'
 import { makeNode, type LawNode } from '../../server/utils/lawtext/konsTree'
 import type { DraftSummary, RisConsultation } from '../../shared/types'
@@ -26,22 +27,33 @@ import type { DraftSummary, RisConsultation } from '../../shared/types'
 // The annex: rows and the draft they belong to
 // ---------------------------------------------------------------------------
 
-/** One row of a Textgegenüberstellung, defaulting to a changed § 5 with no text. */
-export const comparisonRow = (over: Partial<ComparisonRow> = {}): ComparisonRow => ({
-  kind: 'pair',
-  law: null,
-  heading: null,
-  gld: null,
-  para: '§ 5.',
-  current: '',
-  proposed: '',
-  change: 'changed',
-  elided: false,
-  segments: null,
-  editorial: false,
-  elisionRange: false,
-  ...over,
-})
+/**
+ * One row of a Textgegenüberstellung, defaulting to a changed § 5 with no text.
+ *
+ * A changed row carries the word diff of its two columns unless the test
+ * passes `segments` — as both parsers emit it, where only a row too long for
+ * the diff has none, and the gate leaves that one's § unchecked
+ * (`RightColumnCheck.undiffed`).
+ */
+export const comparisonRow = (over: Partial<ComparisonRow> = {}): ComparisonRow => {
+  const row: ComparisonRow = {
+    kind: 'pair',
+    law: null,
+    heading: null,
+    gld: null,
+    para: '§ 5.',
+    current: '',
+    proposed: '',
+    change: 'changed',
+    elided: false,
+    segments: null,
+    editorial: false,
+    elisionRange: false,
+    ...over,
+  }
+  if (over.segments === undefined && row.kind === 'pair' && row.change === 'changed' && !row.elided) row.segments = diffTokens(row.current, row.proposed).segments
+  return row
+}
 
 /** One Artikel of a draft, defaulting to an amending Artikel 1 with a Stammnorm. */
 export const draftArticle = (over: Partial<DraftArticle> = {}): DraftArticle => ({

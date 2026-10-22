@@ -91,7 +91,9 @@ function seqContains(hay: readonly string[], needle: readonly string[]): boolean
  *
  * An `inserted` row's whole proposed column, and every `inserted` segment of
  * a `changed` row's word diff. An `elided` row is the annex saying it left
- * text out and carries no claim either way.
+ * text out and carries no claim either way. A `changed` row whose word diff
+ * stopped at `MAX_DP_CELLS` has no segments and gives nothing here — which is
+ * not „nothing new", and `rightColumnCheck` counts it (`undiffed`).
  */
 export function insertedStretches(rows: readonly ComparisonRow[]): string[] {
   const out: string[] = []
@@ -406,6 +408,18 @@ export interface RightColumnCheck {
   missing: string[]
   /** The first stretch that fired rule 1, for the report */
   standingStretch: string | null
+  /**
+   * Rows the § shows as changed whose word diff stopped at `MAX_DP_CELLS`
+   * (`segments` null, 22.10.2026). Neither rule sees what such a row shows
+   * as new, so they did not run over the whole §, and a § they did not run
+   * over may not verify (`verifyAnnex`). What they found on the other rows
+   * stands. Measured over the 400 newest Begut records of GP XXVIII: 4 rows
+   * on the PDF path and 3 on the table path; one § among them verified with
+   * no new word seen, AußWG 2011 § 1 (14.642 / 16.235 characters) — where the
+   * full diff shows 94 new words and the draft carries every one, right only
+   * by luck.
+   */
+  undiffed: number
 }
 
 /**
@@ -501,5 +515,6 @@ export function rightColumnCheck(rows: readonly ComparisonRow[], standing: Stand
   // instruction of the draft orders. The counts stay honest either way, so a
   // report cannot read "nothing missing" where nothing was compared.
   const notInDraft = draft.read && words.length >= MIN_NEW_WORDS && missing.length >= MIN_MISSING_WORDS && (words.length - missing.length) / words.length < DRAFT_THRESHOLD
-  return { alreadyStanding: standingStretch !== null, notInDraft, newWords: words.length, missingWords: missing.length, missing: missing.map((it) => it.word), standingStretch }
+  const undiffed = pairs.filter((r) => r.change === 'changed' && !r.elided && r.segments === null).length
+  return { alreadyStanding: standingStretch !== null, notInDraft, newWords: words.length, missingWords: missing.length, missing: missing.map((it) => it.word), standingStretch, undiffed }
 }

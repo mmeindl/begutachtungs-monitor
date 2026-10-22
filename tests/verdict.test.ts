@@ -15,6 +15,7 @@ import {
   REASON_NO_SUCH_PARAGRAPH,
   REASON_NOTHING_TO_COMPARE,
   REASON_NOT_REPRESENTABLE,
+  REASON_TOO_LONG,
   REASON_TOO_SHORT,
   REASON_UNRESOLVED,
   lawCheck,
@@ -256,6 +257,31 @@ describe('verifyAnnex', () => {
     // because an empty bag proves nothing.
     const blind = await verifyAnnex(foreignRows(), draft({ blocks: [] }), fakeSources({ 'BGBl. I 1/2020': { '§ 2': STANDING_BODY } }))
     expect(blind.verdicts['#§ 2.']).toBe('verified')
+  })
+
+  // AußWG 2011 § 1 (22.10.2026): 14.642 and 16.235 characters, above
+  // `MAX_DP_CELLS`, so the row came without a word diff, both right-column
+  // rules saw no new word — and the § was „bestätigt" on the left check alone.
+  it('leaves a § unchecked whose change was too long for the word diff', async () => {
+    const [foreign] = foreignRows()
+    const undiffed = [{ ...foreign!, segments: null }]
+    const check = await verifyAnnex(undiffed, draft(), fakeSources({ 'BGBl. I 1/2020': { '§ 2': STANDING_BODY } }))
+    expect(check.verdicts['#§ 2.']).toBe('unchecked')
+    expect(check.uncheckedReasons['#§ 2.']).toBe(REASON_TOO_LONG)
+    expect(check.judged).toBe(1)
+    expect(check.verified).toBe(0)
+  })
+
+  it('still withholds such a § where the left column or another row gives a cause', async () => {
+    // The left check does not need the word diff.
+    const lost = [row({ gld: '§ 1.', para: '§ 1.', current: OTHER_PROSE, proposed: `${OTHER_PROSE} ${PROSE}`, segments: null })]
+    const standing = await verifyAnnex(lost, draft(), fakeSources({ 'BGBl. I 1/2020': { '§ 1': PROSE } }))
+    expect(standing.withheldCauses['#§ 1.']).toBe('standing')
+    // What the rules found on the rows they could read stands.
+    const [foreign] = foreignRows()
+    const rows = [foreign!, row({ gld: null, para: '§ 2.', current: STANDING_BODY, proposed: `${STANDING_BODY} ${PROSE}`, segments: null })]
+    const found = await verifyAnnex(rows, draft(), fakeSources({ 'BGBl. I 1/2020': { '§ 2': STANDING_BODY } }))
+    expect(found.withheldCauses['#§ 2.']).toBe('notInDraft')
   })
 
   it('withholds an inserted § whose text is nowhere in the draft, and vouches for none', async () => {

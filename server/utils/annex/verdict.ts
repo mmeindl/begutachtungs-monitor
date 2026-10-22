@@ -289,6 +289,14 @@ export const REASON_TOO_SHORT = 'die gezeigten Änderungen tragen zu wenig Text 
  * provisions is false in the ordinary reading of it.
  */
 export const REASON_NOTHING_TO_COMPARE = 'die Beilage zeigt an diesen Stellen keinen geltenden Text, der sich vergleichen ließe'
+/**
+ * A § with a change too long for the word diff (`MAX_DP_CELLS`): the page
+ * shows both columns without marking what is new, and both right-column
+ * rules read only what is marked new (`RightColumnCheck.undiffed`,
+ * 22.10.2026). Its left column was checked; its right one could not be, so
+ * it is not „bestätigt".
+ */
+export const REASON_TOO_LONG = 'eine gezeigte Änderung ist zu lang für einen Abgleich Wort für Wort'
 
 /** What the check concluded about one § of the annex. */
 export type ParagraphVerdict = 'verified' | 'withheld' | 'unchecked'
@@ -346,7 +354,8 @@ export interface AnnexVerification {
   judged: number
   /**
    * …of those, the ones that came through everything: the standing text
-   * accounts for the left column **and** neither right-column rule fired.
+   * accounts for the left column **and** neither right-column rule fired,
+   * having read every row the § shows as changed (`RightColumnCheck.undiffed`).
    * Counted off the verdict map, so it cannot drift from what is shown.
    */
   verified: number
@@ -635,6 +644,13 @@ export async function verifyAnnex(
       // lifted from another part of the same draft.
       if (!cover.prose) {
         skip(key, cover.comparable === 0 ? REASON_NOTHING_TO_COMPARE : REASON_TOO_SHORT)
+        continue
+      }
+      // Nor may a § whose right column the rules could not read whole: a
+      // changed row without a word diff shows them no new word, and silence
+      // there is not a pass. What they did find above still withholds.
+      if ((right?.undiffed ?? 0) > 0) {
+        skip(key, REASON_TOO_LONG)
         continue
       }
       verdicts[key] = 'verified'
