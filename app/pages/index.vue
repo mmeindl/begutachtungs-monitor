@@ -12,9 +12,9 @@ import { LAND_NAME } from '#shared/utils/laender'
 import { HOME_LIST_LENGTH, compareRowsByFrist, draftRows } from '#shared/utils/draftOrder'
 import { viewOfDraft, viewOfOutcome, viewOfRow, viewOfVorlage } from '~/utils/entryView'
 import { gpWindow } from '#shared/utils/gp'
+import { MAX_LIST_QUERY_CHARS } from '#shared/utils/queryParams'
 import { SECOND_ROUND_WINDOW } from '~/utils/spine'
 import type { AsyncDataRequestStatus } from '#app'
-import { MAX_LIST_QUERY_CHARS } from '#shared/utils/queryParams'
 
 /* „Gesetzes- und Verordnungsentwürfe" since 18.09.2026. It said
    „Gesetzesentwürfe" from before the RIS half shipped, and then went on
@@ -352,6 +352,17 @@ const rankedHref = computed(
 const enactedHref = computed(
   () => '/entwuerfe?station=bgbl' + (enactedIsFallback.value ? `&gp=${enactedGp.value}` : ''),
 )
+
+/* The way in for whoever arrives with a subject, not a date. A plain GET
+ * form onto the list's own `q`, so it works before hydration; with
+ * JavaScript the submit becomes a client-side navigation. Bare
+ * `/entwuerfe?q=` is the state in which the full text applies
+ * (`useFullTextSearch`), so no other filter is set. */
+const searchTerm = ref('')
+function submitSearch() {
+  const q = searchTerm.value.trim()
+  return navigateTo(q ? { path: '/entwuerfe', query: { q } } : '/entwuerfe')
+}
 </script>
 
 <template>
@@ -375,50 +386,6 @@ const enactedHref = computed(
         für jeden Entwurf danach: Regierungsvorlage, Bundesgesetzblatt.
       </p>
 
-      <!-- The account-free alert tier, IN the header since 18.09.2026, not
-           between it and the first section. It stood at `mt-8` with the
-           80px section boundary under it — 1:3, too little to read as its
-           own thing and too much to read as part of the lede, so it
-           belonged to nothing. Its old comment called it "directly above
-           the list of Fristen it applies to"; it was a heading and a
-           section boundary away from that list.
-
-           It is a line about the page, and the header is where the page
-           speaks about itself. The move also takes it out of
-
-/* The way in for whoever arrives with a subject, not a date. A plain GET
- * form onto the list's own `q`, so it works before hydration; with
- * JavaScript the submit becomes a client-side navigation. Bare
- * `/entwuerfe?q=` is the state in which the full text applies
- * (`useFullTextSearch`), so no other filter is set. */
-const searchTerm = ref('')
-function submitSearch() {
-  const q = searchTerm.value.trim()
-  return navigateTo(q ? { path: '/entwuerfe', query: { q } } : '/entwuerfe')
-}
-           `v-else-if="data"`: `useFeedUrls()` touches no endpoint, so a
-           failed `/api/dashboard` used to take the one still-working offer
-           down with the data. Footer keeps the full version with the
-           manual URL. -->
-      <!-- `leading-7`: the links are `tap-target` boxes of 28 px in the line,
-           so a text-sm line of 20 px made every wrapped line a different
-           height on a phone. -->
-      <p class="mt-4 text-sm leading-7 text-ink-secondary">
-        <SubscribeLinks />
-      </p>
-    </header>
-
-    <FetchGate
-      v-slot="{ data }"
-      :status="status"
-      :error="error"
-      :data="data"
-      loading-label="Daten werden geladen …"
-      state-class="mt-10"
-      @retry="refresh()"
-    >
-      <!-- ONE list, because the question is one: "was läuft gerade, wo kann
-           ich noch mitreden?" (docs/architecture.md §12.20). Which official
       <!-- On submit, not on input: a page change per keystroke takes the
            cursor out of the word (WCAG 3.2.2). One line in the header, not a
            hero field — the page's question stays „was wird daraus?". Full
@@ -448,6 +415,39 @@ function submitSearch() {
         </UButton>
       </form>
 
+      <!-- The account-free alert tier, IN the header since 18.09.2026, not
+           between it and the first section. It stood at `mt-8` with the
+           80px section boundary under it — 1:3, too little to read as its
+           own thing and too much to read as part of the lede, so it
+           belonged to nothing. Its old comment called it "directly above
+           the list of Fristen it applies to"; it was a heading and a
+           section boundary away from that list.
+
+           It is a line about the page, and the header is where the page
+           speaks about itself. The move also takes it out of
+           `v-else-if="data"`: `useFeedUrls()` touches no endpoint, so a
+           failed `/api/dashboard` used to take the one still-working offer
+           down with the data. Footer keeps the full version with the
+           manual URL. -->
+      <!-- `leading-7`: the links are `tap-target` boxes of 28 px in the line,
+           so a text-sm line of 20 px made every wrapped line a different
+           height on a phone. -->
+      <p class="mt-4 text-sm leading-7 text-ink-secondary">
+        <SubscribeLinks />
+      </p>
+    </header>
+
+    <FetchGate
+      v-slot="{ data }"
+      :status="status"
+      :error="error"
+      :data="data"
+      loading-label="Daten werden geladen …"
+      state-class="mt-10"
+      @retry="refresh()"
+    >
+      <!-- ONE list, because the question is one: "was läuft gerade, wo kann
+           ich noch mitreden?" (docs/architecture.md §12.20). Which official
            register happens to carry a record is plumbing, and plumbing does
            not belong in the page skeleton — it belongs on the row, which is
            why both row kinds now lead their meta line with the type word.
