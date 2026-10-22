@@ -48,7 +48,7 @@ import { articleBlocks, draftArticles, type DraftArticle } from '../../server/ut
 import { getText, resolveLawByBgbl, type KonsParagraphRef } from '../../server/utils/ris/konsLaw'
 import { fetchLawAsOf, fetchParagraphTree, resolveGesetzesnummer } from '../../server/utils/harness/risKonsHistory'
 import { guardParagraph, type GuardFlag } from '../../server/utils/kons/applyGuard'
-import { addressedParagraphs, refusedLineUnits, refusedUnits } from '../../server/utils/kons/konsGate'
+import { addressedParagraphs, refusedLineUnits, refusedUnits, touchedKey, unitsByKey } from '../../server/utils/kons/konsGate'
 import { createdUnits, namedParagraphs, opAddress } from '../../server/utils/kons/novao'
 import { parseTextComparison, type ComparisonRow } from '../../server/utils/annex/comparisonRows'
 import { parseAnnexPdf } from '../../server/utils/annex/annexPdf'
@@ -63,7 +63,7 @@ import { installFetchCache } from '../lib/harnessCache'
 import { argAssigned, argFlag } from '../lib/args'
 import { PARLIAMENT, getJson, risJson as risQuery, scriptUserAgent } from '../lib/http'
 import { asArray, pickExplanations, pickTextComparisons } from '../lib/ris'
-import { anlageLabelKey, bareParaId, isDivision } from '../../server/utils/text/designation'
+import { anlageLabelKey } from '../../server/utils/text/designation'
 import { appendFileSync, readFileSync, writeFileSync } from 'node:fs'
 
 const SCRIPT = 'harness/me'
@@ -103,11 +103,17 @@ const annexSource = (argAssigned('annex') ?? 'ris') as 'ris' | 'parlament'
  */
 const withExplanations = argFlag('erl')
 /**
- * The bare number this Prüfstand holds its §§ under — and none for a division
- * above the § („Abschnitt 4"), which the site keys apart (`unitKey`) and
- * which locked § 4 here under its number.
+ * The key this Prüfstand holds its units under — the page's (`touchedKey`):
+ * „5" for § 5, „Anl. 1" for a schedule, and none for a division above the §
+ * („Abschnitt 4").
+ *
+ * The bare number until 22.10.2026, while the page kept a schedule apart. A
+ * § 1 and an Anl. 1 then fell together here: a changed schedule passed the
+ * guard on this bench and never on the page, an instruction on the Anlage
+ * counted as touching § 1, and a refusal on „Anlage 6" locked § 6. What the
+ * bench reported was not what the page would show.
  */
-const harnessKey = (label: string): string | null => (isDivision(label) ? null : bareParaId(label))
+const harnessKey = (label: string): string | null => touchedKey(label)
 
 /**
  * Which version of the standing law the draft is applied to: the first day
@@ -440,7 +446,7 @@ async function verifyLaw(
   const { law: after, results, unresolved } = applyNovelle(law, instructions)
   result.applied = results.filter((r) => r.applied).length
 
-  // The site's reading (`refusedUnits`), keyed by the bare number this Prüfstand holds its §§ under.
+  // The site's reading (`refusedUnits`), keyed as the site keys its units (`harnessKey`).
   const refusedIds = refusedUnits(unresolved, refused, harnessKey)
 
   if (verbose) {
@@ -468,11 +474,14 @@ async function verifyLaw(
   const lawKey = isPackage ? article.key : undefined
   const outcome = new Map<string, string>()
 
+  // Looked up as the page looks them up (`unitsByKey`).
+  const afterByKey = unitsByKey(after.paragraphs)
+  const beforeByKey = unitsByKey(law.paragraphs)
   for (const id of [...touched].sort()) {
-    const node = after.paragraphs.find((p) => p.id === id)
+    const node = afterByKey.get(id)
     if (!node) continue
     result.produced++
-    const beforeNode = law.paragraphs.find((p) => p.id === id) ?? null
+    const beforeNode = beforeByKey.get(id) ?? null
     const touching = instructions
       .map((instruction, i) => ({ instruction, result: results[i]! }))
       .filter(({ instruction: { op, payload } }) => {
@@ -548,7 +557,7 @@ async function verifyLaw(
     else if (deleted.has(id)) bump('kein Text: § aufgehoben')
     else if (!read.has(id) && !inserted.has(id)) bump('kein Text: Anweisung nicht gelesen')
     else if (inserted.has(id)) bump('kein Text: neuer § nicht eingefügt')
-    else if (!law.paragraphs.some((p) => p.id === id)) bump('kein Text: nicht im RIS-Stand')
+    else if (!beforeByKey.has(id)) bump('kein Text: nicht im RIS-Stand')
     else bump('kein Text: sonst')
   }
   return result

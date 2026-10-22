@@ -1,8 +1,10 @@
 import { describe, expect, it } from 'vitest'
-import { addressedLabels, addressedParagraphs, byParagraphOrder, gateParagraph, refusedUnits } from '../server/utils/kons/konsGate'
+import { addressedLabels, addressedParagraphs, byParagraphOrder, gateParagraph, refusedUnits, touchedKey, unitsByKey } from '../server/utils/kons/konsGate'
 import { unitKey } from '../server/utils/text/designation'
-import { instructionsFromUnits, parsePayload, type Instruction } from '../server/utils/kons/lawApply'
-import { createdUnits, parseInstruction, refusedAddresses } from '../server/utils/kons/novao'
+import { applyNovelle, instructionsFromUnits, parsePayload, type Instruction, type StandingLaw } from '../server/utils/kons/lawApply'
+import { createdUnits, opAddress, parseInstruction, refusedAddresses } from '../server/utils/kons/novao'
+import { guardParagraph } from '../server/utils/kons/applyGuard'
+import { makeNode } from '../server/utils/lawtext/konsTree'
 
 /** An instruction, the way the harness hands it to the module. */
 function instr(line: string, payloadLines: string[] = []): Instruction[] {
@@ -231,6 +233,44 @@ describe('a refused line locks every unit it names, not its first § (22.10.2026
     const labels = addressedLabels([], ['In Artikel II § 8 und § 9 Abs. 1 wird etwas Unlesbares getan.'])
     expect(labels?.get('8')).toBe('Art. 2 § 8')
     expect(labels?.get('9')).toBe('Art. 2 § 9')
+  })
+})
+
+describe('an Anlage is touched under its own key, not under § 1 (22.10.2026)', () => {
+  // The page held a schedule as „Anl. 1" and asked which instructions touch
+  // it by the bare number: none did, and every correct change of a schedule
+  // read as unexplained — while § 1 counted the Anlage's operands as its own.
+  it('keys an address the way the page holds the unit', () => {
+    expect(touchedKey('Anlage 1')).toBe('Anl. 1')
+    expect(touchedKey('Anhang')).toBe('Anl.')
+    expect(touchedKey('§ 1')).toBe('1')
+    expect(touchedKey('Abschnitt 4')).toBeNull()
+    expect(touchedKey(null)).toBeNull()
+  })
+
+  it('holds a § and a schedule of one number apart, and a sole schedule also as „Anl."', () => {
+    const p1 = makeNode('para', '1', '§ 1.', '', 'Geltungsbereich')
+    const anl = makeNode('para', '1', 'Anl. 1', '', null)
+    const units = unitsByKey([p1, anl])
+    expect(units.get('1')).toBe(p1)
+    expect(units.get('Anl. 1')).toBe(anl)
+    expect(units.get('Anl.')).toBe(anl)
+    expect(unitsByKey([p1, anl, makeNode('para', '2', 'Anl. 2', '', null)]).has('Anl.')).toBe(false)
+  })
+
+  it('lets a correct change of a schedule pass the guard, and leaves § 1 untouched by it', () => {
+    const anl = makeNode('para', '1', 'Anl. 1', '', null)
+    anl.children.push(makeNode('abs', '', '', 'Die Gebühr beträgt 50 Euro je Antrag.'))
+    const p1 = makeNode('para', '1', '§ 1.', '', 'Geltungsbereich')
+    p1.children.push(makeNode('abs', '1', '(1)', 'Dieses Gesetz gilt für Anträge.'))
+    const standing: StandingLaw = { paragraphs: [p1, anl] }
+    const instructions = instr('In der Anlage 1 wird der Betrag "50 Euro" durch den Betrag "70 Euro" ersetzt.')
+    const { law: after, results } = applyNovelle(standing, instructions)
+    const touching = (id: string) => instructions.flatMap((instruction, i) => (touchedKey(opAddress(instruction.op)?.para ?? null) === id ? [{ instruction, result: results[i]! }] : []))
+    const [before, out] = [unitsByKey(standing.paragraphs), unitsByKey(after.paragraphs)]
+    expect(addressedParagraphs(instructions, [])).toEqual(['Anl. 1'])
+    expect(guardParagraph('Anl. 1', standing, before.get('Anl. 1')!, out.get('Anl. 1')!, touching('Anl. 1')).plausible).toBe(true)
+    expect(touching('1')).toEqual([])
   })
 })
 

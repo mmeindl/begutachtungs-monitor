@@ -29,8 +29,8 @@
  */
 import type { ConsolidatedParagraph, ConsolidatedTextResponse, LawDiffSegment } from '#shared/types'
 import { guardParagraph } from './applyGuard'
-import { addressedLabels, addressedParagraphs, gateParagraph, refusedUnits } from './konsGate'
-import { anlageLabelKey, bareParaId, isDivision, isSchedule, unitKey } from '../text/designation'
+import { addressedLabels, addressedParagraphs, gateParagraph, refusedUnits, touchedKey, unitsByKey } from './konsGate'
+import { anlageLabelKey, isSchedule, unitKey } from '../text/designation'
 import { fetchParagraphXml, resolveKonsLaw } from './konsCache'
 import { konsLawUrl } from '../lawtext/amendedLawsService'
 import { diffTokens } from '../diff/wordDiff'
@@ -299,29 +299,15 @@ async function consolidate(
         return {
           touching: { instruction, result: results[i]! },
           document: address?.level === 'document',
-          // An Abschnitt touches no § of its number (`isDivision`).
-          para: address?.para && !isDivision(address.para) ? bareParaId(address.para) : null,
+          // Under the key the § is held by below — an Anlage as „Anl. 1", not
+          // as § 1 — and an Abschnitt under none (`touchedKey`).
+          para: touchedKey(address?.para ?? null),
           payloadIds: insertsParagraphs ? new Set(payload.map((pl) => pl.id).filter((id) => !!id)) : null,
         }
       })
-      // Held under the unit key, not the bare number: a § 1 and an Anl. 1 fell
-      // together here, and „first occurrence wins" then gave one of them the
-      // other's text. Unreachable while no schedule document was ever fetched
-      // — which is exactly what changed. The schedule is entered under its
-      // own key AND, where the law has only one, under the bare „Anl." an
-      // instruction without a number addresses it by.
-      const nodeById = (nodes: readonly LawNode[]): Map<string, LawNode> => {
-        const out = new Map<string, LawNode>()
-        const marks = nodes.filter((n) => isSchedule(n.marker))
-        for (const node of nodes) {
-          const key = isSchedule(node.marker) ? (unitKey(node.marker) ?? node.id) : node.id
-          if (!out.has(key)) out.set(key, node)
-        }
-        if (marks.length === 1 && !out.has('Anl.')) out.set('Anl.', marks[0]!)
-        return out
-      }
-      const afterById = nodeById(after.paragraphs)
-      const beforeById = nodeById(standing.paragraphs)
+      // Held under the unit key, not the bare number (`unitsByKey`).
+      const afterById = unitsByKey(after.paragraphs)
+      const beforeById = unitsByKey(standing.paragraphs)
 
       const found: ConsolidatedParagraph[] = []
       for (const id of addressed) {

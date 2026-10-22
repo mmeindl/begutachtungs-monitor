@@ -34,6 +34,7 @@
  */
 
 import type { Instruction, RefusedInstruction } from './lawApply'
+import type { LawNode } from '../lawtext/konsTree'
 import { articleQualifier, createdUnits, isTocInstruction, mentionedUnits, namedParagraphs, opAddress, refusedAddresses } from './novao'
 import type { ConsolidatedWithheldCause } from '../../../shared/types'
 import { articleNumberKey, isDivision, isSchedule, unitKey } from '../text/designation'
@@ -104,6 +105,41 @@ export function byParagraphOrder(a: string, b: string): number {
   if (isSchedule(a) !== isSchedule(b)) return isSchedule(a) ? 1 : -1
   const key = (id: string): string => (isSchedule(id) ? id.replace(/^\S+\s*/, '') : id)
   return num(key(a)) - num(key(b)) || a.localeCompare(b, 'de')
+}
+
+/**
+ * The key an instruction's address touches its unit under — the page's
+ * (`unitKey`), and none for a division above the § (`isDivision`), which
+ * touches no § of its number.
+ *
+ * The bare number stood here until 22.10.2026, while the page held a schedule
+ * as „Anl. 1": an instruction on the Anlage touched nothing, so every correct
+ * change of a schedule read as unexplained and none could pass the guard —
+ * and it touched § 1 instead, whose guard then counted the Anlage's operands
+ * as its own.
+ */
+export function touchedKey(designation: string | null): string | null {
+  return designation && !isDivision(designation) ? unitKey(designation) : null
+}
+
+/**
+ * The units of a stock under the key the page holds them by (`unitKey`) — „5"
+ * for § 5, „Anl. 1" for a schedule — and a law's only schedule also under the
+ * bare „Anl." an instruction without a number addresses it by.
+ *
+ * Held under the unit key, not the bare number: a § 1 and an Anl. 1 fell
+ * together, and „first occurrence wins" then gave one of them the other's
+ * text. The page and the Prüfstand read the same map.
+ */
+export function unitsByKey(nodes: readonly LawNode[]): Map<string, LawNode> {
+  const out = new Map<string, LawNode>()
+  const marks = nodes.filter((n) => isSchedule(n.marker))
+  for (const node of nodes) {
+    const key = isSchedule(node.marker) ? (unitKey(node.marker) ?? node.id) : node.id
+    if (!out.has(key)) out.set(key, node)
+  }
+  if (marks.length === 1 && !out.has('Anl.')) out.set('Anl.', marks[0]!)
+  return out
 }
 
 /**
