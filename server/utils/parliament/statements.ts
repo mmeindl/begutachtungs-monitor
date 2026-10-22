@@ -8,19 +8,37 @@
  * (`defineCachedFunction`, `createError`), which is exactly why no test
  * could reach it here. Not re-exported from here — under `server/utils`
  * both files are auto-imported, and a re-export would make the same name
- * arrive from two modules.
+ * arrive from two modules. (Since 22.10.2026 `tests/statementsFetch.test.ts`
+ * does run this file, with Nitro's two names faked; what it tests is the
+ * sizing and the cap, which only exist here.)
  */
 import type { StatementMeta } from '#shared/types'
 import { findLastRvLink, parseStages, type RvLink } from './detailJson'
 import { getDraftsForGp, getGegenstand } from './drafts'
-import { mapStatementRow } from './list142'
+import { mapStatementRow, STATEMENTS_CAP, type StatementParentType } from './list142'
 import {
   loadLastGoodStatements,
   saveLastGoodStatements,
   type LastGoodStatements,
 } from './lastgood'
-import { assertListHeader, assertRowsMatchParent, fetchFilterList } from '../upstream/parliament'
+import {
+  assertListHeader,
+  assertRowsMatchParent,
+  fetchFilterList,
+  type FilterListResponse,
+} from '../upstream/parliament'
 import { UPSTREAM_LIST_TTL_S } from '../cache/ttl'
+
+/** One Ministerialentwurf's list 142, as the page reads it. */
+interface MeStatements {
+  /** Classified rows, date descending. Above the cap the INSTITUTIONS only. */
+  items: StatementMeta[]
+  /**
+   * Counted upstream and deliberately not fetched — the rest of a list above
+   * `STATEMENTS_CAP`. 0 wherever the whole list was read.
+   */
+  unlisted: number
+}
 
 /**
  * List 142 of one ME, GDPR-filtered and mapped, date descending. Derived —
@@ -37,51 +55,70 @@ import { UPSTREAM_LIST_TTL_S } from '../cache/ttl'
  * that classified them — a change to `classifySubmitter` shows on the next
  * request instead of in half an hour.
  *
+ * SIZED BEFORE IT IS READ, since 22.10.2026, the way the Vorlage's list
+ * below always was: the first call omits `showAll` and gets one page plus
+ * upstream's `count`. Up to `STATEMENTS_CAP` the whole list follows, and it
+ * has to arrive whole (`fetchWholeList`); above it the institutions are read
+ * by name and the rest is counted (`unlisted`). Until then this read every
+ * row it was given — and 164/ME of GP XXVII, 106,183 Stellungnahmen, was
+ * given 100,000, which were aggregated as if they were all of them.
+ *
  * Inconsistency guard: list 142 sometimes answers EMPTY although list 81
  * still counts statements (observed 2026-08-27: 88/ME had 707 in list 81,
  * 0 rows in list 142 — reproducible with the filter definition embedded in
  * parlament.gv.at's own detail page). A cached empty would freeze that
  * glitch for 30 minutes, so: one retry, then throw — errors are never
- * cached, and callers degrade explicitly instead of lying with a zero.
+ * cached, and callers degrade explicitly instead of lying with a zero. The
+ * sizing call is what answers empty now, with a `count` of 0, so it is the
+ * one retried.
  */
 const getStatementsForMe = defineCachedFunction(
-  async (gp: string, inr: number): Promise<StatementMeta[]> => {
-    const query = () =>
-      fetchFilterList(142, {
-        BEZUG_GP_CODE: [gp],
-        BEZUG_ITYP: ['ME'],
-        BEZUG_INR: [inr],
-      })
+  async (gp: string, inr: number): Promise<MeStatements> => {
+    const body = { BEZUG_GP_CODE: [gp], BEZUG_ITYP: ['ME'], BEZUG_INR: [inr] }
+    const size = () => fetchFilterList(142, body, {}, { all: false })
     // List 81 alongside, not before: it is a warm leaf on every real draft,
     // so the parallel read costs nothing — and it is the existence check. A
     // number that is no draft throws here, and an error is never cached, so
     // made-up numbers leave no empty list behind.
     const [first, draft] = await Promise.all([
-      query(),
+      size(),
       getDraftsForGp(gp).then(({ items }) => items.find((i) => i.inr === inr)),
     ])
     if (!draft) throw createError({ statusCode: 404, statusMessage: 'Entwurf nicht gefunden' })
-    let res = first
-    let rows = res.rows ?? []
-    if (rows.length === 0) {
-      if (draft.statementCount > 0) {
-        res = await query()
-        rows = res.rows ?? []
-        if (rows.length === 0) {
-          throw createError({
-            statusCode: 502,
-            statusMessage:
-              'Stellungnahmen-Liste ist auf parlament.gv.at derzeit nicht abrufbar',
-          })
-        }
+    let head = first
+    let total = countOf(head)
+    if (total === 0 && draft.statementCount > 0) {
+      head = await size()
+      total = countOf(head)
+      if (total === 0) {
+        throw createError({
+          statusCode: 502,
+          statusMessage: 'Stellungnahmen-Liste ist auf parlament.gv.at derzeit nicht abrufbar',
+        })
       }
     }
-    assertRowsMatchParent(rows, gp, 'ME', inr)
-    assertListHeader(142, res)
-    const items = rows.map(mapStatementRow)
-    items.sort((a, b) => (b.date ?? '').localeCompare(a.date ?? ''))
-    await rememberStatements(gp, inr, items)
-    return items
+    if (total === 0) return { items: [], unlisted: 0 }
+
+    let result: MeStatements
+    if (total > STATEMENTS_CAP) {
+      const institutions = await fetchInstitutionStatements(body, gp, 'ME', inr)
+      /* Unknown, never none (see there) — and unlike the Vorlage's line, this
+       * page has a fallback for a list it could not read, so it fails like any
+       * other failed read and the last-good record or list 81's count stands
+       * in. Never the count alone presented as a list nobody read. */
+      if (!institutions) {
+        throw createError({
+          statusCode: 502,
+          statusMessage: 'Organisationen der Stellungnahmen-Liste derzeit nicht abrufbar',
+        })
+      }
+      result = { items: institutions, unlisted: Math.max(0, total - institutions.length) }
+    } else {
+      const rows = await fetchWholeList(body, head, gp, 'ME', inr)
+      result = { items: sortByDateDesc(rows.map(mapStatementRow)), unlisted: 0 }
+    }
+    await rememberStatements(gp, inr, result)
+    return result
   },
   {
     name: 'statements-me',
@@ -92,17 +129,82 @@ const getStatementsForMe = defineCachedFunction(
   },
 )
 
+/** Date descending; a missing date sorts last. */
+function sortByDateDesc(items: StatementMeta[]): StatementMeta[] {
+  return items.sort((a, b) => (b.date ?? '').localeCompare(a.date ?? ''))
+}
+
 /**
- * Above this many Stellungnahmen on one Regierungsvorlage the full list is
- * not fetched. The COVID-era Vorlagen carry tens of thousands (1289 d.B. of
- * GP XXVII: 41,376 — ten megabytes of names for one fact line); everything
- * else measured in GP XXVII/XXVIII stays far below.
- *
- * It is a cap on the ROWS, not on what the page may say: since 26.09.2026 a
- * Vorlage above it still gets its organisations by name
- * (`fetchInstitutionStatements`).
+ * Upstream's total for a filtered list: `count`, which every answer of the
+ * filter API carries, sized or whole. An answer without one cannot be held
+ * against anything, and holding the rows against it is the one check these
+ * reads may not skip (`fetchWholeList`) — so it is a 502, never a guess from
+ * the rows. Guessing is how a list of more than 20 used to pass as its
+ * first page wherever the count was missing.
  */
-export const RV_STATEMENTS_CAP = 5_000
+function countOf(res: FilterListResponse): number {
+  const { count } = res
+  if (typeof count !== 'number' || !Number.isInteger(count) || count < 0) {
+    throw createError({
+      statusCode: 502,
+      statusMessage: 'Stellungnahmen-Liste ohne Gesamtzahl geliefert (Liste 142)',
+    })
+  }
+  return count
+}
+
+/**
+ * The rows of one answer are the whole list it counts — or a 502.
+ *
+ * Held against the `count` of the SAME answer, not against the sizing call
+ * before it: a Stellungnahme filed between the two is a longer list, not a
+ * broken one. What this catches is the documented failure of `showAll`: it
+ * stops at 100,000 rows with no error, no flag and no marker
+ * (`api-exploration.md`, list 142), and a list cut short aggregates exactly
+ * as cleanly as a whole one.
+ */
+function assertWholeList(res: FilterListResponse, rows: unknown[][]): void {
+  const count = countOf(res)
+  if (rows.length !== count) {
+    throw createError({
+      statusCode: 502,
+      statusMessage: `Stellungnahmen-Liste unvollständig geliefert (${rows.length} von ${count} Zeilen)`,
+    })
+  }
+}
+
+/**
+ * Every row of one parent's list 142, below the cap — read whole, and proven
+ * whole before anything is aggregated or remembered.
+ *
+ * The sizing answer is reused where its one page already holds the list
+ * (up to 20 rows), so small lists cost one request. A count with no rows
+ * behind it is the index glitch both lists show: one retry, then a 502.
+ */
+async function fetchWholeList(
+  body: Record<string, unknown>,
+  head: FilterListResponse,
+  gp: string,
+  ityp: StatementParentType,
+  inr: number,
+): Promise<unknown[][]> {
+  let res = (head.rows ?? []).length >= countOf(head) ? head : await fetchFilterList(142, body)
+  let rows = res.rows ?? []
+  if (rows.length === 0) {
+    res = await fetchFilterList(142, body)
+    rows = res.rows ?? []
+    if (rows.length === 0) {
+      throw createError({
+        statusCode: 502,
+        statusMessage: 'Stellungnahmen-Liste ist auf parlament.gv.at derzeit nicht abrufbar',
+      })
+    }
+  }
+  assertWholeList(res, rows)
+  assertRowsMatchParent(rows, gp, ityp, inr)
+  assertListHeader(142, res)
+  return rows
+}
 
 /**
  * The Regierungsvorlage a draft became — from the draft's own stage list,
@@ -132,9 +234,10 @@ export interface RvStatements {
 }
 
 /**
- * The organisations of a Vorlage that is too large to read whole — and the
- * reason the cap no longer costs the named half (`api-exploration.md`,
- * list 142).
+ * The organisations of an item whose list is too large to read whole — and
+ * the reason the cap no longer costs the named half (`api-exploration.md`,
+ * list 142). Both sides take this path since 22.10.2026: the Vorlage since
+ * 26.09.2026, the Ministerialentwurf since it has a cap at all.
  *
  * List 142's hidden column 19 (`TYP`) is a filter dimension, not only a
  * column: `TYP: ['I']` narrows the list to the submitters who registered as
@@ -144,6 +247,8 @@ export interface RvStatements {
  * list exactly. The mass half of a mass campaign is the private persons,
  * whom this site never names anyway; what the cap used to throw away with
  * them was seventeen chambers, law firms and associations that can be named.
+ * The worst Ministerialentwurf, 164/ME of GP XXVII, answers 117 against its
+ * 106,183 (measured live 22.10.2026).
  *
  * The narrowing is ASSERTED, not trusted. The filter API ignores keys it
  * does not know and answers the unfiltered list (`upstream/parliament.ts`) —
@@ -158,34 +263,33 @@ export interface RvStatements {
  * suppress a name, never publish one (`privacy.ts`).
  *
  * Null is „unknown", never „none": this runs where the whole list could not
- * be read, so a zero here would print „keine Organisation" about a Vorlage
+ * be read, so a zero here would print „keine Organisation" about an item
  * nobody looked at. The caller keeps the total and says nothing else.
  */
 async function fetchInstitutionStatements(
   body: Record<string, unknown>,
   gp: string,
+  ityp: StatementParentType,
   inr: number,
 ): Promise<StatementMeta[] | null> {
   const typBody = { ...body, TYP: ['I'] }
   const head = await fetchFilterList(142, typBody, {}, { all: false })
-  const headRows = head.rows ?? []
-  const count = typeof head.count === 'number' ? head.count : headRows.length
+  const count = countOf(head)
   if (count === 0) return []
   /* Both guards against an ignored `TYP`: a list that did not narrow is the
    * whole list, which is by definition above the cap that sent us here. */
-  if (count > RV_STATEMENTS_CAP) return null
+  if (count > STATEMENTS_CAP) return null
 
-  const res = headRows.length >= count ? head : await fetchFilterList(142, typBody)
+  const res = (head.rows ?? []).length >= count ? head : await fetchFilterList(142, typBody)
   const rows = res.rows ?? []
   /* The index glitch (a count with no rows) — unknown, not empty. */
   if (rows.length === 0) return null
-  assertRowsMatchParent(rows, gp, 'I', inr)
+  assertWholeList(res, rows)
+  assertRowsMatchParent(rows, gp, ityp, inr)
   assertListHeader(142, res)
   assertInstitutionRows(rows)
-  const items = rows.map(mapStatementRow)
   /* Same order as the uncapped path, so one list renders both. */
-  items.sort((a, b) => (b.date ?? '').localeCompare(a.date ?? ''))
-  return items
+  return sortByDateDesc(rows.map(mapStatementRow))
 }
 
 /**
@@ -216,7 +320,9 @@ function assertInstitutionRows(rows: unknown[][]): void {
  * Sized before it is fetched: the first call omits `showAll` and gets one
  * page plus the total. Small lists arrive complete in that page and cost
  * nothing more. Derived cache, like the ME list: the raw rows name private
- * persons and are never stored.
+ * persons and are never stored. Below the cap the rows are held against
+ * upstream's count (`fetchWholeList`, since 22.10.2026), and `total` is then
+ * the rows read, which is that count.
  *
  * ABOVE THE CAP the organisations are fetched on their own since
  * 26.09.2026 (`fetchInstitutionStatements`) and `unlisted` carries the
@@ -231,32 +337,16 @@ export const getStatementsForRv = defineCachedFunction(
   async (gp: string, inr: number): Promise<RvStatements> => {
     const body = { BEZUG_GP_CODE: [gp], BEZUG_ITYP: ['I'], BEZUG_INR: [inr] }
     const head = await fetchFilterList(142, body, {}, { all: false })
-    const headRows = head.rows ?? []
-    const total = typeof head.count === 'number' ? head.count : headRows.length
+    const total = countOf(head)
     if (total === 0) return { total: 0, items: [], unlisted: 0 }
-    if (total > RV_STATEMENTS_CAP) {
-      const institutions = await fetchInstitutionStatements(body, gp, inr)
-      return { total, items: institutions, unlisted: total - (institutions?.length ?? 0) }
+    if (total > STATEMENTS_CAP) {
+      const institutions = await fetchInstitutionStatements(body, gp, 'I', inr)
+      return { total, items: institutions, unlisted: Math.max(0, total - (institutions?.length ?? 0)) }
     }
 
-    let res = headRows.length >= total ? head : await fetchFilterList(142, body)
-    let rows = res.rows ?? []
-    if (rows.length === 0) {
-      // The same index glitch the ME list has: a count with no rows behind it.
-      res = await fetchFilterList(142, body)
-      rows = res.rows ?? []
-      if (rows.length === 0) {
-        throw createError({
-          statusCode: 502,
-          statusMessage: 'Stellungnahmen-Liste ist auf parlament.gv.at derzeit nicht abrufbar',
-        })
-      }
-    }
-    assertRowsMatchParent(rows, gp, 'I', inr)
-    assertListHeader(142, res)
-    const items = rows.map(mapStatementRow)
-    items.sort((a, b) => (b.date ?? '').localeCompare(a.date ?? ''))
-    return { total, items, unlisted: 0 }
+    const rows = await fetchWholeList(body, head, gp, 'I', inr)
+    const items = sortByDateDesc(rows.map(mapStatementRow))
+    return { total: items.length, items, unlisted: 0 }
   },
   {
     name: 'statements-rv',
@@ -290,15 +380,17 @@ const lastGoodStatements = new Map<string, LastGoodStatements>()
 async function rememberStatements(
   gp: string,
   inr: number,
-  items: StatementMeta[],
+  { items, unlisted }: MeStatements,
 ): Promise<void> {
   // An empty list is never worth remembering, and must never overwrite a
   // real one: "0 rows" is the shape the list-142 outage takes, and a stale
   // zero would render as "Noch keine Stellungnahmen" — the one degraded
   // state that carries no staleness note at all (the UI shows it only for
-  // total > 0).
+  // total > 0). Above the cap `items` are the institutions, and `unlisted`
+  // travels with them: without it a recalled record would present them as
+  // the whole list.
   if (items.length === 0) return
-  const record: LastGoodStatements = { items, fetchedAt: new Date().toISOString() }
+  const record: LastGoodStatements = { items, unlisted, fetchedAt: new Date().toISOString() }
   lastGoodStatements.set(`${gp}-${inr}`, record)
   await saveLastGoodStatements(gp, inr, record)
 }
@@ -313,13 +405,12 @@ async function recallStatements(
   if (cached) return cached
   const stored = await loadLastGoodStatements(gp, inr)
   if (!stored) return null
-  const record = { items: stored.items, fetchedAt: stored.fetchedAt }
+  const record = { items: stored.items, unlisted: stored.unlisted, fetchedAt: stored.fetchedAt }
   lastGoodStatements.set(key, record)
   return record
 }
 
-interface StatementsResult {
-  items: StatementMeta[]
+interface StatementsResult extends MeStatements {
   /** Set only when `items` is a last-good fallback, never for live data. */
   staleAsOf: string | null
 }
@@ -341,10 +432,11 @@ export async function getStatementsWithFallback(
   inr: number,
 ): Promise<StatementsResult> {
   try {
-    return { items: await getStatementsForMe(gp, inr), staleAsOf: null }
+    const { items, unlisted } = await getStatementsForMe(gp, inr)
+    return { items, unlisted, staleAsOf: null }
   } catch (err) {
     const lastGood = await recallStatements(gp, inr)
     if (!lastGood) throw err
-    return { items: lastGood.items, staleAsOf: lastGood.fetchedAt }
+    return { items: lastGood.items, unlisted: lastGood.unlisted, staleAsOf: lastGood.fetchedAt }
   }
 }

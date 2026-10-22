@@ -1,8 +1,22 @@
 export interface StatementsSummary {
+  /**
+   * How many Stellungnahmen the summary is about: the three kinds below,
+   * plus `unlisted` where a list above the cap was not read whole. On the
+   * draft page THE statements number (`DraftDetail`).
+   */
   total: number
   organisations: number
   privatePersons: number
   nonPublic: number
+  /**
+   * Counted upstream and deliberately not fetched — the rest of a list above
+   * `STATEMENTS_CAP` (`server/utils/parliament/list142.ts`), of which only
+   * the institutions were read; the three kinds above count those. Part of
+   * `total`, of none of the kinds. Absent wherever the whole list was read.
+   * Since 22.10.2026; until then 164/ME of GP XXVII was summarised from
+   * 100,000 of its 106,183 rows, as if they were all.
+   */
+  unlisted?: number
   /**
    * Set when list 142 was unavailable or inconsistent with list 81: `total`
    * then comes from the list-81 counter and the breakdown/organisationList
@@ -111,6 +125,7 @@ export interface RvStatementsResponse {
    * Vorlage above `cap` (1289 d.B.: 41,359 of 41,376). 0 everywhere else.
    */
   unlisted: number
+  /** `STATEMENTS_CAP`, the same on both sides of list 142. */
   cap: number
   /**
    * The committee's own call for Stellungnahmen on this Vorlage, when it made
@@ -136,7 +151,14 @@ export interface CommitteeConsultation {
 }
 
 export interface StatementsResponse {
+  /** Above `STATEMENTS_CAP` the institutions only — see `unlisted`. */
   items: StatementMeta[]
+  /**
+   * Counted upstream and not fetched: the rest of a list above the cap,
+   * beside the institutions in `items`. 0 wherever every row was read, so a
+   * reader of this endpoint can tell 117 rows of 106,183 from a whole list.
+   */
+  unlisted: number
   /**
    * Set when list 142 was unavailable and the persisted last-good
    * aggregation is served instead (ISO timestamp of that fetch) — same

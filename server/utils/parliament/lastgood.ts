@@ -26,9 +26,17 @@ import { mkdir, readFile, rename, rm, writeFile } from 'node:fs/promises'
 import { join } from 'node:path'
 import type { StatementMeta } from '../../../shared/types'
 import { GP_RE } from '../../../shared/utils/gp'
+import { STATEMENTS_CAP } from './list142'
 
 export interface LastGoodStatements {
   items: StatementMeta[]
+  /**
+   * Counted upstream and deliberately not fetched — the rest of a list above
+   * `STATEMENTS_CAP`, whose institutions alone are `items`. 0 wherever the
+   * whole list was read. Stored because a record without it would present
+   * the institutions of 164/ME as all of its Stellungnahmen.
+   */
+  unlisted: number
   /** ISO timestamp of the upstream fetch these items came from. */
   fetchedAt: string
 }
@@ -37,8 +45,16 @@ export interface LastGoodStatements {
  * Bumped whenever the shape of a stored record changes. A record from an
  * older version is dropped, not migrated — it is a fallback, the next
  * successful fetch rewrites it within the cache window.
+ *
+ * Version 1 is the one exception, and it is read, not migrated. It is the
+ * record before `unlisted` (22.10.2026), when every record held a list read
+ * whole — so it reads as `unlisted: 0`, unless it holds more rows than the
+ * cap. Those predate the cap and are refused (`loadLastGoodStatements`).
+ * Dropping the rest as well would cost more than a cache window: list 142
+ * loses whole drafts for days, and their records are the fallback a deploy
+ * must not take with it.
  */
-const RECORD_VERSION = 1
+const RECORD_VERSION = 2
 
 const STATE_SUBDIR = 'statements'
 
@@ -122,6 +138,13 @@ export async function saveLastGoodStatements(
  * unreadable, from an older version, or empty. Anything unexpected is
  * treated as "nothing stored" — the caller's degraded path is a valid
  * answer, a half-parsed record is not.
+ *
+ * And null where it holds more rows than `STATEMENTS_CAP`. Only a version-1
+ * record can: it is the whole list of one of the mass drafts of GP XXVII,
+ * written before the cap — or, at exactly 100,000 rows, one that `showAll`
+ * cut short, whose counts would be served as the whole list's. Serving
+ * either would put back the load the cap takes away, on the failure path;
+ * the next successful fetch writes the institutions instead.
  */
 export async function loadLastGoodStatements(
   gp: string,
@@ -141,12 +164,15 @@ export async function loadLastGoodStatements(
 
   try {
     const parsed = JSON.parse(raw) as Partial<LastGoodStatements> & { version?: unknown }
-    if (parsed.version !== RECORD_VERSION) return null
+    if (parsed.version !== RECORD_VERSION && parsed.version !== 1) return null
     if (typeof parsed.fetchedAt !== 'string' || !parsed.fetchedAt) return null
     // An empty list carries no information and is exactly the shape the
     // list-142 outage takes — never serve it as a last-good.
     if (!Array.isArray(parsed.items) || parsed.items.length === 0) return null
-    return { items: parsed.items, fetchedAt: parsed.fetchedAt }
+    if (parsed.items.length > STATEMENTS_CAP) return null
+    const unlisted = parsed.version === 1 ? 0 : parsed.unlisted
+    if (typeof unlisted !== 'number' || !Number.isInteger(unlisted) || unlisted < 0) return null
+    return { items: parsed.items, unlisted, fetchedAt: parsed.fetchedAt }
   } catch {
     return null
   }

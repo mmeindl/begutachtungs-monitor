@@ -34,7 +34,11 @@ const props = withDefaults(
     listUrl?: string
     /** The Vorlage: already in the page's own response, so never fetched. */
     items?: StatementMeta[] | null
-    /** The summary counts only part of the Stellungnahmen (above the cap). */
+    /**
+     * The summary counts only part of the Stellungnahmen: above
+     * `STATEMENTS_CAP` only the institutions are read — on a Vorlage, and
+     * since 22.10.2026 on a draft too (`availableStatementFilters`).
+     */
     partial?: boolean
     /** Of the list's sr-only heading — one below the section it sits in. */
     headingLevel?: 3 | 4

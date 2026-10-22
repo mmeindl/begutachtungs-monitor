@@ -81,6 +81,25 @@ describe('buildStatementsSummary', () => {
     expect(summary.organisationList[0]!.statements).toHaveLength(2)
   })
 
+  /* Above STATEMENTS_CAP only the institutions are read (22.10.2026). The
+   * rest is part of the total and of no kind — `total` is the draft's ONE
+   * statements number, the one the bar and the share preview print, and
+   * 164/ME has 106,183 Stellungnahmen, not the 117 that were read. */
+  it('counts the unread rest into the total and into no kind', () => {
+    const summary = buildStatementsSummary([org('Muster GmbH'), org('Verein Musterstadt'), person()], 9_997)
+    expect(summary.total).toBe(10_000)
+    expect(summary.unlisted).toBe(9_997)
+    expect(summary.organisations).toBe(2)
+    expect(summary.privatePersons).toBe(1)
+    expect(summary.nonPublic).toBe(0)
+    expect(summary.organisations + summary.privatePersons + summary.nonPublic + summary.unlisted!).toBe(summary.total)
+  })
+
+  it('carries no `unlisted` where the whole list was read', () => {
+    expect('unlisted' in buildStatementsSummary([org('Muster GmbH')])).toBe(false)
+    expect('unlisted' in buildStatementsSummary([org('Muster GmbH')], 0)).toBe(false)
+  })
+
   it('answers an empty Verfahren with zeros and an empty list', () => {
     expect(buildStatementsSummary([])).toEqual({
       total: 0,

@@ -34,6 +34,34 @@ import { asNumber, asString } from './rowCells'
 // every submitter into "Privatperson".
 // ---------------------------------------------------------------------------
 
+/**
+ * Above this many Stellungnahmen on one item — a Ministerialentwurf or a
+ * Regierungsvorlage — list 142 is not read whole. The COVID-era items carry
+ * tens of thousands (164/ME of GP XXVII: 106,183; 1289 d.B.: 41,376); all
+ * else stays far below. Measured over the 596 last-good records of a local
+ * run on 22.10.2026 — 350 drafts of GP XXVII, 143 of GP XXVIII and a sample
+ * of the older periods: nine drafts of GP XXVII lie above the cap, from
+ * 5,127 to 106,183, the next one below holds 1,136, and GP XXVIII peaks at
+ * 846 (126/ME).
+ *
+ * It is a cap on the ROWS, not on what the page may say: above it the
+ * institutions are still read by name (`TYP: ['I']`, `statements.ts`
+ * `fetchInstitutionStatements`) and the rest is counted, not listed.
+ *
+ * It was the Vorlage's alone (`RV_STATEMENTS_CAP`) until 22.10.2026, and the
+ * Ministerialentwurf had none. 164/ME then read 100,000 of its 106,183 rows —
+ * where `showAll` stops without a word —, parsed some 41 MB of JSON in a
+ * process with a 384 MB heap, held 19 MB of rows in the 48 MB derived cache
+ * and in a last-good record, sent all 100,000 to the browser, and printed
+ * the breakdown of 94 % of the list as that of all of it. At the cap a list
+ * is about 2 MB of JSON and 1 MB of rows.
+ *
+ * Pure, and in this module rather than `statements.ts`, because the
+ * last-good store reads it too: a record from before the cap that holds
+ * more rows than this is refused (`lastgood.ts`).
+ */
+export const STATEMENTS_CAP = 5_000
+
 /** The item types a Stellungnahme comes as — also the path segment of its page. */
 export type StatementItemType = 'SNME' | 'SN'
 

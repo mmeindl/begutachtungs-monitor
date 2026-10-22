@@ -4,6 +4,7 @@ import { join } from 'node:path'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import type { StatementMeta } from '../shared/types'
 import { loadLastGoodStatements, saveLastGoodStatements } from '../server/utils/parliament/lastgood'
+import { STATEMENTS_CAP } from '../server/utils/parliament/list142'
 
 function statement(overrides: Partial<StatementMeta> = {}): StatementMeta {
   return {
@@ -38,6 +39,7 @@ describe('last-good statements store', () => {
   it('round-trips items and the fetch timestamp', async () => {
     const record = {
       items: [statement(), statement({ citation: '2/SN-88/ME' })],
+      unlisted: 0,
       fetchedAt: '2026-08-27T06:15:00.000Z',
     }
     await saveLastGoodStatements('XXVIII', 88, record)
@@ -55,10 +57,12 @@ describe('last-good statements store', () => {
   it('keeps one record per ME and overwrites it on the next save', async () => {
     await saveLastGoodStatements('XXVIII', 88, {
       items: [statement()],
+      unlisted: 0,
       fetchedAt: '2026-08-20T00:00:00.000Z',
     })
     await saveLastGoodStatements('XXVIII', 88, {
       items: [statement(), statement({ citation: '3/SN-88/ME' })],
+      unlisted: 0,
       fetchedAt: '2026-08-27T00:00:00.000Z',
     })
 
@@ -72,6 +76,7 @@ describe('last-good statements store', () => {
   it('separates MEs and GPs', async () => {
     await saveLastGoodStatements('XXVIII', 88, {
       items: [statement()],
+      unlisted: 0,
       fetchedAt: '2026-08-27T00:00:00.000Z',
     })
 
@@ -82,6 +87,7 @@ describe('last-good statements store', () => {
   it('drops a record written by an older version', async () => {
     await saveLastGoodStatements('XXVIII', 88, {
       items: [statement()],
+      unlisted: 0,
       fetchedAt: '2026-08-27T00:00:00.000Z',
     })
     const file = recordFile('XXVIII', 88)
@@ -94,6 +100,7 @@ describe('last-good statements store', () => {
   it('treats a truncated or corrupt record as nothing stored', async () => {
     await saveLastGoodStatements('XXVIII', 88, {
       items: [statement()],
+      unlisted: 0,
       fetchedAt: '2026-08-27T00:00:00.000Z',
     })
     const file = recordFile('XXVIII', 88)
@@ -118,6 +125,7 @@ describe('last-good statements store', () => {
     for (const gp of ['../..', 'XXVIII/../..', '', 'xxviii']) {
       await saveLastGoodStatements(gp, 88, {
         items: [statement()],
+        unlisted: 0,
         fetchedAt: '2026-08-27T00:00:00.000Z',
       })
       expect(await loadLastGoodStatements(gp, 88)).toBeNull()
@@ -125,12 +133,82 @@ describe('last-good statements store', () => {
     for (const inr of [0, -1, 1.5, Number.NaN]) {
       await saveLastGoodStatements('XXVIII', inr, {
         items: [statement()],
+        unlisted: 0,
         fetchedAt: '2026-08-27T00:00:00.000Z',
       })
       expect(await loadLastGoodStatements('XXVIII', inr)).toBeNull()
     }
     // Nothing was written at all — not even a state directory.
     await expect(readdir(join(dir, 'statements'))).rejects.toThrow()
+  })
+
+  /* Above STATEMENTS_CAP the record holds the institutions and counts the
+   * rest (22.10.2026). Without the count a recalled record would present
+   * 117 institutions as all of a draft's 106,183 Stellungnahmen. */
+  it('round-trips the count of the rows a capped list did not read', async () => {
+    const record = {
+      items: [statement(), statement({ citation: '2/SN-88/ME' })],
+      unlisted: 106_181,
+      fetchedAt: '2026-10-22T06:00:00.000Z',
+    }
+    await saveLastGoodStatements('XXVII', 164, record)
+
+    expect(await loadLastGoodStatements('XXVII', 164)).toEqual(record)
+    expect(JSON.parse(await readFile(recordFile('XXVII', 164), 'utf8')).version).toBe(2)
+  })
+
+  /* Version 1 predates `unlisted`, and every record of it was a list read
+   * whole — so it is read, as one, rather than dropped with the fallback it
+   * is for. */
+  it('reads a version-1 record as a whole list', async () => {
+    await mkdir(join(dir, 'statements'), { recursive: true })
+    await writeFile(
+      recordFile('XXVIII', 88),
+      JSON.stringify({ version: 1, items: [statement()], fetchedAt: '2026-09-18T00:00:00.000Z' }),
+      'utf8',
+    )
+
+    expect(await loadLastGoodStatements('XXVIII', 88)).toEqual({
+      items: [statement()],
+      unlisted: 0,
+      fetchedAt: '2026-09-18T00:00:00.000Z',
+    })
+  })
+
+  /* A version-1 record above the cap is the whole list of a mass draft, or
+   * at exactly 100,000 rows one `showAll` cut short (164/ME: 100,000 of
+   * 106,183, 19 MB on disk). Either would bring back on the failure path
+   * the load the cap took away — and the second would serve wrong counts. */
+  it('refuses a record that holds more rows than the cap', async () => {
+    await mkdir(join(dir, 'statements'), { recursive: true })
+    const items = Array.from({ length: STATEMENTS_CAP + 1 }, (_, i) =>
+      statement({ citation: `${i + 1}/SN-164/ME`, submitterKind: 'person', submitterName: null }))
+    await writeFile(
+      recordFile('XXVII', 164),
+      JSON.stringify({ version: 1, items, fetchedAt: '2026-10-21T22:27:20.000Z' }),
+      'utf8',
+    )
+    expect(await loadLastGoodStatements('XXVII', 164)).toBeNull()
+
+    // At the cap it is a list like any other.
+    await writeFile(
+      recordFile('XXVII', 164),
+      JSON.stringify({ version: 1, items: items.slice(0, STATEMENTS_CAP), fetchedAt: '2026-10-21T22:27:20.000Z' }),
+      'utf8',
+    )
+    expect((await loadLastGoodStatements('XXVII', 164))?.items).toHaveLength(STATEMENTS_CAP)
+  })
+
+  it('treats a version-2 record without a sound `unlisted` as nothing stored', async () => {
+    await mkdir(join(dir, 'statements'), { recursive: true })
+    for (const unlisted of [undefined, -1, 1.5, '3', null]) {
+      await writeFile(
+        recordFile('XXVIII', 88),
+        JSON.stringify({ version: 2, items: [statement()], unlisted, fetchedAt: '2026-10-22T00:00:00.000Z' }),
+        'utf8',
+      )
+      expect(await loadLastGoodStatements('XXVIII', 88), String(unlisted)).toBeNull()
+    }
   })
 
   /**
@@ -147,6 +225,7 @@ describe('last-good statements store', () => {
     await expect(
       saveLastGoodStatements('XXVIII', 88, {
         items: [statement()],
+        unlisted: 0,
         fetchedAt: '2026-08-27T00:00:00.000Z',
       }),
     ).resolves.toBeUndefined()

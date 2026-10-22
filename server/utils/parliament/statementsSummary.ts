@@ -6,8 +6,9 @@
  * execute the module directly. It was inside `statements.ts` until
  * 23.09.2026, which is a Nitro file (`defineCachedFunction`, `createError`)
  * and therefore not importable by a test at all: the one rule here that the
- * page depends on — that the three numbers PARTITION the total — was
- * asserted by nothing.
+ * page depends on — that the three numbers PARTITION the total (with
+ * `unlisted` beside them above the cap, since 22.10.2026) — was asserted by
+ * nothing.
  */
 import type { StatementMeta, StatementsSummary } from '../../../shared/types'
 import { groupOrganisationStatements } from './organisations'
@@ -32,7 +33,18 @@ import { groupOrganisationStatements } from './organisations'
  */
 export const ORG_LIST_CAP = 150
 
-export function buildStatementsSummary(items: StatementMeta[]): StatementsSummary {
+/**
+ * `unlisted`: Stellungnahmen upstream counts and nobody read — the rest of a
+ * list above `STATEMENTS_CAP`, whose `items` are the institutions alone
+ * (since 22.10.2026, `parliament/statements.ts`). They count towards `total`
+ * and towards none of the three kinds, so the partition becomes: the kinds
+ * plus `unlisted` add up to `total`. `total` stays the number of
+ * Stellungnahmen the summary is about, because on the draft page it is THE
+ * number — the bar's Begutachtung row and the share preview print it
+ * (`DraftDetail.statements`), and 164/ME has 106,183, not the 117 that were
+ * read.
+ */
+export function buildStatementsSummary(items: StatementMeta[], unlisted = 0): StatementsSummary {
   const organisations: StatementMeta[] = []
   let privatePersons = 0
   let nonPublic = 0
@@ -42,7 +54,7 @@ export function buildStatementsSummary(items: StatementMeta[]): StatementsSummar
     else nonPublic++
   }
   return {
-    total: items.length,
+    total: items.length + unlisted,
     /* Statements, not distinct organisations: this number is one part of the
      * partition of `total` that the panel renders as a legend and a mix bar,
      * and it has to keep adding up. The entry count of organisationList is
@@ -51,6 +63,9 @@ export function buildStatementsSummary(items: StatementMeta[]): StatementsSummar
     organisations: organisations.length,
     privatePersons,
     nonPublic,
+    /* Only where it is not zero: a summary of a whole list looks exactly as
+     * it did before the cap existed. */
+    ...(unlisted > 0 ? { unlisted } : {}),
     organisationList: groupOrganisationStatements(organisations).slice(0, ORG_LIST_CAP),
   }
 }

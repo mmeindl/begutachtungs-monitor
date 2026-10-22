@@ -38,10 +38,13 @@ export type StatementFilter = 'organisations' | 'persons' | 'nonpublic' | 'all'
  * organisations, „Alle" IS that segment under a second name, so it is left
  * out and the panel shows that one segment alone, as the list's label.
  *
- * `partial`: the summary counts only part of the Stellungnahmen — a
- * Regierungsvorlage above `RV_STATEMENTS_CAP`, where only the organisations
- * are read. „Alle" would then state the organisations' number as the total
- * (1289 d.B.: „Alle 17" over 41.376), so it is not offered.
+ * `partial`: the summary counts only part of the Stellungnahmen — a list
+ * above `STATEMENTS_CAP`, where only the institutions are read: a
+ * Regierungsvorlage, and since 22.10.2026 a Ministerialentwurf too (164/ME:
+ * 117 read of 106.183). „Alle" would then put a number on a list it does
+ * not hold — the institutions' count as the total on the Vorlage (1289
+ * d.B.: „Alle 17" over 41.376), the whole count over 117 rows on the
+ * draft —, so it is not offered.
  */
 export function availableStatementFilters(
   summary: StatementsSummary,

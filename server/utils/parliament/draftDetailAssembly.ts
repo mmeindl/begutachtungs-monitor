@@ -68,8 +68,11 @@ export interface DraftDetailInputs {
   trace: TraceStep[]
   /** The running Gesetzgebungsperiode, from its own leaf cache. */
   currentGp: string
-  /** List 142, live or last-good; `null` when even the fallback had nothing. */
-  statements: { items: StatementMeta[]; staleAsOf: string | null } | null
+  /**
+   * List 142, live or last-good; `null` when even the fallback had nothing.
+   * Above the cap `items` are the institutions and `unlisted` the rest.
+   */
+  statements: { items: StatementMeta[]; unlisted: number; staleAsOf: string | null } | null
   /** The RIS join for this period; `null` when it failed or ran past its budget. */
   risMap: { rows: RisMapRow[] } | null
   /** The period's ME→RV links; `null` when it failed or ran past its budget. */
@@ -129,7 +132,7 @@ export function assembleDraftDetail(input: DraftDetailInputs): DraftDetail {
     successor: related.successor,
     statements: input.statements
       ? {
-          ...buildStatementsSummary(input.statements.items),
+          ...buildStatementsSummary(input.statements.items, input.statements.unlisted),
           overviewTotal: listCount,
           staleAsOf: input.statements.staleAsOf,
         }

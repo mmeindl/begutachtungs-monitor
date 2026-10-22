@@ -7,6 +7,10 @@
  * with `staleAsOf` — the same fallback the detail page's summary uses
  * (parliament/statements.ts, getStatementsWithFallback). Only without any record does
  * this route error, and then with the upstream reason.
+ *
+ * Above STATEMENTS_CAP the items are the institutions only and `unlisted`
+ * counts the rest (since 22.10.2026) — never the first 100,000 rows of a
+ * longer list presented as all of them.
  */
 import type { StatementsResponse } from '#shared/types'
 import { validateGpInrParams } from '../../../../utils/http/params'
@@ -20,5 +24,5 @@ export default defineEventHandler(async (event): Promise<StatementsResponse> => 
     requireDraft(gp, inr),
     getStatementsWithFallback(gp, inr),
   ])
-  return { items: statements.items, staleAsOf: statements.staleAsOf }
+  return { items: statements.items, unlisted: statements.unlisted, staleAsOf: statements.staleAsOf }
 })

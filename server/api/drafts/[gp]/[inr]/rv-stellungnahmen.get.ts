@@ -3,7 +3,7 @@
  * Stellungnahmen filed on the Regierungsvorlage the draft became (list 142,
  * item type SN) — count, GDPR-filtered breakdown and the organisations,
  * exactly as the Begutachtung's own panel has them. 404 while the draft has
- * no Regierungsvorlage; above RV_STATEMENTS_CAP the organisations alone,
+ * no Regierungsvorlage; above STATEMENTS_CAP the organisations alone,
  * with `unlisted` naming what was left (`parliament/statements.ts`,
  * getStatementsForRv).
  *
@@ -41,7 +41,7 @@ export default defineEventHandler(async (event): Promise<RvStatementsResponse> =
     summary: items ? buildStatementsSummary(items) : null,
     items,
     unlisted,
-    cap: RV_STATEMENTS_CAP,
+    cap: STATEMENTS_CAP,
     committeeConsultation,
   }
 })

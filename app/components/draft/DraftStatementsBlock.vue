@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import type { DraftDetail } from '#shared/types'
 import type { SourceEntry } from '#shared/utils/provenance'
-import { countLabelDe, formatDateTimeDe } from '#shared/utils/format'
+import { countLabelDe, formatDateTimeDe, formatNumberDe } from '#shared/utils/format'
 import { countDriftSentenceDe } from '~/utils/statementRows'
 
 /**
@@ -21,10 +21,27 @@ const props = defineProps<{
   filingOpen: boolean
 }>()
 
+/* Above STATEMENTS_CAP only the institutions are read and `unlisted`
+ * counts the rest (since 22.10.2026) — the state the Vorlage's list has
+ * been in since 26.09.2026, and rendered the way `RvStatements` renders it:
+ * the count as a sentence, the panel over what was read, and no „Alle" on
+ * it, which would state the institutions' number as the total. */
+const unlisted = computed(() => props.draft.statements.unlisted ?? 0)
+const readCount = computed(() => {
+  const { organisations, privatePersons, nonPublic } = props.draft.statements
+  return organisations + privatePersons + nonPublic
+})
+
 /* Silent disagreement between the two upstream sources is the one option
  * that serves nobody — a journalist who cites the card's number and
  * screenshots this page must not find a contradiction. The sentence, and
- * the singular it needs where either side is one, are `countDriftSentenceDe`. */
+ * the singular it needs where either side is one, are `countDriftSentenceDe`.
+ *
+ * Its „bisher" says the list lags behind the counter, which is true only
+ * because `total` is list 142's own count: a list that does not arrive
+ * whole is refused rather than counted, and above the cap `total` is the
+ * count, not the rows read (22.10.2026). Before, 164/ME printed „in der
+ * Liste stehen bisher 100.000" — where `showAll` had cut 106,183 short. */
 const countDrift = computed(() => {
   const { overviewTotal, total } = props.draft.statements
   return overviewTotal != null && overviewTotal !== total ? countDriftSentenceDe(overviewTotal, total) : null
@@ -50,7 +67,22 @@ const STATEMENTS_SOURCES: SourceEntry[] = [{ what: 'Stellungnahmen', publisher: 
       >Auf parlament.gv.at ansehen</ExternalLink>
     </p>
     <template v-else-if="draft.statements.total > 0">
-      <StatementsPanel :list-url="listUrl" :summary="draft.statements" />
+      <!-- Only where the panel cannot carry the count: above the cap its
+           buttons count what was read. The same sentence as the Vorlage's
+           (`RvStatements`) — the rest is stated as what upstream counts,
+           not as Privatpersonen, because the flag that split it separates
+           institutions from everything else. -->
+      <p v-if="unlisted > 0" class="text-sm text-ink">
+        {{ countLabelDe(draft.statements.total, 'Stellungnahme', 'Stellungnahmen') }}.
+        Aufgeschlüsselt sind nur die Organisationen, die übrigen
+        {{ formatNumberDe(unlisted) }} nicht.
+      </p>
+      <StatementsPanel
+        v-if="readCount > 0"
+        :list-url="listUrl"
+        :summary="draft.statements"
+        :partial="unlisted > 0"
+      />
       <!-- The two upstream counts, where they disagree (`countDrift`). -->
       <p v-if="countDrift" class="mt-3 text-xs text-ink-muted">
         {{ countDrift }}
@@ -65,8 +97,10 @@ const STATEMENTS_SOURCES: SourceEntry[] = [{ what: 'Stellungnahmen', publisher: 
            Organisationen/Privatpersonen/Nicht öffentlich is ours
            (privacy.ts), and that Privatpersonen stand without names
            is our rule, not Parliament's record — until here only the
-           empty search state said so. -->
+           empty search state said so. Under the panel only, as under the
+           Vorlage's: a bare count above the cap classifies nothing. -->
       <SectionCredits
+        v-if="readCount > 0"
         :sources="STATEMENTS_SOURCES"
         :marked="false"
         own="Einordnung der Einbringer:innen"

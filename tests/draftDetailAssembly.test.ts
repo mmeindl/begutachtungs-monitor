@@ -72,7 +72,7 @@ function inputs(over: Partial<DraftDetailInputs> = {}): DraftDetailInputs {
     content: {},
     trace: [],
     currentGp: 'XXVIII',
-    statements: { items: [], staleAsOf: null },
+    statements: { items: [], unlisted: 0, staleAsOf: null },
     risMap: null,
     stationMap: null,
     enactment: null,
@@ -85,7 +85,7 @@ describe('assembleDraftDetail — the statements number', () => {
   it('uses list 142 and keeps the list-81 counter beside it', () => {
     const detail = assembleDraftDetail(inputs({
       summary: draftSummary({ statementCount: 707 }),
-      statements: { items: [statement(), statement({ submitterKind: 'person', submitterName: null })], staleAsOf: null },
+      statements: { items: [statement(), statement({ submitterKind: 'person', submitterName: null })], unlisted: 0, staleAsOf: null },
     }))
     expect(detail.statements.total).toBe(2)
     expect(detail.statements.overviewTotal).toBe(707)
@@ -115,9 +115,30 @@ describe('assembleDraftDetail — the statements number', () => {
 
   it('passes the staleness of a last-good aggregation through', () => {
     const detail = assembleDraftDetail(inputs({
-      statements: { items: [statement()], staleAsOf: '2026-09-20T06:00:00.000Z' },
+      statements: { items: [statement()], unlisted: 0, staleAsOf: '2026-09-20T06:00:00.000Z' },
     }))
     expect(detail.statements.staleAsOf).toBe('2026-09-20T06:00:00.000Z')
+    expect(detail.statements.degraded).toBeUndefined()
+  })
+
+  /* Above STATEMENTS_CAP (22.10.2026): the institutions were read, the rest
+   * counted. The detail number is still the whole list's — the bar and the
+   * share preview print `total` — and the overview line compares counter
+   * with count, never counter with the rows that happened to be read. */
+  it('keeps the whole count as the detail number above the cap', () => {
+    const detail = assembleDraftDetail(inputs({
+      summary: draftSummary({ statementCount: 106_183 }),
+      statements: {
+        items: [statement(), statement({ citation: '2/SN-88/ME', submitterKind: 'person', submitterName: null })],
+        unlisted: 106_181,
+        staleAsOf: null,
+      },
+    }))
+    expect(detail.statements.total).toBe(106_183)
+    expect(detail.statements.unlisted).toBe(106_181)
+    expect(detail.statements.organisations).toBe(1)
+    expect(detail.statements.privatePersons).toBe(1)
+    expect(detail.statements.overviewTotal).toBe(detail.statements.total)
     expect(detail.statements.degraded).toBeUndefined()
   })
 

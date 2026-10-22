@@ -46,7 +46,7 @@ const summary = computed(() => props.data.summary)
  *
  *  - **read whole** — the normal case, every row fetched and classified.
  *    The panel's buttons carry every count, so no sentence does.
- *  - **organisations only** — above `RV_STATEMENTS_CAP`. Since 26.09.2026
+ *  - **organisations only** — above `STATEMENTS_CAP`. Since 26.09.2026
  *    the named half survives the cap: list 142 filters on its own
  *    institution flag, so 1289 d.B. answers its 17 organisations without
  *    the 41,359 private persons behind them. The panel then offers the
