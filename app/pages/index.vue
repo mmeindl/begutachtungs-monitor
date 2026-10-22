@@ -12,6 +12,7 @@ import { viewOfDraft, viewOfOutcome, viewOfRow, viewOfVorlage } from '~/utils/en
 import { gpWindow } from '#shared/utils/gp'
 import { SECOND_ROUND_WINDOW } from '~/utils/spine'
 import type { AsyncDataRequestStatus } from '#app'
+import { MAX_LIST_QUERY_CHARS } from '#shared/utils/queryParams'
 
 /* „Gesetzes- und Verordnungsentwürfe" since 18.09.2026. It said
    „Gesetzesentwürfe" from before the RIS half shipped, and then went on
@@ -348,6 +349,17 @@ const enactedHref = computed(
 
            It is a line about the page, and the header is where the page
            speaks about itself. The move also takes it out of
+
+/* The way in for whoever arrives with a subject, not a date. A plain GET
+ * form onto the list's own `q`, so it works before hydration; with
+ * JavaScript the submit becomes a client-side navigation. Bare
+ * `/entwuerfe?q=` is the state in which the full text applies
+ * (`useFullTextSearch`), so no other filter is set. */
+const searchTerm = ref('')
+function submitSearch() {
+  const q = searchTerm.value.trim()
+  return navigateTo(q ? { path: '/entwuerfe', query: { q } } : '/entwuerfe')
+}
            `v-else-if="data"`: `useFeedUrls()` touches no endpoint, so a
            failed `/api/dashboard` used to take the one still-working offer
            down with the data. Footer keeps the full version with the
@@ -371,6 +383,35 @@ const enactedHref = computed(
     >
       <!-- ONE list, because the question is one: "was läuft gerade, wo kann
            ich noch mitreden?" (docs/architecture.md §12.20). Which official
+      <!-- On submit, not on input: a page change per keystroke takes the
+           cursor out of the word (WCAG 3.2.2). One line in the header, not a
+           hero field — the page's question stays „was wird daraus?". Full
+           width like the list's field it leads into, on the lede's edges. The
+           placeholder cannot count like the list's, the homepage does not
+           know the total. -->
+      <form
+        action="/entwuerfe"
+        method="get"
+        role="search"
+        class="mt-6 flex gap-2"
+        @submit.prevent="submitSearch"
+      >
+        <UInput
+          v-model="searchTerm"
+          name="q"
+          type="search"
+          :maxlength="MAX_LIST_QUERY_CHARS"
+          icon="i-lucide-search"
+          placeholder="In allen Entwürfen suchen …"
+          aria-label="Entwürfe durchsuchen"
+          class="min-w-0 flex-1"
+          :ui="{ base: 'min-h-target' }"
+        />
+        <UButton type="submit" color="neutral" variant="outline" class="min-h-target">
+          Suchen
+        </UButton>
+      </form>
+
            register happens to carry a record is plumbing, and plumbing does
            not belong in the page skeleton — it belongs on the row, which is
            why both row kinds now lead their meta line with the type word.
