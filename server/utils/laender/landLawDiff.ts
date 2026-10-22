@@ -29,17 +29,34 @@ import { compareWords, tokenSimilarity } from '../diff/wordDiff'
 import { parseLawUnitsFromRis, segmentUnits, type LawUnit } from '../lawtext/lawUnits'
 import { lawBlocksFromPdfPages } from './draftPdfLaw'
 
-const QUOTES_RE = /[„“”"»«]/g
+/* Double quotes, and the single inner ones Salzburg nests („‚erneuerbare
+   Energie‘"); not the apostrophe ’, which is part of a word. */
+const QUOTES_RE = /[„“”"»«‚‘]/g
 
 /* Quotes out, and a compound split at a line end closed up again
    („Median- Entgelthöhe" in the XML): a hyphen, a space, a capital. „Land-
    und Forstwirtschaft" keeps its space — the next word is lower case. */
 function clean(text: string): string {
-  return text.replace(QUOTES_RE, '').replace(/(\p{L})- (?=\p{Lu})/gu, '$1-').replace(/\s*&\s*/g, '&').replace(/\s+/g, ' ').trim()
+  return text.replace(QUOTES_RE, '').replace(/(\p{L})- (?=\p{Lu})/gu, '$1-').replace(/\s*&\s*/g, '&')
+    // One bullet glyph („•" in the PDF, „●" in RIS), and no image path RIS
+    // leaves in the text of a table („/Dokumente/LgblAuth/…/image002.jpg").
+    .replace(/[•●▪◦]/g, '•').replace(/\S*\/Dokumente\/\S+\.(?:jpe?g|png|gif)\b/gi, ' ').replace(/\s+/g, ' ').trim()
 }
 
+/* The Artikel names too: RIS writes „Artikel\u00a0I" with a no-break
+   space, the PDF „Artikel I" — equal to the eye, not to the map the units
+   are grouped by, so an untitled Artikel paired by number held no unit
+   (Salzburg 29779). */
+const sameSpaces = (s: string | null) => (s === null ? null : s.replace(/\s+/g, ' ').trim())
+
 function unquoted(units: LawUnit[]): LawUnit[] {
-  return units.map((u) => ({ ...u, text: clean(u.text), blocks: u.blocks.map((b) => ({ ...b, text: clean(b.text) })) }))
+  return units.map((u) => ({
+    ...u,
+    article: sameSpaces(u.article),
+    articleNumber: sameSpaces(u.articleNumber),
+    text: clean(u.text),
+    blocks: u.blocks.map((b) => ({ ...b, text: clean(b.text) })),
+  }))
 }
 
 /** The Kundmachung's units, from the Landesgesetzblatt's RIS XML. */
@@ -61,8 +78,10 @@ export function lgblUnits(xml: string): LawUnit[] {
   // and amend another in Artikel II (16087, 16099, 16022 read one to two
   // units of a whole new law while the gate was the document).
   // Split at the Artikel only: the Landesgesetzblatt types its divisions
-  // („1. Teil", „2. Abschnitt") as `art` too (LGBl. Nr. 64/2021).
-  const parts = xml.split(/(?=<ueberschrift typ="art"[^>]*>\s*(?:<[^>]+>\s*)*Artikel\b)/)
+  // („1. Teil", „2. Abschnitt") as `art` too (LGBl. Nr. 64/2021). Salzburg
+  // types the Artikel itself as `g1` — unsplit, a new law in Artikel I read
+  // as two instructions of Artikel II (LGBl. Nr. 95/2022, 112/2021).
+  const parts = xml.split(/(?=<ueberschrift typ="(?:art|g1)"[^>]*>\s*(?:<[^>]+>\s*)*Artikel\b)/)
   const doc = parts.map((part) => /<absatz typ="novao[12]"/.test(part)
     ? part
     : part
@@ -79,6 +98,9 @@ export function lgblUnits(xml: string): LawUnit[] {
     // Der Landeshauptmann:"), a table the parser would append to the last
     // unit — seen in the committee-report cross-check (§12.44).
     .replace(SIGNATURE_TABLE_RE, '')
+    // A sub-instruction („2.2. Im Abs 2 lautet …", Salzburg) is part of its
+    // instruction: as plain text it joins it, as the PDF side reads it.
+    .replace(/<absatz typ="novao[12]"([^>]*)>(\s*(?:<[^>]+>\s*)*\d+\.\s?\d+\.\s)/g, '<absatz typ="abs"$1>$2')
     // RIS writes „&" as an element (`Land<amp />Forst`), which the shared
     // parser drops with the other tags; the federal fix waits for its own
     // old-against-new run (TODO.md).
@@ -101,6 +123,9 @@ function addressOf(heading: string | null): string | null {
   return m ? `§${m[1]}${m[2] ? ` Abs.${m[2]}` : ''}${m[3] ? ` ${m[3].replace(/\s+/g, '')}` : ''}` : null
 }
 
+const PAIR_MARK = 'artikelpaar'
+const PAIR_MARK_RE = / artikelpaar\d+$/
+
 /** Lower than the engine's 0.6, because the address already says it is the
  *  same place; read over all 34 pairs a looser rule made (§12.44 Nachtrag 3). */
 const SAME_PLACE_SIMILARITY = 0.35
@@ -116,8 +141,21 @@ const SAME_PLACE_SIMILARITY = 0.35
  * rule (same Artikel, same heading) pairs; measured in §12.44, Nachtrag 3.
  */
 export function diffLandDraft(draft: LawUnit[], kundmachung: LawUnit[]): LawDiffUnit[] {
-  const from = unquoted(draft)
-  const to = unquoted(kundmachung)
+  // The Artikel are paired on the texts AS THEY ARE: pairing by number
+  // checks which §§ each side's instructions address, and a quoted § is new
+  // wording, not an address — without the quotes every quoted § counted as
+  // one, and Salzburg 29779 paired no Artikel I. The draft's Artikel then
+  // take their partners' names, so the comparison of the cleaned texts
+  // pairs them again by title.
+  // A shared marker word per pair carries the decision through: untitled
+  // Artikel („Artikel I" on both sides) have no other word for the title
+  // rule to match. Taken off again before anything leaves this function.
+  const pairs = articlePairs(draft, kundmachung).filter((p) => p.to !== null)
+  const markFrom = new Map(pairs.map((p, k) => [p.from, k]))
+  const markTo = new Map(pairs.map((p, k) => [p.to, k]))
+  const marked = (name: string | null, k: number | undefined) => (k === undefined ? sameSpaces(name) : `${sameSpaces(name) ?? ''} ${PAIR_MARK}${k}`)
+  const from = unquoted(draft).map((u, i) => ({ ...u, article: marked(pairs[markFrom.get(draft[i]!.article) ?? -1]?.to ?? draft[i]!.article, markFrom.get(draft[i]!.article)) }))
+  const to = unquoted(kundmachung).map((u, i) => ({ ...u, article: marked(kundmachung[i]!.article, markTo.get(kundmachung[i]!.article)) }))
   const first = diffLawUnits(from, to)
   const key = (u: LawDiffUnit, address: string | null) => `${u.articleKey ?? u.fromArticleKey ?? ''}|${address}`
   const removed = new Map<string, LawDiffUnit[]>()
@@ -141,7 +179,9 @@ export function diffLandDraft(draft: LawUnit[], kundmachung: LawUnit[]): LawDiff
     b.heading = a.heading
     paired++
   }
-  return paired ? diffLawUnits(from, renamed) : first
+  const result = paired ? diffLawUnits(from, renamed) : first
+  const unmark = (s: string | null | undefined) => (s == null ? s : s.replace(PAIR_MARK_RE, ''))
+  return result.map((u) => ({ ...u, article: unmark(u.article) ?? null, ...(u.fromArticle ? { fromArticle: unmark(u.fromArticle)! } : {}) }))
 }
 
 /**

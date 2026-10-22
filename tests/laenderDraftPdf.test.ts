@@ -39,8 +39,15 @@ describe('lawBlocksFromPdfPages — a Land draft from its PDF', () => {
 
   it('opens an instruction where the PDF dropped the space after its number (16120)', () => {
     const pages = [page('Der Oö. Landtag hat beschlossen:', 'Artikel II', 'Das Oö. Y-Gesetz wird wie folgt geändert:',
-      '6. Die §§ 6 und 7 entfallen.', '7.Im § 8 wird das Wort „x“ gestrichen.')]
-    expect(ids(pages)).toEqual(['Artikel II Z6', 'Artikel II Z7'])
+      '1. Die §§ 6 und 7 entfallen.', '2.Im § 8 wird das Wort „x“ gestrichen.')]
+    expect(ids(pages)).toEqual(['Artikel II Z1', 'Artikel II Z2'])
+  })
+
+  it('takes no numbered table row of the payload for an instruction: the sequence must go on', () => {
+    const pages = [page('Der Salzburger Landtag hat beschlossen:', 'Artikel I', 'Die Verordnung wird geändert wie folgt:',
+      '1. In der Anlage lautet die Tabelle:', 'Modellfunktion Anforderung', '46. Operationstechnische Assistenz 1 hoch', '47. Operationstechnische Assistenz 2 mittel',
+      '2. § 4 entfällt.', '3. § 5 entfällt.')]
+    expect(ids(pages)).toEqual(['Artikel I Z1', 'Artikel I Z2', 'Artikel I Z3'])
   })
 
   it('takes a single unnumbered instruction under the clause as the first (16039)', () => {
@@ -111,6 +118,15 @@ describe('diffLandDraft — the draft against the Landesgesetzblatt', () => {
     const kundmachung = lgblUnits(xml('1. Im § 2 wird das Wort "zugleich Vorsitzende" durch das Wort "Leiterin" ersetzt.').replace('</abschnitt>',
       '<ueberschrift typ="art">Artikel II<br />Änderung des Oö. Y-Gesetzes</ueberschrift><absatz typ="promkleinlsatz">Das Oö. Y-Gesetz wird wie folgt geändert:</absatz><absatz typ="novao1">1. § 9 entfällt.</absatz></abschnitt>'))
     expect(packageChanges(landDraftUnits(draft)!, kundmachung).added).toEqual(['Artikel II Änderung des Oö. Y-Gesetzes'])
+  })
+
+  it('splits a package at Salzburg\'s Artikel, typed `g1`, so a new law in Artikel I keeps its §§', () => {
+    // LGBl. Nr. 95/2022: unsplit, the instructions of Artikel II made the
+    // whole document a Novelle, and the 73 §§ of the new law read as two units.
+    const units = lgblUnits('<abschnitt><ueberschrift typ="g1">Artikel I</ueberschrift><ueberschrift typ="para">§ 1</ueberschrift><absatz typ="abs">(1) Erstens.</absatz>' +
+      '<ueberschrift typ="para">§ 2</ueberschrift><absatz typ="abs">(1) Zweitens.</absatz>' +
+      '<ueberschrift typ="g1">Artikel II</ueberschrift><absatz typ="promkleinlsatz">Das Y-Gesetz wird wie folgt geändert:</absatz><absatz typ="novao1">1. § 9 entfällt.</absatz></abschnitt>')
+    expect(units.map((u) => u.id)).toEqual(['§1', '§2', 'Z1'])
   })
 
   it('pairs a reworded instruction at the same place as changed, and not two places of one §', () => {

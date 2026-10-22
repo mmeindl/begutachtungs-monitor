@@ -67,6 +67,10 @@ const shortTitle = computed(() => (draft.value ? landShortTitle(draft.value.titl
 const kindLabel = computed(() => (draft.value ? RIS_KIND_LABEL[draft.value.kind] : ''))
 const citeAs = computed(() => (draft.value ? `${kindLabel.value} „${draft.value.title}“ (Land ${landName.value})` : ''))
 
+/* The Land's Textgegenüberstellung — Oberösterreich's is the format read
+   (`landTguService`); the section asks only where there is one. */
+const hasTgu = computed(() => props.land === 'ooe' && (draft.value?.documents ?? []).some((d) => /gegenüber/i.test(d.title)))
+
 const documents = computed<DraftDocument[]>(() =>
   (draft.value?.documents ?? []).map((d) => ({ title: d.title, formats: [{ type: 'pdf', url: d.url }] })))
 
@@ -195,6 +199,11 @@ useSeoMeta({ ogTitle: () => draft.value?.title ?? 'Entwurf', ogType: 'article' }
                 <li v-for="point in detail.summary" :key="point">{{ point }}</li>
               </ul>
             </PageSubsection>
+            <!-- What the draft would do to the law in force, § by §, read
+                 from the Land's own Textgegenüberstellung — where the
+                 Ministerialentwurf's page asks the same question, after the
+                 summary and before the documents (22.10.2026). -->
+            <LandLawDiffSection v-if="hasTgu" :land="land" :number="number" from="geltend" to="entwurf" />
             <!-- Named like the Dokumente of the other draft pages, and OPEN
                  where they fold (22.10.2026): there the documents follow the
                  comparison and the Erläuterungen, here they are the only way

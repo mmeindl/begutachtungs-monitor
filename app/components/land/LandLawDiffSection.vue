@@ -40,14 +40,19 @@ const { data, status } = useFetch<LandLawDiffResponse>(
 )
 
 /* The Bund's question for the same pair, word for word (`lawStationPairQuestion`). */
-const AS_LAW_STATION: Record<LandTextStation, LawStationId> = { entwurf: 'me', rv: 'rv', ausschuss: 'ausschuss', lgbl: 'bgbl' }
-const LABEL: Record<LandTextStation, string> = { entwurf: 'Entwurf', rv: 'Regierungsvorlage', ausschuss: 'Ausschussfassung', lgbl: 'Kundmachung' }
+const AS_LAW_STATION: Record<Exclude<LandTextStation, 'geltend'>, LawStationId> = { entwurf: 'me', rv: 'rv', ausschuss: 'ausschuss', lgbl: 'bgbl' }
+const LABEL: Record<LandTextStation, string> = { geltend: 'Geltende Fassung', entwurf: 'Entwurf', rv: 'Regierungsvorlage', ausschuss: 'Ausschussfassung', lgbl: 'Kundmachung' }
 /* „(im Entwurf Z 6)" — where the earlier text numbered the unit otherwise. */
-const IN_FROM: Record<LandTextStation, string> = { entwurf: 'im Entwurf', rv: 'in der Regierungsvorlage', ausschuss: 'in der Ausschussfassung', lgbl: 'in der Kundmachung' }
+const IN_FROM: Record<LandTextStation, string> = { geltend: 'in der geltenden Fassung', entwurf: 'im Entwurf', rv: 'in der Regierungsvorlage', ausschuss: 'in der Ausschussfassung', lgbl: 'in der Kundmachung' }
 /* When the changes happened, temporal and never causal (framing rule). */
 const WHEN: Record<string, string> = { 'entwurf>rv': 'nach der Begutachtung', 'rv>ausschuss': 'im Ausschuss', 'entwurf>lgbl': 'bis zur Kundmachung' }
 
-const heading = computed(() => lawStationPairQuestion(AS_LAW_STATION[props.from], AS_LAW_STATION[props.to]))
+/* The law in force against the draft is the Ministerialentwurf's
+   „Was ändert der Entwurf?" — its heading and its anchor. */
+const ofDraft = computed(() => props.from === 'geltend')
+const heading = computed(() => (props.from === 'geltend' || props.to === 'geltend'
+  ? 'Was ändert der Entwurf?'
+  : lawStationPairQuestion(AS_LAW_STATION[props.from], AS_LAW_STATION[props.to])))
 const FROM_LABEL = computed(() => LABEL[props.from])
 const TO_LABEL = computed(() => LABEL[props.to])
 const isNovelle = computed(() => isNovelleUnits(units.value))
@@ -135,6 +140,16 @@ const summary = computed(() => {
   // Counted as the pills count: an editorial change is not a change of
   // substance, and the two numbers must add up to what the box shows.
   const changes = s.changed - s.editorial + s.inserted + s.removed
+  if (ofDraft.value) {
+    const what = [
+      // „ändert 1 Paragraphen", „ändert 12 Paragraphen": the accusative is one word for both.
+      s.changed - s.editorial ? `ändert ${countLabelDe(s.changed - s.editorial, 'Paragraphen', 'Paragraphen')}` : null,
+      s.inserted ? `fügt ${countLabelDe(s.inserted, 'neuen', 'neue')} ein` : null,
+      s.removed ? `lässt ${s.removed} entfallen` : null,
+    ].filter(Boolean)
+    const editorial = s.editorial ? ` ${countLabelDe(s.editorial, 'Änderung ist', 'Änderungen sind')} redaktionell.` : ''
+    return what.length ? `Der Entwurf ${what.join(', ').replace(/, ([^,]*)$/, ' und $1')}.${editorial}` : `Der Entwurf ändert keinen Paragraphen inhaltlich.${editorial}`
+  }
   const when = WHEN[`${props.from}>${props.to}`] ?? ''
   if (!changes && !s.editorial) return `Die ${TO_LABEL.value} übernimmt ${props.from === 'entwurf' ? 'den Entwurf' : `die ${FROM_LABEL.value}`} Wort für Wort.`
   const parts = [
@@ -147,7 +162,7 @@ const summary = computed(() => {
 </script>
 
 <template>
-  <PageSubsection :id="`textvergleich-${to}`" :heading="heading">
+  <PageSubsection :id="ofDraft ? 'gegenueberstellung' : `textvergleich-${to}`" :heading="heading">
     <ListSkeleton v-if="status === 'pending' || status === 'idle'" class="mt-3">
       {{ FROM_LABEL }} und {{ TO_LABEL }} werden verglichen …
     </ListSkeleton>
@@ -168,6 +183,12 @@ const summary = computed(() => {
         um. Was hier als neu erscheint, kann aus {{ data.sharedWith.length > 1 ? 'jenen Entwürfen' : 'jenem Entwurf' }} stammen.
       </p>
       <p v-if="summary" class="text-sm text-ink">{{ summary }}</p>
+      <!-- What the Land's document shows and this list does not, counted:
+           a § is shown only where RIS confirms our reading of its text in
+           force (`landTguService`). -->
+      <p v-if="data.withheld" class="mt-1 text-sm text-ink-secondary">
+        {{ countLabelDe(data.withheld, 'weiterer Paragraph', 'weitere Paragraphen') }} der Textgegenüberstellung {{ data.withheld === 1 ? 'steht' : 'stehen' }} hier nicht: {{ data.withheld === 1 ? 'seinen' : 'ihren' }} geltenden Text fand der Monitor im RIS nicht wortgleich. Die Textgegenüberstellung selbst steht unter den Dokumenten.
+      </p>
       <ListBox class="mt-4">
         <template #header>
           <DiffToolbar
@@ -242,7 +263,7 @@ const summary = computed(() => {
             {{ doc.publisher }}: <ExternalLink v-if="doc.url" :href="doc.url" class="link-muted">{{ doc.label }}</ExternalLink><template v-else>{{ doc.label }}</template>
           </template>
         </span>
-        <span>Vergleich: Begutachtungs-Monitor</span>
+        <span>{{ ofDraft ? 'Lesart und Abgleich' : 'Vergleich' }}: Begutachtungs-Monitor</span>
       </SectionCredits>
     </template>
   </PageSubsection>

@@ -68,7 +68,7 @@ describe('matchLgbl — the rule', () => {
     )
     expect(r.get('sbg-1')).toEqual({
       state: 'gefunden',
-      stage: { station: 'bgbl', label: 'Kundgemacht', detail: 'LGBl. Nr. 42/2026', date: '2026-05-13', url: 'https://www.ris.bka.gv.at/eli/lgbl/SA/2026/42', via: 'suche' },
+      stage: { station: 'bgbl', label: 'Kundgemacht', detail: 'LGBl. Nr. 42/2026', date: '2026-05-13', url: 'https://www.ris.bka.gv.at/eli/lgbl/SA/2026/42', via: 'suche', unique: true },
     })
   })
 
@@ -79,6 +79,8 @@ describe('matchLgbl — the rule', () => {
       lgbl({ nr: 'LGBl. Nr. 30/2025', titel: title, datum: '2025-05-01' }),
     ])
     expect(r.get('sbg-1')).toMatchObject({ stage: { detail: 'LGBl. Nr. 30/2025' } })
+    // Two candidates: a find, but not certain enough to compare against.
+    expect(r.get('sbg-1')).toMatchObject({ stage: { unique: false } })
   })
 
   it('looks only after the start and within two years, and only at the right type', () => {

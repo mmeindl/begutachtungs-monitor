@@ -3,6 +3,8 @@
  * station sections — as the Ministerialentwurf's page hangs a comparison on
  * each station that produced one:
  *
+ *   geltend → entwurf    „Was ändert der Entwurf?" — from the Land's
+ *                        Textgegenüberstellung, `landTguService.ts`
  *   entwurf → rv         „Was sich nach der Begutachtung geändert hat"
  *   rv → ausschuss       „Was der Ausschuss an der Regierungsvorlage geändert hat"
  *   entwurf → lgbl       „Was sich vom Entwurf bis zum kundgemachten Gesetz …"
@@ -22,9 +24,17 @@
  * Kundmachung the monitor found by title (`matchLgbl`) is wrong about two
  * times in a hundred, and held against the wrong law a comparison would
  * report a whole draft rewritten: the one error this layer must not make.
+ * Not even the search's single candidates (`LandStage.unique`): 57 of 57 were
+ * right against Oberösterreich's oracle, but Salzburg, which has none, holds
+ * a draft of 2022 matched to the one amendment of the same law in 2024
+ * (sbg-27156, §12.44 Nachtrag 6).
+ *
+ * And a comparison in which not one unit pairs is no comparison: a draft and
+ * its own Kundmachung share at least the law they amend. Shown, it would read
+ * as every instruction dropped and replaced (`NOTHING_PAIRS`).
  */
 import type { LandCode, LandDraftDetail, LandLawDiffResponse, LandTextDocument, LandTextStation } from '#shared/types'
-import { landDraftPath } from '#shared/utils/laender'
+import { LAND_NAME, landDraftPath } from '#shared/utils/laender'
 import { safeExternalUrl } from '#shared/utils/safeExternalUrl'
 import { DERIVED_CACHE } from '../cache/base'
 import { summarizeDiff } from '../diff/lawDiff'
@@ -32,6 +42,7 @@ import type { LawUnit } from '../lawtext/lawUnits'
 import { upstreamBytes, upstreamText, type UpstreamPolicy } from '../upstream/fetch'
 import { diffLandDraft, landDraftUnits, lgblUnits, packageChanges } from './landLawDiff'
 import { lgblXmlUrl } from './lgblIndex'
+import { compareTgu } from './landTguService'
 import { draftsSharingKundmachung } from './sources'
 
 const POLICY: UpstreamPolicy = { timeoutMs: 30_000, retries: 2, upstreamHostsOnly: true }
@@ -39,17 +50,20 @@ const PDF_MAX_BYTES = 30 * 1024 * 1024
 
 /** The pairs the page asks for; anything else is no comparison of ours. */
 export const LAND_TEXT_PAIRS: readonly (readonly [LandTextStation, LandTextStation])[] = [
+  ['geltend', 'entwurf'],
   ['entwurf', 'rv'],
   ['rv', 'ausschuss'],
   ['entwurf', 'lgbl'],
 ]
+
+const NOTHING_PAIRS = 'Die beiden Texte haben keinen einzigen Teil gemeinsam — der Monitor zeigt hier keinen Vergleich, statt alles als neu zu melden.'
 
 const emptyStats = { total: 0, unchanged: 0, changed: 0, editorial: 0, inserted: 0, removed: 0 }
 
 function unavailable(from: LandTextStation, to: LandTextStation, reason: string, rest: Partial<LandLawDiffResponse> = {}): LandLawDiffResponse {
   return {
     from, to, available: false, unavailableReason: reason, units: [], stats: emptyStats,
-    fromDocument: null, toDocument: null, addedLaws: [], droppedLaws: [], sharedWith: [], ...rest,
+    fromDocument: null, toDocument: null, addedLaws: [], droppedLaws: [], sharedWith: [], withheld: 0, ...rest,
   }
 }
 
@@ -72,8 +86,11 @@ const pdfSource = (label: string, url: string, publisher: string): Source => ({
 
 /** Where each text of the draft is, by the Land's own record; null where there is none. */
 function sourceOf(land: LandCode, detail: LandDraftDetail, station: LandTextStation): Source | null {
-  const landName = 'Land Oberösterreich'
+  const landName = `Land ${LAND_NAME[land]}`
   switch (station) {
+    // Read with the draft's text from one document (`compareTgu`), never alone.
+    case 'geltend':
+      return null
     case 'entwurf': {
       const docs = detail.draft.documents
       const doc = docs.find((d) => /Begutachtungsentwurf|Entwurf/i.test(d.title)) ?? docs[0]
@@ -112,6 +129,7 @@ export async function compareLandTexts(
   from: LandTextStation,
   to: LandTextStation,
 ): Promise<LandLawDiffResponse> {
+  if (from === 'geltend') return compareTgu(land, detail)
   const a = sourceOf(land, detail, from)
   const b = sourceOf(land, detail, to)
   if (!a || !b) {
@@ -127,6 +145,7 @@ export async function compareLandTexts(
   const units = diffLandDraft(x, y)
   const { added, dropped } = packageChanges(x, y)
   const s = summarizeDiff(units)
+  if (!s.unchanged && !s.changed) return unavailable(from, to, NOTHING_PAIRS, docs)
   const shared = to === 'lgbl' && detail.draft.stage && detail.draft.stage !== 'unknown' && detail.draft.stage.detail
     ? await draftsSharingKundmachung(land, detail.draft.stage.detail, detail.draft.id).catch(() => [])
     : []
@@ -141,6 +160,7 @@ export async function compareLandTexts(
     addedLaws: added,
     droppedLaws: dropped,
     sharedWith: shared.map((d) => ({ title: d.title, path: landDraftPath(d.land, d.id), deadline: d.deadline, startedAt: d.startedAt })),
+    withheld: 0,
   }
 }
 

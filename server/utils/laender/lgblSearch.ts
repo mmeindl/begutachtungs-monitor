@@ -89,7 +89,7 @@ export function lgblWords(title: string): Set<string> {
 
 const DAY_MS = 86_400_000
 
-interface Claim { entry: LgblEntry; f1: number }
+interface Claim { entry: LgblEntry; f1: number; candidates: number }
 
 /** The best candidate for one draft, before the one-draft-per-LGBl guard. */
 function bestFor(draft: LandConsultation, index: readonly IndexedEntry[], ref: string): Claim | null {
@@ -110,6 +110,7 @@ function bestForWords(words: Set<string>, draft: LandConsultation, index: readon
   const from = Date.parse(ref)
   const to = from + WINDOW_DAYS * DAY_MS
   let best: Claim | null = null
+  let candidates = 0
   for (const e of index) {
     if (!TYPES[draft.kind].has(e.entry.typ)) continue
     const at = Date.parse(e.entry.datum)
@@ -118,10 +119,12 @@ function bestForWords(words: Set<string>, draft: LandConsultation, index: readon
     for (const w of words) if (e.words.has(w)) shared++
     if (shared / words.size < MIN_CONTAINMENT - 1e-9) continue
     const f1 = (2 * shared) / (words.size + e.words.size)
+    candidates++
     if (!best || f1 > best.f1 + 1e-4 || (Math.abs(f1 - best.f1) <= 1e-4 && e.entry.datum < best.entry.datum)) {
-      best = { entry: e.entry, f1 }
+      best = { entry: e.entry, f1, candidates: 0 }
     }
   }
+  if (best) best.candidates = candidates
   return best
 }
 
@@ -157,6 +160,7 @@ export function matchLgbl(
           date: claim.entry.datum,
           url: claim.entry.url,
           via: 'suche',
+          unique: claim.candidates === 1,
         },
       })
     } else {

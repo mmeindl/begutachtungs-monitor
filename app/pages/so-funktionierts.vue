@@ -536,6 +536,16 @@ const waitMonths = Math.round(RV_LATENCY_CONTEXT_DAYS / 30.44)
         Gesetz als umgeschrieben zeigen.
       </p>
       <p>
+        Was ein Entwurf am geltenden Recht ändern würde, zeigt Oberösterreich
+        selbst: in einer Textgegenüberstellung, in der das Neue unterstrichen
+        und das Gestrichene durchgestrichen ist. Der Monitor liest beides
+        daraus und stellt es Paragraph für Paragraph gegenüber, wie bei den
+        Entwürfen des Bundes unter „Was ändert der Entwurf?“. Einen Paragraphen
+        zeigt er nur, wenn dessen geltende Fassung so, wie er sie gelesen hat,
+        auch im Rechtsinformationssystem steht; die übrigen zählt die Seite,
+        und die Textgegenüberstellung selbst steht unter den Dokumenten.
+      </p>
+      <p>
         Die Länder haben eigene Gesetzgebungsperioden. In der Liste der
         Entwürfe zählt ein Länder-Entwurf deshalb zu der Gesetzgebungsperiode
         des Bundes, in deren Zeitraum seine Begutachtung begann. So umfasst

@@ -12988,6 +12988,99 @@ seine Kundmachung, jeder Vergleich stünde also auf der eigenen Titelsuche —
 die Regel dieses Abschnitts schließt das aus. Wien: vier Entwürfe, keiner mit
 gefundener Kundmachung, nichts zu messen.
 
+#### Nachtrag 6, 22.10.: der Salzburger Leser — und warum ein einziger Treffer noch nicht reicht
+
+Der Leser kann Salzburg jetzt: „geändert wie folgt:", die gestufte
+Nummerierung („2.1." gehört zu „2."), Tabellenzeilen, die keine Anordnungen
+sind (eine Nummer zählt nur in der Folge der vorigen), der Word-Pfad als
+Rauschen, Verordnungen („wird verordnet:"). Im Landesgesetzblatt schreibt
+Salzburg den Artikel als `g1`, nicht als `art` — ungeteilt las der Leser ein
+neues Gesetz in Artikel I als zwei Anordnungen aus Artikel II (LGBl. Nr.
+95/2022: 73 §§ gegen 2 Einheiten; 112/2021: 20 gegen 2). Geteilt: 73 gegen
+75, 20 gegen 20.
+
+Zur Frage, ob Salzburg damit vergleichbar wird, kam eine zweite Regel auf
+den Prüfstand: die Kundmachung nicht nur zu glauben, wo das Land sie nennt,
+sondern auch, wo die Titelsuche in ihrem Fenster **genau einen** Kandidaten
+hatte (`LandStage.unique`). Gegen Oberösterreichs Orakel waren alle 57
+solchen Funde richtig; die beiden bekannten Fehler hatten mehrere Kandidaten.
+Über alle 583 Salzburger Funde gelesen, trägt sie trotzdem nicht: In 29
+Vergleichen paart keine einzige Einheit, und mindestens einer davon ist ein
+falscher Fund mit einem einzigen Kandidaten — ein Entwurf von 2022 („LGBl Nr
+…/2022", § 28 Abs. 3) gegen die einzige Änderung desselben Gesetzes 2024
+(sbg-27156, LGBl. Nr. 40/2024). Die Klasse „dasselbe Gesetz zweimal geändert"
+tritt also auch mit einem Kandidaten auf, sobald der richtige gar nicht im
+Fenster liegt. `unique` wird gespeichert und nicht zum Vergleichen benutzt;
+die Regel des Abschnitts bleibt. Die übrigen 28 sind ungelesen — alte
+Entwürfe, deren Wortlaut ganz anders sein kann, oder weitere Fehlfunde.
+
+Dazu ein Netz für alle Länder: Ein Vergleich, in dem keine einzige Einheit
+paart, wird nicht gezeigt. Ein Entwurf und seine eigene Kundmachung teilen
+mindestens das Gesetz, das sie ändern; gezeigt läse er sich als „alles
+entfallen, alles neu".
+
+### 12.45 „Was ändert der Entwurf?" für Oberösterreich — aus der Textgegenüberstellung des Landes (22.10.2026)
+
+Die Frage, die die Seite eines Ministerialentwurfs aus der Textgegenüber-
+stellung des Ressorts beantwortet, für einen Landesentwurf. Oberösterreich
+legt 73 seiner Entwürfe eine bei — aber nicht zweispaltig: Sie ist der
+konsolidierte Text in einer Spalte, das Hinzugefügte **unterstrichen**, das
+Gestrichene **durchgestrichen**. Beides sind gezeichnete Linien, keine
+Schrift; die Textschicht allein unterscheidet sie nicht. Eine Linie knapp
+unter der Grundlinie ist Unterstreichung (0,02–0,45 Schrifthöhen darunter),
+eine durch die Zeilenmitte Streichung (0,1–0,65 darüber). Ohne die
+unterstrichenen Zeichen bleibt das geltende Recht, ohne die gestrichenen der
+Entwurf.
+
+**Gemessen, bevor es gebaut wurde**, mit zwei Orakeln, je eines pro Seite:
+
+- *Die geltende Seite gegen RIS* (LrKons zum Datum des Dokuments, § für §):
+  859 von 923 §§, die RIS führt, Wort für Wort gleich (≥ 0,98 der Wörter in
+  Reihenfolge). Der Rest gelesen: fast nur die Messung selbst — die nächste
+  Gliederungsüberschrift am Ende eines §, RIS' „(Anm: LGBl. Nr. …)" und
+  Fußzeile, der Titel des nächsten Gesetzes in Sammelentwürfen — und ein
+  anderer Stand der geltenden Fassung (Oö. KAG 1997 §§ 4–6b).
+- *Die Entwurfsseite gegen den Begutachtungsentwurf selbst*, der jede neue
+  Fassung in Anführungszeichen zitiert — dasselbe Datum, also keine
+  Landtagsänderung dazwischen: 3.632 von 3.872 zitierten Sätzen stehen
+  wörtlich in der gelesenen Entwurfsfassung (94 %). Gelesene Verluste:
+  Inhaltsverzeichnisse, Zitate aus den Erläuterungen, Typografie
+  („Vergleichswerte :") — und Abweichungen des Landes selbst: Die
+  Textgegenüberstellung druckt „Beratung zu Nachhaltigkeit", der Entwurf
+  „zur"; „BGBl. I" gegen „BGBl I".
+
+Was übrig blieb, war ein Zeichen am Rand einer Linie: das Komma vor einem
+gestrichenen Wort ohne Leerzeichen dazwischen („ist,zweiten"). Die Zeichen
+eines Laufs gleichmäßig zu verteilen, setzt ein schmales Komma eine halbe
+Letter zu weit nach rechts — über die Grenze. Jedes Zeichen sitzt jetzt nach
+der Breite seiner eigenen Glyphe aus der Operatorliste (845 → 859 gleich,
+240 statt 274 verlorene Sätze). Wo eine weggelassene Strecke ein
+Leerzeichen enthielt, bleiben die Nachbarn zwei Wörter: Das Land druckt ein
+hinzugefügtes „der Landes-Personalvertretung" und ein gestrichenes „des"
+ohne Abstand, die Linie ist der Abstand.
+
+**Ein § wird nur gezeigt, wo RIS unsere Lesart bestätigt**: seine geltende
+Fassung steht in RIS zum Datum des Dokuments (≥ 0,98), oder — ganz neu — RIS
+kennt die Nummer noch nicht. Ein § ohne erkanntes Gesetz bleibt draußen.
+Alles andere wird gezählt und die Seite sagt, wie viele. Über alle 73:
+von 1.753 §§ werden 1.301 bestätigt und 239 sind neu; einbehalten 81 unter
+der Schwelle, 51 ohne RIS-Gegenstück, 81 ohne erkanntes Gesetz.
+
+Zwei Formen, die das erst richtig zählen ließen: Ein § mit neuem Wortlaut
+steht im Dokument **zweimal** — erst ganz gestrichen, dann ganz unterstrichen,
+beide unter „§ 2" — und wird zu einem zusammengelegt (101 der 107 ganz
+unterstrichenen §§, deren Nummer RIS schon kennt; die übrigen sechs bleiben
+einbehalten). Und der lange Titel eines Gesetzes („Landesgesetz über …"),
+der über zwei, drei Zeilen läuft, bevor die Klammer mit dem Kurztitel ihn
+bestätigt, wird aus dem letzten § des Gesetzes davor zurückgenommen — an
+einer Zeile, die mit „Landesgesetz" beginnt, kann der § nicht enden, dorthin
+bricht auch ein Satz um.
+
+Nur Oberösterreich: Salzburgs und Wiens Dokumente sind nicht gemessen.
+Gezeigt im Abschnitt „Der Entwurf", wo der Bund dieselbe Frage stellt.
+Offen: Die Absätze eines § stehen in allen Vergleichen als ein Block;
+`absaetze()` teilt bisher nur die Lesefassung.
+
 ## 13. Open questions
 
 1. **Legal (restated 2026-09-16 — the old wording asked the wrong question).** It assumed the metadata was CC-BY and only the full texts excluded. Parliament's licence page for the Begutachtungsverfahren excludes *Beteiligungen zu Ministerialentwürfen* from open-data reuse as such, and no licensed dataset covers Ministerialentwürfe at all. So the question is now: **on what basis may the metadata of lists 81/142/305 be reused?** Two halves — the factual one (how is that sentence meant, is a case-by-case release possible) goes to the Parlamentsdirektion, the legal one (is factual metadata protectable at all; Datenbankherstellerrecht §§ 76c ff vs. § 42h UrhG) to a university partner. The inline web-form texts remain a sub-question of it, not a separate one. It blocks a blanket CC-BY claim on the site, which was removed on 2026-09-16. **And "stage 1 is metadata-only either way", which stood here until 2026-09-19, is not quite true — one block breaks it.** Under „Worum geht es?" the draft page prints Parliament's `shortinfo`: Ziele, Inhalt, Hauptgesichtspunkte. That is prose from the excluded dataset, and no enumeration of "Fristen, Geschäftszahlen, Anzahl" covers it. The obvious escape was measured and does not hold (`pnpm corpus:kurzinfo`, GP XXVII, 337 drafts): the Kurzinformation is *not* simply the ministry's text, which RIS publishes CC BY. 53 % of drafts carry no prose at all, only the Vorblatt lists (67 % of all characters, untested here because the Vorblatt is a RIS document the corpus mapper does not carry); where there is prose, a median of 60 % of its eight-word windows occur verbatim in the ministry's documents, p10 25 %, and only 6.6 % of drafts are covered to 90 % or more. It is Parliament's editorial work on the ministry's material — related, but not the same document, so it cannot be sourced from RIS instead. Consequence: `/impressum` and `/ueber` name it since 2026-09-19, and **the question to the Parlamentsdirektion has to name it too** — an answer of the form "only the contents of the Stellungnahmen are excluded" would not settle it, because the Kurzinformation is neither a Stellungnahme nor a metadatum. And a third block, found 23.09.2026, which unlike the Kurzinformation sits in code: the § comparison reads the Ministerialentwurf's Gesetzestext from Parliament's HTML wherever Parliament publishes one (`diff/lawDiffService.ts`, RIS XML only where it does not), and the Begründungsvergleich reads the draft's Erläuterungen from the same copy on both sides (`explanations/reasoningDiffService.ts`) — both for a measured reason, one Word template on both sides (§12.12, sixth measurement), and both against the source order the Textgegenüberstellung follows (`annex/annexSource.ts`). The argument that carries it is the one the annex switch refuses for the drafts RIS does not hold — the same documents stand in RIS under CC BY — and for those drafts (12 of 350 in GP XXVII) the comparison shows Parliament's text with no RIS twin. `/ueber` and `/impressum` name it since 23.09.2026. Open, and part of the question above: whether to read the draft's text RIS-first like the annex, at the measured cost to the alignment, or to keep the parser symmetry and say so — as the copy now does. Read live on 23.09.2026, Parliament's own dataset pages (Regierungsvorlagen, Anträge, Ausschussberichte, Beschlüsse — one template) call the documents of those items „freie Werke und somit ohne Lizenzierung frei nutzbar“ and license only the result lists, the API and the history pages as CC BY 4.0; the exclusion sentence on the Beteiligungen page names *Beteiligungen* zu Ministerialentwürfen, not the drafts or their documents. (What stood here until 30.09.2026 — that the Beteiligungen lists are CC BY and that the Stellungnahmen zur Regierungsvorlage, §12.14, run under that grant — was a misreading: the Beteiligungen dataset is „Aktuelle Beteiligungen", list 143, items open for participation on the day of the query, and its page says „Ministerialentwürfe und Stellungnahmen fallen nicht darunter"; the Regierungsvorlagen page excludes „sämtliche Informationen zu Stellungnahmen" from free use and licensing, for data protection and copyright. The Stellungnahmen zur Regierungsvorlage therefore carry no licence either, and `/impressum` says so since 30.09.2026.) So the sharp form of the question to the Parlamentsdirektion is whether „die Dokumente selbst sind freie Werke“ holds for a Ministerialentwurf's documents too — and, separately, on what basis list 81 as such and the Kurzinformation may be reused. **The § comparison's own credit line was corrected to those facts on 23.09.2026:** it claimed „CC BY 4.0" whenever neither side was the Ministerialentwurf (`isLicensedPair`), which named a licence Parliament does not grant for these documents — the correct note for a Regierungsvorlage, Ausschuss- or Plenarfassung read from Parliament is „Dokumente: freie Werke, § 7 UrhG", a RIS-sourced side stays CC BY 4.0, and the Ministerialentwurf is credited by name with no claim at all, because what may be claimed for it is precisely this open question (`lawDiffSourceCredit`).

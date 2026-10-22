@@ -80,6 +80,14 @@ export interface LandStage {
    * it is. Absent: the Land's own record.
    */
   via?: 'suche'
+  /**
+   * With `via: 'suche'`: the search had exactly one candidate in its
+   * window. Over Oberösterreich's oracle (§12.44, Nachtrag 6) 57 of 57 such
+   * finds were right — and still not certain: Salzburg holds a 2022 draft
+   * matched to the 2024 amendment of the same law (sbg-27156). Recorded, not
+   * yet used to compare (`landLawDiffService`).
+   */
+  unique?: boolean
 }
 
 /**
@@ -184,8 +192,12 @@ export interface LandDraftDetail {
   listUrl: string
 }
 
-/** The texts a Land's draft can be compared at (`landLawDiffService`). */
-export type LandTextStation = 'entwurf' | 'rv' | 'ausschuss' | 'lgbl'
+/**
+ * The texts a Land's draft can be compared at (`landLawDiffService`).
+ * `geltend` is the law in force as the Land's Textgegenüberstellung prints
+ * it, held against RIS (`landTgu.ts`) — compared only with `entwurf`.
+ */
+export type LandTextStation = 'geltend' | 'entwurf' | 'rv' | 'ausschuss' | 'lgbl'
 
 /**
  * Two texts of a Land's draft, § by § (`landLawDiffService`,
@@ -214,6 +226,12 @@ export interface LandLawDiffResponse {
    * Only where the later text is the Kundmachung.
    */
   sharedWith: { title: string; path: string; deadline: string | null; startedAt: string | null }[]
+  /**
+   * Paragraphen the Land's Textgegenüberstellung shows and this comparison
+   * does not, because RIS did not confirm their text in force
+   * (`geltend → entwurf` only; 0 elsewhere).
+   */
+  withheld: number
 }
 
 export interface LandTextDocument {

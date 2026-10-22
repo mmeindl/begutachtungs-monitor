@@ -26,10 +26,11 @@
 import type { TextBlock } from '../lawtext/lawUnits'
 
 /** Running header and footer lines of the Land's draft template. */
-const NOISE_RE = /^(?:Seite \d+(?: von \d+)?|- ?\d+ ?-|\d+)$/
+const NOISE_RE = /^(?:Seite \d+(?: von \d+)?|\d+ von \d+|- ?\d+ ?-|\d+|[A-Z]:\\.*\.docx?\b.*|E n t w u r f)$/
 
 /** Where the legal text begins: the enacting clause. */
-const ENACTING_RE = /Landtag hat beschlossen:?$/
+/* A Verordnung is issued, not resolved: „Auf Grund des § … wird verordnet:". */
+const ENACTING_RE = /(?:Landtag hat beschlossen|wird verordnet):?$/
 /** Where it ends, if the PDF goes on: the explanations or the comparison after it. */
 const AFTER_LAW_RE = /^(?:Erläuterungen|Textgegenüberstellung|[AB]\.\s+(?:Allgemeiner|Besonderer)\s+Teil)\b/
 
@@ -37,8 +38,16 @@ const ARTICLE_LINE_RE = /^Artikel\s+(?:[IVXL]+|\d+[a-z]?)\.?$/
 /** What an Artikel's title line says — never the amending clause under an untitled Artikel. */
 const ARTICLE_TITLE_RE = /^(?:Änderung|Inkrafttreten|Außerkrafttreten|Übergangs|Schluss|Aufhebung|Erlassung|Umsetzung|Verweis|(?:Landes)?[Gg]esetz\b|Verordnung\b)/
 /** The clause that turns the paragraphs after it into instructions. */
-const AMENDING_RE = /wird (?:wie folgt|folgendermaßen) geändert:?$/
+/* „wird wie folgt geändert:" (Oberösterreich), „wird geändert wie folgt:"
+   (Salzburg) — and without the „wird" a Salzburg draft dropped (31136). */
+const AMENDING_RE = /(?:wird )?(?:(?:wie folgt|folgendermaßen) geändert|geändert wie folgt):?$/
 const NUMBERED_RE = /^(\d+)[a-z]?\.(?:\s|(?=\p{Lu}))/u
+/* A sub-instruction of a nested numbering („2.1.", and the draft's „2. 2."):
+   part of instruction 2, as the Landesgesetzblatt reads it (Salzburg). */
+const SUB_NUMBERED_RE = /^\d+\.\s?\d+\.\s/
+/* An instruction whose number lost its dot („2 Im § 34 …", Salzburg) — taken
+   only as the next number of the sequence, saying what it does. */
+const UNDOTTED_RE = /^(\d+)\s+(?=(?:Im|Dem|Nach|Vor|Der|Die|Das|In|§)\s)/
 /** What an instruction says it does — the second signal beside the number. */
 const INSTRUCTION_VERB_RE = /\b(?:lautet|lauten|entfällt|entfallen|eingefügt|angefügt|ersetzt|erhält|erhalten|eingeführt|aufgehoben|vorgenommen|geändert)\b/
 
@@ -50,16 +59,16 @@ function quoteDepth(text: string): number {
 }
 /** A line that opens a paragraph of its own. „7.Im § 8 …": the PDF drops
  *  the space after a number now and then (16120). */
-const OPENS_RE = /^(?:[„"»]?\d+[a-z]?\.(?:\s|(?=\p{Lu}))|[„"»]?\(\d+[a-z]?\)\s|[„"»]?§{1,2}\s*\d|[–-]\s|[„"»]?Artikel\s)/u
+const OPENS_RE = /^(?:\d+\.\s?\d+\.\s|\d+\s+(?:Im|Dem|Nach|Vor)\s|[„"»]?\d+[a-z]?\.(?:\s|(?=\p{Lu}))|[„"»]?\(\d+[a-z]?\)\s|[„"»]?§{1,2}\s*\d|[–-]\s|[„"»]?Artikel\s)/u
 /**
  * What the RIS parser leaves out of the Landesgesetzblatt, left out here too
  * so the two sides compare like with like (measured on 16120, 22.10.2026):
- * a quoted division heading — „4. Abschnitt", „V. ABSCHNITT", „6.Abschnitt"
- * and the title lines under it —
+ * a quoted division heading — „4. Abschnitt", „V. ABSCHNITT", „6.Abschnitt",
+ * Salzburg's „IVa. Umsetzungshinweis, …" — and the title lines under it —
  * which RIS sets as a heading and `segmentUnits` drops as payload, and the
  * § entries of a table of contents, which RIS sets as `inhaltsvz`.
  */
-const DIVISION_RE = /^[„"»]?(?:\d+[a-z]?|[IVXL]+)\.\s*(?:Abschnitt|Unterabschnitt|Hauptstück|Teil)(?:\s.*)?$/i
+const DIVISION_RE = /^[„"»]?(?:(?:\d+[a-z]?|[IVXL]+)\.\s*(?:Abschnitt|Unterabschnitt|Hauptstück|Teil)(?:\s.*)?|[IVXL]+[a-z]?\.\s+\p{Lu}\D*)$/iu
 const TOC_ENTRY_RE = /^[„"»]?§{1,2}\s*\d+[a-z]*(?:\s+\S|[“"«]?$)/
 
 /** A new law's § designation alone on its line („§ 2"); its title follows. */
@@ -83,7 +92,10 @@ function joinLines(a: string, b: string): string {
  */
 export function lawBlocksFromPdfPages(pages: readonly string[]): TextBlock[] | null {
   const lines = pages.flatMap((p) => p.split('\n')).map((l) => l.replace(/\s+/g, ' ').trim()).filter((l) => l && !NOISE_RE.test(l))
-  const start = lines.findIndex((l) => ENACTING_RE.test(l))
+  // Where a draft leaves out the enacting clause (Salzburg's S.WFG 2025),
+  // its title „Gesetz vom …… über/, mit dem …" marks the start instead.
+  const enacting = lines.findIndex((l) => ENACTING_RE.test(l))
+  const start = enacting >= 0 ? enacting : lines.findIndex((l) => /^(?:Landes)?(?:[Gg]esetz|Verordnung)\s+vom\b/.test(l))
   if (start < 0) return null
 
   const blocks: TextBlock[] = []
@@ -96,6 +108,11 @@ export function lawBlocksFromPdfPages(pages: readonly string[]): TextBlock[] | n
     blocks.push({ kind: 'title', cls: 'pdf', text: lines.slice(titleStart, start).reduce((a, l) => joinLines(a, l)), gld: null })
   }
   let para: string | null = null
+  /* The last line added to the paragraph — Salzburg sets a § title ABOVE
+     its „§ 1" („Begriffsbestimmungen" / „§ 1"), so the line before a bare §
+     can be its title rather than the end of the § before. */
+  let lastLine: string | null = null
+  let lastLineAt = -1
   /* A NEW law (no amending clause): „§ 2" opens a §, the line after it is
      its title, the paragraph after that carries the symbol — the shape the
      Landesgesetzblatt's XML has once its heading is taken apart
@@ -103,6 +120,7 @@ export function lawBlocksFromPdfPages(pages: readonly string[]): TextBlock[] | n
   let paraGld: string | null = null
   let pendingGld: string | null = null
   let title: string | null = null
+  let titledAbove = false
   /* Quote depth before the paragraph being built, and whether this Artikel
      has said that it amends. */
   let depth = 0
@@ -110,7 +128,10 @@ export function lawBlocksFromPdfPages(pages: readonly string[]): TextBlock[] | n
   let lastNumber = 0
   const flush = () => {
     if (para) {
-      const n = Number(NUMBERED_RE.exec(para)?.[1] ?? 0)
+      const undotted = Number(UNDOTTED_RE.exec(para)?.[1] ?? 0)
+      const n = SUB_NUMBERED_RE.test(para)
+        ? 0
+        : Number(NUMBERED_RE.exec(para)?.[1] ?? (undotted === lastNumber + 1 && INSTRUCTION_VERB_RE.test(para) ? undotted : 0))
       /* Outside the quotes — or, where a quote was never closed, the next
          number of the sequence saying what it does. A draft is a draft:
          16120 opens „§ 4 „Auswahlverfahren" with one quote too many, and
@@ -119,7 +140,13 @@ export function lawBlocksFromPdfPages(pages: readonly string[]): TextBlock[] | n
       // stands directly under the clause (16039, 16017).
       const single = amending && n === 0 && lastNumber === 0 && depth === 0 &&
         blocks.at(-1)?.kind === 'ziff' && AMENDING_RE.test(blocks.at(-1)!.text) && INSTRUCTION_VERB_RE.test(para)
-      const instruction = single || (amending && n > 0 && (depth === 0 || (n === lastNumber + 1 && INSTRUCTION_VERB_RE.test(para))))
+      // The number must go on from the last one — the next, one skipped, or
+      // the same with a letter („2a.") — or a numbered row of a table in the
+      // payload, unquoted in the PDF, opens instruction 46 after 7 (Salzburg
+      // Zulagenverordnung 2024).
+      const lettered = /^\d+[a-z]\./.test(para)
+      const inSequence = n === lastNumber + 1 || n === lastNumber + 2 || (lettered && n === lastNumber)
+      const instruction = single || (amending && n > 0 && inSequence && (depth === 0 || (n === lastNumber + 1 && INSTRUCTION_VERB_RE.test(para))))
       if (instruction) {
         depth = 0
         lastNumber = Math.max(n, 1)
@@ -196,6 +223,7 @@ export function lawBlocksFromPdfPages(pages: readonly string[]): TextBlock[] | n
       // up to its first §, division or clause.
       const titled = article.text !== article.text.replace(/^(Artikel\s+\S+).*$/, '$1')
       const continues = titled && !OPENS_RE.test(line) && !DIVISION_RE.test(line) && !BARE_PARAGRAPH_RE.test(line) &&
+        !/^Inhaltsverzeichnis$/i.test(line) &&
         !/^(?:Das|Die|Der|Dieses|Diese)\s/.test(line) && !line.endsWith(':')
       if ((!titled && ARTICLE_TITLE_RE.test(line) && !line.endsWith(':')) || continues) {
         article.text = joinLines(article.text, line)
@@ -233,17 +261,33 @@ export function lawBlocksFromPdfPages(pages: readonly string[]): TextBlock[] | n
     if (!amending) {
       const bare = BARE_PARAGRAPH_RE.exec(line)
       if (bare) {
+        // A short line without closing punctuation right before the §:
+        // its title, taken back from the paragraph it was joined to.
+        let titleAbove: string | null = null
+        const titleLike = (l: string) => l.length <= 90 && !/[.;:,)]$/.test(l) && !OPENS_RE.test(l)
+        // Only the line DIRECTLY above: with dropped lines between (a
+        // division and its title), the last contents entry is no title
+        // („Anlage 4 Datenübermittlung" over § 1 of 16110).
+        const adjacent = lastLineAt === i - 1
+        if (adjacent && para !== null && lastLine && para !== lastLine && para.endsWith(lastLine) && titleLike(lastLine)) {
+          titleAbove = lastLine
+          para = para.slice(0, -lastLine.length).trimEnd()
+        } else if (adjacent && para !== null && para === lastLine && titleLike(para) && pendingGld === null) {
+          titleAbove = para
+          para = null
+        }
         flush()
         pendingGld = `§ ${bare[1]}.`
-        title = null
+        title = titleAbove
+        titledAbove = titleAbove !== null
         continue
       }
-      if (pendingGld && title === null && !OPENS_RE.test(line)) {
+      if (pendingGld && title === null && !titledAbove && !OPENS_RE.test(line)) {
         title = line
         continue
       }
       // A title wrapped onto a second line goes on in lower case.
-      if (pendingGld && title !== null && /^\p{Ll}/u.test(line)) {
+      if (pendingGld && title !== null && !titledAbove && /^\p{Ll}/u.test(line)) {
         title = joinLines(title, line)
         continue
       }
@@ -253,16 +297,23 @@ export function lawBlocksFromPdfPages(pages: readonly string[]): TextBlock[] | n
         paraGld = pendingGld
         pendingGld = null
         title = null
+        titledAbove = false
         para = line
+        lastLine = line
+        lastLineAt = i
         continue
       }
     }
     if (para === null || OPENS_RE.test(line) || /[:]$/.test(para)) {
       flush()
       para = line
+      lastLine = line
+      lastLineAt = i
       continue
     }
     para = joinLines(para, line)
+    lastLine = line
+    lastLineAt = i
   }
   flush()
   return blocks
