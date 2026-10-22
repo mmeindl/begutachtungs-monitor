@@ -789,6 +789,31 @@ describe('a § the Novelle brings into being (22.10.2026)', () => {
   })
 })
 
+describe('an insertion behind a unit whose number the § repeats (22.10.2026)', () => {
+  // KfzStG-like: a § that prints „(6)" twice. The anchor fell back on the §
+  // and the new Absatz went behind the FIRST „(6)", reported applied.
+  const twice = (): StandingLaw => {
+    const p = makeNode('para', '5', '§ 5.', '', 'Steuersätze')
+    p.children.push(makeNode('abs', '6', '(6)', 'Erster Absatz sechs.'), makeNode('abs', '7', '(7)', 'Absatz sieben.'), makeNode('abs', '6', '(6)', 'Zweiter Absatz sechs.'))
+    return { paragraphs: [p] }
+  }
+
+  it('refuses the insertion instead of choosing one of them', () => {
+    const { law: out, results, unresolved } = run(twice(), instr('Nach § 5 Abs. 6 wird folgender Abs. 6a eingefügt:', ['(6a) Neu.']))
+    expect(results[0]!.applied).toBe(false)
+    expect(results[0]!.reason).toMatch(/^Anker nicht eindeutig/)
+    expect(unresolved.has('§ 5')).toBe(true)
+    expect(out.paragraphs[0]!.children.map((c) => c.id)).toEqual(['6', '7', '6'])
+  })
+
+  it('still inserts behind a unit that stands once, and refuses one that is missing as before', () => {
+    const { law: out, results } = run(twice(), instr('Nach § 5 Abs. 7 wird folgender Abs. 7a eingefügt:', ['(7a) Neu.']))
+    expect(results[0]!.reason).toBeNull()
+    expect(out.paragraphs[0]!.children.map((c) => c.id)).toEqual(['6', '7', '7a', '6'])
+    expect(run(twice(), instr('Nach § 5 Abs. 9 wird folgender Abs. 9a eingefügt:', ['(9a) Neu.'])).results[0]!.reason).toMatch(/^Anker nicht gefunden/)
+  })
+})
+
 describe('Anlagen sind keine Paragraphen (26.09.2026)', () => {
   /** A law that carries a § 1 and an Anl. 1 — the collision RIS's own numbering produces. */
   function withSchedule(): StandingLaw {

@@ -413,6 +413,23 @@ function childThrough(node: LawNode, level: NodeLevel, id: string): LawNode | nu
 }
 
 /**
+ * Why `resolveTarget` found nothing — for the report: a unit the address
+ * names stands twice on its way down (`uniqueChild`), where `childThrough`
+ * looks for it. False where it is simply not there.
+ */
+function repeatedOnTheWay(para: LawNode, a: NovaoAddress): boolean {
+  let node = para
+  for (const [level, id] of [['abs', a.abs], ['z', a.z], ['lit', a.lit]] as const) {
+    if (id === null) continue
+    const hosts = [node, ...node.children.filter((c) => c.id === '' && c.level !== level)]
+    const found = hosts.flatMap((h) => h.children.filter((c) => c.level === level && c.id === id))
+    if (found.length !== 1) return found.length > 1
+    node = found[0]!
+  }
+  return false
+}
+
+/**
  * The body of a § without Absatz numbering: its one unnumbered Absatz.
  *
  * `lawtext/konsTree.ts` files such a § as a single Absatz with an empty
@@ -1485,9 +1502,23 @@ function applyOne(law: StandingLaw, { op, payload }: Instruction): string | null
       if (op.anchor.siblings.length > 0) return ONE_PLACE_SIBLINGS
       const para = findParagraph(law, op.anchor)
       if (!para) return `§ nicht im geltenden Text: ${op.anchor.para}`
-      const host = op.anchor.level === 'para' ? para : (resolveTarget(law, op.anchor) ?? para)
       const anchorId = op.anchor.level === 'para' ? null : deepestId(op.anchor)
-      const container = anchorId && host !== para ? (parentOf(law, host) ?? para) : para
+      // The anchor where the address puts it, and only there, once. Until
+      // 22.10.2026 a null from `resolveTarget` fell back on the § itself, and
+      // the search below took the FIRST unit of that number: „Nach § 5 Abs. 6
+      // wird folgender Abs. 6a eingefügt" in a § that prints „(6)" twice — 164
+      // of 24.053 standing §§ of the corpus repeat a designation, mostly
+      // Inkrafttretens-§§ — went behind the first one and reported success,
+      // and an annex row printing only the new Absatz confirmed it.
+      // `resolveTarget` answers null for a repeated unit on purpose
+      // (`uniqueChild`), and for one the address does not reach; neither is a
+      // place to guess at, and a unit the fallback found was always one
+      // `resolveTarget` had refused. Over both Prüfstände (200 Entwürfe, 60
+      // BGBl) it carried out no insertion at all, so nothing there moves.
+      const host = anchorId === null ? para : resolveTarget(law, op.anchor)
+      if (!host) return `${repeatedOnTheWay(para, op.anchor) ? 'Anker nicht eindeutig' : 'Anker nicht gefunden'}: ${op.anchor.raw.slice(0, 60)}`
+      const container = anchorId === null ? para : parentOf(law, host)
+      if (!container) return 'Elternknoten nicht gefunden'
       // A new Absatz, Ziffer or Litera prints its own designation. Without
       // one the payload line was read as something else — „nach Abs. 7
       // folgender Abs. 8 eingefügt:" over a bare sentence came out as a
