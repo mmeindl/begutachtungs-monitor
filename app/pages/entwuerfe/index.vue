@@ -17,6 +17,7 @@ import {
   stationTabsFor,
 } from '~/utils/draftFilters'
 import { matchesQuery } from '#shared/utils/textMatch'
+import { MAX_LIST_QUERY_CHARS } from '#shared/utils/queryParams'
 
 /**
  * Every Begutachtung of a period, in ONE list — Ministerialentwürfe and the
@@ -710,6 +711,7 @@ const countLabel = computed(() =>
           <UInput
             v-model="q"
             type="search"
+            :maxlength="MAX_LIST_QUERY_CHARS"
             icon="i-lucide-search"
             :placeholder="`In ${countLabelDe(visibleTotal, 'Entwurf', 'Entwürfen')} suchen …`"
             aria-label="Entwürfe durchsuchen"

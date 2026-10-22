@@ -1,8 +1,6 @@
 import type { H3Event } from 'h3'
 import { describe, expect, it } from 'vitest'
 import {
-  MAX_LIST_QUERY_CHARS,
-  MAX_LIST_QUERY_TERMS,
   PREVIOUS_PERIOD,
   gpFromParam,
   ministryFilterOptions,
@@ -14,6 +12,7 @@ import {
   validateGpInrParams,
 } from '../server/utils/http/params'
 import type { FakeError, FakeEvent } from './helpers/nitroGlobals'
+import { MAX_LIST_QUERY_CHARS, MAX_LIST_QUERY_TERMS } from '../shared/utils/queryParams'
 
 /**
  * What a handler reads out of a request (`server/utils/http/params.ts`).
