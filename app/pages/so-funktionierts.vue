@@ -119,14 +119,16 @@ const paths: { id: string; name: string; count: string; lede: string; steps: Ste
       },
       {
         id: 'bundesgesetzblatt',
-        /* The station's name since 22.10.2026, as on the tabs and the
-           spine; the anchor keeps its old id, it is in circulation. */
+        /* The station's name since 22.10.2026, as on the list tabs; the
+           bar on a draft's page names the Gazette instead (`stations`), and
+           the monitor line says so. The anchor keeps its old id, it is in
+           circulation. */
         name: 'Kundgemacht',
         /* „wird das Gesetz verbindlich" was imprecise: the Kundmachung is the
            publication, while the Inkrafttreten can come later and is named in
            the law itself. */
         text: 'Mit der Kundmachung im Bundesgesetzblatt Teil I ist das Gesetz erlassen. In Kraft tritt es zu dem Zeitpunkt, den es selbst nennt – das kann derselbe Tag sein oder Monate später.',
-        monitor: 'Die Nummer der Kundmachung, verlinkt ins Rechtsinformationssystem.',
+        monitor: 'Die Nummer der Kundmachung, verlinkt ins Rechtsinformationssystem. Auf der Seite eines Entwurfs heißt die Station nach dem Blatt: „Bundesgesetzblatt“.',
       },
     ],
   },
@@ -155,7 +157,7 @@ const paths: { id: string; name: string; count: string; lede: string; steps: Ste
         name: 'Kundgemacht',
         text: 'Das Ministerium erlässt die überarbeitete Verordnung und macht sie im Bundesgesetzblatt Teil II kund – erst damit gilt sie. Eine Regierungsvorlage und einen Beschluss des Nationalrats gibt es hier nicht; zwischen Fristende und Kundmachung ist von außen nichts zu sehen.',
         monitor:
-          'Die Kundmachung selbst – Nummer und Datum, etwa „BGBl. II Nr. 410/2024“, „44 Tage nach Fristende“ – auf der Seite des Entwurfs und als Stand in der Liste. Gefunden wird sie über Titel, Ressort und Datum, also nicht lückenlos: Über 294 Verordnungsentwürfe seit 2024 gemessen (Oktober 2026) findet der Abgleich 85,4\u00a0% der Kundmachungen, bei Fristen von vor mehr als einem Jahr 91,1\u00a0%. Zwischen Fristende und Kundmachung liegen im Median 57 Tage, in einem von zehn Fällen rund ein halbes Jahr oder länger.',
+          'Die Kundmachung selbst – Nummer und Datum, etwa „BGBl. II Nr. 410/2024“, „44 Tage nach Fristende“ – auf der Seite des Entwurfs und als Stand in der Liste. Gefunden wird sie über Titel, Ressort und Datum, also nicht lückenlos: Über 294 Verordnungsentwürfe seit 2024 gemessen (Oktober 2026) findet der Abgleich 85,4\u00a0% der Kundmachungen, bei Fristen von vor mehr als einem Jahr 91,1\u00a0%. Zwischen Fristende und Kundmachung liegen im Median 57 Tage, in einem von zehn Fällen rund ein halbes Jahr oder länger. Auf der Seite eines Entwurfs heißt die Station nach dem Blatt: „Bundesgesetzblatt“.',
         link: {
           to: 'https://www.ris.bka.gv.at/Bgbl-Auth/',
           label: 'Bundesgesetzblatt II im RIS',
@@ -485,8 +487,8 @@ const waitMonths = Math.round(RV_LATENCY_CONTEXT_DAYS / 30.44)
       <p>
         Der Weg ist ähnlich, die Stellen heißen anders: Wo beim Bund der
         Nationalrat beschließt, ist es der Landtag – in den Listen steht er
-        unter „Parlament“ –, und kundgemacht wird im Landesgesetzblatt statt
-        im Bundesgesetzblatt. Eine Stellungnahme geht direkt an das Land, je
+        unter „Parlament“, auf der Seite eines Entwurfs unter „Landtag“ –, und
+        kundgemacht wird im Landesgesetzblatt statt im Bundesgesetzblatt. Eine Stellungnahme geht direkt an das Land, je
         nach Land per E-Mail an die zuständige Abteilung oder über ein
         Formular; die Entwurfsseite nennt den Weg. Wie viele Stellungnahmen
         eingehen, zählt keines der drei Länder öffentlich – jedes
@@ -498,8 +500,10 @@ const waitMonths = Math.round(RV_LATENCY_CONTEXT_DAYS / 30.44)
         Wie weit der Monitor einem Entwurf folgen kann, hängt davon ab, was das
         Land veröffentlicht. Oberösterreich verzeichnet jeden Gesetzesentwurf
         im Landtag bis zur Kundmachung; seine Entwürfe stehen deshalb auch unter
-        „Regierungsvorlage“, „Parlament“ und „Kundgemacht“, und die
-        Entwurfsseite zeigt die Schritte im Landtag. Salzburg führt alle
+        „Regierungsvorlage“, „Parlament“ und „Kundgemacht“. Die Entwurfsseite
+        zeigt die Regierungsvorlage, was der Landtag mit ihr getan hat –
+        Ausschuss, Anträge, Abstimmung, in seinen eigenen Worten, und darunter
+        alle seine Schritte – und die Kundmachung. Salzburg führt alle
         Entwürfe seit 2004, aber nur bis zum Ende der Begutachtung. Wien zeigt
         einen Entwurf bis zum Beschluss im Landtag, höchstens ein Jahr lang;
         danach ist er auch hier nicht mehr abrufbar.
