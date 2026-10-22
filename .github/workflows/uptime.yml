@@ -17,6 +17,14 @@
 # upstream outage does NOT trip it: the page then serves its last-good
 # aggregation, name included, and labels the staleness itself.
 #
+# Third probe, the Länder canary (22.10.2026): /api/laender names every
+# Land the monitor reads and whether its page could be read. A Land that
+# cannot — its site down, or a relaunch the parser's gate refuses — opens its
+# OWN issue, labelled `land-quelle`, not `downtime`: the site is up, one
+# source is not, and the page already says so to its readers. Judged twice,
+# 90 s apart, because a failed read is not cached and a single slow answer
+# from a Land's server is not a broken parser.
+#
 # Known trap: GitHub disables scheduled workflows in repositories without
 # commits for 60 days and sends a mail when it does. Re-enable it in the
 # Actions tab, or make any commit.
@@ -48,6 +56,8 @@ env:
   CANARY_SITE: https://begutachtungs-monitor.at/entwuerfe/XXVIII/8
   CANARY_KEYWORD: Rechtsanwaltskammertag
   LABEL: downtime
+  LAENDER_API: https://begutachtungs-monitor.at/api/laender
+  LAND_LABEL: land-quelle
 
 jobs:
   probe:
@@ -125,4 +135,56 @@ jobs:
           elif [ -n "$open" ]; then
             gh issue close "$open" --repo "$GITHUB_REPOSITORY" \
               --comment "Back up at $now (HTTP 200, keyword and canary present). Probe: $RUN_URL"
+          fi
+
+      - name: Probe the Länder sources
+        id: laender
+        if: steps.probe.outputs.reason == ''
+        run: |
+          set +e
+          unreadable() {
+            curl -sS -L --max-time 60 --retry 2 --retry-delay 15 --retry-all-errors "$LAENDER_API" \
+              | jq -r '[.sources[] | select(.state != "ok") | .land] | join(",")' 2>/dev/null
+          }
+          first=$(unreadable); rc=$?
+          if [ "$rc" -ne 0 ]; then first="api"; fi
+          if [ -n "$first" ]; then
+            sleep 90
+            second=$(unreadable); rc=$?
+            if [ "$rc" -ne 0 ]; then second="api"; fi
+          else
+            second=""
+          fi
+          echo "lands=$second" >> "$GITHUB_OUTPUT"
+          if [ -n "$second" ]; then echo "::warning::Länder nicht lesbar: $second"; else echo "alle Länder lesbar"; fi
+
+      - name: Open or close the Länder issue
+        if: steps.probe.outputs.reason == ''
+        env:
+          GH_TOKEN: ${{ github.token }}
+          LANDS: ${{ steps.laender.outputs.lands }}
+          OWNER: ${{ github.repository_owner }}
+          RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+        run: |
+          set -euo pipefail
+          now=$(date -u '+%Y-%m-%d %H:%M UTC')
+          gh label create "$LAND_LABEL" --repo "$GITHUB_REPOSITORY" --force \
+            --color D93F0B --description "A Land's source cannot be read; opened and closed by the Uptime workflow" >/dev/null
+          open=$(gh issue list --repo "$GITHUB_REPOSITORY" --label "$LAND_LABEL" --state open \
+                   --json number --jq '.[0].number // empty')
+          if [ -n "$LANDS" ]; then
+            if [ -z "$open" ]; then
+              body=$(printf '%s\n\n%s\n%s\n\n%s' \
+                "@$OWNER — a Land's list could not be read at $now (twice, 90 s apart)." \
+                "**Länder:** $LANDS (\`api\` = /api/laender itself did not answer)" \
+                "**Probe:** $RUN_URL" \
+                "The site shows these Länder as „gerade nicht abrufbar“ meanwhile. Check the Land's page against its parser and gate in \`server/utils/laender/\` (a relaunch, or a maintenance page). Closes itself when every Land reads again.")
+              gh issue create --repo "$GITHUB_REPOSITORY" --label "$LAND_LABEL" \
+                --title "Land-Quelle nicht lesbar: $LANDS" --body "$body"
+            else
+              echo "still unreadable, issue #$open already open"
+            fi
+          elif [ -n "$open" ]; then
+            gh issue close "$open" --repo "$GITHUB_REPOSITORY" \
+              --comment "Every Land reads again at $now. Probe: $RUN_URL"
           fi
