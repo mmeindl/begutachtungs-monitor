@@ -194,14 +194,19 @@ useSeoMeta({ ogTitle: () => draft.value?.title ?? 'Entwurf', ogType: 'article' }
                 <li v-for="point in detail.summary" :key="point">{{ point }}</li>
               </ul>
             </PageSubsection>
-            <div>
+            <!-- Named like the Dokumente of the other draft pages, and OPEN
+                 where they fold (22.10.2026): there the documents follow the
+                 comparison and the Erläuterungen, here they are the only way
+                 to read the draft — folded, a Salzburg or Wien page would show
+                 a heading over a closed fold where its content belongs. -->
+            <PageSubsection id="dokumente" heading="Dokumente">
               <DocumentList :documents="documents" :source="LAND_HOST[land]" :cite-as="citeAs" />
               <p class="mt-3 text-sm text-ink-secondary">
                 Quelle: Land {{ landName }} · Nummer
                 <span class="font-mono text-xs text-ink">{{ number }}</span>.
                 <template v-if="detail.retentionNote">{{ detail.retentionNote }}</template>
               </p>
-            </div>
+            </PageSubsection>
           </div>
         </section>
 
