@@ -278,13 +278,15 @@ describe('draftCountLabel', () => {
     )
   })
 
-  it('names one record of the other half as one of the two, not as „und andere"', () => {
+  it('names one record of the other half by its kind, not as „und andere"', () => {
     // A search that hits a single Verordnung, e.g. „Leistungs- und Strukturstatistik".
-    expect(draftCountLabel({ me: 0, vorlagen: [], ris: 1, laterStationsOnly: false })).toBe(
-      '0 Ministerialentwürfe · 1 Verordnungs- oder anderer Entwurf',
-    )
-    expect(draftCountLabel({ me: 0, vorlagen: [], ris: 0, laterStationsOnly: false })).toBe(
-      `0 Ministerialentwürfe · 0 ${ART_VERORDNUNG_NOUN}`,
-    )
+    const one = { me: 0, vorlagen: [], ris: 1, laterStationsOnly: false }
+    expect(draftCountLabel({ ...one, risKindOfOne: 'verordnung' })).toBe('0 Ministerialentwürfe · 1 Verordnungsentwurf')
+    expect(draftCountLabel({ ...one, risKindOfOne: 'gesetz' })).toBe('0 Ministerialentwürfe · 1 Gesetzesentwurf')
+    expect(draftCountLabel({ ...one, risKindOfOne: 'unbestimmt' })).toBe('0 Ministerialentwürfe · 1 anderer Entwurf')
+    // Without the row's kind, the most general of the three.
+    expect(draftCountLabel(one)).toBe('0 Ministerialentwürfe · 1 anderer Entwurf')
+    expect(draftCountLabel({ ...one, ris: 0 })).toBe(`0 Ministerialentwürfe · 0 ${ART_VERORDNUNG_NOUN}`)
+    expect(draftCountLabel({ ...one, ris: 2, risKindOfOne: 'verordnung' })).toBe(`0 Ministerialentwürfe · 2 ${ART_VERORDNUNG_NOUN}`)
   })
 })

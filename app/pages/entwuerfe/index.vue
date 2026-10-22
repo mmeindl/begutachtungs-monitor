@@ -365,7 +365,7 @@ const {
  * … but in the history entry, since 22.10.2026: Back returns to the page as
  * it was left. A reader who had opened 150 rows, read a draft and came back
  * found 50, and the position the router restores (`router.options.ts`) lay
- * beyond the end of the list — it waited out its five seconds and dropped
+ * beyond the end of the list — it waited out its window and dropped
  * the reader at the pager. A new visit has an entry of its own and starts at
  * the first page; so does hydration, because the server rendered that one
  * (and a reload therefore writes it back).
@@ -482,6 +482,8 @@ const countLabel = computed(() =>
     me: wantsMe.value ? meTotal.value : null,
     vorlagen: openVorlagen.value,
     ris: !wantsRis.value ? null : risError.value ? 'failed' : risTotal.value,
+    // At exactly one, the line names what it is („1 Verordnungsentwurf").
+    risKindOfOne: risTotal.value === 1 ? (risData.value?.items[0]?.kind ?? null) : null,
     laterStationsOnly: laterStationsOnly.value,
   }),
 )
