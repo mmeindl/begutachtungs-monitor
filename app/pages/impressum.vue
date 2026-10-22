@@ -284,13 +284,15 @@ usePageSeo({
             Land Salzburg, Gesetz- und Verordnungsentwürfe in Begutachtung
           </dt>
           <dd>
-            Titel und Ende der Begutachtungsfrist aus den Listen auf
+            Titel, Beginn und Ende der Begutachtungsfrist aus den Listen auf
             <ExternalLink
               href="https://service.salzburg.gv.at/pub/list/gesetz_entw/landesrecht-list"
               class="link-inline"
-            >service.salzburg.gv.at</ExternalLink>. Eine Open-Data-Lizenz
-            weist das Land für diese Listen nicht aus. Der Monitor übernimmt
-            die Entwürfe nicht, sondern verlinkt sie beim Land.
+            >service.salzburg.gv.at</ExternalLink>, dazu Anzahl und
+            einreichende Organisationen der Stellungnahmen, die das Land
+            veröffentlicht. Eine Open-Data-Lizenz weist das Land für diese
+            Seiten nicht aus. Der Monitor übernimmt weder Entwürfe noch
+            Stellungnahmen, sondern verlinkt sie beim Land.
           </dd>
         </div>
       </dl>

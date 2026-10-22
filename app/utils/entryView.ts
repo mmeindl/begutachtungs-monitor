@@ -53,7 +53,7 @@ import { type DeadlineTone, deadlineTone, fristClassLineDe, isNewArrival, isWith
 import { bgblShort, formatDateDe, formatDateWeekdayDe, fristEndedDe, fristLabel, todayIso } from '#shared/utils/format'
 import { promulgationState } from '#shared/utils/promulgation'
 import { RIS_KIND_LABEL } from '#shared/utils/risConsultations'
-import { LAND_NAME, landShortTitle } from '#shared/utils/laender'
+import { LAND_NAME, landDraftPath, landShortTitle } from '#shared/utils/laender'
 
 /**
  * Zone 3 — what was filed in this Verfahren.
@@ -542,17 +542,17 @@ export function viewOfVorlage(v: OpenVorlage): EntryView {
  * each wrote it themselves until 03.10.2026.
  */
 /**
- * A Land's draft (22.10.2026): read off the Land's own list, so the row
- * links there and nowhere inside the monitor — there is no chain to show.
- * The Land stands where a Bund row names its Ressort: who put it out. No
- * „Neu" chip and no Frist class: the Länder state no start date.
+ * A Land's draft (22.10.2026). The Land stands where a Bund row names its
+ * Ressort: who put it out.
  */
 export function viewOfLand(c: LandConsultation): EntryView {
   const name = LAND_NAME[c.land]
   return {
     key: `land-${c.id}`,
-    to: null,
-    href: c.url,
+    // The monitor's page since the register is read (22.10.2026): it lives
+    // on after the Frist, so a shared row does not die with it.
+    to: landDraftPath(c.land, c.id),
+    href: null,
     title: landShortTitle(c.title) ?? c.title,
     titleFull: c.title,
     kindLabel: RIS_KIND_LABEL[c.kind],
@@ -560,8 +560,10 @@ export function viewOfLand(c: LandConsultation): EntryView {
     ministry: { code: name, name: `Land ${name}` },
     coMinistries: [],
     alias: null,
+    // No Frist class: „kurz" and „voll" are measured against the Bund's
+    // Regelfall, which binds no Land.
     note: null,
-    newLabel: null,
+    newLabel: begutachtungNewLabel(c.startedAt, c.active),
     // Filed with the Land, counted by nobody — the RIS rows' state.
     participation: { kind: 'unpublished' },
     state: c.active ? openState(c.deadline, true) : endedState(c.deadline, 'Begutachtung abgeschlossen'),

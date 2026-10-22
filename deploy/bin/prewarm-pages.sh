@@ -21,6 +21,11 @@ paths() {
     | node -e 'let s="";process.stdin.on("data",(d)=>{s+=d}).on("end",()=>{for(const d of JSON.parse(s).items)console.log(`/entwuerfe/${d.gp}/${d.inr}`)})'
   curl -fsS --max-time 120 "$BASE/api/ris-drafts?status=open" \
     | node -e 'let s="";process.stdin.on("data",(d)=>{s+=d}).on("end",()=>{for(const c of JSON.parse(s).items)console.log(`/entwuerfe/${c.id}`)})'
+  # The Länder's running drafts (22.10.2026). Rendering one also warms the
+  # Land's register, which takes Salzburg 13 s to send. The path map repeats
+  # `LAND_SLUG` in shared/utils/laender.ts.
+  curl -fsS --max-time 120 "$BASE/api/laender" \
+    | node -e 'const slug={sbg:"salzburg"};let s="";process.stdin.on("data",(d)=>{s+=d}).on("end",()=>{for(const c of JSON.parse(s).items)console.log(`/entwuerfe/${slug[c.land]}/${c.id.slice(c.id.indexOf("-")+1)}`)})'
 }
 
 ok=0

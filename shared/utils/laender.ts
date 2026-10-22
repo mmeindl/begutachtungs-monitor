@@ -21,6 +21,21 @@ export const LAND_NAME: Record<LandCode, string> = {
   sbg: 'Salzburg',
 }
 
+/** The host a Land's documents come from, as the document list names it. */
+export const LAND_HOST: Record<LandCode, string> = {
+  sbg: 'service.salzburg.gv.at',
+}
+
+/** The Land's path segment under `/entwuerfe/` — its name, as a reader types it. */
+export const LAND_SLUG: Record<LandCode, string> = {
+  sbg: 'salzburg',
+}
+
+/** The monitor's page of a Land's draft, from its id (`sbg-35442`). */
+export function landDraftPath(land: LandCode, id: string): string {
+  return `/entwuerfe/${LAND_SLUG[land]}/${id.slice(id.indexOf('-') + 1)}`
+}
+
 /** The cookie that remembers the choice; functional, no consent needed. */
 export const LAND_COOKIE = 'laender'
 

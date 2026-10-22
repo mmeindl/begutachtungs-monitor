@@ -7,6 +7,6 @@
  * cached answer serves every choice.
  */
 import type { LaenderResponse } from '#shared/types'
-import { readLaender } from '../utils/laender/sources'
+import { readLaender } from '../../utils/laender/sources'
 
 export default defineEventHandler((): Promise<LaenderResponse> => readLaender())
