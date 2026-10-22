@@ -1183,7 +1183,13 @@ function applyOne(law: StandingLaw, { op, payload }: Instruction): string | null
       if (op.target.level !== 'para') payload = unwrapParaPayload(payload, op.target)
       const ids = [op.target.level === 'para' ? (bareParaId(op.target.para) ?? '') : deepestId(op.target), ...op.target.siblings]
       if (op.target.level === 'para') {
-        const paras = ids.map((id) => law.paragraphs.find((p) => p.id === id) ?? null)
+        // Through `findParagraph`, which asks the KIND as well as the number
+        // (22.10.2026): „Die Anlage 1 und 2 lauten:" looked up by „1" and
+        // „2" alone replaced § 1 with the new Anlage 1 wherever § 1 stood
+        // first in the stock, and reported success; the Anlage kept its old
+        // text (Zweite Außenwirtschaftsverordnung 2019, ME-Prüfstand). The
+        // lookup below a § has asked since 26.09.2026; this one never did.
+        const paras = ids.map((id) => findParagraph(law, op.target, id))
         // "§ 7 lautet:" can arrive without a para-level block at all, when the
         // payload opens straight into "(1) …" and the § symbol stayed in the
         // instruction. One target and one block is still a 1:1 replacement.
@@ -1355,9 +1361,11 @@ function applyOne(law: StandingLaw, { op, payload }: Instruction): string | null
       const ids = [deepestId(op.target), ...op.target.siblings]
       for (const id of ids) {
         if (op.target.level === 'para') {
-          const at = law.paragraphs.findIndex((p) => p.id === id)
-          if (at < 0) return `§ nicht im geltenden Text: § ${id}`
-          law.paragraphs.splice(at, 1)
+          // The kind with the number (`findParagraph`): „Die Anlage 3
+          // entfällt" must not take § 3 with it.
+          const unit = findParagraph(law, op.target, id)
+          if (!unit) return `§ nicht im geltenden Text: § ${id}`
+          law.paragraphs.splice(law.paragraphs.indexOf(unit), 1)
           continue
         }
         const node = resolveTarget(law, op.target, id)
@@ -1705,7 +1713,8 @@ function renumberBatch(law: StandingLaw, batch: readonly Pick<Instruction, 'op' 
     const ids = [deepestId(op.target), ...op.target.siblings]
     const nodes: LawNode[] = []
     for (const id of ids) {
-      const node = op.target.level === 'para' ? (law.paragraphs.find((p) => p.id === id) ?? null) : resolveTarget(law, op.target, id)
+      // The kind with the number (`findParagraph`), as everywhere a § is looked up.
+      const node = op.target.level === 'para' ? findParagraph(law, op.target, id) : resolveTarget(law, op.target, id)
       if (!node) return `Nicht im geltenden Text: ${op.target.raw.slice(0, 60)}`
       nodes.push(node)
     }

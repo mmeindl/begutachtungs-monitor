@@ -871,6 +871,24 @@ describe('Anlagen sind keine Paragraphen (26.09.2026)', () => {
     expect(results[0]!.applied).toBe(false)
     expect(results[0]!.reason).toMatch(/Nicht im geltenden Text/)
   })
+
+  // Zweite Außenwirtschaftsverordnung 2019 (22.10.2026): „Die Anlage 1 und 2
+  // lauten:" replaced § 1 — whichever of the two stood first in the stock.
+  it('replaces, deletes and renames the Anlage an address names, never the § of its number', () => {
+    const replaced = run(withSchedule(), instr('Die Anlage 1 lautet:', ['Die neue Liste.']))
+    expect(replaced.results[0]!.reason).toBeNull()
+    expect(plainText(replaced.law.paragraphs[0]!)).toBe('Anwendungsbereich Dieses Bundesgesetz gilt für alle Verfahren.')
+    expect(replaced.law.paragraphs[1]!.marker).toBe('Anl. 1')
+    expect(plainText(replaced.law.paragraphs[1]!)).toBe('Die neue Liste.')
+
+    const deleted = run(withSchedule(), instr('Die Anlage 1 entfällt.'))
+    expect(deleted.results[0]!.reason).toBeNull()
+    expect(deleted.law.paragraphs.map((p) => p.marker)).toEqual(['§ 1.'])
+
+    const renamed = run(withSchedule(), instr('§ 1 erhält die Paragraphenbezeichnung "§ 2".'))
+    expect(renamed.results[0]!.reason).toBeNull()
+    expect(renamed.law.paragraphs.map((p) => `${p.marker}:${p.id}`)).toEqual(['§ 2.:2', 'Anl. 1:1'])
+  })
 })
 
 describe('Schreibweise einer Fundstelle (26.09.2026)', () => {
