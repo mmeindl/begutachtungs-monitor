@@ -26,5 +26,6 @@ export default defineEventHandler(async (event): Promise<BgblLawsResponse> => {
   await requireDraft(gp, inr)
   const { bgblNumber } = await getDraftOutcome(gp, inr)
   if (!bgblNumber) return { bgbl: null, laws: [] }
-  return { bgbl: bgblShortDe(bgblNumber) ?? bgblNumber, laws: await readBgblLaws(bgblNumber) }
+  const { laws, repealed } = await readBgblLaws(bgblNumber)
+  return { bgbl: bgblShortDe(bgblNumber) ?? bgblNumber, laws, repealed }
 })

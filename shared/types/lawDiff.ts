@@ -69,18 +69,41 @@ export interface BgblLaw {
   /** Its Stammnorm as RIS cites it („BGBl. Nr. 663/1994", „JGS Nr.
    *  946/1811"), for the citation; null where RIS gives none. */
   stammnorm?: string | null
+  /**
+   * The last day the law was in force, ISO — set only where RIS shows the
+   * law no longer in force today, so its „geltende Fassung" is none
+   * (22.10.2026). Decidable only for a law this Bundesgesetzblatt CREATED:
+   * then the search returns every version of it, and all of them ended
+   * („COVID-19-Impfpflichtgesetz", BGBl. I Nr. 4/2022: 2022-07-28). A law it
+   * merely amended shows only the versions naming it, so absent here says
+   * nothing either way.
+   */
+  inKraftBis?: string
+}
+
+/** A law a Bundesgesetzblatt repealed whole — nothing of it left to link. */
+export interface RepealedLaw {
+  /** Kurztitel from RIS. */
+  title: string
+  gesetzesnummer: string
+  /** Its Stammnorm as RIS cites it, as on `BgblLaw`. */
+  stammnorm: string | null
 }
 
 /**
  * The laws in force a Bundesgesetzblatt changed, for „Geltende Fassung" in
- * the BGBl station (21.10.2026). An empty list with a `bgbl` means RIS
- * holds no consolidated version carrying this number yet — the
- * consolidation trails the Kundmachung by days to weeks.
+ * the BGBl station (21.10.2026). An empty `laws` list with a `bgbl` means
+ * RIS holds no consolidated version carrying this number yet — the
+ * consolidation trails the Kundmachung by days to weeks — UNLESS `repealed`
+ * names laws: then the Bundesgesetzblatt repealed and changed nothing, and
+ * there is nothing to consolidate, now or later.
  */
 export interface BgblLawsResponse {
   /** „BGBl. I Nr. 69/2026"; null where the draft has no Kundmachung. */
   bgbl: string | null
   laws: BgblLaw[]
+  /** The laws this Bundesgesetzblatt repealed whole (22.10.2026). */
+  repealed?: RepealedLaw[]
 }
 
 /**

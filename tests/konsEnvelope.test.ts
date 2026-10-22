@@ -175,7 +175,7 @@ describe('through the day-long caches (`kons/konsCache.ts`): nothing is stored, 
     expect(nitroCacheKeys()).toEqual([])
 
     ris = ANSWER
-    const laws = await settled(readBgblLaws('Bundesgesetzblatt I Nr. 62/2026'))
+    const { laws } = await settled(readBgblLaws('Bundesgesetzblatt I Nr. 62/2026'))
     expect(laws.map((l) => l.title)).toEqual(['Universitätsgesetz 2002'])
   })
 
