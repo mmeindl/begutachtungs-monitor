@@ -628,7 +628,9 @@ const waitMonths = Math.round(RV_LATENCY_CONTEXT_DAYS / 30.44)
       <p>
         Auch die Erläuterungen beider Fassungen halten wir gegeneinander.
         Gezählt werden nur Begründungen, die in beiden Fassungen zur selben
-        Änderung stehen, und davon die, die das Ressort umgeschrieben hat. Ob
+        Änderung stehen, und davon die, in denen das Ressort Wörter geändert
+        hat – schon ein einziges zählt, Satzzeichen, Leerzeichen und
+        Bindestriche nicht. Ob
         eine Änderung auf eine Stellungnahme zurückgeht, sagt keiner der
         beiden Vergleiche.
       </p>
