@@ -50,6 +50,13 @@ const props = defineProps<{
    * Ignored when `links` is set.
    */
   detail?: string | null
+  /**
+   * Files with no citation to carry them — a Land's Stellungnahmen, which
+   * the Land publishes as PDFs and numbers nowhere (`LandStatements`). They
+   * stand in the citation cell, under the „Stellungnahme" header. Ignored
+   * when `links` is set.
+   */
+  files?: string[] | null
   /** Names the submitter in the links' accessible names — organisations only. */
   submitter?: string | null
   /**
@@ -70,6 +77,10 @@ function linkAriaLabel(citation: string): string {
 /* A row that IS one Stellungnahme answers to its fragment. A grouped
  * organisation's row stands for several and carries none — its sub-rows,
  * this same component, carry one each. */
+/* A row of files only (a Land's): three tracks, and the two right-hand
+   cells are not drawn at all — empty, they would still claim their width. */
+const filesOnly = computed(() => !props.links?.length && Boolean(props.files?.length))
+
 const anchor = computed(() =>
   props.links?.length === 1 ? statementAnchor(props.links[0]!.citation) : undefined,
 )
@@ -99,7 +110,8 @@ const anchor = computed(() =>
        to one Stellungnahme is shown which of twenty rows it is. -->
   <li
     :id="anchor"
-    class="grid scroll-mt-24 grid-cols-1 items-baseline gap-x-3 gap-y-1 px-4 py-2.5 target:bg-mark-wash row-cols:statement-tracks"
+    class="grid scroll-mt-24 grid-cols-1 items-baseline gap-x-3 gap-y-1 px-4 py-2.5 target:bg-mark-wash"
+    :class="filesOnly ? 'row-cols:statement-tracks-files' : 'row-cols:statement-tracks'"
   >
     <!-- Two lines, not one: what distinguishes these submitters sits at the
          END of the name ("Amt der Kärntner Landesregierung; Abteilung 1 –
@@ -180,12 +192,20 @@ const anchor = computed(() =>
           </ExternalLink>
         </span>
         <span v-if="!links?.length && detail" class="flex min-h-6 items-center text-ink-muted">{{ detail }}</span>
+        <span v-for="file in links?.length ? [] : files ?? []" :key="file" class="flex min-h-6 items-center">
+          <ExternalLink
+            :href="file"
+            :aria-label="submitter ? `Stellungnahme ${submitter} als PDF öffnen` : 'Stellungnahme als PDF öffnen'"
+            class="tap-target font-medium link-quiet"
+          >PDF</ExternalLink>
+        </span>
       </span>
 
       <!-- The file column. Empty on a row whose statement was typed into
            parliament's web form — there the text is on the page the citation
            already links to, so the gap is the answer, not a missing link. -->
       <span
+        v-if="!filesOnly"
         class="flex flex-col items-start gap-y-1 row-cols:col-start-4 row-cols:row-start-1"
       >
         <StatementDocumentTag
@@ -211,6 +231,7 @@ const anchor = computed(() =>
            keeps its word. The `meta` slot is for what follows the number
            („gesamt" on a grouped row). -->
       <span
+        v-if="!filesOnly"
         class="whitespace-nowrap tabular-nums text-ink-secondary row-cols:col-start-5 row-cols:row-start-1 row-cols:text-right"
       >
         <template v-if="endorsements">

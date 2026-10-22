@@ -27,8 +27,12 @@ import type { StatementSort } from '~/utils/statementRows'
  */
 const sort = defineModel<StatementSort>('sort', { required: true })
 
-/** Without a second row there is nothing to order: plain labels then. */
-defineProps<{ sortable: boolean }>()
+withDefaults(defineProps<{
+  /** Without a second row there is nothing to order: plain labels then. */
+  sortable: boolean
+  /** A Land counts no Zustimmungen: its list has no such column (`LandStatements`). */
+  endorsements?: boolean
+}>(), { endorsements: true })
 </script>
 
 <template>
@@ -39,10 +43,10 @@ defineProps<{ sortable: boolean }>()
        exception and stay reachable. Sticky inside the panel's sheet, so past
        the first screen of a long list the right-hand digits still have a
        name. -->
-  <ColumnHeader :sortable="sortable" class="gap-x-3 row-cols:grid row-cols:statement-tracks">
+  <ColumnHeader :sortable="sortable" class="gap-x-3 row-cols:grid" :class="endorsements ? 'row-cols:statement-tracks' : 'row-cols:statement-tracks-files'">
     <ColumnLabel label="Datum" :sort="sortable ? { order: 'neueste zuerst', active: sort === 'date' } : null" @choose="sort = 'date'" />
     <ColumnLabel label="Eingebracht von" />
-    <ColumnLabel label="Stellungnahme" class="col-span-2" />
-    <ColumnLabel label="Zustimmungen" :sort="sortable ? { order: 'meiste zuerst', active: sort === 'endorsements' } : null" align="end" class="text-right" @choose="sort = 'endorsements'" />
+    <ColumnLabel label="Stellungnahme" :class="endorsements && 'col-span-2'" />
+    <ColumnLabel v-if="endorsements" label="Zustimmungen" :sort="sortable ? { order: 'meiste zuerst', active: sort === 'endorsements' } : null" align="end" class="text-right" @choose="sort = 'endorsements'" />
   </ColumnHeader>
 </template>

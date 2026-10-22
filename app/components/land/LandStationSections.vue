@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import type { LandConsultation, LandProcedureStep } from '#shared/types'
+import type { LandConsultation, LandLandtag, LandProcedureStep } from '#shared/types'
 import type { Fact } from '~/components/ui/FactList.vue'
 import { citeLineDe } from '#shared/utils/citations'
 import { formatDateDe } from '#shared/utils/format'
@@ -16,9 +16,10 @@ import { afterFristDe } from '~/utils/spine'
  * fact the list only implied — how it stood to the Frist, which on
  * 16120 was ten days BEFORE it ended — and the Kundmachung will exist
  * without any Landtag record once the Landesgesetzblatt is searched for the
- * other Länder (docs/architecture.md §12.43). The record's order survives:
- * the three sections follow it, and only the two steps that are stations
- * leave the list.
+ * other Länder (docs/architecture.md §12.43). „Im Landtag" then became
+ * what „Im Parlament" is (22.10.2026): a frame of the facts — committee,
+ * report, motions, vote — with the whole record folded under it, in the
+ * Landtag's order and words.
  *
  * Each section only where there is something in it. No reading of ours:
  * the record's words, its dates, its links — with one exception, said where
@@ -28,14 +29,15 @@ const props = defineProps<{
   draft: LandConsultation
   /** The Landtag's record, station steps tagged (`ooeStationSteps`). */
   procedure: LandProcedureStep[] | null
+  /** What the Landtag did, read from that record (`ooeLandtagOf`). */
+  landtag: LandLandtag | null
   landName: string
 }>()
 
 const steps = computed(() => props.procedure ?? [])
 const rvStep = computed(() => steps.value.find((s) => s.station === 'rv') ?? null)
-/* The record without the two steps that have sections of their own. The
-   Beschluss stays: it is the Landtag's own act, and the bar's row lands on
-   its line. */
+/* Whether the Landtag did anything past the Vorlage's arrival and the
+   Kundmachung — the section exists only then. */
 const landtagSteps = computed(() => steps.value.filter((s) => s.station !== 'rv' && s.station !== 'bgbl'))
 const kundmachung = computed(() => {
   const s = props.draft.stage
@@ -57,6 +59,26 @@ const rvFacts = computed<Fact[]>(() => {
   ]
 })
 const lgblFacts: Fact[] = [{ key: 'kundmachung', title: 'Kundgemacht' }]
+
+/* The frame of „Im Landtag", in „Im Parlament"'s order: where it stands,
+   the committee, the motions, the vote. A row is missing where the record
+   names nothing — never „keine", which a step the record files under
+   another wording would turn into a false negative. */
+const landtagFacts = computed<Fact[]>(() => {
+  const l = props.landtag
+  if (!l) return []
+  return [
+    { key: 'stand', title: 'Stand', text: l.decision ? (l.decision.date ? `Beschlossen am ${formatDateDe(l.decision.date)}` : 'Beschlossen') : 'In Behandlung' },
+    ...(l.committee || l.report ? [{ key: 'ausschuss', title: 'Im Ausschuss' }] : []),
+    ...(l.motions.length ? [{ key: 'antraege', title: l.motions.length > 1 ? 'Anträge' : 'Antrag' }] : []),
+    ...(l.decision?.vote ? [{ key: 'abstimmung', title: 'Abstimmung', text: l.decision.vote }] : []),
+  ]
+})
+/* „Beilage 1420/2026" — what the report is cited by. */
+const reportName = computed(() => {
+  const r = props.landtag?.report
+  return r ? (r.linkText ?? r.label.replace(/^Ausschussbericht\s*/, '')) : null
+})
 </script>
 
 <template>
@@ -78,9 +100,11 @@ const lgblFacts: Fact[] = [{ key: 'kundmachung', title: 'Kundgemacht' }]
     </div>
   </section>
 
-  <!-- What came after, as the Landtag records it: sittings, committee,
-       Beschluss — its words and dates, in its order. No claim about what
-       changed between the draft and the Vorlage. -->
+  <!-- What the Landtag did, as „Im Parlament" says what Parliament did: a
+       frame of facts to consult (§12.39), each in the record's words, and
+       the record itself folded under it — until 22.10.2026 the record WAS
+       the section, a ruled log of sittings and agendas in which the
+       committee and the vote had to be found. -->
   <section
     v-if="landtagSteps.length"
     id="landtag"
@@ -88,25 +112,41 @@ const lgblFacts: Fact[] = [{ key: 'kundmachung', title: 'Kundgemacht' }]
     aria-labelledby="landtag-heading"
   >
     <h2 id="landtag-heading" class="section-heading">Im Landtag</h2>
-    <ol class="mt-4 divide-y divide-hairline border-y border-hairline">
-      <!-- A station's step wears the highlighter when the bar's row led
-           here, as a linked Stellungnahme does (StatementRow). -->
-      <li
-        v-for="(step, i) in landtagSteps"
-        :id="step.station ? `landtag-${step.station}` : undefined"
-        :key="i"
-        class="flex scroll-mt-24 gap-4 py-2 text-sm target:bg-mark-wash"
-      >
-        <span class="w-24 shrink-0 text-ink-muted tabular-nums">{{ step.date ? formatDateDe(step.date) : '' }}</span>
-        <span class="min-w-0">
-          <ExternalLink v-if="step.url" :href="step.url" class="link-inline">{{ step.label }}</ExternalLink>
-          <template v-else>{{ step.label }}</template>
-        </span>
-      </li>
-    </ol>
-    <p class="mt-3 text-sm text-ink-secondary">
-      Quelle: Landtag {{ landName }}, wie er das Verfahren selbst verzeichnet.
-    </p>
+    <div class="mt-4 space-y-8">
+      <div v-if="landtagFacts.length">
+        <FactList :facts="landtagFacts">
+          <template #value-ausschuss>
+            <p v-if="landtag?.committee">
+              {{ landtag.committee }}<template v-if="landtag.subcommittee">, mit Unterausschuss</template>
+            </p>
+            <p v-if="landtag?.report && reportName">
+              Bericht
+              <ExternalLink v-if="landtag.report.url" :href="landtag.report.url" class="link-inline">{{ reportName }}</ExternalLink><template v-else>{{ reportName }}</template><template v-if="landtag.report.date">, {{ formatDateDe(landtag.report.date) }}</template>
+            </p>
+          </template>
+          <template v-if="landtag?.motions.length" #value-antraege>
+            <ul class="space-y-1">
+              <li v-for="(m, i) in landtag.motions" :key="i">
+                <LandStepText :step="m" />
+              </li>
+            </ul>
+          </template>
+        </FactList>
+        <SectionCredits :sources="[]" :marked="false">
+          <span>Quelle: Landtag {{ landName }}, wie er das Verfahren selbst verzeichnet</span>
+        </SectionCredits>
+      </div>
+      <!-- Every step, in the Landtag's order and words: the sittings,
+           agendas and Wortprotokolle the frame leaves out. -->
+      <FoldSection :heading="`Alle Schritte im Landtag (${steps.length})`">
+        <ol class="space-y-2 pb-2 text-sm">
+          <li v-for="(step, i) in steps" :key="i" class="flex gap-4">
+            <span class="w-24 shrink-0 text-ink-muted tabular-nums">{{ step.date ? formatDateDe(step.date) : '' }}</span>
+            <span class="min-w-0 text-ink"><LandStepText :step="step" /></span>
+          </li>
+        </ol>
+      </FoldSection>
+    </div>
   </section>
 
   <!-- The Kundmachung in RIS, citable, as the Bund's „Im

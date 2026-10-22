@@ -25,7 +25,7 @@
  * page that fails is refused (`LandSourceError`), and Oberösterreich reads
  * as „nicht abrufbar", never as „keine Begutachtung offen".
  */
-import type { LandConsultation, LandDocument, LandProcedureStep, LandStage, LandStatement } from '#shared/types'
+import type { LandConsultation, LandDocument, LandLandtag, LandProcedureStep, LandStage, LandStatement } from '#shared/types'
 import { safeExternalUrl } from '#shared/utils/safeExternalUrl'
 import { lgblEliUrl } from '#shared/utils/citations'
 import { decodeEntities } from '../parliament/htmlText'
@@ -203,11 +203,14 @@ export function parseOoeDetail(html: string): OoeDetail | null {
       for (const l of e.links) if (l.url) documents.push({ title: l.label || 'Dokument', url: l.url, date: e.date })
     }
   }
-  const steps: LandProcedureStep[] = entries('verfahren').map((e) => ({
-    date: e.date,
-    label: e.body.replace(/\s*\((?:PDF|DOC|DOCX)-Dokument[^)]*\)/gi, '').trim(),
-    url: e.links[0]?.url ?? null,
-  })).filter((s) => s.label)
+  const steps: LandProcedureStep[] = entries('verfahren').map((e) => {
+    const label = e.body.replace(/\s*\((?:PDF|DOC|DOCX)-Dokument[^)]*\)/gi, '').trim()
+    const link = e.links[0]
+    // The link covers only the end („… XXIX. GP" + „Wortprotokolle des Oö.
+    // Landtags"): said, so the page does not link the whole sentence.
+    const linkText = link?.label && label.length > link.label.length && label.endsWith(link.label) ? link.label : undefined
+    return { date: e.date, label, url: link?.url ?? null, ...(linkText ? { linkText } : {}) }
+  }).filter((s) => s.label)
   const stationAt = ooeStationSteps(steps)
   const procedure = steps.map((s, i) => {
     const station = (Object.keys(stationAt) as LandStage['station'][]).find((k) => stationAt[k] === i)
@@ -252,6 +255,33 @@ export function ooeStationSteps(procedure: readonly LandProcedureStep[]): Partia
     if (i >= 0) at[station] = i
   }
   return at
+}
+
+/**
+ * The Landtag's handling of the Vorlage, from its record (22.10.2026) — for
+ * the frame „Im Landtag", as „Im Parlament" gives Parliament's.
+ *
+ * Measured over the 90 readable drafts on the Land's lists that day, each in
+ * one form: „Zuweisung an <Ausschuss>" (89), „Ausschussbericht Beilage
+ * n/yyyy" (73), „Antrag angenommen - <vote>" (82), „Abänderungsantrag" /
+ * „Zusatzantrag Beilage n/yyyy <vote>" (12), „Einsetzung eines
+ * Unterausschusses" (12). The last of each counts, as for the stations.
+ * Votes stay in the record's words — split votes name provisions and
+ * clubs, and any reading of ours would be a claim.
+ */
+export function ooeLandtagOf(procedure: readonly LandProcedureStep[]): LandLandtag | null {
+  if (!procedure.length) return null
+  const last = (re: RegExp) => procedure.findLast((s) => re.test(s.label)) ?? null
+  const committee = /^Zuweisung an (.+)$/.exec(last(/^Zuweisung an /)?.label ?? '')?.[1]?.trim() ?? null
+  const decided = last(/^Antrag angenommen\b/)
+  const vote = decided ? decided.label.replace(/^Antrag angenommen\s*[-–]?\s*/, '').trim() || null : null
+  return {
+    committee,
+    subcommittee: procedure.some((s) => /^Einsetzung eines Unterausschusses\b/.test(s.label)),
+    report: last(/^Ausschussbericht\b/),
+    motions: procedure.filter((s) => /^(?:Abänderungsantrag|Zusatzantrag)\b/.test(s.label)),
+    decision: decided ? { date: decided.date, vote } : null,
+  }
 }
 
 /** The station a draft reached: the furthest one the record holds a step for. */

@@ -134,6 +134,32 @@ export interface LandProcedureStep {
   /** The station this step is the record of, on the one step that counts
    *  for it (`ooeStationSteps`): where the bar's row lands. */
   station?: LandStage['station']
+  /**
+   * The part of `label` the link covers, where it covers only its end:
+   * „Eingang in der 45. Sitzung … XXIX. GP" + „Wortprotokolle des Oö.
+   * Landtags". `label` stays the whole text, which the station matcher
+   * reads.
+   */
+  linkText?: string
+}
+
+/**
+ * What the Landtag did with the Vorlage, read from its record (OÖ,
+ * `ooeLandtagOf`) — the facts the Ministerialentwurf's „Im Parlament" gives
+ * for Parliament: the committee and its report, the motions, the vote. Each
+ * part in the Landtag's own words; null or empty where the record has none.
+ */
+export interface LandLandtag {
+  /** „Ausschuss für Bauen und Naturschutz" */
+  committee: string | null
+  /** The committee set up a Unterausschuss. */
+  subcommittee: boolean
+  /** „Ausschussbericht Beilage 1420/2026", with its link. */
+  report: LandProcedureStep | null
+  /** Abänderungs- and Zusatzanträge, each with its vote. */
+  motions: LandProcedureStep[]
+  /** The Beschluss: its date and the vote, the record's text after „Antrag angenommen". */
+  decision: { date: string | null; vote: string | null } | null
 }
 
 export interface LandDraftDetail {
@@ -148,6 +174,8 @@ export interface LandDraftDetail {
   summary: string[] | null
   /** The Land's own record of what came after (OÖ); null where it keeps none. */
   procedure: LandProcedureStep[] | null
+  /** The Landtag's handling, read from that record (OÖ); null where it keeps none. */
+  landtag: LandLandtag | null
   /** How long the Land keeps the draft online, where it says (Wien: a year). */
   retentionNote: string | null
   /** The Land's list the draft stands on, for the credit line. */

@@ -1,6 +1,6 @@
 import { readFileSync } from 'node:fs'
 import { describe, expect, it } from 'vitest'
-import { ooeFristOf, ooeStageOf, ooeStationSteps, parseOoeDetail, parseOoeGesetze, parseOoeVerordnungen } from '../server/utils/laender/oberoesterreich'
+import { ooeFristOf, ooeLandtagOf, ooeStageOf, ooeStationSteps, parseOoeDetail, parseOoeGesetze, parseOoeVerordnungen } from '../server/utils/laender/oberoesterreich'
 import { LandSourceError } from '../server/utils/laender/gate'
 
 const fixture = (name: string) => readFileSync(new URL(`./fixtures/laender/${name}-2026-10-22.html`, import.meta.url), 'utf8')
@@ -71,6 +71,40 @@ describe('Oberösterreich — the Landtag’s page of one draft', () => {
   it('says null for a number the Landtag cannot load, and refuses any other page', () => {
     expect(parseOoeDetail('<p>FEHLER: Informationen zur Landtagsbeilage konnten nicht geladen werden.</p>')).toBeNull()
     expect(() => parseOoeDetail('<html>Wartung</html>')).toThrow(LandSourceError)
+  })
+})
+
+describe('Oberösterreich — what the Landtag did', () => {
+  const step = (label: string, date = '2026-01-01') => ({ label, date, url: null })
+
+  it('reads committee, report, motions and vote, each in the record’s words', () => {
+    const l = ooeLandtagOf([
+      step('Einlangen Regierungsvorlage Beilage 1390/2026'),
+      step('Zuweisung an Ausschuss für Bauen und Naturschutz'),
+      step('Einsetzung eines Unterausschusses Oö. Naturschutzgesetz-Novelle'),
+      step('Ausschussbericht Beilage 1420/2026', '2026-06-25'),
+      step('Abänderungsantrag Beilage 1430/2026 mehrstimmig abgelehnt - Dagegen: ÖVP, FPÖ / Dafür: SPÖ, GRÜNE'),
+      step('Antrag angenommen - mehrstimmig (ÖVP, FPÖ, SPÖ, MFG und NEOS dafür; Grüne dagegen)', '2026-07-09'),
+    ])!
+    expect(l.committee).toBe('Ausschuss für Bauen und Naturschutz')
+    expect(l.subcommittee).toBe(true)
+    expect(l.report).toMatchObject({ label: 'Ausschussbericht Beilage 1420/2026', date: '2026-06-25' })
+    expect(l.motions.map((m) => m.label)).toEqual(['Abänderungsantrag Beilage 1430/2026 mehrstimmig abgelehnt - Dagegen: ÖVP, FPÖ / Dafür: SPÖ, GRÜNE'])
+    expect(l.decision).toEqual({ date: '2026-07-09', vote: 'mehrstimmig (ÖVP, FPÖ, SPÖ, MFG und NEOS dafür; Grüne dagegen)' })
+  })
+
+  it('says nothing it did not read: no committee, no decision', () => {
+    expect(ooeLandtagOf([step('Einlangen Regierungsvorlage Beilage 1/2026')])).toEqual({
+      committee: null, subcommittee: false, report: null, motions: [], decision: null,
+    })
+    expect(ooeLandtagOf([])).toBeNull()
+  })
+
+  it('links only the end where the record links only the end', () => {
+    const d = parseOoeDetail(fixture('ooe-detail-16121'))!
+    const eingang = d.procedure.find((s) => s.label.startsWith('Eingang in der'))!
+    expect(eingang.linkText).toBe('Wortprotokolle des Oö. Landtags')
+    expect(eingang.label.endsWith('Wortprotokolle des Oö. Landtags')).toBe(true)
   })
 })
 

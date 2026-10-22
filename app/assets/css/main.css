@@ -315,6 +315,16 @@
 }
 
 /*
+ * The three of them a Land's list needs (`LandStatements`): its file has no
+ * citation beside it and it counts no Zustimmungen, so the two right-hand
+ * tracks would stand empty on every row and squeeze the names into three
+ * lines. The file takes the citation's track, under the same header.
+ */
+@utility statement-tracks-files {
+  grid-template-columns: 6rem minmax(8rem, 1fr) 8.5rem;
+}
+
+/*
  * `divide-y` for a list whose overflow rows are `hidden` until find-in-page
  * reveals them (StatementsPanel: the organisation list ships whole so the
  * names stay in the SSR HTML, and the rows past the page are folded away

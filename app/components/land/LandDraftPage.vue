@@ -4,7 +4,7 @@ import type { Fact } from '~/components/ui/FactList.vue'
 import { LAND_HOST, LAND_NAME, LAND_PUBLICATION_NOTE, landDraftPath, landShortTitle } from '#shared/utils/laender'
 import { RIS_KIND_LABEL } from '#shared/utils/risConsultations'
 import { citeLineDe } from '#shared/utils/citations'
-import { countLabelDe, formatDateDe } from '#shared/utils/format'
+import { formatDateDe } from '#shared/utils/format'
 import { fristFact, fristStateDe } from '~/utils/deadlines'
 import type { StationId } from '~/utils/spine'
 import { landStations, landStatusDe } from '~/utils/spine'
@@ -79,8 +79,7 @@ const stationList = computed(() =>
   draft.value ? landStations(draft.value, data.value?.statements?.length ?? null, data.value?.procedure) : [])
 /* Every station links into the section that holds it, as on the
    Ministerialentwurf's page (`LandStationSections`, which renders the same
-   conditions). The Landtag's row lands on its Beschluss where there is one,
-   inside the record; a station without a section stays plain text. */
+   conditions); a station without a section stays plain text. */
 const stationAnchors = computed<Partial<Record<StationId, string>>>(() => {
   const steps = data.value?.procedure ?? []
   const stage = draft.value?.stage
@@ -90,13 +89,10 @@ const stationAnchors = computed<Partial<Record<StationId, string>>>(() => {
     entwurf: '#entwurf',
     begutachtung: '#begutachtung',
     ...(has('rv') ? { rv: '#regierungsvorlage' } : {}),
-    ...(has('parlament') ? { parlament: '#landtag-parlament' } : inLandtag ? { parlament: '#landtag' } : {}),
+    ...(inLandtag ? { parlament: '#landtag' } : {}),
     ...(stage && stage !== 'unknown' && stage.station === 'bgbl' && stage.detail ? { bgbl: '#landesgesetzblatt' } : {}),
   }
 })
-
-const named = computed(() => (data.value?.statements ?? []).filter((s) => s.name))
-const unnamed = computed(() => (data.value?.statements ?? []).filter((s) => !s.name))
 
 usePageSeo({
   title: () => truncate(shortTitle.value ?? draft.value?.title ?? 'Entwurf', 60),
@@ -220,54 +216,19 @@ useSeoMeta({ ogTitle: () => draft.value?.title ?? 'Entwurf', ogType: 'article' }
               Die Frist nennt das Land nicht mehr.
             </p>
 
-            <PageSubsection heading="Stellungnahmen">
-              <p v-if="detail.statements === null" class="text-sm text-ink-secondary">
-                <template v-if="detail.statementsUrl">
-                  Gerade nicht abrufbar –
-                  <ExternalLink :href="detail.statementsUrl" class="link-inline font-medium">beim Land nachsehen</ExternalLink>.
-                </template>
-                <template v-else>Das Land veröffentlicht zu diesem Entwurf keine Stellungnahmen.</template>
-              </p>
-              <p v-else-if="!detail.statements.length" class="text-sm text-ink-secondary">
-                <template v-if="detail.draft.active">Bisher keine veröffentlicht.</template>
-                <template v-else>Das Land hat zu diesem Entwurf keine Stellungnahmen veröffentlicht.</template>
-                <template v-if="publicationNote"> {{ publicationNote }}</template>
-              </p>
-              <template v-else>
-                <p class="text-sm text-ink-secondary">
-                  {{ countLabelDe(detail.statements.length, 'veröffentlichte Stellungnahme', 'veröffentlichte Stellungnahmen') }}.
-                  <template v-if="publicationNote">{{ publicationNote }}</template>
-                </p>
-                <ul class="mt-3 divide-y divide-hairline border-y border-hairline">
-                  <li v-for="s in named" :key="s.url" class="flex items-center justify-between gap-3 py-2 text-sm">
-                    <span class="text-ink">{{ s.name }}</span>
-                    <span class="flex shrink-0 items-center gap-3">
-                      <span v-if="s.date" class="text-ink-muted tabular-nums">{{ formatDateDe(s.date) }}</span>
-                      <ExternalLink :href="s.url" class="link-inline">PDF</ExternalLink>
-                    </span>
-                  </li>
-                  <!-- Without a name, as on Bund drafts: the monitor names
-                       organisations only (`classifySubmitter`). -->
-                  <li v-for="(s, i) in unnamed" :key="s.url" class="flex items-center justify-between gap-3 py-2 text-sm">
-                    <span class="text-ink-secondary">Stellungnahme{{ unnamed.length > 1 ? ` ${i + 1}` : '' }} (Einbringer nicht angezeigt)</span>
-                    <span class="flex shrink-0 items-center gap-3">
-                      <span v-if="s.date" class="text-ink-muted tabular-nums">{{ formatDateDe(s.date) }}</span>
-                      <ExternalLink :href="s.url" class="link-inline">PDF</ExternalLink>
-                    </span>
-                  </li>
-                </ul>
-                <p class="mt-3 text-sm text-ink-secondary">
-                  Namen nennt der Monitor nur bei Organisationen.
-                  <ExternalLink v-if="detail.statementsUrl" :href="detail.statementsUrl" class="link-inline">Alle beim Land ansehen</ExternalLink>
-                </p>
-              </template>
-            </PageSubsection>
+            <LandStatements
+              :statements="detail.statements"
+              :statements-url="detail.statementsUrl"
+              :active="detail.draft.active"
+              :publication-note="publicationNote"
+              :land-name="landName"
+            />
           </div>
         </section>
 
         <!-- The stations after the Begutachtung, one section each, where
              the Land records them (OÖ). -->
-        <LandStationSections :draft="detail.draft" :procedure="detail.procedure" :land-name="landName" />
+        <LandStationSections :draft="detail.draft" :procedure="detail.procedure" :landtag="detail.landtag" :land-name="landName" />
       </template>
     </FetchGate>
   </div>

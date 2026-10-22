@@ -46,6 +46,7 @@ import {
   parseOoeDetail,
   parseOoeGesetze,
   parseOoeVerordnungen,
+  ooeLandtagOf,
   ooeStageOf,
 } from './oberoesterreich'
 import { fetchLgblIndex } from './lgblIndex'
@@ -203,6 +204,7 @@ const salzburg: LandReader = {
       filing: { kind: 'email', address: SALZBURG_FILING_EMAIL, recipient: null },
       summary: null,
       procedure: null,
+      landtag: null,
       retentionNote: null,
       listUrl: SALZBURG_LISTS[draft.kind],
     }
@@ -243,6 +245,7 @@ const wien: LandReader = {
       filing: { kind: 'email', address: entry.address, recipient: entry.recipient },
       summary: null,
       procedure: null,
+      landtag: null,
       retentionNote: WIEN_RETENTION,
       listUrl: WIEN_LIST,
     }
@@ -314,6 +317,7 @@ const oberoesterreich: LandReader = {
         filing: { kind: 'document' },
         summary: null,
         procedure: null,
+        landtag: null,
         retentionNote: null,
         listUrl: OOE_VERORDNUNGEN,
       }
@@ -356,6 +360,7 @@ const oberoesterreich: LandReader = {
       filing: { kind: 'form', url: ooeFormUrl(jahr!, nummer!) },
       summary: detail.summary,
       procedure: detail.procedure,
+      landtag: ooeLandtagOf(detail.procedure),
       retentionNote: null,
       listUrl: OOE_GESETZE,
     }
