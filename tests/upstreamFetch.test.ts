@@ -1,6 +1,8 @@
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import {
+  DEFAULT_HOST_CONCURRENCY,
   DEFAULT_MAX_BYTES,
+  HOST_CONCURRENCY,
   fetchUpstream,
   RisEnvelopeError,
   risJson,
@@ -267,6 +269,134 @@ describe('the size cap, while the body arrives', () => {
     stubFetch(new Response(new Blob([new Uint8Array([1, 2]), new Uint8Array([3])])))
     const { bytes } = await upstreamBytes('https://example.test/x', NOW)
     expect([...new Uint8Array(bytes)]).toEqual([1, 2, 3])
+  })
+})
+
+/**
+ * How many requests one upstream host gets from this process at once
+ * (`HOST_CONCURRENCY`, 22.10.2026). Fifteen `/api/drafts?gp=…` requests put
+ * 180 requests in flight against Parliament before; the cap holds wherever
+ * a fan-out starts. What the rest of the server relies on: the queue is
+ * fair, a slot comes back on every way out of an attempt, the timeout is the
+ * upstream's and not the queue's, and no slot is held while nothing is sent.
+ */
+describe('requests in flight per host', () => {
+  interface HeldCall {
+    url: string
+    answer: (res: Response) => void
+    fail: (err: unknown) => void
+  }
+
+  /** A fetch the test answers by hand; an aborted request rejects as a timeout, as undici's does. */
+  function heldFetch(answerAtOnce: (url: string) => Response | null = () => null): HeldCall[] {
+    const calls: HeldCall[] = []
+    vi.stubGlobal('fetch', (url: string, init: RequestInit) =>
+      new Promise<Response>((resolve, reject) => {
+        const timedOut = () => reject(new DOMException('The operation was aborted due to timeout', 'TimeoutError'))
+        if (init.signal?.aborted) return timedOut()
+        init.signal?.addEventListener('abort', timedOut)
+        calls.push({ url, answer: resolve, fail: reject })
+        const now = answerAtOnce(url)
+        if (now) resolve(now)
+      }),
+    )
+    return calls
+  }
+
+  /** Enough turns for an answered request to read its body and hand its slot on. */
+  async function settle(): Promise<void> {
+    for (let i = 0; i < 5; i++) await new Promise((r) => setTimeout(r, 0))
+  }
+
+  const ok = () => jsonResponse({ ok: true })
+  const SLOW: UpstreamPolicy = { timeoutMs: 5_000, retries: 0 }
+
+  it('keeps at most 16 requests to Parliament in flight, and starts the rest in the order they came', async () => {
+    const limit = HOST_CONCURRENCY['www.parlament.gv.at']!
+    expect(limit).toBe(16)
+    const calls = heldFetch()
+    const pending = Array.from({ length: limit + 3 }, (_, i) => upstreamJson(`https://www.parlament.gv.at/n/${i}`, SLOW))
+    await settle()
+    expect(calls).toHaveLength(limit)
+
+    calls[3]!.answer(ok())
+    await settle()
+    expect(calls.map((c) => c.url).slice(limit)).toEqual([`https://www.parlament.gv.at/n/${limit}`])
+
+    while (calls.length < pending.length) {
+      for (const call of calls) call.answer(ok())
+      await settle()
+    }
+    for (const call of calls) call.answer(ok())
+    await expect(Promise.all(pending)).resolves.toHaveLength(limit + 3)
+  })
+
+  it('counts each host on its own', async () => {
+    const calls = heldFetch()
+    const busy = Array.from({ length: DEFAULT_HOST_CONCURRENCY }, (_, i) => upstreamJson(`https://own-host-a.test/${i}`, SLOW))
+    const other = upstreamJson('https://own-host-b.test/x', SLOW)
+    await settle()
+    expect(calls.map((c) => c.url)).toContain('https://own-host-b.test/x')
+    for (const call of calls) call.answer(ok())
+    await Promise.all([...busy, other])
+  })
+
+  it('gives the slot back when an attempt fails', async () => {
+    const calls = heldFetch()
+    const busy = Array.from({ length: DEFAULT_HOST_CONCURRENCY }, (_, i) => upstreamJson(`https://fails.test/${i}`, SLOW))
+    const waiting = upstreamJson('https://fails.test/waiting', SLOW)
+    await settle()
+    expect(calls).toHaveLength(DEFAULT_HOST_CONCURRENCY)
+
+    calls[0]!.fail(new Error('ECONNRESET'))
+    await expect(busy[0]).rejects.toThrow(UpstreamUnreachableError)
+    await settle()
+    expect(calls.at(-1)!.url).toBe('https://fails.test/waiting')
+
+    for (const call of calls) call.answer(ok())
+    await Promise.all([...busy.slice(1), waiting])
+  })
+
+  /* The waiting request's own timeout (30 ms) is shorter than the time it
+   * spends queued (60 ms, until the requests ahead of it time out). Started
+   * in the queue, it would have expired before its request was ever sent. */
+  it('gives the slot back on a timeout, and times a request from its slot, not from the queue', async () => {
+    const answered = new Set<string>()
+    const calls = heldFetch((url) => (url.endsWith('/waiting') ? (answered.add(url), ok()) : null))
+    const busy = Array.from({ length: DEFAULT_HOST_CONCURRENCY }, (_, i) =>
+      upstreamJson(`https://times-out.test/${i}`, { timeoutMs: 60, retries: 0 }))
+    const waiting = upstreamJson('https://times-out.test/waiting', { timeoutMs: 30, retries: 0 })
+
+    for (const request of busy) await expect(request).rejects.toThrow(UpstreamUnreachableError)
+    await expect(waiting).resolves.toEqual({ ok: true })
+    expect(answered).toEqual(new Set(['https://times-out.test/waiting']))
+    expect(calls).toHaveLength(DEFAULT_HOST_CONCURRENCY + 1)
+  })
+
+  it('holds no slot during the backoff between two attempts', async () => {
+    const calls = heldFetch()
+    const busy = Array.from({ length: DEFAULT_HOST_CONCURRENCY - 1 }, (_, i) => upstreamJson(`https://backs-off.test/${i}`, SLOW))
+    const retried = upstreamJson('https://backs-off.test/retried', { timeoutMs: 5_000, retries: 1, backoffMs: () => 50 })
+    await settle()
+    expect(calls).toHaveLength(DEFAULT_HOST_CONCURRENCY)
+
+    // Its first attempt fails; while it waits out the backoff, its slot is free.
+    calls.at(-1)!.answer(new Response('', { status: 503 }))
+    await settle()
+    const newcomer = upstreamJson('https://backs-off.test/newcomer', SLOW)
+    await settle()
+    expect(calls.at(-1)!.url).toBe('https://backs-off.test/newcomer')
+
+    // After the backoff the retry has to queue for a slot like anyone else.
+    await new Promise((r) => setTimeout(r, 80))
+    expect(calls.filter((c) => c.url.endsWith('/retried'))).toHaveLength(1)
+    calls.at(-1)!.answer(ok())
+    await settle()
+    expect(calls.filter((c) => c.url.endsWith('/retried'))).toHaveLength(2)
+
+    for (const call of calls) call.answer(ok())
+    await expect(retried).resolves.toEqual({ ok: true })
+    await Promise.all([...busy, newcomer])
   })
 })
 

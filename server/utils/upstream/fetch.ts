@@ -16,9 +16,65 @@
  */
 
 import { safeExternalUrl } from '../../../shared/utils/safeExternalUrl'
+import { createSlots, type Slots } from './slots'
 
 /** One identity for every request this server makes (decided 22.09.2026). */
 export const USER_AGENT = 'begutachtungs-monitor/0.1 (+https://begutachtungs-monitor.at)'
+
+/**
+ * How many requests this process keeps in flight to one upstream host —
+ * the outbound half of the door policy (`server/middleware/guard.ts` is
+ * the inbound one), and the only half that holds however a fan-out is
+ * started (22.10.2026).
+ *
+ * The guard hides `/api/stations/:gp`, whose cold build fans out to 300–650
+ * Parliament requests, twelve at a time (`parliament/stationMap.ts`). But
+ * `/api/drafts?gp=…` starts that same build for any plausible period, and
+ * fifteen such requests — XIV to XXVIII — put 180 requests in flight at
+ * once against a service that documents no rate limit; the guard's own
+ * header names what follows when Parliament limits this server's address.
+ * No route can be closed against that without closing a page, so the cap
+ * sits where every request passes: here.
+ *
+ * The numbers are the widest legitimate fan-outs, so that no single normal
+ * build waits:
+ *
+ * - Parliament, 16: a cold station map holds 12, and a page view beside it
+ *   takes three or four (list 81, the Gegenstand, list 142, the Vorlage).
+ *   Two cold builds at once now queue instead of doubling the load.
+ * - Every other host — the RIS ones — 24: a cold draft page fetches §
+ *   documents in three sections side by side, the Lesefassung 16 of them
+ *   (four Artikel × four §§, `kons/konsService.ts`), the annex check and the
+ *   § names four each.
+ *
+ * A slot is taken per ATTEMPT and given back when the attempt is over — the
+ * body read included, nothing else: never across a backoff, never across a
+ * cached function the caller awaits. No request can therefore wait for a
+ * slot while holding one, which is what keeps nested fan-outs (the
+ * Lesefassung's four-in-four) free of deadlock. The per-attempt timeout
+ * starts once the slot is taken: time spent queued is this server's, not the
+ * upstream's, and must not count as the upstream being slow.
+ */
+export const HOST_CONCURRENCY: Readonly<Record<string, number>> = { 'www.parlament.gv.at': 16 }
+export const DEFAULT_HOST_CONCURRENCY = 24
+
+const slotsByHost = new Map<string, Slots>()
+
+/** The slots of the host `url` names; one table for the whole process. */
+function slotsFor(url: string): Slots {
+  let host = ''
+  try {
+    host = new URL(url).host
+  } catch {
+    // An unparseable URL fails in `fetch` itself; it queues with the rest.
+  }
+  let slots = slotsByHost.get(host)
+  if (!slots) {
+    slots = createSlots(HOST_CONCURRENCY[host] ?? DEFAULT_HOST_CONCURRENCY)
+    slotsByHost.set(host, slots)
+  }
+  return slots
+}
 
 /** The RIS OGD endpoint every Applikation (Begut, BrKons, BgblAuth) is queried through. */
 export const RIS_API_BASE = 'https://data.bka.gv.at/ris/api/v2.6/Bundesrecht'
@@ -168,6 +224,11 @@ function requestInit(policy: UpstreamPolicy): RequestInit {
  * retried a failed `res.json()` since it was written. Anything the consumer
  * decides is NOT transport, so an `UpstreamError` it raises with
  * `retryable === false` leaves the loop at once.
+ *
+ * Each attempt holds one of its host's slots (`HOST_CONCURRENCY`) from
+ * before the request to after the body, and gives it back on every way out
+ * — answer, error, timeout. `consume` must therefore only read: an upstream
+ * call inside it would wait for a slot while holding one.
  */
 async function withRetries<T>(
   url: string,
@@ -179,34 +240,43 @@ async function withRetries<T>(
     if (!safe) throw new UpstreamRefusedError(url)
     url = safe
   }
+  const slots = slotsFor(url)
   let lastError: unknown
   for (let attempt = 0; attempt <= policy.retries; attempt++) {
     if (attempt > 0 && policy.backoffMs) await sleep(policy.backoffMs(attempt))
 
-    let res: Response
+    const release = await slots.acquire()
     try {
-      res = policy.upstreamHostsOnly
-        ? await fetchWithinUpstreams(url, requestInit(policy))
-        : await fetch(url, requestInit(policy))
-    } catch (err) {
-      // A refused hop or a broken redirect chain is an answer, not a bad minute.
-      if (err instanceof UpstreamError && !err.retryable) throw err
-      // Network error or timeout.
-      lastError = err
-      continue
-    }
+      let res: Response
+      try {
+        // `requestInit` after the slot, not before: it starts the timeout.
+        res = policy.upstreamHostsOnly
+          ? await fetchWithinUpstreams(url, requestInit(policy))
+          : await fetch(url, requestInit(policy))
+      } catch (err) {
+        // A refused hop or a broken redirect chain is an answer, not a bad minute.
+        if (err instanceof UpstreamError && !err.retryable) throw err
+        // Network error or timeout.
+        lastError = err
+        continue
+      }
 
-    if (res.status >= 500 || (!res.ok && policy.retryOnHttpError)) {
-      lastError = new UpstreamHttpError(res.status, url)
-      continue
-    }
+      if (res.status >= 500 || (!res.ok && policy.retryOnHttpError)) {
+        // Unread, the body would keep the connection busy past the slot.
+        abandon(res.body)
+        lastError = new UpstreamHttpError(res.status, url)
+        continue
+      }
 
-    try {
-      return await consume(res)
-    } catch (err) {
-      if (err instanceof UpstreamError && !err.retryable) throw err
-      lastError = err
-      continue
+      try {
+        return await consume(res)
+      } catch (err) {
+        if (err instanceof UpstreamError && !err.retryable) throw err
+        lastError = err
+        continue
+      }
+    } finally {
+      release()
     }
   }
   throw new UpstreamUnreachableError(url, lastError)
@@ -256,7 +326,9 @@ export function fetchUpstream(url: string, policy: UpstreamPolicy): Promise<Resp
 }
 
 function assertOk(res: Response, url: string): void {
-  if (!res.ok) throw new UpstreamHttpError(res.status, url)
+  if (res.ok) return
+  abandon(res.body)
+  throw new UpstreamHttpError(res.status, url)
 }
 
 /**
