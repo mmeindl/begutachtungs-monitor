@@ -31,7 +31,12 @@ const DATE_TIME_FORMAT = new Intl.DateTimeFormat('de-AT', {
   timeStyle: 'short',
   timeZone: 'Europe/Vienna',
 })
-const NUMBER_FORMAT = new Intl.NumberFormat('de-AT')
+/* „12.345", with the dot (decided 22.10.2026). de-AT's CLDR data groups
+ * with a no-break space — „12 345", in Node's ICU and in every browser alike
+ * — while everything here had been written for the dot (this file's own
+ * examples, the tests). de-DE groups with the dot and writes decimals with
+ * the comma, as de-AT does; the locale is chosen for that one digit. */
+const NUMBER_FORMAT = new Intl.NumberFormat('de-DE')
 
 /** ISO date ("2026-08-24" or full ISO) → "24.08.2026" */
 export function formatDateDe(iso: string | null | undefined): string {
@@ -58,7 +63,7 @@ export function formatDateTimeDe(iso: string | null | undefined): string {
   return DATE_TIME_FORMAT.format(d)
 }
 
-/** 12345 → "12.345" (de-AT grouping) */
+/** 12345 → "12.345", 1.5 → "1,5" — the dot groups thousands, the comma marks decimals (`NUMBER_FORMAT`). */
 export function formatNumberDe(n: number | null | undefined): string {
   if (n === null || n === undefined || Number.isNaN(n)) return '–'
   return NUMBER_FORMAT.format(n)

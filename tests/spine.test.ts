@@ -66,10 +66,9 @@ describe('stations — the Regierungsvorlage row', () => {
   it('formats large counts the Austrian way, on both rows', () => {
     const d = draft({ statements: { total: 41376, organisations: 0, privatePersons: 0, nonPublic: 0, organisationList: [] } } as Partial<DraftDetail>)
     const list = stations(d, { rvStatementTotal: 41376 })
-    // Whatever de-AT grouping Node's ICU produces (a narrow space here, a
-    // dot in browsers) — the point is that both rows use the same one.
+    // Both rows through the one formatter, so both carry the same dot.
     const grouped = formatNumberDe(41376)
-    expect(grouped).not.toBe('41376')
+    expect(grouped).toBe('41.376')
     expect(list.find((s) => s.id === 'begutachtung')!.facts.at(-1)).toBe(`${grouped} Stellungnahmen`)
     expect(list.find((s) => s.id === 'rv')!.facts[1]).toBe(`${grouped} Stellungnahmen`)
   })

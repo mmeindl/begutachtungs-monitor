@@ -18,9 +18,19 @@ describe('shownLabelDe', () => {
   })
 
   it('groups thousands through the shared number formatting', () => {
-    /* Composed, not spelled out: de-AT groups with a narrow no-break space
-     * in Node's ICU, and this line must not be the one place that pins it. */
-    expect(shownLabelDe(10, 1234)).toBe(`10 von ${formatNumberDe(1234)}`)
+    expect(shownLabelDe(10, 1234)).toBe('10 von 1.234')
+  })
+})
+
+describe('formatNumberDe', () => {
+  it('groups with the dot and writes decimals with the comma', () => {
+    // de-AT's own grouping would be a no-break space („12 345"); the site
+    // prints the dot, on the server as in every browser.
+    expect(formatNumberDe(12345)).toBe('12.345')
+    expect(formatNumberDe(106183)).toBe('106.183')
+    expect(formatNumberDe(1234567)).toBe('1.234.567')
+    expect(formatNumberDe(999)).toBe('999')
+    expect(formatNumberDe(1.5)).toBe('1,5')
   })
 })
 
