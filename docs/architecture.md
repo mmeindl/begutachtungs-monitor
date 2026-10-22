@@ -13080,8 +13080,14 @@ bricht auch ein Satz um.
 
 Nur Oberösterreich: Salzburgs und Wiens Dokumente sind nicht gemessen.
 Gezeigt im Abschnitt „Der Entwurf", wo der Bund dieselbe Frage stellt.
-Offen: Die Absätze eines § stehen in allen Vergleichen als ein Block;
-`absaetze()` teilt bisher nur die Lesefassung.
+Die Absätze eines § standen in allen Vergleichen als ein Block —
+`absaetze()` teilte nur die Lesefassung. Seit dem Abend teilt `DiffBody` jeden
+Text nach derselben Regel, in Spalten jede Seite nach ihrem eigenen Text (ein
+gestrichenes „(2)" öffnet auf der neuen Seite keinen Block). Eine Ausnahme kam
+dazu, gefunden an den Auslassungen der Textgegenüberstellung: „1. und 2. …"
+ist eine Spanne, keine zwei Ziffern. Über `corpus:absatz-marker` (40 Gesetze,
+4.132 §§) ändert sie nichts — 17.780 gefunden, 262 erfunden, vorher wie
+nachher.
 
 ## 13. Open questions
 

@@ -79,6 +79,8 @@ const ORDINAL_OF = new Set([
 ])
 /** „ABl. Nr. L 11 vom 16. 1. 2003" — ein rein numerisch geschriebenes Datum. */
 const YEAR_RE = /^\d{4}[,.;:)]?$/
+/** Zwischen zwei Ziffern allein: eine Spanne, keine zwei Ziffern. */
+const RANGE_WORD = new Set(['und', 'bis', 'oder'])
 /** Steht eines davor, ist die Zahl eine Verweisung und keine Ziffer. */
 const REFERENCE = new Set([
   'Abs.', 'Z', 'Ziffer', 'Ziffern', '§', '§§', 'Art.', 'Artikel', 'lit.', 'Nr.',
@@ -98,7 +100,12 @@ export function blockStarts(tokens: string[]): Set<number> {
   for (const [i, t] of tokens.entries()) if (i > 0 && ABS_RE.test(t)) out.add(i)
 
   for (const run of ascendingRuns(tokens, Z_RE, (m) => Number(m[1]), 1)) {
-    for (const i of run) accept(tokens, i, out)
+    for (const [k, i] of run.entries()) {
+      // „1. und 2. …", „2. bis 26b. …": a range the Textgegenüberstellung
+      // leaves out, not two Ziffern — a block of „1. und" alone says nothing.
+      if (k > 0 && run[k - 1] === i - 2 && RANGE_WORD.has(tokens[i - 1]!)) continue
+      accept(tokens, i, out)
+    }
   }
   for (const run of ascendingRuns(tokens, LIT_RE, (m) => m[0].charCodeAt(0), 'a'.charCodeAt(0))) {
     // Eine Literafolge, die unmittelbar auf eine Ziffer folgt, steht im

@@ -17,6 +17,16 @@ describe('absaetze', () => {
     ])
   })
 
+  it('keeps a range the annex leaves out together — „1. und 2. …"', () => {
+    expect(texts(absaetze([eq('Der Minister kann, 1. und 2. … 3. neu.')]))).toEqual([
+      ['Der Minister kann, '],
+      ['1. und 2. … '],
+      ['3. neu.'],
+    ])
+    // A last Ziffer after „und" with text between still opens its own block.
+    expect(texts(absaetze([eq('1. erstens; und 2. zweitens.')]))).toEqual([['1. erstens; und '], ['2. zweitens.']])
+  })
+
   it('reads a lettered Absatz as one', () => {
     expect(texts(absaetze([eq('(2) Alt. (2a) Neu.')]))).toEqual([['(2) Alt. '], ['(2a) Neu.']])
   })
