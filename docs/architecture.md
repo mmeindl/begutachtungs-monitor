@@ -12791,6 +12791,76 @@ gleichnamige Kundmachung, bis auf eine Fischereiverordnung, deren Entwurf
 eine Erläuterung in Klammern trug, die die Kundmachung nicht übernahm.
 Kalt 13 s für den ersten Abruf (Index dreier Länder), danach aus dem Cache.
 
+### 12.44 Landesentwurf gegen Kundmachung, § für § — gemessen, dann gebaut (22.10.2026)
+
+Gefragt war der Gesetzesvergleich der Bundesentwürfe auch für die Länder.
+Was anders ist: Ein Land veröffentlicht seinen Begutachtungsentwurf **nur als
+PDF** (kein RIS-Begut für Landesrecht); die Kundmachung dagegen liegt im RIS
+als **XML im selben `risdok`-Format** wie das BGBl, das `parseLawUnitsFromRis`
+liest. Neu ist also nur die Entwurfsseite.
+
+**Leser** (`server/utils/laender/draftPdfLaw.ts`): Text aus dem PDF (unpdf),
+ab „… Landtag hat beschlossen:", Zeilen zu Absätzen, zwei Arten getypt — der
+Artikel und die Änderungsanordnung (nummeriert, außerhalb von Anführungen,
+nach „… wird wie folgt geändert:"). Der Rest geht als Text an
+`segmentUnits`, verglichen wird mit `diffLawUnits` wie beim Bund.
+
+**Orakel:** die 83 oberösterreichischen Gesetze, deren Landtagsakt das LGBl
+nennt (`pnpm corpus:laender-diff`). Sechs davon Behauptung für Behauptung
+gelesen (16120, 16119, 16116, 16115, 16113, 16101), dazu alle Behauptungen
+aller 83 maschinell nach Leser-Artefakten durchsucht (Kopf- und Fußzeilen,
+Trennungen, angeklebte Nummern). Gefundene Fehlerklassen, alle behoben:
+
+| Klasse | Beispiel | Ursache |
+|---|---|---|
+| Anführungszeichen | „§ 5 gegen § 5 | das XML hält das öffnende Zeichen in einem Element, das der Parser auslässt |
+| zitierte Gliederungsüberschrift | „4. Abschnitt …", „V. ABSCHNITT" | der RIS-Parser lässt sie als Payload weg, der PDF-Leser nicht |
+| Inhaltsverzeichnis | „§ 4 Auswahlverfahren; …" | im XML `inhaltsvz`, ausgelassen; im PDF Text |
+| verklebte Nummer | „7.Im § 8 …" | das PDF verliert das Leerzeichen nach der Nummer |
+| getrennte Komposita | „Median- Entgelthöhe" | Zeilenrest im XML |
+| doppelt geöffnetes Zitat | „§ 4 „Auswahlverfahren" (16120) | Tippfehler im Entwurf; danach schluckte Anordnung 13 die 19 folgenden |
+| unnummerierte Einzelanordnung | „§ 6 Abs. 1 letzter Satz lautet:" (16039) | eine Novelle in einem Punkt nummeriert nicht |
+
+Gegen den Tippfehler zählt neben den Anführungen ein zweites Signal: die
+nächste Nummer der Folge, die sagt, was sie tut („lautet", „entfällt", …).
+Und zitierte Gliederungen und Inhaltsverzeichnisse lässt der Leser weg, wie
+der RIS-Parser auf der anderen Seite.
+
+**Ergebnis über alle 83:** 76 Entwürfe vergleichbar; 7 sind neue Gesetze
+ohne Änderungsanordnungen, für die beide Leser einen §-Modus bräuchten
+(auch das XML liefert dort 0 Einheiten) — nicht gebaut, gesagt. Die
+gelesenen Behauptungen sind nach den Korrekturen inhaltliche Änderungen des
+Landtags („zugleich Vorsitzende" → „Leiterin", ein Unabhängigkeitsvorbehalt
+in drei Artikeln gleich, neue Absätze, gestrichene Anordnungen) oder
+redaktionelle. Eine Schwäche der Darstellung, keine falsche Aussage: eine
+stark umformulierte Anordnung zur selben Stelle erscheint als entfallen +
+neu statt geändert (16101 § 1 Abs. 2 Z 3a) — Paarung über die Fundstelle
+wäre der nächste Schritt.
+
+**Eine Abweichung am Weg, nicht im Vergleich:** 2023-16039 (eine Anordnung)
+und 2024-16064 sind in dasselbe LGBl 95/2024 gegangen; der Vergleich der
+kleinen Fassung zeigt 60 neue Anordnungen. Wahr — der Landtag hat die beiden
+zusammengeführt —, aber ohne diesen Satz missverständlich.
+
+**Gebaut** (`landLawDiffService.ts`, `GET /api/laender/:land/:number/vergleich`,
+`LandLawDiffSection.vue` unter „Im Landesgesetzblatt", Frage und Bausteine wie
+beim Ministerialentwurf):
+
+- **Nur wo das Land selbst die Kundmachung nennt** (OÖ-Landtagsakt). Gegen
+  einen Fund der eigenen Titelsuche (§12.43, rund 2 % falsch) würde ein
+  Fehlgriff ein ganzes Gesetz als umgeschrieben melden.
+- Der Artikel-Typ `art` wird nur auf diesem Weg gemappt. Das BGBl des Bundes
+  nutzt ihn in älteren Dokumenten genauso; ihn im Bundesparser zu mappen ist
+  eine Änderung der Bundesmaschine und wartet auf die Annex-Drift-Messung.
+- Anführungszeichen fallen nach dem Schneiden auf beiden Seiten weg.
+- Neue Gesetze: „Für ein neues Gesetz vergleicht der Monitor Entwurf und
+  Kundmachung noch nicht."
+
+**Offen:** §-Modus für neue Gesetze; die Stationen dazwischen (OÖ
+Regierungsvorlage und Ausschussbericht liegen als Landtags-PDFs vor);
+Salzburg und Wien erst mit eigener Messung — und dort nur gegen eine
+Kundmachung, die nicht von unserer Suche stammt.
+
 ## 13. Open questions
 
 1. **Legal (restated 2026-09-16 — the old wording asked the wrong question).** It assumed the metadata was CC-BY and only the full texts excluded. Parliament's licence page for the Begutachtungsverfahren excludes *Beteiligungen zu Ministerialentwürfen* from open-data reuse as such, and no licensed dataset covers Ministerialentwürfe at all. So the question is now: **on what basis may the metadata of lists 81/142/305 be reused?** Two halves — the factual one (how is that sentence meant, is a case-by-case release possible) goes to the Parlamentsdirektion, the legal one (is factual metadata protectable at all; Datenbankherstellerrecht §§ 76c ff vs. § 42h UrhG) to a university partner. The inline web-form texts remain a sub-question of it, not a separate one. It blocks a blanket CC-BY claim on the site, which was removed on 2026-09-16. **And "stage 1 is metadata-only either way", which stood here until 2026-09-19, is not quite true — one block breaks it.** Under „Worum geht es?" the draft page prints Parliament's `shortinfo`: Ziele, Inhalt, Hauptgesichtspunkte. That is prose from the excluded dataset, and no enumeration of "Fristen, Geschäftszahlen, Anzahl" covers it. The obvious escape was measured and does not hold (`pnpm corpus:kurzinfo`, GP XXVII, 337 drafts): the Kurzinformation is *not* simply the ministry's text, which RIS publishes CC BY. 53 % of drafts carry no prose at all, only the Vorblatt lists (67 % of all characters, untested here because the Vorblatt is a RIS document the corpus mapper does not carry); where there is prose, a median of 60 % of its eight-word windows occur verbatim in the ministry's documents, p10 25 %, and only 6.6 % of drafts are covered to 90 % or more. It is Parliament's editorial work on the ministry's material — related, but not the same document, so it cannot be sourced from RIS instead. Consequence: `/impressum` and `/ueber` name it since 2026-09-19, and **the question to the Parlamentsdirektion has to name it too** — an answer of the form "only the contents of the Stellungnahmen are excluded" would not settle it, because the Kurzinformation is neither a Stellungnahme nor a metadatum. And a third block, found 23.09.2026, which unlike the Kurzinformation sits in code: the § comparison reads the Ministerialentwurf's Gesetzestext from Parliament's HTML wherever Parliament publishes one (`diff/lawDiffService.ts`, RIS XML only where it does not), and the Begründungsvergleich reads the draft's Erläuterungen from the same copy on both sides (`explanations/reasoningDiffService.ts`) — both for a measured reason, one Word template on both sides (§12.12, sixth measurement), and both against the source order the Textgegenüberstellung follows (`annex/annexSource.ts`). The argument that carries it is the one the annex switch refuses for the drafts RIS does not hold — the same documents stand in RIS under CC BY — and for those drafts (12 of 350 in GP XXVII) the comparison shows Parliament's text with no RIS twin. `/ueber` and `/impressum` name it since 23.09.2026. Open, and part of the question above: whether to read the draft's text RIS-first like the annex, at the measured cost to the alignment, or to keep the parser symmetry and say so — as the copy now does. Read live on 23.09.2026, Parliament's own dataset pages (Regierungsvorlagen, Anträge, Ausschussberichte, Beschlüsse — one template) call the documents of those items „freie Werke und somit ohne Lizenzierung frei nutzbar“ and license only the result lists, the API and the history pages as CC BY 4.0; the exclusion sentence on the Beteiligungen page names *Beteiligungen* zu Ministerialentwürfen, not the drafts or their documents. (What stood here until 30.09.2026 — that the Beteiligungen lists are CC BY and that the Stellungnahmen zur Regierungsvorlage, §12.14, run under that grant — was a misreading: the Beteiligungen dataset is „Aktuelle Beteiligungen", list 143, items open for participation on the day of the query, and its page says „Ministerialentwürfe und Stellungnahmen fallen nicht darunter"; the Regierungsvorlagen page excludes „sämtliche Informationen zu Stellungnahmen" from free use and licensing, for data protection and copyright. The Stellungnahmen zur Regierungsvorlage therefore carry no licence either, and `/impressum` says so since 30.09.2026.) So the sharp form of the question to the Parlamentsdirektion is whether „die Dokumente selbst sind freie Werke“ holds for a Ministerialentwurf's documents too — and, separately, on what basis list 81 as such and the Kurzinformation may be reused. **The § comparison's own credit line was corrected to those facts on 23.09.2026:** it claimed „CC BY 4.0" whenever neither side was the Ministerialentwurf (`isLicensedPair`), which named a licence Parliament does not grant for these documents — the correct note for a Regierungsvorlage, Ausschuss- or Plenarfassung read from Parliament is „Dokumente: freie Werke, § 7 UrhG", a RIS-sourced side stays CC BY 4.0, and the Ministerialentwurf is credited by name with no claim at all, because what may be claimed for it is precisely this open question (`lawDiffSourceCredit`).

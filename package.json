@@ -24,6 +24,7 @@
     "corpus:stationen": "vite-node scripts/corpus/stationen.ts --",
     "corpus:erlaeuterungen": "vite-node scripts/corpus/erlaeuterungen.ts --",
     "corpus:erl-diff": "vite-node scripts/corpus/erlDiff.ts --",
+    "corpus:laender-diff": "vite-node scripts/corpus/laenderDiff.ts --",
     "corpus:kurzinfo": "vite-node scripts/corpus/kurzinfo.ts --",
     "corpus:bgbl2": "vite-node scripts/corpus/bgbl2.ts --",
     "corpus:bgbl-station": "vite-node -c vitest.config.ts scripts/corpus/bgblStation.ts --",
