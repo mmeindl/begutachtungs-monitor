@@ -1667,9 +1667,10 @@ Begründungen über GP XXVI–XXVIII — Verweise, die der Umnummerierung folgen
 (17), neu geschriebene Daten (5), Artikel-, „in"/„im"- und
 Zitierwort-Wechsel (44), Platzhalter (2). Tippfehler, Groß- und
 Kleinschreibung und Schreibvarianten bleiben „geändert": Sie ändern ein Wort.
-Offen, schon am Paragraphen: Die Regel verzeiht Artikel, „in"/„im" und
-Zitierwörter, die Definition auf der Seite (`shared/utils/lawStations.ts`) sagt
-„kein einziges Wort" — 44 der 68 ändern ein solches Wort.
+Die Regel verzeiht Artikel, „in"/„im" und Zitierwörter — 44 der 68 ändern
+ein solches Wort —, und die Definition auf der Seite sagt das seit demselben
+Tag auch (`shared/utils/lawStations.ts`); bis dahin hieß sie „kein einziges
+Wort", am Paragraphen wie hier.
 
 ### 12.11 Speaking names — mostly a lookup, not a language model
 
