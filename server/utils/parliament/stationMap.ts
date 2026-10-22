@@ -38,18 +38,52 @@
  * Derived layer: `mapVorlageRow`, `parseStages` and the folding below are
  * ours, so an edit to any of them must not survive in dev
  * (`server/utils/cache/base.ts`).
+ *
+ * A DRAFT WHOSE RECORD COULD NOT BE READ IS NOT IN THE MAP (22.10.2026), and
+ * a map with such a gap is kept for minutes, not hours (`chainOf`,
+ * `INCOMPLETE_MAP_TTL_MS`).
  */
 import type { DraftChain, NoPromulgation } from '#shared/types'
 import { STATUS_AT_BUNDESRAT, STATUS_FINISHED, furtherChain, stationFor } from '#shared/utils/draftStations'
 import { antragPathFor, carriesDraft } from '#shared/utils/antragPath'
+import {
+  extractBgblLink,
+  findBundesratArrival,
+  findBundesratDecisionDate,
+  findHouseDecisionDate,
+  findLastRvLink,
+  findNoPromulgation,
+  isVorlageFilingOpen,
+  isVorlageGpEnded,
+  parseStages,
+} from './detailJson'
+import { getCurrentGp, getDraftsForGp, getGegenstand, getVorlagenForGp } from './drafts'
 import type { VorlageRow } from './list101'
 import { mapWithConcurrency } from '../pool'
 import { withinBudget } from '../http/budget'
+import { DERIVED_CACHE } from '../cache/base'
+import { keepIncompleteFor, type Gathered } from '../cache/gathered'
+import { findBgblIForVorlage, getBgblIssueDate } from '../ris/bgblService'
 
 /** Six hours: a station moves on the scale of days, and this way at most
  *  four cold builds a day can land on a visitor — the nightly prewarm
  *  takes the first (`deploy/systemd/…-prewarm.service`). */
 const STATION_MAP_TTL_S = 60 * 60 * 6
+
+/**
+ * Ten minutes for a map in which a read failed (`keepIncompleteFor`).
+ *
+ * Not six hours: what failed is a blip, and the list should say the right
+ * thing within minutes of it passing. Not zero either: the map is read by
+ * every list, every detail page and the homepage, and a map that is never
+ * kept would be rebuilt on each of them while Parliament keeps failing —
+ * every rebuild asking once more for every record that failed, and the
+ * list answering without stations each time the rebuild outlasts its
+ * budget. One rebuild per ten minutes is cheap: what did answer comes from
+ * its own 30-minute leaf cache (`getGegenstand`), so it asks again only for
+ * what failed.
+ */
+const INCOMPLETE_MAP_TTL_MS = 10 * 60 * 1000
 
 /** How many drafts are asked about at once. The annex pipeline uses the
  *  same worker-pool shape; 12 builds GP XXVII's 650 requests in 35.6 s
@@ -80,19 +114,43 @@ function kundmachungDateOf(bgblNumber: string): Promise<string | null> {
 }
 
 /**
+ * What the walk for one draft produced: its chain, or null where the draft's
+ * own record could not be read — and whether every read it rests on
+ * answered.
+ */
+interface ChainRead {
+  chain: DraftChain | null
+  complete: boolean
+}
+
+/**
  * The chain of one draft, read from its own stage record.
  *
- * Every failure is a station of `begutachtung` with no claim attached, never
- * a thrown error: one unreachable Gegenstand must not cost the whole list
- * its filter. The row then says what a row without a Vorlage says, which is
- * what the page said before this map existed.
+ * Never a thrown error: one unreachable Gegenstand must not cost the whole
+ * list its filter. But where the draft's own record cannot be read, there is
+ * NO chain — null, and the draft is left out of the map. Until 22.10.2026
+ * this returned a chain at `begutachtung` here, on the reasoning that the row
+ * then said „what the page said before this map existed". It did not: a row
+ * without a chain says „Begutachtung abgeschlossen", the last state the list
+ * itself evidences (`entryView.viewOfDraft`), while a chain at
+ * `begutachtung` says „Bisher keine Regierungsvorlage" — a claim about a
+ * stage record nobody read, cached for six hours, and on a draft whose
+ * Vorlage exists the false accusation this map was built to avoid. A
+ * period in which every record failed now reads as a map without chains,
+ * which `chainCoverageOf` calls `unknown`, rather than as a period in which
+ * nothing moved.
+ *
+ * What a failed read of the VORLAGE leaves is still a chain: the stage
+ * record names the Vorlage, so the station stays `rv`, the weakest claim the
+ * evidence supports. Either way the read is marked, and the map that holds
+ * it is kept for `INCOMPLETE_MAP_TTL_MS` only.
  */
 async function chainOf(
   gp: string,
   inr: number,
   houseRow: (gp: string, inr: number) => Promise<VorlageRow | null>,
   currentGp: string,
-): Promise<DraftChain> {
+): Promise<ChainRead> {
   const nothing: DraftChain = {
     station: 'begutachtung',
     rvCitation: null,
@@ -110,7 +168,7 @@ async function chainOf(
        * Antrag route skips the Vorlage, so `rvCitation` stays null and the
        * Kundmachung is the Antrag's. A table lookup, no request. */
       const path = antragPathFor(gp, inr)
-      return carriesDraft(path)
+      const chain: DraftChain = carriesDraft(path)
         ? {
             ...nothing,
             station: 'bgbl',
@@ -119,6 +177,7 @@ async function chainOf(
             bgblDate: await kundmachungDateOf(path.antrag.bgblNumber),
           }
         : nothing
+      return { chain, complete: true }
     }
 
     /* The Vorlage's OWN period, not the draft's: a carry-over names the
@@ -133,6 +192,9 @@ async function chainOf(
     let bundesratDecidedAt: string | null = null
     let notPromulgated: NoPromulgation | null = null
     let antragCitation: string | undefined
+    // False where a read of the Vorlage's side failed — the chain stands on
+    // what did answer, and the map is kept only briefly.
+    let complete = true
     try {
       const rvDetail = await getGegenstand(rv.gp, 'I', rv.inr)
       const phase = rvDetail.content?.phase
@@ -175,12 +237,14 @@ async function chainOf(
           }
         } catch {
           // Per-item tolerance: the stated successor is enrichment.
+          complete = false
         }
       }
     } catch {
       // The Vorlage exists — the stage record says so. Only what the Vorlage
       // itself would have added is missing, so the station stays `rv`: the
       // weakest claim the evidence supports.
+      complete = false
     }
 
     /* One row, two facts: what the house did with the Vorlage, and when it
@@ -215,32 +279,32 @@ async function chainOf(
     const station = stationFor(bgblNumber, row?.status ?? null, decidedAt)
     if (bgblNumber && !bgblDate) bgblDate = await kundmachungDateOf(bgblNumber)
     return {
-      station,
-      rvCitation: rv.label,
-      rvDate: row?.date || null,
-      bgblNumber,
-      filingOpen,
-      rvGpEnded,
-      decidedAt,
-      bgblDate,
-      bundesratArrivedAt,
-      bundesratDecidedAt,
-      notPromulgated,
-      ...(antragCitation ? { antragCitation } : {}),
+      chain: {
+        station,
+        rvCitation: rv.label,
+        rvDate: row?.date || null,
+        bgblNumber,
+        filingOpen,
+        rvGpEnded,
+        decidedAt,
+        bgblDate,
+        bundesratArrivedAt,
+        bundesratDecidedAt,
+        notPromulgated,
+        ...(antragCitation ? { antragCitation } : {}),
+      },
+      complete,
     }
   } catch {
-    return nothing
+    // The draft's own record unread — or the walk broken by anything else
+    // past it: no chain, never `nothing` (see above).
+    return { chain: null, complete: false }
   }
 }
 
-/**
- * Every draft of the period, keyed by its `inr`.
- *
- * Keyed by number rather than citation because that is what the list rows
- * carry and what `/api/drafts` joins on.
- */
-export const getStationMapForGp = defineCachedFunction(
-  async (gp: string): Promise<Record<number, DraftChain>> => {
+/** The map below, and whether every read it rests on answered — the cached half. */
+const buildStationMap = defineCachedFunction(
+  async (gp: string): Promise<Gathered<Record<number, DraftChain>>> => {
     const [{ items }, currentGp] = await Promise.all([getDraftsForGp(gp), getCurrentGp()])
 
     /* The Vorlagen list of a period, for the two facts the Vorlage's own
@@ -249,28 +313,36 @@ export const getStationMapForGp = defineCachedFunction(
      * — and a period is fetched only if a Vorlage actually points into it,
      * which for the carry-over case (§13.4) is at most one extra list. */
     const houseLists = new Map<string, Promise<Map<number, VorlageRow>>>()
+    // A list that failed costs the rows their house status and date, so the
+    // map that read without it counts as incomplete.
+    let housesRead = true
     const houseRow = async (rvGp: string, rvInr: number): Promise<VorlageRow | null> => {
       let list = houseLists.get(rvGp)
       if (!list) {
         list = getVorlagenForGp(rvGp)
           .then((rows) => new Map(rows.map((r) => [r.inr, r])))
-          .catch(() => new Map<number, VorlageRow>())
+          .catch(() => {
+            housesRead = false
+            return new Map<number, VorlageRow>()
+          })
         houseLists.set(rvGp, list)
       }
       return (await list).get(rvInr) ?? null
     }
 
-    const chains = await mapWithConcurrency(items, CONCURRENCY, (item) =>
+    const reads = await mapWithConcurrency(items, CONCURRENCY, (item) =>
       chainOf(item.gp, item.inr, houseRow, currentGp),
     )
 
     // Duplicate rows exist upstream (dual-ministry drafts, `outcomes.ts`);
-    // the further chain is the true one for the draft.
+    // the further chain is the true one for the draft. A row whose record
+    // could not be read adds nothing.
     const out: Record<number, DraftChain> = {}
     items.forEach((item, i) => {
-      out[item.inr] = furtherChain(out[item.inr], chains[i]!)
+      const { chain } = reads[i]!
+      if (chain) out[item.inr] = furtherChain(out[item.inr], chain)
     })
-    return out
+    return { value: out, complete: housesRead && reads.every((r) => r.complete) }
   },
   {
     name: 'stations-gp',
@@ -278,5 +350,17 @@ export const getStationMapForGp = defineCachedFunction(
     getKey: (gp: string) => gp,
     maxAge: STATION_MAP_TTL_S,
     swr: false,
+    validate: keepIncompleteFor(INCOMPLETE_MAP_TTL_MS),
   },
 )
+
+/**
+ * Every draft of the period whose record could be read, keyed by its `inr`.
+ *
+ * Keyed by number rather than citation because that is what the list rows
+ * carry and what `/api/drafts` joins on. A draft that is missing has no
+ * chain anywhere: its row reads as it does without the map.
+ */
+export async function getStationMapForGp(gp: string): Promise<Record<number, DraftChain>> {
+  return (await buildStationMap(gp)).value
+}
