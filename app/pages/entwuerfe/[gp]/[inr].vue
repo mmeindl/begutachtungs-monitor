@@ -16,32 +16,38 @@ import { ministryLinkFor } from '~/components/draft/MinistryLinks.vue'
 import { aliasesFor } from '#shared/utils/draftAliases'
 import { citeLineDe, draftCitationDe } from '#shared/utils/citations'
 import { countLabelDe, formatDateDe } from '#shared/utils/format'
-import { GP_RE, INR_RE } from '#shared/utils/gp'
+import { GP_RE, parseInr } from '#shared/utils/gp'
 import type { SourceEntry } from '#shared/utils/provenance'
 
 definePageMeta({
-  // Messenger/autocorrect lowercasing kills valid shared links — 301 to
-  // the canonical uppercase URL instead of 404ing (one URL truth for SEO).
-  // The query and the anchor go along: a comparison's `?von=…&bis=…` and a
-  // section's `#…` are what the link was shared for (both were dropped
-  // until 22.10.2026).
+  // One address per draft (one URL truth for SEO). Messenger/autocorrect
+  // lowercasing kills valid shared links, and `/00088` rendered a second
+  // copy of 88 that named itself canonical — both 301 to the canonical URL
+  // instead. The query and the anchor go along: a comparison's
+  // `?von=…&bis=…` and a section's `#…` are what the link was shared for
+  // (both were dropped until 22.10.2026).
   middleware: [
     (to) => {
       const gpParam = String(to.params.gp ?? '')
-      const canonical = gpParam.toUpperCase()
-      if (gpParam !== canonical && GP_RE.test(canonical)) {
+      const inrParam = String(to.params.inr ?? '')
+      const gp = gpParam.toUpperCase()
+      const inr = parseInr(inrParam)
+      if (!GP_RE.test(gp) || inr === null) return
+      if (gpParam !== gp || inrParam !== String(inr)) {
         return navigateTo(
-          { path: `/entwuerfe/${canonical}/${String(to.params.inr ?? '')}`, query: to.query, hash: to.hash },
+          { path: `/entwuerfe/${gp}/${inr}`, query: to.query, hash: to.hash },
           { redirectCode: 301 },
         )
       }
     },
   ],
   // Case-insensitive so the middleware gets to redirect regardless of
-  // middleware/validate ordering; non-GP garbage still 404s.
+  // middleware/validate ordering; non-GP garbage still 404s. The number by
+  // the API's own rule (`parseInr`), so `/0` is a 404 too rather than a page
+  // whose request can only fail.
   validate: (route) =>
     GP_RE.test(String(route.params.gp ?? '').toUpperCase()) &&
-    INR_RE.test(String(route.params.inr ?? '')),
+    parseInr(String(route.params.inr ?? '')) !== null,
 })
 
 const route = useRoute()

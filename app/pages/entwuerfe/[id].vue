@@ -54,6 +54,21 @@ const { data, error, refresh, status } = await useFetch<RisConsultationDetail>(
   { lazy: true },
 )
 
+/* An id of the right shape that the corpus does not hold is a page that
+ * does not exist — 404, as on the Ministerialentwurf's page. Until
+ * 22.10.2026 it answered 200 with „Daten konnten nicht geladen werden" and
+ * a retry that could only ask again. */
+const notFound = () => createError({
+  statusCode: 404,
+  statusMessage: 'Entwurf nicht gefunden',
+  fatal: true,
+})
+if (error.value?.statusCode === 404) throw notFound()
+// After a click the answer arrives once the page is already on screen.
+watch(error, (e) => {
+  if (e?.statusCode === 404) showError(notFound())
+})
+
 /* What became of a Verordnung, for the heading and the bar's last station.
 
    Normally it comes along in the page's own response. Null there means
