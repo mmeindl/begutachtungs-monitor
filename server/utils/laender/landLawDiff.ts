@@ -42,8 +42,35 @@ function unquoted(units: LawUnit[]): LawUnit[] {
 }
 
 /** The Kundmachung's units, from the Landesgesetzblatt's RIS XML. */
+/**
+ * A NEW law sets „§ 1" inside its § heading („§ 1<br />Ziel und
+ * Anwendungsbereich"); the federal XML carries it as `<gldsym>` in the first
+ * Absatz, which is where `segmentUnits` opens a §. Moved there — but only in
+ * a law without amending instructions: inside a Novelle the same heading is
+ * quoted payload, and the PDF side keeps „§ 5 Schlichtungsverfahren" as text.
+ */
+const PARA_HEAD_RE = /<ueberschrift typ="para"([^>]*)>\s*(§\s*\d+[a-z]*\.?)\s*(?:<br\s*\/>\s*([\s\S]*?))?<\/ueberschrift>(\s*)<absatz typ="(abs|satz)"([^>]*)>/g
+
+const DIVISION_HEAD_RE = /<ueberschrift typ="(?:g1|g1min|g2|art)"[^>]*>(?!\s*(?:<[^>]+>\s*)*Artikel\b)(?:(?!<\/ueberschrift>)[\s\S])*?\b(?:Abschnitt|Unterabschnitt|Teil|Hauptstück|ABSCHNITT|TEIL|HAUPTSTÜCK)\b(?:(?!<\/ueberschrift>)[\s\S])*<\/ueberschrift>/g
+
 export function lgblUnits(xml: string): LawUnit[] {
-  return parseLawUnitsFromRis(xml.replace(/<ueberschrift typ="art"/g, '<ueberschrift typ="g1"'))
+  // Per Artikel, not per document: a package can enact a law in Artikel I
+  // and amend another in Artikel II (16087, 16099, 16022 read one to two
+  // units of a whole new law while the gate was the document).
+  // Split at the Artikel only: the Landesgesetzblatt types its divisions
+  // („1. Teil", „2. Abschnitt") as `art` too (LGBl. Nr. 64/2021).
+  const parts = xml.split(/(?=<ueberschrift typ="art"[^>]*>\s*(?:<[^>]+>\s*)*Artikel\b)/)
+  const doc = parts.map((part) => /<absatz typ="novao[12]"/.test(part)
+    ? part
+    : part
+        .replace(PARA_HEAD_RE, (_m, attrs: string, sym: string, title: string | undefined, gap: string, typ: string, absAttrs: string) =>
+          `<ueberschrift typ="para"${attrs}>${title ?? ''}</ueberschrift>${gap}<absatz typ="${typ}"${absAttrs}><gldsym>${sym.endsWith('.') ? sym : `${sym}.`}</gldsym>`)
+        // A new law's divisions („1. Abschnitt Allgemeine Bestimmungen")
+        // would name the Artikel — the parser takes the first heading after
+        // it for its title — and the PDF side drops them (`draftPdfLaw`).
+        .replace(DIVISION_HEAD_RE, ''))
+    .join('')
+  return parseLawUnitsFromRis(doc.replace(/<ueberschrift typ="art"/g, '<ueberschrift typ="g1"'))
 }
 
 /** The draft's units, from its PDF's pages; null where no legal text was found. */

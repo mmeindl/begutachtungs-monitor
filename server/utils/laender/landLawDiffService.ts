@@ -64,10 +64,10 @@ export async function compareLandDraft(land: LandCode, detail: LandDraftDetail):
 
   const [pages, xml] = await Promise.all([pdfPages(draft.url), upstreamText(xmlUrl, POLICY)])
   const from = landDraftUnits(pages)
-  // A new law has no amending instructions to hold against each other; the
-  // reader takes apart Novellen only (§12.44: 7 of 83 drafts).
+  // Novellen by instruction, new laws by § (§12.44: all 83 of the oracle);
+  // a PDF the reader cannot take apart says so rather than show nothing.
   if (!from?.length) {
-    return unavailable('Für ein neues Gesetz vergleicht der Monitor Entwurf und Kundmachung noch nicht.', { draft, kundmachung })
+    return unavailable('Im PDF des Entwurfs fand der Monitor keinen Gesetzestext, den er Paragraph für Paragraph lesen kann.', { draft, kundmachung })
   }
   const to = lgblUnits(xml)
   if (!to.length) return unavailable('Die Kundmachung ließ sich nicht in Paragraphen gliedern.', { draft, kundmachung })

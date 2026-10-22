@@ -70,8 +70,15 @@ describe('lawBlocksFromPdfPages — a Land draft from its PDF', () => {
     expect(lawBlocksFromPdfPages([page('Erläuterungen', 'Allgemeiner Teil')])).toBeNull()
   })
 
-  it('cuts no units out of a new law: it has no instructions (7 of 83 drafts)', () => {
-    expect(landDraftUnits([page('Der Oö. Landtag hat beschlossen:', 'INHALTSVERZEICHNIS', '§ 1 Ziel', '§ 1', 'Ziel', '(1) Dieses Landesgesetz regelt …')])).toEqual([])
+  it('reads a new law § by §, past a contents list that prints its §§ the same way (16053)', () => {
+    const units = landDraftUnits([page('Landesgesetz über die Jagd', 'Der Oö. Landtag hat beschlossen:', 'INHALTSVERZEICHNIS',
+      '§ 1', 'Ziel', '§ 2', 'Begriffe', '§ 1', 'Ziel', 'Dieses Landesgesetz regelt die Jagd.', '§ 2', 'Begriffe',
+      '(1) Im Sinn dieses Landesgesetzes', 'bedeutet Wild: …')])!
+    expect(units.map((u) => [u.id, u.heading, u.text])).toEqual([
+      ['§1', 'Ziel', 'Dieses Landesgesetz regelt die Jagd.'],
+      ['§2', 'Begriffe', '(1) Im Sinn dieses Landesgesetzes bedeutet Wild: …'],
+    ])
+    expect(units[0]!.article).toBe('Landesgesetz über die Jagd')
   })
 })
 
