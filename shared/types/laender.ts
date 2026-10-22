@@ -62,6 +62,10 @@ export interface LaenderResponse {
   items: LandConsultation[]
   /** Every Land the monitor reads, in display order, readable or not. */
   sources: LandSourceState[]
+  /** In period mode (`?gp`, `?status`): the period used as the time window. */
+  gp?: string
+  /** In period mode: the periods the select offers. */
+  availableGps?: string[]
 }
 
 /**

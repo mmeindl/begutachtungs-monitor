@@ -10,7 +10,7 @@ import {
   submitterOfFile,
 } from '../server/utils/laender/salzburg'
 import { LandSourceError } from '../server/utils/laender/gate'
-import { formatLandList, landCoverageDe, landDraftPath, landShortTitle, parseLandList } from '../shared/utils/laender'
+import { formatSourceList, isDefaultSources, landCoverageDe, landDraftPath, landShortTitle, parseSourceList } from '../shared/utils/laender'
 
 const fixture = (name: string) => readFileSync(new URL(`./fixtures/laender/${name}`, import.meta.url), 'utf8')
 const GESETZE = fixture('salzburg-gesetze-2026-10-22.html')
@@ -73,13 +73,20 @@ describe('Salzburg — the gate', () => {
   })
 })
 
-describe('the reader’s choice of Länder', () => {
-  it('reads the URL value, keeping „said: none" apart from „not said"', () => {
-    expect(parseLandList('w,sbg')).toEqual(['sbg', 'w'])
-    expect(parseLandList('SBG, xyz')).toEqual(['sbg'])
-    expect(parseLandList('')).toEqual([])
-    expect(parseLandList(null)).toBeNull()
-    expect(formatLandList(['sbg'])).toBe('sbg')
+describe('the reader’s choice of sources', () => {
+  it('reads the URL value in display order, and never as an empty choice', () => {
+    expect(parseSourceList('w,bund')).toEqual(['bund', 'w'])
+    expect(parseSourceList('SBG, xyz')).toEqual(['sbg'])
+    // Naming nothing known is not a choice: the caller falls back.
+    expect(parseSourceList('')).toBeNull()
+    expect(parseSourceList('xyz')).toBeNull()
+    expect(parseSourceList(null)).toBeNull()
+    expect(formatSourceList(['w', 'bund'])).toBe('bund,w')
+  })
+
+  it('knows the default, which the address and the cookie leave out', () => {
+    expect(isDefaultSources(['bund'])).toBe(true)
+    expect(isDefaultSources(['bund', 'sbg'])).toBe(false)
   })
 
   it('states the coverage', () => {
@@ -141,5 +148,14 @@ describe('a Land draft’s short name and page', () => {
 
   it('addresses the page by the Land’s name and number', () => {
     expect(landDraftPath('sbg', 'sbg-35442')).toBe('/entwuerfe/salzburg/35442')
+  })
+})
+
+describe('Land rows in the list order', () => {
+  it('orders closed drafts without a Frist by their start, newest first', async () => {
+    const { compareRowsByFrist, landRow } = await import('../shared/utils/draftOrder')
+    const row = (id: string, startedAt: string) => landRow({ id, land: 'sbg', kind: 'gesetz', title: id, startedAt, deadline: null, url: '', documents: [], active: false })
+    const sorted = [row('a', '2015-10-28'), row('b', '2017-01-18'), row('c', '2016-03-31')].sort(compareRowsByFrist)
+    expect(sorted.map((r) => r.key)).toEqual(['land-b', 'land-c', 'land-a'])
   })
 })

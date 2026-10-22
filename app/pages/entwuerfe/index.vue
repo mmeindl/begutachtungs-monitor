@@ -1,6 +1,6 @@
 <script setup lang="ts">
-import type { DashboardSecondRound, DraftStation, LaenderResponse } from '#shared/types'
-import { LAND_NAME } from '#shared/utils/laender'
+import type { DashboardSecondRound, DraftStation } from '#shared/types'
+import { LAND_CODES, LAND_NAME } from '#shared/utils/laender'
 import {
   compareRowsByFrist,
   compareRowsByStatements,
@@ -241,15 +241,44 @@ function chooseSort(key: string) {
   sort.value = key as SortKey
 }
 
-/* The two halves this `art` asks for, the gate over them, the period and
- * Ressort menus: `useDraftHalves`. */
-const halves = useDraftHalves(filters)
+/**
+ * Where the rows come from (`useSourceChoice`, 22.10.2026): the Bund, and
+ * the Länder the reader chose — or one Land alone, with the Bund off.
+ *
+ * The Länder's drafts come running and closed, for the period used as a
+ * TIME WINDOW: a draft belongs to GP XXVIII when its Begutachtung began
+ * within that period's dates (`readLaenderInWindow`); the sentence under the
+ * chips says so. What the Länder rows cannot answer, the chips say as their
+ * reason, and they keep their state for the view that can: a later station
+ * (the monitor follows a Land's draft no further than its Begutachtung),
+ * „Ministerialentwürfe", and a Ressort while the Bund is on.
+ */
+const { bund, laender: chosenLaender } = useSourceChoice()
+const landUnavailable = computed<string | null>(() => {
+  if (stations.value.length && !stations.value.includes('begutachtung')) return 'Länder-Entwürfe verfolgt der Monitor nur in der Begutachtung'
+  if (art.value === 'ministerialentwurf') return 'Länder-Entwürfe sind keine Ministerialentwürfe'
+  if (bund.value && ministry.value) return 'Länder-Entwürfe haben kein Ministerium'
+  return null
+})
+const landsApply = computed(() => chosenLaender.value.length > 0 && !landUnavailable.value)
+const sourceUnavailable = computed(() =>
+  Object.fromEntries(LAND_CODES.map((land) => [land, landUnavailable.value])))
+const sourceNote = computed(() =>
+  chosenLaender.value.length
+    ? 'Länder: nach Beginn der Begutachtung im Zeitraum der gewählten Gesetzgebungsperiode.'
+    : null)
+
+/* The halves the sources and `art` ask for, the gate over them, the period
+ * and Ressort menus: `useDraftHalves`. */
+const halves = useDraftHalves({ ...filters, bund, wantsLaender: landsApply })
 const {
   wantsMe,
   wantsRis,
   meData,
   risData,
   risError,
+  laenderData,
+  laenderStatus,
   gateStatus,
   gateError,
   gateData,
@@ -286,42 +315,17 @@ const secondRoundFetch = useFetch<DashboardSecondRound>(
   { lazy: true, server: false },
 )
 
-/**
- * The Länder the reader chose (`useLandChoice`, 22.10.2026) — rows only
- * where the view can carry them. The monitor reads the Länder's RUNNING
- * Begutachtungen and nothing else: no period, no Ressort, no chain, no
- * archive. So the chips stand unavailable, with the reason, wherever the
- * view asks for one of those (`ToggleChip`), and keep their state for the
- * view that can. Greyed rather than hidden: a chip that vanishes reads as
- * the Länder having gone, and the reason is true — the monitor does not have
- * this yet (`TODO.md` 5L).
- */
-const { chosen: landChoice } = useLandChoice()
-const landUnavailable = computed<string | null>(() => {
-  if (statusFilter.value === 'closed' || gp.value) return 'Aus den Ländern nur laufende Begutachtungen'
-  if (stations.value.length && !stations.value.includes('begutachtung')) return 'Aus den Ländern nur die Begutachtung'
-  if (art.value === 'ministerialentwurf') return 'Länder-Entwürfe sind keine Ministerialentwürfe'
-  if (ministry.value) return 'Länder-Entwürfe haben kein Ministerium'
-  return null
-})
-const landsApply = computed(() => landChoice.value.length > 0 && !landUnavailable.value)
-const laenderFetch = useAsyncData<LaenderResponse | null>(
-  'entwuerfe-laender',
-  () => (landsApply.value ? $fetch<LaenderResponse>('/api/laender', { timeout: 6000 }) : Promise.resolve(null)),
-  { watch: [landsApply], lazy: true },
-)
-
 await halves.ready
 const { data: secondRound } = await secondRoundFetch
-const { data: laender, status: laenderStatus } = await laenderFetch
 
 /* Under the same controls as everything else, as far as they reach: the
  * Land chosen, „Verordnungsentwürfe" keeps the Länder's Verordnungen, the
- * search the same word rule (`matchesQuery`). */
+ * search the same word rule (`matchesQuery`). Period and status went
+ * upstream (`useDraftHalves`). */
 const landItems = computed(() => {
   if (!landsApply.value) return []
-  return (laender.value?.items ?? [])
-    .filter((item) => landChoice.value.includes(item.land))
+  return (laenderData.value?.items ?? [])
+    .filter((item) => chosenLaender.value.includes(item.land))
     .filter((item) => art.value !== 'verordnung' || item.kind === 'verordnung')
     .filter((item) => matchesQuery(item.title, qDebounced.value))
 })
@@ -329,8 +333,8 @@ const landItems = computed(() => {
  * chosen Land unreadable, never as none open. */
 const unreadableLaender = computed(() => {
   if (!landsApply.value || laenderStatus.value === 'pending' || laenderStatus.value === 'idle') return []
-  const sources = laender.value?.sources
-  return landChoice.value
+  const sources = laenderData.value?.sources
+  return chosenLaender.value
     .map((land) => sources?.find((s) => s.land === land) ?? { land, state: 'unavailable' as const, listUrl: null })
     .filter((s) => s.state === 'unavailable')
 })
@@ -356,7 +360,7 @@ const unreadableLaender = computed(() => {
  */
 const openVorlagen = computed(() => {
   const list = secondRound.value
-  if (!list || statusFilter.value === 'closed' || art.value === 'verordnung' || ministry.value) return []
+  if (!list || !bund.value || statusFilter.value === 'closed' || art.value === 'verordnung' || ministry.value) return []
   if (stations.value.length && !stations.value.includes('rv')) return []
   if (selectedGp.value && selectedGp.value !== list.gp) return []
   return list.items
@@ -533,7 +537,7 @@ const countLabel = computed(() =>
     risKindOfOne: risTotal.value === 1 ? (risData.value?.items[0]?.kind ?? null) : null,
     laterStationsOnly: laterStationsOnly.value,
     laender: landsApply.value ? landItems.value.length : null,
-  }),
+  }) || (landUnavailable.value ?? ''),
 )
 
 /* Selects are TokenSelect (native <select> in token styling with the
@@ -701,7 +705,14 @@ const countLabel = computed(() =>
                    where the search below ends; its names are the longest. -->
               <div class="min-w-0 md:flex-1">
                 <label for="filter-ministry" class="sr-only">Ministerium</label>
-                <TokenSelect id="filter-ministry" v-model="ministry" block>
+                <!-- Off with the Bund: a Land's draft has no Ministerium. -->
+                <TokenSelect
+                  id="filter-ministry"
+                  v-model="ministry"
+                  block
+                  :disabled="!bund"
+                  :title="bund ? undefined : 'Nur für Entwürfe des Bundes'"
+                >
                   <option value="">Alle Ministerien</option>
                   <option v-for="m in ministries" :key="m.code" :value="m.code">
                     {{ m.name || m.code }}
@@ -710,10 +721,10 @@ const countLabel = computed(() =>
               </div>
             </div>
           </div>
-          <!-- Which Länder join the list (`LandChips`), on a line of its
-               own: three more chips do not fit beside the selects. Part of
-               what fixes the set, so above the search. -->
-          <LandChips :unavailable="landUnavailable" />
+          <!-- Where the rows come from (`SourceChips`), on a line of its
+               own: four chips do not fit beside the selects. Part of what
+               fixes the set, so above the search. -->
+          <SourceChips :unavailable="sourceUnavailable" :note="sourceNote" />
           <p v-for="s in unreadableLaender" :key="s.land" class="text-sm text-ink-muted">
             {{ LAND_NAME[s.land] }} ist gerade nicht abrufbar<template v-if="s.listUrl"> –
               <ExternalLink :href="s.listUrl" class="link-inline font-medium">beim Land nachsehen</ExternalLink></template>.

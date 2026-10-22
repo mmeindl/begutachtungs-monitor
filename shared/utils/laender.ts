@@ -2,7 +2,7 @@
  * The Länder the monitor reads, and the reader's choice among them
  * (22.10.2026).
  *
- * The choice is one value with two carriers: `?land=sbg,w` in the URL, so a
+ * The choice is one value with two carriers: `?quellen=bund,sbg` in the URL, so a
  * shared link shows the same list, and a cookie, so the server renders the
  * list already chosen and nothing jumps after hydration. The URL wins where
  * it is given.
@@ -42,25 +42,46 @@ export function landDraftPath(land: LandCode, id: string): string {
   return `/entwuerfe/${LAND_SLUG[land]}/${id.slice(id.indexOf('-') + 1)}`
 }
 
-/** The cookie that remembers the choice; functional, no consent needed. */
-export const LAND_COOKIE = 'laender'
+/**
+ * Where the lists' drafts come from: the Bund (Parliament's list and RIS),
+ * and each Land the monitor reads. The reader's choice among them — since
+ * 22.10.2026 the Bund too, so a list can show one Land alone.
+ */
+export type SourceCode = 'bund' | LandCode
 
-/** A year: a choice of Länder is not something one makes weekly. */
-export const LAND_COOKIE_MAX_AGE_S = 60 * 60 * 24 * 365
+/** Display order: the Bund first, then the Länder. */
+export const SOURCE_CODES: readonly SourceCode[] = ['bund', ...LAND_CODES]
+
+/** What a reader sees without having chosen: the lists as they were before the Länder. */
+export const DEFAULT_SOURCES: readonly SourceCode[] = ['bund']
+
+export const SOURCE_NAME: Record<SourceCode, string> = { bund: 'Bund', ...LAND_NAME }
+
+/** The URL parameter and the cookie that carry the choice. */
+export const SOURCE_PARAM = 'quellen'
+export const SOURCE_COOKIE = 'quellen'
+
+/** A year: a choice of sources is not something one makes weekly. */
+export const SOURCE_COOKIE_MAX_AGE_S = 60 * 60 * 24 * 365
 
 /**
- * `"sbg,w"` → the known codes in display order, unknown ones dropped. Null
- * for a missing value, so the caller can tell „not said" from „said: none"
- * (`?land=` empty is the reader turning every Land off).
+ * `"bund,sbg"` → the known codes in display order, unknown ones dropped.
+ * Null for a missing value or one that names no known source: the choice is
+ * never empty (`useSourceChoice`), so an empty list cannot be a choice.
  */
-export function parseLandList(value: string | null | undefined): LandCode[] | null {
+export function parseSourceList(value: string | null | undefined): SourceCode[] | null {
   if (value === null || value === undefined) return null
   const wanted = new Set(value.split(',').map((v) => v.trim().toLowerCase()))
-  return LAND_CODES.filter((code) => wanted.has(code))
+  const codes = SOURCE_CODES.filter((code) => wanted.has(code))
+  return codes.length ? codes : null
 }
 
-export function formatLandList(codes: readonly LandCode[]): string {
-  return LAND_CODES.filter((code) => codes.includes(code)).join(',')
+export function formatSourceList(codes: readonly SourceCode[]): string {
+  return SOURCE_CODES.filter((code) => codes.includes(code)).join(',')
+}
+
+export function isDefaultSources(codes: readonly SourceCode[]): boolean {
+  return formatSourceList(codes) === formatSourceList(DEFAULT_SOURCES)
 }
 
 /** „Salzburg – 1 von 9 Ländern", the line that keeps the list from claiming more. */

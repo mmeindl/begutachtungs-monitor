@@ -24,7 +24,9 @@ const model = defineModel<string>({ required: true })
  * stays the default: a lone select in a section (LawDiffSection) should
  * still be as wide as its content.
  */
-defineProps<{ id?: string; block?: boolean }>()
+/* `disabled` reaches the <select> itself (22.10.2026): attributes fall
+ * through to the wrapper, and a disabled wrapper disables nothing. */
+defineProps<{ id?: string; block?: boolean; disabled?: boolean }>()
 </script>
 
 <template>
@@ -37,7 +39,8 @@ defineProps<{ id?: string; block?: boolean }>()
     <select
       :id="id"
       v-model="model"
-      class="min-h-target w-full min-w-0 appearance-none truncate rounded-md border border-baseline bg-surface py-2 pl-3 pr-9 text-sm text-ink hover:border-hover-edge hover:bg-hover"
+      :disabled="disabled"
+      class="min-h-target w-full min-w-0 appearance-none truncate rounded-md border border-baseline bg-surface py-2 pl-3 pr-9 text-sm text-ink hover:border-hover-edge hover:bg-hover disabled:cursor-not-allowed disabled:border-dashed disabled:bg-page disabled:text-ink-muted disabled:hover:bg-page"
     >
       <slot />
     </select>

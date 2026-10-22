@@ -566,7 +566,14 @@ export function viewOfLand(c: LandConsultation): EntryView {
     newLabel: begutachtungNewLabel(c.startedAt, c.active),
     // Filed with the Land, counted by nobody — the RIS rows' state.
     participation: { kind: 'unpublished' },
-    state: c.active ? openState(c.deadline, true) : endedState(c.deadline, 'Begutachtung abgeschlossen'),
+    /* Closed: when the Frist ended where the Land kept it; where it kept
+     * only the start (Salzburg's register), when it began — never an
+     * invented end. */
+    state: c.active
+      ? openState(c.deadline, true)
+      : c.deadline || !c.startedAt
+        ? endedState(c.deadline, 'Begutachtung abgeschlossen')
+        : { label: 'Begutachtung abgeschlossen', detail: `begonnen am ${formatDateDe(c.startedAt)}`, tone: 'inactive', actionable: false },
   }
 }
 

@@ -110,6 +110,13 @@ interface LandReader {
   listUrl: string
   /** Every draft on the Land's current lists, running or not. */
   current: () => Promise<LandConsultation[]>
+  /**
+   * Every draft the Land still publishes, running and closed — what the
+   * lists show for a period (`readLaenderInWindow`). Unlike `current` it
+   * waits for a register: a period's list that left out the closed drafts
+   * of one Land would claim they do not exist.
+   */
+  all: () => Promise<LandConsultation[]>
   /** One draft by the Land's number; null when unknown (404). */
   detail: (number: string) => Promise<LandDraftDetail | null>
 }
@@ -152,6 +159,17 @@ const salzburg: LandReader = {
     ])
     const byId = new Map((register ?? []).map((d) => [d.id, d]))
     return current.map((d) => withRegister(d, byId.get(d.id)))
+  },
+  all: async () => {
+    const [current, register] = await Promise.all([salzburgCurrent(), salzburgRegister()])
+    const running = new Map(current.map((d) => [d.id, d]))
+    const merged = register.map((d) => {
+      const live = running.get(d.id)
+      return live ? withRegister(live, d) : d
+    })
+    // A draft newer than the register (it is held for hours) still counts.
+    const known = new Set(register.map((d) => d.id))
+    return [...merged, ...current.filter((d) => !known.has(d.id))]
   },
   detail: async (number) => {
     const id = `sbg-${number}`
@@ -196,6 +214,8 @@ const WIEN_RETENTION = 'Die Stadt Wien veröffentlicht einen Entwurf bis zum Bes
 const wien: LandReader = {
   listUrl: WIEN_LIST,
   current: async () => parseWienList(await fetchLatin1Page(WIEN_LIST)).map((e) => e.draft),
+  // The page is everything Wien still publishes: a year back at most.
+  all: async () => parseWienList(await fetchLatin1Page(WIEN_LIST)).map((e) => e.draft),
   detail: async (number) => {
     const entries = parseWienList(await fetchLatin1Page(WIEN_LIST))
     const entry = entries.find((e) => e.draft.id === `w-${number}`)
@@ -251,6 +271,14 @@ const oberoesterreich: LandReader = {
       .map(async (d) => [d.id, parseOoeDetail(await fetchLandPage(d.url))?.startedAt ?? null] as const)), GARNISH_BUDGET_MS)
     const byId = new Map(started ?? [])
     return items.map((d) => ({ ...d, startedAt: byId.get(d.id) ?? d.startedAt }))
+  },
+  all: async () => {
+    const [current, archive] = await Promise.all([
+      ooeCurrent(),
+      fetchLandPage(OOE_GESETZE_ARCHIV).then((html) => parseOoeGesetze(html, OOE_ARCHIV_HEADING)),
+    ])
+    const known = new Set(current.map((d) => d.id))
+    return [...current, ...archive.filter((d) => !known.has(d.id))]
   },
   detail: async (number) => {
     const verordnung = OOE_VERORDNUNG_ID_RE.exec(number)
@@ -341,6 +369,43 @@ export async function readLaender(): Promise<LaenderResponse> {
   })
   return {
     items: withLandActiveOn(items).filter((item) => item.active),
+    sources,
+  }
+}
+
+/**
+ * The date that places a Land's draft in a period: the start of its
+ * Begutachtung, or — where the Land kept only the end (OÖ's archive and
+ * Verordnungen) — the end of its Frist.
+ */
+export function landDraftDate(d: LandConsultation): string | null {
+  return d.startedAt ?? d.deadline
+}
+
+/**
+ * The Länder's drafts for a Bund Gesetzgebungsperiode, used as a TIME
+ * WINDOW (22.10.2026): a Land has its own legislative periods, so a draft
+ * belongs to GP XXVIII when its Begutachtung began between 24.10.2024 and
+ * that period's end. The lists say so beside the chips.
+ */
+export async function readLaenderInWindow(
+  window: { from: string; to: string | null },
+  status: 'open' | 'closed' | 'all',
+): Promise<Pick<LaenderResponse, 'items' | 'sources'>> {
+  const results = await Promise.allSettled(LAND_CODES.map((land) => READERS[land].all()))
+  const items: LandConsultation[] = []
+  const sources: LandSourceState[] = LAND_CODES.map((land, i) => {
+    const result = results[i]!
+    if (result.status === 'fulfilled') items.push(...result.value)
+    else console.warn(`[laender] ${land} nicht abrufbar:`, result.reason instanceof Error ? result.reason.message : result.reason)
+    return { land, state: result.status === 'fulfilled' ? 'ok' : 'unavailable', listUrl: READERS[land].listUrl }
+  })
+  const inWindow = withLandActiveOn(items).filter((d) => {
+    const date = landDraftDate(d)
+    return date !== null && date >= window.from && (window.to === null || date <= window.to)
+  })
+  return {
+    items: inWindow.filter((d) => status === 'all' || (status === 'open') === d.active),
     sources,
   }
 }

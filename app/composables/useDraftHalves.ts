@@ -1,6 +1,6 @@
 /**
- * The two halves `/entwuerfe` merges — the Ministerialentwürfe and the
- * Begutachtungen without a Gegenstand — fetched, gated and retried as the
+ * The halves `/entwuerfe` merges — the Ministerialentwürfe, the
+ * Begutachtungen without a Gegenstand and, since 22.10.2026, the Länder — fetched, gated and retried as the
  * page needs them (docs/architecture.md §7, §12.19).
  *
  * Synchronous on purpose: both fetches start here and the page awaits
@@ -12,7 +12,7 @@
  * the component's scope.)
  */
 import type { Ref } from 'vue'
-import type { DraftsResponse, RisConsultationsResponse } from '#shared/types'
+import type { DraftsResponse, LaenderResponse, RisConsultationsResponse } from '#shared/types'
 import type { ArtFilter } from '~/utils/draftFilters'
 import { unionGps, unionMinistries } from '~/utils/draftFilters'
 import type { DraftFilters } from '~/composables/useDraftFilters'
@@ -21,8 +21,12 @@ export function useDraftHalves(filters: {
   art: Ref<ArtFilter>
   gp: Ref<string>
   query: DraftFilters['query']
+  /** The Bund is among the reader's sources (`useSourceChoice`, 22.10.2026). */
+  bund: Ref<boolean>
+  /** A chosen Land can join this view (the page decides, `landUnavailable`). */
+  wantsLaender: Ref<boolean>
 }) {
-  const { art, gp, query } = filters
+  const { art, gp, query, bund, wantsLaender } = filters
 
   /**
    * WHICH HALVES THIS `art` ASKS FOR — the filter decides the REQUEST, not
@@ -45,8 +49,8 @@ export function useDraftHalves(filters: {
    * (198 of 201, measured 23.09.2026). Those are the „und andere" of the
    * label and they belong on the page.
    */
-  const wantsMe = computed(() => art.value !== 'verordnung')
-  const wantsRis = computed(() => art.value !== 'ministerialentwurf')
+  const wantsMe = computed(() => bund.value && art.value !== 'verordnung')
+  const wantsRis = computed(() => bund.value && art.value !== 'ministerialentwurf')
 
   /* `enabled` keeps the request from being made at all, on the server too, so
    * a filtered list ships only the half it renders. Watched is the half's own
@@ -82,8 +86,24 @@ export function useDraftHalves(filters: {
     { query, timeout: 8000, enabled: wantsRis, watch: [wantsRis], lazy: true },
   )
 
+  /* The THIRD half since 22.10.2026: the Länder's drafts for the period,
+   * running and closed (`/api/laender?gp&status`). Only the period and the
+   * status go upstream; the Land, the Art and the search apply on the page,
+   * so one answer serves every choice. The generous timeout is Salzburg's
+   * register, thirteen seconds cold — prewarmed, but a list may not cut it
+   * off, or a period would lose Salzburg's closed drafts without a word. */
+  const laenderQuery = computed(() => ({ gp: query.value.gp, status: query.value.status }))
+  const laenderFetch = useFetch<LaenderResponse>('/api/laender', {
+    query: laenderQuery,
+    timeout: 30000,
+    enabled: wantsLaender,
+    watch: [wantsLaender],
+    lazy: true,
+  })
+
   const { data: meFetched, error, refresh, status } = draftsFetch
   const { data: risFetched, error: risError, status: risStatus, refresh: risRefresh } = risFetch
+  const { data: laenderFetched, error: laenderError, status: laenderStatus, refresh: laenderRefresh } = laenderFetch
 
   /* What this `art` asks for, and nothing else. A `useFetch` handle keeps the
    * answer it last gave when it is switched off, so without this cut the count
@@ -91,6 +111,7 @@ export function useDraftHalves(filters: {
    * that is not on the page any more after a toggle. */
   const meData = computed(() => (wantsMe.value ? meFetched.value : null))
   const risData = computed(() => (wantsRis.value ? risFetched.value : null))
+  const laenderData = computed(() => (wantsLaender.value ? laenderFetched.value : null))
 
   /**
    * Both fetches are `lazy` (04.10.2026): a click shows the page at once
@@ -106,7 +127,8 @@ export function useDraftHalves(filters: {
    */
   const firstAnswerPending = computed(() =>
     (wantsMe.value && !meFetched.value && !error.value) ||
-    (wantsRis.value && !risFetched.value && !risError.value),
+    (wantsRis.value && !risFetched.value && !risError.value) ||
+    (wantsLaender.value && !laenderFetched.value && !laenderError.value),
   )
 
   /**
@@ -118,34 +140,45 @@ export function useDraftHalves(filters: {
    * beside it: it is the page's own data then, and it decides loading,
    * failure and retry the way the other half does otherwise.
    */
-  const gateStatus = computed(() =>
-    firstAnswerPending.value ? 'pending' : wantsMe.value ? status.value : risStatus.value,
-  )
-  const gateError = computed(() => (wantsMe.value ? error.value : risError.value))
-  const gateData = computed(() =>
-    firstAnswerPending.value ? null : wantsMe.value ? meData.value : risData.value,
-  )
+  /* With the Bund turned off (22.10.2026) the Länder carry the page alone. */
+  const lead = computed<'me' | 'ris' | 'laender'>(() => (wantsMe.value ? 'me' : wantsRis.value ? 'ris' : 'laender'))
+  /* Nothing asked for at all — the Bund off and the view excluding the
+   * Länder (a later station): the page stands, with an empty list and the
+   * chips saying why, instead of a gate waiting for a fetch never made. */
+  const nothingWanted = computed(() => !wantsMe.value && !wantsRis.value && !wantsLaender.value)
+  const gateStatus = computed(() => {
+    if (nothingWanted.value) return 'success'
+    if (firstAnswerPending.value) return 'pending'
+    return { me: status.value, ris: risStatus.value, laender: laenderStatus.value }[lead.value]
+  })
+  const gateError = computed(() => ({ me: error.value, ris: risError.value, laender: laenderError.value })[lead.value])
+  const gateData = computed(() => {
+    if (nothingWanted.value) return {}
+    if (firstAnswerPending.value) return null
+    return { me: meData.value, ris: risData.value, laender: laenderData.value }[lead.value]
+  })
 
   /* Retries whichever halves this `art` asks for — a switched-off handle
    * refuses by itself (`enabled`). */
   function retry(): void {
     void refresh()
     void risRefresh()
+    void laenderRefresh()
   }
 
   const selectedGp = computed({
-    get: () => gp.value || meData.value?.gp || risData.value?.gp || '',
+    get: () => gp.value || meData.value?.gp || risData.value?.gp || laenderData.value?.gp || '',
     set: (value: string) => {
       gp.value = value
     },
   })
 
   /* The menus: the union of the halves that are asked for (`unionGps`). */
-  const availableGps = computed(() => unionGps(meData.value?.availableGps, risData.value?.availableGps))
+  const availableGps = computed(() => unionGps(meData.value?.availableGps, risData.value?.availableGps, laenderData.value?.availableGps))
   const ministries = computed(() => unionMinistries(meData.value?.ministries, risData.value?.ministries))
 
   /** Both fetches settled — the page awaits this beside its own fetch. */
-  const ready: Promise<void> = Promise.all([draftsFetch, risFetch]).then(() => {})
+  const ready: Promise<void> = Promise.all([draftsFetch, risFetch, laenderFetch]).then(() => {})
 
   return {
     wantsMe,
@@ -154,6 +187,9 @@ export function useDraftHalves(filters: {
     risData,
     /** The RIS half's failure — stated in the count line while it is enrichment. */
     risError,
+    laenderData,
+    laenderStatus,
+    laenderError,
     gateStatus,
     gateError,
     gateData,

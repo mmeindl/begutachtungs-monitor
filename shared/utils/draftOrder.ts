@@ -185,8 +185,8 @@ export type DraftListRow =
 export function rowOrderKey(row: DraftListRow): OrderedDraft {
   if (row.kind === 'me') return draftOrderKey(row.draft)
   if (row.kind === 'ris') return row.item
-  // A Land states no start; only the end orders it, which is all an open row needs.
-  if (row.kind === 'land') return { active: row.item.active, deadline: row.item.deadline, startedAt: null, title: row.item.title }
+  // A closed Land row without a Frist (Salzburg's register) is ordered by its start.
+  if (row.kind === 'land') return { active: row.item.active, deadline: row.item.deadline, startedAt: row.item.startedAt, title: row.item.title }
   return { active: false, deadline: null, startedAt: row.vorlage.date || null, title: row.vorlage.title }
 }
 

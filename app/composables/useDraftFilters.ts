@@ -18,6 +18,7 @@ import {
   draftUrlQuery,
   sameDraftFilters,
 } from '~/utils/draftFilters'
+import { SOURCE_PARAM } from '#shared/utils/laender'
 
 export interface DraftFilters {
   statusFilter: Ref<DraftStatus>
@@ -91,11 +92,11 @@ export function useDraftFilters(): DraftFilters {
   })
 
   // Keep the URL in sync with the filters (defaults stay out of the URL).
-  /* `land` is not this list's filter but the site's choice of Länder
-   * (`useLandChoice`), and the write-back must not drop it. */
+  /* `quellen` is not this list's filter but the site's choice of sources
+   * (`useSourceChoice`), and the write-back must not drop it. */
   watch([query, art, sort], () => {
-    const land = route.query.land
-    router.replace({ query: { ...draftUrlQuery(current()), ...(land !== undefined ? { land } : {}) } })
+    const quellen = route.query[SOURCE_PARAM]
+    router.replace({ query: { ...draftUrlQuery(current()), ...(quellen !== undefined ? { [SOURCE_PARAM]: quellen } : {}) } })
   })
 
   /**

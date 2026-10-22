@@ -13,8 +13,8 @@
  *     directive, and without one Caddy writes no access log;
  *   - no third parties at runtime: the fonts live in public/fonts, no CDN,
  *     no analytics;
- *   - one cookie, `laender`, and only after a Land chip was pressed:
- *     app/composables/useLandChoice.ts (22.10.2026). The only browser
+ *   - one cookie, `quellen`, and only after a source chip was pressed:
+ *     app/composables/useSourceChoice.ts (22.10.2026). The only browser
  *     storage on the site — grep for localStorage/useCookie before changing
  *     the sentence;
  *   - processors and locations: deploy/infrastructure.md;
@@ -25,7 +25,7 @@
 usePageSeo({
   title: 'Datenschutz',
   description:
-    'Welche Daten der Begutachtungs-Monitor verarbeitet: kein Tracking, keine Zugriffsprotokolle, ein Cookie nur für die Auswahl der Länder – und wie mit den Namen aus den Parlamentsdaten umgegangen wird.',
+    'Welche Daten der Begutachtungs-Monitor verarbeitet: kein Tracking, keine Zugriffsprotokolle, ein Cookie nur für die Auswahl der Quellen – und wie mit den Namen aus den Parlamentsdaten umgegangen wird.',
 })
 </script>
 
@@ -37,7 +37,7 @@ usePageSeo({
     <p class="mt-4 leading-relaxed text-ink-secondary">
       Der Monitor kennt keine Konten, bindet keine Drittanbieter ein und
       führt keine Zugriffsprotokolle. Ein Cookie setzt er nur, wenn Sie
-      Länder zur Liste hinzufügen. Deshalb ist diese
+      auswählen, aus welchen Quellen die Liste der Entwürfe stammt. Deshalb ist diese
       Erklärung kurz – und sie beschreibt nur, was tatsächlich passiert.
     </p>
 
@@ -76,23 +76,23 @@ usePageSeo({
       </p>
     </ProseSection>
 
-    <ProseSection id="dse-cookie" heading="Wenn Sie Länder auswählen">
+    <ProseSection id="dse-cookie" heading="Wenn Sie Quellen auswählen">
       <p>
-        Wählen Sie über „Auch aus den Ländern“ ein Land aus, merkt sich der
-        Monitor diese Auswahl in einem Cookie namens <code>laender</code>.
-        Es enthält nur die Kürzel der gewählten Länder (etwa
-        <code>sbg</code>), keine Kennung und nichts, was Sie von anderen
-        Besucherinnen und Besuchern unterscheidet. Es wird nur gesetzt,
-        wenn Sie ein Land an- oder abwählen, und gilt ein Jahr. Der Server
-        liest es, um die Liste gleich mit Ihren Ländern auszuliefern.
+        Ändern Sie über „Entwürfe von“ die Auswahl – Bund und Länder –,
+        merkt sich der Monitor sie in einem Cookie namens
+        <code>quellen</code>. Es enthält nur die Kürzel der gewählten
+        Quellen (etwa <code>bund,sbg</code>), keine Kennung und nichts, was
+        Sie von anderen Besucherinnen und Besuchern unterscheidet. Es wird nur
+        gesetzt, wenn Sie die Auswahl ändern, und gilt ein Jahr. Der Server
+        liest es, um die Liste gleich mit Ihrer Auswahl auszuliefern.
       </p>
       <p>
         Das Cookie ist für eine Funktion nötig, die Sie selbst aufrufen;
         dafür braucht es keine Einwilligung (§ 165 Abs 3 TKG 2021). Löschen
-        können Sie es in Ihrem Browser oder indem Sie alle Länder wieder
-        abwählen. Die Auswahl steht außerdem in der Adresse
-        (<code>?land=sbg</code>), sodass ein geteilter Link dieselbe Liste
-        zeigt.
+        können Sie es in Ihrem Browser oder indem Sie zur Grundauswahl
+        zurückkehren, nur den Bund. Die Auswahl steht außerdem in der Adresse
+        (<code>?quellen=bund,sbg</code>), sodass ein geteilter Link dieselbe
+        Liste zeigt.
       </p>
     </ProseSection>
 
@@ -100,7 +100,7 @@ usePageSeo({
       <ul>
         <li>
           Keine weiteren Cookies und keine vergleichbare Speicherung im
-          Browser – außer dem einen Cookie für die Auswahl der Länder.
+          Browser – außer dem einen Cookie für die Auswahl der Quellen.
         </li>
         <li>
           Keine Reichweitenmessung, keine Analytik, kein Tracking, keine

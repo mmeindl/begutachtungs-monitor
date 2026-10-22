@@ -21,12 +21,19 @@ const props = defineProps<{
   pressed: boolean
   /** Why it cannot be used here; null or absent where it can. */
   unavailable?: string | null
+  /**
+   * Why it cannot be turned off, while it stays on — the last source of a
+   * list (`SourceChips`). Not „unavailable": the dashed grey says „not in
+   * this view", and a locked chip IS in it. Drawn as on; the reason is its
+   * title and its accessible name.
+   */
+  locked?: string | null
 }>()
 
 const emit = defineEmits<{ toggle: [] }>()
 
 function press(): void {
-  if (!props.unavailable) emit('toggle')
+  if (!props.unavailable && !props.locked) emit('toggle')
 }
 </script>
 
@@ -35,16 +42,16 @@ function press(): void {
     color="neutral"
     :variant="pressed && !unavailable ? 'subtle' : 'outline'"
     :aria-pressed="pressed"
-    :aria-disabled="unavailable ? true : undefined"
-    :title="unavailable ?? undefined"
+    :aria-disabled="unavailable || locked ? true : undefined"
+    :title="unavailable ?? locked ?? undefined"
     class="shrink-0"
-    :class="unavailable ? 'cursor-not-allowed outline-1 outline-dashed -outline-offset-1 outline-baseline bg-page text-ink-muted ring-0 hover:bg-page' : pressed && 'ring-ink'"
+    :class="unavailable ? 'cursor-not-allowed outline-1 outline-dashed -outline-offset-1 outline-baseline bg-page text-ink-muted ring-0 hover:bg-page' : [pressed && 'ring-ink', locked && 'cursor-default']"
     @click="press"
   >
     <!-- A box, ticked when on: says „toggle" in both states, and both
          icons are one width, so pressing moves nothing. -->
     <UIcon :name="pressed ? 'i-lucide-square-check' : 'i-lucide-square'" class="size-4 shrink-0" aria-hidden="true" />
     <slot />
-    <span v-if="unavailable" class="sr-only">({{ unavailable }})</span>
+    <span v-if="unavailable || locked" class="sr-only">({{ unavailable ?? locked }})</span>
   </UButton>
 </template>
