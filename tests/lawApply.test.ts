@@ -789,6 +789,40 @@ describe('a § the Novelle brings into being (22.10.2026)', () => {
   })
 })
 
+describe('a unit replaced by a text that opens with its own list (22.10.2026)', () => {
+  // „§ 2 Z 2 lautet: ‚2. a) … b) …'": the list went into Z 2's text AND
+  // stayed below it as Literae.
+  const defs = (): StandingLaw => {
+    const p = makeNode('para', '2', '§ 2.', '', 'Begriffsbestimmungen')
+    const abs = makeNode('abs', '', '', 'Im Sinne dieses Bundesgesetzes bedeuten:')
+    const z2 = makeNode('z', '2', '2.', '')
+    z2.children.push(makeNode('lit', 'a', 'a)', 'alte Litera a;'), makeNode('lit', 'b', 'b)', 'alte Litera b;'))
+    abs.children.push(makeNode('z', '1', '1.', 'Behörde: die Bezirksverwaltungsbehörde;'), z2, makeNode('z', '3', '3.', 'Antrag: das Ansuchen.'))
+    p.children.push(abs)
+    return { paragraphs: [p] }
+  }
+
+  it('installs the list once, as the unit’s children', () => {
+    const { law: out, results } = run(defs(), instr('§ 2 Z 2 lautet:', ['2. a) neue Litera a;', 'b) neue Litera b;']))
+    expect(results[0]!.reason).toBeNull()
+    const z2 = out.paragraphs[0]!.children[0]!.children[1]!
+    expect(z2.text).toBe('')
+    expect(z2.children.map((c) => `${c.id}:${c.text}`)).toEqual(['a:neue Litera a;', 'b:neue Litera b;'])
+    expect(plainText(out.paragraphs[0]!)).toBe('Begriffsbestimmungen Im Sinne dieses Bundesgesetzes bedeuten: Behörde: die Bezirksverwaltungsbehörde; neue Litera a; neue Litera b; Antrag: das Ansuchen.')
+  })
+
+  it('keeps the words in front of a list, and a text without markers whole', () => {
+    // Without its own marker the new text is a § node carrying its words in `heading`.
+    const intro = run(law(), instr('§ 5 Abs. 2 lautet:', ['Ausgenommen sind nur:', '1. Verfahren nach dem AVG.']))
+    expect(intro.results[0]!.reason).toBeNull()
+    const abs2 = intro.law.paragraphs[0]!.children[1]!
+    expect(abs2.text).toBe('Ausgenommen sind nur:')
+    expect(abs2.children.map((c) => c.text)).toEqual(['Verfahren nach dem AVG.'])
+    const bare = run(law(), instr('§ 5 Abs. 1 lautet:', ['Dieses Bundesgesetz gilt für Verwaltungsverfahren.']))
+    expect(bare.law.paragraphs[0]!.children[0]!.text).toBe('Dieses Bundesgesetz gilt für Verwaltungsverfahren.')
+  })
+})
+
 describe('an insertion behind a unit whose number the § repeats (22.10.2026)', () => {
   // KfzStG-like: a § that prints „(6)" twice. The anchor fell back on the §
   // and the new Absatz went behind the FIRST „(6)", reported applied.

@@ -1303,7 +1303,16 @@ function applyOne(law: StandingLaw, { op, payload }: Instruction): string | null
           if (!slot) return `Satz ${op.target.satz} nicht auffindbar`
           slot.write(payload.map((p) => plainText(p)).join(' '))
         } else {
-          node.text = block.text || plainText(block)
+          // The unit's own text, and its list as its children — never the
+          // list's text a second time. A payload without markers arrives as
+          // a § node that carries its words in `heading` (`parsePayload`):
+          // the whole new text, or the words in front of a list. Until
+          // 22.10.2026 this read `plainText(block)`, which is the same for a
+          // block without children and for one with children is the list
+          // again: „§ 2 Z 2 lautet: ‚2. a) … b) …'" set Z 2's text to „…
+          // …" AND kept a) and b) below it — 35 of 8.200 sub-unit
+          // replacements of the corpus, held back by the guard alone.
+          node.text = block.text || (block.level === 'para' ? (block.heading ?? '') : '')
           node.children = block.children
         }
       }
