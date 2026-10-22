@@ -53,6 +53,40 @@ function stem(t: string): string {
   return t
 }
 
+/**
+ * The two memos of this module, and why they have a ceiling (22.10.2026).
+ *
+ * They were written for the RIS↔ME join, where a title recurs within one run,
+ * and they never forgot anything: every title and every PAIR of titles any
+ * caller asked about stayed for the life of the process. `bgblJoin` asks
+ * about pairs by the hundred thousand — the BGBl-II join of one period left,
+ * measured with the heap after GC, 109 MB (XXVIII), 774 MB (XXVII) and over
+ * 1.5 GB (XXV) behind, on a production heap of 384 MB. The period chooser
+ * of /entwuerfe was one request away from killing the process.
+ *
+ * WHAT A CEILING COSTS, measured by replaying the access sequence of both
+ * joins through caches of every size (22.10.2026): a title comes back
+ * shortly after its first use or not at all. The RIS↔ME join of XXVIII and
+ * XXVII asks 61.692 times for the tokens of 2.881 titles and finds them
+ * 95,3 % of the time unbounded, 95,1 % with 250 entries; it asks 25.062 times
+ * for 15.423 pairs, 38,5 % unbounded, 38,3 % with 250 entries. The BGBl-II
+ * join of XXVII reaches its 99,5 % on the tokens from 2.000 entries on. So
+ * insertion-order eviction — the oldest entry goes — keeps the hit rate an
+ * LRU would, within a tenth of a point at every size measured, and the
+ * ceilings below hold both joins with room to spare.
+ */
+// --- Measured surface: exported for tests and harness scripts, not for the app. ---
+export const TOKEN_MEMO_LIMIT = 8_192
+export const COMPONENT_MEMO_LIMIT = 4_096
+
+/** Store under a ceiling: once `limit` is reached, the oldest entry goes first. */
+function remember<V>(memo: Map<string, V>, limit: number, key: string, value: V): V {
+  // A Map iterates in insertion order, so its first key is the oldest.
+  if (memo.size >= limit) memo.delete(memo.keys().next().value!)
+  memo.set(key, value)
+  return value
+}
+
 const tokenCache = new Map<string, string[]>()
 
 /** Ordered, stemmed, stop-word-free tokens of a title. */
@@ -71,8 +105,7 @@ export function titleTokens(s: string | null | undefined): string[] {
     }
     out.push(stem(t))
   }
-  tokenCache.set(key, out)
-  return out
+  return remember(tokenCache, TOKEN_MEMO_LIMIT, key, out)
 }
 
 function tokenSet(s: string | null | undefined): Set<string> {
@@ -111,6 +144,11 @@ export interface TitleComponents {
 
 const componentCache = new Map<string, TitleComponents>()
 
+/** How full the two memos are — what a test reads to see the ceiling hold. */
+export function titleMemoSizes(): { tokens: number; components: number } {
+  return { tokens: tokenCache.size, components: componentCache.size }
+}
+
 /**
  * Similarity components between the ME core title and one RIS title field.
  * `cont` (containment of the shorter side) is the load-bearing number;
@@ -141,8 +179,7 @@ export function titleComponents(meCore: string, risText: string): TitleComponent
     const lcp = a && b ? n / len : 0
     result = { jac: round3(jac), cont: round3(cont), covMe: round3(covMe), lcp: round3(lcp), nA: A.size, nB: B.size }
   }
-  componentCache.set(key, result)
-  return result
+  return remember(componentCache, COMPONENT_MEMO_LIMIT, key, result)
 }
 
 const DAY_MS = 86_400_000

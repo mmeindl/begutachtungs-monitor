@@ -42,6 +42,12 @@ const MAX_PAGES = 20
  */
 const CURRENT_YEAR_TTL_S = 60 * 60 * 6
 const JOIN_TTL_S = 60 * 60 * 6
+/**
+ * How many drafts a period's join compares before it gives the event loop
+ * back (`getBgblOutcomesForGp`). One draft costs about a millisecond (GP
+ * XXVII, 22.10.2026), so no other request waits longer than a few dozen.
+ */
+const JOIN_YIELD_EVERY = 25
 
 /**
  * Today's Jahrgang — the newest year a Kundmachung can carry.
@@ -395,8 +401,17 @@ export const getBgblOutcome = defineCachedFunction(
  *
  * Why not `getBgblOutcome` per row: every call would pull the corpus and the
  * years through the cache again, two hundred times over. Here the years are
- * loaded ONCE and every draft is joined against them; the title comparisons
- * themselves are cheap, because `titleTokens` has a cache of its own.
+ * loaded ONCE and every draft is joined against them.
+ *
+ * The title comparisons were NOT cheap, whatever this said until 22.10.2026:
+ * GP XXVII took 7,4 s in one synchronous stretch and left 774 MB in the
+ * unbounded title memo — more than the production heap holds, so the period
+ * chooser of /entwuerfe restarted the process, and `withinBudget` above it
+ * could not stop a join that had already started. Since then the join skips
+ * foreign Stellen before it compares titles and the memo has a ceiling
+ * (`bgblJoin.rankCandidates`, `titleSimilarity.remember`): the same period
+ * takes well under a second and leaves a few MB. And it gives way every few
+ * drafts, so even that second never holds up another visitor's request.
  */
 export const getBgblOutcomesForGp = defineCachedFunction(
   async (gp: string): Promise<Record<string, BgblOutcome>> => {
@@ -412,7 +427,8 @@ export const getBgblOutcomesForGp = defineCachedFunction(
       await Promise.all(years.map(async (y) => [y, await getBgblTeil2Year(y)] as const)),
     )
     const out: Record<string, BgblOutcome> = {}
-    for (const item of relevant) {
+    for (const [i, item] of relevant.entries()) {
+      if (i > 0 && i % JOIN_YIELD_EVERY === 0) await new Promise((resolve) => setImmediate(resolve))
       const records = yearsFor(item.deadline!).flatMap((y) => byYear.get(y) ?? [])
       out[item.id] = outcomeOf(item, joinDraftToBgbl(draftOf(item), records))
     }

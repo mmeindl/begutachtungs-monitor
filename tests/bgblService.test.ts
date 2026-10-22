@@ -51,6 +51,23 @@ vi.stubGlobal(
     },
 )
 
+/**
+ * Every draft the period's join compares, and every turn of the event loop
+ * that came between two of them — `joinDraftToBgbl` itself, passed through.
+ */
+const trace = vi.hoisted(() => [] as string[])
+
+vi.mock('../server/utils/ris/bgblJoin', async (importOriginal) => {
+  const real = await importOriginal<typeof import('../server/utils/ris/bgblJoin')>()
+  return {
+    ...real,
+    joinDraftToBgbl: (...args: Parameters<typeof real.joinDraftToBgbl>) => {
+      trace.push('draft')
+      return real.joinDraftToBgbl(...args)
+    },
+  }
+})
+
 vi.mock('../server/utils/ris/risOnly', () => ({
   getRisConsultation: vi.fn(),
   getRisOnlyForGp: vi.fn(),
@@ -183,6 +200,7 @@ beforeEach(() => {
   vi.stubGlobal('fetch', vi.fn((url: string) => Promise.resolve(answer(url))))
   jahrgang.clear()
   asked.length = 0
+  trace.length = 0
   viaCache.length = 0
   getRisConsultation.mockReset()
   getRisOnlyForGp.mockReset()
@@ -369,6 +387,30 @@ describe('der Stand einer ganzen Periode', () => {
       ]),
     )
     expect(Object.keys(await getBgblOutcomesForGp('XXVIII'))).toEqual(['BEGUT_1'])
+  })
+
+  /* Eine Periode sind Hunderte Entwürfe — 624 in der XXVII —, und bis zum
+   * 22.10.2026 liefen sie in einem Stück durch, sieben Sekunden lang, in
+   * denen kein anderer Besucher eine Antwort bekam. Seither gibt der Lauf die
+   * Ereignisschleife alle paar Entwürfe frei. */
+  it('gibt die Ereignisschleife frei, während er eine Periode vergleicht', async () => {
+    pin('2026-09-26')
+    getRisOnlyForGp.mockResolvedValue(
+      corpus(Array.from({ length: 60 }, (_, i) => verordnung({ id: `BEGUT_${i}` }))),
+    )
+    let done = false
+    const tick = () => {
+      trace.push('tick')
+      if (!done) setImmediate(tick)
+    }
+    setImmediate(tick)
+    await getBgblOutcomesForGp('XXVIII')
+    done = true
+
+    const first = trace.indexOf('draft')
+    const last = trace.lastIndexOf('draft')
+    expect(trace.filter((t) => t === 'draft')).toHaveLength(60)
+    expect(trace.slice(first, last)).toContain('tick')
   })
 
   /* Der gespeicherte `active`-Wert ist bedeutungslos, und genau das wird hier

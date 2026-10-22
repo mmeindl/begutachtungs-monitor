@@ -94,6 +94,30 @@ describe('joinDraftToBgbl — the ministry name is no evidence', () => {
   })
 })
 
+describe('joinDraftToBgbl — what it compares, and what it skips', () => {
+  it('lets no foreign Stelle stand in the way of the own Ressort', () => {
+    // Since 22.10.2026 a foreign record is skipped before its title is
+    // compared — the verdict is the one the filtered ranking always gave: a
+    // foreign Kundmachung with the same title is no rival, and no tie.
+    const own = record({ id: 'OWN' })
+    const foreign = record({ id: 'FOREIGN', datum: '2026-03-20', stelle: 'Vorstand der E-Control' })
+    expect(joinDraftToBgbl(draft(), [foreign, own])?.record.id).toBe('OWN')
+    // The measurement still sees both.
+    expect(bgblCandidates(draft(), [foreign, own]).map((c) => c.record.id)).toEqual(['OWN', 'FOREIGN'])
+  })
+
+  it('reads the same record afresh for every draft that asks about it', () => {
+    // What is kept per record (issue day, Stelle, title cores) must carry
+    // nothing of the draft that asked first.
+    const r = record()
+    expect(joinDraftToBgbl(draft({ ende: '2026-01-15' }), [r])?.days).toBe(60)
+    expect(joinDraftToBgbl(draft({ ende: '2026-03-01' }), [r])?.days).toBe(15)
+    expect(joinDraftToBgbl(draft({ ende: '2026-03-01', stelle: 'BMF (Bundesministerium für Finanzen)' }), [r])).toBeNull()
+    // Whole days across a leap day, as `daysBetween` counts them.
+    expect(joinDraftToBgbl(draft({ ende: '2024-02-28' }), [record({ datum: '2024-03-01' })])?.days).toBe(2)
+  })
+})
+
 describe('bgblTitleScore', () => {
   it('scores the same short title as a full match', () => {
     const d = draft({ kurztitel: 'Studienbeihilfen-Valorisierungsverordnung 2026', titel: null })

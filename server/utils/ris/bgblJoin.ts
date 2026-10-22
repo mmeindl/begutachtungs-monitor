@@ -282,15 +282,68 @@ export function bgblTitleCore(title: string | null | undefined): string {
   return normalizeTitleText(t)
 }
 
-/** Every draft title against every Kundmachung title; the best one counts. */
-export function bgblTitleScore(draft: BgblJoinDraft, record: BgblRecord): number {
+/**
+ * What the join reads off a Kundmachung, worked out once per record instead
+ * of once per draft × record pair (22.10.2026).
+ *
+ * A period's join asks about the same Kundmachung for every draft whose
+ * window covers it — about 770 times per draft in GP XXVII. Per pair it
+ * parsed the issue date (`daysBetween`, a quarter of the join's time), read
+ * the Stelle's code with a regex and cut the preamble of both titles. Held
+ * weakly by the record: the Jahrgang arrays live in the derived cache, and
+ * the facts go with them.
+ */
+interface RecordFacts {
+  /** The issue date as a day number, so the window is one subtraction. */
+  day: number
+  /** `ministryCodeOf` the Stelle. */
+  code: string
+  /** The distinct title cores, cut on first use — most records are never scored. */
+  cores: readonly string[] | null
+}
+
+const recordFacts = new WeakMap<BgblRecord, RecordFacts>()
+
+function factsOf(record: BgblRecord): RecordFacts {
+  let facts = recordFacts.get(record)
+  if (!facts) {
+    facts = { day: dayNumber(record.datum), code: ministryCodeOf(record.stelle), cores: null }
+    recordFacts.set(record, facts)
+  }
+  return facts
+}
+
+/**
+ * Days since 1970-01-01 — `daysBetween` from a fixed start, so the
+ * difference of two of them is exactly `daysBetween` of the two dates (both
+ * count whole UTC days).
+ */
+function dayNumber(iso: string): number {
+  return daysBetween('1970-01-01', iso)
+}
+
+/**
+ * The cores worth comparing: empty ones dropped, and a Kurztitel that cuts to
+ * the same core as the Titel compared once — it scores the same twice.
+ */
+function distinctCores(...titles: (string | null)[]): string[] {
+  const out: string[] = []
+  for (const title of titles) {
+    const core = bgblTitleCore(title)
+    if (core && !out.includes(core)) out.push(core)
+  }
+  return out
+}
+
+function coresOf(record: BgblRecord, facts: RecordFacts): readonly string[] {
+  return (facts.cores ??= distinctCores(record.kurztitel, record.titel))
+}
+
+/** Every draft core against every Kundmachung core; the best pair counts. */
+function coreScore(lefts: readonly string[], rights: readonly string[]): number {
   let best = 0
-  for (const a of [draft.kurztitel, draft.titel]) {
-    const left = bgblTitleCore(a)
-    if (!left) continue
-    for (const b of [record.kurztitel, record.titel]) {
-      const right = bgblTitleCore(b)
-      if (!right) continue
+  for (const left of lefts) {
+    for (const right of rights) {
       const c = titleComponents(left, right)
       // `cont` is load-bearing, because the Kundmachung often SHORTENS the
       // draft's title („Änderung der Honigverordnung" against the full
@@ -301,6 +354,11 @@ export function bgblTitleScore(draft: BgblJoinDraft, record: BgblRecord): number
     }
   }
   return Math.round(best * 1000) / 1000
+}
+
+/** Every draft title against every Kundmachung title; the best one counts. */
+export function bgblTitleScore(draft: BgblJoinDraft, record: BgblRecord): number {
+  return coreScore(distinctCores(draft.kurztitel, draft.titel), coresOf(record, factsOf(record)))
 }
 
 /** One scored candidate. */
@@ -319,21 +377,38 @@ interface BgblMatch extends BgblCandidate {
 }
 
 /**
- * A draft's candidates, scored and sorted descending.
+ * The candidates in the window, scored and sorted descending — of every
+ * Stelle, or of the draft's own Ressort and its lineage only.
  *
- * Kept apart from the verdict so the measurement can see what just missed —
- * a threshold checked only against its hits is not checked at all.
+ * The Ressort is checked BEFORE the titles are compared, when only the own
+ * Ressort counts (22.10.2026). A foreign record is refused whatever its
+ * title scores, so scoring it bought nothing but the comparison itself —
+ * and those were most of them: the window of a GP XXVII draft holds on
+ * average 772 records of Teil II, 118 of them of its own Ressort. Comparing
+ * every one took 7,4 s for the period and filled the title memo with pairs
+ * that could never match.
  */
-export function bgblCandidates(draft: BgblJoinDraft, records: readonly BgblRecord[]): BgblCandidate[] {
+function rankCandidates(draft: BgblJoinDraft, records: readonly BgblRecord[], ownRessortOnly: boolean): BgblCandidate[] {
   if (!draft.ende) return []
   const codes = new Set([ministryCodeOf(draft.stelle)])
+  const ende = dayNumber(draft.ende)
+  const lefts = distinctCores(draft.kurztitel, draft.titel)
+  // `ministryScore` walks the lineage groups for every foreign Stelle; a
+  // window holds a few dozen Stellen, not hundreds of them.
+  const ministryByCode = new Map<string, number>()
   const out: BgblCandidate[] = []
   for (const record of records) {
     if (record.teil !== 'Teil2' || !record.datum) continue
-    const days = daysBetween(draft.ende, record.datum)
+    const facts = factsOf(record)
+    const days = facts.day - ende
     if (days < BGBL_WINDOW_DAYS[0] || days > BGBL_WINDOW_DAYS[1]) continue
-    const ministry = ministryScore(codes, ministryCodeOf(record.stelle))
-    const score = bgblTitleScore(draft, record)
+    let ministry = ministryByCode.get(facts.code)
+    if (ministry === undefined) {
+      ministry = ministryScore(codes, facts.code)
+      ministryByCode.set(facts.code, ministry)
+    }
+    if (ownRessortOnly && ministry <= 0) continue
+    const score = coreScore(lefts, coresOf(record, facts))
     if (score <= 0) continue
     out.push({ record, score, days, ministry })
   }
@@ -341,6 +416,18 @@ export function bgblCandidates(draft: BgblJoinDraft, records: readonly BgblRecor
   // twice, the first Kundmachung after the Frist is the one from this
   // Begutachtung.
   return out.sort((a, b) => b.score - a.score || a.days - b.days)
+}
+
+/**
+ * A draft's candidates, scored and sorted descending.
+ *
+ * Kept apart from the verdict so the measurement can see what just missed —
+ * a threshold checked only against its hits is not checked at all. That is
+ * also why this one still scores the foreign Stellen: the verdict below
+ * skips them unscored.
+ */
+export function bgblCandidates(draft: BgblJoinDraft, records: readonly BgblRecord[]): BgblCandidate[] {
+  return rankCandidates(draft, records, false)
 }
 
 /**
@@ -353,7 +440,10 @@ export function bgblCandidates(draft: BgblJoinDraft, records: readonly BgblRecor
  * of government that can fall between Frist and Kundmachung.
  */
 export function joinDraftToBgbl(draft: BgblJoinDraft, records: readonly BgblRecord[]): BgblMatch | null {
-  const ranked = bgblCandidates(draft, records).filter((c) => c.ministry > 0)
+  // The same ranking as `bgblCandidates(…).filter((c) => c.ministry > 0)` —
+  // the sort is stable, so dropping the foreign records first changes no
+  // order — without scoring what would be thrown away.
+  const ranked = rankCandidates(draft, records, true)
   const best = ranked[0]
   if (!best || best.score < BGBL_ACCEPT) return null
   const second = ranked[1]
