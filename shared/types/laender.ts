@@ -232,7 +232,24 @@ export interface LandLawDiffResponse {
    * (`geltend → entwurf` only; 0 elsewhere).
    */
   withheld: number
+  /**
+   * The Landesgesetzblatt the draft was held against, and what made it
+   * certain (`to === 'lgbl'` only; null elsewhere). `searched` is the title
+   * search's find where the monitor searched — it differs from `nr` where
+   * the Regierungsvorlage showed another (§12.48). `certainBy` null: the
+   * search's find could not be confirmed, and nothing was compared.
+   */
+  kundmachung: { nr: string; url: string | null; date: string | null; certainBy: LandKundmachungCertainty | null; searched: string | null } | null
 }
+
+/**
+ * How a Kundmachung became certain: named by the Land; the Regierungsvorlage
+ * RIS links it to holds the draft's text; the Landesgesetzblatt itself holds
+ * it (a Verordnung); both texts name the same last amendment of the law; or
+ * the search's single candidate, with nothing in the texts against it
+ * (§12.47–50).
+ */
+export type LandKundmachungCertainty = 'land' | 'vorlage' | 'wortlaut' | 'kette' | 'treffer'
 
 export interface LandTextDocument {
   label: string

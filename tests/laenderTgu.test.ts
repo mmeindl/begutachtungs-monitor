@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { joinLines, mergeParagraphs, shareInRis, tguLines, tguParagraphs, tguUnits, type TguLine, type TguPage } from '../server/utils/laender/landTgu'
+import { amendedLawOf, columnParagraphs, joinLines, mergeParagraphs, shareInRis, standsInRis, tguLines, tguParagraphs, tguUnits, type TguLine, type TguPage } from '../server/utils/laender/landTgu'
 
 /** A run at (x, y), each character 5 pt wide; glyph widths equal, so centres fall evenly. */
 function run(s: string, x: number, y: number) {
@@ -129,5 +129,28 @@ describe('shareInRis', () => {
   })
   it('is 0 where the § does not start as RIS\'s does', () => {
     expect(shareInRis('Ganz anderer Paragraph mit Text.', ris)).toBe(0)
+  })
+})
+
+describe('two-column Textgegenüberstellung (Wien)', () => {
+  const ris = '<nutzdaten>Strafbestimmungen § 6. (1) Wer entgegen § 2 Abs. 1 Straßen verunreinigt, ist mit einer Geldstrafe von 50 Euro zu bestrafen. (2) Wer Aufträgen nicht nachkommt, ist zu bestrafen. (3) Bei allen Übertretungen können Organstrafverfügungen ergehen. (4) Weiter. (5) Ende.</nutzdaten>'
+
+  it('checks every stretch between elisions, and the § designation nowhere', () => {
+    expect(standsInRis('Strafbestimmungen (1) Wer entgegen § 2 Abs. 1 Straßen verunreinigt, ist mit einer Geldstrafe von 50 Euro zu bestrafen. (2) bis (3) … (4) Ganz anders formuliert als im Gesetz stehend.', ris)).toBe(false)
+    expect(standsInRis('Strafbestimmungen (1) Wer entgegen § 2 Abs. 1 Straßen verunreinigt, ist mit einer Geldstrafe von 50 Euro zu bestrafen. (2) bis (5) …', ris)).toBe(true)
+    expect(standsInRis('Strafbestimmungen (1) Wer entgegen § 2 Abs. 1 Straßen verunreinigt, ist mit einer Geldstrafe von 70 Euro zu bestrafen. (2) bis (5) …', ris)).toBe(false)
+  })
+
+  it('joins a §\'s rows and puts its heading on a line of its own', () => {
+    const paras = columnParagraphs([
+      { kind: 'pair', law: null, para: '§ 2.', current: 'Reinhaltung öffentlicher Flächen § 2. (1) bis (7) …', proposed: 'Reinhaltung öffentlicher Flächen § 2. (1) bis (7) …', changed: false },
+      { kind: 'pair', law: null, para: '§ 2.', current: '(8) Alt.', proposed: '(8) Neu.', changed: true },
+    ], 'Wiener Reinhaltegesetz')
+    expect(paras).toEqual([{ law: 'Wiener Reinhaltegesetz', number: '2', old: ['Reinhaltung öffentlicher Flächen', '(1) bis (7) …', '(8) Alt.'], neu: ['Reinhaltung öffentlicher Flächen', '(1) bis (7) …', '(8) Neu.'], changed: true }])
+  })
+
+  it('names the one law a draft amends from its title', () => {
+    expect(amendedLawOf('Gesetz, mit dem das Wiener Reinhaltegesetz geändert wird')).toBe('Wiener Reinhaltegesetz')
+    expect(amendedLawOf('Gesetz, mit dem die Dienstordnung 1994, die Besoldungsordnung 1994 und das Wiener Bedienstetengesetz geändert werden')).toBeNull()
   })
 })

@@ -73,25 +73,63 @@ export const fetchLgblIndex = defineCachedFunction(
   { name: 'land-lgbl-index', base: DERIVED_CACHE, getKey: (land: LandCode) => land, maxAge: 60 * 60 * 6, swr: true },
 )
 
-/**
- * The XML of one Landesgesetzblatt, by its number („LGBl. Nr. 57/2026"), from
- * the OGD API — the document the comparison reads (`landLawDiffService`).
- * Null where RIS does not hold it.
- */
-export async function lgblXmlUrl(land: LandCode, nr: string): Promise<string | null> {
+/** One Landesgesetzblatt as the OGD API describes it: where its XML is, and the Landtag's Regierungsvorlage it was built from. */
+export interface LgblRecord {
+  nr: string
+  datum: string | null
+  url: string | null
+  xmlUrl: string | null
+  /** Salzburg's `RegierungsvorlageLink`: the Landtag's PDF, where the law came from one (§12.47). */
+  vorlageUrl: string | null
+}
+
+/* eslint-disable @typescript-eslint/no-explicit-any -- RIS's envelope */
+function recordOf(ref: any): LgblRecord | null {
+  const meta = ref?.Data?.Metadaten?.Landesrecht
+  const nr = meta?.LgblAuth?.Lgblnummer
+  if (typeof nr !== 'string') return null
+  let xmlUrl: string | null = null
+  for (const content of asArray<any>(ref?.Data?.Dokumentliste?.ContentReference)) {
+    for (const u of asArray<any>(content?.Urls?.ContentUrl)) {
+      if (!xmlUrl && typeof u?.Url === 'string' && u.Url.endsWith('.xml')) xmlUrl = safeExternalUrl(u.Url)
+    }
+  }
+  const vorlage = meta?.LgblAuth?.RegierungsvorlageLink
+  const eli = meta?.LgblAuth?.EuropeanLegislationIdentifier
+  return {
+    nr,
+    datum: typeof meta?.Kundmachungsdatum === 'string' ? meta.Kundmachungsdatum : null,
+    url: typeof eli === 'string' ? safeExternalUrl(eli) : null,
+    xmlUrl,
+    vorlageUrl: typeof vorlage === 'string' ? safeExternalUrl(vorlage) : null,
+  }
+}
+
+/** One Landesgesetzblatt by its number („LGBl. Nr. 57/2026"); null where RIS does not hold it. */
+export async function lgblRecord(land: LandCode, nr: string): Promise<LgblRecord | null> {
   const number = /(\d+\/\d{4})/.exec(nr)?.[1]
   if (!number) return null
   const params = new URLSearchParams({ Applikation: 'LgblAuth', [`Bundesland_SucheIn${RIS_LAND[land]}`]: 'true', Lgblnummer: number })
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any -- RIS's envelope
   const result = await risJson<any>(`${LANDESRECHT_API}?${params}`, INDEX_POLICY)
-  for (const ref of asArray<any>(result?.OgdDocumentResults?.OgdDocumentReference)) { // eslint-disable-line @typescript-eslint/no-explicit-any
-    if (ref?.Data?.Metadaten?.Landesrecht?.LgblAuth?.Lgblnummer !== nr.replace(/LGBI/, 'LGBl')) continue
-    for (const content of asArray<any>(ref?.Data?.Dokumentliste?.ContentReference)) { // eslint-disable-line @typescript-eslint/no-explicit-any
-      for (const u of asArray<any>(content?.Urls?.ContentUrl)) { // eslint-disable-line @typescript-eslint/no-explicit-any
-        const url = typeof u?.Url === 'string' && u.Url.endsWith('.xml') ? safeExternalUrl(u.Url) : null
-        if (url) return url
-      }
-    }
+  for (const ref of asArray<any>(result?.OgdDocumentResults?.OgdDocumentReference)) {
+    const rec = recordOf(ref)
+    if (rec?.nr === nr.replace(/LGBI/, 'LGBl')) return rec
   }
   return null
+}
+
+/** The Landesgesetzblätter whose text contains `phrase` — RIS's full-text search, first hundred hits. */
+export async function lgblFullText(land: LandCode, phrase: string): Promise<LgblRecord[]> {
+  const params = new URLSearchParams({ Applikation: 'LgblAuth', [`Bundesland_SucheIn${RIS_LAND[land]}`]: 'true', Suchworte: `"${phrase}"`, DokumenteProSeite: 'OneHundred' })
+  const result = await risJson<any>(`${LANDESRECHT_API}?${params}`, INDEX_POLICY)
+  return asArray<any>(result?.OgdDocumentResults?.OgdDocumentReference).map(recordOf).filter((r): r is LgblRecord => r !== null)
+}
+/* eslint-enable @typescript-eslint/no-explicit-any */
+
+/**
+ * The XML of one Landesgesetzblatt, by its number — the document the
+ * comparison reads (`landLawDiffService`). Null where RIS does not hold it.
+ */
+export async function lgblXmlUrl(land: LandCode, nr: string): Promise<string | null> {
+  return (await lgblRecord(land, nr))?.xmlUrl ?? null
 }

@@ -14,17 +14,22 @@
  * new wording, 94 % stand in it verbatim and the losses read were the
  * measurement's or the Land's own (docs/architecture.md §12.45).
  *
- * Oberösterreich only: its documents are the format measured. Salzburg's and
- * Wien's are not read until they are measured.
+ * Two formats. Oberösterreich's is its own (one column, underline and
+ * strike, `landTgu.ts`); Wien's is the Bund's two-column template at the end
+ * of the draft's PDF, read by the Bund's reader (`annex/annexPdf.ts`) and
+ * checked stretch by stretch between its elisions (`standsInRis`, §12.49).
+ * Salzburg publishes none in a form measured here.
  */
-import type { LandCode, LandDraftDetail, LandLawDiffResponse } from '#shared/types'
+import type { LandCode, LandDraftDetail, LandLawDiffResponse, LandTextDocument } from '#shared/types'
 import { safeExternalUrl } from '#shared/utils/safeExternalUrl'
 import { formatDateDe } from '#shared/utils/format'
 import { diffLawUnits, summarizeDiff } from '../diff/lawDiff'
 import { upstreamBytes, type UpstreamPolicy } from '../upstream/fetch'
 import { lawInForce, paragraphText } from './landKons'
-import { joinLines, mergeParagraphs, shareInRis, STANDS_IN_RIS, tguLines, tguParagraphs, tguUnits, type TguParagraph } from './landTgu'
+import { amendedLawOf, columnParagraphs, joinLines, mergeParagraphs, standsInRis, tguLines, tguParagraphs, tguUnits, type TguParagraph } from './landTgu'
 import { tguPages } from './landTguPdf'
+import { pagesOf } from '../annex/annexPdfPages'
+import { parseAnnexPdf } from '../annex/annexPdf'
 
 const POLICY: UpstreamPolicy = { timeoutMs: 30_000, retries: 2, upstreamHostsOnly: true }
 const PDF_MAX_BYTES = 30 * 1024 * 1024
@@ -43,7 +48,7 @@ const emptyStats = { total: 0, unchanged: 0, changed: 0, editorial: 0, inserted:
 function unavailable(reason: string, rest: Partial<LandLawDiffResponse> = {}): LandLawDiffResponse {
   return {
     from: 'geltend', to: 'entwurf', available: false, unavailableReason: reason, units: [], stats: emptyStats,
-    fromDocument: null, toDocument: null, addedLaws: [], droppedLaws: [], sharedWith: [], withheld: 0, ...rest,
+    fromDocument: null, toDocument: null, addedLaws: [], droppedLaws: [], sharedWith: [], withheld: 0, kundmachung: null, ...rest,
   }
 }
 
@@ -53,17 +58,65 @@ async function inChunks<T, R>(items: readonly T[], size: number, fn: (item: T) =
   return out
 }
 
-export async function compareTgu(land: LandCode, detail: LandDraftDetail): Promise<LandLawDiffResponse> {
-  if (land !== 'ooe') return unavailable('Textgegenüberstellungen liest der Monitor bisher nur für Oberösterreich.')
+interface TguRead {
+  paragraphs: TguParagraph[]
+  fromDocument: LandTextDocument
+  date: string
+}
+
+/**
+ * Oberösterreich: the Land's own Textgegenüberstellung, one column with
+ * underline and strike (`landTgu.ts`).
+ */
+async function readOoe(detail: LandDraftDetail): Promise<TguRead | string> {
   const doc = tguDocument(detail)
   const url = doc ? safeExternalUrl(doc.url) : null
-  if (!doc || !url) return unavailable('Das Land hat zu diesem Entwurf keine Textgegenüberstellung veröffentlicht.')
-  const date = doc.date ?? detail.draft.startedAt ?? new Date().toISOString().slice(0, 10)
-  const fromDocument = { label: doc.title, url, publisher: 'Land Oberösterreich' }
-  const toDocument = { label: `Oö. Landesrecht, Fassung vom ${formatDateDe(date)} (Abgleich)`, url: null, publisher: 'RIS (CC BY 4.0)' }
-
+  if (!doc || !url) return NO_TGU
   const { bytes } = await upstreamBytes(url, { ...POLICY, maxBytes: PDF_MAX_BYTES })
-  const paragraphs = mergeParagraphs(tguParagraphs((await tguPages(new Uint8Array(bytes))).flatMap(tguLines)))
+  return {
+    paragraphs: mergeParagraphs(tguParagraphs((await tguPages(new Uint8Array(bytes))).flatMap(tguLines))),
+    fromDocument: { label: doc.title, url, publisher: 'Land Oberösterreich' },
+    date: doc.date ?? detail.draft.startedAt ?? new Date().toISOString().slice(0, 10),
+  }
+}
+
+/** Wien's running head on every page: „Seite 1 von 2", the Zahl „821297/2026", the date. */
+const WIEN_HEAD_RE = /^(?:Seite \d+ von \d+|\d+\/\d{4}|\d{1,2}\. (?:Jänner|Januar|Februar|März|April|Mai|Juni|Juli|August|September|Oktober|November|Dezember) \d{4})$/
+
+/**
+ * Wien: the Textgegenüberstellung stands at the end of the draft's own PDF,
+ * in the Bund's two-column template („Geltende Fassung" | „Vorgeschlagene
+ * Fassung") — read by the Bund's reader (`annex/annexPdf.ts`) from the page
+ * it starts on, with the Land's running head taken out first.
+ */
+async function readWien(detail: LandDraftDetail): Promise<TguRead | string> {
+  const doc = tguDocument(detail) ?? detail.draft.documents[0]
+  const url = doc ? safeExternalUrl(doc.url) : null
+  if (!doc || !url) return NO_TGU
+  const { bytes } = await upstreamBytes(url, { ...POLICY, maxBytes: PDF_MAX_BYTES })
+  const pages = (await pagesOf(new Uint8Array(bytes))).map((p) => ({ ...p, items: p.items.filter((i) => !WIEN_HEAD_RE.test(i.text.trim())) }))
+  const start = pages.findIndex((p) => p.items.some((i) => /^Textgegenüberstellung\b/.test(i.text.trim())))
+  if (start < 0) return NO_TGU
+  const parse = parseAnnexPdf(pages.slice(start))
+  const rows = parse.rows.map((r) => ({ kind: r.kind, law: r.law, para: r.para, current: r.current, proposed: r.proposed, changed: r.change !== 'unchanged' }))
+  return {
+    paragraphs: columnParagraphs(rows, amendedLawOf(detail.draft.title)),
+    fromDocument: { label: `${doc.title}, Textgegenüberstellung`, url, publisher: 'Stadt Wien' },
+    date: doc.date ?? detail.draft.startedAt ?? new Date().toISOString().slice(0, 10),
+  }
+}
+
+const NO_TGU = 'Das Land hat zu diesem Entwurf keine Textgegenüberstellung veröffentlicht.'
+const READ_TGU: Partial<Record<LandCode, (detail: LandDraftDetail) => Promise<TguRead | string>>> = { ooe: readOoe, w: readWien }
+const LAW_LABEL: Partial<Record<LandCode, string>> = { ooe: 'Oö. Landesrecht', w: 'Wiener Landesrecht' }
+
+export async function compareTgu(land: LandCode, detail: LandDraftDetail): Promise<LandLawDiffResponse> {
+  const read = READ_TGU[land]
+  if (!read) return unavailable('Textgegenüberstellungen liest der Monitor bisher für Oberösterreich und Wien.')
+  const got = await read(detail)
+  if (typeof got === 'string') return unavailable(got)
+  const { paragraphs, fromDocument, date } = got
+  const toDocument = { label: `${LAW_LABEL[land]}, Fassung vom ${formatDateDe(date)} (Abgleich)`, url: null, publisher: 'RIS (CC BY 4.0)' }
   if (!paragraphs.length) {
     return unavailable('In der Textgegenüberstellung fand der Monitor keine Paragraphen, die er lesen kann.', { fromDocument })
   }
@@ -80,7 +133,7 @@ export async function compareTgu(land: LandCode, detail: LandDraftDetail): Promi
     const risUrl = paras.get(p.number)
     if (!risUrl) return false
     const risText = await paragraphText(risUrl).catch(() => '')
-    return shareInRis(joinLines(p.old), risText) >= STANDS_IN_RIS
+    return standsInRis(joinLines(p.old), risText)
   }
   const verdicts = await inChunks(paragraphs, PARALLEL, confirmed)
   const kept = paragraphs.filter((_, i) => verdicts[i])
@@ -108,5 +161,6 @@ export async function compareTgu(land: LandCode, detail: LandDraftDetail): Promi
     droppedLaws: [],
     sharedWith: [],
     withheld,
+    kundmachung: null,
   }
 }

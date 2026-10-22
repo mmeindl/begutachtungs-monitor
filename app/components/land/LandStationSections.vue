@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import type { LandCode, LandConsultation, LandLandtag, LandProcedureStep } from '#shared/types'
+import type { LandCode, LandConsultation, LandLandtag, LandLawDiffResponse, LandProcedureStep } from '#shared/types'
 import type { Fact } from '~/components/ui/FactList.vue'
 import { citeLineDe } from '#shared/utils/citations'
 import { formatDateDe } from '#shared/utils/format'
@@ -43,10 +43,22 @@ const rvStep = computed(() => steps.value.find((s) => s.station === 'rv') ?? nul
 /* Whether the Landtag did anything past the Vorlage's arrival and the
    Kundmachung — the section exists only then. */
 const landtagSteps = computed(() => steps.value.filter((s) => s.station !== 'rv' && s.station !== 'bgbl'))
+/* What the comparison below established (`landLawDiffService`, §12.48):
+   another Landesgesetzblatt than the title search's, or its confirmation. */
+const resolved = ref<LandLawDiffResponse['kundmachung']>(null)
+
 const kundmachung = computed(() => {
   const s = props.draft.stage
   return s && s !== 'unknown' && s.station === 'bgbl' && s.detail ? s : null
 })
+/* The Landesgesetzblatt the card shows: the search's, until the comparison
+   has found the draft's own text in another one's Regierungsvorlage. */
+const shownKundmachung = computed(() => {
+  const k = kundmachung.value
+  const r = resolved.value
+  return k && r && r.certainBy && r.nr !== k.detail ? { ...k, detail: r.nr, url: r.url, date: r.date } : k
+})
+const corrected = computed(() => Boolean(resolved.value?.certainBy && kundmachung.value && resolved.value.nr !== kundmachung.value.detail))
 
 /* „Beilage 1454/2026" — the Landtag's number for the Vorlage, from the
    record's own words. */
@@ -193,11 +205,11 @@ const reportName = computed(() => {
           <!-- Flex row like every line with „Zitieren" (`CiteButton`). -->
           <p class="flex flex-wrap items-center gap-x-3 gap-y-1">
             <span>
-              <ExternalLink v-if="kundmachung.url" :href="kundmachung.url" class="link-inline">{{ kundmachung.detail }}</ExternalLink><template v-else>{{ kundmachung.detail }}</template><template v-if="kundmachung.date">, am {{ formatDateDe(kundmachung.date) }}</template>
+              <ExternalLink v-if="shownKundmachung!.url" :href="shownKundmachung!.url" class="link-inline">{{ shownKundmachung!.detail }}</ExternalLink><template v-else>{{ shownKundmachung!.detail }}</template><template v-if="shownKundmachung!.date">, am {{ formatDateDe(shownKundmachung!.date) }}</template>
             </span>
             <CiteButton
-              v-if="kundmachung.url"
-              :text="citeLineDe(kundmachung.detail, kundmachung.url)"
+              v-if="shownKundmachung!.url"
+              :text="citeLineDe(shownKundmachung!.detail!, shownKundmachung!.url)"
               subject="Das Landesgesetzblatt"
             />
           </p>
@@ -206,21 +218,47 @@ const reportName = computed(() => {
       <!-- Whose finding it is: the Land records nothing after the
            Begutachtung, so the assignment is ours, by title (§12.43) — and
            can be wrong where the same law changed twice within two years. -->
-      <p v-if="kundmachung.via === 'suche'" class="mt-3 text-sm text-ink-secondary">
-        Vom Monitor über den Titel im Rechtsinformationssystem gefunden – das Land
-        selbst ordnet seine Entwürfe keiner Kundmachung zu. Wurde dasselbe Gesetz
-        kurz hintereinander zweimal geändert, kann die Zuordnung die frühere
-        Änderung treffen.
-      </p>
+      <template v-if="kundmachung.via === 'suche'">
+        <p v-if="corrected" class="mt-3 text-sm text-ink-secondary">
+          Die Suche über den Titel fand {{ kundmachung.detail }}. Kundgemacht wurde
+          dieser Entwurf aber als {{ resolved!.nr }}:
+          <template v-if="resolved!.certainBy === 'vorlage'">Die Regierungsvorlage, die das
+            Rechtsinformationssystem mit diesem Landesgesetzblatt verknüpft, enthält
+            den Text des Entwurfs.</template><template v-else>Dieses Landesgesetzblatt enthält den Text des Entwurfs.</template>
+        </p>
+        <p v-else-if="resolved?.certainBy === 'vorlage'" class="mt-3 text-sm text-ink-secondary">
+          Vom Monitor über den Titel im Rechtsinformationssystem gefunden und bestätigt:
+          Die Regierungsvorlage, die das Rechtsinformationssystem mit diesem
+          Landesgesetzblatt verknüpft, enthält den Text des Entwurfs.
+        </p>
+        <p v-else-if="resolved?.certainBy === 'wortlaut'" class="mt-3 text-sm text-ink-secondary">
+          Vom Monitor über den Titel im Rechtsinformationssystem gefunden und bestätigt:
+          Das Landesgesetzblatt enthält den Text des Entwurfs.
+        </p>
+        <p v-else-if="resolved?.certainBy === 'kette'" class="mt-3 text-sm text-ink-secondary">
+          Vom Monitor über den Titel im Rechtsinformationssystem gefunden und bestätigt:
+          Entwurf und Landesgesetzblatt nennen dieselbe letzte Änderung des Gesetzes.
+        </p>
+        <!-- Whose finding it is: the Land records nothing after the
+             Begutachtung, so the assignment is ours, by title (§12.43) — and
+             can be wrong where the same law changed twice within two years. -->
+        <p v-else class="mt-3 text-sm text-ink-secondary">
+          Vom Monitor über den Titel im Rechtsinformationssystem gefunden – das Land
+          selbst ordnet seine Entwürfe keiner Kundmachung zu. Wurde dasselbe Gesetz
+          kurz hintereinander zweimal geändert, kann die Zuordnung die frühere
+          Änderung treffen.
+        </p>
+      </template>
     </div>
     <!-- What became of the draft, § by § — only where the Kundmachung is
-         certain (`landLawDiffService`): named by the Land, or for
-         Salzburg's Gesetze found by us and confirmed by both texts'
-         promulgation clauses. Which, the server decides after reading, and
+         certain (`landLawDiffService`): named by the Land, or for Salzburg
+         found by us and confirmed by the texts (Regierungsvorlage, the
+         Landesgesetzblatt's own text, the promulgation clause). Which, the
+         server decides after reading, and
          says so where it does not compare; against a wrong match the
          comparison would report a whole law rewritten. -->
-    <div v-if="(kundmachung.via !== 'suche' || (land === 'sbg' && draft.kind === 'gesetz')) && land && number" class="mt-8">
-      <LandLawDiffSection :land="land" :number="number" from="entwurf" to="lgbl" />
+    <div v-if="(kundmachung.via !== 'suche' || land === 'sbg') && land && number" class="mt-8">
+      <LandLawDiffSection :land="land" :number="number" from="entwurf" to="lgbl" @kundmachung="resolved = $event" />
     </div>
   </section>
 </template>

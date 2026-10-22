@@ -300,10 +300,14 @@ export function tguUnits(paragraphs: readonly TguParagraph[]): { from: LawUnit[]
   return { from, to }
 }
 
-/** Words, compared as RIS and the PDF both print them: no markup, no quotes, no hyphens, no notes of RIS's own. */
+/** Words, compared as RIS and the PDF both print them: no markup, no quotes, no hyphens, no § designations, no notes of RIS's own. */
 export function comparableWords(text: string): string[] {
   return text
     .replace(/<[^>]+>/g, ' ')
+    // The § designation is where the two print differently — RIS between
+    // heading and „(1)", the document on a line of its own — and the § is
+    // already fixed by looking it up by number.
+    .replace(/§\s*\d+[a-z]*\.?/g, ' ')
     .replace(/&[a-z]+;/g, ' ')
     .replace(/[„“”"»«‚‘]/g, '')
     .toLowerCase()
@@ -346,3 +350,69 @@ export function shareInRis(text: string, risText: string): number {
 
 /** At or above this share a § counts as the law in force (§12.45: the corpus parts at 0.98). */
 export const STANDS_IN_RIS = 0.98
+
+/**
+ * „(1) bis (7) …", „2. …": what a two-column Textgegenüberstellung leaves
+ * out on purpose. The text between two such marks is the ressort's copy of
+ * the law in force; the marks themselves are not.
+ */
+const ELISION_RE = /(?:\(?[\p{L}\p{N}]+[.)]?\s+bis\s+)?\(?[\p{L}\p{N}]+[.)]?\s*(?:…|\.\.\.)/gu
+
+/** A stretch shorter than this proves nothing either way. */
+const MIN_STRETCH_WORDS = 6
+
+/**
+ * Does the text in force, as the document prints it, stand in RIS? Every
+ * stretch between two elisions must (`shareInRis` ≥ `STANDS_IN_RIS`), and at
+ * least one stretch must be long enough to say so. Without elisions — the
+ * Oberösterreich format — this is `shareInRis` on the whole.
+ */
+export function standsInRis(text: string, risText: string): boolean {
+  if (!/…|\.\.\./.test(text)) return shareInRis(text, risText) >= STANDS_IN_RIS
+  const stretches = text.split(ELISION_RE).map((s) => s.trim()).filter((s) => s.split(/\s+/).length >= MIN_STRETCH_WORDS)
+  return stretches.length > 0 && stretches.every((s) => shareInRis(s, risText) >= STANDS_IN_RIS)
+}
+
+/** One paired row of a two-column Textgegenüberstellung, as the federal reader returns it (`annex/annexPdf.ts`). */
+export interface ColumnRow {
+  kind: 'article' | 'pair'
+  law: string | null
+  para: string | null
+  current: string
+  proposed: string
+  changed: boolean
+}
+
+/**
+ * The rows of a two-column Textgegenüberstellung as §§ (Wien, 22.10.2026):
+ * the rows of one § joined, each column with the § heading on a line of its
+ * own — „Reinhaltung öffentlicher Flächen § 2. (1) bis (7) …" becomes the
+ * heading and „(1) bis (7) …".
+ */
+export function columnParagraphs(rows: readonly ColumnRow[], fallbackLaw: string | null): TguParagraph[] {
+  const out = new Map<string, TguParagraph>()
+  for (const r of rows) {
+    if (r.kind !== 'pair' || !r.para) continue
+    const number = /§\s*(\d+[a-z]*)/.exec(r.para)?.[1]
+    if (!number) continue
+    const law = r.law ?? fallbackLaw
+    const key = `${law ?? ''}|${number}`
+    const p = out.get(key) ?? { law, number, old: [], neu: [], changed: false }
+    const lines = (text: string) => {
+      const m = /^(.{1,120}?)\s*§\s*\d+[a-z]*\.\s*/.exec(text)
+      if (m) return [m[1]!.trim(), text.slice(m[0].length)].filter(Boolean)
+      return [text.replace(/^§\s*\d+[a-z]*\.\s*/, '')].filter(Boolean)
+    }
+    if (r.current.trim()) p.old.push(...lines(r.current.trim()))
+    if (r.proposed.trim()) p.neu.push(...lines(r.proposed.trim()))
+    p.changed ||= r.changed
+    out.set(key, p)
+  }
+  return [...out.values()]
+}
+
+/** „Gesetz, mit dem das Wiener Reinhaltegesetz geändert wird" → „Wiener Reinhaltegesetz": the one law a draft amends. */
+export function amendedLawOf(title: string): string | null {
+  const m = /mit de[rm] (?:das|die|der) ((?:(?!,| und ).)+?) geändert wird/.exec(title)
+  return m ? m[1]!.trim() : null
+}

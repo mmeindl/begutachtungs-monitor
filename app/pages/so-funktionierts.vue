@@ -533,17 +533,19 @@ const waitMonths = Math.round(RV_LATENCY_CONTEXT_DAYS / 30.44)
         vergleicht der Monitor den Ausschuss mit der Vorlage und nicht mit dem
         Gesetz. Gegen eine Kundmachung, die nur unsere Suche
         gefunden hat, vergleicht er grundsätzlich nicht: Ein falscher Treffer
-        würde ein ganzes Gesetz als umgeschrieben zeigen. Eine Ausnahme sind
-        Salzburgs Gesetze – dort vergleicht er, wenn beide Texte dieselbe
-        letzte Änderung des Gesetzes nennen („zuletzt geändert durch …“) oder
-        die Suche nur einen einzigen Treffer hatte. Geprüft haben wir das an
-        den Regierungsvorlagen, deren Text der Entwurf ist und die das
-        Rechtsinformationssystem mit ihrem Landesgesetzblatt verknüpft.
+        würde ein ganzes Gesetz als umgeschrieben zeigen. Eine Ausnahme ist
+        Salzburg – dort entscheidet der Text, welche Kundmachung zum Entwurf
+        gehört: bei einem Gesetz die Regierungsvorlage, die das
+        Rechtsinformationssystem mit dem Landesgesetzblatt verknüpft und die den
+        Text des Entwurfs enthält, bei einer Verordnung das Landesgesetzblatt
+        selbst. Wo das eine andere Kundmachung zeigt als unsere Suche über den
+        Titel, sagt die Seite das.
       </p>
       <p>
-        Was ein Entwurf am geltenden Recht ändern würde, zeigt Oberösterreich
-        selbst: in einer Textgegenüberstellung, in der das Neue unterstrichen
-        und das Gestrichene durchgestrichen ist. Der Monitor liest beides
+        Was ein Entwurf am geltenden Recht ändern würde, zeigen Oberösterreich
+        und Wien selbst: in einer Textgegenüberstellung – Oberösterreich mit
+        unterstrichenem Neuem und durchgestrichenem Altem, Wien in zwei Spalten
+        wie der Bund. Der Monitor liest beides
         daraus und stellt es Paragraph für Paragraph gegenüber, wie bei den
         Entwürfen des Bundes unter „Was ändert der Entwurf?“. Einen Paragraphen
         zeigt er nur, wenn dessen geltende Fassung so, wie er sie gelesen hat,

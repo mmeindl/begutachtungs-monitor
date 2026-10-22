@@ -24,6 +24,9 @@
  * - `data.bka.gv.at`: the RIS OGD API itself.
  * - `service.salzburg.gv.at`: Salzburg's list of drafts in Begutachtung and
  *   its documents (`server/utils/laender/salzburg.ts`).
+ * - `www.salzburg.gv.at`: the Salzburg Landtag's PDFs — the Regierungsvorlage
+ *   RIS links each Landesgesetzblatt to (`RegierungsvorlageLink`), read to
+ *   decide which Kundmachung is a draft's own (`laender/vorlageMatch.ts`).
  * - `www.wien.gv.at`: Wien's page of drafts and Stellungnahmen
  *   (`server/utils/laender/wien.ts`).
  * - `www.land-oberoesterreich.gv.at`, `www2.land-oberoesterreich.gv.at`:
@@ -38,6 +41,7 @@ export const UPSTREAM_HOSTS: ReadonlySet<string> = new Set([
   'ogd.ris.bka.gv.at',
   'data.bka.gv.at',
   'service.salzburg.gv.at',
+  'www.salzburg.gv.at',
   'www.wien.gv.at',
   'www.land-oberoesterreich.gv.at',
   'www2.land-oberoesterreich.gv.at',

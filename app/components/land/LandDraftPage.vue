@@ -67,9 +67,10 @@ const shortTitle = computed(() => (draft.value ? landShortTitle(draft.value.titl
 const kindLabel = computed(() => (draft.value ? RIS_KIND_LABEL[draft.value.kind] : ''))
 const citeAs = computed(() => (draft.value ? `${kindLabel.value} „${draft.value.title}“ (Land ${landName.value})` : ''))
 
-/* The Land's Textgegenüberstellung — Oberösterreich's is the format read
-   (`landTguService`); the section asks only where there is one. */
-const hasTgu = computed(() => props.land === 'ooe' && (draft.value?.documents ?? []).some((d) => /gegenüber/i.test(d.title)))
+/* The Land's Textgegenüberstellung (`landTguService`): Oberösterreich's is a
+   document of its own; Wien's stands at the end of the draft's PDF, so the
+   section always asks there and the server says when there is none. */
+const hasTgu = computed(() => props.land === 'w' || (props.land === 'ooe' && (draft.value?.documents ?? []).some((d) => /gegenüber/i.test(d.title))))
 
 const documents = computed<DraftDocument[]>(() =>
   (draft.value?.documents ?? []).map((d) => ({ title: d.title, formats: [{ type: 'pdf', url: d.url }] })))

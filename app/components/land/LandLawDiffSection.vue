@@ -34,6 +34,10 @@ const props = withDefaults(defineProps<{
   to?: LandTextStation
 }>(), { from: 'entwurf', to: 'lgbl' })
 
+/* Which Landesgesetzblatt the comparison held the draft against, and how it
+   became certain — for the section above it (`LandStationSections`). */
+const emit = defineEmits<{ kundmachung: [LandLawDiffResponse['kundmachung']] }>()
+
 const { data, status } = useFetch<LandLawDiffResponse>(
   () => `/api/laender/${props.land}/${props.number}/vergleich`,
   { query: { von: props.from, bis: props.to }, lazy: true, server: false },
@@ -50,6 +54,10 @@ const WHEN: Record<string, string> = { 'entwurf>rv': 'nach der Begutachtung', 'r
 /* The law in force against the draft is the Ministerialentwurf's
    „Was ändert der Entwurf?" — its heading and its anchor. */
 const ofDraft = computed(() => props.from === 'geltend')
+watch(() => data.value?.kundmachung, (k) => {
+  if (k) emit('kundmachung', k)
+}, { immediate: true })
+
 const heading = computed(() => (props.from === 'geltend' || props.to === 'geltend'
   ? 'Was ändert der Entwurf?'
   : lawStationPairQuestion(AS_LAW_STATION[props.from], AS_LAW_STATION[props.to])))
