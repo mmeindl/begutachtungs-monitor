@@ -23,6 +23,7 @@ describe('absaetze', () => {
       ['1. und 2. … '],
       ['3. neu.'],
     ])
+    expect(texts(absaetze([eq('(1) bis (7) … (8) Neu.')]))).toEqual([['(1) bis (7) … '], ['(8) Neu.']])
     // A last Ziffer after „und" with text between still opens its own block.
     expect(texts(absaetze([eq('1. erstens; und 2. zweitens.')]))).toEqual([['1. erstens; und '], ['2. zweitens.']])
   })

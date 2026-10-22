@@ -97,7 +97,12 @@ const REFERENCE = new Set([
  */
 export function blockStarts(tokens: string[]): Set<number> {
   const out = new Set<number>()
-  for (const [i, t] of tokens.entries()) if (i > 0 && ABS_RE.test(t)) out.add(i)
+  for (const [i, t] of tokens.entries()) {
+    if (i === 0 || !ABS_RE.test(t)) continue
+    // „(1) bis (7) …": a range the Textgegenüberstellung leaves out.
+    if (i >= 2 && RANGE_WORD.has(tokens[i - 1]!) && ABS_RE.test(tokens[i - 2]!)) continue
+    out.add(i)
+  }
 
   for (const run of ascendingRuns(tokens, Z_RE, (m) => Number(m[1]), 1)) {
     for (const [k, i] of run.entries()) {
