@@ -20,7 +20,7 @@ import { sameRisStammnorm, type BgblCitation } from '../lawtext/bgblCitation'
 import type { ClauseName } from '../lawtext/draftArticles'
 import { bestNameScore, pickClearWinner } from '../text/clearWinner'
 import { namesCompatible } from '../lawtext/lawNames'
-import { RIS_API_BASE, upstreamJson, upstreamText, type UpstreamPolicy } from '../upstream/fetch'
+import { RIS_API_BASE, risJson, upstreamText, type UpstreamPolicy } from '../upstream/fetch'
 import { safeExternalUrl } from '../../../shared/utils/safeExternalUrl'
 
 const TIMEOUT_MS = 20_000
@@ -78,8 +78,24 @@ function asArray<T>(x: T | T[] | null | undefined): T[] {
   return x === null || x === undefined ? [] : Array.isArray(x) ? x : [x]
 }
 
-export function konsJson(url: string): Promise<any> {
-  return upstreamJson<any>(url, { ...KONS_POLICY, accept: 'application/json' })
+/**
+ * One BrKons answer, as `{ OgdSearchResult }` — the shape every reader of it
+ * walks (here, `bgblLaws.ts`, the harness).
+ *
+ * THROUGH `risJson`, NOT `upstreamJson` (22.10.2026). RIS reports a failure
+ * on its side as HTTP 200 with `OgdSearchResult.Error`, and the plain JSON
+ * client read that envelope as a result without hits: `resolveLawByBgbl`
+ * answered „no such law", `paragraphHistory` an empty history, `lawsOfBgbl`
+ * an empty list — and the derived caches above them (`kons/konsCache.ts`,
+ * and the § names, the annex check, the Lesefassung and the amended laws
+ * above those) kept that for a day as a fact about the law. `risJson` checks the envelope and
+ * retries it like any bad minute, so the error throws, and nothing that
+ * reads this function has to know about it. It unwraps to the
+ * `OgdSearchResult`, so the wrapper is put back here rather than in every
+ * caller.
+ */
+export async function konsJson(url: string): Promise<any> {
+  return { OgdSearchResult: await risJson<any>(url, { ...KONS_POLICY, accept: 'application/json' }) }
 }
 
 /** One RIS document, retried like `konsJson` and for the same reason. */
