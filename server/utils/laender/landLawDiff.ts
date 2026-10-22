@@ -9,9 +9,15 @@
  *
  * Two adjustments, both on the Land's path only:
  * - The Landesgesetzblatt sets its Artikel as `<ueberschrift typ="art">`,
- *   which the RIS parser does not map. The Bund's BGBl uses the same type in
- *   older documents; mapping it there too is a change to the federal engine
- *   and waits for its own measurement (annex drift baseline).
+ *   which the RIS parser does not map — and its quoted divisions too („7b.
+ *   Abschnitt"). Mapped to `g1`, the parser takes an „Artikel …" for an
+ *   Artikel and anything else for a section heading, which it drops as
+ *   payload: both right here. NOT in the federal parser: there RIS types
+ *   „I. TEIL" of a Verordnung the same way, ahead of any instruction, and
+ *   as a section heading it became the Artikel's title — 105 units of
+ *   federal drafts renamed, measured over 245 cached RIS documents on
+ *   22.10.2026 (`scripts/corpus/artMapping.ts`). A Novelle of the
+ *   Landesgesetzblatt has no such heading before its Artikel.
  * - Quote marks are dropped on both sides after the units are cut, and a
  *   compound split at a line end is closed up. The PDF has „§ 5 where the
  *   XML keeps the opening quote in an element the parser leaves out;
