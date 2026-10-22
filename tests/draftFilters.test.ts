@@ -9,6 +9,7 @@ import {
   draftCountLabel,
   draftFiltersFromQuery,
   draftUrlQuery,
+  sameDraftFilters,
   stationTabsFor,
   unionGps,
   unionMinistries,
@@ -125,6 +126,29 @@ describe('the round trip', () => {
   it('leaves every default out of the URL', () => {
     expect(draftUrlQuery(empty)).toEqual({})
     expect(draftUrlQuery({ ...empty, sort: 'frist', status: 'all' })).toEqual({})
+  })
+})
+
+describe('sameDraftFilters', () => {
+  const open: DraftFilterValues = { ...empty, status: 'open', stations: ['begutachtung'] }
+
+  it('recognises the state the page itself wrote into the URL', () => {
+    // `useDraftFilters` reads its own `router.replace` back through the route.
+    for (const values of [empty, open, { ...open, gp: 'XXVII', q: 'klima', sort: 'stellungnahmen' as const }]) {
+      expect(sameDraftFilters(draftFiltersFromQuery(draftUrlQuery(values)), values)).toBe(true)
+    }
+  })
+
+  it('tells a navigation to another list apart, one filter is enough', () => {
+    // The header's „Entwürfe" from a list the homepage opened filtered.
+    expect(sameDraftFilters(empty, open)).toBe(false)
+    expect(sameDraftFilters(open, { ...open, ministry: 'BMF' })).toBe(false)
+    expect(sameDraftFilters(open, { ...open, sort: 'stellungnahmen' })).toBe(false)
+    expect(sameDraftFilters({ ...open, q: 'klima' }, open)).toBe(false)
+  })
+
+  it('compares what a URL carries, not how a link spelled it', () => {
+    expect(sameDraftFilters(draftFiltersFromQuery({ gp: 'xxvii', status: 'halb' }), { ...empty, gp: 'XXVII' })).toBe(true)
   })
 })
 

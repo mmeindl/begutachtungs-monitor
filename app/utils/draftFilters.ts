@@ -170,6 +170,18 @@ export function draftUrlQuery(f: DraftFilterValues): Record<string, string> {
   return query
 }
 
+/**
+ * Whether two states write the same URL — and are therefore the same list,
+ * since the URL carries every filter and the round trip loses nothing.
+ * `useDraftFilters` tells its own write-back from a navigation by it.
+ */
+export function sameDraftFilters(a: DraftFilterValues, b: DraftFilterValues): boolean {
+  const x = draftUrlQuery(a)
+  const y = draftUrlQuery(b)
+  const keys = Object.keys(x)
+  return keys.length === Object.keys(y).length && keys.every((key) => x[key] === y[key])
+}
+
 /* ------------------------------------------------------------------ *
  * What the list page builds from the filters — pure, so it is tested
  * ------------------------------------------------------------------ */

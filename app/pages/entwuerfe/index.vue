@@ -124,7 +124,7 @@ const rowComparators: Record<SortKey, (a: DraftListRow, b: DraftListRow) => numb
 /* Filter state, URL binding and the query for both endpoints:
  * `useDraftFilters`, with the pure half in `app/utils/draftFilters.ts`. */
 const filters = useDraftFilters()
-const { statusFilter, art, gp, ministry, q, qDebounced, sort, stations, query } = filters
+const { statusFilter, art, gp, ministry, q, qDebounced, sort, stations, query, onNavigate } = filters
 
 /* The station tabs (`stationTabsFor` says how a link naming several
  * stations keeps its set, and why two tabs stand unavailable under
@@ -166,12 +166,21 @@ function toggleOpen(): void {
   statusFilter.value = wantsOpen.value ? 'open' : 'all'
 }
 
-/* An old `?status=closed` link is its own state (its chip clears it); the
- * stations leave it alone. */
-watch(openUnavailable, (reason) => {
+/* The wish applied wherever the chip is available. An old `?status=closed`
+ * link is its own state (its chip clears it); the stations leave it alone. */
+function applyWish(): void {
   if (statusFilter.value === 'closed') return
-  statusFilter.value = wantsOpen.value && !reason ? 'open' : 'all'
-}, { immediate: true })
+  statusFilter.value = wantsOpen.value && !openUnavailable.value ? 'open' : 'all'
+}
+watch(openUnavailable, applyWish, { immediate: true })
+
+/* A navigation to another list sets the filters from its URL
+ * (`useDraftFilters`), and the wish follows as at setup: it is what that URL
+ * says. The tick stayed across the header's „Entwürfe" until 22.10.2026. */
+onNavigate(() => {
+  wantsOpen.value = statusFilter.value === 'open'
+  applyWish()
+})
 
 /**
  * The rarer filters — Art, period, Ressort — behind one disclosure, at every
