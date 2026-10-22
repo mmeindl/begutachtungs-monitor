@@ -25,4 +25,16 @@ describe('foldByBudget', () => {
     const items = [text(1000), heading(10), text(1000)]
     expect(foldByBudget(items, 1400)).toEqual({ visible: [items[0]], folded: [items[1], items[2]] })
   })
+
+  it('moves every heading of a run at the cut, not just the last', () => {
+    // A heading over a subheading, as 108/ME's visible part ended on
+    // „Hauptgesichtspunkte des Entwurfs:" above „Weiterlesen".
+    const items = [text(1000), heading(10), heading(10), text(1000)]
+    expect(foldByBudget(items, 1400)).toEqual({ visible: [items[0]], folded: items.slice(1) })
+  })
+
+  it('never folds the first paragraph or the headings above it', () => {
+    const items = [heading(10), heading(10), text(1000), heading(10), heading(10), text(1000)]
+    expect(foldByBudget(items, 1400)).toEqual({ visible: items.slice(0, 3), folded: items.slice(3) })
+  })
 })

@@ -35,7 +35,10 @@ export function foldByBudget<T extends FoldItem>(items: readonly T[], budget: nu
     shown = i + 1
   }
   // No dangling heading at the cut: it belongs to what stands below it, so
-  // it moves into the disclosure with it.
-  if (shown < items.length && items[shown - 1]?.kind === 'heading') shown -= 1
+  // it moves into the disclosure with it — every heading of a run, since a
+  // heading over a subheading is as dangling as one alone (108/ME,
+  // 86/ME). The walk ends at the last paragraph shown, and a cut only ever
+  // falls after the first: the first paragraph never folds.
+  while (shown < items.length && items[shown - 1]?.kind === 'heading') shown -= 1
   return { visible: items.slice(0, shown), folded: items.slice(shown) }
 }
