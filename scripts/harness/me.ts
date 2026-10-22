@@ -48,8 +48,8 @@ import { articleBlocks, draftArticles, type DraftArticle } from '../../server/ut
 import { getText, resolveLawByBgbl, type KonsParagraphRef } from '../../server/utils/ris/konsLaw'
 import { fetchLawAsOf, fetchParagraphTree, resolveGesetzesnummer } from '../../server/utils/harness/risKonsHistory'
 import { guardParagraph, type GuardFlag } from '../../server/utils/kons/applyGuard'
-import { addressedParagraphs, refusedUnits } from '../../server/utils/kons/konsGate'
-import { isTocInstruction, namedParagraphs, opAddress, refusedAddresses } from '../../server/utils/kons/novao'
+import { addressedParagraphs, refusedLineUnits, refusedUnits } from '../../server/utils/kons/konsGate'
+import { createdUnits, namedParagraphs, opAddress } from '../../server/utils/kons/novao'
 import { parseTextComparison, type ComparisonRow } from '../../server/utils/annex/comparisonRows'
 import { parseAnnexPdf } from '../../server/utils/annex/annexPdf'
 import { pagesOf } from '../../server/utils/annex/annexPdfPages'
@@ -398,7 +398,7 @@ async function verifyLaw(
   const { instructions, refused } = instructionsFromUnits(units)
   result.instructions = instructions.length + refused.length
   result.read = instructions.length
-  const addressed = addressedParagraphs(instructions, refused.map((r) => r.line))
+  const addressed = addressedParagraphs(instructions, refused)
   if (result.instructions === 0) {
     result.note = 'keine Novellierungsanordnungen'
     return result
@@ -441,7 +441,7 @@ async function verifyLaw(
   result.applied = results.filter((r) => r.applied).length
 
   // The site's reading (`refusedUnits`), keyed by the bare number this Prüfstand holds its §§ under.
-  const refusedIds = refusedUnits(unresolved, refused.map((r) => r.line), harnessKey)
+  const refusedIds = refusedUnits(unresolved, refused, harnessKey)
 
   if (verbose) {
     console.log(`\n${draft.id}${article.number ? ` ${article.number}` : ''} — ${result.law} (Begutachtung ab ${draft.beginn})`)
@@ -531,8 +531,7 @@ async function verifyLaw(
   }
   // Every unit a refusal names, as `refusedUnits` locks them on the site.
   for (const r of refused) {
-    if (isTocInstruction(r.line)) continue
-    for (const p of refusedAddresses(r.line) ?? [/§+\s*\d+[a-z]*/.exec(r.line)?.[0] ?? '']) blame(p ? harnessKey(p) : null, `Grammatik: ${reasonClass(r.reason ?? '')}`)
+    for (const p of [...refusedLineUnits(r), ...createdUnits(r.line)]) blame(harnessKey(p), `Grammatik: ${reasonClass(r.reason ?? '')}`)
   }
   instructions.forEach(({ op }, i) => {
     if (results[i]!.applied || op.kind === 'toc') return

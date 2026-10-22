@@ -1,8 +1,8 @@
 import { describe, expect, it } from 'vitest'
 import { addressedLabels, addressedParagraphs, byParagraphOrder, gateParagraph, refusedUnits } from '../server/utils/kons/konsGate'
 import { unitKey } from '../server/utils/text/designation'
-import { parsePayload, type Instruction } from '../server/utils/kons/lawApply'
-import { parseInstruction } from '../server/utils/kons/novao'
+import { instructionsFromUnits, parsePayload, type Instruction } from '../server/utils/kons/lawApply'
+import { createdUnits, parseInstruction, refusedAddresses } from '../server/utils/kons/novao'
 
 /** An instruction, the way the harness hands it to the module. */
 function instr(line: string, payloadLines: string[] = []): Instruction[] {
@@ -52,7 +52,8 @@ describe('addressedParagraphs — der Nenner der Anzeige', () => {
   // „2 von 2" would stand over a list that hides half the draft.
   it('keeps a refused instruction in the denominator', () => {
     const instructions = instr('In § 5 Abs. 1 wird das Wort "A" durch das Wort "B" ersetzt.')
-    expect(addressedParagraphs(instructions, ['In den §§ 9 und 10 wird etwas Unlesbares getan.'])).toEqual(['5', '9'])
+    // Every § the refused line names, not its first one (22.10.2026).
+    expect(addressedParagraphs(instructions, ['In den §§ 9 und 10 wird etwas Unlesbares getan.'])).toEqual(['5', '9', '10'])
   })
 
   it('counts and fetches every § of a list, not the first one only', () => {
@@ -129,6 +130,107 @@ describe('refusedUnits — was nicht als sauber gelten darf (26.09.2026)', () =>
 
   it('keys a schedule the way the page does', () => {
     expect([...refusedUnits(['Anl. 1', '§ 5'], [], unitKey)].sort()).toEqual(['5', 'Anl. 1'])
+  })
+})
+
+describe('a refused line locks every unit it names, not its first § (22.10.2026)', () => {
+  // `refusedAddresses` gives up on these on purpose — for the annex no address
+  // beats a wrong one. The gate fell back on the first §, and the others
+  // stood clean with the change missing.
+  const sorted = (s: Iterable<string>): string[] => [...s].sort(byParagraphOrder)
+
+  it('Bäderhygieneverordnung: refused over the sublit., seven §§ named', () => {
+    const line = 'In § 2 Z 19, § 7 Abs. 1 Z 2 lit. b, lit. c sublit. aa, § 21 Abs. 1 und 6, § 27 Abs. 2, § 28 Abs. 2 und 3, § 31 Abs. 1, der Überschrift zu § 103 und § 103 Abs. 1 und 2 entfällt jeweils der Klammerausdruck "(Whirl Pools)" .'
+    expect(refusedAddresses(line)).toBeNull()
+    expect(sorted(refusedUnits([], [line], unitKey))).toEqual(['2', '7', '21', '27', '28', '31', '103'])
+    expect(addressedParagraphs([], [line])).toEqual(['2', '7', '21', '27', '28', '31', '103'])
+  })
+
+  it('reads the plural shorthand as the grammar does: a number with a component of its own is a §', () => {
+    // BVergG: the 5 is an Absatz of § 184, the 5, 7 and 8 Ziffern of § 380.
+    const bvergg = 'In den §§ 184 Abs. 4 und 5, 360 Abs. 5 und 380 Abs. 1 Z 1, 5, 7 und 8 sowie Abs. 2 wird die Wortfolge "der Bundesminister für Verfassung, Reformen, Deregulierung und" jeweils durch die Wortfolge "die Bundesministerin für" ersetzt.'
+    expect(sorted(refusedUnits([], [bvergg], unitKey))).toEqual(['184', '360', '380'])
+    // ASVG: „erster Satz" between them does not end the list.
+    const asvg = 'In den §§ 92 Abs. 2, 254 Abs. 6, Abs. 7 erster Satz und Z 2 sowie Abs. 8 erster Satz und 814 Abs. 2 Z 2 wird jeweils das Wort "Teilpension" durch das Wort "Anteilspension" ersetzt.'
+    expect(sorted(refusedUnits([], [asvg], unitKey))).toEqual(['92', '254', '814'])
+  })
+
+  it('reads a long ascending list to its end, a Litera behind a Litera included', () => {
+    // Finanzstrafgesetz: the list stopped at „lit. a und c", and „61 Abs. 1,
+    // 80, 81" read as Absätze 80 and 81 of § 61.
+    const line = 'In den §§ 58 Abs. 2, 59 Abs. 1, 2 und 3, 60 Abs. 1, 61 Abs. 1, 80, 81, 82 Abs. 1 und 3, 88 Abs. 1 lit. a und c, Abs. 3 und 5, 90 Abs. 2, 95 und 115 wird etwas Unlesbares.'
+    expect(sorted(refusedUnits([], [line], unitKey))).toEqual(['58', '59', '60', '61', '80', '81', '82', '88', '90', '95', '115'])
+    // Behind a Ziffer a larger number stays a Ziffer: definitions run long.
+    expect(sorted(refusedUnits([], ['In den §§ 2 Z 5, 12 und 19 sowie 4 Abs. 2 wird etwas Unlesbares.'], unitKey))).toEqual(['2', '4'])
+  })
+
+  it('locks what a refused insertion announces, not the references of its new text', () => {
+    // Refused over a table: „§ 43" is the anchor, §§ 44 to 52 are the line's.
+    expect(sorted(refusedUnits([], ['Nach § 43 werden folgende §§ 44 bis 52 samt Überschriften eingefügt:'], unitKey))).toEqual(['43', '44', '45', '46', '47', '48', '49', '50', '51', '52'])
+    expect(createdUnits('Nach der Anlage 4 zu § 30 wird folgende Anlage 5 zu § 14 eingefügt:')).toEqual(['Anlage 5'])
+  })
+
+  it('reads a range, but never a Ziffer behind a single § as a §', () => {
+    expect(sorted(refusedUnits([], ['Die §§ 7 bis 9 werden etwas Unlesbares.'], unitKey))).toEqual(['7', '8', '9'])
+    expect(sorted(refusedUnits([], ['In § 5 Abs. 1 Z 2 und 3 lit. a wird etwas Unlesbares.'], unitKey))).toEqual(['5'])
+  })
+
+  it('locks a schedule a refused line names', () => {
+    expect(sorted(refusedUnits([], ['In Anlage 2 Teil IV Z 3 entfällt der 2. Spiegelstrich.'], unitKey))).toEqual(['Anl. 2'])
+  })
+
+  it('locks the new number of a refused renumbering, quoted or not', () => {
+    // Read as § 43 alone, the line left the standing § 44 clean for „Dem
+    // neuen § 44 wird folgender Abs. 6 angefügt".
+    expect(sorted(refusedUnits([], ['Der bisherige § 43 erhält die Bezeichnung § 44 .'], unitKey))).toEqual(['43', '44'])
+    expect(sorted(refusedUnits([], ['Die §§ 5 bis 9 erhalten die Paragrafenbezeichnungen "6." bis "10." und etwas Unlesbares.'], unitKey))).toEqual(['5', '6', '7', '8', '9', '10'])
+    expect(sorted(refusedUnits([], ['Der bisherige § 9 wird zu § 16.'], unitKey))).toEqual(['9', '16'])
+    // A renamed Ziffer stays inside its §: „4." to „8." are no §§.
+    expect(sorted(refusedUnits([], ['In § 107 erhalten die Z 5 bis 9 die Ziffernbezeichnungen "4." bis "8." und etwas Unlesbares.'], unitKey))).toEqual(['107'])
+  })
+
+  it('leaves a citation behind an operand’s noun out where the grammar has no reading', () => {
+    // Fiskalratgesetz, BGBl. I Nr. 29/2026: § 3 and § 2 are what the line
+    // cites, § 9 what it changes. Locked, § 3 was withheld for nothing.
+    const line = 'In § 9 wird das Zitat § 3 Abs. 3 durch das Zitat § 2 Abs. 3 ersetzt.'
+    expect(refusedAddresses(line)).toBeNull()
+    expect(sorted(refusedUnits([], [line], unitKey))).toEqual(['9'])
+    expect(sorted(refusedUnits([], ['In § 108a Abs. 1 Z 2 wird der Verweis auf § 18a durch den Verweis §§ 98a bis 98h ersetzt.'], unitKey))).toEqual(['108a'])
+  })
+
+  it('keeps the grammar’s reading where it has one, so an operand’s citation stays out', () => {
+    const line = 'In § 73 Abs. 2 wird der Verweis auf § 20 Abs. 6 durch den Verweis auf § 20 Abs. 4 ersetzt.'
+    expect(refusedAddresses(line)).toEqual(['§ 73'])
+    expect(sorted(refusedUnits([], [line], unitKey))).toEqual(['73'])
+  })
+
+  it('locks the container § of a refused sub-instruction', () => {
+    // Glücksspielgesetz: „c) In Abs. 5 wird der Verweis auf ‚§ 16 Abs. 4 bis
+    // 6' hinzugefügt." names no § of its own; the first-§ fallback locked the
+    // citation § 16 and left the § it changes clean.
+    const unit = { article: null, articleNumber: null, id: 'Z5', heading: null, quotedHeadings: [], stammnorm: null, text: '', blocks: [
+      { kind: 'novao' as const, cls: '', text: '5. § 14 wird wie folgt geändert:', gld: null },
+      { kind: 'novao' as const, cls: '', text: 'a) In Abs. 2 wird das Wort "alt" durch das Wort "neu" ersetzt.', gld: null },
+      { kind: 'novao' as const, cls: '', text: 'c) In Abs. 5 wird der Verweis auf "§ 16 Abs. 4 bis 6" hinzugefügt.', gld: null },
+    ] }
+    const { instructions, refused } = instructionsFromUnits([unit])
+    expect(refused.map((r) => r.inherited?.para)).toEqual(['§ 14'])
+    // § 16 stays locked: the reading before is the floor.
+    expect(sorted(refusedUnits([], refused, unitKey))).toEqual(['14', '16'])
+    expect(addressedParagraphs(instructions, refused)).toEqual(['14', '16'])
+    // The bare line, as a caller without the container hands it over, reads as before.
+    expect(sorted(refusedUnits([], refused.map((r) => r.line), unitKey))).toEqual(['16'])
+  })
+
+  it('never locks less than the reading before, which also looked into quotations', () => {
+    // A Verordnung that quotes its own §: „Der bisherige ‚§ 7' erhält …".
+    expect(sorted(refusedUnits([], ['Der bisherige "§ 7" erhält die Bezeichnung "§ 8" und lautet:'], unitKey))).toEqual(['7', '8'])
+  })
+
+  it('labels every § of a refused line, under the Artikel it names', () => {
+    const labels = addressedLabels([], ['In Artikel II § 8 und § 9 Abs. 1 wird etwas Unlesbares getan.'])
+    expect(labels?.get('8')).toBe('Art. 2 § 8')
+    expect(labels?.get('9')).toBe('Art. 2 § 9')
   })
 })
 

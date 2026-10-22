@@ -33,8 +33,8 @@
  * by construction).
  */
 
-import type { Instruction } from './lawApply'
-import { articleQualifier, isTocInstruction, namedParagraphs, opAddress, refusedAddresses } from './novao'
+import type { Instruction, RefusedInstruction } from './lawApply'
+import { articleQualifier, createdUnits, isTocInstruction, mentionedUnits, namedParagraphs, opAddress, refusedAddresses } from './novao'
 import type { ConsolidatedWithheldCause } from '../../../shared/types'
 import { articleNumberKey, isDivision, isSchedule, unitKey } from '../text/designation'
 
@@ -107,8 +107,59 @@ export function byParagraphOrder(a: string, b: string): number {
 }
 
 /**
+ * A refused instruction as `instructionsFromUnits` hands it over — or its bare
+ * line, for a caller that has no container to give.
+ */
+export type RefusedLine = string | Pick<RefusedInstruction, 'line' | 'inherited'>
+
+const lineOf = (refused: RefusedLine): string => (typeof refused === 'string' ? refused : refused.line)
+
+/**
+ * The units a refused line names: the grammar's reading of its address where
+ * there is one (`refusedAddresses`), and where there is none every unit its
+ * words name (`mentionedUnits`) and the § of the container it stands under.
+ *
+ * `refusedAddresses` is tuned for the annex, where no address beats a wrong
+ * one, and returns null for every line it cannot read whole. Until
+ * 22.10.2026 the gate then fell back on the line's first § — and a line is
+ * refused precisely because it is hard to read, which is where it names
+ * several: „In den §§ 184 Abs. 4 und 5, 360 Abs. 5 und 380 …" locked § 184
+ * and left §§ 360 and 380 clean with the replacement missing (BVergG), the
+ * Bäderhygieneverordnung's „Whirl Pools" line § 2 of seven. Over the draft
+ * corpus 368 of 6.300 refused lines locked fewer §§ than they name.
+ *
+ * **And a refused sub-instruction locked no § at all.** „§ 4 wird wie folgt
+ * geändert: … c) In Abs. 3 wird …" — the c) names none of its own, so § 4
+ * stood clean with the change of its Abs. 3 missing; where the line quoted a
+ * citation („der Verweis auf ‚§ 16 Abs. 4 bis 6'"), the first-§ fallback
+ * locked that instead. 337 of the 359 refused sub-instructions of the corpus.
+ * The line is now read with the address it would have inherited.
+ *
+ * **The reading before stays the floor** — the line's own address, or else
+ * its first § anywhere, quotations included. Usually that § is a citation,
+ * sometimes the target itself: „Der bisherige ‚§ 7' erhält die Bezeichnung
+ * ‚§ 8'" quotes its §. A lock this reading could take away would be a § shown
+ * that was withheld before.
+ *
+ * The same reading for the lock, the denominator and the labels, so a § the
+ * line locks is also counted and looked up.
+ *
+ * A clause on the table of contents names no unit (`isTocInstruction`).
+ */
+export function refusedLineUnits(refused: RefusedLine): string[] {
+  const line = lineOf(refused)
+  const inherited = typeof refused === 'string' ? null : refused.inherited
+  if (isTocInstruction(line)) return []
+  const own = refusedAddresses(line)
+  const read = (inherited ? refusedAddresses(line, inherited) : own) ?? [...mentionedUnits(line), ...(inherited?.para ? [inherited.para] : [])]
+  const first = /§+\s*\d+[a-z]*/.exec(line)?.[0]
+  return [...new Set([...read, ...(own ?? (first ? [first] : []))])]
+}
+
+/**
  * The units a run of `applyNovelle` must not show as clean: every one an
- * unresolved instruction names, and every one a refused line names.
+ * unresolved instruction names, and every one a refused line names
+ * (`refusedLineUnits`) or would have brought into being (`createdUnits`).
  *
  * Two readings stood in three places (`konsService`, both Prüfstände), and
  * both stopped short. A refused line counted with its first § only, so the
@@ -117,14 +168,25 @@ export function byParagraphOrder(a: string, b: string): number {
  * And both were keyed by the bare number, while the page keys a schedule as
  * „Anl. 1": a failed instruction on the Anlage marked § 1 refused and left the
  * Anlage clean. `key` is the form the caller looks units up in.
+ *
+ * **The new number of a refused renumbering is locked too, and the §§ a
+ * refused insertion announces** (22.10.2026). „Der bisherige § 43 erhält die
+ * Bezeichnung § 44" refused leaves the standing § 44 where the draft means the
+ * old § 43, and the next instruction on „§ 44" lands on it — read as § 43
+ * alone, the line left § 44 clean. `kons/lawApply.ts` does the same for an
+ * instruction that was read and then failed (`newParagraphsOf`).
+ *
+ * Over-locking is the safe direction here, the opposite of the annex's trade:
+ * a § locked too many is withheld, a § locked too few is shown without a
+ * change the draft makes.
  */
-export function refusedUnits(unresolved: Iterable<string>, refusedLines: readonly string[], key: (designation: string) => string | null): Set<string> {
+export function refusedUnits(unresolved: Iterable<string>, refusedLines: readonly RefusedLine[], key: (designation: string) => string | null): Set<string> {
   const out = new Set<string>()
   for (const p of unresolved) {
     const id = key(p)
     if (id) out.add(id)
   }
-  for (const line of refusedLines) {
+  for (const refused of refusedLines) {
     // „Im Inhaltsverzeichnis entfällt der Eintrag zu § 17; die Einträge zu den
     // §§ 18 und 19 lauten": the table of contents, which no § text carries —
     // the grammar reads it as `toc` for the same reason. Named §§ are its
@@ -132,10 +194,8 @@ export function refusedUnits(unresolved: Iterable<string>, refusedLines: readonl
     // predicate the grammar, the annex and the § names ask too: a prefix test
     // here missed „Der Eintrag zu § 50 im Inhaltsverzeichnis lautet:" and
     // locked § 50 (01.10.2026).
-    if (isTocInstruction(line)) continue
-    const named = refusedAddresses(line) ?? [/§+\s*\d+[a-z]*/.exec(line)?.[0] ?? '']
-    for (const p of named) {
-      const id = p ? key(p) : null
+    for (const p of [...refusedLineUnits(refused), ...createdUnits(lineOf(refused))]) {
+      const id = key(p)
       if (id) out.add(id)
     }
   }
@@ -157,7 +217,7 @@ export function refusedUnits(unresolved: Iterable<string>, refusedLines: readonl
  */
 export function addressedParagraphs(
   instructions: readonly Instruction[],
-  refusedLines: readonly string[],
+  refusedLines: readonly RefusedLine[],
 ): string[] {
   const out = new Set<string>()
   for (const { op, payload } of instructions) {
@@ -176,9 +236,15 @@ export function addressedParagraphs(
       for (const p of payload) if (p.id) out.add(p.id)
     }
   }
-  for (const line of refusedLines) {
-    const id = /§+\s*(\d+[a-z]*)/.exec(line)?.[1]
-    if (id) out.add(id)
+  // Every unit the line names, read as the lock reads it (`refusedLineUnits`):
+  // counted with its first § only, „In den §§ 184 …, 360 … und 380 …" put one
+  // of three §§ into the denominator, and the page divided by too little.
+  for (const refused of refusedLines) {
+    for (const para of refusedLineUnits(refused)) {
+      if (isDivision(para)) continue
+      const id = unitKey(para)
+      if (id) out.add(id)
+    }
   }
   return [...out].sort(byParagraphOrder)
 }
@@ -204,7 +270,7 @@ export function addressedParagraphs(
  */
 export function addressedLabels(
   instructions: readonly Instruction[],
-  refusedLines: readonly string[],
+  refusedLines: readonly RefusedLine[],
 ): Map<string, string> | null {
   const out = new Map<string, string>()
   const add = (id: string, artikel: string | null): boolean => {
@@ -236,11 +302,19 @@ export function addressedLabels(
   // — the collision this guards against is between two things that are
   // actually applied. Letting it refuse the Artikel anyway cost 116/ME one of
   // its 65 laws on a line whose § was addressed perfectly well elsewhere.
-  for (const line of refusedLines) {
-    const id = /§+\s*(\d+[a-z]*)/.exec(line)?.[1]
-    if (!id || out.has(id)) continue
-    const numeral = articleQualifier(line)
-    out.set(id, numeral ? `Art. ${articleNumberKey(numeral) ?? numeral} § ${id}` : `§ ${id}`)
+  //
+  // Every unit the line names, as the denominator counts them; the Artikel a
+  // line names in front of its § holds for the line (`parseAddressList` carries
+  // it the same way).
+  for (const refused of refusedLines) {
+    // A sub-instruction's Artikel is its container's.
+    const numeral = articleQualifier(lineOf(refused)) ?? (typeof refused === 'string' ? null : (refused.inherited?.artikel ?? null))
+    for (const para of refusedLineUnits(refused)) {
+      if (isDivision(para)) continue
+      const id = unitKey(para)
+      if (!id || out.has(id)) continue
+      out.set(id, isSchedule(id) ? id : numeral ? `Art. ${articleNumberKey(numeral) ?? numeral} § ${id}` : `§ ${id}`)
+    }
   }
   return out
 }

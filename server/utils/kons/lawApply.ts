@@ -279,6 +279,23 @@ function payloadLine(b: { kind: string; text: string; gld: string | null }): Pay
 }
 
 /**
+ * An instruction line nothing was made of, and why — with the container it
+ * stands under, where it stands under one.
+ *
+ * „§ 4 wird wie folgt geändert: … c) In Abs. 3 wird …": refused, the c) names
+ * no § of its own, and read alone it locked none — the § 4 it changes stayed
+ * clean at the gate. 337 of the 359 refused sub-instructions of the draft
+ * corpus were of that kind (22.10.2026). `inherited` is the address the line
+ * would have inherited, so the readers of a refusal can read it as the grammar
+ * would have (`refusedLineUnits` in `kons/konsGate.ts`).
+ */
+export interface RefusedInstruction {
+  line: string
+  reason: string
+  inherited: NovaoAddress | null
+}
+
+/**
  * The instructions of a parsed Novelle, each with the text it installs.
  *
  * A unit can hold more than one instruction: "§ 20 wird wie folgt geändert:"
@@ -286,9 +303,9 @@ function payloadLine(b: { kind: string; text: string; gld: string | null }): Pay
  * and they inherit its address. Treating them as payload swallowed them
  * silently — which is why the split lives here and not in a script.
  */
-export function instructionsFromUnits(units: readonly LawUnit[]): { instructions: Instruction[]; refused: { line: string; reason: string }[] } {
+export function instructionsFromUnits(units: readonly LawUnit[]): { instructions: Instruction[]; refused: RefusedInstruction[] } {
   const instructions: Instruction[] = []
-  const refused: { line: string; reason: string }[] = []
+  const refused: RefusedInstruction[] = []
   // „17. Der Eintrag nach der § 29 betreffenden Zeile lautet:" goes on with
   // the table of contents of the instruction before it; read alone it was
   // refused and locked § 29 (`tocSequence`).
@@ -309,7 +326,7 @@ export function instructionsFromUnits(units: readonly LawUnit[]): { instructions
       // become Absätze in whatever order the parser met them. Seven §§ of the
       // NEHG diverged that way (BGBl. I Nr. 60/2024, 2026-09-09). Refused.
       if (tables.has(gi)) {
-        refused.push({ line: group.line, reason: 'Tabelle im neuen Text — nicht als Gesetzestext abbildbar' })
+        refused.push({ line: group.line, reason: 'Tabelle im neuen Text — nicht als Gesetzestext abbildbar', inherited: container })
         continue
       }
       // The table of contents follows from the headings and is never applied;
@@ -334,7 +351,7 @@ export function instructionsFromUnits(units: readonly LawUnit[]): { instructions
       // full stop into a comma and stopped — publishes a sentence that ends
       // in mid-air and reports success (Privatschulgesetz § 23, 2026-09-09).
       if (parsed.ops.length === 0 || parsed.reason !== null) {
-        refused.push({ line: group.line, reason: parsed.reason ?? 'nicht gelesen' })
+        refused.push({ line: group.line, reason: parsed.reason ?? 'nicht gelesen', inherited: container })
         continue
       }
       for (const op of parsed.ops) {
@@ -1791,6 +1808,48 @@ function joinPhrase(left: string, text: string, right: string): string {
   return `${l}${sepLeft}${t}${sepRight}${r}`.trim()
 }
 
+/**
+ * The §§ an instruction would bring into being: the new numbers of a
+ * renumbering of §§, the §§ an insertion announces or spells out, and those a
+ * replacement run installs („durch folgende §§ 7 bis 10").
+ *
+ * Where the instruction fails these are as unresolved as its target. „Der
+ * bisherige § 43 erhält die Bezeichnung § 44" refused leaves the standing
+ * § 44 standing; a later „§ 44" of the Novelle means the old § 43 and lands
+ * on it, and a § 44 that is marked clean is shown that way (22.10.2026).
+ *
+ * „folgende Anlage 5 zu § 14 eingefügt" creates a schedule, and the op keeps
+ * only its number — read as § 5 it locked a § the line never touches
+ * (Alternative Investmentfonds Manager-Gesetz, BGBl. I Nr. 57/2026). The kind
+ * comes from the line's own announcement.
+ */
+function newParagraphsOf({ op, payload, line }: Instruction): string[] {
+  if (op.kind === 'renumber') {
+    const first = op.target.level === 'para' && op.to ? bareParaId(op.to) : null
+    if (!first) return []
+    const last = op.toLast ? bareParaId(op.toLast) : null
+    return [first, ...(last ? (expandRange(first, last) ?? []) : [])].map((id) => `§ ${id}`)
+  }
+  if ((op.kind === 'insertAfter' || op.kind === 'append') && op.child === 'para') {
+    const kind = ANNOUNCES_SCHEDULE_RE.test(normalizeText(line)) ? 'Anlage' : '§'
+    return [...new Set([...op.childIds, ...payload.map((p) => p.id)])].filter(Boolean).map((id) => `${kind} ${id}`)
+  }
+  if (op.kind === 'replace' && op.target.level === 'para') return payload.filter((p) => p.level === 'para' && p.id).map((p) => `§ ${p.id}`)
+  return []
+}
+
+/** „folgende Anlage 5", „als neue Anlage 5": an insertion whose new unit is a schedule. */
+const ANNOUNCES_SCHEDULE_RE = /(?<![\p{L}])(?:folgende[rnms]?|nachstehende[rnms]?|als)\s+(?:neue[rnms]?\s+)?(?:Anlage|Anhang)(?![\p{L}])/iu
+
+/**
+ * „Dem neuen § 44 wird folgender Abs. 6 angefügt", „Im neuen § 13 …": an
+ * address on a § the Novelle itself brings into being — by a renumbering or
+ * an insertion before it. Only the § of the address itself counts: in „Nach
+ * § 12 wird ein neuer § 12a … eingefügt" the anchor is § 12, and the new
+ * § 12a is what the line creates.
+ */
+const NEW_PARAGRAPH_RE = /(?<![\p{L}])neue[nmrs]?\s+§\s*(\d+[a-z]*)/iu
+
 /** Deep copy, so a refused run leaves the standing law untouched. */
 function cloneLaw(law: StandingLaw): StandingLaw {
   const clone = (n: LawNode): LawNode => ({ ...n, children: n.children.map(clone) })
@@ -1812,13 +1871,21 @@ export function applyNovelle(input: StandingLaw, instructions: readonly Instruct
    */
   const renumberedIn = new Set<string>()
   let paragraphsRenumbered = false
+  /** The §§ an applied renumbering or insertion of this Novelle has brought into being, by bare id. */
+  const produced = new Set<string>()
   const extra: ApplyResult[] = []
+  /** The instructions a renumbering batch carried out with the one at `i` — for the bookkeeping below. */
+  const batched: Instruction[] = []
   const renamed: Renaming[] = []
   for (let i = 0; i < instructions.length; i++) {
     const instruction = instructions[i]!
     const { op, line } = instruction
     const target = opAddress(op)
     const para = target?.para ?? null
+    const producing = ((op.kind === 'insertAfter' || op.kind === 'append') && op.child === 'para') || (op.kind === 'replace' && op.target.level === 'para')
+    const idsBefore = producing ? new Set(law.paragraphs.map((p) => p.id)) : null
+    const renamedBefore = renamed.length
+    const fresh = target ? NEW_PARAGRAPH_RE.exec(target.raw) : null
     let reason: string | null
     try {
       // "§ 107 Z 6 (neu) lautet:" addresses the numbering *after* an earlier
@@ -1828,6 +1895,14 @@ export function applyNovelle(input: StandingLaw, instructions: readonly Instruct
       // the Novelle does not license it; moved §§ do, for every § address.
       const renumbered = paragraphsRenumbered || (para !== null && renumberedIn.has(para))
       if (target && /\(neu\)/i.test(target.raw) && !renumbered) reason = '„(neu)" ohne vorangehende Umbenennung'
+      // „Dem neuen § 44 wird folgender Abs. 6 angefügt" is the same address in
+      // words: after „Der bisherige § 43 erhält die Bezeichnung § 44" was
+      // refused, it appended to the STANDING § 44 and reported success
+      // (22.10.2026). Stricter than „(neu)", because the words name the §:
+      // the renumbering or insertion that made THIS § must have been carried
+      // out — any other moved § does not license it. Below the §, a
+      // renumbering inside it does, as for „(neu)" („der neue § 7 Abs. 4d").
+      else if (fresh && fresh[1] === bareParaId(target!.para) && !produced.has(fresh[1]) && !(target!.level !== 'para' && renumberedIn.has(para!))) reason = `„neuer § ${fresh[1]}" ohne vorangehende Umbenennung oder Einfügung`
       // „Die Überschrift des 4. Abschnitts lautet:" — the standing text holds
       // no Abschnitt, and looked up by its number the address found § 4: the
       // Abschnitt's heading went over § 4's, „Der 4. Abschnitt lautet:" over
@@ -1844,7 +1919,10 @@ export function applyNovelle(input: StandingLaw, instructions: readonly Instruct
         while (i + 1 < instructions.length && instructions[i + 1]!.op.kind === 'renumber' && instructions[i + 1]!.line === line) batch.push(instructions[++i]!)
         reason = renumberBatch(law, batch, renamed)
         // One result per instruction, in instruction order — callers zip the two.
-        for (const b of batch.slice(1)) extra.push({ line: b.line, kind: 'renumber', applied: reason === null, reason, para: 'target' in b.op ? b.op.target.para : null })
+        for (const b of batch.slice(1)) {
+          extra.push({ line: b.line, kind: 'renumber', applied: reason === null, reason, para: 'target' in b.op ? b.op.target.para : null })
+          batched.push(b)
+        }
       } else reason = applyOne(law, instruction)
     } catch (err) {
       reason = `Fehler beim Anwenden: ${String(err)}`
@@ -1853,13 +1931,24 @@ export function applyNovelle(input: StandingLaw, instructions: readonly Instruct
       if (op.target.level === 'para') paragraphsRenumbered = true
       else if (para) renumberedIn.add(para)
     }
+    if (reason === null) {
+      for (const r of renamed.slice(renamedBefore)) if (r.level === 'para' && r.to) produced.add(r.to)
+      if (idsBefore) for (const p of law.paragraphs) if (!idsBefore.has(p.id)) produced.add(p.id)
+    }
     results.push({ line, kind: op.kind, applied: reason === null, reason, para }, ...extra)
     // Every § the address names: a failed „Die §§ 12a und 13 entfallen"
     // leaves § 13 as unresolved as § 12a, and a § 13 that is marked clean
-    // would be shown as if the line had never been written.
-    if (reason !== null && target) for (const p of namedParagraphs(target)) unresolved.add(p)
-    for (const r of extra) if (r.reason !== null && r.para) unresolved.add(r.para)
+    // would be shown as if the line had never been written. And every § it
+    // would have brought into being (`newParagraphsOf`).
+    if (reason !== null) {
+      for (const failed of [instruction, ...batched]) {
+        const address = opAddress(failed.op)
+        for (const p of address ? namedParagraphs(address) : []) unresolved.add(p)
+        for (const p of newParagraphsOf(failed)) unresolved.add(p)
+      }
+    }
     extra.length = 0
+    batched.length = 0
   }
   return { law, results, unresolved, renamed }
 }

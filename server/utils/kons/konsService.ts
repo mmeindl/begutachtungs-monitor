@@ -211,12 +211,12 @@ async function consolidate(
       if (instructions.length + refused.length === 0) return null
       // The denominator, counted before anything can fail — pure and tested
       // in `kons/konsGate.ts`, because a number that stands on the page is a
-      // statement and not an intermediate result.
-      const refusedLines = refused.map((r) => r.line)
+      // statement and not an intermediate result. The refusals go in whole,
+      // with the container a refused sub-instruction stands under.
       // The RIS labels beside the denominator, and from the same pure step:
       // a law divided into Artikel files its § 3 as „Art. 2 § 3", and null
       // here means two addressed §§ would collide under one id (§12.12a).
-      return { index, article, instructions, refused, addressed: addressedParagraphs(instructions, refusedLines), labels: addressedLabels(instructions, refusedLines) }
+      return { index, article, instructions, refused, addressed: addressedParagraphs(instructions, refused), labels: addressedLabels(instructions, refused) }
     })
     for (const w of perArticle) if (w) touched += w.addressed.length
 
@@ -286,7 +286,7 @@ async function consolidate(
       const standing: StandingLaw = { paragraphs: await standingParagraphs(queue) }
       const { law: after, results, unresolved } = applyNovelle(standing, instructions)
 
-      const refusedIds = refusedUnits(unresolved, refused.map((r) => r.line), unitKey)
+      const refusedIds = refusedUnits(unresolved, refused, unitKey)
 
       // Read once instead of once per §: the designation every instruction
       // addresses, and the §§ its payload inserts. The condition below is

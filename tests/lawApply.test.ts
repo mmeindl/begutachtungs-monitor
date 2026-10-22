@@ -726,6 +726,69 @@ describe('renumbering (2026-09-09)', () => {
   })
 })
 
+describe('a § the Novelle brings into being (22.10.2026)', () => {
+  const standing = (): StandingLaw => ({ paragraphs: [para('43', 'Alt', ['Text des alten § 43.']), para('44', 'Stehend', ['Absatz 1 des stehenden § 44.'])] })
+
+  it('refuses „Dem neuen § 44" where no renumbering or insertion made § 44', () => {
+    // The renumbering „Der bisherige § 43 erhält die Bezeichnung § 44" was
+    // refused by the grammar; the append landed on the STANDING § 44.
+    const { law: out, results, unresolved } = run(standing(), instr('Dem neuen § 44 wird folgender Absatz 6 angefügt:', ['(6) Gemeint für den umbenannten § 43.']))
+    expect(results[0]!.applied).toBe(false)
+    expect(results[0]!.reason).toMatch(/neuer § 44/)
+    expect(unresolved.has('§ 44')).toBe(true)
+    expect(plainText(out.paragraphs[1]!)).not.toMatch(/umbenannten/)
+  })
+
+  it('applies it once the renumbering that made § 44 went through', () => {
+    const l: StandingLaw = { paragraphs: [para('43', 'Alt', ['Text des alten § 43.'])] }
+    const { law: out, results } = run(l, instr('Der bisherige § 43 erhält die Bezeichnung "§ 44".'), instr('Dem neuen § 44 wird folgender Abs. 2 angefügt:', ['(2) Neu.']))
+    expect(results.map((r) => r.reason)).toEqual([null, null])
+    expect(out.paragraphs.map((p) => p.id)).toEqual(['44'])
+    expect(out.paragraphs[0]!.children.map((c) => c.id)).toEqual(['1', '2'])
+  })
+
+  it('applies it once an insertion made the §', () => {
+    const l: StandingLaw = { paragraphs: [para('13', 'A', ['Eins.'])] }
+    const { results } = run(
+      l,
+      instr('Nach § 13 wird folgender § 13l samt Überschrift eingefügt:', [{ text: 'Neu', heading: true }, '§ 13l. (1) Eins.', '(5) Fünf.']),
+      instr('Nach dem neuen § 13l Abs. 5 wird folgender Abs. 6 eingefügt:', ['(6) Sechs.']),
+    )
+    expect(results.map((r) => r.reason)).toEqual([null, null])
+  })
+
+  it('reads „neu" of the § the address names, not of the § the line creates', () => {
+    // „Nach § 8 wird ein neuer § 8a … eingefügt": the anchor is § 8.
+    const l: StandingLaw = { paragraphs: [para('8', 'A', ['Eins.']), para('9', 'B', ['Zwei.'])] }
+    const { law: out, results } = run(l, instr('Nach § 8 wird ein neuer § 8a samt Überschrift eingefügt:', [{ text: 'Neu', heading: true }, '§ 8a. Neuer Text.']))
+    expect(results[0]!.reason).toBeNull()
+    expect(out.paragraphs.map((p) => p.id)).toEqual(['8', '8a', '9'])
+  })
+
+  it('leaves the new number of a failed renumbering unresolved, and the §§ a failed insertion announces', () => {
+    // The standing law carries a § 44, so „§ 43 → § 44" collides; a later
+    // „In § 44 …" would land on the standing one.
+    const renumbering = run(standing(), instr('Der bisherige § 43 erhält die Bezeichnung "§ 44".'))
+    expect(renumbering.results[0]!.applied).toBe(false)
+    expect([...renumbering.unresolved].sort()).toEqual(['§ 43', '§ 44'])
+    const insertion = run(standing(), instr('Nach § 43 wird folgender § 44 eingefügt:', ['§ 44. Neuer Text.']))
+    expect(insertion.results[0]!.applied).toBe(false)
+    expect([...insertion.unresolved].sort()).toEqual(['§ 43', '§ 44'])
+  })
+
+  it('names a failed schedule insertion’s new unit a schedule, not the § of its number', () => {
+    // AIFMG, BGBl. I Nr. 57/2026: the engine collides „Anlage 5" with § 5 and
+    // refuses; the lock belongs to the Anlage, § 5 is not touched.
+    const anlage = makeNode('para', '4', 'Anl. 4', '', null)
+    anlage.children.push(makeNode('abs', '', '', 'Anlage vier.'))
+    const l: StandingLaw = { paragraphs: [para('5', 'Fünf', ['Text.']), anlage] }
+    const { results, unresolved } = run(l, instr('Nach der Anlage 4 zu § 30 wird folgende Anlage 5 zu § 14 eingefügt:', ['Anlage 5 zu § 14', 'Inhalt.']))
+    expect(results[0]!.applied).toBe(false)
+    expect(unresolved.has('§ 5')).toBe(false)
+    expect(unresolved.has('Anlage 5')).toBe(true)
+  })
+})
+
 describe('Anlagen sind keine Paragraphen (26.09.2026)', () => {
   /** A law that carries a § 1 and an Anl. 1 — the collision RIS's own numbering produces. */
   function withSchedule(): StandingLaw {

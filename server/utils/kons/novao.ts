@@ -2525,6 +2525,252 @@ export function refusedAddresses(raw: string, inherited?: NovaoAddress | null): 
   return paras.length > 0 ? paras : null
 }
 
+/**
+ * The words an address is made of behind its § sign: numbers, the
+ * designators below the § with their own number, the joins between them, and
+ * the vocabulary of a place inside a unit. Any other word ends the address.
+ */
+const MENTION_TOKEN_RE = /(?<sign>§§?)|(?<comp>(?<![\p{L}])(?:Abs(?:\.|atz)|Z(?:iff(?:er)?)?)\s*\d+[a-z]*(?![\p{L}\p{N}])|(?<![\p{L}])lit(?:\.|era)\s*[a-z]{1,2}(?![\p{L}\p{N}]))|(?<num>\d+[a-z]*(?:\.\d+)?(?![\p{L}\p{N}]))|(?<join>,|(?<![\p{L}])(?:und|sowie|oder|bis)(?![\p{L}]))|(?<word>\p{L}[\p{L}-]*\.?)/gu
+/** The words that may stand inside an address without ending it: „§§ 46 Abs. 3 zweiter Satz und 213", „§§ 21 samt Überschrift und 22". */
+const ADDRESS_WORD_RE = new RegExp(`^(?:${ORDINAL_WORD}[rnsm]?|S[äa]tze?s?|Halbsatz(?:es)?|Einleitungs(?:satz|teil)|Schluss(?:satz|teil)|samt|Überschrift(?:en)?|jeweils|der|des|die|den|dem|im|in|zu|zum)$`, 'iu')
+/** A schedule as `PARA_RE` reads one — „Anlage 2", „des Anhangs" — anywhere in a head. */
+const SCHEDULE_MENTION_RE = /\b(Anlage|Anhang)(?:e?s)?\b(?:\s+((?:\d+[a-z]*|[IVXL]+)(?![A-Za-zÄÖÜäöüß])))?/gi
+/**
+ * A § sign directly behind the noun of an operand — „wird das Zitat § 3
+ * Abs. 3 durch das Zitat § 2 Abs. 3 ersetzt", „der Verweis auf § 20 Abs. 6" —
+ * opens a citation, not an address. Read as one, the Fiskalratgesetz line
+ * locked its two citations and § 3 was withheld for nothing (BGBl. I
+ * Nr. 29/2026). The new number of a renumbering („erhält die Bezeichnung
+ * § 44") is read by `renumberedParagraphs`, which this does not touch.
+ */
+const OPERAND_BEFORE_SIGN_RE = new RegExp(`\\b${PHRASE_OBJECT}\\s+(?:(?:auf|von)\\s+(?:(?:den|die|das|dem)\\s+)?|des\\s+|der\\s+)?\\(?\\s*$`, 'iu')
+/**
+ * The noun of a renumbering of §§ — „erhält die Bezeichnung", „erhalten die
+ * Paragraphenbezeichnungen" — and the „wird zu § 16" form. „Absatzbezeichnung"
+ * and „Ziffernbezeichnungen" rename units below the §, which stay inside the §
+ * the address names, and the leading boundary keeps them out.
+ */
+const RENUMBER_NOUN_RE = /\b(?:Paragra(?:ph|f)en)?bezeichnung(?:en)?\b|(?<![\p{L}])(?:wird|werden)\s+zu(?=\s*§)/iu
+/** The verb in front of that noun — „die Bezeichnung ‚§ 4' durch …" is an operand, not a renumbering. */
+const RENUMBER_VERB_RE = /(?<![\p{L}])erh(?:ä|a)lt(?:en)?(?![\p{L}])/u
+
+/** Quotations blanked to the same length, so an index found in the result points into the original. */
+function blankQuotes(t: string): string {
+  return t.replace(/"[^"]*"/g, (m) => `"${' '.repeat(m.length - 2)}"`)
+}
+
+/**
+ * Every § sign of a head and the §§ its lists name. A plural list is read as
+ * the grammar reads the shorthand (`splitPluralParagraphs`): **a number
+ * followed by a component of its own is a Paragraph**, so „§§ 184 Abs. 4 und
+ * 5, 360 Abs. 5" names §§ 184 and 360, and the 5 is an Absatz. Behind either
+ * sign a number with nothing but joins in front of it continues the list of
+ * §§ („§§ 5, 7 und 9", and „§ 5, 7 und 9" as `parseAddress` reads it). Behind
+ * the words of a sentence a plural list goes on with its next § („§§ 46
+ * Abs. 3 zweiter Satz und 213"), and behind an Absatz with a number above
+ * the last § („§§ … 61 Abs. 1, 80, 81").
+ *
+ * Where the reading is in doubt, the number counts as a §: the caller locks
+ * what this returns, and a lock too many costs a § of the display, never its
+ * correctness.
+ *
+ * `once` reads one address and stops where it ends — for the §§ an insertion
+ * announces („folgende §§ 44 bis 52 samt Überschriften eingefügt"), behind
+ * which a § is a reference of the new text and none of the line's.
+ */
+function signedParagraphs(masked: string, once = false): string[] {
+  const out: string[] = []
+  const tokens = [...masked.matchAll(MENTION_TOKEN_RE)]
+  // 'off' until a § sign opens an address, and again once a word ends it.
+  let state: 'off' | 'start' | 'para' | 'comp' | 'word' = 'off'
+  let plural = false
+  let rangeFrom: string | null = null
+  /** The number of the last § read, and whether the component behind it was an Absatz. */
+  let lastPara: number | null = null
+  let underAbsatz = false
+  const add = (id: string): void => {
+    const run = rangeFrom === null ? null : expandRange(rangeFrom, id)
+    for (const between of run ?? [id]) out.push(`§ ${between}`)
+    rangeFrom = null
+    lastPara = Number.parseInt(id, 10)
+  }
+  for (const [i, t] of tokens.entries()) {
+    const g = t.groups!
+    if (g.sign) {
+      // A citation behind an operand's noun is no place of the line.
+      if (OPERAND_BEFORE_SIGN_RE.test(masked.slice(0, t.index))) {
+        if (once && state !== 'off') break
+        state = 'off'
+        rangeFrom = null
+        continue
+      }
+      // „§ 5 bis § 7": a range runs across the second sign.
+      if (state !== 'para') rangeFrom = null
+      state = 'start'
+      plural = g.sign === '§§'
+      continue
+    }
+    if (state === 'off') continue
+    if (g.num) {
+      const ownComponent = plural && tokens[i + 1]?.groups?.comp !== undefined
+      // A list of §§ ascends: „§§ … 61 Abs. 1, 80, 81, 82 Abs. 1 …" goes on
+      // with §§ 80 and 81, and no § carries eighty Absätze (Finanzstrafgesetz).
+      // Only behind an Absatz — the Ziffern of a definitions § run far above
+      // its number („§§ 2 Z 5, 12 und 19").
+      const ascending = plural && state === 'comp' && underAbsatz && lastPara !== null && Number.parseInt(g.num, 10) > lastPara
+      if (state === 'start' || state === 'para' || (plural && state === 'word') || ownComponent || ascending) {
+        add(g.num)
+        state = 'para'
+      } else {
+        state = 'comp'
+        rangeFrom = null
+      }
+      continue
+    }
+    if (g.comp) {
+      state = 'comp'
+      underAbsatz = /^Abs/.test(g.comp)
+      rangeFrom = null
+      continue
+    }
+    if (g.join) {
+      if (g.join === 'bis' && state === 'para') rangeFrom = /(\d+[a-z]*(?:\.\d+)?)$/.exec(out.at(-1) ?? '')?.[1] ?? null
+      continue
+    }
+    const word = g.word?.replace(/\.$/, '') ?? ''
+    // „lit. a und c": a Litera behind a Litera carries no designator of its own.
+    if (state === 'comp' && /^([a-z])\1?$/.test(word)) continue
+    if (ADDRESS_WORD_RE.test(word)) {
+      state = 'word'
+      rangeFrom = null
+      continue
+    }
+    if (once) break
+    state = 'off'
+    rangeFrom = null
+  }
+  return out
+}
+
+/**
+ * The new §§ of a renumbering clause — „Der bisherige § 7 erhält die
+ * Bezeichnung § 9", „die §§ 264a und 264b erhalten die Bezeichnungen ‚§ 264'
+ * und ‚§ 264a'", „die §§ 5 bis 9 erhalten die Paragrafenbezeichnungen ‚6.'
+ * bis ‚10.'", „Der bisherige § 9 wird zu § 16". Read inside the quotations
+ * too, because a renumbering quotes a designation and no law text.
+ *
+ * Only where a § itself is renamed: between the § and the noun no unit below
+ * it may stand. „In § 107 erhalten die Z 5 bis 9 die Ziffernbezeichnungen ‚4.'
+ * bis ‚8.'" renames Ziffern, and its „4." to „8." are no §§.
+ */
+function renumberedParagraphs(head: string): string[] {
+  const masked = blankQuotes(head)
+  const noun = RENUMBER_NOUN_RE.exec(masked)
+  if (!noun) return []
+  // The subject's § may be quoted — „Der bisherige ‚§ 7' erhält die
+  // Bezeichnung ‚§ 8'" (a Verordnung of 2026) — so the sign is looked for in
+  // the line as written.
+  const sign = head.indexOf('§')
+  if (sign < 0 || sign > noun.index || DESIGNATOR_TOKEN_RE.test(masked.slice(sign, noun.index))) return []
+  if (!/^(?:wird|werden)/i.test(noun[0]) && !RENUMBER_VERB_RE.test(masked.slice(sign, noun.index))) return []
+  const behind = head.slice(noun.index + noun[0].length)
+  // Unquoted („die Bezeichnungen §§ 433 und 434") as every other list, …
+  const out = signedParagraphs(maskQuotes(behind))
+  // … quoted one designation per quotation, and a range between two of them.
+  let previous: string | null = null
+  let ranged = false
+  for (const m of behind.matchAll(/"([^"]*)"|(?<![\p{L}])(bis)(?![\p{L}])/gu)) {
+    if (m[2]) {
+      ranged = previous !== null
+      continue
+    }
+    const id = /^\s*(?:§+\s*)?(\d+[a-z]*)\.?\s*$/.exec(m[1]!)?.[1] ?? null
+    const run = id && ranged && previous !== null ? expandRange(previous, id) : null
+    if (id) for (const between of run ?? [id]) out.push(`§ ${between}`)
+    previous = id
+    ranged = false
+  }
+  return out
+}
+
+/** The clauses of a line that are not on the table of contents, each cut to its head. */
+function untocHeads(raw: string): string[] {
+  if (isTocInstruction(raw)) return []
+  const parts = splitCompound(normalizeText(raw).replace(NUMBER_PREFIX, ''))
+  const toc = tocClauses(parts)
+  return parts.flatMap((part, i) => (toc[i] ? [] : [instructionHead(part)]))
+}
+
+/**
+ * Every unit a line names, read off its words — for the one reader that needs
+ * the opposite trade of `refusedAddresses`: the gate (`kons/konsGate.ts`).
+ *
+ * `refusedAddresses` returns null wherever it cannot read a line whole,
+ * because for the annex no address beats a wrong one. For the gate a refused
+ * line that locks too few units is the dangerous direction: „In § 2 Z 19, …
+ * lit. c sublit. aa, § 21 Abs. 1 und 6, § 27 Abs. 2, … § 103 Abs. 1 und 2
+ * entfällt jeweils der Klammerausdruck ‚(Whirl Pools)'" is refused over the
+ * sublit., and locked by its first § alone it left §§ 21, 27, 28, 31 and 103
+ * clean with the deletion missing — only the annex held them back
+ * (Bäderhygieneverordnung 2012). Over the draft corpus 368 of 6.300 refused
+ * lines locked fewer §§ than they name (22.10.2026).
+ *
+ * So this reads every § sign in the head of each clause, outside its
+ * quotations, with the §§ of a plural list and its ranges
+ * (`signedParagraphs`), every schedule as `PARA_RE` reads one, and the new
+ * §§ of a renumbering (`renumberedParagraphs`). A citation directly behind an
+ * operand's noun („das Zitat § 3 Abs. 3") is left out; one written any other
+ * way is read as well, and where the line is refused that costs the § its
+ * display, and nothing else. A clause on the table of contents names no unit
+ * (`isTocInstruction`).
+ */
+export function mentionedUnits(raw: string): string[] {
+  const out = new Set<string>()
+  for (const head of untocHeads(raw)) {
+    const masked = maskQuotes(head)
+    for (const p of signedParagraphs(masked)) out.add(p)
+    for (const m of masked.matchAll(SCHEDULE_MENTION_RE)) out.add(m[2] ? `${m[1]} ${m[2]}` : m[1]!)
+    for (const p of renumberedParagraphs(head)) out.add(p)
+  }
+  return [...out]
+}
+
+/** „folgende §§ 44 bis 52", „als neue Anlage 5": where an insertion announces the units it creates. */
+const ANNOUNCEMENT_RE = /(?<![\p{L}])(?:folgende[rnms]?|nachstehende[rnms]?|als)\s+(?:neue[rnms]?\s+)?(?=§|Anlage|Anhang)/giu
+
+/** The units an insertion clause announces behind „folgende" — read up to where the announcement ends. */
+function announcedUnits(masked: string): string[] {
+  const out: string[] = []
+  for (const m of masked.matchAll(ANNOUNCEMENT_RE)) {
+    const rest = masked.slice(m.index + m[0].length)
+    if (rest.startsWith('§')) out.push(...signedParagraphs(rest, true))
+    else {
+      const schedule = /^(Anlage|Anhang)\b(?:\s+((?:\d+[a-z]*|[IVXL]+)(?![A-Za-zÄÖÜäöüß])))?/i.exec(rest)
+      if (schedule) out.push(schedule[2] ? `${schedule[1]} ${schedule[2]}` : schedule[1]!)
+    }
+  }
+  return out
+}
+
+/**
+ * The units a line would bring into being — the new §§ of a renumbering
+ * (`renumberedParagraphs`) and the §§ and schedules an insertion announces.
+ * The part of `mentionedUnits` the gate needs even where the grammar has read
+ * the line's address, because that address is the OLD unit or the anchor:
+ * „Der bisherige § 7 erhält die Bezeichnung § 9" is read as § 7, „Nach § 43
+ * werden folgende §§ 44 bis 52 … eingefügt" as § 43. Refused, they left § 9
+ * and § 44 clean, and the next instruction on either landed on the standing
+ * one (draft corpus, 22.10.2026).
+ */
+export function createdUnits(raw: string): string[] {
+  const out = new Set<string>()
+  for (const head of untocHeads(raw)) {
+    for (const p of renumberedParagraphs(head)) out.add(p)
+    for (const p of announcedUnits(maskQuotes(head))) out.add(p)
+  }
+  return [...out]
+}
+
 /** The instruction was read and names no § because none is meant: the table of contents, the whole text. */
 export const NO_PARAGRAPH_ADDRESSED = 'kein Paragraph adressiert'
 
