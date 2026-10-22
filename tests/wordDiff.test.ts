@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { compareWords, diffTokens, isAddressOnlyDifference, isEditorialChange, sameWording, tokenSimilarity } from '../server/utils/diff/wordDiff'
+import { compareWords, diffTokens, isAddressOnlyDifference, isEditorialChange, renumberingOf, sameWording, tokenSimilarity } from '../server/utils/diff/wordDiff'
 
 describe('diffTokens', () => {
   it('finds word-level changes and a similarity', () => {
@@ -299,5 +299,21 @@ describe('diffTokens — die Auslassung der Beilage', () => {
     const d = diffTokens('monatlich........................ 1,21 Euro', 'monatlich………………………… 1,21 Euro')
     expect(d.similarity).toBe(1)
     expect(d.segments).toEqual([{ type: 'equal', text: 'monatlich 1,21 Euro' }])
+  })
+})
+
+// One builder for the § comparison and the Begründungsvergleich (22.10.2026).
+describe('renumberingOf', () => {
+  it('liest nur umnummerierte Paragraphen, je späterem Artikel', () => {
+    const map = renumberingOf([
+      { fromId: '§5', toId: '§6', article: 'A' },
+      // A Ziffer renumbers too, and no reference in a law points at one.
+      { fromId: 'Z1', toId: 'Z2', article: 'A' },
+      { fromId: '§7', toId: '§7', article: 'A' },
+      { fromId: '§3', toId: '§4', article: null },
+    ])
+    expect([...map.keys()]).toEqual(['A', ''])
+    expect([...map.get('A')!]).toEqual([['5', '6']])
+    expect([...map.get('')!]).toEqual([['3', '4']])
   })
 })

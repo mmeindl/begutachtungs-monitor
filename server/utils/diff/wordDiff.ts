@@ -14,6 +14,7 @@
  */
 import type { LawDiffSegment } from '../../../shared/types'
 import { compareToken, displayTokens } from '../lawtext/normalize'
+import { bareParaId } from '../text/designation'
 
 /** Above this many token pairs the word-level diff is skipped (O(n·m) memory). */
 const MAX_DP_CELLS = 2_500_000
@@ -313,13 +314,44 @@ function classifyToken(raw: string): TokenClass {
  * segments themselves.
  *
  * Exactly one thing so far: which § of the earlier version is which § of the
- * later one, built by `diffLawUnits` from its own alignment. Optional, and
- * absent means "nothing established" — every caller that cannot supply it
- * gets the stricter answer, never a more generous one.
+ * later one (`renumberingOf`), built by `diffLawUnits` from its own alignment
+ * and by the Begründungsvergleich from the units of that same comparison.
+ * Optional, and absent means "nothing established" — every caller that cannot
+ * supply it gets the stricter answer, never a more generous one.
  */
 export interface EditorialContext {
   /** Bare § id of the earlier version → bare § id of the later one, for the ONE article of this unit. */
   renumbered?: ReadonlyMap<string, string>
+}
+
+/**
+ * Which § of the earlier version is which § of the later one, per article —
+ * the renumbering a comparison established, and the only kind
+ * `isEditorialChange` may credit a moved reference to.
+ *
+ * Paragraphs only. A Novellierungsanordnung renumbers too (74/ME moves 394 of
+ * 399 instructions), but no reference in a law text points at the instruction
+ * list, so putting „Z 5 → Z 6" in the map would explain a changed „Abs. 5"
+ * with a coincidence. Keyed by the LATER article, because that is the article
+ * a paired unit reports (`toUnit`).
+ *
+ * Here and not in `lawDiff.ts` since 22.10.2026: the Begründungsvergleich
+ * holds its passages to the same rule (`explanations/reasoningDiff.ts`), and
+ * one builder for both is what keeps „redaktionell" one word on the page.
+ */
+export function renumberingOf(pairs: Iterable<{ fromId: string; toId: string; article: string | null }>): Map<string, ReadonlyMap<string, string>> {
+  const byArticle = new Map<string, Map<string, string>>()
+  for (const p of pairs) {
+    if (!p.fromId.startsWith('§') || !p.toId.startsWith('§')) continue
+    const before = bareParaId(p.fromId)
+    const after = bareParaId(p.toId)
+    if (!before || !after || before === after) continue
+    const key = p.article ?? ''
+    let map = byArticle.get(key)
+    if (!map) byArticle.set(key, (map = new Map()))
+    map.set(before, after)
+  }
+  return byArticle
 }
 
 /**

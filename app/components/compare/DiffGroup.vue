@@ -33,7 +33,7 @@
  * the Stellungnahmen. Where an open group starts is marked by the bold law
  * name, the chevron and the hairline under the header.
  */
-import { BADGE_CLASS, UNCHECKED_PILL, type DiffBadgeCount } from '~/utils/diffBadges'
+import { BADGE_CLASS, PILL_CLASS, UNCHECKED_PILL, type DiffBadgeCount } from '~/utils/diffBadges'
 
 const props = defineProps<{
   /** The law or Artikel this group collects; empty where the annex names none. */
@@ -192,8 +192,8 @@ async function showMore(event: MouseEvent) {
         <span
           v-for="b in badges"
           :key="b.badge"
-          class="inline-flex items-center rounded-full px-2 py-0.5 text-xs font-medium tabular-nums"
-          :class="BADGE_CLASS[b.badge]"
+          class="tabular-nums"
+          :class="[PILL_CLASS, BADGE_CLASS[b.badge]]"
         >
           {{ b.count }} {{ b.label }}
         </span>

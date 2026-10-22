@@ -24,6 +24,7 @@ import type { LawDiffResponse, ReasoningDiffResponse } from '#shared/types'
 import { changeShareNounDe, ownChangeShare } from '#shared/utils/changeShare'
 import { lawDiffKey, lawReasoningKey } from '#shared/utils/lawStations'
 import { changeShareValueDe, reasoningShareValueDe } from '~/utils/outcomes'
+import { substantiveReasoningChanges } from '~/utils/reasoningNotes'
 
 export function useVorlageOutcome(source: () => { gp: string; inr: number }, enabled: Ref<boolean>) {
   const { data: diff, status: diffStatus } = useFetch<LawDiffResponse>(
@@ -45,9 +46,10 @@ export function useVorlageOutcome(source: () => { gp: string; inr: number }, ena
   /** Still on its way — the card holds the row's place meanwhile. */
   const sharePending = computed(() => enabled.value && !diff.value && diffStatus.value !== 'error')
 
+  /** Changed as the page counts it, the editorial ones not (`substantiveReasoningChanges`). */
   const reasoningStats = computed(() => {
     const stats = reasoning.value?.stats
-    return stats?.compared ? { changed: stats.changed, compared: stats.compared } : null
+    return stats?.compared ? { changed: substantiveReasoningChanges(stats), compared: stats.compared } : null
   })
   /** The Vorlage's Erläuterungen. The service sends both documents as
    *  [Entwurf, Regierungsvorlage], and only where both were found. */

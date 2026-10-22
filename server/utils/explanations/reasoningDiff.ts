@@ -86,7 +86,7 @@
 import type { LawDiffUnit, ReasoningDiffEntry } from '../../../shared/types'
 import { diffUnitKey } from '../../../shared/utils/diffKey'
 import { displayId, isParagraphUnit } from '../../../shared/utils/unitName'
-import { diffTokens, sameWording } from '../diff/wordDiff'
+import { diffTokens, isEditorialChange, renumberingOf, sameWording } from '../diff/wordDiff'
 import { addressedParagraph, addressedParagraphOf, instructionParagraphs } from '../lawtext/instructionAddress'
 import { passagesByArticleParagraph, passagesByParagraph, type HtmlExplanations, type HtmlPassage } from './explanationsHtml'
 import { ADDRESS_WORD_RE, addressOf, leadingAddress } from './risExplanations'
@@ -123,7 +123,8 @@ export interface ReasoningComparison {
   units: Record<string, string>
   /** The comparisons, once per passage (Ziffer join) or per Paragraph (§ join). */
   entries: Record<string, ReasoningDiffEntry>
-  stats: { compared: number; changed: number; uncompared: number }
+  /** `changed` counts the editorial ones too, as `summarizeDiff` does; `editorial` is the part of it. */
+  stats: { compared: number; changed: number; editorial: number; uncompared: number }
 }
 
 /** Paragraph number → text, as the § join reads both documents. */
@@ -229,8 +230,26 @@ function ambiguousParagraphs(units: readonly LawDiffUnit[], read: Readings): Set
  *
  * `drift` is still the share of differing words, for the measurement
  * scripts (`aenderungsrate.ts`); it decides nothing any more.
+ *
+ * „REDAKTIONELL" BY THE LAW COMPARISON'S OWN RULE (22.10.2026): a changed
+ * Begründung is editorial where `isEditorialChange` says so of its word diff
+ * — what `toUnit` asks of a § — with the renumbering of the same comparison
+ * as the context (`renumbered`, `renumberingOf`). Not a looser test: a typo,
+ * a case or a spelling variant changes a word and stays „geändert", as the
+ * badge's definition says („kein einziges Wort", `EDITORIAL_BADGE_SENTENCE`);
+ * a passage above `MAX_DP_CELLS` has no segments and is never editorial.
+ * Measured over the 353 drafts of GP XXVI–XXVIII: 68 of the 4.066 changed
+ * Begründungen are editorial (10, 36, 22) — 17 references that follow the
+ * comparison's renumbering (ten in 32/ME XXVIII, whose new law the Vorlage
+ * renumbered), 5 dates written anew („22.8.2018" → „22.08.2018", all that
+ * changed in XXVII 307/ME, whose „1 der 12" is now „Keine der 12"), 2 filled
+ * placeholders and connectives — and, by the same rule, 19 that change an
+ * article or „in"/„im" and 25 that change citation words alone („Nr."
+ * dropped, „Z" → „lit.", „Hauptstück" → „Abschnitt"), which the rule forgives
+ * a Novellierungsanordnung and therefore forgives here. Not counted as
+ * changed (`substantiveReasoningChanges`), the sentence of 37 drafts moves.
  */
-function entryOf(basis: ReasoningDiffEntry['basis'], label: string, a: string, b: string): ReasoningDiffEntry {
+function entryOf(basis: ReasoningDiffEntry['basis'], label: string, a: string, b: string, renumbered: ReadonlyMap<string, string> | undefined): ReasoningDiffEntry {
   const { similarity, segments } = diffTokens(a, b)
   const drift = 1 - similarity
   const changed = !sameWording(a, b)
@@ -241,6 +260,7 @@ function entryOf(basis: ReasoningDiffEntry['basis'], label: string, a: string, b
     fromHeading: null,
     drift,
     changed,
+    editorial: changed && isEditorialChange(segments, { renumbered }),
     segments: changed ? segments : null,
     // Both versions whole, but only where the word comparison stopped at
     // its ceiling: the unfolded Begründung would otherwise stand there
@@ -256,6 +276,13 @@ function entryOf(basis: ReasoningDiffEntry['basis'], label: string, a: string, b
 interface Filling {
   out: ReasoningComparison
   skipped: Set<string>
+  /**
+   * The renumbering of §§ the law comparison of the same pair established,
+   * per later Artikel title (`renumberingOf`, read off its units by
+   * `renumberingOfUnits`) — what `isEditorialChange` may credit a moved
+   * reference to. An entry asks under the Artikel of the unit that opened it.
+   */
+  renumbered: ReadonlyMap<string, ReadonlyMap<string, string>>
 }
 
 /**
@@ -264,7 +291,7 @@ interface Filling {
  * the draft's comes along, empty where its passage is a bare heading.
  */
 function uncomparedOf(basis: ReasoningDiffEntry['basis'], label: string, fromHeading: string, a: string, b: string): ReasoningDiffEntry {
-  return { basis, label, comparable: false, fromHeading, drift: null, changed: false, segments: null, fromText: a || null, toText: b }
+  return { basis, label, comparable: false, fromHeading, drift: null, changed: false, editorial: false, segments: null, fromText: a || null, toText: b }
 }
 
 /**
@@ -308,7 +335,7 @@ function fill(f: Filling, unit: LawDiffUnit, key: string, make: () => EntryInput
     }
     f.out.entries[key] = uncompared && !sameWords(a, b)
       ? uncomparedOf(basis, label, uncompared.fromHeading, a, b)
-      : entryOf(basis, label, a, b)
+      : entryOf(basis, label, a, b, f.renumbered.get(unit.article ?? ''))
   }
   f.out.units[diffUnitKey(unit)] = key
 }
@@ -351,7 +378,7 @@ function joinAtParagraph(f: Filling, units: readonly LawDiffUnit[], ambiguous: R
 export function compareReasoningByParagraph(units: readonly LawDiffUnit[], before: Texts, after: Texts, byArticle: { before: Texts; after: Texts } | null = null): ReasoningComparison {
   const read = readings()
   const ambiguous = ambiguousParagraphs(units, read)
-  const f: Filling = { out: { units: {}, entries: {}, stats: { compared: 0, changed: 0, uncompared: 0 } }, skipped: new Set() }
+  const f = filling(units)
   // Two passes: every unique number first, the Artikel-keyed ones after. The
   // ceiling counts entries, and in unit order an Artikel-keyed § early in a
   // long Sammelgesetz took the place of a unique one that had been shown
@@ -365,8 +392,28 @@ export function compareReasoningByParagraph(units: readonly LawDiffUnit[], befor
 function finish(out: ReasoningComparison): ReasoningComparison {
   const entries = Object.values(out.entries)
   const compared = entries.filter((e) => e.comparable)
-  out.stats = { compared: compared.length, changed: compared.filter((e) => e.changed).length, uncompared: entries.length - compared.length }
+  const changed = compared.filter((e) => e.changed)
+  out.stats = { compared: compared.length, changed: changed.length, editorial: changed.filter((e) => e.editorial).length, uncompared: entries.length - compared.length }
   return out
+}
+
+/** An empty result for `units`, with the renumbering their comparison established. */
+function filling(units: readonly LawDiffUnit[]): Filling {
+  return { out: { units: {}, entries: {}, stats: { compared: 0, changed: 0, editorial: 0, uncompared: 0 } }, skipped: new Set(), renumbered: renumberingOfUnits(units) }
+}
+
+/**
+ * The renumbering of §§ the law comparison established, read back off its
+ * units: every pair it made is a unit present on both sides, `fromId` the
+ * earlier § and `id` the later one, filed under the later Artikel title as
+ * `toUnit` files it — the map `diffLawUnits` built from the same pairs. The
+ * Begründungsvergleich is handed exactly those units
+ * (`reasoningDiffService.ts` reads the ME→RV comparison the page shows), so
+ * a reference in a Begründung is credited to the renumbering only where the
+ * comparison beside it made one.
+ */
+function renumberingOfUnits(units: readonly LawDiffUnit[]): Map<string, ReadonlyMap<string, string>> {
+  return renumberingOf(units.flatMap((u) => (isPaired(u) && u.fromId ? [{ fromId: u.fromId, toId: u.id, article: u.article }] : [])))
 }
 
 /** A document's passages as text per Paragraph number — the § join's input. */
@@ -845,7 +892,7 @@ export interface ReasoningComparisonAtZiffer extends ReasoningComparison {
 export function compareReasoning(units: readonly LawDiffUnit[], before: HtmlExplanations, after: HtmlExplanations): ReasoningComparisonAtZiffer {
   const read = readings()
   const ambiguous = ambiguousParagraphs(units, read)
-  const f: Filling = { out: { units: {}, entries: {}, stats: { compared: 0, changed: 0, uncompared: 0 } }, skipped: new Set() }
+  const f = filling(units)
   const fallbacks: Record<string, ZifferFallback> = {}
 
   const titled = before.special.some((p) => p.ziffern.length > 0) && after.special.some((p) => p.ziffern.length > 0)

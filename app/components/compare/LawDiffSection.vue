@@ -23,7 +23,7 @@ import type { LawDiffSegment, LawDiffUnit, LawStationId, ReasoningDiffEntry } fr
 import { diffUnitKey } from '#shared/utils/diffKey'
 import { countLabelDe, formatDateDe } from '#shared/utils/format'
 import { isNovelleUnits } from '#shared/utils/changeShare'
-import { type DiffBadge, badgeCounts, badgeLabels } from '~/utils/diffBadges'
+import { BADGE_CLASS, type DiffBadge, PILL_CLASS, badgeCounts, badgeLabels } from '~/utils/diffBadges'
 import { readsSideBySide, splitSegments } from '~/utils/diffSides'
 import { displayId, extraHeading, unitName } from '#shared/utils/unitName'
 import { droppedLawsNote, mergedLawsNote, outsideDraftNote } from '~/utils/lawPackage'
@@ -109,7 +109,9 @@ useNearViewport(root, enable, '600px 0px', () => enabled.value)
 
 /**
  * The reasoning to show at one unit: a changed one, or one shown without a
- * comparison (`comparable: false`, the scope rule) — or nothing.
+ * comparison (`comparable: false`, the scope rule) — or nothing. A changed
+ * one that is merely editorial is shown too, with the pill the § carries
+ * for the same (`ReasoningDiffEntry.editorial`, 22.10.2026).
  *
  * Two steps, because there are two levels: computed per passage — the one on
  * the instruction's Ziffer, or where the Erläuterungen are titled by § the
@@ -605,7 +607,14 @@ const droppedNote = computed(() =>
                            by § — everything they say about the Paragraph. -->
                       <template #summary>
                         <template v-if="!b.reasoning.comparable">Die Begründung des Ressorts zu dieser Änderung</template>
-                        <template v-else>{{ b.reasoning.basis === 'ziffer' ? 'Die Begründung des Ressorts zu dieser Änderung hat sich geändert' : 'Die Begründung des Ressorts zu diesem Paragraphen hat sich geändert' }}</template>
+                        <template v-else>
+                          {{ b.reasoning.basis === 'ziffer' ? 'Die Begründung des Ressorts zu dieser Änderung hat sich geändert' : 'Die Begründung des Ressorts zu diesem Paragraphen hat sich geändert' }}
+                          <!-- Only numbers, dates, punctuation or a reference
+                               that follows this comparison's renumbering: the
+                               § comparison's „redaktionell", by its rule and
+                               in its pill (22.10.2026). -->
+                          <span v-if="b.reasoning.editorial" :class="[PILL_CLASS, BADGE_CLASS.editorial]">{{ BADGE_LABEL.editorial }}</span>
+                        </template>
                       </template>
                       <!-- Shown, not compared (01.10.2026): the two documents
                            explain this change together with different others,

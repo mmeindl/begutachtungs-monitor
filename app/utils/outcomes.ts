@@ -159,9 +159,11 @@ const SINGULAR_DE: Readonly<Record<string, string>> = { Paragraphen: 'Paragraph'
 
 /**
  * The value of the card's row „Begründung": how many of the Begründungen in
- * both Erläuterungen the Ressort rewrote (docs/architecture.md §12.10b).
- * Counted over the passages both versions carry — the restriction stands on
- * /so-funktionierts; the row's footnote names the document.
+ * both Erläuterungen the Ressort changed (docs/architecture.md §12.10b) —
+ * editorial changes not counted, as in the row above
+ * (`substantiveReasoningChanges`). Counted over the passages both versions
+ * carry — the restriction stands on /so-funktionierts; the row's footnote
+ * names the document.
  */
 export function reasoningShareValueDe(changed: number, compared: number): string {
   return `${changed} von ${compared} ${compared === 1 ? 'Begründung' : 'Begründungen'} geändert`

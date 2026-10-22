@@ -12,7 +12,7 @@
  * under the text, still inside the gutter (the reasoning drawer).
  */
 import type { LawDiffSegment, LawUnitChange } from '#shared/types'
-import { BADGE_CLASS, type DiffBadge, GUTTER_CLASS } from '~/utils/diffBadges'
+import { BADGE_CLASS, type DiffBadge, GUTTER_CLASS, PILL_CLASS } from '~/utils/diffBadges'
 
 defineProps<{
   badge: DiffBadge
@@ -38,7 +38,7 @@ defineProps<{
 <template>
   <div class="border-l-2 pl-3" :class="GUTTER_CLASS[badge]">
     <p class="mb-1 text-sm">
-      <span class="inline-flex items-center rounded-full px-2 py-0.5 text-xs font-medium" :class="BADGE_CLASS[badge]">
+      <span :class="[PILL_CLASS, BADGE_CLASS[badge]]">
         {{ label }}
       </span>
       <slot name="pill-after" />

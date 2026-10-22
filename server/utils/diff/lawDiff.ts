@@ -26,10 +26,10 @@ import type { LawDiffUnit, LawPackageEntry, LawUnitChange } from '../../../share
 import type { LawUnit } from '../lawtext/lawUnits'
 import { compareKey, normalizeText } from '../lawtext/normalize'
 import { articleNameTokens, jaccardSimilarity } from '../lawtext/lawNames'
-import { bareParaId, leadingArticleKey } from '../text/designation'
+import { leadingArticleKey } from '../text/designation'
 import { sameStammnormCited, type BgblCitation } from '../lawtext/bgblCitation'
 import { instructionParagraphs } from '../lawtext/instructionAddress'
-import { compareWords, diffTokens, isAddressOnlyDifference, isEditorialChange, tokenSimilarity, type TokenDiff } from './wordDiff'
+import { compareWords, diffTokens, isAddressOnlyDifference, isEditorialChange, renumberingOf, tokenSimilarity, type TokenDiff } from './wordDiff'
 
 // ---------------------------------------------------------------------------
 // Article pairing
@@ -553,32 +553,6 @@ function quotedHeadingOf(u: LawUnit | null): string | null {
   return heads.length > 2 ? `${heads.slice(0, 2).join(' · ')} · …` : heads.join(' · ')
 }
 
-/**
- * Which § of the earlier version is which § of the later one, per article —
- * the renumbering THIS comparison established, and the only kind
- * `isEditorialChange` may credit a moved reference to.
- *
- * Paragraphs only. A Novellierungsanordnung renumbers too (74/ME moves 394 of
- * 399 instructions), but no reference in a law text points at the instruction
- * list, so putting „Z 5 → Z 6" in the map would explain a changed „Abs. 5"
- * with a coincidence. Keyed by the LATER article, because that is the article
- * a paired unit reports (`toUnit`).
- */
-function renumberedParagraphs(pairs: readonly { from: LawUnit; to: LawUnit }[]): Map<string, ReadonlyMap<string, string>> {
-  const byArticle = new Map<string, Map<string, string>>()
-  for (const p of pairs) {
-    if (!p.from.id.startsWith('§') || !p.to.id.startsWith('§')) continue
-    const before = bareParaId(p.from.id)
-    const after = bareParaId(p.to.id)
-    if (!before || !after || before === after) continue
-    const key = p.to.article ?? ''
-    let map = byArticle.get(key)
-    if (!map) byArticle.set(key, (map = new Map()))
-    map.set(before, after)
-  }
-  return byArticle
-}
-
 function toUnit(change: LawUnitChange, from: LawUnit | null, to: LawUnit | null, diff: TokenDiff | null, renumbered?: ReadonlyMap<string, string>): LawDiffUnit {
   const ref = to ?? from!
   return {
@@ -628,7 +602,8 @@ function removedUnit(u: LawUnit, articles: ReadonlyMap<string | null, string | n
 export function diffLawUnits(from: readonly LawUnit[], to: readonly LawUnit[]): LawDiffUnit[] {
   const { pairs, onlyFrom, onlyTo, articles } = alignUnits(from, to)
   const toPartner = new Map(pairs.map((p) => [p.to, p.from]))
-  const renumbered = renumberedParagraphs(pairs)
+  // The renumbering THIS comparison established (`renumberingOf`).
+  const renumbered = renumberingOf(pairs.map((p) => ({ fromId: p.from.id, toId: p.to.id, article: p.to.article })))
   const removedSet = new Set(onlyFrom)
   const insertedSet = new Set(onlyTo)
   const out: LawDiffUnit[] = []

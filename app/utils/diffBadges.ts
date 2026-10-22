@@ -49,6 +49,15 @@ export const BADGE_CLASS: Record<DiffBadge, string> = {
 }
 
 /**
+ * The pill's shape; its colour is `BADGE_CLASS`. One for every place that
+ * names a kind of change — the change itself (`DiffBody`), a group's counts
+ * (`DiffGroup`) and, since 22.10.2026, a Begründung that changed only
+ * editorially (`LawDiffSection`), which carries the § comparison's
+ * „redaktionell" rather than a look of its own.
+ */
+export const PILL_CLASS = 'inline-flex items-center rounded-full px-2 py-0.5 text-xs font-medium'
+
+/**
  * The gutter repeats the pill's colour, so state reads at a glance down the
  * page: red gone, green new, amber edited, grey formalities, hairline
  * untouched.

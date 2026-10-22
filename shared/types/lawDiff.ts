@@ -149,6 +149,14 @@ export interface ReasoningDiffEntry {
   drift: number | null
   /** At least one word differs once punctuation, spacing and hyphenation are left aside (`sameWording`, 22.10.2026). */
   changed: boolean
+  /**
+   * Changed, but only in numbers, dates, punctuation or a reference that
+   * follows a renumbering of this comparison — the law comparison's own rule
+   * (`isEditorialChange`, `EDITORIAL_BADGE_SENTENCE`), with the same pill.
+   * Counted as changed nowhere the page counts Begründungen
+   * (`substantiveReasoningChanges`). Never on an entry without `segments`.
+   */
+  editorial: boolean
 }
 
 /**
@@ -184,10 +192,12 @@ export interface ReasoningDiffResponse {
   /** The comparisons, once per passage (Ziffer) or per Paragraph (§). */
   entries: Record<string, ReasoningDiffEntry>
   /**
-   * How many Begründungen were compared and how many of them changed — and
-   * how many are shown without a comparison (`comparable: false`).
+   * How many Begründungen were compared and how many of them changed — the
+   * editorial ones included, as `summarizeDiff` counts §§, and `editorial`
+   * is that part of them — and how many are shown without a comparison
+   * (`comparable: false`).
    */
-  stats: { compared: number; changed: number; uncompared: number }
+  stats: { compared: number; changed: number; editorial: number; uncompared: number }
 }
 
 /**

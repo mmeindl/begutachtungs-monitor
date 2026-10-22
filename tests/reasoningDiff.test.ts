@@ -37,7 +37,7 @@ describe('compareReasoningByParagraph — der §-Join', () => {
     const out = compareReasoningByParagraph(units, before, after)
 
     // Two Paragraphen, three instructions: the statistic counts Paragraphen.
-    expect(out.stats).toEqual({ compared: 2, changed: 1, uncompared: 0 })
+    expect(out.stats).toEqual({ compared: 2, changed: 1, editorial: 0, uncompared: 0 })
     expect(Object.keys(out.entries).sort()).toEqual(['§ 6', '§ 7'])
     expect(out.units).toEqual({ [`${SNG}|Z2|changed`]: '§ 6', [`${SNG}|Z3|changed`]: '§ 6', [`${SNG}|Z4|changed`]: '§ 7' })
     expect(out.entries['§ 6']!.changed).toBe(true)
@@ -55,7 +55,7 @@ describe('compareReasoningByParagraph — der §-Join', () => {
     const out = compareReasoningByParagraph(units, before, after)
 
     expect(out.units).toEqual({})
-    expect(out.stats).toEqual({ compared: 0, changed: 0, uncompared: 0 })
+    expect(out.stats).toEqual({ compared: 0, changed: 0, editorial: 0, uncompared: 0 })
   })
 
   it('vergleicht die mehrdeutige Nummer unter ihrem Artikel, wo beide Seiten ihn nennen (27.09.2026)', () => {
@@ -103,7 +103,7 @@ describe('compareReasoningByParagraph — der §-Join', () => {
     const out = compareReasoningByParagraph(units, new Map([['15', 'x']]), new Map([['15', 'y']]), byArticle)
 
     expect(out.units).toEqual({})
-    expect(out.stats).toEqual({ compared: 0, changed: 0, uncompared: 0 })
+    expect(out.stats).toEqual({ compared: 0, changed: 0, editorial: 0, uncompared: 0 })
   })
 
   it('vergleicht nur, wo beide Fassungen eine Begründung führen', () => {
@@ -118,7 +118,7 @@ describe('compareReasoningByParagraph — der §-Join', () => {
     const units = [unit(SNG, 'Z2', 'In § 6 Abs. 1 wird das Wort "kann" durch das Wort "darf" ersetzt.')]
     const out = compareReasoningByParagraph(units, new Map([['6', `${words} Punkt`]]), new Map([['6', `${words} Punkt.`]]))
 
-    expect(out.stats).toEqual({ compared: 1, changed: 0, uncompared: 0 })
+    expect(out.stats).toEqual({ compared: 1, changed: 0, editorial: 0, uncompared: 0 })
     expect(out.entries['§ 6']!.segments).toBeNull()
     expect(out.entries['§ 6']!.fromText).toBeNull()
   })
@@ -132,7 +132,7 @@ describe('compareReasoningByParagraph — der §-Join', () => {
     const out = compareReasoningByParagraph(units, new Map([['6', `Ab Jänner ${words}.`]]), new Map([['6', `Ab April ${words}.`]]))
     const entry = out.entries['§ 6']!
 
-    expect(out.stats).toEqual({ compared: 1, changed: 1, uncompared: 0 })
+    expect(out.stats).toEqual({ compared: 1, changed: 1, editorial: 0, uncompared: 0 })
     expect(entry.drift).toBeLessThan(0.02)
     expect(entry.segments!.filter((s) => s.type !== 'equal')).toEqual([
       { type: 'removed', text: 'Jänner' },
@@ -150,7 +150,7 @@ describe('compareReasoningByParagraph — der §-Join', () => {
       new Map([['6', 'Um Härten zu vermeiden, wird z. B. die COVID-19-Pandemie nach Abs. 2 berücksichtigt.']]),
     )
 
-    expect(out.stats).toEqual({ compared: 1, changed: 0, uncompared: 0 })
+    expect(out.stats).toEqual({ compared: 1, changed: 0, editorial: 0, uncompared: 0 })
     expect(out.entries['§ 6']!.drift).toBeGreaterThan(0.02)
   })
 
@@ -230,7 +230,7 @@ describe('compareReasoning — die Begründung an der Ziffer (01.10.2026)', () =
 
     const out = compareReasoning(units, before, after)
 
-    expect(out.stats).toEqual({ compared: 2, changed: 1, uncompared: 0 })
+    expect(out.stats).toEqual({ compared: 2, changed: 1, editorial: 0, uncompared: 0 })
     const z1 = out.entries[out.units['Gesetz|Z1|changed']!]!
     const z2 = out.entries[out.units['Gesetz|Z2|changed']!]!
     expect(z1).toMatchObject({ basis: 'ziffer', label: 'Zu Z 1 (§ 11 Abs. 1):', changed: false })
@@ -281,7 +281,7 @@ describe('compareReasoning — die Begründung an der Ziffer (01.10.2026)', () =
 
     const out = compareReasoning(units, before, after)
 
-    expect(out.stats).toEqual({ compared: 1, changed: 1, uncompared: 0 })
+    expect(out.stats).toEqual({ compared: 1, changed: 1, editorial: 0, uncompared: 0 })
     expect(new Set(Object.values(out.units)).size).toBe(1)
     expect(Object.keys(out.units)).toHaveLength(3)
   })
@@ -295,7 +295,7 @@ describe('compareReasoning — die Begründung an der Ziffer (01.10.2026)', () =
     const out = compareReasoning(units, before, after)
 
     expect(out.fallbacks).toEqual({ 'Gesetz|Z1|changed': 'scope', 'Gesetz|Z2|changed': 'scope' })
-    expect(out.stats).toEqual({ compared: 0, changed: 0, uncompared: 2 })
+    expect(out.stats).toEqual({ compared: 0, changed: 0, editorial: 0, uncompared: 2 })
     expect(out.entries[out.units['Gesetz|Z1|changed']!]).toEqual({
       basis: 'ziffer',
       label: 'Zu Z 1 und 2 (§§ 1 und 2):',
@@ -303,6 +303,7 @@ describe('compareReasoning — die Begründung an der Ziffer (01.10.2026)', () =
       fromHeading: 'Zu Z 1 (§ 1):',
       drift: null,
       changed: false,
+      editorial: false,
       segments: null,
       fromText: 'Erstens.',
       toText: 'Erstens und zweitens.',
@@ -488,7 +489,7 @@ describe('compareReasoning — der § eines neuen Gesetzes nach seiner eigenen B
     const out = compareReasoning(units, before, after)
 
     expect(out.routes).toEqual({ ziffer: 0, paragraph: 0, ownParagraph: 2 })
-    expect(out.stats).toEqual({ compared: 2, changed: 1, uncompared: 0 })
+    expect(out.stats).toEqual({ compared: 2, changed: 1, editorial: 0, uncompared: 0 })
     expect(out.entries[out.units['Neues Gesetz|§1|changed']!]).toMatchObject({ basis: 'paragraph', label: '§ 1', changed: false })
     expect(out.entries[out.units['Neues Gesetz|§6|changed']!]).toMatchObject({ basis: 'paragraph', label: '§ 6', changed: true })
   })
@@ -500,7 +501,7 @@ describe('compareReasoning — der § eines neuen Gesetzes nach seiner eigenen B
 
     const out = compareReasoning(units, before, after)
 
-    expect(out.stats).toEqual({ compared: 1, changed: 1, uncompared: 0 })
+    expect(out.stats).toEqual({ compared: 1, changed: 1, editorial: 0, uncompared: 0 })
     expect(new Set(Object.values(out.units)).size).toBe(1)
   })
 
@@ -511,7 +512,7 @@ describe('compareReasoning — der § eines neuen Gesetzes nach seiner eigenen B
 
     const out = compareReasoning(units, before, after)
 
-    expect(out.stats).toEqual({ compared: 0, changed: 0, uncompared: 2 })
+    expect(out.stats).toEqual({ compared: 0, changed: 0, editorial: 0, uncompared: 2 })
     expect(out.entries[out.units['Neues Gesetz|§1|changed']!]).toMatchObject({ basis: 'paragraph', comparable: false, label: 'Zu §§ 1 und 2:', fromHeading: 'Zu § 1:', fromText: 'Das Ziel.' })
   })
 
@@ -563,7 +564,7 @@ describe('compareReasoning — der § eines neuen Gesetzes nach seiner eigenen B
     const out = compareReasoning(units, before, after)
 
     // The sub-passage is § 6's and stays out of § 2's scope, so both are compared.
-    expect(out.stats).toEqual({ compared: 2, changed: 0, uncompared: 0 })
+    expect(out.stats).toEqual({ compared: 2, changed: 0, editorial: 0, uncompared: 0 })
   })
 })
 
@@ -747,5 +748,54 @@ describe('compareReasoning — Unterpassagen unter einer nach § betitelten Übe
 
     expect(out.units['Änderung des Energie-Control-Gesetzes|Z15|changed']).toBeUndefined()
     expect(out.entries[out.units['Elektrizitätswirtschaftsgesetz|§5|changed']!]).toMatchObject({ changed: true })
+  })
+})
+
+// „Redaktionell" by the § comparison's own rule (22.10.2026): `isEditorialChange`
+// over the passage's word diff, with the renumbering of the same comparison.
+describe('compareReasoning — „redaktionell" wie im Vergleich der Paragraphen', () => {
+  const instruction = [unit(SNG, 'Z2', 'In § 6 Abs. 1 wird das Wort "kann" durch das Wort "darf" ersetzt.')]
+
+  it('nennt eine Begründung redaktionell, deren Datum nur anders geschrieben ist', () => {
+    // XXVII 307/ME: „22.8.2018" → „22.08.2018" was the only change.
+    const out = compareReasoningByParagraph(instruction, new Map([['6', 'Die Richtlinie vom 22.8.2018 wird umgesetzt.']]), new Map([['6', 'Die Richtlinie vom 22.08.2018 wird umgesetzt.']]))
+
+    expect(out.entries['§ 6']).toMatchObject({ changed: true, editorial: true })
+    expect(out.stats).toEqual({ compared: 1, changed: 1, editorial: 1, uncompared: 0 })
+  })
+
+  it('nennt einen Verweis redaktionell, der einer Umnummerierung dieses Vergleichs folgt', () => {
+    // A new law whose §§ 5 and 7 the Vorlage numbers 6 and 8: the Begründung
+    // of the first follows the second's new number.
+    const units = [para('§6', '§5', '(1) Erstens.'), para('§8', '§7', '(1) Zweitens.')]
+    const before = erl('Zu § 5:', 'Die Bestimmung ergänzt § 7.', 'Zu § 7:', 'Zweitens.')
+    const after = erl('Zu § 6:', 'Die Bestimmung ergänzt § 8.', 'Zu § 8:', 'Zweitens.')
+
+    const out = compareReasoning(units, before, after)
+
+    expect(out.entries[out.units['Neues Gesetz|§6|changed']!]).toMatchObject({ changed: true, editorial: true })
+    expect(out.stats).toEqual({ compared: 2, changed: 1, editorial: 1, uncompared: 0 })
+  })
+
+  it('lässt denselben Verweis „geändert", wo der Vergleich nichts umnummeriert hat', () => {
+    const out = compareReasoningByParagraph(instruction, new Map([['6', 'Die Bestimmung ergänzt § 7.']]), new Map([['6', 'Die Bestimmung ergänzt § 8.']]))
+    expect(out.entries['§ 6']).toMatchObject({ changed: true, editorial: false })
+
+    // Nor where the renumbering is another law's: the map is per Artikel, as in `toUnit`.
+    const elsewhere = [...instruction, para('§8', '§7', '(1) Zweitens.', 'changed', {}, 'Anderes Gesetz')]
+    const other = compareReasoningByParagraph(elsewhere, new Map([['6', 'Die Bestimmung ergänzt § 7.']]), new Map([['6', 'Die Bestimmung ergänzt § 8.']]))
+    expect(other.entries['§ 6']).toMatchObject({ changed: true, editorial: false })
+  })
+
+  it('lässt einen Tippfehler „geändert": er ändert ein Wort', () => {
+    const out = compareReasoningByParagraph(instruction, new Map([['6', 'Die Rgelung gilt ab 2027.']]), new Map([['6', 'Die Regelung gilt ab 2027.']]))
+    expect(out.entries['§ 6']).toMatchObject({ changed: true, editorial: false })
+    expect(out.stats.editorial).toBe(0)
+  })
+
+  it('nennt nichts redaktionell, was über der Grenze des Wortvergleichs liegt', () => {
+    const words = Array.from({ length: 1700 }, (_, i) => `wort${i}`).join(' ')
+    const out = compareReasoningByParagraph(instruction, new Map([['6', `Vom 22.8.2018 ${words}`]]), new Map([['6', `Vom 22.08.2018 ${words}`]]))
+    expect(out.entries['§ 6']).toMatchObject({ changed: true, editorial: false, segments: null })
   })
 })

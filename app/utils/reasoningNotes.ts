@@ -12,9 +12,22 @@
  */
 import type { ReasoningDiffResponse } from '#shared/types'
 
+/**
+ * The Begründungen the Ressort changed, as the page counts them: the
+ * editorial ones not (`ReasoningDiffEntry.editorial`, 22.10.2026) — the
+ * count of the § comparison, which leaves its „redaktionell" units out the
+ * same way (`ownChangeShare`). One function for this sentence and the
+ * Regierungsvorlage's row (`useVorlageOutcome`), so the two cannot count
+ * differently.
+ */
+export function substantiveReasoningChanges(stats: Pick<ReasoningDiffResponse['stats'], 'changed' | 'editorial'>): number {
+  return stats.changed - stats.editorial
+}
+
 export function reasoningRateNote(stats: ReasoningDiffResponse['stats'] | null | undefined): string | null {
   if (!stats?.compared) return null
-  const { compared, changed } = stats
+  const { compared } = stats
+  const changed = substantiveReasoningChanges(stats)
   // Shorter since 30.09.2026; „— aufklappbar an der Änderung" went, the
   // disclosure at each change announces itself. Counts Begründungen since
   // 01.10.2026, not Paragraphen: what is compared is the ressort's passage to

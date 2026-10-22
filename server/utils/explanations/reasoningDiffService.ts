@@ -57,7 +57,7 @@ function empty(gp: string, inr: number, reason: string | null, sources: TraceLin
     sources,
     units: {},
     entries: {},
-    stats: { compared: 0, changed: 0, uncompared: 0 },
+    stats: { compared: 0, changed: 0, editorial: 0, uncompared: 0 },
   }
 }
 
