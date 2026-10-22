@@ -25,6 +25,7 @@
  */
 import type { LawDiffUnit } from '#shared/types'
 import { articlePairs, diffLawUnits } from '../diff/lawDiff'
+import { compareWords, tokenSimilarity } from '../diff/wordDiff'
 import { parseLawUnitsFromRis, segmentUnits, type LawUnit } from '../lawtext/lawUnits'
 import { lawBlocksFromPdfPages } from './draftPdfLaw'
 
@@ -90,8 +91,57 @@ export function landDraftUnits(pages: readonly string[]): LawUnit[] | null {
   return blocks ? segmentUnits(blocks) : null
 }
 
+/** The provision an instruction addresses first: „§ 14 Abs. 8", „§ 5". */
+function addressOf(heading: string | null): string | null {
+  // „§ 82 (neu) (= bisheriger § 60) Abs. 3": the brackets are no address.
+  const h = (heading ?? '').replace(/\s*\((?:neu|=[^)]*)\)/g, '')
+  const m = /§\s*(\d+[a-z]*)(?:\s+Abs\.\s*(\d+[a-z]*))?(?:\s+(Z\s*\d+[a-z]*|lit\.\s*[a-z]+|(?:erster|zweiter|dritter|vierter|fünfter|sechster|siebter|achter|neunter|zehnter|vorletzter|letzter)\s+Satz))?/.exec(h)
+  // The finer place right after it belongs to the address: „§ 22 Abs. 5 Z 1"
+  // and „… Z 2" are two places, „vorletzter" and „letzter Satz" too.
+  return m ? `§${m[1]}${m[2] ? ` Abs.${m[2]}` : ''}${m[3] ? ` ${m[3].replace(/\s+/g, '')}` : ''}` : null
+}
+
+/** Lower than the engine's 0.6, because the address already says it is the
+ *  same place; read over all 34 pairs a looser rule made (§12.44 Nachtrag 3). */
+const SAME_PLACE_SIMILARITY = 0.35
+
+/**
+ * The comparison, and one pass the Bund's engine does not make (yet): an
+ * instruction reworded so far that the engine reports it removed and a new
+ * one inserted — „Im § 1 Abs. 2 wird folgende Z 3a eingefügt" against „Im
+ * § 1 Abs. 2 wird nach Z 3 folgende Z 3a eingefügt" (16101) — is paired as
+ * one changed instruction, where it is the ONLY such pair at that address in
+ * its Artikel and the two still share a third of their words. Done by giving
+ * the later one the earlier one's instruction line, which the engine's first
+ * rule (same Artikel, same heading) pairs; measured in §12.44, Nachtrag 3.
+ */
 export function diffLandDraft(draft: LawUnit[], kundmachung: LawUnit[]): LawDiffUnit[] {
-  return diffLawUnits(unquoted(draft), unquoted(kundmachung))
+  const from = unquoted(draft)
+  const to = unquoted(kundmachung)
+  const first = diffLawUnits(from, to)
+  const key = (u: LawDiffUnit, address: string | null) => `${u.articleKey ?? u.fromArticleKey ?? ''}|${address}`
+  const removed = new Map<string, LawDiffUnit[]>()
+  const inserted = new Map<string, LawDiffUnit[]>()
+  for (const u of first) {
+    if (u.change !== 'removed' && u.change !== 'inserted') continue
+    const unit = (u.change === 'removed' ? from : to).find((x) => x.id === (u.change === 'removed' ? (u.fromId ?? u.id) : u.id) && x.article === (u.change === 'removed' ? (u.fromArticle ?? u.article) : u.article))
+    const address = addressOf(unit?.heading ?? u.heading)
+    if (!address) continue
+    const map = u.change === 'removed' ? removed : inserted
+    map.set(key(u, address), [...(map.get(key(u, address)) ?? []), u])
+  }
+  let paired = 0
+  const renamed = to.map((t) => ({ ...t }))
+  for (const [k, ins] of inserted) {
+    const rem = removed.get(k)
+    if (ins.length !== 1 || rem?.length !== 1) continue
+    const a = from.find((x) => x.id === (rem[0]!.fromId ?? rem[0]!.id) && x.article === (rem[0]!.fromArticle ?? rem[0]!.article))
+    const b = renamed.find((x) => x.id === ins[0]!.id && x.article === ins[0]!.article)
+    if (!a || !b || tokenSimilarity(compareWords(a.text), compareWords(b.text)) < SAME_PLACE_SIMILARITY) continue
+    b.heading = a.heading
+    paired++
+  }
+  return paired ? diffLawUnits(from, renamed) : first
 }
 
 /**

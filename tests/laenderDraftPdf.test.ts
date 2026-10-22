@@ -102,14 +102,32 @@ describe('diffLandDraft — the draft against the Landesgesetzblatt', () => {
       '2. § 4 lautet: "§ 4 (1) Neu."',
       '3. Im § 5 wird das Wort "Median- Entgelthöhe" eingefügt.',
     )))
-    // „§ 4 entfällt" against „§ 4 lautet: …" are two instructions, not one
-    // changed: the engine says removed and inserted, as on the Bund's pages.
-    expect(units.map((u) => [u.id, u.change])).toEqual([['Z1', 'unchanged'], ['Z2', 'inserted'], ['Z2', 'removed'], ['Z3', 'unchanged']])
+    // „§ 4 entfällt" against „§ 4 lautet: …": the same place, now one
+    // changed instruction (the address pass, §12.44 Nachtrag 3).
+    expect(units.map((u) => [u.id, u.change])).toEqual([['Z1', 'unchanged'], ['Z2', 'changed'], ['Z3', 'unchanged']])
   })
 
   it('pairs the Artikel by title, and names a law the Landtag added', () => {
     const kundmachung = lgblUnits(xml('1. Im § 2 wird das Wort "zugleich Vorsitzende" durch das Wort "Leiterin" ersetzt.').replace('</abschnitt>',
       '<ueberschrift typ="art">Artikel II<br />Änderung des Oö. Y-Gesetzes</ueberschrift><absatz typ="promkleinlsatz">Das Oö. Y-Gesetz wird wie folgt geändert:</absatz><absatz typ="novao1">1. § 9 entfällt.</absatz></abschnitt>'))
     expect(packageChanges(landDraftUnits(draft)!, kundmachung).added).toEqual(['Artikel II Änderung des Oö. Y-Gesetzes'])
+  })
+
+  it('pairs a reworded instruction at the same place as changed, and not two places of one §', () => {
+    const draftAt = (...instructions: string[]) => landDraftUnits([page('Der Oö. Landtag hat beschlossen:', 'Artikel I', 'Änderung des Oö. X-Gesetzes',
+      'Das Oö. X-Gesetz, LGBl. Nr. 1/2020, wird wie folgt geändert:', ...instructions)])!
+    // 16101: the same Z 3a, worded anew.
+    const same = diffLandDraft(
+      draftAt('1. Im § 1 Abs. 2 wird folgende Z 3a eingefügt:', '„3a. Eltern dazu befähigen, ihren Kindern die bestmöglichen Chancen im Leben zu ermöglichen;“'),
+      lgblUnits(xml('1. Im § 1 Abs. 2 wird nach Z 3 folgende Z 3a eingefügt: "3a. Eltern darin unterstützen, ihren Kindern die bestmöglichen Chancen für die Entwicklung zu ermöglichen;"')),
+    )
+    expect(same.map((u) => u.change)).toEqual(['changed'])
+    // Too different for the engine's own pairing, close enough for the
+    // address pass: paired at the same place, kept apart at Z 1 and Z 2.
+    const before = '„1. die Gemeinde, in der der Hund überwiegend gehalten wird, sofern die Halterin dort wohnt;“'
+    const after = 'die Bezirksverwaltungsbehörde, in deren Sprengel der Hund gehalten wird, sofern keine Gemeinde zuständig ist;"'
+    const at = (z: string) => diffLandDraft(draftAt('1. § 22 Abs. 5 Z 1 lautet:', before), lgblUnits(xml(`1. § 22 Abs. 5 Z ${z} lautet: "${z}. ${after}`)))
+    expect(at('1').map((u) => u.change)).toEqual(['changed'])
+    expect(at('2').map((u) => u.change).sort()).toEqual(['inserted', 'removed'])
   })
 })
