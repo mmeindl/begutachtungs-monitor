@@ -203,11 +203,16 @@ export function parseOoeDetail(html: string): OoeDetail | null {
       for (const l of e.links) if (l.url) documents.push({ title: l.label || 'Dokument', url: l.url, date: e.date })
     }
   }
-  const procedure: LandProcedureStep[] = entries('verfahren').map((e) => ({
+  const steps: LandProcedureStep[] = entries('verfahren').map((e) => ({
     date: e.date,
     label: e.body.replace(/\s*\((?:PDF|DOC|DOCX)-Dokument[^)]*\)/gi, '').trim(),
     url: e.links[0]?.url ?? null,
   })).filter((s) => s.label)
+  const stationAt = ooeStationSteps(steps)
+  const procedure = steps.map((s, i) => {
+    const station = (Object.keys(stationAt) as LandStage['station'][]).find((k) => stationAt[k] === i)
+    return station ? { ...s, station } : s
+  })
 
   return {
     title,
@@ -221,29 +226,53 @@ export function parseOoeDetail(html: string): OoeDetail | null {
 }
 
 /**
- * The station a draft reached, from the Landtag's own record (22.10.2026).
+ * Which step of the Landtag's record stands for which station (22.10.2026).
  *
  * Measured over all 91 drafts on the Land's lists that day: the record
  * writes the three steps that matter in one form each — „Einlangen
  * Regierungsvorlage" (75), „Antrag angenommen – einstimmig / mehrstimmig"
  * (66), „Kundmachung im Landesgesetzblatt LGBl. Nr. 45/2026" (83, 18 of them
- * typed „LGBI" with a capital I). The furthest one wins. Anything else in
- * the record (sittings, committees, motions) is the way, not a station.
+ * typed „LGBI" with a capital I). The last one of each form counts.
+ * Anything else in the record (sittings, committees, motions) is the way,
+ * not a station.
+ *
+ * One matcher for two readers: the stage (`ooeStageOf`) and the page, whose
+ * bar lands each row on its step (`LandProcedureStep.station`).
  */
+const OOE_STATION_STEP: Record<LandStage['station'], RegExp> = {
+  rv: /^Einlangen Regierungsvorlage\b/,
+  parlament: /^Antrag angenommen\b/,
+  bgbl: /Kundmachung im Landesgesetzblatt/,
+}
+
+export function ooeStationSteps(procedure: readonly LandProcedureStep[]): Partial<Record<LandStage['station'], number>> {
+  const at: Partial<Record<LandStage['station'], number>> = {}
+  for (const [station, re] of Object.entries(OOE_STATION_STEP) as [LandStage['station'], RegExp][]) {
+    const i = procedure.findLastIndex((s) => re.test(s.label))
+    if (i >= 0) at[station] = i
+  }
+  return at
+}
+
+/** The station a draft reached: the furthest one the record holds a step for. */
 export function ooeStageOf(procedure: readonly LandProcedureStep[]): LandStage | null {
-  const find = (re: RegExp) => [...procedure].reverse().find((s) => re.test(s.label))
-  const lgbl = find(/Kundmachung im Landesgesetzblatt/)
+  const at = ooeStationSteps(procedure)
+  const stepOf = (station: LandStage['station']) => {
+    const i = at[station]
+    return i === undefined ? undefined : procedure[i]
+  }
+  const lgbl = stepOf('bgbl')
   if (lgbl) {
     const nr = /LGB[lI]\.?\s*Nr\.\s*(\d+\/\d{4})/.exec(lgbl.label)?.[1]
     const detail = nr ? `LGBl. Nr. ${nr}` : null
     return { station: 'bgbl', label: 'Kundgemacht', detail, date: lgbl.date, url: detail ? lgblEliUrl('OB', detail) : null }
   }
-  const decided = find(/^Antrag angenommen\b/)
+  const decided = stepOf('parlament')
   if (decided) {
     const how = /angenommen\s*-\s*(einstimmig|mehrstimmig)/.exec(decided.label)?.[1]
     return { station: 'parlament', label: 'Im Landtag beschlossen', detail: how ?? null, date: decided.date }
   }
-  const rv = find(/^Einlangen Regierungsvorlage\b/)
+  const rv = stepOf('rv')
   if (rv) {
     return { station: 'rv', label: 'Regierungsvorlage', detail: rv.date ? `eingelangt am ${rv.date.split('-').reverse().join('.')}` : null, date: rv.date }
   }

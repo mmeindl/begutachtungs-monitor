@@ -131,6 +131,9 @@ export interface LandProcedureStep {
   date: string | null
   label: string
   url: string | null
+  /** The station this step is the record of, on the one step that counts
+   *  for it (`ooeStationSteps`): where the bar's row lands. */
+  station?: LandStage['station']
 }
 
 export interface LandDraftDetail {

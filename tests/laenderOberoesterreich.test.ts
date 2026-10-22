@@ -1,6 +1,6 @@
 import { readFileSync } from 'node:fs'
 import { describe, expect, it } from 'vitest'
-import { ooeFristOf, ooeStageOf, parseOoeDetail, parseOoeGesetze, parseOoeVerordnungen } from '../server/utils/laender/oberoesterreich'
+import { ooeFristOf, ooeStageOf, ooeStationSteps, parseOoeDetail, parseOoeGesetze, parseOoeVerordnungen } from '../server/utils/laender/oberoesterreich'
 import { LandSourceError } from '../server/utils/laender/gate'
 
 const fixture = (name: string) => readFileSync(new URL(`./fixtures/laender/${name}-2026-10-22.html`, import.meta.url), 'utf8')
@@ -93,6 +93,19 @@ describe('Oberösterreich — the station a draft reached', () => {
 
   it('does not count a rejected amendment as the Landtag’s decision', () => {
     expect(ooeStageOf([step('Einlangen Regierungsvorlage Beilage 1/2026'), step('Abänderungsantrag Beilage 2/2026 mehrstimmig abgelehnt')])!.station).toBe('rv')
+  })
+
+  it('tags the one step per station the bar lands on — the last of its form', () => {
+    const steps = [
+      step('Einlangen Regierungsvorlage Beilage 1/2026'),
+      step('Zuweisung an Ausschuss'),
+      step('Antrag angenommen - einstimmig'),
+      step('Antrag angenommen - mehrstimmig'),
+    ]
+    expect(ooeStationSteps(steps)).toEqual({ rv: 0, parlament: 3 })
+    const d = parseOoeDetail(fixture('ooe-detail-16121'))!
+    expect(d.procedure.filter((s) => s.station).map((s) => [s.station, s.label]))
+      .toEqual([['rv', 'Einlangen Regierungsvorlage Beilage 1454/2026']])
   })
 
   it('reads the July draft as waiting in the Landtag’s committee: a Regierungsvorlage', () => {

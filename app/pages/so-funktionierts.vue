@@ -505,6 +505,19 @@ const waitMonths = Math.round(RV_LATENCY_CONTEXT_DAYS / 30.44)
         danach ist er auch hier nicht mehr abrufbar.
       </p>
       <p>
+        Wo das Land nach der Begutachtung nichts verzeichnet, sucht der Monitor
+        die Kundmachung selbst: im Landesgesetzblatt des Rechtsinformationssystems,
+        über den Titel des Entwurfs. Ein Fund steht mit Nummer und Link auf der
+        Entwurfsseite und unter „Kundgemacht“, und die Seite sagt, dass die
+        Zuordnung unsere ist. Wurde dasselbe Gesetz kurz hintereinander zweimal
+        geändert, kann sie die frühere Änderung treffen. Findet die Suche nichts,
+        heißt das nicht, dass der Entwurf nicht kundgemacht wurde – nur, dass wir
+        ihn nicht gefunden haben; die Seite verweist dann auf das
+        Landesgesetzblatt zum Nachsehen. Vor 2015 führt das
+        Rechtsinformationssystem kein Landesgesetzblatt, das sich so durchsuchen
+        ließe.
+      </p>
+      <p>
         Die Länder haben eigene Gesetzgebungsperioden. In der Liste der
         Entwürfe zählt ein Länder-Entwurf deshalb zu der Gesetzgebungsperiode
         des Bundes, in deren Zeitraum seine Begutachtung begann. So umfasst

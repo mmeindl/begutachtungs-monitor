@@ -6,19 +6,23 @@ import { RIS_KIND_LABEL } from '#shared/utils/risConsultations'
 import { citeLineDe } from '#shared/utils/citations'
 import { countLabelDe, formatDateDe } from '#shared/utils/format'
 import { fristFact, fristStateDe } from '~/utils/deadlines'
+import type { StationId } from '~/utils/spine'
+import { landStations, landStatusDe } from '~/utils/spine'
 
 /**
  * A Land's draft (22.10.2026), behind `/entwuerfe/<land>/<number>`.
  *
  * The RIS page's anatomy where the facts are the same kind — header,
- * door card while the Frist runs, „Der Entwurf", „Die Begutachtung" — and
- * nothing that would describe the Bund's procedure: no station card, no
- * Frist bar (its Regelfall and medians are measured on Bund drafts and
- * would be the wrong yardstick here).
+ * procedure card, door card while the Frist runs, „Der Entwurf", „Die
+ * Begutachtung" — and nothing measured on the Bund's procedure: no Frist bar
+ * (its Regelfall and medians are measured on Bund drafts and would be the
+ * wrong yardstick here). Its bar runs to the Kundmachung where the monitor
+ * follows the draft that far, and names the gap where it does not
+ * (`landStations`).
  *
  * What a Land publishes differs, and the page shows each part only where
  * the Land has it: Oberösterreich's Kurzinformation and its Landtag's
- * record („Im Landtag"), Wien's filing address per Magistratsabteilung and
+ * record (`LandStationSections`), Wien's filing address per Magistratsabteilung and
  * its one-year limit. Everything here is the Land's own statement; the
  * monitor adds no reading of its own.
  *
@@ -71,6 +75,26 @@ const fristFacts = computed<Fact[]>(() => {
   return d?.deadline ? [fristFact(d.startedAt, d.deadline)] : []
 })
 
+const stationList = computed(() =>
+  draft.value ? landStations(draft.value, data.value?.statements?.length ?? null, data.value?.procedure) : [])
+/* Every station links into the section that holds it, as on the
+   Ministerialentwurf's page (`LandStationSections`, which renders the same
+   conditions). The Landtag's row lands on its Beschluss where there is one,
+   inside the record; a station without a section stays plain text. */
+const stationAnchors = computed<Partial<Record<StationId, string>>>(() => {
+  const steps = data.value?.procedure ?? []
+  const stage = draft.value?.stage
+  const has = (id: 'rv' | 'parlament' | 'bgbl') => steps.some((s) => s.station === id)
+  const inLandtag = steps.some((s) => s.station !== 'rv' && s.station !== 'bgbl')
+  return {
+    entwurf: '#entwurf',
+    begutachtung: '#begutachtung',
+    ...(has('rv') ? { rv: '#regierungsvorlage' } : {}),
+    ...(has('parlament') ? { parlament: '#landtag-parlament' } : inLandtag ? { parlament: '#landtag' } : {}),
+    ...(stage && stage !== 'unknown' && stage.station === 'bgbl' && stage.detail ? { bgbl: '#landesgesetzblatt' } : {}),
+  }
+})
+
 const named = computed(() => (data.value?.statements ?? []).filter((s) => s.name))
 const unnamed = computed(() => (data.value?.statements ?? []).filter((s) => !s.name))
 
@@ -120,6 +144,16 @@ useSeoMeta({ ogTitle: () => draft.value?.title ?? 'Entwurf', ogType: 'article' }
             {{ detail.draft.title }}
           </p>
         </DraftHeader>
+
+        <!-- The ME page's card, in the same place, on every Land's draft:
+             where the monitor does not follow the draft past its
+             Begutachtung, the last row says so (`landStations`). -->
+        <ProcedureCard
+          :status="landStatusDe(detail.draft)"
+          :stations="stationList"
+          :anchors="stationAnchors"
+          how-to="/so-funktionierts#laender"
+        />
 
         <!-- The one place to act, while the Frist runs — the RIS page's
              card. Where it goes is the Land's: an address (a mail link in
@@ -231,45 +265,9 @@ useSeoMeta({ ogTitle: () => draft.value?.title ?? 'Entwurf', ogType: 'article' }
           </div>
         </section>
 
-        <!-- What came after, as the Land's Landtag records it (OÖ):
-             Regierungsvorlage, sittings, committee, Beschluss, LGBl — its
-             words and dates, in its order. No reading of ours, so no claim
-             about what changed between the draft and the Vorlage. Only
-             where there is a step: before the Vorlage, an empty section
-             would announce a wait, not a fact. -->
-        <section
-          v-if="detail.procedure?.length"
-          id="landtag"
-          class="page-section scroll-mt-6"
-          aria-labelledby="landtag-heading"
-        >
-          <h2 id="landtag-heading" class="section-heading">Im Landtag</h2>
-          <!-- Where the record ends in the Landesgesetzblatt: the
-               Kundmachung in RIS, citable, as the Bund's draft pages give
-               their BGBl (22.10.2026). -->
-          <p
-            v-if="detail.draft.stage && detail.draft.stage !== 'unknown' && detail.draft.stage.station === 'bgbl' && detail.draft.stage.url"
-            class="mt-4 flex flex-wrap items-center gap-x-3 gap-y-1 text-sm"
-          >
-            <span>
-              Kundgemacht im Landesgesetzblatt:
-              <ExternalLink :href="detail.draft.stage.url" class="link-inline font-medium">{{ detail.draft.stage.detail }}</ExternalLink><template v-if="detail.draft.stage.date">, am {{ formatDateDe(detail.draft.stage.date) }}</template>
-            </span>
-            <CiteButton :text="citeLineDe(detail.draft.stage.detail, detail.draft.stage.url)" subject="Die Kundmachung" />
-          </p>
-          <ol class="mt-4 divide-y divide-hairline border-y border-hairline">
-            <li v-for="(step, i) in detail.procedure" :key="i" class="flex gap-4 py-2 text-sm">
-              <span class="w-24 shrink-0 text-ink-muted tabular-nums">{{ step.date ? formatDateDe(step.date) : '' }}</span>
-              <span class="min-w-0">
-                <ExternalLink v-if="step.url" :href="step.url" class="link-inline">{{ step.label }}</ExternalLink>
-                <template v-else>{{ step.label }}</template>
-              </span>
-            </li>
-          </ol>
-          <p class="mt-3 text-sm text-ink-secondary">
-            Quelle: Landtag {{ landName }}, wie er das Verfahren selbst verzeichnet.
-          </p>
-        </section>
+        <!-- The stations after the Begutachtung, one section each, where
+             the Land records them (OÖ). -->
+        <LandStationSections :draft="detail.draft" :procedure="detail.procedure" :land-name="landName" />
       </template>
     </FetchGate>
   </div>

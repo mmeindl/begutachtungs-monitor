@@ -1,8 +1,10 @@
 import { describe, expect, it } from 'vitest'
-import type { BgblOutcome, DraftDetail, LawStationId } from '../shared/types'
+import type { BgblOutcome, DraftDetail, LandConsultation, LandStage, LawStationId } from '../shared/types'
 import { bgblShort, formatNumberDe } from '../shared/utils/format'
 import {
   houseOutcomeOf,
+  landStations,
+  landStatusDe,
   lastParliamentStation,
   parliamentOutcome,
   parliamentStandDe,
@@ -519,7 +521,7 @@ describe('regulationStations — the Verordnung path', () => {
 
   it('draws three stations, Entwurf · Begutachtung · Kundgemacht (BGBl. II)', () => {
     const list = regulationStations(ended, null)
-    expect(list.map((s) => s.name)).toEqual(['Entwurf', 'Begutachtung', 'Kundgemacht'])
+    expect(list.map((s) => s.name)).toEqual(['Entwurf', 'Begutachtung', 'Bundesgesetzblatt'])
     expect(list[0]!.facts).toEqual(['05.01.2026'])
     expect(list[1]!.facts).toEqual(['Volle Frist: 6 Wochen', '05.01.–16.02.2026'])
   })
@@ -565,6 +567,103 @@ describe('regulationStations — the Verordnung path', () => {
     for (const o of [null, outcome({ state: 'unbekannt' })]) {
       expect(last(o)).toMatchObject({ state: 'open', facts: [] })
     }
+  })
+})
+
+describe('landStations — a Land\'s draft', () => {
+  const land = (o: Partial<LandConsultation> = {}) =>
+    ({ land: 'sbg', active: false, startedAt: '2026-01-05', deadline: '2026-02-16', ...o }) as const
+  const stage = (o: Partial<LandStage>): LandStage =>
+    ({ station: 'rv', label: '', detail: null, date: null, ...o })
+  const names = (l: ReturnType<typeof landStations>) => l.map((s) => s.name)
+
+  it('draws three rows where the monitor does not follow the draft, and the last one says so', () => {
+    const list = landStations(land())
+    expect(names(list)).toEqual(['Entwurf', 'Begutachtung', 'Landesgesetzblatt'])
+    expect(list[1]!.facts).toEqual(['Volle Frist: 6 Wochen', '05.01.–16.02.2026'])
+    expect(list[2]).toMatchObject({ state: 'open', facts: ['verfolgt der Monitor hier noch nicht'] })
+    expect(list[2]!.source?.href).toBe('https://www.ris.bka.gv.at/Ergebnis.wxe?Abfrage=LgblAuth&Bundesland=Salzburg')
+    expect(landStatusDe(land())).toBe('Begutachtung beendet')
+  })
+
+  it('encodes the Land in the RIS link', () => {
+    expect(landStations(land({ land: 'ooe' }))[2]!.source?.href).toMatch(/Bundesland=Ober%C3%B6sterreich$/)
+  })
+
+  it('keeps the last row plainly ahead while the Frist runs, without a link', () => {
+    const list = landStations(land({ active: true }))
+    expect(list[1]!.state).toBe('current')
+    expect(list[2]).toMatchObject({ state: 'open', facts: ['ausstehend'] })
+    expect(list[2]!.source).toBeUndefined()
+    expect(landStatusDe(land({ active: true }))).toBe('In Begutachtung')
+  })
+
+  it('says an unreadable record is unreadable, not unfollowed', () => {
+    expect(landStations(land({ stage: 'unknown' }))[2]!.facts).toEqual(['Stand gerade nicht abrufbar'])
+  })
+
+  it('leaves a lost Frist blank rather than „keine Frist angegeben"', () => {
+    expect(landStations(land({ deadline: null }))[1]!.facts).toEqual([])
+  })
+
+  it('counts the published Stellungnahmen, and says nothing where none are published', () => {
+    expect(landStations(land(), 10)[1]!.facts.at(-1)).toBe('10 Stellungnahmen veröffentlicht')
+    expect(landStations(land(), 1)[1]!.facts.at(-1)).toBe('1 Stellungnahme veröffentlicht')
+    expect(landStations(land(), 0)[1]!.facts.at(-1)).toBe('keine veröffentlicht')
+    expect(landStations(land({ active: true }), 0)[1]!.facts.at(-1)).toBe('noch keine veröffentlicht')
+    expect(landStations(land(), null)[1]!.facts).toEqual(['Volle Frist: 6 Wochen', '05.01.–16.02.2026'])
+  })
+
+  it('draws five rows from the Landtag\'s record, and „bisher keine" where no Vorlage came', () => {
+    const list = landStations(land({ land: 'ooe', stage: null }))
+    expect(names(list)).toEqual(['Entwurf', 'Begutachtung', 'Regierungsvorlage', 'Landtag', 'Landesgesetzblatt'])
+    expect(list[2]).toMatchObject({ state: 'current', facts: ['bisher keine'] })
+    expect(list[3]!.state).toBe('open')
+    expect(landStatusDe(land({ stage: null }))).toBe('Bisher keine Regierungsvorlage')
+  })
+
+  it('puts the text in the Landtag once the Vorlage came, and says how it stood to the Frist', () => {
+    const s = stage({ station: 'rv', detail: 'eingelangt am 28.09.2026', date: '2026-09-28' })
+    const list = landStations(land({ land: 'ooe', stage: s, startedAt: '2026-06-11', deadline: '2026-07-27' }))
+    expect(list[2]).toMatchObject({ state: 'done', facts: ['28.09.2026, 2 Monate nach Fristende'] })
+    expect(list[3]).toMatchObject({ state: 'current', facts: ['in Behandlung'] })
+    expect(list[4]!.state).toBe('open')
+    expect(landStatusDe(land({ stage: s }))).toBe('Im Landtag')
+  })
+
+  it('waits for the Kundmachung after the Beschluss', () => {
+    const s = stage({ station: 'parlament', detail: 'einstimmig', date: '2026-07-03' })
+    const list = landStations(land({ land: 'ooe', stage: s }))
+    // Without the record, the rows before the furthest have no date.
+    expect(list[2]).toMatchObject({ state: 'done', facts: [] })
+    expect(list[3]).toMatchObject({ state: 'done', facts: ['einstimmig', '03.07.2026'] })
+    expect(list[4]).toMatchObject({ state: 'current', facts: ['bisher keine Kundmachung'] })
+    expect(landStatusDe(land({ stage: s }))).toBe('Beschlossen – Kundmachung ausständig')
+  })
+
+  it('dates every reached row from its own step, and names a Vorlage before the Fristende', () => {
+    const s = stage({ station: 'bgbl', detail: 'LGBl. Nr. 57/2026', date: '2026-07-30' })
+    const steps = [
+      { label: 'Einlangen Regierungsvorlage Beilage 1390/2026', date: '2026-06-08', url: null, station: 'rv' as const },
+      { label: 'Antrag angenommen - mehrstimmig', date: '2026-07-09', url: null, station: 'parlament' as const },
+      { label: 'Kundmachung im Landesgesetzblatt LGBI. Nr. 57/2026', date: '2026-07-30', url: null, station: 'bgbl' as const },
+    ]
+    const list = landStations(land({ land: 'ooe', stage: s, startedAt: '2026-05-20', deadline: '2026-06-18' }), null, steps)
+    expect(list[2]!.facts).toEqual(['08.06.2026, noch vor Fristende'])
+    expect(list[3]!.facts).toEqual(['09.07.2026'])
+    expect(list[4]!.facts).toEqual(['LGBl. Nr. 57/2026', '30.07.2026'])
+  })
+
+  it('ends on the Landesgesetzblatt', () => {
+    const s = stage({ station: 'bgbl', detail: 'LGBl. Nr. 57/2026', date: '2026-07-30' })
+    const list = landStations(land({ land: 'ooe', stage: s }))
+    expect(list.every((r) => r.state === 'done')).toBe(true)
+    expect(list[4]!.facts).toEqual(['LGBl. Nr. 57/2026', '30.07.2026'])
+    expect(landStatusDe(land({ stage: s }))).toBe('Gesetz geworden')
+  })
+
+  it('offers no comparison on any row', () => {
+    expect(landStations(land({ stage: null })).every((r) => r.comparison === null)).toBe(true)
   })
 })
 

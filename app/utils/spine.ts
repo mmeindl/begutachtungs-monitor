@@ -41,12 +41,13 @@
  * (the amended laws, the Regierungsvorlage's own Stellungnahmen count), so
  * the values are handed in rather than guessed or fetched here.
  */
-import type { BgblOutcome, DraftDetail, EnactmentInfo, HouseVote, LawStationId, RisConsultation } from '#shared/types'
+import type { BgblOutcome, DraftDetail, EnactmentInfo, HouseVote, LandConsultation, LandProcedureStep, LawStationId, RisConsultation } from '#shared/types'
 import { carriesDraft } from '#shared/utils/antragPath'
 import { bgblShort, formatDateDe, formatNumberDe, fristEndedDe, spanInDays, todayIso } from '#shared/utils/format'
 import { promulgationState } from '#shared/utils/promulgation'
 import { PARLIAMENT_COMPARISON_QUESTION, UPSTREAM_AUSSCHUSS_TITLE, UPSTREAM_PLENUM_TITLE } from '#shared/utils/lawStations'
 import type { SourceEntry } from '#shared/utils/provenance'
+import { LAND_NAME } from '#shared/utils/laender'
 import { fristClassLineDe, fristRangeDe, fristSpanDe } from './deadlines'
 
 export type StationId = 'entwurf' | 'begutachtung' | 'rv' | 'parlament' | 'bgbl'
@@ -172,7 +173,7 @@ function fristLineDe(start: string | null, deadline: string | null, active: bool
  * eight drafts, and it is not when the ministry first had them — submitters
  * send to the ministry directly too.
  */
-function afterFristDe(deadline: string | null, date: string | null, start?: string | null): string | null {
+export function afterFristDe(deadline: string | null, date: string | null, start?: string | null): string | null {
   const sinceStart = spanInDays(start, date)
   if (sinceStart !== null && sinceStart <= 0) return 'noch vor Beginn der Begutachtung'
   return daysAfterFristDe(spanInDays(deadline, date))
@@ -761,9 +762,12 @@ export function stations(d: DraftDetail, ctx: StationContext = {}, today: string
     },
     {
       id: 'bgbl',
-      // The state, not the Gazette (`DRAFT_STATION_LABEL`, 22.10.2026); the
-      // fact under it names the Gazette.
-      name: 'Kundgemacht',
+      // The Gazette, as the section it leads to („Im Bundesgesetzblatt"):
+      // every row is its section's name without „Im". The LISTS say
+      // „Kundgemacht" (`DRAFT_STATION_LABEL`), because their tabs hold Bund
+      // and Länder together; a draft page holds one source, so the Gazette
+      // is never ambiguous here (22.10.2026).
+      name: 'Bundesgesetzblatt',
       // The GP is the boundary here as it is for the Vorlage: while it runs a
       // law can still come, whatever the Frist says; once it is over, nothing.
       //
@@ -881,7 +885,7 @@ export function regulationStations(
                 // „nicht gefunden" from reading as „gibt es nicht".
                 lead: 'unsere Suche findet nicht jede –',
                 href: 'https://www.ris.bka.gv.at/Bgbl-Auth/',
-                label: 'im Bundesgesetzblatt nachsehen',
+                label: 'im RIS nachsehen',
               },
             }
           : { state: 'open', facts: [] }
@@ -905,10 +909,162 @@ export function regulationStations(
     },
     {
       id: 'bgbl',
-      name: 'Kundgemacht',
+      // Not „Bundesgesetzblatt II": the citation under it says which part.
+      name: 'Bundesgesetzblatt',
       comparison: null,
       ...bgbl,
     },
+  ]
+}
+
+/**
+ * A Land's draft in the card's words (22.10.2026). Where the monitor follows
+ * the draft past its Begutachtung (`stage` present — Oberösterreich's
+ * Gesetze, from the Landtag's own record), the headline names the furthest
+ * station as the Bund's does; elsewhere only the Begutachtung is known, and
+ * the line says no more than that.
+ *
+ * „Bisher keine Regierungsvorlage" may stand here for the reason it may on a
+ * Ministerialentwurf: the Landtag's record is the complete list, not a
+ * search of ours.
+ */
+export function landStatusDe(d: Pick<LandConsultation, 'active' | 'stage' | 'kind'>): string {
+  if (d.active) return 'In Begutachtung'
+  const s = d.stage
+  if (s === undefined || s === 'unknown') return 'Begutachtung beendet'
+  // Our own find: the evidenced outcome goes to the top, a miss never does
+  // (`regulationStatusDe`) — „Begutachtung beendet" above.
+  if (s?.via === 'suche') return d.kind === 'gesetz' ? 'Gesetz geworden' : 'Kundgemacht'
+  if (!s) return 'Bisher keine Regierungsvorlage'
+  if (s.station === 'bgbl') return 'Gesetz geworden'
+  if (s.station === 'parlament') return 'Beschlossen – Kundmachung ausständig'
+  return 'Im Landtag'
+}
+
+/**
+ * The last row where the Land records nothing after the Begutachtung, and
+ * the monitor searched the Landesgesetzblatt itself (`matchLgbl`, §12.43).
+ *
+ * The asymmetry of the Bund's Verordnungen (`regulationStations`): a find
+ * stands as done, with the number and the date, and the section below says
+ * whose finding it is; a miss says „nicht gefunden" about our search, with
+ * the way to check beside it — never „nicht kundgemacht".
+ */
+function searchedRow(
+  d: Pick<LandConsultation, 'land' | 'active' | 'stage' | 'lgblSearch'>,
+): Pick<Station, 'state' | 'facts' | 'source'> {
+  const s = d.stage
+  if (s && s !== 'unknown' && s.via === 'suche') {
+    return { state: 'done', facts: kept(s.detail, s.date ? formatDateDe(s.date) : null) }
+  }
+  if (d.active) return { state: 'open', facts: ['ausstehend'] }
+  const ris = `https://www.ris.bka.gv.at/Ergebnis.wxe?Abfrage=LgblAuth&Bundesland=${encodeURIComponent(LAND_NAME[d.land])}`
+  switch (s === 'unknown' ? 'nicht-abrufbar' : d.lgblSearch) {
+    case 'nicht-gefunden':
+      return {
+        state: 'current',
+        facts: ['keine Kundmachung gefunden'],
+        source: { lead: 'unsere Suche findet nicht jede –', href: ris, label: 'im RIS nachsehen' },
+      }
+    case 'vor-ris':
+      // Before 2015 RIS holds no authentic Landesgesetzblatt to search.
+      return {
+        state: 'open',
+        facts: ['vor 2015, nicht im RIS durchsuchbar'],
+        source: { lead: null, href: ris, label: 'im RIS nachsehen' },
+      }
+    case 'nicht-abrufbar':
+      return { state: 'open', facts: ['Stand gerade nicht abrufbar'], source: { lead: null, href: ris, label: 'im RIS nachsehen' } }
+    default:
+      return { state: 'open', facts: ['verfolgt der Monitor hier noch nicht'], source: { lead: null, href: ris, label: 'im RIS nachsehen' } }
+  }
+}
+
+/**
+ * The bar for a Land's draft, on every Land's page.
+ *
+ * Where the monitor follows the draft past the Begutachtung (`stage` read —
+ * Oberösterreich's Gesetze, from the Landtag's own record): the Bund's five
+ * stations with „Landtag" in place of „Parlament" and „Landesgesetzblatt"
+ * in place of „Bundesgesetzblatt". The stage names the
+ * furthest station; `steps`, the record with its station steps tagged,
+ * dates the rows before it.
+ *
+ * Elsewhere three rows, the third the monitor's own search of the
+ * Landesgesetzblatt (`searchedRow`): a find, or which kind of miss, with
+ * the Land's hit list in RIS to check it (verified 22.10.2026: it filters by
+ * Bundesland). Not two rows — a bar that stops at the Begutachtung claims
+ * the procedure ends there. A find of OUR search never unlocks the five
+ * rows: Regierungsvorlage and Landtag only the Land's own record can fill.
+ *
+ * No comparison on any row: the monitor reads no text of a Land's draft.
+ * `statementCount` is the Land's published Stellungnahmen; null where the
+ * Land publishes none or its page could not be read — then the row says
+ * nothing rather than „keine".
+ */
+export function landStations(
+  d: Pick<LandConsultation, 'land' | 'active' | 'startedAt' | 'deadline' | 'stage' | 'lgblSearch'>,
+  statementCount: number | null = null,
+  steps: readonly LandProcedureStep[] | null = null,
+): Station[] {
+  const count = statementCount === null
+    ? null
+    : statementCount === 0
+      ? d.active ? 'noch keine veröffentlicht' : 'keine veröffentlicht'
+      : `${formatNumberDe(statementCount)} ${statementCount === 1 ? 'Stellungnahme' : 'Stellungnahmen'} veröffentlicht`
+  const head: Station[] = [
+    {
+      id: 'entwurf',
+      name: 'Entwurf',
+      state: 'done',
+      facts: kept(d.startedAt ? formatDateDe(d.startedAt) : null),
+      comparison: null,
+    },
+    {
+      id: 'begutachtung',
+      name: 'Begutachtung',
+      state: d.active ? 'current' : 'done',
+      // A closed draft's Frist is gone from some registers (Salzburg): no
+      // „keine Frist angegeben", which would blame the Land for our gap.
+      facts: kept(...(d.deadline ? fristLineDe(d.startedAt, d.deadline, d.active) : []), count),
+      comparison: null,
+    },
+  ]
+
+  const s = d.stage
+  if (s === undefined || s === 'unknown' || s?.via === 'suche') {
+    return [...head, { id: 'bgbl', name: 'Landesgesetzblatt', comparison: null, ...searchedRow(d) }]
+  }
+
+  const order: StationId[] = ['rv', 'parlament', 'bgbl']
+  const reached = s ? order.indexOf(s.station) : -1
+  /* Each reached row dates itself from its own step of the record
+     (`LandProcedureStep.station`); the stage knows only the furthest. The
+     Vorlage says how it stood to the Frist, in the Bund row's words — a
+     Vorlage before the Fristende is the finding, not its date. */
+  const reachedFacts = (id: StationId): string[] => {
+    const date = steps?.find((st) => st.station === id)?.date ?? (id === s?.station ? s.date : null)
+    if (id === 'rv') {
+      const span = afterFristDe(d.deadline, date, d.startedAt)
+      return kept(date ? (span ? `${formatDateDe(date)}, ${span}` : formatDateDe(date)) : null)
+    }
+    return kept(id === s?.station ? s.detail : null, date ? formatDateDe(date) : null)
+  }
+  const after = (id: StationId): Pick<Station, 'state' | 'facts'> => {
+    const i = order.indexOf(id)
+    if (i <= reached) return { state: 'done', facts: reachedFacts(id) }
+    if (d.active || i > reached + 1) return { state: 'open', facts: [] }
+    // The next station after the last one reached: where the text is now.
+    return {
+      state: 'current',
+      facts: [id === 'rv' ? 'bisher keine' : id === 'parlament' ? 'in Behandlung' : 'bisher keine Kundmachung'],
+    }
+  }
+  return [
+    ...head,
+    { id: 'rv', name: 'Regierungsvorlage', comparison: null, ...after('rv') },
+    { id: 'parlament', name: 'Landtag', comparison: null, ...after('parlament') },
+    { id: 'bgbl', name: 'Landesgesetzblatt', comparison: null, ...after('bgbl') },
   ]
 }
 

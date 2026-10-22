@@ -254,13 +254,21 @@ function chooseSort(key: string) {
  * „Ministerialentwürfe", and a Ressort while the Bund is on.
  */
 const { bund, laender: chosenLaender } = useSourceChoice()
-/* Oberösterreich's Landtag records the steps after the Begutachtung
- * (`ooeStageOf`), so its drafts reach every station; the other Länder the
- * monitor follows no further than the Begutachtung. */
-const FOLLOWED_PAST_BEGUTACHTUNG: readonly LandCode[] = ['ooe']
-const laterStationsOnlyChosen = computed(() => stations.value.length > 0 && !stations.value.includes('begutachtung'))
+/* The stations a Land's drafts can reach here. Oberösterreich's Landtag
+ * records every step after the Begutachtung (`ooeStageOf`); for the other
+ * Länder the monitor finds the Kundmachung itself (`matchLgbl`, §12.43) and
+ * nothing in between — so under „Regierungsvorlage" or „Parlament" alone
+ * they have no rows to give, and the chip says why. */
+const FOLLOWED_STATIONS: Record<LandCode, readonly DraftStation[] | 'all'> = {
+  ooe: 'all',
+  sbg: ['begutachtung', 'bgbl'],
+  w: ['begutachtung', 'bgbl'],
+}
 function landUnavailableFor(land: LandCode): string | null {
-  if (laterStationsOnlyChosen.value && !FOLLOWED_PAST_BEGUTACHTUNG.includes(land)) return 'Diese Länder-Entwürfe verfolgt der Monitor nur in der Begutachtung'
+  const followed = FOLLOWED_STATIONS[land]
+  if (stations.value.length && followed !== 'all' && !stations.value.some((s) => followed.includes(s))) {
+    return 'Diese Länder-Entwürfe verfolgt der Monitor nur in Begutachtung und Kundmachung'
+  }
   if (art.value === 'ministerialentwurf') return 'Länder-Entwürfe sind keine Ministerialentwürfe'
   if (bund.value && ministry.value) return 'Länder-Entwürfe haben kein Ministerium'
   return null
