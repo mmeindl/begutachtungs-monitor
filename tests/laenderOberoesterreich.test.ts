@@ -84,7 +84,7 @@ describe('Oberösterreich — the station a draft reached', () => {
     expect(ooeStageOf([step('Einlangen Regierungsvorlage Beilage 1/2026'), step('Antrag angenommen - mehrstimmig - Dafür: ÖVP, FPÖ', '2026-03-05')]))
       .toMatchObject({ station: 'parlament', label: 'Im Landtag beschlossen', detail: 'mehrstimmig' })
     expect(ooeStageOf([step('Antrag angenommen - einstimmig'), step('Kundmachung im Landesgesetzblatt LGBl. Nr. 45/2026', '2026-04-01')]))
-      .toEqual({ station: 'bgbl', label: 'Kundgemacht', detail: 'LGBl. Nr. 45/2026', date: '2026-04-01' })
+      .toEqual({ station: 'bgbl', label: 'Kundgemacht', detail: 'LGBl. Nr. 45/2026', date: '2026-04-01', url: 'https://www.ris.bka.gv.at/eli/lgbl/OB/2026/45' })
   })
 
   it('reads the Land’s „LGBI" with a capital I, 18 of 83 times', () => {

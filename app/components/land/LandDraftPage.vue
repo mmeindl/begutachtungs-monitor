@@ -238,6 +238,19 @@ useSeoMeta({ ogTitle: () => draft.value?.title ?? 'Entwurf', ogType: 'article' }
           aria-labelledby="landtag-heading"
         >
           <h2 id="landtag-heading" class="section-heading">Im Landtag</h2>
+          <!-- Where the record ends in the Landesgesetzblatt: the
+               Kundmachung in RIS, citable, as the Bund's draft pages give
+               their BGBl (22.10.2026). -->
+          <p
+            v-if="detail.draft.stage && detail.draft.stage !== 'unknown' && detail.draft.stage.station === 'bgbl' && detail.draft.stage.url"
+            class="mt-4 flex flex-wrap items-center gap-x-3 gap-y-1 text-sm"
+          >
+            <span>
+              Kundgemacht im Landesgesetzblatt:
+              <ExternalLink :href="detail.draft.stage.url" class="link-inline font-medium">{{ detail.draft.stage.detail }}</ExternalLink><template v-if="detail.draft.stage.date">, am {{ formatDateDe(detail.draft.stage.date) }}</template>
+            </span>
+            <CiteButton :text="citeLineDe(detail.draft.stage.detail, detail.draft.stage.url)" subject="Die Kundmachung" />
+          </p>
           <ol class="mt-4 divide-y divide-hairline border-y border-hairline">
             <li v-for="(step, i) in detail.procedure" :key="i" class="flex gap-4 py-2 text-sm">
               <span class="w-24 shrink-0 text-ink-muted tabular-nums">{{ step.date ? formatDateDe(step.date) : '' }}</span>

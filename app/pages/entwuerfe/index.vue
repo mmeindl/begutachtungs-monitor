@@ -273,7 +273,7 @@ const sourceUnavailable = computed(() =>
   Object.fromEntries(LAND_CODES.map((land) => [land, landUnavailableFor(land)])))
 const sourceNote = computed(() =>
   chosenLaender.value.length
-    ? `Länder: ${landCoverageDe()}; einer Gesetzgebungsperiode zugeordnet nach dem Beginn ihrer Begutachtung.`
+    ? `Länder: ${landCoverageDe()}`
     : null)
 
 /* The halves the sources and `art` ask for, the gate over them, the period

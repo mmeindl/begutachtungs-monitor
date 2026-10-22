@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { beilageOfUrl, bgblEliUrl, bgblShortDe, blgNrDe, citeLineDe, draftCitationDe, erlRvPassageDe, latestAmendmentOf, lawCiteDe, rvCitationDe } from '../shared/utils/citations'
+import { beilageOfUrl, bgblEliUrl, bgblShortDe, blgNrDe, citeLineDe, draftCitationDe, erlRvPassageDe, latestAmendmentOf, lawCiteDe, lgblEliUrl, rvCitationDe } from '../shared/utils/citations'
 
 describe('citations', () => {
   it('cites a draft as Parliament does, a Vorlage as a footnote does', () => {
@@ -86,5 +86,12 @@ describe('BlgNR — the Beilagen as a footnote cites them', () => {
 
   it('keeps Parliament’s form for a Vorlage it cannot cite as a Beilage', () => {
     expect(rvCitationDe('525 d.B.', 'XXVIII')).toBe('RV 525 BlgNR 28. GP')
+  })
+})
+
+describe('lgblEliUrl — a Landesgesetzblatt in RIS', () => {
+  it('builds the address from RIS’s Land code and the number', () => {
+    expect(lgblEliUrl('OB', 'LGBl. Nr. 45/2026')).toBe('https://www.ris.bka.gv.at/eli/lgbl/OB/2026/45')
+    expect(lgblEliUrl('OB', 'kein Blatt')).toBeNull()
   })
 })

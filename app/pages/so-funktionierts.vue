@@ -174,6 +174,7 @@ const toc = [
   { to: '#wirkung', label: 'Was eine Stellungnahme bewirkt' },
   { to: '#stationen', label: 'Der Weg eines Entwurfs' },
   { to: '#ohne-stellungnahmen', label: 'Warum manche Entwürfe keine Stellungnahmen zeigen' },
+  { to: '#laender', label: 'Begutachtungen der Länder' },
   { to: '#gegenueberstellung', label: 'Woher „Was ändert der Entwurf?“ kommt' },
   { to: '#wartezeit', label: 'Wie lange es bis zur Regierungsvorlage dauert' },
   { to: '#vergleich', label: 'Wie wir Entwurf und Regierungsvorlage vergleichen' },
@@ -462,6 +463,52 @@ const waitMonths = Math.round(RV_LATENCY_CONTEXT_DAYS / 30.44)
         Entwürfen nennt schon der Titel keine Rechtsform – Staatsverträge etwa
         oder Vereinbarungen zwischen Bund und Ländern; welchen Weg sie nehmen,
         sagt das Dokument selbst.
+      </p>
+    </ProseSection>
+
+    <!-- The Länder (22.10.2026): what differs from the Bund, how far the
+         monitor can follow each Land — which is what each Land publishes,
+         not a choice of ours — and how the lists place a Land's draft in a
+         Bund period. That last sentence stood under the chips for a day and
+         went there: a rule about the list's order is this page's job, not
+         the list's. -->
+    <ProseSection id="laender" heading="Begutachtungen der Länder">
+      <p>
+        Auch die neun Länder legen Entwürfe zur Begutachtung auf:
+        Landesgesetze, die der Landtag beschließt, und Verordnungen der
+        Landesregierung. Eine gemeinsame Stelle wie das Rechtsinformationssystem
+        des Bundes gibt es dafür nicht – jedes Land veröffentlicht auf seiner
+        eigenen Seite und in seiner eigenen Form. Der Monitor liest derzeit
+        drei davon: Oberösterreich, Salzburg und Wien. Im Kopf jeder Liste
+        wählen Sie, ob sie Entwürfe des Bundes, eines Landes oder beider zeigt.
+      </p>
+      <p>
+        Der Weg ist ähnlich, die Stellen heißen anders: Wo beim Bund der
+        Nationalrat beschließt, ist es der Landtag – in den Listen steht er
+        unter „Parlament“ –, und kundgemacht wird im Landesgesetzblatt statt
+        im Bundesgesetzblatt. Eine Stellungnahme geht direkt an das Land, je
+        nach Land per E-Mail an die zuständige Abteilung oder über ein
+        Formular; die Entwurfsseite nennt den Weg. Wie viele Stellungnahmen
+        eingehen, zählt keines der drei Länder öffentlich – jedes
+        veröffentlicht nur einen Teil davon, nach eigenen Regeln, die die
+        Entwurfsseite nennt. Deshalb steht in den Zeilen „nicht gezählt“.
+        Namen nennt der Monitor auch hier nur bei Organisationen.
+      </p>
+      <p>
+        Wie weit der Monitor einem Entwurf folgen kann, hängt davon ab, was das
+        Land veröffentlicht. Oberösterreich verzeichnet jeden Gesetzesentwurf
+        im Landtag bis zur Kundmachung; seine Entwürfe stehen deshalb auch unter
+        „Regierungsvorlage“, „Parlament“ und „Kundgemacht“, und die
+        Entwurfsseite zeigt die Schritte im Landtag. Salzburg führt alle
+        Entwürfe seit 2004, aber nur bis zum Ende der Begutachtung. Wien zeigt
+        einen Entwurf bis zum Beschluss im Landtag, höchstens ein Jahr lang;
+        danach ist er auch hier nicht mehr abrufbar.
+      </p>
+      <p>
+        Die Länder haben eigene Gesetzgebungsperioden. In der Liste der
+        Entwürfe zählt ein Länder-Entwurf deshalb zu der Gesetzgebungsperiode
+        des Bundes, in deren Zeitraum seine Begutachtung begann. So umfasst
+        eine Auswahl wie „GP XXVIII“ bei Bund und Ländern denselben Zeitraum.
       </p>
     </ProseSection>
 

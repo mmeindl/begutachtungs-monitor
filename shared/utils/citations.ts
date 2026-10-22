@@ -86,6 +86,19 @@ export function bgblEliUrl(number: string): string | null {
   return `https://www.ris.bka.gv.at/eli/bgbl/${m[1]}/${m[3]}/${m[2]}`
 }
 
+/**
+ * A Landesgesetzblatt's address in RIS (22.10.2026): `LGBl. Nr. 45/2026`
+ * → `https://www.ris.bka.gv.at/eli/lgbl/OB/2026/45`, `eliLand` being RIS's
+ * code for the Land (Oberösterreich: `OB`). Checked for Oberösterreich over
+ * 2020–2026, the years its drafts on the Land's lists reach: each address
+ * opens that number's Kundmachung. RIS answers an unknown number with 200
+ * too, so only numbers the Land itself recorded are linked.
+ */
+export function lgblEliUrl(eliLand: string, number: string): string | null {
+  const m = /LGBl\.?\s*Nr\.\s*(\d+)\/(\d{4})/.exec(number)
+  return m ? `https://www.ris.bka.gv.at/eli/lgbl/${eliLand}/${m[2]}/${m[1]}` : null
+}
+
 /** The copied string: the parts that exist, joined by commas. */
 export function citeLineDe(...parts: (string | null | undefined)[]): string {
   return parts.map((p) => p?.trim()).filter(Boolean).join(', ')

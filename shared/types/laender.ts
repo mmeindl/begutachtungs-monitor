@@ -62,6 +62,8 @@ export interface LandStage {
   detail: string | null
   /** ISO date the station was reached, for the „Neu" chip. */
   date: string | null
+  /** The Kundmachung in RIS, where the station is `bgbl` (`lgblEliUrl`). */
+  url?: string | null
 }
 
 /**

@@ -27,6 +27,7 @@
  */
 import type { LandConsultation, LandDocument, LandProcedureStep, LandStage, LandStatement } from '#shared/types'
 import { safeExternalUrl } from '#shared/utils/safeExternalUrl'
+import { lgblEliUrl } from '#shared/utils/citations'
 import { decodeEntities } from '../parliament/htmlText'
 import { classifySubmitter } from '../parliament/privacy'
 import { LandSourceError } from './gate'
@@ -234,7 +235,8 @@ export function ooeStageOf(procedure: readonly LandProcedureStep[]): LandStage |
   const lgbl = find(/Kundmachung im Landesgesetzblatt/)
   if (lgbl) {
     const nr = /LGB[lI]\.?\s*Nr\.\s*(\d+\/\d{4})/.exec(lgbl.label)?.[1]
-    return { station: 'bgbl', label: 'Kundgemacht', detail: nr ? `LGBl. Nr. ${nr}` : null, date: lgbl.date }
+    const detail = nr ? `LGBl. Nr. ${nr}` : null
+    return { station: 'bgbl', label: 'Kundgemacht', detail, date: lgbl.date, url: detail ? lgblEliUrl('OB', detail) : null }
   }
   const decided = find(/^Antrag angenommen\b/)
   if (decided) {
