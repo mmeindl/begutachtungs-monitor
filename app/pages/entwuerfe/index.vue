@@ -360,6 +360,24 @@ const {
   all: showAll,
 } = usePagedList(entries, LIST_PAGE_SIZE, [query, art, sort], listPaged)
 
+/**
+ * … but in the history entry, since 22.10.2026: Back returns to the page as
+ * it was left. A reader who had opened 150 rows, read a draft and came back
+ * found 50, and the position the router restores (`router.options.ts`) lay
+ * beyond the end of the list — it waited out its five seconds and dropped
+ * the reader at the pager. A new visit has an entry of its own and starts at
+ * the first page; so does hydration, because the server rendered that one
+ * (and a reload therefore writes it back).
+ */
+const PAGER_STATE_KEY = 'entwuerfeVisible'
+if (import.meta.client) {
+  const kept: unknown = useNuxtApp().isHydrating ? null : window.history.state?.[PAGER_STATE_KEY]
+  if (typeof kept === 'number' && kept > visibleCount.value) visibleCount.value = kept
+  watch(visibleCount, (count) => {
+    window.history.replaceState({ ...window.history.state, [PAGER_STATE_KEY]: count }, '')
+  }, { immediate: true })
+}
+
 /* ------------------------------------------------------------------ *
  * The search's second half: the full text (docs/architecture.md §12.31)
  *
