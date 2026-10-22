@@ -9,7 +9,13 @@ import { citeLineDe } from '#shared/utils/citations'
  * 21.10.2026. A Sammelgesetz changes a hundred; past five the rest fold, as
  * „Geltendes Recht" on the draft does (`AmendedLawsFrame`).
  */
-defineProps<{ laws: BgblLaw[] }>()
+defineProps<{
+  laws: BgblLaw[]
+  /** What the list holds, in the plural („Gesetze", „Verordnungen") — the
+   *  word the section's title counts in, so the fold names the same thing.
+   *  No singular: the fold opens past five, never at one. */
+  noun: string
+}>()
 
 const FOLD_AT = 5
 
@@ -32,7 +38,7 @@ function citeOf(law: BgblLaw): string {
   </ul>
   <Disclosure v-if="laws.length > FOLD_AT" class="mt-2">
     <template #summary>
-      <span class="group-open:hidden">Alle {{ laws.length }} Gesetze anzeigen</span>
+      <span class="group-open:hidden">Alle {{ laws.length }} {{ noun }} anzeigen</span>
       <span class="hidden group-open:inline">Weniger anzeigen</span>
     </template>
     <ul role="list" class="mt-1 space-y-1">

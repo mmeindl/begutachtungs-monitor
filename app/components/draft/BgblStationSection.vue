@@ -49,6 +49,11 @@ const { data: fassung } = await useFetch<BgblLawsResponse>(
 
 const FASSUNG_SOURCES: SourceEntry[] = [risSource('Geltende Fassung')]
 
+/* What „Geltende Fassung" counts, one word for its title and the list's
+ * fold (`GeltendeFassungList`); the Verordnung's section counts
+ * „Verordnungen". */
+const FASSUNG_NOUN = 'Gesetze'
+
 const facts = computed<Fact[]>(() => {
   const f = fassung.value
   const out: Fact[] = [{ key: 'kundmachung', title: 'Kundgemacht' }]
@@ -58,7 +63,7 @@ const facts = computed<Fact[]>(() => {
     // until then there is no Fassung carrying this change to link.
     return [...out, { key: 'fassung', title: 'Geltende Fassung', text: 'Im RIS noch nicht eingearbeitet: Die konsolidierte Fassung folgt der Kundmachung mit einigen Tagen Verzug.' }]
   }
-  return [...out, { key: 'fassung', title: f.laws.length === 1 ? 'Geltende Fassung' : `Geltende Fassung, ${f.laws.length} Gesetze` }]
+  return [...out, { key: 'fassung', title: f.laws.length === 1 ? 'Geltende Fassung' : `Geltende Fassung, ${f.laws.length} ${FASSUNG_NOUN}` }]
 })
 
 function bgblCite(number: string | null, risUrl: string | null): string | null {
@@ -110,8 +115,12 @@ function bgblCite(number: string | null, risUrl: string | null): string | null {
               />
             </p>
           </template>
-          <template #value-fassung>
-            <GeltendeFassungList :laws="fassung!.laws" />
+          <!-- Only with laws to list. A slot passed at all wins over the
+               fact's text (`FactList`), so after a fresh Kundmachung, when
+               RIS has not consolidated yet, the title stood over an empty
+               list and „Im RIS noch nicht eingearbeitet" never showed. -->
+          <template v-if="fassung?.laws.length" #value-fassung>
+            <GeltendeFassungList :laws="fassung.laws" :noun="FASSUNG_NOUN" />
           </template>
         </FactList>
         <!-- Which version the links open is provenance: the credit line under

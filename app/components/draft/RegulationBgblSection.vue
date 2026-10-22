@@ -35,6 +35,10 @@ const cite = computed(() => {
 
 const FASSUNG_SOURCES: SourceEntry[] = [risSource('Geltende Fassung')]
 
+/* One word for the title and the list's fold, which said „Gesetze" here
+ * under a title counting „Verordnungen" (`GeltendeFassungList`). */
+const FASSUNG_NOUN = 'Verordnungen'
+
 const facts = computed<Fact[]>(() => {
   const out: Fact[] = [{ key: 'kundmachung', title: 'Kundgemacht' }]
   const f = props.fassung
@@ -42,7 +46,7 @@ const facts = computed<Fact[]>(() => {
   if (!f.laws.length) {
     return [...out, { key: 'fassung', title: 'Geltende Fassung', text: 'Im RIS noch nicht eingearbeitet: Die konsolidierte Fassung folgt der Kundmachung mit einigen Tagen Verzug.' }]
   }
-  return [...out, { key: 'fassung', title: f.laws.length === 1 ? 'Geltende Fassung' : `Geltende Fassung, ${f.laws.length} Verordnungen` }]
+  return [...out, { key: 'fassung', title: f.laws.length === 1 ? 'Geltende Fassung' : `Geltende Fassung, ${f.laws.length} ${FASSUNG_NOUN}` }]
 })
 </script>
 
@@ -63,8 +67,10 @@ const facts = computed<Fact[]>(() => {
             <CiteButton v-if="cite" :text="cite" subject="Die Kundmachung" />
           </p>
         </template>
-        <template #value-fassung>
-          <GeltendeFassungList :laws="fassung!.laws" />
+        <!-- Only with laws to list, or the empty slot hides the fact's
+             „noch nicht eingearbeitet" (`BgblStationSection`). -->
+        <template v-if="fassung?.laws.length" #value-fassung>
+          <GeltendeFassungList :laws="fassung.laws" :noun="FASSUNG_NOUN" />
         </template>
       </FactList>
       <SectionCredits v-if="fassung?.laws.length" :sources="FASSUNG_SOURCES" :marked="false">
