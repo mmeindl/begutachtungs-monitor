@@ -572,7 +572,7 @@ describe('regulationStations — the Verordnung path', () => {
 
 describe('landStations — a Land\'s draft', () => {
   const land = (o: Partial<LandConsultation> = {}) =>
-    ({ land: 'sbg', active: false, startedAt: '2026-01-05', deadline: '2026-02-16', ...o }) as const
+    ({ land: 'sbg', kind: 'gesetz', active: false, startedAt: '2026-01-05', deadline: '2026-02-16', ...o }) as const
   const stage = (o: Partial<LandStage>): LandStage =>
     ({ station: 'rv', label: '', detail: null, date: null, ...o })
   const names = (l: ReturnType<typeof landStations>) => l.map((s) => s.name)
