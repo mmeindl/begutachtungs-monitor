@@ -14,8 +14,8 @@ import { LAENDER_TOTAL, LAND_CODES, SOURCE_CODES, SOURCE_NAME } from '#shared/ut
  *
  * The choice is the site's (`useSourceChoice`), so this component only
  * shows it and toggles it. What changes stands directly below: the list.
- * The last source stays ticked and says why — the list is never empty by
- * choice.
+ * The list is never empty by choice: turning off the last Land brings
+ * the Bund back, and the Bund alone stays ticked and says why.
  *
  * The coverage stands beside the chips, always: the monitor reads some of
  * nine Länder, and a list that does not say so claims the rest are quiet.
@@ -27,9 +27,9 @@ const props = defineProps<{
   note?: string | null
 }>()
 
-const { chosen, isLast, toggle } = useSourceChoice()
+const { chosen, isLocked, toggle } = useSourceChoice()
 
-const LOCKED = 'Mindestens eine Quelle bleibt ausgewählt'
+const LOCKED = 'Ohne andere Quelle bleibt der Bund ausgewählt'
 </script>
 
 <template>
@@ -41,7 +41,7 @@ const LOCKED = 'Mindestens eine Quelle bleibt ausgewählt'
         :key="code"
         :pressed="chosen.includes(code)"
         :unavailable="props.unavailable?.[code] ?? null"
-        :locked="isLast(code) ? LOCKED : null"
+        :locked="isLocked(code) ? LOCKED : null"
         @toggle="toggle(code)"
       >
         {{ SOURCE_NAME[code] }}

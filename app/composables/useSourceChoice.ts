@@ -21,9 +21,11 @@ import {
  * reads, so the list renders chosen and nothing moves after hydration.
  * Default: the Bund alone, the lists as they were before the Länder.
  *
- * NEVER EMPTY. The last source cannot be turned off (`isLast`): a list with
- * no source would read as „nothing open", the one claim this site must
- * never make without checking it.
+ * NEVER EMPTY: a list with no source would read as „nothing open", the one
+ * claim this site must never make without checking it. Turning off the last
+ * Land therefore brings the Bund back — the default, not a dead end. Only
+ * the Bund alone cannot be turned off (`isLocked`): there is nothing to
+ * fall back to.
  *
  * A toggle writes both carriers: the cookie for the next visit, the URL so
  * the address shares what is on screen. The default writes neither — the
@@ -34,7 +36,7 @@ export function useSourceChoice(): {
   chosen: Ref<SourceCode[]>
   bund: ComputedRef<boolean>
   laender: ComputedRef<LandCode[]>
-  isLast: (code: SourceCode) => boolean
+  isLocked: (code: SourceCode) => boolean
   toggle: (code: SourceCode) => void
   /** `?quellen=…` for a link that should carry the choice; '' for the default. */
   queryValue: ComputedRef<string>
@@ -59,10 +61,13 @@ export function useSourceChoice(): {
   })
 
   const isLast = (code: SourceCode) => chosen.value.length === 1 && chosen.value[0] === code
+  const isLocked = (code: SourceCode) => code === 'bund' && isLast(code)
 
   function toggle(code: SourceCode): void {
-    if (isLast(code)) return
-    const next = chosen.value.includes(code) ? chosen.value.filter((c) => c !== code) : [...chosen.value, code]
+    if (isLocked(code)) return
+    const next = isLast(code)
+      ? [...DEFAULT_SOURCES]
+      : chosen.value.includes(code) ? chosen.value.filter((c) => c !== code) : [...chosen.value, code]
     chosen.value = parseSourceList(formatSourceList(next)) ?? [...DEFAULT_SOURCES]
     const value = isDefaultSources(chosen.value) ? null : formatSourceList(chosen.value)
     cookie.value = value
@@ -73,7 +78,7 @@ export function useSourceChoice(): {
     chosen,
     bund: computed(() => chosen.value.includes('bund')),
     laender: computed(() => chosen.value.filter((c): c is LandCode => c !== 'bund')),
-    isLast,
+    isLocked,
     toggle,
     queryValue: computed(() => (isDefaultSources(chosen.value) ? '' : formatSourceList(chosen.value))),
   }
