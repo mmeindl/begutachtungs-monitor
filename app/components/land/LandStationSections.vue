@@ -4,6 +4,7 @@ import type { Fact } from '~/components/ui/FactList.vue'
 import { citeLineDe } from '#shared/utils/citations'
 import { formatDateDe } from '#shared/utils/format'
 import { afterFristDe } from '~/utils/spine'
+import ListBox from '~/components/ui/ListBox.vue'
 
 /**
  * The stations after a Land's Begutachtung, one section each, as the
@@ -140,14 +141,28 @@ const reportName = computed(() => {
         </SectionCredits>
       </div>
       <!-- Every step, in the Landtag's order and words: the sittings,
-           agendas and Wortprotokolle the frame leaves out. -->
+           agendas and Wortprotokolle the frame leaves out. On the sheet the
+           Land's Stellungnahmen stand on (22.10.2026), with their date
+           track: a dated row that opens a document is the same row in both
+           lists. Bare, the rows floated on the paper with nothing to end
+           them. The link stays where the record puts it, inside the
+           sentence — a step linked as a whole has no name a column of its
+           own could carry. -->
       <FoldSection :heading="`Alle Schritte im Landtag (${steps.length})`">
-        <ol class="space-y-2 pb-2 text-sm">
-          <li v-for="(step, i) in steps" :key="i" class="flex gap-4">
-            <span class="w-24 shrink-0 text-ink-muted tabular-nums">{{ step.date ? formatDateDe(step.date) : '' }}</span>
-            <span class="min-w-0 text-ink"><LandStepText :step="step" /></span>
-          </li>
-        </ol>
+        <div class="pb-2">
+          <ListBox class="@container/list">
+            <ol class="divide-y divide-hairline text-sm">
+              <li
+                v-for="(step, i) in steps"
+                :key="i"
+                class="grid grid-cols-1 items-baseline gap-x-3 gap-y-0.5 px-4 py-2.5 row-cols:grid-cols-[6rem_minmax(0,1fr)]"
+              >
+                <span class="tabular-nums text-ink-muted">{{ formatDateDe(step.date) }}</span>
+                <span class="min-w-0 text-ink"><LandStepText :step="step" /></span>
+              </li>
+            </ol>
+          </ListBox>
+        </div>
       </FoldSection>
     </div>
   </section>
