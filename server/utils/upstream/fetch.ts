@@ -318,8 +318,10 @@ async function fetchWithinUpstreams(url: string, init: RequestInit): Promise<Res
 /**
  * The raw answer, retried per policy. A non-OK status below 500 is
  * RETURNED, not thrown — the callers that map 404 onto their own answer
- * need to see it. The body is left unread, and with it `maxBytes`: whoever
- * reads it owns the cap.
+ * need to see it. The body is left unread, and with it `maxBytes` and the
+ * host slot: the slot comes back once the headers are in, so a caller
+ * reading a large body here reads it outside `HOST_CONCURRENCY`. No request
+ * path calls this; the reads below are what they use.
  */
 export function fetchUpstream(url: string, policy: UpstreamPolicy): Promise<Response> {
   return withRetries(url, policy, (res) => res)
