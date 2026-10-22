@@ -19,7 +19,10 @@
  * `available: false` states below are the ones RIS really has — no document,
  * a scan, a document without a general part. A timeout or a 500 throws and is
  * not cached, so a bad minute upstream cannot be served as "dieser Entwurf hat
- * keine Erläuterungen" for a day.
+ * keine Erläuterungen" for a day. The one read that does not throw is the
+ * draft's own text, which only places the passages at their Paragraph: there
+ * the general part goes out without them, and is not stored either
+ * (`articlesOf`, `cache/gathered.ts`).
  *
  * **Two cache layers, split by provenance** (`cache/base.ts`): the document as
  * RIS sent it is persistent — it is expensive and our code did not make it —
@@ -33,6 +36,7 @@ import { explanationsByParagraph } from './explanationsJoin'
 import type { DraftArticle } from '../lawtext/draftArticles'
 import { draftArticlesOfXml, getDraftArticles, type DraftText } from '../lawtext/draftArticlesService'
 import { DERIVED_CACHE } from '../cache/base'
+import { onlyComplete, type Gathered } from '../cache/gathered'
 import { DERIVED_ANALYSIS_TTL_S, PUBLISHED_DOCUMENT_TTL_S } from '../cache/ttl'
 import { getText } from '../ris/konsLaw'
 import { getRisMapForGp } from '../ris/begutCorpus'
@@ -111,19 +115,29 @@ function view(
 }
 
 /**
- * The draft's Artikel, for the join's key.
+ * The draft's Artikel, for the join's key — or null where they could not be
+ * read.
  *
  * Out of the draft's own text, because the Beilage's law key comes from there
  * (`draftArticles` → `segmentUnits` → `ComparisonRow.law`). Where the fetch
  * fails there simply is no attribution: the Erläuterungen themselves still
  * stand on the page, only without the passages at the Paragraph. A missing
  * draft text must not cost the whole section.
+ *
+ * NULL, NOT AN EMPTY LIST (22.10.2026). Unknown Artikel are not „no Artikel":
+ * handed `[]`, the join files every passage under `law: null`, and the
+ * Beilage keys its rows by the Artikel as soon as the draft names one — so a
+ * draft amending one law lost every passage at its §§, and in a package
+ * whose annex could not be cut law by law a passage could stand at another
+ * law's § of the same number. And that answer was cached for a day. Null
+ * makes `read` show no passages and send the answer as incomplete
+ * (`cache/gathered.ts`), so the next request reads the draft again.
  */
-async function articlesOf(read: () => Promise<DraftText>): Promise<DraftArticle[]> {
+async function articlesOf(read: () => Promise<DraftText>): Promise<DraftArticle[] | null> {
   try {
     return (await read()).articles
   } catch {
-    return []
+    return null
   }
 }
 
@@ -144,40 +158,54 @@ async function read(
    * Beilage the question costs a call to Parliament.
    */
   annexOf: () => Promise<boolean>,
-): Promise<ExplanationsResponse> {
+): Promise<Gathered<ExplanationsResponse>> {
   if (!formats?.xml) {
-    return empty(
+    return whole(empty(
       formats
         ? 'Die Erläuterungen liegen im RIS nur als Bilddatei vor; auslesen lassen sie sich daraus nicht.'
         : 'Zu diesem Entwurf sind im RIS keine Erläuterungen veröffentlicht.',
       formats ? documentLink(formats) : null,
-    )
+    ))
   }
   const parsed = parseExplanations(await fetchExplanationsXml(formats.xml))
   if (!hasReadableText(parsed)) {
-    return empty('Die Erläuterungen liegen als Scan vor — im RIS-Dokument stehen Bilder statt Text.', documentLink(formats))
+    return whole(empty('Die Erläuterungen liegen als Scan vor — im RIS-Dokument stehen Bilder statt Text.', documentLink(formats)))
   }
   if (!parsed.general) {
-    return empty(
+    return whole(empty(
       'Die Erläuterungen dieses Entwurfs heben keinen Allgemeinen Teil hervor. Was das Ressort schreibt, steht im Dokument selbst.',
       documentLink(formats),
-    )
+    ))
   }
   const articles = parsed.special ? await articlesOf(draftText) : []
-  const paragraphs = explanationsByParagraph(parsed, articles)
-  return view(parsed.general, formats, !parsed.generalInferred, parsed, paragraphs, paragraphs.length > 0 && (await annexOf()))
+  // Without the Artikel, no passage at a Paragraph — and the page then says
+  // that the rest stands in the document, which is true (`paragraphsAtAnnex`).
+  const paragraphs = articles ? explanationsByParagraph(parsed, articles) : []
+  return {
+    value: view(parsed.general, formats, !parsed.generalInferred, parsed, paragraphs, paragraphs.length > 0 && (await annexOf())),
+    complete: articles !== null,
+  }
 }
 
-/** For a Ministerialentwurf: through the RIS↔ME join, like the Textgegenüberstellung. */
-export const getExplanations = defineCachedFunction(
-  async (gp: string, inr: number): Promise<ExplanationsResponse> => {
+/** An answer that rests on nothing that failed. */
+function whole(value: ExplanationsResponse): Gathered<ExplanationsResponse> {
+  return { value, complete: true }
+}
+
+/**
+ * The cached half of `getExplanations`. An answer without the draft's Artikel
+ * goes out once and is not stored (`onlyComplete`): the general part is all
+ * there, only the passages at the Paragraph wait for the next request.
+ */
+const readExplanations = defineCachedFunction(
+  async (gp: string, inr: number): Promise<Gathered<ExplanationsResponse>> => {
     const row = (await getRisMapForGp(gp)).rows.find((r) => r.inr === inr) ?? null
     if (!row?.risId) {
-      return empty(
+      return whole(empty(
         row?.status === 'ambiguous'
           ? 'Mehrere RIS-Datensätze kommen für diesen Entwurf infrage. Die Erläuterungen aus dem falschen zu zeigen wäre schlechter als keine.'
           : 'Der Entwurf ließ sich keinem RIS-Dokument zuordnen; nur dort lesen wir die Erläuterungen aus.',
-      )
+      ))
     }
     // Whether the passages below stand at a Paragraph is answered by the
     // section that shows them — `hasAnnexDocument` rather than a condition
@@ -198,12 +226,24 @@ export const getExplanations = defineCachedFunction(
     return read(row.explanations, () => getDraftArticles(gp, inr, 'ris-xml'), async () =>
       row.status === 'matched' && (await hasAnnexDocument(gp, inr, row.textComparison)))
   },
-  { name: 'erlaeuterungen-me', base: DERIVED_CACHE, getKey: (gp: string, inr: number) => `${gp}-${inr}`, maxAge: DERIVED_ANALYSIS_TTL_S, swr: false },
+  {
+    name: 'erlaeuterungen-me',
+    base: DERIVED_CACHE,
+    getKey: (gp: string, inr: number) => `${gp}-${inr}`,
+    maxAge: DERIVED_ANALYSIS_TTL_S,
+    swr: false,
+    validate: onlyComplete,
+  },
 )
 
-/** For a Begutachtung without a parliamentary Gegenstand: straight from its own record. */
-export const getRisExplanations = defineCachedFunction(
-  async (id: string): Promise<ExplanationsResponse> => {
+/** For a Ministerialentwurf: through the RIS↔ME join, like the Textgegenüberstellung. */
+export async function getExplanations(gp: string, inr: number): Promise<ExplanationsResponse> {
+  return (await readExplanations(gp, inr)).value
+}
+
+/** The cached half of `getRisExplanations` — stored only when complete, as above. */
+const readRisExplanations = defineCachedFunction(
+  async (id: string): Promise<Gathered<ExplanationsResponse>> => {
     const detail = await getRisConsultation(id)
     if (!detail) throw createError({ statusCode: 404, statusMessage: 'Begutachtung nicht gefunden' })
     // **At the Paragraph since 26.09.2026.** These pages render the
@@ -222,5 +262,17 @@ export const getRisExplanations = defineCachedFunction(
     const hasAnnex = detail.textComparisonParts.length > 0
     return read(detail.explanations, () => (xml ? draftArticlesOfXml(xml) : Promise.resolve({ blocks: [], articles: [] })), async () => hasAnnex)
   },
-  { name: 'erlaeuterungen-ris', base: DERIVED_CACHE, getKey: (id: string) => id, maxAge: DERIVED_ANALYSIS_TTL_S, swr: false },
+  {
+    name: 'erlaeuterungen-ris',
+    base: DERIVED_CACHE,
+    getKey: (id: string) => id,
+    maxAge: DERIVED_ANALYSIS_TTL_S,
+    swr: false,
+    validate: onlyComplete,
+  },
 )
+
+/** For a Begutachtung without a parliamentary Gegenstand: straight from its own record. */
+export async function getRisExplanations(id: string): Promise<ExplanationsResponse> {
+  return (await readRisExplanations(id)).value
+}
