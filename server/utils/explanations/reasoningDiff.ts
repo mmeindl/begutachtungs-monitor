@@ -236,7 +236,7 @@ function ambiguousParagraphs(units: readonly LawDiffUnit[], read: Readings): Set
  * — what `toUnit` asks of a § — with the renumbering of the same comparison
  * as the context (`renumbered`, `renumberingOf`). Not a looser test: a typo,
  * a case or a spelling variant changes a word and stays „geändert", as the
- * badge's definition says („kein einziges Wort", `EDITORIAL_BADGE_SENTENCE`);
+ * badge's definition says („kein einziges Wort", `shared/utils/lawStations.ts`);
  * a passage above `MAX_DP_CELLS` has no segments and is never editorial.
  * Measured over the 353 drafts of GP XXVI–XXVIII: 68 of the 4.066 changed
  * Begründungen are editorial (10, 36, 22) — 17 references that follow the

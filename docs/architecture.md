@@ -1668,7 +1668,7 @@ Begründungen über GP XXVI–XXVIII — Verweise, die der Umnummerierung folgen
 Zitierwort-Wechsel (44), Platzhalter (2). Tippfehler, Groß- und
 Kleinschreibung und Schreibvarianten bleiben „geändert": Sie ändern ein Wort.
 Offen, schon am Paragraphen: Die Regel verzeiht Artikel, „in"/„im" und
-Zitierwörter, der Satz auf der Seite (`EDITORIAL_BADGE_SENTENCE`) sagt
+Zitierwörter, die Definition auf der Seite (`shared/utils/lawStations.ts`) sagt
 „kein einziges Wort" — 44 der 68 ändern ein solches Wort.
 
 ### 12.11 Speaking names — mostly a lookup, not a language model
