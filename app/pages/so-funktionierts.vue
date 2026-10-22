@@ -522,6 +522,17 @@ const waitMonths = Math.round(RV_LATENCY_CONTEXT_DAYS / 30.44)
         ließe.
       </p>
       <p>
+        Wo das Land die Kundmachung selbst nennt – bei Oberösterreichs Gesetzen –,
+        vergleicht der Monitor den Begutachtungsentwurf mit dem kundgemachten
+        Gesetz, Änderungsanordnung für Änderungsanordnung, wie bei den Entwürfen
+        des Bundes. Den Entwurf veröffentlicht das Land nur als PDF; der Monitor
+        liest den Gesetzestext daraus, die Kundmachung aus dem
+        Rechtsinformationssystem. Gegen eine Kundmachung, die nur unsere Suche
+        gefunden hat, vergleicht er nicht: Ein falscher Treffer würde ein ganzes
+        Gesetz als umgeschrieben zeigen. Neue Gesetze, die nichts ändern, sondern
+        erst erlassen werden, vergleicht er noch nicht.
+      </p>
+      <p>
         Die Länder haben eigene Gesetzgebungsperioden. In der Liste der
         Entwürfe zählt ein Länder-Entwurf deshalb zu der Gesetzgebungsperiode
         des Bundes, in deren Zeitraum seine Begutachtung begann. So umfasst

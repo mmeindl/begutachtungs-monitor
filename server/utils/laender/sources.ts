@@ -472,6 +472,10 @@ export async function readLaenderInWindow(
   }
 }
 
+/* Salzburg and Wien number with digits; Oberösterreich with `2026-16124`
+ * (Landtag year and number) or `v560198` (a Verordnung's link id). */
+export const LAND_NUMBER_RE = /^(?:\d{1,9}|20\d{2}-\d{1,6}|v\d{1,9})$/
+
 export async function readLandDraft(land: LandCode, number: string): Promise<LandDraftDetail | null> {
   const detail = await READERS[land].detail(number)
   if (!detail) return null

@@ -233,7 +233,7 @@ useSeoMeta({ ogTitle: () => draft.value?.title ?? 'Entwurf', ogType: 'article' }
 
         <!-- The stations after the Begutachtung, one section each, where
              the Land records them (OÖ). -->
-        <LandStationSections :draft="detail.draft" :procedure="detail.procedure" :landtag="detail.landtag" :land-name="landName" />
+        <LandStationSections :draft="detail.draft" :procedure="detail.procedure" :landtag="detail.landtag" :land-name="landName" :land="land" :number="number" />
       </template>
     </FetchGate>
   </div>

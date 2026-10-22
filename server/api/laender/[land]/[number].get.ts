@@ -6,16 +6,12 @@
  */
 import type { LandCode, LandDraftDetail } from '#shared/types'
 import { LAND_CODES } from '#shared/utils/laender'
-import { readLandDraft } from '../../../utils/laender/sources'
-
-/* Salzburg and Wien number with digits; Oberösterreich with `2026-16124`
- * (Landtag year and number) or `v560198` (a Verordnung's link id). */
-const NUMBER_RE = /^(?:\d{1,9}|20\d{2}-\d{1,6}|v\d{1,9})$/
+import { LAND_NUMBER_RE, readLandDraft } from '../../../utils/laender/sources'
 
 export default defineEventHandler(async (event): Promise<LandDraftDetail> => {
   const land = getRouterParam(event, 'land') ?? ''
   const number = getRouterParam(event, 'number') ?? ''
-  if (!(LAND_CODES as readonly string[]).includes(land) || !NUMBER_RE.test(number)) {
+  if (!(LAND_CODES as readonly string[]).includes(land) || !LAND_NUMBER_RE.test(number)) {
     throw createError({ statusCode: 404, statusMessage: 'Entwurf nicht gefunden' })
   }
   let detail: LandDraftDetail | null

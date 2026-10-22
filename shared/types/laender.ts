@@ -1,3 +1,5 @@
+import type { LawDiffUnit } from './lawDiff'
+
 /**
  * Begutachtungen der Länder (22.10.2026).
  *
@@ -180,4 +182,25 @@ export interface LandDraftDetail {
   retentionNote: string | null
   /** The Land's list the draft stands on, for the credit line. */
   listUrl: string
+}
+
+/**
+ * A Land's draft against its Kundmachung, § by § (`landLawDiffService`,
+ * docs/architecture.md §12.44): the Begutachtungsentwurf from the Land's
+ * PDF, the Kundmachung from the Landesgesetzblatt in RIS.
+ */
+export interface LandLawDiffResponse {
+  available: boolean
+  /** Why there is no comparison, in a sentence; null when there is one. */
+  unavailableReason: string | null
+  units: LawDiffUnit[]
+  stats: { total: number; unchanged: number; changed: number; editorial: number; inserted: number; removed: number }
+  /** The draft as the Land published it. */
+  draft: { label: string; url: string } | null
+  /** „LGBl. Nr. 57/2026", linked into RIS. */
+  kundmachung: { label: string; url: string | null } | null
+  /** Artikel (laws) only the Kundmachung has — added after the Begutachtung. */
+  addedLaws: string[]
+  /** Artikel only the draft has — no longer in the Kundmachung. */
+  droppedLaws: string[]
 }

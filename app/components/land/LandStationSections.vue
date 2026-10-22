@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import type { LandConsultation, LandLandtag, LandProcedureStep } from '#shared/types'
+import type { LandCode, LandConsultation, LandLandtag, LandProcedureStep } from '#shared/types'
 import type { Fact } from '~/components/ui/FactList.vue'
 import { citeLineDe } from '#shared/utils/citations'
 import { formatDateDe } from '#shared/utils/format'
@@ -32,6 +32,9 @@ const props = defineProps<{
   /** What the Landtag did, read from that record (`ooeLandtagOf`). */
   landtag: LandLandtag | null
   landName: string
+  /** The draft's address, for the comparison under the Kundmachung. */
+  land?: LandCode
+  number?: string
 }>()
 
 const steps = computed(() => props.procedure ?? [])
@@ -185,6 +188,12 @@ const reportName = computed(() => {
         kurz hintereinander zweimal geändert, kann die Zuordnung die frühere
         Änderung treffen.
       </p>
+    </div>
+    <!-- What became of the draft, § by § — only where the Land itself names
+         the Kundmachung (`landLawDiffService`): against a Kundmachung of
+         our own finding, a wrong match would report a whole law rewritten. -->
+    <div v-if="kundmachung.via !== 'suche' && land && number" class="mt-8">
+      <LandLawDiffSection :land="land" :number="number" />
     </div>
   </section>
 </template>
