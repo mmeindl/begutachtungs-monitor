@@ -1658,6 +1658,19 @@ gezählt. Im selben Zug liest der Vergleich jede Anweisung einmal statt je
 Kandidat: XXVI 75/ME 5,05 s → 0,59 s auf dem einen Node-Prozess, Ausgabe
 über alle 838 Vergleiche des Korpus Byte für Byte gleich.
 
+*Und „redaktionell", nach derselben Regel wie am Paragraphen (22.10.2026).*
+Eine geänderte Begründung, deren Änderung `isEditorialChange` mit der
+Umnummerierung des Gesetzesvergleichs desselben Paares als redaktionell
+erkennt, trägt dieselbe Marke wie ein redaktioneller § und zählt wie dort
+nicht als geändert (`substantiveReasoningChanges`): 68 von 4.066 geänderten
+Begründungen über GP XXVI–XXVIII — Verweise, die der Umnummerierung folgen
+(17), neu geschriebene Daten (5), Artikel-, „in"/„im"- und
+Zitierwort-Wechsel (44), Platzhalter (2). Tippfehler, Groß- und
+Kleinschreibung und Schreibvarianten bleiben „geändert": Sie ändern ein Wort.
+Offen, schon am Paragraphen: Die Regel verzeiht Artikel, „in"/„im" und
+Zitierwörter, der Satz auf der Seite (`EDITORIAL_BADGE_SENTENCE`) sagt
+„kein einziges Wort" — 44 der 68 ändern ein solches Wort.
+
 ### 12.11 Speaking names — mostly a lookup, not a language model
 
 Asked for in user feedback (2026-09-08): speaking names for procedures and
@@ -11304,9 +11317,19 @@ GP XXII–XXVIII):
   fort (darunter EAG-Wasserstoff 2024 → 158/2024), zwei richtige dazu
   (Saisonkontingentverordnung 2022, Winterfahrverbotskalender Salzburg 2024).
 
-Offen und nicht gebaut: eine Eins-zu-eins-Regel je Periode (19 Nummern
-werden von zwei Entwürfen beansprucht, sieben davon einmal zu Unrecht), und
-ob ein Gleichstand „keine Kundmachung gefunden" oder „unbekannt" heißen soll.
+*Ein abgelehnter Gleichstand ist „unbekannt" (22.10.2026).* Wo der Join
+Kandidaten fand, aber keinen entscheiden konnte, sagte die Seite nach der
+Schweigefrist „keine Kundmachung gefunden" — wörtlich falsch, es waren
+zwei. `bgblVerdict` unterscheidet „nichts gefunden" von „nicht
+entschieden", und das zweite wird „unbekannt": 57 Entwürfe über GP
+XXII–XXVIII, sonst bewegt sich nichts. Eine Eins-zu-eins-Regel je Periode
+(eine Kundmachung, ein Entwurf) wurde gebaut und gemessen und ist **nicht
+übernommen**: Sie nimmt 8 falsche Ansprüche weg und verbirgt 20 vertretbare
+(Duplikate derselben Begutachtung, Wiederholungen, Kundmachungen für mehrere
+Entwürfe), und die Verordnungsseite hinge kalt bis zu 3 s an der ganzen
+Periode. Die verbleibenden falschen Ansprüche brauchen ein schärferes
+Unterscheidungsmerkmal als die Nummer (in GP XXV–XXVIII beanspruchen zwei
+Entwürfe 19 Nummern, sieben davon einmal zu Unrecht).
 
 **Nachgemessen 22.10.2026, nach beiden Nachträgen** (`pnpm corpus:bgbl2`,
 Fristende ab 2024, live): **251 von 294 Entwürfen gefunden (85,4 %)**, bei
@@ -11430,8 +11453,10 @@ standen: § 48 → § 48a BAO (27/ME Z 4), § 49c Abs. 4 Z 1 → § 49b Abs. 1a 
 Verfassungsbestimmung, die „§ 169 Abs. 7" dazubekam (32/ME § 1). Die Regel
 lautet jetzt: Ein Verweis ist nur dort redaktionell, wo **dieser Vergleich
 selbst** den Paragraphen umnummeriert hat — die Ausrichtung also eine Einheit
-mit der alten und der neuen Nummer gepaart hat (`renumberedParagraphs` in
-`diff/lawDiff.ts`, nur §§, nie Novellierungsanordnungen). Daraus folgen die
+mit der alten und der neuen Nummer gepaart hat (`renumberingOf` in
+`diff/wordDiff.ts`, seit 22.10.2026 auch vom Begründungsvergleich gelesen;
+vorher `renumberedParagraphs` in `diff/lawDiff.ts` — nur §§, nie
+Novellierungsanordnungen). Daraus folgen die
 drei Schnitte, die jeden der vier Fälle schließen: ein Verweis in ein
 **anderes Gesetz** kann nie in der Karte stehen, eine **Abs.-/Z-Adresse** ist
 keine Einheit dieses Vergleichs, und ein Verweis, den eine Seite **gar nicht
