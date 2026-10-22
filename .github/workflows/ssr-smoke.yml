@@ -76,8 +76,14 @@ jobs:
       - name: Bauen
         run: pnpm build
 
+      # Mit dem Heap des Servers (`deploy/bootstrap.sh`, ExecStart): Unter
+      # dem Standard-Heap des Runners rendert, was auf der Box abstürzt. So
+      # lief es bis 22.10.2026 — `/entwuerfe?gp=XXVII…` brach mit 384 MB ab
+      # (die Titel-Memos des BGBl-II-Joins), und hier war alles grün.
       - name: Seiten rendern
         run: pnpm ci:ssr-smoke
+        env:
+          NODE_OPTIONS: --max-old-space-size=384
 
       - name: Kassette sichern
         if: always()
