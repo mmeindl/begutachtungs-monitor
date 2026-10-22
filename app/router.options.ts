@@ -42,11 +42,16 @@ import { isChangingPage } from '#app/components/utils'
  * change of the page's height puts the position back.
  *
  * Until the reader does anything (their scrolling wins over a position nobody
- * has chosen yet), a newer navigation starts, or five seconds have passed —
- * a cold cache answers in one to four. A page still too short then scrolls
- * as far as it reaches, the nearest point to where the reader was.
+ * has chosen yet), a newer navigation starts, or two and a half seconds have
+ * passed. A warm page — the normal case, the caches are prewarmed — holds its
+ * position within some 50 ms; the window is for the sections that load after
+ * it, and it is short because two inputs pass unseen: dragging the scrollbar
+ * and find-in-page, which a late section could otherwise pull back once.
+ * Five seconds, enough for a cold cache's one to four, was the first choice
+ * and too long (22.10.2026). A page still too short when the window closes
+ * scrolls as far as it reaches, the nearest point to where the reader was.
  */
-const RESTORE_MS = 5_000
+const RESTORE_MS = 2_500
 const USER_INPUT = ['wheel', 'touchstart', 'keydown', 'pointerdown'] as const
 
 function restorePosition({ left, top }: { left: number; top: number }, isCurrent: () => boolean): void {
