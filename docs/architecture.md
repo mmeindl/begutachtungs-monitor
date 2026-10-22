@@ -5011,6 +5011,50 @@ GAP-Strategieplan-Anwendungsverordnung § 232), und ein Rest unter drei
 Wörtern. Ein Rand, an dem die Beilage selbst „…" setzt, bleibt blind, mit
 Absicht — dort sagt sie nichts über den Text.
 
+**Nachtrag 22.10.2026: was das Tor durchließ, ohne dass es auffiel.** Eine
+Prüfung der Engine fand vier Lücken, in denen ein Signal offen stand, und
+einen Fehler, der Gesetzestext löschte; offline gemessen am ME-Prüfstand
+(200 Entwürfe) und am BGBl-Prüfstand (60 Bundesgesetzblätter, RIS als
+Wahrheit):
+
+- *Eine verweigerte Anweisung sperrte nur ihren ersten Paragraphen.*
+  `refusedAddresses` gibt für mehrteilige Zeilen absichtlich nichts zurück —
+  für die Beilage ist keine Adresse besser als eine falsche —, und das Tor
+  nahm dann den ersten §. „In § 2 Z 19, …, § 21 Abs. 1 und 6, § 27 …, § 103 …
+  entfällt jeweils …" (Bäderhygieneverordnung 2012) sperrte § 2; die übrigen
+  kamen ohne die Streichung beim Orakel an. Jetzt liest `mentionedUnits`
+  jeden § im Kopf einer verweigerten Zeile, Listen und Bereiche inklusive,
+  dazu Anlagen und die neuen Nummern von Umbenennungen; Unteranweisungen
+  unter „§ N wird wie folgt geändert:" (337 von 359 sperrten nichts) tragen
+  die Adresse ihres Rahmens, und „dem neuen § 44" trifft nie mehr den
+  stehenden § 44. Zeilen mit zu wenig Sperren 368 → 219 (der Rest: Zitate in
+  ungequoteten Operanden); am BGBl-Prüfstand 106 §§ mehr gesperrt, 105 davon
+  mit falschem Text.
+- *Ein doppelt vergebener Anker wurde geraten* (`insertAfter`, „hinter dem
+  ersten ‚(6)'") — jetzt „Anker nicht eindeutig", wie es oben steht.
+- *Anlagen hatten in Produktion den Schlüssel ihres Paragraphen* („1" statt
+  „Anl. 1"): keine geänderte Anlage konnte je plausibel sein, und ihre
+  Anweisungen zählten als Berührung von § 1. Seither ein Schlüssel für
+  Seite und Prüfstand (`touchedKey`).
+- *Eine neu gefasste Einheit, die mit einer Liste beginnt*, trug die Liste
+  doppelt (35 von 8.200 Ersetzungen; vom Wächter gefangen, also nie gezeigt).
+- *Anlage und Paragraph gleicher Nummer* — der eigentliche Fund: Ersetzen,
+  Streichen und Umbenennen eines ganzen § fragten nur nach der Nummer. „Die
+  Anlage 1 entfällt." strich § 1 des Erneuerbaren-Ausbau-Gesetzes, eine
+  Verfassungsbestimmung, und meldete Erfolg. Aufgefallen beim Messen der
+  Ladereihenfolge: auf der Seite traf es den §, wenn sein Dokument zuerst
+  zurückkam — seither kommt der Bestand in der Reihenfolge, in der RIS ihn
+  druckt, und die Suche fragt die Art mit.
+
+Ergebnis: ME-Prüfstand gezeigt 1.462 → 1.468, nichts verloren, jeder Gewinn
+von seiner Beilage bestätigt; BGBl-Prüfstand ungeprüft durchgelassene §§
+ohne gültigen Text 46 (3,0 %) → 25 (1,7 %), identisch mit RIS 1.374 →
+1.376. Daneben: „Geltendes Recht" nennt jedes Gesetz, das der Entwurf ändert
+— 116/ME XXVIII sagte „ändert 40 Gesetze" bei 65, die Obergrenze gilt jetzt
+nur den RIS-Abfragen —, und das „idF" eines Zitats fällt weg, wo das neueste
+Jahr Novellen aus zwei Teilen des Bundesgesetzblatts trägt, die keine Nummer
+ordnen kann.
+
 ### 12.12b Der Besondere Teil als zweites Verifikationssignal — gemessen, und er trägt nicht
 
 Die teuerste offene Frage des Pakets ist, ob es neben der

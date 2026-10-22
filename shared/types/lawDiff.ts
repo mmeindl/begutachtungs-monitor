@@ -41,8 +41,10 @@ export interface AmendedLaw {
   risBgbl: string | null
   /**
    * The law's latest amendment in force at `asOf` („BGBl. I Nr. 50/2024"),
-   * for the „idF" of its citation (21.10.2026); null where RIS shows none or
-   * the law was not resolved.
+   * for the „idF" of its citation (21.10.2026); null where RIS shows none,
+   * the law was not resolved, or the newest year holds amendments from two
+   * Teile of the Bundesgesetzblatt, which no number can order
+   * (`latestAmendmentOf`, 22.10.2026).
    */
   amendedBy?: string | null
 }
