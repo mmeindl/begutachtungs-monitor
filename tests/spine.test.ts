@@ -517,9 +517,9 @@ describe('regulationStations — the Verordnung path', () => {
     ({ state: 'unbekannt', nummer: null, datum: null, url: null, days: null, ...o })
   const last = (o: BgblOutcome | null, r = ended) => regulationStations(r, o)[2]!
 
-  it('draws three stations, Entwurf · Begutachtung · Bundesgesetzblatt II', () => {
+  it('draws three stations, Entwurf · Begutachtung · Kundgemacht (BGBl. II)', () => {
     const list = regulationStations(ended, null)
-    expect(list.map((s) => s.name)).toEqual(['Entwurf', 'Begutachtung', 'Bundesgesetzblatt II'])
+    expect(list.map((s) => s.name)).toEqual(['Entwurf', 'Begutachtung', 'Kundgemacht'])
     expect(list[0]!.facts).toEqual(['05.01.2026'])
     expect(list[1]!.facts).toEqual(['Volle Frist: 6 Wochen', '05.01.–16.02.2026'])
   })

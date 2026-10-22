@@ -45,6 +45,7 @@ import {
   parseOoeDetail,
   parseOoeGesetze,
   parseOoeVerordnungen,
+  ooeStageOf,
 } from './oberoesterreich'
 
 const LAND_POLICY: UpstreamPolicy = {
@@ -278,7 +279,22 @@ const oberoesterreich: LandReader = {
       fetchLandPage(OOE_GESETZE_ARCHIV).then((html) => parseOoeGesetze(html, OOE_ARCHIV_HEADING)),
     ])
     const known = new Set(current.map((d) => d.id))
-    return [...current, ...archive.filter((d) => !known.has(d.id))]
+    const all = [...current, ...archive.filter((d) => !known.has(d.id))]
+    /* Each Gesetz's station from its Landtag page (`ooeStageOf`) — at most
+     * one page per draft on the Land's lists, 91 on 22.10.2026, cached like
+     * every page. A page that fails leaves the station unknown, never the
+     * first one. Verordnungen have no Landtag page and no station after
+     * their Begutachtung that the monitor reads. */
+    return Promise.all(all.map(async (d) => {
+      if (d.kind !== 'gesetz') return d
+      const stage = await fetchLandPage(d.url)
+        .then((html) => {
+          const detail = parseOoeDetail(html)
+          return detail ? ooeStageOf(detail.procedure) : ('unknown' as const)
+        })
+        .catch(() => 'unknown' as const)
+      return { ...d, stage }
+    }))
   },
   detail: async (number) => {
     const verordnung = OOE_VERORDNUNG_ID_RE.exec(number)
@@ -328,6 +344,7 @@ const oberoesterreich: LandReader = {
       url,
       documents: detail.documents,
       active: false,
+      stage: ooeStageOf(detail.procedure),
     }
     return {
       draft: withLandActiveOn([draft])[0]!,

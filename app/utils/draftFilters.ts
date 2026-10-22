@@ -322,7 +322,12 @@ export function draftCountLabel(c: {
    * „0" nor as „gerade nicht abrufbar". Both would answer a question nobody
    * asked: it is neither empty nor broken, it does not belong to this axis.
    * The sentence above the list says why. */
-  if (c.laterStationsOnly) return parts.join(' · ')
+  /* The Länder's term travels on both paths: Oberösterreich's drafts do
+   * reach the later stations (22.10.2026). */
+  const laender = c.laender !== null && c.laender !== undefined
+    ? `${countLabelDe(c.laender, 'Entwurf', 'Entwürfe')} aus den Ländern`
+    : null
+  if (c.laterStationsOnly) return [...parts, ...(laender ? [laender] : [])].join(' · ')
   /* The same noun as in the Art filter, so the two numbers on the page
    * cannot count two different things. „ohne Gegenstand im Parlament" was
    * Parliament's category, not this list's — and it stood beside a box
@@ -339,8 +344,6 @@ export function draftCountLabel(c: {
   }
   /* A fourth term, never added up either: a Land's draft is neither kind
    * of the Bund's. */
-  if (c.laender !== null && c.laender !== undefined) {
-    parts.push(`${countLabelDe(c.laender, 'Entwurf', 'Entwürfe')} aus den Ländern`)
-  }
+  if (laender) parts.push(laender)
   return parts.join(' · ')
 }

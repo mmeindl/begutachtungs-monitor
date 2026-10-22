@@ -42,6 +42,26 @@ export interface LandConsultation {
   documents: LandDocument[]
   /** PLACEHOLDER until the request decides it (`withLandActiveOn`). */
   active: boolean
+  /**
+   * How far the draft got after its Begutachtung, where the Land records it
+   * (Oberösterreich's Landtag, 22.10.2026). Absent: the monitor does not
+   * follow this Land's drafts past the Begutachtung. `null`: it does, and
+   * nothing came yet. `'unknown'`: it does, but this record could not be
+   * read — such a row stays out of every station tab rather than be
+   * claimed for the first one.
+   */
+  stage?: LandStage | null | 'unknown'
+}
+
+/** A station a Land's draft reached, in the Bund's station vocabulary. */
+export interface LandStage {
+  station: 'rv' | 'parlament' | 'bgbl'
+  /** The row's state line, e.g. „Im Landtag beschlossen". */
+  label: string
+  /** What pins it down, e.g. „LGBl. Nr. 45/2026". */
+  detail: string | null
+  /** ISO date the station was reached, for the „Neu" chip. */
+  date: string | null
 }
 
 /**

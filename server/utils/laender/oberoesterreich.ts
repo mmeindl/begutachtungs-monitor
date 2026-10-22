@@ -25,7 +25,7 @@
  * page that fails is refused (`LandSourceError`), and Oberösterreich reads
  * as „nicht abrufbar", never as „keine Begutachtung offen".
  */
-import type { LandConsultation, LandDocument, LandProcedureStep, LandStatement } from '#shared/types'
+import type { LandConsultation, LandDocument, LandProcedureStep, LandStage, LandStatement } from '#shared/types'
 import { safeExternalUrl } from '#shared/utils/safeExternalUrl'
 import { decodeEntities } from '../parliament/htmlText'
 import { classifySubmitter } from '../parliament/privacy'
@@ -217,4 +217,33 @@ export function parseOoeDetail(html: string): OoeDetail | null {
     procedure,
     formOpen: /value="Stellungnahme einbringen"/.test(html),
   }
+}
+
+/**
+ * The station a draft reached, from the Landtag's own record (22.10.2026).
+ *
+ * Measured over all 91 drafts on the Land's lists that day: the record
+ * writes the three steps that matter in one form each — „Einlangen
+ * Regierungsvorlage" (75), „Antrag angenommen – einstimmig / mehrstimmig"
+ * (66), „Kundmachung im Landesgesetzblatt LGBl. Nr. 45/2026" (83, 18 of them
+ * typed „LGBI" with a capital I). The furthest one wins. Anything else in
+ * the record (sittings, committees, motions) is the way, not a station.
+ */
+export function ooeStageOf(procedure: readonly LandProcedureStep[]): LandStage | null {
+  const find = (re: RegExp) => [...procedure].reverse().find((s) => re.test(s.label))
+  const lgbl = find(/Kundmachung im Landesgesetzblatt/)
+  if (lgbl) {
+    const nr = /LGB[lI]\.?\s*Nr\.\s*(\d+\/\d{4})/.exec(lgbl.label)?.[1]
+    return { station: 'bgbl', label: 'Kundgemacht', detail: nr ? `LGBl. Nr. ${nr}` : null, date: lgbl.date }
+  }
+  const decided = find(/^Antrag angenommen\b/)
+  if (decided) {
+    const how = /angenommen\s*-\s*(einstimmig|mehrstimmig)/.exec(decided.label)?.[1]
+    return { station: 'parlament', label: 'Im Landtag beschlossen', detail: how ?? null, date: decided.date }
+  }
+  const rv = find(/^Einlangen Regierungsvorlage\b/)
+  if (rv) {
+    return { station: 'rv', label: 'Regierungsvorlage', detail: rv.date ? `eingelangt am ${rv.date.split('-').reverse().join('.')}` : null, date: rv.date }
+  }
+  return null
 }

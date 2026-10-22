@@ -761,7 +761,9 @@ export function stations(d: DraftDetail, ctx: StationContext = {}, today: string
     },
     {
       id: 'bgbl',
-      name: 'Bundesgesetzblatt',
+      // The state, not the Gazette (`DRAFT_STATION_LABEL`, 22.10.2026); the
+      // fact under it names the Gazette.
+      name: 'Kundgemacht',
       // The GP is the boundary here as it is for the Vorlage: while it runs a
       // law can still come, whatever the Frist says; once it is over, nothing.
       //
@@ -903,7 +905,7 @@ export function regulationStations(
     },
     {
       id: 'bgbl',
-      name: 'Bundesgesetzblatt II',
+      name: 'Kundgemacht',
       comparison: null,
       ...bgbl,
     },

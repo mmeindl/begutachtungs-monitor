@@ -61,7 +61,11 @@ export const DRAFT_STATION_LABEL: Record<DraftStation, string> = {
   begutachtung: 'Begutachtung',
   rv: 'Regierungsvorlage',
   parlament: 'Parlament',
-  bgbl: 'Bundesgesetzblatt',
+  /* „Kundgemacht" since 22.10.2026, not „Bundesgesetzblatt": the Länder's
+   * drafts reach this station too, in their Landesgesetzblatt, and a tab
+   * naming the Bund's Gazette over them would be wrong. The state is what
+   * both share; the citation under it says which Gazette. */
+  bgbl: 'Kundgemacht',
 }
 
 /** Furthest wins when a draft produced more than one Vorlage (ME→RV is

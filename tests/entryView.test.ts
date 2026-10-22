@@ -438,7 +438,7 @@ describe('The „Neu" mark', () => {
     expect(closed(chain({ rvDate: daysAgo(3) }))).toBe('Neu: Regierungsvorlage')
     expect(closed(chain({ station: 'parlament', rvDate: daysAgo(30), decidedAt: daysAgo(0) }))).toBe('Neu: Parlament')
     expect(closed(chain({ station: 'bgbl', bgblNumber: 'Bundesgesetzblatt I Nr. 69/2026', bgblDate: daysAgo(NEW_ARRIVAL_DAYS) })))
-      .toBe('Neu: Bundesgesetzblatt')
+      .toBe('Neu: Kundgemacht')
   })
 
   it('stops at the window, and says nothing where the date was not read', () => {
@@ -459,12 +459,12 @@ describe('The „Neu" mark', () => {
       rvCitation: '594 d.B.',
       bgblNumber: 'Bundesgesetzblatt I Nr. 69/2026',
       bgblDate: daysAgo(0),
-    } as ClosedOutcome).newLabel).toBe('Neu: Bundesgesetzblatt')
+    } as ClosedOutcome).newLabel).toBe('Neu: Kundgemacht')
   })
 
   it('marks a Verordnung promulgated this week', () => {
     const outcome = { state: 'kundgemacht' as const, nummer: 'BGBl. II Nr. 50/2026', datum: daysAgo(0), url: null, days: 12 }
-    expect(viewOfRis(ris({ active: false, outcome })).newLabel).toBe('Neu: Bundesgesetzblatt')
+    expect(viewOfRis(ris({ active: false, outcome })).newLabel).toBe('Neu: Kundgemacht')
   })
 
   // The chip names the station even where zone 2 already names the

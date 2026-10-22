@@ -119,7 +119,9 @@ const paths: { id: string; name: string; count: string; lede: string; steps: Ste
       },
       {
         id: 'bundesgesetzblatt',
-        name: 'Bundesgesetzblatt',
+        /* The station's name since 22.10.2026, as on the tabs and the
+           spine; the anchor keeps its old id, it is in circulation. */
+        name: 'Kundgemacht',
         /* „wird das Gesetz verbindlich" was imprecise: the Kundmachung is the
            publication, while the Inkrafttreten can come later and is named in
            the law itself. */
@@ -150,7 +152,7 @@ const paths: { id: string; name: string; count: string; lede: string; steps: Ste
            `app/utils/spine.ts`, since 26.09.2026) thus has three rows, each
            of which can show something. */
         id: 'bundesgesetzblatt-ii',
-        name: 'Bundesgesetzblatt II',
+        name: 'Kundgemacht',
         text: 'Das Ministerium erlässt die überarbeitete Verordnung und macht sie im Bundesgesetzblatt Teil II kund – erst damit gilt sie. Eine Regierungsvorlage und einen Beschluss des Nationalrats gibt es hier nicht; zwischen Fristende und Kundmachung ist von außen nichts zu sehen.',
         monitor:
           'Die Kundmachung selbst – Nummer und Datum, etwa „BGBl. II Nr. 410/2024“, „44 Tage nach Fristende“ – auf der Seite des Entwurfs und als Stand in der Liste. Gefunden wird sie über Titel, Ressort und Datum, also nicht lückenlos: Über 294 Verordnungsentwürfe seit 2024 gemessen (Oktober 2026) findet der Abgleich 85,4\u00a0% der Kundmachungen, bei Fristen von vor mehr als einem Jahr 91,1\u00a0%. Zwischen Fristende und Kundmachung liegen im Median 57 Tage, in einem von zehn Fällen rund ein halbes Jahr oder länger.',

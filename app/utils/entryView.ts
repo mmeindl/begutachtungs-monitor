@@ -563,17 +563,23 @@ export function viewOfLand(c: LandConsultation): EntryView {
     // No Frist class: „kurz" and „voll" are measured against the Bund's
     // Regelfall, which binds no Land.
     note: null,
-    newLabel: begutachtungNewLabel(c.startedAt, c.active),
+    // A station the Land recorded this week, else a Begutachtung that began this week.
+    newLabel: c.stage && c.stage !== 'unknown'
+      ? stationNewLabel(c.stage.station, c.stage.date)
+      : begutachtungNewLabel(c.startedAt, c.active),
     // Filed with the Land, counted by nobody — the RIS rows' state.
     participation: { kind: 'unpublished' },
-    /* Closed: when the Frist ended where the Land kept it; where it kept
-     * only the start (Salzburg's register), when it began — never an
-     * invented end. */
+    /* Closed: the station the Land's record shows (OÖ), in its words —
+     * „Im Landtag beschlossen · einstimmig"; else when the Frist ended where
+     * the Land kept it; else, where it kept only the start (Salzburg's
+     * register), when it began — never an invented end. */
     state: c.active
       ? openState(c.deadline, true)
-      : c.deadline || !c.startedAt
-        ? endedState(c.deadline, 'Begutachtung abgeschlossen')
-        : { label: 'Begutachtung abgeschlossen', detail: `begonnen am ${formatDateDe(c.startedAt)}`, tone: 'inactive', actionable: false },
+      : c.stage && c.stage !== 'unknown'
+        ? { label: c.stage.label, detail: c.stage.detail, tone: 'inactive', actionable: false }
+        : c.deadline || !c.startedAt
+          ? endedState(c.deadline, 'Begutachtung abgeschlossen')
+          : { label: 'Begutachtung abgeschlossen', detail: `begonnen am ${formatDateDe(c.startedAt)}`, tone: 'inactive', actionable: false },
   }
 }
 

@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import type { DashboardSecondRound, DraftStation } from '#shared/types'
+import type { DashboardSecondRound, DraftStation, LandCode } from '#shared/types'
 import { LAND_CODES, LAND_NAME } from '#shared/utils/laender'
 import {
   compareRowsByFrist,
@@ -254,15 +254,23 @@ function chooseSort(key: string) {
  * „Ministerialentwürfe", and a Ressort while the Bund is on.
  */
 const { bund, laender: chosenLaender } = useSourceChoice()
-const landUnavailable = computed<string | null>(() => {
-  if (stations.value.length && !stations.value.includes('begutachtung')) return 'Länder-Entwürfe verfolgt der Monitor nur in der Begutachtung'
+/* Oberösterreich's Landtag records the steps after the Begutachtung
+ * (`ooeStageOf`), so its drafts reach every station; the other Länder the
+ * monitor follows no further than the Begutachtung. */
+const FOLLOWED_PAST_BEGUTACHTUNG: readonly LandCode[] = ['ooe']
+const laterStationsOnlyChosen = computed(() => stations.value.length > 0 && !stations.value.includes('begutachtung'))
+function landUnavailableFor(land: LandCode): string | null {
+  if (laterStationsOnlyChosen.value && !FOLLOWED_PAST_BEGUTACHTUNG.includes(land)) return 'Diese Länder-Entwürfe verfolgt der Monitor nur in der Begutachtung'
   if (art.value === 'ministerialentwurf') return 'Länder-Entwürfe sind keine Ministerialentwürfe'
   if (bund.value && ministry.value) return 'Länder-Entwürfe haben kein Ministerium'
   return null
-})
-const landsApply = computed(() => chosenLaender.value.length > 0 && !landUnavailable.value)
+}
+const applyingLaender = computed(() => chosenLaender.value.filter((land) => !landUnavailableFor(land)))
+/* The reason the count line gives when no chosen source applies at all. */
+const landUnavailable = computed(() => (chosenLaender.value.length ? landUnavailableFor(chosenLaender.value[0]!) : null))
+const landsApply = computed(() => applyingLaender.value.length > 0)
 const sourceUnavailable = computed(() =>
-  Object.fromEntries(LAND_CODES.map((land) => [land, landUnavailable.value])))
+  Object.fromEntries(LAND_CODES.map((land) => [land, landUnavailableFor(land)])))
 const sourceNote = computed(() =>
   chosenLaender.value.length
     ? 'Länder: nach Beginn der Begutachtung im Zeitraum der gewählten Gesetzgebungsperiode.'
@@ -325,7 +333,14 @@ const { data: secondRound } = await secondRoundFetch
 const landItems = computed(() => {
   if (!landsApply.value) return []
   return (laenderData.value?.items ?? [])
-    .filter((item) => chosenLaender.value.includes(item.land))
+    .filter((item) => applyingLaender.value.includes(item.land))
+    /* The station tabs: a row's station is the one its Land recorded, the
+     * Begutachtung where nothing came yet; an unread record matches none. */
+    .filter((item) => {
+      if (!stations.value.length) return true
+      if (item.stage === 'unknown') return false
+      return stations.value.includes(item.stage?.station ?? 'begutachtung')
+    })
     .filter((item) => art.value !== 'verordnung' || item.kind === 'verordnung')
     .filter((item) => matchesQuery(item.title, qDebounced.value))
 })

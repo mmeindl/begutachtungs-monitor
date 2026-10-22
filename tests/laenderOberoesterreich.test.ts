@@ -1,6 +1,6 @@
 import { readFileSync } from 'node:fs'
 import { describe, expect, it } from 'vitest'
-import { ooeFristOf, parseOoeDetail, parseOoeGesetze, parseOoeVerordnungen } from '../server/utils/laender/oberoesterreich'
+import { ooeFristOf, ooeStageOf, parseOoeDetail, parseOoeGesetze, parseOoeVerordnungen } from '../server/utils/laender/oberoesterreich'
 import { LandSourceError } from '../server/utils/laender/gate'
 
 const fixture = (name: string) => readFileSync(new URL(`./fixtures/laender/${name}-2026-10-22.html`, import.meta.url), 'utf8')
@@ -71,5 +71,31 @@ describe('Oberösterreich — the Landtag’s page of one draft', () => {
   it('says null for a number the Landtag cannot load, and refuses any other page', () => {
     expect(parseOoeDetail('<p>FEHLER: Informationen zur Landtagsbeilage konnten nicht geladen werden.</p>')).toBeNull()
     expect(() => parseOoeDetail('<html>Wartung</html>')).toThrow(LandSourceError)
+  })
+})
+
+describe('Oberösterreich — the station a draft reached', () => {
+  const step = (label: string, date = '2026-01-01') => ({ label, date, url: null })
+
+  it('takes the furthest step the Landtag recorded', () => {
+    expect(ooeStageOf([])).toBeNull()
+    expect(ooeStageOf([step('Einlangen Regierungsvorlage Beilage 1454/2026', '2026-09-28')]))
+      .toEqual({ station: 'rv', label: 'Regierungsvorlage', detail: 'eingelangt am 28.09.2026', date: '2026-09-28' })
+    expect(ooeStageOf([step('Einlangen Regierungsvorlage Beilage 1/2026'), step('Antrag angenommen - mehrstimmig - Dafür: ÖVP, FPÖ', '2026-03-05')]))
+      .toMatchObject({ station: 'parlament', label: 'Im Landtag beschlossen', detail: 'mehrstimmig' })
+    expect(ooeStageOf([step('Antrag angenommen - einstimmig'), step('Kundmachung im Landesgesetzblatt LGBl. Nr. 45/2026', '2026-04-01')]))
+      .toEqual({ station: 'bgbl', label: 'Kundgemacht', detail: 'LGBl. Nr. 45/2026', date: '2026-04-01' })
+  })
+
+  it('reads the Land’s „LGBI" with a capital I, 18 of 83 times', () => {
+    expect(ooeStageOf([step('Kundmachung im Landesgesetzblatt LGBI. Nr. 7/2025')])!.detail).toBe('LGBl. Nr. 7/2025')
+  })
+
+  it('does not count a rejected amendment as the Landtag’s decision', () => {
+    expect(ooeStageOf([step('Einlangen Regierungsvorlage Beilage 1/2026'), step('Abänderungsantrag Beilage 2/2026 mehrstimmig abgelehnt')])!.station).toBe('rv')
+  })
+
+  it('reads the July draft as waiting in the Landtag’s committee: a Regierungsvorlage', () => {
+    expect(ooeStageOf(parseOoeDetail(fixture('ooe-detail-16121'))!.procedure)!.station).toBe('rv')
   })
 })
