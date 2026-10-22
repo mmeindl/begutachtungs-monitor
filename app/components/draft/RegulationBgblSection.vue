@@ -3,7 +3,7 @@ import type { BgblLawsResponse, BgblOutcome } from '#shared/types'
 import type { Fact } from '~/components/ui/FactList.vue'
 import { formatDateDe } from '#shared/utils/format'
 import { bgblEliUrl, bgblShortDe, citeLineDe } from '#shared/utils/citations'
-import { risSource, type SourceEntry } from '#shared/utils/provenance'
+import { fassungFacts, fassungSources } from '~/utils/geltendeFassung'
 
 /**
  * „Im Bundesgesetzblatt" of a Verordnungsentwurf's page (21.10.2026) — the
@@ -33,21 +33,12 @@ const cite = computed(() => {
   return url ? citeLineDe(nummer.value, url) : null
 })
 
-const FASSUNG_SOURCES: SourceEntry[] = [risSource('Geltende Fassung')]
-
 /* One word for the title and the list's fold, which said „Gesetze" here
  * under a title counting „Verordnungen" (`GeltendeFassungList`). */
 const FASSUNG_NOUN = 'Verordnungen'
 
-const facts = computed<Fact[]>(() => {
-  const out: Fact[] = [{ key: 'kundmachung', title: 'Kundgemacht' }]
-  const f = props.fassung
-  if (!f?.bgbl) return out
-  if (!f.laws.length) {
-    return [...out, { key: 'fassung', title: 'Geltende Fassung', text: 'Im RIS noch nicht eingearbeitet: Die konsolidierte Fassung folgt der Kundmachung mit einigen Tagen Verzug.' }]
-  }
-  return [...out, { key: 'fassung', title: f.laws.length === 1 ? 'Geltende Fassung' : `Geltende Fassung, ${f.laws.length} ${FASSUNG_NOUN}` }]
-})
+const facts = computed<Fact[]>(() => [{ key: 'kundmachung', title: 'Kundgemacht' }, ...fassungFacts(props.fassung, FASSUNG_NOUN)])
+const credits = computed(() => fassungSources(props.fassung))
 </script>
 
 <template>
@@ -73,8 +64,8 @@ const facts = computed<Fact[]>(() => {
           <GeltendeFassungList :laws="fassung.laws" :noun="FASSUNG_NOUN" />
         </template>
       </FactList>
-      <SectionCredits v-if="fassung?.laws.length" :sources="FASSUNG_SOURCES" :marked="false">
-        <span>Verlinkt in der heute geltenden Fassung</span>
+      <SectionCredits v-if="credits.length" :sources="credits" :marked="false">
+        <span v-if="fassung?.laws.length">Verlinkt in der heute geltenden Fassung</span>
       </SectionCredits>
     </div>
   </section>

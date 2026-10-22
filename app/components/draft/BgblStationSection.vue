@@ -1,8 +1,8 @@
 <script setup lang="ts">
 import type { BgblLawsResponse, EnactmentInfo, LawStationId } from '#shared/types'
 import type { Fact } from '~/components/ui/FactList.vue'
-import { risSource, type SourceEntry } from '#shared/utils/provenance'
 import { bgblEliUrl, bgblShortDe, citeLineDe } from '#shared/utils/citations'
+import { fassungFacts, fassungSources } from '~/utils/geltendeFassung'
 
 /**
  * „Im Bundesgesetzblatt" of the draft page (04.10.2026, out of the page).
@@ -47,24 +47,16 @@ const { data: fassung } = await useFetch<BgblLawsResponse>(
   { lazy: true, server: false },
 )
 
-const FASSUNG_SOURCES: SourceEntry[] = [risSource('Geltende Fassung')]
-
 /* What „Geltende Fassung" counts, one word for its title and the list's
  * fold (`GeltendeFassungList`); the Verordnung's section counts
  * „Verordnungen". */
 const FASSUNG_NOUN = 'Gesetze'
 
-const facts = computed<Fact[]>(() => {
-  const f = fassung.value
-  const out: Fact[] = [{ key: 'kundmachung', title: 'Kundgemacht' }]
-  if (!f?.bgbl) return out
-  if (!f.laws.length) {
-    // RIS consolidates after the Kundmachung, with a lag of days to weeks;
-    // until then there is no Fassung carrying this change to link.
-    return [...out, { key: 'fassung', title: 'Geltende Fassung', text: 'Im RIS noch nicht eingearbeitet: Die konsolidierte Fassung folgt der Kundmachung mit einigen Tagen Verzug.' }]
-  }
-  return [...out, { key: 'fassung', title: f.laws.length === 1 ? 'Geltende Fassung' : `Geltende Fassung, ${f.laws.length} ${FASSUNG_NOUN}` }]
-})
+/* „Geltende Fassung", „Aufgehoben", or the note that RIS has not
+ * consolidated yet — the same three cases on the Verordnung's section
+ * (`app/utils/geltendeFassung.ts`). */
+const facts = computed<Fact[]>(() => [{ key: 'kundmachung', title: 'Kundgemacht' }, ...fassungFacts(fassung.value, FASSUNG_NOUN)])
+const credits = computed(() => fassungSources(fassung.value))
 
 function bgblCite(number: string | null, risUrl: string | null): string | null {
   if (!number) return null
@@ -126,8 +118,8 @@ function bgblCite(number: string | null, risUrl: string | null): string | null {
         <!-- Which version the links open is provenance: the credit line under
              the frame, as under „Geltendes Recht" on the draft. Today's, so the
              change this BGBl made is in it — and every one after it. -->
-        <SectionCredits v-if="fassung?.laws.length" :sources="FASSUNG_SOURCES" :marked="false">
-          <span>Verlinkt in der heute geltenden Fassung</span>
+        <SectionCredits v-if="credits.length" :sources="credits" :marked="false">
+          <span v-if="fassung?.laws.length">Verlinkt in der heute geltenden Fassung</span>
         </SectionCredits>
       </div>
       <!-- The one comparison that is no step: the whole way from the draft
