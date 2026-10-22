@@ -71,7 +71,7 @@ box only through the retrofit in [README.md](README.md) ("Retrofit
   security headers (HSTS, nosniff, Referrer-Policy, frame denial), drops
   `Server:`, caps request bodies at 1 MB. **No access log** — the privacy
   statement (`/datenschutz`) says so and cites the Caddyfile.
-- **ufw** — default deny inbound; only 22/80/443 open.
+- **ufw** — default deny inbound; only 22/80/443 open (443 over TCP and UDP — UDP for HTTP/3; on the live box since the one-line retrofit in README.md "Notes").
 - **SSH hardening** — key-only logins (`/etc/ssh/sshd_config.d/00-hardening.conf`,
   checked against `sshd -T` by the bootstrap).
 - **unattended-upgrades** — automatic security patches from Ubuntu, and

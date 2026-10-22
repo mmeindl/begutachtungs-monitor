@@ -108,6 +108,11 @@ ufw default allow outgoing
 ufw allow OpenSSH
 ufw allow 80/tcp
 ufw allow 443/tcp
+# HTTP/3 is QUIC, i.e. UDP. Caddy serves it by default and says so in every
+# response (`alt-svc: h3=":443"`); with only 443/tcp open, every browser
+# that takes the offer up runs into a closed port first and falls back to
+# TCP (seen on the live site, 22.10.2026).
+ufw allow 443/udp
 ufw --force enable
 
 # --- app user + directory ----------------------------------------------------

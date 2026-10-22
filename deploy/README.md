@@ -211,7 +211,11 @@ the two backups in `/root` for a week.
 ## Notes
 
 - The service binds to `127.0.0.1:3000`; only Caddy is reachable from outside
-  (ufw allows 22/80/443 only).
+  (ufw allows 22, 80 and 443 only — 443 also over UDP, for HTTP/3). A box
+  bootstrapped before 22.10.2026 needs that rule once:
+  `ssh root@<SERVER_IP> 'ufw allow 443/udp'` — Caddy has advertised HTTP/3
+  (`alt-svc: h3`) all along, and without the rule every browser that takes
+  the offer first runs into a closed port.
 - Logs: `ssh root@<SERVER_IP> journalctl -u begutachtungs-monitor -f`
 - On the 1 GB pico the local-build + rsync flow is not just the default but
   required — `pnpm build` needs more RAM than the server has. `bootstrap.sh`
