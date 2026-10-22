@@ -108,6 +108,25 @@ export function byParagraphOrder(a: string, b: string): number {
 }
 
 /**
+ * Documents in the order the law prints them — the order RIS lists the law's
+ * labels in (`printed`, the keys of `KonsLawAtDate.paragraphs`).
+ *
+ * The engine reads its stock as a law: „Die §§ 7 bis 9 werden durch folgende
+ * §§ 7 bis 10 ersetzt" needs §§ 7, 8 and 9 side by side (`spliceRun`), and a
+ * new § goes where its number puts it (`numberedSlot`). The page loaded the
+ * §§ the annex covers first and kept them in the order the fetches finished,
+ * so whether such a replacement applied depended on who answered first
+ * (22.10.2026). RIS's order and not `byParagraphOrder`: over the 324 laws of
+ * the draft corpus the §§ come in the same order either way, and the 24 laws
+ * where the two differ also carry Artikel („Art. 1" beside „§ 1") — RIS knows
+ * how those are printed, a number does not.
+ */
+export function inPrintedOrder<T extends { label: string }>(refs: readonly T[], printed: readonly string[]): T[] {
+  const at = new Map(printed.map((label, i) => [label, i] as const))
+  return [...refs].sort((a, b) => (at.get(a.label) ?? printed.length) - (at.get(b.label) ?? printed.length))
+}
+
+/**
  * The key an instruction's address touches its unit under — the page's
  * (`unitKey`), and none for a division above the § (`isDivision`), which
  * touches no § of its number.

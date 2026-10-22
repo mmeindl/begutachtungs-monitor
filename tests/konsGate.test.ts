@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { addressedLabels, addressedParagraphs, byParagraphOrder, gateParagraph, refusedUnits, touchedKey, unitsByKey } from '../server/utils/kons/konsGate'
+import { addressedLabels, addressedParagraphs, byParagraphOrder, gateParagraph, inPrintedOrder, refusedUnits, touchedKey, unitsByKey } from '../server/utils/kons/konsGate'
 import { unitKey } from '../server/utils/text/designation'
 import { applyNovelle, instructionsFromUnits, parsePayload, type Instruction, type StandingLaw } from '../server/utils/kons/lawApply'
 import { createdUnits, opAddress, parseInstruction, refusedAddresses } from '../server/utils/kons/novao'
@@ -271,6 +271,34 @@ describe('an Anlage is touched under its own key, not under § 1 (22.10.2026)', 
     expect(addressedParagraphs(instructions, [])).toEqual(['Anl. 1'])
     expect(guardParagraph('Anl. 1', standing, before.get('Anl. 1')!, out.get('Anl. 1')!, touching('Anl. 1')).plausible).toBe(true)
     expect(touching('1')).toEqual([])
+  })
+})
+
+describe('the stock in the order the law prints it (22.10.2026)', () => {
+  // The page loaded the annex-covered §§ first and kept them in the order the
+  // fetches finished; a range replacement then depended on who answered first.
+  const P = (id: string) => {
+    const p = makeNode('para', id, `§ ${id}.`, '', `H${id}`)
+    p.children.push(makeNode('abs', '1', '(1)', `Alt ${id}.`))
+    return p
+  }
+  const range = instr('Die §§ 7 bis 9 werden durch folgende §§ 7 bis 10 ersetzt:', ['§ 7. (1) Neu 7.', '§ 8. (1) Neu 8.', '§ 9. (1) Neu 9.', '§ 10. (1) Neu 10.'])
+
+  it('puts the documents back into RIS’s order, whatever order they were allotted in', () => {
+    const printed = ['§ 7', '§ 8', '§ 9', '§ 12', 'Anl. 1']
+    const allotted = ['§ 12', '§ 9', 'Anl. 1', '§ 7', '§ 8'].map((label) => ({ label }))
+    expect(inPrintedOrder(allotted, printed).map((r) => r.label)).toEqual(printed)
+    // A label RIS does not list goes last rather than anywhere.
+    expect(inPrintedOrder([{ label: 'x' }, { label: '§ 8' }], printed).map((r) => r.label)).toEqual(['§ 8', 'x'])
+  })
+
+  it('lets a range replacement apply that the completion order refused', () => {
+    const outOfTurn = applyNovelle({ paragraphs: ['7', '9', '12', '8'].map(P) }, range)
+    expect(outOfTurn.results[0]!.reason).toMatch(/nicht zusammenhängend/)
+    const ordered = inPrintedOrder(['7', '9', '12', '8'].map((id) => ({ label: `§ ${id}`, id })), ['§ 7', '§ 8', '§ 9', '§ 12'])
+    const inTurn = applyNovelle({ paragraphs: ordered.map((r) => P(r.id)) }, range)
+    expect(inTurn.results[0]!.reason).toBeNull()
+    expect(inTurn.law.paragraphs.map((p) => p.id)).toEqual(['7', '8', '9', '10', '12'])
   })
 })
 

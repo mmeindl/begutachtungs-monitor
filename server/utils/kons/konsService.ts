@@ -29,7 +29,7 @@
  */
 import type { ConsolidatedParagraph, ConsolidatedTextResponse, LawDiffSegment } from '#shared/types'
 import { guardParagraph } from './applyGuard'
-import { addressedLabels, addressedParagraphs, gateParagraph, refusedUnits, touchedKey, unitsByKey } from './konsGate'
+import { addressedLabels, addressedParagraphs, gateParagraph, inPrintedOrder, refusedUnits, touchedKey, unitsByKey } from './konsGate'
 import { anlageLabelKey, isSchedule, unitKey } from '../text/designation'
 import { fetchParagraphXml, resolveKonsLaw } from './konsCache'
 import { konsLawUrl } from '../lawtext/amendedLawsService'
@@ -78,7 +78,9 @@ function allotBudget(refs: readonly KonsParagraphRef[], budget: { left: number }
 }
 
 /**
- * The § documents this Artikel addresses, as trees.
+ * The § documents this Artikel addresses, as trees — in the order of
+ * `queue`, which the caller puts into the order the law prints them
+ * (`inPrintedOrder`).
  *
  * **The fetch stands outside the try, the parse inside it**, exactly as in
  * `annex/annexGuardService.ts` and for the same reason: a RIS that does not
@@ -88,20 +90,20 @@ function allotBudget(refs: readonly KonsParagraphRef[], budget: { left: number }
  * is the right answer for it.
  */
 async function standingParagraphs(queue: readonly KonsParagraphRef[]): Promise<LawNode[]> {
-  // `trees` is filled in the callback rather than built from the result: the
-  // order is the order of completion, and it always was.
-  const trees: LawNode[] = []
-  await mapWithConcurrency(queue, CONCURRENCY, async (ref) => {
-    if (!ref.xmlUrl) return
+  // Built from the result, which keeps the input order. Until 22.10.2026 the
+  // callback pushed each tree as its fetch finished, and the stock came out
+  // in the order of completion.
+  const trees = await mapWithConcurrency(queue, CONCURRENCY, async (ref) => {
+    if (!ref.xmlUrl) return null
     const xml = await fetchParagraphXml(ref.nor, ref.xmlUrl)
     try {
-      const tree = parseKonsParagraph(xml)
-      if (tree) trees.push(tree)
+      return parseKonsParagraph(xml)
     } catch {
       // A document that is no § — 27 of 3.110 in the BGBl corpus.
+      return null
     }
   })
-  return trees
+  return trees.filter((tree): tree is LawNode => tree !== null)
 }
 
 /** Nothing to show, and the denominator with it. */
@@ -255,8 +257,9 @@ async function consolidate(
       // loaded stock, and an instruction whose anchor § is missing fails. On
       // 100/ME „Anweisung ließ sich nicht sicher anwenden" rose from 8 to 11
       // that way and the display lost two §§. The order changes nothing about
-      // the stock as long as the budget suffices; only when it does not does
-      // the order decide what is missing.
+      // the stock as long as the budget suffices — the engine gets it back in
+      // printed order (`inPrintedOrder`); only when the budget does not
+      // suffice does this order decide what is missing.
       const covered = (id: string): boolean =>
         paragraphRows(byParagraph, id, isPackage ? article.key : undefined).length > 0
       // Asked for under the label RIS prints, not under the bare designation:
@@ -283,7 +286,10 @@ async function consolidate(
 
     const shownPerArticle = await mapWithConcurrency(jobs, CONCURRENCY, async (job) => {
       const { article, instructions, refused, addressed, law, queue, skipped } = job
-      const standing: StandingLaw = { paragraphs: await standingParagraphs(queue) }
+      // The budget chose WHICH §§ (the covered ones first); the engine reads
+      // them in the order the law prints them, or a range replacement fails
+      // on a stock whose §§ came back out of turn (`inPrintedOrder`).
+      const standing: StandingLaw = { paragraphs: await standingParagraphs(inPrintedOrder(queue, Object.keys(law.paragraphs))) }
       const { law: after, results, unresolved } = applyNovelle(standing, instructions)
 
       const refusedIds = refusedUnits(unresolved, refused, unitKey)
