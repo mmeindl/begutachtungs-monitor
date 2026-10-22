@@ -1,7 +1,8 @@
 <script setup lang="ts">
 import type { LandCode, LandLawDiffResponse, LawDiffSegment, LawDiffUnit } from '#shared/types'
 import { diffUnitKey } from '#shared/utils/diffKey'
-import { countLabelDe } from '#shared/utils/format'
+import { countLabelDe, formatDateDe } from '#shared/utils/format'
+import { landShortTitle } from '#shared/utils/laender'
 import { lawStationPairQuestion } from '#shared/utils/lawStations'
 import { displayId, extraHeading, unitName } from '#shared/utils/unitName'
 import { type DiffBadge, badgeCounts, badgeLabels } from '~/utils/diffBadges'
@@ -142,6 +143,15 @@ const summary = computed(() => {
       {{ data.unavailableReason }}
     </p>
     <template v-else>
+      <!-- Two Begutachtungen, one law: said before the numbers, or the
+           other draft's changes read as changes made to this one after its
+           Begutachtung (2023-16039 and 2024-16064, LGBl. Nr. 95/2024). -->
+      <p v-if="data.sharedWith.length" class="mb-3 text-sm text-ink">
+        Dieselbe Kundmachung setzt auch
+        <template v-for="(other, i) in data.sharedWith" :key="other.path"><template v-if="i > 0">{{ i === data.sharedWith.length - 1 ? ' und ' : ', ' }}</template>den Entwurf
+          <NuxtLink :to="other.path" class="link-inline">„{{ landShortTitle(other.title) ?? other.title }}“</NuxtLink><template v-if="other.deadline"> (Frist bis {{ formatDateDe(other.deadline) }})</template></template>
+        um. Was hier als neu erscheint, kann aus {{ data.sharedWith.length > 1 ? 'jenen Entwürfen' : 'jenem Entwurf' }} stammen.
+      </p>
       <p v-if="summary" class="text-sm text-ink">{{ summary }}</p>
       <ListBox class="mt-4">
         <template #header>

@@ -17,6 +17,8 @@ import { summarizeDiff } from '../diff/lawDiff'
 import { upstreamBytes, upstreamText, type UpstreamPolicy } from '../upstream/fetch'
 import { diffLandDraft, landDraftUnits, lgblUnits, packageChanges } from './landLawDiff'
 import { lgblXmlUrl } from './lgblIndex'
+import { draftsSharingKundmachung } from './sources'
+import { landDraftPath } from '#shared/utils/laender'
 
 const POLICY: UpstreamPolicy = { timeoutMs: 30_000, retries: 2, upstreamHostsOnly: true }
 const PDF_MAX_BYTES = 30 * 1024 * 1024
@@ -30,6 +32,7 @@ const unavailable = (reason: string, rest: Partial<LandLawDiffResponse> = {}): L
   kundmachung: null,
   addedLaws: [],
   droppedLaws: [],
+  sharedWith: [],
   ...rest,
 })
 
@@ -71,6 +74,7 @@ export async function compareLandDraft(land: LandCode, detail: LandDraftDetail):
 
   const units = diffLandDraft(from, to)
   const { added, dropped } = packageChanges(from, to)
+  const shared = await draftsSharingKundmachung(land, stage.detail, detail.draft.id).catch(() => [])
   const s = summarizeDiff(units)
   return {
     available: true,
@@ -81,6 +85,7 @@ export async function compareLandDraft(land: LandCode, detail: LandDraftDetail):
     kundmachung,
     addedLaws: added,
     droppedLaws: dropped,
+    sharedWith: shared.map((d) => ({ title: d.title, path: landDraftPath(d.land, d.id), deadline: d.deadline, startedAt: d.startedAt })),
   }
 }
 

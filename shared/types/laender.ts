@@ -203,4 +203,9 @@ export interface LandLawDiffResponse {
   addedLaws: string[]
   /** Artikel only the draft has — no longer in the Kundmachung. */
   droppedLaws: string[]
+  /**
+   * Other drafts the Land's record sends into the same Kundmachung: what
+   * reads as new here may come from them (`draftsSharingKundmachung`).
+   */
+  sharedWith: { title: string; path: string; deadline: string | null; startedAt: string | null }[]
 }

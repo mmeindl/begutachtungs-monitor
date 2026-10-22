@@ -98,6 +98,21 @@ export const fetchLandRegister = defineCachedFunction(
   { name: 'land-register-page', getKey: urlKey, maxAge: REGISTER_TTL_S, swr: true },
 )
 
+/**
+ * One draft's Landtag page, for the LIST only (Oberösterreich, 22.10.2026):
+ * what station each of the Land's 91 drafts reached. Held like the register
+ * — two hours, served stale while it refreshes — because the list reads all
+ * of them at once, and with the page cache's 30 minutes and no SWR every
+ * period list after half an hour waited five seconds for 91 pages again.
+ * The draft's own page reads the same document fresh (`fetchLandPage`), so
+ * the list can trail the page by those two hours and never the other way.
+ */
+const RECORD_TTL_S = 60 * 60 * 2
+export const fetchLandRecord = defineCachedFunction(
+  (url: string): Promise<string> => upstreamText(url, LAND_POLICY),
+  { name: 'land-record-page', getKey: urlKey, maxAge: RECORD_TTL_S, swr: true },
+)
+
 /** How long a LIST waits for what only garnishes it: start dates. */
 const GARNISH_BUDGET_MS = 1_500
 
@@ -275,7 +290,7 @@ const oberoesterreich: LandReader = {
      * date on the Landtag's page — a garnish here, so under a budget. */
     const started = await withinBudget(Promise.all(items
       .filter((d) => d.active && d.kind === 'gesetz')
-      .map(async (d) => [d.id, parseOoeDetail(await fetchLandPage(d.url))?.startedAt ?? null] as const)), GARNISH_BUDGET_MS)
+      .map(async (d) => [d.id, parseOoeDetail(await fetchLandRecord(d.url))?.startedAt ?? null] as const)), GARNISH_BUDGET_MS)
     const byId = new Map(started ?? [])
     return items.map((d) => ({ ...d, startedAt: byId.get(d.id) ?? d.startedAt }))
   },
@@ -293,7 +308,7 @@ const oberoesterreich: LandReader = {
      * their Begutachtung that the monitor reads. */
     return Promise.all(all.map(async (d) => {
       if (d.kind !== 'gesetz') return d
-      const stage = await fetchLandPage(d.url)
+      const stage = await fetchLandRecord(d.url)
         .then((html) => {
           const detail = parseOoeDetail(html)
           return detail ? ooeStageOf(detail.procedure) : ('unknown' as const)
@@ -470,6 +485,19 @@ export async function readLaenderInWindow(
     items: inWindow.filter((d) => status === 'all' || (status === 'open') === d.active),
     sources,
   }
+}
+
+/**
+ * The Land's other drafts its own record sends into the same Kundmachung —
+ * two Begutachtungen of one law, enacted together (2023-16039 and
+ * 2024-16064, both LGBl. Nr. 95/2024). The comparison of either says so, or
+ * the other's changes read as changes made to this one after its
+ * Begutachtung. Only the Land's record counts, never our title search.
+ */
+export async function draftsSharingKundmachung(land: LandCode, nr: string, exceptId: string): Promise<LandConsultation[]> {
+  const all = await READERS[land].all()
+  return all.filter((d) =>
+    d.id !== exceptId && d.stage && d.stage !== 'unknown' && d.stage.station === 'bgbl' && d.stage.via !== 'suche' && d.stage.detail === nr)
 }
 
 /* Salzburg and Wien number with digits; Oberösterreich with `2026-16124`

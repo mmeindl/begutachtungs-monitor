@@ -53,6 +53,7 @@ const FETCHED: Record<string, string> = {
   'land-list-page': "a Land's list of drafts in Begutachtung, or one draft's page of Stellungnahmen, as its site served it; parsed and gated fresh on every call",
   'land-list-page-latin1': 'the same for a Land that serves ISO-8859-1 (Wien), decoded to text and nothing else',
   'land-register-page': "a Land's whole register of drafts as its site served it (Salzburg since 2004); parsed fresh on every call",
+  'land-record-page': "one draft's Landtag page as its site served it, read by the list for the station (Oberösterreich); parsed fresh on every call",
 }
 
 const UTILS = join(import.meta.dirname, '..', 'server', 'utils')
