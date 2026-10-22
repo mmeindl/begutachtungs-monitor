@@ -1,5 +1,6 @@
 <script setup lang="ts">
-import type { LandCode, LandLawDiffResponse, LawDiffSegment, LawDiffUnit } from '#shared/types'
+import type { LandCode, LandLawDiffResponse, LandTextStation, LawDiffSegment, LawDiffUnit, LawStationId } from '#shared/types'
+import { isNovelleUnits } from '#shared/utils/changeShare'
 import { diffUnitKey } from '#shared/utils/diffKey'
 import { countLabelDe, formatDateDe } from '#shared/utils/format'
 import { landShortTitle } from '#shared/utils/laender'
@@ -25,19 +26,32 @@ import ListBox from '~/components/ui/ListBox.vue'
  * documents and a PDF parse the page must not wait for, and the section
  * says „lädt" meanwhile — nothing false in the time it takes.
  */
-const props = defineProps<{
+const props = withDefaults(defineProps<{
   land: LandCode
   number: string
-}>()
+  /** The two texts; the draft against the Kundmachung unless said. */
+  from?: LandTextStation
+  to?: LandTextStation
+}>(), { from: 'entwurf', to: 'lgbl' })
 
 const { data, status } = useFetch<LandLawDiffResponse>(
   () => `/api/laender/${props.land}/${props.number}/vergleich`,
-  { lazy: true, server: false },
+  { query: { von: props.from, bis: props.to }, lazy: true, server: false },
 )
 
-const heading = lawStationPairQuestion('me', 'bgbl')
-const FROM_LABEL = 'Entwurf'
-const TO_LABEL = 'Kundmachung'
+/* The Bund's question for the same pair, word for word (`lawStationPairQuestion`). */
+const AS_LAW_STATION: Record<LandTextStation, LawStationId> = { entwurf: 'me', rv: 'rv', ausschuss: 'ausschuss', lgbl: 'bgbl' }
+const LABEL: Record<LandTextStation, string> = { entwurf: 'Entwurf', rv: 'Regierungsvorlage', ausschuss: 'Ausschussfassung', lgbl: 'Kundmachung' }
+/* „(im Entwurf Z 6)" — where the earlier text numbered the unit otherwise. */
+const IN_FROM: Record<LandTextStation, string> = { entwurf: 'im Entwurf', rv: 'in der Regierungsvorlage', ausschuss: 'in der Ausschussfassung', lgbl: 'in der Kundmachung' }
+/* When the changes happened, temporal and never causal (framing rule). */
+const WHEN: Record<string, string> = { 'entwurf>rv': 'nach der Begutachtung', 'rv>ausschuss': 'im Ausschuss', 'entwurf>lgbl': 'bis zur Kundmachung' }
+
+const heading = computed(() => lawStationPairQuestion(AS_LAW_STATION[props.from], AS_LAW_STATION[props.to]))
+const FROM_LABEL = computed(() => LABEL[props.from])
+const TO_LABEL = computed(() => LABEL[props.to])
+const isNovelle = computed(() => isNovelleUnits(units.value))
+const unitNoun = (n: number) => (isNovelle.value ? (n === 1 ? 'Änderungsanordnung' : 'Änderungsanordnungen') : (n === 1 ? 'Paragraph' : 'Paragraphen'))
 const BADGE_LABEL = badgeLabels('entfallen')
 
 function badgeOf(u: LawDiffUnit): DiffBadge {
@@ -121,20 +135,21 @@ const summary = computed(() => {
   // Counted as the pills count: an editorial change is not a change of
   // substance, and the two numbers must add up to what the box shows.
   const changes = s.changed - s.editorial + s.inserted + s.removed
-  if (!changes && !s.editorial) return 'Die Kundmachung übernimmt den Entwurf Wort für Wort.'
+  const when = WHEN[`${props.from}>${props.to}`] ?? ''
+  if (!changes && !s.editorial) return `Die ${TO_LABEL.value} übernimmt ${props.from === 'entwurf' ? 'den Entwurf' : `die ${FROM_LABEL.value}`} Wort für Wort.`
   const parts = [
-    changes ? `${countLabelDe(changes, 'Änderung', 'Änderungen')} nach der Begutachtung` : 'Keine inhaltliche Änderung nach der Begutachtung',
+    changes ? `${countLabelDe(changes, 'Änderung', 'Änderungen')} ${when}` : `Keine inhaltliche Änderung ${when}`,
     s.editorial ? `${countLabelDe(s.editorial, 'redaktionelle', 'redaktionelle')} dazu` : null,
-    `${countLabelDe(s.unchanged, 'Anordnung', 'Anordnungen')} unverändert übernommen`,
+    `${s.unchanged} ${unitNoun(s.unchanged)} unverändert übernommen`,
   ]
   return `${parts.filter(Boolean).join(', ')}.`
 })
 </script>
 
 <template>
-  <PageSubsection id="textvergleich" :heading="heading">
+  <PageSubsection :id="`textvergleich-${to}`" :heading="heading">
     <ListSkeleton v-if="status === 'pending' || status === 'idle'" class="mt-3">
-      Entwurf und Kundmachung werden verglichen …
+      {{ FROM_LABEL }} und {{ TO_LABEL }} werden verglichen …
     </ListSkeleton>
     <p v-else-if="status === 'error' || !data" class="text-sm text-ink-secondary">
       Der Vergleich ist gerade nicht verfügbar.
@@ -174,16 +189,16 @@ const summary = computed(() => {
           @more="showAll(g.article)"
         >
           <p v-if="addedLaws.has(g.article)" class="border-b border-hairline px-4 py-2.5 text-sm text-ink-secondary">
-            Dieses Gesetz kommt im Entwurf nicht vor; der Landtag hat es dem Paket hinzugefügt.
+            Dieses Gesetz kommt {{ IN_FROM[from] }} nicht vor; es ist auf dem Weg hinzugekommen.
           </p>
           <p v-else-if="droppedLaws.has(g.article)" class="border-b border-hairline px-4 py-2.5 text-sm text-ink-secondary">
-            Der Entwurf änderte dieses Gesetz; die Kundmachung ändert es nicht mehr.
+            {{ FROM_LABEL === 'Entwurf' ? 'Der Entwurf' : `Die ${FROM_LABEL}` }} änderte dieses Gesetz; die {{ TO_LABEL }} ändert es nicht mehr.
           </p>
           <template v-for="b in g.blocks" :key="b.kind === 'unit' ? `u|${diffUnitKey(b.unit)}` : `c|${diffUnitKey(b.units[0]!.unit)}`">
             <details v-if="b.kind === 'context'" class="group border-b border-hairline last:border-b-0">
               <summary class="flex min-h-target cursor-pointer list-none items-center gap-2 px-4 py-2 text-xs text-ink-muted hover:bg-hover [&::-webkit-details-marker]:hidden">
                 <UIcon name="i-lucide-chevron-down" class="size-4 shrink-0 transition-transform group-open:rotate-180" aria-hidden="true" />
-                {{ b.units.length }} {{ b.units.length === 1 ? 'Änderungsanordnung' : 'Änderungsanordnungen' }} unverändert
+                {{ b.units.length }} {{ unitNoun(b.units.length) }} unverändert
               </summary>
               <div class="space-y-3 px-4 pb-3 pl-10 text-sm leading-relaxed text-ink-secondary">
                 <p v-for="u in b.units" :key="diffUnitKey(u.unit)" class="hyphens-auto">
@@ -197,7 +212,7 @@ const summary = computed(() => {
               <p class="mb-1 flex flex-wrap items-baseline gap-x-2 gap-y-1 text-sm">
                 <span class="font-medium text-ink">
                   {{ displayId(b.unit.id) }}
-                  <span v-if="b.unit.fromId && b.unit.fromId !== b.unit.id" class="font-normal text-ink-muted">(im Entwurf {{ displayId(b.unit.fromId) }})</span>
+                  <span v-if="b.unit.fromId && b.unit.fromId !== b.unit.id" class="font-normal text-ink-muted">({{ IN_FROM[from] }} {{ displayId(b.unit.fromId) }})</span>
                 </span>
                 <span v-if="b.label" class="min-w-0 text-ink-secondary">{{ b.label }}</span>
               </p>
@@ -218,17 +233,16 @@ const summary = computed(() => {
           </template>
         </DiffGroup>
       </ListBox>
-      <!-- Whose text and whose reading: the Land's PDF, RIS's Kundmachung,
-           and the comparison ours — read from a PDF, which the Bund's
-           drafts are not (§12.44). -->
+      <!-- Whose texts and whose reading: the Land's and the Landtag's PDFs,
+           RIS's Kundmachung, and the comparison ours — read from PDFs,
+           which the Bund's drafts are not (§12.44). -->
       <SectionCredits :sources="[]" :marked="false" method="/so-funktionierts#laender">
-        <span>
-          Entwurf: Land Oberösterreich, <ExternalLink v-if="data.draft" :href="data.draft.url" class="link-muted">{{ data.draft.label }}</ExternalLink>
+        <span v-for="doc in [data.fromDocument, data.toDocument]" :key="doc?.label">
+          <template v-if="doc">
+            {{ doc.publisher }}: <ExternalLink v-if="doc.url" :href="doc.url" class="link-muted">{{ doc.label }}</ExternalLink><template v-else>{{ doc.label }}</template>
+          </template>
         </span>
-        <span>
-          Kundmachung: RIS (CC BY 4.0), <ExternalLink v-if="data.kundmachung?.url" :href="data.kundmachung.url" class="link-muted">{{ data.kundmachung.label }}</ExternalLink><template v-else>{{ data.kundmachung?.label }}</template>
-        </span>
-        <span>Vergleich aus dem PDF des Entwurfs: Begutachtungs-Monitor</span>
+        <span>Vergleich: Begutachtungs-Monitor</span>
       </SectionCredits>
     </template>
   </PageSubsection>

@@ -522,12 +522,16 @@ const waitMonths = Math.round(RV_LATENCY_CONTEXT_DAYS / 30.44)
         ließe.
       </p>
       <p>
-        Wo das Land die Kundmachung selbst nennt – bei Oberösterreichs Gesetzen –,
-        vergleicht der Monitor den Begutachtungsentwurf mit dem kundgemachten
-        Gesetz, Änderungsanordnung für Änderungsanordnung, wie bei den Entwürfen
-        des Bundes. Den Entwurf veröffentlicht das Land nur als PDF; der Monitor
-        liest den Gesetzestext daraus, die Kundmachung aus dem
-        Rechtsinformationssystem. Gegen eine Kundmachung, die nur unsere Suche
+        Bei Oberösterreichs Gesetzen vergleicht der Monitor die Texte Station für
+        Station, wie bei den Entwürfen des Bundes: den Begutachtungsentwurf mit
+        der Regierungsvorlage, die Vorlage mit dem, was der Ausschuss daraus
+        gemacht hat, und den Entwurf mit dem kundgemachten Gesetz. Entwurf,
+        Vorlage und Ausschussbericht veröffentlichen Land und Landtag nur als PDF;
+        der Monitor liest den Gesetzestext daraus, die Kundmachung aus dem
+        Rechtsinformationssystem. Zwischen Ausschuss und Kundmachung wird der Text
+        noch für die Veröffentlichung bearbeitet („Hektar“ wird „ha“) – darum
+        vergleicht der Monitor den Ausschuss mit der Vorlage und nicht mit dem
+        Gesetz. Gegen eine Kundmachung, die nur unsere Suche
         gefunden hat, vergleicht er nicht: Ein falscher Treffer würde ein ganzes
         Gesetz als umgeschrieben zeigen.
       </p>

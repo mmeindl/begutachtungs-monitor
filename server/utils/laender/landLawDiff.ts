@@ -34,7 +34,7 @@ const QUOTES_RE = /[„“”"»«]/g
    („Median- Entgelthöhe" in the XML): a hyphen, a space, a capital. „Land-
    und Forstwirtschaft" keeps its space — the next word is lower case. */
 function clean(text: string): string {
-  return text.replace(QUOTES_RE, '').replace(/(\p{L})- (?=\p{Lu})/gu, '$1-').replace(/\s+/g, ' ').trim()
+  return text.replace(QUOTES_RE, '').replace(/(\p{L})- (?=\p{Lu})/gu, '$1-').replace(/\s*&\s*/g, '&').replace(/\s+/g, ' ').trim()
 }
 
 function unquoted(units: LawUnit[]): LawUnit[] {
@@ -50,6 +50,8 @@ function unquoted(units: LawUnit[]): LawUnit[] {
  * quoted payload, and the PDF side keeps „§ 5 Schlichtungsverfahren" as text.
  */
 const PARA_HEAD_RE = /<ueberschrift typ="para"([^>]*)>\s*(§\s*\d+[a-z]*\.?)\s*(?:<br\s*\/>\s*([\s\S]*?))?<\/ueberschrift>(\s*)<absatz typ="(abs|satz)"([^>]*)>/g
+
+const SIGNATURE_TABLE_RE = /<table\b(?:(?!<\/table>)[\s\S])*?(?:Präsident|Landeshauptmann|Landeshauptfrau)(?:(?!<\/table>)[\s\S])*<\/table>/g
 
 const DIVISION_HEAD_RE = /<ueberschrift typ="(?:g1|g1min|g2|art)"[^>]*>(?!\s*(?:<[^>]+>\s*)*Artikel\b)(?:(?!<\/ueberschrift>)[\s\S])*?\b(?:Abschnitt|Unterabschnitt|Teil|Hauptstück|ABSCHNITT|TEIL|HAUPTSTÜCK)\b(?:(?!<\/ueberschrift>)[\s\S])*<\/ueberschrift>/g
 
@@ -70,7 +72,16 @@ export function lgblUnits(xml: string): LawUnit[] {
         // it for its title — and the PDF side drops them (`draftPdfLaw`).
         .replace(DIVISION_HEAD_RE, ''))
     .join('')
-  return parseLawUnitsFromRis(doc.replace(/<ueberschrift typ="art"/g, '<ueberschrift typ="g1"'))
+  return parseLawUnitsFromRis(doc
+    .replace(/<ueberschrift typ="art"/g, '<ueberschrift typ="g1"')
+    // The signatures under the law („Der Erste Präsident des Oö. Landtags: /
+    // Der Landeshauptmann:"), a table the parser would append to the last
+    // unit — seen in the committee-report cross-check (§12.44).
+    .replace(SIGNATURE_TABLE_RE, '')
+    // RIS writes „&" as an element (`Land<amp />Forst`), which the shared
+    // parser drops with the other tags; the federal fix waits for its own
+    // old-against-new run (TODO.md).
+    .replace(/<amp\s*\/>/g, '&'))
 }
 
 /** The draft's units, from its PDF's pages; null where no legal text was found. */
@@ -84,10 +95,9 @@ export function diffLandDraft(draft: LawUnit[], kundmachung: LawUnit[]): LawDiff
 }
 
 /**
- * The Artikel only one side has: a law the Landtag added to the package
- * (16113, the Deregulierungsgesetz 2026: nine laws in the draft, fifteen in
- * the Landesgesetzblatt), or one it dropped. Paired as the comparison pairs
- * them (`articlePairs`), by title before number.
+ * The Artikel only one side has: a law the Landtag added to the package, or
+ * one it dropped. Paired as the comparison pairs them (`articlePairs`), by
+ * title before number.
  */
 export function packageChanges(draft: LawUnit[], kundmachung: LawUnit[]): { added: string[]; dropped: string[] } {
   const pairs = articlePairs(draft, kundmachung)

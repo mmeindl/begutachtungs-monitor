@@ -184,28 +184,41 @@ export interface LandDraftDetail {
   listUrl: string
 }
 
+/** The texts a Land's draft can be compared at (`landLawDiffService`). */
+export type LandTextStation = 'entwurf' | 'rv' | 'ausschuss' | 'lgbl'
+
 /**
- * A Land's draft against its Kundmachung, § by § (`landLawDiffService`,
- * docs/architecture.md §12.44): the Begutachtungsentwurf from the Land's
- * PDF, the Kundmachung from the Landesgesetzblatt in RIS.
+ * Two texts of a Land's draft, § by § (`landLawDiffService`,
+ * docs/architecture.md §12.44): the Begutachtungsentwurf and the
+ * Regierungsvorlage and the committee's text from the Land's PDFs, the
+ * Kundmachung from the Landesgesetzblatt in RIS.
  */
 export interface LandLawDiffResponse {
+  from: LandTextStation
+  to: LandTextStation
   available: boolean
   /** Why there is no comparison, in a sentence; null when there is one. */
   unavailableReason: string | null
   units: LawDiffUnit[]
   stats: { total: number; unchanged: number; changed: number; editorial: number; inserted: number; removed: number }
-  /** The draft as the Land published it. */
-  draft: { label: string; url: string } | null
-  /** „LGBl. Nr. 57/2026", linked into RIS. */
-  kundmachung: { label: string; url: string | null } | null
-  /** Artikel (laws) only the Kundmachung has — added after the Begutachtung. */
+  /** The two documents, for the credit line: what, where, from whom. */
+  fromDocument: LandTextDocument | null
+  toDocument: LandTextDocument | null
+  /** Artikel (laws) only the later text has — added on the way. */
   addedLaws: string[]
-  /** Artikel only the draft has — no longer in the Kundmachung. */
+  /** Artikel only the earlier text has — no longer in the later one. */
   droppedLaws: string[]
   /**
    * Other drafts the Land's record sends into the same Kundmachung: what
    * reads as new here may come from them (`draftsSharingKundmachung`).
+   * Only where the later text is the Kundmachung.
    */
   sharedWith: { title: string; path: string; deadline: string | null; startedAt: string | null }[]
+}
+
+export interface LandTextDocument {
+  label: string
+  url: string | null
+  /** „Land Oberösterreich", „Oö. Landtag", „RIS (CC BY 4.0)". */
+  publisher: string
 }

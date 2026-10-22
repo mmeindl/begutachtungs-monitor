@@ -148,6 +148,7 @@ useSeoMeta({ ogTitle: () => draft.value?.title ?? 'Entwurf', ogType: 'article' }
           :status="landStatusDe(detail.draft)"
           :stations="stationList"
           :anchors="stationAnchors"
+          :comparison-anchors="{ begutachtung: '#textvergleich-rv', parlament: '#textvergleich-ausschuss' }"
           how-to="/so-funktionierts#laender"
         />
 

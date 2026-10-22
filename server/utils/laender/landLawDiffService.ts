@@ -1,47 +1,61 @@
 /**
- * A Land's draft against its Kundmachung (22.10.2026), for the draft page's
- * „Im Landesgesetzblatt": the PDF the Land published as Begutachtungsentwurf,
- * the Landesgesetzblatt's XML from RIS, compared § by § (`landLawDiff.ts`,
- * docs/architecture.md §12.44).
+ * Two texts of a Land's draft, § by § (22.10.2026), for the draft page's
+ * station sections — as the Ministerialentwurf's page hangs a comparison on
+ * each station that produced one:
  *
- * ONLY WHERE THE LAND ITSELF NAMES THE KUNDMACHUNG — Oberösterreich's
- * Gesetze, from the Landtag's record. A Kundmachung the monitor found by
- * title (`matchLgbl`) is wrong about two times in a hundred, and held
- * against the wrong law a comparison would report a whole draft as
- * rewritten: the one error this layer must not make.
+ *   entwurf → rv         „Was sich nach der Begutachtung geändert hat"
+ *   rv → ausschuss       „Was der Ausschuss an der Regierungsvorlage geändert hat"
+ *   entwurf → lgbl       „Was sich vom Entwurf bis zum kundgemachten Gesetz …"
+ *
+ * The Begutachtungsentwurf is the Land's PDF; the Regierungsvorlage and the
+ * committee report are the Landtag's PDFs (same template, same reader,
+ * `landLawDiff.ts`); the Kundmachung is the Landesgesetzblatt's XML in RIS.
+ * Measured before it was built — docs/architecture.md §12.44, with the cross
+ * check that settles the readers: the committee report against the
+ * Kundmachung splits into the same units in nearly every draft, and what
+ * differs is the editing for publication („Hektar" → „ha"), not the reading.
+ *
+ * NOT `rv → lgbl` for the Landtag: it would mix the committee's changes with
+ * that editing, which is not the committee's.
+ *
+ * ONLY THE LAND'S OWN RECORD NAMES THE TEXTS — Oberösterreich's Landtag. A
+ * Kundmachung the monitor found by title (`matchLgbl`) is wrong about two
+ * times in a hundred, and held against the wrong law a comparison would
+ * report a whole draft rewritten: the one error this layer must not make.
  */
-import type { LandCode, LandDraftDetail, LandLawDiffResponse } from '#shared/types'
+import type { LandCode, LandDraftDetail, LandLawDiffResponse, LandTextDocument, LandTextStation } from '#shared/types'
+import { landDraftPath } from '#shared/utils/laender'
 import { safeExternalUrl } from '#shared/utils/safeExternalUrl'
 import { DERIVED_CACHE } from '../cache/base'
 import { summarizeDiff } from '../diff/lawDiff'
+import type { LawUnit } from '../lawtext/lawUnits'
 import { upstreamBytes, upstreamText, type UpstreamPolicy } from '../upstream/fetch'
 import { diffLandDraft, landDraftUnits, lgblUnits, packageChanges } from './landLawDiff'
 import { lgblXmlUrl } from './lgblIndex'
 import { draftsSharingKundmachung } from './sources'
-import { landDraftPath } from '#shared/utils/laender'
 
 const POLICY: UpstreamPolicy = { timeoutMs: 30_000, retries: 2, upstreamHostsOnly: true }
 const PDF_MAX_BYTES = 30 * 1024 * 1024
 
-const unavailable = (reason: string, rest: Partial<LandLawDiffResponse> = {}): LandLawDiffResponse => ({
-  available: false,
-  unavailableReason: reason,
-  units: [],
-  stats: { total: 0, unchanged: 0, changed: 0, editorial: 0, inserted: 0, removed: 0 },
-  draft: null,
-  kundmachung: null,
-  addedLaws: [],
-  droppedLaws: [],
-  sharedWith: [],
-  ...rest,
-})
+/** The pairs the page asks for; anything else is no comparison of ours. */
+export const LAND_TEXT_PAIRS: readonly (readonly [LandTextStation, LandTextStation])[] = [
+  ['entwurf', 'rv'],
+  ['rv', 'ausschuss'],
+  ['entwurf', 'lgbl'],
+]
 
-/** The document a Land calls its draft: „Begutachtungsentwurf", else the first. */
-function draftDocument(detail: LandDraftDetail): { label: string; url: string } | null {
-  const docs = detail.draft.documents
-  const doc = docs.find((d) => /Begutachtungsentwurf|Entwurf/i.test(d.title)) ?? docs[0]
-  const url = doc ? safeExternalUrl(doc.url) : null
-  return doc && url ? { label: doc.title, url } : null
+const emptyStats = { total: 0, unchanged: 0, changed: 0, editorial: 0, inserted: 0, removed: 0 }
+
+function unavailable(from: LandTextStation, to: LandTextStation, reason: string, rest: Partial<LandLawDiffResponse> = {}): LandLawDiffResponse {
+  return {
+    from, to, available: false, unavailableReason: reason, units: [], stats: emptyStats,
+    fromDocument: null, toDocument: null, addedLaws: [], droppedLaws: [], sharedWith: [], ...rest,
+  }
+}
+
+interface Source {
+  document: LandTextDocument
+  read: () => Promise<LawUnit[] | null>
 }
 
 async function pdfPages(url: string): Promise<string[]> {
@@ -51,38 +65,79 @@ async function pdfPages(url: string): Promise<string[]> {
   return Array.isArray(text) ? text : [text]
 }
 
-export async function compareLandDraft(land: LandCode, detail: LandDraftDetail): Promise<LandLawDiffResponse> {
-  const stage = detail.draft.stage
-  if (!stage || stage === 'unknown' || stage.station !== 'bgbl' || stage.via === 'suche' || !stage.detail) {
-    return unavailable('Verglichen wird nur, wo das Land selbst die Kundmachung nennt.')
-  }
-  const draft = draftDocument(detail)
-  const kundmachung = { label: stage.detail, url: stage.url ?? null }
-  if (!draft) return unavailable('Das Land hat zu diesem Entwurf kein Dokument veröffentlicht.', { kundmachung })
-  const xmlUrl = await lgblXmlUrl(land, stage.detail)
-  if (!xmlUrl) return unavailable('Das Rechtsinformationssystem führt diese Kundmachung nicht als Text.', { draft, kundmachung })
+const pdfSource = (label: string, url: string, publisher: string): Source => ({
+  document: { label, url, publisher },
+  read: async () => landDraftUnits(await pdfPages(url)),
+})
 
-  const [pages, xml] = await Promise.all([pdfPages(draft.url), upstreamText(xmlUrl, POLICY)])
-  const from = landDraftUnits(pages)
-  // Novellen by instruction, new laws by § (§12.44: all 83 of the oracle);
-  // a PDF the reader cannot take apart says so rather than show nothing.
-  if (!from?.length) {
-    return unavailable('Im PDF des Entwurfs fand der Monitor keinen Gesetzestext, den er Paragraph für Paragraph lesen kann.', { draft, kundmachung })
+/** Where each text of the draft is, by the Land's own record; null where there is none. */
+function sourceOf(land: LandCode, detail: LandDraftDetail, station: LandTextStation): Source | null {
+  const landName = 'Land Oberösterreich'
+  switch (station) {
+    case 'entwurf': {
+      const docs = detail.draft.documents
+      const doc = docs.find((d) => /Begutachtungsentwurf|Entwurf/i.test(d.title)) ?? docs[0]
+      const url = doc ? safeExternalUrl(doc.url) : null
+      return doc && url ? pdfSource(doc.title, url, landName) : null
+    }
+    case 'rv': {
+      const step = detail.procedure?.find((s) => s.station === 'rv')
+      const url = step?.url ? safeExternalUrl(step.url) : null
+      const beilage = /Beilage\s+\d+\/\d{4}/.exec(step?.label ?? '')?.[0]
+      return url ? pdfSource(`Regierungsvorlage${beilage ? `, ${beilage}` : ''}`, url, 'Oö. Landtag') : null
+    }
+    case 'ausschuss': {
+      const report = detail.landtag?.report
+      const url = report?.url ? safeExternalUrl(report.url) : null
+      return url ? pdfSource(report!.label, url, 'Oö. Landtag') : null
+    }
+    case 'lgbl': {
+      const stage = detail.draft.stage
+      if (!stage || stage === 'unknown' || stage.station !== 'bgbl' || stage.via === 'suche' || !stage.detail) return null
+      const nr = stage.detail
+      return {
+        document: { label: nr, url: stage.url ?? null, publisher: 'RIS (CC BY 4.0)' },
+        read: async () => {
+          const xmlUrl = await lgblXmlUrl(land, nr)
+          return xmlUrl ? lgblUnits(await upstreamText(xmlUrl, POLICY)) : null
+        },
+      }
+    }
   }
-  const to = lgblUnits(xml)
-  if (!to.length) return unavailable('Die Kundmachung ließ sich nicht in Paragraphen gliedern.', { draft, kundmachung })
+}
 
-  const units = diffLandDraft(from, to)
-  const { added, dropped } = packageChanges(from, to)
-  const shared = await draftsSharingKundmachung(land, stage.detail, detail.draft.id).catch(() => [])
+export async function compareLandTexts(
+  land: LandCode,
+  detail: LandDraftDetail,
+  from: LandTextStation,
+  to: LandTextStation,
+): Promise<LandLawDiffResponse> {
+  const a = sourceOf(land, detail, from)
+  const b = sourceOf(land, detail, to)
+  if (!a || !b) {
+    return unavailable(from, to, to === 'lgbl' && !b
+      ? 'Verglichen wird nur, wo das Land selbst die Kundmachung nennt.'
+      : 'Das Land hat einen der beiden Texte nicht veröffentlicht.', { fromDocument: a?.document ?? null, toDocument: b?.document ?? null })
+  }
+  const docs = { fromDocument: a.document, toDocument: b.document }
+  const [x, y] = await Promise.all([a.read(), b.read()])
+  if (!x?.length || !y?.length) {
+    return unavailable(from, to, `Im ${!x?.length ? a.document.label : b.document.label} fand der Monitor keinen Gesetzestext, den er Paragraph für Paragraph lesen kann.`, docs)
+  }
+  const units = diffLandDraft(x, y)
+  const { added, dropped } = packageChanges(x, y)
   const s = summarizeDiff(units)
+  const shared = to === 'lgbl' && detail.draft.stage && detail.draft.stage !== 'unknown' && detail.draft.stage.detail
+    ? await draftsSharingKundmachung(land, detail.draft.stage.detail, detail.draft.id).catch(() => [])
+    : []
   return {
+    from,
+    to,
     available: true,
     unavailableReason: null,
     units,
     stats: { total: s.total, unchanged: s.unchanged, changed: s.changed, editorial: s.editorial, inserted: s.inserted, removed: s.removed },
-    draft,
-    kundmachung,
+    ...docs,
     addedLaws: added,
     droppedLaws: dropped,
     sharedWith: shared.map((d) => ({ title: d.title, path: landDraftPath(d.land, d.id), deadline: d.deadline, startedAt: d.startedAt })),
@@ -90,10 +145,17 @@ export async function compareLandDraft(land: LandCode, detail: LandDraftDetail):
 }
 
 /**
- * Held a day, in the derived layer: the two documents do not change, but
- * the reader does, and a stale comparison must not outlive a fix to it.
+ * Held a day, in the derived layer: the documents do not change, but the
+ * reader does, and a stale comparison must not outlive a fix to it.
  */
 export const cachedLandComparison = defineCachedFunction(
-  (land: LandCode, number: string, detail: LandDraftDetail): Promise<LandLawDiffResponse> => compareLandDraft(land, detail),
-  { name: 'land-law-diff', base: DERIVED_CACHE, getKey: (land: LandCode, number: string) => `${land}-${number}`, maxAge: 60 * 60 * 24, swr: false },
+  (land: LandCode, number: string, from: LandTextStation, to: LandTextStation, detail: LandDraftDetail): Promise<LandLawDiffResponse> =>
+    compareLandTexts(land, detail, from, to),
+  {
+    name: 'land-law-diff',
+    base: DERIVED_CACHE,
+    getKey: (land: LandCode, number: string, from: LandTextStation, to: LandTextStation) => `${land}-${number}-${from}-${to}`,
+    maxAge: 60 * 60 * 24,
+    swr: false,
+  },
 )

@@ -1060,10 +1060,25 @@ export function landStations(
       facts: [id === 'rv' ? 'bisher keine' : id === 'parlament' ? 'in Behandlung' : 'bisher keine Kundmachung'],
     }
   }
+  /* The comparisons the station produced, as on the Bund's bar: the
+     Vorlage's against the draft, the committee's against the Vorlage —
+     only where the record links both texts (`LandStationSections`). */
+  const rvText = steps?.some((st) => st.station === 'rv' && st.url) ?? false
+  const committeeText = rvText && (steps?.some((st) => /^Ausschussbericht\b/.test(st.label) && st.url) ?? false)
   return [
     ...head,
-    { id: 'rv', name: 'Regierungsvorlage', comparison: null, ...after('rv') },
-    { id: 'parlament', name: 'Landtag', comparison: null, ...after('parlament') },
+    {
+      id: 'rv',
+      name: 'Regierungsvorlage',
+      comparison: rvText ? { id: 'begutachtung', question: 'Was sich nach der Begutachtung geändert hat' } : null,
+      ...after('rv'),
+    },
+    {
+      id: 'parlament',
+      name: 'Landtag',
+      comparison: committeeText ? { id: 'parlament', question: 'Was der Ausschuss an der Regierungsvorlage geändert hat' } : null,
+      ...after('parlament'),
+    },
     { id: 'bgbl', name: 'Landesgesetzblatt', comparison: null, ...after('bgbl') },
   ]
 }

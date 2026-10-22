@@ -102,6 +102,11 @@ const reportName = computed(() => {
         </template>
       </FactList>
     </div>
+    <!-- What changed after the Begutachtung: the draft against the
+         Vorlage, the comparison the Bund's drafts lead with. -->
+    <div v-if="land && number && rvStep.url" class="mt-8">
+      <LandLawDiffSection :land="land" :number="number" from="entwurf" to="rv" />
+    </div>
   </section>
 
   <!-- What the Landtag did, as „Im Parlament" says what Parliament did: a
@@ -140,6 +145,10 @@ const reportName = computed(() => {
           <span>Quelle: Landtag {{ landName }}, wie er das Verfahren selbst verzeichnet</span>
         </SectionCredits>
       </div>
+      <!-- What the committee changed: the Vorlage against the text in its
+           report. Not against the Kundmachung, which adds the editing for
+           publication („Hektar" → „ha") — not the committee's (§12.44). -->
+      <LandLawDiffSection v-if="land && number && landtag?.report?.url && rvStep?.url" :land="land" :number="number" from="rv" to="ausschuss" />
       <!-- Every step, in the Landtag's order and words: the sittings,
            agendas and Wortprotokolle the frame leaves out. On the sheet the
            Land's Stellungnahmen stand on (22.10.2026), with their date
@@ -208,7 +217,7 @@ const reportName = computed(() => {
          the Kundmachung (`landLawDiffService`): against a Kundmachung of
          our own finding, a wrong match would report a whole law rewritten. -->
     <div v-if="kundmachung.via !== 'suche' && land && number" class="mt-8">
-      <LandLawDiffSection :land="land" :number="number" />
+      <LandLawDiffSection :land="land" :number="number" from="entwurf" to="lgbl" />
     </div>
   </section>
 </template>

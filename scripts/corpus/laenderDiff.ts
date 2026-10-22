@@ -19,6 +19,11 @@ const args = process.argv.slice(2)
 const limit = Number(args[args.indexOf('--limit') + 1]) || 5
 const dump = args.includes('--dump')
 const only = args.includes('--id') ? args[args.indexOf('--id') + 1] : null
+/* Which pair: the draft against the Kundmachung (default), against the
+   Regierungsvorlage, or the Vorlage against the Kundmachung — the cross
+   check: between those two only the committee and the plenary change the
+   text, so where neither did, nearly everything must read unchanged. */
+const pair = (args.includes('--pair') ? args[args.indexOf('--pair') + 1] : 'draft-lgbl') as 'draft-lgbl' | 'draft-rv' | 'rv-lgbl' | 'ab-lgbl'
 const CACHE = '.harness-cache/laender-diff'
 mkdirSync(CACHE, { recursive: true })
 
@@ -57,15 +62,24 @@ for (const d of picks) {
   try {
     const detail = await (await fetch(`${BASE}/api/laender/ooe/${number}`)).json()
     const doc = detail.draft.documents.find((x: { title: string }) => /Begutachtungsentwurf/i.test(x.title)) ?? detail.draft.documents[0]
-    const draftUnits = landDraftUnits(await pdfPages(await cached(doc.url)))
-    if (!draftUnits) { console.log(`${number}: no enacting clause in the PDF`); continue }
-    const xmlUrl = await lgblXmlUrl(d.lgbl)
-    if (!xmlUrl) { console.log(`${number}: no XML for ${d.lgbl}`); continue }
-    const kundmachung = lgblUnits((await cached(xmlUrl)).toString('utf8'))
+    const rvUrl = (detail.procedure ?? []).find((x: { station?: string }) => x.station === 'rv')?.url as string | undefined
+    const rvUnits = async () => (rvUrl ? landDraftUnits(await pdfPages(await cached(rvUrl))) : null)
+    const lgbl = async () => {
+      const xmlUrl = await lgblXmlUrl(d.lgbl)
+      return xmlUrl ? lgblUnits((await cached(xmlUrl)).toString('utf8')) : null
+    }
+    // The committee report carries the text the committee adopted: against
+    // the Kundmachung only plenary motions may differ — the readers' test.
+    const abUrl = detail.landtag?.report?.url as string | undefined
+    const abUnits = async () => (abUrl ? landDraftUnits(await pdfPages(await cached(abUrl))) : null)
+    const fromUnits = pair === 'rv-lgbl' ? await rvUnits() : pair === 'ab-lgbl' ? await abUnits() : landDraftUnits(await pdfPages(await cached(doc.url)))
+    const kundmachung = pair === 'draft-rv' ? await rvUnits() : await lgbl()
+    if (!fromUnits || !kundmachung) { console.log(`${number}: ${!fromUnits ? 'no earlier text' : 'no later text'} (${pair})`); continue }
+    const draftUnits = fromUnits
     const diff = diffLandDraft(draftUnits, kundmachung)
     const s = summarizeDiff(diff)
     const arts = (u: typeof draftUnits) => new Set(u.map((x) => x.articleNumber)).size
-    console.log(`${number} → ${d.lgbl}: draft ${draftUnits.length} units/${arts(draftUnits)} art, LGBl ${kundmachung.length}/${arts(kundmachung)} | ${JSON.stringify(s)}`)
+    console.log(`${number} → ${pair === 'draft-rv' ? 'RV' : d.lgbl}: draft ${draftUnits.length} units/${arts(draftUnits)} art, LGBl ${kundmachung.length}/${arts(kundmachung)} | ${JSON.stringify(s)}`)
     if (dump) {
       for (const u of diff) {
         if (u.change === 'unchanged') continue
