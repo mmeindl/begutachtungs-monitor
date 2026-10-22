@@ -91,7 +91,7 @@ export function citeLineDe(...parts: (string | null | undefined)[]): string {
   return parts.map((p) => p?.trim()).filter(Boolean).join(', ')
 }
 
-const AMENDED_BY = /zuletzt geändert durch\s+(BGBl\.\s+(?:I{1,3}\s+)?Nr\.\s*(\d+)\/(\d{4}))/
+const AMENDED_BY = /zuletzt geändert durch\s+(BGBl\.\s+(?:(I{1,3})\s+)?Nr\.\s*(\d+)\/(\d{4}))/
 
 /**
  * The law's latest amendment, from the Kundmachungsorgan of its §
@@ -99,16 +99,25 @@ const AMENDED_BY = /zuletzt geändert durch\s+(BGBl\.\s+(?:I{1,3}\s+)?Nr\.\s*(\d
  * Nr. 50/2024") — what „idF" names in a citation (21.10.2026). Each §
  * version names the Novelle that made it; the law stands in the newest of
  * them, by year and then number. Null where no § was ever amended.
+ *
+ * **By number only inside one Teil.** BGBl. I and BGBl. II count separately,
+ * so „II Nr. 20/2026" says nothing about coming after „I Nr. 8/2026": the
+ * Bundesvergabegesetz Verteidigung und Sicherheit 2012 was cited „idF
+ * BGBl. II Nr. 20/2026" (10.02.2026) where BGBl. I Nr. 8/2026 (27.02.2026)
+ * is the newer (22.10.2026). The § versions carry no issue date to decide
+ * by, so where the newest year holds two Teile there is no „idF" — a
+ * citation without it is incomplete, one with the wrong Novelle is wrong.
  */
 export function latestAmendmentOf(organs: readonly (string | null | undefined)[]): string | null {
-  let best: { cite: string; year: number; nr: number } | null = null
-  for (const organ of organs) {
+  const amendments = organs.flatMap((organ) => {
     const m = AMENDED_BY.exec(organ ?? '')
-    if (!m) continue
-    const cand = { cite: m[1]!.replace(/\s+/g, ' '), year: Number(m[3]), nr: Number(m[2]) }
-    if (!best || cand.year > best.year || (cand.year === best.year && cand.nr > best.nr)) best = cand
-  }
-  return best?.cite ?? null
+    return m ? [{ cite: m[1]!.replace(/\s+/g, ' '), teil: m[2] ?? '', nr: Number(m[3]), year: Number(m[4]) }] : []
+  })
+  if (amendments.length === 0) return null
+  const year = Math.max(...amendments.map((a) => a.year))
+  const newest = amendments.filter((a) => a.year === year)
+  if (new Set(newest.map((a) => a.teil)).size > 1) return null
+  return newest.reduce((best, a) => (a.nr > best.nr ? a : best)).cite
 }
 
 /** „Universitätsgesetz 2002, BGBl. I Nr. 120/2002 idF BGBl. I Nr. 50/2024, <URL>". */

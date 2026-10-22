@@ -38,6 +38,21 @@ describe('latestAmendmentOf — the „idF" of a law citation', () => {
     ])).toBe('BGBl. I Nr. 50/2024')
   })
 
+  // Bundesvergabegesetz Verteidigung und Sicherheit 2012 (22.10.2026): II Nr.
+  // 20/2026 (10.02.) won over I Nr. 8/2026 (27.02.) because 20 > 8.
+  it('never compares numbers across Teile: two Teile in the newest year give no „idF"', () => {
+    expect(latestAmendmentOf([
+      'BGBl. I Nr. 10/2012 zuletzt geändert durch BGBl. I Nr. 8/2026 ',
+      'BGBl. I Nr. 10/2012 zuletzt geändert durch BGBl. II Nr. 20/2026 ',
+    ])).toBeNull()
+    // The year still decides across Teile, and one Teil in the newest year is read by number.
+    expect(latestAmendmentOf([
+      'BGBl. I Nr. 10/2012 zuletzt geändert durch BGBl. II Nr. 200/2025',
+      'BGBl. I Nr. 10/2012 zuletzt geändert durch BGBl. I Nr. 8/2026',
+      'BGBl. I Nr. 10/2012 zuletzt geändert durch BGBl. I Nr. 3/2026',
+    ])).toBe('BGBl. I Nr. 8/2026')
+  })
+
   it('reads the pre-1997 form without a Teil, and says nothing for a law never amended', () => {
     expect(latestAmendmentOf(['BGBl. Nr. 340/1993 zuletzt geändert durch BGBl. Nr. 72/1996'])).toBe('BGBl. Nr. 72/1996')
     expect(latestAmendmentOf(['BGBl. I Nr. 77/2020'])).toBeNull()
