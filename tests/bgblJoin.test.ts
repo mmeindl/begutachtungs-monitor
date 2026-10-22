@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import {
+  BGBL_ACCEPT,
   BGBL_SILENCE_MEANS_SOMETHING_DAYS,
   BGBL_WINDOW_DAYS,
   bgblCandidates,
@@ -216,6 +217,125 @@ describe('joinDraftToBgbl', () => {
     // only against its hits is not checked.
     const foreign = record({ stelle: 'Vorstand der E-Control' })
     expect(bgblCandidates(draft(), [foreign])[0]?.ministry).toBe(0)
+  })
+})
+
+/**
+ * A side of ONE word that matches only by its first eight letters
+ * (22.10.2026). Measured on GP XXV–XXVIII: 13 of 1.405 matches rested on
+ * it, nine of them plainly wrong — and each wrong one also tied with the
+ * right Kundmachung of the same day and kept that draft from its own.
+ * The titles below are the corpus's own.
+ */
+describe('joinDraftToBgbl — one word is no title', () => {
+  const bmg = 'BMGF (Bundesministerium für Gesundheit und Frauen)'
+
+  it('does not let a word stand for the Verordnung it only begins', () => {
+    // „Psychotropen" (of the Grenzmengenverordnung) begins
+    // „Psychotropenverordnung" — another Verordnung. Scored 0,900 until then.
+    const d = draft({
+      kurztitel: 'Änderung der Psychotropen-Grenzmengenverordnung',
+      titel: 'Verordnung der Bundesministerin für Gesundheit und Frauen, mit der die Psychotropen-Grenzmengenverordnung geändert wird',
+      stelle: bmg,
+      ende: '2017-06-02',
+    })
+    const r = record({
+      nummer: 'BGBl. II Nr. 291/2017',
+      datum: '2017-10-30',
+      kurztitel: 'Änderung der Psychotropenverordnung',
+      titel: 'Verordnung der Bundesministerin für Gesundheit und Frauen, mit der die Psychotropenverordnung geändert wird',
+      stelle: bmg,
+    })
+    expect(bgblTitleScore(d, r)).toBeLessThan(BGBL_ACCEPT)
+    expect(joinDraftToBgbl(d, [r])).toBeNull()
+  })
+
+  it('still counts the one word where the other side carries it whole', () => {
+    const d = draft({ kurztitel: 'Mutterschutzverordnung', titel: null })
+    const r = record({ kurztitel: 'Mutterschutzverordnung – MSchV', titel: null })
+    expect(bgblTitleScore(d, r)).toBe(0.9)
+  })
+
+  it('keeps the prefix match that the common beginning carries', () => {
+    const d = draft({ kurztitel: 'Novelle der Schweinegesundheits-Verordnung', titel: null })
+    const r = record({
+      kurztitel: '1. Novelle der Schweinegesundheitsverordnung',
+      titel: 'Verordnung des Bundesministers für Soziales, Gesundheit, Pflege und Konsumentenschutz, mit der die Schweinegesundheitsverordnung geändert wird (1. Novelle der Schweinegesundheitsverordnung)',
+    })
+    expect(bgblTitleScore(d, r)).toBeGreaterThanOrEqual(BGBL_ACCEPT)
+  })
+
+  it('gives the draft its own Kundmachung once the prefix rival is gone', () => {
+    // Promulgated the same day: the Ausbildungsordnung and an amendment of
+    // the Lehrberufsliste, which „Lehrberuf" in the draft's title used to
+    // tie at 0,900 — a tie on the same day, so no answer at all.
+    const bmwfw = 'BMWFW (Bundesministerium für Wissenschaft, Forschung und Wirtschaft)'
+    const d = draft({
+      kurztitel: 'Klavierbau-Ausbildungsordnung',
+      titel: 'Verordnung des Bundesministers für Wissenschaft, Forschung und Wirtschaft über die Berufsausbildung im Lehrberuf Klavierbau (Klavierbau-Ausbildungsordnung)',
+      stelle: bmwfw,
+      ende: '2016-04-22',
+    })
+    const liste = record({ id: 'LISTE', nummer: 'BGBl. II Nr. 120/2016', datum: '2016-05-30', kurztitel: 'Änderung der Lehrberufsliste', titel: null, stelle: bmwfw })
+    const own = record({ id: 'OWN', nummer: 'BGBl. II Nr. 126/2016', datum: '2016-05-30', kurztitel: 'Klavierbau-Ausbildungsordnung 2016', titel: null, stelle: bmwfw })
+    expect(joinDraftToBgbl(d, [liste, own])?.record.id).toBe('OWN')
+  })
+})
+
+/**
+ * Which Kundmachung a tie on the title goes to (22.10.2026): the first after
+ * the end of the Frist — what the comments always said, and what the plain
+ * day count did not do, because the window's negative days sorted first.
+ */
+describe('joinDraftToBgbl — before and after the Frist', () => {
+  const bmaw = 'BMAW (Bundesministerium für Arbeit und Wirtschaft)'
+  const lehrberufsliste = (over: Partial<BgblRecord>) =>
+    record({
+      kurztitel: 'Änderung der Lehrberufslisteverordnung',
+      titel: 'Verordnung des Bundesministers für Arbeit und Wirtschaft, mit der die Lehrberufslisteverordnung geändert wird',
+      stelle: bmaw,
+      ...over,
+    })
+  // Begutachtung 27.06.–25.07.2024.
+  const d = draft({
+    kurztitel: 'Änderung der Lehrberufslisteverordnung',
+    titel: 'Verordnung des Bundesministers für Arbeit und Wirtschaft, mit der die Lehrberufslisteverordnung geändert wird',
+    stelle: bmaw,
+    ende: '2024-07-25',
+  })
+  // Issued while this draft was in Begutachtung — the previous draft's.
+  const during = lehrberufsliste({ id: 'DURING', nummer: 'BGBl. II Nr. 179/2024', datum: '2024-07-03' })
+  const after = lehrberufsliste({ id: 'AFTER', nummer: 'BGBl. II Nr. 376/2024', datum: '2024-12-18' })
+
+  it('takes the first Kundmachung after the Frist over one issued during the Begutachtung', () => {
+    const hit = joinDraftToBgbl(d, [during, after])
+    expect(hit?.record.id).toBe('AFTER')
+    expect(hit?.days).toBe(146)
+    expect(bgblCandidates(d, [during, after]).map((c) => c.record.id)).toEqual(['AFTER', 'DURING'])
+  })
+
+  it('keeps one before the Frist where nothing equal came after it', () => {
+    expect(joinDraftToBgbl(d, [during])?.days).toBe(-22)
+  })
+
+  it('still refuses when the one before the Frist lies close to the one after it', () => {
+    // „Änderung der Suchtgiftverordnung", Frist 16.04.2020: Nr. 145/2020
+    // seven days before, Nr. 215/2020 32 days after — the order alone would
+    // pick the second; 39 days apart, the time says nothing.
+    const soon = lehrberufsliste({ id: 'SOON', datum: '2024-08-20' })
+    const close = lehrberufsliste({ id: 'CLOSE', datum: '2024-07-18' })
+    expect(joinDraftToBgbl(d, [close, soon, after])).toBeNull()
+  })
+
+  it('refuses where the score prefers the one before the Frist and the time the one after it', () => {
+    const words = 'Abwasseremissionen Fließgewässer Kanalisationen Siedlungsgebiete Einzelobjekte Extremlage Reinigungsanlagen Begrenzung Methoden Anpassung Messwerte Grenzwerte'
+    const nearTie = draft({ kurztitel: words, titel: null, stelle: bmaw, ende: '2024-07-25' })
+    const before = record({ id: 'BEFORE', datum: '2024-07-10', kurztitel: words, titel: null, stelle: bmaw })
+    const later = record({ id: 'LATER', datum: '2024-11-02', kurztitel: `${words} Übergangsbestimmungen`, titel: null, stelle: bmaw })
+    // 1,000 against 0,923: within the margin, so the time would decide — and
+    // it points the other way.
+    expect(bgblTitleScore(nearTie, before) - bgblTitleScore(nearTie, later)).toBeLessThan(0.08)
+    expect(joinDraftToBgbl(nearTie, [before, later])).toBeNull()
   })
 })
 

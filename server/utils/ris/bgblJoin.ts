@@ -28,7 +28,7 @@
 import type { BgblOutcomeState } from '../../../shared/types'
 import { daysUntil } from '../../../shared/utils/format'
 import { ministryCodeOf, ministryScore } from './ministryCodes'
-import { daysBetween, normalizeTitleText, titleComponents } from './titleSimilarity'
+import { daysBetween, normalizeTitleText, titleComponents, titleTokens, type TitleComponents } from './titleSimilarity'
 
 /** One Bundesgesetzblatt record, as much of it as the join needs. */
 export interface BgblRecord {
@@ -219,8 +219,32 @@ export const BGBL_MARGIN = 0.08
  * can come out of the same Begutachtung). The first version refused exactly
  * these cases as ambiguous, which cost 21 drafts, among them candidates
  * scoring 1,000 (docs/architecture.md §12.32).
+ *
+ * „Apart" is the distance in days, either way round — since 22.10.2026, when
+ * the Kundmachungen from before the end of the Frist moved to the back of
+ * the order (`timeRank`), the rival can lie before the best as well as after
+ * it.
  */
 const BGBL_TIE_DAYS = 60
+
+/**
+ * The order of time among tied titles: the Kundmachungen after the end of
+ * the Frist first, earliest first; then those from before it, nearest to the
+ * Frist first (22.10.2026).
+ *
+ * Until then the plain day count decided, and it put the window's negative
+ * days FIRST — the opposite of what the comments said. A Verordnung amended
+ * twice a year carries the same title every time, and the Kundmachung of
+ * the PREVIOUS draft, issued while this one was still in Begutachtung, won
+ * the tie: „Änderung der Lehrberufslisteverordnung" (Begutachtung 27.06. bis
+ * 25.07.2024) read as kundgemacht with BGBl. II Nr. 179/2024 of 03.07.2024
+ * — the June draft's — instead of Nr. 376/2024 of 18.12.2024. A Kundmachung
+ * before the Frist stays possible (`BGBL_WINDOW_DAYS`), but only where no
+ * equal one came after it.
+ */
+function timeRank(days: number): number {
+  return days >= 0 ? days : BGBL_WINDOW_DAYS[1] - days
+}
 
 /**
  * A Verordnung's formulaic preamble, which says nothing about the title.
@@ -339,6 +363,35 @@ function coresOf(record: BgblRecord, facts: RecordFacts): readonly string[] {
   return (facts.cores ??= distinctCores(record.kurztitel, record.titel))
 }
 
+/**
+ * The containment a pair may count — `cont`, unless one side is a single
+ * word that the other side does not carry verbatim (22.10.2026).
+ *
+ * `titleComponents` matches two words of eight letters or more when one
+ * begins with the other, which is what lets „AltlastenatlasVO" find
+ * „Altlastenatlas-VO". On a side of ONE word that soft match is the whole
+ * containment, and it is far too cheap: „Psychotropen" (of the
+ * „Psychotropen-Grenzmengenverordnung") begins „Psychotropenverordnung",
+ * „Lehrberuf" begins „Lehrberufsliste", „Wasserstoff" begins
+ * „Wasserstoffverordnung" — each scored 0,900 against `BGBL_ACCEPT` 0,72.
+ * `risJoin` refuses the same case by requiring two words. Measured over the
+ * 1.405 matches of GP XXV–XXVIII: 13 rested on such a prefix, nine of them
+ * plainly wrong — and the wrong ones did not only claim a number, they also
+ * tied with the right Kundmachung and kept 13 drafts from their own.
+ *
+ * Exact, the single word still counts („Mutterschutzverordnung" against
+ * „Mutterschutzverordnung – MSchV"); soft, it is left to `jac` and `lcp`,
+ * which keep the right prefix matches: „Novelle der
+ * Schweinegesundheits-Verordnung" scores 0,850 by its common beginning
+ * with „1. Novelle der Schweinegesundheitsverordnung".
+ */
+function containment(c: TitleComponents, left: string, right: string): number {
+  if (Math.min(c.nA, c.nB) !== 1) return c.cont
+  // `nA`/`nB` count distinct words, so a side of one may name it twice.
+  const [single, other] = c.nA === 1 ? [titleTokens(left)[0], titleTokens(right)] : [titleTokens(right)[0], titleTokens(left)]
+  return single !== undefined && other.includes(single) ? c.cont : 0
+}
+
 /** Every draft core against every Kundmachung core; the best pair counts. */
 function coreScore(lefts: readonly string[], rights: readonly string[]): number {
   let best = 0
@@ -349,7 +402,7 @@ function coreScore(lefts: readonly string[], rights: readonly string[]): number 
       // draft's title („Änderung der Honigverordnung" against the full
       // Verordnung title); `jac` holds against it where containment alone
       // would be too cheap.
-      const s = Math.max(c.jac, c.cont * 0.9, c.lcp * 0.85)
+      const s = Math.max(c.jac, containment(c, left, right) * 0.9, c.lcp * 0.85)
       if (s > best) best = s
     }
   }
@@ -412,10 +465,9 @@ function rankCandidates(draft: BgblJoinDraft, records: readonly BgblRecord[], ow
     if (score <= 0) continue
     out.push({ record, score, days, ministry })
   }
-  // By score, and on a tie the earlier date: if the same text is amended
-  // twice, the first Kundmachung after the Frist is the one from this
-  // Begutachtung.
-  return out.sort((a, b) => b.score - a.score || a.days - b.days)
+  // By score, and on a tie by `timeRank`: if the same text is amended twice,
+  // the first Kundmachung after the Frist is the one from this Begutachtung.
+  return out.sort((a, b) => b.score - a.score || timeRank(a.days) - timeRank(b.days))
 }
 
 /**
@@ -449,9 +501,22 @@ export function joinDraftToBgbl(draft: BgblJoinDraft, records: readonly BgblReco
   const second = ranked[1]
   const margin = best.score - (second?.score ?? 0)
   // A tie on the titles: then the time decides, in favour of the FIRST
-  // Kundmachung after the end of the Frist — `bgblCandidates` already sorts
+  // Kundmachung after the end of the Frist — `rankCandidates` already sorts
   // for that. If the two lie close together, the time says nothing either,
-  // and then two answers are none.
-  if (second && margin < BGBL_MARGIN && second.days - best.days < BGBL_TIE_DAYS) return null
+  // and then two answers are none; and where the score prefers one and the
+  // time the other, there is no answer either.
+  const unclear = (rival: BgblCandidate) =>
+    best.score - rival.score < BGBL_MARGIN &&
+    (Math.abs(rival.days - best.days) < BGBL_TIE_DAYS || timeRank(rival.days) < timeRank(best.days))
+  // The rivals are the second — and every Kundmachung from before the Frist,
+  // which the order now puts behind those after it. Before 22.10.2026 it
+  // stood in front, where the check between the first two saw it; moving it
+  // back must not hide it from that check. Compared with the second alone,
+  // „Änderung der Suchtgiftverordnung" (Frist 16.04.2020) would read as Nr.
+  // 215/2020 (+32 days), though Nr. 145/2020 (−7 days) carries the same
+  // title. (Every near-tie instead of the second: one decision in 2.402
+  // changes, and it loses a right match — a draft in two parts, both
+  // promulgated on the same day.)
+  if (ranked.slice(1).some((c, i) => (i === 0 || c.days < 0) && unclear(c))) return null
   return { ...best, margin: Math.round(margin * 1000) / 1000 }
 }
