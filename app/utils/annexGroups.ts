@@ -290,5 +290,16 @@ export function annexParas(g: AnnexGroup, { limit, folding, explanationsFor, con
     shown++
   }
   flush()
+  // One layout per § (22.10.2026): `readsSideBySide` decides per row, and a §
+  // whose (3) stood in two columns and whose (4) ran inline switched shape
+  // between two Absätze of one provision — it read as inconsistency, not as a
+  // choice. Where one shown row of a § needs the columns, every changed row
+  // of it gets them; a switch between §§ is one the reader can follow.
+  // Inserted and removed rows have one side only and stay a single block
+  // (`DiffBody`), so no column ever stands empty.
+  for (const p of paras) {
+    if (!p.blocks.some((b) => b.kind === 'row' && b.split)) continue
+    for (const b of p.blocks) if (b.kind === 'row') b.split = true
+  }
   return { paras: paras.filter((p) => p.blocks.length > 0), hidden }
 }

@@ -177,4 +177,12 @@ describe('annexParas', () => {
       [{ type: 'inserted', text: 'neu § 1' }],
     ])
   })
+
+  it('gives a § one layout: one row in two columns puts every row of it there, other §§ untouched', () => {
+    // A swapped word reads inline on its own (`readsSideBySide`).
+    const segments = [{ type: 'equal' as const, text: 'Die Frist beträgt ' }, { type: 'removed' as const, text: 'vier' }, { type: 'inserted' as const, text: 'sechs' }, { type: 'equal' as const, text: ' Wochen.' }]
+    const { paras } = parasOf([row('§ 1', { segments }), row('§ 1'), row('§ 2', { segments })])
+    const splits = paras.map((p) => p.blocks.map((b) => b.kind === 'row' && b.split))
+    expect(splits).toEqual([[true, true], [false]])
+  })
 })
