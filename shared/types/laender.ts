@@ -9,7 +9,7 @@
  */
 
 /** The Länder the monitor reads, by the RIS abbreviation of their name. */
-export type LandCode = 'sbg'
+export type LandCode = 'sbg' | 'w' | 'ooe'
 
 /** What the Land's own list calls the draft — its list, not our classifier. */
 export type LandDraftKind = 'gesetz' | 'verordnung'
@@ -17,6 +17,8 @@ export type LandDraftKind = 'gesetz' | 'verordnung'
 export interface LandDocument {
   title: string
   url: string
+  /** ISO date, where the Land dates the document (Wien's „Stand", OÖ). */
+  date?: string | null
 }
 
 export interface LandConsultation {
@@ -69,10 +71,26 @@ export interface LaenderResponse {
  * name — linked, because the Land itself published it.
  */
 export interface LandStatement {
-  /** The organisation, as the file name gives it; null where that is not
+  /** The organisation, as the Land names it; null where that is not
    *  certainly an organisation. */
   name: string | null
   url: string
+  /** ISO date, where the Land dates it (OÖ). */
+  date?: string | null
+}
+
+/** Where a Stellungnahme goes: an address, or the Land's own form. */
+export type LandFiling =
+  | { kind: 'email'; address: string; recipient: string | null }
+  | { kind: 'form'; url: string }
+  /** The Land's page names none; the draft itself says where (OÖ Verordnungen). */
+  | { kind: 'document' }
+
+/** One step after the Begutachtung, as the Land lists it (OÖ: „Im Landtag"). */
+export interface LandProcedureStep {
+  date: string | null
+  label: string
+  url: string | null
 }
 
 export interface LandDraftDetail {
@@ -80,9 +98,15 @@ export interface LandDraftDetail {
   /** Null when the Land's page of Stellungnahmen could not be read. */
   statements: LandStatement[] | null
   /** The Land's own page of them, for „beim Land ansehen". */
-  statementsUrl: string
+  statementsUrl: string | null
   /** Where a Stellungnahme goes, as the Land states it. */
-  filingEmail: string
+  filing: LandFiling
+  /** The Land's own summary, point by point (OÖ); null where it has none. */
+  summary: string[] | null
+  /** The Land's own record of what came after (OÖ); null where it keeps none. */
+  procedure: LandProcedureStep[] | null
+  /** How long the Land keeps the draft online, where it says (Wien: a year). */
+  retentionNote: string | null
   /** The Land's list the draft stands on, for the credit line. */
   listUrl: string
 }

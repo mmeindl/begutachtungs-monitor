@@ -51,6 +51,7 @@ const FETCHED: Record<string, string> = {
   'drafts-list': 'list 81 of one GP, exactly as the API answered',
   'parliament-me-config': "the ME list's page configuration, as served",
   'land-list-page': "a Land's list of drafts in Begutachtung, or one draft's page of Stellungnahmen, as its site served it; parsed and gated fresh on every call",
+  'land-list-page-latin1': 'the same for a Land that serves ISO-8859-1 (Wien), decoded to text and nothing else',
   'land-register-page': "a Land's whole register of drafts as its site served it (Salzburg since 2004); parsed fresh on every call",
 }
 

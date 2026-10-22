@@ -172,8 +172,9 @@ usePageSeo({
     <ProseSection id="dse-parliament" heading="Namen aus den Parlamentsdaten">
       <p>
         Der Monitor zeigt Daten, die die Parlamentsdirektion auf
-        parlament.gv.at veröffentlicht, und die Stellungnahmen, die das Land
-        Salzburg zu seinen Entwürfen veröffentlicht. Darin kommen Namen vor:
+        parlament.gv.at veröffentlicht, und die Stellungnahmen, die die
+        Länder Oberösterreich, Salzburg und Wien zu ihren Entwürfen
+        veröffentlichen. Darin kommen Namen vor:
         als Einbringer von Stellungnahmen erscheinen dort auch Privatpersonen.
         Das ist eine Verarbeitung personenbezogener Daten, die nicht bei
         den Betroffenen selbst erhoben wurden – dafür gilt Art 14 DSGVO.
@@ -206,9 +207,9 @@ usePageSeo({
             href="https://www.parlament.gv.at/recherchieren/open-data/"
             class="link-inline"
           >parlament.gv.at/recherchieren/open-data</ExternalLink>, und für
-          Salzburg die Seite des Landes (service.salzburg.gv.at). Der Name
-          steht dort im Dateinamen der Stellungnahme; dieselbe Regel
-          entscheidet, ob der Monitor ihn nennt.
+          die Länder deren eigene Seiten (land-oberoesterreich.gv.at,
+          service.salzburg.gv.at, wien.gv.at). Dieselbe Regel entscheidet
+          dort, ob der Monitor einen Namen nennt.
         </li>
       </ul>
       <p>

@@ -24,6 +24,7 @@ const NAMED_ENTITIES: Record<string, string> = {
   uuml: 'ü',
   Uuml: 'Ü',
   szlig: 'ß',
+  ast: '*',
   eacute: 'é',
   egrave: 'è',
   agrave: 'à',

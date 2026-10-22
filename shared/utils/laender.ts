@@ -11,24 +11,30 @@
  */
 import type { LandCode } from '../types'
 
-/** Display order — the order the chips stand in. */
-export const LAND_CODES: readonly LandCode[] = ['sbg']
+/** Display order — the order the chips stand in: alphabetical, as the Länder are listed everywhere. */
+export const LAND_CODES: readonly LandCode[] = ['ooe', 'sbg', 'w']
 
 /** Austria has nine; the coverage line counts against this. */
 export const LAENDER_TOTAL = 9
 
 export const LAND_NAME: Record<LandCode, string> = {
+  ooe: 'Oberösterreich',
   sbg: 'Salzburg',
+  w: 'Wien',
 }
 
 /** The host a Land's documents come from, as the document list names it. */
 export const LAND_HOST: Record<LandCode, string> = {
+  ooe: 'land-oberoesterreich.gv.at',
   sbg: 'service.salzburg.gv.at',
+  w: 'wien.gv.at',
 }
 
 /** The Land's path segment under `/entwuerfe/` — its name, as a reader types it. */
 export const LAND_SLUG: Record<LandCode, string> = {
+  ooe: 'oberoesterreich',
   sbg: 'salzburg',
+  w: 'wien',
 }
 
 /** The monitor's page of a Land's draft, from its id (`sbg-35442`). */
@@ -74,4 +80,14 @@ export function landCoverageDe(): string {
 export function landShortTitle(title: string): string | null {
   const name = /\(([^()]{4,80})\)\s*$/.exec(title)?.[1]?.trim()
   return name && /^\p{Lu}/u.test(name) && !/^Anlage\b/.test(name) ? name : null
+}
+
+/**
+ * What each Land says about publishing the Stellungnahmen it receives, in
+ * its own terms; null where its page says nothing (Wien).
+ */
+export const LAND_PUBLICATION_NOTE: Record<LandCode, string | null> = {
+  ooe: 'Das Land veröffentlicht die Stellungnahmen, sobald die Regierungsvorlage vorliegt; die von Privatpersonen nur mit deren Einwilligung.',
+  sbg: 'Das Land veröffentlicht eine Stellungnahme nur mit Zustimmung derer, die sie einreichen.',
+  w: null,
 }

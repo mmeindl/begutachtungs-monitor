@@ -10,10 +10,17 @@
  * milliseconds. A failed fetch throws and is therefore not cached — the
  * next request asks again.
  */
-import type { LandCode, LandConsultation, LandDraftDetail, LandSourceState, LaenderResponse, LandStatement } from '#shared/types'
+import type {
+  LandCode,
+  LandConsultation,
+  LandDraftDetail,
+  LandSourceState,
+  LaenderResponse,
+  LandStatement,
+} from '#shared/types'
 import { LAND_CODES } from '#shared/utils/laender'
 import { todayIso } from '#shared/utils/format'
-import { type UpstreamPolicy, upstreamText } from '../upstream/fetch'
+import { type UpstreamPolicy, upstreamBytes, upstreamText } from '../upstream/fetch'
 import { UPSTREAM_LIST_TTL_S } from '../cache/ttl'
 import { withinBudget } from '../http/budget'
 import {
@@ -26,6 +33,19 @@ import {
   salzburgDrafts,
   salzburgStatementsUrl,
 } from './salzburg'
+import { WIEN_LIST, WIEN_NUMBER_RE, WIEN_STATEMENTS, decodeWien, parseWienList, parseWienStatements } from './wien'
+import {
+  OOE_GESETZE,
+  OOE_GESETZE_ARCHIV,
+  OOE_GESETZ_ID_RE,
+  OOE_VERORDNUNGEN,
+  OOE_VERORDNUNG_ID_RE,
+  ooeDetailUrl,
+  ooeFormUrl,
+  parseOoeDetail,
+  parseOoeGesetze,
+  parseOoeVerordnungen,
+} from './oberoesterreich'
 
 const LAND_POLICY: UpstreamPolicy = {
   timeoutMs: 15_000,
@@ -35,10 +55,24 @@ const LAND_POLICY: UpstreamPolicy = {
   maxBytes: 4 * 1024 * 1024,
 }
 
-/** One list page, or one draft's page of Stellungnahmen, as the Land served it. */
+/**
+ * The cache key for a URL. Not the URL itself: unstorage cuts a key at its
+ * first „?" (`normalizeKey`), and Oberösterreich's Landtag pages differ only
+ * in `?jahr=…&nummer=…` — every one of them was served the first one's
+ * content (22.10.2026). Encoded, the query is part of the key.
+ */
+const urlKey = (url: string) => encodeURIComponent(url)
+
+/** One list page, or one draft's page, as the Land served it (UTF-8). */
 export const fetchLandPage = defineCachedFunction(
   (url: string): Promise<string> => upstreamText(url, LAND_POLICY),
-  { name: 'land-list-page', getKey: (url: string) => url, maxAge: UPSTREAM_LIST_TTL_S, swr: false },
+  { name: 'land-list-page', getKey: urlKey, maxAge: UPSTREAM_LIST_TTL_S, swr: false },
+)
+
+/** The same for Wien, which serves ISO-8859-1 and says so only in a meta tag. */
+export const fetchLatin1Page = defineCachedFunction(
+  async (url: string): Promise<string> => decodeWien((await upstreamBytes(url, LAND_POLICY)).bytes),
+  { name: 'land-list-page-latin1', getKey: urlKey, maxAge: UPSTREAM_LIST_TTL_S, swr: false },
 )
 
 /**
@@ -56,11 +90,33 @@ const REGISTER_TTL_S = 60 * 60 * 6
 const REGISTER_POLICY: UpstreamPolicy = { ...LAND_POLICY, timeoutMs: 45_000, maxBytes: 16 * 1024 * 1024 }
 export const fetchLandRegister = defineCachedFunction(
   (url: string): Promise<string> => upstreamText(url, REGISTER_POLICY),
-  { name: 'land-register-page', getKey: (url: string) => url, maxAge: REGISTER_TTL_S, swr: true },
+  { name: 'land-register-page', getKey: urlKey, maxAge: REGISTER_TTL_S, swr: true },
 )
 
-/** How long the LIST waits for the register: its start dates are a garnish there. */
-const REGISTER_BUDGET_MS = 1_500
+/** How long a LIST waits for what only garnishes it: start dates. */
+const GARNISH_BUDGET_MS = 1_500
+
+/**
+ * 410 with the Land's reason. The reason travels in the body (`data`), not
+ * in the status message: that one is a header, and a header loses every
+ * umlaut on the way („verffentlicht", 22.10.2026).
+ */
+const gone = (reason: string) => createError({ statusCode: 410, statusMessage: 'Gone', data: { reason } })
+
+const unavailable = (land: string) => createError({ statusCode: 503, statusMessage: `${land} gerade nicht abrufbar` })
+
+interface LandReader {
+  /** The page a reader is sent to when the Land cannot be read. */
+  listUrl: string
+  /** Every draft on the Land's current lists, running or not. */
+  current: () => Promise<LandConsultation[]>
+  /** One draft by the Land's number; null when unknown (404). */
+  detail: (number: string) => Promise<LandDraftDetail | null>
+}
+
+/* ------------------------------------------------------------------ *
+ * Salzburg
+ * ------------------------------------------------------------------ */
 
 const KINDS = ['gesetz', 'verordnung'] as const
 
@@ -87,62 +143,183 @@ function withRegister(current: LandConsultation, registered: LandConsultation | 
   }
 }
 
-interface LandReader {
-  /** The page a reader is sent to when the Land cannot be read. */
-  listUrl: string
-  /** The running drafts; the register only where it is already warm. */
-  current: () => Promise<LandConsultation[]>
-  /** One draft by the Land's number, running or closed; null when unknown. */
-  detail: (number: string) => Promise<LandDraftDetail | null>
-}
-
-const READERS: Record<LandCode, LandReader> = {
-  sbg: {
-    listUrl: SALZBURG_LISTS.gesetz,
-    current: async () => {
-      const [current, register] = await Promise.all([
-        salzburgCurrent(),
-        withinBudget(salzburgRegister(), REGISTER_BUDGET_MS),
-      ])
-      const byId = new Map((register ?? []).map((d) => [d.id, d]))
-      return current.map((d) => withRegister(d, byId.get(d.id)))
-    },
-    detail: async (number) => {
-      const id = `sbg-${number}`
-      /* Both sources may fail on their own; the page needs one of them. The
-       * current list alone knows the Frist, the register alone a closed draft. */
-      const [current, register] = await Promise.all([
-        salzburgCurrent().catch(() => null),
-        salzburgRegister().catch(() => null),
-      ])
-      if (!current && !register) throw createError({ statusCode: 503, statusMessage: 'Salzburg gerade nicht abrufbar' })
-      const running = current?.find((d) => d.id === id)
-      const registered = register?.find((d) => d.id === id)
-      const draft = running ? withRegister(running, registered) : registered
-      if (!draft) {
-        // Unknown in a source that answered is a 404 only when BOTH answered.
-        if (!current || !register) throw createError({ statusCode: 503, statusMessage: 'Salzburg gerade nicht abrufbar' })
-        return null
-      }
-      const statementsUrl = salzburgStatementsUrl(number)
-      const statements: LandStatement[] | null = await fetchLandPage(statementsUrl)
-        .then((html) => parseSalzburgStatements(html, statementsUrl))
-        .catch(() => null)
-      return {
-        draft: withLandActiveOn([draft])[0]!,
-        statements,
-        statementsUrl,
-        filingEmail: SALZBURG_FILING_EMAIL,
-        listUrl: SALZBURG_LISTS[draft.kind],
-      }
-    },
+const salzburg: LandReader = {
+  listUrl: SALZBURG_LISTS.gesetz,
+  current: async () => {
+    const [current, register] = await Promise.all([
+      salzburgCurrent(),
+      withinBudget(salzburgRegister(), GARNISH_BUDGET_MS),
+    ])
+    const byId = new Map((register ?? []).map((d) => [d.id, d]))
+    return current.map((d) => withRegister(d, byId.get(d.id)))
+  },
+  detail: async (number) => {
+    const id = `sbg-${number}`
+    /* Both sources may fail on their own; the page needs one of them. The
+     * current list alone knows the Frist, the register alone a closed draft. */
+    const [current, register] = await Promise.all([
+      salzburgCurrent().catch(() => null),
+      salzburgRegister().catch(() => null),
+    ])
+    if (!current && !register) throw unavailable('Salzburg')
+    const running = current?.find((d) => d.id === id)
+    const registered = register?.find((d) => d.id === id)
+    const draft = running ? withRegister(running, registered) : registered
+    if (!draft) {
+      // Unknown is a 404 only when BOTH sources answered.
+      if (!current || !register) throw unavailable('Salzburg')
+      return null
+    }
+    const statementsUrl = salzburgStatementsUrl(number)
+    const statements: LandStatement[] | null = await fetchLandPage(statementsUrl)
+      .then((html) => parseSalzburgStatements(html, statementsUrl))
+      .catch(() => null)
+    return {
+      draft: withLandActiveOn([draft])[0]!,
+      statements,
+      statementsUrl,
+      filing: { kind: 'email', address: SALZBURG_FILING_EMAIL, recipient: null },
+      summary: null,
+      procedure: null,
+      retentionNote: null,
+      listUrl: SALZBURG_LISTS[draft.kind],
+    }
   },
 }
 
+/* ------------------------------------------------------------------ *
+ * Wien
+ * ------------------------------------------------------------------ */
+
+const WIEN_RETENTION = 'Die Stadt Wien veröffentlicht einen Entwurf bis zum Beschluss des Landtags, höchstens ein Jahr lang.'
+
+const wien: LandReader = {
+  listUrl: WIEN_LIST,
+  current: async () => parseWienList(await fetchLatin1Page(WIEN_LIST)).map((e) => e.draft),
+  detail: async (number) => {
+    const entries = parseWienList(await fetchLatin1Page(WIEN_LIST))
+    const entry = entries.find((e) => e.draft.id === `w-${number}`)
+    if (!entry) {
+      /* A number Wien no longer lists was a draft once if it lies behind
+       * the newest one Wien has numbered: Wien takes its drafts down after
+       * a year. Said, as 410. A number beyond that never existed: 404. */
+      const newest = entries.map((e) => e.draft.id.slice(2)).sort().at(-1) ?? ''
+      if (WIEN_NUMBER_RE.test(number) && number < newest) {
+        throw gone(`${WIEN_RETENTION} Diesen Entwurf führt sie nicht mehr.`)
+      }
+      return null
+    }
+    const statements: LandStatement[] | null = await fetchLatin1Page(WIEN_STATEMENTS)
+      .then((html) => parseWienStatements(html, number))
+      .catch(() => null)
+    return {
+      draft: withLandActiveOn([entry.draft])[0]!,
+      statements,
+      statementsUrl: statements?.length ? `${WIEN_STATEMENTS}#${number}` : null,
+      filing: { kind: 'email', address: entry.address, recipient: entry.recipient },
+      summary: null,
+      procedure: null,
+      retentionNote: WIEN_RETENTION,
+      listUrl: WIEN_LIST,
+    }
+  },
+}
+
+/* ------------------------------------------------------------------ *
+ * Oberösterreich
+ * ------------------------------------------------------------------ */
+
+const OOE_GESETZE_HEADING = /Begutachtungsentw(?:ü|&uuml;)rfe von Landesgesetzen/
+const OOE_ARCHIV_HEADING = /Archiv der Begutachtungsentw/
+
+async function ooeCurrent(): Promise<LandConsultation[]> {
+  const [gesetze, verordnungen] = await Promise.all([
+    fetchLandPage(OOE_GESETZE).then((html) => parseOoeGesetze(html, OOE_GESETZE_HEADING)),
+    fetchLandPage(OOE_VERORDNUNGEN).then(parseOoeVerordnungen),
+  ])
+  return [...gesetze, ...verordnungen]
+}
+
+const oberoesterreich: LandReader = {
+  listUrl: OOE_GESETZE,
+  current: async () => {
+    const items = withLandActiveOn(await ooeCurrent())
+    /* The start of a running Gesetz's Begutachtung is its first document's
+     * date on the Landtag's page — a garnish here, so under a budget. */
+    const started = await withinBudget(Promise.all(items
+      .filter((d) => d.active && d.kind === 'gesetz')
+      .map(async (d) => [d.id, parseOoeDetail(await fetchLandPage(d.url))?.startedAt ?? null] as const)), GARNISH_BUDGET_MS)
+    const byId = new Map(started ?? [])
+    return items.map((d) => ({ ...d, startedAt: byId.get(d.id) ?? d.startedAt }))
+  },
+  detail: async (number) => {
+    const verordnung = OOE_VERORDNUNG_ID_RE.exec(number)
+    if (verordnung) {
+      const draft = (await fetchLandPage(OOE_VERORDNUNGEN).then(parseOoeVerordnungen)).find((d) => d.id === `ooe-${number}`)
+      if (!draft) {
+        throw gone('Das Land Oberösterreich führt diesen Verordnungsentwurf nicht mehr auf seiner Seite.')
+      }
+      return {
+        draft: withLandActiveOn([draft])[0]!,
+        statements: null,
+        statementsUrl: null,
+        // The Verordnungen page names no address: it stands in the draft.
+        filing: { kind: 'document' },
+        summary: null,
+        procedure: null,
+        retentionNote: null,
+        listUrl: OOE_VERORDNUNGEN,
+      }
+    }
+    const gesetz = OOE_GESETZ_ID_RE.exec(number)
+    if (!gesetz) return null
+    const [, jahr, nummer] = gesetz
+    const url = ooeDetailUrl(jahr!, nummer!)
+    /* The Landtag's page holds everything but the Frist; the Frist stands on
+     * the current list or, once closed, on the archive. A page whose Frist
+     * neither knows is still the draft — it then shows without one. */
+    const [detail, listed] = await Promise.all([
+      fetchLandPage(url).then(parseOoeDetail),
+      Promise.all([
+        fetchLandPage(OOE_GESETZE).then((h) => parseOoeGesetze(h, OOE_GESETZE_HEADING)).catch(() => []),
+        fetchLandPage(OOE_GESETZE_ARCHIV).then((h) => parseOoeGesetze(h, OOE_ARCHIV_HEADING)).catch(() => []),
+      ]).then((lists) => lists.flat().find((d) => d.id === `ooe-${number}`)),
+    ])
+    if (!detail) {
+      // The Land's lists know it, so the Landtag's system is down, not wrong.
+      if (listed) throw unavailable('Oberösterreich')
+      return null
+    }
+    const draft: LandConsultation = {
+      id: `ooe-${number}`,
+      land: 'ooe',
+      kind: 'gesetz',
+      title: detail.title || listed?.title || '',
+      startedAt: detail.startedAt,
+      deadline: listed?.deadline ?? null,
+      url,
+      documents: detail.documents,
+      active: false,
+    }
+    return {
+      draft: withLandActiveOn([draft])[0]!,
+      statements: detail.statements,
+      statementsUrl: url,
+      filing: { kind: 'form', url: ooeFormUrl(jahr!, nummer!) },
+      summary: detail.summary,
+      procedure: detail.procedure,
+      retentionNote: null,
+      listUrl: OOE_GESETZE,
+    }
+  },
+}
+
+const READERS: Record<LandCode, LandReader> = { sbg: salzburg, w: wien, ooe: oberoesterreich }
+
 /**
- * Whether a Frist runs on `day`: the current list's Frist decides, and a
- * draft without one (closed, read from the register) is not running.
- * Decided per request, never inside a cache (`withRisActiveOn`).
+ * Whether a Frist runs on `day`: the Land's Frist decides, and a draft
+ * without one (closed, read from a register) is not running. Decided per
+ * request, never inside a cache (`withRisActiveOn`).
  */
 export function withLandActiveOn(items: LandConsultation[], day: string = todayIso()): LandConsultation[] {
   return items.map((item) => ({ ...item, active: item.deadline !== null && item.deadline >= day }))
@@ -150,8 +327,8 @@ export function withLandActiveOn(items: LandConsultation[], day: string = todayI
 
 /**
  * Every Land the monitor reads. Only RUNNING Begutachtungen leave here:
- * some Länder leave expired entries on their list, and the lists have no
- * view for closed Länder drafts yet (`TODO.md` 5L).
+ * Wien and Oberösterreich keep expired entries on their lists, and the
+ * lists have no view for closed Länder drafts yet (`TODO.md` 5L).
  */
 export async function readLaender(): Promise<LaenderResponse> {
   const results = await Promise.allSettled(LAND_CODES.map((land) => READERS[land].current()))

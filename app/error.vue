@@ -4,15 +4,21 @@ import type { NuxtError } from '#app'
 const props = defineProps<{ error: NuxtError }>()
 
 const is404 = computed(() => props.error?.statusCode === 404)
+/* 410 since 22.10.2026: a Land's draft the Land no longer publishes (Wien
+   keeps one a year). The page existed; the message says why it is gone. */
+const isGone = computed(() => props.error?.statusCode === 410)
+const missing = computed(() => is404.value || isGone.value)
 
 const title = computed(() =>
-  is404.value ? 'Seite nicht gefunden' : 'Etwas ist schiefgelaufen',
+  isGone.value ? 'Nicht mehr verfügbar' : is404.value ? 'Seite nicht gefunden' : 'Etwas ist schiefgelaufen',
 )
 
 const description = computed(() =>
-  is404.value
-    ? 'Die angeforderte Seite existiert nicht oder wurde verschoben.'
-    : 'Beim Laden dieser Seite ist ein Fehler aufgetreten.',
+  isGone.value
+    ? ((props.error?.data as { reason?: string } | undefined)?.reason || 'Diese Seite gibt es nicht mehr.')
+    : is404.value
+      ? 'Die angeforderte Seite existiert nicht oder wurde verschoben.'
+      : 'Beim Laden dieser Seite ist ein Fehler aufgetreten.',
 )
 
 useSeoMeta({ title })
@@ -43,9 +49,9 @@ function retry() {
         {{ description }}
       </p>
       <div class="mt-6 flex flex-wrap justify-center gap-2">
-        <!-- No reload on a 404: the page is missing, not merely failing to load -->
-        <UButton v-if="!is404" color="primary" @click="retry">Erneut versuchen</UButton>
-        <UButton :color="is404 ? 'primary' : 'neutral'" :variant="is404 ? 'solid' : 'outline'" @click="goHome">
+        <!-- No reload on a 404 or 410: the page is missing, not merely failing to load -->
+        <UButton v-if="!missing" color="primary" @click="retry">Erneut versuchen</UButton>
+        <UButton :color="missing ? 'primary' : 'neutral'" :variant="missing ? 'solid' : 'outline'" @click="goHome">
           Zur Startseite
         </UButton>
       </div>

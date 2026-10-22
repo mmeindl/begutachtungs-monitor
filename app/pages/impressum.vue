@@ -275,7 +275,8 @@ usePageSeo({
             >parlament.gv.at</ExternalLink>. Namen von Privatpersonen veröffentlicht er nicht.
           </dd>
         </div>
-        <!-- The Länder since 22.10.2026, read off each Land's own list
+        <!-- The Länder since 22.10.2026 (Salzburg, then Wien and
+             Oberösterreich the same day), read off each Land's own list
              (`server/utils/laender/`). No licence claimed: none is stated
              for those lists. What the monitor takes is a title, a date and a
              link — the documents stay on the Land's site. -->
@@ -293,6 +294,39 @@ usePageSeo({
             veröffentlicht. Eine Open-Data-Lizenz weist das Land für diese
             Seiten nicht aus. Der Monitor übernimmt weder Entwürfe noch
             Stellungnahmen, sondern verlinkt sie beim Land.
+          </dd>
+        </div>
+        <div>
+          <dt>
+            Stadt Wien, Entwürfe von Landesgesetzen und Verordnungen
+          </dt>
+          <dd>
+            Titel, Auflagefrist, die zuständige Magistratsabteilung samt
+            Adresse und die einreichenden Organisationen der veröffentlichten
+            Stellungnahmen, von
+            <ExternalLink
+              href="https://www.wien.gv.at/recht/landesrecht-wien/begutachtung/"
+              class="link-inline"
+            >wien.gv.at</ExternalLink>. Eine Open-Data-Lizenz weist die Stadt
+            für diese Seiten nicht aus; Entwürfe und Stellungnahmen verlinkt
+            der Monitor bei der Stadt.
+          </dd>
+        </div>
+        <div>
+          <dt>
+            Land Oberösterreich und Oö. Landtag, Begutachtungsentwürfe
+          </dt>
+          <dd>
+            Titel, Begutachtungsfrist und Dokumente aus den Listen auf
+            <ExternalLink
+              href="https://www.land-oberoesterreich.gv.at/35987.htm"
+              class="link-inline"
+            >land-oberoesterreich.gv.at</ExternalLink>, dazu aus dem
+            Landtagsinformationssystem die Kurzinformation des Landes, die
+            einreichenden Organisationen der veröffentlichten Stellungnahmen
+            und die Schritte im Landtag, so wie der Landtag sie verzeichnet.
+            Eine Open-Data-Lizenz weist das Land für diese Seiten nicht aus;
+            Dokumente verlinkt der Monitor beim Land.
           </dd>
         </div>
       </dl>

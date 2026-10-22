@@ -24,6 +24,11 @@
  * - `data.bka.gv.at`: the RIS OGD API itself.
  * - `service.salzburg.gv.at`: Salzburg's list of drafts in Begutachtung and
  *   its documents (`server/utils/laender/salzburg.ts`).
+ * - `www.wien.gv.at`: Wien's page of drafts and Stellungnahmen
+ *   (`server/utils/laender/wien.ts`).
+ * - `www.land-oberoesterreich.gv.at`, `www2.land-oberoesterreich.gv.at`:
+ *   Oberösterreich's lists and its Landtag's pages of each draft
+ *   (`server/utils/laender/oberoesterreich.ts`).
  *
  * A bare-domain variant is added only once upstream data is seen using it.
  */
@@ -33,6 +38,9 @@ export const UPSTREAM_HOSTS: ReadonlySet<string> = new Set([
   'ogd.ris.bka.gv.at',
   'data.bka.gv.at',
   'service.salzburg.gv.at',
+  'www.wien.gv.at',
+  'www.land-oberoesterreich.gv.at',
+  'www2.land-oberoesterreich.gv.at',
 ])
 
 /** Parliament's host — the one `/gegenstand/…` paths are read from. */

@@ -75,7 +75,7 @@ describe('Salzburg — the gate', () => {
 
 describe('the reader’s choice of Länder', () => {
   it('reads the URL value, keeping „said: none" apart from „not said"', () => {
-    expect(parseLandList('sbg')).toEqual(['sbg'])
+    expect(parseLandList('w,sbg')).toEqual(['sbg', 'w'])
     expect(parseLandList('SBG, xyz')).toEqual(['sbg'])
     expect(parseLandList('')).toEqual([])
     expect(parseLandList(null)).toBeNull()
@@ -83,7 +83,7 @@ describe('the reader’s choice of Länder', () => {
   })
 
   it('states the coverage', () => {
-    expect(landCoverageDe()).toBe('Salzburg – 1 von 9 Ländern')
+    expect(landCoverageDe()).toBe('Oberösterreich, Salzburg und Wien – 3 von 9 Ländern')
   })
 })
 
