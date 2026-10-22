@@ -67,7 +67,7 @@ const drafts: Row[] = corpus.records
   .filter((r) => classifyRisRecord(r) === 'verordnung' && r.ende && r.ende >= since && r.ende <= today)
   .map((r) => ({
     id: r.id,
-    draft: { kurztitel: r.kurztitel, titel: r.titel, stelle: r.stelle, ende: r.ende },
+    draft: { kurztitel: r.kurztitel, titel: r.titel, stelle: r.stelle, ende: r.ende, beginn: r.beginn },
     title: r.kurztitel ?? r.titel ?? '(ohne Titel)',
     age: daysSince(r.ende!),
   }))
@@ -84,9 +84,9 @@ if (has('show')) {
   }
   console.log(`▸ ${row.title}\n   ${row.id} · Frist bis ${row.draft.ende} · ${row.draft.stelle}\n`)
   for (const c of bgblCandidates(row.draft, teil2).slice(0, 8)) {
-    const mark = c.ministry > 0 ? (c.score >= BGBL_ACCEPT ? '✓' : ' ') : '✗'
+    const mark = c.ministry > 0 && !c.beforeBeginn ? (c.score >= BGBL_ACCEPT ? '✓' : ' ') : '✗'
     console.log(
-      `  ${mark} ${c.score.toFixed(3)} · ${c.record.nummer} · ${c.record.datum} (+${c.days} T) · Ressort ${c.ministry} · ${(c.record.kurztitel ?? c.record.titel ?? '').slice(0, 58)}`,
+      `  ${mark} ${c.score.toFixed(3)} · ${c.record.nummer} · ${c.record.datum} (+${c.days} T) · Ressort ${c.ministry}${c.beforeBeginn ? ' · vor Beginn' : ''} · ${(c.record.kurztitel ?? c.record.titel ?? '').slice(0, 58)}`,
     )
   }
   process.exit(0)
@@ -127,16 +127,21 @@ console.log(`   Abstand zum zweiten: Median ${quantile(margins, 0.5).toFixed(3)}
 console.log(`   Perfekte Titelgleichheit (1.000): ${scores.filter((s) => s >= 0.999).length} (${pct(scores.filter((s) => s >= 0.999).length, scores.length)})`)
 
 // What the threshold and the margin cost: the cases that fail on them alone.
-// A threshold checked only against its hits is not checked at all.
+// A threshold checked only against its hits is not checked at all. „Own"
+// is what the verdict may choose: the own Ressort, issued no earlier than
+// the Begutachtung began.
+const choosable = (c: { ministry: number; beforeBeginn: boolean }) => c.ministry > 0 && !c.beforeBeginn
 let blockedByScore = 0
 let blockedByMargin = 0
 let blockedByMinistry = 0
+let blockedByBeginn = 0
 for (const row of missed) {
   const all = bgblCandidates(row.draft, teil2)
-  const own = all.filter((c) => c.ministry > 0)
+  if (all.some((c) => c.ministry > 0 && c.beforeBeginn && c.score >= BGBL_ACCEPT)) blockedByBeginn++
+  const own = all.filter(choosable)
   const best = own[0]
   if (!best) {
-    if (all[0] && all[0].score >= BGBL_ACCEPT) blockedByMinistry++
+    if (all[0] && all[0].score >= BGBL_ACCEPT && all[0].ministry <= 0) blockedByMinistry++
     continue
   }
   if (best.score < BGBL_ACCEPT) blockedByScore++
@@ -145,6 +150,7 @@ for (const row of missed) {
 console.log(`\n   Ohne Treffer, aber ein Kandidat des eigenen Ressorts lag über der Schwelle und zu nah am zweiten: ${blockedByMargin}`)
 console.log(`   Bester eigener Kandidat unter der Schwelle (${BGBL_ACCEPT}): ${blockedByScore}`)
 console.log(`   Über der Schwelle, aber fremdes Ressort (verworfen): ${blockedByMinistry}`)
+console.log(`   Über der Schwelle, aber vor dem Beginn der Begutachtung kundgemacht (verworfen): ${blockedByBeginn}`)
 
 console.log('\n── 3. Wie lange dauert es')
 const lags = matched.map((m) => m.days)
@@ -158,7 +164,7 @@ if (lags.length) {
 if (has('near')) {
   console.log('\n── Beinahe-Treffer (eigenes Ressort, Punktzahl 0,45–Schwelle)')
   for (const row of missed) {
-    const best = bgblCandidates(row.draft, teil2).filter((c) => c.ministry > 0)[0]
+    const best = bgblCandidates(row.draft, teil2).filter(choosable)[0]
     if (!best || best.score < 0.45 || best.score >= BGBL_ACCEPT) continue
     console.log(`   ${best.score.toFixed(3)} ${row.title.slice(0, 52)}`)
     console.log(`         → ${best.record.nummer} ${(best.record.kurztitel ?? '').slice(0, 52)}`)
@@ -169,7 +175,7 @@ if (has('misses')) {
   const n = Number(flag('misses')) || 20
   console.log(`\n── Ohne Kundmachung, älteste Frist zuerst (${n})`)
   for (const row of [...missed].sort((a, b) => b.age - a.age).slice(0, n)) {
-    const best = bgblCandidates(row.draft, teil2).filter((c) => c.ministry > 0)[0]
+    const best = bgblCandidates(row.draft, teil2).filter(choosable)[0]
     console.log(`   ${row.draft.ende} (vor ${row.age} T) ${row.title.slice(0, 60)}`)
     if (best) console.log(`      bester Kandidat ${best.score.toFixed(3)} · ${best.record.nummer} ${(best.record.kurztitel ?? '').slice(0, 48)}`)
   }

@@ -107,6 +107,12 @@ export interface BgblJoinDraft {
   stelle: string | null
   /** End of the Begutachtungsfrist, ISO. Without it no window can be drawn. */
   ende: string | null
+  /**
+   * Start of the Begutachtung, ISO (22.10.2026). A Kundmachung issued before
+   * it cannot be its result, so the verdict never chooses one. Optional: a
+   * draft without it is joined as before.
+   */
+  beginn?: string | null
 }
 
 /**
@@ -195,6 +201,19 @@ export function bgblOutcomeState(
  * lets the Begutachtung run in parallel. −30 admits that case without
  * catching the preceding version of the same Verordnung.
  *
+ * Never before the Begutachtung BEGAN, though (22.10.2026). A Frist is often
+ * shorter than 30 days, and then the window reaches back past the Beginn —
+ * to Kundmachungen that cannot be this consultation's result, because it had
+ * not started. The verdict skips them (`BgblJoinDraft.beginn`). Measured over
+ * the 3.018 Verordnungsentwürfe of GP XXII–XXVIII, five decisions changed:
+ * three wrong matches went (the BMUKK's Grundausbildungsverordnung for the
+ * BMWF's, issued the day before; the EAG-Investitionszuschüsseverordnung-Gas
+ * for the Wasserstoff one, eight days before; the „cannabinomimetisch"
+ * Räuchermischungen-Verordnung for the draft about „arzneilich wirksame
+ * Stoffe", two days before), and two refused ties now resolve right —
+ * Saisonkontingentverordnung 2022 and Winterfahrverbotskalender A 10 2024,
+ * each kept out by a rival from the week before the Beginn.
+ *
  * The upper bound is generous because it costs nothing: the title decides,
  * the date only narrows. Measured (`pnpm corpus:bgbl2`), the median lies far
  * below it; what the 540 days prevent is the match on the NEXT Novelle of
@@ -240,7 +259,7 @@ const BGBL_TIE_DAYS = 60
  * 25.07.2024) read as kundgemacht with BGBl. II Nr. 179/2024 of 03.07.2024
  * — the June draft's — instead of Nr. 376/2024 of 18.12.2024. A Kundmachung
  * before the Frist stays possible (`BGBL_WINDOW_DAYS`), but only where no
- * equal one came after it.
+ * equal one came after it, and never one from before the Begutachtung began.
  */
 function timeRank(days: number): number {
   return days >= 0 ? days : BGBL_WINDOW_DAYS[1] - days
@@ -422,6 +441,8 @@ interface BgblCandidate {
   days: number
   /** 1 the same Ressort, 0.5 a legal successor, 0 a foreign one. */
   ministry: number
+  /** Issued before the Begutachtung began — never this draft's Kundmachung. */
+  beforeBeginn: boolean
 }
 
 /** The result: one match, with its distance to the second best. */
@@ -430,21 +451,22 @@ interface BgblMatch extends BgblCandidate {
 }
 
 /**
- * The candidates in the window, scored and sorted descending — of every
- * Stelle, or of the draft's own Ressort and its lineage only.
+ * The candidates in the window, scored and sorted descending — all of them,
+ * or for the `verdict` only those it may choose: of the draft's own Ressort
+ * and its lineage, and not issued before the Begutachtung began.
  *
- * The Ressort is checked BEFORE the titles are compared, when only the own
- * Ressort counts (22.10.2026). A foreign record is refused whatever its
- * title scores, so scoring it bought nothing but the comparison itself —
- * and those were most of them: the window of a GP XXVII draft holds on
- * average 772 records of Teil II, 118 of them of its own Ressort. Comparing
- * every one took 7,4 s for the period and filled the title memo with pairs
- * that could never match.
+ * Both are checked BEFORE the titles are compared (22.10.2026). A foreign
+ * record is refused whatever its title scores, so scoring it bought nothing
+ * but the comparison itself — and those were most of them: the window of a
+ * GP XXVII draft holds on average 772 records of Teil II, 118 of them of its
+ * own Ressort. Comparing every one took 7,4 s for the period and filled the
+ * title memo with pairs that could never match.
  */
-function rankCandidates(draft: BgblJoinDraft, records: readonly BgblRecord[], ownRessortOnly: boolean): BgblCandidate[] {
+function rankCandidates(draft: BgblJoinDraft, records: readonly BgblRecord[], verdict: boolean): BgblCandidate[] {
   if (!draft.ende) return []
   const codes = new Set([ministryCodeOf(draft.stelle)])
   const ende = dayNumber(draft.ende)
+  const beginn = draft.beginn ? draft.beginn.slice(0, 10) : null
   const lefts = distinctCores(draft.kurztitel, draft.titel)
   // `ministryScore` walks the lineage groups for every foreign Stelle; a
   // window holds a few dozen Stellen, not hundreds of them.
@@ -455,15 +477,17 @@ function rankCandidates(draft: BgblJoinDraft, records: readonly BgblRecord[], ow
     const facts = factsOf(record)
     const days = facts.day - ende
     if (days < BGBL_WINDOW_DAYS[0] || days > BGBL_WINDOW_DAYS[1]) continue
+    const beforeBeginn = beginn !== null && record.datum < beginn
+    if (verdict && beforeBeginn) continue
     let ministry = ministryByCode.get(facts.code)
     if (ministry === undefined) {
       ministry = ministryScore(codes, facts.code)
       ministryByCode.set(facts.code, ministry)
     }
-    if (ownRessortOnly && ministry <= 0) continue
+    if (verdict && ministry <= 0) continue
     const score = coreScore(lefts, coresOf(record, facts))
     if (score <= 0) continue
-    out.push({ record, score, days, ministry })
+    out.push({ record, score, days, ministry, beforeBeginn })
   }
   // By score, and on a tie by `timeRank`: if the same text is amended twice,
   // the first Kundmachung after the Frist is the one from this Begutachtung.
@@ -475,8 +499,9 @@ function rankCandidates(draft: BgblJoinDraft, records: readonly BgblRecord[], ow
  *
  * Kept apart from the verdict so the measurement can see what just missed —
  * a threshold checked only against its hits is not checked at all. That is
- * also why this one still scores the foreign Stellen: the verdict below
- * skips them unscored.
+ * also why this one still scores the foreign Stellen and the Kundmachungen
+ * from before the Beginn, flagged (`ministry` 0, `beforeBeginn`): the
+ * verdict below skips both unscored.
  */
 export function bgblCandidates(draft: BgblJoinDraft, records: readonly BgblRecord[]): BgblCandidate[] {
   return rankCandidates(draft, records, false)
@@ -492,9 +517,11 @@ export function bgblCandidates(draft: BgblJoinDraft, records: readonly BgblRecor
  * of government that can fall between Frist and Kundmachung.
  */
 export function joinDraftToBgbl(draft: BgblJoinDraft, records: readonly BgblRecord[]): BgblMatch | null {
-  // The same ranking as `bgblCandidates(…).filter((c) => c.ministry > 0)` —
-  // the sort is stable, so dropping the foreign records first changes no
-  // order — without scoring what would be thrown away.
+  // The same ranking as `bgblCandidates(…).filter((c) => c.ministry > 0 &&
+  // !c.beforeBeginn)` — the sort is stable, so dropping those records first
+  // changes no order — without scoring what would be thrown away. Nor is a
+  // record from before the Beginn a rival in the tie below: it cannot be
+  // this draft's at all.
   const ranked = rankCandidates(draft, records, true)
   const best = ranked[0]
   if (!best || best.score < BGBL_ACCEPT) return null

@@ -351,12 +351,18 @@ function yearsFor(ende: string): number[] {
  */
 const UNKNOWN: BgblOutcome = { state: 'unbekannt', nummer: null, datum: null, url: null, days: null }
 
-function draftOf(c: Pick<RisConsultation, 'title' | 'longTitle' | 'ministryCode' | 'ministryName' | 'deadline'>): BgblJoinDraft {
+/**
+ * The draft as the join reads it — for the period's pass and the single
+ * outcome alike, so both exclude the same Kundmachungen: those issued before
+ * the Begutachtung began (`beginn`, 22.10.2026).
+ */
+function draftOf(c: Pick<RisConsultation, 'title' | 'longTitle' | 'ministryCode' | 'ministryName' | 'deadline' | 'startedAt'>): BgblJoinDraft {
   return {
     kurztitel: c.title,
     titel: c.longTitle ?? c.title,
     stelle: c.ministryCode ? `${c.ministryCode} (${c.ministryName})` : c.ministryName,
     ende: c.deadline,
+    beginn: c.startedAt,
   }
 }
 

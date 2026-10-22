@@ -339,6 +339,66 @@ describe('joinDraftToBgbl — before and after the Frist', () => {
   })
 })
 
+/**
+ * A Kundmachung issued before the Begutachtung began cannot be its result
+ * (22.10.2026). The window reaches 30 days back from the end of the Frist,
+ * past the Beginn of every shorter Begutachtung.
+ */
+describe('joinDraftToBgbl — not before the Begutachtung began', () => {
+  // Beginn 01.01., Frist 15.01.: the window opens on 16.12.
+  const d = draft({ ende: '2026-01-15', beginn: '2026-01-01' })
+
+  it('never chooses a Kundmachung issued the day before the Begutachtung began', () => {
+    const dayBefore = record({ datum: '2025-12-31' })
+    expect(joinDraftToBgbl(d, [dayBefore])).toBeNull()
+    // The measurement still sees it, flagged.
+    expect(bgblCandidates(d, [dayBefore])[0]?.beforeBeginn).toBe(true)
+  })
+
+  it('can still choose one issued on the day it began', () => {
+    const hit = joinDraftToBgbl(d, [record({ datum: '2026-01-01' })])
+    expect(hit?.days).toBe(-14)
+    expect(hit?.beforeBeginn).toBe(false)
+  })
+
+  it('joins a draft without a Beginn as before', () => {
+    expect(joinDraftToBgbl(draft({ ende: '2026-01-15' }), [record({ datum: '2025-12-31' })])?.days).toBe(-15)
+  })
+
+  it('does not count one from before the Beginn as a rival either', () => {
+    // Winterfahrverbotskalender Salzburg 2024 (Begutachtung 09.–18.01.2024):
+    // the Tirol calendar of 08.01. tied within the margin, 17 days from the
+    // A 10's of 25.01., and kept the right one out.
+    const bmk = 'BMK (Bundesministerium für Klimaschutz, Umwelt, Energie, Mobilität, Innovation und Technologie)'
+    const pre = 'Verordnung der Bundesministerin für Klimaschutz, Umwelt, Energie, Mobilität, Innovation und Technologie, mit der für die'
+    const salzburg = draft({
+      kurztitel: 'Winterfahrverbotskalender Salzburg 2024',
+      titel: `${pre} A 10 Tauern Autobahn an bestimmten Freitagen und Samstagen im Winter 2024 ein Fahrverbot für Lastkraftfahrzeuge verfügt wird (Winterfahrverbotskalender Salzburg 2024)`,
+      stelle: bmk,
+      ende: '2024-01-18',
+      beginn: '2024-01-09',
+    })
+    const a10 = record({
+      id: 'A10',
+      nummer: 'BGBl. II Nr. 24/2024',
+      datum: '2024-01-25',
+      kurztitel: 'Winterfahrverbotskalender A 10 2024',
+      titel: `${pre} A 10 Tauern Autobahn an bestimmten Freitagen und Samstagen im Winter 2024 ein Fahrverbot für Lastkraftfahrzeuge verfügt wird (Winterfahrverbotskalender A 10 2024)`,
+      stelle: bmk,
+    })
+    const tirol = record({
+      id: 'TIROL',
+      nummer: 'BGBl. II Nr. 2/2024',
+      datum: '2024-01-08',
+      kurztitel: 'Winterfahrverbotskalender 2024',
+      titel: `${pre} A 12 Inntalautobahn und die A 13 Brennerautobahn an bestimmten Samstagen im Winter 2024 ein Fahrverbot für Lastkraftfahrzeuge verfügt wird (Winterfahrverbotskalender 2024)`,
+      stelle: bmk,
+    })
+    expect(joinDraftToBgbl({ ...salzburg, beginn: null }, [tirol, a10])).toBeNull()
+    expect(joinDraftToBgbl(salzburg, [tirol, a10])?.record.id).toBe('A10')
+  })
+})
+
 describe('isRunningYear', () => {
   it('reads the day own year as running and the one before it as closed', () => {
     expect(isRunningYear(2026, '2026-12-31')).toBe(true)

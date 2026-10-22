@@ -343,6 +343,24 @@ describe('der Stand einer Verordnung', () => {
     })
   })
 
+  /* Eine Kundmachung von vor dem Beginn der Begutachtung ist nicht ihr
+   * Ergebnis — beide Wege lesen den Beginn mit, der einzelne Abruf wie der
+   * Lauf über die Periode. */
+  it('übergeht eine Kundmachung von vor dem Beginn, einzeln wie für die Periode', async () => {
+    pin('2026-09-26')
+    const kurz = { startedAt: '2026-06-01', deadline: '2026-06-13' }
+    getRisConsultation.mockResolvedValue(detail(kurz))
+    getRisOnlyForGp.mockResolvedValue(corpus([verordnung({ id: 'BEGUT_1', ...kurz })]))
+
+    jahrgang.set(2026, [{ ...kundmachung, datum: '2026-05-31' }])
+    expect((await getBgblOutcome('BEGUT_1')).state).toBe('ausstehend')
+    expect((await getBgblOutcomesForGp('XXVIII')).BEGUT_1?.state).toBe('ausstehend')
+
+    jahrgang.set(2026, [{ ...kundmachung, datum: '2026-06-01' }])
+    expect((await getBgblOutcome('BEGUT_1')).state).toBe('kundgemacht')
+    expect((await getBgblOutcomesForGp('XXVIII')).BEGUT_1?.state).toBe('kundgemacht')
+  })
+
   it('sagt „begutachtung", solange die Frist läuft', async () => {
     pin('2026-06-01')
     getRisConsultation.mockResolvedValue(detail({ active: true }))
