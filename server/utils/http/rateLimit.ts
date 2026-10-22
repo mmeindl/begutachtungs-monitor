@@ -6,9 +6,18 @@
  * X-Forwarded-For on every request it proxies. Node listens on 127.0.0.1, so
  * a request WITHOUT the header came from the box itself: the prewarm and
  * watchdog units (`deploy/systemd/`), which curl 127.0.0.1:3000 directly.
- * Server-side renders are not in that group — Nuxt forwards the visitor's
- * headers to its internal API calls, X-Forwarded-For included, so an SSR
- * page counts against the visitor who asked for it.
+ *
+ * WHAT IS NOT A REQUEST OF ITS OWN (since 22.10.2026). A server-side render
+ * calls the API in-process, and where it forwards the visitor's headers —
+ * X-Forwarded-For included — that call drew a token of its own: a draft
+ * page's SSR cost two (the page and `/api/drafts/:gp/:inr`; its
+ * `/erlaeuterungen` call carries no X-Forwarded-For and never counted —
+ * measured on a production build, 22.10.2026). An in-process call is no new
+ * arrival: its page was admitted at the door, and it is told apart by its
+ * socket (`isInProcessRequest`). What the page costs upstream is bounded
+ * where it is spent — the per-host slots in `upstream/fetch.ts` — not by
+ * counting its parts here. The sections a browser loads after the page are
+ * requests of their own and count as before.
  *
  * WHICH ADDRESS. The LAST entry of the header, the one Caddy itself
  * appended: everything left of it was sent by the client and can say
@@ -19,6 +28,18 @@
  * IPv6 is keyed by its /64: one connection typically holds a whole /64, and
  * a per-address limit there is a limit nobody has to respect.
  */
+
+/**
+ * Whether a request is an in-process sub-request of a page being rendered —
+ * Nitro's `localFetch`, whose mock socket (node-mock-http) carries an empty
+ * `remoteAddress`. A real connection always has one: Caddy's 127.0.0.1, or
+ * the box's own curl. Undefined is NOT in-process — a socket whose address
+ * is gone (a client that hung up) still counts — so a Nitro that changed its
+ * mock would count these calls again, the old and safe behaviour.
+ */
+export function isInProcessRequest(remoteAddress: string | null | undefined): boolean {
+  return remoteAddress === ''
+}
 
 /** Routes that exist for the prewarm unit alone and fan out hundreds of upstream requests cold. */
 const PREWARM_ONLY = [/^\/api\/stations(?:\/|$)/, /^\/api\/ris-map(?:\/|$)/, /^\/api\/bgbl\/teil2\/?$/]
@@ -51,11 +72,15 @@ export interface BucketRule {
 /**
  * The numbers, as constraints:
  *
- * - `global` must never be felt by a reader. One SSR page is the page plus
- *   its internal API calls (up to ~10 on a draft page), and client
+ * - `global` must never be felt by a reader. An SSR page is one request
+ *   (its in-process API calls are free, `isInProcessRequest`), and client
  *   navigation adds a few calls per click — 240 at once and 240 a minute
- *   covers someone clicking through drafts as fast as they can, while a
- *   crawler that ignores robots.txt is slowed to four requests a second.
+ *   covers someone clicking through drafts as fast as they can. A crawler
+ *   that ignores robots.txt is slowed to four requests a second — four
+ *   pages since an SSR page costs one token, where it was two (22.10.2026).
+ *   Warm, a draft page renders in about 90 ms; cold, its upstream calls
+ *   queue in the per-host slots (`upstream/fetch.ts`, 16 at once to
+ *   Parliament).
  * - `search` costs one uncached RIS request plus an XML re-parse every
  *   time. The field debounces 700 ms, so a reader typing produces a handful;
  *   20 at once and 12 a minute leave room for that and none for a loop.

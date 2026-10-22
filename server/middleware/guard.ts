@@ -9,7 +9,8 @@
  *    with it. 404 rather than 403: from outside they do not exist.
  * 2. Every external request draws from a per-client budget, and the two
  *    routes that cost upstream requests on every call draw from a second,
- *    stricter one as well.
+ *    stricter one as well. A page's in-process API calls are not external
+ *    requests: the page was admitted, its parts are not counted again.
  *
  * In memory, per process — one Node process serves the site, and a restart
  * forgetting the counts is harmless.
@@ -18,6 +19,7 @@ import {
   RATE_RULES,
   clientKeyFromForwardedFor,
   createRateLimiter,
+  isInProcessRequest,
   isPrewarmOnlyPath,
   isUncountedPath,
   strictClassFor,
@@ -41,6 +43,7 @@ function normalisedPath(raw: string): string {
 }
 
 export default defineEventHandler((event) => {
+  if (isInProcessRequest(event.node.req.socket?.remoteAddress)) return
   const key = clientKeyFromForwardedFor(getRequestHeader(event, 'x-forwarded-for'))
   if (key === null) return
 

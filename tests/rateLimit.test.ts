@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest'
 import {
   RATE_RULES,
   clientKeyFromForwardedFor,
+  isInProcessRequest,
   createRateLimiter,
   ipv6Prefix64,
   isPrewarmOnlyPath,
@@ -14,6 +15,18 @@ import {
  * breaks: a prewarm route reachable from outside (hundreds of upstream
  * requests per call), or a budget a reader can feel.
  */
+describe('a page’s own API calls', () => {
+  it('are in-process only on the mock socket’s empty address', () => {
+    expect(isInProcessRequest('')).toBe(true)
+    // Caddy, and the box's own prewarm curl: real connections.
+    expect(isInProcessRequest('127.0.0.1')).toBe(false)
+    expect(isInProcessRequest('::ffff:127.0.0.1')).toBe(false)
+    // A socket that lost its address still counts — the safe side.
+    expect(isInProcessRequest(undefined)).toBe(false)
+    expect(isInProcessRequest(null)).toBe(false)
+  })
+})
+
 describe('who is outside', () => {
   it('treats a request without X-Forwarded-For as local', () => {
     expect(clientKeyFromForwardedFor(undefined)).toBeNull()
