@@ -38,9 +38,78 @@ describe('Salzburg — the list page, as served on 22.10.2026', () => {
     expect(drafts.every((d) => d.kind === 'verordnung' && d.land === 'sbg')).toBe(true)
   })
 
-  it('keeps an annex whose draft is not on the list as a row of its own', () => {
+  const entry = (n: number, title: string) => ({ title, url: `https://service.salzburg.gv.at/pub/get/${n}`, startedAt: '2024-11-05' })
+
+  it('keeps an annex whose draft is not on the list as a row of its own, under the draft’s title', () => {
     const drafts = salzburgDrafts([{ title: 'Verordnung X - Anlage I', url: 'https://service.salzburg.gv.at/pub/get/2', deadline: '2026-11-01' }], 'verordnung')
-    expect(drafts.map((d) => d.title)).toEqual(['Verordnung X (Anlage I)'])
+    expect(drafts.map((d) => d.title)).toEqual(['Verordnung X'])
+    expect(drafts[0]!.documents.map((d) => d.title)).toEqual(['Anlage I'])
+  })
+
+  it('makes one row of a Verordnung filed only as its annexes (31228–31238)', () => {
+    const drafts = salzburgDrafts([
+      entry(31228, 'Verordnung Riedelwald - Anlage 1'),
+      entry(31229, 'Verordnung Riedelwald - Anlage 2 Blatt 1'),
+      entry(31230, 'Verordnung Riedelwald - Anlage 2 Blatt 2'),
+    ], 'verordnung')
+    expect(drafts).toHaveLength(1)
+    expect(drafts[0]).toMatchObject({ id: 'sbg-31228', title: 'Verordnung Riedelwald' })
+    expect(drafts[0]!.documents.map((d) => d.title)).toEqual(['Anlage 1', 'Anlage 2 Blatt 1', 'Anlage 2 Blatt 2'])
+  })
+
+  it('puts the draft first when it is filed after its annex', () => {
+    const drafts = salzburgDrafts([entry(5, 'Verordnung Y - Anlage I'), entry(6, 'Verordnung Y')], 'verordnung')
+    expect(drafts).toHaveLength(1)
+    expect(drafts[0]!.documents.map((d) => d.title)).toEqual(['Entwurf', 'Anlage I'])
+    expect(drafts[0]!.url).toBe('https://service.salzburg.gv.at/pub/get/6')
+    // The draft's own number, the row's address before the fold.
+    expect(drafts[0]!.id).toBe('sbg-6')
+  })
+
+  it('does not let a same-titled draft years later adopt an old annex', () => {
+    const drafts = salzburgDrafts([
+      { ...entry(18182, 'Gesetz Z - Anlage'), startedAt: '2006-01-10' },
+      { ...entry(18447, 'Gesetz Z'), startedAt: '2015-02-01' },
+    ], 'gesetz')
+    expect(drafts).toHaveLength(2)
+  })
+
+  it('folds any addition after a separator, in the Land’s words — not a list of them', () => {
+    const base = 'Verordnung, mit der die Seenschutzverordnung geändert wird'
+    const drafts = salzburgDrafts([
+      entry(10, base),
+      entry(11, `${base} - Lageplan`),
+      entry(12, `${base}; Plan`),
+      entry(13, `${base} -Übersichtskarte`),
+      entry(14, `${base} - Textgegenüerstellung`),
+    ], 'verordnung')
+    expect(drafts).toHaveLength(1)
+    expect(drafts[0]!.documents.map((d) => d.title)).toEqual(['Entwurf', 'Lageplan', 'Plan', 'Übersichtskarte', 'Textgegenüerstellung'])
+  })
+
+  it('keeps a later draft whose title extends an older one: a year is no attachment', () => {
+    const base = 'Verordnung des Landeshauptmannes von Salzburg zur Änderung des Kehrtarifs'
+    const drafts = salzburgDrafts([
+      { ...entry(30610, base), startedAt: '2024-07-25' },
+      { ...entry(32624, `${base} – Valorisierung 2025`), startedAt: '2025-06-30' },
+    ], 'verordnung')
+    expect(drafts).toHaveLength(2)
+  })
+
+  it('folds a document filed months later, and not years later', () => {
+    const base = 'Gesetz, mit dem das Salzburger Gleichbehandlungsgesetz geändert wird'
+    const late = salzburgDrafts([{ ...entry(18197, base), startedAt: '2015-04-07' }, { ...entry(18198, `${base} - TGÜ`), startedAt: '2015-11-09' }], 'gesetz')
+    expect(late).toHaveLength(1)
+    const decade = salzburgDrafts([{ ...entry(18455, base), startedAt: '2008-06-12' }, { ...entry(23090, `${base} (inkl. Textgegenüberstellung)`), startedAt: '2020-10-27' }], 'gesetz')
+    expect(decade).toHaveLength(2)
+  })
+
+  it('does not take a longer law for an annex: a bare space is no separator', () => {
+    const drafts = salzburgDrafts([
+      entry(20, 'Gesetz, mit dem das A geändert wird'),
+      entry(21, 'Gesetz, mit dem das A geändert wird und das B erlassen wird'),
+    ], 'gesetz')
+    expect(drafts).toHaveLength(2)
   })
 })
 

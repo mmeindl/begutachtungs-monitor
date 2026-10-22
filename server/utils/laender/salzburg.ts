@@ -135,19 +135,52 @@ export function parseSalzburgRegister(html: string, registerUrl: string): RawEnt
 }
 
 /**
- * Entries → drafts. An annex joins the draft whose title it extends — the
- * one with the highest number below its own, because the same title
- * returns over the years („… Mindestsicherungsgesetz geändert wird" stands
- * there several times). An annex without such a draft stays a row of its
- * own rather than vanish.
+ * Entries → drafts: one draft, one row, however many entries the Land files
+ * it under.
+ *
+ * An entry belongs to an earlier one when its title IS that title plus a
+ * separator („ - ", „-", „; ", „ (") and an addition: „… geändert wird -
+ * TGÜ", „… - Lageplan", „…; Plan", „… - Anlage 2 Blatt 3". Structural, not
+ * a list of words alone, because the Land's words do not end — measured
+ * over the register on 22.10.2026, 139 entries stood as drafts of their own
+ * with Plan, Lageplan, TGÜ, Übersichtskarte, Planmappe, Gutachten, a
+ * misspelt „Textgegenüerstellung" and more (docs/architecture.md §12.43).
+ * A bare space is no separator: „… geändert wird und das Y …" would be
+ * another law.
+ *
+ * And it must be filed with it: within a month, or — where the addition
+ * names a kind of document — within a year (the Land filed the TGÜs of
+ * 2015 in one batch in November, up to seven months late). The same
+ * measurement found a dozen later DRAFTS whose titles extend an older one:
+ * „… Kehrtarifs – Valorisierung 2025", „… Teilhabe - 2022", „(Maßnahmengebiet
+ * Strobl 2025 bis 2033)", a 2020 draft „… (inkl. Textgegenüberstellung)"
+ * twelve years after its namesake. Each is a Begutachtung of its own.
+ *
+ * It joins the draft with the longest such title, and among equal titles
+ * the one with the highest number below its own — the same title returns
+ * over the years („… Mindestsicherungsgesetz geändert wird" several times).
+ *
+ * An annex whose draft is not filed at all („X - Anlage 1", „X - Anlage 2
+ * Blatt 1" … and no „X": one Verordnung in twelve entries) becomes ONE row
+ * titled X, its documents the annexes; an „X" filed within the month joins
+ * that row, first, and gives it its number.
  */
+const ATTACHMENT_SEP_RE = /^(?:\s*[-–;]\s*|\s+\()(.+?)\)?\s*$/
+/** An addition that names a kind of document, not a year or a name. */
+const DOCUMENT_KIND_RE = /^(?:inkl\.\s*)?(?:\S*plan\S*|\S*pläne|\S*karten?\b|TGÜ|Text\s*gegen\S*|Gegenüberstellung|Anlage|Anhang|Beilage|Erläuterung|Gutachten|Abgrenzung|Planungsgebiet)/i
+const SAME_FILING_DAYS = 31
+const LATE_DOCUMENT_DAYS = 365
+
 export function salzburgDrafts(entries: RawEntry[], kind: LandDraftKind): LandConsultation[] {
   const drafts: LandConsultation[] = []
-  const byTitle = new Map<string, LandConsultation[]>()
-  const annexes: { base: string; doc: LandDocument; entry: RawEntry }[] = []
-  const numberOf = (d: LandConsultation) => Number(d.id.slice(4))
+  /* Drafts born of an annex, still without their main document. */
+  const awaitingMain = new Set<LandConsultation>()
+  const numberOf = (url: string) => Number(documentNumber(url) ?? Number.NaN)
+  const dateOf = (x: { startedAt?: string | null; deadline?: string | null }) => x.startedAt ?? x.deadline ?? null
+  const daysApart = (a: string | null, b: string | null) =>
+    a && b ? Math.abs(Date.parse(a) - Date.parse(b)) / 86_400_000 : 0
 
-  const toDraft = (entry: RawEntry, title: string): LandConsultation => ({
+  const toDraft = (entry: RawEntry, title: string, doc: LandDocument): LandConsultation => ({
     id: `sbg-${documentNumber(entry.url) ?? entry.url}`,
     land: 'sbg',
     kind,
@@ -155,27 +188,56 @@ export function salzburgDrafts(entries: RawEntry[], kind: LandDraftKind): LandCo
     startedAt: entry.startedAt ?? null,
     deadline: entry.deadline ?? null,
     url: entry.url,
-    documents: [{ title: 'Entwurf', url: entry.url }],
+    documents: [doc],
     active: false,
   })
 
-  for (const entry of entries) {
-    const annex = ANNEX_RE.exec(entry.title)
-    if (annex) {
-      annexes.push({ base: annex[1]!, doc: { title: annex[2]!, url: entry.url }, entry })
+  /* The draft an entry extends, and what it adds. */
+  const ownerOf = (entry: RawEntry, own: number): { draft: LandConsultation; addition: string } | null => {
+    const { title } = entry
+    let best: { draft: LandConsultation; addition: string } | null = null
+    for (const d of drafts) {
+      if (!(numberOf(d.url) < own) || !title.startsWith(d.title) || title.length === d.title.length) continue
+      const addition = ATTACHMENT_SEP_RE.exec(title.slice(d.title.length))?.[1]
+      if (!addition) continue
+      const apart = daysApart(dateOf(d), dateOf(entry))
+      if (apart > SAME_FILING_DAYS && !(apart <= LATE_DOCUMENT_DAYS && DOCUMENT_KIND_RE.test(addition))) continue
+      if (!best || d.title.length > best.draft.title.length ||
+        (d.title.length === best.draft.title.length && numberOf(d.url) > numberOf(best.draft.url))) {
+        best = { draft: d, addition }
+      }
+    }
+    return best
+  }
+
+  // In the Land's order of filing: an annex comes after what it extends.
+  for (const entry of [...entries].sort((x, y) => numberOf(x.url) - numberOf(y.url))) {
+    const own = numberOf(entry.url)
+    const owner = ownerOf(entry, own)
+    if (owner) {
+      owner.draft.documents.push({ title: owner.addition, url: entry.url })
       continue
     }
-    const draft = toDraft(entry, entry.title)
-    drafts.push(draft)
-    byTitle.set(entry.title, [...(byTitle.get(entry.title) ?? []), draft])
-  }
-  for (const { base, doc, entry } of annexes) {
-    const own = Number(documentNumber(entry.url))
-    const draft = (byTitle.get(base) ?? [])
-      .filter((d) => numberOf(d) < own)
-      .sort((a, b) => numberOf(b) - numberOf(a))[0]
-    if (draft) draft.documents.push(doc)
-    else drafts.push(toDraft(entry, entry.title.replace(ANNEX_RE, '$1 ($2)')))
+    const waiting = [...awaitingMain].find((d) =>
+      d.title === entry.title && daysApart(dateOf(d), dateOf(entry)) <= SAME_FILING_DAYS)
+    if (waiting) {
+      // The draft itself, filed after its annexes: first among them, and
+      // the row takes its number — the address it had before the annexes
+      // were folded, which links in circulation point to.
+      waiting.documents.unshift({ title: 'Entwurf', url: entry.url })
+      waiting.url = entry.url
+      waiting.id = `sbg-${documentNumber(entry.url) ?? entry.url}`
+      awaitingMain.delete(waiting)
+      continue
+    }
+    const annex = ANNEX_RE.exec(entry.title)
+    if (annex) {
+      const draft = toDraft(entry, annex[1]!, { title: annex[2]!, url: entry.url })
+      drafts.push(draft)
+      awaitingMain.add(draft)
+      continue
+    }
+    drafts.push(toDraft(entry, entry.title, { title: 'Entwurf', url: entry.url }))
   }
   return drafts
 }
