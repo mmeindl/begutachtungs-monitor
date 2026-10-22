@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import type { DraftDocument, LandCode, LandDraftDetail } from '#shared/types'
 import type { Fact } from '~/components/ui/FactList.vue'
-import { LAND_HOST, LAND_NAME, LAND_PUBLICATION_NOTE, landShortTitle } from '#shared/utils/laender'
+import { LAND_HOST, LAND_NAME, LAND_PUBLICATION_NOTE, landDraftPath, landShortTitle } from '#shared/utils/laender'
 import { RIS_KIND_LABEL } from '#shared/utils/risConsultations'
 import { citeLineDe } from '#shared/utils/citations'
 import { countLabelDe, formatDateDe } from '#shared/utils/format'
@@ -130,6 +130,7 @@ useSeoMeta({ ogTitle: () => draft.value?.title ?? 'Entwurf', ogType: 'article' }
           frist
           :deadline="detail.draft.deadline"
           :filing-href="detail.filing.kind === 'form' ? detail.filing.url : null"
+          :ics-href="`${landDraftPath(land, detail.draft.id)}/frist.ics`"
         >
           <p class="mt-2 text-sm text-ink">
             <template v-if="detail.filing.kind === 'email'">

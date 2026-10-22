@@ -373,3 +373,18 @@ describe('bodyEtag', () => {
     expect(short.split('-')[0]!.length).toBeGreaterThanOrEqual(8)
   })
 })
+
+describe('buildIcsCalendar — a Land’s draft (22.10.2026)', () => {
+  const land = {
+    id: 'ooe-2026-16124', land: 'ooe' as const, kind: 'gesetz' as const,
+    title: 'Oö. Umweltschutzgesetz-Novelle 2026', startedAt: '2026-10-09', deadline: '2026-11-09',
+    url: 'https://www2.land-oberoesterreich.gv.at/x', documents: [], active: true,
+  }
+
+  it('carries its own UID namespace and links the monitor’s page of it', () => {
+    const ics = buildIcsCalendar('https://begutachtungs-monitor.at', [], [], [land])
+    expect(ics).toContain('UID:land-ooe-2026-16124@begutachtungs-monitor.at')
+    expect(ics).toContain('URL:https://begutachtungs-monitor.at/entwuerfe/oberoesterreich/2026-16124')
+    expect(ics).toContain('DTSTART;VALUE=DATE:20261109')
+  })
+})

@@ -10,9 +10,10 @@
  * readers would surface daily phantom updates). Deterministic bodies are
  * also what make the routes' ETag/304 handling effective.
  */
-import type { DraftSummary, RisConsultation } from '../../shared/types'
+import type { DraftSummary, LandConsultation, RisConsultation } from '../../shared/types'
 import { formatDateDe } from '../../shared/utils/format'
 import { RIS_KIND_LABEL, risFilingNote } from '../../shared/utils/risConsultations'
+import { LAND_NAME, landDraftPath } from '../../shared/utils/laender'
 
 /** Draft page URL inside the monitor. */
 function pageUrl(siteUrl: string, item: DraftSummary): string {
@@ -56,6 +57,13 @@ const feedUid = (item: DraftSummary) =>
  * apart forever, so a subscriber's read-state cannot collide.
  */
 const risFeedUid = (item: RisConsultation) => `ris-${item.id}@${FEED_UID_DOMAIN}`
+
+/**
+ * The same rule once more for a Land's draft (22.10.2026): built from the
+ * Land and its own number (`sbg-35442`, `ooe-2026-16124`), never from our
+ * route. The `land-` prefix keeps it apart from both namespaces above.
+ */
+const landFeedUid = (item: LandConsultation) => `land-${item.id}@${FEED_UID_DOMAIN}`
 
 /**
  * One entry, whatever it came from — the shape both builders sort and print.
@@ -134,6 +142,25 @@ function risEntry(siteUrl: string, item: RisConsultation): FeedEntry {
     // entry is often read without the page behind it, and "send it where?"
     // is the only open question these procedures leave.
     calendarDescription: `${item.ministryName} – ${risFilingNote(item.active)}`,
+    tieBreak: item.id,
+  }
+}
+
+function landEntry(siteUrl: string, item: LandConsultation): FeedEntry {
+  const kind = RIS_KIND_LABEL[item.kind]
+  const land = `Land ${LAND_NAME[item.land]}`
+  // Where it goes is on the draft's page: an address per office in Wien, a
+  // form in Oberösterreich — too varied for one line.
+  const filing = 'Stellungnahme direkt an das Land, der Weg steht auf der Entwurfsseite'
+  return {
+    uid: landFeedUid(item),
+    url: `${siteUrl}${landDraftPath(item.land, item.id)}`,
+    title: `${kind}: ${item.title}`,
+    meta: [land, item.deadline ? `Frist bis ${formatDateDe(item.deadline)}` : 'Ohne Frist', filing].join(' · '),
+    publishedAt: item.startedAt ?? '',
+    deadline: item.deadline,
+    calendarSummary: `Frist: ${item.title} (${kind}, ${land})`,
+    calendarDescription: `${land} – ${filing}`,
     tieBreak: item.id,
   }
 }
@@ -406,10 +433,12 @@ export function buildIcsCalendar(
   siteUrl: string,
   items: DraftSummary[],
   risItems: RisConsultation[] = [],
+  landItems: LandConsultation[] = [],
 ): string {
   const withDeadline = [
     ...items.map((i) => draftEntry(siteUrl, i)),
     ...risItems.map((i) => risEntry(siteUrl, i)),
+    ...landItems.map((i) => landEntry(siteUrl, i)),
   ]
     .filter((e): e is FeedEntry & { deadline: string } => e.deadline !== null)
     .sort((a, b) => a.deadline.localeCompare(b.deadline) || a.tieBreak.localeCompare(b.tieBreak))
