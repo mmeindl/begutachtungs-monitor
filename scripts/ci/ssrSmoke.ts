@@ -124,7 +124,6 @@ const ROUTES: Route[] = [
   // Eine abgeschlossene Periode mit Stationsfilter — die andere Hälfte der
   // Liste, und die, die ohne Stationskarte anders rendert (§12.27).
   { path: '/entwuerfe?gp=XXVII&status=all&station=bgbl', marker: '<title>Entwürfe · Begutachtungs-Monitor</title>' },
-  { path: '/live', marker: '<title>Begutachtungs-Monitor live · Begutachtungs-Monitor</title>' },
   { path: '/ueber', marker: '<title>Über das Projekt · Begutachtungs-Monitor</title>' },
   { path: '/impressum', marker: '<title>Impressum &amp; Offenlegung · Begutachtungs-Monitor</title>' },
   { path: '/datenschutz', marker: '<title>Datenschutz · Begutachtungs-Monitor</title>' },

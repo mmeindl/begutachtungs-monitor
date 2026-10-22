@@ -100,6 +100,11 @@ export default defineNuxtConfig({
     // along, because Nitro appends the query to the target — whoever opens a
     // shared link sees hits and not an empty field.
     '/suche': { redirect: { to: '/entwuerfe', statusCode: 301 } },
+    // `/live` was the address behind one Demokratiewoche event (21.10.2026)
+    // and redirected into its video room. The event is over; the listing
+    // that links it is not ours to change, so the address lands on the
+    // start page rather than on a 404.
+    '/live': { redirect: { to: '/', statusCode: 301 } },
     // The font carries no hash in its name, so Nitro sends it without a
     // Cache-Control and browsers guess a lifetime from Last-Modified — which
     // every deploy resets, so returning readers revalidated it over and over.
