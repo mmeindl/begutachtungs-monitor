@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { compareWords, diffTokens, isAddressOnlyDifference, isEditorialChange, tokenSimilarity } from '../server/utils/diff/wordDiff'
+import { compareWords, diffTokens, isAddressOnlyDifference, isEditorialChange, sameWording, tokenSimilarity } from '../server/utils/diff/wordDiff'
 
 describe('diffTokens', () => {
   it('finds word-level changes and a similarity', () => {
@@ -26,6 +26,34 @@ describe('diffTokens', () => {
     expect(diffTokens('die E-Mail-Adresse nach dem E-GoVG', 'die EMailAdresse nach dem EGoVG').similarity).toBe(1)
     // A dash BETWEEN words is not a hyphen inside one and stays a token.
     expect(diffTokens('Wien - Graz', 'Wien Graz').similarity).toBeLessThan(1)
+  })
+})
+
+// The Begründungsvergleich's „unverändert" (22.10.2026): the same words in
+// the same order, whatever the punctuation, spacing and hyphenation.
+describe('sameWording', () => {
+  it('lässt Satzzeichen, Leerzeichen und Bindestriche beiseite', () => {
+    expect(sameWording('Härten zu vermeiden', 'Härten zu vermeiden,')).toBe(true)
+    expect(sameWording('„Verbunds" (VBK)', 'Verbunds (VBK)')).toBe(true)
+    expect(sameWording('z.B. nach Abs.2', 'z. B. nach Abs. 2')).toBe(true)
+    expect(sameWording('die COVID-19 Pandemie', 'die COVID-19-Pandemie')).toBe(true)
+    expect(sameWording('Blaue Karte EU-Richtlinie', 'Blaue-Karte-EU-Richtlinie')).toBe(true)
+    expect(sameWording('(inter)ministeriellen', '[inter]ministeriellen')).toBe(true)
+  })
+
+  it('sieht jedes geänderte Wort, auch Groß- und Kleinschreibung', () => {
+    expect(sameWording('ab Jänner 2026', 'ab April 2026')).toBe(false)
+    expect(sameWording('die RAO.', 'die RAPG.')).toBe(false)
+    expect(sameWording('Covid-19', 'COVID-19')).toBe(false)
+    expect(sameWording('dass', 'daß')).toBe(false)
+  })
+
+  it('hält Zeichen, die für ein Wort stehen, und Zeichen in einer Zahl fest', () => {
+    expect(sameWording('nach § 5', 'nach 5')).toBe(false)
+    expect(sameWording('5 % der Fälle', '5 der Fälle')).toBe(false)
+    expect(sameWording('1,5 Prozent', '15 Prozent')).toBe(false)
+    expect(sameWording('BGBl. I Nr. 8/2020', 'BGBl. I Nr. 82020')).toBe(false)
+    expect(sameWording('BGBl. I Nr. 8/2020.', 'BGBl. I Nr. 8/2020')).toBe(true)
   })
 })
 

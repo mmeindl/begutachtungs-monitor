@@ -120,9 +120,9 @@ export interface ReasoningDiffEntry {
    */
   fromText: string | null
   toText: string | null
-  /** Share of changed words, 0 to 1 — the number behind `changed`; null where not compared. */
+  /** Share of changed words, 0 to 1, for the measurement; null where not compared. It does not decide `changed`. */
   drift: number | null
-  /** From 2 % diverging words up: below that it is punctuation. */
+  /** At least one word differs once punctuation, spacing and hyphenation are left aside (`sameWording`, 22.10.2026). */
   changed: boolean
 }
 

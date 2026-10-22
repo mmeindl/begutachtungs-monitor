@@ -113,7 +113,7 @@ describe('compareReasoningByParagraph — der §-Join', () => {
     expect(out.units).toEqual({})
   })
 
-  it('hält eine Änderung unter 2 % für Satzzeichen und nicht für eine Überarbeitung', () => {
+  it('hält ein Satzzeichen für keine Überarbeitung', () => {
     const words = Array.from({ length: 200 }, (_, i) => `wort${i}`).join(' ')
     const units = [unit(SNG, 'Z2', 'In § 6 Abs. 1 wird das Wort "kann" durch das Wort "darf" ersetzt.')]
     const out = compareReasoningByParagraph(units, new Map([['6', `${words} Punkt`]]), new Map([['6', `${words} Punkt.`]]))
@@ -121,6 +121,59 @@ describe('compareReasoningByParagraph — der §-Join', () => {
     expect(out.stats).toEqual({ compared: 1, changed: 0, uncompared: 0 })
     expect(out.entries['§ 6']!.segments).toBeNull()
     expect(out.entries['§ 6']!.fromText).toBeNull()
+  })
+
+  // Until 22.10.2026 „geändert" began at 2 % differing words, and one word in
+  // fifty stays below that: 61/ME XXVIII moved a date from „Jänner" to
+  // „April" in a passage the page called unchanged.
+  it('nennt eine Begründung geändert, sobald ein Wort anders ist, wie lang sie auch ist', () => {
+    const words = Array.from({ length: 200 }, (_, i) => `wort${i}`).join(' ')
+    const units = [unit(SNG, 'Z2', 'In § 6 Abs. 1 wird das Wort "kann" durch das Wort "darf" ersetzt.')]
+    const out = compareReasoningByParagraph(units, new Map([['6', `Ab Jänner ${words}.`]]), new Map([['6', `Ab April ${words}.`]]))
+    const entry = out.entries['§ 6']!
+
+    expect(out.stats).toEqual({ compared: 1, changed: 1, uncompared: 0 })
+    expect(entry.drift).toBeLessThan(0.02)
+    expect(entry.segments!.filter((s) => s.type !== 'equal')).toEqual([
+      { type: 'removed', text: 'Jänner' },
+      { type: 'inserted', text: 'April' },
+    ])
+  })
+
+  // The floor cut the other way for a short passage: one comma in eleven
+  // words was „geändert" (XXVII 177/ME).
+  it('nennt eine kurze Begründung unverändert, die sich nur in Satzzeichen, Leerzeichen und Bindestrichen unterscheidet', () => {
+    const units = [unit(SNG, 'Z2', 'In § 6 Abs. 1 wird das Wort "kann" durch das Wort "darf" ersetzt.')]
+    const out = compareReasoningByParagraph(
+      units,
+      new Map([['6', 'Um Härten zu vermeiden wird z.B. die COVID-19 Pandemie nach Abs.2 berücksichtigt']]),
+      new Map([['6', 'Um Härten zu vermeiden, wird z. B. die COVID-19-Pandemie nach Abs. 2 berücksichtigt.']]),
+    )
+
+    expect(out.stats).toEqual({ compared: 1, changed: 0, uncompared: 0 })
+    expect(out.entries['§ 6']!.drift).toBeGreaterThan(0.02)
+  })
+
+  it('liest den Beistrich in einer Zahl als Teil der Zahl', () => {
+    const units = [unit(SNG, 'Z2', 'In § 6 Abs. 1 wird das Wort "kann" durch das Wort "darf" ersetzt.')]
+    const out = compareReasoningByParagraph(units, new Map([['6', 'Der Satz beträgt 1,5 Prozent.']]), new Map([['6', 'Der Satz beträgt 15 Prozent.']]))
+
+    expect(out.entries['§ 6']!.changed).toBe(true)
+  })
+
+  // Above the ceiling the verdict rested on the bag of words, which cannot
+  // see a word that moved; the word sequence can.
+  it('sieht über der Grenze des Wortvergleichs auch ein verschobenes Wort', () => {
+    const words = Array.from({ length: 1700 }, (_, i) => `wort${i}`)
+    const moved = [words[1]!, words[0]!, ...words.slice(2)]
+    const units = [unit(SNG, 'Z2', 'In § 6 Abs. 1 wird das Wort "kann" durch das Wort "darf" ersetzt.')]
+    const out = compareReasoningByParagraph(units, new Map([['6', words.join(' ')]]), new Map([['6', moved.join(' ')]]))
+    const entry = out.entries['§ 6']!
+
+    expect(entry.drift).toBe(0)
+    expect(entry.changed).toBe(true)
+    expect(entry.segments).toBeNull()
+    expect(entry.toText).toBe(moved.join(' '))
   })
 
   it('legt beide Fassungen bei, wo der Wortvergleich zu lang zum Rechnen ist', () => {
@@ -268,6 +321,19 @@ describe('compareReasoning — die Begründung an der Ziffer (01.10.2026)', () =
     expect(out.fallbacks['Gesetz|Z1|changed']).toBe('scope')
     expect(out.entries[out.units['Gesetz|Z1|changed']!]).toMatchObject({ comparable: true, changed: false, drift: 0 })
     expect(out.entries[out.units['Gesetz|Z2|changed']!]).toMatchObject({ comparable: false })
+  })
+
+  // „Wort für Wort" by the verdict's own rule (22.10.2026): a comma does not
+  // keep two regrouped passages apart (XXVII 202/ME „hat" → „hat,").
+  it('urteilt dort auch „unverändert", wo sich die umgruppierten Passagen nur im Satzzeichen unterscheiden', () => {
+    const units = [z('Z1', 'Z1', 'In § 1 wird "a" durch "b" ersetzt.'), z('Z2', 'Z2', 'In § 2 wird "a" durch "b" ersetzt.')]
+    const before = erl('Zu Z 1 (§ 1):', 'Die Anpassung erfolgt wie es das Gesetz verlangt.', 'Zu Z 2 (§ 2):', 'Anderes.')
+    const after = erl('Zu Z 1 und 2 (§§ 1 und 2):', 'Die Anpassung erfolgt, wie es das Gesetz verlangt.')
+
+    const out = compareReasoning(units, before, after)
+
+    expect(out.fallbacks['Gesetz|Z1|changed']).toBe('scope')
+    expect(out.entries[out.units['Gesetz|Z1|changed']!]).toMatchObject({ comparable: true, changed: false })
   })
 
   // 41/ME XXVIII: „Zu Z 26 (§ 122 Abs. 1):" against „Zu Z 31 und 32 (§ 122

@@ -58,6 +58,46 @@ export function compareWords(text: string): string[] {
   return words(text).compare
 }
 
+/**
+ * Whether two texts say the same words in the same order once punctuation,
+ * spacing and hyphenation are left aside — the Begründungsvergleich's
+ * „unverändert" (`explanations/reasoningDiff.ts`, 22.10.2026).
+ *
+ * Read off the form `diffTokens` aligns on (`words`: the leader dots, the
+ * space before a punctuation mark and the hyphen inside a word fold exactly
+ * as there), with two things more left out — every space, by joining the
+ * words, and every punctuation mark (`\p{P}`) but two kinds: the signs that
+ * stand for a word (`WORD_SIGNS`), and a mark between two digits, which is
+ * part of the number. „1,5" against „15" is a different rate, „8/2020" a
+ * different Fundstelle than „82020".
+ *
+ * Every space, and not only the one the compare form already folds before a
+ * punctuation mark: „z.B." against „z. B.", „Abs.2" against „Abs. 2",
+ * „habensich" against „haben sich" differ in a space, not in a word. Measured
+ * over the Begründungen of GP XXVI–XXVIII (22.10.2026), comparing the words
+ * one by one instead left 43 such passages „geändert". Case is not left
+ * aside: the rule says punctuation, spacing and hyphenation, and „Covid-19" →
+ * „COVID-19" is a spelling the ressort changed (`reasoningDiff.ts`, `entryOf`).
+ *
+ * Exact at any length — no `MAX_DP_CELLS` — so above the ceiling the verdict
+ * no longer rests on `bagSimilarity`, which cannot see a word that moved.
+ */
+export function sameWording(aText: string, bText: string): boolean {
+  return wordingOf(aText) === wordingOf(bText)
+}
+
+/** §, %, ‰, & and the gender star: punctuation by their Unicode class, words in a sentence. */
+const WORD_SIGNS = new Set(['§', '%', '‰', '&', '*'])
+const PUNCTUATION_RE = /\p{P}/gu
+const DIGIT_RE = /\d/
+
+/** A text as one string of its letters, digits and word signs — see `sameWording`. */
+function wordingOf(text: string): string {
+  return words(text)
+    .compare.map((w) => w.replace(PUNCTUATION_RE, (mark, at: number) => (WORD_SIGNS.has(mark) || (DIGIT_RE.test(w[at - 1] ?? '') && DIGIT_RE.test(w[at + 1] ?? '')) ? mark : '')))
+    .join('')
+}
+
 export interface TokenDiff {
   similarity: number
   segments: LawDiffSegment[] | null

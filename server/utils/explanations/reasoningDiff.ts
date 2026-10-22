@@ -86,7 +86,7 @@
 import type { LawDiffUnit, ReasoningDiffEntry } from '../../../shared/types'
 import { diffUnitKey } from '../../../shared/utils/diffKey'
 import { displayId, isParagraphUnit } from '../../../shared/utils/unitName'
-import { diffTokens } from '../diff/wordDiff'
+import { diffTokens, sameWording } from '../diff/wordDiff'
 import { addressedParagraph, addressedParagraphOf, instructionParagraphs } from '../lawtext/instructionAddress'
 import { passagesByArticleParagraph, passagesByParagraph, type HtmlExplanations, type HtmlPassage } from './explanationsHtml'
 import { ADDRESS_WORD_RE, addressOf, leadingAddress } from './risExplanations'
@@ -96,8 +96,6 @@ import { ADDRESS_WORD_RE, addressOf, leadingAddress } from './risExplanations'
 // raw Gliederungssymbol such as § 365m1, which never reaches here.
 import { articleParagraphKey, explanationParaId } from '../../../shared/utils/explanationKey'
 
-/** Below this it is punctuation and whitespace, not a revision. */
-const CHANGED_AT = 0.02
 /**
  * A ceiling for the outlier, set from the corpus (27.09.2026, `aenderungsrate.ts
  * --reasoning`): uncapped, a draft carries median 8 entries, p99 129–175 over
@@ -204,11 +202,38 @@ function ambiguousParagraphs(units: readonly LawDiffUnit[], read: Readings): Set
   return new Set([...articles].filter(([, seen]) => seen.size > 1).map(([para]) => para))
 }
 
-/** The comparison of two texts as an entry. */
+/**
+ * The comparison of two texts as an entry.
+ *
+ * „GEÄNDERT" MEANS A WORD CHANGED (22.10.2026): unchanged is only a passage
+ * whose words stand in the same order on both sides once punctuation,
+ * spacing and hyphenation are left aside (`sameWording`). Until then it was
+ * one with under 2 % of its words different — „below this it is punctuation
+ * and whitespace, not a revision", which was false: one word replaced in a
+ * passage of more than 50 words stays under 2 %. Measured over the 353 drafts
+ * of GP XXVI–XXVIII with Erläuterungen on both sides, 680 of the 4.907
+ * Begründungen judged unchanged had changed words — 61/ME XXVIII „Jänner" →
+ * „April" and „Juli 2026" → „Jänner 2027", 32/ME „Dezember 2025" → „Juni
+ * 2026", 112/ME „RAO" → „RAPG" under „Keine der 34 Begründungen hat das
+ * Ressort geändert." Six drafts said „keine" or „nicht geändert" over a
+ * changed wording. The floor cut the other way too: 38 passages differing in
+ * nothing but a comma, a space or a hyphen („COVID-19 Pandemie" →
+ * „COVID-19-Pandemie") read „geändert" for being short.
+ *
+ * Changed per GP, XXVI to XXVIII: 626 → 741, 2.051 → 2.472, 747 → 853 of
+ * 1.589, 4.866 and 1.883 compared. Read one by one, 37 of the 680 are
+ * spelling alone — case, typos, variants, a date with its zeros („Covid-19"
+ * → „COVID-19", „Rgelung" → „Regelung", „Potential" → „Potenzial", „22.8.2018"
+ * → „22.08.2018", the only change in XXVII 307/ME) — and count as a change
+ * like any other; whether the page sets them apart is not decided here.
+ *
+ * `drift` is still the share of differing words, for the measurement
+ * scripts (`aenderungsrate.ts`); it decides nothing any more.
+ */
 function entryOf(basis: ReasoningDiffEntry['basis'], label: string, a: string, b: string): ReasoningDiffEntry {
   const { similarity, segments } = diffTokens(a, b)
   const drift = 1 - similarity
-  const changed = drift >= CHANGED_AT
+  const changed = !sameWording(a, b)
   return {
     basis,
     label,
@@ -243,15 +268,18 @@ function uncomparedOf(basis: ReasoningDiffEntry['basis'], label: string, fromHea
 }
 
 /**
- * Not a word apart, by the same comparison that gives the verdict. The scope
- * rule holds passages apart because a different grouping can make two texts
- * differ without the Begründung changing — a false „geändert". Where the two
- * texts are the same word for word, that cannot happen: „unverändert" is
- * true however the Ziffern are grouped (65/ME XXVIII, „Redaktionelle
- * Anpassungen." under eight Ziffern on both sides, 01.10.2026).
+ * Not a word apart, by the same comparison that gives the verdict
+ * (`sameWording`, `entryOf`). The scope rule holds passages apart because a
+ * different grouping can make two texts differ without the Begründung
+ * changing — a false „geändert". Where the two texts are the same word for
+ * word, that cannot happen: „unverändert" is true however the Ziffern are
+ * grouped (65/ME XXVIII, „Redaktionelle Anpassungen." under eight Ziffern on
+ * both sides, 01.10.2026). Read by the verdict's rule since 22.10.2026, a
+ * comma no longer keeps them apart: 7 regrouped pairs of GP XXVI–XXVIII went
+ * from „shown without a verdict" to „unverändert".
  */
 function sameWords(a: string, b: string): boolean {
-  return Boolean(a) && diffTokens(a, b).similarity === 1
+  return Boolean(a) && sameWording(a, b)
 }
 
 /** What `fill` builds an entry from. */
