@@ -186,6 +186,12 @@ describe('missingStationReason', () => {
       expect(missingStationReason(id, true)).toBe(MISSING_STATION_REASON[id])
     }
   })
+
+  it('names the Kundmachung the Vorlage names, where RIS has no text for it yet', () => {
+    const reason = missingStationReason('bgbl', true, 'BGBl. I Nr. 5/2026')
+    expect(reason).not.toMatch(/nicht als Gesetz kundgemacht/)
+    expect(reason).toMatch(/^Kundgemacht als BGBl\. I Nr\. 5\/2026/)
+  })
 })
 
 describe('lawDiffScopeOf and lawDiffSteps', () => {

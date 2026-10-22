@@ -116,6 +116,10 @@ const readLawDiff = defineCachedFunction(
     // Vorlage detail the Kundmachung comes from, so it costs no request.
     let bundled: boolean | null = null
     let otherDrafts: { gp: string; inr: number }[] = []
+    // The Fundstelle the Vorlage names, read or not: without a readable RIS
+    // text the station is absent, and the sentence for that must not deny it
+    // (`missingStationReason`).
+    let promulgatedAs: string | null = null
     // False where the Kundmachung's lookup failed and this pair could do
     // without it — the answer is then served and not stored.
     let complete = true
@@ -132,6 +136,7 @@ const readLawDiff = defineCachedFunction(
       bundled = bundlesOtherDrafts(rv.content?.preconst, gp, inr)
       otherDrafts = otherBundledDrafts(rv.content?.preconst, gp, inr)
       const nummer = extractBgblLink(rv.content?.status?.bgbllinks)?.number
+      promulgatedAs = nummer ? bgblShort(nummer) : null
       let doc: Awaited<ReturnType<typeof getBgblDocument>> = null
       if (nummer) {
         try {
@@ -207,7 +212,7 @@ const readLawDiff = defineCachedFunction(
       // An unreadable stage record claims nothing either way.
     }
     for (const id of [to, from]) {
-      if (!found.has(id)) return answer(missingStationReason(id, rvLinked))
+      if (!found.has(id)) return answer(missingStationReason(id, rvLinked, promulgatedAs))
     }
     if (!comparable(from)) {
       return answer(

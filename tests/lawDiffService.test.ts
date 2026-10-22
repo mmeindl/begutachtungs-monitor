@@ -158,6 +158,14 @@ describe('the Kundmachung does not arrive', () => {
     expect(stored()).toEqual(['law-diff:XXVIII-1-me-rv'])
   })
 
+  it('a Fundstelle RIS has no text for yet is named, not denied — and kept', async () => {
+    getBgblDocument.mockResolvedValue(null)
+    const diff = await getLawDiff('XXVIII', 1, 'rv', 'bgbl')
+    expect(diff.unavailableReason).not.toBe(NOT_PROMULGATED)
+    expect(diff.unavailableReason).toMatch(/^Kundgemacht als BGBl\. I Nr\. 5\/2026/)
+    expect(stored()).toEqual(['law-diff:XXVIII-1-rv-bgbl'])
+  })
+
   it('a Vorlage without a Kundmachung is an answer, and it is kept', async () => {
     rv = { content: { ...rvDetail().content, status: { bgbllinks: [] } } }
     const first = await getLawDiff('XXVIII', 1, 'rv', 'bgbl')

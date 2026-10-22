@@ -99,9 +99,17 @@ export const MISSING_STATION_REASON: Record<LawStationId, string> = {
  * names two sections higher (docs/architecture.md §12.18, Nachtrag) — the
  * false accusation `parliament/stationMap.ts` exists to avoid.
  */
-export function missingStationReason(id: LawStationId, rvLinked: boolean): string {
+export function missingStationReason(id: LawStationId, rvLinked: boolean, promulgatedAs: string | null = null): string {
   if (id === 'rv' && rvLinked) {
     return 'Zur Regierungsvorlage ist kein Gesetzestext als eigenes Dokument veröffentlicht, mit dem sich der Entwurf vergleichen ließe.'
+  }
+  // The same two facts for the Kundmachung (22.10.2026): the Vorlage names
+  // its Fundstelle, and RIS has no readable text for it yet — the days
+  // between the Bundesgesetzblatt and its record, i.e. exactly the newest
+  // laws. The table's sentence would deny a Kundmachung the Vorlage itself
+  // names.
+  if (id === 'bgbl' && promulgatedAs) {
+    return `Kundgemacht als ${promulgatedAs} — das RIS bietet dazu noch keinen Text an, mit dem sich der Entwurf vergleichen ließe.`
   }
   return MISSING_STATION_REASON[id]
 }
