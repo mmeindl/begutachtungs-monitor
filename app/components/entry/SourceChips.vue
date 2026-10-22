@@ -19,16 +19,13 @@ import { SOURCE_CODES, SOURCE_NAME } from '#shared/utils/laender'
  * The list is never empty by choice: turning off the last Land brings
  * the Bund back, and the Bund alone stays ticked and says why.
  *
- * No lead („Entwürfe von:") and no coverage beside them: the chips name
- * themselves. The coverage — the monitor reads some of nine Länder, and a
- * list that does not say so claims the rest are quiet — stands where a
- * Land's rows are, under the list (`landCoverageDe`), while one is chosen.
+ * No lead („Entwürfe von:"): the chips name themselves. At the row's end
+ * „Weitere Länder folgen": the monitor reads some of nine Länder, and a
+ * list that does not say so claims the rest are quiet.
  */
 const props = defineProps<{
   /** Per source, why it cannot join this view; absent where it can. */
   unavailable?: Partial<Record<SourceCode, string | null>>
-  /** One sentence under the chips, where the view needs it (the period as a time window). */
-  note?: string | null
 }>()
 
 const { chosen, isLocked, toggle } = useSourceChoice()
@@ -49,7 +46,9 @@ const LOCKED = 'Ohne andere Quelle bleibt der Bund ausgewählt'
       >
         {{ SOURCE_NAME[code] }}
       </ToggleChip>
+      <!-- In place of „3 von 9 Ländern" (22.10.2026): the same honesty —
+           the chips are not all nine — said as what comes, at the row's end. -->
+      <span class="ml-auto text-sm text-ink-muted">Weitere Länder folgen</span>
     </div>
-    <p v-if="note" class="mt-2 text-sm text-ink-muted">{{ note }}</p>
   </div>
 </template>

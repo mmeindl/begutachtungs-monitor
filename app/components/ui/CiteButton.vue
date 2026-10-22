@@ -34,24 +34,7 @@ const props = defineProps<{
   compact?: boolean
 }>()
 
-const copied = ref(false)
-let timer: ReturnType<typeof setTimeout> | undefined
-
-async function copy() {
-  try {
-    await navigator.clipboard.writeText(props.text)
-  } catch {
-    window.prompt('Zitat zum Kopieren:', props.text)
-    return
-  }
-  copied.value = true
-  clearTimeout(timer)
-  timer = setTimeout(() => { copied.value = false }, 2500)
-}
-
-onBeforeUnmount(() => clearTimeout(timer))
-
-const announcement = computed(() => (copied.value ? `Zitat kopiert: ${props.text}` : ''))
+const { copied, announcement, copy } = useClipboardCopy(() => props.text, { prompt: 'Zitat zum Kopieren:', done: 'Zitat kopiert' })
 </script>
 
 <template>

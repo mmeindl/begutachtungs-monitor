@@ -8,7 +8,7 @@ import type {
   LaenderResponse,
   RisConsultationsResponse,
 } from '#shared/types'
-import { LAND_NAME, landCoverageDe } from '#shared/utils/laender'
+import { LAND_NAME } from '#shared/utils/laender'
 import { HOME_LIST_LENGTH, compareRowsByFrist, draftRows } from '#shared/utils/draftOrder'
 import { viewOfDraft, viewOfOutcome, viewOfRow, viewOfVorlage } from '~/utils/entryView'
 import { gpWindow } from '#shared/utils/gp'
@@ -529,13 +529,6 @@ function submitSearch() {
                 </p>
               </EmptyState>
             </div>
-          </template>
-          <!-- The coverage, where a Land's rows are: the monitor reads some
-               of nine, and the list must not read as if the rest were quiet. -->
-          <template v-if="chosenLaender.length" #foot>
-            <p class="border-t border-hairline px-4 py-3 text-sm text-ink-muted">
-              Länder: {{ landCoverageDe() }}
-            </p>
           </template>
         </EntryList>
 

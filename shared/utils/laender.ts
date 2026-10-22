@@ -14,9 +14,6 @@ import type { LandCode } from '../types'
 /** Display order — the order the chips stand in: alphabetical, as the Länder are listed everywhere. */
 export const LAND_CODES: readonly LandCode[] = ['ooe', 'sbg', 'w']
 
-/** Austria has nine; the coverage line counts against this. */
-export const LAENDER_TOTAL = 9
-
 export const LAND_NAME: Record<LandCode, string> = {
   ooe: 'Oberösterreich',
   sbg: 'Salzburg',
@@ -82,13 +79,6 @@ export function formatSourceList(codes: readonly SourceCode[]): string {
 
 export function isDefaultSources(codes: readonly SourceCode[]): boolean {
   return formatSourceList(codes) === formatSourceList(DEFAULT_SOURCES)
-}
-
-/** „Oberösterreich, Salzburg und Wien – 3 von 9", after „Länder:": the line that keeps a list from claiming more. */
-export function landCoverageDe(): string {
-  const names = LAND_CODES.map((code) => LAND_NAME[code])
-  const list = names.length > 1 ? `${names.slice(0, -1).join(', ')} und ${names.at(-1)}` : names[0]
-  return `${list} – ${LAND_CODES.length} von ${LAENDER_TOTAL}`
 }
 
 /**

@@ -64,6 +64,10 @@ const doorClass = computed(() =>
     </p>
     <slot name="after-context" />
     <div class="mt-3 flex flex-wrap items-center gap-3">
+      <!-- The page's own primary action where it is not a link — a Land's
+           address to copy (`CopyButton`, 22.10.2026) — first, where the
+           form's button stands otherwise. -->
+      <slot v-if="frist" name="primary" />
       <DoorButton v-if="frist && filingHref" :href="filingHref">
         <slot name="filing" />
       </DoorButton>

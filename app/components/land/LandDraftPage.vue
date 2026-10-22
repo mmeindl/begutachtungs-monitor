@@ -122,8 +122,8 @@ useSeoMeta({ ogTitle: () => draft.value?.title ?? 'Entwurf', ogType: 'article' }
         </DraftHeader>
 
         <!-- The one place to act, while the Frist runs — the RIS page's
-             card. Where it goes is the Land's: an address (DoorButton opens
-             web addresses only, so a plain mailto link), the Land's own
+             card. Where it goes is the Land's: an address (a mail link in
+             the sentence, copied by the primary button), the Land's own
              form, or — where the Land's page names neither — the draft. -->
         <DraftDoorCard
           v-if="detail.draft.active"
@@ -147,6 +147,11 @@ useSeoMeta({ ogTitle: () => draft.value?.title ?? 'Entwurf', ogType: 'article' }
             <template v-if="publicationNote"> {{ publicationNote }}</template>
           </p>
           <template #filing>Stellungnahme einbringen</template>
+          <!-- Both ways to the address: the link in the sentence opens the
+               mail program, the button copies it for wherever one writes. -->
+          <template v-if="detail.filing.kind === 'email'" #primary>
+            <CopyButton :text="detail.filing.address" what="E-Mail-Adresse">E-Mail-Adresse kopieren</CopyButton>
+          </template>
         </DraftDoorCard>
 
         <section id="entwurf" class="page-section scroll-mt-6" aria-labelledby="entwurf-heading">

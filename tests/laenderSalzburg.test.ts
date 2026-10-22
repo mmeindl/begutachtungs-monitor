@@ -10,7 +10,7 @@ import {
   submitterOfFile,
 } from '../server/utils/laender/salzburg'
 import { LandSourceError } from '../server/utils/laender/gate'
-import { formatSourceList, isDefaultSources, landCoverageDe, landDraftPath, landShortTitle, parseSourceList } from '../shared/utils/laender'
+import { formatSourceList, isDefaultSources, landDraftPath, landShortTitle, parseSourceList } from '../shared/utils/laender'
 
 const fixture = (name: string) => readFileSync(new URL(`./fixtures/laender/${name}`, import.meta.url), 'utf8')
 const GESETZE = fixture('salzburg-gesetze-2026-10-22.html')
@@ -87,10 +87,6 @@ describe('the reader’s choice of sources', () => {
   it('knows the default, which the address and the cookie leave out', () => {
     expect(isDefaultSources(['bund'])).toBe(true)
     expect(isDefaultSources(['bund', 'sbg'])).toBe(false)
-  })
-
-  it('states the coverage', () => {
-    expect(landCoverageDe()).toBe('Oberösterreich, Salzburg und Wien – 3 von 9')
   })
 })
 

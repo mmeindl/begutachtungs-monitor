@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import type { DashboardSecondRound, DraftStation, LandCode } from '#shared/types'
-import { LAND_CODES, LAND_NAME, landCoverageDe } from '#shared/utils/laender'
+import { LAND_CODES, LAND_NAME } from '#shared/utils/laender'
 import {
   compareRowsByFrist,
   compareRowsByStatements,
@@ -271,10 +271,6 @@ const landUnavailable = computed(() => (chosenLaender.value.length ? landUnavail
 const landsApply = computed(() => applyingLaender.value.length > 0)
 const sourceUnavailable = computed(() =>
   Object.fromEntries(LAND_CODES.map((land) => [land, landUnavailableFor(land)])))
-const sourceNote = computed(() =>
-  chosenLaender.value.length
-    ? `Länder: ${landCoverageDe()}`
-    : null)
 
 /* The halves the sources and `art` ask for, the gate over them, the period
  * and Ressort menus: `useDraftHalves`. */
@@ -739,7 +735,7 @@ const countLabel = computed(() =>
           <!-- Where the rows come from (`SourceChips`), on a line of its
                own: four chips do not fit beside the selects. Part of what
                fixes the set, so above the search. -->
-          <SourceChips :unavailable="sourceUnavailable" :note="sourceNote" />
+          <SourceChips :unavailable="sourceUnavailable" />
           <p v-for="s in unreadableLaender" :key="s.land" class="text-sm text-ink-muted">
             {{ LAND_NAME[s.land] }} ist gerade nicht abrufbar<template v-if="s.listUrl"> –
               <ExternalLink :href="s.listUrl" class="link-inline font-medium">beim Land nachsehen</ExternalLink></template>.
