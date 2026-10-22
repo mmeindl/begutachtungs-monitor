@@ -565,8 +565,13 @@ function submitSearch() {
                Vokabular"). „Zweite Runde" stays the name of the SET, in
                code and docs. „im Parlament", not „im Nationalrat", since the
                same day: the window runs through the Bundesrat's phase, and
-               the section lists those Vorlagen too. -->
-          Regierungsvorlage: Stellungnahme im Parlament möglich
+               the section lists those Vorlagen too.
+               Shortened to „Jetzt im Parlament" on 22.10.2026, the pair to
+               „Jetzt in Begutachtung": that heading names the stage and lets
+               the section say you can take part, and so does this one — the
+               lede below says a Stellungnahme is possible, and the column
+               header and the link still name the station. -->
+          Jetzt im Parlament
         </ListHeader>
         <!-- The first sentence says where a Stellungnahme goes, which is true
              of every row here — Parliament's own description of the window
@@ -676,7 +681,7 @@ function submitSearch() {
            ONE PROCEDURE, ONE PLACE (03.10.2026). While its window is open —
            through the Bundesrat's phase, until its Beschluss — a decided
            procedure stands in the act half, as its Vorlage under
-           „Regierungsvorlage: Stellungnahme im Parlament möglich"; it comes
+           „Jetzt im Parlament"; it comes
            here only once nothing can be filed any more (`pickDecided`). So
            the heading says what this section's rows have in common: the
            procedure is over, the Kundmachung is not. The link goes to the
