@@ -21,6 +21,7 @@ import type {
 import { LAND_CODES } from '#shared/utils/laender'
 import { todayIso } from '#shared/utils/format'
 import { type UpstreamPolicy, upstreamBytes, upstreamText } from '../upstream/fetch'
+import { DERIVED_CACHE } from '../cache/base'
 import { UPSTREAM_LIST_TTL_S } from '../cache/ttl'
 import { withinBudget } from '../http/budget'
 import {
@@ -47,6 +48,8 @@ import {
   parseOoeVerordnungen,
   ooeStageOf,
 } from './oberoesterreich'
+import { fetchLgblIndex } from './lgblIndex'
+import { matchLgbl, type LgblResult } from './lgblSearch'
 
 const LAND_POLICY: UpstreamPolicy = {
   timeoutMs: 15_000,
@@ -361,6 +364,42 @@ const oberoesterreich: LandReader = {
 
 const READERS: Record<LandCode, LandReader> = { sbg: salzburg, w: wien, ooe: oberoesterreich }
 
+/* ------------------------------------------------------------------ *
+ * The Kundmachung, searched where the Land records none (§12.43)
+ * ------------------------------------------------------------------ */
+
+/**
+ * One Land's drafts against its Landesgesetzblatt, all at once and held like
+ * the index it reads: the list and the draft page read the same answer,
+ * and a page view does not redo two thousand comparisons.
+ */
+const lgblAssignment = defineCachedFunction(
+  async (land: LandCode): Promise<Record<string, LgblResult>> => {
+    const [drafts, index] = await Promise.all([READERS[land].all(), fetchLgblIndex(land)])
+    return Object.fromEntries(matchLgbl(drafts, index, todayIso()))
+  },
+  { name: 'land-lgbl-assignment', base: DERIVED_CACHE, getKey: (land: LandCode) => land, maxAge: 60 * 60 * 6, swr: true },
+)
+
+/**
+ * The search's answer laid onto each draft: a find becomes its station, a
+ * miss says which kind of miss. Where the search failed, every closed draft
+ * it would have covered says so rather than „not followed".
+ */
+async function withLgblSearch(land: LandCode, drafts: LandConsultation[]): Promise<LandConsultation[]> {
+  const results = await lgblAssignment(land).catch((err: unknown) => {
+    console.warn(`[laender] LGBl ${land} nicht abrufbar:`, err instanceof Error ? err.message : err)
+    return null
+  })
+  return drafts.map((d) => {
+    if (d.stage !== undefined) return d
+    const r = results?.[d.id]
+    if (r?.state === 'gefunden') return { ...d, stage: r.stage }
+    if (r) return { ...d, lgblSearch: r.state }
+    return !results && !d.active ? { ...d, lgblSearch: 'nicht-abrufbar' as const } : d
+  })
+}
+
 /**
  * Whether a Frist runs on `day`: the Land's Frist decides, and a draft
  * without one (closed, read from a register) is not running. Decided per
@@ -409,7 +448,8 @@ export async function readLaenderInWindow(
   window: { from: string; to: string | null },
   status: 'open' | 'closed' | 'all',
 ): Promise<Pick<LaenderResponse, 'items' | 'sources'>> {
-  const results = await Promise.allSettled(LAND_CODES.map((land) => READERS[land].all()))
+  const results = await Promise.allSettled(LAND_CODES.map(async (land) =>
+    withLgblSearch(land, withLandActiveOn(await READERS[land].all()))))
   const items: LandConsultation[] = []
   const sources: LandSourceState[] = LAND_CODES.map((land, i) => {
     const result = results[i]!
@@ -427,6 +467,9 @@ export async function readLaenderInWindow(
   }
 }
 
-export function readLandDraft(land: LandCode, number: string): Promise<LandDraftDetail | null> {
-  return READERS[land].detail(number)
+export async function readLandDraft(land: LandCode, number: string): Promise<LandDraftDetail | null> {
+  const detail = await READERS[land].detail(number)
+  if (!detail) return null
+  const [draft] = await withLgblSearch(land, [detail.draft])
+  return { ...detail, draft: draft! }
 }

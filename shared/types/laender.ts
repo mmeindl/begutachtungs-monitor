@@ -51,6 +51,14 @@ export interface LandConsultation {
    * claimed for the first one.
    */
   stage?: LandStage | null | 'unknown'
+  /**
+   * Why a closed draft the Land does not follow has no Kundmachung here
+   * (`matchLgbl`; a find sets `stage` instead): `nicht-gefunden` — our
+   * search found none, which is not „nicht kundgemacht"; `vor-ris` — begun
+   * before RIS holds the Landesgesetzblatt (2015); `nicht-abrufbar` — the
+   * Landesgesetzblatt could not be read just now.
+   */
+  lgblSearch?: 'nicht-gefunden' | 'vor-ris' | 'nicht-abrufbar'
 }
 
 /** A station a Land's draft reached, in the Bund's station vocabulary. */
@@ -64,6 +72,12 @@ export interface LandStage {
   date: string | null
   /** The Kundmachung in RIS, where the station is `bgbl` (`lgblEliUrl`). */
   url?: string | null
+  /**
+   * `suche`: found by the monitor's own search of the Landesgesetzblatt
+   * (`matchLgbl`), not recorded by the Land — the page says whose finding
+   * it is. Absent: the Land's own record.
+   */
+  via?: 'suche'
 }
 
 /**
