@@ -5,6 +5,8 @@
  * list-81 leaf; the route itself is uncached (architecture.md §5).
  * Calendar apps refresh on a schedule — ETag/304 keeps that cheap.
  */
+import { dedupeDraftList } from '../utils/parliament/draftList'
+
 export default defineEventHandler(async (event) => {
   const siteUrl = useRuntimeConfig(event).public.siteUrl
   const gp = await getCurrentGp()
@@ -26,9 +28,12 @@ export default defineEventHandler(async (event) => {
   ])
   // Both halves get their `active` at request time, never from a cache:
   // `reconcileActive` for list 81, `withRisActiveOn` for the RIS records.
+  // Folded as `/api/drafts` folds: a draft two Ressorts sent stands in list
+  // 81 twice, and two VEVENTs with one UID make the calendar invalid under
+  // RFC 5545 — apps then keep one of them, or neither.
   const body = buildIcsCalendar(
     siteUrl,
-    [...items.map(reconcileActive), ...carryOver],
+    dedupeDraftList([...items.map(reconcileActive), ...carryOver]),
     [...withRisActiveOn(risOnly.items), ...risCarryOver],
   )
 

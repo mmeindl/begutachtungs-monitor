@@ -8,6 +8,7 @@
 import type { DashboardPayload } from '#shared/types'
 import { rankByStatements } from '#shared/utils/draftOrder'
 import { getCarryOverDrafts } from '../utils/parliament/carryOver'
+import { dedupeDraftList } from '../utils/parliament/draftList'
 import { getRankedPeriod } from '../utils/parliament/rankedPeriod'
 
 export default defineEventHandler(async (): Promise<DashboardPayload> => {
@@ -20,8 +21,11 @@ export default defineEventHandler(async (): Promise<DashboardPayload> => {
    * Frist, and „Jetzt in Begutachtung" claims a moment, not a period
    * (§12.35). Empty in normal operation, measured over four finished
    * periods, so this adds rows only in the weeks where it is the difference
-   * between a list and a wrong list. */
-  const open = [...items.filter((item) => item.active), ...(await getCarryOverDrafts(gp))].sort(
+   * between a list and a wrong list.
+   *
+   * Folded after the merge, as `/api/drafts` does: a draft two Ressorts sent
+   * stands in list 81 once per Ressort and would be listed twice. */
+  const open = dedupeDraftList([...items.filter((item) => item.active), ...(await getCarryOverDrafts(gp))]).sort(
     (a, b) => (a.deadline ?? '9999-12-31').localeCompare(b.deadline ?? '9999-12-31'),
   )
 

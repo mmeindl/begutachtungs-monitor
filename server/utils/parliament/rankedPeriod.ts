@@ -23,17 +23,23 @@
 import type { DraftSummary } from '#shared/types'
 import { canRankPeriod } from '#shared/utils/draftOrder'
 import { previousGp } from '#shared/utils/gp'
+import { dedupeDraftList } from './draftList'
 import { getDraftsForGp, reconcileActive } from './drafts'
 
 export interface RankedPeriod {
   /** The period the ranking speaks about — the running one, or the one before. */
   gp: string
-  /** Its whole list 81, reconciled; the caller cuts it to the ranking. */
+  /** Its whole list 81, reconciled and folded; the caller cuts it to the ranking. */
   items: DraftSummary[]
 }
 
+/**
+ * Folded like `/api/drafts` (`dedupeDraftList`): a draft two Ressorts sent
+ * stands in list 81 twice, and unfolded it took two of the five places and
+ * counted twice in the section's total — GP XXVII has three such drafts.
+ */
 async function periodOf(gp: string): Promise<RankedPeriod> {
-  return { gp, items: (await getDraftsForGp(gp)).items.map(reconcileActive) }
+  return { gp, items: dedupeDraftList((await getDraftsForGp(gp)).items.map(reconcileActive)) }
 }
 
 /**

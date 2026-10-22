@@ -12,6 +12,9 @@
  * can simply have nothing in the current GP, and a 404 would make
  * readers surface a broken subscription over a quiet one.
  */
+import { ministryFilterOptions } from '../utils/http/params'
+import { dedupeDraftList } from '../utils/parliament/draftList'
+
 const RESSORT_RE = /^[A-Za-z]{2,20}$/
 
 export default defineEventHandler(async (event) => {
@@ -39,17 +42,27 @@ export default defineEventHandler(async (event) => {
     getCarryOverDrafts(gp),
     getCarryOverRisConsultations(gp),
   ])
-  const all = [...items.map(reconcileActive), ...carryOver]
-  const scoped = code ? all.filter((item) => item.ministryCode === code) : all
+  /* Folded, as `/api/drafts` folds: a draft two Ressorts sent stands in list
+   * 81 once per Ressort, and both rows carry the same guid — which a reader
+   * either shows twice or keeps once with whichever Ressort it saw first.
+   * Folded, the one entry names both. The scope then takes the lead OR a
+   * co-Ressort, the rule of the list's own filter, so the draft stays in
+   * the feed of each Ressort that sent it. */
+  const all = dedupeDraftList([...items.map(reconcileActive), ...carryOver])
+  const scoped = code
+    ? all.filter((item) => item.ministryCode === code || item.coMinistries.some((m) => m.code === code))
+    : all
   // `active` per request (`risRecord.withRisActiveOn`), the same rule
   // `reconcileActive` applies to the Parliament half one line above: the
   // feed prints it as the filing note.
   const risItems = [...withRisActiveOn(risOnly.items), ...risCarryOver]
   const risScoped = code ? risItems.filter((item) => item.ministryCode === code) : risItems
+  // The scoped Ressort's own name, which on a co-issued draft is not the lead's.
+  const name = ministryFilterOptions(scoped).find((m) => m.code === code)?.name
   const body = buildRssFeed(
     siteUrl,
     scoped,
-    code ? { code, name: scoped[0]?.ministryName ?? risScoped[0]?.ministryName ?? null } : undefined,
+    code ? { code, name: name ?? risScoped[0]?.ministryName ?? null } : undefined,
     risScoped,
   )
 

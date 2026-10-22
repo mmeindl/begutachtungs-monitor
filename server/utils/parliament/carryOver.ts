@@ -46,6 +46,12 @@ import { getDraftsForGp, reconcileActive } from './drafts'
  * Wirft nie: eine Ergänzung darf die Liste, die sie ergänzt, nicht
  * mitreißen. Fällt der Abruf aus, zeigt die Seite die laufende Periode
  * allein — also das, was sie vor dieser Datei gezeigt hat.
+ *
+ * UNGEFALTET, mit Absicht: Gefaltet wird nach dem Zusammenführen, beim
+ * Aufrufer (`dedupeDraftList` in `/api/drafts`, `/api/dashboard`,
+ * `/feed.xml`, `/kalender.ics`). Ein zweites Falten wäre nicht harmlos —
+ * `foldJointDraft` setzt bei einer einzelnen, schon gefalteten Zeile
+ * `coMinistries` neu, aus dieser einen Zeile, also leer.
  */
 export async function getCarryOverDrafts(currentGp: string): Promise<DraftSummary[]> {
   const prev = previousGp(currentGp)
