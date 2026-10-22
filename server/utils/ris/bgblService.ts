@@ -379,12 +379,18 @@ function outcomeOf(
  * id the corpus does not hold is not a state at all: it throws, and errors
  * are never cached — otherwise every syntactically valid `BEGUT_…` anyone
  * makes up would leave an entry behind.
+ *
+ * So is a record that is no Verordnung (22.10.2026): a Gesetzesentwurf is
+ * promulgated in Teil I, which this join does not search, so its silence in
+ * Teil II says nothing — the period's pass below has always skipped it, and
+ * only this one did not. The Teilpensionsgesetz (Frist 27.06.2025, a law
+ * without a Ministerialentwurf) read „keine Kundmachung gefunden" here.
  */
 export const getBgblOutcome = defineCachedFunction(
   async (risId: string): Promise<BgblOutcome> => {
     const detail = await getRisConsultation(risId)
     if (!detail) throw createError({ statusCode: 404, statusMessage: 'Begutachtung nicht gefunden' })
-    if (!detail.deadline) return UNKNOWN
+    if (detail.kind !== 'verordnung' || !detail.deadline) return UNKNOWN
     const records = (await Promise.all(yearsFor(detail.deadline).map((y) => getBgblTeil2Year(y)))).flat()
     return outcomeOf(detail, joinDraftToBgbl(draftOf(detail), records))
   },

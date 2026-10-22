@@ -258,6 +258,18 @@ describe('welche Jahrgänge gefragt werden', () => {
     expect(asked).toEqual([])
   })
 
+  /* Ein Gesetzesentwurf wird in Teil I kundgemacht, den dieser Abgleich nicht
+   * durchsucht — sein Schweigen in Teil II ist keine Antwort. Bis zum
+   * 22.10.2026 stand beim Teilpensionsgesetz „keine Kundmachung gefunden". */
+  it('antwortet für einen Gesetzesentwurf `unbekannt`, ohne RIS zu fragen', async () => {
+    pin('2026-09-26')
+    for (const kind of ['gesetz', 'unbestimmt'] as const) {
+      getRisConsultation.mockResolvedValue(detail({ kind, title: 'Teilpensionsgesetz', deadline: '2025-06-27' }))
+      expect((await getBgblOutcome('BEGUT_1')).state).toBe('unbekannt')
+    }
+    expect(asked).toEqual([])
+  })
+
   /* Ohne Frist gibt es kein Fenster und also keine Frage an RIS — die vierte
    * Antwort `unbekannt`, für das, was das Fenster gar nicht entscheiden kann. */
   it('fragt gar nicht, wo keine Frist steht', async () => {
