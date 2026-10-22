@@ -14,7 +14,7 @@
  */
 import type { DraftStation, DraftStatus, OpenVorlage } from '#shared/types'
 import { DRAFT_STATION_LABEL, DRAFT_STATION_ORDER } from '#shared/utils/draftStations'
-import { countLabelDe, formatNumberDe } from '#shared/utils/format'
+import { countLabelDe } from '#shared/utils/format'
 import { GP_STARTS, intToRoman, isPlausibleGp, romanToInt } from '#shared/utils/gp'
 import { firstQueryValue } from '#shared/utils/queryParams'
 
@@ -44,6 +44,11 @@ export type ArtFilter = '' | 'ministerialentwurf' | 'verordnung'
  * out rather than „u. a.", which a screen reader reads as „u a".
  */
 export const ART_VERORDNUNG_NOUN = 'Verordnungsentwürfe und andere'
+
+/* The same noun for one record, in the count line only: it is ONE of the
+ * two, so „oder" where the set says „und" — „1 Verordnungsentwürfe und
+ * andere" stood there until 22.10.2026. */
+const ART_VERORDNUNG_NOUN_ONE = 'Verordnungs- oder anderer Entwurf'
 
 export const ART_OPTIONS: { value: ArtFilter; label: string }[] = [
   { value: '', label: 'Alle Arten' },
@@ -307,7 +312,7 @@ export function draftCountLabel(c: {
     parts.push(
       c.ris === 'failed'
         ? 'die Verordnungsentwürfe sind gerade nicht abrufbar'
-        : `${formatNumberDe(c.ris)} ${ART_VERORDNUNG_NOUN}`,
+        : countLabelDe(c.ris, ART_VERORDNUNG_NOUN_ONE, ART_VERORDNUNG_NOUN),
     )
   }
   return parts.join(' · ')

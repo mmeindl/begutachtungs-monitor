@@ -253,4 +253,14 @@ describe('draftCountLabel', () => {
       '1 Ministerialentwurf · 1 Regierungsvorlage ohne Begutachtung',
     )
   })
+
+  it('names one record of the other half as one of the two, not as „und andere"', () => {
+    // A search that hits a single Verordnung, e.g. „Leistungs- und Strukturstatistik".
+    expect(draftCountLabel({ me: 0, vorlagen: [], ris: 1, laterStationsOnly: false })).toBe(
+      '0 Ministerialentwürfe · 1 Verordnungs- oder anderer Entwurf',
+    )
+    expect(draftCountLabel({ me: 0, vorlagen: [], ris: 0, laterStationsOnly: false })).toBe(
+      `0 Ministerialentwürfe · 0 ${ART_VERORDNUNG_NOUN}`,
+    )
+  })
 })
