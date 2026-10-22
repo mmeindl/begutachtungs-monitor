@@ -93,7 +93,19 @@ interface Claim { entry: LgblEntry; f1: number }
 
 /** The best candidate for one draft, before the one-draft-per-LGBl guard. */
 function bestFor(draft: LandConsultation, index: readonly IndexedEntry[], ref: string): Claim | null {
-  const words = lgblWords(draft.title)
+  const full = bestForWords(lgblWords(draft.title), draft, index, ref)
+  if (full) return full
+  // A draft that explains itself in brackets the Kundmachung leaves out
+  // („… Fischereiverordnung geändert wird (Managementmaßnahme Signalkrebs
+  // Pacifastacus leniusculus)", „(NG-VO)"): once more without them, where
+  // what remains still says what law it is — two distinctive words, or one
+  // that is a law's name.
+  const core = lgblWords(draft.title.replace(/\([^)]*\)/g, ' '))
+  const named = core.size === 1 && /^.{8,}(?:gesetz|verordnung|ordnung|statut)$/.test([...core][0]!)
+  return core.size >= 2 || named ? bestForWords(core, draft, index, ref) : null
+}
+
+function bestForWords(words: Set<string>, draft: LandConsultation, index: readonly IndexedEntry[], ref: string): Claim | null {
   if (!words.size) return null
   const from = Date.parse(ref)
   const to = from + WINDOW_DAYS * DAY_MS
