@@ -53,6 +53,7 @@ payload:
 - **A second oracle: list 142's own `TYP` flag (2026-09-16).** Column 19 carries `I` (institution) or `P` (person) on 100 % of rows — measured over 106,626 across GP XXVIII/ME, GP XXVII/ME and the RV Stellungnahmen; it agrees with the name heuristic on 96.8 / 99.7 / 94.2 %. It records **how the submitter registered**, not what the name denotes, which is why it sees the one class a name rule structurally cannot: a person standing *behind* an org-shaped naming segment ("Windland Energieerzeugungs GmbH; <Vorname Nachname>", "i.A. <Nachname>, <Verband>"). `leadsWithPersonName` inspects the segment before the first semicolon and looks straight past those. **It may only ever veto, never authorise:** `P` suppresses a name the string alone would publish; `I` changes nothing by itself, because publishing on an undocumented upstream column would hand it the hard invariant — one silent flip and the site republishes names. The `I` disagreements are printed by `scripts/audit/classifier.ts` as list 3, a review queue; `ORG_ALLOWLIST` is what publishes one, by hand, and therefore outranks the flag. Orthogonal to `nonpublic` (902 non-public rows are `P`, 13 are `I`), so the placeholder string stays the only truth there. Column 19 is asserted in `parliament/listHeaders.ts` by its `feld_name` (`TYP`; its `label` is literally `"?"`), so a move fails loudly. Adoption cost across all three corpora: **0 names newly published**, 5 + 24 + 0 rows no longer published — of the 29, roughly sixteen named a real person. `docs/api-exploration.md` §4 carries the numbers.
 - **The allowlist carries an optional display name (2026-09-16).** Parliament stores the submitter in two fields shaped "Nachname, Vorname"; an organisation that fills them in comes back inverted ("Pressefreiheit, Institut für", "GmbH, Verkehrsverbund Ost-Region (VOR); …") and was printed that way for as long as the row was public. `ORG_ALLOWLIST` is a `Map`: the value is the name to print, `null` keeps the upstream string. A display name is a **de-inversion read off the same string**, never an invention and never a person's name. The 13 organisations whose staff registered privately — the flag's false vetoes — were added this way; each matched exactly one upstream string in GP XXVIII/XXVII and nothing else.
 - **Validation is a corpus comparison, not a unit test.** A change to `classifySubmitter` is run old-against-new over every list-142 row of a GP; every string that becomes public is read by hand (they must all be organisations), every string that becomes hidden is printed with its naming segment masked (they should all be persons). The 2026-09-15 change, final round: GP XXVIII 482 rows newly public (126 distinct strings), all institutions; 1 newly hidden, a lawyer filing with the firm. Six rounds were needed — each added pattern was tried against the corpus and three of them (`schule`, `österreichisch`, `hochschüler`) first let a person through in GP XXVII (a dotted degree that broke the title stripper, an all-lowercase name, two representatives filing jointly with a slash) before the guard learned those shapes.
+- **A stored name is held against today's classifier (2026-10-22).** The last-good store (`parliament/lastgood.ts`) serves rows an earlier process classified, and the classifier keeps tightening (23.09., 28.09., 30.09.) — a record outlives the rules that wrote it, and it is read exactly when list 142 has dropped a draft for days. So every stored name passes `recheckStoredStatement` (`parliament/list142.ts`) on the way out: it is served only where `classifySubmitter` still prints exactly that name — with the `TYP` flag the record now keeps beside each organisation's name, or on the string rules alone for older records. A name that fails is withheld, never shortened; the raw string it came from is gone. Measured on the 596 local records: 292 stored names withheld (289 of them in the 101 records of 18.09.), 0 of the 3,149 organisation rows written since 03.10.
 - SNME detail pages (incl. full texts) are **not fetched at all** in v1. Links point to parlament.gv.at (linking ≠ republishing).
 - Unit tests for the classifier are mandatory (`tests/privacy.test.ts`).
 
@@ -113,7 +114,7 @@ of them, whichever folder it sits in:
 - `ris/titleSimilarity.ts` / `ris/ministryCodes.ts` — **pure**: the toolkit the join was calibrated on (title normalisation, tokens, components, `daysBetween`; the `"CODE (long name)"` reader and the lineage groups), borrowed by `parliament/related.ts`, `parliament/precedingDraft.ts`, `ris/bgblJoin.ts`, `ris/risOnly.ts` and the full-text search instead of being re-derived per caller.
 - `parliament/related.ts` — **pure**: same-title drafts (predecessor/successor) by exact equality of the normalised title tokens, evaluated on the 57 GP XXVII drafts without RV (§12.10). `parliament/draftDetail.ts` looks in this, the previous and — once the GP is over — the next GP, and keeps a predecessor only when it produced no RV.
 - `lawtext/` / `diff/` — **pure**: Parliament Word-template HTML → § units (or Novellierungsanordnungen); article pairing by law name (the "Artikel n" marker is read from the heading text, not its class — the two documents disagree on the level), package scoping via `diffLawPackage`, unit alignment by heading, LCS word diff, editorial-vs-substantive rule. `lawDiffService.ts` fetches and caches around them.
-- `parliament/lastgood.ts` — on-disk store for the last-good statements aggregation of one ME (one JSON record per ME, write-then-rename, versioned; read back only when the live list-142 fetch fails). State directory: `BM_STATE_DIR` → systemd `STATE_DIRECTORY` (`/var/lib/begutachtungs-monitor`) → `./.data`. Deliberately outside the app dir — `deploy.sh` rsyncs `.output/` with `--delete`.
+- `parliament/lastgood.ts` — on-disk store for the last-good statements aggregation of one ME (one JSON record per ME, write-then-rename, versioned; read back only when the live list-142 fetch fails). Version 2 since 2026-10-22: records carry `unlisted` (the rest of a list above `STATEMENTS_CAP`) and list 142's `TYP` flag beside each organisation's name, and every stored name is re-checked against today's classifier on the way out (§3); a version-1 record is still read, but refused above the cap. State directory: `BM_STATE_DIR` → systemd `STATE_DIRECTORY` (`/var/lib/begutachtungs-monitor`) → `./.data`. Deliberately outside the app dir — `deploy.sh` rsyncs `.output/` with `--delete`.
 
 **Cache rules (August 2026, forced by a real failure):**
 
@@ -194,6 +195,49 @@ of them, whichever folder it sits in:
    result may be kept (§3), and a cached raw response would hand the
    empty-list retry of rule 4 the very answer it is retrying. Nothing has to
    be deleted by hand any more.
+6. **A failure is not an answer — not even a partial one (2026-10-22).**
+   Nitro caches every value that is not `undefined`, so a `catch` that
+   returns `null`, `[]` or „not found" stores an outage as a finding for the
+   whole TTL. Five places did, against the rule §12.13 had already written
+   for the annex: the station map said „Bisher keine Regierungsvorlage" for
+   a draft whose record had not loaded (6 h), the § comparison „bisher nicht
+   kundgemacht" where RIS had not answered (24 h), BrKons read RIS's error
+   envelope (HTTP 200 with `OgdSearchResult.Error`) as „no such law",
+   `?station=bgbl` turned an RIS failure into „0 Verordnungsentwürfe", and
+   the Erläuterungen lost every passage at its § when the draft's text did
+   not arrive. Now a read whose answer the page states throws. A read that
+   is only garnish — the Kundmachung beside a pair that does not reach it,
+   one § name among sixty, the passages under a general part read in full —
+   lets the answer go out without it and tells the cache so:
+   `cache/gathered.ts` (`Gathered<T>` with Nitro's `validate` option;
+   `onlyComplete` stores nothing incomplete, `keepIncompleteFor(ms)` keeps an
+   incomplete station map ten minutes instead of six hours, so a Parliament
+   outage does not mean a rebuild on every request). A draft whose own
+   record failed has no chain in the map at all: its row says „Begutachtung
+   abgeschlossen", the last state the list itself evidences.
+7. **What one request may cost is bounded where it is spent (2026-10-22).**
+   Outbound: a per-host FIFO limit in the one HTTP client
+   (`upstream/slots.ts`) — 16 requests at once to Parliament, 24 to every
+   other host, each the widest legitimate fan-out (a cold station map holds
+   12, a cold draft page 16 RIS documents for the Lesefassung). A slot is
+   held for one attempt including its body, never across a backoff or a
+   cached call, so nested fan-outs cannot deadlock; the timeout starts once
+   the slot is taken. Before, fifteen requests to `/api/drafts?gp=…` put 180
+   requests to Parliament in flight — the guard hides `/api/stations`, not
+   the build behind it. Bodies are counted while they arrive and dropped at
+   the cap (`readCapped`; default 64 MB, Parliament 8 MB, list 142 64 MB,
+   scripts unbounded) instead of being compared once whole. The worker pool
+   pulls no new item after a failure, in both modes. Inbound: `?q=` on the
+   list endpoints at most 1,000 characters and 100 words (`MAX_LIST_QUERY_*`
+   in `shared/utils/queryParams.ts`, the search field's `maxlength`), folded
+   once per request; `/erlaeuterungen` and `/konsolidiert` check that the
+   draft exists before their cached call, so a made-up number leaves no
+   entry; Nuxt Icon's endpoint caches into its own 1 MB mount
+   (`cache:nuxt:icon`), not into the document LRU. And the memos of
+   `ris/titleSimilarity.ts` have a ceiling (8,192 titles, 4,096 pairs): the
+   BGBl-II join of one older period left 774 MB (XXVII) to 1.5 GB (XXV) of
+   pairs behind on a 384 MB heap — the period chooser on `/entwuerfe` was one
+   request away from killing the process (§12.32, Nachtrag 22.10.2026).
 - `parliament/list81.ts`, `parliament/list101.ts`, `parliament/list142.ts`, `parliament/detailJson.ts` (with `htmlText.ts`, `dates.ts`, `rowCells.ts`, `organisations.ts` underneath) — rows→types. **List 81, 0-based:** 0 gp, 2 inr, 4 title, 5 citation, 6 ministry code, 7 path, 8 deadline (display), 10 arrival (ISO "Datesort"), 11 active `'J'`, 13 statement count, 14 fristsort (`yyyymmdd` → ISO; empty → null), 16 full ministry name. **List 142, 0-based:** 2 snmeInr, 4 date, 6 submitter (HTML `<a>`), 12 endorsements, 15 citation. Stage texts: strip HTML, extract + absolutize links.
 - RV enrichment: last `/gegenstand/{gp}/I/{nr}` link from the stages (ME→RV is 1:n → the outcome takes the latest RV; the comparison, its Erläuterungen and its BGBl station take the RV whose Gesetzestext the draft's text evolution carries, `findComparisonRvLink`, §13 Nr. 4); RV JSON: `content.status.bgbllinks[]`, entry with `Abfrage=BgblAuth` (never blindly `[0]`).
 - Documents: `content.documents[]`; text evolution: `content.statements.documents[]` (misleading key, intentional upstream!).
@@ -1589,6 +1633,30 @@ mitgezählt werden (82/ME), fremde Gesetze, die wegfallen (255/ME, 331/ME), und
 188/ME aus Schritt 4. Die Deckung der Aufklapper an der Gegenüberstellung
 bleibt bei 1.816 von 2.396 (`pnpm corpus:erlaeuterungen -- --join`): Die
 Ausgabe ist vorher und nachher Byte für Byte gleich.
+
+**Nachtrag 22.10.2026: „unverändert" heißt jetzt: kein Wort anders.** Die
+Grenze, unter der eine Begründung als unverändert galt, war eine Drift von
+2 % (`CHANGED_AT`) — „darunter sind es Satzzeichen und Leerzeichen". Das
+stimmte nur für kurze Passagen: Ein ersetztes Wort in einer Passage von mehr
+als 50 Wörtern bleibt unter 2 %. Über die 353 Entwürfe der GP XXVI–XXVIII mit
+Erläuterungen auf beiden Seiten trugen **680 der 4.907 als unverändert
+gezählten Begründungen geänderte Wörter** — 61/ME XXVIII „Jänner" → „April",
+„Juli 2026" → „Jänner 2027"; 32/ME „Dezember 2025" → „Juni 2026"; 112/ME
+„RAO" → „RAPG" unter „Keine der 34 Begründungen hat das Ressort geändert."
+Seither ist eine Begründung unverändert, wo beide Fassungen dieselben Wörter
+in derselben Reihenfolge tragen, Satzzeichen, Leerzeichen und Bindestriche
+beiseite (`wordDiff.sameWording`; ein Zeichen zwischen zwei Ziffern gehört
+zur Zahl, „1,5" ist nicht „15"); `drift` bleibt als Maß, entscheidet aber
+nichts mehr. Geändert je GP, XXVI / XXVII / XXVIII: 626 → 741, 2.051 →
+2.472, 747 → 853. Sieben Entwürfe sagten „keine" oder „nicht geändert" und
+sagen es nicht mehr; 38 kurze Passagen, die sich nur in Satzzeichen,
+Leerzeichen oder Bindestrich unterschieden, gelten jetzt als unverändert.
+Rund 37 der 680 sind reine Schreibung (Groß/klein, Tippfehler, Varianten,
+Datumsnullen) — ob die Seite sie eigens kennzeichnet, ist offen. Die „16 Paare
+praktisch unverändert (< 2 %)" der Messung oben sind mit der alten Grenze
+gezählt. Im selben Zug liest der Vergleich jede Anweisung einmal statt je
+Kandidat: XXVI 75/ME 5,05 s → 0,59 s auf dem einen Node-Prozess, Ausgabe
+über alle 838 Vergleiche des Korpus Byte für Byte gleich.
 
 ### 12.11 Speaking names — mostly a lookup, not a language model
 
@@ -7602,6 +7670,19 @@ und begründet ist das in §12.12a („Prüfung 4"); dieses Tor hier bleibt dabe
 Zeile für Zeile, wie es war — dieselben Berichte beider Pfade, dieselben
 Zeilen für L, R-alt, R-neu und U.
 
+**Nachtrag 22.10.2026: ohne Wortvergleich keine Bestätigung.** Eine
+geänderte Zeile über `MAX_DP_CELLS` kommt ohne Segmente, und beide Regeln
+der rechten Spalte lesen nur, was die Segmente als neu zeigen — sie sahen
+dort kein neues Wort, und der Paragraph galt als bestätigt, sobald die linke
+Spalte stimmte. So AußWG 2011 § 1 (14.642 / 16.235 Zeichen), mit vollem
+Vergleich 94 neue Wörter, alle im Entwurf: richtig, aber aus Zufall.
+`rightColumnCheck` zählt solche Zeilen (`undiffed`), und ein Paragraph mit
+einer davon bleibt „ungeprüft" (`REASON_TOO_LONG`); was die Regeln an den
+übrigen Zeilen finden, hält weiter zurück. Über die 400 jüngsten
+Begut-Datensätze: vier solche Zeilen im PDF-Pfad, drei im Tabellenpfad, ein
+Urteil bewegt sich (PDF-Pfad 2.049 / 355 / 1.386 → 2.048 / 355 / 1.387); die
+Grundlinie des Drift-Alarms ist im selben Commit neu gezogen.
+
 ### 12.14 Stellungnahmen zur Regierungsvorlage, der Dokument-Link und der Spaltenkopf
 
 Three things from one round of user feedback (2026-09-15), all shipped the
@@ -7626,7 +7707,13 @@ station the page already draws, off the SSR path. Sized before it is
 fetched: without `showAll` the API returns one page plus the total, and
 above `RV_STATEMENTS_CAP` (5,000) the rows are not fetched — the COVID-era
 Vorlagen carry tens of thousands (1289 d.B.: 41,376), ten megabytes of names
-for one line. No last-good fallback: a failed fetch costs a line, not the
+for one line. (Since 22.10.2026 the cap is `STATEMENTS_CAP` in
+`parliament/list142.ts` and holds for the Ministerialentwurf too, which had
+none: 164/ME of GP XXVII read 100,000 of its 106,183 rows — where `showAll`
+stops without a word — and aggregated them as all of them. Every whole-list
+read is now held against the `count` of the same answer and fails as a 502
+when short; measured live on 183 drafts of GP XXVIII/XXVII, `count` and the
+rows agree on every one.) No last-good fallback: a failed fetch costs a line, not the
 page. Not built: the Ausschuss's answer to this input (that is the
 parliament comparison, §12.2).
 
@@ -11141,6 +11228,41 @@ Fällen zu grob — bei der EKB-InvestitionsV stehen drei Kandidaten gleichauf
 bei 0,900, darunter eine fremde Investitionskostenersatzverordnung, und der
 Gleichstand heißt keine Antwort. Das ist eine eigene Arbeit, nicht dieser
 Fix.
+
+**Nachtrag 22.10.2026: Speicher, ein Wort und die Zeit.** Drei Befunde einer
+Prüfung, alle am eingefrorenen Korpus gemessen (3.018 Verordnungen,
+GP XXII–XXVIII):
+
+- *Der Join riss den Prozess um.* Die Titel-Memos in
+  `ris/titleSimilarity.ts` vergaßen nichts, und `bgblCandidates` verglich
+  jeden Titel jedes Teil-II-Datensatzes im Fenster, bevor die Ressortprüfung
+  sie verwarf. Nach einem Join blieben 109 MB (XXVIII), 774 MB (XXVII) und
+  über 1,5 GB (XXV) im Heap — bei 384 MB in Produktion genügte die Periode
+  XXVII im Wähler von `/entwuerfe`. Jetzt fallen fremde Stellen vor dem
+  Titelvergleich weg (Ergebnis Byte für Byte gleich), die Memos haben eine
+  Decke (§5, Regel 7), Datum, Ressort und Titelkern rechnet jeder Datensatz
+  einmal, und der Periodenjoin gibt alle 25 Entwürfe die Ereignisschleife
+  frei: zusammen unter 10 MB, XXVII in 0,66 s statt 7,4 s.
+- *Ein Wort ist kein Titel.* Hatte eine Seite nur ein Wort, reichte ein
+  Präfix von acht Zeichen für `cont` = 1 und damit 0,9 — die
+  „EAG-Investitionszuschüsseverordnung-Wasserstoff" wurde zur
+  Wasserstoffverordnung. Ein einwortiger Titel zählt jetzt nur, wo die andere
+  Seite das Wort wörtlich trägt. Und bei Gleichstand gewinnt die erste
+  Kundmachung NACH der Frist, dann die nächste davor — die Sortierung stellte
+  die frühere voran, auch eine aus der eigenen Begutachtungszeit
+  (Lehrberufslisteverordnung 2024: 179 → 376/2024). XXV–XXVIII 1.405 →
+  1.410 Treffer: acht falsche fort, 13 richtige dazu, die vorher an einem
+  Präfix-Rivalen hingen, keine richtige verloren. Bekannt falsch bleibt die
+  UHSBV (jetzt 330/2019 statt 182/2019).
+- *Nichts vor dem Beginn.* Eine Kundmachung, die vor der Begutachtung
+  erschien, kann nicht ihr Ergebnis sein; sie fällt aus dem Join und zählt
+  auch als Rivale nicht mehr. Fünf Entscheidungen ändern sich: drei falsche
+  fort (darunter EAG-Wasserstoff 2024 → 158/2024), zwei richtige dazu
+  (Saisonkontingentverordnung 2022, Winterfahrverbotskalender Salzburg 2024).
+
+Offen und nicht gebaut: eine Eins-zu-eins-Regel je Periode (19 Nummern
+werden von zwei Entwürfen beansprucht, sieben davon einmal zu Unrecht), und
+ob ein Gleichstand „keine Kundmachung gefunden" oder „unbekannt" heißen soll.
 
 ### 12.33 Die BGBl-Station — gebaut, und die fünf falschen Unterschiede, die sie aufgedeckt hat
 
