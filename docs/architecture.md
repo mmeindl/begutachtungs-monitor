@@ -13492,7 +13492,8 @@ In der Liste entscheiden ginge nicht: Eine Entscheidung liest die PDF des
 Entwurfs und bis zu fünf Vorlagen, die Liste einer Periode hält über hundert
 davon. Also das Muster der Stationskarte des Bundes (§12.13,
 `parliament/stationMap.ts`): eine Karte je Land und Zeitfenster
-(`laender/verdicts.ts`), im Hintergrund gebaut, zwei Entscheidungen zugleich;
+(`laender/verdicts.ts`), im Hintergrund gebaut, eine Entscheidung nach der
+anderen;
 die Liste wartet höchstens zwei Sekunden auf sie und antwortet sonst mit der
 Titelsuche — mit dem, was sie bis dahin sagte, nie mit Schlechterem. Jede
 Entscheidung ist die der Seite (`resolveKundmachung`, eine Woche gehalten),
@@ -13511,6 +13512,15 @@ Minuten nach einem kalten Start; 27156 steht jetzt auch in der Liste als
 Salzburger Entwürfe der Periode, Liste gegen Seite: keine Abweichung. Ein
 Entwurf, der nach dem Bau dazukommt, zeigt bis zum nächsten (sechs Stunden)
 die Titelsuche.
+
+Der Speicher, gemessen am Produktionsbuild mit dem Heap der Produktion (384
+MB) und der Abfolge des Prewarm, dazu GP XXVII: Der Bau hob die Spitze des
+Heaps von 212 auf 315 MB (nach voller Sammlung 135 → 205 MB), ohne
+Abbruch. Daher eine Entscheidung nach der anderen statt zweier — zwei große
+Vorlagen (bis 30 MB) werden nie zugleich gelesen. Dass pdf.js seine Dokumente
+offen lässt (`extractText` mit einem Dokument statt mit Bytes), kostet
+nichts: Über 300 PDFs aus dem Harness bleibt der Heap nach voller Sammlung
+bei 11–12 MB, mit und ohne Schließen.
 
 ### 12.61 Abänderungsanträge im Salzburger Landtag (23.10.2026)
 

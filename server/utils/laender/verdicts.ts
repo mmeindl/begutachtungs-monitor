@@ -12,7 +12,7 @@
  * THE BUND'S STATION MAP, FOR THE LÄNDER (`parliament/stationMap.ts`): one
  * decision per draft costs a draft PDF and up to five Vorlagen, so it must
  * never be paid while a list waits. The map holds the decisions of one Land
- * for one period's window, built in the background a few at a time; the
+ * for one period's window, built in the background one at a time; the
  * list waits for it at most `VERDICT_BUDGET_MS` and otherwise answers as
  * before — with the title search, which is what the list said until now and
  * never worse than that. Each decision is the page's own cached one
@@ -70,8 +70,15 @@ export function decidedByText(land: LandCode, d: LandConsultation): boolean {
   return !d.active && !!s && s !== 'unknown' && s.via === 'suche' && !!s.detail && (RESOLVED[land]?.includes(d.kind) ?? false)
 }
 
-/** How many decisions are made at once: each reads PDFs, which pdf.js parses on the event loop. */
-const CONCURRENCY = 2
+/**
+ * One decision at a time: each reads PDFs, which pdf.js parses on the event
+ * loop, and a Regierungsvorlage may weigh up to 30 MB. Measured under the
+ * prewarm's sequence with the production heap (384 MB, 23.10.2026): the
+ * build lifted the heap's peak from 212 to 315 MB; one at a time keeps two
+ * large Vorlagen from being parsed at once, at the price of a slower build
+ * nobody waits for.
+ */
+const CONCURRENCY = 1
 const VERDICT_MAP_TTL_S = 60 * 60 * 6
 const INCOMPLETE_MAP_TTL_MS = 10 * 60 * 1000
 /** How long a list waits for the map before it answers with the title search. */
