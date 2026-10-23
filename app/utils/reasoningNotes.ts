@@ -24,7 +24,7 @@ export function substantiveReasoningChanges(stats: Pick<ReasoningDiffResponse['s
   return stats.changed - stats.editorial
 }
 
-export function reasoningRateNote(stats: ReasoningDiffResponse['stats'] | null | undefined): string | null {
+export function reasoningRateNote(stats: ReasoningDiffResponse['stats'] | null | undefined, author = 'das Ressort'): string | null {
   if (!stats?.compared) return null
   const { compared } = stats
   const changed = substantiveReasoningChanges(stats)
@@ -39,15 +39,15 @@ export function reasoningRateNote(stats: ReasoningDiffResponse['stats'] | null |
   // the one the count needs to be read right.
   if (compared === 1) {
     return changed === 0
-      ? 'Die Begründung, die in beiden Fassungen steht, hat das Ressort nicht geändert.'
-      : 'Die Begründung, die in beiden Fassungen steht, hat das Ressort geändert.'
+      ? `Die Begründung, die in beiden Fassungen steht, hat ${author} nicht geändert.`
+      : `Die Begründung, die in beiden Fassungen steht, hat ${author} geändert.`
   }
   //
   // „…, die in beiden Fassungen stehen" left the plural on 02.10.2026: it
   // shares a paragraph with the pointer to the Erläuterungen now, and the
   // restriction stands on /so-funktionierts. The singular keeps it — „Die
   // Begründung" alone would not say which one.
-  if (changed === 0) return `Keine der ${compared} Begründungen hat das Ressort geändert.`
-  if (changed === compared) return `Alle ${compared} Begründungen hat das Ressort geändert.`
-  return `${changed} der ${compared} Begründungen hat das Ressort geändert.`
+  if (changed === 0) return `Keine der ${compared} Begründungen hat ${author} geändert.`
+  if (changed === compared) return `Alle ${compared} Begründungen hat ${author} geändert.`
+  return `${changed} der ${compared} Begründungen hat ${author} geändert.`
 }

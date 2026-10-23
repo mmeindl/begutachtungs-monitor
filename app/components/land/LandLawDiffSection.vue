@@ -1,12 +1,13 @@
 <script setup lang="ts">
-import type { LandCode, LandExplanationsResponse, LandLawDiffResponse, LandTextStation, LawDiffSegment, LawDiffUnit, LawStationId } from '#shared/types'
+import type { LandCode, LandExplanationsResponse, LandLawDiffResponse, LandReasoningResponse, ReasoningDiffEntry, LandTextStation, LawDiffSegment, LawDiffUnit, LawStationId } from '#shared/types'
 import { isNovelleUnits } from '#shared/utils/changeShare'
 import { diffUnitKey } from '#shared/utils/diffKey'
 import { countLabelDe, formatDateDe } from '#shared/utils/format'
 import { landShortTitle } from '#shared/utils/laender'
 import { lawStationPairQuestion } from '#shared/utils/lawStations'
 import { displayId, extraHeading, unitName } from '#shared/utils/unitName'
-import { type DiffBadge, badgeCounts, badgeLabels } from '~/utils/diffBadges'
+import { BADGE_CLASS, type DiffBadge, PILL_CLASS, badgeCounts, badgeLabels } from '~/utils/diffBadges'
+import { reasoningRateNote } from '~/utils/reasoningNotes'
 import { readsSideBySide, splitSegments } from '~/utils/diffSides'
 import ListBox from '~/components/ui/ListBox.vue'
 
@@ -55,6 +56,22 @@ function reasonsFor(u: LawDiffUnit) {
   if (!n) return []
   return (explanations.value?.particular ?? []).filter((e) => e.paras.includes(n) && (!e.law || !u.article || lawKey(e.law) === lawKey(u.article)))
 }
+
+/* The Land's reasoning, draft against Vorlage, at each change after the
+   Begutachtung — the Ministerialentwurf's Begründungsvergleich, by the same
+   rule: shown where it changed, or where the two group it differently
+   (`LawDiffSection.reasoningOf`, §12.54). */
+const { data: reasoning } = useFetch<LandReasoningResponse>(
+  () => `/api/laender/${props.land}/${props.number}/begruendung`,
+  { lazy: true, server: false, immediate: props.from === 'entwurf' && props.to === 'rv' },
+)
+function reasoningOf(u: LawDiffUnit): ReasoningDiffEntry | null {
+  if (!(props.from === 'entwurf' && props.to === 'rv')) return null
+  const key = reasoning.value?.units?.[diffUnitKey(u)]
+  const entry = key ? reasoning.value?.entries?.[key] : null
+  return entry && (entry.changed || !entry.comparable) ? entry : null
+}
+const reasoningNote = computed(() => reasoningRateNote(reasoning.value?.available ? reasoning.value.stats : null, 'das Land'))
 
 /* The Bund's question for the same pair, word for word (`lawStationPairQuestion`). */
 const AS_LAW_STATION: Record<Exclude<LandTextStation, 'geltend'>, LawStationId> = { entwurf: 'me', rv: 'rv', ausschuss: 'ausschuss', lgbl: 'bgbl' }
@@ -200,6 +217,7 @@ const summary = computed(() => {
         um. Was hier als neu erscheint, kann aus {{ data.sharedWith.length > 1 ? 'jenen Entwürfen' : 'jenem Entwurf' }} stammen.
       </p>
       <p v-if="summary" class="text-sm text-ink">{{ summary }}</p>
+      <p v-if="reasoningNote" class="mt-1 text-sm text-ink-secondary">{{ reasoningNote }}</p>
       <!-- What the Land's document shows and this list does not, counted:
            a § is shown only where RIS confirms our reading of its text in
            force (`landTguService`). -->
@@ -278,7 +296,35 @@ const summary = computed(() => {
                 :to-text="b.unit.toText"
                 :from-label="FROM_LABEL"
                 :to-label="TO_LABEL"
-              />
+              >
+                <!-- The Land's reasoning at this change, as the ministry's on
+                     the Bund's page: closed, it answers a second question. -->
+                <Disclosure v-if="reasoningOf(b.unit)" size="xs" tone="secondary" class="mt-2">
+                  <template #summary>
+                    <template v-if="!reasoningOf(b.unit)!.comparable">Die Begründung des Landes zu dieser Änderung</template>
+                    <template v-else>
+                      Die Begründung des Landes zu diesem Paragraphen hat sich geändert
+                      <span v-if="reasoningOf(b.unit)!.editorial" :class="[PILL_CLASS, BADGE_CLASS.editorial]">{{ BADGE_LABEL.editorial }}</span>
+                    </template>
+                  </template>
+                  <div v-if="!reasoningOf(b.unit)!.comparable || !reasoningOf(b.unit)!.segments" class="pb-2 pl-6">
+                    <p class="mb-2 text-xs text-ink-muted">
+                      {{ reasoningOf(b.unit)!.comparable ? 'Für einen Wortvergleich ist die Passage zu lang — hier beide Fassungen im Ganzen.' : 'Entwurf und Regierungsvorlage fassen die Begründung zu dieser Änderung verschieden zusammen; verglichen wird sie deshalb nicht.' }}
+                    </p>
+                    <SideBySide :from-label="FROM_LABEL" :to-label="TO_LABEL">
+                      <template v-if="reasoningOf(b.unit)!.fromText" #from>
+                        <p class="hyphens-auto text-ink">{{ reasoningOf(b.unit)!.fromText }}</p>
+                      </template>
+                      <template #to>
+                        <p class="hyphens-auto text-ink">{{ reasoningOf(b.unit)!.toText }}</p>
+                      </template>
+                    </SideBySide>
+                  </div>
+                  <p v-else class="hyphens-auto pb-2 pl-6 text-sm leading-relaxed text-ink">
+                    <DiffText :segments="reasoningOf(b.unit)!.segments ?? []" />
+                  </p>
+                </Disclosure>
+              </DiffBody>
             </div>
           </template>
         </DiffGroup>

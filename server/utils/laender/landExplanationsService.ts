@@ -14,7 +14,8 @@ import { safeExternalUrl } from '#shared/utils/safeExternalUrl'
 import { DERIVED_CACHE } from '../cache/base'
 import { addressOf } from '../diff/lawDiff'
 import { landDraftUnits } from './landLawDiff'
-import { headingZiffern, parseLandExplanations } from './landExplanations'
+import { headingZiffern, parseLandExplanations, type LandExplanationsParse } from './landExplanations'
+import type { LawUnit } from '../lawtext/lawUnits'
 import { amendedLawsOf } from './landTgu'
 import { draftDocument, pdfPages } from './texts/read'
 import type { LandDraftRecord } from './texts/stations'
@@ -27,6 +28,28 @@ function romanValue(r: string): number {
     total += v < (ROMAN[r[i + 1]!] ?? 0) ? -v : v
   }
   return total
+}
+
+/**
+ * Each „Zu …" entry with the §§ it explains: from its brackets, or — where it
+ * names only the draft's Ziffern — from the instructions those Ziffern are
+ * (`units`, the text's own `landDraftUnits`). The law: the one the draft
+ * amends, or in a package the one its Artikel number stands for.
+ */
+export function explainedParagraphs(parse: LandExplanationsParse, units: readonly LawUnit[] | null, laws: readonly string[]): LandExplanationsResponse['particular'] {
+  const byZiffer = new Map<string, string>()
+  for (const u of units ?? []) {
+    const n = /^Z(\d+)$/.exec(u.id)?.[1]
+    const para = /^§(\d+[a-z]*)/.exec(addressOf(u.heading) ?? '')?.[1]
+    const article = romanValue(/Artikel\s+([IVXL]+)/.exec(u.articleNumber ?? '')?.[1] ?? 'I')
+    if (n && para) byZiffer.set(`${article}|${n}`, para)
+  }
+  return parse.particular.map((e) => {
+    const article = e.article ? romanValue(e.article) : 1
+    const paras = e.paras.length ? e.paras : [...new Set(headingZiffern(e.heading).map((z) => byZiffer.get(`${article}|${z}`)).filter((p): p is string => Boolean(p)))]
+    const law = laws.length === 1 ? laws[0]! : (e.article ? laws[article - 1] ?? null : null)
+    return { law, paras, heading: e.heading, text: e.text }
+  })
 }
 
 const unavailable = (reason: string, publisher: string, document: LandExplanationsResponse['document'] = null): LandExplanationsResponse => ({
@@ -49,20 +72,7 @@ export async function landExplanations(land: LandCode, detail: LandDraftRecord):
   // The draft's instructions, for entries that name only Ziffern.
   const draftUrl = draft ? safeExternalUrl(draft.url) : null
   const units = own ? (draftUrl ? landDraftUnits(await pdfPages(draftUrl).catch(() => [])) : null) : landDraftUnits(pages)
-  const byZiffer = new Map<string, string>()
-  for (const u of units ?? []) {
-    const n = /^Z(\d+)$/.exec(u.id)?.[1]
-    const para = /^§(\d+[a-z]*)/.exec(addressOf(u.heading) ?? '')?.[1]
-    const article = romanValue(/Artikel\s+([IVXL]+)/.exec(u.articleNumber ?? '')?.[1] ?? 'I')
-    if (n && para) byZiffer.set(`${article}|${n}`, para)
-  }
-  const laws = amendedLawsOf(detail.draft.title)
-  const particular = parse.particular.map((e) => {
-    const article = e.article ? romanValue(e.article) : 1
-    const paras = e.paras.length ? e.paras : [...new Set(headingZiffern(e.heading).map((z) => byZiffer.get(`${article}|${z}`)).filter((p): p is string => Boolean(p)))]
-    const law = laws.length === 1 ? laws[0]! : (e.article ? laws[article - 1] ?? null : null)
-    return { law, paras, heading: e.heading, text: e.text }
-  })
+  const particular = explainedParagraphs(parse, units, amendedLawsOf(detail.draft.title))
   return { available: true, unavailableReason: null, document, publisher, labelled: parse.labelled, general: parse.general, particular }
 }
 

@@ -1,4 +1,4 @@
-import type { LawDiffUnit } from './lawDiff'
+import type { LawDiffUnit, ReasoningDiffEntry } from './lawDiff'
 
 /**
  * Begutachtungen der Länder (22.10.2026).
@@ -281,4 +281,21 @@ export interface LandExplanationsResponse {
   general: { heading: string | null; text: string[] }[]
   /** One per „Zu …" heading; `paras` from its brackets, or from the draft's own instructions where it names only Ziffern. */
   particular: { law: string | null; paras: string[]; heading: string; text: string[] }[]
+}
+
+/**
+ * The Land's reasoning between its draft and the Regierungsvorlage, at the
+ * changes of that comparison (`laender/landReasoningService.ts`,
+ * docs/architecture.md §12.54) — the Ministerialentwurf's
+ * Begründungsvergleich (`ReasoningDiffResponse`), keyed the same way.
+ */
+export interface LandReasoningResponse {
+  available: boolean
+  unavailableReason: string | null
+  /** The two documents read, for the credit line. */
+  sources: LandTextDocument[]
+  /** `diffUnitKey` of a change → its entry's key. */
+  units: Record<string, string>
+  entries: Record<string, ReasoningDiffEntry>
+  stats: { compared: number; changed: number; editorial: number; uncompared: number }
 }

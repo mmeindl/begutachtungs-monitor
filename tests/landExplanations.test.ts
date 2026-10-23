@@ -28,3 +28,11 @@ describe('a Land\'s Erläuterungen', () => {
     ])
   })
 })
+
+describe('the rate note names who changed the reasoning', () => {
+  it('says „das Land" on a Land\'s page', async () => {
+    const { reasoningRateNote } = await import('../app/utils/reasoningNotes')
+    expect(reasoningRateNote({ compared: 13, changed: 4, editorial: 0, uncompared: 0 }, 'das Land')).toBe('4 der 13 Begründungen hat das Land geändert.')
+    expect(reasoningRateNote({ compared: 13, changed: 4, editorial: 0, uncompared: 0 })).toBe('4 der 13 Begründungen hat das Ressort geändert.')
+  })
+})
