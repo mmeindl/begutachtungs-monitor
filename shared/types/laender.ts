@@ -60,7 +60,8 @@ export interface LandConsultation {
    * before RIS holds the Landesgesetzblatt (2015); `nicht-abrufbar` — the
    * Landesgesetzblatt could not be read just now; `widerlegt` — the search
    * found one, and its Regierungsvorlage does not hold the draft's text
-   * (`texts/kundmachung.ts`; the draft's page only, 23.10.2026).
+   * (`texts/kundmachung.ts`, 23.10.2026; on the lists where the period's
+   * map of the page's decisions is built, `laender/verdicts.ts`).
    */
   lgblSearch?: 'nicht-gefunden' | 'vor-ris' | 'nicht-abrufbar' | 'widerlegt'
   /** With `lgblSearch: 'widerlegt'`: what the search had found, „LGBl. Nr. 30/2026". */

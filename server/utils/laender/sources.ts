@@ -56,6 +56,7 @@ import {
 import { fetchLgblIndex } from './lgblIndex'
 import { hasTgu } from './landTguService'
 import { resolveKundmachung } from './texts/kundmachung'
+import { listVerdictOf, withListVerdicts, withVerdict } from './verdicts'
 import { comparisonsOf, type LandDraftRecord } from './texts/stations'
 import { matchLgbl, type LgblResult } from './lgblSearch'
 
@@ -511,10 +512,10 @@ export async function readLaenderInWindow(
     else console.warn(`[laender] ${land} nicht abrufbar:`, result.reason instanceof Error ? result.reason.message : result.reason)
     return { land, state: result.status === 'fulfilled' ? 'ok' : 'unavailable', listUrl: READERS[land].listUrl }
   })
-  const inWindow = withLandActiveOn(items).filter((d) => {
+  const inWindow = await withListVerdicts(withLandActiveOn(items).filter((d) => {
     const date = landDraftDate(d)
     return date !== null && date >= window.from && (window.to === null || date <= window.to)
-  })
+  }), `${window.from}_${window.to ?? 'laufend'}`)
   return {
     items: inWindow.filter((d) => status === 'all' || (status === 'open') === d.active),
     sources,
@@ -554,26 +555,14 @@ export async function readLandDraft(land: LandCode, number: string): Promise<Lan
     return null
   })
   const stage = detail.draft.stage
-  if (resolved === 'widerlegt' && stage && stage !== 'unknown' && stage.detail) {
-    // The texts refuted the title search's find: no Kundmachung of ours,
-    // and the page says which one the search found and why it is not it.
-    detail = { ...detail, draft: { ...detail.draft, stage: undefined, lgblSearch: 'widerlegt', lgblRefuted: stage.detail } }
-  } else if (resolved && resolved !== 'widerlegt' && stage && stage !== 'unknown') {
-    detail = {
-      ...detail,
-      draft: {
-        ...detail.draft,
-        stage: {
-          ...stage,
-          detail: resolved.record.nr,
-          date: resolved.record.datum ?? stage.date,
-          url: resolved.record.url ?? stage.url,
-          certainBy: resolved.certainBy,
-          ...(resolved.searched ? { searched: resolved.searched } : {}),
-        },
-      },
-      ...(resolved.landtag && !detail.procedure ? { procedure: resolved.landtag.procedure, landtag: resolved.landtag.landtag } : {}),
-    }
+  // Refuted, the find goes and the page says which one the search had;
+  // decided, the stage names the decided Landesgesetzblatt — one rule with
+  // the lists (`withVerdict`).
+  if (stage && stage !== 'unknown') {
+    detail = { ...detail, draft: withVerdict(detail.draft, listVerdictOf(resolved, stage)) }
+  }
+  if (resolved && resolved !== 'widerlegt' && resolved.landtag && !detail.procedure) {
+    detail = { ...detail, procedure: resolved.landtag.procedure, landtag: resolved.landtag.landtag }
   }
   return { ...detail, comparisons: comparisonsOf(land, detail, hasTgu(land, detail.draft.documents)) }
 }
