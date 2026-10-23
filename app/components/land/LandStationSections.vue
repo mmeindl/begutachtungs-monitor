@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import type { LandCode, LandConsultation, LandLandtag, LandLawDiffResponse, LandProcedureStep } from '#shared/types'
+import type { LandCode, LandConsultation, LandLandtag, LandProcedureStep, LandTextStation } from '#shared/types'
 import type { Fact } from '~/components/ui/FactList.vue'
 import { citeLineDe } from '#shared/utils/citations'
 import { formatDateDe } from '#shared/utils/format'
@@ -33,36 +33,34 @@ const props = defineProps<{
   /** What the Landtag did, read from that record (`ooeLandtagOf`). */
   landtag: LandLandtag | null
   landName: string
-  /** The draft's address, for the comparison under the Kundmachung. */
+  /** The draft's address, for the comparisons. */
   land?: LandCode
   number?: string
+  /** The comparisons the draft's texts allow (`LandDraftDetail.comparisons`): rendered where their station is, and only these. */
+  comparisons?: [LandTextStation, LandTextStation][]
 }>()
+
+/* Whether the server offers this pair for this draft. */
+const offers = (from: LandTextStation, to: LandTextStation) => Boolean(props.land && props.number && props.comparisons?.some(([a, b]) => a === from && b === to))
 
 const steps = computed(() => props.procedure ?? [])
 const rvStep = computed(() => steps.value.find((s) => s.station === 'rv') ?? null)
 /* Whether the Landtag did anything past the Vorlage's arrival and the
    Kundmachung — the section exists only then. */
 const landtagSteps = computed(() => steps.value.filter((s) => s.station !== 'rv' && s.station !== 'bgbl'))
-/* What the comparison below established (`landLawDiffService`, §12.48):
-   another Landesgesetzblatt than the title search's, or its confirmation. */
-const resolved = ref<LandLawDiffResponse['kundmachung']>(null)
-
 const kundmachung = computed(() => {
   const s = props.draft.stage
   return s && s !== 'unknown' && s.station === 'bgbl' && s.detail ? s : null
 })
-/* The Landesgesetzblatt the card shows: the search's, until the comparison
-   has found the draft's own text in another one's Regierungsvorlage. */
-const shownKundmachung = computed(() => {
-  const k = kundmachung.value
-  const r = resolved.value
-  return k && r && r.certainBy && r.nr !== k.detail ? { ...k, detail: r.nr, url: r.url, date: r.date } : k
+/* How the Landtag cites the Vorlage, from the record's own words:
+   „Beilage 1454/2026" (Oberösterreich), „Nr 148 der Beilagen (6. Session der
+   16. GP)" (Salzburg). */
+const beilage = computed(() => {
+  const label = rvStep.value?.label ?? ''
+  const ooe = /Beilage\s+(\d+\/\d{4})/.exec(label)?.[1]
+  if (ooe) return `Beilage ${ooe}`
+  return /(Nr\s+\d+ der Beilagen(?: \([^)]*\))?)/.exec(label)?.[1] ?? null
 })
-const corrected = computed(() => Boolean(resolved.value?.certainBy && kundmachung.value && resolved.value.nr !== kundmachung.value.detail))
-
-/* „Beilage 1454/2026" — the Landtag's number for the Vorlage, from the
-   record's own words. */
-const beilage = computed(() => /Beilage\s+(\d+\/\d{4})/.exec(rvStep.value?.label ?? '')?.[1] ?? null)
 const rvFacts = computed<Fact[]>(() => {
   const step = rvStep.value
   if (!step) return []
@@ -109,15 +107,15 @@ const reportName = computed(() => {
       <FactList :facts="rvFacts">
         <template #value-vorlage>
           <ExternalLink :href="rvStep.url!" class="link-inline">
-            Regierungsvorlage<template v-if="beilage">, Beilage {{ beilage }}</template>
+            Regierungsvorlage<template v-if="beilage">, {{ beilage }}</template>
           </ExternalLink>
         </template>
       </FactList>
     </div>
     <!-- What changed after the Begutachtung: the draft against the
          Vorlage, the comparison the Bund's drafts lead with. -->
-    <div v-if="land && number && rvStep.url" class="mt-8">
-      <LandLawDiffSection :land="land" :number="number" from="entwurf" to="rv" />
+    <div v-if="offers('entwurf', 'rv')" class="mt-8">
+      <LandLawDiffSection :land="land!" :number="number!" from="entwurf" to="rv" />
     </div>
   </section>
 
@@ -154,13 +152,21 @@ const reportName = computed(() => {
           </template>
         </FactList>
         <SectionCredits :sources="[]" :marked="false">
-          <span>Quelle: Landtag {{ landName }}, wie er das Verfahren selbst verzeichnet</span>
+          <!-- Oberösterreich's Landtag keeps a record of every step;
+               Salzburg's facts are read off the Landesgesetzblatt's links in
+               RIS and the committee's report (`texts/salzburgLandtag.ts`). -->
+          <span v-if="land === 'sbg'">Quelle: Bericht des Ausschusses, mit Regierungsvorlage und Landesgesetzblatt im Rechtsinformationssystem verknüpft</span>
+          <span v-else>Quelle: Landtag {{ landName }}, wie er das Verfahren selbst verzeichnet</span>
         </SectionCredits>
       </div>
       <!-- What the committee changed: the Vorlage against the text in its
            report. Not against the Kundmachung, which adds the editing for
            publication („Hektar" → „ha") — not the committee's (§12.44). -->
-      <LandLawDiffSection v-if="land && number && landtag?.report?.url && rvStep?.url" :land="land" :number="number" from="rv" to="ausschuss" />
+      <LandLawDiffSection v-if="offers('rv', 'ausschuss')" :land="land!" :number="number!" from="rv" to="ausschuss" />
+      <!-- Where the committee's report carries no text (Salzburg), what the
+           Landtag changed is read against the Kundmachung, the Landtag's own
+           text with the editing for publication in it (`texts/stations.ts`). -->
+      <LandLawDiffSection v-if="offers('rv', 'lgbl')" :land="land!" :number="number!" from="rv" to="lgbl" />
       <!-- Every step, in the Landtag's order and words: the sittings,
            agendas and Wortprotokolle the frame leaves out. On the sheet the
            Land's Stellungnahmen stand on (22.10.2026), with their date
@@ -205,11 +211,11 @@ const reportName = computed(() => {
           <!-- Flex row like every line with „Zitieren" (`CiteButton`). -->
           <p class="flex flex-wrap items-center gap-x-3 gap-y-1">
             <span>
-              <ExternalLink v-if="shownKundmachung!.url" :href="shownKundmachung!.url" class="link-inline">{{ shownKundmachung!.detail }}</ExternalLink><template v-else>{{ shownKundmachung!.detail }}</template><template v-if="shownKundmachung!.date">, am {{ formatDateDe(shownKundmachung!.date) }}</template>
+              <ExternalLink v-if="kundmachung.url" :href="kundmachung.url" class="link-inline">{{ kundmachung.detail }}</ExternalLink><template v-else>{{ kundmachung.detail }}</template><template v-if="kundmachung.date">, am {{ formatDateDe(kundmachung.date) }}</template>
             </span>
             <CiteButton
-              v-if="shownKundmachung!.url"
-              :text="citeLineDe(shownKundmachung!.detail!, shownKundmachung!.url)"
+              v-if="kundmachung.url"
+              :text="citeLineDe(kundmachung.detail, kundmachung.url)"
               subject="Das Landesgesetzblatt"
             />
           </p>
@@ -219,23 +225,23 @@ const reportName = computed(() => {
            Begutachtung, so the assignment is ours, by title (§12.43) — and
            can be wrong where the same law changed twice within two years. -->
       <template v-if="kundmachung.via === 'suche'">
-        <p v-if="corrected" class="mt-3 text-sm text-ink-secondary">
-          Die Suche über den Titel fand {{ kundmachung.detail }}. Kundgemacht wurde
-          dieser Entwurf aber als {{ resolved!.nr }}:
-          <template v-if="resolved!.certainBy === 'vorlage'">Die Regierungsvorlage, die das
+        <p v-if="kundmachung.searched" class="mt-3 text-sm text-ink-secondary">
+          Die Suche über den Titel fand {{ kundmachung.searched }}. Kundgemacht wurde
+          dieser Entwurf aber als {{ kundmachung.detail }}:
+          <template v-if="kundmachung.certainBy === 'vorlage'">Die Regierungsvorlage, die das
             Rechtsinformationssystem mit diesem Landesgesetzblatt verknüpft, enthält
             den Text des Entwurfs.</template><template v-else>Dieses Landesgesetzblatt enthält den Text des Entwurfs.</template>
         </p>
-        <p v-else-if="resolved?.certainBy === 'vorlage'" class="mt-3 text-sm text-ink-secondary">
+        <p v-else-if="kundmachung.certainBy === 'vorlage'" class="mt-3 text-sm text-ink-secondary">
           Vom Monitor über den Titel im Rechtsinformationssystem gefunden und bestätigt:
           Die Regierungsvorlage, die das Rechtsinformationssystem mit diesem
           Landesgesetzblatt verknüpft, enthält den Text des Entwurfs.
         </p>
-        <p v-else-if="resolved?.certainBy === 'wortlaut'" class="mt-3 text-sm text-ink-secondary">
+        <p v-else-if="kundmachung.certainBy === 'wortlaut'" class="mt-3 text-sm text-ink-secondary">
           Vom Monitor über den Titel im Rechtsinformationssystem gefunden und bestätigt:
           Das Landesgesetzblatt enthält den Text des Entwurfs.
         </p>
-        <p v-else-if="resolved?.certainBy === 'kette'" class="mt-3 text-sm text-ink-secondary">
+        <p v-else-if="kundmachung.certainBy === 'kette'" class="mt-3 text-sm text-ink-secondary">
           Vom Monitor über den Titel im Rechtsinformationssystem gefunden und bestätigt:
           Entwurf und Landesgesetzblatt nennen dieselbe letzte Änderung des Gesetzes.
         </p>
@@ -257,8 +263,8 @@ const reportName = computed(() => {
          server decides after reading, and
          says so where it does not compare; against a wrong match the
          comparison would report a whole law rewritten. -->
-    <div v-if="(kundmachung.via !== 'suche' || land === 'sbg') && land && number" class="mt-8">
-      <LandLawDiffSection :land="land" :number="number" from="entwurf" to="lgbl" @kundmachung="resolved = $event" />
+    <div v-if="offers('entwurf', 'lgbl')" class="mt-8">
+      <LandLawDiffSection :land="land!" :number="number!" from="entwurf" to="lgbl" />
     </div>
   </section>
 </template>

@@ -81,6 +81,16 @@ export interface LgblRecord {
   xmlUrl: string | null
   /** Salzburg's `RegierungsvorlageLink`: the Landtag's PDF, where the law came from one (§12.47). */
   vorlageUrl: string | null
+  /** „26": the Vorlage's number among the Landtag's Beilagen. */
+  vorlageNr: string | null
+  /** The committee's report, `AusschussberichtLink`, and its Beilage number. */
+  ausschussUrl: string | null
+  ausschussNr: string | null
+  /** The Landtag's Beschluss, `BeschlussDatum`. */
+  beschluss: string | null
+  /** „16." and „6. Session" — the Landtag's period and session, for citing the Beilagen. */
+  periode: string | null
+  session: string | null
 }
 
 /* eslint-disable @typescript-eslint/no-explicit-any -- RIS's envelope */
@@ -94,14 +104,20 @@ function recordOf(ref: any): LgblRecord | null {
       if (!xmlUrl && typeof u?.Url === 'string' && u.Url.endsWith('.xml')) xmlUrl = safeExternalUrl(u.Url)
     }
   }
-  const vorlage = meta?.LgblAuth?.RegierungsvorlageLink
-  const eli = meta?.LgblAuth?.EuropeanLegislationIdentifier
+  const a = meta?.LgblAuth ?? {}
+  const str = (v: unknown) => (typeof v === 'string' && v.trim() ? v.trim() : null)
   return {
     nr,
-    datum: typeof meta?.Kundmachungsdatum === 'string' ? meta.Kundmachungsdatum : null,
-    url: typeof eli === 'string' ? safeExternalUrl(eli) : null,
+    datum: str(meta?.Kundmachungsdatum),
+    url: str(a.EuropeanLegislationIdentifier) ? safeExternalUrl(a.EuropeanLegislationIdentifier) : null,
     xmlUrl,
-    vorlageUrl: typeof vorlage === 'string' ? safeExternalUrl(vorlage) : null,
+    vorlageUrl: str(a.RegierungsvorlageLink) ? safeExternalUrl(a.RegierungsvorlageLink) : null,
+    vorlageNr: str(a.Regierungsvorlage),
+    ausschussUrl: str(a.AusschussberichtLink) ? safeExternalUrl(a.AusschussberichtLink) : null,
+    ausschussNr: str(a.Ausschussbericht),
+    beschluss: str(a.BeschlussDatum),
+    periode: str(a.Gesetzgebungsperiode),
+    session: /(\d+)\.\s*Session/.exec(String(a.Sitzungsnummer ?? ''))?.[1] ?? /\/(\d+)Session\//.exec(String(a.RegierungsvorlageLink ?? ''))?.[1] ?? null,
   }
 }
 

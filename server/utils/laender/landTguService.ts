@@ -20,7 +20,8 @@
  * checked stretch by stretch between its elisions (`standsInRis`, §12.49).
  * Salzburg publishes none in a form measured here.
  */
-import type { LandCode, LandDraftDetail, LandLawDiffResponse, LandTextDocument } from '#shared/types'
+import type { LandCode, LandDocument, LandDraftDetail, LandLawDiffResponse, LandTextDocument } from '#shared/types'
+import type { LandDraftRecord } from './texts/stations'
 import { safeExternalUrl } from '#shared/utils/safeExternalUrl'
 import { formatDateDe } from '#shared/utils/format'
 import { diffLawUnits, summarizeDiff } from '../diff/lawDiff'
@@ -39,7 +40,7 @@ const PARALLEL = 8
 const TGU_TITLE_RE = /gegenüber/i
 
 /** The Land's Textgegenüberstellung among the draft's documents, if it published one. */
-export function tguDocument(detail: LandDraftDetail) {
+export function tguDocument(detail: LandDraftRecord) {
   return detail.draft.documents.find((d) => TGU_TITLE_RE.test(d.title)) ?? null
 }
 
@@ -48,7 +49,7 @@ const emptyStats = { total: 0, unchanged: 0, changed: 0, editorial: 0, inserted:
 function unavailable(reason: string, rest: Partial<LandLawDiffResponse> = {}): LandLawDiffResponse {
   return {
     from: 'geltend', to: 'entwurf', available: false, unavailableReason: reason, units: [], stats: emptyStats,
-    fromDocument: null, toDocument: null, addedLaws: [], droppedLaws: [], sharedWith: [], withheld: 0, kundmachung: null, ...rest,
+    fromDocument: null, toDocument: null, addedLaws: [], droppedLaws: [], sharedWith: [], withheld: 0, ...rest,
   }
 }
 
@@ -68,7 +69,7 @@ interface TguRead {
  * Oberösterreich: the Land's own Textgegenüberstellung, one column with
  * underline and strike (`landTgu.ts`).
  */
-async function readOoe(detail: LandDraftDetail): Promise<TguRead | string> {
+async function readOoe(detail: LandDraftRecord): Promise<TguRead | string> {
   const doc = tguDocument(detail)
   const url = doc ? safeExternalUrl(doc.url) : null
   if (!doc || !url) return NO_TGU
@@ -89,7 +90,7 @@ const WIEN_HEAD_RE = /^(?:Seite \d+ von \d+|\d+\/\d{4}|\d{1,2}\. (?:Jänner|Janu
  * Fassung") — read by the Bund's reader (`annex/annexPdf.ts`) from the page
  * it starts on, with the Land's running head taken out first.
  */
-async function readWien(detail: LandDraftDetail): Promise<TguRead | string> {
+async function readWien(detail: LandDraftRecord): Promise<TguRead | string> {
   const doc = tguDocument(detail) ?? detail.draft.documents[0]
   const url = doc ? safeExternalUrl(doc.url) : null
   if (!doc || !url) return NO_TGU
@@ -107,7 +108,13 @@ async function readWien(detail: LandDraftDetail): Promise<TguRead | string> {
 }
 
 const NO_TGU = 'Das Land hat zu diesem Entwurf keine Textgegenüberstellung veröffentlicht.'
-const READ_TGU: Partial<Record<LandCode, (detail: LandDraftDetail) => Promise<TguRead | string>>> = { ooe: readOoe, w: readWien }
+
+/** Whether a Land's Textgegenüberstellung is there to read: its own document, or for Wien inside the draft's PDF (the server says when there is none). */
+export function hasTgu(land: LandCode, documents: readonly LandDocument[]): boolean {
+  if (!READ_TGU[land]) return false
+  return land === 'w' || documents.some((d) => TGU_TITLE_RE.test(d.title))
+}
+const READ_TGU: Partial<Record<LandCode, (detail: LandDraftRecord) => Promise<TguRead | string>>> = { ooe: readOoe, w: readWien }
 const LAW_LABEL: Partial<Record<LandCode, string>> = { ooe: 'Oö. Landesrecht', w: 'Wiener Landesrecht' }
 
 export async function compareTgu(land: LandCode, detail: LandDraftDetail): Promise<LandLawDiffResponse> {
@@ -161,6 +168,5 @@ export async function compareTgu(land: LandCode, detail: LandDraftDetail): Promi
     droppedLaws: [],
     sharedWith: [],
     withheld,
-    kundmachung: null,
   }
 }

@@ -67,10 +67,8 @@ const shortTitle = computed(() => (draft.value ? landShortTitle(draft.value.titl
 const kindLabel = computed(() => (draft.value ? RIS_KIND_LABEL[draft.value.kind] : ''))
 const citeAs = computed(() => (draft.value ? `${kindLabel.value} „${draft.value.title}“ (Land ${landName.value})` : ''))
 
-/* The Land's Textgegenüberstellung (`landTguService`): Oberösterreich's is a
-   document of its own; Wien's stands at the end of the draft's PDF, so the
-   section always asks there and the server says when there is none. */
-const hasTgu = computed(() => props.land === 'w' || (props.land === 'ooe' && (draft.value?.documents ?? []).some((d) => /gegenüber/i.test(d.title))))
+/* The Land's Textgegenüberstellung, where the server offers it (`LandDraftDetail.comparisons`). */
+const hasTgu = computed(() => (data.value?.comparisons ?? []).some(([a, b]) => a === 'geltend' && b === 'entwurf'))
 
 const documents = computed<DraftDocument[]>(() =>
   (draft.value?.documents ?? []).map((d) => ({ title: d.title, formats: [{ type: 'pdf', url: d.url }] })))
@@ -244,7 +242,7 @@ useSeoMeta({ ogTitle: () => draft.value?.title ?? 'Entwurf', ogType: 'article' }
 
         <!-- The stations after the Begutachtung, one section each, where
              the Land records them (OÖ). -->
-        <LandStationSections :draft="detail.draft" :procedure="detail.procedure" :landtag="detail.landtag" :land-name="landName" :land="land" :number="number" />
+        <LandStationSections :draft="detail.draft" :procedure="detail.procedure" :landtag="detail.landtag" :land-name="landName" :land="land" :number="number" :comparisons="detail.comparisons" />
       </template>
     </FetchGate>
   </div>

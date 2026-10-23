@@ -50,6 +50,9 @@ import {
   ooeStageOf,
 } from './oberoesterreich'
 import { fetchLgblIndex } from './lgblIndex'
+import { hasTgu } from './landTguService'
+import { resolveKundmachung } from './texts/kundmachung'
+import { comparisonsOf, type LandDraftRecord } from './texts/stations'
 import { matchLgbl, type LgblResult } from './lgblSearch'
 
 const LAND_POLICY: UpstreamPolicy = {
@@ -138,7 +141,7 @@ interface LandReader {
    */
   all: () => Promise<LandConsultation[]>
   /** One draft by the Land's number; null when unknown (404). */
-  detail: (number: string) => Promise<LandDraftDetail | null>
+  detail: (number: string) => Promise<LandDraftRecord | null>
 }
 
 /* ------------------------------------------------------------------ *
@@ -504,9 +507,38 @@ export async function draftsSharingKundmachung(land: LandCode, nr: string, excep
  * (Landtag year and number) or `v560198` (a Verordnung's link id). */
 export const LAND_NUMBER_RE = /^(?:\d{1,9}|20\d{2}-\d{1,6}|v\d{1,9})$/
 
+/**
+ * One draft, as its page reads it: the Land's record, the title search's
+ * Kundmachung — decided by text where the Land names none
+ * (`resolveKundmachung`, which for Salzburg also brings the Landtag's
+ * procedure) — and the comparisons its texts allow (`comparisonsOf`).
+ */
 export async function readLandDraft(land: LandCode, number: string): Promise<LandDraftDetail | null> {
-  const detail = await READERS[land].detail(number)
-  if (!detail) return null
-  const [draft] = await withLgblSearch(land, [detail.draft])
-  return { ...detail, draft: draft! }
+  const record = await READERS[land].detail(number)
+  if (!record) return null
+  const [searched] = await withLgblSearch(land, [record.draft])
+  let detail: LandDraftRecord = { ...record, draft: searched! }
+  const resolved = await resolveKundmachung(land, detail.draft).catch((err: unknown) => {
+    console.warn(`[laender] Kundmachung ${land}/${number}:`, err instanceof Error ? err.message : err)
+    return false as const
+  })
+  const stage = detail.draft.stage
+  if (resolved && stage && stage !== 'unknown') {
+    detail = {
+      ...detail,
+      draft: {
+        ...detail.draft,
+        stage: {
+          ...stage,
+          detail: resolved.record.nr,
+          date: resolved.record.datum ?? stage.date,
+          url: resolved.record.url ?? stage.url,
+          certainBy: resolved.certainBy,
+          ...(resolved.searched ? { searched: resolved.searched } : {}),
+        },
+      },
+      ...(resolved.landtag && !detail.procedure ? { procedure: resolved.landtag.procedure, landtag: resolved.landtag.landtag } : {}),
+    }
+  }
+  return { ...detail, comparisons: comparisonsOf(land, detail, hasTgu(land, detail.draft.documents)) }
 }

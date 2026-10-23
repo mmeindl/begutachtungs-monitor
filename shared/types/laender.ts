@@ -88,6 +88,14 @@ export interface LandStage {
    * yet used to compare (`landLawDiffService`).
    */
   unique?: boolean
+  /**
+   * With `via: 'suche'`: how the find became certain — decided by text on
+   * the draft's page (`laender/texts/kundmachung.ts`, §12.47–50). Absent:
+   * not decided, and nothing is compared against it.
+   */
+  certainBy?: LandKundmachungCertainty
+  /** The title search's find, where the text decided on another (§12.48). */
+  searched?: string
 }
 
 /**
@@ -190,6 +198,11 @@ export interface LandDraftDetail {
   retentionNote: string | null
   /** The Land's list the draft stands on, for the credit line. */
   listUrl: string
+  /**
+   * The comparisons this draft's texts allow, in the page's order
+   * (`laender/texts/stations.ts`): the page renders these and no other.
+   */
+  comparisons: [LandTextStation, LandTextStation][]
 }
 
 /**
@@ -232,14 +245,6 @@ export interface LandLawDiffResponse {
    * (`geltend → entwurf` only; 0 elsewhere).
    */
   withheld: number
-  /**
-   * The Landesgesetzblatt the draft was held against, and what made it
-   * certain (`to === 'lgbl'` only; null elsewhere). `searched` is the title
-   * search's find where the monitor searched — it differs from `nr` where
-   * the Regierungsvorlage showed another (§12.48). `certainBy` null: the
-   * search's find could not be confirmed, and nothing was compared.
-   */
-  kundmachung: { nr: string; url: string | null; date: string | null; certainBy: LandKundmachungCertainty | null; searched: string | null } | null
 }
 
 /**
