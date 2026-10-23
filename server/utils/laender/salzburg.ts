@@ -257,15 +257,22 @@ export function salzburgDrafts(entries: RawEntry[], kind: LandDraftKind): LandCo
   /* The draft itself, filed after its annexes: first among them, and the
      row takes its number — the address it had before the annexes were
      folded, which links in circulation point to. */
+  /* Each title's letters once: the lookups below compare against every draft. */
+  const lettersOf = new Map<string, string>()
+  const lettersFor = (title: string) => {
+    let value = lettersOf.get(title)
+    if (value === undefined) lettersOf.set(title, value = letters(title))
+    return value
+  }
   const awaiting = (title: string, entry: RawEntry) =>
-    [...awaitingMain].find((d) => letters(d.title) === letters(title) && daysApart(dateOf(d), dateOf(entry)) <= SAME_FILING_DAYS)
+    [...awaitingMain].find((d) => lettersFor(d.title) === lettersFor(title) && daysApart(dateOf(d), dateOf(entry)) <= SAME_FILING_DAYS)
   /* The draft an annex names in the same letters, filed before it within the
      month — the latest such. */
   const spelledAlike = (base: string, own: number, entry: RawEntry) => {
-    const want = letters(base)
+    const want = lettersFor(base)
     let best: LandConsultation | null = null
     for (const d of drafts) {
-      if (numberOf(d.url) < own && letters(d.title) === want && daysApart(dateOf(d), dateOf(entry)) <= SAME_FILING_DAYS &&
+      if (numberOf(d.url) < own && lettersFor(d.title) === want && daysApart(dateOf(d), dateOf(entry)) <= SAME_FILING_DAYS &&
         (!best || numberOf(d.url) > numberOf(best.url))) best = d
     }
     return best
