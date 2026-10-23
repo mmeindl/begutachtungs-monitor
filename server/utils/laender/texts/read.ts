@@ -47,7 +47,7 @@ export function pdfSource(label: string, url: string, publisher: string): TextSo
 }
 
 /** What a document's title says it is NOT: the draft's companions, filed as entries of their own. */
-const COMPANION_RE = /gegenüberstellung|\btgü\b|erläuter|vorblatt|anlage|beilage|anhang|stellungnahme|folgenabschätzung|\bplan|lageplan|pläne|karte|planungsgebiet/i
+const COMPANION_RE = /gegenüberstellung|\btgü(?!\p{L})|erläuter|vorblatt|anlage|beilage|anhang|stellungnahme|folgenabschätzung|\bplan|lageplan|pläne|karte|planungsgebiet/iu
 
 /**
  * The draft's own text among its documents. Salzburg files Erläuterungen,

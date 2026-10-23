@@ -107,8 +107,13 @@ async function resolve(land: LandCode, draft: LandConsultation): Promise<Resolve
   }
 }
 
-/** The Länder whose finds are decided by text — those the oracles measured. */
-export const RESOLVED_LAENDER: readonly LandCode[] = ['sbg']
+/**
+ * Whose finds are decided by text, and of which kind. Salzburg names no
+ * Kundmachung at all; Oberösterreich's Landtag names every Gesetz's, so only
+ * its Verordnungen rest on the search — decided by the method measured on
+ * Salzburg's 371 (§12.50), which reads the texts and nothing of the Land.
+ */
+export const RESOLVED: Partial<Record<LandCode, readonly LandConsultation['kind'][]>> = { sbg: ['gesetz', 'verordnung'], ooe: ['verordnung'] }
 
 /**
  * Held a week in the derived layer: the documents do not change once
@@ -118,7 +123,7 @@ export const RESOLVED_LAENDER: readonly LandCode[] = ['sbg']
  */
 export const resolveKundmachung = defineCachedFunction(
   async (land: LandCode, draft: LandConsultation): Promise<ResolvedKundmachung | false> =>
-    (RESOLVED_LAENDER.includes(land) ? await resolve(land, draft) : null) ?? false,
+    (RESOLVED[land]?.includes(draft.kind) ? await resolve(land, draft) : null) ?? false,
   {
     name: 'land-kundmachung',
     base: DERIVED_CACHE,

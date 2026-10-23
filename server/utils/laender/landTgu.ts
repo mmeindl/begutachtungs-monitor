@@ -287,17 +287,38 @@ function unitOf(p: TguParagraph, lines: string[]): LawUnit | null {
   }
 }
 
-/** The two texts as units for `diffLawUnits`: the law in force, and the law as the draft would have it. */
+/** The heading every unit of one § carries into `diffLawUnits`, so that its first rule pairs them (`tguUnits`). */
+const SAME_PARA = '\u0000tgu-para '
+
+/**
+ * The two texts as units for `diffLawUnits`: the law in force, and the law
+ * as the draft would have it. The engine pairs a § by heading, then by id
+ * only where the two look alike — a guard against renumbering. Here the
+ * document itself says both sides are one §, so each side carries the same
+ * marker heading and the engine's first rule pairs them however little
+ * they share („(1) bis (6) …" against „… (7) Neu"); `withHeadings` puts the
+ * printed headings back.
+ */
 export function tguUnits(paragraphs: readonly TguParagraph[]): { from: LawUnit[]; to: LawUnit[] } {
   const from: LawUnit[] = []
   const to: LawUnit[] = []
   for (const p of paragraphs) {
     const a = unitOf(p, p.old)
     const b = unitOf(p, p.neu)
-    if (a) from.push(a)
-    if (b) to.push(b)
+    const mark = `${SAME_PARA}${p.law ?? ''} ${p.number}`
+    if (a) from.push({ ...a, heading: mark })
+    if (b) to.push({ ...b, heading: mark })
   }
   return { from, to }
+}
+
+/** The printed heading of each §, back on the compared units (`tguUnits`). */
+export function withHeadings<U extends { heading: string | null; article: string | null; id: string }>(units: readonly U[], paragraphs: readonly TguParagraph[]): U[] {
+  const printed = new Map<string, string | null>(paragraphs.map((p) => {
+    const lines = p.neu.length ? p.neu : p.old
+    return [`${p.law ?? ''}|§${p.number}`, unitOf(p, lines)?.heading ?? null] as const
+  }))
+  return units.map((u) => (u.heading?.startsWith(SAME_PARA) ? { ...u, heading: printed.get(`${u.article ?? ''}|${u.id}`) ?? null } : u))
 }
 
 /** Words, compared as RIS and the PDF both print them: no markup, no quotes, no hyphens, no § designations, no notes of RIS's own. */
@@ -367,6 +388,28 @@ const MIN_STRETCH_WORDS = 6
  * least one stretch must be long enough to say so. Without elisions — the
  * Oberösterreich format — this is `shareInRis` on the whole.
  */
+/**
+ * A phrase to find a § by in RIS's full text: the first eight consecutive
+ * plain words of the longest stretch between elisions, past its first two
+ * (the heading) — no numbers, § marks or line-break hyphens, which the two
+ * print differently. Null where no such run exists.
+ */
+export function searchPhrase(text: string): string | null {
+  const stretch = text.split(ELISION_RE).map((s) => s.trim()).sort((a, b) => b.length - a.length)[0] ?? ''
+  const tokens = stretch.split(/\s+/)
+  const plain = (t: string) => /^[„“"]?\p{L}[\p{L}-]*[,.;:“”"]?$/u.test(t) && !/-$/.test(t)
+  for (let i = 2; i + 8 <= tokens.length; i++) {
+    const window = tokens.slice(i, i + 8)
+    if (window.every(plain)) return window.map((t) => t.replace(/[„“”",.;:]/g, '')).join(' ')
+  }
+  return null
+}
+
+/** Is the text in force, as printed, nothing but elisions — „(1) bis (4) …"? Then there is no wording to check. */
+export function onlyElided(text: string): boolean {
+  return /…|\.\.\./.test(text) && !text.split(ELISION_RE).some((s) => s.trim().split(/\s+/).length >= MIN_STRETCH_WORDS)
+}
+
 export function standsInRis(text: string, risText: string): boolean {
   if (!/…|\.\.\./.test(text)) return shareInRis(text, risText) >= STANDS_IN_RIS
   const stretches = text.split(ELISION_RE).map((s) => s.trim()).filter((s) => s.split(/\s+/).length >= MIN_STRETCH_WORDS)
@@ -377,6 +420,8 @@ export function standsInRis(text: string, risText: string): boolean {
 export interface ColumnRow {
   kind: 'article' | 'pair'
   law: string | null
+  /** The row's heading, where the reader found one — in Salzburg's packages also the law's name. */
+  heading?: string | null
   para: string | null
   current: string
   proposed: string
@@ -389,13 +434,19 @@ export interface ColumnRow {
  * own — „Reinhaltung öffentlicher Flächen § 2. (1) bis (7) …" becomes the
  * heading and „(1) bis (7) …".
  */
-export function columnParagraphs(rows: readonly ColumnRow[], fallbackLaw: string | null): TguParagraph[] {
+export function columnParagraphs(rows: readonly ColumnRow[], laws: readonly string[]): TguParagraph[] {
   const out = new Map<string, TguParagraph>()
+  // One law: every § is its. Several: a row whose heading begins with one of
+  // their names opens it (Salzburg prints the law's name above its first §),
+  // and where no row says, the RIS check decides (`landTguService`).
+  let current: string | null = laws.length === 1 ? laws[0]! : null
   for (const r of rows) {
     if (r.kind !== 'pair' || !r.para) continue
     const number = /§\s*(\d+[a-z]*)/.exec(r.para)?.[1]
     if (!number) continue
-    const law = r.law ?? fallbackLaw
+    const named = laws.find((l) => r.heading?.startsWith(l) || r.heading?.startsWith(l.replace(/^Salzburger /, '')))
+    if (named) current = named
+    const law = r.law ?? current
     const key = `${law ?? ''}|${number}`
     const p = out.get(key) ?? { law, number, old: [], neu: [], changed: false }
     const lines = (text: string) => {
@@ -411,8 +462,37 @@ export function columnParagraphs(rows: readonly ColumnRow[], fallbackLaw: string
   return [...out.values()]
 }
 
-/** „Gesetz, mit dem das Wiener Reinhaltegesetz geändert wird" → „Wiener Reinhaltegesetz": the one law a draft amends. */
+/** „Salzburger Schulorganisations-Ausführungsgesetz 1995 – SchuOG 1995" → the name without its abbreviation. */
+export function lawName(name: string): string {
+  return name.replace(/\s+[–-]\s+[\p{L}.\s-]*\d*\s*$/u, '').replace(/\s*\([^)]*\)\s*$/, '').trim()
+}
+
+/**
+ * The laws a draft amends, from its title: „Gesetz, mit dem das Wiener
+ * Reinhaltegesetz geändert wird" → one; „…, mit dem das Landesbeamten-
+ * Pensionsgesetz, das Salzburger Objektivierungsgesetz 2017 und das …
+ * geändert werden" → each.
+ */
+export function amendedLawsOf(title: string): string[] {
+  const m = /mit de[rm] ((?:das|die|der) .+?) geändert (?:wird|werden)/.exec(title)
+  if (!m) return []
+  return m[1]!.split(/,\s*(?=(?:das|die|der)\s)|\s+und\s+(?=(?:das|die|der)\s)/).map((x) => lawName(x.replace(/^(?:das|die|der)\s+/, ''))).filter(Boolean)
+}
+
+/** The one law a draft amends; null for a package. */
 export function amendedLawOf(title: string): string | null {
-  const m = /mit de[rm] (?:das|die|der) ((?:(?!,| und ).)+?) geändert wird/.exec(title)
-  return m ? m[1]!.trim() : null
+  const laws = amendedLawsOf(title)
+  return laws.length === 1 ? laws[0]! : null
+}
+
+/**
+ * Does the draft itself delete this §? A two-column reading that finds the
+ * right column empty is shown as „entfallen" only when the draft says so —
+ * an empty column may as well be one the reader did not see.
+ */
+export function draftDeletes(draftText: string, number: string): boolean {
+  const t = draftText.replace(/\s+/g, ' ')
+  const n = number.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
+  return new RegExp(`§\\s*${n}(?![a-z0-9])[^.;:„"]{0,160}?(?:entf[äa]ll|aufgehoben)`).test(t) ||
+    new RegExp(`§§[^.;:„"]{0,120}?\\b${n}(?![a-z0-9])[^.;:„"]{0,120}?(?:entfallen|aufgehoben)`).test(t)
 }

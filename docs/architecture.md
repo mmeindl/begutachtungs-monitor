@@ -13236,6 +13236,42 @@ Dabei behoben: Sieben Salzburger Entwürfe tragen gar keinen Entwurf, nur
 Erläuterungen oder Pläne; der Vergleich las das erste Dokument als
 Gesetzestext (`draftDocument`).
 
+### 12.52 Salzburgs Textgegenüberstellung (23.10.2026)
+
+Salzburg legt sie als eigenes Dokument bei (151 Entwürfe seit Mitte 2014,
+„Textgegenüberstellung" oder „TGÜ"), zweispaltig wie der Bund. Gelesen vom
+Leser des Bundes, nachdem Salzburgs Kopfzeile (Pfad der Word-Datei, „1 von
+2") heraus ist und seine §-Bezeichnungen den Punkt tragen, den der Leser als
+Zeilengrenze braucht („§ 64" → „§ 64."). Geprüft wie Wien gegen RIS, mit
+drei Ergänzungen, alle drei auch für Wien:
+
+- **Welches Gesetz?** Ein Paket nennt seine Gesetze im Titel, die
+  Gegenüberstellung markiert die Grenzen aber nicht verlässlich. Ein § gehört
+  zu dem Gesetz, in dessen geltender Fassung RIS seinen Text bestätigt; wo der
+  Name des Entwurfs RIS nichts sagt — „Salzburger Behindertengesetz 1981"
+  heißt heute „Salzburger Teilhabegesetz", und RIS nennt auch die alte
+  Fassung so —, findet eine Phrase aus dem § selbst ihn im Volltext
+  (`paragraphByPhrase`), samt dem heutigen Namen des Gesetzes.
+- **Ohne prüfbaren Wortlaut** — ganz neu, oder nur „(1) bis (4) …" — gehört
+  ein § dem Gesetz seiner bestätigten Nachbarn, und RIS muss zustimmen: ein
+  neuer § darf dort noch nicht stehen, ein ausgelassener muss.
+- **Entfallen** nur, wo der Entwurf es sagt („§ 15 entfällt"): Eine leere
+  rechte Spalte kann ebenso eine sein, die der Leser nicht sah.
+
+Und ein Fehler, den die Prüfung nicht fing: „(1) bis (6) …" gegen „(1) bis
+(6) … (7) Neu" teilen zu wenig Wörter, und die Maschine paart gleiche
+Nummern nur bei Ähnlichkeit — derselbe § stand als „neu" und als
+„entfallen" da. Die Gegenüberstellung sagt selbst, dass beide Seiten ein §
+sind; beide tragen jetzt dieselbe Markierung als Überschrift
+(`tguUnits`, `withHeadings`).
+
+Über den Produktionspfad, alle 151: 139 zeigen einen Vergleich, 1.377 §§
+gezeigt (317 neu, 136 entfallen), 829 zurückgehalten — vor allem große
+Dienstrechtspakete 2015–2020, deren alte Spalte nur die Überschrift trägt.
+Ob das Dokument so druckt oder der Leser den Text verliert, ist nicht
+entschieden; bis dahin bleibt so ein § draußen, denn angenommen würde sein
+ganzer Text als „neu" erscheinen.
+
 ## 13. Open questions
 
 1. **Legal (restated 2026-09-16 — the old wording asked the wrong question).** It assumed the metadata was CC-BY and only the full texts excluded. Parliament's licence page for the Begutachtungsverfahren excludes *Beteiligungen zu Ministerialentwürfen* from open-data reuse as such, and no licensed dataset covers Ministerialentwürfe at all. So the question is now: **on what basis may the metadata of lists 81/142/305 be reused?** Two halves — the factual one (how is that sentence meant, is a case-by-case release possible) goes to the Parlamentsdirektion, the legal one (is factual metadata protectable at all; Datenbankherstellerrecht §§ 76c ff vs. § 42h UrhG) to a university partner. The inline web-form texts remain a sub-question of it, not a separate one. It blocks a blanket CC-BY claim on the site, which was removed on 2026-09-16. **And "stage 1 is metadata-only either way", which stood here until 2026-09-19, is not quite true — one block breaks it.** Under „Worum geht es?" the draft page prints Parliament's `shortinfo`: Ziele, Inhalt, Hauptgesichtspunkte. That is prose from the excluded dataset, and no enumeration of "Fristen, Geschäftszahlen, Anzahl" covers it. The obvious escape was measured and does not hold (`pnpm corpus:kurzinfo`, GP XXVII, 337 drafts): the Kurzinformation is *not* simply the ministry's text, which RIS publishes CC BY. 53 % of drafts carry no prose at all, only the Vorblatt lists (67 % of all characters, untested here because the Vorblatt is a RIS document the corpus mapper does not carry); where there is prose, a median of 60 % of its eight-word windows occur verbatim in the ministry's documents, p10 25 %, and only 6.6 % of drafts are covered to 90 % or more. It is Parliament's editorial work on the ministry's material — related, but not the same document, so it cannot be sourced from RIS instead. Consequence: `/impressum` and `/ueber` name it since 2026-09-19, and **the question to the Parlamentsdirektion has to name it too** — an answer of the form "only the contents of the Stellungnahmen are excluded" would not settle it, because the Kurzinformation is neither a Stellungnahme nor a metadatum. And a third block, found 23.09.2026, which unlike the Kurzinformation sits in code: the § comparison reads the Ministerialentwurf's Gesetzestext from Parliament's HTML wherever Parliament publishes one (`diff/lawDiffService.ts`, RIS XML only where it does not), and the Begründungsvergleich reads the draft's Erläuterungen from the same copy on both sides (`explanations/reasoningDiffService.ts`) — both for a measured reason, one Word template on both sides (§12.12, sixth measurement), and both against the source order the Textgegenüberstellung follows (`annex/annexSource.ts`). The argument that carries it is the one the annex switch refuses for the drafts RIS does not hold — the same documents stand in RIS under CC BY — and for those drafts (12 of 350 in GP XXVII) the comparison shows Parliament's text with no RIS twin. `/ueber` and `/impressum` name it since 23.09.2026. Open, and part of the question above: whether to read the draft's text RIS-first like the annex, at the measured cost to the alignment, or to keep the parser symmetry and say so — as the copy now does. Read live on 23.09.2026, Parliament's own dataset pages (Regierungsvorlagen, Anträge, Ausschussberichte, Beschlüsse — one template) call the documents of those items „freie Werke und somit ohne Lizenzierung frei nutzbar“ and license only the result lists, the API and the history pages as CC BY 4.0; the exclusion sentence on the Beteiligungen page names *Beteiligungen* zu Ministerialentwürfen, not the drafts or their documents. (What stood here until 30.09.2026 — that the Beteiligungen lists are CC BY and that the Stellungnahmen zur Regierungsvorlage, §12.14, run under that grant — was a misreading: the Beteiligungen dataset is „Aktuelle Beteiligungen", list 143, items open for participation on the day of the query, and its page says „Ministerialentwürfe und Stellungnahmen fallen nicht darunter"; the Regierungsvorlagen page excludes „sämtliche Informationen zu Stellungnahmen" from free use and licensing, for data protection and copyright. The Stellungnahmen zur Regierungsvorlage therefore carry no licence either, and `/impressum` says so since 30.09.2026.) So the sharp form of the question to the Parlamentsdirektion is whether „die Dokumente selbst sind freie Werke“ holds for a Ministerialentwurf's documents too — and, separately, on what basis list 81 as such and the Kurzinformation may be reused. **The § comparison's own credit line was corrected to those facts on 23.09.2026:** it claimed „CC BY 4.0" whenever neither side was the Ministerialentwurf (`isLicensedPair`), which named a licence Parliament does not grant for these documents — the correct note for a Regierungsvorlage, Ausschuss- or Plenarfassung read from Parliament is „Dokumente: freie Werke, § 7 UrhG", a RIS-sourced side stays CC BY 4.0, and the Ministerialentwurf is credited by name with no claim at all, because what may be claimed for it is precisely this open question (`lawDiffSourceCredit`).

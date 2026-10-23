@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { amendedLawOf, columnParagraphs, joinLines, mergeParagraphs, shareInRis, standsInRis, tguLines, tguParagraphs, tguUnits, type TguLine, type TguPage } from '../server/utils/laender/landTgu'
+import { amendedLawOf, amendedLawsOf, columnParagraphs, draftDeletes, joinLines, mergeParagraphs, onlyElided, searchPhrase, shareInRis, standsInRis, tguLines, tguParagraphs, tguUnits, withHeadings, type TguLine, type TguPage } from '../server/utils/laender/landTgu'
 
 /** A run at (x, y), each character 5 pt wide; glyph widths equal, so centres fall evenly. */
 function run(s: string, x: number, y: number) {
@@ -108,10 +108,13 @@ describe('mergeParagraphs', () => {
 })
 
 describe('tguUnits and joinLines', () => {
-  it('splits off a short heading and joins the lines', () => {
-    const { from, to } = tguUnits([{ law: 'G', number: '7', old: ['Urkunden', '(1) Ein Gemeinde-', 'Bezügegesetz und', 'mehr.'], neu: [], changed: true }])
-    expect(from[0]).toMatchObject({ id: '§7', article: 'G', heading: 'Urkunden', text: '(1) Ein Gemeinde-Bezügegesetz und mehr.' })
-    expect(to).toEqual([])
+  it('splits off a short heading and joins the lines, pairing both sides as one §', () => {
+    const paras = [{ law: 'G', number: '7', old: ['Urkunden', '(1) Ein Gemeinde-', 'Bezügegesetz und', 'mehr.'], neu: ['Urkunden', '(1) bis (6) …', '(7) Neu.'], changed: true }]
+    const { from, to } = tguUnits(paras)
+    expect(from[0]).toMatchObject({ id: '§7', article: 'G', text: '(1) Ein Gemeinde-Bezügegesetz und mehr.' })
+    // The document says both sides are § 7: one marker, whatever they share.
+    expect(from[0]!.heading).toBe(to[0]!.heading)
+    expect(withHeadings([{ ...from[0]!, article: 'G' }], paras)[0]!.heading).toBe('Urkunden')
   })
 
   it('keeps the space before „und" after a hyphen', () => {
@@ -145,12 +148,42 @@ describe('two-column Textgegenüberstellung (Wien)', () => {
     const paras = columnParagraphs([
       { kind: 'pair', law: null, para: '§ 2.', current: 'Reinhaltung öffentlicher Flächen § 2. (1) bis (7) …', proposed: 'Reinhaltung öffentlicher Flächen § 2. (1) bis (7) …', changed: false },
       { kind: 'pair', law: null, para: '§ 2.', current: '(8) Alt.', proposed: '(8) Neu.', changed: true },
-    ], 'Wiener Reinhaltegesetz')
+    ], ['Wiener Reinhaltegesetz'])
     expect(paras).toEqual([{ law: 'Wiener Reinhaltegesetz', number: '2', old: ['Reinhaltung öffentlicher Flächen', '(1) bis (7) …', '(8) Alt.'], neu: ['Reinhaltung öffentlicher Flächen', '(1) bis (7) …', '(8) Neu.'], changed: true }])
   })
 
-  it('names the one law a draft amends from its title', () => {
+  it('names the laws a draft amends from its title, without their abbreviation', () => {
     expect(amendedLawOf('Gesetz, mit dem das Wiener Reinhaltegesetz geändert wird')).toBe('Wiener Reinhaltegesetz')
-    expect(amendedLawOf('Gesetz, mit dem die Dienstordnung 1994, die Besoldungsordnung 1994 und das Wiener Bedienstetengesetz geändert werden')).toBeNull()
+    expect(amendedLawOf('Gesetz, mit dem das Salzburger Schulorganisations-Ausführungsgesetz 1995 – SchuOG 1995 geändert wird')).toBe('Salzburger Schulorganisations-Ausführungsgesetz 1995')
+    expect(amendedLawsOf('Gesetz, mit dem die Dienstordnung 1994, die Besoldungsordnung 1994 und das Wiener Bedienstetengesetz geändert werden'))
+      .toEqual(['Dienstordnung 1994', 'Besoldungsordnung 1994', 'Wiener Bedienstetengesetz'])
+  })
+
+  it('files §§ under the law whose name heads them in a package', () => {
+    const paras = columnParagraphs([
+      { kind: 'pair', law: null, heading: 'Landesbeamten-Pensionsgesetz', para: '§ 37o.', current: '', proposed: '§ 37o. (1) Neu.', changed: true },
+      { kind: 'pair', law: null, heading: 'Salzburger Objektivierungsgesetz 2017 Ausschreibung', para: '§ 3.', current: '(1) Alt.', proposed: '(1) Neu.', changed: true },
+    ], ['Landesbeamten-Pensionsgesetz', 'Salzburger Objektivierungsgesetz 2017'])
+    expect(paras.map((p) => [p.law, p.number])).toEqual([['Landesbeamten-Pensionsgesetz', '37o'], ['Salzburger Objektivierungsgesetz 2017', '3']])
+  })
+
+  it('takes a § as deleted only where the draft says so', () => {
+    expect(draftDeletes('2. § 15 samt Überschrift entfällt.', '15')).toBe(true)
+    expect(draftDeletes('3. Die §§ 14 und 15 entfallen.', '15')).toBe(true)
+    expect(draftDeletes('2. § 15 Abs 1 lautet: „(1) Neu."', '15')).toBe(false)
+    expect(draftDeletes('2. § 150 entfällt.', '15')).toBe(false)
+  })
+})
+
+describe('finding a § by its own words', () => {
+  it('takes eight plain words past the heading, from the longest stretch', () => {
+    expect(searchPhrase('Hilfeleistungen (1) bis (2) … (3) Als Hilfeleistungen nach diesem Gesetz kommen in Betracht die Eingliederungshilfe und die Pflege.'))
+      .toBe('Hilfeleistungen nach diesem Gesetz kommen in Betracht die')
+    expect(searchPhrase('§ 3 Abs 1 Z 2 lit a')).toBeNull()
+  })
+
+  it('knows a § with nothing but elisions to check', () => {
+    expect(onlyElided('(1) bis (4) …')).toBe(true)
+    expect(onlyElided('(1) bis (4) … (5) Die Landesregierung hat durch Verordnung festzulegen.')).toBe(false)
   })
 })
