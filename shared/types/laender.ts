@@ -262,3 +262,23 @@ export interface LandTextDocument {
   /** „Land Oberösterreich", „Oö. Landtag", „RIS (CC BY 4.0)". */
   publisher: string
 }
+
+/**
+ * What a Land gives as its reasons — the Erläuterungen of its draft
+ * (`laender/landExplanations.ts`, docs/architecture.md §12.53): the general
+ * part for „Was das Land begründet", the particular part at the §§ of the
+ * comparison.
+ */
+export interface LandExplanationsResponse {
+  available: boolean
+  unavailableReason: string | null
+  /** The PDF they were read from. */
+  document: { label: string; url: string } | null
+  /** „Land Oberösterreich". */
+  publisher: string
+  /** Whether the Land headed a general part itself („Allgemeiner Teil", „Allgemeines"). */
+  labelled: boolean
+  general: { heading: string | null; text: string[] }[]
+  /** One per „Zu …" heading; `paras` from its brackets, or from the draft's own instructions where it names only Ziffern. */
+  particular: { law: string | null; paras: string[]; heading: string; text: string[] }[]
+}

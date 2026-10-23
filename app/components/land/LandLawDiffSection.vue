@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import type { LandCode, LandLawDiffResponse, LandTextStation, LawDiffSegment, LawDiffUnit, LawStationId } from '#shared/types'
+import type { LandCode, LandExplanationsResponse, LandLawDiffResponse, LandTextStation, LawDiffSegment, LawDiffUnit, LawStationId } from '#shared/types'
 import { isNovelleUnits } from '#shared/utils/changeShare'
 import { diffUnitKey } from '#shared/utils/diffKey'
 import { countLabelDe, formatDateDe } from '#shared/utils/format'
@@ -38,6 +38,23 @@ const { data, status } = useFetch<LandLawDiffResponse>(
   () => `/api/laender/${props.land}/${props.number}/vergleich`,
   { query: { von: props.from, bis: props.to }, lazy: true, server: false },
 )
+
+/* The Land's reasoning at each § of its Textgegenüberstellung, as the
+   ministry's stands at each § of its own (`TextComparisonSection`) — the
+   particular part of the Erläuterungen, one request shared with „Was das
+   Land begründet" (`LandExplanationsSection`). */
+const { data: explanations } = useFetch<LandExplanationsResponse>(
+  () => `/api/laender/${props.land}/${props.number}/erlaeuterungen`,
+  { lazy: true, server: false, immediate: props.from === 'geltend' },
+)
+/* „Oö. Krankenanstaltengesetz 1997" and „Krankenanstaltengesetz 1997" name one law. */
+const lawKey = (law: string | null) => (law ?? '').replace(/^(?:Oö\.|Salzburger|Wiener)\s+/, '').toLowerCase()
+function reasonsFor(u: LawDiffUnit) {
+  if (props.from !== 'geltend') return []
+  const n = /^§(\S+)$/.exec(u.id)?.[1]
+  if (!n) return []
+  return (explanations.value?.particular ?? []).filter((e) => e.paras.includes(n) && (!e.law || !u.article || lawKey(e.law) === lawKey(u.article)))
+}
 
 /* The Bund's question for the same pair, word for word (`lawStationPairQuestion`). */
 const AS_LAW_STATION: Record<Exclude<LandTextStation, 'geltend'>, LawStationId> = { entwurf: 'me', rv: 'rv', ausschuss: 'ausschuss', lgbl: 'bgbl' }
@@ -237,6 +254,18 @@ const summary = computed(() => {
                 </span>
                 <span v-if="b.label" class="min-w-0 text-ink-secondary">{{ b.label }}</span>
               </p>
+              <!-- The Land's reasoning, where the question arises: under the
+                   §'s own line, in ink, indented and without a gutter — the
+                   ministry's disclosure on the Bund's page, same shape. -->
+              <Disclosure v-if="reasonsFor(b.unit).length" size="xs" tone="ink" class="mb-2">
+                <template #summary>Begründung des Landes</template>
+                <div class="mt-1 pl-6">
+                  <div v-for="(e, ei) in reasonsFor(b.unit)" :key="ei" :class="ei > 0 ? 'mt-3' : ''">
+                    <p class="text-xs text-ink-muted">{{ e.heading }}</p>
+                    <p v-for="(t, ti) in e.text" :key="ti" class="mt-1 hyphens-auto text-sm leading-relaxed text-ink-secondary">{{ t }}</p>
+                  </div>
+                </div>
+              </Disclosure>
               <DiffBody
                 :badge="badgeOf(b.unit)"
                 :label="BADGE_LABEL[badgeOf(b.unit)]"

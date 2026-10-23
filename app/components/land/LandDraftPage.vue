@@ -203,6 +203,9 @@ useSeoMeta({ ogTitle: () => draft.value?.title ?? 'Entwurf', ogType: 'article' }
                  Ministerialentwurf's page asks the same question, after the
                  summary and before the documents (22.10.2026). -->
             <LandLawDiffSection v-if="hasTgu" :land="land" :number="number" from="geltend" to="entwurf" />
+            <!-- The Land's reasons, after what the draft changes — the order of
+                 the Ministerialentwurf's page. -->
+            <LandExplanationsSection :land="land" :number="number" />
             <!-- Named like the Dokumente of the other draft pages, and OPEN
                  where they fold (22.10.2026): there the documents follow the
                  comparison and the Erläuterungen, here they are the only way

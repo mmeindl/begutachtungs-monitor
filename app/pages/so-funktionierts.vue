@@ -542,15 +542,17 @@ const waitMonths = Math.round(RV_LATENCY_CONTEXT_DAYS / 30.44)
         Titel, sagt die Seite das.
       </p>
       <p>
-        Was ein Entwurf am geltenden Recht ändern würde, zeigen Oberösterreich
-        und Wien selbst: in einer Textgegenüberstellung – Oberösterreich mit
-        unterstrichenem Neuem und durchgestrichenem Altem, Wien in zwei Spalten
-        wie der Bund. Der Monitor liest beides
-        daraus und stellt es Paragraph für Paragraph gegenüber, wie bei den
-        Entwürfen des Bundes unter „Was ändert der Entwurf?“. Einen Paragraphen
-        zeigt er nur, wenn dessen geltende Fassung so, wie er sie gelesen hat,
-        auch im Rechtsinformationssystem steht; die übrigen zählt die Seite,
-        und die Textgegenüberstellung selbst steht unter den Dokumenten.
+        Was ein Entwurf am geltenden Recht ändern würde, zeigen die Länder selbst:
+        in einer Textgegenüberstellung – Oberösterreich mit unterstrichenem Neuem
+        und durchgestrichenem Altem, Salzburg und Wien in zwei Spalten wie der
+        Bund. Der Monitor liest sie und stellt sie Paragraph für Paragraph
+        gegenüber, wie bei den Entwürfen des Bundes unter „Was ändert der
+        Entwurf?“. Einen Paragraphen zeigt er nur, wenn dessen geltende Fassung so,
+        wie er sie gelesen hat, auch im Rechtsinformationssystem steht; die übrigen
+        zählt die Seite, und die Textgegenüberstellung selbst steht unter den
+        Dokumenten. Die Erläuterungen des Landes stehen darunter – der allgemeine
+        Teil unter „Was das Land begründet“, die Begründung einzelner Paragraphen
+        beim jeweiligen Paragraphen.
       </p>
       <p>
         Die Länder haben eigene Gesetzgebungsperioden. In der Liste der
