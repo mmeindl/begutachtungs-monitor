@@ -69,21 +69,42 @@ function paragraphs(lines: readonly string[]): ExplanationPassage[] {
     flushPara()
     if (current.heading || current.text.length) out.push(current)
   }
-  for (const line of lines) {
+  let joined = -1
+  lines.forEach((line, i) => {
+    if (i === joined) return
     // „I. Anlass und Inhalt" is a heading; „1. die Schaffung einer … Ersatzvor-" an item of a list.
-    const heading = (START_RE.test(line) || (HEADING_RE.test(line) && /^\S+\.\s+\p{Lu}/u.test(line))) && line.length < 90 && !/[.;,-]$/.test(line)
+    let heading = (START_RE.test(line) || (HEADING_RE.test(line) && /^\S+\.\s+\p{Lu}/u.test(line))) && line.length < 90 && !/[.;,-]$/.test(line)
+    let name = line
+    // A heading that ends mid-phrase wraps: „VI. Auswirkungen … insbesondere
+    // auf" over „Frauen und Männer", in most of Salzburg's Erläuterungen —
+    // the rest of it is the next line where that is short and ends no
+    // sentence. Where the next line runs on, the „heading" was the first
+    // line of a numbered item: „2. Das konkrete Ausmaß … an der" over
+    // „Landschaftsabgabe hängt vom …" (23.10.2026).
+    if (heading && DANGLING_RE.test(line)) {
+      const next = lines[i + 1]
+      if (next && next.length <= 60 && !/[.;:,]$/.test(next) && /^\p{L}/u.test(next)) {
+        name = `${line} ${next}`
+        joined = i + 1
+      } else {
+        heading = false
+      }
+    }
     if (heading) {
       flushPassage()
-      current = { heading: line.replace(/:$/, ''), text: [] }
-      continue
+      current = { heading: name.replace(/:$/, ''), text: [] }
+      return
     }
     if (/^[-–•]\s/.test(line)) flushPara()
     para = !para ? line : /\p{L}-$/u.test(para) && /^\p{Ll}/u.test(line) && !/^(?:und|oder|bzw\.|sowie)\b/.test(line) ? `${para.slice(0, -1)}${line}` : `${para} ${line}`
     if (/[.:;!?]$/.test(line) && line.length < measure * 0.85) flushPara()
-  }
+  })
   flushPassage()
   return out
 }
+
+/** A line that ends mid-phrase: an article, a preposition, a conjunction. */
+const DANGLING_RE = /\s(?:von|der|die|das|des|dem|den|und|oder|für|zur|zum|im|in|auf|mit|bei|nach|über|sowie|insbesondere)$/
 
 /**
  * The §§ a „Zu …" heading names: „(§ 1 Abs. 3)" → 1, „(§§ 4, 5 und 7)" →

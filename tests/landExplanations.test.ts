@@ -27,6 +27,24 @@ describe('a Land\'s Erläuterungen', () => {
       ['Zu Art. I Z 3 und 4 (§ 3a Abs. 2 Z 1 und 2):', ['3a'], ['Ambulante Plätze werden angerechnet.']],
     ])
   })
+
+  it('joins a heading that wraps mid-phrase, and does not take a numbered sentence for one', () => {
+    const parse = parseLandExplanations([[
+      'Erläuterungen',
+      '1. Allgemeines:',
+      'Die Novelle passt das Gesetz an.',
+      'VI. Auswirkungen auf die verschiedenen Gruppen der Gesellschaft, insbesondere auf',
+      'Frauen und Männer',
+      'Die Regelungen betreffen alle gleich.',
+      '2. Das konkrete Ausmaß der den Gemeinden zukommenden Ertragsanteile an der',
+      'Landschaftsabgabe hängt vom allfälligen Aufkommen ab und lässt sich nicht beziffern.',
+    ].join('\n')])!
+    expect(parse.general.map((p) => p.heading)).toEqual(['1. Allgemeines', 'VI. Auswirkungen auf die verschiedenen Gruppen der Gesellschaft, insbesondere auf Frauen und Männer'])
+    expect(parse.general[1]!.text).toEqual([
+      'Die Regelungen betreffen alle gleich.',
+      '2. Das konkrete Ausmaß der den Gemeinden zukommenden Ertragsanteile an der Landschaftsabgabe hängt vom allfälligen Aufkommen ab und lässt sich nicht beziffern.',
+    ])
+  })
 })
 
 describe('the rate note names who changed the reasoning', () => {
