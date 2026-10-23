@@ -41,11 +41,11 @@
  * (the amended laws, the Regierungsvorlage's own Stellungnahmen count), so
  * the values are handed in rather than guessed or fetched here.
  */
-import type { BgblOutcome, DraftDetail, EnactmentInfo, HouseVote, LandConsultation, LandProcedureStep, LawStationId, RisConsultation } from '#shared/types'
+import type { BgblOutcome, DraftDetail, EnactmentInfo, HouseVote, LandConsultation, LandProcedureStep, LandTextStation, LawStationId, RisConsultation } from '#shared/types'
 import { carriesDraft } from '#shared/utils/antragPath'
 import { bgblShort, formatDateDe, formatNumberDe, fristEndedDe, spanInDays, todayIso } from '#shared/utils/format'
 import { promulgationState } from '#shared/utils/promulgation'
-import { PARLIAMENT_COMPARISON_QUESTION, UPSTREAM_AUSSCHUSS_TITLE, UPSTREAM_PLENUM_TITLE } from '#shared/utils/lawStations'
+import { PARLIAMENT_COMPARISON_QUESTION, UPSTREAM_AUSSCHUSS_TITLE, UPSTREAM_PLENUM_TITLE, lawStationPairQuestion } from '#shared/utils/lawStations'
 import type { SourceEntry } from '#shared/utils/provenance'
 import { LAND_NAME } from '#shared/utils/laender'
 import { fristClassLineDe, fristRangeDe, fristSpanDe } from './deadlines'
@@ -983,29 +983,35 @@ function searchedRow(
 /**
  * The bar for a Land's draft, on every Land's page.
  *
- * Where the monitor follows the draft past the Begutachtung (`stage` read —
- * Oberösterreich's Gesetze, from the Landtag's own record): the Bund's five
- * stations with „Landtag" in place of „Parlament" and „Landesgesetzblatt"
- * in place of „Bundesgesetzblatt". The stage names the
- * furthest station; `steps`, the record with its station steps tagged,
- * dates the rows before it.
+ * Where a record of the Landtag stands behind the draft: the Bund's five
+ * stations with „Landtag" in place of „Parlament" and „Landesgesetzblatt" in
+ * place of „Bundesgesetzblatt". The record is the Land's own (Oberösterreich's
+ * Gesetze), or — for a Kundmachung the texts decided — what RIS links to that
+ * Landesgesetzblatt: its Regierungsvorlage, the committee's report, the
+ * Beschluss (Salzburg, `salzburgLandtag`, 23.10.2026; until then the bar drew
+ * three rows over a page with sections for all five). The stage names the
+ * furthest station; `steps`, the record with its station steps tagged, dates
+ * the rows before it.
  *
  * Elsewhere three rows, the third the monitor's own search of the
  * Landesgesetzblatt (`searchedRow`): a find, or which kind of miss, with
  * the Land's hit list in RIS to check it (verified 22.10.2026: it filters by
  * Bundesland). Not two rows — a bar that stops at the Begutachtung claims
- * the procedure ends there. A find of OUR search never unlocks the five
- * rows: Regierungsvorlage and Landtag only the Land's own record can fill.
+ * the procedure ends there. A find of the title search alone never unlocks
+ * the five rows: nothing then says there was a Vorlage.
  *
- * No comparison on any row: the monitor reads no text of a Land's draft.
- * `statementCount` is the Land's published Stellungnahmen; null where the
- * Land publishes none or its page could not be read — then the row says
- * nothing rather than „keine".
+ * A row carries a comparison where the page has it (`comparisons`, the
+ * server's `LandDraftDetail.comparisons`): the Vorlage the step after the
+ * Begutachtung, the Landtag the committee's (Oberösterreich) or the way to
+ * the Kundmachung (Salzburg). `statementCount` is the Land's published
+ * Stellungnahmen; null where the Land publishes none or its page could not
+ * be read — then the row says nothing rather than „keine".
  */
 export function landStations(
   d: Pick<LandConsultation, 'land' | 'active' | 'startedAt' | 'deadline' | 'stage' | 'lgblSearch'>,
   statementCount: number | null = null,
   steps: readonly LandProcedureStep[] | null = null,
+  comparisons: readonly (readonly [LandTextStation, LandTextStation])[] = [],
 ): Station[] {
   const count = statementCount === null
     ? null
@@ -1032,7 +1038,8 @@ export function landStations(
   ]
 
   const s = d.stage
-  if (s === undefined || s === 'unknown' || s?.via === 'suche') {
+  const linkedByRis = !!s && s !== 'unknown' && s.via === 'suche' && s.certainBy !== undefined && (steps?.some((st) => st.station === 'rv') ?? false)
+  if (s === undefined || s === 'unknown' || (s?.via === 'suche' && !linkedByRis)) {
     return [...head, { id: 'bgbl', name: 'Landesgesetzblatt', comparison: null, ...searchedRow(d) }]
   }
 
@@ -1043,10 +1050,13 @@ export function landStations(
      Vorlage says how it stood to the Frist, in the Bund row's words — a
      Vorlage before the Fristende is the finding, not its date. */
   const reachedFacts = (id: StationId): string[] => {
-    const date = steps?.find((st) => st.station === id)?.date ?? (id === s?.station ? s.date : null)
+    const step = steps?.find((st) => st.station === id)
+    const date = step?.date ?? (id === s?.station ? s.date : null)
     if (id === 'rv') {
       const span = afterFristDe(d.deadline, date, d.startedAt)
-      return kept(date ? (span ? `${formatDateDe(date)}, ${span}` : formatDateDe(date)) : null)
+      // Salzburg's Vorlage is known by its Beilage, not its day of arrival.
+      const beilage = /\bNr\s+\d+ der Beilagen\b/.exec(step?.label ?? '')?.[0] ?? null
+      return kept(date ? (span ? `${formatDateDe(date)}, ${span}` : formatDateDe(date)) : beilage)
     }
     return kept(id === s?.station ? s.detail : null, date ? formatDateDe(date) : null)
   }
@@ -1060,23 +1070,24 @@ export function landStations(
       facts: [id === 'rv' ? 'bisher keine' : id === 'parlament' ? 'in Behandlung' : 'bisher keine Kundmachung'],
     }
   }
-  /* The comparisons the station produced, as on the Bund's bar: the
-     Vorlage's against the draft, the committee's against the Vorlage —
-     only where the record links both texts (`LandStationSections`). */
-  const rvText = steps?.some((st) => st.station === 'rv' && st.url) ?? false
-  const committeeText = rvText && (steps?.some((st) => /^Ausschussbericht\b/.test(st.label) && st.url) ?? false)
+  /* The comparisons the station produced, as on the Bund's bar — those the
+     page shows (`comparisons`), in the questions their sections ask. Read
+     off the record until 23.10.2026, which offered Salzburg's Landtag the
+     committee's comparison its page does not have. */
+  const offers = (from: LandTextStation, to: LandTextStation) => comparisons.some(([a, b]) => a === from && b === to)
+  const landtagTo: LawStationId | null = offers('rv', 'ausschuss') ? 'ausschuss' : offers('rv', 'lgbl') ? 'bgbl' : null
   return [
     ...head,
     {
       id: 'rv',
       name: 'Regierungsvorlage',
-      comparison: rvText ? { id: 'begutachtung', question: 'Was sich nach der Begutachtung geändert hat' } : null,
+      comparison: offers('entwurf', 'rv') ? { id: 'begutachtung', question: lawStationPairQuestion('me', 'rv') } : null,
       ...after('rv'),
     },
     {
       id: 'parlament',
       name: 'Landtag',
-      comparison: committeeText ? { id: 'parlament', question: 'Was der Ausschuss an der Regierungsvorlage geändert hat' } : null,
+      comparison: landtagTo ? { id: 'parlament', question: lawStationPairQuestion('rv', landtagTo) } : null,
       ...after('parlament'),
     },
     { id: 'bgbl', name: 'Landesgesetzblatt', comparison: null, ...after('bgbl') },

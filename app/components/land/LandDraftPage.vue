@@ -95,7 +95,13 @@ const fristFacts = computed<Fact[]>(() => {
 })
 
 const stationList = computed(() =>
-  draft.value ? landStations(draft.value, data.value?.statements?.length ?? null, data.value?.procedure) : [])
+  draft.value ? landStations(draft.value, data.value?.statements?.length ?? null, data.value?.procedure, data.value?.comparisons) : [])
+/* Where the bar's comparison links land: the Landtag's is the committee's
+   (Oberösterreich) or the way to the Kundmachung (Salzburg). */
+const comparisonAnchors = computed(() => ({
+  begutachtung: '#textvergleich-rv',
+  parlament: (data.value?.comparisons ?? []).some(([a, b]) => a === 'rv' && b === 'ausschuss') ? '#textvergleich-ausschuss' : '#textvergleich-landtag',
+}))
 /* Every station links into the section that holds it, as on the
    Ministerialentwurf's page (`LandStationSections`, which renders the same
    conditions); a station without a section stays plain text. */
@@ -167,7 +173,7 @@ useSeoMeta({ ogTitle: () => draft.value?.title ?? 'Entwurf', ogType: 'article' }
           :status="landStatusDe(detail.draft)"
           :stations="stationList"
           :anchors="stationAnchors"
-          :comparison-anchors="{ begutachtung: '#textvergleich-rv', parlament: '#textvergleich-ausschuss' }"
+          :comparison-anchors="comparisonAnchors"
           how-to="/so-funktionierts#laender"
         />
 

@@ -292,7 +292,7 @@ export function salzburgDrafts(entries: RawEntry[], kind: LandDraftKind): LandCo
   let previous: { draft: LandConsultation; number: number } | null = null
   for (const entry of [...entries].sort((x, y) => numberOf(x.url) - numberOf(y.url))) {
     const own = numberOf(entry.url)
-    const adjacent = previous && own - previous.number <= ADJACENT_NUMBERS ? previous.draft : null
+    const adjacent: LandConsultation | null = previous && own - previous.number <= ADJACENT_NUMBERS ? previous.draft : null
     previous = { draft: place(entry, own, adjacent), number: own }
   }
   return drafts

@@ -504,7 +504,11 @@ const waitMonths = Math.round(RV_LATENCY_CONTEXT_DAYS / 30.44)
         zeigt die Regierungsvorlage, was der Landtag mit ihr getan hat –
         Ausschuss, Anträge, Abstimmung, in seinen eigenen Worten, und darunter
         alle seine Schritte – und die Kundmachung. Salzburg führt alle
-        Entwürfe seit 2004, aber nur bis zum Ende der Begutachtung. Wien zeigt
+        Entwürfe seit 2004, aber nur bis zum Ende der Begutachtung; wo
+        feststeht, welches Landesgesetzblatt aus einem Gesetzesentwurf wurde,
+        verknüpft das Rechtsinformationssystem es mit der Regierungsvorlage und
+        dem Bericht des Ausschusses, und die Entwurfsseite zeigt auch diese
+        Stationen. Wien zeigt
         einen Entwurf bis zum Beschluss im Landtag, höchstens ein Jahr lang;
         danach ist er auch hier nicht mehr abrufbar.
       </p>

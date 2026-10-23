@@ -662,8 +662,37 @@ describe('landStations — a Land\'s draft', () => {
     expect(landStatusDe(land({ stage: s }))).toBe('Gesetz geworden')
   })
 
-  it('offers no comparison on any row', () => {
+  it('offers no comparison on any row the page has none for', () => {
     expect(landStations(land({ stage: null })).every((r) => r.comparison === null)).toBe(true)
+  })
+
+  it('links the rows to the comparisons the page shows: the Vorlage\'s step and the committee\'s', () => {
+    const s = stage({ station: 'bgbl', detail: 'LGBl. Nr. 95/2024', date: '2024-11-14' })
+    const list = landStations(land({ land: 'ooe', stage: s }), null, null, [['entwurf', 'rv'], ['rv', 'ausschuss'], ['entwurf', 'lgbl']])
+    expect(list[2]!.comparison).toEqual({ id: 'begutachtung', question: 'Was sich nach der Begutachtung geändert hat' })
+    expect(list[3]!.comparison).toEqual({ id: 'parlament', question: 'Was der Ausschuss an der Regierungsvorlage geändert hat' })
+  })
+
+  /* Salzburg records nothing after the Begutachtung; RIS links a decided
+     Kundmachung to its Vorlage, the committee's report and the Beschluss
+     (`salzburgLandtag`, 23.10.2026). */
+  it('draws five rows for a Kundmachung the texts decided, from what RIS links to it', () => {
+    const s = stage({ station: 'bgbl', detail: 'LGBl. Nr. 11/2026', date: '2026-02-18', via: 'suche', certainBy: 'vorlage' })
+    const steps = [
+      { label: 'Regierungsvorlage, Nr 258 der Beilagen (4. Session der 17. GP)', date: null, url: 'https://www.salzburg.gv.at/x/258.pdf', station: 'rv' as const },
+      { label: 'Ausschussbericht, Nr 291 der Beilagen (4. Session der 17. GP)', date: '2026-02-04', url: 'https://www.salzburg.gv.at/x/291.pdf' },
+      { label: 'Beschluss des Salzburger Landtages', date: '2026-02-04', url: null, station: 'parlament' as const },
+      { label: 'Kundmachung, LGBl. Nr. 11/2026', date: '2026-02-18', url: null, station: 'bgbl' as const },
+    ]
+    const list = landStations(land({ stage: s, deadline: null, startedAt: '2025-12-04' }), 11, steps, [['entwurf', 'rv'], ['rv', 'lgbl'], ['entwurf', 'lgbl']])
+    expect(names(list)).toEqual(['Entwurf', 'Begutachtung', 'Regierungsvorlage', 'Landtag', 'Landesgesetzblatt'])
+    expect(list[2]).toMatchObject({ state: 'done', facts: ['Nr 258 der Beilagen'] })
+    expect(list[3]).toMatchObject({ state: 'done', facts: ['04.02.2026'] })
+    expect(list[3]!.comparison).toEqual({ id: 'parlament', question: 'Was sich von der Regierungsvorlage bis zum Gesetz geändert hat' })
+    expect(list[4]).toMatchObject({ state: 'done', facts: ['LGBl. Nr. 11/2026', '18.02.2026'] })
+    // The title search's find alone says nothing about a Vorlage: three rows.
+    const found = stage({ station: 'bgbl', detail: 'LGBl. Nr. 30/2026', date: '2026-04-14', via: 'suche' })
+    expect(names(landStations(land({ stage: found }), null, steps))).toEqual(['Entwurf', 'Begutachtung', 'Landesgesetzblatt'])
   })
 })
 
