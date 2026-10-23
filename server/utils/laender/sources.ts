@@ -549,12 +549,16 @@ export async function readLandDraft(land: LandCode, number: string): Promise<Lan
   if (!record) return null
   const [searched] = await withLgblSearch(land, [record.draft])
   let detail: LandDraftRecord = { ...record, draft: searched! }
-  const resolved = await resolveKundmachung(land, detail.draft).catch((err: unknown) => {
+  const resolved = await resolveKundmachung(land, detail.draft).then((r) => r.value, (err: unknown) => {
     console.warn(`[laender] Kundmachung ${land}/${number}:`, err instanceof Error ? err.message : err)
-    return false as const
+    return null
   })
   const stage = detail.draft.stage
-  if (resolved && stage && stage !== 'unknown') {
+  if (resolved === 'widerlegt' && stage && stage !== 'unknown' && stage.detail) {
+    // The texts refuted the title search's find: no Kundmachung of ours,
+    // and the page says which one the search found and why it is not it.
+    detail = { ...detail, draft: { ...detail.draft, stage: undefined, lgblSearch: 'widerlegt', lgblRefuted: stage.detail } }
+  } else if (resolved && resolved !== 'widerlegt' && stage && stage !== 'unknown') {
     detail = {
       ...detail,
       draft: {

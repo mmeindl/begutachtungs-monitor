@@ -58,9 +58,13 @@ export interface LandConsultation {
    * (`matchLgbl`; a find sets `stage` instead): `nicht-gefunden` — our
    * search found none, which is not „nicht kundgemacht"; `vor-ris` — begun
    * before RIS holds the Landesgesetzblatt (2015); `nicht-abrufbar` — the
-   * Landesgesetzblatt could not be read just now.
+   * Landesgesetzblatt could not be read just now; `widerlegt` — the search
+   * found one, and its Regierungsvorlage does not hold the draft's text
+   * (`texts/kundmachung.ts`; the draft's page only, 23.10.2026).
    */
-  lgblSearch?: 'nicht-gefunden' | 'vor-ris' | 'nicht-abrufbar'
+  lgblSearch?: 'nicht-gefunden' | 'vor-ris' | 'nicht-abrufbar' | 'widerlegt'
+  /** With `lgblSearch: 'widerlegt'`: what the search had found, „LGBl. Nr. 30/2026". */
+  lgblRefuted?: string
 }
 
 /** A station a Land's draft reached, in the Bund's station vocabulary. */

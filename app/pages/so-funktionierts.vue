@@ -543,7 +543,10 @@ const waitMonths = Math.round(RV_LATENCY_CONTEXT_DAYS / 30.44)
         Rechtsinformationssystem mit dem Landesgesetzblatt verknüpft und die den
         Text des Entwurfs enthält, bei einer Verordnung das Landesgesetzblatt
         selbst. Wo das eine andere Kundmachung zeigt als unsere Suche über den
-        Titel, sagt die Seite das.
+        Titel, sagt die Seite das. Enthält die Regierungsvorlage des gefundenen
+        Landesgesetzblatts den Entwurf gar nicht, gilt der Fund nicht: Die Seite
+        nennt dann keine Kundmachung und sagt, welches Landesgesetzblatt die
+        Suche über den Titel fand.
       </p>
       <p>
         Was ein Entwurf am geltenden Recht ändern würde, zeigen die Länder selbst:

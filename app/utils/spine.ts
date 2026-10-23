@@ -951,7 +951,7 @@ export function landStatusDe(d: Pick<LandConsultation, 'active' | 'stage' | 'kin
  * the way to check beside it — never „nicht kundgemacht".
  */
 function searchedRow(
-  d: Pick<LandConsultation, 'land' | 'active' | 'stage' | 'lgblSearch'>,
+  d: Pick<LandConsultation, 'land' | 'active' | 'stage' | 'lgblSearch' | 'lgblRefuted'>,
 ): Pick<Station, 'state' | 'facts' | 'source'> {
   const s = d.stage
   if (s && s !== 'unknown' && s.via === 'suche') {
@@ -965,6 +965,19 @@ function searchedRow(
         state: 'current',
         facts: ['keine Kundmachung gefunden'],
         source: { lead: 'unsere Suche findet nicht jede –', href: ris, label: 'im RIS nachsehen' },
+      }
+    case 'widerlegt':
+      // The search found one with a like title, and the texts say it is not
+      // this draft's (`texts/kundmachung.ts`): a miss — naming what was set
+      // aside, for the reader who finds it in RIS by the same title.
+      return {
+        state: 'current',
+        facts: ['keine Kundmachung gefunden'],
+        source: {
+          lead: `${d.lgblRefuted ?? 'Das Landesgesetzblatt gleichen Titels'} hat einen ähnlichen Titel, seine Regierungsvorlage aber einen anderen Text –`,
+          href: ris,
+          label: 'im RIS nachsehen',
+        },
       }
     case 'vor-ris':
       // Before 2015 RIS holds no authentic Landesgesetzblatt to search.
@@ -1008,7 +1021,7 @@ function searchedRow(
  * be read — then the row says nothing rather than „keine".
  */
 export function landStations(
-  d: Pick<LandConsultation, 'land' | 'active' | 'startedAt' | 'deadline' | 'stage' | 'lgblSearch'>,
+  d: Pick<LandConsultation, 'land' | 'active' | 'startedAt' | 'deadline' | 'stage' | 'lgblSearch' | 'lgblRefuted'>,
   statementCount: number | null = null,
   steps: readonly LandProcedureStep[] | null = null,
   comparisons: readonly (readonly [LandTextStation, LandTextStation])[] = [],

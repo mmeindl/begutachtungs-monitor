@@ -598,6 +598,13 @@ describe('landStations — a Land\'s draft', () => {
     expect(landStatusDe(land({ active: true }))).toBe('In Begutachtung')
   })
 
+  it('says a find the texts refuted is no find, and names it', () => {
+    const row = landStations(land({ lgblSearch: 'widerlegt', lgblRefuted: 'LGBl. Nr. 30/2026' }))[2]!
+    expect(row).toMatchObject({ state: 'current', facts: ['keine Kundmachung gefunden'] })
+    expect(row.source?.lead).toBe('LGBl. Nr. 30/2026 hat einen ähnlichen Titel, seine Regierungsvorlage aber einen anderen Text –')
+    expect(landStatusDe(land({ lgblSearch: 'widerlegt' }))).toBe('Begutachtung beendet')
+  })
+
   it('says an unreadable record is unreadable, not unfollowed', () => {
     expect(landStations(land({ stage: 'unknown' }))[2]!.facts).toEqual(['Stand gerade nicht abrufbar'])
   })
