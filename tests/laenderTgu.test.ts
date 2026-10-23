@@ -152,6 +152,15 @@ describe('two-column Textgegenüberstellung (Wien)', () => {
     expect(paras).toEqual([{ law: 'Wiener Reinhaltegesetz', number: '2', old: ['Reinhaltung öffentlicher Flächen', '(1) bis (7) …', '(8) Alt.'], neu: ['Reinhaltung öffentlicher Flächen', '(1) bis (7) …', '(8) Neu.'], changed: true }])
   })
 
+  it('leaves the next division\'s heading out of the § before it, and a reference to a division in', () => {
+    const paras = columnParagraphs([
+      { kind: 'pair', law: null, para: '§ 16a.', current: '', proposed: '§ 16a. (5) Darzulegen sind die Kriterien. 6. Teil Raumordnungs-Aufsicht', changed: true },
+      { kind: 'pair', law: null, para: '§ 17.', current: '§ 17. (1) Es gilt das nach dem 6. Teil.', proposed: '§ 17. (1) Es gilt das nach dem 6. Teil.', changed: false },
+    ], ['Salzburger Raumordnungsgesetz 2009'])
+    expect(paras[0]!.neu).toEqual(['(5) Darzulegen sind die Kriterien.'])
+    expect(paras[1]!.old).toEqual(['(1) Es gilt das nach dem 6. Teil.'])
+  })
+
   it('names the laws a draft amends from its title, without their abbreviation', () => {
     expect(amendedLawOf('Gesetz, mit dem das Wiener Reinhaltegesetz geändert wird')).toBe('Wiener Reinhaltegesetz')
     expect(amendedLawOf('Gesetz, mit dem das Salzburger Schulorganisations-Ausführungsgesetz 1995 – SchuOG 1995 geändert wird')).toBe('Salzburger Schulorganisations-Ausführungsgesetz 1995')

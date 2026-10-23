@@ -429,6 +429,15 @@ export interface ColumnRow {
 }
 
 /**
+ * A division heading the reader left at the end of the § before it —
+ * „… darzulegen. 6. Teil Raumordnungs-Aufsicht" (Salzburg 33616, § 16a,
+ * 23.10.2026): the next part's name, not the §'s text. Only after a
+ * sentence's end and with no sentence after it, so a reference „… nach dem
+ * 6. Teil." stays.
+ */
+const TRAILING_DIVISION_RE = /(?<=[.;:])\s+(?:\d+|[IVXL]+)\.\s+(?:Teil|Abschnitt|Hauptstück|Unterabschnitt)\s+\p{Lu}[^.;:]*$/u
+
+/**
  * The rows of a two-column Textgegenüberstellung as §§ (Wien, 22.10.2026):
  * the rows of one § joined, each column with the § heading on a line of its
  * own — „Reinhaltung öffentlicher Flächen § 2. (1) bis (7) …" becomes the
@@ -454,8 +463,10 @@ export function columnParagraphs(rows: readonly ColumnRow[], laws: readonly stri
       if (m) return [m[1]!.trim(), text.slice(m[0].length)].filter(Boolean)
       return [text.replace(/^§\s*\d+[a-z]*\.\s*/, '')].filter(Boolean)
     }
-    if (r.current.trim()) p.old.push(...lines(r.current.trim()))
-    if (r.proposed.trim()) p.neu.push(...lines(r.proposed.trim()))
+    const inForce = r.current.trim().replace(TRAILING_DIVISION_RE, '')
+    const proposed = r.proposed.trim().replace(TRAILING_DIVISION_RE, '')
+    if (inForce) p.old.push(...lines(inForce))
+    if (proposed) p.neu.push(...lines(proposed))
     p.changed ||= r.changed
     out.set(key, p)
   }
