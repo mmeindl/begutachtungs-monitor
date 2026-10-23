@@ -111,6 +111,64 @@ describe('Salzburg — the list page, as served on 22.10.2026', () => {
     ], 'gesetz')
     expect(drafts).toHaveLength(2)
   })
+
+  it('folds an annex that names its draft another way, filed right after it (35593, 23.10.2026)', () => {
+    const drafts = salzburgDrafts([
+      entry(35593, 'Verordnung der Landesregierung, mit der die Grundversorgungs-Verordnung geändert wird'),
+      entry(35594, 'Verordnung, mit der die Grundversorgungs-Verordnung geändert wird - Textgegenüberstellung'),
+    ], 'verordnung')
+    expect(drafts).toHaveLength(1)
+    expect(drafts[0]).toMatchObject({ id: 'sbg-35593', title: 'Verordnung der Landesregierung, mit der die Grundversorgungs-Verordnung geändert wird' })
+    expect(drafts[0]!.documents.map((d) => d.title)).toEqual(['Entwurf', 'Textgegenüberstellung'])
+    // A year in the title is no name: „Naturschutzgesetz 1998 … - TGÜ" for 1999 (18194).
+    expect(salzburgDrafts([
+      entry(18194, 'Gesetz, mit dem das Salzburger Naturschutzgesetz 1999 geändert wird'),
+      entry(18195, 'Gesetz, mit dem das Salzburger Naturschutzgesetz 1998 geändert wird - TGÜ'),
+    ], 'gesetz')).toHaveLength(1)
+  })
+
+  it('folds such an annex only into the draft filed right before it, and only where it names nothing else', () => {
+    // Not adjacent: another entry stood between them.
+    expect(salzburgDrafts([
+      entry(100, 'Verordnung der Landesregierung, mit der die X-Verordnung geändert wird'),
+      entry(104, 'Verordnung, mit der die X-Verordnung geändert wird - Textgegenüberstellung'),
+    ], 'verordnung')).toHaveLength(2)
+    // Two drafts filed together: the second's plan is not the first's.
+    expect(salzburgDrafts([
+      entry(200, 'Verordnung, mit der Anordnungen zum Schutz des Grundwassers erlassen werden (Schongebietsverordnung Rehhof)'),
+      entry(201, 'Verordnung, mit der Anordnungen zum Schutz des Grundwassers erlassen werden (Schongebietsverordnung Taxach) - Plan'),
+    ], 'verordnung')).toHaveLength(2)
+  })
+
+  it('reads „X - Entwurf" as the draft X, whose Erläuterungen follow (29477, 32075)', () => {
+    const base = 'Verordnung der Salzburger Landesregierung, mit der die Wohnbauförderungsverordnung 2015 geändert wird'
+    const drafts = salzburgDrafts([
+      { ...entry(29093, base), startedAt: '2023-10-02' },
+      { ...entry(29477, `${base} - Entwurf`), startedAt: '2024-01-17' },
+      { ...entry(29478, `${base} - Erläuterungen`), startedAt: '2024-01-17' },
+    ], 'verordnung')
+    expect(drafts).toHaveLength(2)
+    // The Erläuterungen are the new draft's, not the older one's of the same title.
+    expect(drafts.find((d) => d.id === 'sbg-29093')!.documents.map((d) => d.title)).toEqual(['Entwurf'])
+    expect(drafts.find((d) => d.id === 'sbg-29477')).toMatchObject({ title: base })
+    expect(drafts.find((d) => d.id === 'sbg-29477')!.documents.map((d) => d.title)).toEqual(['Entwurf', 'Erläuterungen'])
+  })
+
+  it('puts a plan filed before its draft under the draft, with the draft’s number (7654, 34471)', () => {
+    const base = 'Verordnung der Salzburger Landesregierung, mit der die Tauglgries - Natur- und Europaschutzgebietsverordnung geändert wird'
+    const drafts = salzburgDrafts([entry(7654, `${base} - Plan`), entry(7655, base)], 'verordnung')
+    expect(drafts).toHaveLength(1)
+    expect(drafts[0]).toMatchObject({ id: 'sbg-7655', title: base })
+    expect(drafts[0]!.documents.map((d) => d.title)).toEqual(['Entwurf', 'Plan'])
+  })
+
+  it('folds a Textgegenüberstellung filed years late when the Land numbered it right after its draft (18170)', () => {
+    const base = 'Gesetz, mit dem das Salzburger Landes-Personalvertretungsgesetz geändert wird'
+    expect(salzburgDrafts([
+      { ...entry(18170, base), startedAt: '2016-04-25' },
+      { ...entry(18171, `${base} - Textgegenüberstellung`), startedAt: '2017-07-25' },
+    ], 'gesetz')).toHaveLength(1)
+  })
 })
 
 /**

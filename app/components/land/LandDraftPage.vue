@@ -58,6 +58,22 @@ watch(error, (e) => {
   }
 })
 
+/* A number the Land filed as a document of another draft — an annex once
+   read as a draft of its own (`salzburgDrafts`, 23.10.2026) — answers with
+   that draft, and the address moves to the draft's own: one page per draft,
+   and an old link still lands on it. */
+const canonicalPath = computed(() => (data.value ? landDraftPath(props.land, data.value.draft.id) : null))
+function toCanonical() {
+  const path = canonicalPath.value
+  return path && path !== landDraftPath(props.land, `${props.land}-${props.number}`)
+    ? navigateTo(path, { redirectCode: 301, replace: true })
+    : undefined
+}
+await toCanonical()
+watch(canonicalPath, () => {
+  void toCanonical()
+})
+
 const landName = computed(() => LAND_NAME[props.land])
 const publicationNote = computed(() => LAND_PUBLICATION_NOTE[props.land])
 const draft = computed(() => data.value?.draft ?? null)

@@ -28,6 +28,7 @@ import {
   SALZBURG_FILING_EMAIL,
   SALZBURG_LISTS,
   SALZBURG_REGISTERS,
+  documentNumber,
   parseSalzburgList,
   parseSalzburgRegister,
   parseSalzburgStatements,
@@ -203,15 +204,21 @@ const salzburg: LandReader = {
       salzburgRegister().catch(() => null),
     ])
     if (!current && !register) throw unavailable('Salzburg')
-    const running = current?.find((d) => d.id === id)
-    const registered = register?.find((d) => d.id === id)
+    /* By its own number, or — for a number the Land filed as a document of
+       another draft, an annex once read as a draft of its own
+       (`salzburgDrafts`, 23.10.2026) — as that draft, whose page the page
+       then sends the reader to. */
+    const find = (list: LandConsultation[] | null) =>
+      list?.find((d) => d.id === id) ?? list?.find((d) => d.documents.some((doc) => documentNumber(doc.url) === number))
+    const running = find(current)
+    const registered = running ? register?.find((d) => d.id === running.id) : find(register)
     const draft = running ? withRegister(running, registered) : registered
     if (!draft) {
       // Unknown is a 404 only when BOTH sources answered.
       if (!current || !register) throw unavailable('Salzburg')
       return null
     }
-    const statementsUrl = salzburgStatementsUrl(number)
+    const statementsUrl = salzburgStatementsUrl(draft.id.slice('sbg-'.length))
     const statements: LandStatement[] | null = await fetchLandPage(statementsUrl)
       .then((html) => parseSalzburgStatements(html, statementsUrl))
       .catch(() => null)
