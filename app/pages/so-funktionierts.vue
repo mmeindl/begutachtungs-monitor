@@ -508,7 +508,8 @@ const waitMonths = Math.round(RV_LATENCY_CONTEXT_DAYS / 30.44)
         feststeht, welches Landesgesetzblatt aus einem Gesetzesentwurf wurde,
         verknüpft das Rechtsinformationssystem es mit der Regierungsvorlage und
         dem Bericht des Ausschusses, und die Entwurfsseite zeigt auch diese
-        Stationen. Wien zeigt
+        Stationen – Ausschuss, Anträge und Abstimmung so, wie der Bericht sie
+        festhält. Wien zeigt
         einen Entwurf bis zum Beschluss im Landtag, höchstens ein Jahr lang;
         danach ist er auch hier nicht mehr abrufbar.
       </p>
