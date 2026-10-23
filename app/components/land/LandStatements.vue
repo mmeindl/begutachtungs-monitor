@@ -62,7 +62,10 @@ const rows = computed(() => {
     <p v-else-if="!statements.length" class="text-sm text-ink-secondary">
       <template v-if="active">Bisher keine veröffentlicht.</template>
       <template v-else>Das Land hat zu diesem Entwurf keine Stellungnahmen veröffentlicht.</template>
-      <template v-if="publicationNote"> {{ publicationNote }}</template>
+      <!-- The space as a string: Vue's whitespace condensing drops a leading
+           space inside `<template v-if>` („…veröffentlicht.Das Land …",
+           23.10.2026). -->
+      <template v-if="publicationNote">{{ ` ${publicationNote}` }}</template>
     </p>
     <template v-else>
       <!-- The count and the Land's rule above the sheet, as the

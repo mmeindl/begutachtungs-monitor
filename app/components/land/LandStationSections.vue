@@ -265,14 +265,25 @@ const reportName = computed(() => {
           Vom Monitor über den Titel im Rechtsinformationssystem gefunden und bestätigt:
           Entwurf und Landesgesetzblatt nennen dieselbe letzte Änderung des Gesetzes.
         </p>
+        <!-- The search's single candidate, nothing in the texts against it
+             (`followsOn`): compared, and said on what it rests. -->
+        <p v-else-if="kundmachung.certainBy === 'treffer'" class="mt-3 text-sm text-ink-secondary">
+          Vom Monitor über den Titel im Rechtsinformationssystem gefunden: der
+          einzige Treffer der Suche, und nichts in den Texten spricht dagegen.
+        </p>
         <!-- Whose finding it is: the Land records nothing after the
              Begutachtung, so the assignment is ours, by title (§12.43) — and
-             can be wrong where the same law changed twice within two years. -->
+             can be wrong where the same law changed twice within two years.
+             And why nothing is compared against it (23.10.2026): the
+             comparisons below it on other drafts would otherwise make its
+             absence here read as a gap. -->
         <p v-else class="mt-3 text-sm text-ink-secondary">
           Vom Monitor über den Titel im Rechtsinformationssystem gefunden – das Land
           selbst ordnet seine Entwürfe keiner Kundmachung zu. Wurde dasselbe Gesetz
           kurz hintereinander zweimal geändert, kann die Zuordnung die frühere
-          Änderung treffen.
+          Änderung treffen. Mit dem Entwurf vergleicht der Monitor nur eine
+          Kundmachung, deren Zuordnung die Texte bestätigen; diese ist nicht
+          bestätigt.
         </p>
       </template>
     </div>

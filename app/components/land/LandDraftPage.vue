@@ -85,6 +85,15 @@ const citeAs = computed(() => (draft.value ? `${kindLabel.value} „${draft.valu
 
 /* The Land's Textgegenüberstellung, where the server offers it (`LandDraftDetail.comparisons`). */
 const hasTgu = computed(() => (data.value?.comparisons ?? []).some(([a, b]) => a === 'geltend' && b === 'entwurf'))
+/* An amending draft asks „Was ändert der Entwurf?" whether or not the Land
+   answers it, as on the Bund's page (23.10.2026): without a
+   Textgegenüberstellung the section says so, instead of being missing. Not
+   where the title says one is inside the draft („inkl.
+   Textgegenüberstellung"), which the monitor does not read. */
+const amends = computed(() => {
+  const title = draft.value?.title ?? ''
+  return /geändert (?:wird|werden)|Änderung|Novelle/.test(title) && !/gegenüberstellung|\bTGÜ/i.test(title)
+})
 
 const documents = computed<DraftDocument[]>(() =>
   (draft.value?.documents ?? []).map((d) => ({ title: d.title, formats: [{ type: 'pdf', url: d.url }] })))
@@ -200,7 +209,7 @@ useSeoMeta({ ogTitle: () => draft.value?.title ?? 'Entwurf', ogType: 'article' }
             <template v-else>
               Wohin eine Stellungnahme geht, steht im Entwurf.
             </template>
-            <template v-if="publicationNote"> {{ publicationNote }}</template>
+            <template v-if="publicationNote">{{ ` ${publicationNote}` }}</template>
           </p>
           <template #filing>Stellungnahme einbringen</template>
           <!-- Both ways to the address: the link in the sentence opens the
@@ -225,6 +234,9 @@ useSeoMeta({ ogTitle: () => draft.value?.title ?? 'Entwurf', ogType: 'article' }
                  Ministerialentwurf's page asks the same question, after the
                  summary and before the documents (22.10.2026). -->
             <LandLawDiffSection v-if="hasTgu" :land="land" :number="number" from="geltend" to="entwurf" />
+            <PageSubsection v-else-if="amends" id="gegenueberstellung" heading="Was ändert der Entwurf?">
+              <p class="text-sm text-ink-secondary">Das Land hat zu diesem Entwurf keine Textgegenüberstellung veröffentlicht.</p>
+            </PageSubsection>
             <!-- The Land's reasons, after what the draft changes — the order of
                  the Ministerialentwurf's page. -->
             <LandExplanationsSection :land="land" :number="number" />
