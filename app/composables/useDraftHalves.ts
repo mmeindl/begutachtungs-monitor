@@ -151,7 +151,6 @@ export function useDraftHalves(filters: {
     if (firstAnswerPending.value) return 'pending'
     return { me: status.value, ris: risStatus.value, laender: laenderStatus.value }[lead.value]
   })
-  const gateError = computed(() => ({ me: error.value, ris: risError.value, laender: laenderError.value })[lead.value])
   const gateData = computed(() => {
     if (nothingWanted.value) return {}
     if (firstAnswerPending.value) return null
@@ -191,7 +190,6 @@ export function useDraftHalves(filters: {
     laenderStatus,
     laenderError,
     gateStatus,
-    gateError,
     gateData,
     retry,
     selectedGp,

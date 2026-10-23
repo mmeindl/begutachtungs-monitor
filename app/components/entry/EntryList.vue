@@ -93,7 +93,7 @@ defineEmits<{ 'update:sort': [key: string] }>()
     <!-- With `sortable`, `aria-hidden` moves from the row to its plain
          labels: the sort buttons are the one part a screen reader must
          reach (`SortHeader`). Sticky inside its own sheet (`ColumnHeader`). -->
-    <ColumnHeader v-if="entries.length" :sortable="!!sortable" class="gap-4 md:flex">
+    <ColumnHeader v-if="entries.length || $slots.state" :sortable="!!sortable" class="gap-4 md:flex">
       <ColumnLabel :label="lead ?? 'Entwurf'" class="min-w-0 flex-1" />
       <!-- One line, and any excess spills LEFT, into the empty gap: the
            label is 121 px against a 112 px column at `md` (128 in 128 at
@@ -116,12 +116,19 @@ defineEmits<{ 'update:sort': [key: string] }>()
         @choose="sortable?.state && $emit('update:sort', sortable.state.key)"
       />
     </ColumnHeader>
+    <!-- No rows YET: what the sheet says while its rows are on the way or
+         failed to come (23.10.2026). The box, its controls and the column
+         header stand meanwhile, so a changed filter does not take the
+         filters away while it loads. Takes the place of rows and empty
+         state alike — „Keine Entwürfe gefunden" would be a claim about an
+         answer that does not exist yet. -->
+    <slot v-if="$slots.state" name="state" />
     <!-- No rows: the list's own empty state, in the sheet's grammar (a
          name, the fact under it) instead of a card in the card. -->
-    <slot v-if="!entries.length" name="empty" />
+    <slot v-else-if="!entries.length" name="empty" />
     <component
       :is="ordered ? 'ol' : 'ul'"
-      v-if="entries.length"
+      v-else
       class="divide-y divide-hairline"
     >
       <li v-for="entry in entries" :key="entry.key">
