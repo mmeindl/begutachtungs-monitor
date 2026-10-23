@@ -10,7 +10,7 @@ import {
   submitterOfFile,
 } from '../server/utils/laender/salzburg'
 import { LandSourceError } from '../server/utils/laender/gate'
-import { formatSourceList, isDefaultSources, landDraftPath, landShortTitle, parseSourceList } from '../shared/utils/laender'
+import { formatSourceList, isDefaultSources, landDraftPath, landLawGroupTitle, landShortTitle, parseSourceList } from '../shared/utils/laender'
 
 const fixture = (name: string) => readFileSync(new URL(`./fixtures/laender/${name}`, import.meta.url), 'utf8')
 const GESETZE = fixture('salzburg-gesetze-2026-10-22.html')
@@ -213,6 +213,21 @@ describe('a Land draft’s short name and page', () => {
 
   it('addresses the page by the Land’s name and number', () => {
     expect(landDraftPath('sbg', 'sbg-35442')).toBe('/entwuerfe/salzburg/35442')
+  })
+
+  it('names a comparison’s group by the title without date, blanks and running number', () => {
+    // The draft and the Vorlage leave the date blank, the Landesgesetzblatt numbers its pieces.
+    expect(landLawGroupTitle('Gesetz vom ......................................., mit dem das Salzburger Raumordnungsgesetz 2009 geändert wird'))
+      .toBe('Gesetz, mit dem das Salzburger Raumordnungsgesetz 2009 geändert wird')
+    expect(landLawGroupTitle('11. Gesetz vom 4. Februar 2026, mit dem das Salzburger Raumordnungsgesetz 2009 geändert wird'))
+      .toBe('Gesetz, mit dem das Salzburger Raumordnungsgesetz 2009 geändert wird')
+    expect(landLawGroupTitle('Verordnung der Salzburger Landesregierung vom …………, mit der die Hegeschau-Verordnung geändert wird'))
+      .toBe('Verordnung der Salzburger Landesregierung, mit der die Hegeschau-Verordnung geändert wird')
+    expect(landLawGroupTitle('Gesetz vom 2. Juli 2025 über die Förderung des Sports')).toBe('Gesetz über die Förderung des Sports')
+    // An Artikel's own name stays as it is; so does a date that is part of a law's name.
+    expect(landLawGroupTitle('Artikel I Änderung des Oö. Agrarrecht-Organisationsgesetzes')).toBe('Artikel I Änderung des Oö. Agrarrecht-Organisationsgesetzes')
+    expect(landLawGroupTitle('Änderung des Gesetzes vom 24. April 2002')).toBe('Änderung des Gesetzes vom 24. April 2002')
+    expect(landLawGroupTitle('')).toBe('')
   })
 })
 

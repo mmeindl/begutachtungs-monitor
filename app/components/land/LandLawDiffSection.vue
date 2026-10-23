@@ -1,13 +1,13 @@
 <script setup lang="ts">
+import type { Ref } from 'vue'
 import type { LandCode, LandExplanationsResponse, LandLawDiffResponse, LandReasoningResponse, ReasoningDiffEntry, LandTextStation, LawDiffSegment, LawDiffUnit, LawStationId } from '#shared/types'
 import { isNovelleUnits } from '#shared/utils/changeShare'
 import { diffUnitKey } from '#shared/utils/diffKey'
-import { countLabelDe, formatDateDe } from '#shared/utils/format'
-import { landShortTitle } from '#shared/utils/laender'
+import { formatDateDe } from '#shared/utils/format'
+import { landDiffKey, landExplanationsKey, landLawGroupTitle, landReasoningKey, landShortTitle } from '#shared/utils/laender'
 import { lawStationPairQuestion } from '#shared/utils/lawStations'
 import { displayId, extraHeading, unitName } from '#shared/utils/unitName'
 import { BADGE_CLASS, type DiffBadge, PILL_CLASS, badgeCounts, badgeLabels } from '~/utils/diffBadges'
-import { reasoningRateNote } from '~/utils/reasoningNotes'
 import { readsSideBySide, splitSegments } from '~/utils/diffSides'
 import ListBox from '~/components/ui/ListBox.vue'
 
@@ -26,6 +26,15 @@ import ListBox from '~/components/ui/ListBox.vue'
  * Lazy and client-side, like every comparison on the draft pages: two
  * documents and a PDF parse the page must not wait for, and the section
  * says „lädt" meanwhile — nothing false in the time it takes.
+ *
+ * NOTHING ABOVE THE LIST but a rare warning (23.10.2026), as on the
+ * Ministerialentwurf's page. Three sentences stood there: the counts, which
+ * the legend and the groups' pills state already; the Begründungen changed,
+ * which for the step after the Begutachtung is a row of the Vorlage's frame
+ * now (`useLandVorlageOutcome`), as the Bund's; and the §§ the
+ * Textgegenüberstellung withheld, which its law's group counts („nicht
+ * gezeigt") and names when opened. What stays above is what the Bund keeps
+ * there too: that what follows may be misread (`ComparisonCaveats`).
  */
 const props = withDefaults(defineProps<{
   land: LandCode
@@ -35,19 +44,36 @@ const props = withDefaults(defineProps<{
   to?: LandTextStation
 }>(), { from: 'entwurf', to: 'lgbl' })
 
+/* Keyed by draft and pair: the Vorlage's frame reads the same request for
+   its counts (`useLandVorlageOutcome`). */
 const { data, status } = useFetch<LandLawDiffResponse>(
   () => `/api/laender/${props.land}/${props.number}/vergleich`,
-  { query: { von: props.from, bis: props.to }, lazy: true, server: false },
+  {
+    query: { von: props.from, bis: props.to },
+    key: () => landDiffKey(props.land, props.number, props.from, props.to),
+    lazy: true,
+    server: false,
+    dedupe: 'defer',
+  },
 )
 
 /* The Land's reasoning at each § of its Textgegenüberstellung, as the
    ministry's stands at each § of its own (`TextComparisonSection`) — the
    particular part of the Erläuterungen, one request shared with „Was das
-   Land begründet" (`LandExplanationsSection`). */
-const { data: explanations } = useFetch<LandExplanationsResponse>(
-  () => `/api/laender/${props.land}/${props.number}/erlaeuterungen`,
-  { lazy: true, server: false, immediate: props.from === 'geltend' },
-)
+   Land begründet" (`LandExplanationsSection`) by its key.
+
+   Registered only by the instance that reads it, and the Begründungen below
+   only by the step after the Begutachtung: a shared key keeps the options of
+   whoever registers it first, and the Textgegenüberstellung's instance, first
+   on the page, registered the Begründungen with `enabled: false` for every
+   later one — the Vorlage's frame never got its count (23.10.2026). The
+   condition is a prop's, fixed for an instance's life. */
+const explanations: Ref<LandExplanationsResponse | null | undefined> = props.from === 'geltend'
+  ? useFetch<LandExplanationsResponse>(
+    () => `/api/laender/${props.land}/${props.number}/erlaeuterungen`,
+    { key: () => landExplanationsKey(props.land, props.number), lazy: true, server: false, dedupe: 'defer' },
+  ).data
+  : shallowRef(null)
 /* „Oö. Krankenanstaltengesetz 1997" and „Krankenanstaltengesetz 1997" name one law. */
 const lawKey = (law: string | null) => (law ?? '').replace(/^(?:Oö\.|Salzburger|Wiener)\s+/, '').toLowerCase()
 function reasonsFor(u: LawDiffUnit) {
@@ -61,25 +87,39 @@ function reasonsFor(u: LawDiffUnit) {
    Begutachtung — the Ministerialentwurf's Begründungsvergleich, by the same
    rule: shown where it changed, or where the two group it differently
    (`LawDiffSection.reasoningOf`, §12.54). */
-const { data: reasoning } = useFetch<LandReasoningResponse>(
-  () => `/api/laender/${props.land}/${props.number}/begruendung`,
-  { lazy: true, server: false, immediate: props.from === 'entwurf' && props.to === 'rv' },
-)
+const vorlageStep = props.from === 'entwurf' && props.to === 'rv'
+// Shared with the Vorlage's frame, which counts the same Begründungen.
+const reasoning: Ref<LandReasoningResponse | null | undefined> = vorlageStep
+  ? useFetch<LandReasoningResponse>(
+    () => `/api/laender/${props.land}/${props.number}/begruendung`,
+    { key: () => landReasoningKey(props.land, props.number), lazy: true, server: false, dedupe: 'defer' },
+  ).data
+  : shallowRef(null)
 function reasoningOf(u: LawDiffUnit): ReasoningDiffEntry | null {
-  if (!(props.from === 'entwurf' && props.to === 'rv')) return null
+  if (!vorlageStep) return null
   const key = reasoning.value?.units?.[diffUnitKey(u)]
   const entry = key ? reasoning.value?.entries?.[key] : null
   return entry && (entry.changed || !entry.comparable) ? entry : null
 }
-const reasoningNote = computed(() => reasoningRateNote(reasoning.value?.available ? reasoning.value.stats : null, 'das Land'))
 
 /* The Bund's question for the same pair, word for word (`lawStationPairQuestion`). */
 const AS_LAW_STATION: Record<Exclude<LandTextStation, 'geltend'>, LawStationId> = { entwurf: 'me', rv: 'rv', ausschuss: 'ausschuss', lgbl: 'bgbl' }
 const LABEL: Record<LandTextStation, string> = { geltend: 'Geltende Fassung', entwurf: 'Entwurf', rv: 'Regierungsvorlage', ausschuss: 'Ausschussfassung', lgbl: 'Kundmachung' }
 /* „(im Entwurf Z 6)" — where the earlier text numbered the unit otherwise. */
 const IN_FROM: Record<LandTextStation, string> = { geltend: 'in der geltenden Fassung', entwurf: 'im Entwurf', rv: 'in der Regierungsvorlage', ausschuss: 'in der Ausschussfassung', lgbl: 'in der Kundmachung' }
-/* When the changes happened, temporal and never causal (framing rule). */
-const WHEN: Record<string, string> = { 'entwurf>rv': 'nach der Begutachtung', 'rv>ausschuss': 'im Ausschuss', 'rv>lgbl': 'im Landtag', 'entwurf>lgbl': 'bis zur Kundmachung' }
+
+/* Each comparison's anchor, which the bar and inbound links use. Two
+   comparisons end at the Kundmachung on a Salzburg page — the Landtag's step
+   and the whole way — and both were `textvergleich-lgbl` until 23.10.2026,
+   so the bar's link could not tell them apart. The whole way keeps it. */
+const ANCHOR: Record<string, string> = {
+  'geltend>entwurf': 'gegenueberstellung',
+  'entwurf>rv': 'textvergleich-rv',
+  'rv>ausschuss': 'textvergleich-ausschuss',
+  'rv>lgbl': 'textvergleich-landtag',
+  'entwurf>lgbl': 'textvergleich-lgbl',
+}
+const anchor = ANCHOR[`${props.from}>${props.to}`] ?? `textvergleich-${props.from}-${props.to}`
 
 /* The law in force against the draft is the Ministerialentwurf's
    „Was ändert der Entwurf?" — its heading and its anchor. */
@@ -115,26 +155,55 @@ const visible = computed(() =>
   hiddenKinds.value.length ? searched.value.filter((u) => !hiddenKinds.value.includes(badgeOf(u))) : searched.value)
 
 interface UnitView { unit: LawDiffUnit; label: string | null }
+/* What a block carries, it carries computed (`LawDiffSection`, the same
+   reason): the template asked for the Begründung up to five times a row, on
+   every keystroke of the search. */
 type Block =
-  | ({ kind: 'unit'; from: LawDiffSegment[]; to: LawDiffSegment[]; split: boolean } & UnitView)
+  | ({ kind: 'unit'; from: LawDiffSegment[]; to: LawDiffSegment[]; split: boolean; reasoning: ReasoningDiffEntry | null; reasons: ReturnType<typeof reasonsFor> } & UnitView)
   | { kind: 'context'; units: UnitView[] }
 
 const viewOf = (u: LawDiffUnit): UnitView => ({ unit: u, label: unitName(u, null, diffUnitKey(u)) ?? extraHeading(u) })
+
+/**
+ * The §§ the Textgegenüberstellung withheld, per group: counted in the
+ * group's header („nicht gezeigt", the Bund's dashed pill) and named at the
+ * top of its body. A § the server files under a law no group carries joins
+ * the only group there is, or stands as a group of its own. A search hides
+ * them, as the Bund's: there is no text of theirs to find.
+ */
+const withheldByGroup = computed(() => {
+  const out = new Map<string, string[]>()
+  if (!data.value?.available || query.value.trim()) return out
+  const keys = new Set(units.value.map((u) => u.article ?? ''))
+  for (const w of data.value.withheld) {
+    const own = w.law ?? ''
+    const key = keys.has(own) || keys.size !== 1 ? own : [...keys][0]!
+    out.set(key, [...(out.get(key) ?? []), displayId(w.id)])
+  }
+  return out
+})
+
+/* „§ 3, § 7 und § 12" */
+const listDe = (items: readonly string[]) => (items.length > 1 ? `${items.slice(0, -1).join(', ')} und ${items.at(-1)}` : items[0] ?? '')
 
 /* One group per Gesetz of the package, folded; runs of unchanged
    instructions fold into one line — as on the Ministerialentwurf's page. */
 const groups = computed(() => {
   const byArticle = new Map<string, { article: string; units: LawDiffUnit[]; counts: Record<DiffBadge, number> }>()
-  for (const u of visible.value) {
-    const key = u.article ?? ''
+  const groupOf = (key: string) => {
     let g = byArticle.get(key)
     if (!g) {
       g = { article: key, units: [], counts: { unchanged: 0, changed: 0, editorial: 0, inserted: 0, removed: 0 } }
       byArticle.set(key, g)
     }
+    return g
+  }
+  for (const u of visible.value) {
+    const g = groupOf(u.article ?? '')
     g.units.push(u)
     g.counts[badgeOf(u)]++
   }
+  for (const key of withheldByGroup.value.keys()) groupOf(key)
   return [...byArticle.values()].map((g) => {
     const limit = limitFor(g.article)
     const blocks: Block[] = []
@@ -155,48 +224,30 @@ const groups = computed(() => {
         continue
       }
       flush()
-      blocks.push({ kind: 'unit', ...viewOf(u), ...splitSegments(u.segments, u.fromText, u.toText), split: readsSideBySide(u.segments) })
+      blocks.push({
+        kind: 'unit',
+        ...viewOf(u),
+        ...splitSegments(u.segments, u.fromText, u.toText),
+        split: readsSideBySide(u.segments),
+        reasoning: reasoningOf(u),
+        reasons: reasonsFor(u),
+      })
       shown++
     }
     flush()
-    return { ...g, blocks, hidden }
+    return { ...g, title: landLawGroupTitle(g.article), blocks, hidden, withheld: withheldByGroup.value.get(g.article) ?? [] }
   })
 })
 
 const addedLaws = computed(() => new Set(data.value?.addedLaws ?? []))
 const droppedLaws = computed(() => new Set(data.value?.droppedLaws ?? []))
 
-/* What the comparison found, in one sentence above the box: the changes, and
-   what stayed — the wins and the rest, both ways (framing rule). */
-const summary = computed(() => {
-  const s = data.value?.stats
-  if (!s) return null
-  // Counted as the pills count: an editorial change is not a change of
-  // substance, and the two numbers must add up to what the box shows.
-  const changes = s.changed - s.editorial + s.inserted + s.removed
-  if (ofDraft.value) {
-    const what = [
-      // „ändert 1 Paragraphen", „ändert 12 Paragraphen": the accusative is one word for both.
-      s.changed - s.editorial ? `ändert ${countLabelDe(s.changed - s.editorial, 'Paragraphen', 'Paragraphen')}` : null,
-      s.inserted ? `fügt ${countLabelDe(s.inserted, 'neuen', 'neue')} ein` : null,
-      s.removed ? `lässt ${s.removed} entfallen` : null,
-    ].filter(Boolean)
-    const editorial = s.editorial ? ` ${countLabelDe(s.editorial, 'Änderung ist', 'Änderungen sind')} redaktionell.` : ''
-    return what.length ? `Der Entwurf ${what.join(', ').replace(/, ([^,]*)$/, ' und $1')}.${editorial}` : `Der Entwurf ändert keinen Paragraphen inhaltlich.${editorial}`
-  }
-  const when = WHEN[`${props.from}>${props.to}`] ?? ''
-  if (!changes && !s.editorial) return `Die ${TO_LABEL.value} übernimmt ${props.from === 'entwurf' ? 'den Entwurf' : `die ${FROM_LABEL.value}`} Wort für Wort.`
-  const parts = [
-    changes ? `${countLabelDe(changes, 'Änderung', 'Änderungen')} ${when}` : `Keine inhaltliche Änderung ${when}`,
-    s.editorial ? `${countLabelDe(s.editorial, 'redaktionelle', 'redaktionelle')} dazu` : null,
-    `${s.unchanged} ${unitNoun(s.unchanged)} unverändert übernommen`,
-  ]
-  return `${parts.filter(Boolean).join(', ')}.`
-})
+/* Where a search found nothing — said in the box, as the Bund's (`NoMatches`). */
+const hasUnits = computed(() => units.value.length > 0)
 </script>
 
 <template>
-  <PageSubsection :id="ofDraft ? 'gegenueberstellung' : `textvergleich-${to}`" :heading="heading">
+  <PageSubsection :id="anchor" :heading="heading">
     <ListSkeleton v-if="status === 'pending' || status === 'idle'" class="mt-3">
       {{ FROM_LABEL }} und {{ TO_LABEL }} werden verglichen …
     </ListSkeleton>
@@ -207,24 +258,20 @@ const summary = computed(() => {
       {{ data.unavailableReason }}
     </p>
     <template v-else>
-      <!-- Two Begutachtungen, one law: said before the numbers, or the
-           other draft's changes read as changes made to this one after its
-           Begutachtung (2023-16039 and 2024-16064, LGBl. Nr. 95/2024). -->
-      <p v-if="data.sharedWith.length" class="mb-3 text-sm text-ink">
-        Dieselbe Kundmachung setzt auch
-        <template v-for="(other, i) in data.sharedWith" :key="other.path"><template v-if="i > 0">{{ i === data.sharedWith.length - 1 ? ' und ' : ', ' }}</template>den Entwurf
-          <NuxtLink :to="other.path" class="link-inline">„{{ landShortTitle(other.title) ?? other.title }}“</NuxtLink><template v-if="other.deadline"> (Frist bis {{ formatDateDe(other.deadline) }})</template></template>
-        um. Was hier als neu erscheint, kann aus {{ data.sharedWith.length > 1 ? 'jenen Entwürfen' : 'jenem Entwurf' }} stammen.
-      </p>
-      <p v-if="summary" class="text-sm text-ink">{{ summary }}</p>
-      <p v-if="reasoningNote" class="mt-1 text-sm text-ink-secondary">{{ reasoningNote }}</p>
-      <!-- What the Land's document shows and this list does not, counted:
-           a § is shown only where RIS confirms our reading of its text in
-           force (`landTguService`). -->
-      <p v-if="data.withheld" class="mt-1 text-sm text-ink-secondary">
-        {{ countLabelDe(data.withheld, 'weiterer Paragraph', 'weitere Paragraphen') }} der Textgegenüberstellung {{ data.withheld === 1 ? 'steht' : 'stehen' }} hier nicht: {{ data.withheld === 1 ? 'seinen' : 'ihren' }} geltenden Text fand der Monitor im RIS nicht wortgleich. Die Textgegenüberstellung selbst steht unter den Dokumenten.
-      </p>
-      <ListBox class="mt-4">
+      <!-- Two Begutachtungen, one law: said before the list, or the other
+           draft's changes read as changes made to this one after its
+           Begutachtung (2023-16039 and 2024-16064, LGBl. Nr. 95/2024). The
+           one sentence that stays above, in the Bund's form for a warning
+           that what follows may be misread. -->
+      <ComparisonCaveats v-if="data.sharedWith.length" :notes="[]" class="mb-4">
+        <p>
+          Dieselbe Kundmachung setzt auch
+          <template v-for="(other, i) in data.sharedWith" :key="other.path"><template v-if="i > 0">{{ i === data.sharedWith.length - 1 ? ' und ' : ', ' }}</template>den Entwurf
+            <NuxtLink :to="other.path" class="link-inline">„{{ landShortTitle(other.title) ?? other.title }}“</NuxtLink><template v-if="other.deadline"> (Frist bis {{ formatDateDe(other.deadline) }})</template></template>
+          um. Was hier als neu erscheint, kann aus {{ data.sharedWith.length > 1 ? 'jenen Entwürfen' : 'jenem Entwurf' }} stammen.
+        </p>
+      </ComparisonCaveats>
+      <ListBox>
         <template #header>
           <DiffToolbar
             v-model:query="query"
@@ -237,13 +284,23 @@ const summary = computed(() => {
         <DiffGroup
           v-for="g in groups"
           :key="g.article"
-          :title="g.article"
+          :title="g.title"
           :badges="badgeCounts(g.counts, BADGE_LABEL)"
+          :withheld="g.withheld.length"
           :open="groupOpen(g.article)"
           :more="g.hidden"
           @toggle="toggleGroup(g.article)"
           @more="showAll(g.article)"
         >
+          <!-- What the Land's document shows and this list does not: a § is
+               shown only where RIS confirms our reading of its text in force
+               (`landTguService`). Named where the header counts it, with
+               the way to the document that does show it. -->
+          <p v-if="g.withheld.length" class="border-b border-hairline px-4 py-2.5 text-sm text-ink-secondary">
+            Nicht gezeigt: {{ listDe(g.withheld) }}. {{ g.withheld.length === 1 ? 'Seinen' : 'Ihren' }} geltenden Text fand der Monitor im RIS nicht wortgleich;
+            <template v-if="data.fromDocument?.url">die <ExternalLink :href="data.fromDocument.url" class="link-inline">Textgegenüberstellung des Landes</ExternalLink> zeigt {{ g.withheld.length === 1 ? 'ihn' : 'sie' }}.</template>
+            <template v-else>die Textgegenüberstellung des Landes zeigt {{ g.withheld.length === 1 ? 'ihn' : 'sie' }}.</template>
+          </p>
           <p v-if="addedLaws.has(g.article)" class="border-b border-hairline px-4 py-2.5 text-sm text-ink-secondary">
             Dieses Gesetz kommt {{ IN_FROM[from] }} nicht vor; es ist auf dem Weg hinzugekommen.
           </p>
@@ -275,10 +332,10 @@ const summary = computed(() => {
               <!-- The Land's reasoning, where the question arises: under the
                    §'s own line, in ink, indented and without a gutter — the
                    ministry's disclosure on the Bund's page, same shape. -->
-              <Disclosure v-if="reasonsFor(b.unit).length" size="xs" tone="ink" class="mb-2">
+              <Disclosure v-if="b.reasons.length" size="xs" tone="ink" class="mb-2">
                 <template #summary>Begründung des Landes</template>
                 <div class="mt-1 pl-6">
-                  <div v-for="(e, ei) in reasonsFor(b.unit)" :key="ei" :class="ei > 0 ? 'mt-3' : ''">
+                  <div v-for="(e, ei) in b.reasons" :key="ei" :class="ei > 0 ? 'mt-3' : ''">
                     <p class="text-xs text-ink-muted">{{ e.heading }}</p>
                     <p v-for="(t, ti) in e.text" :key="ti" class="mt-1 hyphens-auto text-sm leading-relaxed text-ink-secondary">{{ t }}</p>
                   </div>
@@ -299,35 +356,36 @@ const summary = computed(() => {
               >
                 <!-- The Land's reasoning at this change, as the ministry's on
                      the Bund's page: closed, it answers a second question. -->
-                <Disclosure v-if="reasoningOf(b.unit)" size="xs" tone="secondary" class="mt-2">
+                <Disclosure v-if="b.reasoning" size="xs" tone="secondary" class="mt-2">
                   <template #summary>
-                    <template v-if="!reasoningOf(b.unit)!.comparable">Die Begründung des Landes zu dieser Änderung</template>
+                    <template v-if="!b.reasoning.comparable">Die Begründung des Landes zu dieser Änderung</template>
                     <template v-else>
                       Die Begründung des Landes zu diesem Paragraphen hat sich geändert
-                      <span v-if="reasoningOf(b.unit)!.editorial" :class="[PILL_CLASS, BADGE_CLASS.editorial]">{{ BADGE_LABEL.editorial }}</span>
+                      <span v-if="b.reasoning.editorial" :class="[PILL_CLASS, BADGE_CLASS.editorial]">{{ BADGE_LABEL.editorial }}</span>
                     </template>
                   </template>
-                  <div v-if="!reasoningOf(b.unit)!.comparable || !reasoningOf(b.unit)!.segments" class="pb-2 pl-6">
+                  <div v-if="!b.reasoning.comparable || !b.reasoning.segments" class="pb-2 pl-6">
                     <p class="mb-2 text-xs text-ink-muted">
-                      {{ reasoningOf(b.unit)!.comparable ? 'Für einen Wortvergleich ist die Passage zu lang — hier beide Fassungen im Ganzen.' : 'Entwurf und Regierungsvorlage fassen die Begründung zu dieser Änderung verschieden zusammen; verglichen wird sie deshalb nicht.' }}
+                      {{ b.reasoning.comparable ? 'Für einen Wortvergleich ist die Passage zu lang — hier beide Fassungen im Ganzen.' : 'Entwurf und Regierungsvorlage fassen die Begründung zu dieser Änderung verschieden zusammen; verglichen wird sie deshalb nicht.' }}
                     </p>
                     <SideBySide :from-label="FROM_LABEL" :to-label="TO_LABEL">
-                      <template v-if="reasoningOf(b.unit)!.fromText" #from>
-                        <p class="hyphens-auto text-ink">{{ reasoningOf(b.unit)!.fromText }}</p>
+                      <template v-if="b.reasoning.fromText" #from>
+                        <p class="hyphens-auto text-ink">{{ b.reasoning.fromText }}</p>
                       </template>
                       <template #to>
-                        <p class="hyphens-auto text-ink">{{ reasoningOf(b.unit)!.toText }}</p>
+                        <p class="hyphens-auto text-ink">{{ b.reasoning.toText }}</p>
                       </template>
                     </SideBySide>
                   </div>
                   <p v-else class="hyphens-auto pb-2 pl-6 text-sm leading-relaxed text-ink">
-                    <DiffText :segments="reasoningOf(b.unit)!.segments ?? []" />
+                    <DiffText :segments="b.reasoning.segments ?? []" />
                   </p>
                 </Disclosure>
               </DiffBody>
             </div>
           </template>
         </DiffGroup>
+        <NoMatches v-if="hasUnits" :found="visible.length > 0" />
       </ListBox>
       <!-- Whose texts and whose reading: the Land's and the Landtag's PDFs,
            RIS's Kundmachung, and the comparison ours — read from PDFs,

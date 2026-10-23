@@ -4,6 +4,7 @@ import type { Fact } from '~/components/ui/FactList.vue'
 import { citeLineDe } from '#shared/utils/citations'
 import { formatDateDe } from '#shared/utils/format'
 import { afterFristDe } from '~/utils/spine'
+import { useLandVorlageOutcome } from '~/composables/useLandVorlageOutcome'
 import ListBox from '~/components/ui/ListBox.vue'
 
 /**
@@ -61,6 +62,14 @@ const beilage = computed(() => {
   if (ooe) return `Beilage ${ooe}`
   return /(Nr\s+\d+ der Beilagen(?: \([^)]*\))?)/.exec(label)?.[1] ?? null
 })
+/* What the Vorlage made of the draft, as rows of its frame — the Bund's
+   „Umgeschrieben oder gestrichen" and „Begründung", from the requests the
+   comparison under the frame reads (`useLandVorlageOutcome`). */
+const vorlageCompared = computed(() => offers('entwurf', 'rv'))
+const { share, sharePending, shareDe, reasoningDe } = useLandVorlageOutcome(
+  () => ({ land: props.land!, number: props.number! }),
+  vorlageCompared,
+)
 const rvFacts = computed<Fact[]>(() => {
   const step = rvStep.value
   if (!step) return []
@@ -70,8 +79,14 @@ const rvFacts = computed<Fact[]>(() => {
       ? [{ key: 'eingelangt', title: 'Eingelangt im Landtag', text: span ? `${formatDateDe(step.date)}, ${span}` : formatDateDe(step.date) }]
       : []),
     ...(step.url ? [{ key: 'vorlage', title: 'Die Vorlage' }] : []),
+    // The first holds its place while the comparison loads; both go where
+    // there is nothing to count.
+    ...(share.value || sharePending.value ? [{ key: 'aenderung', title: 'Umgeschrieben oder gestrichen' }] : []),
+    ...(reasoningDe.value ? [{ key: 'begruendung', title: 'Begründung', text: reasoningDe.value }] : []),
   ]
 })
+/* The counts are ours, not the Land's: said under the frame, as the Bund's. */
+const rvCounted = computed(() => rvFacts.value.some((f) => f.key === 'aenderung' || f.key === 'begruendung'))
 const lgblFacts: Fact[] = [{ key: 'kundmachung', title: 'Kundgemacht' }]
 
 /* The frame of „Im Landtag", in „Im Parlament"'s order: where it stands,
@@ -110,7 +125,12 @@ const reportName = computed(() => {
             Regierungsvorlage<template v-if="beilage">, {{ beilage }}</template>
           </ExternalLink>
         </template>
+        <template #value-aenderung>
+          <p v-if="shareDe">{{ shareDe }}</p>
+          <div v-else class="mt-1.5 h-3 w-2/3 animate-pulse rounded bg-hairline motion-reduce:animate-none" aria-hidden="true" />
+        </template>
       </FactList>
+      <SectionCredits v-if="rvCounted" :sources="[]" :marked="false" own="Zählung" method="/so-funktionierts#laender" />
     </div>
     <!-- What changed after the Begutachtung: the draft against the
          Vorlage, the comparison the Bund's drafts lead with. -->

@@ -45,7 +45,7 @@ const emptyStats = { total: 0, unchanged: 0, changed: 0, editorial: 0, inserted:
 function unavailable(from: LandTextStation, to: LandTextStation, reason: string, rest: Partial<LandLawDiffResponse> = {}): LandLawDiffResponse {
   return {
     from, to, available: false, unavailableReason: reason, units: [], stats: emptyStats,
-    fromDocument: null, toDocument: null, addedLaws: [], droppedLaws: [], sharedWith: [], withheld: 0, ...rest,
+    fromDocument: null, toDocument: null, addedLaws: [], droppedLaws: [], sharedWith: [], withheld: [], ...rest,
   }
 }
 
@@ -88,7 +88,7 @@ export async function compareLandTexts(
     addedLaws: added,
     droppedLaws: dropped,
     sharedWith: shared.map((d) => ({ title: d.title, path: landDraftPath(d.land, d.id), deadline: d.deadline, startedAt: d.startedAt })),
-    withheld: 0,
+    withheld: [],
   }
 }
 

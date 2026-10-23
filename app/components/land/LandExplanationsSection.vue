@@ -13,13 +13,15 @@
  * wait for. The request is shared with the comparison above it.
  */
 import type { LandCode, LandExplanationsResponse } from '#shared/types'
+import { landExplanationsKey } from '#shared/utils/laender'
 import { foldByBudget } from '~/utils/foldByBudget'
 
 const props = defineProps<{ land: LandCode; number: string }>()
 
+/* Keyed, so the Textgegenüberstellung's request is this one (`landExplanationsKey`). */
 const { data, status } = useFetch<LandExplanationsResponse>(
   () => `/api/laender/${props.land}/${props.number}/erlaeuterungen`,
-  { lazy: true, server: false },
+  { key: () => landExplanationsKey(props.land, props.number), lazy: true, server: false, dedupe: 'defer' },
 )
 
 interface Item {

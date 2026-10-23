@@ -9,7 +9,7 @@
  *
  * Pure module (auto-imported; vitest imports it relatively).
  */
-import type { LandCode } from '../types'
+import type { LandCode, LandTextStation } from '../types'
 
 /** Display order — the order the chips stand in: alphabetical, as the Länder are listed everywhere. */
 export const LAND_CODES: readonly LandCode[] = ['ooe', 'sbg', 'w']
@@ -91,6 +91,43 @@ export function isDefaultSources(codes: readonly SourceCode[]): boolean {
 export function landShortTitle(title: string): string | null {
   const name = /\(([^()]{4,80})\)\s*$/.exec(title)?.[1]?.trim()
   return name && /^\p{Lu}/u.test(name) && !/^Anlage\b/.test(name) ? name : null
+}
+
+/**
+ * The keys of a Land draft page's lazy requests (23.10.2026), as the Bund's
+ * (`lawDiffKey`): the Regierungsvorlage's frame counts what the comparison
+ * under it shows, from one request, and „Was das Land begründet" reads the
+ * Erläuterungen the Textgegenüberstellung shows at its §§, from one request.
+ * Without a key Nuxt keys a fetch by its call site — two components asked
+ * twice for one document, and one component in four comparisons shared one
+ * answer meant for one of them.
+ */
+export function landDiffKey(land: LandCode, number: string, from: LandTextStation, to: LandTextStation): string {
+  return `land-diff:${land}:${number}:${from}>${to}`
+}
+
+export function landReasoningKey(land: LandCode, number: string): string {
+  return `land-reasoning:${land}:${number}`
+}
+
+export function landExplanationsKey(land: LandCode, number: string): string {
+  return `land-erlaeuterungen:${land}:${number}`
+}
+
+/**
+ * The name a group of a Land's comparison carries (23.10.2026). The law text
+ * names itself by its promulgation title — „Gesetz vom ………………, mit dem das
+ * Salzburger Raumordnungsgesetz 2009 geändert wird" in the draft and the
+ * Vorlage, „11. Gesetz vom 4. Februar 2026, mit dem …" in the
+ * Landesgesetzblatt — so one law stood under three names in three
+ * comparisons, two of them with blanks. Without the date, its blanks and the
+ * Landesgesetzblatt's running number it is the title the draft carries.
+ */
+export function landLawGroupTitle(title: string): string {
+  return title
+    .replace(/^\d+\.\s+(?=(?:Landes)?(?:verfassungs)?(?:Gesetz|Verordnung|Kundmachung))/iu, '')
+    .replace(/\s+vom\s+(?:[.…_\s]{3,}|\d{1,2}\.\s*\p{L}+\s+\d{4})(?=\s*,|\s+(?:über|zur|zum|betreffend|mit|des|der)\b)/u, '')
+    .trim()
 }
 
 /**

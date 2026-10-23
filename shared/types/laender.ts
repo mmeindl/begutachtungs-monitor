@@ -242,9 +242,12 @@ export interface LandLawDiffResponse {
   /**
    * Paragraphen the Land's Textgegenüberstellung shows and this comparison
    * does not, because RIS did not confirm their text in force
-   * (`geltend → entwurf` only; 0 elsewhere).
+   * (`geltend → entwurf` only; empty elsewhere). Each under the law it
+   * belongs to as far as the document says — its own heading, or the
+   * confirmed § before it — so the list can count them where they stand, as
+   * the Ministerialentwurf's „nicht gezeigt" (23.10.2026).
    */
-  withheld: number
+  withheld: { law: string | null; id: string }[]
 }
 
 /**

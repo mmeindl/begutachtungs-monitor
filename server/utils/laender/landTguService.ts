@@ -7,9 +7,9 @@
  * A § IS SHOWN ONLY WHERE RIS CONFIRMS OUR READING OF IT. The text in force
  * we read off the document must stand in RIS's consolidated Landesrecht at
  * the document's date (`shareInRis` ≥ 0.98); a § the document prints as wholly
- * new must not exist there yet. Everything else is withheld and counted, and
- * the page says how many — as the federal annex withholds the rows its RIS
- * check does not carry. What the check cannot see is the draft's side alone;
+ * new must not exist there yet. Everything else is withheld and named, and
+ * the page counts it under its law („nicht gezeigt") — as the federal annex
+ * withholds the rows its RIS check does not carry. What the check cannot see is the draft's side alone;
  * measured against the sentences the Begutachtungsentwurf itself quotes as
  * new wording, 94 % stand in it verbatim and the losses read were the
  * measurement's or the Land's own (docs/architecture.md §12.45).
@@ -50,7 +50,7 @@ const emptyStats = { total: 0, unchanged: 0, changed: 0, editorial: 0, inserted:
 function unavailable(reason: string, rest: Partial<LandLawDiffResponse> = {}): LandLawDiffResponse {
   return {
     from: 'geltend', to: 'entwurf', available: false, unavailableReason: reason, units: [], stats: emptyStats,
-    fromDocument: null, toDocument: null, addedLaws: [], droppedLaws: [], sharedWith: [], withheld: 0, ...rest,
+    fromDocument: null, toDocument: null, addedLaws: [], droppedLaws: [], sharedWith: [], withheld: [], ...rest,
   }
 }
 
@@ -241,7 +241,9 @@ export async function compareTgu(land: LandCode, detail: LandDraftDetail): Promi
     return (p.old.length ? paras.has(p.number) : !paras.has(p.number)) ? law : null
   })
   const kept = paragraphs.flatMap((p, i) => (verdicts[i] ? [{ ...p, law: verdicts[i] }] : []))
-  const withheld = paragraphs.length - kept.length
+  // Under the law the document files it under, or that of the confirmed §
+  // beside it — where the page counts it (`LandLawDiffSection`).
+  const withheld = paragraphs.flatMap((p, i) => (verdicts[i] ? [] : [{ law: p.law ?? neighbour(i), id: `§${p.number}` }]))
   if (!kept.length) {
     return unavailable(
       'Den geltenden Text in dieser Textgegenüberstellung fand der Monitor im RIS nicht wortgleich; sie steht unter den Dokumenten.',
