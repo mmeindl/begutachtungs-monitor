@@ -15,7 +15,7 @@
  *    „Zu den einzelnen Bestimmungen:" … „Zu Z 1 (§ 28 Abs 3):".
  *  - Wien: after law and Vorblatt, „ERLÄUTERUNGEN" … „Allgemeiner Teil" …
  *    „Besonderer Teil" … „Zu Z 1 (§ 2 Abs. 8):", the Textgegenüberstellung
- *    after them.
+ *    after them; headings in bold, many without a number (`boldHeading`).
  */
 
 export interface ExplanationPassage {
@@ -46,19 +46,41 @@ const TITLE_RE = /^(?:Erläuterungen|ERLÄUTERUNGEN|Erläuternde Bemerkungen)\b/
 const PARTICULAR_RE = /^(?:[A-Z]\.|[IVX]+\.|\d+\.)?\s*(?:Besonderer Teil|Zu den einzelnen Bestimmungen)\b/
 /* „Zu Art. I Z 2", and in Salzburg's packages „Zu Art 2 Z 1" (23.10.2026). */
 const ENTRY_RE = /^Zu\s+(?:(?:Art(?:ikel)?\.?\s*(?:[IVXL]+|\d+)|Z(?:iffer)?n?\.?\s*\d|§§?\s*\d|den\s+Z|Abs)|Art\.)/
-const END_RE = /^(?:Textgegenüberstellung|Der (?:Oö\. |Salzburger |Wiener )?Landtag hat beschlossen|Die (?:Oö\. |Salzburger |Wiener )?Landesregierung hat (?:beschlossen|verordnet)|Vorblatt)\b/
+/* „TEXTGEGENÜBERSTELLUNG" in capitals in Wien's drafts (w-2026006); the last „Zu …" entry ran on into the table. */
+const END_RE = /^(?:Textgegenüberstellung|TEXTGEGENÜBERSTELLUNG|Der (?:Oö\. |Salzburger |Wiener )?Landtag hat beschlossen|Die (?:Oö\. |Salzburger |Wiener )?Landesregierung hat (?:beschlossen|verordnet)|Vorblatt)\b/
 const HEADING_RE = /^(?:[A-Z]|[IVX]+|\d+)\.\s+\S/
 
+/** A line of the document, and whether all of it is set in bold (`pdfStyledPages`). */
+interface Line {
+  text: string
+  bold: boolean
+}
+
 /** Lines a document repeats on most pages — address, file number, date — are page furniture, not prose. */
-function withoutFurniture(lines: readonly string[]): string[] {
+function withoutFurniture(lines: readonly Line[]): Line[] {
   const counts = new Map<string, number>()
-  for (const l of lines) counts.set(l, (counts.get(l) ?? 0) + 1)
-  return lines.filter((l) => l && !PAGE_NOISE_RE.test(l) && !(l.length < 80 && (counts.get(l) ?? 0) >= 3))
+  for (const l of lines) counts.set(l.text, (counts.get(l.text) ?? 0) + 1)
+  return lines.filter(({ text: l }) => l && !PAGE_NOISE_RE.test(l) && !(l.length < 80 && (counts.get(l) ?? 0) >= 3))
+}
+
+/**
+ * A heading only its weight tells (23.10.2026): Wien sets those of its
+ * Erläuterungen unnumbered and in bold — „Ziel und Inhalt der Novelle",
+ * „Begründung", „Finanzielle Auswirkungen des Regelungsvorhabens auf den
+ * Haushalt der Stadt Wien:" — and read as text they ran into the paragraph
+ * below. A whole line in bold that opens with a capital and ends no
+ * sentence: a bold sentence is emphasis, not a heading. A rule by the text
+ * alone — a short line without a full stop — found headings in 375 of 540
+ * documents, nearly all of them wrong. Only Wien's lines carry a weight
+ * here (`HEADINGS_BY_WEIGHT`, docs/architecture.md §12.62).
+ */
+function boldHeading(l: Line): boolean {
+  return l.bold && l.text.length < 120 && /^\p{Lu}/u.test(l.text) && !/[.;,]$/.test(l.text)
 }
 
 /** Lines into paragraphs: a line that ends a sentence well short of the measure ends its paragraph; a bullet or a heading opens one. */
-function paragraphs(lines: readonly string[]): ExplanationPassage[] {
-  const measure = Math.max(40, ...lines.map((l) => l.length))
+function paragraphs(lines: readonly Line[]): ExplanationPassage[] {
+  const measure = Math.max(40, ...lines.map((l) => l.text.length))
   const out: ExplanationPassage[] = []
   let current: ExplanationPassage = { heading: null, text: [] }
   let para = ''
@@ -71,21 +93,25 @@ function paragraphs(lines: readonly string[]): ExplanationPassage[] {
     if (current.heading || current.text.length) out.push(current)
   }
   let joined = -1
-  lines.forEach((line, i) => {
+  lines.forEach((l, i) => {
     if (i === joined) return
+    const line = l.text
     // „I. Anlass und Inhalt" is a heading; „1. die Schaffung einer … Ersatzvor-" an item of a list.
-    let heading = (START_RE.test(line) || (HEADING_RE.test(line) && /^\S+\.\s+\p{Lu}/u.test(line))) && line.length < 90 && !/[.;,-]$/.test(line)
+    let heading = ((START_RE.test(line) || (HEADING_RE.test(line) && /^\S+\.\s+\p{Lu}/u.test(line))) && line.length < 90 && !/[.;,-]$/.test(line)) || boldHeading(l)
     let name = line
     // A heading that ends mid-phrase wraps: „VI. Auswirkungen … insbesondere
     // auf" over „Frauen und Männer", in most of Salzburg's Erläuterungen —
     // the rest of it is the next line where that is short and ends no
-    // sentence. Where the next line runs on, the „heading" was the first
-    // line of a numbered item: „2. Das konkrete Ausmaß … an der" over
-    // „Landschaftsabgabe hängt vom …" (23.10.2026).
-    if (heading && DANGLING_RE.test(line)) {
+    // sentence. A bold heading's rest is bold too, may end in its colon, and
+    // may follow a word broken at its hyphen. Where the next line runs on,
+    // the „heading" was the first line of a numbered item: „2. Das konkrete
+    // Ausmaß … an der" over „Landschaftsabgabe hängt vom …" (23.10.2026).
+    const broken = l.bold && /\p{L}-$/u.test(line)
+    if (heading && (DANGLING_RE.test(line) || broken)) {
       const next = lines[i + 1]
-      if (next && next.length <= 60 && !/[.;:,]$/.test(next) && /^\p{L}/u.test(next)) {
-        name = `${line} ${next}`
+      const ends = l.bold && next?.bold ? /[.;,]$/ : /[.;:,]$/
+      if (next && (!broken || next.bold) && next.text.length <= 60 && !ends.test(next.text) && /^\p{L}/u.test(next.text)) {
+        name = broken && /^\p{Ll}/u.test(next.text) && !/^(?:und|oder|bzw\.|sowie)\b/.test(next.text) ? `${line.slice(0, -1)}${next.text}` : `${line} ${next.text}`
         joined = i + 1
       } else {
         heading = false
@@ -134,28 +160,33 @@ export function headingZiffern(heading: string): number[] {
   return out
 }
 
-export function parseLandExplanations(pageTexts: readonly string[]): LandExplanationsParse | null {
-  const lines = withoutFurniture(pageTexts.flatMap((p) => p.split('\n')).map((l) => l.replace(/\s+/g, ' ').trim()))
-  const title = lines.findIndex((l) => TITLE_RE.test(l))
-  const startAt = lines.findIndex((l, i) => START_RE.test(l) && (title < 0 || i >= title))
+/**
+ * The Erläuterungen in a document's pages; `bold` says, per page and line,
+ * which lines are set in bold (`pdfStyledPages`) — without it, only numbered
+ * headings are found.
+ */
+export function parseLandExplanations(pageTexts: readonly string[], bold?: readonly (readonly boolean[])[]): LandExplanationsParse | null {
+  const lines = withoutFurniture(pageTexts.flatMap((p, n) => p.split('\n').map((l, i) => ({ text: l.replace(/\s+/g, ' ').trim(), bold: bold?.[n]?.[i] ?? false }))))
+  const title = lines.findIndex((l) => TITLE_RE.test(l.text))
+  const startAt = lines.findIndex((l, i) => START_RE.test(l.text) && (title < 0 || i >= title))
   const begin = startAt >= 0 ? startAt : title >= 0 ? title + 1 : -1
   if (begin < 0) return null
   const rest = lines.slice(begin)
   // The particular part begins at its heading where the document has one; a
   // „Zu Art 1 Z 5 …" before it is a row of the general part's tables (the
   // costs per provision, Salzburg's Raumordnungs-Novelle 2025).
-  const particularHead = rest.findIndex((l, i) => i > 0 && PARTICULAR_RE.test(l))
-  const particularAt = particularHead >= 0 ? particularHead : rest.findIndex((l, i) => i > 0 && ENTRY_RE.test(l))
+  const particularHead = rest.findIndex((l, i) => i > 0 && PARTICULAR_RE.test(l.text))
+  const particularAt = particularHead >= 0 ? particularHead : rest.findIndex((l, i) => i > 0 && ENTRY_RE.test(l.text))
   const generalLines = particularAt < 0 ? rest : rest.slice(0, particularAt)
-  const generalEnd = generalLines.findIndex((l, i) => i > 0 && END_RE.test(l))
+  const generalEnd = generalLines.findIndex((l, i) => i > 0 && END_RE.test(l.text))
   const general = paragraphs(generalEnd < 0 ? generalLines : generalLines.slice(0, generalEnd))
 
   const particular: ParticularExplanation[] = []
   if (particularAt >= 0) {
     let body = rest.slice(particularAt)
-    const end = body.findIndex((l, i) => i > 0 && END_RE.test(l))
+    const end = body.findIndex((l, i) => i > 0 && END_RE.test(l.text))
     if (end > 0) body = body.slice(0, end)
-    let entry: { heading: string; lines: string[] } | null = null
+    let entry: { heading: string; lines: Line[] } | null = null
     const flush = () => {
       if (!entry) return
       const text = paragraphs(entry.lines).flatMap((p) => [...(p.heading ? [p.heading] : []), ...p.text])
@@ -163,7 +194,8 @@ export function parseLandExplanations(pageTexts: readonly string[]): LandExplana
       particular.push({ article, paras: headingParas(entry.heading), heading: entry.heading, text })
     }
     let headingOpen = false
-    for (const line of body) {
+    for (const l of body) {
+      const line = l.text
       if (ENTRY_RE.test(line)) {
         flush()
         entry = { heading: line, lines: [] }
@@ -178,7 +210,7 @@ export function parseLandExplanations(pageTexts: readonly string[]): LandExplana
         continue
       }
       headingOpen = false
-      entry.lines.push(line)
+      entry.lines.push(l)
     }
     flush()
   }

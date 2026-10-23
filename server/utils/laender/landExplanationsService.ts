@@ -17,7 +17,7 @@ import { landDraftUnits } from './landLawDiff'
 import { headingZiffern, parseLandExplanations, type LandExplanationsParse } from './landExplanations'
 import type { LawUnit } from '../lawtext/lawUnits'
 import { amendedLawsOf } from './landTgu'
-import { draftDocument, pdfPages } from './texts/read'
+import { draftDocument, pdfPages, pdfStyledPages } from './texts/read'
 import type { LandDraftRecord } from './texts/stations'
 
 const ROMAN: Record<string, number> = { I: 1, V: 5, X: 10, L: 50 }
@@ -54,6 +54,18 @@ export function explainedParagraphs(parse: LandExplanationsParse, units: readonl
   })
 }
 
+/**
+ * The Länder whose Erläuterungen are read with each line's weight
+ * (`pdfStyledPages`, 23.10.2026): Wien sets its headings in bold, many of
+ * them unnumbered — „Ziel und Inhalt der Novelle", „Begründung",
+ * „Hauptgesichtspunkte der Novelle". Oberösterreich and Salzburg number
+ * theirs, and set letterheads, table rows and emphasis in bold: read so,
+ * 333 of their documents changed — „Amt der Oö. Landesregierung" became a
+ * heading in 74 — over the 540 the harness held and Wien's five drafts of
+ * 2026, of which four gained headings, each of them right.
+ */
+const HEADINGS_BY_WEIGHT: ReadonlySet<LandCode> = new Set(['w'])
+
 const unavailable = (reason: string, publisher: string, document: LandExplanationsResponse['document'] = null): LandExplanationsResponse => ({
   available: false, unavailableReason: reason, document, publisher, labelled: false, general: [], particular: [],
 })
@@ -67,8 +79,8 @@ export async function landExplanations(land: LandCode, detail: LandDraftRecord):
   const url = doc ? safeExternalUrl(doc.url) : null
   if (!doc || !url) return unavailable('Das Land hat zu diesem Entwurf keine Erläuterungen veröffentlicht.', publisher)
   const document = { label: own ? doc.title : `${doc.title} (Erläuterungen)`, url }
-  const pages = await pdfPages(url)
-  const parse = parseLandExplanations(pages)
+  const { pages, bold } = HEADINGS_BY_WEIGHT.has(land) ? await pdfStyledPages(url) : { pages: await pdfPages(url), bold: undefined }
+  const parse = parseLandExplanations(pages, bold)
   if (!parse) return unavailable('In den Dokumenten des Landes fand der Monitor keine Erläuterungen, die er lesen kann.', publisher, document)
 
   // The draft's instructions, for entries that name only Ziffern.

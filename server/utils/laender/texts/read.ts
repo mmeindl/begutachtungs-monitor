@@ -8,6 +8,7 @@ import { safeExternalUrl } from '#shared/utils/safeExternalUrl'
 import type { LawUnit } from '../../lawtext/lawUnits'
 import { upstreamBytes, upstreamText, type UpstreamPolicy } from '../../upstream/fetch'
 import { landDraftUnits, lgblUnits } from '../landLawDiff'
+import { styledPages, type StyledPages } from './styledPages'
 
 export const TEXT_POLICY: UpstreamPolicy = { timeoutMs: 30_000, retries: 2, upstreamHostsOnly: true }
 const PDF_MAX_BYTES = 30 * 1024 * 1024
@@ -29,6 +30,12 @@ export async function pdfPages(url: string): Promise<string[]> {
   const { extractText, getDocumentProxy } = await import('unpdf')
   const { text } = await extractText(await getDocumentProxy(new Uint8Array(bytes)), { mergePages: false })
   return Array.isArray(text) ? text : [text]
+}
+
+/** `pdfPages`, with the weight of each line (`styledPages`) — for the headings of the Erläuterungen. */
+export async function pdfStyledPages(url: string): Promise<StyledPages> {
+  const { bytes } = await upstreamBytes(url, { ...TEXT_POLICY, maxBytes: PDF_MAX_BYTES })
+  return styledPages(new Uint8Array(bytes))
 }
 
 export async function readPdf(url: string): Promise<ReadText> {

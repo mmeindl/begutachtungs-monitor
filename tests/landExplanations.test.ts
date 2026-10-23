@@ -68,6 +68,43 @@ describe('a Land\'s Erläuterungen', () => {
       '2. Das konkrete Ausmaß der den Gemeinden zukommenden Ertragsanteile an der Landschaftsabgabe hängt vom allfälligen Aufkommen ab und lässt sich nicht beziffern.',
     ])
   })
+
+  /** One page of lines, each `[text, bold]` — as `pdfStyledPages` reads them. */
+  const styled = (lines: [string, boolean][]): [string[], boolean[][]] => [[lines.map(([t]) => t).join('\n')], [lines.map(([, b]) => b)]]
+
+  it('takes a whole line in bold for a heading where only its weight tells (Wien)', () => {
+    const [pages, bold] = styled([
+      ['ERLÄUTERUNGEN', true],
+      ['Allgemeiner Teil', true],
+      ['Ziel und Inhalt der Novelle', true],
+      ['Mit der Novelle soll der Magistrat Kosten pauschal verrechnen können.', false],
+      ['Die Novelle tritt mit dem der Kundmachung folgenden Tag in Kraft.', true],
+      ['Finanzielle Auswirkungen des Regelungsvorhabens auf den Haushalt der', true],
+      ['Stadt Wien:', true],
+      ['Es entstehen keine Kosten.', false],
+      ['Vorbemerkungen zu den §§ 36 bis 44 (Übergangs-', true],
+      ['bestimmung):', true],
+      ['Die Bestimmungen werden neu gefasst.', false],
+      ['Besonderer Teil', true],
+      ['Zu Artikel II', true],
+      ['Inkrafttreten', true],
+      ['Artikel II regelt das Inkrafttreten.', false],
+      ['TEXTGEGENÜBERSTELLUNG', true],
+      ['Geltende Fassung Vorgeschlagene Fassung', true],
+    ])
+    const parse = parseLandExplanations(pages, bold)!
+    expect(parse.general.map((p) => [p.heading, p.text])).toEqual([
+      ['Allgemeiner Teil', []],
+      // A bold sentence is emphasis: it stays text.
+      ['Ziel und Inhalt der Novelle', ['Mit der Novelle soll der Magistrat Kosten pauschal verrechnen können. Die Novelle tritt mit dem der Kundmachung folgenden Tag in Kraft.']],
+      ['Finanzielle Auswirkungen des Regelungsvorhabens auf den Haushalt der Stadt Wien', ['Es entstehen keine Kosten.']],
+      ['Vorbemerkungen zu den §§ 36 bis 44 (Übergangsbestimmung)', ['Die Bestimmungen werden neu gefasst.']],
+    ])
+    // The entry ends where the Textgegenüberstellung begins, in capitals.
+    expect(parse.particular.map((e) => [e.heading, e.text])).toEqual([['Zu Artikel II', ['Inkrafttreten', 'Artikel II regelt das Inkrafttreten.']]])
+    // Without the weights, the same lines have only their numbered headings.
+    expect(parseLandExplanations(pages)!.general.map((p) => p.heading)).toEqual(['Allgemeiner Teil'])
+  })
 })
 
 describe('the rate note names who changed the reasoning', () => {
