@@ -7,13 +7,16 @@
  *
  * Layers as `cache/base.ts` prescribes: the PAGES are the fetched payload
  * and are cached; the parses are not, they run per request and cost
- * milliseconds. A failed fetch throws and is therefore not cached — the
- * next request asks again.
+ * milliseconds — all but one, Salzburg's register, whose grouping is held
+ * for the version of the page it was made from (`registerDrafts`). A failed
+ * fetch throws and is therefore not cached — the next request asks again.
  */
+import { createHash } from 'node:crypto'
 import type {
   LandCode,
   LandConsultation,
   LandDraftDetail,
+  LandDraftKind,
   LandSourceState,
   LaenderResponse,
   LandStatement,
@@ -157,9 +160,30 @@ async function salzburgCurrent(): Promise<LandConsultation[]> {
   return lists.flat()
 }
 
+/**
+ * The register's drafts, grouped once per version of the page (23.10.2026).
+ * Grouping 2.400 entries (`salzburgDrafts`) takes 125 ms, and every Salzburg
+ * request ran it: the draft's page, each of its lazy sections, the
+ * homepage's running drafts, the period lists — 0,8 s of blocked event loop
+ * per page view, with every cache warm. The parse stays per request in
+ * spirit (`cache/base.ts`: a fix to the parser reaches the next request) —
+ * this holds the result only for the page it was made from, known by a hash,
+ * so the 1,7 MB page is not held twice. The drafts are shared between
+ * requests and must not be changed after they leave `salzburgDrafts`; nothing
+ * here does.
+ */
+const registerMemo = new Map<LandDraftKind, { hash: string; drafts: LandConsultation[] }>()
+function registerDrafts(kind: LandDraftKind, html: string): LandConsultation[] {
+  const hash = createHash('sha1').update(html).digest('base64')
+  const hit = registerMemo.get(kind)
+  if (hit?.hash === hash) return hit.drafts
+  const drafts = salzburgDrafts(parseSalzburgRegister(html, SALZBURG_REGISTERS[kind]), kind)
+  registerMemo.set(kind, { hash, drafts })
+  return drafts
+}
+
 async function salzburgRegister(): Promise<LandConsultation[]> {
-  const registers = await Promise.all(KINDS.map(async (kind) =>
-    salzburgDrafts(parseSalzburgRegister(await fetchLandRegister(SALZBURG_REGISTERS[kind]), SALZBURG_REGISTERS[kind]), kind)))
+  const registers = await Promise.all(KINDS.map(async (kind) => registerDrafts(kind, await fetchLandRegister(SALZBURG_REGISTERS[kind]))))
   return registers.flat()
 }
 
