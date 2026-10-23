@@ -165,10 +165,13 @@ export function parseSalzburgRegister(html: string, registerUrl: string): RawEnt
  * over the years („… Mindestsicherungsgesetz geändert wird" several times).
  *
  * An annex whose draft is not filed at all („X - Anlage 1", „X - Anlage 2
- * Blatt 1" … and no „X": one Verordnung in twelve entries) becomes ONE row
- * titled X, its documents the annexes; an „X" filed within the month joins
- * that row, first, and gives it its number. So does an annex filed BEFORE
- * its draft („X - Plan", then „X": 7654, 34471, 34472).
+ * Blatt 1" … and no „X") becomes ONE row titled X, its documents the
+ * annexes; an „X" filed within the month joins that row, first, and gives it
+ * its number. So does an annex filed BEFORE its draft („X - Plan", then „X":
+ * 7654, 34471, 34472). The twelve-entry Verordnung that was read as such
+ * (31228) has its „X" — spelt „Riedelwaldplatte" where the annexes write
+ * „Riedelwald-platte" (31215): titles that differ only in spacing and
+ * punctuation are one (`letters`).
  *
  * Three more of the Land's habits, read over the register on 23.10.2026,
  * where one draft stood as two rows — the newest a running draft whose
@@ -195,6 +198,12 @@ const SAME_FILING_DAYS = 31
 const LATE_DOCUMENT_DAYS = 365
 /** How far apart in the Land's numbering two entries filed together may be. */
 const ADJACENT_NUMBERS = 2
+
+/**
+ * The same title but for spacing and punctuation: „Riedelwaldplatte" and
+ * „Riedelwald-platte" (31215 and its eleven annexes, 13 numbers apart).
+ */
+const letters = (title: string) => title.toLowerCase().replace(/[^\p{L}\p{N}]+/gu, '')
 
 /** Every distinctive word of the annex's title stands in the draft's (`lgblWords`: no template, no years). */
 function namesSameDraft(annexBase: string, draftTitle: string): boolean {
@@ -249,7 +258,18 @@ export function salzburgDrafts(entries: RawEntry[], kind: LandDraftKind): LandCo
      row takes its number — the address it had before the annexes were
      folded, which links in circulation point to. */
   const awaiting = (title: string, entry: RawEntry) =>
-    [...awaitingMain].find((d) => d.title === title && daysApart(dateOf(d), dateOf(entry)) <= SAME_FILING_DAYS)
+    [...awaitingMain].find((d) => letters(d.title) === letters(title) && daysApart(dateOf(d), dateOf(entry)) <= SAME_FILING_DAYS)
+  /* The draft an annex names in the same letters, filed before it within the
+     month — the latest such. */
+  const spelledAlike = (base: string, own: number, entry: RawEntry) => {
+    const want = letters(base)
+    let best: LandConsultation | null = null
+    for (const d of drafts) {
+      if (numberOf(d.url) < own && letters(d.title) === want && daysApart(dateOf(d), dateOf(entry)) <= SAME_FILING_DAYS &&
+        (!best || numberOf(d.url) > numberOf(best.url))) best = d
+    }
+    return best
+  }
   const asMain = (row: LandConsultation, entry: RawEntry, docTitle: string) => {
     row.documents.unshift({ title: docTitle, url: entry.url })
     row.url = entry.url
@@ -274,6 +294,11 @@ export function salzburgDrafts(entries: RawEntry[], kind: LandDraftKind): LandCo
     if (annex && adjacent && daysApart(dateOf(adjacent), dateOf(entry)) <= SAME_FILING_DAYS && namesSameDraft(annex[1]!, adjacent.title)) {
       adjacent.documents.push({ title: annex[2]!, url: entry.url })
       return adjacent
+    }
+    const alike = annex ? spelledAlike(annex[1]!, own, entry) : null
+    if (annex && alike) {
+      alike.documents.push({ title: annex[2]!, url: entry.url })
+      return alike
     }
     if (annex) {
       const draft = toDraft(entry, annex[1]!, { title: annex[2]!, url: entry.url })

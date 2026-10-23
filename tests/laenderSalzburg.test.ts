@@ -46,7 +46,7 @@ describe('Salzburg — the list page, as served on 22.10.2026', () => {
     expect(drafts[0]!.documents.map((d) => d.title)).toEqual(['Anlage I'])
   })
 
-  it('makes one row of a Verordnung filed only as its annexes (31228–31238)', () => {
+  it('makes one row of a Verordnung filed only as its annexes', () => {
     const drafts = salzburgDrafts([
       entry(31228, 'Verordnung Riedelwald - Anlage 1'),
       entry(31229, 'Verordnung Riedelwald - Anlage 2 Blatt 1'),
@@ -160,6 +160,18 @@ describe('Salzburg — the list page, as served on 22.10.2026', () => {
     expect(drafts).toHaveLength(1)
     expect(drafts[0]).toMatchObject({ id: 'sbg-7655', title: base })
     expect(drafts[0]!.documents.map((d) => d.title)).toEqual(['Entwurf', 'Plan'])
+  })
+
+  it('takes titles that differ only in spacing and punctuation for one (31215 and its annexes)', () => {
+    const base = 'Verordnung des Landeshauptmannes, mit der Anordnungen zum Schutz des Grundwasservorkommens erlassen werden'
+    const drafts = salzburgDrafts([
+      entry(31215, `${base} (Schongebietsverordnung Riedelwaldplatte)`),
+      entry(31216, 'Kundmachung der Salzburger Landesregierung über die Höhe der Richtsätze'),
+      entry(31228, `${base} (Schongebietsverordnung Riedelwald-platte) - Anlage 1`),
+      entry(31229, `${base} (Schongebietsverordnung Riedelwald-platte) - Anlage 2 Blatt 1`),
+    ], 'verordnung')
+    expect(drafts).toHaveLength(2)
+    expect(drafts.find((d) => d.id === 'sbg-31215')!.documents.map((d) => d.title)).toEqual(['Entwurf', 'Anlage 1', 'Anlage 2 Blatt 1'])
   })
 
   it('folds a Textgegenüberstellung filed years late when the Land numbered it right after its draft (18170)', () => {

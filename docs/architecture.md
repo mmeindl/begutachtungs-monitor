@@ -13367,12 +13367,15 @@ vier Gewohnheiten des Landes:
 - Eine Textgegenüberstellung kam Jahre später, aber mit der Nummer direkt
   nach ihrem Entwurf (18171, 18182): Die Nummer sagt, dass sie zusammen
   abgelegt wurden; die Jahresgrenze gilt dann nicht.
+- Titel, die sich nur in Leerzeichen und Satzzeichen unterscheiden, sind
+  einer: Die „Verordnung in zwölf Einträgen ohne X" aus §12.43 (31228) hat
+  ihr X — 31215 schreibt „Riedelwaldplatte", die Anlagen „Riedelwald-platte".
 
 Alt gegen neu über das ganze Register: Gesetze 685 → 679, Verordnungen
-1.347 → 1.341 Zeilen, jede Änderung gelesen, alle richtig. Eine davon
+1.347 → 1.340 Zeilen, jede Änderung gelesen, alle richtig. Eine davon
 behob einen zweiten Fehler: Die Erläuterungen von 29477 hingen an einem
 älteren Entwurf gleichen Titels (29093), weil 29477 als „… - Entwurf" keinen
-gleichen Titel trug. Die zwölf Nummern, die keine eigene Zeile mehr sind,
+gleichen Titel trug. Die dreizehn Nummern, die keine eigene Zeile mehr sind,
 leiten auf die Seite ihres Entwurfs weiter (301).
 
 ### 12.57 Die Leiste eines Salzburger Entwurfs: fünf Stationen, wo RIS sie verknüpft (23.10.2026)
