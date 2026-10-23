@@ -41,11 +41,13 @@ export function explainedParagraphs(parse: LandExplanationsParse, units: readonl
   for (const u of units ?? []) {
     const n = /^Z(\d+)$/.exec(u.id)?.[1]
     const para = /^§(\d+[a-z]*)/.exec(addressOf(u.heading) ?? '')?.[1]
-    const article = romanValue(/Artikel\s+([IVXL]+)/.exec(u.articleNumber ?? '')?.[1] ?? 'I')
+    // „Artikel II" or — in the Land's own PDFs — „Artikel 2".
+    const numbered = /Artikel\s+([IVXL]+|\d+)/.exec(u.articleNumber ?? '')?.[1] ?? 'I'
+    const article = /^\d+$/.test(numbered) ? Number(numbered) : romanValue(numbered)
     if (n && para) byZiffer.set(`${article}|${n}`, para)
   }
   return parse.particular.map((e) => {
-    const article = e.article ? romanValue(e.article) : 1
+    const article = e.article ? (/^\d+$/.test(e.article) ? Number(e.article) : romanValue(e.article)) : 1
     const paras = e.paras.length ? e.paras : [...new Set(headingZiffern(e.heading).map((z) => byZiffer.get(`${article}|${z}`)).filter((p): p is string => Boolean(p)))]
     const law = laws.length === 1 ? laws[0]! : (e.article ? laws[article - 1] ?? null : null)
     return { law, paras, heading: e.heading, text: e.text }

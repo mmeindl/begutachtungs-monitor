@@ -28,6 +28,29 @@ describe('a Land\'s Erläuterungen', () => {
     ])
   })
 
+  it('reads „Zu Art 2 Z 1" as an entry, and keeps a „Zu …" row of the general part in it', () => {
+    const parse = parseLandExplanations([[
+      'Erläuterungen',
+      '1. Allgemeines:',
+      'Die Novelle ändert zwei Gesetze.',
+      '2. Kosten:',
+      'Zu Z 4:',
+      'Die Kosten betragen 2 Mio €.',
+      '3. Ergebnisse des Begutachtungsverfahrens:',
+      'Die Stellungnahmen wurden berücksichtigt.',
+      '4. Zu den einzelnen Bestimmungen:',
+      'Zu Art 1 Z 1 (§ 6 Abs 4):',
+      'Die Bestimmung wird klarer.',
+      'Zu Art 2 Z 1 (§ 3):',
+      'Die Bestimmung entfällt.',
+    ].join('\n')])!
+    expect(parse.general.map((p) => p.heading)).toEqual(['1. Allgemeines', '2. Kosten', '3. Ergebnisse des Begutachtungsverfahrens'])
+    expect(parse.particular.map((e) => [e.heading, e.article, e.paras])).toEqual([
+      ['Zu Art 1 Z 1 (§ 6 Abs 4):', '1', ['6']],
+      ['Zu Art 2 Z 1 (§ 3):', '2', ['3']],
+    ])
+  })
+
   it('joins a heading that wraps mid-phrase, and does not take a numbered sentence for one', () => {
     const parse = parseLandExplanations([[
       'Erläuterungen',

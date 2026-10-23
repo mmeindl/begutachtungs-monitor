@@ -114,6 +114,13 @@ describe('diffLandDraft — the draft against the Landesgesetzblatt', () => {
     expect(units.map((u) => [u.id, u.change])).toEqual([['Z1', 'unchanged'], ['Z2', 'changed'], ['Z3', 'unchanged']])
   })
 
+  it('pairs „Artikel 1" of the PDF with „Artikel I" of the Landesgesetzblatt (Salzburg 32923)', () => {
+    const arabic = landDraftUnits([page('Der Oö. Landtag hat beschlossen:', 'Artikel 1', 'Änderung des Oö. X-Gesetzes', 'Das Oö. X-Gesetz, LGBl. Nr. 1/2020, wird wie folgt geändert:',
+      '1. Im § 2 wird das Wort „zugleich Vorsitzende“ durch das Wort „Leiterin“ ersetzt.', '2. § 4 entfällt.')])!
+    const units = diffLandDraft(arabic, lgblUnits(xml('1. Im § 2 wird das Wort "zugleich Vorsitzende" durch das Wort "Leiterin" ersetzt.', '2. § 4 entfällt.')))
+    expect(units.map((u) => [u.id, u.change])).toEqual([['Z1', 'unchanged'], ['Z2', 'unchanged']])
+  })
+
   it('pairs the Artikel by title, and names a law the Landtag added', () => {
     const kundmachung = lgblUnits(xml('1. Im § 2 wird das Wort "zugleich Vorsitzende" durch das Wort "Leiterin" ersetzt.').replace('</abschnitt>',
       '<ueberschrift typ="art">Artikel II<br />Änderung des Oö. Y-Gesetzes</ueberschrift><absatz typ="promkleinlsatz">Das Oö. Y-Gesetz wird wie folgt geändert:</absatz><absatz typ="novao1">1. § 9 entfällt.</absatz></abschnitt>'))

@@ -24,7 +24,7 @@ export interface ExplanationPassage {
 }
 
 export interface ParticularExplanation {
-  /** „I", where the heading names an Artikel — the law, in a package. */
+  /** „I" or „2", where the heading names an Artikel — the law, in a package. */
   article: string | null
   /** The §§ it explains, „5", „12a" — from the heading's brackets. */
   paras: string[]
@@ -44,7 +44,8 @@ const PAGE_NOISE_RE = /^(?:Seite \d+(?: von \d+)?|\d+ von \d+|- ?\d+ ?-|\d+)$/
 const START_RE = /^(?:[A-Z]\.|[IVX]+\.|\d+\.)?\s*(?:Allgemeiner Teil|Allgemeines)\b/
 const TITLE_RE = /^(?:Erläuterungen|ERLÄUTERUNGEN|Erläuternde Bemerkungen)\b/
 const PARTICULAR_RE = /^(?:[A-Z]\.|[IVX]+\.|\d+\.)?\s*(?:Besonderer Teil|Zu den einzelnen Bestimmungen)\b/
-const ENTRY_RE = /^Zu\s+(?:(?:Art(?:ikel)?\.?\s*[IVXL]+|Z(?:iffer)?n?\.?\s*\d|§§?\s*\d|den\s+Z|Abs)|Art\.)/
+/* „Zu Art. I Z 2", and in Salzburg's packages „Zu Art 2 Z 1" (23.10.2026). */
+const ENTRY_RE = /^Zu\s+(?:(?:Art(?:ikel)?\.?\s*(?:[IVXL]+|\d+)|Z(?:iffer)?n?\.?\s*\d|§§?\s*\d|den\s+Z|Abs)|Art\.)/
 const END_RE = /^(?:Textgegenüberstellung|Der (?:Oö\. |Salzburger |Wiener )?Landtag hat beschlossen|Die (?:Oö\. |Salzburger |Wiener )?Landesregierung hat (?:beschlossen|verordnet)|Vorblatt)\b/
 const HEADING_RE = /^(?:[A-Z]|[IVX]+|\d+)\.\s+\S/
 
@@ -140,7 +141,11 @@ export function parseLandExplanations(pageTexts: readonly string[]): LandExplana
   const begin = startAt >= 0 ? startAt : title >= 0 ? title + 1 : -1
   if (begin < 0) return null
   const rest = lines.slice(begin)
-  const particularAt = rest.findIndex((l, i) => i > 0 && (PARTICULAR_RE.test(l) || ENTRY_RE.test(l)))
+  // The particular part begins at its heading where the document has one; a
+  // „Zu Art 1 Z 5 …" before it is a row of the general part's tables (the
+  // costs per provision, Salzburg's Raumordnungs-Novelle 2025).
+  const particularHead = rest.findIndex((l, i) => i > 0 && PARTICULAR_RE.test(l))
+  const particularAt = particularHead >= 0 ? particularHead : rest.findIndex((l, i) => i > 0 && ENTRY_RE.test(l))
   const generalLines = particularAt < 0 ? rest : rest.slice(0, particularAt)
   const generalEnd = generalLines.findIndex((l, i) => i > 0 && END_RE.test(l))
   const general = paragraphs(generalEnd < 0 ? generalLines : generalLines.slice(0, generalEnd))
@@ -154,7 +159,7 @@ export function parseLandExplanations(pageTexts: readonly string[]): LandExplana
     const flush = () => {
       if (!entry) return
       const text = paragraphs(entry.lines).flatMap((p) => [...(p.heading ? [p.heading] : []), ...p.text])
-      const article = /^Zu\s+Art(?:ikel)?\.?\s*([IVXL]+)\b/.exec(entry.heading)?.[1] ?? null
+      const article = /^Zu\s+Art(?:ikel)?\.?\s*([IVXL]+|\d+)\b/.exec(entry.heading)?.[1] ?? null
       particular.push({ article, paras: headingParas(entry.heading), heading: entry.heading, text })
     }
     let headingOpen = false

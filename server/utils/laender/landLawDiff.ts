@@ -48,6 +48,26 @@ function clean(text: string): string {
    (Salzburg 29779). */
 const sameSpaces = (s: string | null) => (s === null ? null : s.replace(/\s+/g, ' ').trim())
 
+const ROMAN: readonly [number, string][] = [[50, 'L'], [40, 'XL'], [10, 'X'], [9, 'IX'], [5, 'V'], [4, 'IV'], [1, 'I']]
+function roman(n: number): string {
+  let out = ''
+  for (const [value, digits] of ROMAN) while (n >= value) { out += digits; n -= value }
+  return out
+}
+const ARABIC_ARTICLE_RE = /^(Art(?:ikel|\.)\s*)(\d{1,2})(?!\d)/
+const romanArticle = (s: string | null) => (s === null ? null : s.replace(ARABIC_ARTICLE_RE, (_m, art: string, n: string) => `${art}${roman(Number(n))}`))
+
+/**
+ * One numbering for the Artikel: the Land's PDFs write „Artikel 1", the
+ * Landesgesetzblatt „Artikel I" (Salzburg 32923, 23.10.2026). Paired as they
+ * came, no Artikel met its partner — not by name, not by number — and the
+ * comparison of two identical texts read as two texts with nothing in common.
+ * Roman, as RIS prints them.
+ */
+function romanArticles(units: readonly LawUnit[]): LawUnit[] {
+  return units.map((u) => ({ ...u, article: romanArticle(u.article), articleNumber: romanArticle(u.articleNumber) }))
+}
+
 function unquoted(units: LawUnit[]): LawUnit[] {
   return units.map((u) => ({
     ...u,
@@ -120,7 +140,9 @@ const PAIR_MARK_RE = / artikelpaar\d+$/
  * at the same place (`diffAtSamePlace`; first measured here, 16101, §12.44
  * Nachtrag 3).
  */
-export function diffLandDraft(draft: LawUnit[], kundmachung: LawUnit[]): LawDiffUnit[] {
+export function diffLandDraft(draftAsRead: LawUnit[], kundmachungAsRead: LawUnit[]): LawDiffUnit[] {
+  const draft = romanArticles(draftAsRead)
+  const kundmachung = romanArticles(kundmachungAsRead)
   // The Artikel are paired on the texts AS THEY ARE: pairing by number
   // checks which §§ each side's instructions address, and a quoted § is new
   // wording, not an address — without the quotes every quoted § counted as
@@ -146,7 +168,9 @@ export function diffLandDraft(draft: LawUnit[], kundmachung: LawUnit[]): LawDiff
  * one it dropped. Paired as the comparison pairs them (`articlePairs`), by
  * title before number.
  */
-export function packageChanges(draft: LawUnit[], kundmachung: LawUnit[]): { added: string[]; dropped: string[] } {
+export function packageChanges(draftAsRead: LawUnit[], kundmachungAsRead: LawUnit[]): { added: string[]; dropped: string[] } {
+  const draft = romanArticles(draftAsRead)
+  const kundmachung = romanArticles(kundmachungAsRead)
   const pairs = articlePairs(draft, kundmachung)
   const paired = new Set(pairs.map((p) => p.to).filter((a): a is string => a !== null))
   const added = [...new Set(kundmachung.map((u) => u.article).filter((a): a is string => a !== null && !paired.has(a)))]
