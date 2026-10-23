@@ -121,6 +121,34 @@ describe('diffLandDraft — the draft against the Landesgesetzblatt', () => {
     expect(units.map((u) => [u.id, u.change])).toEqual([['Z1', 'unchanged'], ['Z2', 'unchanged']])
   })
 
+  it('pairs a draft of one law with the Artikel of the package that holds it word for word (Salzburg 33388)', () => {
+    const single = landDraftUnits([page('Gesetz vom ........, mit dem das Oö. X-Gesetz geändert wird', 'Der Oö. Landtag hat beschlossen:',
+      'Das Oö. X-Gesetz, LGBl. Nr. 1/2020, wird wie folgt geändert:', '1. Im § 2 wird das Wort „zugleich Vorsitzende“ durch das Wort „Leiterin“ ersetzt.', '2. § 4 entfällt.')])!
+    const kundmachung = lgblUnits(xml('1. Im § 2 wird das Wort "zugleich Vorsitzende" durch das Wort "Leiterin" ersetzt.', '2. § 4 entfällt.').replace('</abschnitt>',
+      '<ueberschrift typ="art">Artikel II<br />Änderung des Oö. Y-Gesetzes</ueberschrift><absatz typ="promkleinlsatz">Das Oö. Y-Gesetz wird wie folgt geändert:</absatz><absatz typ="novao1">1. § 9 entfällt.</absatz></abschnitt>'))
+    const units = diffLandDraft(single, kundmachung)
+    expect(units.filter((u) => u.change === 'unchanged').map((u) => u.id)).toEqual(['Z1', 'Z2'])
+    expect(packageChanges(single, kundmachung)).toEqual({ added: ['Artikel II Änderung des Oö. Y-Gesetzes'], dropped: [] })
+  })
+
+  it('reads a § whose one sentence was taken for its title, and stops at the Erläuterungen (Salzburg 33878)', () => {
+    const units = landDraftUnits([page('Gesetz vom ........, mit dem das X-Gesetz 1998 aufgehoben wird', 'Der Salzburger Landtag hat beschlossen:',
+      '§ 1', 'Das X-Gesetz 1998, LGBl Nr 47, wird mit Wirkung ab 1. Jänner 2027', 'aufgehoben.',
+      '§ 2', 'Bis zum 31. Dezember 2026 gewährte Befrei-', 'ungen bleiben unberührt.'), page('Erläuterungen', '1. Allgemeines', 'Die Befreiung entfällt.')])!
+    expect(units.map((u) => [u.id, u.text])).toEqual([
+      ['§1', 'Das X-Gesetz 1998, LGBl Nr 47, wird mit Wirkung ab 1. Jänner 2027 aufgehoben.'],
+      ['§2', 'Bis zum 31. Dezember 2026 gewährte Befreiungen bleiben unberührt.'],
+    ])
+  })
+
+  it('does not name an Artikel after its „(Verfassungsbestimmung)" (LGBl. Nr. 76/2025)', () => {
+    const units = lgblUnits('<abschnitt><ueberschrift typ="g1">Artikel 1</ueberschrift><ueberschrift typ="para">(Verfassungsbestimmung)</ueberschrift>' +
+      '<absatz typ="promkleinlsatz">Das L-VG wird geändert wie folgt:</absatz><absatz typ="novao1">1. Art 28 entfällt.</absatz>' +
+      '<ueberschrift typ="g1">Artikel 4</ueberschrift><ueberschrift typ="para">(Verfassungsbestimmung)</ueberschrift>' +
+      '<absatz typ="promkleinlsatz">Das Stadtrecht wird geändert wie folgt:</absatz><absatz typ="novao1">1. § 4 entfällt.</absatz></abschnitt>')
+    expect([...new Set(units.map((u) => u.article))]).toEqual(['Artikel 1', 'Artikel 4'])
+  })
+
   it('pairs the Artikel by title, and names a law the Landtag added', () => {
     const kundmachung = lgblUnits(xml('1. Im § 2 wird das Wort "zugleich Vorsitzende" durch das Wort "Leiterin" ersetzt.').replace('</abschnitt>',
       '<ueberschrift typ="art">Artikel II<br />Änderung des Oö. Y-Gesetzes</ueberschrift><absatz typ="promkleinlsatz">Das Oö. Y-Gesetz wird wie folgt geändert:</absatz><absatz typ="novao1">1. § 9 entfällt.</absatz></abschnitt>'))

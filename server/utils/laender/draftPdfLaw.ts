@@ -177,7 +177,9 @@ export function lawBlocksFromPdfPages(pages: readonly string[]): TextBlock[] | n
   }
   const body = lines.slice(start)
   for (const [i, line] of body.entries()) {
-    if (blocks.length > 2 && AFTER_LAW_RE.test(line)) break
+    // The law ends at its Erläuterungen — also a law of two §§, whose blocks
+    // are still few when they begin (Salzburg 33878, 23.10.2026).
+    if ((blocks.length > 2 || pendingGld !== null || paraGld !== null) && AFTER_LAW_RE.test(line)) break
     // A paragraph that ends in a colon is complete: settle it before the
     // payload under it is weighed.
     if (para !== null && /:$/.test(para) && !ARTICLE_LINE_RE.test(line)) flush()
@@ -261,6 +263,14 @@ export function lawBlocksFromPdfPages(pages: readonly string[]): TextBlock[] | n
     if (!amending) {
       const bare = BARE_PARAGRAPH_RE.exec(line)
       if (bare) {
+        // A § whose only line was taken for its title has none: that line
+        // was its text — „§ 1 / Das … Gesetz … wird … aufgehoben." of a
+        // repeal (33878), which vanished with the next „§ 2".
+        if (pendingGld && title !== null && !titledAbove) {
+          paraGld = pendingGld
+          para = title
+          pendingGld = null
+        }
         // A short line without closing punctuation right before the §:
         // its title, taken back from the paragraph it was joined to.
         let titleAbove: string | null = null
@@ -286,9 +296,22 @@ export function lawBlocksFromPdfPages(pages: readonly string[]): TextBlock[] | n
         title = line
         continue
       }
-      // A title wrapped onto a second line goes on in lower case.
+      // A title wrapped onto a second line goes on in lower case — unless
+      // the two lines end a sentence: then they were the §'s text.
       if (pendingGld && title !== null && !titledAbove && /^\p{Ll}/u.test(line)) {
-        title = joinLines(title, line)
+        const joined = joinLines(title, line)
+        if (/[.;:]$/.test(joined)) {
+          flush()
+          paraGld = pendingGld
+          pendingGld = null
+          title = null
+          titledAbove = false
+          para = joined
+          lastLine = line
+          lastLineAt = i
+          continue
+        }
+        title = joined
         continue
       }
       if (pendingGld) {

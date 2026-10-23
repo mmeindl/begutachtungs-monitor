@@ -100,7 +100,13 @@ export function lgblUnits(xml: string): LawUnit[] {
   // („1. Teil", „2. Abschnitt") as `art` too (LGBl. Nr. 64/2021). Salzburg
   // types the Artikel itself as `g1` — unsplit, a new law in Artikel I read
   // as two instructions of Artikel II (LGBl. Nr. 95/2022, 112/2021).
-  const parts = xml.split(/(?=<ueberschrift typ="(?:art|g1)"[^>]*>\s*(?:<[^>]+>\s*)*Artikel\b)/)
+  // „(Verfassungsbestimmung)" under an Artikel is set as a § heading, and
+  // the reader took it for the Artikel's name: every such Artikel of a
+  // package became one group of that name (LGBl. Nr. 76/2025, Artikel 1 and
+  // 4, 23.10.2026). A note on the Artikel, not a name; the PDF side has none.
+  const parts = xml
+    .replace(/<ueberschrift typ="para"[^>]*>\s*\((?:Verfassungsbestimmung|Grundsatzbestimmung)\)\s*<\/ueberschrift>/g, '')
+    .split(/(?=<ueberschrift typ="(?:art|g1)"[^>]*>\s*(?:<[^>]+>\s*)*Artikel\b)/)
   const doc = parts.map((part) => /<absatz typ="novao[12]"/.test(part)
     ? part
     : part
@@ -132,6 +138,49 @@ export function landDraftUnits(pages: readonly string[]): LawUnit[] | null {
   return blocks ? segmentUnits(blocks) : null
 }
 
+/** Half of an Artikel's instructions, word for word, in the other: the same law. */
+const SAME_CONTENT_SHARE = 0.5
+
+/**
+ * The Artikel the names do not pair, paired by what they say (23.10.2026):
+ * a draft of one law carries no Artikel, and the Vorlage made a package of
+ * it — 33388, whose Artikel I is the draft word for word and Artikel II–IV
+ * are laws the Land added. Neither title nor number nor § address pairs
+ * the draft's single text with „Artikel I", and the comparison said the two
+ * had nothing in common. An Artikel still unpaired goes to the unpaired one
+ * that holds at least half of its instructions word for word, and the most.
+ */
+function landArticlePairs(from: readonly LawUnit[], to: readonly LawUnit[]): { from: string | null; to: string | null }[] {
+  const pairs: { from: string | null; to: string | null }[] = articlePairs(from, to).map((p) => ({ from: p.from, to: p.to }))
+  // `articlePairs` returns what it paired; the rest of the earlier text's
+  // Artikel stand unpaired — which `packageChanges` reports as dropped.
+  const paired = new Set(pairs.map((p) => p.from))
+  for (const article of new Set(from.map((u) => u.article))) if (!paired.has(article)) pairs.push({ from: article, to: null })
+  const used = new Set<string | null>(pairs.map((p) => p.to).filter((a) => a !== null))
+  const textsOf = (units: readonly LawUnit[], article: string | null) =>
+    new Set(units.filter((u) => u.article === article).map((u) => clean(u.text).toLowerCase()))
+  const open = [...new Set(to.map((u) => u.article))].filter((a) => !used.has(a))
+  for (const p of pairs) {
+    if (p.to !== null) continue
+    const mine = textsOf(from, p.from)
+    if (!mine.size) continue
+    let best: { article: string | null; share: number } | null = null
+    for (const article of open) {
+      if (used.has(article)) continue
+      const theirs = textsOf(to, article)
+      let hits = 0
+      for (const t of mine) if (theirs.has(t)) hits++
+      const share = hits / mine.size
+      if (share >= SAME_CONTENT_SHARE && (!best || share > best.share)) best = { article, share }
+    }
+    if (best) {
+      p.to = best.article
+      used.add(best.article)
+    }
+  }
+  return pairs
+}
+
 const PAIR_MARK = 'artikelpaar'
 const PAIR_MARK_RE = / artikelpaar\d+$/
 
@@ -152,7 +201,7 @@ export function diffLandDraft(draftAsRead: LawUnit[], kundmachungAsRead: LawUnit
   // A shared marker word per pair carries the decision through: untitled
   // Artikel („Artikel I" on both sides) have no other word for the title
   // rule to match. Taken off again before anything leaves this function.
-  const pairs = articlePairs(draft, kundmachung).filter((p) => p.to !== null)
+  const pairs = landArticlePairs(draft, kundmachung).filter((p) => p.to !== null)
   const markFrom = new Map(pairs.map((p, k) => [p.from, k]))
   const markTo = new Map(pairs.map((p, k) => [p.to, k]))
   const marked = (name: string | null, k: number | undefined) => (k === undefined ? sameSpaces(name) : `${sameSpaces(name) ?? ''} ${PAIR_MARK}${k}`)
@@ -165,15 +214,20 @@ export function diffLandDraft(draftAsRead: LawUnit[], kundmachungAsRead: LawUnit
 
 /**
  * The Artikel only one side has: a law the Landtag added to the package, or
- * one it dropped. Paired as the comparison pairs them (`articlePairs`), by
+ * one it dropped. Paired as the comparison pairs them (`landArticlePairs`), by
  * title before number.
  */
 export function packageChanges(draftAsRead: LawUnit[], kundmachungAsRead: LawUnit[]): { added: string[]; dropped: string[] } {
   const draft = romanArticles(draftAsRead)
   const kundmachung = romanArticles(kundmachungAsRead)
-  const pairs = articlePairs(draft, kundmachung)
+  const pairs = landArticlePairs(draft, kundmachung)
   const paired = new Set(pairs.map((p) => p.to).filter((a): a is string => a !== null))
-  const added = [...new Set(kundmachung.map((u) => u.article).filter((a): a is string => a !== null && !paired.has(a)))]
-  const dropped = pairs.filter((p) => p.from !== null && p.to === null).map((p) => p.from!)
+  // Not where the other text has an Artikel of the same name: the list groups
+  // by name, so that group holds both sides, and „added" or „dropped" would
+  // contradict it (Salzburg 32879: „Artikel IV" in both, renumbered § 8 → § 7).
+  const before = new Set(draft.map((u) => u.article))
+  const after = new Set(kundmachung.map((u) => u.article))
+  const added = [...new Set(kundmachung.map((u) => u.article).filter((a): a is string => a !== null && !paired.has(a) && !before.has(a)))]
+  const dropped = pairs.filter((p) => p.from !== null && p.to === null && !after.has(p.from)).map((p) => p.from!)
   return { added, dropped }
 }
