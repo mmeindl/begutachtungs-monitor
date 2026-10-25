@@ -160,6 +160,11 @@ const STRONG_ORG_PATTERNS: RegExp[] = [
   /genossenschaft/i,
   /bischofskonferenz|erzdiözese|diözese/i,
   /stiftung\b/i,
+  // Städtebund and Gemeindebund file with their Landesgruppe behind a comma
+  // („Österreichischer Städtebund, Landesgruppe Kärnten", Kärnten's
+  // Stellungnahmen, 23.10.2026), which the person comma form took. Neither
+  // is part of a name.
+  /städtebund|gemeindebund/i,
 ]
 
 /**
@@ -267,6 +272,7 @@ const ORG_PATTERNS: RegExp[] = [
   /magazin\b|zeitung\b|rundschau\b|\bjournal\b/i,
   /^ORF\b/,
   /umweltanwalt\b/i, // Landesumweltanwalt — the office, like the Umweltanwaltschaft above
+  /landesvolksanwält(?:in)?\b|landesvolksanwalt\b/i, // Tirol's Landesvolksanwältin: the office, as above (23.10.2026)
   /\bUN-|\bUNHCR\b|\bOSCE\b/,
   /einrichtung(?:en)?\b|anstalt\b/i,
   /[a-zäöüß](?:freunde|wende|forum)\b/i, // compounds only: "Naturschutzfreunde", "Verkehrswende", "Aktienforum"

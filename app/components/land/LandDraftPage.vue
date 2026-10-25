@@ -75,7 +75,10 @@ watch(canonicalPath, () => {
 })
 
 const landName = computed(() => LAND_NAME[props.land])
-const publicationNote = computed(() => LAND_PUBLICATION_NOTE[props.land])
+/* Tirol's Verordnungen live in the IFG-Informationsregister, not in the Landtag's records — and so do their Stellungnahmen. */
+const publicationNote = computed(() => (props.land === 't' && draft.value?.kind === 'verordnung'
+  ? 'Das Land veröffentlicht die Stellungnahmen im Informationsregister beim Entwurf.'
+  : LAND_PUBLICATION_NOTE[props.land]))
 const draft = computed(() => data.value?.draft ?? null)
 /* The row's short name as the heading where the title ends with one; the
    whole title then stands under it, as on the RIS page. */
@@ -94,6 +97,13 @@ const amends = computed(() => {
   const title = draft.value?.title ?? ''
   return /geändert (?:wird|werden)|Änderung|Novelle/.test(title) && !/gegenüberstellung|\bTGÜ/i.test(title)
 })
+
+/* A Textgegenüberstellung the Land published in a form the monitor does
+   not read yet (Kärnten, Tirol, 23.10.2026): said so, never „keine". */
+const tguListed = computed(() => (draft.value?.documents ?? []).some((d) => /gegenüberstellung|\bTGÜ/i.test(d.title) && !/^Regierungsvorlage\b/.test(d.title)))
+
+/* The span of a reckoned Frist, as the Land's letter writes it. */
+const WEEKS_DE: Record<number, string> = { 2: 'zwei', 3: 'drei', 4: 'vier', 5: 'fünf', 6: 'sechs', 8: 'acht' }
 
 const documents = computed<DraftDocument[]>(() =>
   (draft.value?.documents ?? []).map((d) => ({ title: d.title, formats: [{ type: 'pdf', url: d.url }] })))
@@ -235,7 +245,8 @@ useSeoMeta({ ogTitle: () => draft.value?.title ?? 'Entwurf', ogType: 'article' }
                  summary and before the documents (22.10.2026). -->
             <LandLawDiffSection v-if="hasTgu" :land="land" :number="number" from="geltend" to="entwurf" />
             <PageSubsection v-else-if="amends" id="gegenueberstellung" heading="Was ändert der Entwurf?">
-              <p class="text-sm text-ink-secondary">Das Land hat zu diesem Entwurf keine Textgegenüberstellung veröffentlicht.</p>
+              <p v-if="tguListed" class="text-sm text-ink-secondary">Das Land hat eine Textgegenüberstellung veröffentlicht; sie steht unter den Dokumenten. Ihre Form liest der Monitor noch nicht.</p>
+              <p v-else class="text-sm text-ink-secondary">Das Land hat zu diesem Entwurf keine Textgegenüberstellung veröffentlicht.</p>
             </PageSubsection>
             <!-- The Land's reasons, after what the draft changes — the order of
                  the Ministerialentwurf's page. -->
@@ -246,7 +257,7 @@ useSeoMeta({ ogTitle: () => draft.value?.title ?? 'Entwurf', ogType: 'article' }
                  to read the draft — folded, a Salzburg or Wien page would show
                  a heading over a closed fold where its content belongs. -->
             <PageSubsection id="dokumente" heading="Dokumente">
-              <DocumentList :documents="documents" :source="LAND_HOST[land]" :cite-as="citeAs" />
+              <DocumentList :documents="documents" :source="LAND_HOST[land]" :cite-as="citeAs" author="des Landes" />
               <p class="mt-3 text-sm text-ink-secondary">
                 Quelle: Land {{ landName }} · Nummer
                 <span class="font-mono text-xs text-ink">{{ number }}</span>.
@@ -260,17 +271,48 @@ useSeoMeta({ ogTitle: () => draft.value?.title ?? 'Entwurf', ogType: 'article' }
           <h2 id="begutachtung-heading" class="section-heading">Die Begutachtung</h2>
           <div class="mt-4 space-y-8">
             <FactList v-if="fristFacts.length" :facts="fristFacts" />
+            <!-- A Frist the monitor reckoned from the Land's cover letter
+                 (Kärnten's Verordnungen, `ktnVoLetter`): measured against the
+                 drafts where page and letter both speak, it can be off by two
+                 days — said, so the date above is read as what it is. -->
+            <p v-if="detail.draft.deadlineFrom" class="text-sm text-ink-secondary">
+              Einen Tag nennt das Land nicht: Es ersucht um Stellungnahme innerhalb von
+              {{ WEEKS_DE[detail.draft.deadlineFrom.weeks] ?? detail.draft.deadlineFrom.weeks }} Wochen ab Zustellung
+              seines Schreibens vom {{ formatDateDe(detail.draft.deadlineFrom.letterDate) }}. Das Ende der Frist ist
+              danach gerechnet und kann um ein, zwei Tage abweichen.
+            </p>
+            <!-- Tirol's Verordnungen (`fristUnknown`): the register they are
+                 published in has no field for the Frist, and the documents'
+                 dates are as often the Verordnung's own deadlines. Its own
+                 v-if chain, apart from the reckoned-Frist sentence above: tied
+                 to it, „nennt das Land nicht mehr" stood under every Frist
+                 that was shown (24.10.2026). -->
+            <p v-if="!fristFacts.length && detail.draft.fristUnknown" class="text-sm text-ink-secondary">
+              <template v-if="detail.draft.startedAt">Im Informationsregister veröffentlicht am {{ formatDateDe(detail.draft.startedAt) }}. </template>
+              Eine Frist nennt das Land dort nicht; wenn überhaupt, steht sie im
+              Begutachtungsschreiben unter den Dokumenten. Ob der Entwurf noch
+              offen ist, sagt der Monitor deshalb nicht.
+              <!-- The way to file, which the door card above gives only for
+                   a running Frist (24.10.2026). -->
+              <template v-if="detail.filing.kind === 'email'">
+                Stellungnahmen nimmt <template v-if="detail.filing.recipient">das {{ detail.filing.recipient }}</template><template v-else>das Land</template>
+                per E-Mail an <a :href="`mailto:${detail.filing.address}`" class="link-inline font-medium">{{ detail.filing.address }}</a> entgegen.
+              </template>
+            </p>
             <!-- A closed draft read from a register keeps its start and not
-                 its Frist: said, not left blank. -->
-            <p v-else class="text-sm text-ink-secondary">
-              <template v-if="detail.draft.startedAt">In Begutachtung gegangen am {{ formatDateDe(detail.draft.startedAt) }}. </template>
-              Die Frist nennt das Land nicht mehr.
+                 its Frist (Salzburg); Kärnten's archive keeps neither. Said,
+                 not left blank. -->
+            <p v-else-if="!fristFacts.length && detail.draft.startedAt" class="text-sm text-ink-secondary">
+              In Begutachtung gegangen am {{ formatDateDe(detail.draft.startedAt) }}. Die Frist nennt das Land nicht mehr.
+            </p>
+            <p v-else-if="!fristFacts.length" class="text-sm text-ink-secondary">
+              Weder Beginn noch Frist dieser Begutachtung nennt das Land<template v-if="detail.draft.placedAt">; in der Liste steht der Entwurf beim Datum seiner Regierungsvorlage</template>.
             </p>
 
             <LandStatements
               :statements="detail.statements"
               :statements-url="detail.statementsUrl"
-              :active="detail.draft.active"
+              :active="detail.draft.active || !!detail.draft.fristUnknown"
               :publication-note="publicationNote"
               :land-name="landName"
             />

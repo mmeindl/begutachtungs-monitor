@@ -7,7 +7,7 @@ import type { LandCode } from '#shared/types'
 import { asArray } from '../ris/risRecord'
 import { risJson, upstreamText, type UpstreamPolicy } from '../upstream/fetch'
 
-const RIS_LAND: Record<LandCode, string> = { ooe: 'Oberoesterreich', sbg: 'Salzburg', w: 'Wien' }
+const RIS_LAND: Record<LandCode, string> = { ktn: 'Kaernten', ooe: 'Oberoesterreich', sbg: 'Salzburg', t: 'Tirol', w: 'Wien' }
 const LANDESRECHT_API = 'https://data.bka.gv.at/ris/api/v2.6/Landesrecht'
 const POLICY: UpstreamPolicy = { timeoutMs: 30_000, retries: 2, accept: 'application/json', retryOnHttpError: true }
 const XML_POLICY: UpstreamPolicy = { timeoutMs: 30_000, retries: 2, upstreamHostsOnly: true }
@@ -23,7 +23,10 @@ const MAX_PAGES = 20
  */
 export async function lawInForce(land: LandCode, shortTitle: string, date: string): Promise<Map<string, string>> {
   const found = await lawInForceAs(land, shortTitle, date)
-  if (found.size || land !== 'sbg') return found
+  if (found.size) return found
+  // Tirol's short titles put the Land's name last: „Bauordnung 2022, Tiroler" for the Tiroler Bauordnung 2022 (23.10.2026).
+  if (land === 't') return /^Tiroler\s/.test(shortTitle) ? lawInForceAs(land, `${shortTitle.replace(/^Tiroler\s+/, '')}, Tiroler`, date) : found
+  if (land !== 'sbg') return found
   // Salzburg titles a law with and without the Land's name — „Jagdgesetz
   // 1993", „Salzburger Raumordnungsgesetz 2009" — and its drafts as they like.
   const other = shortTitle.startsWith('Salzburger ') ? shortTitle.slice('Salzburger '.length) : `Salzburger ${shortTitle}`

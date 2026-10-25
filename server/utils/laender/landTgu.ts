@@ -156,6 +156,12 @@ export interface TguParagraph {
   old: string[]
   neu: string[]
   changed: boolean
+  /**
+   * The document changes this § and the reader does not read how (24.10.2026,
+   * Kärnten: an instruction below a whole Absatz). No text: it is withheld,
+   * as `reason: 'unread'`, so the page names it.
+   */
+  unread?: true
 }
 
 const PARA_RE = /^§\s*(\d+[a-z]*)\.?$/
@@ -271,9 +277,9 @@ function splitHeading(text: string[]): { heading: string | null; body: string[] 
   return { heading: null, body: text }
 }
 
-function unitOf(p: TguParagraph, lines: string[]): LawUnit | null {
+function unitOf(p: TguParagraph, lines: string[], keepHeading = false): LawUnit | null {
   if (!lines.length) return null
-  const { heading, body } = splitHeading(lines)
+  const { heading, body } = keepHeading ? { heading: null, body: lines } : splitHeading(lines)
   const text = joinLines(body.length ? body : lines)
   return {
     article: p.law,
@@ -303,8 +309,13 @@ export function tguUnits(paragraphs: readonly TguParagraph[]): { from: LawUnit[]
   const from: LawUnit[] = []
   const to: LawUnit[] = []
   for (const p of paragraphs) {
-    const a = unitOf(p, p.old)
-    const b = unitOf(p, p.neu)
+    // A heading the draft changes is a change (24.10.2026): set aside on
+    // both sides, „§ 52 Herstellung des gesetzmäßigen Zustandes" → „… nach
+    // Abbruch" (Tirol 723/2026) read as „unverändert". Where the two printed
+    // headings differ, they stay in the text that is compared.
+    const retitled = p.old.length > 0 && p.neu.length > 0 && splitHeading(p.old).heading !== splitHeading(p.neu).heading
+    const a = unitOf(p, p.old, retitled)
+    const b = unitOf(p, p.neu, retitled)
     const mark = `${SAME_PARA}${p.law ?? ''} ${p.number}`
     if (a) from.push({ ...a, heading: mark })
     if (b) to.push({ ...b, heading: mark })

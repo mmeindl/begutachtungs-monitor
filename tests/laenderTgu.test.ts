@@ -1,4 +1,5 @@
 import { describe, expect, it } from 'vitest'
+import { draftNameOf, kaerntenDated, readableLawName, tirolDated } from '../server/utils/laender/landTguService'
 import { amendedLawOf, amendedLawsOf, columnParagraphs, draftDeletes, joinLines, mergeParagraphs, onlyElided, searchPhrase, shareInRis, standsInRis, tguLines, tguParagraphs, tguUnits, withHeadings, type TguLine, type TguPage } from '../server/utils/laender/landTgu'
 
 /** A run at (x, y), each character 5 pt wide; glyph widths equal, so centres fall evenly. */
@@ -194,5 +195,64 @@ describe('finding a § by its own words', () => {
   it('knows a § with nothing but elisions to check', () => {
     expect(onlyElided('(1) bis (4) …')).toBe(true)
     expect(onlyElided('(1) bis (4) … (5) Die Landesregierung hat durch Verordnung festzulegen.')).toBe(false)
+  })
+})
+
+describe('draftNameOf — one law under RIS\'s name and the draft\'s (23.10.2026)', () => {
+  it('maps RIS\'s short title with its abbreviation back to the draft\'s name', () => {
+    expect(draftNameOf('Kärntner Jagdgesetz 2000 - K-JG', ['Kärntner Jagdgesetz 2000'])).toBe('Kärntner Jagdgesetz 2000')
+    expect(draftNameOf('Kärntner Fischereigesetz-K-FG', ['Kärntner Fischereigesetz'])).toBe('Kärntner Fischereigesetz')
+  })
+
+  it('leaves another law alone', () => {
+    expect(draftNameOf('Kärntner Jagdgesetz 2000 - K-JG', ['Kärntner Fischereigesetz'])).toBeNull()
+    expect(draftNameOf('Kärntner Landes-Gleichbehandlungsgesetz 2022', ['Kärntner Landarbeiterkammergesetz 1979'])).toBeNull()
+  })
+})
+
+describe('tguUnits — a heading the draft changes (24.10.2026)', () => {
+  const para = (old: string[], neu: string[]) => ({ law: 'Tiroler Bauordnung 2022', number: '52', old, neu, changed: true })
+
+  it('is a change, not „unverändert"', () => {
+    const { from, to } = tguUnits([para(['Herstellung des gesetzmäßigen Zustandes', '(1) Text.'], ['Herstellung des gesetzmäßigen Zustandes nach Abbruch', '(1) Text.'])])
+    expect(from[0]!.text).not.toBe(to[0]!.text)
+  })
+
+  it('still sets an unchanged heading aside', () => {
+    const { from, to } = tguUnits([para(['Geltungsbereich', '(1) Alt.'], ['Geltungsbereich', '(1) Neu.'])])
+    expect(from[0]!.text).toBe('(1) Alt.')
+    expect(to[0]!.text).toBe('(1) Neu.')
+  })
+})
+
+describe('law names folded into one (24.10.2026)', () => {
+  it.each([
+    ['Geschäftsordnung des Kärntner Landtages - K-LTGO', 'Gesetz über die Geschäftsordnung des Kärntner Landtages'],
+    ['Kärntner Bauvorschriften- K-BV', 'Kärntner Bauvorschriften'],
+    ['Bauordnung 2022, Tiroler', 'Tiroler Bauordnung 2022'],
+    ['Gemeinde-Investitionsfonds, Gesetz über den', 'Gesetz über den Gemeinde-Investitionsfonds'],
+  ])('%s is the draft\'s %s', (ris, draft) => {
+    expect(draftNameOf(ris, [draft])).toBe(draft)
+  })
+
+  it('keeps a law whose last word only looks like an abbreviation', () => {
+    expect(draftNameOf('Kärntner Landes-Gleichbehandlungsgesetz 2022', ['Kärntner Landes'])).toBeNull()
+  })
+
+  it('turns RIS\'s order round where no draft names the law', () => {
+    expect(readableLawName('Bauordnung 2022, Tiroler')).toBe('Tiroler Bauordnung 2022')
+    expect(readableLawName('Gemeinde-Investitionsfonds, Gesetz über den')).toBe('Gesetz über den Gemeinde-Investitionsfonds')
+    expect(readableLawName('Landeskulturfonds, Gesetz')).toBe('Landeskulturfonds, Gesetz')
+  })
+})
+
+describe('the date a Textgegenüberstellung gives itself (24.10.2026)', () => {
+  it('Kärnten: the first of the month it names', () => {
+    expect(kaerntenDated([{ items: [{ text: 'Begutachtungsentwurf' }, { text: 'Oktober 2026' }, { text: 'zu Zl. LAD-VD-LG-37427/2025-79' }] }])).toBe('2026-10-01')
+    expect(kaerntenDated([{ items: [{ text: 'Textgegenüberstellung' }] }])).toBeNull()
+  })
+
+  it('Tirol: the day of its version', () => {
+    expect(tirolDated([{ runs: [{ s: '1 von 12' }, { s: 'VD-173/2-2026 Fassung vom 9. März 2026' }] }])).toBe('2026-03-09')
   })
 })

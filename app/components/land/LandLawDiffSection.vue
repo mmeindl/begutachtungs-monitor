@@ -172,16 +172,20 @@ const viewOf = (u: LawDiffUnit): UnitView => ({ unit: u, label: unitName(u, null
  * them, as the Bund's: there is no text of theirs to find.
  */
 const withheldByGroup = computed(() => {
-  const out = new Map<string, string[]>()
+  const out = new Map<string, { id: string; unread: boolean }[]>()
   if (!data.value?.available || query.value.trim()) return out
   const keys = new Set(units.value.map((u) => u.article ?? ''))
   for (const w of data.value.withheld) {
     const own = w.law ?? ''
     const key = keys.has(own) || keys.size !== 1 ? own : [...keys][0]!
-    out.set(key, [...(out.get(key) ?? []), displayId(w.id)])
+    out.set(key, [...(out.get(key) ?? []), { id: displayId(w.id), unread: w.reason === 'unread' }])
   }
   return out
 })
+
+/* The withheld of a group by why: RIS did not confirm them, or the reader does not read their change. */
+const refused = (items: readonly { id: string; unread: boolean }[]) => items.filter((w) => !w.unread).map((w) => w.id)
+const unreadOf = (items: readonly { id: string; unread: boolean }[]) => items.filter((w) => w.unread).map((w) => w.id)
 
 /* „§ 3, § 7 und § 12" */
 const listDe = (items: readonly string[]) => (items.length > 1 ? `${items.slice(0, -1).join(', ')} und ${items.at(-1)}` : items[0] ?? '')
@@ -296,10 +300,19 @@ const hasUnits = computed(() => units.value.length > 0)
                shown only where RIS confirms our reading of its text in force
                (`landTguService`). Named where the header counts it, with
                the way to the document that does show it. -->
-          <p v-if="g.withheld.length" class="border-b border-hairline px-4 py-2.5 text-sm text-ink-secondary">
-            Nicht gezeigt: {{ listDe(g.withheld) }}. {{ g.withheld.length === 1 ? 'Seinen' : 'Ihren' }} geltenden Text fand der Monitor im RIS nicht wortgleich;
-            <template v-if="data.fromDocument?.url">die <ExternalLink :href="data.fromDocument.url" class="link-inline">Textgegenüberstellung des Landes</ExternalLink> zeigt {{ g.withheld.length === 1 ? 'ihn' : 'sie' }}.</template>
-            <template v-else>die Textgegenüberstellung des Landes zeigt {{ g.withheld.length === 1 ? 'ihn' : 'sie' }}.</template>
+          <p v-if="refused(g.withheld).length" class="border-b border-hairline px-4 py-2.5 text-sm text-ink-secondary">
+            Nicht gezeigt: {{ listDe(refused(g.withheld)) }}. {{ refused(g.withheld).length === 1 ? 'Seinen' : 'Ihren' }} geltenden Text fand der Monitor im RIS nicht wortgleich;
+            <template v-if="data.fromDocument?.url">die <ExternalLink :href="data.fromDocument.url" class="link-inline">Textgegenüberstellung des Landes</ExternalLink> zeigt {{ refused(g.withheld).length === 1 ? 'ihn' : 'sie' }}.</template>
+            <template v-else>die Textgegenüberstellung des Landes zeigt {{ refused(g.withheld).length === 1 ? 'ihn' : 'sie' }}.</template>
+          </p>
+          <!-- §§ the Land's document changes in a way the reader does not
+               perform (Kärnten's finer instructions, 24.10.2026): named, so
+               the §§ shown are not read as all the draft changes. -->
+          <p v-if="unreadOf(g.withheld).length" class="border-b border-hairline px-4 py-2.5 text-sm text-ink-secondary">
+            Ebenfalls geändert, hier nicht gezeigt: {{ listDe(unreadOf(g.withheld)) }}. Die Novelle ändert dort einzelne Wörter oder Sätze;
+            den neuen Wortlaut setzt der Monitor nicht selbst zusammen –
+            <template v-if="data.fromDocument?.url">die <ExternalLink :href="data.fromDocument.url" class="link-inline">Textgegenüberstellung des Landes</ExternalLink> zeigt {{ unreadOf(g.withheld).length === 1 ? 'ihn' : 'sie' }}.</template>
+            <template v-else>die Textgegenüberstellung des Landes zeigt {{ unreadOf(g.withheld).length === 1 ? 'ihn' : 'sie' }}.</template>
           </p>
           <p v-if="addedLaws.has(g.article)" class="border-b border-hairline px-4 py-2.5 text-sm text-ink-secondary">
             Dieses Gesetz kommt {{ IN_FROM[from] }} nicht vor; es ist auf dem Weg hinzugekommen.

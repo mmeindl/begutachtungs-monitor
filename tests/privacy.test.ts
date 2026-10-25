@@ -754,3 +754,24 @@ describe('reviewed public bodies the „Nachname, Vorname" shape misreads (28.09
     expect(classifySubmitter(name, 'I')).toEqual({ kind: 'organisation', name })
   })
 })
+
+describe('Länder Stellungnahmen: two public bodies read as persons until 23.10.2026', () => {
+  it.each([
+    // The comma form with the Landesgruppe behind it (Kärnten), and once in list 142 (GP XXVI, upstream I).
+    'Österreichischer Städtebund, Landesgruppe Kärnten',
+    'Österreichischer Städtebund, Landesgruppe Niederösterreich',
+    // Tirol's office, like the Landesumweltanwalt.
+    'Landesvolksanwältin',
+  ])('%s → organisation', (name) => {
+    expect(classifySubmitter(name)).toEqual({ kind: 'organisation', name })
+  })
+
+  it.each([
+    'Mustermann, Maria; Landesvolksanwältin',
+    'Mag. Maria Mustermann, Landesvolksanwältin',
+    'Landesvolksanwältin Mag. Maria Mustermann',
+    'Mustermann, Maria; Städtebund',
+  ])('%s stays a person: the office or the Bund beside a name does not publish the name', (name) => {
+    expect(classifySubmitter(name).kind).toBe('person')
+  })
+})

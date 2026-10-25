@@ -928,15 +928,17 @@ export function regulationStations(
  * Ministerialentwurf: the Landtag's record is the complete list, not a
  * search of ours.
  */
-export function landStatusDe(d: Pick<LandConsultation, 'active' | 'stage' | 'kind'>): string {
+export function landStatusDe(d: Pick<LandConsultation, 'active' | 'stage' | 'kind' | 'fristUnknown'>): string {
   if (d.active) return 'In Begutachtung'
   const s = d.stage
+  // No Frist published: whether it still runs, nobody can say here (`fristUnknown`).
+  if (d.fristUnknown && (s === undefined || s === 'unknown' || (s?.via === 'suche' && s.station !== 'bgbl'))) return 'In Begutachtung, Frist unbekannt'
   if (s === undefined || s === 'unknown') return 'Begutachtung beendet'
   // Our own find: the evidenced outcome goes to the top, a miss never does
   // (`regulationStatusDe`) — „Begutachtung beendet" above.
   if (s?.via === 'suche') return d.kind === 'gesetz' ? 'Gesetz geworden' : 'Kundgemacht'
   if (!s) return 'Bisher keine Regierungsvorlage'
-  if (s.station === 'bgbl') return 'Gesetz geworden'
+  if (s.station === 'bgbl') return d.kind === 'gesetz' ? 'Gesetz geworden' : 'Kundgemacht'
   if (s.station === 'parlament') return 'Beschlossen – Kundmachung ausständig'
   return 'Im Landtag'
 }
@@ -951,7 +953,7 @@ export function landStatusDe(d: Pick<LandConsultation, 'active' | 'stage' | 'kin
  * the way to check beside it — never „nicht kundgemacht".
  */
 function searchedRow(
-  d: Pick<LandConsultation, 'land' | 'active' | 'stage' | 'lgblSearch' | 'lgblRefuted'>,
+  d: Pick<LandConsultation, 'land' | 'active' | 'stage' | 'lgblSearch' | 'lgblRefuted' | 'fristUnknown'>,
 ): Pick<Station, 'state' | 'facts' | 'source'> {
   const s = d.stage
   if (s && s !== 'unknown' && s.via === 'suche') {
@@ -959,6 +961,10 @@ function searchedRow(
   }
   if (d.active) return { state: 'open', facts: ['ausstehend'] }
   const ris = `https://www.ris.bka.gv.at/Ergebnis.wxe?Abfrage=LgblAuth&Bundesland=${encodeURIComponent(LAND_NAME[d.land])}`
+  // Without a Frist the Begutachtung may still run: a miss is „noch keine", and not where the draft stands.
+  if (d.fristUnknown && d.lgblSearch === 'nicht-gefunden') {
+    return { state: 'open', facts: ['noch keine Kundmachung gefunden'], source: { lead: null, href: ris, label: 'im RIS nachsehen' } }
+  }
   switch (s === 'unknown' ? 'nicht-abrufbar' : d.lgblSearch) {
     case 'nicht-gefunden':
       return {
@@ -1021,7 +1027,7 @@ function searchedRow(
  * be read — then the row says nothing rather than „keine".
  */
 export function landStations(
-  d: Pick<LandConsultation, 'land' | 'active' | 'startedAt' | 'deadline' | 'stage' | 'lgblSearch' | 'lgblRefuted'>,
+  d: Pick<LandConsultation, 'land' | 'active' | 'startedAt' | 'deadline' | 'stage' | 'lgblSearch' | 'lgblRefuted' | 'fristUnknown'>,
   statementCount: number | null = null,
   steps: readonly LandProcedureStep[] | null = null,
   comparisons: readonly (readonly [LandTextStation, LandTextStation])[] = [],
@@ -1042,10 +1048,11 @@ export function landStations(
     {
       id: 'begutachtung',
       name: 'Begutachtung',
-      state: d.active ? 'current' : 'done',
+      // Without a Frist (`fristUnknown`) the Begutachtung is where the draft is known to stand, until a later station says otherwise.
+      state: d.active || (d.fristUnknown && !(d.stage && d.stage !== 'unknown')) ? 'current' : 'done',
       // A closed draft's Frist is gone from some registers (Salzburg): no
       // „keine Frist angegeben", which would blame the Land for our gap.
-      facts: kept(...(d.deadline ? fristLineDe(d.startedAt, d.deadline, d.active) : []), count),
+      facts: kept(...(d.deadline ? fristLineDe(d.startedAt, d.deadline, d.active) : d.fristUnknown ? ['Frist unbekannt'] : []), count),
       comparison: null,
     },
   ]

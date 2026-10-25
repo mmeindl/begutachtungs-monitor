@@ -173,7 +173,7 @@ usePageSeo({
       <p>
         Der Monitor zeigt Daten, die die Parlamentsdirektion auf
         parlament.gv.at veröffentlicht, und die Stellungnahmen, die die
-        Länder Oberösterreich, Salzburg und Wien zu ihren Entwürfen
+        Länder Kärnten, Oberösterreich, Salzburg, Tirol und Wien zu ihren Entwürfen
         veröffentlichen. Darin kommen Namen vor:
         als Einbringer von Stellungnahmen erscheinen dort auch Privatpersonen.
         Das ist eine Verarbeitung personenbezogener Daten, die nicht bei

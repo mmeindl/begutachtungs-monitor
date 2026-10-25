@@ -65,8 +65,12 @@ export function useLandVorlageOutcome(source: () => { land: LandCode; number: st
     return s ? changeShareValueDe(s.changed, s.own, s.noun) : null
   })
   const reasoningDe = computed(() => {
-    const stats = reasoning.value?.available ? reasoning.value.stats : null
-    return stats?.compared ? reasoningShareValueDe(substantiveReasoningChanges(stats), stats.compared) : null
+    const r = reasoning.value
+    if (!r) return null
+    const stats = r.available ? r.stats : null
+    if (stats?.compared) return reasoningShareValueDe(substantiveReasoningChanges(stats), stats.compared)
+    // Not compared is said, never left out (24.10.2026): a missing row read as „the reasons did not change".
+    return `nicht verglichen – ${(r.unavailableReason ?? 'die Erläuterungen beider Texte decken keinen gemeinsamen Paragraphen ab.').replace(/^\p{Lu}/u, (c) => c.toLowerCase())}`
   })
 
   return { share, sharePending, shareDe, reasoningDe }

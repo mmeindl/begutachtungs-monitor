@@ -53,6 +53,31 @@ import {
   ooeLandtagOf,
   ooeStageOf,
 } from './oberoesterreich'
+import {
+  KTN_CURRENT,
+  KTN_FILING_EMAIL,
+  KTN_FIRST_YEAR,
+  KTN_NUMBER_RE,
+  KTN_VO_LIST,
+  ktnArchiveUrl,
+  ktnBeschluesseUrl,
+  ktnChainOf,
+  ktnNextStuecke,
+  ktnPartsOfNumber,
+  ktnVoDeadline,
+  ktnVoDetailUrl,
+  ktnVoLetter,
+  ktnVorlagenUrl,
+  parseKtnBeschluesse,
+  parseKtnVoDetail,
+  parseKtnVoList,
+  parseKtnList,
+  parseKtnStatements,
+  parseKtnVorlagen,
+  type KtnEntry,
+} from './kaernten'
+import { TIROL_LIST, TIROL_NUMBER_RE, TIROL_VO_NUMBER_RE, TIROL_VO_PAGE, parseTirolList, parseTirolRecord, parseTirolVoSearch, tirolFilingEmail, tirolRecordUrl, tirolVoOf, tirolVoSearchUrl, type TirolVoDraft } from './tirol'
+import { pdfPages } from './texts/read'
 import { fetchLgblIndex } from './lgblIndex'
 import { hasTgu } from './landTguService'
 import { resolveKundmachung } from './texts/kundmachung'
@@ -417,7 +442,266 @@ const oberoesterreich: LandReader = {
   },
 }
 
-const READERS: Record<LandCode, LandReader> = { sbg: salzburg, w: wien, ooe: oberoesterreich }
+/* ------------------------------------------------------------------ *
+ * Kärnten
+ * ------------------------------------------------------------------ */
+
+/** The years the Land keeps pages for, newest first (`KTN_FIRST_YEAR`). */
+function ktnYears(today: string = todayIso()): number[] {
+  const now = Number(today.slice(0, 4))
+  return Array.from({ length: now - KTN_FIRST_YEAR + 1 }, (_, i) => now - i)
+}
+
+/**
+ * One of the Land's yearly pages. The current year's may not exist yet in
+ * January — that one, and only that one, reads as empty when it fails; an
+ * earlier year's failing is Kärnten failing.
+ */
+async function ktnYearly<T>(url: (year: number) => string, parse: (html: string) => T[]): Promise<T[]> {
+  const years = ktnYears()
+  const pages = await Promise.all(years.map((year, i) =>
+    fetchLandRecord(url(year)).then(parse, (err: unknown) => {
+      if (i === 0) return []
+      throw err
+    })))
+  return pages.flat()
+}
+
+async function ktnCurrent(): Promise<KtnEntry[]> {
+  return parseKtnList(await fetchLandPage(KTN_CURRENT), { requireFrist: true })
+}
+
+/**
+ * Every draft the Land keeps, with its chain (`ktnChainOf`). A draft on
+ * both the running list and an archive (closed this week) is one draft: the
+ * archive's, with the running list's Frist.
+ */
+async function ktnAll(): Promise<{ entry: KtnEntry; draft: LandConsultation; chain: ReturnType<typeof ktnChainOf> }[]> {
+  const [current, archive, vorlagen, beschluesse, index] = await Promise.all([
+    ktnCurrent(),
+    ktnYearly(ktnArchiveUrl, (h) => parseKtnList(h, { requireFrist: false })),
+    ktnYearly(ktnVorlagenUrl, parseKtnVorlagen),
+    ktnYearly(ktnBeschluesseUrl, parseKtnBeschluesse),
+    fetchLgblIndex('ktn').catch(() => null),
+  ])
+  const running = new Map(current.map((e) => [e.draft.id, e]))
+  const archived = new Set(archive.map((e) => e.draft.id))
+  const entries = [
+    ...archive.map((e) => {
+      const live = running.get(e.draft.id)
+      return live ? { ...e, draft: { ...e.draft, deadline: live.draft.deadline } } : e
+    }),
+    ...current.filter((e) => !archived.has(e.draft.id)),
+  ].filter((e, i, all) => all.findIndex((o) => o.draft.id === e.draft.id) === i)
+  const numbers = entries.map((e) => e.draft.id.slice('ktn-'.length))
+  const next = ktnNextStuecke(numbers)
+  return entries.map((entry, i) => {
+    const number = numbers[i]!
+    const chain = ktnChainOf({ ...ktnPartsOfNumber(number), nextStueck: next.get(number)!, title: entry.draft.title }, vorlagen, beschluesse, index)
+    // Without the Landesgesetzblatt a decided draft may well be kundgemacht: unknown, not „im Landtag".
+    const stage = !index && chain.stage?.station === 'parlament' ? ('unknown' as const) : chain.stage
+    const rv = chain.procedure.find((s) => s.station === 'rv')
+    // A draft whose Akt shows nothing after the Begutachtung is not followed — its pages may simply not record it.
+    const draft: LandConsultation = {
+      ...entry.draft,
+      ...(stage ? { stage } : {}),
+      ...(!entry.draft.startedAt && !entry.draft.deadline && rv?.date ? { placedAt: rv.date } : {}),
+    }
+    return { entry, draft, chain }
+  })
+}
+
+/**
+ * A Verordnung's cover letter as the draft needs it: its date and the span
+ * of its Frist (`ktnVoLetter`). Held a day in the derived layer — a letter
+ * does not change, the reader may.
+ */
+const ktnVoLetterOf = defineCachedFunction(
+  async (url: string) => ktnVoLetter((await pdfPages(url)).join('\n')),
+  { name: 'ktn-vo-letter', base: DERIVED_CACHE, getKey: urlKey, maxAge: 60 * 60 * 24, swr: true },
+)
+
+/** Every Verordnung draft on the Land's tiles, with the Frist its page or its letter sets (`kaernten.ts`, „Verordnungen"). */
+async function ktnVerordnungen(): Promise<{ draft: LandConsultation; email: string | null }[]> {
+  const tiles = parseKtnVoList(await fetchLandRecord(KTN_VO_LIST))
+  const read = await Promise.all(tiles.map(async ({ detail }) => {
+    const url = ktnVoDetailUrl(detail)
+    const vo = parseKtnVoDetail(await fetchLandRecord(url))
+    if (!vo) return null
+    // A letter that cannot be read leaves the draft without its date, not without the draft.
+    const letter = vo.letterUrl ? await ktnVoLetterOf(vo.letterUrl).catch(() => null) : null
+    const reckoned = vo.deadline ? null : letter ? ktnVoDeadline(letter) : null
+    const draft: LandConsultation = {
+      id: `ktn-v${detail}`,
+      land: 'ktn',
+      kind: 'verordnung',
+      title: vo.title,
+      // The cover letter's date is the day the Land sent the draft out.
+      startedAt: letter?.date ?? null,
+      deadline: vo.deadline ?? reckoned,
+      ...(reckoned && letter?.date && letter.weeks ? { deadlineFrom: { letterDate: letter.date, weeks: letter.weeks } } : {}),
+      url,
+      documents: vo.documents,
+      active: false,
+    }
+    return { draft, email: vo.email }
+  }))
+  return read.filter((r): r is NonNullable<typeof r> => r !== null)
+}
+
+const kaernten: LandReader = {
+  listUrl: KTN_CURRENT,
+  /* The Verordnungen as a garnish under a budget: cold, their letters are
+   * eighteen PDFs, and the running Gesetze must not wait for them. */
+  current: async () => {
+    const [gesetze, verordnungen] = await Promise.all([ktnCurrent(), withinBudget(ktnVerordnungen(), GARNISH_BUDGET_MS * 2)])
+    return [...gesetze.map((e) => e.draft), ...(verordnungen ?? []).map((v) => v.draft)]
+  },
+  all: async () => {
+    const [gesetze, verordnungen] = await Promise.all([ktnAll(), ktnVerordnungen()])
+    return [...gesetze.map((k) => k.draft), ...verordnungen.map((v) => v.draft)]
+  },
+  detail: async (number) => {
+    if (/^v\d{1,6}$/.test(number)) {
+      const found = (await ktnVerordnungen()).find((v) => v.draft.id === `ktn-${number}`)
+      if (!found) {
+        // A tile still listed is no draft (an information page); one gone from the list was one.
+        const listed = parseKtnVoList(await fetchLandRecord(KTN_VO_LIST)).some((t) => `v${t.detail}` === number)
+        if (listed) return null
+        throw gone('Das Land Kärnten führt diesen Verordnungsentwurf nicht mehr auf seiner Seite.')
+      }
+      return {
+        draft: withLandActiveOn([found.draft])[0]!,
+        statements: null,
+        statementsUrl: null,
+        // The page names an address where the department gives one; else the letter does.
+        filing: found.email ? { kind: 'email', address: found.email, recipient: null } : { kind: 'document' },
+        summary: null,
+        procedure: null,
+        landtag: null,
+        retentionNote: null,
+        listUrl: KTN_VO_LIST,
+      }
+    }
+    if (!KTN_NUMBER_RE.test(number)) return null
+    const found = (await ktnAll()).find((k) => k.draft.id === `ktn-${number}`)
+    if (!found) return null
+    const { entry, draft, chain } = found
+    // The running list publishes no Stellungnahmen; the archive links their page.
+    const statements: LandStatement[] | null = entry.statementsUrl
+      ? await fetchLandPage(entry.statementsUrl).then(parseKtnStatements).catch(() => null)
+      : []
+    return {
+      draft: withLandActiveOn([{ ...draft, documents: [...draft.documents, ...chain.documents] }])[0]!,
+      statements,
+      statementsUrl: entry.statementsUrl,
+      filing: { kind: 'email', address: KTN_FILING_EMAIL, recipient: 'Verfassungsdienst' },
+      summary: null,
+      procedure: chain.procedure.length ? chain.procedure : null,
+      landtag: chain.landtag,
+      retentionNote: null,
+      listUrl: KTN_CURRENT,
+    }
+  },
+}
+
+/* ------------------------------------------------------------------ *
+ * Tirol
+ * ------------------------------------------------------------------ */
+
+const TIROL_FILING_FALLBACK = 'verfassungsdienst@tirol.gv.at'
+
+/**
+ * Tirol's Verordnungsentwürfe from the IFG-Informationsregister
+ * (`tirol.ts`, „Verordnungen"): every page of the search, held like a
+ * Landtag record. The answer must hold as many datasets as it counts — a
+ * short read would make drafts disappear without a word.
+ */
+const TIROL_VO_MAX_PAGES = 20
+async function tirolVerordnungen(): Promise<TirolVoDraft[]> {
+  const first = parseTirolVoSearch(JSON.parse(await fetchLandRecord(tirolVoSearchUrl(0))))
+  const pages = Math.min(Math.ceil(first.count / 50), TIROL_VO_MAX_PAGES)
+  const rest = await Promise.all(Array.from({ length: Math.max(0, pages - 1) }, async (_, i) =>
+    parseTirolVoSearch(JSON.parse(await fetchLandRecord(tirolVoSearchUrl(i + 1)))).results))
+  const all = [...first.results, ...rest.flat()]
+  if (all.length < first.count) throw new Error(`Tirol: Informationsregister ${all.length} von ${first.count} gelesen`)
+  return all.map(tirolVoOf).filter((v): v is TirolVoDraft => v !== null)
+}
+
+const tirol: LandReader = {
+  listUrl: TIROL_LIST,
+  // Its Verordnungen have no Frist, so none of them is running (`fristUnknown`).
+  current: async () => parseTirolList(await fetchLandPage(TIROL_LIST)),
+  /* The list is everything the Land still lists — weeks back, no archive.
+   * Each entry's station from its Landtag record, as for Oberösterreich; a
+   * record that fails leaves the station unknown, never the first one. */
+  all: async () => {
+    const [gesetze, verordnungen] = await Promise.all([
+      Promise.all(parseTirolList(await fetchLandPage(TIROL_LIST)).map(async (d) => {
+        const stage = await fetchLandRecord(d.url)
+          .then((html) => parseTirolRecord(html, d.url).stage)
+          .catch(() => 'unknown' as const)
+        return { ...d, stage }
+      })),
+      tirolVerordnungen(),
+    ])
+    return [...gesetze, ...verordnungen.map((v) => v.draft)]
+  },
+  detail: async (number) => {
+    if (TIROL_VO_NUMBER_RE.test(number)) {
+      const found = (await tirolVerordnungen()).find((v) => v.draft.id === `t-${number}`)
+      if (!found) return null
+      return {
+        draft: withLandActiveOn([found.draft])[0]!,
+        statements: found.statements,
+        statementsUrl: found.draft.url,
+        filing: found.email ? { kind: 'email', address: found.email, recipient: found.recipient } : { kind: 'document' },
+        summary: null,
+        procedure: null,
+        landtag: null,
+        retentionNote: null,
+        listUrl: TIROL_VO_PAGE,
+      }
+    }
+    const m = TIROL_NUMBER_RE.exec(number)
+    if (!m) return null
+    const url = tirolRecordUrl(m[1]!, m[2]!)
+    const [record, listHtml] = await Promise.all([
+      fetchLandPage(url).then((html) => parseTirolRecord(html, url)),
+      fetchLandPage(TIROL_LIST).catch(() => null),
+    ])
+    const listed = listHtml ? parseTirolList(listHtml).find((d) => d.id === `t-${number}`) : undefined
+    // A Gegenstand of the Landtag that is no Begutachtung (an Anfrage, a
+    // Petition) is not a draft — unless the Land lists it as one.
+    if (!listed && !record.documents.some((d) => d.title === 'Entwurf')) return null
+    const draft: LandConsultation = {
+      id: `t-${number}`,
+      land: 't',
+      kind: listed?.kind ?? 'gesetz',
+      title: listed?.title ?? record.title,
+      // Until it is a Vorlage, the Landtag files the draft on the day the Begutachtung began.
+      startedAt: listed?.startedAt ?? (record.stage ? null : record.filedAt),
+      deadline: listed?.deadline ?? null,
+      url,
+      documents: record.documents,
+      active: false,
+      stage: record.stage,
+    }
+    return {
+      draft: withLandActiveOn([draft])[0]!,
+      statements: record.statements,
+      statementsUrl: record.statements.length ? url : null,
+      filing: { kind: 'email', address: (listHtml && tirolFilingEmail(listHtml)) || TIROL_FILING_FALLBACK, recipient: 'Abteilung Verfassungsdienst' },
+      summary: null,
+      procedure: record.procedure.length ? record.procedure : null,
+      landtag: record.landtag,
+      retentionNote: null,
+      listUrl: TIROL_LIST,
+    }
+  },
+}
+
+const READERS: Record<LandCode, LandReader> = { ktn: kaernten, ooe: oberoesterreich, sbg: salzburg, t: tirol, w: wien }
 
 /* ------------------------------------------------------------------ *
  * The Kundmachung, searched where the Land records none (§12.43)
@@ -487,10 +771,11 @@ export async function readLaender(): Promise<LaenderResponse> {
 /**
  * The date that places a Land's draft in a period: the start of its
  * Begutachtung, or — where the Land kept only the end (OÖ's archive and
- * Verordnungen) — the end of its Frist.
+ * Verordnungen) — the end of its Frist, or — where it kept neither
+ * (Kärnten's archive) — the date of the Regierungsvorlage (`placedAt`).
  */
 export function landDraftDate(d: LandConsultation): string | null {
-  return d.startedAt ?? d.deadline
+  return d.startedAt ?? d.deadline ?? d.placedAt ?? null
 }
 
 /**
@@ -502,11 +787,13 @@ export function landDraftDate(d: LandConsultation): string | null {
 export async function readLaenderInWindow(
   window: { from: string; to: string | null },
   status: 'open' | 'closed' | 'all',
-): Promise<Pick<LaenderResponse, 'items' | 'sources'>> {
-  const results = await Promise.allSettled(LAND_CODES.map(async (land) =>
+  /** The Länder to read; one for a Land's own feed (`feed.xml?quelle=`). */
+  lands: readonly LandCode[] = LAND_CODES,
+): Promise<Pick<LaenderResponse, 'items' | 'sources' | 'undated'>> {
+  const results = await Promise.allSettled(lands.map(async (land) =>
     withLgblSearch(land, withLandActiveOn(await READERS[land].all()))))
   const items: LandConsultation[] = []
-  const sources: LandSourceState[] = LAND_CODES.map((land, i) => {
+  const sources: LandSourceState[] = lands.map((land, i) => {
     const result = results[i]!
     if (result.status === 'fulfilled') items.push(...result.value)
     else console.warn(`[laender] ${land} nicht abrufbar:`, result.reason instanceof Error ? result.reason.message : result.reason)
@@ -516,9 +803,13 @@ export async function readLaenderInWindow(
     const date = landDraftDate(d)
     return date !== null && date >= window.from && (window.to === null || date <= window.to)
   }), `${window.from}_${window.to ?? 'laufend'}`)
+  const undated: Partial<Record<LandCode, number>> = {}
+  for (const d of items) if (landDraftDate(d) === null) undated[d.land] = (undated[d.land] ?? 0) + 1
   return {
-    items: inWindow.filter((d) => status === 'all' || (status === 'open') === d.active),
+    // A draft without a Frist is neither open nor closed: it stands under „Alle" only (`fristUnknown`).
+    items: inWindow.filter((d) => status === 'all' || (!d.fristUnknown && (status === 'open') === d.active)),
     sources,
+    undated,
   }
 }
 
@@ -536,8 +827,11 @@ export async function draftsSharingKundmachung(land: LandCode, nr: string, excep
 }
 
 /* Salzburg and Wien number with digits; Oberösterreich with `2026-16124`
- * (Landtag year and number) or `v560198` (a Verordnung's link id). */
-export const LAND_NUMBER_RE = /^(?:\d{1,9}|20\d{2}-\d{1,6}|v\d{1,9})$/
+ * (Landtag year and number) or `v560198` (a Verordnung's link id); Tirol
+ * as Oberösterreich (`2026-722`); Kärnten with its Geschäftszahl,
+ * `113253-2025-38` or, before 2022, `1994-6`, and a Verordnung by its
+ * tile, `v1631`; a Tirol Verordnung by its register id, `v` + 32 hex digits. */
+export const LAND_NUMBER_RE = /^(?:\d{1,9}|20\d{2}-\d{1,6}|v\d{1,9}|v[0-9a-f]{32}|\d{1,7}-(?:20\d{2}-)?\d{1,4})$/
 
 /**
  * One draft, as its page reads it: the Land's record, the title search's

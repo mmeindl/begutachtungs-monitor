@@ -56,7 +56,7 @@ const { webcalUrl, googleCalUrl, icsDisplayUrl } = useFeedUrls()
         Zwischenspeicher; eine eigene Datenbank gibt es nicht. Die
         Begutachtungen der Länder haben keine solche Schnittstelle: Der
         Monitor liest sie von den Seiten der Länder selbst, derzeit von
-        Oberösterreich, Salzburg und Wien. Es gibt keine Konten und kein Tracking; ein Cookie nur,
+        Kärnten, Oberösterreich, Salzburg, Tirol und Wien. Es gibt keine Konten und kein Tracking; ein Cookie nur,
         wenn Sie die Quellen der Liste ändern.
       </p>
     </ProseSection>

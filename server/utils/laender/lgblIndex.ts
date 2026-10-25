@@ -11,11 +11,11 @@ import { risJson, type UpstreamPolicy } from '../upstream/fetch'
 import type { LgblEntry } from './lgblSearch'
 
 /** RIS's name for each Land in `Bundesland_SucheIn…`. */
-const RIS_LAND: Record<LandCode, string> = { ooe: 'Oberoesterreich', sbg: 'Salzburg', w: 'Wien' }
+const RIS_LAND: Record<LandCode, string> = { ktn: 'Kaernten', ooe: 'Oberoesterreich', sbg: 'Salzburg', t: 'Tirol', w: 'Wien' }
 const LANDESRECHT_API = 'https://data.bka.gv.at/ris/api/v2.6/Landesrecht'
 const INDEX_POLICY: UpstreamPolicy = { timeoutMs: 30_000, retries: 2, accept: 'application/json', retryOnHttpError: true }
 /* Measured 22.10.2026: OÖ 1.565, Salzburg 1.451, Wien 796 entries — 8 to
-   16 pages. A hundred pages would be a different source, not a bigger one. */
+   16 pages; on 23.10. Tirol 1.815, Kärnten 1.255. A hundred pages would be a different source, not a bigger one. */
 const MAX_PAGES = 100
 
 function indexUrl(land: LandCode, page: number): string {

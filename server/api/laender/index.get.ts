@@ -33,6 +33,6 @@ export default defineEventHandler(async (event): Promise<LaenderResponse> => {
   const window = gpWindow(gp)
   // A period the calendar does not reach has no window: no Länder rows, said
   // by an empty list and the period's own answer, not by an error.
-  const { items, sources } = window ? await readLaenderInWindow(window, status) : { items: [], sources: (await readLaender()).sources }
-  return { items, sources, gp, availableGps: listAvailableGps(currentGp) }
+  const { items, sources, undated } = window ? await readLaenderInWindow(window, status) : { items: [], sources: (await readLaender()).sources, undated: {} }
+  return { items, sources, undated, gp, availableGps: listAvailableGps(currentGp) }
 })

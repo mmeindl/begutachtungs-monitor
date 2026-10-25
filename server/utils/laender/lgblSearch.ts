@@ -66,14 +66,14 @@ const TYPES: Record<LandConsultation['kind'], ReadonlySet<string>> = {
 const MONTHS = 'jänner|januar|februar|märz|april|mai|juni|juli|august|september|oktober|november|dezember'
 const STOP = new Set(`gesetz gesetzes landesgesetz verordnung kundmachung landesverfassungsgesetz mit dem der die das des den wird werden
 geändert geaendert änderung aenderung erlassen erlassung und sowie über ueber zur zum von vom für fuer ein eine einer eines im in an auf
-salzburger salzburg oö oberösterreichische oberösterreich wiener wien landesregierung landeshauptmannes landeshauptfrau landeshauptmann land landes
+salzburger salzburg oö oberösterreichische oberösterreich wiener wien tiroler tirol kärntner kärnten landesregierung landeshauptmannes landeshauptfrau landeshauptmann land landes
 inkl textgegenüberstellung tgü erläuterungen novelle betreffend durch`.split(/\s+/))
 
 /** The title reduced to what can match: no date, no years, no punctuation. */
 export function lgblNorm(title: string): string {
   return title.toLowerCase()
     .replace(new RegExp(`\\bvom \\d{1,2}\\. (?:${MONTHS}) \\d{4}`, 'gu'), ' ')
-    .replace(/\b(?:der|des) (?:oö\. |salzburger |wiener )?landesregierung\b/gu, ' ')
+    .replace(/\b(?:der|des) (?:oö\. |salzburger |wiener |tiroler |kärntner )?landesregierung\b/gu, ' ')
     .replace(/\b(?:entwurf|begutachtung)\b/gu, ' ')
     .replace(/[^\p{L}\p{N}]+/gu, ' ')
     // Years wander between draft and Kundmachung („Novelle 2024" → „2025").

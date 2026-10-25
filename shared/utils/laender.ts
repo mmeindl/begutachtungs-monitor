@@ -12,25 +12,31 @@
 import type { LandCode, LandTextStation } from '../types'
 
 /** Display order — the order the chips stand in: alphabetical, as the Länder are listed everywhere. */
-export const LAND_CODES: readonly LandCode[] = ['ooe', 'sbg', 'w']
+export const LAND_CODES: readonly LandCode[] = ['ktn', 'ooe', 'sbg', 't', 'w']
 
 export const LAND_NAME: Record<LandCode, string> = {
+  ktn: 'Kärnten',
   ooe: 'Oberösterreich',
   sbg: 'Salzburg',
+  t: 'Tirol',
   w: 'Wien',
 }
 
 /** The host a Land's documents come from, as the document list names it. */
 export const LAND_HOST: Record<LandCode, string> = {
+  ktn: 'ktn.gv.at',
   ooe: 'land-oberoesterreich.gv.at',
   sbg: 'service.salzburg.gv.at',
+  t: 'tirol.gv.at',
   w: 'wien.gv.at',
 }
 
 /** The Land's path segment under `/entwuerfe/` — its name, as a reader types it. */
 export const LAND_SLUG: Record<LandCode, string> = {
+  ktn: 'kaernten',
   ooe: 'oberoesterreich',
   sbg: 'salzburg',
+  t: 'tirol',
   w: 'wien',
 }
 
@@ -135,7 +141,9 @@ export function landLawGroupTitle(title: string): string {
  * its own terms; null where its page says nothing (Wien).
  */
 export const LAND_PUBLICATION_NOTE: Record<LandCode, string | null> = {
+  ktn: 'Das Land veröffentlicht die Stellungnahmen nach dem Ende der Begutachtung; die von Privatpersonen nur mit deren Einwilligung, die von Organisationen und öffentlichen Stellen auch ohne.',
   ooe: 'Das Land veröffentlicht die Stellungnahmen, sobald die Regierungsvorlage vorliegt; die von Privatpersonen nur mit deren Einwilligung.',
   sbg: 'Das Land veröffentlicht eine Stellungnahme nur mit Zustimmung derer, die sie einreichen.',
+  t: 'Das Land veröffentlicht die eingelangten Stellungnahmen beim Gegenstand im Landtag.',
   w: null,
 }

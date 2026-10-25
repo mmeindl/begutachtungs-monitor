@@ -8,7 +8,9 @@ import { safeExternalUrl } from '#shared/utils/safeExternalUrl'
 import type { LawUnit } from '../../lawtext/lawUnits'
 import { upstreamBytes, upstreamText, type UpstreamPolicy } from '../../upstream/fetch'
 import { landDraftUnits, lgblUnits } from '../landLawDiff'
+import { isTirolDocumentUrl, tirolDocumentBytes } from '../tirol'
 import { styledPages, type StyledPages } from './styledPages'
+import { fromMacRoman } from '../../annex/annexPdfPages'
 
 export const TEXT_POLICY: UpstreamPolicy = { timeoutMs: 30_000, retries: 2, upstreamHostsOnly: true }
 const PDF_MAX_BYTES = 30 * 1024 * 1024
@@ -25,17 +27,49 @@ export interface TextSource {
   read: () => Promise<ReadText>
 }
 
-export async function pdfPages(url: string): Promise<string[]> {
+/**
+ * A Land's PDF, wherever it lives — the one door every reader of a Land's
+ * documents goes through. Tirol's have no address of their own and are read
+ * through their Gegenstand's page (`tirolDocumentBytes`).
+ */
+export async function landPdfBytes(url: string): Promise<Uint8Array> {
+  if (isTirolDocumentUrl(url)) return tirolDocumentBytes(url)
   const { bytes } = await upstreamBytes(url, { ...TEXT_POLICY, maxBytes: PDF_MAX_BYTES })
-  const { extractText, getDocumentProxy } = await import('unpdf')
-  const { text } = await extractText(await getDocumentProxy(new Uint8Array(bytes)), { mergePages: false })
-  return Array.isArray(text) ? text : [text]
+  return new Uint8Array(bytes)
+}
+
+export async function pdfPages(url: string): Promise<string[]> {
+  const bytes = await landPdfBytes(url)
+  const { extractText } = await import('unpdf')
+  // Bytes, not a proxy: a document unpdf opens itself it also destroys.
+  const { text } = await extractText(bytes, { mergePages: false })
+  return repairMacRoman(Array.isArray(text) ? text : [text])
+}
+
+/**
+ * A text layer in Windows-1252 read as Mac Roman (`annexPdfPages.ts`,
+ * `isMacRomanMisread`), repaired line by line: Tirol's 722/2026 came back
+ * with „ß" for each of its 58 „§" (24.10.2026), and no § of it could be
+ * found. Decided for the document, as there; a „ß" the reading turned into
+ * „ﬂ" is lost to the normalisation here („Strafle") — what is restored is
+ * every „§" and every umlaut.
+ */
+function repairMacRoman(pages: string[]): string[] {
+  const text = pages.join('')
+  const misread = (text.match(/[¸‰ˆ]/g) ?? []).length
+  const real = (text.match(/[äöüÄÖÜ§]/g) ?? []).length
+  // Or the one sign a law text cannot do without: 722's draft mixes a font
+  // that reads right (8 umlauts, 5 „§") with one that does not (58 „ß 4").
+  const paraSigns = (text.match(/ß\s*\d/g) ?? []).length
+  const realParas = (text.match(/§/g) ?? []).length
+  const byParas = paraSigns >= 10 && paraSigns >= 5 * realParas
+  if (!byParas && (misread < 20 || misread < 20 * real)) return pages
+  return pages.map((page) => page.split('\n').map(fromMacRoman).join('\n'))
 }
 
 /** `pdfPages`, with the weight of each line (`styledPages`) — for the headings of the Erläuterungen. */
 export async function pdfStyledPages(url: string): Promise<StyledPages> {
-  const { bytes } = await upstreamBytes(url, { ...TEXT_POLICY, maxBytes: PDF_MAX_BYTES })
-  return styledPages(new Uint8Array(bytes))
+  return styledPages(await landPdfBytes(url))
 }
 
 export async function readPdf(url: string): Promise<ReadText> {

@@ -13,8 +13,11 @@ const props = withDefaults(
      *  („Ministerialentwurf 115/ME XXVIII. GP"). Given, each row gets a
      *  „Zitieren" column (21.10.2026). */
     citeAs?: string
+    /** Whose reasons the Erläuterungen are: a ressort's, or — on a Land's
+     *  page — the Land's (23.10.2026; every Land's page said „des Ministeriums"). */
+    author?: string
   }>(),
-  { source: 'parlament.gv.at' },
+  { source: 'parlament.gv.at', author: 'des Ministeriums' },
 )
 
 const formatNames: Record<'pdf' | 'html', string> = { pdf: 'PDF', html: 'HTML' }
@@ -38,7 +41,7 @@ function formatOf(doc: DraftDocument, type: 'pdf' | 'html') {
 const DOC_HINTS: [prefix: string, hint: string][] = [
   ['Gesetzestext', 'Der Entwurfstext selbst'],
   ['Entwurfstext', 'Der Entwurfstext selbst'],
-  ['Erläuterungen', 'Die Begründung des Ministeriums'],
+  ['Erläuterungen', 'Die Begründung {author}'],
   ['Vorblatt und WFA', 'Kurzüberblick und Folgenabschätzung'],
   ['Textgegenüberstellung', 'Geltendes Recht und Entwurf nebeneinander'],
   // No hint for the later stations („Geändert im Ausschuss", „Geändert im
@@ -60,7 +63,7 @@ function citeOf(doc: DraftDocument): string | null {
 function docHint(doc: DraftDocument): string | null {
   const t = doc.title.trim()
   const hit = DOC_HINTS.find(([prefix]) => t === prefix || t.startsWith(prefix))
-  return hit ? hit[1] : null
+  return hit ? hit[1].replace('{author}', props.author) : null
 }
 </script>
 

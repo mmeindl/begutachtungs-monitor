@@ -575,11 +575,17 @@ export function viewOfLand(c: LandConsultation): EntryView {
      * register), when it began — never an invented end. */
     state: c.active
       ? openState(c.deadline, true)
-      : c.stage && c.stage !== 'unknown'
-        ? { label: c.stage.label, detail: c.stage.detail, tone: 'inactive', actionable: false }
-        : c.deadline || !c.startedAt
-          ? endedState(c.deadline, 'Begutachtung abgeschlossen')
-          : { label: 'Begutachtung abgeschlossen', detail: `begonnen am ${formatDateDe(c.startedAt)}`, tone: 'inactive', actionable: false },
+      : c.fristUnknown && !(c.stage && c.stage !== 'unknown')
+        // No Frist published (Tirol's Verordnungen): neither „Noch n Tage" nor „abgeschlossen".
+        ? { label: 'Frist unbekannt', detail: c.startedAt ? `veröffentlicht am ${formatDateDe(c.startedAt)}` : null, tone: 'neutral', actionable: false }
+        : c.stage && c.stage !== 'unknown'
+          ? { label: c.stage.label, detail: c.stage.detail, tone: 'inactive', actionable: false }
+          // The record or the Landesgesetzblatt could not be read just now: not „nothing came after".
+          : c.stage === 'unknown' || c.lgblSearch === 'nicht-abrufbar'
+            ? { label: 'Begutachtung abgeschlossen', detail: 'weiterer Weg gerade nicht abrufbar', tone: 'inactive', actionable: false }
+            : c.deadline || !c.startedAt
+              ? endedState(c.deadline, 'Begutachtung abgeschlossen')
+              : { label: 'Begutachtung abgeschlossen', detail: `begonnen am ${formatDateDe(c.startedAt)}`, tone: 'inactive', actionable: false },
   }
 }
 

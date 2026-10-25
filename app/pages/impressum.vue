@@ -276,7 +276,8 @@ usePageSeo({
           </dd>
         </div>
         <!-- The Länder since 22.10.2026 (Salzburg, then Wien and
-             Oberösterreich the same day), read off each Land's own list
+             Oberösterreich the same day; Kärnten and Tirol on 23.10.2026),
+             read off each Land's own list
              (`server/utils/laender/`). No licence claimed: none is stated
              for those lists. What the monitor takes is a title, a date and a
              link — the documents stay on the Land's site. -->
@@ -327,6 +328,53 @@ usePageSeo({
             und die Schritte im Landtag, so wie der Landtag sie verzeichnet.
             Eine Open-Data-Lizenz weist das Land für diese Seiten nicht aus;
             Dokumente verlinkt der Monitor beim Land.
+          </dd>
+        </div>
+        <div>
+          <dt>
+            Land Kärnten, Verfassungsdienst, Begutachtungen von Landesgesetzen
+          </dt>
+          <dd>
+            Titel, Ende der Begutachtungsfrist und Dokumente der laufenden und
+            abgeschlossenen Begutachtungen, die einreichenden Organisationen
+            der veröffentlichten Stellungnahmen sowie Regierungsvorlagen und
+            Gesetzesbeschlüsse des Landtags, von
+            <ExternalLink
+              href="https://www.ktn.gv.at/Verwaltung/Amt-der-Kaerntner-Landesregierung/Verfassungsdienst/Landesgesetzgebung/akt%5fBeg%5fLG"
+              class="link-inline"
+            >ktn.gv.at</ExternalLink>; einem Entwurf zugeordnet über die
+            Geschäftszahl. Dazu die Verordnungsentwürfe unter „Themen A–Z“
+            mit Titel, Frist und Dokumenten, und aus deren Anschreiben das
+            Datum und die Frist. Eine Open-Data-Lizenz weist das Land für
+            diese Seiten nicht aus; Dokumente verlinkt der Monitor beim Land.
+          </dd>
+        </div>
+        <div>
+          <dt>
+            Land Tirol und Tiroler Landtag, Gesetzentwürfe in Begutachtung
+          </dt>
+          <dd>
+            Titel, Fassung und Begutachtungsfrist aus der Liste auf
+            <ExternalLink
+              href="https://www.tirol.gv.at/buergerservice/landesgesetze-verordnungen-und-richtlinien/gesetzentwuerfe-in-begutachtung/"
+              class="link-inline"
+            >tirol.gv.at</ExternalLink>, dazu aus der
+            <ExternalLink
+              href="https://lte.tirol.gv.at/public/index.xhtml"
+              class="link-inline"
+            >Landtagsevidenz</ExternalLink> die Dokumente, die einreichenden
+            Organisationen der Stellungnahmen und die Schritte im Landtag bis
+            zum Landesgesetzblatt, so wie der Landtag sie verzeichnet. Eine
+            Open-Data-Lizenz weist das Land für diese Seiten nicht aus;
+            Dokumente verlinkt der Monitor auf die Seite des Gegenstands in der
+            Landtagsevidenz. Die Verordnungsentwürfe der Landesregierung aus dem
+            <ExternalLink
+              href="https://www.data.gv.at/datasets?query=%22Verordnungsbegutachtungen+Tirol%22"
+              class="link-inline"
+            >Informationsregister auf data.gv.at</ExternalLink>: Titel, Datum der
+            Veröffentlichung, zuständige Abteilung, Dokumente und die einreichenden
+            Organisationen der Stellungnahmen. Ihre Dokumente stellt das Land dort
+            unter CC BY 4.0 bereit.
           </dd>
         </div>
       </dl>

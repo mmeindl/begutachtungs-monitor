@@ -32,6 +32,14 @@
  * - `www.land-oberoesterreich.gv.at`, `www2.land-oberoesterreich.gv.at`:
  *   Oberösterreich's lists and its Landtag's pages of each draft
  *   (`server/utils/laender/oberoesterreich.ts`).
+ * - `www.ktn.gv.at`: Kärnten's pages of drafts, Vorlagen and Beschlüsse
+ *   and their PDFs (`server/utils/laender/kaernten.ts`).
+ * - `www.tirol.gv.at`: Tirol's list of drafts in Begutachtung;
+ *   `lte.tirol.gv.at`: its Landtag's record of each, and the documents
+ *   read through it (`server/utils/laender/tirol.ts`).
+ * - `www.data.gv.at`: the IFG-Informationsregister, where Tirol publishes
+ *   its Verordnungsentwürfe; `dokumente.tirol.gv.at`: their documents
+ *   (`server/utils/laender/tirol.ts`, „Verordnungen").
  *
  * A bare-domain variant is added only once upstream data is seen using it.
  */
@@ -45,6 +53,11 @@ export const UPSTREAM_HOSTS: ReadonlySet<string> = new Set([
   'www.wien.gv.at',
   'www.land-oberoesterreich.gv.at',
   'www2.land-oberoesterreich.gv.at',
+  'www.ktn.gv.at',
+  'www.tirol.gv.at',
+  'lte.tirol.gv.at',
+  'www.data.gv.at',
+  'dokumente.tirol.gv.at',
 ])
 
 /** Parliament's host — the one `/gegenstand/…` paths are read from. */

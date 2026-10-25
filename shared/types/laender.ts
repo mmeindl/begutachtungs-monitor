@@ -11,7 +11,7 @@ import type { LawDiffUnit, ReasoningDiffEntry } from './lawDiff'
  */
 
 /** The Länder the monitor reads, by the RIS abbreviation of their name. */
-export type LandCode = 'sbg' | 'w' | 'ooe'
+export type LandCode = 'ktn' | 'ooe' | 'sbg' | 't' | 'w'
 
 /** What the Land's own list calls the draft — its list, not our classifier. */
 export type LandDraftKind = 'gesetz' | 'verordnung'
@@ -38,6 +38,28 @@ export interface LandConsultation {
   /** ISO date; the end of the Frist as the Land's current list states it.
    *  Null for a closed draft: the register does not keep the Frist. */
   deadline: string | null
+  /**
+   * Where the Land dates neither the start nor the Frist of a closed
+   * Begutachtung (Kärnten's archive, 23.10.2026): the first date its own
+   * record holds after it — the Regierungsvorlage's. It places the draft in
+   * a period (`landDraftDate`) and is shown nowhere as a date of the
+   * Begutachtung.
+   */
+  placedAt?: string
+  /**
+   * Where the Land sets no day for the Frist but a span from its cover
+   * letter (Kärnten's Verordnungen: „innerhalb von vier Wochen ab
+   * Zustellung", 23.10.2026): the letter's date and the span. `deadline` is
+   * then the monitor's reckoning of it, and the page says so.
+   */
+  deadlineFrom?: { letterDate: string; weeks: number }
+  /**
+   * The Land publishes no Frist for this draft at all (Tirol's Verordnungen
+   * in the IFG-Informationsregister, 24.10.2026). Neither open nor closed:
+   * the lists show „Frist unbekannt", the draft stands under „Alle" only,
+   * and `active` stays false without meaning „abgeschlossen".
+   */
+  fristUnknown?: true
   /** Where the draft is read: the Land's own page, or its first document. */
   url: string
   /** Every document the list names for this draft, the main text first. */
@@ -125,6 +147,12 @@ export interface LaenderResponse {
   gp?: string
   /** In period mode: the periods the select offers. */
   availableGps?: string[]
+  /**
+   * In period mode: per Land, the drafts it publishes that no period can
+   * hold — no start, no Frist, no Regierungsvorlage to place them by
+   * (Kärnten's archive, 24.10.2026). The list says how many are missing.
+   */
+  undated?: Partial<Record<LandCode, number>>
 }
 
 /**
@@ -250,19 +278,24 @@ export interface LandLawDiffResponse {
    * (`geltend → entwurf` only; empty elsewhere). Each under the law it
    * belongs to as far as the document says — its own heading, or the
    * confirmed § before it — so the list can count them where they stand, as
-   * the Ministerialentwurf's „nicht gezeigt" (23.10.2026).
+   * the Ministerialentwurf's „nicht gezeigt" (23.10.2026). `reason:
+   * 'unread'`: not a § RIS refused but one the Land's document changes in a
+   * way the reader does not perform (Kärnten's finer instructions,
+   * 24.10.2026) — named so the list is never read as all the draft changes.
    */
-  withheld: { law: string | null; id: string }[]
+  withheld: { law: string | null; id: string; reason?: 'unread' }[]
 }
 
 /**
  * How a Kundmachung became certain: named by the Land; the Regierungsvorlage
  * RIS links it to holds the draft's text; the Landesgesetzblatt itself holds
- * it (a Verordnung); both texts name the same last amendment of the law; or
- * the search's single candidate, with nothing in the texts against it
- * (§12.47–50).
+ * it (a Verordnung); both texts name the same last amendment of the law; the
+ * search's single candidate, with nothing in the texts against it
+ * (§12.47–50); or — Kärnten, 23.10.2026 — the one Landesgesetzblatt whose
+ * title carries the date of the Landtag's Beschluss the Land records for the
+ * draft, and the draft's words (`ktnKundmachung`).
  */
-export type LandKundmachungCertainty = 'land' | 'vorlage' | 'wortlaut' | 'kette' | 'treffer'
+export type LandKundmachungCertainty = 'land' | 'vorlage' | 'wortlaut' | 'kette' | 'treffer' | 'beschluss'
 
 export interface LandTextDocument {
   label: string

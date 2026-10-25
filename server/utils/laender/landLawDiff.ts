@@ -104,8 +104,12 @@ export function lgblUnits(xml: string): LawUnit[] {
   // the reader took it for the Artikel's name: every such Artikel of a
   // package became one group of that name (LGBl. Nr. 76/2025, Artikel 1 and
   // 4, 23.10.2026). A note on the Artikel, not a name; the PDF side has none.
+  // Tirol sets a §'s number and its title as two headings („§ 1" |
+  // „Geltungsbereich", LGBl. Nr. 39/2026, 23.10.2026) and every § read as
+  // nothing; joined, they are the „§ 1<br />Geltungsbereich" the other Länder write.
   const parts = xml
     .replace(/<ueberschrift typ="para"[^>]*>\s*\((?:Verfassungsbestimmung|Grundsatzbestimmung)\)\s*<\/ueberschrift>/g, '')
+    .replace(/<ueberschrift typ="para"([^>]*)>\s*(§\s*\d+[a-z]*)\.?\s*<\/ueberschrift>\s*<ueberschrift typ="para"[^>]*>(?!\s*§)((?:(?!<\/ueberschrift>)[\s\S])*?)<\/ueberschrift>/g, '<ueberschrift typ="para"$1>$2<br />$3</ueberschrift>')
     .split(/(?=<ueberschrift typ="(?:art|g1)"[^>]*>\s*(?:<[^>]+>\s*)*Artikel\b)/)
   const doc = parts.map((part) => /<absatz typ="novao[12]"/.test(part)
     ? part

@@ -26,7 +26,8 @@
 import type { TextBlock } from '../lawtext/lawUnits'
 
 /** Running header and footer lines of the Land's draft template. */
-const NOISE_RE = /^(?:Seite \d+(?: von \d+)?|\d+ von \d+|- ?\d+ ?-|\d+|[A-Z]:\\.*\.docx?\b.*|E n t w u r f)$/
+/* Tirol's running head is its Geschäftszahl and version: „VD-173/2-2026 Fassung vom 9. März 2026" (23.10.2026). */
+const NOISE_RE = /^(?:Seite \d+(?: von \d+)?|\d+ von \d+|- ?\d+ ?-|\d+|[A-Z]:\\.*\.docx?\b.*|E n t w u r f|[A-Z]{2,5}-\d+\/\d+-\d{4} Fassung vom \d{1,2}\. \p{L}+ \d{4})$/u
 
 /** Where the legal text begins: the enacting clause. */
 /* A Verordnung is issued, not resolved: „Auf Grund des § … wird verordnet:". */

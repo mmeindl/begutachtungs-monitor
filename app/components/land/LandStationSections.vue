@@ -76,7 +76,8 @@ const rvFacts = computed<Fact[]>(() => {
   const span = afterFristDe(props.draft.deadline, step.date, props.draft.startedAt)
   return [
     ...(step.date
-      ? [{ key: 'eingelangt', title: 'Eingelangt im Landtag', text: span ? `${formatDateDe(step.date)}, ${span}` : formatDateDe(step.date) }]
+      // Kärnten dates its Vorlage by the government's sitting, not by its arrival (`kaernten.ts`).
+      ? [{ key: 'eingelangt', title: props.land === 'ktn' ? 'Beschlossen von der Landesregierung' : 'Eingelangt im Landtag', text: span ? `${formatDateDe(step.date)}, ${span}` : formatDateDe(step.date) }]
       : []),
     ...(step.url ? [{ key: 'vorlage', title: 'Die Vorlage' }] : []),
     // The first holds its place while the comparison loads; both go where
@@ -176,6 +177,8 @@ const reportName = computed(() => {
                Salzburg's facts are read off the Landesgesetzblatt's links in
                RIS and the committee's report (`texts/salzburgLandtag.ts`). -->
           <span v-if="land === 'sbg'">Quelle: Bericht des Ausschusses, mit Regierungsvorlage und Landesgesetzblatt im Rechtsinformationssystem verknüpft</span>
+          <!-- Kärnten's Vorlagen and Beschlüsse stand on the Land's own pages, joined to the draft by its Geschäftszahl (`kaernten.ts`). -->
+          <span v-else-if="land === 'ktn'">Quelle: Seiten des Verfassungsdienstes des Landes Kärnten, über die Geschäftszahl des Entwurfs zugeordnet</span>
           <span v-else>Quelle: Landtag {{ landName }}, wie er das Verfahren selbst verzeichnet</span>
         </SectionCredits>
       </div>
@@ -264,6 +267,13 @@ const reportName = computed(() => {
         <p v-else-if="kundmachung.certainBy === 'kette'" class="mt-3 text-sm text-ink-secondary">
           Vom Monitor über den Titel im Rechtsinformationssystem gefunden und bestätigt:
           Entwurf und Landesgesetzblatt nennen dieselbe letzte Änderung des Gesetzes.
+        </p>
+        <!-- Kärnten (`ktnKundmachung`): the Land records the Beschluss, and
+             its laws are kundgemacht under that date. -->
+        <p v-else-if="kundmachung.certainBy === 'beschluss'" class="mt-3 text-sm text-ink-secondary">
+          Vom Monitor im Rechtsinformationssystem gefunden: das einzige
+          Landesgesetzblatt, das mit dem Datum des Landtagsbeschlusses, den das
+          Land verzeichnet, und unter dem Titel des Entwurfs kundgemacht wurde.
         </p>
         <!-- The search's single candidate, nothing in the texts against it
              (`followsOn`): compared, and said on what it rests. -->

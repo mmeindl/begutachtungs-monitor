@@ -26,15 +26,22 @@ import { draftSource, pdfSource, readLgbl, type TextSource } from './read'
 export type LandDraftRecord = Omit<LandDraftDetail, 'comparisons'>
 
 /** Who publishes a Land's Landtag documents, for the credit line. */
-const LANDTAG: Record<LandCode, string> = { ooe: 'Oö. Landtag', sbg: 'Salzburger Landtag', w: 'Wiener Landtag' }
+/* Kärnten publishes its Vorlagen and the Landtag's Beschlüsse on the Land's own pages (`kaernten.ts`). */
+const LANDTAG: Record<LandCode, string> = { ktn: 'Land Kärnten', ooe: 'Oö. Landtag', sbg: 'Salzburger Landtag', t: 'Tiroler Landtag', w: 'Wiener Landtag' }
 
 /** Whose committee report carries the law text as the committee passed it. */
 const REPORT_HAS_TEXT: Partial<Record<LandCode, true>> = { ooe: true }
 
-/** „Regierungsvorlage, Beilage 980/2024" from Oberösterreich's step; Salzburg's step is already named so. */
+/**
+ * „Regierungsvorlage, Beilage 980/2024" from Oberösterreich's step; Salzburg's
+ * step is already named so; Tirol's „Regierungsvorlage, GZ 135/2026,
+ * eingebracht" and Kärnten's „…, beschlossen in der 78. Regierungssitzung am
+ * 08.09.2026" name the document without what happened to it.
+ */
 function vorlageLabel(label: string): string {
   const ooe = /Beilage\s+\d+\/\d{4}/.exec(label)?.[0]
-  return ooe ? `Regierungsvorlage, ${ooe}` : label
+  if (ooe) return `Regierungsvorlage, ${ooe}`
+  return label.replace(/,\s*(?:eingebracht|beschlossen in der .+)$/, '')
 }
 
 export function textSources(land: LandCode, detail: LandDraftRecord): Partial<Record<LandTextStation, TextSource>> {

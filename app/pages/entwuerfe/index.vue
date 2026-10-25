@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import type { DashboardSecondRound, DraftStation, LandCode } from '#shared/types'
 import { LAND_CODES, LAND_NAME } from '#shared/utils/laender'
+import { formatNumberDe } from '#shared/utils/format'
 import {
   compareRowsByFrist,
   compareRowsByStatements,
@@ -254,14 +255,18 @@ function chooseSort(key: string) {
  * „Ministerialentwürfe", and a Ressort while the Bund is on.
  */
 const { bund, laender: chosenLaender } = useSourceChoice()
-/* The stations a Land's drafts can reach here. Oberösterreich's Landtag
- * records every step after the Begutachtung (`ooeStageOf`); for the other
- * Länder the monitor finds the Kundmachung itself (`matchLgbl`, §12.43) and
- * nothing in between — so under „Regierungsvorlage" or „Parlament" alone
- * they have no rows to give, and the chip says why. */
+/* The stations a Land's drafts can reach here. Oberösterreich's and
+ * Tirol's Landtag record every step after the Begutachtung (`ooeStageOf`,
+ * `parseTirolRecord`), Kärnten's pages the Vorlage and the Beschluss
+ * (`ktnChainOf`); for the other Länder the monitor finds the Kundmachung
+ * itself (`matchLgbl`, §12.43) and nothing in between — so under
+ * „Regierungsvorlage" or „Parlament" alone they have no rows to give, and
+ * the chip says why. */
 const FOLLOWED_STATIONS: Record<LandCode, readonly DraftStation[] | 'all'> = {
+  ktn: 'all',
   ooe: 'all',
   sbg: ['begutachtung', 'bgbl'],
+  t: 'all',
   w: ['begutachtung', 'bgbl'],
 }
 function landUnavailableFor(land: LandCode): string | null {
@@ -351,6 +356,13 @@ const landItems = computed(() => {
     .filter((item) => art.value !== 'verordnung' || item.kind === 'verordnung')
     .filter((item) => matchesQuery(item.title, qDebounced.value))
 })
+/* The station tabs: a row whose further way could not be read matches no
+ * station. A correction of what the list shows now, so it stays at the list. */
+const unreadStageCount = computed(() => {
+  if (!landsApply.value || laenderStatus.value !== 'success' || !stations.value.length) return 0
+  return (laenderData.value?.items ?? []).filter((i) => applyingLaender.value.includes(i.land) && i.stage === 'unknown').length
+})
+
 /* A chosen Land that could not be read — a failed fetch counts as every
  * chosen Land unreadable, never as none open. */
 const unreadableLaender = computed(() => {
@@ -744,6 +756,9 @@ const countLabel = computed(() =>
         <p v-for="s in unreadableLaender" :key="s.land" class="text-sm text-ink-muted">
           {{ LAND_NAME[s.land] }} ist gerade nicht abrufbar<template v-if="s.listUrl"> –
             <ExternalLink :href="s.listUrl" class="link-inline font-medium">beim Land nachsehen</ExternalLink></template>.
+        </p>
+        <p v-if="unreadStageCount" class="text-sm text-ink-muted">
+          Bei {{ formatNumberDe(unreadStageCount) }} Länder-{{ unreadStageCount === 1 ? 'Entwurf' : 'Entwürfen' }} war der weitere Weg gerade nicht abrufbar; nach Station sind sie hier nicht eingeordnet.
         </p>
         <!-- What the closed panel holds, each removable in one press —
              on a phone; from `md` up the selects state it themselves,
