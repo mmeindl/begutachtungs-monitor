@@ -22,7 +22,7 @@ import type { AsyncDataRequestStatus } from '#app'
    the one sentence that travels with every shared link and is the first
    thing a newcomer reads. */
 const pageDescription =
-  'Laufende Begutachtungen österreichischer Gesetzes- und Verordnungsentwürfe: Fristen und Stellungnahmen – und danach: Regierungsvorlage, Bundesgesetzblatt.'
+  'Laufende Begutachtungen des Bundes und der Länder: Fristen und Stellungnahmen – und was danach aus jedem Entwurf wurde: Regierungsvorlage, Beschluss, Gesetzblatt.'
 
 const { siteUrl } = useRuntimeConfig().public
 
@@ -385,9 +385,10 @@ function submitSearch() {
            the reorder took the distance away that an anchor was saving. The
            sentence still makes the promise; the sections below keep it. -->
       <p class="mt-3 text-ink-secondary">
-        Alle laufenden Begutachtungen österreichischer Gesetzes- und
-        Verordnungsentwürfe: Fristen und Stellungnahmen auf einen Blick. Und
-        für jeden Entwurf danach: Regierungsvorlage, Bundesgesetzblatt.
+        Laufende Begutachtungen des Bundes und der Länder: Fristen und
+        Stellungnahmen auf einen Blick. Und was danach aus jedem Entwurf wurde
+        – Regierungsvorlage, Beschluss, Gesetzblatt –, soweit Bund und Länder
+        es veröffentlichen.
       </p>
 
       <!-- On submit, not on input: a page change per keystroke takes the
@@ -438,6 +439,9 @@ function submitSearch() {
            height on a phone. -->
       <div class="mt-4">
         <SubscribeLinks />
+        <!-- How complete the Länder are (`LaenderCoverageFold`), as on the
+             list: in place of a sentence per gap under the running drafts. -->
+        <LaenderCoverageFold />
       </div>
     </header>
 

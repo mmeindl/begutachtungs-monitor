@@ -34,6 +34,8 @@
  * („die beiden Fragen in der Leiste"). The rail says its own state in words
  * instead.
  */
+import { LAND_CODES, LAND_NAME } from '#shared/utils/laender'
+import { COVERAGE_ROWS, LAENDER_NOT_READ, LAND_COVERAGE } from '#shared/utils/laenderCoverage'
 import { EDITORIAL_BADGE_DEFINITION } from '#shared/utils/lawStations'
 import { SECOND_ROUND_WINDOW } from '~/utils/spine'
 import { RV_LATENCY_CONTEXT_DAYS } from '~/utils/deadlines'
@@ -187,6 +189,9 @@ const toc = [
 const waitRate = rvBaseRateFor(null)
 const waitTenths = Math.round(waitRate.withinLatencyWindow * 10)
 const waitMonths = Math.round(RV_LATENCY_CONTEXT_DAYS / 30.44)
+
+/* „Burgenland, Niederösterreich, Steiermark und Vorarlberg" */
+const notReadDe = LAENDER_NOT_READ.join(', ').replace(/, ([^,]*)$/, ' und $1')
 </script>
 
 <template>
@@ -480,89 +485,69 @@ const waitMonths = Math.round(RV_LATENCY_CONTEXT_DAYS / 30.44)
         Landesgesetze, die der Landtag beschließt, und Verordnungen der
         Landesregierung. Eine gemeinsame Stelle wie das Rechtsinformationssystem
         des Bundes gibt es dafür nicht – jedes Land veröffentlicht auf seiner
-        eigenen Seite und in seiner eigenen Form. Der Monitor liest derzeit
-        drei davon: Oberösterreich, Salzburg und Wien. Im Kopf jeder Liste
-        wählen Sie, ob sie Entwürfe des Bundes, eines Landes oder beider zeigt.
+        eigenen Seite und in seiner eigenen Form. Der Monitor liest fünf davon;
+        {{ notReadDe }} noch nicht. Im Kopf jeder Liste wählen Sie, welche
+        Quellen sie zeigt.
       </p>
       <p>
-        Der Weg ist ähnlich, die Stellen heißen anders: Wo beim Bund der
-        Nationalrat beschließt, ist es der Landtag – in den Listen steht er
-        unter „Parlament“, auf der Seite eines Entwurfs unter „Landtag“ –, und
-        kundgemacht wird im Landesgesetzblatt statt im Bundesgesetzblatt. Eine Stellungnahme geht direkt an das Land, je
-        nach Land per E-Mail an die zuständige Abteilung oder über ein
-        Formular; die Entwurfsseite nennt den Weg. Wie viele Stellungnahmen
-        eingehen, zählt keines der drei Länder öffentlich – jedes
-        veröffentlicht nur einen Teil davon, nach eigenen Regeln, die die
-        Entwurfsseite nennt. Deshalb steht in den Zeilen „nicht gezählt“.
-        Namen nennt der Monitor auch hier nur bei Organisationen.
+        Der Weg ist ähnlich, die Stellen heißen anders: Statt des Nationalrats
+        beschließt der Landtag – in den Listen steht er unter „Parlament“ –, und
+        kundgemacht wird im Landesgesetzblatt. Eine Stellungnahme geht direkt an
+        das Land; die Entwurfsseite nennt den Weg. Wie viele eingehen, zählt
+        kein Land öffentlich, deshalb steht in den Zeilen „nicht gezählt“.
+      </p>
+      <p>Wie weit der Monitor einem Entwurf folgen kann, hängt davon ab, was das Land veröffentlicht:</p>
+      <!-- One table instead of a paragraph per Land (25.10.2026): the same
+           facts as the list's fold „Wie vollständig die Länder-Entwürfe sind"
+           (`LAND_COVERAGE`). Below `sm` one block per Land instead: five
+           columns do not fit a phone, and a table scrolled sideways under a
+           sticky first column showed its cells through the gutter. -->
+      <table class="hidden w-full border-collapse text-sm sm:table">
+        <caption class="sr-only">Was der Monitor je Land zeigt</caption>
+        <thead>
+          <tr>
+            <th scope="col" class="py-2 pr-3 text-left"><span class="sr-only">Frage</span></th>
+            <th v-for="land in LAND_CODES" :key="land" scope="col" class="px-2 py-2 text-left font-semibold text-ink">{{ LAND_NAME[land] }}</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr v-for="row in COVERAGE_ROWS" :key="row.key" class="border-t border-hairline">
+            <th scope="row" class="w-32 py-2 pr-3 text-left align-top font-medium text-ink">{{ row.label }}</th>
+            <td v-for="land in LAND_CODES" :key="land" class="px-2 py-2 align-top text-ink-secondary">{{ LAND_COVERAGE[land].cells[row.key] }}</td>
+          </tr>
+        </tbody>
+      </table>
+      <div class="mt-3 space-y-5 sm:hidden">
+        <section v-for="land in LAND_CODES" :key="land" :aria-label="LAND_NAME[land]">
+          <h3 class="text-sm font-semibold text-ink">{{ LAND_NAME[land] }}</h3>
+          <dl class="mt-1 divide-y divide-hairline text-sm">
+            <div v-for="row in COVERAGE_ROWS" :key="row.key" class="grid grid-cols-[9rem_1fr] gap-x-3 py-1.5">
+              <dt class="text-ink-muted">{{ row.label }}</dt>
+              <dd class="text-ink-secondary">{{ LAND_COVERAGE[land].cells[row.key] }}</dd>
+            </div>
+          </dl>
+        </section>
+      </div>
+      <p class="text-sm text-ink-muted">
+        Die Regeln, nach denen ein Land Stellungnahmen veröffentlicht – von
+        Privatpersonen meist nur mit Einwilligung –, nennt die Entwurfsseite.
       </p>
       <p>
-        Wie weit der Monitor einem Entwurf folgen kann, hängt davon ab, was das
-        Land veröffentlicht. Oberösterreich verzeichnet jeden Gesetzesentwurf
-        im Landtag bis zur Kundmachung; seine Entwürfe stehen deshalb auch unter
-        „Regierungsvorlage“, „Parlament“ und „Kundgemacht“. Die Entwurfsseite
-        zeigt die Regierungsvorlage, was der Landtag mit ihr getan hat –
-        Ausschuss, Anträge, Abstimmung, in seinen eigenen Worten, und darunter
-        alle seine Schritte – und die Kundmachung. Salzburg führt alle
-        Entwürfe seit 2004, aber nur bis zum Ende der Begutachtung; wo
-        feststeht, welches Landesgesetzblatt aus einem Gesetzesentwurf wurde,
-        verknüpft das Rechtsinformationssystem es mit der Regierungsvorlage und
-        dem Bericht des Ausschusses, und die Entwurfsseite zeigt auch diese
-        Stationen – Ausschuss, Anträge und Abstimmung so, wie der Bericht sie
-        festhält. Wien zeigt
-        einen Entwurf bis zum Beschluss im Landtag, höchstens ein Jahr lang;
-        danach ist er auch hier nicht mehr abrufbar.
+        Wo das Land die Kundmachung nicht selbst nennt, sucht der Monitor sie im
+        Landesgesetzblatt des Rechtsinformationssystems: über den Titel, in
+        Salzburg entschieden über den Text der Regierungsvorlage, in Kärnten
+        über das Datum des Landtagsbeschlusses. Die Entwurfsseite sagt, dass die
+        Zuordnung unsere ist. Findet die Suche nichts, heißt das nicht, dass der
+        Entwurf nicht kundgemacht wurde – nur, dass wir ihn nicht gefunden haben.
+        Mit dem Entwurf verglichen wird nur eine Kundmachung, die das Land nennt
+        oder deren Zuordnung die Texte bestätigen.
       </p>
       <p>
-        Wo das Land nach der Begutachtung nichts verzeichnet, sucht der Monitor
-        die Kundmachung selbst: im Landesgesetzblatt des Rechtsinformationssystems,
-        über den Titel des Entwurfs. Ein Fund steht mit Nummer und Link auf der
-        Entwurfsseite und unter „Kundgemacht“, und die Seite sagt, dass die
-        Zuordnung unsere ist. Wurde dasselbe Gesetz kurz hintereinander zweimal
-        geändert, kann sie die frühere Änderung treffen. Findet die Suche nichts,
-        heißt das nicht, dass der Entwurf nicht kundgemacht wurde – nur, dass wir
-        ihn nicht gefunden haben; die Seite verweist dann auf das
-        Landesgesetzblatt zum Nachsehen. Vor 2015 führt das
-        Rechtsinformationssystem kein Landesgesetzblatt, das sich so durchsuchen
-        ließe.
-      </p>
-      <p>
-        Bei Oberösterreichs Gesetzen vergleicht der Monitor die Texte Station für
-        Station, wie bei den Entwürfen des Bundes: den Begutachtungsentwurf mit
-        der Regierungsvorlage, die Vorlage mit dem, was der Ausschuss daraus
-        gemacht hat, und den Entwurf mit dem kundgemachten Gesetz. Entwurf,
-        Vorlage und Ausschussbericht veröffentlichen Land und Landtag nur als PDF;
-        der Monitor liest den Gesetzestext daraus, die Kundmachung aus dem
-        Rechtsinformationssystem. Zwischen Ausschuss und Kundmachung wird der Text
-        noch für die Veröffentlichung bearbeitet („Hektar“ wird „ha“) – darum
-        vergleicht der Monitor den Ausschuss mit der Vorlage und nicht mit dem
-        Gesetz. Gegen eine Kundmachung, die nur unsere Suche
-        gefunden hat, vergleicht er grundsätzlich nicht: Ein falscher Treffer
-        würde ein ganzes Gesetz als umgeschrieben zeigen. Eine Ausnahme ist
-        Salzburg – dort entscheidet der Text, welche Kundmachung zum Entwurf
-        gehört: bei einem Gesetz die Regierungsvorlage, die das
-        Rechtsinformationssystem mit dem Landesgesetzblatt verknüpft und die den
-        Text des Entwurfs enthält, bei einer Verordnung das Landesgesetzblatt
-        selbst. Wo das eine andere Kundmachung zeigt als unsere Suche über den
-        Titel, sagt die Seite das. Enthält die Regierungsvorlage des gefundenen
-        Landesgesetzblatts den Entwurf gar nicht, gilt der Fund nicht: Die Seite
-        nennt dann keine Kundmachung und sagt, welches Landesgesetzblatt die
-        Suche über den Titel fand. Die Liste der Entwürfe folgt dieser
-        Entscheidung, sobald der Monitor die Entwürfe des Zeitraums im
-        Hintergrund gelesen hat; bis dahin zeigt sie den Fund der Titelsuche.
-      </p>
-      <p>
-        Was ein Entwurf am geltenden Recht ändern würde, zeigen die Länder selbst:
-        in einer Textgegenüberstellung – Oberösterreich mit unterstrichenem Neuem
-        und durchgestrichenem Altem, Salzburg und Wien in zwei Spalten wie der
-        Bund. Der Monitor liest sie und stellt sie Paragraph für Paragraph
-        gegenüber, wie bei den Entwürfen des Bundes unter „Was ändert der
-        Entwurf?“. Einen Paragraphen zeigt er nur, wenn dessen geltende Fassung so,
-        wie er sie gelesen hat, auch im Rechtsinformationssystem steht; die übrigen
-        zählt die Seite, und die Textgegenüberstellung selbst steht unter den
-        Dokumenten. Die Erläuterungen des Landes stehen darunter – der allgemeine
-        Teil unter „Was das Land begründet“, die Begründung einzelner Paragraphen
-        beim jeweiligen Paragraphen.
+        „Was ändert der Entwurf?“ liest die Textgegenüberstellung des Landes.
+        Einen Paragraphen zeigt der Monitor nur, wenn dessen geltende Fassung so,
+        wie er sie gelesen hat, auch im Rechtsinformationssystem steht; die
+        übrigen nennt die Seite, und die Textgegenüberstellung selbst steht unter
+        den Dokumenten.
       </p>
       <p>
         Die Länder haben eigene Gesetzgebungsperioden. In der Liste der
