@@ -1,6 +1,6 @@
 import { readFileSync } from 'node:fs'
 import { describe, expect, it } from 'vitest'
-import { isTirolDocumentUrl, parseTirolList, parseTirolRecord, parseTirolVoSearch, tirolDocumentUrl, tirolFilingEmail, tirolRecordUrl, tirolVoOf } from '../server/utils/laender/tirol'
+import { isTirolDocumentUrl, parseTirolList, parseTirolRecord, parseTirolVoSearch, tirolDocumentUrl, tirolFilingEmail, tirolRecordUrl, tirolStatementUrl, tirolVoOf } from '../server/utils/laender/tirol'
 import { LandSourceError } from '../server/utils/laender/gate'
 
 const fixture = (name: string) => readFileSync(new URL(`./fixtures/laender/${name}`, import.meta.url), 'utf8')
@@ -45,6 +45,15 @@ describe('Tirol — the Landtag\'s record of one Gegenstand', () => {
     expect(r.stage).toMatchObject({ station: 'rv', date: '2026-09-29' })
     expect(r.statements.map((s) => s.name)).toEqual(['AK Tirol', 'Bundesministerium für Bildung', 'Tiroler Gemeindeverband'])
     expect(r.landtag?.committee).toBe('Ausschuss für Wohnen, Raumordnung, Rechts- und Gemeindeangelegenheiten')
+  })
+
+  it('links each Stellungnahme by its number, never by the label that names its submitter', () => {
+    for (const [html, n] of [[VORLAGE, '573'], [KUNDGEMACHT, '135']] as const) {
+      const r = parseTirolRecord(html, url(n))
+      expect(r.statements.length).toBeGreaterThan(0)
+      expect(r.statements.map((s) => s.url)).toEqual(r.statements.map((_, i) => tirolStatementUrl(url(n), i + 1)))
+      expect(r.statements.some((s) => isTirolDocumentUrl(s.url) || s.url.includes('%20'))).toBe(false)
+    }
   })
 
   it('kundgemacht: every station from the Land\'s own record, the plenary sitting once', () => {

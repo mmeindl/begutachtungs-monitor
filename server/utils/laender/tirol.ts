@@ -27,7 +27,8 @@
  * — which is where a reader lands to open it, and what `tirolDocumentBytes`
  * reads it from: a fresh session, the row whose label is that name (rows
  * move as the Vorlage's documents are added above them), the post, the
- * servlet.
+ * servlet. A Stellungnahme's label names its submitter, so its link is
+ * numbered instead (`tirolStatementUrl`) — none is read through it.
  *
  * THE GATE. The list is held to its heading and every entry to a Landtag
  * link and a Frist; the Landtag's page to its „Allgemein" block with a GZ.
@@ -168,6 +169,19 @@ export function tirolDocumentUrl(recordUrl: string, label: string): string {
   return `${recordUrl}#dok=${encodeURIComponent(label)}`
 }
 
+/**
+ * A Stellungnahme of the Gegenstand: its page, numbered in the Landtag's
+ * order — never by its name (25.10.2026). The Landtag labels it
+ * „Stellungnahme <Einbringer>", and a fragment carrying the label put the
+ * name of every submitter the page shows „Ohne Namen" into the API's answer
+ * and the link. Nothing reads a Stellungnahme through the fragment (only the
+ * draft's documents go through `tirolDocumentBytes`); the reader lands on
+ * the page and opens it there, as with any of them.
+ */
+export function tirolStatementUrl(recordUrl: string, n: number): string {
+  return `${recordUrl}#stellungnahme-${n}`
+}
+
 /* The draft's documents, then the Vorlage's — titled as Kärnten's are (`kaernten.ts`), which the reasoning service reads. */
 const DRAFT_DOC: [RegExp, string][] = [
   [/^Begutachtungsentwurf$/, 'Entwurf'],
@@ -200,9 +214,9 @@ export function parseTirolRecord(html: string, recordUrl: string): TirolRecord {
     const label = labels.find((l) => re.test(l))
     if (label) documents.push({ title, url: docUrl(label) })
   }
-  const statements: LandStatement[] = labels.filter((l) => /^Stellungnahme\s+\S/.test(l)).map((l) => {
+  const statements: LandStatement[] = labels.filter((l) => /^Stellungnahme\s+\S/.test(l)).map((l, i) => {
     const c = classifySubmitter(l.replace(/^Stellungnahme\s+/, ''))
-    return { name: c.kind === 'organisation' ? c.name : null, url: docUrl(l) }
+    return { name: c.kind === 'organisation' ? c.name : null, url: tirolStatementUrl(recordUrl, i + 1) }
   })
 
   const type = f.get('Typ') ?? ''
