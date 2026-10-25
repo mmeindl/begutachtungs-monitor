@@ -121,6 +121,13 @@ describe('Kärnten — the chain', () => {
     expect(chain.procedure.map((s) => s.station)).toEqual(['rv', 'parlament'])
     expect(chain.documents.map((d) => d.title)).toEqual(['Regierungsvorlage', 'Regierungsvorlage, Erläuterungen', 'Regierungsvorlage, Textgegenüberstellung'])
   })
+
+  it('marks a Vorlage or Beschluss without what follows as its own join, not as the Land\'s word that nothing followed', () => {
+    const draft = { ...ktnPartsOfNumber('113253-2025-38'), nextStueck: Infinity, title: 'Gesetz, mit dem das Kärntner Rettungsdienstgesetz geändert wird' }
+    // The gazette was read and holds no Gesetz of that date and title: a miss of our search.
+    expect(ktnChainOf(draft, vorlagen, beschluesse, []).stage).toMatchObject({ station: 'parlament', joined: true })
+    expect(ktnChainOf(draft, vorlagen, [], []).stage).toMatchObject({ station: 'rv', joined: true })
+  })
 })
 
 describe('Kärnten — the Verordnungen, as served on 23.10.2026', () => {

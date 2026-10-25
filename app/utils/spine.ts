@@ -41,7 +41,7 @@
  * (the amended laws, the Regierungsvorlage's own Stellungnahmen count), so
  * the values are handed in rather than guessed or fetched here.
  */
-import type { BgblOutcome, DraftDetail, EnactmentInfo, HouseVote, LandConsultation, LandProcedureStep, LandTextStation, LawStationId, RisConsultation } from '#shared/types'
+import type { BgblOutcome, DraftDetail, EnactmentInfo, HouseVote, LandCode, LandConsultation, LandProcedureStep, LandTextStation, LawStationId, RisConsultation } from '#shared/types'
 import { carriesDraft } from '#shared/utils/antragPath'
 import { bgblShort, formatDateDe, formatNumberDe, fristEndedDe, spanInDays, todayIso } from '#shared/utils/format'
 import { promulgationState } from '#shared/utils/promulgation'
@@ -939,8 +939,16 @@ export function landStatusDe(d: Pick<LandConsultation, 'active' | 'stage' | 'kin
   if (s?.via === 'suche') return d.kind === 'gesetz' ? 'Gesetz geworden' : 'Kundgemacht'
   if (!s) return 'Bisher keine Regierungsvorlage'
   if (s.station === 'bgbl') return d.kind === 'gesetz' ? 'Gesetz geworden' : 'Kundgemacht'
-  if (s.station === 'parlament') return 'Beschlossen – Kundmachung ausständig'
-  return 'Im Landtag'
+  // Where the stations are our join of the Land's lists (`joined`, Kärnten),
+  // the last one found is said, and nothing about what has not come: the
+  // Kundmachung may stand in RIS under a title our search missed.
+  if (s.station === 'parlament') return s.joined ? 'Im Landtag beschlossen' : 'Beschlossen – Kundmachung ausständig'
+  return s.joined ? 'Regierungsvorlage beschlossen' : 'Im Landtag'
+}
+
+/** Where a reader checks a Land's Landesgesetzblatt for themselves. */
+function risLgblSearchUrl(land: LandCode): string {
+  return `https://www.ris.bka.gv.at/Ergebnis.wxe?Abfrage=LgblAuth&Bundesland=${encodeURIComponent(LAND_NAME[land])}`
 }
 
 /**
@@ -960,7 +968,7 @@ function searchedRow(
     return { state: 'done', facts: kept(s.detail, s.date ? formatDateDe(s.date) : null) }
   }
   if (d.active) return { state: 'open', facts: ['ausstehend'] }
-  const ris = `https://www.ris.bka.gv.at/Ergebnis.wxe?Abfrage=LgblAuth&Bundesland=${encodeURIComponent(LAND_NAME[d.land])}`
+  const ris = risLgblSearchUrl(d.land)
   // Without a Frist the Begutachtung may still run: a miss is „noch keine", and not where the draft stands.
   if (d.fristUnknown && d.lgblSearch === 'nicht-gefunden') {
     return { state: 'open', facts: ['noch keine Kundmachung gefunden'], source: { lead: null, href: ris, label: 'im RIS nachsehen' } }
@@ -1080,10 +1088,17 @@ export function landStations(
     }
     return kept(id === s?.station ? s.detail : null, date ? formatDateDe(date) : null)
   }
-  const after = (id: StationId): Pick<Station, 'state' | 'facts'> => {
+  const after = (id: StationId): Pick<Station, 'state' | 'facts' | 'source'> => {
     const i = order.indexOf(id)
     if (i <= reached) return { state: 'done', facts: reachedFacts(id) }
     if (d.active || i > reached + 1) return { state: 'open', facts: [] }
+    // After a station of our own join (`joined`, Kärnten): what the join and
+    // the search did not find, said as theirs — as `searchedRow` says it.
+    if (s && s.joined) {
+      return id === 'bgbl'
+        ? { state: 'current', facts: ['keine Kundmachung gefunden'], source: { lead: 'unsere Suche findet nicht jede –', href: risLgblSearchUrl(d.land), label: 'im RIS nachsehen' } }
+        : { state: 'current', facts: ['kein Beschluss gefunden'] }
+    }
     // The next station after the last one reached: where the text is now.
     return {
       state: 'current',

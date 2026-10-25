@@ -350,7 +350,9 @@ export function ktnKundmachung(beschluss: KtnChainStep, draftTitle: string, inde
  * Begutachtung (`nextStueck`); its Beschluss the one that links that very
  * Vorlage. Each part only where the Land's pages hold it; the Kundmachung
  * is the monitor's finding and says so (`via: 'suche'`, `certainBy:
- * 'beschluss'`).
+ * 'beschluss'`), and a Vorlage or Beschluss without what follows is our
+ * join's furthest point, not the Land's word that nothing followed
+ * (`joined`).
  */
 export function ktnChainOf(
   draft: { akt: string; stueck: number; nextStueck: number; title: string },
@@ -371,9 +373,10 @@ export function ktnChainOf(
   if (lgbl) {
     stage = { station: 'bgbl', label: 'Kundgemacht', detail: lgbl.nr, date: lgbl.datum, url: lgbl.url, via: 'suche', unique: true, certainBy: 'beschluss' }
   } else if (beschluss) {
-    stage = { station: 'parlament', label: 'Im Landtag beschlossen', detail: null, date: beschluss.date }
+    // Joined, not recorded (`joined`): no LGBl found is our search's miss, never „Kundmachung ausständig".
+    stage = { station: 'parlament', label: 'Im Landtag beschlossen', detail: null, date: beschluss.date, joined: true }
   } else if (vorlage) {
-    stage = { station: 'rv', label: 'Regierungsvorlage', detail: vorlage.date ? `beschlossen am ${vorlage.date.split('-').reverse().join('.')}` : null, date: vorlage.date }
+    stage = { station: 'rv', label: 'Regierungsvorlage', detail: vorlage.date ? `beschlossen am ${vorlage.date.split('-').reverse().join('.')}` : null, date: vorlage.date, joined: true }
   }
   const landtag: LandLandtag | null = beschluss
     ? { committee: null, subcommittee: false, report: null, motions: [], decision: { date: beschluss.date, vote: null } }

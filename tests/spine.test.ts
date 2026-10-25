@@ -629,6 +629,21 @@ describe('landStations — a Land\'s draft', () => {
     expect(landStatusDe(land({ stage: null }))).toBe('Bisher keine Regierungsvorlage')
   })
 
+  it('after a station of its own join (Kärnten), says what it did not find — never „ausständig" or „in Behandlung"', () => {
+    const decided = stage({ station: 'parlament', label: 'Im Landtag beschlossen', date: '2021-11-25', joined: true })
+    const list = landStations(land({ land: 'ktn', stage: decided }))
+    expect(list[4]).toMatchObject({ state: 'current', facts: ['keine Kundmachung gefunden'] })
+    expect(list[4]!.source).toMatchObject({ lead: 'unsere Suche findet nicht jede –', label: 'im RIS nachsehen' })
+    expect(list[4]!.source?.href).toMatch(/Bundesland=K%C3%A4rnten$/)
+    expect(landStatusDe(land({ stage: decided }))).toBe('Im Landtag beschlossen')
+
+    const tabled = stage({ station: 'rv', detail: 'beschlossen am 17.06.2024', date: '2024-06-17', joined: true })
+    const rows = landStations(land({ land: 'ktn', stage: tabled }))
+    expect(rows[3]).toMatchObject({ state: 'current', facts: ['kein Beschluss gefunden'] })
+    expect(rows[4]).toMatchObject({ state: 'open', facts: [] })
+    expect(landStatusDe(land({ stage: tabled }))).toBe('Regierungsvorlage beschlossen')
+  })
+
   it('puts the text in the Landtag once the Vorlage came, and says how it stood to the Frist', () => {
     const s = stage({ station: 'rv', detail: 'eingelangt am 28.09.2026', date: '2026-09-28' })
     const list = landStations(land({ land: 'ooe', stage: s, startedAt: '2026-06-11', deadline: '2026-07-27' }))

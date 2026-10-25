@@ -123,6 +123,15 @@ export interface LandStage {
   certainBy?: LandKundmachungCertainty
   /** The title search's find, where the text decided on another (§12.48). */
   searched?: string
+  /**
+   * The station is the monitor's own join of the Land's lists, not a record
+   * of this draft (Kärnten: Vorlage and Beschluss joined by the
+   * Geschäftszahl, `ktnChainOf`, 25.10.2026). A station after it is then not
+   * known to be pending — the join or the search may simply have missed
+   * it — so the page says „nicht gefunden", never „ausständig" or „in
+   * Behandlung".
+   */
+  joined?: true
 }
 
 /**

@@ -40,7 +40,10 @@ function entriesOf(result: any): LgblEntry[] {
     return [{
       nr,
       typ: String(m?.LgblAuth?.Typ ?? ''),
-      titel,
+      // RIS sets a title off with a space now and then (Kärnten's LGBl. Nr.
+      // 40/2026: „ Gesetz vom 19. März 2026, …") and breaks it with a line
+      // feed; every reader anchors at its start (`ktnKundmachung`, 25.10.2026).
+      titel: titel.replace(/\s+/g, ' ').trim(),
       datum,
       url: typeof eli === 'string' ? safeExternalUrl(eli) : null,
     }]
