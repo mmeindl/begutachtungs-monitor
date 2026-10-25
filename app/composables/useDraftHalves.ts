@@ -32,25 +32,22 @@ export function useDraftHalves(filters: {
    * WHICH HALVES THIS `art` ASKS FOR — the filter decides the REQUEST, not
    * just the rows, since 23.09.2026 (docs/architecture.md §7).
    *
-   * `art` is the one control here that does not narrow a list: it names one
-   * of the two halves this page merges. `/api/drafts` holds
-   * Ministerialentwürfe and nothing else, so under „Verordnungsentwürfe"
-   * there is nothing for it to answer; the RIS half is the whole other half.
-   * Both were fetched whatever the filter said until then and one of them
-   * was dropped in the browser: the server-rendered payload of a filtered
-   * list carried both halves in full, 218 KB, against the 152 KB
-   * („Verordnungsentwürfe") resp. 67 KB („Ministerialentwürfe") it carries
-   * now (measured 23.09.2026).
+   * `/api/drafts` holds Ministerialentwürfe and nothing else, all of them
+   * law drafts, so under „Verordnungsentwürfe" there is nothing for it to
+   * answer. Both halves were fetched whatever the filter said until then and
+   * one of them was dropped in the browser: the server-rendered payload of a
+   * filtered list carried both in full, 218 KB, against the 152 KB resp.
+   * 67 KB it carried filtered (measured 23.09.2026).
    *
-   * NOT a query parameter of either endpoint. `/api/ris-drafts?art=` exists
-   * but means something else — the instrument kind,
-   * `verordnung|gesetz|unbestimmt` — and handing this filter's `verordnung`
-   * to it would drop the three records of the half that are no Verordnungen
-   * (198 of 201, measured 23.09.2026). Those are the „und andere" of the
-   * label and they belong on the page.
+   * The RIS half is asked for under every Art since the filter names kinds
+   * (23.10.2026) — it holds law drafts too, four in GP XXVIII — and narrowed
+   * upstream: `/api/ris-drafts?art=` takes the instrument kind in the same
+   * words, so „Gesetzesentwürfe" ships four records, not 210. Under „Alle
+   * Arten" it goes without `art`, the records of kind `unbestimmt` included.
    */
   const wantsMe = computed(() => bund.value && art.value !== 'verordnung')
-  const wantsRis = computed(() => bund.value && art.value !== 'ministerialentwurf')
+  const wantsRis = computed(() => bund.value)
+  const risQuery = computed(() => (art.value ? { ...query.value, art: art.value } : query.value))
 
   /* `enabled` keeps the request from being made at all, on the server too, so
    * a filtered list ships only the half it renders. Watched is the half's own
@@ -83,7 +80,7 @@ export function useDraftHalves(filters: {
    */
   const risFetch = useFetch<RisConsultationsResponse>(
     '/api/ris-drafts',
-    { query, timeout: 8000, enabled: wantsRis, watch: [wantsRis], lazy: true },
+    { query: risQuery, timeout: 8000, enabled: wantsRis, watch: [wantsRis], lazy: true },
   )
 
   /* The THIRD half since 22.10.2026: the Länder's drafts for the period,

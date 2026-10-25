@@ -142,8 +142,9 @@ export async function useFullTextSearch(
   /** The hits that survive the active filters — Art and Ressort. */
   const fullTextHits = computed<BegutSearchHit[]>(() =>
     (fullText.value?.hits ?? []).filter((hit) => {
+      /* A Ministerialentwurf is a law draft; a RIS record names its kind. */
       if (art.value === 'verordnung' && hit.entry.kind === 'draft') return false
-      if (art.value === 'ministerialentwurf' && hit.entry.kind === 'ris') return false
+      if (art.value && hit.entry.kind === 'ris' && hit.entry.consultation.kind !== art.value) return false
       if (ministry.value) {
         const code =
           hit.entry.kind === 'draft' ? hit.entry.draft.ministryCode : hit.entry.consultation.ministryCode

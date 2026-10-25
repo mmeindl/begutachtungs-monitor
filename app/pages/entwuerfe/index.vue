@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import type { DashboardSecondRound, DraftStation, LandCode } from '#shared/types'
+import type { DashboardSecondRound, DraftStation, LandCode, RisConsultationKind } from '#shared/types'
 import { LAND_CODES, LAND_NAME } from '#shared/utils/laender'
 import { formatNumberDe } from '#shared/utils/format'
 import {
@@ -33,8 +33,9 @@ import { MAX_LIST_QUERY_CHARS } from '#shared/utils/queryParams'
  * what?), and it answered one question in two places.
  *
  * So: one list, one filter, three row shapes — and never a single pooled
- * total. The count line states each kind separately, because a headline
- * "336 Entwürfe" would imply the Stellungnahmen figures cover all of them.
+ * total. The count line states each kind separately (summed over the
+ * sources since 24.10.2026), because a headline "336 Entwürfe" would imply
+ * the Stellungnahmen figures cover all of them.
  */
 usePageSeo({
   title: 'Entwürfe',
@@ -86,8 +87,8 @@ const OPEN_UNAVAILABLE: Partial<Record<DraftStation, string>> = {
   bgbl: 'Nach der Kundmachung ist keine Stellungnahme mehr möglich',
 }
 
-/* The Art filter's options and the noun it shares with the count line live
- * in `app/utils/draftFilters.ts` (`ART_OPTIONS`, `ART_VERORDNUNG_NOUN`). */
+/* The Art filter's options and the nouns it shares with the count line live
+ * in `app/utils/draftFilters.ts` (`ART_OPTIONS`, `RIS_KIND_TERM`). */
 const artOptions = ART_OPTIONS
 
 /**
@@ -251,8 +252,9 @@ function chooseSort(key: string) {
  * within that period's dates (`readLaenderInWindow`); the sentence under the
  * chips says so. What the Länder rows cannot answer, the chips say as their
  * reason, and they keep their state for the view that can: a later station
- * (the monitor follows a Land's draft no further than its Begutachtung),
- * „Ministerialentwürfe", and a Ressort while the Bund is on.
+ * (the monitor follows a Land's draft no further than its Begutachtung)
+ * and a Ressort while the Bund is on. The Art is no reason since
+ * 23.10.2026: a Land's draft is a Gesetz or a Verordnung like the Bund's.
  */
 const { bund, laender: chosenLaender } = useSourceChoice()
 /* The stations a Land's drafts can reach here. Oberösterreich's and
@@ -274,7 +276,6 @@ function landUnavailableFor(land: LandCode): string | null {
   if (stations.value.length && followed !== 'all' && !stations.value.some((s) => followed.includes(s))) {
     return 'Diese Länder-Entwürfe verfolgt der Monitor nur in Begutachtung und Kundmachung'
   }
-  if (art.value === 'ministerialentwurf') return 'Länder-Entwürfe sind keine Ministerialentwürfe'
   if (bund.value && ministry.value) return 'Länder-Entwürfe haben kein Ministerium'
   return null
 }
@@ -339,7 +340,7 @@ await halves.ready
 const { data: secondRound } = await secondRoundFetch
 
 /* Under the same controls as everything else, as far as they reach: the
- * Land chosen, „Verordnungsentwürfe" keeps the Länder's Verordnungen, the
+ * Land chosen, the Art by the kind the Land names (`LandDraftKind`), the
  * search the same word rule (`matchesQuery`). Period and status went
  * upstream (`useDraftHalves`). */
 const landItems = computed(() => {
@@ -353,7 +354,7 @@ const landItems = computed(() => {
       if (item.stage === 'unknown') return false
       return stations.value.includes(item.stage?.station ?? 'begutachtung')
     })
-    .filter((item) => art.value !== 'verordnung' || item.kind === 'verordnung')
+    .filter((item) => !art.value || item.kind === art.value)
     .filter((item) => matchesQuery(item.title, qDebounced.value))
 })
 /* The station tabs: a row whose further way could not be read matches no
@@ -561,18 +562,36 @@ const stationsUnavailable = computed(
   () => stationsMissing.value && (stations.value.length > 0 || statusFilter.value === 'closed'),
 )
 
-/* Each kind counted on its own, never summed (`draftCountLabel`). */
+/* Rows per kind — each set is the filtered one as it stands in the list. */
+function countByKind(items: readonly { kind: RisConsultationKind }[]) {
+  const counts: Partial<Record<RisConsultationKind, number>> = {}
+  for (const item of items) counts[item.kind] = (counts[item.kind] ?? 0) + 1
+  return counts
+}
+
+/* The rows by kind, summed over the sources (`draftCountLabel`). */
 const countLabel = computed(() =>
   draftCountLabel({
     me: wantsMe.value ? meTotal.value : null,
     vorlagen: openVorlagen.value,
-    ris: !wantsRis.value ? null : risError.value ? 'failed' : risTotal.value,
-    // At exactly one, the line names what it is („1 Verordnungsentwurf").
-    risKindOfOne: risTotal.value === 1 ? (risData.value?.items[0]?.kind ?? null) : null,
+    ris: !wantsRis.value ? null : risError.value ? 'failed' : countByKind(risData.value?.items ?? []),
     laterStationsOnly: laterStationsOnly.value,
-    laender: landsApply.value ? landItems.value.length : null,
+    art: art.value,
+    laender: landsApply.value ? countByKind(landItems.value) : null,
   }) || (landUnavailable.value ?? ''),
 )
+
+/* What „Meiste Stellungnahmen" does with the rows it cannot rank: only a
+ * Ministerialentwurf carries a count in this list (`compareRowsByStatements`).
+ * Keyed to the rows, not to the Art since 23.10.2026 — „Gesetzesentwürfe"
+ * holds unranked rows too (the RIS half's, the Länder's), and a list of
+ * nothing but Ministerialentwürfe needs no caveat. */
+const statementsSortNote = computed(() => {
+  if (sort.value !== 'stellungnahmen' || rows.value.every((row) => row.kind === 'me')) return null
+  return rows.value.some((row) => row.kind === 'me')
+    ? 'Gereiht sind nur die Ministerialentwürfe – nur bei ihnen zählt die Liste Stellungnahmen. Die übrigen Zeilen stehen dahinter, weiter nach Frist geordnet.'
+    : 'Stellungnahmen zählt die Liste nur bei Ministerialentwürfen – diese Zeilen bleiben nach Frist geordnet.'
+})
 
 /* Selects are TokenSelect (native <select> in token styling with the
  * page-wide chevron) — see that component for why not USelect. */
@@ -870,12 +889,8 @@ const countLabel = computed(() =>
         <!-- What the sort order does with the half it cannot sort — above the
                list, not below it: a caveat on what the order claims has to be read
                before the rows are. -->
-        <p
-          v-if="sort === 'stellungnahmen' && art !== 'ministerialentwurf'"
-          class="text-sm text-ink-muted"
-        >
-          Verordnungsentwürfe und andere führen keine Stellungnahmen – sie
-          stehen hinter den gereihten Zeilen, weiter nach Frist geordnet.
+        <p v-if="statementsSortNote" class="text-sm text-ink-muted">
+          {{ statementsSortNote }}
         </p>
         <!-- THE SEARCH'S LIMIT, at the place where it affects somebody: under
                these filters ONLY the title was searched, because the full text

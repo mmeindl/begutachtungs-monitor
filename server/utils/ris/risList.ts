@@ -26,8 +26,8 @@ import { stripMinistryMentions, type MinistryToken } from '../search/searchHayst
  * Decision: under `begutachtung` they belong, because that is where they
  * stand; out of `rv` and `parlament` they stay, because they cannot reach
  * those — that is not a selection, it is the Verfahren. Whoever wants one
- * kind only has the Art filter next to it, and the count line names both
- * halves separately.
+ * kind only has the Art filter next to it, and the count line names each
+ * kind separately.
  *
  * Rejected after one afternoon: dropping them from the station axis
  * ALTOGETHER, because the chip „Begutachtung" otherwise shows 245 rows, 198

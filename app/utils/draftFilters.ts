@@ -19,46 +19,58 @@ import { GP_STARTS, intToRoman, isPlausibleGp, romanToInt } from '#shared/utils/
 import { firstQueryValue } from '#shared/utils/queryParams'
 
 /**
- * Filter by WHERE a draft stands in the procedure, not by the type word on
- * its title — that is the distinction the two halves actually differ in, and
- * the only one the data supports without a classifier. `verordnung` is
- * spelled the way a reader would type it, and `/weitere-entwuerfe` redirects
- * onto it.
+ * Filter by WHAT a draft is — a law or a Verordnung — since 23.10.2026, the
+ * one distinction every source answers: Parliament's Ministerialentwürfe
+ * are law drafts (148 of 148 in GP XXVIII, measured 23.10.2026), the RIS
+ * half names its instrument (`RisConsultationKind`) and so does each Land
+ * (`LandDraftKind`).
  *
- * It is therefore the one filter that names a HALF rather than narrowing a
- * list, which is why it is no part of `draftApiQuery`: the page decides by it
- * which of the two endpoints is asked at all.
- */
-export type ArtFilter = '' | 'ministerialentwurf' | 'verordnung'
-
-/**
- * `verordnung` therefore selects all 201 records without a Gegenstand, of
- * which 198 are Verordnungen and the rest are drafts that likewise never
- * reached Parliament. The label admits that rather than pretending, and
- * each row carries its own type word.
+ * Until then the filter named a HALF: „Ministerialentwürfe" or
+ * „Verordnungsentwürfe und andere". The first is a Bund term — under it
+ * every Land stood aside („Länder-Entwürfe sind keine Ministerialentwürfe")
+ * — and the second had to admit four law drafts of the RIS half that never
+ * reached Parliament. Both questions survive: „only the Bund" is the
+ * source chips', and those four now stand where they belong, under
+ * „Gesetzesentwürfe". A record of kind `unbestimmt` (none in GP XXVIII)
+ * stands only under „Alle Arten".
  *
- * ONE noun, used by the option and by the count line under the filters
- * (`draftCountLabel`). They named the same set two ways until 18.09.2026 —
- * „Verordnungsentwürfe u. a." here, „ohne Gegenstand im Parlament" there —
- * and a reader comparing the two had no way to know it was one set. Written
- * out rather than „u. a.", which a screen reader reads as „u a".
+ * Old links keep working: `?art=ministerialentwurf` reads as `gesetz`, a
+ * superset of what it showed; `/weitere-entwuerfe` redirects onto
+ * `verordnung`. The value also goes to `/api/ris-drafts?art=` unchanged —
+ * the same words there (`useDraftHalves`).
  */
-export const ART_VERORDNUNG_NOUN = 'Verordnungsentwürfe und andere'
+export type ArtFilter = '' | 'gesetz' | 'verordnung'
 
-/* One record of that half, in the count line only, by what it IS: the set's
- * noun has no singular that reads well („1 Verordnungsentwürfe und andere"
- * until 22.10.2026, then „1 Verordnungs- oder anderer Entwurf"), and with a
- * single row left the page knows its kind. */
-const RIS_KIND_ONE: Record<RisConsultationKind, string> = {
-  verordnung: 'Verordnungsentwurf',
-  gesetz: 'Gesetzesentwurf',
-  unbestimmt: 'anderer Entwurf',
+/* The count line's terms, one per kind and in the Art filter's words. A
+ * kind that counts none stays out; „andere" is the RIS kind `unbestimmt`,
+ * none in GP XXVIII. */
+const KIND_TERM: Record<RisConsultationKind, [one: string, many: string]> = {
+  gesetz: ['Gesetzesentwurf', 'Gesetzesentwürfe'],
+  verordnung: ['Verordnungsentwurf', 'Verordnungsentwürfe'],
+  unbestimmt: ['anderer Entwurf', 'andere Entwürfe'],
+}
+const KIND_ORDER: readonly RisConsultationKind[] = ['gesetz', 'verordnung', 'unbestimmt']
+
+/* The term a list with no row at all says, by the Art it stands under. */
+const EMPTY_TERM: Record<ArtFilter, string> = {
+  '': '0 Entwürfe',
+  gesetz: '0 Gesetzesentwürfe',
+  verordnung: '0 Verordnungsentwürfe',
+}
+
+/* The RIS half's failure, named by what it would have brought: the Bund's
+ * Verordnungsentwürfe and the few law drafts that never reached
+ * Parliament. */
+const RIS_FAILED: Record<ArtFilter, string> = {
+  '': 'die Verordnungs- und einzelne Gesetzesentwürfe des Bundes sind gerade nicht abrufbar',
+  gesetz: 'einzelne Gesetzesentwürfe des Bundes sind gerade nicht abrufbar',
+  verordnung: 'die Verordnungsentwürfe des Bundes sind gerade nicht abrufbar',
 }
 
 export const ART_OPTIONS: { value: ArtFilter; label: string }[] = [
   { value: '', label: 'Alle Arten' },
-  { value: 'ministerialentwurf', label: 'Ministerialentwürfe' },
-  { value: 'verordnung', label: ART_VERORDNUNG_NOUN },
+  { value: 'gesetz', label: 'Gesetzesentwürfe' },
+  { value: 'verordnung', label: 'Verordnungsentwürfe' },
 ]
 
 /**
@@ -102,7 +114,8 @@ function parseStatus(v: unknown): DraftStatus {
 
 function parseArt(v: unknown): ArtFilter {
   const s = firstQueryValue(v)
-  return s === 'ministerialentwurf' || s === 'verordnung' ? s : ''
+  if (s === 'ministerialentwurf') return 'gesetz'
+  return s === 'gesetz' || s === 'verordnung' ? s : ''
 }
 
 function parseSort(v: unknown): SortKey {
@@ -276,38 +289,55 @@ export function activeFilterChips(
 }
 
 /**
- * The count line: each kind counted on its own, never summed
- * (docs/architecture.md §12.19).
+ * The count line: the rows of the list by KIND — law, Verordnung — summed
+ * over every source, since 24.10.2026. It speaks the Art filter's words,
+ * the axis right above it; where a row comes from is the source chips'
+ * question and each row's own line.
  *
- * A single "336 Entwürfe" would put the Stellungnahmen figures of a third of
- * the rows over all of them. The search placeholder does name the total,
- * because there it is a statement about the search scope rather than about
- * the corpus.
+ * Until then it counted by source: „148 Ministerialentwürfe · 4 weitere
+ * Gesetzesentwürfe · 206 Verordnungsentwürfe · 282 Entwürfe aus den
+ * Ländern" — the Bund split by data half and kind, the Länder by neither,
+ * and „weitere" asked the reader to know where Parliament's data ends. The
+ * rule of §12.19 is not touched by the sum: it forbids pooling figures only
+ * one half carries (the Stellungnahmen), and a count of law drafts is a
+ * count of law drafts wherever they were published.
  */
 export function draftCountLabel(c: {
-  /** Ministerialentwürfe; null where the half is not asked for. */
+  /** Ministerialentwürfe — law drafts all (148 of 148 in GP XXVIII); null
+   *  where the half is not asked for. */
   me: number | null
   /** The Regierungsvorlagen without a draft that stand in the list. */
   vorlagen: readonly Pick<OpenVorlage, 'consultation'>[]
-  /** The other half: its total, `failed`, or null where it is not asked for. */
-  ris: number | 'failed' | null
-  /** The kind of the one record, where the other half counts exactly one. */
-  risKindOfOne?: RisConsultationKind | null
+  /** The RIS half, counted per kind; `failed`, or null where it is not
+   *  asked for. */
+  ris: Partial<Record<RisConsultationKind, number>> | 'failed' | null
+  /** The Art filter: what an empty list or a failed half says. */
+  art?: ArtFilter
   /** Only stations selected that a record without a Gegenstand cannot reach. */
   laterStationsOnly: boolean
-  /** The chosen Länder's rows in the list; null where none is chosen or
-   *  the view cannot carry them (`LandChips`). */
-  laender?: number | null
+  /** The chosen Länder's rows in the list, per kind; null where none is
+   *  chosen or the view cannot carry them (`LandChips`). */
+  laender?: Partial<Record<RisConsultationKind, number>> | null
 }): string {
-  const parts: string[] = []
-  if (c.me !== null) {
-    parts.push(countLabelDe(c.me, 'Ministerialentwurf', 'Ministerialentwürfe'))
-  }
+  const art = c.art ?? ''
+  /* Under a station filter the RIS half does not count — neither as rows
+   * nor as „gerade nicht abrufbar". Both would answer a question nobody
+   * asked: it is neither empty nor broken, it does not belong to this axis.
+   * The sentence above the list says why. The Länder do count there:
+   * Oberösterreich's drafts reach the later stations (22.10.2026). */
+  const ris = c.laterStationsOnly ? null : c.ris
+  const kinds: Partial<Record<RisConsultationKind, number>> = {}
+  const add = (kind: RisConsultationKind, n: number) => { kinds[kind] = (kinds[kind] ?? 0) + n }
+  if (c.me !== null) add('gesetz', c.me)
+  if (ris && ris !== 'failed') for (const kind of KIND_ORDER) add(kind, ris[kind] ?? 0)
+  if (c.laender) for (const kind of KIND_ORDER) add(kind, c.laender[kind] ?? 0)
+
+  const parts = KIND_ORDER
+    .filter((kind) => (kinds[kind] ?? 0) > 0)
+    .map((kind) => countLabelDe(kinds[kind]!, ...KIND_TERM[kind]))
   /* A third term, never added up (§12.19): a Regierungsvorlage without a
-   * Begutachtung is neither a Ministerialentwurf nor a Verordnungsentwurf —
-   * folding it into either number would claim about it what holds for the
-   * other half. Before the station-filter exit, because these rows do come
-   * along under „Regierungsvorlage". */
+   * Begutachtung is no draft in Begutachtung — folding it into the law
+   * drafts would claim about it what holds for them. */
   /* The addition „ohne Begutachtung" only where it is evidenced for EVERY
    * counted row. It is the aggregate form of the statement that stands in the
    * row, so it must not reach further either: as soon as one Vorlage is in
@@ -318,32 +348,13 @@ export function draftCountLabel(c: {
     const allChecked = c.vorlagen.every((v) => v.consultation.kind === 'none')
     parts.push(allChecked ? `${count} ohne Begutachtung` : count)
   }
-  /* Under a station filter the Verordnung half does not count — neither as
-   * „0" nor as „gerade nicht abrufbar". Both would answer a question nobody
-   * asked: it is neither empty nor broken, it does not belong to this axis.
-   * The sentence above the list says why. */
-  /* The Länder's term travels on both paths: Oberösterreich's drafts do
-   * reach the later stations (22.10.2026). */
-  const laender = c.laender !== null && c.laender !== undefined
-    ? `${countLabelDe(c.laender, 'Entwurf', 'Entwürfe')} aus den Ländern`
-    : null
-  if (c.laterStationsOnly) return [...parts, ...(laender ? [laender] : [])].join(' · ')
-  /* The same noun as in the Art filter, so the two numbers on the page
-   * cannot count two different things. „ohne Gegenstand im Parlament" was
-   * Parliament's category, not this list's — and it stood beside a box
-   * carrying a join statistic under the same word. */
-  /* `failed` only reaches this line while both halves are asked for. Where
-   * the RIS half carries the page alone, its failure is the page's failure
-   * and the gate says so. */
-  if (c.ris !== null) {
-    parts.push(
-      c.ris === 'failed'
-        ? 'die Verordnungsentwürfe sind gerade nicht abrufbar'
-        : countLabelDe(c.ris, RIS_KIND_ONE[c.risKindOfOne ?? 'unbestimmt'], ART_VERORDNUNG_NOUN),
-    )
-  }
-  /* A fourth term, never added up either: a Land's draft is neither kind
-   * of the Bund's. */
-  if (laender) parts.push(laender)
+  /* Something was asked for and nothing came: one zero, in the Art's noun. */
+  const asked = c.me !== null || ris !== null || (c.laender !== null && c.laender !== undefined)
+  if (!parts.length && asked) parts.push(EMPTY_TERM[art])
+  /* `failed` only reaches this line while another source is asked for too.
+   * Where the RIS half carries the page alone, its failure is the page's
+   * failure and the gate says so. The sum stands without it, and this term
+   * says it is short. */
+  if (ris === 'failed') parts.push(RIS_FAILED[art])
   return parts.join(' · ')
 }

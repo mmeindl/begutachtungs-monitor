@@ -299,7 +299,7 @@ const waitMonths = Math.round(RV_LATENCY_CONTEXT_DAYS / 30.44)
         die beides gelesen haben.
         Die Liste lässt sich
         <NuxtLink
-          to="/entwuerfe?art=ministerialentwurf&sort=stellungnahmen"
+          to="/entwuerfe?art=gesetz&sort=stellungnahmen"
           class="link-inline font-medium"
         >nach den meisten Stellungnahmen reihen</NuxtLink> – jede Zeile mit
         dem, was aus dem Entwurf geworden ist.

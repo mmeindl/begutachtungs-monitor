@@ -1,7 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import { GP_STARTS, intToRoman, romanToInt } from '../shared/utils/gp'
 import {
-  ART_VERORDNUNG_NOUN,
   type DraftFilterValues,
   SEVERAL_STATIONS,
   activeFilterChips,
@@ -50,8 +49,14 @@ describe('draftFiltersFromQuery', () => {
 
   it('falls back rather than erroring on a hand-typed link', () => {
     expect(
-      draftFiltersFromQuery({ status: 'halb', art: 'gesetz', sort: 'neu', station: 'mond' }),
+      draftFiltersFromQuery({ status: 'halb', art: 'unbestimmt', sort: 'neu', station: 'mond' }),
     ).toEqual(empty)
+  })
+
+  it('reads an old „Ministerialentwürfe" link as the law drafts', () => {
+    // The Art names kinds since 23.10.2026; a superset of what the link showed.
+    expect(draftFiltersFromQuery({ art: 'ministerialentwurf' }).art).toBe('gesetz')
+    expect(draftFiltersFromQuery({ art: 'gesetz' }).art).toBe('gesetz')
   })
 
   it('reads an empty query as no filter at all', () => {
@@ -112,7 +117,7 @@ describe('the round trip', () => {
     empty,
     { ...empty, status: 'open' },
     { ...empty, stations: ['begutachtung', 'rv'] },
-    { ...empty, art: 'ministerialentwurf', gp: 'XXVIII', ministry: 'BMJ' },
+    { ...empty, art: 'gesetz', gp: 'XXVIII', ministry: 'BMJ' },
     { ...empty, q: 'klimaschutz', sort: 'stellungnahmen' },
     { status: 'closed', stations: ['bgbl'], art: 'verordnung', gp: 'XXVII', ministry: 'BMF', q: 'x', sort: 'stellungnahmen' },
   ]
@@ -223,7 +228,7 @@ describe('activeFilterChips', () => {
       activeFilterChips({ status: 'closed', art: 'verordnung', gp: 'XXVII', ministry: 'BMF' }),
     ).toEqual([
       { key: 'status', label: 'Nicht möglich' },
-      { key: 'art', label: ART_VERORDNUNG_NOUN },
+      { key: 'art', label: 'Verordnungsentwürfe' },
       { key: 'gp', label: 'GP XXVII' },
       { key: 'ministry', label: 'BMF' },
     ])
@@ -231,62 +236,92 @@ describe('activeFilterChips', () => {
 })
 
 /**
- * The count line — never a pooled total (docs/architecture.md §12.19). A
- * headline „336 Entwürfe" would put the Stellungnahmen figures of a third of
- * the rows over all of them.
+ * The count line — by kind, summed over the sources, never one pooled total
+ * (docs/architecture.md §12.19). A headline „336 Entwürfe" would put the
+ * Stellungnahmen figures of a third of the rows over all of them.
  */
 describe('draftCountLabel', () => {
-  const both = { me: 135, vorlagen: [], ris: 201, laterStationsOnly: false }
+  // GP XXVIII on 23.10.2026: 148 Ministerialentwürfe, the RIS half 4 + 206.
+  const ris = { gesetz: 4, verordnung: 206 }
+  const both = { me: 148, vorlagen: [], ris, laterStationsOnly: false }
 
-  it('counts each half on its own and never adds them up', () => {
+  it('counts by kind, the Ministerialentwürfe among the law drafts', () => {
     const label = draftCountLabel(both)
-    expect(label).toBe(`135 Ministerialentwürfe · 201 ${ART_VERORDNUNG_NOUN}`)
-    expect(label).not.toContain('336')
+    expect(label).toBe('152 Gesetzesentwürfe · 206 Verordnungsentwürfe')
+    expect(label).not.toContain('358')
+    expect(label).not.toContain('weitere')
   })
 
-  it('names only the halves that are asked for', () => {
-    expect(draftCountLabel({ ...both, ris: null })).toBe('135 Ministerialentwürfe')
-    expect(draftCountLabel({ ...both, me: null })).toBe(`201 ${ART_VERORDNUNG_NOUN}`)
-  })
-
-  it('says the RIS half failed rather than counting it as zero', () => {
-    expect(draftCountLabel({ ...both, ris: 'failed' })).toBe(
-      '135 Ministerialentwürfe · die Verordnungsentwürfe sind gerade nicht abrufbar',
+  it('sums the Länder into the same kinds', () => {
+    expect(draftCountLabel({ ...both, laender: { gesetz: 100, verordnung: 182 } })).toBe(
+      '252 Gesetzesentwürfe · 388 Verordnungsentwürfe',
+    )
+    expect(draftCountLabel({ me: null, vorlagen: [], ris: null, laterStationsOnly: false, laender: { gesetz: 36 } })).toBe(
+      '36 Gesetzesentwürfe',
     )
   })
 
-  it('counts the Regierungsvorlagen as a third term', () => {
+  it('names only the kinds that are in the list', () => {
+    expect(draftCountLabel({ ...both, ris: null })).toBe('148 Gesetzesentwürfe')
+    expect(draftCountLabel({ ...both, me: null, ris: { verordnung: 206 }, art: 'verordnung' })).toBe('206 Verordnungsentwürfe')
+  })
+
+  it('names a record of kind „unbestimmt" only where there is one', () => {
+    expect(draftCountLabel({ ...both, ris: { ...ris, unbestimmt: 1 } })).toBe(
+      '152 Gesetzesentwürfe · 206 Verordnungsentwürfe · 1 anderer Entwurf',
+    )
+  })
+
+  it('uses the singular per kind', () => {
+    expect(draftCountLabel({ me: 0, vorlagen: [], ris: { gesetz: 1, verordnung: 1 }, laterStationsOnly: false })).toBe(
+      '1 Gesetzesentwurf · 1 Verordnungsentwurf',
+    )
+  })
+
+  it('says an empty list once, by the Art it stands under', () => {
+    expect(draftCountLabel({ ...both, me: 0, ris: {} })).toBe('0 Entwürfe')
+    expect(draftCountLabel({ ...both, me: 0, ris: {}, art: 'gesetz' })).toBe('0 Gesetzesentwürfe')
+    expect(draftCountLabel({ ...both, me: null, ris: {}, art: 'verordnung' })).toBe('0 Verordnungsentwürfe')
+    expect(draftCountLabel({ ...both, me: null, ris: null, laender: {} })).toBe('0 Entwürfe')
+  })
+
+  it('says nothing where nothing is asked for', () => {
+    expect(draftCountLabel({ ...both, me: null, ris: null })).toBe('')
+  })
+
+  it('says the RIS half failed rather than counting it as zero, by what it would have brought', () => {
+    expect(draftCountLabel({ ...both, ris: 'failed' })).toBe(
+      '148 Gesetzesentwürfe · die Verordnungs- und einzelne Gesetzesentwürfe des Bundes sind gerade nicht abrufbar',
+    )
+    expect(draftCountLabel({ ...both, ris: 'failed', art: 'gesetz' })).toBe(
+      '148 Gesetzesentwürfe · einzelne Gesetzesentwürfe des Bundes sind gerade nicht abrufbar',
+    )
+    expect(draftCountLabel({ ...both, me: null, ris: 'failed', art: 'verordnung', laender: { verordnung: 12 } })).toBe(
+      '12 Verordnungsentwürfe · die Verordnungsentwürfe des Bundes sind gerade nicht abrufbar',
+    )
+  })
+
+  it('counts the Regierungsvorlagen as a term of their own', () => {
     const none = { consultation: { kind: 'none' as const } }
     expect(draftCountLabel({ ...both, vorlagen: [none, none] })).toBe(
-      `135 Ministerialentwürfe · 2 Regierungsvorlagen ohne Begutachtung · 201 ${ART_VERORDNUNG_NOUN}`,
+      '152 Gesetzesentwürfe · 206 Verordnungsentwürfe · 2 Regierungsvorlagen ohne Begutachtung',
     )
   })
 
   it('claims „ohne Begutachtung" only where every Vorlage is checked', () => {
     const vorlagen = [{ consultation: { kind: 'none' as const } }, { consultation: { kind: 'unknown' as const } }]
-    expect(draftCountLabel({ ...both, ris: null, vorlagen })).toBe('135 Ministerialentwürfe · 2 Regierungsvorlagen')
+    expect(draftCountLabel({ ...both, ris: null, vorlagen })).toBe('148 Gesetzesentwürfe · 2 Regierungsvorlagen')
   })
 
-  it('leaves the Verordnung half out under a station it cannot reach — not as 0, not as failed', () => {
-    expect(draftCountLabel({ ...both, laterStationsOnly: true })).toBe('135 Ministerialentwürfe')
-    expect(draftCountLabel({ ...both, ris: 'failed', laterStationsOnly: true })).toBe('135 Ministerialentwürfe')
+  it('leaves the RIS half out under a station it cannot reach — not as rows, not as failed', () => {
+    expect(draftCountLabel({ ...both, laterStationsOnly: true })).toBe('148 Gesetzesentwürfe')
+    expect(draftCountLabel({ ...both, ris: 'failed', laterStationsOnly: true })).toBe('148 Gesetzesentwürfe')
+    expect(draftCountLabel({ ...both, laterStationsOnly: true, laender: { gesetz: 3 } })).toBe('151 Gesetzesentwürfe')
   })
 
   it('uses the singular at one', () => {
     expect(draftCountLabel({ me: 1, vorlagen: [{ consultation: { kind: 'none' } }], ris: null, laterStationsOnly: false })).toBe(
-      '1 Ministerialentwurf · 1 Regierungsvorlage ohne Begutachtung',
+      '1 Gesetzesentwurf · 1 Regierungsvorlage ohne Begutachtung',
     )
-  })
-
-  it('names one record of the other half by its kind, not as „und andere"', () => {
-    // A search that hits a single Verordnung, e.g. „Leistungs- und Strukturstatistik".
-    const one = { me: 0, vorlagen: [], ris: 1, laterStationsOnly: false }
-    expect(draftCountLabel({ ...one, risKindOfOne: 'verordnung' })).toBe('0 Ministerialentwürfe · 1 Verordnungsentwurf')
-    expect(draftCountLabel({ ...one, risKindOfOne: 'gesetz' })).toBe('0 Ministerialentwürfe · 1 Gesetzesentwurf')
-    expect(draftCountLabel({ ...one, risKindOfOne: 'unbestimmt' })).toBe('0 Ministerialentwürfe · 1 anderer Entwurf')
-    // Without the row's kind, the most general of the three.
-    expect(draftCountLabel(one)).toBe('0 Ministerialentwürfe · 1 anderer Entwurf')
-    expect(draftCountLabel({ ...one, ris: 0 })).toBe(`0 Ministerialentwürfe · 0 ${ART_VERORDNUNG_NOUN}`)
-    expect(draftCountLabel({ ...one, ris: 2, risKindOfOne: 'verordnung' })).toBe(`0 Ministerialentwürfe · 2 ${ART_VERORDNUNG_NOUN}`)
   })
 })

@@ -346,7 +346,7 @@ const enactedIsFallback = computed(() => isFallbackGp(enactedGp.value))
  * parameter would buy nothing but an active-filter chip on arrival. */
 const rankedHref = computed(
   () =>
-    '/entwuerfe?art=ministerialentwurf&sort=stellungnahmen' +
+    '/entwuerfe?art=gesetz&sort=stellungnahmen' +
     (rankedIsFallback.value ? `&gp=${rankedGp.value}` : ''),
 )
 const enactedHref = computed(
@@ -618,11 +618,13 @@ function submitSearch() {
       >
         <!-- The link continues the ranking rather than pointing at the pool
              it was drawn from: `?sort=stellungnahmen` is the same order,
-             uncut, and `?art=ministerialentwurf` is what the sort can
-             speak about — a draft without a Gegenstand has no Stellungnahmen
-             count and never will (§12.24). The count is the GP's
-             Ministerialentwürfe, which is exactly the set behind the
-             link. -->
+             uncut, and `?art=gesetz` keeps the Verordnungen out, which
+             the sort cannot speak about — a draft without a Gegenstand has
+             no Stellungnahmen count and never will (§12.24). The count is
+             the GP's Ministerialentwürfe: the ranked rows behind the link,
+             ahead of the few law drafts without a Gegenstand (and any
+             chosen Land's) that stand unranked after them since
+             23.10.2026. -->
         <ListHeader
           id="ranked-heading"
           :to="rankedHref"
