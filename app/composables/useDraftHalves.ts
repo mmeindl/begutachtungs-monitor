@@ -153,6 +153,18 @@ export function useDraftHalves(filters: {
     if (firstAnswerPending.value) return null
     return { me: meData.value, ris: risData.value, laender: laenderData.value }[lead.value]
   })
+  /* The rows on screen answer the PREVIOUS filter (24.10.2026): some half
+   * that is asked for is fetching again after its first answer. The list
+   * keeps them standing and marks them stale instead of passing them off as
+   * the answer — any half, not only the lead, because the RIS and Länder
+   * rows sort in among the others. */
+  const refreshing = computed(() =>
+    !firstAnswerPending.value && (
+      (wantsMe.value && status.value === 'pending') ||
+      (wantsRis.value && risStatus.value === 'pending') ||
+      (wantsLaender.value && laenderStatus.value === 'pending')
+    ),
+  )
 
   /* Retries whichever halves this `art` asks for — a switched-off handle
    * refuses by itself (`enabled`). */
@@ -188,6 +200,7 @@ export function useDraftHalves(filters: {
     laenderError,
     gateStatus,
     gateData,
+    refreshing,
     retry,
     selectedGp,
     availableGps,

@@ -153,12 +153,16 @@ const { data: risOnly, status: risStatus } = await useFetch<RisConsultationsResp
  * like the RIS half, and for its reason: a chosen Land's rows sort in among
  * the others by Frist, so they cannot arrive after the list. Asked only when
  * a Land is chosen — the default homepage pays nothing for them. One answer
- * carries every Land; the choice is applied below. */
+ * carries every Land; the choice is applied below. So it is asked again only
+ * when the choice goes from none to some, never on a switch between Länder:
+ * watching the list itself refetched on every chip and blanked the list
+ * while it did (25.10.2026). */
 const { bund, laender: chosenLaender, queryValue: sourcesQuery } = useSourceChoice()
+const wantsLaender = computed(() => chosenLaender.value.length > 0)
 const { data: laender, status: laenderStatus } = await useAsyncData<LaenderResponse | null>(
   'home-laender',
-  () => (chosenLaender.value.length ? $fetch<LaenderResponse>('/api/laender', { timeout: 6000 }) : Promise.resolve(null)),
-  { watch: [chosenLaender], lazy: true },
+  () => (wantsLaender.value ? $fetch<LaenderResponse>('/api/laender', { timeout: 6000 }) : Promise.resolve(null)),
+  { watch: [wantsLaender], lazy: true },
 )
 
 const { data, error, refresh, status } = await dashboardFetch
@@ -496,20 +500,22 @@ function submitSearch() {
           >im RIS nachsehen</ExternalLink>.
         </p>
 
-        <!-- Until both halves are here: the RIS rows sort in between the
-             others by Frist, so a list drawn from one half would reorder
-             under the reader's eyes. -->
-        <ListSkeleton v-if="(bund && loading(risStatus)) || (chosenLaender.length > 0 && loading(laenderStatus))" class="mt-4">
-          Offene Entwürfe werden geladen …
-        </ListSkeleton>
         <!-- Always the box, since the chips moved into its head (22.10.2026):
              a list that vanished when empty would take the control that
-             could fill it with it. -->
-        <EntryList v-else :entries="visibleOpenRows" class="mt-4">
+             could fill it with it. For the same reason the loading state
+             stands inside it (`#state`) rather than in its place: a chip
+             that blanked the box took itself away until the answer came. -->
+        <EntryList :entries="visibleOpenRows" class="mt-4">
           <!-- Where the rows come from (`SourceChips`), in the box's head
                like every list's controls. -->
           <template #header>
             <SourceChips />
+          </template>
+          <!-- Until both halves are here: the RIS rows sort in between the
+               others by Frist, so a list drawn from one half would reorder
+               under the reader's eyes. -->
+          <template v-if="(bund && loading(risStatus)) || (wantsLaender && loading(laenderStatus))" #state>
+            <LoadingState label="Offene Entwürfe werden geladen …" />
           </template>
           <template #empty>
             <!-- The no-open moment is exactly the moment to subscribe. Said

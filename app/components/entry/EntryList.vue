@@ -69,6 +69,15 @@ defineProps<{
   sort?: string
   /** The search the rows were filtered by; each row marks its words. */
   query?: string | null
+  /**
+   * The rows answer the previous filter while the next answer is on the way
+   * (24.10.2026): they stay where they are, faded and `aria-busy`, under a
+   * bar at the sheet's top edge. Stale-while-revalidate instead of clearing
+   * to a loading state: the reader keeps place and scroll, and nothing moves
+   * until the new rows replace the old. Both marks come in after 200 ms
+   * (`stale-fade`, `stale-bar`), so a fast answer does not flicker.
+   */
+  stale?: boolean
 }>()
 
 defineEmits<{ 'update:sort': [key: string] }>()
@@ -93,6 +102,13 @@ defineEmits<{ 'update:sort': [key: string] }>()
     <!-- With `sortable`, `aria-hidden` moves from the row to its plain
          labels: the sort buttons are the one part a screen reader must
          reach (`SortHeader`). Sticky inside its own sheet (`ColumnHeader`). -->
+    <!-- The refresh bar: its own sticky line of no height rather than part
+         of the column header, which is hidden below `md` — on a phone,
+         scrolled down, the bar is the one sign that the rows are being
+         replaced. Drawn over the header's top edge, it takes no space. -->
+    <div class="sticky top-0 z-20 h-0" aria-hidden="true">
+      <div class="stale-bar" :data-stale="stale || undefined" />
+    </div>
     <ColumnHeader v-if="entries.length || $slots.state" :sortable="!!sortable" class="gap-4 md:flex">
       <ColumnLabel :label="lead ?? 'Entwurf'" class="min-w-0 flex-1" />
       <!-- One line, and any excess spills LEFT, into the empty gap: the
@@ -129,7 +145,9 @@ defineEmits<{ 'update:sort': [key: string] }>()
     <component
       :is="ordered ? 'ol' : 'ul'"
       v-else
-      class="divide-y divide-hairline"
+      class="stale-fade divide-y divide-hairline"
+      :data-stale="stale || undefined"
+      :aria-busy="stale || undefined"
     >
       <li v-for="entry in entries" :key="entry.key">
         <EntryItem :entry="entry" :query="query">

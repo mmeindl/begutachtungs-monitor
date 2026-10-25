@@ -299,6 +299,7 @@ const {
   laenderStatus,
   gateStatus,
   gateData,
+  refreshing,
   retry,
   selectedGp,
   availableGps,
@@ -663,6 +664,7 @@ const statementsSortNote = computed(() => {
       :sortable="SORT_COLUMNS"
       :sort="sort"
       :query="qDebounced"
+      :stale="refreshing"
       @update:sort="chooseSort"
     >
       <!-- WHERE IT STANDS as the tabs (02.10.2026): the stations are the
@@ -818,7 +820,9 @@ const statementsSortNote = computed(() => {
              fixes the set, here how it is read. On a phone, where no
              column header is drawn, the order is a select beside it. -->
         <div class="flex flex-wrap items-center justify-between gap-x-4 gap-y-2">
-          <p class="text-sm text-ink-muted" aria-live="polite">
+          <!-- Fades with the rows while they refresh: it counts the same
+               stale answer. The live region announces the new count. -->
+          <p class="stale-fade text-sm text-ink-muted" aria-live="polite" :data-stale="refreshing || undefined">
             {{ gateData ? countLabel : '' }}
           </p>
           <div class="flex min-w-0 items-center gap-2 md:hidden">

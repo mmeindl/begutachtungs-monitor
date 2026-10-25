@@ -655,6 +655,62 @@
   @apply rounded text-ink-muted underline underline-offset-2 hover:decoration-2;
 }
 
+/*
+ * Stale while revalidating (24.10.2026): content that still answers the
+ * previous filter, kept standing while the next answer loads (`EntryList`'s
+ * `stale`). It fades only after 200 ms, so an answer that comes fast never
+ * flickers, and comes back at once. Toggled by `data-stale`, not by a class,
+ * so the transition runs on an element that stays mounted.
+ */
+@utility stale-fade {
+  transition: opacity 150ms ease-out;
+  &[data-stale] {
+    opacity: 0.5;
+    transition-delay: 200ms;
+  }
+}
+
+/*
+ * Its bar: 2 px along the sheet's top edge, a segment sliding across while
+ * the answer is on the way. Ink, not blue — blue says „you can do something
+ * here", and there is nothing to do but wait. Under reduced motion it stands
+ * still at full width.
+ */
+@utility stale-bar {
+  position: relative;
+  height: 2px;
+  overflow: hidden;
+  opacity: 0;
+  transition: opacity 150ms ease-out;
+  &[data-stale] {
+    opacity: 1;
+    transition-delay: 200ms;
+  }
+  &::after {
+    content: '';
+    position: absolute;
+    inset: 0 auto 0 0;
+    width: 30%;
+    background-color: var(--color-ink-secondary);
+    animation: stale-slide 1.2s ease-in-out infinite;
+  }
+  @media (prefers-reduced-motion: reduce) {
+    &::after {
+      width: 100%;
+      animation: none;
+    }
+  }
+}
+
+@keyframes stale-slide {
+  from {
+    transform: translateX(-100%);
+  }
+  to {
+    transform: translateX(333%);
+  }
+}
+
 /* In-page anchor jumps glide — but only for users without reduced motion. */
 @media (prefers-reduced-motion: no-preference) {
   html {
