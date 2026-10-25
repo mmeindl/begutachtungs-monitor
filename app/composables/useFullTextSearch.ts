@@ -202,7 +202,8 @@ export async function useFullTextSearch(
    */
   const fullTextCorpus = computed(() => {
     const n = fullText.value?.corpusSize ?? 0
-    return n === 1 ? 'der einen laufenden Begutachtung' : `der ${n} laufenden Begutachtungen`
+    // „des Bundes" since 24.10.2026: the full text is RIS's, and the Länder are not in it.
+    return n === 1 ? 'der einen laufenden Begutachtung des Bundes' : `der ${n} laufenden Begutachtungen des Bundes`
   })
 
   return {

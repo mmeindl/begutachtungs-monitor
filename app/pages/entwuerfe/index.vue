@@ -987,15 +987,15 @@ const statementsSortNote = computed(() => {
            draft page's section does. In the serif it was a third heading
            style. -->
       <h2 class="font-sans text-base font-semibold text-ink">
-        Außerdem im Volltext der laufenden Begutachtungen
+        Außerdem im Volltext der laufenden Begutachtungen des Bundes
       </h2>
       <!-- The asterisk is explained here and not at the field: it applies
            to THIS half — RIS searches whole words, the list above searches
            substrings. A usage note belongs with what it changes. -->
       <p class="mt-1 text-sm text-ink-muted">
-        Alle Dokumente eines Entwurfs – Text, Erläuterungen,
+        Alle Dokumente eines Entwurfs des Bundes – Text, Erläuterungen,
         Gegenüberstellung, Anhänge. Gesucht werden ganze Wörter,
-        <code>Klima*</code> findet auch zusammengesetzte.
+        <code>Klima*</code> findet auch zusammengesetzte.<template v-if="landsApply"> In den Dokumenten der Länder sucht der Monitor nicht, nur in ihren Titeln.</template>
       </p>
 
       <LoadingState v-if="fullTextPending" label="Im Volltext wird gesucht …" />
