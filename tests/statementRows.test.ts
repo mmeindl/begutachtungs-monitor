@@ -59,9 +59,9 @@ describe('submitterLabel', () => {
     // The API contract says `submitterName` is null for a person. This is
     // the second line of defence, for the day it is not.
     expect(submitterLabel(meta({ submitterKind: 'person', submitterName: 'Maria Musterfrau' })))
-      .toBe('Privatperson')
+      .toBe('Ohne Namen')
     expect(submitterLabel(meta({ submitterKind: 'person', submitterName: null })))
-      .toBe('Privatperson')
+      .toBe('Ohne Namen')
   })
 
   it('never names a non-public submission either', () => {

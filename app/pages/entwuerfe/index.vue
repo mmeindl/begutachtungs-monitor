@@ -975,7 +975,6 @@ const statementsSortNote = computed(() => {
           :visible="visibleCount"
           :total="entries.length"
           :step="LIST_PAGE_SIZE"
-          :all-above="LIST_PAGE_SIZE"
           @more="showMore()"
           @all="showAll()"
         />

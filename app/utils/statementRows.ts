@@ -14,6 +14,14 @@
 import type { StatementMeta, StatementsSummary } from '#shared/types'
 import { countLabelDe, formatNumberDe } from '#shared/utils/format'
 
+/* Ten, not the panel's old twenty-five: a list of Stellungnahmen sits on a detail page with
+ * five other sections — the Ministerialentwurf's panel and, since 23.10.2026,
+ * a Land's list (`LandStatements`) —, and a first page that fills the viewport makes the
+ * Stellungnahmen the page instead of a part of it. What ten costs — more
+ * presses on the long lists — the search field and "Alle N anzeigen" both
+ * answer. */
+export const STATEMENT_PAGE_SIZE = 10
+
 /**
  * The panel's segments, in the order it offers them — the order of the
  * legend above the list, so a segment sits where the numbers said it would.
@@ -47,7 +55,7 @@ export type StatementFilter = 'organisations' | 'persons' | 'nonpublic' | 'all'
  * draft —, so it is not offered.
  */
 export function availableStatementFilters(
-  summary: StatementsSummary,
+  summary: Pick<StatementsSummary, 'organisations' | 'privatePersons' | 'nonPublic'>,
   { partial = false }: { partial?: boolean } = {},
 ): StatementFilter[] {
   const kinds: StatementFilter[] = []
@@ -78,11 +86,15 @@ export function compareStatementRows(a: SortableRow, b: SortableRow, sort: State
 }
 
 /* GDPR defense in depth: persons and non-public submissions always render a
- * fixed label — never a name — regardless of what the API delivered. */
+ * fixed label — never a name — regardless of what the API delivered.
+ * „Ohne Namen", not „Privatperson", since 25.10.2026: the classifier files
+ * as a person every submitter it is not sure is an organisation (Salzburg:
+ * 171 of 547 files, nearly all of them institutions), so „Privatperson"
+ * claimed more than the monitor knows. */
 export function submitterLabel(s: StatementMeta): string {
   if (s.submitterKind === 'organisation') return s.submitterName ?? 'Organisation'
   if (s.submitterKind === 'nonpublic') return 'Nicht-öffentliche Stellungnahme'
-  return 'Privatperson'
+  return 'Ohne Namen'
 }
 
 /* Same guard for the link's accessible name: only an organisation is named. */

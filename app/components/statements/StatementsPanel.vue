@@ -10,6 +10,7 @@ import {
   compareStatementRows,
   orgRowIndexOfAnchor,
   orgRowsOf,
+  STATEMENT_PAGE_SIZE,
   submitterLabel,
   submitterName,
 } from '~/utils/statementRows'
@@ -46,22 +47,8 @@ const props = withDefaults(
   { listUrl: undefined, items: null, partial: false, headingLevel: 3 },
 )
 
-/* Ten, not the panel's old twenty-five: this list sits on a detail page with
- * five other sections, and a first page that fills the viewport makes the
- * Stellungnahmen the page instead of a part of it. What ten costs — more
- * presses on the long lists — the search field and "Alle N anzeigen" both
- * answer. */
-const PAGE_SIZE = 10
-
-/* Above this many still-hidden rows, offer the jump to the end — roughly
- * four presses, which is where stepping starts to feel like work. 88/ME's
- * 707 Stellungnahmen are 70 presses otherwise.
- *
- * On BOTH segments, not just the long one: the search field finds a name the
- * reader already knows, and answers nothing for "show me all of them". On the
- * organisation list the skipped rows are in the DOM already, so the press
- * only unhides them. */
-const ALL_ABOVE = 30
+/* The page size, shared with a Land's list (`statementRows.ts`). */
+const PAGE_SIZE = STATEMENT_PAGE_SIZE
 
 /* Below this the search field is not offered: on twenty rows the eye is
  * faster than the keyboard, and the field would be a fourth control on a
@@ -79,7 +66,7 @@ const SEARCH_MIN = 20
  */
 const filterLabels: Record<StatementFilter, string> = {
   organisations: 'Organisationen',
-  persons: 'Privatpersonen',
+  persons: 'Ohne Namen',
   nonpublic: 'Nicht öffentlich',
   all: 'Alle',
 }
@@ -493,7 +480,7 @@ const showColumnHeader = computed(() =>
         <ListBoxNotice
           v-else-if="searchActive"
           title="Keine Organisation gefunden"
-          description="Gesucht wird nur in Organisationen; Privatpersonen stehen hier nicht mit Namen."
+          description="Gesucht wird nur in Organisationen; was ohne Namen steht, findet die Suche nicht."
         />
         <!-- No third branch: this segment is offered only where an
              organisation filed, so without a query the list has rows. The
@@ -529,7 +516,6 @@ const showColumnHeader = computed(() =>
         :visible="visibleCount"
         :total="segmentTotal"
         :step="PAGE_SIZE"
-        :all-above="ALL_ABOVE"
         @more="showMore()"
         @all="showAll(segmentTotal)"
       />

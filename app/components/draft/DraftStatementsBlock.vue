@@ -105,7 +105,7 @@ const STATEMENTS_SOURCES: SourceEntry[] = [{ what: 'Stellungnahmen', publisher: 
         :marked="false"
         own="Einordnung der Einbringer:innen"
       >
-        <NuxtLink to="/ueber#about-privacy" class="link-muted">Privatpersonen ohne Namen</NuxtLink>
+        <NuxtLink to="/ueber#about-privacy" class="link-muted">Warum ohne Namen</NuxtLink>
       </SectionCredits>
     </template>
     <p v-else class="text-sm text-ink-secondary">

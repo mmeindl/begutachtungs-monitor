@@ -131,13 +131,17 @@ const { siteUrl } = useRuntimeConfig().public
     <ProseSection id="about-privacy" heading="Privatpersonen & DSGVO">
       <p>
         Stellungnahmen kommen auch von Privatpersonen, die auf
-        parlament.gv.at namentlich erscheinen. Dass das Parlament diese Namen
-        veröffentlicht, ist keine Rechtfertigung, sie systematisch
+        parlament.gv.at und auf den Seiten der Länder namentlich erscheinen.
+        Dass Parlament und Länder diese Namen veröffentlichen, ist keine
+        Rechtfertigung, sie systematisch
         weiterzuverbreiten. Der Monitor nennt deshalb keine Namen von
-        Privatpersonen: Sie erscheinen hier als „Privatperson“ und fließen in
-        die Zählungen ein. Organisationen – Kammern, Verbände, Vereine,
-        Ministerien, Unternehmen – werden namentlich genannt. Im Zweifel wird
-        ein Name als Privatperson behandelt.
+        Privatpersonen: Ihre Stellungnahmen stehen hier „Ohne Namen“ und
+        fließen in die Zählungen ein. Organisationen – Kammern, Verbände,
+        Vereine, Ministerien, Unternehmen – werden namentlich genannt. Ist
+        nicht sicher, dass eine Organisation einreicht, steht die
+        Stellungnahme ebenfalls ohne Namen: Unter „Ohne Namen“ stehen also
+        Privatpersonen und manche Organisation, die der Monitor nicht sicher
+        als solche erkennt.
       </p>
     </ProseSection>
 

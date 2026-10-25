@@ -24,8 +24,6 @@ const props = defineProps<{
   total: number
   /** How many more one press adds. */
   step: number
-  /** Above this remainder, a second button skips to the end. Omitted → none. */
-  allAbove?: number
 }>()
 
 const emit = defineEmits<{ more: []; all: [] }>()
@@ -87,9 +85,13 @@ const pageable = computed(() => props.total > props.step)
 
     <!-- The verb is visible since 15.10.2026. „Weitere 8" alone read as a
          count beside the count, not as a control: a reader looking for
-         their own organisation stopped at row ten. -->
+         their own organisation stopped at row ten.
+         „Weitere" only while a press would not show the rest (23.10.2026):
+         with ten or fewer left, „Weitere 5" and „Alle 15" are the same
+         press, and the one that names the list's end is kept. -->
     <UFieldGroup v-if="remaining > 0" class="w-full sm:w-auto">
       <UButton
+        v-if="remaining > step"
         color="neutral"
         variant="outline"
         class="min-h-target flex-1 justify-center tabular-nums sm:flex-none"
@@ -97,12 +99,10 @@ const pageable = computed(() => props.total > props.step)
       >
         {{ moreLabelDe(remaining, step) }} anzeigen
       </UButton>
-      <!-- The escape hatch for the long lists — 88/ME carries 707
-           Stellungnahmen, where stepping in tens is 70 presses. Hidden on
-           the short ones, where a second segment would only say what the
-           first already says. -->
+      <!-- Always, while anything is hidden (23.10.2026): the way to the
+           end of the list in one press — 88/ME carries 707 Stellungnahmen,
+           where stepping in tens is 70 presses. -->
       <UButton
-        v-if="allAbove !== undefined && remaining > allAbove"
         color="neutral"
         variant="outline"
         class="min-h-target flex-1 justify-center tabular-nums sm:flex-none"

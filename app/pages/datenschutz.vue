@@ -183,9 +183,10 @@ usePageSeo({
         <li>
           <strong class="font-semibold text-ink">Privatpersonen werden
             nicht namentlich genannt.</strong>
-          Sie erscheinen als „Privatperson“ und fließen ausschließlich in
-          Zählungen ein. Im Zweifel wird ein Name als Privatperson
-          behandelt.
+          Ihre Stellungnahmen erscheinen „Ohne Namen“ und fließen
+          ausschließlich in Zählungen ein. Im Zweifel steht eine
+          Stellungnahme ohne Namen – auch die einer Organisation, die der
+          Monitor nicht sicher als solche erkennt.
         </li>
         <li>
           Namentlich genannt werden Organisationen – Kammern, Verbände,
