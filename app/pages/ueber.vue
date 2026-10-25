@@ -1,4 +1,7 @@
 <script setup lang="ts">
+import { LAND_CODES, LAND_NAME } from '#shared/utils/laender'
+import { feedUrlsOf } from '~/composables/useFeedUrls'
+
 usePageSeo({
   title: 'Über das Projekt',
   description:
@@ -6,6 +9,7 @@ usePageSeo({
 })
 
 const { webcalUrl, googleCalUrl, icsDisplayUrl } = useFeedUrls()
+const { siteUrl } = useRuntimeConfig().public
 </script>
 
 <template>
@@ -75,11 +79,17 @@ const { webcalUrl, googleCalUrl, icsDisplayUrl } = useFeedUrls()
         >zu Google Kalender hinzufügen</ExternalLink>
         – oder die Adresse
         <span class="select-all font-medium text-ink">{{ icsDisplayUrl }}</span>
-        manuell als Kalender-Abo eintragen. Wichtig: abonnieren, nicht
-        importieren – nur ein Abo aktualisiert sich automatisch, wenn
-        Fristen dazukommen oder verlängert werden. Beides funktioniert ohne
+        manuell als Kalender-Abo eintragen. Beides funktioniert ohne
         Registrierung, mit dem Kalender oder Feed-Reader, den man ohnehin
         nutzt.
+      </p>
+      <p>
+        Feed und Kalender oben gelten für die Entwürfe des Bundes. Jedes Land,
+        das der Monitor liest, hat einen eigenen:
+        <template v-for="(land, i) in LAND_CODES" :key="land"><template v-if="i">, </template>{{ LAND_NAME[land] }}
+          (<ExternalLink :href="`/feed.xml?quelle=${land}`" class="link-inline">RSS</ExternalLink>,
+          <a :href="feedUrlsOf(siteUrl, land).webcalUrl" class="link-inline">Kalender</a>)</template>.
+        Über den Listen wählt man die Quelle des Abos direkt vor den Links.
       </p>
     </ProseSection>
 

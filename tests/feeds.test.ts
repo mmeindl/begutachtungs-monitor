@@ -1,4 +1,5 @@
 import { describe, expect, it } from 'vitest'
+import type { LandConsultation } from '../shared/types'
 import { draftSummary as draft, risConsultation } from './helpers/builders'
 import {
   bodyEtag,
@@ -386,5 +387,29 @@ describe('buildIcsCalendar — a Land’s draft (22.10.2026)', () => {
     expect(ics).toContain('UID:land-ooe-2026-16124@begutachtungs-monitor.at')
     expect(ics).toContain('URL:https://begutachtungs-monitor.at/entwuerfe/oberoesterreich/2026-16124')
     expect(ics).toContain('DTSTART;VALUE=DATE:20261109')
+  })
+})
+
+describe('a Land\'s own feed and calendar (25.10.2026)', () => {
+  const land = (over: Partial<LandConsultation> = {}): LandConsultation => ({
+    id: 't-2026-722', land: 't', kind: 'gesetz', title: 'Gesetz, mit dem das Tiroler Vergabenachprüfungsgesetz 2018 geändert wird',
+    startedAt: '2026-09-28', deadline: '2026-10-30', url: 'https://lte.tirol.gv.at/x', documents: [], active: true, ...over,
+  })
+
+  it('names the Land, points at its own address, and holds only its drafts', () => {
+    const xml = buildRssFeed(SITE, [], undefined, [], { code: 't', items: [land()] })
+    expect(xml).toContain('<title>Begutachtungs-Monitor – Begutachtungen des Landes Tirol</title>')
+    expect(xml).toContain(`href="${SITE}/feed.xml?quelle=t"`)
+    expect(xml.match(/<item>/g)).toHaveLength(1)
+    expect(xml).toContain('/entwuerfe/tirol/2026-722')
+  })
+
+  it('says „Frist unbekannt" where the Land publishes none', () => {
+    const xml = buildRssFeed(SITE, [], undefined, [], { code: 't', items: [land({ deadline: null, fristUnknown: true, kind: 'verordnung' })] })
+    expect(xml).toContain('Frist unbekannt')
+  })
+
+  it('names the calendar after the Land', () => {
+    expect(buildIcsCalendar(SITE, [], [], [land()], 'Begutachtungsfristen – Land Tirol')).toContain('X-WR-CALNAME:Begutachtungsfristen – Land Tirol')
   })
 })

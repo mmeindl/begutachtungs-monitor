@@ -11,14 +11,23 @@
  * code with no items yields a valid empty feed, not an error: a ministry
  * can simply have nothing in the current GP, and a 404 would make
  * readers surface a broken subscription over a quiet one.
+ *
+ * Optional ?quelle=t (or any Land's code) is that Land's feed instead
+ * (`feedSourceOf`, 25.10.2026); without it, the Bund's.
  */
 import { ministryFilterOptions } from '../utils/http/params'
 import { dedupeDraftList } from '../utils/parliament/draftList'
+import { feedSourceOf, landFeedItems } from '../utils/laender/feedSource'
 
 const RESSORT_RE = /^[A-Za-z]{2,20}$/
 
 export default defineEventHandler(async (event) => {
   const siteUrl = useRuntimeConfig(event).public.siteUrl
+  const source = feedSourceOf(event)
+  if (source !== 'bund') {
+    const items = await landFeedItems(source, await getCurrentGp())
+    return respondWithEtag(event, buildRssFeed(siteUrl, [], undefined, [], { code: source, items }), 'application/rss+xml; charset=utf-8')
+  }
   const ressortParam = firstQueryValue(getQuery(event).ressort)
   if (ressortParam !== undefined && !RESSORT_RE.test(ressortParam)) {
     throw createError({ statusCode: 404, statusMessage: 'Unbekanntes Ressort' })

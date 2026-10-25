@@ -594,9 +594,9 @@ const countLabel = computed(() =>
            one is the moment somebody decides „dieses Ressort verfolge ich" —
            and stays outside every live region, so a screen reader does not
            read it out on each keystroke. -->
-      <p class="mt-2 text-sm leading-7 text-ink-muted">
+      <div class="mt-2">
         <SubscribeLinks :ministry="ministry" />
-      </p>
+      </div>
       <!-- THE WAY TO THE SEARCH STOOD HERE UNTIL 21.09.2026 — a link to
            `/suche` plus two sentences on what is different there from the
            field below. It is gone because the field below does both since

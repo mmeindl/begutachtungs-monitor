@@ -4,12 +4,22 @@
  * subscription (all-day events, stable UIDs). Reuses the cached
  * list-81 leaf; the route itself is uncached (architecture.md §5).
  * Calendar apps refresh on a schedule — ETag/304 keeps that cheap.
+ *
+ * Optional ?quelle=t (or any Land's code): that Land's Fristen instead
+ * (`feedSourceOf`, 25.10.2026); without it, the Bund's.
  */
+import { LAND_NAME } from '#shared/utils/laender'
 import { dedupeDraftList } from '../utils/parliament/draftList'
+import { feedSourceOf, landFeedItems } from '../utils/laender/feedSource'
 
 export default defineEventHandler(async (event) => {
   const siteUrl = useRuntimeConfig(event).public.siteUrl
+  const source = feedSourceOf(event)
   const gp = await getCurrentGp()
+  if (source !== 'bund') {
+    const body = buildIcsCalendar(siteUrl, [], [], await landFeedItems(source, gp), `Begutachtungsfristen – Land ${LAND_NAME[source]}`)
+    return respondWithEtag(event, body, 'text/calendar; charset=utf-8')
+  }
   // Verordnungsfristen too — they are deadlines like any other, and this
   // calendar is the account-free substitute for the alerts that are not
   // built (docs/architecture.md §12.3, §12.16).

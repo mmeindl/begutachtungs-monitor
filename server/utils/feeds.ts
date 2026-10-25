@@ -10,7 +10,7 @@
  * readers would surface daily phantom updates). Deterministic bodies are
  * also what make the routes' ETag/304 handling effective.
  */
-import type { DraftSummary, LandConsultation, RisConsultation } from '../../shared/types'
+import type { DraftSummary, LandCode, LandConsultation, RisConsultation } from '../../shared/types'
 import { formatDateDe } from '../../shared/utils/format'
 import { RIS_KIND_LABEL, risFilingNote } from '../../shared/utils/risConsultations'
 import { LAND_NAME, landDraftPath } from '../../shared/utils/laender'
@@ -152,15 +152,19 @@ function landEntry(siteUrl: string, item: LandConsultation): FeedEntry {
   // Where it goes is on the draft's page: an address per office in Wien, a
   // form in Oberösterreich — too varied for one line.
   const filing = 'Stellungnahme direkt an das Land, der Weg steht auf der Entwurfsseite'
+  // A Frist the monitor reckoned from the Land's letter (`deadlineFrom`) says so here too, as on the page.
+  const reckoned = item.deadlineFrom
+    ? ` – Frist vom Monitor gerechnet: ${item.deadlineFrom.weeks} Wochen ab dem Schreiben des Landes vom ${formatDateDe(item.deadlineFrom.letterDate)}; kann um ein, zwei Tage abweichen`
+    : ''
   return {
     uid: landFeedUid(item),
     url: `${siteUrl}${landDraftPath(item.land, item.id)}`,
     title: `${kind}: ${item.title}`,
-    meta: [land, item.deadline ? `Frist bis ${formatDateDe(item.deadline)}` : 'Ohne Frist', filing].join(' · '),
+    meta: [land, item.deadline ? `Frist bis ${formatDateDe(item.deadline)}${item.deadlineFrom ? ' (gerechnet)' : ''}` : item.fristUnknown ? 'Frist unbekannt' : 'Ohne Frist', filing].join(' · '),
     publishedAt: item.startedAt ?? '',
     deadline: item.deadline,
     calendarSummary: `Frist: ${item.title} (${kind}, ${land})`,
-    calendarDescription: `${land} – ${filing}`,
+    calendarDescription: `${land} – ${filing}${reckoned}`,
     tieBreak: item.id,
   }
 }
@@ -268,8 +272,14 @@ export function buildRssFeed(
   items: DraftSummary[],
   ressort?: { code: string; name: string | null },
   risItems: RisConsultation[] = [],
+  /** A Land's own feed (`?quelle=`, 25.10.2026): its drafts alone, under its name. */
+  land?: { code: LandCode; items: LandConsultation[] },
 ): string {
-  const sorted = [...items.map((i) => draftEntry(siteUrl, i)), ...risItems.map((i) => risEntry(siteUrl, i))]
+  const sorted = [
+    ...items.map((i) => draftEntry(siteUrl, i)),
+    ...risItems.map((i) => risEntry(siteUrl, i)),
+    ...(land?.items ?? []).map((i) => landEntry(siteUrl, i)),
+  ]
     .sort((a, b) => b.publishedAt.localeCompare(a.publishedAt) || b.tieBreak.localeCompare(a.tieBreak))
     .slice(0, RSS_MAX_ITEMS)
 
@@ -297,12 +307,16 @@ export function buildRssFeed(
 
   const lastBuild = sorted[0] ? rfc1123(sorted[0].publishedAt) : null
 
-  const channelTitle = ressort
-    ? `Begutachtungs-Monitor – Begutachtungsverfahren (${ressort.name ?? ressort.code})`
-    : 'Begutachtungs-Monitor – Begutachtungsverfahren'
-  const selfUrl = ressort
-    ? `${siteUrl}/feed.xml?ressort=${encodeURIComponent(ressort.code)}`
-    : `${siteUrl}/feed.xml`
+  const channelTitle = land
+    ? `Begutachtungs-Monitor – Begutachtungen des Landes ${LAND_NAME[land.code]}`
+    : ressort
+      ? `Begutachtungs-Monitor – Begutachtungsverfahren (${ressort.name ?? ressort.code})`
+      : 'Begutachtungs-Monitor – Begutachtungsverfahren des Bundes'
+  const selfUrl = land
+    ? `${siteUrl}/feed.xml?quelle=${land.code}`
+    : ressort
+      ? `${siteUrl}/feed.xml?ressort=${encodeURIComponent(ressort.code)}`
+      : `${siteUrl}/feed.xml`
 
   return [
     '<?xml version="1.0" encoding="UTF-8"?>',
@@ -314,7 +328,9 @@ export function buildRssFeed(
     // Parliament's half only when the RIS records joined it, and a channel
     // description that names one half is the same wrong claim the homepage
     // heading carried (docs/architecture.md §12.16).
-    '    <description>Neue Begutachtungsverfahren zu österreichischen Gesetzes- und Verordnungsentwürfen: Fristen, Stellungnahmen und was daraus wurde.</description>',
+    `    <description>${escapeXml(land
+      ? `Neue Begutachtungen des Landes ${LAND_NAME[land.code]} zu Gesetzes- und Verordnungsentwürfen: Fristen und was daraus wurde.`
+      : 'Neue Begutachtungsverfahren zu Gesetzes- und Verordnungsentwürfen des Bundes: Fristen, Stellungnahmen und was daraus wurde.')}</description>`,
     '    <language>de-at</language>',
     `    <atom:link href="${escapeXml(selfUrl)}" rel="self" type="application/rss+xml"/>`,
     ...(lastBuild ? [`    <lastBuildDate>${lastBuild}</lastBuildDate>`] : []),
@@ -434,6 +450,8 @@ export function buildIcsCalendar(
   items: DraftSummary[],
   risItems: RisConsultation[] = [],
   landItems: LandConsultation[] = [],
+  /** The calendar's name: the Bund's, or a Land's own (`?quelle=`, 25.10.2026). */
+  name = 'Begutachtungsfristen',
 ): string {
   const withDeadline = [
     ...items.map((i) => draftEntry(siteUrl, i)),
@@ -449,7 +467,7 @@ export function buildIcsCalendar(
     'PRODID:-//Begutachtungs-Monitor//Fristen//DE',
     'CALSCALE:GREGORIAN',
     'METHOD:PUBLISH',
-    'X-WR-CALNAME:Begutachtungsfristen',
+    `X-WR-CALNAME:${escapeIcsText(name)}`,
     // Refresh hints (RFC 7986 + de-facto): consultation windows run only
     // 2–6 weeks; the clients that honor these must not default to weekly.
     'REFRESH-INTERVAL;VALUE=DURATION:PT12H',

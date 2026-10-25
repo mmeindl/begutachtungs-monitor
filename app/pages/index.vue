@@ -432,9 +432,9 @@ function submitSearch() {
       <!-- `leading-7`: the links are `tap-target` boxes of 28 px in the line,
            so a text-sm line of 20 px made every wrapped line a different
            height on a phone. -->
-      <p class="mt-4 text-sm leading-7 text-ink-secondary">
+      <div class="mt-4">
         <SubscribeLinks />
-      </p>
+      </div>
     </header>
 
     <FetchGate
@@ -524,9 +524,9 @@ function submitSearch() {
                      second set built here: one wording for the same three ways
                      to follow, wherever they stand. `leading-7` for the header's
                      reason, the links are `tap-target` boxes in the line. -->
-                <p class="text-sm leading-7 text-ink-secondary">
+                <div>
                   <SubscribeLinks />
-                </p>
+                </div>
               </EmptyState>
             </div>
           </template>
