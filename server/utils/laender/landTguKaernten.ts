@@ -1319,12 +1319,12 @@ export function ktnTguReading(pages: readonly AnnexPage[], laws: readonly string
 
   const nameOf = (text: string | null) => (text ? laws.find((l) => nameMatches(l, text)) ?? null : null)
   const out: TguParagraph[] = []
-  const reaches: { law: string | null; instruction: string }[] = []
+  const reaches: { law: string | null; instruction: string; repeal?: true }[] = []
   // A law the Novelle repeals whole: its sentence said for that law, as the
   // document prints it (1082/2019). Its §§ the left column does not print.
   for (const a of all) {
     if (!a.repeal || a.instructions.length) continue
-    reaches.push({ law: nameOf(a.title) ?? nameOf(a.named) ?? (a.named ? lawName(a.named) : a.title ? nominative(a.title) : a.artikel), instruction: a.repeal })
+    reaches.push({ law: nameOf(a.title) ?? nameOf(a.named) ?? (a.named ? lawName(a.named) : a.title ? nominative(a.title) : a.artikel), instruction: a.repeal, repeal: true })
   }
   amendments.forEach((a) => {
     if (ofNovelle(a)) {

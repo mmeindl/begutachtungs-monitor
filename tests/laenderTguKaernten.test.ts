@@ -497,7 +497,7 @@ describe('ktnTguReading — a law repealed whole (26.10.2026)', () => {
     ]
     const r = ktnTguReading([page([...leftLaw(), ...right])], ['Kärntner Beispielgesetz'])
     expect(r.paragraphs.map((p) => [p.law, p.number, p.unread ?? false])).toEqual([['Kärntner Beispielgesetz', '7', false]])
-    expect(r.reaches).toEqual([{ law: 'Kärntner Altgesetz', instruction: 'Das Kärntner Altgesetz – K-AG, LGBl. Nr. 1/2000, in der Fassung des Gesetzes LGBl. Nr. 2/2010, tritt mit Inkrafttreten dieses Gesetzes außer Kraft.' }])
+    expect(r.reaches).toEqual([{ law: 'Kärntner Altgesetz', instruction: 'Das Kärntner Altgesetz – K-AG, LGBl. Nr. 1/2000, in der Fassung des Gesetzes LGBl. Nr. 2/2010, tritt mit Inkrafttreten dieses Gesetzes außer Kraft.', repeal: true }])
   })
 })
 

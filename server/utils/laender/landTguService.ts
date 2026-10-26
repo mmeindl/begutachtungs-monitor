@@ -102,7 +102,7 @@ interface TguRead {
   /** False where the draft's own text could not be read: `deletes` then knows nothing, and a date taken from it is a guess. */
   complete?: false
   /** Instructions that reach §§ they do not name, per law (`TguReading`). */
-  reaches?: { law: string | null; instruction: string }[]
+  reaches?: { law: string | null; instruction: string; repeal?: true }[]
   /** Pages of the document the reader did not read (`TguReading`). */
   droppedPages?: number
 }

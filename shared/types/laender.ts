@@ -296,10 +296,10 @@ export interface LandLawDiffResponse {
    * Instructions of the Novelle that reach §§ they do not name — „Im V.
    * Abschnitt wird jeweils …", „Im ganzen Gesetz …" — quoted per law, so
    * the §§ listed are not read as all it changes (26.10.2026); and the
-   * sentence that repeals a law whole, said for that law (26.10.2026). Only
-   * `geltend → entwurf`.
+   * sentence that repeals a law whole, said for that law (26.10.2026;
+   * `repeal`: nothing is left to compose). Only `geltend → entwurf`.
    */
-  reaches?: { law: string | null; instruction: string }[]
+  reaches?: { law: string | null; instruction: string; repeal?: true }[]
   /** Pages of the Land's document the reader did not read; said as the Bund's annex says it (`annexDroppedPagesNote`). */
   droppedPages?: number
 }

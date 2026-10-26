@@ -8,7 +8,7 @@ import { landDiffKey, landExplanationsKey, landLawGroupTitle, landReasoningKey, 
 import { lawStationPairQuestion } from '#shared/utils/lawStations'
 import { displayId, extraHeading, unitName } from '#shared/utils/unitName'
 import { BADGE_CLASS, type DiffBadge, PILL_CLASS, badgeCounts, badgeLabels } from '~/utils/diffBadges'
-import { reachesGroups, withheldGroups } from '~/utils/landWithheld'
+import { reachesGroups, withheldGroups, type Reach } from '~/utils/landWithheld'
 import { annexDroppedPagesNote } from '~/utils/annexNotes'
 import { readsSideBySide, splitSegments } from '~/utils/diffSides'
 import ListBox from '~/components/ui/ListBox.vue'
@@ -191,7 +191,7 @@ const unshownByLaw = computed(() => (data.value && !data.value.available ? withh
 
 /* Instructions that reach §§ they do not name, by the group of their law (26.10.2026); hidden by a search, as the withheld §§. */
 const reachesByGroup = computed(() => {
-  if (!data.value || query.value.trim()) return new Map<string, string[]>()
+  if (!data.value || query.value.trim()) return new Map<string, Reach[]>()
   return reachesGroups(data.value.reaches ?? [], data.value.available ? units.value.map((u) => u.article) : [])
 })
 /* Every law the unshown list names, by §§ or by instruction. */

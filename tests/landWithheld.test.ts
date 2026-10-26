@@ -85,8 +85,10 @@ describe('reachesGroups — instructions said for their law (26.10.2026)', () =>
       { law: 'K', instruction: 'Im V. Abschnitt wird jeweils „a“ durch „b“ ersetzt.' },
       { law: null, instruction: 'Im ganzen Gesetz wird „x“ durch „y“ ersetzt.' },
     ], ['K'])
-    expect([...groups.entries()]).toEqual([['K', ['Im V. Abschnitt wird jeweils „a“ durch „b“ ersetzt.', 'Im ganzen Gesetz wird „x“ durch „y“ ersetzt.']]])
+    expect([...groups.entries()]).toEqual([['K', [{ instruction: 'Im V. Abschnitt wird jeweils „a“ durch „b“ ersetzt.', repeal: false }, { instruction: 'Im ganzen Gesetz wird „x“ durch „y“ ersetzt.', repeal: false }]]])
     expect(reachesNote().after).toBe('Den Wortlaut, der sich daraus ergibt, setzt der Monitor nicht selbst zusammen.')
+    // A law repealed whole leaves no wording to compose: the page says nothing after it (26.10.2026).
+    expect(reachesGroups([{ law: 'M', instruction: 'Das Gesetz M, LGBl. Nr. 1/2000, tritt außer Kraft.', repeal: true }], []).get('M')).toEqual([{ instruction: 'Das Gesetz M, LGBl. Nr. 1/2000, tritt außer Kraft.', repeal: true }])
     expect(quotedInstruction('Der 4. Abschnitt lautet:')).toBe('Der 4. Abschnitt lautet: …')
     expect(quotedInstruction('Im ganzen Gesetz wird „x“ durch „y“ ersetzt.')).toBe('Im ganzen Gesetz wird „x“ durch „y“ ersetzt.')
   })

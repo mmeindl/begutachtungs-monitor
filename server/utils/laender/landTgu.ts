@@ -206,7 +206,7 @@ export function paraId(number: string): string {
  */
 export interface TguReading {
   paragraphs: TguParagraph[]
-  reaches?: { law: string | null; instruction: string }[]
+  reaches?: { law: string | null; instruction: string; repeal?: true }[]
   droppedPages?: number
 }
 

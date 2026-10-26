@@ -141,10 +141,10 @@ export function withheldNotes(items: readonly LandWithheld[], { alone = false } 
  * An instruction of the Novelle that reaches §§ it does not name, said for
  * its law (26.10.2026) — „Im V. Abschnitt wird jeweils …", „Im ganzen Gesetz
  * …", or one that changes another Novelle's article — or the sentence that
- * repeals a law whole (26.10.2026): quoted as the document prints it, so the
- * §§ listed are not read as all it changes. The sentence after it says
- * nothing of §§, since not every such instruction reaches one, and holds
- * where nothing is left to compose.
+ * repeals a law whole: quoted as the document prints it, so the §§ listed
+ * are not read as all it changes. The sentence after it says nothing of §§,
+ * since not every such instruction reaches one — and stands not after a
+ * repeal, where no wording is left to compose (`repeal`, 26.10.2026).
  */
 export function reachesNote(): { lead: string; after: string } {
   return { lead: 'Außerdem ordnet die Novelle an:', after: 'Den Wortlaut, der sich daraus ergibt, setzt der Monitor nicht selbst zusammen.' }
@@ -155,14 +155,18 @@ export function quotedInstruction(instruction: string): string {
   return /:$/.test(instruction.trim()) ? `${instruction.trim()} …` : instruction.trim()
 }
 
-/** The instructions of `reaches` that belong to a group — the law each is said for (`withheldGroups`' rule). */
-export function reachesGroups(reaches: readonly { law: string | null; instruction: string }[], shownLaws: readonly (string | null)[]): Map<string, string[]> {
+/** One instruction as a group lists it: its words, and whether it repeals a law whole. */
+export interface Reach { instruction: string; repeal: boolean }
+
+/** The instructions of `reaches` that belong to a group — the law each is said for (`withheldGroups`' rule), each once. */
+export function reachesGroups(reaches: readonly { law: string | null; instruction: string; repeal?: true }[], shownLaws: readonly (string | null)[]): Map<string, Reach[]> {
   const keys = new Set(shownLaws.map((l) => l ?? ''))
   const only = keys.size === 1 ? [...keys][0]! : null
-  const out = new Map<string, string[]>()
+  const out = new Map<string, Reach[]>()
   for (const r of reaches) {
     const key = r.law ? r.law : (only ?? '')
-    out.set(key, [...new Set([...(out.get(key) ?? []), r.instruction])])
+    const listed = out.get(key) ?? []
+    if (!listed.some((x) => x.instruction === r.instruction)) out.set(key, [...listed, { instruction: r.instruction, repeal: !!r.repeal }])
   }
   return out
 }
