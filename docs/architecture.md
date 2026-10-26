@@ -5358,8 +5358,10 @@ desselben § wörtlich neu setzt (51/ME, „Strafbestimmung") — nur so oft, wi
 die Beilage ihn streicht und neu setzt.
 
 Gemessen über die 148 und 214 Entwürfe, zusammen mit der Beilage-Arbeit des
-Abends (§12.13): gezeigt 2.080 → 2.127 bzw. 551 → 606, „nicht gefunden" 62
-→ 21; von gezeigt zu zurückgehalten nur die zwei §§, die allein gegen ein
+Abends (§12.13), mit dem Prüfstand der Seite offline: gezeigt 2.080 → 2.127
+bzw. 551 → 606, „nicht gefunden" 62 → 21 — über den laufenden Server
+(`accounting.ts`) 2.121 und 606 gezeigt, „nicht gefunden" 5 und 16, keine
+Verletzung, mit dem bekannten Versatz der beiden Instrumente von rund sechs §§; von gezeigt zu zurückgehalten nur die zwei §§, die allein gegen ein
 Inhaltsverzeichnis bestätigt waren. Fehlerinjektion jede Klasse ≥ 95 %
 (Pools 1.006 und 1.349), BGBl-Prüfstand 108 bestätigt, 0 abweichend, eigene
 Abweichung 23 wie zuvor. Offen: Ketten unterhalb des § (ArbVG § 110 Abs. 2a,
