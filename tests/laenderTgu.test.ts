@@ -39,6 +39,21 @@ describe('tguLines', () => {
     expect(l!.neu).toBe('Mitwirkung der Landes')
   })
 
+  it('gives a hyphen that breaks a word at the line\'s end the marks of that word (Oö. 2026-16120, 2023-16043)', () => {
+    // „Gleichbehandlungs-" struck, the rule stopping short of its hyphen.
+    const struck = 'Stelle;die Gleichbehandlungs-'
+    const [a] = tguLines({ items: [run(struck, 0, 100)], rules: [rule(0, 100, 7, 28, 'strike')], glyphs: glyphsOf(struck) })
+    expect(a).toMatchObject({ old: 'Stelle;die Gleichbehandlungs-', neu: 'Stelle;' })
+    // „Leichenbe-" struck, its hyphen underlined.
+    const underlined = 'von Leichenbe-'
+    const [b] = tguLines({ items: [run(underlined, 0, 100)], rules: [rule(0, 100, 4, 13, 'strike'), rule(0, 100, 13, 14, 'under')], glyphs: glyphsOf(underlined) })
+    expect(b).toMatchObject({ old: 'von Leichenbe-', neu: 'von' })
+    // A dash after a space is no word's.
+    const dash = 'neu -'
+    const [c] = tguLines({ items: [run(dash, 0, 100)], rules: [rule(0, 100, 0, 3, 'under')], glyphs: glyphsOf(dash) })
+    expect(c).toMatchObject({ old: '-', neu: 'neu -' })
+  })
+
   it('reads lines top to bottom', () => {
     const page: TguPage = { items: [run('unten', 0, 100), run('oben', 0, 200)], rules: [], glyphs: glyphsOf('unten', 'oben') }
     expect(tguLines(page).map((l) => l.raw)).toEqual(['oben', 'unten'])

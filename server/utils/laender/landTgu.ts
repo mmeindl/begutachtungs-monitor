@@ -96,6 +96,21 @@ function centres(item: TguItem, glyphs: { text: string; widths: number[] }, curs
   return out
 }
 
+/**
+ * A hyphen that breaks a word at the end of a line belongs to that word, and
+ * goes where the word goes (26.10.2026). The document's rule stops short of
+ * it — „Gleichbehandlungs-" struck but its hyphen not (Oö. 2026-16120) — or
+ * underlines it beside a struck word — „Leichenbe-" (2023-16043) — and it
+ * stood alone in the other text: „… Gleichbehandlungsstelle; - 5. …". Seven
+ * lines in six of the 73 documents.
+ */
+function breakHyphen(chars: Char[]): void {
+  let last = chars.length - 1
+  while (last > 0 && chars[last]!.c.trim() === '') last--
+  const before = chars[last - 1]
+  if (last > 0 && chars[last]!.c === '-' && before && /\p{L}/u.test(before.c)) chars[last] = { ...chars[last]!, ins: before.ins, del: before.del }
+}
+
 /** The lines of one page, top to bottom, each character marked as underlined or struck. */
 export function tguLines(page: TguPage): TguLine[] {
   const visible = page.glyphs.filter((g) => g.u.length === 1 && g.u !== ' ')
@@ -123,6 +138,7 @@ export function tguLines(page: TguPage): TguLine[] {
       ;[...it.s].forEach((c, k) => chars.push({ c, ins: under(cx[k]!, UNDERLINE), del: under(cx[k]!, STRIKE) }))
       lastEnd = it.x + it.w
     }
+    breakHyphen(chars)
     const text = (keep: (c: Char) => boolean) => {
       // Where a left-out run held a space, its neighbours stay two words:
       // the document prints an added „der Landes-Personalvertretung" and a
