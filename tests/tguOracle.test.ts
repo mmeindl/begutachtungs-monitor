@@ -757,6 +757,32 @@ describe('rowsByParagraph — a § filed under the designation it carries after 
     expect(paragraphRows(grouped, '44g').map((r) => r.current)).toEqual(['§ 44g. Die Kosten der Verlautbarung sind von Amts wegen zu tragen.'])
   })
 
+  it('reads a struck § and the new one it becomes, both under one heading, as the § renamed (51/ME XXVIII: § 10 → § 17)', () => {
+    // „Der bisherige § 10 wird zu § 17 und lautet samt Überschrift": the
+    // annex strikes § 10 whole and prints § 17 as new, the heading on both.
+    const grouped = rowsByParagraph([
+      moved('Strafbestimmung', '', null, null),
+      moved('§ 10. Wer gegen § 7 verstößt, ist zu bestrafen.', '', '§ 10.', null),
+      moved('', 'Strafbestimmung', null, '§ 17.'),
+      moved('', '§ 17. Wer gegen § 7 oder § 9 verstößt, ist zu bestrafen.', '§ 17.', '§ 17.'),
+    ].map((r, i) => ({ ...r, para: i < 2 ? '§ 10.' : '§ 17.' })))
+    const rows = paragraphRows(grouped, '17', undefined, '10')
+    expect(rows).toHaveLength(4)
+    const before = 'Strafbestimmung Wer gegen § 7 verstößt, ist zu bestrafen.'
+    expect(oracleVerdict('17', before, 'Strafbestimmung Wer gegen § 7 oder § 9 verstößt, ist zu bestrafen.', rows).verdict).toBe('bestätigt')
+    // The struck text itself still has to be gone, and the heading may not stand twice.
+    expect(oracleVerdict('17', before, 'Strafbestimmung Wer gegen § 7 verstößt, ist zu bestrafen. Wer gegen § 7 oder § 9 verstößt, ist zu bestrafen.', rows)).toMatchObject({ verdict: 'widersprochen', note: expect.stringMatching(/Gestrichene Fassung/) })
+    expect(oracleVerdict('17', before, 'Strafbestimmung Strafbestimmung Wer gegen § 7 oder § 9 verstößt, ist zu bestrafen.', rows)).toMatchObject({ verdict: 'widersprochen' })
+  })
+
+  it('reads a struck text a CHANGED row proposes in place of another as struck still (121/ME XXVIII § 154)', () => {
+    // „§ 154 Abs. 1 sowie die Absatzbezeichnung ‚(2)' entfallen": the annex
+    // sets the old Abs. 2 in place of Abs. 1 and strikes it below. A result
+    // that kept Abs. 1 and dropped only its number is not what it says.
+    const rows = [pair('§ 154. (1) Eine Untersuchung hat zu unterbleiben.', '§ 154. Strafgefangene sind vorzubereiten.', '§ 154.'), pair('(2) Strafgefangene sind vorzubereiten.', '')]
+    expect(oracleVerdict('154', 'Eine Untersuchung hat zu unterbleiben. Strafgefangene sind vorzubereiten.', 'Eine Untersuchung hat zu unterbleiben. Strafgefangene sind vorzubereiten.', rows).verdict).toBe('widersprochen')
+  })
+
   it('a new § the annex prints beside another one\'s standing text keeps its right column only (2/ME XXVIII: § 1a)', () => {
     const grouped = rowsByParagraph([
       moved('(1) bis (2) …', '§ 1a. Im Sinne dieses Bundesgesetzes bedeutet:', '§ 2.', '§ 1a.'),

@@ -462,6 +462,13 @@ function key(t: string): string {
   return stripMarkers(sameText(t)).replace(/[\s"'„“‚‘\-‐‑–—&]/g, '')
 }
 
+/** How often `needle` stands in `hay`, without overlaps. */
+function occurrences(hay: string, needle: string): number {
+  let n = 0
+  for (let at = hay.indexOf(needle); at >= 0; at = hay.indexOf(needle, at + needle.length)) n++
+  return n
+}
+
 /** What the comparison form and the word list both drop: the copy's spellings of the same text. */
 function sameText(t: string): string {
   return t.replace(RIS_NOTE_RE, ' ').replace(PLACEHOLDER_RE, 'XXX').replace(REPEALED_RE, ' ')
@@ -1178,7 +1185,23 @@ export function oracleVerdict(id: string, before: string | null, got: string, ro
     // read. What it has to say is the mirror image: the text must be *gone*
     // from the result (23.09.2026).
     if (!row.proposed) {
-      if (row.current && unaccountedStretch(gotKey, row.current) === null) {
+      // Unless a row of its own inserts the very same text again: 51/ME
+      // XXVIII strikes the old § 10 whole and prints the § 17 it becomes as
+      // new, both under „Strafbestimmung". To the engine they are one §
+      // renamed (`paragraphRows`, `origin`), and the heading it keeps is the
+      // one the annex proposes — not a deletion left standing (26.10.2026).
+      // Only an inserted row, and only as often as the annex says: a CHANGED
+      // row proposing that text sets it in place of another one („§ 154
+      // Abs. 1 sowie die Absatzbezeichnung ‚(2)' entfallen", 121/ME), and a
+      // result that holds it more often than the standing text did, less
+      // what the annex strikes and plus what it inserts, kept the deletion
+      // after all. Counted over the whole §, because a heading recurs in its
+      // text: „Vollziehung" over „Mit der Vollziehung … ist betraut".
+      const struck = key(row.current)
+      const strikes = substantive.filter((r) => !r.proposed && key(r.current) === struck).length
+      const inserts = substantive.filter((r) => r.change === 'inserted' && key(r.proposed) === struck).length
+      const again = struck !== '' && inserts > 0 && occurrences(gotKey, struck) <= occurrences(beforeKey, struck) - strikes + inserts
+      if (row.current && !again && unaccountedStretch(gotKey, row.current) === null) {
         return { para: id, verdict: 'widersprochen', rows: rows.length, note: `Gestrichene Fassung steht noch im Ergebnis: "${row.current.slice(0, 60)}"` }
       }
       continue
