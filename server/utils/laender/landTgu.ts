@@ -768,12 +768,27 @@ export function bareLawName(name: string): string {
  * Reinhaltegesetz geändert wird" → one; „…, mit dem das Landesbeamten-
  * Pensionsgesetz, das Salzburger Objektivierungsgesetz 2017 und das …
  * geändert werden" → each.
+ *
+ * An article of a Novelle among them names the Novelle by its own „mit dem
+ * … geändert wird": „…, das Kärntner Schulbaufondsgesetz, Art. II des
+ * Gesetzes, mit dem das Kärntner Schulbaufondsgesetz geändert wird, das
+ * Kärntner Landesrechnungshofgesetz 1996, …" (Kärnten 842/2022). Read as the
+ * end of the list, it left two laws, the second „Kärntner
+ * Schulbaufondsgesetz, Art. II des Gesetzes, mit dem das Kärntner
+ * Schulbaufondsgesetz" — no Artikel found its law by that, and §§ 1, 3 and 4
+ * were named instead of shown (27.10.2026). It is one item of the list now.
  */
 export function amendedLawsOf(title: string): string[] {
-  const m = /mit de[rm] ((?:das|die|der) .+?) geändert (?:wird|werden)/.exec(title)
+  // The article's own clause, kept from the list's „geändert werden" by its spaces.
+  const kept = title.replace(NOVELLE_ARTICLE_RE, (_, article: string, clause: string) => `${article}\u0001${clause.replace(/ /g, '\u0002')}`)
+  const m = /mit de[rm] ((?:das|die|der) .+?) geändert (?:wird|werden)/.exec(kept)
   if (!m) return []
-  return m[1]!.split(/,\s*(?=(?:das|die|der)\s)|\s+und\s+(?=(?:das|die|der)\s)/).map((x) => lawName(x.replace(/^(?:das|die|der)\s+/, ''))).filter(Boolean)
+  return m[1]!.split(/(?:,\s*|\s+und\s+)(?=(?:das|die|der)\s|Art(?:ikel|\.)\s*[IVXL\d])/)
+    .map((x) => lawName(x.replace(/^(?:das|die|der)\s+/, '').replaceAll('\u0001', ', ').replaceAll('\u0002', ' ')))
+    .filter(Boolean)
 }
+/** „Art. II des Gesetzes, mit dem das Kärntner Schulbaufondsgesetz geändert wird" inside a title's list of laws. */
+const NOVELLE_ARTICLE_RE = /(Art(?:ikel|\.)\s*[IVXL\d]+[a-z]?\s+des\s+(?:Landes)?[Gg]esetzes),\s+(mit\s+de[mr]\s+[^,]+?\s+geändert\s+wird)(?=,|\s+und\s)/g
 
 /** The one law a draft amends; null for a package. */
 export function amendedLawOf(title: string): string | null {

@@ -264,6 +264,13 @@ describe('two-column Textgegenüberstellung (Wien)', () => {
       .toEqual(['Dienstordnung 1994', 'Besoldungsordnung 1994', 'Wiener Bedienstetengesetz'])
   })
 
+  it('reads an article of a Novelle among the laws as one item, its own „geändert wird" included (Kärnten 842/2022, 227/2022; 27.10.2026)', () => {
+    expect(amendedLawsOf('Gesetz, mit dem die Kärntner Landesverfassung, das Kärntner Schulbaufondsgesetz, Art. II des Gesetzes, mit dem das Kärntner Schulbaufondsgesetz geändert wird, das Kärntner Landesrechnungshofgesetz 1996, das Kärntner Regionalfondsgesetz und das Kärntner Schulgesetz geändert werden'))
+      .toEqual(['Kärntner Landesverfassung', 'Kärntner Schulbaufondsgesetz', 'Art. II des Gesetzes, mit dem das Kärntner Schulbaufondsgesetz geändert wird', 'Kärntner Landesrechnungshofgesetz 1996', 'Kärntner Regionalfondsgesetz', 'Kärntner Schulgesetz'])
+    expect(amendedLawsOf('Gesetz, mit dem das Kärntner Wohnbauförderungsgesetz 2017, Artikel II des Gesetzes LGBl. Nr. 93/2019 und Artikel II des Gesetzes LGBl. Nr. 99/2021 geändert werden'))
+      .toEqual(['Kärntner Wohnbauförderungsgesetz 2017', 'Artikel II des Gesetzes LGBl. Nr. 93/2019', 'Artikel II des Gesetzes LGBl. Nr. 99/2021'])
+  })
+
   it('files §§ under the law whose name heads them in a package', () => {
     const paras = columnParagraphs([
       { kind: 'pair', law: null, heading: 'Landesbeamten-Pensionsgesetz', para: '§ 37o.', current: '', proposed: '§ 37o. (1) Neu.', changed: true },
