@@ -60,6 +60,8 @@ export async function styledPages(bytes: Uint8Array): Promise<StyledPages> {
     // The operator list of a long document is the bulk of its memory (`landTguPdf.ts`).
     page.cleanup()
   }
-  await doc.cleanup()
+  // Ended, not only cleaned up — nothing returned holds a pdf.js object — and
+  // the way unpdf ends every document it opens itself (`withDocument`).
+  await doc.loadingTask.destroy()
   return { pages, bold }
 }
