@@ -308,6 +308,13 @@ export interface LandLawDiffResponse {
    * named as a group of its own (`enactedNote`). Only `geltend → entwurf`.
    */
   enacted?: string[]
+  /**
+   * The renumberings the draft's own text orders — „Der bisherige § 54a
+   * erhält die Paragraphenbezeichnung „§ 54b"" — where the Land's
+   * Textgegenüberstellung prints no mapping and the comparison goes by
+   * number (26.10.2026; `renumberedNote`). Only `geltend → entwurf`.
+   */
+  renumbered?: string[]
 }
 
 /**

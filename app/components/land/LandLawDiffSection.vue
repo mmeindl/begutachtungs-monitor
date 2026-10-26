@@ -8,7 +8,7 @@ import { landDiffKey, landExplanationsKey, landLawGroupTitle, landReasoningKey, 
 import { lawStationPairQuestion } from '#shared/utils/lawStations'
 import { displayId, extraHeading, unitName } from '#shared/utils/unitName'
 import { BADGE_CLASS, type DiffBadge, PILL_CLASS, badgeCounts, badgeLabels } from '~/utils/diffBadges'
-import { reachesGroups, withheldGroups, type Reach } from '~/utils/landWithheld'
+import { reachesGroups, renumberedNote, withheldGroups, type Reach } from '~/utils/landWithheld'
 import { annexDroppedPagesNote } from '~/utils/annexNotes'
 import { readsSideBySide, splitSegments } from '~/utils/diffSides'
 import ListBox from '~/components/ui/ListBox.vue'
@@ -201,6 +201,8 @@ const unshownLaws = computed(() => [...new Set([...unshownByLaw.value.keys(), ..
 
 /* Pages of the document the reader did not read: said above the list, as the Bund's annex says it. */
 const droppedNote = computed(() => annexDroppedPagesNote(data.value?.droppedPages ?? 0))
+/* A draft that renumbers where the Land's document prints no mapping: the list goes by number (26.10.2026). */
+const renumberNote = computed(() => renumberedNote(data.value?.renumbered ?? []))
 
 /* One group per Gesetz of the package, folded; runs of unchanged
    instructions fold into one line — as on the Ministerialentwurf's page. */
@@ -280,7 +282,7 @@ const hasUnits = computed(() => units.value.length > 0)
       <!-- Read, and none of it shown: every § is named all the same, by law
            and with why (25.10.2026) — Kärnten 15193/2025 said „keine
            Paragraphen" and named none of the 21 its Novelle changes. -->
-      <ComparisonCaveats v-if="droppedNote" :notes="[droppedNote]" class="mt-3" />
+      <ComparisonCaveats v-if="droppedNote || renumberNote" :notes="[droppedNote, renumberNote]" class="mt-3" />
       <ListBox v-if="unshownLaws.length" class="mt-3">
         <DiffGroup
           v-for="law in unshownLaws"
@@ -301,7 +303,7 @@ const hasUnits = computed(() => units.value.length > 0)
            Begutachtung (2023-16039 and 2024-16064, LGBl. Nr. 95/2024). The
            one sentence that stays above, in the Bund's form for a warning
            that what follows may be misread. -->
-      <ComparisonCaveats v-if="data.sharedWith.length || droppedNote" :notes="[droppedNote]" class="mb-4">
+      <ComparisonCaveats v-if="data.sharedWith.length || droppedNote || renumberNote" :notes="[droppedNote, renumberNote]" class="mb-4">
         <p v-if="data.sharedWith.length">
           Dieselbe Kundmachung setzt auch
           <template v-for="(other, i) in data.sharedWith" :key="other.path"><template v-if="i > 0">{{ i === data.sharedWith.length - 1 ? ' und ' : ', ' }}</template>den Entwurf

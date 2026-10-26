@@ -32,7 +32,7 @@ import { safeExternalUrl } from '#shared/utils/safeExternalUrl'
 import { formatDateDe } from '#shared/utils/format'
 import { diffLawUnits, summarizeDiff } from '../diff/lawDiff'
 import { lawInForce, paragraphByPhrase, paragraphText } from './landKons'
-import { amendedLawsOf, bareLawName, columnParagraphs, draftDeletes, joinLines, mergeParagraphs, onlyElided, paraId, tguParagraphKey, searchPhrase, standsInRis, tguLines, tguParagraphs, tguUnits, withHeadings, type ColumnRow, type TguParagraph, type TguReading } from './landTgu'
+import { amendedLawsOf, bareLawName, columnParagraphs, draftDeletes, joinLines, mergeParagraphs, onlyElided, paraId, renumberingSentences, tguParagraphKey, searchPhrase, standsInRis, tguLines, tguParagraphs, tguUnits, withHeadings, type ColumnRow, type TguParagraph, type TguReading } from './landTgu'
 import { draftSource, landPdfBytes } from './texts/read'
 import { tguPages } from './landTguPdf'
 import { pagesOf } from '../annex/annexPdfPages'
@@ -107,6 +107,8 @@ interface TguRead {
   droppedPages?: number
   /** Laws the Novelle enacts anew, whose text the document does not print (`TguReading`). */
   enacted?: string[]
+  /** The renumberings the draft's own text orders, where the document prints no mapping (`renumberingSentences`). */
+  renumbered?: string[]
 }
 
 /** The draft's own text, or null where reading it failed — which `deletes` must not take for a draft without repeals. */
@@ -147,6 +149,7 @@ async function readOoe(detail: LandDraftRecord): Promise<TguRead | string> {
       date,
       laws,
       deletes: (n) => draftDeletes(draftText ?? '', n),
+      renumbered: renumberingSentences(draftText ?? ''),
       ...(draftText === null ? { complete: false as const } : {}),
     }
   }
@@ -258,6 +261,7 @@ async function readWien(detail: LandDraftRecord): Promise<TguRead | string> {
     date: doc.date ?? detail.draft.startedAt ?? new Date().toISOString().slice(0, 10),
     laws,
     deletes: (n) => draftDeletes(draftText, n),
+    renumbered: renumberingSentences(draftText),
   }
 }
 
@@ -302,6 +306,7 @@ async function readSalzburg(detail: LandDraftRecord): Promise<TguRead | string> 
     date: doc.date ?? detail.draft.startedAt ?? new Date().toISOString().slice(0, 10),
     laws,
     deletes: (n) => draftDeletes(draftText ?? '', n),
+    renumbered: renumberingSentences(draftText ?? ''),
     ...(draftText === null ? { complete: false as const } : {}),
   }
 }
@@ -421,6 +426,7 @@ export async function compareTgu(land: LandCode, detail: LandDraftDetail): Promi
     ...(got.reaches?.length ? { reaches: got.reaches } : {}),
     ...(got.droppedPages ? { droppedPages: got.droppedPages } : {}),
     ...(got.enacted?.length ? { enacted: got.enacted } : {}),
+    ...(got.renumbered?.length ? { renumbered: got.renumbered } : {}),
   }
   if (!paragraphs.length) {
     return whole(unavailable('In der Textgegenüberstellung fand der Monitor keine Paragraphen, die er lesen kann.', { fromDocument, ...beside }))

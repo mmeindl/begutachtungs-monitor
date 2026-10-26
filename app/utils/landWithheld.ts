@@ -159,6 +159,17 @@ export function enactedNote(): string {
   return 'Dieses Gesetz erlässt der Entwurf neu. Seinen ganzen Text enthält der Entwurf selbst, nicht die Textgegenüberstellung; der Monitor vergleicht hier nur Änderungen bestehender Gesetze.'
 }
 
+/**
+ * Where the draft renumbers §§ and the Land's document prints no mapping
+ * (`LandLawDiffResponse.renumbered`, 26.10.2026): said above the list, as a
+ * warning that a § may stand beside the one that takes its number. One
+ * sentence of the draft's quoted, as it prints it.
+ */
+export function renumberedNote(sentences: readonly string[]): string | null {
+  if (!sentences.length) return null
+  return `Die Novelle nummeriert Paragraphen um, etwa: „${sentences[0]}“. Der Monitor stellt die Paragraphen hier nach ihrer Nummer gegenüber, nicht nach ihrer Herkunft.`
+}
+
 /** An instruction as the note quotes it: one whose text follows its colon („Der 4. Abschnitt lautet:") with the text left out, „…". */
 export function quotedInstruction(instruction: string): string {
   return /:$/.test(instruction.trim()) ? `${instruction.trim()} …` : instruction.trim()

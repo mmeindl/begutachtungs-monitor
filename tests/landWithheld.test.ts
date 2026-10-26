@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { enactedNote, quotedInstruction, reachesGroups, reachesNote, withheldGroups, withheldNotes } from '../app/utils/landWithheld'
+import { enactedNote, quotedInstruction, reachesGroups, reachesNote, renumberedNote, withheldGroups, withheldNotes } from '../app/utils/landWithheld'
 
 describe('withheldGroups — where the page counts a § it does not show', () => {
   it('files a § of another law under that law, not under the one group shown (Kärnten 38532/2024)', () => {
@@ -75,6 +75,13 @@ describe('withheldNotes — a renumbered § (26.10.2026)', () => {
   it('carries the number it has in force beside the one it gets, for „§ 13 → § 9"', () => {
     const notes = withheldNotes([{ law: 'O', id: '§9', fromId: '§13', reason: 'unsure' }, { law: 'O', id: '§7', reason: 'unsure' }])
     expect(notes.map((n) => [n.ids, n.fromIds])).toEqual([[['§9', '§7'], ['§13', null]]])
+  })
+})
+
+describe('renumberedNote — a draft that renumbers where no mapping is printed (26.10.2026)', () => {
+  it('quotes the first of the draft\'s renumberings and says the list goes by number, and says nothing without one', () => {
+    expect(renumberedNote(['Der bisherige § 54a erhält die Paragraphenbezeichnung „§ 54b“'])).toBe('Die Novelle nummeriert Paragraphen um, etwa: „Der bisherige § 54a erhält die Paragraphenbezeichnung „§ 54b““. Der Monitor stellt die Paragraphen hier nach ihrer Nummer gegenüber, nicht nach ihrer Herkunft.')
+    expect(renumberedNote([])).toBeNull()
   })
 })
 

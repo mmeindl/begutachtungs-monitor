@@ -910,6 +910,20 @@ export function amendedLawOf(title: string): string | null {
 }
 
 /**
+ * „Der bisherige § 54a erhält die Paragraphenbezeichnung „§ 54b"", „die §§
+ * 37 und 38 erhalten die Paragraphenbezeichnungen „§ 24" bzw „§ 25"": the
+ * renumberings a draft's own text orders, each once, as it prints them
+ * (26.10.2026). For a Textgegenüberstellung that prints no mapping of its
+ * own — Salzburg's, Wien's, Oö. 2021-16029's two columns — the page says
+ * that the Novelle renumbers while the comparison goes by number.
+ */
+export function renumberingSentences(draftText: string): string[] {
+  const t = draftText.replace(/\s+/g, ' ')
+  return [...new Set([...t.matchAll(RENUMBERING_RE)].map((m) => m[0].replace(/^die\b/, 'Die').trim()))]
+}
+const RENUMBERING_RE = /(?:(?:Der|Die|die)\s+bisherigen?\s+|(?:Die|die)\s+)?§§?\s*\d+[a-z]*(?:\s*(?:,|und|bis)\s*\d+[a-z]*)*\s+erh(?:ält|alten)\s+die\s+(?:Paragraphen|Paragrafen)?[Bb]ezeichnung(?:en)?\s+„§[^“”"]*[“”"](?:\s*(?:bzw\.?|bis|und)\s*„§[^“”"]*[“”"])*/g
+
+/**
  * Does the draft itself delete this §? A two-column reading that finds the
  * right column empty is shown as „entfallen" only when the draft says so —
  * an empty column may as well be one the reader did not see.

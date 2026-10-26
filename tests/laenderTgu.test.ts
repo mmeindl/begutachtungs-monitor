@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import { draftNameOf, kaerntenDated, readableLawName, tirolDated, wienTguStart } from '../server/utils/laender/landTguService'
-import { amendedLawOf, amendedLawsOf, columnParagraphs, draftDeletes, joinLines, mergeParagraphs, onlyElided, searchPhrase, shareInRis, STANDS_IN_RIS, standsInRis, tguLines, tguParagraphs, tguUnits, withHeadings, type TguLine, type TguPage } from '../server/utils/laender/landTgu'
+import { amendedLawOf, amendedLawsOf, columnParagraphs, draftDeletes, joinLines, mergeParagraphs, onlyElided, renumberingSentences, searchPhrase, shareInRis, STANDS_IN_RIS, standsInRis, tguLines, tguParagraphs, tguUnits, withHeadings, type TguLine, type TguPage } from '../server/utils/laender/landTgu'
 
 /** A run at (x, y), each character 5 pt wide; glyph widths equal, so centres fall evenly. */
 function run(s: string, x: number, y: number) {
@@ -380,6 +380,12 @@ describe('two-column Textgegenüberstellung (Wien)', () => {
       { kind: 'pair', law: null, para: 'Artikel 16', current: 'Artikel 16 Landtag (1) Alt.', proposed: 'Artikel 16 Landtag (1) Neu.', changed: true },
     ], ['Salzburger Landes-Verfassungsgesetz 1999'])
     expect(paras).toEqual([{ law: 'Salzburger Landes-Verfassungsgesetz 1999', number: 'Art. 16', old: ['Landtag (1) Alt.'], neu: ['Landtag (1) Neu.'], changed: true }])
+  })
+
+  it('finds the renumberings a draft orders in its own text, each once (Salzburg 32025, 18554; 26.10.2026)', () => {
+    const text = '4. Der bisherige § 54a erhält die Paragraphenbezeichnung „§ 54b“ und lautet: … 7. Die §§ 37 und 38 erhalten die Paragraphenbezeichnungen „§ 24“ bzw „§ 25“. Zu Z 4: Der bisherige § 54a erhält die Paragraphenbezeichnung „§ 54b“.'
+    expect(renumberingSentences(text)).toEqual(['Der bisherige § 54a erhält die Paragraphenbezeichnung „§ 54b“', 'Die §§ 37 und 38 erhalten die Paragraphenbezeichnungen „§ 24“ bzw „§ 25“'])
+    expect(renumberingSentences('In § 25 Abs 2 erfolgte eine Umnummerierung der lit g.')).toEqual([])
   })
 
   it('takes a § as deleted only where the draft says so', () => {
