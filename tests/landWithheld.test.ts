@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { enactedNote, quotedInstruction, reachesGroups, reachesNote, renumberedNote, withheldGroups, withheldNotes } from '../app/utils/landWithheld'
+import { enactedNote, moveTargets, quotedInstruction, reachesGroups, reachesNote, renumberedNote, withheldGroups, withheldNotes } from '../app/utils/landWithheld'
 
 describe('withheldGroups — where the page counts a § it does not show', () => {
   it('files a § of another law under that law, not under the one group shown (Kärnten 38532/2024)', () => {
@@ -75,6 +75,20 @@ describe('withheldNotes — a renumbered § (26.10.2026)', () => {
   it('carries the number it has in force beside the one it gets, for „§ 13 → § 9"', () => {
     const notes = withheldNotes([{ law: 'O', id: '§9', fromId: '§13', reason: 'unsure' }, { law: 'O', id: '§7', reason: 'unsure' }])
     expect(notes.map((n) => [n.ids, n.fromIds])).toEqual([[['§9', '§7'], ['§13', null]]])
+  })
+
+  it('names the § in force under a number another § moves to „(alt)", and not one printed as new (Tirol 575)', () => {
+    const movedTo = moveTargets([{ id: '§33', fromId: '§34' }, { id: '§5', fromId: '§5' }, { id: '§6' }])
+    expect([...movedTo]).toEqual(['§33'])
+    const notes = withheldNotes([
+      { law: 'T', id: '§33', reason: 'unsure' },
+      { law: 'T', id: '§12', reason: 'unsure' },
+      { law: 'T', id: '§33', fromId: '§34', reason: 'unsure' },
+      { law: 'T', id: '§33', reason: 'inserted' },
+    ], { movedTo })
+    expect(notes.map((n) => [n.cause, n.inForce])).toEqual([['inserted', [false]], ['unsure', [true, false, false]]])
+    // Without a move to its number, a § is named by its number alone.
+    expect(withheldNotes([{ law: 'T', id: '§33', reason: 'unsure' }])[0]!.inForce).toEqual([false])
   })
 })
 

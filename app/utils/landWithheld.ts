@@ -117,10 +117,28 @@ const NOTES: Record<WithheldCause, { lead: string; one: string; many: string }> 
 const ORDER: WithheldCause[] = ['unchecked', 'standing', 'inserted', 'elided', 'deletion', 'twice', 'unsure', 'division', 'gap', 'wording', 'unread', 'annex', 'title']
 
 /**
+ * The numbers other §§ of a group move to: „§ 34 → § 33" makes § 33 one
+ * (26.10.2026). A § of the group that keeps such a number without moving is
+ * the one in force there, struck or not read, and the page names it „§ 33
+ * (alt)" (`IN_FORCE_MARK`) — beside the moved one it read as the same §
+ * (Tirol 575; Oö. 16120's struck §§ 9 to 12 beside §§ 13 to 16, which
+ * become §§ 9 to 12).
+ */
+export function moveTargets(entries: readonly { id: string; fromId?: string | null }[]): Set<string> {
+  return new Set(entries.filter((e) => e.fromId && e.fromId !== e.id).map((e) => e.id))
+}
+
+/** What follows such a §'s number: „§ 33 (alt)". */
+export const IN_FORCE_MARK = '(alt)'
+
+/**
  * The withheld §§ of one group by cause, in `ORDER`, each with its words.
  * `alone`: no § of the comparison is shown, so nothing is „ebenfalls" changed.
+ * `movedTo`: the group's `moveTargets` — a § withheld under one of those
+ * numbers that does not move itself, and that the document does not print
+ * as new, is the one in force there (`inForce`).
  */
-export function withheldNotes(items: readonly LandWithheld[], { alone = false } = {}): { cause: WithheldCause; ids: string[]; fromIds: (string | null)[]; lead: string; text: string; pronoun: 'ihn' | 'sie' }[] {
+export function withheldNotes(items: readonly LandWithheld[], { alone = false, movedTo = new Set<string>() }: { alone?: boolean; movedTo?: ReadonlySet<string> } = {}): { cause: WithheldCause; ids: string[]; fromIds: (string | null)[]; inForce: boolean[]; lead: string; text: string; pronoun: 'ihn' | 'sie' }[] {
   const byCause = new Map<WithheldCause, LandWithheld[]>()
   for (const w of items) {
     const cause: WithheldCause = w.reason ?? 'standing'
@@ -133,7 +151,8 @@ export function withheldNotes(items: readonly LandWithheld[], { alone = false } 
     const lead = alone ? note.lead.replace(/^Ebenfalls geändert/, 'Geändert') : note.lead
     // „Die Textgegenüberstellung des Landes zeigt ihn" — a Paragraph, an Artikel; an Anlage is „sie".
     // `fromIds`: the number a renumbered § has in force, named „§ 13 → § 9" as the comparison shows it (26.10.2026).
-    return { cause, ids, fromIds: listed.map((w) => w.fromId ?? null), lead, text: ids.length === 1 ? note.one : note.many, pronoun: ids.length === 1 && cause !== 'annex' ? 'ihn' as const : 'sie' as const }
+    const inForce = listed.map((w) => !w.fromId && w.reason !== 'inserted' && movedTo.has(w.id))
+    return { cause, ids, fromIds: listed.map((w) => w.fromId ?? null), inForce, lead, text: ids.length === 1 ? note.one : note.many, pronoun: ids.length === 1 && cause !== 'annex' ? 'ihn' as const : 'sie' as const }
   })
 }
 

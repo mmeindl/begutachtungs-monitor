@@ -8,7 +8,7 @@ import { landDiffKey, landExplanationsKey, landLawGroupTitle, landReasoningKey, 
 import { lawStationPairQuestion } from '#shared/utils/lawStations'
 import { displayId, extraHeading, unitName } from '#shared/utils/unitName'
 import { BADGE_CLASS, type DiffBadge, PILL_CLASS, badgeCounts, badgeLabels } from '~/utils/diffBadges'
-import { reachesGroups, renumberedNote, withheldGroups, type Reach } from '~/utils/landWithheld'
+import { IN_FORCE_MARK, moveTargets, reachesGroups, renumberedNote, withheldGroups, type Reach } from '~/utils/landWithheld'
 import { annexDroppedPagesNote } from '~/utils/annexNotes'
 import { readsSideBySide, splitSegments } from '~/utils/diffSides'
 import ListBox from '~/components/ui/ListBox.vue'
@@ -201,6 +201,21 @@ const unshownLaws = computed(() => [...new Set([...unshownByLaw.value.keys(), ..
 
 /* Pages of the document the reader did not read: said above the list, as the Bund's annex says it. */
 const droppedNote = computed(() => annexDroppedPagesNote(data.value?.droppedPages ?? 0))
+/* The numbers §§ move to, per group (26.10.2026): a § struck or withheld
+   under such a number is the one in force there, „§ 33 (alt)" — beside
+   „§ 34 → § 33" it read as the same §. Not narrowed by a search. */
+const movedToByGroup = computed(() => {
+  const out = new Map<string, Set<string>>()
+  const add = (key: string, entries: readonly { id: string; fromId?: string | null }[]) => {
+    for (const id of moveTargets(entries)) out.set(key, (out.get(key) ?? new Set<string>()).add(id))
+  }
+  for (const u of units.value) add(u.article ?? '', [u])
+  const withheld = data.value?.available ? withheldGroups(data.value.withheld, units.value.map((u) => u.article)) : unshownByLaw.value
+  for (const [key, items] of withheld) add(key, items)
+  return out
+})
+const inForceNumber = (u: LawDiffUnit) => u.change === 'removed' && (movedToByGroup.value.get(u.article ?? '')?.has(u.id) ?? false)
+
 /* A renumbering the comparison could not pair old → new: there the list goes by number (26.10.2026). Only beside a list. */
 const renumberNote = computed(() => renumberedNote(data.value?.renumbered ?? []))
 
@@ -293,7 +308,7 @@ const hasUnits = computed(() => units.value.length > 0)
           :open="groupOpen(law)"
           @toggle="toggleGroup(law)"
         >
-          <LandWithheldNotes :items="unshownByLaw.get(law) ?? []" :reaches="reachesByGroup.get(law) ?? []" :enacted="enactedLaws.has(law)" :document-url="data.fromDocument?.url ?? null" alone />
+          <LandWithheldNotes :items="unshownByLaw.get(law) ?? []" :reaches="reachesByGroup.get(law) ?? []" :enacted="enactedLaws.has(law)" :moved-to="movedToByGroup.get(law)" :document-url="data.fromDocument?.url ?? null" alone />
         </DiffGroup>
       </ListBox>
     </template>
@@ -338,7 +353,7 @@ const hasUnits = computed(() => units.value.length > 0)
                text. Named where the header counts it, each cause in its own
                words (`withheldNotes`), with the way to the document that does
                show it — so the §§ shown are not read as all the draft changes. -->
-          <LandWithheldNotes :items="g.withheld" :reaches="g.reaches" :enacted="enactedLaws.has(g.article)" :document-url="data.fromDocument?.url ?? null" />
+          <LandWithheldNotes :items="g.withheld" :reaches="g.reaches" :enacted="enactedLaws.has(g.article)" :moved-to="movedToByGroup.get(g.article)" :document-url="data.fromDocument?.url ?? null" />
           <p v-if="addedLaws.has(g.article)" class="border-b border-hairline px-4 py-2.5 text-sm text-ink-secondary">
             Dieses Gesetz kommt {{ IN_FROM[from] }} nicht vor; es ist auf dem Weg hinzugekommen.
           </p>
@@ -364,7 +379,7 @@ const hasUnits = computed(() => units.value.length > 0)
                 <!-- A § the later text numbers otherwise says so where its number
                      stands, as the Bund's Beilage does: the arrow is for the eye,
                      a screen reader hears „wird zu". -->
-                <span class="font-medium text-ink"><template v-if="movedFrom(b.unit)">{{ movedFrom(b.unit) }}<span aria-hidden="true">&nbsp;→ </span><span class="sr-only"> wird zu </span></template>{{ displayId(b.unit.id) }}</span>
+                <span class="font-medium text-ink"><template v-if="movedFrom(b.unit)">{{ movedFrom(b.unit) }}<span aria-hidden="true">&nbsp;→ </span><span class="sr-only"> wird zu </span></template>{{ displayId(b.unit.id) }}<template v-if="inForceNumber(b.unit)">&nbsp;{{ IN_FORCE_MARK }}</template></span>
                 <span v-if="b.label" class="min-w-0 text-ink-secondary">{{ b.label }}</span>
               </p>
               <!-- The Land's reasoning, where the question arises: under the

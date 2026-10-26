@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import type { LandLawDiffResponse } from '#shared/types'
 import { displayId } from '#shared/utils/unitName'
-import { enactedNote, quotedInstruction, reachesNote, withheldNotes, type Reach } from '~/utils/landWithheld'
+import { IN_FORCE_MARK, enactedNote, quotedInstruction, reachesNote, withheldNotes, type Reach } from '~/utils/landWithheld'
 
 /**
  * The §§ of one law that the comparison does not show, one line per cause
@@ -20,9 +20,11 @@ const props = defineProps<{
   reaches?: readonly Reach[]
   /** The draft enacts this law anew, and the Land's document does not print its text */
   enacted?: boolean
+  /** The numbers other §§ of this law move to (`moveTargets`): a § withheld under one is named „§ 33 (alt)" */
+  movedTo?: ReadonlySet<string>
 }>()
 
-const notes = computed(() => withheldNotes(props.items, { alone: props.alone }))
+const notes = computed(() => withheldNotes(props.items, { alone: props.alone, movedTo: props.movedTo }))
 const reaching = reachesNote()
 
 /* „§ 3, § 7 und § 12": the joint before the k-th of n. */
@@ -31,7 +33,7 @@ const joint = (k: number, n: number) => (k === 0 ? '' : k === n - 1 ? ' und ' : 
 
 <template>
   <p v-for="n in notes" :key="n.cause" class="border-b border-hairline px-4 py-2.5 text-sm text-ink-secondary">
-    {{ n.lead }} <template v-for="(id, k) in n.ids" :key="k">{{ joint(k, n.ids.length) }}<!-- A renumbered § as the comparison names it, „§ 13 → § 9" (26.10.2026). --><template v-if="n.fromIds[k]">{{ displayId(n.fromIds[k]!) }}<span aria-hidden="true">&nbsp;→ </span><span class="sr-only"> wird zu </span></template>{{ displayId(id) }}</template>. <template v-if="n.text">{{ n.text }}. </template>
+    {{ n.lead }} <template v-for="(id, k) in n.ids" :key="k">{{ joint(k, n.ids.length) }}<!-- A renumbered § as the comparison names it, „§ 13 → § 9" (26.10.2026). --><template v-if="n.fromIds[k]">{{ displayId(n.fromIds[k]!) }}<span aria-hidden="true">&nbsp;→ </span><span class="sr-only"> wird zu </span></template>{{ displayId(id) }}<template v-if="n.inForce[k]">&nbsp;{{ IN_FORCE_MARK }}</template></template>. <template v-if="n.text">{{ n.text }}. </template>
     <template v-if="documentUrl">Die <ExternalLink :href="documentUrl" class="link-inline">Textgegenüberstellung des Landes</ExternalLink> zeigt {{ n.pronoun }}.</template>
     <template v-else>Die Textgegenüberstellung des Landes zeigt {{ n.pronoun }}.</template>
   </p>
