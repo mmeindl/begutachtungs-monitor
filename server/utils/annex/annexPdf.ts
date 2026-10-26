@@ -869,18 +869,37 @@ function isChrome(line: AnnexLine): boolean {
  * because no right-column line ever counted as wrapped before each column was
  * measured against its own edge (`columnEdge`).
  */
-function joinLines(parts: { text: string; wrapped: boolean }[]): string {
+function joinLines(parts: { text: string; wrapped: boolean }[], hyphensByWord = false): string {
   let out = ''
   /** Whether the line that `out` currently ends with ran to its column's edge. */
   let carrierWrapped = false
   for (const part of parts) {
     if (!part.text) continue
     if (out === '') out = part.text
+    else if (hyphensByWord && /\p{L}-$/u.test(out)) out = joinedAtHyphen(out, part.text)
     else if (/[a-zäöüß]-$/.test(out) && carrierWrapped) out = `${out.slice(0, -1)}${part.text}`
     else out = `${out} ${part.text}`
     carrierWrapped = part.wrapped
   }
   return normalizeText(out)
+}
+
+/** The words after which a line-final hyphen is the drafter's: „Landes- und Bundesrecht", „sowohl Wohn- als auch …". */
+const AFTER_DRAFTERS_HYPHEN_RE = /^(?:und|oder|bzw\.?|beziehungsweise|sowie|bis|als|wie|noch|sondern|aber)\b/
+
+/**
+ * A line ending in a hyphen and the line after it, where the word after
+ * decides (`AnnexLayout.hyphensByWord`): a word in lower case after a lower
+ * case letter goes on with the word the line broke — „Höchs-" „tausmaß" —
+ * unless it is „und", „oder" and the like; a capital, or a hyphen after one,
+ * keeps the hyphen in the word — „Landes-" „Beamtengesetz", „UVP-"
+ * „pflichtig" — and so does a bracket closing it: „(Mit-" „)Eigentümer".
+ */
+function joinedAtHyphen(out: string, next: string): string {
+  if (AFTER_DRAFTERS_HYPHEN_RE.test(next)) return `${out} ${next}`
+  if (/[a-zäöüß]-$/.test(out) && /^[a-zäöüß]/.test(next)) return `${out.slice(0, -1)}${next}`
+  if (/^[\p{L})\]]/u.test(next)) return `${out}${next}`
+  return `${out} ${next}`
 }
 
 /** The lines of one column, already joined, keyed by the unit they describe. */
@@ -1430,7 +1449,7 @@ function unitsOfColumn(lines: readonly ColumnLine[], contents: ContentsLines, la
   // (2026-09-09).
   const built = units.map((u) => {
     const gld = u.gld === null ? null : (rangeEnd(u) ?? u.gld)
-    return { id: gld ? idOfMarker(gld) : null, gld, context: u.context, text: joinLines(u.parts), ...(u.cut ? { cut: true as const } : {}) }
+    return { id: gld ? idOfMarker(gld) : null, gld, context: u.context, text: joinLines(u.parts, layout.hyphensByWord), ...(u.cut ? { cut: true as const } : {}) }
   })
 
   // A designation may occur twice in one column, because many annexes reprint
@@ -1630,6 +1649,17 @@ export interface AnnexLayout {
    * ending „… innerhalb von vier" and § 46 going on with another §'s text.
    */
   cutAtGaps?: boolean
+  /**
+   * Whether a line-final hyphen is the typesetter's is told by the word
+   * after it, not by the line having reached its column's edge (`joinLines`,
+   * `joinedAtHyphen`). Salzburg's documents break words at lines that end
+   * short of the edge — 1.447 times in 157 of them, against 10.959 at the
+   * edge — and the right column's edge of a short one stands at its two
+   * widest lines, 11 pt beyond the rest (18214): „Höchs- tausmaß" (18186),
+   * „zu verbes- sern" (18214, § 86). And at the edge a drafter's hyphen went
+   * with the word as well: „Kinderund Jugendhilfe" (34413, § 15a).
+   */
+  hyphensByWord?: boolean
 }
 
 /**

@@ -1057,6 +1057,21 @@ describe('a line-final hyphen', () => {
     expect(rows.find((r) => r.gld === '§ 6.')!.current)
       .toBe('§ 6. (1) Das Staatsschutz- und Nachrichtendienst-Gesetz ist anzuwenden, soweit nichts anderes bestimmt ist.')
   })
+
+  // Salzburg breaks words at lines that end short of the edge („Höchs-
+  // tausmaß", 18186), and a drafter's hyphen at the edge went with the word
+  // („Kinderund Jugendhilfe", 34413): there the word after decides.
+  it('is told by the word after it where the layout says so (`hyphensByWord`)', () => {
+    const read = (layout: AnnexLayout) => parseAnnexPdf([headerPage(), pageOf([
+      ...both(700, '§ 7. (1) Bis zum Höchs-', SHORT),
+      ...both(680, 'tausmaß der Kinder-', REACHES),
+      ...both(660, 'und Jugendhilfe gilt das Landes-', REACHES),
+      ...both(640, 'Beamtengesetz für (Mit-', REACHES),
+      ...both(620, ')Eigentümer.', SHORT),
+    ])], ONE_LAW, layout).rows.find((r) => r.gld === '§ 7.')!.current
+    expect(read({ hyphensByWord: true })).toBe('§ 7. (1) Bis zum Höchstausmaß der Kinder- und Jugendhilfe gilt das Landes-Beamtengesetz für (Mit-)Eigentümer.')
+    expect(read({})).toBe('§ 7. (1) Bis zum Höchs- tausmaß der Kinderund Jugendhilfe gilt das LandesBeamtengesetz für (Mit)Eigentümer.')
+  })
 })
 
 describe('an entry of the annex’s own table of contents', () => {

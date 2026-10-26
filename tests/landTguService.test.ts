@@ -301,6 +301,9 @@ describe('two-column documents for the federal reader (26.10.2026)', () => {
     expect(out.items.map((i) => i.text)).toEqual(['Geltende Fassung', 'in Kraft.'])
     const table = page(run('Geltende Fassung', 201, 499), run('15', 90, 81), run('17', 120, 81))
     expect(withoutPageNumber(table).items).toHaveLength(3)
+    // 18214, page 5: an empty run under the „5" kept it in § 86, „… zu verbessern. 5".
+    const under = withoutPageNumber(page(run('Geltende Fassung', 201, 499), run('sern.', 421, 168), run('5', 751, 100), run('', 85, 78)))
+    expect(under.items.map((i) => i.text)).toEqual(['Geltende Fassung', 'sern.', ''])
   })
 
   it('takes Oberösterreich\'s side-by-side document for two columns, and names its draft header as the template does (2021-16029)', () => {

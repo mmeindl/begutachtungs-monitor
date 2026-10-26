@@ -302,13 +302,15 @@ const SBG_HEAD_RE = /^(?:[A-Z]:\\.*|\d+ von \d+)$|\.docx?\b/
  * A page without its number: Salzburg's, a bare „3" alone on the page's
  * first or last line (26.10.2026). Read as text, it ended the § above it —
  * „… in Kraft. 3" (18093, § 51), „… nicht über7" (18192, § 37b), where the
- * page broke a word.
+ * page broke a word. Lines of nothing but empty runs do not count: one under
+ * the „5" of 18214's fifth page kept it in § 86, „… zu verbessern. 5".
  */
 export function withoutPageNumber<P extends { items: readonly { text: string; y: number }[] }>(page: P): P {
-  if (!page.items.length) return page
-  const ys = page.items.map((i) => i.y)
+  const inked = page.items.filter((i) => i.text.trim() !== '')
+  if (!inked.length) return page
+  const ys = inked.map((i) => i.y)
   const alone = (y: number) => {
-    const line = page.items.filter((i) => Math.abs(i.y - y) < 2)
+    const line = inked.filter((i) => Math.abs(i.y - y) < 2)
     return line.length === 1 && /^\d{1,4}$/.test(line[0]!.text.trim()) ? line[0]! : null
   }
   const numbers = [alone(Math.min(...ys)), alone(Math.max(...ys))].filter((i) => i !== null)
@@ -328,8 +330,8 @@ async function readSalzburg(detail: LandDraftRecord): Promise<TguRead | string> 
   const pages = (await pagesOf(bytes)).map((p) => withFullStops(withoutPageNumber({ ...p, items: p.items.filter((i) => !SBG_HEAD_RE.test(i.text.trim())) })))
   const laws = amendedLawsOf(detail.draft.title)
   const draftText = await draftTextOf(draftSource(detail.draft.documents, 'Land Salzburg'))
-  // Salzburg centres every heading over its designation, and heads some packages' laws by their bare names (`AnnexLayout`).
-  const { rows, droppedPages } = columnRows(pages, packageArticles(draftText ?? '', laws), { headingsCentred: true, lawsByName: true, cutAtGaps: true })
+  // Salzburg centres every heading over its designation, heads some packages' laws by their bare names, and breaks words short of the edge (`AnnexLayout`).
+  const { rows, droppedPages } = columnRows(pages, packageArticles(draftText ?? '', laws), { headingsCentred: true, lawsByName: true, cutAtGaps: true, hyphensByWord: true })
   // „Der bisherige § 54a erhält die Paragraphenbezeichnung „§ 54b"": the draft's text says what the two columns do not (26.10.2026).
   const { paragraphs, unmapped } = withRenumberings(columnParagraphs(rows, laws), renumberingsOf(draftText ?? '', laws))
   return {
