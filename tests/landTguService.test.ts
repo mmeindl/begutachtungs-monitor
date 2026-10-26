@@ -25,7 +25,7 @@ const { lawInForce, paragraphText, paragraphByPhrase } = vi.mocked(await import(
 const { draftSource, landPdfBytes } = vi.mocked(await import('../server/utils/laender/texts/read'))
 const { ktnTguParagraphs, ktnTguReading } = vi.mocked(await import('../server/utils/laender/landTguKaernten'))
 const { parseAnnexPdf } = vi.mocked(await import('../server/utils/annex/annexPdf'))
-const { compareTgu, ooeColumnPages, sideBySide, withFullStops } = await import('../server/utils/laender/landTguService')
+const { compareTgu, ooeColumnPages, sideBySide, withFullStops, withoutPageNumber } = await import('../server/utils/laender/landTguService')
 
 const LAW = 'Kärntner Beispielgesetz'
 const detail = (title = `Gesetz, mit dem das ${LAW} geändert wird`): LandDraftDetail => ({
@@ -286,6 +286,21 @@ describe('two-column documents for the federal reader (26.10.2026)', () => {
     const out = withFullStops(page(run('§ 64', 60, 500), run('§', 220, 480, 6), run(' ', 226, 480, 3), run('8c', 229, 480, 10), run('§', 60, 460, 6), run(' ', 66, 460, 3), run('5', 69, 460, 5), run(' Abs. 2 gilt.', 74, 460)))
     expect(out.items.map((i) => i.text)).toEqual(['§ 64.', '§ 8c.', '§', ' ', '5', ' Abs. 2 gilt.'])
     expect(out.items[1]).toMatchObject({ x: 220, width: 19 })
+  })
+
+  // Salzburg 22320, § 80: „§ 15g" and „;" are two runs of a line in the text;
+  // read as „§ 15g." the citation opened a § and cut § 80 at „… nach".
+  it('leaves a § cited at a line\'s start without a full stop, and gives one to a § whose Absatz begins beside it', () => {
+    const out = withFullStops(page(run('§ 15g', 460, 289, 23), run(';', 483, 289, 3), run('§ 64', 446, 260, 20), run('(1) Der Antrag ist schriftlich zu stellen.', 470, 260)))
+    expect(out.items.map((i) => i.text)).toEqual(['§ 15g', ';', '§ 64.', '(1) Der Antrag ist schriftlich zu stellen.'])
+  })
+
+  // Read as text, the page number ended the § above it: „… in Kraft. 3" (18093), „… nicht über7" (18192).
+  it('takes out a page\'s number, alone on its first or last line, and nothing else', () => {
+    const out = withoutPageNumber(page(run('7', 415, 571), run('Geltende Fassung', 201, 499), run('in Kraft.', 90, 120), run('3', 85, 81)))
+    expect(out.items.map((i) => i.text)).toEqual(['Geltende Fassung', 'in Kraft.'])
+    const table = page(run('Geltende Fassung', 201, 499), run('15', 90, 81), run('17', 120, 81))
+    expect(withoutPageNumber(table).items).toHaveLength(3)
   })
 
   it('takes Oberösterreich\'s side-by-side document for two columns, and names its draft header as the template does (2021-16029)', () => {

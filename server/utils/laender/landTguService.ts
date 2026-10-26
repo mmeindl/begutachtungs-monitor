@@ -36,7 +36,7 @@ import { amendedLawsOf, bareLawName, columnParagraphs, draftDeletes, joinLines, 
 import { draftSource, landPdfBytes } from './texts/read'
 import { tguPages } from './landTguPdf'
 import { pagesOf } from '../annex/annexPdfPages'
-import { parseAnnexPdf, type AnnexPage } from '../annex/annexPdf'
+import { parseAnnexPdf, type AnnexLayout, type AnnexPage } from '../annex/annexPdf'
 import { HEADER_CURRENT_RE, HEADER_PROPOSED_RE } from '../annex/tableCells'
 import { ktnTguReading } from './landTguKaernten'
 import { tirolTguPages, tirolTguReading } from './landTguTirol'
@@ -197,7 +197,12 @@ export function ooeColumnPages(pages: readonly AnnexPage[]): AnnexPage[] {
  * until 26.10.2026).
  */
 export function withFullStops(page: AnnexPage): AnnexPage {
-  const items = page.items.map((i) => (/^§\s*\d+[a-z]*$/.test(i.text.trim()) ? { ...i, text: `${i.text.trim()}.` } : i))
+  // Not where its line goes on as a citation does: „§ 15g" „;" is one the
+  // line begins with, and read as „§ 15g." it opened a § of its own and cut
+  // § 80 of Salzburg 22320 at „… oder einer Rahmendienstzeit nach"
+  // (26.10.2026). „§ 64" „(1) Der …" on one line is the § itself.
+  const cited = (i: (typeof page.items)[number]) => page.items.some((o) => o !== i && Math.abs(o.y - i.y) < 2 && o.x >= i.x + i.width - 1 && o.x - (i.x + i.width) < 30 && CITED_BY_RE.test(o.text))
+  const items = page.items.map((i) => (/^§\s*\d+[a-z]*$/.test(i.text.trim()) && !cited(i) ? { ...i, text: `${i.text.trim()}.` } : i))
   const merged = new Map<(typeof items)[number], (typeof items)[number] | null>()
   for (const sign of items) {
     if (sign.text.trim() !== '§' || merged.has(sign)) continue
@@ -217,6 +222,9 @@ export function withFullStops(page: AnnexPage): AnnexPage {
   if (!merged.size) return { ...page, items }
   return { ...page, items: items.flatMap((i) => (merged.has(i) ? (merged.get(i) ? [merged.get(i)!] : []) : [i])) }
 }
+
+/** What goes on after a § cited at a line's start: „;", „,", „Abs 2", „Z 3", „lit. a", a word in lower case. */
+const CITED_BY_RE = /^\s*(?:[,;:)]|Abs\b|Abs\.|Z\s|Satz\b|lit\.|\p{Ll})/u
 
 /** Wien's running head on every page: „Seite 1 von 2", the Zahl „821297/2026", the date. */
 const WIEN_HEAD_RE = /^(?:Seite \d+ von \d+|\d+\/\d{4}|\d{1,2}\. (?:Jänner|Januar|Februar|März|April|Mai|Juni|Juli|August|September|Oktober|November|Dezember) \d{4})$/
@@ -275,8 +283,8 @@ async function readWien(detail: LandDraftRecord): Promise<TguRead | string> {
  * A package's laws each on their own, where the draft's text names them by
  * Artikel and the document heads each (`packageArticles`).
  */
-function columnRows(pages: Parameters<typeof parseAnnexPdf>[0], articles: Parameters<typeof parseAnnexPdf>[1]): { rows: ColumnRow[]; droppedPages: number } {
-  const parsed = parseAnnexPdf(pages, articles)
+function columnRows(pages: Parameters<typeof parseAnnexPdf>[0], articles: Parameters<typeof parseAnnexPdf>[1], layout: AnnexLayout = {}): { rows: ColumnRow[]; droppedPages: number } {
+  const parsed = parseAnnexPdf(pages, articles, layout)
   return {
     rows: parsed.rows.map((r) => ({ kind: r.kind, law: r.law, heading: r.heading, para: r.para, current: r.current, proposed: r.proposed, changed: r.change !== 'unchanged' })),
     droppedPages: parsed.droppedPages,
@@ -291,6 +299,23 @@ function columnRows(pages: Parameters<typeof parseAnnexPdf>[0], articles: Parame
 const SBG_HEAD_RE = /^(?:[A-Z]:\\.*|\d+ von \d+)$|\.docx?\b/
 
 /**
+ * A page without its number: Salzburg's, a bare „3" alone on the page's
+ * first or last line (26.10.2026). Read as text, it ended the § above it —
+ * „… in Kraft. 3" (18093, § 51), „… nicht über7" (18192, § 37b), where the
+ * page broke a word.
+ */
+export function withoutPageNumber<P extends { items: readonly { text: string; y: number }[] }>(page: P): P {
+  if (!page.items.length) return page
+  const ys = page.items.map((i) => i.y)
+  const alone = (y: number) => {
+    const line = page.items.filter((i) => Math.abs(i.y - y) < 2)
+    return line.length === 1 && /^\d{1,4}$/.test(line[0]!.text.trim()) ? line[0]! : null
+  }
+  const numbers = [alone(Math.min(...ys)), alone(Math.max(...ys))].filter((i) => i !== null)
+  return numbers.length ? { ...page, items: page.items.filter((i) => !numbers.includes(i)) } : page
+}
+
+/**
  * Salzburg: its Textgegenüberstellung is a document of its own, in the
  * Bund's two-column template — read by the Bund's reader once its running
  * head is out and its §§ carry their full stop (`withFullStops`).
@@ -300,10 +325,11 @@ async function readSalzburg(detail: LandDraftRecord): Promise<TguRead | string> 
   const url = doc ? safeExternalUrl(doc.url) : null
   if (!doc || !url) return NO_TGU
   const bytes = await landPdfBytes(url)
-  const pages = (await pagesOf(bytes)).map((p) => withFullStops({ ...p, items: p.items.filter((i) => !SBG_HEAD_RE.test(i.text.trim())) }))
+  const pages = (await pagesOf(bytes)).map((p) => withFullStops(withoutPageNumber({ ...p, items: p.items.filter((i) => !SBG_HEAD_RE.test(i.text.trim())) })))
   const laws = amendedLawsOf(detail.draft.title)
   const draftText = await draftTextOf(draftSource(detail.draft.documents, 'Land Salzburg'))
-  const { rows, droppedPages } = columnRows(pages, packageArticles(draftText ?? '', laws))
+  // Salzburg centres every heading in its column: a line that is not centred is never one (`AnnexLayout`).
+  const { rows, droppedPages } = columnRows(pages, packageArticles(draftText ?? '', laws), { headingsCentred: true })
   // „Der bisherige § 54a erhält die Paragraphenbezeichnung „§ 54b"": the draft's text says what the two columns do not (26.10.2026).
   const { paragraphs, unmapped } = withRenumberings(columnParagraphs(rows, laws), renumberingsOf(draftText ?? '', laws))
   return {

@@ -1046,6 +1046,11 @@ interface ColumnLine {
   centred?: boolean
   /** The line starts where the column's body text does (`isFlush`). */
   flush?: boolean
+  /** The x of the line's middle, and how far it starts inside the column's body margin (`columnMargin`; null where none was measured). */
+  centre?: number
+  inset?: number | null
+  /** The x of the column's middle, between its body margins; null where they were not both measured. */
+  axis?: number | null
   /** The headings printed across both columns above this line (`parseAnnexPdf`). */
   context?: string
   /** The first line of a document of its own inside the annex (`startsDocument`): nothing above it is its heading. */
@@ -1307,7 +1312,7 @@ function contentsInBoth(left: readonly ColumnLine[], right: readonly ColumnLine[
  * carried wrapped body text into the next § wherever a sentence lacked its
  * full stop or a citation began a line (41/ME § 49, 96/ME „§ 105.").
  */
-function unitsOfColumn(lines: readonly ColumnLine[], contents: ContentsLines): { units: ColumnUnit[]; contents: number } {
+function unitsOfColumn(lines: readonly ColumnLine[], contents: ContentsLines, layout: AnnexLayout = {}): { units: ColumnUnit[]; contents: number } {
   type Unit = { gld: string | null; context: string | null; parts: ColumnLine[]; opener: ColumnLine | null }
   const units: Unit[] = []
   let current: Unit = { gld: null, context: null, parts: [], opener: null }
@@ -1359,6 +1364,9 @@ function unitsOfColumn(lines: readonly ColumnLine[], contents: ContentsLines): {
     // Over the front matter, an elision of several §§ takes no heading: what
     // stands there is the document's title (`SEVERAL_ELIDED_RE`).
     const takesHeading = division === null && !(current.gld === null && SEVERAL_ELIDED_RE.test(line.text))
+    // Only over a designation that is itself centred: 19978 copies the law in
+    // force into its left column with heading and „§ 51a" at the Absatz's indent.
+    const centredLayout = layout.headingsCentred === true && BARE_DESIGNATION_RE.test(line.text.trim()) && (line.inset ?? 0) >= CENTRED_INSET
     while (takesHeading && current.parts.length > 0 && carried.length < 3) {
       const last = current.parts[current.parts.length - 1]!
       // A unit's own marker line is never handed to the next unit. It could
@@ -1375,10 +1383,26 @@ function unitsOfColumn(lines: readonly ColumnLine[], contents: ContentsLines): {
       // Raumordnungsgesetz runs over three lines, the first set two points
       // inside the margin, and § 39 kept the rest of it (sbg-18131).
       const continued = carried.length > 0 && /\p{L}-$/u.test(last.text.trim()) && /^\p{Ll}/u.test(carried[0]!.text.trim())
-      if ((last.wrapped && !last.centred && !continued) || SENTENCE_END.test(last.text) || BODY_LINE_RE.test(last.text)) break
+      // Where the document centres its headings over the designation
+      // (`AnnexLayout`), that is what makes a line one — not a missing full
+      // stop: „… und die Beurteilung ihrer Person zu erhalten" went to § 8
+      // as its heading (Salzburg 23522), „Verwaltungsgerichtshof" at a
+      // Ziffer's indent to § 11c (22320). Elsewhere a line that ran to the
+      // edge is body text, unless a centred heading's.
+      // „entfällt", centred where the § above is repealed, is never a heading (22320, L-VBG § 8).
+      const shaped = centredLayout ? onAxis(last, line) && !REPEALED_RE.test(last.text.trim()) : !(last.wrapped && !last.centred)
+      if ((!shaped && !continued) || SENTENCE_END.test(last.text) || BODY_LINE_RE.test(last.text)) break
       if (current.parts.at(-2) === current.opener && NAMES_ITS_PARAGRAPHS_RE.test(last.text)) break
       carried.unshift(current.parts.pop()!)
     }
+    // A line the line above runs on into is that line's end, on the middle
+    // or not: a line as wide as the column is („ihrem Anforderungswert …
+    // zugeordnet werden", the end of § 6 of 22320's Gehaltsgesetz, its full
+    // stop missing), and so may one at a Ziffer's indent be („kein
+    // Dienstverhältnis bestanden, ist nach Abs 1 bis 4 vorzugehen" over § 9d
+    // of its L-BG). Not a line set well inside the column, as a heading's
+    // short line is: „Netzen" under „… von Gigabit-" (35452, § 14b).
+    while (centredLayout && carried.length > 0 && (carried[0]!.inset ?? 0) < HEADING_INSET && runsOn(current.parts.at(-1))) current.parts.push(carried.shift()!)
     if (current.gld !== null || current.parts.length > 0) units.push(current)
     current = { gld: normalizeText(marker[1] ?? marker[0]), context: line.context ?? overContents, parts: [...carried, line], opener: line }
     overContents = null
@@ -1554,6 +1578,51 @@ function candidateLines(lines: readonly AnnexLine[], edges: ColumnEdges): { cand
   return { candidates, roles }
 }
 
+/**
+ * What a caller knows of a document's layout that the parse cannot measure
+ * on a page or two (26.10.2026). `headingsCentred`: the document centres
+ * each heading over the bare designation below it, „§ 25." on a line of its
+ * own (`onAxis`), so a line that is not is body text, even without its full
+ * stop — and a centred one is a heading, even where it runs to the edge.
+ * Salzburg's Textgegenüberstellungen do (`readSalzburg`); the Bund's annexes
+ * are read without it. `isCentred` cannot tell: on a short document no line
+ * end is common enough to fix the column's end margin, and it then held no
+ * heading of Salzburg 28924 for one.
+ */
+export interface AnnexLayout {
+  headingsCentred?: boolean
+}
+
+/** „entfällt", „(3) entfallen": what a column prints for a § or an Absatz the draft repeals. */
+const REPEALED_RE = /^(?:\(\d+[a-z]*\)\s*)?(?:entf(?:ällt|allen)|aufgehoben)\.?$/i
+
+/** „§ 25." alone on its line — the designation Salzburg centres its heading over. */
+const BARE_DESIGNATION_RE = /^[„"“]?\s*§\s*\d+[a-z]*\.?$/
+/** How far a heading's middle may lie from its designation's or its column's, in points: 17,8 for 18159's of § 20; a line that ends a § stands 60 and more off. */
+const AXIS_TOLERANCE = 20
+/** How far inside its column a centred designation starts at least: some 150 pt in Salzburg's, 0 to 20 at the margin or an Absatz's indent. */
+const CENTRED_INSET = 60
+
+/**
+ * Is this line set as a heading (`AnnexLayout`): its middle where the
+ * designation's is, or the column's? Salzburg 28924's heading of § 5 stands
+ * 0,05 pt off the middle of „§ 5.", on a document too short to measure its
+ * column's margins; 23522's of § 2 0,1 pt off its column's middle, its „§ 2"
+ * 10 pt off it. „… und die Beurteilung ihrer Person zu erhalten", the end of
+ * § 7 before § 8's heading, 67 pt off.
+ */
+function onAxis(line: ColumnLine, designation: ColumnLine): boolean {
+  if (line.centre === undefined) return false
+  const near = (x: number | null | undefined) => typeof x === 'number' && Math.abs(line.centre! - x) <= AXIS_TOLERANCE
+  return near(designation.centre) || near(line.axis)
+}
+
+/** How far inside its column a heading's short line starts at least — 100 pt and more in Salzburg's; a § ends on the margin or at a Ziffer's indent, 0 to 34 pt. */
+const HEADING_INSET = 40
+
+/** Does this line run on into the next — to its column's edge, without a sentence's end? */
+const runsOn = (line: ColumnLine | undefined) => !!line && line.wrapped && !SENTENCE_END.test(line.text)
+
 export interface AnnexParse {
   rows: ComparisonRow[]
   /**
@@ -1617,7 +1686,7 @@ export interface AnnexParse {
  * against", and the annex is then read as one undivided law — a case only
  * the tests construct, which is why the parameter carries a default at all.
  */
-export function parseAnnexPdf(pages: readonly AnnexPage[], articles: readonly DraftArticle[] = []): AnnexParse {
+export function parseAnnexPdf(pages: readonly AnnexPage[], articles: readonly DraftArticle[] = [], layout: AnnexLayout = {}): AnnexParse {
   const rows: ComparisonRow[] = []
   // The pages this parse will stand behind. A page set differently from the
   // rest of the document is left unread rather than sliced at a boundary that
@@ -1783,11 +1852,16 @@ export function parseAnnexPdf(pages: readonly AnnexPage[], articles: readonly Dr
     if (section.opened && section.article) {
       rows.push({ kind: 'article', law, heading: headingOf(section.article), gld: null, para: null, paraAfter: null, current: '', proposed: '', change: 'unchanged', elided: false, segments: null, editorial: false, elisionRange: false })
     }
-    const leftLines = section.lines.map((l) => ({ text: l.left, wrapped: reachedEdge(l.leftEnd, edges.left), centred: isCentred(l.leftStart, l.leftEnd, margins.left), flush: isFlush(l.leftStart, margins.left), context: contextFor.get(l), barrier: startsPart.has(l) }))
-    const rightLines = section.lines.map((l) => ({ text: l.right, wrapped: reachedEdge(l.rightEnd, edges.right), centred: isCentred(l.rightStart, l.rightEnd, margins.right), flush: isFlush(l.rightStart, margins.right), context: contextFor.get(l), barrier: startsPart.has(l) }))
+    const at = (start: number, end: number, margin: { start: number | null; end: number | null }) => ({
+      centre: (start + end) / 2,
+      inset: margin.start === null ? null : start - margin.start,
+      axis: margin.start === null || margin.end === null ? null : (margin.start + margin.end) / 2,
+    })
+    const leftLines = section.lines.map((l) => ({ text: l.left, wrapped: reachedEdge(l.leftEnd, edges.left), centred: isCentred(l.leftStart, l.leftEnd, margins.left), flush: isFlush(l.leftStart, margins.left), ...at(l.leftStart, l.leftEnd, margins.left), context: contextFor.get(l), barrier: startsPart.has(l) }))
+    const rightLines = section.lines.map((l) => ({ text: l.right, wrapped: reachedEdge(l.rightEnd, edges.right), centred: isCentred(l.rightStart, l.rightEnd, margins.right), flush: isFlush(l.rightStart, margins.right), ...at(l.rightStart, l.rightEnd, margins.right), context: contextFor.get(l), barrier: startsPart.has(l) }))
     const toc = contentsInBoth(leftLines, rightLines)
-    const leftRead = unitsOfColumn(leftLines, toc.left)
-    const rightRead = unitsOfColumn(rightLines, toc.right)
+    const leftRead = unitsOfColumn(leftLines, toc.left, layout)
+    const rightRead = unitsOfColumn(rightLines, toc.right, layout)
     const left = leftRead.units
     const right = rightRead.units
     // The reprinted tables of contents, per column (`contentsRegions`).

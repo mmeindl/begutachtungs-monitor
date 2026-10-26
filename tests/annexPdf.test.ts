@@ -1,5 +1,5 @@
 import { describe, expect, expectTypeOf, it } from 'vitest'
-import { columnBoundary, linesFromPage, parseAnnexPdf, sameTypesetting, type AnnexItem, type AnnexPage, type AnnexParse, type PageGeometry } from '../server/utils/annex/annexPdf'
+import { columnBoundary, linesFromPage, parseAnnexPdf, sameTypesetting, type AnnexItem, type AnnexLayout, type AnnexPage, type AnnexParse, type PageGeometry } from '../server/utils/annex/annexPdf'
 import { fromMacRoman, isMacRomanMisread, uprightRuns, type RawRun } from '../server/utils/annex/annexPdfPages'
 import type { DraftArticle } from '../server/utils/lawtext/draftArticles'
 import { draftArticles as draft } from './helpers/builders'
@@ -905,6 +905,51 @@ describe('each column measured against its own edge', () => {
     ])])
     expect(rows.find((r) => r.gld === '§ 38.')!.current).not.toContain('Einzel')
     expect(rows.find((r) => r.gld === '§ 39.')!.current.startsWith('Kennzeichnung von Flächen für Einzelhandelsnutzungen § 39.')).toBe(true)
+  })
+})
+
+describe('a layout that centres its headings over the designation (Salzburg, 26.10.2026)', () => {
+  /** Salzburg's two columns: body from the margin to the edge, heading and „§ n." centred over it. */
+  const FULL = 340
+  const centre = (x: number) => (x === LEFT_X ? LEFT_X + FULL / 2 : RIGHT_X + FULL / 2)
+  const both = (y: number, text: string, advance = text.length * CHAR): AnnexItem[] => [wide(LEFT_X, y, text, advance), wide(RIGHT_X, y, text, advance)]
+  const centred = (y: number, text: string): AnnexItem[] => [LEFT_X, RIGHT_X].map((x) => wide(centre(x) - (text.length * CHAR) / 2, y, text, text.length * CHAR))
+  const body = (y: number) => both(y, 'Die Behörde hat die Bewerberinnen und Bewerber davon schriftlich zu', FULL)
+  const document = (tail: AnnexItem[]) => [pageOf([
+    ...centred(740, 'Informationsrecht'),
+    ...centred(725, '§ 7.'),
+    // Ten lines at least, or the column's edge is not measured (`columnEdge`).
+    ...Array.from({ length: 10 }, (_, i) => body(710 - i * 11)).flat(),
+    ...tail,
+    ...centred(560, 'Ausschreibung'),
+    ...centred(545, '§ 8.'),
+    ...both(530, '(1) Jede Stelle ist auszuschreiben.'),
+  ])]
+  const rows = (pages: AnnexPage[], layout: AnnexLayout = { headingsCentred: true }) => parseAnnexPdf([headerPage(), ...pages], ONE_LAW, layout).rows
+
+  // Salzburg 23522 prints § 7's last line without its full stop; read as a
+  // heading, it went to § 8, and § 7's new text ended mid-sentence.
+  it('leaves a § its last line, full stop or none, where that line stands off the middle', () => {
+    const pages = document(both(599, 'und die Beurteilung ihrer Person zu erhalten'))
+    const [seven, eight] = [rows(pages).find((r) => r.gld === '§ 7.')!, rows(pages).find((r) => r.gld === '§ 8.')!]
+    expect(seven.proposed.endsWith('und die Beurteilung ihrer Person zu erhalten')).toBe(true)
+    expect(eight.proposed.startsWith('Ausschreibung § 8.')).toBe(true)
+    // Read without the layout, the line heads § 8.
+    expect(rows(pages, {}).find((r) => r.gld === '§ 8.')!.proposed.startsWith('und die Beurteilung')).toBe(true)
+  })
+
+  // 22320, § 6 of the Gehaltsgesetz: as wide as the column, the last line
+  // stands on the middle too; the line above runs on into it.
+  it('leaves a § a last line as wide as the column where the line above runs on into it', () => {
+    const pages = document(both(599, 'ihrem Anforderungswert entsprechenden Einkommensband zugeordnet werden', FULL))
+    expect(rows(pages).find((r) => r.gld === '§ 7.')!.proposed.endsWith('zugeordnet werden')).toBe(true)
+    expect(rows(pages).find((r) => r.gld === '§ 8.')!.proposed.startsWith('Ausschreibung § 8.')).toBe(true)
+  })
+
+  it('hands a heading on, however it ends, and never „entfällt"', () => {
+    const pages = document([...both(599, 'zu verständigen.'), ...centred(580, 'entfällt')])
+    expect(rows(pages).find((r) => r.gld === '§ 7.')!.proposed.endsWith('zu verständigen. entfällt')).toBe(true)
+    expect(rows(pages).find((r) => r.gld === '§ 8.')!.proposed.startsWith('Ausschreibung § 8.')).toBe(true)
   })
 })
 
