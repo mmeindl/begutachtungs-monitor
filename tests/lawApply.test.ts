@@ -932,6 +932,21 @@ describe('Anlagen sind keine Paragraphen (26.09.2026)', () => {
     expect(renamed.results[0]!.reason).toBeNull()
     expect(renamed.law.paragraphs.map((p) => `${p.marker}:${p.id}`)).toEqual(['§ 2.:2', 'Anl. 1:1'])
   })
+
+  // 26.10.2026: keyed by the bare number, „Anlage 1 erhält die Bezeichnung
+  // ‚Anlage 2'" collided with a § 2, and where it went through it reported
+  // § 1 as vacated and § 2 as the Anlage's — and the Anlage came out as „§ 2.".
+  it('renames an Anlage as an Anlage, under the key the page holds it by', () => {
+    const law = (): StandingLaw => ({ paragraphs: [...withSchedule().paragraphs.slice(0, 1), para('2', 'Zwei', ['Zwei.']), withSchedule().paragraphs[1]!] })
+    const { law: out, results, renamed } = run(law(), instr('Die Anlage 1 erhält die Bezeichnung "Anlage 2".'))
+    expect(results[0]!.reason).toBeNull()
+    expect(out.paragraphs.map((p) => `${p.marker}:${p.id}`)).toEqual(['§ 1.:1', '§ 2.:2', 'Anl. 2:2'])
+    expect(renamed).toMatchObject([{ level: 'para', para: 'Anl. 2', from: 'Anl. 1', to: 'Anl. 2', origin: 'Anl. 1' }])
+    const origin = renamedOrigins(renamed)
+    expect(['Anl. 2', 'Anl. 1', '1', '2'].map(origin)).toEqual(['Anl. 1', null, '1', '2'])
+    // A schedule takes a number or nothing.
+    expect(run(law(), instr('Die Anlage 1 erhält die Bezeichnung "Anlage B".')).results[0]!.reason).toBe('Neue Bezeichnung nicht lesbar')
+  })
 })
 
 describe('Schreibweise einer Fundstelle (26.09.2026)', () => {

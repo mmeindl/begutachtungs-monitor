@@ -2248,7 +2248,7 @@ function replaceEndMark(units: readonly (readonly Slot[])[], from: string, to: s
  */
 function renumberBatch(law: StandingLaw, batch: readonly Pick<Instruction, 'op' | 'payload'>[], renamed: Renaming[] = []): string | null {
   const batchNo = (renamed[renamed.length - 1]?.batch ?? -1) + 1
-  const moves: { node: LawNode; id: string; level: NodeLevel; siblings: LawNode[]; para: string }[] = []
+  const moves: { node: LawNode; id: string; level: NodeLevel; siblings: LawNode[]; para: string; schedule: boolean }[] = []
   for (const { op } of batch) {
     if (op.kind !== 'renumber') return 'keine Umbenennung'
     const ids = [deepestId(op.target), ...op.target.siblings]
@@ -2261,7 +2261,10 @@ function renumberBatch(law: StandingLaw, batch: readonly Pick<Instruction, 'op' 
     }
     // `to === ''` is the Wegfall of a designation: the unit keeps its text
     // and loses its number ("entfällt die Absatzbezeichnung „(1)“").
-    const first = op.to === '' ? '' : (bareParaId(op.to) ?? op.to.replace(/[^\w]/g, ''))
+    // A schedule takes a number or nothing: „Anhang VIII" read as „AnhangVIII"
+    // would be an id no instruction and no RIS label ever names.
+    const schedule = op.target.level === 'para' && isSchedule(op.target.para)
+    const first = op.to === '' ? '' : (bareParaId(op.to) ?? (schedule ? '' : op.to.replace(/[^\w]/g, '')))
     if (!first && op.to !== '') return 'Neue Bezeichnung nicht lesbar'
     if (first === '' && (op.toLast || nodes.length !== 1)) return 'Wegfall einer Bezeichnung nur für eine Einheit'
     // "die Z 5 bis 9 erhalten die Ziffernbezeichnungen „4.“ bis „8.“": the
@@ -2279,26 +2282,37 @@ function renumberBatch(law: StandingLaw, batch: readonly Pick<Instruction, 'op' 
     // bisherige Inhalt only where it IS the whole §. Anything beside it would
     // stay outside the new Abs. 1 and read as text of no Absatz at all.
     if (op.target.level === 'abs' && nodes.some((n) => n.id === '') && siblings.length !== 1) return 'Der bisherige Inhalt ist nicht ein einziger Absatz'
-    nodes.forEach((node, i) => moves.push({ node, id: newIds[i]!, level: node.level, siblings, para: op.target.para ?? '' }))
+    nodes.forEach((node, i) => moves.push({ node, id: newIds[i]!, level: node.level, siblings, para: op.target.para ?? '', schedule: node.level === 'para' && isSchedule(node.marker) }))
   }
   const moving = new Set(moves.map((m) => m.node))
   for (const m of moves) {
-    // At § level a number the standing § keeps until a later line moves it
-    // on (`mayShare`) is no collision — the ascending chains of E0399A69.
-    const holders = m.siblings.filter((n) => !moving.has(n) && n.level === m.level && n.id === m.id)
-    if (holders.length > 0 && !(m.level === 'para' && mayShare(law, m.id, holders, `Bezeichnung ${m.id} existiert bereits`))) return `Bezeichnung ${m.id} existiert bereits`
+    // Of its own kind (`findParagraph`): an Anlage 2 is no collision for
+    // § 2. At § level a number the standing § keeps until a later line
+    // moves it on (`mayShare`) is none either — the ascending chains of
+    // E0399A69.
+    const holders = m.siblings.filter((n) => !moving.has(n) && n.level === m.level && n.id === m.id && (m.level !== 'para' || isSchedule(n.marker) === m.schedule))
+    if (holders.length > 0 && !(m.level === 'para' && !m.schedule && mayShare(law, m.id, holders, `Bezeichnung ${m.id} existiert bereits`))) return `Bezeichnung ${m.id} existiert bereits`
   }
-  if (new Set(moves.map((m) => `${m.level}|${m.id}`)).size !== moves.length) return 'Zwei Einheiten erhalten dieselbe Bezeichnung'
+  if (new Set(moves.map((m) => `${m.level}|${m.schedule ? 'Anl.' : ''}|${m.id}`)).size !== moves.length) return 'Zwei Einheiten erhalten dieselbe Bezeichnung'
   const run = RUNS.get(law)
   for (const m of moves) {
     const unit = run && m.level === 'para' ? unitOf(run, m.node) : null
-    renamed.push({ level: m.level, para: m.level === 'para' ? `§ ${m.id}` : m.para, from: m.node.id, to: m.id, batch: batchNo, instruction: run?.index ?? -1, unit, origin: unit === null ? null : (run!.origin.get(unit) ?? null) })
+    // A schedule is held under its kind as well as its number (`unitKey`).
+    // Recorded by the bare number, „Anlage 1 erhält die Bezeichnung
+    // ‚Anlage 2'" told the callers that § 1 had left its number and § 2 was
+    // the Anlage's — a § paired with a schedule's origin (26.10.2026).
+    const key = (id: string): string => (m.schedule ? (id ? `Anl. ${id}` : 'Anl.') : id)
+    const from = m.schedule ? (unitKey(m.node.marker) ?? 'Anl.') : m.node.id
+    renamed.push({ level: m.level, para: m.level !== 'para' ? m.para : m.schedule ? key(m.id) : `§ ${m.id}`, from, to: key(m.id), batch: batchNo, instruction: run?.index ?? -1, unit, origin: unit === null ? null : (run!.origin.get(unit) ?? null) })
     m.node.id = m.id
-    m.node.marker = m.id === '' ? '' : m.level === 'para' ? `§ ${m.id}.` : m.level === 'abs' ? `(${m.id})` : m.level === 'lit' ? `${m.id})` : `${m.id}.`
-    if (m.level === 'para') arrive(law, m.node)
+    m.node.marker = m.id === '' ? '' : m.schedule ? `${SCHEDULE_WORD_RE.exec(m.node.marker.trim())?.[0] ?? 'Anl.'} ${m.id}` : m.level === 'para' ? `§ ${m.id}.` : m.level === 'abs' ? `(${m.id})` : m.level === 'lit' ? `${m.id})` : `${m.id}.`
+    if (m.level === 'para' && !m.schedule) arrive(law, m.node)
   }
   return null
 }
+
+/** The word a schedule's designation opens with — „Anl." in RIS, „Anlage" or „Anhang" in a payload. */
+const SCHEDULE_WORD_RE = /^(?:Anlage|Anhang|Anl\.?)/i
 
 /**
  * A run of units replaced by a different number of units: "Die §§ 7 bis 9
