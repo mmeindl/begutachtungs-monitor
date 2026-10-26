@@ -8097,6 +8097,19 @@ PDF-Entwürfe; die Grundlinie kommt aus dem Artefakt des ersten Laufs nach
 dem Push. Salzburg liest seine Beilage durch denselben Leser: 89 §§ mehr
 gezeigt, 23 von gezeigt zu genannt (§12.63).
 
+**Dritter Nachtrag 26.10.2026: der Trennstrich am Spaltenrand.** Wo eine
+Zeile den Rand ihrer Spalte erreicht, galt ihr Trennstrich als der des
+Setzers und ging — auch der des Verfassers: „Kinderund Jugendhilfe",
+„LandesBeamtengesetz", „(Mit)Eigentümer". Jetzt entscheidet das Wort
+danach, wie in Salzburg (§12.63): „und", „oder" und ihresgleichen lassen den
+Strich stehen, ein Großbuchstabe oder eine schließende Klammer behält ihn im
+Wort, nur vor einem Kleinbuchstaben geht er. Das Tor der Beilage liest ohne
+Striche und bewegt kein Urteil (2.124 / 120 / 1.268 vorher wie nachher) —
+aber das Orakel der Lesefassung vergleicht Wörter, und „kinderund" ist nicht
+„kinder": 40 §§ standen als „Beilage widerspricht" zurückgehalten, die jetzt
+gezeigt sind (2.127 → 2.159 und 606 → 614), keiner geht den anderen Weg;
+Fehlerinjektion jede Klasse ≥ 95 %, BGBl-Prüfstand unverändert.
+
 ### 12.14 Stellungnahmen zur Regierungsvorlage, der Dokument-Link und der Spaltenkopf
 
 Three things from one round of user feedback (2026-09-15), all shipped the
@@ -14035,8 +14048,9 @@ sagt das in einer Zeile; ein umbenanntes Gesetz heißt, wie der Entwurf es
 druckt, „(heute: …)" dahinter (14 Gruppen in 12 Entwürfen), und seine
 Begründung findet es unter beiden Namen. Kein § geht von gezeigt zu
 genannt. Offen: 35399 §§ 15 und 175 (die Bezeichnung steht als ein Lauf
-mittig über der Spaltenfuge), das hochgestellte „m²", und der Leser des
-Bundes verklebt echte Trennstriche am Spaltenrand ebenso („Kinderund").
+mittig über der Spaltenfuge) und das hochgestellte „m²". Den Leser des
+Bundes, der echte Trennstriche am Spaltenrand ebenso verklebte, regelt
+seither das Wort danach (§12.13).
 
 ## 13. Open questions
 
