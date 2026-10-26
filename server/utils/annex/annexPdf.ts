@@ -520,6 +520,60 @@ function reachedEdge(end: number, edge: number): boolean {
   return end > edge - WRAP_TOLERANCE
 }
 
+/**
+ * Where a column's body text starts, or ends: the outermost start (end) that
+ * a share of its lines have in common.
+ *
+ * Not the extreme, and not `columnEdge`: page numbers, elision brackets and
+ * the few widest runs — which set the right column's edge some 3,5 pt beyond
+ * its text (`WRAP_TOLERANCE`) — are few, and they move an extreme. Not the
+ * most common position either: where a law is mostly lists, as the
+ * Wasserstraßen-Verkehrsordnung is (RIS 707EA278), most lines start at a
+ * list's indent, and the column's own margin is the outermost position that
+ * many lines still share. Rounded to the point.
+ */
+const MARGIN_SHARE = 0.02
+const MARGIN_LINES = 3
+
+function columnMargin(xs: readonly number[], side: 'start' | 'end'): number | null {
+  const counts = new Map<number, number>()
+  for (const x of xs) if (Number.isFinite(x) && x > 0) counts.set(Math.round(x), (counts.get(Math.round(x)) ?? 0) + 1)
+  const enough = Math.max(MARGIN_LINES, MARGIN_SHARE * xs.length)
+  const common = [...counts].filter(([, n]) => n >= enough).map(([x]) => x)
+  if (common.length === 0) return null
+  return side === 'start' ? Math.min(...common) : Math.max(...common)
+}
+
+/**
+ * A centred line's two margins differ by at most this many points, or this
+ * share of their sum where that is more — a short heading is set to the point
+ * less exactly than a long one is — and it keeps more than `CENTRE_MARGIN` on
+ * each side.
+ */
+const CENTRE_TOLERANCE = 3
+const CENTRE_TOLERANCE_SHARE = 0.06
+const CENTRE_MARGIN = 2.5
+
+/**
+ * Does this line keep the same margin on both sides of its column — the shape
+ * of a heading, never of a line of body text, which starts flush or at an
+ * indent (`unitsOfColumn`)?
+ *
+ * The margins are the column's body text (`columnMargin`), not its measured
+ * edge: on the right the edge lies some 3,5 pt beyond the text, and a heading
+ * centred over that column then kept 3,5 pt more on its right than on its
+ * left. For a line that ran to the edge, the left margin is what tells the two
+ * apart: a justified body line starts where the column does, 0 to 1 pt from
+ * it, and a heading nearly as wide as the column starts as far in as it ends
+ * short — 4 and 4 pt on 58/ME XXVIII.
+ */
+function isCentred(start: number, end: number, margins: { start: number | null; end: number | null }): boolean {
+  if (margins.start === null || margins.end === null || !Number.isFinite(start)) return false
+  const before = start - margins.start
+  const after = margins.end - end
+  return before >= CENTRE_MARGIN && after >= CENTRE_MARGIN - CENTRE_TOLERANCE && Math.abs(before - after) <= Math.max(CENTRE_TOLERANCE, CENTRE_TOLERANCE_SHARE * (before + after))
+}
+
 const PAGE_NUMBER_RE = /^\d+\s+von\s+\d+$/i
 const TITLE_RE = /^textgeg(?:en)?b?ü?berstellung$/i
 /**
@@ -869,6 +923,53 @@ function isContentsEntry(gld: string | null, text: string): boolean {
 }
 
 /**
+ * A line that opens with an Absatz of the § it stands in — „(2)", „(3) bis
+ * (7)" — or with RIS's note on a repealed one, „(Anm.: Abs. 11 aufgehoben
+ * durch …)". The tail of the unit above, never the heading of the one below,
+ * however short it is and whatever it does not end with: 141/ME XXVIII prints
+ * „(2)" and „(3) bis (7)" without their „…" above „§ 23. bis § 23a", and
+ * 108/ME the note on § 70 Abs. 11 above § 70a — both read as headings of the
+ * § below, and on one side only. The same rule the oracle reads a heading row
+ * by (`isHeadingRow` in `kons/tguOracle.ts`).
+ *
+ * Not a Ziffer („4.") or a litera: a law that numbers its divisions without
+ * naming them heads them so — „2. Großhandel mit Tabakerzeugnissen" in the
+ * Tabakmonopolgesetz, „8. Angelegenheiten nach dem EU-UmgrG" in the
+ * Rechtspflegergesetz — and those are headings (measured 26.10.2026).
+ */
+const BODY_LINE_RE = /^\s*(?:\(\d+[a-z]*\)|\(Anm\b)/
+
+/**
+ * „(zu § 61 Abs. 5 und 5a)": the §§ a schedule names itself by, on the line
+ * under its own designation — the Bäderhygieneverordnung's (RIS E9F4C208)
+ * Anlage 11 and 12 had nothing else, and the line went to the next Anlage
+ * as its heading. Only there: above a designation the same words are part
+ * of the heading below it, „Hauptwahlbehörde (zu den §§ 6 und 10)" over § 98
+ * of Salzburg's Gemeindewahlordnung (sbg-18058, 26.10.2026).
+ */
+const NAMES_ITS_PARAGRAPHS_RE = /^\s*\(zu\s/
+
+/**
+ * „§ 1. bis § 3. ...", „§ 92. und § 93. ...": one line leaving several §§ out
+ * at once. No heading of its own stands over it, so in the front matter what
+ * stands above it is the document's title — 08E3BE3E's „Novelle
+ * Methodenverordnung Wasser, Fassung vom 26.08.2025" against „Novelle
+ * Methodenverordnung Wasser" read as § 1 changing (`unitsOfColumn`).
+ */
+const SEVERAL_ELIDED_RE = /^(?:\[\s*(?:\.\.\.|…)\s*\]\s*|(?:\.\.\.|…)\s*)*§+\s*\d\S*\s+(?:bis|und)\s+§/
+
+/** One line of one column, as `unitsOfColumn` reads it. */
+interface ColumnLine {
+  text: string
+  /** The line ran to its column's edge (`reachedEdge`). */
+  wrapped: boolean
+  /** The line keeps the same margin on both sides of its column (`isCentred`). */
+  centred?: boolean
+  /** The headings printed across both columns above this line (`parseAnnexPdf`). */
+  context?: string
+}
+
+/**
  * A schedule designated without a number, on a line of its own: „Anlage" — a
  * Verordnung's only one — or „Anlage A". `UNIT_RE` asks for a numeral, so
  * neither opened a unit, and the schedule's table ran on as text of the last
@@ -901,6 +1002,9 @@ function markerOf(text: string): RegExpExecArray | null {
   return CITATION_TAIL_RE.test(tail) ? null : marker
 }
 
+/** „…", „...", „[...]" on a line of their own — and RIS's „(Anm.: § 129a.)" where an entry was. */
+const OMISSION_LINE_RE = /^(?:(?:\[\s*)?(?:\.{3,}|…+)(?:\s*\])?|\(Anm\.?\s*:.*\))$/
+
 /**
  * One column's lines → its units.
  *
@@ -914,12 +1018,24 @@ function markerOf(text: string): RegExpExecArray | null {
  *
  * A heading sits *above* the § it names, so on reaching a marker the trailing
  * short lines of the previous unit are handed to the new one. A wrapped body
- * line reaches the column edge and a finished sentence ends in punctuation;
- * a heading does neither, which is what distinguishes it.
+ * line reaches the column edge, a finished sentence ends in punctuation, and a
+ * line of the § above may open with its Absatz (`BODY_LINE_RE`); a heading
+ * does none of these, which is what distinguishes it.
+ *
+ * **A centred line that ran to the edge is a heading all the same**
+ * (26.10.2026). The edge is measured per column, and a heading nearly as wide
+ * as its column was wrapped on one side and not on the other: 58/ME XXVIII's
+ * „Vergabe von öffentlichen Aufträgen aufgrund von Rahmenvereinbarungen"
+ * ended 4,6 pt short of the left edge and 4,4 pt short of the right one, so
+ * § 155 read as gaining its own heading — and so did §§ 92, 226, 230, 235 and
+ * 263 of that annex and § 35 of 108/ME. A body line that wraps starts flush or
+ * at an indent; only a heading keeps the same margin on both sides
+ * (`isCentred`). The edge test itself stays: dropping it was measured and
+ * carried wrapped body text into the next § wherever a sentence lacked its
+ * full stop or a citation began a line (41/ME § 49, 96/ME „§ 105.").
  */
-function unitsOfColumn(lines: readonly { text: string; wrapped: boolean; context?: string }[]): ColumnUnit[] {
-  type Line = { text: string; wrapped: boolean }
-  type Unit = { gld: string | null; context: string | null; parts: Line[]; opener: Line | null }
+function unitsOfColumn(lines: readonly ColumnLine[]): ColumnUnit[] {
+  type Unit = { gld: string | null; context: string | null; parts: ColumnLine[]; opener: ColumnLine | null }
   const units: Unit[] = []
   let current: Unit = { gld: null, context: null, parts: [], opener: null }
 
@@ -933,8 +1049,11 @@ function unitsOfColumn(lines: readonly { text: string; wrapped: boolean; context
     // A division heading goes to the next unit whole (`divisionStart`); any
     // other heading is at most three short lines.
     const division = divisionStart(current.parts, current.opener)
-    const carried: Line[] = division === null ? [] : current.parts.splice(division)
-    while (division === null && current.parts.length > 0 && carried.length < 3) {
+    const carried: ColumnLine[] = division === null ? [] : current.parts.splice(division)
+    // Over the front matter, an elision of several §§ takes no heading: what
+    // stands there is the document's title (`SEVERAL_ELIDED_RE`).
+    const takesHeading = division === null && !(current.gld === null && SEVERAL_ELIDED_RE.test(line.text))
+    while (takesHeading && current.parts.length > 0 && carried.length < 3) {
       const last = current.parts[current.parts.length - 1]!
       // A unit's own marker line is never handed to the next unit. It could
       // be: a line that opens a § and ends without a full stop looks exactly
@@ -944,7 +1063,14 @@ function unitsOfColumn(lines: readonly { text: string; wrapped: boolean; context
       // and 126 of the worst-scoring rows in the corpus were that one bug
       // (2026-09-09).
       if (last === current.opener) break
-      if (last.wrapped || SENTENCE_END.test(last.text)) break
+      // A word broken over two lines is one text: the line whose word the
+      // carried line goes on with („Einzel-" over „handelsnutzungen …") goes
+      // too, though it ran to the edge — the heading of § 39 of Salzburg's
+      // Raumordnungsgesetz runs over three lines, the first set two points
+      // inside the margin, and § 39 kept the rest of it (sbg-18131).
+      const continued = carried.length > 0 && /\p{L}-$/u.test(last.text.trim()) && /^\p{Ll}/u.test(carried[0]!.text.trim())
+      if ((last.wrapped && !last.centred && !continued) || SENTENCE_END.test(last.text) || BODY_LINE_RE.test(last.text)) break
+      if (current.parts.at(-2) === current.opener && NAMES_ITS_PARAGRAPHS_RE.test(last.text)) break
       carried.unshift(current.parts.pop()!)
     }
     if (current.gld !== null || current.parts.length > 0) units.push(current)
@@ -957,7 +1083,10 @@ function unitsOfColumn(lines: readonly { text: string; wrapped: boolean; context
   // on that alone paired the Radonschutzverordnung's Anlage 1 with the
   // proposed § 1 — six schedules scored 11–45 % against unrelated provisions
   // (2026-09-09).
-  const built = units.map((u) => ({ id: u.gld ? idOfMarker(u.gld) : null, gld: u.gld, context: u.context, text: joinLines(u.parts) }))
+  const built = units.map((u) => {
+    const gld = u.gld === null ? null : (rangeEnd(u) ?? u.gld)
+    return { id: gld ? idOfMarker(gld) : null, gld, context: u.context, text: joinLines(u.parts) }
+  })
 
   // A designation may occur twice in one column, because many annexes reprint
   // the law's **Inhaltsverzeichnis** first: "§ 1. Unmittelbare
@@ -978,6 +1107,30 @@ function unitsOfColumn(lines: readonly { text: string; wrapped: boolean; context
 
 /** „§ 6.01a" whole (`PARAGRAPH_NUMBER`), or a roman numeral. */
 const MARKER_NUMBER_RE = new RegExp(String.raw`(${PARAGRAPH_NUMBER}|[IVXL]+)`)
+
+/**
+ * „§ 23. bis § 23a (2) ...": an omission from one § to an Absatz of a later
+ * one, whose text then goes on — „(3) Über den Verbrauch …" is § 23a's
+ * Abs. 3, and so is every change printed below it.
+ */
+const RANGE_INTO_RE = /^(?:\[\s*(?:\.\.\.|…)\s*\]\s*|(?:\.\.\.|…)\s*)*§+\s*\S+(?:\s*\(\S+\))?\s+bis\s+§+\s*(\d[^\s(]*?)\.?\s*\(\S+\)/
+
+/**
+ * The § a unit's rows belong to where its marker line leaves out a range that
+ * ends inside a later § and text follows (`RANGE_INTO_RE`): that later §.
+ * The marker names the first § of the range, so the change below it was
+ * filed there — 141/ME XXVIII showed § 23a's new sentence as a change of
+ * § 23, and the Biozidproduktegesetz's new § 25 Abs. 14 under § 23 („§ 23.
+ * (1) bis § 25. (13) …", 145/ME). A range that ends with the omission keeps
+ * the § it opens with: nothing is printed of the later one.
+ */
+function rangeEnd(unit: { parts: readonly ColumnLine[]; opener: ColumnLine | null }): string | null {
+  if (unit.opener === null) return null
+  const m = RANGE_INTO_RE.exec(unit.opener.text)
+  const after = unit.parts.slice(unit.parts.indexOf(unit.opener) + 1)
+  if (!m || !after.some((line) => line.text.trim() && !OMISSION_LINE_RE.test(line.text.trim()))) return null
+  return `§ ${m[1]}.`
+}
 
 function idOfMarker(gld: string): string | null {
   // „Anlage", „Anlage A" (`SCHEDULE_ALONE_RE`): the schedule without a number.
@@ -1248,6 +1401,12 @@ export function parseAnnexPdf(pages: readonly AnnexPage[], articles: readonly Dr
   // Measured over the whole document, like the boundary: a single page need
   // not print one line that reaches its column's edge.
   const edges = columnEdges(placed, boundary, vouched[0]?.page.width ?? width)
+  // Where each column's body text runs, for `isCentred` — over the content,
+  // not the chrome: a page number on each of 113 pages is a common end too.
+  const margins = {
+    left: { start: columnMargin(lines.filter((l) => l.left).map((l) => l.leftStart), 'start'), end: columnMargin(lines.filter((l) => l.left).map((l) => l.leftEnd), 'end') },
+    right: { start: columnMargin(lines.filter((l) => l.right).map((l) => l.rightStart), 'start'), end: columnMargin(lines.filter((l) => l.right).map((l) => l.rightEnd), 'end') },
+  }
 
   const { candidates, roles } = candidateLines(lines, edges)
   const resolution = resolveBoundaries(candidates, articles)
@@ -1306,8 +1465,10 @@ export function parseAnnexPdf(pages: readonly AnnexPage[], articles: readonly Dr
     if (section.opened && section.article) {
       rows.push({ kind: 'article', law, heading: headingOf(section.article), gld: null, para: null, paraAfter: null, current: '', proposed: '', change: 'unchanged', elided: false, segments: null, editorial: false, elisionRange: false })
     }
-    const left = unitsOfColumn(section.lines.map((l) => ({ text: l.left, wrapped: reachedEdge(l.leftEnd, edges.left), context: contextFor.get(l) })))
-    const right = unitsOfColumn(section.lines.map((l) => ({ text: l.right, wrapped: reachedEdge(l.rightEnd, edges.right), context: contextFor.get(l) })))
+    const leftLines = section.lines.map((l) => ({ text: l.left, wrapped: reachedEdge(l.leftEnd, edges.left), centred: isCentred(l.leftStart, l.leftEnd, margins.left), context: contextFor.get(l) }))
+    const rightLines = section.lines.map((l) => ({ text: l.right, wrapped: reachedEdge(l.rightEnd, edges.right), centred: isCentred(l.rightStart, l.rightEnd, margins.right), context: contextFor.get(l) }))
+    const left = unitsOfColumn(leftLines)
+    const right = unitsOfColumn(rightLines)
     const byId = new Map(left.filter((u) => u.id).map((u) => [u.id!, u]))
     const used = new Set<string>()
 

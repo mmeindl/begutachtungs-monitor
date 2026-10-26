@@ -606,6 +606,29 @@ describe('what looks like a provision but is not', () => {
   })
 })
 
+describe('the tail of one unit and the heading of the next', () => {
+  // „(zu § 61 Abs. 5 und 5a)" under a schedule's designation names the §§ it
+  // belongs to (RIS E9F4C208); above a designation the same words are the
+  // heading's (Salzburg's Gemeindewahlordnung, sbg-18058).
+  it('keeps „(zu …)" under its designation, and hands it on above one', () => {
+    const rows = parse([page([
+      { y: 700, left: 'Anlage 11', right: 'Anlage 11' },
+      { y: 686, left: '(zu § 61 Abs. 5 und 5a)', right: '(zu § 61 Abs. 5 und 5a)' },
+      { y: 672, left: 'Anlage 12', right: 'Anlage 12' },
+      { y: 658, left: '(zu § 2 Z 4 lit. g)', right: '(zu § 2 Z 4 lit. g)' },
+    ]), page([
+      { y: 700, left: '§ 94. (1) Die §§ 3 und 5 sind anzuwenden.', right: '§ 94. (1) Die §§ 3 und 5 sind anzuwenden.' },
+      { y: 686, left: 'Hauptwahlbehörde', right: 'Hauptwahlbehörde' },
+      { y: 672, left: '(zu den §§ 6 und 10)', right: '(zu den §§ 6 und 10)' },
+      { y: 658, left: '§ 98. (1) Die Mitglieder sind zu bestellen.', right: '§ 98. (1) Die Mitglieder werden bestellt.' },
+    ])])
+    expect(rows.find((r) => r.gld === 'Anlage 11')!.current).toBe('Anlage 11 (zu § 61 Abs. 5 und 5a)')
+    expect(rows.find((r) => r.gld === 'Anlage 12')!.current).toBe('Anlage 12 (zu § 2 Z 4 lit. g)')
+    expect(rows.find((r) => r.gld === '§ 94.')!.current).toBe('§ 94. (1) Die §§ 3 und 5 sind anzuwenden.')
+    expect(rows.find((r) => r.gld === '§ 98.')!.current.startsWith('Hauptwahlbehörde (zu den §§ 6 und 10) § 98.')).toBe(true)
+  })
+})
+
 describe('the header pair as the gate on the geometry', () => {
   // Every line of this path is read out of a coordinate, and nothing in the
   // text itself would reveal that the coordinates were misread — the words
@@ -813,6 +836,25 @@ describe('each column measured against its own edge', () => {
     const four = rows.find((r) => r.gld === '§ 4.')!
     expect(four.change).toBe('unchanged')
     expect(four.current).toContain('Besondere Voraussetzungen')
+  })
+
+  // A word broken over two lines is one text. Salzburg's Raumordnungsgesetz
+  // (sbg-18131) heads its § 39 with three lines, the first set two points in
+  // from the margin and running to the edge; the carry stopped there and § 38
+  // ended in „Flächen für Einzel-".
+  it('hands on the line whose word the heading goes on with', () => {
+    const rows = parse([pageOf([
+      ...page([{ y: 740, left: '§ 38. (1) Die Behörde entscheidet mit Bescheid.', right: '§ 38. (1) Die Behörde entscheidet mit Bescheid.' }]).items,
+      ...Array.from({ length: 10 }, (_, i) => body(i + 2, 720 - i * 20)).flat(),
+      wide(LEFT_X + 2, 500, 'Kennzeichnung von Flächen für Einzel-', 336),
+      wide(RIGHT_X + 2, 500, 'Kennzeichnung von Flächen für Einzel-', 336),
+      ...page([
+        { y: 480, left: 'handelsnutzungen', right: 'handelsnutzungen' },
+        { y: 460, left: '§ 39. (1) Der Antrag ist schriftlich zu stellen.', right: '§ 39. (1) Der Antrag ist schriftlich zu stellen.' },
+      ]).items.map((i) => ({ ...i, x: i.text === 'handelsnutzungen' ? i.x + 130 : i.x })),
+    ])])
+    expect(rows.find((r) => r.gld === '§ 38.')!.current).not.toContain('Einzel')
+    expect(rows.find((r) => r.gld === '§ 39.')!.current.startsWith('Kennzeichnung von Flächen für Einzelhandelsnutzungen § 39.')).toBe(true)
   })
 })
 
