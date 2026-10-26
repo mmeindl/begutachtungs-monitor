@@ -5364,11 +5364,26 @@ bzw. 551 → 606, „nicht gefunden" 62 → 21 — über den laufenden Server
 Verletzung, mit dem bekannten Versatz der beiden Instrumente von rund sechs §§; von gezeigt zu zurückgehalten nur die zwei §§, die allein gegen ein
 Inhaltsverzeichnis bestätigt waren. Fehlerinjektion jede Klasse ≥ 95 %
 (Pools 1.006 und 1.349), BGBl-Prüfstand 108 bestätigt, 0 abweichend, eigene
-Abweichung 23 wie zuvor. Offen: Ketten unterhalb des § (ArbVG § 110 Abs. 2a,
-verweigert); Prüfung 3 lässt die Wörter einer unveränderten Zeile ihren
+Abweichung 23 wie zuvor. Offen damals: Ketten unterhalb des § (ArbVG § 110
+Abs. 2a, verweigert — seither gebaut, siehe unten); Prüfung 3 lässt die Wörter einer unveränderten Zeile ihren
 eigenen Verlust entschuldigen (AC8FD757 § 3c) — auf geänderte Zeilen
 beschränkt änderte das keine Seite, der Wächterlauf dazu fehlt; 20 „fremd"
 in 707EA278 wegen gesperrt gesetzter Überschriften im PDF.
+
+**Ketten unterhalb des § (26.10.2026, spät).** Dasselbe wie eine Ebene
+höher: Alle Verschiebungen einer Novelle innerhalb eines § gelten zusammen,
+gegen den Endstand geprüft (ArbVG § 110: Abs. 2a → 2b → 2c → 2d, dazu
+„Abs. 2a lautet" vor „der bisherige Abs. 2a"). Die Plausibilitätsprüfung
+verrechnet eine Anweisung jetzt mit der Einheit, auf die sie wirkte, nicht
+mit der, die ihre Adresse im geltenden Text nennt — nach einer
+Umnummerierung rechnete sie die falsche. Eine Reihe von Litterae („d) bis
+m)") ist aufzählbar wie eine von Ziffern. Und ein alter Fehler, den keine
+Textprüfung sah: „Z 3 bis 5 durch folgende Z 4 bis 6" behielt die alten
+Nummern beim neuen Text. Unterhalb des § im Korpus des Prüfstands
+verweigert 12 → 7 von 109 Zeilen, in der XXVIII. GP 30 → 23 von 216; gezeigt
+2.159 → 2.165 und 614 → 623, jeder neue § Wort für Wort gegen die Beilage
+gelesen, keiner verloren; BGBl-Prüfstand identisch 1.389 → 1.390, eigene
+Abweichung 23, abweichend 0.
 
 ### 12.13 „Was ändert der Entwurf?" — die amtliche Gegenüberstellung auf der Seite
 
