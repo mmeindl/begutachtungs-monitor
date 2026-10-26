@@ -332,6 +332,16 @@ describe('two-column Textgegenüberstellung (Wien)', () => {
       .toEqual(['Dienstordnung 1994', 'Besoldungsordnung 1994', 'Wiener Bedienstetengesetz'])
   })
 
+  it('lists only the laws a draft amends where it also enacts or repeals one (26.10.2026)', () => {
+    // „… geändert, das … aufgehoben und das … erlassen werden": none at all until then (Salzburg 18161).
+    expect(amendedLawsOf('Gesetz, mit dem das Salzburger Landeswappengesetz 1989 und das Jagdgesetz 1993 geändert, das Salzburger Landwirtschafts-Materialseilbahngesetz aufgehoben und das Salzburger Motorschlittengesetz 2016 erlassen werden'))
+      .toEqual(['Salzburger Landeswappengesetz 1989', 'Jagdgesetz 1993'])
+    // „… erlassen und das … aufgehoben sowie das …": the enacted and the repealed law lumped in until then (Kärnten 1082/2019).
+    expect(amendedLawsOf('Gesetz, mit dem das Gesetz über die Pflege (Kärntner Pflegegesetz – K-PG) erlassen und das Kärntner Mindestsicherungsgesetz aufgehoben sowie das Kärntner Bestattungsgesetz und das Kärntner Chancengleichheitsgesetz geändert werden'))
+      .toEqual(['Kärntner Bestattungsgesetz', 'Kärntner Chancengleichheitsgesetz'])
+    expect(amendedLawsOf('Landesgesetz, mit dem das Oö. Tourismusgesetz 2018 geändert und das Oö. Campingplatzgesetz aufgehoben werden')).toEqual(['Oö. Tourismusgesetz 2018'])
+  })
+
   it('reads an article of a Novelle among the laws as one item, its own „geändert wird" included (Kärnten 842/2022, 227/2022; 26.10.2026)', () => {
     expect(amendedLawsOf('Gesetz, mit dem die Kärntner Landesverfassung, das Kärntner Schulbaufondsgesetz, Art. II des Gesetzes, mit dem das Kärntner Schulbaufondsgesetz geändert wird, das Kärntner Landesrechnungshofgesetz 1996, das Kärntner Regionalfondsgesetz und das Kärntner Schulgesetz geändert werden'))
       .toEqual(['Kärntner Landesverfassung', 'Kärntner Schulbaufondsgesetz', 'Art. II des Gesetzes, mit dem das Kärntner Schulbaufondsgesetz geändert wird', 'Kärntner Landesrechnungshofgesetz 1996', 'Kärntner Regionalfondsgesetz', 'Kärntner Schulgesetz'])

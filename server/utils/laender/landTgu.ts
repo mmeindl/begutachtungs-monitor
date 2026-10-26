@@ -870,7 +870,11 @@ export function bareLawName(name: string): string {
  * The laws a draft amends, from its title: „Gesetz, mit dem das Wiener
  * Reinhaltegesetz geändert wird" → one; „…, mit dem das Landesbeamten-
  * Pensionsgesetz, das Salzburger Objektivierungsgesetz 2017 und das …
- * geändert werden" → each.
+ * geändert werden" → each. Only those it amends (26.10.2026): a title that
+ * also enacts or repeals a law — „… geändert, das … aufgehoben und das …
+ * erlassen werden" — gave none (Salzburg 18161, 18172, Oö. 2021-16019), or
+ * the enacted and the repealed law lumped with the amended (Kärnten
+ * 1082/2019), and every such name was asked of RIS in vain.
  *
  * An article of a Novelle among them names the Novelle by its own „mit dem
  * … geändert wird": „…, das Kärntner Schulbaufondsgesetz, Art. II des
@@ -884,9 +888,15 @@ export function bareLawName(name: string): string {
 export function amendedLawsOf(title: string): string[] {
   // The article's own clause, kept from the list's „geändert werden" by its spaces.
   const kept = title.replace(NOVELLE_ARTICLE_RE, (_, article: string, clause: string) => `${article}\u0001${clause.replace(/ /g, '\u0002')}`)
-  const m = /mit de[rm] ((?:das|die|der) .+?) geändert (?:wird|werden)/.exec(kept)
+  // The list „geändert" closes — also where another verb's list follows it
+  // („… geändert, das … aufgehoben und das … erlassen werden", Salzburg 18161).
+  const m = /mit de[rm] ((?:das|die|der) .+?) geändert(?= (?:wird|werden)\b|,| und\b| sowie\b)/.exec(kept)
   if (!m) return []
-  return m[1]!.split(/(?:,\s*|\s+und\s+)(?=(?:das|die|der)\s|Art(?:ikel|\.)\s*[IVXL\d])/)
+  // Only its own clause where another verb's precedes it („… erlassen und das
+  // … aufgehoben sowie das …", Kärnten 1082/2019): a law enacted or repealed is
+  // no law the draft amends.
+  const own = m[1]!.split(/\s+(?:erlassen|aufgehoben|aufgelöst)\s+(?:und|sowie)\s+(?=(?:das|die|der)\s)/).at(-1)!
+  return own.split(/(?:,\s*|\s+und\s+)(?=(?:das|die|der)\s|Art(?:ikel|\.)\s*[IVXL\d])/)
     .map((x) => lawName(x.replace(/^(?:das|die|der)\s+/, '').replaceAll('\u0001', ', ').replaceAll('\u0002', ' ')))
     .filter(Boolean)
 }
