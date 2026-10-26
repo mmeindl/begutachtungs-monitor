@@ -32,7 +32,7 @@ import { safeExternalUrl } from '#shared/utils/safeExternalUrl'
 import { formatDateDe } from '#shared/utils/format'
 import { diffLawUnits, summarizeDiff } from '../diff/lawDiff'
 import { lawInForce, paragraphByPhrase, paragraphText } from './landKons'
-import { amendedLawsOf, bareLawName, columnParagraphs, draftDeletes, joinLines, mergeParagraphs, onlyElided, onlyListed, packageArticles, paraId, renumberingsOf, tguParagraphKey, searchPhrase, standsInRis, tguLines, tguParagraphs, tguUnits, withHeadings, withRenumberings, type ColumnRow, type TguParagraph, type TguReading } from './landTgu'
+import { amendedLawsOf, bareLawName, columnParagraphs, draftDeletes, joinLines, mergeParagraphs, onlyElided, onlyListed, packageArticles, paraId, renumberingsOf, replacementsOf, tguParagraphKey, searchPhrase, standsInRis, tguLines, tguParagraphs, tguUnits, withHeadings, withRenumberings, type ColumnRow, type TguParagraph, type TguReading } from './landTgu'
 import { draftSource, landPdfBytes } from './texts/read'
 import { tguPages } from './landTguPdf'
 import { pagesOf } from '../annex/annexPdfPages'
@@ -109,6 +109,8 @@ interface TguRead {
   enacted?: string[]
   /** The renumberings the draft's own text orders that the reading could not pair old → new (`withRenumberings`). */
   renumbered?: string[]
+  /** Laws the draft puts in place of one in force of the same name (`replacementsOf`). */
+  replacements?: { old: string; by: string }[]
 }
 
 /** The draft's own text, or null where reading it failed — which `deletes` must not take for a draft without repeals. */
@@ -152,6 +154,7 @@ async function readOoe(detail: LandDraftRecord): Promise<TguRead | string> {
       laws,
       deletes: (n) => draftDeletes(draftText ?? '', n),
       renumbered: unmapped,
+      replacements: replacementsOf(detail.draft.title, draftText ?? ''),
       ...(draftText === null ? { complete: false as const } : {}),
     }
   }
@@ -273,6 +276,7 @@ async function readWien(detail: LandDraftRecord): Promise<TguRead | string> {
     laws,
     deletes: (n) => draftDeletes(draftText, n),
     renumbered: unmapped,
+    replacements: replacementsOf(detail.draft.title, draftText),
   }
 }
 
@@ -342,6 +346,7 @@ async function readSalzburg(detail: LandDraftRecord): Promise<TguRead | string> 
     laws,
     deletes: (n) => draftDeletes(draftText ?? '', n),
     renumbered: unmapped,
+    replacements: replacementsOf(detail.draft.title, draftText ?? ''),
     ...(draftText === null ? { complete: false as const } : {}),
   }
 }
@@ -419,6 +424,7 @@ function readOwn<Page>({ publisher, load, parse, dated, guardDeletes }: OwnReade
       date: doc.date ?? detail.draft.startedAt ?? dated(pages, draftText ?? '') ?? detail.draft.placedAt ?? new Date().toISOString().slice(0, 10),
       laws,
       ...(guardDeletes ? { deletes: (n: string) => draftDeletes(draftText ?? '', n) } : {}),
+      replacements: replacementsOf(detail.draft.title, draftText ?? ''),
       ...(draftText === null ? { complete: false as const } : {}),
     }
   }
@@ -688,6 +694,12 @@ export async function compareTgu(land: LandCode, detail: LandDraftDetail): Promi
   const { from, to } = tguUnits(kept)
   const units = withHeadings(diffLawUnits(from, to), kept)
   const s = summarizeDiff(units)
+  /* A group stays filed under the law RIS confirmed — its §§ were checked
+   * there — and is headed by both laws where the draft puts a new law in
+   * place of one in force and the Land's document sets the two side by side
+   * (`replacementsOf`, 26.10.2026). */
+  const groups = new Set([...units.map((u) => u.article), ...withheld.map((w) => w.law)].filter((l): l is string => !!l))
+  const replaced = (got.replacements ?? []).flatMap((r) => [...groups].filter((g) => bareLawName(g) === bareLawName(r.old)).map((law) => ({ law, by: r.by })))
   return {
     value: {
       from: 'geltend',
@@ -705,6 +717,7 @@ export async function compareTgu(land: LandCode, detail: LandDraftDetail): Promi
       ...beside,
       // Only beside §§ compared: what the list does by number, it says above it (`renumberedNote`).
       ...(got.renumbered?.length ? { renumbered: got.renumbered } : {}),
+      ...(replaced.length ? { replaced } : {}),
     },
     complete,
   }

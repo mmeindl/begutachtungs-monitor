@@ -315,6 +315,15 @@ export interface LandLawDiffResponse {
    * Only beside a list, and only `geltend → entwurf`.
    */
   renumbered?: string[]
+  /**
+   * A law the draft puts in place of one in force of the same name, which
+   * the Land's Textgegenüberstellung sets against it § by § by number —
+   * Salzburg 18151, the Salzburger Objektivierungsgesetz 2016 for the
+   * Salzburger Objektivierungsgesetz (26.10.2026): `law` is the group, the
+   * law in force as RIS names it; `by` the new law as the draft names it.
+   * Only `geltend → entwurf`.
+   */
+  replaced?: { law: string; by: string }[]
 }
 
 /**

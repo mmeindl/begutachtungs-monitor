@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest'
 import { draftNameOf, kaerntenDated, readableLawName, tirolDated, wienTguStart } from '../server/utils/laender/landTguService'
 import { parseAnnexPdf, type AnnexItem, type AnnexPage } from '../server/utils/annex/annexPdf'
-import { amendedLawOf, amendedLawsOf, columnParagraphs, draftDeletes, joinLines, mergeParagraphs, onlyElided, onlyListed, packageArticles, renumberingsOf, searchPhrase, shareInRis, STANDS_IN_RIS, standsInRis, tguLines, tguParagraphs, tguUnits, withHeadings, withRenumberings, type Renumbering, type TguLine, type TguPage, type TguParagraph } from '../server/utils/laender/landTgu'
+import { amendedLawOf, amendedLawsOf, columnParagraphs, draftDeletes, joinLines, mergeParagraphs, onlyElided, onlyListed, packageArticles, renumberingsOf, replacementsOf, searchPhrase, shareInRis, STANDS_IN_RIS, standsInRis, tguLines, tguParagraphs, tguUnits, withHeadings, withRenumberings, type Renumbering, type TguLine, type TguPage, type TguParagraph } from '../server/utils/laender/landTgu'
 
 /** A run at (x, y), each character 5 pt wide; glyph widths equal, so centres fall evenly. */
 function run(s: string, x: number, y: number) {
@@ -500,6 +500,21 @@ describe('packageArticles — a package\'s laws, each read on its own (26.10.202
     expect(crossed).toHaveLength(1)
     expect(crossed[0]!.current).toContain('(1) bis (19)')
     expect(crossed[0]!.proposed).toContain('(4b) Besucht')
+  })
+})
+
+describe('replacementsOf — a new law in place of one in force of the same name (26.10.2026)', () => {
+  it('pairs the law the title enacts with the law the text puts out of force (Salzburg 18151, 20016, 18216)', () => {
+    expect(replacementsOf('Gesetz, mit dem ein Salzburger Objektivierungsgesetz 2016 erlassen wird und das Landes-Personalvertretungsgesetz geändert wird', '(2) Zu dem im Abs 1 genannten Zeitpunkt tritt das Salzburger Objektivierungsgesetz, LGBl Nr 7/2001, zuletzt geändert durch das Gesetz LGBl Nr 93/2015, außer Kraft.'))
+      .toEqual([{ old: 'Salzburger Objektivierungsgesetz', by: 'Salzburger Objektivierungsgesetz 2016' }])
+    expect(replacementsOf('Gesetz, mit dem ein Gesetz über die Regelung des Gemeindewesens im Land Salzburg erlassen wird (Salzburger Gemeindeordnung 2019 – GdO 2019)', '(2) Gleichzeitig tritt die Salzburger Gemeindeordnung 1994, LGBl Nr 107, zuletzt geändert durch das Gesetz LGBl Nr 82/2018, außer Kraft.'))
+      .toEqual([{ old: 'Salzburger Gemeindeordnung 1994', by: 'Salzburger Gemeindeordnung 2019' }])
+    expect(replacementsOf('Gesetz, mit dem ein Gesetz über die Diensthoheit erlassen wird (Salzburger Landeslehrpersonen-Diensthoheitsgesetz 2015 - LDHG 2015)', '(1) … tritt das Salzburger Landesleh- rer-Diensthoheitsgesetz 1995 – LDHG 1995, LGBl Nr 138, außer Kraft.'))
+      .toEqual([{ old: 'Salzburger Landeslehrer-Diensthoheitsgesetz 1995', by: 'Salzburger Landeslehrpersonen-Diensthoheitsgesetz 2015' }])
+  })
+
+  it('pairs nothing where the law put out of force has another name (Kärnten 1082/2019)', () => {
+    expect(replacementsOf('Gesetz, mit dem das Kärntner Pflege- und Betreuungsgesetz erlassen wird', 'Gleichzeitig tritt das Kärntner Mindestsicherungsgesetz, LGBl Nr 15/2007, außer Kraft.')).toEqual([])
   })
 })
 

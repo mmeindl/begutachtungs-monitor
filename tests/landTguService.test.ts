@@ -211,6 +211,17 @@ describe('compareTgu — one law, one group (25.10.2026)', () => {
     expect(r.withheld.map((w) => w.law)).toEqual(['Kärntner landwirtschaftliches Schulgesetz 1993 - K-LSchG'])
   })
 
+  // Salzburg 18151: the Land's document sets the old law against the new one, § by number.
+  it('says which new law a group of the law in force stands beside, where the draft puts it in that law\'s place', async () => {
+    draftSource.mockReturnValue({ document: { label: 'Entwurf', url: 'https://www.ktn.gv.at/e.pdf', publisher: 'Land Kärnten' }, read: async () => ({ units: null, text: '§ 9 (2) Gleichzeitig tritt das Kärntner Beispielgesetz, LGBl Nr 1/2000, zuletzt geändert durch das Gesetz LGBl Nr 2/2020, außer Kraft.' }) })
+    // The title amends no law; RIS finds the one in force by the §'s words.
+    paragraphByPhrase.mockResolvedValue({ url: 'ris:5', law: LAW })
+    ktnTguParagraphs.mockReturnValue([para('5', { law: null, old: [TEXT_5], neu: ['Begriffe (1) Neu.'] })])
+    const r = (await compareTgu('ktn', detail(`Gesetz, mit dem ein ${LAW} 2026 erlassen wird`))).value
+    expect(r.units.map((u) => [u.article, u.id])).toEqual([[LAW, '§5']])
+    expect(r.replaced).toEqual([{ law: LAW, by: `${LAW} 2026` }])
+  })
+
   it('asks RIS for the elided and new §§ of a renamed law under the name it confirmed the others under (Salzburg 19504)', async () => {
     const NOW = 'Kärntner Bildungsbaufondsgesetz – K-BBFG'
     lawInForce.mockImplementation(async (_land, law) => (law === NOW ? new Map([['5', 'ris:5'], ['6', 'ris:6']]) : new Map()))

@@ -178,8 +178,10 @@ async function showMore(event: MouseEvent) {
     >
       <span class="flex w-full items-start gap-3">
         <!-- A group without a law name is the law text itself: a single-law
-             draft, or an annex that marks no boundaries. -->
-        <span class="min-w-0 flex-1 text-sm font-semibold text-ink" :class="stuck && 'truncate'">{{ title || 'Gesetzestext' }}</span>
+             draft, or an annex that marks no boundaries. A caller may set
+             the name with more than text (`#title`): a Land's new law in
+             place of an old one, „alt → neu" (26.10.2026). -->
+        <span class="min-w-0 flex-1 text-sm font-semibold text-ink" :class="stuck && 'truncate'"><slot name="title">{{ title || 'Gesetzestext' }}</slot></span>
         <UIcon
           name="i-lucide-chevron-down"
           class="mt-0.5 size-4 shrink-0 text-ink-muted transition-transform"

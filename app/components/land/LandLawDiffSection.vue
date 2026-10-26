@@ -186,6 +186,9 @@ const withheldByGroup = computed(() => {
 /* The title of a group of §§ the reader filed under no law of the package. */
 const UNFILED = 'Ohne Zuordnung zu einem Gesetz'
 
+/* A new law in place of one in force of the same name: its group is headed by both (`replaced`, 26.10.2026). */
+const replacedBy = computed(() => new Map((data.value?.replaced ?? []).map((r) => [r.law, r.by])))
+
 /* Where nothing is shown: the same §§, by the law each is filed under. */
 const unshownByLaw = computed(() => (data.value && !data.value.available ? withheldGroups(data.value.withheld ?? [], []) : new Map<string, LandLawDiffResponse['withheld']>()))
 
@@ -271,7 +274,7 @@ const groups = computed(() => {
     }
     flush()
     // A group of §§ only withheld, under no law: the reader could not tell which law of the package they are (Kärnten, 25.10.2026).
-    return { ...g, title: landLawGroupTitle(g.article) || (g.units.length ? '' : UNFILED), blocks, hidden, withheld: withheldByGroup.value.get(g.article) ?? [], reaches: reachesByGroup.value.get(g.article) ?? [] }
+    return { ...g, title: landLawGroupTitle(g.article) || (g.units.length ? '' : UNFILED), replacedBy: replacedBy.value.get(g.article) ?? null, blocks, hidden, withheld: withheldByGroup.value.get(g.article) ?? [], reaches: reachesByGroup.value.get(g.article) ?? [] }
   })
 })
 
@@ -347,6 +350,14 @@ const hasUnits = computed(() => units.value.length > 0)
           @toggle="toggleGroup(g.article)"
           @more="showAll(g.article)"
         >
+          <!-- The law in force and the new law in its place, „alt → neu":
+               the arrow for the eye, a screen reader hears „ersetzt durch". -->
+          <template v-if="g.replacedBy" #title>
+            {{ g.title }}<span aria-hidden="true"> → </span><span class="sr-only"> ersetzt durch </span>{{ landLawGroupTitle(g.replacedBy) }}
+          </template>
+          <p v-if="g.replacedBy" class="border-b border-hairline px-4 py-2.5 text-sm text-ink-secondary">
+            Das neue Gesetz ersetzt das geltende; das Land stellt die beiden nach den Nummern ihrer Paragraphen gegenüber.
+          </p>
           <!-- What the Land's document shows and this list does not: a § is
                shown only where RIS confirms our reading of its text in force
                (`landTguService`), and only where the reader composed its new

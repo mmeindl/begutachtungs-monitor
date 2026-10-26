@@ -964,6 +964,51 @@ export function amendedLawsOf(title: string): string[] {
 /** „Art. II des Gesetzes, mit dem das Kärntner Schulbaufondsgesetz geändert wird" inside a title's list of laws. */
 const NOVELLE_ARTICLE_RE = /(Art(?:ikel|\.)\s*[IVXL\d]+[a-z]?\s+des\s+(?:Landes)?[Gg]esetzes),\s+(mit\s+de[mr]\s+[^,]+?\s+geändert\s+wird)(?=,|\s+und\s)/g
 
+/**
+ * A law the draft enacts in place of one in force of the same name (26.10.2026):
+ * Salzburg 18151's title enacts „ein Salzburger Objektivierungsgesetz 2016",
+ * its text puts „das Salzburger Objektivierungsgesetz, LGBl Nr 7/2001, …"
+ * out of force, and the Land's Textgegenüberstellung sets the two against
+ * each other, § by § by number. `old` as the draft names the law in force,
+ * `by` the new one. The same name: without year and abbreviation, or the
+ * same abbreviation — „Salzburger Landeslehrpersonen-Diensthoheitsgesetz
+ * 2015 - LDHG 2015" for the „Landeslehrer-Diensthoheitsgesetz 1995 – LDHG
+ * 1995" (18216).
+ */
+export function replacementsOf(title: string, draftText: string): { old: string; by: string }[] {
+  const t = draftText.replace(/\s+/g, ' ').replace(/(\p{Ll})- (?!(?:und|oder|bzw|sowie)\b)(?=\p{Ll})/gu, '$1')
+  const enacted = enactedLawsOf(title)
+  const abbreviation = (name: string) => /\s[–-]\s*([\p{Lu}][\p{L}.\d-]*?)(?:\s+\d{4})?\s*$/u.exec(name)?.[1]?.toLowerCase() ?? null
+  const yearless = (name: string) => bareLawName(name).replace(/\s+\d{4}$/, '')
+  const sameName = (a: string, b: string) => yearless(a) === yearless(b) || (abbreviation(a) !== null && abbreviation(a) === abbreviation(b))
+  const out: { old: string; by: string }[] = []
+  // „… tritt das X, LGBl …, außer Kraft", „Das X, LGBl …, tritt … außer Kraft"
+  const NAME = String.raw`((?:(?!\s(?:das|die|der)\s)[^,;:„“]){3,150}?),\s+LG\s?B[lI1]\b`
+  const repealed = new RegExp(String.raw`\btritt\s+(?:das|die|der)\s+${NAME}[^.;:]{0,200}?außer\s+Kraft|\b(?:Das|Die|Der)\s+${NAME}[^.;:]{0,200}?\btritt\b[^.;:]{0,120}?außer\s+Kraft`, 'g')
+  for (const m of t.matchAll(repealed)) {
+    const old = (m[1] ?? m[2]!).trim()
+    const by = enacted.find((n) => sameName(n, old) && bareLawName(n) !== bareLawName(old))
+    if (by && !out.some((o) => o.old === lawName(old))) out.push({ old: lawName(old), by: lawName(by) })
+  }
+  return out
+}
+
+/**
+ * The laws a draft's title enacts: „mit dem ein Salzburger
+ * Objektivierungsgesetz 2016 erlassen wird", by its short title where it
+ * gives one — „… erlassen wird (Salzburger Gemeindeordnung 2019 – GdO 2019)"
+ * (20016).
+ */
+function enactedLawsOf(title: string): string[] {
+  const out: string[] = []
+  for (const m of title.matchAll(/mit\s+de[mr]\s+(.+?)\s+erlassen(?:\s+(?:wird|werden))?(?:\s*\(([^()]+)\))?(?=$|[\s,])/g)) {
+    // The last of a list, „… geändert und das X erlassen": the law the verb is of.
+    const last = m[1]!.split(/(?:,\s*|\s+(?:und|sowie)\s+)(?=(?:das|die|der|ein|eine|einen)\s)/).at(-1)!.replace(/^(?:das|die|der|ein|eine|einen)\s+/, '')
+    out.push(m[2]?.trim() || /\(([^()]+)\)\s*$/.exec(last)?.[1]?.trim() || last.trim())
+  }
+  return out
+}
+
 /** The one law a draft amends; null for a package. */
 export function amendedLawOf(title: string): string | null {
   const laws = amendedLawsOf(title)
