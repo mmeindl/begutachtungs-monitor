@@ -2119,6 +2119,23 @@ describe('a § replaced by one under another number is that § renamed (26.10.20
   })
 })
 
+describe('a § renumbered with its new designation written out (26.10.2026)', () => {
+  const l = (): StandingLaw => ({ paragraphs: [para('9', 'Haftung', ['IVS-Diensteanbieter haften.']), para('14', 'Verweisungen', ['Soweit verwiesen wird, gilt die geltende Fassung.']), para('16', 'Vollziehung', ['Betraut ist die Bundesministerin.'])] })
+
+  it('moves the § and records the move (51/ME XXVIII: § 14 → § 22)', () => {
+    const { law: out, results, renamed } = run(l(), instr('Der bisherige § 14 wird zu § 22.'))
+    expect(results[0]!.applied).toBe(true)
+    expect(out.paragraphs.map((p) => p.marker)).toEqual(['§ 9.', '§ 22.', '§ 16.'])
+    expect(renamedOrigins(renamed)('22')).toBe('14')
+  })
+
+  it('refuses a number another § still holds, and locks both (51/ME: § 9 → § 16 before § 16 → § 24)', () => {
+    const { results, unresolved } = run(l(), instr('Der bisherige § 9 wird zu § 16.'))
+    expect(results[0]!.reason).toBe('Bezeichnung 16 existiert bereits')
+    expect([...unresolved].sort()).toEqual(['§ 16', '§ 9'])
+  })
+})
+
 describe('what a refused line would have created (26.10.2026)', () => {
   it('keeps the §§ its new text spells out, and none of a table of contents', () => {
     // DC0E9C30: „Der 3. Unterabschnitt des 2. Abschnitts lautet:" refused for

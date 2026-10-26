@@ -1842,6 +1842,41 @@ const NAMED_BY_DESIGNATION_RE = /\bmit\s+der\s+\p{L}*bezeichnung\s*""/iu
  */
 const NAMED_AS_RE = /\bals\s+(Abs\.|Z|lit\.)\s*(\d+[a-z]*|[a-z])\s+bezeichnet\b/iu
 
+/**
+ * „Der bisherige § 14 wird zu § 22.", „§ 101e … wird in § 101f
+ * umbenannt.", „Der bisherige § 5 erhält die Bezeichnung § 7.", „… wird als
+ * § 22 bezeichnet." — the renumbering of a § with its new designation
+ * written out, not quoted. Refused as „kein bekanntes Verb" or „Umbenennung
+ * ohne neue Bezeichnung", so the § never moved: 51/ME XXVIII renumbers
+ * § 9 → § 16 and § 14 → § 22 this way, and the engine kept both under their
+ * old numbers (26.10.2026).
+ *
+ * Only where the designation ends the clause: „wird zu § 23 Abs. 1", „erhält
+ * die Bezeichnung § 19. (1)" pull a level in (`absatzDrawnIn`), and „wird zu
+ * § 17 und lautet" is a replacement (`renamedTo` in `kons/lawApply.ts`). A
+ * list renames one by one, in order: „Die §§ 8 und 9 erhalten die
+ * Bezeichnungen §§ 5 und 6".
+ */
+const PARA_LIST = String.raw`§§?\s*\d+(?:[a-z]{1,2}(?![\p{L}]))?(?:\.\d+)?(?:\s*(?:,|und|bis)\s*(?:§\s*)?\d+(?:[a-z]{1,2}(?![\p{L}]))?(?:\.\d+)?)*`
+const PARA_RENAMED_RE = new RegExp(String.raw`(?<![\p{L}])(?:(?:wird|werden)\s+(?:zu(?:m)?\s+(?:den\s+)?(${PARA_LIST})|in\s+(?:den\s+)?(${PARA_LIST})\s+umbenannt|als\s+(${PARA_LIST})\s+bezeichnet)|erh(?:ä|a)lt(?:en)?\s+die\s+(?:Paragra(?:ph|f)en)?[Bb]ezeichnung(?:en)?\s+(${PARA_LIST}))\s*\.?\s*$`, 'u')
+
+/** „§§ 22 und 23", „§§ 104b bis 104i" → the designations in order; null where a range cannot be counted out. */
+function paragraphNumbers(list: string): string[] | null {
+  const out: string[] = []
+  let ranged = false
+  for (const m of list.matchAll(/(\d+(?:[a-z]{1,2}(?![\p{L}]))?(?:\.\d+)?)|(?<![\p{L}])(bis)(?![\p{L}])/gu)) {
+    if (m[2]) {
+      ranged = true
+      continue
+    }
+    const run = ranged ? expandRange(out.at(-1) ?? '', m[1]!) : [m[1]!]
+    if (!run) return null
+    out.push(...run)
+    ranged = false
+  }
+  return out
+}
+
 function parseOne(raw: string, inherited: NovaoAddress | null | undefined, whole: string): ParsedInstruction {
   const line = normalizeText(raw).replace(NUMBER_PREFIX, '')
   const head = instructionHead(line)
@@ -1874,7 +1909,9 @@ function parseOne(raw: string, inherited: NovaoAddress | null | undefined, whole
   // what it reads, so a clause that goes on after it must not end here.
   const namedMatch = NAMED_AS_RE.exec(maskQuotes(head))
   const namedAs = namedMatch && /^[\s.;]*$/.test(maskQuotes(head).slice(namedMatch.index + namedMatch[0].length)) ? namedMatch : null
-  const addressText = redundantLocator ? (scope || head).replace(locator[0], `${locator[1]} `) : namedAs ? (scope || head).replace(namedAs[0], 'bezeichnet') : scope || head
+  // Nor is the new § of „Der bisherige § 14 wird zu § 22." (`PARA_RENAMED_RE`).
+  const paraRenamed = namedAs || quotes.length > 0 ? null : PARA_RENAMED_RE.exec(head)
+  const addressText = redundantLocator ? (scope || head).replace(locator[0], `${locator[1]} `) : namedAs ? (scope || head).replace(namedAs[0], 'bezeichnet') : paraRenamed ? (scope || head).replace(paraRenamed[0], '') : scope || head
   const targets = payloadOnly ? [inherited!] : (parseAddressList(addressText, inherited) ?? (textOp ? sentencePairPlaces(addressText, inherited) : null))
   if (!targets || targets.length === 0) {
     // Name the word rather than report a missing address: „sublit." and the
@@ -1888,6 +1925,23 @@ function parseOne(raw: string, inherited: NovaoAddress | null | undefined, whole
   const target = targets[0]!
 
   if (/wird wie folgt geändert|werden wie folgt geändert|wird wie folgt geändert/i.test(head)) return ok({ kind: 'container', target })
+
+  // „Der bisherige § 14 wird zu § 22." (`PARA_RENAMED_RE`): one renumbering
+  // per § named, in order — the applier carries a line's renumberings out at
+  // once (`renumberBatch`). A § and nothing below it, and as many new
+  // designations as §§. And the subject is all that stands in front: „§ 74
+  // samt Überschrift entfällt. § 74a erhält die Bezeichnung § 74" is two
+  // sentences, read as one it renamed § 74 to itself; „§ 622 in der Fassung
+  // BGBl. I Nr. 45/2005" is one of two §§ 622, and which one the standing
+  // text cannot say.
+  if (paraRenamed) {
+    const subject = (scope || head).slice(0, (scope || head).lastIndexOf(paraRenamed[0]))
+    const to = paragraphNumbers(paraRenamed.slice(1).find((g) => g !== undefined)!)
+    const from = target.para?.startsWith('§') ? [bareParaId(target.para), ...target.siblings] : []
+    if (targets.length !== 1 || target.level !== 'para' || from.length === 0 || from.some((id) => !id) || FINITE_VERB_RE.test(subject) || /\bin\s+der\s+Fassung\b/i.test(subject)) return fail('Umbenennung in einen Paragraphen — Ziel nicht eindeutig')
+    if (!to || to.length !== from.length) return fail(`${from.length} Paragraphen, ${to?.length ?? '?'} neue Bezeichnungen`)
+    return { ops: from.map((id, i) => ({ kind: 'renumber' as const, target: { ...target, para: `§ ${id}`, siblings: [] }, to: `§ ${to[i]}`, toLast: null })), reason: null, line }
+  }
 
   // "erhält die Absatzbezeichnung", "erhalten die Paragraphenbezeichnungen",
   // "erhält die Bezeichnung": the noun varies in spelling (Paragrafen/
@@ -2587,10 +2641,11 @@ function numeralOf(designation: string): string | null {
  *   orders nothing is not an instruction, and its §§ are citations: "der
  *   Regierungsberater gemäß § 5 Abs. 1 Bundes-Krisensicherheitsgesetz" is law
  *   text RIS tagged as `novao1`. Costs 5 units on each path — among them two
- *   ministry typos ("eingfügt", "entfälllt") and two of the renumbering form
- *   "Der bisherige § 9 wird zu § 16.", which is left in the general bag on
- *   purpose: reading it would file the unit under § 9 alone while § 16 lost
- *   the same words.
+ *   ministry typos ("eingfügt", "entfälllt") and, until the grammar read it
+ *   (`PARA_RENAMED_RE`, 26.10.2026), two of the renumbering form "Der
+ *   bisherige § 9 wird zu § 16.": read here it would file the unit under
+ *   § 9 alone while § 16 lost the same words. Read as a renumbering it
+ *   names both (`addressedUnits`).
  * - **`§§` with a single designation.** "In den §§ 156 Abs. 2 und 317 Abs. 2 …"
  *   names two provisions and `parseAddressList` resolves one, because the
  *   second half carries no § sign of its own. Filing the unit under § 156 would
