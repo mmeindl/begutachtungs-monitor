@@ -291,6 +291,15 @@ export interface LandLawDiffResponse {
    * changes.
    */
   withheld: { law: string | null; id: string; reason?: LandWithheldReason }[]
+  /**
+   * Instructions of the Novelle that reach §§ they do not name — „Im V.
+   * Abschnitt wird jeweils …", „Im ganzen Gesetz …" — quoted per law, so
+   * the §§ listed are not read as all it changes (26.10.2026). Only
+   * `geltend → entwurf`.
+   */
+  reaches?: { law: string | null; instruction: string }[]
+  /** Pages of the Land's document the reader did not read; said as the Bund's annex says it (`annexDroppedPagesNote`). */
+  droppedPages?: number
 }
 
 /**
@@ -315,9 +324,14 @@ export interface LandLawDiffResponse {
  *  - `deletion`: no new text found for it, and no repeal of it in the
  *    draft's own text;
  *  - `unchecked`: a read it rests on failed — RIS, or the draft's own text
- *    for the deletion guard; such an answer is not cached (`gathered.ts`).
+ *    for the deletion guard; such an answer is not cached (`gathered.ts`);
+ *  - `division`: a § of a division the Novelle replaces, inserts or repeals
+ *    as a whole, which the reader does not take apart (26.10.2026);
+ *  - `gap`: a § of a law whose instructions the reader did not all find in
+ *    the document (its numbering skips);
+ *  - `annex`: an Anlage or Anhang — the RIS check is for §§ and articles.
  */
-export type LandWithheldReason = 'unread' | 'wording' | 'unsure' | 'inserted' | 'elided' | 'twice' | 'deletion' | 'unchecked'
+export type LandWithheldReason = 'unread' | 'wording' | 'unsure' | 'inserted' | 'elided' | 'twice' | 'deletion' | 'unchecked' | 'division' | 'gap' | 'annex'
 
 /**
  * How a Kundmachung became certain: named by the Land; the Regierungsvorlage

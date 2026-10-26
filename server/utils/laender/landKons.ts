@@ -16,6 +16,20 @@ const XML_POLICY: UpstreamPolicy = { timeoutMs: 30_000, retries: 2, upstreamHost
 const MAX_PAGES = 20
 
 /**
+ * A unit's key as the readers number it: „§ 5" → „5"; an article, „Art. 19"
+ * → „Art. 19" (26.10.2026: a Landesverfassung's articles were not keyed at
+ * all, so not one could be checked). Only an article that is the whole
+ * designation: a § inside one, „Art. 2 § 3", is not the article.
+ */
+function unitKey(designation: string): string | undefined {
+  const s = designation.trim()
+  const para = /^§\s*(\d+[a-z]*)/.exec(s)?.[1]
+  if (para) return para
+  const article = /^Art(?:ikel|\.)?\s*(\d+[a-z]*)$/.exec(s)?.[1]
+  return article ? `Art. ${article}` : undefined
+}
+
+/**
  * Where each § of a law stands in RIS on `date`: „§ 5" → its XML document.
  *
  * Searched by title and kept by the short title, because the title search
@@ -61,7 +75,7 @@ async function lawInForceAs(land: LandCode, shortTitle: string, date: string): P
       const meta = ref?.Data?.Metadaten?.Landesrecht
       const title = String(meta?.Kurztitel ?? '').replace(/\s+/g, ' ').trim()
       if (title !== shortTitle && shortTitleKey(title) !== want) continue
-      const para = /^§\s*(\d+[a-z]*)/.exec(String(meta?.LrKons?.ArtikelParagraphAnlage ?? ''))?.[1]
+      const para = unitKey(String(meta?.LrKons?.ArtikelParagraphAnlage ?? ''))
       if (!para) continue
       const urls = asArray<any>(asArray<any>(ref?.Data?.Dokumentliste?.ContentReference)[0]?.Urls?.ContentUrl)
       const xml = urls.map((u) => String(u?.Url ?? '')).find((u) => u.endsWith('.xml'))
@@ -100,7 +114,7 @@ export async function paragraphByPhrase(land: LandCode, phrase: string, number: 
   const body = await risJson<any>(`${LANDESRECHT_API}?${params}`, POLICY)
   const hits = asArray<any>(body?.OgdDocumentResults?.OgdDocumentReference).flatMap((ref) => {
     const meta = ref?.Data?.Metadaten?.Landesrecht
-    const para = /^§\s*(\d+[a-z]*)/.exec(String(meta?.LrKons?.ArtikelParagraphAnlage ?? ''))?.[1]
+    const para = unitKey(String(meta?.LrKons?.ArtikelParagraphAnlage ?? ''))
     const urls = asArray<any>(asArray<any>(ref?.Data?.Dokumentliste?.ContentReference)[0]?.Urls?.ContentUrl)
     const xml = urls.map((u) => String(u?.Url ?? '')).find((u) => u.endsWith('.xml'))
     return para === number && xml ? [{ url: xml, law: String(meta?.Kurztitel ?? '').replace(/\s+/g, ' ').trim() }] : []

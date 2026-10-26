@@ -15,10 +15,10 @@ vi.mock('../server/utils/upstream/fetch', () => ({ risJson: vi.fn(), upstreamTex
 const { risJson } = vi.mocked(await import('../server/utils/upstream/fetch'))
 const { lawInForce } = await import('../server/utils/laender/landKons')
 
-/** One RIS hit: a § of a law under its short title. */
+/** One RIS hit: a § of a law under its short title — or an article, „Art. 19". */
 const hit = (title: string, para: string) => ({
   Data: {
-    Metadaten: { Landesrecht: { Kurztitel: title, LrKons: { ArtikelParagraphAnlage: `§ ${para}` } } },
+    Metadaten: { Landesrecht: { Kurztitel: title, LrKons: { ArtikelParagraphAnlage: para.startsWith('Art') ? para : `§ ${para}` } } },
     Dokumentliste: { ContentReference: { Urls: { ContentUrl: [{ Url: `https://ris/${encodeURIComponent(title)}/${para}.xml` }] } } },
   },
 })
@@ -53,6 +53,11 @@ describe('lawInForce — a law by the name its draft gives it', () => {
   it('finds nothing where two laws answer to the name without their abbreviations', async () => {
     risJson.mockResolvedValue(answer(hit('Kärntner Beispielgesetz - K-BG', '1'), hit('Kärntner Beispielgesetz - K-BspG', '2')) as never)
     expect((await lawInForce('ktn', 'Kärntner Beispielgesetz', '2025-01-01')).size).toBe(0)
+  })
+
+  it('keys an article as „Art. 19", so a Landesverfassung\'s units can be checked (26.10.2026)', async () => {
+    risJson.mockResolvedValue(answer(hit('Kärntner Landesverfassung - K-LVG', 'Art. 19'), hit('Kärntner Landesverfassung - K-LVG', 'Art. 20a')) as never)
+    expect([...(await lawInForce('ktn', 'Kärntner Landesverfassung', '2020-06-01')).keys()]).toEqual(['Art. 19', 'Art. 20a'])
   })
 
   it('lets a failed search throw, never answer „no such law"', async () => {

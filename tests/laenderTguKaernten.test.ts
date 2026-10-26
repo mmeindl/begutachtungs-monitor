@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import type { AnnexItem, AnnexPage } from '../server/utils/annex/annexPdf'
-import { gutterOf, ktnLines, ktnTguParagraphs, rangeNumbers, readInstruction } from '../server/utils/laender/landTguKaernten'
+import { divisionOf, gutterOf, ktnLines, ktnTguParagraphs, ktnTguReading, promulgatedName, rangeNumbers, readInstruction } from '../server/utils/laender/landTguKaernten'
 
 /**
  * Kärnten's layout, as measured (23.10.2026): the left column from 85 to 417,
@@ -78,6 +78,8 @@ describe('readInstruction', () => {
     // The anchor of an insertion is not touched; the § sign lost still names the §.
     expect(read('Nach § 74 wird folgender § 74a eingefügt:').touches).toEqual(['74a'])
     expect(read('In 75 Abs. 1a wird das Wort „a“ durch das Wort „b“ ersetzt.').touches).toEqual(['75'])
+    // A list of §§ each with its Absatz (842/2022, 26.10.2026): every one of them, not the first alone.
+    expect(read('In den §§ 61 Abs. 1, 62 Abs. 1, 63 Abs. 1 und 65 Abs. 1 wird das Wort „a“ jeweils durch das Wort „b“ ersetzt.').touches).toEqual(['61', '62', '63', '65'])
   })
 
   it('names no § for an instruction about the table of contents, though it names §§ as its entries (25.10.2026)', () => {
@@ -99,9 +101,10 @@ describe('readInstruction', () => {
   })
 
   it('takes an instruction without a § for the whole law, unless it is about the contents, an Anlage or a division name', () => {
-    expect(read('Im ganzen Gesetz wird das Wort „Bezirk“ durch das Wort „Region“ ersetzt.').all).toBe(true)
-    expect(read('Im V. Abschnitt wird jeweils der Ausdruck „a“ durch „b“ ersetzt.').all).toBe(true)
-    expect(read('Der 1. Abschnitt des Gesetzes („Auskunft“) entfällt.').all).toBe(true)
+    expect(read('Im ganzen Gesetz wird das Wort „Bezirk“ durch das Wort „Region“ ersetzt.')).toMatchObject({ all: true, quoted: 'Bezirk' })
+    // A division's words or the division itself (26.10.2026): not every § of the law.
+    expect(read('Im V. Abschnitt wird jeweils der Ausdruck „Kindergärtner(innen)“ durch „Elementarpädagogen“ ersetzt.')).toMatchObject({ all: false, op: { kind: 'divisionWording', division: { level: 'Abschnitt', designation: '5' }, quoted: 'Kindergärtner(innen)' } })
+    expect(read('Der 1. Abschnitt des Gesetzes („Auskunft“) entfällt.')).toMatchObject({ all: false, op: { kind: 'divisionDelete', division: { level: 'Abschnitt', designation: '1' } } })
     expect(read('Das Inhaltsverzeichnis wird wie folgt geändert:').all).toBe(false)
     expect(read('Die bisherige Anlage 17 erhält die Bezeichnung „Anlage 18“.').all).toBe(false)
     expect(read('Abschnitt V erhält folgende Bezeichnung:').all).toBe(false)
@@ -204,8 +207,8 @@ describe('ktnTguParagraphs', () => {
     expect(because([body(R, '1. In § 6 Abs. 3 wird das Wort „bleibt“ durch das Wort „geht“ ersetzt.', 450)])).toEqual([['6', 'wording']])
     // A whole Absatz the left column does not print: not a word changed.
     expect(because([body(R, '1. § 7 Abs. 2 lautet:', 450), absatz(R, '(2) Gibt es nicht.', 438)])).toEqual([['7', null]])
-    // The numbering skips an instruction: whatever it changes, nobody read it.
-    expect(because([body(R, '1. In § 5 Abs. 1 wird das Wort „wie“ durch „als“ ersetzt.', 450), body(R, '3. § 7 entfällt.', 400)])).toEqual([['5', null], ['7', null]])
+    // The numbering skips an instruction: whatever it changes, nobody read it — and the page says so (26.10.2026).
+    expect(because([body(R, '1. In § 5 Abs. 1 wird das Wort „wie“ durch „als“ ersetzt.', 450), body(R, '3. § 7 entfällt.', 400)])).toEqual([['5', 'gap'], ['7', 'gap']])
   })
 
   it('names every § a range creates, not only those the left column prints (25.10.2026)', () => {
@@ -213,7 +216,10 @@ describe('ktnTguParagraphs', () => {
     expect(rangeNumbers(['5', '7'])).toEqual(['5', '6', '7'])
     expect(rangeNumbers(['5', '7a'])).toEqual([])
     const right = [body(R, '1. Nach § 7 wird folgender 3. Abschnitt mit den §§ 7a bis 7c eingefügt:', 450), centre(R, '3. Abschnitt', 438)]
-    expect(unreadOf(ktnTguParagraphs([page([...leftLaw(), ...right])], laws))).toEqual(['7', '7a', '7b', '7c'])
+    // § 7 is where the new division stands, not a § it changes (26.10.2026).
+    const ps = ktnTguParagraphs([page([...leftLaw(), ...right])], laws)
+    expect(unreadOf(ps)).toEqual(['7a', '7b', '7c'])
+    expect(ps.every((p) => p.because === 'division')).toBe(true)
   })
 
   it('withholds the §§ a swallowed repeat of an instruction names', () => {
@@ -269,10 +275,150 @@ describe('ktnTguParagraphs', () => {
     expect(out.map((p) => [p.number, p.unread, p.because])).toEqual([['7', true, 'wording'], ['5', true, 'wording'], ['9', true, 'wording']])
     // A § such an Artikel inserts whole is named too, and not handed to the RIS check under no law.
     const inserts = [...right, centre(R, 'Artikel IV', 200), body(R, '1. Nach § 9 wird folgender § 9a eingefügt:', 188), centre(R, '§ 9a', 176), body(R, 'Neu.', 164)]
-    expect(ktnTguParagraphs([page([...leftLaw(), ...second, ...inserts])], ['Kärntner Beispielgesetz', 'Kärntner Zweitgesetz']).find((p) => p.number === '9a')).toMatchObject({ law: null, unread: true, old: [], neu: [] })
+    // Filed under the Artikel's own designation, so that two such Artikel do not run into one (26.10.2026).
+    expect(ktnTguParagraphs([page([...leftLaw(), ...second, ...inserts])], ['Kärntner Beispielgesetz', 'Kärntner Zweitgesetz']).find((p) => p.number === '9a')).toMatchObject({ law: 'Artikel IV', unread: true, old: [], neu: [] })
   })
 
   it('reads nothing from a portrait document', () => {
     expect(ktnTguParagraphs([{ width: 595, items: leftLaw(), geometry: { runs: 1, offTurn: 0, skewed: 0 } }], laws)).toEqual([])
+  })
+})
+
+describe('ktnTguParagraphs — what was lost or named falsely until 26.10.2026', () => {
+  const laws = ['Kärntner Beispielgesetz']
+  const pick = (ps: ReturnType<typeof ktnTguParagraphs>) => ps.map((p) => [p.number, p.unread ? (p.because ?? 'unread') : 'shown']).sort((a, b) => a[0]!.localeCompare(b[0]!))
+
+  /** The law with §§ 5 to 7, § 6 and § 7 in its 3. Abschnitt. */
+  function divided(): AnnexItem[] {
+    const items = leftLaw()
+    const at = items.findIndex((i) => i.text === '§ 6')
+    const y = items[at]!.y
+    // Make room: the division heading and its name stand above § 6.
+    return [...items.slice(0, at), centre(L, '3. Abschnitt', y + 6), centre(L, 'Pflichten und Strafen', y + 3), ...items.slice(at)]
+  }
+
+  it('names the §§ of a division the Novelle prints anew and the reader cannot read (48376/2024)', () => {
+    const right = [body(R, '1. Der 3. Abschnitt lautet:', 450), centre(R, '3. Abschnitt', 438), centre(R, 'Neue Regeln', 426), body(R, 'Ein Text ohne einen einzigen Paragraphen.', 414)]
+    expect(pick(ktnTguParagraphs([page([...divided(), ...right])], laws))).toEqual([['6', 'division'], ['7', 'division']])
+  })
+
+  it('nests the divisions as the law\'s headings come, a Teil inside an Abschnitt, and reads a new division after its long title (48376/2024)', () => {
+    const left = [
+      body(L, 'Kärntner Beispielgesetz - K-BspG', 488), body(L, 'StF: LGBl Nr 1/2000', 476),
+      centre(L, '4. Abschnitt', 464), centre(L, '1. Teil', 452), centre(L, '§ 21', 440), body(L, 'Der Abschnitt gilt für die Gesellschaft und ihre Organe.', 428),
+      centre(L, '2. Teil', 416), centre(L, '§ 22', 404), body(L, 'Die Aufnahme folgt den Regeln des zweiten Abschnitts.', 392),
+    ]
+    const right = [
+      body(R, '1. Der 4. Abschnitt lautet:', 470), centre(R, '4. Abschnitt', 458),
+      { x: R.margin + 8, y: 446, width: R.edge - R.margin - 16, text: 'Objektivierung in der Landeskrankenanstalten-Betriebsgesellschaft –' },
+      centre(R, 'KABEG', 434), centre(R, '§ 21', 422), body(R, 'Der Abschnitt gilt für die Gesellschaft.', 410),
+    ]
+    expect(pick(ktnTguParagraphs([page([...left, ...right])], laws))).toEqual([['21', 'shown'], ['22', 'division']])
+  })
+
+  it('shows what a new division prints of a § in force, and names the § it no longer prints', () => {
+    const right = [body(R, '1. Der 3. Abschnitt lautet:', 450), centre(R, '3. Abschnitt', 438), centre(R, '§ 6', 426), centre(R, 'Pflichten', 414), body(R, 'Neu gefasst.', 402)]
+    expect(pick(ktnTguParagraphs([page([...divided(), ...right])], laws))).toEqual([['6', 'shown'], ['7', 'division']])
+  })
+
+  it('takes a division\'s §§ from the instruction where it lists them, and not a § another instruction addresses (44393/2023, 44/2021)', () => {
+    // „mit den §§ 6": § 7, printed under the same heading, is not the division's.
+    expect(pick(ktnTguParagraphs([page([...divided(), body(R, '1. Der 3. Abschnitt mit dem § 6 entfällt.', 450), body(R, '2. § 7 entfällt.', 430)])], laws))).toEqual([['6', 'division'], ['7', 'shown']])
+    // The column leaves out the heading of the division § 7 stands in; another instruction addresses it, so it is not the replaced one's.
+    const right = [body(R, '1. Der 3. Abschnitt lautet:', 450), centre(R, '3. Abschnitt', 438), centre(R, '§ 6', 426), centre(R, 'Pflichten', 414), body(R, 'Neu gefasst.', 402), body(R, '2. § 7 entfällt.', 380)]
+    expect(pick(ktnTguParagraphs([page([...divided(), ...right])], laws))).toEqual([['6', 'shown'], ['7', 'shown']])
+  })
+
+  it('compares a § another division\'s new text prints by its number, rather than name it (20258/2025)', () => {
+    const right = [
+      body(R, '1. Der 3. Abschnitt lautet:', 450), centre(R, '3. Abschnitt', 438), centre(R, '§ 6', 426), body(R, 'Neu gefasst.', 414),
+      body(R, '2. Nach § 7 wird folgender 4. Abschnitt angefügt:', 390), centre(R, '4. Abschnitt', 378), centre(R, '§ 8', 366), body(R, 'Ganz neu.', 354),
+    ]
+    // § 7, not printed by the new 3. Abschnitt, is named; were it printed by another instruction, it would be compared.
+    expect(pick(ktnTguParagraphs([page([...divided(), ...right])], laws))).toEqual([['6', 'shown'], ['7', 'division'], ['8', 'shown']])
+  })
+
+  it('names the §§ of a division repealed whole, and those of one whose words change throughout, saying the instruction for the law', () => {
+    expect(pick(ktnTguParagraphs([page([...divided(), body(R, '1. Der 3. Abschnitt entfällt.', 450)])], laws))).toEqual([['6', 'division'], ['7', 'division']])
+    const wording = ktnTguReading([page([...divided(), body(R, '1. Im 3. Abschnitt wird jeweils das Wort „Person“ durch das Wort „Mensch“ ersetzt.', 450)])], laws)
+    expect(pick(wording.paragraphs)).toEqual([['6', 'wording']])
+    expect(wording.reaches).toEqual([{ law: 'Kärntner Beispielgesetz', instruction: 'Im 3. Abschnitt wird jeweils das Wort „Person“ durch das Wort „Mensch“ ersetzt.' }])
+  })
+
+  it('says an instruction for the whole law for its law, and names the §§ its words stand in', () => {
+    const r = ktnTguReading([page([...leftLaw(), body(R, '1. Im ganzen Gesetz wird das Wort „Person“ durch das Wort „Mensch“ ersetzt.', 450)])], laws)
+    expect(pick(r.paragraphs)).toEqual([['6', 'wording']])
+    expect(r.reaches?.map((x) => x.instruction)).toEqual(['Im ganzen Gesetz wird das Wort „Person“ durch das Wort „Mensch“ ersetzt.'])
+  })
+
+  it('reads the Artikel of a law organised in Artikel (K-LVG, 1203/2020)', () => {
+    const left = [
+      body(L, 'Kärntner Landesverfassung - K-LVG', 488), body(L, 'StF: LGBl Nr 85/1996', 476),
+      centre(L, 'Artikel 19', 464), centre(L, 'Landtag', 452), absatz(L, '(1) Der Landtag besteht aus sechsunddreißig Abgeordneten.', 440),
+      centre(L, 'Artikel 20', 428), centre(L, 'Wahl', 416), absatz(L, '(1) Die Abgeordneten werden gewählt.', 404),
+    ]
+    const right = [body(R, '1. Art. 19 lautet:', 450), centre(R, 'Artikel 19', 438), centre(R, 'Landtag', 426), absatz(R, '(1) Der Landtag besteht aus Abgeordneten.', 414), body(R, '2. In Art. 20 Abs. 1 wird das Wort „gewählt“ durch „bestimmt“ ersetzt.', 380)]
+    const ps = ktnTguParagraphs([page([...left, ...right])], ['Kärntner Landesverfassung'])
+    expect(pick(ps)).toEqual([['Art. 19', 'shown'], ['Art. 20', 'wording']])
+    expect(ps.find((p) => p.number === 'Art. 19')).toMatchObject({ old: ['Landtag', '(1) Der Landtag besteht aus sechsunddreißig Abgeordneten.'], neu: ['Landtag', '(1) Der Landtag besteht aus Abgeordneten.'] })
+  })
+
+  it('reads an Artikel whose single instruction carries no number, after the sentence that names its law (11829/2021)', () => {
+    expect(promulgatedName('Das Kärntner Beispielgesetz, LGBl Nr 1/2000, zuletzt geändert durch LGBl Nr 5/2020, wird wie folgt geändert:')).toBe('Kärntner Beispielgesetz')
+    const right = [centre(R, 'Artikel I', 497), body(R, 'Das Kärntner Beispielgesetz, LGBl Nr 1/2000, wird wie folgt geändert:', 485), body(R, '§ 7 entfällt.', 470)]
+    expect(pick(ktnTguParagraphs([page([...leftLaw(), ...right])], laws))).toEqual([['7', 'shown']])
+  })
+
+  it('reads a one-law draft that opens with the sentence naming its law, without an Artikel above it', () => {
+    const right = [body(R, 'Das Kärntner Beispielgesetz, LGBl Nr 1/2000, wird wie folgt geändert:', 485), body(R, '1. § 7 entfällt.', 470)]
+    expect(pick(ktnTguParagraphs([page([...leftLaw(), ...right])], laws))).toEqual([['7', 'shown']])
+  })
+
+  it('says what an Artikel changes in another Novelle\'s article for that article, with or without the sentence that opens it (227/2022, 698/2021)', () => {
+    const right = [
+      centre(R, 'Artikel II', 497), centre(R, 'Änderung des Artikels II des Gesetzes LGBl. Nr. 93/2019', 485),
+      absatz(R, 'Art. II des Gesetzes LGBl. Nr. 93/2019 wird wie folgt geändert:', 473),
+      body(R, 'In Art. II Abs. 2 wird das Datum „30. Juni 2023“ durch das Datum „31. Dezember 2024“ ersetzt.', 461),
+      centre(R, 'Artikel III', 400), centre(R, 'Änderung des Art. II des Gesetzes LGBl. Nr. 1/2013', 388),
+      body(R, 'Im Art. II Abs. 2 des Gesetzes LGBl. Nr. 1/2013 wird nach dem Wort „a“ das Wort „b“ eingefügt.', 376),
+    ]
+    const r = ktnTguReading([page([...leftLaw(), ...right])], laws)
+    // Under the article it amends, not under the one law of the draft's title.
+    expect(r.reaches).toEqual([
+      { law: 'Art. II des Gesetzes LGBl. Nr. 93/2019', instruction: 'In Art. II Abs. 2 wird das Datum „30. Juni 2023“ durch das Datum „31. Dezember 2024“ ersetzt.' },
+      { law: 'Art. II des Gesetzes LGBl. Nr. 1/2013', instruction: 'Im Art. II Abs. 2 des Gesetzes LGBl. Nr. 1/2013 wird nach dem Wort „a“ das Wort „b“ eingefügt.' },
+    ])
+  })
+
+  it('pairs an Artikel with its law by a name the column wrapped at its hyphen, and keeps an Artikel that amends another Novelle out of the pairing (1037/2021)', () => {
+    const left = [
+      body(L, 'Gesetz über die Personalvertretung (Kärntner Gemeinde- Personalvertretungsgesetz - K-GPVG)', 488), body(L, 'StF: LGBl Nr 1/1983', 476),
+      centre(L, '§ 21', 464), body(L, 'Die Personalvertretung besteht aus gewählten Mitgliedern.', 452),
+    ]
+    const right = [
+      centre(R, 'Artikel I', 497), centre(R, 'Änderung des Kärntner Gemeinde-Personalvertretungsgesetzes', 485), body(R, '1. § 21 entfällt.', 470),
+      centre(R, 'Artikel II', 400), centre(R, 'Änderung des Landesgesetzes LGBl. Nr. 117/2022', 388),
+      absatz(R, 'Das Landesgesetz LGBl. Nr. 117/2022 wird wie folgt geändert:', 376),
+      body(R, 'In Art. III Abs. 2 wird die Zahl „2023“ durch die Zahl „2024“ ersetzt.', 364),
+    ]
+    const r = ktnTguReading([page([...left, ...right])], ['Kärntner Gemeinde-Personalvertretungsgesetz'])
+    expect(r.paragraphs.map((p) => [p.law, p.number, p.unread ?? false])).toEqual([['Kärntner Gemeinde-Personalvertretungsgesetz', '21', false]])
+    expect(r.reaches).toEqual([{ law: 'Landesgesetz LGBl. Nr. 117/2022', instruction: 'In Art. III Abs. 2 wird die Zahl „2023“ durch die Zahl „2024“ ersetzt.' }])
+  })
+
+  it('takes a numbered line whose § sign was lost for an instruction, not for a gap in the numbering (2314, „4. 8 Abs. 3 Z 2 entfällt.")', () => {
+    const right = [body(R, '1. § 7 entfällt.', 450), body(R, '2. 6 Abs. 3 entfällt.', 430), body(R, '3. § 5 entfällt.', 410)]
+    // Read as instruction 2, it leaves the law's other instructions to be performed, and names its own §.
+    expect(pick(ktnTguParagraphs([page([...leftLaw(), ...right])], laws))).toEqual([['5', 'shown'], ['6', 'unread'], ['7', 'shown']])
+  })
+
+  it('names an Anlage an instruction replaces, and no § for it', () => {
+    const right = [body(R, '1. § 7 entfällt.', 450), body(R, '2. Die Anlage 2 lautet:', 430), body(R, '„Anlage 2 Neue Tabelle“', 418)]
+    expect(pick(ktnTguParagraphs([page([...leftLaw(), ...right])], laws))).toEqual([['7', 'shown'], ['Anlage 2', 'annex']])
+  })
+
+  it('knows a division by its level and number, in words or in Roman numerals', () => {
+    expect(divisionOf('Der 4. Abschnitt lautet:')).toMatchObject({ level: 'Abschnitt', designation: '4' })
+    expect(divisionOf('Im V. Abschnitt wird jeweils …')).toMatchObject({ level: 'Abschnitt', designation: '5' })
   })
 })

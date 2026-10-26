@@ -14,12 +14,15 @@ import type { TguParagraph } from '../server/utils/laender/landTgu'
 vi.mock('../server/utils/laender/landKons', () => ({ lawInForce: vi.fn(), paragraphText: vi.fn(), paragraphByPhrase: vi.fn() }))
 vi.mock('../server/utils/laender/texts/read', () => ({ landPdfBytes: vi.fn(async () => new Uint8Array()), draftSource: vi.fn() }))
 vi.mock('../server/utils/annex/annexPdfPages', () => ({ pagesOf: vi.fn(async () => [{ width: 842, items: [] }]) }))
-vi.mock('../server/utils/laender/landTguKaernten', () => ({ ktnTguParagraphs: vi.fn() }))
+vi.mock('../server/utils/laender/landTguKaernten', () => {
+  const ktnTguParagraphs = vi.fn()
+  return { ktnTguParagraphs, ktnTguReading: vi.fn((pages: unknown, laws: unknown) => ({ paragraphs: ktnTguParagraphs(pages, laws) })) }
+})
 
 const { lawInForce, paragraphText, paragraphByPhrase } = vi.mocked(await import('../server/utils/laender/landKons'))
-const { draftSource } = vi.mocked(await import('../server/utils/laender/texts/read'))
-const { ktnTguParagraphs } = vi.mocked(await import('../server/utils/laender/landTguKaernten'))
-const { compareTgu } = await import('../server/utils/laender/landTguService')
+const { draftSource, landPdfBytes } = vi.mocked(await import('../server/utils/laender/texts/read'))
+const { ktnTguParagraphs, ktnTguReading } = vi.mocked(await import('../server/utils/laender/landTguKaernten'))
+const { compareTgu, ooeColumnPages, sideBySide, withFullStops } = await import('../server/utils/laender/landTguService')
 
 const LAW = 'Kärntner Beispielgesetz'
 const detail = (title = `Gesetz, mit dem das ${LAW} geändert wird`): LandDraftDetail => ({
@@ -215,5 +218,64 @@ describe('compareTgu — one law, one group (25.10.2026)', () => {
     ])
     const r = (await compareTgu('ktn', detail('Gesetz, mit dem das Kärntner Sammelgesetz geändert wird'))).value
     expect(r.withheld).toEqual([{ law: 'Kärntner Sammelgesetz', id: '§7', reason: 'unread' }])
+  })
+})
+
+describe('compareTgu — what the reader says beside the §§ (26.10.2026)', () => {
+  it('hands on the instructions that reach §§ they do not name, and the pages it did not read', async () => {
+    ktnTguReading.mockReturnValueOnce({
+      paragraphs: [para('5', { old: [TEXT_5], neu: ['Begriffe (1) Neu.'] })],
+      reaches: [{ law: LAW, instruction: 'Im V. Abschnitt wird jeweils das Wort „Kindergärtnerin" ersetzt.' }],
+      droppedPages: 2,
+    })
+    const r = (await compareTgu('ktn', detail())).value
+    expect(r).toMatchObject({ available: true, reaches: [{ law: LAW, instruction: 'Im V. Abschnitt wird jeweils das Wort „Kindergärtnerin" ersetzt.' }], droppedPages: 2 })
+  })
+
+  it('names a § once per cause — two causes, two lines; the same cause twice, one', async () => {
+    ktnTguParagraphs.mockReturnValue([
+      para('6', { unread: true, because: 'division' }),
+      para('6', { unread: true, because: 'wording' }),
+      para('6', { unread: true, because: 'wording' }),
+    ])
+    expect((await compareTgu('ktn', detail())).value.withheld).toEqual([
+      { law: LAW, id: '§6', reason: 'division' },
+      { law: LAW, id: '§6', reason: 'wording' },
+    ])
+  })
+
+  it('names an Artikel and an Anlage by their own designation', async () => {
+    ktnTguParagraphs.mockReturnValue([para('Art. 19', { unread: true, because: 'wording' }), para('Anlage 2', { unread: true, because: 'annex' })])
+    expect((await compareTgu('ktn', detail())).value.withheld.map((w) => w.id)).toEqual(['Art. 19', 'Anlage 2'])
+  })
+})
+
+describe('Wien reads the newest version of its draft (26.10.2026)', () => {
+  it('opens the last document, not the first', async () => {
+    const wien = {
+      ...detail(),
+      draft: { ...detail().draft, id: 'w-2026003', land: 'w', documents: [{ title: 'Entwurf', url: 'https://www.wien.gv.at/a.pdf', date: '2026-03-18' }, { title: 'Entwurf', url: 'https://www.wien.gv.at/b.pdf', date: '2026-05-05' }] },
+    } as unknown as LandDraftDetail
+    await compareTgu('w', wien)
+    expect(landPdfBytes).toHaveBeenCalledWith('https://www.wien.gv.at/b.pdf')
+  })
+})
+
+describe('two-column documents for the federal reader (26.10.2026)', () => {
+  const run = (text: string, x: number, y: number, width = text.length * 5) => ({ text, x, y, width })
+  const page = (...items: ReturnType<typeof run>[]) => ({ width: 842, items, geometry: { runs: items.length, offTurn: 0, skewed: 0 } })
+
+  it('gives a § designation its full stop, in one run or in several, where its line holds nothing else', () => {
+    const out = withFullStops(page(run('§ 64', 60, 500), run('§', 220, 480, 6), run(' ', 226, 480, 3), run('8c', 229, 480, 10), run('§', 60, 460, 6), run(' ', 66, 460, 3), run('5', 69, 460, 5), run(' Abs. 2 gilt.', 74, 460)))
+    expect(out.items.map((i) => i.text)).toEqual(['§ 64.', '§ 8c.', '§', ' ', '5', ' Abs. 2 gilt.'])
+    expect(out.items[1]).toMatchObject({ x: 220, width: 19 })
+  })
+
+  it('takes Oberösterreich\'s side-by-side document for two columns, and names its draft header as the template does (2021-16029)', () => {
+    const tgu = [{ items: [{ s: 'Geltende Fassung - Oö. ADIG', x: 153, y: 438, w: 154 }, { s: 'Begutachtungsentwurf – Oö. ADIG-Novelle 2021', x: 450, y: 438, w: 251 }] }]
+    expect(sideBySide(tgu)).toBe(true)
+    expect(sideBySide([{ items: [{ s: 'Geltende Fassung', x: 153, y: 438, w: 80 }] }])).toBe(false)
+    const [p] = ooeColumnPages([page(run('Geltende Fassung - Oö. ADIG', 153, 438), run('Begutachtungsentwurf – Oö. ADIG-Novelle', 450, 438), run('2021', 660, 438), run('§', 220, 400, 6), run('12', 229, 400, 10))])
+    expect(p!.items.map((i) => i.text)).toEqual(['Geltende Fassung - Oö. ADIG', 'Vorgeschlagene Fassung', '§ 12.'])
   })
 })

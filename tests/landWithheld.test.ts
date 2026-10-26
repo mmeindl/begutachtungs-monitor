@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { withheldGroups, withheldNotes } from '../app/utils/landWithheld'
+import { quotedInstruction, reachesGroups, reachesNote, withheldGroups, withheldNotes } from '../app/utils/landWithheld'
 
 describe('withheldGroups — where the page counts a § it does not show', () => {
   it('files a § of another law under that law, not under the one group shown (Kärnten 38532/2024)', () => {
@@ -39,5 +39,40 @@ describe('withheldNotes — one true sentence per cause (25.10.2026)', () => {
   it('drops „ebenfalls" where nothing of the comparison is shown', () => {
     expect(withheldNotes([{ law: null, id: '§1', reason: 'unread' }], { alone: true })[0]!.lead).toBe('Geändert, hier nicht gezeigt:')
     expect(withheldNotes([{ law: null, id: '§1', reason: 'unread' }])[0]!.lead).toBe('Ebenfalls geändert, hier nicht gezeigt:')
+  })
+})
+
+describe('withheldNotes — the causes of 26.10.2026', () => {
+  it('words a division, a gap in the instructions and an annex each in a sentence of its own, in that order', () => {
+    const notes = withheldNotes([
+      { law: 'K', id: 'Anlage 2', reason: 'annex' },
+      { law: 'K', id: '§21', reason: 'division' },
+      { law: 'K', id: '§22', reason: 'division' },
+      { law: 'K', id: '§7', reason: 'gap' },
+    ])
+    expect(notes.map((n) => [n.cause, n.ids])).toEqual([['division', ['§21', '§22']], ['gap', ['§7']], ['annex', ['Anlage 2']]])
+    expect(notes[0]!.text).toMatch(/^Die Novelle fasst den Teil des Gesetzes, in dem sie stehen, als Ganzes neu/)
+    expect(notes[1]!.text).toMatch(/^Nicht jede Änderungsanweisung der Novelle zu diesem Gesetz fand der Monitor/)
+    expect(notes[2]).toMatchObject({ lead: 'Nicht gezeigt:', text: 'Anlagen und Anhänge gleicht der Monitor nicht mit dem RIS ab und zeigt sie deshalb nicht' })
+  })
+
+  it('refers to one § as „ihn", to several and to an Anlage as „sie"', () => {
+    expect(withheldNotes([{ law: null, id: '§1', reason: 'division' }])[0]!.pronoun).toBe('ihn')
+    expect(withheldNotes([{ law: null, id: '§1', reason: 'division' }, { law: null, id: '§2', reason: 'division' }])[0]!.pronoun).toBe('sie')
+    expect(withheldNotes([{ law: null, id: 'Anlage 1', reason: 'annex' }])[0]!.pronoun).toBe('sie')
+  })
+})
+
+describe('reachesGroups — instructions said for their law (26.10.2026)', () => {
+  it('files each instruction under its law, once, and one of no law under the only group there is', () => {
+    const groups = reachesGroups([
+      { law: 'K', instruction: 'Im V. Abschnitt wird jeweils „a“ durch „b“ ersetzt.' },
+      { law: 'K', instruction: 'Im V. Abschnitt wird jeweils „a“ durch „b“ ersetzt.' },
+      { law: null, instruction: 'Im ganzen Gesetz wird „x“ durch „y“ ersetzt.' },
+    ], ['K'])
+    expect([...groups.entries()]).toEqual([['K', ['Im V. Abschnitt wird jeweils „a“ durch „b“ ersetzt.', 'Im ganzen Gesetz wird „x“ durch „y“ ersetzt.']]])
+    expect(reachesNote().after).toBe('Den Wortlaut, der sich daraus ergibt, setzt der Monitor nicht selbst zusammen.')
+    expect(quotedInstruction('Der 4. Abschnitt lautet:')).toBe('Der 4. Abschnitt lautet: …')
+    expect(quotedInstruction('Im ganzen Gesetz wird „x“ durch „y“ ersetzt.')).toBe('Im ganzen Gesetz wird „x“ durch „y“ ersetzt.')
   })
 })

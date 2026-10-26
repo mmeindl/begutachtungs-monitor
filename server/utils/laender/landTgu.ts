@@ -165,14 +165,72 @@ export interface TguParagraph {
   /**
    * Why, where the reader knows more (25.10.2026): `wording`, Kärnten's
    * instructions below a whole Absatz; `unsure`, a § whose text or marks the
-   * reader could not read with certainty (Tirol).
+   * reader could not read with certainty (Tirol); `division`, a § of a
+   * division the Novelle replaces, inserts or repeals as a whole; `gap`, a
+   * law whose instructions the reader did not all find; `annex`, an Anlage
+   * or Anhang (26.10.2026).
    */
-  because?: 'wording' | 'unsure'
+  because?: 'wording' | 'unsure' | 'division' | 'gap' | 'annex'
 }
 
-const PARA_RE = /^§\s*(\d+[a-z]*)\.?$/
-/** „2. Hauptstück", „III. Teil": the next division's heading, which closes the § above it. */
-const DIVISION_RE = /^(?:\d+|[IVXL]+)\.\s+(?:Hauptstück|Abschnitt|Teil|Unterabschnitt)\b/i
+/**
+ * A unit's id as the page names it: „§5" for a §, the label itself for an
+ * article or an annex — „Art. 46a", „Anlage 2" (26.10.2026). `number` is
+ * the § number, or such a label.
+ */
+export function paraId(number: string): string {
+  return /^\d/.test(number) ? `§${number}` : number
+}
+
+/**
+ * What a Land's reader returns beside the §§ (26.10.2026): instructions
+ * that reach §§ they do not name — „Im V. Abschnitt wird jeweils …", „Im
+ * ganzen Gesetz …" — said per law, and pages it could not read, said as the
+ * Bund's annex says them (`annexDroppedPagesNote`).
+ */
+export interface TguReading {
+  paragraphs: TguParagraph[]
+  reaches?: { law: string | null; instruction: string }[]
+  droppedPages?: number
+}
+
+/**
+ * „§ 5" on a line of its own — also with the opening quote a new § is
+ * printed with where the document copies it from the draft: „„§ 65"
+ * (Oberösterreich 2025-16106), whose §§ were lost whole until 26.10.2026.
+ */
+const PARA_RE = /^[„"“]?\s*§\s*(\d+[a-z]*)\.?$/
+/**
+ * „Artikel 46a": a unit of a law organised in Artikel, the Oö. L-VG
+ * (2025-16094), which RIS files as „Art. 46a". Arabic numbers only: a
+ * Roman „Artikel II" is a draft's own division of a package.
+ */
+const ARTICLE_RE = /^[„"“]?\s*Artikel\s+(\d+[a-z]*)\.?$/
+/**
+ * „§ 10§ 14": a § the draft renumbers, the new number underlined, the old
+ * struck — 2026-16120 renumbers §§ 13 to 17 to §§ 9 to 13, 2021-16019
+ * §§ 57a to 57l to §§ 58 to 69. Until 26.10.2026 no such line opened a §,
+ * and every renumbered § ran into the one above it.
+ */
+const RENUMBERED_RE = /^§\s*(\d+[a-z]*)\.?\s*§\s*(\d+[a-z]*)\.?$/
+/**
+ * „Anlage 1" on a line of its own: an annex, which closes the § above it —
+ * the reader had run 2026-16111's struck Anlage 1 into its § 88. A contents
+ * entry carries its title in brackets on the same line, „Anlage 1
+ * (CE-Konformitätskennzeichnung)", and opens nothing.
+ */
+const ANNEX_RE = /^[„"“]?\s*((?:Anlage|Anhang)\s+(?:\d+|[IVXL]+)[a-z]?)$/
+/** A line that ends mid-sentence: in a word that wants the next one, or a comma. */
+const RUNS_ON_RE = /(?:^|\s)(?:bis|und|oder|sowie|bzw\.|des|der|dem|den|die|das|im|in|zum|zur|vom|von|für|mit|nach|gemäß|laut|siehe|über|auf|aus|bei|an|gegen|ohne)$|,$/
+/**
+ * „2. Hauptstück", „III. Teil", „7b. Abschnitt": the next division's
+ * heading, which closes the § above it. Only where the word ends there, at a
+ * space or a colon: „19. Teil-Aktionsplan: Plan zur …" is the 19th
+ * definition of a § (2026-16124), and „IV. Teil, 4. Hauptstück, …" a
+ * reference in one (2021-16018); each closed its § mid-text and lost the
+ * rest of it until 26.10.2026.
+ */
+const DIVISION_RE = /^(?:\d+[a-z]?|[IVXL]+)\.\s+(?:Hauptstück|Abschnitt|Teil|Unterabschnitt)(?=$|[\s:])/i
 /** The law's long title, which the short title in brackets follows within a few lines. */
 const LONG_TITLE_RE = /^(?:Landes)?(?:[Gg]esetz|Verordnung)\b/
 /** „(Oö. Bautechnikgesetz 2013 - Oö. BauTG 2013)": the short title, and the abbreviation after the dash. */
@@ -180,6 +238,65 @@ const SHORT_TITLE_RE = /\(([^()]*?)(?:\s+-\s+[^()]*)?\)\s*$/
 /** „Oö. Gemeindeordnung 1990 (Oö. GemO 1990)": the short title standing alone, its abbreviation in brackets. */
 const BARE_TITLE_RE = /^((?:Oö\.\s|Statut\s)[^()]*?)\s+\(([^()]{2,30})\)$/
 const NOISE_RE = /^(?:Seite \d+(?: von \d+)?|\d+|(?:Sub)?[Bb]eilage zu\b.*)$/
+
+/**
+ * The units a line opens, or null: a §, an Artikel, an annex — or, for a
+ * renumbered §, two. A renumbered § is read § by number, as the comparison
+ * reads every §: what stood under the old number is its text in force, and
+ * what will stand under the new one its new text. So 16120's § 9 compares
+ * the struck § 9 with the § 13 that takes its number, and § 13 the § 13 in
+ * force with the § 17 that becomes it (`mergeParagraphs` joins the halves).
+ * Where the marks do not say which number is which, both are named as read
+ * with uncertainty (`because: 'unsure'`).
+ */
+function opened(line: TguLine, law: string | null, prev: string): { old: TguParagraph; neu: TguParagraph } | null {
+  // A quoted heading after a line that ends in a colon is a § the text
+  // quotes, not one of its own: „… mit der Maßgabe aufrecht, dass 1. § 16
+  // lautet: „§ 16 Geheimhaltung …"" in § 5 of the Oö.
+  // Gemeindesanitätsdienstgesetz 2006 (2025-16094).
+  if (/^[„"“]/.test(line.raw) && /:$/.test(prev)) return null
+  const unit = (number: string, extra: Partial<TguParagraph> = {}): TguParagraph => ({ law, number, old: [], neu: [], changed: false, ...extra })
+  const para = PARA_RE.exec(line.raw)
+  if (para) {
+    const p = unit(para[1]!)
+    return { old: p, neu: p }
+  }
+  // An article or an annex opens only where the line before does not run
+  // on into it: „… ergibt sich aus der" / „Anlage 1" is a sentence the
+  // column wrapped, „… von Kleinfeuerstätten" / „Anlage 2" the title of the
+  // annex above (2025-16103).
+  const ended = !RUNS_ON_RE.test(prev)
+  const article = ended ? ARTICLE_RE.exec(line.raw) : null
+  if (article) {
+    const p = unit(`Art. ${article[1]!}`)
+    return { old: p, neu: p }
+  }
+  const annex = ended ? ANNEX_RE.exec(line.raw) : null
+  if (annex) {
+    const p = unit(annex[1]!.replace(/\s+/g, ' '), { unread: true, because: 'annex' })
+    return { old: p, neu: p }
+  }
+  const two = RENUMBERED_RE.exec(line.raw)
+  if (!two) return null
+  const [a, b] = [two[1]!, two[2]!]
+  if (a === b && !line.marked) {
+    const p = unit(a)
+    return { old: p, neu: p }
+  }
+  const was = PARA_RE.exec(line.old)?.[1]
+  const will = PARA_RE.exec(line.neu)?.[1]
+  // The number the old text keeps and the one the new text shows; where only
+  // one side reads as a single number, the other number on the line is the
+  // other side's.
+  const from = was ?? (will === a ? b : will === b ? a : undefined)
+  const to = will ?? (was === a ? b : was === b ? a : undefined)
+  if (!from || !to || from === to) {
+    const p = unit(a, { changed: true, unread: true, because: 'unsure' })
+    const q = unit(b, { changed: true, unread: true, because: 'unsure' })
+    return { old: p, neu: q }
+  }
+  return { old: unit(from, { changed: true }), neu: unit(to, { changed: true }) }
+}
 
 /**
  * The §§ of the document, each under the law whose title came last.
@@ -192,23 +309,29 @@ export function tguParagraphs(lines: readonly TguLine[]): TguParagraph[] {
   const out: TguParagraph[] = []
   let law: string | null = null
   let titleAt = -10
-  let open: TguParagraph | null = null
-  /** The line each of the open §'s texts came from, to take a law's title back out of it */
+  /** Where the open unit's text in force goes and where its new text goes: one §, but two for a renumbered one (`opened`). */
+  let open: { old: TguParagraph; neu: TguParagraph } | null = null
+  /** The line each of the open unit's texts came from, to take a law's title back out of it */
   let openAt: { old: number[]; neu: number[] } = { old: [], neu: [] }
+  /** Units printed with an opening quote, whose closing quote is the draft's and not the text's */
+  const quoted = new Set<TguParagraph>()
   let prev = ''
   const retractFrom = (at: number) => {
     if (!open) return
-    while (openAt.old.length && openAt.old.at(-1)! >= at) { openAt.old.pop(); open.old.pop() }
-    while (openAt.neu.length && openAt.neu.at(-1)! >= at) { openAt.neu.pop(); open.neu.pop() }
+    while (openAt.old.length && openAt.old.at(-1)! >= at) { openAt.old.pop(); open.old.old.pop() }
+    while (openAt.neu.length && openAt.neu.at(-1)! >= at) { openAt.neu.pop(); open.neu.neu.pop() }
   }
   lines.forEach((line, i) => {
     const raw = line.raw
     if (NOISE_RE.test(raw)) return
-    const para = PARA_RE.exec(raw)
-    if (para) {
-      open = { law, number: para[1]!, old: [], neu: [], changed: false }
+    const unit = opened(line, law, prev)
+    if (unit) {
+      open = unit
       openAt = { old: [], neu: [] }
-      out.push(open)
+      out.push(unit.old)
+      if (unit.neu !== unit.old) out.push(unit.neu)
+      if (line.marked) { unit.old.changed = true; unit.neu.changed = true }
+      if (/^[„"“]/.test(raw)) quoted.add(unit.neu)
       prev = raw
       return
     }
@@ -227,14 +350,19 @@ export function tguParagraphs(lines: readonly TguLine[]): TguParagraph[] {
     } else if (DIVISION_RE.test(raw) || /^Inhaltsverzeichnis$/i.test(raw)) {
       open = null
     } else if (open) {
-      const p: TguParagraph = open
-      if (line.old) { p.old.push(line.old); openAt.old.push(i) }
-      if (line.neu) { p.neu.push(line.neu); openAt.neu.push(i) }
-      if (line.marked) p.changed = true
+      const { old, neu }: { old: TguParagraph; neu: TguParagraph } = open
+      if (line.old) { old.old.push(line.old); openAt.old.push(i) }
+      if (line.neu) { neu.neu.push(line.neu); openAt.neu.push(i) }
+      if (line.marked) { old.changed = true; neu.changed = true }
     }
     prev = raw
   })
-  return out
+  for (const p of quoted) {
+    const last = p.neu.length - 1
+    if (last >= 0) p.neu[last] = p.neu[last]!.replace(/\s*[“"]\s*$/, '')
+  }
+  // An annex the document prints and does not change is not one it changes.
+  return out.filter((p) => p.because !== 'annex' || p.changed)
 }
 
 /**
@@ -290,11 +418,11 @@ function unitOf(p: TguParagraph, lines: string[], keepHeading = false): LawUnit 
   return {
     article: p.law,
     articleNumber: null,
-    id: `§${p.number}`,
+    id: paraId(p.number),
     heading,
     quotedHeadings: [],
     text,
-    blocks: [{ kind: 'abs', cls: 'abs', text, gld: `§ ${p.number}.` }],
+    blocks: [{ kind: 'abs', cls: 'abs', text, gld: /^\d/.test(p.number) ? `§ ${p.number}.` : p.number }],
     stammnorm: null,
   }
 }
@@ -333,7 +461,7 @@ export function tguUnits(paragraphs: readonly TguParagraph[]): { from: LawUnit[]
 export function withHeadings<U extends { heading: string | null; article: string | null; id: string }>(units: readonly U[], paragraphs: readonly TguParagraph[]): U[] {
   const printed = new Map<string, string | null>(paragraphs.map((p) => {
     const lines = p.neu.length ? p.neu : p.old
-    return [`${p.law ?? ''}|§${p.number}`, unitOf(p, lines)?.heading ?? null] as const
+    return [`${p.law ?? ''}|${paraId(p.number)}`, unitOf(p, lines)?.heading ?? null] as const
   }))
   return units.map((u) => (u.heading?.startsWith(SAME_PARA) ? { ...u, heading: printed.get(`${u.article ?? ''}|${u.id}`) ?? null } : u))
 }
@@ -365,6 +493,17 @@ export function comparableWords(text: string): string[] {
  * aktualisiert am").
  */
 export function shareInRis(text: string, risText: string): number {
+  // An article's own designation stands where a §'s does, between heading
+  // and text — „Landtag Art. 19 (1) …" (26.10.2026) — and is taken out, on
+  // both sides, only where the heading is not found with it: „nach Art 5 und
+  // 8" in a §'s text stays as each prints it (Salzburg 20708, § 13, which RIS
+  // writes „Art. 5").
+  const ARTICLE = /\bArt(?:ikel|\.)\s*\d+[a-z]*\.?/g
+  return lcsShare(text, risText) ?? lcsShare(text.replace(ARTICLE, ' '), risText.replace(ARTICLE, ' ')) ?? 0
+}
+
+/** `shareInRis` on the words as they stand; null where RIS's text has no place the §'s first words stand at. */
+function lcsShare(text: string, risText: string): number | null {
   const a = comparableWords(text)
   if (!a.length) return 0
   let b = comparableWords(risText)
@@ -372,7 +511,7 @@ export function shareInRis(text: string, risText: string): number {
   if (trailer > 0) b = b.slice(0, trailer)
   const head = a.slice(0, 4).join(' ')
   const at = b.findIndex((_, i) => b.slice(i, i + 4).join(' ') === head)
-  if (at < 0) return 0
+  if (at < 0) return null
   b = b.slice(at, at + Math.round(a.length * 1.15) + 4)
   // One row at a time: a long § is thousands of words on each side.
   let prevRow = new Uint16Array(b.length + 1)
@@ -475,11 +614,43 @@ function fromLastDivision(text: string): string {
   return marks.length > 1 ? text.slice(marks.at(-1)!.index).trim() : text
 }
 
+/** „Anlage 2", „Anhang I", „Artikel 16", „Art. 5": a row the federal reader opened on something other than a §. */
+const OTHER_PARA_RE = /^(?:(?:Anlage|Anhang)\s+[\dIVXL]+[a-z]?|Art(?:ikel|\.)\s*(\d+[a-z]*))\.?$/
+/**
+ * What follows a designation the reader took for a unit of its own where
+ * the document cites it mid-sentence: „Anhang I Teil 2 und 3 der
+ * Verordnung (EG) …", „Artikel 16 Absatz 1 der Richtlinie …" (Salzburg
+ * 18121), „… ergeben sich aus der Anlage 2. Die Beurteilung …" (34574).
+ * The row then holds the rest of the § above it, cut off.
+ */
+const CITED_TAIL_RE = /^\s*(?:Abs(?:\.|atz)|Satz|Unterabsatz|Z\s|Ziffer|lit\.|Teil\s+\d+\s+(?:und|bis|der|des)\b|[,;)]|\.\s+\p{Lu}|(?!zu\b)[a-zäöüß])/u
+
+/**
+ * One column of such a row: cited — a cut-off piece of a § — or the unit
+ * itself, from its designation on: what the reader carried in front of it
+ * („(1) bis (6) Anlage 2") is the end of the unit above, not the annex's.
+ */
+function otherSide(text: string, designation: string): { cited: boolean; text: string } | null {
+  const t = text.replace(/\s+/g, ' ').trim()
+  if (!t) return null
+  // „Anlage 1", not the start of „Anlage 10"
+  const at = new RegExp(`${designation.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}(?![\\da-z])`).exec(t)?.index ?? -1
+  if (at < 0 || CITED_TAIL_RE.test(t.slice(at + designation.length))) return { cited: true, text: t }
+  return { cited: false, text: t.slice(at) }
+}
+
 /**
  * The rows of a two-column Textgegenüberstellung as §§ (Wien, 22.10.2026):
  * the rows of one § joined, each column with the § heading on a line of its
  * own — „Reinhaltung öffentlicher Flächen § 2. (1) bis (7) …" becomes the
  * heading and „(1) bis (7) …".
+ *
+ * A row the reader opened on an annex or an article (26.10.2026) was
+ * skipped until then — Salzburg 23522's new salary table among them, 12
+ * changed rows in 9 drafts. Now an annex whose two columns differ is named
+ * (`because: 'annex'`); an article is read as a unit, „Art. 5"; and a row
+ * that is a cut-off piece of the § above it names that § as read with
+ * uncertainty, since its text in either column may lack the piece.
  */
 export function columnParagraphs(rows: readonly ColumnRow[], laws: readonly string[]): TguParagraph[] {
   const out = new Map<string, TguParagraph>()
@@ -487,13 +658,42 @@ export function columnParagraphs(rows: readonly ColumnRow[], laws: readonly stri
   // their names opens it (Salzburg prints the law's name above its first §),
   // and where no row says, the RIS check decides (`landTguService`).
   let current: string | null = laws.length === 1 ? laws[0]! : null
+  /** The § the row before was part of — the right column's previous unit, in whose order the reader returns its rows */
+  let previous: TguParagraph | null = null
   for (const r of rows) {
-    if (r.kind !== 'pair' || !r.para) continue
-    const number = /§\s*(\d+[a-z]*)/.exec(r.para)?.[1]
-    if (!number) continue
+    if (r.kind !== 'pair' || !r.para) {
+      previous = null
+      continue
+    }
     const named = laws.find((l) => r.heading?.startsWith(l) || r.heading?.startsWith(l.replace(/^Salzburger /, '')))
     if (named) current = named
     const law = r.law ?? current
+    const number = /§\s*(\d+[a-z]*)/.exec(r.para)?.[1]
+    if (!number) {
+      const other = OTHER_PARA_RE.exec(r.para.trim())
+      if (other) {
+        const designation = r.para.trim().replace(/\.$/, '')
+        const sides = [otherSide(r.current, designation), otherSide(r.proposed, designation)]
+        if (sides.some((s) => s?.cited) && previous) {
+          previous.unread = true
+          previous.because = 'unsure'
+        }
+        const [was, will] = sides.map((s) => (s && !s.cited ? s.text : ''))
+        if (was !== will) {
+          const article = other[1]
+          const id = article ? `Art. ${article}` : designation.replace(/\s+/g, ' ')
+          const key = `${law ?? ''}|${id}`
+          const p = out.get(key) ?? { law, number: id, old: [], neu: [], changed: false, ...(article ? {} : { unread: true as const, because: 'annex' as const }) }
+          const body = (text: string) => text.slice(designation.length).trim()
+          if (was && body(was)) p.old.push(body(was))
+          if (will && body(will)) p.neu.push(body(will))
+          p.changed = true
+          out.set(key, p)
+        }
+      }
+      previous = null
+      continue
+    }
     const key = `${law ?? ''}|${number}`
     const p = out.get(key) ?? { law, number, old: [], neu: [], changed: false }
     const lines = (text: string) => {
@@ -507,6 +707,7 @@ export function columnParagraphs(rows: readonly ColumnRow[], laws: readonly stri
     if (proposed) p.neu.push(...lines(proposed))
     p.changed ||= r.changed
     out.set(key, p)
+    previous = p
   }
   return [...out.values()]
 }
@@ -587,7 +788,11 @@ export function amendedLawOf(title: string): string | null {
  */
 export function draftDeletes(draftText: string, number: string): boolean {
   const t = draftText.replace(/\s+/g, ' ')
-  const n = number.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
-  return new RegExp(`§\\s*${n}(?![a-z0-9])[^.;:„"]{0,160}?(?:entf[äa]ll|aufgehoben)`).test(t) ||
-    new RegExp(`§§[^.;:„"]{0,120}?\\b${n}(?![a-z0-9])[^.;:„"]{0,120}?(?:entfallen|aufgehoben)`).test(t)
+  // An article, „Art. 37" (26.10.2026): its own designation, not a §'s.
+  const article = /^Art\.\s*(.+)$/.exec(number)
+  const n = (article ? article[1]! : number).replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
+  const one = article ? 'Art(?:ikel|\\.)\\s*' : '§\\s*'
+  const several = article ? 'Art(?:ikel|\\.)' : '§§'
+  return new RegExp(`${one}${n}(?![a-z0-9])[^.;:„"]{0,160}?(?:entf[äa]ll|aufgehoben)`).test(t) ||
+    new RegExp(`${several}[^.;:„"]{0,120}?\\b${n}(?![a-z0-9])[^.;:„"]{0,120}?(?:entfallen|aufgehoben)`).test(t)
 }

@@ -32,14 +32,14 @@ import { safeExternalUrl } from '#shared/utils/safeExternalUrl'
 import { formatDateDe } from '#shared/utils/format'
 import { diffLawUnits, summarizeDiff } from '../diff/lawDiff'
 import { lawInForce, paragraphByPhrase, paragraphText } from './landKons'
-import { amendedLawsOf, bareLawName, columnParagraphs, draftDeletes, joinLines, mergeParagraphs, onlyElided, searchPhrase, standsInRis, tguLines, tguParagraphs, tguUnits, withHeadings, type ColumnRow, type TguParagraph } from './landTgu'
+import { amendedLawsOf, bareLawName, columnParagraphs, draftDeletes, joinLines, mergeParagraphs, onlyElided, paraId, searchPhrase, standsInRis, tguLines, tguParagraphs, tguUnits, withHeadings, type ColumnRow, type TguParagraph, type TguReading } from './landTgu'
 import { draftSource, landPdfBytes } from './texts/read'
 import { tguPages } from './landTguPdf'
 import { pagesOf } from '../annex/annexPdfPages'
-import { parseAnnexPdf } from '../annex/annexPdf'
+import { parseAnnexPdf, type AnnexPage } from '../annex/annexPdf'
 import { HEADER_CURRENT_RE, HEADER_PROPOSED_RE } from '../annex/tableCells'
-import { ktnTguParagraphs } from './landTguKaernten'
-import { tirolTguPages, tirolTguParagraphs } from './landTguTirol'
+import { ktnTguReading } from './landTguKaernten'
+import { tirolTguPages, tirolTguReading } from './landTguTirol'
 import type { Gathered } from '../cache/gathered'
 
 /** RIS documents fetched at once while checking the §§ */
@@ -101,6 +101,10 @@ interface TguRead {
   deletes?: (number: string) => boolean
   /** False where the draft's own text could not be read: `deletes` then knows nothing, and a date taken from it is a guess. */
   complete?: false
+  /** Instructions that reach §§ they do not name, per law (`TguReading`). */
+  reaches?: { law: string | null; instruction: string }[]
+  /** Pages of the document the reader did not read (`TguReading`). */
+  droppedPages?: number
 }
 
 /** The draft's own text, or null where reading it failed — which `deletes` must not take for a draft without repeals. */
@@ -111,21 +115,100 @@ async function draftTextOf(draft: ReturnType<typeof draftSource>): Promise<strin
 
 /**
  * Oberösterreich: the Land's own Textgegenüberstellung, one column with
- * underline and strike (`landTgu.ts`).
+ * underline and strike (`landTgu.ts`) — but for 2021-16029 (Oö.
+ * ADIG-Novelle 2021), the one of 73 that sets the law in force and the draft
+ * side by side under a header of its own, „Geltende Fassung - Oö. ADIG" |
+ * „Begutachtungsentwurf – …". Read as one column, its two sides ran into
+ * each other line by line, and the page showed §§ 10a and 23 as unchanged
+ * (26.10.2026). It goes to the federal reader, as Salzburg's does
+ * (`ooeColumnPages`).
  */
 async function readOoe(detail: LandDraftRecord): Promise<TguRead | string> {
   const doc = tguDocument(detail)
   const url = doc ? safeExternalUrl(doc.url) : null
   if (!doc || !url) return NO_TGU
   const bytes = await landPdfBytes(url)
-  const paragraphs = mergeParagraphs(tguParagraphs((await tguPages(bytes)).flatMap(tguLines)))
+  const fromDocument = { label: doc.title, url, publisher: 'Land Oberösterreich' }
+  const date = doc.date ?? detail.draft.startedAt ?? new Date().toISOString().slice(0, 10)
+  // A copy: the PDF reader takes the bytes it is given, and the side-by-side
+  // document needs them a second time.
+  const pages = await tguPages(bytes.slice())
+  if (sideBySide(pages)) {
+    const columns = ooeColumnPages(await pagesOf(bytes))
+    const laws = amendedLawsOf(detail.draft.title)
+    const draftText = await draftTextOf(draftSource(detail.draft.documents, 'Land Oberösterreich'))
+    const { rows, droppedPages } = columnRows(columns)
+    return {
+      paragraphs: columnParagraphs(rows, laws),
+      droppedPages,
+      fromDocument,
+      date,
+      laws,
+      deletes: (n) => draftDeletes(draftText ?? '', n),
+      ...(draftText === null ? { complete: false as const } : {}),
+    }
+  }
+  const paragraphs = mergeParagraphs(tguParagraphs(pages.flatMap(tguLines)))
   return {
     paragraphs,
-    fromDocument: { label: doc.title, url, publisher: 'Land Oberösterreich' },
-    date: doc.date ?? detail.draft.startedAt ?? new Date().toISOString().slice(0, 10),
+    fromDocument,
+    date,
     // The document names each law above its §§ (`tguParagraphs`), and strikes what it deletes.
     laws: [...new Set(paragraphs.map((p) => p.law).filter((l): l is string => l !== null))],
   }
+}
+
+/** „Geltende Fassung …" with a header of the other side on the same line, far to its right: two columns. */
+export function sideBySide(pages: readonly { items: readonly { s: string; x: number; y: number; w: number }[] }[]): boolean {
+  return pages.slice(0, 3).some((p) => p.items.some((i) => HEADER_CURRENT_RE.test(i.s.trim()) &&
+    p.items.some((o) => o !== i && Math.abs(o.y - i.y) < 3 && o.x > i.x + i.w + 40 && o.s.trim() !== '')))
+}
+
+/**
+ * A side-by-side Oberösterreich document as the federal reader takes it:
+ * the draft's header named as its template names it, „Vorgeschlagene
+ * Fassung" — the reader stands behind no geometry without the pair — and
+ * the §§ with their full stop (`withFullStops`).
+ */
+export function ooeColumnPages(pages: readonly AnnexPage[]): AnnexPage[] {
+  return pages.map((page) => {
+    const left = page.items.find((i) => HEADER_CURRENT_RE.test(i.text.trim()))
+    const beside = left ? page.items.filter((i) => i !== left && Math.abs(i.y - left.y) < 3 && i.x > left.x + left.width + 40 && i.text.trim() !== '') : []
+    if (!beside.length || beside.some((i) => HEADER_PROPOSED_RE.test(i.text.trim()))) return withFullStops(page)
+    const first = beside.reduce((a, b) => (a.x <= b.x ? a : b))
+    const items = page.items.filter((i) => !beside.includes(i) || i === first).map((i) => (i === first ? { ...i, text: 'Vorgeschlagene Fassung' } : i))
+    return withFullStops({ ...page, items })
+  })
+}
+
+/**
+ * A § designation without the full stop the federal reader opens a § by
+ * („§ 64" for „§ 64."), as Salzburg and Oberösterreich's side-by-side
+ * document print them — with it. In one run, as Salzburg has always been
+ * read; or in several, „§", „ ", „8c", where the line in its column holds
+ * nothing else (Salzburg 32075 lost §§ 8c and 8d that way into the § above,
+ * until 26.10.2026).
+ */
+export function withFullStops(page: AnnexPage): AnnexPage {
+  const items = page.items.map((i) => (/^§\s*\d+[a-z]*$/.test(i.text.trim()) ? { ...i, text: `${i.text.trim()}.` } : i))
+  const merged = new Map<(typeof items)[number], (typeof items)[number] | null>()
+  for (const sign of items) {
+    if (sign.text.trim() !== '§' || merged.has(sign)) continue
+    // The runs of its line in its column: on its baseline, each within 30 pt of the one before.
+    const row = items.filter((o) => Math.abs(o.y - sign.y) < 2).sort((a, b) => a.x - b.x)
+    let from = row.indexOf(sign)
+    let to = from
+    while (from > 0 && row[from]!.x - (row[from - 1]!.x + row[from - 1]!.width) < 30) from--
+    while (to < row.length - 1 && row[to + 1]!.x - (row[to]!.x + row[to]!.width) < 30) to++
+    const runs = row.slice(from, to + 1)
+    const number = /^§\s*(\d+[a-z]*)$/.exec(runs.map((r) => r.text).join('').replace(/\s+/g, ' ').trim())?.[1]
+    if (!number || runs.length < 2) continue
+    const last = runs.at(-1)!
+    merged.set(runs[0]!, { ...runs[0]!, width: last.x + last.width - runs[0]!.x, text: `§ ${number}.` })
+    for (const r of runs.slice(1)) merged.set(r, null)
+  }
+  if (!merged.size) return { ...page, items }
+  return { ...page, items: items.flatMap((i) => (merged.has(i) ? (merged.get(i) ? [merged.get(i)!] : []) : [i])) }
 }
 
 /** Wien's running head on every page: „Seite 1 von 2", the Zahl „821297/2026", the date. */
@@ -151,7 +234,10 @@ export function wienTguStart(pages: readonly { items: readonly { text: string }[
  * it starts on, with the Land's running head taken out first.
  */
 async function readWien(detail: LandDraftRecord): Promise<TguRead | string> {
-  const doc = tguDocument(detail) ?? detail.draft.documents[0]
+  // The newest version, as the draft's own link (`wien.ts`): the first one
+  // was read until 26.10.2026, and 2026003's of 05.05.2026 prints § 11d's
+  // text in force otherwise than its first of 18.03.2026.
+  const doc = tguDocument(detail) ?? detail.draft.documents.at(-1)
   const url = doc ? safeExternalUrl(doc.url) : null
   if (!doc || !url) return NO_TGU
   const bytes = await landPdfBytes(url)
@@ -162,8 +248,10 @@ async function readWien(detail: LandDraftRecord): Promise<TguRead | string> {
   const laws = amendedLawsOf(detail.draft.title)
   // The draft's own text stands in front of the Textgegenüberstellung, in the same PDF.
   const draftText = pages.slice(0, start).flatMap((p) => p.items.map((i) => i.text)).join(' ')
+  const { rows, droppedPages } = columnRows(pages.slice(start))
   return {
-    paragraphs: columnParagraphs(columnRows(pages.slice(start)), laws),
+    paragraphs: columnParagraphs(rows, laws),
+    droppedPages,
     fromDocument: { label: `${doc.title}, Textgegenüberstellung`, url, publisher: 'Stadt Wien' },
     date: doc.date ?? detail.draft.startedAt ?? new Date().toISOString().slice(0, 10),
     laws,
@@ -171,9 +259,17 @@ async function readWien(detail: LandDraftRecord): Promise<TguRead | string> {
   }
 }
 
-/** The two-column reader's rows, as `columnParagraphs` takes them. */
-function columnRows(pages: Parameters<typeof parseAnnexPdf>[0]): ColumnRow[] {
-  return parseAnnexPdf(pages).rows.map((r) => ({ kind: r.kind, law: r.law, heading: r.heading, para: r.para, current: r.current, proposed: r.proposed, changed: r.change !== 'unchanged' }))
+/**
+ * The two-column reader's rows, as `columnParagraphs` takes them — and the
+ * pages it did not read, which the page states as the Bund's annex does
+ * (26.10.2026: sbg-18192 read 26 of its 51 pages and said nothing of it).
+ */
+function columnRows(pages: Parameters<typeof parseAnnexPdf>[0]): { rows: ColumnRow[]; droppedPages: number } {
+  const parsed = parseAnnexPdf(pages)
+  return {
+    rows: parsed.rows.map((r) => ({ kind: r.kind, law: r.law, heading: r.heading, para: r.para, current: r.current, proposed: r.proposed, changed: r.change !== 'unchanged' })),
+    droppedPages: parsed.droppedPages,
+  }
 }
 
 /**
@@ -186,23 +282,20 @@ const SBG_HEAD_RE = /^(?:[A-Z]:\\.*|\d+ von \d+)$|\.docx?\b/
 /**
  * Salzburg: its Textgegenüberstellung is a document of its own, in the
  * Bund's two-column template — read by the Bund's reader once its running
- * head is out and its §§ carry their full stop.
+ * head is out and its §§ carry their full stop (`withFullStops`).
  */
 async function readSalzburg(detail: LandDraftRecord): Promise<TguRead | string> {
   const doc = tguDocument(detail)
   const url = doc ? safeExternalUrl(doc.url) : null
   if (!doc || !url) return NO_TGU
   const bytes = await landPdfBytes(url)
-  const pages = (await pagesOf(bytes)).map((p) => ({
-    ...p,
-    items: p.items
-      .filter((i) => !SBG_HEAD_RE.test(i.text.trim()))
-      .map((i) => (/^§\s*\d+[a-z]*$/.test(i.text.trim()) ? { ...i, text: `${i.text.trim()}.` } : i)),
-  }))
+  const pages = (await pagesOf(bytes)).map((p) => withFullStops({ ...p, items: p.items.filter((i) => !SBG_HEAD_RE.test(i.text.trim())) }))
   const laws = amendedLawsOf(detail.draft.title)
   const draftText = await draftTextOf(draftSource(detail.draft.documents, 'Land Salzburg'))
+  const { rows, droppedPages } = columnRows(pages)
   return {
-    paragraphs: columnParagraphs(columnRows(pages), laws),
+    paragraphs: columnParagraphs(rows, laws),
+    droppedPages,
     fromDocument: { label: doc.title, url, publisher: 'Land Salzburg' },
     date: doc.date ?? detail.draft.startedAt ?? new Date().toISOString().slice(0, 10),
     laws,
@@ -220,7 +313,7 @@ async function readSalzburg(detail: LandDraftRecord): Promise<TguRead | string> 
 interface OwnReader<Page> {
   publisher: string
   load: (bytes: Uint8Array) => Promise<Page[]>
-  parse: (pages: Page[], laws: readonly string[]) => TguParagraph[]
+  parse: (pages: Page[], laws: readonly string[]) => TguParagraph[] | TguReading
   /** The day the documents date themselves, where the draft's record does not (`kaerntenDated`, `tirolDated`): the Textgegenüberstellung's pages, and the draft's own text. */
   dated: (pages: Page[], draftText: string) => string | null
   /**
@@ -273,8 +366,12 @@ function readOwn<Page>({ publisher, load, parse, dated, guardDeletes }: OwnReade
     // The draft's text: for the deletion guard, and for the date where the record keeps none.
     const draft = guardDeletes || !detail.draft.startedAt ? draftSource(detail.draft.documents, publisher) : null
     const draftText = draft ? await draftTextOf(draft) : ''
+    const parsed = parse(pages, laws)
+    const reading: TguReading = Array.isArray(parsed) ? { paragraphs: parsed } : parsed
     return {
-      paragraphs: parse(pages, laws),
+      paragraphs: reading.paragraphs,
+      ...(reading.reaches?.length ? { reaches: reading.reaches } : {}),
+      ...(reading.droppedPages ? { droppedPages: reading.droppedPages } : {}),
       fromDocument: { label: doc.title, url, publisher },
       date: doc.date ?? detail.draft.startedAt ?? dated(pages, draftText ?? '') ?? detail.draft.placedAt ?? new Date().toISOString().slice(0, 10),
       laws,
@@ -283,14 +380,14 @@ function readOwn<Page>({ publisher, load, parse, dated, guardDeletes }: OwnReade
     }
   }
 }
-const readKaernten = readOwn({ publisher: 'Land Kärnten', load: pagesOf, parse: ktnTguParagraphs, dated: kaerntenDated, guardDeletes: true })
+const readKaernten = readOwn({ publisher: 'Land Kärnten', load: pagesOf, parse: ktnTguReading, dated: kaerntenDated, guardDeletes: true })
 // Tirol marks its changes by colour and rule, as Oberösterreich does: its pages need their drawing, not only their text (`tirolTguPages`).
-const readTirol = readOwn({ publisher: 'Land Tirol', load: tirolTguPages, parse: tirolTguParagraphs, dated: tirolDated, guardDeletes: false })
+const readTirol = readOwn({ publisher: 'Land Tirol', load: tirolTguPages, parse: tirolTguReading, dated: tirolDated, guardDeletes: false })
 
 const NO_TGU = 'Das Land hat zu diesem Entwurf keine Textgegenüberstellung veröffentlicht.'
 
 /** Where §§ were read and none can be shown. The page names every one under it, with why (`LandWithheldNotes`). */
-const NONE_SHOWN = 'Aus dieser Textgegenüberstellung zeigt der Monitor keinen Paragraphen. Welche sie ändert und warum sie hier fehlen, steht darunter; sie selbst steht unter den Dokumenten.'
+const NONE_SHOWN = 'Aus dieser Textgegenüberstellung zeigt der Monitor keinen Paragraphen. Welche Paragraphen die Novelle ändert und warum sie hier fehlen, steht darunter; die Textgegenüberstellung selbst steht unter den Dokumenten.'
 
 /** Whether a Land's Textgegenüberstellung is there to read: its own document, or for Wien inside the draft's PDF (the server says when there is none). */
 export function hasTgu(land: LandCode, documents: readonly LandDocument[]): boolean {
@@ -315,17 +412,21 @@ export async function compareTgu(land: LandCode, detail: LandDraftDetail): Promi
   if (typeof got === 'string') return whole(unavailable(got))
   const { paragraphs, fromDocument, date } = got
   const toDocument = { label: `${LAW_LABEL[land]}, Fassung vom ${formatDateDe(date)} (Abgleich)`, url: null, publisher: 'RIS (CC BY 4.0)' }
+  // Beside the §§, in every answer (26.10.2026): instructions that reach §§
+  // they do not name, said per law, and pages the reader did not read.
+  const beside: Partial<LandLawDiffResponse> = {
+    ...(got.reaches?.length ? { reaches: got.reaches } : {}),
+    ...(got.droppedPages ? { droppedPages: got.droppedPages } : {}),
+  }
   if (!paragraphs.length) {
-    return whole(unavailable('In der Textgegenüberstellung fand der Monitor keine Paragraphen, die er lesen kann.', { fromDocument }))
+    return whole(unavailable('In der Textgegenüberstellung fand der Monitor keine Paragraphen, die er lesen kann.', { fromDocument, ...beside }))
   }
   // Every § changed in a way the reader does not compose: named, each with
   // why — Kärnten 15193/2025 said „keine Paragraphen, die er lesen kann" and
   // named none of its 21 (25.10.2026).
   if (paragraphs.every((p) => p.unread)) {
-    const withheld = paragraphs
-      .map((p) => ({ law: p.law, id: `§${p.number}`, reason: p.because ?? ('unread' as const) }))
-      .filter((w, i, all) => all.findIndex((o) => o.law === w.law && o.id === w.id) === i)
-    return whole(unavailable(NONE_SHOWN, { fromDocument, withheld }))
+    const withheld = once(paragraphs.map((p) => ({ law: p.law, id: paraId(p.number), reason: p.because ?? ('unread' as const) })))
+    return whole(unavailable(NONE_SHOWN, { fromDocument, withheld, ...beside }))
   }
 
   /** Whether every read answered; false keeps the answer out of the cache. */
@@ -495,19 +596,19 @@ export async function compareTgu(land: LandCode, detail: LandDraftDetail): Promi
     if (group.length === 2 && oldOnly.length === 1 && neuOnly.length === 1) {
       return [{ ...oldOnly[0]!, neu: neuOnly[0]!.neu, changed: true }]
     }
-    doubled.push({ law: group[0]!.law, id: `§${group[0]!.number}` })
+    doubled.push({ law: group[0]!.law, id: paraId(group[0]!.number) })
     return []
   })
   // Under the law the document files it under, or that of the confirmed §
   // beside it — where the page counts it (`LandLawDiffSection`).
-  const withheld: LandLawDiffResponse['withheld'] = [
-    ...paragraphs.flatMap((p, i) => (verdicts[i] ? [] : [{ law: filedUnder(p.law ?? neighbour(i)), id: `§${p.number}`, ...(why[i] ? { reason: why[i] } : {}) }])),
+  const withheld = once([
+    ...paragraphs.flatMap((p, i) => (verdicts[i] ? [] : [{ law: filedUnder(p.law ?? neighbour(i)), id: paraId(p.number), ...(why[i] ? { reason: why[i] } : {}) }])),
     ...doubled.map((d) => ({ ...d, reason: 'twice' as const })),
-  ].filter((w, i, all) => all.findIndex((o) => o.law === w.law && o.id === w.id) === i)
+  ])
   // Nothing to show: the §§ are named all the same, each with why — the
   // page lists them under the sentence (`LandLawDiffSection`), as it does
   // beside the §§ it shows.
-  if (!kept.length) return { value: unavailable(NONE_SHOWN, { fromDocument, toDocument, withheld }), complete }
+  if (!kept.length) return { value: unavailable(NONE_SHOWN, { fromDocument, toDocument, withheld, ...beside }), complete }
 
   const { from, to } = tguUnits(kept)
   const units = withHeadings(diffLawUnits(from, to), kept)
@@ -526,7 +627,17 @@ export async function compareTgu(land: LandCode, detail: LandDraftDetail): Promi
       droppedLaws: [],
       sharedWith: [],
       withheld,
+      ...beside,
     },
     complete,
   }
+}
+
+/**
+ * Each withheld § once per law and reason (26.10.2026). Deduplicated by law
+ * and id alone, the second reason of a § was dropped — and two Artikel filed
+ * under no law ran into one: 2314/2021 named § 6 once for two laws.
+ */
+function once(items: LandLawDiffResponse['withheld']): LandLawDiffResponse['withheld'] {
+  return items.filter((w, i, all) => all.findIndex((o) => o.law === w.law && o.id === w.id && o.reason === w.reason) === i)
 }

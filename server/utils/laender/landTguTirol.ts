@@ -52,7 +52,7 @@
  * (`pagesOf`) knows neither rules nor colour.
  */
 import type { AnnexPage } from '../annex/annexPdf'
-import type { TguParagraph } from './landTgu'
+import type { TguParagraph, TguReading } from './landTgu'
 
 /* ------------------------------------------------------------------ *
  * The page geometry
@@ -497,6 +497,11 @@ export function lawOfArticle(title: string, laws: readonly string[]): string | n
  * names none we know — RIS decides then, `compareTgu`).
  */
 export function tirolParagraphs(pages: readonly TirolTguPage[], laws: readonly string[]): TguParagraph[] {
+  return tirolReading(pages, laws).paragraphs
+}
+
+/** `tirolParagraphs`, and how many pages had no gutter and so were not read (26.10.2026). */
+function tirolReading(pages: readonly TirolTguPage[], laws: readonly string[]): TguReading {
   const done: Open[] = []
   let law: string | null = laws.length === 1 ? laws[0]! : null
   let open: Open | null = null
@@ -506,12 +511,22 @@ export function tirolParagraphs(pages: readonly TirolTguPage[], laws: readonly s
     if (open) done.push(open)
     open = null
   }
+  let dropped = 0
   pages.forEach((page, n) => {
     const cols = pageLines(page, n + 1)
     // No gutter: the page's reading order would be ours. The § running into
-    // it, and every § on it, is withheld.
+    // it, and every § on it, is withheld — and named (26.10.2026): a § that
+    // began on such a page was opened nowhere and vanished. Its heading is
+    // a run of its own, „§ 4", wherever it stands; what follows on the next
+    // page is the last one's, withheld with it.
     if (!cols) {
+      dropped++
       if (open) open.bad = true
+      const headings = page.runs.filter((r) => PARA_RE.test(r.s.trim())).sort((a, b) => b.y - a.y || a.x - b.x)
+      for (const r of headings) {
+        close()
+        open = { law, number: PARA_RE.exec(r.s.trim())![1]!, renumbered: null, side: 'both', old: [], neu: [], marked: false, bad: true, titled: { old: 0, neu: 0, done: true } }
+      }
       return
     }
     for (const lines of [cols.left, cols.right]) {
@@ -584,7 +599,7 @@ export function tirolParagraphs(pages: readonly TirolTguPage[], laws: readonly s
     }
   })
   close()
-  return pairTwins(done)
+  return { paragraphs: pairTwins(done), ...(dropped ? { droppedPages: dropped } : {}) }
 }
 
 /**
@@ -613,6 +628,11 @@ function pairTwins(entries: readonly Open[]): TguParagraph[] {
     // to show, where RIS lacks its number, and where RIS has it refused as
     // „nicht wortgleich", which is not why (728/2026, §§ 73 and 32).
     const withheld: TguParagraph = { law: group[0]!.law, number: group[0]!.number, old: [], neu: [], changed: true, unread: true, because: 'unsure' }
+    // A renumbered § is named under its new number too (26.10.2026): under its
+    // old one alone, it was dropped wherever a new § takes that number, and the
+    // number it moves to was said nowhere (723/2026: § 72 now § 74).
+    const moved = group[0]!.renumbered
+    if (moved) out.push({ ...withheld, number: moved })
     if (!p || p.bad) {
       out.push(withheld)
       continue
@@ -655,6 +675,11 @@ const isTirolPage = (p: AnnexPage | TirolTguPage): p is TirolTguPage => 'runs' i
  * nothing rather than a guess.
  */
 export function tirolTguParagraphs(pages: readonly (AnnexPage | TirolTguPage)[], laws: readonly string[]): TguParagraph[] {
-  if (!pages.length || !pages.every(isTirolPage)) return []
-  return tirolParagraphs(pages, laws)
+  return tirolTguReading(pages, laws).paragraphs
+}
+
+/** `tirolTguParagraphs`, with the pages it did not read (`TguReading`). */
+export function tirolTguReading(pages: readonly (AnnexPage | TirolTguPage)[], laws: readonly string[]): TguReading {
+  if (!pages.length || !pages.every(isTirolPage)) return { paragraphs: [] }
+  return tirolReading(pages, laws)
 }

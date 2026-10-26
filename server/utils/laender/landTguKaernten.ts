@@ -47,7 +47,7 @@
  * which is why it is only ever the document's own words.
  */
 import type { AnnexItem, AnnexPage } from '../annex/annexPdf'
-import { joinLines, lawName, type TguParagraph } from './landTgu'
+import { joinLines, lawName, type TguParagraph, type TguReading } from './landTgu'
 
 /**
  * Whether whole-Absatz instructions are performed on the left column's §
@@ -171,16 +171,71 @@ const heading = (l: KtnLine, f: Frame) => Math.abs((l.x0 + l.x1) / 2 - (f.margin
 const ABSATZ_RE = /^\((\d+[a-z]*)\)\s/
 const absatzStart = (l: KtnLine, f: Frame) => ABSATZ_RE.test(l.text) && l.x0 - f.margin >= 10 && l.x0 - f.margin <= 32
 
-const PARA_LINE_RE = /^§\s*(\d+[a-z]*)\.?$/
+/**
+ * A unit's own line: „§ 5" — and in a Landesverfassung „Artikel 19"
+ * (26.10.2026), whose articles were read as no unit at all: 1203/2020's 26
+ * instructions to the Kärntner Landesverfassung named nothing on the page.
+ */
+const PARA_LINE_RE = /^(?:§\s*(\d+[a-z]*)|Artikel\s+(\d+[a-z]*))\.?$/
+/** The unit's number as this reader keys it: „5", „Art. 19". */
+const unitNumber = (m: RegExpExecArray) => (m[1] ? m[1] : `Art. ${m[2]!}`)
 /** „1. Abschnitt", „II. Teil", „3. Hauptstück", „Abschnitt 2": a division heading, which closes the § above it. */
 const DIVISION_RE = /^(?:(?:\d+[a-z]?|[IVXL]+)\.\s*)?(?:Hauptstück|Abschnitt|Teil|Unterabschnitt)(?:\s+(?:\d+|[IVXL]+))?:?(?:\s|$)/
 const CLOSE_RE = /^(?:Inhaltsverzeichnis:?|Anlagen?(?:\s+\d+)?(?:\s+zu\b.*)?|Artikel\s+[IVXL]+\b.*|Art\.\s*\d+.*)$/
 
-/** One § as a column prints it: the heading line(s) under „§ 5", then the body. */
+/** The levels a law is divided in — nested as its headings come (`printedParagraphs`). */
+type Level = 'Teil' | 'Hauptstück' | 'Abschnitt' | 'Unterabschnitt'
+/** Where a § stands: the designation of each division it is in, „Abschnitt" → „4". */
+type DivisionPath = Partial<Record<Level, string>>
+/** A division an instruction names: „Der 1. Abschnitt des II. Teils" → Abschnitt 1 in Teil 2. */
+export interface DivisionSpec { level: Level; designation: string; parent?: { level: Level; designation: string } }
+
+const ROMAN: Record<string, number> = { I: 1, V: 5, X: 10, L: 50 }
+/** „IV" → „4", „12a" → „12a", „VI a" → „6a": a division's designation, compared as a number. */
+function designationOf(raw: string): string | null {
+  const m = /^([IVXL]+|\d+)\s?([a-z]?)$/.exec(raw.trim())
+  if (!m) return null
+  if (/^\d/.test(m[1]!)) return `${m[1]}${m[2]}`
+  let n = 0
+  for (let i = 0; i < m[1]!.length; i++) {
+    const v = ROMAN[m[1]![i]!]!
+    const next = ROMAN[m[1]![i + 1]!] ?? 0
+    n += v < next ? -v : v
+  }
+  return `${n}${m[2]}`
+}
+
+const LEVEL_RE = String.raw`(Hauptstück|Abschnitt|Teils?|Unterabschnitt)`
+const DESIGNATION_RE = String.raw`(\d+[a-z]?|[IVXL]+(?:\s?[a-z](?![a-zäöü]))?)`
+/**
+ * The first division a text names — „4. Abschnitt", „Abschnitt Ia", „III.
+ * Teil" — with the one it stands in where the text says so („des II.
+ * Teils"). Null where it names none with a designation.
+ */
+export function divisionOf(text: string): DivisionSpec | null {
+  const before = new RegExp(String.raw`${DESIGNATION_RE}\.\s*${LEVEL_RE}\b`).exec(text)
+  const after = new RegExp(String.raw`\b${LEVEL_RE}\s+${DESIGNATION_RE}\b`).exec(text)
+  const hit = before && (!after || before.index <= after.index)
+    ? { at: before.index + before[0].length, level: before[2]!, designation: before[1]! }
+    : after ? { at: after.index + after[0].length, level: after[1]!, designation: after[2]! } : null
+  const designation = hit ? designationOf(hit.designation) : null
+  if (!hit || !designation) return null
+  const level = hit.level.replace(/^Teils$/, 'Teil') as Level
+  const up = new RegExp(String.raw`^\s*des\s+${DESIGNATION_RE}\.\s*${LEVEL_RE}\b`).exec(text.slice(hit.at))
+  const parentDesignation = up ? designationOf(up[1]!) : null
+  return up && parentDesignation ? { level, designation, parent: { level: up[2]!.replace(/^Teils$/, 'Teil') as Level, designation: parentDesignation } } : { level, designation }
+}
+
+/** Does a § stand in the division? */
+const inDivision = (path: DivisionPath, spec: DivisionSpec) =>
+  path[spec.level] === spec.designation && (!spec.parent || path[spec.parent.level] === spec.parent.designation)
+
+/** One § as a column prints it: the heading line(s) under „§ 5", then the body, and the divisions it stands in. */
 interface PrintedPara {
   number: string
   heading: string[]
   body: KtnLine[]
+  div: DivisionPath
 }
 
 /**
@@ -192,14 +247,28 @@ interface PrintedPara {
 function printedParagraphs(lines: readonly KtnLine[], f: Frame): PrintedPara[] {
   const out: PrintedPara[] = []
   let open: PrintedPara | null = null
+  // The divisions the next § stands in (26.10.2026): a division the Novelle
+  // replaces or repeals as a whole is found by them.
+  let path: DivisionPath = {}
+  // The levels in the order the law nests them: as its headings come, not
+  // as a fixed hierarchy — the Objektivierungsgesetz divides its 4. Abschnitt
+  // into a 1., 2. and 3. Teil (48376/2024), and a fixed „Teil above
+  // Abschnitt" put §§ 21 to 37 in no Abschnitt at all.
+  let order: Level[] = []
   lines.forEach((l, i) => {
     const para = PARA_LINE_RE.exec(l.text)
     if (para && centred(l, f)) {
-      open = { number: para[1]!, heading: [], body: [] }
+      open = { number: unitNumber(para), heading: [], body: [], div: { ...path } }
       out.push(open)
       return
     }
     if (centred(l, f) && (DIVISION_RE.test(l.text) || CLOSE_RE.test(l.text))) {
+      const d = DIVISION_RE.test(l.text) ? divisionOf(l.text) : null
+      if (d) {
+        const at = order.indexOf(d.level)
+        order = at >= 0 ? order.slice(0, at + 1) : [...order, d.level]
+        path = { ...Object.fromEntries(order.filter((k) => k !== d.level && path[k]).map((k) => [k, path[k]!])), [d.level]: d.designation }
+      }
       open = null
       return
     }
@@ -230,8 +299,10 @@ function absaetzeOf(body: readonly KtnLine[], f: Frame): { label: string; lines:
   return out.length ? out : null
 }
 
-/** „4" < „4a" < „4b" < „5". */
+/** „4" < „4a" < „4b" < „5" — and „Art. 4" < „Art. 5". */
 function compareLabel(a: string, b: string): number {
+  const article = /^Art\.\s*/
+  if (article.test(a) && article.test(b)) return compareLabel(a.replace(article, ''), b.replace(article, ''))
   const pa = /^(\d+)([a-z]*)$/.exec(a)
   const pb = /^(\d+)([a-z]*)$/.exec(b)
   if (!pa || !pb) return a.localeCompare(b)
@@ -252,18 +323,61 @@ interface Instruction {
    * once numbered two „8." (2038/2020). Its text is then not only its own.
    */
   swallowed: string[]
+  /** An Artikel's one instruction, printed without a number (26.10.2026). */
+  unnumbered?: true
 }
 
 /** One law's part of the Novelle: its „Änderung des …" heading and its instructions. */
 interface Amendment {
   title: string | null
+  /**
+   * The law its promulgation sentence names, „Das Kärntner
+   * Abgabenorganisationsgesetz, K-AOG, LGBl. Nr. 42/2010, … wird wie folgt
+   * geändert:" — in the nominative, and there where the „Änderung des …"
+   * heading is missing (26.10.2026).
+   */
+  named: string | null
+  /** „Artikel II", where the Novelle has Artikel. */
+  artikel: string | null
   instructions: Instruction[]
   /** The numbering skipped a number: an instruction was not seen. */
   gap: boolean
 }
 
-/** „35. Der bisherige Text …" — and „6.§ 27 Abs. 1 lautet:", the space lost (1023/2021). */
-const INSTRUCTION_RE = /^(\d+)[a-z]?\.\s*(?=[^\d\s])(\S.*)$/
+/**
+ * „35. Der bisherige Text …" — and „6.§ 27 Abs. 1 lautet:", the space lost
+ * (1023/2021), and „4. 8 Abs. 3 Z 2 entfällt.", the § sign lost (2314/2021,
+ * 26.10.2026: read as no instruction, its law got a gap).
+ */
+const INSTRUCTION_RE = /^(\d+)[a-z]?\.\s*(?=[^\d\s]|\d+[a-z]*\s+Abs\.)(\S.*)$/
+/**
+ * The sentence that opens an Artikel: „Das Kärntner … wird wie folgt
+ * geändert:" — or, where the Artikel amends another Novelle's article,
+ * „Art. II des Gesetzes LGBl. Nr. 93/2019 wird wie folgt geändert:"
+ * (227/2022).
+ */
+const PROMULGATION_START_RE = /^(?:(?:Das|Die|Der)\s+\S|Art(?:ikel|\.)\s*[IVXL\d]+[a-z]?\s+des\s+Gesetzes\b)/
+/**
+ * „Änderung des Art. II des Gesetzes LGBl. Nr. 1/2013", „… des Art. II des
+ * Gesetzes, mit dem das Kärntner Schulbaufondsgesetz geändert wird",
+ * „Änderung des Landesgesetzes LGBl. Nr. 117/2022": an Artikel that amends
+ * another Novelle, not a law the left column prints (1037/2021, 227/2022,
+ * 842/2022) — and may open with its one instruction (698/2021).
+ */
+const OF_NOVELLE_RE = /^(?:Art(?:ikels?|\.)\s*[IVXL\d]+[a-z]?\s+des\s+(?:Landes)?[Gg]esetzes\b|(?:Landes)?[Gg]esetzes\s+(?:vom\s+[^,]*?\s+)?LGBl\b)/
+/** How an Artikel's one unnumbered instruction begins: „§ 2 lit. b lautet:", „In § 4 Abs. 1 entfällt …". */
+const UNNUMBERED_HEAD_RE = /^(?:§|Art\.|In\s|Im\s|Nach\s|Vor\s|Dem\s|Der\s|Die\s|Das\s|Anstelle\s)/
+
+/**
+ * The law a promulgation sentence names, without its abbreviation and
+ * Fundstelle: „Das Kärntner Abgabenorganisationsgesetz, K-AOG, LGBl. Nr.
+ * 42/2010, …" → „Kärntner Abgabenorganisationsgesetz"; „Die Kärntner
+ * Bauordnung 1996 – K-BO 1996, LGBl. …" → „Kärntner Bauordnung 1996".
+ */
+export function promulgatedName(text: string): string | null {
+  const m = /(?:^|\s)(?:Das|Die|Der)\s+([^:]+?)(?:,\s+[\p{Lu}][\p{L}\d.-]*)?,\s+LGBl\b/u.exec(text.replace(/\s+/g, ' '))
+  return m ? lawName(m[1]!.trim()) || null : null
+}
 /** What every Novellierungsanordnung says somewhere in its first lines. */
 const VERB_RE = /\b(?:lautet|lauten|eingefügt|angefügt|entfällt|entfallen|ersetzt|aufgehoben|erhält|erhalten|geändert|wird|werden|tritt|treten)\b/
 const ARTIKEL_RE = /^Artikel\s+[IVXL]+$/
@@ -281,15 +395,25 @@ export function amendmentsOf(lines: readonly KtnLine[], f: Frame): Amendment[] {
   let current: Amendment | null = null
   let open: Instruction | null = null
   let headOpen = false
-  const start = () => {
-    current = { title: null, instructions: [], gap: false }
+  /** The open Artikel's promulgation sentence, while it runs. */
+  let promulgation: string | null = null
+  /** It ended and no instruction came yet: an Artikel's one instruction may stand unnumbered. */
+  let awaitFirst = false
+  // A new Artikel closes every head of the last one (26.10.2026): one left
+  // open let „Änderung des Kärntner Familienförderungsgesetzes" pass as text
+  // (2314/2021), and the Artikel was read as no law at all.
+  const start = (artikel: string | null = null) => {
+    current = { title: null, named: null, artikel, instructions: [], gap: false }
     out.push(current)
     open = null
+    headOpen = false
+    promulgation = null
+    awaitFirst = false
   }
   for (let i = 0; i < lines.length; i++) {
     const l = lines[i]!
     if (ARTIKEL_RE.test(l.text) && heading(l, f)) {
-      start()
+      start(l.text)
       continue
     }
     const amends = AMENDS_RE.exec(l.text)
@@ -300,14 +424,18 @@ export function amendmentsOf(lines: readonly KtnLine[], f: Frame): Amendment[] {
       // A heading without an Artikel above it opens a law of its own (one-law drafts print none).
       if (!current || (current as Amendment).title !== null || (current as Amendment).instructions.length) start()
       current!.title = title
+      if (OF_NOVELLE_RE.test(title)) awaitFirst = true
       continue
     }
     const m = INSTRUCTION_RE.exec(l.text)
     const a = current as Amendment | null
+    // An unnumbered instruction followed by „1." was an introduction, not the Artikel's one.
+    if (m && +m[1]! === 1 && a?.instructions.length === 1 && a.instructions[0]!.unnumbered) a.instructions[0]!.number = 0
     const expected = a ? (a.instructions.at(-1)?.number ?? 0) + 1 : 1
     // At the margin, give or take 8 pt — the margin is an estimate (`outermost`), and a
     // Ziffer or Absatz of a payload stands 19 pt or more further in.
-    if (m && Math.abs(l.x0 - f.margin) <= 8) {
+    const atMargin = Math.abs(l.x0 - f.margin) <= 8
+    if (m && atMargin) {
       const n = +m[1]!
       const firstLines = [m[2]!, ...lines.slice(i + 1, i + 3).map((x) => x.text)].join(' ')
       if (n >= expected && n <= expected + 4 && VERB_RE.test(firstLines)) {
@@ -317,6 +445,8 @@ export function amendmentsOf(lines: readonly KtnLine[], f: Frame): Amendment[] {
         open = { number: n, head: m[2]!, payload: [], swallowed: [] }
         cur.instructions.push(open)
         headOpen = !/:$/.test(m[2]!)
+        promulgation = null
+        awaitFirst = false
         continue
       }
       // A margin line with a number out of turn that reads like an instruction:
@@ -326,6 +456,41 @@ export function amendmentsOf(lines: readonly KtnLine[], f: Frame): Amendment[] {
       let own = m[2]!
       for (let j = i + 1; j < Math.min(lines.length, i + 4) && !/[.:]$/.test(own) && !INSTRUCTION_RE.test(lines[j]!.text); j++) own += ` ${lines[j]!.text}`
       if (open && VERB_RE.test(own) && (/§/.test(own) || /^(?:Im|In|Nach|Vor|Dem|Der|Die|Das|Am|Auf)\s/.test(m[2]!))) (open as Instruction).swallowed.push(own)
+    }
+    // Before an Artikel's first instruction: its promulgation sentence, which
+    // names the law where no „Änderung des …" heading does, and after it an
+    // instruction that may stand without a number — Kärnten numbers none
+    // where an Artikel has one (26.10.2026; seven of 11829/2023's thirteen
+    // Artikel were read as empty, their changes gone from the page).
+    if (!open && (!a || !a.instructions.length)) {
+      // „Der § 5 lautet:" right after the sentence is an instruction, not another
+      // sentence — but „Das Landesgesetz LGBl. Nr. 117/2022 … wird wie folgt
+      // geändert:" after a heading is the sentence itself.
+      const opening = [l.text, ...lines.slice(i + 1, i + 3).map((x) => x.text)].join(' ')
+      if (awaitFirst && atMargin && !m && UNNUMBERED_HEAD_RE.test(l.text) && VERB_RE.test(opening) &&
+        !(PROMULGATION_START_RE.test(l.text) && /\bwie\s+folgt\s+geändert:/.test(opening))) {
+        const cur = current as unknown as Amendment
+        open = { number: 1, head: l.text, payload: [], swallowed: [], unnumbered: true }
+        cur.instructions.push(open)
+        headOpen = !/:$/.test(l.text)
+        awaitFirst = false
+        continue
+      }
+      if (promulgation !== null || PROMULGATION_START_RE.test(l.text)) {
+        promulgation = `${promulgation ?? ''} ${l.text}`.trim()
+        if (/:$/.test(l.text)) {
+          if (/geändert:$/.test(promulgation)) {
+            // Taken before `start`, which clears it: a one-law draft opens with the sentence.
+            const sentence = promulgation
+            if (!a) start()
+            const cur = current as unknown as Amendment
+            cur.named ??= promulgatedName(sentence)
+            awaitFirst = true
+          }
+          promulgation = null
+        }
+        continue
+      }
     }
     if (!open) continue
     const o = open as Instruction
@@ -350,6 +515,10 @@ function paragraphRefs(head: string): { list: string[]; ranges: [string, string]
     const body = m[1]!
     for (const r of body.matchAll(/(\d+[a-z]*)\s*bis\s*(\d+[a-z]*)/g)) ranges.push([r[1]!, r[2]!])
     list.push(...(body.match(/\d+[a-z]*/g) ?? []))
+  }
+  // „In den §§ 61 Abs. 1, 62 Abs. 1, 63 Abs. 1 und 65 Abs. 1 wird …" (842/2022): each item a § with its subdivision.
+  for (const m of t.matchAll(/§§\s*((?:\d+[a-z]*\s+(?:Abs\.|Z|lit\.)\s*\d+[a-z]*\s*(?:,|und|sowie)?\s*)+)/g)) {
+    for (const r of m[1]!.matchAll(/(\d+[a-z]*)\s+(?:Abs\.|Z|lit\.)/g)) list.push(r[1]!)
   }
   for (const m of t.replace(/§§\s*(?:\d+[a-z]*(?:\s*(?:,|und|bis|sowie)\s*(?:§\s*)?)?)+/g, ' ').matchAll(/§\s*(\d+[a-z]*)/g)) list.push(m[1]!)
   // „In 75 Abs. 1a wird …" (1003/2021, the § sign left out): still § 75.
@@ -415,11 +584,43 @@ const DIVISION_INSERT_RE = /^(?:Nach|Vor)\s+(?:dem|der)\s+(?:\d+[a-z]?\.\s*|[IVX
 const ABS_LIST = String.raw`(?:Abs\.|Absatz|Absätze)\s*(\d+[a-z]*(?:\s*(?:,|und|bis)\s*(?:Abs\.\s*)?\d+[a-z]*)*)`
 
 type Op =
-  | { kind: 'paragraphs'; replaces: boolean; payload: KtnLine[]; numbers: string[] | null }
+  | { kind: 'paragraphs'; replaces: boolean; payload: KtnLine[]; numbers: string[] | null; division?: DivisionSpec | null; listed?: string[] }
   | { kind: 'delete'; numbers: string[]; ranges: [string, string][] }
   | { kind: 'absReplace'; para: string; labels: string[]; range: boolean; payload: KtnLine[] }
   | { kind: 'absInsert'; para: string; after: string | null; labels: string[]; range: boolean; payload: KtnLine[] }
   | { kind: 'absDelete'; para: string; labels: string[]; range: boolean }
+  | { kind: 'divisionDelete'; division: DivisionSpec; listed: string[] }
+  | { kind: 'divisionWording'; division: DivisionSpec; quoted: string | null }
+
+/**
+ * What an instruction does and names (`readInstruction`). `quoted`: the
+ * expression a „jeweils"/„im ganzen Gesetz" instruction looks for; `annex`:
+ * the Anlagen and Anhänge it changes (26.10.2026).
+ */
+export interface InstructionReading {
+  op: Op | null
+  touches: string[]
+  ranges: [string, string][]
+  all: boolean
+  quoted?: string | null
+  annex?: string[]
+}
+
+/** „Anlage 10", „Anhang II": what an instruction changes beside §§ (26.10.2026). */
+const ANNEX_REF_RE = /\b(Anlage|Anhang|Beilage)\s+((?:\d+|[IVXL]+)[a-z]?)\b/g
+const annexRefs = (head: string) => [...new Set([...head.replace(QUOTED_RE, ' ').matchAll(ANNEX_REF_RE)].map((m) => `${m[1]} ${m[2]}`))]
+/** The first expression an instruction quotes: what „wird jeweils … ersetzt" looks for. */
+const firstQuoted = (head: string) => /[„"]([^“”"]{2,})[“”"]/.exec(head)?.[1] ?? null
+/** „Nach § 51 wird folgender …": the § after which something new stands — not one the instruction changes. */
+const ANCHOR_RE = /^(?:Nach|Vor)\s+(?:dem\s+)?§\s*(\d+[a-z]*)\s+(?:wird|werden)\s/
+/** „Der 1. Abschnitt des Gesetzes („…") entfällt.": a division repealed whole. */
+const DIVISION_DELETE_RE = /^(?:Der|Das|Die)\s+(?:\d+[a-z]?\.\s*|[IVXL]+\.\s*)(?:Hauptstück|Abschnitt|Teil|Unterabschnitt)\b[^:]*?\b(?:entfällt|entfallen|wird aufgehoben|werden aufgehoben)\.?$/
+/** „Im V. Abschnitt wird jeweils …": words changed throughout one division. */
+const DIVISION_WORDING_RE = /^Im\s+(?:\d+[a-z]?\.\s*|[IVXL]+\.\s*)(?:Hauptstück|Abschnitt|Teil|Unterabschnitt)\b.*\bjeweils\b/
+/** „Nach § 10b wird folgender Abschnitt Ia eingefügt:", „Nach § 51 wird folgender 3. Abschnitt mit den §§ 51a bis 51d eingefügt:": new §§ after a §. */
+const DIVISION_AFTER_RE = /^(?:Nach|Vor)\s+(?:dem\s+)?§\s*\d+[a-z]*\s+(?:wird|werden)\s+folgende[rns]?\s+(?:(?:\d+[a-z]?|[IVXL]+[a-z]?)\.\s*)?(?:Hauptstück|Abschnitt|Teil|Unterabschnitt)\b[^:]*\b(?:eingefügt|angefügt):$/
+/** „Die Überschrift des 35 lautet:" — the § sign lost (1530/2021): read as reaching every §, it kept 28 §§ of its law from the page. */
+const BARE_HEADING_RE = /^Die Überschrift (?:des|zu)\s+(?:§\s*)?(\d+[a-z]*)\s+lautet:$/
 
 /** „1 und 2", „2 bis 4", „5, 6 und 7" → the labels, and whether it was a range. */
 function labelList(s: string): { labels: string[]; range: boolean } {
@@ -432,27 +633,78 @@ function labelList(s: string): { labels: string[]; range: boolean } {
  * every § it names, whatever it does; `all` an instruction that may touch
  * any § of the law.
  */
-export function readInstruction(ins: Instruction): { op: Op | null; touches: string[]; ranges: [string, string][]; all: boolean } {
-  const h = ins.head.replace(/\s+/g, ' ').trim()
-  const refs = paragraphRefs(h)
-  const none = { op: null, touches: refs.list, ranges: refs.ranges, all: false }
+export function readInstruction(ins: Instruction): InstructionReading {
+  const raw = ins.head.replace(/\s+/g, ' ').trim()
+  // A Landesverfassung counts in articles (26.10.2026): „Art. 19 Abs. 3a
+  // lautet:" is read as a §'s instruction, its numbers handed back as „Art. 19".
+  const outside = raw.replace(QUOTED_RE, ' ')
+  const articles = /\bArt\.\s*\d/.test(outside) && !/§/.test(outside)
+  const r = readHead(articles ? raw.replace(/\bArt\.\s*(?=\d)/g, '§ ') : raw, ins)
+  return articles ? asArticles(r) : r
+}
+
+function asArticles(r: InstructionReading): InstructionReading {
+  const a = (n: string) => `Art. ${n}`
+  const op = r.op
+  const mapped: Op | null = !op
+    ? null
+    : op.kind === 'paragraphs'
+      ? { ...op, numbers: op.numbers?.map(a) ?? null }
+      : op.kind === 'delete'
+        ? { ...op, numbers: op.numbers.map(a), ranges: op.ranges.map(([x, y]) => [a(x), a(y)] as [string, string]) }
+        : op.kind === 'absReplace' || op.kind === 'absInsert' || op.kind === 'absDelete'
+          ? { ...op, para: a(op.para) }
+          : op
+  return { ...r, op: mapped, touches: r.touches.map(a), ranges: r.ranges.map(([x, y]) => [a(x), a(y)] as [string, string]) }
+}
+
+function readHead(h: string, ins: Instruction): InstructionReading {
+  let refs = paragraphRefs(h)
+  const outside = h.replace(QUOTED_RE, ' ')
+  const annex = annexRefs(h)
+  const withAnnex = (r: InstructionReading): InstructionReading => (annex.length ? { ...r, annex } : r)
   if (ins.swallowed.length) {
     // Out, and with it every § the swallowed instructions name — or every §, where they name none.
     const more = ins.swallowed.map((t) => paragraphRefs(t.replace(/\s+/g, ' ')))
-    return {
+    return withAnnex({
       op: null,
       touches: [...refs.list, ...more.flatMap((r) => r.list)],
       ranges: [...refs.ranges, ...more.flatMap((r) => r.ranges)],
       all: more.some((r, k) => !r.list.length && !changesNoParagraph(ins.swallowed[k]!)),
-    }
+    })
   }
   if (aboutContentsOnly(h)) return { op: null, touches: [], ranges: [], all: false }
-  if (DIVISION_REPLACE_RE.test(h)) return { op: { kind: 'paragraphs', replaces: true, payload: ins.payload, numbers: null }, touches: [], ranges: [], all: false }
-  if (DIVISION_INSERT_RE.test(h)) return { op: { kind: 'paragraphs', replaces: false, payload: ins.payload, numbers: null }, touches: [], ranges: [], all: false }
-  if (changesNoParagraph(h)) return none
-  const everywhere = WHOLE_LAW_RE.test(h.replace(QUOTED_RE, ' '))
-  // „Im ganzen Gesetz wird …", „Im V. Abschnitt wird jeweils …", „Der 1. Abschnitt … entfällt": any § may be meant.
-  if (!refs.list.length || everywhere) return { ...none, all: true }
+  // The anchor of an insertion is not changed by it (26.10.2026): „Nach § 51
+  // wird folgender 3. Abschnitt … eingefügt" named § 51 as changed (15193/2025).
+  const anchor = ANCHOR_RE.exec(h)?.[1]
+  if (anchor) {
+    const at = refs.list.indexOf(anchor)
+    if (at >= 0) refs = { ...refs, list: refs.list.filter((_, k) => k !== at) }
+  }
+  const none = { op: null, touches: refs.list, ranges: refs.ranges, all: false }
+  // The §§ a division's instruction lists as its own: „Das 2. Hauptstück mit den §§ 2, 3 und 4 entfällt." (44393/2023)
+  const listed = [...new Set([...refs.list, ...refs.ranges.flatMap(rangeNumbers)])]
+  if (DIVISION_REPLACE_RE.test(h)) return { op: { kind: 'paragraphs', replaces: true, payload: ins.payload, numbers: null, division: divisionOf(h), listed }, touches: [], ranges: [], all: false }
+  if (DIVISION_INSERT_RE.test(h) || DIVISION_AFTER_RE.test(h)) {
+    // The §§ it names it creates („mit den §§ 51a bis 51d"): named where the payload cannot be read.
+    return { op: { kind: 'paragraphs', replaces: false, payload: ins.payload, numbers: null }, touches: [...new Set([...refs.list, ...refs.ranges.flatMap(rangeNumbers)])], ranges: [], all: false }
+  }
+  if (DIVISION_DELETE_RE.test(h)) {
+    const division = divisionOf(h)
+    if (division) return { op: { kind: 'divisionDelete', division, listed }, touches: [], ranges: [], all: false }
+  }
+  if (changesNoParagraph(h)) return withAnnex(none)
+  // Its anchor gone, what it changes is a heading or the contents: „Nach § 87 wird folgende Überschrift eingefügt:".
+  if (anchor && !refs.list.length && /Überschrift|[Bb]ezeichnung|Inhaltsverzeichnis/.test(outside)) return withAnnex({ op: null, touches: [], ranges: [], all: false })
+  const bareHeading = BARE_HEADING_RE.exec(h)
+  if (bareHeading && !refs.list.length) return { op: null, touches: [bareHeading[1]!], ranges: [], all: false }
+  if (DIVISION_WORDING_RE.test(h) && !refs.list.length) {
+    const division = divisionOf(h)
+    if (division) return { op: { kind: 'divisionWording', division, quoted: firstQuoted(h) }, touches: [], ranges: [], all: false }
+  }
+  const everywhere = WHOLE_LAW_RE.test(outside)
+  // „Im ganzen Gesetz wird …": any § may be meant — unless it names nothing but an Anlage.
+  if (!refs.list.length || everywhere) return withAnnex({ ...none, all: everywhere || !annex.length, quoted: firstQuoted(h) })
   const P = String.raw`§\s*(\d+[a-z]*)`
   let m: RegExpExecArray | null
   // „§ 16 lautet:", „Der § 4c samt Überschrift lautet:", „§§ 4 und 5 lauten:"
@@ -462,10 +714,13 @@ export function readInstruction(ins: Instruction): { op: Op | null; touches: str
   if (/^(?:Die )?§§ [\d\sa-z,]+(?:und|sowie) [\d\sa-z]+ lauten:$/.test(h)) {
     return { op: { kind: 'paragraphs', replaces: true, payload: ins.payload, numbers: refs.list }, touches: refs.list, ranges: [], all: false }
   }
-  // „Nach § 74 wird folgender § 74a eingefügt:", „Nach § 90 werden folgende § 90a und § 90b angefügt:"
-  if ((m = /folgende[rn]?\s+(§§?\s*\d+[a-z]*(?:\s*(?:,|und)\s*(?:§\s*)?\d+[a-z]*)*)(?:\s+samt\s+Überschriften?)?\s+(?:eingefügt|angefügt):$/.exec(h)) &&
+  // „Nach § 74 wird folgender § 74a eingefügt:", „Nach § 90 werden folgende § 90a und § 90b angefügt:",
+  // „Nach § 11 werden folgende §§ 11a bis 11d eingefügt:" (113253/2025)
+  if ((m = /folgende[rn]?\s+(§§?\s*\d+[a-z]*(?:\s*(?:,|und|bis)\s*(?:§\s*)?\d+[a-z]*)*)(?:\s+samt\s+Überschriften?)?\s+(?:eingefügt|angefügt):$/.exec(h)) &&
     /^(?:Nach|Vor) (?:§|de[mr] )/.test(h)) {
-    const created = m[1]!.match(/\d+[a-z]*/g) ?? []
+    const listed = m[1]!.match(/\d+[a-z]*/g) ?? []
+    const range = /\bbis\b/.test(m[1]!) && listed.length === 2 ? rangeNumbers([listed[0]!, listed[1]!]) : []
+    const created = range.length ? range : listed
     // The anchor („Nach § 74") is not touched; what it creates is.
     return { op: { kind: 'paragraphs', replaces: false, payload: ins.payload, numbers: created }, touches: created, ranges: [], all: false }
   }
@@ -473,7 +728,7 @@ export function readInstruction(ins: Instruction): { op: Op | null; touches: str
   if (new RegExp(String.raw`^(?:Der |Die )?(?:${P}|§§ [\d\sa-z,]+?)(?: samt Überschriften?)? (?:entfällt|entfallen|wird aufgehoben|werden aufgehoben)\.$`).test(h)) {
     return { op: { kind: 'delete', numbers: refs.list, ranges: refs.ranges }, touches: refs.list, ranges: refs.ranges, all: false }
   }
-  if (refs.list.length !== 1) return none
+  if (refs.list.length !== 1) return withAnnex(none)
   const para = refs.list[0]!
   // „§ 12 Abs. 1 lautet:", „§ 19 Abs. 2 bis 4 lauten:"
   if ((m = new RegExp(String.raw`^(?:Im |In )?${P} ${ABS_LIST} (?:lautet|lauten):$`).exec(h))) {
@@ -492,7 +747,7 @@ export function readInstruction(ins: Instruction): { op: Op | null; touches: str
   if ((m = new RegExp(String.raw`^(?:Im |In )?${P} ${ABS_LIST} (?:entfällt|entfallen)\.$`).exec(h))) {
     return { op: { kind: 'absDelete', para, ...labelList(m[2]!) }, touches: [para], ranges: [], all: false }
   }
-  return none
+  return withAnnex(none)
 }
 
 // ——— Putting the two together ———
@@ -534,16 +789,25 @@ export function leftLawsOf(lines: readonly KtnLine[], f: Frame): LeftLaw[] {
  * „Stadtrechtes") standing for its nominative either way round.
  */
 function nameMatches(law: string, text: string): boolean {
-  const words = text.toLowerCase().replace(/[(),.;:]/g, ' ').split(/[\s–]+/)
-  const want = law.toLowerCase().replace(/[(),.;:]/g, ' ').split(/[\s–]+/).filter((w) => w.length > 2 || /\d/.test(w))
+  // A name the column wrapped at its hyphen, „Kärntner Gemeinde- Personalvertretungsgesetz" (1037/2021), is one word.
+  const joined = (s: string) => s.replace(/(\p{L})-\s+(?!und\b|oder\b|bzw\.|sowie\b)(\p{L})/gu, '$1-$2')
+  const words = joined(text).toLowerCase().replace(/[(),.;:]/g, ' ').split(/[\s–]+/)
+  const want = joined(law).toLowerCase().replace(/[(),.;:]/g, ' ').split(/[\s–]+/).filter((w) => w.length > 2 || /\d/.test(w))
   const same = (a: string, b: string) => a === b || (a.length > 3 && b.length > 3 && (a.startsWith(b) || b.startsWith(a)) && Math.abs(a.length - b.length) <= 2)
   return want.length > 0 && want.every((w) => words.some((x) => same(x, w)))
 }
 
-/** The short title a left column's long title carries in brackets: „(Kärntner Landes-Gleichbehandlungsgesetz 2022 – K-LGlBG 2022)". */
+/**
+ * The short title a left column's long title carries in brackets:
+ * „(Kärntner Landes-Gleichbehandlungsgesetz 2022 – K-LGlBG 2022)" — or that
+ * it begins with, also a Stadtrecht's and the Landesverfassung's
+ * („Klagenfurter Stadtrecht 1998 - K-KStR 1998", 61525/2024: its §§ were
+ * filed under no law, and the page put them under a neighbour's).
+ */
 function titleOfLeft(title: string): string | null {
-  const bracket = /\(([^()]*(?:gesetz|ordnung|statut)[^()]*)\)/i.exec(title)
-  const raw = bracket?.[1] ?? (/^(Kärntner\s.*?(?:gesetz|ordnung)(?:\s+\d{4})?)\b/i.exec(title)?.[1] ?? null)
+  const bracket = /\(([^()]*(?:gesetz|ordnung|statut|recht|verfassung)[^()]*)\)/i.exec(title)
+  const raw = bracket?.[1] ?? (/^((?:Kärntner|Klagenfurter|Villacher)\s.*?(?:gesetz|ordnung|statut|recht|verfassung)(?:\s+\d{4})?)\b/i.exec(title)?.[1] ?? null)
+  // „Kärntner Gemeinde- Personalvertretungsgesetz" stays as printed: RIS writes it so, and finds it only so (33450/2026).
   return raw ? lawName(raw.replace(/\s+/g, ' ')) : null
 }
 
@@ -597,6 +861,8 @@ const inRange = (n: string, ranges: readonly [string, string][]) => ranges.some(
  * forms or runs past 60 numbers.
  */
 export function rangeNumbers([a, b]: readonly [string, string]): string[] {
+  const article = /^Art\.\s*/
+  if (article.test(a) && article.test(b)) return rangeNumbers([a.replace(article, ''), b.replace(article, '')]).map((n) => `Art. ${n}`)
   const pa = /^(\d+)([a-z]?)$/.exec(a)
   const pb = /^(\d+)([a-z]?)$/.exec(b)
   if (!pa || !pb) return []
@@ -611,10 +877,23 @@ export function rangeNumbers([a, b]: readonly [string, string]): string[] {
 
 /**
  * One law: its §§ in force (left) and its instructions (right) → the §§
- * whose new text the document gives whole.
+ * whose new text the document gives whole, every other § an instruction
+ * reaches named with why, and the instructions that reach §§ they do not
+ * name (`reaches`, said per law).
  */
-function lawParagraphs(law: string | null, left: readonly PrintedPara[], amendment: Amendment, lf: Frame, rf: Frame): TguParagraph[] {
+function lawParagraphs(law: string | null, left: readonly PrintedPara[], amendment: Amendment, lf: Frame, rf: Frame): { paragraphs: TguParagraph[]; reaches: string[] } {
   const read = amendment.instructions.map(readInstruction)
+  const heads = amendment.instructions.map((ins) => ins.head.replace(/\s+/g, ' ').trim())
+  /**
+   * §§ named for a cause of their own (26.10.2026), beside those an
+   * instruction names: the §§ of a division the Novelle replaces, inserts
+   * or repeals whole; those a „jeweils" or „im ganzen Gesetz" instruction
+   * reaches by the words it quotes; Anlagen.
+   */
+  const extra = new Map<string, NonNullable<TguParagraph['because']>>()
+  const reaches: string[] = []
+  const contains = (p: PrintedPara, quoted: string) => joinLines(textOf(p.heading, p.body)).replace(/\s+/g, ' ').includes(quoted.replace(/\s+/g, ' '))
+  for (const r of read) for (const label of r.annex ?? []) extra.set(label, 'annex')
   /* What the law's instructions name and this reader does not show goes
    * out as `unread`, never silently (24.10.2026): the page names it beside
    * the §§ it shows, so they are not read as all the draft changes. Where an
@@ -624,13 +903,45 @@ function lawParagraphs(law: string | null, left: readonly PrintedPara[], amendme
     const ins = amendment.instructions[k]!
     return !r.op && !ins.swallowed.length && (r.touches.includes(n) || inRange(n, r.ranges)) && FINER_RE.test(ins.head.replace(/\s+/g, ' ').replace(QUOTED_RE, ' '))
   })
-  const unread = (n: string, because?: 'wording'): TguParagraph => ({ law, number: n, old: [], neu: [], changed: true, unread: true, ...(because ? { because } : {}) })
+  const unread = (n: string, because?: TguParagraph['because']): TguParagraph => ({ law, number: n, old: [], neu: [], changed: true, unread: true, ...(because ? { because } : {}) })
+  /** The §§ an instruction other than the k-th addresses by number. */
+  const addressedBesides = (k: number) => new Set(read.flatMap((r, j) => {
+    if (j === k) return []
+    const op = r.op
+    const own = !op ? [] : 'para' in op ? [op.para] : 'numbers' in op && op.numbers ? op.numbers : []
+    return [...r.touches, ...r.ranges.flatMap(rangeNumbers), ...own]
+  }))
+  /**
+   * The §§ in force of a division an instruction replaces or repeals whole:
+   * those it lists, where it lists them; else those the left column prints
+   * under the division's heading that no other instruction addresses. The
+   * column prints only what the Novelle touches and leaves out the headings
+   * of the divisions between, so „under the last heading" alone filed
+   * 44393/2023's § 15 and § 32 in the repealed 2. Hauptstück, and 44/2021's
+   * §§ 19d, 19j and 27 in the replaced 4. Abschnitt (26.10.2026).
+   */
+  const membersOf = (division: DivisionSpec, listed: readonly string[] | undefined, k: number) => {
+    if (listed?.length) return left.filter((p) => listed.includes(p.number))
+    const besides = addressedBesides(k)
+    return left.filter((p) => inDivision(p.div, division) && !besides.has(p.number))
+  }
   const named = () => {
     const numbers = new Set(read.flatMap((r) => [...r.touches, ...r.ranges.flatMap(rangeNumbers)]))
     for (const p of left) if (read.some((r) => inRange(p.number, r.ranges))) numbers.add(p.number)
+    for (const n of extra.keys()) numbers.add(n)
     return [...numbers]
   }
-  if (amendment.gap || read.some((r) => r.all)) return named().map((n) => unread(n))
+  // Why each named § is not shown: its own cause, or a numbering gap, or words changed, or only that it is not composed.
+  const becauseOf = (n: string) => extra.get(n) ?? (amendment.gap ? 'gap' : finer(n) ? 'wording' : undefined)
+  if (amendment.gap || read.some((r) => r.all)) {
+    // Every § may be meant: those the quoted words stand in are named too, and the instruction is said for its law.
+    read.forEach((r, k) => {
+      if (!r.all) return
+      reaches.push(heads[k]!)
+      if (r.quoted) for (const p of left) if (contains(p, r.quoted)) extra.set(p.number, extra.get(p.number) ?? 'wording')
+    })
+    return { paragraphs: named().map((n) => unread(n, becauseOf(n))), reaches }
+  }
   const inForce = new Map<string, PrintedPara | null>()
   // A number the left column prints twice is not one § we can name; one it
   // prints as „§ 148 …" (1037/2021) or without a body, it does not print.
@@ -640,23 +951,72 @@ function lawParagraphs(law: string | null, left: readonly PrintedPara[], amendme
   const tainted = (n: string) => read.some((r) => !r.op && (r.touches.includes(n) || inRange(n, r.ranges)))
   const out = new Map<string, TguParagraph | null>()
   const put = (number: string, p: TguParagraph | null) => out.set(number, out.has(number) ? null : p)
+  /**
+   * The §§ in force of a division replaced or repealed whole that its own new
+   * text does not print. Named once every instruction is read, and only
+   * where none prints them: a Novelle that rewrites several divisions moves
+   * §§ from one into another (20258/2025 prints § 11 of the old 1. Abschnitt
+   * in the new 2. Abschnitt), and § 11 is then compared by its number, as
+   * every § is.
+   */
+  const unprinted = new Set<string>()
 
-  // Whole §§: replaced, inserted, deleted.
-  for (const r of read) {
+  // Whole §§: replaced, inserted, deleted — and whole divisions.
+  read.forEach((r, k) => {
     const op = r.op
-    if (!op) continue
+    if (!op) return
     if (op.kind === 'paragraphs') {
-      const printed = printedParagraphs(unquoted(op.payload), rf)
-      // The payload must print exactly the §§ the instruction names, and from its first line.
-      const first = unquoted(op.payload).find((l) => !(centred(l, rf) && (DIVISION_RE.test(l.text) || !PARA_LINE_RE.test(l.text))))
-      if (!printed.length || !first || !PARA_LINE_RE.test(first.text)) { for (const n of op.numbers ?? []) put(n, null); continue }
-      if (op.numbers && printed.map((p) => p.number).join(' ') !== op.numbers.join(' ')) { for (const n of op.numbers) put(n, null); continue }
+      const payload = unquoted(op.payload)
+      const printed = printedParagraphs(payload, rf)
+      // The §§ in force of a division the Novelle prints anew (26.10.2026).
+      const members = op.division ? membersOf(op.division, op.listed, k) : []
+      // The payload must print exactly the §§ the instruction names, and from its first line —
+      // a division's new text after its heading and title, which may run nearly the column's
+      // width („Objektivierung in der Landeskrankenanstalten-Betriebsgesellschaft –", 48376/2024):
+      // only no text of a § before its first §.
+      const firstAt = payload.findIndex((l) => centred(l, rf) && PARA_LINE_RE.test(l.text))
+      const first = op.division
+        ? (firstAt >= 0 && payload.slice(0, firstAt).every((l) => !ABSATZ_RE.test(l.text) && !/[.;]$/.test(l.text)) ? payload[firstAt] : undefined)
+        : payload.find((l) => !(centred(l, rf) && (DIVISION_RE.test(l.text) || !PARA_LINE_RE.test(l.text))))
+      if (!printed.length || !first || !PARA_LINE_RE.test(first.text)) {
+        for (const n of op.numbers ?? []) put(n, null)
+        if (op.numbers === null) {
+          // A division printed anew that the reader cannot read: its §§ in
+          // force, and those its new text prints, are named, not lost
+          // (48376/2024's 4. Abschnitt, §§ 21–37). Where neither can be
+          // told, the instruction is said for the law.
+          const printedUnits = payload.flatMap((l) => {
+            const u = PARA_LINE_RE.exec(l.text)
+            return u && centred(l, rf) ? [unitNumber(u)] : []
+          })
+          for (const n of [...members.map((p) => p.number), ...printedUnits, ...r.touches]) extra.set(n, 'division')
+          if (!members.length && !printedUnits.length && !r.touches.length) reaches.push(heads[k]!)
+        }
+        return
+      }
+      if (op.numbers && printed.map((p) => p.number).join(' ') !== op.numbers.join(' ')) {
+        for (const n of op.numbers) put(n, null)
+        return
+      }
       for (const p of printed) {
         const old = inForce.get(p.number)
         // Replacing a § the left column does not print, or inserting one it does, is not the document's pair.
         if (old === null || (op.replaces && op.numbers && !old) || (!op.replaces && inForce.has(p.number))) { put(p.number, null); continue }
         put(p.number, { law, number: p.number, old: old ? textOf(old.heading, old.body) : [], neu: textOf(p.heading, p.body), changed: true })
       }
+      // The §§ of a replaced division its new text no longer prints: gone or moved — named, not shown as „entfallen".
+      for (const p of members) if (!printed.some((q) => q.number === p.number)) unprinted.add(p.number)
+    } else if (op.kind === 'divisionDelete') {
+      // A division repealed whole (61525/2024): its §§ in force named, or the instruction said where the left column prints none.
+      const members = membersOf(op.division, op.listed, k)
+      for (const p of members) unprinted.add(p.number)
+      // Listed but not printed on the left: named all the same.
+      for (const n of op.listed) unprinted.add(n)
+      if (!members.length && !op.listed.length) reaches.push(heads[k]!)
+    } else if (op.kind === 'divisionWording') {
+      // „Im V. Abschnitt wird jeweils …" (1037/2021): the §§ of the division that carry the quoted words, and the instruction said for the law.
+      for (const p of left) if (inDivision(p.div, op.division) && (!op.quoted || contains(p, op.quoted))) extra.set(p.number, 'wording')
+      reaches.push(heads[k]!)
     } else if (op.kind === 'delete') {
       const numbers = [...new Set([...op.numbers, ...left.map((p) => p.number).filter((n) => inRange(n, op.ranges))])]
       for (const n of numbers) {
@@ -664,7 +1024,9 @@ function lawParagraphs(law: string | null, left: readonly PrintedPara[], amendme
         put(n, old ? { law, number: n, old: textOf(old.heading, old.body), neu: [], changed: true } : null)
       }
     }
-  }
+  })
+
+  for (const n of unprinted) if (!out.get(n)) extra.set(n, extra.get(n) ?? 'division')
 
   // Whole Absätze, on the left column's §.
   const absOps = new Map<string, Op[]>()
@@ -676,9 +1038,9 @@ function lawParagraphs(law: string | null, left: readonly PrintedPara[], amendme
     put(n, neu ? { law, number: n, old: textOf(old.heading, old.body), neu: textOf(old.heading, neu), changed: true } : null)
   }
 
-  const shown = [...out].flatMap(([n, p]) => (p && !tainted(n) ? [p] : []))
+  const shown = [...out].flatMap(([n, p]) => (p && !tainted(n) && !extra.has(n) ? [p] : []))
   const shownNumbers = new Set(shown.map((p) => p.number))
-  return [...shown, ...named().filter((n) => !shownNumbers.has(n)).map((n) => unread(n, finer(n) ? 'wording' : undefined))]
+  return { paragraphs: [...shown, ...named().filter((n) => !shownNumbers.has(n)).map((n) => unread(n, becauseOf(n)))], reaches }
 }
 
 /**
@@ -723,37 +1085,67 @@ function applyAbsaetze(old: PrintedPara, ops: readonly Op[], lf: Frame, rf: Fram
   return abs.flatMap((a) => a.lines)
 }
 
+/** „Kärntner Familienförderungsgesetzes" → „Kärntner Familienförderungsgesetz": an „Änderung des …" heading's law, as a name. */
+const nominative = (title: string) => title.replace(/(gesetz|Gesetz|statut|Statut|recht|Recht)e?s\b/g, '$1')
+/**
+ * What an Artikel that amends another Novelle amends, named as its group:
+ * „Artikels II des Gesetzes LGBl. Nr. 93/2019" → „Art. II des Gesetzes LGBl.
+ * Nr. 93/2019", „Landesgesetzes LGBl. Nr. 117/2022" → „Landesgesetz LGBl.
+ * Nr. 117/2022".
+ */
+const novelleLabel = (title: string) => (/^Art/.test(title) ? title.replace(/^Art(?:ikels?|\.)\s*/, 'Art. ') : nominative(title))
+
 /**
  * The §§ of a Kärnten Textgegenüberstellung whose old and new text the
  * document gives (see the head comment), each under its law: the one the
  * draft amends, or in a package the one of `laws` its Artikel names.
  */
 export function ktnTguParagraphs(pages: readonly AnnexPage[], laws: readonly string[]): TguParagraph[] {
+  return ktnTguReading(pages, laws).paragraphs
+}
+
+/** `ktnTguParagraphs`, with the instructions that reach §§ they do not name, per law (26.10.2026). */
+export function ktnTguReading(pages: readonly AnnexPage[], laws: readonly string[]): TguReading {
   // Portrait pages are not this template — once the „TGÜ" link led to the Erläuterungen (57687/2026).
-  if (!pages.length || pages[0]!.width < 700) return []
+  if (!pages.length || pages[0]!.width < 700) return { paragraphs: [] }
   const lines = ktnLines(pages)
   const leftLines = lines.filter((l) => l.side === 'left')
   const rightLines = lines.filter((l) => l.side === 'right')
-  if (!leftLines.length || !rightLines.length) return []
+  if (!leftLines.length || !rightLines.length) return { paragraphs: [] }
   const lf = frameOf(leftLines)
   const rf = frameOf(rightLines)
   const lefts = leftLawsOf(leftLines, lf)
   const amendments = amendmentsOf(rightLines, rf).filter((a) => a.instructions.length)
+  // An Artikel that amends another Novelle's article amends no law of the left column (227/2022).
+  const ofNovelle = (a: Amendment) => a.title !== null && OF_NOVELLE_RE.test(a.title)
+  const ofLaws = amendments.filter((a) => !ofNovelle(a))
 
   const nameOf = (text: string | null) => (text ? laws.find((l) => nameMatches(l, text)) ?? null : null)
   const out: TguParagraph[] = []
-  amendments.forEach((a, k) => {
-    // Which law: by name where both sides carry one, by order where the two columns print as many laws.
-    const named = nameOf(a.title)
+  const reaches: { law: string | null; instruction: string }[] = []
+  amendments.forEach((a) => {
+    if (ofNovelle(a)) {
+      const law = novelleLabel(a.title!)
+      const r = lawParagraphs(law, [], a, lf, rf)
+      out.push(...r.paragraphs.map((p) => (p.unread ? p : { law, number: p.number, old: [], neu: [], changed: true, unread: true as const })))
+      reaches.push(...r.reaches.map((instruction) => ({ law, instruction })))
+      return
+    }
+    const k = ofLaws.indexOf(a)
+    // Which law: by name where both sides carry one — the „Änderung des …"
+    // heading's, or the promulgation sentence's — by order where the two
+    // columns print as many laws.
+    const named = nameOf(a.title) ?? nameOf(a.named)
     let left = named ? lefts.find((l) => nameOf(l.title) === named) : undefined
     // Where the draft's title does not list it: the Artikel's own name against the left column's titles, if exactly one fits.
-    if (!left && a.title) {
-      const own = a.title.replace(/\s+[–-]\s+.*$/, '').replace(/,.*$/, '')
+    for (const name of [a.title, a.named]) {
+      if (left || !name) continue
+      const own = name.replace(/\s+[–-]\s+.*$/, '').replace(/,.*$/, '')
       const fits = lefts.filter((l) => nameMatches(own, l.title))
       if (fits.length === 1) left = fits[0]
     }
-    if (!left && lefts.length === amendments.length) left = lefts[k]
-    if (!left && lefts.length === 1 && amendments.length === 1) left = lefts[0]
+    if (!left && lefts.length === ofLaws.length) left = lefts[k]
+    if (!left && lefts.length === 1 && ofLaws.length === 1) left = lefts[0]
     // No left column to hold the instructions against: what they name is
     // named all the same, as not composed. Dropped, 18 Textgegenüberstellungen
     // lost 259 §§ this way — 2314/2021 the 68 its two Artikel name, and the
@@ -761,12 +1153,20 @@ export function ktnTguParagraphs(pages: readonly AnnexPage[], laws: readonly str
     // RIS check only under a law we know: without one, the check would file
     // it under its neighbour's, which may be another Artikel's.
     if (!left) {
-      const law = named ?? (laws.length === 1 ? laws[0]! : null)
-      out.push(...lawParagraphs(law, [], a, lf, rf).map((p) => (law || p.unread ? p : { law, number: p.number, old: [], neu: [], changed: true, unread: true as const })))
+      const known = named ?? (laws.length === 1 ? laws[0]! : null)
+      // Named under the law the Artikel itself names, or its designation:
+      // filed under no law, two such Artikel ran into one (2314/2021, 26.10.2026).
+      const law = known ?? (a.named ? lawName(a.named) : a.title ? nominative(a.title) : a.artikel)
+      const r = lawParagraphs(law, [], a, lf, rf)
+      out.push(...r.paragraphs.map((p) => (known || p.unread ? p : { law, number: p.number, old: [], neu: [], changed: true, unread: true as const })))
+      reaches.push(...r.reaches.map((instruction) => ({ law, instruction })))
       return
     }
-    const law = named ?? nameOf(left.title) ?? (laws.length === 1 ? laws[0]! : titleOfLeft(left.title))
-    out.push(...lawParagraphs(law, left.paragraphs, a, lf, rf))
+    // Where neither the draft's title nor the left column says, the Artikel's own name (61525/2024).
+    const law = named ?? nameOf(left.title) ?? (laws.length === 1 ? laws[0]! : titleOfLeft(left.title)) ?? (a.named ? lawName(a.named) : a.title ? nominative(a.title) : null)
+    const r = lawParagraphs(law, left.paragraphs, a, lf, rf)
+    out.push(...r.paragraphs)
+    reaches.push(...r.reaches.map((instruction) => ({ law, instruction })))
   })
-  return out
+  return { paragraphs: out, reaches }
 }

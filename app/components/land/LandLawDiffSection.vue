@@ -8,7 +8,8 @@ import { landDiffKey, landExplanationsKey, landLawGroupTitle, landReasoningKey, 
 import { lawStationPairQuestion } from '#shared/utils/lawStations'
 import { displayId, extraHeading, unitName } from '#shared/utils/unitName'
 import { BADGE_CLASS, type DiffBadge, PILL_CLASS, badgeCounts, badgeLabels } from '~/utils/diffBadges'
-import { withheldGroups } from '~/utils/landWithheld'
+import { reachesGroups, withheldGroups } from '~/utils/landWithheld'
+import { annexDroppedPagesNote } from '~/utils/annexNotes'
 import { readsSideBySide, splitSegments } from '~/utils/diffSides'
 import ListBox from '~/components/ui/ListBox.vue'
 import LandWithheldNotes from '~/components/land/LandWithheldNotes.vue'
@@ -184,6 +185,17 @@ const UNFILED = 'Ohne Zuordnung zu einem Gesetz'
 /* Where nothing is shown: the same §§, by the law each is filed under. */
 const unshownByLaw = computed(() => (data.value && !data.value.available ? withheldGroups(data.value.withheld ?? [], []) : new Map<string, LandLawDiffResponse['withheld']>()))
 
+/* Instructions that reach §§ they do not name, by the group of their law (26.10.2026); hidden by a search, as the withheld §§. */
+const reachesByGroup = computed(() => {
+  if (!data.value || query.value.trim()) return new Map<string, string[]>()
+  return reachesGroups(data.value.reaches ?? [], data.value.available ? units.value.map((u) => u.article) : [])
+})
+/* Every law the unshown list names, by §§ or by instruction. */
+const unshownLaws = computed(() => [...new Set([...unshownByLaw.value.keys(), ...reachesByGroup.value.keys()])])
+
+/* Pages of the document the reader did not read: said above the list, as the Bund's annex says it. */
+const droppedNote = computed(() => annexDroppedPagesNote(data.value?.droppedPages ?? 0))
+
 /* One group per Gesetz of the package, folded; runs of unchanged
    instructions fold into one line — as on the Ministerialentwurf's page. */
 const groups = computed(() => {
@@ -202,6 +214,7 @@ const groups = computed(() => {
     g.counts[badgeOf(u)]++
   }
   for (const key of withheldByGroup.value.keys()) groupOf(key)
+  for (const key of reachesByGroup.value.keys()) groupOf(key)
   return [...byArticle.values()].map((g) => {
     const limit = limitFor(g.article)
     const blocks: Block[] = []
@@ -234,7 +247,7 @@ const groups = computed(() => {
     }
     flush()
     // A group of §§ only withheld, under no law: the reader could not tell which law of the package they are (Kärnten, 25.10.2026).
-    return { ...g, title: landLawGroupTitle(g.article) || (g.units.length ? '' : UNFILED), blocks, hidden, withheld: withheldByGroup.value.get(g.article) ?? [] }
+    return { ...g, title: landLawGroupTitle(g.article) || (g.units.length ? '' : UNFILED), blocks, hidden, withheld: withheldByGroup.value.get(g.article) ?? [], reaches: reachesByGroup.value.get(g.article) ?? [] }
   })
 })
 
@@ -260,17 +273,18 @@ const hasUnits = computed(() => units.value.length > 0)
       <!-- Read, and none of it shown: every § is named all the same, by law
            and with why (25.10.2026) — Kärnten 15193/2025 said „keine
            Paragraphen" and named none of the 21 its Novelle changes. -->
-      <ListBox v-if="unshownByLaw.size" class="mt-3">
+      <ComparisonCaveats v-if="droppedNote" :notes="[droppedNote]" class="mt-3" />
+      <ListBox v-if="unshownLaws.length" class="mt-3">
         <DiffGroup
-          v-for="[law, items] in unshownByLaw"
+          v-for="law in unshownLaws"
           :key="law"
           :title="landLawGroupTitle(law) || UNFILED"
           :badges="[]"
-          :withheld="items.length"
+          :withheld="unshownByLaw.get(law)?.length ?? 0"
           :open="groupOpen(law)"
           @toggle="toggleGroup(law)"
         >
-          <LandWithheldNotes :items="items" :document-url="data.fromDocument?.url ?? null" alone />
+          <LandWithheldNotes :items="unshownByLaw.get(law) ?? []" :reaches="reachesByGroup.get(law) ?? []" :document-url="data.fromDocument?.url ?? null" alone />
         </DiffGroup>
       </ListBox>
     </template>
@@ -280,8 +294,8 @@ const hasUnits = computed(() => units.value.length > 0)
            Begutachtung (2023-16039 and 2024-16064, LGBl. Nr. 95/2024). The
            one sentence that stays above, in the Bund's form for a warning
            that what follows may be misread. -->
-      <ComparisonCaveats v-if="data.sharedWith.length" :notes="[]" class="mb-4">
-        <p>
+      <ComparisonCaveats v-if="data.sharedWith.length || droppedNote" :notes="[droppedNote]" class="mb-4">
+        <p v-if="data.sharedWith.length">
           Dieselbe Kundmachung setzt auch
           <template v-for="(other, i) in data.sharedWith" :key="other.path"><template v-if="i > 0">{{ i === data.sharedWith.length - 1 ? ' und ' : ', ' }}</template>den Entwurf
             <NuxtLink :to="other.path" class="link-inline">„{{ landShortTitle(other.title) ?? other.title }}“</NuxtLink><template v-if="other.deadline"> (Frist bis {{ formatDateDe(other.deadline) }})</template></template>
@@ -315,7 +329,7 @@ const hasUnits = computed(() => units.value.length > 0)
                text. Named where the header counts it, each cause in its own
                words (`withheldNotes`), with the way to the document that does
                show it — so the §§ shown are not read as all the draft changes. -->
-          <LandWithheldNotes :items="g.withheld" :document-url="data.fromDocument?.url ?? null" />
+          <LandWithheldNotes :items="g.withheld" :reaches="g.reaches" :document-url="data.fromDocument?.url ?? null" />
           <p v-if="addedLaws.has(g.article)" class="border-b border-hairline px-4 py-2.5 text-sm text-ink-secondary">
             Dieses Gesetz kommt {{ IN_FROM[from] }} nicht vor; es ist auf dem Weg hinzugekommen.
           </p>

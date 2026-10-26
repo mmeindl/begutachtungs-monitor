@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { lawOfArticle, pageLines, tirolTguParagraphs, type TirolRun, type TirolTguPage } from '../server/utils/laender/landTguTirol'
+import { lawOfArticle, pageLines, tirolTguParagraphs, tirolTguReading, type TirolRun, type TirolTguPage } from '../server/utils/laender/landTguTirol'
 
 /*
  * Synthetic pages in the geometry Tirol's Textgegenüberstellung has once
@@ -134,7 +134,11 @@ describe('tirolTguParagraphs', () => {
       line(589, 500, '§ ', del('72'), ins('74')),
       line(RIGHT + 20, 480, 'Inkrafttreten.'),
     )
-    expect(tirolTguParagraphs([p], laws)).toEqual([{ law: laws[0], number: '72', old: [], neu: ['Die neue Übergangsbestimmung.'], changed: true }])
+    // The old § 72 is now § 74: named under the number it moves to (26.10.2026), which was said nowhere.
+    expect(tirolTguParagraphs([p], laws)).toEqual([
+      { law: laws[0], number: '72', old: [], neu: ['Die neue Übergangsbestimmung.'], changed: true },
+      { law: laws[0], number: '74', old: [], neu: [], changed: true, unread: true, because: 'unsure' },
+    ])
   })
 
   it('names a § with an unsure line as withheld for that reason, whatever RIS knows of its number', () => {
@@ -147,6 +151,14 @@ describe('tirolTguParagraphs', () => {
     const first = page(line(235, 500, '§ 5'), line(LEFT + 20, 480, 'Anfang des Textes.'))
     const table = page(line(LEFT, 500, 'eine Zeile, die quer über die ganze Seite läuft und den Bundsteg überdeckt, wie eine Tabelle es tut'))
     expect(tirolTguParagraphs([first, table], laws)).toEqual([{ law: laws[0], number: '5', old: [], neu: [], changed: true, unread: true, because: 'unsure' }])
+  })
+
+  it('names a § that begins on a page without a gutter, and counts the page as not read (26.10.2026)', () => {
+    const first = page(line(235, 500, '§ 5'), line(LEFT + 20, 480, 'Anfang des Textes.'))
+    const table = page(line(LEFT, 500, 'eine Zeile, die quer über die ganze Seite läuft und den Bundsteg überdeckt, wie eine Tabelle es tut'), line(235, 470, '§ 6'), line(LEFT, 450, 'noch eine Zeile quer über die ganze Seite, über den Bundsteg hinweg, wie in einer Tabelle'))
+    const r = tirolTguReading([first, table], laws)
+    expect(r.paragraphs.map((p) => [p.number, p.unread, p.because])).toEqual([['5', true, 'unsure'], ['6', true, 'unsure']])
+    expect(r.droppedPages).toBe(1)
   })
 
   it('puts a changed § heading into the text compared, which would otherwise read „unverändert"', () => {

@@ -90,16 +90,31 @@ const NOTES: Record<WithheldCause, { lead: string; one: string; many: string }> 
     one: 'Seinen neuen Wortlaut setzt der Monitor aus den Änderungsanweisungen der Novelle nicht selbst zusammen',
     many: 'Ihren neuen Wortlaut setzt der Monitor aus den Änderungsanweisungen der Novelle nicht selbst zusammen',
   },
+  division: {
+    lead: 'Ebenfalls geändert, hier nicht gezeigt:',
+    one: 'Die Novelle fasst den Teil des Gesetzes, in dem er steht, als Ganzes neu, fügt ihn ein oder hebt ihn auf; was dabei aus ihm wird, setzt der Monitor nicht einzeln zusammen',
+    many: 'Die Novelle fasst den Teil des Gesetzes, in dem sie stehen, als Ganzes neu, fügt ihn ein oder hebt ihn auf; was dabei aus ihnen wird, setzt der Monitor nicht einzeln zusammen',
+  },
+  gap: {
+    lead: 'Ebenfalls geändert, hier nicht gezeigt:',
+    one: 'Nicht jede Änderungsanweisung der Novelle zu diesem Gesetz fand der Monitor in der Textgegenüberstellung an ihrer Stelle; ohne sie setzt er keinen neuen Wortlaut zusammen',
+    many: 'Nicht jede Änderungsanweisung der Novelle zu diesem Gesetz fand der Monitor in der Textgegenüberstellung an ihrer Stelle; ohne sie setzt er keinen neuen Wortlaut zusammen',
+  },
+  annex: {
+    lead: 'Nicht gezeigt:',
+    one: 'Anlagen und Anhänge gleicht der Monitor nicht mit dem RIS ab und zeigt sie deshalb nicht',
+    many: 'Anlagen und Anhänge gleicht der Monitor nicht mit dem RIS ab und zeigt sie deshalb nicht',
+  },
 }
 
 /** The order the causes stand in under a law: what RIS or the reading refused, then what the reader does not compose. */
-const ORDER: WithheldCause[] = ['unchecked', 'standing', 'inserted', 'elided', 'deletion', 'twice', 'unsure', 'wording', 'unread']
+const ORDER: WithheldCause[] = ['unchecked', 'standing', 'inserted', 'elided', 'deletion', 'twice', 'unsure', 'division', 'gap', 'wording', 'unread', 'annex']
 
 /**
  * The withheld §§ of one group by cause, in `ORDER`, each with its words.
  * `alone`: no § of the comparison is shown, so nothing is „ebenfalls" changed.
  */
-export function withheldNotes(items: readonly LandWithheld[], { alone = false } = {}): { cause: WithheldCause; ids: string[]; lead: string; text: string }[] {
+export function withheldNotes(items: readonly LandWithheld[], { alone = false } = {}): { cause: WithheldCause; ids: string[]; lead: string; text: string; pronoun: 'ihn' | 'sie' }[] {
   const byCause = new Map<WithheldCause, string[]>()
   for (const w of items) {
     const cause: WithheldCause = w.reason ?? 'standing'
@@ -109,6 +124,35 @@ export function withheldNotes(items: readonly LandWithheld[], { alone = false } 
     const ids = byCause.get(cause)!
     const note = NOTES[cause] ?? NOTES.standing
     const lead = alone ? note.lead.replace(/^Ebenfalls geändert/, 'Geändert') : note.lead
-    return { cause, ids, lead, text: ids.length === 1 ? note.one : note.many }
+    // „Die Textgegenüberstellung des Landes zeigt ihn" — a Paragraph, an Artikel; an Anlage is „sie".
+    return { cause, ids, lead, text: ids.length === 1 ? note.one : note.many, pronoun: ids.length === 1 && cause !== 'annex' ? 'ihn' as const : 'sie' as const }
   })
+}
+
+/**
+ * An instruction of the Novelle that reaches §§ it does not name, said for
+ * its law (26.10.2026) — „Im V. Abschnitt wird jeweils …", „Im ganzen Gesetz
+ * …", or one that changes another Novelle's article: quoted as the document
+ * prints it, so the §§ listed are not read as all it changes. The sentence
+ * after it says nothing of §§, since not every such instruction reaches one.
+ */
+export function reachesNote(): { lead: string; after: string } {
+  return { lead: 'Außerdem ordnet die Novelle an:', after: 'Den Wortlaut, der sich daraus ergibt, setzt der Monitor nicht selbst zusammen.' }
+}
+
+/** An instruction as the note quotes it: one whose text follows its colon („Der 4. Abschnitt lautet:") with the text left out, „…". */
+export function quotedInstruction(instruction: string): string {
+  return /:$/.test(instruction.trim()) ? `${instruction.trim()} …` : instruction.trim()
+}
+
+/** The instructions of `reaches` that belong to a group — the law each is said for (`withheldGroups`' rule). */
+export function reachesGroups(reaches: readonly { law: string | null; instruction: string }[], shownLaws: readonly (string | null)[]): Map<string, string[]> {
+  const keys = new Set(shownLaws.map((l) => l ?? ''))
+  const only = keys.size === 1 ? [...keys][0]! : null
+  const out = new Map<string, string[]>()
+  for (const r of reaches) {
+    const key = r.law ? r.law : (only ?? '')
+    out.set(key, [...new Set([...(out.get(key) ?? []), r.instruction])])
+  }
+  return out
 }

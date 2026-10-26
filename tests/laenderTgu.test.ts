@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import { draftNameOf, kaerntenDated, readableLawName, tirolDated, wienTguStart } from '../server/utils/laender/landTguService'
-import { amendedLawOf, amendedLawsOf, columnParagraphs, draftDeletes, joinLines, mergeParagraphs, onlyElided, searchPhrase, shareInRis, standsInRis, tguLines, tguParagraphs, tguUnits, withHeadings, type TguLine, type TguPage } from '../server/utils/laender/landTgu'
+import { amendedLawOf, amendedLawsOf, columnParagraphs, draftDeletes, joinLines, mergeParagraphs, onlyElided, searchPhrase, shareInRis, STANDS_IN_RIS, standsInRis, tguLines, tguParagraphs, tguUnits, withHeadings, type TguLine, type TguPage } from '../server/utils/laender/landTgu'
 
 /** A run at (x, y), each character 5 pt wide; glyph widths equal, so centres fall evenly. */
 function run(s: string, x: number, y: number) {
@@ -94,6 +94,83 @@ describe('tguParagraphs', () => {
   })
 })
 
+describe('tguParagraphs — units the reader lost until 26.10.2026', () => {
+  const law = line('Oö. Gemeindeordnung 1990 (Oö. GemO 1990)')
+  const ins = (raw: string): TguLine => ({ raw, old: '', neu: raw, marked: true })
+  const del = (raw: string): TguLine => ({ raw, old: raw, neu: '', marked: true })
+
+  it('opens a § printed with the opening quote of the draft, and leaves the closing quote out (2025-16106, § 65)', () => {
+    const paras = tguParagraphs([law, line('4. Abschnitt'), ins('„§ 65'), ins('Urkunden'), ins('(1) Urkunden sind zu unterfertigen.“')])
+    expect(paras).toEqual([{ law: 'Oö. Gemeindeordnung 1990', number: '65', old: [], neu: ['Urkunden', '(1) Urkunden sind zu unterfertigen.'], changed: true }])
+  })
+
+  it('leaves a § the text quotes after an instruction in the § that quotes it (2025-16094, § 5 of the Oö. Gemeindesanitätsdienstgesetz 2006)', () => {
+    const paras = tguParagraphs([law, line('§ 5'), line('(4) § 42 bleibt mit der Maßgabe aufrecht, dass'), ins('1. § 16 lautet:'), ins('„§ 16'), ins('Geheimhaltung'), ins('Die Verpflichtung besteht auch danach.“')])
+    expect(paras.map((p) => [p.number, p.neu])).toEqual([['5', ['(4) § 42 bleibt mit der Maßgabe aufrecht, dass', '1. § 16 lautet:', '„§ 16', 'Geheimhaltung', 'Die Verpflichtung besteht auch danach.“']]])
+  })
+
+  it('reads an Artikel of a law organised in Artikel as a unit of its own (2025-16094, Art. 46a)', () => {
+    const paras = tguParagraphs([line('Oö. Landes-Verfassungsgesetz (Oö. L-VG)'), line('Artikel 46'), line('Amtsverschwiegenheit'), line('(1) Text.'), ins('Artikel 46a'), ins('Die Mitglieder sind verpflichtet.')])
+    expect(paras.map((p) => [p.number, p.old, p.neu, p.changed])).toEqual([
+      ['Art. 46', ['Amtsverschwiegenheit', '(1) Text.'], ['Amtsverschwiegenheit', '(1) Text.'], false],
+      ['Art. 46a', [], ['Die Mitglieder sind verpflichtet.'], true],
+    ])
+  })
+
+  it('reads a renumbered § by number: the old number keeps the text in force, the new one gets the new text (2026-16120)', () => {
+    const paras = mergeParagraphs(tguParagraphs([
+      law,
+      del('§ 10'), del('Rechtsstellung der Mitglieder'), del('(1) Ehrenamtlich.'),
+      { raw: '§ 10§ 14', old: '§ 14', neu: '§ 10', marked: true },
+      line('Geschäftsordnung'),
+      { raw: '(1) Die Geschäftsordnung gilt alt.', old: '(1) Die Geschäftsordnung gilt alt.', neu: '(1) Die Geschäftsordnung gilt.', marked: true },
+    ]))
+    expect(paras.map((p) => [p.number, p.old, p.neu])).toEqual([
+      ['10', ['Rechtsstellung der Mitglieder', '(1) Ehrenamtlich.'], ['Geschäftsordnung', '(1) Die Geschäftsordnung gilt.']],
+      ['14', ['Geschäftsordnung', '(1) Die Geschäftsordnung gilt alt.'], []],
+    ])
+  })
+
+  it('names both numbers of a renumbered § as unsure where the marks do not say which is which', () => {
+    const paras = tguParagraphs([law, { raw: '§ 61§ 57d', old: '§ 61§ 57d', neu: '§ 61§ 57d', marked: true }, line('(1) Text.')])
+    expect(paras.map((p) => [p.number, p.unread, p.because])).toEqual([['61', true, 'unsure'], ['57d', true, 'unsure']])
+    // Where one side reads as one number, the other number on the line is the other side's.
+    const known = tguParagraphs([law, { raw: '§ 61§ 57d', old: '§ 57d', neu: '§ 61§ 57d', marked: true }, line('(1) Text.')])
+    expect(known.map((p) => [p.number, p.old, p.neu])).toEqual([['57d', ['(1) Text.'], []], ['61', [], ['(1) Text.']]])
+  })
+
+  it('closes a § at an Anlage, names the Anlage where it is changed, and passes over one it prints unchanged (2026-16111)', () => {
+    const paras = tguParagraphs([
+      law, line('§ 88'), line('(1) Schluss.'),
+      del('Anlage 1'), del('CE-Konformitätskennzeichnung'), del('Die Kennzeichnung besteht aus den Buchstaben.'),
+      line('Anlage 2'), line('Einbauzeichen'),
+    ])
+    expect(paras.map((p) => [p.number, p.old, p.unread ?? false, p.because ?? null])).toEqual([
+      ['88', ['(1) Schluss.'], false, null],
+      ['Anlage 1', ['CE-Konformitätskennzeichnung', 'Die Kennzeichnung besteht aus den Buchstaben.'], true, 'annex'],
+    ])
+  })
+
+  it('opens no Anlage where a sentence the column wrapped goes on in it', () => {
+    const paras = tguParagraphs([law, line('§ 5'), ins('(1) Die Form ergibt sich aus der'), ins('Anlage 1'), ins('zu diesem Gesetz.')])
+    expect(paras.map((p) => [p.number, p.neu])).toEqual([['5', ['(1) Die Form ergibt sich aus der', 'Anlage 1', 'zu diesem Gesetz.']]])
+  })
+
+  it('opens nothing at a contents entry of an Anlage, which carries its title in brackets', () => {
+    const paras = tguParagraphs([law, line('Inhaltsverzeichnis'), ins('Anlage 1 (CE-Konformitätskennzeichnung)'), line('§ 1'), line('(1) Text.')])
+    expect(paras.map((p) => p.number)).toEqual(['1'])
+  })
+
+  it('does not close a § at a definition that begins like a division, and does close it at „7b. Abschnitt"', () => {
+    const paras = tguParagraphs([
+      law, line('§ 2'), line('18. Grenzwerte: Werte;'), line('19. Teil-Aktionsplan: Plan zur Regelung;'), line('IV. Teil, 4. Hauptstück, nach Inhalt gleichwertig;'), line('20. Beste verfügbare Techniken.'),
+      line('7b. Abschnitt'), line('Umsetzung'), line('§ 3'), line('(1) Text.'),
+    ])
+    expect(paras[0]!.old).toEqual(['18. Grenzwerte: Werte;', '19. Teil-Aktionsplan: Plan zur Regelung;', 'IV. Teil, 4. Hauptstück, nach Inhalt gleichwertig;', '20. Beste verfügbare Techniken.'])
+    expect(paras[1]!.old).toEqual(['(1) Text.'])
+  })
+})
+
 describe('mergeParagraphs', () => {
   it('joins a § printed twice — struck whole, then underlined whole — into one', () => {
     const merged = mergeParagraphs([
@@ -133,6 +210,14 @@ describe('shareInRis', () => {
   })
   it('is 0 where the § does not start as RIS\'s does', () => {
     expect(shareInRis('Ganz anderer Paragraph mit Text.', ris)).toBe(0)
+  })
+  it('finds an article under its heading although RIS prints its designation in between (26.10.2026)', () => {
+    expect(shareInRis('Landtag (1) Der Landtag besteht aus Abgeordneten.', '<nutzdaten>Landtag Art. 19 (1) Der Landtag besteht aus Abgeordneten.</nutzdaten>')).toBe(1)
+  })
+  it('keeps an article cited in a §\'s text, where RIS writes it „Art. 5" and the document „Art 5" (Salzburg 20708, § 13)', () => {
+    const body = 'Zur sachgemäßen Ausübung der Fischerei, des Fischens, zur Abwehr von Fischereischäden und im Rahmen notwendiger wiederkehrender Fischbestandsuntersuchungen nach ART 5 und 8 oder eines Maßnahmenprogramms der Wasserrahmenrichtlinie sind der Bewirtschafter eines Fischwassers, dessen Mitarbeiter, die Fischereiausübungsberechtigten, die Fischereischutzorgane sowie die von der Behörde beauftragten Sachverständigen berechtigt, Grundstücke zu betreten und zu benützen, soweit dies unbedingt erforderlich ist.'
+    // Taken out of RIS's text alone, the article's two words cost the § its place in the law (0,97).
+    expect(shareInRis(`Benutzung von Grundstücken ${body.replace('ART', 'Art')}`, `<nutzdaten>Benutzung von Grundstücken § 13 ${body.replace('ART', 'Art.')}</nutzdaten>`)).toBeGreaterThanOrEqual(STANDS_IN_RIS)
   })
 })
 
@@ -185,6 +270,31 @@ describe('two-column Textgegenüberstellung (Wien)', () => {
       { kind: 'pair', law: null, heading: 'Salzburger Objektivierungsgesetz 2017 Ausschreibung', para: '§ 3.', current: '(1) Alt.', proposed: '(1) Neu.', changed: true },
     ], ['Landesbeamten-Pensionsgesetz', 'Salzburger Objektivierungsgesetz 2017'])
     expect(paras.map((p) => [p.law, p.number])).toEqual([['Landesbeamten-Pensionsgesetz', '37o'], ['Salzburger Objektivierungsgesetz 2017', '3']])
+  })
+
+  it('names a changed annex row, and passes over one whose columns differ only by what stood in front of it (Salzburg, 26.10.2026)', () => {
+    const paras = columnParagraphs([
+      { kind: 'pair', law: null, para: '§ 76.', current: '§ 76. (1) Alt.', proposed: '§ 76. (1) Neu.', changed: true },
+      { kind: 'pair', law: null, para: 'Anlage 1', current: '(1) bis (11) Anlage 1 EB 12 - - -', proposed: 'Anlage 1 EB 12 6.705,10 7.139,40 7.573,81', changed: true },
+      { kind: 'pair', law: null, para: 'Anlage 2', current: '(1) bis (6) Anlage 2', proposed: 'Anlage 2', changed: true },
+    ], ['Salzburger Vertragsbedienstetengesetz'])
+    expect(paras.map((p) => [p.number, p.unread ?? false, p.because ?? null])).toEqual([['76', false, null], ['Anlage 1', true, 'annex']])
+  })
+
+  it('names the § above a row that is a cut-off piece of it as unsure, and opens no unit for the piece (Salzburg 18121)', () => {
+    const paras = columnParagraphs([
+      { kind: 'pair', law: null, para: '§ 75.', current: '§ 75. (1) Alt und ganz.', proposed: '§ 75. (1) Sind diese im Sinn der Kriterien nach', changed: true },
+      { kind: 'pair', law: null, para: 'Anhang I', current: '', proposed: 'Anhang I Teil 2 und 3 der Verordnung (EG) Nr 1272/2008 einzustufen.', changed: true },
+      { kind: 'pair', law: null, para: '§ 76.', current: '§ 76. (1) Alt.', proposed: '§ 76. (1) Neu.', changed: true },
+    ], ['Salzburger Land- und Forstarbeitsgesetz'])
+    expect(paras.map((p) => [p.number, p.unread ?? false, p.because ?? null])).toEqual([['75', true, 'unsure'], ['76', false, null]])
+  })
+
+  it('reads an article row as a unit „Art. N"', () => {
+    const paras = columnParagraphs([
+      { kind: 'pair', law: null, para: 'Artikel 16', current: 'Artikel 16 Landtag (1) Alt.', proposed: 'Artikel 16 Landtag (1) Neu.', changed: true },
+    ], ['Salzburger Landes-Verfassungsgesetz 1999'])
+    expect(paras).toEqual([{ law: 'Salzburger Landes-Verfassungsgesetz 1999', number: 'Art. 16', old: ['Landtag (1) Alt.'], neu: ['Landtag (1) Neu.'], changed: true }])
   })
 
   it('takes a § as deleted only where the draft says so', () => {
