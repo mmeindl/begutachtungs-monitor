@@ -31,6 +31,7 @@ import type { DraftArticle } from '../lawtext/draftArticles'
 import type { LawDiffSegment } from '../../../shared/types'
 import { elisionOpens, isElidedPair, isElisionRangeOnly } from './elision'
 import { compareKey } from '../lawtext/normalize'
+import { PARAGRAPH_NUMBER } from '../../../shared/utils/paragraphNumber'
 import { cellText, headingOnly, paraHeading, stripGld, stripParaHeading, HEADER_CURRENT_RE, HEADER_PROPOSED_RE } from './tableCells'
 import { COLSPAN_RE, columnSpans, columnsOf, coversTheWidth, headerPairSpans, itemsInOrder, liftTables, outermost, type ComparisonItem } from './tableElements'
 
@@ -149,7 +150,7 @@ const GLD_RE = /<gldsym\b[^>]*>([\s\S]*?)<\/gldsym>|<span\s+class=["']?991GldSym
  * …" carries none after the number). „§ 8.03." whole, as a Verordnung that
  * numbers its §§ by Kapitel writes it (`explanationParaId`).
  */
-const TYPED_DESIGNATION_RE = /^\s*(§+\s*\d+[a-z]*(?:\.\d+)?\.)(?=\s|$)/i
+const TYPED_DESIGNATION_RE = new RegExp(String.raw`^\s*(§+\s*${PARAGRAPH_NUMBER}\.)(?=\s|$)`, 'i')
 
 /**
  * A structural division of the law — "3. Abschnitt", "Abschnitt XI",

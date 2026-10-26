@@ -568,6 +568,15 @@ describe('what looks like a provision but is not', () => {
     ])])
     expect(rows.map((r) => r.gld)).toEqual(['§ 1.08', '§ 1.09'])
   })
+
+  // 707EA278: „§ 6.01a" opened as „§ 6.01", and its rows fell onto § 6.01 (26.10.2026).
+  it('keeps the letter behind a decimal paragraph number', () => {
+    const rows = parse([page([
+      { y: 700, left: '§ 6.01 Alte Fassung.', right: '§ 6.01 Neue Fassung.' },
+      { y: 660, left: '§ 6.01a Alte Fassung der Ausnahme.', right: '§ 6.01a Neue Fassung der Ausnahme.' },
+    ])])
+    expect(rows.map((r) => r.gld)).toEqual(['§ 6.01', '§ 6.01a'])
+  })
 })
 
 describe('the header pair as the gate on the geometry', () => {

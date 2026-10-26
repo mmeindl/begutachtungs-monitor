@@ -1240,6 +1240,8 @@ describe('paraAfter — the designation a § carries after the draft', () => {
     // A § numbered by Kapitel is read whole (707EA278).
     const kapitel = parse(annex([pair('<gldsym>§ 8.03.</gldsym>Sicherheit an Bord …', '§ 8.04. Sicherheit an Bord …')]))
     expect(after(kapitel)).toEqual([['§ 8.03.', '§ 8.04.']])
+    // And the letter behind the decimal (26.10.2026).
+    expect(after(parse(annex([pair('<gldsym>§ 6.01a.</gldsym>Ausnahme …', '§ 6.01b. Ausnahme …')])))).toEqual([['§ 6.01a.', '§ 6.01b.']])
   })
 
   it('is null for a row without a §, and the same designation in both columns is no renumbering', () => {

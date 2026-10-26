@@ -21,6 +21,7 @@
  */
 import { normalizeText, stripQuotes } from '../lawtext/normalize'
 import { articleNumberKey, bareParaId } from '../text/designation'
+import { PARAGRAPH_NUMBER } from '../../../shared/utils/paragraphNumber'
 
 // ---------------------------------------------------------------------------
 // Addresses
@@ -261,10 +262,11 @@ function parseSentence(tail: string): { satz: string | null; satzCount: number }
  * Artikel at all — with one, `parseAddress` cuts the scope at the § before
  * `PARA_RE` ever sees the Artikel.
  */
-// The letters of a § are one or two („§ 12a", „§ 12aa"); a word glued to the
-// number is no part of it — „13. § 42wird wie folgt geändert:" (61/ME XXVIII)
-// was read as „§ 42wird", a § no annex block and no RIS label ever carries.
-const PARA_RE = /(?:§+\s*(\d+(?:[a-z]{1,2}(?![a-zäöüß]))?(?:\.\d+)?)|\bArt(?:\.|ikel)\s*(\d+[a-z]*(?:\.\d+)?|[IVXLCDM]+(?![A-Za-zÄÖÜäöüß]))|\b(Anlage|Anhang)(?:e?s)?\b(?:\s+((?:\d+[a-z]*|[IVXL]+)(?![A-Za-zÄÖÜäöüß])))?)/i
+// The § number as every reader reads it (`PARAGRAPH_NUMBER`): one or two
+// letters („§ 12a", „§ 12aa"), behind a Kapitel's decimal („§ 6.01a"), and no
+// word glued to the number — „13. § 42wird wie folgt geändert:" (61/ME
+// XXVIII) was read as „§ 42wird", a § no annex block and no RIS label carries.
+const PARA_RE = new RegExp(String.raw`(?:§+\s*(${PARAGRAPH_NUMBER})|\bArt(?:\.|ikel)\s*(\d+[a-z]*(?:\.\d+)?|[IVXLCDM]+(?![A-Za-zÄÖÜäöüß]))|\b(Anlage|Anhang)(?:e?s)?\b(?:\s+((?:\d+[a-z]*|[IVXL]+)(?![A-Za-zÄÖÜäöüß])))?)`, 'i')
 const ABS_RE = /\bAbs\.?\s*(\d+[a-z]*)/i
 const Z_RE = /\bZ(?:iffer)?\.?\s*(\d+[a-z]*)/i
 const LIT_RE = /\blit\.?\s*([a-z]+)\b/i
@@ -452,7 +454,7 @@ type EnumLevel = 'para' | 'abs' | 'z' | 'lit'
  * letter — „§ 21c Z 1 lit. b, c, e und f entfällt" deleted lit. b alone,
  * because only numbers were read as siblings (26.09.2026).
  */
-const ENUM_ID: Record<EnumLevel, string> = { para: '\\d+[a-z]*|[a-z]', abs: '\\d+[a-z]*', z: '\\d+[a-z]*', lit: '[a-z]{1,2}' }
+const ENUM_ID: Record<EnumLevel, string> = { para: `${PARAGRAPH_NUMBER}|[a-z]`, abs: '\\d+[a-z]*', z: '\\d+[a-z]*', lit: '[a-z]{1,2}' }
 /**
  * The designator a sibling may repeat: „Abs. 1 und Abs. 2", „Z 7 und Z 7a",
  * „lit. a und lit. b". Repeated, the enumeration was not read at all and the
@@ -704,7 +706,7 @@ function splitPluralParagraphs(t: string): string[] | null {
   const plural = /§§\s*/.exec(t)
   if (!plural) return null
   const tail = t.slice(plural.index + plural[0].length)
-  const sep = /(?:\s*,\s*|\s+(?:und|sowie)\s+)(?=\d+[a-z]*\s*(?:Abs(?:\.|atz)|Z(?:iff(?:er)?)?\b|lit(?:\.|era)))/gi
+  const sep = new RegExp(String.raw`(?:\s*,\s*|\s+(?:und|sowie)\s+)(?=${PARAGRAPH_NUMBER}\s*(?:Abs(?:\.|atz)|Z(?:iff(?:er)?)?\b|lit(?:\.|era)))`, 'gi')
   const cuts: { at: number; len: number }[] = []
   for (const m of tail.matchAll(sep)) cuts.push({ at: m.index!, len: m[0].length })
   const parts: string[] = []
@@ -1525,7 +1527,7 @@ export function isTocInstruction(raw: string): boolean {
  * 5. Abschnitt". Taken out of a clause before `continuesToc` asks whether
  * the clause names anything else.
  */
-const ENTRY_TARGET = '(?:§§?\\s*\\d+[a-z]*(?:\\s*(?:,|und|bis)\\s*\\d+[a-z]*)*|(?:\\d+\\.\\s*)?(?:Abschnitt|Teil|Hauptstück)(?:\\s+\\d+[a-z]*)?)'
+const ENTRY_TARGET = String.raw`(?:§§?\s*${PARAGRAPH_NUMBER}(?:\s*(?:,|und|bis)\s*${PARAGRAPH_NUMBER})*|(?:\d+\.\s*)?(?:Abschnitt|Teil|Hauptstück)(?:\s+\d+[a-z]*)?)`
 const ENTRY_REF_RE = new RegExp(
   `(?:\\b(?:der|die|den|dem|das)\\s+)?${ENTRY_TARGET}\\s+betreffende[nrs]?\\s+(?:Zeilen?|Eintr(?:ag|äge)s?)\\b|\\b(?:Zeilen?|Eintr(?:ag|äge)s?)\\s+(?:zu[mr]?|betreffend|für)\\s+(?:(?:den|dem|der|die|das)\\s+)?${ENTRY_TARGET}`,
   'gi',
@@ -1857,14 +1859,16 @@ const NAMED_AS_RE = /\bals\s+(Abs\.|Z|lit\.)\s*(\d+[a-z]*|[a-z])\s+bezeichnet\b/
  * list renames one by one, in order: „Die §§ 8 und 9 erhalten die
  * Bezeichnungen §§ 5 und 6".
  */
-const PARA_LIST = String.raw`§§?\s*\d+(?:[a-z]{1,2}(?![\p{L}]))?(?:\.\d+)?(?:\s*(?:,|und|bis)\s*(?:§\s*)?\d+(?:[a-z]{1,2}(?![\p{L}]))?(?:\.\d+)?)*`
+const PARA_LIST = String.raw`§§?\s*${PARAGRAPH_NUMBER}(?:\s*(?:,|und|bis)\s*(?:§\s*)?${PARAGRAPH_NUMBER})*`
 const PARA_RENAMED_RE = new RegExp(String.raw`(?<![\p{L}])(?:(?:wird|werden)\s+(?:zu(?:m)?\s+(?:den\s+)?(${PARA_LIST})|in\s+(?:den\s+)?(${PARA_LIST})\s+umbenannt|als\s+(${PARA_LIST})\s+bezeichnet)|erh(?:ä|a)lt(?:en)?\s+die\s+(?:Paragra(?:ph|f)en)?[Bb]ezeichnung(?:en)?\s+(${PARA_LIST}))\s*\.?\s*$`, 'u')
+
+const PARA_NUMBER_OR_BIS_RE = new RegExp(String.raw`(${PARAGRAPH_NUMBER})|(?<![\p{L}])(bis)(?![\p{L}])`, 'gu')
 
 /** „§§ 22 und 23", „§§ 104b bis 104i" → the designations in order; null where a range cannot be counted out. */
 function paragraphNumbers(list: string): string[] | null {
   const out: string[] = []
   let ranged = false
-  for (const m of list.matchAll(/(\d+(?:[a-z]{1,2}(?![\p{L}]))?(?:\.\d+)?)|(?<![\p{L}])(bis)(?![\p{L}])/gu)) {
+  for (const m of list.matchAll(PARA_NUMBER_OR_BIS_RE)) {
     if (m[2]) {
       ranged = true
       continue
@@ -2611,7 +2615,7 @@ export function namedParagraphs(address: NovaoAddress): string[] {
 
 /** The numeral inside a new designation: "„§ 11.“" → "11", "4." → "4". */
 function numeralOf(designation: string): string | null {
-  return /(\d+[a-z]*)/.exec(designation)?.[1] ?? null
+  return bareParaId(designation)
 }
 
 /**
@@ -2711,7 +2715,7 @@ export function refusedAddresses(raw: string, inherited?: NovaoAddress | null): 
  * designators below the § with their own number, the joins between them, and
  * the vocabulary of a place inside a unit. Any other word ends the address.
  */
-const MENTION_TOKEN_RE = /(?<sign>§§?)|(?<comp>(?<![\p{L}])(?:Abs(?:\.|atz)|Z(?:iff(?:er)?)?)\s*\d+[a-z]*(?![\p{L}\p{N}])|(?<![\p{L}])lit(?:\.|era)\s*[a-z]{1,2}(?![\p{L}\p{N}]))|(?<num>\d+(?:[a-z]{1,2}(?![\p{L}]))?(?:\.\d+)?(?![\p{N}]))|(?<join>,|(?<![\p{L}])(?:und|sowie|oder|bis)(?![\p{L}]))|(?<word>\p{L}[\p{L}-]*\.?)/gu
+const MENTION_TOKEN_RE = new RegExp(String.raw`(?<sign>§§?)|(?<comp>(?<![\p{L}])(?:Abs(?:\.|atz)|Z(?:iff(?:er)?)?)\s*\d+[a-z]*(?![\p{L}\p{N}])|(?<![\p{L}])lit(?:\.|era)\s*[a-z]{1,2}(?![\p{L}\p{N}]))|(?<num>${PARAGRAPH_NUMBER}(?![\p{N}]))|(?<join>,|(?<![\p{L}])(?:und|sowie|oder|bis)(?![\p{L}]))|(?<word>\p{L}[\p{L}-]*\.?)`, 'gu')
 /** The words that may stand inside an address without ending it: „§§ 46 Abs. 3 zweiter Satz und 213", „§§ 21 samt Überschrift und 22". */
 const ADDRESS_WORD_RE = new RegExp(`^(?:${ORDINAL_WORD}[rnsm]?|S[äa]tze?s?|Halbsatz(?:es)?|Einleitungs(?:satz|teil)|Schluss(?:satz|teil)|samt|Überschrift(?:en)?|jeweils|der|des|die|den|dem|im|in|zu|zum)$`, 'iu')
 /**
@@ -2863,7 +2867,7 @@ function signedParagraphs(masked: string, once = false): string[] {
       continue
     }
     if (g.join) {
-      if (g.join === 'bis' && state === 'para') rangeFrom = /(\d+[a-z]*(?:\.\d+)?)$/.exec(out.at(-1) ?? '')?.[1] ?? null
+      if (g.join === 'bis' && state === 'para') rangeFrom = bareParaId(out.at(-1) ?? null)
       continue
     }
     const word = g.word?.replace(/\.$/, '') ?? ''
@@ -2880,6 +2884,9 @@ function signedParagraphs(masked: string, once = false): string[] {
   }
   return out
 }
+
+/** A quoted new designation of a §: „§ 15.", „16", „§ 6.01a." */
+const QUOTED_PARAGRAPH_RE = new RegExp(String.raw`^\s*(?:§+\s*)?(${PARAGRAPH_NUMBER})\.?\s*$`)
 
 /**
  * The new §§ of a renumbering clause — „Der bisherige § 7 erhält die
@@ -2913,7 +2920,7 @@ function renumberedParagraphs(head: string): string[] {
       ranged = previous !== null
       continue
     }
-    const id = /^\s*(?:§+\s*)?(\d+[a-z]*)\.?\s*$/.exec(m[1]!)?.[1] ?? null
+    const id = QUOTED_PARAGRAPH_RE.exec(m[1]!)?.[1] ?? null
     const run = id && ranged && previous !== null ? expandRange(previous, id) : null
     if (id) for (const between of run ?? [id]) out.push(`§ ${between}`)
     previous = id

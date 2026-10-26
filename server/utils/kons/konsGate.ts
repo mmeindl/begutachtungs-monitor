@@ -38,6 +38,7 @@ import type { LawNode } from '../lawtext/konsTree'
 import { articleQualifier, createdParagraphs, createdUnits, isTocInstruction, mentionedUnits, namedParagraphs, opAddress, refusedAddresses } from './novao'
 import type { ConsolidatedWithheldCause } from '../../../shared/types'
 import { articleNumberKey, isDivision, isSchedule, unitKey } from '../text/designation'
+import { PARAGRAPH_NUMBER } from '../../../shared/utils/paragraphNumber'
 
 /**
  * Why a produced § is not shown.
@@ -185,6 +186,14 @@ const lineOf = (refused: RefusedLine): string => (typeof refused === 'string' ? 
 const createdBy = (refused: RefusedLine): string[] => [...createdUnits(lineOf(refused)), ...(typeof refused === 'string' ? [] : (refused.created ?? []))]
 
 /**
+ * The floor of `refusedLineUnits`: the line's first § sign with its number,
+ * read whole (`PARAGRAPH_NUMBER`). Cut to „§ 1", the refused „§ 1.01 lit. b
+ * Z 3 und 4 lautet:" of 707EA278 locked and counted a § 1 no line names, and
+ * the page listed its outcome at the end of the law (26.10.2026).
+ */
+const FIRST_PARAGRAPH_RE = new RegExp(String.raw`§+\s*${PARAGRAPH_NUMBER}`)
+
+/**
  * The units a refused line names: the grammar's reading of its address where
  * there is one (`refusedAddresses`), and where there is none every unit its
  * words name (`mentionedUnits`) and the § of the container it stands under.
@@ -222,7 +231,7 @@ export function refusedLineUnits(refused: RefusedLine): string[] {
   if (isTocInstruction(line)) return []
   const own = refusedAddresses(line)
   const read = (inherited ? refusedAddresses(line, inherited) : own) ?? [...mentionedUnits(line), ...(inherited?.para ? [inherited.para] : [])]
-  const first = /§+\s*\d+(?:[a-z]{1,2}(?![a-zäöüß]))?/.exec(line)?.[0]
+  const first = FIRST_PARAGRAPH_RE.exec(line)?.[0]
   return [...new Set([...read, ...(own ?? (first ? [first] : []))])]
 }
 

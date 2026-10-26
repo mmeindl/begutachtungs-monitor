@@ -5,6 +5,10 @@
  * PURE MODULE — relative imports only, so vitest runs it directly. Read by
  * `annex/comparisonRows.ts` and by the PDF path in `annex/annexPdf.ts`.
  */
+import { PARAGRAPH_NUMBER } from '../../../shared/utils/paragraphNumber'
+
+/** A designation's number, „6.01a" whole (`PARAGRAPH_NUMBER`). */
+const NUMBER_TOKEN_RE = new RegExp(PARAGRAPH_NUMBER, 'gi')
 
 /** Any of the annex's three-dots marks, anywhere in the text. */
 const ELISION_MARK_RE = /\.\.\.|…/
@@ -37,7 +41,7 @@ function withoutElision(text: string): string {
     .replace(/\b(?:bis|und|sowie|oder)\b/gi, ' ')
     .replace(/§+/g, ' ')
     .replace(/\b(?:Abs|Z|lit|Art|Artikel|Anlage|Anhang|Teil|Abschnitt|Unterabschnitt|Hauptstück|Kapitel)\b\.?/gi, ' ')
-    .replace(/\d+[a-z]*(?:\.\d+)?/gi, ' ')
+    .replace(NUMBER_TOKEN_RE, ' ')
     .replace(/\b[a-z]{1,2}\s*[).]/gi, ' ')
     .replace(/\bx{2,4}\b/gi, ' ')
     .replace(/[()[\].,;:\-–—"'/]/g, ' ')
@@ -147,7 +151,7 @@ function digitRun(text: string): string {
  * showed. `Ab.` is not a typo of ours — the Verbrechensopfergesetz annex
  * writes it that way.
  */
-const ELISION_HEAD_RE = /^(§\s*\d+[a-z]*(?:\.\d+)?)\s*(?:Abs?|Z|lit)\b/
+const ELISION_HEAD_RE = new RegExp(String.raw`^(§\s*${PARAGRAPH_NUMBER})\s*(?:Abs?|Z|lit)\b`)
 
 /**
  * The § an elision line opens, when it names one — null otherwise.
@@ -210,7 +214,7 @@ export function elisionOpens(current: string, proposed: string): string | null {
  * brackets some ressorts put around them („[…]", GAP-Strategieplan).
  */
 const ELISION_RUN_RE = /\[\s*(?:\.{2,}|…+)\s*\]|\.{2,}|…+/g
-const DESIGNATION_TOKEN = String.raw`(?:\(\s*\d+[a-z]*\s*\)|\d+[a-z]*(?:\.\d+)?\.?|[a-z]{1,2}[).]|x{2,4}\.?)`
+const DESIGNATION_TOKEN = String.raw`(?:\(\s*\d+[a-z]*\s*\)|${PARAGRAPH_NUMBER}\.?|[a-z]{1,2}[).]|x{2,4}\.?)`
 const DESIGNATION_PART = String.raw`(?:§+\s*)?(?:(?:Abs|Z|lit|Art|Artikel|Anlage|Anhang|Teil|Abschnitt|Unterabschnitt|Hauptstück|Kapitel)\b\.?\s*)?${DESIGNATION_TOKEN}`
 /** „bis", „und" — or a plain space, which is how a compound designation joins („(5) Z 1 …"). */
 const DESIGNATION_JOIN = String.raw`(?:\s*(?:bis|und|sowie|oder|,|[-–—])\s*|\s+)`

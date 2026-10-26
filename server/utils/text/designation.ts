@@ -11,19 +11,21 @@
  * `idOfMarker` in `annex/annexPdf.ts` (carries the kind into the id it
  * builds). They differ on purpose.
  */
+import { PARAGRAPH_NUMBER } from '../../../shared/utils/paragraphNumber'
+
+const NUMBER_RE = new RegExp(`(${PARAGRAPH_NUMBER})`)
 
 /**
  * The bare number of a designation: „§ 5" → „5", „Art. 3" → „3",
  * „Anlage 2" → „2", „§ 285b." → „285b".
  *
- * The first number anywhere in the label, with its optional letter and the
- * dotted form („§ 12.1"). Null where there is none.
+ * The first number anywhere in the label, as every reader reads a §'s
+ * number (`PARAGRAPH_NUMBER`): „§ 6.01a" is „6.01a", „§ 42wird" is „42".
+ * Null where there is none.
  */
 export function bareParaId(label: string | null): string | null {
   if (!label) return null
-  // One or two letters, and not the start of a word glued on: „§ 42wird"
-  // is § 42 (`PARA_RE` in `kons/novao.ts`).
-  const m = /(\d+(?:[a-z]{1,2}(?![a-zäöüß]))?(?:\.\d+)?)/.exec(label)
+  const m = NUMBER_RE.exec(label)
   return m ? m[1]! : null
 }
 

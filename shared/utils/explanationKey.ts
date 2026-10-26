@@ -16,6 +16,11 @@
  * are exactly what a Nitro auto-import resolves silently and wrongly. So
  * these are named differently again, law first, like the younger of the two.
  */
+import { PARAGRAPH_NUMBER } from './paragraphNumber'
+
+/** „§ 6.01a" at the start of a designation, its number read as every reader reads it (`PARAGRAPH_NUMBER`). */
+const DESIGNATION_RE = new RegExp(String.raw`^\s*§+\s*(${PARAGRAPH_NUMBER})`, 'i')
+const NUMBER_RE = new RegExp(String.raw`(${PARAGRAPH_NUMBER})`, 'i')
 
 /**
  * Designation → number: „§ 54c." from the annex's Gliederungssymbol and
@@ -37,8 +42,9 @@ export function explanationParaId(designation: string | null): string | null {
   // numbers its §§ by Kapitel read as „8", its outcomes met no § block, and
   // 60 blocks of 707EA278 said „Anweisung nicht gefunden" (26.10.2026). The
   // full stop of a plain „§ 5." is no part of it: only a digit behind the
-  // point continues the number.
-  const m = /^\s*§+\s*(\d+[a-z]*(?:\.\d+)?)\b/i.exec(designation ?? '')
+  // point continues the number. „§ 6.01a" and „§ 365m1" whole, as every
+  // reader reads it (`PARAGRAPH_NUMBER`).
+  const m = DESIGNATION_RE.exec(designation ?? '')
   return m ? m[1]!.toLowerCase() : null
 }
 
@@ -60,7 +66,7 @@ export function annexUnitId(designation: string | null): string | null {
   const para = explanationParaId(t)
   if (para) return para
   if (!/^(?:Anlage|Anhang|Anl\.?)(?!\p{L})/iu.test(t)) return null
-  const n = /(\d+[a-z]*(?:\.\d+)?)/i.exec(t)
+  const n = NUMBER_RE.exec(t)
   return n ? `anl. ${n[1]!.toLowerCase()}` : 'anl.'
 }
 

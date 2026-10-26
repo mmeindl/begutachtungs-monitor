@@ -23,6 +23,7 @@ import { normalizeText } from '../lawtext/normalize'
 import { announcesSchedule, continuesToc, createdParagraphs, createdUnits, expandRange, isTocInstruction, namedParagraphs, opAddress, parseInstruction, tocSequence, type NovaoAddress, type NovaoOp } from './novao'
 import { bareParaId, isDivision, isSchedule } from '../text/designation'
 import { byParagraphOrder } from './konsGate'
+import { PARAGRAPH_NUMBER } from '../../../shared/utils/paragraphNumber'
 
 export interface StandingLaw {
   /** Paragraphs in printed order; insert and append change this list */
@@ -112,7 +113,12 @@ export interface ApplyReport {
 // Payload
 // ---------------------------------------------------------------------------
 
-const PARA_LINE = /^§\s*(\d+[a-z]*)\.\s*/
+// The § number as every reader reads it (`PARAGRAPH_NUMBER`), and whole: taken
+// into a lookahead, it cannot give its decimal back to the full stop. A
+// Verordnung numbered by Kapitel prints „§ 10.07a Sorgfaltspflicht …" with no
+// full stop behind the number, and read as „§ 10." its new § 10.07a went in
+// as a § 10 (707EA278, 26.10.2026). A plain number still needs its stop.
+const PARA_LINE = new RegExp(String.raw`^§\s*(?=(${PARAGRAPH_NUMBER}))\1(?:\.|(?<=\.\d[\da-z]*)(?=\s|$))\s*`)
 const ABS_LINE = /^\((\d+[a-z]*)\)\s*/
 const Z_LINE = /^(\d+[a-z]*)\.\s+/
 const LIT_LINE = /^([a-z]{1,2})\)\s+/
@@ -261,6 +267,9 @@ function splitLit(z: LawNode): void {
   z.text = ''
 }
 
+/** A payload's opening quotation mark, behind the § designation the first line may carry. */
+const OPENING_QUOTE_RE = new RegExp(String.raw`^((?:§+\s*${PARAGRAPH_NUMBER}\.\s*)?)["\u00ab\u2039]\s*`)
+
 /**
  * The quotation marks around a payload belong to the *instruction*, not to
  * the law text it installs — "In § 60 wird folgender Abs. 44 angefügt:
@@ -290,7 +299,7 @@ export function stripPayloadQuotes(lines: readonly PayloadLine[]): PayloadLine[]
     const l = out[i]
     return typeof l === 'object' && l.heading
   }
-  if (!heading(0)) edit(0, (t) => t.replace(/^((?:§+\s*\d+[a-z]*\.\s*)?)["\u00ab\u2039]\s*/, '$1'))
+  if (!heading(0)) edit(0, (t) => t.replace(OPENING_QUOTE_RE, '$1'))
   // A closing quote is sometimes followed by the instruction's own full stop
   // ("… zu verlangen."."), which left `verlangen".` in the text.
   if (!heading(out.length - 1)) edit(out.length - 1, (t) => t.replace(/\s*["\u00bb\u203a]\s*\.?$/, ''))
@@ -430,9 +439,11 @@ export function instructionsFromUnits(units: readonly LawUnit[]): { instructions
   return { instructions, refused }
 }
 
+const RENAMED_TO_RE = new RegExp(String.raw`(?<![\p{L}])(?:wird|werden)\s+(?:zu|in)\s+(?:den\s+)?§\s*(${PARAGRAPH_NUMBER})`, 'u')
+
 /** „Der bisherige § 10 wird zu § 17 und lautet", „… wird in § 15 umbenannt": the number a § is renamed to, or null. */
 function renamedTo(line: string): string | null {
-  return /(?<![\p{L}])(?:wird|werden)\s+(?:zu|in)\s+(?:den\s+)?§\s*(\d+[a-z]*)/u.exec(normalizeText(line))?.[1] ?? null
+  return RENAMED_TO_RE.exec(normalizeText(line))?.[1] ?? null
 }
 
 /**
@@ -2215,7 +2226,7 @@ function newParagraphsOf({ op, payload, line }: Instruction): string[] {
  * § 12 wird ein neuer § 12a … eingefügt" the anchor is § 12, and the new
  * § 12a is what the line creates.
  */
-const NEW_PARAGRAPH_RE = /(?<![\p{L}])neue[nmrs]?\s+§\s*(\d+[a-z]*)/iu
+const NEW_PARAGRAPH_RE = new RegExp(String.raw`(?<![\p{L}])neue[nmrs]?\s+§\s*(${PARAGRAPH_NUMBER})`, 'iu')
 
 /** Deep copy, so a refused run leaves the standing law untouched. */
 function cloneLaw(law: StandingLaw): StandingLaw {

@@ -12,6 +12,7 @@
  */
 import { normalizeText, stripMarkup } from './normalize'
 import { decodeEntities } from '../parliament/htmlText'
+import { PARAGRAPH_NUMBER } from '../../../shared/utils/paragraphNumber'
 
 export type NodeLevel = 'para' | 'abs' | 'z' | 'lit' | 'schluss'
 
@@ -190,6 +191,11 @@ function closingHost(abs: LawNode, typ: string, ebene: string | null = null): La
   return level === 'z' ? z : (lastChild(z, 'lit') ?? z)
 }
 
+/** „Art. 2 § 3": the § directly behind its Artikel, its number as every reader reads it (`PARAGRAPH_NUMBER`). */
+const ARTIKEL_PARA_RE = new RegExp(String.raw`^\s*Art(?:\.|ikel)?\s*[\dIVXLCDM]+\s*§+\s*(${PARAGRAPH_NUMBER})`, 'i')
+/** „§ 6.01a.", „Art. 3", „Anl. 1": the unit's own number. */
+const UNIT_ID_RE = new RegExp(String.raw`(?:§|Art\.?|Artikel|Anl(?:age)?\.?)\s*(${PARAGRAPH_NUMBER})`, 'i')
+
 /**
  * One BrKons paragraph document → its tree.
  *
@@ -230,14 +236,14 @@ export function parseKonsParagraph(xml: string): LawNode | null {
   // correct-looking text. „Anlage 5 zu § 14" is NOT this shape — the § there
   // is a cross-reference and the Anlage keeps its own number — so the § is
   // read only where it stands directly behind the Artikel.
-  const artikelPara = /^\s*Art(?:\.|ikel)?\s*[\dIVXLCDM]+\s*§+\s*(\d+[a-z]*(?:\.\d+)?)/i.exec(idText)
+  const artikelPara = ARTIKEL_PARA_RE.exec(idText)
   // `Anl\.?` and not only „Anlage": RIS writes a schedule's Gliederungssymbol
   // as **„Anl. 1"**, and the word this read was the one an INSTRUCTION uses.
   // So every Anlage of every law arrived with the id „?" — its 41 Ziffern
   // parsed and unreachable, because `findParagraph` looks a § up by that id.
   // Measured on the Anhang of the Bundesgesetzes gegen den unlauteren
   // Wettbewerb (26.09.2026): id „?", marker „Anl. 1", 41 Ziffern.
-  const idMatch = artikelPara ?? /(?:§|Art\.?|Artikel|Anl(?:age)?\.?)\s*([\d]+[a-z]*(?:\.\d+)?)/i.exec(idText)
+  const idMatch = artikelPara ?? UNIT_ID_RE.exec(idText)
   // **„§ 0" is not a provision.** RIS files a law's front matter under that
   // label — the Inhaltsverzeichnis, the Promulgationsklausel, the list of
   // amendments — and no Novellierungsanordnung addresses it. It stayed out

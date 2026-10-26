@@ -39,6 +39,7 @@ import { printedLayout, printedStretches } from '../annex/elision'
 import { punctuationTokens } from '../text/punctuationTokens'
 import { isSchedule, unitKey } from '../text/designation'
 import { bodyText, type LawNode } from '../lawtext/konsTree'
+import { PARAGRAPH_NUMBER } from '../../../shared/utils/paragraphNumber'
 
 export type OracleVerdict =
   /** All four containments hold */
@@ -59,6 +60,9 @@ export interface OracleReport {
   note: string | null
 }
 
+/** „§ 6.01a.", „§ 365m1." at the start of a Gliederungssymbol, read whole as every reader reads a § number (`PARAGRAPH_NUMBER`). */
+const GLD_PARAGRAPH_RE = new RegExp(String.raw`^§+\s*(${PARAGRAPH_NUMBER})`)
+
 /**
  * "§ 5." → "5", "§ 12a." → "12a"; null for anything else.
  *
@@ -72,7 +76,7 @@ export function paraIdOfGld(gld: string | null): string | null {
   // Wasserstraßen-Verkehrsordnung's „§ 8.03") is keyed so on the address
   // side (`unitKey`), and read as „2" here every § of a Kapitel fell into
   // one (26.10.2026).
-  const m = /^§+\s*(\d+[a-z]*(?:\.\d+)?)\b/.exec(t)
+  const m = GLD_PARAGRAPH_RE.exec(t)
   if (m) return m[1]!
   // A schedule names itself, and it is a unit of the law like any other:
   // „Anlage 1", „Anhang". Keyed under `unitKey` so it meets the address side
@@ -398,6 +402,14 @@ function isHeadingRow(row: ComparisonRow): boolean {
 }
 
 /**
+ * A Paragraphenkennung with its full stop, the number whole (`PARAGRAPH_NUMBER`,
+ * in a lookahead so it cannot give its decimal back to the stop) — or, for a
+ * Kapitel's number, without one: „§ 8.03 Sicherheit an Bord …". Cut as „§ 8."
+ * the rest „03" stayed in the comparison form.
+ */
+const PARAGRAPH_MARKER_RE = new RegExp(String.raw`§+\s*(?=(${PARAGRAPH_NUMBER}))\1(?:\.|(?<=\.\d[\da-z]*)(?=\s|$))\s*`, 'g')
+
+/**
  * Comparison form of annex text: markers the tree does not carry are
  * dropped, whitespace and quotes normalised the way `plainText` does.
  *
@@ -417,7 +429,7 @@ function isHeadingRow(row: ComparisonRow): boolean {
 export function stripMarkers(t: string): string {
   return normalizeText(
     normalizeText(t)
-      .replace(/§+\s*\d+[a-z]*\.\s*/g, ' ')
+      .replace(PARAGRAPH_MARKER_RE, ' ')
       .replace(/(^|\s)\(\d+[a-z]*\)(?=\s|$)/g, '$1')
       .replace(/(^|\s)(\d+[a-z]*)\.(?=\s|$)/g, (_whole, pre: string, num: string, offset: number, all: string) =>
         keepsNumber(all.slice(0, offset), all.slice(offset + _whole.length)) ? `${pre}${num}` : pre)
@@ -864,9 +876,11 @@ function runAt(hay: readonly string[], needle: readonly string[], from = 0): num
   return -1
 }
 
+const PARAGRAPH_SYMBOL_RE = new RegExp(String.raw`§+\s*${PARAGRAPH_NUMBER}\.`)
+
 /** The words a cell prints ahead of its § symbol — the §'s heading on the PDF path, nothing on the table path. */
 function headingOf(cell: string): string[] {
-  const symbol = /§+\s*\d+[a-z]*\./.exec(cell)
+  const symbol = PARAGRAPH_SYMBOL_RE.exec(cell)
   return symbol && symbol.index > 0 ? words4(cell.slice(0, symbol.index)) : []
 }
 

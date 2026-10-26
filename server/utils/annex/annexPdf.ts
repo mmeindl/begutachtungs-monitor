@@ -26,6 +26,7 @@ import type { DraftArticle } from '../lawtext/draftArticles'
 import { classify, designateAfter, type ComparisonRow } from './comparisonRows'
 import { isElisionRangeOnly, isElidedPair } from './elision'
 import { HEADER_CURRENT_RE, HEADER_PROPOSED_RE } from './tableCells'
+import { PARAGRAPH_NUMBER } from '../../../shared/utils/paragraphNumber'
 
 /**
  * One positioned text run, in PDF user space: origin bottom-left, y upward,
@@ -533,7 +534,7 @@ const TITLE_RE = /^textgeg(?:en)?b?ü?berstellung$/i
  * of its Anlagen onto §§ 1 to 6 and scored 11–45 % against the wrong
  * provisions (2026-09-09). The marker itself is group 1, without the prefix.
  */
-const UNIT_RE = /^(?:\[\s*(?:\.\.\.|…)\s*\]\s*|(?:\.\.\.|…)\s*)*(§\s*\d+[a-z]*\.\d+\.?|§\s*\d+[a-z]*\.|Art(?:\.|ikel)\s*\d+[a-z]*(?=\s)|Anlage\s+[\dIVXL]+[a-z]?|Anhang\s+[\dIVXL]+[a-z]?)/
+const UNIT_RE = new RegExp(String.raw`^(?:\[\s*(?:\.\.\.|…)\s*\]\s*|(?:\.\.\.|…)\s*)*(§\s*(?=\d+\.\d)${PARAGRAPH_NUMBER}\.?|§\s*${PARAGRAPH_NUMBER}\.|Art(?:\.|ikel)\s*\d+[a-z]*(?=\s)|Anlage\s+[\dIVXL]+[a-z]?|Anhang\s+[\dIVXL]+[a-z]?)`)
 /**
  * What follows a designation that is a *citation* rather than a provision.
  *
@@ -934,10 +935,13 @@ function unitsOfColumn(lines: readonly { text: string; wrapped: boolean; context
   return built.filter((u) => u.id === null || longest.get(u.id) === u)
 }
 
+/** „§ 6.01a" whole (`PARAGRAPH_NUMBER`), or a roman numeral. */
+const MARKER_NUMBER_RE = new RegExp(String.raw`(${PARAGRAPH_NUMBER}|[IVXL]+)`)
+
 function idOfMarker(gld: string): string | null {
   // A law numbered in decimals ("§ 1.08") keeps the whole number: cut at the
   // first period, every one of its §§ collapses onto "1".
-  const number = /(\d+[a-z]*(?:\.\d+)?|[IVXL]+)/.exec(gld)?.[1]
+  const number = MARKER_NUMBER_RE.exec(gld)?.[1]
   if (!number) return null
   const kind = /^(?:Anlage|Anhang)/i.test(gld) ? 'anlage' : /^Art/i.test(gld) ? 'artikel' : 'para'
   return `${kind}:${number}`
