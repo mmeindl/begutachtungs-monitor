@@ -136,7 +136,7 @@ export function uprightRuns(runs: readonly RawRun[], viewport: RawViewport): Ann
  * A run without a string `str` is a marked-content marker, not text.
  */
 export async function pagesOf(bytes: Uint8Array): Promise<AnnexPage[]> {
-  const { getDocumentProxy } = await import('unpdf')
+  const { getDocumentProxy, getResolvedPDFJS } = await import('unpdf')
   const doc = await getDocumentProxy(bytes)
   const read = async (misread: boolean): Promise<AnnexPage[]> => {
     const pages: AnnexPage[] = []
@@ -147,15 +147,129 @@ export async function pagesOf(bytes: Uint8Array): Promise<AnnexPage[]> {
       // „ﬂ" that stands for „ß" into the „fl" of „Pflicht", and nothing tells
       // them apart afterwards.
       const content = await page.getTextContent(misread ? ({ disableNormalization: true } as any) : undefined)
-      const runs: RawRun[] = content.items
+      let runs: RawRun[] = content.items
         .filter((i: any) => typeof i.str === 'string')
         .map((i: any) => ({ transform: i.transform, width: i.width ?? 0, text: misread ? fromMacRoman(i.str) : i.str }))
+      // A page with a run that may be letter-spaced is asked for its glyphs (`spelledOut`).
+      if (runs.some((run) => SPACED_RE.test(run.text))) {
+        const { OPS } = await getResolvedPDFJS()
+        const list = await page.getOperatorList()
+        const glyphs = spellingOf(list.fnArray, list.argsArray, OPS.showText, misread ? fromMacRoman : (t) => t)
+        runs = runs.map((run) => (SPACED_RE.test(run.text) ? { ...run, text: spelledOut(run.text, glyphs) } : run))
+      }
       pages.push(uprightRuns(runs, { transform: viewport.transform, width: viewport.width, height: viewport.height }))
     }
     return pages
   }
   const pages = await read(false)
   return isMacRomanMisread(pages) ? read(true) : pages
+}
+
+/** Three single characters in a row, each between spaces: a run that may be letter-spaced (`spelledOut`). */
+const SPACED_RE = /(?:^|\s)\S(?:\s\S){2,}(?=\s|$)/u
+/** Marks no space follows, and marks no space precedes: „, (, » — “, ), «, the stops. */
+const OPENS_RE = /[„‚»([]/
+const CLOSES_RE = /[“‘«)\],.;:!?]/
+
+/** A page's glyphs as its text operations set them (`spellingOf`). */
+export interface Spelling {
+  /** Every glyph's characters, the spaces left out, in the order of the operations. */
+  chars: string
+  /** Per character: the text operation that set it… */
+  op: number[]
+  /** …whether that operation set a space right before it… */
+  spaced: boolean[]
+  /** …and right after it. */
+  spacedAfter: boolean[]
+}
+
+/**
+ * The glyphs of a page's text operations (pdf.js's operator list, `showText`):
+ * what the document itself spells, before pdf.js reads gaps as spaces.
+ */
+export function spellingOf(fnArray: readonly number[], argsArray: readonly unknown[], showText: number, repair: (text: string) => string = (t) => t): Spelling {
+  let chars = ''
+  const op: number[] = []
+  const spaced: boolean[] = []
+  const spacedAfter: boolean[] = []
+  fnArray.forEach((fn, i) => {
+    const glyphs = fn === showText ? (argsArray[i] as unknown[] | undefined)?.[0] : null
+    if (!Array.isArray(glyphs)) return
+    let space = false
+    const first = op.length
+    for (const glyph of glyphs) {
+      // A number between two glyphs moves the next one; it is no character.
+      const unicode = typeof glyph === 'object' && glyph !== null ? (glyph as { unicode?: unknown }).unicode : undefined
+      if (typeof unicode !== 'string') continue
+      const text = repair(unicode)
+      if (!text.trim()) {
+        space = true
+        if (op.length > first) spacedAfter[op.length - 1] = true
+        continue
+      }
+      for (let k = 0; k < text.length; k++) {
+        chars += text[k]
+        op.push(i)
+        spaced.push(k === 0 && space)
+        spacedAfter.push(false)
+      }
+      space = false
+    }
+  })
+  return { chars, op, spaced, spacedAfter }
+}
+
+/**
+ * A run with its spaces where the document set them, if it is letter-spaced.
+ *
+ * RIS prints a word it sets letter-spaced (`<gs>`) by widening the gap after
+ * each glyph, and pdf.js reads every wide gap as a space: „B e g r i f f s
+ * b e s t i m m u n g e n" over § 1.01 of the Wasserstraßen-Verkehrsordnung
+ * (RIS 707EA278), and „M i t f ü h r e n d e r V e r o r d n u n g" — the
+ * space between two words like any other. The glyphs still tell them apart:
+ * a word ends where the document set a space glyph. So a space next to a
+ * single character goes where the two glyphs stand in one text operation
+ * with no space between them, and stays where the document set one —
+ * „lit. a b" and „a, b und c" are set with spaces and keep them, and a run's
+ * ordinary words are never touched (26.10.2026). Where the operation changes,
+ * the glyphs say nothing, and the space stays — unless German never sets one
+ * there: after an opening quotation mark or bracket, before a closing one or
+ * a stop.
+ *
+ * The run's characters have to stand in the page's glyphs as they are, and
+ * read alike wherever they stand; otherwise the run comes back as it was.
+ */
+export function spelledOut(text: string, spelling: Spelling): string {
+  const lead = /^\s*/.exec(text)![0]
+  const trail = /\s*$/.exec(text.slice(lead.length))![0]
+  const body = text.slice(lead.length, text.length - trail.length)
+  const chars: string[] = []
+  const gap: boolean[] = []
+  for (let k = 0; k < body.length; k++) {
+    if (/\s/.test(body[k]!)) {
+      gap[chars.length] = true
+      continue
+    }
+    gap[chars.length] ??= false
+    chars.push(body[k]!)
+  }
+  // A character alone between spaces: where a letter-spaced word stands.
+  const alone = chars.map((_, k) => (k === 0 || gap[k]!) && (k === chars.length - 1 || gap[k + 1]!))
+  const needle = chars.join('')
+  let read: string | null = null
+  for (let at = spelling.chars.indexOf(needle); needle && at >= 0; at = spelling.chars.indexOf(needle, at + 1)) {
+    let out = chars[0]!
+    for (let k = 1; k < chars.length; k++) {
+      const spacing = gap[k] && (alone[k - 1] || alone[k])
+      const joined = spelling.op[at + k] === spelling.op[at + k - 1]
+        ? !spelling.spaced[at + k]
+        : !spelling.spacedAfter[at + k - 1] && !spelling.spaced[at + k] && (OPENS_RE.test(chars[k - 1]!) || CLOSES_RE.test(chars[k]!))
+      out += (gap[k] && !(spacing && joined) ? ' ' : '') + chars[k]
+    }
+    if (read !== null && read !== out) return text
+    read = out
+  }
+  return read === null ? text : `${lead}${read}${trail}`
 }
 
 /**

@@ -1,6 +1,6 @@
 import { describe, expect, expectTypeOf, it } from 'vitest'
 import { columnBoundary, linesFromPage, parseAnnexPdf, sameTypesetting, type AnnexItem, type AnnexLayout, type AnnexPage, type AnnexParse, type PageGeometry } from '../server/utils/annex/annexPdf'
-import { fromMacRoman, isMacRomanMisread, uprightRuns, type RawRun } from '../server/utils/annex/annexPdfPages'
+import { fromMacRoman, isMacRomanMisread, spelledOut, spellingOf, uprightRuns, type RawRun } from '../server/utils/annex/annexPdfPages'
 import type { DraftArticle } from '../server/utils/lawtext/draftArticles'
 import { draftArticles as draft } from './helpers/builders'
 import type { TextComparisonResponse } from '../shared/types'
@@ -1256,6 +1256,29 @@ describe('uprightRuns', () => {
     ], A4)
     expect(turned.width).toBeCloseTo(841.92, 2)
     expect(turned.items[1]!.y).toBeCloseTo(turned.items[2]!.y, 2)
+  })
+})
+
+describe('a letter-spaced word (RIS 707EA278, 26.10.2026)', () => {
+  // pdf.js's operator list: `showText` with the glyphs of one text operation,
+  // a number between two of them where the document widens the gap.
+  const SHOW_TEXT = 44
+  const operation = (text: string) => [[...text].flatMap((c, i) => [...(i > 0 ? [-134] : []), { unicode: c, isSpace: c === ' ' }])]
+  const page = (...operations: string[]) => spellingOf(operations.map(() => SHOW_TEXT), operations.map(operation), SHOW_TEXT)
+
+  it('is read as the words it spells, where the document set its spaces', () => {
+    expect(spelledOut('B e g r i f f s b e s t i m m u n g e n', page('§ 1.01', 'Begriffsbestimmungen'))).toBe('Begriffsbestimmungen')
+    // Every gap reads as a space to pdf.js, the one between two words too.
+    expect(spelledOut('M i t f ü h r e n d e r V e r o r d n u n g', page('Mitführen der Verordnung'))).toBe('Mitführen der Verordnung')
+  })
+
+  it('keeps a quotation mark at its word where the text operation changes', () => {
+    expect(spelledOut('1. „V e r b a n d “: ein Schleppverband', page('1. „', 'Verband', '“: ein Schleppverband'))).toBe('1. „Verband“: ein Schleppverband')
+  })
+
+  it('leaves single letters the document sets apart, and a run its glyphs do not spell', () => {
+    expect(spelledOut('lit. a b c und d', page('gemäß lit. a b c und d'))).toBe('lit. a b c und d')
+    expect(spelledOut('V e r b o t', page('Gebot'))).toBe('V e r b o t')
   })
 })
 
