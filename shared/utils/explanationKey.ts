@@ -36,6 +36,28 @@ export function explanationParaId(designation: string | null): string | null {
   return m ? m[1]!.toLowerCase() : null
 }
 
+/**
+ * Designation → the unit a § block of the annex and an outcome of the
+ * Lesefassung both stand for: „§ 54c." → „54c", „Anlage 1 (zu § 6)" →
+ * „anl. 1", „Anhang" → „anl.". Lowercased, as `explanationParaId`.
+ *
+ * The Lesefassung's own reading, apart from `explanationParaId`, because the
+ * two answer for a schedule differently: a Begründung passage is keyed by
+ * Paragraph only, while the engine keys a schedule as a unit of its own
+ * (`unitKey` in `server/utils/text/designation.ts` — kind and first number).
+ * Looked up through `explanationParaId`, every confirmed schedule found no §
+ * block and was never rendered (26.10.2026). Anchored at the start like the
+ * oracle's `paraIdOfGld`: a row that merely mentions an Anlage opens none.
+ */
+export function annexUnitId(designation: string | null): string | null {
+  const t = (designation ?? '').trim()
+  const para = explanationParaId(t)
+  if (para) return para
+  if (!/^(?:Anlage|Anhang|Anl\.?)(?!\p{L})/iu.test(t)) return null
+  const n = /(\d+[a-z]*(?:\.\d+)?)/i.exec(t)
+  return n ? `anl. ${n[1]!.toLowerCase()}` : 'anl.'
+}
+
 /** Law and Paragraph as one key. The empty law is a real value. */
 export function explanationKey(law: string | null, paraId: string): string {
   return `${law ?? ''}#${paraId}`

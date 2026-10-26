@@ -50,6 +50,20 @@ const KONS_POLICY: UpstreamPolicy = {
  */
 export const IMPLAUSIBLE_HITS = 50_000
 
+/**
+ * RIS consolidated law, at the version in force on `date`.
+ *
+ * Here and not in `lawtext/amendedLawsService.ts`, where it stood until
+ * 26.10.2026: that module defines a cached function at its top level, so
+ * importing it outside Nitro throws — and the Lesefassung
+ * (`kons/consolidate.ts`) has to run in the corpus Prüfstand as it runs on
+ * the page.
+ */
+export function konsLawUrl(gesetzesnummer: string, date: string | null): string {
+  const base = `https://www.ris.bka.gv.at/GeltendeFassung.wxe?Abfrage=Bundesnormen&Gesetzesnummer=${gesetzesnummer}`
+  return date ? `${base}&FassungVom=${date}` : base
+}
+
 export interface KonsParagraphRef {
   nor: string
   /** "§ 5", "Art. 3", "Anlage 2" as RIS prints it */

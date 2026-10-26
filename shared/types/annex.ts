@@ -3,10 +3,17 @@ import type { LawUnitChange } from './lawDiff'
 
 /**
  * Why a Paragraph of our own konsolidierte Lesefassung is not shown
- * (`server/utils/kons/konsGate.ts`, docs/architecture.md §12.12).
+ * (`server/utils/kons/konsGate.ts`, `server/utils/kons/consolidate.ts`,
+ * docs/architecture.md §12.12).
  *
- * The sentences belong in the gate, not here: they are a decision with
- * tests, not a type definition.
+ * The first six are the gate's verdict on a § the engine produced; the rest
+ * are the steps before it, where no text was produced at all. Until
+ * 26.10.2026 those steps ended in a bare `continue` and the page heard
+ * nothing of them — a § the draft changes simply had no Lesefassung, with
+ * no way to tell „withheld" from „never looked at".
+ *
+ * The sentences belong in `app/utils/konsNotes.ts`, not here: they are copy
+ * with tests, not a type definition.
  */
 export type ConsolidatedWithheldCause =
   | 'verweigert'
@@ -14,7 +21,36 @@ export type ConsolidatedWithheldCause =
   | 'unplausibel'
   | 'kein-anhang'
   | 'anhang-schweigt'
+  /** The annex's geltende Fassung is not the standing text in RIS (oracle `fremd`). */
+  | 'anhang-fremd'
   | 'anhang-widerspricht'
+  /** RIS knows no such law, cannot tell two apart, or the Stammnorm is no BGBl (the UGB's dRGBl). */
+  | 'gesetz-unbekannt'
+  /** Two §§ of one Artikel share a number under different Artikel of the standing law (`addressedLabels`). */
+  | 'nummer-doppelt'
+  /** The standing law in RIS carries no such §, and the draft does not create it either. */
+  | 'nicht-im-ris'
+  /** RIS carries the § in a form we cannot read — a table, or a document without XML. */
+  | 'nicht-lesbar'
+  /** The word diff is too long to compute (`diffTokens` → null). */
+  | 'zu-lang'
+  /** The standing § is gone after the draft — repealed, or renumbered away: nothing stands under its number. */
+  | 'entfaellt'
+  /** A package whose annex marks no law boundaries: no § can be attributed to one law of it. */
+  | 'anhang-ungeteilt'
+
+/**
+ * A § the draft changes and the Lesefassung does not show — with the reason,
+ * so the page can say it at the § (since 26.10.2026).
+ *
+ * Keyed exactly like `ConsolidatedParagraph` (`id`, `annexLaw`), so the page
+ * looks both up the same way.
+ */
+export interface ConsolidatedWithheld {
+  id: string
+  annexLaw: string | null
+  cause: ConsolidatedWithheldCause
+}
 
 /** A Paragraph as it would read after the draft's Novellierungsanordnungen. */
 export interface ConsolidatedParagraph {
@@ -66,9 +102,32 @@ export interface ConsolidatedTextResponse {
   inr: number | null
   risId: string | null
   paragraphs: ConsolidatedParagraph[]
+  /**
+   * Every other § the draft amends, each with the reason it is not shown.
+   * `paragraphs` and `withheld` together are all of them: their lengths add
+   * up to `touched` — the conservation the corpus Prüfstand holds every
+   * draft to (`consolidationBalance`).
+   */
+  withheld: ConsolidatedWithheld[]
   /** How many §§ the draft amends at all — the denominator on display. */
   touched: number
+  /**
+   * Why the draft's §§ were not even read — null where they were
+   * (`emptyConsolidated`). Then `touched` is 0 and both lists are empty,
+   * and that must not read as „der Entwurf ändert hier nichts": the page
+   * says this one reason once instead of blaming every § of the annex.
+   *
+   * - `zuordnung` — the RIS record is not surely this draft (a weak join).
+   * - `stichtag` — RIS names no first day of the Begutachtung, so which
+   *   version of the law the draft amends is unknown.
+   * - `kein-xml` — the draft's text exists in RIS only as PDF; the
+   *   instructions are read from the XML alone.
+   * - `keine-novelle` — as we read the draft, no Artikel amends a law.
+   */
+  notRun: ConsolidatedNotRun | null
 }
+
+export type ConsolidatedNotRun = 'zuordnung' | 'stichtag' | 'kein-xml' | 'keine-novelle'
 
 /**
  * Why a § of the Textgegenüberstellung is not shown

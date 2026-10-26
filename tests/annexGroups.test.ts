@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
-import type { TextComparisonRow } from '#shared/types'
-import { annexBadge, annexLawKeys, annexParas, designationAfter, groupAnnexRows, type AnnexParaOptions } from '../app/utils/annexGroups'
+import type { TextComparisonRow, ConsolidatedTextResponse, ParagraphExplanationView } from '#shared/types'
+import { annexBadge, annexLawKeys, annexParas, designationAfter, groupAnnexRows, placeAtParagraphs, type AnnexParaOptions } from '../app/utils/annexGroups'
 
 /** A pair row of § `para`, changed and verified unless told otherwise. */
 function row(para: string | null, over: Partial<TextComparisonRow> = {}): TextComparisonRow {
@@ -117,11 +117,13 @@ describe('groupAnnexRows', () => {
   })
 })
 
-const none = { explanationsFor: () => [], consolidatedFor: () => null }
+/** A law-less passage on § `para`, as the Erläuterungen file it. */
+const passage = (para: string, heading = `Zu § ${para}:`, text = [`Begründung ${para}`]): ParagraphExplanationView => ({ law: null, para, heading, text })
 
-function parasOf(rows: TextComparisonRow[], over: Partial<AnnexParaOptions> = {}) {
+/** Placed as the section places it (`placeAtParagraphs`), then cut into blocks. */
+function parasOf(rows: TextComparisonRow[], over: Partial<AnnexParaOptions> = {}, passages: ParagraphExplanationView[] = [], kons: ConsolidatedTextResponse | null = null) {
   const g = groupAnnexRows(rows, all).groups[0]!
-  return annexParas(g, { limit: Number.POSITIVE_INFINITY, folding: true, ...none, ...over })
+  return annexParas(g, { limit: Number.POSITIVE_INFINITY, folding: true, placed: placeAtParagraphs(rows, kons, passages).byRow, ...over })
 }
 
 describe('annexParas', () => {
@@ -193,11 +195,11 @@ describe('annexParas', () => {
       row('§ 3', { check: 'withheld', current: '', proposed: '' }),
       row('§ 4'),
     ]
-    const explanationsFor = () => [{ law: null, para: 'x', heading: 'Zu § x:', text: [] }]
-    const { paras, hidden } = parasOf(rows, { limit: 1, explanationsFor })
+    const explained = ['1', '2', '3', '4'].map((id) => passage(id))
+    const { paras, hidden } = parasOf(rows, { limit: 1 }, explained)
     expect(paras.map((p) => p.key)).toEqual(['§ 1'])
     // What „N weitere Änderungen anzeigen" promises is what the press prints.
-    const all = parasOf(rows, { explanationsFor }).paras
+    const all = parasOf(rows, {}, explained).paras
     const changeRows = (ps: typeof all) => ps.flatMap((p) => p.blocks).filter((b) => b.kind === 'row').length
     expect(hidden).toBe(changeRows(all) - changeRows(paras))
     expect(hidden).toBe(2)
@@ -237,13 +239,8 @@ describe('annexParas', () => {
 })
 
 describe('annexParas — the Begründung and the Lesefassung of a renumbered §', () => {
-  /** One passage per (law-less) designation, as `explanationsFor` hands them out. */
-  function passages(...ids: string[]) {
-    const byId = new Map(ids.map((id) => [id, [{ law: null, para: id, heading: `Zu § ${id}:`, text: [`Begründung ${id}`] }]]))
-    return (_law: string | null, para: string | null) => byId.get(/\d+[a-z]*/.exec(para ?? '')?.[0] ?? '') ?? []
-  }
   const headings = (rows: TextComparisonRow[], ids: string[]) =>
-    parasOf(rows, { explanationsFor: passages(...ids) }).paras.map((p) => [p.key, p.explanations.map((e) => e.heading)])
+    parasOf(rows, {}, ids.map((id) => passage(id))).paras.map((p) => [p.key, p.explanations.map((e) => e.heading)])
 
   // 51/ME XXVIII: the new § 14 is inserted, and further down the old § 14
   // becomes § 22 — one row, „§ 14." left, „§ 22." right, the right one left
@@ -289,21 +286,33 @@ describe('annexParas — the Begründung and the Lesefassung of a renumbered §'
       row('§ 2.', { gld: '§ 2.', change: 'unchanged' }),
       row('§ 2.'),
     ]
-    const both = (_law: string | null, para: string | null) => {
-      const shared = { law: null, para: '1a', heading: 'Zu Z 1 (§§ 1a und 2 Abs. 3):', text: ['Begriffe'] }
-      if (para === '§ 1a.') return [shared]
-      if (para === '§ 2.') return [{ ...shared, para: '2' }, { law: null, para: '2', heading: 'Zu Z 2 (§ 2 Abs. 1 Z 3):', text: ['Z 3'] }]
-      return []
-    }
-    const { paras } = parasOf(rows, { explanationsFor: both })
+    // „Zu Z 1 (§§ 1a und 2 Abs. 3)" is filed under both §§ it names.
+    const both = [passage('1a', 'Zu Z 1 (§§ 1a und 2 Abs. 3):', ['Begriffe']), passage('2', 'Zu Z 1 (§§ 1a und 2 Abs. 3):', ['Begriffe']), passage('2', 'Zu Z 2 (§ 2 Abs. 1 Z 3):', ['Z 3'])]
+    const { paras } = parasOf(rows, {}, both)
     expect(paras.map((p) => p.explanations.map((e) => e.heading))).toEqual([['Zu Z 1 (§§ 1a und 2 Abs. 3):', 'Zu Z 2 (§ 2 Abs. 1 Z 3):']])
   })
 
-  it('looks the Lesefassung up the same way', () => {
-    const kons = { id: '22', segments: [], headingSegments: null, risUrl: null, annexLaw: null }
-    const consolidatedFor = (_law: string | null, para: string | null) => (para === '§ 22.' ? kons : null)
-    const { paras } = parasOf(renumbered, { consolidatedFor })
-    expect(paras.map((p) => p.consolidated?.id ?? null)).toEqual([null, null, '22'])
+  const response = (shown: string[], withheld: [string, ConsolidatedTextResponse['withheld'][number]['cause']][]): ConsolidatedTextResponse => ({
+    gp: 'XXVIII', inr: 51, risId: null, touched: shown.length + withheld.length, notRun: null,
+    paragraphs: shown.map((id) => ({ id, segments: [], headingSegments: null, risUrl: null, annexLaw: null })),
+    withheld: withheld.map(([id, cause]) => ({ id, annexLaw: null, cause })),
+  })
+  const outcomes = (rows: TextComparisonRow[], kons: ConsolidatedTextResponse) =>
+    parasOf(rows, {}, [], kons).paras.map((p) => p.lesefassungen.map((l) => (l.lesefassung.kind === 'shown' ? l.lesefassung.paragraph.id : l.lesefassung.cause)))
+
+  it('looks the Lesefassung up the same way — the old § 14 shows § 22, never the new § 14', () => {
+    expect(outcomes(renumbered, response(['22'], [['14', 'verweigert'], ['21', 'anhang-widerspricht']]))).toEqual([['verweigert'], ['anhang-widerspricht'], ['22']])
+    // A § the annex shows changing, of which the run knows nothing.
+    expect(outcomes(renumbered, response(['22'], []))).toEqual([['nicht-gefunden'], ['nicht-gefunden'], ['22']])
+  })
+
+  it('leaves no vacated number behind for the end of the law', () => {
+    // The old § 14 moves to § 22 and nothing takes its number: its outcome
+    // (`entfaellt`) belongs to the block that shows the move.
+    const moved = [row('§ 14.', { gld: '§ 14.', current: 'Soweit verwiesen wird …', proposed: '§ 22. Soweit verwiesen wird …' })]
+    const placement = placeAtParagraphs(moved, response(['22'], [['14', 'entfaellt']]), [])
+    expect([...placement.ends.byGroup.values()].flatMap((e) => e.outcomes)).toEqual([])
+    expect(placement.byRow.get(moved[0]!)!.lesefassungen.map((l) => l.designation)).toEqual(['§ 22.'])
   })
 })
 

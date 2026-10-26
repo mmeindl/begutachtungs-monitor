@@ -23,7 +23,7 @@ describe('gateParagraph', () => {
   it('does not show an unverified paragraph, however clean the run was', () => {
     expect(gateParagraph({ refused: false, plausible: true, oracle: 'kein Anhang' })).toEqual({ show: false, cause: 'kein-anhang' })
     expect(gateParagraph({ refused: false, plausible: true, oracle: 'stumm' })).toEqual({ show: false, cause: 'anhang-schweigt' })
-    expect(gateParagraph({ refused: false, plausible: true, oracle: 'fremd' })).toEqual({ show: false, cause: 'anhang-schweigt' })
+    expect(gateParagraph({ refused: false, plausible: true, oracle: 'fremd' })).toEqual({ show: false, cause: 'anhang-fremd' })
     expect(gateParagraph({ refused: false, plausible: true, oracle: 'widersprochen' })).toEqual({ show: false, cause: 'anhang-widerspricht' })
   })
 

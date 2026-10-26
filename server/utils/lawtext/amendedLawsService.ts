@@ -26,6 +26,7 @@ import { clauseNameOf, isAmendmentClause, type ClauseName } from './draftArticle
 import { getDraftArticles } from './draftArticlesService'
 import { getDraftsForGp } from '../parliament/drafts'
 import { resolveKonsLaw } from '../kons/konsCache'
+import { konsLawUrl } from '../ris/konsLaw'
 import { mapWithConcurrency } from '../pool'
 import { DERIVED_ANALYSIS_TTL_S } from '../cache/ttl'
 import { latestAmendmentOf } from '../../../shared/utils/citations'
@@ -64,12 +65,6 @@ function leadingStammnorm(blocks: readonly TextBlock[]): { title: string | null;
     if (b.kind === 'novao') return null
   }
   return null
-}
-
-/** RIS consolidated law, at the version in force on `date`. */
-export function konsLawUrl(gesetzesnummer: string, date: string | null): string {
-  const base = `https://www.ris.bka.gv.at/GeltendeFassung.wxe?Abfrage=Bundesnormen&Gesetzesnummer=${gesetzesnummer}`
-  return date ? `${base}&FassungVom=${date}` : base
 }
 
 /**

@@ -10,10 +10,11 @@
  * the rows twice, each loop with its own copy of the search and the elided
  * rule; they share one pass now.
  */
-import type { AnnexWithheldCause, ConsolidatedParagraph, LawDiffSegment, ParagraphExplanationView, TextComparisonRow } from '#shared/types'
-import { explanationParaId } from '#shared/utils/explanationKey'
+import type { AnnexWithheldCause, ConsolidatedTextResponse, LawDiffSegment, ParagraphExplanationView, TextComparisonRow } from '#shared/types'
+import { annexUnitId, explanationKey, explanationParaId } from '#shared/utils/explanationKey'
 import { type DiffBadge, paragraphBadge } from './diffBadges'
 import { readsSideBySide, splitSegments } from './diffSides'
+import { outcomeIndex, showsInstructedChange, type LawEnd, type Lesefassung } from './lesefassung'
 
 /**
  * A row whose two columns are nothing but the annex's elision notation, reaching
@@ -268,10 +269,28 @@ export interface AnnexPara {
   blocks: AnnexBlock[]
   /** What the Ressort explains about this very §; empty when nothing was found. */
   explanations: ParagraphExplanationView[]
-  /** The whole § as it would read after the draft; null where the gate withholds it. */
-  consolidated: ConsolidatedParagraph | null
+  /**
+   * Our Lesefassung of the §§ this block stands for after the draft — shown,
+   * or why not (`placeAtParagraphs`). Usually one; two where a run opens two
+   * §§ (2/ME XXVIII: § 2 and the new § 1a), each under its designation.
+   * Empty only where there is nothing to say: the run has not answered, or
+   * the § shows no change an instruction would make.
+   */
+  lesefassungen: PlacedLesefassung[]
   /** Whether a row of this § already carries the „nicht geprüft" pill. */
   uncheckedMarked: boolean
+}
+
+/** One § of our Lesefassung at a block: the designation it carries after the draft, and its outcome. */
+export interface PlacedLesefassung {
+  designation: string | null
+  lesefassung: Lesefassung
+}
+
+/** What one § block takes (`placeAtParagraphs`). */
+export interface ParaPlacement {
+  explanations: ParagraphExplanationView[]
+  lesefassungen: PlacedLesefassung[]
 }
 
 export interface AnnexParaOptions {
@@ -283,8 +302,12 @@ export interface AnnexParaOptions {
    *  own block instead of disappearing into a folded context line that says
    *  only how many there were. */
   folding: boolean
-  explanationsFor: (law: string | null, para: string | null) => ParagraphExplanationView[]
-  consolidatedFor: (law: string | null, para: string | null) => ConsolidatedParagraph | null
+  /**
+   * What each row's § block takes, by row (`placeAtParagraphs`) — decided
+   * once over the whole annex, so a search that narrows the rows cannot move
+   * a Begründung or a Lesefassung to another § or to the end of its law.
+   */
+  placed: ReadonlyMap<TextComparisonRow, ParaPlacement> | null
 }
 
 /** One § as the annex prints it: a contiguous stretch of rows under one `para`. */
@@ -414,20 +437,6 @@ function lookUp<T>(law: string | null, p: Addressed, lookup: (law: string | null
   return p.ownTaken ? null : lookup(law, p.own)
 }
 
-/**
- * The Lesefassung of a run: the § that keeps the run's number first (2/ME's
- * § 2 also opens the new § 1a, and stays § 2), else the first one it opens —
- * a renumbered § under the number it moves to (51/ME's old § 14 is § 22).
- */
-function consolidatedOf(law: string | null, paragraphs: readonly Addressed[], consolidatedFor: AnnexParaOptions['consolidatedFor']): ConsolidatedParagraph | null {
-  const keeps = (p: Addressed) => p.after !== null && explanationParaId(p.after) === explanationParaId(p.own)
-  for (const p of [...paragraphs.filter(keeps), ...paragraphs.filter((p) => !keeps(p))]) {
-    const hit = lookUp(law, p, consolidatedFor, (c) => c !== null)
-    if (hit) return hit
-  }
-  return null
-}
-
 /** Passages that answer for several designations („Zu §§ 1a und 2") stand once. */
 function distinctPassages(passages: readonly ParagraphExplanationView[]): ParagraphExplanationView[] {
   const seen = new Set<string>()
@@ -439,10 +448,9 @@ function distinctPassages(passages: readonly ParagraphExplanationView[]): Paragr
   })
 }
 
-export function annexParas(g: AnnexGroup, { limit, folding, explanationsFor, consolidatedFor }: AnnexParaOptions): { paras: AnnexPara[]; hidden: number } {
+export function annexParas(g: AnnexGroup, { limit, folding, placed }: AnnexParaOptions): { paras: AnnexPara[]; hidden: number } {
   const paras: AnnexPara[] = []
   const runs = paragraphRuns(g.rows)
-  const addressed = addressedParagraphs(runs)
   /** How often each `para` opened a block so far — for a unique `key`. */
   const seen = new Map<string, number>()
   /*
@@ -472,13 +480,15 @@ export function annexParas(g: AnnexGroup, { limit, folding, explanationsFor, con
     const first = run.rows[0]!
     const n = (seen.get(run.key) ?? 0) + 1
     seen.set(run.key, n)
+    // Any row of the § answers for it: the placement filed every row of it.
+    const at = placed?.get(first) ?? null
     const current: AnnexPara = {
       key: n === 1 ? run.key : `${run.key}#${n}`,
       gld: first.para,
       heading: null,
       blocks: [],
-      explanations: distinctPassages((addressed[i] ?? []).flatMap((p) => lookUp(first.law, p, explanationsFor, (xs) => xs.length > 0) ?? [])),
-      consolidated: consolidatedOf(first.law, addressed[i] ?? [], consolidatedFor),
+      explanations: at?.explanations ?? [],
+      lesefassungen: at?.lesefassungen ?? [],
       uncheckedMarked: false,
     }
     paras.push(current)
@@ -541,4 +551,116 @@ export function annexParas(g: AnnexGroup, { limit, folding, explanationsFor, con
     for (const b of p.blocks) if (b.kind === 'row') b.split = true
   }
   return { paras: paras.filter((p) => p.blocks.length > 0), hidden }
+}
+
+/**
+ * Where everything the page knows about a § goes — ONE pass over the whole
+ * annex, before any search or legend (26.10.2026).
+ *
+ * Each § block takes, under the designation it carries AFTER the draft
+ * (`addressedParagraphs`), the Ressort's Begründung and our Lesefassung —
+ * one source of truth for both, so a renumbered § gets its own of each and
+ * never its successor's (51/ME XXVIII: the old § 14, now § 22). What no
+ * block takes is not dropped but kept for the end of its law (`ends`): the
+ * §§ the draft amends that the annex prints no block for, and the passages
+ * on a § without one — a new law above all, which no Textgegenüberstellung
+ * covers (126/ME: 15 of 88 passages). Until then both were simply absent,
+ * and nothing on the page said so.
+ *
+ * Every row maps to its block's placement, so `annexParas` finds it from
+ * whichever row of the § the search left first.
+ *
+ * `consolidated` and `explanations` arrive separately and either may be
+ * missing; each places what it has. `nicht-gefunden` — a § that shows a
+ * change no instruction names — is said only once the Lesefassung's run has
+ * answered (`outcomeIndex`).
+ */
+export function placeAtParagraphs(
+  rows: readonly TextComparisonRow[],
+  consolidated: ConsolidatedTextResponse | null,
+  explanations: readonly ParagraphExplanationView[],
+): { byRow: Map<TextComparisonRow, ParaPlacement>; groupKeys: string[]; ends: { byGroup: Map<string, LawEnd>; rest: (LawEnd & { law: string | null })[] } } {
+  const { groups } = groupAnnexRows(rows, { matches: null, hidden: [] })
+  const groupKeys = groups.map((g) => g.key)
+  const outcomes = outcomeIndex(consolidated)
+
+  // The passages under the key the section looks them up by: the law the
+  // Erläuterungen file them under, and the bare §.
+  const passages = new Map<string, ParagraphExplanationView[]>()
+  for (const e of explanations) {
+    const key = explanationKey(e.law, e.para)
+    passages.set(key, [...(passages.get(key) ?? []), e])
+  }
+  const passagesAt = (law: string | null, para: string | null): ParagraphExplanationView[] => {
+    const id = explanationParaId(para)
+    return id ? (passages.get(explanationKey(law, id)) ?? []) : []
+  }
+  const placedPassages = new Set<ParagraphExplanationView>()
+
+  const byRow = new Map<TextComparisonRow, ParaPlacement>()
+  for (const g of groups) {
+    const runs = paragraphRuns(g.rows)
+    const addressed = addressedParagraphs(runs)
+    for (const [i, run] of runs.entries()) {
+      const first = run.rows[0]!
+      const ps = addressed[i] ?? []
+      const matched = ps.flatMap((p) => lookUp(first.law, p, passagesAt, (xs) => xs.length > 0) ?? [])
+      for (const e of matched) placedPassages.add(e)
+
+      const lesefassungen: PlacedLesefassung[] = []
+      if (outcomes) {
+        // The § that keeps the run's number first (2/ME's § 2 also opens the
+        // new § 1a, and stays § 2), then the others, each under the number
+        // it carries after the draft.
+        const keeps = (p: (typeof ps)[number]): boolean => p.after !== null && explanationParaId(p.after) === explanationParaId(p.own)
+        for (const p of [...ps.filter(keeps), ...ps.filter((p) => !keeps(p))]) {
+          const hit = lookUp(first.law, p, (law, para) => outcomes.at(law, para), (o) => o !== null)
+          if (!hit || hit.outcomes.every((o) => lesefassungen.some((l) => l.lesefassung === o.lesefassung))) continue
+          outcomes.take(hit.outcomes)
+          lesefassungen.push({ designation: p.after ?? p.own, lesefassung: hit.lesefassung })
+          // A § this block shows under a new number leaves its old one
+          // behind: the number is vacated (`entfaellt`), or another § holds
+          // it — and that one is placed at its own block.
+          if (p.after !== null && explanationParaId(p.after) !== explanationParaId(p.own)) {
+            const old = outcomes.at(first.law, p.own)
+            if (old && old.lesefassung.kind === 'withheld' && old.lesefassung.cause === 'entfaellt') outcomes.take(old.outcomes)
+          }
+        }
+        // A § the annex shows changing, of which the Lesefassung knows
+        // nothing: the draft's instructions, as we read them, name no such §.
+        // Only at a § or a schedule — the Lesefassung is kept per unit, and
+        // rows before the first designation (a heading, the table of
+        // contents) are none. And only where a § of the block stands after
+        // the draft: a repealed one is struck rows that say it already, and
+        // where a new § took its number, that one's outcome is the new §'s
+        // (51/ME XXVIII: the old §§ 5, 6, 8, 10 to 13 and 16).
+        if (lesefassungen.length === 0 && ps.some((p) => p.after !== null) && annexUnitId(first.para) && showsInstructedChange(run.rows)) {
+          lesefassungen.push({ designation: first.para, lesefassung: { kind: 'withheld', cause: 'nicht-gefunden' } })
+        }
+      }
+      const placement: ParaPlacement = { explanations: distinctPassages(matched), lesefassungen }
+      for (const row of run.rows) byRow.set(row, placement)
+    }
+  }
+
+  // What no block took, per law; then per group of the annex, or after the
+  // last group where the annex has none for that law. A single-law draft
+  // files its §§ and passages under no law; they go to the one group, or
+  // after the groups where the annex happens to divide itself.
+  const leftovers = new Map<string | null, LawEnd>()
+  const endOf = (law: string | null): LawEnd => {
+    let end = leftovers.get(law)
+    if (!end) leftovers.set(law, (end = { outcomes: [], explanations: [] }))
+    return end
+  }
+  for (const o of outcomes?.untaken() ?? []) endOf(o.law).outcomes.push({ id: o.id, lesefassung: o.lesefassung })
+  for (const e of explanations) if (!placedPassages.has(e)) endOf(e.law).explanations.push(e)
+  const byGroup = new Map<string, LawEnd>()
+  const rest: (LawEnd & { law: string | null })[] = []
+  for (const [law, end] of leftovers) {
+    const key = law === null ? (groupKeys.length === 1 ? groupKeys[0]! : null) : (groupKeys.includes(law) ? law : null)
+    if (key !== null) byGroup.set(key, end)
+    else rest.push({ law, ...end })
+  }
+  return { byRow, groupKeys, ends: { byGroup, rest } }
 }

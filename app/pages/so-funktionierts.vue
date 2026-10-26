@@ -611,8 +611,10 @@ const notReadDe = LAENDER_NOT_READ.join(', ').replace(/, ([^,]*)$/, ' und $1')
         Auch die rechte Spalte prüfen wir: Was dort als
         neu markiert ist, darf im
         geltenden Paragraphen nicht schon stehen – sonst fehlt links Text, und
-        der Entwurf wirkt umfangreicher, als er ist. Und es muss in den
-        Novellierungsanordnungen
+        der Entwurf wirkt umfangreicher, als er ist. Ausgenommen ist ein
+        Wortlaut, den eine Anweisung des Entwurfs genau so an diese Stelle
+        einfügt, auch wenn er anderswo im Paragraphen schon steht. Und es muss
+        in den Novellierungsanordnungen
         vorkommen, die der Entwurf für diesen Paragraphen trifft.
       </p>
 
@@ -669,14 +671,33 @@ const notReadDe = LAENDER_NOT_READ.join(', ').replace(/, ([^,]*)$/, ' und $1')
            each disclosure on a draft page („Ganzer Paragraph danach (nicht
            amtlich)") links here as „Wie diese Lesefassung entsteht". -->
       <h3 id="lesefassung" class="mt-8 scroll-mt-6 text-base font-semibold text-ink">Die Lesefassung</h3>
+      <!-- „zum selben Text kommt" until 26.10.2026: the check is a set of
+           containments over what the annex prints, not an equality, and the
+           annex prints excerpts. Since the same day the page names, at
+           every §, why a Lesefassung is missing (`app/utils/lesefassung.ts`),
+           so this section says what the reasons are, not that there are
+           some. -->
       <p class="mt-2">
         Bei manchen Paragraphen lässt sich aufklappen, wie die Bestimmung nach
         dem Entwurf ganz lauten würde. Das ist keine amtliche Fassung: Wir
         nehmen den geltenden Text aus dem RIS und wenden die Anweisungen des
         Entwurfs darauf an. Gezeigt wird das Ergebnis nur, wo die
-        Gegenüberstellung des Ministeriums zum selben Text kommt. Fehlt die
-        Lesefassung bei einem Paragraphen, heißt das nicht, dass er gleich
-        bleibt – nur, dass wir sie nicht bestätigen konnten.
+        Gegenüberstellung des Ministeriums es stützt: Was sie als geltend
+        abdruckt, muss so im RIS stehen, was sie als neu abdruckt, in unserem
+        Ergebnis – und die Absätze, die sie nennt, in derselben Reihenfolge.
+        Unser Ergebnis darf auch nichts ändern, was sie nicht zeigt. Weil die
+        Gegenüberstellung oft nur Auszüge druckt, kann sie nur bestätigen, was
+        sie abdruckt.
+      </p>
+      <p class="mt-2">
+        Wo wir die Lesefassung nicht zeigen, steht am Paragraphen, warum: etwa
+        weil sich eine Anweisung des Entwurfs nicht sicher anwenden ließ, weil
+        unser Ergebnis von der Beilage abweicht, weil wir das Gesetz oder den
+        Paragraphen im RIS nicht fanden oder weil die Beilage an dieser Stelle
+        nichts zeigt, woran sich unser Ergebnis prüfen ließe. Paragraphen, die
+        der Entwurf ändert, zu denen wir in der Beilage aber keine
+        Gegenüberstellung fanden, nennen wir am Ende ihres Gesetzes. Fehlt die
+        Lesefassung, heißt das also nie, dass der Paragraph gleich bleibt.
       </p>
     </ProseSection>
 

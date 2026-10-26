@@ -15,12 +15,11 @@
  * neighbouring questions and a second visual language would suggest a
  * difference that is not there.
  */
-import type { AnnexWithheldCause, ConsolidatedParagraph, ConsolidatedTextResponse, ParagraphExplanationView, TextComparisonResponse, TextComparisonRow } from '#shared/types'
-import { explanationKey, explanationParaId } from '#shared/utils/explanationKey'
+import type { AnnexWithheldCause, ConsolidatedTextResponse, TextComparisonResponse, TextComparisonRow } from '#shared/types'
 import { mixedPublishers, parliamentDocumentSource, PUBLISHER_NAME_DE, risSource, type SourceEntry } from '#shared/utils/provenance'
 import { UNCHECKED_PILL, badgeCounts, badgeLabels } from '~/utils/diffBadges'
-import { absaetze } from '~/utils/absaetze'
-import { annexBadge, annexLawKeys, annexParas, groupAnnexRows } from '~/utils/annexGroups'
+import { annexBadge, annexParas, groupAnnexRows, placeAtParagraphs, type AnnexPara, type PlacedLesefassung } from '~/utils/annexGroups'
+import { NOTICE_LESEFASSUNG_TOO, lesefassungLine, lesefassungNotRunText, mergesIntoNotice } from '~/utils/lesefassung'
 import {
   annexDoubtfulGroupNote,
   annexDoubtfulNote,
@@ -73,61 +72,64 @@ const { data: explanations } = useExplanations(() => ({ gp: props.gp, inr: props
  * Bestimmung dann" arises right here, at the §, and is answered here instead
  * of two screens further down.
  */
-const { data: consolidated } = await useFetch<ConsolidatedTextResponse>(
+const { data: consolidated, status: consolidatedStatus } = await useFetch<ConsolidatedTextResponse>(
   () => `${base.value}/konsolidiert`,
   { lazy: true, server: false },
 )
 
 /**
- * Looked up under the same key the gate used.
+ * Where each § block's Begründung and Lesefassung go, and what each law
+ * leaves over for its end (`placeAtParagraphs`, 26.10.2026) — one pass, under
+ * the designation a § carries after the draft, so a renumbered § gets its
+ * own of each and never its successor's.
  *
- * Two entries per Paragraph, and the second is no convenience: for a
- * single-law Novelle the gate asked the annex WITHOUT a law
- * (`annexLaw: null`), while the annex's row carries one anyway. A lookup by
- * (law, number) alone would find nothing there.
+ * Over the whole annex, not over what the search leaves: where a § stands is
+ * a fact about the annex, and a Begründung or a Lesefassung must not move to
+ * the end of its law because a search hid its block.
  */
-const consolidatedByKey = computed(() => {
-  const out = new Map<string, ConsolidatedParagraph>()
-  for (const p of consolidated.value?.paragraphs ?? []) {
-    out.set(explanationKey(p.annexLaw, p.id.toLowerCase()), p)
-    if (p.annexLaw === null) out.set(`*#${p.id.toLowerCase()}`, p)
-  }
-  return out
-})
+const placed = computed(() => placeAtParagraphs(data.value?.available ? data.value.rows : [], consolidated.value ?? null, explanations.value?.paragraphs ?? []))
 
-function consolidatedFor(law: string | null, para: string | null): ConsolidatedParagraph | null {
-  const id = explanationParaId(para)
-  if (!id) return null
-  return consolidatedByKey.value.get(explanationKey(law, id)) ?? consolidatedByKey.value.get(`*#${id}`) ?? null
-}
-
-/** How many §§ the Lesefassung carries — whether the credit names its source. */
-const consolidatedShown = computed(() => consolidated.value?.paragraphs.length ?? 0)
-
-/** The passages, lookupable by (law, Paragraph). */
-const explanationsByKey = computed(() => {
-  const out = new Map<string, ParagraphExplanationView[]>()
-  for (const e of explanations.value?.paragraphs ?? []) {
-    const key = explanationKey(e.law, e.para)
-    const list = out.get(key)
-    if (list) list.push(e)
-    else out.set(key, [e])
-  }
-  return out
+/**
+ * The text in force behind the Lesefassung, linked in the credit only where
+ * every shown § comes from one law. In a package the first § stood for all
+ * of them (26.10.2026); each § now links its own at the disclosure.
+ */
+const soleRisUrl = computed(() => {
+  const urls = new Set((consolidated.value?.paragraphs ?? []).map((p) => p.risUrl).filter((u): u is string => !!u))
+  return urls.size === 1 ? [...urls][0]! : null
 })
 
 /**
- * The passages for ONE § of the annex.
- *
- * Looked up, not searched: both sides build the same key from law and
- * normalised designation (`#shared/utils/explanationKey`). Where the annex
- * does not keep its laws apart its row carries no law while the entry does —
- * then the key finds nothing, and that is the right answer: § 5 of the second
- * law is a different provision from § 5 of the first.
+ * What each law leaves over: the §§ the draft amends that no § block took,
+ * and the Begründung passages on a § without a block. At the end of the
+ * law's group, and — for a law the annex has no group for, a new law above
+ * all — after the last group, under the law's name.
  */
-function explanationsFor(law: string | null, para: string | null): ParagraphExplanationView[] {
-  const id = explanationParaId(para)
-  return id ? explanationsByKey.value.get(explanationKey(law, id)) ?? [] : []
+const lawEnds = computed(() => placed.value.ends)
+
+/**
+ * Why the Lesefassung is missing as a whole — the run did not happen
+ * (`notRun`), or its request failed. Said once, under the comparison: it is
+ * about the layer below the annex, not about the annex.
+ */
+const lesefassungNote = computed(() => {
+  if (consolidatedStatus.value === 'error') return 'Ganze Paragraphen danach sind gerade nicht verfügbar.'
+  return lesefassungNotRunText(consolidated.value ?? null)
+})
+
+/**
+ * The line at a § where the disclosure would stand — null where there is
+ * none, or where the annex notice at the same § says it already
+ * (`mergesIntoNotice`). A block standing for two §§ names each.
+ */
+function lineFor(p: AnnexPara, l: PlacedLesefassung): string | null {
+  if (p.blocks.some((b) => b.kind === 'withheld' && mergesIntoNotice(l.lesefassung, b.cause))) return null
+  return lesefassungLine(l.lesefassung, p.lesefassungen.length > 1 ? l.designation : null)
+}
+
+/** Whether the withheld notice of this § takes the Lesefassung's sentence. */
+function noticeTakesLesefassung(p: AnnexPara, cause: AnnexWithheldCause | null): boolean {
+  return p.lesefassungen.some((l) => mergesIntoNotice(l.lesefassung, cause))
 }
 
 /**
@@ -208,7 +210,7 @@ const kindCounts = computed(() => grouped.value.kindCounts)
 const renderedGroups = computed(() =>
   groups.value.map((g) => ({
     ...g,
-    ...annexParas(g, { limit: limitFor(g.key), folding: folding.value, explanationsFor, consolidatedFor }),
+    ...annexParas(g, { limit: limitFor(g.key), folding: folding.value, placed: placed.value.byRow }),
   })),
 )
 
@@ -253,7 +255,7 @@ const sources = computed<SourceEntry[]>(() => {
   const d = data.value
   if (!d?.available) return []
   const out = [d.publisher === 'ris' ? risSource('Textgegenüberstellung') : parliamentDocumentSource('Textgegenüberstellung', 'me')]
-  if (consolidatedShown.value > 0 && consolidated.value?.paragraphs[0]?.risUrl) out.push(risSource('Geltender Text'))
+  if (consolidated.value?.paragraphs.some((p) => p.risUrl)) out.push(risSource('Geltender Text'))
   return out
 })
 /** Where the annex came from Parliament and the text in force from RIS, the annex link names its publisher. */
@@ -266,12 +268,13 @@ const droppedPagesNote = computed(() => annexDroppedPagesNote(data.value?.droppe
 const doubtfulLaws = computed(() => new Set(data.value?.verification?.doubtfulLaws ?? []))
 const doubtfulGroupNote = computed(() => annexDoubtfulGroupNote(data.value?.readFrom ?? null))
 /** Above the comparison only for a named law no group carries, so nothing is
- *  lost — no group of the UNFILTERED comparison (`annexLawKeys`): this note
- *  stands above the toolbar, so neither the search nor the legend may move it. */
-const lawKeys = computed(() => annexLawKeys(data.value?.available ? data.value.rows : []))
-const doubtfulNote = computed(() =>
-  annexDoubtfulNote([...doubtfulLaws.value].filter((l) => !lawKeys.value.has(l)), data.value?.readFrom ?? null),
-)
+ *  lost — no group of the UNFILTERED comparison (`placeAtParagraphs`): this
+ *  note stands above the toolbar, so neither the search nor the legend may
+ *  move it (25.10.2026). */
+const doubtfulNote = computed(() => {
+  const keys = new Set(placed.value.groupKeys)
+  return annexDoubtfulNote([...doubtfulLaws.value].filter((l) => !keys.has(l)), data.value?.readFrom ?? null)
+})
 /** Why the §'s changes are not shown, and — where the cause is the layout
  *  — whose layout: the blame asked for once. */
 function withheldReason(cause: AnnexWithheldCause | null): string {
@@ -306,6 +309,12 @@ function withheldReason(cause: AnnexWithheldCause | null): string {
       <p v-if="data.pdf || data.source" class="mt-3 flex flex-wrap gap-x-4 gap-y-1 text-xs text-ink-muted">
         <ExternalLink v-if="data.source" :href="data.source.url" class="link-muted">{{ data.source.label }}</ExternalLink>
         <ExternalLink v-if="data.pdf" :href="data.pdf.url" class="link-muted">{{ data.pdf.label }}</ExternalLink>
+      </p>
+      <!-- The layer below the annex goes with it, and the page says so
+           (26.10.2026): the draft amends §§ we could have read, but nobody
+           confirms our reading of them (`kein-anhang`). -->
+      <p v-if="(consolidated?.touched ?? 0) > 0" class="mt-2 text-xs text-ink-muted">
+        Ganze Paragraphen danach zeigen wir deshalb auch nicht: Ohne Gegenüberstellung bestätigt niemand unser Ergebnis.
       </p>
     </template>
 
@@ -433,6 +442,7 @@ function withheldReason(cause: AnnexWithheldCause | null): string {
                      „…im RIS.Das kann …" (seen 30.09.2026). -->
                 {{ withheldReason(b.cause) }}
                 Die Beilage des Ministeriums sagt, was sich ändert.
+                <template v-if="noticeTakesLesefassung(p, b.cause)">{{ ' ' + NOTICE_LESEFASSUNG_TOO }}</template>
               </p>
               <Disclosure v-else-if="b.kind === 'context'" size="xs" tone="muted">
                 <template #summary>{{ b.rows.length }} {{ b.rows.length === 1 ? 'Stelle' : 'Stellen' }} unverändert</template>
@@ -490,34 +500,32 @@ function withheldReason(cause: AnnexWithheldCause | null): string {
                  arises — at the end. Above the rows it would be a door in
                  front of the answer. The reasoning stays on top: it belongs
                  to the change, not to the result. -->
-            <Disclosure v-if="p.consolidated" size="xs" tone="ink" class="mt-3">
-              <template #summary>Ganzer Paragraph danach (nicht amtlich)</template>
-              <div class="mt-1 pl-6">
-                <!-- „nicht amtlich" stands IN the summary since 30.09.2026,
-                     so it is read before the disclosure opens, not after;
-                     inside, only the way to how the text is made (RIS in
-                     force plus this draft's instructions, confirmed by the
-                     ressort's own Gegenüberstellung). -->
-                <p class="text-xs text-ink-muted">
-                  <NuxtLink to="/so-funktionierts#lesefassung" class="link-inline">Wie diese Lesefassung entsteht</NuxtLink>
-                </p>
-                <p v-if="p.consolidated.headingSegments" class="mt-2 text-sm font-semibold text-ink">
-                  <DiffText :segments="p.consolidated.headingSegments" removed-normal-weight />
-                </p>
-                <!-- One paragraph per Absatz: that is how the law is
-                     structured, and eighteen of them in one block are no
-                     structure at all. -->
-                <p
-                  v-for="(abs, ai) in absaetze(p.consolidated.segments)"
-                  :key="ai"
-                  class="mt-2 hyphens-auto text-sm leading-relaxed text-ink"
-                >
-                  <DiffText :segments="abs" />
-                </p>
+            <!-- Where it is shown, the disclosure; where not, why (26.10.2026):
+                 eight causes ended in silence before, and a § without the
+                 disclosure read the same whichever it was (`lesefassungLine`).
+                 A block that stands for two §§ after the draft (2/ME: § 2
+                 and the new § 1a) carries both, each named. -->
+            <template v-for="l in p.lesefassungen" :key="l.designation ?? ''">
+              <div v-if="l.lesefassung.kind === 'shown'" class="mt-3">
+                <p v-if="p.lesefassungen.length > 1" class="text-xs font-medium text-ink">{{ l.designation }}</p>
+                <LesefassungDisclosure :paragraph="l.lesefassung.paragraph" />
               </div>
-            </Disclosure>
+              <p v-else-if="lineFor(p, l)" class="mt-3 text-xs text-ink-muted">{{ lineFor(p, l) }}</p>
+            </template>
+          </section>
+          <!-- The §§ of this law no block took, once the group is shown
+               whole: a list at the foot of a group that is cut off would
+               stand above the button that shows the rest. -->
+          <section v-if="!g.hidden && lawEnds.byGroup.has(g.key)" class="border-b border-hairline px-4 py-3 last:border-b-0">
+            <AnnexLawEnd :end="lawEnds.byGroup.get(g.key)!" />
           </section>
         </DiffGroup>
+        <!-- Laws of the draft the annex has no group for — a new law above
+             all, which no Textgegenüberstellung covers. -->
+        <section v-for="r in lawEnds.rest" :key="r.law ?? ''" class="border-t border-hairline px-4 py-3">
+          <p class="text-sm font-semibold text-ink">{{ r.law || 'Gesetzestext' }}</p>
+          <AnnexLawEnd :end="r" outside-annex class="mt-1" />
+        </section>
         <!-- Same wording as the § comparison (`NoMatches`). -->
         <NoMatches v-if="hasRows" :found="matchCount > 0" />
       </ListBox>
@@ -534,14 +542,16 @@ function withheldReason(cause: AnnexWithheldCause | null): string {
            02.10.2026). The licence stood here until 01.10.2026, and so did a
            second „CC BY 4.0, RIS" for the text in force wherever the annex
            itself came from Parliament. -->
+      <p v-if="lesefassungNote" class="mt-3 text-xs text-ink-muted">{{ lesefassungNote }}</p>
+
       <SectionCredits :sources="sources" :paired="data.readFrom === 'pdf'" method="/so-funktionierts#gegenueberstellung">
         <ExternalLink v-if="data.source" :href="data.source.url" class="link-muted">{{ data.source.label }}{{ annexTag }}</ExternalLink>
         <!-- The geltender Text of the Lesefassung, only where one is
              expandable somewhere: RIS text in force, with a Fundstelle of its
              own. -->
         <ExternalLink
-          v-if="consolidatedShown > 0 && consolidated?.paragraphs[0]?.risUrl"
-          :href="consolidated.paragraphs[0]!.risUrl!"
+          v-if="soleRisUrl"
+          :href="soleRisUrl"
           class="link-muted"
         >Geltender Text im RIS</ExternalLink>
         <!-- Gone on 30.09.2026, both added the same morning: the Stichtag

@@ -53,6 +53,8 @@ import { articleNumberKey, isDivision, isSchedule, unitKey } from '../text/desig
  * - `kein-anhang` — the draft carries no readable Textgegenüberstellung.
  * - `anhang-schweigt` — there is one, but it says nothing checkable about
  *   this §.
+ * - `anhang-fremd` — it does, but its geltende Fassung is not the standing
+ *   text in RIS, so what it proposes cannot be held against our result.
  * - `anhang-widerspricht` — it contradicts the engine's result.
  */
 export type WithholdCause = ConsolidatedWithheldCause
@@ -83,9 +85,14 @@ export function gateParagraph({ refused, plausible, oracle }: GateInput): { show
   if (oracle === 'bestätigt') return { show: true, cause: null }
   if (oracle === 'kein Anhang') return { show: false, cause: 'kein-anhang' }
   if (oracle === 'widersprochen') return { show: false, cause: 'anhang-widerspricht' }
-  // „stumm" (the annex does not carry the §) and „fremd" (its geltende
-  // Fassung is not in the RIS text that way) are the same thing to a reader:
-  // there is no second opinion here. The harness keeps them apart.
+  // „fremd" — the annex's geltende Fassung is not in the RIS text that way.
+  // Until 26.10.2026 it shared a cause with „stumm": to a reader there is no
+  // second opinion either way. But the page now says the cause at the §
+  // (`app/utils/lesefassung.ts`), and there the two are different
+  // sentences — „the annex shows no change here" against „the annex starts
+  // from another text than RIS", which the annex section's own notice at
+  // the same § often says too.
+  if (oracle === 'fremd') return { show: false, cause: 'anhang-fremd' }
   return { show: false, cause: 'anhang-schweigt' }
 }
 
