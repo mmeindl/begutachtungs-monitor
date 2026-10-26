@@ -629,6 +629,42 @@ describe('the tail of one unit and the heading of the next', () => {
   })
 })
 
+describe('a title over the annex’s pages', () => {
+  /** „Textgegenüberstellung" across both columns, as the annex heads its first page. */
+  const title = (y: number): AnnexItem => ({ x: 300, y, width: 260, text: 'Textgegenüberstellung' })
+  const withTitle = (lines: Parameters<typeof page>[0]): AnnexPage => pageOf([title(780), ...headerPage().items.map((i) => ({ ...i, y: 760 })), ...page(lines).items])
+
+  // Salzburg prints it on every page of some documents (sbg-20822, all 42),
+  // and read as the start of a new document each time it cut the § that ran
+  // over the page: § 36 ended „Vorschüsse von", on both sides alike.
+  it('is a running head on every page, and a § runs on over the page', () => {
+    const rows = parseAnnexPdf([
+      withTitle([{ y: 700, left: '§ 36. (1) Die Gemeinden haben Vorschüsse von', right: '§ 36. (1) Die Gemeinden haben Vorschüsse von' }]),
+      withTitle([{ y: 700, left: 'je 22,5 % zu leisten.', right: 'je 22,5 % zu leisten.' }]),
+    ], ONE_LAW).rows
+    expect(rows.map((r) => r.gld)).toEqual(['§ 36.'])
+    expect(rows[0]!.current).toBe('§ 36. (1) Die Gemeinden haben Vorschüsse von je 22,5 % zu leisten.')
+  })
+
+  // Several files read as one annex each open with the title on a page of
+  // their own (12/ME XXVIII, RIS 215AB69F): what follows is the next
+  // document's front matter, no text of the § before it.
+  it('starts a document of its own on a page after one without it', () => {
+    const rows = parseAnnexPdf([
+      withTitle([{ y: 700, left: '§ 4. (1) Die Rebsorten sind zugelassen.', right: '§ 4. (1) Die Rebsorten sind zugelassen.' }]),
+      page([{ y: 700, left: '§ 5. (1) Weiter.', right: '§ 5. (1) Weiter.' }]),
+      withTitle([
+        { y: 700, left: 'Langtitel', right: 'Langtitel' },
+        { y: 686, left: 'Verordnung über das Weinbaukataster.', right: 'Verordnung über das Weinbaukataster.' },
+        { y: 672, left: 'Auf Grund des Weingesetzes wird verordnet:', right: 'Auf Grund des Weingesetzes wird verordnet:' },
+        { y: 658, left: '§ 1. (1) Das Kataster ist zu führen.', right: '§ 1. (1) Das Kataster wird geführt.' },
+      ]),
+    ], ONE_LAW).rows
+    expect(rows.find((r) => r.gld === '§ 5.')!.current).toBe('§ 5. (1) Weiter.')
+    expect(rows.find((r) => r.gld === '§ 1.')!.current).toBe('§ 1. (1) Das Kataster ist zu führen.')
+  })
+})
+
 describe('the header pair as the gate on the geometry', () => {
   // Every line of this path is read out of a coordinate, and nothing in the
   // text itself would reveal that the coordinates were misread — the words

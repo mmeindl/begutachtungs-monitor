@@ -784,6 +784,55 @@ function agreedSeam(seams: readonly number[]): number | null {
   return best
 }
 
+/** The annex's title line, „Textgegenüberstellung". */
+function isTitle(line: AnnexLine): boolean {
+  const both = `${line.left} ${line.right} ${line.spanning ?? ''}`.trim()
+  return both !== '' && TITLE_RE.test((line.spanning ?? both).replace(/\s+/g, ''))
+}
+
+/**
+ * The lines a document of its own begins with inside the annex: the first
+ * content line after each title that is not the annex's first.
+ *
+ * A ressort may publish one draft's Gegenüberstellung in several files, and
+ * they are read as one (`annexPdfService.ts`); 12/ME XXVIII prints three in
+ * one. Each opens with its title and its own front matter, and with nothing
+ * between, the second file's Langtitel, „StF:" and Promulgationsklausel ran on
+ * as text of the first file's last § — the Weinrecht-Sammelverordnung 2026's
+ * § 4 of the Rebsortenverordnung (RIS 215AB69F) „changed" by the head of the
+ * Verordnung that follows it.
+ *
+ * **A title on the page after a titled page is the running head of one
+ * document**, not the start of another: some of Salzburg's
+ * Textgegenüberstellungen print it on every page (sbg-20822, all 42), and
+ * read as a new document each time it cut every § that ran over a page —
+ * § 36 ended „Vorschüsse von", on both sides alike (26.10.2026). The
+ * documents a file joins start on a page of their own, after one that
+ * carries no title: 12/ME, RIS 7A666965 and 215AB69F, and the seven
+ * Artikel of Salzburg's package 32075.
+ */
+function startsDocument(pages: readonly (readonly AnnexLine[])[]): Set<AnnexLine> {
+  const out = new Set<AnnexLine>()
+  let content = false
+  let pending = false
+  let titledBefore = false
+  for (const lines of pages) {
+    const titled = lines.some(isTitle)
+    for (const line of lines) {
+      if (isTitle(line)) {
+        pending = content && !titledBefore
+        continue
+      }
+      if (isChrome(line)) continue
+      if (pending) out.add(line)
+      pending = false
+      content = true
+    }
+    titledBefore = titled
+  }
+  return out
+}
+
 /** Page furniture the Rundschreiben requires on every page — not content. */
 function isChrome(line: AnnexLine): boolean {
   const both = `${line.left} ${line.right} ${line.spanning ?? ''}`.trim()
@@ -958,6 +1007,16 @@ const NAMES_ITS_PARAGRAPHS_RE = /^\s*\(zu\s/
  */
 const SEVERAL_ELIDED_RE = /^(?:\[\s*(?:\.\.\.|…)\s*\]\s*|(?:\.\.\.|…)\s*)*§+\s*\d\S*\s+(?:bis|und)\s+§/
 
+/**
+ * „Text" on a line of its own: where RIS's print of a law ends its head —
+ * Langtitel, „StF:", the „Änderung" list of Bundesgesetzblätter, the table of
+ * contents — and the provisions begin. What stands before it is no heading of
+ * the first §: the Weinrecht-Sammelverordnung 2026 (RIS 215AB69F) prints its
+ * standing text so, and „BGBl. II Nr. 191/2023 BGBl. II Nr. 250/2024 Text"
+ * stood as text its § 1 loses.
+ */
+const RIS_BODY_START_RE = /^Text$/
+
 /** One line of one column, as `unitsOfColumn` reads it. */
 interface ColumnLine {
   text: string
@@ -967,6 +1026,8 @@ interface ColumnLine {
   centred?: boolean
   /** The headings printed across both columns above this line (`parseAnnexPdf`). */
   context?: string
+  /** The first line of a document of its own inside the annex (`startsDocument`): nothing above it is its heading. */
+  barrier?: boolean
 }
 
 /**
@@ -1040,7 +1101,20 @@ function unitsOfColumn(lines: readonly ColumnLine[]): ColumnUnit[] {
   let current: Unit = { gld: null, context: null, parts: [], opener: null }
 
   for (const line of lines) {
+    // A document of its own begins here: what stood above is no heading of
+    // what follows, and its front matter is front matter again.
+    if (line.barrier && (current.gld !== null || current.parts.length > 0)) {
+      units.push(current)
+      current = { gld: null, context: null, parts: [], opener: null }
+    }
     if (!line.text) continue
+    // RIS's print starts its provisions here: what stood above is its head,
+    // and the lines below begin like a document's front matter again.
+    if (RIS_BODY_START_RE.test(line.text.trim())) {
+      if (current.gld !== null || current.parts.length > 0) units.push(current)
+      current = { gld: null, context: null, parts: [], opener: null }
+      continue
+    }
     const marker = markerOf(line.text)
     if (!marker) {
       current.parts.push(line)
@@ -1384,7 +1458,8 @@ export function parseAnnexPdf(pages: readonly AnnexPage[], articles: readonly Dr
   // instead, which prints the header pair on 2 of its 7 pages. So the ink keeps
   // the cut.
   const boundary = vouched.length === read.length ? estimate : columnBoundary(vouched.map((p) => p.page))
-  const placed = vouched.length === read.length ? vouched.flatMap((p) => p.lines) : vouched.flatMap((p) => linesFromPage(p.page, boundary))
+  const pageLines = vouched.length === read.length ? vouched.map((p) => p.lines) : vouched.map((p) => linesFromPage(p.page, boundary))
+  const placed = pageLines.flat()
 
   // The one structural check this path has. Everything below reads a column
   // out of a coordinate, and nothing in the text itself would reveal that the
@@ -1398,6 +1473,9 @@ export function parseAnnexPdf(pages: readonly AnnexPage[], articles: readonly Dr
     return { rows: [], refusal: null, droppedPages, unreadable: 'Die beiden Spaltenüberschriften der Beilage waren nicht zu finden; die Seitengeometrie ist damit nicht belegt.' }
   }
   const lines = placed.filter((line) => !isChrome(line))
+  // Where a document of its own begins inside the annex: its title,
+  // „Textgegenüberstellung", after the first content line (`startsDocument`).
+  const documentStarts = startsDocument(pageLines)
   // Measured over the whole document, like the boundary: a single page need
   // not print one line that reaches its column's edge.
   const edges = columnEdges(placed, boundary, vouched[0]?.page.width ?? width)
@@ -1417,8 +1495,13 @@ export function parseAnnexPdf(pages: readonly AnnexPage[], articles: readonly Dr
   /** Context headings waiting for the provision they stand over. */
   let pendingHeading: string[] = []
   const contextFor = new Map<AnnexLine, string>()
+  /** The first line of a section that a new document of the annex begins with (`startsDocument`). */
+  const startsPart = new Set<AnnexLine>()
 
+  /** A document began on a line that went into no section — a heading, a law boundary — so the next one is its first. */
+  let partPending = false
   for (const [i, line] of lines.entries()) {
+    if (documentStarts.has(line)) partPending = true
     const role = roles.get(i)
     if (role?.role === 'candidate') {
       const article = resolution.accepted.get(role.at)
@@ -1455,6 +1538,8 @@ export function parseAnnexPdf(pages: readonly AnnexPage[], articles: readonly Dr
       contextFor.set(line, pendingHeading.filter(Boolean).join(' '))
       pendingHeading = []
     }
+    if (documentStarts.has(line) || partPending) startsPart.add(line)
+    partPending = false
     sections[sections.length - 1]!.lines.push(line)
   }
 
@@ -1465,8 +1550,8 @@ export function parseAnnexPdf(pages: readonly AnnexPage[], articles: readonly Dr
     if (section.opened && section.article) {
       rows.push({ kind: 'article', law, heading: headingOf(section.article), gld: null, para: null, paraAfter: null, current: '', proposed: '', change: 'unchanged', elided: false, segments: null, editorial: false, elisionRange: false })
     }
-    const leftLines = section.lines.map((l) => ({ text: l.left, wrapped: reachedEdge(l.leftEnd, edges.left), centred: isCentred(l.leftStart, l.leftEnd, margins.left), context: contextFor.get(l) }))
-    const rightLines = section.lines.map((l) => ({ text: l.right, wrapped: reachedEdge(l.rightEnd, edges.right), centred: isCentred(l.rightStart, l.rightEnd, margins.right), context: contextFor.get(l) }))
+    const leftLines = section.lines.map((l) => ({ text: l.left, wrapped: reachedEdge(l.leftEnd, edges.left), centred: isCentred(l.leftStart, l.leftEnd, margins.left), context: contextFor.get(l), barrier: startsPart.has(l) }))
+    const rightLines = section.lines.map((l) => ({ text: l.right, wrapped: reachedEdge(l.rightEnd, edges.right), centred: isCentred(l.rightStart, l.rightEnd, margins.right), context: contextFor.get(l), barrier: startsPart.has(l) }))
     const left = unitsOfColumn(leftLines)
     const right = unitsOfColumn(rightLines)
     const byId = new Map(left.filter((u) => u.id).map((u) => [u.id!, u]))
