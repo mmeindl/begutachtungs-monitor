@@ -729,12 +729,16 @@ async function verifyLaw(blocks: readonly TextBlock[], article: DraftArticle, ct
     }
     // The draft-time gate: refusal, plausibility, and — where the draft has
     // an annex — the ressort's own comparison. Tallied against the RIS truth.
+    // The instructions on the § it came from as well, as the page reads them
+    // (`kons/consolidate.ts`): „Der bisherige § 10 wird zu § 17 und lautet"
+    // addresses § 10, and the guard of § 17 weighs its payload.
     const touching = instructions
       .map((instruction, i) => ({ instruction, result: results[i]! }))
       .filter(({ instruction: { op, payload } }) => {
         const address = 'target' in op ? op.target : 'anchor' in op ? op.anchor : null
         if (address?.level === 'document') return true
-        if (address?.para && harnessKey(address.para) === id) return true
+        const named = address?.para ? harnessKey(address.para) : null
+        if (named !== null && id !== undefined && (named === id || named === originOfId(id))) return true
         if ((op.kind === 'insertAfter' || op.kind === 'append') && op.child === 'para') return payload.some((p) => p.id === id)
         return false
       })

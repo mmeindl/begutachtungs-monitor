@@ -1372,9 +1372,10 @@ const ONE_PLACE_SIBLINGS = 'Mehrere Einheiten für eine Stelle'
 
 /**
  * Applies one instruction. Mutates `law`; returns null on success or the
- * reason for refusal.
+ * reason for refusal. A § it moves to another number goes on `renamed`, as a
+ * renumbering's do (`renumberBatch`).
  */
-function applyOne(law: StandingLaw, { op, payload, line }: Instruction): string | null {
+function applyOne(law: StandingLaw, { op, payload, line }: Instruction, renamed: Renaming[]): string | null {
   switch (op.kind) {
     case 'toc':
       // The table of contents follows from the headings; deriving it is
@@ -1454,7 +1455,26 @@ function applyOne(law: StandingLaw, { op, payload, line }: Instruction): string 
         // text carries. Any other number in the text is a payload we misread.
         if (blocks.length === outgoing.length && blocks.some((b, i) => b.id !== '' && b.id !== outgoing[i]!.id)) {
           if (!op.run && !(blocks.length === 1 && renamedTo(line) === blocks[0]!.id)) return `Neuer Text trägt eine andere Bezeichnung (${blocks.find((b, i) => b.id !== outgoing[i]!.id)!.marker}), die die Anweisung nicht ankündigt`
-          return spliceRun(law.paragraphs, outgoing, blocks, 'para')
+          // ONE § out and one in is the § renamed: „Der bisherige § 10 wird zu
+          // § 17 und lautet", „§ 3d wird durch folgenden § 3e ersetzt". The
+          // Beilage pairs the two („§ 3d." left, „§ 3e." right), and without
+          // a record the new § had no origin — the page printed it as wholly
+          // inserted, and the oracle held only its right column against it
+          // (51/ME XXVIII, AC8FD757, E0399A69; 26.10.2026). In a batch of its
+          // own: nothing else moves with it. A run of several („§§ 11 bis 13
+          // … durch folgende §§ 18 bis 20") claims no succession one by one
+          // and stays a replacement; nor is a schedule a § (`unitKey`).
+          const [from, to] = [outgoing[0]!, blocks[0]!]
+          const renaming = blocks.length === 1 && !isSchedule(from.marker) && !isSchedule(to.marker)
+          // And it keeps its Überschrift unless the new text brings one, as
+          // every § restated does (below). Spliced as it came, § 3e lost
+          // „Zollrechtliche Bestimmungen für nationale Allgemeingenehmigungen"
+          // and § 29 its „Übergangsbestimmungen", which both Beilagen keep —
+          // unseen while nothing held the § against the one it came from.
+          if (renaming && op.withHeading && !to.heading) return 'samt Überschrift, aber keine Überschrift im neuen Text'
+          const reason = spliceRun(law.paragraphs, outgoing, renaming ? [{ ...to, heading: to.heading ?? from.heading }] : blocks, 'para')
+          if (reason === null && renaming) renamed.push({ level: 'para', para: `§ ${to.id}`, from: from.id, to: to.id, batch: (renamed[renamed.length - 1]?.batch ?? -1) + 1 })
+          return reason
         }
         if (single) {
           // The payload is the § *body*: "§ 7 lautet:" followed by (1) … (6).
@@ -1855,7 +1875,7 @@ function applyOne(law: StandingLaw, { op, payload, line }: Instruction): string 
     }
 
     case 'renumber':
-      return renumberBatch(law, [{ op, payload }], [])
+      return renumberBatch(law, [{ op, payload }], renamed)
 
     case 'replacePhrase': {
       const units = phraseUnits(law, op.target, op.eachUnit)
@@ -2270,7 +2290,7 @@ export function applyNovelle(input: StandingLaw, instructions: readonly Instruct
           extra.push({ line: b.line, kind: 'renumber', applied: reason === null, reason, para: 'target' in b.op ? b.op.target.para : null })
           batched.push(b)
         }
-      } else reason = applyOne(law, instruction)
+      } else reason = applyOne(law, instruction, renamed)
     } catch (err) {
       reason = `Fehler beim Anwenden: ${String(err)}`
     }
@@ -2278,6 +2298,8 @@ export function applyNovelle(input: StandingLaw, instructions: readonly Instruct
       if (op.target.level === 'para') paragraphsRenumbered = true
       else if (para) renumberedIn.add(para)
     }
+    // A § replaced by one under another number has moved as well (`applyOne`).
+    if (reason === null && op.kind === 'replace' && renamed.length > renamedBefore) paragraphsRenumbered = true
     if (reason === null) {
       for (const r of renamed.slice(renamedBefore)) if (r.level === 'para' && r.to) produced.add(r.to)
       if (idsBefore) for (const p of law.paragraphs) if (!idsBefore.has(p.id)) produced.add(p.id)

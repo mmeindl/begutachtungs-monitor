@@ -2074,6 +2074,51 @@ describe('a replacement whose new text carries other numbers (26.10.2026)', () =
   })
 })
 
+describe('a § replaced by one under another number is that § renamed (26.10.2026)', () => {
+  const l = (): StandingLaw => ({ paragraphs: [para('8', 'Acht', ['Alt acht.']), para('10', 'Zehn', ['Alt zehn.']), para('11', 'Elf', ['Alt elf.']), para('12', 'Zwölf', ['Alt zwölf.'])] })
+
+  it('records „wird zu § 17 und lautet" as a renaming, so the new § is held against the old one', () => {
+    // 51/ME XXVIII: the Beilage sets „§ 10." beside „§ 17."; without the
+    // record the page printed § 17 as wholly inserted.
+    const { renamed, results } = run(l(), instr('Der bisherige § 10 wird zu § 17 und lautet samt Überschrift:', [{ text: 'Siebzehn', heading: true }, '§ 17. Neu siebzehn.']))
+    expect(results[0]!.applied).toBe(true)
+    expect(renamed).toEqual([{ level: 'para', para: '§ 17', from: '10', to: '17', batch: 0 }])
+    const origin = renamedOrigins(renamed)
+    expect([origin('17'), origin('10'), origin('11')]).toEqual(['10', null, '11'])
+  })
+
+  it('reads „durch folgenden § 3e ersetzt" the same way, and keeps the Überschrift the new text does not bring (AC8FD757)', () => {
+    const { renamed, law: out } = run(l(), instr('§ 11 wird durch folgenden § 11a ersetzt:', ['§ 11a. Neu elf a.']))
+    expect(renamed.map((r) => [r.from, r.to])).toEqual([['11', '11a']])
+    expect(out.paragraphs.map((p) => `${p.id}:${p.heading}`)).toEqual(['8:Acht', '10:Zehn', '11a:Elf', '12:Zwölf'])
+    // A heading in the new text is the new heading; „samt Überschrift" without one is refused.
+    expect(run(l(), instr('Der bisherige § 10 wird zu § 17 und lautet:', [{ text: 'Siebzehn', heading: true }, '§ 17. Neu.'])).law.paragraphs[1]!.heading).toBe('Siebzehn')
+    expect(run(l(), instr('Der bisherige § 10 wird zu § 17 und lautet samt Überschrift:', ['§ 17. Neu.'])).results[0]!.reason).toBe('samt Überschrift, aber keine Überschrift im neuen Text')
+  })
+
+  it('records a run of several as no renaming — it claims no succession one by one', () => {
+    const { renamed, results } = run(l(), instr('Im 3. Abschnitt werden die bisherigen §§ 11 und 12 samt Überschriften durch folgende §§ 18 und 19 ersetzt:', ['§ 18. Neu achtzehn.', '§ 19. Neu neunzehn.']))
+    expect(results[0]!.applied).toBe(true)
+    expect(renamed).toEqual([])
+  })
+
+  it('puts it in a batch of its own behind a renumbering, and records nothing where it fails', () => {
+    const { renamed } = run(
+      l(),
+      instr('§ 8 erhält die Paragraphenbezeichnung "§ 9."'),
+      instr('Der bisherige § 10 wird zu § 17 und lautet:', ['§ 17. Neu siebzehn.']),
+      // § 11 still stands: the replacement is refused, and nothing moved.
+      instr('Der bisherige § 12 wird zu § 11 und lautet:', ['§ 11. Neu elf.']),
+    )
+    expect(renamed.map((r) => [r.from, r.to, r.batch])).toEqual([['8', '9', 0], ['10', '17', 1]])
+  })
+
+  it('licenses a later „(neu)", as a renumbering does', () => {
+    const { results } = run(l(), instr('Der bisherige § 10 wird zu § 17 und lautet:', ['§ 17. Neu siebzehn.']), instr('In § 17 (neu) wird das Wort "siebzehn" durch das Wort "zehn" ersetzt.'))
+    expect(results.map((r) => r.reason)).toEqual([null, null])
+  })
+})
+
 describe('what a refused line would have created (26.10.2026)', () => {
   it('keeps the §§ its new text spells out, and none of a table of contents', () => {
     // DC0E9C30: „Der 3. Unterabschnitt des 2. Abschnitts lautet:" refused for
