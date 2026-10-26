@@ -144,6 +144,23 @@ describe('applyNovelle — safety', () => {
 })
 
 describe('parseKonsParagraph', () => {
+  // KommAustria-Gesetz § 35 as RIS serves it (26.10.2026): Abs. 14 typed as
+  // `erltext`, the tag RIS uses for notes — and a note that repeats a
+  // marker the § has stays out.
+  it('reads an Absatz RIS typed as a note, and only that', () => {
+    const xml = `<risdok><nutzdaten><abschnitt>
+      <absatz typ="erltext" ct="artikel_anlage">§ 35</absatz>
+      <absatz typ="abs" ct="text"><gldsym>§ 35.</gldsym> (1) Eins.</absatz>
+      <absatz typ="abs" ct="text">(13) Dreizehn.</absatz>
+      <absatz typ="erltext" ct="text">(14) Für die Mitglieder ist Ersatz zu leisten.</absatz>
+      <absatz typ="erltext" ct="text">(1) Eine Anmerkung, die eine Marke wiederholt.</absatz>
+      <ueberschrift typ="titel">Zuletzt aktualisiert am</ueberschrift><absatz typ="erltext" ct="geaendert">24.04.2026</absatz>
+    </abschnitt></nutzdaten></risdok>`
+    const node = parseKonsParagraph(xml)!
+    expect(node.children.map((c) => c.id)).toEqual(['1', '13', '14'])
+    expect(node.children[2]!.text).toBe('Für die Mitglieder ist Ersatz zu leisten.')
+  })
+
   it('reads a RIS BrKons document into the tree', () => {
     const xml = `<risdok><nutzdaten><abschnitt>
       <kzinhalt typ="p"><absatz typ="kz">Bundesrecht konsolidiert</absatz></kzinhalt>

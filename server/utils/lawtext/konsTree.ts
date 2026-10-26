@@ -371,7 +371,17 @@ export function parseKonsParagraph(xml: string): LawNode | null {
     // engine had reproduced exactly then counted as incomplete, because an
     // instruction replacing that Absatz dropped the appended block. So the
     // fallback applies to the documents that need it and to no others.
-    if (typ === 'erltext' && hasAbsaetze) continue
+    //
+    // **Except an Absatz RIS typed as one** (26.10.2026): KommAustria-Gesetz
+    // § 35 ends „(13) … </absatz><absatz typ="erltext">(14) Für die in der
+    // KommAustria tätigen Mitglieder …" — a binding Absatz, and skipped here
+    // every Lesefassung of § 35 lacked it. The annex's „(2) bis (14) …" named
+    // it, and only the oracle's Absatz check saw the gap (`absatzOrderBroken`).
+    // Over the 25.187 cached § documents with Absätze, 14 erltext blocks open
+    // with an Absatz marker: 10 such Absätze (two Sparkassengesetz §§ with
+    // (10) to (15)), and 4 that repeat a marker the § already has — a list
+    // inside a schedule-like §, which stays out.
+    if (typ === 'erltext' && hasAbsaetze && typedAsNote(inner, root)) continue
     if (typ !== 'abs' && typ !== 'satz' && typ !== '' && typ !== 'erltext') continue
     const gld = GLD_RE.exec(inner)
     const rest = text(gld ? inner.replace(gld[0], ' ') : inner)
@@ -414,6 +424,17 @@ export function parseKonsParagraph(xml: string): LawNode | null {
   // not tell the units apart, the refusal is the right answer and stays.
   if (sawTable && root && !uniquelyAddressable(root)) return null
   return root
+}
+
+/**
+ * Whether an `erltext` block in a § with Absätze is the Absatz RIS mistyped
+ * rather than a note: it opens with an Absatz marker the § does not carry
+ * yet. Named for what it rules out, so the call reads as the skip it
+ * guards.
+ */
+function typedAsNote(inner: string, root: LawNode | null): boolean {
+  const am = /^\((\d+[a-z]?)\)\s/.exec(text(inner))
+  return !am || !root || root.children.some((c) => c.level === 'abs' && c.id === am[1])
 }
 
 /** No two children of a node share a level and a designation. */

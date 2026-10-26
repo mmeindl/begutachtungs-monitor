@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest'
-import { KEPT_DELETION_NOTE, keptDeletion, oracleVerdict, paraIdOfGld, paragraphRows, rowsByParagraph, stripMarkers } from '../server/utils/kons/tguOracle'
+import { KEPT_DELETION_NOTE, absatzSequence, keptDeletion, oracleVerdict, paraIdOfGld, paragraphRows, rowsByParagraph, stripMarkers } from '../server/utils/kons/tguOracle'
+import type { LawNode } from '../server/utils/lawtext/konsTree'
 import type { ComparisonRow } from '../server/utils/annex/comparisonRows'
 
 function pair(current: string, proposed: string, gld: string | null = null, elided = false, law: string | null = null): ComparisonRow {
@@ -637,4 +638,70 @@ describe('check 3 and the diff around an insertion (06.10.2026)', () => {
     const rows = [pair('Mengenschwellen für die Anwendung.', 'Mengenschwellen und Konzentrations- schwellen für die Anwendung.', '§ 12.')]
     expect(oracleVerdict('12', before, got, rows)).toMatchObject({ verdict: 'bestätigt' })
   })
+})
+
+describe('oracleVerdict — structure and numbers (26.10.2026)', () => {
+  // 48/ME KOG § 35: „vor Abs. 2 … eingefügt" — our result put the new (1h)
+  // after (2), with every word right. Checks 1 to 4 compare text without
+  // markers and confirmed it; the annex prints (1h) above „(2) bis (14) …".
+  const before = 'Text eins. Text zwei. Text drei.'
+  const got = 'Text eins. Text zwei. Neuer Text. Text drei.'
+  const rows = [
+    pair('§ 35. (1f) Text eins.', '§ 35. (1f) Text eins.', '§ 35.'),
+    pair('', '(1h) Neuer Text.'),
+    pair('(2) bis (3) …', '(2) bis (3) …', null, true),
+  ]
+
+  it('contradicts a result whose Absätze stand in another order than the annex prints them', () => {
+    expect(oracleVerdict('35', before, got, rows)).toMatchObject({ verdict: 'bestätigt' })
+    expect(oracleVerdict('35', before, got, rows, ['1f', '2', '1h', '3'])).toMatchObject({ verdict: 'widersprochen', note: expect.stringMatching(/^Absätze der Beilage nicht so im Ergebnis: \(2\)/) })
+    expect(oracleVerdict('35', before, got, rows, ['1f', '1h', '2', '3'])).toMatchObject({ verdict: 'bestätigt' })
+  })
+
+  // 126/ME StAG § 42: a second Artikel applied to the untouched text lost
+  // the (26) the first inserts; the annex names it in its elision chain.
+  it('contradicts a result that lacks an Absatz the annex prints', () => {
+    const withChain = [pair('(1) bis (26) …', '(1) bis (26) …', '§ 42.', true), pair('', '(27) Neu.')]
+    expect(oracleVerdict('42', 'Alt.', 'Alt. Neu.', withChain, ['1', '25', '27'])).toMatchObject({ verdict: 'widersprochen', note: expect.stringContaining('(26) fehlt im Ergebnis') })
+    // Missing from the standing text as well: the annex assumes another text.
+    expect(oracleVerdict('42', 'Alt.', 'Alt. Neu.', withChain, ['1', '25', '27'], ['1', '25'])).toMatchObject({ verdict: 'fremd' })
+    expect(oracleVerdict('42', 'Alt.', 'Alt. Neu.', withChain, ['1', '25', '26', '27'])).toMatchObject({ verdict: 'bestätigt' })
+    // A result without Absätze has nothing to hold the markers against.
+    expect(oracleVerdict('42', 'Alt.', 'Alt. Neu.', withChain, [])).toMatchObject({ verdict: 'bestätigt' })
+  })
+
+  it('reads a marker only where one can stand', () => {
+    // An exam regulation's grades and a wavelength are text, not Absätze.
+    const grades = [pair('(2) Jeder Prüfer hat', '(2) Jeder Prüfer hat zu beurteilen: a) sehr gut (1), b) gut (2), c) genügend (3).', '§ 14.'), pair('(3) Die Verhandlungsschrift', '(3) Die Verhandlungsschrift ist abzuschließen.')]
+    expect(oracleVerdict('14', 'Jeder Prüfer hat Die Verhandlungsschrift', 'Jeder Prüfer hat zu beurteilen: a) sehr gut (1), b) gut (2), c) genügend (3). Die Verhandlungsschrift ist abzuschließen.', grades, ['2', '3'])).toMatchObject({ verdict: 'bestätigt' })
+    // Read off the display: an Absatz set inline still counts as the one it
+    // says, and a tree with an unnumbered Absatz gives nothing to compare.
+    const node = (ids: string[], inline = ''): LawNode => ({ level: 'para', id: '11', marker: '§ 11.', heading: null, context: [], text: '', children: ids.map((a, i) => ({ level: 'abs', id: a, marker: a ? `(${a})` : '', heading: null, context: [], text: `Satz ${i}.${i === 0 ? inline : ''}`, children: [] })) })
+    expect(absatzSequence(node(['1'], ' (2) Die Frist endet.'))).toEqual(['1', '2'])
+    expect(absatzSequence(node(['', '2']))).toBeUndefined()
+    // A repealed Absatz the annex prints as „Aufgehoben" is none RIS prints,
+    // and the § before's tail in front of the designation is not this §.
+    expect(oracleVerdict('417', 'Eins. Zwei.', 'Eins.', [pair('§ 417. (1) ... (2) Zwei.', '§ 417. (1) ... (2) Aufgehoben.', '§ 417.')], ['1'])).toMatchObject({ verdict: 'bestätigt' })
+    expect(oracleVerdict('6f', 'Eins.', 'Eins. Neu.', [pair('(3) […] § 6f. (1) Eins.', '(3) […] § 6f. (1) Eins. Neu.', '§ 6f.')], ['1'])).toMatchObject({ verdict: 'bestätigt' })
+  })
+
+  it('sees a date that moves, and a citation number that ends a sentence', () => {
+    expect(stripMarkers('tritt mit 15. Juli 2026 in Kraft')).toBe('tritt mit 15 Juli 2026 in Kraft')
+    expect(stripMarkers('nach Maßgabe des Abs. 2.')).toBe('nach Maßgabe des Abs. 2')
+    // Still a marker where nothing around says otherwise.
+    expect(stripMarkers('folgende: 1. erstens 2. zweitens')).toBe('folgende: erstens zweitens')
+    const inForce = [pair('§ 9. Diese Verordnung tritt mit 1. Juli 2026 in Kraft.', '§ 9. Diese Verordnung tritt mit 15. Juli 2026 in Kraft.', '§ 9.')]
+    const old = 'Inkrafttreten Diese Verordnung tritt mit 1. Juli 2026 in Kraft.'
+    expect(oracleVerdict('9', old, old, inForce)).toMatchObject({ verdict: 'widersprochen' })
+    expect(oracleVerdict('9', old, old.replace('1. Juli', '15. Juli'), inForce)).toMatchObject({ verdict: 'bestätigt' })
+  })
+})
+
+it('files the previous §\'s elided tail under that §, not as the next one\'s heading', () => {
+  // Strafvollzugsgesetz § 115/§ 116 (Strafvollzugsnovelle 2026): „(3) …" is
+  // short and ends in no full stop, and stood at the head of § 116.
+  const rows = [pair('§ 115. (1) a', '§ 115. (1) b', '§ 115.'), pair('(3) …', '(3) …', null, true), pair('§ 116. (1) c', '§ 116. (1) d', '§ 116.')]
+  const grouped = rowsByParagraph(rows)
+  expect(grouped.get('#115')).toHaveLength(2)
+  expect(grouped.get('#116')).toHaveLength(1)
 })

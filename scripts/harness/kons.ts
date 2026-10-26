@@ -56,7 +56,7 @@ import { guardParagraph, type GuardFlag } from '../../server/utils/kons/applyGua
 import { refusedUnits } from '../../server/utils/kons/konsGate'
 import { parseTextComparison, type ComparisonRow } from '../../server/utils/annex/comparisonRows'
 import { isScanned } from '../../server/utils/annex/tableCells'
-import { oracleVerdict, paragraphRows, rowsByParagraph, stripMarkers, type OracleVerdict } from '../../server/utils/kons/tguOracle'
+import { absatzSequence, oracleVerdict, paragraphRows, rowsByParagraph, stripMarkers, type OracleVerdict } from '../../server/utils/kons/tguOracle'
 import { installFetchCache } from '../lib/harnessCache'
 import { argAssigned, argFlag } from '../lib/args'
 import { PARLIAMENT, risJson as risQuery } from '../lib/http'
@@ -740,7 +740,9 @@ async function verifyLaw(blocks: readonly TextBlock[], article: DraftArticle, ct
     if (id && refusedIds.has(id)) flags.add('verweigert')
     const dangerous = verdict === 'abweichend' && comparable
     const outcome = dangerous ? 'abweichend' : verdict
-    const oracleReport = oracle && id ? oracleVerdict(id, beforeText, got, paragraphRows(oracle.rows, id, oracle.lawKey)) : null
+    // With the Absätze, as the page asks it (`kons/consolidate.ts`): a
+    // Prüfstand measuring checks 1 to 4 alone would report another oracle.
+    const oracleReport = oracle && id ? oracleVerdict(id, beforeText, got, paragraphRows(oracle.rows, id, oracle.lawKey), absatzSequence(node), beforeNode ? (absatzSequence(beforeNode) ?? null) : null) : null
     const oracleKey: OracleVerdict | 'kein Orakel' = oracleReport?.verdict ?? 'kein Orakel'
     tally(oracleTally, `${oracleKey}|${outcome}|${flags.has('verweigert') ? 'verweigert' : 'ohne Verweigerung'}`)
     if (oracle && id && bgblLines) {

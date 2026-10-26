@@ -176,7 +176,7 @@ import { fetchParagraphTree } from '../../server/utils/harness/risKonsHistory'
 import { parseTextComparison, type ComparisonRow } from '../../server/utils/annex/comparisonRows'
 import { isScanned } from '../../server/utils/annex/tableCells'
 import { applyNovelle, instructionsFromUnits, type StandingLaw } from '../../server/utils/kons/lawApply'
-import { KEPT_DELETION_NOTE, oracleVerdict, paragraphRows, rowsByParagraph, type OracleVerdict } from '../../server/utils/kons/tguOracle'
+import { ABSATZ_ORDER_NOTE, KEPT_DELETION_NOTE, absatzSequence, oracleVerdict, paragraphRows, rowsByParagraph, type OracleVerdict } from '../../server/utils/kons/tguOracle'
 import { segmentUnits } from '../../server/utils/lawtext/lawUnits'
 import { anlageLabelKey, bareParaId } from '../../server/utils/text/designation'
 import { installFetchCache } from '../lib/harnessCache'
@@ -636,6 +636,78 @@ function withKeptRemoval(before: string, got: string, replaced: boolean): { cont
 /** Equal runs shorter than this inside a struck unit are the LCS pairing a function word by chance. */
 const BRIDGE = 3
 
+/** The ids of a §'s Absätze — where the faults pick their Absatz. */
+const absOf = (node: LawNode): string[] => node.children.filter((c) => c.level === 'abs').map((c) => c.id)
+
+/** „(1h)" → „1h", every Absatz marker the annex's proposed column prints for this §. */
+function printedAbsaetze(rows: readonly ComparisonRow[], elidedOnly: boolean): Set<string> {
+  const out = new Set<string>()
+  for (const r of rows) {
+    if (r.kind !== 'pair' || !r.proposed || (elidedOnly && !r.elided)) continue
+    for (const m of normalizeText(r.proposed).matchAll(/(?:^|\s)\((\d+[a-z]*)\)(?=\s|$)/g)) out.add(m[1]!)
+  }
+  return out
+}
+
+/**
+ * The structural faults of 26.10.2026 — the two the oracle could not see
+ * while it compared text alone (check 5, `absatzOrderBroken`):
+ *
+ * - **Reihe** — two neighbouring Absätze of the result swapped, both printed
+ *   by the annex. 48/ME KOG § 35: the new (1h) after (2), every word right.
+ * - **Fehlt** — an Absatz of the result dropped that the annex prints only in
+ *   an elision chain („(1) bis (26) …"), so no text check reads it. 126/ME
+ *   StAG § 42: the (26) another Artikel inserts.
+ *
+ * Built on the tree, so the faulted result is a result the engine could
+ * produce: the same Absätze, in another order or one fewer.
+ */
+function structuralFault(node: LawNode, rows: readonly ComparisonRow[], kind: 'Reihe' | 'Fehlt'): LawNode | null {
+  const abs = node.children.filter((c) => c.level === 'abs')
+  if (kind === 'Reihe') {
+    const printed = printedAbsaetze(rows, false)
+    for (let i = 0; i + 1 < node.children.length; i++) {
+      const [a, b] = [node.children[i]!, node.children[i + 1]!]
+      if (a.level !== 'abs' || b.level !== 'abs' || !printed.has(a.id) || !printed.has(b.id)) continue
+      const children = [...node.children]
+      children[i] = b
+      children[i + 1] = a
+      return { ...node, children }
+    }
+    return null
+  }
+  const chained = printedAbsaetze(rows, true)
+  const changed = printedAbsaetze(rows.filter((r) => !r.elided), false)
+  const drop = abs.find((c) => chained.has(c.id) && !changed.has(c.id) && c !== abs[0] && c !== abs[abs.length - 1])
+  return drop ? { ...node, children: node.children.filter((c) => c !== drop) } : null
+}
+
+/** The same Absatz out of the standing § — `Fehlt` takes it from both sides. */
+function withoutAbsatz(node: LawNode, id: string): LawNode {
+  return { ...node, children: node.children.filter((c) => !(c.level === 'abs' && c.id === id)) }
+}
+
+/**
+ * **Datum** — the day of a date the annex prints in a changed row, moved by
+ * one: „1. Juli" → „2. Juli". Until 26.10.2026 `stripMarkers` took every
+ * „1." for a Ziffer's marker, on both sides, and a result that missed a
+ * moved Inkrafttreten read exactly like one that made it.
+ */
+function dateFault(got: string, rows: readonly ComparisonRow[]): string | null {
+  const shown = rows.filter((r) => r.kind === 'pair' && !r.elided && r.change !== 'unchanged').map((r) => normalizeText(r.proposed)).join(' ')
+  for (const m of got.matchAll(/(?<!\d)(\d{1,2})\.(\s*)(Jänner|Januar|Februar|März|April|Mai|Juni|Juli|August|September|Oktober|November|Dezember)/g)) {
+    // The date with the words around it, so it is THIS date the annex
+    // prints — „1. Oktober" alone stands inside „31. Oktober", and a date in
+    // an Absatz the annex leaves out is a fault nothing could see.
+    const window = normalizeText(got.slice(Math.max(0, m.index! - 30), m.index! + m[0].length + 20)).replace(/^\S*\s/, '').replace(/\s\S*$/, '')
+    if (!shown.includes(window)) continue
+    const day = Number(m[1])
+    const moved = `${day >= 28 ? day - 1 : day + 1}.${m[2]}${m[3]}`
+    return got.slice(0, m.index) + moved + got.slice(m.index! + m[0].length)
+  }
+  return null
+}
+
 /**
  * The engine on this draft, and the oracle on its result — once as computed,
  * once per fault.
@@ -689,8 +761,17 @@ async function injectIntoResults(
       const before = beforeNode ? plainText(beforeNode) : null
       const got = plainText(node)
       const paraRows = paragraphRows(byParagraph, id, lawKey)
-      const report = oracleVerdict(id, before, got, paraRows)
+      const report = oracleVerdict(id, before, got, paraRows, absatzSequence(node), beforeNode ? (absatzSequence(beforeNode) ?? null) : null)
       results.verdicts.set(report.verdict, (results.verdicts.get(report.verdict) ?? 0) + 1)
+      // Check 5's false-alarm side, like check 4's below: every § it speaks
+      // on had passed the other four.
+      if (report.note?.startsWith(ABSATZ_ORDER_NOTE)) {
+        results.order++
+        results.orderAlarms.push(`${cite} § ${id}${lawKey ? ` [${String(lawKey).slice(0, 24)}]` : ''} — ${report.note}`)
+        if (argFlag('alarme')) {
+          results.orderAlarms.push(...paraRows.filter((r) => r.kind === 'pair').map((r) => `          ${r.elided ? 'ausgelassen' : r.change.padEnd(11)}: ${r.proposed.slice(0, 160)}`), `          Ergebnis-Absätze: ${(absatzSequence(node) ?? []).join(', ')}`)
+        }
+      }
       // The false-alarm side of the new check: it runs last, so every § it
       // speaks on had passed the other three — confirmed until 01.10.2026.
       if (report.note?.startsWith(KEPT_DELETION_NOTE)) {
@@ -705,6 +786,35 @@ async function injectIntoResults(
       }
       if (report.verdict !== 'bestätigt' || before === null) continue
       results.confirmed++
+      for (const kind of ['Reihe', 'Fehlt'] as const) {
+        const faulted = structuralFault(node, paraRows, kind)
+        if (!faulted) continue
+        const into = oracleFaults[kind]
+        into.tried++
+        // „Fehlt" is the 126/ME shape: the Absatz is missing from the text
+        // the engine started from as much as from its result — another
+        // Artikel was to insert it — so no word was removed, and only the
+        // annex's chain names it.
+        const dropped = kind === 'Fehlt' ? absOf(node).find((a) => !absOf(faulted).includes(a)) ?? null : null
+        const faultedBefore = dropped && beforeNode ? plainText(withoutAbsatz(beforeNode, dropped)) : before
+        const judged = oracleVerdict(id, faultedBefore, plainText(faulted), paraRows, absatzSequence(faulted), beforeNode ? (absatzSequence(dropped ? withoutAbsatz(beforeNode, dropped) : beforeNode) ?? null) : null)
+        if (judged.verdict !== 'bestätigt') into.caught++
+        if (judged.note?.startsWith(ABSATZ_ORDER_NOTE)) into.byKept++
+        else if (judged.verdict === 'bestätigt') into.misses.push(`${cite} § ${id} — Absätze ${(absatzSequence(faulted) ?? []).join(', ')}`)
+      }
+      const dated = dateFault(got, paraRows)
+      if (dated) {
+        oracleFaults.Datum.tried++
+        const judged = oracleVerdict(id, before, dated, paraRows, absatzSequence(node), beforeNode ? (absatzSequence(beforeNode) ?? null) : null)
+        if (judged.verdict !== 'bestätigt') oracleFaults.Datum.caught++
+        else {
+          oracleFaults.Datum.misses.push(`${cite} § ${id}`)
+          if (argFlag('alarme')) {
+            const at = dated.split('').findIndex((ch, i) => ch !== got[i])
+            oracleFaults.Datum.misses.push(`        Ergebnis mit Fehler: …${dated.slice(Math.max(0, at - 60), at + 40)}…`, ...paraRows.filter((r) => r.kind === 'pair' && !r.elided && r.change !== 'unchanged').map((r) => `        vorgeschlagen: ${r.proposed.slice(0, 200)}`))
+          }
+        }
+      }
       for (const [replaced, into] of [[false, oracleFaults.E], [true, oracleFaults.Ersatz]] as const) {
         const fault = withKeptRemoval(before, got, replaced)
         if (!fault) continue
@@ -745,10 +855,13 @@ const faults = {
   U: tally('U     fremder Satz beidspaltig gleich'),
 }
 /** The engine's result as the oracle judged it, without any fault. */
-const results = { verdicts: new Map<OracleVerdict, number>(), confirmed: 0, controlMoved: 0, kept: 0, keptAlarms: [] as string[] }
+const results = { verdicts: new Map<OracleVerdict, number>(), confirmed: 0, controlMoved: 0, kept: 0, keptAlarms: [] as string[], order: 0, orderAlarms: [] as string[] }
 const oracleFaults = {
   E: oracleTally('E     eine Einheit zu viel'),
   Ersatz: oracleTally('E-neben alter Text neben dem neuen'),
+  Reihe: oracleTally('Reihe zwei Absätze vertauscht'),
+  Fehlt: oracleTally('Fehlt Absatz der Auslassung fehlt'),
+  Datum: oracleTally('Datum Tag eines Datums verschoben'),
 }
 
 const docs: any[] = []
@@ -839,14 +952,35 @@ console.log(`\n  Orakel (kons/tguOracle.ts) über das Ergebnis der Engine, ohne 
 for (const [verdict, n] of [...results.verdicts].sort((a, b) => b[1] - a[1])) console.log(`    ${verdict.padEnd(14)}: ${String(n).padStart(5)}`)
 console.log(`    Prüfung 4 („Gestrichenes steht noch im Ergebnis") meldet ohne Injektion: ${results.kept}`)
 for (const line of results.keptAlarms) console.log(`      + ${line}`)
+console.log(`    Prüfung 5 („Absätze der Beilage nicht so im Ergebnis") meldet ohne Injektion: ${results.order}`)
+for (const line of results.orderAlarms) console.log(`      + ${line}`)
 console.log(`\n  Mit Injektion ins Ergebnis, über ${results.confirmed} bestätigte Paragraphen mit geltendem Text (Kontrolle verschob ${results.controlMoved})`)
-console.log(`  Fehler                                §§   gefangen            davon Prüfung 4`)
-for (const fault of [oracleFaults.E, oracleFaults.Ersatz]) {
+console.log(`  Fehler                                §§   gefangen            davon Prüfung 4 (Reihe, Fehlt: Prüfung 5)`)
+for (const fault of [oracleFaults.E, oracleFaults.Ersatz, oracleFaults.Reihe, oracleFaults.Fehlt, oracleFaults.Datum]) {
   const cell = (n: number): string => `${String(n).padStart(6)} (${pct(n, fault.tried)})`
   console.log(`  ${fault.label.padEnd(36)} ${String(fault.tried).padStart(4)}   ${cell(fault.caught)}   ${cell(fault.byKept)}`)
 }
 if (argFlag('misses')) {
-  for (const fault of [oracleFaults.E, oracleFaults.Ersatz]) {
+  for (const fault of [oracleFaults.E, oracleFaults.Ersatz, oracleFaults.Reihe, oracleFaults.Fehlt, oracleFaults.Datum]) {
     for (const line of fault.misses) console.log(`    ${fault.label.slice(0, 8).trim()} durchgelassen: ${line}`)
   }
+}
+
+/**
+ * `--mindestens=95`: fail (exit 1) when the oracle catches less than this
+ * share of any fault class it was tried on at least 20 times (26.10.2026).
+ *
+ * The five classes are the oracle's measured reach, and a reach that is only
+ * printed regresses unseen — the first three classes stood at 1 to 3 % for
+ * weeks before anyone injected them. With a floor, a change to
+ * `kons/tguOracle.ts` or to the engine that loses a class fails the run the
+ * way a test does. Twenty tries, because below that one miss is five points.
+ */
+const floor = argAssigned('mindestens')
+if (floor !== null) {
+  const short = [oracleFaults.E, oracleFaults.Ersatz, oracleFaults.Reihe, oracleFaults.Fehlt, oracleFaults.Datum]
+    .filter((f) => f.tried >= 20 && (100 * f.caught) / f.tried < Number(floor))
+  for (const f of short) console.log(`  ✗ unter ${floor} %: ${f.label.trim()} — ${f.caught}/${f.tried}`)
+  if (short.length) process.exit(1)
+  console.log(`  ✓ jede Fehlerklasse mit mindestens 20 Versuchen zu mindestens ${floor} % gefangen`)
 }

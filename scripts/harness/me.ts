@@ -54,7 +54,7 @@ import { parseTextComparison, type ComparisonRow } from '../../server/utils/anne
 import { parseAnnexPdf } from '../../server/utils/annex/annexPdf'
 import { pagesOf } from '../../server/utils/annex/annexPdfPages'
 import { isScanned } from '../../server/utils/annex/tableCells'
-import { containmentKey, oracleVerdict, paragraphRows, rowsByParagraph, unaccountedStretch, type OracleVerdict } from '../../server/utils/kons/tguOracle'
+import { absatzSequence, containmentKey, oracleVerdict, paragraphRows, rowsByParagraph, unaccountedStretch, type OracleVerdict } from '../../server/utils/kons/tguOracle'
 import { dedupeMeRows, joinRisToMe, type MeListRow, type RisBegutRecord } from '../../server/utils/ris/risJoin'
 import { parseExplanations } from '../../server/utils/explanations/risExplanations'
 import { explanationsByParagraph } from '../../server/utils/explanations/explanationsJoin'
@@ -500,7 +500,8 @@ async function verifyLaw(
     }
     const plausible = !isRefused && guard.plausible
     if (plausible) result.plausible++
-    const report = rows ? oracleVerdict(id, beforeNode ? plainText(beforeNode) : null, plainText(node), paragraphRows(rows, id, lawKey)) : null
+    // With the Absätze, as the page asks it (`kons/consolidate.ts`).
+    const report = rows ? oracleVerdict(id, beforeNode ? plainText(beforeNode) : null, plainText(node), paragraphRows(rows, id, lawKey), absatzSequence(node), beforeNode ? (absatzSequence(beforeNode) ?? null) : null) : null
     const verdict: OracleVerdict | 'kein Anhang' = report?.verdict ?? 'kein Anhang'
     tally(oracleTally, `${plausible ? 'plausibel' : 'unplausibel'}|${verdict}`)
     outcome.set(id, isRefused ? 'Text, verweigert' : !guard.plausible ? 'Text, unplausibel' : verdict === 'bestätigt' ? 'gezeigt' : `Text, Orakel ${verdict}`)

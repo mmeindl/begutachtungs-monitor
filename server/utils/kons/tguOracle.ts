@@ -38,6 +38,7 @@ import type { ComparisonRow } from '../annex/comparisonRows'
 import { printedLayout, printedStretches } from '../annex/elision'
 import { punctuationTokens } from '../text/punctuationTokens'
 import { isSchedule, unitKey } from '../text/designation'
+import { bodyText, type LawNode } from '../lawtext/konsTree'
 
 export type OracleVerdict =
   /** All four containments hold */
@@ -225,7 +226,17 @@ function rowsById(byParagraph: ReadonlyMap<string, ComparisonRow[]>): Map<string
 }
 
 function isHeadingRow(row: ComparisonRow): boolean {
+  // An elided row is the annex's notation for text it leaves out — „(3) …"
+  // at the foot of the § before — and never a heading, however short it is
+  // and whatever it does not end with. Read as one, the previous §'s tail
+  // was filed at the head of the next: harmless while no check read elided
+  // rows, and 165 false alarms of check 5 once one did (26.10.2026).
+  if (row.elided) return false
   const cells = [row.current, row.proposed].filter(Boolean)
+  // Nor a row that opens with an Absatz marker: „(5) bis (16)", printed
+  // without its „…", is the same tail of the § before (Schulunterrichtsgesetz
+  // § 19/§ 20, ASVG § 31c/§ 31d). A § heading never opens with one.
+  if (cells.some((c) => /^\s*\(\d/.test(c))) return false
   return cells.length > 0 && cells.every((c) => c.length <= 120 && !/[.;:]$/.test(c))
 }
 
@@ -251,10 +262,31 @@ export function stripMarkers(t: string): string {
     normalizeText(t)
       .replace(/§+\s*\d+[a-z]*\.\s*/g, ' ')
       .replace(/(^|\s)\(\d+[a-z]*\)(?=\s|$)/g, '$1')
-      .replace(/(^|\s)\d+[a-z]*\.(?=\s|$)/g, '$1')
+      .replace(/(^|\s)(\d+[a-z]*)\.(?=\s|$)/g, (_whole, pre: string, num: string, offset: number, all: string) =>
+        keepsNumber(all.slice(0, offset), all.slice(offset + _whole.length)) ? `${pre}${num}` : pre)
       .replace(/(^|\s)[a-z]{1,2}\)(?=\s)/g, '$1'),
   )
 }
+
+/**
+ * Whether „15." is a number of the text rather than a Ziffer's marker: the
+ * day of a date („mit 15. Juli 2026"), or a citation's number at the end of
+ * a sentence („gemäß Abs. 2.", „nach Z 4.").
+ *
+ * **The marker rule stripped them all until 26.10.2026**, on both sides
+ * alike, so the comparison was symmetrical and blind: a draft moving an
+ * Inkrafttreten from „1. Juli" to „15. Juli", or a reference from „Abs. 2."
+ * to „Abs. 3.", left the same comparison form whether the engine carried it
+ * out or not — and an engine that missed it was confirmed. Kept only where
+ * the text around says which kind of number it is; every other bare „3."
+ * still goes as the marker it usually is. The dot goes either way, so a
+ * number ending the cell reads like the same number inside a sentence.
+ */
+function keepsNumber(before: string, after: string): boolean {
+  return MONTH_AFTER_RE.test(after) || CITATION_BEFORE_RE.test(before)
+}
+const MONTH_AFTER_RE = /^\s*(?:Jänner|Januar|Feber|Februar|März|April|Mai|Juni|Juli|August|September|Oktober|November|Dezember)(?!\p{L})/u
+const CITATION_BEFORE_RE = /(?:(?<!\p{L})(?:Abs|Art|lit|Nr|Z|Ziff|Pkt|Tz|Rz)\.?|(?<!\p{L})(?:Absatz|Absätze|Artikel|Ziffer|Ziffern|Satz|Sätze|Punkt|Teil|Abschnitt|Hauptstück|Kapitel))\s*$/u
 
 /**
  * Whitespace- and quote-free form for containment: the two sources break
@@ -864,12 +896,113 @@ export function keptDeletion(got: string, rows: readonly ComparisonRow[]): strin
   return null
 }
 
+/** How check 5's report opens — the harness counts its alarms by it. */
+export const ABSATZ_ORDER_NOTE = 'Absätze der Beilage nicht so im Ergebnis'
+
+/**
+ * „(1h)" → „1h": the Absatz markers a cell prints, in order — an elision's
+ * designation chain („(2) bis (14) …", „(3) und (4) …") included.
+ *
+ * **Only where a marker can stand**: at the start of the cell, or after the
+ * end of a sentence or an elision mark. Anywhere else a number in brackets
+ * is text — the grades „sehr gut (1), gut (2)" of an exam regulation, the
+ * wavelength „(254nm)" of the Bäderhygieneverordnung — and read as markers
+ * they made check 5 contradict sound results (26.10.2026).
+ */
+function absatzMarkers(cell: string, own: string | null = null): string[] {
+  const out: string[] = []
+  // On the PDF path a cell is a whole §, and what stands in front of ITS
+  // designation is not the § — its heading, or the § before's tail
+  // („(3) […] § 6f. (1) …", DokuG-Novelle 2025). Only its own: a citation
+  // ending a sentence („nach § 13.") is no place to cut.
+  const full = normalizeText(cell)
+  const symbol = own ? new RegExp(`§+\\s*${own.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}\\.\\s`).exec(full) : null
+  const text = symbol ? full.slice(symbol.index) : full
+  for (const m of text.matchAll(ABSATZ_RUN_RE)) {
+    // „(2) Aufgehoben." is the annex's way of saying the Absatz is gone, and
+    // RIS prints nothing in its place (`REPEALED_RE`).
+    if (/^\s*(?:Aufgehoben|\(aufgehoben\)|entfällt)/i.test(text.slice(m.index! + m[0].length))) continue
+    for (const n of m[0].matchAll(/\((\d{1,3}[a-z]?)\)/g)) out.push(n[1]!)
+  }
+  return out
+}
+/** A marker where one can stand, and the chain „bis"/„und" may hang on it. */
+const ABSATZ_RUN_RE = /(?:^|(?<=[.:;…]\s*)|(?<=\.\.\.\s*))\(\d{1,3}[a-z]?\)(?:\s+(?:bis|und)\s+\(\d{1,3}[a-z]?\))*(?=\s|$)/g
+
+/**
+ * Check 5: the Absätze the annex prints in its proposed column — every row
+ * of the §, in its order, the elided ones included — stand in the result,
+ * in the same order. The first that does not, or null.
+ *
+ * **The one thing checks 1 to 4 cannot see is structure** (26.10.2026). They
+ * compare text, and `stripMarkers` takes every „(2)" out first, because the
+ * annex sets its markers differently from the tree. So a result that put a
+ * new Absatz in the wrong place, or lost one, read the same as the right
+ * one wherever its words were all there: 48/ME KOG § 35 came out
+ * „(1f), (2), (1h), (3)" — the instruction says „vor Abs. 2" — and was
+ * confirmed; 126/ME StAG § 42 lacked the (26) a second Artikel inserts and
+ * was confirmed. Both are in the annex's own column as markers: „(1h)" above
+ * „(2) bis (14) …", „(1) bis (26) …" above „(27)".
+ *
+ * Read off the result's DISPLAY text with the same reader as the annex's
+ * column (`absatzSequence`), so both sides count a marker the same way —
+ * and an Absatz the engine set inline („(1) … (2) Die Frist …" in one node,
+ * Radonschutzverordnung § 11) reads as the two Absätze it says, which is
+ * what the reader sees. Not where the tree holds an Absatz without a number:
+ * RIS prints some first Absätze bare, and then the annex's „(1)" has
+ * nothing to meet (`absatzSequence` → undefined).
+ */
+// --- Measured surface: exported for tests and harness scripts, not for the app. ---
+export function absatzOrderBroken(rows: readonly ComparisonRow[], resultAbsaetze: readonly string[], standingAbsaetze: readonly string[] | null = null, own: string | null = null): { note: string; foreign: boolean } | null {
+  if (resultAbsaetze.length === 0) return null
+  const printed: string[] = []
+  const assumed = new Set<string>()
+  for (const row of rows) {
+    if (row.kind !== 'pair') continue
+    for (const m of absatzMarkers(row.current, own)) assumed.add(m)
+    if (!row.proposed) continue
+    for (const m of absatzMarkers(row.proposed, own)) if (printed[printed.length - 1] !== m) printed.push(m)
+  }
+  let at = 0
+  for (const m of printed) {
+    const found = resultAbsaetze.indexOf(m, at)
+    if (found >= 0) {
+      at = found + 1
+      continue
+    }
+    if (resultAbsaetze.includes(m)) return { note: `(${m}) steht im Ergebnis an anderer Stelle`, foreign: false }
+    // An Absatz the annex treats as standing — its geltende column prints it
+    // too, „(1) bis (26) …" on both sides — and that the text the engine
+    // started from lacks: the annex assumes an Absatz RIS does not carry on
+    // that day, another version or one another Artikel of the draft inserts
+    // first. That is the annex starting from another text (`fremd`), not our
+    // result contradicting it. An Absatz the annex inserts is new on its
+    // side alone, and missing from our result it is the engine's miss.
+    const foreign = standingAbsaetze !== null && !standingAbsaetze.includes(m) && assumed.has(m)
+    return { note: `(${m}) fehlt im Ergebnis${foreign ? ' und im geltenden Text' : ''}`, foreign }
+  }
+  return null
+}
+
+/**
+ * The Absatz markers a § displays, in order, as check 5 reads them — or
+ * undefined where the tree holds an Absatz without a number, which no marker
+ * of the annex can meet.
+ */
+export function absatzSequence(node: LawNode): string[] | undefined {
+  if (node.children.some((c) => c.level === 'abs' && !c.id)) return undefined
+  return absatzMarkers(bodyText(node).replace(/\n/g, ' … '))
+}
+
 /**
  * The oracle's verdict on one §: `before` and `got` as `plainText` gives
  * them (`before` null for a § the draft creates), `rows` the annex rows of
- * that §.
+ * that §, and `resultAbsaetze` the result's `absatzSequence` for check 5
+ * (`absatzOrderBroken`) — left out by a caller that has no tree, which then
+ * gets checks 1 to 4 only. `standingAbsaetze`, the standing §'s, tells an
+ * Absatz the engine lost from one the annex assumes and RIS never had.
  */
-export function oracleVerdict(id: string, before: string | null, got: string, rows: readonly ComparisonRow[]): OracleReport {
+export function oracleVerdict(id: string, before: string | null, got: string, rows: readonly ComparisonRow[], resultAbsaetze?: readonly string[], standingAbsaetze?: readonly string[] | null): OracleReport {
   const substantive = rows.filter((r) => r.kind === 'pair' && !r.elided && r.change !== 'unchanged')
   if (substantive.length === 0) return { para: id, verdict: 'stumm', rows: rows.length, note: null }
 
@@ -940,6 +1073,12 @@ export function oracleVerdict(id: string, before: string | null, got: string, ro
   const kept = keptDeletion(got, rows)
   if (kept !== null) {
     return { para: id, verdict: 'widersprochen', rows: rows.length, note: `${KEPT_DELETION_NOTE}: "${kept.slice(0, 60)}"` }
+  }
+  // Check 5, last for the same reason: its alarms are the confirmations it
+  // withdraws.
+  const broken = resultAbsaetze ? absatzOrderBroken(rows, resultAbsaetze, standingAbsaetze ?? null, id) : null
+  if (broken !== null) {
+    return { para: id, verdict: broken.foreign ? 'fremd' : 'widersprochen', rows: rows.length, note: `${ABSATZ_ORDER_NOTE}: ${broken.note}` }
   }
   return { para: id, verdict: 'bestätigt', rows: rows.length, note: null }
 }
