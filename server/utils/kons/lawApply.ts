@@ -2264,14 +2264,20 @@ function renumberBatch(law: StandingLaw, batch: readonly Pick<Instruction, 'op' 
     // A schedule takes a number or nothing: „Anhang VIII" read as „AnhangVIII"
     // would be an id no instruction and no RIS label ever names.
     const schedule = op.target.level === 'para' && isSchedule(op.target.para)
-    const first = op.to === '' ? '' : (bareParaId(op.to) ?? (schedule ? '' : op.to.replace(/[^\w]/g, '')))
+    // Both ends of a run read alike. „die bisherigen lit. e bis n erhalten die
+    // Literabezeichnungen ‚d)' bis ‚m)'" read the first as „d" and the last
+    // through `bareParaId` alone, which finds no number in a letter: every
+    // run of Litterae was refused as „nicht aufzählbar" (five lines of the
+    // GP-XXVIII drafts, 26.10.2026).
+    const designation = (to: string): string => bareParaId(to) ?? (schedule ? '' : to.replace(/[^\w]/g, ''))
+    const first = op.to === '' ? '' : designation(op.to)
     if (!first && op.to !== '') return 'Neue Bezeichnung nicht lesbar'
     if (first === '' && (op.toLast || nodes.length !== 1)) return 'Wegfall einer Bezeichnung nur für eine Einheit'
     // "die Z 5 bis 9 erhalten die Ziffernbezeichnungen „4.“ bis „8.“": the
     // new run must be exactly as long as the old one, or nothing moves.
     let newIds = [first]
     if (op.toLast) {
-      const range = expandRange(first, bareParaId(op.toLast) ?? '')
+      const range = expandRange(first, designation(op.toLast))
       if (!range) return `Zielbezeichnungen ${op.to} bis ${op.toLast} nicht aufzählbar`
       newIds = [first, ...range]
     }

@@ -741,6 +741,32 @@ describe('renumbering (2026-09-09)', () => {
     expect(results.map((r) => r.reason)).toEqual([null, null, null])
     expect(out.paragraphs[0]!.children.map((c) => `${c.id}:${c.text}`)).toEqual(['1:Eins.', '2:Die Summe darf die Kosten nicht übersteigen.'])
   })
+
+  it('enumerates a run of Litterae, as of Ziffern (D9552AF8, 3697C718; 26.10.2026)', () => {
+    // „Zielbezeichnungen d) bis m) nicht aufzählbar": the last designation of
+    // the run was read for a number, and a letter has none.
+    const l = (): StandingLaw => {
+      const p = makeNode('para', '3', '§ 3.', '', 'Begriffe')
+      const body = makeNode('abs', '', '', 'Im Sinne dieser Verordnung bedeutet:')
+      const z6 = makeNode('z', '6', '6.', 'Stoffe:')
+      ;['a', 'b', 'c', 'd', 'e', 'f'].forEach((x) => z6.children.push(makeNode('lit', x, `${x})`, `alt ${x}`)))
+      body.children.push(z6)
+      p.children.push(body)
+      return { paragraphs: [p] }
+    }
+    const lits = (out: StandingLaw) => out.paragraphs[0]!.children[0]!.children[0]!.children.map((c) => `${c.id}:${c.text}`)
+    const down = run(
+      l(),
+      instr('In § 3 Z 6 entfällt die lit. b und die bisherigen lit. c bis e erhalten die Literabezeichnungen "b)" bis "d)".'),
+      instr('In § 3 Z 6 erhält die bisherige lit. f die Literabezeichnung "e)" und lautet:', ['e) neu e']),
+    )
+    expect(down.results.map((r) => r.reason)).toEqual([null, null, null, null])
+    expect(lits(down.law)).toEqual(['a:alt a', 'b:alt c', 'c:alt d', 'd:alt e', 'e:neu e'])
+    // Upwards, and the insertion into the number the run vacated.
+    const up = run(l(), instr('In § 3 Z 6 erhalten die lit. c bis f die Bezeichnung "d)" bis "g)"; nach lit. b wird folgende lit. c eingefügt:', ['c) neu c']))
+    expect(up.results.map((r) => r.reason)).toEqual([null, null])
+    expect(lits(up.law)).toEqual(['a:alt a', 'b:alt b', 'c:neu c', 'd:alt c', 'e:alt d', 'f:alt e', 'g:alt f'])
+  })
 })
 
 describe('a § the Novelle brings into being (22.10.2026)', () => {
