@@ -497,6 +497,26 @@ describe('finding a § by its own words', () => {
     expect(onlyListed({ old: [], neu: [] })).toBe(false)
   })
 
+  it('takes an omission Salzburg prints without its „…" as one, and an Absatz\'s own „bis" or „und" not (26.10.2026)', () => {
+    expect(onlyElided('Allgemeines (1) bis (5)')).toBe(true)
+    expect(onlyElided('(3) bis (7)')).toBe(true)
+    expect(onlyElided('(1) und (2)')).toBe(true)
+    expect(onlyElided('(1) bis (4a)')).toBe(true)
+    expect(onlyElided('(3) bis zum 31. Dezember 2025 gelten die bisherigen Bestimmungen weiter.')).toBe(false)
+    expect(onlyElided('(3) Bis zum Ablauf des Jahres gelten die bisherigen Bestimmungen weiter.')).toBe(false)
+    const ris = '<nutzdaten>Kostenbeiträge § 62. (1) Eins. (2) Zwei. (3) Drei. (4) Vier. (5) Fünf. (6) Die Kostenbeiträge gemäß Abs. 1, 3 und 4 sind für jedes Jahr neu festzusetzen.</nutzdaten>'
+    // The stretch after the omission is what RIS checks; before, the bare „(1) bis (5)" counted as words of the text.
+    expect(standsInRis('Kostenbeiträge (1) bis (5) (6) Die Kostenbeiträge gemäß Abs. 1, 3 und 4 sind für jedes Jahr neu festzusetzen.', ris)).toBe(true)
+    expect(standsInRis('Kostenbeiträge (1) bis (5) (6) Die Kostenbeiträge gemäß Abs. 1, 3 und 4 sind für jedes Jahr anders festzusetzen.', ris)).toBe(false)
+    // „die Absätze (1) und (2) gelten …": words of the Absatz, not an omission.
+    expect(onlyElided('(4) Die Absätze (1) und (2) gelten sinngemäß.')).toBe(false)
+    // „(1) und (2) …" is one omission: the heading before it stands in RIS whole (Salzburg 18750, § 54).
+    const heading = '<nutzdaten>Leistungsbeurteilung für eine Schulstufe, Feststellungs- und Nachtragsprüfung § 54 (1) Eins. (2) Zwei.</nutzdaten>'
+    expect(standsInRis('Leistungsbeurteilung für eine Schulstufe, Feststellungs- und Nachtragsprüfung (1) und (2) ...', heading)).toBe(true)
+    expect(onlyElided('Leistungsbeurteilung (1) und (2) …')).toBe(true)
+    expect(searchPhrase('Kostenbeiträge (1) bis (5) (6) Die Kostenbeiträge gemäß den Bestimmungen dieses Gesetzes sind jedes Jahr festzusetzen.')).toBe('Kostenbeiträge gemäß den Bestimmungen dieses Gesetzes sind jedes')
+  })
+
   it('knows a § with nothing but elisions to check', () => {
     expect(onlyElided('(1) bis (4) …')).toBe(true)
     expect(onlyElided('(1) bis (4) … (5) Die Landesregierung hat durch Verordnung festzulegen.')).toBe(false)

@@ -648,21 +648,27 @@ function lcsShare(text: string, risText: string): number | null {
 export const STANDS_IN_RIS = 0.98
 
 /**
- * „(1) bis (7) …", „2. …": what a two-column Textgegenüberstellung leaves
- * out on purpose. The text between two such marks is the ressort's copy of
- * the law in force; the marks themselves are not.
+ * „(3) bis (7)", „(1) und (2)": an omission Salzburg prints without its „…"
+ * (26.10.2026) — Absätze named, and after them only the next Absatz or the
+ * end. Not „(3) bis zum 31. Dezember …", an Absatz's own words, nor „die
+ * Absätze (1) und (2) gelten …".
  */
-const ELISION_RE = /(?:\(?[\p{L}\p{N}]+[.)]?\s+bis\s+)?\(?[\p{L}\p{N}]+[.)]?\s*(?:…|\.\.\.)/gu
+const BARE_ELISION = String.raw`\(\d+[a-z]?\)\s+(?:bis|und)\s+\(\d+[a-z]?\)(?=\s*(?:\(\d|$))`
+/**
+ * „(1) bis (7) …", „2. …", „(1) und (2) …", „(3) bis (7)": what a
+ * two-column Textgegenüberstellung leaves out on purpose. The text between
+ * two such marks is the ressort's copy of the law in force; the marks
+ * themselves are not. Before „und", only a designation — „(1)", „1.", „a)" —
+ * so that a word of the text („Arbeitnehmer und 2. …") stays in it.
+ */
+const ELISION_RE = new RegExp(String.raw`(?:\(?[\p{L}\p{N}]+[.)]?\s+bis\s+|\(?[\p{L}\p{N}]+[.)]\s+und\s+)?\(?[\p{L}\p{N}]+[.)]?\s*(?:…|\.\.\.)|${BARE_ELISION}`, 'gu')
+const BARE_ELISION_RE = new RegExp(BARE_ELISION, 'u')
+/** Whether a text leaves anything out (`ELISION_RE`). */
+const elides = (text: string) => /…|\.\.\./.test(text) || BARE_ELISION_RE.test(text)
 
 /** A stretch shorter than this proves nothing either way. */
 const MIN_STRETCH_WORDS = 6
 
-/**
- * Does the text in force, as the document prints it, stand in RIS? Every
- * stretch between two elisions must (`shareInRis` ≥ `STANDS_IN_RIS`), and at
- * least one stretch must be long enough to say so. Without elisions — the
- * Oberösterreich format — this is `shareInRis` on the whole.
- */
 /**
  * A phrase to find a § by in RIS's full text: the first eight consecutive
  * plain words of the longest stretch between elisions, past its first two
@@ -680,9 +686,9 @@ export function searchPhrase(text: string): string | null {
   return null
 }
 
-/** Is the text in force, as printed, nothing but elisions — „(1) bis (4) …"? Then there is no wording to check. */
+/** Is the text in force, as printed, nothing but elisions — „(1) bis (4) …", „Allgemeines (1) bis (5)"? Then there is no wording to check. */
 export function onlyElided(text: string): boolean {
-  return /…|\.\.\./.test(text) && !text.split(ELISION_RE).some((s) => s.trim().split(/\s+/).length >= MIN_STRETCH_WORDS)
+  return elides(text) && !text.split(ELISION_RE).some((s) => s.trim().split(/\s+/).length >= MIN_STRETCH_WORDS)
 }
 
 /**
@@ -694,11 +700,17 @@ export function onlyElided(text: string): boolean {
  */
 export function onlyListed(p: Pick<TguParagraph, 'old' | 'neu'>): boolean {
   const old = joinLines(p.old)
-  return old !== '' && old === joinLines(p.neu) && !/…|\.\.\./.test(old) && comparableWords(old).length < MIN_STRETCH_WORDS
+  return old !== '' && old === joinLines(p.neu) && !elides(old) && comparableWords(old).length < MIN_STRETCH_WORDS
 }
 
+/**
+ * Does the text in force, as the document prints it, stand in RIS? Every
+ * stretch between two elisions must (`shareInRis` ≥ `STANDS_IN_RIS`), and at
+ * least one stretch must be long enough to say so. Without elisions — the
+ * Oberösterreich format — this is `shareInRis` on the whole.
+ */
 export function standsInRis(text: string, risText: string): boolean {
-  if (!/…|\.\.\./.test(text)) return shareInRis(text, risText) >= STANDS_IN_RIS
+  if (!elides(text)) return shareInRis(text, risText) >= STANDS_IN_RIS
   const stretches = text.split(ELISION_RE).map((s) => s.trim()).filter((s) => s.split(/\s+/).length >= MIN_STRETCH_WORDS)
   return stretches.length > 0 && stretches.every((s) => shareInRis(s, risText) >= STANDS_IN_RIS)
 }
