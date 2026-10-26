@@ -105,7 +105,7 @@ function multisetMinus(a: readonly string[], b: readonly string[]): string[] {
  * replacement its payload and the unit it replaces, a deletion the deleted
  * unit. What the engine actually changed must be covered by this.
  */
-function announced(before: StandingLaw, id: string, beforeTree: LawNode | null, ops: readonly Instruction[]): { inserted: string[]; removed: string[]; delta: number } {
+function announced(before: StandingLaw, id: string, beforeTree: LawNode | null, ops: readonly { instruction: Instruction; result: ApplyResult }[]): { inserted: string[]; removed: string[]; delta: number } {
   const inserted: string[] = []
   const removed: string[] = []
   let delta = 0
@@ -117,10 +117,16 @@ function announced(before: StandingLaw, id: string, beforeTree: LawNode | null, 
     removed.push(...punctuationTokens(t))
     delta -= t.length + 1
   }
-  const unitText = (op: Instruction['op'], targetId: string): string | null => {
+  /** The `at`-th unit `op` names below the §, as it stood when the instruction acted on it (`ApplyResult.units`). */
+  let units: readonly (LawNode | null)[] | undefined
+  const unitNode = (op: Instruction['op'], targetId: string, at: number): LawNode | null =>
+    !('target' in op) ? null : units ? (units[at] ?? null) : resolveTarget(before, op.target, targetId)
+  const unitText = (op: Instruction['op'], targetId: string, at: number): string | null => {
     if (!('target' in op) || !beforeTree) return null
     if (op.target.level === 'para') return targetId === id ? plainText(beforeTree) : null
-    const node = resolveTarget(before, op.target, targetId)
+    // Not by its address in the standing text: once a renumbering has moved
+    // the units, that names another one (`unitsActedOn` in `kons/lawApply.ts`).
+    const node = unitNode(op, targetId, at)
     if (!node) return null
     // A phrase inside a Halbsatz is searched in the sentence it lies in, not
     // in the whole unit (`halbsatzHost`), so a „jeweils" is counted there.
@@ -147,12 +153,13 @@ function announced(before: StandingLaw, id: string, beforeTree: LawNode | null, 
       const own = beforeTree ? plainText(beforeTree) : null
       return own !== null && own.includes(needle) ? [own] : []
     }
-    const units = t.satz || t.level !== 'para' ? [t.lit ?? t.z ?? t.abs ?? id, ...t.siblings] : [null]
-    const scopes = units.map((unit) => (unit !== null ? unitText(op, unit) : beforeTree ? plainText(beforeTree) : null))
+    const named = t.satz || t.level !== 'para' ? [t.lit ?? t.z ?? t.abs ?? id, ...t.siblings] : [null]
+    const scopes = named.map((unit, at) => (unit !== null ? unitText(op, unit, at) : beforeTree ? plainText(beforeTree) : null))
     const hit = scopes.filter((scope) => scope === null || scope.includes(needle))
     return hit.length > 0 ? hit : scopes.slice(0, 1)
   }
-  for (const { op, payload } of ops) {
+  for (const { instruction: { op, payload }, result } of ops) {
+    units = result.units
     // A payload of several §§ ("folgende §§ 10h und 10i") is charged to the §
     // it creates, not to every § it names; the first version charged both
     // to each and flagged every multi-§ insert (2026-09-09).
@@ -192,11 +199,11 @@ function announced(before: StandingLaw, id: string, beforeTree: LawNode | null, 
           break
         }
         const ids = [op.target.lit ?? op.target.z ?? op.target.abs ?? '', ...op.target.siblings]
-        for (const t of ids) {
+        for (const [at, t] of ids.entries()) {
           // A Halbsatz replaced is charged as that Halbsatz — the whole unit
           // would weigh a one-clause change as the loss of the Absatz.
-          const node = op.target.halbsatz && beforeTree ? resolveTarget(before, op.target, t) : null
-          const old = op.target.halbsatz ? (node ? addressedHalbsatz(node, op.target, payloadText) : null) : unitText(op, t)
+          const node = op.target.halbsatz && beforeTree ? unitNode(op, t, at) : null
+          const old = op.target.halbsatz ? (node ? addressedHalbsatz(node, op.target, payloadText) : null) : unitText(op, t, at)
           if (old !== null) loss(old)
         }
         break
@@ -209,8 +216,8 @@ function announced(before: StandingLaw, id: string, beforeTree: LawNode | null, 
         break
       case 'delete': {
         const ids = [op.target.lit ?? op.target.z ?? op.target.abs ?? id, ...op.target.siblings]
-        for (const t of ids) {
-          const old = unitText(op, t)
+        for (const [at, t] of ids.entries()) {
+          const old = unitText(op, t, at)
           if (old !== null) loss(old)
         }
         break
@@ -237,7 +244,7 @@ export function guardParagraph(
   touching: readonly { instruction: Instruction; result: ApplyResult }[],
 ): GuardReport {
   const flags = new Set<GuardFlag>()
-  const applied = touching.filter((t) => t.result.applied).map((t) => t.instruction)
+  const applied = touching.filter((t) => t.result.applied)
   if (touching.some((t) => !t.result.applied)) flags.add('verweigert')
 
   const beforeText = beforeTree ? plainText(beforeTree) : ''

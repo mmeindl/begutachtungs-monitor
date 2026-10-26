@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest'
 import { guardParagraph, SIZE_TOLERANCE } from '../server/utils/kons/applyGuard'
-import { applyNovelle, parsePayload, type Instruction, type StandingLaw } from '../server/utils/kons/lawApply'
-import type { LawNode } from '../server/utils/lawtext/konsTree'
+import { applyNovelle, parsePayload, renamedOrigins, type Instruction, type StandingLaw } from '../server/utils/kons/lawApply'
+import { makeNode, type LawNode } from '../server/utils/lawtext/konsTree'
 import { paraNode as para } from './helpers/builders'
 import { parseInstruction } from '../server/utils/kons/novao'
 
@@ -165,5 +165,42 @@ describe('an instruction on the whole text (26.10.2026)', () => {
   it('and charges it every time it does', () => {
     const l: StandingLaw = { paragraphs: [para('6', 'Zuständigkeit', ['Der Bundesminister für Land- und Forstwirtschaft, Umwelt und Wasserwirtschaft entscheidet; der Bundesminister für Land- und Forstwirtschaft, Umwelt und Wasserwirtschaft hört an.'])] }
     expect(guard(l, instr(line)).plausible).toBe(true)
+  })
+})
+
+describe('a unit the Novelle moved before an instruction acts on it (26.10.2026)', () => {
+  /** Run the instructions and guard § `id` of the result against the § it came from. */
+  function guardMoved(l: StandingLaw, instructions: Instruction[], id: string) {
+    const { law: out, results, renamed, touches } = applyNovelle(l, instructions)
+    const after = out.paragraphs.find((p) => p.id === id)!
+    const origin = renamedOrigins(renamed)(id)
+    const touching = instructions.map((instruction, i) => ({ instruction, result: results[i]! })).filter((_, i) => touches(i, after))
+    return guardParagraph(id, l, l.paragraphs.find((p) => p.id === origin) ?? null, after, touching)
+  }
+
+  it('charges the unit a renumbering below the § brought to the number, not the standing one (D9552AF8)', () => {
+    // „erhält die bisherige lit. f die Literabezeichnung ‚e)' und lautet"
+    // replaces the old lit. f; the standing lit. e is lit. d now and stays.
+    const p = makeNode('para', '3', '§ 3.', '', 'Sprengel')
+    const body = makeNode('abs', '', '', 'Es umfassen:')
+    const z6 = makeNode('z', '6', '6.', 'der Sprengel Nord')
+    ;['Bezirk Amstetten', 'Bezirk Baden', 'Bezirk Gänserndorf', 'Bezirk Hollabrunn', 'Bezirk Krems', 'Bezirk Mistelbach und Umgebung'].forEach((t, i) => z6.children.push(makeNode('lit', 'abcdef'[i]!, `${'abcdef'[i]})`, t)))
+    body.children.push(z6)
+    p.children.push(body)
+    const r = guardMoved({ paragraphs: [p] }, [
+      ...instr('In § 3 Z 6 entfällt die lit. b und die bisherigen lit. c bis e erhalten die Literabezeichnungen "b)" bis "d)".'),
+      ...instr('In § 3 Z 6 erhält die bisherige lit. f die Literabezeichnung "e)" und lautet:', ['e) Bezirk Tulln']),
+    ], '3')
+    expect(r.flags).toEqual([])
+  })
+
+  it('charges the Absatz of the § that came to the number, not of the one standing there (E0399A69)', () => {
+    const l: StandingLaw = { paragraphs: [para('15', 'Fünfzehn', ['Die Meldung erfolgt schriftlich.', 'Die Frist beträgt einen Monat ab Zustellung des Bescheides.']), para('16', 'Sechzehn', ['Zuständig ist die Landesregierung.', 'Sie entscheidet durch Verordnung.'])] }
+    const r = guardMoved(l, [
+      ...instr('§ 15 erhält die Paragraphenbezeichnung "16".'),
+      ...instr('§ 16 Abs. 2 lautet:', ['(2) Die Frist beträgt zwei Monate.']),
+      ...instr('§ 16 erhält die Paragraphenbezeichnung "17".'),
+    ], '16')
+    expect(r.flags).toEqual([])
   })
 })

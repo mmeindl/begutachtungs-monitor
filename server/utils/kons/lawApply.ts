@@ -46,6 +46,13 @@ export interface ApplyResult {
   reason: string | null
   /** The paragraph the instruction touched, e.g. "§ 5" */
   para: string | null
+  /**
+   * Below the §: each unit a replacement, a deletion or a phrase operation
+   * acted on, as it stood the moment before — in the order its address lists
+   * them, null for one not found (`unitsActedOn`). What the guard charges the
+   * instruction with (`kons/applyGuard.ts`).
+   */
+  units?: (LawNode | null)[]
 }
 
 /** One unit that changed its designation: "§ 8" became "§ 15". */
@@ -570,6 +577,8 @@ interface RunContext {
   pending: { index: number; id: string; reason: string }[]
   /** §§ arrived during the instruction now applied — the „neue §" it licenses. */
   arrivals: LawNode[]
+  /** The units below the § the instruction now applied acts on, as they stood before it (`ApplyResult.units`). */
+  units: (LawNode | null)[] | undefined
 }
 
 const RUNS = new WeakMap<StandingLaw, RunContext>()
@@ -2468,8 +2477,37 @@ const NEW_PARAGRAPH_RE = new RegExp(String.raw`(?<![\p{L}])neue[nmrs]?\s+§\s*($
 
 /** Deep copy, so a refused run leaves the standing law untouched. */
 function cloneLaw(law: StandingLaw): StandingLaw {
-  const clone = (n: LawNode): LawNode => ({ ...n, children: n.children.map(clone) })
-  return { paragraphs: law.paragraphs.map(clone) }
+  return { paragraphs: law.paragraphs.map(cloneNode) }
+}
+
+function cloneNode(n: LawNode): LawNode {
+  return { ...n, children: n.children.map(cloneNode) }
+}
+
+/**
+ * Each unit below the § an instruction is about to act on, as it stands now
+ * (`ApplyResult.units`) — looked up as the instruction itself looks it up, in
+ * the order its address lists them.
+ *
+ * The guard charges a replacement with the text it takes out, a deletion with
+ * the unit it removes, and counts a phrase where it stands. It looked each
+ * unit up by its address in the STANDING text, and once a renumbering has
+ * moved the units, the address names another one: „In § 3 Z 6 erhält die
+ * bisherige lit. o die Literabezeichnung ‚n)' und lautet" replaces the old
+ * lit. o, and the guard charged the standing lit. n, which is still there as
+ * lit. m (D9552AF8, D0F87F8D; 26.10.2026). The same after a § moved: „§ 16
+ * Abs. 2 lautet" behind „§ 15 erhält die Bezeichnung ‚16'" was charged with
+ * the standing § 16. A § itself is charged by what it came from
+ * (`renamedOrigins`), so only the units below it are kept here.
+ */
+function unitsActedOn(law: StandingLaw, { op }: Instruction): (LawNode | null)[] | undefined {
+  if (op.kind !== 'replace' && op.kind !== 'delete' && op.kind !== 'replacePhrase' && op.kind !== 'insertPhrase' && op.kind !== 'deletePhrase') return undefined
+  const a = op.target
+  if (a.level === 'para' || a.level === 'document' || a.heading) return undefined
+  return [a.lit ?? a.z ?? a.abs ?? bareParaId(a.para) ?? '', ...a.siblings].map((id) => {
+    const node = resolveTarget(law, a, id)
+    return node ? cloneNode(node) : null
+  })
 }
 
 /**
@@ -2544,6 +2582,7 @@ function runNovelle(input: StandingLaw, instructions: readonly Instruction[], va
     shared: [],
     pending: [],
     arrivals: [],
+    units: undefined,
   }
   for (const p of law.paragraphs) run.origin.set(unitOf(run, p), isSchedule(p.marker) ? (unitKey(p.marker) ?? p.id) : p.id)
   RUNS.set(law, run)
@@ -2578,6 +2617,7 @@ function runNovelle(input: StandingLaw, instructions: readonly Instruction[], va
     run.touched = new Set()
     run.pending = []
     run.arrivals = []
+    run.units = undefined
     run.prefer = movesParagraphs(instruction) ? 'standing' : 'arrived'
     let reason: string | null
     try {
@@ -2617,7 +2657,10 @@ function runNovelle(input: StandingLaw, instructions: readonly Instruction[], va
           extra.push({ line: b.line, kind: 'renumber', applied: reason === null, reason, para: 'target' in b.op ? b.op.target.para : null })
           batched.push(b)
         }
-      } else reason = refused.get(first) ?? applyOne(law, instruction, renamed)
+      } else {
+        if (!refused.has(first)) run.units = unitsActedOn(law, instruction)
+        reason = refused.get(first) ?? applyOne(law, instruction, renamed)
+      }
     } catch (err) {
       reason = `Fehler beim Anwenden: ${String(err)}`
     }
@@ -2635,7 +2678,7 @@ function runNovelle(input: StandingLaw, instructions: readonly Instruction[], va
       // A number taken while its standing § still carried it is new all the same.
       for (const p of run.arrivals) produced.add(p.id)
     }
-    results.push({ line, kind: op.kind, applied: reason === null, reason, para }, ...extra)
+    results.push({ line, kind: op.kind, applied: reason === null, reason, para, ...(run.units ? { units: run.units } : {}) }, ...extra)
     // Every § the address names: a failed „Die §§ 12a und 13 entfallen"
     // leaves § 13 as unresolved as § 12a, and a § 13 that is marked clean
     // would be shown as if the line had never been written. And every § it
