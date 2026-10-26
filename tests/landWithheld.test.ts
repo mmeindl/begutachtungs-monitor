@@ -63,7 +63,7 @@ describe('withheldNotes — the causes of 26.10.2026', () => {
   })
 })
 
-describe('withheldNotes — a law title (27.10.2026)', () => {
+describe('withheldNotes — a law title (26.10.2026)', () => {
   it('names a changed title after everything else, as what RIS cannot check, and refers to it as „ihn"', () => {
     const notes = withheldNotes([{ law: 'O', id: 'Titel', reason: 'title' }, { law: 'O', id: 'Anlage 1', reason: 'annex' }])
     expect(notes.map((n) => [n.cause, n.ids])).toEqual([['annex', ['Anlage 1']], ['title', ['Titel']]])

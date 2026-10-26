@@ -168,12 +168,12 @@ export interface TguParagraph {
    * reader could not read with certainty (Tirol); `division`, a § of a
    * division the Novelle replaces, inserts or repeals as a whole; `gap`, a
    * law whose instructions the reader did not all find; `annex`, an Anlage
-   * or Anhang (26.10.2026); `title`, the law's title (27.10.2026).
+   * or Anhang (26.10.2026); `title`, the law's title (26.10.2026).
    */
   because?: 'wording' | 'unsure' | 'division' | 'gap' | 'annex' | 'title'
   /**
    * The heading of a division the draft changes, printed over this § — on
-   * each side, joined into one line (`tguParagraphs`, 27.10.2026). Shown
+   * each side, joined into one line (`tguParagraphs`, 26.10.2026). Shown
    * with the § (`tguUnits`), and not part of what RIS checks (`old`).
    */
   division?: { old?: string; neu?: string }
@@ -318,7 +318,7 @@ const SIDE_DIVISION_RE = /^(?:\d+[a-z]?|[IVXL]+)\.\s*(?:Hauptstück|Abschnitt|Te
  * different provision from § 5 of the first — the title is what tells them
  * apart, and what the law in force is looked up by.
  *
- * HEADINGS THE DRAFT CHANGES (27.10.2026). A division's heading — „4.
+ * HEADINGS THE DRAFT CHANGES (26.10.2026). A division's heading — „4.
  * Abschnitt" and its name — that the draft marks goes, on each side, to the
  * § below it on that side, as the Bund's reader hands a division heading to
  * the provision below it (`annex/annexPdf.ts`): the change shows in that §
@@ -507,7 +507,7 @@ export function tguUnits(paragraphs: readonly TguParagraph[]): { from: LawUnit[]
   const from: LawUnit[] = []
   const to: LawUnit[] = []
   for (const p of paragraphs) {
-    // The heading of a division the draft changes, over the § (`division`, 27.10.2026).
+    // The heading of a division the draft changes, over the § (`division`, 26.10.2026).
     const old = withDivision(p.old, p.division?.old)
     const neu = withDivision(p.neu, p.division?.neu)
     // A heading the draft changes is a change (24.10.2026): set aside on
@@ -852,7 +852,7 @@ export function bareLawName(name: string): string {
  * end of the list, it left two laws, the second „Kärntner
  * Schulbaufondsgesetz, Art. II des Gesetzes, mit dem das Kärntner
  * Schulbaufondsgesetz" — no Artikel found its law by that, and §§ 1, 3 and 4
- * were named instead of shown (27.10.2026). It is one item of the list now.
+ * were named instead of shown (26.10.2026). It is one item of the list now.
  */
 export function amendedLawsOf(title: string): string[] {
   // The article's own clause, kept from the list's „geändert werden" by its spaces.

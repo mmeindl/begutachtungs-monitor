@@ -171,7 +171,7 @@ describe('tguParagraphs — units the reader lost until 26.10.2026', () => {
   })
 })
 
-describe('tguParagraphs — headings the draft changes (27.10.2026)', () => {
+describe('tguParagraphs — headings the draft changes (26.10.2026)', () => {
   const law = line('Oö. Gemeindeordnung 1990 (Oö. GemO 1990)')
   const ins = (raw: string): TguLine => ({ raw, old: '', neu: raw, marked: true })
   const del = (raw: string): TguLine => ({ raw, old: raw, neu: '', marked: true })
@@ -321,7 +321,7 @@ describe('two-column Textgegenüberstellung (Wien)', () => {
       .toEqual(['Dienstordnung 1994', 'Besoldungsordnung 1994', 'Wiener Bedienstetengesetz'])
   })
 
-  it('reads an article of a Novelle among the laws as one item, its own „geändert wird" included (Kärnten 842/2022, 227/2022; 27.10.2026)', () => {
+  it('reads an article of a Novelle among the laws as one item, its own „geändert wird" included (Kärnten 842/2022, 227/2022; 26.10.2026)', () => {
     expect(amendedLawsOf('Gesetz, mit dem die Kärntner Landesverfassung, das Kärntner Schulbaufondsgesetz, Art. II des Gesetzes, mit dem das Kärntner Schulbaufondsgesetz geändert wird, das Kärntner Landesrechnungshofgesetz 1996, das Kärntner Regionalfondsgesetz und das Kärntner Schulgesetz geändert werden'))
       .toEqual(['Kärntner Landesverfassung', 'Kärntner Schulbaufondsgesetz', 'Art. II des Gesetzes, mit dem das Kärntner Schulbaufondsgesetz geändert wird', 'Kärntner Landesrechnungshofgesetz 1996', 'Kärntner Regionalfondsgesetz', 'Kärntner Schulgesetz'])
     expect(amendedLawsOf('Gesetz, mit dem das Kärntner Wohnbauförderungsgesetz 2017, Artikel II des Gesetzes LGBl. Nr. 93/2019 und Artikel II des Gesetzes LGBl. Nr. 99/2021 geändert werden'))

@@ -423,7 +423,7 @@ describe('ktnTguParagraphs — what was lost or named falsely until 26.10.2026',
   })
 })
 
-describe('ktnTguParagraphs — a number out of turn (27.10.2026)', () => {
+describe('ktnTguParagraphs — a number out of turn (26.10.2026)', () => {
   const laws = ['Kärntner Beispielgesetz']
   const pick = (ps: ReturnType<typeof ktnTguParagraphs>) => ps.map((p) => [p.number, p.unread ? (p.because ?? 'unread') : 'shown']).sort((a, b) => a[0]!.localeCompare(b[0]!))
   const read = (right: AnnexItem[]) => pick(ktnTguParagraphs([page([...leftLaw(), ...right])], laws))
@@ -463,7 +463,7 @@ describe('ktnTguParagraphs — a number out of turn (27.10.2026)', () => {
   })
 })
 
-describe('ktnTguParagraphs — a head without its colon (27.10.2026)', () => {
+describe('ktnTguParagraphs — a head without its colon (26.10.2026)', () => {
   const laws = ['Kärntner Beispielgesetz']
 
   it('ends the head where its payload\'s § begins, and names no § the new text cites (32262/2025, § 87 K-LTWO)', () => {
@@ -484,7 +484,7 @@ describe('ktnTguParagraphs — a head without its colon (27.10.2026)', () => {
   })
 })
 
-describe('ktnTguReading — a law repealed whole (27.10.2026)', () => {
+describe('ktnTguReading — a law repealed whole (26.10.2026)', () => {
   it('says the sentence that repeals a law for that law, and pairs the other Artikel as before (1082/2019)', () => {
     const right = [
       centre(R, 'Artikel I', 497),

@@ -295,7 +295,7 @@ export interface LandLawDiffResponse {
    * Instructions of the Novelle that reach §§ they do not name — „Im V.
    * Abschnitt wird jeweils …", „Im ganzen Gesetz …" — quoted per law, so
    * the §§ listed are not read as all it changes (26.10.2026); and the
-   * sentence that repeals a law whole, said for that law (27.10.2026). Only
+   * sentence that repeals a law whole, said for that law (26.10.2026). Only
    * `geltend → entwurf`.
    */
   reaches?: { law: string | null; instruction: string }[]
@@ -332,7 +332,7 @@ export interface LandLawDiffResponse {
  *    the document (its numbering skips);
  *  - `annex`: an Anlage or Anhang — the RIS check is for §§ and articles;
  *  - `title`: the law's title, which the draft changes (id `Titel`) — RIS
- *    keeps no title to check it against (27.10.2026).
+ *    keeps no title to check it against (26.10.2026).
  */
 export type LandWithheldReason = 'unread' | 'wording' | 'unsure' | 'inserted' | 'elided' | 'twice' | 'deletion' | 'unchecked' | 'division' | 'gap' | 'annex' | 'title'
 

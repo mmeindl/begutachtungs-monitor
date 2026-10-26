@@ -357,7 +357,7 @@ interface Amendment {
    * The sentence an Artikel repeals a whole law with, in place of
    * instructions: „Das Kärntner Mindestsicherungsgesetz – K-MSG, LGBl. Nr.
    * 15/2007, …, tritt mit Inkrafttreten des Art. I außer Kraft." (1082/2019,
-   * 27.10.2026: an Artikel without instructions, so the page did not say
+   * 26.10.2026: an Artikel without instructions, so the page did not say
    * that the law goes).
    */
   repeal: string | null
@@ -371,7 +371,7 @@ interface Amendment {
 const INSTRUCTION_RE = /^(\d+)[a-z]?\.\s*(?=[^\d\s]|\d+[a-z]*\s+Abs\.)(\S.*)$/
 /**
  * „9 § 41 Abs. 9 entfällt.", „41 In § 96 Abs. 1 wird …": the number without
- * its full stop (18119/2023, 1037/2021 twice, 59470/2025; 27.10.2026 — each
+ * its full stop (18119/2023, 1037/2021 twice, 59470/2025; 26.10.2026 — each
  * read as the payload of the instruction before, and its law got a gap).
  * Taken only as the next number, after a line that ends a sentence.
  */
@@ -383,7 +383,7 @@ const HEAD_START_RE = /^(?:§|Art\.\s*\d|(?:Im|In|Nach|Vor|Dem|Der|Die|Das|Am|Au
 /**
  * A head that ends where its colon would stand: „… folgender § 18b
  * eingefügt", „§ 5 lautet". Followed by its payload's centred „§ 18b" or
- * division, it ended there (27.10.2026: 32262/2025 #10 ran on into its
+ * division, it ended there (26.10.2026: 32262/2025 #10 ran on into its
  * payload, and the § its new text cites, § 87 of the K-LTWO, was named as
  * a § of the Volksbefragungsgesetz).
  */
@@ -431,7 +431,7 @@ const REPEAL_RE = /\b(?:tritt|treten)\b.*\baußer\s+Kraft\.$|\b(?:wird|werden)\b
  * everything else is the open instruction's: its head up to the line that
  * ends in a colon, its payload after.
  *
- * A NUMBER OUT OF TURN (27.10.2026). Of the 20 numbers found missing over
+ * A NUMBER OUT OF TURN (26.10.2026). Of the 20 numbers found missing over
  * the Textgegenüberstellungen of 2013–2026, nine stood in the document: one
  * printed after the next (2193/2019: 1, 3, 2, 4), two under the number of an
  * earlier one, where the missing one belongs (539/2021: „14." between 17 and
@@ -1049,7 +1049,7 @@ function lawParagraphs(law: string | null, left: readonly PrintedPara[], amendme
     })
     // And every § a payload prints whole, which no instruction need name: a
     // division's new §§, or one whose instruction the document does not print
-    // — 35244/2025 prints § 5a, new, under no head (27.10.2026).
+    // — 35244/2025 prints § 5a, new, under no head (26.10.2026).
     const printed = amendment.instructions.flatMap((ins) => ins.payload.flatMap((l) => {
       const u = PARA_LINE_RE.exec(l.text)
       return u && centred(l, rf) ? [unitNumber(u)] : []
