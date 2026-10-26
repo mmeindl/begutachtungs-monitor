@@ -966,3 +966,14 @@ describe('diffAtSamePlace — an instruction reworded at the same place (§12.46
     expect(units.map((u) => u.change).sort()).toEqual(['inserted', 'removed'])
   })
 })
+
+describe('a unit with no word to compare (26.10.2026)', () => {
+  const u = (id: string, heading: string, text: string): LawUnit => ({ article: 'G', articleNumber: null, id, heading, quotedHeadings: [], text, blocks: [], stammnorm: null })
+
+  it('is paired by its heading or its id, never by likeness — „…" against „…" said nothing (Oö. 2021-16019, § 57a against § 63)', () => {
+    const units = diffLawUnits([u('§57a', 'a', '…'), u('§58', 'b', '(1) Ein Text, der bleibt.')], [u('§63', 'c', '…'), u('§58', 'b', '(1) Ein Text, der bleibt.')])
+    expect(units.map((x) => [x.fromId, x.id, x.change])).toEqual([[null, '§63', 'inserted'], ['§57a', '§57a', 'removed'], ['§58', '§58', 'unchanged']])
+    // Under one heading, or one id, two elided stubs are the same unit as before.
+    expect(diffLawUnits([u('§9', 'x', '(1) bis (4) …')], [u('§9', 'x', '(1) bis (4) …')]).map((x) => x.change)).toEqual(['unchanged'])
+  })
+})

@@ -465,6 +465,22 @@ function addressOnlyPair(a: LawUnit, b: LawUnit): boolean {
   return isAddressOnlyDifference(diffTokens(a.text, b.text).segments)
 }
 
+/**
+ * A unit with no word to compare: elision marks and the designations they
+ * stand for — „…", „(1) bis (4) …", „1. …" — and nothing else.
+ *
+ * Two such units are alike by construction — „…" against „…" scores 1 — so
+ * step 3 paired them across numbers: Oö. 2021-16019 showed § 63 as
+ * „unverändert (in der geltenden Fassung § 57a)", § 57a's stub against
+ * § 63's, while § 57a became § 58 (26.10.2026). Likeness says nothing about
+ * such a unit; it pairs by its heading or its id, or not at all.
+ */
+function wordless(words: readonly string[]): boolean {
+  return !words.some((w) => /\p{L}{2,}/u.test(w) && !CONNECTIVES.has(w.toLowerCase()))
+}
+/** The words an elision joins its designations with: „(1) bis (4) …". */
+const CONNECTIVES = new Set(['bis', 'und'])
+
 // --- Measured surface: exported for tests and harness scripts, not for the app. ---
 export function alignUnits(fromUnits: readonly LawUnit[], to: readonly LawUnit[]): Alignment {
   const articleMap = pairArticles(fromUnits, to)
@@ -513,9 +529,9 @@ export function alignUnits(fromUnits: readonly LawUnit[], to: readonly LawUnit[]
     pair(u, partner)
   }
 
-  // 3. similarity within the article
-  const restFrom = from.filter((u) => !pairedFrom.has(u))
-  const restTo = to.filter((u) => !pairedTo.has(u))
+  // 3. similarity within the article — of units that have words to compare
+  const restFrom = from.filter((u) => !pairedFrom.has(u) && !wordless(wordsOf(u)))
+  const restTo = to.filter((u) => !pairedTo.has(u) && !wordless(wordsOf(u)))
   const candidates: { from: LawUnit; to: LawUnit; s: number }[] = []
   for (const a of restFrom) {
     for (const b of restTo) {
