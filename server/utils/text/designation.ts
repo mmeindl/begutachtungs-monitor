@@ -29,6 +29,22 @@ export function bareParaId(label: string | null): string | null {
   return m ? m[1]! : null
 }
 
+/**
+ * The label RIS files a § of a Verordnung numbered by Kapitel under: the
+ * number without its point. The Wasserstraßen-Verkehrsordnung's § 6.01a is
+ * „§ 601a" in RIS's index, while the document itself prints „§ 6.01a" as
+ * its Gliederungssymbol (707EA278). Null for a number without a point.
+ *
+ * Only a candidate. „§ 601a" may as well be a § of that number, and a join
+ * on the label alone would edit another provision — so the caller takes the
+ * document only where its own Gliederungssymbol reads the number with the
+ * point (`kons/consolidate.ts`, `standingParagraphs`).
+ */
+export function kapitelLabelWithoutPoint(label: string): string | null {
+  const m = /^§\s*(\d+)\.(\d+[a-z]*\d*)$/.exec(label.trim())
+  return m ? `§ ${m[1]}${m[2]}` : null
+}
+
 /** RIS prints a schedule as „Anl. 2", an instruction says „Anlage 2". */
 export function anlageLabelKey(label: string): string {
   return label.replace(/\s+/g, ' ').trim().replace(/^(?:Anlage|Anhang)\b/, 'Anl.')

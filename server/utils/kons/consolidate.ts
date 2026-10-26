@@ -32,7 +32,7 @@ import type {
 import type { DraftIdentity } from '../ris/draftIdentity'
 import { guardParagraph } from './applyGuard'
 import { addressedLabels, addressedParagraphs, byParagraphOrder, gateParagraph, inPrintedOrder, refusedUnits, unitsByKey } from './konsGate'
-import { anlageLabelKey, isSchedule, unitKey } from '../text/designation'
+import { anlageLabelKey, bareParaId, isSchedule, kapitelLabelWithoutPoint, unitKey } from '../text/designation'
 import { konsLawUrl, type KonsLawAtDate, type KonsParagraphRef } from '../ris/konsLaw'
 import { diffTokens } from '../diff/wordDiff'
 import { applyNovelle, instructionsFromUnits, renamedOrigins, type Instruction, type RefusedInstruction, type StandingLaw } from './lawApply'
@@ -121,7 +121,7 @@ function allotBudget(refs: readonly KonsParagraphRef[], budget: { left: number }
  * stable property of that document (RIS carries some §§ as a table), and null
  * is the right answer for it.
  */
-async function standingParagraphs(queue: readonly KonsParagraphRef[], sources: KonsSources): Promise<LawNode[]> {
+async function standingParagraphs(queue: readonly KonsParagraphRef[], sources: KonsSources, joined: ReadonlyMap<string, string> = new Map()): Promise<LawNode[]> {
   // Built from the result, which keeps the input order. Until 22.10.2026 the
   // callback pushed each tree as its fetch finished, and the stock came out
   // in the order of completion.
@@ -129,7 +129,13 @@ async function standingParagraphs(queue: readonly KonsParagraphRef[], sources: K
     if (!ref.xmlUrl) return null
     const xml = await sources.paragraphXml(ref)
     try {
-      return parseKonsParagraph(xml)
+      const tree = parseKonsParagraph(xml)
+      // Found under a Kapitel label without its point (`kapitelLabelWithoutPoint`):
+      // taken only where the document's own Gliederungssymbol, which the tree
+      // keeps as its marker, reads the number with the point — and then under it.
+      const id = joined.get(anlageLabelKey(ref.label))
+      if (tree && id !== undefined) return bareParaId(tree.marker) === id ? { ...tree, id } : null
+      return tree
     } catch {
       // A document that is no § — 27 of 3.110 in the BGBl corpus.
       return null
@@ -397,13 +403,23 @@ export async function consolidate(
     // answers it — and it answers nothing where the law has several.
     const schedules = Object.keys(law.paragraphs).filter((label) => isSchedule(label))
     if (labelOf.get('Anl.') === 'Anl.' && schedules.length === 1) labelOf.set('Anl.', anlageLabelKey(schedules[0]!))
+    // A Verordnung numbered by Kapitel is filed without the point („§ 601a"
+    // for § 6.01a, 707EA278): asked for under its own label, none of its §§
+    // had a standing text, and every instruction on them was refused.
+    const inRis = new Set(Object.keys(law.paragraphs).map(anlageLabelKey))
+    const joined = new Map<string, string>()
+    for (const [id, label] of labelOf) {
+      const dotless = inRis.has(label) ? null : kapitelLabelWithoutPoint(label)
+      if (dotless === null || !inRis.has(dotless) || [...labelOf.values()].includes(dotless)) continue
+      labelOf.set(id, dotless)
+      joined.set(dotless, id)
+    }
     const wanted = new Map(w.addressed.map((id) => [labelOf.get(id)!, covered(id)]))
     const refs = Object.entries(law.paragraphs)
       .filter(([label]) => wanted.has(anlageLabelKey(label)))
       .sort(([a], [b]) => Number(wanted.get(anlageLabelKey(b))) - Number(wanted.get(anlageLabelKey(a))))
       .map(([, ref]) => ref)
-    const inRis = new Set(Object.keys(law.paragraphs).map(anlageLabelKey))
-    return { kind: 'resolved' as const, w, law, refs, labelOf, inRis }
+    return { kind: 'resolved' as const, w, law, refs, labelOf, inRis, joined }
   })
 
   // The allotment, pure and in order — before the fetching, not inside it.
@@ -431,12 +447,12 @@ export async function consolidate(
     /** What the Artikel before left of each unit, under the key the stock is held by (`unitsByKey`). */
     const carried = new Map<string, LawNode>()
     for (const job of chain) {
-      const { w, law, queue, skipped, labelOf, inRis } = job
+      const { w, law, queue, skipped, labelOf, inRis, joined } = job
       const { instructions, refused, addressed } = w
       // The budget chose WHICH §§ (the covered ones first); the engine reads
       // them in the order the law prints them, or a range replacement fails
       // on a stock whose §§ came back out of turn (`inPrintedOrder`).
-      const loaded = await standingParagraphs(inPrintedOrder(queue, Object.keys(law.paragraphs)), sources)
+      const loaded = await standingParagraphs(inPrintedOrder(queue, Object.keys(law.paragraphs)), sources, joined)
       // A unit the Artikel before changed is read as it left it, and one it
       // created — in no RIS document yet — joins the stock where this Artikel
       // addresses it.

@@ -149,3 +149,33 @@ describe('consolidate — §§ the draft changes without naming them one by one 
     expect(consolidationBalance(r).balanced).toBe(true)
   })
 })
+
+describe('consolidate — a Verordnung numbered by Kapitel (26.10.2026)', () => {
+  // RIS files the Wasserstraßen-Verkehrsordnung's § 6.01a as „§ 601a" and
+  // prints „§ 6.01a." as the document's own Gliederungssymbol (707EA278).
+  const I = 'Änderung des Testgesetzes'
+  const blocks = draft(artikel('1', I, '<absatz typ="novao1">1. In &sect; 6.01a wird das Wort &bdquo;alte&ldquo; durch das Wort &bdquo;neue&ldquo; ersetzt.</absatz>'))
+  const doc = (gld: string) => `<risdok><nutzdaten><abschnitt>
+    <absatz typ="erltext" ct="artikel_anlage">§ 601a</absatz>
+    <absatz typ="abs" ct="text"><gldsym>${gld}</gldsym> Das alte Wort gilt.</absatz>
+  </abschnitt></nutzdaten></risdok>`
+  const law: KonsLawAtDate = {
+    ...LAW,
+    paragraphs: { '§ 601a': { nor: 'NOR2', label: '§ 601a', id: '601a', inkrafttreten: null, ausserkrafttreten: null, kundmachungsorgan: null, stammnorm: null, gesetzesnummer: '10000001', xmlUrl: 'https://www.ris.bka.gv.at/601a.xml' } },
+  }
+  const rows = [pair(I, '§ 6.01a. Das alte Wort gilt.', '§ 6.01a. Das neue Wort gilt.', '§ 6.01a.')]
+
+  it('takes RIS\'s „§ 601a" for § 6.01a where the document\'s own Gliederungssymbol says so', async () => {
+    const r = await consolidate(who, blocks, '2026-01-01', { resolveLaw: async () => law, paragraphXml: async () => doc('§ 6.01a.'), annexRows: async () => rows })
+    expect(r.paragraphs.map((p) => p.id)).toEqual(['6.01a'])
+    expect(r.paragraphs[0]!.segments.filter((s) => s.type !== 'removed').map((s) => s.text).join(' ')).toMatch(/neue Wort gilt/)
+    expect(consolidationBalance(r).balanced).toBe(true)
+  })
+
+  it('never by the label alone: a document that names another number stays out', async () => {
+    const r = await consolidate(who, blocks, '2026-01-01', { resolveLaw: async () => law, paragraphXml: async () => doc('§ 601a.'), annexRows: async () => rows })
+    expect(r.paragraphs).toEqual([])
+    expect(r.withheld.map((w) => [w.id, w.cause])).toEqual([['6.01a', 'verweigert']])
+    expect(consolidationBalance(r).balanced).toBe(true)
+  })
+})
