@@ -102,7 +102,7 @@ describe('placeAtParagraphs — the Lesefassung', () => {
 describe('the sentences', () => {
   it('names what we could not do, at the § and once for the section', () => {
     expect(lesefassungLine({ kind: 'withheld', cause: 'anhang-widerspricht' })).toBe('Ganzer Paragraph danach nicht gezeigt: Unser Ergebnis weicht von der Beilage ab.')
-    expect(lesefassungLine({ kind: 'withheld', cause: 'verweigert' }, '§ 1a.')).toMatch(/^§ 1a: Ganzer Paragraph danach nicht gezeigt: /)
+    expect(lesefassungLine({ kind: 'withheld', cause: 'verweigert' }, '§ 1a.')).toMatch(/^Ganzer § 1a danach nicht gezeigt: /)
     // A § the draft repeals or moves stands in the annex as struck rows already.
     expect(lesefassungLine({ kind: 'withheld', cause: 'entfaellt' })).toBeNull()
     expect(lesefassungNotRunText({ ...response([], []), notRun: 'keine-novelle' })).toMatch(/^Ganze Paragraphen danach zeigen wir hier nicht: So wie wir den Entwurf lesen/)

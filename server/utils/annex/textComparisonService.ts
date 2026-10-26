@@ -153,7 +153,7 @@ export const getTextComparison = defineCachedFunction(
         // is read. Until 25.10.2026 it said „ungeprüft zeigen wir sie nicht",
         // which stopped being true when unchecked rows began to be shown under
         // a „nicht geprüft" pill (92/ME XXVIII shows all 31 of its rows so).
-        'Die Textgegenüberstellung liegt beim Parlament vor. Wir lesen sie aus dem RIS aus, und dort ließ sich diesem Entwurf kein Datensatz eindeutig zuordnen — darum ist hier das Dokument des Parlaments verlinkt.',
+        'Die Textgegenüberstellung liegt beim Parlament vor. Diesem Entwurf ließ sich im RIS kein Datensatz eindeutig zuordnen, und ohne ihn lesen wir sie nicht aus – darum ist hier das Dokument des Parlaments verlinkt.',
         row?.status === 'ambiguous'
           ? 'Mehrere RIS-Datensätze kommen für diesen Entwurf infrage. Die Gegenüberstellung aus dem falschen zu zeigen wäre schlechter als keine.'
           : 'Der Entwurf ließ sich keinem RIS-Dokument zuordnen; nur dort lesen wir die Textgegenüberstellung aus.',

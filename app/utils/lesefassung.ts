@@ -133,10 +133,10 @@ export function showsInstructedChange(rows: readonly TextComparisonRow[]): boole
 
 const CAUSE_TEXT: Record<LesefassungCause, string> = {
   verweigert: 'Eine Anweisung des Entwurfs zu diesem Paragraphen konnten wir nicht sicher anwenden.',
-  unplausibel: 'Unser Ergebnis hat unsere eigene Plausibilitätsprüfung nicht bestanden.',
+  unplausibel: 'Unser Ergebnis hat die Plausibilitätsprüfung nicht bestanden.',
   'nicht-geladen': 'Der Entwurf ändert mehr Paragraphen, als wir für eine Seite laden.',
   'kein-anhang': 'Ohne lesbare Gegenüberstellung bestätigt niemand unser Ergebnis.',
-  'anhang-schweigt': 'Die Beilage zeigt hier keine Änderung, an der wir unser Ergebnis prüfen könnten.',
+  'anhang-schweigt': 'Zu diesem Paragraphen fanden wir in der Beilage keine Änderung, an der sich unser Ergebnis prüfen ließe.',
   'anhang-fremd': 'Den geltenden Text, von dem die Beilage hier ausgeht, fanden wir so nicht im RIS.',
   'anhang-widerspricht': 'Unser Ergebnis weicht von der Beilage ab.',
   'gesetz-unbekannt': 'Das geänderte Gesetz fanden wir im RIS nicht eindeutig.',
@@ -145,7 +145,7 @@ const CAUSE_TEXT: Record<LesefassungCause, string> = {
   'nicht-lesbar': 'Das RIS führt diesen Paragraphen in einer Form, die wir nicht lesen können, etwa als Tabelle.',
   'zu-lang': 'Der Paragraph ist zu lang für unseren Vergleich.',
   entfaellt: 'Unter dieser Nummer steht nach dem Entwurf kein Paragraph mehr.',
-  'anhang-ungeteilt': 'Die Beilage trennt die geänderten Gesetze nicht, und so ordnen wir den Paragraphen keinem Gesetz sicher zu.',
+  'anhang-ungeteilt': 'Wo in der Beilage ein Gesetz endet und das nächste beginnt, lesen wir nicht heraus; so ordnen wir den Paragraphen keinem Gesetz sicher zu.',
   'nicht-gefunden': 'Eine Anweisung des Entwurfs zu diesem Paragraphen fanden wir nicht.',
 }
 
@@ -157,14 +157,14 @@ const CAUSE_TEXT: Record<LesefassungCause, string> = {
  */
 export function lesefassungLine(lesefassung: Lesefassung, designation: string | null = null): string | null {
   if (lesefassung.kind !== 'withheld' || lesefassung.cause === 'entfaellt') return null
-  const what = designation ? `${designation.replace(/\.$/, '')}: ` : ''
-  return `${what}Ganzer Paragraph danach nicht gezeigt: ${CAUSE_TEXT[lesefassung.cause]}`
+  const what = designation ? `${designation.replace(/\.$/, '')} ` : 'Paragraph '
+  return `Ganzer ${what}danach nicht gezeigt: ${CAUSE_TEXT[lesefassung.cause]}`
 }
 
 const NOT_RUN_TEXT: Record<ConsolidatedNotRun, string> = {
   zuordnung: 'Den Eintrag im RIS ordnen wir diesem Entwurf nicht sicher zu.',
   stichtag: 'Das RIS nennt keinen Beginn der Begutachtung, und ohne ihn wissen wir nicht, welche Fassung der Gesetze der Entwurf ändert.',
-  'kein-xml': 'Den Entwurf gibt es im RIS nicht als XML, und nur daraus lesen wir seine Änderungsanweisungen.',
+  'kein-xml': 'Den Entwurf gibt es im RIS nicht in der maschinenlesbaren Fassung, aus der allein wir seine Änderungsanweisungen lesen.',
   'keine-novelle': 'So wie wir den Entwurf lesen, ändert er kein bestehendes Gesetz.',
 }
 
