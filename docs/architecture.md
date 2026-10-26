@@ -13994,9 +13994,29 @@ noch genannt außer Oö. 2021-16029 §§ 21–23, die jetzt als 21 → 25, 22 �
 und 23 → 27 gezeigt sind; die Leser-Korrekturen des Bundes (§12.13) in
 Salzburg 89 §§ mehr gezeigt, 23 von gezeigt zu genannt — Salzburg druckt
 Auslassungen ohne „…" („(3) bis (7)"), und die Länderprüfung liest sie noch
-nicht als Auslassung. Die Korrektur liegt auf `fu/bare-elision`: zusammen
-210 §§ neu gezeigt, von denen erst die meisten zu lesen sind (23522 § 25
-paart die § 25 zweier Gesetze).
+nicht als Auslassung — sie tut es jetzt.
+
+**Die Durchsicht dieser Korrektur fand Fehler, die schon live standen.**
+Jeder neu gezeigte oder geänderte § ging durch eine automatische Prüfung —
+seine Wörter gegen den Entwurfstext, sein Gesetz gegen seine Anweisung —,
+und dieselbe Prüfung lief über alles, was die Seite für Salzburg schon
+zeigte (1.351 §§): In Paketen paarte der Leser die §§ zweier Gesetze (23522
+§ 25; 22320 L-VBG §§ 5 und 6 standen als „geändert", obwohl der Entwurf sie
+aufhebt), ein Zitat am Zeilenanfang („§ 15g;") öffnete einen § und schnitt
+den vorigen ab, Seitenzahlen standen im Text, eine Überschrift ohne
+Schlusspunkt in der Zeile davor wanderte zum falschen §, und über
+ungelesene Seiten hinweg wurde ein § zusammengesetzt — jetzt genannt,
+„unsicher gelesen". Gegen den Stand davor: 327 §§ neu gezeigt (Salzburg
+307, Kärnten 13, Oberösterreich 7), 13 mit bestehendem Grund
+zurückgehalten, 2 von „geändert" zu „entfällt"; 20 zufällig gewählte neu
+gezeigte §§, gegen die PDF-Rohdaten gelesen, stimmen alle. Was die Prüfung
+noch meldet, ist überwiegend ihr eigenes Rauschen (Salzburg setzt am Ende
+eines § keinen Punkt; „entfallen" gegen „entfällt"). Offen: fünf Pakete,
+die noch als ein Gesetz gelesen werden (34728, 35399, 23088, 18133, 18186),
+Trennstriche mitten im Wort (18186, 18214) und zwei Produktfragen —
+Salzburg 18151, dessen Gegenüberstellung ein altes und ein neues Gesetz
+nach Nummer paart, und umbenannte Gesetze unter dem heutigen Namen des
+RIS.
 
 ## 13. Open questions
 
