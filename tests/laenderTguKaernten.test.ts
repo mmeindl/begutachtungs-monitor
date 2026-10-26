@@ -546,3 +546,19 @@ describe('ktnTguReading — a division heading and the title (26.10.2026)', () =
     expect(ktnTguReading([page([...leftLaw(), ...right])], laws).reaches).toEqual([{ law: 'Kärntner Beispielgesetz', instruction: 'Nach § 6 wird folgende Überschrift eingefügt:' }])
   })
 })
+
+describe('ktnTguReading — a law enacted anew (26.10.2026)', () => {
+  it('names a law an Artikel enacts without an instruction, by the short title its heading carries (5020/2023, 78379/2024)', () => {
+    const right = [
+      centre(R, 'Artikel I', 497),
+      centre(R, 'Gesetz über neue Beispiele', 485),
+      centre(R, '(Kärntner Neubeispielgesetz – K-NBG)', 473),
+      centre(R, 'Artikel II', 449),
+      centre(R, 'Änderung des Kärntner Beispielgesetzes', 437),
+      body(R, '1. § 7 entfällt.', 425),
+    ]
+    const r = ktnTguReading([page([...leftLaw(), ...right])], ['Kärntner Beispielgesetz'])
+    expect(r.enacted).toEqual(['Kärntner Neubeispielgesetz'])
+    expect(r.paragraphs.map((p) => [p.law, p.number])).toEqual([['Kärntner Beispielgesetz', '7']])
+  })
+})

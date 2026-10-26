@@ -302,6 +302,12 @@ export interface LandLawDiffResponse {
   reaches?: { law: string | null; instruction: string; repeal?: true }[]
   /** Pages of the Land's document the reader did not read; said as the Bund's annex says it (`annexDroppedPagesNote`). */
   droppedPages?: number
+  /**
+   * Laws the draft enacts anew whose text the Textgegenüberstellung does
+   * not print — Kärnten's Artikel without an instruction (26.10.2026). Each
+   * named as a group of its own (`enactedNote`). Only `geltend → entwurf`.
+   */
+  enacted?: string[]
 }
 
 /**

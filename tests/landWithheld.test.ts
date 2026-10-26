@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { quotedInstruction, reachesGroups, reachesNote, withheldGroups, withheldNotes } from '../app/utils/landWithheld'
+import { enactedNote, quotedInstruction, reachesGroups, reachesNote, withheldGroups, withheldNotes } from '../app/utils/landWithheld'
 
 describe('withheldGroups — where the page counts a § it does not show', () => {
   it('files a § of another law under that law, not under the one group shown (Kärnten 38532/2024)', () => {
@@ -75,6 +75,12 @@ describe('withheldNotes — a renumbered § (26.10.2026)', () => {
   it('carries the number it has in force beside the one it gets, for „§ 13 → § 9"', () => {
     const notes = withheldNotes([{ law: 'O', id: '§9', fromId: '§13', reason: 'unsure' }, { law: 'O', id: '§7', reason: 'unsure' }])
     expect(notes.map((n) => [n.ids, n.fromIds])).toEqual([[['§9', '§7'], ['§13', null]]])
+  })
+})
+
+describe('enactedNote — a law the draft enacts anew (26.10.2026)', () => {
+  it('says that the draft carries its text and the Textgegenüberstellung does not, in the Monitor\'s voice', () => {
+    expect(enactedNote()).toBe('Dieses Gesetz erlässt der Entwurf neu. Seinen ganzen Text enthält der Entwurf selbst, nicht die Textgegenüberstellung; der Monitor vergleicht hier nur Änderungen bestehender Gesetze.')
   })
 })
 

@@ -208,6 +208,8 @@ export interface TguReading {
   paragraphs: TguParagraph[]
   reaches?: { law: string | null; instruction: string; repeal?: true }[]
   droppedPages?: number
+  /** Laws the Novelle enacts anew, whose text the document does not print (Kärnten, 26.10.2026). */
+  enacted?: string[]
 }
 
 /**

@@ -195,7 +195,9 @@ const reachesByGroup = computed(() => {
   return reachesGroups(data.value.reaches ?? [], data.value.available ? units.value.map((u) => u.article) : [])
 })
 /* Every law the unshown list names, by §§ or by instruction. */
-const unshownLaws = computed(() => [...new Set([...unshownByLaw.value.keys(), ...reachesByGroup.value.keys()])])
+/* Laws the draft enacts anew, whose text the Land's document does not print (26.10.2026): a group each, named. */
+const enactedLaws = computed(() => new Set(query.value.trim() ? [] : (data.value?.enacted ?? [])))
+const unshownLaws = computed(() => [...new Set([...unshownByLaw.value.keys(), ...reachesByGroup.value.keys(), ...enactedLaws.value])])
 
 /* Pages of the document the reader did not read: said above the list, as the Bund's annex says it. */
 const droppedNote = computed(() => annexDroppedPagesNote(data.value?.droppedPages ?? 0))
@@ -219,6 +221,7 @@ const groups = computed(() => {
   }
   for (const key of withheldByGroup.value.keys()) groupOf(key)
   for (const key of reachesByGroup.value.keys()) groupOf(key)
+  for (const key of enactedLaws.value) groupOf(key)
   return [...byArticle.values()].map((g) => {
     const limit = limitFor(g.article)
     const blocks: Block[] = []
@@ -288,7 +291,7 @@ const hasUnits = computed(() => units.value.length > 0)
           :open="groupOpen(law)"
           @toggle="toggleGroup(law)"
         >
-          <LandWithheldNotes :items="unshownByLaw.get(law) ?? []" :reaches="reachesByGroup.get(law) ?? []" :document-url="data.fromDocument?.url ?? null" alone />
+          <LandWithheldNotes :items="unshownByLaw.get(law) ?? []" :reaches="reachesByGroup.get(law) ?? []" :enacted="enactedLaws.has(law)" :document-url="data.fromDocument?.url ?? null" alone />
         </DiffGroup>
       </ListBox>
     </template>
@@ -333,7 +336,7 @@ const hasUnits = computed(() => units.value.length > 0)
                text. Named where the header counts it, each cause in its own
                words (`withheldNotes`), with the way to the document that does
                show it — so the §§ shown are not read as all the draft changes. -->
-          <LandWithheldNotes :items="g.withheld" :reaches="g.reaches" :document-url="data.fromDocument?.url ?? null" />
+          <LandWithheldNotes :items="g.withheld" :reaches="g.reaches" :enacted="enactedLaws.has(g.article)" :document-url="data.fromDocument?.url ?? null" />
           <p v-if="addedLaws.has(g.article)" class="border-b border-hairline px-4 py-2.5 text-sm text-ink-secondary">
             Dieses Gesetz kommt {{ IN_FROM[from] }} nicht vor; es ist auf dem Weg hinzugekommen.
           </p>

@@ -105,6 +105,8 @@ interface TguRead {
   reaches?: { law: string | null; instruction: string; repeal?: true }[]
   /** Pages of the document the reader did not read (`TguReading`). */
   droppedPages?: number
+  /** Laws the Novelle enacts anew, whose text the document does not print (`TguReading`). */
+  enacted?: string[]
 }
 
 /** The draft's own text, or null where reading it failed — which `deletes` must not take for a draft without repeals. */
@@ -372,6 +374,7 @@ function readOwn<Page>({ publisher, load, parse, dated, guardDeletes }: OwnReade
       paragraphs: reading.paragraphs,
       ...(reading.reaches?.length ? { reaches: reading.reaches } : {}),
       ...(reading.droppedPages ? { droppedPages: reading.droppedPages } : {}),
+      ...(reading.enacted?.length ? { enacted: reading.enacted } : {}),
       fromDocument: { label: doc.title, url, publisher },
       date: doc.date ?? detail.draft.startedAt ?? dated(pages, draftText ?? '') ?? detail.draft.placedAt ?? new Date().toISOString().slice(0, 10),
       laws,
@@ -417,6 +420,7 @@ export async function compareTgu(land: LandCode, detail: LandDraftDetail): Promi
   const beside: Partial<LandLawDiffResponse> = {
     ...(got.reaches?.length ? { reaches: got.reaches } : {}),
     ...(got.droppedPages ? { droppedPages: got.droppedPages } : {}),
+    ...(got.enacted?.length ? { enacted: got.enacted } : {}),
   }
   if (!paragraphs.length) {
     return whole(unavailable('In der Textgegenüberstellung fand der Monitor keine Paragraphen, die er lesen kann.', { fromDocument, ...beside }))

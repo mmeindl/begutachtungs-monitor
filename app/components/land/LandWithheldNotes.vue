@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import type { LandLawDiffResponse } from '#shared/types'
 import { displayId } from '#shared/utils/unitName'
-import { quotedInstruction, reachesNote, withheldNotes, type Reach } from '~/utils/landWithheld'
+import { enactedNote, quotedInstruction, reachesNote, withheldNotes, type Reach } from '~/utils/landWithheld'
 
 /**
  * The §§ of one law that the comparison does not show, one line per cause
@@ -18,6 +18,8 @@ const props = defineProps<{
   alone?: boolean
   /** Instructions of the Novelle that reach §§ they do not name, for this law */
   reaches?: readonly Reach[]
+  /** The draft enacts this law anew, and the Land's document does not print its text */
+  enacted?: boolean
 }>()
 
 const notes = computed(() => withheldNotes(props.items, { alone: props.alone }))
@@ -33,6 +35,7 @@ const joint = (k: number, n: number) => (k === 0 ? '' : k === n - 1 ? ' und ' : 
     <template v-if="documentUrl">Die <ExternalLink :href="documentUrl" class="link-inline">Textgegenüberstellung des Landes</ExternalLink> zeigt {{ n.pronoun }}.</template>
     <template v-else>Die Textgegenüberstellung des Landes zeigt {{ n.pronoun }}.</template>
   </p>
+  <p v-if="enacted" class="border-b border-hairline px-4 py-2.5 text-sm text-ink-secondary">{{ enactedNote() }}</p>
   <p v-for="r in reaches ?? []" :key="r.instruction" class="border-b border-hairline px-4 py-2.5 text-sm text-ink-secondary">
     {{ reaching.lead }} <span class="italic">{{ quotedInstruction(r.instruction) }}</span><template v-if="!r.repeal"> {{ reaching.after }}</template>
   </p>

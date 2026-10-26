@@ -150,6 +150,15 @@ export function reachesNote(): { lead: string; after: string } {
   return { lead: 'Außerdem ordnet die Novelle an:', after: 'Den Wortlaut, der sich daraus ergibt, setzt der Monitor nicht selbst zusammen.' }
 }
 
+/**
+ * A law the draft enacts anew, where the Textgegenüberstellung does not
+ * print its text (Kärnten, 26.10.2026) — the sense of the Bund's
+ * `neu-erlassen`, said for what the Land's document does.
+ */
+export function enactedNote(): string {
+  return 'Dieses Gesetz erlässt der Entwurf neu. Seinen ganzen Text enthält der Entwurf selbst, nicht die Textgegenüberstellung; der Monitor vergleicht hier nur Änderungen bestehender Gesetze.'
+}
+
 /** An instruction as the note quotes it: one whose text follows its colon („Der 4. Abschnitt lautet:") with the text left out, „…". */
 export function quotedInstruction(instruction: string): string {
   return /:$/.test(instruction.trim()) ? `${instruction.trim()} …` : instruction.trim()

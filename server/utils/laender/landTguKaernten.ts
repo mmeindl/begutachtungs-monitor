@@ -361,6 +361,12 @@ interface Amendment {
    * that the law goes).
    */
   repeal: string | null
+  /**
+   * The centred lines right under „Artikel I", before anything else: where
+   * the Artikel has no instruction, the title of a law the Novelle enacts
+   * („Neuerlassung" / „Kärntner Energieeffizienzgesetz – K-EEG", 78379/2024).
+   */
+  headingLines: string[]
 }
 
 /**
@@ -457,7 +463,7 @@ export function amendmentsOf(lines: readonly KtnLine[], f: Frame): Amendment[] {
   // open let „Änderung des Kärntner Familienförderungsgesetzes" pass as text
   // (2314/2021), and the Artikel was read as no law at all.
   const start = (artikel: string | null = null) => {
-    current = { title: null, named: null, artikel, instructions: [], gap: false, repeal: null }
+    current = { title: null, named: null, artikel, instructions: [], gap: false, repeal: null, headingLines: [] }
     out.push(current)
     open = null
     headOpen = false
@@ -482,6 +488,12 @@ export function amendmentsOf(lines: readonly KtnLine[], f: Frame): Amendment[] {
       continue
     }
     const amends = AMENDS_RE.exec(l.text)
+    // An Artikel's own heading, centred under „Artikel I", while nothing else has begun.
+    const cur0 = current as Amendment | null
+    if (!amends && cur0?.artikel && cur0.title === null && !cur0.instructions.length && !open && promulgation === null && heading(l, f) && cur0.headingLines.length < 6) {
+      cur0.headingLines.push(l.text)
+      continue
+    }
     if (amends && heading(l, f) && !(open as Instruction | null)?.payload.length && !headOpen) {
       // „Änderung der Kärntner Gemeinderats- und Bürgermeisterwahlordnung" / „2002"
       let title = amends[1]!
@@ -1326,6 +1338,15 @@ export function ktnTguReading(pages: readonly AnnexPage[], laws: readonly string
     if (!a.repeal || a.instructions.length) continue
     reaches.push({ law: nameOf(a.title) ?? nameOf(a.named) ?? (a.named ? lawName(a.named) : a.title ? nominative(a.title) : a.artikel), instruction: a.repeal, repeal: true })
   }
+  // A law the Novelle enacts anew, in an Artikel of its own without an
+  // instruction: the Textgegenüberstellung prints its title, not its text
+  // (5020/2023, 1082/2019, 1994-6, 78379/2024 — named nowhere until
+  // 26.10.2026). Named by the short title its heading carries.
+  const enacted = all.flatMap((a) => {
+    if (a.instructions.length || a.repeal || a.title !== null || !a.headingLines.length) return []
+    const name = titleOfLeft(a.headingLines.filter((l) => !/^Neuerlassung$/i.test(l)).join(' '))
+    return name ? [nameOf(name) ?? name] : []
+  })
   amendments.forEach((a) => {
     if (ofNovelle(a)) {
       const law = novelleLabel(a.title!)
@@ -1371,5 +1392,5 @@ export function ktnTguReading(pages: readonly AnnexPage[], laws: readonly string
     out.push(...r.paragraphs)
     reaches.push(...r.reaches.map((instruction) => ({ law, instruction })))
   })
-  return { paragraphs: out, reaches }
+  return { paragraphs: out, reaches, ...(enacted.length ? { enacted } : {}) }
 }
