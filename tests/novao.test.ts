@@ -384,6 +384,17 @@ describe('forms from the held-out corpus (2026-09-09)', () => {
     expect(op('In § 33 Abs. 1 entfällt die Absatzbezeichnung "(1)".')).toMatchObject({ kind: 'renumber', to: '', target: { abs: '1' } })
   })
 
+  it('refuses the Wegfall of a designation another unit carries (A0DA8D19, 121/ME XXVIII; 26.10.2026)', () => {
+    // Read as one renumbering, the Absatz to be deleted lost its number and stayed.
+    for (const line of [
+      'In § 6 entfallen die Absatzbezeichnung "(1)" sowie Abs. 2.',
+      'In § 70 entfallen die Absatzbezeichnung "(1)" sowie die Abs. 2 bis 7.',
+      '§ 154 Abs. 1 sowie die Absatzbezeichnung "(2)" entfallen.',
+      'In der Anlage 1 entfallen die Ziffernbezeichnung "1." und die Z 2.',
+    ]) expect(parseInstruction(line), line).toMatchObject({ ops: [], reason: 'Wegfall einer Bezeichnung — Ziel nicht eindeutig' })
+    expect(op('In § 7 Z 3 entfällt die Ziffernbezeichnung "3.".')).toMatchObject({ kind: 'renumber', to: '', target: { z: '3' } })
+  })
+
   it('places a § appended "nach § X" behind it, not inside it', () => {
     expect(op('Nach § 408a wird folgender § 408b samt Überschrift angefügt:')).toMatchObject({ kind: 'insertAfter', child: 'para', childIds: ['408b'], where: 'after' })
   })

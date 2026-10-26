@@ -2154,6 +2154,15 @@ function parseOne(raw: string, inherited: NovaoAddress | null | undefined, whole
   // BGBl. I Nr. 124/2024, 2026-09-09). A renumbering to the empty designation.
   if (/\w*bezeichnung\b/i.test(head) && /\bentfäll[te]\b|\bentfallen\b/i.test(head)) {
     if (targets.length > 1 || target.level === 'para' || target.level === 'satz') return fail('Wegfall einer Bezeichnung — Ziel nicht eindeutig')
+    // The designation that goes is the quoted one, and it has to be the
+    // unit's own. „In § 6 entfallen die Absatzbezeichnung ‚(1)' sowie Abs. 2"
+    // deletes Abs. 2 and unnumbers Abs. 1, „§ 154 Abs. 1 sowie die
+    // Absatzbezeichnung ‚(2)' entfallen" the other way round: read as one
+    // renumbering, each unnumbered the Absatz it should have deleted and kept
+    // it, and the other one kept its number (A0DA8D19, 121/ME XXVIII;
+    // 26.10.2026). Refused until the two halves are read apart.
+    const named = quotes[0]?.replace(/[()\s.]/g, '')
+    if (named !== undefined && (named !== (target.lit ?? target.z ?? target.abs) || target.siblings.length > 0)) return fail('Wegfall einer Bezeichnung — Ziel nicht eindeutig')
     return ok({ kind: 'renumber', target, to: '', toLast: null })
   }
 
