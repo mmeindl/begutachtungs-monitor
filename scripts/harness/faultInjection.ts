@@ -156,6 +156,7 @@
  */
 import { annexParagraphKey, comparableTokens, designationKey } from '../../server/utils/annex/annexText'
 import { PARAGRAPH_THRESHOLD, coverageOfParagraph } from '../../server/utils/annex/coverage'
+import { paragraphReference } from '../../server/utils/annex/verdict'
 import {
   MIN_STANDING_STRETCH,
   draftBags,
@@ -175,7 +176,7 @@ import { getText, resolveLawByBgbl, type KonsLawAtDate, type KonsParagraphRef } 
 import { fetchParagraphTree } from '../../server/utils/harness/risKonsHistory'
 import { parseTextComparison, type ComparisonRow } from '../../server/utils/annex/comparisonRows'
 import { isScanned } from '../../server/utils/annex/tableCells'
-import { applyNovelle, instructionsFromUnits, type StandingLaw } from '../../server/utils/kons/lawApply'
+import { applyNovelle, instructionsFromUnits, renamedOrigins, type StandingLaw } from '../../server/utils/kons/lawApply'
 import { ABSATZ_ORDER_NOTE, KEPT_DELETION_NOTE, absatzSequence, oracleVerdict, paragraphRows, rowsByParagraph, type OracleVerdict } from '../../server/utils/kons/tguOracle'
 import { segmentUnits } from '../../server/utils/lawtext/lawUnits'
 import { anlageLabelKey, bareParaId } from '../../server/utils/text/designation'
@@ -447,8 +448,9 @@ async function inject(doc: any): Promise<DraftResult | null> {
   // see the note under the table.
   /**
    * The §-wise reference for one § of the annex — `draftReference`'s own
-   * decision, so the script measures the shipped lookup and not a second
-   * reading of the index. `shown` is what the annex prints a block of its own
+   * decision, joined as the gate joins it for a renumbered §
+   * (`paragraphReference`), so the script measures the shipped lookup and not
+   * a second reading of the index. `shown` is what the annex prints a block of its own
    * for, per law, which is the distinction that keeps a merged block from
    * reading as unexplained text.
    */
@@ -467,7 +469,8 @@ async function inject(doc: any): Promise<DraftResult | null> {
       reference = draftReference(bags, para.law, shown.get(para.law) ?? new Set<string>())
       references.set(para.law, reference)
     }
-    return reference(para.para)
+    const lookup = reference
+    return paragraphReference(para, (_law, designation) => lookup(designation))
   }
   // Where that lookup landed, which is the coverage question: a § whose law
   // the index does not know falls back to the whole draft (the rule as it
@@ -752,15 +755,19 @@ async function injectIntoResults(
       if (tree) paragraphs.push(tree)
     }
     const law: StandingLaw = { paragraphs }
-    const { law: after } = applyNovelle(law, instructions)
+    const { law: after, renamed } = applyNovelle(law, instructions)
+    // Paired as the page pairs them (`kons/consolidate.ts`): a renumbered §
+    // against the standing § it came from.
+    const originOf = renamedOrigins(renamed)
     const lawKey = amendingCount > 1 ? article.key : undefined
     for (const id of [...touched].sort()) {
       const node = after.paragraphs.find((p) => p.id === id)
       if (!node) continue
-      const beforeNode = law.paragraphs.find((p) => p.id === id) ?? null
+      const origin = originOf(id)
+      const beforeNode = origin === null ? null : (law.paragraphs.find((p) => p.id === origin) ?? null)
       const before = beforeNode ? plainText(beforeNode) : null
       const got = plainText(node)
-      const paraRows = paragraphRows(byParagraph, id, lawKey)
+      const paraRows = paragraphRows(byParagraph, id, lawKey, origin)
       const report = oracleVerdict(id, before, got, paraRows, absatzSequence(node), beforeNode ? (absatzSequence(beforeNode) ?? null) : null)
       results.verdicts.set(report.verdict, (results.verdicts.get(report.verdict) ?? 0) + 1)
       // Check 5's false-alarm side, like check 4's below: every § it speaks

@@ -171,6 +171,20 @@ export interface TextComparisonRow {
   gld: string | null
   /** The § the row belongs to, inherited where the row opens none of its own */
   para: string | null
+  /**
+   * The designation that § carries AFTER the draft — `para` where it keeps
+   * its number, the new one where the draft renumbers it („§ 14." becomes
+   * „§ 22.", 51/ME XXVIII), null where nothing of it stands afterwards (the
+   * draft repeals it, or moves it to a number the annex prints as a § of its
+   * own) and for a row without a §.
+   *
+   * `para` stays the LEFT column's designation: the standing § the RIS check
+   * holds the row against. This one is what the Ressort's Begründung, our
+   * Lesefassung and its oracle address the § by (`designateAfter` in
+   * `server/utils/annex/comparisonRows.ts`). Kept on a withheld row, whose
+   * text is gone.
+   */
+  paraAfter: string | null
   current: string
   proposed: string
   change: LawUnitChange

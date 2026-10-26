@@ -35,7 +35,7 @@ import { addressedLabels, addressedParagraphs, gateParagraph, inPrintedOrder, re
 import { anlageLabelKey, isSchedule, unitKey } from '../text/designation'
 import { konsLawUrl, type KonsLawAtDate, type KonsParagraphRef } from '../ris/konsLaw'
 import { diffTokens } from '../diff/wordDiff'
-import { applyNovelle, instructionsFromUnits, type Instruction, type RefusedInstruction, type StandingLaw } from './lawApply'
+import { applyNovelle, instructionsFromUnits, renamedOrigins, type Instruction, type RefusedInstruction, type StandingLaw } from './lawApply'
 import { bodyText, parseKonsParagraph, plainText, type LawNode } from '../lawtext/konsTree'
 import { segmentUnits, type TextBlock } from '../lawtext/lawUnits'
 import { articleBlocks, type ClauseName, type DraftArticle } from '../lawtext/draftArticles'
@@ -340,7 +340,12 @@ export async function consolidate(
         if (earlier && !present.has(id)) stock.push(earlier)
       }
       const standing: StandingLaw = { paragraphs: stock }
-      const { law: after, results, unresolved } = applyNovelle(standing, instructions)
+      const { law: after, results, unresolved, renamed } = applyNovelle(standing, instructions)
+      // Which standing § each § of the result came from: where the draft
+      // renumbers, the result's § 9f is the old § 7a, and its § 7a a new
+      // provision in the vacated number (118/ME XXVIII). Paired by id alone,
+      // the new § 7a was held against the old one's text, and failed.
+      const originOf = renamedOrigins(renamed)
       for (const [key, node] of unitsByKey(after.paragraphs)) carried.set(key, node)
 
       const refusedIds = refusedUnits(unresolved, refused, unitKey)
@@ -388,9 +393,10 @@ export async function consolidate(
           hold(id, refusedIds.has(id) ? 'verweigert' : beforeById.has(id) ? 'entfaellt' : inRis.has(labelOf.get(id)!) ? 'nicht-lesbar' : 'nicht-im-ris')
           continue
         }
-        const beforeNode = beforeById.get(id) ?? null
+        const origin = originOf(id)
+        const beforeNode = origin === null ? null : (beforeById.get(origin) ?? null)
         const touching = analysed
-          .filter((a) => a.document || a.para === id || (a.payloadIds?.has(id) ?? false))
+          .filter((a) => a.document || a.para === id || (origin !== null && a.para === origin) || (a.payloadIds?.has(id) ?? false))
           .map((a) => a.touching)
         const guard = guardParagraph(id, standing, beforeNode, node, touching)
         const before = beforeNode ? plainText(beforeNode) : null
@@ -413,7 +419,7 @@ export async function consolidate(
         // another law of the same package.
         // With the Absätze as the page displays them, so check 5 can hold the
         // annex's markers against them (`absatzOrderBroken`, 26.10.2026).
-        const report = oracleVerdict(id, before, got, paragraphRows(byParagraph, id, isPackage ? w.article.key : undefined), absatzSequence(node), beforeNode ? (absatzSequence(beforeNode) ?? null) : null)
+        const report = oracleVerdict(id, before, got, paragraphRows(byParagraph, id, isPackage ? w.article.key : undefined, origin), absatzSequence(node), beforeNode ? (absatzSequence(beforeNode) ?? null) : null)
         const gate = gateParagraph({
           refused: refusedIds.has(id),
           plausible: guard.plausible,

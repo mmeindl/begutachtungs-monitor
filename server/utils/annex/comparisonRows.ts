@@ -25,6 +25,7 @@
  */
 
 import { candidateOf, headingOf, resolveBoundaries, type BoundaryCandidate } from './annexBoundaries'
+import { designationKey } from './annexText'
 import { diffTokens, isEditorialChange } from '../diff/wordDiff'
 import type { DraftArticle } from '../lawtext/draftArticles'
 import type { LawDiffSegment } from '../../../shared/types'
@@ -63,6 +64,20 @@ export interface ComparisonRow {
    * oracle's heading detection depends on the difference.
    */
   para: string | null
+  /**
+   * The designation the row's § carries AFTER the draft (`designateAfter`):
+   * `para` where the § keeps its number, the new one where the draft
+   * renumbers it, null where the draft repeals it — or where the row carries
+   * no § at all.
+   *
+   * `para` is the LEFT column's designation, the § the RIS check holds the
+   * standing text against. Where a draft renumbers, the annex prints both in
+   * one row — „§ 14." left, „§ 22." right (51/ME XXVIII) — and the right one
+   * was readable only as text left in `proposed` (`stripGld`). Everything
+   * that asks about the § as it reads afterwards — the Erläuterungen, our
+   * Lesefassung, its oracle — needs this one.
+   */
+  paraAfter: string | null
   current: string
   proposed: string
   change: ComparisonChange
@@ -127,6 +142,13 @@ const STRIP = [
  * for one thing, one of them unknown to one of the two modules that need it.
  */
 const GLD_RE = /<gldsym\b[^>]*>([\s\S]*?)<\/gldsym>|<span\s+class=["']?991GldSymbol["']?[^>]*>([\s\S]*?)<\/span>/
+
+/**
+ * „§ 22." at the head of a column's text — a § designation with its full
+ * stop, as a Gliederungssymbol is written, not a citation („§ 5 Abs. 2 gilt
+ * …" carries none after the number).
+ */
+const TYPED_DESIGNATION_RE = /^\s*(§+\s*\d+[a-z]*\.)(?=\s|$)/i
 
 /**
  * A structural division of the law — "3. Abschnitt", "Abschnitt XI",
@@ -391,6 +413,12 @@ export function parseTextComparison(xml: string | readonly string[], articles: r
 
   // Pass 3: emit.
   const rows: ComparisonRow[] = []
+  /**
+   * The rows that print a designation of their own in the RIGHT column that
+   * is not the left one's — a renumbering, „§ 14." left, „§ 22." right
+   * (`designateAfter`).
+   */
+  const renamed = new Map<ComparisonRow, string>()
   let law = resolution.whole?.key ?? null
   /** The § currently open — a new law restarts the numbering. */
   let openPara: string | null = null
@@ -447,7 +475,7 @@ export function parseTextComparison(xml: string | readonly string[], articles: r
         releaseHeadings()
         law = article.key
         openPara = null
-        rows.push({ kind: 'article', law, heading: headingOf(article), gld: null, para: null, current: '', proposed: '', change: 'unchanged', elided: false, segments: null, editorial: false, elisionRange: false })
+        rows.push({ kind: 'article', law, heading: headingOf(article), gld: null, para: null, paraAfter: null, current: '', proposed: '', change: 'unchanged', elided: false, segments: null, editorial: false, elisionRange: false })
         pendingHeading = []
         continue
       }
@@ -499,11 +527,16 @@ export function parseTextComparison(xml: string | readonly string[], articles: r
     const lift = ownHeading !== null && ownHeading === paraHeading(raw.proposedHtml)
     const currentHtml = lift ? stripParaHeading(raw.currentHtml) : raw.currentHtml
     const proposedHtml = lift ? stripParaHeading(raw.proposedHtml) : raw.proposedHtml
-    const gldMatch = GLD_RE.exec(currentHtml) ?? GLD_RE.exec(proposedHtml)
+    const leftMatch = GLD_RE.exec(currentHtml)
+    const rightMatch = GLD_RE.exec(proposedHtml)
+    const gldMatch = leftMatch ?? rightMatch
     // Group 1 is RIS's `<gldsym>`, group 2 the Word template's span; exactly
     // one of them is set. Reading group 1 alone gave `undefined` for every
     // Parliament annex — the branch fired and its capture was dropped.
     const gld = gldMatch ? cellText(gldMatch[1] ?? gldMatch[2] ?? '') : null
+    // The right column's own Gliederungssymbol, where the row is filed under
+    // the left one (`designateAfter`).
+    const rightGld = leftMatch && rightMatch ? cellText(rightMatch[1] ?? rightMatch[2] ?? '') : null
     if (gld) openPara = gld
     // The two-sided headings held above this row were waiting for exactly this:
     // the row opens a §, so they are its heading and stop being rows of their
@@ -521,6 +554,14 @@ export function parseTextComparison(xml: string | readonly string[], articles: r
     // the row does *not* carry stays in the text (`stripGld`).
     const current = cellText(stripGld(currentHtml, gld))
     const proposed = cellText(stripGld(proposedHtml, gld))
+    // Where the two designations differ, the § is renumbered. The right one is
+    // the column's own Gliederungssymbol, or — where the ressort typed it as
+    // text — a designation at the head of the column that the left one does
+    // not open with too: 144/ME XXVIII prints its new „§ 14." that way above
+    // the standing § 15.
+    const typed = leftMatch && !rightMatch ? (TYPED_DESIGNATION_RE.exec(proposed)?.[1] ?? null) : null
+    const rightDesignation = rightGld ?? (typed && !current.startsWith(typed) ? typed : null)
+    const renumberedTo = rightDesignation && gld && designationKey(rightDesignation) !== designationKey(gld) ? rightDesignation : null
     if (lift && !current && !proposed) {
       // The heading had a row of its own. It belongs to the § *below* it —
       // read in printed order it landed in the § before, which once put
@@ -547,6 +588,8 @@ export function parseTextComparison(xml: string | readonly string[], articles: r
       heading: [pendingHeading.join(' '), lift ? ownHeading : ''].filter(Boolean).join(' · ') || null,
       gld,
       para: openPara,
+      // Decided per § once the annex is read (`designateAfter`).
+      paraAfter: null,
       current,
       proposed,
       change,
@@ -555,6 +598,7 @@ export function parseTextComparison(xml: string | readonly string[], articles: r
       editorial: isEditorialChange(segments),
       elisionRange: change === 'changed' && !elided && isElisionRangeOnly(current, proposed),
     }
+    if (renumberedTo) renamed.set(row, renumberedTo)
     pendingHeading = []
     // A heading the annex prints in **both** columns, in a row of its own and
     // above the § it heads. Whose it is cannot be known yet — it is the § the
@@ -642,7 +686,59 @@ export function parseTextComparison(xml: string | readonly string[], articles: r
   }
   releaseTwoSided()
   releaseHeadings()
+  designateAfter(rows, renamed)
   return { rows, refusal: resolution.refusal }
+}
+
+/**
+ * The designation each § of the annex carries AFTER the draft, onto every
+ * row of it (`ComparisonRow.paraAfter`) — decided per § and not per row,
+ * because a § the draft keeps can lose its first Absatz, and only the whole §
+ * says whether anything of it stands afterwards.
+ *
+ * A § here is what the annex opens: a run of rows under one `para`, and a
+ * new one at every row with a designation of its own — 2/ME XXVIII opens
+ * „§ 2." twice in a row, once beside the new „§ 1a." and once as § 2 itself.
+ * Three answers, the three shapes a renumbering takes in GP XXVIII:
+ *
+ *  - **the new number** where a row of the § prints another designation in
+ *    the right column than in the left (`renamed`): one row, „§ 14." beside
+ *    „§ 22." — 61 §§ of 19 GP-XXVIII drafts, eleven of them
+ *    Ministerialentwürfe (26.10.2026);
+ *  - **null** where nothing of the § stands in the right column — the draft
+ *    repeals it, or moves it to a number the annex prints elsewhere as a new
+ *    §: 51/ME prints the new § 5 and, three §§ later, the old § 5 struck;
+ *  - **its own** otherwise, the ordinary case.
+ *
+ * An elided row („(1) bis (4) …") stands in both columns, so a § that keeps
+ * any of its text keeps its number. A row without a § keeps none.
+ *
+ * The PDF path pairs its columns by number, so there a § is one row, and no
+ * row can name two (`annexPdf.ts`); the rule is the same.
+ */
+export function designateAfter(rows: readonly ComparisonRow[], renamed: ReadonlyMap<ComparisonRow, string> = new Map()): void {
+  let unit: ComparisonRow[] = []
+  let opened = false
+  const close = (): void => {
+    const para = unit[0]?.para ?? null
+    const moved = unit.map((r) => renamed.get(r)).find((d) => d !== undefined)
+    const after = para === null ? null : (moved ?? (unit.every((r) => r.proposed === '') ? null : para))
+    for (const r of unit) r.paraAfter = after
+    unit = []
+    opened = false
+  }
+  for (const row of rows) {
+    if (row.kind === 'article') {
+      close()
+      row.paraAfter = null
+      continue
+    }
+    const last = unit[unit.length - 1]
+    if (last && (last.para !== row.para || last.law !== row.law || (row.gld !== null && opened))) close()
+    unit.push(row)
+    if (row.gld !== null) opened = true
+  }
+  close()
 }
 
 /**

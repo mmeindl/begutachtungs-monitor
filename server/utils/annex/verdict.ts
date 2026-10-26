@@ -415,6 +415,37 @@ function addBareParagraphKeys(paragraphs: Map<string, KonsParagraphRef>): void {
 }
 
 /** Every pair row of a §, grouped by the law it belongs to. */
+/**
+ * What rule 2 holds a § group's right column against: the draft's
+ * instructions for the §, and — where the annex says the § stands under
+ * another number afterwards (`ComparisonRow.paraAfter`) — that number's too.
+ *
+ * The group keeps the LEFT designation, and so does the left check: the
+ * standing text is filed under it. But the right column is the § after the
+ * draft, and a draft that renumbers addresses it by either number — 2/ME
+ * XXVIII amends § 14a before making it § 15, 20/ME orders „§ 82 Abs. 24" for
+ * the old § 81, which becomes § 82. Asked by the left number alone, the
+ * right column of 20/ME's § 81, 147/ME's § 92b and the
+ * Medizinproduktebetreiberverordnung's § 11 read as text the draft does not
+ * order (`notInDraft`), and each withheld the new § printed under the same
+ * number with it. `draftBags` links the two numbers already where the
+ * draft's renumbering instruction is read; this is the annex saying it where
+ * it is not (26.10.2026).
+ */
+export function paragraphReference(group: { law: string | null; para: string; rows: readonly ComparisonRow[] }, draftWords: (law: string | null, para: string) => WordBag): WordBag {
+  const own = draftWords(group.law, group.para)
+  const ownKey = designationKey(group.para)
+  const afters = [...new Set(group.rows.map((r) => r.paraAfter).filter((d): d is string => d !== null && designationKey(d) !== ownKey))]
+  if (afters.length === 0) return own
+  const bags = [own, ...afters.map((d) => draftWords(group.law, d))]
+  const carried = bags.filter((b) => b.carries !== undefined)
+  return {
+    has: (w) => bags.some((b) => b.has(w)),
+    read: own.read,
+    carries: carried.length ? (tokens) => carried.some((b) => b.carries!(tokens)) : undefined,
+  }
+}
+
 function paragraphGroups(rows: readonly ComparisonRow[]): Map<string, { law: string | null; para: string; rows: ComparisonRow[] }> {
   const groups = new Map<string, { law: string | null; para: string; rows: ComparisonRow[] }>()
   for (const row of rows) {
@@ -604,7 +635,7 @@ export async function verifyAnnex(
     const byPara = coverage.get(group.law) ?? new Map<string, Coverage>()
     byPara.set(group.para, coverageOfParagraph(group.rows, standing.text))
     coverage.set(group.law, byPara)
-    rightColumn.set(annexParagraphKey(group.law, group.para), rightColumnCheck(group.rows, standing, draftWords(group.law, group.para)))
+    rightColumn.set(annexParagraphKey(group.law, group.para), rightColumnCheck(group.rows, standing, paragraphReference(group, draftWords)))
   }, { failFast: true })
 
   const doubtfulLaws: LawCheck[] = []

@@ -1,9 +1,9 @@
 import { describe, expect, it } from 'vitest'
-import { parseTextComparison, summarizeComparison, type ComparisonRow } from '../server/utils/annex/comparisonRows'
+import { designateAfter, parseTextComparison, summarizeComparison, type ComparisonRow } from '../server/utils/annex/comparisonRows'
 import { isScanned } from '../server/utils/annex/tableCells'
 import { isElidedPair, isElisionRangeOnly, printedLayout, printedStretches } from '../server/utils/annex/elision'
 import type { DraftArticle } from '../server/utils/lawtext/draftArticles'
-import { draftArticles as draft } from './helpers/builders'
+import { comparisonRow, draftArticles as draft } from './helpers/builders'
 
 const ONE_LAW = draft({ title: 'Änderung des Aktiengesetzes' })
 const parse = (xml: string, articles: DraftArticle[] = ONE_LAW) => parseTextComparison(xml, articles).rows
@@ -1183,5 +1183,75 @@ describe('an annex that opens every row with a spacer column', () => {
       <tr><td><nbsp /></td><td><gldsym>§ 8.</gldsym>Neu eingefuegt.</td></tr>
     </table>`
     expect(parse(plain).find((r) => r.kind === 'pair')).toMatchObject({ current: '', change: 'inserted' })
+  })
+})
+
+describe('paraAfter — the designation a § carries after the draft', () => {
+  const after = (rows: ComparisonRow[]) => rows.filter((r) => r.kind === 'pair').map((r) => [r.para, r.paraAfter])
+
+  it('is the right column\'s own designation where one row prints two (51/ME XXVIII: § 14 → § 22)', () => {
+    const rows = parse(annex([
+      pair('<gldsym>§ 14.</gldsym>Soweit auf andere Bundesgesetze verwiesen wird …', '<gldsym>§ 22.</gldsym>Soweit auf andere Bundesgesetze verwiesen wird …'),
+      pair('', '(2) Neuer Absatz.'),
+    ]))
+    // Filed under the left one, which the RIS check holds the standing text against …
+    expect(rows[0]).toMatchObject({ gld: '§ 14.', para: '§ 14.' })
+    // … and every row of the § knows the number it has afterwards.
+    expect(after(rows)).toEqual([['§ 14.', '§ 22.'], ['§ 14.', '§ 22.']])
+  })
+
+  it('is null for a § nothing of which stands afterwards, and its own for the new § of the same number (51/ME: the old § 5)', () => {
+    const rows = parse(annex([
+      pair('', '<gldsym>§ 5.</gldsym>Vorrangige Maßnahmen.'),
+      pair('<gldsym>§ 6.</gldsym>Alt.', '<gldsym>§ 6.</gldsym>Neu.'),
+      pair('<gldsym>§ 5.</gldsym>(1) Spezifikationen und Maßnahmen.', ''),
+      pair('(2) Mehr davon.', ''),
+    ]))
+    expect(after(rows)).toEqual([['§ 5.', '§ 5.'], ['§ 6.', '§ 6.'], ['§ 5.', null], ['§ 5.', null]])
+  })
+
+  it('splits a run that opens two §§ (2/ME XXVIII: § 2 beside the new § 1a, then § 2 itself)', () => {
+    const rows = parse(annex([
+      pair('<gldsym>§ 2.</gldsym>(1) bis (2) …', '<gldsym>§ 1a.</gldsym>Im Sinne dieses Bundesgesetzes bedeutet:'),
+      pair('(3) Als Verurteilung ist anzusehen …', '1. „Verurteilung" jedes Erkenntnis …'),
+      pair('<gldsym>§ 2.</gldsym>(1) In das Strafregister sind aufzunehmen:', '<gldsym>§ 2.</gldsym>(1) In das Strafregister sind aufzunehmen:'),
+      pair('3. alle Verurteilungen;', '3. alle rechtskräftigen Verurteilungen;'),
+    ]))
+    expect(after(rows)).toEqual([['§ 2.', '§ 1a.'], ['§ 2.', '§ 1a.'], ['§ 2.', '§ 2.'], ['§ 2.', '§ 2.']])
+  })
+
+  it('keeps the number of a § that loses an Absatz, or is left out in elision lines only', () => {
+    const rows = parse(annex([
+      pair('<gldsym>§ 7.</gldsym>(1) Fällt weg.', ''),
+      pair('(2) Alt.', '(2) Neu.'),
+      pair('<gldsym>§ 8.</gldsym>(1) bis (3) …', '<gldsym>§ 8.</gldsym>(1) bis (3) …'),
+      pair('(4) Fällt auch weg.', ''),
+    ]))
+    expect(after(rows)).toEqual([['§ 7.', '§ 7.'], ['§ 7.', '§ 7.'], ['§ 8.', '§ 8.'], ['§ 8.', '§ 8.']])
+  })
+
+  it('reads a new number the ressort typed as text where the right column has no Gliederungssymbol (144/ME XXVIII: § 15 → § 14)', () => {
+    const rows = parse(annex([
+      pair('<gldsym>§ 15.</gldsym>(1) Dopingkontrollen können …', '§ 14. (1) Dopingkontrollen können …'),
+      // A citation both columns open with is no renumbering.
+      pair('<gldsym>§ 16.</gldsym>§ 5. gilt sinngemäß.', '§ 5. gilt sinngemäß, soweit …'),
+    ]))
+    expect(after(rows)).toEqual([['§ 15.', '§ 14.'], ['§ 16.', '§ 16.']])
+  })
+
+  it('is null for a row without a §, and the same designation in both columns is no renumbering', () => {
+    const rows = parse(annex([pair('Bundesgesetz über …', 'Bundesgesetz über …'), pair('<gldsym>§ 1</gldsym>Alt.', '<gldsym>§ 1.</gldsym>Neu.')]))
+    expect(after(rows)).toEqual([[null, null], ['§ 1', '§ 1']])
+  })
+})
+
+describe('designateAfter on the PDF path\'s rows — one row per §, the columns paired by number', () => {
+  it('keeps a paired §\'s number and gives a § printed in the left column only none', () => {
+    const rows = [
+      comparisonRow({ gld: '§ 3.', para: '§ 3.', current: '§ 3. Alt.', proposed: '§ 3. Neu.' }),
+      comparisonRow({ gld: '§ 4.', para: '§ 4.', current: '§ 4. Fällt weg.', proposed: '', change: 'removed' }),
+    ]
+    designateAfter(rows)
+    expect(rows.map((r) => r.paraAfter)).toEqual(['§ 3.', null])
   })
 })

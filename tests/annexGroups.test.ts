@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import type { TextComparisonRow, ConsolidatedTextResponse, ParagraphExplanationView } from '#shared/types'
-import { annexBadge, annexLawKeys, annexParas, designationAfter, groupAnnexRows, placeAtParagraphs, type AnnexParaOptions } from '../app/utils/annexGroups'
+import { annexBadge, annexLawKeys, annexParas, groupAnnexRows, placeAtParagraphs, type AnnexParaOptions } from '../app/utils/annexGroups'
 
 /** A pair row of § `para`, changed and verified unless told otherwise. */
 function row(para: string | null, over: Partial<TextComparisonRow> = {}): TextComparisonRow {
@@ -10,6 +10,7 @@ function row(para: string | null, over: Partial<TextComparisonRow> = {}): TextCo
     heading: null,
     gld: null,
     para,
+    paraAfter: para,
     current: `alt ${para}`,
     proposed: `neu ${para}`,
     change: 'changed',
@@ -243,36 +244,43 @@ describe('annexParas — the Begründung and the Lesefassung of a renumbered §'
     parasOf(rows, {}, ids.map((id) => passage(id))).paras.map((p) => [p.key, p.explanations.map((e) => e.heading)])
 
   // 51/ME XXVIII: the new § 14 is inserted, and further down the old § 14
-  // becomes § 22 — one row, „§ 14." left, „§ 22." right, the right one left
-  // in the text.
+  // becomes § 22 — one row, „§ 14." left, „§ 22." right. The server says so
+  // in `paraAfter` (`designateAfter`).
   const renumbered = [
     row('§ 14.', { gld: '§ 14.', change: 'inserted', current: '', proposed: '(1) Die öffentliche Hand stellt bereit:' }),
     row('§ 21.', { gld: '§ 21.', change: 'inserted', current: '' }),
-    row('§ 14.', { gld: '§ 14.', current: 'Soweit verwiesen wird …', proposed: '§ 22. Soweit verwiesen wird …' }),
+    row('§ 14.', { gld: '§ 14.', paraAfter: '§ 22.', current: 'Soweit verwiesen wird …', proposed: '§ 22. Soweit verwiesen wird …' }),
   ]
 
-  it('reads the designation after the draft from the head of the proposed column', () => {
-    expect(designationAfter([renumbered[2]!])).toBe('§ 22.')
-    expect(designationAfter([renumbered[0]!])).toBe('§ 14.')
-    // A repealed § carries none afterwards.
-    expect(designationAfter([row('§ 8.', { gld: '§ 8.', change: 'removed', proposed: '' })])).toBeNull()
-    // A citation both columns open with is no renumbering.
-    expect(designationAfter([row('§ 7.', { gld: '§ 7.', current: '§ 5. gilt sinngemäß.', proposed: '§ 5. gilt sinngemäß, soweit …' })])).toBe('§ 7.')
+  it('reads the designation after the draft from the server, not from the text — a withheld row has none', () => {
+    const withheld = row('§ 14.', { gld: '§ 14.', paraAfter: '§ 22.', current: '', proposed: '', check: 'withheld', withheldCause: 'standing' })
+    expect(headings([renumbered[0]!, renumbered[1]!, withheld], ['14', '21', '22'])).toEqual([['§ 14.', ['Zu § 14:']], ['§ 21.', ['Zu § 21:']], ['§ 14.#2', ['Zu § 22:']]])
+    // „§ 5." at the head of both columns is a citation, and no field says otherwise.
+    expect(headings([row('§ 7.', { gld: '§ 7.', current: '§ 5. gilt sinngemäß.', proposed: '§ 5. gilt sinngemäß, soweit …' })], ['5', '7'])).toEqual([['§ 7.', ['Zu § 7:']]])
   })
 
   it('looks a renumbered § up by its new number, and the new § by the old one', () => {
     expect(headings(renumbered, ['14', '21', '22'])).toEqual([['§ 14.', ['Zu § 14:']], ['§ 21.', ['Zu § 21:']], ['§ 14.#2', ['Zu § 22:']]])
   })
 
+  it('names the new number on the § line only where the whole block is that one §', () => {
+    const lines = (rows: TextComparisonRow[]) => parasOf(rows).paras.map((p) => [p.gld, p.renumberedTo])
+    expect(lines(renumbered)).toEqual([['§ 14.', null], ['§ 21.', null], ['§ 14.', '§ 22.']])
+    // 2/ME: one run, § 2 beside the new § 1a and then § 2 itself — no single new number.
+    expect(lines([row('§ 2.', { gld: '§ 2.', paraAfter: '§ 1a.' }), row('§ 2.', { gld: '§ 2.' })])).toEqual([['§ 2.', null]])
+    // A repealed § says it with its struck rows.
+    expect(lines([row('§ 8.', { gld: '§ 8.', paraAfter: null, change: 'removed', proposed: '' })])).toEqual([['§ 8.', null]])
+  })
+
   it('falls back to the old number where nothing stands under the new one and no other § carries it (2/ME XXVIII)', () => {
-    const rows = [row('§ 14a.', { gld: '§ 14a.', current: '(1) …', proposed: '§ 15. (1) …' }), row('§ 14a.', { change: 'inserted', current: '', proposed: '(3) Das Strafgericht …' })]
+    const rows = [row('§ 14a.', { gld: '§ 14a.', paraAfter: '§ 15.', current: '(1) …', proposed: '§ 15. (1) …' }), row('§ 14a.', { paraAfter: '§ 15.', change: 'inserted', current: '', proposed: '(3) Das Strafgericht …' })]
     expect(headings(rows, ['14a'])).toEqual([['§ 14a.', ['Zu § 14a:']]])
     // … but not where another § of the law carries the old number afterwards.
     expect(headings(renumbered, ['14'])).toEqual([['§ 14.', ['Zu § 14:']], ['§ 21.', []], ['§ 14.#2', []]])
   })
 
   it('gives a repealed § its own passage only where no other § takes its number', () => {
-    const repealed = row('§ 8.', { gld: '§ 8.', change: 'removed', proposed: '' })
+    const repealed = row('§ 8.', { gld: '§ 8.', paraAfter: null, change: 'removed', proposed: '' })
     const newEight = row('§ 8.', { gld: '§ 8.', change: 'inserted', current: '' })
     expect(headings([repealed], ['8'])).toEqual([['§ 8.', ['Zu § 8:']]])
     // 51/ME: the new § 8 earlier in the annex, the repealed old § 8 later.
@@ -281,8 +289,8 @@ describe('annexParas — the Begründung and the Lesefassung of a renumbered §'
 
   it('collects the passages of every § one run opens, each once (2/ME: § 2 → § 1a, then § 2)', () => {
     const rows = [
-      row('§ 2.', { gld: '§ 2.', current: '(1) bis (2) …', proposed: '§ 1a. Im Sinne dieses Bundesgesetzes bedeutet:' }),
-      row('§ 2.', { change: 'inserted', current: '' }),
+      row('§ 2.', { gld: '§ 2.', paraAfter: '§ 1a.', current: '(1) bis (2) …', proposed: '§ 1a. Im Sinne dieses Bundesgesetzes bedeutet:' }),
+      row('§ 2.', { paraAfter: '§ 1a.', change: 'inserted', current: '' }),
       row('§ 2.', { gld: '§ 2.', change: 'unchanged' }),
       row('§ 2.'),
     ]
@@ -306,10 +314,24 @@ describe('annexParas — the Begründung and the Lesefassung of a renumbered §'
     expect(outcomes(renumbered, response(['22'], []))).toEqual([['nicht-gefunden'], ['nicht-gefunden'], ['22']])
   })
 
+  it('gives each § of a shift its own outcome, and names a § the run does not know by its number afterwards (20/ME XXVIII)', () => {
+    // The old § 81 becomes § 82, the old § 82 becomes § 83; the run knows § 82 only.
+    const shift = [
+      row('§ 81.', { gld: '§ 81.', change: 'inserted', current: '' }),
+      row('§ 81.', { gld: '§ 81.', paraAfter: '§ 82.', current: '(1) Inkrafttreten …', proposed: '§ 82. (1) Inkrafttreten …' }),
+      row('§ 82.', { gld: '§ 82.', paraAfter: '§ 83.', current: 'Mit der Vollziehung …', proposed: '§ 83. Mit der Vollziehung …' }),
+    ]
+    const placed = parasOf(shift, {}, [], response([], [['81', 'verweigert'], ['82', 'verweigert']])).paras
+    expect(placed.map((p) => p.lesefassungen.map((l) => `${l.designation}:${l.lesefassung.kind === 'shown' ? 'shown' : l.lesefassung.cause}`))).toEqual([
+      ['§ 81.:verweigert', '§ 82.:verweigert'],
+      ['§ 83.:nicht-gefunden'],
+    ])
+  })
+
   it('leaves no vacated number behind for the end of the law', () => {
     // The old § 14 moves to § 22 and nothing takes its number: its outcome
     // (`entfaellt`) belongs to the block that shows the move.
-    const moved = [row('§ 14.', { gld: '§ 14.', current: 'Soweit verwiesen wird …', proposed: '§ 22. Soweit verwiesen wird …' })]
+    const moved = [row('§ 14.', { gld: '§ 14.', paraAfter: '§ 22.', current: 'Soweit verwiesen wird …', proposed: '§ 22. Soweit verwiesen wird …' })]
     const placement = placeAtParagraphs(moved, response(['22'], [['14', 'entfaellt']]), [])
     expect([...placement.ends.byGroup.values()].flatMap((e) => e.outcomes)).toEqual([])
     expect(placement.byRow.get(moved[0]!)!.lesefassungen.map((l) => l.designation)).toEqual(['§ 22.'])

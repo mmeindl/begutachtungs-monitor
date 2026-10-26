@@ -14,7 +14,7 @@ import {
 /** A pair row of § `para`, changed unless told otherwise. */
 function row(para: string | null, over: Partial<TextComparisonRow> = {}): TextComparisonRow {
   return {
-    kind: 'pair', law: null, heading: null, gld: para, para,
+    kind: 'pair', law: null, heading: null, gld: para, para, paraAfter: para,
     current: `alt ${para}`, proposed: `neu ${para}`, change: 'changed', elided: false, segments: null,
     editorial: false, elisionRange: false, check: 'verified', owesCheck: true,
     ...over,
@@ -79,8 +79,8 @@ describe('placeAtParagraphs — the Lesefassung', () => {
     const rows = [row('§ 1.'), row('§ 2.', { editorial: true }), row('§ 3.', { change: 'unchanged' })]
     expect(carried(rows, response([], [])).at).toEqual([['nicht-gefunden'], [], []])
     expect(carried(rows, null).at).toEqual([[], [], []])
-    // A repealed § says it with its struck rows.
-    expect(carried([row('§ 8.', { change: 'removed', proposed: '' })], response([], [])).at).toEqual([[]])
+    // A repealed § says it with its struck rows — the server gives it no number afterwards.
+    expect(carried([row('§ 8.', { change: 'removed', proposed: '', paraAfter: null })], response([], [])).at).toEqual([[]])
   })
 
   it('looks a package\'s § up by its law', () => {

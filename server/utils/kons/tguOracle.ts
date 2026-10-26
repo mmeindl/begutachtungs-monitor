@@ -82,6 +82,15 @@ export function paraIdOfGld(gld: string | null): string | null {
  * The annex's rows grouped by the § they belong to: a row opens a § with its
  * `gld`, every following row without one continues it.
  *
+ * **Filed under the designation the § carries AFTER the draft**
+ * (`ComparisonRow.paraAfter`, 26.10.2026) — the one the engine's result for it
+ * carries. Which § a row belongs to is still decided by the left column, the
+ * annex's own order; only the drawer changes. Filed by the left one, 51/ME
+ * XXVIII put the old § 14, now § 22, into the drawer of the NEW § 14: the
+ * engine's § 22 found no row of its own, and its § 14 met a row about
+ * another provision. A § nothing of which stands afterwards stays under its
+ * own number, set aside (`paragraphRows`, `origin`).
+ *
  * Keyed by **law and designation**, because a Sammelnovelle's next law starts
  * its own § 1 and 15,1 % of § designations in the multi-law annexes recur in
  * another law of the same package. The key was a running counter over the
@@ -91,12 +100,21 @@ export function paraIdOfGld(gld: string | null): string | null {
  */
 export function rowsByParagraph(rows: readonly ComparisonRow[]): Map<string, ComparisonRow[]> {
   const out = new Map<string, ComparisonRow[]>()
+  const struck = new Set<ComparisonRow>()
+  const position = new Map<ComparisonRow, number>()
+  const standing = new Map<ComparisonRow, string>()
+  /** The § open, by its own number — what the rules below compare against. */
   let current: string | null = null
+  /** Where its rows go: its number after the draft, or its own, set aside. */
+  let drawer: { key: string; struck: boolean; standing: string } | null = null
   for (const [i, row] of rows.entries()) {
     if (row.kind === 'article') {
       current = null
+      drawer = null
       continue
     }
+    /** The row whose designation opened the § — this one, or for a heading the one below. */
+    let opener = row
     let id = paraIdOfGld(row.gld)
     // A schedule the annex opens with a line printed once per column carries
     // its name in `para`, not in `gld` (`comparisonRows`, `opensAnlage`), and
@@ -113,7 +131,10 @@ export function rowsByParagraph(rows: readonly ComparisonRow[]): Map<string, Com
     // without a closing full stop, right before a row that opens a §, is
     // that §'s heading.
     const next = rows[i + 1]
-    if (!id && next && next.kind === 'pair' && paraIdOfGld(next.gld) && isHeadingRow(row)) id = paraIdOfGld(next.gld)
+    if (!id && next && next.kind === 'pair' && paraIdOfGld(next.gld) && isHeadingRow(row)) {
+      id = paraIdOfGld(next.gld)
+      opener = next
+    }
     // A § the annex opened without a row that carries its symbol. Where the
     // designation stands in a row of its own and nothing beside it —
     // „§ 190." over the salary table of the Richter- und
@@ -136,14 +157,45 @@ export function rowsByParagraph(rows: readonly ComparisonRow[]): Map<string, Com
       const opened = paraIdOfGld(row.para)
       if (opened && paragraphKey(opened, row.law) !== current && !opensBelow(rows, i, opened)) id = opened
     }
-    if (id) current = paragraphKey(id, row.law)
-    if (!current) continue
-    const list = out.get(current) ?? []
+    if (id) {
+      current = paragraphKey(id, row.law)
+      drawer = { ...drawerOf(id, opener, row.law), standing: id }
+    }
+    if (!current || !drawer) continue
+    const list = out.get(drawer.key) ?? []
     list.push(row)
-    out.set(current, list)
+    out.set(drawer.key, list)
+    position.set(row, i)
+    standing.set(row, drawer.standing)
+    if (drawer.struck) struck.add(row)
   }
+  STRUCK.set(out, struck)
+  POSITION.set(out, position)
+  STANDING.set(out, standing)
   return out
 }
+
+/**
+ * Where a § opened by `opener` is filed: under the number it carries after
+ * the draft, or — where nothing of it stands afterwards (`paraAfter` null) —
+ * under its own number, set aside for the § the engine made of it.
+ */
+function drawerOf(id: string, opener: ComparisonRow, law: string | null): { key: string; struck: boolean } {
+  if (opener.paraAfter === opener.para) return { key: paragraphKey(id, law), struck: false }
+  if (opener.paraAfter === null) return { key: paragraphKey(id, law), struck: true }
+  return { key: paragraphKey(paraIdOfGld(opener.paraAfter) ?? id, law), struck: false }
+}
+
+/**
+ * Per map of `rowsByParagraph`, what `paragraphRows` needs beside the drawers:
+ * the rows of §§ nothing of which stands after the draft, the standing § each
+ * row's left column belongs to (its own number, before the draft), and every
+ * row's place in the annex, so rows joined from two drawers keep the printed
+ * order. Keyed on the map, so all three die with it.
+ */
+const STRUCK = new WeakMap<ReadonlyMap<string, ComparisonRow[]>, ReadonlySet<ComparisonRow>>()
+const STANDING = new WeakMap<ReadonlyMap<string, ComparisonRow[]>, ReadonlyMap<ComparisonRow, string>>()
+const POSITION = new WeakMap<ReadonlyMap<string, ComparisonRow[]>, ReadonlyMap<ComparisonRow, number>>()
 
 /**
  * Whether a row further down, inside the run that inherits the same `para`,
@@ -166,13 +218,63 @@ export function paragraphKey(id: string, law: string | null): string {
 }
 
 /**
- * The annex rows of one § — of a named law where the annex divides its laws.
+ * The annex rows of one § of the engine's result — of a named law where the
+ * annex divides its laws.
  *
  * A caller that does not know which law of a package it means may only ask
  * when there is exactly one candidate. Answering anyway is what the running
  * counter did, and it held the engine's § 5 against another law's § 5.
+ *
+ * `origin` is the § of the standing law the result's § came from
+ * (`renamedOrigins`): itself unless the draft renumbered, null for a § the
+ * draft brings in new. A row's LEFT column is the standing text of the § it
+ * is filed under by the left designation, so it speaks only for the § the
+ * engine made of that one:
+ *
+ *  - the rows of a § the annex strikes join the § of their own number only
+ *    where that is its origin — „§ 5 lautet" printed as the old § 5 struck
+ *    and the new § 5 set elsewhere (51/ME XXVIII) is one § to the engine;
+ *    the old § 16 struck beside the old § 9 moving to § 16 is not;
+ *  - a row that moved into this § from another number, where the engine
+ *    did not derive the § from that number, keeps its right column only.
+ *    The PDF path pairs its columns by number, so where 35/ME XXVIII moves
+ *    the old § 44f to § 44g and brings in a new § 44f, the row „§ 44f." has
+ *    the old one's text on the left and the new one's on the right; held
+ *    against the new § 44f, the left column read as standing text the annex
+ *    got wrong („fremd"), which it did not.
  */
-export function paragraphRows(byParagraph: ReadonlyMap<string, ComparisonRow[]>, id: string, law?: string | null): ComparisonRow[] {
+export function paragraphRows(byParagraph: ReadonlyMap<string, ComparisonRow[]>, id: string, law?: string | null, origin: string | null = id): ComparisonRow[] {
+  const own = drawerRows(byParagraph, id, law)
+  const struck = STRUCK.get(byParagraph)
+  const standing = STANDING.get(byParagraph)
+  if (!struck || !standing) return own
+  // „Anl." finds the one schedule's drawer (`drawerRows`), whose rows stand
+  // under that schedule's number.
+  const originId = id === 'Anl.' && origin === 'Anl.' && own[0] ? (standing.get(own[0]) ?? origin) : origin
+  const kept: ComparisonRow[] = []
+  for (const r of own) {
+    const from = standing.get(r)
+    if (struck.has(r)) {
+      if (from === originId) kept.push(r)
+      continue
+    }
+    if (from === originId || !r.current) kept.push(r)
+    else if (r.proposed) kept.push(rightColumnOnly(r))
+  }
+  // A struck § is filed under its own number, so another number's struck rows
+  // stand in that number's drawer only.
+  const inherited = originId === null || origin === id ? [] : drawerRows(byParagraph, originId, law).filter((r) => struck.has(r) && standing.get(r) === originId)
+  if (inherited.length === 0) return kept
+  const position = POSITION.get(byParagraph)!
+  return [...kept, ...inherited].sort((a, b) => position.get(a)! - position.get(b)!)
+}
+
+/** A row as the § its right column belongs to sees it: text the draft brings in. */
+function rightColumnOnly(row: ComparisonRow): ComparisonRow {
+  return { ...row, current: '', change: row.elided ? row.change : 'inserted', segments: null, editorial: false, elisionRange: false }
+}
+
+function drawerRows(byParagraph: ReadonlyMap<string, ComparisonRow[]>, id: string, law?: string | null): ComparisonRow[] {
   // „Anl." is an instruction saying „the schedule", and the annex writes the
   // number („Anlage 1"). They are the same unit wherever the map holds
   // exactly one schedule; where it holds several the instruction named none

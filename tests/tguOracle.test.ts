@@ -5,9 +5,9 @@ import type { ComparisonRow } from '../server/utils/annex/comparisonRows'
 
 function pair(current: string, proposed: string, gld: string | null = null, elided = false, law: string | null = null): ComparisonRow {
   const change = !current && proposed ? 'inserted' : current && !proposed ? 'removed' : current === proposed ? 'unchanged' : 'changed'
-  return { kind: 'pair', law, heading: null, gld, para: gld, current, proposed, change, elided, segments: null, editorial: false, elisionRange: false }
+  return { kind: 'pair', law, heading: null, gld, para: gld, paraAfter: gld, current, proposed, change, elided, segments: null, editorial: false, elisionRange: false }
 }
-const article = (heading: string, law: string | null = null): ComparisonRow => ({ kind: 'article', law, heading, gld: null, para: null, current: '', proposed: '', change: 'unchanged', elided: false, segments: null, editorial: false, elisionRange: false })
+const article = (heading: string, law: string | null = null): ComparisonRow => ({ kind: 'article', law, heading, gld: null, para: null, paraAfter: null, current: '', proposed: '', change: 'unchanged', elided: false, segments: null, editorial: false, elisionRange: false })
 
 describe('rowsByParagraph', () => {
   // A package's second law starts its own § 5, and in the multi-law annexes
@@ -704,4 +704,64 @@ it('files the previous §\'s elided tail under that §, not as the next one\'s h
   const grouped = rowsByParagraph(rows)
   expect(grouped.get('#115')).toHaveLength(2)
   expect(grouped.get('#116')).toHaveLength(1)
+})
+
+describe('rowsByParagraph — a § filed under the designation it carries after the draft (26.10.2026)', () => {
+  // `pair` gives every row its own number as `paraAfter`; a renumbering or a repeal says otherwise.
+  const moved = (current: string, proposed: string, gld: string | null, after: string | null): ComparisonRow => ({ ...pair(current, proposed, gld), paraAfter: after })
+
+  // 51/ME XXVIII: the new § 14, and further down the old § 14 moving to § 22.
+  const rows = [
+    pair('', '§ 14. (1) Die öffentliche Hand stellt bereit:', '§ 14.'),
+    moved('Soweit verwiesen wird, gilt die geltende Fassung.', '§ 22. Soweit verwiesen wird, gilt die geltende Fassung.', '§ 14.', '§ 22.'),
+  ]
+
+  it('gives the engine\'s § 22 the row of the old § 14, and its new § 14 only its own', () => {
+    const grouped = rowsByParagraph(rows)
+    expect(paragraphRows(grouped, '22').map((r) => r.gld)).toEqual(['§ 14.'])
+    expect(paragraphRows(grouped, '14').map((r) => r.current)).toEqual([''])
+    const text = 'Soweit verwiesen wird, gilt die geltende Fassung.'
+    expect(oracleVerdict('22', text, text, paragraphRows(grouped, '22', undefined, '14')).verdict).toBe('bestätigt')
+  })
+
+  it('sets a struck § aside: its own number gets it, another § only where it came from it', () => {
+    // 51/ME: the old § 16 struck, the old § 9 moving to § 16.
+    const grouped = rowsByParagraph([
+      moved('§ 9. IVS-Diensteanbieter haften.', '§ 16. IVS-Diensteanbieter haften.', '§ 9.', '§ 16.'),
+      moved('§ 16. Mit der Vollziehung ist betraut.', '', '§ 16.', null),
+      moved('§ 5. Spezifikationen.', '', '§ 5.', null),
+    ])
+    // The engine's § 16 is the old § 9: the struck old § 16 is another provision.
+    expect(paragraphRows(grouped, '16', undefined, '9').map((r) => r.gld)).toEqual(['§ 9.'])
+    // Where the engine reads § 16 as § 16 („§ 16 lautet"), both are its rows, as before.
+    expect(paragraphRows(grouped, '16').map((r) => r.gld)).toEqual(['§ 9.', '§ 16.'])
+    // A § the draft brings in new has no struck predecessor …
+    expect(paragraphRows(grouped, '16', undefined, null).map((r) => r.gld)).toEqual(['§ 9.'])
+    // … and a § the engine made of the old § 5 gets its struck rows, in printed order.
+    expect(paragraphRows(grouped, '7', undefined, '5').map((r) => r.gld)).toEqual(['§ 5.'])
+  })
+
+  it('lets a left column speak only for the § the engine made of it (35/ME XXVIII: the PDF path pairs by number)', () => {
+    // The old § 44f moves to § 44g, a new § 44f comes in: paired by number,
+    // each row has one provision on the left and another on the right.
+    const grouped = rowsByParagraph([
+      pair('§ 44f. Ist der Antrag kundgemacht worden, so kann die Behörde durch Edikt zustellen.', '§ 44f. Die Behörde kann nach Prüfung der Richtigkeit Zahlungen anweisen.', '§ 44f.'),
+      pair('§ 44g. Die Kosten der Verlautbarung sind von Amts wegen zu tragen.', '§ 44g. Ist der Antrag kundgemacht worden, so kann die Behörde durch Edikt zustellen.', '§ 44g.'),
+    ])
+    const newF = paragraphRows(grouped, '44f', undefined, null)
+    expect(newF.map((r) => [r.current, r.change])).toEqual([['', 'inserted']])
+    expect(oracleVerdict('44f', null, 'Die Behörde kann nach Prüfung der Richtigkeit Zahlungen anweisen.', newF).verdict).toBe('bestätigt')
+    const moved = 'Ist der Antrag kundgemacht worden, so kann die Behörde durch Edikt zustellen.'
+    expect(oracleVerdict('44g', moved, moved, paragraphRows(grouped, '44g', undefined, '44f')).verdict).toBe('bestätigt')
+    // Held against its own number, as before, the old § 44g's text is still the standing text it is.
+    expect(paragraphRows(grouped, '44g').map((r) => r.current)).toEqual(['§ 44g. Die Kosten der Verlautbarung sind von Amts wegen zu tragen.'])
+  })
+
+  it('a new § the annex prints beside another one\'s standing text keeps its right column only (2/ME XXVIII: § 1a)', () => {
+    const grouped = rowsByParagraph([
+      moved('(1) bis (2) …', '§ 1a. Im Sinne dieses Bundesgesetzes bedeutet:', '§ 2.', '§ 1a.'),
+      moved('(3) Als Verurteilung ist anzusehen jedes Erkenntnis.', '1. „Verurteilung" jedes Erkenntnis.', null, '§ 1a.'),
+    ].map((r) => ({ ...r, para: '§ 2.' })))
+    expect(paragraphRows(grouped, '1a').map((r) => r.current)).toEqual(['', ''])
+  })
 })

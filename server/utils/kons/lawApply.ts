@@ -54,6 +54,43 @@ export interface Renaming {
   para: string
   from: string
   to: string
+  /**
+   * Which renumbering it belongs to, counted from 0 in the order they were
+   * carried out. The moves of one renumbering happen at once — „die §§ 8 und
+   * 9 erhalten die Bezeichnungen §§ 9 und 10" moves the old § 9, not the § 8
+   * that has just become § 9 (`renamedOrigins`).
+   */
+  batch: number
+}
+
+/**
+ * Where each § of the result stood in the standing law, after the
+ * renumberings carried out (`ApplyReport.renamed`) — what the engine's result
+ * for a § has to be held against.
+ *
+ * - a number a renumbering moved a § TO: the number it came from, followed
+ *   across renumberings (§ 8 → § 15, later § 15 → § 22: § 22 is the old § 8);
+ * - a number a renumbering vacated and none filled again: null — a § under it
+ *   in the result is a new one, and the standing § of that number is another
+ *   provision (51/ME XXVIII: the new § 14 beside the old one, now § 22);
+ * - any other: itself.
+ *
+ * The moves of one renumbering are resolved together, never one after
+ * another: read in order, „§ 8 → § 9, § 9 → § 10" made the new § 10 the old
+ * § 8 (`Renaming.batch`).
+ */
+export function renamedOrigins(renamed: readonly Renaming[]): (id: string) => string | null {
+  const moved = new Map<string, string | null>()
+  const originOf = (id: string): string | null => (moved.has(id) ? moved.get(id)! : id)
+  const paras = renamed.filter((r) => r.level === 'para')
+  for (let i = 0; i < paras.length;) {
+    const batch = paras.filter((r) => r.batch === paras[i]!.batch)
+    const filled = batch.map((r) => [r.to, originOf(r.from)] as const)
+    for (const r of batch) moved.set(r.from, null)
+    for (const [to, origin] of filled) moved.set(to, origin)
+    i += batch.length
+  }
+  return originOf
 }
 
 export interface ApplyReport {
@@ -1866,6 +1903,7 @@ function replaceEndMark(units: readonly (readonly Slot[])[], from: string, to: s
  * same batch may swap freely.
  */
 function renumberBatch(law: StandingLaw, batch: readonly Pick<Instruction, 'op' | 'payload'>[], renamed: Renaming[] = []): string | null {
+  const batchNo = (renamed[renamed.length - 1]?.batch ?? -1) + 1
   const moves: { node: LawNode; id: string; level: NodeLevel; siblings: LawNode[]; para: string }[] = []
   for (const { op } of batch) {
     if (op.kind !== 'renumber') return 'keine Umbenennung'
@@ -1906,7 +1944,7 @@ function renumberBatch(law: StandingLaw, batch: readonly Pick<Instruction, 'op' 
   }
   if (new Set(moves.map((m) => `${m.level}|${m.id}`)).size !== moves.length) return 'Zwei Einheiten erhalten dieselbe Bezeichnung'
   for (const m of moves) {
-    renamed.push({ level: m.level, para: m.level === 'para' ? `§ ${m.id}` : m.para, from: m.node.id, to: m.id })
+    renamed.push({ level: m.level, para: m.level === 'para' ? `§ ${m.id}` : m.para, from: m.node.id, to: m.id, batch: batchNo })
     m.node.id = m.id
     m.node.marker = m.id === '' ? '' : m.level === 'para' ? `§ ${m.id}.` : m.level === 'abs' ? `(${m.id})` : m.level === 'lit' ? `${m.id})` : `${m.id}.`
   }

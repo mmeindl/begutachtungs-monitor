@@ -41,7 +41,7 @@
  * put 9,3 % of the corpus on the harmless side of the report
  * (`applyReport.ts`, `halbangewendet`).
  */
-import { applyNovelle, instructionsFromUnits, resolveTarget, type StandingLaw } from '../../server/utils/kons/lawApply'
+import { applyNovelle, instructionsFromUnits, renamedOrigins, resolveTarget, type StandingLaw } from '../../server/utils/kons/lawApply'
 import { plainText, type LawNode } from '../../server/utils/lawtext/konsTree'
 import { segmentUnits, type TextBlock } from '../../server/utils/lawtext/lawUnits'
 import { parseRisXml } from '../../server/utils/lawtext/risXml'
@@ -632,8 +632,11 @@ async function verifyLaw(blocks: readonly TextBlock[], article: DraftArticle, ct
   // is looked up by that origin, RIS's by label (RIS keeps its history per
   // label, so its "before § 15" is the old § 15 — which is what the harness
   // has to live with, and why renumbered §§ mostly score as created).
-  const originOf = new Map<string, string>()
-  for (const r of renamed) if (r.level === 'para') originOf.set(r.to, originOf.get(r.from) ?? r.from)
+  // The moves of one renumbering are resolved together (`renamedOrigins`):
+  // followed one by one, „§ 8 → § 9, § 9 → § 10" made the new § 10 the old
+  // § 8. A number vacated and filled anew keeps its own label here, as it did.
+  const originOfId = renamedOrigins(renamed)
+  const standingIdOf = (id: string): string => originOfId(id) ?? id
   // The question a per-paragraph publication gate turns on: when the engine
   // reports no refusal for a §, is that § actually right? Refusals are known
   // at draft time; correctness is not, because the law has not been passed yet.
@@ -696,7 +699,7 @@ async function verifyLaw(blocks: readonly TextBlock[], article: DraftArticle, ct
     if (!node || truths.length === 0) continue
     checked++
     const got = plainText(node)
-    const beforeNode = nodeFor(law.paragraphs, label, id === undefined ? id : (originOf.get(id) ?? id))
+    const beforeNode = nodeFor(law.paragraphs, label, id === undefined ? id : standingIdOf(id))
     const beforeText = beforeNode ? plainText(beforeNode) : null
     const rank = { identisch: 0, unvollständig: 1, unverändert: 2, halbangewendet: 3, abweichend: 4 }
     const best = truths
@@ -742,7 +745,8 @@ async function verifyLaw(blocks: readonly TextBlock[], article: DraftArticle, ct
     const outcome = dangerous ? 'abweichend' : verdict
     // With the Absätze, as the page asks it (`kons/consolidate.ts`): a
     // Prüfstand measuring checks 1 to 4 alone would report another oracle.
-    const oracleReport = oracle && id ? oracleVerdict(id, beforeText, got, paragraphRows(oracle.rows, id, oracle.lawKey), absatzSequence(node), beforeNode ? (absatzSequence(beforeNode) ?? null) : null) : null
+    // The annex rows of the § as it reads afterwards, and the struck rows of the § it came from.
+    const oracleReport = oracle && id ? oracleVerdict(id, beforeText, got, paragraphRows(oracle.rows, id, oracle.lawKey, standingIdOf(id)), absatzSequence(node), beforeNode ? (absatzSequence(beforeNode) ?? null) : null) : null
     const oracleKey: OracleVerdict | 'kein Orakel' = oracleReport?.verdict ?? 'kein Orakel'
     tally(oracleTally, `${oracleKey}|${outcome}|${flags.has('verweigert') ? 'verweigert' : 'ohne Verweigerung'}`)
     if (oracle && id && bgblLines) {
@@ -765,7 +769,7 @@ async function verifyLaw(blocks: readonly TextBlock[], article: DraftArticle, ct
     if (verbose && oracleReport && oracleReport.verdict !== 'stumm' && oracleReport.verdict !== 'bestätigt') {
       console.log(`        ↳ Orakel ${oracleReport.verdict} [RIS: ${verdict}]: ${oracleReport.note ?? ''}`)
       if (argFlag('oracle-debug') && verdict === 'identisch') {
-        const rows = paragraphRows(oracle!.rows, id!, oracle!.lawKey)
+        const rows = paragraphRows(oracle!.rows, id!, oracle!.lawKey, standingIdOf(id!))
         for (const row of rows.filter((r) => r.kind === 'pair' && !r.elided && r.change !== 'unchanged')) {
           const p = stripMarkers(row.proposed).replace(/\s+/g, '')
           const g = stripMarkers(got).replace(/\s+/g, '')

@@ -40,7 +40,7 @@
  * number that blurred the two would be the harness reporting its own
  * coverage as accuracy.
  */
-import { applyNovelle, instructionsFromUnits, type StandingLaw } from '../../server/utils/kons/lawApply'
+import { applyNovelle, instructionsFromUnits, renamedOrigins, type StandingLaw } from '../../server/utils/kons/lawApply'
 import { plainText, type LawNode } from '../../server/utils/lawtext/konsTree'
 import { segmentUnits, type TextBlock } from '../../server/utils/lawtext/lawUnits'
 import { parseRisXml } from '../../server/utils/lawtext/risXml'
@@ -443,7 +443,9 @@ async function verifyLaw(
     if (tree) paragraphs.push(tree)
   }
   const law: StandingLaw = { paragraphs }
-  const { law: after, results, unresolved } = applyNovelle(law, instructions)
+  const { law: after, results, unresolved, renamed } = applyNovelle(law, instructions)
+  // The standing § each § of the result came from, as the page pairs them (`kons/consolidate.ts`).
+  const originOf = renamedOrigins(renamed)
   result.applied = results.filter((r) => r.applied).length
 
   // The site's reading (`refusedUnits`), keyed as the site keys its units (`harnessKey`).
@@ -481,13 +483,14 @@ async function verifyLaw(
     const node = afterByKey.get(id)
     if (!node) continue
     result.produced++
-    const beforeNode = beforeByKey.get(id) ?? null
+    const origin = originOf(id)
+    const beforeNode = origin === null ? null : (beforeByKey.get(origin) ?? null)
     const touching = instructions
       .map((instruction, i) => ({ instruction, result: results[i]! }))
       .filter(({ instruction: { op, payload } }) => {
         const address = 'target' in op ? op.target : 'anchor' in op ? op.anchor : null
         if (address?.level === 'document') return true
-        if (address?.para && harnessKey(address.para) === id) return true
+        if (address?.para && (harnessKey(address.para) === id || (origin !== null && harnessKey(address.para) === origin))) return true
         if ((op.kind === 'insertAfter' || op.kind === 'append') && op.child === 'para') return payload.some((p) => p.id === id)
         return false
       })
@@ -501,7 +504,7 @@ async function verifyLaw(
     const plausible = !isRefused && guard.plausible
     if (plausible) result.plausible++
     // With the Absätze, as the page asks it (`kons/consolidate.ts`).
-    const report = rows ? oracleVerdict(id, beforeNode ? plainText(beforeNode) : null, plainText(node), paragraphRows(rows, id, lawKey), absatzSequence(node), beforeNode ? (absatzSequence(beforeNode) ?? null) : null) : null
+    const report = rows ? oracleVerdict(id, beforeNode ? plainText(beforeNode) : null, plainText(node), paragraphRows(rows, id, lawKey, origin), absatzSequence(node), beforeNode ? (absatzSequence(beforeNode) ?? null) : null) : null
     const verdict: OracleVerdict | 'kein Anhang' = report?.verdict ?? 'kein Anhang'
     tally(oracleTally, `${plausible ? 'plausibel' : 'unplausibel'}|${verdict}`)
     outcome.set(id, isRefused ? 'Text, verweigert' : !guard.plausible ? 'Text, unplausibel' : verdict === 'bestätigt' ? 'gezeigt' : `Text, Orakel ${verdict}`)
@@ -519,7 +522,7 @@ async function verifyLaw(
         : []
       appendFileSync(
         dumpFile,
-        `${JSON.stringify({ begut: draft.id, stelle: draft.stelle, law: result.law, article: article.number, id, refused: isRefused, plausible, flags: [...flags], unexplained: flags.has('unerklärt') ? guard.unexplained : undefined, oracle: verdict, note: report?.note ?? null, before: beforeNode ? plainText(beforeNode) : null, got: plainText(node), erl, fremd: verdict === 'fremd' && rows ? fremdRow(beforeNode ? plainText(beforeNode) : '', paragraphRows(rows, id, lawKey)) : null, missing: verdict === 'widersprochen' && rows ? missingRow(plainText(node), paragraphRows(rows, id, lawKey)) : null })}\n`,
+        `${JSON.stringify({ begut: draft.id, stelle: draft.stelle, law: result.law, article: article.number, id, refused: isRefused, plausible, flags: [...flags], unexplained: flags.has('unerklärt') ? guard.unexplained : undefined, oracle: verdict, note: report?.note ?? null, before: beforeNode ? plainText(beforeNode) : null, got: plainText(node), erl, fremd: verdict === 'fremd' && rows ? fremdRow(beforeNode ? plainText(beforeNode) : '', paragraphRows(rows, id, lawKey, origin)) : null, missing: verdict === 'widersprochen' && rows ? missingRow(plainText(node), paragraphRows(rows, id, lawKey, origin)) : null })}\n`,
       )
     }
   }

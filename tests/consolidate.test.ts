@@ -31,7 +31,7 @@ const LAW: KonsLawAtDate = {
 }
 
 const pair = (law: string, current: string, proposed: string, gld: string | null, elided = false): ComparisonRow => ({
-  kind: 'pair', law, heading: null, gld, para: gld ?? '§ 5.', current, proposed,
+  kind: 'pair', law, heading: null, gld, para: gld ?? '§ 5.', paraAfter: gld ?? '§ 5.', current, proposed,
   change: elided ? 'unchanged' : current ? 'changed' : 'inserted', elided, segments: null, editorial: false, elisionRange: false,
 })
 

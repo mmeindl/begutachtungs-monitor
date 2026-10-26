@@ -42,6 +42,7 @@ export const comparisonRow = (over: Partial<ComparisonRow> = {}): ComparisonRow 
     heading: null,
     gld: null,
     para: '§ 5.',
+    paraAfter: null,
     current: '',
     proposed: '',
     change: 'changed',
@@ -51,6 +52,8 @@ export const comparisonRow = (over: Partial<ComparisonRow> = {}): ComparisonRow 
     elisionRange: false,
     ...over,
   }
+  // The ordinary § keeps its number; a test about renumbering says so.
+  if (over.paraAfter === undefined) row.paraAfter = row.para
   if (over.segments === undefined && row.kind === 'pair' && row.change === 'changed' && !row.elided) row.segments = diffTokens(row.current, row.proposed).segments
   return row
 }

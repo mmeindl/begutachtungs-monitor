@@ -379,7 +379,11 @@ function withheldReason(cause: AnnexWithheldCause | null): string {
                  heading a band of its own. LawDiffSection sets a unit's
                  designation and name the same way. -->
             <p v-if="p.gld || p.heading" class="mb-1 flex flex-wrap items-baseline gap-x-2 gap-y-1 text-sm">
-              <span v-if="p.gld" class="font-medium text-ink">{{ p.gld }}</span>
+              <!-- A § the draft renumbers says so where its number stands: the
+                   right column's text opens with the new one, which read as an
+                   inserted word and nothing more (26.10.2026). The arrow is for
+                   the eye; a screen reader hears „wird zu". -->
+              <span v-if="p.gld" class="font-medium text-ink">{{ p.gld }}<template v-if="p.renumberedTo"><span aria-hidden="true">&nbsp;→ </span><span class="sr-only"> wird zu </span>{{ p.renumberedTo }}</template></span>
               <span v-if="p.heading" class="min-w-0 text-ink-secondary">{{ p.heading }}</span>
             </p>
 

@@ -264,6 +264,14 @@ export interface AnnexPara {
   key: string
   /** "§ 40." — null for rows that precede the first designation */
   gld: string | null
+  /**
+   * The number the § stands under after the draft, where that is another one
+   * — „§ 14." → „§ 22." (51/ME XXVIII, `TextComparisonRow.paraAfter`). Only
+   * where the whole block is that one §: a run that opens two §§ (2/ME's § 2
+   * beside the new § 1a) names them in its Lesefassungen instead, and a
+   * repealed § says it with its struck rows.
+   */
+  renumberedTo: string | null
   /** The annex's own heading for the paragraph */
   heading: string | null
   blocks: AnnexBlock[]
@@ -328,68 +336,31 @@ function paragraphRuns(rows: readonly TextComparisonRow[]): ParagraphRun[] {
 }
 
 /**
- * „§ 22." at the head of a column — a Gliederungssymbol with its full stop,
- * not a citation („§ 5 Abs. 2 gilt …" carries none after the number).
- */
-const LEADING_DESIGNATION_RE = /^\s*(§+\s*\d+[a-z]*\.)(?=\s|$)/i
-
-/**
- * The designation a § carries AFTER the draft — the one the Erläuterungen
- * and the Lesefassung address it by. Null for a § the draft repeals: every
- * row of it stands in the left column only, so it carries none afterwards.
+ * The §§ a run opens, each with the designation it carries AFTER the draft —
+ * the one the Erläuterungen and the Lesefassung address it by.
  *
- * A row is filed under the designation of its LEFT column (`gld`, the §
- * the RIS check holds the left column against), and where a draft
- * renumbers, the annex prints both in one row: „§ 14." left, „§ 22." right.
- * `stripGld` takes out only the row's own one, so the right column's text
- * still begins with „§ 22." (server/utils/annex/tableCells.ts). Looked up
- * by „§ 14.", the old § 14 got „Zu § 14: Der vorgeschlagene Abs. 1 zählt
- * IVS-Anwendungen auf …" — the Begründung of the NEW § 14 (51/ME XXVIII).
- *
- * Only where the left column does not begin with the same designation: a §
- * that opens with a mirrored citation is no renumbering. And only for
- * Paragraphen, the one designation either lookup understands
- * (`explanationParaId`).
- */
-export function designationAfter(rows: readonly TextComparisonRow[]): string | null {
-  for (const row of rows) {
-    if (row.gld === null || explanationParaId(row.gld) === null) continue
-    const right = LEADING_DESIGNATION_RE.exec(row.proposed)?.[1]
-    if (!right || row.current.trimStart().startsWith(right)) continue
-    if (explanationParaId(right) !== explanationParaId(row.gld)) return right
-  }
-  return rows.every((r) => r.change === 'removed') ? null : (rows[0]?.para ?? null)
-}
-
-/**
- * The §§ a run opens — a new one at every row with a designation of its own,
- * the rows above the first (a heading printed over its §) belonging to it.
- *
- * Usually one. Two where the annex opens the same `para` twice in a row: 2/ME
- * XXVIII pairs the standing § 2 Abs. 1 to 3 with the new § 1a („§ 2." left,
- * „§ 1a." right) and then prints § 2 itself, „§ 2." on both sides — one run,
- * two §§ after the draft, each with its own Begründung.
+ * The server decides that per § (`TextComparisonRow.paraAfter`, from the
+ * right column's own Gliederungssymbol) and writes it onto every row of it,
+ * so a run splits where it changes. Usually it does not. It does where the
+ * annex opens the same `para` twice in a row: 2/ME XXVIII pairs the standing
+ * § 2 Abs. 1 to 3 with the new § 1a („§ 2." left, „§ 1a." right) and then
+ * prints § 2 itself — one run, two §§ after the draft, each with its own
+ * Begründung. Until 26.10.2026 the page read „§ 22." back out of the proposed
+ * column's text, which a withheld row no longer has.
  */
 function openedParagraphs(rows: readonly TextComparisonRow[]): TextComparisonRow[][] {
   const out: TextComparisonRow[][] = []
-  let current: TextComparisonRow[] = []
-  let opened = false
   for (const row of rows) {
-    if (row.gld !== null && opened) {
-      out.push(current)
-      current = []
-      opened = false
-    }
-    current.push(row)
-    if (row.gld !== null) opened = true
+    const last = out[out.length - 1]
+    if (last && last[0]!.paraAfter === row.paraAfter) last.push(row)
+    else out.push([row])
   }
-  if (current.length) out.push(current)
   return out
 }
 
 /** A § as the Erläuterungen and the Lesefassung may address it. */
 interface Addressed {
-  /** The designation after the draft (`designationAfter`); null where it is repealed. */
+  /** The designation after the draft (`TextComparisonRow.paraAfter`); null where it is repealed. */
   after: string | null
   /** Its designation before — the row's `para`. */
   own: string | null
@@ -411,7 +382,7 @@ interface Addressed {
  * gets nothing rather than its successor's Begründung.
  */
 function addressedParagraphs(runs: readonly ParagraphRun[]): Addressed[][] {
-  const opened = runs.map((run) => openedParagraphs(run.rows).map((rows) => ({ own: rows[0]!.para, after: designationAfter(rows) })))
+  const opened = runs.map((run) => openedParagraphs(run.rows).map((rows) => ({ own: rows[0]!.para, after: rows[0]!.paraAfter })))
   /** How many §§ of the law carry each number after the draft. */
   const carriers = new Map<string, number>()
   for (const { after } of opened.flat()) {
@@ -482,9 +453,12 @@ export function annexParas(g: AnnexGroup, { limit, folding, placed }: AnnexParaO
     seen.set(run.key, n)
     // Any row of the § answers for it: the placement filed every row of it.
     const at = placed?.get(first) ?? null
+    const afters = new Set(run.rows.map((r) => r.paraAfter))
+    const [after] = afters
     const current: AnnexPara = {
       key: n === 1 ? run.key : `${run.key}#${n}`,
       gld: first.para,
+      renumberedTo: afters.size === 1 && after != null && after !== first.para ? after : null,
       heading: null,
       blocks: [],
       explanations: at?.explanations ?? [],
@@ -634,8 +608,11 @@ export function placeAtParagraphs(
         // the draft: a repealed one is struck rows that say it already, and
         // where a new § took its number, that one's outcome is the new §'s
         // (51/ME XXVIII: the old §§ 5, 6, 8, 10 to 13 and 16).
-        if (lesefassungen.length === 0 && ps.some((p) => p.after !== null) && annexUnitId(first.para) && showsInstructedChange(run.rows)) {
-          lesefassungen.push({ designation: first.para, lesefassung: { kind: 'withheld', cause: 'nicht-gefunden' } })
+        // Named by the number it stands under afterwards: 20/ME XXVIII's old
+        // § 82 is § 83, and „§ 82" belongs to the old § 81 beside it.
+        const standsAfter = ps.find((p) => p.after !== null)?.after ?? null
+        if (lesefassungen.length === 0 && standsAfter !== null && annexUnitId(standsAfter) && showsInstructedChange(run.rows)) {
+          lesefassungen.push({ designation: standsAfter, lesefassung: { kind: 'withheld', cause: 'nicht-gefunden' } })
         }
       }
       const placement: ParaPlacement = { explanations: distinctPassages(matched), lesefassungen }

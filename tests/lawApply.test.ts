@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { applyNovelle, instructionsFromUnits, parsePayload, resolveTarget, splitSentences, stripPayloadQuotes, type Instruction, type StandingLaw } from '../server/utils/kons/lawApply'
+import { applyNovelle, instructionsFromUnits, parsePayload, renamedOrigins, resolveTarget, splitSentences, stripPayloadQuotes, type Instruction, type StandingLaw } from '../server/utils/kons/lawApply'
 import { bodyText, makeNode, parseKonsParagraph, plainText, renderNode } from '../server/utils/lawtext/konsTree'
 import { paraNode as para } from './helpers/builders'
 import { parseAddress, parseInstruction, type NovaoAddress } from '../server/utils/kons/novao'
@@ -1932,5 +1932,28 @@ describe('a § replaced by one bare line, and a heading named by the § below it
     expect(results[0]!.reason).toBeNull()
     expect(out.paragraphs[0]!.heading).toBe('Zwangsstrafen wegen nicht zeitgerechter Offenlegung')
     expect(out.paragraphs[0]!.children[0]!.text).toBe('Die Vertreter sind zu bestrafen.')
+  })
+})
+
+describe('renamedOrigins — which standing § a § of the result came from', () => {
+  const r = (from: string, to: string, batch: number) => ({ level: 'para' as const, para: `§ ${to}`, from, to, batch })
+
+  it('resolves the moves of one renumbering together — an upward shift does not chain', () => {
+    // „Die §§ 8 und 9 erhalten die Bezeichnungen §§ 9 und 10": the new § 10 is the old § 9.
+    const origin = renamedOrigins([r('8', '9', 0), r('9', '10', 0)])
+    expect([origin('9'), origin('10'), origin('8'), origin('7')]).toEqual(['8', '9', null, '7'])
+  })
+
+  it('follows one renumbering into the next, and a downward shift alike (144/ME XXVIII: § 15 → § 14, § 17 → § 15)', () => {
+    expect(renamedOrigins([r('15', '14', 0), r('17', '15', 0)])('15')).toBe('17')
+    const chained = renamedOrigins([r('8', '15', 0), r('15', '22', 1)])
+    expect([chained('22'), chained('15'), chained('8')]).toEqual(['8', null, null])
+  })
+
+  it('carries the batch on the record the engine writes', () => {
+    const law: StandingLaw = { paragraphs: [para('8', 'Acht', ['Acht.']), para('9', 'Neun', ['Neun.'])] }
+    const { renamed } = run(law, instr('Die §§ 8 und 9 erhalten die Paragraphenbezeichnungen "§ 9." bis "§ 10."'))
+    expect(renamed.map((x) => [x.from, x.to, x.batch])).toEqual([['8', '9', 0], ['9', '10', 0]])
+    expect(renamedOrigins(renamed)('10')).toBe('9')
   })
 })
