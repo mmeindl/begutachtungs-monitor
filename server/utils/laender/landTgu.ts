@@ -168,9 +168,15 @@ export interface TguParagraph {
    * reader could not read with certainty (Tirol); `division`, a § of a
    * division the Novelle replaces, inserts or repeals as a whole; `gap`, a
    * law whose instructions the reader did not all find; `annex`, an Anlage
-   * or Anhang (26.10.2026).
+   * or Anhang (26.10.2026); `title`, the law's title (27.10.2026).
    */
-  because?: 'wording' | 'unsure' | 'division' | 'gap' | 'annex'
+  because?: 'wording' | 'unsure' | 'division' | 'gap' | 'annex' | 'title'
+  /**
+   * The heading of a division the draft changes, printed over this § — on
+   * each side, joined into one line (`tguParagraphs`, 27.10.2026). Shown
+   * with the § (`tguUnits`), and not part of what RIS checks (`old`).
+   */
+  division?: { old?: string; neu?: string }
 }
 
 /**
@@ -299,11 +305,32 @@ function opened(line: TguLine, law: string | null, prev: string): { old: TguPara
 }
 
 /**
+ * A marked line's side that reads as a division's designation, „6.Abschnitt"
+ * without its space too: „5. Abschnitt6.Abschnitt" (2026-16120) is one
+ * division renumbered, and read as none it ran into the § above it.
+ */
+const SIDE_DIVISION_RE = /^(?:\d+[a-z]?|[IVXL]+)\.\s*(?:Hauptstück|Abschnitt|Teil|Unterabschnitt)(?=$|[\s:])/i
+
+/**
  * The §§ of the document, each under the law whose title came last.
  *
  * A package amends several laws in one document, and § 5 of the second is a
  * different provision from § 5 of the first — the title is what tells them
  * apart, and what the law in force is looked up by.
+ *
+ * HEADINGS THE DRAFT CHANGES (27.10.2026). A division's heading — „4.
+ * Abschnitt" and its name — that the draft marks goes, on each side, to the
+ * § below it on that side, as the Bund's reader hands a division heading to
+ * the provision below it (`annex/annexPdf.ts`): the change shows in that §
+ * (`division`). Until then a renamed, renumbered, new or repealed division
+ * was not on the page (2023-16060, 2026-16120). RIS does not check it: RIS
+ * prints a division's heading over the § that opens the division, and the
+ * document prints only the §§ the draft touches — 2023-16060 prints the
+ * 4. Abschnitt over § 26, which RIS files under § 24, and held against RIS
+ * with it, § 26 was refused. A heading the draft leaves as it is stays out
+ * of the §§, as before. A law title the draft marks is named, `Titel`
+ * (`because: 'title'`): RIS keeps no title to hold it against (2026-16118,
+ * 2023-16060).
  */
 export function tguParagraphs(lines: readonly TguLine[]): TguParagraph[] {
   const out: TguParagraph[] = []
@@ -315,11 +342,19 @@ export function tguParagraphs(lines: readonly TguLine[]): TguParagraph[] {
   let openAt: { old: number[]; neu: number[] } = { old: [], neu: [] }
   /** Units printed with an opening quote, whose closing quote is the draft's and not the text's */
   const quoted = new Set<TguParagraph>()
+  /** The division headings since the last § of each side, and whether the draft marks any of them. */
+  let division: { old: string[]; neu: string[]; marked: boolean } | null = null
   let prev = ''
   const retractFrom = (at: number) => {
     if (!open) return
     while (openAt.old.length && openAt.old.at(-1)! >= at) { openAt.old.pop(); open.old.old.pop() }
     while (openAt.neu.length && openAt.neu.at(-1)! >= at) { openAt.neu.pop(); open.neu.neu.pop() }
+  }
+  /** A law title the draft marks: one `Titel` per law — the new title and the struck old one stand in turn, and the §§ go under the last. */
+  const titled = () => {
+    const last = out.at(-1)
+    if (last?.because === 'title') last.law = law
+    else out.push({ law, number: 'Titel', old: [], neu: [], changed: true, unread: true, because: 'title' })
   }
   lines.forEach((line, i) => {
     const raw = line.raw
@@ -332,6 +367,19 @@ export function tguParagraphs(lines: readonly TguLine[]): TguParagraph[] {
       if (unit.neu !== unit.old) out.push(unit.neu)
       if (line.marked) { unit.old.changed = true; unit.neu.changed = true }
       if (/^[„"“]/.test(raw)) quoted.add(unit.neu)
+      // The division headings above it, on each side its designation stands on.
+      if (division && unit.old.because !== 'annex') {
+        for (const side of ['old', 'neu'] as const) {
+          if (!line[side] || !division[side].length) continue
+          if (division.marked) {
+            const p = unit[side]
+            p.division = { ...p.division, [side]: joinLines(division[side]) }
+            p.changed = true
+          }
+          division[side] = []
+        }
+        if (!division.old.length && !division.neu.length) division = null
+      } else if (division) division = null
       prev = raw
       return
     }
@@ -339,21 +387,35 @@ export function tguParagraphs(lines: readonly TguLine[]): TguParagraph[] {
     const joined = /\([^()]*$/.test(prev) ? `${prev} ${raw}` : raw
     const bare = BARE_TITLE_RE.exec(raw)
     const short = SHORT_TITLE_RE.exec(joined)
+    const sideDivision = line.marked && (SIDE_DIVISION_RE.test(line.old) || SIDE_DIVISION_RE.test(line.neu))
     if (bare && /gesetz|ordnung|Statut/i.test(bare[1]!)) {
       law = bare[1]!.replace(/\s+/g, ' ').trim()
+      if (line.marked) titled()
       open = null
+      division = null
     } else if (short && i - titleAt <= 3 && /gesetz|ordnung/i.test(short[1]!)) {
       law = short[1]!.replace(/\s+/g, ' ').trim()
+      if (lines.slice(titleAt, i + 1).some((l) => l.marked)) titled()
       // The long title above it was read as the end of the last § of the law before.
       retractFrom(titleAt)
       open = null
-    } else if (DIVISION_RE.test(raw) || /^Inhaltsverzeichnis$/i.test(raw)) {
+      division = null
+    } else if (DIVISION_RE.test(raw) || sideDivision) {
       open = null
+      division = { old: [...(division?.old ?? []), ...(line.old ? [line.old] : [])], neu: [...(division?.neu ?? []), ...(line.neu ? [line.neu] : [])], marked: !!division?.marked || line.marked }
+    } else if (/^Inhaltsverzeichnis$/i.test(raw)) {
+      open = null
+      division = null
     } else if (open) {
       const { old, neu }: { old: TguParagraph; neu: TguParagraph } = open
       if (line.old) { old.old.push(line.old); openAt.old.push(i) }
       if (line.neu) { neu.neu.push(line.neu); openAt.neu.push(i) }
       if (line.marked) { old.changed = true; neu.changed = true }
+    } else if (division) {
+      // A division's name, under its designation — or an entry of the contents,
+      // „§ 5 Begriffe", where the designation was the contents' own.
+      if (/^§/.test(raw) || division.old.length + division.neu.length > 12) division = null
+      else division = { old: [...division.old, ...(line.old ? [line.old] : [])], neu: [...division.neu, ...(line.neu ? [line.neu] : [])], marked: division.marked || line.marked }
     }
     prev = raw
   })
@@ -382,6 +444,8 @@ export function mergeParagraphs(paragraphs: readonly TguParagraph[]): TguParagra
       seen.old.push(...p.old)
       seen.neu.push(...p.neu)
       seen.changed ||= p.changed
+      // The struck § carries the division heading in force, the underlined one the new.
+      if (p.division) seen.division = { ...p.division, ...seen.division }
     }
   }
   return [...byKey.values()]
@@ -443,18 +507,30 @@ export function tguUnits(paragraphs: readonly TguParagraph[]): { from: LawUnit[]
   const from: LawUnit[] = []
   const to: LawUnit[] = []
   for (const p of paragraphs) {
+    // The heading of a division the draft changes, over the § (`division`, 27.10.2026).
+    const old = withDivision(p.old, p.division?.old)
+    const neu = withDivision(p.neu, p.division?.neu)
     // A heading the draft changes is a change (24.10.2026): set aside on
     // both sides, „§ 52 Herstellung des gesetzmäßigen Zustandes" → „… nach
     // Abbruch" (Tirol 723/2026) read as „unverändert". Where the two printed
     // headings differ, they stay in the text that is compared.
-    const retitled = p.old.length > 0 && p.neu.length > 0 && splitHeading(p.old).heading !== splitHeading(p.neu).heading
-    const a = unitOf(p, p.old, retitled)
-    const b = unitOf(p, p.neu, retitled)
+    const retitled = old.length > 0 && neu.length > 0 && splitHeading(old).heading !== splitHeading(neu).heading
+    const a = unitOf(p, old, retitled)
+    const b = unitOf(p, neu, retitled)
     const mark = `${SAME_PARA}${p.law ?? ''} ${p.number}`
     if (a) from.push({ ...a, heading: mark })
     if (b) to.push({ ...b, heading: mark })
   }
   return { from, to }
+}
+
+/**
+ * A §'s lines with a division heading over it, on one line with the first —
+ * as the Bund's reader gives a division heading to the provision below it.
+ */
+function withDivision(lines: readonly string[], division: string | undefined): string[] {
+  if (!division) return [...lines]
+  return lines.length ? [`${division} ${lines[0]}`, ...lines.slice(1)] : [division]
 }
 
 /** The printed heading of each §, back on the compared units (`tguUnits`). */

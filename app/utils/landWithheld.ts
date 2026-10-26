@@ -105,10 +105,16 @@ const NOTES: Record<WithheldCause, { lead: string; one: string; many: string }> 
     one: 'Anlagen und Anhänge gleicht der Monitor nicht mit dem RIS ab und zeigt sie deshalb nicht',
     many: 'Anlagen und Anhänge gleicht der Monitor nicht mit dem RIS ab und zeigt sie deshalb nicht',
   },
+  // One per law (`tguParagraphs`): the id is „Titel".
+  title: {
+    lead: 'Nicht gezeigt:',
+    one: 'Den Titel des Gesetzes gleicht der Monitor nicht mit dem RIS ab und zeigt ihn deshalb nicht',
+    many: 'Den Titel des Gesetzes gleicht der Monitor nicht mit dem RIS ab und zeigt ihn deshalb nicht',
+  },
 }
 
 /** The order the causes stand in under a law: what RIS or the reading refused, then what the reader does not compose. */
-const ORDER: WithheldCause[] = ['unchecked', 'standing', 'inserted', 'elided', 'deletion', 'twice', 'unsure', 'division', 'gap', 'wording', 'unread', 'annex']
+const ORDER: WithheldCause[] = ['unchecked', 'standing', 'inserted', 'elided', 'deletion', 'twice', 'unsure', 'division', 'gap', 'wording', 'unread', 'annex', 'title']
 
 /**
  * The withheld §§ of one group by cause, in `ORDER`, each with its words.

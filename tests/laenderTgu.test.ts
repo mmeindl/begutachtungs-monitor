@@ -171,6 +171,63 @@ describe('tguParagraphs — units the reader lost until 26.10.2026', () => {
   })
 })
 
+describe('tguParagraphs — headings the draft changes (27.10.2026)', () => {
+  const law = line('Oö. Gemeindeordnung 1990 (Oö. GemO 1990)')
+  const ins = (raw: string): TguLine => ({ raw, old: '', neu: raw, marked: true })
+  const del = (raw: string): TguLine => ({ raw, old: raw, neu: '', marked: true })
+
+  it('hands a division heading the draft changes to the § below it on each side, and leaves an unchanged one out (2023-16060, 2026-16120)', () => {
+    const paras = mergeParagraphs(tguParagraphs([
+      law,
+      line('1. Abschnitt'), line('Allgemeines'), line('§ 1'), line('(1) Text.'),
+      del('4. Abschnitt'), del('Ehrungen'), ins('4. Abschnitt'), ins('Datenverarbeitungen'),
+      line('§ 26'), line('(1) Daten.'),
+      ins('5. Abschnitt'), ins('Neues'), ins('§ 27'), ins('(1) Neu.'),
+    ]))
+    expect(paras.map((p) => [p.number, p.division ?? null, p.changed])).toEqual([
+      ['1', null, false],
+      ['26', { old: '4. Abschnitt Ehrungen', neu: '4. Abschnitt Datenverarbeitungen' }, true],
+      ['27', { neu: '5. Abschnitt Neues' }, true],
+    ])
+    // Not what RIS checks: the text in force stays the §'s own.
+    expect(paras[1]!.old).toEqual(['(1) Daten.'])
+    // Shown with the §, on the line of its first words.
+    const { from, to } = tguUnits(paras.slice(1, 2))
+    expect([from[0]!.text, to[0]!.text]).toEqual(['4. Abschnitt Ehrungen (1) Daten.', '4. Abschnitt Datenverarbeitungen (1) Daten.'])
+  })
+
+  it('keeps a struck division heading for the next § that stands on its side', () => {
+    const paras = mergeParagraphs(tguParagraphs([law, del('5. Abschnitt'), del('Alt'), ins('§ 7'), ins('(1) Neu.'), del('§ 8'), del('(1) Alt.')]))
+    expect(paras.map((p) => [p.number, p.division ?? null])).toEqual([['7', null], ['8', { old: '5. Abschnitt Alt' }]])
+  })
+
+  it('reads a renumbered division as a division, not as the § above it, „5. Abschnitt6.Abschnitt" (2026-16120)', () => {
+    const paras = mergeParagraphs(tguParagraphs([law, line('§ 8'), line('(1) Text.'), { raw: '5. Abschnitt6.Abschnitt', old: '6.Abschnitt', neu: '5. Abschnitt', marked: true }, line('Ausbildung'), line('§ 9'), line('(1) Mehr.')]))
+    expect(paras.map((p) => [p.number, p.old, p.division ?? null])).toEqual([
+      ['8', ['(1) Text.'], null],
+      ['9', ['(1) Mehr.'], { old: '6.Abschnitt Ausbildung', neu: '5. Abschnitt Ausbildung' }],
+    ])
+  })
+
+  it('hands no division heading of the contents to a §', () => {
+    const paras = tguParagraphs([law, line('Inhaltsverzeichnis'), ins('4. Abschnitt'), ins('Neu'), line('§ 24 Ehrungen'), line('4. Abschnitt'), line('Ehrungen'), line('§ 24'), line('(1) Text.')])
+    expect(paras.map((p) => [p.number, p.division ?? null])).toEqual([['24', null]])
+  })
+
+  it('names a law title the draft changes once, under the law its §§ go under (2026-16118)', () => {
+    const paras = tguParagraphs([
+      ins('Landesgesetz'), ins('betreffend die Chancengleichheit von Menschen mit Behinderungen'), ins('(Oö. Chancengleichheitsgesetz - Oö. ChG)'),
+      del('Landesgesetz betreffend die Chancengleichheit von Menschen'), del('mit Beeinträchtigungen (Oö. Chancengleichheitsgesetz - Oö. ChG)'),
+      line('§ 1'), line('(1) Text.'),
+    ])
+    expect(paras.map((p) => [p.law, p.number, p.unread ?? false, p.because ?? null])).toEqual([
+      ['Oö. Chancengleichheitsgesetz', 'Titel', true, 'title'],
+      ['Oö. Chancengleichheitsgesetz', '1', false, null],
+    ])
+    expect(tguParagraphs([law, line('§ 1'), line('(1) Text.')]).map((p) => p.number)).toEqual(['1'])
+  })
+})
+
 describe('mergeParagraphs', () => {
   it('joins a § printed twice — struck whole, then underlined whole — into one', () => {
     const merged = mergeParagraphs([

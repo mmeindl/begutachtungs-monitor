@@ -594,7 +594,8 @@ export async function compareTgu(land: LandCode, detail: LandDraftDetail): Promi
     const oldOnly = group.filter((p) => p.old.length && !p.neu.length)
     const neuOnly = group.filter((p) => p.neu.length && !p.old.length)
     if (group.length === 2 && oldOnly.length === 1 && neuOnly.length === 1) {
-      return [{ ...oldOnly[0]!, neu: neuOnly[0]!.neu, changed: true }]
+      const division = oldOnly[0]!.division || neuOnly[0]!.division ? { ...neuOnly[0]!.division, ...oldOnly[0]!.division } : undefined
+      return [{ ...oldOnly[0]!, neu: neuOnly[0]!.neu, changed: true, ...(division ? { division } : {}) }]
     }
     doubled.push({ law: group[0]!.law, id: paraId(group[0]!.number) })
     return []
