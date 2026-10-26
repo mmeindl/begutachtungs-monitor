@@ -41,11 +41,14 @@ export default defineNuxtConfig({
   // disk cache and the memory `derived` mount above.
   //
   // The sizes, as constraints: Node runs with --max-old-space-size=384 under
-  // MemoryMax=512M (deploy/bootstrap.sh) and measured ~90–130 MB warm. The
-  // driver counts an entry as the UTF-8 length of its serialised JSON, and
-  // V8 holds German text with „“ as a two-byte string, so the heap cost is
-  // up to twice the count: 64 + 48 MB stays under ~225 MB of heap in the
-  // worst case, beside the app. `derived` gets its own budget so a run of
+  // MemoryMax=512M (deploy/bootstrap.sh). The driver is our own
+  // (`server/utils/cache/memoryDriver.ts`): it keeps an entry as the UTF-8
+  // bytes of its JSON and counts exactly those, so 64 + 48 MB is all the
+  // memory the two layers can hold. Until 26.10.2026 unstorage's `lru-cache`
+  // counted the same UTF-8 length while V8 held German text with „“ at two
+  // bytes a character: measured, the budget stood for ~207 MB of heap, and
+  // after the prewarm and every open draft the layers held 165 of 230 MB
+  // live heap. `derived` gets its own budget so a run of
   // large PDFs cannot push out the RIS corpus and the station maps every
   // page reads (and LRU keeps those, being read on every request). `max`
   // lifts the driver's default of 1000 entries: `statement-document` alone
@@ -68,8 +71,8 @@ export default defineNuxtConfig({
   // name assembled at runtime would be missing in production alone.
   nitro: {
     storage: {
-      cache: { driver: 'lru-cache', maxSize: 64 * 1024 * 1024, max: 20_000 },
-      derived: { driver: 'lru-cache', maxSize: 48 * 1024 * 1024, max: 20_000 },
+      cache: { driver: '#server/utils/cache/memoryDriver', maxSize: 64 * 1024 * 1024, max: 20_000 },
+      derived: { driver: '#server/utils/cache/memoryDriver', maxSize: 48 * 1024 * 1024, max: 20_000 },
       'cache:nuxt:icon': { driver: 'lru-cache', maxSize: 1024 * 1024, max: 100 },
     },
     devStorage: { derived: { driver: 'memory' } },

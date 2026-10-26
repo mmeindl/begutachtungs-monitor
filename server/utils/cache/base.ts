@@ -26,11 +26,12 @@
  *    server file.
  *
  * In production both layers are memory, each a size-bounded LRU
- * (`nuxt.config.ts`, `nitro.storage`), and `systemctl restart` empties them
- * (`deploy/deploy.sh`). The bound is the LRU's and nothing else's: `maxAge`
- * only decides whether an entry is still fresh when it is read — Nitro's
- * cache never deletes an expired entry by itself — so a TTL is no memory
- * limit, and an entry evicted early is simply fetched again.
+ * (`nuxt.config.ts`, `nitro.storage`, `memoryDriver.ts`), and `systemctl
+ * restart` empties them (`deploy/deploy.sh`). The bound is the LRU's and
+ * nothing else's: Nitro never deletes an expired entry itself, and the
+ * driver lets one go once its `maxAge` has passed — but a TTL is no memory
+ * limit, a burst of fresh entries meets only the budget, and an entry
+ * evicted early is simply fetched again.
  *
  * A function that fetches *and* parses belongs to neither layer and cannot
  * be made correct while it stays one function — any invalidation that
