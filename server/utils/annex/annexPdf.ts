@@ -892,7 +892,20 @@ interface ColumnUnit {
   text: string
 }
 
-const SENTENCE_END = /[.;:!?…]["»›)]?$/
+/**
+ * A line that ends a sentence: its closing mark, and behind it whatever
+ * closes around a sentence — quotation marks, a bracket.
+ *
+ * **The German closing mark „“" was not among them until 26.10.2026**, nor
+ * „”", „’", „«" and „‹". A § whose last sentence closes a quotation — a
+ * Novelle quoting its new text, „… verwendet werden.“" — did not end there,
+ * and its last line went to the unit below as that unit's heading: Salzburg
+ * 20807 § 221 handed „Kundmachung folgenden Monatsersten in Kraft.“" to
+ * Anlage 1, the Weinrecht-Sammelverordnung 2026 (RIS 215AB69F) its new § 2's
+ * last line to § 3. „]" closes too: „[...]" is the annex's own omission,
+ * the end of what it prints of the unit above.
+ */
+const SENTENCE_END = /[.;:!?…][\]"'»«›‹)“”’‘]*$/
 /** The same marks, anywhere in a text: does this passage contain a sentence at all? */
 const SENTENCE_MARK = /[.;:!?…]/
 

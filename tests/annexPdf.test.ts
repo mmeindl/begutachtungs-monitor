@@ -627,6 +627,20 @@ describe('the tail of one unit and the heading of the next', () => {
     expect(rows.find((r) => r.gld === '§ 94.')!.current).toBe('§ 94. (1) Die §§ 3 und 5 sind anzuwenden.')
     expect(rows.find((r) => r.gld === '§ 98.')!.current.startsWith('Hauptwahlbehörde (zu den §§ 6 und 10) § 98.')).toBe(true)
   })
+
+  // „… in Kraft.“ ends a sentence: the closing quote of a quoted provision
+  // stood after the full stop, and Salzburg's § 221 (sbg-20807) lost its last
+  // line to Anlage 1 as that schedule's heading.
+  it('ends a sentence at a closing quote', () => {
+    const rows = parse([page([
+      { y: 700, left: '§ 221. (1) bis (16) …', right: '§ 221. (1) bis (16) … (17) Diese Fassung tritt mit dem auf dessen' },
+      { y: 686, right: 'Kundmachung folgenden Monatsersten in Kraft.“' },
+      { y: 672, left: 'Anlage 1', right: 'Anlage 1' },
+      { y: 658, left: 'Verwendungsgruppe A (Höherer Dienst)', right: 'Verwendungsgruppe A (Höherer Dienst)' },
+    ])])
+    expect(rows.find((r) => r.gld === '§ 221.')!.proposed).toContain('Monatsersten in Kraft.')
+    expect(rows.find((r) => r.gld === 'Anlage 1')!.proposed).toBe('Anlage 1 Verwendungsgruppe A (Höherer Dienst)')
+  })
 })
 
 describe('a title over the annex’s pages', () => {
