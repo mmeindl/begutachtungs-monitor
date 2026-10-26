@@ -32,7 +32,7 @@ import { safeExternalUrl } from '#shared/utils/safeExternalUrl'
 import { formatDateDe } from '#shared/utils/format'
 import { diffLawUnits, summarizeDiff } from '../diff/lawDiff'
 import { lawInForce, paragraphByPhrase, paragraphText } from './landKons'
-import { amendedLawsOf, bareLawName, columnParagraphs, draftDeletes, joinLines, mergeParagraphs, onlyElided, onlyListed, paraId, renumberingsOf, tguParagraphKey, searchPhrase, standsInRis, tguLines, tguParagraphs, tguUnits, withHeadings, withRenumberings, type ColumnRow, type TguParagraph, type TguReading } from './landTgu'
+import { amendedLawsOf, bareLawName, columnParagraphs, draftDeletes, joinLines, mergeParagraphs, onlyElided, onlyListed, packageArticles, paraId, renumberingsOf, tguParagraphKey, searchPhrase, standsInRis, tguLines, tguParagraphs, tguUnits, withHeadings, withRenumberings, type ColumnRow, type TguParagraph, type TguReading } from './landTgu'
 import { draftSource, landPdfBytes } from './texts/read'
 import { tguPages } from './landTguPdf'
 import { pagesOf } from '../annex/annexPdfPages'
@@ -141,7 +141,7 @@ async function readOoe(detail: LandDraftRecord): Promise<TguRead | string> {
     const columns = ooeColumnPages(await pagesOf(bytes))
     const laws = amendedLawsOf(detail.draft.title)
     const draftText = await draftTextOf(draftSource(detail.draft.documents, 'Land Oberösterreich'))
-    const { rows, droppedPages } = columnRows(columns)
+    const { rows, droppedPages } = columnRows(columns, packageArticles(draftText ?? '', laws))
     // „§ 20 erhält die Bezeichnung „§ 24"": the draft's text says what the two columns do not (26.10.2026).
     const { paragraphs, unmapped } = withRenumberings(columnParagraphs(rows, laws), renumberingsOf(draftText ?? '', laws))
     return {
@@ -255,7 +255,7 @@ async function readWien(detail: LandDraftRecord): Promise<TguRead | string> {
   const laws = amendedLawsOf(detail.draft.title)
   // The draft's own text stands in front of the Textgegenüberstellung, in the same PDF.
   const draftText = pages.slice(0, start).flatMap((p) => p.items.map((i) => i.text)).join(' ')
-  const { rows, droppedPages } = columnRows(pages.slice(start))
+  const { rows, droppedPages } = columnRows(pages.slice(start), packageArticles(draftText, laws))
   const { paragraphs, unmapped } = withRenumberings(columnParagraphs(rows, laws), renumberingsOf(draftText, laws))
   return {
     paragraphs,
@@ -272,9 +272,11 @@ async function readWien(detail: LandDraftRecord): Promise<TguRead | string> {
  * The two-column reader's rows, as `columnParagraphs` takes them — and the
  * pages it did not read, which the page states as the Bund's annex does
  * (26.10.2026: sbg-18192 read 26 of its 51 pages and said nothing of it).
+ * A package's laws each on their own, where the draft's text names them by
+ * Artikel and the document heads each (`packageArticles`).
  */
-function columnRows(pages: Parameters<typeof parseAnnexPdf>[0]): { rows: ColumnRow[]; droppedPages: number } {
-  const parsed = parseAnnexPdf(pages)
+function columnRows(pages: Parameters<typeof parseAnnexPdf>[0], articles: Parameters<typeof parseAnnexPdf>[1]): { rows: ColumnRow[]; droppedPages: number } {
+  const parsed = parseAnnexPdf(pages, articles)
   return {
     rows: parsed.rows.map((r) => ({ kind: r.kind, law: r.law, heading: r.heading, para: r.para, current: r.current, proposed: r.proposed, changed: r.change !== 'unchanged' })),
     droppedPages: parsed.droppedPages,
@@ -301,7 +303,7 @@ async function readSalzburg(detail: LandDraftRecord): Promise<TguRead | string> 
   const pages = (await pagesOf(bytes)).map((p) => withFullStops({ ...p, items: p.items.filter((i) => !SBG_HEAD_RE.test(i.text.trim())) }))
   const laws = amendedLawsOf(detail.draft.title)
   const draftText = await draftTextOf(draftSource(detail.draft.documents, 'Land Salzburg'))
-  const { rows, droppedPages } = columnRows(pages)
+  const { rows, droppedPages } = columnRows(pages, packageArticles(draftText ?? '', laws))
   // „Der bisherige § 54a erhält die Paragraphenbezeichnung „§ 54b"": the draft's text says what the two columns do not (26.10.2026).
   const { paragraphs, unmapped } = withRenumberings(columnParagraphs(rows, laws), renumberingsOf(draftText ?? '', laws))
   return {
@@ -555,9 +557,20 @@ export async function compareTgu(land: LandCode, detail: LandDraftDetail): Promi
     for (let j = i + 1; j < first.length; j++) if (typeof first[j] === 'string' && first[j] !== 'later') return first[j] as string
     return laws.length === 1 ? laws[0]! : null
   }
+  /**
+   * The law RIS confirmed the §§ of a law the document names under, where it
+   * confirmed every one of them under one: a law renamed since the draft —
+   * Salzburg 19504's „Salzburger Behindertengesetz 1981", RIS's „Salzburger
+   * Teilhabegesetz" (26.10.2026). Its elided and new §§ are asked of RIS
+   * there; under the draft's name RIS knows none.
+   */
+  const confirmedUnder = (law: string): string => {
+    const as = new Set(paragraphs.flatMap((q, j) => (q.law === law && typeof first[j] === 'string' && first[j] !== 'later' ? [first[j] as string] : [])))
+    return as.size === 1 ? [...as][0]! : law
+  }
   const verdict = (p: TguParagraph, i: number, vacated: ReadonlySet<string>): string | null => {
     if (first[i] !== 'later') return first[i] as string | null
-    const law = p.law ?? neighbour(i)
+    const law = p.law ? confirmedUnder(p.law) : neighbour(i)
     const paras = law ? inForce.get(law) : null
     // An empty answer is a law RIS did not find under this name, not one
     // without the §: read as „known, § absent" it let every new § of Tirol's

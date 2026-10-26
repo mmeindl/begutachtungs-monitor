@@ -211,6 +211,20 @@ describe('compareTgu — one law, one group (25.10.2026)', () => {
     expect(r.withheld.map((w) => w.law)).toEqual(['Kärntner landwirtschaftliches Schulgesetz 1993 - K-LSchG'])
   })
 
+  it('asks RIS for the elided and new §§ of a renamed law under the name it confirmed the others under (Salzburg 19504)', async () => {
+    const NOW = 'Kärntner Bildungsbaufondsgesetz – K-BBFG'
+    lawInForce.mockImplementation(async (_land, law) => (law === NOW ? new Map([['5', 'ris:5'], ['6', 'ris:6']]) : new Map()))
+    paragraphByPhrase.mockResolvedValue({ url: 'ris:5', law: NOW })
+    ktnTguParagraphs.mockReturnValue([
+      para('5', { law: 'Kärntner Schulbaufondsgesetz', old: [TEXT_5], neu: ['Begriffe (1) Neu.'] }),
+      para('6', { law: 'Kärntner Schulbaufondsgesetz', old: ['Pflichten (1) bis (3) …'], neu: ['Pflichten (1) bis (3) … (4) Neu.'] }),
+      para('7', { law: 'Kärntner Schulbaufondsgesetz', neu: ['Neu (1) Ganz neu.'] }),
+    ])
+    const r = (await compareTgu('ktn', detail('Gesetz, mit dem das Kärntner Schulbaufondsgesetz geändert wird'))).value
+    expect(r.units.map((u) => [u.article, u.id, u.change])).toEqual([[NOW, '§5', 'changed'], [NOW, '§6', 'changed'], [NOW, '§7', 'inserted']])
+    expect(r.withheld).toEqual([])
+  })
+
   it('leaves a law alone whose confirmed §§ stand under more than one law', async () => {
     lawInForce.mockResolvedValue(new Map())
     paragraphByPhrase.mockImplementation(async (_l: string, _ph: string, n: string) => ({ url: `ris:${n}`, law: n === '5' ? 'Gesetz A' : 'Gesetz B' }))
@@ -361,6 +375,15 @@ describe('compareTgu — a renumbering the draft\'s own text orders, read into t
     expect(sorted(r)).toEqual([[null, '§5', 'inserted'], ['§5', '§9', 'unchanged']])
     // A § that does not move keeps the check it had: its heading alone is too short for RIS.
     expect(r.withheld).toEqual([{ law: SBG_LAW, id: '§6' }])
+  })
+
+  it('hands the reader the package\'s Artikel, read from the draft\'s text, so that each law is read on its own (23522)', async () => {
+    const d = sbg()
+    const pkg = { ...d, draft: { ...d.draft, title: `Gesetz, mit dem das ${SBG_LAW} und das Salzburger Zweitgesetz geändert werden` } } as LandDraftDetail
+    draftText(`Artikel I Das ${SBG_LAW}, LGBl Nr 1/2000, wird geändert wie folgt: 1. Im § 6 wird angefügt: „(2) Neu.“ Artikel II Das Salzburger Zweitgesetz, LGBl Nr 2/2000, wird geändert wie folgt: 1. Im § 6 wird angefügt: „(3) Neu.“`)
+    rows(row('§ 6.', `Pflichten § 6. ${TEXT_6.slice('Pflichten '.length)}`, 'Pflichten § 6. (1) Neu.'))
+    await compareTgu('sbg', pkg)
+    expect(parseAnnexPdf.mock.calls.at(-1)![1]!.map((a) => [a.number, a.key])).toEqual([['Artikel I', SBG_LAW], ['Artikel II', 'Salzburger Zweitgesetz']])
   })
 
   it('says nothing of renumbering where no § is compared', async () => {

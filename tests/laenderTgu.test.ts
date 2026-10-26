@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest'
 import { draftNameOf, kaerntenDated, readableLawName, tirolDated, wienTguStart } from '../server/utils/laender/landTguService'
-import { amendedLawOf, amendedLawsOf, columnParagraphs, draftDeletes, joinLines, mergeParagraphs, onlyElided, onlyListed, renumberingsOf, searchPhrase, shareInRis, STANDS_IN_RIS, standsInRis, tguLines, tguParagraphs, tguUnits, withHeadings, withRenumberings, type Renumbering, type TguLine, type TguPage, type TguParagraph } from '../server/utils/laender/landTgu'
+import { parseAnnexPdf, type AnnexItem, type AnnexPage } from '../server/utils/annex/annexPdf'
+import { amendedLawOf, amendedLawsOf, columnParagraphs, draftDeletes, joinLines, mergeParagraphs, onlyElided, onlyListed, packageArticles, renumberingsOf, searchPhrase, shareInRis, STANDS_IN_RIS, standsInRis, tguLines, tguParagraphs, tguUnits, withHeadings, withRenumberings, type Renumbering, type TguLine, type TguPage, type TguParagraph } from '../server/utils/laender/landTgu'
 
 /** A run at (x, y), each character 5 pt wide; glyph widths equal, so centres fall evenly. */
 function run(s: string, x: number, y: number) {
@@ -402,6 +403,61 @@ describe('two-column Textgegenüberstellung (Wien)', () => {
     expect(draftDeletes('3. Die §§ 14 und 15 entfallen.', '15')).toBe(true)
     expect(draftDeletes('2. § 15 Abs 1 lautet: „(1) Neu."', '15')).toBe(false)
     expect(draftDeletes('2. § 150 entfällt.', '15')).toBe(false)
+  })
+})
+
+describe('packageArticles — a package\'s laws, each read on its own (26.10.2026)', () => {
+  const PACKAGE = 'Gesetz, mit dem das Landesbeamten-Pensionsgesetz und das Salzburger Bezügegesetz 1992 geändert werden'
+  const LAWS = amendedLawsOf(PACKAGE)
+  const TEXT = 'Der Salzburger Landtag hat beschlossen: Artikel V Das Landesbeamten-Pensionsgesetz, LGBl Nr 17/2001, zuletzt geändert durch das Gesetz LGBl Nr 140/2020, wird geändert wie folgt: 1. Im § 25 wird nach Abs 4a eingefügt: „(4b) Neu.“ Artikel VI Das Salzburger Bezügegesetz 1992, LGBl Nr 67/1992, zuletzt geändert durch das Gesetz LGBl Nr 22/2020, wird geändert wie folgt: 1. Im § 25 wird angefügt: „(20) Neu.“'
+
+  it('reads each Artikel with the law its instructions amend, under the name the title gives it', () => {
+    expect(packageArticles(TEXT, LAWS).map((a) => [a.number, a.numeral, a.key])).toEqual([['Artikel V', 'V', 'Landesbeamten-Pensionsgesetz'], ['Artikel VI', 'VI', 'Salzburger Bezügegesetz 1992']])
+  })
+
+  it('gives none for one law, or where no Artikel heads the instructions', () => {
+    expect(packageArticles('Das Salzburger Bezügegesetz 1992, LGBl Nr 67/1992, wird geändert wie folgt: 1. Im § 25 wird angefügt: „(20) Neu.“', ['Salzburger Bezügegesetz 1992'])).toEqual([])
+    expect(packageArticles(TEXT.replace(/Artikel [VI]+ /g, ''), LAWS)).toEqual([])
+  })
+
+  /** Salzburg's layout: the Artikel and the law centred across both columns, each § with its heading over it in both. */
+  const at = (x: number, y: number, text: string): AnnexItem => ({ x, y, width: text.length * 5, text })
+  const across = (y: number, text: string): AnnexItem => ({ x: 300, y, width: 260, text })
+  const both = (y: number, left: string, right = left) => [at(60, y, left), at(470, y, right)]
+  /** A heading, centred in each column as Salzburg sets it. */
+  const centred = (y: number, text: string) => [at(230 - text.length * 2.5, y, text), at(640 - text.length * 2.5, y, text)]
+  const page = (items: AnnexItem[]): AnnexPage => ({ width: 842, items, geometry: { runs: items.length, offTurn: 0, skewed: 0 } })
+  const DOCUMENT = [page([
+    ...both(800, 'Geltende Fassung', 'Vorgeschlagene Fassung'),
+    across(760, 'Artikel V'),
+    across(740, 'Änderungen des Landesbeamten-Pensionsgesetzes'),
+    ...centred(720, 'Waisenversorgungsbezug'),
+    ...centred(700, '§ 25.'),
+    ...both(680, '(1) bis (4a)'),
+    at(470, 660, '(4b) Besucht das Kind eine Einrichtung, gilt Abs 3 nur bei'),
+    at(470, 645, 'ernsthaftem Studium.'),
+    across(620, 'Artikel VI'),
+    across(600, 'Änderungen des Salzburger Bezügegesetzes 1992'),
+    ...centred(580, 'Inkrafttreten und Übergang'),
+    ...centred(560, '§ 25.'),
+    ...both(540, '(1) bis (19)'),
+    at(470, 520, '(20) Neu.'),
+  ])]
+
+  // Salzburg 23522: read as one law, each column kept the longer of its two
+  // § 25 — the Bezügegesetz's in force beside the Pensionsgesetz's new text.
+  it('keeps two laws\' § 25 apart, each with its own two columns (Salzburg 23522)', () => {
+    const rows = parseAnnexPdf(DOCUMENT, packageArticles(TEXT, LAWS)).rows.filter((r) => r.kind === 'pair')
+    const paras = columnParagraphs(rows.map((r) => ({ kind: r.kind, law: r.law, heading: r.heading, para: r.para, current: r.current, proposed: r.proposed, changed: r.change !== 'unchanged' })), LAWS)
+    expect(paras.map((p) => [p.law, p.number, p.old.at(-1), p.neu.at(-1)])).toEqual([
+      ['Landesbeamten-Pensionsgesetz', '25', '(1) bis (4a)', '(1) bis (4a) (4b) Besucht das Kind eine Einrichtung, gilt Abs 3 nur bei ernsthaftem Studium.'],
+      ['Salzburger Bezügegesetz 1992', '25', '(1) bis (19)', '(1) bis (19) (20) Neu.'],
+    ])
+    // Without the Artikel, the reader's one § 25 crosses the two laws.
+    const crossed = parseAnnexPdf(DOCUMENT).rows.filter((r) => r.kind === 'pair')
+    expect(crossed).toHaveLength(1)
+    expect(crossed[0]!.current).toContain('(1) bis (19)')
+    expect(crossed[0]!.proposed).toContain('(4b) Besucht')
   })
 })
 

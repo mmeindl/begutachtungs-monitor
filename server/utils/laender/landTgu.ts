@@ -25,6 +25,7 @@
  * the run is what moved them (845 → 859).
  */
 import type { LawUnit } from '../lawtext/lawUnits'
+import type { DraftArticle } from '../lawtext/draftArticles'
 
 /** One text run of a page, upright, in PDF user space (y upwards). */
 export interface TguItem {
@@ -1016,6 +1017,38 @@ function designations(parts: readonly string[]): { numbers: string[]; spans: [nu
     i++
   }
   return { numbers, spans }
+}
+
+/** „Artikel V", „Artikel 2": the heading a package prints over each law's instructions. */
+const ARTICLE_HEADING_RE = /\bArtikel\s+([IVXL]+|\d+[a-z]?)\b/g
+
+/**
+ * A package's Artikel, from the draft's own text (26.10.2026): „Artikel V
+ * Das Landesbeamten-Pensionsgesetz, LGBl Nr 17/2001, …, wird geändert wie
+ * folgt:" — each with the law it amends, as the federal reader takes them
+ * (`parseAnnexPdf`) to read each law of a two-column Textgegenüberstellung
+ * on its own. Without them it read a package as one law and kept, of a §
+ * printed twice in a column, the longer: Salzburg 23522 compared § 25 of the
+ * Bezügegesetz 1992 in force with § 25 of the Landesbeamten-Pensionsgesetz
+ * as the draft would have it, and lost § 8 of the Bezügegesetz to § 8 of the
+ * Objektivierungsgesetz. The reader opens a law only where the document
+ * prints its heading, and reads the package as one where it does not mark
+ * every law (`resolveBoundaries`). Empty where the text names fewer than two
+ * laws so.
+ */
+export function packageArticles(draftText: string, laws: readonly string[]): DraftArticle[] {
+  const t = draftText.replace(/\s+/g, ' ').replace(/(\p{Ll})- (?!(?:und|oder|bzw|sowie)\b)(?=\p{Ll})/gu, '$1')
+  const out: DraftArticle[] = []
+  let after = 0
+  for (const m of t.matchAll(OPENING_RE)) {
+    // The last Artikel heading between the previous opening and this one.
+    const numeral = [...t.slice(Math.max(after, m.index! - 300), m.index!).matchAll(ARTICLE_HEADING_RE)].at(-1)?.[1]
+    after = m.index! + m[0].length
+    if (!numeral) continue
+    const name = m[1]!.replace(/\s+/g, ' ').trim()
+    out.push({ index: out.length, number: `Artikel ${numeral}`, numeral, title: name, key: lawNamed(name, laws) ?? name, amends: true, bgbl: null, clause: null })
+  }
+  return out.length > 1 ? out : []
 }
 
 /** The one law of `laws` an opening names, by the key both are folded to (`bareLawName`). */
