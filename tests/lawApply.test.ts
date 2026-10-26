@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import { applyNovelle, instructionsFromUnits, parsePayload, renamedOrigins, resolveTarget, splitSentences, stripPayloadQuotes, type Instruction, type StandingLaw } from '../server/utils/kons/lawApply'
-import { bodyText, makeNode, parseKonsParagraph, plainText, renderNode } from '../server/utils/lawtext/konsTree'
+import { bodyText, makeNode, parseKonsParagraph, plainText, renderNode, type LawNode } from '../server/utils/lawtext/konsTree'
 import { paraNode as para } from './helpers/builders'
 import { opAddress, parseAddress, parseInstruction, type NovaoAddress } from '../server/utils/kons/novao'
 
@@ -2307,9 +2307,85 @@ describe('a number restated before the line that moves „the former" § of it (
     expect(text(stuck.law)).toEqual(['5:Fünf Alt fünf eins. Alt fünf zwei.', '6:Sechs Alt sechs.'])
   })
 
-  it('refuses the restatement below the §, where nothing can stand beside the unit (BGBl. I Nr. 25/2026, § 110 Abs. 2a)', () => {
+  it('below the § as well: the new unit beside the standing one, which moves on with its text (BGBl. I Nr. 25/2026, § 110 Abs. 2a)', () => {
     const { results, law: out } = run(l(), instr('§ 5 Abs. 2 lautet:', ['(2) Neu zwei.']), instr('Der bisherige Abs. 2 des § 5 erhält die Bezeichnung "(3)".'))
+    expect(results.map((r) => r.reason)).toEqual([null, null])
+    expect(out.paragraphs[0]!.children.map((c) => `${c.marker} ${c.text}`)).toEqual(['(1) Alt fünf eins.', '(2) Neu zwei.', '(3) Alt fünf zwei.'])
+    // It took nothing out, and the guard must not charge it with the old text (`ApplyResult.units`).
+    expect(results[0]!.units).toEqual([null])
+  })
+
+  it('refuses the restatement of several units beside the standing ones', () => {
+    const three: StandingLaw = { paragraphs: [para('5', 'Fünf', ['Alt eins.', 'Alt zwei.', 'Alt drei.'])] }
+    const { results } = run(three, instr('§ 5 Abs. 2 und 3 lauten:', ['(2) Neu zwei.', '(3) Neu drei.']), instr('Der bisherige Abs. 2 des § 5 erhält die Bezeichnung "(4)".'))
     expect(results[0]!.reason).toBe('Neufassung unter einer Nummer, deren bisherige Einheit eine spätere Zeile umbenennt')
-    expect(plainText(out.paragraphs[0]!)).toBe('Fünf Alt fünf eins. Alt fünf zwei.')
+  })
+})
+
+describe('a number two units below the § carry for a while (26.10.2026)', () => {
+  /** A § of numbered Absätze, `[id, text]` each. */
+  const absPara = (id: string, absaetze: [string, string][]): LawNode => {
+    const p = makeNode('para', id, `§ ${id}.`, '', 'Titel')
+    for (const [abs, text] of absaetze) p.children.push(makeNode('abs', abs, `(${abs})`, text))
+    return p
+  }
+  const absaetze = (out: StandingLaw) => out.paragraphs[0]!.children.map((c) => `${c.marker} ${c.text}`)
+
+  it('carries out an ascending chain of moves, the „nunmehrige" unit meaning the one that arrived (BGBl. I Nr. 25/2026, ArbVG § 110)', () => {
+    const l: StandingLaw = { paragraphs: [absPara('110', [['1', 'Eins.'], ['2', 'Zwei.'], ['2a', 'Alt zwei a.'], ['2b', 'Alt zwei b.'], ['2c', 'Alt zwei c.'], ['2d', 'Alt zwei d.'], ['3', 'Drei.']])] }
+    const { law: out, results } = run(
+      l,
+      instr('§ 110 Abs. 2a lautet:', ['(2a) Neu zwei a.']),
+      instr('Der bisherige Abs. 2a des § 110 erhält die Bezeichnung "Abs. 2b".'),
+      instr('Im nunmehrigen § 110 Abs. 2b wird das Wort "Alt" durch das Wort "Bisher" ersetzt.'),
+      instr('Der bisherige Abs. 2b des § 110 erhält die Bezeichnung "Abs. 2c".'),
+      instr('Der bisherige Abs. 2c des § 110 erhält die Bezeichnung "Abs. 2d".'),
+      instr('Der bisherige Abs. 2d des § 110 erhält die Bezeichnung "Abs. 2e".'),
+    )
+    expect(results.map((r) => r.reason)).toEqual([null, null, null, null, null, null])
+    expect(absaetze(out)).toEqual(['(1) Eins.', '(2) Zwei.', '(2a) Neu zwei a.', '(2b) Bisher zwei a.', '(2c) Alt zwei b.', '(2d) Alt zwei c.', '(2e) Alt zwei d.', '(3) Drei.'])
+  })
+
+  it('inserts into a number a later line vacates, behind the anchor the address means (AC8FD757)', () => {
+    const l: StandingLaw = { paragraphs: [absPara('4', [['1', 'Eins.'], ['2', 'Zwei.'], ['3', 'Alt drei.']])] }
+    const { law: out, results } = run(l, instr('In § 4 wird nach Abs. 2 folgender Abs. 3 eingefügt:', ['(3) Neu drei.']), instr('In § 4 erhält Abs. 3 die Absatzbezeichnung "(4)".'))
+    expect(results.map((r) => r.reason)).toEqual([null, null])
+    expect(absaetze(out)).toEqual(['(1) Eins.', '(2) Zwei.', '(3) Neu drei.', '(4) Alt drei.'])
+  })
+
+  it('inserts before a run that brings the units in under the numbers above (114/ME XXVIII § 28)', () => {
+    const p = makeNode('para', '28', '§ 28.', '', 'Aufgaben')
+    const body = makeNode('abs', '', '', 'Aufgaben sind:')
+    ;['eins', 'zwei', 'alt drei', 'alt vier', 'alt fünf'].forEach((t, i) => body.children.push(makeNode('z', String(i + 1), `${i + 1}.`, t)))
+    p.children.push(body)
+    const { law: out, results } = run(
+      { paragraphs: [p] },
+      instr('In § 28 wird nach Z 2 folgende Z 3 eingefügt:', ['3. neu drei']),
+      instr('In § 28 werden Z 3 bis 5 durch folgende Z 4 bis 6 ersetzt:', ['4. neu vier', '5. neu fünf', '6. neu sechs']),
+    )
+    expect(results.map((r) => r.reason)).toEqual([null, null])
+    expect(out.paragraphs[0]!.children[0]!.children.map((c) => `${c.marker} ${c.text}`)).toEqual(['1. eins', '2. zwei', '3. neu drei', '4. neu vier', '5. neu fünf', '6. neu sechs'])
+  })
+
+  it('moves into a number the same line repeals, the „bisherige" unit meaning the standing one (BGBl. I Nr. 39/2026, BFA-VG § 52a)', () => {
+    const l: StandingLaw = { paragraphs: [absPara('52a', [['1', 'Eins.'], ['2', 'Alt zwei.'], ['2a', 'Alt zwei a.'], ['3', 'Alt drei.'], ['4', 'Alt vier.']])] }
+    const { law: out, results } = run(
+      l,
+      instr('In § 52a wird nach Abs. 1 folgender Abs. 2 eingefügt:', ['(2) Neu zwei.']),
+      instr('In § 52a erhalten der bisherige Abs. 2 und Abs. 2a die Absatzbezeichnungen "(3)" und "(7)"; der bisherige Abs. 3 und Abs. 4 entfallen.'),
+      instr('In § 52a Abs. 3 (neu) wird das Wort "Alt" durch das Wort "Bisher" ersetzt.'),
+    )
+    expect(results.map((r) => r.reason)).toEqual([null, null, null, null, null])
+    expect(absaetze(out)).toEqual(['(1) Eins.', '(2) Neu zwei.', '(3) Bisher zwei.', '(7) Alt zwei a.'])
+  })
+
+  it('refuses the line that took the number where nothing frees it, and runs the Novelle again without it', () => {
+    // § 4 Abs. 4 stands and no line moves it: „Abs. 3 → (4)" fails, the
+    // number 3 is never freed, and the insertion is refused with it.
+    const l: StandingLaw = { paragraphs: [absPara('4', [['1', 'Eins.'], ['2', 'Zwei.'], ['3', 'Alt drei.'], ['4', 'Alt vier.']])] }
+    const { law: out, results, unresolved } = run(l, instr('In § 4 wird nach Abs. 2 folgender Abs. 3 eingefügt:', ['(3) Neu drei.']), instr('In § 4 erhält Abs. 3 die Absatzbezeichnung "(4)".'))
+    expect(results.map((r) => r.reason)).toEqual(['(3) existiert bereits', 'Bezeichnung 4 existiert bereits'])
+    expect(absaetze(out)).toEqual(absaetze(l))
+    expect(unresolved.has('§ 4')).toBe(true)
   })
 })

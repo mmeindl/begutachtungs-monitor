@@ -17,7 +17,7 @@
  * one refused operation must be shown as instructions, not as text — the
  * caller enforces that, `unresolved` reports it.
  */
-import { childById, lawTextNodes, makeNode, plainText, uniqueChild, type LawNode, type NodeLevel } from '../lawtext/konsTree'
+import { childById, lawTextNodes, makeNode, plainText, type LawNode, type NodeLevel } from '../lawtext/konsTree'
 import type { LawUnit } from '../lawtext/lawUnits'
 import { normalizeText } from '../lawtext/normalize'
 import { announcesSchedule, continuesToc, createdParagraphs, createdUnits, expandRange, isTocInstruction, namedParagraphs, opAddress, parseInstruction, tocSequence, type NovaoAddress, type NovaoOp } from './novao'
@@ -550,16 +550,25 @@ function divisionOfParagraphs(op: NovaoOp, payload: readonly LawNode[]): NovaoOp
  *    that moves or repeals a § means the one standing there from the start,
  *    every other line the one that has just arrived — the Beilage pairs
  *    exactly that way, the old § 15 with the changed Abs. 2.
+ * 3. **The same below the §** (`preferUnit`, `mayShareUnit`). „Der bisherige
+ *    Abs. 2a des § 110 erhält die Bezeichnung ‚Abs. 2b'", „Im nunmehrigen
+ *    § 110 Abs. 2b wird …", „Der bisherige Abs. 2b … ‚Abs. 2c'" (BGBl. I
+ *    Nr. 25/2026); „In § 4 wird nach Abs. 2 folgender Abs. 3 eingefügt"
+ *    before „In § 4 erhält Abs. 3 die Absatzbezeichnung ‚(4)'" (AC8FD757).
+ *    Units below the § keep no identity across lines — nothing outside the
+ *    § asks for one — only whether they arrived.
  */
 interface RunContext {
   unit: WeakMap<LawNode, number>
   /** Each unit's number in the standing law; null for one the Novelle brought in. */
   origin: Map<number, string | null>
   next: number
-  /** §§ that came to their number in this run: moved, or brought in. */
+  /** §§ and units below them that came to their number in this run: moved, or brought in. */
   arrived: WeakSet<LawNode>
   /** Which of two §§ under one number the instruction now applied means. */
   prefer: 'standing' | 'arrived'
+  /** The same for two units below the §, at the level its address ends on (`unitChild`). */
+  preferUnit: 'standing' | 'arrived'
   /** The index of the instruction now applied, and of the last one applied with it (a batch). */
   index: number
   last: number
@@ -571,14 +580,28 @@ interface RunContext {
   formerLater(id: string): boolean
   /** Whether a later line renumbers this unit below the § and calls it „der bisherige" (`applyOne`). */
   formerUnitLater(a: NovaoAddress): boolean
-  /** Numbers an instruction took while the standing § still carried them — settled at the end (`applyNovelle`). */
-  shared: { index: number; id: string; reason: string }[]
+  /** Whether a later line moves or repeals the standing unit of a place below the § (`unitPlace`, `vacatedUnitsBy`). */
+  vacatedUnitLater(place: string): boolean
+  /**
+   * Numbers an instruction took while the standing § still carried them —
+   * settled at the end (`applyNovelle`). Below the §, with the unit whose
+   * children carry it (`host`) and their level.
+   */
+  shared: SharedNumber[]
   /** The same, for the instruction now applied: kept only where it succeeds. */
-  pending: { index: number; id: string; reason: string }[]
+  pending: SharedNumber[]
   /** §§ arrived during the instruction now applied — the „neue §" it licenses. */
   arrivals: LawNode[]
   /** The units below the § the instruction now applied acts on, as they stood before it (`ApplyResult.units`). */
   units: (LawNode | null)[] | undefined
+}
+
+interface SharedNumber {
+  index: number
+  id: string
+  reason: string
+  host?: LawNode
+  level?: NodeLevel
 }
 
 const RUNS = new WeakMap<StandingLaw, RunContext>()
@@ -648,6 +671,54 @@ function arrivesBeside(law: StandingLaw, para: LawNode): boolean {
   return true
 }
 
+/**
+ * Where a unit below the § stands, as an address names it: its §, the units
+ * above it, its level and its number. The line that takes a number and the
+ * later line that frees it (`vacatedUnitsBy`) name it alike, whatever the
+ * tree looks like in between.
+ */
+function unitPlace(a: NovaoAddress, level: NodeLevel, id: string): string {
+  return [a.artikel ?? '', isSchedule(a.para) ? 'Anl.' : '§', bareParaId(a.para) ?? '', level, level === 'abs' ? '' : (a.abs ?? ''), level === 'lit' ? (a.z ?? '') : '', id].join('|')
+}
+
+/** A unit below the § this instruction moved to its number, or brought in. */
+function arriveUnit(law: StandingLaw, node: LawNode): void {
+  RUNS.get(law)?.arrived.add(node)
+}
+
+/**
+ * `mayShare` below the §: whether a unit may take the number `id` from the
+ * standing siblings under `host` that carry it, because a later line of the
+ * Novelle moves or repeals that one (`vacatedUnitLater`) — „In § 16 wird nach
+ * Abs. 5 folgender Abs. 6 eingefügt" before „§ 16 Abs. 6 erhält die
+ * Bezeichnung ‚(7)'" (AC8FD757). Not from a unit that has itself just
+ * arrived, and the end of the run checks that the number was freed.
+ */
+function mayShareUnit(law: StandingLaw, place: string, holders: readonly LawNode[], reason: string, host: LawNode, level: NodeLevel, id: string): boolean {
+  const run = RUNS.get(law)
+  if (!run || holders.length === 0 || holders.some((h) => run.arrived.has(h)) || !run.vacatedUnitLater(place)) return false
+  run.pending.push({ index: run.index, id, reason, host, level })
+  return true
+}
+
+/**
+ * The one child of `node` an address names (`uniqueChild`) — and, while two
+ * carry its number in this run, the one the instruction means: at the level
+ * its address ends on, a line that moves or repeals means the unit standing
+ * there from the start, every other line the one that arrived
+ * (`RunContext.preferUnit`); above that level the arrived one, which is what
+ * „In § 4 Abs. 7 (neu)" means. Two of a number the standing text itself
+ * repeats stay refused, as ever.
+ */
+function unitChild(law: StandingLaw, node: LawNode, level: NodeLevel, id: string, deepest: boolean): LawNode | null {
+  const hits = node.children.filter((c) => c.level === level && c.id === id)
+  if (hits.length < 2) return hits[0] ?? null
+  const run = RUNS.get(law)
+  if (!run || !hits.some((h) => run.arrived.has(h))) return null
+  const wanted = deepest && run.preferUnit === 'standing' ? hits.filter((h) => !run.arrived.has(h)) : hits.filter((h) => run.arrived.has(h))
+  return wanted.length === 1 ? wanted[0]! : null
+}
+
 /** Whether `move` (a renumbering below the §) names the unit `a` addresses: the same § and the same units above it. */
 function renumbersUnit(move: NovaoAddress, a: NovaoAddress): boolean {
   if (move.para !== a.para || (move.artikel ?? null) !== (a.artikel ?? null) || move.level !== a.level) return false
@@ -703,12 +774,12 @@ function findParagraph(law: StandingLaw, a: NovaoAddress, overrideId?: string): 
  * Absatz, so the descent has to pass through that unnumbered node instead of
  * failing. Found by the harness on the Energieausweis-Vorlage-Gesetz.
  */
-function childThrough(node: LawNode, level: NodeLevel, id: string): LawNode | null {
-  const direct = uniqueChild(node, level, id)
+function childThrough(law: StandingLaw, node: LawNode, level: NodeLevel, id: string, deepest: boolean): LawNode | null {
+  const direct = unitChild(law, node, level, id, deepest)
   if (direct) return direct
   for (const child of node.children) {
     if (child.id === '' && child.level !== level) {
-      const nested = uniqueChild(child, level, id)
+      const nested = unitChild(law, child, level, id, deepest)
       if (nested) return nested
     }
   }
@@ -766,7 +837,7 @@ export function resolveTarget(law: StandingLaw, a: NovaoAddress, overrideDeepest
   for (const [i, [level, id]] of levels.entries()) {
     if (id === null) continue
     const wanted = overrideDeepest !== undefined && i === deepestIndex ? overrideDeepest : id
-    const child = childThrough(node, level, wanted)
+    const child = childThrough(law, node, level, wanted, i === deepestIndex)
     if (!child) return null
     node = child
   }
@@ -1526,12 +1597,12 @@ function levelOf(child: string): NodeLevel | null {
 }
 
 /** Insert `nodes` into `host.children` behind (or in front of) the anchor. */
-function spliceChildren(host: LawNode, anchorId: string | null, level: NodeLevel, nodes: LawNode[], where: 'after' | 'before'): boolean {
-  if (anchorId === null) {
+function spliceChildren(host: LawNode, anchor: LawNode | null, level: NodeLevel, nodes: LawNode[], where: 'after' | 'before'): boolean {
+  if (anchor === null) {
     host.children.push(...nodes)
     return true
   }
-  const at = host.children.findIndex((c) => c.level === level && c.id === anchorId)
+  const at = anchor.level === level ? host.children.indexOf(anchor) : -1
   if (at < 0) return false
   host.children.splice(where === 'after' ? at + 1 : at, 0, ...nodes)
   return true
@@ -1724,10 +1795,23 @@ function applyOne(law: StandingLaw, { op, payload, line }: Instruction, renamed:
       // „§ 110 Abs. 2a lautet:", and the line after „Der bisherige Abs. 2a
       // des § 110 erhält die Bezeichnung ‚Abs. 2b'": the new Abs. 2a, while
       // the standing one moves on with its text (BGBl. I Nr. 25/2026).
-      // Restated in place, that text was gone. Below the § no unit can stand
-      // beside another of its number for a while, as a § can
-      // (`arrivesBeside`), so the line is refused.
-      if (RUNS.get(law)?.formerUnitLater(op.target)) return 'Neufassung unter einer Nummer, deren bisherige Einheit eine spätere Zeile umbenennt'
+      // Restated in place, that text was gone. So the new unit arrives beside
+      // the standing one, in front of it, as a § does (`arrivesBeside`), and
+      // the later line takes the old one away (`mayShareUnit`). One unit
+      // restated whole; several, or a sentence of one, are refused.
+      if (RUNS.get(law)?.formerUnitLater(op.target)) {
+        const refusal = 'Neufassung unter einer Nummer, deren bisherige Einheit eine spätere Zeile umbenennt'
+        const standing = op.target.satz || op.target.halbsatz || ids.length !== 1 || payload.length !== 1 ? null : resolveTarget(law, op.target)
+        const host = standing ? parentOf(law, standing) : null
+        if (!standing || !host || !mayShareUnit(law, unitPlace(op.target, standing.level, standing.id), [standing], refusal, host, standing.level, standing.id)) return refusal
+        const block = payload[0]!
+        const fresh: LawNode = { ...standing, text: block.text || (block.level === 'para' ? (block.heading ?? '') : ''), children: block.children }
+        host.children.splice(host.children.indexOf(standing), 0, fresh)
+        arriveUnit(law, fresh)
+        // It took nothing out (`ApplyResult.units`).
+        RUNS.get(law)!.units = [null]
+        return null
+      }
       // A sub-unit run that changes length is the same form one level down:
       // "In § 1 wird der Abs. 3 durch folgende Abs. 3 bis 5 ersetzt" quietly
       // lost two Absätze before this existed (2026-09-09). It only applies
@@ -1745,7 +1829,7 @@ function applyOne(law: StandingLaw, { op, payload, line }: Instruction, renamed:
         }
         const parent = parentOf(law, outgoing[0]!)
         if (!parent) return 'Elternknoten nicht gefunden'
-        return spliceRun(parent.children, outgoing, payload, level)
+        return spliceRun(parent.children, outgoing, payload, level, law, false, { address: op.target, host: parent })
       }
       // As many blocks as units, under other designations: „In § 28 werden
       // Z 3 bis 5 durch folgende Z 4 bis 6 ersetzt" (114/ME XXVIII), „Abs. 5
@@ -1770,7 +1854,7 @@ function applyOne(law: StandingLaw, { op, payload, line }: Instruction, renamed:
         }
         const parent = parentOf(law, outgoing[0]!)
         if (!parent) return 'Elternknoten nicht gefunden'
-        return spliceRun(parent.children, outgoing, payload, level)
+        return spliceRun(parent.children, outgoing, payload, level, law, false, { address: op.target, host: parent })
       }
       // „§ 1 Z 1 bis 5 lautet:" where Z 5 is new (Waldresilienzfondsgesetz):
       // the run below the § — the form `Die §§ 34a bis 34e lauten` has at §
@@ -1785,7 +1869,7 @@ function applyOne(law: StandingLaw, { op, payload, line }: Instruction, renamed:
           const present = nodes.filter((n): n is LawNode => n !== null)
           const parent = parentOf(law, present[0]!)
           if (!named || !parent) return `Nicht im geltenden Text: ${op.target.raw.slice(0, 60)}`
-          return spliceRun(parent.children, present, payload, level)
+          return spliceRun(parent.children, present, payload, level, law, false, { address: op.target, host: parent })
         }
       }
       for (const [i, id] of ids.entries()) {
@@ -2109,8 +2193,18 @@ function applyOne(law: StandingLaw, { op, payload, line }: Instruction, renamed:
       // The Paragraph branch above refuses the same case; this one never did.
       if ((level === 'abs' || level === 'z' || level === 'lit') && payload.some((p) => !p.id || p.level !== level)) return 'Eingefügte Einheit ohne eigene Bezeichnung'
       const nodes = payload.map((p) => ({ ...p, level }))
-      for (const n of nodes) if (n.id && childById(container, level, n.id)) return `${n.marker} existiert bereits`
-      if (!spliceChildren(container, anchorId, level, nodes, op.where)) return `Anker nicht gefunden: ${op.anchor.raw.slice(0, 60)}`
+      for (const n of nodes) {
+        // A number the standing unit keeps until a later line moves it on
+        // (`mayShareUnit`): „In § 4 wird nach Abs. 2 folgender Abs. 3
+        // eingefügt" before „In § 4 erhält Abs. 3 die Absatzbezeichnung
+        // ‚(4)'" (AC8FD757, EB261E10, 6A7272C6).
+        const holders = n.id ? container.children.filter((c) => c.level === level && c.id === n.id) : []
+        if (holders.length > 0 && !mayShareUnit(law, unitPlace(op.anchor, level, n.id), holders, `${n.marker} existiert bereits`, container, level, n.id)) return `${n.marker} existiert bereits`
+      }
+      // Behind the unit the address found (`resolveTarget`), not behind the
+      // first of its number: while two carry it, the instruction means one.
+      if (!spliceChildren(container, anchorId === null ? null : host, level, nodes, op.where)) return `Anker nicht gefunden: ${op.anchor.raw.slice(0, 60)}`
+      for (const n of nodes) arriveUnit(law, n)
       return null
     }
 
@@ -2282,7 +2376,7 @@ function replaceEndMark(units: readonly (readonly Slot[])[], from: string, to: s
  */
 function renumberBatch(law: StandingLaw, batch: readonly Pick<Instruction, 'op' | 'payload'>[], renamed: Renaming[] = []): string | null {
   const batchNo = (renamed[renamed.length - 1]?.batch ?? -1) + 1
-  const moves: { node: LawNode; id: string; level: NodeLevel; siblings: LawNode[]; para: string; schedule: boolean }[] = []
+  const moves: { node: LawNode; id: string; level: NodeLevel; siblings: LawNode[]; para: string; schedule: boolean; address: NovaoAddress; host: LawNode | null }[] = []
   for (const { op } of batch) {
     if (op.kind !== 'renumber') return 'keine Umbenennung'
     const ids = [deepestId(op.target), ...op.target.siblings]
@@ -2316,22 +2410,28 @@ function renumberBatch(law: StandingLaw, batch: readonly Pick<Instruction, 'op' 
       newIds = [first, ...range]
     }
     if (newIds.length !== nodes.length) return `${nodes.length} Einheiten, ${newIds.length} neue Bezeichnungen`
-    const siblings = op.target.level === 'para' ? law.paragraphs : (parentOf(law, nodes[0]!)?.children ?? [])
+    const host = op.target.level === 'para' ? null : parentOf(law, nodes[0]!)
+    const siblings = op.target.level === 'para' ? law.paragraphs : (host?.children ?? [])
     // „Der bisherige Inhalt des § 29 erhält die Absatzbezeichnung ‚(1)'"
     // (`absatzDrawnIn` in `kons/novao.ts`): the unnumbered Absatz is the
     // bisherige Inhalt only where it IS the whole §. Anything beside it would
     // stay outside the new Abs. 1 and read as text of no Absatz at all.
     if (op.target.level === 'abs' && nodes.some((n) => n.id === '') && siblings.length !== 1) return 'Der bisherige Inhalt ist nicht ein einziger Absatz'
-    nodes.forEach((node, i) => moves.push({ node, id: newIds[i]!, level: node.level, siblings, para: op.target.para ?? '', schedule: node.level === 'para' && isSchedule(node.marker) }))
+    nodes.forEach((node, i) => moves.push({ node, id: newIds[i]!, level: node.level, siblings, para: op.target.para ?? '', schedule: node.level === 'para' && isSchedule(node.marker), address: op.target, host }))
   }
   const moving = new Set(moves.map((m) => m.node))
   for (const m of moves) {
     // Of its own kind (`findParagraph`): an Anlage 2 is no collision for
-    // § 2. At § level a number the standing § keeps until a later line
-    // moves it on (`mayShare`) is none either — the ascending chains of
-    // E0399A69.
+    // § 2. A number the standing § keeps until a later line moves it on
+    // (`mayShare`) is none either — the ascending chains of E0399A69 — nor,
+    // below the §, the one a standing unit keeps (`mayShareUnit`): „Der
+    // bisherige Abs. 2a des § 110 erhält die Bezeichnung ‚Abs. 2b'" before
+    // „Der bisherige Abs. 2b … ‚Abs. 2c'" (BGBl. I Nr. 25/2026).
     const holders = m.siblings.filter((n) => !moving.has(n) && n.level === m.level && n.id === m.id && (m.level !== 'para' || isSchedule(n.marker) === m.schedule))
-    if (holders.length > 0 && !(m.level === 'para' && !m.schedule && mayShare(law, m.id, holders, `Bezeichnung ${m.id} existiert bereits`))) return `Bezeichnung ${m.id} existiert bereits`
+    if (holders.length === 0) continue
+    const reason = `Bezeichnung ${m.id} existiert bereits`
+    if (m.level === 'para' ? !m.schedule && mayShare(law, m.id, holders, reason) : m.host !== null && m.id !== '' && mayShareUnit(law, unitPlace(m.address, m.level, m.id), holders, reason, m.host, m.level, m.id)) continue
+    return reason
   }
   if (new Set(moves.map((m) => `${m.level}|${m.schedule ? 'Anl.' : ''}|${m.id}`)).size !== moves.length) return 'Zwei Einheiten erhalten dieselbe Bezeichnung'
   const run = RUNS.get(law)
@@ -2347,6 +2447,7 @@ function renumberBatch(law: StandingLaw, batch: readonly Pick<Instruction, 'op' 
     m.node.id = m.id
     m.node.marker = m.id === '' ? '' : m.schedule ? `${SCHEDULE_WORD_RE.exec(m.node.marker.trim())?.[0] ?? 'Anl.'} ${m.id}` : m.level === 'para' ? `§ ${m.id}.` : m.level === 'abs' ? `(${m.id})` : m.level === 'lit' ? `${m.id})` : `${m.id}.`
     if (m.level === 'para' && !m.schedule) arrive(law, m.node)
+    else if (m.level !== 'para') arriveUnit(law, m.node)
   }
   return null
 }
@@ -2367,7 +2468,7 @@ const SCHEDULE_WORD_RE = /^(?:Anlage|Anhang|Anl\.?)/i
  * the outgoing units must be contiguous siblings, and no incoming id may
  * collide with a unit outside the run, which would shadow standing text.
  */
-function spliceRun(siblings: LawNode[], outgoing: LawNode[], incoming: LawNode[], level: NodeLevel, law?: StandingLaw, moved = false): string | null {
+function spliceRun(siblings: LawNode[], outgoing: LawNode[], incoming: LawNode[], level: NodeLevel, law?: StandingLaw, moved = false, below?: { address: NovaoAddress; host: LawNode }): string | null {
   const positions = outgoing.map((n) => siblings.indexOf(n))
   if (positions.some((i) => i < 0)) return 'Zu ersetzende Einheit nicht am erwarteten Ort'
   const at = Math.min(...positions)
@@ -2376,12 +2477,17 @@ function spliceRun(siblings: LawNode[], outgoing: LawNode[], incoming: LawNode[]
   if (incoming.some((n) => !n.id)) return 'Neuer Textblock ohne eigene Bezeichnung'
   const survivors = siblings.filter((n) => !outgoing.includes(n))
   for (const n of incoming) {
-    // A § number the standing § keeps until a later line moves it on (`mayShare`).
+    // A number the standing § or unit keeps until a later line moves it on
+    // (`mayShare`, `mayShareUnit`).
     const holders = survivors.filter((s) => s.level === level && s.id === n.id)
-    if (holders.length > 0 && !(law && level === 'para' && mayShare(law, n.id, holders, `${n.marker} existiert bereits`))) return `${n.marker} existiert bereits`
+    if (holders.length === 0) continue
+    const reason = `${n.marker} existiert bereits`
+    if (law && level === 'para' ? mayShare(law, n.id, holders, reason) : law && below ? mayShareUnit(law, unitPlace(below.address, level, n.id), holders, reason, below.host, level, n.id) : false) continue
+    return reason
   }
   const nodes = incoming.map((n): LawNode => ({ ...n, level }))
   siblings.splice(at, outgoing.length, ...nodes)
+  if (law && below) for (const node of nodes) arriveUnit(law, node)
   // Which § each new block is: one restated under its own number stays that
   // §, one § replaced by one under another number is that § moved (`moved`,
   // `applyOne`), every other block is a § the Novelle brings in.
@@ -2578,6 +2684,28 @@ function vacatedBy(instruction: Instruction): string[] {
 }
 
 /**
+ * `movesParagraphs` below the §: whether an instruction takes units out of
+ * their numbers — moves them („Abs. 2a erhält die Bezeichnung ‚Abs. 2b'", „Z 3
+ * bis 5 werden durch folgende Z 4 bis 6 ersetzt") or repeals them („der
+ * bisherige Abs. 4 entfällt"). Such a line means the units standing under the
+ * numbers it names, every other line the ones that arrived there
+ * (`RunContext.preferUnit`).
+ */
+function movesUnits({ op, payload }: Instruction): boolean {
+  const a = opAddress(op)
+  if (!a || (a.level !== 'abs' && a.level !== 'z' && a.level !== 'lit') || a.satz || a.halbsatz || a.heading) return false
+  return op.kind === 'renumber' || op.kind === 'delete' || (op.kind === 'replace' && op.run && otherDesignation(op, unwrapParaPayload(payload, a)) !== null)
+}
+
+/** The places below the § an instruction takes their standing unit out of (`movesUnits`, `unitPlace`). */
+function vacatedUnitsBy(instruction: Instruction): string[] {
+  const a = movesUnits(instruction) ? opAddress(instruction.op) : null
+  if (!a || (a.level !== 'abs' && a.level !== 'z' && a.level !== 'lit')) return []
+  const level = a.level
+  return [deepestId(a), ...a.siblings].filter((id) => id !== '').map((id) => unitPlace(a, level, id))
+}
+
+/**
  * Applies a Novelle. Instructions run in printed order — legistic drafting
  * assumes that, e.g. renumbering before a later instruction addresses the
  * new number.
@@ -2593,10 +2721,13 @@ function vacatedBy(instruction: Instruction): string[] {
  * one (`mayShare`), and lookups in between tell the two apart
  * (`RunContext`). Whether the number was really freed is checked at the end:
  * where it was not, the line that took it is refused, and the Novelle runs
- * again — until no number stands twice.
+ * again — until no number stands twice. Below the § the same, among the
+ * units of one parent (`mayShareUnit`): ArbVG § 110 moves Abs. 2a to 2e up
+ * one by one (BGBl. I Nr. 25/2026), AC8FD757 inserts Abs. 3 before it moves
+ * the old one to Abs. 4.
  */
 export function applyNovelle(input: StandingLaw, instructions: readonly Instruction[]): ApplyReport {
-  const vacates = instructions.map(vacatedBy)
+  const vacates = { paragraphs: instructions.map(vacatedBy), units: instructions.map(vacatedUnitsBy) }
   const refused = new Map<number, string>()
   for (let round = 0; ; round++) {
     const { report, stuck } = runNovelle(input, instructions, vacates, refused)
@@ -2606,7 +2737,7 @@ export function applyNovelle(input: StandingLaw, instructions: readonly Instruct
 }
 
 /** One run of `applyNovelle`, with the lines `refused` refused from the start; `stuck`: lines whose number stayed doubled. */
-function runNovelle(input: StandingLaw, instructions: readonly Instruction[], vacates: readonly string[][], refused: ReadonlyMap<number, string>): { report: ApplyReport; stuck: Map<number, string> } {
+function runNovelle(input: StandingLaw, instructions: readonly Instruction[], vacates: { paragraphs: readonly string[][]; units: readonly string[][] }, refused: ReadonlyMap<number, string>): { report: ApplyReport; stuck: Map<number, string> } {
   const law = cloneLaw(input)
   const former = instructions.map(({ line }) => FORMER_RE.test(line))
   const run: RunContext = {
@@ -2615,12 +2746,14 @@ function runNovelle(input: StandingLaw, instructions: readonly Instruction[], va
     next: 0,
     arrived: new WeakSet(),
     prefer: 'arrived',
+    preferUnit: 'arrived',
     index: 0,
     last: 0,
     touched: new Set(),
-    vacatedLater: (id) => vacates.some((ids, j) => j > run.last && !refused.has(j) && ids.includes(id)),
-    formerLater: (id) => vacates.some((ids, j) => j > run.last && !refused.has(j) && former[j] && ids.includes(id)),
+    vacatedLater: (id) => vacates.paragraphs.some((ids, j) => j > run.last && !refused.has(j) && ids.includes(id)),
+    formerLater: (id) => vacates.paragraphs.some((ids, j) => j > run.last && !refused.has(j) && former[j] && ids.includes(id)),
     formerUnitLater: (a) => instructions.some(({ op }, j) => j > run.last && !refused.has(j) && former[j] && op.kind === 'renumber' && renumbersUnit(op.target, a)),
+    vacatedUnitLater: (place) => vacates.units.some((places, j) => j > run.last && !refused.has(j) && places.includes(place)),
     shared: [],
     pending: [],
     arrivals: [],
@@ -2661,6 +2794,7 @@ function runNovelle(input: StandingLaw, instructions: readonly Instruction[], va
     run.arrivals = []
     run.units = undefined
     run.prefer = movesParagraphs(instruction) ? 'standing' : 'arrived'
+    run.preferUnit = vacates.units[i]!.length > 0 ? 'standing' : 'arrived'
     let reason: string | null
     try {
       // "§ 107 Z 6 (neu) lautet:" addresses the numbering *after* an earlier
@@ -2742,8 +2876,13 @@ function runNovelle(input: StandingLaw, instructions: readonly Instruction[], va
   // refused, and the Novelle runs again without it.
   const holders = new Map<string, number>()
   for (const p of law.paragraphs) if (!isSchedule(p.marker)) holders.set(p.id, (holders.get(p.id) ?? 0) + 1)
+  // Below the §, among the children of the unit the number was taken in —
+  // where that unit is still part of the law (a later line may have restated
+  // the whole § around it).
+  const attached = run.shared.some((s) => s.host) ? new Set(law.paragraphs.flatMap(lawTextNodes)) : null
+  const doubled = (s: SharedNumber): boolean => (s.host ? attached!.has(s.host) && s.host.children.filter((c) => c.level === s.level && c.id === s.id).length > 1 : (holders.get(s.id) ?? 0) > 1)
   const stuck = new Map<number, string>()
-  for (const s of run.shared) if ((holders.get(s.id) ?? 0) > 1 && !stuck.has(s.index)) stuck.set(s.index, s.reason)
+  for (const s of run.shared) if (!stuck.has(s.index) && doubled(s)) stuck.set(s.index, s.reason)
   const touches = (index: number, node: LawNode): boolean => {
     const unit = run.unit.get(node)
     return unit !== undefined && (touched[index]?.has(unit) ?? false)
