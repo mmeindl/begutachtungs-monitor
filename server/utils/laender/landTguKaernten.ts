@@ -340,7 +340,12 @@ interface Amendment {
   /** „Artikel II", where the Novelle has Artikel. */
   artikel: string | null
   instructions: Instruction[]
-  /** The numbering skipped a number: an instruction was not seen. */
+  /**
+   * A number of the Artikel's numbering was seen nowhere: an instruction was
+   * not found. Decided once the Artikel is read, in number order — not when
+   * the numbering first skips, since the document may print the skipped
+   * instruction further on (`amendmentsOf`).
+   */
   gap: boolean
 }
 
@@ -350,6 +355,17 @@ interface Amendment {
  * 26.10.2026: read as no instruction, its law got a gap).
  */
 const INSTRUCTION_RE = /^(\d+)[a-z]?\.\s*(?=[^\d\s]|\d+[a-z]*\s+Abs\.)(\S.*)$/
+/**
+ * „9 § 41 Abs. 9 entfällt.", „41 In § 96 Abs. 1 wird …": the number without
+ * its full stop (18119/2023, 1037/2021 twice, 59470/2025; 27.10.2026 — each
+ * read as the payload of the instruction before, and its law got a gap).
+ * Taken only as the next number, after a line that ends a sentence.
+ */
+const NO_STOP_RE = /^(\d+)\s+(?=§|Art\.\s*\d|(?:Im|In|Nach|Vor|Dem|Der|Die|Das|Am|Auf|Anstelle)\s)(\S.*)$/
+/** „… zugrunde zu legen ist.18." over „§ 61 Abs. 3 lautet:": the next instruction's number at the end of the line above its head (1037/2021). */
+const GLUED_NUMBER_RE = /[\p{Ll})“”"]\.(\d+)\.$/u
+/** How an instruction's head begins, numbered or not: „§ 5 …", „Im § 3 …", „Nach § 74 …", „Der 3. Abschnitt …". */
+const HEAD_START_RE = /^(?:§|Art\.\s*\d|(?:Im|In|Nach|Vor|Dem|Der|Die|Das|Am|Auf|Anstelle)\s)/
 /**
  * The sentence that opens an Artikel: „Das Kärntner … wird wie folgt
  * geändert:" — or, where the Artikel amends another Novelle's article,
@@ -386,9 +402,22 @@ const AMENDS_RE = /^Änderung\s+de[sr]\s+(.+)$/
 /**
  * The right column into the laws it amends and their instructions. An
  * instruction starts at the column's margin with its number — the next one
- * of its Artikel, or a few further on (then the Artikel has a gap) — and a
- * verb in its first lines; everything else is the open instruction's: its
- * head up to the line that ends in a colon, its payload after.
+ * of its Artikel, or a few further on — and a verb in its first lines;
+ * everything else is the open instruction's: its head up to the line that
+ * ends in a colon, its payload after.
+ *
+ * A NUMBER OUT OF TURN (27.10.2026). Of the 20 numbers found missing over
+ * the Textgegenüberstellungen of 2013–2026, nine stood in the document: one
+ * printed after the next (2193/2019: 1, 3, 2, 4), two under the number of an
+ * earlier one, where the missing one belongs (539/2021: „14." between 17 and
+ * 19; 2038/2020: a second „8." before 10), four without the full stop
+ * (`NO_STOP_RE`), one at the end of the line above (`GLUED_NUMBER_RE`), one
+ * in the left column (872/2013, not read). Each is taken as the instruction
+ * it is: a number the Artikel has passed and not seen fills its place; any
+ * other where the next instruction skips exactly one number is the skipped
+ * one — unless its head is a reprint of the instruction it shares its number
+ * with. Every other number out of turn is swallowed as before. Whether a
+ * number is missing is decided at the end, in number order.
  */
 export function amendmentsOf(lines: readonly KtnLine[], f: Frame): Amendment[] {
   const out: Amendment[] = []
@@ -409,6 +438,17 @@ export function amendmentsOf(lines: readonly KtnLine[], f: Frame): Amendment[] {
     headOpen = false
     promulgation = null
     awaitFirst = false
+  }
+  const atMarginOf = (l: KtnLine) => Math.abs(l.x0 - f.margin) <= 8
+  /** The number of the next instruction after line `i`, within its Artikel; null where none follows. */
+  const nextNumber = (i: number): number | null => {
+    for (let j = i + 1; j < lines.length; j++) {
+      const x = lines[j]!
+      if ((ARTIKEL_RE.test(x.text) || AMENDS_RE.test(x.text)) && heading(x, f)) return null
+      const n = INSTRUCTION_RE.exec(x.text)
+      if (n && atMarginOf(x) && VERB_RE.test([n[2]!, ...lines.slice(j + 1, j + 3).map((y) => y.text)].join(' '))) return +n[1]!
+    }
+    return null
   }
   for (let i = 0; i < lines.length; i++) {
     const l = lines[i]!
@@ -431,24 +471,46 @@ export function amendmentsOf(lines: readonly KtnLine[], f: Frame): Amendment[] {
     const a = current as Amendment | null
     // An unnumbered instruction followed by „1." was an introduction, not the Artikel's one.
     if (m && +m[1]! === 1 && a?.instructions.length === 1 && a.instructions[0]!.unnumbered) a.instructions[0]!.number = 0
-    const expected = a ? (a.instructions.at(-1)?.number ?? 0) + 1 : 1
+    const seen = a?.instructions.map((x) => x.number) ?? []
+    const expected = Math.max(0, ...seen) + 1
     // At the margin, give or take 8 pt — the margin is an estimate (`outermost`), and a
     // Ziffer or Absatz of a payload stands 19 pt or more further in.
-    const atMargin = Math.abs(l.x0 - f.margin) <= 8
-    if (m && atMargin) {
-      const n = +m[1]!
-      const firstLines = [m[2]!, ...lines.slice(i + 1, i + 3).map((x) => x.text)].join(' ')
-      if (n >= expected && n <= expected + 4 && VERB_RE.test(firstLines)) {
+    const atMargin = atMarginOf(l)
+    // The instruction the line opens, if any: by its number; by the next number
+    // without its full stop, after a sentence's end; by the next number printed
+    // at the end of the line above, which the open instruction's payload took.
+    const prev = lines[i - 1]
+    const noStop = !m && atMargin ? NO_STOP_RE.exec(l.text) : null
+    const payloadOpen: boolean = open !== null && !headOpen
+    const glued: RegExpExecArray | null = !m && !noStop && atMargin && payloadOpen && prev ? GLUED_NUMBER_RE.exec(prev.text) : null
+    const opener: { n: number; head: string } | null = m && atMargin
+      ? { n: +m[1]!, head: m[2]! }
+      : noStop && +noStop[1]! === expected && prev && /[.:][“”"]?$/.test(prev.text)
+        ? { n: expected, head: noStop[2]! }
+        : glued && +glued[1]! === expected && HEAD_START_RE.test(l.text)
+          ? { n: expected, head: l.text }
+          : null
+    if (opener && VERB_RE.test([opener.head, ...lines.slice(i + 1, i + 3).map((x) => x.text)].join(' '))) {
+      const { n, head }: { n: number; head: string } = opener
+      const headLike = HEAD_START_RE.test(head)
+      const fills: boolean = n < expected && !seen.includes(n) && headLike
+      const reprint = (x: Instruction) => x.number === n && x.head.replace(/\s+/g, ' ').slice(0, 30) === head.replace(/\s+/g, ' ').slice(0, 30)
+      const misprinted: boolean = !fills && (n < expected || n > expected + 4) && headLike && !!a?.instructions.length &&
+        !a.instructions.some(reprint) && nextNumber(i) === expected + 1
+      if ((n >= expected && n <= expected + 4) || fills || misprinted) {
         if (!a) start()
         const cur = current as unknown as Amendment
-        if (n !== expected) cur.gap = true
-        open = { number: n, head: m[2]!, payload: [], swallowed: [] }
+        const payload = glued ? (open as Instruction | null)?.payload : undefined
+        if (glued && payload && prev && payload.at(-1) === prev) payload[payload.length - 1] = { ...prev, text: prev.text.slice(0, -(glued[1]!.length + 1)) }
+        open = { number: misprinted ? expected : n, head, payload: [], swallowed: [] }
         cur.instructions.push(open)
-        headOpen = !/:$/.test(m[2]!)
+        headOpen = !/:$/.test(head)
         promulgation = null
         awaitFirst = false
         continue
       }
+    }
+    if (m && atMargin) {
       // A margin line with a number out of turn that reads like an instruction:
       // one we cannot place, so the text around it is not the open one's alone.
       // (Kärnten's appendix pages repeat an Artikel's last instruction there.)
@@ -501,6 +563,13 @@ export function amendmentsOf(lines: readonly KtnLine[], f: Frame): Amendment[] {
     } else {
       o.payload.push(l)
     }
+  }
+  // Each Artikel's instructions in number order — the order they apply in — and
+  // its gap: a number below its highest that no instruction carries.
+  for (const a of out) {
+    a.instructions.sort((x, y) => x.number - y.number)
+    const numbers = new Set(a.instructions.map((x) => x.number))
+    for (let k = 1; k < Math.max(0, ...numbers); k++) if (!numbers.has(k)) a.gap = true
   }
   return out
 }

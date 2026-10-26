@@ -422,3 +422,34 @@ describe('ktnTguParagraphs — what was lost or named falsely until 26.10.2026',
     expect(divisionOf('Im V. Abschnitt wird jeweils …')).toMatchObject({ level: 'Abschnitt', designation: '5' })
   })
 })
+
+describe('ktnTguParagraphs — a number out of turn (27.10.2026)', () => {
+  const laws = ['Kärntner Beispielgesetz']
+  const pick = (ps: ReturnType<typeof ktnTguParagraphs>) => ps.map((p) => [p.number, p.unread ? (p.because ?? 'unread') : 'shown']).sort((a, b) => a[0]!.localeCompare(b[0]!))
+  const read = (right: AnnexItem[]) => pick(ktnTguParagraphs([page([...leftLaw(), ...right])], laws))
+  const all = [['5', 'shown'], ['6', 'shown'], ['7', 'shown']]
+
+  it('takes an instruction printed after the next one for the one it is (2193/2019: 1, 3, 2, 4)', () => {
+    expect(read([body(R, '1. § 7 entfällt.', 450), body(R, '3. § 5 entfällt.', 430), body(R, '2. § 6 Abs. 3 entfällt.', 410)])).toEqual(all)
+  })
+
+  it('takes an instruction numbered as an earlier one where the next skips a number for the skipped one, but not a reprint (539/2021, 2038/2020)', () => {
+    expect(read([body(R, '1. § 7 entfällt.', 450), body(R, '1. § 6 Abs. 3 entfällt.', 430), body(R, '3. § 5 entfällt.', 410)])).toEqual(all)
+    // The same instruction printed twice is still one we cannot place: the number stays missing.
+    expect(read([body(R, '1. § 7 entfällt.', 450), body(R, '1. § 7 entfällt.', 430), body(R, '3. § 5 entfällt.', 410)])).toEqual([['5', 'gap'], ['7', 'gap']])
+  })
+
+  it('takes the next number without its full stop, after a sentence ends (18119/2023, 1037/2021, 59470/2025)', () => {
+    expect(read([body(R, '1. § 7 entfällt.', 450), body(R, '2 § 6 Abs. 3 entfällt.', 430), body(R, '3. § 5 entfällt.', 410)])).toEqual(all)
+  })
+
+  it('takes the next number from the end of the line above a head, and leaves it out of that line (1037/2021)', () => {
+    const ps = ktnTguParagraphs([page([...leftLaw(), body(R, '1. § 6 Abs. 2 lautet:', 450), absatz(R, '(2) Die neue Fassung.2.', 438), body(R, '§ 5 Abs. 2 entfällt.', 426), body(R, '3. § 7 entfällt.', 414)])], laws)
+    expect(pick(ps)).toEqual(all)
+    expect(ps.find((p) => p.number === '6')!.neu).toContain('(2) Die neue Fassung.')
+  })
+
+  it('still names every § of a law whose numbering misses a number no line carries', () => {
+    expect(read([body(R, '1. § 7 entfällt.', 450), body(R, '3. § 5 entfällt.', 410)])).toEqual([['5', 'gap'], ['7', 'gap']])
+  })
+})
