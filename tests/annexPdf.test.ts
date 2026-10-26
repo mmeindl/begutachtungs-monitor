@@ -979,6 +979,24 @@ describe('a package that heads its laws by their bare names (Salzburg, 26.10.202
   })
 })
 
+describe('a page the parse does not read, between two it does (Salzburg 18192, 26.10.2026)', () => {
+  const first = page([{ y: 700, left: '§ 5. (1) Die Behörde entscheidet', right: '§ 5. (1) Die Behörde entscheidet' }])
+  const skipped = pageOf(page([{ y: 700, left: 'über den Antrag.', right: 'über den Antrag binnen einer Woche.' }]).items, PAGE_WIDTH, { skewed: 3 })
+  const third = page([{ y: 700, left: 'Ende eines anderen Paragraphen.', right: 'Ende eines anderen Paragraphen.' }, { y: 680, left: '§ 6. (1) Alt.', right: '§ 6. (1) Neu.' }])
+  const read = (layout: AnnexLayout) => parseAnnexPdf([headerPage(), first, skipped, third], ONE_LAW, layout)
+
+  it('cuts the provision that runs on to it and marks it, and joins nothing across it', () => {
+    const parsed = read({ cutAtGaps: true })
+    expect(parsed.droppedPages).toBe(1)
+    const five = parsed.rows.find((r) => r.gld === '§ 5.')!
+    expect(five.cut).toBe(true)
+    expect(five.current).toBe('§ 5. (1) Die Behörde entscheidet')
+    expect(parsed.rows.find((r) => r.gld === '§ 6.')!.cut).toBeUndefined()
+    // Read without the layout, § 5 goes on with the text after the gap.
+    expect(read({}).rows.find((r) => r.gld === '§ 5.')!.current).toContain('Ende eines anderen Paragraphen')
+  })
+})
+
 describe('a line-final hyphen', () => {
   /**
    * The evidence that a hyphen is the typesetter's is that the line *carrying*

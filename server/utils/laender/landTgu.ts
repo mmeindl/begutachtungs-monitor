@@ -726,6 +726,8 @@ export interface ColumnRow {
   current: string
   proposed: string
   changed: boolean
+  /** The row breaks off at a page the reader did not read (`ComparisonRow.cut`). */
+  cut?: true
 }
 
 /**
@@ -850,6 +852,12 @@ export function columnParagraphs(rows: readonly ColumnRow[], laws: readonly stri
     if (inForce) p.old.push(...lines(inForce))
     if (proposed) p.neu.push(...lines(proposed))
     p.changed ||= r.changed
+    // Not whole in a column, where a page between was not read: named as read
+    // with uncertainty (Salzburg 18192, 26.10.2026).
+    if (r.cut) {
+      p.unread = true
+      p.because = 'unsure'
+    }
     out.set(key, p)
     previous = p
   }

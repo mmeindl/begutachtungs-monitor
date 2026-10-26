@@ -890,6 +890,8 @@ interface ColumnUnit {
   /** The heading the annex printed over this provision, across both columns */
   context: string | null
   text: string
+  /** Its text breaks off at a page the parse did not read (`AnnexLayout.cutAtGaps`). */
+  cut?: true
 }
 
 /**
@@ -1055,6 +1057,8 @@ interface ColumnLine {
   context?: string
   /** The first line of a document of its own inside the annex (`startsDocument`): nothing above it is its heading. */
   barrier?: boolean
+  /** The first line after a page the parse did not read (`AnnexLayout.cutAtGaps`). */
+  gap?: boolean
 }
 
 /**
@@ -1313,7 +1317,7 @@ function contentsInBoth(left: readonly ColumnLine[], right: readonly ColumnLine[
  * full stop or a citation began a line (41/ME § 49, 96/ME „§ 105.").
  */
 function unitsOfColumn(lines: readonly ColumnLine[], contents: ContentsLines, layout: AnnexLayout = {}): { units: ColumnUnit[]; contents: number } {
-  type Unit = { gld: string | null; context: string | null; parts: ColumnLine[]; opener: ColumnLine | null }
+  type Unit = { gld: string | null; context: string | null; parts: ColumnLine[]; opener: ColumnLine | null; cut?: true }
   const units: Unit[] = []
   let current: Unit = { gld: null, context: null, parts: [], opener: null }
   /** The heading printed across both columns over a table of contents, for the first unit below it. */
@@ -1341,6 +1345,14 @@ function unitsOfColumn(lines: readonly ColumnLine[], contents: ContentsLines, la
     // A document of its own begins here: what stood above is no heading of
     // what follows, and its front matter is front matter again.
     if (line.barrier && (current.gld !== null || current.parts.length > 0)) {
+      units.push(current)
+      current = { gld: null, context: null, parts: [], opener: null }
+    }
+    // A page the parse did not read lies between this line and the one
+    // before: the unit open there breaks off, and what follows it is no part
+    // of it (`AnnexLayout.cutAtGaps`).
+    if (line.gap && (current.gld !== null || current.parts.length > 0)) {
+      if (current.gld !== null) current.cut = true
       units.push(current)
       current = { gld: null, context: null, parts: [], opener: null }
     }
@@ -1416,7 +1428,7 @@ function unitsOfColumn(lines: readonly ColumnLine[], contents: ContentsLines, la
   // (2026-09-09).
   const built = units.map((u) => {
     const gld = u.gld === null ? null : (rangeEnd(u) ?? u.gld)
-    return { id: gld ? idOfMarker(gld) : null, gld, context: u.context, text: joinLines(u.parts) }
+    return { id: gld ? idOfMarker(gld) : null, gld, context: u.context, text: joinLines(u.parts), ...(u.cut ? { cut: true as const } : {}) }
   })
 
   // A designation may occur twice in one column, because many annexes reprint
@@ -1599,6 +1611,13 @@ export interface AnnexLayout {
    * a boundary where it names one of the draft's Artikel clearly.
    */
   lawsByName?: boolean
+  /**
+   * A provision that runs on to or from a page the parse does not read is
+   * cut there and marked (`ComparisonRow.cut`), rather than joined to what
+   * follows the gap: Salzburg 18192, 25 of its pages unread, showed § 37b
+   * ending „… innerhalb von vier" and § 46 going on with another §'s text.
+   */
+  cutAtGaps?: boolean
 }
 
 /**
@@ -1799,6 +1818,15 @@ export function parseAnnexPdf(pages: readonly AnnexPage[], articles: readonly Dr
     return { rows: [], refusal: null, droppedPages, unreadable: 'Die beiden Spaltenüberschriften der Beilage waren nicht zu finden; die Seitengeometrie ist damit nicht belegt.' }
   }
   const lines = placed.filter((line) => !isChrome(line))
+  // The first line after each page the parse did not read, and whether the last read page was followed by one (`AnnexLayout.cutAtGaps`).
+  const gapAt = new Set<AnnexLine>()
+  if (layout.cutAtGaps) {
+    const index = vouched.map((p) => pages.indexOf(p.page))
+    index.forEach((k, n) => {
+      const first = n > 0 && k - index[n - 1]! > 1 ? pageLines[n]!.find((l) => !isChrome(l)) : undefined
+      if (first) gapAt.add(first)
+    })
+  }
   // Where a document of its own begins inside the annex: its title,
   // „Textgegenüberstellung", after the first content line (`startsDocument`).
   const documentStarts = startsDocument(pageLines)
@@ -1826,8 +1854,12 @@ export function parseAnnexPdf(pages: readonly AnnexPage[], articles: readonly Dr
 
   /** A document began on a line that went into no section — a heading, a law boundary — so the next one is its first. */
   let partPending = false
+  /** The same for the first line after a page the parse did not read (`gapAt`). */
+  let gapPending = false
+  const gapStart = new Set<AnnexLine>()
   for (const [i, line] of lines.entries()) {
     if (documentStarts.has(line)) partPending = true
+    if (gapAt.has(line)) gapPending = true
     const role = roles.get(i)
     if (role?.role === 'candidate') {
       const article = resolution.accepted.get(role.at)
@@ -1866,6 +1898,8 @@ export function parseAnnexPdf(pages: readonly AnnexPage[], articles: readonly Dr
     }
     if (documentStarts.has(line) || partPending) startsPart.add(line)
     partPending = false
+    if (gapPending) gapStart.add(line)
+    gapPending = false
     sections[sections.length - 1]!.lines.push(line)
   }
 
@@ -1881,8 +1915,8 @@ export function parseAnnexPdf(pages: readonly AnnexPage[], articles: readonly Dr
       inset: margin.start === null ? null : start - margin.start,
       axis: margin.start === null || margin.end === null ? null : (margin.start + margin.end) / 2,
     })
-    const leftLines = section.lines.map((l) => ({ text: l.left, wrapped: reachedEdge(l.leftEnd, edges.left), centred: isCentred(l.leftStart, l.leftEnd, margins.left), flush: isFlush(l.leftStart, margins.left), ...at(l.leftStart, l.leftEnd, margins.left), context: contextFor.get(l), barrier: startsPart.has(l) }))
-    const rightLines = section.lines.map((l) => ({ text: l.right, wrapped: reachedEdge(l.rightEnd, edges.right), centred: isCentred(l.rightStart, l.rightEnd, margins.right), flush: isFlush(l.rightStart, margins.right), ...at(l.rightStart, l.rightEnd, margins.right), context: contextFor.get(l), barrier: startsPart.has(l) }))
+    const leftLines = section.lines.map((l) => ({ text: l.left, wrapped: reachedEdge(l.leftEnd, edges.left), centred: isCentred(l.leftStart, l.leftEnd, margins.left), flush: isFlush(l.leftStart, margins.left), ...at(l.leftStart, l.leftEnd, margins.left), context: contextFor.get(l), barrier: startsPart.has(l), gap: gapStart.has(l) }))
+    const rightLines = section.lines.map((l) => ({ text: l.right, wrapped: reachedEdge(l.rightEnd, edges.right), centred: isCentred(l.rightStart, l.rightEnd, margins.right), flush: isFlush(l.rightStart, margins.right), ...at(l.rightStart, l.rightEnd, margins.right), context: contextFor.get(l), barrier: startsPart.has(l), gap: gapStart.has(l) }))
     const toc = contentsInBoth(leftLines, rightLines)
     const leftRead = unitsOfColumn(leftLines, toc.left, layout)
     const rightRead = unitsOfColumn(rightLines, toc.right, layout)
@@ -1918,7 +1952,7 @@ export function parseAnnexPdf(pages: readonly AnnexPage[], articles: readonly Dr
       }
       if (mate?.id) used.add(mate.id)
       const row = rowOf(law, unit.gld ?? mate?.gld ?? null, mate?.text ?? '', unit.text, unit.context ?? mate?.context ?? null)
-      if (row) rows.push(row)
+      if (row) rows.push(unit.cut || mate?.cut ? { ...row, cut: true } : row)
     }
     // A § the draft repeals appears only on the left. Printed in the proposed
     // column's order everything else follows, it would otherwise vanish.
@@ -1933,7 +1967,7 @@ export function parseAnnexPdf(pages: readonly AnnexPage[], articles: readonly Dr
         continue
       }
       const row = rowOf(law, unit.gld, unit.text, '', unit.context)
-      if (row) rows.push(row)
+      if (row) rows.push(unit.cut ? { ...row, cut: true } : row)
     }
   }
   designateAfter(rows)

@@ -314,6 +314,11 @@ describe('two-column Textgegenüberstellung (Wien)', () => {
     expect(standsInRis('Strafbestimmungen (1) Wer entgegen § 2 Abs. 1 Straßen verunreinigt, ist mit einer Geldstrafe von 70 Euro zu bestrafen. (2) bis (5) …', ris)).toBe(false)
   })
 
+  it('names a § whose row breaks off at a page the reader did not read as read with uncertainty (Salzburg 18192)', () => {
+    const [p] = columnParagraphs([{ kind: 'pair', law: null, para: '§ 5.', current: '§ 5. (1) Die Behörde entscheidet', proposed: '§ 5. (1) Die Behörde entscheidet', changed: false, cut: true }], ['Salzburger Beispielgesetz'])
+    expect(p).toMatchObject({ number: '5', unread: true, because: 'unsure' })
+  })
+
   it('joins a §\'s rows and puts its heading on a line of its own', () => {
     const paras = columnParagraphs([
       { kind: 'pair', law: null, para: '§ 2.', current: 'Reinhaltung öffentlicher Flächen § 2. (1) bis (7) …', proposed: 'Reinhaltung öffentlicher Flächen § 2. (1) bis (7) …', changed: false },

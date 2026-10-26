@@ -286,7 +286,7 @@ async function readWien(detail: LandDraftRecord): Promise<TguRead | string> {
 function columnRows(pages: Parameters<typeof parseAnnexPdf>[0], articles: Parameters<typeof parseAnnexPdf>[1], layout: AnnexLayout = {}): { rows: ColumnRow[]; droppedPages: number } {
   const parsed = parseAnnexPdf(pages, articles, layout)
   return {
-    rows: parsed.rows.map((r) => ({ kind: r.kind, law: r.law, heading: r.heading, para: r.para, current: r.current, proposed: r.proposed, changed: r.change !== 'unchanged' })),
+    rows: parsed.rows.map((r) => ({ kind: r.kind, law: r.law, heading: r.heading, para: r.para, current: r.current, proposed: r.proposed, changed: r.change !== 'unchanged', ...(r.cut ? { cut: true as const } : {}) })),
     droppedPages: parsed.droppedPages,
   }
 }
@@ -329,7 +329,7 @@ async function readSalzburg(detail: LandDraftRecord): Promise<TguRead | string> 
   const laws = amendedLawsOf(detail.draft.title)
   const draftText = await draftTextOf(draftSource(detail.draft.documents, 'Land Salzburg'))
   // Salzburg centres every heading over its designation, and heads some packages' laws by their bare names (`AnnexLayout`).
-  const { rows, droppedPages } = columnRows(pages, packageArticles(draftText ?? '', laws), { headingsCentred: true, lawsByName: true })
+  const { rows, droppedPages } = columnRows(pages, packageArticles(draftText ?? '', laws), { headingsCentred: true, lawsByName: true, cutAtGaps: true })
   // „Der bisherige § 54a erhält die Paragraphenbezeichnung „§ 54b"": the draft's text says what the two columns do not (26.10.2026).
   const { paragraphs, unmapped } = withRenumberings(columnParagraphs(rows, laws), renumberingsOf(draftText ?? '', laws))
   return {

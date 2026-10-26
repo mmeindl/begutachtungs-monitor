@@ -42,6 +42,11 @@ export interface ComparisonRow {
   /** An Artikel heading spanning both columns, or a paired row of law text */
   kind: 'article' | 'pair'
   /**
+   * The provision runs on to or from a page the parse did not read
+   * (`AnnexLayout.cutAtGaps`): its text in a column is not whole.
+   */
+  cut?: true
+  /**
    * Which law of the package the row belongs to — `segmentUnits`' article key,
    * so it joins onto the diff units and onto `promulgationByArticle`. Null
    * when the draft amends one law only, and null when the annex does not mark
