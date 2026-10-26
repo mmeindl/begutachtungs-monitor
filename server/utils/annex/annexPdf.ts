@@ -1537,7 +1537,7 @@ type Role =
  * the name would but is a qualifier, and stopping at anything that opens a
  * provision.
  */
-function candidateLines(lines: readonly AnnexLine[], edges: ColumnEdges): { candidates: BoundaryCandidate[]; roles: Map<number, Role> } {
+function candidateLines(lines: readonly AnnexLine[], edges: ColumnEdges, lawNames: readonly string[] = []): { candidates: BoundaryCandidate[]; roles: Map<number, Role> } {
   const candidates: BoundaryCandidate[] = []
   const roles = new Map<number, Role>()
 
@@ -1545,7 +1545,8 @@ function candidateLines(lines: readonly AnnexLine[], edges: ColumnEdges): { cand
     if (roles.has(i)) continue
     const text = headingText(line, edges)
     if (text === null) continue
-    const candidate = candidateOf(text)
+    // A law's bare name across both columns, where the document heads its laws so (`AnnexLayout`).
+    const candidate = candidateOf(text) ?? (line.spanning && namesLaw(text, lawNames) ? { text: normalizeText(text), numeral: null, title: normalizeText(text) } : null)
     if (!candidate) {
       if (line.spanning) roles.set(i, { role: 'heading' })
       continue
@@ -1591,6 +1592,29 @@ function candidateLines(lines: readonly AnnexLine[], edges: ColumnEdges): { cand
  */
 export interface AnnexLayout {
   headingsCentred?: boolean
+  /**
+   * The document heads each law of a package with its bare name across both
+   * columns — „Salzburger Nächtigungsabgabengesetz", „Benützungsgebührengesetz"
+   * (Salzburg 30259) — not with „Artikel 2" or „Änderung des …": such a line is
+   * a boundary where it names one of the draft's Artikel clearly.
+   */
+  lawsByName?: boolean
+}
+
+/**
+ * Is this line one of the draft's laws by name — that name, give or take a
+ * short addition such as an abbreviation (`AnnexLayout.lawsByName`)? Not a
+ * sentence that names it: 18116's title, „Gesetz vom …, mit dem das Salzburger
+ * Landesverwaltungsgerichtsgesetz, das Salzburger Landes-Beamtengesetz 1987,
+ * … geändert werden", opened the Landes-Beamtengesetz over the first law.
+ */
+function namesLaw(text: string, names: readonly string[]): boolean {
+  const key = (s: string) => normalizeText(s).toLowerCase().replace(/\s+/g, ' ').trim()
+  const line = key(text)
+  return names.some((n) => {
+    const name = key(n)
+    return (line.startsWith(name) && line.length - name.length <= 20) || (name.startsWith(line) && name.length - line.length <= 20)
+  })
 }
 
 /** „entfällt", „(3) entfallen": what a column prints for a § or an Absatz the draft repeals. */
@@ -1788,7 +1812,7 @@ export function parseAnnexPdf(pages: readonly AnnexPage[], articles: readonly Dr
     right: { start: columnMargin(lines.filter((l) => l.right).map((l) => l.rightStart), 'start'), end: columnMargin(lines.filter((l) => l.right).map((l) => l.rightEnd), 'end') },
   }
 
-  const { candidates, roles } = candidateLines(lines, edges)
+  const { candidates, roles } = candidateLines(lines, edges, layout.lawsByName ? articles.flatMap((a) => (a.title ? [a.title] : [])) : [])
   const resolution = resolveBoundaries(candidates, articles)
 
   const sections: { article: DraftArticle | null; opened: boolean; lines: AnnexLine[] }[] = [

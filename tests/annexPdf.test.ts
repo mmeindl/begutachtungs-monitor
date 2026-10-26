@@ -953,6 +953,32 @@ describe('a layout that centres its headings over the designation (Salzburg, 26.
   })
 })
 
+describe('a package that heads its laws by their bare names (Salzburg, 26.10.2026)', () => {
+  const across = (y: number, text: string): AnnexItem => ({ x: 300, y, width: 260, text })
+  const ARTICLES = draft({ n: 'I', title: 'Salzburger Nächtigungsabgabengesetz' }, { n: 'II', title: 'Benützungsgebührengesetz' })
+  const PACKAGE = [pageOf([
+    across(760, 'Gesetz, mit dem das Salzburger Nächtigungsabgabengesetz und das Benützungsgebührengesetz geändert werden'),
+    across(740, 'Salzburger Nächtigungsabgabengesetz'),
+    ...page([{ y: 720, left: '§ 11. (1) Die Abgabe ist jährlich zu entrichten.', right: '§ 11. (1) Die Abgabe ist jährlich samt Beitrag zu entrichten.' }]).items,
+    across(680, 'Benützungsgebührengesetz'),
+    ...page([{ y: 660, left: '§ 11. (1) Die Gebühr wird fällig. Sonst später.', right: '§ 11. (1) Die Gebühr wird fällig.' }]).items,
+  ])]
+  const read = (layout: AnnexLayout) => parseAnnexPdf([headerPage(), ...PACKAGE], ARTICLES, layout)
+
+  // 30259 prints „Salzburger Nächtigungsabgabengesetz" over its first law, not
+  // „Artikel I": read as one law, its two § 11 became one, of two laws.
+  it('opens a law at its name, and not at a sentence that names it', () => {
+    const parsed = read({ lawsByName: true })
+    expect(parsed.refusal).toBeNull()
+    expect(parsed.rows.filter((r) => r.kind === 'pair').map((r) => [r.law, r.current])).toEqual([
+      ['Salzburger Nächtigungsabgabengesetz', '§ 11. (1) Die Abgabe ist jährlich zu entrichten.'],
+      ['Benützungsgebührengesetz', '§ 11. (1) Die Gebühr wird fällig. Sonst später.'],
+    ])
+    // Without the layout, the package is refused and read as one.
+    expect(read({}).refusal).not.toBeNull()
+  })
+})
+
 describe('a line-final hyphen', () => {
   /**
    * The evidence that a hyphen is the typesetter's is that the line *carrying*
