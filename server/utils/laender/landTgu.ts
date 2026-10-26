@@ -159,9 +159,15 @@ export interface TguParagraph {
   /**
    * The document changes this § and the reader does not read how (24.10.2026,
    * Kärnten: an instruction below a whole Absatz). No text: it is withheld,
-   * as `reason: 'unread'`, so the page names it.
+   * as `reason: 'unread'` — or `because` — so the page names it.
    */
   unread?: true
+  /**
+   * Why, where the reader knows more (25.10.2026): `wording`, Kärnten's
+   * instructions below a whole Absatz; `unsure`, a § whose text or marks the
+   * reader could not read with certainty (Tirol).
+   */
+  because?: 'wording' | 'unsure'
 }
 
 const PARA_RE = /^§\s*(\d+[a-z]*)\.?$/
@@ -508,6 +514,52 @@ export function columnParagraphs(rows: readonly ColumnRow[], laws: readonly stri
 /** „Salzburger Schulorganisations-Ausführungsgesetz 1995 – SchuOG 1995" → the name without its abbreviation. */
 export function lawName(name: string): string {
   return name.replace(/\s+[–-]\s+[\p{L}.\s-]*\d*\s*$/u, '').replace(/\s*\([^)]*\)\s*$/, '').trim()
+}
+
+/**
+ * „ - K-JG", „-K-FG", „ – K-LGlBG 2022", „, K-LPG": an abbreviation after a
+ * dash or a comma, two capitals at least. The comma is Kärnten's too —
+ * „Kärntner Landes-Pflanzenschutzmittelgesetz, K-LPG" (25.10.2026).
+ */
+const ABBREVIATION_RE = /\s*[,–-]\s*([\p{Lu}][\p{L}.\d-]{0,15})(?:\s+\d{4})?$/u
+
+function withoutAbbreviation(name: string): string {
+  const abbreviation = ABBREVIATION_RE.exec(name)
+  return abbreviation && (abbreviation[1]!.match(/\p{Lu}/gu) ?? []).length >= 2 ? name.slice(0, abbreviation.index).trim() : name
+}
+
+/**
+ * A short title as a key for telling whether RIS and a draft name ONE law
+ * (`lawInForce`): without RIS's abbreviation — „Kärntner Jagdgesetz 2000 -
+ * K-JG" is the „Kärntner Jagdgesetz 2000" — and in the drafts' word order —
+ * „Bauordnung 2022, Tiroler". Nothing more: unlike `bareLawName`, a title
+ * that goes on after its dash in words stays another law, „Kärntner
+ * Jagdgesetz 2000 - Durchführungsverordnung".
+ */
+export function shortTitleKey(name: string): string {
+  return withoutAbbreviation(name.replace(/\s+/g, ' ').trim())
+    .replace(/^(.+),\s*(Tiroler|Kärntner|Salzburger|Wiener|Oö\.)$/u, '$2 $1')
+    .toLowerCase()
+}
+
+/**
+ * A law's name as a key, the forms RIS and the drafts use folded into one
+ * (lower case):
+ *  - without its abbreviation — „Kärntner Fischereigesetz-K-FG", „… 2000 -
+ *    K-JG", „Kärntner Bauvorschriften- K-BV";
+ *  - in the drafts' word order where RIS turns it round — „Bauordnung 2022,
+ *    Tiroler" (Tirol, 24.10.2026), „Gemeinde-Investitionsfonds, Gesetz über
+ *    den";
+ *  - without „Gesetz über …" in front — „Gesetz über die Geschäftsordnung
+ *    des Kärntner Landtages" is the „Geschäftsordnung des Kärntner Landtages"
+ *    RIS names.
+ */
+export function bareLawName(name: string): string {
+  let n = withoutAbbreviation(lawName(name).replace(/\s+/g, ' ').trim())
+  n = n.replace(/^(.+),\s*(Tiroler|Kärntner|Salzburger|Wiener|Oö\.)$/u, '$2 $1')
+  n = n.replace(/^(.+),\s*Gesetz(?:\s+(?:über|zur|zum)(?:\s+(?:den|die|das|dem))?)?$/u, '$1')
+  n = n.replace(/^Gesetz\s+(?:über|zur|zum)(?:\s+(?:den|die|das|dem))?\s+/u, '')
+  return n.toLowerCase()
 }
 
 /**

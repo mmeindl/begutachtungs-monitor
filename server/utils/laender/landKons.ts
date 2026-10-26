@@ -6,6 +6,7 @@
 import type { LandCode } from '#shared/types'
 import { asArray } from '../ris/risRecord'
 import { risJson, upstreamText, type UpstreamPolicy } from '../upstream/fetch'
+import { shortTitleKey } from './landTgu'
 
 const RIS_LAND: Record<LandCode, string> = { ktn: 'Kaernten', ooe: 'Oberoesterreich', sbg: 'Salzburg', t: 'Tirol', w: 'Wien' }
 const LANDESRECHT_API = 'https://data.bka.gv.at/ris/api/v2.6/Landesrecht'
@@ -17,9 +18,13 @@ const MAX_PAGES = 20
 /**
  * Where each § of a law stands in RIS on `date`: „§ 5" → its XML document.
  *
- * Searched by title and kept by the exact short title, because the title
- * search is a word search — „Bauordnung" also finds the Bauordnungs-Novelle.
- * RIS ends its short titles with a space now and then.
+ * Searched by title and kept by the short title, because the title search
+ * is a word search — „Bauordnung" also finds the Bauordnungs-Novelle. The
+ * exact short title wins; without it, the one short title that is the same
+ * law under RIS's spelling (`shortTitleKey`): Kärnten's carry their
+ * abbreviation, „Kärntner Jagdgesetz 2000 - K-JG", and no Kärnten law
+ * resolved by the name its draft gives it (25.10.2026). Two such titles are
+ * no find. RIS ends its short titles with a space now and then.
  */
 export async function lawInForce(land: LandCode, shortTitle: string, date: string): Promise<Map<string, string>> {
   const found = await lawInForceAs(land, shortTitle, date)
@@ -34,7 +39,9 @@ export async function lawInForce(land: LandCode, shortTitle: string, date: strin
 }
 
 async function lawInForceAs(land: LandCode, shortTitle: string, date: string): Promise<Map<string, string>> {
-  const out = new Map<string, string>()
+  const want = shortTitleKey(shortTitle)
+  /** Each short title the search returned for this law, with its §§. */
+  const byTitle = new Map<string, Map<string, string>>()
   let pages = 1
   for (let page = 1; page <= pages; page++) {
     const params = new URLSearchParams({
@@ -52,16 +59,21 @@ async function lawInForceAs(land: LandCode, shortTitle: string, date: string): P
     if (page === 1) pages = Math.min(Math.ceil(Number(body?.OgdDocumentResults?.Hits?.['#text'] ?? 0) / 100), MAX_PAGES)
     for (const ref of refs) {
       const meta = ref?.Data?.Metadaten?.Landesrecht
-      if (String(meta?.Kurztitel ?? '').replace(/\s+/g, ' ').trim() !== shortTitle) continue
+      const title = String(meta?.Kurztitel ?? '').replace(/\s+/g, ' ').trim()
+      if (title !== shortTitle && shortTitleKey(title) !== want) continue
       const para = /^§\s*(\d+[a-z]*)/.exec(String(meta?.LrKons?.ArtikelParagraphAnlage ?? ''))?.[1]
       if (!para) continue
       const urls = asArray<any>(asArray<any>(ref?.Data?.Dokumentliste?.ContentReference)[0]?.Urls?.ContentUrl)
       const xml = urls.map((u) => String(u?.Url ?? '')).find((u) => u.endsWith('.xml'))
-      if (xml) out.set(para, xml)
+      if (!xml) continue
+      if (!byTitle.has(title)) byTitle.set(title, new Map())
+      byTitle.get(title)!.set(para, xml)
     }
     /* eslint-enable @typescript-eslint/no-explicit-any */
   }
-  return out
+  const exact = byTitle.get(shortTitle)
+  if (exact) return exact
+  return byTitle.size === 1 ? [...byTitle.values()][0]! : new Map()
 }
 
 export function paragraphText(url: string): Promise<string> {

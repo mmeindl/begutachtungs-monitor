@@ -8,8 +8,10 @@ import { landDiffKey, landExplanationsKey, landLawGroupTitle, landReasoningKey, 
 import { lawStationPairQuestion } from '#shared/utils/lawStations'
 import { displayId, extraHeading, unitName } from '#shared/utils/unitName'
 import { BADGE_CLASS, type DiffBadge, PILL_CLASS, badgeCounts, badgeLabels } from '~/utils/diffBadges'
+import { withheldGroups } from '~/utils/landWithheld'
 import { readsSideBySide, splitSegments } from '~/utils/diffSides'
 import ListBox from '~/components/ui/ListBox.vue'
+import LandWithheldNotes from '~/components/land/LandWithheldNotes.vue'
 
 /**
  * What became of a Land's draft, § by § (22.10.2026): the Begutachtungsentwurf
@@ -167,28 +169,20 @@ const viewOf = (u: LawDiffUnit): UnitView => ({ unit: u, label: unitName(u, null
 /**
  * The §§ the Textgegenüberstellung withheld, per group: counted in the
  * group's header („nicht gezeigt", the Bund's dashed pill) and named at the
- * top of its body. A § the server files under a law no group carries joins
- * the only group there is, or stands as a group of its own. A search hides
- * them, as the Bund's: there is no text of theirs to find.
+ * top of its body. A § filed under no law joins the only group there is; a
+ * § of another law stands in that law's group (`withheldGroups`). A search
+ * hides them, as the Bund's: there is no text of theirs to find.
  */
 const withheldByGroup = computed(() => {
-  const out = new Map<string, { id: string; unread: boolean }[]>()
-  if (!data.value?.available || query.value.trim()) return out
-  const keys = new Set(units.value.map((u) => u.article ?? ''))
-  for (const w of data.value.withheld) {
-    const own = w.law ?? ''
-    const key = keys.has(own) || keys.size !== 1 ? own : [...keys][0]!
-    out.set(key, [...(out.get(key) ?? []), { id: displayId(w.id), unread: w.reason === 'unread' }])
-  }
-  return out
+  if (!data.value?.available || query.value.trim()) return new Map<string, LandLawDiffResponse['withheld']>()
+  return withheldGroups(data.value.withheld, units.value.map((u) => u.article))
 })
 
-/* The withheld of a group by why: RIS did not confirm them, or the reader does not read their change. */
-const refused = (items: readonly { id: string; unread: boolean }[]) => items.filter((w) => !w.unread).map((w) => w.id)
-const unreadOf = (items: readonly { id: string; unread: boolean }[]) => items.filter((w) => w.unread).map((w) => w.id)
+/* The title of a group of §§ the reader filed under no law of the package. */
+const UNFILED = 'Ohne Zuordnung zu einem Gesetz'
 
-/* „§ 3, § 7 und § 12" */
-const listDe = (items: readonly string[]) => (items.length > 1 ? `${items.slice(0, -1).join(', ')} und ${items.at(-1)}` : items[0] ?? '')
+/* Where nothing is shown: the same §§, by the law each is filed under. */
+const unshownByLaw = computed(() => (data.value && !data.value.available ? withheldGroups(data.value.withheld ?? [], []) : new Map<string, LandLawDiffResponse['withheld']>()))
 
 /* One group per Gesetz of the package, folded; runs of unchanged
    instructions fold into one line — as on the Ministerialentwurf's page. */
@@ -239,7 +233,8 @@ const groups = computed(() => {
       shown++
     }
     flush()
-    return { ...g, title: landLawGroupTitle(g.article), blocks, hidden, withheld: withheldByGroup.value.get(g.article) ?? [] }
+    // A group of §§ only withheld, under no law: the reader could not tell which law of the package they are (Kärnten, 25.10.2026).
+    return { ...g, title: landLawGroupTitle(g.article) || (g.units.length ? '' : UNFILED), blocks, hidden, withheld: withheldByGroup.value.get(g.article) ?? [] }
   })
 })
 
@@ -258,9 +253,27 @@ const hasUnits = computed(() => units.value.length > 0)
     <p v-else-if="status === 'error' || !data" class="text-sm text-ink-secondary">
       Der Vergleich ist gerade nicht verfügbar.
     </p>
-    <p v-else-if="!data.available" class="text-sm text-ink-secondary">
-      {{ data.unavailableReason }}
-    </p>
+    <template v-else-if="!data.available">
+      <p class="text-sm text-ink-secondary">
+        {{ data.unavailableReason }}
+      </p>
+      <!-- Read, and none of it shown: every § is named all the same, by law
+           and with why (25.10.2026) — Kärnten 15193/2025 said „keine
+           Paragraphen" and named none of the 21 its Novelle changes. -->
+      <ListBox v-if="unshownByLaw.size" class="mt-3">
+        <DiffGroup
+          v-for="[law, items] in unshownByLaw"
+          :key="law"
+          :title="landLawGroupTitle(law) || UNFILED"
+          :badges="[]"
+          :withheld="items.length"
+          :open="groupOpen(law)"
+          @toggle="toggleGroup(law)"
+        >
+          <LandWithheldNotes :items="items" :document-url="data.fromDocument?.url ?? null" alone />
+        </DiffGroup>
+      </ListBox>
+    </template>
     <template v-else>
       <!-- Two Begutachtungen, one law: said before the list, or the other
            draft's changes read as changes made to this one after its
@@ -298,22 +311,11 @@ const hasUnits = computed(() => units.value.length > 0)
         >
           <!-- What the Land's document shows and this list does not: a § is
                shown only where RIS confirms our reading of its text in force
-               (`landTguService`). Named where the header counts it, with
-               the way to the document that does show it. -->
-          <p v-if="refused(g.withheld).length" class="border-b border-hairline px-4 py-2.5 text-sm text-ink-secondary">
-            Nicht gezeigt: {{ listDe(refused(g.withheld)) }}. {{ refused(g.withheld).length === 1 ? 'Seinen' : 'Ihren' }} geltenden Text fand der Monitor im RIS nicht wortgleich;
-            <template v-if="data.fromDocument?.url">die <ExternalLink :href="data.fromDocument.url" class="link-inline">Textgegenüberstellung des Landes</ExternalLink> zeigt {{ refused(g.withheld).length === 1 ? 'ihn' : 'sie' }}.</template>
-            <template v-else>die Textgegenüberstellung des Landes zeigt {{ refused(g.withheld).length === 1 ? 'ihn' : 'sie' }}.</template>
-          </p>
-          <!-- §§ the Land's document changes in a way the reader does not
-               perform (Kärnten's finer instructions, 24.10.2026): named, so
-               the §§ shown are not read as all the draft changes. -->
-          <p v-if="unreadOf(g.withheld).length" class="border-b border-hairline px-4 py-2.5 text-sm text-ink-secondary">
-            Ebenfalls geändert, hier nicht gezeigt: {{ listDe(unreadOf(g.withheld)) }}. Die Novelle ändert dort einzelne Wörter oder Sätze;
-            den neuen Wortlaut setzt der Monitor nicht selbst zusammen –
-            <template v-if="data.fromDocument?.url">die <ExternalLink :href="data.fromDocument.url" class="link-inline">Textgegenüberstellung des Landes</ExternalLink> zeigt {{ unreadOf(g.withheld).length === 1 ? 'ihn' : 'sie' }}.</template>
-            <template v-else>die Textgegenüberstellung des Landes zeigt {{ unreadOf(g.withheld).length === 1 ? 'ihn' : 'sie' }}.</template>
-          </p>
+               (`landTguService`), and only where the reader composed its new
+               text. Named where the header counts it, each cause in its own
+               words (`withheldNotes`), with the way to the document that does
+               show it — so the §§ shown are not read as all the draft changes. -->
+          <LandWithheldNotes :items="g.withheld" :document-url="data.fromDocument?.url ?? null" />
           <p v-if="addedLaws.has(g.article)" class="border-b border-hairline px-4 py-2.5 text-sm text-ink-secondary">
             Dieses Gesetz kommt {{ IN_FROM[from] }} nicht vor; es ist auf dem Weg hinzugekommen.
           </p>

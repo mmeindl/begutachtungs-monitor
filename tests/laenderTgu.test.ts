@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { draftNameOf, kaerntenDated, readableLawName, tirolDated } from '../server/utils/laender/landTguService'
+import { draftNameOf, kaerntenDated, readableLawName, tirolDated, wienTguStart } from '../server/utils/laender/landTguService'
 import { amendedLawOf, amendedLawsOf, columnParagraphs, draftDeletes, joinLines, mergeParagraphs, onlyElided, searchPhrase, shareInRis, standsInRis, tguLines, tguParagraphs, tguUnits, withHeadings, type TguLine, type TguPage } from '../server/utils/laender/landTgu'
 
 /** A run at (x, y), each character 5 pt wide; glyph widths equal, so centres fall evenly. */
@@ -218,6 +218,14 @@ describe('draftNameOf — one law under RIS\'s name and the draft\'s (23.10.2026
     expect(draftNameOf('Kärntner Jagdgesetz 2000 - K-JG', ['Kärntner Fischereigesetz'])).toBeNull()
     expect(draftNameOf('Kärntner Landes-Gleichbehandlungsgesetz 2022', ['Kärntner Landarbeiterkammergesetz 1979'])).toBeNull()
   })
+
+  it('takes the abbreviation after a comma for the same law (25.10.2026)', () => {
+    expect(draftNameOf('Kärntner Landes-Pflanzenschutzmittelgesetz, K-LPG', ['Kärntner Landes-Pflanzenschutzmittelgesetz'])).toBe('Kärntner Landes-Pflanzenschutzmittelgesetz')
+    expect(draftNameOf('Kärntner Berg- und Schiführergesetz, K-BSFG', ['Kärntner Sportgesetz 1997', 'Kärntner Berg- und Schiführergesetz'])).toBe('Kärntner Berg- und Schiführergesetz')
+    // RIS's word order is no abbreviation.
+    expect(draftNameOf('Bauordnung 2022, Tiroler', ['Tiroler Bauordnung 2022'])).toBe('Tiroler Bauordnung 2022')
+    expect(draftNameOf('Kärntner Schulgesetz - K-SchG', ['Kärntner landwirtschaftliche Schulgesetz 1993'])).toBeNull()
+  })
 })
 
 describe('tguUnits — a heading the draft changes (24.10.2026)', () => {
@@ -264,5 +272,18 @@ describe('the date a Textgegenüberstellung gives itself (24.10.2026)', () => {
 
   it('Tirol: the day of its version', () => {
     expect(tirolDated([{ runs: [{ s: '1 von 12' }, { s: 'VD-173/2-2026 Fassung vom 9. März 2026' }] }])).toBe('2026-03-09')
+  })
+})
+
+describe('where Wien\'s Textgegenüberstellung starts (25.10.2026)', () => {
+  const page = (...texts: string[]) => ({ items: texts.map((text) => ({ text })) })
+  it('finds its title in any case', () => {
+    expect(wienTguStart([page('Gesetz, mit dem …'), page('TEXTGEGENÜBERSTELLUNG', '25. Novelle des Wiener Schulgesetzes')])).toBe(1)
+    expect(wienTguStart([page('Erläuterungen'), page('Textgegenüberstellung')])).toBe(1)
+  })
+
+  it('takes the template\'s header pair where the title is missing, and nothing else', () => {
+    expect(wienTguStart([page('Entwurf'), page('Geltende Fassung', 'Vorgeschlagene Fassung')])).toBe(1)
+    expect(wienTguStart([page('Geltende Fassung'), page('Die Textgegenüberstellungen folgen.')])).toBe(-1)
   })
 })

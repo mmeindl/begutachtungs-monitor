@@ -137,16 +137,16 @@ describe('tirolTguParagraphs', () => {
     expect(tirolTguParagraphs([p], laws)).toEqual([{ law: laws[0], number: '72', old: [], neu: ['Die neue Übergangsbestimmung.'], changed: true }])
   })
 
-  it('names a § with an unsure line as one without text, so the RIS check withholds it', () => {
+  it('names a § with an unsure line as withheld for that reason, whatever RIS knows of its number', () => {
     const p = page(line(235, 500, '§ 5'), line(LEFT + 20, 480, 'Text ', { s: 'blau', mark: 'plain' }))
     p.runs[2]!.coloured = [true, true, true, true]
-    expect(tirolTguParagraphs([p], laws)).toEqual([{ law: laws[0], number: '5', old: [], neu: [], changed: true }])
+    expect(tirolTguParagraphs([p], laws)).toEqual([{ law: laws[0], number: '5', old: [], neu: [], changed: true, unread: true, because: 'unsure' }])
   })
 
   it('withholds the § that runs onto a page without a gutter', () => {
     const first = page(line(235, 500, '§ 5'), line(LEFT + 20, 480, 'Anfang des Textes.'))
     const table = page(line(LEFT, 500, 'eine Zeile, die quer über die ganze Seite läuft und den Bundsteg überdeckt, wie eine Tabelle es tut'))
-    expect(tirolTguParagraphs([first, table], laws)).toEqual([{ law: laws[0], number: '5', old: [], neu: [], changed: true }])
+    expect(tirolTguParagraphs([first, table], laws)).toEqual([{ law: laws[0], number: '5', old: [], neu: [], changed: true, unread: true, because: 'unsure' }])
   })
 
   it('puts a changed § heading into the text compared, which would otherwise read „unverändert"', () => {

@@ -372,10 +372,34 @@ const NOT_A_PARAGRAPH_RE = /Inhaltsverzeichnis|\bEintr(?:ag|äge)\b|^(?:Der |Die
  */
 const DIVISION_NAME_RE = /(?=.*(?:Abschnitt|Teil|Hauptstück))(?=.*(?:[Bb]ezeichnung|[Üü]berschrift))(?!.*\b(?:entfällt|entfallen|aufgehoben)\b)/
 
-/** An instruction that changes no § text: it names no § and is about the contents, the title, an Anlage or a division's name. */
+/**
+ * An instruction that changes no § text: it names no § and is about the
+ * contents, the title, an Anlage or a division's name. The division may be
+ * named inside the quotes — „Die Überschrift „3. Teil Tagesbetreuung" wird
+ * durch …" — so that test reads them; read without, the instruction counted
+ * as one reaching every §, and 15193/2025 showed none of its 21 (25.10.2026).
+ */
 function changesNoParagraph(head: string): boolean {
-  const t = head.replace(/\s+/g, ' ').replace(QUOTED_RE, ' ')
-  return !/§/.test(t) && !WHOLE_LAW_RE.test(t) && (NOT_A_PARAGRAPH_RE.test(t) || DIVISION_NAME_RE.test(t))
+  const whole = head.replace(/\s+/g, ' ')
+  const t = whole.replace(QUOTED_RE, ' ')
+  return !/§/.test(t) && !WHOLE_LAW_RE.test(t) && (NOT_A_PARAGRAPH_RE.test(t) || DIVISION_NAME_RE.test(whole))
+}
+
+/**
+ * An instruction about the table of contents, which names §§ only as its
+ * entries: „Im Inhaltsverzeichnis entfällt der Eintrag zu § 93.", „Im
+ * Inhaltsverzeichnis wird nach dem Eintrag zu § 55a folgender Eintrag
+ * eingefügt:", „Vor § 1 wird folgendes Inhaltsverzeichnis eingefügt:". It
+ * changes no § — read as touching one, it named § 93 of 83484/2024 as
+ * changed in words, and kept § 95 of 38532/2024 from being shown
+ * (25.10.2026; 31 such instructions in the 123 Textgegenüberstellungen).
+ * Not where it also addresses a § itself („… und in § 5 Abs. 2 …").
+ */
+const CONTENTS_RE = /^(?:(?:Im|Das|Dem)\s+Inhaltsverzeichnis\b|Die\s+Einträge\s+im\s+Inhaltsverzeichnis\b|(?:Vor|Nach)\s+(?:dem\s+)?§\s*\d+[a-z]*\s+wird\s+folgendes\s+Inhaltsverzeichnis\s+eingefügt:$)/
+function aboutContentsOnly(head: string): boolean {
+  const t = head.replace(/\s+/g, ' ').trim()
+  const m = CONTENTS_RE.exec(t)
+  return !!m && !/\b(?:im|in|dem)\s+§/i.test(t.slice(m[0].length).replace(QUOTED_RE, ' '))
 }
 /**
  * What reaches every § of the law, or of a division: „im gesamten Gesetz",
@@ -394,7 +418,7 @@ type Op =
   | { kind: 'paragraphs'; replaces: boolean; payload: KtnLine[]; numbers: string[] | null }
   | { kind: 'delete'; numbers: string[]; ranges: [string, string][] }
   | { kind: 'absReplace'; para: string; labels: string[]; range: boolean; payload: KtnLine[] }
-  | { kind: 'absInsert'; para: string; after: string | null; labels: string[]; payload: KtnLine[] }
+  | { kind: 'absInsert'; para: string; after: string | null; labels: string[]; range: boolean; payload: KtnLine[] }
   | { kind: 'absDelete'; para: string; labels: string[]; range: boolean }
 
 /** „1 und 2", „2 bis 4", „5, 6 und 7" → the labels, and whether it was a range. */
@@ -422,6 +446,7 @@ export function readInstruction(ins: Instruction): { op: Op | null; touches: str
       all: more.some((r, k) => !r.list.length && !changesNoParagraph(ins.swallowed[k]!)),
     }
   }
+  if (aboutContentsOnly(h)) return { op: null, touches: [], ranges: [], all: false }
   if (DIVISION_REPLACE_RE.test(h)) return { op: { kind: 'paragraphs', replaces: true, payload: ins.payload, numbers: null }, touches: [], ranges: [], all: false }
   if (DIVISION_INSERT_RE.test(h)) return { op: { kind: 'paragraphs', replaces: false, payload: ins.payload, numbers: null }, touches: [], ranges: [], all: false }
   if (changesNoParagraph(h)) return none
@@ -457,11 +482,11 @@ export function readInstruction(ins: Instruction): { op: Op | null; touches: str
   // „Nach § 11 Abs. 2 wird folgender Abs. 2a eingefügt:", „In § 5 wird nach Abs. 2 folgender Abs. 2a eingefügt:"
   if ((m = new RegExp(String.raw`^Nach ${P} Abs\.\s*(\d+[a-z]*) (?:wird|werden) folgende[rn]? ${ABS_LIST} eingefügt:$`).exec(h)) ||
     (m = new RegExp(String.raw`^(?:Im |In )${P} (?:wird|werden) nach Abs\.\s*(\d+[a-z]*) folgende[rn]? ${ABS_LIST} eingefügt:$`).exec(h))) {
-    return { op: { kind: 'absInsert', para, after: m[2]!, labels: labelList(m[3]!).labels, payload: ins.payload }, touches: [para], ranges: [], all: false }
+    return { op: { kind: 'absInsert', para, after: m[2]!, ...labelList(m[3]!), payload: ins.payload }, touches: [para], ranges: [], all: false }
   }
   // „§ 15 wird folgender Abs. 7 angefügt:", „Dem § 56a werden folgende Abs. 5 und 6 angefügt:"
   if ((m = new RegExp(String.raw`^(?:Dem )?${P} (?:wird|werden) folgende[rn]? ${ABS_LIST} angefügt:$`).exec(h))) {
-    return { op: { kind: 'absInsert', para, after: null, labels: labelList(m[2]!).labels, payload: ins.payload }, touches: [para], ranges: [], all: false }
+    return { op: { kind: 'absInsert', para, after: null, ...labelList(m[2]!), payload: ins.payload }, touches: [para], ranges: [], all: false }
   }
   // „§ 73 Abs. 3 entfällt.", „§ 61 Abs. 3 und 4 entfallen."
   if ((m = new RegExp(String.raw`^(?:Im |In )?${P} ${ABS_LIST} (?:entfällt|entfallen)\.$`).exec(h))) {
@@ -551,8 +576,38 @@ function unquoted(payload: readonly KtnLine[]): KtnLine[] {
   return out
 }
 
+/**
+ * An instruction that changes something below a whole Absatz — a word, a
+ * sentence, a Ziffer, a litera, a citation: what the page says as „Die
+ * Novelle ändert dort einzelne Wörter, Sätze oder Ziffern" (`because:
+ * 'wording'`). Until 25.10.2026 the page said it of every § the reader did
+ * not compose — of § 93 of 83484/2024, whose only instruction was its entry
+ * in the contents, and of § 95 of 38532/2024, which gains whole Absätze.
+ */
+const FINER_RE = /\b(?:Satz|Sätzen?|Wort|Worte[ns]?|Wörter[n]?|Wortfolgen?|Wortgruppen?|Ausdr(?:uck|ücke)|Zeichen(?:folge)?|Satzzeichen|Beistrich|Strichpunkt|Klammerausdruck|Ziffer[n]?|Z|Zahl|Fundstellen?|Zitat|Zitierung|Verweis(?:ung)?|Betrag)\b|\b(?:sub)?lit\./
+
 /** Is `n` within one of the ranges, „§§ 5 bis 7" covering 5a and 6? */
 const inRange = (n: string, ranges: readonly [string, string][]) => ranges.some(([a, b]) => compareLabel(a, n) <= 0 && compareLabel(n, b) <= 0)
+
+/**
+ * The §§ a range names that need not stand in the left column — the ones it
+ * creates: „§§ 51a bis 51d" → 51a, 51b, 51c, 51d; „§§ 5 bis 7" → 5, 6, 7.
+ * Taken only from the left column, a § the range inserts was named nowhere
+ * (15193/2025, § 51b; 25.10.2026). Nothing for a range that mixes the two
+ * forms or runs past 60 numbers.
+ */
+export function rangeNumbers([a, b]: readonly [string, string]): string[] {
+  const pa = /^(\d+)([a-z]?)$/.exec(a)
+  const pb = /^(\d+)([a-z]?)$/.exec(b)
+  if (!pa || !pb) return []
+  if (pa[1] === pb[1] && pa[2] && pb[2]) {
+    const out: string[] = []
+    for (let c = pa[2].charCodeAt(0); c <= pb[2].charCodeAt(0); c++) out.push(`${pa[1]}${String.fromCharCode(c)}`)
+    return out
+  }
+  if (pa[2] || pb[2] || +pb[1]! - +pa[1]! > 60) return []
+  return Array.from({ length: Math.max(0, +pb[1]! - +pa[1]! + 1) }, (_, k) => String(+pa[1]! + k))
+}
 
 /**
  * One law: its §§ in force (left) and its instructions (right) → the §§
@@ -562,14 +617,20 @@ function lawParagraphs(law: string | null, left: readonly PrintedPara[], amendme
   const read = amendment.instructions.map(readInstruction)
   /* What the law's instructions name and this reader does not show goes
    * out as `unread`, never silently (24.10.2026): the page names it beside
-   * the §§ it shows, so they are not read as all the draft changes. */
-  const unread = (n: string): TguParagraph => ({ law, number: n, old: [], neu: [], changed: true, unread: true })
+   * the §§ it shows, so they are not read as all the draft changes. Where an
+   * instruction it does not perform changes words, sentences or Ziffern of
+   * it, the page may say so (`FINER_RE`); else only that it is not composed. */
+  const finer = (n: string) => read.some((r, k) => {
+    const ins = amendment.instructions[k]!
+    return !r.op && !ins.swallowed.length && (r.touches.includes(n) || inRange(n, r.ranges)) && FINER_RE.test(ins.head.replace(/\s+/g, ' ').replace(QUOTED_RE, ' '))
+  })
+  const unread = (n: string, because?: 'wording'): TguParagraph => ({ law, number: n, old: [], neu: [], changed: true, unread: true, ...(because ? { because } : {}) })
   const named = () => {
-    const numbers = new Set(read.flatMap((r) => r.touches))
+    const numbers = new Set(read.flatMap((r) => [...r.touches, ...r.ranges.flatMap(rangeNumbers)]))
     for (const p of left) if (read.some((r) => inRange(p.number, r.ranges))) numbers.add(p.number)
     return [...numbers]
   }
-  if (amendment.gap || read.some((r) => r.all)) return named().map(unread)
+  if (amendment.gap || read.some((r) => r.all)) return named().map((n) => unread(n))
   const inForce = new Map<string, PrintedPara | null>()
   // A number the left column prints twice is not one § we can name; one it
   // prints as „§ 148 …" (1037/2021) or without a body, it does not print.
@@ -617,7 +678,7 @@ function lawParagraphs(law: string | null, left: readonly PrintedPara[], amendme
 
   const shown = [...out].flatMap(([n, p]) => (p && !tainted(n) ? [p] : []))
   const shownNumbers = new Set(shown.map((p) => p.number))
-  return [...shown, ...named().filter((n) => !shownNumbers.has(n)).map(unread)]
+  return [...shown, ...named().filter((n) => !shownNumbers.has(n)).map((n) => unread(n, finer(n) ? 'wording' : undefined))]
 }
 
 /**
@@ -648,7 +709,10 @@ function applyAbsaetze(old: PrintedPara, ops: readonly Op[], lf: Frame, rf: Fram
       from = 0
     } else if (op.kind === 'absInsert') {
       const inserted = absaetzeOf(unquoted(op.payload), rf)
-      if (!inserted || inserted.map((r) => r.label).join(' ') !== op.labels.join(' ')) return null
+      // „Abs. 3 bis 5": the payload's first and last Absatz, every one between in order (checked below).
+      // Read as the list „3, 5" it never fit (38532/2024, § 95; 11 such instructions, 25.10.2026).
+      const labels = inserted?.map((r) => r.label) ?? []
+      if (!inserted || (op.range ? labels[0] !== op.labels[0] || labels.at(-1) !== op.labels.at(-1) : labels.join(' ') !== op.labels.join(' '))) return null
       if (inserted.some((r) => at(r.label) >= 0)) return null
       const after: number = op.after === null ? abs.length - 1 : at(op.after)
       if (after < 0) return null
@@ -690,7 +754,17 @@ export function ktnTguParagraphs(pages: readonly AnnexPage[], laws: readonly str
     }
     if (!left && lefts.length === amendments.length) left = lefts[k]
     if (!left && lefts.length === 1 && amendments.length === 1) left = lefts[0]
-    if (!left) return
+    // No left column to hold the instructions against: what they name is
+    // named all the same, as not composed. Dropped, 18 Textgegenüberstellungen
+    // lost 259 §§ this way — 2314/2021 the 68 its two Artikel name, and the
+    // page said it found none (25.10.2026). A § they insert whole goes to the
+    // RIS check only under a law we know: without one, the check would file
+    // it under its neighbour's, which may be another Artikel's.
+    if (!left) {
+      const law = named ?? (laws.length === 1 ? laws[0]! : null)
+      out.push(...lawParagraphs(law, [], a, lf, rf).map((p) => (law || p.unread ? p : { law, number: p.number, old: [], neu: [], changed: true, unread: true as const })))
+      return
+    }
     const law = named ?? nameOf(left.title) ?? (laws.length === 1 ? laws[0]! : titleOfLeft(left.title))
     out.push(...lawParagraphs(law, left.paragraphs, a, lf, rf))
   })

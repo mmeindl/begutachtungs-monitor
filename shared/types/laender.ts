@@ -283,17 +283,41 @@ export interface LandLawDiffResponse {
   sharedWith: { title: string; path: string; deadline: string | null; startedAt: string | null }[]
   /**
    * Paragraphen the Land's Textgegenüberstellung shows and this comparison
-   * does not, because RIS did not confirm their text in force
-   * (`geltend → entwurf` only; empty elsewhere). Each under the law it
-   * belongs to as far as the document says — its own heading, or the
+   * does not (`geltend → entwurf` only; empty elsewhere). Each under the law
+   * it belongs to as far as the document says — its own heading, or the
    * confirmed § before it — so the list can count them where they stand, as
-   * the Ministerialentwurf's „nicht gezeigt" (23.10.2026). `reason:
-   * 'unread'`: not a § RIS refused but one the Land's document changes in a
-   * way the reader does not perform (Kärnten's finer instructions,
-   * 24.10.2026) — named so the list is never read as all the draft changes.
+   * the Ministerialentwurf's „nicht gezeigt" (23.10.2026), and each with why
+   * (`LandWithheldReason`): named so the list is never read as all the draft
+   * changes.
    */
-  withheld: { law: string | null; id: string; reason?: 'unread' }[]
+  withheld: { law: string | null; id: string; reason?: LandWithheldReason }[]
 }
+
+/**
+ * Why a § of the Land's Textgegenüberstellung is not shown — each worded on
+ * the page in a sentence of its own (`app/utils/landWithheld.ts`), which
+ * must be true of every § it follows (25.10.2026: one sentence stood for
+ * several causes). None: RIS refused it — its text in force, as the
+ * document prints it, is not RIS's word for word.
+ *
+ *  - `unread`: the reader does not compose its new text from the Novelle's
+ *    instructions (Kärnten, 24.10.2026);
+ *  - `wording`: the same, where an instruction changes words, sentences or
+ *    Ziffern below a whole Absatz;
+ *  - `unsure`: its text, or the marks in it, the reader could not read with
+ *    certainty — Tirol's unsure lines, a § printed without text;
+ *  - `inserted`: printed as new, and RIS did not confirm that the law has
+ *    no such § yet;
+ *  - `elided`: its text in force printed only as „…", and RIS has no such §
+ *    under that law;
+ *  - `twice`: printed more than once under one law, other than as its old
+ *    and its new text;
+ *  - `deletion`: no new text found for it, and no repeal of it in the
+ *    draft's own text;
+ *  - `unchecked`: a read it rests on failed — RIS, or the draft's own text
+ *    for the deletion guard; such an answer is not cached (`gathered.ts`).
+ */
+export type LandWithheldReason = 'unread' | 'wording' | 'unsure' | 'inserted' | 'elided' | 'twice' | 'deletion' | 'unchecked'
 
 /**
  * How a Kundmachung became certain: named by the Land; the Regierungsvorlage

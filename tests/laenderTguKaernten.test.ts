@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import type { AnnexItem, AnnexPage } from '../server/utils/annex/annexPdf'
-import { gutterOf, ktnLines, ktnTguParagraphs, readInstruction } from '../server/utils/laender/landTguKaernten'
+import { gutterOf, ktnLines, ktnTguParagraphs, rangeNumbers, readInstruction } from '../server/utils/laender/landTguKaernten'
 
 /**
  * Kärnten's layout, as measured (23.10.2026): the left column from 85 to 417,
@@ -80,6 +80,24 @@ describe('readInstruction', () => {
     expect(read('In 75 Abs. 1a wird das Wort „a“ durch das Wort „b“ ersetzt.').touches).toEqual(['75'])
   })
 
+  it('names no § for an instruction about the table of contents, though it names §§ as its entries (25.10.2026)', () => {
+    for (const head of [
+      'Im Inhaltsverzeichnis entfällt der Eintrag zu § 93.',
+      'Im Inhaltsverzeichnis wird nach dem Eintrag zu § 55a folgender Eintrag eingefügt:',
+      'Im Inhaltsverzeichnis werden die bisherigen Einträge zu §§ 51a bis 51c durch folgende Einträge ersetzt:',
+      'Im Inhaltsverzeichnis wird nach § 7 folgender § 7a samt Überschrift eingefügt:',
+      'Vor dem § 1 wird folgendes Inhaltsverzeichnis eingefügt:',
+      'Die Einträge im Inhaltsverzeichnis zum 2. Hauptstück (2. Hauptstück Vorverfahren, §§ 2, 3 und 4) entfallen.',
+    ]) expect(read(head)).toMatchObject({ op: null, touches: [], ranges: [], all: false })
+    // One that also addresses a § itself still names it.
+    expect(read('Im Inhaltsverzeichnis und in § 5 Abs. 2 wird das Wort „a“ durch „b“ ersetzt.').touches).toEqual(['5'])
+  })
+
+  it('takes „Abs. 3 bis 5" of an insertion as a range (25.10.2026)', () => {
+    expect(read('Dem § 95 werden folgende Abs. 3 bis 5 angefügt:').op).toMatchObject({ kind: 'absInsert', para: '95', after: null, labels: ['3', '5'], range: true })
+    expect(read('Nach § 5 Abs. 2 werden folgende Abs. 2a bis 2c eingefügt:').op).toMatchObject({ kind: 'absInsert', after: '2', labels: ['2a', '2c'], range: true })
+  })
+
   it('takes an instruction without a § for the whole law, unless it is about the contents, an Anlage or a division name', () => {
     expect(read('Im ganzen Gesetz wird das Wort „Bezirk“ durch das Wort „Region“ ersetzt.').all).toBe(true)
     expect(read('Im V. Abschnitt wird jeweils der Ausdruck „a“ durch „b“ ersetzt.').all).toBe(true)
@@ -87,6 +105,8 @@ describe('readInstruction', () => {
     expect(read('Das Inhaltsverzeichnis wird wie folgt geändert:').all).toBe(false)
     expect(read('Die bisherige Anlage 17 erhält die Bezeichnung „Anlage 18“.').all).toBe(false)
     expect(read('Abschnitt V erhält folgende Bezeichnung:').all).toBe(false)
+    // The division named only inside the quotes (15193/2025, 25.10.2026).
+    expect(read('Die Überschrift „3. Teil Tagesbetreuung“ wird durch die Überschrift „3. Teil Tagesbetreuung und Bildung“ ersetzt.')).toMatchObject({ all: false, touches: [] })
     // „jeweils" with a § named stays in it.
     expect(read('In § 9 Abs. 1 und 3 wird jeweils die Verweisung „x“ durch „y“ ersetzt.')).toMatchObject({ all: false, touches: ['9'] })
   })
@@ -150,6 +170,19 @@ describe('ktnTguParagraphs', () => {
     expect(unreadOf(ps)).toEqual(['6'])
   })
 
+  it('appends a range of whole Absätze, and leaves a § the contents name alone (25.10.2026)', () => {
+    const right = [
+      body(R, '1. Im Inhaltsverzeichnis wird nach dem Eintrag zu § 6 folgender Eintrag eingefügt:', 470),
+      body(R, '„§ 6a Ausnahmen“', 458),
+      body(R, '2. § 6 werden folgende Abs. 4 bis 5 angefügt:', 440),
+      absatz(R, '„(4) Der vierte Absatz kommt neu hinzu.', 428),
+      absatz(R, '(5) Der fünfte auch.“', 416),
+    ]
+    const ps = ktnTguParagraphs([page([...leftLaw(), ...right])], laws)
+    expect(unreadOf(ps)).toEqual([])
+    expect(ps.find((p) => p.number === '6')!.neu.slice(-2)).toEqual(['(4) Der vierte Absatz kommt neu hinzu.', '(5) Der fünfte auch.'])
+  })
+
   it('leaves out a § whose Absatz the left column does not print, and names it', () => {
     const right = [body(R, '1. § 7 Abs. 2 lautet:', 450), absatz(R, '(2) Gibt es nicht.', 438)]
     const ps = ktnTguParagraphs([page([...leftLaw(), ...right])], laws)
@@ -163,6 +196,24 @@ describe('ktnTguParagraphs', () => {
     expect(unreadOf(ktnTguParagraphs([page([...leftLaw(), ...gap])], laws))).toEqual(['5', '7'])
     const everywhere = [body(R, '1. § 7 entfällt.', 450), body(R, '2. Im ganzen Gesetz wird das Wort „Person“ durch „Mensch“ ersetzt.', 400)]
     expect(shownOf(ktnTguParagraphs([page([...leftLaw(), ...everywhere])], laws))).toEqual([])
+  })
+
+  it('says „wording" only of a § an instruction below a whole Absatz touches (25.10.2026)', () => {
+    const because = (right: AnnexItem[]) => ktnTguParagraphs([page([...leftLaw(), ...right])], laws).filter((p) => p.unread).map((p) => [p.number, p.because ?? null])
+    // A word changed: „einzelne Wörter, Sätze oder Ziffern" is true.
+    expect(because([body(R, '1. In § 6 Abs. 3 wird das Wort „bleibt“ durch das Wort „geht“ ersetzt.', 450)])).toEqual([['6', 'wording']])
+    // A whole Absatz the left column does not print: not a word changed.
+    expect(because([body(R, '1. § 7 Abs. 2 lautet:', 450), absatz(R, '(2) Gibt es nicht.', 438)])).toEqual([['7', null]])
+    // The numbering skips an instruction: whatever it changes, nobody read it.
+    expect(because([body(R, '1. In § 5 Abs. 1 wird das Wort „wie“ durch „als“ ersetzt.', 450), body(R, '3. § 7 entfällt.', 400)])).toEqual([['5', null], ['7', null]])
+  })
+
+  it('names every § a range creates, not only those the left column prints (25.10.2026)', () => {
+    expect(rangeNumbers(['51a', '51d'])).toEqual(['51a', '51b', '51c', '51d'])
+    expect(rangeNumbers(['5', '7'])).toEqual(['5', '6', '7'])
+    expect(rangeNumbers(['5', '7a'])).toEqual([])
+    const right = [body(R, '1. Nach § 7 wird folgender 3. Abschnitt mit den §§ 7a bis 7c eingefügt:', 450), centre(R, '3. Abschnitt', 438)]
+    expect(unreadOf(ktnTguParagraphs([page([...leftLaw(), ...right])], laws))).toEqual(['7', '7a', '7b', '7c'])
   })
 
   it('withholds the §§ a swallowed repeat of an instruction names', () => {
@@ -199,6 +250,26 @@ describe('ktnTguParagraphs', () => {
       ['Kärntner Beispielgesetz', '7', 'Strafen'],
       ['Kärntner Zweitgesetz', '5', 'Zweck'],
     ])
+  })
+
+  it('names what an Artikel changes where no law of the left column is its, rather than drop it (25.10.2026)', () => {
+    const second = [
+      body(L, 'Kärntner Zweitgesetz - K-ZG', 290),
+      body(L, 'StF: LGBl Nr 2/2001', 278),
+      centre(L, '§ 5', 266),
+      body(L, 'Der Zweck des zweiten Gesetzes ist ein anderer als der des ersten.', 242),
+    ]
+    // Three Artikel, two laws on the left, and no Artikel names its law.
+    const right = [
+      centre(R, 'Artikel I', 497), body(R, '1. In § 7 wird das Wort „a“ durch „b“ ersetzt.', 485),
+      centre(R, 'Artikel II', 400), body(R, '1. In § 5 wird das Wort „c“ durch „d“ ersetzt.', 388),
+      centre(R, 'Artikel III', 300), body(R, '1. In § 9 wird das Wort „e“ durch „f“ ersetzt.', 288),
+    ]
+    const out = ktnTguParagraphs([page([...leftLaw(), ...second, ...right])], ['Kärntner Beispielgesetz', 'Kärntner Zweitgesetz'])
+    expect(out.map((p) => [p.number, p.unread, p.because])).toEqual([['7', true, 'wording'], ['5', true, 'wording'], ['9', true, 'wording']])
+    // A § such an Artikel inserts whole is named too, and not handed to the RIS check under no law.
+    const inserts = [...right, centre(R, 'Artikel IV', 200), body(R, '1. Nach § 9 wird folgender § 9a eingefügt:', 188), centre(R, '§ 9a', 176), body(R, 'Neu.', 164)]
+    expect(ktnTguParagraphs([page([...leftLaw(), ...second, ...inserts])], ['Kärntner Beispielgesetz', 'Kärntner Zweitgesetz']).find((p) => p.number === '9a')).toMatchObject({ law: null, unread: true, old: [], neu: [] })
   })
 
   it('reads nothing from a portrait document', () => {

@@ -608,10 +608,11 @@ function pairTwins(entries: readonly Open[]): TguParagraph[] {
         ? { ...a, side: 'both', neu: b.neu, bad: a.bad || b.bad, marked: true }
         : null
     } else if (group.length > 2) p = null
-    // Withheld, but named: a § with no text at all is one `compareTgu`
-    // shows only where RIS lacks its number — and then has nothing to show;
-    // where RIS has it, the page counts it as „nicht gezeigt".
-    const withheld = { law: group[0]!.law, number: group[0]!.number, old: [], neu: [], changed: true }
+    // Withheld, and named as unsure (25.10.2026). Handed on without text
+    // and without a reason, it was taken for a new § — shown, with nothing
+    // to show, where RIS lacks its number, and where RIS has it refused as
+    // „nicht wortgleich", which is not why (728/2026, §§ 73 and 32).
+    const withheld: TguParagraph = { law: group[0]!.law, number: group[0]!.number, old: [], neu: [], changed: true, unread: true, because: 'unsure' }
     if (!p || p.bad) {
       out.push(withheld)
       continue
