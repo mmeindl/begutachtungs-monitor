@@ -197,6 +197,8 @@ describe('compareTgu — one law, one group (25.10.2026)', () => {
     const r = (await compareTgu('ktn', detail('Gesetz, mit dem das Kärntner Schulbaufondsgesetz geändert wird'))).value
     expect(r.units.map((u) => u.article)).toEqual(['Kärntner Bildungsbaufondsgesetz – K-BBFG'])
     expect(r.withheld).toEqual([{ law: 'Kärntner Bildungsbaufondsgesetz – K-BBFG', id: '§6', reason: 'wording' }])
+    // Headed by the name the draft prints, RIS's after it; the group stays RIS's (26.10.2026).
+    expect(r.renamed).toEqual([{ law: 'Kärntner Bildungsbaufondsgesetz – K-BBFG', printed: 'Kärntner Schulbaufondsgesetz' }])
   })
 
   it('keeps RIS\'s name where the draft declines the adjective after its article, and files the withheld §§ there', async () => {
@@ -209,6 +211,8 @@ describe('compareTgu — one law, one group (25.10.2026)', () => {
     const r = (await compareTgu('ktn', detail('Gesetz, mit dem das Kärntner landwirtschaftliche Schulgesetz 1993 geändert wird'))).value
     expect(r.units.map((u) => u.article)).toEqual(['Kärntner landwirtschaftliches Schulgesetz 1993 - K-LSchG'])
     expect(r.withheld.map((w) => w.law)).toEqual(['Kärntner landwirtschaftliches Schulgesetz 1993 - K-LSchG'])
+    // One name, declined: not renamed.
+    expect(r.renamed).toBeUndefined()
   })
 
   // Salzburg 18151: the Land's document sets the old law against the new one, § by number.
@@ -220,6 +224,7 @@ describe('compareTgu — one law, one group (25.10.2026)', () => {
     const r = (await compareTgu('ktn', detail(`Gesetz, mit dem ein ${LAW} 2026 erlassen wird`))).value
     expect(r.units.map((u) => [u.article, u.id])).toEqual([[LAW, '§5']])
     expect(r.replaced).toEqual([{ law: LAW, by: `${LAW} 2026` }])
+    expect(r.renamed).toBeUndefined()
   })
 
   it('asks RIS for the elided and new §§ of a renamed law under the name it confirmed the others under (Salzburg 19504)', async () => {

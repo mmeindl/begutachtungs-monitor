@@ -316,6 +316,13 @@ export interface LandLawDiffResponse {
    */
   renumbered?: string[]
   /**
+   * Groups whose law the draft names otherwise than RIS does today — renamed
+   * since (26.10.2026): `law` is the group, the law as RIS names it, under
+   * which its §§ were checked; `printed` the name the draft prints, which
+   * heads the group with „(heute: …)" after it. Only `geltend → entwurf`.
+   */
+  renamed?: { law: string; printed: string }[]
+  /**
    * A law the draft puts in place of one in force of the same name, which
    * the Land's Textgegenüberstellung sets against it § by § by number —
    * Salzburg 18151, the Salzburger Objektivierungsgesetz 2016 for the

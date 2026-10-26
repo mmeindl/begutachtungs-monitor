@@ -186,8 +186,16 @@ const withheldByGroup = computed(() => {
 /* The title of a group of §§ the reader filed under no law of the package. */
 const UNFILED = 'Ohne Zuordnung zu einem Gesetz'
 
-/* A new law in place of one in force of the same name: its group is headed by both (`replaced`, 26.10.2026). */
+/* A group is headed by the name the draft prints (26.10.2026); where RIS
+   has renamed the law since, its name today follows — the group itself, and
+   every RIS lookup, stay with RIS's name (`renamed`). A new law in place of
+   one in force of the same name is headed by both (`replaced`). */
+const printedAs = computed(() => new Map((data.value?.renamed ?? []).map((r) => [r.law, r.printed])))
 const replacedBy = computed(() => new Map((data.value?.replaced ?? []).map((r) => [r.law, r.by])))
+function groupTitle(law: string): string {
+  const printed = printedAs.value.get(law)
+  return printed ? `${landLawGroupTitle(printed)} (heute: ${landLawGroupTitle(law)})` : landLawGroupTitle(law)
+}
 
 /* Where nothing is shown: the same §§, by the law each is filed under. */
 const unshownByLaw = computed(() => (data.value && !data.value.available ? withheldGroups(data.value.withheld ?? [], []) : new Map<string, LandLawDiffResponse['withheld']>()))
@@ -274,7 +282,7 @@ const groups = computed(() => {
     }
     flush()
     // A group of §§ only withheld, under no law: the reader could not tell which law of the package they are (Kärnten, 25.10.2026).
-    return { ...g, title: landLawGroupTitle(g.article) || (g.units.length ? '' : UNFILED), replacedBy: replacedBy.value.get(g.article) ?? null, blocks, hidden, withheld: withheldByGroup.value.get(g.article) ?? [], reaches: reachesByGroup.value.get(g.article) ?? [] }
+    return { ...g, title: groupTitle(g.article) || (g.units.length ? '' : UNFILED), replacedBy: replacedBy.value.get(g.article) ?? null, blocks, hidden, withheld: withheldByGroup.value.get(g.article) ?? [], reaches: reachesByGroup.value.get(g.article) ?? [] }
   })
 })
 
@@ -305,7 +313,7 @@ const hasUnits = computed(() => units.value.length > 0)
         <DiffGroup
           v-for="law in unshownLaws"
           :key="law"
-          :title="landLawGroupTitle(law) || UNFILED"
+          :title="groupTitle(law) || UNFILED"
           :badges="[]"
           :withheld="unshownByLaw.get(law)?.length ?? 0"
           :open="groupOpen(law)"

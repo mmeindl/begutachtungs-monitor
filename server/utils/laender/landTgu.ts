@@ -1009,6 +1009,47 @@ function enactedLawsOf(title: string): string[] {
   return out
 }
 
+/** Two names further apart than this share of the longer are two names of a law, not one written two ways (`renamedTo`). */
+const RENAMED_DISTANCE = 0.2
+
+/**
+ * Has RIS renamed the law the draft prints as `printed`, since? Not where the
+ * two are one name written two ways — a misprint („Kärntner
+ * Wildschadensfondsfondsgesetz", 38532), a declension („Salzburger
+ * Landwirtschaftliche Schulgesetz 2018", 24042), another year („… 2022" for
+ * „… 2002", Kärnten 1003/2021), the Land in front, an abbreviation —, and
+ * not where the draft prints a long title, „Gesetz über die Kinder- und
+ * Jugendhilfe im Land Salzburg": RIS knows that one too. Nor a list the
+ * title was not parted into, „Salzburger Raumordnungsgesetz 2009 sowie das
+ * Anliegerleistungsgesetz" (18131). Renamed:
+ * „Salzburger Behindertengesetz 1981" → „Salzburger Teilhabegesetz" (19504),
+ * „Kärntner Schulbaufondsgesetz" → „Kärntner Bildungsbaufondsgesetz"
+ * (1177/2021), „Oö. Parkgebührengesetz" → „Oö. Parkgebühren- und
+ * Straßenaufsichtsorganegesetz" (2023-16060).
+ */
+export function renamedTo(printed: string, ris: string): boolean {
+  if (/^(?:Landes)?(?:Gesetz|Verordnung)\b|^mit\s+de[mr]\s|,\s+mit\s+de[mr]\b|\s(?:und|sowie)\s+(?:das|die|der)\s/.test(printed.trim())) return false
+  const key = (name: string) => bareLawName(name)
+    .replace(/^(?:salzburger|kärntner|tiroler|wiener|oö\.)\s+/u, '')
+    .replace(/\b\d{4}\b/g, '')
+    .replace(/\bu\.\s/g, 'und ')
+    .replace(/[^\p{L}]+/gu, '')
+  const a = key(printed)
+  const b = key(ris)
+  return editDistance(a, b) > RENAMED_DISTANCE * Math.max(a.length, b.length)
+}
+
+/** Levenshtein's distance between two strings. */
+function editDistance(a: string, b: string): number {
+  let row = Array.from({ length: b.length + 1 }, (_, j) => j)
+  for (let i = 1; i <= a.length; i++) {
+    const next = [i]
+    for (let j = 1; j <= b.length; j++) next.push(Math.min(row[j]! + 1, next[j - 1]! + 1, row[j - 1]! + (a[i - 1] === b[j - 1] ? 0 : 1)))
+    row = next
+  }
+  return row[b.length]!
+}
+
 /** The one law a draft amends; null for a package. */
 export function amendedLawOf(title: string): string | null {
   const laws = amendedLawsOf(title)

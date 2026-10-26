@@ -32,7 +32,7 @@ import { safeExternalUrl } from '#shared/utils/safeExternalUrl'
 import { formatDateDe } from '#shared/utils/format'
 import { diffLawUnits, summarizeDiff } from '../diff/lawDiff'
 import { lawInForce, paragraphByPhrase, paragraphText } from './landKons'
-import { amendedLawsOf, bareLawName, columnParagraphs, draftDeletes, joinLines, mergeParagraphs, onlyElided, onlyListed, packageArticles, paraId, renumberingsOf, replacementsOf, tguParagraphKey, searchPhrase, standsInRis, tguLines, tguParagraphs, tguUnits, withHeadings, withRenumberings, type ColumnRow, type TguParagraph, type TguReading } from './landTgu'
+import { amendedLawsOf, bareLawName, columnParagraphs, draftDeletes, joinLines, mergeParagraphs, onlyElided, onlyListed, packageArticles, paraId, renamedTo, renumberingsOf, replacementsOf, tguParagraphKey, searchPhrase, standsInRis, tguLines, tguParagraphs, tguUnits, withHeadings, withRenumberings, type ColumnRow, type TguParagraph, type TguReading } from './landTgu'
 import { draftSource, landPdfBytes } from './texts/read'
 import { tguPages } from './landTguPdf'
 import { pagesOf } from '../annex/annexPdfPages'
@@ -694,10 +694,26 @@ export async function compareTgu(land: LandCode, detail: LandDraftDetail): Promi
   const { from, to } = tguUnits(kept)
   const units = withHeadings(diffLawUnits(from, to), kept)
   const s = summarizeDiff(units)
-  /* A group stays filed under the law RIS confirmed — its §§ were checked
-   * there — and is headed by both laws where the draft puts a new law in
-   * place of one in force and the Land's document sets the two side by side
-   * (`replacementsOf`, 26.10.2026). */
+  /* The names the draft prints (26.10.2026). A group stays filed under the
+   * law RIS confirmed — its §§ were checked there, and are asked there — and
+   * is headed by the draft's name where RIS has renamed the law since
+   * (`renamedTo`); by both laws where the draft puts a new law in place of
+   * one in force and the Land's document sets the two side by side
+   * (`replacementsOf`). */
+  const printedAs = new Map<string, Set<string>>()
+  paragraphs.forEach((p, i) => {
+    const group = named(verdicts[i] ?? null)
+    if (p.law && group) printedAs.set(group, (printedAs.get(group) ?? new Set<string>()).add(p.law))
+  })
+  // Renamed: RIS knows no law of the draft's name today (an empty answer, not
+  // a failed one), every § filed under it RIS confirmed under this one law,
+  // and the two are two names (`renamedTo`) — not a § the reader filed under
+  // the wrong law of a package, which RIS found in another.
+  const renamed = [...printedAs].flatMap(([law, as]) => {
+    const printed = [...as][0]!
+    const unknown = as.size === 1 && inForce.get(printed)?.size === 0 && confirmedAs.get(named(printed)!)?.size === 1
+    return unknown && renamedTo(printed, law) ? [{ law, printed }] : []
+  })
   const groups = new Set([...units.map((u) => u.article), ...withheld.map((w) => w.law)].filter((l): l is string => !!l))
   const replaced = (got.replacements ?? []).flatMap((r) => [...groups].filter((g) => bareLawName(g) === bareLawName(r.old)).map((law) => ({ law, by: r.by })))
   return {
@@ -717,6 +733,7 @@ export async function compareTgu(land: LandCode, detail: LandDraftDetail): Promi
       ...beside,
       // Only beside §§ compared: what the list does by number, it says above it (`renumberedNote`).
       ...(got.renumbered?.length ? { renumbered: got.renumbered } : {}),
+      ...(renamed.length ? { renamed } : {}),
       ...(replaced.length ? { replaced } : {}),
     },
     complete,

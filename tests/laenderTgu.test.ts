@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest'
 import { draftNameOf, kaerntenDated, readableLawName, tirolDated, wienTguStart } from '../server/utils/laender/landTguService'
 import { parseAnnexPdf, type AnnexItem, type AnnexPage } from '../server/utils/annex/annexPdf'
-import { amendedLawOf, amendedLawsOf, columnParagraphs, draftDeletes, joinLines, mergeParagraphs, onlyElided, onlyListed, packageArticles, renumberingsOf, replacementsOf, searchPhrase, shareInRis, STANDS_IN_RIS, standsInRis, tguLines, tguParagraphs, tguUnits, withHeadings, withRenumberings, type Renumbering, type TguLine, type TguPage, type TguParagraph } from '../server/utils/laender/landTgu'
+import { amendedLawOf, amendedLawsOf, columnParagraphs, draftDeletes, joinLines, mergeParagraphs, onlyElided, onlyListed, packageArticles, renamedTo, renumberingsOf, replacementsOf, searchPhrase, shareInRis, STANDS_IN_RIS, standsInRis, tguLines, tguParagraphs, tguUnits, withHeadings, withRenumberings, type Renumbering, type TguLine, type TguPage, type TguParagraph } from '../server/utils/laender/landTgu'
 
 /** A run at (x, y), each character 5 pt wide; glyph widths equal, so centres fall evenly. */
 function run(s: string, x: number, y: number) {
@@ -515,6 +515,22 @@ describe('replacementsOf — a new law in place of one in force of the same name
 
   it('pairs nothing where the law put out of force has another name (Kärnten 1082/2019)', () => {
     expect(replacementsOf('Gesetz, mit dem das Kärntner Pflege- und Betreuungsgesetz erlassen wird', 'Gleichzeitig tritt das Kärntner Mindestsicherungsgesetz, LGBl Nr 15/2007, außer Kraft.')).toEqual([])
+  })
+})
+
+describe('renamedTo — a law RIS has renamed since the draft (26.10.2026)', () => {
+  it('takes two names for a rename', () => {
+    expect(renamedTo('Salzburger Behindertengesetz 1981', 'Salzburger Teilhabegesetz')).toBe(true)
+    expect(renamedTo('Kärntner Schulbaufondsgesetz', 'Kärntner Bildungsbaufondsgesetz – K-BBFG')).toBe(true)
+    expect(renamedTo('Oö. Parkgebührengesetz', 'Oö. Parkgebühren- und Straßenaufsichtsorganegesetz')).toBe(true)
+  })
+
+  it('takes one name written two ways for none, nor a long title or a list the title was not parted into', () => {
+    expect(renamedTo('Kärntner Wildschadensfondsfondsgesetz', 'Kärntner Wildschadensfondsgesetz')).toBe(false)
+    expect(renamedTo('Salzburger Landwirtschaftliche Schulgesetz 2018', 'Salzburger Landwirtschaftliches Schulgesetz 2018')).toBe(false)
+    expect(renamedTo('Kärntner Gemeinderats- und Bürgermeisterwahlordnung 2022', 'Kärntner Gemeinderats- und Bürgermeisterwahlordnung 2002')).toBe(false)
+    expect(renamedTo('Gesetz über die Kinder- und Jugendhilfe im Land Salzburg', 'Salzburger Kinder- und Jugendhilfegesetz')).toBe(false)
+    expect(renamedTo('Salzburger Raumordnungsgesetz 2009 sowie das Anliegerleistungsgesetz', 'Salzburger Raumordnungsgesetz 2009')).toBe(false)
   })
 })
 
