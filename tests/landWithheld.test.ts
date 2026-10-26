@@ -78,9 +78,9 @@ describe('withheldNotes — a renumbered § (26.10.2026)', () => {
   })
 })
 
-describe('renumberedNote — a draft that renumbers where no mapping is printed (26.10.2026)', () => {
-  it('quotes the first of the draft\'s renumberings and says the list goes by number, and says nothing without one', () => {
-    expect(renumberedNote(['Der bisherige § 54a erhält die Paragraphenbezeichnung „§ 54b“'])).toBe('Die Novelle nummeriert Paragraphen um, etwa: „Der bisherige § 54a erhält die Paragraphenbezeichnung „§ 54b““. Der Monitor stellt die Paragraphen hier nach ihrer Nummer gegenüber, nicht nach ihrer Herkunft.')
+describe('renumberedNote — a renumbering the comparison could not pair old → new (26.10.2026)', () => {
+  it('quotes the first such sentence and says there the list goes by number, and says nothing without one', () => {
+    expect(renumberedNote(['Der bisherige § 17 erhält die Bezeichnung „§ 19“'])).toBe('Die Novelle nummeriert Paragraphen um. Wo der Monitor einen Paragraphen in der Textgegenüberstellung nicht seiner neuen Nummer zuordnen kann, etwa bei „Der bisherige § 17 erhält die Bezeichnung „§ 19““, stellt er ihn nach seiner Nummer gegenüber, nicht nach seiner Herkunft.')
     expect(renumberedNote([])).toBeNull()
   })
 })

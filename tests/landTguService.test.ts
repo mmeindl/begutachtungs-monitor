@@ -14,6 +14,8 @@ import type { TguParagraph } from '../server/utils/laender/landTgu'
 vi.mock('../server/utils/laender/landKons', () => ({ lawInForce: vi.fn(), paragraphText: vi.fn(), paragraphByPhrase: vi.fn() }))
 vi.mock('../server/utils/laender/texts/read', () => ({ landPdfBytes: vi.fn(async () => new Uint8Array()), draftSource: vi.fn() }))
 vi.mock('../server/utils/annex/annexPdfPages', () => ({ pagesOf: vi.fn(async () => [{ width: 842, items: [] }]) }))
+// Salzburg's two columns, as the Bund's reader returns their rows (`readSalzburg`).
+vi.mock('../server/utils/annex/annexPdf', () => ({ parseAnnexPdf: vi.fn(() => ({ rows: [], droppedPages: 0 })) }))
 vi.mock('../server/utils/laender/landTguKaernten', () => {
   const ktnTguParagraphs = vi.fn()
   return { ktnTguParagraphs, ktnTguReading: vi.fn((pages: unknown, laws: unknown) => ({ paragraphs: ktnTguParagraphs(pages, laws) })) }
@@ -22,6 +24,7 @@ vi.mock('../server/utils/laender/landTguKaernten', () => {
 const { lawInForce, paragraphText, paragraphByPhrase } = vi.mocked(await import('../server/utils/laender/landKons'))
 const { draftSource, landPdfBytes } = vi.mocked(await import('../server/utils/laender/texts/read'))
 const { ktnTguParagraphs, ktnTguReading } = vi.mocked(await import('../server/utils/laender/landTguKaernten'))
+const { parseAnnexPdf } = vi.mocked(await import('../server/utils/annex/annexPdf'))
 const { compareTgu, ooeColumnPages, sideBySide, withFullStops } = await import('../server/utils/laender/landTguService')
 
 const LAW = 'Kärntner Beispielgesetz'
@@ -300,5 +303,57 @@ describe('compareTgu — a renumbered § is compared with its origin (26.10.2026
     ])
     const r = (await compareTgu('ktn', detail())).value
     expect(r.withheld).toEqual([{ law: LAW, id: '§9', fromId: '§5' }])
+  })
+})
+
+describe('compareTgu — a renumbering the draft\'s own text orders, read into two columns (Salzburg, 26.10.2026)', () => {
+  const SBG_LAW = 'Salzburger Beispielgesetz'
+  const TEXT_6 = 'Pflichten (1) Jede Person hat die Pflichten nach diesem Gesetz zu erfüllen.'
+  const sbg = (): LandDraftDetail => {
+    const d = detail(`Gesetz, mit dem das ${SBG_LAW} geändert wird`)
+    return { ...d, draft: { ...d.draft, id: 'sbg-1', land: 'sbg', documents: [{ title: 'Entwurf', url: 'https://service.salzburg.gv.at/pub/get/1' }, { title: 'Textgegenüberstellung', url: 'https://service.salzburg.gv.at/pub/get/2' }] } } as unknown as LandDraftDetail
+  }
+  /** One row of the two columns: what each prints, the § designation in its text. */
+  const row = (para: string, current: string, proposed: string) => ({ kind: 'pair', law: null, heading: null, para, current, proposed, change: current && proposed ? 'changed' : proposed ? 'inserted' : 'removed' })
+  const rows = (...r: ReturnType<typeof row>[]) => parseAnnexPdf.mockReturnValue({ rows: r, droppedPages: 0 } as never)
+  const draftText = (text: string) => draftSource.mockReturnValue({ document: { label: 'Entwurf', url: 'https://service.salzburg.gv.at/pub/get/1', publisher: 'Land Salzburg' }, read: async () => ({ units: null, text }) })
+  const ORDERS = `Das ${SBG_LAW}, LGBl Nr 1/2000, wird geändert wie folgt: 1. Der bisherige § 5 erhält die Paragraphenbezeichnung „§ 9“. 2. Der bisherige § 6 erhält die Paragraphenbezeichnung „§ 10“.`
+  const sorted = (r: { units: { fromId?: string | null; id: string; change: string }[] }) => r.units.map((u) => [u.fromId ?? null, u.id, u.change]).sort((a, b) => String(a[1]).localeCompare(String(b[1])))
+
+  beforeEach(() => {
+    lawInForce.mockImplementation(async (_land, law) => (law === SBG_LAW ? new Map([['5', 'ris:5'], ['6', 'ris:6']]) : new Map()))
+    paragraphText.mockImplementation(async (url: string) => ris({ 5: TEXT_5, 6: TEXT_6 }[url.slice('ris:'.length)] ?? ''))
+    draftText(ORDERS)
+  })
+
+  it('compares a moved § with its origin, takes a new § under the number it frees for new, and says what it could not pair', async () => {
+    rows(
+      row('§ 5.', `Begriffe § 5. ${TEXT_5.slice('Begriffe '.length)}`, 'Neu § 5. (1) Ganz neu.'),
+      row('§ 9.', '', `Begriffe § 9. ${TEXT_5.slice('Begriffe '.length)}`),
+      row('§ 6.', `Pflichten § 6. ${TEXT_6.slice('Pflichten '.length)}`, 'Pflichten § 6. (1) Neu.'),
+    )
+    const r = (await compareTgu('sbg', sbg())).value
+    expect(sorted(r)).toEqual([[null, '§5', 'inserted'], ['§6', '§6', 'changed'], ['§5', '§9', 'unchanged']])
+    expect(r.withheld).toEqual([])
+    // § 6 → § 10: the document prints no § 10, so § 6 stays by its number — said above the list.
+    expect(r.renumbered).toEqual(['Der bisherige § 6 erhält die Paragraphenbezeichnung „§ 10“'])
+  })
+
+  it('takes a new § under the number an elided § leaves for new, where RIS confirms only that number (19400)', async () => {
+    rows(
+      row('§ 5.', 'Begriffe § 5. (1) bis (3) …', 'Neu § 5. (1) Ganz neu.'),
+      row('§ 9.', '', 'Begriffe § 9. (1) bis (3) …'),
+      row('§ 6.', `Pflichten § 6. ${TEXT_6.slice('Pflichten '.length)}`, 'Pflichten § 6. (1) Neu.'),
+    )
+    const r = (await compareTgu('sbg', sbg())).value
+    expect(sorted(r)).toEqual([[null, '§5', 'inserted'], ['§6', '§6', 'changed'], ['§5', '§9', 'unchanged']])
+    expect(r.withheld).toEqual([])
+  })
+
+  it('says nothing of renumbering where no § is compared', async () => {
+    rows(row('§ 6.', 'Pflichten § 6. (1) Ganz andere Pflichten als die im RIS stehenden Pflichten.', 'Pflichten § 6. (1) Neu.'))
+    const r = (await compareTgu('sbg', sbg())).value
+    expect(r.available).toBe(false)
+    expect(r.renumbered).toBeUndefined()
   })
 })

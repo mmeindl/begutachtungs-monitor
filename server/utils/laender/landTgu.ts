@@ -910,18 +910,179 @@ export function amendedLawOf(title: string): string | null {
 }
 
 /**
- * „Der bisherige § 54a erhält die Paragraphenbezeichnung „§ 54b"", „die §§
- * 37 und 38 erhalten die Paragraphenbezeichnungen „§ 24" bzw „§ 25"": the
- * renumberings a draft's own text orders, each once, as it prints them
- * (26.10.2026). For a Textgegenüberstellung that prints no mapping of its
- * own — Salzburg's, Wien's, Oö. 2021-16029's two columns — the page says
- * that the Novelle renumbers while the comparison goes by number.
+ * A renumbering the draft's own text orders (26.10.2026): „Der bisherige
+ * § 54a erhält die Paragraphenbezeichnung „§ 54b"" (Salzburg 32025), „§ 20
+ * erhält die Bezeichnung „§ 24"" (Oö. 2021-16029), „die §§ 37 und 38 erhalten
+ * die Paragraphenbezeichnungen „§ 24" bzw „§ 25"" (Salzburg 18554). A
+ * Textgegenüberstellung in two columns — Salzburg's, Wien's, Oö.
+ * 2021-16029's — prints no mapping of its own; the draft's text is where it
+ * stands (`withRenumberings`).
  */
-export function renumberingSentences(draftText: string): string[] {
-  const t = draftText.replace(/\s+/g, ' ')
-  return [...new Set([...t.matchAll(RENUMBERING_RE)].map((m) => m[0].replace(/^die\b/, 'Die').trim()))]
+export interface Renumbering {
+  /** The sentence as the draft prints it — the page quotes it where the move is not shown (`renumberedNote`) */
+  sentence: string
+  /** The law it renumbers in, as the draft's title names it (`amendedLawsOf`); null where the draft's text does not say which */
+  law: string | null
+  /** Old → new, one by one; none where the sentence cannot be read so */
+  moves: { from: string; to: string }[]
+  /**
+   * The stretches a „bis" spans, old and new numbers: „§§ 29 bis 34" counts
+   * a § 30a too, which no „§ 17" to „§ 23" pairs (`withRenumberings`).
+   */
+  spans: [number, number][]
 }
-const RENUMBERING_RE = /(?:(?:Der|Die|die)\s+bisherigen?\s+|(?:Die|die)\s+)?§§?\s*\d+[a-z]*(?:\s*(?:,|und|bis)\s*\d+[a-z]*)*\s+erh(?:ält|alten)\s+die\s+(?:Paragraphen|Paragrafen)?[Bb]ezeichnung(?:en)?\s+„§[^“”"]*[“”"](?:\s*(?:bzw\.?|bis|und)\s*„§[^“”"]*[“”"])*/g
+
+const DESIGNATION = String.raw`\d+[a-z]*`
+const LISTED = String.raw`${DESIGNATION}(?:\s*(?:,|und|bis)\s*${DESIGNATION})*`
+const QUOTED = String.raw`„§[^“”"„]*[“”"]`
+const QUOTES = String.raw`${QUOTED}(?:\s*(?:,|bzw\.?|und|bis)\s*${QUOTED})*`
+const NAMING = String.raw`(?:Paragraphen|Paragrafen)?[Bb]ezeichnung(?:en)?`
+/** „Der bisherige § 54a erhält die Paragraphenbezeichnung „§ 54b"", „die §§ 37 und 38 erhalten …", „§ 20 erhält die Bezeichnung „§ 24"" */
+const SUBJECT_FIRST_RE = new RegExp(String.raw`(?:(?:Der|Die|die)\s+bisherigen?\s+|(?:Die|die)\s+)?§§?\s*(${LISTED})\s+erh(?:ält|alten)\s+die\s+${NAMING}\s+(${QUOTES})`, 'g')
+/**
+ * „Die bisherige Abschnittsbezeichnung „IIIa" erhält die
+ * Abschnittsbezeichnung „IIIb" und erhalten die bisherigen §§ 15a und 15b die
+ * Paragraphenbezeichnungen „§ 15b" und „§ 15c"" (Salzburg 19504): the verb
+ * first, after another renumbering — found by none until 26.10.2026.
+ */
+const VERB_FIRST_RE = new RegExp(String.raw`(?:(?:Die|Der|Das)\s+[^.;:]{0,200}?\s+und\s+)?erh(?:ält|alten)\s+(?:der|die)\s+bisherigen?\s+§§?\s*(${LISTED})\s+die\s+${NAMING}\s+(${QUOTES})`, 'g')
+/**
+ * „Das Salzburger Landeselektrizitätsgesetz 1999, LGBl Nr 75/1999, zuletzt
+ * geändert …, wird geändert wie folgt:" — where the instructions for one law
+ * of a package begin. „LGBI" too, as Salzburg 19504 misprints it.
+ */
+const OPENING_RE = /(?:Das|Die|Der)\s+((?:(?!(?:Das|Die|Der)\s)[^:;„“])+?),\s+LGB[lI]\b[^:]{0,400}?\bwird\s+(?:geändert\s+wie\s+folgt|wie\s+folgt\s+geändert)\s*:/g
+
+/**
+ * „19 und 29 bis 34" → 19, 29, 30, …, 34, with the stretch „bis" spans.
+ * Null where a stretch's ends are not plain numbers in order, or a quote
+ * holds more than a designation.
+ */
+function designations(parts: readonly string[]): { numbers: string[]; spans: [number, number][] } | null {
+  const numbers: string[] = []
+  const spans: [number, number][] = []
+  for (let i = 0; i < parts.length; i++) {
+    const part = parts[i]!
+    if (part !== 'bis') {
+      if (!/^\d+[a-z]*$/.test(part)) return null
+      numbers.push(part)
+      continue
+    }
+    const first = numbers.at(-1)
+    const last = parts[i + 1]
+    if (!first || !last || !/^\d+$/.test(first) || !/^\d+$/.test(last) || Number(last) <= Number(first)) return null
+    for (let n = Number(first) + 1; n <= Number(last); n++) numbers.push(String(n))
+    spans.push([Number(first), Number(last)])
+    i++
+  }
+  return { numbers, spans }
+}
+
+/** The one law of `laws` an opening names, by the key both are folded to (`bareLawName`). */
+function lawNamed(name: string, laws: readonly string[]): string | null {
+  const key = bareLawName(name)
+  const same = laws.filter((l) => bareLawName(l) === key)
+  const near = same.length ? same : laws.filter((l) => bareLawName(l).startsWith(key) || key.startsWith(bareLawName(l)))
+  return near.length === 1 ? near[0]! : null
+}
+
+/**
+ * The renumberings a draft's own text orders, each once, in its order, with
+ * the law it is in: the draft's one law, or in a package the law whose
+ * instructions it stands among (`OPENING_RE`).
+ */
+export function renumberingsOf(draftText: string, laws: readonly string[]): Renumbering[] {
+  // One line — and a word the line broke whole again: „Paragraphenbe- zeichnungen" (Salzburg 18554).
+  const t = draftText.replace(/\s+/g, ' ').replace(/(\p{Ll})- (?!(?:und|oder|bzw|sowie)\b)(?=\p{Ll})/gu, '$1')
+  const openings = [...t.matchAll(OPENING_RE)].map((m) => ({ at: m.index!, name: m[1]! }))
+  const lawAt = (at: number): string | null => {
+    if (laws.length === 1) return laws[0]!
+    const opening = openings.filter((o) => o.at < at).at(-1)
+    return opening ? lawNamed(opening.name, laws) : null
+  }
+  const found = new Map<string, Renumbering & { at: number }>()
+  for (const re of [SUBJECT_FIRST_RE, VERB_FIRST_RE]) {
+    for (const m of t.matchAll(re)) {
+      const sentence = m[0].replace(/^die\b/, 'Die').trim()
+      if (found.has(sentence)) continue
+      const old = designations(m[1]!.match(/\d+[a-z]*|\bbis\b/g) ?? [])
+      const neu = designations([...m[2]!.matchAll(/„§\s*([^“”"„]*?)\s*[“”"]|\bbis\b/g)].map((q) => q[1] ?? 'bis'))
+      const paired = old && neu && old.numbers.length === neu.numbers.length
+      found.set(sentence, {
+        at: m.index!,
+        sentence,
+        law: lawAt(m.index!),
+        moves: paired ? old.numbers.map((from, k) => ({ from, to: neu.numbers[k]! })) : [],
+        spans: paired ? [...old.spans, ...neu.spans] : [],
+      })
+    }
+  }
+  return [...found.values()].sort((a, b) => a.at - b.at).map((r) => ({ sentence: r.sentence, law: r.law, moves: r.moves, spans: r.spans }))
+}
+
+/**
+ * A two-column Textgegenüberstellung's §§ with the renumberings its draft
+ * orders read into them (26.10.2026). The § in force under its old number
+ * and the same § under its new one become one entry, `from` → `number`:
+ * compared with each other, and checked in RIS under the old number, as
+ * where a Land's document prints the mapping itself (`TguParagraph.from`).
+ *
+ * Only where nothing else can be meant: the document prints the old number
+ * with its text in force and the new one with its new text, each once in the
+ * law the sentence is in, and no other move claims either. A stretch („§§ 39
+ * bis 41") counts only where the document prints no lettered § inside it.
+ * What else the two numbers carry stays an entry of its own: under the old
+ * number, a new § the draft puts there; under the new, the § in force there,
+ * which moves on or goes.
+ *
+ * `unmapped`: each sentence not read into the §§ whole — the page says it
+ * above the list, since there the comparison goes by number (`renumberedNote`).
+ */
+export function withRenumberings(paragraphs: readonly TguParagraph[], renumberings: readonly Renumbering[]): { paragraphs: TguParagraph[]; unmapped: string[] } {
+  const ofLaw = (p: TguParagraph, law: string) => !p.from && !p.unread && (p.law === null || bareLawName(p.law) === bareLawName(law))
+  const lettered = (law: string, [first, last]: [number, number]) => paragraphs.some((p) => {
+    const n = Number.parseInt(p.number, 10)
+    return ofLaw(p, law) && /^\d+[a-z]+$/.test(p.number) && n >= first && n < last
+  })
+  const planned: { sentence: string; from: TguParagraph; to: TguParagraph; move: { from: string; to: string } }[] = []
+  const unmapped = new Set<string>()
+  for (const r of renumberings) {
+    const law = r.law
+    if (!law || !r.moves.length || r.spans.some((s) => lettered(law, s))) {
+      unmapped.add(r.sentence)
+      continue
+    }
+    for (const move of r.moves) {
+      const from = paragraphs.filter((p) => ofLaw(p, law) && p.number === move.from)
+      const to = paragraphs.filter((p) => ofLaw(p, law) && p.number === move.to)
+      if (from.length === 1 && from[0]!.old.length && to.length === 1 && to[0]!.neu.length) planned.push({ sentence: r.sentence, from: from[0]!, to: to[0]!, move })
+      else unmapped.add(r.sentence)
+    }
+  }
+  // A number two different moves claim: neither is certain. The same move twice is one.
+  const clashes = (a: (typeof planned)[number]) => planned.some((b) => (b.from === a.from) !== (b.to === a.to))
+  const done = planned.filter((p) => !clashes(p))
+  for (const p of planned) if (clashes(p)) unmapped.add(p.sentence)
+  const movedTo = new Map<TguParagraph, TguParagraph>()
+  for (const d of done) {
+    // Under the law the document files the two under: in a package often none, and RIS decides (`compareTgu`).
+    if (!movedTo.has(d.to)) movedTo.set(d.to, { law: d.from.law ?? d.to.law, number: d.move.to, from: d.move.from, old: [...d.from.old], neu: [...d.to.neu], changed: true })
+  }
+  const takenOld = new Set(done.map((d) => d.from))
+  const takenNeu = new Set(done.map((d) => d.to))
+  const out: TguParagraph[] = []
+  for (const p of paragraphs) {
+    // The moved § where the document prints it under its new number.
+    const moved = movedTo.get(p)
+    if (moved) out.push(moved)
+    if (!takenOld.has(p) && !takenNeu.has(p)) out.push(p)
+    else {
+      const rest = { ...p, old: takenOld.has(p) ? [] : [...p.old], neu: takenNeu.has(p) ? [] : [...p.neu] }
+      if (rest.old.length || rest.neu.length) out.push(rest)
+    }
+  }
+  return { paragraphs: out, unmapped: [...unmapped] }
+}
 
 /**
  * Does the draft itself delete this §? A two-column reading that finds the

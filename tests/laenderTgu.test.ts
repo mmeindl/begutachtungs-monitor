@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import { draftNameOf, kaerntenDated, readableLawName, tirolDated, wienTguStart } from '../server/utils/laender/landTguService'
-import { amendedLawOf, amendedLawsOf, columnParagraphs, draftDeletes, joinLines, mergeParagraphs, onlyElided, renumberingSentences, searchPhrase, shareInRis, STANDS_IN_RIS, standsInRis, tguLines, tguParagraphs, tguUnits, withHeadings, type TguLine, type TguPage } from '../server/utils/laender/landTgu'
+import { amendedLawOf, amendedLawsOf, columnParagraphs, draftDeletes, joinLines, mergeParagraphs, onlyElided, renumberingsOf, searchPhrase, shareInRis, STANDS_IN_RIS, standsInRis, tguLines, tguParagraphs, tguUnits, withHeadings, withRenumberings, type Renumbering, type TguLine, type TguPage, type TguParagraph } from '../server/utils/laender/landTgu'
 
 /** A run at (x, y), each character 5 pt wide; glyph widths equal, so centres fall evenly. */
 function run(s: string, x: number, y: number) {
@@ -382,17 +382,89 @@ describe('two-column Textgegenüberstellung (Wien)', () => {
     expect(paras).toEqual([{ law: 'Salzburger Landes-Verfassungsgesetz 1999', number: 'Art. 16', old: ['Landtag (1) Alt.'], neu: ['Landtag (1) Neu.'], changed: true }])
   })
 
-  it('finds the renumberings a draft orders in its own text, each once (Salzburg 32025, 18554; 26.10.2026)', () => {
-    const text = '4. Der bisherige § 54a erhält die Paragraphenbezeichnung „§ 54b“ und lautet: … 7. Die §§ 37 und 38 erhalten die Paragraphenbezeichnungen „§ 24“ bzw „§ 25“. Zu Z 4: Der bisherige § 54a erhält die Paragraphenbezeichnung „§ 54b“.'
-    expect(renumberingSentences(text)).toEqual(['Der bisherige § 54a erhält die Paragraphenbezeichnung „§ 54b“', 'Die §§ 37 und 38 erhalten die Paragraphenbezeichnungen „§ 24“ bzw „§ 25“'])
-    expect(renumberingSentences('In § 25 Abs 2 erfolgte eine Umnummerierung der lit g.')).toEqual([])
-  })
-
   it('takes a § as deleted only where the draft says so', () => {
     expect(draftDeletes('2. § 15 samt Überschrift entfällt.', '15')).toBe(true)
     expect(draftDeletes('3. Die §§ 14 und 15 entfallen.', '15')).toBe(true)
     expect(draftDeletes('2. § 15 Abs 1 lautet: „(1) Neu."', '15')).toBe(false)
     expect(draftDeletes('2. § 150 entfällt.', '15')).toBe(false)
+  })
+})
+
+describe('renumberingsOf — the renumberings a draft orders in its own text (26.10.2026)', () => {
+  const PACKAGE = ['S.EU-Rechtsvorschriften-Begleitgesetz', 'Salzburger Landeselektrizitätsgesetz 1999']
+
+  it('reads one move, each sentence once, with the law whose instructions it stands among (Salzburg 32025)', () => {
+    const text = 'Artikel I Das S.EU-Rechtsvorschriften-Begleitgesetz, LGBl Nr 35/2019, zuletzt geändert durch das Gesetz LGBl Nr 114/2022, wird geändert wie folgt: 1. § 1 lautet: … Artikel II Das Salzburger Landeselektrizitätsgesetz 1999, LGBl Nr 75/1999, zuletzt geändert durch das Gesetz LGBl Nr 14/2024, wird geändert wie folgt: 4. Der bisherige § 54a erhält die Paragraphenbezeichnung „§ 54b“ und lautet: … Zu Z 4: Der bisherige § 54a erhält die Paragraphenbezeichnung „§ 54b“.'
+    expect(renumberingsOf(text, PACKAGE)).toEqual([
+      { sentence: 'Der bisherige § 54a erhält die Paragraphenbezeichnung „§ 54b“', law: 'Salzburger Landeselektrizitätsgesetz 1999', moves: [{ from: '54a', to: '54b' }], spans: [] },
+    ])
+    // In a package, a sentence before any law's instructions is no law's.
+    expect(renumberingsOf('Der bisherige § 5 erhält die Bezeichnung „§ 6“.', PACKAGE)[0]!.law).toBeNull()
+    expect(renumberingsOf('In § 25 Abs 2 erfolgte eine Umnummerierung der lit g.', PACKAGE)).toEqual([])
+  })
+
+  it('pairs a list and a stretch one by one, a word the line broke joined again (Salzburg 18554)', () => {
+    const text = '6. Die §§ 17, 18 und 20 bis 28 entfallen; die §§ 19 und 29 bis 34 erhalten die Paragraphenbe- zeichnungen „§ 17“ bis „§ 23“. 7. Die §§ 35 und 36 entfallen; die §§ 37 und 38 erhalten die Paragraphenbezeichnungen „§ 24“ bzw „§ 25“.'
+    const [stretch, list] = renumberingsOf(text, ['Salzburger Abfallwirtschaftsgesetz 1998'])
+    expect(stretch!.sentence).toBe('Die §§ 19 und 29 bis 34 erhalten die Paragraphenbezeichnungen „§ 17“ bis „§ 23“')
+    expect(stretch!.moves.map((m) => `${m.from}>${m.to}`)).toEqual(['19>17', '29>18', '30>19', '31>20', '32>21', '33>22', '34>23'])
+    expect(stretch!.spans).toEqual([[29, 34], [17, 23]])
+    expect(list!.moves).toEqual([{ from: '37', to: '24' }, { from: '38', to: '25' }])
+  })
+
+  it('reads the verb first, after another renumbering (Salzburg 19504)', () => {
+    const text = '18. Die bisherige Abschnittsbezeichnung „IIIa“ erhält die Abschnittsbezeichnung „IIIb“ und erhalten die bisherigen §§ 15a und 15b die Paragraphenbezeichnungen „§ 15b“ und „§ 15c“.'
+    const [r] = renumberingsOf(text, ['Salzburger Behindertengesetz 1981'])
+    expect(r!.sentence).toBe('Die bisherige Abschnittsbezeichnung „IIIa“ erhält die Abschnittsbezeichnung „IIIb“ und erhalten die bisherigen §§ 15a und 15b die Paragraphenbezeichnungen „§ 15b“ und „§ 15c“')
+    expect(r!.moves).toEqual([{ from: '15a', to: '15b' }, { from: '15b', to: '15c' }])
+  })
+
+  it('pairs none where a stretch runs between lettered §§ or the counts differ', () => {
+    expect(renumberingsOf('Die §§ 8c bis 8e erhalten die Paragraphenbezeichnungen „§ 8d“ bis „§ 8f“.', ['G'])[0]!.moves).toEqual([])
+    expect(renumberingsOf('Die §§ 3 und 4 erhalten die Paragraphenbezeichnungen „§ 5“ bis „§ 7“.', ['G'])[0]!.moves).toEqual([])
+  })
+})
+
+describe('withRenumberings — a renumbering the draft orders, read into two columns (26.10.2026)', () => {
+  const LAW = 'Salzburger Landeselektrizitätsgesetz 1999'
+  const p = (number: string, old: string[], neu: string[], law: string | null = null): TguParagraph => ({ law, number, old, neu, changed: true })
+  const moves = (sentence: string, pairs: [string, string][], over: Partial<Renumbering> = {}): Renumbering => ({ sentence, law: LAW, moves: pairs.map(([from, to]) => ({ from, to })), spans: [], ...over })
+  const view = (ps: TguParagraph[]) => ps.map((x) => `${x.from ? `${x.from}>` : ''}${x.number}:${x.old.join('|')}/${x.neu.join('|')}`)
+
+  it('makes the § in force and the same § under its new number one entry, and leaves the new § under the old number its own (32025)', () => {
+    const got = withRenumberings([p('54a', ['Erdverkabelung (1) Alt.'], ['Anschlussleitungen (1) Neu.']), p('54b', [], ['Erdverkabelung (1) Alt.'])], [moves('§ 54a → § 54b', [['54a', '54b']])])
+    expect(view(got.paragraphs)).toEqual(['54a:/Anschlussleitungen (1) Neu.', '54a>54b:Erdverkabelung (1) Alt./Erdverkabelung (1) Alt.'])
+    // Under the law the document files it under — here none, and RIS decides.
+    expect(got.paragraphs[1]!.law).toBeNull()
+    expect(got.unmapped).toEqual([])
+  })
+
+  it('follows a chain one move at a time (32075: § 8c → § 8d → § 8e → § 8f)', () => {
+    const got = withRenumberings([
+      p('8c', ['Konformität'], ['Ökodesign (1) Neu.']),
+      p('8d', ['CE-Kennzeichnung'], ['Konformität']),
+      p('8e', ['Unterrichtung'], ['CE-Kennzeichnung']),
+      p('8f', [], ['Unterrichtung']),
+    ], [moves('a', [['8c', '8d']]), moves('b', [['8d', '8e']]), moves('c', [['8e', '8f']])])
+    expect(view(got.paragraphs)).toEqual(['8c:/Ökodesign (1) Neu.', '8c>8d:Konformität/Konformität', '8d>8e:CE-Kennzeichnung/CE-Kennzeichnung', '8e>8f:Unterrichtung/Unterrichtung'])
+    expect(got.unmapped).toEqual([])
+  })
+
+  it('pairs nothing the document does not print, and says so (26924: § 17 → § 19, no § 19 printed)', () => {
+    const paragraphs = [p('16', ['Alt 16'], ['Neu 16']), p('17', ['Alt 17'], ['Neu 17']), p('18', [], ['Alt 16'])]
+    const got = withRenumberings(paragraphs, [moves('§ 16 → § 18', [['16', '18']]), moves('§ 17 → § 19', [['17', '19']])])
+    expect(view(got.paragraphs)).toEqual(['16:/Neu 16', '17:Alt 17/Neu 17', '16>18:Alt 16/Alt 16'])
+    expect(got.unmapped).toEqual(['§ 17 → § 19'])
+  })
+
+  it('pairs nothing where another law\'s §, a second entry, a lettered § in the stretch or another move could be meant', () => {
+    const otherLaw = withRenumberings([p('5', ['A'], ['B'], 'Anderes Gesetz'), p('6', [], ['A'], 'Anderes Gesetz')], [moves('s', [['5', '6']])])
+    expect(otherLaw.unmapped).toEqual(['s'])
+    expect(otherLaw.paragraphs.every((x) => !x.from)).toBe(true)
+    expect(withRenumberings([p('5', ['A'], ['B']), p('5', ['C'], []), p('6', [], ['A'])], [moves('s', [['5', '6']])]).unmapped).toEqual(['s'])
+    expect(withRenumberings([p('29', ['A'], []), p('30a', ['X'], []), p('17', [], ['A'])], [moves('s', [['29', '17']], { spans: [[29, 34]] })]).unmapped).toEqual(['s'])
+    expect(withRenumberings([p('5', ['A'], []), p('6', [], ['A']), p('7', [], ['A'])], [moves('s', [['5', '6']]), moves('t', [['5', '7']])]).unmapped).toEqual(['s', 't'])
+    expect(withRenumberings([p('5', ['A'], []), p('6', [], ['A'])], [moves('s', [['5', '6']], { law: null })]).unmapped).toEqual(['s'])
   })
 })
 

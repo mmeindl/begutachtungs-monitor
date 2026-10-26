@@ -201,7 +201,7 @@ const unshownLaws = computed(() => [...new Set([...unshownByLaw.value.keys(), ..
 
 /* Pages of the document the reader did not read: said above the list, as the Bund's annex says it. */
 const droppedNote = computed(() => annexDroppedPagesNote(data.value?.droppedPages ?? 0))
-/* A draft that renumbers where the Land's document prints no mapping: the list goes by number (26.10.2026). */
+/* A renumbering the comparison could not pair old → new: there the list goes by number (26.10.2026). Only beside a list. */
 const renumberNote = computed(() => renumberedNote(data.value?.renumbered ?? []))
 
 /* One group per Gesetz of the package, folded; runs of unchanged
@@ -282,7 +282,7 @@ const hasUnits = computed(() => units.value.length > 0)
       <!-- Read, and none of it shown: every § is named all the same, by law
            and with why (25.10.2026) — Kärnten 15193/2025 said „keine
            Paragraphen" and named none of the 21 its Novelle changes. -->
-      <ComparisonCaveats v-if="droppedNote || renumberNote" :notes="[droppedNote, renumberNote]" class="mt-3" />
+      <ComparisonCaveats v-if="droppedNote" :notes="[droppedNote]" class="mt-3" />
       <ListBox v-if="unshownLaws.length" class="mt-3">
         <DiffGroup
           v-for="law in unshownLaws"

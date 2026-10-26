@@ -32,7 +32,7 @@ import { safeExternalUrl } from '#shared/utils/safeExternalUrl'
 import { formatDateDe } from '#shared/utils/format'
 import { diffLawUnits, summarizeDiff } from '../diff/lawDiff'
 import { lawInForce, paragraphByPhrase, paragraphText } from './landKons'
-import { amendedLawsOf, bareLawName, columnParagraphs, draftDeletes, joinLines, mergeParagraphs, onlyElided, paraId, renumberingSentences, tguParagraphKey, searchPhrase, standsInRis, tguLines, tguParagraphs, tguUnits, withHeadings, type ColumnRow, type TguParagraph, type TguReading } from './landTgu'
+import { amendedLawsOf, bareLawName, columnParagraphs, draftDeletes, joinLines, mergeParagraphs, onlyElided, paraId, renumberingsOf, tguParagraphKey, searchPhrase, standsInRis, tguLines, tguParagraphs, tguUnits, withHeadings, withRenumberings, type ColumnRow, type TguParagraph, type TguReading } from './landTgu'
 import { draftSource, landPdfBytes } from './texts/read'
 import { tguPages } from './landTguPdf'
 import { pagesOf } from '../annex/annexPdfPages'
@@ -107,7 +107,7 @@ interface TguRead {
   droppedPages?: number
   /** Laws the Novelle enacts anew, whose text the document does not print (`TguReading`). */
   enacted?: string[]
-  /** The renumberings the draft's own text orders, where the document prints no mapping (`renumberingSentences`). */
+  /** The renumberings the draft's own text orders that the reading could not pair old → new (`withRenumberings`). */
   renumbered?: string[]
 }
 
@@ -142,14 +142,16 @@ async function readOoe(detail: LandDraftRecord): Promise<TguRead | string> {
     const laws = amendedLawsOf(detail.draft.title)
     const draftText = await draftTextOf(draftSource(detail.draft.documents, 'Land Oberösterreich'))
     const { rows, droppedPages } = columnRows(columns)
+    // „§ 20 erhält die Bezeichnung „§ 24"": the draft's text says what the two columns do not (26.10.2026).
+    const { paragraphs, unmapped } = withRenumberings(columnParagraphs(rows, laws), renumberingsOf(draftText ?? '', laws))
     return {
-      paragraphs: columnParagraphs(rows, laws),
+      paragraphs,
       droppedPages,
       fromDocument,
       date,
       laws,
       deletes: (n) => draftDeletes(draftText ?? '', n),
-      renumbered: renumberingSentences(draftText ?? ''),
+      renumbered: unmapped,
       ...(draftText === null ? { complete: false as const } : {}),
     }
   }
@@ -254,14 +256,15 @@ async function readWien(detail: LandDraftRecord): Promise<TguRead | string> {
   // The draft's own text stands in front of the Textgegenüberstellung, in the same PDF.
   const draftText = pages.slice(0, start).flatMap((p) => p.items.map((i) => i.text)).join(' ')
   const { rows, droppedPages } = columnRows(pages.slice(start))
+  const { paragraphs, unmapped } = withRenumberings(columnParagraphs(rows, laws), renumberingsOf(draftText, laws))
   return {
-    paragraphs: columnParagraphs(rows, laws),
+    paragraphs,
     droppedPages,
     fromDocument: { label: `${doc.title}, Textgegenüberstellung`, url, publisher: 'Stadt Wien' },
     date: doc.date ?? detail.draft.startedAt ?? new Date().toISOString().slice(0, 10),
     laws,
     deletes: (n) => draftDeletes(draftText, n),
-    renumbered: renumberingSentences(draftText),
+    renumbered: unmapped,
   }
 }
 
@@ -299,14 +302,16 @@ async function readSalzburg(detail: LandDraftRecord): Promise<TguRead | string> 
   const laws = amendedLawsOf(detail.draft.title)
   const draftText = await draftTextOf(draftSource(detail.draft.documents, 'Land Salzburg'))
   const { rows, droppedPages } = columnRows(pages)
+  // „Der bisherige § 54a erhält die Paragraphenbezeichnung „§ 54b"": the draft's text says what the two columns do not (26.10.2026).
+  const { paragraphs, unmapped } = withRenumberings(columnParagraphs(rows, laws), renumberingsOf(draftText ?? '', laws))
   return {
-    paragraphs: columnParagraphs(rows, laws),
+    paragraphs,
     droppedPages,
     fromDocument: { label: doc.title, url, publisher: 'Land Salzburg' },
     date: doc.date ?? detail.draft.startedAt ?? new Date().toISOString().slice(0, 10),
     laws,
     deletes: (n) => draftDeletes(draftText ?? '', n),
-    renumbered: renumberingSentences(draftText ?? ''),
+    renumbered: unmapped,
     ...(draftText === null ? { complete: false as const } : {}),
   }
 }
@@ -426,7 +431,6 @@ export async function compareTgu(land: LandCode, detail: LandDraftDetail): Promi
     ...(got.reaches?.length ? { reaches: got.reaches } : {}),
     ...(got.droppedPages ? { droppedPages: got.droppedPages } : {}),
     ...(got.enacted?.length ? { enacted: got.enacted } : {}),
-    ...(got.renumbered?.length ? { renumbered: got.renumbered } : {}),
   }
   if (!paragraphs.length) {
     return whole(unavailable('In der Textgegenüberstellung fand der Monitor keine Paragraphen, die er lesen kann.', { fromDocument, ...beside }))
@@ -550,14 +554,7 @@ export async function compareTgu(land: LandCode, detail: LandDraftDetail): Promi
     for (let j = i + 1; j < first.length; j++) if (typeof first[j] === 'string' && first[j] !== 'later') return first[j] as string
     return laws.length === 1 ? laws[0]! : null
   }
-  /**
-   * The numbers a renumbered § leaves, where RIS confirmed it there
-   * (26.10.2026): a § the document prints as new under such a number is new
-   * although RIS still has the number — Tirol 723/2026's new § 72, where the
-   * § 72 in force becomes § 74.
-   */
-  const vacated = new Set(paragraphs.flatMap((p, i) => (p.from && typeof first[i] === 'string' && first[i] !== 'later' ? [`${p.law ?? ''}|${p.from}`] : [])))
-  const verdicts = paragraphs.map((p, i) => {
+  const verdict = (p: TguParagraph, i: number, vacated: ReadonlySet<string>): string | null => {
     if (first[i] !== 'later') return first[i] as string | null
     const law = p.law ?? neighbour(i)
     const paras = law ? inForce.get(law) : null
@@ -569,6 +566,21 @@ export async function compareTgu(land: LandCode, detail: LandDraftDetail): Promi
     // Its law could not be asked, or some RIS read failed and its neighbours' law with it.
     why[i] = (law && paras === null) || risFailed ? 'unchecked' : p.old.length ? 'elided' : 'inserted'
     return null
+  }
+  // The §§ in force first — by their text, or elided by their number — then
+  // the new ones, which may take a number a renumbered § leaves.
+  const fresh = (p: TguParagraph, i: number) => first[i] === 'later' && !p.old.length
+  const verdicts = paragraphs.map((p, i) => (fresh(p, i) ? null : verdict(p, i, new Set())))
+  /**
+   * The numbers a renumbered § leaves, where RIS confirmed it there
+   * (26.10.2026): a § the document prints as new under such a number is new
+   * although RIS still has the number — Tirol 723/2026's new § 72, where the
+   * § 72 in force becomes § 74. Also where its text is elided and RIS
+   * confirmed only its number (Salzburg 19400, § 11a → § 11d).
+   */
+  const vacated = new Set(paragraphs.flatMap((p, i) => (p.from && verdicts[i] ? [`${p.law ?? ''}|${p.from}`] : [])))
+  paragraphs.forEach((p, i) => {
+    if (fresh(p, i)) verdicts[i] = verdict(p, i, vacated)
   })
   // One law, one name: RIS confirms some §§ under its own short title with
   // the abbreviation („Kärntner Jagdgesetz 2000 - K-JG") where the draft names
@@ -649,6 +661,8 @@ export async function compareTgu(land: LandCode, detail: LandDraftDetail): Promi
       sharedWith: [],
       withheld,
       ...beside,
+      // Only beside §§ compared: what the list does by number, it says above it (`renumberedNote`).
+      ...(got.renumbered?.length ? { renumbered: got.renumbered } : {}),
     },
     complete,
   }

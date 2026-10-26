@@ -160,14 +160,15 @@ export function enactedNote(): string {
 }
 
 /**
- * Where the draft renumbers §§ and the Land's document prints no mapping
- * (`LandLawDiffResponse.renumbered`, 26.10.2026): said above the list, as a
- * warning that a § may stand beside the one that takes its number. One
- * sentence of the draft's quoted, as it prints it.
+ * Where the draft renumbers §§ and the comparison could not pair one of them
+ * old → new (`LandLawDiffResponse.renumbered`, 26.10.2026): said above the
+ * list, as a warning that a § may stand beside the one that takes its
+ * number. One such sentence of the draft's quoted, as it prints it — and
+ * true beside the moves the list does show, „§ 16 → § 18".
  */
 export function renumberedNote(sentences: readonly string[]): string | null {
   if (!sentences.length) return null
-  return `Die Novelle nummeriert Paragraphen um, etwa: „${sentences[0]}“. Der Monitor stellt die Paragraphen hier nach ihrer Nummer gegenüber, nicht nach ihrer Herkunft.`
+  return `Die Novelle nummeriert Paragraphen um. Wo der Monitor einen Paragraphen in der Textgegenüberstellung nicht seiner neuen Nummer zuordnen kann, etwa bei „${sentences[0]}“, stellt er ihn nach seiner Nummer gegenüber, nicht nach seiner Herkunft.`
 }
 
 /** An instruction as the note quotes it: one whose text follows its colon („Der 4. Abschnitt lautet:") with the text left out, „…". */
