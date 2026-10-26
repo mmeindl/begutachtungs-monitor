@@ -177,7 +177,17 @@ export interface TguParagraph {
    * with the § (`tguUnits`), and not part of what RIS checks (`old`).
    */
   division?: { old?: string; neu?: string }
+  /**
+   * The number the § has in force, where the draft gives it another
+   * (`number`, 26.10.2026): read off the document — OÖ's „§ 9§ 13", Tirol's
+   * „§ 72 74", Kärntens „Der bisherige § 51a erhält die Bezeichnung …" —
+   * never guessed. Its text in force is § `from`'s, and RIS checks it there.
+   */
+  from?: string
 }
+
+/** A §'s identity in the comparison: its number, and where it moves, the number it comes from. */
+export const tguParagraphKey = (p: Pick<TguParagraph, 'law' | 'number' | 'from'>) => `${p.law ?? ''}|${p.from ? `${p.from}>` : ''}${p.number}`
 
 /**
  * A unit's id as the page names it: „§5" for a §, the label itself for an
@@ -246,14 +256,14 @@ const BARE_TITLE_RE = /^((?:Oö\.\s|Statut\s)[^()]*?)\s+\(([^()]{2,30})\)$/
 const NOISE_RE = /^(?:Seite \d+(?: von \d+)?|\d+|(?:Sub)?[Bb]eilage zu\b.*)$/
 
 /**
- * The units a line opens, or null: a §, an Artikel, an annex — or, for a
- * renumbered §, two. A renumbered § is read § by number, as the comparison
- * reads every §: what stood under the old number is its text in force, and
- * what will stand under the new one its new text. So 16120's § 9 compares
- * the struck § 9 with the § 13 that takes its number, and § 13 the § 13 in
- * force with the § 17 that becomes it (`mergeParagraphs` joins the halves).
- * Where the marks do not say which number is which, both are named as read
- * with uncertainty (`because: 'unsure'`).
+ * The units a line opens, or null: a §, an Artikel, an annex. A renumbered
+ * §, „§ 9§ 13" — 13 struck, 9 underlined — is one unit under its new number
+ * that comes from the old one (`from`, 26.10.2026): its text in force is
+ * § 13's, its new text § 9's, and the comparison marks only what the draft
+ * edits in it. Read by number until then, 2026-16120's § 9 compared the
+ * struck § 9 with the § 13 that takes its number, and §§ 14 to 17 read as
+ * „entfallen". Where the marks do not say which number is which, both are
+ * named as read with uncertainty (`because: 'unsure'`), and nothing pairs.
  */
 function opened(line: TguLine, law: string | null, prev: string): { old: TguParagraph; neu: TguParagraph } | null {
   // A quoted heading after a line that ends in a colon is a § the text
@@ -301,7 +311,8 @@ function opened(line: TguLine, law: string | null, prev: string): { old: TguPara
     const q = unit(b, { changed: true, unread: true, because: 'unsure' })
     return { old: p, neu: q }
   }
-  return { old: unit(from, { changed: true }), neu: unit(to, { changed: true }) }
+  const p = unit(to, { changed: true, from })
+  return { old: p, neu: p }
 }
 
 /**
@@ -437,7 +448,7 @@ export function tguParagraphs(lines: readonly TguLine[]): TguParagraph[] {
 export function mergeParagraphs(paragraphs: readonly TguParagraph[]): TguParagraph[] {
   const byKey = new Map<string, TguParagraph>()
   for (const p of paragraphs) {
-    const key = `${p.law ?? ''}|${p.number}`
+    const key = tguParagraphKey(p)
     const seen = byKey.get(key)
     if (!seen) byKey.set(key, { ...p, old: [...p.old], neu: [...p.neu] })
     else {
@@ -475,24 +486,27 @@ function splitHeading(text: string[]): { heading: string | null; body: string[] 
   return { heading: null, body: text }
 }
 
-function unitOf(p: TguParagraph, lines: string[], keepHeading = false): LawUnit | null {
+/** One side of a § as a unit — under `number`: the side in force of a renumbered § is under its old number (`from`). */
+function unitOf(p: TguParagraph, lines: string[], keepHeading = false, number = p.number): LawUnit | null {
   if (!lines.length) return null
   const { heading, body } = keepHeading ? { heading: null, body: lines } : splitHeading(lines)
   const text = joinLines(body.length ? body : lines)
   return {
     article: p.law,
     articleNumber: null,
-    id: paraId(p.number),
+    id: paraId(number),
     heading,
     quotedHeadings: [],
     text,
-    blocks: [{ kind: 'abs', cls: 'abs', text, gld: /^\d/.test(p.number) ? `§ ${p.number}.` : p.number }],
+    blocks: [{ kind: 'abs', cls: 'abs', text, gld: /^\d/.test(number) ? `§ ${number}.` : number }],
     stammnorm: null,
   }
 }
 
 /** The heading every unit of one § carries into `diffLawUnits`, so that its first rule pairs them (`tguUnits`). */
 const SAME_PARA = '\u0000tgu-para '
+/** One §'s marker: its law, number and — where it moves — the number it comes from (`tguParagraphKey`). */
+const markOf = (p: TguParagraph) => `${SAME_PARA}${tguParagraphKey(p)}`
 
 /**
  * The two texts as units for `diffLawUnits`: the law in force, and the law
@@ -515,9 +529,11 @@ export function tguUnits(paragraphs: readonly TguParagraph[]): { from: LawUnit[]
     // Abbruch" (Tirol 723/2026) read as „unverändert". Where the two printed
     // headings differ, they stay in the text that is compared.
     const retitled = old.length > 0 && neu.length > 0 && splitHeading(old).heading !== splitHeading(neu).heading
-    const a = unitOf(p, old, retitled)
+    // A renumbered § pairs with its origin by the marker alone: the unit in force
+    // under its old number, the new one under its new (`from`, 26.10.2026).
+    const a = unitOf(p, old, retitled, p.from ?? p.number)
     const b = unitOf(p, neu, retitled)
-    const mark = `${SAME_PARA}${p.law ?? ''} ${p.number}`
+    const mark = markOf(p)
     if (a) from.push({ ...a, heading: mark })
     if (b) to.push({ ...b, heading: mark })
   }
@@ -533,13 +549,22 @@ function withDivision(lines: readonly string[], division: string | undefined): s
   return lines.length ? [`${division} ${lines[0]}`, ...lines.slice(1)] : [division]
 }
 
-/** The printed heading of each §, back on the compared units (`tguUnits`). */
-export function withHeadings<U extends { heading: string | null; article: string | null; id: string }>(units: readonly U[], paragraphs: readonly TguParagraph[]): U[] {
-  const printed = new Map<string, string | null>(paragraphs.map((p) => {
-    const lines = p.neu.length ? p.neu : p.old
-    return [`${p.law ?? ''}|${paraId(p.number)}`, unitOf(p, lines)?.heading ?? null] as const
-  }))
-  return units.map((u) => (u.heading?.startsWith(SAME_PARA) ? { ...u, heading: printed.get(`${u.article ?? ''}|${u.id}`) ?? null } : u))
+/**
+ * The printed heading of each §, back on the compared units (`tguUnits`) —
+ * and the number a renumbered § comes from, where the document prints no
+ * text of it in force: 2021-16019 renumbers § 61 to § 83 and underlines all
+ * of its text, and the unit came out „neu" with nothing to say where from.
+ */
+export function withHeadings<U extends { heading: string | null; article: string | null; id: string; fromId?: string | null }>(units: readonly U[], paragraphs: readonly TguParagraph[]): U[] {
+  // By the marker each unit carries (`markOf`): a § that moves and the § that
+  // takes its old number share a number, and only the marker tells them apart.
+  const byMark = new Map(paragraphs.map((p) => [markOf(p), p] as const))
+  return units.map((u) => {
+    const p = u.heading?.startsWith(SAME_PARA) ? byMark.get(u.heading) : undefined
+    if (!u.heading?.startsWith(SAME_PARA)) return u
+    const heading = p ? (unitOf(p, p.neu.length ? p.neu : p.old)?.heading ?? null) : null
+    return { ...u, heading, ...(p?.from && !u.fromId ? { fromId: paraId(p.from) } : {}) }
+  })
 }
 
 /** Words, compared as RIS and the PDF both print them: no markup, no quotes, no hyphens, no § designations, no notes of RIS's own. */

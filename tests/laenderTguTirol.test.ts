@@ -126,7 +126,7 @@ describe('tirolTguParagraphs', () => {
     ])
   })
 
-  it('withholds a renumbered § and keeps the new one that takes its number', () => {
+  it('reads a renumbered § as one § from its old number to its new, and keeps the new one that takes the old number (26.10.2026)', () => {
     // 723/2026: a new § 72 inserted, the old § 72 now § 74 — „§ 72 74" with 72 struck.
     const p = page(
       line(235, 500, ins('§ 72')),
@@ -134,10 +134,10 @@ describe('tirolTguParagraphs', () => {
       line(589, 500, '§ ', del('72'), ins('74')),
       line(RIGHT + 20, 480, 'Inkrafttreten.'),
     )
-    // The old § 72 is now § 74: named under the number it moves to (26.10.2026), which was said nowhere.
+    // Withheld under both numbers until then; now compared with itself, „§ 72 → § 74".
     expect(tirolTguParagraphs([p], laws)).toEqual([
       { law: laws[0], number: '72', old: [], neu: ['Die neue Übergangsbestimmung.'], changed: true },
-      { law: laws[0], number: '74', old: [], neu: [], changed: true, unread: true, because: 'unsure' },
+      { law: laws[0], number: '74', from: '72', old: ['Inkrafttreten.'], neu: ['Inkrafttreten.'], changed: true },
     ])
   })
 

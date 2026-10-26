@@ -33,10 +33,13 @@
  *    across columns and pages.
  *
  * WITHHELD, never guessed (the one error this layer must not make is a false
- * „entfällt", „neu" or „geändert"): a § with an unsure line; a § whose
- * heading is itself marked with two numbers („§ 67": renumbered); a § on a
+ * „entfällt", „neu" or „geändert"): a § with an unsure line; a § on a
  * page whose two columns cannot be told apart; a § that stands twice under
- * the same law other than as the struck old and the underlined new twin.
+ * the same law other than as the struck old and the underlined new twin. A §
+ * whose heading carries two numbers, „§ 72 74" — 72 struck, 74 underlined —
+ * is renumbered, and read as one § under its new number that comes from
+ * the old one (`TguParagraph.from`, 26.10.2026; withheld under both until
+ * then).
  * Such a § is handed on without text, so that `compareTgu` names it as not
  * shown wherever RIS knows its number. Everything else that comes out is
  * still checked against RIS (`compareTgu`).
@@ -52,7 +55,7 @@
  * (`pagesOf`) knows neither rules nor colour.
  */
 import type { AnnexPage } from '../annex/annexPdf'
-import type { TguParagraph, TguReading } from './landTgu'
+import { tguParagraphKey, type TguParagraph, type TguReading } from './landTgu'
 
 /* ------------------------------------------------------------------ *
  * The page geometry
@@ -459,8 +462,8 @@ const CENTRED_INDENT = 60
 interface Open {
   law: string | null
   number: string
-  /** The number a renumbered § takes („§ 72 74" → „74"); null where it keeps its own */
-  renumbered: string | null
+  /** The number a renumbered § has in force („§ 72 74" → number „74", from „72"); null where it keeps its own */
+  from: string | null
   /** Whether the heading itself was struck („old") or underlined („neu") whole */
   side: 'both' | 'old' | 'neu'
   old: string[]
@@ -525,7 +528,7 @@ function tirolReading(pages: readonly TirolTguPage[], laws: readonly string[]): 
       const headings = page.runs.filter((r) => PARA_RE.test(r.s.trim())).sort((a, b) => b.y - a.y || a.x - b.x)
       for (const r of headings) {
         close()
-        open = { law, number: PARA_RE.exec(r.s.trim())![1]!, renumbered: null, side: 'both', old: [], neu: [], marked: false, bad: true, titled: { old: 0, neu: 0, done: true } }
+        open = { law, number: PARA_RE.exec(r.s.trim())![1]!, from: null, side: 'both', old: [], neu: [], marked: false, bad: true, titled: { old: 0, neu: 0, done: true } }
       }
       return
     }
@@ -553,15 +556,14 @@ function tirolReading(pages: readonly TirolTguPage[], laws: readonly string[]): 
           let number = para[1]!
           let side: Open['side'] = 'both'
           let bad = line.unsure
-          let renumbered: string | null = null
+          let from: string | null = null
           if (line.marked) {
             const o = PARA_RE.exec(line.old)?.[1]
             const nu = PARA_RE.exec(line.neu)?.[1]
             if (o && nu && o !== nu) {
-              // „§ 67": renumbered
-              bad = true
-              number = o
-              renumbered = nu
+              // „§ 72 74": the § in force as § 72 is § 74 now
+              number = nu
+              from = o
             } else if (o && nu) {
               number = o
             } else if (o) {
@@ -574,7 +576,7 @@ function tirolReading(pages: readonly TirolTguPage[], laws: readonly string[]): 
               bad = true
             }
           }
-          open = { law, number, renumbered, side, old: [], neu: [], marked: line.marked, bad, titled: { old: 0, neu: 0, done: false } }
+          open = { law, number, from, side, old: [], neu: [], marked: line.marked, bad, titled: { old: 0, neu: 0, done: false } }
           continue
         }
         if (ELIDED_RE.test(raw) || (centred && (DIVISION_RE.test(raw) || ANNEX_RE.test(raw)))) {
@@ -612,7 +614,7 @@ function pairTwins(entries: readonly Open[]): TguParagraph[] {
   const byKey = new Map<string, Open[]>()
   // A renumbered § is a group of its own: the new § that takes its old
   // number (723/2026: § 72 new, the old § 72 now § 74) is another provision.
-  const keyOf = (e: Open) => `${e.law ?? ''}|${e.number}${e.renumbered ? `>${e.renumbered}` : ''}`
+  const keyOf = (e: Open) => tguParagraphKey({ law: e.law, number: e.number, from: e.from ?? undefined })
   for (const e of entries) byKey.set(keyOf(e), [...(byKey.get(keyOf(e)) ?? []), e])
   const out: TguParagraph[] = []
   for (const group of byKey.values()) {
@@ -627,12 +629,8 @@ function pairTwins(entries: readonly Open[]): TguParagraph[] {
     // and without a reason, it was taken for a new § — shown, with nothing
     // to show, where RIS lacks its number, and where RIS has it refused as
     // „nicht wortgleich", which is not why (728/2026, §§ 73 and 32).
-    const withheld: TguParagraph = { law: group[0]!.law, number: group[0]!.number, old: [], neu: [], changed: true, unread: true, because: 'unsure' }
-    // A renumbered § is named under its new number too (26.10.2026): under its
-    // old one alone, it was dropped wherever a new § takes that number, and the
-    // number it moves to was said nowhere (723/2026: § 72 now § 74).
-    const moved = group[0]!.renumbered
-    if (moved) out.push({ ...withheld, number: moved })
+    const moved = group[0]!.from
+    const withheld: TguParagraph = { law: group[0]!.law, number: group[0]!.number, ...(moved ? { from: moved } : {}), old: [], neu: [], changed: true, unread: true, because: 'unsure' }
     if (!p || p.bad) {
       out.push(withheld)
       continue
@@ -642,12 +640,12 @@ function pairTwins(entries: readonly Open[]): TguParagraph[] {
       out.push(withheld)
       continue
     }
-    out.push({ law: p.law, number: p.number, ...retitled(p), changed: p.marked })
+    out.push({ law: p.law, number: p.number, ...(p.from ? { from: p.from } : {}), ...retitled(p), changed: p.marked })
   }
   // A placeholder under a number a § read in full also carries is dropped:
   // the page would name „§ 72" as withheld beside „§ 72" shown.
-  const shown = new Set(out.filter((p) => p.old.length || p.neu.length).map((p) => `${p.law ?? ''}|${p.number}`))
-  return out.filter((p) => p.old.length || p.neu.length || !shown.has(`${p.law ?? ''}|${p.number}`))
+  const shown = new Set(out.filter((p) => p.old.length || p.neu.length).map(tguParagraphKey))
+  return out.filter((p) => p.old.length || p.neu.length || !shown.has(tguParagraphKey(p)))
 }
 
 /**

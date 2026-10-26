@@ -500,3 +500,29 @@ describe('ktnTguReading — a law repealed whole (26.10.2026)', () => {
     expect(r.reaches).toEqual([{ law: 'Kärntner Altgesetz', instruction: 'Das Kärntner Altgesetz – K-AG, LGBl. Nr. 1/2000, in der Fassung des Gesetzes LGBl. Nr. 2/2010, tritt mit Inkrafttreten dieses Gesetzes außer Kraft.' }])
   })
 })
+
+describe('ktnTguParagraphs — a renumbered § (26.10.2026)', () => {
+  const laws = ['Kärntner Beispielgesetz']
+  const pick = (ps: ReturnType<typeof ktnTguParagraphs>) => ps.map((p) => [p.from ?? null, p.number, p.unread ? (p.because ?? 'unread') : 'shown'])
+
+  it('shows the § in force under its new number, from its old, where nothing else edits it (15193/2025)', () => {
+    const ps = ktnTguParagraphs([page([...leftLaw(), body(R, '1. Der bisherige § 7 erhält die Bezeichnung „§ 7a“.', 450)])], laws)
+    expect(pick(ps)).toEqual([['7', '7a', 'shown']])
+    expect(ps[0]!.old).toEqual(ps[0]!.neu)
+  })
+
+  it('names it as moved where another instruction edits it, once and with that instruction\'s reason (840/2021)', () => {
+    const right = [body(R, '1. Der bisherige § 6 erhält die Bezeichnung „§ 6a“.', 450), body(R, '2. In § 6a Abs. 3 wird das Wort „bleibt“ durch das Wort „geht“ ersetzt.', 430)]
+    expect(pick(ktnTguParagraphs([page([...leftLaw(), ...right])], laws))).toEqual([['6', '6a', 'wording']])
+  })
+
+  it('takes a § the Novelle inserts under the number a renumbering frees for a new one', () => {
+    const right = [
+      body(R, '1. Nach § 6 wird folgender § 7 eingefügt:', 450), centre(R, '§ 7', 438), centre(R, 'Neu', 426), absatz(R, '(1) Ganz neu.', 414),
+      body(R, '2. Der bisherige § 7 erhält die Bezeichnung „§ 8“.', 400),
+    ]
+    const ps = ktnTguParagraphs([page([...leftLaw(), ...right])], laws)
+    expect(pick(ps)).toEqual([[null, '7', 'shown'], ['7', '8', 'shown']])
+    expect(ps[0]!.old).toEqual([])
+  })
+})

@@ -279,3 +279,26 @@ describe('two-column documents for the federal reader (26.10.2026)', () => {
     expect(p!.items.map((i) => i.text)).toEqual(['Geltende Fassung - Oö. ADIG', 'Vorgeschlagene Fassung', '§ 12.'])
   })
 })
+
+describe('compareTgu — a renumbered § is compared with its origin (26.10.2026)', () => {
+  it('checks it where it stands in force, pairs it old → new, and takes a new § under the number it frees for new', async () => {
+    ktnTguParagraphs.mockReturnValue([
+      para('9', { from: '5', old: [TEXT_5], neu: [TEXT_5] }),
+      para('5', { neu: ['Neu (1) Ganz neu.'] }),
+      para('6', { old: ['Pflichten (1) Jede Person hat die Pflichten nach diesem Gesetz zu erfüllen.'], neu: ['Pflichten (1) Neu.'] }),
+    ])
+    const r = (await compareTgu('ktn', detail())).value
+    // Only what the draft edits is marked: nothing — and the new § 5 is new, although RIS still has the § 5 that moves.
+    expect(r.units.map((u) => [u.fromId, u.id, u.change])).toEqual([['§5', '§9', 'unchanged'], [null, '§5', 'inserted'], ['§6', '§6', 'changed']])
+    expect(r.withheld).toEqual([])
+  })
+
+  it('names one RIS refuses under both its numbers', async () => {
+    ktnTguParagraphs.mockReturnValue([
+      para('9', { from: '5', old: ['Begriffe (1) Ganz andere Begriffe als die im RIS stehenden Begriffe.'], neu: ['x'] }),
+      para('6', { old: ['Pflichten (1) Jede Person hat die Pflichten nach diesem Gesetz zu erfüllen.'], neu: ['Pflichten (1) Neu.'] }),
+    ])
+    const r = (await compareTgu('ktn', detail())).value
+    expect(r.withheld).toEqual([{ law: LAW, id: '§9', fromId: '§5' }])
+  })
+})

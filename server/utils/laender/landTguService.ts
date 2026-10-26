@@ -32,7 +32,7 @@ import { safeExternalUrl } from '#shared/utils/safeExternalUrl'
 import { formatDateDe } from '#shared/utils/format'
 import { diffLawUnits, summarizeDiff } from '../diff/lawDiff'
 import { lawInForce, paragraphByPhrase, paragraphText } from './landKons'
-import { amendedLawsOf, bareLawName, columnParagraphs, draftDeletes, joinLines, mergeParagraphs, onlyElided, paraId, searchPhrase, standsInRis, tguLines, tguParagraphs, tguUnits, withHeadings, type ColumnRow, type TguParagraph, type TguReading } from './landTgu'
+import { amendedLawsOf, bareLawName, columnParagraphs, draftDeletes, joinLines, mergeParagraphs, onlyElided, paraId, tguParagraphKey, searchPhrase, standsInRis, tguLines, tguParagraphs, tguUnits, withHeadings, type ColumnRow, type TguParagraph, type TguReading } from './landTgu'
 import { draftSource, landPdfBytes } from './texts/read'
 import { tguPages } from './landTguPdf'
 import { pagesOf } from '../annex/annexPdfPages'
@@ -425,7 +425,7 @@ export async function compareTgu(land: LandCode, detail: LandDraftDetail): Promi
   // why — Kärnten 15193/2025 said „keine Paragraphen, die er lesen kann" and
   // named none of its 21 (25.10.2026).
   if (paragraphs.every((p) => p.unread)) {
-    const withheld = once(paragraphs.map((p) => ({ law: p.law, id: paraId(p.number), reason: p.because ?? ('unread' as const) })))
+    const withheld = once(paragraphs.map((p) => ({ law: p.law, ...idsOf(p), reason: p.because ?? ('unread' as const) })))
     return whole(unavailable(NONE_SHOWN, { fromDocument, withheld, ...beside }))
   }
 
@@ -480,18 +480,20 @@ export async function compareTgu(land: LandCode, detail: LandDraftDetail): Promi
       unchecked = true
       return failed(null)()
     })
+    // A renumbered § is checked where it stands in force, under its old number (26.10.2026).
+    const origin = p.from ?? p.number
     for (const law of p.law ? [p.law, ...laws.filter((l) => l !== p.law)] : laws) {
       const paras = inForce.get(law)
       // Its own law, or any where the document names none, could not be asked.
       if (paras === null) unchecked ||= !p.law || law === p.law
-      const risUrl = paras?.get(p.number)
+      const risUrl = paras?.get(origin)
       const text = risUrl ? await risText(risUrl) : null
       if (text !== null && standsInRis(old, text)) return law
     }
     // Not under any name the draft uses: by its own words (`paragraphByPhrase`).
     const phrase = searchPhrase(old)
     const hit = phrase
-      ? await paragraphByPhrase(land, phrase, p.number, date).catch(() => {
+      ? await paragraphByPhrase(land, phrase, origin, date).catch(() => {
           unchecked = true
           return failed(null)()
         })
@@ -515,7 +517,7 @@ export async function compareTgu(land: LandCode, detail: LandDraftDetail): Promi
       for (const law of discovered) {
         const paras = inForce.get(law)
         if (paras === null) why[i] = 'unchecked'
-        const risUrl = paras?.get(p.number)
+        const risUrl = paras?.get(p.from ?? p.number)
         const text = risUrl ? await paragraphText(risUrl).catch(failed(null)) : null
         if (risUrl && text === null) why[i] = 'unchecked'
         if (text !== null && standsInRis(joinLines(p.old), text)) {
@@ -538,6 +540,13 @@ export async function compareTgu(land: LandCode, detail: LandDraftDetail): Promi
     for (let j = i + 1; j < first.length; j++) if (typeof first[j] === 'string' && first[j] !== 'later') return first[j] as string
     return laws.length === 1 ? laws[0]! : null
   }
+  /**
+   * The numbers a renumbered § leaves, where RIS confirmed it there
+   * (26.10.2026): a § the document prints as new under such a number is new
+   * although RIS still has the number — Tirol 723/2026's new § 72, where the
+   * § 72 in force becomes § 74.
+   */
+  const vacated = new Set(paragraphs.flatMap((p, i) => (p.from && typeof first[i] === 'string' && first[i] !== 'later' ? [`${p.law ?? ''}|${p.from}`] : [])))
   const verdicts = paragraphs.map((p, i) => {
     if (first[i] !== 'later') return first[i] as string | null
     const law = p.law ?? neighbour(i)
@@ -546,7 +555,7 @@ export async function compareTgu(land: LandCode, detail: LandDraftDetail): Promi
     // without the §: read as „known, § absent" it let every new § of Tirol's
     // drafts through unchecked (RIS files „Bauordnung 2022, Tiroler",
     // 23.10.2026).
-    if (law && paras?.size && (p.old.length ? paras.has(p.number) : !paras.has(p.number))) return law
+    if (law && paras?.size && (p.old.length ? paras.has(p.from ?? p.number) : !paras.has(p.number) || vacated.has(`${p.law ?? ''}|${p.number}`))) return law
     // Its law could not be asked, or some RIS read failed and its neighbours' law with it.
     why[i] = (law && paras === null) || risFailed ? 'unchecked' : p.old.length ? 'elided' : 'inserted'
     return null
@@ -585,10 +594,11 @@ export async function compareTgu(land: LandCode, detail: LandDraftDetail): Promi
    * its new text alone — those are one §. Anything else twice is withheld. */
   const byKey = new Map<string, TguParagraph[]>()
   for (const p of confirmed) {
-    const key = `${p.law ?? ''}|${p.number}`
+    // A § that moves is not the § that takes its old number (`tguParagraphKey`).
+    const key = tguParagraphKey(p)
     byKey.set(key, [...(byKey.get(key) ?? []), p])
   }
-  const doubled: { law: string | null; id: string }[] = []
+  const doubled: { law: string | null; id: string; fromId?: string }[] = []
   const kept = [...byKey.values()].flatMap((group) => {
     if (group.length === 1) return group
     const oldOnly = group.filter((p) => p.old.length && !p.neu.length)
@@ -597,13 +607,13 @@ export async function compareTgu(land: LandCode, detail: LandDraftDetail): Promi
       const division = oldOnly[0]!.division || neuOnly[0]!.division ? { ...neuOnly[0]!.division, ...oldOnly[0]!.division } : undefined
       return [{ ...oldOnly[0]!, neu: neuOnly[0]!.neu, changed: true, ...(division ? { division } : {}) }]
     }
-    doubled.push({ law: group[0]!.law, id: paraId(group[0]!.number) })
+    doubled.push({ law: group[0]!.law, ...idsOf(group[0]!) })
     return []
   })
   // Under the law the document files it under, or that of the confirmed §
   // beside it — where the page counts it (`LandLawDiffSection`).
   const withheld = once([
-    ...paragraphs.flatMap((p, i) => (verdicts[i] ? [] : [{ law: filedUnder(p.law ?? neighbour(i)), id: paraId(p.number), ...(why[i] ? { reason: why[i] } : {}) }])),
+    ...paragraphs.flatMap((p, i) => (verdicts[i] ? [] : [{ law: filedUnder(p.law ?? neighbour(i)), ...idsOf(p), ...(why[i] ? { reason: why[i] } : {}) }])),
     ...doubled.map((d) => ({ ...d, reason: 'twice' as const })),
   ])
   // Nothing to show: the §§ are named all the same, each with why — the
@@ -640,5 +650,10 @@ export async function compareTgu(land: LandCode, detail: LandDraftDetail): Promi
  * under no law ran into one: 2314/2021 named § 6 once for two laws.
  */
 function once(items: LandLawDiffResponse['withheld']): LandLawDiffResponse['withheld'] {
-  return items.filter((w, i, all) => all.findIndex((o) => o.law === w.law && o.id === w.id && o.reason === w.reason) === i)
+  return items.filter((w, i, all) => all.findIndex((o) => o.law === w.law && o.id === w.id && o.fromId === w.fromId && o.reason === w.reason) === i)
+}
+
+/** A withheld §'s ids: its number, and the number it comes from where the draft renumbers it (`TguParagraph.from`). */
+function idsOf(p: TguParagraph): { id: string; fromId?: string } {
+  return p.from ? { id: paraId(p.number), fromId: paraId(p.from) } : { id: paraId(p.number) }
 }

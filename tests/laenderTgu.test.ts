@@ -117,7 +117,7 @@ describe('tguParagraphs — units the reader lost until 26.10.2026', () => {
     ])
   })
 
-  it('reads a renumbered § by number: the old number keeps the text in force, the new one gets the new text (2026-16120)', () => {
+  it('reads a renumbered § as one § from its old number to its new, beside the § it replaces under that number (2026-16120; 26.10.2026)', () => {
     const paras = mergeParagraphs(tguParagraphs([
       law,
       del('§ 10'), del('Rechtsstellung der Mitglieder'), del('(1) Ehrenamtlich.'),
@@ -125,10 +125,14 @@ describe('tguParagraphs — units the reader lost until 26.10.2026', () => {
       line('Geschäftsordnung'),
       { raw: '(1) Die Geschäftsordnung gilt alt.', old: '(1) Die Geschäftsordnung gilt alt.', neu: '(1) Die Geschäftsordnung gilt.', marked: true },
     ]))
-    expect(paras.map((p) => [p.number, p.old, p.neu])).toEqual([
-      ['10', ['Rechtsstellung der Mitglieder', '(1) Ehrenamtlich.'], ['Geschäftsordnung', '(1) Die Geschäftsordnung gilt.']],
-      ['14', ['Geschäftsordnung', '(1) Die Geschäftsordnung gilt alt.'], []],
+    // Read by number until then: § 10 compared the struck § 10 with § 14's text, and § 14 read as „entfallen".
+    expect(paras.map((p) => [p.from ?? null, p.number, p.old, p.neu])).toEqual([
+      [null, '10', ['Rechtsstellung der Mitglieder', '(1) Ehrenamtlich.'], []],
+      ['14', '10', ['Geschäftsordnung', '(1) Die Geschäftsordnung gilt alt.'], ['Geschäftsordnung', '(1) Die Geschäftsordnung gilt.']],
     ])
+    // Compared with itself: the unit in force under its old number, the new one under its new, paired.
+    const { from, to } = tguUnits(paras.slice(1))
+    expect([from[0]!.id, to[0]!.id, from[0]!.heading === to[0]!.heading]).toEqual(['§14', '§10', true])
   })
 
   it('names both numbers of a renumbered § as unsure where the marks do not say which is which', () => {
@@ -136,7 +140,7 @@ describe('tguParagraphs — units the reader lost until 26.10.2026', () => {
     expect(paras.map((p) => [p.number, p.unread, p.because])).toEqual([['61', true, 'unsure'], ['57d', true, 'unsure']])
     // Where one side reads as one number, the other number on the line is the other side's.
     const known = tguParagraphs([law, { raw: '§ 61§ 57d', old: '§ 57d', neu: '§ 61§ 57d', marked: true }, line('(1) Text.')])
-    expect(known.map((p) => [p.number, p.old, p.neu])).toEqual([['57d', ['(1) Text.'], []], ['61', [], ['(1) Text.']]])
+    expect(known.map((p) => [p.from, p.number, p.old, p.neu])).toEqual([['57d', '61', ['(1) Text.'], ['(1) Text.']]])
   })
 
   it('closes a § at an Anlage, names the Anlage where it is changed, and passes over one it prints unchanged (2026-16111)', () => {
@@ -250,6 +254,13 @@ describe('tguUnits and joinLines', () => {
     // The document says both sides are § 7: one marker, whatever they share.
     expect(from[0]!.heading).toBe(to[0]!.heading)
     expect(withHeadings([{ ...from[0]!, article: 'G' }], paras)[0]!.heading).toBe('Urkunden')
+  })
+
+  it('says where a renumbered § comes from although the document prints no text of it in force (2021-16019, § 61 → § 83)', () => {
+    const paras = [{ law: 'G', number: '83', from: '61', old: [], neu: ['Verweise', '(1) Neu.'], changed: true }]
+    const { from, to } = tguUnits(paras)
+    expect(from).toEqual([])
+    expect(withHeadings([{ ...to[0]!, article: 'G', fromId: null }], paras)[0]).toMatchObject({ id: '§83', fromId: '§61', heading: 'Verweise' })
   })
 
   it('keeps the space before „und" after a hyphen', () => {

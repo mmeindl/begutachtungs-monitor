@@ -288,9 +288,10 @@ export interface LandLawDiffResponse {
    * confirmed § before it — so the list can count them where they stand, as
    * the Ministerialentwurf's „nicht gezeigt" (23.10.2026), and each with why
    * (`LandWithheldReason`): named so the list is never read as all the draft
-   * changes.
+   * changes. `fromId`: the number a § has in force where the draft renumbers
+   * it (26.10.2026), named „§ 13 → § 9" as the comparison shows it.
    */
-  withheld: { law: string | null; id: string; reason?: LandWithheldReason }[]
+  withheld: { law: string | null; id: string; fromId?: string; reason?: LandWithheldReason }[]
   /**
    * Instructions of the Novelle that reach §§ they do not name — „Im V.
    * Abschnitt wird jeweils …", „Im ganzen Gesetz …" — quoted per law, so

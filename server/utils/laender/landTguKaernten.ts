@@ -698,6 +698,7 @@ type Op =
   | { kind: 'absDelete'; para: string; labels: string[]; range: boolean }
   | { kind: 'divisionDelete'; division: DivisionSpec; listed: string[] }
   | { kind: 'divisionWording'; division: DivisionSpec; quoted: string | null }
+  | { kind: 'renumber'; from: string; to: string }
 
 /**
  * What an instruction does and names (`readInstruction`). `quoted`: the
@@ -711,7 +712,18 @@ export interface InstructionReading {
   all: boolean
   quoted?: string | null
   annex?: string[]
+  /** The § it renumbers, „Der bisherige § 51a erhält die Bezeichnung „§ 51e"" — performed or not (`op`). */
+  renumber?: { from: string; to: string }
 }
+
+/**
+ * „Der bisherige § 51a erhält die Bezeichnung „§ 51e"." (15193/2025): the §
+ * in force under a new number. Where nothing more follows, its text stays
+ * as it stands (`op: 'renumber'`); where more does — „… und wird mit
+ * folgender Überschrift … eingefügt:" (840/2021) — it is named as moved,
+ * not composed (26.10.2026).
+ */
+const RENUMBER_RE = /^(?:Der\s+)?bisherige\s+§\s*(\d+[a-z]*)\s+erhält\s+die\s+(?:Paragraphen)?[Bb]ezeichnung\s+[„"]§\s*(\d+[a-z]*)[“”"]/
 
 /** „Anlage 10", „Anhang II": what an instruction changes beside §§ (26.10.2026). */
 const ANNEX_REF_RE = /\b(Anlage|Anhang|Beilage)\s+((?:\d+|[IVXL]+)[a-z]?)\b/g
@@ -781,6 +793,12 @@ function readHead(h: string, ins: Instruction): InstructionReading {
     })
   }
   if (aboutContentsOnly(h)) return { op: null, touches: [], ranges: [], all: false }
+  const renumber = RENUMBER_RE.exec(h)
+  if (renumber) {
+    const [from, to] = [renumber[1]!, renumber[2]!]
+    // Its §, under either number, is the moved § `lawParagraphs` names or shows — not one it touches.
+    return { op: /^\.?$/.test(h.slice(renumber[0].length).trim()) ? { kind: 'renumber', from, to } : null, touches: [], ranges: [], all: false, renumber: { from, to } }
+  }
   // The anchor of an insertion is not changed by it (26.10.2026): „Nach § 51
   // wird folgender 3. Abschnitt … eingefügt" named § 51 as changed (15193/2025).
   const anchor = ANCHOR_RE.exec(h)?.[1]
@@ -1040,6 +1058,26 @@ function lawParagraphs(law: string | null, left: readonly PrintedPara[], amendme
   }
   // Why each named § is not shown: its own cause, or a numbering gap, or words changed, or only that it is not composed.
   const becauseOf = (n: string) => extra.get(n) ?? (amendment.gap ? 'gap' : finer(n) ? 'wording' : undefined)
+  /**
+   * The §§ the Novelle renumbers (26.10.2026): each one § from its old number
+   * to its new — shown as it stands where nothing but its renumbering
+   * touches it, named as moved where something does (`unreadMoved`). Read
+   * by number until then, 15193/2025's § 51a, which becomes § 51e, was named
+   * as not composed and § 51e nowhere. The old number is free for a § the
+   * Novelle inserts there (15193/2025: a new § 51a in a new 3. Abschnitt).
+   */
+  const renumbers = read.flatMap((r) => (r.renumber ? [r.renumber] : []))
+  const vacated = new Set(renumbers.map((m) => m.from))
+  /** Whether an instruction edits § n — any but a renumbering or one that creates § n. */
+  const edited = (n: string) => read.some((r) => {
+    const op = r.op
+    if (r.renumber || (op?.kind === 'paragraphs' && !op.replaces)) return false
+    const own = !op ? [] : 'para' in op ? [op.para] : 'numbers' in op && op.numbers ? op.numbers : []
+    return r.touches.includes(n) || inRange(n, r.ranges) || own.includes(n)
+  })
+  /** A number that stands for a moved § in the instructions: its new one, and its old one where an edit uses it. */
+  const movedNumber = (n: string) => renumbers.some((m) => m.to === n || (m.from === n && edited(n)))
+  const unreadMoved = (m: { from: string; to: string }): TguParagraph => ({ ...unread(m.to, becauseOf(m.from) ?? becauseOf(m.to)), from: m.from })
   if (amendment.gap || read.some((r) => r.all)) {
     // Every § may be meant: those the quoted words stand in are named too, and the instruction is said for its law.
     read.forEach((r, k) => {
@@ -1054,7 +1092,7 @@ function lawParagraphs(law: string | null, left: readonly PrintedPara[], amendme
       const u = PARA_LINE_RE.exec(l.text)
       return u && centred(l, rf) ? [unitNumber(u)] : []
     }))
-    return { paragraphs: [...new Set([...named(), ...printed])].map((n) => unread(n, becauseOf(n))), reaches }
+    return { paragraphs: [...[...new Set([...named(), ...printed])].filter((n) => !movedNumber(n)).map((n) => unread(n, becauseOf(n))), ...renumbers.map(unreadMoved)], reaches }
   }
   const inForce = new Map<string, PrintedPara | null>()
   // A number the left column prints twice is not one § we can name; one it
@@ -1114,9 +1152,11 @@ function lawParagraphs(law: string | null, left: readonly PrintedPara[], amendme
       }
       for (const p of printed) {
         const old = inForce.get(p.number)
+        // Inserted under a number a renumbering frees: the § in force there is the moved one's.
+        const atVacated = !op.replaces && vacated.has(p.number)
         // Replacing a § the left column does not print, or inserting one it does, is not the document's pair.
-        if (old === null || (op.replaces && op.numbers && !old) || (!op.replaces && inForce.has(p.number))) { put(p.number, null); continue }
-        put(p.number, { law, number: p.number, old: old ? textOf(old.heading, old.body) : [], neu: textOf(p.heading, p.body), changed: true })
+        if ((old === null && !atVacated) || (op.replaces && op.numbers && !old) || (!op.replaces && inForce.has(p.number) && !atVacated)) { put(p.number, null); continue }
+        put(p.number, { law, number: p.number, old: op.replaces && old ? textOf(old.heading, old.body) : [], neu: textOf(p.heading, p.body), changed: true })
       }
       // The §§ of a replaced division its new text no longer prints: gone or moved — named, not shown as „entfallen".
       for (const p of members) if (!printed.some((q) => q.number === p.number)) unprinted.add(p.number)
@@ -1137,6 +1177,11 @@ function lawParagraphs(law: string | null, left: readonly PrintedPara[], amendme
         const old = inForce.get(n)
         put(n, old ? { law, number: n, old: textOf(old.heading, old.body), neu: [], changed: true } : null)
       }
+    } else if (op.kind === 'renumber') {
+      // Its text in force, under its new number: the comparison marks what else the Novelle does to it — nothing.
+      const old = inForce.get(op.from)
+      const text = old ? textOf(old.heading, old.body) : []
+      put(`${op.from}>${op.to}`, old ? { law, number: op.to, from: op.from, old: text, neu: text, changed: false } : null)
     }
   })
 
@@ -1152,9 +1197,22 @@ function lawParagraphs(law: string | null, left: readonly PrintedPara[], amendme
     put(n, neu ? { law, number: n, old: textOf(old.heading, old.body), neu: textOf(old.heading, neu), changed: true } : null)
   }
 
-  const shown = [...out].flatMap(([n, p]) => (p && !tainted(n) && !extra.has(n) ? [p] : []))
-  const shownNumbers = new Set(shown.map((p) => p.number))
-  return { paragraphs: [...shown, ...named().filter((n) => !shownNumbers.has(n)).map((n) => unread(n, becauseOf(n)))], reaches }
+  const shown = [...out].flatMap(([n, p]) => {
+    if (!p) return []
+    // A moved § only where nothing but its renumbering touches it, under either number.
+    if (p.from) return !edited(p.from) && !edited(p.number) && !extra.has(p.from) && !extra.has(p.number) ? [p] : []
+    return !tainted(n) && !extra.has(n) ? [p] : []
+  })
+  const shownNumbers = new Set(shown.flatMap((p) => (p.from ? [] : [p.number])))
+  const shownMoves = new Set(shown.flatMap((p) => (p.from ? [`${p.from}>${p.number}`] : [])))
+  return {
+    paragraphs: [
+      ...shown,
+      ...named().filter((n) => !shownNumbers.has(n) && !movedNumber(n)).map((n) => unread(n, becauseOf(n))),
+      ...renumbers.filter((m) => !shownMoves.has(`${m.from}>${m.to}`)).map(unreadMoved),
+    ],
+    reaches,
+  }
 }
 
 /**
