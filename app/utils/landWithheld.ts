@@ -120,18 +120,20 @@ const ORDER: WithheldCause[] = ['unchecked', 'standing', 'inserted', 'elided', '
  * The withheld §§ of one group by cause, in `ORDER`, each with its words.
  * `alone`: no § of the comparison is shown, so nothing is „ebenfalls" changed.
  */
-export function withheldNotes(items: readonly LandWithheld[], { alone = false } = {}): { cause: WithheldCause; ids: string[]; lead: string; text: string; pronoun: 'ihn' | 'sie' }[] {
-  const byCause = new Map<WithheldCause, string[]>()
+export function withheldNotes(items: readonly LandWithheld[], { alone = false } = {}): { cause: WithheldCause; ids: string[]; fromIds: (string | null)[]; lead: string; text: string; pronoun: 'ihn' | 'sie' }[] {
+  const byCause = new Map<WithheldCause, LandWithheld[]>()
   for (const w of items) {
     const cause: WithheldCause = w.reason ?? 'standing'
-    byCause.set(cause, [...(byCause.get(cause) ?? []), w.id])
+    byCause.set(cause, [...(byCause.get(cause) ?? []), w])
   }
   return ORDER.filter((c) => byCause.has(c)).map((cause) => {
-    const ids = byCause.get(cause)!
+    const listed = byCause.get(cause)!
+    const ids = listed.map((w) => w.id)
     const note = NOTES[cause] ?? NOTES.standing
     const lead = alone ? note.lead.replace(/^Ebenfalls geändert/, 'Geändert') : note.lead
     // „Die Textgegenüberstellung des Landes zeigt ihn" — a Paragraph, an Artikel; an Anlage is „sie".
-    return { cause, ids, lead, text: ids.length === 1 ? note.one : note.many, pronoun: ids.length === 1 && cause !== 'annex' ? 'ihn' as const : 'sie' as const }
+    // `fromIds`: the number a renumbered § has in force, named „§ 13 → § 9" as the comparison shows it (26.10.2026).
+    return { cause, ids, fromIds: listed.map((w) => w.fromId ?? null), lead, text: ids.length === 1 ? note.one : note.many, pronoun: ids.length === 1 && cause !== 'annex' ? 'ihn' as const : 'sie' as const }
   })
 }
 

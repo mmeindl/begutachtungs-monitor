@@ -71,6 +71,13 @@ describe('withheldNotes — a law title (26.10.2026)', () => {
   })
 })
 
+describe('withheldNotes — a renumbered § (26.10.2026)', () => {
+  it('carries the number it has in force beside the one it gets, for „§ 13 → § 9"', () => {
+    const notes = withheldNotes([{ law: 'O', id: '§9', fromId: '§13', reason: 'unsure' }, { law: 'O', id: '§7', reason: 'unsure' }])
+    expect(notes.map((n) => [n.ids, n.fromIds])).toEqual([[['§9', '§7'], ['§13', null]]])
+  })
+})
+
 describe('reachesGroups — instructions said for their law (26.10.2026)', () => {
   it('files each instruction under its law, once, and one of no law under the only group there is', () => {
     const groups = reachesGroups([

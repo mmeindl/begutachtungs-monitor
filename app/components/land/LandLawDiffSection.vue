@@ -108,8 +108,12 @@ function reasoningOf(u: LawDiffUnit): ReasoningDiffEntry | null {
 /* The Bund's question for the same pair, word for word (`lawStationPairQuestion`). */
 const AS_LAW_STATION: Record<Exclude<LandTextStation, 'geltend'>, LawStationId> = { entwurf: 'me', rv: 'rv', ausschuss: 'ausschuss', lgbl: 'bgbl' }
 const LABEL: Record<LandTextStation, string> = { geltend: 'Geltende Fassung', entwurf: 'Entwurf', rv: 'Regierungsvorlage', ausschuss: 'Ausschussfassung', lgbl: 'Kundmachung' }
-/* „(im Entwurf Z 6)" — where the earlier text numbered the unit otherwise. */
+/* „im Entwurf" — where the earlier text has a law the later one does not. */
 const IN_FROM: Record<LandTextStation, string> = { geltend: 'in der geltenden Fassung', entwurf: 'im Entwurf', rv: 'in der Regierungsvorlage', ausschuss: 'in der Ausschussfassung', lgbl: 'in der Kundmachung' }
+/* A unit the later text numbers otherwise: „§ 13 → § 9", for every pair of
+   texts this section compares (26.10.2026) — the federal Beilage's form
+   (`TextComparisonSection`), which replaced „(in der geltenden Fassung § 13)". */
+const movedFrom = (u: LawDiffUnit) => (u.fromId && u.fromId !== u.id ? displayId(u.fromId) : null)
 
 /* Each comparison's anchor, which the bar and inbound links use. Two
    comparisons end at the Kundmachung on a Salzburg page — the Landtag's step
@@ -344,7 +348,7 @@ const hasUnits = computed(() => units.value.length > 0)
               </summary>
               <div class="space-y-3 px-4 pb-3 pl-10 text-sm leading-relaxed text-ink-secondary">
                 <p v-for="u in b.units" :key="diffUnitKey(u.unit)" class="hyphens-auto">
-                  <span class="font-medium text-ink">{{ displayId(u.unit.id) }}</span>
+                  <span class="font-medium text-ink"><template v-if="movedFrom(u.unit)">{{ movedFrom(u.unit) }}<span aria-hidden="true">&nbsp;→ </span><span class="sr-only"> wird zu </span></template>{{ displayId(u.unit.id) }}</span>
                   <span v-if="u.label" class="font-medium text-ink"> {{ u.label }}</span>
                   <span> — {{ u.unit.toText }}</span>
                 </p>
@@ -352,10 +356,10 @@ const hasUnits = computed(() => units.value.length > 0)
             </details>
             <div v-else class="border-b border-hairline px-4 py-3 last:border-b-0">
               <p class="mb-1 flex flex-wrap items-baseline gap-x-2 gap-y-1 text-sm">
-                <span class="font-medium text-ink">
-                  {{ displayId(b.unit.id) }}
-                  <span v-if="b.unit.fromId && b.unit.fromId !== b.unit.id" class="font-normal text-ink-muted">({{ IN_FROM[from] }} {{ displayId(b.unit.fromId) }})</span>
-                </span>
+                <!-- A § the later text numbers otherwise says so where its number
+                     stands, as the Bund's Beilage does: the arrow is for the eye,
+                     a screen reader hears „wird zu". -->
+                <span class="font-medium text-ink"><template v-if="movedFrom(b.unit)">{{ movedFrom(b.unit) }}<span aria-hidden="true">&nbsp;→ </span><span class="sr-only"> wird zu </span></template>{{ displayId(b.unit.id) }}</span>
                 <span v-if="b.label" class="min-w-0 text-ink-secondary">{{ b.label }}</span>
               </p>
               <!-- The Land's reasoning, where the question arises: under the

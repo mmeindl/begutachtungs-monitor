@@ -23,16 +23,13 @@ const props = defineProps<{
 const notes = computed(() => withheldNotes(props.items, { alone: props.alone }))
 const reaching = reachesNote()
 
-/* „§ 3, § 7 und § 12" */
-const listDe = (ids: readonly string[]) => {
-  const shown = ids.map(displayId)
-  return shown.length > 1 ? `${shown.slice(0, -1).join(', ')} und ${shown.at(-1)}` : shown[0] ?? ''
-}
+/* „§ 3, § 7 und § 12": the joint before the k-th of n. */
+const joint = (k: number, n: number) => (k === 0 ? '' : k === n - 1 ? ' und ' : ', ')
 </script>
 
 <template>
   <p v-for="n in notes" :key="n.cause" class="border-b border-hairline px-4 py-2.5 text-sm text-ink-secondary">
-    {{ n.lead }} {{ listDe(n.ids) }}. <template v-if="n.text">{{ n.text }}. </template>
+    {{ n.lead }} <template v-for="(id, k) in n.ids" :key="k">{{ joint(k, n.ids.length) }}<!-- A renumbered § as the comparison names it, „§ 13 → § 9" (26.10.2026). --><template v-if="n.fromIds[k]">{{ displayId(n.fromIds[k]!) }}<span aria-hidden="true">&nbsp;→ </span><span class="sr-only"> wird zu </span></template>{{ displayId(id) }}</template>. <template v-if="n.text">{{ n.text }}. </template>
     <template v-if="documentUrl">Die <ExternalLink :href="documentUrl" class="link-inline">Textgegenüberstellung des Landes</ExternalLink> zeigt {{ n.pronoun }}.</template>
     <template v-else>Die Textgegenüberstellung des Landes zeigt {{ n.pronoun }}.</template>
   </p>
