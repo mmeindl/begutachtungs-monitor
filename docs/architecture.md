@@ -639,6 +639,60 @@ niemand mehr fährt. Drittens zöge jeder Entwurf jeden § jedes geänderten
 Gesetzes nächtlich aus dem RIS, für eine Schicht, die im Median an 12 % der
 Paragraphen eines Entwurfs überhaupt existiert (§12.12a).
 
+**Was den Heap füllt (26.10.2026).** Gemessen am Produktionsbuild (Node
+22.16, `--max-old-space-size=384`) mit der Anfragefolge des Deploys —
+Prewarm, `prewarm-pages.sh`, jeder offene Entwurf des Bundes, ohne
+Gegenstand und der Länder, dazu die zwei schwersten Länderentwürfe —, jede
+Antwort von außen einmal aufgezeichnet und jedem Build mit ihrer Latenz
+vorgespielt: gleiche Eingaben für jeden Stand, und kein Upstream zweimal
+belastet. Lebend nach voller Sammlung 230,6 MB, davon die zwei LRU-Speicher
+164,7 MB (71 %): `cache` 110,4 MB für 60,5 gezählte, `derived` 54,3 für
+29,7. Fast jeder große Eintrag ist eine Zeichenkette mit „“ oder –, und V8
+hält eine solche mit zwei Bytes je Zeichen: 1,84 bzw. 1,86 Heap-Byte je
+gezähltem Byte. Die Schätzung „bis zum Doppelten" im Kommentar der
+`nuxt.config.ts` stimmte; der Plan um sie nicht — ~207 MB Speicher und ~66
+MB App ließen unter 384 MB zu wenig Raum für die Spitzen einer Anfrage. Und
+abgelaufene Einträge blieben: Nitro reicht `maxAge` als `ttl` an jeden
+Schreibzugriff, und der Treiber überging es.
+
+Die Spitze am Ende, die die Messung vom selben Morgen dem Ausklingen
+zuschrieb, gehört dem schweren Vergleich (Oö. 2025-16094, +60–80 MB auf
+285 MB lebend): Die Zeitachse war um die 86–89 s versetzt, die der Server
+bis zum ersten `curl /` gebraucht hatte. Nach der letzten Antwort läuft
+nichts mehr.
+
+Seither, ohne dass sich eine Antwort ändert:
+
+- ein eigener Treiber (`server/utils/cache/memoryDriver.ts`), der einen
+  Wert als seine UTF-8-Bytes in einer Ein-Byte-Zeichenkette hält, genau
+  das zählt und `ttl` beachtet — die Budgets von 64 + 48 MB meinen jetzt,
+  was sie sagen;
+- ein Index der RIS-Datensätze neben dem Korpus (`getRisBegutRecord`):
+  eine Entwurfsseite parst nicht mehr das ganze 10-MB-Korpus, um einen
+  Datensatz zu finden; er antwortet nur, solange der Cache das Korpus noch
+  hält, aus dem er gebaut ist (erste Seite 141 → 120 ms, jede weitere
+  29 → 5 ms);
+- die Kundmachungs-Karten der Länder entscheiden nacheinander, über alle
+  Builds hinweg ein Slot (`laender/verdicts.ts`);
+- ein PDF der Erläuterungen wird beendet, nicht nur aufgeräumt
+  (`texts/styledPages.ts`).
+
+Höchste Spitze der Folge 307 → 217 MB, lebend am Ende 227 → 137 MB — gemessen auf dem Stand der Speicheränderungen allein, vor der Integration der Leser-Änderungen desselben Tages (§12.12c, §12.13, §12.63); 157
+Antworten byte-gleich bis auf die Build-ID, `risFetchedAt` und eine live
+gezählte Stellungnahmenzahl. Nicht geändert, weil gemessen ohne Befund:
+`resolveGesetz` liest die Vorlagen weiter parallel — über 263 PDFs einer
+ganzen Salzburger Karte waren nie mehr als zwei zugleich offen.
+
+**Offen, eine Entscheidung am Server.** 384 MB Heap und dazu Code, Puffer
+und externe Zeichenketten (die gepackten Werte ab etwa 1 MB liegen
+außerhalb des Heaps) können `MemoryMax=512M` erreichen, bevor V8 an sein
+eigenes Limit stößt — das ist das Swappen vom 23.10. Empfehlung:
+`MemoryMax` und `MemorySwapMax=0` in das Drop-in, das `deploy.sh` schon
+ausliefert (in `bootstrap.sh` wäre es eine stehende Pflicht, die Unit von
+Hand nachzuziehen), und entweder `MemoryMax` auf ~600M oder den Heap auf
+~320 MB, noch ~100 MB über der neuen Spitze; danach `MemoryPeak` und
+`memory.events` nach dem nächtlichen Prewarm lesen.
+
 **EU sovereignty (hard invariant):** at runtime the application loads
 **no** third-party resources — no web fonts (system sans), no icon/script
 CDNs (icons bundled from the locally installed `@iconify-json/lucide`,
@@ -5267,6 +5321,53 @@ misst keiner von beiden. Wahrheit hat nur der BGBl-Prüfstand
 (`harness/kons.ts`): Wo Entwurf und BGBl dieselbe Anweisung tragen, ist der
 RIS-Text nach dem Inkrafttreten die Antwort.
 
+**Nachtrag am Abend (26.10.2026): Umnummerierungen, und eine Nummer für
+alle.** Vier Lücken der Engine, die die Zählung oben stehen ließ:
+
+- *Eine Ersetzung, die umnummeriert* („Der bisherige § 10 wird zu § 17 und
+  lautet", „§ 3d wird durch folgenden § 3e ersetzt"), ist eine Umbenennung
+  in einer eigenen Charge: Der neue § wird gegen den alten gehalten, wie die
+  Beilage ihn hält, statt als ganz eingefügt zu gelten. Eine Folge mehrerer
+  §§ („§§ 11 bis 13 … durch folgende §§ 18 bis 20") bleibt eine Ersetzung —
+  sie behauptet keine Nachfolge Stück für Stück. Die Überschrift bleibt, wo
+  der neue Text keine bringt.
+- *„Der bisherige § 14 wird zu § 22."* ohne „und lautet" war „kein bekanntes
+  Verb". Jetzt liest die Grammatik „wird zu", „in … umbenannt", „als …
+  bezeichnet" und ein unquotiertes „erhält die Bezeichnung" (im RIS-Korpus
+  des Prüfstands 0 → 29 Zeilen der letzten Form).
+- *Aufsteigende Ketten* („§ 8 → § 9, § 9 → § 10") scheiterten Schritt für
+  Schritt an „existiert bereits". Jetzt gelten alle Verschiebungen einer
+  Novelle zusammen, gegen den Endstand geprüft, und jede Umbenennung weiß,
+  welche Anweisung sie machte — „§ 15 (neu) lautet" trifft den neuen § 15,
+  nicht den alten, der zu § 23 wurde. E0399A69 Artikel 1: von ~15
+  „existiert bereits" auf eine Zeile.
+- *Eine Nummer, ein Muster* (`shared/utils/paragraphNumber.ts`): Engine,
+  Grammatik, Beilage-Leser, Seitenschlüssel und Begründungsüberschriften
+  lasen „§ 6.01a" als „6.01" oder „6" und „§ 365m1" als „365m" — der eine §
+  fiel auf den anderen. Jetzt liest jeder die ganze Nummer; „§ 42wird"
+  bleibt § 42, „§ 31Abs. 3" § 31. Und ein Kapitel-Paragraph findet sein
+  RIS-Dokument, das ihn ohne Punkt führt („§ 601a" für § 6.01a) — nur wo das
+  Gliederungssymbol des Dokuments es bestätigt: 707EA278 Artikel 1 zeigt 20
+  §§ statt keinen.
+
+Nebenbei: „In § 6 entfallen die Absatzbezeichnung ‚(1)' sowie Abs. 2" las
+sich als Umnummerierung von Abs. 2 ins Nichts — jetzt verweigert. Eine
+Auslassung ohne „…" („(2) bis (3)") ist für das Orakel eine Auslassung. Und
+Prüfung 2 bemängelt keinen gestrichenen Text mehr, den eine eingefügte Zeile
+desselben § wörtlich neu setzt (51/ME, „Strafbestimmung") — nur so oft, wie
+die Beilage ihn streicht und neu setzt.
+
+Gemessen über die 148 und 214 Entwürfe, zusammen mit der Beilage-Arbeit des
+Abends (§12.13): gezeigt 2.080 → 2.127 bzw. 551 → 606, „nicht gefunden" 62
+→ 21; von gezeigt zu zurückgehalten nur die zwei §§, die allein gegen ein
+Inhaltsverzeichnis bestätigt waren. Fehlerinjektion jede Klasse ≥ 95 %
+(Pools 1.006 und 1.349), BGBl-Prüfstand 108 bestätigt, 0 abweichend, eigene
+Abweichung 23 wie zuvor. Offen: Ketten unterhalb des § (ArbVG § 110 Abs. 2a,
+verweigert); Prüfung 3 lässt die Wörter einer unveränderten Zeile ihren
+eigenen Verlust entschuldigen (AC8FD757 § 3c) — auf geänderte Zeilen
+beschränkt änderte das keine Seite, der Wächterlauf dazu fehlt; 20 „fremd"
+in 707EA278 wegen gesperrt gesetzter Überschriften im PDF.
+
 ### 12.13 „Was ändert der Entwurf?" — die amtliche Gegenüberstellung auf der Seite
 
 Geliefert 2026-09-08, und zwar aus dem amtlichen Anhang, nicht aus der
@@ -7954,6 +8055,45 @@ sie vergleicht den geltenden Text. GP XXVIII: 61 umnummerierte §§ in 19
 Entwürfen, 9 §§ mehr in der Lesefassung, jeder von Hand gegen die Beilage
 gelesen; die verlorenen Bestätigungen waren alle ein unumbenannter § X, der
 gegen den alten § X der Beilage bestätigt worden war.
+
+**Zweiter Nachtrag 26.10.2026: was „nicht gefunden" noch hieß.** Von den 62
+„nicht gefunden" (§12.12c) waren 41 unser Lesen der PDF-Beilage
+(`annex/annexPdf.ts`), in sechs Klassen:
+
+- *Das Inhaltsverzeichnis als Paragraphen* (24): Unter „Inhaltsverzeichnis"
+  öffnete jede Marke eine Einheit. Jetzt fällt das Verzeichnis als Ganzes,
+  wie der Tabellenpfad `<inhaltsvz>` fallen lässt, bis zur ersten
+  Bestimmung; die Überschrift darüber (der Name des Gesetzes) trägt weiter.
+- *Die Überschrift über den Rand getragen* (10): Eine zentrierte, fast
+  spaltenbreite Überschrift galt als Fließtext, Absatz- und „(Anm.: …)"-
+  Zeilen wanderten nach unten, und „§ 23. bis § 23a (2)" legte die Änderung
+  unter § 23 ab. Die Überschrift gehört dem § darunter, der Rest dem darüber.
+- *Kein Dokumentanfang* (1): Ein Dokument beginnt bei einem Titel, der auf
+  Text folgt — nicht bei einem Kopf, den jede Seite trägt.
+- *Marken* (3): Der Zitatschwanz kannte Absatz, Satz, Ziffer und „Teil N
+  und" nicht, und eine Anlage ohne Nummer öffnete nie eine Einheit. Die
+  Wasserstraßen-Verkehrsordnung druckt alle 191 Kapitelnummern ohne Punkt;
+  „§ 3.22 und 3.25, führen:" am Zeilenanfang ist am Kleinbuchstaben dahinter
+  als Zitat zu erkennen, nicht am fehlenden Punkt.
+- *Eine Anmerkung als Änderung* (1): „editorial" entschied der Wortvergleich
+  allein; jetzt auch die Notation, und „[Kommentar: …]" wird nicht gegen das
+  RIS gehalten.
+- *Das Satzende vor dem Anführungszeichen* (2): Nach dem Punkt galten „“ ” ’
+  « ] nicht als Satzende, und die letzte Zeile eines § wanderte weiter.
+
+Bleiben 21: sieben wahre Aussagen; zehn Anlagen der Lehrberufsliste in fünf
+Lehrberufs-Verordnungen, deren Beilage die Gegenüberstellung eines anderen
+Rechtsakts mitdruckt, ohne es zu sagen (wahr, eine genauere Aussage bräuchte
+die Verknüpfung der Datensätze); vier Eigenheiten einzelner Dokumente. Von
+gezeigt zu zurückgehalten: 30/ME BörseG § 176 und ZaDiG § 101 — der Entwurf
+ändert sie nicht, er fügt §§ 176a und 101a dahinter ein, und bestätigt waren
+sie nur gegen Einträge des Inhaltsverzeichnisses. Tor der Beilage: XML
+unverändert; PDF 363 Urteile bewegt, keines zu „zurückgehalten" — 305
+ungeprüfte Einheiten des Verzeichnisses entfallen, 15 zurückgehaltene werden
+bestätigt, 18 ungeprüft. Der wöchentliche Drift-Alarm meldet damit 36
+PDF-Entwürfe; die Grundlinie kommt aus dem Artefakt des ersten Laufs nach
+dem Push. Salzburg liest seine Beilage durch denselben Leser: 89 §§ mehr
+gezeigt, 23 von gezeigt zu genannt (§12.63).
 
 ### 12.14 Stellungnahmen zur Regierungsvorlage, der Dokument-Link und der Spaltenkopf
 
@@ -13799,6 +13939,62 @@ Dabei behoben: „TEXTGEGENÜBERSTELLUNG" in Großbuchstaben beendete nichts —
 der letzte Eintrag von w-2026006 lief in die Tabelle der
 Textgegenüberstellung weiter. Ohne Gewichte gelesen ändert das über die 545
 Dokumente genau dieses eine.
+
+### 12.63 Länder: jede geänderte Stelle gezeigt oder genannt — Umnummerierungen wie beim Bund (26.10.2026)
+
+**Der Morgen** (339ee18, bcae6c5): Über alle 364 Länderentwürfe mit
+Textgegenüberstellung verschwand kein § von der Seite; 176 §§ mehr gezeigt,
+171 neu mit Grund genannt, 368 Gründe geschärft. Darunter Kärntner
+Abschnitte, die eine Novelle als Ganzes ersetzt (`division`),
+Landesverfassungen in Artikeln, Anweisungen für ein ganzes Gesetz (als Zitat
+gesagt, `reaches`), Salzburger Anhänge, nicht gelesene Seiten (in den Worten
+des Bundes), Wiens jüngstes Dokument statt des ältesten und Oö. 2021-16029,
+das als einziges von 73 oberösterreichischen Dokumenten zweispaltig ist.
+
+**Der Abend:**
+
+- *Kärnten:* Lücken der Nummernfolge 20 → 12. Neun gesuchte Nummern standen
+  im Dokument — nach der nächsten gedruckt, unter einer früheren Nummer,
+  ohne Punkt, an die Zeile darüber geklebt; elf stehen nirgends und eine in
+  der linken Spalte, und für sie bleibt der Satz. Ein Anweisungskopf ohne
+  Doppelpunkt endet vor seinem Paragraphen (32262 nennt § 87 eines anderen
+  Gesetzes nicht mehr), ein Artikel einer Novelle im Titel ist ein Eintrag
+  der Gesetzesliste (842: §§ 1, 3, 4 gezeigt), ein ganz aufgehobenes Gesetz
+  wird gesagt (1082), ein neu erlassenes bekommt eine eigene Gruppe.
+- *Oberösterreich:* Eine geänderte Gliederungsüberschrift steht beim §
+  darunter, wie der Bund sie gibt — nicht gegen das RIS geprüft, weil RIS sie
+  über den § setzt, der den Abschnitt öffnet; ein geänderter Gesetzestitel
+  heißt „Titel" und ist genannt. Ein Trennstrich am Zeilenende geht mit
+  seinem Wort. In Kärnten und Tirol sind Überschrifts- und Titelanweisungen,
+  die verschwanden, zitiert oder genannt.
+- *Umnummerierungen* (entschieden 26.10.2026: „alt → neu, wie beim Bund"):
+  Ein umnummerierter § ist ein Eintrag, mit seinem Ursprung verglichen, unter
+  der alten Nummer gegen das RIS geprüft, und heißt „§ 13 → § 9" — der Pfeil
+  `aria-hidden`, ein Screenreader hört „wird zu" — für jedes Textpaar der
+  Länderseite; der geltende § unter einer Nummer, auf die ein anderer
+  umzieht, heißt „(alt)". Die Zuordnung kommt aus dem Dokument (Oö. „§ 10§
+  14", Tirol „§ 72 74", die Kärntner Anweisung) oder aus dem Entwurfstext
+  (14 von 27 in Salzburg und Oö. 2021-16029); wo keine lesbar ist,
+  vergleicht die Seite nach Nummer und sagt über der Liste, dass die Novelle
+  umnummeriert. Oö. 2021-16019: 22 von 30 Verschiebungen stehen jetzt
+  „unverändert", wo ganze Texte als geändert standen. Der Gesetzesvergleich
+  des Bundes (ME → RV) schreibt eine Umnummerierung weiter „(im Entwurf § 13)"
+  — offen, ob angleichen.
+- *Ohne Wörter keine Ähnlichkeit* (`diff/lawDiff.ts`): Eine Einheit aus
+  lauter „…" paarte über Nummern hinweg (16019 § 63 „unverändert (in der
+  geltenden Fassung § 57a)"); jetzt nur nach Überschrift oder Nummer. Beim
+  Bund geprüft: 98 Vergleiche ME → RV und 652 spätere Stationen, keine
+  Einheit ändert sich.
+
+Je für sich gemessen über alle 364 Entwürfe: die Länderarbeit des Abends 66
+§§ neu gezeigt, 15 neu genannt, 115 Gründe geschärft, kein gezeigter § nur
+noch genannt außer Oö. 2021-16029 §§ 21–23, die jetzt als 21 → 25, 22 → 26
+und 23 → 27 gezeigt sind; die Leser-Korrekturen des Bundes (§12.13) in
+Salzburg 89 §§ mehr gezeigt, 23 von gezeigt zu genannt — Salzburg druckt
+Auslassungen ohne „…" („(3) bis (7)"), und die Länderprüfung liest sie noch
+nicht als Auslassung. Die Korrektur liegt auf `fu/bare-elision`: zusammen
+210 §§ neu gezeigt, von denen erst die meisten zu lesen sind (23522 § 25
+paart die § 25 zweier Gesetze).
 
 ## 13. Open questions
 
