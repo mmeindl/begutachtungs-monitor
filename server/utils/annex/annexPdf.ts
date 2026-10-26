@@ -553,8 +553,18 @@ const UNIT_RE = new RegExp(String.raw`^(?:\[\s*(?:\.\.\.|…)\s*\]\s*|(?:\.\.\.|
  * 2009/72/EG", „Art. 29a Bilanz-Richtlinie", „der Statusverordnung") or a
  * treaty („Art. 8 EMRK") is a citation. „Art. 8 EMRK" alone had filed a
  * § of the Asylgesetz under an Artikel the law does not have.
+ *
+ * **Written out, and by its part, a citation reads the same (26.10.2026)**:
+ * „Artikel 16 Absatz 1 der Richtlinie 89/391/EWG" and „Anhang I Teil 2 und 3
+ * der Verordnung (EG) Nr 1272/2008" each opened a unit of their own in the
+ * Salzburger Landarbeitsordnung's Gegenüberstellung (Land Salzburg 18121),
+ * where the Länder reader read it through here. „Absatz", „Satz", „Ziffer"
+ * and „Teil 2 und …" join the subdivisions. A Ziffer is cited with its
+ * number, „Z 3": „Z u s ä t z l i c h e" is a heading set letter by letter
+ * (the Wasserstraßen-Verkehrsordnung's „§ 3.14 Z u s ä t z l i c h e
+ * Bezeichnung …", RIS 707EA278).
  */
-const CITATION_TAIL_RE = /^\s*(?:Abs\.|Z\s|Buchstabe|Unterabsatz|Nr\.|Nummer|,|(?!zu\b)[a-zäöüß]|[\wÄÖÜäöüß-]*(?:[Rr]ichtlinie|[Vv]erordnung|-VO)\b|\((?:EU|EG|EWG)\)|(?:EMRK|B-VG|AEUV|EUV|GRC|DSGVO|StGG)\b)/
+const CITATION_TAIL_RE = /^\s*(?:Abs(?:\.|atz\b)|Satz\b|Z\s+\d|Ziffer\b|Buchstabe|Unterabsatz|Teil\s+\d+\s+(?:und|bis|der|des)\b|Nr\.|Nummer|,|(?!zu\b)[a-zäöüß]|[\wÄÖÜäöüß-]*(?:[Rr]ichtlinie|[Vv]erordnung|-VO)\b|\((?:EU|EG|EWG)\)|(?:EMRK|B-VG|AEUV|EUV|GRC|DSGVO|StGG)\b)/
 /** "Artikel 3" with nothing else on the line. */
 const BARE_ARTICLE_RE = /^Artikel\s+(?:[Xx]?\d+[a-z]?|[IVXL]+)$/
 /** A qualifier that stands where the law's name would, and is not one. */
@@ -859,6 +869,39 @@ function isContentsEntry(gld: string | null, text: string): boolean {
 }
 
 /**
+ * A schedule designated without a number, on a line of its own: „Anlage" — a
+ * Verordnung's only one — or „Anlage A". `UNIT_RE` asks for a numeral, so
+ * neither opened a unit, and the schedule's table ran on as text of the last
+ * § before it: the Arzneimittel-Abgrenzungsverordnung's (RIS 6AAAFEB3) under
+ * § 7, the AEV pflanzliche Nahrungs- und Futtermittel's Anlage A (RIS
+ * 0F9A8F06) under § 6 — each a § „changing" by a table it does not hold.
+ */
+const SCHEDULE_ALONE_RE = /^((?:Anlage|Anhang)(?:\s+[A-Z])?)$/
+
+/**
+ * The line's unit marker, or null — where it has none, and where what reads
+ * like one is a citation: "§ 5." can only be a designation, while "Art. 92",
+ * "Anlage 4" and "Anhang I" are as often citations, and there the text after
+ * the number decides.
+ *
+ * **A § designation that carries no full stop decides by its tail as well**
+ * (26.10.2026). Only a Verordnung that numbers its §§ by Kapitel writes one
+ * („§ 3.20 Bezeichnung …", `UNIT_RE`), and there a line may begin with a
+ * citation the same way — the Wasserstraßen-Verkehrsordnung's „§ 3.22 und
+ * 3.25, führen:", the second line of a Ziffer of § 3.20, opened a § 3.22 of
+ * its own (RIS 707EA278).
+ */
+function markerOf(text: string): RegExpExecArray | null {
+  const marker = UNIT_RE.exec(text) ?? SCHEDULE_ALONE_RE.exec(text.trim())
+  if (marker === null) return null
+  const paragraph = marker[1]!.startsWith('§')
+  if (paragraph && marker[1]!.endsWith('.')) return marker
+  // The letter a designation may end in („§ 6.01a") is the number's, not the tail's.
+  const tail = text.slice(marker[0].length).replace(paragraph ? /^[a-z]+(?=\s|$)/ : /^(?!)/, '')
+  return CITATION_TAIL_RE.test(tail) ? null : marker
+}
+
+/**
  * One column's lines → its units.
  *
  * The two columns of an annex do **not** advance together. Where the draft
@@ -882,11 +925,8 @@ function unitsOfColumn(lines: readonly { text: string; wrapped: boolean; context
 
   for (const line of lines) {
     if (!line.text) continue
-    const marker = UNIT_RE.exec(line.text)
-    // "§ 5." can only be a designation. "Art. 92", "Anlage 4" and "Anhang I"
-    // are as often citations, and there the text after the number decides.
-    const cited = marker !== null && !marker[1]!.startsWith('§') && CITATION_TAIL_RE.test(line.text.slice(marker[0].length))
-    if (!marker || cited) {
+    const marker = markerOf(line.text)
+    if (!marker) {
       current.parts.push(line)
       continue
     }
@@ -940,6 +980,9 @@ function unitsOfColumn(lines: readonly { text: string; wrapped: boolean; context
 const MARKER_NUMBER_RE = new RegExp(String.raw`(${PARAGRAPH_NUMBER}|[IVXL]+)`)
 
 function idOfMarker(gld: string): string | null {
+  // „Anlage", „Anlage A" (`SCHEDULE_ALONE_RE`): the schedule without a number.
+  const alone = SCHEDULE_ALONE_RE.exec(gld)
+  if (alone) return `anlage:${/\s([A-Z])$/.exec(gld)?.[1] ?? ''}`
   // A law numbered in decimals ("§ 1.08") keeps the whole number: cut at the
   // first period, every one of its §§ collapses onto "1".
   const number = MARKER_NUMBER_RE.exec(gld)?.[1]

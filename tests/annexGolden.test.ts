@@ -202,13 +202,18 @@ describe('the PDF annex of the UWG-Novelle, whose pages are turned', () => {
   const pages = JSON.parse(fixture('annex-uwg-pages.json')) as AnnexPage[]
   const parsed = parseAnnexPdf(pages, UWG_DRAFT)
 
-  it('reads seven provisions out of nine turned pages', () => {
+  it('reads seven provisions and the Anhang out of nine turned pages', () => {
     // Before the page frame was uprighted this annex produced two rows of
     // shuffled words shown as new law ("mit Zeit eine nicht oder bzw. Bilder,
     // der Etiketten, Recht Text, Marken", 2026-09-10).
-    expect(parsed.rows).toHaveLength(7)
-    expect(parsed.rows.map((r) => r.gld)).toEqual(['§ 1.', '§ 1a.', '§ 2.', '§ 7a.', '§ 33a.', '§ 44.', '§ 45.'])
-    expect(counted(parsed.rows)).toEqual({ article: 0, unchanged: 0, changed: 6, inserted: 1, removed: 0, elided: 0 })
+    //
+    // The Anhang is designated without a number, and until 26.10.2026 no unit
+    // opened there: its list of unfair practices — the new Z 2a and 31a among
+    // them — stood as text of § 45.
+    expect(parsed.rows).toHaveLength(8)
+    expect(parsed.rows.map((r) => r.gld)).toEqual(['§ 1.', '§ 1a.', '§ 2.', '§ 7a.', '§ 33a.', '§ 44.', '§ 45.', 'Anhang'])
+    expect(counted(parsed.rows)).toEqual({ article: 0, unchanged: 0, changed: 7, inserted: 1, removed: 0, elided: 0 })
+    expect(parsed.rows.find((r) => r.gld === '§ 45.')!.current).not.toContain('Geschäftspraktiken, die unter allen Umständen')
     invariants(parsed.rows)
   })
 

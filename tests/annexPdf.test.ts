@@ -543,10 +543,24 @@ describe('what looks like a provision but is not', () => {
     'Art. 6 oder Art. 7 Abs. 1 bis 11 der Verordnung.',
     'Anhang XVI gelten ausschließlich die Bestimmungen dieses Abschnittes.',
     'Anhang XVI, oder bei Verkehrsdiensten.',
+    // Salzburg's Landarbeitsordnung (sbg-18121) names the part in full words.
+    'Anhang I Teil 2 und 3 der Verordnung (EG) Nr 1272/2008 zu verstehen.',
   ])('reads „%s" on a wrapped line as a citation', (text) => {
     const rows = parse([page([
       { y: 700, left: '§ 5. (1) Die Behörde entscheidet nach', right: '§ 5. (1) Das Gericht entscheidet nach' },
       { y: 686, left: text, right: text },
+    ])])
+    expect(rows.map((r) => r.gld)).toEqual(['§ 5.'])
+  })
+
+  // And the Absatz in full words, at the head of a line that ran to the edge
+  // of its column — no heading, so read as a provision of its own (sbg-18121).
+  it('reads „Artikel 16 Absatz 1 …" at the head of a wrapped line as a citation', () => {
+    const rows = parse([pageOf([
+      ...page([{ y: 700, left: '§ 5. (1) Es gelten die Pflichten nach', right: '§ 5. (1) Es gelten die Pflichten nach' }]).items,
+      wide(LEFT_X, 686, 'Artikel 16 Absatz 1 der Richtlinie 89/391/EWG des Rates über die', 356),
+      wide(RIGHT_X, 686, 'Artikel 16 Absatz 1 der Richtlinie 89/391/EWG des Rates über die', 366),
+      ...page([{ y: 672, left: 'Durchführung von Maßnahmen.', right: 'Durchführung von Maßnahmen.' }]).items,
     ])])
     expect(rows.map((r) => r.gld)).toEqual(['§ 5.'])
   })
@@ -576,6 +590,19 @@ describe('what looks like a provision but is not', () => {
       { y: 660, left: '§ 6.01a Alte Fassung der Ausnahme.', right: '§ 6.01a Neue Fassung der Ausnahme.' },
     ])])
     expect(rows.map((r) => r.gld)).toEqual(['§ 6.01', '§ 6.01a'])
+  })
+
+  // The Wasserstraßen-Verkehrsordnung (RIS 707EA278) prints its designations
+  // without a closing full stop, so a citation at the head of a line has the
+  // same shape: „§ 3.22 und 3.25, führen:" opened a § 3.22 of its own.
+  it('reads a decimal § with a lowercase continuation as a citation', () => {
+    const rows = parse([page([
+      { y: 700, left: '§ 3.14 Alte Bezeichnung der Fahrzeuge, die nach', right: '§ 3.14 Neue Bezeichnung der Fahrzeuge, die nach' },
+      { y: 686, left: '§ 3.22 und 3.25, führen:', right: '§ 3.22 und 3.25, führen:' },
+      { y: 672, left: '§ 3.15 Alte Fassung.', right: '§ 3.15 Neue Fassung.' },
+    ])])
+    expect(rows.map((r) => r.gld)).toEqual(['§ 3.14', '§ 3.15'])
+    expect(rows[0]!.current).toContain('§ 3.22 und 3.25, führen:')
   })
 })
 
