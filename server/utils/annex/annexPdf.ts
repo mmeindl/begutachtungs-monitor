@@ -574,8 +574,15 @@ function isCentred(start: number, end: number, margins: { start: number | null; 
   return before >= CENTRE_MARGIN && after >= CENTRE_MARGIN - CENTRE_TOLERANCE && Math.abs(before - after) <= Math.max(CENTRE_TOLERANCE, CENTRE_TOLERANCE_SHARE * (before + after))
 }
 
+/** Does this line start where the column's body text does, as a justified line does (`isCentred`)? */
+function isFlush(start: number, margins: { start: number | null }): boolean {
+  return margins.start !== null && Number.isFinite(start) && start - margins.start < CENTRE_MARGIN
+}
+
 const PAGE_NUMBER_RE = /^\d+\s+von\s+\d+$/i
 const TITLE_RE = /^textgeg(?:en)?b?ü?berstellung$/i
+/** The annex's title at the head of a heading, „Textgegenüberstellung: Novelle der …". */
+const ANNEX_TITLE_RE = /^textgeg(?:en)?b?ü?berstellung\b/i
 /**
  * A row boundary is a paragraph *opening*: a single § with a number and the
  * full stop that follows it ("§ 6.", "§ 5a."). The plural "§§" and a bare
@@ -1024,6 +1031,8 @@ interface ColumnLine {
   wrapped: boolean
   /** The line keeps the same margin on both sides of its column (`isCentred`). */
   centred?: boolean
+  /** The line starts where the column's body text does (`isFlush`). */
+  flush?: boolean
   /** The headings printed across both columns above this line (`parseAnnexPdf`). */
   context?: string
   /** The first line of a document of its own inside the annex (`startsDocument`): nothing above it is its heading. */
@@ -1063,8 +1072,198 @@ function markerOf(text: string): RegExpExecArray | null {
   return CITATION_TAIL_RE.test(tail) ? null : marker
 }
 
+/**
+ * „Inhaltsverzeichnis" — on a line of its own that does not start where the
+ * column's body text does (a word of running text that wrapped would), or
+ * printed across both columns, so that it stands over the next line as its
+ * `context`. Not „centred": 30/ME XXVIII sets the Zahlungsdienstegesetz's
+ * contents as a table of their own, and the heading stands over that table.
+ */
+const CONTENTS_HEADING_RE = /^Inhaltsverzeichnis:?$/
+const CONTENTS_CONTEXT_RE = /(?:^|\s)Inhaltsverzeichnis:?$/
+/**
+ * A line of a table of contents that names a unit: a designation at its
+ * head, with or without its full stop — an entry the draft adds is often
+ * printed without („§ 20a ESAP-Sammelstelle", 30/ME XXVIII).
+ */
+const CONTENTS_ENTRY_RE = /^(?:\[\s*(?:\.\.\.|…)\s*\]\s*|(?:\.\.\.|…)\s*)*(?:§|(?:Anlage|Anhang)\s+[\dIVXL])/
 /** „…", „...", „[...]" on a line of their own — and RIS's „(Anm.: § 129a.)" where an entry was. */
 const OMISSION_LINE_RE = /^(?:(?:\[\s*)?(?:\.{3,}|…+)(?:\s*\])?|\(Anm\.?\s*:.*\))$/
+/**
+ * A division in a table of contents, „2. Teil – Einsicht in das
+ * Kontenregister" and „4. Kapitel" among them (97/ME XXVIII, RIS 707EA278):
+ * a heading, not a Ziffer of a provision.
+ */
+const CONTENTS_DIVISION_RE = /^(?:\d+[a-z]?|[IVXL]+)\.\s*(?:Teil|Abschnitt|Unterabschnitt|Hauptstück|Kapitel|Titel)\b/i
+
+/** A division's line, as the provisions or a table of contents print it. */
+function isDivision(text: string): boolean {
+  const t = text.trim()
+  return DIVISION_LINE_RE.test(t) || CONTENTS_DIVISION_RE.test(t)
+}
+/**
+ * A table-of-contents entry is a designation and a title of a line or two:
+ * this many characters of its own and it is a provision. The divisions listed
+ * between two entries are not its own, and they are not always centred where
+ * the column's text is — 30/ME XXVIII sets the Zahlungsdienstegesetz's
+ * contents as a table of their own, shifted to the right.
+ */
+const CONTENTS_ENTRY_CHARS = 300
+
+/**
+ * Does the unit whose marker stands on line `at` hold a provision, rather than
+ * an entry of a table of contents?
+ *
+ * An entry is a designation, a title, perhaps the omission „…" — and nothing
+ * else. A provision opens with its Absatz („§ 3. (1) …"), numbers a list
+ * („1. Beim Stillliegen …": the Wasserstraßen-Verkehrsordnung's §§ have no
+ * Absätze), runs longer than an entry does, or ends a sentence. Division
+ * headings and centred lines are the next unit's and say nothing here.
+ */
+function opensProvision(lines: readonly ColumnLine[], at: number): boolean {
+  const first = lines[at]!.text
+  const marker = markerOf(first)
+  if (marker === null) return false
+  const tail = first.slice(marker[0].length).trim()
+  if (/^\(\d/.test(tail)) return true
+  let chars = tail.length
+  let last = tail
+  for (let k = at + 1; k < lines.length; k++) {
+    const t = lines[k]!.text.trim()
+    if (!t) continue
+    if (markerOf(t) || CONTENTS_ENTRY_RE.test(t) || RIS_BODY_START_RE.test(t)) break
+    // The omission „…" between entries is the annex's notation, no text.
+    if (DIVISION_LINE_RE.test(t) || CONTENTS_DIVISION_RE.test(t) || lines[k]!.centred || OMISSION_LINE_RE.test(t)) continue
+    // An Absatz or a Ziffer of its own. Not RIS's note „(Anm.: § 3
+    // aufgehoben …)", which a table of contents prints where an entry was.
+    if (/^\(\d/.test(t) || /^\d+[a-z]*\.\s/.test(t)) return true
+    chars += t.length
+    last = t
+  }
+  return chars > CONTENTS_ENTRY_CHARS || /[^.…]\.[\]"'»«›‹)“”’‘]*$/.test(last)
+}
+
+/**
+ * The reprinted table of contents in one column: its lines, as indices, and
+ * how many entries they name.
+ *
+ * **Not a provision, and no § of the comparison (26.10.2026).** Annexes reprint
+ * the law's Inhaltsverzeichnis at the head of a law, and its entries open
+ * with the very markers the provisions do. Read as provisions, each entry
+ * became a § block of its own wherever the annex prints no body for that §:
+ * „§ 75a ESAP-Sammelstelle § 76. bis § 79. …" as § 76 of the Börsegesetz,
+ * the Pfandbriefgesetz's „4. Hauptstück" heading as a change of its § 27,
+ * „Zugangsportal" — the end of a wrapped entry — as text the Pfandbriefgesetz's
+ * § 30 gains, and the whole table of contents of the Bäderhygieneverordnung
+ * (RIS E9F4C208) as its Anlage 1, which pushed the real Anlage 1 out of the
+ * comparison. Each said „Anweisung nicht gefunden" for a change no instruction
+ * makes: 30/ME, 27/ME, 81/ME, 85/ME, 97/ME, 123/ME, 148/ME XXVIII and RIS
+ * 707EA278, 138B4B08, E9F4C208.
+ *
+ * Dropped as the table path drops it — RIS keeps the Inhaltsverzeichnis as a
+ * document of its own (`<inhaltsvz>`, `comparisonRows.ts`), and the front
+ * matter here already went the same way — and counted as `contents`. What
+ * changes in it changes in the provisions it lists: an entry the draft adds
+ * is the § the draft inserts, a renamed entry the § heading it renames.
+ *
+ * From the heading to the first provision (`opensProvision`), or to RIS's
+ * „Text", which ends the contents of a printed law. The headings printed over
+ * that first provision stay its own: the centred lines and divisions right
+ * above it, up to the last line of an entry.
+ */
+function contentsRegions(lines: readonly ColumnLine[]): [number, number][] {
+  const out: [number, number][] = []
+  for (let i = 0; i < lines.length; i++) {
+    const line = lines[i]!
+    const own = line.flush === false && CONTENTS_HEADING_RE.test(line.text.trim())
+    if (!own && !CONTENTS_CONTEXT_RE.test(line.context ?? '')) continue
+    // The heading's own line goes with it; a heading printed across both
+    // columns is no line of this one, and the line it stands over is the
+    // first entry — unless that line is already a provision.
+    if (!own && opensProvision(lines, i)) continue
+    let end = lines.length
+    for (let j = i + 1; j < lines.length; j++) {
+      const t = lines[j]!.text.trim()
+      if (!t) continue
+      if (RIS_BODY_START_RE.test(t) || (lines[j]!.flush === false && CONTENTS_HEADING_RE.test(t))) {
+        end = j
+        break
+      }
+      if (opensProvision(lines, j)) {
+        end = j
+        while (end - 1 > i) {
+          const above = lines[end - 1]!
+          const a = above.text.trim()
+          if (a && (CONTENTS_ENTRY_RE.test(a) || !(DIVISION_LINE_RE.test(a) || CONTENTS_DIVISION_RE.test(a) || above.centred))) break
+          end--
+        }
+        // Where that walk stopped short of a division, the nearest division
+        // no entry follows heads the provisions, and so does all below it,
+        // centred or not: Salzburg's S.EU-Rechtsvorschriften-Begleitgesetz
+        // (sbg-26924) sets „Industrieanlagen, Fernwärme- und Fernkältenetze;
+        // Kosten-Nutzen-Analyse" a point inside each margin, and its § 14
+        // lost the heading under „5. Abschnitt" to the contents. Only in
+        // contents with entries of their own: a table that lists divisions
+        // alone ends on one of its own — „IX. Abschnitt (§ 185):" over § 65
+        // of the Mineralrohstoffgesetz (27/ME XXVIII).
+        if (!isDivision(lines[end]?.text ?? '')) {
+          let division = -1
+          for (let k = end - 1; k > i; k--) {
+            const a = lines[k]!.text.trim()
+            if (CONTENTS_ENTRY_RE.test(a)) {
+              if (division >= 0) end = division
+              break
+            }
+            if (division < 0 && isDivision(a)) division = k
+          }
+        }
+        break
+      }
+    }
+    out.push([i, end])
+    i = end - 1
+  }
+  return out
+}
+
+/** The lines a column leaves out as table of contents, and how many entries they name. */
+interface ContentsLines {
+  lines: Set<number>
+  entries: number
+}
+
+/**
+ * Both columns' tables of contents, ending together.
+ *
+ * Each column finds its own (`contentsRegions`), and a column whose contents
+ * end on a division the draft does not touch cannot tell that division from
+ * the first heading of the provisions below — its other column can, where the
+ * draft adds an entry after it: 9/ME XXVIII's Wertpapierfirmengesetz lists
+ * „8. Abschnitt" on both sides and the new „§ 47a" on the right only, and
+ * the left gave the division to its first § as a heading the right did not
+ * have. The columns stand on the same lines, so a table of contents that
+ * starts on the same line on both sides ends on the later of the two ends.
+ */
+function contentsInBoth(left: readonly ColumnLine[], right: readonly ColumnLine[]): { left: ContentsLines; right: ContentsLines } {
+  const l = contentsRegions(left)
+  const r = contentsRegions(right)
+  for (const a of l) {
+    const b = r.find((x) => x[0] === a[0])
+    if (!b) continue
+    a[1] = b[1] = Math.max(a[1], b[1])
+  }
+  const lines = (regions: readonly [number, number][], column: readonly ColumnLine[]): ContentsLines => {
+    const out: ContentsLines = { lines: new Set(), entries: 0 }
+    for (const [from, to] of regions) {
+      for (let k = from; k < to; k++) {
+        out.lines.add(k)
+        if (CONTENTS_ENTRY_RE.test(column[k]!.text.trim())) out.entries++
+      }
+    }
+    return out
+  }
+  return { left: lines(l, left), right: lines(r, right) }
+}
 
 /**
  * One column's lines → its units.
@@ -1095,12 +1294,32 @@ const OMISSION_LINE_RE = /^(?:(?:\[\s*)?(?:\.{3,}|…+)(?:\s*\])?|\(Anm\.?\s*:.*
  * carried wrapped body text into the next § wherever a sentence lacked its
  * full stop or a citation began a line (41/ME § 49, 96/ME „§ 105.").
  */
-function unitsOfColumn(lines: readonly ColumnLine[]): ColumnUnit[] {
+function unitsOfColumn(lines: readonly ColumnLine[], contents: ContentsLines): { units: ColumnUnit[]; contents: number } {
   type Unit = { gld: string | null; context: string | null; parts: ColumnLine[]; opener: ColumnLine | null }
   const units: Unit[] = []
   let current: Unit = { gld: null, context: null, parts: [], opener: null }
+  /** The heading printed across both columns over a table of contents, for the first unit below it. */
+  let overContents: string | null = null
 
-  for (const line of lines) {
+  for (const [i, line] of lines.entries()) {
+    // A table of contents is left out (`contentsRegions`), and what stood
+    // above it is no heading of what follows it: the Langtitel of 58/ME
+    // XXVIII's Bundesvergabegesetz would otherwise reach § 2, two pages on.
+    // The heading printed across both columns over it is another matter:
+    // it heads the provisions the contents list. Salzburg's package 26924
+    // names its Landeselektrizitätsgesetz over that law's contents alone,
+    // and its §§ 47a and 77c went to the law before it (26.10.2026). Not the
+    // annex's own title, „Textgegenüberstellung: Novelle der
+    // Luftverkehrsregeln 2014" (RIS 4C25BC88): it heads no §.
+    if (contents.lines.has(i)) {
+      if (!contents.lines.has(i - 1)) {
+        if (current.gld !== null || current.parts.length > 0) units.push(current)
+        current = { gld: null, context: null, parts: [], opener: null }
+        const heading = line.context?.replace(CONTENTS_CONTEXT_RE, '').trim() ?? ''
+        overContents = heading && !ANNEX_TITLE_RE.test(heading) ? heading : null
+      }
+      continue
+    }
     // A document of its own begins here: what stood above is no heading of
     // what follows, and its front matter is front matter again.
     if (line.barrier && (current.gld !== null || current.parts.length > 0)) {
@@ -1148,7 +1367,8 @@ function unitsOfColumn(lines: readonly ColumnLine[]): ColumnUnit[] {
       carried.unshift(current.parts.pop()!)
     }
     if (current.gld !== null || current.parts.length > 0) units.push(current)
-    current = { gld: normalizeText(marker[1] ?? marker[0]), context: line.context ?? null, parts: [...carried, line], opener: line }
+    current = { gld: normalizeText(marker[1] ?? marker[0]), context: line.context ?? overContents, parts: [...carried, line], opener: line }
+    overContents = null
   }
   if (current.gld !== null || current.parts.length > 0) units.push(current)
 
@@ -1176,7 +1396,7 @@ function unitsOfColumn(lines: readonly ColumnLine[]): ColumnUnit[] {
     const seen = longest.get(unit.id)
     if (!seen || unit.text.length > seen.text.length) longest.set(unit.id, unit)
   }
-  return built.filter((u) => u.id === null || longest.get(u.id) === u)
+  return { units: built.filter((u) => u.id === null || longest.get(u.id) === u), contents: contents.entries }
 }
 
 /** „§ 6.01a" whole (`PARAGRAPH_NUMBER`), or a roman numeral. */
@@ -1550,10 +1770,15 @@ export function parseAnnexPdf(pages: readonly AnnexPage[], articles: readonly Dr
     if (section.opened && section.article) {
       rows.push({ kind: 'article', law, heading: headingOf(section.article), gld: null, para: null, paraAfter: null, current: '', proposed: '', change: 'unchanged', elided: false, segments: null, editorial: false, elisionRange: false })
     }
-    const leftLines = section.lines.map((l) => ({ text: l.left, wrapped: reachedEdge(l.leftEnd, edges.left), centred: isCentred(l.leftStart, l.leftEnd, margins.left), context: contextFor.get(l), barrier: startsPart.has(l) }))
-    const rightLines = section.lines.map((l) => ({ text: l.right, wrapped: reachedEdge(l.rightEnd, edges.right), centred: isCentred(l.rightStart, l.rightEnd, margins.right), context: contextFor.get(l), barrier: startsPart.has(l) }))
-    const left = unitsOfColumn(leftLines)
-    const right = unitsOfColumn(rightLines)
+    const leftLines = section.lines.map((l) => ({ text: l.left, wrapped: reachedEdge(l.leftEnd, edges.left), centred: isCentred(l.leftStart, l.leftEnd, margins.left), flush: isFlush(l.leftStart, margins.left), context: contextFor.get(l), barrier: startsPart.has(l) }))
+    const rightLines = section.lines.map((l) => ({ text: l.right, wrapped: reachedEdge(l.rightEnd, edges.right), centred: isCentred(l.rightStart, l.rightEnd, margins.right), flush: isFlush(l.rightStart, margins.right), context: contextFor.get(l), barrier: startsPart.has(l) }))
+    const toc = contentsInBoth(leftLines, rightLines)
+    const leftRead = unitsOfColumn(leftLines, toc.left)
+    const rightRead = unitsOfColumn(rightLines, toc.right)
+    const left = leftRead.units
+    const right = rightRead.units
+    // The reprinted tables of contents, per column (`contentsRegions`).
+    contents += leftRead.contents + rightRead.contents
     const byId = new Map(left.filter((u) => u.id).map((u) => [u.id!, u]))
     const used = new Set<string>()
 

@@ -957,6 +957,34 @@ describe('an entry of the annex’s own table of contents', () => {
     expect(parsed.unplacedKinds).toEqual({ frontMatter: 0, contents: 2 })
   })
 
+  // Under its heading the whole table is left out, as the table path drops
+  // RIS's <inhaltsvz>: its entries were §§ of their own wherever the annex
+  // prints no body for them, and „Anweisung nicht gefunden" for a change no
+  // instruction makes (30/ME XXVIII and nine more, 26.10.2026). The division
+  // no entry follows heads the first provision, whatever its margins
+  // (Salzburg 26924), and so does the heading printed over the contents —
+  // the law's name, in a package (also 26924).
+  it('is left out under its heading, with the headings of the first provision kept', () => {
+    const law = (y: number): AnnexItem => ({ x: 300, y, width: 260, text: 'Salzburger Landeselektrizitätsgesetz 1999' })
+    const parsed = parseAnnexPdf([headerPage(), pageOf([
+      law(730),
+      run(LEFT_X + 100, 716, 'Inhaltsverzeichnis'),
+      run(RIGHT_X + 100, 716, 'Inhaltsverzeichnis'),
+      ...page([
+        { y: 702, left: '§ 1. Geltungsbereich', right: '§ 1. Geltungsbereich' },
+        { y: 688, left: '§ 2. Begriffsbestimmungen', right: '§ 2. Begriffe' },
+        { y: 674, left: '1. Abschnitt', right: '1. Abschnitt' },
+        { y: 660, left: 'Allgemeines', right: 'Allgemeines' },
+        { y: 646, left: '§ 1. (1) Dieses Gesetz gilt für alle.', right: '§ 1. (1) Dieses Gesetz gilt für jeden.' },
+      ]).items,
+    ])], ONE_LAW)
+    expect(parsed.rows.map((r) => r.gld)).toEqual(['§ 1.'])
+    expect(parsed.rows[0]!.current).toBe('1. Abschnitt Allgemeines § 1. (1) Dieses Gesetz gilt für alle.')
+    expect(parsed.rows[0]!.heading).toBe('Salzburger Landeselektrizitätsgesetz 1999')
+    // Each column's entries.
+    expect(parsed.unplacedKinds).toEqual({ frontMatter: 0, contents: 4 })
+  })
+
   // Two shapes stay: an elision is the annex saying it left the text out, and
   // a designation with nothing after it says something of its own — a § the
   // draft repeals, with an empty proposed column.
