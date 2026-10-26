@@ -18,16 +18,16 @@
  * the change.
  *
  * **A passage's address comes from `explanations/risExplanations.ts`**
- * (`addressOf`, `isAddressHeading`) and is not invented a second time here:
+ * (`headingAddress`, `isAddressHeading`) and is not invented a second time here:
  * „Zu Z 4 (§ 54c Abs. 1a und 1b):" has to mean the same Paragraph on both
  * sides, or the Begründung hangs on the wrong §.
  */
-import { addressOf, ARTICLE_HEADING_RE, isAddressHeading, splitHeading, ziffernOf } from './risExplanations'
+import { headingAddress, ARTICLE_HEADING_RE, isAddressHeading, splitHeading, ziffernOf } from './risExplanations'
 import { articleNumberKey, leadingArticleKey } from '../text/designation'
 import { normalizeText } from '../lawtext/normalize'
 import { parseParliamentHtml } from '../lawtext/parliamentHtml'
 // One reading of a designation for both sides of the lookup. Its `\b` changes
-// nothing for what `addressOf` builds: 0 of 4.215 designations differ over the
+// nothing for what `headingAddress` builds: 0 of 4.215 designations differ over the
 // offline corpus (22.09.2026).
 import { articleParagraphKey, explanationParaId } from '../../../shared/utils/explanationKey'
 
@@ -242,7 +242,7 @@ export function parseExplanationsHtml(html: string): HtmlExplanations {
       // read from the whole line, as before: the Ziffern above all, since a
       // heading that runs on into prose names no instruction (`ziffernOf`).
       const { address, prose } = splitHeading(text)
-      const paragraphs = addressOf(address).paragraphs
+      const paragraphs = headingAddress(address).paragraphs
       // „Zu Art. 7 Abs. 4 der RL …" names no Artikel of this package: the
       // passage stands under the mark above it and leaves that mark alone.
       const cited = isCitedArticle(text)
@@ -262,7 +262,7 @@ export function parseExplanationsHtml(html: string): HtmlExplanations {
       // with or without a number the parser can read („Zu Art. X1 (…)").
       // Asked of the whole line, as before the cut: what opens a section
       // stays what it was.
-      if (!cited && ziffern.length === 0 && addressOf(text).paragraphs.length === 0 && (ARTICLE_HEADING_RE.test(text) || LAW_HEADING_RE.test(text))) {
+      if (!cited && ziffern.length === 0 && headingAddress(text).paragraphs.length === 0 && (ARTICLE_HEADING_RE.test(text) || LAW_HEADING_RE.test(text))) {
         section = sectionOf(text)
         law = lawOf(text)
       }
@@ -278,7 +278,7 @@ export function parseExplanationsHtml(html: string): HtmlExplanations {
     // over GP XXVII, and each would have put the passages after it under the
     // wrong law. The RIS reader has the same guard implicitly, because it
     // takes marks from heading elements only.
-    if (ARTICLE_HEADING_RE.test(text) && !isCitedArticle(text) && addressOf(text).paragraphs.length === 0 && /Ueberschr/i.test(block.cls)) {
+    if (ARTICLE_HEADING_RE.test(text) && !isCitedArticle(text) && headingAddress(text).paragraphs.length === 0 && /Ueberschr/i.test(block.cls)) {
       mark = leadingArticleKey(text)
       section = sectionOf(text)
       law = lawOf(text)

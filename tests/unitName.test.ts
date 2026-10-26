@@ -91,6 +91,15 @@ describe('withoutOwnDesignation', () => {
     expect(withoutOwnDesignation('§ 2. Begriffsbestimmungen.', '§ 2')).toBe('Begriffsbestimmungen.')
   })
 
+  it('reads the § number whole, as every reader does (26.10.2026)', () => {
+    // A Kapitel number and digits behind the letter: read with its own
+    // pattern, „§ 6.01a" matched nothing and „§ 365m1" was „§ 365m".
+    expect(withoutOwnDesignation('§ 6.01a Sorgfaltspflicht', '§ 6.01a')).toBe('Sorgfaltspflicht')
+    expect(withoutOwnDesignation('§ 6.01a Sorgfaltspflicht', '§ 6.01')).toBe('§ 6.01a Sorgfaltspflicht')
+    expect(withoutOwnDesignation('§ 365m1. Meldepflicht', '§ 365m1')).toBe('Meldepflicht')
+    expect(withoutOwnDesignation('§ 365m1. Meldepflicht', '§ 365m')).toBe('§ 365m1. Meldepflicht')
+  })
+
   it('returns null where the designation is all there is', () => {
     expect(withoutOwnDesignation('§ 27.', '§ 27')).toBeNull()
     // The older form of the Genossenschaftsgesetz.

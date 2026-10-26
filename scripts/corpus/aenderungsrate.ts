@@ -95,7 +95,7 @@ import { argFlag, argPair } from '../lib/args'
 import { parseExplanationsHtml, passagesByArticleParagraph, passagesByParagraph, type HtmlExplanations, type HtmlPassage } from '../../server/utils/explanations/explanationsHtml'
 import { compareReasoning, compareReasoningByParagraph, passageTexts } from '../../server/utils/explanations/reasoningDiff'
 import { diffTokens } from '../../server/utils/diff/wordDiff'
-import { addressOf, isAddressHeading, splitHeading } from '../../server/utils/explanations/risExplanations'
+import { headingAddress, isAddressHeading, splitHeading } from '../../server/utils/explanations/risExplanations'
 import { addressedParagraphOf, instructionParagraphs } from '../../server/utils/lawtext/instructionAddress'
 import { parseParliamentHtml } from '../../server/utils/lawtext/parliamentHtml'
 import { normalizeText } from '../../server/utils/lawtext/normalize'
@@ -826,14 +826,14 @@ function markedPassages(html: string): MarkedPassage[] {
       mark = null
       continue
     }
-    const paragraphs = addressOf(text).paragraphs
+    const paragraphs = headingAddress(text).paragraphs
     const isMark = ARTICLE_HEADING_RE.test(text) && paragraphs.length === 0
     if (isAddressHeading(text)) {
       const named = articlesNamed(text)
       const own = articleNumber(text)
       // As the shipped walk cuts it since 02.10.2026: the address is the heading.
       const { address } = splitHeading(text)
-      const ownParagraphs = addressOf(address).paragraphs
+      const ownParagraphs = headingAddress(address).paragraphs
       if (named.length > 1) {
         // One passage for several laws: no single Artikel, and no running mark either.
         out.push({ heading: address, paragraphs: ownParagraphs, article: null, via: 'multi' })

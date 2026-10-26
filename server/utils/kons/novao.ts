@@ -1084,9 +1084,10 @@ export type NovaoOp =
  * hangs behind. Null only for `toc`, the one kind that addresses nothing —
  * the table of contents is derived from the law text and never applied.
  *
- * Named for the op, not for the address: `explanations/risExplanations.ts`
- * already holds `addressOf` in the auto-import namespace, and it answers a
- * different question (which §§ a heading of the Erläuterungen names).
+ * Named for the op, not for the address: `diff/lawDiff.ts` already holds
+ * `addressOf` in the auto-import namespace (the provision an instruction
+ * line names first), and `explanations/risExplanations.ts` has
+ * `headingAddress` (which §§ a heading of the Erläuterungen names).
  */
 export function opAddress(op: Exclude<NovaoOp, { kind: 'toc' }>): NovaoAddress
 export function opAddress(op: NovaoOp): NovaoAddress | null

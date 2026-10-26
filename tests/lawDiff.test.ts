@@ -958,6 +958,16 @@ describe('diffAtSamePlace — an instruction reworded at the same place (§12.46
     expect(units.map((u) => u.change)).toEqual(['changed'])
   })
 
+  it('keeps § 6.01 and § 6.01a apart — the number read whole (26.10.2026)', () => {
+    // Read as „§ 6" both, the extended intervention below paired across two §§.
+    const units = diffAtSamePlace(
+      [z(1, 'In § 6.01 Abs. 1 entfällt der vorletzte Satz.', 'In § 6.01 Abs. 1 entfällt der vorletzte Satz.')],
+      [z(1, 'In § 6.01a Abs. 1 wird die Zeichenfolge "BGBl. I Nr. 227/2021" durch die Zeichenfolge "BGBl. Nr. 703/1994" ersetzt und es entfällt der vorletzte Satz.',
+        'In § 6.01a Abs. 1 wird die Zeichenfolge "BGBl. I Nr. 227/2021" durch die Zeichenfolge "BGBl. Nr. 703/1994" ersetzt und es entfällt der vorletzte Satz.')],
+    )
+    expect(units.map((u) => u.change).sort()).toEqual(['inserted', 'removed'])
+  })
+
   it('keeps two places of one Absatz apart', () => {
     const units = diffAtSamePlace(
       [z(1, 'In § 22 Abs. 5 Z 1 wird das Wort "Gemeinde" ersetzt.', 'In § 22 Abs. 5 Z 1 wird das Wort "Gemeinde" durch das Wort "Behörde" ersetzt.')],

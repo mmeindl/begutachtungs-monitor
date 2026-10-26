@@ -30,6 +30,7 @@
  * second copy of it.
  */
 import type { LawDiffUnit } from '#shared/types'
+import { PARAGRAPH_NUMBER } from './paragraphNumber'
 
 /** "§5" → "§ 5", "Z3" → "Z 3" */
 export function displayId(id: string): string {
@@ -54,6 +55,14 @@ export function extraHeading(u: LawDiffUnit): string | null {
 }
 
 /**
+ * The § a unit addresses and the designation a heading opens with — the
+ * number whole, as every reader reads it (`PARAGRAPH_NUMBER`): „§ 6.01a" is
+ * not „§ 6", and „§ 365m1" not „§ 365m".
+ */
+const OWN_PARAGRAPH_RE = new RegExp(String.raw`^§\s*(${PARAGRAPH_NUMBER})$`, 'i')
+const HEADING_DESIGNATION_RE = new RegExp(String.raw`^\s*§\s*\.?\s*(${PARAGRAPH_NUMBER})(?:\s*\.)?(?=\s|$)`, 'i')
+
+/**
  * A RIS § heading without the designation it sometimes carries itself.
  *
  * Most consolidated §§ keep the „§ 37." in a marker of its own and the
@@ -71,8 +80,8 @@ export function extraHeading(u: LawDiffUnit): string | null {
  * and comes back as null.
  */
 export function withoutOwnDesignation(heading: string, para: string): string | null {
-  const own = /^§\s*(\d+[a-z]*)$/i.exec(para.trim())?.[1]
-  const lead = /^\s*§\s*\.?\s*(\d+[a-z]*)(?:\s*\.)?(?=\s|$)/i.exec(heading)
+  const own = OWN_PARAGRAPH_RE.exec(para.trim())?.[1]
+  const lead = HEADING_DESIGNATION_RE.exec(heading)
   if (!own || !lead || lead[1]!.toLowerCase() !== own.toLowerCase()) return heading
   return heading.slice(lead[0].length).trim() || null
 }

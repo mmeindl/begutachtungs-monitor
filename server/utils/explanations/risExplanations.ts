@@ -345,11 +345,14 @@ export function ziffernOf(heading: string): HeadingZiffer[] {
  *
  * Without this the passage „Zu Z 3 bis 6 (§§ 23 bis 25 NO)" reaches § 23 and
  * leaves §§ 24 and 25 unexplained although the ressort explained them in the
- * same breath. Only plain numbers are expanded: „§§ 140a bis 140i" would need
- * us to invent the letters in between, and inventing designations is exactly
- * what this module does not do.
+ * same breath. Only the last run of digits is counted (`rangeBetween`): „§§
+ * 99e1 bis 99e4" of the BWG are four §§, „§§ 6.01 bis 6.04" of a Verordnung
+ * numbered by Kapitel too — read with their own pattern, both reached their
+ * first § alone (26.10.2026). „§§ 140a bis 140i" would need us to invent the
+ * letters in between, and inventing designations is exactly what this
+ * module does not do.
  */
-const PARA_RANGE_RE = /§§\s*(\d+)\s*(?:bis|–|-)\s*(\d+)/gi
+const PARA_RANGE_RE = new RegExp(String.raw`§§\s*(${PARAGRAPH_NUMBER})\s*(?:bis|–|-)\s*(${PARAGRAPH_NUMBER})`, 'gi')
 /**
  * „§§ 12 und 13", „§§ 4, 5 und 6" — an enumeration in which only the first
  * Paragraph carries the sign.
@@ -359,7 +362,7 @@ const PARA_RANGE_RE = /§§\s*(\d+)\s*(?:bis|–|-)\s*(\d+)/gi
  * only the first one gets the Begründung. Unlike the range, nothing is
  * invented here — every number stands in the text.
  */
-const PARA_LIST_RE = /§§\s*(\d+[a-z]?(?:\s*,\s*\d+[a-z]?)*)\s*(?:und|sowie)\s*(\d+[a-z]?)\b/gi
+const PARA_LIST_RE = new RegExp(String.raw`§§\s*(${PARAGRAPH_NUMBER}(?:\s*,\s*${PARAGRAPH_NUMBER})*)\s*(?:und|sowie)\s*(${PARAGRAPH_NUMBER})\b`, 'gi')
 /** A range longer than this is a citation habit, not an address — 45 of 45 measured ranges are far below. */
 const MAX_RANGE = 50
 
@@ -368,18 +371,34 @@ function uniq(values: string[]): string[] {
 }
 
 /**
+ * The §§ from `from` to `to` where the two differ only in their last run of
+ * digits, that run counted as printed („6.01" … „6.04" keeps its zero);
+ * null for anything else, and for a range longer than `MAX_RANGE`.
+ */
+function rangeBetween(from: string, to: string): string[] | null {
+  const a = /^(.*?)(\d+)$/.exec(from)
+  const b = /^(.*?)(\d+)$/.exec(to)
+  if (!a || !b || a[1] !== b[1]) return null
+  const [low, high] = [Number(a[2]), Number(b[2])]
+  if (high <= low || high - low > MAX_RANGE) return null
+  const width = a[2]!.startsWith('0') && a[2]!.length === b[2]!.length ? a[2]!.length : 0
+  return Array.from({ length: high - low + 1 }, (_, i) => `${a[1]}${String(low + i).padStart(width, '0')}`)
+}
+
+/**
  * Exported since 22.09.2026: the Regierungsvorlage's Erläuterungen exist only
  * as Parliament's Word HTML, not as typed RIS XML, and a second expression
  * for the same address would be a second chance to hang a passage on the
  * wrong Paragraph (`explanations/explanationsHtml.ts`).
+ *
+ * Called `addressOf` until 26.10.2026, a name `diff/lawDiff.ts` exports too:
+ * Nitro auto-imports every export of server/utils, and the build warned of
+ * the clash on every run.
  */
-export function addressOf(heading: string): { paragraphs: string[]; items: string[] } {
+export function headingAddress(heading: string): { paragraphs: string[]; items: string[] } {
   const paragraphs = [...heading.matchAll(PARA_RE)].map((m) => `§ ${m[1]!.toLowerCase()}`)
   for (const m of heading.matchAll(PARA_RANGE_RE)) {
-    const from = Number(m[1])
-    const to = Number(m[2])
-    if (to <= from || to - from > MAX_RANGE) continue
-    for (let n = from; n <= to; n++) paragraphs.push(`§ ${n}`)
+    for (const n of rangeBetween(m[1]!.toLowerCase(), m[2]!.toLowerCase()) ?? []) paragraphs.push(`§ ${n}`)
   }
   for (const m of heading.matchAll(PARA_LIST_RE)) {
     for (const part of m[1]!.split(',')) paragraphs.push(`§ ${part.trim().toLowerCase()}`)
@@ -486,7 +505,7 @@ export function splitHeading(heading: string): SplitHeading {
   const rest = heading.slice(at + 1).trim()
   if (!/[A-Za-zÄÖÜäöüß]/.test(rest)) return { address: heading, prose: null }
   if (isAddressHeading(rest) || /^\(\s*§/.test(rest)) return { address: heading, prose: null }
-  const own = addressOf(address)
+  const own = headingAddress(address)
   if (ARTICLE_HEADING_RE.test(address) && !own.paragraphs.length && !own.items.length) return { address: heading, prose: null }
   if (!SENTENCE_END_RE.test(rest) && (own.paragraphs.length > 0 || wordCount(rest) <= TITLE_MAX_WORDS)) return { address: heading, prose: null }
   return { address, prose: rest }
@@ -564,7 +583,7 @@ export function parseExplanations(xml: string): ExplanationsDocument {
     // read from the whole line: one that runs on names none (`ziffernOf`).
     const { address, prose } = isAddressHeading(heading) ? splitHeading(heading) : { address: heading, prose: null }
     if (prose) part.chars += prose.length
-    return { heading: address, article, paragraphs: addressOf(address).paragraphs, items: addressOf(heading).items, text: prose ? [prose] : [] }
+    return { heading: address, article, paragraphs: headingAddress(address).paragraphs, items: headingAddress(heading).items, text: prose ? [prose] : [] }
   }
 
   for (const block of blocks) {
@@ -607,7 +626,7 @@ export function parseExplanations(xml: string): ExplanationsDocument {
       // Inside the Besonderer Teil, the Artikel heading may arrive as an
       // ordinary passage heading too — then it divides the package rather
       // than explaining a provision.
-      if (part.kind === 'special' && ARTICLE_HEADING_RE.test(text) && !addressOf(text).paragraphs.length) {
+      if (part.kind === 'special' && ARTICLE_HEADING_RE.test(text) && !headingAddress(text).paragraphs.length) {
         article = text
         passage = null
         continue

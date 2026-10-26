@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { addressOf, hasReadableText, parseExplanations, splitHeading, ziffernOf } from '../server/utils/explanations/risExplanations'
+import { headingAddress, hasReadableText, parseExplanations, splitHeading, ziffernOf } from '../server/utils/explanations/risExplanations'
 import { explanationsByParagraph } from '../server/utils/explanations/explanationsJoin'
 
 /**
@@ -221,7 +221,7 @@ describe('explanationsByParagraph — die Passage an ihrem Paragraphen', () => {
     )
     const only = articles({ numeral: null, key: 'V' })
     expect(explanationsByParagraph(parsed, only).map((e) => e.para)).toEqual(['1.01', '30'])
-    expect(addressOf('Zu § 5. und § 31Abs. 3:').paragraphs).toEqual(['§ 5', '§ 31'])
+    expect(headingAddress('Zu § 5. und § 31Abs. 3:').paragraphs).toEqual(['§ 5', '§ 31'])
   })
 
   it('macht aus „Zu Art. 2 Z 1 (§ 7)" keine Artikelüberschrift — sie erklärt einen §', () => {
@@ -269,8 +269,8 @@ describe('ziffernOf — die Novellierungsanordnungen einer Passagenüberschrift 
     expect(read('Zu Z 5 ist festzuhalten, dass der Gesamtwert …')).toEqual([])
   })
 
-  it('füllt addressOf().items aus derselben Lesung', () => {
-    expect(addressOf('Zu Z 1 bis 3 (§ 5 Abs. 2 Z 7):').items).toEqual(['Z 1', 'Z 2', 'Z 3'])
+  it('füllt headingAddress().items aus derselben Lesung', () => {
+    expect(headingAddress('Zu Z 1 bis 3 (§ 5 Abs. 2 Z 7):').items).toEqual(['Z 1', 'Z 2', 'Z 3'])
   })
 })
 

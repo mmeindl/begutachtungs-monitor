@@ -89,12 +89,13 @@ import { displayId, isParagraphUnit } from '../../../shared/utils/unitName'
 import { diffTokens, isEditorialChange, renumberingOf, sameWording } from '../diff/wordDiff'
 import { addressedParagraph, addressedParagraphOf, instructionParagraphs } from '../lawtext/instructionAddress'
 import { passagesByArticleParagraph, passagesByParagraph, type HtmlExplanations, type HtmlPassage } from './explanationsHtml'
-import { ADDRESS_WORD_RE, addressOf, leadingAddress } from './risExplanations'
+import { ADDRESS_WORD_RE, headingAddress, leadingAddress } from './risExplanations'
 // The key of `passagesByParagraph`, and the same reading the page looks up
 // with. Its `\b` changes nothing for the designations `parseAddress` builds:
 // 0 of 4.215 differ over the offline corpus (22.09.2026). It bites only on a
 // raw Gliederungssymbol such as § 365m1, which never reaches here.
 import { articleParagraphKey, explanationParaId } from '../../../shared/utils/explanationKey'
+import { PARAGRAPH_NUMBER } from '../../../shared/utils/paragraphNumber'
 
 /**
  * A ceiling for the outlier, set from the corpus (27.09.2026, `aenderungsrate.ts
@@ -650,7 +651,7 @@ function ownedPassages(doc: HtmlExplanations, index: number): number[] {
   for (let i = index + 1; i < doc.special.length; i++) {
     const p = doc.special[i]!
     if (p.ziffern.length > 0 || p.article !== head.article || !SUB_HEADING_RE.test(p.heading)) break
-    const named = addressOf(leadingAddress(p.heading)).paragraphs
+    const named = headingAddress(leadingAddress(p.heading)).paragraphs
     if (named.some((x) => !paras.has(explanationParaId(x)))) break
     if (head.ziffern.length === 0 && named.length > 0) break
     out.push(i)
@@ -769,7 +770,7 @@ function unitParagraphIds(unit: LawDiffUnit, side: Side): Set<string> {
   // grammar types, „Der bisherige § 14a erhält die Bezeichnung „§ 14."" the
   // one in quotes — both are what a passage heading names.
   const head = line.split(':')[0] ?? line
-  for (const p of [addressedParagraph(line), ...instructionParagraphs(line), ...addressOf(head).paragraphs]) {
+  for (const p of [addressedParagraph(line), ...instructionParagraphs(line), ...headingAddress(head).paragraphs]) {
     const id = explanationParaId(p)
     if (id) ids.add(id)
   }
@@ -1067,9 +1068,10 @@ export function compareReasoning(units: readonly LawDiffUnit[], before: HtmlExpl
   return { ...finish(f.out), fallbacks, routes: { ziffer: zifferRoute, paragraph: atParagraph.length, ownParagraph: ownParagraph.length }, guarded: [...guarded.values()], scopes }
 }
 
-/** „§9" → „9", „§5a" → „5a"; null for anything else — a duplicate number („§9#dup") is refused. */
+/** „§9" → „9", „§5a" → „5a", „§6.01a" → „6.01a" (`PARAGRAPH_NUMBER`); null for anything else — a duplicate number („§9#dup") is refused. */
+const PARAGRAPH_ID_RE = new RegExp(String.raw`^§(${PARAGRAPH_NUMBER})$`, 'i')
 function paragraphOfId(id: string | null): string | null {
-  const m = /^§(\d+[a-z]*)$/i.exec(id ?? '')
+  const m = PARAGRAPH_ID_RE.exec(id ?? '')
   return m ? m[1]!.toLowerCase() : null
 }
 
@@ -1102,7 +1104,7 @@ function titledParagraphs(passage: HtmlPassage): string[] {
     if (/^[§\d(),.–-]/.test(word) || ADDRESS_WORD_RE.test(word) || PARAGRAPH_ADDRESS_WORD_RE.test(word)) out.push(word)
     else break
   }
-  return addressOf(out.join(' ')).paragraphs
+  return headingAddress(out.join(' ')).paragraphs
 }
 
 /**

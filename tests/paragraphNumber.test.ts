@@ -6,7 +6,7 @@ import { createdUnits, mentionedUnits, parseAddress } from '../server/utils/kons
 import { parsePayload } from '../server/utils/kons/lawApply'
 import { refusedLineUnits } from '../server/utils/kons/konsGate'
 import { parseKonsParagraph } from '../server/utils/lawtext/konsTree'
-import { addressOf } from '../server/utils/explanations/risExplanations'
+import { headingAddress } from '../server/utils/explanations/risExplanations'
 import { elisionOpens } from '../server/utils/annex/elision'
 
 /**
@@ -69,8 +69,18 @@ describe('a § number, read the same everywhere (26.10.2026)', () => {
   it('in a RIS § document, a passage heading and an elision line', () => {
     const xml = `<risdok><nutzdaten><abschnitt><absatz typ="abs" ct="text"><gldsym>§ 6.01a.</gldsym> Text.</absatz></abschnitt></nutzdaten></risdok>`
     expect(parseKonsParagraph(xml)?.id).toBe('6.01a')
-    expect(addressOf('Zu Z 50 und Z 51 (§ 6.01a):').paragraphs).toEqual(['§ 6.01a'])
-    expect(addressOf('Zu § 103z4:').paragraphs).toEqual(['§ 103z4'])
+    expect(headingAddress('Zu Z 50 und Z 51 (§ 6.01a):').paragraphs).toEqual(['§ 6.01a'])
+    expect(headingAddress('Zu § 103z4:').paragraphs).toEqual(['§ 103z4'])
     expect(elisionOpens('§ 6.01a Z 1 bis 3 …', '§ 6.01a Z 1 bis 3 …')).toBe('§ 6.01a.')
+  })
+
+  it('in a passage heading\'s range and list: the last digits counted, no letter invented', () => {
+    expect(headingAddress('Zu §§ 99e1 bis 99e4:').paragraphs).toEqual(['§ 99e1', '§ 99e2', '§ 99e3', '§ 99e4'])
+    expect(headingAddress('Zu §§ 6.09 bis 6.11:').paragraphs).toEqual(['§ 6.09', '§ 6.10', '§ 6.11'])
+    expect(headingAddress('Zu §§ 23 bis 25 NO:').paragraphs).toEqual(['§ 23', '§ 24', '§ 25'])
+    // Letters in between are not ours to invent.
+    expect(headingAddress('Zu §§ 140a bis 140i:').paragraphs).toEqual(['§ 140a'])
+    expect(headingAddress('Zu §§ 365m1 und 365n1:').paragraphs).toEqual(['§ 365m1', '§ 365n1'])
+    expect(headingAddress('Zu §§ 6.01a, 6.02 und 6.03:').paragraphs).toEqual(['§ 6.01a', '§ 6.02', '§ 6.03'])
   })
 })

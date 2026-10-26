@@ -30,6 +30,7 @@ import { leadingArticleKey } from '../text/designation'
 import { sameStammnormCited, type BgblCitation } from '../lawtext/bgblCitation'
 import { instructionParagraphs } from '../lawtext/instructionAddress'
 import { compareWords, diffTokens, isAddressOnlyDifference, isEditorialChange, renumberingOf, tokenSimilarity, type TokenDiff } from './wordDiff'
+import { PARAGRAPH_NUMBER } from '../../../shared/utils/paragraphNumber'
 
 // ---------------------------------------------------------------------------
 // Article pairing
@@ -747,11 +748,16 @@ export function diffLawPackage(
   }
 }
 
-/** The provision an instruction addresses first: „§ 14 Abs. 8", „§ 5". */
+const INSTRUCTION_ADDRESS_RE = new RegExp(String.raw`§\s*(${PARAGRAPH_NUMBER})(?:\s+Abs\.\s*(\d+[a-z]*))?(?:\s+(Z\s*\d+[a-z]*|lit\.\s*[a-z]+|(?:erster|zweiter|dritter|vierter|fünfter|sechster|siebter|achter|neunter|zehnter|vorletzter|letzter)\s+Satz))?`)
+
+/**
+ * The provision an instruction addresses first: „§ 14 Abs. 8", „§ 5" — the
+ * number whole (`PARAGRAPH_NUMBER`), „§ 6.01a" and not „§ 6".
+ */
 export function addressOf(heading: string | null): string | null {
   // „§ 82 (neu) (= bisheriger § 60) Abs. 3": the brackets are no address.
   const h = (heading ?? '').replace(/\s*\((?:neu|=[^)]*)\)/g, '')
-  const m = /§\s*(\d+[a-z]*)(?:\s+Abs\.\s*(\d+[a-z]*))?(?:\s+(Z\s*\d+[a-z]*|lit\.\s*[a-z]+|(?:erster|zweiter|dritter|vierter|fünfter|sechster|siebter|achter|neunter|zehnter|vorletzter|letzter)\s+Satz))?/.exec(h)
+  const m = INSTRUCTION_ADDRESS_RE.exec(h)
   // The finer place right after it belongs to the address: „§ 22 Abs. 5 Z 1"
   // and „… Z 2" are two places, „vorletzter" and „letzter Satz" too.
   return m ? `§${m[1]}${m[2] ? ` Abs.${m[2]}` : ''}${m[3] ? ` ${m[3].replace(/\s+/g, '')}` : ''}` : null
