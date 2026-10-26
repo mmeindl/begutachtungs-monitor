@@ -5128,6 +5128,145 @@ der Gegenüberstellung, und seine 55 % Deckung dort, wo der Anhang schweigt,
 sind das, was ein Leser bekommt, wenn wir ihm keinen Gesetzestext zeigen
 dürfen.
 
+### 12.12c Jeder Paragraph mit Ergebnis — und was das Orakel nicht sah (26.10.2026)
+
+**Was fehlte.** `touched` zählte seit 19.09.2026 jeden Paragraphen, den der
+Entwurf ändert; beim Leser kamen nur die gezeigten an. Acht Stellen in
+`konsService.ts` endeten in einem stummen `continue` — das Gesetz, das RIS
+nicht kennt, die Decke, der § als Tabelle im RIS, die Verweigerung, das
+Schweigen der Beilage —, und an einem Paragraphen ohne „Ganzer Paragraph
+danach" ließ sich „zurückgehalten" nicht von „nie angesehen" unterscheiden.
+
+**Jetzt hat jeder Paragraph ein Ergebnis.** Der Lauf steht in
+`kons/consolidate.ts`, ohne Nitro, damit Prüfstand und Tests die Funktion
+der Seite rufen und keine Abschrift ihres Glues. Neben `paragraphs` liefert
+er `withheld` mit Grund (`ConsolidatedWithheldCause`) und `notRun` für einen
+Lauf, der gar nicht stattfand; gezeigt + zurückgehalten = geändert
+(`consolidationBalance`). Die Seite setzt jeden Grund an den Paragraphen der
+Beilage (`placeAtParagraphs`), nennt einen Paragraphen ohne Block am Ende
+seines Gesetzes (dieselbe Funktion, `ends`) und sagt an einem Paragraphen, der eine
+Änderung zeigt, für die wir keine Anweisung fanden, genau das
+(`nicht-gefunden`). Am Gesetzesende stehen auch die Passagen der
+Begründung, die keinen Block finden — vor allem die eines neuen Gesetzes,
+das keine Beilage abdeckt (126/ME: 15 von 88).
+
+**Ein Prüfstand über die Seite, nicht über die Engine.**
+`scripts/harness/accounting.ts` fragt einen laufenden Server, was der
+Abschnitt fragt, und rechnet mit den Funktionen der Seite nach.
+Invarianten: Bilanz; kein Paragraph mit Änderung ohne Aussage (`stumm`);
+kein bestätigter Paragraph ohne Block (`ortlos`); Abschnitt und
+Lesefassung lesen dieselbe Beilage (`quelle`).
+
+**Gemessen über alle 148 Ministerialentwürfe der XXVIII. GP und die 214
+Begutachtungen ohne Gegenstand** (26.10.2026): Jeder der 4.463 bzw. 1.541
+geänderten §§ hat ein Ergebnis, kein bestätigter § steht ohne Block, und
+Abschnitt und Lesefassung lesen dieselbe Beilage; gezeigt 2.074 bzw. 551.
+Der erste Lauf meldete 45 „stumm" in neun Entwürfen, und keiner davon war
+die Seite: Alle waren aufgehobene §§ — eine aufgehobene Stelle sagt es mit
+ihren gestrichenen Zeilen —, deren Zeilen der Prüfstand nicht ganz las,
+weil zurückgehaltene Zeilen auf der Seite nur als Hinweis stehen. Gezählt,
+nicht verletzt, hatte er 220 bzw. 137 „nicht gefunden" — jeder ein
+Kandidat für eine Lücke in unserem Lesen der Anweisungen —, und gelesen
+waren sie das auch: Was der Entwurf erst schafft (die §§ einer Ersetzung
+mehrerer §§, Umnummerierungsziele, Einfügungen in verweigerten Zeilen),
+zählte keine Lesung mit; eine Ersetzung, deren neuer Text eine andere
+Nummer trägt, behielt die alte (51/ME: § 11 mit dem Text des neuen § 18);
+ein neuer Abschnitt aus lauter §§ war keine Einfügung dieser §§; „§ 8.03"
+galt als § 8. Seit Sperre, Nenner, Bezeichnungen und Plausibilität
+dieselbe Lesung zählen (`createdParagraphs`), sind die Nenner größer
+(4.263 → 4.463, 1.434 → 1.541) und „nicht gefunden" 35 bzw. 27 —
+überwiegend Zeilen, die der Leser der Beilage dem falschen Gesetz oder
+Paragraphen zuordnet, Inhaltsverzeichnisse und Anmerkungen. Weiter
+gezählt: 235 bzw. 109 §§ ohne Block in der Beilage, 549 von 4.203 bzw. 105
+von 1.175 Begründungspassagen am Gesetzesende. Häufigste Gründe
+(Ministerialentwürfe): verweigert 864, Beilage widerspricht 442,
+unplausibel 252, Beilage geht von anderem Text aus 237, Beilage schweigt
+192, nicht geladen 139.
+
+**Ein § mit Kapitelnummer, drei Lesungen.** „§ 8.03" ganz zu lesen, brachte
+die Lesefassung von 707EA278 an ihre Blöcke (75 → 2 ohne Block) und nahm
+der Begründung dieselben: Der Leser der Passagenüberschriften schnitt
+„§ 1.01" weiter zu „§ 1", und 81 von 108 Passagen standen am
+Gesetzesende — wo vorher jede Passage eines Kapitels unter jedem seiner §§
+gestanden hatte, weil alle denselben Schlüssel trugen. Jetzt liest auch er
+die Nummer ganz (`PARA_RE` in `risExplanations.ts`): 0 von 115, jede
+Passage unter ihrem §. Kein anderer Entwurf der Periode setzt einen § so.
+Gefunden hat es die Zählung des Prüfstands, nicht eine Invariante — eine
+Passage am Gesetzesende ist gesagt, nicht verschwiegen; zwischen zwei Läufen
+verglichen, war sie trotzdem ein Rückschritt. Offen, und nur dort: „§ 6.01a"
+lesen Engine, Beilage und Seite übereinstimmend als „6.01" — falsch
+benannt, aber an jeder Stelle gleich; die drei §§ dieser Form sind
+verweigert.
+
+**Die fünfte Prüfung: Absätze.** Die Prüfungen 1 bis 4 vergleichen Text
+ohne Marken (`stripMarkers`), weil die Beilage ihre Marken anders setzt als
+der Baum. Damit waren sie blind für Reihenfolge und fehlende Absätze:
+48/ME KOG § 35 kam mit (1h) hinter (2) bestätigt heraus („vor Abs. 2"
+eingefügt), 126/ME StAG § 42 Teil II ohne das (26), das Teil I einfügt.
+Prüfung 5 (`absatzOrderBroken`) hält die Absatzmarken der vorgeschlagenen
+Spalte — samt Auslassungsketten „(1) bis (26) …" — gegen die Absätze, die
+die Seite anzeigt (`absatzSequence`), mit demselben Leser auf beiden
+Seiten und nur, wo eine Marke stehen kann. Fehlt eine Marke, die die
+Beilage auch als geltend druckt, schon im geltenden Text, ist das `fremd`:
+Die Beilage setzt einen Absatz voraus, den das RIS an dem Tag nicht kennt.
+
+**Zahlen.** `stripMarkers` nahm jede „15." für eine Ziffernmarke, auch den
+Tag eines Datums („15. Juli") und die Zahl eines Zitats am Satzende
+(„Abs. 2."). Beidseitig, also symmetrisch und blind. Jetzt bleibt die Zahl
+stehen, wo das Umfeld sagt, welche sie ist (`keepsNumber`).
+
+**Gemessen mit Fehlerinjektion** (`harness/faultInjection.ts`, drei neue
+Klassen über die Paragraphen, die das Orakel bestätigt):
+
+| GP XXVIII | Reihe, Tabelle | Reihe, PDF | Fehlt, Tabelle | Datum, Tabelle | Datum, PDF |
+|---|---:|---:|---:|---:|---:|
+| vorher | 14/735 (1,9 %) | 476/1.047 (45,5 %) | 14/479 (2,9 %) | 1/122 (0,8 %) | 1/116 (0,9 %) |
+| nachher | 789/794 (99,4 %) | 1.058/1.074 (98,5 %) | 538/543 (99,1 %) | 117/119 (98,3 %) | 110/110 (100 %) |
+
+Ohne Injektion zieht Prüfung 5 10 (Tabellenpfad) und 17 (PDF-Pfad) Bestätigungen zurück. Gelesen:
+überwiegend Absätze, die die Engine nicht als eigenen Absatz anlegte,
+doppelte Marken, falsche Reihenfolge (Rechtspraktikantengesetz § 29: (2r)
+ans Ende statt nach (2q)) und Inkrafttretens-Paragraphen, deren Beilage
+einen Absatz voraussetzt, den das RIS nicht kennt. Drei Lesefehler fand
+erst diese Prüfung, weil sie als erste Auslassungszeilen liest: der Schwanz
+des vorigen Paragraphen galt als Überschrift des nächsten (`isHeadingRow`,
+165 Fehlalarme), Noten „gut (2)" und Einheiten „(254nm)" galten als Marken,
+und eine im Absatz eingebettete Marke („(1) … (2) Die Frist …",
+Radonschutzverordnung § 11) galt als fehlender Absatz — jetzt wird die
+Anzeige gelesen, nicht der Baum. `--mindestens=95` lässt den Lauf
+scheitern, sobald eine Klasse darunter fällt.
+
+**Was die fünfte Prüfung freilegte, und was danach behoben wurde.**
+Drei Fehler der Engine und einer des Parsers, alle zuvor bestätigt
+gezeigt: „vor Abs. 2 … angefügt" las sich als Anfügen *in* den genannten
+Absatz (181 von 1.541 Anfügungen des ME-Prüfstands hatten die Form, jetzt
+`siblingAnchor`/`placedBefore`); ein Satz mit eigener Aufzählung verlor im
+Ergebnis seine Ziffern (AVG § 41, `writeListSentence`); „Die Überschrift
+vor § X lautet" ersetzte den ganzen § (`HEADING_ABOVE_RE`). Und RIS setzt
+manche Absätze als `erltext` — KOG § 35 Abs. 14, zehn von 25.187 Dokumenten
+mit Absätzen —, die der Baum als Anmerkung übersprang (`typedAsNote`); die
+Lesefassung von KOG § 35 lautete ohne ihn, und erst die Auslassungskette der
+Beilage („(2) bis (14) …") verriet es. KOG § 35 steht jetzt vollständig und
+in der Reihenfolge der Anweisung da. Dazu die Zeilen eines §, der ohne
+eigene Zeile beginnt (RStDG § 190 unter § 184, `opensBelow`): acht §§ mehr
+bestätigt, keiner weniger. Gegen die Wahrheit des BGBl-Prüfstands
+(`harness:kons --oracle`): 108 bestätigte §§, null abweichend — vorher wie
+nachher.
+
+**Zwei Artikel, ein Gesetz.** 126/ME ändert das StAG in Artikel 3 und 4
+(„Teil II"), das FM-GwG-Anpassungsgesetz das FM-GwG zweimal; jeder Artikel
+lief auf dem unberührten RIS-Text. Jetzt laufen die Artikel eines Gesetzes
+als Kette in Druckreihenfolge. StAG § 42 Teil II trägt das (26) aus Teil I
+und wird bestätigt (`tests/consolidate.test.ts`).
+
+**Was das nicht beweist.** Das Orakel kann nur bestätigen, was die Beilage
+abdruckt, und zwei Lesungen derselben Anweisung, die denselben Fehler
+machen, bleiben bestätigt. Der Prüfstand misst das Schweigen, die
+Fehlerinjektion die Reichweite je bekannter Fehlerklasse — Fehlerfreiheit
+misst keiner von beiden. Wahrheit hat nur der BGBl-Prüfstand
+(`harness/kons.ts`): Wo Entwurf und BGBl dieselbe Anweisung tragen, ist der
+RIS-Text nach dem Inkrafttreten die Antwort.
+
 ### 12.13 „Was ändert der Entwurf?" — die amtliche Gegenüberstellung auf der Seite
 
 Geliefert 2026-09-08, und zwar aus dem amtlichen Anhang, nicht aus der
@@ -7740,6 +7879,81 @@ einer davon bleibt „ungeprüft" (`REASON_TOO_LONG`); was die Regeln an den
 Begut-Datensätze: vier solche Zeilen im PDF-Pfad, drei im Tabellenpfad, ein
 Urteil bewegt sich (PDF-Pfad 2.049 / 355 / 1.386 → 2.048 / 355 / 1.387); die
 Grundlinie des Drift-Alarms ist im selben Commit neu gezogen.
+
+**Nachtrag 26.10.2026: fünf Lesefehler, gemessen über 360 Begut-Datensätze
+(247 lesbare Beilagen, 6.490 §§).** Aus einer Prüfung von Text gegen
+Funktion; jeder Fund reproduziert, jede Änderung über den ganzen Bestand
+gemessen. Zusammen: bestätigt 3.817 → 3.897, zurückgehalten 425 → 214,
+„schafft neues Recht" 96 → 76 §§.
+
+- *Promulgationsklausel als Anweisung gesetzt.* RIS setzt die Klausel einer
+  Einzelnovelle oft im Stil einer Novellierungsanordnung (`novao1`), und
+  `draftArticles` übersprang jeden solchen Block vor seiner Klauselprüfung:
+  92/ME ändert das LWA-G und galt als neues Recht, alle 31 Zeilen „nicht
+  geprüft", die Lesefassung ohne einen einzigen §. Jetzt gilt der erste
+  solche Block als Klausel, wenn er die Formel trägt *und* ein Gesetzblatt
+  zitiert (`isTaggedClause`); „1. § 2 wird wie folgt geändert:" zitiert
+  keines. Zwei Entwürfe ändern sich, 20 §§ des Tors bewegen sich, keiner zu
+  zurückgehalten.
+- *Abschnittsüberschriften am Ende des vorigen Paragraphen (PDF-Pfad).* Die
+  Übergabe an den nächsten § nahm höchstens drei Zeilen und keine, die bis
+  zum Rand lief; 81/ME druckt fünf über § 14, und „4. Abschnitt Technische
+  Unterstützung …" stand als eingefügter Text am Ende von § 21. Jetzt geht
+  eine Gliederungszeile nach dem letzten Satz mit allem Folgenden an den
+  nächsten § (`divisionStart`), und die linke Prüfung liest eine PDF-Zeile
+  ab der eigenen §-Bezeichnung (`provisionText`). Allein das Übergeben
+  verschob 20 falsche „steht so nicht im RIS" nur an den nächsten §.
+  66 Entwürfe: 119 §§ von zurückgehalten zu bestätigt, 65 von bestätigt zu
+  ungeprüft — sie waren nur über Überschriftwörter bestätigt, ihr Text
+  ganz ausgelassen. Der Länder-Leser parst durch dieselbe Stelle und bekam
+  das Gegenstück (`landTgu.ts`).
+- *Bildpfad als Gesetzestext.* `<binary><src>…img1is.png` ist ein Textknoten,
+  und die Zelle las ihn: StVO § 54 lit. o auf 62/ME zeigte einen Pfad als
+  neuen Text, die Bäderhygiene-Novelle verlor zwei §§ an „steht so nicht im
+  RIS". Jetzt „[Abbildung]", von keiner Prüfung gezählt.
+- *„bereits geltend" für Wortlaut, den der Entwurf anfügt.* FSG § 26 Abs. 3
+  bekommt den Satz, den Abs. 2 schon trägt; die Regel liest den § im Ganzen
+  und hielt zurück. Fünf der acht §§, die der Kommentar zu
+  `MIN_STANDING_STRETCH` als echte Treffer führte, waren diese Form. Jetzt
+  tritt die Regel zurück, wo eine Anweisung für diesen §, die nur Text
+  hinzufügt, genau diesen Wortlaut trägt (`WordBag.carries`) — nicht für
+  „lautet" und nicht für eine eingefügte Einheit. Acht §§ wechseln, kein
+  echter Treffer geht verloren (BWG § 30 bleibt); die Fehlerinjektion fängt
+  jede Klasse wie zuvor. Der Satz am Paragraphen nennt seither unsere
+  Prüfung, nicht die Fassung der Beilage. Golden: Organtransplantation § 4
+  wird bestätigt, `gate-nlav.json` übernimmt den echten Fall (§ 11a).
+- *„ungeprüft zeigen wir sie nicht"* stand im Satz für einen Entwurf ohne
+  eindeutigen RIS-Datensatz und war seit dem „nicht geprüft"-Pill falsch.
+
+Die Überschneidung „Beilage hält zurück, Lesefassung bestätigt" lag nicht
+bei 67 §§, wie geschätzt, sondern bei 9, und sie ist keine Klasse: FSG § 26
+war der Fehler der Regel, KFG § 1, NLAV § 11a und AußWG § 80 sind zu Recht
+zurückgehaltene Wortvergleiche, auch wo die Lesefassung stimmt.
+
+Auf der Seite, ebenfalls 26.10.2026 (`app/utils/annexGroups.ts`): Die
+Begründung und die Lesefassung eines umnummerierten § werden unter der
+Bezeichnung *nach* dem Entwurf gesucht (`designationAfter`) — der alte § 14
+von 51/ME bekam „Zu § 14", die Begründung des *neuen* § 14; ein § mit
+ausgelassenem Bestand ist „geändert", nicht „neu" (224 von 633 „neu");
+„N Änderungen hier nicht gezeigt" zählt Änderungen, nicht Zeilen; das Limit
+einer Gruppe schneidet zwischen Paragraphen statt mitten in einen; und der
+Hinweis über ein auffälliges Gesetz hängt nicht mehr an der Suche.
+
+**Die Bezeichnung nach dem Entwurf trägt der Server (`paraAfter`).** Die
+Seite las sie zuerst aus dem Text der rechten Spalte („§ 22." am Anfang) —
+blind dort, wo das Tor den Text einer Zeile geleert hat, und bei einer
+Bezeichnung, die das Ressort ohne Gliederungssymbol setzt (144/ME). Jetzt
+entscheidet `designateAfter` (`comparisonRows.ts`) sie je §, und drei Leser
+richten sich danach: die Seite (Begründung, Lesefassung, „§ 9. → § 16." an
+der Paragraphenzeile), das Orakel der Lesefassung, das Zeilen unter der
+neuen Nummer ablegt und die linke Spalte nur für den § gelten lässt, aus
+dem die Engine den ihren ableitet (`paragraphRows` mit `origin`,
+`renamedOrigins`), und Regel 2 der RIS-Prüfung, die auch die Anweisungen
+der neuen Nummer befragt. Die linke Prüfung bleibt bei der alten Nummer —
+sie vergleicht den geltenden Text. GP XXVIII: 61 umnummerierte §§ in 19
+Entwürfen, 9 §§ mehr in der Lesefassung, jeder von Hand gegen die Beilage
+gelesen; die verlorenen Bestätigungen waren alle ein unumbenannter § X, der
+gegen den alten § X der Beilage bestätigt worden war.
 
 ### 12.14 Stellungnahmen zur Regierungsvorlage, der Dokument-Link und der Spaltenkopf
 

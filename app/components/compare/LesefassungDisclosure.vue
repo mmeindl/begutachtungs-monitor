@@ -6,7 +6,7 @@
  * Its own component since 26.10.2026, because it now stands in two places:
  * under the § of the Textgegenüberstellung it was checked against, and — for
  * a § the page could not place there — in the list at the end of its law
- * (`placeLesefassung`). One markup, so the two cannot drift.
+ * (`placeAtParagraphs`). One markup, so the two cannot drift.
  */
 import type { ConsolidatedParagraph } from '#shared/types'
 import { absaetze } from '~/utils/absaetze'

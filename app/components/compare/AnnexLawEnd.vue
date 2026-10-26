@@ -1,7 +1,7 @@
 <script setup lang="ts">
 /**
  * What one law of the draft leaves over at the end of the
- * Textgegenüberstellung (`annexLawEnds`, 26.10.2026): the §§ the draft
+ * Textgegenüberstellung (`placeAtParagraphs`, its `ends`; 26.10.2026): the §§ the draft
  * amends that no § block of the annex took, and the Begründung passages on
  * a § no block stands for.
  *
