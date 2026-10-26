@@ -23,6 +23,7 @@ import {
 // nothing is re-exported here.
 import { asArray, flattenRisRecord, risDocumentUrl, type RisBegutFlat } from './risRecord'
 import { RIS_API_BASE, risJson, sleep, type UpstreamPolicy } from '../upstream/fetch'
+import { unpack } from '../cache/memoryDriver'
 
 const RIS_PAGE_SIZE = 100
 const RIS_MAX_PAGES = 80
@@ -128,10 +129,91 @@ export const getRisBegutCorpus = defineCachedFunction(
       }
       if (res.docs.length < RIS_PAGE_SIZE || page * RIS_PAGE_SIZE >= hits) break
     }
-    return { fetchedAt: new Date().toISOString(), hits, records }
+    const corpus = { fetchedAt: new Date().toISOString(), hits, records }
+    corpusIndex = indexOf(corpus)
+    return corpus
   },
   { name: 'ris-begut-corpus', base: DERIVED_CACHE, getKey: () => 'all', maxAge: RIS_CORPUS_TTL_S, swr: false },
 )
+
+/**
+ * ONE RECORD WITHOUT THE CORPUS (26.10.2026). A draft page, or one of its
+ * sections, needs one record of the ~4.600 — and `getRisConsultation` found
+ * it by reading the whole corpus out of the cache: 10 MB of JSON parsed into
+ * ~50 MB of objects to keep one, twice on a first page view and once per
+ * section. Over the prewarm's pages those reads were the largest burst left
+ * on the heap.
+ *
+ * So the build that makes a corpus files its records by id as well: their
+ * JSON as one block of UTF-8 bytes, one per character as the cache keeps a
+ * value (`cache/memoryDriver.ts`), and where each record lies in it. A
+ * lookup decodes a few kilobytes and parses a fresh copy, so no reader
+ * shares an object with another. The block is the corpus once more, ~10 MB
+ * beside the heap; there is one, and the next build replaces it.
+ *
+ * TIED TO THE CORPUS IT CAME FROM, so no answer can differ from a read of
+ * the corpus: the index answers only while the cache still holds the
+ * corpus built with it — not past that corpus's lifetime, counted from a
+ * moment before Nitro stamps it, and not once the budget has pushed the
+ * corpus out. Then a lookup reads the corpus as it always did: a fresh one
+ * where it is gone, failing as that build fails.
+ */
+interface CorpusIndex {
+  fetchedAt: string
+  builtAt: number
+  /** Every record's JSON, its UTF-8 bytes one per character. */
+  block: string
+  /** Where each record's bytes lie in `block`, by RIS id. */
+  spans: Map<string, readonly [number, number]>
+}
+
+/** The index of the corpus this process built last. */
+let corpusIndex: CorpusIndex | null = null
+
+/**
+ * Where Nitro keeps the corpus: `[base, group, name, key + '.json']` joined
+ * by colons, the group `nitro/functions` by default (nitropack 2.13,
+ * runtime/internal/cache.mjs; `tests/risCorpusIndex.test.ts` holds both
+ * halves — this key and the corpus's options above).
+ */
+const CORPUS_STORAGE_KEY = [DERIVED_CACHE, 'nitro/functions', 'ris-begut-corpus', 'all.json'].join(':')
+
+function indexOf(corpus: RisBegutCorpus): CorpusIndex {
+  const json = corpus.records.map((r) => JSON.stringify(r))
+  const lengths = json.map((j) => Buffer.byteLength(j))
+  const bytes = Buffer.allocUnsafeSlow(lengths.reduce((sum, n) => sum + n, 0))
+  const spans = new Map<string, readonly [number, number]>()
+  let at = 0
+  corpus.records.forEach((r, i) => {
+    bytes.write(json[i]!, at, 'utf8')
+    spans.set(r.id, [at, at + lengths[i]!])
+    at += lengths[i]!
+  })
+  return { fetchedAt: corpus.fetchedAt, builtAt: Date.now(), block: bytes.toString('latin1'), spans }
+}
+
+function recordIn(index: CorpusIndex, id: string): RisBegutFlat | null {
+  const span = index.spans.get(id)
+  return span ? (JSON.parse(unpack(index.block.slice(span[0], span[1]))) as RisBegutFlat) : null
+}
+
+/** Whether the cache still serves the corpus `index` was built with. */
+async function stillServed(index: CorpusIndex): Promise<boolean> {
+  if (Date.now() - index.builtAt <= RIS_CORPUS_TTL_S * 1000 && (await useStorage().hasItem(CORPUS_STORAGE_KEY))) return true
+  // Gone or expired: the index answers nothing more, and need not be kept.
+  if (corpusIndex === index) corpusIndex = null
+  return false
+}
+
+/** One record of the corpus by RIS id — what `getRisBegutCorpus().records.find(…)` would answer. */
+export async function getRisBegutRecord(id: string): Promise<RisBegutFlat | null> {
+  const index = corpusIndex
+  if (index && (await stillServed(index))) return recordIn(index, id)
+  const corpus = await getRisBegutCorpus()
+  // Read just now, or built just now with its index.
+  if (corpusIndex?.fetchedAt === corpus.fetchedAt) return recordIn(corpusIndex, id)
+  return corpus.records.find((r) => r.id === id) ?? null
+}
 
 function toMapRow(
   row: { cite: string; inr: number; status: RisMapRow['status']; tier: RisMapRow['tier']; risId: string | null; reason: string | null; candidates: JoinCandidate[] },

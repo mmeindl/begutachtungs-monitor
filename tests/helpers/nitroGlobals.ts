@@ -59,6 +59,10 @@
  * says so through Nitro's `validate` (`server/utils/cache/gathered.ts`), and
  * `tests/risDraftsRoute.test.ts` runs a route handler, which is h3's
  * `defineEventHandler` around a function — faked there as the identity.
+ *
+ * `useStorage` came with the RIS corpus's index (26.10.2026): it asks the
+ * cache whether the corpus is still there (`ris/begutCorpus.ts`). Written out
+ * for the same reason as `defineCachedFunction`, and only as far as it is read.
  */
 declare global {
   const createError: typeof import('h3').createError
@@ -78,6 +82,7 @@ declare global {
     },
   ) => (...args: A) => Promise<T>
   const DERIVED_CACHE: typeof import('../../server/utils/cache/base').DERIVED_CACHE
+  const useStorage: () => { hasItem: (key: string) => Promise<boolean> }
 
   /** Nuxt's build-time flag, read by `ris/begutCorpus.ts` to cache RIS pages in dev only. */
   interface ImportMeta {

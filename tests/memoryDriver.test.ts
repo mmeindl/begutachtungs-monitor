@@ -1,8 +1,6 @@
-import { readFileSync, realpathSync } from 'node:fs'
-import { createRequire } from 'node:module'
-import { dirname, join } from 'node:path'
 import { describe, expect, it } from 'vitest'
 import memoryDriver, { createMemoryLru, ENTRY_OVERHEAD, pack, unpack } from '../server/utils/cache/memoryDriver'
+import { nitroCacheSource } from './helpers/nitropack'
 
 /**
  * The production memory of both cache layers (`server/utils/cache/memoryDriver.ts`).
@@ -151,14 +149,6 @@ describe('the unstorage driver', () => {
 })
 
 describe('what the lifetimes rest on: nitropack', () => {
-  /** nitropack's cached-function runtime as installed — reached through Nuxt, which brings it. */
-  function nitroCacheSource(): string {
-    const root = join(import.meta.dirname, '..')
-    const fromNuxt = createRequire(realpathSync(join(root, 'node_modules', 'nuxt', 'package.json')))
-    const fromServer = createRequire(realpathSync(fromNuxt.resolve('@nuxt/nitro-server/package.json')))
-    return readFileSync(join(dirname(fromServer.resolve('nitropack/package.json')), 'dist', 'runtime', 'internal', 'cache.mjs'), 'utf8')
-  }
-
   it('passes maxAge as the ttl of a write, and only where swr is off', () => {
     // If an swr entry got a ttl, the driver would drop the stale value SWR
     // serves while it rebuilds — the Länder lists' verdicts among them.

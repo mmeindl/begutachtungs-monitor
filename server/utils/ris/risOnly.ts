@@ -39,7 +39,7 @@ import { gpWindow, previousGp, windowPeriodFor } from '#shared/utils/gp'
 import { sortConsultations } from '#shared/utils/risConsultations'
 import { classifyRisRecord, type RisClass } from './risJoin'
 import { ministryCodeOf, ministryNameOf } from './ministryCodes'
-import { getRisBegutCorpus, getRisMapForGp } from './begutCorpus'
+import { getRisBegutCorpus, getRisBegutRecord, getRisMapForGp } from './begutCorpus'
 import { hasDocument, risDocumentUrl, withRisActiveOn, type RisBegutFlat } from './risRecord'
 
 const RIS_ONLY_TTL_S = 60 * 30
@@ -220,13 +220,14 @@ export async function getCarryOverRisConsultations(currentGp: string): Promise<R
 /**
  * One record with its documents, by RIS ID.
  *
- * Reads the cached corpus rather than fetching the single document: the
+ * From the cached corpus rather than fetching the single document: the
  * corpus is one leaf the site holds anyway, and a per-ID fetch would add an
- * upstream request per page view for data already in memory.
+ * upstream request per page view for data already in memory. Through the
+ * corpus's own index (`getRisBegutRecord`), which answers as the corpus
+ * would without parsing all of it.
  */
 export async function getRisConsultation(id: string): Promise<RisConsultationDetail | null> {
-  const corpus = await getRisBegutCorpus()
-  const r = corpus.records.find((x) => x.id === id)
+  const r = await getRisBegutRecord(id)
   if (!r) return null
   // Uncached, but the day is still decided here and not in `toConsultation`,
   // so there is exactly one rule for `active` in this file.
