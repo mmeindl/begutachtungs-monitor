@@ -1070,7 +1070,8 @@ describe('a line-final hyphen', () => {
       ...both(620, ')Eigentümer.', SHORT),
     ])], ONE_LAW, layout).rows.find((r) => r.gld === '§ 7.')!.current
     expect(read({ hyphensByWord: true })).toBe('§ 7. (1) Bis zum Höchstausmaß der Kinder- und Jugendhilfe gilt das Landes-Beamtengesetz für (Mit-)Eigentümer.')
-    expect(read({})).toBe('§ 7. (1) Bis zum Höchs- tausmaß der Kinderund Jugendhilfe gilt das LandesBeamtengesetz für (Mit)Eigentümer.')
+    // Without it only a hyphen at the edge goes — and the word after still says whether it is the drafter's.
+    expect(read({})).toBe('§ 7. (1) Bis zum Höchs- tausmaß der Kinder- und Jugendhilfe gilt das Landes-Beamtengesetz für (Mit-)Eigentümer.')
   })
 })
 

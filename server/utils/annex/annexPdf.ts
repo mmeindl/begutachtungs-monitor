@@ -877,11 +877,24 @@ function joinLines(parts: { text: string; wrapped: boolean }[], hyphensByWord = 
     if (!part.text) continue
     if (out === '') out = part.text
     else if (hyphensByWord && /\p{L}-$/u.test(out)) out = joinedAtHyphen(out, part.text)
-    else if (/[a-zäöüß]-$/.test(out) && carrierWrapped) out = `${out.slice(0, -1)}${part.text}`
+    else if (/[a-zäöüß]-$/.test(out) && carrierWrapped) out = joinedAtEdge(out, part.text)
     else out = `${out} ${part.text}`
     carrierWrapped = part.wrapped
   }
   return normalizeText(out)
+}
+
+/**
+ * A hyphen on a line that ran to its column's edge is the typesetter's —
+ * unless the word after it says the drafter put it there: „Kinder-" „und
+ * Jugendhilfe", „Landes-" „Beamtengesetz", „(Mit-" „)Eigentümer". Until
+ * 26.10.2026 every such hyphen went, in the Bund's Beilagen as in
+ * Salzburg's, and the page printed „Kinderund" and „LandesBeamtengesetz".
+ */
+function joinedAtEdge(out: string, next: string): string {
+  if (AFTER_DRAFTERS_HYPHEN_RE.test(next)) return `${out} ${next}`
+  if (/^[A-ZÄÖÜ)\]]/.test(next)) return `${out}${next}`
+  return `${out.slice(0, -1)}${next}`
 }
 
 /** The words after which a line-final hyphen is the drafter's: „Landes- und Bundesrecht", „sowohl Wohn- als auch …". */
