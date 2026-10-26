@@ -714,7 +714,20 @@ export interface InstructionReading {
   annex?: string[]
   /** The § it renumbers, „Der bisherige § 51a erhält die Bezeichnung „§ 51e"" — performed or not (`op`). */
   renumber?: { from: string; to: string }
+  /** It changes a division's heading or designation: said for its law, quoted (`reaches`). */
+  heading?: true
+  /** It changes the law's title: named „Titel" (`because: 'title'`). */
+  title?: true
 }
+
+/**
+ * The law's title, its Langtitel, Kurztitel or Abkürzung: „Der Titel des
+ * Gesetzes samt Abkürzung wird … ersetzt:" (842/2022), „Im Langtitel des
+ * Gesetzes wird die Wortfolge …" (38532/2024). Named „Titel", as
+ * Oberösterreich's marked title is (26.10.2026); not one of them stood on the
+ * page before.
+ */
+const TITLE_RE = /^(?:Der |Die |Im |In (?:der |dem )?)?(?:Titel|Langtitel|Kurztitel|Abkürzung)\b/
 
 /**
  * „Der bisherige § 51a erhält die Bezeichnung „§ 51e"." (15193/2025): the §
@@ -818,9 +831,17 @@ function readHead(h: string, ins: Instruction): InstructionReading {
     const division = divisionOf(h)
     if (division) return { op: { kind: 'divisionDelete', division, listed }, touches: [], ranges: [], all: false }
   }
-  if (changesNoParagraph(h)) return withAnnex(none)
+  // A division's heading or designation, and the law's title (26.10.2026):
+  // „Die Überschrift des 2. Abschnitts lautet:", „Abschnitt V erhält folgende
+  // Bezeichnung:" — 15 instructions in 11 drafts, said nowhere until then.
+  if (changesNoParagraph(h)) {
+    if (TITLE_RE.test(outside)) return withAnnex({ ...none, title: true })
+    return withAnnex(DIVISION_NAME_RE.test(h.replace(/\s+/g, ' ')) && !NOT_A_PARAGRAPH_RE.test(outside) ? { ...none, heading: true } : none)
+  }
   // Its anchor gone, what it changes is a heading or the contents: „Nach § 87 wird folgende Überschrift eingefügt:".
-  if (anchor && !refs.list.length && /Überschrift|[Bb]ezeichnung|Inhaltsverzeichnis/.test(outside)) return withAnnex({ op: null, touches: [], ranges: [], all: false })
+  if (anchor && !refs.list.length && /Überschrift|[Bb]ezeichnung|Inhaltsverzeichnis/.test(outside)) {
+    return withAnnex({ op: null, touches: [], ranges: [], all: false, ...(/Inhaltsverzeichnis/.test(outside) ? {} : { heading: true as const }) })
+  }
   const bareHeading = BARE_HEADING_RE.exec(h)
   if (bareHeading && !refs.list.length) return { op: null, touches: [bareHeading[1]!], ranges: [], all: false }
   if (DIVISION_WORDING_RE.test(h) && !refs.list.length) {
@@ -1019,6 +1040,9 @@ function lawParagraphs(law: string | null, left: readonly PrintedPara[], amendme
   const reaches: string[] = []
   const contains = (p: PrintedPara, quoted: string) => joinLines(textOf(p.heading, p.body)).replace(/\s+/g, ' ').includes(quoted.replace(/\s+/g, ' '))
   for (const r of read) for (const label of r.annex ?? []) extra.set(label, 'annex')
+  // The law's title, named; a division's heading, said as the instruction prints it (26.10.2026).
+  if (read.some((r) => r.title)) extra.set('Titel', 'title')
+  read.forEach((r, k) => { if (r.heading) reaches.push(heads[k]!) })
   /* What the law's instructions name and this reader does not show goes
    * out as `unread`, never silently (24.10.2026): the page names it beside
    * the §§ it shows, so they are not read as all the draft changes. Where an

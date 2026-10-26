@@ -208,3 +208,24 @@ describe('lawOfArticle', () => {
     expect(lawOfArticle('Inkrafttreten', [])).toBeNull()
   })
 })
+
+describe('tirolTguParagraphs — a division heading the draft changes (26.10.2026)', () => {
+  const laws = ['Tiroler Elektrizitätsgesetz 2026']
+
+  it('hands it to the § below it on each side, and leaves an unchanged one out (728/2026, 575/2026)', () => {
+    const p = page(
+      line(230, 560, '2. Abschnitt'),
+      line(200, 540, 'Energieraumplanung und ', del('besondere Verfahren'), ins('Trassenfreihaltung')),
+      line(235, 520, '§ 10'),
+      line(LEFT + 20, 500, 'Ein Text, der bleibt.'),
+      line(230, 480, '3. Abschnitt'),
+      line(215, 460, 'Schlussbestimmungen'),
+      line(235, 440, '§ 11'),
+      line(LEFT + 20, 420, 'Noch ein Text.'),
+    )
+    expect(tirolTguParagraphs([p], laws).map((x) => [x.number, x.division ?? null, x.changed])).toEqual([
+      ['10', { old: '2. Abschnitt Energieraumplanung und besondere Verfahren', neu: '2. Abschnitt Energieraumplanung und Trassenfreihaltung' }, true],
+      ['11', null, false],
+    ])
+  })
+})

@@ -526,3 +526,23 @@ describe('ktnTguParagraphs — a renumbered § (26.10.2026)', () => {
     expect(ps[0]!.old).toEqual([])
   })
 })
+
+describe('ktnTguReading — a division heading and the title (26.10.2026)', () => {
+  const laws = ['Kärntner Beispielgesetz']
+
+  it('says an instruction about a division\'s heading for its law, as printed, and names the title „Titel"', () => {
+    const right = [
+      body(R, '1. Der Titel des Gesetzes lautet:', 450), absatz(R, '„Gesetz über ein neues Beispiel“', 438),
+      body(R, '2. Die Überschrift des 2. Abschnitts lautet:', 426), centre(R, '„Pflichten und Rechte“', 414),
+      body(R, '3. § 7 entfällt.', 400),
+    ]
+    const r = ktnTguReading([page([...leftLaw(), ...right])], laws)
+    expect(r.paragraphs.map((p) => [p.number, p.unread ? (p.because ?? 'unread') : 'shown'])).toEqual([['7', 'shown'], ['Titel', 'title']])
+    expect(r.reaches).toEqual([{ law: 'Kärntner Beispielgesetz', instruction: 'Die Überschrift des 2. Abschnitts lautet:' }])
+  })
+
+  it('says an anchored heading too, „Nach § 87 wird folgende Überschrift eingefügt:" (1003/2021), and not one of the contents', () => {
+    const right = [body(R, '1. Nach § 6 wird folgende Überschrift eingefügt:', 450), centre(R, '„Strafen“', 438), body(R, '2. Vor § 5 wird folgendes Inhaltsverzeichnis eingefügt:', 426), body(R, '3. § 7 entfällt.', 400)]
+    expect(ktnTguReading([page([...leftLaw(), ...right])], laws).reaches).toEqual([{ law: 'Kärntner Beispielgesetz', instruction: 'Nach § 6 wird folgende Überschrift eingefügt:' }])
+  })
+})

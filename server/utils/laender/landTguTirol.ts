@@ -55,7 +55,7 @@
  * (`pagesOf`) knows neither rules nor colour.
  */
 import type { AnnexPage } from '../annex/annexPdf'
-import { tguParagraphKey, type TguParagraph, type TguReading } from './landTgu'
+import { joinLines, tguParagraphKey, type TguParagraph, type TguReading } from './landTgu'
 
 /* ------------------------------------------------------------------ *
  * The page geometry
@@ -473,6 +473,8 @@ interface Open {
   bad: boolean
   /** How many of `old` and `neu` are the §'s own heading: its centred lines right under „§ 4" */
   titled: { old: number; neu: number; done: boolean }
+  /** The heading of a division the draft changes, over this § (`TguParagraph.division`) */
+  division?: { old?: string; neu?: string }
 }
 
 /**
@@ -510,6 +512,14 @@ function tirolReading(pages: readonly TirolTguPage[], laws: readonly string[]): 
   let open: Open | null = null
   /** After „Artikel II": its title lines, until the first § */
   let articleTitle: string[] | null = null
+  /**
+   * The division headings since the last § of each side, and whether the
+   * draft marks any of them: a changed one goes to the § below it on its
+   * side, as Oberösterreich's (`tguParagraphs`, 26.10.2026) — 728/2026
+   * renames its 2. to 4. Abschnitt, 723/2026 repeals its 7a. Abschnitt, and
+   * neither stood on the page.
+   */
+  let division: { old: string[]; neu: string[]; marked: boolean } | null = null
   const close = () => {
     if (open) done.push(open)
     open = null
@@ -576,20 +586,43 @@ function tirolReading(pages: readonly TirolTguPage[], laws: readonly string[]): 
               bad = true
             }
           }
-          open = { law, number, from, side, old: [], neu: [], marked: line.marked, bad, titled: { old: 0, neu: 0, done: false } }
+          const opened: Open = { law, number, from, side, old: [], neu: [], marked: line.marked, bad, titled: { old: 0, neu: 0, done: false } }
+          if (division) {
+            for (const s of ['old', 'neu'] as const) {
+              if ((side !== 'both' && side !== s) || !division[s].length) continue
+              if (division.marked) opened.division = { ...opened.division, [s]: joinLines(division[s]) }
+              division[s] = []
+            }
+            if (!division.old.length && !division.neu.length) division = null
+          }
+          open = opened
           continue
         }
-        if (ELIDED_RE.test(raw) || (centred && (DIVISION_RE.test(raw) || ANNEX_RE.test(raw)))) {
+        const sideDivision = line.marked && (DIVISION_RE.test(line.old.trim()) || DIVISION_RE.test(line.neu.trim()))
+        if (centred && (DIVISION_RE.test(raw) || sideDivision)) {
           close()
+          division = { old: [...(division?.old ?? []), ...(line.old ? [line.old] : [])], neu: [...(division?.neu ?? []), ...(line.neu ? [line.neu] : [])], marked: !!division?.marked || line.marked }
+          continue
+        }
+        if (ELIDED_RE.test(raw) || (centred && ANNEX_RE.test(raw))) {
+          close()
+          division = null
           continue
         }
         if (centred && ARTICLE_RE.test(raw)) {
           close()
+          division = null
           law = null
           articleTitle = []
           continue
         }
-        if (!open) continue
+        if (!open) {
+          // A division's name, under its designation — wider than the centre's indent where it is long (728/2026).
+          if (division && division.old.length + division.neu.length < 12) {
+            division = { old: [...division.old, ...(line.old ? [line.old] : [])], neu: [...division.neu, ...(line.neu ? [line.neu] : [])], marked: division.marked || line.marked }
+          } else division = null
+          continue
+        }
         const o: Open = open
         const title = !o.titled.done && centred
         if (!title) o.titled.done = true
@@ -622,7 +655,7 @@ function pairTwins(entries: readonly Open[]): TguParagraph[] {
     if (group.length === 2) {
       const [a, b] = group as [Open, Open]
       p = a.side === 'old' && !a.neu.length && b.side === 'neu' && !b.old.length
-        ? { ...a, side: 'both', neu: b.neu, bad: a.bad || b.bad, marked: true }
+        ? { ...a, side: 'both', neu: b.neu, bad: a.bad || b.bad, marked: true, ...(a.division || b.division ? { division: { ...b.division, ...a.division } } : {}) }
         : null
     } else if (group.length > 2) p = null
     // Withheld, and named as unsure (25.10.2026). Handed on without text
@@ -640,7 +673,7 @@ function pairTwins(entries: readonly Open[]): TguParagraph[] {
       out.push(withheld)
       continue
     }
-    out.push({ law: p.law, number: p.number, ...(p.from ? { from: p.from } : {}), ...retitled(p), changed: p.marked })
+    out.push({ law: p.law, number: p.number, ...(p.from ? { from: p.from } : {}), ...retitled(p), changed: p.marked || !!p.division, ...(p.division ? { division: p.division } : {}) })
   }
   // A placeholder under a number a § read in full also carries is dropped:
   // the page would name „§ 72" as withheld beside „§ 72" shown.
