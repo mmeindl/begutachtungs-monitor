@@ -78,6 +78,20 @@ const WITHHELD_FROM_TABLE: Record<AnnexWithheldCause, string | null> = {
   notInDraft: 'Das kann auch an unserer Zuordnung zum Paragraphen liegen.',
 }
 
+/**
+ * How a withheld block begins: how many changes of this § are not shown.
+ *
+ * `count` counts changes, not rows (`annexParas`): the verdict is per §, so
+ * all of a §'s rows are withheld together, its unchanged Absätze with them,
+ * and „8 Änderungen" stood over a § that changes one (95/ME XXVIII § 7). None
+ * of the 296 withheld blocks of GP XXVIII is without a change (25.10.2026),
+ * so the count-free variant is a guard, not a case.
+ */
+export function annexWithheldLead(count: number): string {
+  if (count <= 0) return 'Hier nicht gezeigt:'
+  return `${count} ${count === 1 ? 'Änderung' : 'Änderungen'} hier nicht gezeigt:`
+}
+
 export function annexWithheldText(cause: AnnexWithheldCause | null): string {
   // No cause recorded is the state every withholding had before 2026-09-10.
   return WITHHELD_FINDING[cause ?? 'standing']

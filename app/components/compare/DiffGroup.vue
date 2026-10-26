@@ -131,11 +131,13 @@ async function toggle() {
  * at the top of the page. It goes to the first change the press revealed,
  * which is what the reader asked for. Found as the first element that was
  * not there before, not as the button's neighbour, because what is revealed
- * need not follow what was shown: the Textgegenüberstellung cuts after a
- * number of rows, not at a §, and keeps listing the §§ its check withheld
- * past the cut. So the rest lands inside and between elements that were
- * already there (74/ME, Asylgesetz: § 38 opens after § 36, ahead of the
- * withheld §§ 41, 53 and 28 that stood above the button). */
+ * need not follow what was shown: the § comparison keeps folding the
+ * unchanged units past the cut into the line above the button, so the rest
+ * lands ahead of elements that were already there. The
+ * Textgegenüberstellung did the same with whole §§ until 25.10.2026 — it cut
+ * after a number of rows and kept listing the §§ past the cut (74/ME,
+ * Asylgesetz: § 38 opened after § 36, ahead of the withheld §§ 41, 53 and 28
+ * that stood above the button); it cuts between §§ now (`annexParas`). */
 async function showMore(event: MouseEvent) {
   const hadFocus = event.currentTarget === document.activeElement
   const before = new Set<Node>(body.value?.querySelectorAll('*') ?? [])

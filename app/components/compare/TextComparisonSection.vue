@@ -20,13 +20,14 @@ import { explanationKey, explanationParaId } from '#shared/utils/explanationKey'
 import { mixedPublishers, parliamentDocumentSource, PUBLISHER_NAME_DE, risSource, type SourceEntry } from '#shared/utils/provenance'
 import { UNCHECKED_PILL, badgeCounts, badgeLabels } from '~/utils/diffBadges'
 import { absaetze } from '~/utils/absaetze'
-import { annexBadge, annexParas, groupAnnexRows } from '~/utils/annexGroups'
+import { annexBadge, annexLawKeys, annexParas, groupAnnexRows } from '~/utils/annexGroups'
 import {
   annexDoubtfulGroupNote,
   annexDoubtfulNote,
   annexDroppedPagesNote,
   annexUncheckedNote,
   annexWithheldBlame,
+  annexWithheldLead,
   annexWithheldText,
 } from '~/utils/annexNotes'
 
@@ -264,11 +265,13 @@ const droppedPagesNote = computed(() => annexDroppedPagesNote(data.value?.droppe
 /** The laws whose §§ fail in a cluster — said inside each law's group. */
 const doubtfulLaws = computed(() => new Set(data.value?.verification?.doubtfulLaws ?? []))
 const doubtfulGroupNote = computed(() => annexDoubtfulGroupNote(data.value?.readFrom ?? null))
-/** Above the comparison only for a named law no group carries, so nothing is lost. */
-const doubtfulNote = computed(() => {
-  const keys = new Set(groups.value.map((g) => g.key))
-  return annexDoubtfulNote([...doubtfulLaws.value].filter((l) => !keys.has(l)), data.value?.readFrom ?? null)
-})
+/** Above the comparison only for a named law no group carries, so nothing is
+ *  lost — no group of the UNFILTERED comparison (`annexLawKeys`): this note
+ *  stands above the toolbar, so neither the search nor the legend may move it. */
+const lawKeys = computed(() => annexLawKeys(data.value?.available ? data.value.rows : []))
+const doubtfulNote = computed(() =>
+  annexDoubtfulNote([...doubtfulLaws.value].filter((l) => !lawKeys.value.has(l)), data.value?.readFrom ?? null),
+)
 /** Why the §'s changes are not shown, and — where the cause is the layout
  *  — whose layout: the blame asked for once. */
 function withheldReason(cause: AnnexWithheldCause | null): string {
@@ -424,7 +427,7 @@ function withheldReason(cause: AnnexWithheldCause | null): string {
                  above is keyed by the § itself. -->
             <div v-for="(b, bi) in p.blocks" :key="`${b.kind}-${bi}`" :class="bi > 0 ? 'mt-3' : ''">
               <p v-if="b.kind === 'withheld'" class="text-xs text-ink-muted">
-                {{ b.count }} {{ b.count === 1 ? 'Änderung' : 'Änderungen' }} hier nicht gezeigt:
+                {{ annexWithheldLead(b.count) }}
                 <!-- The space as a string: Vue's whitespace condensing drops
                      a leading space inside `<template v-if>`, which printed
                      „…im RIS.Das kann …" (seen 30.09.2026). -->

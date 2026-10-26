@@ -11,6 +11,7 @@
  * rule; they share one pass now.
  */
 import type { AnnexWithheldCause, ConsolidatedParagraph, LawDiffSegment, ParagraphExplanationView, TextComparisonRow } from '#shared/types'
+import { explanationParaId } from '#shared/utils/explanationKey'
 import { type DiffBadge, paragraphBadge } from './diffBadges'
 import { readsSideBySide, splitSegments } from './diffSides'
 
@@ -64,6 +65,26 @@ function isUnchecked(row: TextComparisonRow): boolean {
 
 const noCounts = (): Record<DiffBadge, number> => ({ unchanged: 0, changed: 0, editorial: 0, inserted: 0, removed: 0 })
 
+/** A division of the law, which an elision line may name instead of a part of its §. */
+const DIVISION_RE = /^\s*(?:Art(?:ikel)?\b|Anlage|Anhang|Teil\b|Abschnitt|Unterabschnitt|Hauptstück|Kapitel|\d+[a-z]*\.\s*(?:Teil|Abschnitt|Unterabschnitt|Hauptstück|Kapitel)\b)/i
+
+/**
+ * Whether an elided row says that ITS § has standing text the draft leaves
+ * alone — „(1) bis (4) …", „2. bis 26b. …" under § 54, or the § opening with
+ * its own elision („§ 54." and „(1) bis (3) …").
+ *
+ * Not a line that names other units: „§§ 21 bis 25 …" leaves out five §§ and
+ * inherits its `para` from the § above without being part of it
+ * (`elisionOpens` in server/utils/annex/elision.ts), and neither is an
+ * Abschnitt left out.
+ */
+function keepsStandingText(row: TextComparisonRow): boolean {
+  if (row.gld !== null) return true
+  const named = explanationParaId(row.current)
+  if (named !== null) return named === explanationParaId(row.para)
+  return !DIVISION_RE.test(row.current)
+}
+
 export interface AnnexFilter {
   /** The search: whether a row matches it; null while nothing is searched. */
   matches: ((row: TextComparisonRow) => boolean) | null
@@ -88,6 +109,13 @@ export interface AnnexFilter {
  * what it means to: the 919 rows that carried a real change behind a trailing
  * "…" are no longer among them.
  *
+ * Dropped from the rows, not from what the § is: an elided row is the
+ * ressort saying the § has standing text it leaves alone, so a § whose only
+ * printed row is a new Absatz is „geändert", not „neu" — StVO § 54 on 62/ME
+ * XXVIII prints its new (4a) between „(1) bis (4) …" and „(5) bis (7) …"
+ * (`keepsStandingText`). „neu" is a claim about all of the §
+ * (`paragraphBadge`).
+ *
  * `rows`: the response's rows, or none where it is not `available`.
  */
 export function groupAnnexRows(
@@ -98,8 +126,14 @@ export function groupAnnexRows(
   // row is structural — it opens a group and carries the law's title — so it
   // always survives, and a group left without rows drops out below.
   const kept: { row: TextComparisonRow; index: number }[] = []
+  /** §§ (`paragraphIdOf`) with standing text the annex leaves out — whatever the search keeps. */
+  const standing = new Set<string>()
   for (const [index, row] of rows.entries()) {
-    if (row.kind !== 'article' && (row.elided || (matches && !matches(row)))) continue
+    if (row.kind !== 'article' && row.elided) {
+      if (keepsStandingText(row)) standing.add(paragraphIdOf(row, index))
+      continue
+    }
+    if (row.kind !== 'article' && matches && !matches(row)) continue
     kept.push({ row, index })
   }
 
@@ -114,7 +148,7 @@ export function groupAnnexRows(
     if (row.kind === 'article') continue
     const id = paragraphIdOf(row, index)
     let p = byId.get(id)
-    if (!p) byId.set(id, (p = { badges: new Set(), withheld: false }))
+    if (!p) byId.set(id, (p = { badges: new Set(standing.has(id) ? ['unchanged'] : []), withheld: false }))
     if (row.check === 'withheld') p.withheld = true
     else p.badges.add(annexBadge(row))
   }
@@ -149,7 +183,7 @@ export function groupAnnexRows(
     if (!byPara) paras.set(current, (byPara = new Map()))
     const key = paragraphKeyOf(row, index)
     let p = byPara.get(key)
-    if (!p) byPara.set(key, (p = { badges: new Set(), withheld: false, unchecked: false }))
+    if (!p) byPara.set(key, (p = { badges: new Set(standing.has(paragraphIdOf(row, index)) ? ['unchanged'] : []), withheld: false, unchecked: false }))
     // A withheld row keeps its `change` but lost its text, so counting it
     // would put a change in the header pill that the block below says is not
     // shown — and `stats` already leaves those rows out. It is counted as
@@ -175,6 +209,17 @@ export function groupAnnexRows(
   return { groups: out.filter((g) => g.rows.length > 0), kindCounts }
 }
 
+/**
+ * The laws the comparison has a group for, before any search or hidden kind
+ * — what a caveat ABOVE the toolbar may depend on (25.10.2026). The note on
+ * a doubtful law no group carries was computed from the filtered groups, so
+ * a search that left that law's group out put the note above the very box
+ * whose search had moved it: a control may change nothing above itself.
+ */
+export function annexLawKeys(rows: readonly TextComparisonRow[]): Set<string> {
+  return new Set(groupAnnexRows(rows, { matches: null, hidden: [] }).groups.map((g) => g.key))
+}
+
 export type AnnexBlock =
   /** The two columns come along computed: the template asked for each of them
    *  twice per row, on every render, and a render happens per keystroke. */
@@ -186,6 +231,10 @@ export type AnnexBlock =
    * nothing to render but the fact — and that fact is worth a line: a
    * comparison that silently drops a § is a different kind of wrong answer
    * from one that says it did.
+   *
+   * `count`: the CHANGES withheld — rows that carry one. The verdict is per
+   * §, so its unchanged Absätze are withheld with it, and counting rows put
+   * „8 Änderungen hier nicht gezeigt" over a § with one (95/ME XXVIII § 7).
    */
   | { kind: 'withheld'; count: number; cause: AnnexWithheldCause | null }
 
@@ -204,9 +253,12 @@ export type AnnexBlock =
 export interface AnnexPara {
   /**
    * The § this block belongs to — `row.para`, '' for the rows before the
-   * first designation. Doubles as the `v-for` key, and is unique within a
-   * group because `para` is INHERITED by every row that opens no designation
-   * of its own: a § therefore arrives as one contiguous run, never twice.
+   * first designation — and the `v-for` key, so it has to be unique within a
+   * group. `para` is inherited by every row that opens no designation of its
+   * own, so a § usually arrives as one contiguous run; where a draft
+   * renumbers, it does not. 51/ME XXVIII prints the new § 5 and, three §§
+   * later, the repealed old § 5 — two blocks of one `para`. The second
+   * occurrence of a `para` is keyed „§ 5.#2".
    */
   key: string
   /** "§ 40." — null for rows that precede the first designation */
@@ -223,7 +275,8 @@ export interface AnnexPara {
 }
 
 export interface AnnexParaOptions {
-  /** Changes printed before the group's „show the rest" line (`limitFor`). */
+  /** Changes printed before the group's „show the rest" line (`limitFor`) —
+   *  reached within a §, the § is still printed whole. */
   limit: number
   /** Whether unchanged rows fold into a context line — not while searching:
    *  then the reader asked for these very rows, so an unchanged hit gets its
@@ -234,62 +287,248 @@ export interface AnnexParaOptions {
   consolidatedFor: (law: string | null, para: string | null) => ConsolidatedParagraph | null
 }
 
+/** One § as the annex prints it: a contiguous stretch of rows under one `para`. */
+interface ParagraphRun {
+  key: string
+  rows: TextComparisonRow[]
+}
+
+function paragraphRuns(rows: readonly TextComparisonRow[]): ParagraphRun[] {
+  const runs: ParagraphRun[] = []
+  for (const row of rows) {
+    const key = row.para ?? ''
+    const last = runs[runs.length - 1]
+    if (last && last.key === key) last.rows.push(row)
+    else runs.push({ key, rows: [row] })
+  }
+  return runs
+}
+
+/**
+ * „§ 22." at the head of a column — a Gliederungssymbol with its full stop,
+ * not a citation („§ 5 Abs. 2 gilt …" carries none after the number).
+ */
+const LEADING_DESIGNATION_RE = /^\s*(§+\s*\d+[a-z]*\.)(?=\s|$)/i
+
+/**
+ * The designation a § carries AFTER the draft — the one the Erläuterungen
+ * and the Lesefassung address it by. Null for a § the draft repeals: every
+ * row of it stands in the left column only, so it carries none afterwards.
+ *
+ * A row is filed under the designation of its LEFT column (`gld`, the §
+ * the RIS check holds the left column against), and where a draft
+ * renumbers, the annex prints both in one row: „§ 14." left, „§ 22." right.
+ * `stripGld` takes out only the row's own one, so the right column's text
+ * still begins with „§ 22." (server/utils/annex/tableCells.ts). Looked up
+ * by „§ 14.", the old § 14 got „Zu § 14: Der vorgeschlagene Abs. 1 zählt
+ * IVS-Anwendungen auf …" — the Begründung of the NEW § 14 (51/ME XXVIII).
+ *
+ * Only where the left column does not begin with the same designation: a §
+ * that opens with a mirrored citation is no renumbering. And only for
+ * Paragraphen, the one designation either lookup understands
+ * (`explanationParaId`).
+ */
+export function designationAfter(rows: readonly TextComparisonRow[]): string | null {
+  for (const row of rows) {
+    if (row.gld === null || explanationParaId(row.gld) === null) continue
+    const right = LEADING_DESIGNATION_RE.exec(row.proposed)?.[1]
+    if (!right || row.current.trimStart().startsWith(right)) continue
+    if (explanationParaId(right) !== explanationParaId(row.gld)) return right
+  }
+  return rows.every((r) => r.change === 'removed') ? null : (rows[0]?.para ?? null)
+}
+
+/**
+ * The §§ a run opens — a new one at every row with a designation of its own,
+ * the rows above the first (a heading printed over its §) belonging to it.
+ *
+ * Usually one. Two where the annex opens the same `para` twice in a row: 2/ME
+ * XXVIII pairs the standing § 2 Abs. 1 to 3 with the new § 1a („§ 2." left,
+ * „§ 1a." right) and then prints § 2 itself, „§ 2." on both sides — one run,
+ * two §§ after the draft, each with its own Begründung.
+ */
+function openedParagraphs(rows: readonly TextComparisonRow[]): TextComparisonRow[][] {
+  const out: TextComparisonRow[][] = []
+  let current: TextComparisonRow[] = []
+  let opened = false
+  for (const row of rows) {
+    if (row.gld !== null && opened) {
+      out.push(current)
+      current = []
+      opened = false
+    }
+    current.push(row)
+    if (row.gld !== null) opened = true
+  }
+  if (current.length) out.push(current)
+  return out
+}
+
+/** A § as the Erläuterungen and the Lesefassung may address it. */
+interface Addressed {
+  /** The designation after the draft (`designationAfter`); null where it is repealed. */
+  after: string | null
+  /** Its designation before — the row's `para`. */
+  own: string | null
+  /** Whether another § of the law carries `own` after the draft. */
+  ownTaken: boolean
+}
+
+/**
+ * Who each run is, for the two lookups: one entry per § it opens.
+ *
+ * The designation after the draft comes first, and the one before is the
+ * fallback — because the corpus addresses a renumbered § both ways. 51/ME
+ * XXVIII re-enacts the law and writes „Zu § 22: § 14 wird zum § 22"; 2/ME
+ * amends § 14a and renumbers it afterwards, and writes „Zu Z 33 und 34
+ * (§ 14a Abs. 3 …)" with nothing under § 15. So: what stands under the new
+ * number, else what stands under the old one — but the old one only where no
+ * other § of the law carries it after the draft. Where one does (51/ME: the
+ * new § 14), „Zu § 14" explains that one, and the renumbered or repealed §
+ * gets nothing rather than its successor's Begründung.
+ */
+function addressedParagraphs(runs: readonly ParagraphRun[]): Addressed[][] {
+  const opened = runs.map((run) => openedParagraphs(run.rows).map((rows) => ({ own: rows[0]!.para, after: designationAfter(rows) })))
+  /** How many §§ of the law carry each number after the draft. */
+  const carriers = new Map<string, number>()
+  for (const { after } of opened.flat()) {
+    const id = explanationParaId(after)
+    if (id !== null) carriers.set(id, (carriers.get(id) ?? 0) + 1)
+  }
+  return opened.map((paragraphs) =>
+    paragraphs.map(({ own, after }) => {
+      const id = explanationParaId(own)
+      const others = (carriers.get(id ?? '') ?? 0) - (id !== null && explanationParaId(after) === id ? 1 : 0)
+      return { own, after, ownTaken: others > 0 }
+    }),
+  )
+}
+
+/** What one addressed § finds under `lookup` (see `addressedParagraphs`). */
+function lookUp<T>(law: string | null, p: Addressed, lookup: (law: string | null, para: string | null) => T, found: (t: T) => boolean): T | null {
+  if (p.after !== null) {
+    const hit = lookup(law, p.after)
+    if (found(hit)) return hit
+    if (explanationParaId(p.after) === explanationParaId(p.own)) return null
+  }
+  return p.ownTaken ? null : lookup(law, p.own)
+}
+
+/**
+ * The Lesefassung of a run: the § that keeps the run's number first (2/ME's
+ * § 2 also opens the new § 1a, and stays § 2), else the first one it opens —
+ * a renumbered § under the number it moves to (51/ME's old § 14 is § 22).
+ */
+function consolidatedOf(law: string | null, paragraphs: readonly Addressed[], consolidatedFor: AnnexParaOptions['consolidatedFor']): ConsolidatedParagraph | null {
+  const keeps = (p: Addressed) => p.after !== null && explanationParaId(p.after) === explanationParaId(p.own)
+  for (const p of [...paragraphs.filter(keeps), ...paragraphs.filter((p) => !keeps(p))]) {
+    const hit = lookUp(law, p, consolidatedFor, (c) => c !== null)
+    if (hit) return hit
+  }
+  return null
+}
+
+/** Passages that answer for several designations („Zu §§ 1a und 2") stand once. */
+function distinctPassages(passages: readonly ParagraphExplanationView[]): ParagraphExplanationView[] {
+  const seen = new Set<string>()
+  return passages.filter((e) => {
+    const key = `${e.heading}\u0000${e.text.join('\u0000')}`
+    if (seen.has(key)) return false
+    seen.add(key)
+    return true
+  })
+}
+
 export function annexParas(g: AnnexGroup, { limit, folding, explanationsFor, consolidatedFor }: AnnexParaOptions): { paras: AnnexPara[]; hidden: number } {
   const paras: AnnexPara[] = []
-  let current: AnnexPara = { key: '\u0000', gld: null, heading: null, blocks: [], explanations: [], consolidated: null, uncheckedMarked: false }
-  let context: TextComparisonRow[] = []
+  const runs = paragraphRuns(g.rows)
+  const addressed = addressedParagraphs(runs)
+  /** How often each `para` opened a block so far — for a unique `key`. */
+  const seen = new Map<string, number>()
+  /*
+   * The limit cuts BETWEEN §§ (25.10.2026). It cut between rows, so the §
+   * that reached it lost its remaining Absätze, and every § after it was
+   * still printed — heading, „Begründung des Ressorts", „N Stellen
+   * unverändert", the withheld notice and the Lesefassung, only without its
+   * changes: a § that read as having none. Now a § is printed whole or not
+   * at all, and once the limit is reached the rest of the group waits behind
+   * the button.
+   *
+   * `hidden` keeps its unit — the rows that print as a change once the
+   * button is pressed (`shows`) — so „N weitere Änderungen" is exactly what
+   * appears. Where nothing of that kind is left, nothing is cut: the button
+   * would have nothing to announce, and a § behind no button is a § gone.
+   */
+  const shows = (row: TextComparisonRow) => row.check !== 'withheld' && !(folding && row.change === 'unchanged')
+  const rest: number[] = []
+  for (let i = runs.length - 1, sum = 0; i >= 0; i--) rest[i] = sum += runs[i]!.rows.filter(shows).length
   let shown = 0
   let hidden = 0
-  let withheld = 0
-  // Every withheld row of a § carries the same cause — the verdict is per §.
-  let withheldCause: AnnexWithheldCause | null = null
-  const flush = () => {
-    // The context line also stands on §§ that carry a Lesefassung, and that
-    // is a decision rather than an oversight (19.09.2026): it folds the
-    // unchanged rows OF THE ANNEX, in the same column logic as the changed
-    // ones above — the Lesefassung below is our text from RIS. For a reader
-    // reading the annex, „was hat das Ressort hier unverändert abgedruckt" is
-    // different information from „so lautet der Paragraph dann". Dropping it
-    // on those §§ was tried briefly and undone.
-    if (context.length) current.blocks.push({ kind: 'context', rows: context })
-    context = []
-    if (withheld > 0) current.blocks.push({ kind: 'withheld', count: withheld, cause: withheldCause })
-    withheld = 0
-    withheldCause = null
-  }
-  for (const row of g.rows) {
-    const key = row.para ?? ''
-    if (current.key !== key) {
+  for (const [i, run] of runs.entries()) {
+    if (shown >= limit && rest[i]! > 0) {
+      hidden = rest[i]!
+      break
+    }
+    const first = run.rows[0]!
+    const n = (seen.get(run.key) ?? 0) + 1
+    seen.set(run.key, n)
+    const current: AnnexPara = {
+      key: n === 1 ? run.key : `${run.key}#${n}`,
+      gld: first.para,
+      heading: null,
+      blocks: [],
+      explanations: distinctPassages((addressed[i] ?? []).flatMap((p) => lookUp(first.law, p, explanationsFor, (xs) => xs.length > 0) ?? [])),
+      consolidated: consolidatedOf(first.law, addressed[i] ?? [], consolidatedFor),
+      uncheckedMarked: false,
+    }
+    paras.push(current)
+    let context: TextComparisonRow[] = []
+    /** Withheld rows, and the changes among them (`AnnexBlock` 'withheld'). */
+    let withheld = 0
+    let withheldChanges = 0
+    // Every withheld row of a § carries the same cause — the verdict is per §.
+    let withheldCause: AnnexWithheldCause | null = null
+    const flush = () => {
+      // The context line also stands on §§ that carry a Lesefassung, and that
+      // is a decision rather than an oversight (19.09.2026): it folds the
+      // unchanged rows OF THE ANNEX, in the same column logic as the changed
+      // ones above — the Lesefassung below is our text from RIS. For a reader
+      // reading the annex, „was hat das Ressort hier unverändert abgedruckt" is
+      // different information from „so lautet der Paragraph dann". Dropping it
+      // on those §§ was tried briefly and undone.
+      if (context.length) current.blocks.push({ kind: 'context', rows: context })
+      context = []
+      if (withheld > 0) current.blocks.push({ kind: 'withheld', count: withheldChanges, cause: withheldCause })
+      withheld = 0
+      withheldChanges = 0
+      withheldCause = null
+    }
+    for (const row of run.rows) {
+      // The heading belongs to the paragraph, not to the Absatz that carries it.
+      current.heading ??= row.heading
+      if (row.check === 'withheld') {
+        withheld++
+        // The server empties the text and keeps `change` (`gateRows`).
+        if (row.change !== 'unchanged') withheldChanges++
+        withheldCause ??= row.withheldCause ?? null
+        continue
+      }
+      if (row.change === 'unchanged' && folding) {
+        context.push(row)
+        continue
+      }
       flush()
-      current = { key, gld: row.para, heading: null, blocks: [], explanations: explanationsFor(row.law, row.para), consolidated: consolidatedFor(row.law, row.para), uncheckedMarked: false }
-      paras.push(current)
-    }
-    // The heading belongs to the paragraph, not to the Absatz that carries it.
-    current.heading ??= row.heading
-    if (row.check === 'withheld') {
-      withheld++
-      withheldCause ??= row.withheldCause ?? null
-      continue
-    }
-    if (row.change === 'unchanged' && folding) {
-      context.push(row)
-      continue
-    }
-    if (shown >= limit) {
-      hidden++
-      continue
+      // „nicht geprüft" beside the change badge, once per § (02.10.2026): the
+      // verdict is per §, and on every row of a five-row § it would repeat
+      // itself. At the first SHOWN row that owed a check, so a fold cannot
+      // swallow it. A row without a § is a unit of its own and always gets it.
+      const unchecked = isUnchecked(row) && (row.para === null || !current.uncheckedMarked)
+      if (unchecked && row.para !== null) current.uncheckedMarked = true
+      current.blocks.push({ kind: 'row', row, ...splitSegments(row.segments, row.current, row.proposed), split: readsSideBySide(row.segments), unchecked })
+      shown++
     }
     flush()
-    // „nicht geprüft" beside the change badge, once per § (02.10.2026): the
-    // verdict is per §, and on every row of a five-row § it would repeat
-    // itself. At the first SHOWN row that owed a check, so a fold cannot
-    // swallow it. A row without a § is a unit of its own and always gets it.
-    const unchecked = isUnchecked(row) && (row.para === null || !current.uncheckedMarked)
-    if (unchecked && row.para !== null) current.uncheckedMarked = true
-    current.blocks.push({ kind: 'row', row, ...splitSegments(row.segments, row.current, row.proposed), split: readsSideBySide(row.segments), unchecked })
-    shown++
   }
-  flush()
   // One layout per § (22.10.2026): `readsSideBySide` decides per row, and a §
   // whose (3) stood in two columns and whose (4) ran inline switched shape
   // between two Absätze of one provision — it read as inconsistency, not as a

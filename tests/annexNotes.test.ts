@@ -5,6 +5,7 @@ import {
   annexDroppedPagesNote,
   annexUncheckedNote,
   annexWithheldBlame,
+  annexWithheldLead,
   annexWithheldText,
 } from '../app/utils/annexNotes'
 
@@ -83,5 +84,16 @@ describe('annexDoubtfulGroupNote — the cluster finding inside its own law (03.
   it('needs no name and keeps the cause per path', () => {
     expect(annexDoubtfulGroupNote('pdf')).toBe('Auffällig viele Stellen dieses Gesetzes weichen vom geltenden Text ab – das kann an unserer Lesung des PDF liegen.')
     expect(annexDoubtfulGroupNote('table')).toContain('die Beilage dürfte dort einen anderen Stand')
+  })
+})
+
+describe('annexWithheldLead — how many changes of a § are not shown', () => {
+  it('counts changes, in the singular for one', () => {
+    expect(annexWithheldLead(1)).toBe('1 Änderung hier nicht gezeigt:')
+    expect(annexWithheldLead(3)).toBe('3 Änderungen hier nicht gezeigt:')
+  })
+
+  it('never says „0 Änderungen" — a § withheld without a change is still not shown', () => {
+    expect(annexWithheldLead(0)).toBe('Hier nicht gezeigt:')
   })
 })
