@@ -1279,7 +1279,11 @@ export function oracleVerdict(id: string, before: string | null, got: string, ro
     return { para: id, verdict: 'widersprochen', rows: rows.length, note: `Engine fügte ein, was die Gegenüberstellung nicht zeigt: ${unshown.slice(0, 6).join(' ')}` }
   }
   const removed = bagMinus(removedRaw, insertedRaw)
-  const dropped = new Set(pairs.flatMap((r) => cellWords(r.current)))
+  // Only a row that changes can account for words that go. An unchanged row
+  // says its words stay; counted here, it excused the very loss it rules out —
+  // an engine that dropped part of an unchanged sentence passed, since check 2
+  // reads only changed rows (AC8FD757 § 3c, 26.10.2026).
+  const dropped = new Set(pairs.filter((r) => r.change !== 'unchanged').flatMap((r) => cellWords(r.current)))
   const unshownRemoved = removed.filter((w) => !dropped.has(w))
   if (unshownRemoved.length > 0) {
     return { para: id, verdict: 'widersprochen', rows: rows.length, note: `Engine entfernte, was die Gegenüberstellung nicht zeigt: ${unshownRemoved.slice(0, 6).join(' ')}` }

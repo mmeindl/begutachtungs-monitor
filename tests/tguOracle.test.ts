@@ -152,6 +152,15 @@ describe('oracleVerdict', () => {
     expect(r.note).toMatch(/vier/)
   })
 
+  it('lets no unchanged row excuse the loss of its own words', () => {
+    // The engine dropped „sechs" from the sentence the annex leaves as it is.
+    const got = 'Zuständig ist die Bezirksverwaltungsbehörde am Sitz der Partei. Sie entscheidet binnen Wochen.'
+    const rows = [pair('§ 6. (1) Zuständig ist die Behörde am Sitz der Partei.', '§ 6. (1) Zuständig ist die Bezirksverwaltungsbehörde am Sitz der Partei.', '§ 6.'), pair('Sie entscheidet binnen sechs Wochen.', 'Sie entscheidet binnen sechs Wochen.')]
+    const r = oracleVerdict('6', before, got, rows)
+    expect(r.verdict).toBe('widersprochen')
+    expect(r.note).toMatch(/sechs/)
+  })
+
   it('calls an annex that talks about another version foreign, not confirming', () => {
     const rows = [pair('§ 6. (1) Zuständig ist das Landesgericht.', '§ 6. (1) Zuständig ist das Bezirksgericht.', '§ 6.')]
     expect(oracleVerdict('6', before, before, rows)).toMatchObject({ verdict: 'fremd' })
