@@ -106,7 +106,13 @@ async function run(f: GateFixture) {
 const FIXTURES: { name: string; withholds: string | null }[] = [
   { name: 'gate-obsorge', withholds: null },
   { name: 'gate-leitungspositionen', withholds: null },
-  { name: 'gate-organtransplantation', withholds: 'alreadyStanding' },
+  // Recorded as the rule-1 case until 25.10.2026; re-read, its § 4 was a false
+  // alarm — Z 3 inserts into Abs. 5 a sentence § 4 already carries elsewhere —
+  // and it verifies now (`WordBag.carries`, the test below).
+  { name: 'gate-organtransplantation', withholds: null },
+  // The rule-1 case since: § 11a's right column opens with the § heading the
+  // left one lacks, under an instruction that restates only Abs. 5 Z 3.
+  { name: 'gate-nlav', withholds: 'alreadyStanding' },
   { name: 'gate-avg', withholds: 'notInDraft' },
   { name: 'gate-informationssicherheit', withholds: 'standing' },
 ]
@@ -161,5 +167,14 @@ describe.each(FIXTURES)('$name', ({ name, withholds }) => {
 
     const withheldWithoutCause = Object.entries(check.verdicts).filter(([key, v]) => v === 'withheld' && check.withheldCauses[key] === undefined)
     expect(withheldWithoutCause).toEqual([])
+  })
+})
+
+describe('a wording the draft appends where the § already carries it', () => {
+  it('verifies OTPG § 4, whose Z 3 inserts a sentence the § holds in another Absatz', async () => {
+    const { check } = await run(fixture('gate-organtransplantation'))
+    const key = Object.keys(check.verdicts).find((k) => k.endsWith('#§ 4.'))!
+    expect(check.verdicts[key]).toBe('verified')
+    expect(check.withheldCauses[key]).toBeUndefined()
   })
 })

@@ -72,9 +72,16 @@ const WITHHELD_FINDING: Record<AnnexWithheldCause, string> = {
  * reading is named first, so the finding never reads as the ministry's
  * fault. */
 const WITHHELD_FROM_PDF = 'Das kann an unserer Lesung des PDF liegen.'
+/* „bereits geltend" on the table path named the Beilage's version of the law
+ * as the cause until 25.10.2026. FSG § 26 (68/ME XXVIII) showed the other
+ * one: the draft appends to Abs. 3 the sentence Abs. 2 already carries, and
+ * the check, which reads the § as a whole, cannot tell the two Absätze
+ * apart. Since then an instruction that appends exactly that wording no
+ * longer fires the rule (`WordBag.carries`), but a restated Absatz still can,
+ * so the sentence names our check, not the ministry. */
 const WITHHELD_FROM_TABLE: Record<AnnexWithheldCause, string | null> = {
   standing: null,
-  alreadyStanding: 'Die Beilage dürfte einen anderen Stand des Gesetzes zugrunde legen.',
+  alreadyStanding: 'Das kann auch daran liegen, dass derselbe Wortlaut an anderer Stelle des Paragraphen steht; unsere Prüfung unterscheidet die Absätze nicht.',
   notInDraft: 'Das kann auch an unserer Zuordnung zum Paragraphen liegen.',
 }
 

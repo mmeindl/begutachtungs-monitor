@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { coverageOf, coverageOfParagraph, displayedChangeRows } from '../server/utils/annex/coverage'
+import { coverageOf, coverageOfParagraph, displayedChangeRows, provisionText } from '../server/utils/annex/coverage'
 import { comparisonRow as row } from './helpers/builders'
 
 describe('coverageOf', () => {
@@ -106,5 +106,18 @@ describe('coverageOfParagraph', () => {
     const c = coverageOfParagraph(rows, 'Die Behörde entscheidet über den Antrag binnen sechs Wochen nach Einbringung.')
     expect(c.ratio).toBe(1)
     expect(c.prose).toBe(true)
+  })
+  // A PDF row is a whole provision with whatever the annex prints above it.
+  // „Abschnitt 7d …" heads a division whose §§ the annex leaves out, and RIS
+  // files it above the § that opens it — not above § 42, the next one shown
+  // (Transparenzdatenbankgesetz, 25.10.2026).
+  it('reads a provision from its own designation on', () => {
+    const pdf = row({ change: 'changed', gld: '§ 42.', current: 'Abschnitt 7d Regelungen zur personenbezogenen Veröffentlichung am Transparenzportal 8. Abschnitt Schlussbestimmungen Vollziehung § 42. (1) Mit der Vollziehung dieses Bundesgesetzes ist der Bundesminister für Finanzen betraut.' })
+    const c = coverageOfParagraph([pdf], 'Vollziehung § 42. (1) Mit der Vollziehung dieses Bundesgesetzes ist der Bundesminister für Finanzen betraut.')
+    expect(c.ratio).toBe(1)
+    expect(provisionText(pdf).startsWith('§ 42. (1)')).toBe(true)
+    // A table row carries its designation in `gld` and opens with the Absatz.
+    const table = row({ change: 'changed', gld: '§ 42.', current: '(1) Mit der Vollziehung ist der Bundesminister betraut.' })
+    expect(provisionText(table)).toBe(table.current)
   })
 })

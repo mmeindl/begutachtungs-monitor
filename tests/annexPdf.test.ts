@@ -449,6 +449,57 @@ describe('headings that span both columns', () => {
   })
 })
 
+describe('a division heading between two provisions', () => {
+  // 81/ME XXVIII: five heading lines stand between § 13 and § 14, and the
+  // carry took the last three — „3. Hauptstück", its name and, on the right,
+  // „1. Abschnitt" stayed at the end of § 13, and the word diff showed the
+  // division the draft renames as text it appends to § 13 (25.10.2026).
+  it('hands the whole division heading to the provision below it', () => {
+    const rows = parse([page([
+      { y: 700, left: '§ 13. (1) Die Dokumente sind festzulegen.', right: '§ 13. (1) Die Dokumente sind festzulegen.' },
+      { y: 686, left: '3. Hauptstück', right: '3. Hauptstück' },
+      { y: 672, left: 'Beschränkungen im Verkehr mit Drittstaaten', right: 'Beschränkungen im Verkehr mit Drittstaaten' },
+      { y: 658, left: '1. Abschnitt', right: '1. Abschnitt' },
+      { y: 644, left: 'Beschränkungen im Güterverkehr', right: 'Allgemeine Beschränkungen' },
+      { y: 630, left: 'Genehmigungspflichten', right: 'Genehmigungspflichten' },
+      { y: 616, left: '§ 14. (1) Eine Genehmigung ist erforderlich.', right: '§ 14. (1) Eine Genehmigung ist erforderlich.' },
+    ])])
+    const thirteen = rows.find((r) => r.gld === '§ 13.')!
+    expect(thirteen.current).toBe('§ 13. (1) Die Dokumente sind festzulegen.')
+    expect(thirteen.proposed).toBe('§ 13. (1) Die Dokumente sind festzulegen.')
+    expect(thirteen.change).toBe('unchanged')
+    const fourteen = rows.find((r) => r.gld === '§ 14.')!
+    expect(fourteen.current).toBe('3. Hauptstück Beschränkungen im Verkehr mit Drittstaaten 1. Abschnitt Beschränkungen im Güterverkehr Genehmigungspflichten § 14. (1) Eine Genehmigung ist erforderlich.')
+    expect(fourteen.proposed.startsWith('3. Hauptstück')).toBe(true)
+  })
+
+  // A reference to a division ends its sentence, so it is no heading.
+  it('leaves a reference to a division in its sentence', () => {
+    const rows = parse([page([
+      { y: 700, left: '§ 16. (1) Es gilt das nach dem', right: '§ 16. (1) Es gilt das nach dem' },
+      { y: 686, left: '6. Teil.', right: '6. Teil.' },
+      { y: 672, left: 'Aufsicht', right: 'Aufsicht' },
+      { y: 658, left: '§ 17. (1) Die Aufsicht obliegt dem Land.', right: '§ 17. (1) Die Aufsicht obliegt dem Bund.' },
+    ])])
+    expect(rows.find((r) => r.gld === '§ 16.')!.current).toBe('§ 16. (1) Es gilt das nach dem 6. Teil.')
+    expect(rows.find((r) => r.gld === '§ 17.')!.current).toBe('Aufsicht § 17. (1) Die Aufsicht obliegt dem Land.')
+  })
+
+  // FPG 2005: „Sonderbestimmungen für Minderjährige für das 3. bis 6. und das
+  // 12. bis" / „14. Hauptstück" is one heading broken before a number; read
+  // as a division, it split there and left its first line behind.
+  it('does not split a heading broken before a division number', () => {
+    const rows = parse([page([
+      { y: 700, left: '§ 9. (1) bis (5) ...', right: '§ 9. (1) bis (5) ...' },
+      { y: 686, left: 'Sonderbestimmungen für Minderjährige für das 3. bis 6. und das 12. bis', right: 'Sonderbestimmungen für Minderjährige für das 3. bis 6. und das 12. bis' },
+      { y: 672, left: '14. Hauptstück', right: '14. Hauptstück' },
+      { y: 658, left: '§ 12. (1) Minderjährige sind zu hören.', right: '§ 12. (1) Minderjährige sind anzuhören.' },
+    ])])
+    expect(rows.find((r) => r.gld === '§ 9.')!.current).toBe('§ 9. (1) bis (5) ...')
+    expect(rows.find((r) => r.gld === '§ 12.')!.current.startsWith('Sonderbestimmungen für Minderjährige')).toBe(true)
+  })
+})
+
 describe('what looks like a provision but is not', () => {
   // Annexes reprint the law's Inhaltsverzeichnis: "§ 1. Unmittelbare
   // Bundesvollziehung", one line each. Such a line opens a § and ends without

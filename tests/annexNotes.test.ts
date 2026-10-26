@@ -45,6 +45,14 @@ describe('annexWithheldBlame', () => {
     expect(annexWithheldBlame('standing', 'table')).toBeNull()
     expect(annexWithheldBlame('notInDraft', 'table')).toContain('an unserer Zuordnung zum Paragraphen')
   })
+
+  // FSG § 26 (68/ME XXVIII): the sentence the draft appends to Abs. 3 stands in
+  // Abs. 2. The Beilage was right; the finding is our check reading the § whole.
+  it('names our check, not the Beilage, where the right column repeats standing law', () => {
+    const blame = annexWithheldBlame('alreadyStanding', 'table')!
+    expect(blame).toContain('unsere Prüfung unterscheidet die Absätze nicht')
+    expect(blame).not.toContain('Beilage')
+  })
 })
 
 describe('annexDroppedPagesNote', () => {

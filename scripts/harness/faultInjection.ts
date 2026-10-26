@@ -295,7 +295,10 @@ function judge(rows: readonly ComparisonRow[], standing: StandingText, wide: Wor
   const narrow = rightColumnCheck(rows, standing, para)
   return {
     leftPasses: cover.prose && cover.ratio >= PARAGRAPH_THRESHOLD,
-    rule1: right.alreadyStanding,
+    // From the per-§ reference, the one the gate passes: since 25.10.2026 rule 1
+    // asks it which stretches an adding instruction of this § carries
+    // (`WordBag.carries`); the whole-draft bag has no such answer.
+    rule1: narrow.alreadyStanding,
     rule2Wide: right.notInDraft,
     rule2Para: narrow.notInDraft,
   }

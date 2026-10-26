@@ -128,13 +128,11 @@
   "judged": 3,
   "verdicts": {
    "#§ 2.": "verified",
-   "#§ 4.": "withheld",
+   "#§ 4.": "verified",
    "#§ 18.": "verified",
    "#§ 19a.": "unchecked",
    "#§ 19b.": "unchecked"
   },
-  "withheldCauses": {
-   "#§ 4.": "alreadyStanding"
-  }
+  "withheldCauses": {}
  }
 }

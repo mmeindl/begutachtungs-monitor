@@ -47,6 +47,29 @@ export interface DraftUnit {
   reason: string | null
   /** The unit's text, Gliederungssymbole included, as `draftTextOf` counts them. */
   text: string
+  /**
+   * The unit adds text where it points and restates nothing: „Dem § 26 Abs. 3
+   * wird folgender Satz angefügt", „… wird die Wortfolge ‚X' durch die
+   * Wortfolge ‚Y' ersetzt". A „lautet" reprints a whole provision, the words
+   * it keeps included, and is never this (`annex/rightColumn.ts`, rule 1).
+   */
+  adds: boolean
+}
+
+/** An instruction that adds what it quotes: appended, inserted, or a stretch replaced by another. */
+const ADDING_RE = /\b(?:angefügt|eingefügt)\b|\bdurch\s+(?:die\s+(?:Wortfolge|Zeichenfolge|Wendung|Wörter|Zahl|Ziffer|Paragraphenbezeichnung)|das\s+(?:Wort|Zitat|Datum)|den\s+(?:Ausdruck|Satz|Halbsatz|Betrag|Begriff|Klammerausdruck))\b[\s\S]*\bersetzt\b/
+/** An instruction that reprints a whole unit, the unchanged words with it. */
+const RESTATING_RE = /\b(?:lautet|lauten|neu\s+gefasst)\b|\bdurch\s+(?:folgende|die\s+folgende|den\s+folgenden|das\s+folgende)\b/
+/**
+ * An instruction that installs a designated unit — „nach Abs. 7a folgender
+ * Abs. 7b eingefügt", „folgende Z 4 angefügt". Where the standing § already
+ * holds all of that unit's words, the unit is there already, which is what
+ * rule 1 exists to say (BWG § 30 Abs. 7b, Finanzmarktsammelgesetz 2025).
+ */
+const INSTALLS_UNIT_RE = /\bfolgende[rns]?\s+(?:Abs\.|Absatz|Absätze|Z\b|Ziffer|Ziffern|lit\.|Litera|Literae|§|§§|Paragraph|Paragraphen|Anlage|Anlagen|Anhang|Unterabsatz|Artikel)/
+
+function addsOnly(instructions: readonly TextBlock[]): boolean {
+  return instructions.some((b) => ADDING_RE.test(b.text)) && !instructions.some((b) => RESTATING_RE.test(b.text) || INSTALLS_UNIT_RE.test(b.text))
 }
 
 /** `Z4` addresses nothing readable: the reason of its own instruction line, else this. */
@@ -96,7 +119,7 @@ export function draftUnits(blocks: readonly TextBlock[]): DraftUnit[] {
     // table's words under a real § — 20 units over both paths of GP XXVIII
     // (01.10.2026); they belong in the general bag (`annex/rightColumn.ts`).
     if (toc[ui]) {
-      return { law: unit.article, id: unit.id, paras: [], aliases: [], reason: NO_PARAGRAPH_ADDRESSED, text: draftTextOf(unit.blocks) }
+      return { law: unit.article, id: unit.id, paras: [], aliases: [], reason: NO_PARAGRAPH_ADDRESSED, text: draftTextOf(unit.blocks), adds: false }
     }
     // The container's own address, for the lettered sub-instructions under it.
     const inherited = instructions[0] ? parseAddress(instructions[0].text) : null
@@ -122,6 +145,7 @@ export function draftUnits(blocks: readonly TextBlock[]): DraftUnit[] {
       aliases,
       reason: paras.size > 0 ? null : (reason ?? (instructions.length === 0 ? NO_INSTRUCTION : NO_PARAGRAPH_ADDRESSED)),
       text: draftTextOf(unit.blocks),
+      adds: addsOnly(instructions),
     }
   })
 }

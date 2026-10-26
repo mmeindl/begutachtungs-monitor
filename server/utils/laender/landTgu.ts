@@ -448,6 +448,27 @@ export interface ColumnRow {
  */
 const TRAILING_DIVISION_RE = /(?<=[.;:])\s+(?:\d+|[IVXL]+)\.\s+(?:Teil|Abschnitt|Hauptstück|Unterabschnitt)\s+\p{Lu}[^.;:]*$/u
 
+/** A division's designation inside a heading line: „6. Teil", „5. Abschnitt". */
+const DIVISION_MARK_RE = /(?:^|\s)(?:\d+[a-z]?|[IVXL]+)\.\s*(?:Teil|Abschnitt|Hauptstück|Unterabschnitt)\b/gu
+
+/**
+ * A § from the last division heading above it on.
+ *
+ * Since the federal reader hands a division heading to the § below it whole
+ * (`divisionStart` in `annex/annexPdf.ts`, 25.10.2026), a § whose predecessors
+ * the document leaves out gets the headings of every division in between:
+ * „6. Teil Raumordnungs-Aufsicht 5. Abschnitt Schlussbestimmungen
+ * Umsetzungshinweis" over § 80 (Salzburg 33616). RIS prints over a § only the
+ * divisions that open there, and the head of the old text is what
+ * `shareInRis` anchors on, so the earlier ones would cost the § its law.
+ */
+function fromLastDivision(text: string): string {
+  const designation = /§\s*\d+[a-z]*\./.exec(text)?.index ?? -1
+  if (designation <= 0) return text
+  const marks = [...text.slice(0, designation).matchAll(DIVISION_MARK_RE)]
+  return marks.length > 1 ? text.slice(marks.at(-1)!.index).trim() : text
+}
+
 /**
  * The rows of a two-column Textgegenüberstellung as §§ (Wien, 22.10.2026):
  * the rows of one § joined, each column with the § heading on a line of its
@@ -474,8 +495,8 @@ export function columnParagraphs(rows: readonly ColumnRow[], laws: readonly stri
       if (m) return [m[1]!.trim(), text.slice(m[0].length)].filter(Boolean)
       return [text.replace(/^§\s*\d+[a-z]*\.\s*/, '')].filter(Boolean)
     }
-    const inForce = r.current.trim().replace(TRAILING_DIVISION_RE, '')
-    const proposed = r.proposed.trim().replace(TRAILING_DIVISION_RE, '')
+    const inForce = fromLastDivision(r.current.trim().replace(TRAILING_DIVISION_RE, ''))
+    const proposed = fromLastDivision(r.proposed.trim().replace(TRAILING_DIVISION_RE, ''))
     if (inForce) p.old.push(...lines(inForce))
     if (proposed) p.neu.push(...lines(proposed))
     p.changed ||= r.changed

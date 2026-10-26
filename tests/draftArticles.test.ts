@@ -68,6 +68,55 @@ describe('promulgationByArticle', () => {
   })
 })
 
+describe('a Promulgationsklausel RIS tagged as an instruction', () => {
+  // 92/ME XXVIII: the single-law Novelle's clause arrives as `novao1`, above
+  // „1. § 1 samt Überschrift lautet:". Read past, the draft amended nothing:
+  // the annex gate printed „der Entwurf schafft neues Recht" over all 31 rows
+  // and the Lesefassung counted no § (25.10.2026).
+  const lwa = doc(
+    '<ueberschrift typ="titel">Bundesgesetz, mit dem das Lebenshaltungs- und Wohnkosten-Ausgleichs-Gesetz geändert wird</ueberschrift>' +
+    '<absatz typ="novao1">Das Lebenshaltungs- und Wohnkosten-Ausgleichs-Gesetz - LWA-G, BGBl. I Nr. 93/2022, zuletzt geändert durch das Bundesgesetz BGBl. I Nr. 25/2025, wird wie folgt geändert:</absatz>' +
+    '<absatz typ="novao1">1. § 1 samt Überschrift lautet:</absatz>' +
+    '<absatz typ="abs"><gldsym>§ 1.</gldsym> (1) Mit diesem Bundesgesetz soll ein Beitrag geleistet werden.</absatz>',
+  )
+
+  it('reads it as the clause', () => {
+    const [only, ...rest] = draftArticles(parseRisXml(lwa))
+    expect(rest).toEqual([])
+    expect(only!.amends).toBe(true)
+    expect(only!.bgbl).toEqual({ organ: 'BGBl. I Nr.', nummer: '93/2022' })
+    expect(only!.clause).toEqual({ name: 'Lebenshaltungs- und Wohnkosten-Ausgleichs-Gesetz', abbreviation: 'LWA-G' })
+    expect(only!.key).toBe('Bundesgesetz, mit dem das Lebenshaltungs- und Wohnkosten-Ausgleichs-Gesetz geändert wird')
+  })
+
+  it('gives the Lesefassung its Artikel', () => {
+    expect(articleBlocks(parseRisXml(lwa)).filter((p) => p.article.amends)).toHaveLength(1)
+  })
+
+  // The formula alone is not a clause: an instruction can carry it too, and
+  // an instruction names a §, never a Gesetzblatt.
+  it('does not take an instruction that uses the formula for the clause', () => {
+    const blocks = parseRisXml(doc(
+      '<ueberschrift typ="titel">Bundesgesetz über etwas</ueberschrift>' +
+      '<absatz typ="novao1">1. § 2 wird wie folgt geändert:</absatz>' +
+      '<absatz typ="novao2">a) In Abs. 1 entfällt das Wort "jedenfalls".</absatz>',
+    ))
+    expect(draftArticles(blocks).map((a) => a.amends)).toEqual([false])
+  })
+
+  // In a package each Artikel has its own window (Sozialhilfe-Grundsatzgesetz
+  // and -Statistikgesetz, 23.10.2026: both clauses as `novao1`).
+  it('reads it per Artikel', () => {
+    const xml = doc(
+      '<ueberschrift typ="g1">Artikel 1</ueberschrift><ueberschrift typ="g2">Änderung des A-Gesetzes</ueberschrift>' +
+      '<absatz typ="novao1">Das A-Gesetz, BGBl. I Nr. 41/2019, wird wie folgt geändert:</absatz><absatz typ="novao1">1. § 1 lautet:</absatz>' +
+      '<ueberschrift typ="g1">Artikel 2</ueberschrift><ueberschrift typ="g2">Änderung des B-Gesetzes</ueberschrift>' +
+      '<absatz typ="novao1">Das B-Gesetz, BGBl. I Nr. 42/2019, wird wie folgt geändert:</absatz><absatz typ="novao1">1. § 2 lautet:</absatz>',
+    )
+    expect(draftArticles(parseRisXml(xml)).map((a) => [a.amends, a.bgbl?.nummer ?? null])).toEqual([[true, '41/2019'], [true, '42/2019']])
+  })
+})
+
 describe('draftArticles', () => {
   it('lists a package’s Artikel in printed order with number, title and Stammnorm', () => {
     const xml = doc(

@@ -48,15 +48,37 @@ const AMENDS_RE = /\b(?:wird|werden)\b[^.;:]{0,80}?\bwie folgt geändert|\bwird 
 
 /**
  * Exported so a caller that has to find the clause for itself uses the same
- * test rather than a second, drifting one. `draftArticles` cannot always do
- * it: a single-law Novelle prints no Artikel line and its clause arrives
- * classified as an instruction, so the article scanner never reaches this
- * check (92/ME). Without the test a leading BGBl looks like a clause even
- * when it is a cross-reference inside a new law's own text — which turned
- * the Stammgesetz 101/ME into an amendment of the law its § 1 cites.
+ * test rather than a second, drifting one. Without the test a leading BGBl
+ * looks like a clause even when it is a cross-reference inside a new law's
+ * own text — which turned the Stammgesetz 101/ME into an amendment of the law
+ * its § 1 cites.
  */
 export function isAmendmentClause(text: string): boolean {
   return AMENDS_RE.test(text)
+}
+
+/**
+ * A Promulgationsklausel that RIS tagged as an instruction (`novao1`).
+ *
+ * A single-law Novelle prints no Artikel line, and RIS regularly sets its
+ * clause in the instruction style: „Das Lebenshaltungs- und
+ * Wohnkosten-Ausgleichs-Gesetz - LWA-G, BGBl. I Nr. 93/2022, … wird wie folgt
+ * geändert:" arrives as `novao`, directly above „1. § 1 samt Überschrift
+ * lautet:" (92/ME XXVIII). `segmentUnits` has known that since it learned the
+ * unnumbered first instruction (`PROMULGATION_RE` in `lawUnits.ts`); this
+ * scanner skipped every `novao` block before its clause test, so the Artikel
+ * came out `amends: false` and every section that asks „which law" answered
+ * „none": the annex gate printed „der Entwurf schafft neues Recht" over a
+ * Novelle, and the Lesefassung counted no § at all (25.10.2026).
+ *
+ * Two signals, because an instruction can match the formula too („1. § 2 wird
+ * wie folgt geändert:"): the formula, and a citation of the law in the
+ * clause's own shape — a Bundesgesetzblatt at its head (`stammnormOf`) or the
+ * „Das …, dRGBl. …" form the UGB's clause has (`clauseNameOf`). An
+ * instruction names a § and no Gesetzblatt.
+ */
+function isTaggedClause(text: string): boolean {
+  return AMENDS_RE.test(text) && (stammnormOf(text) !== null || clauseNameOf(text) !== null)
 }
 
 /** A qualifier printed where the law's name would be, and not a name. */
@@ -203,6 +225,15 @@ export function draftArticles(blocks: readonly TextBlock[]): DraftArticle[] {
       continue
     }
     if (b.kind === 'novao') {
+      // The clause in the instruction style (`isTaggedClause`): read as the
+      // clause, and it does not close the window — the instructions start
+      // below it, as they do under a clause RIS tagged as one.
+      if (!seenNovao && !current.amends && isTaggedClause(b.text)) {
+        current.amends = true
+        current.bgbl = stammnormOf(b.text)
+        current.clause = clauseNameOf(b.text)
+        continue
+      }
       seenNovao = true
       continue
     }

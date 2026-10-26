@@ -24,10 +24,17 @@ import { comparableTokens, designationKey } from './annexText'
  * Rule 1's floor: an inserted stretch shorter than this says nothing.
  *
  * Six comparable words, exact and in order. Below that, ordinary legal
- * phrasing collides by itself — and above it, the rule fires on 8 §§ of the
- * GP-XXVIII corpus through the ressort's own XML cells, every one of them a
- * true positive (WiEReG § 5, Ärztegesetz §§ 12 and 12a, OTPG § 4, FSG § 26 …),
- * plus the § headings the PDF path loses on the left.
+ * phrasing collides by itself — and above it, the rule fired on 8 §§ of the
+ * GP-XXVIII corpus through the ressort's own XML cells, plus the § headings
+ * the PDF path loses on the left.
+ *
+ * **Five of those eight were not what they were taken for (25.10.2026).**
+ * WiEReG § 5, Ärztegesetz §§ 12 and 12a, OTPG § 4 and FSG § 26 were read as
+ * true positives; each is the draft appending or substituting a wording the
+ * § already carries in another Absatz or Ziffer — FSG § 26 Abs. 3 gets the
+ * sentence Abs. 2 has — and the rule reads the § whole. Such a stretch is
+ * exempt where an instruction of this § that only adds text carries it
+ * (`WordBag.carries`); a restated provision or an installed unit still fires.
  */
 export const MIN_STANDING_STRETCH = 6
 
@@ -147,6 +154,12 @@ export interface WordBag {
   has: (word: string) => boolean
   /** Was there a Gesetzestext to compare against at all? */
   read: boolean
+  /**
+   * Does an instruction of the draft that only *adds* text to this § carry
+   * these comparable words, in this order (`DraftUnit.adds`)? Rule 1 asks it.
+   * Absent where nothing addresses the § — then nothing is exempt.
+   */
+  carries?: (tokens: readonly string[]) => boolean
 }
 
 /**
@@ -192,6 +205,8 @@ export interface DraftBags {
   rightlyWithoutParagraph: number
   /** Why the others did not, counted by reason. */
   reasons: Map<string, number>
+  /** Law key → § key → the comparable words of each unit that only adds text there (`DraftUnit.adds`). */
+  added: Map<string | null, Map<string, string[][]>>
 }
 
 /** An address `designationKey` reads as no § at all: "Abschnitt 9b", the title. */
@@ -211,6 +226,7 @@ export function draftBags(blocks: readonly TextBlock[]): DraftBags {
   const reasons = new Map<string, number>()
   /** Law → the designation pairs a renumbering declares to be one provision. */
   const aliases = new Map<string | null, [string, string][]>()
+  const added = new Map<string | null, Map<string, string[][]>>()
   let addressed = 0
   let rightlyWithoutParagraph = 0
   const units = draftUnits(blocks)
@@ -252,6 +268,12 @@ export function draftBags(blocks: readonly TextBlock[]): DraftBags {
       law.set(key, into)
     }
     byLaw.set(unit.law, law)
+    if (unit.adds) {
+      const tokens = comparableTokens(normalizeText(unit.text))
+      const lawAdded = added.get(unit.law) ?? new Map<string, string[][]>()
+      for (const key of keys) lawAdded.set(key, [...(lawAdded.get(key) ?? []), tokens])
+      added.set(unit.law, lawAdded)
+    }
   }
   // A renumbered § is one provision under two numbers, and the two documents
   // use different ones: the annex prints the § as the standing law designates
@@ -274,7 +296,7 @@ export function draftBags(blocks: readonly TextBlock[]): DraftBags {
       }
     }
   }
-  return { byLaw, general, whole: draftWordBag(draftTextOf(blocks)), units: units.length, addressed, rightlyWithoutParagraph, reasons }
+  return { byLaw, general, whole: draftWordBag(draftTextOf(blocks)), units: units.length, addressed, rightlyWithoutParagraph, reasons, added }
 }
 
 // --- Measured surface: exported for tests and harness scripts, not for the app. ---
@@ -330,11 +352,20 @@ export function draftReference(bags: DraftBags, law: string | null, shown: Reado
       for (const w of words) inherited.add(w)
     }
   }
+  const addedHere = bags.added.get(law)
   return (para: string): WordBag => {
     const key = designationKey(para)
     const mine = key === null ? undefined : own?.get(key)
-    if (mine === undefined) return { has: (w) => inherited.has(w), read }
-    return { has: (w) => mine.has(w) || inherited.has(w), read }
+    const adds = key === null ? undefined : addedHere?.get(key)
+    // One word of slack at either edge: the word diff may hand a word both
+    // texts share to the other side of the stretch — „über [eine Ärztin …
+    // oder] eine Fachärztin" came out as „Ärztin … oder eine" (Ärztegesetz
+    // §§ 12 and 12a, 2026).
+    const carries = adds
+      ? (tokens: readonly string[]) => adds.some((unit) => seqContains(unit, tokens) || seqContains(unit, tokens.slice(1)) || seqContains(unit, tokens.slice(0, -1)))
+      : undefined
+    if (mine === undefined) return { has: (w) => inherited.has(w), read, carries }
+    return { has: (w) => mine.has(w) || inherited.has(w), read, carries }
   }
 }
 
@@ -502,7 +533,7 @@ export function rightColumnCheck(rows: readonly ComparisonRow[], standing: Stand
   for (const stretch of insertedStretches(pairs)) {
     const tokens = comparableTokens(normalizeText(stretch))
     inserted.push(...tokens)
-    if (standingStretch === null && tokens.length >= MIN_STANDING_STRETCH && seqContains(standingTokens, tokens) && !seqContains(leftTokens, tokens)) {
+    if (standingStretch === null && tokens.length >= MIN_STANDING_STRETCH && seqContains(standingTokens, tokens) && !seqContains(leftTokens, tokens) && !draft.carries?.(tokens)) {
       standingStretch = stretch
     }
   }

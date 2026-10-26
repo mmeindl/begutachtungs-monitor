@@ -775,6 +775,53 @@ const SENTENCE_END = /[.;:!?…]["»›)]?$/
 const SENTENCE_MARK = /[.;:!?…]/
 
 /**
+ * A line that is a division's designation, with its name or without:
+ * „3. Hauptstück", „1. Abschnitt", „6. Teil Raumordnungs-Aufsicht",
+ * „Abschnitt 2". A name on the same line opens with a capital and a small
+ * letter, so a list item „1. Teil A" is not read as one.
+ */
+const DIVISION_LINE_RE = /^(?:(?:\d+[a-z]?|[IVXL]+)\.\s*(?:Teil|Abschnitt|Hauptstück|Unterabschnitt)|(?:Teil|Abschnitt|Hauptstück|Unterabschnitt)\s+(?:\d+[a-z]?|[IVXL]+))(?:\s+\p{Lu}\p{Ll}[^.;:!?]*)?$/u
+
+/**
+ * Where a division heading starts in the lines a unit ends with, or null.
+ *
+ * Only after the unit's last sentence and never at or before its own marker:
+ * what follows the last full stop and opens with „3. Hauptstück" is the
+ * heading of the provisions below, all of it — the division, its name, the
+ * next division and the § heading. 81/ME XXVIII prints five such lines over
+ * its § 14, and § 22's new Abschnitt name runs to the column edge; the
+ * three-line, unwrapped carry in `unitsOfColumn` left „1. Abschnitt" and
+ * „4. Abschnitt Technische Unterstützung im Zusammenhang mit
+ * Verteidigungsgütern" at the end of §§ 13 and 21, where the word diff showed
+ * them as text the draft adds (25.10.2026). The Länder reader, which parses
+ * through here, stripped the same thing downstream for Salzburg 33616
+ * (`TRAILING_DIVISION_RE` in `laender/landTgu.ts`).
+ */
+function divisionStart(parts: readonly { text: string; wrapped: boolean }[], opener: unknown): number | null {
+  let from = parts.length
+  while (from > 0) {
+    const line = parts[from - 1]!
+    if (line === opener || SENTENCE_END.test(line.text)) break
+    from--
+  }
+  for (let i = from; i < parts.length; i++) {
+    const line = parts[i]!
+    if (line.wrapped || !DIVISION_LINE_RE.test(line.text.trim())) continue
+    // „Sonderbestimmungen für Minderjährige für das 3. bis 6. und das 12. bis"
+    // / „14. Hauptstück" is one heading broken before a number (FPG 2005,
+    // 2024 package): a line that ran to the edge or stops on a word that
+    // cannot end a heading is continued by the next one.
+    const before = i > from ? parts[i - 1]! : null
+    if (before && (before.wrapped || CONTINUED_RE.test(before.text.trim()))) continue
+    return i
+  }
+  return null
+}
+
+/** A line ending on a word no heading ends on — the next line continues it. */
+const CONTINUED_RE = /(?:^|\s)(?:bis|und|oder|sowie|bzw\.|des|der|dem|den|die|das|im|in|zum|zur|vom|von|für|mit|nach|gemäß|über|auf|aus|bei|an|gegen|ohne)$/
+
+/**
  * A designation, a title, and nothing else, in one column only: the annex's
  * **Inhaltsverzeichnis**, not a provision.
  *
@@ -841,8 +888,11 @@ function unitsOfColumn(lines: readonly { text: string; wrapped: boolean; context
       current.parts.push(line)
       continue
     }
-    const carried: Line[] = []
-    while (current.parts.length > 0 && carried.length < 3) {
+    // A division heading goes to the next unit whole (`divisionStart`); any
+    // other heading is at most three short lines.
+    const division = divisionStart(current.parts, current.opener)
+    const carried: Line[] = division === null ? [] : current.parts.splice(division)
+    while (division === null && current.parts.length > 0 && carried.length < 3) {
       const last = current.parts[current.parts.length - 1]!
       // A unit's own marker line is never handed to the next unit. It could
       // be: a line that opens a § and ends without a full stop looks exactly

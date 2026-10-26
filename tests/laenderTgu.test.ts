@@ -162,6 +162,16 @@ describe('two-column Textgegenüberstellung (Wien)', () => {
     expect(paras[1]!.old).toEqual(['(1) Es gilt das nach dem 6. Teil.'])
   })
 
+  // The federal reader hands a division heading to the § below it whole, also
+  // the headings of divisions whose §§ the document leaves out (33616: the
+  // 6. Teil over § 80). RIS prints over § 80 only what opens there.
+  it('keeps over a § only the last division heading the reader handed to it', () => {
+    const paras = columnParagraphs([
+      { kind: 'pair', law: null, para: '§ 80.', current: '6. Teil Raumordnungs-Aufsicht 5. Abschnitt Schlussbestimmungen Umsetzungshinweis § 80. Dieses Gesetz dient der Umsetzung.', proposed: '6. Teil Raumordnungs-Aufsicht 5. Abschnitt Schlussbestimmungen Umsetzungshinweis § 80. Dieses Gesetz dient der Umsetzung.', changed: false },
+    ], ['Salzburger Raumordnungsgesetz 2009'])
+    expect(paras[0]!.old).toEqual(['5. Abschnitt Schlussbestimmungen Umsetzungshinweis', 'Dieses Gesetz dient der Umsetzung.'])
+  })
+
   it('names the laws a draft amends from its title, without their abbreviation', () => {
     expect(amendedLawOf('Gesetz, mit dem das Wiener Reinhaltegesetz geändert wird')).toBe('Wiener Reinhaltegesetz')
     expect(amendedLawOf('Gesetz, mit dem das Salzburger Schulorganisations-Ausführungsgesetz 1995 – SchuOG 1995 geändert wird')).toBe('Salzburger Schulorganisations-Ausführungsgesetz 1995')

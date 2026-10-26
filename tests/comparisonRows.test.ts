@@ -172,6 +172,31 @@ describe('parseTextComparison', () => {
   })
 })
 
+describe('an image in a cell', () => {
+  // RIS sets an image as `<binary><src>…</src></binary>`, and the `<src>` is a
+  // text node: 62/ME XXVIII showed StVO § 54's Zusatztafel as the inserted
+  // text „/Dokumente/Begut/…/….img1is.png" (25.10.2026).
+  const image = (n: number, alt: string) =>
+    `<absatz typ="abbobj" halign="l"><binary nr="${n}" shapetype="is" alt="${alt}" datatype="png"><src>/Dokumente/Begut/BEGUT_E6AA7181_7C47_4408_8822_CF9E93918604/1db4591e-9426-4c41-aa43-71b41b4d101d.img${n}is.png</src></binary></absatz>`
+
+  it('names it instead of printing its path', () => {
+    const rows = parse(annex([pair('<nbsp />', image(1, 'Kamerasymbol'))]))
+    expect(rows).toHaveLength(1)
+    expect(rows[0]!.change).toBe('inserted')
+    expect(rows[0]!.proposed).toBe('[Abbildung: Kamerasymbol]')
+  })
+
+  // The Bäderhygieneverordnung's formulae: RIS numbers the files of one
+  // document through, so the same formula is img1is on the left and img2is on
+  // the right. Named alike, the row says what the annex shows — an image in
+  // both columns — and not that the draft changed it.
+  it('reads the same unnamed image in both columns as unchanged', () => {
+    const rows = parse(annex([pair(image(1, ''), image(2, ''))]))
+    expect(rows[0]!.current).toBe('[Abbildung]')
+    expect(rows[0]!.change).toBe('unchanged')
+  })
+})
+
 describe('an annex that spans its columns', () => {
   // The rule "the first cell spans more than one column, so this is an Artikel
   // heading" only holds when each column is one cell wide. Where the header

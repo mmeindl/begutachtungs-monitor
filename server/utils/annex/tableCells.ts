@@ -21,6 +21,32 @@ import { decodeEntities } from '../parliament/htmlText'
 export const HEADER_CURRENT_RE = /^geltende[rn]?\s+(?:fassung|text)\b/i
 export const HEADER_PROPOSED_RE = /^vorgeschlagene[rn]?\s+(?:fassung|text)\b/i
 
+/** RIS's image element, `<binary … alt="…"><src>/Dokumente/Begut/…/….img1is.png</src></binary>`. */
+const BINARY_RE = /<binary\b([^>]*?)(?:\/>|>[\s\S]*?<\/binary\s*>)/g
+
+/**
+ * What a cell says where the ressort set an image: „[Abbildung]", with RIS's
+ * `alt` text where it carries one — „[Abbildung: Kamerasymbol]".
+ *
+ * The `<src>` of a `<binary>` is a text node, so the image's path came out as
+ * the cell's words: 62/ME XXVIII showed the Zusatztafel of StVO § 54 as the
+ * inserted text „/Dokumente/Begut/BEGUT_E6AA7181_…/1db4591e-….img1is.png",
+ * and the Bäderhygieneverordnung's formulae as a changed row (`img1is` →
+ * `img2is` is RIS numbering its files, not the draft changing a formula),
+ * whose path words withheld §§ 20 and 73 against a standing text that never
+ * prints one (25.10.2026). The Erläuterungen reader has dropped these blocks
+ * since it met them (`IMAGE_PATH_RE` in `explanations/risExplanations.ts`).
+ *
+ * Named rather than dropped, because a cell that holds nothing but an image
+ * still says the draft puts something there; and no check counts the name
+ * (`IMAGE_MARK_RE` in `annex/annexText.ts`), because nothing on either side
+ * shows what the image is.
+ */
+function imageText(_all: string, attributes: string): string {
+  const alt = /\balt="([^"]*)"/.exec(attributes)?.[1]?.trim()
+  return ` [Abbildung${alt ? `: ${alt}` : ''}] `
+}
+
 /**
  * A cell's own words.
  *
@@ -38,12 +64,15 @@ export const HEADER_PROPOSED_RE = /^vorgeschlagene[rn]?\s+(?:fassung|text)\b/i
  * ressort typesets between a heading and its title), `<nbsp/>`, and the
  * closing tag of a marker — RIS prints "<symbol>1.</symbol>Altersprädikat"
  * with nothing between, so the number would fuse into the first word.
+ *
+ * An image is named, not spelt out (`imageText`).
  */
 export function cellText(html: string): string {
   return normalizeText(
     decodeEntities(
       stripMarkup(
         html
+          .replace(BINARY_RE, imageText)
           .replace(/<nbsp\s*\/>/g, ' ')
           .replace(/<amp\s*\/>/g, '&amp;')
           .replace(/<gdash\s*\/>/g, '-')

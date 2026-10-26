@@ -261,3 +261,52 @@ describe('draftBags and draftReference', () => {
     expect(rightColumnCheck(draggedIn(), standing, reference('§ 1.')).notInDraft).toBe(false)
   })
 })
+
+// FSG § 26 (68/ME XXVIII): Z 33 appends to Abs. 3 the sentence „§ 25 Abs. 3
+// zweiter Satz ist sinngemäß anzuwenden.", which Abs. 2 already carries. The
+// check reads the § whole, so rule 1 withheld a correct Beilage (25.10.2026).
+describe('rule 1 and a wording the draft adds where it already stands elsewhere', () => {
+  const fsgStanding: StandingText = {
+    text: 'Sonderfälle der Entziehung Die Lenkberechtigung ist auf mindestens sechs Monate zu entziehen. § 25 Abs. 3 zweiter Satz ist sinngemäß anzuwenden. Im Falle der erstmaligen Begehung hat die Entziehungsdauer mindestens drei Monate zu betragen. Eine nach Ablauf von vier Jahren begangene Übertretung gilt als erstmalig begangen.',
+    heading: 'Sonderfälle der Entziehung',
+  }
+  const appended = '§ 25 Abs. 3 zweiter Satz ist sinngemäß anzuwenden.'
+  const rows = [
+    row({ change: 'unchanged', current: '(1) bis (2a)…', proposed: '(1) bis (2a)…', elided: true }),
+    row({
+      change: 'changed',
+      current: 'Eine nach Ablauf von vier Jahren begangene Übertretung gilt als erstmalig begangen.',
+      proposed: `Eine nach Ablauf von vier Jahren begangene Übertretung gilt als erstmalig begangen. ${appended}`,
+      segments: [{ type: 'equal', text: 'Eine nach Ablauf von vier Jahren begangene Übertretung gilt als erstmalig begangen.' }, { type: 'inserted', text: appended }],
+    }),
+  ]
+  const blocks = (instructionLine: string, payload: string): TextBlock[] => [
+    { kind: 'novao', cls: 'absatz/novao1', text: instructionLine, gld: null },
+    { kind: 'other', cls: 'absatz/satz', text: `"${payload}"`, gld: null },
+  ]
+
+  it('fires without the draft — the stretch stands in the § and not in the left column', () => {
+    expect(rightColumnCheck(rows, fsgStanding, NO_DRAFT).alreadyStanding).toBe(true)
+  })
+
+  it('stands down where an instruction of this § appends exactly that wording', () => {
+    const draft = draftReference(draftBags(blocks('33. Dem § 26 Abs. 3 wird folgender Satz angefügt:', appended)), null, new Set(['§ 26']))('§ 26.')
+    expect(draft.carries?.(['abs', 'zweiter', 'satz', 'ist', 'sinngemäß', 'anzuwenden'])).toBe(true)
+    expect(rightColumnCheck(rows, fsgStanding, draft).alreadyStanding).toBe(false)
+  })
+
+  // A restated provision reprints the words it keeps: a stretch lost from the
+  // left column is in its payload too, and rule 1 is what catches that.
+  it('still fires where the instruction restates the provision', () => {
+    const draft = draftReference(draftBags(blocks('33. § 26 Abs. 3 lautet:', `(3) Eine nach Ablauf von vier Jahren begangene Übertretung gilt als erstmalig begangen. ${appended}`)), null, new Set(['§ 26']))('§ 26.')
+    expect(draft.carries).toBeUndefined()
+    expect(rightColumnCheck(rows, fsgStanding, draft).alreadyStanding).toBe(true)
+  })
+
+  // BWG § 30 (Finanzmarktsammelgesetz 2025): „nach Abs. 7a folgender Abs. 7b
+  // eingefügt", and RIS already holds that Abs. 7b — the unit is there.
+  it('still fires where the instruction installs a designated unit', () => {
+    const draft = draftReference(draftBags(blocks('4. In § 26 wird nach Abs. 3 folgender Abs. 3a eingefügt:', appended)), null, new Set(['§ 26']))('§ 26.')
+    expect(rightColumnCheck(rows, fsgStanding, draft).alreadyStanding).toBe(true)
+  })
+})

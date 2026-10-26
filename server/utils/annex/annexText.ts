@@ -51,12 +51,19 @@ const DESIGNATION_RE = /(?:^|\s)§+\s*\d+[a-z]*\.(?=\s|$)/g
  */
 const ANNOTATION_RE = /\(Anm\.?\s*:[^()]*(?:\([^()]*\)[^()]*)*\)/g
 const BOILERPLATE_RE = /Beachte für folgende Bestimmung/gi
+/**
+ * The name the table reader gives an image (`imageText` in
+ * `annex/tableCells.ts`): ours, not the ressort's words, and no standing text
+ * or draft prints it.
+ */
+const IMAGE_MARK_RE = /\[Abbildung(?::[^\]]*)?\]/g
 
 /** Comparable words of a text: the discounts above, lowercased, short words dropped. */
 export function comparableTokens(text: string): string[] {
   return text
     .replace(ANNOTATION_RE, ' ')
     .replace(BOILERPLATE_RE, ' ')
+    .replace(IMAGE_MARK_RE, ' ')
     .replace(ELISION_RE, ' ')
     .replace(DESIGNATION_RE, ' ')
     .replace(/(?:\.\.\.|…)/g, ' ')

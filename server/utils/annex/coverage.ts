@@ -146,5 +146,27 @@ export function displayedChangeRows(rows: readonly ComparisonRow[]): ComparisonR
  * below the line on its own.
  */
 export function coverageOfParagraph(rows: readonly ComparisonRow[], standing: string): Coverage {
-  return coverageOf(displayedChangeRows(rows).map((r) => r.current).join(' '), standing)
+  return coverageOf(displayedChangeRows(rows).map(provisionText).join(' '), standing)
+}
+
+/**
+ * A row's left column from the provision's own designation on.
+ *
+ * A PDF row is one whole provision, and the annex prints over it whatever
+ * stands above it in the law: its heading, and the headings of the
+ * divisions in between — „8. Abschnitt Schlussbestimmungen Vollziehung
+ * § 42. …", or three Abschnitte whose §§ the annex leaves out. RIS files a
+ * division's heading above the § that opens it, not above the next one the
+ * annex happens to show, so those words counted as missing from a § they
+ * were never part of (Transparenzdatenbankgesetz § 42, StVO § 82,
+ * 25.10.2026). The § heading before the designation goes with them; RIS
+ * prints it at the head of the § anyway, so the check loses nothing it
+ * could have found.
+ *
+ * Only where the designation stands inside the text: a table row carries it
+ * in `gld` and its text opens with the Absatz, and is read whole as before.
+ */
+export function provisionText(row: ComparisonRow): string {
+  const at = row.gld ? row.current.indexOf(row.gld) : -1
+  return at > 0 ? row.current.slice(at) : row.current
 }

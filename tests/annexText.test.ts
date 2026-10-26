@@ -22,6 +22,11 @@ describe('what is not comparable', () => {
     expect(comparableTokens('(Anm.: Abs. 2 aufgehoben durch BGBl. I Nr. 1/2020)')).toEqual([])
     expect(comparableTokens('Beachte für folgende Bestimmung Der Text gilt.')).toEqual(['der', 'text', 'gilt'])
   })
+  // The table reader's name for an image is ours: no standing text or draft
+  // prints it, so it may not count as a missing or a new word.
+  it('discounts the name the reader gives an image', () => {
+    expect(comparableTokens('[Abbildung: Kamerasymbol] Eine solche Zusatztafel [Abbildung]')).toEqual(['eine', 'solche', 'zusatztafel'])
+  })
 })
 
 describe('designationKey', () => {

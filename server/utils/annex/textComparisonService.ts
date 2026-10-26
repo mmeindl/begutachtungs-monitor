@@ -148,13 +148,12 @@ export const getTextComparison = defineCachedFunction(
         // One sentence for both states below: with no RIS record and with
         // several possible ones, the outcome for the reader is the same —
         // the annex exists, and we cannot say which RIS document is its twin.
-        // The sentence names the gate rather than the licence, and that reason
-        // holds whichever way `READ_PARLIAMENT_COPY` stands: without the RIS
-        // record there is no standing text to hold the left column against,
-        // and an unchecked Gegenüberstellung is not shown (§12.13). With the
-        // switch off the copy would not be read in any case — the branch
-        // further down is the one that says so.
-        'Die Textgegenüberstellung liegt beim Parlament vor. Ohne den zugehörigen RIS-Datensatz fehlt uns der geltende Gesetzestext, gegen den wir ihre linke Spalte prüfen — ungeprüft zeigen wir sie nicht.',
+        // It names the join, and that reason holds whichever way
+        // `READ_PARLIAMENT_COPY` stands: this branch returns before any copy
+        // is read. Until 25.10.2026 it said „ungeprüft zeigen wir sie nicht",
+        // which stopped being true when unchecked rows began to be shown under
+        // a „nicht geprüft" pill (92/ME XXVIII shows all 31 of its rows so).
+        'Die Textgegenüberstellung liegt beim Parlament vor. Wir lesen sie aus dem RIS aus, und dort ließ sich diesem Entwurf kein Datensatz eindeutig zuordnen — darum ist hier das Dokument des Parlaments verlinkt.',
         row?.status === 'ambiguous'
           ? 'Mehrere RIS-Datensätze kommen für diesen Entwurf infrage. Die Gegenüberstellung aus dem falschen zu zeigen wäre schlechter als keine.'
           : 'Der Entwurf ließ sich keinem RIS-Dokument zuordnen; nur dort lesen wir die Textgegenüberstellung aus.',
