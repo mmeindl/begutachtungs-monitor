@@ -84,6 +84,8 @@ interface AnnexLine {
   /** Where each column's text ends — the evidence that a line wrapped */
   leftEnd: number
   rightEnd: number
+  /** A bare designation set across the gutter, in both columns (`AnnexLayout.designationsAcross`). */
+  across?: true
 }
 
 /** Lines within this many points of each other sit on one baseline. */
@@ -662,14 +664,26 @@ function joinRuns(runs: { x: number; width: number; text: string }[]): string {
  *
  * `boundary` is a test seam: production always lets the page decide.
  */
-export function linesFromPage(page: AnnexPage, boundary?: number): AnnexLine[] {
+export function linesFromPage(page: AnnexPage, boundary?: number, layout: AnnexLayout = {}): AnnexLine[] {
   const mid = boundary ?? page.width / 2
   type Run = { x: number; width: number; text: string }
-  const buckets: { y: number; left: Run[]; right: Run[]; spanning: Run[]; leftEnd: number; rightEnd: number; leftStart: number; rightStart: number }[] = []
+  const buckets: { y: number; left: Run[]; right: Run[]; spanning: Run[]; leftEnd: number; rightEnd: number; leftStart: number; rightStart: number; across: boolean }[] = []
 
   for (const group of baselines(page)) {
-    const bucket = { y: group[0]!.y, left: [] as Run[], right: [] as Run[], spanning: [] as Run[], leftEnd: 0, rightEnd: 0, leftStart: Number.POSITIVE_INFINITY, rightStart: Number.POSITIVE_INFINITY }
+    const bucket = { y: group[0]!.y, left: [] as Run[], right: [] as Run[], spanning: [] as Run[], leftEnd: 0, rightEnd: 0, leftStart: Number.POSITIVE_INFINITY, rightStart: Number.POSITIVE_INFINITY, across: false }
     buckets.push(bucket)
+    // A bare designation alone on its line and across the gutter is both
+    // columns' (`AnnexLayout.designationsAcross`).
+    const alone = group.length === 1 ? group[0]! : null
+    if (layout.designationsAcross && alone && alone.x < mid && alone.x + alone.width > mid && BARE_DESIGNATION_RE.test(alone.text.trim())) {
+      const run = { x: alone.x, width: alone.width, text: alone.text }
+      bucket.left.push(run)
+      bucket.right.push(run)
+      bucket.leftStart = bucket.rightStart = alone.x
+      bucket.leftEnd = bucket.rightEnd = alone.x + alone.width
+      bucket.across = true
+      continue
+    }
     for (const item of group) {
       const right = item.x + item.width
       if (item.x < mid && right > mid + GUTTER_TOLERANCE) {
@@ -698,6 +712,7 @@ export function linesFromPage(page: AnnexPage, boundary?: number): AnnexLine[] {
       rightStart: b.rightStart,
       leftEnd: b.leftEnd,
       rightEnd: b.rightEnd,
+      ...(b.across ? { across: true as const } : {}),
     }))
 }
 
@@ -1093,6 +1108,8 @@ interface ColumnLine {
   barrier?: boolean
   /** The first line after a page the parse did not read (`AnnexLayout.cutAtGaps`). */
   gap?: boolean
+  /** A bare designation set across the gutter, this column's as much as the other's (`AnnexLayout.designationsAcross`). */
+  across?: boolean
 }
 
 /**
@@ -1412,7 +1429,9 @@ function unitsOfColumn(lines: readonly ColumnLine[], contents: ContentsLines, la
     const takesHeading = division === null && !(current.gld === null && SEVERAL_ELIDED_RE.test(line.text))
     // Only over a designation that is itself centred: 19978 copies the law in
     // force into its left column with heading and „§ 51a" at the Absatz's indent.
-    const centredLayout = layout.headingsCentred === true && BARE_DESIGNATION_RE.test(line.text.trim()) && (line.inset ?? 0) >= CENTRED_INSET
+    // One set across the gutter is centred over both columns, and starts
+    // short of the right one's margin.
+    const centredLayout = layout.headingsCentred === true && BARE_DESIGNATION_RE.test(line.text.trim()) && (line.across === true || (line.inset ?? 0) >= CENTRED_INSET)
     while (takesHeading && current.parts.length > 0 && carried.length < 3) {
       const last = current.parts[current.parts.length - 1]!
       // A unit's own marker line is never handed to the next unit. It could
@@ -1673,6 +1692,16 @@ export interface AnnexLayout {
    * with the word as well: „Kinderund Jugendhilfe" (34413, § 15a).
    */
   hyphensByWord?: boolean
+  /**
+   * The document may set a bare designation — „§ 15." on a line of its own —
+   * centred over the whole table rather than over each column: one run across
+   * the gutter, and it is both columns' designation (`linesFromPage`).
+   * Salzburg 35399 so sets §§ 15 and 175 of its Landesbedienstetengesetz,
+   * under a heading across both columns; the column the run's middle fell in
+   * took the designation, the other ran the § on into the one before it, and
+   * both §§ were named and not shown (26.10.2026).
+   */
+  designationsAcross?: boolean
 }
 
 /**
@@ -1814,7 +1843,7 @@ export function parseAnnexPdf(pages: readonly AnnexPage[], articles: readonly Dr
   }
   const estimate = columnBoundary(proven)
   const read = proven.map((page) => {
-    const lines = linesFromPage(page, estimate)
+    const lines = linesFromPage(page, estimate, layout)
     return { page, lines, seam: headerSeam(lines) }
   })
 
@@ -1874,7 +1903,7 @@ export function parseAnnexPdf(pages: readonly AnnexPage[], articles: readonly Dr
   // instead, which prints the header pair on 2 of its 7 pages. So the ink keeps
   // the cut.
   const boundary = vouched.length === read.length ? estimate : columnBoundary(vouched.map((p) => p.page))
-  const pageLines = vouched.length === read.length ? vouched.map((p) => p.lines) : vouched.map((p) => linesFromPage(p.page, boundary))
+  const pageLines = vouched.length === read.length ? vouched.map((p) => p.lines) : vouched.map((p) => linesFromPage(p.page, boundary, layout))
   const placed = pageLines.flat()
 
   // The one structural check this path has. Everything below reads a column
@@ -1906,9 +1935,12 @@ export function parseAnnexPdf(pages: readonly AnnexPage[], articles: readonly Dr
   const edges = columnEdges(placed, boundary, vouched[0]?.page.width ?? width)
   // Where each column's body text runs, for `isCentred` — over the content,
   // not the chrome: a page number on each of 113 pages is a common end too.
+  // Nor over a designation set across the gutter, which is neither column's
+  // text alone (`AnnexLayout.designationsAcross`).
+  const body = lines.filter((l) => !l.across)
   const margins = {
-    left: { start: columnMargin(lines.filter((l) => l.left).map((l) => l.leftStart), 'start'), end: columnMargin(lines.filter((l) => l.left).map((l) => l.leftEnd), 'end') },
-    right: { start: columnMargin(lines.filter((l) => l.right).map((l) => l.rightStart), 'start'), end: columnMargin(lines.filter((l) => l.right).map((l) => l.rightEnd), 'end') },
+    left: { start: columnMargin(body.filter((l) => l.left).map((l) => l.leftStart), 'start'), end: columnMargin(body.filter((l) => l.left).map((l) => l.leftEnd), 'end') },
+    right: { start: columnMargin(body.filter((l) => l.right).map((l) => l.rightStart), 'start'), end: columnMargin(body.filter((l) => l.right).map((l) => l.rightEnd), 'end') },
   }
 
   const { candidates, roles } = candidateLines(lines, edges, layout.lawsByName ? articles.flatMap((a) => (a.title ? [a.title] : [])) : [])
@@ -1986,8 +2018,8 @@ export function parseAnnexPdf(pages: readonly AnnexPage[], articles: readonly Dr
       inset: margin.start === null ? null : start - margin.start,
       axis: margin.start === null || margin.end === null ? null : (margin.start + margin.end) / 2,
     })
-    const leftLines = section.lines.map((l) => ({ text: l.left, wrapped: reachedEdge(l.leftEnd, edges.left), centred: isCentred(l.leftStart, l.leftEnd, margins.left), flush: isFlush(l.leftStart, margins.left), ...at(l.leftStart, l.leftEnd, margins.left), context: contextFor.get(l), barrier: startsPart.has(l), gap: gapStart.has(l) }))
-    const rightLines = section.lines.map((l) => ({ text: l.right, wrapped: reachedEdge(l.rightEnd, edges.right), centred: isCentred(l.rightStart, l.rightEnd, margins.right), flush: isFlush(l.rightStart, margins.right), ...at(l.rightStart, l.rightEnd, margins.right), context: contextFor.get(l), barrier: startsPart.has(l), gap: gapStart.has(l) }))
+    const leftLines = section.lines.map((l) => ({ text: l.left, wrapped: reachedEdge(l.leftEnd, edges.left), centred: isCentred(l.leftStart, l.leftEnd, margins.left), flush: isFlush(l.leftStart, margins.left), ...at(l.leftStart, l.leftEnd, margins.left), context: contextFor.get(l), barrier: startsPart.has(l), gap: gapStart.has(l), ...(l.across ? { across: true } : {}) }))
+    const rightLines = section.lines.map((l) => ({ text: l.right, wrapped: reachedEdge(l.rightEnd, edges.right), centred: isCentred(l.rightStart, l.rightEnd, margins.right), flush: isFlush(l.rightStart, margins.right), ...at(l.rightStart, l.rightEnd, margins.right), context: contextFor.get(l), barrier: startsPart.has(l), gap: gapStart.has(l), ...(l.across ? { across: true } : {}) }))
     const toc = contentsInBoth(leftLines, rightLines)
     const leftRead = unitsOfColumn(leftLines, toc.left, layout)
     const rightRead = unitsOfColumn(rightLines, toc.right, layout)

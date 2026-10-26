@@ -951,6 +951,33 @@ describe('a layout that centres its headings over the designation (Salzburg, 26.
     expect(rows(pages).find((r) => r.gld === '§ 7.')!.proposed.endsWith('zu verständigen. entfällt')).toBe(true)
     expect(rows(pages).find((r) => r.gld === '§ 8.')!.proposed.startsWith('Ausschreibung § 8.')).toBe(true)
   })
+
+  // 35399 sets „§ 15." and „§ 175." of its Landesbedienstetengesetz over the
+  // whole table, under a heading across both columns: one run across the
+  // gutter, which the column its middle fell in took — the other ran the §
+  // on into the one before it.
+  it('gives a designation set across the gutter to both columns (`designationsAcross`)', () => {
+    // The columns as 35399 sets them: 90 to 415 and 426 to 751.
+    const line = (y: number, left: string, right = left): AnnexItem[] => [wide(90, y, left, 325), wide(426, y, right, 325)]
+    const pages = [pageOf([
+      wide(240, 740, '§ 14.', 25), wide(576, 740, '§ 14.', 25),
+      ...Array.from({ length: 10 }, (_, i) => line(725 - i * 11, 'Die Landesregierung hat die Modellstellen fortlaufend zu')).flat(),
+      ...line(600, 'überprüfen.'),
+      wide(316, 580, 'Einreihungsplan- und Modellstellen-Verordnung', 209),
+      wide(410, 565, '§ 15.', 20),
+      ...line(550, '(1) Die Landesregierung hat festzulegen.', '(1) Die Landesregierung hat neu festzulegen.'),
+    ])]
+    const fifteen = (layout: AnnexLayout) => rows(pages, layout).find((r) => r.gld === '§ 15.')!
+    expect(fifteen({ headingsCentred: true, designationsAcross: true })).toMatchObject({
+      heading: 'Einreihungsplan- und Modellstellen-Verordnung',
+      current: '§ 15. (1) Die Landesregierung hat festzulegen.',
+      proposed: '§ 15. (1) Die Landesregierung hat neu festzulegen.',
+    })
+    expect(rows(pages, { headingsCentred: true, designationsAcross: true }).find((r) => r.gld === '§ 14.')!.change).toBe('unchanged')
+    // Without it, the right column's § 15 is the end of its § 14.
+    expect(fifteen({ headingsCentred: true }).proposed).toBe('')
+    expect(rows(pages).find((r) => r.gld === '§ 14.')!.proposed.endsWith('neu festzulegen.')).toBe(true)
+  })
 })
 
 describe('a package that heads its laws by their bare names (Salzburg, 26.10.2026)', () => {

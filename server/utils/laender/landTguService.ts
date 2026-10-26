@@ -334,8 +334,8 @@ async function readSalzburg(detail: LandDraftRecord): Promise<TguRead | string> 
   const pages = (await pagesOf(bytes)).map((p) => withFullStops(withoutPageNumber({ ...p, items: p.items.filter((i) => !SBG_HEAD_RE.test(i.text.trim())) })))
   const laws = amendedLawsOf(detail.draft.title)
   const draftText = await draftTextOf(draftSource(detail.draft.documents, 'Land Salzburg'))
-  // Salzburg centres every heading over its designation, heads some packages' laws by their bare names, and breaks words short of the edge (`AnnexLayout`).
-  const { rows, droppedPages } = columnRows(pages, packageArticles(draftText ?? '', laws), { headingsCentred: true, lawsByName: true, cutAtGaps: true, hyphensByWord: true })
+  // Salzburg centres every heading over its designation, and a designation now and then over both columns at once; it heads some packages' laws by their bare names, and breaks words short of the edge (`AnnexLayout`).
+  const { rows, droppedPages } = columnRows(pages, packageArticles(draftText ?? '', laws), { headingsCentred: true, lawsByName: true, cutAtGaps: true, hyphensByWord: true, designationsAcross: true })
   // „Der bisherige § 54a erhält die Paragraphenbezeichnung „§ 54b"": the draft's text says what the two columns do not (26.10.2026).
   const { paragraphs, unmapped } = withRenumberings(columnParagraphs(rows, laws), renumberingsOf(draftText ?? '', laws))
   return {
