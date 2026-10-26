@@ -452,6 +452,15 @@ describe('ktnTguParagraphs — a number out of turn (27.10.2026)', () => {
   it('still names every § of a law whose numbering misses a number no line carries', () => {
     expect(read([body(R, '1. § 7 entfällt.', 450), body(R, '3. § 5 entfällt.', 410)])).toEqual([['5', 'gap'], ['7', 'gap']])
   })
+
+  it('names there the § a payload prints whole under no head of its own too (35244/2025, § 5a)', () => {
+    const right = [
+      body(R, '1. In § 5 Abs. 1 wird das Wort „wie“ durch „als“ ersetzt.', 450),
+      centre(R, '§ 5a', 438), centre(R, 'Neu', 426), absatz(R, '(1) Ein neuer Paragraph.', 414),
+      body(R, '3. § 7 entfällt.', 400),
+    ]
+    expect(read(right)).toEqual([['5', 'gap'], ['5a', 'gap'], ['7', 'gap']])
+  })
 })
 
 describe('ktnTguParagraphs — a head without its colon (27.10.2026)', () => {

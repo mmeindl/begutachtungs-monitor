@@ -1047,7 +1047,14 @@ function lawParagraphs(law: string | null, left: readonly PrintedPara[], amendme
       reaches.push(heads[k]!)
       if (r.quoted) for (const p of left) if (contains(p, r.quoted)) extra.set(p.number, extra.get(p.number) ?? 'wording')
     })
-    return { paragraphs: named().map((n) => unread(n, becauseOf(n))), reaches }
+    // And every § a payload prints whole, which no instruction need name: a
+    // division's new §§, or one whose instruction the document does not print
+    // — 35244/2025 prints § 5a, new, under no head (27.10.2026).
+    const printed = amendment.instructions.flatMap((ins) => ins.payload.flatMap((l) => {
+      const u = PARA_LINE_RE.exec(l.text)
+      return u && centred(l, rf) ? [unitNumber(u)] : []
+    }))
+    return { paragraphs: [...new Set([...named(), ...printed])].map((n) => unread(n, becauseOf(n))), reaches }
   }
   const inForce = new Map<string, PrintedPara | null>()
   // A number the left column prints twice is not one § we can name; one it
