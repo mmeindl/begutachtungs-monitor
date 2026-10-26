@@ -559,7 +559,8 @@ const droppedNote = computed(() =>
                   <div class="space-y-3 px-4 pb-3 pl-10 text-sm leading-relaxed text-ink-secondary">
                     <p v-for="u in b.units" :key="diffUnitKey(u.unit)" class="hyphens-auto">
                       <span class="font-medium text-ink">{{ displayId(u.unit.id) }}</span>
-                      <span v-if="u.label" class="font-medium text-ink"> {{ u.label }}</span>
+                      <!-- &nbsp;, not a space: Vue drops a whitespace-only first text node, and the heading stood glued to the number („§ 10Geschäftsordnung"). -->
+                      <span v-if="u.label" class="font-medium text-ink">&nbsp;{{ u.label }}</span>
                       <span v-else-if="u.extra"> {{ u.extra }}</span>
                       <span> — {{ u.unit.toText }}</span>
                     </p>
