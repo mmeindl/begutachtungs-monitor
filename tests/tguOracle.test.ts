@@ -68,6 +68,49 @@ describe('rowsByParagraph', () => {
   })
 })
 
+describe('rowsByParagraph — a § opened without a row of its own (25.10.2026)', () => {
+  // `comparisonRows` emits no row for a designation that stands alone („§ 190."
+  // over the salary table of the RStDG, 126/ME XXVIII) and hands the § on in
+  // `para`. Read by `gld` alone, § 190's rows were held against § 184.
+  const inherits = (row: ComparisonRow, para: string): ComparisonRow => ({ ...row, para })
+
+  it('files the rows under the § their `para` names', () => {
+    const rows = [
+      pair('(1) Ist der Leiter verhindert, vertritt ihn der Stellvertreter.', '(1) Ist die Vorsitzende verhindert, vertritt sie das dienstälteste Mitglied.', '§ 184.'),
+      inherits(pair('(2) und (3) …', '(2) und (3) …', null, true), '§ 184.'),
+      inherits(pair('Ein festes Gehalt gebührt dem Leiter im Ausmaß von 15 823,0 €.', 'Ein festes Gehalt gebührt den Mitgliedern im Ausmaß von 16 345,2 €.'), '§ 190.'),
+      inherits(pair('(2) Es haben Anspruch auf ein Gehalt der', '(2) Es haben Anspruch auf ein Gehalt der'), '§ 190.'),
+    ]
+    const grouped = rowsByParagraph(rows)
+    expect(paragraphRows(grouped, '184')).toHaveLength(2)
+    expect(paragraphRows(grouped, '190')).toHaveLength(2)
+    // § 184 is judged on its own rows again, not `fremd` over § 190's salary.
+    const before = 'Ist der Leiter verhindert, vertritt ihn der Stellvertreter. Zwei. Drei.'
+    const got = 'Ist die Vorsitzende verhindert, vertritt sie das dienstälteste Mitglied. Zwei. Drei.'
+    expect(oracleVerdict('184', before, got, paragraphRows(grouped, '184')).verdict).toBe('bestätigt')
+  })
+
+  it('opens the § an elision line names', () => {
+    // Verbrechensopfergesetz: „§ 4 Ab. 1 bis 4 …" opens § 4 (`elisionOpens`).
+    const rows = [pair('10. Pauschalentschädigung.', '10. Pauschalentschädigung;', '§ 2.'), inherits(pair('§ 4 Ab. 1 bis 4 …', '§ 4 Ab. 1 bis 4 …', null, true), '§ 4.'), inherits(pair('(5) alt', '(5) neu'), '§ 4.')]
+    const grouped = rowsByParagraph(rows)
+    expect(paragraphRows(grouped, '2')).toHaveLength(1)
+    expect(paragraphRows(grouped, '4').map((r) => r.current)).toEqual(['§ 4 Ab. 1 bis 4 …', '(5) alt'])
+  })
+
+  it('does not open a § early for a heading held back for it', () => {
+    // StVO, a changed Abschnitt heading handed to § 68, whose own row follows:
+    // RIS keeps the heading out of the §'s text, and read under § 68 it made
+    // a confirmed § `fremd`.
+    const rows = [
+      pair('§ 54. (1) a', '§ 54. (1) b', '§ 54.'),
+      inherits(pair('Besondere Vorschriften für den Verkehr mit Fahrrädern.', 'Besondere Vorschriften für den Verkehr mit Fahrrädern und Rollern.'), '§ 68.'),
+      pair('(1) bis (5) …', '(1) bis (5) …', '§ 68.', true),
+    ]
+    expect(paragraphRows(rowsByParagraph(rows), '68')).toHaveLength(1)
+  })
+})
+
 describe('stripMarkers', () => {
   it('drops the markers the tree does not carry', () => {
     expect(stripMarkers('§ 5. (1) Der Text 1. erste a) zweite')).toBe('Der Text erste zweite')

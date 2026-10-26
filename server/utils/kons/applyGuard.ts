@@ -28,7 +28,7 @@
 import { diffTokens } from '../diff/wordDiff'
 import { lawTextNodes, plainText, type LawNode } from '../lawtext/konsTree'
 import type { ApplyResult, Instruction, StandingLaw } from './lawApply'
-import { addressedHalbsatz, addressedHalbsatzHost, addressedSentence, resolveTarget } from './lawApply'
+import { addressedHalbsatz, addressedHalbsatzHost, addressedSentence, isLoneLine, resolveTarget } from './lawApply'
 import { punctuationTokens } from '../text/punctuationTokens'
 
 export type GuardFlag =
@@ -178,7 +178,8 @@ function announced(before: StandingLaw, id: string, beforeTree: LawNode | null, 
         if (op.target.level === 'para') {
           // A § restated without a printed heading keeps its old one; only a
           // payload that brings a heading replaces it.
-          if (beforeTree) loss(plainText({ ...beforeTree, heading: own.some((p) => p.heading) ? beforeTree.heading : null }))
+          // A lone line is the §'s text, and the Überschrift stays (`isLoneLine`).
+          if (beforeTree) loss(plainText({ ...beforeTree, heading: own.some((p) => p.heading && !isLoneLine(p, beforeTree)) ? beforeTree.heading : null }))
           break
         }
         const ids = [op.target.lit ?? op.target.z ?? op.target.abs ?? '', ...op.target.siblings]

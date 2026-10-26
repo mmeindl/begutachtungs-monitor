@@ -948,3 +948,49 @@ describe('a unit named by its designation (01.10.2026)', () => {
     expect(op('In § 5 wird die Bezeichnung "Bundesminister" durch die Bezeichnung "Bundesministerin" ersetzt.')).toMatchObject({ kind: 'replacePhrase' })
   })
 })
+
+describe('„angefügt" beside a unit of the new one\'s own level (25.10.2026)', () => {
+  // KommAustria-Gesetz § 35 of 48/ME XXVIII: read as an append, Abs. 1h became
+  // a child of Abs. 2 and the page printed (1f), (2), (1h), (3).
+  it('reads the place word, and the side it names', () => {
+    expect(op('In § 35 wird vor Abs. 2 folgender Abs. 1h angefügt:')).toMatchObject({ kind: 'insertAfter', where: 'before', child: 'abs', childIds: ['1h'], anchor: { para: '§ 35', abs: '2', level: 'abs' } })
+    expect(op('In § 47 wird nach dem Abs. 1 folgender Abs. 1a angefügt:')).toMatchObject({ kind: 'insertAfter', where: 'after', child: 'abs', anchor: { para: '§ 47', abs: '1' } })
+    // Without a place word the new unit follows the one named.
+    expect(op('Dem § 63 Abs. 4 wird folgender Absatz 4a angefügt:')).toMatchObject({ kind: 'insertAfter', where: 'after', anchor: { abs: '4', level: 'abs' } })
+  })
+
+  it('cuts a deeper place handed on to the new unit\'s level', () => {
+    const { ops, reason } = parseInstruction('In § 78 Abs. 1 wird in Z 11 lit. c der Punkt durch den Ausdruck " , oder" ersetzt und es wird folgende Z 12 angefügt:')
+    expect(reason).toBeNull()
+    expect(ops[1]).toMatchObject({ kind: 'insertAfter', where: 'after', child: 'z', childIds: ['12'], anchor: { abs: '1', z: '11', lit: null, level: 'z' } })
+  })
+
+  it('keeps the append where the address names the host', () => {
+    expect(op('Dem § 5 Abs. 2 wird folgende Z 4 angefügt:')).toMatchObject({ kind: 'append', child: 'z', target: { abs: '2', level: 'abs' } })
+    expect(op('Dem § 5 wird folgender Abs. 4 angefügt:')).toMatchObject({ kind: 'append', child: 'abs', target: { para: '§ 5', level: 'para' } })
+  })
+
+  it('honours „vor" for a § and a Satz, and refuses it where nothing can stand in front', () => {
+    expect(op('Vor § 5 wird folgender § 4a samt Überschrift angefügt:')).toMatchObject({ kind: 'insertAfter', where: 'before', child: 'para' })
+    expect(op('In § 6 Abs. 1 wird vor dem letzten Satz folgender Satz angefügt:')).toMatchObject({ kind: 'insertAfter', where: 'before', child: 'satz', anchor: { satz: 'letzter' } })
+    expect(parseInstruction('Dem § 5 wird vor Abs. 2 folgende Z 3 angefügt:').reason).toMatch(/„vor"/)
+    // Two Absätze to stand beside, one new one: no place.
+    expect(parseInstruction('Dem § 13 Abs. 1 und 3 wird jeweils folgender Abs. 5 angefügt:').ops).toEqual([])
+  })
+})
+
+describe('a heading named by the § below it (25.10.2026)', () => {
+  // PRIIP-Vollzugsgesetz § 3 (30/ME XXVIII), Unternehmensgesetzbuch § 283
+  // (4/ME XXVIII): read through the plain „lautet", the § was the target and
+  // its text was replaced by the heading.
+  it('reads „die Überschrift vor § 3" as that §\'s own heading', () => {
+    expect(op('Die Überschrift vor § 3 lautet:')).toMatchObject({ kind: 'replaceHeading', target: { para: '§ 3', heading: true } })
+    expect(op('Die Überschrift vor § 283 wird durch folgende Paragrafenüberschrift ersetzt:')).toMatchObject({ kind: 'replaceHeading', target: { para: '§ 283', heading: true } })
+  })
+
+  it('refuses the heading of a group above the §', () => {
+    for (const line of ['Die Zwischenüberschrift vor § 48a lautet:', 'Die Abschnittsbezeichnung vor § 22 lautet:', 'Die Abschnittsüberschrift vor § 6 lautet:']) {
+      expect(parseInstruction(line).reason, line).toMatch(/Gliederungseinheit/)
+    }
+  })
+})

@@ -113,6 +113,28 @@ export function rowsByParagraph(rows: readonly ComparisonRow[]): Map<string, Com
     // that §'s heading.
     const next = rows[i + 1]
     if (!id && next && next.kind === 'pair' && paraIdOfGld(next.gld) && isHeadingRow(row)) id = paraIdOfGld(next.gld)
+    // A § the annex opened without a row that carries its symbol. Where the
+    // designation stands in a row of its own and nothing beside it —
+    // „§ 190." over the salary table of the Richter- und
+    // Staatsanwaltschaftsdienstgesetz — `comparisonRows` emits no row for it
+    // and hands the § on in `para` alone; an elision line naming its §
+    // („§ 16 Abs. 1 bis 24 …", `elisionOpens`) does the same. Read by `gld`
+    // alone, every row of such a § was filed under the § ABOVE it: 126/ME
+    // XXVIII held § 190's rows against § 184, which came out `fremd`, and
+    // left § 190 without a single row (25.10.2026).
+    //
+    // **Only where no row of that § carries the symbol.** `comparisonRows`
+    // also hands the § below to the heading rows it held back for it
+    // (`heldHeadings`) — a changed Abschnitt heading („Besondere Vorschriften
+    // für den Verkehr mit Fahrrädern und Motorfahrrädern.") among them, which
+    // RIS keeps out of every §'s own text. Read by `para` they opened that §
+    // early and made it `fremd`: six §§ the oracle had confirmed, measured
+    // over the 400 drafts of the ME-Prüfstand. Where the § opens with its own
+    // symbol below, those rows stay where they were (`opensBelow`).
+    if (!id && row.para) {
+      const opened = paraIdOfGld(row.para)
+      if (opened && paragraphKey(opened, row.law) !== current && !opensBelow(rows, i, opened)) id = opened
+    }
     if (id) current = paragraphKey(id, row.law)
     if (!current) continue
     const list = out.get(current) ?? []
@@ -120,6 +142,21 @@ export function rowsByParagraph(rows: readonly ComparisonRow[]): Map<string, Com
     out.set(current, list)
   }
   return out
+}
+
+/**
+ * Whether a row further down, inside the run that inherits the same `para`,
+ * opens `id` with its own symbol — the § then has a row of its own, and a
+ * row above it that merely inherits it is not where it opens.
+ */
+function opensBelow(rows: readonly ComparisonRow[], at: number, id: string): boolean {
+  const { para, law } = rows[at]!
+  for (let j = at + 1; j < rows.length; j++) {
+    const r = rows[j]!
+    if (r.kind !== 'pair' || r.para !== para || r.law !== law) return false
+    if (r.gld) return paraIdOfGld(r.gld) === id
+  }
+  return false
 }
 
 /** The key `rowsByParagraph` files a § under. */

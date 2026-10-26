@@ -1,8 +1,8 @@
 import { describe, expect, it } from 'vitest'
 import { applyNovelle, instructionsFromUnits, parsePayload, resolveTarget, splitSentences, stripPayloadQuotes, type Instruction, type StandingLaw } from '../server/utils/kons/lawApply'
-import { makeNode, parseKonsParagraph, plainText, renderNode } from '../server/utils/lawtext/konsTree'
+import { bodyText, makeNode, parseKonsParagraph, plainText, renderNode } from '../server/utils/lawtext/konsTree'
 import { paraNode as para } from './helpers/builders'
-import { parseInstruction, type NovaoAddress } from '../server/utils/kons/novao'
+import { parseAddress, parseInstruction, type NovaoAddress } from '../server/utils/kons/novao'
 
 function law(): StandingLaw {
   return {
@@ -1797,5 +1797,123 @@ describe('a sentence inserted after or before a named sentence (06.10.2026)', ()
     const { law: out, results } = run(l(), instr('In § 16 Abs. 1 wird nach dem fünften Satz folgender Satz eingefügt:', ['Sie hört die Partei an.']))
     expect(results[0]!.reason).toMatch(/nicht auffindbar/)
     expect(plainText(out.paragraphs[0]!.children[0]!)).toBe('Die Behörde prüft. Sie entscheidet binnen vier Wochen. Die Frist ist zu verlängern.')
+  })
+})
+
+describe('an Absatz „angefügt" beside one of its own level (25.10.2026)', () => {
+  const ids = (l: StandingLaw): string[] => l.paragraphs[0]!.children.map((c) => c.id)
+
+  it('stands in front of the Absatz „vor" names, not inside it', () => {
+    // KommAustria-Gesetz § 35, 48/ME XXVIII: (1h) printed after (2).
+    const l: StandingLaw = { paragraphs: [para('35', 'Finanzierung', ['Eins.', 'Zwei.', 'Drei.'])] }
+    const { law: out, results } = run(l, instr('In § 35 wird vor Abs. 2 folgender Abs. 1h angefügt:', ['(1h) Neu.']))
+    expect(results[0]!.reason).toBeNull()
+    expect(ids(out)).toEqual(['1', '1h', '2', '3'])
+    expect(out.paragraphs[0]!.children.every((c) => c.children.length === 0)).toBe(true)
+  })
+
+  it('stands behind the whole Absatz „nach" names, its Schlussteil included', () => {
+    // Abfallwirtschaftsgesetz 2002 § 13b, 94/ME XXVIII: (2a) landed between
+    // the list of Abs. 2 and the sentence that closes it.
+    const l: StandingLaw = { paragraphs: [para('13b', 'Koordinierung', ['Eins.', { text: 'Betraut werden kann, wenn', ziffern: ['erstens,', 'zweitens.'] }, 'Drei.'])] }
+    l.paragraphs[0]!.children[1]!.children.push(makeNode('schluss', 'schluss', '', 'Die Betrauung kann unbefristet erfolgen.'))
+    const { law: out, results } = run(l, instr('Im § 13b wird nach Abs. 2 folgender Abs. 2a angefügt:', ['(2a) Neu.']))
+    expect(results[0]!.reason).toBeNull()
+    expect(ids(out)).toEqual(['1', '2', '2a', '3'])
+    expect(out.paragraphs[0]!.children[1]!.children.at(-1)!.text).toBe('Die Betrauung kann unbefristet erfolgen.')
+  })
+
+  it('refuses a number that stands already instead of printing it twice', () => {
+    // Kontenregister- und Konteneinschaugesetz § 15, 27/ME XXVIII: Abs. 8
+    // came in by another Novelle; nested into Abs. 7, the second „(8)" was
+    // never checked against the first.
+    const l: StandingLaw = { paragraphs: [para('15', 'Inkrafttreten', ['Eins.', 'Zwei.', 'Drei.', 'Vier.', 'Fünf.', 'Sechs.', 'Sieben.', 'Acht.'])] }
+    const { results } = run(l, instr('Dem § 15 wird nach Abs. 7 folgender Abs. 8 angefügt:', ['(8) Neu acht.']))
+    expect(results[0]!.applied).toBe(false)
+    expect(results[0]!.reason).toMatch(/existiert bereits/)
+  })
+
+  it('never hangs a unit inside one of its own level, whoever asks', () => {
+    const l: StandingLaw = { paragraphs: [para('35', 'Finanzierung', ['Eins.', 'Zwei.'])] }
+    const target = parseAddress('§ 35 Abs. 2')!
+    const { results } = applyNovelle(l, [{ op: { kind: 'append', target, child: 'abs', childIds: ['2a'] }, payload: parsePayload(['(2a) Neu.']), line: 'x' }])
+    expect(results[0]!.applied).toBe(false)
+    expect(results[0]!.reason).toMatch(/gleichrangige Einheit/)
+  })
+})
+
+describe('a sentence that brings a list of its own (25.10.2026)', () => {
+  // AVG § 41 Abs. 1, 35/ME XXVIII: the new second sentence carries Z 1 to 3,
+  // and written as text into the sentence's slot it lost them.
+  const avg = (rest = ''): StandingLaw => ({
+    paragraphs: [para('41', 'Mündliche Verhandlung', [`Die Anberaumung hat durch Verständigung zu erfolgen. Wenn andere Personen in Betracht kommen, ist die Verhandlung an der Amtstafel kundzumachen.${rest}`, 'Zweiter Absatz.'])],
+  })
+  const payload = ['Wenn andere Personen in Betracht kommen, ist die Verhandlung überdies', '1. durch Verlautbarung im RIS oder', '2. an der Amtstafel', 'kundzumachen.']
+
+  it('keeps the Ziffern as Ziffern, and the comparison form as it was', () => {
+    const { law: out, results } = run(avg(), instr('§ 41 Abs. 1 zweiter Satz lautet:', payload))
+    expect(results[0]!.reason).toBeNull()
+    const abs = out.paragraphs[0]!.children[0]!
+    expect(abs.text).toBe('Die Anberaumung hat durch Verständigung zu erfolgen. Wenn andere Personen in Betracht kommen, ist die Verhandlung überdies')
+    expect(abs.children.map((c) => [c.level, c.marker, c.text])).toEqual([['z', '1.', 'durch Verlautbarung im RIS oder'], ['z', '2.', 'an der Amtstafel'], ['schluss', '', 'kundzumachen.']])
+    expect(bodyText(out.paragraphs[0]!)).toContain('überdies\n1. durch Verlautbarung im RIS oder\n2. an der Amtstafel\nkundzumachen.\n(2) Zweiter Absatz.')
+    // The oracle and the guard read this form; it must not move.
+    expect(plainText(abs)).toBe('Die Anberaumung hat durch Verständigung zu erfolgen. Wenn andere Personen in Betracht kommen, ist die Verhandlung überdies durch Verlautbarung im RIS oder an der Amtstafel kundzumachen.')
+  })
+
+  it('carries the sentences behind the replaced one into the Schlussteil', () => {
+    const { law: out } = run(avg(' Die Frist beträgt eine Woche.'), instr('§ 41 Abs. 1 zweiter Satz lautet:', payload))
+    expect(out.paragraphs[0]!.children[0]!.children.at(-1)!.text).toBe('kundzumachen. Die Frist beträgt eine Woche.')
+  })
+
+  it('appends such a sentence at the end of the unit, and inserts it in front of a named one', () => {
+    const appended = run(avg(), instr('Dem § 41 Abs. 1 wird folgender Satz angefügt:', payload))
+    expect(appended.results[0]!.reason).toBeNull()
+    expect(appended.law.paragraphs[0]!.children[0]!.text).toMatch(/kundzumachen\. Wenn andere Personen in Betracht kommen, ist die Verhandlung überdies$/)
+    const inserted = run(avg(), instr('In § 41 Abs. 1 wird vor dem letzten Satz folgender Satz eingefügt:', payload))
+    expect(inserted.results[0]!.reason).toBeNull()
+    expect(inserted.law.paragraphs[0]!.children[0]!.children.at(-1)!.text).toBe('kundzumachen. Wenn andere Personen in Betracht kommen, ist die Verhandlung an der Amtstafel kundzumachen.')
+  })
+
+  it('refuses where the unit carries a list already, and writes nothing', () => {
+    const l: StandingLaw = { paragraphs: [para('5', 'A', [{ text: 'Erster Satz. Ausgenommen sind:', ziffern: ['a,', 'b.'] }])] }
+    const { law: out, results } = run(l, instr('§ 5 Abs. 1 erster Satz lautet:', payload))
+    expect(results[0]!.applied).toBe(false)
+    expect(results[0]!.reason).toMatch(/Aufzählung/)
+    expect(out.paragraphs[0]!.children[0]!.text).toBe('Erster Satz. Ausgenommen sind:')
+  })
+
+  it('leaves a sentence the ressort quoted with its Absatz number a sentence', () => {
+    const { law: out, results } = run(avg(), instr('§ 41 Abs. 1 erster Satz lautet:', ['(1) Die Anberaumung erfolgt schriftlich.']))
+    expect(results[0]!.reason).toBeNull()
+    expect(out.paragraphs[0]!.children[0]!.children).toEqual([])
+    expect(out.paragraphs[0]!.children[0]!.text).toMatch(/^Die Anberaumung erfolgt schriftlich\. Wenn andere/)
+  })
+})
+
+describe('a § replaced by one bare line, and a heading named by the § below it (25.10.2026)', () => {
+  const zweck = (): StandingLaw => ({ paragraphs: [para('1', 'Zweck', ['Dieses Bundesgesetz dient der Verordnung (EU) Nr. 1286/2014.'])] })
+
+  it('takes the line for the §\'s text and keeps its Überschrift', () => {
+    // PRIIP-Vollzugsgesetz § 1, 30/ME XXVIII: the sentence became the
+    // heading, and the page struck the whole body.
+    const { law: out, results } = run(zweck(), instr('§ 1 lautet:', ['Dieses Bundesgesetz dient der Verordnung (EU) 2023/2869.']))
+    expect(results[0]!.reason).toBeNull()
+    expect(out.paragraphs[0]!.heading).toBe('Zweck')
+    expect(bodyText(out.paragraphs[0]!)).toBe('Dieses Bundesgesetz dient der Verordnung (EU) 2023/2869.')
+  })
+
+  it('refuses one line that has to be heading and text at once', () => {
+    const { results } = run(zweck(), instr('§ 1 lautet samt Überschrift:', ['Dieses Bundesgesetz dient der Verordnung (EU) 2023/2869.']))
+    expect(results[0]!.applied).toBe(false)
+  })
+
+  it('replaces the heading „die Überschrift vor §" names, and keeps the text', () => {
+    // Unternehmensgesetzbuch § 283, 4/ME XXVIII.
+    const l: StandingLaw = { paragraphs: [para('283', 'Zwangsstrafen', ['Die Vertreter sind zu bestrafen.'])] }
+    const { law: out, results } = run(l, instr('Die Überschrift vor § 283 wird durch folgende Paragrafenüberschrift ersetzt:', ['Zwangsstrafen wegen nicht zeitgerechter Offenlegung']))
+    expect(results[0]!.reason).toBeNull()
+    expect(out.paragraphs[0]!.heading).toBe('Zwangsstrafen wegen nicht zeitgerechter Offenlegung')
+    expect(out.paragraphs[0]!.children[0]!.text).toBe('Die Vertreter sind zu bestrafen.')
   })
 })

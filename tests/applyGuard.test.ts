@@ -143,3 +143,11 @@ describe('a „jeweils" inside a Halbsatz (28.09.2026)', () => {
     expect(r.flags).toContain('unerklärt')
   })
 })
+
+describe('a § replaced by one bare line (25.10.2026)', () => {
+  it('accounts the line as the §\'s text, as the engine installs it', () => {
+    // PRIIP-Vollzugsgesetz § 1, 30/ME XXVIII: the Überschrift stays.
+    const r = guard(law(), instr('§ 6 lautet:', ['Zuständig ist die Bezirksverwaltungsbehörde.']))
+    expect(r.flags).toEqual([])
+  })
+})

@@ -317,6 +317,12 @@ const HEADING_TARGET_RE = /Überschrift(?:en)?\s+(?:zu|des|der|von|zum|im|dieses
  * tiny, and both were half-applied before this existed: the body renamed,
  * the heading left standing. One of the two passed the Anhang gate that way.
  */
+/**
+ * „die Überschrift vor § 3", „die Zwischenüberschrift vor § 48a" — a heading
+ * named by the § below it. Group 1 is set for the heading of a group of §§.
+ */
+const HEADING_ABOVE_RE = /(?:(Zwischen|Abschnitts|Unterabschnitts|Gliederungs|Teil|Hauptstück)(?:überschrift|bezeichnung)|(?<![\p{L}])Überschrift)(?:en)?\s+vor\s+(?:dem\s+)?§/iu
+
 const ALSO_HEADING_RE = /samt\s+(?:der\s+|den\s+)?Überschrift(?:en)?/i
 
 /** Quoted spans are operands, never addresses — "…den Ausdruck 'Abs. 1 Z 1 bis 5'…". */
@@ -1714,6 +1720,38 @@ function appendHost(from: NovaoAddress, child: 'abs' | 'z' | 'lit'): NovaoAddres
   return { ...base, lit: null, level: 'z' }
 }
 
+/**
+ * The address cut to the level of a unit an append brings in — the sibling
+ * it is to stand beside. Null where the address does not reach that level,
+ * and then it names the host the unit goes into („Dem § 5 Abs. 2 wird
+ * folgende Z 4 angefügt"), which is what an append is.
+ *
+ * Cut, not taken whole: „In § 78 Abs. 1 wird in Z 11 lit. c der Punkt …
+ * ersetzt und es wird folgende Z 12 angefügt" hands on lit. c, and the
+ * Ziffer that follows stands behind Z 11, not inside its Litera.
+ */
+function siblingAnchor(a: NovaoAddress, child: 'abs' | 'z' | 'lit'): NovaoAddress | null {
+  if (!a.para || a.level === 'document' || a.level === 'abschnitt' || a.level === 'titel' || a.heading) return null
+  const depth = a.lit !== null ? 3 : a.z !== null ? 2 : a.abs !== null ? 1 : 0
+  const childDepth = child === 'abs' ? 1 : child === 'z' ? 2 : 3
+  if (depth < childDepth) return null
+  const base: NovaoAddress = { ...a, satz: null, satzCount: 0, halbsatz: null, heading: false, alsoHeading: false }
+  if (child === 'abs') return { ...base, z: null, lit: null, level: 'abs' }
+  if (child === 'z') return { ...base, lit: null, level: 'z' }
+  return { ...base, level: 'lit' }
+}
+
+/**
+ * „vor Abs. 2", „Vor § 5": a clause that places its new unit in front of
+ * the one it names. „Nach § 10a und vor § 11" names both neighbours and
+ * stands behind the first, as the insertion branch has always read it.
+ * Quoted text is no place word.
+ */
+function placedBefore(scope: string): boolean {
+  const masked = maskQuotes(scope)
+  return /\bvor\b/i.test(masked) && !/\bnach\b/i.test(masked)
+}
+
 /** „Abs. 3" behind „Abs. 2", „Z 5" behind „Z 4", „lit. c" behind „lit. b" — the next designation on the same level, or nothing. */
 function nextDesignation(id: string): string | null {
   if (/^\d+$/.test(id)) return String(Number(id) + 1)
@@ -2055,6 +2093,21 @@ function parseOne(raw: string, inherited: NovaoAddress | null | undefined, whole
     return fail('Wortfolge genannt, aber kein bekanntes Verb')
   }
 
+  // „Die Überschrift vor § 3 lautet:", „Die Überschrift vor § 283 wird
+  // durch folgende Paragrafenüberschrift ersetzt": the § heading, named by
+  // the § it stands above. Read through the plain „lautet", the § itself was
+  // the target, and its whole text was replaced by the heading (PRIIP-
+  // Vollzugsgesetz § 3, Unternehmensgesetzbuch § 283 — 30/ME and 4/ME XXVIII,
+  // 25.10.2026). The heading of a GROUP above the § („Zwischenüberschrift",
+  // „Abschnittsbezeichnung vor § 22") is no unit of the standing text and is
+  // refused — Bundesabgabenordnung § 48a lost its text the same way.
+  const headingAbove = HEADING_ABOVE_RE.exec(maskQuotes(head))
+  if (headingAbove && /\blaute[nt]\b|\bersetzt\b/i.test(head)) {
+    if (headingAbove[1]) return fail('Überschrift einer Gliederungseinheit über dem Paragraphen — keine Einheit des geltenden Texts')
+    if (targets.length !== 1 || target.level !== 'para' || target.siblings.length > 0) return fail('Überschrift vor mehreren Einheiten — Ziel nicht eindeutig')
+    return ok({ kind: 'replaceHeading', target: { ...target, heading: true } })
+  }
+
   if (HEADING_TARGET_RE.test(head) && /\blaute[nt]\b|erhäl?t folgende Überschrift/i.test(head)) {
     return ok({ kind: 'replaceHeading', target: { ...target, heading: true } })
   }
@@ -2118,13 +2171,16 @@ function parseOne(raw: string, inherited: NovaoAddress | null | undefined, whole
 
   if (APPEND_VERB_RE.test(head)) {
     const child = childLevel(payload || whole)
+    // „In § 35 wird vor Abs. 2 folgender Abs. 1h angefügt": the place word
+    // says where the unit goes, whatever the verb says (`placedBefore`).
+    const before = placedBefore(scope)
     // "Nach § 408a wird folgender § 408b samt Überschrift angefügt": a new §
     // behind the named one, not a child of it. As an append it was pushed
     // into § 408a's children and became part of its text (ASVG, BGBl. I Nr.
     // 38/2024, 2026-09-09).
     if (child === 'para') {
       if (targets.length > 1) return fail(`${targets.length} Anker für einen neuen Paragraphen`)
-      return ok({ kind: 'insertAfter', anchor: target, child, childIds: childIds(payload, child), where: 'after' })
+      return ok({ kind: 'insertAfter', anchor: target, child, childIds: childIds(payload, child), where: before ? 'before' : 'after' })
     }
     // „… wird der Punkt am Ende der Z 4 durch einen Strichpunkt ersetzt;
     // folgende Z 5 und 6 werden angefügt:" — the ordinary way to extend a
@@ -2147,6 +2203,33 @@ function parseOne(raw: string, inherited: NovaoAddress | null | undefined, whole
     if (payloadOnly && (child === 'satz' || child === 'halbsatz')) {
       if (inherited!.siblings.length > 0) return fail(`Anfügung ${child === 'satz' ? 'eines Satzes' : 'eines Halbsatzes'} — Einheit davor nicht eindeutig`)
       return ok({ kind: 'append', target: { ...inherited!, heading: false, alsoHeading: false }, child, childIds: [] })
+    }
+    // „In § 47 wird nach dem Abs. 1 folgender Abs. 1a angefügt", „Dem § 63
+    // Abs. 4 wird folgender Absatz 4a angefügt", „In § 35 wird vor Abs. 2
+    // folgender Abs. 1h angefügt": the address names a unit on the new unit's
+    // OWN level — the sibling it is to stand beside, not a host it could hang
+    // inside. Read as an append, the new Absatz became a CHILD of the one
+    // named: the page printed it where that one's text ended, a later
+    // instruction on it found nothing, and a collision with a standing unit
+    // of the same number went unseen. KommAustria-Gesetz § 35 of 48/ME XXVIII
+    // read (1f), (2), (1h), (3) — and the annex confirmed it, because the
+    // oracle checks its rows one by one and none of them says where (1h)
+    // stands (25.10.2026). 181 of 1.541 appends of the ME-Prüfstand
+    // (400 Entwürfe) had this shape. Read as the insertion it is, with the
+    // side the place word gives and „behind the named unit" without one.
+    if (child === 'abs' || child === 'z' || child === 'lit') {
+      const sibling = siblingAnchor(target, child)
+      if (sibling) {
+        if (targets.length > 1 || target.siblings.length > 0) return fail('Anfügung neben mehreren Einheiten — Stelle nicht eindeutig')
+        return ok({ kind: 'insertAfter', anchor: sibling, child, childIds: childIds(payload, child), where: before ? 'before' : 'after' })
+      }
+    }
+    // „vor dem letzten Satz … angefügt": a Satz in front of the one named,
+    // which the insertion carries out (`kons/lawApply.ts`). Any other „vor"
+    // names a place an append cannot reach — it would land at the end.
+    if (before) {
+      if (child === 'satz' && target.satz && targets.length === 1 && target.siblings.length === 0) return ok({ kind: 'insertAfter', anchor: target, child, childIds: [], where: 'before' })
+      return fail('Anfügung „vor" einer Einheit — Stelle nicht bestimmbar')
     }
     // "§ 3 Abs. 1 und § 4 Abs. 1 wird jeweils folgender Satz angefügt" names
     // two places; appending to the first alone reported success on a law

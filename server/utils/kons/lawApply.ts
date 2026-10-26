@@ -793,6 +793,92 @@ function sentenceSlots(unit: LawNode, satz: string, count = 1): { slots: Slot[];
   return one(partsSlot(node, parts, first, n))
 }
 
+/**
+ * New sentence text that carries a list of its own: „Wenn noch andere
+ * Personen … in Betracht kommen, ist die Verhandlung überdies 1. durch … oder
+ * 2. durch … oder 3. an der Amtstafel der Gemeinde kundzumachen." — the
+ * words in front of it (`lead`), the Ziffern or Litera (`items`), and what
+ * closes it behind them (`closing`).
+ *
+ * Null where the payload carries no list at all — the ordinary sentence,
+ * including one the ressort quoted with its Absatz number („(4) Durch
+ * Verordnung …"). `unplaceable` where it carries one in a shape this does
+ * not read: two blocks, items of two levels, text between the items.
+ */
+interface ListSentence {
+  lead: string
+  items: LawNode[]
+  closing: string
+}
+function listSentence(payload: readonly LawNode[]): ListSentence | 'unplaceable' | null {
+  const isItem = (n: LawNode): boolean => (n.level === 'z' || n.level === 'lit') && n.id !== ''
+  const carries = (n: LawNode): boolean => n.children.some((c) => isItem(c) || carries(c))
+  if (!payload.some((p) => isItem(p) || carries(p))) return null
+  if (payload.length !== 1 || isItem(payload[0]!)) return 'unplaceable'
+  const top = payload[0]!
+  const lead = (top.text || (top.level === 'para' ? (top.heading ?? '') : '')).trim()
+  const items: LawNode[] = []
+  const closing: string[] = []
+  for (const c of top.children) {
+    if (isItem(c)) {
+      if (closing.length > 0 || (items.length > 0 && items[0]!.level !== c.level)) return 'unplaceable'
+      items.push(c)
+      continue
+    }
+    // The words behind the list: `parsePayload` files them as an unnumbered
+    // Absatz where the list hangs off no Absatz, as a Schlussteil where it does.
+    const closes = (c.level === 'abs' && c.id === '' && c.children.length === 0) || (c.level === 'schluss' && c.id === 'schluss')
+    if (!closes || items.length === 0) return 'unplaceable'
+    closing.push(c.text)
+  }
+  if (!lead || items.length === 0) return 'unplaceable'
+  return { lead, items, closing: closing.join(' ').trim() }
+}
+
+/**
+ * Where sentences stand in a unit that is plain text: its parts and the run
+ * `[first, first + n)` an address names. `satz` null is the unit's end, for
+ * an append. Null where the unit carries a list or a table already, where it
+ * names an Einleitung or Schlussteil, or where the count is not certain —
+ * the same refusals as `sentenceSlots`.
+ */
+function plainSentences(unit: LawNode, satz: string | null, count = 1): { node: LawNode; parts: string[]; first: number; n: number } | null {
+  const node = bodyOf(unit)
+  if (node.children.length > 0) return null
+  const parts = node.text.trim() ? splitSentences(node.text) : []
+  if (parts === null) return null
+  if (satz === null) return { node, parts, first: parts.length, n: 0 }
+  if (satz === 'einleitung' || satz === 'schluss') return null
+  const n = Math.max(1, count)
+  const first = satz === 'letzter' ? parts.length - n : satz === 'vorletzter' ? parts.length - 2 : (ORDINALS[satz] ?? -1)
+  if (first < 0 || first + n > parts.length) return null
+  return { node, parts, first, n }
+}
+
+/**
+ * A sentence with a list of its own, written into a unit that was plain
+ * text: the words in front of the list close the unit's own text, the items
+ * become its children, and what closes the list — with every sentence that
+ * stood behind the replaced ones — its Schlussteil. That is the shape RIS
+ * gives such an Absatz (`lawtext/konsTree.ts`).
+ *
+ * Until 25.10.2026 the payload went through `plainText` into the sentence's
+ * slot, which keeps the words and drops the „1.", „2.", „3." — and with them
+ * the list. The comparison form has no markers on either side, so the
+ * oracle confirmed it and the page showed AVG § 41 Abs. 1 of 35/ME XXVIII
+ * as one running sentence („überdies durch Verlautbarung im
+ * Rechtsinformationssystem des Bundes oder durch Verlautbarung …").
+ */
+function writeListSentence(at: { node: LawNode; parts: string[]; first: number; n: number }, list: ListSentence): void {
+  const clone = (n: LawNode): LawNode => ({ ...n, children: n.children.map(clone) })
+  at.node.text = [...at.parts.slice(0, at.first), list.lead].join(' ').replace(/\s+/g, ' ').trim()
+  const after = [list.closing, ...at.parts.slice(at.first + at.n)].filter(Boolean).join(' ').replace(/\s+/g, ' ').trim()
+  at.node.children = [...list.items.map(clone), ...(after ? [makeNode('schluss', 'schluss', '', after)] : [])]
+}
+
+/** The refusal where a list-carrying sentence has no place the words determine. */
+const LIST_SENTENCE_UNPLACEABLE = 'Satz mit eigener Aufzählung — Gliederung an dieser Stelle nicht abbildbar'
+
 /** Sentences `first` to `first + n` of `parts`, written back into `node.text`. */
 function partsSlot(node: LawNode, parts: readonly string[], first: number, n: number): Slot {
   return {
@@ -1118,6 +1204,20 @@ const ORDINALS: Record<string, number> = {
   erster: 0, zweiter: 1, dritter: 2, vierter: 3, fünfter: 4, sechster: 5, siebenter: 6, siebter: 6, achter: 7, neunter: 8, zehnter: 9,
 }
 
+/**
+ * A § replacement whose payload is one bare line — no § symbol, no Absatz
+ * marker — and so arrives from `parsePayload` as a heading-only node: that
+ * line is the §'s text, not its Überschrift (`applyOne`, `replace`). Not for
+ * a schedule, whose one line is as often its new title. Exported for the
+ * guard, which has to account the line the same way (`kons/applyGuard.ts`).
+ */
+export function isLoneLine(replacement: LawNode, standing: LawNode): boolean {
+  return !!replacement.heading && replacement.children.length === 0 && !replacement.text && !replacement.id && !isSchedule(standing.marker)
+}
+
+/** How deep a level stands below the § — a unit can only hang off one above it. */
+const LEVEL_DEPTH: Record<NodeLevel, number> = { para: 0, abs: 1, z: 2, lit: 3, schluss: 4 }
+
 function levelOf(child: string): NodeLevel | null {
   return child === 'abs' || child === 'z' || child === 'lit' || child === 'para' ? (child as NodeLevel) : null
 }
@@ -1248,6 +1348,22 @@ function applyOne(law: StandingLaw, { op, payload }: Instruction): string | null
           if (op.withHeading && !replacement.heading) return 'samt Überschrift, aber keine Überschrift im neuen Text'
           if (!replacement.heading && replacement.children.length === 0 && !replacement.text) return 'Neufassung ohne Text'
           const at = law.paragraphs.indexOf(para)
+          // „§ 1 lautet: ‚Dieses Bundesgesetz dient …'": one bare line and
+          // no § symbol, which `parsePayload` carries as a heading-only node.
+          // Installed as it came, it became the §'s Überschrift and the §
+          // had no text: the page struck the whole body and printed the new
+          // sentence as the heading, while the comparison form — heading
+          // included — read right and the annex confirmed it (PRIIP-
+          // Vollzugsgesetz § 1 of 30/ME XXVIII, Bäderhygieneverordnung 2012
+          // § 52, 25.10.2026). A § is not a heading alone: the line is its
+          // text, as one unnumbered Absatz, and the Überschrift stays. With
+          // „samt Überschrift" the one line cannot be both. Not for a
+          // schedule, whose one line is as often its new title.
+          if (isLoneLine(replacement, para)) {
+            if (op.withHeading) return 'samt Überschrift, aber nur eine Zeile im neuen Text'
+            law.paragraphs.splice(at, 1, { ...para, level: 'para' as const, children: [makeNode('abs', '', '', replacement.heading ?? '')] })
+            continue
+          }
           law.paragraphs.splice(at, 1, { ...replacement, level: 'para' as const, id: para.id, marker: para.marker, heading: replacement.heading ?? para.heading })
         }
         return null
@@ -1293,6 +1409,8 @@ function applyOne(law: StandingLaw, { op, payload }: Instruction): string | null
         const block = payload[i] ?? payload[0]
         if (!block) return 'Ersetzung ohne neuen Text'
         if (op.target.halbsatz) {
+          // A Halbsatz carrying a list would break its sentence apart.
+          if (listSentence(payload)) return LIST_SENTENCE_UNPLACEABLE
           const host = halbsatzHost(node, op.target)
           if (!host) return `Halbsatz ${op.target.halbsatz} nicht auffindbar`
           const replacement = payload.map((p) => plainText(p)).join(' ').trim()
@@ -1303,6 +1421,17 @@ function applyOne(law: StandingLaw, { op, payload }: Instruction): string | null
           continue
         }
         if (op.target.satz) {
+          // A new sentence with a list of its own is structure, not text: its
+          // items become the unit's children (`writeListSentence`) — or, where
+          // the unit has a list already, nothing is written at all.
+          const list = listSentence(payload)
+          if (list === 'unplaceable') return LIST_SENTENCE_UNPLACEABLE
+          if (list) {
+            const at = plainSentences(node, op.target.satz, op.target.satzCount)
+            if (!at) return sentenceSlot(node, op.target.satz, op.target.satzCount) ? LIST_SENTENCE_UNPLACEABLE : `Satz ${op.target.satz} nicht auffindbar`
+            writeListSentence(at, list)
+            continue
+          }
           // The whole payload replaces the addressed sentence(s): "der zweite
           // Satz durch folgende Sätze ersetzt" installs several at once.
           const slot = sentenceSlot(node, op.target.satz, op.target.satzCount)
@@ -1386,6 +1515,19 @@ function applyOne(law: StandingLaw, { op, payload }: Instruction): string | null
       // A Satz is not a node: it joins the target's own text. Common enough
       // that refusing it cost a fifth of the appends in the harness.
       if (op.child === 'satz' || op.child === 'halbsatz') {
+        // „Dem § 140 Abs. 16 wird folgender Satz angefügt: ‚… 1. … 2. …'":
+        // behind the sentence named, or at the unit's end, as structure
+        // (`writeListSentence`). Not with a mark to replace on the way, and
+        // not as a Halbsatz.
+        const list = listSentence(payload)
+        if (list === 'unplaceable' || (list && (op.child === 'halbsatz' || op.endMark))) return LIST_SENTENCE_UNPLACEABLE
+        if (list) {
+          const named = op.target.satz ? plainSentences(host, op.target.satz, op.target.satzCount) : null
+          const at = op.target.satz ? (named && { ...named, first: named.first + named.n, n: 0 }) : plainSentences(host, null)
+          if (!at) return LIST_SENTENCE_UNPLACEABLE
+          writeListSentence(at, list)
+          return null
+        }
         const added = payload.map((p) => plainText(p)).join(' ').trim()
         if (!added) return 'Anfügung ohne Text'
         // Behind the sentence the clause before named, where it named one —
@@ -1441,6 +1583,13 @@ function applyOne(law: StandingLaw, { op, payload }: Instruction): string | null
       // ones do too. Pushed onto the § they would stand beside that Absatz —
       // the same words in a tree no rendering reads as one list.
       if (host.level === 'para' && level === 'z') host = bodyOf(host)
+      // An appended unit goes INSIDE its host, so the host must stand above
+      // it. An Absatz appended to an Absatz became that Absatz's child, and
+      // the page printed it inside the text of its neighbour — after it, even
+      // where the instruction said „vor" (KommAustria-Gesetz § 35, 48/ME
+      // XXVIII, 25.10.2026). `kons/novao.ts` reads that shape as an insertion
+      // beside the named unit now; whatever still reaches here is refused.
+      if (LEVEL_DEPTH[host.level] >= LEVEL_DEPTH[level]) return `${level === 'abs' ? 'Absatz' : level === 'z' ? 'Ziffer' : 'Litera'} an eine gleichrangige Einheit angefügt — Stelle nicht eindeutig`
       const nodes = payload.map((p) => ({ ...p, level }))
       for (const n of nodes) if (n.id && childById(host, level, n.id)) return `${n.marker} existiert bereits`
       // The end of the enumeration, not the end of the node. Where the Absatz
@@ -1469,6 +1618,16 @@ function applyOne(law: StandingLaw, { op, payload }: Instruction): string | null
         if (op.anchor.siblings.length > 0) return ONE_PLACE_SIBLINGS
         const host = resolveTarget(law, op.anchor)
         if (!host) return `Nicht im geltenden Text: ${op.anchor.raw.slice(0, 60)}`
+        // The same structure as a replacement writes (`writeListSentence`),
+        // in front of the sentence named or behind it.
+        const list = listSentence(payload)
+        if (list === 'unplaceable') return LIST_SENTENCE_UNPLACEABLE
+        if (list) {
+          const named = plainSentences(host, op.anchor.satz, op.anchor.satzCount)
+          if (!named) return LIST_SENTENCE_UNPLACEABLE
+          writeListSentence({ ...named, first: op.where === 'before' ? named.first : named.first + named.n, n: 0 }, list)
+          return null
+        }
         const added = payload.map((p) => plainText(p)).join(' ').trim()
         if (!added) return 'Einfügung ohne Text'
         const slot = sentenceSlot(host, op.anchor.satz, op.anchor.satzCount)
