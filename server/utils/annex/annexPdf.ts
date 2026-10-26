@@ -24,6 +24,7 @@ import { diffTokens, isEditorialChange } from '../diff/wordDiff'
 import { normalizeText } from '../lawtext/normalize'
 import type { DraftArticle } from '../lawtext/draftArticles'
 import { classify, designateAfter, type ComparisonRow } from './comparisonRows'
+import { notationOnly } from './annexText'
 import { isElisionRangeOnly, isElidedPair } from './elision'
 import { HEADER_CURRENT_RE, HEADER_PROPOSED_RE } from './tableCells'
 import { PARAGRAPH_NUMBER } from '../../../shared/utils/paragraphNumber'
@@ -969,7 +970,8 @@ function rowOf(law: string | null, gld: string | null, current: string, proposed
     change,
     elided,
     segments,
-    editorial: isEditorialChange(segments),
+    // Notation alone („(Anm.: …)", „[Kommentar: …]") is no change of the law (`notationOnly`).
+    editorial: isEditorialChange(segments) || (change !== 'unchanged' && notationOnly(current, proposed)),
     elisionRange: change === 'changed' && !elided && isElisionRangeOnly(current, proposed),
   }
 }

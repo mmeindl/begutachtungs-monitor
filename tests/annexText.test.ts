@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { comparableTokens, designationKey } from '../server/utils/annex/annexText'
+import { comparableTokens, designationKey, notationOnly } from '../server/utils/annex/annexText'
 
 describe('what is not comparable', () => {
   // Three of these were once the ruler blaming the parse for its own gaps.
@@ -26,6 +26,25 @@ describe('what is not comparable', () => {
   // prints it, so it may not count as a missing or a new word.
   it('discounts the name the reader gives an image', () => {
     expect(comparableTokens('[Abbildung: Kamerasymbol] Eine solche Zusatztafel [Abbildung]')).toEqual(['eine', 'solche', 'zusatztafel'])
+  })
+
+  // 148/ME XXVIII explains under GrEStG § 13 why Abs. 4 stays where it is.
+  it("discounts the ressort's comment to the reader", () => {
+    expect(comparableTokens('(4) Die Abgabe wird erhoben. [Kommentar: Abs. 4 bleibt hier, weil …]')).toEqual(['die', 'abgabe', 'wird', 'erhoben'])
+  })
+})
+
+describe('notationOnly', () => {
+  // A row whose columns differ in a note and nothing else is shown under
+  // „redaktionell", not as a change an instruction has to make.
+  it('is true where the columns differ in a note alone', () => {
+    expect(notationOnly('§ 13. (1) Die Abgabe wird erhoben.', '§ 13. (1) Die Abgabe wird erhoben. [Kommentar: Abs. 4 bleibt hier.]')).toBe(true)
+    expect(notationOnly('§ 70a. (1) Gilt. (Anm.: Abs. 11 aufgehoben durch BGBl. I Nr. 1/2020)', '§ 70a. (1) Gilt.')).toBe(true)
+  })
+
+  it('is false where the law itself differs, or where there is no note', () => {
+    expect(notationOnly('§ 13. (1) Die Abgabe wird erhoben.', '§ 13. (1) Die Abgabe wird nicht erhoben. [Kommentar: neu]')).toBe(false)
+    expect(notationOnly('§ 13. (1) Die Abgabe wird erhoben.', '§ 13. (1) Die Abgabe wird erhoben,')).toBe(false)
   })
 })
 

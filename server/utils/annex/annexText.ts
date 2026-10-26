@@ -5,6 +5,8 @@
  * every other module of `annex/`; the gate itself is `annex/verdict.ts`.
  */
 
+import { compareKey } from '../lawtext/normalize'
+
 /**
  * What is not comparable, on either side.
  *
@@ -52,6 +54,13 @@ const DESIGNATION_RE = /(?:^|\s)§+\s*\d+[a-z]*\.(?=\s|$)/g
 const ANNOTATION_RE = /\(Anm\.?\s*:[^()]*(?:\([^()]*\)[^()]*)*\)/g
 const BOILERPLATE_RE = /Beachte für folgende Bestimmung/gi
 /**
+ * „[Kommentar: …]": the ressort's note to the reader inside its own annex —
+ * 148/ME XXVIII explains under GrEStG § 13 why Abs. 4 stays there (26.10.2026).
+ * No text of the law, and nothing the draft orders, so no word of it is a new
+ * word of the §.
+ */
+const COMMENT_RE = /\[\s*Kommentar\s*:[^\]]*\]/gi
+/**
  * The name the table reader gives an image (`imageText` in
  * `annex/tableCells.ts`): ours, not the ressort's words, and no standing text
  * or draft prints it.
@@ -62,6 +71,7 @@ const IMAGE_MARK_RE = /\[Abbildung(?::[^\]]*)?\]/g
 export function comparableTokens(text: string): string[] {
   return text
     .replace(ANNOTATION_RE, ' ')
+    .replace(COMMENT_RE, ' ')
     .replace(BOILERPLATE_RE, ' ')
     .replace(IMAGE_MARK_RE, ' ')
     .replace(ELISION_RE, ' ')
@@ -72,6 +82,27 @@ export function comparableTokens(text: string): string[] {
     .replace(/[­‑]/g, '-')
     .split(/[^\p{L}\p{N}§-]+/u)
     .filter((w) => w.length > 2)
+}
+
+/**
+ * Do the two columns differ in notation alone — RIS's „(Anm.: Abs. 2
+ * aufgehoben durch …)" and the ressort's „[Kommentar: …]" — and in nothing
+ * the law says?
+ *
+ * Then the row shows a difference and no change of the law, and it is marked
+ * `editorial`: still shown, under „redaktionell", and no change an
+ * instruction of the draft would have to make (`showsInstructedChange` on the
+ * page). 148/ME XXVIII's GrEStG § 13 read as changing by its comment, and
+ * 108/ME's BWG § 70a by the note on § 70 Abs. 11 the column had carried along
+ * (26.10.2026). Whether the notes differ in spacing — „(Anm. : …)" against
+ * „(Anm.: …)", the PDF's positioned runs — `compareKey` already does not see.
+ */
+export function notationOnly(current: string, proposed: string): boolean {
+  const strip = (text: string): string => text.replace(ANNOTATION_RE, ' ').replace(COMMENT_RE, ' ')
+  const a = strip(current)
+  const b = strip(proposed)
+  if (a === current && b === proposed) return false
+  return compareKey(a) === compareKey(b)
 }
 
 /**

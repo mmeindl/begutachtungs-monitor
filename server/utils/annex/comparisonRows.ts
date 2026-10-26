@@ -25,7 +25,7 @@
  */
 
 import { candidateOf, headingOf, resolveBoundaries, type BoundaryCandidate } from './annexBoundaries'
-import { designationKey } from './annexText'
+import { designationKey, notationOnly } from './annexText'
 import { diffTokens, isEditorialChange } from '../diff/wordDiff'
 import type { DraftArticle } from '../lawtext/draftArticles'
 import type { LawDiffSegment } from '../../../shared/types'
@@ -597,7 +597,8 @@ export function parseTextComparison(xml: string | readonly string[], articles: r
       change,
       elided,
       segments,
-      editorial: isEditorialChange(segments),
+      // Notation alone („(Anm.: …)", „[Kommentar: …]") is no change of the law (`notationOnly`).
+      editorial: isEditorialChange(segments) || (change !== 'unchanged' && notationOnly(current, proposed)),
       elisionRange: change === 'changed' && !elided && isElisionRangeOnly(current, proposed),
     }
     if (renumberedTo) renamed.set(row, renumberedTo)
