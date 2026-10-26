@@ -286,7 +286,7 @@ async function readWien(detail: LandDraftRecord): Promise<TguRead | string> {
 function columnRows(pages: Parameters<typeof parseAnnexPdf>[0], articles: Parameters<typeof parseAnnexPdf>[1], layout: AnnexLayout = {}): { rows: ColumnRow[]; droppedPages: number } {
   const parsed = parseAnnexPdf(pages, articles, layout)
   return {
-    rows: parsed.rows.map((r) => ({ kind: r.kind, law: r.law, heading: r.heading, para: r.para, current: r.current, proposed: r.proposed, changed: r.change !== 'unchanged', ...(r.cut ? { cut: true as const } : {}) })),
+    rows: parsed.rows.map((r) => ({ kind: r.kind, law: r.law, heading: r.heading, para: r.para, current: r.current, proposed: r.proposed, changed: r.change !== 'unchanged', ...(r.cut ? { cut: true as const } : {}), ...(r.repeated ? { repeated: true as const } : {}) })),
     droppedPages: parsed.droppedPages,
   }
 }

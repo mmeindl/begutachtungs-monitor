@@ -26,6 +26,7 @@
  */
 import type { LawUnit } from '../lawtext/lawUnits'
 import type { DraftArticle } from '../lawtext/draftArticles'
+import { articleNumberKey, romanOf } from '../text/designation'
 
 /** One text run of a page, upright, in PDF user space (y upwards). */
 export interface TguItem {
@@ -185,9 +186,10 @@ export interface TguParagraph {
    * reader could not read with certainty (Tirol); `division`, a § of a
    * division the Novelle replaces, inserts or repeals as a whole; `gap`, a
    * law whose instructions the reader did not all find; `annex`, an Anlage
-   * or Anhang (26.10.2026); `title`, the law's title (26.10.2026).
+   * or Anhang (26.10.2026); `title`, the law's title (26.10.2026); `twice`,
+   * a § printed more than once in a package read as one (`ColumnRow.repeated`).
    */
-  because?: 'wording' | 'unsure' | 'division' | 'gap' | 'annex' | 'title'
+  because?: 'wording' | 'unsure' | 'division' | 'gap' | 'annex' | 'title' | 'twice'
   /**
    * The heading of a division the draft changes, printed over this § — on
    * each side, joined into one line (`tguParagraphs`, 26.10.2026). Shown
@@ -728,6 +730,8 @@ export interface ColumnRow {
   changed: boolean
   /** The row breaks off at a page the reader did not read (`ComparisonRow.cut`). */
   cut?: true
+  /** A column printed its designation more than once where the row stands (`ComparisonRow.repeated`). */
+  repeated?: true
 }
 
 /**
@@ -857,6 +861,14 @@ export function columnParagraphs(rows: readonly ColumnRow[], laws: readonly stri
     if (r.cut) {
       p.unread = true
       p.because = 'unsure'
+    }
+    // Printed more than once in a column of a package the reader could not
+    // part into its laws: the two columns may pair two laws' §§ of this
+    // number, and the reader kept the longer of each (26.10.2026). Named,
+    // not paired.
+    if (r.repeated && r.law === null && laws.length > 1) {
+      p.unread = true
+      p.because = 'twice'
     }
     out.set(key, p)
     previous = p
@@ -998,9 +1010,17 @@ const VERB_FIRST_RE = new RegExp(String.raw`(?:(?:Die|Der|Das)\s+[^.;:]{0,200}?\
 /**
  * „Das Salzburger Landeselektrizitätsgesetz 1999, LGBl Nr 75/1999, zuletzt
  * geändert …, wird geändert wie folgt:" — where the instructions for one law
- * of a package begin. „LGBI" too, as Salzburg 19504 misprints it.
+ * of a package begin. „LGBI" too, as Salzburg 19504 misprints it, and „LG BI"
+ * and „LGB1", as the text recognition of 20822 reads it: its Kinder- und
+ * Jugendhilfegesetz and its Leichen- und Bestattungsgesetz were no Artikel
+ * until 26.10.2026, and the reader filed their §§ under the law before them.
+ *
+ * Never across a sentence that opens with „Das", „Die" or „Der": in 18133
+ * „Die Landes- und Gemeinde-Verwaltungsabgabenverordnung 2012, LGBl Nr
+ * 91/2011, … gilt …", a sentence of the first law's new text, ran on to the
+ * next law's „wird geändert wie folgt:" and swallowed its opening.
  */
-const OPENING_RE = /(?:Das|Die|Der)\s+((?:(?!(?:Das|Die|Der)\s)[^:;„“])+?),\s+LGB[lI]\b[^:]{0,400}?\bwird\s+(?:geändert\s+wie\s+folgt|wie\s+folgt\s+geändert)\s*:/g
+const OPENING_RE = /(?:Das|Die|Der)\s+((?:(?!(?:Das|Die|Der)\s)[^:;„“])+?),\s+LG\s?B[lI1]\b(?:(?!(?:Das|Die|Der)\s)[^:]){0,400}?\bwird\s+(?:geändert\s+wie\s+folgt|wie\s+folgt\s+geändert)\s*:/g
 
 /**
  * „19 und 29 bis 34" → 19, 29, 30, …, 34, with the stretch „bis" spans.
@@ -1043,20 +1063,39 @@ const ARTICLE_HEADING_RE = /\bArtikel\s+([IVXL]+|\d+[a-z]?)\b/g
  * prints its heading, and reads the package as one where it does not mark
  * every law (`resolveBoundaries`). Empty where the text names fewer than two
  * laws so.
+ *
+ * And empty where it cannot vouch for every Artikel (26.10.2026): the check
+ * that no law of the package goes unmarked (`resolveBoundaries`) knows only
+ * the Artikel listed here, and an Artikel missing from the list put its §§
+ * under the law before it — 20822 filed § 49 of its Leichen- und
+ * Bestattungsgesetz under its Krankenanstaltengesetz. So every opening has
+ * its Artikel, and they run without a gap; one the text recognition garbled
+ * („ArtikelllJ", 20822) is the one between its two neighbours.
+ *
+ * The title is the law's name without its abbreviation — „Landesbediensteten-
+ * Gehaltsgesetz", not „… – LB-GG" (35399): the document heads the law without
+ * it, and the abbreviation's two words cost the match its clear majority.
  */
 export function packageArticles(draftText: string, laws: readonly string[]): DraftArticle[] {
   const t = draftText.replace(/\s+/g, ' ').replace(/(\p{Ll})- (?!(?:und|oder|bzw|sowie)\b)(?=\p{Ll})/gu, '$1')
-  const out: DraftArticle[] = []
+  const openings: { numeral: string | null; name: string }[] = []
   let after = 0
   for (const m of t.matchAll(OPENING_RE)) {
     // The last Artikel heading between the previous opening and this one.
-    const numeral = [...t.slice(Math.max(after, m.index! - 300), m.index!).matchAll(ARTICLE_HEADING_RE)].at(-1)?.[1]
+    const numeral = [...t.slice(Math.max(after, m.index! - 300), m.index!).matchAll(ARTICLE_HEADING_RE)].at(-1)?.[1] ?? null
     after = m.index! + m[0].length
-    if (!numeral) continue
-    const name = m[1]!.replace(/\s+/g, ' ').trim()
-    out.push({ index: out.length, number: `Artikel ${numeral}`, numeral, title: name, key: lawNamed(name, laws) ?? name, amends: true, bgbl: null, clause: null })
+    openings.push({ numeral, name: m[1]!.replace(/\s+/g, ' ').trim() })
   }
-  return out.length > 1 ? out : []
+  if (openings.length < 2) return []
+  const value = (numeral: string | null) => (numeral === null ? null : Number(articleNumberKey(numeral) ?? Number.NaN))
+  openings.forEach((o, i) => {
+    const before = value(openings[i - 1]?.numeral ?? null)
+    const next = value(openings[i + 1]?.numeral ?? null)
+    if (o.numeral === null && before && next && next - before === 2) o.numeral = /^\d/.test(openings[i - 1]!.numeral!) ? String(before + 1) : romanOf(before + 1)
+  })
+  const values = openings.map((o) => value(o.numeral))
+  if (values.some((v, i) => !v || (i > 0 && v !== values[i - 1]! + 1))) return []
+  return openings.map((o, index) => ({ index, number: `Artikel ${o.numeral}`, numeral: o.numeral, title: lawName(o.name), key: lawNamed(o.name, laws) ?? o.name, amends: true, bgbl: null, clause: null }))
 }
 
 /** The one law of `laws` an opening names, by the key both are folded to (`bareLawName`). */

@@ -116,7 +116,7 @@ const ROMAN: readonly (readonly [string, number])[] = [
   ['L', 50], ['XL', 40], ['X', 10], ['IX', 9], ['V', 5], ['IV', 4], ['I', 1],
 ]
 
-function romanOf(n: number): string {
+export function romanOf(n: number): string {
   let out = ''
   let rest = n
   for (const [symbol, value] of ROMAN) {

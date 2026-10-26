@@ -47,6 +47,13 @@ export interface ComparisonRow {
    */
   cut?: true
   /**
+   * A column printed the designation more than once in the row's section,
+   * and the parse kept the longer (`unitsOfColumn`) — set only where the
+   * section carries no law: there it may hold several, and the two columns
+   * may pair two laws' §§ of one number.
+   */
+  repeated?: true
+  /**
    * Which law of the package the row belongs to — `segmentUnits`' article key,
    * so it joins onto the diff units and onto `promulgationByArticle`. Null
    * when the draft amends one law only, and null when the annex does not mark

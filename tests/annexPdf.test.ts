@@ -977,6 +977,32 @@ describe('a package that heads its laws by their bare names (Salzburg, 26.10.202
     // Without the layout, the package is refused and read as one.
     expect(read({}).refusal).not.toBeNull()
   })
+
+  // 34728 prints each law's name in each column, the Land in front, and its
+  // draft amends „Landesumweltanwaltschafts-Gesetz – LUA-G".
+  const NAMED = draft({ n: 'I', title: 'Salzburger Campingplatzgesetz' }, { n: 'II', title: 'Landesumweltanwaltschafts-Gesetz – LUA-G' })
+  const named = (tail: { y: number; left: string; right: string }[]) => parseAnnexPdf([headerPage(), page([
+    { y: 740, left: 'Salzburger Campingplatzgesetz', right: 'Salzburger Campingplatzgesetz' },
+    { y: 720, left: '§ 8. (1) Der Betrieb ist anzuzeigen.', right: '§ 8. (1) Der Betrieb ist elektronisch anzuzeigen.' },
+    ...tail,
+    { y: 680, left: 'Salzburger Landesumweltanwaltschafts-Gesetz', right: 'Salzburger Landesumweltanwaltschafts-Gesetz' },
+    { y: 660, left: '§ 8. (1) Der Landesumweltanwaltschaft kommt Parteistellung zu.', right: '§ 8. (1) Der Landesumweltanwaltschaft kommt Parteistellung zu. Neu.' },
+  ])], NAMED, { lawsByName: true })
+
+  it('opens a law at its name printed in each column, without the Land in front or the abbreviation after it', () => {
+    const parsed = named([])
+    expect(parsed.refusal).toBeNull()
+    expect(parsed.rows.filter((r) => r.kind === 'pair').map((r) => [r.law, r.proposed])).toEqual([
+      ['Salzburger Campingplatzgesetz', '§ 8. (1) Der Betrieb ist elektronisch anzuzeigen.'],
+      ['Landesumweltanwaltschafts-Gesetz – LUA-G', '§ 8. (1) Der Landesumweltanwaltschaft kommt Parteistellung zu. Neu.'],
+    ])
+  })
+
+  // 32075: „Bautechnikgesetz 2015 in Kraft." ended § 29 of the Bebauungsgrundlagengesetz, and opened the Bautechnikgesetz.
+  it('does not open a law at a line in each column that only begins with its name', () => {
+    const parsed = named([{ y: 700, left: 'Landesumweltanwaltschafts-Gesetz in Kraft.', right: 'Landesumweltanwaltschafts-Gesetz in Kraft.' }])
+    expect(parsed.rows.find((r) => r.kind === 'pair' && r.law === 'Salzburger Campingplatzgesetz')!.current).toBe('§ 8. (1) Der Betrieb ist anzuzeigen. Landesumweltanwaltschafts-Gesetz in Kraft.')
+  })
 })
 
 describe('a page the parse does not read, between two it does (Salzburg 18192, 26.10.2026)', () => {

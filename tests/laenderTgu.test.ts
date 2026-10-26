@@ -319,6 +319,15 @@ describe('two-column Textgegenüberstellung (Wien)', () => {
     expect(p).toMatchObject({ number: '5', unread: true, because: 'unsure' })
   })
 
+  // A package read as one: each column kept the longer of two § 8, perhaps of two laws.
+  it('names, not pairs, a § printed more than once in a package the reader could not part', () => {
+    const row = { kind: 'pair' as const, law: null, para: '§ 8.', current: '§ 8. (1) Alt.', proposed: '§ 8. (1) Neu.', changed: true, repeated: true as const }
+    expect(columnParagraphs([row], ['Salzburger Campingplatzgesetz', 'Landesumweltanwaltschafts-Gesetz'])[0]).toMatchObject({ number: '8', unread: true, because: 'twice' })
+    // One law, or a law the row is read under: the reader's choice of the longer stands.
+    expect(columnParagraphs([row], ['Salzburger Campingplatzgesetz'])[0]!.unread).toBeUndefined()
+    expect(columnParagraphs([{ ...row, law: 'Salzburger Campingplatzgesetz' }], ['Salzburger Campingplatzgesetz', 'Landesumweltanwaltschafts-Gesetz'])[0]!.unread).toBeUndefined()
+  })
+
   it('joins a §\'s rows and puts its heading on a line of its own', () => {
     const paras = columnParagraphs([
       { kind: 'pair', law: null, para: '§ 2.', current: 'Reinhaltung öffentlicher Flächen § 2. (1) bis (7) …', proposed: 'Reinhaltung öffentlicher Flächen § 2. (1) bis (7) …', changed: false },
@@ -423,6 +432,34 @@ describe('packageArticles — a package\'s laws, each read on its own (26.10.202
   it('gives none for one law, or where no Artikel heads the instructions', () => {
     expect(packageArticles('Das Salzburger Bezügegesetz 1992, LGBl Nr 67/1992, wird geändert wie folgt: 1. Im § 25 wird angefügt: „(20) Neu.“', ['Salzburger Bezügegesetz 1992'])).toEqual([])
     expect(packageArticles(TEXT.replace(/Artikel [VI]+ /g, ''), LAWS)).toEqual([])
+  })
+
+  // 20822, read by text recognition: „LG BI", „LGB1", „ArtikelllJ" for „Artikel III".
+  const OCR = ['Salzburger Sozialhilfegesetz', 'Salzburger Teilhabegesetz', 'Salzburger Kinder- und Jugendhilfegesetz', 'Salzburger Leichen- und Bestattungsgesetz 1986']
+  const OCR_TEXT = 'Artikel II Das Salzburger Sozialhilfegesetz, LGBI Nr 19/1975, wird geändert wie folgt: 1. Im § 6 … Artikel lllJ Das Salzburger Teilhabegesetz, LGBI Nr 93/1981, wird geändert wie folgt: 1. Im § 10 … Artikel IV Das Salzburger Kinder- und Jugendhilfegesetz, LG BI Nr 32/2015, wird geändert wie folgt: 1. Im § 48 … Artikel V Das Salzburger Leichen- und Bestattungsgesetz 1986, LG BI Nr 84, zuletzt geändert durch das Gesetz LGB1 Nr 79/2018, wird geändert wie folgt: 1. Im § 16 …'
+
+  it('reads an opening the text recognition garbled, and an Artikel between two it read (20822)', () => {
+    expect(packageArticles(OCR_TEXT, OCR).map((a) => [a.numeral, a.key])).toEqual([['II', OCR[0]], ['III', OCR[1]], ['IV', OCR[2]], ['V', OCR[3]]])
+  })
+
+  // Read without „Artikel IV", the Kinder- und Jugendhilfegesetz's §§ went to the Teilhabegesetz.
+  it('gives none where an Artikel between two it read is missing', () => {
+    expect(packageArticles(OCR_TEXT.replace('Artikel IV Das Salzburger Kinder- und Jugendhilfegesetz, LG BI', 'Artikel IV Zum Kinder- und Jugendhilfegesetz, LG BI'), OCR)).toEqual([])
+    // The last one without its Artikel: none after it to say which it is.
+    expect(packageArticles(OCR_TEXT.replace('Artikel V Das', 'Das'), OCR)).toEqual([])
+  })
+
+  // 18133: a sentence of the first law's new text, „Die … Verordnung 2012, LGBl Nr 91/2011, … gilt …", ran on to the second law's opening.
+  it('does not run an opening across a sentence into the next law\'s', () => {
+    const text = 'Artikel 1 Das Salzburger Landes- und Gemeindeverwaltungsabgabengesetz 1969, LGBl Nr 77, wird geändert wie folgt: 1. Im § 12 wird angefügt: „(8) Die Landes- und Gemeinde-Verwaltungsabgabenverordnung 2012, LGBl Nr 91/2011, gilt als Verordnung im Sinn des § 3.“ Artikel 2 Das Salzburger Landeselektrizitätsgesetz 1999, LGBl Nr 75, wird geändert wie folgt: 1. § 75 Abs 2 entfällt.'
+    const laws = ['Salzburger Landes- und Gemeindeverwaltungsabgabengesetz 1969', 'Salzburger Landeselektrizitätsgesetz 1999']
+    expect(packageArticles(text, laws).map((a) => [a.numeral, a.key])).toEqual([['1', laws[0]], ['2', laws[1]]])
+  })
+
+  // 35399: the document heads „Landesbediensteten-Gehaltsgesetz", and „– LB-GG" cost the match its majority.
+  it('titles an Artikel with the law\'s name, without its abbreviation', () => {
+    const text = 'Artikel I Das Landesbeamten-Pensionsgesetz, LGBl Nr 17/2001, wird geändert wie folgt: 1. … Artikel II Das Landesbediensteten-Gehaltsgesetz – LB-GG, LGBl Nr 36/2023, wird geändert wie folgt: 1. …'
+    expect(packageArticles(text, ['Landesbeamten-Pensionsgesetz', 'Landesbediensteten-Gehaltsgesetz']).map((a) => a.title)).toEqual(['Landesbeamten-Pensionsgesetz', 'Landesbediensteten-Gehaltsgesetz'])
   })
 
   /** Salzburg's layout: the Artikel and the law centred across both columns, each § with its heading over it in both. */

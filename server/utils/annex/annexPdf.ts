@@ -892,6 +892,8 @@ interface ColumnUnit {
   text: string
   /** Its text breaks off at a page the parse did not read (`AnnexLayout.cutAtGaps`). */
   cut?: true
+  /** The column printed its designation more than once; this is the longest (`ComparisonRow.repeated`). */
+  repeated?: true
 }
 
 /**
@@ -1440,12 +1442,17 @@ function unitsOfColumn(lines: readonly ColumnLine[], contents: ContentsLines, la
   // is the longer one; a § that only ever appears in the contents keeps its
   // title, which is honest, rather than displacing the real text.
   const longest = new Map<string, { id: string | null; gld: string | null; context: string | null; text: string }>()
+  const repeated = new Set<string>()
   for (const unit of built) {
     if (!unit.id) continue
     const seen = longest.get(unit.id)
+    if (seen) repeated.add(unit.id)
     if (!seen || unit.text.length > seen.text.length) longest.set(unit.id, unit)
   }
-  return { units: built.filter((u) => u.id === null || longest.get(u.id) === u), contents: contents.entries }
+  return {
+    units: built.filter((u) => u.id === null || longest.get(u.id) === u).map((u) => (u.id && repeated.has(u.id) ? { ...u, repeated: true as const } : u)),
+    contents: contents.entries,
+  }
 }
 
 /** „§ 6.01a" whole (`PARAGRAPH_NUMBER`), or a roman numeral. */
@@ -1557,8 +1564,11 @@ function candidateLines(lines: readonly AnnexLine[], edges: ColumnEdges, lawName
     if (roles.has(i)) continue
     const text = headingText(line, edges)
     if (text === null) continue
-    // A law's bare name across both columns, where the document heads its laws so (`AnnexLayout`).
-    const candidate = candidateOf(text) ?? (line.spanning && namesLaw(text, lawNames) ? { text: normalizeText(text), numeral: null, title: normalizeText(text) } : null)
+    // A law's bare name across both columns, or the same in each, where the
+    // document heads its laws so (`AnnexLayout`) — titled as the draft names
+    // it, which is what `resolveBoundaries` holds it against.
+    const named = line.spanning || line.left === line.right ? lawNamed(text, lawNames, line.spanning !== null) : null
+    const candidate = candidateOf(text) ?? (named ? { text: normalizeText(text), numeral: null, title: named } : null)
     if (!candidate) {
       if (line.spanning) roles.set(i, { role: 'heading' })
       continue
@@ -1607,8 +1617,10 @@ export interface AnnexLayout {
   /**
    * The document heads each law of a package with its bare name across both
    * columns — „Salzburger Nächtigungsabgabengesetz", „Benützungsgebührengesetz"
-   * (Salzburg 30259) — not with „Artikel 2" or „Änderung des …": such a line is
-   * a boundary where it names one of the draft's Artikel clearly.
+   * (Salzburg 30259) — or with the same name in each column („Salzburger
+   * Campingplatzgesetz" | „Salzburger Campingplatzgesetz", 34728), not with
+   * „Artikel 2" or „Änderung des …": such a line is a boundary where it names
+   * one of the draft's Artikel clearly (`lawNamed`).
    */
   lawsByName?: boolean
   /**
@@ -1621,19 +1633,35 @@ export interface AnnexLayout {
 }
 
 /**
- * Is this line one of the draft's laws by name — that name, give or take a
- * short addition such as an abbreviation (`AnnexLayout.lawsByName`)? Not a
- * sentence that names it: 18116's title, „Gesetz vom …, mit dem das Salzburger
+ * The one of the draft's laws this line is by name (`AnnexLayout.lawsByName`);
+ * null where it is none or more than one. Not a sentence that names it:
+ * 18116's title, „Gesetz vom …, mit dem das Salzburger
  * Landesverwaltungsgerichtsgesetz, das Salzburger Landes-Beamtengesetz 1987,
  * … geändert werden", opened the Landes-Beamtengesetz over the first law.
+ * Across both columns (`loose`) give or take a short addition; in each column
+ * the name alone — a paragraph's last line can begin with a law's name:
+ * „Bautechnikgesetz 2015 in Kraft." (32075, § 29 of the
+ * Bebauungsgrundlagengesetz) opened the Bautechnikgesetz there.
  */
-function namesLaw(text: string, names: readonly string[]): boolean {
-  const key = (s: string) => normalizeText(s).toLowerCase().replace(/\s+/g, ' ').trim()
-  const line = key(text)
-  return names.some((n) => {
-    const name = key(n)
-    return (line.startsWith(name) && line.length - name.length <= 20) || (name.startsWith(line) && name.length - line.length <= 20)
+function lawNamed(text: string, names: readonly string[], loose: boolean): string | null {
+  const line = lawNameKey(text)
+  const hits = names.filter((n) => {
+    const name = lawNameKey(n)
+    return line === name || (loose && ((line.startsWith(name) && line.length - name.length <= 20) || (name.startsWith(line) && name.length - line.length <= 20)))
   })
+  return hits.length === 1 ? hits[0]! : null
+}
+
+/**
+ * A law's name as `lawNamed` compares it: in lower case, without an
+ * abbreviation after a dash and without the Land in front — 34728's document
+ * heads „Salzburger Landesumweltanwaltschafts-Gesetz" what its draft amends
+ * as „Landesumweltanwaltschafts-Gesetz – LUA-G".
+ */
+function lawNameKey(name: string): string {
+  return normalizeText(name).toLowerCase().replace(/\s+/g, ' ').trim()
+    .replace(/\s+[–-]\s+[\p{L}.\s-]*\d*$/u, '')
+    .replace(/^(?:salzburger|kärntner|tiroler|wiener|oö\.)\s+/u, '')
 }
 
 /** „entfällt", „(3) entfallen": what a column prints for a § or an Absatz the draft repeals. */
@@ -1952,7 +1980,7 @@ export function parseAnnexPdf(pages: readonly AnnexPage[], articles: readonly Dr
       }
       if (mate?.id) used.add(mate.id)
       const row = rowOf(law, unit.gld ?? mate?.gld ?? null, mate?.text ?? '', unit.text, unit.context ?? mate?.context ?? null)
-      if (row) rows.push(unit.cut || mate?.cut ? { ...row, cut: true } : row)
+      if (row) rows.push({ ...row, ...(unit.cut || mate?.cut ? { cut: true as const } : {}), ...(law === null && (unit.repeated || mate?.repeated) ? { repeated: true as const } : {}) })
     }
     // A § the draft repeals appears only on the left. Printed in the proposed
     // column's order everything else follows, it would otherwise vanish.
@@ -1967,7 +1995,7 @@ export function parseAnnexPdf(pages: readonly AnnexPage[], articles: readonly Dr
         continue
       }
       const row = rowOf(law, unit.gld, unit.text, '', unit.context)
-      if (row) rows.push(unit.cut ? { ...row, cut: true } : row)
+      if (row) rows.push({ ...row, ...(unit.cut ? { cut: true as const } : {}), ...(law === null && unit.repeated ? { repeated: true as const } : {}) })
     }
   }
   designateAfter(rows)
