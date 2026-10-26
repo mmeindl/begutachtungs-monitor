@@ -210,6 +210,20 @@ describe('explanationsByParagraph — die Passage an ihrem Paragraphen', () => {
     expect(explanationsByParagraph(parsed, only).map((e) => e.para)).toEqual(['23', '24', '25'])
   })
 
+  it('liest einen nach Kapiteln gezählten § ganz, wie die Zeilen ihn tragen', () => {
+    // 707EA278: read as „§ 1", no passage of Kapitel 1 found its block once
+    // the rows were keyed „1.01". A point that ends the designation stays out.
+    const parsed = besonderer(
+      head('erll', 'Zu Z 2 (§ 1.01 lit. b Z 1) und Z 3 (§ 1.01 lit. b Z 3 und 4):') +
+      text('Dazu.') +
+      head('erll', 'Zu Z 13 (§ 30):') +
+      text('Und dazu.'),
+    )
+    const only = articles({ numeral: null, key: 'V' })
+    expect(explanationsByParagraph(parsed, only).map((e) => e.para)).toEqual(['1.01', '30'])
+    expect(addressOf('Zu § 5. und § 31Abs. 3:').paragraphs).toEqual(['§ 5', '§ 31'])
+  })
+
   it('macht aus „Zu Art. 2 Z 1 (§ 7)" keine Artikelüberschrift — sie erklärt einen §', () => {
     const parsed = besonderer(head('erll', 'Zu Art. 2 Z 1 (§ 7):') + text('Dazu.'))
     const pack = articles({ numeral: '1', key: 'Änderung der Notariatsordnung' }, { numeral: '2', key: 'Änderung der Rechtsanwaltsordnung' })

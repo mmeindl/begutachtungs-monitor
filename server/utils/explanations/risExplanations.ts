@@ -191,8 +191,13 @@ const IMAGE_PATH_RE = /^\/?Dokumente\/[\w-]+\/[\w.-]+\.(?:gif|png|jpe?g)$/i
  * The letter stands alone: „§ 31Abs. 3" and „§ 92AKG", printed without the
  * space, are § 31 and § 92, not § 31a and § 92a (02.10.2026, 14 headings in
  * the Erläuterungen of GP XXVI–XXVIII); „§ 243ba" keeps both its letters.
+ * „§ 1.01" of a Verordnung numbered by Kapitel is read whole, as the rows'
+ * key reads it (`explanationParaId`): cut to „§ 1", every passage of Kapitel 1
+ * shared one key, and once the rows read „1.01" none found its § block
+ * (707EA278, 81 of 108, 26.10.2026). Only a digit behind the point continues
+ * the number.
  */
-const PARA_RE = /§+\s*(\d+(?:(?:[a-z]{1,2}|[A-Z])(?![a-zA-ZäöüÄÖÜß]))?)/g
+const PARA_RE = /§+\s*(\d+(?:(?:[a-z]{1,2}|[A-Z])(?![a-zA-ZäöüÄÖÜß]))?(?:\.\d+)?)/g
 /**
  * One Ziffer a heading names — the Novellierungsanordnung the passage
  * explains — and the Artikel the heading itself names for it, or null.
