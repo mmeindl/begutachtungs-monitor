@@ -158,7 +158,10 @@ export async function tirolTguPages(bytes: Uint8Array): Promise<TirolTguPage[]> 
     pages.push(upright(viewport, items, glyphs, rawRules))
     page.cleanup()
   }
-  await doc.cleanup()
+  // Ended, not only cleaned up — nothing returned holds a pdf.js object — as
+  // unpdf ends every document it opens itself (`withDocument`). The proxy
+  // has no `destroy()` of its own in this pdf.js.
+  await doc.loadingTask.destroy()
   return pages
 }
 
