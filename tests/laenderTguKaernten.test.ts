@@ -453,3 +453,24 @@ describe('ktnTguParagraphs — a number out of turn (27.10.2026)', () => {
     expect(read([body(R, '1. § 7 entfällt.', 450), body(R, '3. § 5 entfällt.', 410)])).toEqual([['5', 'gap'], ['7', 'gap']])
   })
 })
+
+describe('ktnTguParagraphs — a head without its colon (27.10.2026)', () => {
+  const laws = ['Kärntner Beispielgesetz']
+
+  it('ends the head where its payload\'s § begins, and names no § the new text cites (32262/2025, § 87 K-LTWO)', () => {
+    const right = [
+      body(R, '1. Nach § 7 wird folgender § 7a eingefügt', 450),
+      centre(R, '§ 7a', 438),
+      centre(R, 'Fristen', 426),
+      absatz(R, '§ 87 K-LTWO gilt sinngemäß.', 414),
+    ]
+    const ps = ktnTguParagraphs([page([...leftLaw(), ...right])], laws)
+    expect(ps.map((p) => [p.number, p.unread ?? false])).toEqual([['7a', false]])
+    expect(ps[0]!.neu).toEqual(['Fristen', '§ 87 K-LTWO gilt sinngemäß.'])
+  })
+
+  it('keeps a head that runs on over lines, where no centred § follows', () => {
+    const right = [body(R, '1. In § 6 Abs. 3 wird das Wort „bleibt“ durch das Wort', 450), body(R, '„geht“ ersetzt.', 438)]
+    expect(ktnTguParagraphs([page([...leftLaw(), ...right])], laws).map((p) => [p.number, p.because ?? null])).toEqual([['6', 'wording']])
+  })
+})

@@ -325,6 +325,12 @@ interface Instruction {
   swallowed: string[]
   /** An Artikel's one instruction, printed without a number (26.10.2026). */
   unnumbered?: true
+  /**
+   * Its head lacks the colon before its payload (`HEAD_WITHOUT_COLON_RE`):
+   * „10. Nach § 18a wird folgender § 18b eingefügt" (32262/2025). Read as
+   * if it had one; quoted as printed.
+   */
+  colonless?: true
 }
 
 /** One law's part of the Novelle: its „Änderung des …" heading and its instructions. */
@@ -366,6 +372,14 @@ const NO_STOP_RE = /^(\d+)\s+(?=§|Art\.\s*\d|(?:Im|In|Nach|Vor|Dem|Der|Die|Das|
 const GLUED_NUMBER_RE = /[\p{Ll})“”"]\.(\d+)\.$/u
 /** How an instruction's head begins, numbered or not: „§ 5 …", „Im § 3 …", „Nach § 74 …", „Der 3. Abschnitt …". */
 const HEAD_START_RE = /^(?:§|Art\.\s*\d|(?:Im|In|Nach|Vor|Dem|Der|Die|Das|Am|Auf|Anstelle)\s)/
+/**
+ * A head that ends where its colon would stand: „… folgender § 18b
+ * eingefügt", „§ 5 lautet". Followed by its payload's centred „§ 18b" or
+ * division, it ended there (27.10.2026: 32262/2025 #10 ran on into its
+ * payload, and the § its new text cites, § 87 of the K-LTWO, was named as
+ * a § of the Volksbefragungsgesetz).
+ */
+const HEAD_WITHOUT_COLON_RE = /\b(?:lautet|lauten|eingefügt|angefügt|ersetzt|vorangestellt)$/
 /**
  * The sentence that opens an Artikel: „Das Kärntner … wird wie folgt
  * geändert:" — or, where the Artikel amends another Novelle's article,
@@ -556,7 +570,12 @@ export function amendmentsOf(lines: readonly KtnLine[], f: Frame): Amendment[] {
     }
     if (!open) continue
     const o = open as Instruction
-    if (headOpen) {
+    if (headOpen && centred(l, f) && (PARA_LINE_RE.test(l.text) || DIVISION_RE.test(l.text)) && HEAD_WITHOUT_COLON_RE.test(o.head.trim())) {
+      // The payload's first § or division, centred: the head ended without its colon.
+      o.colonless = true
+      headOpen = false
+      o.payload.push(l)
+    } else if (headOpen) {
       o.head += ` ${l.text}`
       // A head ends in a colon (a payload follows) or where the next instruction begins.
       if (/:$/.test(l.text)) headOpen = false
@@ -703,7 +722,7 @@ function labelList(s: string): { labels: string[]; range: boolean } {
  * any § of the law.
  */
 export function readInstruction(ins: Instruction): InstructionReading {
-  const raw = ins.head.replace(/\s+/g, ' ').trim()
+  const raw = `${ins.head.replace(/\s+/g, ' ').trim()}${ins.colonless ? ':' : ''}`
   // A Landesverfassung counts in articles (26.10.2026): „Art. 19 Abs. 3a
   // lautet:" is read as a §'s instruction, its numbers handed back as „Art. 19".
   const outside = raw.replace(QUOTED_RE, ' ')
