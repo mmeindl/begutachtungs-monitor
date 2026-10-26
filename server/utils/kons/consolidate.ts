@@ -31,7 +31,7 @@ import type {
 } from '../../../shared/types'
 import type { DraftIdentity } from '../ris/draftIdentity'
 import { guardParagraph } from './applyGuard'
-import { addressedLabels, addressedParagraphs, byParagraphOrder, gateParagraph, inPrintedOrder, refusedUnits, touchedKey, unitsByKey } from './konsGate'
+import { addressedLabels, addressedParagraphs, byParagraphOrder, gateParagraph, inPrintedOrder, refusedUnits, unitsByKey } from './konsGate'
 import { anlageLabelKey, isSchedule, unitKey } from '../text/designation'
 import { konsLawUrl, type KonsLawAtDate, type KonsParagraphRef } from '../ris/konsLaw'
 import { diffTokens } from '../diff/wordDiff'
@@ -447,7 +447,7 @@ export async function consolidate(
         if (earlier && !present.has(id)) stock.push(earlier)
       }
       const standing: StandingLaw = { paragraphs: stock }
-      const { law: after, results, unresolved, renamed } = applyNovelle(standing, instructions)
+      const { law: after, results, unresolved, renamed, touches } = applyNovelle(standing, instructions)
       // Which standing § each § of the result came from: where the draft
       // renumbers, the result's § 9f is the old § 7a, and its § 7a a new
       // provision in the vacated number (118/ME XXVIII). Paired by id alone,
@@ -467,9 +467,6 @@ export async function consolidate(
         return {
           touching: { instruction, result: results[i]! },
           document: address?.level === 'document',
-          // Under the key the § is held by below — an Anlage as „Anl. 1", not
-          // as § 1 — and an Abschnitt under none (`touchedKey`).
-          para: touchedKey(address?.para ?? null),
           // The §§ it brings into being, as the denominator counts them
           // (`createdParagraphs`, `createdUnits`): an insertion's payload, a
           // replacement run's, a renumbering's new numbers.
@@ -510,9 +507,12 @@ export async function consolidate(
         }
         const origin = originOf(id)
         const beforeNode = origin === null ? null : (beforeById.get(origin) ?? null)
-        const touching = analysed
-          .filter((a) => a.document || a.para === id || (origin !== null && a.para === origin) || a.created.has(id))
-          .map((a) => a.touching)
+        // What acted on THIS § (`ApplyReport.touches`), whatever number it
+        // carried then. Matched by number — the §, the one it came from, the
+        // ones a line creates — the guard of BGBl. I Nr. 24/2026 § 23, the old
+        // § 15, was charged with „§ 15 (neu) lautet", which the line after
+        // the renumbering means for the § that is § 15 now (26.10.2026).
+        const touching = analysed.filter((a, i) => a.document || touches(i, node)).map((a) => a.touching)
         const guard = guardParagraph(id, standing, beforeNode, node, touching)
         const before = beforeNode ? plainText(beforeNode) : null
         const got = plainText(node)

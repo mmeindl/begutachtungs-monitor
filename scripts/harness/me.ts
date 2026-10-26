@@ -443,7 +443,7 @@ async function verifyLaw(
     if (tree) paragraphs.push(tree)
   }
   const law: StandingLaw = { paragraphs }
-  const { law: after, results, unresolved, renamed } = applyNovelle(law, instructions)
+  const { law: after, results, unresolved, renamed, touches } = applyNovelle(law, instructions)
   // The standing § each § of the result came from, as the page pairs them (`kons/consolidate.ts`).
   const originOf = renamedOrigins(renamed)
   result.applied = results.filter((r) => r.applied).length
@@ -485,15 +485,11 @@ async function verifyLaw(
     result.produced++
     const origin = originOf(id)
     const beforeNode = origin === null ? null : (beforeByKey.get(origin) ?? null)
+    // What acted on this §, whatever number it carried then (`ApplyReport.touches`), as the page reads it.
     const touching = instructions
-      .map((instruction, i) => ({ instruction, result: results[i]! }))
-      .filter(({ instruction: { op, payload } }) => {
-        const address = 'target' in op ? op.target : 'anchor' in op ? op.anchor : null
-        if (address?.level === 'document') return true
-        if (address?.para && (harnessKey(address.para) === id || (origin !== null && harnessKey(address.para) === origin))) return true
-        if ((op.kind === 'insertAfter' || op.kind === 'append') && op.child === 'para') return payload.some((p) => p.id === id)
-        return false
-      })
+      .map((instruction, i) => ({ instruction, result: results[i]!, i }))
+      .filter(({ instruction: { op }, i }) => ('target' in op && op.target.level === 'document') || touches(i, node))
+      .map(({ instruction, result }) => ({ instruction, result }))
     const guard = guardParagraph(id, law, beforeNode, node, touching)
     const flags = new Set<GuardFlag>(guard.flags)
     const isRefused = refusedIds.has(id)

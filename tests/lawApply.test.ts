@@ -1965,18 +1965,25 @@ describe('a § replaced by one bare line, and a heading named by the § below it
 })
 
 describe('renamedOrigins — which standing § a § of the result came from', () => {
-  const r = (from: string, to: string, batch: number) => ({ level: 'para' as const, para: `§ ${to}`, from, to, batch })
+  // `unit` is the § that moved, `origin` its number in the standing law.
+  const r = (from: string, to: string, batch: number, unit: number, origin: string | null) => ({ level: 'para' as const, para: `§ ${to}`, from, to, batch, instruction: batch, unit, origin })
 
   it('resolves the moves of one renumbering together — an upward shift does not chain', () => {
     // „Die §§ 8 und 9 erhalten die Bezeichnungen §§ 9 und 10": the new § 10 is the old § 9.
-    const origin = renamedOrigins([r('8', '9', 0), r('9', '10', 0)])
+    const origin = renamedOrigins([r('8', '9', 0, 1, '8'), r('9', '10', 0, 2, '9')])
     expect([origin('9'), origin('10'), origin('8'), origin('7')]).toEqual(['8', '9', null, '7'])
   })
 
   it('follows one renumbering into the next, and a downward shift alike (144/ME XXVIII: § 15 → § 14, § 17 → § 15)', () => {
-    expect(renamedOrigins([r('15', '14', 0), r('17', '15', 0)])('15')).toBe('17')
-    const chained = renamedOrigins([r('8', '15', 0), r('15', '22', 1)])
+    expect(renamedOrigins([r('15', '14', 0, 1, '15'), r('17', '15', 0, 2, '17')])('15')).toBe('17')
+    const chained = renamedOrigins([r('8', '15', 0, 1, '8'), r('15', '22', 1, 1, '8')])
     expect([chained('22'), chained('15'), chained('8')]).toEqual(['8', null, null])
+  })
+
+  it('follows the § that moved, not the number, where a number stands twice for a while (E0399A69)', () => {
+    // „§ 15 erhält die Bezeichnung ‚16'", later „§ 16 wird durch folgenden § 17 ersetzt" — the old § 16.
+    const origin = renamedOrigins([r('15', '16', 0, 1, '15'), r('16', '17', 1, 2, '16')])
+    expect([origin('16'), origin('17'), origin('15')]).toEqual(['15', '16', null])
   })
 
   it('carries the batch on the record the engine writes', () => {
@@ -2082,7 +2089,7 @@ describe('a § replaced by one under another number is that § renamed (26.10.20
     // record the page printed § 17 as wholly inserted.
     const { renamed, results } = run(l(), instr('Der bisherige § 10 wird zu § 17 und lautet samt Überschrift:', [{ text: 'Siebzehn', heading: true }, '§ 17. Neu siebzehn.']))
     expect(results[0]!.applied).toBe(true)
-    expect(renamed).toEqual([{ level: 'para', para: '§ 17', from: '10', to: '17', batch: 0 }])
+    expect(renamed).toMatchObject([{ level: 'para', para: '§ 17', from: '10', to: '17', batch: 0, instruction: 0, origin: '10' }])
     const origin = renamedOrigins(renamed)
     expect([origin('17'), origin('10'), origin('11')]).toEqual(['10', null, '11'])
   })
@@ -2093,7 +2100,7 @@ describe('a § replaced by one under another number is that § renamed (26.10.20
     expect(out.paragraphs.map((p) => `${p.id}:${p.heading}`)).toEqual(['8:Acht', '10:Zehn', '11a:Elf', '12:Zwölf'])
     // A heading in the new text is the new heading; „samt Überschrift" without one is refused.
     expect(run(l(), instr('Der bisherige § 10 wird zu § 17 und lautet:', [{ text: 'Siebzehn', heading: true }, '§ 17. Neu.'])).law.paragraphs[1]!.heading).toBe('Siebzehn')
-    expect(run(l(), instr('Der bisherige § 10 wird zu § 17 und lautet samt Überschrift:', ['§ 17. Neu.'])).results[0]!.reason).toBe('samt Überschrift, aber keine Überschrift im neuen Text')
+    expect(run(l(), instr('Der bisherige § 10 wird zu § 17 und lautet samt Überschrift:', ['§ 17. Neu.'])).results.map((r) => r.reason)).toContain('samt Überschrift, aber keine Überschrift im neuen Text')
   })
 
   it('records a run of several as no renaming — it claims no succession one by one', () => {
@@ -2114,7 +2121,7 @@ describe('a § replaced by one under another number is that § renamed (26.10.20
   })
 
   it('licenses a later „(neu)", as a renumbering does', () => {
-    const { results } = run(l(), instr('Der bisherige § 10 wird zu § 17 und lautet:', ['§ 17. Neu siebzehn.']), instr('In § 17 (neu) wird das Wort "siebzehn" durch das Wort "zehn" ersetzt.'))
+    const { results } = run(l(), instr('§ 10 wird durch folgenden § 17 ersetzt:', ['§ 17. Neu siebzehn.']), instr('In § 17 (neu) wird das Wort "siebzehn" durch das Wort "zehn" ersetzt.'))
     expect(results.map((r) => r.reason)).toEqual([null, null])
   })
 })
@@ -2133,6 +2140,52 @@ describe('a § renumbered with its new designation written out (26.10.2026)', ()
     const { results, unresolved } = run(l(), instr('Der bisherige § 9 wird zu § 16.'))
     expect(results[0]!.reason).toBe('Bezeichnung 16 existiert bereits')
     expect([...unresolved].sort()).toEqual(['§ 16', '§ 9'])
+  })
+})
+
+describe('a number two §§ carry for a while: ascending chains (26.10.2026)', () => {
+  const l = (): StandingLaw => ({ paragraphs: [para('14', 'Vierzehn', ['Alt vierzehn.']), para('15', 'Fünfzehn', ['Alt fünfzehn eins.', 'Alt fünfzehn zwei.']), para('16', 'Sechzehn', ['Alt sechzehn.']), para('17', 'Siebzehn', ['Alt siebzehn.'])] })
+  const text = (out: StandingLaw) => out.paragraphs.map((p) => `${p.id}:${plainText(p)}`)
+
+  it('carries out the moves of E0399A69 in the order of the old numbers', () => {
+    const { law: out, results, renamed } = run(
+      l(),
+      instr('Nach § 14 wird folgender § 15 samt Überschrift eingefügt:', [{ text: 'Neu', heading: true }, '§ 15. Neu fünfzehn.']),
+      instr('§ 15 erhält die Paragraphenbezeichnung "16".'),
+      // The § that has just become § 16 — the Beilage changes the old § 15's Abs. 2.
+      instr('§ 16 Abs. 2 lautet:', ['(2) Neu zwei.']),
+      // The § standing under 16 from the start.
+      instr('§ 16 wird durch folgenden § 17 ersetzt:', ['§ 17. Neu siebzehn.']),
+      instr('§ 17 erhält die Paragraphenbezeichnung "§ 18".'),
+    )
+    expect(results.map((r) => r.reason)).toEqual([null, null, null, null, null])
+    expect(text(out)).toEqual([
+      '14:Vierzehn Alt vierzehn.',
+      '15:Neu Neu fünfzehn.',
+      '16:Fünfzehn Alt fünfzehn eins. Neu zwei.',
+      '17:Sechzehn Neu siebzehn.',
+      '18:Siebzehn Alt siebzehn.',
+    ])
+    const origin = renamedOrigins(renamed)
+    expect(['15', '16', '17', '18'].map(origin)).toEqual([null, '15', '16', '17'])
+  })
+
+  it('refuses the line that took the number where nothing frees it, and runs the Novelle again without it', () => {
+    // § 17 stays: „§ 16 → § 17" fails, and with it the number 16 is never
+    // freed — so „§ 15 → § 16" is refused too, and nothing moves.
+    const { law: out, results } = run(l(), instr('§ 15 erhält die Paragraphenbezeichnung "16".'), instr('§ 16 erhält die Paragraphenbezeichnung "17".'))
+    expect(results.map((r) => r.reason)).toEqual(['Bezeichnung 16 existiert bereits', 'Bezeichnung 17 existiert bereits'])
+    expect(out.paragraphs.map((p) => p.id)).toEqual(['14', '15', '16', '17'])
+    expect(run(l(), instr('Nach § 14 wird folgender § 15 eingefügt:', ['§ 15. Neu.'])).results[0]!.reason).toBe('§ 15 existiert bereits')
+  })
+
+  it('records which § an instruction acted on, whatever number it carried then (BGBl. I Nr. 24/2026: § 15 (neu))', () => {
+    const law: StandingLaw = { paragraphs: [para('8', 'Acht', ['Alt acht.']), para('15', 'Fünfzehn', ['Alt fünfzehn.'])] }
+    const report = run(law, instr('§ 15 erhält die Paragraphenbezeichnung "§ 23." ; § 8 erhält die Paragraphenbezeichnung "§ 15."'), instr('§ 15 (neu) lautet:', ['Neu fünfzehn.']))
+    const [now15, now23] = ['15', '23'].map((id) => report.law.paragraphs.find((p) => p.id === id)!)
+    // „§ 15 (neu)" means the old § 8; the old § 15, now § 23, only moved.
+    expect([report.touches(2, now15!), report.touches(2, now23!)]).toEqual([true, false])
+    expect([report.touches(0, now23!), report.touches(1, now15!)]).toEqual([true, true])
   })
 })
 
@@ -2157,5 +2210,36 @@ describe('what a refused line would have created (26.10.2026)', () => {
     // 51/ME XXVIII: read as the insertion alone; § 23 was neither counted nor locked.
     const { unresolved } = run(law(), instr('Der bisherige § 15 wird zu § 23 Abs. 1; ihm wird folgender Abs. 2 angefügt:', ['(2) Neu.']))
     expect(unresolved.has('§ 23')).toBe(true)
+  })
+})
+
+describe('a number restated before the line that moves „the former" § of it (26.10.2026)', () => {
+  const l = (): StandingLaw => ({ paragraphs: [para('5', 'Fünf', ['Alt fünf eins.', 'Alt fünf zwei.']), para('6', 'Sechs', ['Alt sechs.'])] })
+  const text = (out: StandingLaw) => out.paragraphs.map((p) => `${p.id}:${plainText(p)}`)
+
+  it('sets the new § beside the standing one, which keeps its text under its new number', () => {
+    // „1. § 5 lautet: … 2. Der bisherige § 5 erhält die Bezeichnung § 7." —
+    // restated in place, § 7 carried the NEW text and the old one was gone.
+    const report = run(l(), instr('§ 5 lautet:', ['Neu fünf.']), instr('Der bisherige § 5 erhält die Bezeichnung § 7.'))
+    expect(report.results.map((r) => r.reason)).toEqual([null, null])
+    expect(text(report.law)).toEqual(['5:Fünf Neu fünf.', '7:Fünf Alt fünf eins. Alt fünf zwei.', '6:Sechs Alt sechs.'])
+    const [now5, now7] = ['5', '7'].map((id) => report.law.paragraphs.find((p) => p.id === id)!)
+    expect([report.touches(0, now5!), report.touches(0, now7!), report.touches(1, now7!)]).toEqual([true, false, true])
+    expect(['5', '7'].map(renamedOrigins(report.renamed))).toEqual([null, '5'])
+  })
+
+  it('restates in place where no later line calls the § the former one, and where that line fails', () => {
+    // Without „bisherig" the later line moves the § as it stands then.
+    expect(text(run(l(), instr('§ 5 lautet:', ['Neu fünf.']), instr('§ 5 erhält die Bezeichnung § 7.')).law)).toEqual(['7:Fünf Neu fünf.', '6:Sechs Alt sechs.'])
+    // § 6 is taken: the move fails, the number is never freed, and the restatement is refused with it.
+    const stuck = run(l(), instr('§ 5 lautet:', ['Neu fünf.']), instr('Der bisherige § 5 erhält die Bezeichnung § 6.'))
+    expect(stuck.results.map((r) => r.applied)).toEqual([false, false])
+    expect(text(stuck.law)).toEqual(['5:Fünf Alt fünf eins. Alt fünf zwei.', '6:Sechs Alt sechs.'])
+  })
+
+  it('refuses the restatement below the §, where nothing can stand beside the unit (BGBl. I Nr. 25/2026, § 110 Abs. 2a)', () => {
+    const { results, law: out } = run(l(), instr('§ 5 Abs. 2 lautet:', ['(2) Neu zwei.']), instr('Der bisherige Abs. 2 des § 5 erhält die Bezeichnung "(3)".'))
+    expect(results[0]!.reason).toBe('Neufassung unter einer Nummer, deren bisherige Einheit eine spätere Zeile umbenennt')
+    expect(plainText(out.paragraphs[0]!)).toBe('Fünf Alt fünf eins. Alt fünf zwei.')
   })
 })

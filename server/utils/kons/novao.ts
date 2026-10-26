@@ -106,13 +106,17 @@ const ORDINAL_WORD = '(?:erste|zweite|dritte|vierte|fünfte|sechste|siebente|sie
 const ORDINAL_SATZ = new RegExp(`\\b(${ORDINAL_WORD})[rnsm]?(?:\\s+und\\s+(${ORDINAL_WORD})[rnsm]?)?\\s+Satz(?:es)?\\b`, 'i')
 const NUMERIC_SATZ = /\b(\d{1,2})\.\s*Satz(?:es)?\b/i
 const GROUP_SATZ = /\b(ersten|letzten)\s+(beiden|zwei|drei|vier|fünf)\s+Sätze\b/i
-const PART_SATZ = /\b(Einleitungssatz|Einleitungsteil|Schlusssatz|Schlussteil)\b/i
+// „Die Einleitung des § 3c Abs. 1 lautet:" is the Einleitungsteil too. Read
+// without it, the address was the whole Absatz, and its new opening replaced
+// the Ziffern below with it (AC8FD757, 26.10.2026). „Allgemeine Einleitung"
+// is not: that is the name of a section in an Anlage.
+const PART_SATZ = /\b(Einleitungssatz|Einleitungsteil|(?<!Allgemeine[nr]?\s)Einleitung|Schlusssatz|Schlussteil)\b/i
 /** „der Halbsatz", „der Satz" in front of a (masked) quotation: the noun of the quoted text, not a sentence word. */
 const HALBSATZ_NOUN_RE = /\b(?:der|den|dem|die|einen?|ein)\s+(?:Halbsatz(?:es)?|Satz(?:es)?|Sätze)\s*(?="")/gi
 /** „erster Halbsatz", „im letzten Halbsatz", „der zweite Halbsatz". */
 const ORDINAL_HALBSATZ = new RegExp(`\\b(${ORDINAL_WORD})[rnsm]?\\s+Halbsatz(?:es)?\\b`, 'i')
 /** Any sentence word at all — an address that carries one must resolve it or be refused. */
-const SATZ_WORD = /\bS[äa]tze?s?\b|\bHalbsatz|\bEinleitungssatz|\bEinleitungsteil|\bSchlusssatz|\bSchlussteil/i
+const SATZ_WORD = /\bS[äa]tze?s?\b|\bHalbsatz|\bEinleitungssatz|\bEinleitungsteil|\b(?<!Allgemeine[nr]?\s)Einleitung\b|\bSchlusssatz|\bSchlussteil/i
 
 /**
  * The units below the Litera — and the whole reason they are named here is
@@ -336,6 +340,46 @@ function maskQuotes(t: string): string {
 }
 
 /**
+ * A unit named in front of the § it belongs to: „Die Einleitung der Z 4 in
+ * § 11", „Die Z 1 und 2 des § 130 Abs. 5", „Im neu bezeichneten Abs. 1 des
+ * § 81". The components of an address are read behind the §, so the unit in
+ * front fell away and the address widened to the § or its Absatz — the new
+ * opening of § 11 Z 4 replaced the opening of § 11 (114/ME), and „Die Z 1
+ * und 2 des § 130 Abs. 5 lauten" replaced the whole Absatz with its two
+ * Ziffern (26.10.2026).
+ *
+ * Moved behind the § and the units that stand right after it, the unit reads
+ * as the address means it. Where it cannot be placed there — no deeper than
+ * a unit behind the §, or a unit without a number („der zweite mit Absatz 6
+ * bezeichnete Absatz des § 7") — the address is refused (null): which unit
+ * is meant is then not the parser's to guess.
+ *
+ * Not a unit the line brings in: „dieser wird als Abs. 4a in § 28 nach
+ * Abs. 4 eingefügt", „folgende Z 3 in § 5" name the new unit, and the place
+ * is what follows the §.
+ */
+const UNIT_ID = String.raw`(?:\d+[a-z]*|[a-z]{1,2}(?![\p{L}]))`
+const UNIT_IN_FRONT_RE = new RegExp(String.raw`(?<![\p{L}])(?<!\b(?:als(?:\s+neue[rnms]?)?|folgende[rnms]?|nachstehende[rnms]?)\s+)(Abs(?:\.|atz)|Z(?:iffer)?\.?|lit(?:\.|era))\s*(${UNIT_ID}(?:\s*(?:,|und|bis)\s*${UNIT_ID})*)\s+(?:des|in|im|in\s+dem)\s+(?=§\s*\d)`, 'u')
+const UNNUMBERED_UNIT_IN_FRONT_RE = /(?<![\p{L}])(?<!\b(?:als(?:\s+neue[rnms]?)?|folgende[rnms]?|nachstehende[rnms]?)\s+)(?:Abs(?:\.|atz)|Ziffer|Z|lit(?:\.|era))\s+(?:des|in|im|in\s+dem)\s+§/u
+const PARAGRAPH_CHAIN_RE = new RegExp(String.raw`^§\s*${PARAGRAPH_NUMBER}(?<abs>\s+Abs\.?\s*\d+[a-z]*)?(?<z>\s+Z(?:iffer)?\.?\s*\d+[a-z]*)?(?<lit>\s+lit\.?\s*[a-z]+\b)?`)
+const UNIT_DEPTH: Record<string, number> = { abs: 1, z: 2, lit: 3 }
+
+function unitsBehindTheParagraph(t: string): string | null {
+  if (UNNUMBERED_UNIT_IN_FRONT_RE.test(t)) return null
+  const m = UNIT_IN_FRONT_RE.exec(t)
+  if (!m) return t
+  const word = m[1]!.toLowerCase()
+  const level = word.startsWith('abs') ? 'abs' : word.startsWith('lit') ? 'lit' : 'z'
+  const rest = t.slice(m.index + m[0].length)
+  const chain = PARAGRAPH_CHAIN_RE.exec(rest)
+  if (!chain) return null
+  const behind = Object.entries(chain.groups ?? {}).filter(([, v]) => v !== undefined).map(([k]) => UNIT_DEPTH[k]!)
+  if (behind.some((depth) => depth >= UNIT_DEPTH[level]!)) return null
+  const unit = `${level === 'abs' ? 'Abs.' : level === 'lit' ? 'lit.' : 'Z'} ${m[2]}`
+  return `${t.slice(0, m.index)}${chain[0]} ${unit}${rest.slice(chain[0].length)}`
+}
+
+/**
  * An instruction that creates text describes the new unit after "folgende…":
  * "Dem § 5 wird folgender Abs. 4 angefügt". Everything from that word on is
  * payload, not address — reading it as the target made "§ 5" become
@@ -518,7 +562,8 @@ function onePlace(tail: string, components: readonly (RegExpExecArray | null)[],
  * passing `inherited`.
  */
 export function parseAddress(text: string, inherited?: NovaoAddress | null): NovaoAddress | null {
-  const t = maskQuotes(normalizeText(text))
+  const t = unitsBehindTheParagraph(maskQuotes(normalizeText(text)))
+  if (t === null) return null
   // A sub-unit this model has no level for widens the target to the unit above
   // it if it is ignored — the same over-reach `parseSatz` refuses below, one
   // level down (`SUBUNIT_WORD`).
@@ -1333,7 +1378,10 @@ const COMPOUND_SPLIT = /[;,]\s*(?=[A-Za-zÄÖÜ§])|\s+(?:sowie|und)\s+/gi
 // `bezeichnet`: „der bisherige Abs. 8 als Abs. 9 bezeichnet und nach Abs. 7
 // folgender Abs. 8 eingefügt" is a renumbering and an insertion (`NAMED_AS_RE`);
 // two lines of the corpus carry the word outside a quotation (30.09.2026).
-const VERB_RE = /\blaute[nt]\b|\bersetzt\b|\bangefügt\b|\beingefügt\b|\bentfäll[te]\b|\bentfallen\b|\baufgehoben\b|bezeichnung(?:en)?\b|\bbezeichnet\b|wie folgt geändert/i
+// „wird zu § N": „Der bisherige § 15 wird zu § 23 Abs. 1; ihm wird folgender
+// Abs. 2 angefügt" is a renumbering and an insertion too, and read as one
+// clause neither came out (51/ME XXVIII, 26.10.2026; `PARA_RENAMED_RE`).
+const VERB_RE = /\blaute[nt]\b|\bersetzt\b|\bangefügt\b|\beingefügt\b|\bentfäll[te]\b|\bentfallen\b|\baufgehoben\b|bezeichnung(?:en)?\b|\bbezeichnet\b|wie folgt geändert|\b(?:wird|werden)\s+zu(?=\s*§)/i
 
 /**
  * „Der bisherige § 57 erhält die Absatzbezeichnung ‚(1)'. Als neuer Abs. 2
@@ -1860,7 +1908,13 @@ const NAMED_AS_RE = /\bals\s+(Abs\.|Z|lit\.)\s*(\d+[a-z]*|[a-z])\s+bezeichnet\b/
  * Bezeichnungen §§ 5 und 6".
  */
 const PARA_LIST = String.raw`§§?\s*${PARAGRAPH_NUMBER}(?:\s*(?:,|und|bis)\s*(?:§\s*)?${PARAGRAPH_NUMBER})*`
-const PARA_RENAMED_RE = new RegExp(String.raw`(?<![\p{L}])(?:(?:wird|werden)\s+(?:zu(?:m)?\s+(?:den\s+)?(${PARA_LIST})|in\s+(?:den\s+)?(${PARA_LIST})\s+umbenannt|als\s+(${PARA_LIST})\s+bezeichnet)|erh(?:ä|a)lt(?:en)?\s+die\s+(?:Paragra(?:ph|f)en)?[Bb]ezeichnung(?:en)?\s+(${PARA_LIST}))\s*\.?\s*$`, 'u')
+/**
+ * And with the text drawn into Abs. 1 on the way: „Der bisherige § 15 wird zu
+ * § 23 Abs. 1", „§ 19 erhält die Bezeichnung § 19. (1)" — the renumbering, and
+ * the §'s one unnumbered Absatz numbered (1), as `absatzDrawnIn` reads it.
+ */
+const DRAWN_IN_TAIL = String.raw`\s*(?:Abs(?:\.|atz)\s*1|\.\s*\(1\))`
+const PARA_RENAMED_RE = new RegExp(String.raw`(?<![\p{L}])(?:(?:wird|werden)\s+(?:zu(?:m)?\s+(?:den\s+)?(?<zu>${PARA_LIST})(?<zuDrawn>${DRAWN_IN_TAIL})?|in\s+(?:den\s+)?(?<in>${PARA_LIST})\s+umbenannt|als\s+(?<als>${PARA_LIST})\s+bezeichnet)|erh(?:ä|a)lt(?:en)?\s+die\s+(?:Paragra(?:ph|f)en)?[Bb]ezeichnung(?:en)?\s+(?<erh>${PARA_LIST})(?<erhDrawn>${DRAWN_IN_TAIL})?)\s*\.?\s*$`, 'u')
 
 const PARA_NUMBER_OR_BIS_RE = new RegExp(String.raw`(${PARAGRAPH_NUMBER})|(?<![\p{L}])(bis)(?![\p{L}])`, 'gu')
 
@@ -1940,11 +1994,19 @@ function parseOne(raw: string, inherited: NovaoAddress | null | undefined, whole
   // text cannot say.
   if (paraRenamed) {
     const subject = (scope || head).slice(0, (scope || head).lastIndexOf(paraRenamed[0]))
-    const to = paragraphNumbers(paraRenamed.slice(1).find((g) => g !== undefined)!)
+    const g = paraRenamed.groups!
+    const to = paragraphNumbers(g.zu ?? g.in ?? g.als ?? g.erh!)
     const from = target.para?.startsWith('§') ? [bareParaId(target.para), ...target.siblings] : []
     if (targets.length !== 1 || target.level !== 'para' || from.length === 0 || from.some((id) => !id) || FINITE_VERB_RE.test(subject) || /\bin\s+der\s+Fassung\b/i.test(subject)) return fail('Umbenennung in einen Paragraphen — Ziel nicht eindeutig')
     if (!to || to.length !== from.length) return fail(`${from.length} Paragraphen, ${to?.length ?? '?'} neue Bezeichnungen`)
-    return { ops: from.map((id, i) => ({ kind: 'renumber' as const, target: { ...target, para: `§ ${id}`, siblings: [] }, to: `§ ${to[i]}`, toLast: null })), reason: null, line }
+    const renumbered = from.map((id, i) => ({ kind: 'renumber' as const, target: { ...target, para: `§ ${id}`, siblings: [] }, to: `§ ${to[i]}`, toLast: null }))
+    if ((g.zuDrawn ?? g.erhDrawn) === undefined) return { ops: renumbered, reason: null, line }
+    // „… wird zu § 23 Abs. 1": the renumbering where the number changes, and
+    // the Absatz drawn in under the number the § carries on this line — the
+    // applier carries both out at once (`renumberBatch`).
+    if (from.length !== 1) return fail('Umbenennung mehrerer Paragraphen mit Absatz 1 — Ziel nicht eindeutig')
+    const drawn = { kind: 'renumber' as const, target: { ...target, para: `§ ${from[0]}`, siblings: [], abs: '', level: 'abs' as const }, to: '(1)', toLast: null }
+    return { ops: to[0] === from[0] ? [drawn] : [...renumbered, drawn], reason: null, line }
   }
 
   // "erhält die Absatzbezeichnung", "erhalten die Paragraphenbezeichnungen",
@@ -2479,6 +2541,8 @@ export function parseInstruction(raw: string, inherited?: NovaoAddress | null): 
   // a clause with an address of its own resolves the same way every time and
   // the duplicates fall out.
   let contexts: (NovaoAddress | null)[] = [inherited ?? null]
+  /** §§ this line renumbers, old number → new (see below). */
+  const renumberedInLine = new Map<string, string>()
   for (const [i, part] of parts.entries()) {
     // A clause on the table of contents (`tocClauses`) names no place, and
     // hands none on.
@@ -2516,9 +2580,28 @@ export function parseInstruction(raw: string, inherited?: NovaoAddress | null): 
     }
     if (refusal !== null) reasons.push(refusal)
     ops.push(...got)
-    const next = got.map(opContext).filter((a): a is NovaoAddress => a !== null)
-    if (next.length > 0) {
-      const byKey = new Map(next.map((a) => [addressKey(a), a] as const))
+    // A § this line renumbers is carried on under its new number: the
+    // applier moves it before any later clause of the line runs. „§ 14b
+    // erhält die Paragraphenbezeichnung ‚§ 16.'; der bisherige § 14b erhält
+    // die Absatzbezeichnung ‚(1)' und es wird folgender Abs. 2 angefügt"
+    // appends to § 16 (2/ME XXVIII). And a § handed on beside a unit below it
+    // is that unit's: „§ 15 wird zu § 23 Abs. 1" hands on § 23 Abs. 1, not
+    // § 23 as well — once each, the Abs. 2 behind it went in twice.
+    for (const op of got) {
+      if (op.kind !== 'renumber' || op.target.level !== 'para' || op.toLast !== null || op.target.siblings.length > 0) continue
+      const [was, now] = [bareParaId(op.target.para), bareParaId(op.to)]
+      if (was && now && op.target.para?.startsWith('§')) renumberedInLine.set(was, now)
+    }
+    const next = got
+      .map(opContext)
+      .filter((a): a is NovaoAddress => a !== null)
+      .map((a) => {
+        const now = a.para?.startsWith('§') ? renumberedInLine.get(bareParaId(a.para) ?? '') : undefined
+        return now ? { ...a, para: `§ ${now}` } : a
+      })
+    const handed = next.filter((a) => a.level === 'para' ? !next.some((b) => b.level !== 'para' && b.para === a.para) : true)
+    if (handed.length > 0) {
+      const byKey = new Map(handed.map((a) => [addressKey(a), a] as const))
       contexts = [...byKey.values()]
     }
   }

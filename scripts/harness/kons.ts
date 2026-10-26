@@ -626,7 +626,7 @@ async function verifyLaw(blocks: readonly TextBlock[], article: DraftArticle, ct
   const law: StandingLaw = { paragraphs }
 
   const bgblLines = withOracle ? linesByParagraph(blocks) : null
-  const { law: after, results, unresolved, renamed } = applyNovelle(law, instructions)
+  const { law: after, results, unresolved, renamed, touches } = applyNovelle(law, instructions)
   // After "die §§ 8 bis 13 erhalten die Paragraphenbezeichnungen § 15 bis
   // § 20" the result's § 15 is the old § 8. The engine-side "before" of a §
   // is looked up by that origin, RIS's by label (RIS keeps its history per
@@ -729,19 +729,12 @@ async function verifyLaw(blocks: readonly TextBlock[], article: DraftArticle, ct
     }
     // The draft-time gate: refusal, plausibility, and — where the draft has
     // an annex — the ressort's own comparison. Tallied against the RIS truth.
-    // The instructions on the § it came from as well, as the page reads them
-    // (`kons/consolidate.ts`): „Der bisherige § 10 wird zu § 17 und lautet"
-    // addresses § 10, and the guard of § 17 weighs its payload.
+    // The instructions that acted on this §, whatever number it carried then,
+    // as the page reads them (`kons/consolidate.ts`, `ApplyReport.touches`).
     const touching = instructions
-      .map((instruction, i) => ({ instruction, result: results[i]! }))
-      .filter(({ instruction: { op, payload } }) => {
-        const address = 'target' in op ? op.target : 'anchor' in op ? op.anchor : null
-        if (address?.level === 'document') return true
-        const named = address?.para ? harnessKey(address.para) : null
-        if (named !== null && id !== undefined && (named === id || named === originOfId(id))) return true
-        if ((op.kind === 'insertAfter' || op.kind === 'append') && op.child === 'para') return payload.some((p) => p.id === id)
-        return false
-      })
+      .map((instruction, i) => ({ instruction, result: results[i]!, i }))
+      .filter(({ instruction: { op }, i }) => ('target' in op && op.target.level === 'document') || touches(i, node))
+      .map(({ instruction, result }) => ({ instruction, result }))
     const guard = id ? guardParagraph(id, law, beforeNode ?? null, node, touching) : null
     const flags = new Set<GuardFlag>(guard?.flags ?? [])
     if (id && refusedIds.has(id)) flags.add('verweigert')

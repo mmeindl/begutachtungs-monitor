@@ -307,6 +307,34 @@ describe('sentence addresses (2026-09-09)', () => {
     expect(parseAddress('Im Schlussteil des § 169 Abs. 1 wird')).toMatchObject({ para: '§ 169', abs: '1', satz: 'schluss' })
   })
 
+  it('reads „die Einleitung" as the Einleitungsteil, not as the whole unit', () => {
+    // Read as the whole Absatz, the new opening replaced the Ziffern below it (26.10.2026).
+    expect(op('Die Einleitung des § 3c Abs. 1 lautet:')).toMatchObject({ kind: 'replace', target: { para: '§ 3c', abs: '1', satz: 'einleitung', level: 'satz' } })
+    expect(op('In § 10.07 lautet die Einleitung der Z 3:')).toMatchObject({ target: { para: '§ 10.07', z: '3', satz: 'einleitung' } })
+    expect(op('In der Einleitung des § 36 Abs. 2 wird der Ausdruck "a" durch den Ausdruck "b" ersetzt.')).toMatchObject({ kind: 'replacePhrase', target: { abs: '2', satz: 'einleitung' } })
+    // The name of a section in an Anlage is not a sentence word.
+    expect(op('Anlage 2 Allgemeine Einleitung Z 1 lautet wie folgt:')).toMatchObject({ target: { satz: null } })
+  })
+
+  it('reads a unit named in front of its § as part of the address', () => {
+    // Read behind the § only, these widened to the § or its Absatz (26.10.2026).
+    expect(op('Die Einleitung der Z 4 in § 11 lautet:')).toMatchObject({ target: { para: '§ 11', abs: null, z: '4', satz: 'einleitung' } })
+    expect(op('Die Einleitung der Z 2 in § 17 Abs. 4 lautet:')).toMatchObject({ target: { para: '§ 17', abs: '4', z: '2', satz: 'einleitung' } })
+    expect(op('Die Z 1 und 2 des § 130 Abs. 5 lauten:')).toMatchObject({ kind: 'replace', target: { abs: '5', z: '1', siblings: ['2'], level: 'z' } })
+    expect(op('Abs. 6 des § 2 entfällt.')).toMatchObject({ kind: 'delete', target: { para: '§ 2', abs: '6', level: 'abs' } })
+    expect(op('Der nunmehrige Abs. 7 des § 5 lautet:')).toMatchObject({ kind: 'replace', target: { para: '§ 5', abs: '7', level: 'abs' } })
+    expect(op('Im neu bezeichneten Abs. 1 des § 81 lautet Z 2:')).toMatchObject({ target: { para: '§ 81', abs: '1', z: '2', level: 'z' } })
+    expect(op('Der bisherige Abs. 2a des § 110 erhält die Bezeichnung "Abs. 2b".')).toMatchObject({ kind: 'renumber', target: { para: '§ 110', abs: '2a', level: 'abs' } })
+  })
+
+  it('refuses a unit in front of its § that it cannot place, and leaves a unit the line brings in alone', () => {
+    expect(parseInstruction('Der zweite mit Absatz 6 bezeichnete Absatz des § 7 erhält die Bezeichnung "(7)".').ops).toHaveLength(0)
+    // A Ziffer in front of an Absatz behind is placed; an Absatz in front of a Ziffer behind is not.
+    expect(parseAddress('Abs. 2 des § 5 Z 3')).toBeNull()
+    const moved = parseInstruction('In § 27 entfällt der bisherige Abs. 11, dieser wird als Abs. 4a in § 28 nach Abs. 4 eingefügt.')
+    expect(moved.ops[1]).toMatchObject({ kind: 'insertAfter', anchor: { para: '§ 28', abs: '4' } })
+  })
+
   it('refuses a sentence word it cannot place instead of widening to the Absatz', () => {
     // „erster Halbsatz" stood here until 27.09.2026; it is read now, as a Halbsatz.
     expect(parseAddress('§ 169 Abs. 5 erster Halbsatz lautet')).toMatchObject({ abs: '5', satz: null, halbsatz: 'erster', level: 'satz' })
@@ -1105,22 +1133,43 @@ describe('a § renumbered with its new designation written out (26.10.2026)', ()
     expect(renames('§ 3 erhält die Bezeichnung § 1 und lautet:')).toEqual(['§ 3 → § 1', 'replace'])
   })
 
-  it('leaves a level drawn in, a replacement and a clause that goes on to their own readings', () => {
-    expect(op('Der bisherige § 10 wird zu § 17 und lautet samt Überschrift:')).toMatchObject({ kind: 'replace', target: { para: '§ 10' } })
-    for (const line of ['§ 19 erhält die Bezeichnung § 19. (1) ; folgender Abs. 2 wird angefügt:', '§ 13 erhält die Bezeichnung § 13 Abs. 1; es wird folgender Abs. 2 angefügt:']) {
-      expect(parseInstruction(line).ops.some((o) => o.kind === 'renumber' && o.target.level === 'para'), line).toBe(false)
+  it('reads „wird zu § 17 und lautet" as the renumbering and the new text of the § it arrives as', () => {
+    expect(parseInstruction('Der bisherige § 10 wird zu § 17 und lautet samt Überschrift:').ops).toMatchObject([
+      { kind: 'renumber', target: { para: '§ 10' }, to: '§ 17' },
+      { kind: 'replace', target: { para: '§ 17', level: 'para' } },
+    ])
+  })
+
+  it('reads a § drawn into Abs. 1 on the way, and hands on that Absatz (51/ME XXVIII: § 15 → § 23 Abs. 1)', () => {
+    expect(parseInstruction('Der bisherige § 15 wird zu § 23 Abs. 1; ihm wird folgender Abs. 2 angefügt:').ops).toMatchObject([
+      { kind: 'renumber', target: { para: '§ 15', level: 'para' }, to: '§ 23' },
+      { kind: 'renumber', target: { para: '§ 15', abs: '', level: 'abs' }, to: '(1)' },
+      { kind: 'insertAfter', anchor: { para: '§ 23', abs: '1' }, child: 'abs', childIds: ['2'] },
+    ])
+    for (const line of ['Der bisherige Text des § 3 wird zu § 3 Abs. 1 und es wird folgender Abs. 2 angefügt:', '§ 13 erhält die Bezeichnung § 13 Abs. 1; es wird folgender Abs. 2 angefügt:', '§ 19 erhält die Bezeichnung § 19. (1) ; folgender Abs. 2 wird angefügt:']) {
+      const { ops, reason } = parseInstruction(line)
+      expect(reason, line).toBeNull()
+      expect(ops[0], line).toMatchObject({ kind: 'renumber', target: { abs: '', level: 'abs' }, to: '(1)' })
+      expect(ops.some((o) => o.kind === 'renumber' && o.target.level === 'para'), line).toBe(false)
     }
+  })
+
+  it('hands a § renumbered earlier in the line on under its new number (2/ME XXVIII)', () => {
+    const { ops } = parseInstruction('§ 14b erhält die Paragraphenbezeichnung "§ 16." ; der bisherige § 14b erhält die Absatzbezeichnung "(1)" und es wird folgender Abs. 2 angefügt:')
+    expect(ops.at(-1)).toMatchObject({ kind: 'insertAfter', anchor: { para: '§ 16', abs: '1' } })
   })
 
   it('refuses what is not one § named alone: a unit below it, a second sentence, a § of two versions, a count that does not match', () => {
     for (const line of [
       // Read as one sentence it renamed § 74 to itself and lost the deletion.
       '§ 74 samt Überschrift entfällt. § 74a erhält die Bezeichnung § 74 .',
-      '§ 81 Abs. 2 entfällt und Abs. 1 wird zu § 81.',
-      '§ 59 wird zu § 61 und § 60 wird zu § 62.',
       '§ 622 in der Fassung des Bundesgesetzes BGBl. I Nr. 45/2005 erhält die Bezeichnung § 623 .',
       'Die bisherigen §§ 4 und 5 erhalten die Bezeichnungen §§ 12 bis 14.',
     ]) expect(parseInstruction(line).ops, line).toEqual([])
+    // An Absatz that becomes the § is no § renamed: the line is refused whole.
+    expect(parseInstruction('§ 81 Abs. 2 entfällt und Abs. 1 wird zu § 81.').reason).toMatch(/Ziel nicht eindeutig/)
+    // Two clauses, each its own renumbering — carried out at once.
+    expect(parseInstruction('§ 59 wird zu § 61 und § 60 wird zu § 62.').ops.map((o) => (o.kind === 'renumber' ? `${o.target.para} → ${o.to}` : o.kind))).toEqual(['§ 59 → § 61', '§ 60 → § 62'])
     // An Absatz that becomes the § is no § renamed; the line is refused whole.
     expect(parseInstruction('§ 129 Abs. 2 entfällt, der bisherige Abs. 1 erhält die Bezeichnung § 129.').reason).toMatch(/Ziel nicht eindeutig/)
   })

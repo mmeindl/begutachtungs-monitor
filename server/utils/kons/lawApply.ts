@@ -21,7 +21,7 @@ import { childById, lawTextNodes, makeNode, plainText, uniqueChild, type LawNode
 import type { LawUnit } from '../lawtext/lawUnits'
 import { normalizeText } from '../lawtext/normalize'
 import { announcesSchedule, continuesToc, createdParagraphs, createdUnits, expandRange, isTocInstruction, namedParagraphs, opAddress, parseInstruction, tocSequence, type NovaoAddress, type NovaoOp } from './novao'
-import { bareParaId, isDivision, isSchedule } from '../text/designation'
+import { bareParaId, isDivision, isSchedule, unitKey } from '../text/designation'
 import { byParagraphOrder } from './konsGate'
 import { PARAGRAPH_NUMBER } from '../../../shared/utils/paragraphNumber'
 
@@ -59,9 +59,25 @@ export interface Renaming {
    * Which renumbering it belongs to, counted from 0 in the order they were
    * carried out. The moves of one renumbering happen at once — „die §§ 8 und
    * 9 erhalten die Bezeichnungen §§ 9 und 10" moves the old § 9, not the § 8
-   * that has just become § 9 (`renamedOrigins`).
+   * that has just become § 9.
    */
   batch: number
+  /**
+   * The instruction that carried it out: its index in what `applyNovelle`
+   * was handed. Which § an instruction on a number means depends on where it
+   * stands — „§ 15 (neu) lautet" behind the renumbering of the old § 15 to
+   * § 23 means the § that is § 15 now (`ApplyReport.touches`).
+   */
+  instruction: number
+  /**
+   * Which § moved, as a unit of the run: kept across every move and every
+   * restatement of its text, null below the §. A number can be carried by two
+   * §§ for a while (`applyNovelle`, ascending chains), so `from` alone no
+   * longer says which one moved.
+   */
+  unit: number | null
+  /** That §'s number in the standing law — null for one the Novelle brought in, and below the §. */
+  origin: string | null
 }
 
 /**
@@ -69,29 +85,28 @@ export interface Renaming {
  * renumberings carried out (`ApplyReport.renamed`) — what the engine's result
  * for a § has to be held against.
  *
- * - a number a renumbering moved a § TO: the number it came from, followed
- *   across renumberings (§ 8 → § 15, later § 15 → § 22: § 22 is the old § 8);
- * - a number a renumbering vacated and none filled again: null — a § under it
- *   in the result is a new one, and the standing § of that number is another
+ * - a number a § moved TO and kept: the number it stood under in the standing
+ *   law, followed across every move (§ 8 → § 15, later § 15 → § 22: § 22 is
+ *   the old § 8), null for a § the Novelle brought in;
+ * - a number a § left and no moved § ended on: null — a § under it in the
+ *   result is a new one, and the standing § of that number is another
  *   provision (51/ME XXVIII: the new § 14 beside the old one, now § 22);
  * - any other: itself.
  *
- * The moves of one renumbering are resolved together, never one after
- * another: read in order, „§ 8 → § 9, § 9 → § 10" made the new § 10 the old
- * § 8 (`Renaming.batch`).
+ * Followed per § (`Renaming.unit`), not per number. Read number by number in
+ * order, „§ 8 → § 9, § 9 → § 10" made the new § 10 the old § 8 — which is why
+ * the moves of one renumbering were resolved together — and once a number
+ * may stand twice for a while, „§ 15 → § 16, then the old § 16 → § 17" made
+ * § 17 the old § 15 (E0399A69, 26.10.2026).
  */
 export function renamedOrigins(renamed: readonly Renaming[]): (id: string) => string | null {
-  const moved = new Map<string, string | null>()
-  const originOf = (id: string): string | null => (moved.has(id) ? moved.get(id)! : id)
   const paras = renamed.filter((r) => r.level === 'para')
-  for (let i = 0; i < paras.length;) {
-    const batch = paras.filter((r) => r.batch === paras[i]!.batch)
-    const filled = batch.map((r) => [r.to, originOf(r.from)] as const)
-    for (const r of batch) moved.set(r.from, null)
-    for (const [to, origin] of filled) moved.set(to, origin)
-    i += batch.length
-  }
-  return originOf
+  const last = new Map<number, Renaming>()
+  paras.forEach((r, i) => last.set(r.unit ?? -1 - i, r))
+  const moved = new Map<string, string | null>()
+  for (const r of paras) moved.set(r.from, null)
+  for (const r of last.values()) moved.set(r.to, r.origin)
+  return (id) => (moved.has(id) ? moved.get(id)! : id)
 }
 
 export interface ApplyReport {
@@ -107,6 +122,17 @@ export interface ApplyReport {
    * a divergence (IVS-Gesetz, 2026-09-09).
    */
   renamed: Renaming[]
+  /**
+   * Whether the instruction at `index` acted on the § `node` of the result —
+   * looked it up, restated it, moved it or brought it in — whatever number it
+   * named it by at the time. The callers held instructions against a § by
+   * number: the § itself, the one it came from, the ones a line creates. That
+   * cannot see WHEN a number meant which §: in BGBl. I Nr. 24/2026 the old
+   * § 15 moves to § 23 and „§ 15 (neu) lautet" comes after, and § 23 was
+   * charged with it (26.10.2026). Instructions on the whole text are not
+   * recorded here; they reach every §.
+   */
+  touches(index: number, node: LawNode): boolean
 }
 
 // ---------------------------------------------------------------------------
@@ -497,6 +523,141 @@ function divisionOfParagraphs(op: NovaoOp, payload: readonly LawNode[]): NovaoOp
 }
 
 // ---------------------------------------------------------------------------
+// One run
+// ---------------------------------------------------------------------------
+
+/**
+ * What a run of `applyNovelle` keeps beside the law it edits, found through
+ * that law (`RUNS`): the lookups below need it, and threading it through
+ * every operation would touch them all for two questions.
+ *
+ * 1. **Which § is which** (`unit`). A § keeps its unit when its number moves
+ *    and when its text is restated; a § the Novelle brings in gets a new one.
+ *    Every instruction records the units it acted on (`touched`), and that is
+ *    what a caller asks (`ApplyReport.touches`).
+ * 2. **Which § a number means while two carry it** (`arrived`, `prefer`).
+ *    Ministries renumber upwards in the order of the old numbers: „§ 15
+ *    erhält die Bezeichnung ‚16'", then „§ 16 Abs. 2 lautet", then „§ 16 wird
+ *    durch folgenden § 17 ersetzt" (E0399A69). Until the last line moves the
+ *    old § 16, both carry 16. The drafting is consistent once read so: a line
+ *    that moves or repeals a § means the one standing there from the start,
+ *    every other line the one that has just arrived — the Beilage pairs
+ *    exactly that way, the old § 15 with the changed Abs. 2.
+ */
+interface RunContext {
+  unit: WeakMap<LawNode, number>
+  /** Each unit's number in the standing law; null for one the Novelle brought in. */
+  origin: Map<number, string | null>
+  next: number
+  /** §§ that came to their number in this run: moved, or brought in. */
+  arrived: WeakSet<LawNode>
+  /** Which of two §§ under one number the instruction now applied means. */
+  prefer: 'standing' | 'arrived'
+  /** The index of the instruction now applied, and of the last one applied with it (a batch). */
+  index: number
+  last: number
+  /** Units the instruction now applied acted on, and those it brought in. */
+  touched: Set<number>
+  /** Whether a later move of this Novelle takes the standing § of a number out of it (`vacatedBy`). */
+  vacatedLater(id: string): boolean
+  /** The same, by a line that calls it „der bisherige" (`arrivesBeside`). */
+  formerLater(id: string): boolean
+  /** Whether a later line renumbers this unit below the § and calls it „der bisherige" (`applyOne`). */
+  formerUnitLater(a: NovaoAddress): boolean
+  /** Numbers an instruction took while the standing § still carried them — settled at the end (`applyNovelle`). */
+  shared: { index: number; id: string; reason: string }[]
+  /** The same, for the instruction now applied: kept only where it succeeds. */
+  pending: { index: number; id: string; reason: string }[]
+  /** §§ arrived during the instruction now applied — the „neue §" it licenses. */
+  arrivals: LawNode[]
+}
+
+const RUNS = new WeakMap<StandingLaw, RunContext>()
+
+function unitOf(run: RunContext, node: LawNode): number {
+  let unit = run.unit.get(node)
+  if (unit === undefined) {
+    unit = run.next++
+    run.unit.set(node, unit)
+    run.origin.set(unit, null)
+  }
+  return unit
+}
+
+/** `node` restated or moved as `next`: the same §. */
+function carry(law: StandingLaw, node: LawNode, next: LawNode): void {
+  const run = RUNS.get(law)
+  if (!run) return
+  const unit = unitOf(run, node)
+  run.unit.set(next, unit)
+  if (run.arrived.has(node)) run.arrived.add(next)
+  run.touched.add(unit)
+}
+
+/** A § this instruction moved to its number, or brought in. */
+function arrive(law: StandingLaw, node: LawNode): void {
+  const run = RUNS.get(law)
+  if (!run) return
+  run.arrived.add(node)
+  run.arrivals.push(node)
+  run.touched.add(unitOf(run, node))
+}
+
+/**
+ * Whether a § may take the number `id` from the standing § that carries it,
+ * because a later line of the Novelle moves or repeals that one — „Nach § 14
+ * wird folgender § 15 eingefügt" before „§ 15 erhält die Bezeichnung ‚16'".
+ * Not from a § that has itself just arrived there, and not where nothing
+ * later frees the number. The end of the run checks that it was freed.
+ */
+function mayShare(law: StandingLaw, id: string, holders: readonly LawNode[], reason: string): boolean {
+  const run = RUNS.get(law)
+  if (!run || holders.length === 0 || holders.some((h) => run.arrived.has(h)) || !run.vacatedLater(id)) return false
+  run.pending.push({ index: run.index, id, reason })
+  return true
+}
+
+/**
+ * „§ 5 lautet:" and two lines later „Der bisherige § 5 erhält die Bezeichnung
+ * § 7": a new § 5, and the old one keeps its text under § 7 — „der
+ * bisherige" names the § standing there before the Novelle. Restated in
+ * place, the old text was gone, and the line after moved the NEW text to
+ * § 7 (nine documents of the cache, „§ 15 samt Überschrift lautet" before
+ * „Der bisherige § 15 erhält die Paragraphenbezeichnung ‚§ 16' und lautet"
+ * among them; 26.10.2026). So where a later line moves the standing § of the
+ * number on and calls it the former one, the new text arrives beside it
+ * (`mayShare`) — in front of it, where the old one leaves — and that line
+ * takes the old one away. The standing § is then not what this instruction
+ * acted on.
+ */
+function arrivesBeside(law: StandingLaw, para: LawNode): boolean {
+  const run = RUNS.get(law)
+  if (!run || run.arrived.has(para) || isSchedule(para.marker) || !run.formerLater(para.id)) return false
+  const holders = law.paragraphs.filter((p) => p.id === para.id && !isSchedule(p.marker))
+  if (!mayShare(law, para.id, holders, `§ ${para.id} existiert bereits`)) return false
+  run.touched.delete(unitOf(run, para))
+  return true
+}
+
+/** Whether `move` (a renumbering below the §) names the unit `a` addresses: the same § and the same units above it. */
+function renumbersUnit(move: NovaoAddress, a: NovaoAddress): boolean {
+  if (move.para !== a.para || (move.artikel ?? null) !== (a.artikel ?? null) || move.level !== a.level) return false
+  if (a.level === 'para' || a.level === 'satz' || a.level === 'document') return false
+  if (a.level !== 'abs' && move.abs !== a.abs) return false
+  if (a.level === 'lit' && move.z !== a.z) return false
+  return [deepestId(move), ...move.siblings].includes(deepestId(a))
+}
+
+/** Of several §§ under one number, the one the instruction means (`RunContext`). */
+function sharedNumber(law: StandingLaw, hits: readonly LawNode[]): LawNode | null {
+  const run = RUNS.get(law)
+  const arrived = run ? hits.filter((h) => run.arrived.has(h)) : []
+  if (!run || arrived.length === 0) return hits[0]!
+  const wanted = run.prefer === 'standing' ? hits.filter((h) => !run.arrived.has(h)) : arrived
+  return wanted.length === 1 ? wanted[0]! : null
+}
+
+// ---------------------------------------------------------------------------
 // Lookup
 // ---------------------------------------------------------------------------
 
@@ -519,8 +680,11 @@ function findParagraph(law: StandingLaw, a: NovaoAddress, overrideId?: string): 
   // „Z 1 lit. n des Anhangs" names no number, because the law has exactly
   // one schedule. Where it has several the instruction has to say which, and
   // an address that does not is refused rather than guessed at.
-  if (id === null) return wantsSchedule && pool.length === 1 ? pool[0]! : null
-  return pool.find((p) => p.id === id) ?? null
+  const hits = id === null ? (wantsSchedule && pool.length === 1 ? pool : []) : pool.filter((p) => p.id === id)
+  const found = hits.length > 1 ? sharedNumber(law, hits) : (hits[0] ?? null)
+  const run = RUNS.get(law)
+  if (found && run) run.touched.add(unitOf(run, found))
+  return found
 }
 
 /**
@@ -1436,7 +1600,7 @@ function applyOne(law: StandingLaw, { op, payload, line }: Instruction, renamed:
           // none of whose §§ stand is no replacement at all.
           const named = blocks.length === ids.length && blocks.every((b, i) => b.id === ids[i])
           if (!named || absent.length === ids.length) return `§ nicht im geltenden Text: § ${absent[0]}`
-          return spliceRun(law.paragraphs, paras.filter((p): p is LawNode => p !== null), blocks, 'para')
+          return spliceRun(law.paragraphs, paras.filter((p): p is LawNode => p !== null), blocks, 'para', law)
         }
         const outgoing = paras as LawNode[]
         const single = outgoing.length === 1 && blocks.length === 0 && payload.length > 0
@@ -1452,7 +1616,7 @@ function applyOne(law: StandingLaw, { op, payload, line }: Instruction, renamed:
           // inserted a § 27b consisting of that heading alone (Privatschul-
           // gesetz, 2026-09-09).
           if (!op.run) return `${outgoing.length} Ziel, ${blocks.length} Textblöcke`
-          return spliceRun(law.paragraphs, outgoing, blocks, 'para')
+          return spliceRun(law.paragraphs, outgoing, blocks, 'para', law)
         }
         // The new text carries other designations than the §§ it replaces —
         // „Im 3. Abschnitt werden die bisherigen §§ 11 bis 13 … durch folgende
@@ -1483,8 +1647,12 @@ function applyOne(law: StandingLaw, { op, payload, line }: Instruction, renamed:
           // and § 29 its „Übergangsbestimmungen", which both Beilagen keep —
           // unseen while nothing held the § against the one it came from.
           if (renaming && op.withHeading && !to.heading) return 'samt Überschrift, aber keine Überschrift im neuen Text'
-          const reason = spliceRun(law.paragraphs, outgoing, renaming ? [{ ...to, heading: to.heading ?? from.heading }] : blocks, 'para')
-          if (reason === null && renaming) renamed.push({ level: 'para', para: `§ ${to.id}`, from: from.id, to: to.id, batch: (renamed[renamed.length - 1]?.batch ?? -1) + 1 })
+          const reason = spliceRun(law.paragraphs, outgoing, renaming ? [{ ...to, heading: to.heading ?? from.heading }] : blocks, 'para', law, renaming)
+          if (reason === null && renaming) {
+            const run = RUNS.get(law)
+            const unit = run ? unitOf(run, from) : null
+            renamed.push({ level: 'para', para: `§ ${to.id}`, from: from.id, to: to.id, batch: (renamed[renamed.length - 1]?.batch ?? -1) + 1, instruction: run?.index ?? -1, unit, origin: unit === null ? null : (run!.origin.get(unit) ?? null) })
+          }
           return reason
         }
         if (single) {
@@ -1497,7 +1665,14 @@ function applyOne(law: StandingLaw, { op, payload, line }: Instruction, renamed:
           if (op.withHeading) return 'samt Überschrift, aber keine Überschrift im neuen Text'
           // The group headings above the § are not the §'s own text and a
           // replacement does not touch them, so they carry over unchanged.
-          law.paragraphs.splice(at, 1, { level: 'para' as const, id: para.id, marker: para.marker, heading: para.heading, context: para.context, text: '', children: payload })
+          const restated: LawNode = { level: 'para' as const, id: para.id, marker: para.marker, heading: para.heading, context: para.context, text: '', children: payload }
+          if (arrivesBeside(law, para)) {
+            law.paragraphs.splice(at, 0, restated)
+            arrive(law, restated)
+            return null
+          }
+          law.paragraphs.splice(at, 1, restated)
+          carry(law, para, restated)
           return null
         }
         for (const [i, para] of outgoing.entries()) {
@@ -1523,15 +1698,27 @@ function applyOne(law: StandingLaw, { op, payload, line }: Instruction, renamed:
           // text, as one unnumbered Absatz, and the Überschrift stays. With
           // „samt Überschrift" the one line cannot be both. Not for a
           // schedule, whose one line is as often its new title.
-          if (isLoneLine(replacement, para)) {
-            if (op.withHeading) return 'samt Überschrift, aber nur eine Zeile im neuen Text'
-            law.paragraphs.splice(at, 1, { ...para, level: 'para' as const, children: [makeNode('abs', '', '', replacement.heading ?? '')] })
+          const restated: LawNode = isLoneLine(replacement, para)
+            ? { ...para, level: 'para' as const, children: [makeNode('abs', '', '', replacement.heading ?? '')] }
+            : { ...replacement, level: 'para' as const, id: para.id, marker: para.marker, heading: replacement.heading ?? para.heading }
+          if (isLoneLine(replacement, para) && op.withHeading) return 'samt Überschrift, aber nur eine Zeile im neuen Text'
+          if (outgoing.length === 1 && arrivesBeside(law, para)) {
+            law.paragraphs.splice(at, 0, restated)
+            arrive(law, restated)
             continue
           }
-          law.paragraphs.splice(at, 1, { ...replacement, level: 'para' as const, id: para.id, marker: para.marker, heading: replacement.heading ?? para.heading })
+          law.paragraphs.splice(at, 1, restated)
+          carry(law, para, restated)
         }
         return null
       }
+      // „§ 110 Abs. 2a lautet:", and the line after „Der bisherige Abs. 2a
+      // des § 110 erhält die Bezeichnung ‚Abs. 2b'": the new Abs. 2a, while
+      // the standing one moves on with its text (BGBl. I Nr. 25/2026).
+      // Restated in place, that text was gone. Below the § no unit can stand
+      // beside another of its number for a while, as a § can
+      // (`arrivesBeside`), so the line is refused.
+      if (RUNS.get(law)?.formerUnitLater(op.target)) return 'Neufassung unter einer Nummer, deren bisherige Einheit eine spätere Zeile umbenennt'
       // A sub-unit run that changes length is the same form one level down:
       // "In § 1 wird der Abs. 3 durch folgende Abs. 3 bis 5 ersetzt" quietly
       // lost two Absätze before this existed (2026-09-09). It only applies
@@ -1840,14 +2027,22 @@ function applyOne(law: StandingLaw, { op, payload, line }: Instruction, renamed:
         // Of its own kind: a new § 1 beside an Anlage 1 is no collision — read by
         // the bare number, „Vor dem 2. Abschnitt wird folgender 1. Abschnitt
         // eingefügt" was refused as „§ 1 existiert bereits" (1. AußWV 2011).
-        for (const p of blocks) if (law.paragraphs.some((x) => x.id === p.id && !isSchedule(x.marker))) return `§ ${p.id} existiert bereits`
+        // A number the standing § still carries is free where a later line
+        // of the Novelle moves that one on (`mayShare`): „Nach § 14 wird
+        // folgender § 15 eingefügt" before „§ 15 erhält die Bezeichnung ‚16'".
+        for (const p of blocks) {
+          const holders = law.paragraphs.filter((x) => x.id === p.id && !isSchedule(x.marker))
+          if (holders.length > 0 && !mayShare(law, p.id, holders, `§ ${p.id} existiert bereits`)) return `§ ${p.id} existiert bereits`
+        }
+        const inserted = blocks.map((p): LawNode => ({ ...p, level: 'para' as const }))
         if (!anchor) {
           if (blocks.length !== op.childIds.length || blocks.some((p, i) => p.id !== op.childIds[i])) return `${op.anchor.para} — die eingefügten Paragraphen sind nicht die angekündigten`
-          law.paragraphs.splice(numberedSlot(law.paragraphs, blocks[0]!.id), 0, ...blocks.map((p) => ({ ...p, level: 'para' as const })))
-          return null
+          law.paragraphs.splice(numberedSlot(law.paragraphs, blocks[0]!.id), 0, ...inserted)
+        } else {
+          const at = law.paragraphs.indexOf(anchor)
+          law.paragraphs.splice(op.where === 'after' ? at + 1 : at, 0, ...inserted)
         }
-        const at = law.paragraphs.indexOf(anchor)
-        law.paragraphs.splice(op.where === 'after' ? at + 1 : at, 0, ...blocks.map((p) => ({ ...p, level: 'para' as const })))
+        for (const node of inserted) arrive(law, node)
         return null
       }
       // A sub-unit insert names its anchor at the same level inside the §,
@@ -2088,14 +2283,19 @@ function renumberBatch(law: StandingLaw, batch: readonly Pick<Instruction, 'op' 
   }
   const moving = new Set(moves.map((m) => m.node))
   for (const m of moves) {
-    const clash = m.siblings.find((n) => !moving.has(n) && n.level === m.level && n.id === m.id)
-    if (clash) return `Bezeichnung ${m.id} existiert bereits`
+    // At § level a number the standing § keeps until a later line moves it
+    // on (`mayShare`) is no collision — the ascending chains of E0399A69.
+    const holders = m.siblings.filter((n) => !moving.has(n) && n.level === m.level && n.id === m.id)
+    if (holders.length > 0 && !(m.level === 'para' && mayShare(law, m.id, holders, `Bezeichnung ${m.id} existiert bereits`))) return `Bezeichnung ${m.id} existiert bereits`
   }
   if (new Set(moves.map((m) => `${m.level}|${m.id}`)).size !== moves.length) return 'Zwei Einheiten erhalten dieselbe Bezeichnung'
+  const run = RUNS.get(law)
   for (const m of moves) {
-    renamed.push({ level: m.level, para: m.level === 'para' ? `§ ${m.id}` : m.para, from: m.node.id, to: m.id, batch: batchNo })
+    const unit = run && m.level === 'para' ? unitOf(run, m.node) : null
+    renamed.push({ level: m.level, para: m.level === 'para' ? `§ ${m.id}` : m.para, from: m.node.id, to: m.id, batch: batchNo, instruction: run?.index ?? -1, unit, origin: unit === null ? null : (run!.origin.get(unit) ?? null) })
     m.node.id = m.id
     m.node.marker = m.id === '' ? '' : m.level === 'para' ? `§ ${m.id}.` : m.level === 'abs' ? `(${m.id})` : m.level === 'lit' ? `${m.id})` : `${m.id}.`
+    if (m.level === 'para') arrive(law, m.node)
   }
   return null
 }
@@ -2113,16 +2313,34 @@ function renumberBatch(law: StandingLaw, batch: readonly Pick<Instruction, 'op' 
  * the outgoing units must be contiguous siblings, and no incoming id may
  * collide with a unit outside the run, which would shadow standing text.
  */
-function spliceRun(siblings: LawNode[], outgoing: LawNode[], incoming: LawNode[], level: NodeLevel): string | null {
+function spliceRun(siblings: LawNode[], outgoing: LawNode[], incoming: LawNode[], level: NodeLevel, law?: StandingLaw, moved = false): string | null {
   const positions = outgoing.map((n) => siblings.indexOf(n))
   if (positions.some((i) => i < 0)) return 'Zu ersetzende Einheit nicht am erwarteten Ort'
   const at = Math.min(...positions)
   const contiguous = positions.slice().sort((a, b) => a - b).every((pos, i) => pos === at + i)
   if (!contiguous) return `${outgoing.length} zu ersetzende Einheiten sind nicht zusammenhängend`
   if (incoming.some((n) => !n.id)) return 'Neuer Textblock ohne eigene Bezeichnung'
-  const survivors = new Set(siblings.filter((n) => !outgoing.includes(n)).map((n) => `${n.level}|${n.id}`))
-  for (const n of incoming) if (survivors.has(`${level}|${n.id}`)) return `${n.marker} existiert bereits`
-  siblings.splice(at, outgoing.length, ...incoming.map((n) => ({ ...n, level })))
+  const survivors = siblings.filter((n) => !outgoing.includes(n))
+  for (const n of incoming) {
+    // A § number the standing § keeps until a later line moves it on (`mayShare`).
+    const holders = survivors.filter((s) => s.level === level && s.id === n.id)
+    if (holders.length > 0 && !(law && level === 'para' && mayShare(law, n.id, holders, `${n.marker} existiert bereits`))) return `${n.marker} existiert bereits`
+  }
+  const nodes = incoming.map((n): LawNode => ({ ...n, level }))
+  siblings.splice(at, outgoing.length, ...nodes)
+  // Which § each new block is: one restated under its own number stays that
+  // §, one § replaced by one under another number is that § moved (`moved`,
+  // `applyOne`), every other block is a § the Novelle brings in.
+  if (law && level === 'para') {
+    for (const node of nodes) {
+      const same = outgoing.find((o) => o.id === node.id)
+      if (same) carry(law, same, node)
+      else if (moved) {
+        carry(law, outgoing[0]!, node)
+        arrive(law, node)
+      } else arrive(law, node)
+    }
+  }
   return null
 }
 
@@ -2235,12 +2453,82 @@ function cloneLaw(law: StandingLaw): StandingLaw {
 }
 
 /**
+ * Whether an instruction takes a § out of its number — moves it („erhält die
+ * Bezeichnung", „wird durch folgenden § 17 ersetzt", „… wird zu § 17 und
+ * lautet") or repeals it. Such a line means the § standing under the number
+ * from the start, every other line the one that arrived there (`RunContext`).
+ */
+function movesParagraphs({ op, line }: Instruction): boolean {
+  if (op.kind === 'renumber' || op.kind === 'delete') return op.target.level === 'para'
+  if (op.kind !== 'replace' || op.target.level !== 'para') return false
+  // „… wird zu § 17 und lautet" read as two clauses: the „lautet" names the
+  // number the line moves the § TO, and means the § that arrived there.
+  const to = renamedTo(line)
+  return op.run || (to !== null && to !== bareParaId(op.target.para))
+}
+
+/** „Der bisherige § 5", „die bisherigen Abs. 10 bis 13": a line that names units as they stood before the Novelle. */
+const FORMER_RE = /\bbisherigen?\b/i
+
+/** The § numbers an instruction takes their standing § out of (`movesParagraphs`). */
+function vacatedBy(instruction: Instruction): string[] {
+  if (!movesParagraphs(instruction)) return []
+  const a = opAddress(instruction.op)
+  return a && !isSchedule(a.para) ? [deepestId(a), ...a.siblings] : []
+}
+
+/**
  * Applies a Novelle. Instructions run in printed order — legistic drafting
  * assumes that, e.g. renumbering before a later instruction addresses the
  * new number.
+ *
+ * **Except that a number may stand twice for a while.** Ministries move §§
+ * upwards in the order of the old numbers: „Nach § 14 wird folgender § 15
+ * eingefügt", „§ 15 erhält die Bezeichnung ‚16'", „§ 16 wird durch folgenden
+ * § 17 ersetzt", … (E0399A69); 51/ME XXVIII inserts §§ 5 and 6 and only then
+ * moves the old §§ 5 to 7 on. Checked step by step every one of these
+ * collided with the § the next line moves away, and the whole chain was
+ * refused — 15 lines of E0399A69, eight §§ of 51/ME. So a § may take the
+ * number of the § standing there where a later line moves or repeals that
+ * one (`mayShare`), and lookups in between tell the two apart
+ * (`RunContext`). Whether the number was really freed is checked at the end:
+ * where it was not, the line that took it is refused, and the Novelle runs
+ * again — until no number stands twice.
  */
 export function applyNovelle(input: StandingLaw, instructions: readonly Instruction[]): ApplyReport {
+  const vacates = instructions.map(vacatedBy)
+  const refused = new Map<number, string>()
+  for (let round = 0; ; round++) {
+    const { report, stuck } = runNovelle(input, instructions, vacates, refused)
+    if (stuck.size === 0 || round > instructions.length) return report
+    for (const [index, reason] of stuck) refused.set(index, reason)
+  }
+}
+
+/** One run of `applyNovelle`, with the lines `refused` refused from the start; `stuck`: lines whose number stayed doubled. */
+function runNovelle(input: StandingLaw, instructions: readonly Instruction[], vacates: readonly string[][], refused: ReadonlyMap<number, string>): { report: ApplyReport; stuck: Map<number, string> } {
   const law = cloneLaw(input)
+  const former = instructions.map(({ line }) => FORMER_RE.test(line))
+  const run: RunContext = {
+    unit: new WeakMap(),
+    origin: new Map(),
+    next: 0,
+    arrived: new WeakSet(),
+    prefer: 'arrived',
+    index: 0,
+    last: 0,
+    touched: new Set(),
+    vacatedLater: (id) => vacates.some((ids, j) => j > run.last && !refused.has(j) && ids.includes(id)),
+    formerLater: (id) => vacates.some((ids, j) => j > run.last && !refused.has(j) && former[j] && ids.includes(id)),
+    formerUnitLater: (a) => instructions.some(({ op }, j) => j > run.last && !refused.has(j) && former[j] && op.kind === 'renumber' && renumbersUnit(op.target, a)),
+    shared: [],
+    pending: [],
+    arrivals: [],
+  }
+  for (const p of law.paragraphs) run.origin.set(unitOf(run, p), isSchedule(p.marker) ? (unitKey(p.marker) ?? p.id) : p.id)
+  RUNS.set(law, run)
+  /** The units each instruction acted on (`ApplyReport.touches`). */
+  const touched: Set<number>[] = []
   const results: ApplyResult[] = []
   const unresolved = new Set<string>()
   /**
@@ -2256,6 +2544,7 @@ export function applyNovelle(input: StandingLaw, instructions: readonly Instruct
   const batched: Instruction[] = []
   const renamed: Renaming[] = []
   for (let i = 0; i < instructions.length; i++) {
+    const first = i
     const instruction = instructions[i]!
     const { op, line } = instruction
     const target = opAddress(op)
@@ -2264,6 +2553,12 @@ export function applyNovelle(input: StandingLaw, instructions: readonly Instruct
     const idsBefore = producing ? new Set(law.paragraphs.map((p) => p.id)) : null
     const renamedBefore = renamed.length
     const fresh = target ? NEW_PARAGRAPH_RE.exec(target.raw) : null
+    run.index = i
+    run.last = i
+    run.touched = new Set()
+    run.pending = []
+    run.arrivals = []
+    run.prefer = movesParagraphs(instruction) ? 'standing' : 'arrived'
     let reason: string | null
     try {
       // "§ 107 Z 6 (neu) lautet:" addresses the numbering *after* an earlier
@@ -2295,16 +2590,19 @@ export function applyNovelle(input: StandingLaw, instructions: readonly Instruct
         // (IVS-Gesetz, 2026-09-09).
         const batch = [instruction]
         while (i + 1 < instructions.length && instructions[i + 1]!.op.kind === 'renumber' && instructions[i + 1]!.line === line) batch.push(instructions[++i]!)
-        reason = renumberBatch(law, batch, renamed)
+        run.last = i
+        reason = refused.get(first) ?? renumberBatch(law, batch, renamed)
         // One result per instruction, in instruction order — callers zip the two.
         for (const b of batch.slice(1)) {
           extra.push({ line: b.line, kind: 'renumber', applied: reason === null, reason, para: 'target' in b.op ? b.op.target.para : null })
           batched.push(b)
         }
-      } else reason = applyOne(law, instruction, renamed)
+      } else reason = refused.get(first) ?? applyOne(law, instruction, renamed)
     } catch (err) {
       reason = `Fehler beim Anwenden: ${String(err)}`
     }
+    if (reason === null) run.shared.push(...run.pending)
+    for (let k = first; k <= i; k++) touched[k] = run.touched
     if (reason === null && op.kind === 'renumber') {
       if (op.target.level === 'para') paragraphsRenumbered = true
       else if (para) renumberedIn.add(para)
@@ -2314,6 +2612,8 @@ export function applyNovelle(input: StandingLaw, instructions: readonly Instruct
     if (reason === null) {
       for (const r of renamed.slice(renamedBefore)) if (r.level === 'para' && r.to) produced.add(r.to)
       if (idsBefore) for (const p of law.paragraphs) if (!idsBefore.has(p.id)) produced.add(p.id)
+      // A number taken while its standing § still carried it is new all the same.
+      for (const p of run.arrivals) produced.add(p.id)
     }
     results.push({ line, kind: op.kind, applied: reason === null, reason, para }, ...extra)
     // Every § the address names: a failed „Die §§ 12a und 13 entfallen"
@@ -2330,5 +2630,15 @@ export function applyNovelle(input: StandingLaw, instructions: readonly Instruct
     extra.length = 0
     batched.length = 0
   }
-  return { law, results, unresolved, renamed }
+  // Every number one § again by the end — or the line that doubled it is
+  // refused, and the Novelle runs again without it.
+  const holders = new Map<string, number>()
+  for (const p of law.paragraphs) if (!isSchedule(p.marker)) holders.set(p.id, (holders.get(p.id) ?? 0) + 1)
+  const stuck = new Map<number, string>()
+  for (const s of run.shared) if ((holders.get(s.id) ?? 0) > 1 && !stuck.has(s.index)) stuck.set(s.index, s.reason)
+  const touches = (index: number, node: LawNode): boolean => {
+    const unit = run.unit.get(node)
+    return unit !== undefined && (touched[index]?.has(unit) ?? false)
+  }
+  return { report: { law, results, unresolved, renamed, touches }, stuck }
 }
