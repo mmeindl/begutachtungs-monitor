@@ -353,6 +353,14 @@ interface Amendment {
    * instruction further on (`amendmentsOf`).
    */
   gap: boolean
+  /**
+   * The sentence an Artikel repeals a whole law with, in place of
+   * instructions: „Das Kärntner Mindestsicherungsgesetz – K-MSG, LGBl. Nr.
+   * 15/2007, …, tritt mit Inkrafttreten des Art. I außer Kraft." (1082/2019,
+   * 27.10.2026: an Artikel without instructions, so the page did not say
+   * that the law goes).
+   */
+  repeal: string | null
 }
 
 /**
@@ -411,7 +419,10 @@ export function promulgatedName(text: string): string | null {
 /** What every Novellierungsanordnung says somewhere in its first lines. */
 const VERB_RE = /\b(?:lautet|lauten|eingefügt|angefügt|entfällt|entfallen|ersetzt|aufgehoben|erhält|erhalten|geändert|wird|werden|tritt|treten)\b/
 const ARTIKEL_RE = /^Artikel\s+[IVXL]+$/
-const AMENDS_RE = /^Änderung\s+de[sr]\s+(.+)$/
+/** „Änderung des Kärntner …" — and „Aufhebung des Kärntner Mindestsicherungsgesetzes" over a repeal (1082/2019). */
+const AMENDS_RE = /^(?:Änderung|Aufhebung)\s+de[sr]\s+(.+)$/
+/** How a sentence repeals a law whole: „… tritt mit Inkrafttreten des Art. I außer Kraft.", „… wird aufgehoben." */
+const REPEAL_RE = /\b(?:tritt|treten)\b.*\baußer\s+Kraft\.$|\b(?:wird|werden)\b.*\baufgehoben\.$/
 
 /**
  * The right column into the laws it amends and their instructions. An
@@ -446,7 +457,7 @@ export function amendmentsOf(lines: readonly KtnLine[], f: Frame): Amendment[] {
   // open let „Änderung des Kärntner Familienförderungsgesetzes" pass as text
   // (2314/2021), and the Artikel was read as no law at all.
   const start = (artikel: string | null = null) => {
-    current = { title: null, named: null, artikel, instructions: [], gap: false }
+    current = { title: null, named: null, artikel, instructions: [], gap: false, repeal: null }
     out.push(current)
     open = null
     headOpen = false
@@ -563,6 +574,14 @@ export function amendmentsOf(lines: readonly KtnLine[], f: Frame): Amendment[] {
             cur.named ??= promulgatedName(sentence)
             awaitFirst = true
           }
+          promulgation = null
+        } else if (/\.$/.test(l.text) && REPEAL_RE.test(promulgation) && promulgatedName(promulgation)) {
+          // The sentence repeals the law it names, whole: the Artikel has no instruction.
+          const sentence = promulgation
+          if (!a) start()
+          const cur = current as unknown as Amendment
+          cur.repeal = sentence
+          cur.named ??= promulgatedName(sentence)
           promulgation = null
         }
         continue
@@ -1203,7 +1222,8 @@ export function ktnTguReading(pages: readonly AnnexPage[], laws: readonly string
   const lf = frameOf(leftLines)
   const rf = frameOf(rightLines)
   const lefts = leftLawsOf(leftLines, lf)
-  const amendments = amendmentsOf(rightLines, rf).filter((a) => a.instructions.length)
+  const all = amendmentsOf(rightLines, rf)
+  const amendments = all.filter((a) => a.instructions.length)
   // An Artikel that amends another Novelle's article amends no law of the left column (227/2022).
   const ofNovelle = (a: Amendment) => a.title !== null && OF_NOVELLE_RE.test(a.title)
   const ofLaws = amendments.filter((a) => !ofNovelle(a))
@@ -1211,6 +1231,12 @@ export function ktnTguReading(pages: readonly AnnexPage[], laws: readonly string
   const nameOf = (text: string | null) => (text ? laws.find((l) => nameMatches(l, text)) ?? null : null)
   const out: TguParagraph[] = []
   const reaches: { law: string | null; instruction: string }[] = []
+  // A law the Novelle repeals whole: its sentence said for that law, as the
+  // document prints it (1082/2019). Its §§ the left column does not print.
+  for (const a of all) {
+    if (!a.repeal || a.instructions.length) continue
+    reaches.push({ law: nameOf(a.title) ?? nameOf(a.named) ?? (a.named ? lawName(a.named) : a.title ? nominative(a.title) : a.artikel), instruction: a.repeal })
+  }
   amendments.forEach((a) => {
     if (ofNovelle(a)) {
       const law = novelleLabel(a.title!)

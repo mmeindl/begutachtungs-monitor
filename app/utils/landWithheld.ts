@@ -132,9 +132,11 @@ export function withheldNotes(items: readonly LandWithheld[], { alone = false } 
 /**
  * An instruction of the Novelle that reaches §§ it does not name, said for
  * its law (26.10.2026) — „Im V. Abschnitt wird jeweils …", „Im ganzen Gesetz
- * …", or one that changes another Novelle's article: quoted as the document
- * prints it, so the §§ listed are not read as all it changes. The sentence
- * after it says nothing of §§, since not every such instruction reaches one.
+ * …", or one that changes another Novelle's article — or the sentence that
+ * repeals a law whole (27.10.2026): quoted as the document prints it, so the
+ * §§ listed are not read as all it changes. The sentence after it says
+ * nothing of §§, since not every such instruction reaches one, and holds
+ * where nothing is left to compose.
  */
 export function reachesNote(): { lead: string; after: string } {
   return { lead: 'Außerdem ordnet die Novelle an:', after: 'Den Wortlaut, der sich daraus ergibt, setzt der Monitor nicht selbst zusammen.' }

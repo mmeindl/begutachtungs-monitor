@@ -474,3 +474,20 @@ describe('ktnTguParagraphs — a head without its colon (27.10.2026)', () => {
     expect(ktnTguParagraphs([page([...leftLaw(), ...right])], laws).map((p) => [p.number, p.because ?? null])).toEqual([['6', 'wording']])
   })
 })
+
+describe('ktnTguReading — a law repealed whole (27.10.2026)', () => {
+  it('says the sentence that repeals a law for that law, and pairs the other Artikel as before (1082/2019)', () => {
+    const right = [
+      centre(R, 'Artikel I', 497),
+      centre(R, 'Aufhebung des Kärntner Altgesetzes', 485),
+      absatz(R, 'Das Kärntner Altgesetz – K-AG, LGBl. Nr. 1/2000, in der Fassung des Gesetzes', 473),
+      body(R, 'LGBl. Nr. 2/2010, tritt mit Inkrafttreten dieses Gesetzes außer Kraft.', 461),
+      centre(R, 'Artikel II', 449),
+      centre(R, 'Änderung des Kärntner Beispielgesetzes', 437),
+      body(R, '1. § 7 entfällt.', 425),
+    ]
+    const r = ktnTguReading([page([...leftLaw(), ...right])], ['Kärntner Beispielgesetz'])
+    expect(r.paragraphs.map((p) => [p.law, p.number, p.unread ?? false])).toEqual([['Kärntner Beispielgesetz', '7', false]])
+    expect(r.reaches).toEqual([{ law: 'Kärntner Altgesetz', instruction: 'Das Kärntner Altgesetz – K-AG, LGBl. Nr. 1/2000, in der Fassung des Gesetzes LGBl. Nr. 2/2010, tritt mit Inkrafttreten dieses Gesetzes außer Kraft.' }])
+  })
+})

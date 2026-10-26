@@ -294,7 +294,8 @@ export interface LandLawDiffResponse {
   /**
    * Instructions of the Novelle that reach §§ they do not name — „Im V.
    * Abschnitt wird jeweils …", „Im ganzen Gesetz …" — quoted per law, so
-   * the §§ listed are not read as all it changes (26.10.2026). Only
+   * the §§ listed are not read as all it changes (26.10.2026); and the
+   * sentence that repeals a law whole, said for that law (27.10.2026). Only
    * `geltend → entwurf`.
    */
   reaches?: { law: string | null; instruction: string }[]
