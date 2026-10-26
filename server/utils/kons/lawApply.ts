@@ -1747,6 +1747,31 @@ function applyOne(law: StandingLaw, { op, payload, line }: Instruction, renamed:
         if (!parent) return 'Elternknoten nicht gefunden'
         return spliceRun(parent.children, outgoing, payload, level)
       }
+      // As many blocks as units, under other designations: „In § 28 werden
+      // Z 3 bis 5 durch folgende Z 4 bis 6 ersetzt" (114/ME XXVIII), „Abs. 5
+      // wird durch folgenden Abs. 2 ersetzt" (74/ME, BFA-VG § 19). Installed
+      // one to one below, each unit kept its OLD number with the new text —
+      // Z 3 carried the new Z 4 — and neither the guard nor the oracle reads
+      // a designation to see it by. The § level had the same fault until
+      // 26.10.2026 and the same remedy: a run like any other (`spliceRun`),
+      // out go the units named, in the new ones under their own numbers,
+      // where the line says so (`run`). A „lautet" whose text carries another
+      // number is a payload we misread.
+      const other = otherDesignation(op, payload)
+      if (other) {
+        const level = other.level
+        if (!op.run) return `Neuer Text trägt eine andere Bezeichnung (${other.marker}), die die Anweisung nicht ankündigt`
+        if (payload.some((b) => b.level !== level || !b.id)) return 'Neuer Text mit und ohne eigene Bezeichnung'
+        const outgoing: LawNode[] = []
+        for (const id of ids) {
+          const node = resolveTarget(law, op.target, id)
+          if (!node) return `Nicht im geltenden Text: ${op.target.raw.slice(0, 60)}`
+          outgoing.push(node)
+        }
+        const parent = parentOf(law, outgoing[0]!)
+        if (!parent) return 'Elternknoten nicht gefunden'
+        return spliceRun(parent.children, outgoing, payload, level)
+      }
       // „§ 1 Z 1 bis 5 lautet:" where Z 5 is new (Waldresilienzfondsgesetz):
       // the run below the § — the form `Die §§ 34a bis 34e lauten` has at §
       // level, under the same condition, the blocks ARE the named units,
@@ -2402,6 +2427,23 @@ function deepestId(a: NovaoAddress): string {
   return a.lit ?? a.z ?? a.abs ?? bareParaId(a.para) ?? ''
 }
 
+/**
+ * The first block of a replacement below the § that carries another
+ * designation than the unit it stands for — „Z 3 bis 5 werden durch folgende
+ * Z 4 bis 6 ersetzt", as many blocks as units (`applyOne`). Null where every
+ * block keeps its unit's number, or the count differs (a run of another
+ * length, which `spliceRun` installs under the new numbers anyway). `payload`
+ * as `applyOne` reads it, unwrapped (`unwrapParaPayload`).
+ */
+function otherDesignation(op: NovaoOp, payload: readonly LawNode[]): LawNode | null {
+  if (op.kind !== 'replace' || op.target.satz || op.target.halbsatz) return null
+  const level = op.target.level
+  if (level !== 'abs' && level !== 'z' && level !== 'lit') return null
+  const ids = [deepestId(op.target), ...op.target.siblings]
+  if (payload.length !== ids.length) return null
+  return payload.find((b, i) => b.level === level && b.id !== '' && b.id !== ids[i]) ?? null
+}
+
 /** All nodes an address scopes over — several when the address lists siblings. */
 function scopeOf(law: StandingLaw, a: NovaoAddress): LawNode[] | null {
   if (a.level === 'document') return law.paragraphs
@@ -2672,6 +2714,9 @@ function runNovelle(input: StandingLaw, instructions: readonly Instruction[], va
     }
     // A § replaced by one under another number has moved as well (`applyOne`).
     if (reason === null && op.kind === 'replace' && renamed.length > renamedBefore) paragraphsRenumbered = true
+    // And units below it („Abs. 5 wird durch folgenden Abs. 2 ersetzt"): a
+    // later „Abs. 2 (neu)" means the new one (`otherDesignation`).
+    if (reason === null && op.kind === 'replace' && para && op.target.level !== 'para' && otherDesignation(op, unwrapParaPayload(instruction.payload, op.target))) renumberedIn.add(para)
     if (reason === null) {
       for (const r of renamed.slice(renamedBefore)) if (r.level === 'para' && r.to) produced.add(r.to)
       if (idsBefore) for (const p of law.paragraphs) if (!idsBefore.has(p.id)) produced.add(p.id)

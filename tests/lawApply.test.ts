@@ -769,6 +769,35 @@ describe('renumbering (2026-09-09)', () => {
   })
 })
 
+describe('a unit replaced by one under another designation (26.10.2026)', () => {
+  const l = (): StandingLaw => ({ paragraphs: [para('19', 'Neunzehn', ['Eins.', 'Zwei.', 'Drei.', 'Vier.', 'Fünf.'])] })
+  const absaetze = (out: StandingLaw) => out.paragraphs[0]!.children.map((c) => `${c.marker} ${c.text}`)
+
+  it('installs the new units under their own designations (74/ME XXVIII, BFA-VG § 19)', () => {
+    // One to one, Abs. 5 kept its number and carried the text of the new Abs. 2.
+    const { law: out, results } = run(l(), instr('In § 19 entfallen die Abs. 2 bis 4; Abs. 5 wird durch folgenden Abs. 2 ersetzt:', ['(2) Neu zwei.']))
+    expect(results.map((r) => r.reason)).toEqual([null, null])
+    expect(absaetze(out)).toEqual(['(1) Eins.', '(2) Neu zwei.'])
+  })
+
+  it('licenses a later „(neu)" on the new number', () => {
+    const { law: out, results } = run(
+      l(),
+      instr('In § 19 entfallen die Abs. 2 bis 4; Abs. 5 wird durch folgenden Abs. 2 ersetzt:', ['(2) Neu zwei.']),
+      instr('In § 19 Abs. 2 (neu) wird das Wort "Neu" durch das Wort "Nunmehr" ersetzt.'),
+    )
+    expect(results.map((r) => r.reason)).toEqual([null, null, null])
+    expect(absaetze(out)).toEqual(['(1) Eins.', '(2) Nunmehr zwei.'])
+  })
+
+  it('refuses a „lautet" whose text carries another number, and a new number another unit still holds', () => {
+    expect(run(l(), instr('§ 19 Abs. 5 lautet:', ['(2) Neu zwei.'])).results[0]!.reason).toBe('Neuer Text trägt eine andere Bezeichnung ((2)), die die Anweisung nicht ankündigt')
+    const { law: out, results } = run(l(), instr('In § 19 werden die Abs. 2 und 3 durch folgende Abs. 3 und 4 ersetzt:', ['(3) Neu drei.', '(4) Neu vier.']))
+    expect(results[0]!.reason).toBe('(4) existiert bereits')
+    expect(absaetze(out)).toEqual(absaetze(l()))
+  })
+})
+
 describe('a § the Novelle brings into being (22.10.2026)', () => {
   const standing = (): StandingLaw => ({ paragraphs: [para('43', 'Alt', ['Text des alten § 43.']), para('44', 'Stehend', ['Absatz 1 des stehenden § 44.'])] })
 
