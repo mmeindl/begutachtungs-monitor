@@ -134,3 +134,23 @@ describe('the list never waits for the map, and a failure refutes nothing', () =
     }
   })
 })
+
+describe('the builds take turns', () => {
+  it('decides one draft at a time across every Land and window, and still finishes each', async () => {
+    let deciding = 0
+    let most = 0
+    resolveKundmachung.mockImplementation(async () => {
+      deciding++
+      most = Math.max(most, deciding)
+      await new Promise((resolve) => setTimeout(resolve, 5))
+      deciding--
+      return { value: 'widerlegt', complete: true } as never
+    })
+    const sbg = [draft('sbg-1', found('LGBl. Nr. 1/2025')), draft('sbg-2', found('LGBl. Nr. 2/2025'))]
+    const ooe = [draft('ooe-1', found('LGBl. Nr. 3/2025'), { land: 'ooe', kind: 'verordnung' })]
+    // Two Länder in one period and Salzburg in another: three builds at once.
+    const lists = await Promise.all([withListVerdicts([...sbg, ...ooe], 'period-a'), withListVerdicts(sbg, 'period-b')])
+    expect(most).toBe(1)
+    expect(lists.flat().map((d) => d.lgblSearch)).toEqual(['widerlegt', 'widerlegt', 'widerlegt', 'widerlegt', 'widerlegt'])
+  })
+})

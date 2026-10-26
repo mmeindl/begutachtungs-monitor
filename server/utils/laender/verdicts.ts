@@ -28,6 +28,7 @@ import { DERIVED_CACHE } from '../cache/base'
 import { keepIncompleteFor, type Gathered } from '../cache/gathered'
 import { withinBudget } from '../http/budget'
 import { mapWithConcurrency } from '../pool'
+import { createSlots } from '../upstream/slots'
 import { RESOLVED, resolveKundmachung, type KundmachungVerdict } from './texts/kundmachung'
 
 /** What the page decided, as much of it as a list row shows. */
@@ -77,8 +78,19 @@ export function decidedByText(land: LandCode, d: LandConsultation): boolean {
  * build lifted the heap's peak from 212 to 315 MB; one at a time keeps two
  * large Vorlagen from being parsed at once, at the price of a slower build
  * nobody waits for.
+ *
+ * And one at a time ACROSS the builds (26.10.2026). Every period's list
+ * starts the map of its own window — nine periods have one (`gpWindow`),
+ * and Salzburg's register reaches back to 2004 — and each Land decided by
+ * text builds its own, so a reader stepping through the period chooser set
+ * as many builds deciding side by side, each parsing its Vorlagen:
+ * `CONCURRENCY` held every build to one decision, and nothing held the
+ * builds to one another. The slot below is the process's: builds take turns
+ * decision by decision, so a short one is not stuck behind a long one. A
+ * draft's own page decides without it — that is the read a reader waits for.
  */
 const CONCURRENCY = 1
+const DECIDING = createSlots(1)
 const VERDICT_MAP_TTL_S = 60 * 60 * 6
 const INCOMPLETE_MAP_TTL_MS = 10 * 60 * 1000
 /** How long a list waits for the map before it answers with the title search. */
@@ -93,7 +105,8 @@ const landVerdictMap = defineCachedFunction(
   async (land: LandCode, windowKey: string, drafts: readonly LandConsultation[]): Promise<Gathered<Record<string, ListVerdict>>> => {
     const reads = await mapWithConcurrency(drafts, CONCURRENCY, async (d) => {
       const stage = d.stage as LandStage
-      const resolved = await resolveKundmachung(land, d).catch(() => null)
+      const release = await DECIDING.acquire()
+      const resolved = await resolveKundmachung(land, d).catch(() => null).finally(release)
       if (!resolved) return { id: d.id, verdict: null, complete: false }
       // As the page applies it: a refutation needs every read anyway, and a
       // decision whose side reads failed (the committee's report) stands.
