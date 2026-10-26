@@ -83,7 +83,9 @@ function reasonsFor(u: LawDiffUnit) {
   if (props.from !== 'geltend') return []
   const n = /^§(\S+)$/.exec(u.id)?.[1]
   if (!n) return []
-  return (explanations.value?.particular ?? []).filter((e) => e.paras.includes(n) && (!e.law || !u.article || lawKey(e.law) === lawKey(u.article)))
+  // A renamed law's group carries RIS's name, its passages the name the draft
+  // prints (`printedAs`): either name finds them.
+  return (explanations.value?.particular ?? []).filter((e) => e.paras.includes(n) && (!e.law || !u.article || lawKey(e.law) === lawKey(u.article) || lawKey(e.law) === lawKey(printedAs.value.get(u.article) ?? null)))
 }
 
 /* The Land's reasoning, draft against Vorlage, at each change after the
