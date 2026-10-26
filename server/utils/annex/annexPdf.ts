@@ -39,6 +39,8 @@ export interface AnnexItem {
   y: number
   width: number
   text: string
+  /** The run's type size, where pdf.js gives it (`uprightRuns`): what tells a superscript from its line (`raisedOntoTheirLines`). */
+  size?: number
 }
 
 /**
@@ -134,9 +136,72 @@ function baselines(page: AnnexPage): AnnexItem[][] {
     nearby.set(bucket, [...(nearby.get(bucket) ?? []), groups.length])
     groups.push({ y: item.y, items: [item] })
   }
-  const out = groups.map((g) => g.items)
+  const out = raisedOntoTheirLines(groups.map((g) => g.items))
   BASELINES.set(page, out)
   return out
+}
+
+/**
+ * A superscript's type against its line's, at most, and how far above that
+ * line's baseline it stands, at most — both as shares of the line's type.
+ * Word sets „m²", „1)" and „(Anm. 1)" in type of 65 % and raises them by
+ * 35 %, 3,48 pt over 9,96 (the Bund's annexes, Salzburg's), some of
+ * Salzburg's by 46 %.
+ */
+const SUPERSCRIPT_SIZE = 0.8
+const SUPERSCRIPT_RAISE = 0.6
+/** How far after the run it follows a superscript may begin: a word space, „gemäß (Anm. 1)". */
+const SUPERSCRIPT_GAP = 3.5
+
+/**
+ * The superscripts of a page, each on the line it is raised over.
+ *
+ * Raised further than a baseline's tolerance, a superscript stood on a
+ * baseline of its own, between its line and the one above, and was read as
+ * a line of its own — joined to the end of the line above it: „über- 2 deckte
+ * Fläche … nicht mehr als 35 m betragen." (Salzburg 25409, § 7b; 26.10.2026).
+ * It belongs to the run it follows: one in larger type on a baseline below,
+ * ending where it begins or a word space before, and it sits in a gap of
+ * that line or at its end, never over its text. There it is a word of its
+ * own, as RIS's `<sup>` is (`stripMarkup`): „35 m 2 betragen.".
+ *
+ * Only where pdf.js gives the runs' type (`AnnexItem.size`).
+ */
+function raisedOntoTheirLines(groups: AnnexItem[][]): AnnexItem[][] {
+  const largest = Math.max(0, ...groups.flat().map((run) => run.size ?? 0))
+  const into = new Map<AnnexItem[], AnnexItem[]>()
+  const moved = new Set<AnnexItem>()
+  for (const group of groups) {
+    for (const run of group) {
+      if (run.size === undefined || run.size > SUPERSCRIPT_SIZE * largest) continue
+      const line = lineRaisedOver(run, groups, group)
+      if (!line) continue
+      moved.add(run)
+      into.set(line, [...(into.get(line) ?? []), { ...run, text: ` ${run.text.trim()} ` }])
+    }
+  }
+  if (!moved.size) return groups
+  return groups.map((group) => [...group.filter((run) => !moved.has(run)), ...(into.get(group) ?? [])]).filter((group) => group.length > 0)
+}
+
+/** The line a run is a superscript of, or null (`raisedOntoTheirLines`): of those it may be, the nearest below. */
+function lineRaisedOver(run: AnnexItem, groups: readonly AnnexItem[][], own: readonly AnnexItem[]): AnnexItem[] | null {
+  let best: AnnexItem[] | null = null
+  let nearest = Number.POSITIVE_INFINITY
+  for (const group of groups) {
+    if (group === own) continue
+    for (const before of group) {
+      if (before.size === undefined || run.size! > SUPERSCRIPT_SIZE * before.size) continue
+      const raise = run.y - before.y
+      if (raise <= 0 || raise > SUPERSCRIPT_RAISE * before.size || raise >= nearest) continue
+      const gap = run.x - (before.x + before.width)
+      if (gap < -1 || gap > SUPERSCRIPT_GAP) continue
+      if (group.some((o) => run.x < o.x + o.width - 1 && run.x + run.width > o.x + 1)) continue
+      best = group
+      nearest = raise
+    }
+  }
+  return best
 }
 
 /**

@@ -1102,6 +1102,30 @@ describe('a line-final hyphen', () => {
   })
 })
 
+describe('a superscript (Salzburg 25409, 26.10.2026)', () => {
+  // „m²": the „2" set in type of 6,48 and raised 3,48 pt over a line of
+  // 9,96 — a baseline of its own, read as a line between its line and the
+  // one above: „über- 2 deckte Fläche … 35 m betragen.".
+  const SIZE = 9.96
+  const typed = (x: number, y: number, text: string, width: number, size: number | undefined): AnnexItem => ({ x, y, width, text, ...(size ? { size } : {}) })
+  const read = (sized: boolean) => {
+    const items = [LEFT_X, RIGHT_X].flatMap((x) => [
+      typed(x, 700, '§ 7b. (1) Die von Zelten über-', 356, sized ? SIZE : undefined),
+      typed(x, 689, 'deckte Fläche darf nicht mehr als 35 m', 180, sized ? SIZE : undefined),
+      typed(x + 180, 692.48, '2 ', 5.8, sized ? 6.48 : undefined),
+      typed(x + 185.8, 689, 'betragen.', 37, sized ? SIZE : undefined),
+    ])
+    // Salzburg's layout, where the word after a hyphen decides (`hyphensByWord`).
+    return parseAnnexPdf([headerPage(), pageOf(items)], ONE_LAW, { hyphensByWord: true }).rows.find((r) => r.gld === '§ 7b.')!.current
+  }
+
+  it('is read on the line it is raised over, as a word of its own — as RIS reads `<sup>`', () => {
+    expect(read(true)).toBe('§ 7b. (1) Die von Zelten überdeckte Fläche darf nicht mehr als 35 m 2 betragen.')
+    // Without the type sizes, it stands where its baseline puts it.
+    expect(read(false)).toBe('§ 7b. (1) Die von Zelten über- 2 deckte Fläche darf nicht mehr als 35 m betragen.')
+  })
+})
+
 describe('an entry of the annex’s own table of contents', () => {
   // Five one-sided rows of the corpus were entries of a reprinted
   // Inhaltsverzeichnis for §§ the annex never prints — announced as new law.
@@ -1180,7 +1204,7 @@ describe('uprightRuns', () => {
     // through bit for bit: x is the run's own x, y grows upward.
     const upright = uprightRuns([run([10, 0, 0, 10, 60, 700], 76, 'Geltende Fassung')], A4)
     expect(upright.width).toBeCloseTo(595.32, 2)
-    expect(upright.items[0]).toMatchObject({ x: 60, y: 700, width: 76, text: 'Geltende Fassung' })
+    expect(upright.items[0]).toMatchObject({ x: 60, y: 700, width: 76, text: 'Geltende Fassung', size: 10 })
   })
 
   // The UWG annex sets `/Rotate 0` and turns the *text matrix* instead: every
@@ -1206,6 +1230,8 @@ describe('uprightRuns', () => {
     // on — and the advance along the baseline is unchanged by a quarter turn.
     expect(below!.y).toBeLessThan(current!.y)
     expect(below!.width).toBe(63)
+    // …and so is the type size, which tells a superscript from its line.
+    expect(below!.size).toBe(10)
   })
 
   it('finds the two columns of a turned page where the parse expects them', () => {

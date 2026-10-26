@@ -124,7 +124,8 @@ export function uprightRuns(runs: readonly RawRun[], viewport: RawViewport): Ann
 
   const items: AnnexItem[] = placed.map((run) => {
     const at = place(run.m[4], run.m[5])
-    return { x: at.x - minX, y: at.y - minY, width: run.width, text: run.text }
+    // The type size: the length of the run's own vertical axis, which a quarter turn does not change.
+    return { x: at.x - minX, y: at.y - minY, width: run.width, text: run.text, size: Math.hypot(run.m[2], run.m[3]) }
   })
   return { width, items, geometry: { runs: withText, offTurn: withText - majority[1], skewed } }
 }
