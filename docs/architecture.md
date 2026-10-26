@@ -13980,8 +13980,8 @@ das als einziges von 73 oberösterreichischen Dokumenten zweispaltig ist.
   vergleicht die Seite nach Nummer und sagt über der Liste, dass die Novelle
   umnummeriert. Oö. 2021-16019: 22 von 30 Verschiebungen stehen jetzt
   „unverändert", wo ganze Texte als geändert standen. Der Gesetzesvergleich
-  des Bundes (ME → RV) schreibt eine Umnummerierung weiter „(im Entwurf § 13)"
-  — offen, ob angleichen.
+  des Bundes (ME → RV und weiter) schrieb „(im Entwurf § 13)"; seit demselben
+  Abend schreibt er es ebenso — ein Zeichen, eine Bedeutung.
 - *Ohne Wörter keine Ähnlichkeit* (`diff/lawDiff.ts`): Eine Einheit aus
   lauter „…" paarte über Nummern hinweg (16019 § 63 „unverändert (in der
   geltenden Fassung § 57a)"); jetzt nur nach Überschrift oder Nummer. Beim

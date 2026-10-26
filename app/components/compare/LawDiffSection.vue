@@ -210,6 +210,10 @@ const heading = scope === 'parlament'
   ? PARLIAMENT_COMPARISON_QUESTION
   : lawStationPairQuestion(scopeDefault.from, scopeDefault.to)
 const fromLabel = computed(() => LAW_STATION_LABEL[pair.value.from])
+/* A unit the later text numbers otherwise: „§ 13 → § 9", as the Beilage
+   (`TextComparisonSection`) and the Länder comparisons write it (26.10.2026)
+   — it replaced „(im Entwurf § 13)", so one sign means one thing. */
+const movedFrom = (u: LawDiffUnit) => (u.fromId && u.fromId !== u.id ? displayId(u.fromId) : null)
 const toLabel = computed(() => LAW_STATION_LABEL[pair.value.to])
 
 /** The three sources of a name and their order live in `#shared/utils/unitName`. */
@@ -558,10 +562,10 @@ const droppedNote = computed(() =>
                   </summary>
                   <div class="space-y-3 px-4 pb-3 pl-10 text-sm leading-relaxed text-ink-secondary">
                     <p v-for="u in b.units" :key="diffUnitKey(u.unit)" class="hyphens-auto">
-                      <span class="font-medium text-ink">{{ displayId(u.unit.id) }}</span>
+                      <span class="font-medium text-ink"><template v-if="movedFrom(u.unit)">{{ movedFrom(u.unit) }}<span aria-hidden="true">&nbsp;→ </span><span class="sr-only"> wird zu </span></template>{{ displayId(u.unit.id) }}</span>
                       <!-- &nbsp;, not a space: Vue drops a whitespace-only first text node, and the heading stood glued to the number („§ 10Geschäftsordnung"). -->
                       <span v-if="u.label" class="font-medium text-ink">&nbsp;{{ u.label }}</span>
-                      <span v-else-if="u.extra"> {{ u.extra }}</span>
+                      <span v-else-if="u.extra">&nbsp;{{ u.extra }}</span>
                       <span> — {{ u.unit.toText }}</span>
                     </p>
                   </div>
@@ -575,10 +579,8 @@ const droppedNote = computed(() =>
                        several Absätze, cannot put them there at all. One shape
                        for both sections: what this is, then how it changed. -->
                   <p class="mb-1 flex flex-wrap items-baseline gap-x-2 gap-y-1 text-sm">
-                    <span class="font-medium text-ink">
-                      {{ displayId(b.unit.id) }}
-                      <span v-if="b.unit.fromId && b.unit.fromId !== b.unit.id" class="font-normal text-ink-muted">({{ fromLabel === 'Ministerialentwurf' ? 'im Entwurf' : `in der ${fromLabel}` }} {{ displayId(b.unit.fromId) }})</span>
-                    </span>
+                    <!-- The arrow is for the eye; a screen reader hears „wird zu". -->
+                    <span class="font-medium text-ink"><template v-if="movedFrom(b.unit)">{{ movedFrom(b.unit) }}<span aria-hidden="true">&nbsp;→ </span><span class="sr-only"> wird zu </span></template>{{ displayId(b.unit.id) }}</span>
                     <span v-if="b.label" class="min-w-0 text-ink-secondary">{{ b.label }}</span>
                     <span v-else-if="b.extra" class="min-w-0 text-ink-secondary">{{ b.extra }}</span>
                   </p>
