@@ -38,6 +38,12 @@ export type ConsolidatedWithheldCause =
   | 'entfaellt'
   /** A package whose annex marks no law boundaries: no § can be attributed to one law of it. */
   | 'anhang-ungeteilt'
+  /**
+   * A § of a law the draft enacts anew rather than amends, which the annex
+   * sets against the law it replaces: there are no instructions to apply,
+   * and the draft prints the whole new text itself (`enactedParagraphs`).
+   */
+  | 'neu-erlassen'
 
 /**
  * A § the draft changes and the Lesefassung does not show — with the reason,

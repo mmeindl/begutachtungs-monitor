@@ -138,6 +138,15 @@ function announced(before: StandingLaw, id: string, beforeTree: LawNode | null, 
   // A unit that cannot be read is charged, and at least one always is.
   const carrying = (op: Extract<Instruction['op'], { kind: 'replacePhrase' | 'insertPhrase' | 'deletePhrase' }>, needle: string): (string | null)[] => {
     const t = op.target
+    // The whole text: charged where this § carries the phrase, and as often
+    // as it does. The line reaches every § of its law, and most of them
+    // carry nothing of it — charged once each, the six §§ of the Fluorierte
+    // Treibhausgase-Gesetz the annex had confirmed failed the guard the
+    // moment the line was read (145/ME XXVIII, 26.10.2026).
+    if (t.level === 'document') {
+      const own = beforeTree ? plainText(beforeTree) : null
+      return own !== null && own.includes(needle) ? [own] : []
+    }
     const units = t.satz || t.level !== 'para' ? [t.lit ?? t.z ?? t.abs ?? id, ...t.siblings] : [null]
     const scopes = units.map((unit) => (unit !== null ? unitText(op, unit) : beforeTree ? plainText(beforeTree) : null))
     const hit = scopes.filter((scope) => scope === null || scope.includes(needle))

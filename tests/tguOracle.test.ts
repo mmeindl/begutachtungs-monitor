@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { KEPT_DELETION_NOTE, absatzSequence, keptDeletion, oracleVerdict, paraIdOfGld, paragraphRows, rowsByParagraph, stripMarkers } from '../server/utils/kons/tguOracle'
+import { KEPT_DELETION_NOTE, absatzSequence, annexChangedUnits, keptDeletion, oracleVerdict, paraIdOfGld, paragraphRows, rowsByParagraph, someDrawers, stripMarkers } from '../server/utils/kons/tguOracle'
 import type { LawNode } from '../server/utils/lawtext/konsTree'
 import type { ComparisonRow } from '../server/utils/annex/comparisonRows'
 
@@ -763,5 +763,40 @@ describe('rowsByParagraph — a § filed under the designation it carries after 
       moved('(3) Als Verurteilung ist anzusehen jedes Erkenntnis.', '1. „Verurteilung" jedes Erkenntnis.', null, '§ 1a.'),
     ].map((r) => ({ ...r, para: '§ 2.' })))
     expect(paragraphRows(grouped, '1a').map((r) => r.current)).toEqual(['', ''])
+  })
+})
+
+describe('Kapitel numbers, and the units the annex shows changing (26.10.2026)', () => {
+  it('keys a § numbered by Kapitel whole', () => {
+    expect(paraIdOfGld('§ 8.03')).toBe('8.03')
+    expect(paraIdOfGld('§ 2.01.')).toBe('2.01')
+    expect(paraIdOfGld('§ 5.')).toBe('5')
+  })
+
+  it('lists the units the annex shows changing in one law, under their number afterwards', () => {
+    const rows = [
+      pair('§ 3. Alt.', '§ 3. Neu.', '§ 3.', false, 'Neues Gesetz'),
+      pair('§ 4. Gleich.', '§ 4. Gleich.', '§ 4.', false, 'Neues Gesetz'),
+      // The old § 5 becomes § 6: the unit is the § after the draft.
+      { ...pair('§ 5. Alt.', '§ 6. Alt.', '§ 5.', false, 'Neues Gesetz'), paraAfter: '§ 6.' },
+      // A § the annex strikes whole is no unit of the result.
+      { ...pair('§ 7. Fällt weg.', '', '§ 7.', false, 'Neues Gesetz'), paraAfter: null },
+      pair('§ 9. Alt.', '§ 9. Neu.', '§ 9.', false, 'Änderung des Altgesetzes'),
+    ]
+    const byLaw = rowsByParagraph(rows)
+    expect(annexChangedUnits(byLaw, 'Neues Gesetz')).toEqual(['3', '6'])
+    expect(annexChangedUnits(byLaw, undefined, 'Änderung des Altgesetzes')).toEqual(['9'])
+  })
+
+  it('keeps what paragraphRows needs on a map with fewer drawers', () => {
+    // The old § 9 moves to § 16, the old § 16 is struck (51/ME XXVIII).
+    const grouped = rowsByParagraph([
+      { ...pair('§ 9. IVS-Diensteanbieter haften.', '§ 16. IVS-Diensteanbieter haften.', '§ 9.', false, 'A'), paraAfter: '§ 16.' },
+      { ...pair('§ 16. Mit der Vollziehung ist betraut.', '', '§ 16.', false, 'A'), paraAfter: null },
+      pair('§ 3. Drei.', '§ 3. Neu.', '§ 3.', false, 'B'),
+    ])
+    const fewer = someDrawers(grouped, (key) => key.startsWith('A#'))
+    expect([...fewer.keys()]).toEqual(['A#16'])
+    expect(paragraphRows(fewer, '16', 'A', '9').map((r) => r.gld)).toEqual(['§ 9.'])
   })
 })

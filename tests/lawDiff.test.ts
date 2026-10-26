@@ -201,6 +201,10 @@ describe('an instruction RIS did not tag as one', () => {
     )
     expect(units.map((u) => u.id)).toEqual(['Z20', 'Z21'])
     expect(units[1]!.heading).toBe('In § 29 Abs. 3 entfällt die Wortfolge.')
+    // And it IS the instruction now, for every reader that takes a unit's
+    // instruction lines by kind (`instructionsFromUnits`): kept as `other`,
+    // the unit opened and its line was never read (26.10.2026).
+    expect(units[1]!.blocks[0]!.kind).toBe('novao')
   })
 
   it('leaves a numbered line inside a quoted payload alone', () => {

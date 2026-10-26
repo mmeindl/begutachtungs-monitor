@@ -54,7 +54,23 @@ const AMENDS_RE = /\b(?:wird|werden)\b[^.;:]{0,80}?\bwie folgt geändert|\bwird 
  * its § 1 cites.
  */
 export function isAmendmentClause(text: string): boolean {
-  return AMENDS_RE.test(text)
+  return AMENDS_RE.test(text) || isVerblessClause(text)
+}
+
+/**
+ * „Das Gesundheitsberuferegister-Gesetz (GBRG), BGBl. I Nr. 87/2016, zuletzt
+ * geändert durch …, wie folgt geändert:" — the clause with its „wird" lost
+ * (20/ME XXVIII, Artikel 31). Read as no clause, the Artikel came out
+ * `amends: false`, as a law the draft enacts, and its §§ stood in the annex
+ * as „Anweisung nicht gefunden" (26.10.2026).
+ *
+ * Only in the clause's own shape, the two signals `isTaggedClause` asks for:
+ * the formula closing the sentence, and the law cited at its head — a
+ * Bundesgesetzblatt (`stammnormOf`) or the „Das …, dRGBl. …" form
+ * (`clauseNameOf`). An instruction names a § and no Gesetzblatt.
+ */
+function isVerblessClause(text: string): boolean {
+  return /,\s*wie folgt geändert\s*:?\s*$/i.test(text) && (stammnormOf(text) !== null || clauseNameOf(text) !== null)
 }
 
 /**
@@ -78,7 +94,7 @@ export function isAmendmentClause(text: string): boolean {
  * instruction names a § and no Gesetzblatt.
  */
 function isTaggedClause(text: string): boolean {
-  return AMENDS_RE.test(text) && (stammnormOf(text) !== null || clauseNameOf(text) !== null)
+  return isAmendmentClause(text) && (stammnormOf(text) !== null || clauseNameOf(text) !== null)
 }
 
 /** A qualifier printed where the law's name would be, and not a name. */
@@ -240,7 +256,7 @@ export function draftArticles(blocks: readonly TextBlock[]): DraftArticle[] {
     // The clause stands between the Artikel heading and the first
     // instruction; anything later that cites a BGBl is a cross-reference.
     if (seenNovao || current.amends) continue
-    if (!AMENDS_RE.test(b.text)) continue
+    if (!isAmendmentClause(b.text)) continue
     current.amends = true
     current.bgbl = stammnormOf(b.text)
     current.clause = clauseNameOf(b.text)

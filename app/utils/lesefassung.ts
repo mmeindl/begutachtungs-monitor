@@ -146,6 +146,7 @@ const CAUSE_TEXT: Record<LesefassungCause, string> = {
   'zu-lang': 'Der Paragraph ist zu lang für unseren Vergleich.',
   entfaellt: 'Unter dieser Nummer steht nach dem Entwurf kein Paragraph mehr.',
   'anhang-ungeteilt': 'Wo in der Beilage ein Gesetz endet und das nächste beginnt, lesen wir nicht heraus; so ordnen wir den Paragraphen keinem Gesetz sicher zu.',
+  'neu-erlassen': 'Dieses Gesetz erlässt der Entwurf neu, und seinen ganzen Text enthält er selbst; wir setzen nur Änderungen bestehender Gesetze zusammen.',
   'nicht-gefunden': 'Eine Anweisung des Entwurfs zu diesem Paragraphen fanden wir nicht.',
 }
 

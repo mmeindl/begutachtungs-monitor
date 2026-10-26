@@ -35,7 +35,7 @@
 
 import type { Instruction, RefusedInstruction } from './lawApply'
 import type { LawNode } from '../lawtext/konsTree'
-import { articleQualifier, createdUnits, isTocInstruction, mentionedUnits, namedParagraphs, opAddress, refusedAddresses } from './novao'
+import { articleQualifier, createdParagraphs, createdUnits, isTocInstruction, mentionedUnits, namedParagraphs, opAddress, refusedAddresses } from './novao'
 import type { ConsolidatedWithheldCause } from '../../../shared/types'
 import { articleNumberKey, isDivision, isSchedule, unitKey } from '../text/designation'
 
@@ -172,9 +172,17 @@ export function unitsByKey(nodes: readonly LawNode[]): Map<string, LawNode> {
  * A refused instruction as `instructionsFromUnits` hands it over — or its bare
  * line, for a caller that has no container to give.
  */
-export type RefusedLine = string | Pick<RefusedInstruction, 'line' | 'inherited'>
+export type RefusedLine = string | (Pick<RefusedInstruction, 'line' | 'inherited'> & Partial<Pick<RefusedInstruction, 'created'>>)
 
 const lineOf = (refused: RefusedLine): string => (typeof refused === 'string' ? refused : refused.line)
+
+/**
+ * Every unit a refused line would have brought into being: the ones its words
+ * announce (`createdUnits`) and the §§ its new text spells out
+ * (`RefusedInstruction.created`) — a refused „Der 3. Unterabschnitt lautet:"
+ * names none of the §§ it rewrites.
+ */
+const createdBy = (refused: RefusedLine): string[] => [...createdUnits(lineOf(refused)), ...(typeof refused === 'string' ? [] : (refused.created ?? []))]
 
 /**
  * The units a refused line names: the grammar's reading of its address where
@@ -214,7 +222,7 @@ export function refusedLineUnits(refused: RefusedLine): string[] {
   if (isTocInstruction(line)) return []
   const own = refusedAddresses(line)
   const read = (inherited ? refusedAddresses(line, inherited) : own) ?? [...mentionedUnits(line), ...(inherited?.para ? [inherited.para] : [])]
-  const first = /§+\s*\d+[a-z]*/.exec(line)?.[0]
+  const first = /§+\s*\d+(?:[a-z]{1,2}(?![a-zäöüß]))?/.exec(line)?.[0]
   return [...new Set([...read, ...(own ?? (first ? [first] : []))])]
 }
 
@@ -256,7 +264,7 @@ export function refusedUnits(unresolved: Iterable<string>, refusedLines: readonl
     // predicate the grammar, the annex and the § names ask too: a prefix test
     // here missed „Der Eintrag zu § 50 im Inhaltsverzeichnis lautet:" and
     // locked § 50 (01.10.2026).
-    for (const p of [...refusedLineUnits(refused), ...createdUnits(lineOf(refused))]) {
+    for (const p of [...refusedLineUnits(refused), ...createdBy(refused)]) {
       const id = key(p)
       if (id) out.add(id)
     }
@@ -274,15 +282,21 @@ export function refusedUnits(unresolved: Iterable<string>, refusedLines: readonl
  * what we cannot do, and „12 von 12" would stand over a list that keeps half
  * the draft quiet.
  *
- * An instruction that *inserts* a § counts: under the draft it is part of the
- * law, even where the standing text does not have it.
+ * An instruction that *brings a § into being* counts: under the draft it is
+ * part of the law, even where the standing text does not have it — every §
+ * `createdParagraphs` reads, the one reading the lock has too. Until
+ * 26.10.2026 only the payload of an insertion of §§ counted, and the new §§
+ * of a replacement run („§ 42 wird durch die folgenden §§ 42 bis 42b
+ * ersetzt"), of a renumbering („erhält die Paragraphenbezeichnung ‚§ 15.'")
+ * and of a refused insertion were locked but never counted: no outcome, and
+ * the page labelled their annex block „Anweisung nicht gefunden".
  */
 export function addressedParagraphs(
   instructions: readonly Instruction[],
   refusedLines: readonly RefusedLine[],
 ): string[] {
   const out = new Set<string>()
-  for (const { op, payload } of instructions) {
+  for (const { op, payload, line } of instructions) {
     const address = opAddress(op)
     // `unitKey` and not the bare number: a law may carry a § 1 and an
     // Anl. 1, and everything downstream holds the unit under this key. Every
@@ -294,15 +308,22 @@ export function addressedParagraphs(
       const id = unitKey(para)
       if (id) out.add(id)
     }
-    if ((op.kind === 'insertAfter' || op.kind === 'append') && op.child === 'para') {
-      for (const p of payload) if (p.id) out.add(p.id)
+    // And what the line's words announce beyond its operation („Der bisherige
+    // § 15 wird zu § 23 Abs. 1; …"), as the engine locks it (`newParagraphsOf`).
+    for (const para of [...createdParagraphs(op, payload, line), ...createdUnits(line)]) {
+      if (isDivision(para)) continue
+      const id = unitKey(para)
+      if (id) out.add(id)
     }
   }
-  // Every unit the line names, read as the lock reads it (`refusedLineUnits`):
+  // Every unit the line names, read as the lock reads it (`refusedUnits`):
   // counted with its first § only, „In den §§ 184 …, 360 … und 380 …" put one
-  // of three §§ into the denominator, and the page divided by too little.
+  // of three §§ into the denominator, and the page divided by too little. And
+  // the units it would have created („Nach § 37 wird folgender § 38
+  // angefügt:" refused over a table), which the lock has held since
+  // 22.10.2026 and the denominator never counted.
   for (const refused of refusedLines) {
-    for (const para of refusedLineUnits(refused)) {
+    for (const para of [...refusedLineUnits(refused), ...createdBy(refused)]) {
       if (isDivision(para)) continue
       const id = unitKey(para)
       if (id) out.add(id)
@@ -345,7 +366,7 @@ export function addressedLabels(
     out.set(id, label)
     return true
   }
-  for (const { op, payload } of instructions) {
+  for (const { op, payload, line } of instructions) {
     const address = opAddress(op)
     for (const para of address ? namedParagraphs(address) : []) {
       // Nothing to fetch for an Abschnitt: RIS files no document under it.
@@ -355,8 +376,10 @@ export function addressedLabels(
     }
     // A § this instruction CREATES lives in the Artikel the instruction
     // addresses — it has no designation of its own to read one from.
-    if ((op.kind === 'insertAfter' || op.kind === 'append') && op.child === 'para') {
-      for (const block of payload) if (block.id && !add(block.id, address?.artikel ?? null)) return null
+    for (const para of [...createdParagraphs(op, payload, line), ...createdUnits(line)]) {
+      if (isDivision(para)) continue
+      const id = unitKey(para)
+      if (id && !add(id, address?.artikel ?? null)) return null
     }
   }
   // A refused line fills a gap and never contradicts one. It produces no
@@ -371,7 +394,7 @@ export function addressedLabels(
   for (const refused of refusedLines) {
     // A sub-instruction's Artikel is its container's.
     const numeral = articleQualifier(lineOf(refused)) ?? (typeof refused === 'string' ? null : (refused.inherited?.artikel ?? null))
-    for (const para of refusedLineUnits(refused)) {
+    for (const para of [...refusedLineUnits(refused), ...createdBy(refused)]) {
       if (isDivision(para)) continue
       const id = unitKey(para)
       if (!id || out.has(id)) continue

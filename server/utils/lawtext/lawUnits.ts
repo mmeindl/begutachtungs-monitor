@@ -367,10 +367,18 @@ export function segmentUnits(blocks: readonly TextBlock[]): LawUnit[] {
 
     // Opening an instruction unit. The number goes into the id, not into the
     // compared text — like the § symbol.
+    //
+    // The block that opens it IS the instruction, whatever RIS tagged it:
+    // promoted below from `absatz typ="satz"`, it kept its kind, and every
+    // reader that takes a unit's instruction lines by kind (`instructionsFromUnits`,
+    // the annex's `draftUnits`) skipped it — the unit opened and then said
+    // nothing. Six §§ of GP XXVIII whose one instruction RIS set as plain
+    // text (19/ME § 5h, 22/ME § 20, 125/ME §§ 29, 42 and 46, 859D2924 § 15)
+    // stood in the annex as „Anweisung nicht gefunden" (26.10.2026).
     const openNovao = (n: string): void => {
       novelleMode = true
       lastNovao = Number(n)
-      current = push(`Z${n}`, novaoHeading(b.text), { ...b, text: b.text.replace(NOVAO_NUMBER_RE, '') })
+      current = push(`Z${n}`, novaoHeading(b.text), { ...b, kind: 'novao', text: b.text.replace(NOVAO_NUMBER_RE, '') })
       pendingHeading = null
     }
 

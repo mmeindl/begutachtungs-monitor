@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest'
 import { applyNovelle, instructionsFromUnits, parsePayload, renamedOrigins, resolveTarget, splitSentences, stripPayloadQuotes, type Instruction, type StandingLaw } from '../server/utils/kons/lawApply'
 import { bodyText, makeNode, parseKonsParagraph, plainText, renderNode } from '../server/utils/lawtext/konsTree'
 import { paraNode as para } from './helpers/builders'
-import { parseAddress, parseInstruction, type NovaoAddress } from '../server/utils/kons/novao'
+import { opAddress, parseAddress, parseInstruction, type NovaoAddress } from '../server/utils/kons/novao'
 
 function law(): StandingLaw {
   return {
@@ -794,15 +794,41 @@ describe('a § the Novelle brings into being (22.10.2026)', () => {
   })
 
   it('names a failed schedule insertion’s new unit a schedule, not the § of its number', () => {
-    // AIFMG, BGBl. I Nr. 57/2026: the engine collides „Anlage 5" with § 5 and
-    // refuses; the lock belongs to the Anlage, § 5 is not touched.
-    const anlage = makeNode('para', '4', 'Anl. 4', '', null)
-    anlage.children.push(makeNode('abs', '', '', 'Anlage vier.'))
-    const l: StandingLaw = { paragraphs: [para('5', 'Fünf', ['Text.']), anlage] }
+    // AIFMG, BGBl. I Nr. 57/2026: the lock belongs to the Anlage, § 5 is not
+    // touched. Refused here because an Anlage 5 stands already.
+    const anlage = (n: string) => {
+      const node = makeNode('para', n, `Anl. ${n}`, '', null)
+      node.children.push(makeNode('abs', '', '', `Anlage ${n}.`))
+      return node
+    }
+    const l: StandingLaw = { paragraphs: [para('5', 'Fünf', ['Text.']), anlage('4'), anlage('5')] }
     const { results, unresolved } = run(l, instr('Nach der Anlage 4 zu § 30 wird folgende Anlage 5 zu § 14 eingefügt:', ['Anlage 5 zu § 14', 'Inhalt.']))
     expect(results[0]!.applied).toBe(false)
     expect(unresolved.has('§ 5')).toBe(false)
     expect(unresolved.has('Anlage 5')).toBe(true)
+  })
+
+  it('inserts a new § beside a schedule of its number (26.10.2026)', () => {
+    const anlage = makeNode('para', '1', 'Anl. 1', '', null)
+    anlage.children.push(makeNode('abs', '', '', 'Anlage eins.'))
+    const l: StandingLaw = { paragraphs: [para('2', 'Zwei', ['Text.']), anlage] }
+    const { law: out, results } = run(l, instr('Nach dem 1. Abschnitt wird folgender § 1 eingefügt:', ['§ 1. Neu.']))
+    expect(results[0]!.applied).toBe(true)
+    expect(out.paragraphs.map((p) => p.marker)).toEqual(['§ 1.', '§ 2.', 'Anl. 1'])
+  })
+
+  it('never inserts a new schedule as the § of its number (26.10.2026)', () => {
+    // Marked „§ 5." it collided with § 5 — or, where the law has no § 5,
+    // stood as a § the law does not have (88/ME XXVIII). A schedule's
+    // designation and title stand outside the text RIS compares, so it is
+    // refused as a schedule, and the lock is the Anlage's.
+    const anlage = makeNode('para', '4', 'Anl. 4', '', null)
+    anlage.children.push(makeNode('abs', '', '', 'Anlage vier.'))
+    const l: StandingLaw = { paragraphs: [anlage] }
+    const { law: out, results, unresolved } = run(l, instr('Nach der Anlage 4 zu § 30 wird folgende Anlage 5 zu § 14 eingefügt:', ['Anlage 5 zu § 14', 'Inhalt.']))
+    expect(results[0]!.reason).toMatch(/Neue Anlage/)
+    expect(out.paragraphs.map((p) => p.marker)).toEqual(['Anl. 4'])
+    expect([...unresolved].sort()).toEqual(['Anlage 4', 'Anlage 5'])
   })
 })
 
@@ -1217,18 +1243,21 @@ describe('„jeweils" über mehrere Einheiten einer Adresse (26.09.2026)', () =>
 describe('an Abschnitt is not the § of its number (02.10.2026)', () => {
   // The standing text holds no Abschnitt. Looked up by the number, every one
   // of these wrote into § 4 and reported success.
+  // The § the refused Abschnitt's text would install is locked with it
+  // (`createdParagraphs`, 26.10.2026): it stands nowhere in the result, and a
+  // standing § 10 must not be shown as if the line had never been written.
   it.each([
-    ['Die Überschrift des 4. Abschnitts lautet:', ['Schlussbestimmungen']],
-    ['Der 4. Abschnitt lautet:', ['§ 10. Neu.']],
-    ['Im 4. Abschnitt wird das Wort "Amt" durch das Wort "Behörde" ersetzt.', []],
-    ['Abschnitt 4 entfällt.', []],
-  ])('refuses „%s"', (line, payload) => {
+    ['Die Überschrift des 4. Abschnitts lautet:', ['Schlussbestimmungen'], ['Abschnitt 4']],
+    ['Der 4. Abschnitt lautet:', ['§ 10. Neu.'], ['Abschnitt 4', '§ 10']],
+    ['Im 4. Abschnitt wird das Wort "Amt" durch das Wort "Behörde" ersetzt.', [], ['Abschnitt 4']],
+    ['Abschnitt 4 entfällt.', [], ['Abschnitt 4']],
+  ])('refuses „%s"', (line, payload, locked) => {
     const l: StandingLaw = { paragraphs: [para('4', 'Zuständigkeit', ['Das Amt entscheidet.'])] }
     const { law: out, results, unresolved } = run(l, instr(line, payload))
     expect(results[0]!.reason).toMatch(/Gliederung über dem Paragraphen/)
     expect(out.paragraphs[0]!.heading).toBe('Zuständigkeit')
     expect(plainText(out.paragraphs[0]!)).toBe('Zuständigkeit Das Amt entscheidet.')
-    expect([...unresolved]).toEqual(['Abschnitt 4'])
+    expect([...unresolved]).toEqual(locked)
   })
 
   // Gaswirtschaftsgesetz 2011: a new § is wholly its payload, so it goes where
@@ -1955,5 +1984,116 @@ describe('renamedOrigins — which standing § a § of the result came from', ()
     const { renamed } = run(law, instr('Die §§ 8 und 9 erhalten die Paragraphenbezeichnungen "§ 9." bis "§ 10."'))
     expect(renamed.map((x) => [x.from, x.to, x.batch])).toEqual([['8', '9', 0], ['9', '10', 0]])
     expect(renamedOrigins(renamed)('10')).toBe('9')
+  })
+})
+
+/** A unit of instruction and payload blocks, as `segmentUnits` hands them over. */
+function unitOf(blocks: { kind: 'novao' | 'abs' | 'para_head' | 'other'; text: string; gld?: string; cls?: string }[]) {
+  return { article: null, articleNumber: null, id: 'Z1', heading: null, quotedHeadings: [], stammnorm: null, text: '', blocks: blocks.map((b) => ({ kind: b.kind, cls: b.cls ?? '', text: b.text, gld: b.gld ?? null })) }
+}
+
+describe('a new Abschnitt is an insertion of its §§ (26.10.2026)', () => {
+  // UGB, 4/ME XXVIII: „Nach § 285 wird folgender fünfter Abschnitt
+  // eingefügt:" — the payload is two §§, and the line was refused as
+  // „Eingefügte Einheit nicht bestimmbar".
+  const unit = (line: string) => unitOf([
+    { kind: 'novao', text: line },
+    { kind: 'para_head', text: 'Neues' },
+    { kind: 'abs', gld: '§ 5a.', text: '(1) Erster Absatz.' },
+    { kind: 'para_head', text: 'Weiteres' },
+    { kind: 'abs', gld: '§ 5b.', text: 'Einziger Absatz.' },
+  ])
+
+  it('inserts the §s behind the § the line names', () => {
+    const { instructions, refused } = instructionsFromUnits([unit('1. Nach § 5 wird folgender fünfter Abschnitt eingefügt:')])
+    expect(refused).toEqual([])
+    expect(instructions[0]!.op).toMatchObject({ kind: 'insertAfter', child: 'para', childIds: ['5a', '5b'] })
+    const { law: out, results } = applyNovelle(law(), instructions)
+    expect(results[0]!.applied).toBe(true)
+    expect(out.paragraphs.map((p) => p.id)).toEqual(['5', '5a', '5b', '6'])
+  })
+
+  it('puts them where their numbers go when the line names an Abschnitt', () => {
+    const { instructions } = instructionsFromUnits([unit('1. Nach dem 2. Abschnitt werden folgende Abschnitte 3 und 4 eingefügt:')])
+    const { law: out, results } = applyNovelle(law(), instructions)
+    expect(results[0]!.applied).toBe(true)
+    expect(out.paragraphs.map((p) => p.id)).toEqual(['5', '5a', '5b', '6'])
+  })
+
+  it('leaves a payload that is not §§ alone as it was read', () => {
+    const { instructions } = instructionsFromUnits([unitOf([{ kind: 'novao', text: '1. Nach § 5 wird folgender Abschnitt eingefügt:' }, { kind: 'abs', text: '"(1) Loser Absatz."' }])])
+    expect(instructions[0]!.op).toMatchObject({ kind: 'insertAfter', child: 'unknown' })
+  })
+})
+
+describe('a line on the whole text that goes on in a list below it (26.10.2026)', () => {
+  // 145/ME XXVIII: head, one dash per operand pair, the participle — four
+  // lines, each refused on its own.
+  const units = [unitOf([
+    { kind: 'novao', text: '1. Im gesamten Gesetzestext wird jeweils' },
+    { kind: 'novao', text: '- die Wortfolge "die Behörde am Sitz" durch die Wortfolge "das Amt am Sitz"' },
+    { kind: 'novao', text: '- die Wortfolge "Verfahren vor Gerichten" durch die Wortfolge "gerichtliche Verfahren"' },
+    { kind: 'novao', text: 'ersetzt.' },
+  ])]
+
+  it('reads it as the one sentence it is', () => {
+    const { instructions, refused } = instructionsFromUnits(units)
+    expect(refused).toEqual([])
+    expect(instructions.map((i) => [i.op.kind, opAddress(i.op)?.level])).toEqual([['replacePhrase', 'document'], ['replacePhrase', 'document']])
+    const { law: out, results } = applyNovelle(law(), instructions)
+    expect(results.every((r) => r.applied)).toBe(true)
+    expect(plainText(out.paragraphs[0]!)).toContain('gerichtliche Verfahren.')
+    expect(plainText(out.paragraphs[1]!)).toBe('Zuständigkeit Zuständig ist das Amt am Sitz der Partei.')
+  })
+
+  it('takes a phrase the loaded §§ do not carry for no failure — they are not the whole law', () => {
+    const { results } = run(law(), instr('Im gesamten Gesetzestext wird die Wortfolge "Bundesministerin für Inneres" durch die Wortfolge "Bundesministerin für Justiz" ersetzt.'))
+    expect(results[0]!.applied).toBe(true)
+    // One unit named: not finding the phrase there stays a refusal.
+    expect(run(law(), instr('In § 5 wird die Wortfolge "Bundesministerin für Inneres" durch die Wortfolge "Bundesministerin für Justiz" ersetzt.')).results[0]!.applied).toBe(false)
+  })
+})
+
+describe('a replacement whose new text carries other numbers (26.10.2026)', () => {
+  const l = (): StandingLaw => ({ paragraphs: [para('10', 'Zehn', ['Alt zehn.']), para('11', 'Elf', ['Alt elf.']), para('12', 'Zwölf', ['Alt zwölf.'])] })
+
+  it('installs the new §§ under their own numbers where the line says so', () => {
+    // 51/ME XXVIII: kept one to one, § 11 carried the text of the new § 18.
+    const { law: out, results } = run(l(), instr('Im 3. Abschnitt werden die bisherigen §§ 11 und 12 samt Überschriften durch folgende §§ 18 und 19 ersetzt:', [{ text: 'Achtzehn', heading: true }, '§ 18. Neu achtzehn.', { text: 'Neunzehn', heading: true }, '§ 19. Neu neunzehn.']))
+    expect(results[0]!.applied).toBe(true)
+    expect(out.paragraphs.map((p) => p.id)).toEqual(['10', '18', '19'])
+    const renamed = run(l(), instr('Der bisherige § 10 wird zu § 17 und lautet samt Überschrift:', [{ text: 'Siebzehn', heading: true }, '§ 17. Neu siebzehn.']))
+    expect(renamed.results[0]!.applied).toBe(true)
+    expect(renamed.law.paragraphs.map((p) => p.id)).toEqual(['17', '11', '12'])
+  })
+
+  it('refuses a number the line does not announce', () => {
+    const { results, unresolved } = run(l(), instr('§ 10 lautet:', ['§ 16. Ein anderer Paragraph.']))
+    expect(results[0]!.applied).toBe(false)
+    expect([...unresolved].sort()).toEqual(['§ 10', '§ 16'])
+  })
+})
+
+describe('what a refused line would have created (26.10.2026)', () => {
+  it('keeps the §§ its new text spells out, and none of a table of contents', () => {
+    // DC0E9C30: „Der 3. Unterabschnitt des 2. Abschnitts lautet:" refused for
+    // a table, over §§ the line never names.
+    const { refused } = instructionsFromUnits([unitOf([
+      { kind: 'novao', text: '1. Der 3. Unterabschnitt des 2. Abschnitts lautet:' },
+      { kind: 'abs', gld: '§ 10.', text: '"Text zehn."' },
+      { kind: 'abs', gld: '§ 10a.', text: 'Text zehn a.', cls: 'table:1' },
+    ])])
+    expect(refused.map((r) => [r.reason, r.created])).toEqual([['Tabelle im neuen Text — nicht als Gesetzestext abbildbar', ['§ 10', '§ 10a']]])
+    const toc = instructionsFromUnits([unitOf([
+      { kind: 'novao', text: '1. Im Inhaltsverzeichnis lauten die Einträge zu den §§ 40 bis 40e:' },
+      { kind: 'abs', gld: '§ 40a.', text: 'Eintrag.', cls: 'table:1' },
+    ])])
+    expect(toc.refused.map((r) => r.created)).toEqual([[]])
+  })
+
+  it('locks what the words of a failed line announce beyond its operation', () => {
+    // 51/ME XXVIII: read as the insertion alone; § 23 was neither counted nor locked.
+    const { unresolved } = run(law(), instr('Der bisherige § 15 wird zu § 23 Abs. 1; ihm wird folgender Abs. 2 angefügt:', ['(2) Neu.']))
+    expect(unresolved.has('§ 23')).toBe(true)
   })
 })

@@ -151,3 +151,19 @@ describe('a § replaced by one bare line (25.10.2026)', () => {
     expect(r.flags).toEqual([])
   })
 })
+
+describe('an instruction on the whole text (26.10.2026)', () => {
+  // 145/ME XXVIII: read at last, the renaming of a ministry through the whole
+  // law was charged once to every § — the ones that carry no word of it too,
+  // and each of those failed the guard on size.
+  const line = 'Im gesamten Gesetzestext wird jeweils die Wortfolge "Bundesminister für Land- und Forstwirtschaft, Umwelt und Wasserwirtschaft" durch die Wortfolge "Bundesministerin bzw. Bundesminister für Land- und Forstwirtschaft, Klima- und Umweltschutz, Regionen und Wasserwirtschaft" ersetzt.'
+
+  it('charges a § only with what it carries of the phrase', () => {
+    expect(guard(law(), instr(line)).plausible).toBe(true)
+  })
+
+  it('and charges it every time it does', () => {
+    const l: StandingLaw = { paragraphs: [para('6', 'Zuständigkeit', ['Der Bundesminister für Land- und Forstwirtschaft, Umwelt und Wasserwirtschaft entscheidet; der Bundesminister für Land- und Forstwirtschaft, Umwelt und Wasserwirtschaft hört an.'])] }
+    expect(guard(l, instr(line)).plausible).toBe(true)
+  })
+})

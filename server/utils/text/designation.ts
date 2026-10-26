@@ -21,7 +21,9 @@
  */
 export function bareParaId(label: string | null): string | null {
   if (!label) return null
-  const m = /(\d+[a-z]*(?:\.\d+)?)/.exec(label)
+  // One or two letters, and not the start of a word glued on: „§ 42wird"
+  // is § 42 (`PARA_RE` in `kons/novao.ts`).
+  const m = /(\d+(?:[a-z]{1,2}(?![a-zäöüß]))?(?:\.\d+)?)/.exec(label)
   return m ? m[1]! : null
 }
 

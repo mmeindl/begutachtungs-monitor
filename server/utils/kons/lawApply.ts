@@ -20,7 +20,7 @@
 import { childById, lawTextNodes, makeNode, plainText, uniqueChild, type LawNode, type NodeLevel } from '../lawtext/konsTree'
 import type { LawUnit } from '../lawtext/lawUnits'
 import { normalizeText } from '../lawtext/normalize'
-import { continuesToc, expandRange, isTocInstruction, namedParagraphs, opAddress, parseInstruction, tocSequence, type NovaoAddress, type NovaoOp } from './novao'
+import { announcesSchedule, continuesToc, createdParagraphs, createdUnits, expandRange, isTocInstruction, namedParagraphs, opAddress, parseInstruction, tocSequence, type NovaoAddress, type NovaoOp } from './novao'
 import { bareParaId, isDivision, isSchedule } from '../text/designation'
 import { byParagraphOrder } from './konsGate'
 
@@ -330,6 +330,19 @@ export interface RefusedInstruction {
   line: string
   reason: string
   inherited: NovaoAddress | null
+  /**
+   * The §§ its new text spells out — „Der 3. Unterabschnitt des 2. Abschnitts
+   * lautet:" over §§ 10 to 11, refused for a table in it. The line names none
+   * of them, and only the payload says which §§ the refusal leaves unapplied
+   * (`refusedUnits`, `addressedParagraphs`, 26.10.2026).
+   */
+  created: string[]
+}
+
+/** The §§ a payload spells out with their own designation, as the draft writes them. */
+function payloadParagraphs(payload: readonly PayloadLine[]): string[] {
+  if (payload.length === 0) return []
+  return parsePayload(stripPayloadQuotes(payload)).filter((p) => p.level === 'para' && p.id).map((p) => `§ ${p.id}`)
 }
 
 /**
@@ -348,10 +361,18 @@ export function instructionsFromUnits(units: readonly LawUnit[]): { instructions
   // refused and locked § 29 (`tocSequence`).
   const toc = tocSequence(units.map((u) => ({ line: u.blocks.find((b) => b.kind === 'novao')?.text ?? null, law: u.article })))
   for (const [ui, unit] of units.entries()) {
-    const groups: { line: string; payload: PayloadLine[] }[] = []
+    const groups: { line: string; payload: PayloadLine[]; open: boolean }[] = []
     const tables = new Set<number>()
     for (const b of unit.blocks) {
-      if (b.kind === 'novao') groups.push({ line: b.text, payload: [] })
+      const last = groups[groups.length - 1]
+      if (b.kind === 'novao' && last?.open && last.payload.length === 0) {
+        const joined = continueLine(last.line, b.text)
+        if (joined) {
+          Object.assign(last, joined)
+          continue
+        }
+      }
+      if (b.kind === 'novao') groups.push({ line: b.text, payload: [], open: OPEN_SENTENCE_RE.test(normalizeText(b.text)) })
       else if (groups.length) {
         groups[groups.length - 1]!.payload.push(payloadLine(b))
         if (b.cls.startsWith('table:')) tables.add(groups.length - 1)
@@ -359,11 +380,16 @@ export function instructionsFromUnits(units: readonly LawUnit[]): { instructions
     }
     let container: NovaoAddress | null = null
     for (const [gi, group] of groups.entries()) {
+      // What a refused line's new text spells out — never for a line on the
+      // table of contents, whose „§ 40a. Bezeichnung" lines are entries and
+      // no §§ (116/ME XXVIII: „Im Inhaltsverzeichnis lauten die Einträge zu
+      // den §§ 40 bis 40e:", refused for its table).
+      const created = (): string[] => (isTocInstruction(group.line) || (toc[ui] && (gi === 0 || continuesToc(group.line))) ? [] : payloadParagraphs(group.payload))
       // A table in the new text has no place in the tree — its cells would
       // become Absätze in whatever order the parser met them. Seven §§ of the
       // NEHG diverged that way (BGBl. I Nr. 60/2024, 2026-09-09). Refused.
       if (tables.has(gi)) {
-        refused.push({ line: group.line, reason: 'Tabelle im neuen Text — nicht als Gesetzestext abbildbar', inherited: container })
+        refused.push({ line: group.line, reason: 'Tabelle im neuen Text — nicht als Gesetzestext abbildbar', inherited: container, created: created() })
         continue
       }
       // The table of contents follows from the headings and is never applied;
@@ -388,7 +414,7 @@ export function instructionsFromUnits(units: readonly LawUnit[]): { instructions
       // full stop into a comma and stopped — publishes a sentence that ends
       // in mid-air and reports success (Privatschulgesetz § 23, 2026-09-09).
       if (parsed.ops.length === 0 || parsed.reason !== null) {
-        refused.push({ line: group.line, reason: parsed.reason ?? 'nicht gelesen', inherited: container })
+        refused.push({ line: group.line, reason: parsed.reason ?? 'nicht gelesen', inherited: container, created: created() })
         continue
       }
       for (const op of parsed.ops) {
@@ -396,11 +422,67 @@ export function instructionsFromUnits(units: readonly LawUnit[]): { instructions
           container = op.target
           continue
         }
-        instructions.push({ op, payload: parsePayload(stripPayloadQuotes(group.payload)), line: group.line })
+        const payload = parsePayload(stripPayloadQuotes(group.payload))
+        instructions.push({ op: divisionOfParagraphs(op, payload), payload, line: group.line })
       }
     }
   }
   return { instructions, refused }
+}
+
+/** „Der bisherige § 10 wird zu § 17 und lautet", „… wird in § 15 umbenannt": the number a § is renamed to, or null. */
+function renamedTo(line: string): string | null {
+  return /(?<![\p{L}])(?:wird|werden)\s+(?:zu|in)\s+(?:den\s+)?§\s*(\d+[a-z]*)/u.exec(normalizeText(line))?.[1] ?? null
+}
+
+/**
+ * A line that stops at its auxiliary — „Im gesamten Gesetzestext wird
+ * jeweils" — and goes on in the lines below it: one operand pair per dash
+ * („- die Wortfolge ‚A' durch die Wortfolge ‚B'"), then the participle alone
+ * („ersetzt."). RIS sets each of them as an instruction of its own, and each
+ * was refused on its own — the head for want of a verb, every item for want
+ * of an address — so the renaming of a ministry through a whole law was
+ * applied nowhere (145/ME XXVIII, three Artikel).
+ *
+ * Read as the one sentence it is, it is an ordinary chain of operand pairs,
+ * which the grammar reads (`parseInstruction`).
+ */
+const OPEN_SENTENCE_RE = /(?<![\p{L}])(?:wird|werden)(?:\s+jeweils)?\s*$/u
+const LIST_ITEM_RE = /^\s*[-–—]\s+/
+const CLOSING_PARTICIPLE_RE = /^\s*(?:ersetzt|eingefügt|angefügt|gestrichen|aufgehoben)\s*\.?\s*$/i
+
+function continueLine(line: string, text: string): { line: string; open: boolean } | null {
+  if (LIST_ITEM_RE.test(text)) {
+    const item = normalizeText(text).replace(LIST_ITEM_RE, '').replace(/[,;]\s*$/, '')
+    return { line: `${line}${OPEN_SENTENCE_RE.test(normalizeText(line)) ? ' ' : ', '}${item}`, open: true }
+  }
+  if (CLOSING_PARTICIPLE_RE.test(text) && !OPEN_SENTENCE_RE.test(normalizeText(line))) return { line: `${line} ${normalizeText(text)}`, open: false }
+  return null
+}
+
+/**
+ * „Nach § 285 wird folgender fünfter Abschnitt eingefügt:", „Nach dem
+ * 6. Abschnitt werden folgende Abschnitte 7 und 8 eingefügt:" — a new
+ * Abschnitt, Hauptstück or Titel, whose text is nothing but its §§.
+ *
+ * The line announces a division, so the grammar cannot type what it inserts
+ * (`child: 'unknown'`) and the engine refused it („Eingefügte Einheit nicht
+ * bestimmbar") — while neither the denominator nor the lock knew of the §§ it
+ * creates, so 44 §§ in eleven drafts of GP XXVIII stood in the annex as
+ * „Anweisung nicht gefunden" (4/ME, 34/ME, 38/ME, E3707CED …, 26.10.2026). The division's own heading is no text of any §:
+ * RIS keeps it out of every § document, and the draft prints it as a
+ * `section` that the unit never takes up. What is left is a run of §§, each
+ * with its own designation, and that is an insertion of §§ — behind the §
+ * the line names, or where their numbers put them when it names an Abschnitt
+ * (`numberedSlot`).
+ *
+ * Only where EVERY block of the payload is a § with its designation; a loose
+ * Absatz or a block without a number leaves the line as it was read.
+ */
+function divisionOfParagraphs(op: NovaoOp, payload: readonly LawNode[]): NovaoOp {
+  if (op.kind !== 'insertAfter' || op.child !== 'unknown' || payload.length === 0) return op
+  if (!payload.every((p) => p.level === 'para' && p.id)) return op
+  return { ...op, child: 'para', childIds: payload.map((p) => p.id) }
 }
 
 // ---------------------------------------------------------------------------
@@ -1292,7 +1374,7 @@ const ONE_PLACE_SIBLINGS = 'Mehrere Einheiten für eine Stelle'
  * Applies one instruction. Mutates `law`; returns null on success or the
  * reason for refusal.
  */
-function applyOne(law: StandingLaw, { op, payload }: Instruction): string | null {
+function applyOne(law: StandingLaw, { op, payload, line }: Instruction): string | null {
   switch (op.kind) {
     case 'toc':
       // The table of contents follows from the headings; deriving it is
@@ -1358,6 +1440,20 @@ function applyOne(law: StandingLaw, { op, payload }: Instruction): string | null
           // inserted a § 27b consisting of that heading alone (Privatschul-
           // gesetz, 2026-09-09).
           if (!op.run) return `${outgoing.length} Ziel, ${blocks.length} Textblöcke`
+          return spliceRun(law.paragraphs, outgoing, blocks, 'para')
+        }
+        // The new text carries other designations than the §§ it replaces —
+        // „Im 3. Abschnitt werden die bisherigen §§ 11 bis 13 … durch folgende
+        // §§ 18 bis 20 ersetzt", „Der bisherige § 10 wird zu § 17 und lautet".
+        // Installed one to one below, each block kept the OLD number: the
+        // § 11 of 51/ME XXVIII carried the text of the new § 18, § 10 that of
+        // § 17, and the instruction reported success (26.10.2026). It is a run
+        // like any other (`spliceRun`) — out go the old §§, in the new ones
+        // under their own numbers — where the line says so: „durch folgende"
+        // (`run`), or a single § the line renames to exactly the number its
+        // text carries. Any other number in the text is a payload we misread.
+        if (blocks.length === outgoing.length && blocks.some((b, i) => b.id !== '' && b.id !== outgoing[i]!.id)) {
+          if (!op.run && !(blocks.length === 1 && renamedTo(line) === blocks[0]!.id)) return `Neuer Text trägt eine andere Bezeichnung (${blocks.find((b, i) => b.id !== outgoing[i]!.id)!.marker}), die die Anweisung nicht ankündigt`
           return spliceRun(law.paragraphs, outgoing, blocks, 'para')
         }
         if (single) {
@@ -1695,12 +1791,25 @@ function applyOne(law: StandingLaw, { op, payload }: Instruction): string | null
           if (payload.some((p) => p.level === 'para')) return 'Neuer Paragraph und lose Absätze gemischt'
           blocks = [{ ...makeNode('para', '', '', ''), children: payload }]
         }
+        // „Nach Anlage 2 wird folgende Anlage 3 angefügt:" — a schedule. Marked
+        // „§ 3." it went in as a § 3 the law does not have, or collided with
+        // the one it has („§ 5 existiert bereits", AIFMG), and either way the
+        // Anlage the denominator counts never came into being. Refused as
+        // what it is: RIS files a schedule's designation and title outside the
+        // text we compare, and inserted with them as its heading, both new
+        // schedules of the BGBl corpus came out as own deviations (26.10.2026).
+        // The refusal locks the Anlage, not the § of its number
+        // (`newParagraphsOf`).
+        if (announcesSchedule(line)) return 'Neue Anlage — Bezeichnung und Titel einer Anlage bilden wir nicht ab'
         const unnamed = blocks.filter((p) => !p.id)
         if (unnamed.length > 0) {
           if (unnamed.length !== blocks.length || op.childIds.length !== blocks.length) return 'Neuer Paragraph ohne eigene Bezeichnung'
           blocks = blocks.map((p, i) => ({ ...p, id: op.childIds[i]!, marker: `§ ${op.childIds[i]}.` }))
         }
-        for (const p of blocks) if (law.paragraphs.some((x) => x.id === p.id)) return `§ ${p.id} existiert bereits`
+        // Of its own kind: a new § 1 beside an Anlage 1 is no collision — read by
+        // the bare number, „Vor dem 2. Abschnitt wird folgender 1. Abschnitt
+        // eingefügt" was refused as „§ 1 existiert bereits" (1. AußWV 2011).
+        for (const p of blocks) if (law.paragraphs.some((x) => x.id === p.id && !isSchedule(x.marker))) return `§ ${p.id} existiert bereits`
         if (!anchor) {
           if (blocks.length !== op.childIds.length || blocks.some((p, i) => p.id !== op.childIds[i])) return `${op.anchor.para} — die eingefügten Paragraphen sind nicht die angekündigten`
           law.paragraphs.splice(numberedSlot(law.paragraphs, blocks[0]!.id), 0, ...blocks.map((p) => ({ ...p, level: 'para' as const })))
@@ -1785,6 +1894,15 @@ function applyOne(law: StandingLaw, { op, payload }: Instruction): string | null
           hits += here
           slot.write(joinPhrase(out, op.to, text.slice(last)))
         }
+        // „Im gesamten Gesetzestext wird jeweils …" runs over the stock this
+        // run loaded — the §§ the draft and its annex name, never the whole
+        // law. A phrase that stands in none of THEM is no failed instruction:
+        // it stands in a § nobody asked about, and the §§ asked about need no
+        // change from it. Refused, the line failed every § of its law at the
+        // guard (`verweigert` in `touching`), the ones it never reaches too.
+        // Only for the whole text: an address that names a unit says the
+        // phrase is there, and not finding it is a finding.
+        if (hits === 0 && op.target.level === 'document') return null
         return hits === 0 ? `Textstelle nicht gefunden: "${op.from.slice(0, 60)}"` : null
       }
       // One unit without „jeweils", one question per unit with it. A unit
@@ -2055,37 +2173,20 @@ function joinPhrase(left: string, text: string, right: string): string {
 }
 
 /**
- * The §§ an instruction would bring into being: the new numbers of a
- * renumbering of §§, the §§ an insertion announces or spells out, and those a
- * replacement run installs („durch folgende §§ 7 bis 10").
+ * The §§ an instruction would bring into being (`createdParagraphs` in
+ * `kons/novao.ts`, which the denominator and the lock read too).
  *
  * Where the instruction fails these are as unresolved as its target. „Der
  * bisherige § 43 erhält die Bezeichnung § 44" refused leaves the standing
  * § 44 standing; a later „§ 44" of the Novelle means the old § 43 and lands
  * on it, and a § 44 that is marked clean is shown that way (22.10.2026).
- *
- * „folgende Anlage 5 zu § 14 eingefügt" creates a schedule, and the op keeps
- * only its number — read as § 5 it locked a § the line never touches
- * (Alternative Investmentfonds Manager-Gesetz, BGBl. I Nr. 57/2026). The kind
- * comes from the line's own announcement.
  */
 function newParagraphsOf({ op, payload, line }: Instruction): string[] {
-  if (op.kind === 'renumber') {
-    const first = op.target.level === 'para' && op.to ? bareParaId(op.to) : null
-    if (!first) return []
-    const last = op.toLast ? bareParaId(op.toLast) : null
-    return [first, ...(last ? (expandRange(first, last) ?? []) : [])].map((id) => `§ ${id}`)
-  }
-  if ((op.kind === 'insertAfter' || op.kind === 'append') && op.child === 'para') {
-    const kind = ANNOUNCES_SCHEDULE_RE.test(normalizeText(line)) ? 'Anlage' : '§'
-    return [...new Set([...op.childIds, ...payload.map((p) => p.id)])].filter(Boolean).map((id) => `${kind} ${id}`)
-  }
-  if (op.kind === 'replace' && op.target.level === 'para') return payload.filter((p) => p.level === 'para' && p.id).map((p) => `§ ${p.id}`)
-  return []
+  // And what the line's words announce where its operation does not carry
+  // it: „Der bisherige § 15 wird zu § 23 Abs. 1; ihm wird folgender Abs. 2
+  // angefügt:" is read as the insertion alone (51/ME XXVIII).
+  return [...new Set([...createdParagraphs(op, payload, line), ...createdUnits(line)])]
 }
-
-/** „folgende Anlage 5", „als neue Anlage 5": an insertion whose new unit is a schedule. */
-const ANNOUNCES_SCHEDULE_RE = /(?<![\p{L}])(?:folgende[rnms]?|nachstehende[rnms]?|als)\s+(?:neue[rnms]?\s+)?(?:Anlage|Anhang)(?![\p{L}])/iu
 
 /**
  * „Dem neuen § 44 wird folgender Abs. 6 angefügt", „Im neuen § 13 …": an

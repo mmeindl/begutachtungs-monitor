@@ -261,7 +261,10 @@ function parseSentence(tail: string): { satz: string | null; satzCount: number }
  * Artikel at all — with one, `parseAddress` cuts the scope at the § before
  * `PARA_RE` ever sees the Artikel.
  */
-const PARA_RE = /(?:§+\s*(\d+[a-z]*(?:\.\d+)?)|\bArt(?:\.|ikel)\s*(\d+[a-z]*(?:\.\d+)?|[IVXLCDM]+(?![A-Za-zÄÖÜäöüß]))|\b(Anlage|Anhang)(?:e?s)?\b(?:\s+((?:\d+[a-z]*|[IVXL]+)(?![A-Za-zÄÖÜäöüß])))?)/i
+// The letters of a § are one or two („§ 12a", „§ 12aa"); a word glued to the
+// number is no part of it — „13. § 42wird wie folgt geändert:" (61/ME XXVIII)
+// was read as „§ 42wird", a § no annex block and no RIS label ever carries.
+const PARA_RE = /(?:§+\s*(\d+(?:[a-z]{1,2}(?![a-zäöüß]))?(?:\.\d+)?)|\bArt(?:\.|ikel)\s*(\d+[a-z]*(?:\.\d+)?|[IVXLCDM]+(?![A-Za-zÄÖÜäöüß]))|\b(Anlage|Anhang)(?:e?s)?\b(?:\s+((?:\d+[a-z]*|[IVXL]+)(?![A-Za-zÄÖÜäöüß])))?)/i
 const ABS_RE = /\bAbs\.?\s*(\d+[a-z]*)/i
 const Z_RE = /\bZ(?:iffer)?\.?\s*(\d+[a-z]*)/i
 const LIT_RE = /\blit\.?\s*([a-z]+)\b/i
@@ -422,7 +425,10 @@ function siblingsAfter(rest: string, first: string, level: EnumLevel = 'abs'): {
   let at = 0
   let previous = first
   for (let m = step.exec(rest); m; m = step.exec(rest.slice(at))) {
-    const next = m[2]!
+    // „§§ 34a bis e": a Paragraph's letter alone carries the number before it.
+    const stem = level === 'para' && /^[a-z]$/.test(m[2]!) ? /^(\d+)[a-z]?$/.exec(previous)?.[1] : undefined
+    if (level === 'para' && /^[a-z]$/.test(m[2]!) && stem === undefined) break
+    const next = stem !== undefined ? `${stem}${m[2]}` : m[2]!
     // A Litera is one letter or a doubled one („aa"). Anything else the
     // two-letter pattern catches is a word — „und im Schlussteil" is no
     // Litera „im" — and ends the enumeration in front of it.
@@ -446,14 +452,14 @@ type EnumLevel = 'para' | 'abs' | 'z' | 'lit'
  * letter — „§ 21c Z 1 lit. b, c, e und f entfällt" deleted lit. b alone,
  * because only numbers were read as siblings (26.09.2026).
  */
-const ENUM_ID: Record<EnumLevel, string> = { para: '\\d+[a-z]*', abs: '\\d+[a-z]*', z: '\\d+[a-z]*', lit: '[a-z]{1,2}' }
+const ENUM_ID: Record<EnumLevel, string> = { para: '\\d+[a-z]*|[a-z]', abs: '\\d+[a-z]*', z: '\\d+[a-z]*', lit: '[a-z]{1,2}' }
 /**
  * The designator a sibling may repeat: „Abs. 1 und Abs. 2", „Z 7 und Z 7a",
  * „lit. a und lit. b". Repeated, the enumeration was not read at all and the
  * second unit dropped — „In § 139a Abs. 1 und Abs. 2 wird jeweils … eingefügt"
  * changed Abs. 1 and reported success.
  */
-const ENUM_DESIGNATOR: Record<EnumLevel, string> = { para: '', abs: '(?:Abs(?:\\.|atz)\\s*)', z: '(?:Z(?:iffer)?\\s*)', lit: '(?:lit(?:\\.|era)\\s*)' }
+const ENUM_DESIGNATOR: Record<EnumLevel, string> = { para: '(?:§+\\s*)', abs: '(?:Abs(?:\\.|atz)\\s*)', z: '(?:Z(?:iffer)?\\s*)', lit: '(?:lit(?:\\.|era)\\s*)' }
 
 /** Where the address ends and the instruction begins: its finite verb. */
 const FINITE_VERB_RE = /(?<![\p{L}])(?:wird|werden|entfällt|entfallen|lautet|lauten|erhält|erhalten|tritt|treten)(?![\p{L}])/u
@@ -646,7 +652,11 @@ export function parseAddress(text: string, inherited?: NovaoAddress | null): Nov
     siblings = found.ids
     if (!onePlace(tail, [am, zm, lm], deepest, at + found.consumed)) return null
   } else if (pm) {
-    const found = siblingsAfter(tail, pm[1] ?? pm[2] ?? pm[4] ?? '', 'para')
+    // A schedule's siblings stand right behind its number — „Die Anlage 1
+    // und 2 lauten:" — and its tail is the whole address (above), where the
+    // enumeration was looked for at the start and never found: Anlage 2 was
+    // neither counted nor locked (E96EDA1A, 26.10.2026).
+    const found = siblingsAfter(schedule ? scope.slice(pm.index + pm[0].length) : tail, pm[1] ?? pm[2] ?? pm[4] ?? '', 'para')
     if (found === null) return null
     siblings = found.ids
   }
@@ -697,7 +707,6 @@ function splitPluralParagraphs(t: string): string[] | null {
   const sep = /(?:\s*,\s*|\s+(?:und|sowie)\s+)(?=\d+[a-z]*\s*(?:Abs(?:\.|atz)|Z(?:iff(?:er)?)?\b|lit(?:\.|era)))/gi
   const cuts: { at: number; len: number }[] = []
   for (const m of tail.matchAll(sep)) cuts.push({ at: m.index!, len: m[0].length })
-  if (cuts.length === 0) return null
   const parts: string[] = []
   let last = 0
   for (const c of cuts) {
@@ -705,9 +714,34 @@ function splitPluralParagraphs(t: string): string[] | null {
     last = c.at + c.len
   }
   parts.push(tail.slice(last))
+  const split = parts.flatMap(ascendingParagraphs)
+  if (split.length < 2) return null
   // A trailing part that already carries its own § ("… sowie in § 380 Abs. 1")
   // is left as it stands; only the bare ones get the symbol back.
-  return parts.map((p) => p.trim()).filter(Boolean).map((p) => (PARA_RE.test(p) ? p : `§ ${p}`))
+  return split.map((p) => p.trim()).filter(Boolean).map((p) => (PARA_RE.test(p) ? p : `§ ${p}`))
+}
+
+/**
+ * „§§ 55 Abs. 2, 63, 224 Abs. 2 und 233": behind an Absatz, a bare number
+ * above the § it stands under is the next § of the list, not an Absatz of
+ * that one — the rule `signedParagraphs` reads the lock by. Cut only at a
+ * number with a component of its own, the list put Abs. 63 into § 55 and
+ * Abs. 233 into § 224: both failed, and §§ 63 and 233, which the line
+ * changes, were neither counted nor locked (58/ME XXVIII, 26.10.2026).
+ * Only behind an Absatz, as there: the Ziffern of a definitions § run far
+ * above its number („§§ 2 Z 5, 12 und 19").
+ */
+function ascendingParagraphs(part: string): string[] {
+  const own = /^\s*(\d+)/.exec(part)
+  const absatz = /\bAbs(?:\.|atz)\s*\d+[a-z]*/.exec(part)
+  if (!own || !absatz) return [part]
+  // The enumeration behind the Absatz, one number at a time.
+  const step = /(\s*,\s*|\s+(?:und|sowie|bis)\s+)(\d+)[a-z]?(?![\p{L}\p{N}])(?!\s*(?:Abs(?:\.|atz)|Z(?:iff(?:er)?)?(?![\p{L}])|lit(?:\.|era)))/uy
+  step.lastIndex = absatz.index + absatz[0].length
+  for (let m = step.exec(part); m; m = step.exec(part)) {
+    if (m[1]!.trim() !== 'bis' && Number(m[2]) > Number(own[1])) return [part.slice(0, m.index), part.slice(m.index + m[1]!.length)]
+  }
+  return [part]
 }
 
 /**
@@ -2613,11 +2647,43 @@ export function refusedAddresses(raw: string, inherited?: NovaoAddress | null): 
  * designators below the § with their own number, the joins between them, and
  * the vocabulary of a place inside a unit. Any other word ends the address.
  */
-const MENTION_TOKEN_RE = /(?<sign>§§?)|(?<comp>(?<![\p{L}])(?:Abs(?:\.|atz)|Z(?:iff(?:er)?)?)\s*\d+[a-z]*(?![\p{L}\p{N}])|(?<![\p{L}])lit(?:\.|era)\s*[a-z]{1,2}(?![\p{L}\p{N}]))|(?<num>\d+[a-z]*(?:\.\d+)?(?![\p{L}\p{N}]))|(?<join>,|(?<![\p{L}])(?:und|sowie|oder|bis)(?![\p{L}]))|(?<word>\p{L}[\p{L}-]*\.?)/gu
+const MENTION_TOKEN_RE = /(?<sign>§§?)|(?<comp>(?<![\p{L}])(?:Abs(?:\.|atz)|Z(?:iff(?:er)?)?)\s*\d+[a-z]*(?![\p{L}\p{N}])|(?<![\p{L}])lit(?:\.|era)\s*[a-z]{1,2}(?![\p{L}\p{N}]))|(?<num>\d+(?:[a-z]{1,2}(?![\p{L}]))?(?:\.\d+)?(?![\p{N}]))|(?<join>,|(?<![\p{L}])(?:und|sowie|oder|bis)(?![\p{L}]))|(?<word>\p{L}[\p{L}-]*\.?)/gu
 /** The words that may stand inside an address without ending it: „§§ 46 Abs. 3 zweiter Satz und 213", „§§ 21 samt Überschrift und 22". */
 const ADDRESS_WORD_RE = new RegExp(`^(?:${ORDINAL_WORD}[rnsm]?|S[äa]tze?s?|Halbsatz(?:es)?|Einleitungs(?:satz|teil)|Schluss(?:satz|teil)|samt|Überschrift(?:en)?|jeweils|der|des|die|den|dem|im|in|zu|zum)$`, 'iu')
-/** A schedule as `PARA_RE` reads one — „Anlage 2", „des Anhangs" — anywhere in a head. */
-const SCHEDULE_MENTION_RE = /\b(Anlage|Anhang)(?:e?s)?\b(?:\s+((?:\d+[a-z]*|[IVXL]+)(?![A-Za-zÄÖÜäöüß])))?/gi
+/**
+ * A schedule as `PARA_RE` reads one — „Anlage 2", „des Anhangs" — anywhere in
+ * a head, and the plural with its list: „die Anlagen 6, 7 und 10", „folgende
+ * Anlagen 11 und 12", „die Anhänge VIII und IX". Read as the singular only,
+ * the plural named nothing at all, and a refused „Der Verordnung werden
+ * folgende Anlagen 11 und 12 angefügt:" locked and counted neither
+ * (Bäderhygieneverordnung, two drafts, 26.10.2026).
+ */
+const SCHEDULE_MENTION_RE = /(?<![\p{L}])(Anlage|Anhang|Anlagen|Anhänge)(?:e?s|n)?(?![\p{L}])(?:\s+((?:\d+[a-z]*|[IVXL]+)(?:\s*(?:,|und|sowie|bis)\s*(?:\d+[a-z]*|[IVXL]+))*)(?![\p{L}\p{N}]))?/giu
+
+/** Every schedule a text names (`SCHEDULE_MENTION_RE`), one designation each; `anchored` reads only one at its start. */
+function scheduleList(text: string, anchored = false): string[] {
+  const out: string[] = []
+  for (const m of text.matchAll(SCHEDULE_MENTION_RE)) {
+    if (anchored && m.index !== 0) break
+    const kind = /^Anh/.test(m[1]!) ? 'Anhang' : 'Anlage'
+    const numbers = m[2] ? [...m[2].matchAll(/(\d+[a-z]*|[IVXL]+)|(?<![\p{L}])(bis)(?![\p{L}])/gu)] : []
+    if (numbers.length === 0) out.push(kind)
+    let previous: string | null = null
+    let ranged = false
+    for (const n of numbers) {
+      if (n[2]) {
+        ranged = previous !== null
+        continue
+      }
+      const run = ranged && previous !== null ? expandRange(previous, n[1]!) : null
+      for (const id of run ?? [n[1]!]) out.push(`${kind} ${id}`)
+      previous = n[1]!
+      ranged = false
+    }
+    if (anchored) break
+  }
+  return out
+}
 /**
  * A § sign directly behind the noun of an operand — „wird das Zitat § 3
  * Abs. 3 durch das Zitat § 2 Abs. 3 ersetzt", „der Verweis auf § 20 Abs. 6" —
@@ -2640,6 +2706,22 @@ const RENUMBER_VERB_RE = /(?<![\p{L}])erh(?:ä|a)lt(?:en)?(?![\p{L}])/u
 /** Quotations blanked to the same length, so an index found in the result points into the original. */
 function blankQuotes(t: string): string {
   return t.replace(/"[^"]*"/g, (m) => `"${' '.repeat(m.length - 2)}"`)
+}
+
+/**
+ * „§§ 68 bis 68f": the plain number opens the run of its lettered ones, as law
+ * counts them — § 68a … § 68f (Markenschutzgesetz, 83/ME XXVIII). Only for
+ * the units a line NAMES (`signedParagraphs`), which the gate locks and
+ * counts: there a § too many costs a display, never a text. `expandRange`
+ * stays strict, because what it returns the engine applies — read there,
+ * „Die Überschrift des VII. Abschnittes sowie die §§ 68 bis 68f lauten:" came
+ * out as six § headings.
+ */
+function letteredRun(from: string, to: string): string[] | null {
+  const plain = /^(\d+)$/.exec(from)
+  const lettered = /^(\d+)([a-z])$/.exec(to)
+  if (!plain || !lettered || plain[1] !== lettered[1]) return null
+  return Array.from({ length: lettered[2]!.charCodeAt(0) - 96 }, (_, i) => `${plain[1]}${String.fromCharCode(97 + i)}`)
 }
 
 /**
@@ -2672,7 +2754,7 @@ function signedParagraphs(masked: string, once = false): string[] {
   let lastPara: number | null = null
   let underAbsatz = false
   const add = (id: string): void => {
-    const run = rangeFrom === null ? null : expandRange(rangeFrom, id)
+    const run = rangeFrom === null ? null : (expandRange(rangeFrom, id) ?? letteredRun(rangeFrom, id))
     for (const between of run ?? [id]) out.push(`§ ${between}`)
     rangeFrom = null
     lastPara = Number.parseInt(id, 10)
@@ -2812,10 +2894,35 @@ export function mentionedUnits(raw: string): string[] {
   for (const head of untocHeads(raw)) {
     const masked = maskQuotes(head)
     for (const p of signedParagraphs(masked)) out.add(p)
-    for (const m of masked.matchAll(SCHEDULE_MENTION_RE)) out.add(m[2] ? `${m[1]} ${m[2]}` : m[1]!)
+    for (const p of scheduleList(masked)) out.add(p)
     for (const p of renumberedParagraphs(head)) out.add(p)
   }
+  for (const p of trailingAddressList(raw)) out.add(p)
   return [...out]
+}
+
+/**
+ * „In der jeweils grammatikalisch richtigen Form wird in den folgenden
+ * Paragraphen die Bezeichnung ‚…' durch die Bezeichnung ‚…' ersetzt: § 5a
+ * Abs. 2 bis 4, § 5c Abs. 1, § 6a Abs. 1 … und § 8a." — the places stand
+ * BEHIND the colon, where every other line has its payload, and the head
+ * cut there named none of them. Refused (rightly: „in der grammatikalisch
+ * richtigen Form" is no operand we can match), the line locked only the
+ * first § of the list by the fallback, and §§ 5c and 8a stood in the annex
+ * as „Anweisung nicht gefunden" (64/ME XXVIII, 26.10.2026).
+ *
+ * Only a tail that is an address list and nothing else: it opens with a §
+ * sign and carries no quotation and no verb — a quoted or written-out
+ * payload is never read here.
+ */
+function trailingAddressList(raw: string): string[] {
+  const line = normalizeText(raw)
+  const masked = maskQuotes(line)
+  const colon = masked.lastIndexOf(':')
+  if (colon < 0) return []
+  const tail = masked.slice(colon + 1)
+  if (!/^\s*§/.test(tail) || tail.includes('"') || FINITE_VERB_RE.test(tail)) return []
+  return signedParagraphs(tail)
 }
 
 /** „folgende §§ 44 bis 52", „als neue Anlage 5": where an insertion announces the units it creates. */
@@ -2827,10 +2934,7 @@ function announcedUnits(masked: string): string[] {
   for (const m of masked.matchAll(ANNOUNCEMENT_RE)) {
     const rest = masked.slice(m.index + m[0].length)
     if (rest.startsWith('§')) out.push(...signedParagraphs(rest, true))
-    else {
-      const schedule = /^(Anlage|Anhang)\b(?:\s+((?:\d+[a-z]*|[IVXL]+)(?![A-Za-zÄÖÜäöüß])))?/i.exec(rest)
-      if (schedule) out.push(schedule[2] ? `${schedule[1]} ${schedule[2]}` : schedule[1]!)
-    }
+    else out.push(...scheduleList(rest, true))
   }
   return out
 }
@@ -2852,6 +2956,64 @@ export function createdUnits(raw: string): string[] {
     for (const p of announcedUnits(maskQuotes(head))) out.add(p)
   }
   return [...out]
+}
+
+/** „folgende Anlage 5", „als neue Anlage 5": an insertion whose new unit is a schedule. */
+const ANNOUNCES_SCHEDULE_RE = /(?<![\p{L}])(?:folgende[rnms]?|nachstehende[rnms]?|als)\s+(?:neue[rnms]?\s+)?(?:Anlage|Anhang)(?![\p{L}])/iu
+
+/** Whether an insertion's new unit is a schedule — „folgende Anlage 5", „als neue Anlage 5" (`ANNOUNCES_SCHEDULE_RE`). */
+export function announcesSchedule(line: string): boolean {
+  return ANNOUNCES_SCHEDULE_RE.test(normalizeText(line))
+}
+
+/**
+ * The §§ an instruction read by the grammar brings into being, as the draft
+ * writes them: the new numbers of a renumbering of §§, the §§ an insertion
+ * announces or spells out, and those a replacement installs — „durch folgende
+ * §§ 7 bis 10", and the §§ of a whole Abschnitt replaced („der 1. Abschnitt
+ * durch folgenden 1., 2. und 3. Abschnitt").
+ *
+ * ONE reading for the three that need it (26.10.2026): the engine locks them
+ * where the instruction fails (`newParagraphsOf` in `kons/lawApply.ts`), the
+ * gate counts them in its denominator and asks the annex about them
+ * (`addressedParagraphs` in `kons/konsGate.ts`), and the consolidation hands
+ * the instruction to the guard of each (`touching`). Until then only the lock
+ * read them, and the denominator counted the anchor of an insertion and the
+ * old number of a renumbering: the new § 42a of „§ 42 wird durch die folgenden
+ * §§ 42 bis 42b ersetzt" was applied and never accounted for, and the page
+ * labelled its annex block „Anweisung nicht gefunden" — 53 blocks of GP
+ * XXVIII (ME and RIS-only drafts) whose instruction was read and stands right
+ * there, and 17 more whose instruction was refused (`createdUnits`).
+ *
+ * „folgende Anlage 5 zu § 14 eingefügt" creates a schedule, and the op keeps
+ * only its number — read as § 5 it locked a § the line never touches
+ * (Alternative Investmentfonds Manager-Gesetz, BGBl. I Nr. 57/2026). The kind
+ * comes from the line's own announcement.
+ */
+export function createdParagraphs(op: NovaoOp, payload: readonly { level: string; id: string }[], line: string): string[] {
+  if (op.kind === 'renumber') {
+    const first = op.target.level === 'para' && op.to ? bareParaId(op.to) : null
+    if (!first) return []
+    const last = op.toLast ? bareParaId(op.toLast) : null
+    return [first, ...(last ? (expandRange(first, last) ?? []) : [])].map((id) => `§ ${id}`)
+  }
+  if ((op.kind === 'insertAfter' || op.kind === 'append') && op.child === 'para') {
+    const kind = announcesSchedule(line) ? 'Anlage' : '§'
+    return [...new Set([...op.childIds, ...payload.map((p) => p.id)])].filter(Boolean).map((id) => `${kind} ${id}`)
+  }
+  if (op.kind === 'replace' && (op.target.level === 'para' || op.target.level === 'abschnitt')) return payload.filter((p) => p.level === 'para' && p.id).map((p) => `§ ${p.id}`)
+  return []
+}
+
+/**
+ * Whether a line addresses the whole text of its law — „Im gesamten
+ * Gesetzestext wird jeweils …", „in allen Bestimmungen" — read on the head
+ * outside its quotations, as the grammar reads the address (`DOCUMENT_RE`).
+ * For a line the grammar refused: it names no § either, and the §§ it
+ * reaches are only to be had from the annex (`kons/consolidate.ts`).
+ */
+export function addressesWholeText(raw: string): boolean {
+  return DOCUMENT_RE.test(maskQuotes(instructionHead(normalizeText(raw))))
 }
 
 /** The instruction was read and names no § because none is meant: the table of contents, the whole text. */

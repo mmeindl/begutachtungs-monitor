@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { addressKey, expandRange, opAddress, parseAddress, parseAddressList, parseInstruction, splitCompound, splitPayloadScope, type NovaoAddress, type NovaoOp } from '../server/utils/kons/novao'
+import { addressKey, addressesWholeText, createdParagraphs, createdUnits, expandRange, mentionedUnits, namedParagraphs, opAddress, parseAddress, parseAddressList, parseInstruction, splitCompound, splitPayloadScope, type NovaoAddress, type NovaoOp } from '../server/utils/kons/novao'
 
 /** The single operation of an instruction, or a failure that names the reason. */
 function op(line: string): NovaoOp {
@@ -992,5 +992,77 @@ describe('a heading named by the § below it (25.10.2026)', () => {
     for (const line of ['Die Zwischenüberschrift vor § 48a lautet:', 'Die Abschnittsbezeichnung vor § 22 lautet:', 'Die Abschnittsüberschrift vor § 6 lautet:']) {
       expect(parseInstruction(line).reason, line).toMatch(/Gliederungseinheit/)
     }
+  })
+})
+
+describe('the units an instruction brings into being (26.10.2026)', () => {
+  it('reads them off the op, its payload and its line — one reading for lock, denominator and guard', () => {
+    // A whole Abschnitt replaced by its §§: the line names the Abschnitt only.
+    const division = op('Im 3. Hauptstück wird der 1. Abschnitt durch folgenden 1., 2. und 3. Abschnitt samt Überschriften ersetzt:')
+    expect(createdParagraphs(division, [{ level: 'para', id: '14' }, { level: 'para', id: '14a' }], '')).toEqual(['§ 14', '§ 14a'])
+    // The new numbers of a renumbering run.
+    expect(createdParagraphs(op('Die §§ 88 bis 90 erhalten die Paragraphenbezeichnungen "§ 69." bis "§ 71." .'), [], '')).toEqual(['§ 69', '§ 70', '§ 71'])
+    // A schedule stays a schedule.
+    const line = 'Nach der Anlage 4 wird folgende Anlage 5 eingefügt:'
+    expect(createdParagraphs(op(line), [], line)).toEqual(['Anlage 5'])
+  })
+
+  it('reads a plural of schedules as the list it is', () => {
+    expect(createdUnits('Der Verordnung werden folgende Anlagen 11 und 12 angefügt:')).toEqual(['Anlage 11', 'Anlage 12'])
+    expect(mentionedUnits('Die Anlagen 6, 7 und 10 entfallen.')).toEqual(['Anlage 6', 'Anlage 7', 'Anlage 10'])
+    expect(mentionedUnits('Die Anhänge VIII und IX entfallen.')).toEqual(['Anhang VIII', 'Anhang IX'])
+  })
+
+  it('reads the places a line lists behind its colon', () => {
+    // 64/ME XXVIII: refused for „in der grammatikalisch richtigen Form", and
+    // §§ 5c and 8a were neither counted nor locked.
+    const line = 'In der jeweils grammatikalisch richtigen Form wird in den folgenden Paragraphen die Bezeichnung "das Bundesministerium für Gesundheit und Frauen" durch die Bezeichnung "das zuständige Bundesministerium" ersetzt: § 5a Abs. 2 bis 4 sowie Abs. 7 Z 3, § 5c Abs. 1, § 6a Abs. 1 und § 8a.'
+    expect(parseInstruction(line).ops).toEqual([])
+    expect(mentionedUnits(line)).toEqual(['§ 5a', '§ 5c', '§ 6a', '§ 8a'])
+    // A payload behind the colon is no list of places.
+    expect(mentionedUnits('In § 5 wird folgender Satz angefügt: "Gemäß § 7 gilt das."')).toEqual(['§ 5'])
+  })
+
+  it('names the lettered §§ of a range for the lock, and still refuses what it cannot apply', () => {
+    // 83/ME XXVIII: the Abschnitt heading keeps the line refused, the lock
+    // names § 68a to § 68e as well as the two ends.
+    const line = 'Die Überschrift des VII. Abschnittes sowie die §§ 68 bis 68f lauten:'
+    expect(parseInstruction(line).ops).toEqual([])
+    expect(mentionedUnits(line)).toEqual(['§ 68', '§ 68a', '§ 68b', '§ 68c', '§ 68d', '§ 68e', '§ 68f'])
+    expect(expandRange('68', '68f')).toBeNull()
+  })
+
+  it('knows a line on the whole text', () => {
+    expect(addressesWholeText('Im gesamten Gesetzestext wird jeweils')).toBe(true)
+    expect(addressesWholeText('In § 5 wird die Wortfolge "im gesamten Gesetzestext" gestrichen.')).toBe(false)
+  })
+})
+
+describe('ranges and lists the address reading missed (26.10.2026)', () => {
+  const target = (line: string): NovaoAddress => opAddress(op(line))!
+  it('reads a range whose end repeats the § sign, or names its letter alone', () => {
+    expect(namedParagraphs(target('Die § 48a bis § 48d samt Überschrift lauten:'))).toEqual(['§ 48a', '§ 48b', '§ 48c', '§ 48d'])
+    expect(namedParagraphs(target('§ 14 bis § 20 jeweils samt Überschrift lauten:'))).toEqual(['§ 14', '§ 15', '§ 16', '§ 17', '§ 18', '§ 19', '§ 20'])
+    expect(namedParagraphs(target('§§ 34a bis e samt Überschriften lauten:'))).toEqual(['§ 34a', '§ 34b', '§ 34c', '§ 34d', '§ 34e'])
+  })
+
+  it('reads the second schedule of „Die Anlage 1 und 2 lauten"', () => {
+    expect(namedParagraphs(target('Die Anlage 1 und 2 lauten:'))).toEqual(['Anlage 1', 'Anlage 2'])
+  })
+
+  it('takes a bare number above the § behind an Absatz for the next § of a plural list', () => {
+    // 58/ME XXVIII: read as Abs. 63 of § 55 and Abs. 233 of § 224.
+    const places = parseInstruction('In den §§ 55 Abs. 2, 63, 224 Abs. 2 und 233 wird das Wort "elektronisch" jeweils durch die Wortfolge "mit Formular" ersetzt.').ops.map((o) => addressKey(opAddress(o)!))
+    expect(places).toEqual(['§ 55 Abs. 2', '§ 63', '§ 224 Abs. 2', '§ 233'])
+    // Below the § it stands under, the number stays an Absatz — and behind a
+    // Ziffer, a number above the § stays a Ziffer („§§ 2 Z 5, 12 und 19").
+    expect(parseInstruction('In den §§ 143 Abs. 108 und 109 wird jeweils das Wort "a" durch das Wort "b" ersetzt.').ops.map((o) => addressKey(opAddress(o)!))).toEqual(['§ 143 Abs. 108'])
+    expect(parseInstruction('In den §§ 2 Z 5, 12 und 19 wird jeweils das Wort "a" durch das Wort "b" ersetzt.').ops.map((o) => [addressKey(opAddress(o)!), opAddress(o)!.siblings])).toEqual([['§ 2 Z 5', ['12', '19']]])
+  })
+
+  it('keeps a word glued to the § number out of the number', () => {
+    // 61/ME XXVIII: „13. § 42wird wie folgt geändert:" was § „42wird".
+    expect(target('§ 42wird wie folgt geändert:').para).toBe('§ 42')
+    expect(target('§ 12aa lautet:').para).toBe('§ 12aa')
   })
 })

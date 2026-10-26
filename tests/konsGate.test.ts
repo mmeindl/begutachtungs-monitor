@@ -314,3 +314,33 @@ describe('an Abschnitt is no § of its number (02.10.2026)', () => {
     expect([...(addressedLabels(instructions, []) ?? new Map()).keys()]).toEqual(['5'])
   })
 })
+
+describe('the denominator counts what the draft brings into being (26.10.2026)', () => {
+  it('counts the new §§ of a replacement run, a renumbering and an insertion — as the lock does', () => {
+    const instructions = [
+      ...instr('§ 42 wird durch die folgenden §§ 42 bis 42b samt Überschriften ersetzt:', ['§ 42. Eins.', '§ 42a. Zwei.', '§ 42b. Drei.']),
+      ...instr('§ 14a erhält die Paragraphenbezeichnung "§ 15." .'),
+      ...instr('Nach Anlage 2 wird folgende Anlage 3 samt Überschrift angefügt:', ['Anlage 3', 'Inhalt.']),
+    ]
+    expect(addressedParagraphs(instructions, [])).toEqual(['14a', '15', '42', '42a', '42b', 'Anl. 2', 'Anl. 3'])
+    expect(addressedLabels(instructions, [])?.get('42b')).toBe('§ 42b')
+  })
+
+  it('counts what a refused line would have created, in its words and in its new text', () => {
+    // 15/ME XXVIII: „Nach § 37 wird folgender § 38 … angefügt:" refused over a
+    // table — § 38 was locked and never counted. DC0E9C30: the §§ of a
+    // refused Unterabschnitt stand in its payload only.
+    const refused = [
+      { line: 'Nach § 37 wird folgender § 38 samt Überschrift angefügt:', inherited: null, created: [] },
+      { line: 'Der 3. Unterabschnitt des 2. Abschnitts lautet:', inherited: null, created: ['§ 10', '§ 10a'] },
+    ]
+    expect(addressedParagraphs([], refused)).toEqual(['10', '10a', '37', '38'])
+    // The lock holds the Abschnitt under its own name too, as it always did (`unitKey`).
+    expect([...refusedUnits([], refused, unitKey)].sort(byParagraphOrder)).toEqual(['Abschnitt 3', '10', '10a', '37', '38'])
+  })
+
+  it('counts what the words of a read line announce beyond its operation', () => {
+    // 51/ME XXVIII: „Der bisherige § 15 wird zu § 23 Abs. 1; …" is read as the insertion alone.
+    expect(addressedParagraphs(instr('Der bisherige § 15 wird zu § 23 Abs. 1; ihm wird folgender Abs. 2 angefügt:', ['(2) Neu.']), [])).toEqual(['15', '23'])
+  })
+})

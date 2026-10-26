@@ -83,6 +83,19 @@ describe('placeAtParagraphs — the Lesefassung', () => {
     expect(carried([row('§ 8.', { change: 'removed', proposed: '', paraAfter: null })], response([], [])).at).toEqual([[]])
   })
 
+  it('finds a § numbered by Kapitel under its whole number', () => {
+    // 707EA278: read as „8", the outcome „8.03" met no block, and the block
+    // said „nicht gefunden" over an instruction we had read (26.10.2026).
+    expect(carried([row('§ 8.03'), row('§ 8.04')], response([], [held('8.03', 'verweigert'), held('8.04', 'unplausibel')])).at).toEqual([['verweigert'], ['unplausibel']])
+  })
+
+  it('places a § of a law the draft enacts anew at its block, and never lists it as one the draft „also changes"', () => {
+    const rows = [row('§ 1.', { law: 'Neues Gesetz' })]
+    const { placement, at } = carried(rows, response([], [held('1', 'neu-erlassen', 'Neues Gesetz'), held('2', 'neu-erlassen', 'Neues Gesetz')]))
+    expect(at).toEqual([['neu-erlassen']])
+    expect(placement.ends.byGroup.size + placement.ends.rest.length).toBe(0)
+  })
+
   it('looks a package\'s § up by its law', () => {
     const rows = [row('§ 5.', { law: 'A' }), row('§ 5.', { law: 'B' })]
     expect(carried(rows, response([shown('5', 'A')], [held('5', 'verweigert', 'B')])).at).toEqual([['5'], ['verweigert']])
@@ -105,6 +118,7 @@ describe('the sentences', () => {
     expect(lesefassungLine({ kind: 'withheld', cause: 'verweigert' }, '§ 1a.')).toMatch(/^Ganzer § 1a danach nicht gezeigt: /)
     // A § the draft repeals or moves stands in the annex as struck rows already.
     expect(lesefassungLine({ kind: 'withheld', cause: 'entfaellt' })).toBeNull()
+    expect(lesefassungLine({ kind: 'withheld', cause: 'neu-erlassen' })).toBe('Ganzer Paragraph danach nicht gezeigt: Dieses Gesetz erlässt der Entwurf neu, und seinen ganzen Text enthält er selbst; wir setzen nur Änderungen bestehender Gesetze zusammen.')
     expect(lesefassungNotRunText({ ...response([], []), notRun: 'keine-novelle' })).toMatch(/^Ganze Paragraphen danach zeigen wir hier nicht: So wie wir den Entwurf lesen/)
     expect(lesefassungNotRunText(response([], []))).toBeNull()
   })

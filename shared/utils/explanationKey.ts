@@ -32,7 +32,13 @@ export function explanationParaId(designation: string | null): string | null {
   // Case-insensitive and lowercased afterwards: both sides of the lookup go
   // through this function, so it decides the spelling for both — „§ 54c." and
   // „§ 54C" must not be two different Paragraphen.
-  const m = /^\s*§+\s*(\d+[a-z]*)\b/i.exec(designation ?? '')
+  //
+  // „§ 8.03." whole, as the server keys it (`unitKey`): a Verordnung that
+  // numbers its §§ by Kapitel read as „8", its outcomes met no § block, and
+  // 60 blocks of 707EA278 said „Anweisung nicht gefunden" (26.10.2026). The
+  // full stop of a plain „§ 5." is no part of it: only a digit behind the
+  // point continues the number.
+  const m = /^\s*§+\s*(\d+[a-z]*(?:\.\d+)?)\b/i.exec(designation ?? '')
   return m ? m[1]!.toLowerCase() : null
 }
 

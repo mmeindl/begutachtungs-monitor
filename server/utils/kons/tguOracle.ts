@@ -68,7 +68,11 @@ export interface OracleReport {
  */
 export function paraIdOfGld(gld: string | null): string | null {
   const t = normalizeText(gld ?? '')
-  const m = /^§+\s*(\d+[a-z]*)\b/.exec(t)
+  // „§ 2.01." whole: a Verordnung that numbers its §§ by Kapitel (the
+  // Wasserstraßen-Verkehrsordnung's „§ 8.03") is keyed so on the address
+  // side (`unitKey`), and read as „2" here every § of a Kapitel fell into
+  // one (26.10.2026).
+  const m = /^§+\s*(\d+[a-z]*(?:\.\d+)?)\b/.exec(t)
   if (m) return m[1]!
   // A schedule names itself, and it is a unit of the law like any other:
   // „Anlage 1", „Anhang". Keyed under `unitKey` so it meets the address side
@@ -283,6 +287,57 @@ function drawerRows(byParagraph: ReadonlyMap<string, ComparisonRow[]>, id: strin
   if (law !== undefined) return byParagraph.get(paragraphKey(key, law)) ?? []
   const hits = rowsById(byParagraph).get(key) ?? []
   return hits.length === 1 ? hits[0]! : []
+}
+
+/** A row that shows a change the draft has to instruct — as the page's `showsInstructedChange` reads it. */
+function showsChange(row: ComparisonRow): boolean {
+  return row.kind === 'pair' && row.change !== 'unchanged' && !row.editorial && !row.elisionRange && !row.elided
+}
+
+/**
+ * The units the annex shows changing in one law — for the §§ a draft changes
+ * without naming them one by one: an instruction on the whole text („Im
+ * gesamten Gesetzestext wird jeweils …") and a law the draft enacts anew.
+ * Neither names its §§, and the annex is the one document that lists them.
+ *
+ * Each under the designation it carries after the draft — the drawer it is
+ * filed in (`rowsByParagraph`) — and only where something of it stands
+ * afterwards: a § the annex strikes whole is no § of the result, and no
+ * outcome of ours belongs at it.
+ *
+ * `law` as `paragraphRows` takes it; without one (a single-law draft) the
+ * rows the annex files under no law and under `fallback`.
+ */
+export function annexChangedUnits(byParagraph: ReadonlyMap<string, ComparisonRow[]>, law: string | null | undefined, fallback: string | null = null): string[] {
+  const struck = STRUCK.get(byParagraph)
+  const out: string[] = []
+  for (const [key, rows] of byParagraph) {
+    const cut = key.lastIndexOf('#')
+    if (cut < 0) continue
+    const lawPart = key.slice(0, cut)
+    const fits = law !== undefined ? lawPart === (law ?? '') : lawPart === '' || (fallback !== null && lawPart === fallback)
+    if (!fits || (struck && rows.every((r) => struck.has(r)))) continue
+    if (rows.some(showsChange)) out.push(key.slice(cut + 1))
+  }
+  return out
+}
+
+/**
+ * The same drawers less some of them, as a map `paragraphRows` reads like the
+ * one it came from: the struck rows, the standing § of each row and the
+ * printed order stay attached (they are keyed by row, not by drawer). A plain
+ * filtered copy would lose all three, and with them the origin's reading of
+ * every renumbered § (`kons/consolidate.ts`, `annexOf`).
+ */
+export function someDrawers(byParagraph: ReadonlyMap<string, ComparisonRow[]>, keep: (key: string) => boolean): Map<string, ComparisonRow[]> {
+  const out = new Map([...byParagraph].filter(([key]) => keep(key)))
+  const struck = STRUCK.get(byParagraph)
+  const standing = STANDING.get(byParagraph)
+  const position = POSITION.get(byParagraph)
+  if (struck) STRUCK.set(out, struck)
+  if (standing) STANDING.set(out, standing)
+  if (position) POSITION.set(out, position)
+  return out
 }
 
 /** The one schedule of this law in the annex — null where there is none or several. */

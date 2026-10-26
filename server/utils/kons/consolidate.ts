@@ -31,18 +31,18 @@ import type {
 } from '../../../shared/types'
 import type { DraftIdentity } from '../ris/draftIdentity'
 import { guardParagraph } from './applyGuard'
-import { addressedLabels, addressedParagraphs, gateParagraph, inPrintedOrder, refusedUnits, touchedKey, unitsByKey } from './konsGate'
+import { addressedLabels, addressedParagraphs, byParagraphOrder, gateParagraph, inPrintedOrder, refusedUnits, touchedKey, unitsByKey } from './konsGate'
 import { anlageLabelKey, isSchedule, unitKey } from '../text/designation'
 import { konsLawUrl, type KonsLawAtDate, type KonsParagraphRef } from '../ris/konsLaw'
 import { diffTokens } from '../diff/wordDiff'
 import { applyNovelle, instructionsFromUnits, renamedOrigins, type Instruction, type RefusedInstruction, type StandingLaw } from './lawApply'
 import { bodyText, parseKonsParagraph, plainText, type LawNode } from '../lawtext/konsTree'
 import { segmentUnits, type TextBlock } from '../lawtext/lawUnits'
-import { articleBlocks, type ClauseName, type DraftArticle } from '../lawtext/draftArticles'
-import { opAddress } from './novao'
+import { articleBlocks, draftArticles, type ClauseName, type DraftArticle } from '../lawtext/draftArticles'
+import { addressesWholeText, createdParagraphs, createdUnits, opAddress } from './novao'
 import { mapWithConcurrency } from '../pool'
 import type { ComparisonRow } from '../annex/comparisonRows'
-import { absatzSequence, oracleVerdict, paragraphRows, rowsByParagraph } from './tguOracle'
+import { absatzSequence, annexChangedUnits, oracleVerdict, paragraphRows, rowsByParagraph, someDrawers } from './tguOracle'
 
 /**
  * Ceilings, not budgets: the same values the two neighbours that read the
@@ -138,6 +138,13 @@ async function standingParagraphs(queue: readonly KonsParagraphRef[], sources: K
   return trees.filter((tree): tree is LawNode => tree !== null)
 }
 
+/** The annex rows an Artikel is checked against, and the law they are asked under (`paragraphRows`). */
+interface AnnexOf {
+  rows: ReadonlyMap<string, ComparisonRow[]>
+  /** The Artikel's key; `undefined` asks by the bare number. */
+  law: string | null | undefined
+}
+
 /** One Artikel of the draft, read purely: what it instructs and which §§ it addresses. */
 interface ArticleWork {
   index: number
@@ -146,6 +153,60 @@ interface ArticleWork {
   refused: RefusedInstruction[]
   addressed: string[]
   labels: Map<string, string> | null
+  /** §§ a refused line on the whole text reaches, by the annex (`wholeTextParagraphs`). */
+  locked: Set<string>
+}
+
+/**
+ * „Im gesamten Gesetzestext wird jeweils … ersetzt" names no §, and so the
+ * denominator counted none of the §§ it changes: the annex showed them
+ * changing, nothing on our side accounted for them, and the page said
+ * „Anweisung nicht gefunden" at each — 40 §§ of 145/ME XXVIII (26.10.2026).
+ *
+ * The annex is the one document that lists them, so they join from there:
+ * every § it shows changing in this Artikel's law that no instruction names.
+ * They are fetched and run like any other § — the instruction reaches them
+ * through `touching` (`document`) and the gate decides — and where the line on
+ * the whole text was refused, they are locked as every § a refused line
+ * names (`locked`). Without an annex they stay uncounted, and there is no
+ * block to say anything at either.
+ *
+ * Not for a law divided into Artikel: which Artikel an annex row means is not
+ * in the row, and its RIS label needs it (`addressedLabels`).
+ */
+function wholeTextParagraphs(w: ArticleWork, annex: AnnexOf): void {
+  const read = w.instructions.some(({ op }) => opAddress(op)?.level === 'document')
+  const refused = w.refused.some((r) => addressesWholeText(r.line))
+  if (!read && !refused) return
+  const labels = w.labels
+  if (!labels || [...labels.values()].some((label) => /^Art\./.test(label))) return
+  const added = annexChangedUnits(annex.rows, annex.law, w.article.key).filter((id) => !w.addressed.includes(id))
+  if (added.length === 0) return
+  for (const id of added) labels.set(id, isSchedule(id) ? id : `§ ${id}`)
+  w.addressed = [...w.addressed, ...added].sort(byParagraphOrder)
+  if (refused) for (const id of added) w.locked.add(id)
+}
+
+/**
+ * A law the draft enacts anew instead of amending it — the „Anti-Doping-
+ * Bundesgesetz 2027" of 144/ME XXVIII beside one Novelle — has no
+ * instructions, and where the annex sets it against the law it replaces,
+ * every § of it stood there as „Anweisung nicht gefunden" (39 §§ in 144/ME,
+ * 57/ME and 147/ME XXVIII, 26.10.2026). There is nothing to consolidate: the
+ * draft prints the whole new text itself. Each § the annex shows changing
+ * gets that as its cause (`neu-erlassen`), under the law the annex files it
+ * under, and is counted like every other § the page says something about.
+ *
+ * A draft that enacts one law and amends none never gets here: it does not
+ * run at all (`keine-novelle`), and the page says so once.
+ */
+function enactedParagraphs(blocks: readonly TextBlock[], byParagraph: ReadonlyMap<string, ComparisonRow[]>): ConsolidatedWithheld[] {
+  const out: ConsolidatedWithheld[] = []
+  for (const { article } of articleBlocks(blocks)) {
+    if (article.amends || article.number === null || article.key === null) continue
+    for (const id of annexChangedUnits(byParagraph, article.key)) out.push({ id, annexLaw: article.key, cause: 'neu-erlassen' })
+  }
+  return out
 }
 
 /**
@@ -190,9 +251,13 @@ export async function consolidate(
     // The RIS labels beside the denominator, and from the same pure step:
     // a law divided into Artikel files its § 3 as „Art. 2 § 3", and null
     // here means two addressed §§ would collide under one id (§12.12a).
-    return [{ index, article, instructions, refused, addressed: addressedParagraphs(instructions, refused), labels: addressedLabels(instructions, refused) }]
+    return [{ index, article, instructions, refused, addressed: addressedParagraphs(instructions, refused), labels: addressedLabels(instructions, refused), locked: new Set<string>() }]
   })
-  const touched = works.reduce((n, w) => n + w.addressed.length, 0)
+  /**
+   * The §§ of a law the draft enacts anew that the annex shows changing
+   * (`enactedParagraphs`) — counted and accounted for like the rest.
+   */
+  const enacted: ConsolidatedWithheld[] = []
 
   /** Per Artikel, in input order — flattened at the end, so the order never depends on who finished first. */
   const shownBy = new Map<ArticleWork, ConsolidatedParagraph[]>()
@@ -207,8 +272,10 @@ export async function consolidate(
     // An empty list is not an error but the normal case: in half of the
     // drafts the annex confirms not a single paragraph (§12.12).
     paragraphs: works.flatMap((w) => shownBy.get(w) ?? []),
-    withheld: works.flatMap((w) => withheldBy.get(w) ?? []),
-    touched,
+    withheld: [...works.flatMap((w) => withheldBy.get(w) ?? []), ...enacted],
+    // Summed at the end: an instruction on the whole text adds the §§ the
+    // annex shows to its Artikel once the annex is read (`wholeTextParagraphs`).
+    touched: works.reduce((n, w) => n + w.addressed.length, 0) + enacted.length,
     notRun: null,
   })
   if (works.length === 0) return result()
@@ -218,7 +285,16 @@ export async function consolidate(
   // Read a second time, because the Gegenüberstellung's answer carries the
   // checked rows with their **text emptied** — right for the display, fatal
   // for an oracle that would read empty text as „sagt nichts dazu".
-  const rows = await sources.annexRows(parts.map((p) => p.article))
+  //
+  // With EVERY Artikel of the draft, as the section reads it — not the
+  // amending ones only. The annex files its rows under the Artikel it can
+  // match its headings to, and handed the amending ones alone, the rows of a
+  // law the draft enacts anew had no Artikel of their own and fell under
+  // their neighbour's (or under none): the gate held the Novelle's § 3
+  // against the new law's § 3, and the page, which reads the annex with all
+  // of them, found the outcomes under another key than its blocks
+  // (144/ME XXVIII, 26.10.2026).
+  const rows = await sources.annexRows(draftArticles(blocks))
   const byParagraph = rows ? rowsByParagraph(rows) : null
 
   // Without an annex nothing confirms anything, and then every RIS call is
@@ -241,6 +317,37 @@ export async function consolidate(
   // such a package can be confirmed — said as what it is, not as the annex
   // being silent about each § (`boundaryNote` says the same above the rows).
   const undivided = isPackage && [...byParagraph.keys()].every((key) => key.startsWith('#'))
+  // Where an Artikel's rows are looked up (`AnnexOf`): under its own key in a
+  // package, and also in a single Novelle where the annex files rows under
+  // that key — it does where the draft enacts a law beside it. Otherwise by
+  // the bare number, as ever, but never in the rows the annex files under
+  // ANOTHER Artikel of the draft: the one Novelle of 144/ME XXVIII has no
+  // rows of its own, and its § 1 and § 26 were held against the § 1 and
+  // § 26 of the law the draft enacts anew (`anhang-fremd`, 26.10.2026).
+  const filedLaws = new Set([...byParagraph.keys()].map((key) => key.slice(0, key.lastIndexOf('#'))))
+  const articleKeys = new Set(draftArticles(blocks).flatMap((a) => (a.key === null ? [] : [a.key])))
+  const annexes = new Map<DraftArticle, AnnexOf>()
+  const annexOf = (article: DraftArticle): AnnexOf => {
+    let found = annexes.get(article)
+    if (found) return found
+    if (isPackage || (article.key !== null && filedLaws.has(article.key))) found = { rows: byParagraph, law: article.key }
+    else {
+      const foreign = (key: string): boolean => {
+        const law = key.slice(0, key.lastIndexOf('#'))
+        return law !== '' && law !== article.key && articleKeys.has(law)
+      }
+      found = { rows: [...byParagraph.keys()].some(foreign) ? someDrawers(byParagraph, (key) => !foreign(key)) : byParagraph, law: undefined }
+    }
+    annexes.set(article, found)
+    return found
+  }
+
+  // What the draft changes without naming it § by § — only the annex lists
+  // those §§, so they join here and not in the pure count above.
+  if (!undivided) {
+    for (const w of works) wholeTextParagraphs(w, annexOf(w.article))
+    enacted.push(...enactedParagraphs(blocks, byParagraph))
+  }
 
   const workable: ArticleWork[] = []
   for (const w of works) {
@@ -279,7 +386,7 @@ export async function consolidate(
     // printed order (`inPrintedOrder`); only when the budget does not
     // suffice does this order decide what is missing.
     const covered = (id: string): boolean =>
-      paragraphRows(byParagraph, id, isPackage ? article.key : undefined).length > 0
+      paragraphRows(annexOf(article).rows, id, annexOf(article).law).length > 0
     // Asked for under the label RIS prints, not under the bare designation:
     // in a law divided into Artikel there is no document called „§ 3", and
     // a lookup without the Artikel comes back empty rather than wide.
@@ -349,21 +456,24 @@ export async function consolidate(
       for (const [key, node] of unitsByKey(after.paragraphs)) carried.set(key, node)
 
       const refusedIds = refusedUnits(unresolved, refused, unitKey)
+      for (const id of w.locked) refusedIds.add(id)
 
       // Read once instead of once per §: the designation every instruction
       // addresses, and the §§ its payload inserts (80 §§ × 500 instructions,
       // `docs/refactor-plan.md` §6.8).
       const analysed = instructions.map((instruction, i) => {
-        const { op, payload } = instruction
+        const { op, payload, line } = instruction
         const address = opAddress(op)
-        const insertsParagraphs = (op.kind === 'insertAfter' || op.kind === 'append') && op.child === 'para'
         return {
           touching: { instruction, result: results[i]! },
           document: address?.level === 'document',
           // Under the key the § is held by below — an Anlage as „Anl. 1", not
           // as § 1 — and an Abschnitt under none (`touchedKey`).
           para: touchedKey(address?.para ?? null),
-          payloadIds: insertsParagraphs ? new Set(payload.map((pl) => pl.id).filter((id) => !!id)) : null,
+          // The §§ it brings into being, as the denominator counts them
+          // (`createdParagraphs`, `createdUnits`): an insertion's payload, a
+          // replacement run's, a renumbering's new numbers.
+          created: new Set([...createdParagraphs(op, payload, line), ...createdUnits(line)].map((p) => unitKey(p)).filter((id): id is string => !!id)),
         }
       })
       // Held under the unit key, not the bare number (`unitsByKey`).
@@ -389,14 +499,19 @@ export async function consolidate(
         // number, and nothing stands under this one any more. Otherwise RIS
         // either carries the § in a form we cannot read (a table, no XML), or
         // not at all — and the draft does not create it.
+        // A § an instruction brings into being and the run did not: that
+        // instruction was not carried out as written, whatever it reported —
+        // not a § RIS lacks (`nicht-im-ris`), which is what the draft does
+        // NOT create.
         if (!node) {
-          hold(id, refusedIds.has(id) ? 'verweigert' : beforeById.has(id) ? 'entfaellt' : inRis.has(labelOf.get(id)!) ? 'nicht-lesbar' : 'nicht-im-ris')
+          const created = analysed.some((a) => a.created.has(id))
+          hold(id, refusedIds.has(id) || created ? 'verweigert' : beforeById.has(id) ? 'entfaellt' : inRis.has(labelOf.get(id)!) ? 'nicht-lesbar' : 'nicht-im-ris')
           continue
         }
         const origin = originOf(id)
         const beforeNode = origin === null ? null : (beforeById.get(origin) ?? null)
         const touching = analysed
-          .filter((a) => a.document || a.para === id || (origin !== null && a.para === origin) || (a.payloadIds?.has(id) ?? false))
+          .filter((a) => a.document || a.para === id || (origin !== null && a.para === origin) || a.created.has(id))
           .map((a) => a.touching)
         const guard = guardParagraph(id, standing, beforeNode, node, touching)
         const before = beforeNode ? plainText(beforeNode) : null
@@ -419,7 +534,8 @@ export async function consolidate(
         // another law of the same package.
         // With the Absätze as the page displays them, so check 5 can hold the
         // annex's markers against them (`absatzOrderBroken`, 26.10.2026).
-        const report = oracleVerdict(id, before, got, paragraphRows(byParagraph, id, isPackage ? w.article.key : undefined, origin), absatzSequence(node), beforeNode ? (absatzSequence(beforeNode) ?? null) : null)
+        const annex = annexOf(w.article)
+        const report = oracleVerdict(id, before, got, paragraphRows(annex.rows, id, annex.law, origin), absatzSequence(node), beforeNode ? (absatzSequence(beforeNode) ?? null) : null)
         const gate = gateParagraph({
           refused: refusedIds.has(id),
           plausible: guard.plausible,

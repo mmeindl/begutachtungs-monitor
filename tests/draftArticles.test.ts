@@ -344,3 +344,16 @@ describe('articleBlocks', () => {
     expect(parts[0]!.blocks).toEqual(parseRisXml(single))
   })
 })
+
+describe('a Promulgationsklausel without its „wird" (26.10.2026)', () => {
+  // 20/ME XXVIII, Artikel 31: read as no clause, the Artikel came out as a law
+  // the draft enacts, and its §§ stood in the annex as „nicht gefunden".
+  it('reads the clause in its own shape, and no instruction as one', () => {
+    const clause = 'Das Gesundheitsberuferegister-Gesetz (GBRG), BGBl. I Nr. 87/2016, zuletzt geändert durch das Bundesgesetz BGBl. I Nr. 15/2022, wie folgt geändert:'
+    expect(isAmendmentClause(clause)).toBe(true)
+    const [one] = draftArticles(parseRisXml(doc(article('Artikel 31', 'Änderung des Gesundheitsberuferegister-Gesetz', clause, ['§ 8 lautet:']))))
+    expect(one).toMatchObject({ amends: true, bgbl: { organ: 'BGBl. I Nr.', nummer: '87/2016' } })
+    // Without the citation at its head the formula alone is no clause.
+    expect(isAmendmentClause('§ 2 Abs. 1, wie folgt geändert:')).toBe(false)
+  })
+})

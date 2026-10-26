@@ -630,7 +630,13 @@ export function placeAtParagraphs(
     if (!end) leftovers.set(law, (end = { outcomes: [], explanations: [] }))
     return end
   }
-  for (const o of outcomes?.untaken() ?? []) endOf(o.law).outcomes.push({ id: o.id, lesefassung: o.lesefassung })
+  // A § of a law the draft enacts anew stands for a block of the annex by
+  // construction (`enactedParagraphs`); one the page found no block for is
+  // no § „der Entwurf ändert hier auch", which is what the end of a law says.
+  for (const o of outcomes?.untaken() ?? []) {
+    if (o.lesefassung.kind === 'withheld' && o.lesefassung.cause === 'neu-erlassen') continue
+    endOf(o.law).outcomes.push({ id: o.id, lesefassung: o.lesefassung })
+  }
   for (const e of explanations) if (!placedPassages.has(e)) endOf(e.law).explanations.push(e)
   const byGroup = new Map<string, LawEnd>()
   const rest: (LawEnd & { law: string | null })[] = []

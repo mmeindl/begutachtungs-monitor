@@ -146,9 +146,10 @@ const GLD_RE = /<gldsym\b[^>]*>([\s\S]*?)<\/gldsym>|<span\s+class=["']?991GldSym
 /**
  * „§ 22." at the head of a column's text — a § designation with its full
  * stop, as a Gliederungssymbol is written, not a citation („§ 5 Abs. 2 gilt
- * …" carries none after the number).
+ * …" carries none after the number). „§ 8.03." whole, as a Verordnung that
+ * numbers its §§ by Kapitel writes it (`explanationParaId`).
  */
-const TYPED_DESIGNATION_RE = /^\s*(§+\s*\d+[a-z]*\.)(?=\s|$)/i
+const TYPED_DESIGNATION_RE = /^\s*(§+\s*\d+[a-z]*(?:\.\d+)?\.)(?=\s|$)/i
 
 /**
  * A structural division of the law — "3. Abschnitt", "Abschnitt XI",
