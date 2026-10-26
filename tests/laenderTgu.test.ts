@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import { draftNameOf, kaerntenDated, readableLawName, tirolDated, wienTguStart } from '../server/utils/laender/landTguService'
-import { amendedLawOf, amendedLawsOf, columnParagraphs, draftDeletes, joinLines, mergeParagraphs, onlyElided, renumberingsOf, searchPhrase, shareInRis, STANDS_IN_RIS, standsInRis, tguLines, tguParagraphs, tguUnits, withHeadings, withRenumberings, type Renumbering, type TguLine, type TguPage, type TguParagraph } from '../server/utils/laender/landTgu'
+import { amendedLawOf, amendedLawsOf, columnParagraphs, draftDeletes, joinLines, mergeParagraphs, onlyElided, onlyListed, renumberingsOf, searchPhrase, shareInRis, STANDS_IN_RIS, standsInRis, tguLines, tguParagraphs, tguUnits, withHeadings, withRenumberings, type Renumbering, type TguLine, type TguPage, type TguParagraph } from '../server/utils/laender/landTgu'
 
 /** A run at (x, y), each character 5 pt wide; glyph widths equal, so centres fall evenly. */
 function run(s: string, x: number, y: number) {
@@ -473,6 +473,13 @@ describe('finding a § by its own words', () => {
     expect(searchPhrase('Hilfeleistungen (1) bis (2) … (3) Als Hilfeleistungen nach diesem Gesetz kommen in Betracht die Eingliederungshilfe und die Pflege.'))
       .toBe('Hilfeleistungen nach diesem Gesetz kommen in Betracht die')
     expect(searchPhrase('§ 3 Abs 1 Z 2 lit a')).toBeNull()
+  })
+
+  it('knows a § the document only lists, by the same few words on both sides (Salzburg 32075)', () => {
+    expect(onlyListed({ old: ['Konformitätsbewertung und -erklärung'], neu: ['Konformitätsbewertung und -erklärung'] })).toBe(true)
+    expect(onlyListed({ old: ['Fahrtkostenzuschuss'], neu: ['Fahrtkostenzuschuss', '(1) bis (9) (10) Neu.'] })).toBe(false)
+    expect(onlyListed({ old: ['Begriffe (1) Begriffe sind so zu verstehen.'], neu: ['Begriffe (1) Begriffe sind so zu verstehen.'] })).toBe(false)
+    expect(onlyListed({ old: [], neu: [] })).toBe(false)
   })
 
   it('knows a § with nothing but elisions to check', () => {

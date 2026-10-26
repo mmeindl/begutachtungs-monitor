@@ -669,6 +669,18 @@ export function onlyElided(text: string): boolean {
   return /…|\.\.\./.test(text) && !text.split(ELISION_RE).some((s) => s.trim().split(/\s+/).length >= MIN_STRETCH_WORDS)
 }
 
+/**
+ * A § the document only lists: the same few words on both sides — its
+ * heading, „Konformitätsbewertung und -erklärung § 8c." beside „… § 8d."
+ * (Salzburg 32075, a § that only moves; 26.10.2026). Too few words to prove
+ * anything in RIS (`MIN_STRETCH_WORDS`): like an elided §, it is checked by
+ * its number.
+ */
+export function onlyListed(p: Pick<TguParagraph, 'old' | 'neu'>): boolean {
+  const old = joinLines(p.old)
+  return old !== '' && old === joinLines(p.neu) && !/…|\.\.\./.test(old) && comparableWords(old).length < MIN_STRETCH_WORDS
+}
+
 export function standsInRis(text: string, risText: string): boolean {
   if (!/…|\.\.\./.test(text)) return shareInRis(text, risText) >= STANDS_IN_RIS
   const stretches = text.split(ELISION_RE).map((s) => s.trim()).filter((s) => s.split(/\s+/).length >= MIN_STRETCH_WORDS)

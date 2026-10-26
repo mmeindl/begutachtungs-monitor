@@ -32,7 +32,7 @@ import { safeExternalUrl } from '#shared/utils/safeExternalUrl'
 import { formatDateDe } from '#shared/utils/format'
 import { diffLawUnits, summarizeDiff } from '../diff/lawDiff'
 import { lawInForce, paragraphByPhrase, paragraphText } from './landKons'
-import { amendedLawsOf, bareLawName, columnParagraphs, draftDeletes, joinLines, mergeParagraphs, onlyElided, paraId, renumberingsOf, tguParagraphKey, searchPhrase, standsInRis, tguLines, tguParagraphs, tguUnits, withHeadings, withRenumberings, type ColumnRow, type TguParagraph, type TguReading } from './landTgu'
+import { amendedLawsOf, bareLawName, columnParagraphs, draftDeletes, joinLines, mergeParagraphs, onlyElided, onlyListed, paraId, renumberingsOf, tguParagraphKey, searchPhrase, standsInRis, tguLines, tguParagraphs, tguUnits, withHeadings, withRenumberings, type ColumnRow, type TguParagraph, type TguReading } from './landTgu'
 import { draftSource, landPdfBytes } from './texts/read'
 import { tguPages } from './landTguPdf'
 import { pagesOf } from '../annex/annexPdfPages'
@@ -483,7 +483,8 @@ export async function compareTgu(land: LandCode, detail: LandDraftDetail): Promi
       why[i] = 'unsure'
       return null
     }
-    if (!p.old.length || onlyElided(joinLines(p.old))) return 'later'
+    // A § that only moves, printed by its heading on both sides (`onlyListed`), as well (26.10.2026).
+    if (!p.old.length || onlyElided(joinLines(p.old)) || (p.from && onlyListed(p))) return 'later'
     if (!p.neu.length && got.deletes && !got.deletes(p.number)) {
       why[i] = got.complete === false ? 'unchecked' : 'deletion'
       return null

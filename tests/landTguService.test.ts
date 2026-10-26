@@ -350,6 +350,19 @@ describe('compareTgu — a renumbering the draft\'s own text orders, read into t
     expect(r.withheld).toEqual([])
   })
 
+  it('checks a § that only moves, printed by its heading on both sides, by its number (32075)', async () => {
+    rows(
+      row('§ 5.', 'Begriffe § 5.', 'Neu § 5. (1) Ganz neu.'),
+      row('§ 9.', '', 'Begriffe § 9.'),
+      row('§ 6.', 'Pflichten § 6.', 'Pflichten § 6.'),
+    )
+    draftText(`Das ${SBG_LAW}, LGBl Nr 1/2000, wird geändert wie folgt: 1. Der bisherige § 5 erhält die Paragraphenbezeichnung „§ 9“.`)
+    const r = (await compareTgu('sbg', sbg())).value
+    expect(sorted(r)).toEqual([[null, '§5', 'inserted'], ['§5', '§9', 'unchanged']])
+    // A § that does not move keeps the check it had: its heading alone is too short for RIS.
+    expect(r.withheld).toEqual([{ law: SBG_LAW, id: '§6' }])
+  })
+
   it('says nothing of renumbering where no § is compared', async () => {
     rows(row('§ 6.', 'Pflichten § 6. (1) Ganz andere Pflichten als die im RIS stehenden Pflichten.', 'Pflichten § 6. (1) Neu.'))
     const r = (await compareTgu('sbg', sbg())).value
