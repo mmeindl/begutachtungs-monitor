@@ -680,6 +680,26 @@ function isNextHeading(stretch: string): boolean {
 const TRAILING_GROUP_RE = /(?<=[.;!?])\s*(?:(?:\d+[a-z]*|[IVXLCDM]+)\.\s*|(?:Erst|Zweit|Dritt|Viert|Fünft|Sechst|Siebent|Sieb|Acht|Neunt|Zehnt|Elft|Zwölft)e[rs]?\s+)(?:Teil|Hauptst(?:ü|ue)ck|Abschnitt|Unterabschnitt|Kapitel|Titel)(?!\p{L})[^.;:!?]*$/iu
 
 /**
+ * An Absatz chain the annex prints without its „…" — „(2) bis (3)", „(1)
+ * und (2)" — marked as the omission it is.
+ *
+ * Some ressorts write the omission that way (138/ME XXVIII § 32, and
+ * Salzburg throughout). Check 5 reads such a chain as designations
+ * (`ABSATZ_RUN_RE`), but checks 1, 2 and 4 cut the cell at its marks
+ * (`printedLayout`), found none, and read „bis" as law text: the standing
+ * text carries no such word, and the row came out `fremd` (26.10.2026).
+ * Marked where check 5 reads a chain — at the start of the cell or after a
+ * sentence's end or a mark —, joined by „bis" or „und", and only where
+ * nothing of its own follows: the end of the cell, the next Absatz's marker
+ * or a mark. Followed by words, the chain opens an Absatz and stays text.
+ */
+const DOTLESS_OMISSION_RE = /(?:^|(?<=[.:;…]\s*))\(\d{1,3}[a-z]?\)(?:\s+(?:bis|und)\s+\(\d{1,3}[a-z]?\))+(?=\s*(?:$|\(\d{1,3}[a-z]?\)\s|\.\.\.|…))/g
+
+function markedOmissions(cell: string): string {
+  return normalizeText(cell).replace(DOTLESS_OMISSION_RE, (chain: string, offset: number, all: string) => (/^\s*(?:\.\.\.|…)/.test(all.slice(offset + chain.length)) ? chain : `${chain} …`))
+}
+
+/**
  * The stretch of a cell that `text` does not account for — null when it
  * accounts for all of them, in the order the cell prints them.
  *
@@ -707,7 +727,7 @@ const TRAILING_GROUP_RE = /(?<=[.;!?])\s*(?:(?:\d+[a-z]*|[IVXLCDM]+)\.\s*|(?:Ers
 export function unaccountedStretch(text: string, cell: string): string | null {
   let at = 0
   let first = true
-  const stretches = printedStretches(cell)
+  const stretches = printedStretches(markedOmissions(cell))
   for (const [index, stretch] of stretches.entries()) {
     let piece = key(stretch)
     // A stretch that is nothing but markers — "§ 5." alone at the head of a
@@ -821,7 +841,7 @@ function words4(t: string): string[] {
  * Absatz beside it went unasked (Budgetbegleitgesetz 2025 §§ 412, 417, 808).
  */
 function cellTokens(t: string): string[] {
-  return printedLayout(sameText(t), true).flatMap((piece) => (piece === null ? [ELISION] : words4(piece)))
+  return printedLayout(markedOmissions(sameText(t)), true).flatMap((piece) => (piece === null ? [ELISION] : words4(piece)))
 }
 
 type TokenOp = 'equal' | 'removed' | 'inserted'
@@ -1093,7 +1113,9 @@ function absatzMarkers(cell: string, own: string | null = null): string[] {
   // designation is not the § — its heading, or the § before's tail
   // („(3) […] § 6f. (1) …", DokuG-Novelle 2025). Only its own: a citation
   // ending a sentence („nach § 13.") is no place to cut.
-  const full = normalizeText(cell)
+  // A chain without its „…" reads as the one with it (`markedOmissions`), so
+  // the marker behind it stands where a marker can stand.
+  const full = markedOmissions(cell)
   const symbol = own ? new RegExp(`§+\\s*${own.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}\\.\\s`).exec(full) : null
   const text = symbol ? full.slice(symbol.index) : full
   for (const m of text.matchAll(ABSATZ_RUN_RE)) {

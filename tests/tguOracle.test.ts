@@ -826,3 +826,35 @@ describe('Kapitel numbers, and the units the annex shows changing (26.10.2026)',
     expect(paragraphRows(fewer, '16', 'A', '9').map((r) => r.gld)).toEqual(['§ 9.'])
   })
 })
+
+describe('an omission the annex prints without its „…" (26.10.2026)', () => {
+  // 138/ME XXVIII § 32: „(2) bis (3)" with no dots, as some ressorts print the
+  // omission. Read as text, „bis" stood in the cell and the row was `fremd`.
+  const before = 'Die Behörde entscheidet. Die Frist beträgt sechs Wochen. Die Gebühr ist zu entrichten. Der Antrag ist schriftlich zu stellen.'
+  const got = 'Das Amt entscheidet. Die Frist beträgt sechs Wochen. Die Gebühr ist zu entrichten. Der Antrag ist schriftlich zu stellen.'
+
+  it('reads the chain as the omission it is, wherever check 5 reads it as designations', () => {
+    const inside = [pair('§ 32. (1) Die Behörde entscheidet. (2) bis (3) (4) Der Antrag ist schriftlich zu stellen.', '§ 32. (1) Das Amt entscheidet. (2) bis (3) (4) Der Antrag ist schriftlich zu stellen.', '§ 32.')]
+    expect(oracleVerdict('32', before, got, inside, ['1', '2', '3', '4'])).toMatchObject({ verdict: 'bestätigt' })
+    const atEnd = [pair('§ 32. (1) Die Behörde entscheidet. (2) bis (4)', '§ 32. (1) Das Amt entscheidet. (2) bis (4)', '§ 32.')]
+    expect(oracleVerdict('32', before, got, atEnd, ['1', '2', '3', '4'])).toMatchObject({ verdict: 'bestätigt' })
+    const joined = [pair('§ 32. (1) und (2) (3) Die Gebühr ist zu entrichten.', '§ 32. (1) und (2) (3) Die Gebühr ist in bar zu entrichten.', '§ 32.')]
+    expect(oracleVerdict('32', before, 'Die Behörde entscheidet. Die Frist beträgt sechs Wochen. Die Gebühr ist in bar zu entrichten. Der Antrag ist schriftlich zu stellen.', joined, ['1', '2', '3', '4'])).toMatchObject({ verdict: 'bestätigt' })
+  })
+
+  it('still contradicts what the chain does not cover, and reads a marker behind it as check 5 does behind „…"', () => {
+    const rows = [pair('§ 32. (1) Die Behörde entscheidet. (2) bis (3) (4) Der Antrag ist schriftlich zu stellen.', '§ 32. (1) Das Amt entscheidet. (2) bis (3) (4) Der Antrag ist schriftlich zu stellen.', '§ 32.')]
+    // The engine missed the change: check 1 still sees it.
+    expect(oracleVerdict('32', before, before, rows, ['1', '2', '3', '4'])).toMatchObject({ verdict: 'widersprochen' })
+    // (4) behind the chain is a marker, as it is behind „(2) bis (3) …".
+    expect(oracleVerdict('32', before, got, rows, ['1', '2', '3'])).toMatchObject({ verdict: 'widersprochen', note: expect.stringContaining('(4) fehlt im Ergebnis') })
+    const dotted = [pair('§ 32. (1) Die Behörde entscheidet. (2) bis (3) … (4) Der Antrag ist schriftlich zu stellen.', '§ 32. (1) Das Amt entscheidet. (2) bis (3) … (4) Der Antrag ist schriftlich zu stellen.', '§ 32.')]
+    expect(oracleVerdict('32', before, got, dotted, ['1', '2', '3'])).toMatchObject({ verdict: 'widersprochen', note: expect.stringContaining('(4) fehlt im Ergebnis') })
+  })
+
+  it('leaves a chain that words follow as text', () => {
+    // „(1) und (2) gelten sinngemäß." opens with the chain and goes on: not an omission.
+    const rows = [pair('§ 9. (1) und (2) gelten sinngemäß.', '§ 9. (1) und (2) gelten entsprechend.', '§ 9.')]
+    expect(oracleVerdict('9', 'Abs. 1 und 2 gelten sinngemäß.', 'Abs. 1 und 2 gelten entsprechend.', rows)).toMatchObject({ verdict: 'fremd' })
+  })
+})
