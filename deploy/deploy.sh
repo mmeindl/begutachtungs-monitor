@@ -91,9 +91,13 @@ systemctl enable --now --quiet begutachtungs-monitor-watchdog.timer
 systemctl restart begutachtungs-monitor
 REMOTE
 
-sleep 2
+# Wait for the port, not for a guess: on 27.10.2026 the new process took 4 s
+# to listen (the old one had left 385 MB in swap), the fixed `sleep 2` met a
+# closed port, and the deploy stopped before the prewarm. Exit 7 is curl's
+# "could not connect"; anything else means the server is there, if slow.
 ssh "$SERVER" \
-  "systemctl --quiet is-active begutachtungs-monitor \
+  "for i in \$(seq 1 60); do curl -s -o /dev/null --max-time 1 http://127.0.0.1:3000/; [ \$? -ne 7 ] && break; sleep 1; done; \
+   systemctl --quiet is-active begutachtungs-monitor \
    && curl -fsS -o /dev/null -w 'HTTP %{http_code}\n' http://127.0.0.1:3000/ \
    || { journalctl -u begutachtungs-monitor -n 20 --no-pager; exit 1; }"
 
