@@ -5365,10 +5365,15 @@ Verletzung, mit dem bekannten Versatz der beiden Instrumente von rund sechs §§
 Inhaltsverzeichnis bestätigt waren. Fehlerinjektion jede Klasse ≥ 95 %
 (Pools 1.006 und 1.349), BGBl-Prüfstand 108 bestätigt, 0 abweichend, eigene
 Abweichung 23 wie zuvor. Offen damals: Ketten unterhalb des § (ArbVG § 110
-Abs. 2a, verweigert — seither gebaut, siehe unten); Prüfung 3 lässt die Wörter einer unveränderten Zeile ihren
-eigenen Verlust entschuldigen (AC8FD757 § 3c) — auf geänderte Zeilen
-beschränkt änderte das keine Seite, der Wächterlauf dazu fehlt; 20 „fremd"
-in 707EA278 wegen gesperrt gesetzter Überschriften im PDF.
+Abs. 2a, verweigert — seither gebaut, siehe unten); Prüfung 3 ließ die Wörter einer unveränderten Zeile ihren
+eigenen Verlust entschuldigen (AC8FD757 § 3c) — seither zählen nur
+geänderte Zeilen, ohne dass sich eine Seite änderte; 20 „fremd" in
+707EA278 — nicht, wie hier zuerst stand, wegen gesperrt gesetzter
+Überschriften (die liest der Leser seither als Wörter, §12.13), sondern weil
+die Beilage Absätze ohne Auslassungszeichen weglässt: § 1.02 springt in
+beiden Spalten von Abs. 1 auf Abs. 4. Das dem Orakel als Auslassung
+beizubringen, ohne Prüfung 5 einen wirklich fehlenden Absatz zu nehmen, ist
+offen.
 
 **Ketten unterhalb des § (26.10.2026, spät).** Dasselbe wie eine Ebene
 höher: Alle Verschiebungen einer Novelle innerhalb eines § gelten zusammen,
@@ -5383,7 +5388,14 @@ Nummern beim neuen Text. Unterhalb des § im Korpus des Prüfstands
 verweigert 12 → 7 von 109 Zeilen, in der XXVIII. GP 30 → 23 von 216; gezeigt
 2.159 → 2.165 und 614 → 623, jeder neue § Wort für Wort gegen die Beilage
 gelesen, keiner verloren; BGBl-Prüfstand identisch 1.389 → 1.390, eigene
-Abweichung 23, abweichend 0.
+Abweichung 23, abweichend 0. Dazu las die Grammatik ein ausgeschriebenes
+„Absatz 2" nicht als Adresse: „In § 3 entfallen die Absätze 2 bis 4" galt
+als Aufhebung des ganzen § und wurde angewendet (45BB5DFC, im Prüfstand),
+ebenso eine Phrase „im neuen Absatz 3" im ganzen § (0F9A8F06) — beide hielt
+eine andere Prüfung von der Seite fern. Jetzt liest sie „Absatz", „Absätze"
+und „litera". Und „gestrichen" schließt einen Teilsatz wie „entfällt":
+AC796DAE § 24, dessen falsche Lesung angewendet war und vom Orakel gehalten
+wurde, steht jetzt richtig da.
 
 ### 12.13 „Was ändert der Entwurf?" — die amtliche Gegenüberstellung auf der Seite
 
@@ -8124,6 +8136,17 @@ aber das Orakel der Lesefassung vergleicht Wörter, und „kinderund" ist nicht
 „kinder": 40 §§ standen als „Beilage widerspricht" zurückgehalten, die jetzt
 gezeigt sind (2.127 → 2.159 und 606 → 614), keiner geht den anderen Weg;
 Fehlerinjektion jede Klasse ≥ 95 %, BGBl-Prüfstand unverändert.
+
+**Vierter Nachtrag 26./27.10.2026: Hochzahlen und gesperrte Wörter.** Eine
+Hochzahl stand 3,5–4,6 pt höher, als die Toleranz einer Zeile erlaubt, wurde
+zur eigenen Zeile und beendete die darüber („über- 2 deckte"). Jetzt gehört
+ein Lauf in höchstens 80 % der Schriftgröße, höchstens 60 % angehoben und
+direkt hinter einem Lauf der Zeile darunter, zu dieser Zeile — wie RIS sein
+`<sup>`. Gesperrt gesetzte Wörter („V e r k e h r s z e i c h e n") liest der
+Leser aus den Glyphen, die pdf.js je Textoperation meldet; „lit. a b" und
+„a, b und c" bleiben, wie sie sind (519 Läufe in 618 Dokumenten). Das Tor
+bewegt kein Urteil (2.124 / 120 / 1.268); gezeigt 2.165 → 2.167 und
+624 → 630, keiner geht den anderen Weg.
 
 ### 12.14 Stellungnahmen zur Regierungsvorlage, der Dokument-Link und der Spaltenkopf
 
@@ -14062,10 +14085,26 @@ das Land nach Nummer gegenüberstellt (18151), heißt „altes → neues" und
 sagt das in einer Zeile; ein umbenanntes Gesetz heißt, wie der Entwurf es
 druckt, „(heute: …)" dahinter (14 Gruppen in 12 Entwürfen), und seine
 Begründung findet es unter beiden Namen. Kein § geht von gezeigt zu
-genannt. Offen: 35399 §§ 15 und 175 (die Bezeichnung steht als ein Lauf
-mittig über der Spaltenfuge) und das hochgestellte „m²". Den Leser des
-Bundes, der echte Trennstriche am Spaltenrand ebenso verklebte, regelt
-seither das Wort danach (§12.13).
+genannt. Den Leser des Bundes, der echte Trennstriche am Spaltenrand
+ebenso verklebte, regelt seither das Wort danach (§12.13).
+
+**Danach.** Eine Bezeichnung, die als ein Lauf mittig über der Spaltenfuge
+steht, gilt in Salzburg für beide Spalten (35399 §§ 15 und 175 — jetzt
+richtig gepaart, aber genannt: RIS kennt das Landesbedienstetengesetz zum Tag
+des Entwurfs nicht). Hochzahlen und gesperrte Wörter liest der Leser wie
+beim Bund (§12.13). Und ein Dokument, das das Land als Entwurf ablegt und
+das keiner ist, liest der Monitor nicht als Entwurf: Über alle 2.180
+Entwurfsdokumente der Länder sind es vier — 23088 die Stellungnahme des
+Gemeindeverbands, 7365 Salzburgs Begleitschreiben, 18099 und 18140 die
+Textgegenüberstellung, die bis dahin als „Was das Land begründet" erschien.
+An ihrer Stelle steht: „Das Land hat als Entwurf ein anderes Dokument
+veröffentlicht; der Monitor liest es nicht als Entwurf." Drei Kärntner
+Verordnungen lesen seither die Verordnung statt des Anschreibens. Offen:
+sieben Tiroler Verordnungen lesen noch das Begleitschreiben, weil mehrere
+Dokumente in Frage kommen — die Wahl bräuchte den Inhalt, nicht den Titel;
+ein Trennstrich an der Grenze zweier Textoperationen behält sein
+Leerzeichen („Bleib - weg - Signal"); mit echten Leerzeichen gesperrte
+Kärntner Überschriften bleiben gesperrt.
 
 ## 13. Open questions
 
