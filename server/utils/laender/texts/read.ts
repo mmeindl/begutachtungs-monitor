@@ -19,6 +19,32 @@ const PDF_MAX_BYTES = 30 * 1024 * 1024
 export interface ReadText {
   units: LawUnit[] | null
   text: string
+  /** The document the Land files as the draft is evidently none (`notADraft`). */
+  notDraft?: true
+}
+
+/** What the page says where a comparison or the Erläuterungen would read a draft that is none (`notADraft`). */
+export const NOT_A_DRAFT = 'Das Land hat als Entwurf ein anderes Dokument veröffentlicht; der Monitor liest es nicht als Entwurf.'
+
+/** A letter's marks: what a Stellungnahme or a cover letter carries, and no law text does. */
+const LETTER_RE = /Stellungnahme|Sehr geehrte|Mit freundlichen Grüßen|Hochachtungsvoll/
+
+/**
+ * A document the Land files as the draft that evidently is none (26.10.2026):
+ * the reader finds no unit of law text in it, and it either opens as a
+ * Textgegenüberstellung or reads as a letter — not one „§" in it, and a
+ * Stellungnahme's or a letter's marks. Salzburg files as the „Entwurf" of
+ * 23088 the Gemeindeverband's Stellungnahme, of 7365 its own covering
+ * letter, and of 18099 and 18140 the Textgegenüberstellung — whose columns
+ * the page showed as the Land's Erläuterungen. A draft the reader cannot
+ * divide into units — a new law, „Gesetz vom …, mit dem …" — prints its
+ * §§ and is not one of them.
+ */
+export function notADraft(read: ReadText): boolean {
+  if (read.units?.length) return false
+  const text = read.text.replace(/\s+/g, ' ').trim()
+  if (!text) return false
+  return /^.{0,300}Textgegenüberstellung/iu.test(text) || (!text.includes('§') && LETTER_RE.test(text))
 }
 
 /** One text of a draft: what it is, and how to read it. */
@@ -87,8 +113,13 @@ export function pdfSource(label: string, url: string, publisher: string): TextSo
   return { document: { label, url, publisher }, read: () => readPdf(url) }
 }
 
-/** What a document's title says it is NOT: the draft's companions, filed as entries of their own. */
-const COMPANION_RE = /gegenüberstellung|\btgü(?!\p{L})|erläuter|vorblatt|anlage|beilage|anhang|stellungnahme|folgenabschätzung|\bplan|lageplan|pläne|karte|planungsgebiet/iu
+/**
+ * What a document's title says it is NOT: the draft's companions, filed as
+ * entries of their own — and the Land's letter that sends the draft out,
+ * Kärnten's „Anschreiben" and „Begutachtung - Akt" (v1065, v1369), which
+ * stood in for the Verordnung beside it until 26.10.2026.
+ */
+const COMPANION_RE = /gegenüberstellung|\btgü(?!\p{L})|erläuter|vorblatt|anlage|beilage|anhang|stellungnahme|folgenabschätzung|\bplan|lageplan|pläne|karte|planungsgebiet|anschreiben|(?<!\p{L})akt(?!\p{L})/iu
 
 /**
  * The draft's own text among its documents. Salzburg files Erläuterungen,
@@ -97,13 +128,33 @@ const COMPANION_RE = /gegenüberstellung|\btgü(?!\p{L})|erläuter|vorblatt|anla
  * stood in for it — the comparison then read „Erläuterungen" as law text.
  */
 export function draftDocument(documents: readonly LandDocument[]): LandDocument | null {
-  return documents.find((d) => /entwurf/i.test(d.title) && !COMPANION_RE.test(d.title)) ??
-    documents.find((d) => !COMPANION_RE.test(d.title)) ??
-    null
+  return draftCandidates(documents)[0] ?? null
 }
 
+/** Every document that may be the draft's own text, in the order `draftDocument` takes them: titled „Entwurf" first. */
+export function draftCandidates(documents: readonly LandDocument[]): LandDocument[] {
+  const candidates = documents.filter((d) => !COMPANION_RE.test(d.title))
+  return [...candidates.filter((d) => /entwurf/i.test(d.title)), ...candidates.filter((d) => !/entwurf/i.test(d.title))]
+}
+
+/**
+ * The draft's own text, read — and marked where the document is evidently
+ * none (`notADraft`), if it is the only one that could be the draft: the
+ * Land filed nothing else as it. Beside others the monitor may have taken
+ * the wrong one — Tirol files its covering letter as „Entwurf …;
+ * Begutachtung" and the Verordnung under its own name — and the page's
+ * sentence would not be true.
+ */
 export function draftSource(documents: readonly LandDocument[], publisher: string): TextSource | null {
-  const doc = draftDocument(documents)
+  const candidates = draftCandidates(documents)
+  const doc = candidates[0]
   const url = doc ? safeExternalUrl(doc.url) : null
-  return doc && url ? pdfSource(doc.title, url, publisher) : null
+  if (!doc || !url) return null
+  return {
+    document: { label: doc.title, url, publisher },
+    read: async () => {
+      const read = await readPdf(url)
+      return candidates.length === 1 && notADraft(read) ? { ...read, notDraft: true } : read
+    },
+  }
 }

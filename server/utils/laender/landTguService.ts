@@ -113,10 +113,14 @@ interface TguRead {
   replacements?: { old: string; by: string }[]
 }
 
-/** The draft's own text, or null where reading it failed — which `deletes` must not take for a draft without repeals. */
+/**
+ * The draft's own text, or null where reading it failed — which `deletes`
+ * must not take for a draft without repeals. Empty where the Land filed none,
+ * and where what it filed as the draft evidently is none (`notADraft`).
+ */
 async function draftTextOf(draft: ReturnType<typeof draftSource>): Promise<string | null> {
   if (!draft) return ''
-  return draft.read().then((r) => r.text, () => null)
+  return draft.read().then((r) => (r.notDraft ? '' : r.text), () => null)
 }
 
 /**

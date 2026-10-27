@@ -17,7 +17,8 @@ vi.mock('../server/utils/laender/sources', () => ({ draftsSharingKundmachung: vi
 vi.mock('../server/utils/laender/texts/stations', () => ({ textSources: vi.fn() }))
 
 const { compareTgu } = vi.mocked(await import('../server/utils/laender/landTguService'))
-const { cachedLandComparison } = await import('../server/utils/laender/landLawDiffService')
+const { textSources } = vi.mocked(await import('../server/utils/laender/texts/stations'))
+const { cachedLandComparison, compareLandTexts } = await import('../server/utils/laender/landLawDiffService')
 
 const detail = { draft: { id: 'ktn-1-2025-1' }, comparisons: [['geltend', 'entwurf']] } as unknown as LandDraftDetail
 const answer = (withheld: LandLawDiffResponse['withheld']): LandLawDiffResponse => ({
@@ -48,5 +49,19 @@ describe('cachedLandComparison', () => {
     compareTgu.mockRejectedValueOnce(new Error('PDF timed out'))
     await expect(cachedLandComparison('ktn', '1-2025-1', 'geltend', 'entwurf', detail)).rejects.toMatchObject({ message: 'PDF timed out' })
     expect(nitroCacheKeys()).toEqual([])
+  })
+})
+
+describe('compareLandTexts — what the Land filed as the draft and is none (26.10.2026)', () => {
+  // Salzburg 23088: the „Entwurf" is the Gemeindeverband's Stellungnahme (`notADraft`).
+  it('is not compared as the draft, and the page says why', async () => {
+    const lgbl = { units: [{ id: '§1' }], text: '§ 1' } as never
+    textSources.mockReturnValueOnce({
+      entwurf: { document: { label: 'Entwurf', url: 'https://example.org/e', publisher: 'Land Salzburg' }, read: async () => ({ units: null, text: 'Stellungnahme', notDraft: true }) },
+      lgbl: { document: { label: 'LGBl. Nr. 16/2021', url: null, publisher: 'RIS (CC BY 4.0)' }, read: async () => lgbl },
+    })
+    const ofDraft = { ...detail, comparisons: [['entwurf', 'lgbl']] } as unknown as LandDraftDetail
+    const got = await compareLandTexts('sbg', ofDraft, 'entwurf', 'lgbl')
+    expect(got.value).toMatchObject({ available: false, unavailableReason: 'Das Land hat als Entwurf ein anderes Dokument veröffentlicht; der Monitor liest es nicht als Entwurf.' })
   })
 })

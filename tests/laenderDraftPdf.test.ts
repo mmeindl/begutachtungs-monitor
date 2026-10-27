@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest'
 import { lawBlocksFromPdfPages } from '../server/utils/laender/draftPdfLaw'
 import { diffLandDraft, landDraftUnits, lgblUnits, packageChanges } from '../server/utils/laender/landLawDiff'
+import { draftDocument, notADraft } from '../server/utils/laender/texts/read'
 
 /* Pages as the PDF's text layer gives them: one string per page, a line per
    printed line, „Seite n" on top. The texts are built for the rules, each
@@ -180,5 +181,36 @@ describe('diffLandDraft — the draft against the Landesgesetzblatt', () => {
     const at = (z: string) => diffLandDraft(draftAt('1. § 22 Abs. 5 Z 1 lautet:', before), lgblUnits(xml(`1. § 22 Abs. 5 Z ${z} lautet: "${z}. ${after}`)))
     expect(at('1').map((u) => u.change)).toEqual(['changed'])
     expect(at('2').map((u) => u.change).sort()).toEqual(['inserted', 'removed'])
+  })
+})
+
+describe('what the Land files as the draft (26.10.2026)', () => {
+  const read = (...pages: string[]) => notADraft({ units: landDraftUnits(pages), text: pages.join('\n') })
+  const DRAFT = ['Der Oö. Landtag hat beschlossen:', 'Artikel I', 'Das Oö. X-Gesetz, LGBl. Nr. 1/2020, wird wie folgt geändert:', '1. § 2 lautet:', '„§ 2', '(1) Text.“']
+
+  // Salzburg 23088 files the Gemeindeverband's Stellungnahme as its „Entwurf".
+  it('is none where it reads as a letter and prints no law text', () => {
+    expect(read(page('Betrifft: Zahl: Datum:', 'Stellungnahme zu Do. Zl. 20031-VERF/107/192-2020', 'Sehr geehrte Damen und Herren!',
+      'Bezugnehmend auf die oben bezeichneten Gesetzesentwürfe wird festgehalten, dass die genannten Änderungen positiv gesehen werden.', 'Mit freundlichen Grüßen'))).toBe(true)
+  })
+
+  // 18099 and 18140 file their Textgegenüberstellung so.
+  it('is none where it opens as a Textgegenüberstellung', () => {
+    expect(read(page('1 von 11', 'Textgegenüberstellung – Haushaltsrechts- und Verwaltungsabgabenreformgesetz 2018', 'Geltende Fassung Vorgeschlagene Fassung', '§ 5 Alter Text. § 5 Neuer Text.'))).toBe(true)
+  })
+
+  it('is one where it prints law text the reader does not divide, or sends a draft out with a letter', () => {
+    expect(read(page('E n t w u r f', 'Gesetz vom …, mit dem das Gebrauchsabgabegesetz erlassen wird', '§ 1 Die Abgabe beträgt fünf Euro.'))).toBe(false)
+    expect(read(page('Sehr geehrte Damen und Herren!', 'Wir ersuchen um Stellungnahme zum folgenden Entwurf.', 'Mit freundlichen Grüßen'), page(...DRAFT))).toBe(false)
+    // A scan without a text layer says nothing either way.
+    expect(read('')).toBe(false)
+  })
+})
+
+describe('draftDocument', () => {
+  // Kärnten v1065 and v1369: the letter that sends the Verordnung out stood in for it.
+  it('passes over the Land\'s letter that sends the draft out', () => {
+    expect(draftDocument([{ title: 'Anschreiben', url: 'a' }, { title: 'Verordnung', url: 'b' }, { title: 'Erläuterungen', url: 'c' }])?.title).toBe('Verordnung')
+    expect(draftDocument([{ title: 'Begutachtung - Akt', url: 'a' }, { title: 'Begutachtung VOText', url: 'b' }])?.title).toBe('Begutachtung VOText')
   })
 })

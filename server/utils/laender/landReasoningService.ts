@@ -15,7 +15,7 @@ import { cachedLandComparison } from './landLawDiffService'
 import { parseLandExplanations } from './landExplanations'
 import { explainedParagraphs } from './landExplanationsService'
 import { amendedLawsOf } from './landTgu'
-import { pdfPages } from './texts/read'
+import { NOT_A_DRAFT, pdfPages } from './texts/read'
 import { textSources } from './texts/stations'
 
 const emptyStats = { compared: 0, changed: 0, editorial: 0, uncompared: 0 }
@@ -56,6 +56,8 @@ export async function compareLandReasoning(land: LandCode, number: string, detai
     reasonsByParagraph(rvUrl, ownUrl(/^Regierungsvorlage, Erläuterungen$/), laws),
     cachedLandComparison(land, number, 'entwurf', 'rv', detail),
   ])
+  // What the Land filed as the draft and evidently is none: said as the comparison says it (`notADraft`).
+  if (comparison.unavailableReason === NOT_A_DRAFT) return unavailable(NOT_A_DRAFT)
   if (!before.size || !after.size) return unavailable('In einem der beiden Texte fand der Monitor keine Erläuterungen zu einzelnen Paragraphen.')
   const result = compareReasoningByParagraph(comparison.units, before, after)
   return {

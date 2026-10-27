@@ -17,7 +17,7 @@ import { landDraftUnits } from './landLawDiff'
 import { headingZiffern, parseLandExplanations, type LandExplanationsParse } from './landExplanations'
 import type { LawUnit } from '../lawtext/lawUnits'
 import { amendedLawsOf } from './landTgu'
-import { draftDocument, pdfPages, pdfStyledPages } from './texts/read'
+import { draftCandidates, NOT_A_DRAFT, notADraft, pdfPages, pdfStyledPages } from './texts/read'
 import type { LandDraftRecord } from './texts/stations'
 
 const ROMAN: Record<string, number> = { I: 1, V: 5, X: 10, L: 50 }
@@ -74,18 +74,25 @@ export async function landExplanations(land: LandCode, detail: LandDraftRecord):
   const publisher = `Land ${LAND_NAME[land]}`
   const docs = detail.draft.documents
   const own = docs.find((d) => /erläuter/i.test(d.title))
-  const draft = draftDocument(docs)
+  const candidates = draftCandidates(docs)
+  const draft = candidates[0] ?? null
   const doc = own ?? draft
   const url = doc ? safeExternalUrl(doc.url) : null
   if (!doc || !url) return unavailable('Das Land hat zu diesem Entwurf keine Erläuterungen veröffentlicht.', publisher)
   const document = { label: own ? doc.title : `${doc.title} (Erläuterungen)`, url }
   const { pages, bold } = HEADINGS_BY_WEIGHT.has(land) ? await pdfStyledPages(url) : { pages: await pdfPages(url), bold: undefined }
+  const ofDraft = (draftPages: string[]) => ({ units: landDraftUnits(draftPages), text: draftPages.join('\n') })
+  // Erläuterungen in the draft's PDF are none where the one document the Land filed as the draft evidently is none (`notADraft`, `draftSource`).
+  const inDraft = own ? null : ofDraft(pages)
+  if (inDraft && candidates.length === 1 && notADraft(inDraft)) return unavailable(NOT_A_DRAFT, publisher, { label: doc.title, url })
   const parse = parseLandExplanations(pages, bold)
   if (!parse) return unavailable('In den Dokumenten des Landes fand der Monitor keine Erläuterungen, die er lesen kann.', publisher, document)
 
-  // The draft's instructions, for entries that name only Ziffern.
+  // The draft's instructions, for entries that name only Ziffern — none from a draft that is none.
   const draftUrl = draft ? safeExternalUrl(draft.url) : null
-  const units = own ? (draftUrl ? landDraftUnits(await pdfPages(draftUrl).catch(() => [])) : null) : landDraftUnits(pages)
+  const draftRead = inDraft ?? (draftUrl ? ofDraft(await pdfPages(draftUrl).catch(() => [])) : null)
+  const units = draftRead && !(candidates.length === 1 && notADraft(draftRead)) ? draftRead.units : null
+
   const particular = explainedParagraphs(parse, units, amendedLawsOf(detail.draft.title))
   return { available: true, unavailableReason: null, document, publisher, labelled: parse.labelled, general: parse.general, particular }
 }
