@@ -1174,3 +1174,30 @@ describe('a § renumbered with its new designation written out (26.10.2026)', ()
     expect(parseInstruction('§ 129 Abs. 2 entfällt, der bisherige Abs. 1 erhält die Bezeichnung § 129.').reason).toMatch(/Ziel nicht eindeutig/)
   })
 })
+
+describe('a designation written out (26.10.2026)', () => {
+  /** Each operation as „kind level: § Abs./Z/lit +siblings → to". */
+  const read = (line: string) => parseInstruction(line).ops.map((o) => {
+    const a = opAddress(o)!
+    return `${o.kind} ${a.level}: ${a.para}${a.abs !== null ? ` Abs. ${a.abs}` : ''}${a.z !== null ? ` Z ${a.z}` : ''}${a.lit !== null ? ` lit. ${a.lit}` : ''}${a.siblings.length ? ` +${a.siblings.join(',')}` : ''}${o.kind === 'renumber' ? ` → ${o.to}` : ''}`
+  })
+
+  it('reads „Absatz 2" as „Abs. 2", where it inherited the Absatz of the clause before (90C297D5)', () => {
+    expect(read('Im § 20 wird nach dem Abs.1 folgender neuer Abs. 2 eingefügt; der bisherige Absatz 2 erhält die Bezeichnung "(3)" .')).toEqual(['insertAfter abs: § 20 Abs. 1', 'renumber abs: § 20 Abs. 2 → (3)'])
+    expect(read('Im § 20 erhält der bisherige Absatz 2 die Bezeichnung "(3)".')).toEqual(['renumber abs: § 20 Abs. 2 → (3)'])
+  })
+
+  it('confines a phrase to the Absatz the words name, not the whole § (0F9A8F06)', () => {
+    expect(read('In § 5 wird im neuen Absatz 3 der Ausdruck "Verordnung" durch "Verordnungen" ersetzt.')).toEqual(['replacePhrase abs: § 5 Abs. 3'])
+  })
+
+  it('repeals the Absätze, not the § (harvested corpus, 45BB5DFC and E5EFB286)', () => {
+    expect(read('In § 3 entfallen die Absätze 2 bis 4.')).toEqual(['delete abs: § 3 Abs. 2 +3,4'])
+    expect(read('§ 1 Absätze 3 bis 5 entfallen. Die nachfolgenden Absätze 6 bis 8 erhalten die Bezeichnung "3" , "4" und "5" .')).toEqual(['delete abs: § 1 Abs. 3 +4,5', 'renumber abs: § 1 Abs. 6 → 3', 'renumber abs: § 1 Abs. 7 → 4', 'renumber abs: § 1 Abs. 8 → 5'])
+  })
+
+  it('reads „litera b" as lit. b, and an Absatzbezeichnung as no Absatz', () => {
+    expect(read('In § 2 Z 4 litera b wird das Wort "alt" durch das Wort "neu" ersetzt.')).toEqual(['replacePhrase lit: § 2 Z 4 lit. b'])
+    expect(read('In § 3 Abs. 1 entfällt die Absatzbezeichnung "(1)".')).toEqual(['renumber abs: § 3 Abs. 1 → '])
+  })
+})

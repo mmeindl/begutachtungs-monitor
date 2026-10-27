@@ -271,9 +271,16 @@ function parseSentence(tail: string): { satz: string | null; satzCount: number }
 // word glued to the number — „13. § 42wird wie folgt geändert:" (61/ME
 // XXVIII) was read as „§ 42wird", a § no annex block and no RIS label carries.
 const PARA_RE = new RegExp(String.raw`(?:§+\s*(${PARAGRAPH_NUMBER})|\bArt(?:\.|ikel)\s*(\d+[a-z]*(?:\.\d+)?|[IVXLCDM]+(?![A-Za-zÄÖÜäöüß]))|\b(Anlage|Anhang)(?:e?s)?\b(?:\s+((?:\d+[a-z]*|[IVXL]+)(?![A-Za-zÄÖÜäöüß])))?)`, 'i')
-const ABS_RE = /\bAbs\.?\s*(\d+[a-z]*)/i
+// The designation written out as well as abbreviated, in the singular and the
+// plural. Read only as „Abs.", „der bisherige Absatz 2 erhält die Bezeichnung
+// ‚(3)'" behind „nach dem Abs. 1 … eingefügt" kept the Absatz of the clause
+// before and renamed Abs. 1 (90C297D5), „In § 5 wird im neuen Absatz 3 der
+// Ausdruck … ersetzt" replaced in the whole § (0F9A8F06), and „In § 3
+// entfallen die Absätze 2 bis 4" was the repeal of § 3 (two drafts of the
+// harvested corpus); „litera b" read as the Litera „era" (26.10.2026).
+const ABS_RE = /\bAbs(?:\.|atz(?:es)?\b|ätzen?\b)?\s*(\d+[a-z]*)/i
 const Z_RE = /\bZ(?:iffer)?\.?\s*(\d+[a-z]*)/i
-const LIT_RE = /\blit\.?\s*([a-z]+)\b/i
+const LIT_RE = /\b(?:litera\b|lit\.?(?!era\b))\s*([a-z]+)\b/i
 const ABSCHNITT_RE = /\b(\d+[a-z]*)\.\s*(?:Haupt|Unter)?[Aa]bschnitt(?:e?s)?\b|\b(?:Haupt|Unter)?[Aa]bschnitt\s+([\dIVXL]+[a-z]*)/
 const TITEL_RE = /\bTitel des (?:Bundesgesetzes|Gesetzes)\b|\bder Titel dieses\b/i
 const DOCUMENT_RE = /\b(?:im|Im) gesamten (?:Gesetzes|Verordnungs|Bundesgesetzes)?text\b|\bin allen (?:Bestimmungen|Paragraf)/i
