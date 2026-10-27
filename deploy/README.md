@@ -185,7 +185,7 @@ ssh $S 'systemctl start begutachtungs-monitor-watchdog.service
 ```
 
 Expect a clearly lower exposure score than in step 1, `MemoryMax=536870912`,
-`--max-old-space-size=384` in the command line, a report file from just now
+`--max-old-space-size=320` in the command line (384 until 27.10.2026), a report file from just now
 (the state directory is writable under `ProtectSystem=strict`), and a watchdog
 line such as `app up …s — not judging` (its unit starts under its sandbox).
 

@@ -683,15 +683,16 @@ gezählte Stellungnahmenzahl. Nicht geändert, weil gemessen ohne Befund:
 `resolveGesetz` liest die Vorlagen weiter parallel — über 263 PDFs einer
 ganzen Salzburger Karte waren nie mehr als zwei zugleich offen.
 
-**Offen, eine Entscheidung am Server.** 384 MB Heap und dazu Code, Puffer
-und externe Zeichenketten (die gepackten Werte ab etwa 1 MB liegen
-außerhalb des Heaps) können `MemoryMax=512M` erreichen, bevor V8 an sein
-eigenes Limit stößt — das ist das Swappen vom 23.10. Empfehlung:
-`MemoryMax` und `MemorySwapMax=0` in das Drop-in, das `deploy.sh` schon
-ausliefert (in `bootstrap.sh` wäre es eine stehende Pflicht, die Unit von
-Hand nachzuziehen), und entweder `MemoryMax` auf ~600M oder den Heap auf
-~320 MB, noch ~100 MB über der neuen Spitze; danach `MemoryPeak` und
-`memory.events` nach dem nächtlichen Prewarm lesen.
+**Am Server, 27.10.2026.** 384 MB Heap und dazu Code, Puffer und externe
+Zeichenketten (die gepackten Werte ab etwa 1 MB liegen außerhalb des Heaps)
+konnten `MemoryMax=512M` erreichen, bevor V8 an sein eigenes Limit stieß —
+und `MemoryMax` begrenzt den Arbeitsspeicher, nicht den Swap: Die alte
+Fassung stand nach 34 Stunden bei 512 MB Spitze und 385 MB im Swap. Jetzt
+`--max-old-space-size=320`, rund 100 MB über der gemessenen Spitze, und
+`MemorySwapMax=0`; `MemoryMax` bleibt 512M. So trifft ein Leck zuerst die
+saubere Grenze von V8 und endet in einem Neustart, nicht in einer Maschine,
+die swappt. Gesetzt in `deploy/bootstrap.sh`, der einzigen Quelle der
+Unit.
 
 **EU sovereignty (hard invariant):** at runtime the application loads
 **no** third-party resources — no web fonts (system sans), no icon/script

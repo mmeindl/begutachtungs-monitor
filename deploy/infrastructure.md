@@ -65,7 +65,7 @@ box only through the retrofit in [README.md](README.md) ("Retrofit
   `app`; the deployed commit is in its `REVISION` file), binds
   `127.0.0.1:3000`, restarts on crash and on reboot. Sandboxed since
   2026-10-04 (`ProtectSystem=strict` and friends — writable only
-  `/var/lib/begutachtungs-monitor`), `MemoryMax=512M` with a 384 MB V8 heap.
+  `/var/lib/begutachtungs-monitor`), `MemoryMax=512M` and `MemorySwapMax=0` with a 320 MB V8 heap (384 MB and swap allowed until 27.10.2026).
 - **Caddy** (official apt repo) — TLS termination + reverse proxy in front
   of the app; Let's Encrypt certificates renew automatically. Sets the
   security headers (HSTS, nosniff, Referrer-Policy, frame denial), drops

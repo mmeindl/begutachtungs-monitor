@@ -138,7 +138,7 @@ WorkingDirectory=$APP_DIR
 # The heap limit is a flag here and not NODE_OPTIONS: the drop-in
 # begutachtungs-monitor.service.d/diagnostics.conf sets NODE_OPTIONS, and a
 # drop-in's assignment replaces this file's — the limit would silently vanish.
-ExecStart=/usr/bin/node --max-old-space-size=384 $APP_DIR/server/index.mjs
+ExecStart=/usr/bin/node --max-old-space-size=320 $APP_DIR/server/index.mjs
 # Persistent app state in /var/lib/begutachtungs-monitor (created and
 # chowned to the service user by systemd, exported as \$STATE_DIRECTORY).
 # Must live OUTSIDE $APP_DIR: deploy.sh rsyncs .output/ with --delete.
@@ -153,13 +153,18 @@ Restart=always
 RestartSec=3
 
 # --- memory ---
-# The box has 952 MB and a 1 GB swapfile; the app measured ~90–130 MB
-# resident warm (docs/architecture.md §5) and a 54 MB heap mid-prewarm. The
-# V8 old space (384 MB, ExecStart) sits below this ceiling with ~128 MB for
-# code, young generation and buffers, so a leak ends as a clean V8 "heap out
-# of memory" exit and a restart — not as the kernel swapping the whole box to
-# a crawl. The ~440 MB left over are Caddy, sshd, journald and apt.
+# The box has 952 MB and a 1 GB swapfile. The V8 old space (320 MB,
+# ExecStart) sits below this ceiling with ~190 MB for code, young
+# generation, buffers and the cache values Node keeps beside the heap
+# (server/utils/cache/memoryDriver.ts), so a leak ends as a clean V8 "heap
+# out of memory" exit and a restart. MemorySwapMax=0 makes that true:
+# MemoryMax caps RAM, not swap, and until 27.10.2026 the app swapped instead
+# (512 MB peak, 385 MB in swap over 34 hours) with a 384 MB heap. Measured
+# under the production sequence (docs/architecture.md §10): heap peak
+# 217 MB, live ~137 MB. The ~440 MB left over are Caddy, sshd, journald and
+# apt.
 MemoryMax=512M
+MemorySwapMax=0
 
 # --- sandbox ---
 # The app reads its code and talks HTTP; everything else is taken away.
