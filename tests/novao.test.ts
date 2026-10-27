@@ -1201,3 +1201,36 @@ describe('a designation written out (26.10.2026)', () => {
     expect(read('In § 3 Abs. 1 entfällt die Absatzbezeichnung "(1)".')).toEqual(['renumber abs: § 3 Abs. 1 → '])
   })
 })
+
+describe('„gestrichen" ends a clause like „entfällt" (27.10.2026)', () => {
+  const read = (line: string) => {
+    const { ops, reason } = parseInstruction(line)
+    return [...ops.map((o) => {
+      const a = opAddress(o)!
+      return `${o.kind} ${a.level}: ${a.para}${a.abs !== null ? ` Abs. ${a.abs}` : ''}${a.z !== null ? ` Z ${a.z}` : ''}${o.kind === 'replacePhrase' ? ` „${o.from}" → „${o.to}"` : o.kind === 'deletePhrase' ? ` „${o.text}"` : ''}`
+    }), ...(reason ? [`! ${reason}`] : [])]
+  }
+
+  it('reads the replacement and the deletion of one clause apart (32/ME XXVIII, E-ControlG § 23)', () => {
+    expect(read('In § 23 erhält der bisherige Abs. 2 die Absatzbezeichnung "(4)" ; in Abs. 4 (neu) werden im Einleitungsteil der Ausdruck "E-Control" durch den Ausdruck "Regulierungsbehörde" ersetzt und das Wort "dabei" gestrichen.')).toEqual([
+      'renumber abs: § 23 Abs. 2',
+      'replacePhrase satz: § 23 Abs. 4 „E-Control" → „Regulierungsbehörde"',
+      'deletePhrase abs: § 23 Abs. 4 „dabei"',
+    ])
+    expect(read('In § 20 Abs. 3 Z 2 wird die Wortfolge "für Landwirtschaft" gestrichen und die Wortfolge "Soziales" durch die Wortfolge "Arbeit, Soziales" ersetzt.')).toEqual([
+      'deletePhrase z: § 20 Abs. 3 Z 2 „für Landwirtschaft"',
+      'replacePhrase z: § 20 Abs. 3 Z 2 „Soziales" → „Arbeit, Soziales"',
+    ])
+  })
+
+  it('no longer runs a deletion into the next clause (AC796DAE: Z 3 went in behind Z 1)', () => {
+    expect(read('In § 24 Z 1 wird am Ende das Wort "sowie" gestrichen; in § 24 Z 2 wird der Punkt am Ende durch das Wort "sowie" ersetzt.')).toEqual([
+      'deletePhrase z: § 24 Z 1 „sowie"',
+      'replacePhrase z: § 24 Z 2 „." → „sowie"',
+    ])
+  })
+
+  it('keeps „gestrichen und durch … ersetzt" one replacement (217ED740)', () => {
+    expect(read('In § 3 Z 3 lit. a wird nach der Wortfolge "Fruchtsaft aus Konzentrat" das Wort "oder" gestrichen und durch einen Beistrich ersetzt.')).toEqual(['replacePhrase lit: § 3 Z 3 „oder" → „,"'])
+  })
+})

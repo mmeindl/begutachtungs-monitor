@@ -1835,8 +1835,11 @@ describe('several insertions under one „eingefügt" (28.09.2026)', () => {
     expect(out.paragraphs[0]!.children[0]!.text).toBe('Er ist abzuliefern; dies gilt nicht, wenn er führt, und bleibt.')
   })
 
-  it('keeps refusing a line whose first quotation is deleted, not an anchor', () => {
-    expect(parseInstruction('In § 20 wird das Wort "zuletzt" gestrichen sowie nach der Wortfolge "A" die Wortfolge "B" eingefügt.').ops).toEqual([])
+  // Refused until „gestrichen" closed a clause: the deleted word is no anchor
+  // of the insertion after it, and the line now reads as the two it says.
+  it('reads a deletion and an insertion where the first quotation is deleted, not an anchor', () => {
+    const ops = parseInstruction('In § 20 wird das Wort "zuletzt" gestrichen sowie nach der Wortfolge "A" die Wortfolge "B" eingefügt.').ops
+    expect(ops).toMatchObject([{ kind: 'deletePhrase', text: 'zuletzt' }, { kind: 'insertPhrase', anchor: 'A', where: 'after', text: 'B' }])
   })
 })
 

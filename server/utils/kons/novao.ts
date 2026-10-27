@@ -1389,7 +1389,11 @@ const COMPOUND_SPLIT = /[;,]\s*(?=[A-Za-zÄÖÜ§])|\s+(?:sowie|und)\s+/gi
 // „wird zu § N": „Der bisherige § 15 wird zu § 23 Abs. 1; ihm wird folgender
 // Abs. 2 angefügt" is a renumbering and an insertion too, and read as one
 // clause neither came out (51/ME XXVIII, 26.10.2026; `PARA_RENAMED_RE`).
-const VERB_RE = /\blaute[nt]\b|\bersetzt\b|\bangefügt\b|\beingefügt\b|\bentfäll[te]\b|\bentfallen\b|\baufgehoben\b|bezeichnung(?:en)?\b|\bbezeichnet\b|wie folgt geändert|\b(?:wird|werden)\s+zu(?=\s*§)/i
+// `gestrichen`, which the deletion reads as its verb: „… der Ausdruck ‚A'
+// durch den Ausdruck ‚B' ersetzt und das Wort ‚C' gestrichen" was one clause
+// of three operands, refused as „Paarbildung unklar", and with it the chain
+// of renumberings it stood in (32/ME XXVIII, E-ControlG § 23; 27.10.2026).
+const VERB_RE = /\blaute[nt]\b|\bersetzt\b|\bangefügt\b|\beingefügt\b|\bentfäll[te]\b|\bentfallen\b|\bgestrichen\b|\baufgehoben\b|bezeichnung(?:en)?\b|\bbezeichnet\b|wie folgt geändert|\b(?:wird|werden)\s+zu(?=\s*§)/i
 
 /**
  * „Der bisherige § 57 erhält die Absatzbezeichnung ‚(1)'. Als neuer Abs. 2
@@ -1442,8 +1446,11 @@ export function splitCompound(line: string): string[] {
     if (/^\s*(?:\d+[a-z]*|[a-z]{1,2})(?=\s*(?:[;,.)]|und\b|sowie\b|bis\b|$))/.test(masked.slice(at))) continue
     // The verbs of the instruction, not of the law text it quotes: „die
     // Wortfolge ‚wird ersetzt' und …" names no second clause (28.09.2026).
+    // Nor does a half that opens with „durch": „das Wort ‚oder' gestrichen
+    // und durch einen Beistrich ersetzt" is one replacement with two verbs,
+    // the object stands in front of both (217ED740, 27.10.2026).
     const left = masked.slice(last, m.index!)
-    if (VERB_RE.test(left) && VERB_RE.test(masked.slice(at))) {
+    if (VERB_RE.test(left) && VERB_RE.test(masked.slice(at)) && !/^\s*durch\b/i.test(masked.slice(at))) {
       bounds.push(m.index!, at)
       last = at
     } else if (/^\s+und\s+$/.test(m[0]) && !VERB_RE.test(left) && GAPPED_LEFT_RE.test(maskQuotes(line.slice(last, m.index!))) && GAPPED_RIGHT_RE.test(maskQuotes(line.slice(at)))) {
