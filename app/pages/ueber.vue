@@ -63,6 +63,20 @@ const { siteUrl } = useRuntimeConfig().public
         Kärnten, Oberösterreich, Salzburg, Tirol und Wien. Es gibt keine Konten und kein Tracking; ein Cookie nur,
         wenn Sie die Quellen der Liste ändern.
       </p>
+      <!-- Voluntary, and deliberately without the article number: no text
+           the site shows about a draft is model-generated, and its own
+           copy is reviewed and owned by the Medieninhaber — the human-review
+           exception of Art 50(4) AI Act. Citing it here would read as a
+           legal opinion; the facts are what a reader can check. If a model
+           ever produces what a page shows, this paragraph stops being true. -->
+      <p>
+        Beim Programmieren und Formulieren hilft ein KI-Assistent. Was der
+        Monitor zu einem Entwurf zeigt, erzeugt aber kein Sprachmodell:
+        Fristen, Zahlen und Texte kommen aus den amtlichen Quellen, die
+        Vergleiche rechnet gewöhnliche Software, und beim Aufruf einer Seite
+        wird kein KI-System befragt. Jeden Text dieser Website hat der
+        Medieninhaber geprüft und verantwortet ihn.
+      </p>
     </ProseSection>
 
     <ProseSection id="about-subscribe" heading="Abonnieren">
