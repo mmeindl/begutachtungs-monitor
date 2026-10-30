@@ -14189,8 +14189,8 @@ Der Monitor zählt seit heute Seitenaufrufe — als Summe je Seitenart und
 UTC-Tag, und sonst nichts. Bis gestern versprach `/datenschutz` „keine
 Reichweitenmessung“; das Versprechen ist geändert, nicht umgangen.
 
-**Warum Zahlen und keine Besucher.** Beide Förderwege fragen nach Wirkung
-(netidee, Stadt Wien), und „wird es gelesen“ ist die erste Wirkungsfrage.
+**Warum Zahlen und keine Besucher.** Jeder Förderantrag fragt nach Wirkung,
+und „wird es gelesen“ ist die erste Wirkungsfrage.
 Eine Besucherzahl bräuchte aber einen Wiedererkennungswert — einen Hash aus
 IP-Adresse und User-Agent, wie ihn „cookielose“ Analytik bildet. Der ist
 pseudonym, nicht anonym, und hätte das Versprechen dem Wortlaut nach
