@@ -92,7 +92,7 @@ export interface ExplanationsResponse {
 export interface ParagraphExplanationView {
   /** Matches `ComparisonRow.law`; null where the rows carry none either. */
   law: string | null
-  /** Normalised designation, „§ 54c". */
+  /** The Paragraph's number, „54c" — as `explanationParaId` builds it, so a lookup takes it as the key without reading it again. */
   para: string
   /** The passage heading as the ministry printed it, „Zu Z 4 (§ 54c Abs. 1a):". */
   heading: string
