@@ -106,6 +106,7 @@ const soleRisUrl = computed(() => {
  * all — after the last group, under the law's name.
  */
 const lawEnds = computed(() => placed.value.ends)
+const enactedLaws = computed(() => new Set(explanations.value?.enactedLaws ?? []))
 
 /**
  * Why the Lesefassung is missing as a whole — the run did not happen
@@ -526,9 +527,9 @@ function withheldReason(cause: AnnexWithheldCause | null): string {
         </DiffGroup>
         <!-- Laws of the draft the annex has no group for — a new law above
              all, which no Textgegenüberstellung covers. -->
-        <section v-for="r in lawEnds.rest" :key="r.law ?? ''" class="border-t border-hairline px-4 py-3">
+        <section v-for="r in lawEnds.rest" :key="r.law ?? ''" class="border-b border-hairline px-4 py-3 last-of-type:border-b-0">
           <p class="text-sm font-semibold text-ink">{{ r.law || 'Gesetzestext' }}</p>
-          <AnnexLawEnd :end="r" outside-annex class="mt-1" />
+          <AnnexLawEnd :end="r" outside-annex :enacted="r.law !== null && enactedLaws.has(r.law)" :undivided="!!data?.boundaryNote" class="mt-1" />
         </section>
         <!-- Same wording as the § comparison (`NoMatches`). -->
         <NoMatches v-if="hasRows" :found="matchCount > 0" />

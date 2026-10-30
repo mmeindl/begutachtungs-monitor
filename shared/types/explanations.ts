@@ -78,6 +78,14 @@ export interface ExplanationsResponse {
    * the sentence it replaced.
    */
   paragraphsAtAnnex: boolean
+  /**
+   * The law keys (`ParagraphExplanationView.law`) of the Artikel that enact a
+   * law rather than amend one — no Promulgationsklausel (`DraftArticle.amends`).
+   * A law of the draft the annex has no part for is, mostly, one of these: it
+   * has no earlier version to be set against, and the page says that instead
+   * of reporting a gap (30.10.2026). Optional for answers cached before.
+   */
+  enactedLaws?: string[]
 }
 
 /** One passage of the Besonderer Teil, addressed to one § of one law. */

@@ -79,6 +79,7 @@ function empty(reason: string, document: TraceLink | null = null): ExplanationsR
     hasSpecial: false,
     paragraphs: [],
     paragraphsAtAnnex: false,
+    enactedLaws: [],
   }
 }
 
@@ -95,6 +96,7 @@ function view(
   doc: ExplanationsDocument,
   paragraphs: ExplanationsResponse['paragraphs'],
   annex: boolean,
+  enactedLaws: string[],
 ): ExplanationsResponse {
   return {
     available: true,
@@ -111,6 +113,7 @@ function view(
     // The second condition — the join bound passages at all — already sits
     // inside `annex`: without it the question is never asked (see `read`).
     paragraphsAtAnnex: annex,
+    enactedLaws,
   }
 }
 
@@ -181,8 +184,9 @@ async function read(
   // Without the Artikel, no passage at a Paragraph — and the page then says
   // that the rest stands in the document, which is true (`paragraphsAtAnnex`).
   const paragraphs = articles ? explanationsByParagraph(parsed, articles) : []
+  const enactedLaws = (articles ?? []).flatMap((a) => (!a.amends && a.key ? [a.key] : []))
   return {
-    value: view(parsed.general, formats, !parsed.generalInferred, parsed, paragraphs, paragraphs.length > 0 && (await annexOf())),
+    value: view(parsed.general, formats, !parsed.generalInferred, parsed, paragraphs, paragraphs.length > 0 && (await annexOf()), enactedLaws),
     complete: articles !== null,
   }
 }
