@@ -41,6 +41,22 @@ export function isInProcessRequest(remoteAddress: string | null | undefined): bo
   return remoteAddress === ''
 }
 
+/**
+ * The path the router will see, normalised so an encoding or a doubled slash
+ * is no way past the checks — the door's checks (`middleware/guard.ts`) and
+ * the page-view count (`zaehlung/klassen.ts`) read the same path.
+ */
+export function normalisedPath(raw: string): string {
+  const path = raw.split('?')[0] ?? ''
+  let decoded = path
+  try {
+    decoded = decodeURIComponent(path)
+  } catch {
+    // Malformed escapes: judge the raw path; the router will 404 it anyway.
+  }
+  return decoded.replace(/\/{2,}/g, '/').toLowerCase()
+}
+
 /** Routes that exist for the prewarm unit alone and fan out hundreds of upstream requests cold. */
 const PREWARM_ONLY = [/^\/api\/stations(?:\/|$)/, /^\/api\/ris-map(?:\/|$)/, /^\/api\/bgbl\/teil2\/?$/]
 

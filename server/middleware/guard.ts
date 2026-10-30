@@ -22,6 +22,7 @@ import {
   isInProcessRequest,
   isPrewarmOnlyPath,
   isUncountedPath,
+  normalisedPath,
   strictClassFor,
   type RateClass,
 } from '../utils/http/rateLimit'
@@ -29,18 +30,6 @@ import {
 const limiters = Object.fromEntries(
   Object.entries(RATE_RULES).map(([name, rule]) => [name, createRateLimiter(rule)]),
 ) as Record<RateClass, ReturnType<typeof createRateLimiter>>
-
-/** The path the router will see, normalised so an encoding or a doubled slash is no way past the checks. */
-function normalisedPath(raw: string): string {
-  const path = raw.split('?')[0] ?? ''
-  let decoded = path
-  try {
-    decoded = decodeURIComponent(path)
-  } catch {
-    // Malformed escapes: judge the raw path; the router will 404 it anyway.
-  }
-  return decoded.replace(/\/{2,}/g, '/').toLowerCase()
-}
 
 export default defineEventHandler((event) => {
   if (isInProcessRequest(event.node.req.socket?.remoteAddress)) return
