@@ -368,6 +368,7 @@ export function buildSitemap(
     `${siteUrl}/ueber`,
     `${siteUrl}/impressum`,
     `${siteUrl}/datenschutz`,
+    `${siteUrl}/statistik`,
     ...items.map((item) => pageUrl(siteUrl, item)),
     // The same reasoning as for the drafts: searching a Verordnung by name
     // is how someone affected by it finds the consultation at all — and for

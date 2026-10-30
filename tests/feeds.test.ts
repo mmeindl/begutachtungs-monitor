@@ -131,13 +131,14 @@ describe('buildSitemap', () => {
     expect(xml).toContain(`<loc>${SITE}/so-funktionierts</loc>`)
     expect(xml).toContain(`<loc>${SITE}/ueber</loc>`)
     expect(xml).toContain(`<loc>${SITE}/impressum</loc>`)
+    expect(xml).toContain(`<loc>${SITE}/statistik</loc>`)
     expect(xml).toContain(`<loc>${SITE}/datenschutz</loc>`)
     expect(xml).toContain(`<loc>${SITE}/entwuerfe/XXVIII/88</loc>`)
   })
 
   it('yields only the static pages for an empty list, well-formed', () => {
     const xml = buildSitemap(SITE, [])
-    expect(xml.match(/<loc>/g)).toHaveLength(6)
+    expect(xml.match(/<loc>/g)).toHaveLength(7)
     // `/suche` does NOT belong in here any more since 22.09.2026: the page
     // is gone, the field on `/entwuerfe` answers both (§12.31), and the path
     // 301s there — a sitemap must not advertise a redirect.
