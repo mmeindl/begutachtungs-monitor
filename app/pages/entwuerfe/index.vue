@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import type { DashboardSecondRound, DraftStation, LandCode, RisConsultationKind } from '#shared/types'
-import { LAND_CODES, LAND_NAME } from '#shared/utils/laender'
+import { LAND_CODES, LAND_NAME, landStationsReason } from '#shared/utils/laender'
 import { formatNumberDe } from '#shared/utils/format'
 import {
   compareRowsByFrist,
@@ -257,33 +257,10 @@ function chooseSort(key: string) {
  * 23.10.2026: a Land's draft is a Gesetz or a Verordnung like the Bund's.
  */
 const { bund, laender: chosenLaender } = useSourceChoice()
-/* The stations a Land's drafts can reach here. Oberösterreich's and
- * Tirol's Landtag record every step after the Begutachtung (`ooeStageOf`,
- * `parseTirolRecord`), Kärnten's pages the Vorlage and the Beschluss
- * (`ktnChainOf`); for the other Länder the monitor finds the Kundmachung
- * itself (`matchLgbl`, §12.43) and nothing in between — so under
- * „Regierungsvorlage" or „Parlament" alone they have no rows to give, and
- * the chip says why. Niederösterreich and Vorarlberg show a draft only while
- * its Begutachtung runs (30.10.2026): nothing of theirs reaches a later
- * station here. */
-const FOLLOWED_STATIONS: Record<LandCode, readonly DraftStation[] | 'all'> = {
-  bgld: ['begutachtung', 'bgbl'],
-  ktn: 'all',
-  noe: ['begutachtung'],
-  ooe: 'all',
-  sbg: ['begutachtung', 'bgbl'],
-  stmk: ['begutachtung', 'bgbl'],
-  t: 'all',
-  vbg: ['begutachtung'],
-  w: ['begutachtung', 'bgbl'],
-}
+/* The stations each Land is followed to: `LAND_FOLLOWED_STATIONS`. */
 function landUnavailableFor(land: LandCode): string | null {
-  const followed = FOLLOWED_STATIONS[land]
-  if (stations.value.length && followed !== 'all' && !stations.value.some((s) => followed.includes(s))) {
-    return followed.includes('bgbl')
-      ? 'Diese Länder-Entwürfe verfolgt der Monitor nur in Begutachtung und Kundmachung'
-      : 'Diese Länder-Entwürfe zeigt der Monitor nur, solange ihre Begutachtung läuft'
-  }
+  const byStation = landStationsReason(land, stations.value)
+  if (byStation) return byStation
   if (bund.value && ministry.value) return 'Länder-Entwürfe haben kein Ministerium'
   return null
 }
@@ -698,6 +675,16 @@ const statementsSortNote = computed(() => {
       <!-- The tool row, `ListBox`'s `header`: it brings the column, the
            gaps and the inset the head drew here itself until 03.10.2026. -->
       <template #header>
+        <!-- Where the rows come from (`SourceChips`), on a line of its
+             own: ten chips do not fit beside the selects. FIRST in the
+             head since 30.10.2026, as in every homepage box: the sources
+             decide which rows exist at all, the filters below narrow
+             them — and the chips stand in the same place on both pages. -->
+        <SourceChips :unavailable="sourceUnavailable" />
+        <p v-for="s in unreadableLaender" :key="s.land" class="text-sm text-ink-muted">
+          {{ LAND_NAME[s.land] }} ist gerade nicht abrufbar<template v-if="s.listUrl"> –
+            <ExternalLink :href="s.listUrl" class="link-inline font-medium">beim Land nachsehen</ExternalLink></template>.
+        </p>
         <div class="flex flex-wrap items-center gap-2">
           <!-- „Was kann ich tun", reduced to its one value that matters:
                the question people arrive with (§12.26), and the filter
@@ -779,14 +766,6 @@ const statementsSortNote = computed(() => {
             </div>
           </div>
         </div>
-        <!-- Where the rows come from (`SourceChips`), on a line of its
-             own: four chips do not fit beside the selects. Part of what
-             fixes the set, so above the search. -->
-        <SourceChips :unavailable="sourceUnavailable" />
-        <p v-for="s in unreadableLaender" :key="s.land" class="text-sm text-ink-muted">
-          {{ LAND_NAME[s.land] }} ist gerade nicht abrufbar<template v-if="s.listUrl"> –
-            <ExternalLink :href="s.listUrl" class="link-inline font-medium">beim Land nachsehen</ExternalLink></template>.
-        </p>
         <p v-if="unreadStageCount" class="text-sm text-ink-muted">
           Bei {{ formatNumberDe(unreadStageCount) }} Länder-{{ unreadStageCount === 1 ? 'Entwurf' : 'Entwürfen' }} war der weitere Weg gerade nicht abrufbar; nach Station sind sie hier nicht eingeordnet.
         </p>

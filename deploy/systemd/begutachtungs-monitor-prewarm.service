@@ -98,9 +98,9 @@ User=app
 Group=app
 NoNewPrivileges=true
 PrivateTmp=true
-# The unit's own worst case, stated rather than inherited: the six --max-time
-# budgets below add up to 3.120 s, and deploy.sh blocks on this job.
-TimeoutStartSec=3200
+# The unit's own worst case, stated rather than inherited: the seven --max-time
+# budgets below add up to 3.240 s, and deploy.sh blocks on this job.
+TimeoutStartSec=3320
 # The first request waits for the port. `After=` orders this job behind the
 # app's START, not behind its LISTEN: after a hand-typed `systemctl restart`
 # the curl came at 16:56:15 and Node listened at 16:56:16 (29.09.2026,
@@ -111,4 +111,7 @@ ExecStart=/usr/bin/curl -fsS -o /dev/null --max-time 300 http://127.0.0.1:3000/a
 ExecStart=/usr/bin/curl -fsS -o /dev/null --max-time 120 "http://127.0.0.1:3000/api/ris-drafts?status=open"
 ExecStart=/usr/bin/curl -fsS -o /dev/null --max-time 900 http://127.0.0.1:3000/api/stations/aktuell
 ExecStart=/usr/bin/curl -fsS -o /dev/null --max-time 300 "http://127.0.0.1:3000/api/laender?status=all"
+# The homepage's cut of the same Länder lists (30.10.2026): read right after them, it
+# costs the cut and nothing upstream.
+ExecStart=/usr/bin/curl -fsS -o /dev/null --max-time 120 http://127.0.0.1:3000/api/dashboard/laender
 ExecStart=/usr/bin/curl -fsS -o /dev/null --max-time 900 http://127.0.0.1:3000/api/stations/vorperiode

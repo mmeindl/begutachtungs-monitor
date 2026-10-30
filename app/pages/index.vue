@@ -2,15 +2,22 @@
 import type {
   DashboardDecided,
   DashboardEnacted,
+  DashboardLaender,
   DashboardOutcomes,
   DashboardPayload,
   DashboardSecondRound,
+  DraftStation,
   LaenderResponse,
+  LandCode,
+  LandConsultation,
+  LandSourceState,
   RisConsultationsResponse,
 } from '#shared/types'
-import { LAND_NAME } from '#shared/utils/laender'
+import { LAND_CODES, LAND_NAME, landStationsReason, type SourceCode } from '#shared/utils/laender'
 import { HOME_LIST_LENGTH, compareRowsByFrist, draftRows } from '#shared/utils/draftOrder'
-import { viewOfDraft, viewOfOutcome, viewOfRow, viewOfVorlage } from '~/utils/entryView'
+import { viewOfDraft, viewOfLand, viewOfOutcome, viewOfRow, viewOfVorlage } from '~/utils/entryView'
+import { landStationDate, mergeNewestFirst } from '#shared/utils/landRecent'
+import { listDe } from '~/utils/geltendeFassung'
 import { gpWindow } from '#shared/utils/gp'
 import { MAX_LIST_QUERY_CHARS } from '#shared/utils/queryParams'
 import { SECOND_ROUND_WINDOW } from '~/utils/spine'
@@ -170,6 +177,60 @@ const { data: outcomes } = await outcomesFetch
 const { data: enacted, status: enactedStatus } = await enactedFetch
 const { data: decided } = await decidedFetch
 
+/* The chosen Länder in the two track sections (30.10.2026): their newest
+ * Kundmachungen beside the Bund's, and their Landtag decisions still
+ * awaiting one. Asked only when a Land is chosen, like the open list's
+ * Länder, and after the Bund's Kundmachungen, because their period is the
+ * window the Länder are read over (§12.35) — 0.5 s warm, a cached cut of the
+ * lists behind the section's link (`/api/dashboard/laender`). */
+const { data: landRecent, status: landRecentStatus } = await useAsyncData<DashboardLaender | null>(
+  'home-laender-recent',
+  () => (wantsLaender.value
+    ? $fetch<DashboardLaender>('/api/dashboard/laender', { query: { gp: enacted.value?.gp }, timeout: 4000 })
+    : Promise.resolve(null)),
+  { watch: [wantsLaender, () => enacted.value?.gp], lazy: true },
+)
+const chosenOf = (rows: readonly LandConsultation[] | undefined) =>
+  (rows ?? []).filter((d) => chosenLaender.value.includes(d.land))
+const unreadableRecent = computed(() => unreadableOf(landRecent.value?.sources, landRecentStatus.value))
+
+/**
+ * Which sources each box can draw from (30.10.2026). Every box whose rows
+ * the choice decides carries the chips (`SourceChips`), and a Land that can
+ * give a box no rows is dashed there with its reason — `/entwuerfe`'s
+ * grammar, from the same station map (`LAND_FOLLOWED_STATIONS`). The
+ * reasons are statements about the monitor, not about the Länder: some
+ * Landtage run a Begutachtung of their own on bills before them (Kärnten,
+ * Oberösterreich, Steiermark, Burgenland), none takes Stellungnahmen on a
+ * Regierungsvorlage, and nobody here counts a Land's Stellungnahmen.
+ */
+type SourceReasons = Partial<Record<SourceCode, string | null>>
+const everyLand = (reason: string): SourceReasons => Object.fromEntries(LAND_CODES.map((land) => [land, reason]))
+const atStation = (station: DraftStation): SourceReasons =>
+  Object.fromEntries(LAND_CODES.map((land) => [land, landStationsReason(land, [station])]))
+const RV_UNAVAILABLE = everyLand('Stellungnahmen zu Regierungsvorlagen verfolgt der Monitor nur im Nationalrat')
+const RANKED_UNAVAILABLE = everyLand('Für die Länder zählt der Monitor keine Stellungnahmen')
+/* Kärnten's stations are our join of its lists (`joined`): the Kundmachung
+ * may stand in RIS under a title the search missed (`isDecidedLandLaw`). */
+const DECIDED_UNAVAILABLE: SourceReasons = {
+  ...atStation('parlament'),
+  ktn: 'Ob ein Beschluss in Kärnten schon kundgemacht ist, kann der Monitor nicht sicher sagen',
+}
+const ENACTED_UNAVAILABLE = atStation('bgbl')
+
+/**
+ * The reason in words, where none of the chosen Länder can give the box a
+ * row: a dashed chip's reason is its title, and a title reaches no phone
+ * (`/entwuerfe` says it in its count line for the same reason). One reason
+ * when they share it, else what they have in common.
+ */
+function noneApply(reasons: SourceReasons): string | null {
+  const given = chosenLaender.value.map((land) => reasons[land] ?? null)
+  if (!given.length || given.some((r) => r === null)) return null
+  return new Set(given).size === 1 ? `${given[0]}.` : 'Die gewählten Länder verfolgt der Monitor nicht bis zu dieser Station.'
+}
+const applying = (reasons: SourceReasons) => chosenLaender.value.filter((land) => !reasons[land])
+
 /** No answer yet, as opposed to none: only after a click, never on the
  *  server, which waits (see `dashboardFetch`). */
 const loading = (s: AsyncDataRequestStatus) => s === 'idle' || s === 'pending'
@@ -179,17 +240,17 @@ const loading = (s: AsyncDataRequestStatus) => s === 'idle' || s === 'pending'
 const chosenLandItems = computed(() =>
   (laender.value?.items ?? []).filter((item) => chosenLaender.value.includes(item.land)),
 )
-const unreadableLaender = computed(() => {
-  if (!chosenLaender.value.length || loading(laenderStatus.value)) return []
-  const sources = laender.value?.sources
+function unreadableOf(sources: readonly LandSourceState[] | undefined, status: AsyncDataRequestStatus) {
+  if (!chosenLaender.value.length || loading(status)) return []
   return chosenLaender.value
     .map((land) => sources?.find((s) => s.land === land) ?? { land, state: 'unavailable' as const, listUrl: null })
     .filter((s) => s.state === 'unavailable')
-})
-/* The list link carries the choice when it came from the address alone: the
+}
+const unreadableLaender = computed(() => unreadableOf(laender.value?.sources, laenderStatus.value))
+/* The list links carry the choice when it came from the address alone: the
  * cookie would carry it otherwise, a shared link has none. */
-const openListHref = computed(() =>
-  `/entwuerfe?status=open&station=begutachtung${sourcesQuery.value ? `&quellen=${sourcesQuery.value}` : ''}`)
+const sourcesParam = computed(() => (sourcesQuery.value ? `&quellen=${sourcesQuery.value}` : ''))
+const openListHref = computed(() => `/entwuerfe?status=open&station=begutachtung${sourcesParam.value}`)
 
 /**
  * What is open right now, both kinds, in ONE deadline-ordered list
@@ -270,22 +331,44 @@ const rankedRows = computed(() => {
  * link. The list exists as a filter now, so the way out is a link like
  * every other section's.
  */
+/* The Bund's alone, and so empty while the Bund is unticked: the box then
+ * stays, with its chips and the reason, rather than ignore the choice. */
+const rankedShown = computed(() => (bund.value ? rankedRows.value : []))
 const visibleSecondRound = computed(
-  () => secondRound.value?.items.slice(0, HOME_LIST_LENGTH).map(viewOfVorlage) ?? [],
+  () => (bund.value ? secondRound.value?.items.slice(0, HOME_LIST_LENGTH).map(viewOfVorlage) ?? [] : []),
 )
 
 /* Uncapped: the endpoint already delivers `HOME_LIST_LENGTH` rows — the cap
  * sits where the Vorlagen are read from list 101, not here. `?? []` does not
  * tell „nichts kundgemacht" from „nicht abrufbar"; that is done by the two
  * sentences in the template, which still ask `enacted` themselves. */
-const enactedEntries = computed(() => enacted.value?.items.map(viewOfOutcome) ?? [])
+const enactedMerged = computed(() =>
+  mergeNewestFirst(
+    bund.value ? (enacted.value?.items ?? []) : [], (o) => o.bgblDate,
+    chosenOf(landRecent.value?.enacted), landStationDate,
+  ).slice(0, HOME_LIST_LENGTH),
+)
+const enactedEntries = computed(() =>
+  enactedMerged.value.map((m) => (m.from === 'a' ? viewOfOutcome(m.item) : viewOfLand(m.item))))
 
 /* The chain route, not `viewOfOutcome`: the Stand „Im Nationalrat
  * beschlossen" and its date live on the chain (`entryView.chainState`), and
  * the outcome route knows only the Vorlage and the Kundmachung. Uncapped
  * here, like the enacted rows: the endpoint delivers at most
  * `HOME_LIST_LENGTH`. */
-const decidedEntries = computed(() => decided.value?.items.map((d) => viewOfDraft(d)) ?? [])
+const decidedMerged = computed(() =>
+  mergeNewestFirst(
+    bund.value ? (decided.value?.items ?? []) : [], (o) => o.chain?.decidedAt,
+    chosenOf(landRecent.value?.decided), landStationDate,
+  ).slice(0, HOME_LIST_LENGTH),
+)
+const decidedEntries = computed(() =>
+  decidedMerged.value.map((m) => (m.from === 'a' ? viewOfDraft(m.item) : viewOfLand(m.item))))
+const decidedShowsBund = computed(() => decidedMerged.value.some((m) => m.from === 'a'))
+const decidedShowsLaender = computed(() => decidedMerged.value.some((m) => m.from === 'b'))
+const decidedTotal = computed(() =>
+  (bund.value ? (decided.value?.total ?? 0) : 0) +
+  chosenLaender.value.reduce((n, land) => n + (landRecent.value?.decidedTotal[land] ?? 0), 0))
 
 /**
  * The Gesetzgebungsperiode each accountability section is counted over,
@@ -354,8 +437,53 @@ const rankedHref = computed(
     (rankedIsFallback.value ? `&gp=${rankedGp.value}` : ''),
 )
 const enactedHref = computed(
-  () => '/entwuerfe?station=bgbl' + (enactedIsFallback.value ? `&gp=${enactedGp.value}` : ''),
+  () => '/entwuerfe?station=bgbl' + (enactedIsFallback.value ? `&gp=${enactedGp.value}` : '') + sourcesParam.value,
 )
+const decidedHref = computed(() => `/entwuerfe?station=parlament&status=closed${sourcesParam.value}`)
+
+/* „Zuletzt Gesetz geworden" with Länder chosen (30.10.2026). The Bund's
+ * sentences below stay as they were for the Bund alone; with a Land the
+ * section is two gazettes, and the sentence names both and the window each
+ * is read over. A Land's window is the Bund's period as a time span
+ * (`readLaenderInWindow`): it has its own legislative periods. */
+const enactedLoading = computed(() =>
+  (bund.value && loading(enactedStatus.value)) || (wantsLaender.value && loading(landRecentStatus.value)))
+const enactedAnswered = computed(() => (!bund.value || !!enacted.value) && (!wantsLaender.value || !!landRecent.value))
+
+/* As the gazettes call themselves: „Landesgesetzblatt für das Burgenland",
+ * „… für die Steiermark", „… für Salzburg". */
+const GAZETTE_FOR: Partial<Record<LandCode, string>> = { bgld: 'das Burgenland', stmk: 'die Steiermark' }
+function landGazettesDe(lands: readonly LandCode[]): string {
+  const names = lands.map((land) => GAZETTE_FOR[land] ?? LAND_NAME[land])
+  return names.length === 1 ? `im Landesgesetzblatt für ${names[0]}` : `in den Landesgesetzblättern für ${listDe(names)}`
+}
+function landWindowDe(gp: string | null): string | null {
+  const w = gp ? gpWindow(gp) : null
+  if (!w) return null
+  return w.to
+    ? `aus Begutachtungen vom ${formatDateDe(w.from)} bis ${formatDateDe(w.to)}`
+    : `aus Begutachtungen seit dem ${formatDateDe(w.from)}`
+}
+const enactedLaender = computed(() => applying(ENACTED_UNAVAILABLE))
+const enactedLandLine = computed(() => {
+  if (!enactedLaender.value.length) return null
+  const gp = enactedGp.value ?? currentGp.value
+  const land = [landGazettesDe(enactedLaender.value), landWindowDe(gp)].filter(Boolean).join(' ')
+  const bundGazette = `im Bundesgesetzblatt${gp ? ` aus der ${gp}. Gesetzgebungsperiode` : ''}`
+  const lead = !bund.value
+    ? `Die jüngsten Kundmachungen ${land}`
+    : enactedIsFallback.value
+      ? `Aus der ${currentGp.value}. Gesetzgebungsperiode ist im Bundesgesetzblatt noch kein Entwurf kundgemacht. Hier stehen deshalb die jüngsten Kundmachungen ${bundGazette} und ${land}`
+      : `Die jüngsten Kundmachungen ${bundGazette} und ${land}`
+  const blocks = bund.value && !enactedIsFallback.value
+    ? ' Der Nationalrat beschließt in Blöcken: zwischen zwei Plenarwochen ändert sich beim Bund nichts.'
+    : ''
+  // Whose finding a row is, said once where a row rests on ours (`isEnactedLandLaw`).
+  const searched = enactedMerged.value.some((m) => m.from === 'b' && m.item.stage && m.item.stage !== 'unknown' && m.item.stage.via === 'suche')
+    ? ' Wo ein Land die Kundmachung nicht selbst verzeichnet, hat sie unsere Suche im RIS gefunden.'
+    : ''
+  return `${lead} – und die Begutachtung, aus der sie hervorgegangen sind.${blocks}${searched}`
+})
 
 /* The way in for whoever arrives with a subject, not a date. A plain GET
  * form onto the list's own `q`, so it works before hydration; with
@@ -577,7 +705,7 @@ function submitSearch() {
           id="second-round-heading"
           to="/entwuerfe?status=open&station=rv"
           noun="Regierungsvorlagen"
-          :total="secondRound.items.length"
+          :total="bund ? secondRound.items.length : undefined"
           :visible="visibleSecondRound.length"
         >
           <!-- Led by the station, „Regierungsvorlage", not by „Zweite
@@ -609,7 +737,20 @@ function submitSearch() {
         <!-- The column header is NOT called „Entwurf" here: these rows are
              Regierungsvorlagen, and the header is the one place where the list
              says for itself what stands in it. -->
-        <EntryList :entries="visibleSecondRound" lead="Regierungsvorlage" class="mt-4" />
+        <!-- The chosen Länder cannot give this box a row: said in words
+             (`noneApply`). Above the box while the Bund fills it, inside it
+             where nothing does. -->
+        <p v-if="bund && noneApply(RV_UNAVAILABLE)" class="mt-2 text-sm text-ink-muted">
+          {{ noneApply(RV_UNAVAILABLE) }}
+        </p>
+        <EntryList :entries="visibleSecondRound" lead="Regierungsvorlage" class="mt-4">
+          <template #header>
+            <SourceChips :unavailable="RV_UNAVAILABLE" />
+          </template>
+          <template #empty>
+            <p class="p-4 text-sm text-ink-muted">{{ noneApply(RV_UNAVAILABLE) }}</p>
+          </template>
+        </EntryList>
       </section>
 
       <!-- The accountability layer opens HERE, not with the recency list
@@ -639,8 +780,8 @@ function submitSearch() {
           id="ranked-heading"
           :to="rankedHref"
           noun="Ministerialentwürfe"
-          :total="data.ranked.total"
-          :visible="rankedRows.length"
+          :total="bund ? data.ranked.total : undefined"
+          :visible="rankedShown.length"
         >
           Wo am meisten mitgeredet wurde
         </ListHeader>
@@ -669,6 +810,12 @@ function submitSearch() {
           > (seit {{ rankedGpStart }})</template> – offene und abgeschlossene – und
           daneben, was aus ihnen geworden ist.
         </p>
+        <!-- The chosen Länder cannot give this box a row: said in words
+             (`noneApply`). Above the box while the Bund fills it, inside it
+             where nothing does. -->
+        <p v-if="bund && noneApply(RANKED_UNAVAILABLE)" class="mt-2 text-sm text-ink-muted">
+          {{ noneApply(RANKED_UNAVAILABLE) }}
+        </p>
         <!-- The same anatomy as everywhere, and here that is the point: the
              number that is ranked by stands in THE SAME column as in every
              other section, and the outcome beside it rather than in its place
@@ -682,7 +829,14 @@ function submitSearch() {
              chips). A ranked list shows its key by ORDER — the number needs
              alignment, not enlargement. An ordered list, because the order
              carries meaning here. -->
-        <EntryList :entries="rankedRows" ordered class="mt-4" />
+        <EntryList :entries="rankedShown" ordered class="mt-4">
+          <template #header>
+            <SourceChips :unavailable="RANKED_UNAVAILABLE" />
+          </template>
+          <template #empty>
+            <p class="p-4 text-sm text-ink-muted">{{ noneApply(RANKED_UNAVAILABLE) }}</p>
+          </template>
+        </EntryList>
       </section>
 
       <!-- THE ONE STATION WITHOUT A LIST, until 03.10.2026 (§12.21). Between
@@ -711,15 +865,15 @@ function submitSearch() {
            same set, the Parlament tab without open windows
            (`status=closed`, a link-only value, §12.26). -->
       <section
-        v-if="decided?.items.length"
+        v-if="decided?.items.length || decidedEntries.length"
         class="page-section"
         aria-labelledby="decided-heading"
       >
         <ListHeader
           id="decided-heading"
-          to="/entwuerfe?station=parlament&status=closed"
+          :to="decidedHref"
           noun="beschlossenen Entwürfe"
-          :total="decided.total"
+          :total="decidedTotal"
           :visible="decidedEntries.length"
         >
           Beschlossen, noch nicht kundgemacht
@@ -730,14 +884,42 @@ function submitSearch() {
              the next period has laws of its own, re-measure it, or the
              sentence claims a number nobody took. A fact about the
              procedure, no verdict on the wait. -->
+        <!-- One sentence per kind of row shown (30.10.2026): the median is
+             the Bund's, measured over its Kundmachungen, and claims nothing
+             about a Land. -->
         <p class="mt-2 text-sm text-ink-secondary">
-          Das parlamentarische Verfahren ist abgeschlossen, die Kundmachung im
-          Bundesgesetzblatt steht noch aus – in der {{ decided.gp }}.
-          Gesetzgebungsperiode vergingen vom Beschluss im Nationalrat bis dahin
-          im Median rund drei Wochen. Dazu die Begutachtung, aus der der
-          Beschluss hervorgegangen ist.
+          <template v-if="decidedShowsBund && decided">Das parlamentarische Verfahren ist abgeschlossen, die Kundmachung im
+            Bundesgesetzblatt steht noch aus – in der {{ decided.gp }}.
+            Gesetzgebungsperiode vergingen vom Beschluss im Nationalrat bis dahin
+            im Median rund drei Wochen.</template>
+          <template v-if="decidedShowsLaender"> Bei den Ländern hat der Landtag
+            beschlossen, die Kundmachung im Landesgesetzblatt steht noch aus.</template>
+          Dazu die Begutachtung, aus der der Beschluss hervorgegangen ist.
         </p>
-        <EntryList :entries="decidedEntries" class="mt-4" />
+        <!-- The chips in this box's head too (30.10.2026): the choice decides
+             its rows, and a control stands at what it changes. One choice for
+             the site, so a toggle here moves the other boxes with it. -->
+        <!-- The chosen Länder cannot give this box a row: said in words
+             (`noneApply`). Above the box while the Bund fills it, inside it
+             where nothing does. -->
+        <p v-if="bund && noneApply(DECIDED_UNAVAILABLE)" class="mt-2 text-sm text-ink-muted">
+          {{ noneApply(DECIDED_UNAVAILABLE) }}
+        </p>
+        <EntryList :entries="decidedEntries" class="mt-4">
+          <template #header>
+            <SourceChips :unavailable="DECIDED_UNAVAILABLE" />
+          </template>
+          <!-- Shown only while the Bund has rows and is unticked: the box
+               stays rather than ignore the choice. -->
+          <template #empty>
+            <p class="p-4 text-sm text-ink-muted">
+              {{ noneApply(DECIDED_UNAVAILABLE) ?? 'Bei den gewählten Ländern ist derzeit kein Beschluss ohne Kundmachung verzeichnet.' }}
+            </p>
+          </template>
+        </EntryList>
+        <p v-for="s in unreadableRecent" :key="s.land" class="mt-2 text-sm text-ink-muted">
+          Das Land {{ LAND_NAME[s.land] }} ist gerade nicht abrufbar – seine Beschlüsse fehlen hier.
+        </p>
       </section>
 
       <!-- The end of the chain, and the page's last word on purpose
@@ -777,7 +959,10 @@ function submitSearch() {
              stands still because the period it belongs to is over. So the
              fallback replaces it rather than adding to it — one reason per
              state, and the true one. -->
-        <p class="mt-2 text-sm text-ink-secondary">
+        <p v-if="enactedLandLine" class="mt-2 text-sm text-ink-secondary">
+          {{ enactedLandLine }}
+        </p>
+        <p v-else class="mt-2 text-sm text-ink-secondary">
           <template v-if="enactedIsFallback">Aus der {{ currentGp }}.
             Gesetzgebungsperiode ist noch kein Entwurf kundgemacht. Hier stehen
             deshalb die jüngsten Kundmachungen im Bundesgesetzblatt aus der
@@ -790,26 +975,60 @@ function submitSearch() {
             sich hier nichts.</template>
         </p>
         <!-- Same row and the same chip as the section above: the object
-             is the Begutachtung, and what became of it goes in the aside. -->
-        <EntryList v-if="enactedEntries.length" :entries="enactedEntries" class="mt-4" />
-        <ListSkeleton v-else-if="loading(enactedStatus)" class="mt-4">
-          Kundmachungen werden geladen …
-        </ListSkeleton>
-        <!-- Two different silences, said differently: nothing promulgated
-             yet is a fact about the period, an unreachable endpoint is a
-             fact about us. -->
-        <!-- Reached only when the period before has nothing either — the
-             fallback has already run by the time the page sees this. It
-             names the period rather than saying „dieser", for the reason
-             §12.21 gives: a demonstrative here points at nothing the reader
-             can see, and now there are two periods it could mean. -->
-        <p v-else-if="enacted" class="mt-4 text-sm text-ink-muted">
-          Aus der <template v-if="enactedGp">{{ enactedGp }}. </template>Gesetzgebungsperiode
-          ist bisher kein Entwurf im Bundesgesetzblatt kundgemacht worden.
+             is the Begutachtung, and what became of it goes in the aside.
+
+             ALWAYS THE BOX since the chips stand in its head (30.10.2026),
+             for the open list's reason: a box that vanished while loading or
+             empty would take with it the control that could fill it. So the
+             skeleton and both silences stand inside it. -->
+        <!-- The chosen Länder cannot give this box a row: said in words
+             (`noneApply`). Above the box while the Bund fills it, inside it
+             where nothing does. -->
+        <p v-if="bund && noneApply(ENACTED_UNAVAILABLE)" class="mt-2 text-sm text-ink-muted">
+          {{ noneApply(ENACTED_UNAVAILABLE) }}
         </p>
-        <p v-else class="mt-4 text-sm text-ink-muted">
-          Die Kundmachungen sind derzeit nicht abrufbar.
-        </p>
+        <EntryList :entries="enactedEntries" class="mt-4">
+          <template #header>
+            <SourceChips :unavailable="ENACTED_UNAVAILABLE" />
+          </template>
+          <template v-if="!enactedEntries.length && enactedLoading" #state>
+            <LoadingState label="Kundmachungen werden geladen …" />
+          </template>
+          <template #empty>
+            <!-- Two different silences, said differently: nothing promulgated
+                 yet is a fact about the period, an unreachable endpoint is a
+                 fact about us. -->
+            <!-- Reached only when the period before has nothing either — the
+                 fallback has already run by the time the page sees this. It
+                 names the period rather than saying „dieser", for the reason
+                 §12.21 gives: a demonstrative here points at nothing the reader
+                 can see, and now there are two periods it could mean. -->
+            <p v-if="!bund && noneApply(ENACTED_UNAVAILABLE)" class="p-4 text-sm text-ink-muted">
+              {{ noneApply(ENACTED_UNAVAILABLE) }}
+            </p>
+            <p v-else-if="enactedAnswered && enactedLaender.length" class="p-4 text-sm text-ink-muted">
+              Aus den gewählten Quellen ist in diesem Zeitraum bisher kein Entwurf
+              kundgemacht worden.
+            </p>
+            <p v-else-if="enactedAnswered" class="p-4 text-sm text-ink-muted">
+              Aus der <template v-if="enactedGp">{{ enactedGp }}. </template>Gesetzgebungsperiode
+              ist bisher kein Entwurf im Bundesgesetzblatt kundgemacht worden.
+            </p>
+            <p v-else class="p-4 text-sm text-ink-muted">
+              Die Kundmachungen sind derzeit nicht abrufbar.
+            </p>
+          </template>
+        </EntryList>
+        <!-- One half missing while the other has rows: said, so the list does
+             not read as if that half had promulgated nothing. -->
+        <template v-if="enactedEntries.length">
+          <p v-if="bund && !enacted && !loading(enactedStatus)" class="mt-2 text-sm text-ink-muted">
+            Die Kundmachungen des Bundes sind gerade nicht abrufbar.
+          </p>
+          <p v-for="s in unreadableRecent" :key="s.land" class="mt-2 text-sm text-ink-muted">
+            Das Land {{ LAND_NAME[s.land] }} ist gerade nicht abrufbar – seine Kundmachungen fehlen hier.
+          </p>
+        </template>
       </section>
 
       <!-- NO credit line of its own (03.10.2026, tried and removed within

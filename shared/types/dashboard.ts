@@ -1,4 +1,5 @@
 import type { DraftSummary } from './drafts'
+import type { LandCode, LandConsultation, LandSourceState } from './laender'
 
 export interface DashboardPayload {
   /** The Gesetzgebungsperiode that is RUNNING — what `open` is a list of. */
@@ -169,4 +170,22 @@ export interface DashboardSecondRound {
   gp: string
   /** Filing open, most recent first. Empty is a normal state, not an error. */
   items: OpenVorlage[]
+}
+
+/**
+ * Payload of /api/dashboard/laender — the Länder's rows for the homepage's
+ * two track sections (30.10.2026, `shared/utils/landRecent.ts`).
+ *
+ * EVERY LAND, newest first per Land and at most `HOME_LIST_LENGTH` each: the
+ * reader's choice is applied on the page, so one cached answer serves every
+ * choice, as `/api/laender` does for the open list.
+ */
+export interface DashboardLaender {
+  /** The period whose window the Kundmachungen were read over — the enacted section's. */
+  gp: string
+  enacted: LandConsultation[]
+  decided: LandConsultation[]
+  /** Per Land, every draft decided and not yet promulgated — the section header's number. */
+  decidedTotal: Partial<Record<LandCode, number>>
+  sources: LandSourceState[]
 }

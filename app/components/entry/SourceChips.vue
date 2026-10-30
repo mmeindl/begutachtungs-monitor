@@ -5,8 +5,13 @@ import { SOURCE_CODES, SOURCE_NAME } from '#shared/utils/laender'
 /**
  * Bund · Oberösterreich · Salzburg · Wien — which sources the list draws
  * from (22.10.2026), in the list's own box since the same day: the box's
- * head is where a list's controls stand (`ListBox`), and the chips change
- * only that list.
+ * head is where a list's controls stand (`ListBox`).
+ *
+ * IN EVERY BOX WHOSE ROWS THE CHOICE DECIDES (30.10.2026): on the homepage
+ * „Jetzt in Begutachtung", „Beschlossen, noch nicht kundgemacht" and
+ * „Zuletzt Gesetz geworden" — so a list that reacts to the choice always
+ * shows it, and a control stands at what it changes. A box whose rows are
+ * the Bund's alone (the ranking, the Regierungsvorlagen) carries none.
  *
  * Checkboxes that ADD to the one list, not a Bund/Länder switch: the
  * question the list answers — where can I still say something, and what is
@@ -15,7 +20,8 @@ import { SOURCE_CODES, SOURCE_NAME } from '#shared/utils/laender'
  * so a list can show one Land alone.
  *
  * The choice is the site's (`useSourceChoice`), so this component only
- * shows it and toggles it. What changes stands directly below: the list.
+ * shows it and toggles it. What changes stands directly below: the box's
+ * list — and, the choice being one, every other box that carries the chips.
  * The list is never empty by choice: turning off the last Land brings
  * the Bund back, and the Bund alone stays ticked and says why.
  *

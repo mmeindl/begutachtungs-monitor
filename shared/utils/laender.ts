@@ -9,7 +9,7 @@
  *
  * Pure module (auto-imported; vitest imports it relatively).
  */
-import type { LandCode, LandTextStation } from '../types'
+import type { DraftStation, LandCode, LandTextStation } from '../types'
 
 /** Display order — the order the chips stand in: alphabetical, as the Länder are listed everywhere. */
 export const LAND_CODES: readonly LandCode[] = ['bgld', 'ktn', 'noe', 'ooe', 'sbg', 'stmk', 't', 'vbg', 'w']
@@ -163,4 +163,35 @@ export const LAND_PUBLICATION_NOTE: Record<LandCode, string | null> = {
   sbg: 'Das Land veröffentlicht eine Stellungnahme nur mit Zustimmung derer, die sie einreichen.',
   t: 'Das Land veröffentlicht die eingelangten Stellungnahmen beim Gegenstand im Landtag.',
   w: null,
+}
+
+/* The stations a Land's drafts can reach here. Oberösterreich's and
+ * Tirol's Landtag record every step after the Begutachtung (`ooeStageOf`,
+ * `parseTirolRecord`), Kärnten's pages the Vorlage and the Beschluss
+ * (`ktnChainOf`); for the other Länder the monitor finds the Kundmachung
+ * itself (`matchLgbl`, §12.43) and nothing in between — so under
+ * „Regierungsvorlage" or „Parlament" alone they have no rows to give, and
+ * the chip says why. Niederösterreich and Vorarlberg show a draft only while
+ * its Begutachtung runs (30.10.2026): nothing of theirs reaches a later
+ * station here. Shared by `/entwuerfe` and the homepage's boxes since
+ * 30.10.2026, so a chip cannot be open in one and dashed in the other. */
+export const LAND_FOLLOWED_STATIONS: Record<LandCode, readonly DraftStation[] | 'all'> = {
+  bgld: ['begutachtung', 'bgbl'],
+  ktn: 'all',
+  noe: ['begutachtung'],
+  ooe: 'all',
+  sbg: ['begutachtung', 'bgbl'],
+  stmk: ['begutachtung', 'bgbl'],
+  t: 'all',
+  vbg: ['begutachtung'],
+  w: ['begutachtung', 'bgbl'],
+}
+
+/** Why a Land has no rows at any of these stations; null where it can have some. */
+export function landStationsReason(land: LandCode, stations: readonly DraftStation[]): string | null {
+  const followed = LAND_FOLLOWED_STATIONS[land]
+  if (!stations.length || followed === 'all' || stations.some((s) => followed.includes(s))) return null
+  return followed.includes('bgbl')
+    ? 'Diese Länder-Entwürfe verfolgt der Monitor nur in Begutachtung und Kundmachung'
+    : 'Diese Länder-Entwürfe zeigt der Monitor nur, solange ihre Begutachtung läuft'
 }
