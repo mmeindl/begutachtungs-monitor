@@ -66,12 +66,7 @@ const explained = computed(() => unitList([...new Set(props.end.explanations.map
          unaltered under their own headings. -->
     <Disclosure v-if="end.explanations.length" size="xs" tone="ink">
       <template #summary>Begründung des Ressorts zu {{ explained }}</template>
-      <div class="mt-1 pl-6">
-        <div v-for="(e, ei) in end.explanations" :key="ei" :class="ei > 0 ? 'mt-3' : ''">
-          <p class="text-xs text-ink-muted">{{ e.heading }}</p>
-          <p v-for="(t, ti) in e.text" :key="ti" class="mt-1 hyphens-auto text-sm leading-relaxed text-ink-secondary">{{ t }}</p>
-        </div>
-      </div>
+      <ExplanationPassages :passages="end.explanations" />
     </Disclosure>
   </div>
 </template>

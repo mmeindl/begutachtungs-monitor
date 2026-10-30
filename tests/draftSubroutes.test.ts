@@ -29,6 +29,7 @@ const ROUTES = join(import.meta.dirname, '..', 'server', 'api', 'drafts', '[gp]'
 const GUARDED: Record<string, string> = {
   'erlaeuterungen.get.ts': 'getExplanations',
   'konsolidiert.get.ts': 'getConsolidatedText',
+  'neue-gesetze.get.ts': 'getEnactedLaws',
 }
 
 /**

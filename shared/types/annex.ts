@@ -398,3 +398,31 @@ export interface TextComparisonResponse {
   } | null
   rows: TextComparisonRow[]
 }
+
+/**
+ * A law the draft enacts anew, as the draft prints it (30.10.2026).
+ *
+ * No Textgegenüberstellung covers it — there is no earlier version to set it
+ * against — and until then the page named the law and its Begründung, but
+ * the text itself stood only in the PDF.
+ */
+export interface EnactedLaw {
+  /** The Artikel's key, as `ParagraphExplanationView.law` and the annex use it. */
+  law: string
+  paragraphs: EnactedParagraph[]
+}
+
+export interface EnactedParagraph {
+  /** „§ 5", „Anlage 1" — as the draft designates it. */
+  id: string
+  /** The § heading the draft prints above it. */
+  heading: string | null
+  /** The parser's blocks in printed order; `sub` for a Ziffer or Litera. */
+  lines: { text: string; sub: boolean }[]
+}
+
+export interface EnactedLawsResponse {
+  laws: EnactedLaw[]
+  /** The RIS document the text is read from. */
+  source: TraceLink | null
+}

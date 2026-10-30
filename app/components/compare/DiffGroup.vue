@@ -50,6 +50,14 @@ const props = defineProps<{
   /** Changes left unprinted under the „N weitere Änderungen anzeigen" line
    *  at the group's foot (`limitFor`); nothing there where none are. */
   more?: number
+  /** What `more` counts, singular and plural — changes unless told otherwise. */
+  moreNoun?: [string, string]
+  /**
+   * A pill that says what the group is rather than counting its changes: a
+   * law the draft enacts anew, whose §§ are no changes and so stay out of
+   * the legend's counts (30.10.2026). In the colour of „neu".
+   */
+  tag?: string
 }>()
 
 const emit = defineEmits<{
@@ -198,6 +206,7 @@ async function showMore(event: MouseEvent) {
              zuklappen, Schaltfläche, erweitert"). -->
       </span>
       <span class="flex-wrap gap-1.5" :class="stuck ? 'hidden' : 'flex'">
+        <span v-if="tag" class="tabular-nums" :class="[PILL_CLASS, BADGE_CLASS.inserted]">{{ tag }}</span>
         <span
           v-for="b in badges"
           :key="b.badge"
@@ -239,7 +248,7 @@ async function showMore(event: MouseEvent) {
         @click="showMore"
       >
         <UIcon name="i-lucide-chevron-down" class="size-4 shrink-0" aria-hidden="true" />
-        {{ more }} weitere {{ more === 1 ? 'Änderung' : 'Änderungen' }} anzeigen
+        {{ more }} weitere {{ more === 1 ? (moreNoun?.[0] ?? 'Änderung') : (moreNoun?.[1] ?? 'Änderungen') }} anzeigen
       </button>
     </div>
   </section>

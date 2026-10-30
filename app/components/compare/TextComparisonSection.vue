@@ -15,10 +15,11 @@
  * neighbouring questions and a second visual language would suggest a
  * difference that is not there.
  */
-import type { AnnexWithheldCause, ConsolidatedTextResponse, TextComparisonResponse, TextComparisonRow } from '#shared/types'
+import type { AnnexWithheldCause, ConsolidatedTextResponse, EnactedLawsResponse, EnactedParagraph, TextComparisonResponse, TextComparisonRow } from '#shared/types'
 import { mixedPublishers, parliamentDocumentSource, PUBLISHER_NAME_DE, risSource, type SourceEntry } from '#shared/utils/provenance'
 import { UNCHECKED_PILL, badgeCounts, badgeLabels } from '~/utils/diffBadges'
 import { annexBadge, annexParas, groupAnnexRows, placeAtParagraphs, type AnnexPara, type PlacedLesefassung } from '~/utils/annexGroups'
+import { enactedHaystack, newLawGroups } from '~/utils/newLawGroups'
 import { NOTICE_LESEFASSUNG_TOO, lesefassungLine, lesefassungNotRunText, mergesIntoNotice } from '~/utils/lesefassung'
 import {
   annexDoubtfulGroupNote,
@@ -107,6 +108,16 @@ const soleRisUrl = computed(() => {
  */
 const lawEnds = computed(() => placed.value.ends)
 const enactedLaws = computed(() => new Set(explanations.value?.enactedLaws ?? []))
+
+/**
+ * The text of the laws the draft enacts anew (`NewLawGroup`, 30.10.2026) —
+ * no annex covers them. Client-side and lazy like the Lesefassung: the
+ * ElWG alone is 190 §§, and the annex must not wait for them.
+ */
+const { data: enacted } = await useFetch<EnactedLawsResponse>(
+  () => `${base.value}/neue-gesetze`,
+  { lazy: true, server: false },
+)
 
 /**
  * Why the Lesefassung is missing as a whole — the run did not happen
@@ -218,7 +229,25 @@ const renderedGroups = computed(() =>
 /** Whether the annex has rows at all — the toolbar's condition, unfiltered,
  *  so a search that finds nothing cannot remove the control that caused it. */
 const hasRows = computed(() => (data.value?.rows ?? []).some((r) => r.kind !== 'article' && !r.elided))
-const matchCount = computed(() => groups.value.reduce((n, g) => n + g.rows.length, 0))
+/** Built once per response, as the annex's (`haystacks`). */
+const enactedHaystacks = computed(() => {
+  const out = new Map<EnactedParagraph, string>()
+  for (const law of enacted.value?.laws ?? []) for (const p of law.paragraphs) out.set(p, enactedHaystack(p))
+  return out
+})
+const newLaws = computed(() =>
+  newLawGroups(lawEnds.value.rest, enacted.value?.laws ?? [], {
+    query: query.value.trim().toLowerCase(),
+    haystack: (p) => enactedHaystacks.value.get(p) ?? '',
+    limitFor,
+  }),
+)
+/** The laws at the end that show no text: everything but a new law whose text arrived. */
+const plainRest = computed(() => {
+  const shown = new Set((enacted.value?.laws ?? []).map((l) => l.law))
+  return lawEnds.value.rest.filter((r) => r.law === null || !shown.has(r.law))
+})
+const matchCount = computed(() => groups.value.reduce((n, g) => n + g.rows.length, 0) + newLaws.value.reduce((n, g) => n + g.matches, 0))
 
 /**
  * What a screen reader hears once the fetch is done.
@@ -257,6 +286,7 @@ const sources = computed<SourceEntry[]>(() => {
   if (!d?.available) return []
   const out = [d.publisher === 'ris' ? risSource('Textgegenüberstellung') : parliamentDocumentSource('Textgegenüberstellung', 'me')]
   if (consolidated.value?.paragraphs.some((p) => p.risUrl)) out.push(risSource('Geltender Text'))
+  if (newLaws.value.length) out.push(risSource('Gesetzestext des Entwurfs'))
   return out
 })
 /** Where the annex came from Parliament and the text in force from RIS, the annex link names its publisher. */
@@ -422,12 +452,7 @@ function withheldReason(cause: AnnexWithheldCause | null): string {
                    is no change at all. The indent alone carries the
                    attribution — the same as the disclosure of unchanged
                    rows two lines below. -->
-              <div class="mt-1 pl-6">
-                <div v-for="(e, ei) in p.explanations" :key="ei" :class="ei > 0 ? 'mt-3' : ''">
-                  <p class="text-xs text-ink-muted">{{ e.heading }}</p>
-                  <p v-for="(t, ti) in e.text" :key="ti" class="mt-1 hyphens-auto text-sm leading-relaxed text-ink-secondary">{{ t }}</p>
-                </div>
-              </div>
+              <ExplanationPassages :passages="p.explanations" />
             </Disclosure>
 
             <!-- Keyed by KIND and position, not by position alone. The blocks
@@ -526,8 +551,21 @@ function withheldReason(cause: AnnexWithheldCause | null): string {
           </section>
         </DiffGroup>
         <!-- Laws of the draft the annex has no group for — a new law above
-             all, which no Textgegenüberstellung covers. -->
-        <section v-for="r in lawEnds.rest" :key="r.law ?? ''" class="border-b border-hairline px-4 py-3 last-of-type:border-b-0">
+             all, which no Textgegenüberstellung covers: its own text, where
+             the draft's arrived, and otherwise what is left of it. -->
+        <NewLawGroup
+          v-for="g in newLaws"
+          :key="g.key"
+          :law="g.law"
+          :total="g.total"
+          :paragraphs="g.paragraphs"
+          :end="g.end"
+          :open="groupOpen(g.key)"
+          :more="g.more"
+          @toggle="toggleGroup(g.key)"
+          @more="showAll(g.key)"
+        />
+        <section v-for="r in plainRest" :key="r.law ?? ''" class="border-b border-hairline px-4 py-3 last-of-type:border-b-0">
           <p class="text-sm font-semibold text-ink">{{ r.law || 'Gesetzestext' }}</p>
           <AnnexLawEnd :end="r" outside-annex :enacted="r.law !== null && enactedLaws.has(r.law)" :undivided="!!data?.boundaryNote" class="mt-1" />
         </section>
@@ -559,6 +597,7 @@ function withheldReason(cause: AnnexWithheldCause | null): string {
           :href="soleRisUrl"
           class="link-muted"
         >Geltender Text im RIS</ExternalLink>
+        <ExternalLink v-if="newLaws.length && enacted?.source" :href="enacted.source.url" class="link-muted">{{ enacted.source.label }}</ExternalLink>
         <!-- Gone on 30.09.2026, both added the same morning: the Stichtag
              of the RIS check („RIS-Abgleich: Stand …") — the rule stands on
              /so-funktionierts#gegenueberstellung and the date itself in the
