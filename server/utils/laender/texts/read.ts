@@ -8,6 +8,7 @@ import { safeExternalUrl } from '#shared/utils/safeExternalUrl'
 import type { LawUnit } from '../../lawtext/lawUnits'
 import { upstreamBytes, upstreamText, type UpstreamPolicy } from '../../upstream/fetch'
 import { landDraftUnits, lgblUnits } from '../landLawDiff'
+import { isStmkDocumentUrl, stmkDocumentBytes } from '../steiermark'
 import { isTirolDocumentUrl, tirolDocumentBytes } from '../tirol'
 import { styledPages, type StyledPages } from './styledPages'
 import { fromMacRoman } from '../../annex/annexPdfPages'
@@ -55,11 +56,12 @@ export interface TextSource {
 
 /**
  * A Land's PDF, wherever it lives — the one door every reader of a Land's
- * documents goes through. Tirol's have no address of their own and are read
- * through their Gegenstand's page (`tirolDocumentBytes`).
+ * documents goes through. Tirol's and Steiermark's have no address of their
+ * own and are read through their Landtag page (`laender/session.ts`).
  */
 export async function landPdfBytes(url: string): Promise<Uint8Array> {
   if (isTirolDocumentUrl(url)) return tirolDocumentBytes(url)
+  if (isStmkDocumentUrl(url)) return stmkDocumentBytes(url)
   const { bytes } = await upstreamBytes(url, { ...TEXT_POLICY, maxBytes: PDF_MAX_BYTES })
   return new Uint8Array(bytes)
 }
@@ -117,9 +119,20 @@ export function pdfSource(label: string, url: string, publisher: string): TextSo
  * What a document's title says it is NOT: the draft's companions, filed as
  * entries of their own — and the Land's letter that sends the draft out,
  * Kärnten's „Anschreiben" and „Begutachtung - Akt" (v1065, v1369), which
- * stood in for the Verordnung beside it until 26.10.2026.
+ * stood in for the Verordnung beside it until 26.10.2026, and Steiermark's
+ * „Versendeschreiben".
  */
-const COMPANION_RE = /gegenüberstellung|\btgü(?!\p{L})|erläuter|vorblatt|anlage|beilage|anhang|stellungnahme|folgenabschätzung|\bplan|lageplan|pläne|karte|planungsgebiet|anschreiben|(?<!\p{L})akt(?!\p{L})/iu
+const COMPANION_RE = /gegenüberstellung|\btgü(?!\p{L})|erläuter|vorblatt|anlage|beilage|anhang|stellungnahme|folgenabschätzung|\bplan|lageplan|pläne|karte|planungsgebiet|anschreiben|versendeschreiben|(?<!\p{L})akt(?!\p{L})/iu
+
+/**
+ * A document that is the draft and its Erläuterungen in one, as Burgenland
+ * titles every one of them (30.10.2026): a companion by its title, and the
+ * draft's text all the same. Only this exact title — a looser rule would take
+ * Salzburg's separate Erläuterungen for drafts.
+ */
+export function isDraftWithExplanations(title: string): boolean {
+  return /^Entwurf und Erläuterungen$/i.test(title.trim())
+}
 
 /**
  * The draft's own text among its documents. Salzburg files Erläuterungen,
@@ -133,7 +146,7 @@ export function draftDocument(documents: readonly LandDocument[]): LandDocument 
 
 /** Every document that may be the draft's own text, in the order `draftDocument` takes them: titled „Entwurf" first. */
 export function draftCandidates(documents: readonly LandDocument[]): LandDocument[] {
-  const candidates = documents.filter((d) => !COMPANION_RE.test(d.title))
+  const candidates = documents.filter((d) => !COMPANION_RE.test(d.title) || isDraftWithExplanations(d.title))
   return [...candidates.filter((d) => /entwurf/i.test(d.title)), ...candidates.filter((d) => !/entwurf/i.test(d.title))]
 }
 

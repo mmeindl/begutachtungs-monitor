@@ -40,6 +40,14 @@
  * - `www.data.gv.at`: the IFG-Informationsregister, where Tirol publishes
  *   its Verordnungsentwürfe; `dokumente.tirol.gv.at`: their documents
  *   (`server/utils/laender/tirol.ts`, „Verordnungen").
+ * - `apps.bgld.gv.at`: Burgenland's lists and their attachments
+ *   (`server/utils/laender/burgenland.ts`).
+ * - `www.noe.gv.at`: Niederösterreich's list, draft pages and documents
+ *   (`server/utils/laender/niederoesterreich.ts`).
+ * - `pallast2.stmk.gv.at`: the Steiermark Landtag's PALLAST, where the
+ *   Land files its drafts (`server/utils/laender/steiermark.ts`).
+ * - `vorarlberg.at`: Vorarlberg's page and its document library — the page
+ *   links bare-domain (`server/utils/laender/vorarlberg.ts`).
  *
  * A bare-domain variant is added only once upstream data is seen using it.
  */
@@ -58,6 +66,10 @@ export const UPSTREAM_HOSTS: ReadonlySet<string> = new Set([
   'lte.tirol.gv.at',
   'www.data.gv.at',
   'dokumente.tirol.gv.at',
+  'apps.bgld.gv.at',
+  'www.noe.gv.at',
+  'pallast2.stmk.gv.at',
+  'vorarlberg.at',
 ])
 
 /** Parliament's host — the one `/gegenstand/…` paths are read from. */

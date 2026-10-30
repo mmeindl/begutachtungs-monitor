@@ -8,7 +8,7 @@ import { asArray } from '../ris/risRecord'
 import { risJson, upstreamText, type UpstreamPolicy } from '../upstream/fetch'
 import { shortTitleKey } from './landTgu'
 
-const RIS_LAND: Record<LandCode, string> = { ktn: 'Kaernten', ooe: 'Oberoesterreich', sbg: 'Salzburg', t: 'Tirol', w: 'Wien' }
+const RIS_LAND: Record<LandCode, string> = { bgld: 'Burgenland', ktn: 'Kaernten', noe: 'Niederoesterreich', ooe: 'Oberoesterreich', sbg: 'Salzburg', stmk: 'Steiermark', t: 'Tirol', vbg: 'Vorarlberg', w: 'Wien' }
 const LANDESRECHT_API = 'https://data.bka.gv.at/ris/api/v2.6/Landesrecht'
 const POLICY: UpstreamPolicy = { timeoutMs: 30_000, retries: 2, accept: 'application/json', retryOnHttpError: true }
 const XML_POLICY: UpstreamPolicy = { timeoutMs: 30_000, retries: 2, upstreamHostsOnly: true }

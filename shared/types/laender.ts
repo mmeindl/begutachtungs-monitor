@@ -10,8 +10,8 @@ import type { LawDiffUnit, ReasoningDiffEntry } from './lawDiff'
  * type would grow those as empty fields (`app/utils/entryView.ts`).
  */
 
-/** The Länder the monitor reads, by the RIS abbreviation of their name. */
-export type LandCode = 'ktn' | 'ooe' | 'sbg' | 't' | 'w'
+/** The Länder the monitor reads, by the usual abbreviation of their name (all nine since 30.10.2026). */
+export type LandCode = 'bgld' | 'ktn' | 'noe' | 'ooe' | 'sbg' | 'stmk' | 't' | 'vbg' | 'w'
 
 /** What the Land's own list calls the draft — its list, not our classifier. */
 export type LandDraftKind = 'gesetz' | 'verordnung'
@@ -183,8 +183,12 @@ export interface LandStatement {
 export type LandFiling =
   | { kind: 'email'; address: string; recipient: string | null }
   | { kind: 'form'; url: string }
-  /** The Land's page names none; the draft itself says where (OÖ Verordnungen). */
-  | { kind: 'document' }
+  /**
+   * The Land's page names none; a document says where — the draft itself
+   * (OÖ Verordnungen), or as `in` names it: „im Versendeschreiben"
+   * (Steiermark, whose Landtag page names no address).
+   */
+  | { kind: 'document'; in?: string }
 
 /** One step after the Begutachtung, as the Land lists it (OÖ: „Im Landtag"). */
 export interface LandProcedureStep {
@@ -228,6 +232,14 @@ export interface LandDraftDetail {
   statements: LandStatement[] | null
   /** The Land's own page of them, for „beim Land ansehen". */
   statementsUrl: string | null
+  /**
+   * Why the page shows no Stellungnahmen although the Land may publish some
+   * — elsewhere than the monitor reads (30.10.2026: Niederösterreich's go to
+   * its Landtag's site, Vorarlberg's page carries none). Null where
+   * `statements` says it all; with it, `statements` is null and the page
+   * says this sentence instead of „keine veröffentlicht".
+   */
+  statementsGap: string | null
   /** Where a Stellungnahme goes, as the Land states it. */
   filing: LandFiling
   /** The Land's own summary, point by point (OÖ); null where it has none. */

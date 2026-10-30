@@ -19,9 +19,9 @@ import { SOURCE_CODES, SOURCE_NAME } from '#shared/utils/laender'
  * The list is never empty by choice: turning off the last Land brings
  * the Bund back, and the Bund alone stays ticked and says why.
  *
- * No lead („Entwürfe von:"): the chips name themselves. At the row's end
- * „Weitere Länder folgen": the monitor reads some of nine Länder, and a
- * list that does not say so claims the rest are quiet.
+ * No lead („Entwürfe von:"): the chips name themselves. Until 30.10.2026
+ * „Weitere Länder folgen" stood at the row's end, while the chips were not
+ * all nine; since then they are.
  */
 const props = defineProps<{
   /** Per source, why it cannot join this view; absent where it can. */
@@ -46,9 +46,6 @@ const LOCKED = 'Ohne andere Quelle bleibt der Bund ausgewählt'
       >
         {{ SOURCE_NAME[code] }}
       </ToggleChip>
-      <!-- In place of „3 von 9 Ländern" (22.10.2026): the same honesty —
-           the chips are not all nine — said as what comes, at the row's end. -->
-      <span class="ml-auto text-sm text-ink-muted">Weitere Länder folgen</span>
     </div>
   </div>
 </template>

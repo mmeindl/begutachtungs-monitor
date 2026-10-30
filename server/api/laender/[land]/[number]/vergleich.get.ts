@@ -8,12 +8,12 @@
 import type { LandCode, LandLawDiffResponse, LandTextStation } from '#shared/types'
 import { LAND_CODES } from '#shared/utils/laender'
 import { cachedLandComparison, LAND_TEXT_PAIRS } from '../../../../utils/laender/landLawDiffService'
-import { LAND_NUMBER_RE, readLandDraft } from '../../../../utils/laender/sources'
+import { isLandNumber, readLandDraft } from '../../../../utils/laender/sources'
 
 export default defineEventHandler(async (event): Promise<LandLawDiffResponse> => {
   const land = getRouterParam(event, 'land') ?? ''
   const number = getRouterParam(event, 'number') ?? ''
-  if (!(LAND_CODES as readonly string[]).includes(land) || !LAND_NUMBER_RE.test(number)) {
+  if (!(LAND_CODES as readonly string[]).includes(land) || !isLandNumber(land as LandCode, number)) {
     throw createError({ statusCode: 404, statusMessage: 'Entwurf nicht gefunden' })
   }
   const query = getQuery(event)

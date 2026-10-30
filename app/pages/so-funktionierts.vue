@@ -35,7 +35,7 @@
  * instead.
  */
 import { LAND_CODES, LAND_NAME } from '#shared/utils/laender'
-import { COVERAGE_ROWS, LAENDER_NOT_READ, LAND_COVERAGE } from '#shared/utils/laenderCoverage'
+import { COVERAGE_ROWS, LAND_COVERAGE } from '#shared/utils/laenderCoverage'
 import { EDITORIAL_BADGE_DEFINITION } from '#shared/utils/lawStations'
 import { SECOND_ROUND_WINDOW } from '~/utils/spine'
 import { RV_LATENCY_CONTEXT_DAYS } from '~/utils/deadlines'
@@ -189,9 +189,6 @@ const toc = [
 const waitRate = rvBaseRateFor(null)
 const waitTenths = Math.round(waitRate.withinLatencyWindow * 10)
 const waitMonths = Math.round(RV_LATENCY_CONTEXT_DAYS / 30.44)
-
-/* „Burgenland, Niederösterreich, Steiermark und Vorarlberg" */
-const notReadDe = LAENDER_NOT_READ.join(', ').replace(/, ([^,]*)$/, ' und $1')
 </script>
 
 <template>
@@ -485,9 +482,10 @@ const notReadDe = LAENDER_NOT_READ.join(', ').replace(/, ([^,]*)$/, ' und $1')
         Landesgesetze, die der Landtag beschließt, und Verordnungen der
         Landesregierung. Eine gemeinsame Stelle wie das Rechtsinformationssystem
         des Bundes gibt es dafür nicht – jedes Land veröffentlicht auf seiner
-        eigenen Seite und in seiner eigenen Form. Der Monitor liest fünf davon;
-        {{ notReadDe }} noch nicht. Im Kopf jeder Liste wählen Sie, welche
-        Quellen sie zeigt.
+        eigenen Seite und in seiner eigenen Form – die Steiermark auf der
+        Seite ihres Landtags. Der Monitor liest alle neun, jedes so weit, wie
+        seine Seite es zulässt. Im Kopf jeder Liste wählen Sie, welche Quellen
+        sie zeigt.
       </p>
       <p>
         Der Weg ist ähnlich, die Stellen heißen anders: Statt des Nationalrats
@@ -497,27 +495,12 @@ const notReadDe = LAENDER_NOT_READ.join(', ').replace(/, ([^,]*)$/, ' und $1')
         kein Land öffentlich, deshalb steht in den Zeilen „nicht gezählt“.
       </p>
       <p>Wie weit der Monitor einem Entwurf folgen kann, hängt davon ab, was das Land veröffentlicht:</p>
-      <!-- One table instead of a paragraph per Land (25.10.2026): the same
-           facts as the list's fold „Wie vollständig die Länder-Entwürfe sind"
-           (`LAND_COVERAGE`). Below `sm` one block per Land instead: five
-           columns do not fit a phone, and a table scrolled sideways under a
-           sticky first column showed its cells through the gutter. -->
-      <table class="hidden w-full border-collapse text-sm sm:table">
-        <caption class="sr-only">Was der Monitor je Land zeigt</caption>
-        <thead>
-          <tr>
-            <th scope="col" class="py-2 pr-3 text-left"><span class="sr-only">Frage</span></th>
-            <th v-for="land in LAND_CODES" :key="land" scope="col" class="px-2 py-2 text-left font-semibold text-ink">{{ LAND_NAME[land] }}</th>
-          </tr>
-        </thead>
-        <tbody>
-          <tr v-for="row in COVERAGE_ROWS" :key="row.key" class="border-t border-hairline">
-            <th scope="row" class="w-32 py-2 pr-3 text-left align-top font-medium text-ink">{{ row.label }}</th>
-            <td v-for="land in LAND_CODES" :key="land" class="px-2 py-2 align-top text-ink-secondary">{{ LAND_COVERAGE[land].cells[row.key] }}</td>
-          </tr>
-        </tbody>
-      </table>
-      <div class="mt-3 space-y-5 sm:hidden">
+      <!-- One block per Land (30.10.2026): the same facts as the list's fold
+           „Wie vollständig die Länder-Entwürfe sind" (`LAND_COVERAGE`). From
+           25.10.2026 a table with a column per Land, which five Länder just
+           fitted; nine fit no text column, and a table scrolled sideways
+           hides the Länder on the right. Two blocks a row from `sm`. -->
+      <div class="mt-3 grid gap-x-8 gap-y-5 sm:grid-cols-2">
         <section v-for="land in LAND_CODES" :key="land" :aria-label="LAND_NAME[land]">
           <h3 class="text-sm font-semibold text-ink">{{ LAND_NAME[land] }}</h3>
           <dl class="mt-1 divide-y divide-hairline text-sm">
@@ -528,6 +511,11 @@ const notReadDe = LAENDER_NOT_READ.join(', ').replace(/, ([^,]*)$/, ' und $1')
           </dl>
         </section>
       </div>
+      <p class="text-sm text-ink-muted">
+        Wo ein Land einen Entwurf nur zeigt, solange seine Begutachtung läuft
+        (Niederösterreich, Vorarlberg), verschwindet er nach dem Ende der Frist
+        auch hier; seine Seite sagt dann, warum.
+      </p>
       <p class="text-sm text-ink-muted">
         Die Regeln, nach denen ein Land Stellungnahmen veröffentlicht – von
         Privatpersonen meist nur mit Einwilligung –, nennt die Entwurfsseite.
@@ -547,7 +535,10 @@ const notReadDe = LAENDER_NOT_READ.join(', ').replace(/, ([^,]*)$/, ' und $1')
         Einen Paragraphen zeigt der Monitor nur, wenn dessen geltende Fassung so,
         wie er sie gelesen hat, auch im Rechtsinformationssystem steht; die
         übrigen nennt die Seite, und die Textgegenüberstellung selbst steht unter
-        den Dokumenten.
+        den Dokumenten. Jedes Land setzt sie anders; die Form Niederösterreichs,
+        der Steiermark und Vorarlbergs liest der Monitor noch nicht – dort sagt
+        die Seite das und verweist auf das Dokument. Das Burgenland legt seinen
+        Entwürfen keine Textgegenüberstellung bei.
       </p>
       <p>
         Die Länder haben eigene Gesetzgebungsperioden. In der Liste der

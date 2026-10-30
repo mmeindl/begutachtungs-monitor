@@ -111,6 +111,20 @@ export interface UpstreamPolicy {
   method?: 'GET' | 'POST'
   /** JSON-encoded, and it sets the Content-Type. */
   body?: unknown
+  /**
+   * A form, sent `application/x-www-form-urlencoded` — the postbacks of the
+   * Länder's JSF and XPages sites (`laender/session.ts`). Never with `body`.
+   */
+  form?: URLSearchParams
+  /** Sent after the defaults: a session's `Cookie`, a JSF `Faces-Request`. */
+  headers?: Readonly<Record<string, string>>
+  /**
+   * `false`: a 3xx is returned as it came, not followed — for a session that
+   * must keep the cookies each hop sets (`laender/session.ts`), and follows
+   * by hand. With `upstreamHostsOnly` the first URL is still held to the
+   * allowlist; every later hop is the session's to check.
+   */
+  followRedirects?: false
   accept?: string
   /**
    * Retry EVERY non-OK status, not just 5xx. Two RIS clients do this and
@@ -205,13 +219,15 @@ function requestInit(policy: UpstreamPolicy): RequestInit {
     method: policy.method ?? 'GET',
     // Manual where the hosts are held to the allowlist: `fetch` would
     // otherwise follow a redirect to any host before anything could look.
-    ...(policy.upstreamHostsOnly ? { redirect: 'manual' as const } : {}),
+    ...(policy.upstreamHostsOnly || policy.followRedirects === false ? { redirect: 'manual' as const } : {}),
     headers: {
       'User-Agent': policy.userAgent ?? USER_AGENT,
       ...(policy.accept ? { Accept: policy.accept } : {}),
       ...(policy.body !== undefined ? { 'Content-Type': 'application/json' } : {}),
+      ...(policy.form ? { 'Content-Type': 'application/x-www-form-urlencoded; charset=UTF-8' } : {}),
+      ...policy.headers,
     },
-    body: policy.body !== undefined ? JSON.stringify(policy.body) : undefined,
+    body: policy.body !== undefined ? JSON.stringify(policy.body) : policy.form?.toString(),
     signal: AbortSignal.timeout(policy.timeoutMs),
   }
 }
@@ -250,7 +266,7 @@ async function withRetries<T>(
       let res: Response
       try {
         // `requestInit` after the slot, not before: it starts the timeout.
-        res = policy.upstreamHostsOnly
+        res = policy.upstreamHostsOnly && policy.followRedirects !== false
           ? await fetchWithinUpstreams(url, requestInit(policy))
           : await fetch(url, requestInit(policy))
       } catch (err) {
@@ -417,6 +433,40 @@ export function upstreamBytes(url: string, policy: UpstreamPolicy): Promise<Upst
     assertOk(res, url)
     const bytes = await readCapped(res, url, policy)
     return { bytes: bytes.buffer, contentType: res.headers.get('content-type') }
+  })
+}
+
+/** One hop of a session (`upstreamExchange`): the answer as it came, redirect or not. */
+export interface UpstreamExchange {
+  status: number
+  /** The `Location` of a 3xx, unresolved; null otherwise. */
+  location: string | null
+  /** Every `Set-Cookie` header, for the session's jar. */
+  cookies: string[]
+  contentType: string | null
+  /** The body, capped by `policy.maxBytes`; empty for a 3xx. */
+  bytes: Uint8Array<ArrayBuffer>
+}
+
+/**
+ * One request of a session that follows its redirects by hand
+ * (`laender/session.ts`): a 3xx comes back unfollowed with its cookies, any
+ * other answer below 400 with its body read under the host's slot and its
+ * cap. Pass `followRedirects: false`, or `fetch` follows the 3xx itself and
+ * the cookies its hops set are lost.
+ */
+export function upstreamExchange(url: string, policy: UpstreamPolicy): Promise<UpstreamExchange> {
+  return withRetries(url, policy, async (res) => {
+    const redirect = res.status >= 300 && res.status < 400
+    if (!redirect) assertOk(res, url)
+    else abandon(res.body)
+    return {
+      status: res.status,
+      location: redirect ? res.headers.get('location') : null,
+      cookies: res.headers.getSetCookie?.() ?? [],
+      contentType: res.headers.get('content-type'),
+      bytes: redirect ? new Uint8Array(0) : await readCapped(res, url, policy),
+    }
   })
 }
 

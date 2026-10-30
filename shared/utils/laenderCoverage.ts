@@ -12,9 +12,11 @@ import type { LandCode } from '../types'
 
 /**
  * The questions the table answers, one row each, in its order. Cells of
- * two or three words (25.10.2026): five columns must fit the text column of
- * /so-funktionierts; with sentences in them the table scrolled sideways even
- * on a desktop and hid two Länder. The sentences are the fold's (`summary`).
+ * two or three words (25.10.2026): with sentences in them the table scrolled
+ * sideways even on a desktop and hid two Länder. The sentences are the
+ * fold's (`summary`). Since all nine Länder are read (30.10.2026) the page
+ * shows one block per Land rather than a column — nine columns fit no text
+ * column at all.
  */
 export const COVERAGE_ROWS = [
   { key: 'verordnungen', label: 'Verordnungsentwürfe' },
@@ -40,6 +42,62 @@ export interface LandCoverage {
 }
 
 export const LAND_COVERAGE: Record<LandCode, LandCoverage> = {
+  bgld: {
+    cells: {
+      verordnungen: 'ja',
+      archive: 'seit 2007',
+      frist: 'ja, ohne Beginn',
+      way: '–',
+      kundmachung: 'Suche über den Titel',
+      tgu: 'keine beigelegt',
+      texts: '–',
+      statements: 'nach Fristende',
+    },
+    summary: 'zeigt alle Entwürfe seit 2007. Den Beginn einer Begutachtung nennt das Land nicht; ein Entwurf steht beim Ende seiner Frist.',
+    complete: true,
+  },
+  noe: {
+    cells: {
+      verordnungen: 'ja',
+      archive: 'nein',
+      frist: 'ja, ohne Beginn',
+      way: '–',
+      kundmachung: '–',
+      tgu: 'nicht gelesen',
+      texts: '–',
+      statements: 'beim Landtag',
+    },
+    summary: 'zeigt einen Entwurf nur, solange seine Begutachtung läuft; abgeschlossene fehlen, und was aus ihnen wurde, lässt sich hier nicht verfolgen.',
+    complete: false,
+  },
+  stmk: {
+    cells: {
+      verordnungen: 'nicht gelesen',
+      archive: 'seit Juni 2015',
+      frist: 'ja',
+      way: '–',
+      kundmachung: 'Suche über den Titel',
+      tgu: 'nicht gelesen',
+      texts: '–',
+      statements: 'ja',
+    },
+    summary: 'zeigt die Gesetzesentwürfe, die die Landesregierung seit Juni 2015 dem Landtag zur Begutachtung übermittelt hat; ältere fehlen, Verordnungsentwürfe liest der Monitor nicht.',
+    complete: false,
+  },
+  vbg: {
+    cells: {
+      verordnungen: 'nicht auf der Seite',
+      archive: 'nein',
+      frist: 'ja, ohne Beginn',
+      way: '–',
+      kundmachung: '–',
+      tgu: 'nicht gelesen',
+      texts: '–',
+      statements: 'nicht auf der Seite',
+    },
+    summary: 'zeigt nur Gesetzesentwürfe, und nur solange ihre Begutachtung läuft; abgeschlossene fehlen, und was aus ihnen wurde, lässt sich hier nicht verfolgen.',
+    complete: false,
+  },
   ktn: {
     cells: {
       verordnungen: 'ja',
@@ -111,6 +169,3 @@ export const LAND_COVERAGE: Record<LandCode, LandCoverage> = {
     complete: false,
   },
 }
-
-/** The Länder the monitor does not read yet — a gap of the monitor, not of the Länder. */
-export const LAENDER_NOT_READ = ['Burgenland', 'Niederösterreich', 'Steiermark', 'Vorarlberg'] as const

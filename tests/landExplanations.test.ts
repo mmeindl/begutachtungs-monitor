@@ -114,3 +114,46 @@ describe('the rate note names who changed the reasoning', () => {
     expect(reasoningRateNote({ compared: 13, changed: 4, editorial: 0, uncompared: 0 })).toBe('4 der 13 Begründungen hat das Ressort geändert.')
   })
 })
+
+describe('parseLandExplanations — Burgenland\'s Vorblatt (30.10.2026)', () => {
+  const pages = [
+    'E n t w u r f\nGesetz vom ……, mit dem das Burgenländische Raumplanungsgesetz 2019 geändert wird\n§ 22h\nBatterie-Energiespeicheranlagen',
+    [
+      'Vorblatt',
+      'Problem:',
+      'Der Ausbau der erneuerbaren Energieträger schreitet rasch voran.',
+      'Ziel und wesentlicher Inhalt:',
+      'Das Hauptziel der Novelle ist eine klare Grundlage.',
+      'Auswirkungen auf die verschiedenen Gruppen der Gesellschaft, insbesondere auf Frauen und',
+      'Männer:',
+      'Keine.',
+      'Erläuterungen:',
+      'Zur Änderung des Inhaltsverzeichnisses',
+      'Das Inhaltsverzeichnis ist anzupassen.',
+      'Zu § 22h',
+      'Zur Vermeidung von Doppelbesicherungen wird vorgesehen, dass nichts doppelt gesichert wird.',
+    ].join('\n'),
+  ]
+
+  it('reads the Vorblatt as the general part, a heading that wraps joined', () => {
+    const parse = parseLandExplanations(pages, undefined, { vorblatt: true })!
+    expect(parse.labelled).toBe(true)
+    expect(parse.general.map((g) => g.heading)).toEqual([
+      'Vorblatt',
+      'Problem',
+      'Ziel und wesentlicher Inhalt',
+      'Auswirkungen auf die verschiedenen Gruppen der Gesellschaft, insbesondere auf Frauen und Männer',
+    ])
+  })
+
+  it('opens an entry at „Zur Änderung …", never at prose that begins alike', () => {
+    const parse = parseLandExplanations(pages, undefined, { vorblatt: true })!
+    expect(parse.particular.map((p) => p.heading)).toEqual(['Zur Änderung des Inhaltsverzeichnisses', 'Zu § 22h'])
+    expect(parse.particular[1]!.text.join(' ')).toMatch(/^Zur Vermeidung/)
+  })
+
+  it('reads a document without a Vorblatt as any other', () => {
+    const without = [pages[0]!, pages[1]!.replace('Vorblatt\n', '')]
+    expect(parseLandExplanations(without, undefined, { vorblatt: true })).toEqual(parseLandExplanations(without))
+  })
+})

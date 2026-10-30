@@ -263,18 +263,26 @@ const { bund, laender: chosenLaender } = useSourceChoice()
  * (`ktnChainOf`); for the other Länder the monitor finds the Kundmachung
  * itself (`matchLgbl`, §12.43) and nothing in between — so under
  * „Regierungsvorlage" or „Parlament" alone they have no rows to give, and
- * the chip says why. */
+ * the chip says why. Niederösterreich and Vorarlberg show a draft only while
+ * its Begutachtung runs (30.10.2026): nothing of theirs reaches a later
+ * station here. */
 const FOLLOWED_STATIONS: Record<LandCode, readonly DraftStation[] | 'all'> = {
+  bgld: ['begutachtung', 'bgbl'],
   ktn: 'all',
+  noe: ['begutachtung'],
   ooe: 'all',
   sbg: ['begutachtung', 'bgbl'],
+  stmk: ['begutachtung', 'bgbl'],
   t: 'all',
+  vbg: ['begutachtung'],
   w: ['begutachtung', 'bgbl'],
 }
 function landUnavailableFor(land: LandCode): string | null {
   const followed = FOLLOWED_STATIONS[land]
   if (stations.value.length && followed !== 'all' && !stations.value.some((s) => followed.includes(s))) {
-    return 'Diese Länder-Entwürfe verfolgt der Monitor nur in Begutachtung und Kundmachung'
+    return followed.includes('bgbl')
+      ? 'Diese Länder-Entwürfe verfolgt der Monitor nur in Begutachtung und Kundmachung'
+      : 'Diese Länder-Entwürfe zeigt der Monitor nur, solange ihre Begutachtung läuft'
   }
   if (bund.value && ministry.value) return 'Länder-Entwürfe haben kein Ministerium'
   return null

@@ -59,8 +59,9 @@ const { siteUrl } = useRuntimeConfig().public
         ruft sie bei Bedarf ab und hält sie rund 30 Minuten im
         Zwischenspeicher; eine eigene Datenbank gibt es nicht. Die
         Begutachtungen der Länder haben keine solche Schnittstelle: Der
-        Monitor liest sie von den Seiten der Länder selbst, derzeit von
-        Kärnten, Oberösterreich, Salzburg, Tirol und Wien. Es gibt keine Konten und kein Tracking; ein Cookie nur,
+        Monitor liest sie von den Seiten der Länder selbst, von allen neun –
+        jedes so weit, wie seine Seite es zulässt; die Steiermark von der Seite
+        ihres Landtags. Es gibt keine Konten und kein Tracking; ein Cookie nur,
         wenn Sie die Quellen der Liste ändern.
       </p>
       <!-- Voluntary, and deliberately without the article number: no text
@@ -155,7 +156,10 @@ const { siteUrl } = useRuntimeConfig().public
         nicht sicher, dass eine Organisation einreicht, steht die
         Stellungnahme ebenfalls ohne Namen: Unter „Ohne Namen“ stehen also
         Privatpersonen und manche Organisation, die der Monitor nicht sicher
-        als solche erkennt.
+        als solche erkennt. Wo ein Land eine Organisation nur abkürzt – das
+        Burgenland schreibt „Stellungnahme AK“ –, schreibt der Monitor den
+        Namen aus, aber nur, wenn die Abkürzung eindeutig ist; sonst steht auch
+        sie ohne Namen.
       </p>
     </ProseSection>
 

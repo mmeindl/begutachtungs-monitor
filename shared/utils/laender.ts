@@ -12,31 +12,44 @@
 import type { LandCode, LandTextStation } from '../types'
 
 /** Display order — the order the chips stand in: alphabetical, as the Länder are listed everywhere. */
-export const LAND_CODES: readonly LandCode[] = ['ktn', 'ooe', 'sbg', 't', 'w']
+export const LAND_CODES: readonly LandCode[] = ['bgld', 'ktn', 'noe', 'ooe', 'sbg', 'stmk', 't', 'vbg', 'w']
 
 export const LAND_NAME: Record<LandCode, string> = {
+  bgld: 'Burgenland',
   ktn: 'Kärnten',
+  noe: 'Niederösterreich',
   ooe: 'Oberösterreich',
   sbg: 'Salzburg',
+  stmk: 'Steiermark',
   t: 'Tirol',
+  vbg: 'Vorarlberg',
   w: 'Wien',
 }
 
 /** The host a Land's documents come from, as the document list names it. */
 export const LAND_HOST: Record<LandCode, string> = {
+  bgld: 'bgld.gv.at',
   ktn: 'ktn.gv.at',
+  noe: 'noe.gv.at',
   ooe: 'land-oberoesterreich.gv.at',
   sbg: 'service.salzburg.gv.at',
+  // The Landtag's PALLAST: the Land files its drafts there (`steiermark.ts`).
+  stmk: 'pallast2.stmk.gv.at',
   t: 'tirol.gv.at',
+  vbg: 'vorarlberg.at',
   w: 'wien.gv.at',
 }
 
 /** The Land's path segment under `/entwuerfe/` — its name, as a reader types it. */
 export const LAND_SLUG: Record<LandCode, string> = {
+  bgld: 'burgenland',
   ktn: 'kaernten',
+  noe: 'niederoesterreich',
   ooe: 'oberoesterreich',
   sbg: 'salzburg',
+  stmk: 'steiermark',
   t: 'tirol',
+  vbg: 'vorarlberg',
   w: 'wien',
 }
 
@@ -141,6 +154,10 @@ export function landLawGroupTitle(title: string): string {
  * its own terms; null where its page says nothing (Wien).
  */
 export const LAND_PUBLICATION_NOTE: Record<LandCode, string | null> = {
+  bgld: 'Das Land veröffentlicht Stellungnahmen bei den abgeschlossenen Begutachtungen.',
+  noe: 'Das Land veröffentlicht die Stellungnahmen auf der Website des NÖ Landtags; die von Privatpersonen mit Namen nur nach deren ausdrücklicher Zustimmung.',
+  stmk: 'Das Land veröffentlicht die eingelangten Stellungnahmen beim Entwurf im Landtag.',
+  vbg: null,
   ktn: 'Das Land veröffentlicht die Stellungnahmen nach dem Ende der Begutachtung; die von Privatpersonen nur mit deren Einwilligung, die von Organisationen und öffentlichen Stellen auch ohne.',
   ooe: 'Das Land veröffentlicht die Stellungnahmen, sobald die Regierungsvorlage vorliegt; die von Privatpersonen nur mit deren Einwilligung.',
   sbg: 'Das Land veröffentlicht eine Stellungnahme nur mit Zustimmung derer, die sie einreichen.',

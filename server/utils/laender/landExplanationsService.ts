@@ -17,7 +17,7 @@ import { landDraftUnits } from './landLawDiff'
 import { headingZiffern, parseLandExplanations, type LandExplanationsParse } from './landExplanations'
 import type { LawUnit } from '../lawtext/lawUnits'
 import { amendedLawsOf } from './landTgu'
-import { draftCandidates, NOT_A_DRAFT, notADraft, pdfPages, pdfStyledPages } from './texts/read'
+import { draftCandidates, isDraftWithExplanations, NOT_A_DRAFT, notADraft, pdfPages, pdfStyledPages } from './texts/read'
 import type { LandDraftRecord } from './texts/stations'
 
 const ROMAN: Record<string, number> = { I: 1, V: 5, X: 10, L: 50 }
@@ -66,6 +66,9 @@ export function explainedParagraphs(parse: LandExplanationsParse, units: readonl
  */
 const HEADINGS_BY_WEIGHT: ReadonlySet<LandCode> = new Set(['w'])
 
+/** The Länder whose general part is a Vorblatt before „Erläuterungen:" (`vorblattParse`). */
+const VORBLATT_AS_GENERAL: ReadonlySet<LandCode> = new Set(['bgld'])
+
 const unavailable = (reason: string, publisher: string, document: LandExplanationsResponse['document'] = null): LandExplanationsResponse => ({
   available: false, unavailableReason: reason, document, publisher, labelled: false, general: [], particular: [],
 })
@@ -83,9 +86,10 @@ export async function landExplanations(land: LandCode, detail: LandDraftRecord):
   const { pages, bold } = HEADINGS_BY_WEIGHT.has(land) ? await pdfStyledPages(url) : { pages: await pdfPages(url), bold: undefined }
   const ofDraft = (draftPages: string[]) => ({ units: landDraftUnits(draftPages), text: draftPages.join('\n') })
   // Erläuterungen in the draft's PDF are none where the one document the Land filed as the draft evidently is none (`notADraft`, `draftSource`).
-  const inDraft = own ? null : ofDraft(pages)
+  // Burgenland files draft and Erläuterungen as one „Entwurf und Erläuterungen": its own, and the draft's too.
+  const inDraft = own && !isDraftWithExplanations(own.title) ? null : ofDraft(pages)
   if (inDraft && candidates.length === 1 && notADraft(inDraft)) return unavailable(NOT_A_DRAFT, publisher, { label: doc.title, url })
-  const parse = parseLandExplanations(pages, bold)
+  const parse = parseLandExplanations(pages, bold, { vorblatt: VORBLATT_AS_GENERAL.has(land) })
   if (!parse) return unavailable('In den Dokumenten des Landes fand der Monitor keine Erläuterungen, die er lesen kann.', publisher, document)
 
   // The draft's instructions, for entries that name only Ziffern — none from a draft that is none.

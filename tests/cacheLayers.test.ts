@@ -51,9 +51,12 @@ const FETCHED: Record<string, string> = {
   'drafts-list': 'list 81 of one GP, exactly as the API answered',
   'parliament-me-config': "the ME list's page configuration, as served",
   'land-list-page': "a Land's list of drafts in Begutachtung, or one draft's page of Stellungnahmen, as its site served it; parsed and gated fresh on every call",
-  'land-list-page-latin1': 'the same for a Land that serves ISO-8859-1 (Wien), decoded to text and nothing else',
   'land-register-page': "a Land's whole register of drafts as its site served it (Salzburg since 2004); parsed once per version of the page, known by its hash (`registerDrafts`)",
   'land-record-page': "one draft's Landtag page as its site served it, read by the list for the station (Oberösterreich); parsed fresh on every call",
+  'land-bgld-pages': "Burgenland's running list or this year's archive view, every page of it as the Land served it (the further ones by postback); parsed fresh on every call",
+  'land-stmk-rows': "the Steiermark Landtag's list of Begutachtungen, all rows in one partial response as PALLAST served it; parsed fresh on every call",
+  'land-stmk-page': "a page of PALLAST as a reader's view serves it — the list's newest ten, a draft's own page; parsed fresh on every call",
+  'land-stmk-draft-page': "one draft's PALLAST page, read by the list for its Frist (Steiermark); parsed fresh on every call",
 }
 
 const UTILS = join(import.meta.dirname, '..', 'server', 'utils')

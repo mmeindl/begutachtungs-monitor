@@ -6,12 +6,12 @@
 import type { LandCode, LandReasoningResponse } from '#shared/types'
 import { LAND_CODES } from '#shared/utils/laender'
 import { cachedLandReasoning } from '../../../../utils/laender/landReasoningService'
-import { LAND_NUMBER_RE, readLandDraft } from '../../../../utils/laender/sources'
+import { isLandNumber, readLandDraft } from '../../../../utils/laender/sources'
 
 export default defineEventHandler(async (event): Promise<LandReasoningResponse> => {
   const land = getRouterParam(event, 'land') ?? ''
   const number = getRouterParam(event, 'number') ?? ''
-  if (!(LAND_CODES as readonly string[]).includes(land) || !LAND_NUMBER_RE.test(number)) {
+  if (!(LAND_CODES as readonly string[]).includes(land) || !isLandNumber(land as LandCode, number)) {
     throw createError({ statusCode: 404, statusMessage: 'Entwurf nicht gefunden' })
   }
   try {

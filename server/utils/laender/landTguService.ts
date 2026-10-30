@@ -448,7 +448,7 @@ export function hasTgu(land: LandCode, documents: readonly LandDocument[]): bool
   return land === 'w' || documents.some((d) => isDraftTgu(d.title))
 }
 const READ_TGU: Partial<Record<LandCode, (detail: LandDraftRecord) => Promise<TguRead | string>>> = { ktn: readKaernten, ooe: readOoe, sbg: readSalzburg, t: readTirol, w: readWien }
-const LAW_LABEL: Record<LandCode, string> = { ktn: 'Kärntner Landesrecht', ooe: 'Oö. Landesrecht', sbg: 'Salzburger Landesrecht', t: 'Tiroler Landesrecht', w: 'Wiener Landesrecht' }
+const LAW_LABEL: Record<LandCode, string> = { bgld: 'Burgenländisches Landesrecht', ktn: 'Kärntner Landesrecht', noe: 'NÖ Landesrecht', ooe: 'Oö. Landesrecht', sbg: 'Salzburger Landesrecht', stmk: 'Steiermärkisches Landesrecht', t: 'Tiroler Landesrecht', vbg: 'Vorarlberger Landesrecht', w: 'Wiener Landesrecht' }
 
 const whole = (value: LandLawDiffResponse): Gathered<LandLawDiffResponse> => ({ value, complete: true })
 

@@ -173,8 +173,8 @@ usePageSeo({
       <p>
         Der Monitor zeigt Daten, die die Parlamentsdirektion auf
         parlament.gv.at veröffentlicht, und die Stellungnahmen, die die
-        Länder Kärnten, Oberösterreich, Salzburg, Tirol und Wien zu ihren Entwürfen
-        veröffentlichen. Darin kommen Namen vor:
+        Länder Burgenland, Kärnten, Oberösterreich, Salzburg, Steiermark, Tirol und
+        Wien zu ihren Entwürfen veröffentlichen. Darin kommen Namen vor:
         als Einbringer von Stellungnahmen erscheinen dort auch Privatpersonen.
         Das ist eine Verarbeitung personenbezogener Daten, die nicht bei
         den Betroffenen selbst erhoben wurden – dafür gilt Art 14 DSGVO.
@@ -208,8 +208,10 @@ usePageSeo({
             href="https://www.parlament.gv.at/recherchieren/open-data/"
             class="link-inline"
           >parlament.gv.at/recherchieren/open-data</ExternalLink>, und für
-          die Länder deren eigene Seiten (land-oberoesterreich.gv.at,
-          service.salzburg.gv.at, wien.gv.at). Dieselbe Regel entscheidet
+          die Länder deren eigene Seiten (apps.bgld.gv.at, ktn.gv.at,
+          land-oberoesterreich.gv.at, service.salzburg.gv.at, tirol.gv.at,
+          wien.gv.at) und die Seiten der Landtage Steiermark und Tirol
+          (pallast2.stmk.gv.at, lte.tirol.gv.at). Dieselbe Regel entscheidet
           dort, ob der Monitor einen Namen nennt.
         </li>
       </ul>

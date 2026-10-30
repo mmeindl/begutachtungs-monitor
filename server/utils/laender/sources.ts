@@ -23,7 +23,8 @@ import type {
 } from '#shared/types'
 import { LAND_CODES } from '#shared/utils/laender'
 import { todayIso } from '#shared/utils/format'
-import { type UpstreamPolicy, upstreamBytes, upstreamText } from '../upstream/fetch'
+import { type UpstreamPolicy, UpstreamHttpError, sleep, upstreamText } from '../upstream/fetch'
+import { mapWithConcurrency } from '../pool'
 import { DERIVED_CACHE } from '../cache/base'
 import { UPSTREAM_LIST_TTL_S } from '../cache/ttl'
 import { withinBudget } from '../http/budget'
@@ -38,7 +39,7 @@ import {
   salzburgDrafts,
   salzburgStatementsUrl,
 } from './salzburg'
-import { WIEN_LIST, WIEN_NUMBER_RE, WIEN_STATEMENTS, decodeWien, parseWienList, parseWienStatements } from './wien'
+import { WIEN_LIST, WIEN_NUMBER_RE, WIEN_STATEMENTS, parseWienList, parseWienStatements } from './wien'
 import {
   OOE_GESETZE,
   OOE_GESETZE_ARCHIV,
@@ -77,6 +78,13 @@ import {
   type KtnEntry,
 } from './kaernten'
 import { TIROL_LIST, TIROL_NUMBER_RE, TIROL_VO_NUMBER_RE, TIROL_VO_PAGE, parseTirolList, parseTirolRecord, parseTirolVoSearch, tirolFilingEmail, tirolRecordUrl, tirolVoOf, tirolVoSearchUrl, type TirolVoDraft } from './tirol'
+import { BGLD_CURRENT, BGLD_FILING_EMAIL, BGLD_FIRST_YEAR, BGLD_NUMBER_RE, BGLD_ORIGIN, bgldArchiveUrl, bgldNextPage, bgldUnidYear, parseBgldPage, type BgldEntry } from './burgenland'
+import { NOE_FILING_EMAIL, NOE_LIST, NOE_NUMBER_RE, NOE_RETENTION, NOE_STATEMENTS_GAP, noeDraftUrl, parseNoeDraftPage, parseNoeList } from './niederoesterreich'
+import { STMK_LIST, STMK_NUMBER_RE, STMK_ORIGIN, STMK_PERIODS, parseStmkDraftPage, parseStmkRows, stmkDraftUrl, stmkListUrl, stmkPageSizes, stmkPartsOf, stmkRowCount, stmkRowsPostback, type StmkDraft, type StmkPeriod } from './steiermark'
+import { VBG_FORM, VBG_LIST, VBG_NUMBER_RE, VBG_RETENTION, VBG_STATEMENTS_GAP, parseVbgList } from './vorarlberg'
+import { LandSourceError } from './gate'
+import { draftKindOfTitle } from './draftKind'
+import { LandSession } from './session'
 import { pdfPages } from './texts/read'
 import { fetchLgblIndex } from './lgblIndex'
 import { hasTgu } from './landTguService'
@@ -105,12 +113,6 @@ const urlKey = (url: string) => encodeURIComponent(url)
 export const fetchLandPage = defineCachedFunction(
   (url: string): Promise<string> => upstreamText(url, LAND_POLICY),
   { name: 'land-list-page', getKey: urlKey, maxAge: UPSTREAM_LIST_TTL_S, swr: false },
-)
-
-/** The same for Wien, which serves ISO-8859-1 and says so only in a meta tag. */
-export const fetchLatin1Page = defineCachedFunction(
-  async (url: string): Promise<string> => decodeWien((await upstreamBytes(url, LAND_POLICY)).bytes),
-  { name: 'land-list-page-latin1', getKey: urlKey, maxAge: UPSTREAM_LIST_TTL_S, swr: false },
 )
 
 /**
@@ -276,6 +278,7 @@ const salzburg: LandReader = {
       draft: withLandActiveOn([draft])[0]!,
       statements,
       statementsUrl,
+      statementsGap: null,
       filing: { kind: 'email', address: SALZBURG_FILING_EMAIL, recipient: null },
       summary: null,
       procedure: null,
@@ -294,11 +297,11 @@ const WIEN_RETENTION = 'Die Stadt Wien veröffentlicht einen Entwurf bis zum Bes
 
 const wien: LandReader = {
   listUrl: WIEN_LIST,
-  current: async () => parseWienList(await fetchLatin1Page(WIEN_LIST)).map((e) => e.draft),
+  current: async () => parseWienList(await fetchLandPage(WIEN_LIST)).map((e) => e.draft),
   // The page is everything Wien still publishes: a year back at most.
-  all: async () => parseWienList(await fetchLatin1Page(WIEN_LIST)).map((e) => e.draft),
+  all: async () => parseWienList(await fetchLandPage(WIEN_LIST)).map((e) => e.draft),
   detail: async (number) => {
-    const entries = parseWienList(await fetchLatin1Page(WIEN_LIST))
+    const entries = parseWienList(await fetchLandPage(WIEN_LIST))
     const entry = entries.find((e) => e.draft.id === `w-${number}`)
     if (!entry) {
       /* A number Wien no longer lists was a draft once if it lies behind
@@ -310,13 +313,14 @@ const wien: LandReader = {
       }
       return null
     }
-    const statements: LandStatement[] | null = await fetchLatin1Page(WIEN_STATEMENTS)
+    const statements: LandStatement[] | null = await fetchLandPage(WIEN_STATEMENTS)
       .then((html) => parseWienStatements(html, number))
       .catch(() => null)
     return {
       draft: withLandActiveOn([entry.draft])[0]!,
       statements,
-      statementsUrl: statements?.length ? `${WIEN_STATEMENTS}#${number}` : null,
+      statementsUrl: entry.statementsUrl ?? (statements?.length ? WIEN_STATEMENTS : null),
+      statementsGap: null,
       filing: { kind: 'email', address: entry.address, recipient: entry.recipient },
       summary: null,
       procedure: null,
@@ -388,6 +392,7 @@ const oberoesterreich: LandReader = {
         draft: withLandActiveOn([draft])[0]!,
         statements: null,
         statementsUrl: null,
+        statementsGap: null,
         // The Verordnungen page names no address: it stands in the draft.
         filing: { kind: 'document' },
         summary: null,
@@ -432,6 +437,7 @@ const oberoesterreich: LandReader = {
       draft: withLandActiveOn([draft])[0]!,
       statements: detail.statements,
       statementsUrl: url,
+      statementsGap: null,
       filing: { kind: 'form', url: ooeFormUrl(jahr!, nummer!) },
       summary: detail.summary,
       procedure: detail.procedure,
@@ -574,6 +580,7 @@ const kaernten: LandReader = {
         draft: withLandActiveOn([found.draft])[0]!,
         statements: null,
         statementsUrl: null,
+        statementsGap: null,
         // The page names an address where the department gives one; else the letter does.
         filing: found.email ? { kind: 'email', address: found.email, recipient: null } : { kind: 'document' },
         summary: null,
@@ -595,6 +602,7 @@ const kaernten: LandReader = {
       draft: withLandActiveOn([{ ...draft, documents: [...draft.documents, ...chain.documents] }])[0]!,
       statements,
       statementsUrl: entry.statementsUrl,
+      statementsGap: null,
       filing: { kind: 'email', address: KTN_FILING_EMAIL, recipient: 'Verfassungsdienst' },
       summary: null,
       procedure: chain.procedure.length ? chain.procedure : null,
@@ -655,6 +663,7 @@ const tirol: LandReader = {
         draft: withLandActiveOn([found.draft])[0]!,
         statements: found.statements,
         statementsUrl: found.draft.url,
+        statementsGap: null,
         filing: found.email ? { kind: 'email', address: found.email, recipient: found.recipient } : { kind: 'document' },
         summary: null,
         procedure: null,
@@ -691,6 +700,7 @@ const tirol: LandReader = {
       draft: withLandActiveOn([draft])[0]!,
       statements: record.statements,
       statementsUrl: record.statements.length ? url : null,
+      statementsGap: null,
       filing: { kind: 'email', address: (listHtml && tirolFilingEmail(listHtml)) || TIROL_FILING_FALLBACK, recipient: 'Abteilung Verfassungsdienst' },
       summary: null,
       procedure: record.procedure.length ? record.procedure : null,
@@ -701,7 +711,349 @@ const tirol: LandReader = {
   },
 }
 
-const READERS: Record<LandCode, LandReader> = { ktn: kaernten, ooe: oberoesterreich, sbg: salzburg, t: tirol, w: wien }
+/* ------------------------------------------------------------------ *
+ * Burgenland
+ * ------------------------------------------------------------------ */
+
+/** A view has at most six pages a year (30.10.2026); twenty is a different source. */
+const BGLD_MAX_PAGES = 20
+
+/**
+ * Every page of one of Burgenland's views: the first by GET, each further one
+ * by a postback of the view (`bgldNextPage`), in one session. A postback that
+ * answers with the page it was sent from would loop; it is refused.
+ */
+async function readBgldPages(url: string): Promise<string[]> {
+  const session = new LandSession(BGLD_ORIGIN, LAND_POLICY)
+  let page = await session.text(url)
+  const pages = [page.html]
+  for (let i = 0; i < BGLD_MAX_PAGES; i++) {
+    const next = bgldNextPage(page.html)
+    if (!next) return pages
+    page = await session.text(new URL(next.action, page.url).href, { form: next.form })
+    const titles = (html: string) => [...html.matchAll(/computedField1">([^<]*)/g)].map((m) => m[1]).join('|')
+    if (titles(page.html) === titles(pages.at(-1)!)) throw new LandSourceError('bgld', `Blättern ohne neue Seite: ${url}`)
+    pages.push(page.html)
+  }
+  throw new LandSourceError('bgld', `mehr als ${BGLD_MAX_PAGES} Seiten: ${url}`)
+}
+
+/** The running list and this year's archive, as the Land served them. */
+const fetchBgldPages = defineCachedFunction(readBgldPages, { name: 'land-bgld-pages', getKey: urlKey, maxAge: UPSTREAM_LIST_TTL_S, swr: false })
+
+/**
+ * A past year of the archive, parsed — held a week, in the derived layer:
+ * a closed year does not change, and its pages are 5 MB of HTML over
+ * 2007–2026 against the fetched layer's 64 MB, for 0,4 MB of drafts (the
+ * trade Salzburg's register makes, `registerDrafts`). The current year is
+ * read fresh, as pages (`fetchBgldPages`).
+ */
+const BGLD_PAST_TTL_S = 60 * 60 * 24 * 7
+const bgldPastYear = defineCachedFunction(
+  async (year: number, kind: LandDraftKind): Promise<BgldEntry[]> => {
+    const url = bgldArchiveUrl(year, kind)
+    return (await readBgldPages(url)).flatMap((html) => parseBgldPage(html, url, kind))
+  },
+  { name: 'land-bgld-past-year', base: DERIVED_CACHE, getKey: (year: number, kind: LandDraftKind) => `${year}-${kind}`, maxAge: BGLD_PAST_TTL_S, swr: true },
+)
+
+async function bgldYear(year: number, kind: LandDraftKind): Promise<BgldEntry[]> {
+  if (year < Number(todayIso().slice(0, 4))) return bgldPastYear(year, kind)
+  const url = bgldArchiveUrl(year, kind)
+  return (await fetchBgldPages(url)).flatMap((html) => parseBgldPage(html, url, kind))
+}
+
+async function bgldCurrent(): Promise<BgldEntry[]> {
+  return (await fetchBgldPages(BGLD_CURRENT)).flatMap((html) => parseBgldPage(html, BGLD_CURRENT))
+}
+
+/**
+ * The archive's years, newest first, each kind — two views at a time, each
+ * a session of the Land's one Domino server: a cold read is some 130 pages
+ * (half a minute), and the past years are then held a week (`bgldPastYear`).
+ */
+async function bgldArchive(years: readonly number[]): Promise<BgldEntry[]> {
+  const views = years.flatMap((year) => KINDS.map((kind) => [year, kind] as const))
+  return (await mapWithConcurrency(views, 2, ([year, kind]) => bgldYear(year, kind))).flat()
+}
+
+function bgldYears(): number[] {
+  const now = Number(todayIso().slice(0, 4))
+  return Array.from({ length: now - BGLD_FIRST_YEAR + 1 }, (_, i) => now - i)
+}
+
+/** Running first: a draft whose Frist ended today may stand on both. */
+function bgldMerged(...lists: BgldEntry[][]): BgldEntry[] {
+  const seen = new Set<string>()
+  return lists.flat().filter((e) => !seen.has(e.draft.id) && !!seen.add(e.draft.id))
+}
+
+const burgenland: LandReader = {
+  listUrl: BGLD_CURRENT,
+  current: async () => (await bgldCurrent()).map((e) => e.draft),
+  all: async () => {
+    const [current, archive] = await Promise.all([bgldCurrent(), bgldArchive(bgldYears())])
+    return bgldMerged(current, archive).map((e) => e.draft)
+  },
+  detail: async (number) => {
+    if (!BGLD_NUMBER_RE.test(number)) return null
+    const id = `bgld-${number}`
+    /* The running list first; then the archive's year the draft's document
+     * id names (`bgldUnidYear`) and its neighbours — the Land files a draft
+     * by the year it was published, which can be the year after; only then
+     * the whole archive. */
+    const find = (entries: BgldEntry[]) => entries.find((e) => e.draft.id === id)
+    let entry = find(await bgldCurrent())
+    const hinted = bgldUnidYear(number)
+    const years = bgldYears()
+    if (!entry && hinted) entry = find(await bgldArchive([hinted + 1, hinted, hinted - 1].filter((y) => years.includes(y))))
+    if (!entry) entry = find(await bgldArchive(years))
+    if (!entry) return null
+    const draft = withLandActiveOn([entry.draft])[0]!
+    return {
+      draft,
+      // The running list publishes none; the archive lists them under the draft.
+      statements: entry.statements,
+      statementsUrl: draft.active ? null : draft.url,
+      statementsGap: null,
+      filing: { kind: 'email', address: BGLD_FILING_EMAIL, recipient: 'Stabsabteilung Verfassung und Recht' },
+      summary: null,
+      procedure: null,
+      landtag: null,
+      retentionNote: null,
+      listUrl: BGLD_CURRENT,
+    }
+  },
+}
+
+/* ------------------------------------------------------------------ *
+ * Niederösterreich
+ * ------------------------------------------------------------------ */
+
+const noeList = async () => parseNoeList(await fetchLandPage(NOE_LIST))
+
+const niederoesterreich: LandReader = {
+  listUrl: NOE_LIST,
+  current: noeList,
+  // The Land keeps no archive: what runs is all it publishes (`niederoesterreich.ts`).
+  all: noeList,
+  detail: async (number) => {
+    if (!NOE_NUMBER_RE.test(number)) return null
+    const url = noeDraftUrl(number)
+    const [html, listed] = await Promise.all([
+      fetchLandPage(url).catch((err: unknown) => {
+        if (err instanceof UpstreamHttpError && err.status === 404) return null
+        throw err
+      }),
+      noeList().then((list) => list.find((d) => d.id === `noe-${number}`), () => undefined),
+    ])
+    if (html === null) {
+      if (listed) throw unavailable('Niederösterreich')
+      throw gone(`${NOE_RETENTION} Unter dieser Adresse führt es keinen Entwurf (mehr).`)
+    }
+    const page = parseNoeDraftPage(html, url)
+    if (!page) return null
+    const draft: LandConsultation = {
+      id: `noe-${number}`,
+      land: 'noe',
+      kind: listed?.kind ?? draftKindOfTitle(page.title),
+      title: page.title,
+      startedAt: null,
+      deadline: page.deadline,
+      url,
+      documents: page.documents,
+      active: false,
+    }
+    return {
+      draft: withLandActiveOn([draft])[0]!,
+      statements: null,
+      statementsUrl: null,
+      statementsGap: NOE_STATEMENTS_GAP,
+      filing: { kind: 'email', address: page.email ?? NOE_FILING_EMAIL, recipient: 'Abteilung Landesamtsdirektion/Service' },
+      summary: null,
+      procedure: null,
+      landtag: null,
+      retentionNote: NOE_RETENTION,
+      listUrl: NOE_LIST,
+    }
+  },
+}
+
+/* ------------------------------------------------------------------ *
+ * Steiermark
+ * ------------------------------------------------------------------ */
+
+/**
+ * PALLAST sits behind a web application firewall that blocks a client
+ * opening many sessions in a short time: on 30.10.2026 a probe that opened
+ * one per draft page — 38 in a minute, beside the monitor's own reads —
+ * was answered 403 from then on, under the monitor's User-Agent only. So
+ * the monitor reads it as a person browsing would: one session for a batch
+ * of pages, two pages at a time, and every page held for hours.
+ */
+const STMK_TTL_S = 60 * 60 * 6
+const STMK_CONCURRENCY = 2
+
+/** A page of PALLAST in the session given, or one of its own: its redirects set the cookies the next hop needs. */
+async function readStmkPage(url: string, session: LandSession = new LandSession(STMK_ORIGIN, LAND_POLICY)): Promise<string> {
+  return (await session.text(url)).html
+}
+
+/**
+ * Every row of one period's list of Begutachtungen: the list, and the
+ * postback asking for all its rows (`stmkRowsPostback`). The answer must
+ * hold as many as the list counts — a short read would make drafts
+ * disappear without a word.
+ */
+async function readStmkRows(period: StmkPeriod): Promise<string> {
+  const session = new LandSession(STMK_ORIGIN, LAND_POLICY)
+  const list = await session.text(stmkListUrl(period))
+  const count = stmkRowCount(list.html)
+  if (parseStmkRows(list.html).length >= count) return list.html
+  // The smallest page the table offers that holds them all; past its largest, page by page.
+  const sizes = stmkPageSizes(list.html)
+  const size = sizes.find((s) => s >= count) ?? sizes.at(-1)!
+  const answers: string[] = []
+  for (let first = 0; first < count; first += size) {
+    const postback = stmkRowsPostback(list.html, first, size)
+    answers.push((await session.text(new URL(postback.action, list.url).href, { form: postback.form, headers: postback.headers })).html)
+  }
+  const read = parseStmkRows(answers.join('\n')).length
+  if (read < count) throw new LandSourceError('stmk', `${period.gp}: ${read} von ${count} Zeilen gelesen`)
+  return answers.join('\n')
+}
+
+/** The current period's rows, as PALLAST served them. */
+const fetchStmkRows = defineCachedFunction(() => readStmkRows(STMK_PERIODS[0]!), { name: 'land-stmk-rows', getKey: () => 'current', maxAge: STMK_TTL_S, swr: true })
+
+/** A page as a reader's view of it is served: the list's newest ten (`current`), a draft's own page (`detail`). */
+const fetchStmkPage = defineCachedFunction(readStmkPage, { name: 'land-stmk-page', getKey: urlKey, maxAge: UPSTREAM_LIST_TTL_S, swr: false })
+
+/** One draft's page as the lists read it — in the batch's session (`stmkDrafts`), held for hours. */
+const fetchStmkDraftPage = defineCachedFunction(readStmkPage, {
+  name: 'land-stmk-draft-page',
+  // The session is how the page is fetched, not which page it is.
+  getKey: (url: string, _session?: LandSession) => urlKey(url),
+  maxAge: STMK_TTL_S,
+  swr: true,
+})
+
+async function stmkDrafts(refs: readonly string[]): Promise<StmkDraft[]> {
+  const session = new LandSession(STMK_ORIGIN, LAND_POLICY)
+  return mapWithConcurrency(refs, STMK_CONCURRENCY, async (ref) => {
+    const parsed = parseStmkDraftPage(await fetchStmkDraftPage(stmkDraftUrl(ref), session), ref)
+    if (!parsed) throw new LandSourceError('stmk', `keine Begutachtung: ${ref}`)
+    return parsed
+  })
+}
+
+/**
+ * A closed period's drafts, parsed — held a week in the derived layer, as
+ * Burgenland's past years (`bgldPastYear`): nothing in a closed period moves.
+ * Read one page at a time with a pause between, in one session: a cold read
+ * is some 170 pages for XVIII. and XVII., and PALLAST's firewall is what it
+ * is (see above). Its pages are not held; the drafts are.
+ */
+const STMK_PAST_TTL_S = 60 * 60 * 24 * 7
+const STMK_PAST_PAUSE_MS = 300
+const stmkPastPeriod = defineCachedFunction(
+  async (key: string): Promise<LandConsultation[]> => {
+    const period = STMK_PERIODS.find((p) => p.key === key)!
+    const rows = parseStmkRows(await readStmkRows(period))
+    const session = new LandSession(STMK_ORIGIN, LAND_POLICY)
+    const out: LandConsultation[] = []
+    for (const { ref } of rows) {
+      const parsed = parseStmkDraftPage(await readStmkPage(stmkDraftUrl(ref, period), session), ref, period)
+      if (!parsed) throw new LandSourceError('stmk', `${period.gp}: keine Begutachtung: ${ref}`)
+      out.push(parsed.draft)
+      await sleep(STMK_PAST_PAUSE_MS)
+    }
+    return out
+  },
+  { name: 'land-stmk-past-period', base: DERIVED_CACHE, getKey: (key: string) => key, maxAge: STMK_PAST_TTL_S, swr: true },
+)
+
+const steiermark: LandReader = {
+  listUrl: STMK_LIST,
+  /* The newest ten by the day they were filed: a running draft is among
+   * them unless more than ten run at once — then the whole list. */
+  current: async () => {
+    const first = await stmkDrafts(parseStmkRows(await fetchStmkPage(STMK_LIST)).map((r) => r.ref))
+    const today = todayIso()
+    const oldest = first.at(-1)?.draft.deadline
+    const drafts = oldest && oldest >= today ? await stmkDrafts(parseStmkRows(await fetchStmkRows()).map((r) => r.ref)) : first
+    return drafts.map((d) => d.draft)
+  },
+  all: async () => {
+    const [current, ...past] = await Promise.all([
+      stmkDrafts(parseStmkRows(await fetchStmkRows()).map((r) => r.ref)),
+      ...STMK_PERIODS.filter((p) => p.key).map((p) => stmkPastPeriod(p.key)),
+    ])
+    return [...current!.map((d) => d.draft), ...past.flat()]
+  },
+  detail: async (number) => {
+    const parts = stmkPartsOf(number)
+    if (!parts) return null
+    const parsed = parseStmkDraftPage(await fetchStmkPage(stmkDraftUrl(parts.ref, parts.period)), parts.ref, parts.period)
+    if (!parsed) return null
+    const hasLetter = parsed.draft.documents.some((d) => /versendeschreiben/i.test(d.title))
+    return {
+      draft: withLandActiveOn([parsed.draft])[0]!,
+      statements: parsed.statements,
+      statementsUrl: parsed.draft.url,
+      statementsGap: null,
+      // The Landtag's page names no address: the Land's cover letter does.
+      filing: { kind: 'document', in: hasLetter ? 'im Versendeschreiben unter den Dokumenten' : 'in den Dokumenten des Landes' },
+      summary: null,
+      procedure: null,
+      landtag: null,
+      retentionNote: null,
+      listUrl: STMK_LIST,
+    }
+  },
+}
+
+/* ------------------------------------------------------------------ *
+ * Vorarlberg
+ * ------------------------------------------------------------------ */
+
+const vbgList = async () => parseVbgList(await fetchLandPage(VBG_LIST))
+
+const vorarlberg: LandReader = {
+  listUrl: VBG_LIST,
+  current: vbgList,
+  // One page, running drafts only (`vorarlberg.ts`).
+  all: vbgList,
+  detail: async (number) => {
+    if (!VBG_NUMBER_RE.test(number)) return null
+    const draft = (await vbgList()).find((d) => d.id === `vbg-${number}`)
+    if (!draft) throw gone(`${VBG_RETENTION} Unter dieser Nummer führt es keinen Entwurf (mehr).`)
+    return {
+      draft: withLandActiveOn([draft])[0]!,
+      statements: null,
+      statementsUrl: null,
+      statementsGap: VBG_STATEMENTS_GAP,
+      filing: { kind: 'form', url: VBG_FORM },
+      summary: null,
+      procedure: null,
+      landtag: null,
+      retentionNote: VBG_RETENTION,
+      listUrl: VBG_LIST,
+    }
+  },
+}
+
+const READERS: Record<LandCode, LandReader> = {
+  bgld: burgenland,
+  ktn: kaernten,
+  noe: niederoesterreich,
+  ooe: oberoesterreich,
+  sbg: salzburg,
+  stmk: steiermark,
+  t: tirol,
+  vbg: vorarlberg,
+  w: wien,
+}
 
 /* ------------------------------------------------------------------ *
  * The Kundmachung, searched where the Land records none (§12.43)
@@ -832,6 +1184,20 @@ export async function draftsSharingKundmachung(land: LandCode, nr: string, excep
  * `113253-2025-38` or, before 2022, `1994-6`, and a Verordnung by its
  * tile, `v1631`; a Tirol Verordnung by its register id, `v` + 32 hex digits. */
 export const LAND_NUMBER_RE = /^(?:\d{1,9}|20\d{2}-\d{1,6}|v\d{1,9}|v[0-9a-f]{32}|\d{1,7}-(?:20\d{2}-)?\d{1,4})$/
+
+/**
+ * The four Länder read since 30.10.2026 number their own way, each held to
+ * its own pattern rather than widening the one above: Burgenland by an
+ * attachment's document id (32 hex digits), Niederösterreich by the name of
+ * the draft's page (`NOe_KJHG_Aenderung1`), Steiermark by the Landtag's
+ * UUID, Vorarlberg by a folder id.
+ */
+const NUMBER_RE: Partial<Record<LandCode, RegExp>> = { bgld: BGLD_NUMBER_RE, noe: NOE_NUMBER_RE, stmk: STMK_NUMBER_RE, vbg: VBG_NUMBER_RE }
+
+/** Whether `number` can be a draft of `land` at all — the routes answer 404 before reading anything. */
+export function isLandNumber(land: LandCode, number: string): boolean {
+  return (NUMBER_RE[land] ?? LAND_NUMBER_RE).test(number)
+}
 
 /**
  * One draft, as its page reads it: the Land's record, the title search's

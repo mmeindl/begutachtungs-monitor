@@ -27,7 +27,7 @@ export type LandDraftRecord = Omit<LandDraftDetail, 'comparisons'>
 
 /** Who publishes a Land's Landtag documents, for the credit line. */
 /* Kärnten publishes its Vorlagen and the Landtag's Beschlüsse on the Land's own pages (`kaernten.ts`). */
-const LANDTAG: Record<LandCode, string> = { ktn: 'Land Kärnten', ooe: 'Oö. Landtag', sbg: 'Salzburger Landtag', t: 'Tiroler Landtag', w: 'Wiener Landtag' }
+const LANDTAG: Record<LandCode, string> = { bgld: 'Burgenländischer Landtag', ktn: 'Land Kärnten', noe: 'NÖ Landtag', ooe: 'Oö. Landtag', sbg: 'Salzburger Landtag', stmk: 'Landtag Steiermark', t: 'Tiroler Landtag', vbg: 'Vorarlberger Landtag', w: 'Wiener Landtag' }
 
 /** Whose committee report carries the law text as the committee passed it. */
 const REPORT_HAS_TEXT: Partial<Record<LandCode, true>> = { ooe: true }

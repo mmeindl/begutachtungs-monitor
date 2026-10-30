@@ -40,7 +40,8 @@ import { lgblEliUrl } from '#shared/utils/citations'
 import { safeExternalUrl } from '#shared/utils/safeExternalUrl'
 import { decodeEntities } from '../parliament/htmlText'
 import { classifySubmitter } from '../parliament/privacy'
-import { USER_AGENT } from '../upstream/fetch'
+import type { UpstreamPolicy } from '../upstream/fetch'
+import { LandSession, pageForms, postbackDocument, type Postback } from './session'
 import { LandSourceError } from './gate'
 
 export const TIROL_LIST = 'https://www.tirol.gv.at/buergerservice/landesgesetze-verordnungen-und-richtlinien/gesetzentwuerfe-in-begutachtung/'
@@ -266,8 +267,7 @@ export function parseTirolRecord(html: string, recordUrl: string): TirolRecord {
  * The documents (see the module's head)
  * ------------------------------------------------------------------ */
 
-const DOC_TIMEOUT_MS = 30_000
-const DOC_MAX_BYTES = 30 * 1024 * 1024
+const DOC_POLICY: UpstreamPolicy = { timeoutMs: 30_000, retries: 1, maxBytes: 30 * 1024 * 1024 }
 
 /** Whether a URL is a Tirol document in the form `tirolDocumentUrl` makes it. */
 export function isTirolDocumentUrl(url: string): boolean {
@@ -279,79 +279,21 @@ export function isTirolDocumentUrl(url: string): boolean {
   }
 }
 
-function cookieOf(res: Response, jar: Map<string, string>) {
-  for (const c of res.headers.getSetCookie?.() ?? []) {
-    const [pair] = c.split(';')
-    const eq = pair!.indexOf('=')
-    if (eq > 0) jar.set(pair!.slice(0, eq).trim(), pair!.slice(eq + 1).trim())
-  }
-}
-
-async function step(url: string, jar: Map<string, string>, init: RequestInit = {}): Promise<Response> {
-  const headers = new Headers(init.headers)
-  headers.set('user-agent', USER_AGENT)
-  if (jar.size) headers.set('cookie', [...jar].map(([k, v]) => `${k}=${v}`).join('; '))
-  const res = await fetch(url, { ...init, headers, redirect: 'manual', signal: AbortSignal.timeout(DOC_TIMEOUT_MS) })
-  cookieOf(res, jar)
-  return res
-}
-
-/** Follow redirects by hand — on the Landtag's host only — keeping the session. */
-async function follow(url: string, jar: Map<string, string>, init: RequestInit = {}): Promise<{ res: Response; url: string }> {
-  let current = url
-  let res = await step(current, jar, init)
-  for (let hops = 0; res.status >= 300 && res.status < 400 && hops < 5; hops++) {
-    const next = new URL(res.headers.get('location') ?? '', current)
-    if (next.origin !== LTE) throw new Error(`Tirol: Weiterleitung auf ${next.host}`)
-    current = next.href
-    res = await step(current, jar)
-  }
-  return { res, url: current }
-}
-
-/** One attribute's value in a tag, whatever the attributes' order. */
-function attr(tag: string, name: string): string | undefined {
-  return new RegExp(`\\s${name}="([^"]*)"`).exec(tag)?.[1]
-}
-
-/** One document of a Gegenstand, by its name — a session of its own per call. */
-export async function tirolDocumentBytes(url: string): Promise<Uint8Array> {
-  if (!isTirolDocumentUrl(url)) throw new Error('Tirol: keine Dokumentadresse')
-  const u = new URL(url)
-  const label = decodeURIComponent(u.hash.slice('#dok='.length))
-  u.hash = ''
-  const jar = new Map<string, string>()
-  const { res: pageRes, url: pageUrl } = await follow(u.href, jar)
-  if (!pageRes.ok) throw new Error(`Tirol: Landtagsseite ${pageRes.status}`)
-  const html = (await pageRes.text()).replace(/<script\b[\s\S]*?<\/script>/g, '')
-  const forms = [...html.matchAll(/(<form\b[^>]*>)([\s\S]*?)<\/form>/g)]
-  for (const [, open, body] of forms) {
-    const name = attr(open!, 'name')
-    const action = attr(open!, 'action')
-    if (!name || !action) continue
-    for (const row of body!.matchAll(/<a\b[^>]*onclick="PrimeFaces\.addSubmitParam\('([^']+)',\{'([^']+)':'[^']+'\}\)[^"]*"[^>]*>([\s\S]*?)<\/a>/g)) {
+/** The Landtag's link to a document: a PrimeFaces command link, its label the document's name. */
+function tirolPostback(html: string, label: string): Postback | null {
+  for (const form of pageForms(html)) {
+    for (const row of form.body.matchAll(/<a\b[^>]*onclick="PrimeFaces\.addSubmitParam\('([^']+)',\{'([^']+)':'[^']+'\}\)[^"]*"[^>]*>([\s\S]*?)<\/a>/g)) {
       const rowLabel = text(row[3]!.replace(/<span[^>]*>(?:file_pdf|file_word|file_excel)<\/span>/g, ''))
-      if (row[1] !== name || rowLabel !== label) continue
-      const form = new URLSearchParams()
-      for (const [input] of body!.matchAll(/<input\b[^>]*type="hidden"[^>]*>/g)) {
-        const field = attr(input, 'name')
-        if (field) form.set(decodeEntities(field), decodeEntities(attr(input, 'value') ?? ''))
-      }
-      form.set(row[2]!, row[2]!)
-      const { res } = await follow(new URL(decodeEntities(action!), pageUrl).href, jar, {
-        method: 'POST',
-        headers: { 'content-type': 'application/x-www-form-urlencoded' },
-        body: form,
-      })
-      if (!res.ok || !/application\/pdf/.test(res.headers.get('content-type') ?? '')) throw new Error(`Tirol: Dokument „${label}" ${res.status}`)
-      const declared = Number(res.headers.get('content-length') ?? 0)
-      if (declared > DOC_MAX_BYTES) throw new Error(`Tirol: Dokument „${label}" zu groß`)
-      const bytes = new Uint8Array(await res.arrayBuffer())
-      if (bytes.length > DOC_MAX_BYTES) throw new Error(`Tirol: Dokument „${label}" zu groß`)
-      return bytes
+      if (row[1] === form.name && rowLabel === label) return { form, param: row[2]! }
     }
   }
-  throw new Error(`Tirol: Dokument „${label}" nicht auf der Landtagsseite`)
+  return null
+}
+
+/** One document of a Gegenstand, by its name — a session of its own per call (`laender/session.ts`). */
+export async function tirolDocumentBytes(url: string): Promise<Uint8Array> {
+  if (!isTirolDocumentUrl(url)) throw new Error('Tirol: keine Dokumentadresse')
+  return postbackDocument(new LandSession(LTE, DOC_POLICY), url, tirolPostback)
 }
 
 /* ------------------------------------------------------------------ *

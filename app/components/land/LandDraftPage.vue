@@ -217,7 +217,7 @@ useSeoMeta({ ogTitle: () => draft.value?.title ?? 'Entwurf', ogType: 'article' }
               Stellungnahmen gehen über das Formular des Landes.
             </template>
             <template v-else>
-              Wohin eine Stellungnahme geht, steht im Entwurf.
+              Wohin eine Stellungnahme geht, steht {{ detail.filing.in ?? 'im Entwurf' }}.
             </template>
             <template v-if="publicationNote">{{ ` ${publicationNote}` }}</template>
           </p>
@@ -312,6 +312,7 @@ useSeoMeta({ ogTitle: () => draft.value?.title ?? 'Entwurf', ogType: 'article' }
             <LandStatements
               :statements="detail.statements"
               :statements-url="detail.statementsUrl"
+              :statements-gap="detail.statementsGap"
               :active="detail.draft.active || !!detail.draft.fristUnknown"
               :publication-note="publicationNote"
               :land-name="landName"

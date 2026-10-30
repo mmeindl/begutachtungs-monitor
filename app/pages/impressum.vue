@@ -276,10 +276,13 @@ usePageSeo({
           </dd>
         </div>
         <!-- The Länder since 22.10.2026 (Salzburg, then Wien and
-             Oberösterreich the same day; Kärnten and Tirol on 23.10.2026),
+             Oberösterreich the same day; Kärnten and Tirol on 23.10.2026;
+             Burgenland, Niederösterreich, Steiermark and Vorarlberg on
+             30.10.2026),
              read off each Land's own list
-             (`server/utils/laender/`). No licence claimed: none is stated
-             for those lists. What the monitor takes is a title, a date and a
+             (`server/utils/laender/`). No licence claimed where none is
+             stated for those lists — Wien states CC BY 4.0 for its pages
+             since its relaunch (seen 30.10.2026), and the entry says how far. What the monitor takes is a title, a date and a
              link — the documents stay on the Land's site. -->
         <div>
           <dt>
@@ -306,10 +309,14 @@ usePageSeo({
             Adresse und die einreichenden Organisationen der veröffentlichten
             Stellungnahmen, von
             <ExternalLink
-              href="https://www.wien.gv.at/recht/landesrecht-wien/begutachtung/"
+              href="https://www.wien.gv.at/recht/landesgesetze-entwuerfe"
               class="link-inline"
-            >wien.gv.at</ExternalLink>. Eine Open-Data-Lizenz weist die Stadt
-            für diese Seiten nicht aus; Entwürfe und Stellungnahmen verlinkt
+            >wien.gv.at</ExternalLink>. Die Stadt stellt diese Seiten unter
+            <ExternalLink
+              href="https://creativecommons.org/licenses/by/4.0/deed.de"
+              class="link-inline"
+            >CC BY 4.0</ExternalLink> bereit; ob das auch für die verlinkten
+            Entwürfe und Stellungnahmen gilt, sagen sie nicht. Diese verlinkt
             der Monitor bei der Stadt.
           </dd>
         </div>
@@ -375,6 +382,67 @@ usePageSeo({
             Veröffentlichung, zuständige Abteilung, Dokumente und die einreichenden
             Organisationen der Stellungnahmen. Ihre Dokumente stellt das Land dort
             unter CC BY 4.0 bereit.
+          </dd>
+        </div>
+        <div>
+          <dt>
+            Land Burgenland, Begutachtungsentwürfe
+          </dt>
+          <dd>
+            Titel, Ende der Begutachtungsfrist und Dokumente der laufenden und
+            abgeschlossenen Begutachtungen seit 2007 sowie die einreichenden
+            Organisationen der veröffentlichten Stellungnahmen, von
+            <ExternalLink
+              href="https://apps.bgld.gv.at/web/landesrecht.nsf/begutachtungen_aktuell.xsp"
+              class="link-inline"
+            >apps.bgld.gv.at</ExternalLink>. Eine Open-Data-Lizenz weist das Land
+            für diese Seiten nicht aus; Dokumente verlinkt der Monitor beim Land.
+          </dd>
+        </div>
+        <div>
+          <dt>
+            Land Niederösterreich, Bürgerbegutachtung
+          </dt>
+          <dd>
+            Titel, Ende der Begutachtungsfrist, Dokumente und die Adresse für
+            Stellungnahmen der laufenden Begutachtungen, von
+            <ExternalLink
+              href="https://www.noe.gv.at/noe/Kontakt-Landesverwaltung/Buergerbegutachtung.html"
+              class="link-inline"
+            >noe.gv.at</ExternalLink>. Eine Open-Data-Lizenz weist das Land für
+            diese Seiten nicht aus; Dokumente verlinkt der Monitor beim Land.
+          </dd>
+        </div>
+        <div>
+          <dt>
+            Landtag Steiermark, Begutachtungsverfahren (§ 24 GeoLT iVm Art 68 L-VG)
+          </dt>
+          <dd>
+            Titel, Beginn und Ende der Begutachtungsfrist, die Dokumente und die
+            einreichenden Organisationen der Stellungnahmen der Entwürfe, die die
+            Landesregierung dem Landtag seit Juni 2015 zur Begutachtung
+            übermittelt hat, aus
+            <ExternalLink
+              href="https://pallast2.stmk.gv.at/pallast-p/pub/documents?type=BEGUTACHTUNGSVERFAHREN&sort=tssubmit&order=desc"
+              class="link-inline"
+            >PALLAST</ExternalLink>, dem Dokumentensystem des Landtags. Eine
+            Open-Data-Lizenz weist der Landtag für diese Seiten nicht aus;
+            Dokumente verlinkt der Monitor auf die Seite des Entwurfs im
+            Landtag, weil sie dort keine eigene Adresse haben.
+          </dd>
+        </div>
+        <div>
+          <dt>
+            Land Vorarlberg, aktuelle Begutachtungsentwürfe
+          </dt>
+          <dd>
+            Titel, Ende der Begutachtungsfrist und Dokumente der laufenden
+            Begutachtungen, von
+            <ExternalLink
+              href="https://vorarlberg.at/-/aktuelle-begutachtungsverfahren"
+              class="link-inline"
+            >vorarlberg.at</ExternalLink>. Eine Open-Data-Lizenz weist das Land
+            für diese Seite nicht aus; Dokumente verlinkt der Monitor beim Land.
           </dd>
         </div>
       </dl>

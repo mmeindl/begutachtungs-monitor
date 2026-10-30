@@ -32,6 +32,12 @@ const props = defineProps<{
   statements: LandStatement[] | null
   /** The Land's own page of them. */
   statementsUrl: string | null
+  /**
+   * Why there are none to show although the Land may publish some, where
+   * the monitor does not read them (`LandDraftDetail.statementsGap`):
+   * said instead of „keine veröffentlicht", which would be untrue.
+   */
+  statementsGap?: string | null
   /** The Begutachtung still runs: „noch keine" rather than „keine". */
   active: boolean
   /** The Land's rule for publishing, where it states one. */
@@ -81,7 +87,10 @@ const { visible, shown, more, all: showAll } = usePagedList(filtered, STATEMENT_
 
 <template>
   <PageSubsection heading="Stellungnahmen">
-    <p v-if="statements === null" class="text-sm text-ink-secondary">
+    <p v-if="statementsGap" class="text-sm text-ink-secondary">
+      {{ statementsGap }}
+    </p>
+    <p v-else-if="statements === null" class="text-sm text-ink-secondary">
       <template v-if="statementsUrl">
         Gerade nicht abrufbar –
         <ExternalLink :href="statementsUrl" class="link-inline font-medium">beim Land nachsehen</ExternalLink>.
