@@ -192,7 +192,10 @@ export function resolveBoundaries(candidates: readonly BoundaryCandidate[], arti
 
   // Nothing survived. Either there was nothing to find, or the annex does not
   // mark what the draft says is there.
-  if (candidates.some((c) => c.numeral !== null) && numbered.length === 0) {
+  // Roman numerals do not count here either, for the reason above: 40/ME and
+  // 75/ME XXVIII amend one law each, which divides itself into „Artikel I"
+  // and „Artikel II", and were refused as undivided packages (30.10.2026).
+  if (candidates.some((c) => c.numeral !== null && !isRoman(c.numeral)) && numbered.length === 0) {
     // The cross-check is symmetric, and here it indicts the draft: the annex
     // is divided into Artikel that the draft's own parse does not know about.
     return { accepted, whole: null, refusal: 'Die Beilage ist in Artikel gegliedert, der Entwurf nicht; die Paragraphen lassen sich darum keinem einzelnen Gesetz zuordnen.' }

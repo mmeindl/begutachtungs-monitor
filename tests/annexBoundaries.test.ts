@@ -160,6 +160,15 @@ describe('resolveBoundaries', () => {
     expect(refusal).toContain('Die Beilage ist in Artikel gegliedert, der Entwurf nicht')
   })
 
+  // 40/ME XXVIII: the one law the draft amends divides itself into Artikel I
+  // and II. That is no package the draft parse missed.
+  it('files a one-law draft whole although its law is divided into Roman Artikel', () => {
+    const one = draft({ title: 'Bundesgesetz, mit dem das Lebensmittelbewirtschaftungsgesetz 1997 geändert wird' })
+    const { whole, refusal } = resolveBoundaries(cands('Artikel I', 'Artikel II'), one)
+    expect(refusal).toBeNull()
+    expect(whole).toBe(one[0])
+  })
+
   it('leaves a Stammgesetz without a law rather than inventing one', () => {
     const stamm = draft({ n: '1', title: 'Bundesgesetz über die Bundesstaatsanwaltschaft', amends: false }, { n: '2', title: 'Änderung des Aktiengesetzes', amends: false })
     expect(resolveBoundaries([], stamm).whole).toBeNull()
