@@ -47,6 +47,23 @@ export interface LandConsultation {
    */
   placedAt?: string
   /**
+   * The Begutachtung is the Landtag's, not the Landesregierung's: a
+   * committee sent a bill before it — a Selbständiger Antrag, never a
+   * Regierungsvorlage — out for comment (Kärnten, § 18a K-LTGO, 30.10.2026).
+   * The draft then has no Vorlage to come, and the rows name the Landtag
+   * where they name the Land. For such a draft `placedAt` is the day the
+   * committee decided the Begutachtung.
+   */
+  runBy?: 'landtag'
+  /**
+   * Listed among the Land's RUNNING Begutachtungen without a Frist — a
+   * Begutachtung of Kärnten's Landtag, whose six weeks stand only in the
+   * letter and run from a day it cannot know (30.10.2026). Open while it
+   * stands there, closed once it does not: the list is the evidence, the row
+   * says „Frist läuft". Not `fristUnknown`, which is neither open nor closed.
+   */
+  listedRunning?: true
+  /**
    * Where the Land sets no day for the Frist but a span from its cover
    * letter (Kärnten's Verordnungen: „innerhalb von vier Wochen ab
    * Zustellung", 23.10.2026): the letter's date and the span. `deadline` is

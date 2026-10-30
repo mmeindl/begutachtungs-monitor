@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import type { DraftDocument, LandCode, LandDraftDetail } from '#shared/types'
 import type { Fact } from '~/components/ui/FactList.vue'
-import { LAND_HOST, LAND_NAME, LAND_PUBLICATION_NOTE, landDraftPath, landShortTitle } from '#shared/utils/laender'
+import { LAND_HOST, LAND_NAME, LAND_PUBLICATION_NOTE, landDraftPath, landPublisherDe, landShortTitle } from '#shared/utils/laender'
 import { RIS_KIND_LABEL } from '#shared/utils/risConsultations'
 import { citeLineDe } from '#shared/utils/citations'
 import { formatDateDe } from '#shared/utils/format'
@@ -84,7 +84,7 @@ const draft = computed(() => data.value?.draft ?? null)
    whole title then stands under it, as on the RIS page. */
 const shortTitle = computed(() => (draft.value ? landShortTitle(draft.value.title) : null))
 const kindLabel = computed(() => (draft.value ? RIS_KIND_LABEL[draft.value.kind] : ''))
-const citeAs = computed(() => (draft.value ? `${kindLabel.value} „${draft.value.title}“ (Land ${landName.value})` : ''))
+const citeAs = computed(() => (draft.value ? `${kindLabel.value} „${draft.value.title}“ (${landPublisherDe(draft.value)})` : ''))
 
 /* The Land's Textgegenüberstellung, where the server offers it (`LandDraftDetail.comparisons`). */
 const hasTgu = computed(() => (data.value?.comparisons ?? []).some(([a, b]) => a === 'geltend' && b === 'entwurf'))
@@ -174,10 +174,11 @@ useSeoMeta({ ogTitle: () => draft.value?.title ?? 'Entwurf', ogType: 'article' }
               <CiteButton :text="citeLineDe(citeAs, detail.draft.url)" subject="Den Entwurf" />
             </span>
           </template>
-          <!-- The Land stands where a Bund draft names its Ministerium. -->
+          <!-- The Land stands where a Bund draft names its Ministerium — or
+               its Landtag, where the Begutachtung is the Landtag's (`runBy`). -->
           <template #identity>
             <span class="text-sm font-medium text-ink-muted">
-              {{ kindLabel }} · Land {{ landName }}
+              {{ kindLabel }} · {{ draft ? landPublisherDe(draft) : `Land ${landName}` }}
             </span>
           </template>
           <p v-if="shortTitle" class="mt-1 text-sm text-ink-secondary">
@@ -304,6 +305,16 @@ useSeoMeta({ ogTitle: () => draft.value?.title ?? 'Entwurf', ogType: 'article' }
                  not left blank. -->
             <p v-else-if="!fristFacts.length && detail.draft.startedAt" class="text-sm text-ink-secondary">
               In Begutachtung gegangen am {{ formatDateDe(detail.draft.startedAt) }}. Die Frist nennt das Land nicht mehr.
+            </p>
+            <!-- The Landtag's own Begutachtung (`runBy`, Kärnten § 18a K-LTGO):
+                 its committee sent an Antrag out through the Verfassungsdienst,
+                 and the date that places it is that decision, read off the
+                 president's letter — never a Regierungsvorlage, which an
+                 Antrag does not have. -->
+            <p v-else-if="!fristFacts.length && detail.draft.runBy === 'landtag'" class="text-sm text-ink-secondary">
+              Diese Begutachtung führt der Landtag: Sein Ausschuss hat den Antrag<template v-if="detail.draft.placedAt">
+                am {{ formatDateDe(detail.draft.placedAt) }}</template> in Begutachtung geschickt, versandt hat ihn der
+              Verfassungsdienst. Beginn und Frist nennt das Land nicht.
             </p>
             <p v-else-if="!fristFacts.length" class="text-sm text-ink-secondary">
               Weder Beginn noch Frist dieser Begutachtung nennt das Land<template v-if="detail.draft.placedAt">; in der Liste steht der Entwurf beim Datum seiner Regierungsvorlage</template>.

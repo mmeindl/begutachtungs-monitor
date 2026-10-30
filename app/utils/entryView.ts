@@ -53,7 +53,7 @@ import { type DeadlineTone, deadlineTone, fristClassLineDe, isNewArrival, isWith
 import { bgblShort, formatDateDe, formatDateWeekdayDe, fristEndedDe, fristLabel, todayIso } from '#shared/utils/format'
 import { promulgationState } from '#shared/utils/promulgation'
 import { RIS_KIND_LABEL } from '#shared/utils/risConsultations'
-import { LAND_NAME, landDraftPath, landShortTitle } from '#shared/utils/laender'
+import { LAND_NAME, landDraftPath, landPublisherDe, landShortTitle } from '#shared/utils/laender'
 
 /**
  * Zone 3 — what was filed in this Verfahren.
@@ -557,7 +557,7 @@ export function viewOfLand(c: LandConsultation): EntryView {
     titleFull: c.title,
     kindLabel: RIS_KIND_LABEL[c.kind],
     citation: null,
-    ministry: { code: name, name: `Land ${name}` },
+    ministry: { code: name, name: landPublisherDe(c) },
     coMinistries: [],
     alias: null,
     // No Frist class: „kurz" and „voll" are measured against the Bund's

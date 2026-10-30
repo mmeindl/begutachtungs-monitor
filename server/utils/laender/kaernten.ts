@@ -58,8 +58,13 @@ export const ktnArchiveUrl = (year: number) => `${BASE}abgeschlossene%20Begutach
 export const ktnVorlagenUrl = (year: number) => `${BASE}Regierungsvorlagen%20${year}`
 export const ktnBeschluesseUrl = (year: number) => `${BASE}Gesetzesbeschl%c3%bcsse%20${year}`
 
-/** A Kärnten draft number: Akt, year where the Land wrote one, and Stück — „113253-2025-38", „1994-6". */
-export const KTN_NUMBER_RE = /^\d{1,7}-(?:20\d{2}-)?\d{1,4}$/
+/**
+ * A Kärnten draft number: Akt, year where the Land wrote one, and Stück —
+ * „113253-2025-38", „1994-6"; or, for a Begutachtung of the Landtag's own
+ * whose files carry no Geschäftszahl of the Land, its Landtag Zahl — „lt17-2-33"
+ * for Ldtgs.Zl. 17-2/33 (`landtagZahlOf`).
+ */
+export const KTN_NUMBER_RE = /^(?:\d{1,7}-(?:20\d{2}-)?\d{1,4}|lt\d{1,3}-\d{1,3}-\d{1,4})$/
 
 /* „LG-113253_2025-38", „LG-11829_2023-26", „LG-104907-2025-32". */
 const GZ_RE = /LG-(\d{1,7})[-_](20\d{2})-(\d{1,4})(?!\d)/
@@ -137,6 +142,23 @@ function tokens(content: string): Token[] {
 
 const TITLE_RE = /^Entwurf\s+(?:eines|einer)\s+Gesetz/
 
+/**
+ * A Begutachtung the Landtag runs (§ 18a K-LTGO, since LGBl. 20/2022): a
+ * committee sends a Selbständiger Antrag out „im Wege des
+ * Verfassungsdienstes", which lists it among the Land's own, its title
+ * ending „(Ausschuss-Begutachtung)" and its one document „Selbständiger
+ * Antrag samt Gesetz und Erläuterungen" — the Landtag president's letter
+ * with the Antrag behind it. Two since 2022 (2023, 2025; 30.10.2026).
+ */
+const LANDTAG_MARK_RE = /\s*\(Ausschuss-Begutachtung\)\s*$/
+
+/** „17-2-33 DU an Verfassungsdienst….pdf" → „lt17-2-33": the Landtag Zahl the letter's file is named by. */
+function landtagZahlOf(url: string): string | null {
+  const name = decodeURIComponent(new URL(url).pathname).split('/').at(-1) ?? ''
+  const m = /^(\d{1,3})-(\d{1,3})-(\d{1,4})(?!\d)/.exec(name)
+  return m ? `lt${m[1]}-${m[2]}-${m[3]}` : null
+}
+
 function linksOf(html: string): { label: string; url: string }[] {
   // `href` need not come first: Abteilung 6 writes `<a target="_new" href=…>`.
   return [...html.matchAll(/<a\b[^>]*?\shref="([^"]+)"[^>]*>([\s\S]*?)<\/a>/g)].flatMap((m) => {
@@ -173,7 +195,8 @@ export function parseKtnList(html: string, { requireFrist }: { requireFrist: boo
   for (let i = 0; i < all.length; i++) {
     if (all[i]!.kind !== 'p' || !TITLE_RE.test(all[i]!.text)) continue
     // „Entwurf eines Gesetzes, mit dem …": the title as the other Länder write it, „Gesetz, mit dem …".
-    const title = all[i]!.text.replace(/^Entwurf\s+eine[sr]\s+Gesetze?s\b/, 'Gesetz')
+    const byLandtag = LANDTAG_MARK_RE.test(all[i]!.text)
+    const title = all[i]!.text.replace(LANDTAG_MARK_RE, '').replace(/^Entwurf\s+eine[sr]\s+Gesetze?s\b/, 'Gesetz')
     let deadline: string | null = null
     const documents: LandDocument[] = []
     let statementsUrl: string | null = null
@@ -184,11 +207,16 @@ export function parseKtnList(html: string, { requireFrist }: { requireFrist: boo
         else if (isPdf(link.url)) documents.push({ title: documentTitle(link.label), url: link.url })
       }
     }
-    if (requireFrist && !deadline) throw new LandSourceError('ktn', `Entwurf „${title.slice(0, 40)}" ohne Frist`)
+    // A Frist the running list must carry — except for the Landtag's own
+    // Begutachtung, whose span stands only in the letter (`listedRunning`):
+    // a draft of the Landesregierung without one is a page that changed.
+    if (requireFrist && !deadline && !byLandtag) throw new LandSourceError('ktn', `Entwurf „${title.slice(0, 40)}" ohne Frist`)
     const gz = [...documents.filter((d) => d.title === 'Entwurf'), ...documents].map((d) => ktnGzOf(d.url)).find(Boolean) ??
       (statementsUrl ? ktnGzOf(statementsUrl) : null)
-    if (!gz || !documents.length) continue
-    const number = numberOf(gz)
+    // The Land's Geschäftszahl where a file carries one — it keeps the 2023
+    // Ausschuss-Begutachtung at the address it had —, else the Landtag's.
+    const number = gz ? numberOf(gz) : byLandtag ? documents.map((d) => landtagZahlOf(d.url)).find(Boolean) ?? null : null
+    if (!number || !documents.length) continue
     out.push({
       draft: {
         id: `ktn-${number}`,
@@ -200,6 +228,8 @@ export function parseKtnList(html: string, { requireFrist }: { requireFrist: boo
         url: documents[0]!.url,
         documents,
         active: false,
+        ...(byLandtag ? { runBy: 'landtag' as const } : {}),
+        ...(byLandtag && requireFrist && !deadline ? { listedRunning: true as const } : {}),
       },
       statementsUrl,
     })
@@ -493,6 +523,24 @@ export function ktnVoLetter(text: string): { date: string | null; weeks: number 
     date: d && month ? isoOf(d[1]!, month, d[3]!) : null,
     weeks: span ? (WEEKS[span] ?? (/^\d+$/.test(span) ? Number(span) : null)) : null,
   }
+}
+
+/**
+ * The day a Landtag committee decided its Begutachtung, from the Landtag
+ * president's letter to the Verfassungsdienst: „hat sich in seiner 30.
+ * Sitzung am 26. Juni 2025 … befasst", else the letter's own date
+ * („Klagenfurt am WS, 26.06.2025"). Not the Frist's start: the letter asks
+ * the Verfassungsdienst to send the draft out, and the span („mit einer
+ * Dauer von sechs Wochen") runs from a day the letter cannot know. The 2023
+ * letter is a scan without text: null.
+ */
+export function ktnLandtagLetter(text: string): { decidedAt: string | null } {
+  const flat = text.replace(/\s+/g, ' ')
+  const sitting = /Sitzung am (\d{1,2})\.\s?(\d{1,2}\.|[A-ZÄ][a-zä]+)\s?(\d{4})/.exec(flat)
+  const month = sitting ? (/^\d/.test(sitting[2]!) ? sitting[2]!.replace('.', '') : MONTHS[sitting[2]!.toLowerCase()]) : undefined
+  if (sitting && month) return { decidedAt: isoOf(sitting[1]!, month, sitting[3]!) }
+  const dated = /Klagenfurt am [^,]{0,30}, (\d{1,2})\.(\d{1,2})\.(\d{4})/.exec(flat)
+  return { decidedAt: dated ? isoOf(dated[1]!, dated[2]!, dated[3]!) : null }
 }
 
 /** The letter's date plus its span, the day the Frist ends by its own rule. */

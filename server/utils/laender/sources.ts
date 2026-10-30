@@ -68,6 +68,7 @@ import {
   ktnVoDeadline,
   ktnVoDetailUrl,
   ktnVoLetter,
+  ktnLandtagLetter,
   ktnVorlagenUrl,
   parseKtnBeschluesse,
   parseKtnVoDetail,
@@ -495,14 +496,24 @@ async function ktnAll(): Promise<{ entry: KtnEntry; draft: LandConsultation; cha
   const entries = [
     ...archive.map((e) => {
       const live = running.get(e.draft.id)
-      return live ? { ...e, draft: { ...e.draft, deadline: live.draft.deadline } } : e
+      // On both: closed this week — unless the running list still holds it without a Frist (`listedRunning`).
+      return live ? { ...e, draft: { ...e.draft, deadline: live.draft.deadline, ...(live.draft.listedRunning ? { listedRunning: true as const } : {}) } } : e
     }),
     ...current.filter((e) => !archived.has(e.draft.id)),
   ].filter((e, i, all) => all.findIndex((o) => o.draft.id === e.draft.id) === i)
   const numbers = entries.map((e) => e.draft.id.slice('ktn-'.length))
   const next = ktnNextStuecke(numbers)
-  return entries.map((entry, i) => {
+  return Promise.all(entries.map(async (entry, i) => {
     const number = numbers[i]!
+    /* The Landtag's own Begutachtung (`runBy`): a Selbständiger Antrag has
+     * no Vorlage, and its Akt's Stücke are the Land's — a join could only
+     * hand it someone else's. Placed by the day the committee decided it,
+     * read off the letter; a letter without text leaves it undated. */
+    if (entry.draft.runBy === 'landtag') {
+      const letter = await ktnLandtagLetterOf(entry.draft.url).catch(() => null)
+      const draft: LandConsultation = { ...entry.draft, ...(letter?.decidedAt ? { placedAt: letter.decidedAt } : {}) }
+      return { entry, draft, chain: KTN_NO_CHAIN }
+    }
     const chain = ktnChainOf({ ...ktnPartsOfNumber(number), nextStueck: next.get(number)!, title: entry.draft.title }, vorlagen, beschluesse, index)
     // Without the Landesgesetzblatt a decided draft may well be kundgemacht: unknown, not „im Landtag".
     const stage = !index && chain.stage?.station === 'parlament' ? ('unknown' as const) : chain.stage
@@ -514,8 +525,16 @@ async function ktnAll(): Promise<{ entry: KtnEntry; draft: LandConsultation; cha
       ...(!entry.draft.startedAt && !entry.draft.deadline && rv?.date ? { placedAt: rv.date } : {}),
     }
     return { entry, draft, chain }
-  })
+  }))
 }
+
+const KTN_NO_CHAIN: ReturnType<typeof ktnChainOf> = { procedure: [], stage: null, landtag: null, documents: [] }
+
+/** The Landtag president's letter, for the day its committee decided the Begutachtung (`ktnLandtagLetter`). A day, as the Verordnungen' letters. */
+const ktnLandtagLetterOf = defineCachedFunction(
+  async (url: string) => ktnLandtagLetter((await pdfPages(url)).join('\n')),
+  { name: 'ktn-landtag-letter', base: DERIVED_CACHE, getKey: urlKey, maxAge: 60 * 60 * 24, swr: true },
+)
 
 /**
  * A Verordnung's cover letter as the draft needs it: its date and the span
@@ -1100,11 +1119,12 @@ async function withLgblSearch(land: LandCode, drafts: LandConsultation[]): Promi
 
 /**
  * Whether a Frist runs on `day`: the Land's Frist decides, and a draft
- * without one (closed, read from a register) is not running. Decided per
- * request, never inside a cache (`withRisActiveOn`).
+ * without one (closed, read from a register) is not running — unless the
+ * Land lists it as running (`listedRunning`). Decided per request, never
+ * inside a cache (`withRisActiveOn`).
  */
 export function withLandActiveOn(items: LandConsultation[], day: string = todayIso()): LandConsultation[] {
-  return items.map((item) => ({ ...item, active: item.deadline !== null && item.deadline >= day }))
+  return items.map((item) => ({ ...item, active: item.deadline !== null ? item.deadline >= day : item.listedRunning === true }))
 }
 
 /**
@@ -1189,8 +1209,9 @@ export async function draftsSharingKundmachung(land: LandCode, nr: string, excep
  * (Landtag year and number) or `v560198` (a Verordnung's link id); Tirol
  * as Oberösterreich (`2026-722`); Kärnten with its Geschäftszahl,
  * `113253-2025-38` or, before 2022, `1994-6`, and a Verordnung by its
- * tile, `v1631`; a Tirol Verordnung by its register id, `v` + 32 hex digits. */
-export const LAND_NUMBER_RE = /^(?:\d{1,9}|20\d{2}-\d{1,6}|v\d{1,9}|v[0-9a-f]{32}|\d{1,7}-(?:20\d{2}-)?\d{1,4})$/
+ * tile, `v1631`, and a Begutachtung of its Landtag by the Landtag Zahl,
+ * `lt17-2-33`; a Tirol Verordnung by its register id, `v` + 32 hex digits. */
+export const LAND_NUMBER_RE = /^(?:\d{1,9}|20\d{2}-\d{1,6}|v\d{1,9}|v[0-9a-f]{32}|\d{1,7}-(?:20\d{2}-)?\d{1,4}|lt\d{1,3}-\d{1,3}-\d{1,4})$/
 
 /**
  * The four Länder read since 30.10.2026 number their own way, each held to

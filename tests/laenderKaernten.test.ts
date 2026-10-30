@@ -14,6 +14,8 @@ import {
   parseKtnVorlagen,
   ktnVoDeadline,
   ktnVoLetter,
+  ktnLandtagLetter,
+  KTN_NUMBER_RE,
   type KtnChainStep,
 } from '../server/utils/laender/kaernten'
 import { LandSourceError } from '../server/utils/laender/gate'
@@ -27,6 +29,8 @@ const VORLAGEN_2026 = fixture('kaernten-vorlagen-2026-2026-10-23.html')
 const BESCHLUESSE_2026 = fixture('kaernten-beschluesse-2026-2026-10-23.html')
 const BESCHLUESSE_2021 = fixture('kaernten-beschluesse-2021-2026-10-23.html')
 const STATEMENTS = fixture('kaernten-stellungnahmen-57687-2026-10-23.html')
+const ARCHIVE_2025 = fixture('kaernten-abgeschlossen-2025-2026-10-30.html')
+const ARCHIVE_2023 = fixture('kaernten-abgeschlossen-2023-2026-10-30.html')
 
 describe('Kärnten — the running list, as served on 23.10.2026', () => {
   it('reads every entry with its Frist, its documents and its Geschäftszahl', () => {
@@ -69,6 +73,45 @@ describe('Kärnten — the archive', () => {
     const statements = parseKtnStatements(STATEMENTS)
     expect(statements).toHaveLength(6)
     expect(statements[0]!.name).toBe('Bundesministerium für Inneres')
+  })
+})
+
+describe('Kärnten — the Landtag\'s own Begutachtung (§ 18a K-LTGO), as served on 30.10.2026', () => {
+  it('reads the 2025 one, whose files carry no Geschäftszahl, by its Landtag Zahl', () => {
+    const entries = parseKtnList(ARCHIVE_2025, { requireFrist: false })
+    expect(entries).toHaveLength(25)
+    const landtag = entries.filter((e) => e.draft.runBy === 'landtag')
+    expect(landtag.map((e) => e.draft.id)).toEqual(['ktn-lt17-2-33'])
+    expect(KTN_NUMBER_RE.test('lt17-2-33')).toBe(true)
+    // The marker is the list's, not the title's.
+    expect(landtag[0]!.draft.title).toBe('Gesetz, mit dem die Kärntner Landesverfassungund die Geschäftsordnung des Kärntner Landtages geändert werden')
+    expect(landtag[0]!.statementsUrl).toBeTruthy()
+  })
+
+  it('keeps the 2023 one at the address its Geschäftszahl gave it', () => {
+    const landtag = parseKtnList(ARCHIVE_2023, { requireFrist: false }).filter((e) => e.draft.runBy === 'landtag')
+    expect(landtag.map((e) => e.draft.id)).toEqual(['ktn-14792-2023-12'])
+  })
+
+  it('lets one stand on the running list without a Frist, and only one of the Landtag', () => {
+    // The running list as it would carry one: the archive's entry, on the current page.
+    const entry = /<div class="text">\s*<p>Entwurf eines Gesetzes, mit dem die Kärntner Landesverfassung[\s\S]*?<\/div>/.exec(ARCHIVE_2025)![0]
+    const withLandtag = CURRENT.replace('<!-- /CONTENT -->', `${entry}<!-- /CONTENT -->`)
+    const landtag = parseKtnList(withLandtag, { requireFrist: true }).find((e) => e.draft.runBy === 'landtag')!
+    expect(landtag.draft).toMatchObject({ id: 'ktn-lt17-2-33', deadline: null, listedRunning: true })
+    const unmarked = withLandtag.replace(' (Ausschuss-Begutachtung)', '')
+    expect(() => parseKtnList(unmarked, { requireFrist: true })).toThrow(LandSourceError)
+  })
+
+  it('marks no draft of the Landesregierung', () => {
+    expect(parseKtnList(ARCHIVE_2026, { requireFrist: false }).some((e) => e.draft.runBy)).toBe(false)
+  })
+
+  it('dates it by the committee\'s sitting, else by the letter, never by a Frist it cannot know', () => {
+    const ocr = 'zu Ldtgs.ZI. 17-2/33 … Klagenfurt am WS, 26.06.2025 Der Ausschuss für Recht, Verfassung, Immunität, Volksgruppen, Europa und Petitionen hat sich in seiner 30. Sitzung am 26. Juni 2025 unter anderem mit der im Betreff genannten Materie befasst. … mit einer Dauer von sechs Wochen'
+    expect(ktnLandtagLetter(ocr)).toEqual({ decidedAt: '2025-06-26' })
+    expect(ktnLandtagLetter('Klagenfurt am Wörthersee, 03.05.2023 … Begutachtungsverfahren')).toEqual({ decidedAt: '2023-05-03' })
+    expect(ktnLandtagLetter('')).toEqual({ decidedAt: null })
   })
 })
 

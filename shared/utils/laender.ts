@@ -195,3 +195,12 @@ export function landStationsReason(land: LandCode, stations: readonly DraftStati
     ? 'Diese Länder-Entwürfe verfolgt der Monitor nur in Begutachtung und Kundmachung'
     : 'Diese Länder-Entwürfe zeigt der Monitor nur, solange ihre Begutachtung läuft'
 }
+
+/**
+ * Who put a Land's draft out, as a row names it where a Bund draft names
+ * its Ministerium: the Land — or its Landtag, where a committee sent its own
+ * Antrag out for comment (`LandConsultation.runBy`, 30.10.2026).
+ */
+export function landPublisherDe(d: { land: LandCode; runBy?: 'landtag' }): string {
+  return `${d.runBy === 'landtag' ? 'Landtag' : 'Land'} ${LAND_NAME[d.land]}`
+}
