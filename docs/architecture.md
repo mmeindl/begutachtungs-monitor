@@ -54,6 +54,7 @@ payload:
 - **The allowlist carries an optional display name (2026-09-16).** Parliament stores the submitter in two fields shaped "Nachname, Vorname"; an organisation that fills them in comes back inverted ("Pressefreiheit, Institut für", "GmbH, Verkehrsverbund Ost-Region (VOR); …") and was printed that way for as long as the row was public. `ORG_ALLOWLIST` is a `Map`: the value is the name to print, `null` keeps the upstream string. A display name is a **de-inversion read off the same string**, never an invention and never a person's name. The 13 organisations whose staff registered privately — the flag's false vetoes — were added this way; each matched exactly one upstream string in GP XXVIII/XXVII and nothing else.
 - **Validation is a corpus comparison, not a unit test.** A change to `classifySubmitter` is run old-against-new over every list-142 row of a GP; every string that becomes public is read by hand (they must all be organisations), every string that becomes hidden is printed with its naming segment masked (they should all be persons). The 2026-09-15 change, final round: GP XXVIII 482 rows newly public (126 distinct strings), all institutions; 1 newly hidden, a lawyer filing with the firm. Six rounds were needed — each added pattern was tried against the corpus and three of them (`schule`, `österreichisch`, `hochschüler`) first let a person through in GP XXVII (a dotted degree that broke the title stripper, an all-lowercase name, two representatives filing jointly with a slash) before the guard learned those shapes.
 - **A stored name is held against today's classifier (2026-10-22).** The last-good store (`parliament/lastgood.ts`) serves rows an earlier process classified, and the classifier keeps tightening (23.09., 28.09., 30.09.) — a record outlives the rules that wrote it, and it is read exactly when list 142 has dropped a draft for days. So every stored name passes `recheckStoredStatement` (`parliament/list142.ts`) on the way out: it is served only where `classifySubmitter` still prints exactly that name — with the `TYP` flag the record now keeps beside each organisation's name, or on the string rules alone for older records. A name that fails is withheld, never shortened; the raw string it came from is gone. Measured on the 596 local records: 292 stored names withheld (289 of them in the 101 records of 18.09.), 0 of the 3,149 organisation rows written since 03.10.
+- **Page views are counted, visitors are not (30.10.2026, §12.65).** Daily sums per page class and per referring host; the user agent is read for one bot flag and dropped, no address, no hash, no cookie and no per-request line is ever stored.
 - SNME detail pages (incl. full texts) are **not fetched at all** in v1. Links point to parlament.gv.at (linking ≠ republishing).
 - Unit tests for the classifier are mandatory (`tests/privacy.test.ts`).
 
@@ -364,6 +365,7 @@ name has to stay globally unique.
 - `/ueber` **About**: mission, how it works, data source/license, GDPR stance (why no names of private persons), lineage (OffenesParlament.at), prototype status.
 - `/impressum` **Offenlegung under § 25 MedienG**, in full rather than under the "kleine Website" relief of § 25 Abs 5 — that relief is for sites without content capable of influencing public opinion, which is exactly this project's purpose, so claiming it would mean arguing against our own case. Carries the per-source licence list (`#imp-license`).
 - `/datenschutz` **Datenschutzerklärung (Art 13 and 14 GDPR)**, written by hand rather than generated: almost every standard clause (cookies, analytics, newsletter, social plugins, server logs) describes something this project does not do, and a statement claiming processing that does not happen is as wrong as one that conceals some.
+- `/statistik` **Page-view counts (30.10.2026, §12.65)**: the last 30 days, the top 20 referring hosts and the total since counting began, from `/api/statistik`; plain tables, no chart. What is counted and what not stands on `/datenschutz#dse-zaehlung`.
 - `/live` — **ended 22.10.2026.** The stable address behind one Demokratiewoche event (21.10.2026): the event facts, then a 302 into the video room. Page and `live.ics` are gone; the address 301s to `/`, because the event listing that links it is not ours to change (`nuxt.config.ts`).
 - `app/error.vue`: 404/500 in German, link to the home page.
 
@@ -586,7 +588,7 @@ vierzehn gerenderte Seiten ist die Prüfung, die man einmal am Tag macht.
 
 ## 10. Operations (v1)
 
-`npm run dev` (local), `npm run build` → `.output/` (Node server). Hosting (settled Aug 2026, §13.8): **netcup VPS pico G11s** (1 vCPU/1 GB, Ubuntu LTS, Nuremberg, DE) — Nitro bundle as a systemd service behind Caddy (auto-TLS). Build runs locally; the self-contained `.output/` is rsynced (no toolchain on the server; bootstrap adds a 1 GB swapfile). Runbook + scripts: `deploy/`; **live since 2026-08-26** — the inventory (domain/DNS at INWX, IPs, TLS, costs) is `deploy/infrastructure.md`. The one piece of persistent state is the last-good statements store in `/var/lib/begutachtungs-monitor` (systemd `StateDirectory=`, §5 cache rule 4) — losing it costs a degraded page, never data; there is nothing to back up.
+`npm run dev` (local), `npm run build` → `.output/` (Node server). Hosting (settled Aug 2026, §13.8): **netcup VPS pico G11s** (1 vCPU/1 GB, Ubuntu LTS, Nuremberg, DE) — Nitro bundle as a systemd service behind Caddy (auto-TLS). Build runs locally; the self-contained `.output/` is rsynced (no toolchain on the server; bootstrap adds a 1 GB swapfile). Runbook + scripts: `deploy/`; **live since 2026-08-26** — the inventory (domain/DNS at INWX, IPs, TLS, costs) is `deploy/infrastructure.md`. The one piece of persistent state is the last-good statements store in `/var/lib/begutachtungs-monitor` (systemd `StateDirectory=`, §5 cache rule 4) — losing it costs a degraded page, never data; there is nothing to back up. Beside it since 30.10.2026 the daily page-view files in `zaehlung/` (§12.65): sums only, no access log — Caddy still writes none, and the app logs no request; losing them costs the series, nothing else.
 
 **The deploy waits for the prewarm (25.09.2026).** `systemctl restart`
 empties every cache: in production Nitro mounts no storage, so both layers
@@ -698,7 +700,7 @@ Unit.
 **no** third-party resources — no web fonts (system sans), no icon/script
 CDNs (icons bundled from the locally installed `@iconify-json/lucide`,
 `icon.fallbackToApi: false` prevents runtime calls to api.iconify.design),
-no analytics, no cookies. The only upstream source: parlament.gv.at. Hosting
+no analytics service (page views are counted in-house as daily sums, §12.65), no cookies. The only upstream source: parlament.gv.at. Hosting
 only with **EU-owned providers** (no US hyperscaler, not even their EU
 regions — CLOUD Act). The build-time dependency on the npm registry remains
 (documented compromise; the mitigation would be an EU registry mirror).
@@ -14180,6 +14182,67 @@ blieben; die Stellungnahmen werden seither über ihren Dateinamen dem
 Entwurf zugeordnet (`2026003s1.pdf`), nicht über den Anker. Neu: Die Seiten
 stehen unter CC BY 4.0; ob das die PDFs umfasst, sagen sie nicht — das
 Impressum sagt genau das.
+
+### 12.65 Zählung der Seitenaufrufe ohne Personenbezug (30.10.2026)
+
+Der Monitor zählt seit heute Seitenaufrufe — als Summe je Seitenart und
+UTC-Tag, und sonst nichts. Bis gestern versprach `/datenschutz` „keine
+Reichweitenmessung“; das Versprechen ist geändert, nicht umgangen.
+
+**Warum Zahlen und keine Besucher.** Beide Förderwege fragen nach Wirkung
+(netidee, Stadt Wien), und „wird es gelesen“ ist die erste Wirkungsfrage.
+Eine Besucherzahl bräuchte aber einen Wiedererkennungswert — einen Hash aus
+IP-Adresse und User-Agent, wie ihn „cookielose“ Analytik bildet. Der ist
+pseudonym, nicht anonym, und hätte das Versprechen dem Wortlaut nach
+gehalten und dem Sinn nach gebrochen. Seitenaufrufe brauchen keinen: Jeder
+Aufruf erhöht eine Zahl, und aus der Zahl führt kein Weg zurück.
+
+**Was gezählt wird.** `server/plugins/zaehlung.ts` am `afterResponse`,
+die Regeln rein in `server/utils/zaehlung/`. Es zählt ein GET oder HEAD mit
+2xx oder 304, der von außen kam — durch Caddy, also mit X-Forwarded-For,
+und nicht als In-Process-Aufruf einer Seite; dieselbe Prüfung wie an der Tür
+(`http/rateLimit.ts`). Prewarm, Watchdog und Smoke-Test rufen 127.0.0.1
+ohne den Header und zählen nicht. Gezählt wird nur, was eine Seitenart hat
+(`klassen.ts`: Start, Liste, Entwurf Bund, Entwurf Land samt Landeskürzel,
+die vier Textseiten, Statistik, Feed, Kalender, die Frist-Kalender je
+Entwurf, `sonstige` für jede andere HTML-Antwort); API, Bundle, Schriften,
+Icons, robots.txt und Sitemap nie. Programme zählen getrennt: ein
+konservativer Ausdruck über den User-Agent, im Zweifel Programm, und eine
+Anfrage ohne User-Agent ist eines — ein Programm in der Leserzahl bläht
+sie auf, ein Leser in der Programmspalte verschiebt nur eine Zahl, die
+daneben veröffentlicht ist. Feedreader, die sich „fetcher“ nennen, landen
+dort, ebenso der Uptime-Test aus GitHub Actions (`curl`).
+
+**Herkunft.** Vom `Referer` bleibt nur der Hostname, kleingeschrieben,
+ohne Port, Pfad und Query, höchstens 100 Zeichen; die eigene Domain,
+localhost und IP-Literale fallen weg — eine IP als Herkunft kann der
+Rechner eines Menschen sein. Höchstens 300 Hostnamen je Tag, der Rest
+summiert sich unter `andere`, damit eine Flut erfundener Referrer weder
+Speicher noch Datei aufbläht. Programme tragen keine Herkunft bei.
+
+**Wo und wie lange.** Im Speicher der laufende Tag, alle fünf Minuten,
+beim Tageswechsel und beim Beenden atomar nach
+`<StateDirectory>/zaehlung/YYYY-MM-DD.json` geschrieben (`speicher.ts`;
+Verzeichnis wie der Last-good-Speicher: `BM_STATE_DIR`, `STATE_DIRECTORY`,
+`.data`). Ein Neustart liest die Datei des Tages und zählt darauf weiter;
+verloren gehen höchstens die Minuten seit dem letzten Schreiben. Die
+Dateien bleiben unbefristet: Sie enthalten keine personenbezogenen Daten,
+und eine Reihe über Jahre ist genau das, was ein Antrag zeigen will. Kein
+User-Agent, keine Adresse und keine Zeile je Anfrage werden je
+geschrieben oder geloggt.
+
+**Öffentlich.** `/statistik` zeigt die letzten 30 Tage, die 20 häufigsten
+Herkunftsdomains und die Summe seit Beginn, aus `/api/statistik` (zehn
+Minuten im `derived`-Cache). Die Zahlen, mit denen ein Antrag argumentiert,
+kann jede und jeder nachlesen — die beste Antwort auf die Frage, was da
+gezählt wird.
+
+**Grenzen, auch auf der Seite genannt.** Seitenaufrufe sind keine
+Personen. Gezählt wird, was der Server ausliefert: Wer im Monitor
+weiterklickt, lädt die nächste Seite clientseitig, und dieser Klick fehlt —
+die Zahl misst Einstiege eher als Lesetiefe. Bots, die sich nicht zu
+erkennen geben, stehen in der Leserzahl. Feed und Kalender zählen Abrufe,
+nicht Abonnements; wie viele abonniert haben, bleibt unbekannt.
 
 ## 13. Open questions
 

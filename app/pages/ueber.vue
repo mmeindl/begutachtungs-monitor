@@ -62,7 +62,9 @@ const { siteUrl } = useRuntimeConfig().public
         Monitor liest sie von den Seiten der Länder selbst, von allen neun –
         jedes so weit, wie seine Seite es zulässt; die Steiermark von der Seite
         ihres Landtags. Es gibt keine Konten und kein Tracking; ein Cookie nur,
-        wenn Sie die Quellen der Liste ändern.
+        wenn Sie die Quellen der Liste ändern. Seitenaufrufe zählt der Monitor
+        nur als Summe je Tag, ohne IP-Adressen – die Zahlen sind
+        <NuxtLink to="/statistik" class="link-inline">öffentlich</NuxtLink>.
       </p>
       <!-- Voluntary, and deliberately without the article number: no text
            the site shows about a draft is model-generated, and its own
@@ -186,7 +188,7 @@ const { siteUrl } = useRuntimeConfig().public
       <p>
         Der Monitor lädt zur Laufzeit keine Ressourcen von Drittanbietern:
         keine externen Schriften, keine Icon- oder Skript-CDNs, keine
-        Analytik. Betrieb und Hosting sind auf europäische, EU-eigene
+        Analytik-Dienste. Betrieb und Hosting sind auf europäische, EU-eigene
         Infrastruktur ausgelegt; die beiden Amtsquellen oben sind
         österreichische.
       </p>

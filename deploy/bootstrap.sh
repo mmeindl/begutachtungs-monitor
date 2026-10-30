@@ -210,6 +210,8 @@ systemctl enable begutachtungs-monitor
 # NO `log` directive, on purpose: without one Caddy keeps no access log, and
 # the privacy statement (app/pages/datenschutz.vue, "kein Zugriffsprotokoll")
 # cites exactly this. Adding one means changing that page in the same commit.
+# The page-view count (server/plugins/zaehlung.ts) is the app's, not Caddy's:
+# daily sums in the StateDirectory, no line per request.
 #
 # request_body: the app takes no uploads; 1 MB is far above any API request
 # and blocks only bodies nobody legitimately sends.

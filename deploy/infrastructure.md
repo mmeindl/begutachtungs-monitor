@@ -70,7 +70,8 @@ box only through the retrofit in [README.md](README.md) ("Retrofit
   of the app; Let's Encrypt certificates renew automatically. Sets the
   security headers (HSTS, nosniff, Referrer-Policy, frame denial), drops
   `Server:`, caps request bodies at 1 MB. **No access log** — the privacy
-  statement (`/datenschutz`) says so and cites the Caddyfile.
+  statement (`/datenschutz`) says so and cites the Caddyfile. The page-view
+  count (below) is the app's and keeps sums, not lines.
 - **ufw** — default deny inbound; only 22/80/443 open (443 over TCP and UDP — UDP for HTTP/3; on the live box since the one-line retrofit in README.md "Notes").
 - **SSH hardening** — key-only logins (`/etc/ssh/sshd_config.d/00-hardening.conf`,
   checked against `sshd -T` by the bootstrap).
@@ -107,7 +108,17 @@ Nothing the site serves comes from disk. What does live in
 `/var/lib/begutachtungs-monitor` is the last-good Stellungnahmen fallback
 (`server/utils/parliament/lastgood.ts`, losing it costs a degraded page) and
 the snapshot series above (losing it costs the measurement, and it is not
-republished anywhere — the licence question is open). Otherwise the box is
+republished anywhere — the licence question is open).
+
+Since 30.10.2026 it also holds `zaehlung/`, the page-view count
+(`server/plugins/zaehlung.ts`, `docs/architecture.md` §12.65): one JSON
+file per UTC day, `YYYY-MM-DD.json`, written by the app itself every five
+minutes and at shutdown — sums per page class, per Land and per referring
+host name, and nothing else. **No personal data**: no IP address, no user
+agent, no cookie value, no time finer than the day, so nothing in it needs
+a deletion period; the files stay. The same numbers are public on
+`/statistik`. Losing the directory costs the series, not the site. Read
+it like list 81 (commands below). Otherwise the box is
 disposable: a full rebuild is bootstrap + deploy, ~15 minutes, on any Ubuntu
 VPS (the scripts are provider-agnostic).
 
@@ -129,6 +140,7 @@ VPS (the scripts are provider-agnostic).
 | Diagnostic report by hand | `ssh root@85.235.66.11 'kill -USR2 $(systemctl show -p MainPID --value begutachtungs-monitor)'` — does not stop the app; the file lands in `/var/lib/begutachtungs-monitor/reports/` |
 | list-81 snapshots: are they arriving | `ssh root@85.235.66.11 'ls -la /var/lib/begutachtungs-monitor/list81/'` — one file per day; a gap means the run failed, and `journalctl -u begutachtungs-monitor-list81-snapshot` says why |
 | list-81 snapshots: read the series | `rsync -az root@85.235.66.11:/var/lib/begutachtungs-monitor/list81/ .cache/list81/ && pnpm corpus:list81-drift` |
+| Page views: read the day files | `rsync -az root@85.235.66.11:/var/lib/begutachtungs-monitor/zaehlung/ .cache/zaehlung/` — one JSON per UTC day; the summary is `/statistik` |
 | list-81 snapshots: stop collecting | `ssh root@85.235.66.11 'systemctl disable --now begutachtungs-monitor-list81-snapshot.timer'` — and take the `enable` line out of [deploy.sh](deploy.sh), or the next deploy turns it back on |
 | Service status | `ssh root@85.235.66.11 'systemctl status begutachtungs-monitor caddy'` |
 | Re-run setup | `scp deploy/bootstrap.sh root@85.235.66.11: && ssh root@85.235.66.11 'DOMAIN=begutachtungs-monitor.at bash bootstrap.sh'` |

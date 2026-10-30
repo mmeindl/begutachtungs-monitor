@@ -12,7 +12,13 @@
  *   - no access logs: the Caddyfile in deploy/bootstrap.sh has no `log`
  *     directive, and without one Caddy writes no access log;
  *   - no third parties at runtime: the fonts live in public/fonts, no CDN,
- *     no analytics;
+ *     no analytics service;
+ *   - page views counted as daily sums and nothing else (30.10.2026):
+ *     server/plugins/zaehlung.ts and server/utils/zaehlung/ — the class of
+ *     the page, a bot flag from the user agent, the referrer's host; no
+ *     address, no user agent, no cookie is stored. Files under the
+ *     StateDirectory, deploy/infrastructure.md; published whole on
+ *     /statistik;
  *   - one cookie, `quellen`, and only after a source chip was pressed:
  *     app/composables/useSourceChoice.ts (22.10.2026). The only browser
  *     storage on the site — grep for localStorage/useCookie before changing
@@ -25,7 +31,7 @@
 usePageSeo({
   title: 'Datenschutz',
   description:
-    'Welche Daten der Begutachtungs-Monitor verarbeitet: kein Tracking, keine Zugriffsprotokolle, ein Cookie nur für die Auswahl der Quellen – und wie mit den Namen aus den Parlamentsdaten umgegangen wird.',
+    'Welche Daten der Begutachtungs-Monitor verarbeitet: kein Tracking, keine Zugriffsprotokolle, Seitenaufrufe nur als Summe je Tag, ein Cookie nur für die Auswahl der Quellen – und wie mit den Namen aus den Parlamentsdaten umgegangen wird.',
 })
 </script>
 
@@ -36,7 +42,8 @@ usePageSeo({
     </h1>
     <p class="mt-4 leading-relaxed text-ink-secondary">
       Der Monitor kennt keine Konten, bindet keine Drittanbieter ein und
-      führt keine Zugriffsprotokolle. Ein Cookie setzt er nur, wenn Sie
+      führt keine Zugriffsprotokolle. Er zählt Seitenaufrufe, aber nur als
+      Summe je Tag. Ein Cookie setzt er nur, wenn Sie
       auswählen, aus welchen Quellen die Liste der Entwürfe stammt. Deshalb ist diese
       Erklärung kurz – und sie beschreibt nur, was tatsächlich passiert.
     </p>
@@ -74,6 +81,38 @@ usePageSeo({
         Interesse, eine Website betreiben und gegen Angriffe schützen zu
         können. Die Verbindung ist durchgehend TLS-verschlüsselt.
       </p>
+      <p>
+        Was bleibt, ist eine Zahl: Der Aufruf erhöht die Zählung der
+        Seitenaufrufe des Tages, beschrieben im nächsten Abschnitt.
+      </p>
+    </ProseSection>
+
+    <ProseSection id="dse-zaehlung" heading="Zählung der Seitenaufrufe">
+      <p>
+        Der Monitor zählt Seitenaufrufe je Seite und Tag, und er zählt, von
+        welcher Domain ein Besuch kam – die Adresse der verweisenden Seite
+        ohne Pfad, also etwa <code>www.parlament.gv.at</code>, nicht die
+        Unterseite. Gespeichert werden dabei keine IP-Adresse, kein Cookie,
+        keine Gerätemerkmale und keine Kennung, und auch kein Zeitpunkt
+        genauer als der Tag. Einzelne Besuche lassen sich aus den Zahlen
+        nicht rekonstruieren.
+      </p>
+      <p>
+        Zugriffe bekannter Programme – Suchmaschinen, Vorschaudienste,
+        Prüfdienste – werden getrennt gezählt. Ob ein Zugriff von einem
+        Programm kommt, erkennt der Server an der Browserangabe
+        (User-Agent), die jede Anfrage mitschickt; sie wird dafür gelesen,
+        aber nicht gespeichert.
+      </p>
+      <p>
+        Die Zahlen sind öffentlich unter
+        <NuxtLink to="/statistik" class="link-inline">Statistik</NuxtLink>.
+        Die gespeicherten Zahlen sind keine personenbezogenen Daten. Dass
+        Browserangabe und verweisende Adresse während der Anfrage kurz
+        ausgewertet werden, gehört zur Verarbeitung beim Aufruf und stützt
+        sich auf dieselbe Rechtsgrundlage, Art 6 Abs 1 lit f DSGVO – das
+        berechtigte Interesse zu wissen, ob und wie der Monitor genutzt wird.
+      </p>
     </ProseSection>
 
     <ProseSection id="dse-cookie" heading="Wenn Sie Quellen auswählen">
@@ -103,8 +142,10 @@ usePageSeo({
           Browser – außer dem einen Cookie für die Auswahl der Quellen.
         </li>
         <li>
-          Keine Reichweitenmessung, keine Analytik, kein Tracking, keine
-          Profilbildung, keine automatisierte Entscheidungsfindung.
+          Keine Analytik-Dienste Dritter, kein Tracking, keine Profilbildung,
+          keine automatisierte Entscheidungsfindung. Gezählt werden nur
+          Seitenaufrufe als Summe je Tag –
+          <a href="#dse-zaehlung" class="link-inline">wie oben beschrieben</a>.
         </li>
         <li>
           Keine Ressourcen von Drittanbietern: Schriften werden vom eigenen
@@ -134,9 +175,11 @@ usePageSeo({
       <p>
         Feed und Kalender werden bewusst ohne Anmeldung angeboten: Das
         Programm auf dem Gerät ruft die Adresse regelmäßig ab, genau wie
-        eine normale Seite. Es gibt keine Abonnentenliste, keine E-Mail-
-        Adressen und nichts, was gespeichert würde – auch nicht, wie viele
-        Personen abonniert haben.
+        eine normale Seite. Es gibt keine Abonnentenliste und keine E-Mail-
+        Adressen. Die Abrufe fließen in die
+        <a href="#dse-zaehlung" class="link-inline">Zählung</a> ein; wie viele
+        Personen abonniert haben, lässt sich daraus nicht ablesen und wird
+        nirgends gespeichert.
       </p>
     </ProseSection>
 
@@ -165,7 +208,9 @@ usePageSeo({
         DSGVO und verarbeiten ausschließlich innerhalb der EU. Eine eigene
         Datenbank gibt es nicht; die Parlamentsdaten liegen nur im
         Arbeitsspeicher des Servers und in einer kleinen Datei mit dem
-        zuletzt erfolgreich abgerufenen Stand.
+        zuletzt erfolgreich abgerufenen Stand. Die Zählung der
+        Seitenaufrufe liegt als eine kleine Datei je Tag auf demselben
+        Server.
       </p>
     </ProseSection>
 
@@ -252,7 +297,7 @@ usePageSeo({
 
     <ProseSection id="dse-status" heading="Stand">
       <p>
-        September 2026. Ändert sich etwas an der Verarbeitung – etwa mit
+        30. Oktober 2026. Ändert sich etwas an der Verarbeitung – etwa mit
         den geplanten E-Mail-Benachrichtigungen zu Fristen –, wird diese
         Erklärung vorher angepasst.
       </p>
