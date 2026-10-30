@@ -11,7 +11,7 @@ import { bgldNextPage, bgldSubmitter, bgldUnidYear, parseBgldPage } from '../ser
 import { draftKindOfTitle, landDate } from '../server/utils/laender/draftKind'
 import { LandSourceError } from '../server/utils/laender/gate'
 import { noeDraftUrl, parseNoeDraftPage, parseNoeList } from '../server/utils/laender/niederoesterreich'
-import { documentLink, documentLinkParts } from '../server/utils/laender/session'
+import { LandSiteBlockedError, SitePacer, documentLink, documentLinkParts } from '../server/utils/laender/session'
 import { STMK_PERIODS, isStmkDocumentUrl, parseStmkDraftPage, parseStmkRows, stmkPageSizes, stmkPartsOf, stmkRowCount, stmkRowsPostback } from '../server/utils/laender/steiermark'
 import { parseVbgList } from '../server/utils/laender/vorarlberg'
 
@@ -204,5 +204,17 @@ describe('documentLink', () => {
     const url = documentLink('https://pallast2.stmk.gv.at/pallast-p/pub/document?ref=x', 'Vorblatt und Erläuterungen')
     expect(documentLinkParts(url)).toEqual({ page: 'https://pallast2.stmk.gv.at/pallast-p/pub/document?ref=x', label: 'Vorblatt und Erläuterungen' })
     expect(documentLinkParts('https://pallast2.stmk.gv.at/pallast-p/pub/document?ref=x#stellungnahme-1')).toBeNull()
+  })
+})
+
+describe('SitePacer', () => {
+  it('spaces the requests of every session, and goes silent after a block', async () => {
+    const pacer = new SitePacer(50, 60_000)
+    const started = Date.now()
+    await Promise.all([pacer.turn(), pacer.turn(), pacer.turn()])
+    // Three turns: the first at once, the others 50 and 100 ms later.
+    expect(Date.now() - started).toBeGreaterThanOrEqual(95)
+    pacer.block()
+    await expect(pacer.turn()).rejects.toBeInstanceOf(LandSiteBlockedError)
   })
 })

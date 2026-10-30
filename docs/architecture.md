@@ -14133,10 +14133,15 @@ Entwurfsseite, und `LAND_COVERAGE` hält es je Land fest.
   mit einem kaputten Fragment ohne Zeilen. Und **eine Firewall sperrt nach
   Sitzungsbursts**: Rund 40 neue Sitzungen in Minuten (Messung plus
   Dev-Server) brachten 403 für unseren User-Agent, Browser-UAs kamen weiter
-  durch. Nicht umgangen; der Leser liest seither eine Sitzung je Stapel,
-  zwei Seiten gleichzeitig, sechs Stunden gehalten, abgeschlossene Perioden
-  Seite für Seite mit Pause und eine Woche gehalten. Bei der nächsten
-  Prüfung am selben Tag war die Sperre aufgehoben.
+  durch. Nicht umgangen. Bei der nächsten Prüfung am selben Tag war die
+  Sperre aufgehoben — und das gedrosselte Lesen (eine Sitzung je Stapel,
+  zwei Seiten gleichzeitig) reichte trotzdem nicht: Der erste kalte Lauf des
+  Produktionsservers nach dem Deploy, rund 210 Seiten aus drei Lesern
+  zugleich, bekam binnen zwei Minuten 403. Seither geht jede Anfrage an
+  PALLAST durch einen Takt für den ganzen Prozess (`SitePacer`: eine je
+  Sekunde, nach einem 403 zwei Stunden keine), und keine Anfrage wartet auf
+  den kalten Lauf einer Periode — er läuft im Hintergrund weiter, bis dahin
+  ist die Steiermark „nicht abrufbar".
 - *Niederösterreich*, *Vorarlberg*: nur laufende Entwürfe — beide Seiten
   verlieren einen Entwurf mit Fristende, die Entwurfsseite antwortet dann
   410 mit diesem Satz. NÖs Stellungnahmen stehen beim Landtag ohne

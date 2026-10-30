@@ -14,7 +14,7 @@
  * it as it is.
  */
 import { decodeEntities } from '../parliament/htmlText'
-import { upstreamExchange, type UpstreamPolicy } from '../upstream/fetch'
+import { UpstreamHttpError, sleep, upstreamExchange, type UpstreamPolicy } from '../upstream/fetch'
 
 export interface SessionPage {
   /** Where the last hop landed — postbacks go to the form's action resolved against it. */
@@ -25,6 +25,47 @@ export interface SessionPage {
 
 const MAX_HOPS = 6
 
+/**
+ * One site's pace, shared by every session with it in this process
+ * (30.10.2026): at most one request per `gapMs`, however many reads run at
+ * once — and after a 403, none at all for `pauseMs`. Steiermark's PALLAST
+ * blocks a client by its firewall when it asks too much too fast; the
+ * production server's first cold read after a deploy, some 210 pages from
+ * three sessions at once, was answered 403 within two minutes. Asking on
+ * into a block only prolongs it, so a block ends every read at once and
+ * says so (`LandSiteBlockedError`) until the pause is over.
+ */
+export class SitePacer {
+  private next = 0
+  private blockedUntil = 0
+
+  constructor(
+    private readonly gapMs: number,
+    private readonly pauseMs: number,
+  ) {}
+
+  /** Waits for this request's turn; throws while the site blocks us. */
+  async turn(): Promise<void> {
+    const now = Date.now()
+    if (now < this.blockedUntil) throw new LandSiteBlockedError(this.blockedUntil)
+    const at = Math.max(now, this.next)
+    this.next = at + this.gapMs
+    if (at > now) await sleep(at - now)
+  }
+
+  block(): void {
+    this.blockedUntil = Date.now() + this.pauseMs
+  }
+}
+
+/** The site's firewall turned us away; no request goes out before `until`. */
+export class LandSiteBlockedError extends Error {
+  constructor(readonly until: number) {
+    super(`Seite sperrt Anfragen, Pause bis ${new Date(until).toISOString()}`)
+    this.name = 'LandSiteBlockedError'
+  }
+}
+
 export class LandSession {
   private readonly jar = new Map<string, string>()
 
@@ -32,6 +73,8 @@ export class LandSession {
     /** `https://pallast2.stmk.gv.at` — every hop must stay on it. */
     private readonly origin: string,
     private readonly policy: UpstreamPolicy,
+    /** The site's pace, where it needs one (`SitePacer`). */
+    private readonly pacer?: SitePacer,
   ) {}
 
   private keep(cookies: string[]): void {
@@ -49,6 +92,7 @@ export class LandSession {
     let headers = request.headers
     for (let hop = 0; hop <= MAX_HOPS; hop++) {
       if (new URL(current).origin !== this.origin) throw new Error(`Weiterleitung außerhalb von ${this.origin}: ${current}`)
+      await this.pacer?.turn()
       const res = await upstreamExchange(current, {
         ...this.policy,
         upstreamHostsOnly: true,
@@ -56,6 +100,9 @@ export class LandSession {
         method: form ? 'POST' : 'GET',
         ...(form ? { form } : {}),
         headers: { ...headers, ...(this.jar.size ? { Cookie: [...this.jar].map(([k, v]) => `${k}=${v}`).join('; ') } : {}) },
+      }).catch((err: unknown) => {
+        if (err instanceof UpstreamHttpError && err.status === 403) this.pacer?.block()
+        throw err
       })
       this.keep(res.cookies)
       if (res.location === null) return { url: current, contentType: res.contentType, bytes: res.bytes }

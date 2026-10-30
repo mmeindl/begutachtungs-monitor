@@ -23,7 +23,7 @@ import type {
 } from '#shared/types'
 import { LAND_CODES } from '#shared/utils/laender'
 import { todayIso } from '#shared/utils/format'
-import { type UpstreamPolicy, UpstreamHttpError, sleep, upstreamText } from '../upstream/fetch'
+import { type UpstreamPolicy, UpstreamHttpError, upstreamText } from '../upstream/fetch'
 import { mapWithConcurrency } from '../pool'
 import { DERIVED_CACHE } from '../cache/base'
 import { UPSTREAM_LIST_TTL_S } from '../cache/ttl'
@@ -80,7 +80,7 @@ import {
 import { TIROL_LIST, TIROL_NUMBER_RE, TIROL_VO_NUMBER_RE, TIROL_VO_PAGE, parseTirolList, parseTirolRecord, parseTirolVoSearch, tirolFilingEmail, tirolRecordUrl, tirolVoOf, tirolVoSearchUrl, type TirolVoDraft } from './tirol'
 import { BGLD_CURRENT, BGLD_FILING_EMAIL, BGLD_FIRST_YEAR, BGLD_NUMBER_RE, BGLD_ORIGIN, bgldArchiveUrl, bgldNextPage, bgldUnidYear, parseBgldPage, type BgldEntry } from './burgenland'
 import { NOE_FILING_EMAIL, NOE_LIST, NOE_NUMBER_RE, NOE_RETENTION, NOE_STATEMENTS_GAP, noeDraftUrl, parseNoeDraftPage, parseNoeList } from './niederoesterreich'
-import { STMK_LIST, STMK_NUMBER_RE, STMK_ORIGIN, STMK_PERIODS, parseStmkDraftPage, parseStmkRows, stmkDraftUrl, stmkListUrl, stmkPageSizes, stmkPartsOf, stmkRowCount, stmkRowsPostback, type StmkDraft, type StmkPeriod } from './steiermark'
+import { STMK_LIST, STMK_NUMBER_RE, STMK_ORIGIN, STMK_PACER, STMK_PERIODS, parseStmkDraftPage, parseStmkRows, stmkDraftUrl, stmkListUrl, stmkPageSizes, stmkPartsOf, stmkRowCount, stmkRowsPostback, type StmkDraft, type StmkPeriod } from './steiermark'
 import { VBG_FORM, VBG_LIST, VBG_NUMBER_RE, VBG_RETENTION, VBG_STATEMENTS_GAP, parseVbgList } from './vorarlberg'
 import { LandSourceError } from './gate'
 import { draftKindOfTitle } from './draftKind'
@@ -885,17 +885,20 @@ const niederoesterreich: LandReader = {
 
 /**
  * PALLAST sits behind a web application firewall that blocks a client
- * opening many sessions in a short time: on 30.10.2026 a probe that opened
- * one per draft page — 38 in a minute, beside the monitor's own reads —
- * was answered 403 from then on, under the monitor's User-Agent only. So
- * the monitor reads it as a person browsing would: one session for a batch
- * of pages, two pages at a time, and every page held for hours.
+ * asking too much too fast: on 30.10.2026 a probe opening one session per
+ * draft page was answered 403 under the monitor's User-Agent, and so was
+ * the production server's first cold read after the deploy — some 210
+ * pages from three reads at once. So every request goes through one pace
+ * (`STMK_PACER`: one a second, silence after a 403), a batch of pages
+ * shares a session, and every page is held for hours.
  */
 const STMK_TTL_S = 60 * 60 * 6
 const STMK_CONCURRENCY = 2
+/** How long a request waits for a cold read of a whole period: it goes on in the background and fills the cache. */
+const STMK_COLD_BUDGET_MS = 2_000
 
 /** A page of PALLAST in the session given, or one of its own: its redirects set the cookies the next hop needs. */
-async function readStmkPage(url: string, session: LandSession = new LandSession(STMK_ORIGIN, LAND_POLICY)): Promise<string> {
+async function readStmkPage(url: string, session: LandSession = new LandSession(STMK_ORIGIN, LAND_POLICY, STMK_PACER)): Promise<string> {
   return (await session.text(url)).html
 }
 
@@ -906,7 +909,7 @@ async function readStmkPage(url: string, session: LandSession = new LandSession(
  * disappear without a word.
  */
 async function readStmkRows(period: StmkPeriod): Promise<string> {
-  const session = new LandSession(STMK_ORIGIN, LAND_POLICY)
+  const session = new LandSession(STMK_ORIGIN, LAND_POLICY, STMK_PACER)
   const list = await session.text(stmkListUrl(period))
   const count = stmkRowCount(list.html)
   if (parseStmkRows(list.html).length >= count) return list.html
@@ -939,7 +942,7 @@ const fetchStmkDraftPage = defineCachedFunction(readStmkPage, {
 })
 
 async function stmkDrafts(refs: readonly string[]): Promise<StmkDraft[]> {
-  const session = new LandSession(STMK_ORIGIN, LAND_POLICY)
+  const session = new LandSession(STMK_ORIGIN, LAND_POLICY, STMK_PACER)
   return mapWithConcurrency(refs, STMK_CONCURRENCY, async (ref) => {
     const parsed = parseStmkDraftPage(await fetchStmkDraftPage(stmkDraftUrl(ref), session), ref)
     if (!parsed) throw new LandSourceError('stmk', `keine Begutachtung: ${ref}`)
@@ -950,23 +953,21 @@ async function stmkDrafts(refs: readonly string[]): Promise<StmkDraft[]> {
 /**
  * A closed period's drafts, parsed — held a week in the derived layer, as
  * Burgenland's past years (`bgldPastYear`): nothing in a closed period moves.
- * Read one page at a time with a pause between, in one session: a cold read
- * is some 170 pages for XVIII. and XVII., and PALLAST's firewall is what it
- * is (see above). Its pages are not held; the drafts are.
+ * Read one page at a time in one session, at PALLAST's pace (`STMK_PACER`):
+ * a cold read is some 170 pages for XVIII. and XVII. Its pages are not held;
+ * the drafts are.
  */
 const STMK_PAST_TTL_S = 60 * 60 * 24 * 7
-const STMK_PAST_PAUSE_MS = 300
 const stmkPastPeriod = defineCachedFunction(
   async (key: string): Promise<LandConsultation[]> => {
     const period = STMK_PERIODS.find((p) => p.key === key)!
     const rows = parseStmkRows(await readStmkRows(period))
-    const session = new LandSession(STMK_ORIGIN, LAND_POLICY)
+    const session = new LandSession(STMK_ORIGIN, LAND_POLICY, STMK_PACER)
     const out: LandConsultation[] = []
     for (const { ref } of rows) {
       const parsed = parseStmkDraftPage(await readStmkPage(stmkDraftUrl(ref, period), session), ref, period)
       if (!parsed) throw new LandSourceError('stmk', `${period.gp}: keine Begutachtung: ${ref}`)
       out.push(parsed.draft)
-      await sleep(STMK_PAST_PAUSE_MS)
     }
     return out
   },
@@ -985,11 +986,17 @@ const steiermark: LandReader = {
     return drafts.map((d) => d.draft)
   },
   all: async () => {
-    const [current, ...past] = await Promise.all([
-      stmkDrafts(parseStmkRows(await fetchStmkRows()).map((r) => r.ref)),
-      ...STMK_PERIODS.filter((p) => p.key).map((p) => stmkPastPeriod(p.key)),
+    /* A cold read of a period takes a minute or more at PALLAST's pace —
+     * the current one's 38 pages, the closed ones' 170 — and a draft's page
+     * waits for this list (its Kundmachung search). No request waits for it:
+     * it goes on in the background, and until it is in, Steiermark is „nicht
+     * abrufbar" rather than a list that leaves drafts out without a word. */
+    const read = await Promise.all([
+      withinBudget(fetchStmkRows().then((rows) => stmkDrafts(parseStmkRows(rows).map((r) => r.ref))).then((ds) => ds.map((d) => d.draft)), STMK_COLD_BUDGET_MS),
+      ...STMK_PERIODS.filter((p) => p.key).map((p) => withinBudget(stmkPastPeriod(p.key), STMK_COLD_BUDGET_MS)),
     ])
-    return [...current!.map((d) => d.draft), ...past.flat()]
+    if (read.some((r) => r === null)) throw new LandSourceError('stmk', 'Perioden werden gerade gelesen oder sind gesperrt')
+    return read.flatMap((r) => r ?? [])
   },
   detail: async (number) => {
     const parts = stmkPartsOf(number)

@@ -46,9 +46,15 @@ import { classifySubmitter } from '../parliament/privacy'
 import type { UpstreamPolicy } from '../upstream/fetch'
 import { draftKindOfTitle, landDate } from './draftKind'
 import { LandSourceError } from './gate'
-import { LandSession, documentLink, documentLinkParts, pageForms, postbackDocument, type Postback } from './session'
+import { LandSession, SitePacer, documentLink, documentLinkParts, pageForms, postbackDocument, type Postback } from './session'
 
 export const STMK_ORIGIN = 'https://pallast2.stmk.gv.at'
+
+/**
+ * Every request to PALLAST, from every session in this process: one a
+ * second, and two hours of silence after a 403 (`SitePacer`).
+ */
+export const STMK_PACER = new SitePacer(1_000, 2 * 60 * 60 * 1000)
 
 /** One Landtag period's PALLAST: `key` prefixes its drafts' numbers — none for the current one. */
 export interface StmkPeriod {
@@ -228,5 +234,5 @@ export function isStmkDocumentUrl(url: string): boolean {
 /** One Beilage of a draft, by its name — a session of its own per call. */
 export function stmkDocumentBytes(url: string): Promise<Uint8Array> {
   if (!isStmkDocumentUrl(url)) throw new Error('Steiermark: keine Dokumentadresse')
-  return postbackDocument(new LandSession(STMK_ORIGIN, DOC_POLICY), url, stmkPostback)
+  return postbackDocument(new LandSession(STMK_ORIGIN, DOC_POLICY, STMK_PACER), url, stmkPostback)
 }
