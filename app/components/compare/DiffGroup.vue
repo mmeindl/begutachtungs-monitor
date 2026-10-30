@@ -163,11 +163,16 @@ async function showMore(event: MouseEvent) {
   <section ref="section" class="border-b border-hairline last-of-type:border-b-0">
     <div ref="sentinel" class="h-px -mb-px" aria-hidden="true" />
     <!-- The hairline under a stuck header is a shadow, not a border: a
-         border would make it 1px taller each time it sticks. -->
+         border would make it 1px taller each time it sticks.
+
+         The hover wash is laid OVER the surface, as an image, not in its
+         place: `--color-hover` is 5 % ink on transparent, and as the
+         background colour it turned a stuck header see-through, the text
+         scrolling beneath it showing through (30.10.2026). -->
     <button
       ref="header"
       type="button"
-      class="flex w-full min-h-target flex-col gap-2 bg-surface px-4 text-left hover:bg-hover"
+      class="flex w-full min-h-target flex-col gap-2 bg-surface px-4 text-left hover:bg-[linear-gradient(var(--color-hover),var(--color-hover))]"
       :class="[
         open && 'sticky top-0 z-10',
         stuck ? 'py-2 shadow-[0_1px_0_var(--color-hairline)]' : 'py-3',
