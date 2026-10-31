@@ -18,19 +18,42 @@ describe('fasseZusammen', () => {
     d2.stand = '2026-10-30T12:00:00.000Z'
     const s = fasseZusammen([d2, d1], new Date('2026-10-30T15:00:00Z'))
     expect(s.seit).toBe('2026-10-28')
-    expect(s.gesamt).toEqual({ aufrufe: 4, bots: 1 })
+    expect(s.gesamt).toEqual({ seiten: 2, feedKalender: 2, bots: 1 })
     expect(s.tage).toEqual([
-      { tag: '2026-10-30', aufrufe: 2, entwurfBund: 0, entwurfLand: 1, feedKalender: 1, bots: 0 },
-      { tag: '2026-10-29', aufrufe: 0, entwurfBund: 0, entwurfLand: 0, feedKalender: 0, bots: 0 },
-      { tag: '2026-10-28', aufrufe: 2, entwurfBund: 1, entwurfLand: 0, feedKalender: 1, bots: 1 },
+      { tag: '2026-10-30', seiten: 1, feedKalender: 1, bots: 0 },
+      { tag: '2026-10-29', seiten: 0, feedKalender: 0, bots: 0 },
+      { tag: '2026-10-28', seiten: 1, feedKalender: 1, bots: 1 },
+    ])
+    // Every page class in KLASSEN order, zeros included; bots never.
+    expect(s.nachSeite.map((r) => r.klasse)).toEqual([
+      'start', 'entwuerfe', 'entwurf-bund', 'entwurf-land', 'so-funktionierts',
+      'ueber', 'impressum', 'datenschutz', 'statistik', 'sonstige',
+    ])
+    expect(s.nachSeite.filter((r) => r.aufrufe)).toEqual([
+      { klasse: 'entwurf-bund', aufrufe: 1 }, { klasse: 'entwurf-land', aufrufe: 1 },
+    ])
+    expect(s.nachAbo).toEqual([
+      { klasse: 'feed', aufrufe: 1 }, { klasse: 'kalender', aufrufe: 0 }, { klasse: 'frist-kalender', aufrufe: 1 },
     ])
     expect(s.herkunft).toEqual([{ host: 'b.example', aufrufe: 2 }, { host: 'a.example', aufrufe: 1 }])
     expect(s.stand).toBe('2026-10-30T12:00:00.000Z')
   })
 
   it('answers an empty directory with nothing counted', () => {
-    expect(fasseZusammen([], new Date('2026-10-30T15:00:00Z'))).toEqual({
-      seit: null, gesamt: { aufrufe: 0, bots: 0 }, tage: [], herkunft: [], stand: null,
+    const s = fasseZusammen([], new Date('2026-10-30T15:00:00Z'))
+    expect(s).toMatchObject({
+      seit: null, gesamt: { seiten: 0, feedKalender: 0, bots: 0 }, tage: [], herkunft: [], stand: null,
     })
+    expect([...s.nachSeite, ...s.nachAbo].every((r) => r.aufrufe === 0)).toBe(true)
+  })
+
+  it('leaves days outside the window out of the per-page sums but in the totals', () => {
+    const alt = tag('2026-09-01')
+    erfasse(alt, { klasse: 'ueber', bot: false, herkunft: null })
+    const neu = tag('2026-10-30')
+    erfasse(neu, { klasse: 'ueber', bot: false, herkunft: null })
+    const s = fasseZusammen([alt, neu], new Date('2026-10-30T15:00:00Z'))
+    expect(s.gesamt.seiten).toBe(2)
+    expect(s.nachSeite.find((r) => r.klasse === 'ueber')).toEqual({ klasse: 'ueber', aufrufe: 1 })
   })
 })

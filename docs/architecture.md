@@ -365,7 +365,7 @@ name has to stay globally unique.
 - `/ueber` **About**: mission, how it works, data source/license, GDPR stance (why no names of private persons), lineage (OffenesParlament.at), prototype status.
 - `/impressum` **Offenlegung under § 25 MedienG**, in full rather than under the "kleine Website" relief of § 25 Abs 5 — that relief is for sites without content capable of influencing public opinion, which is exactly this project's purpose, so claiming it would mean arguing against our own case. Carries the per-source licence list (`#imp-license`).
 - `/datenschutz` **Datenschutzerklärung (Art 13 and 14 GDPR)**, written by hand rather than generated: almost every standard clause (cookies, analytics, newsletter, social plugins, server logs) describes something this project does not do, and a statement claiming processing that does not happen is as wrong as one that conceals some.
-- `/statistik` **Page-view counts (30.10.2026, §12.65)**: the last 30 days, the top 20 referring hosts and the total since counting began, from `/api/statistik`; plain tables, no chart. What is counted and what not stands on `/datenschutz#dse-zaehlung`.
+- `/statistik` **Page-view counts (30.10.2026, §12.65)**: the last 30 days (pages, Abonnements = feed and calendar files, programs — three columns, none inside another), the views per page class over those days, the top 20 referring hosts and the totals since counting began, from `/api/statistik`; plain tables, no chart. What is counted and what not stands on `/datenschutz#dse-zaehlung`.
 - `/live` — **ended 22.10.2026.** The stable address behind one Demokratiewoche event (21.10.2026): the event facts, then a 302 into the video room. Page and `live.ics` are gone; the address 301s to `/`, because the event listing that links it is not ours to change (`nuxt.config.ts`).
 - `app/error.vue`: 404/500 in German, link to the home page.
 
@@ -14231,9 +14231,17 @@ und eine Reihe über Jahre ist genau das, was ein Antrag zeigen will. Kein
 User-Agent, keine Adresse und keine Zeile je Anfrage werden je
 geschrieben oder geloggt.
 
-**Öffentlich.** `/statistik` zeigt die letzten 30 Tage, die 20 häufigsten
-Herkunftsdomains und die Summe seit Beginn, aus `/api/statistik` (zehn
-Minuten im `derived`-Cache). Die Zahlen, mit denen ein Antrag argumentiert,
+**Öffentlich.** `/statistik` zeigt die letzten 30 Tage, die Aufrufe je
+Seitenart über dieselben 30 Tage, die 20 häufigsten Herkunftsdomains und die
+Summe seit Beginn, aus `/api/statistik` (zehn Minuten im `derived`-Cache).
+Feed und Kalender stehen seit 31.10.2026 als „Abonnements“ in einer eigenen Spalte und einer eigenen Tabelle, mit ihrer Adresse, weil es Dateien und keine Seiten sind — und nicht
+mehr in der Summe der Seitenaufrufe: Am 31.10.2026, noch vor Tagesende, waren 89 von 186
+gezählten Leser-Anfragen Abrufe von Feedreadern und Kalender-Apps, die in
+festen Abständen von sich aus fragen — eine Kalender-App alle 15 Minuten
+ergibt 96 am Tag. In der Summe hätten sie die Zahl der gelesenen Seiten
+ungefähr verdoppelt. Die Tabelle je Seitenart ersetzt die Spalten „Entwürfe
+Bund“ und „Entwürfe Länder“: Sie nennt jede Seite und bleibt auf
+Telefonbreite lesbar, was eine Spalte je Seitenart nicht wäre. Die Zahlen, mit denen ein Antrag argumentiert,
 kann jede und jeder nachlesen — die beste Antwort auf die Frage, was da
 gezählt wird.
 
