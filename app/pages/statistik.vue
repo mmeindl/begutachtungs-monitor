@@ -22,18 +22,18 @@ const { data, status, error, refresh } = useFetch<StatistikPayload>('/api/statis
 
 /** Names for the page classes of `server/utils/zaehlung/klassen.ts`. */
 const KLASSE_NAME: Record<string, string> = {
-  'start': 'Startseite',
-  'entwuerfe': 'Liste der Entwürfe',
+  start: 'Startseite',
+  entwuerfe: 'Liste der Entwürfe',
   'entwurf-bund': 'Entwürfe des Bundes',
   'entwurf-land': 'Entwürfe der Länder',
   'so-funktionierts': 'So funktioniert’s',
-  'ueber': 'Über',
-  'impressum': 'Impressum',
-  'datenschutz': 'Datenschutz',
-  'statistik': 'Statistik',
-  'sonstige': 'Andere Seiten',
-  'feed': 'RSS-Feed (feed.xml)',
-  'kalender': 'Fristen-Kalender (kalender.ics)',
+  ueber: 'Über',
+  impressum: 'Impressum',
+  datenschutz: 'Datenschutz',
+  statistik: 'Statistik',
+  sonstige: 'Andere Seiten',
+  feed: 'RSS-Feed (feed.xml)',
+  kalender: 'Fristen-Kalender (kalender.ics)',
   'frist-kalender': 'Frist eines Entwurfs (.ics)',
 }
 </script>
