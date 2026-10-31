@@ -38,7 +38,7 @@ export interface StatistikPayload {
   gesamt: { seiten: number; feedKalender: number; bots: number }
   /** The last 30 days up to today, newest first; a day without a file reads 0. */
   tage: StatistikTag[]
-  /** Reader requests per page class over those 30 days, in the order of `KLASSEN`, zeros included. */
+  /** Reader requests per page class over those 30 days, most first (ties in `KLASSEN` order, `sonstige` last), zeros included. */
   nachSeite: StatistikSeite[]
   /** The same for the feed and calendar classes. */
   nachAbo: StatistikSeite[]

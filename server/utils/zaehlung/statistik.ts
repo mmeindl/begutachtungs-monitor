@@ -23,6 +23,17 @@ function zeile(tag: string, d: Tagesstand | undefined): StatistikTag {
   return row
 }
 
+/**
+ * Most views first; a tie keeps the given order, so equal counts do not
+ * shuffle. `sonstige` is a bucket, not a page, and stays last.
+ */
+function rangiere(order: readonly Klasse[], counts: ReadonlyMap<string, number>): StatistikSeite[] {
+  return order
+    .map((klasse, i) => ({ klasse, aufrufe: counts.get(klasse)!, i }))
+    .sort((a, b) => Number(a.klasse === 'sonstige') - Number(b.klasse === 'sonstige') || b.aufrufe - a.aufrufe || a.i - b.i)
+    .map(({ klasse, aufrufe }) => ({ klasse, aufrufe }))
+}
+
 /** `days` in any order; `today` is the last day of the window. */
 export function fasseZusammen(days: readonly Tagesstand[], today: Date): StatistikPayload {
   const byTag = new Map(days.map((d) => [d.tag, d]))
@@ -51,8 +62,8 @@ export function fasseZusammen(days: readonly Tagesstand[], today: Date): Statist
     for (const [k, z] of Object.entries(d?.seiten ?? {})) if (klassen.has(k)) klassen.set(k, klassen.get(k)! + z.aufrufe)
   }
 
-  const nachSeite: StatistikSeite[] = KLASSEN.filter((k) => !FEED_KALENDER.has(k)).map((klasse) => ({ klasse, aufrufe: klassen.get(klasse)! }))
-  const nachAbo: StatistikSeite[] = ABOS.map((klasse) => ({ klasse, aufrufe: klassen.get(klasse)! }))
+  const nachSeite = rangiere(KLASSEN.filter((k) => !FEED_KALENDER.has(k)), klassen)
+  const nachAbo = rangiere(ABOS, klassen)
 
   // `andere` is a bucket, not a host: it is not ranked.
   hosts.delete(ANDERE)
