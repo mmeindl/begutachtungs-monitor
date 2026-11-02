@@ -149,7 +149,9 @@ const KLASSE_NAME: Record<string, string> = {
         <ProseSection v-if="stats.seit" id="stat-herkunft" heading="Woher Besuche kommen">
           <p>
             Die Domains der Seiten, über deren Links Besuche der letzten 30
-            Tage kamen – nur die Domain, ohne Pfad. Besuche ohne solche
+            Tage kamen – nur die Domain, ohne Pfad, und erst ab fünf Besuchen,
+            damit ein einzelner Link von einer privaten Seite nicht hier
+            erscheint. Besuche ohne solche
             Angabe, etwa über ein Lesezeichen oder eine App, fehlen hier.
           </p>
           <p v-if="!stats.herkunft.length">

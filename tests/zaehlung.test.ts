@@ -197,6 +197,18 @@ describe('the day aggregate', () => {
     expect(a.seiten.feed).toBeUndefined()
   })
 
+  it('counts a host named like an Object.prototype key as a host, and keeps the file readable', () => {
+    // `http://constructor/` passes herkunftHost; a plain-object lookup read
+    // Object's own constructor and stored a string the file reader refuses.
+    expect(herkunftHost('http://constructor/')).toBe('constructor')
+    const d = tag()
+    erfasse(d, { klasse: 'start', bot: false, herkunft: 'constructor' })
+    erfasse(d, { klasse: 'start', bot: false, herkunft: 'constructor' })
+    expect(d.herkunft.constructor).toBe(2)
+    expect(lies(serialisiere(d))).toEqual(d)
+    expect(verbinde(d, tag()).herkunft.constructor).toBe(2)
+  })
+
   it('round-trips through its file form, and refuses a corrupt one', () => {
     const d = tag()
     erfasse(d, { klasse: 'entwurf-bund', bot: false, herkunft: 'derstandard.at' })

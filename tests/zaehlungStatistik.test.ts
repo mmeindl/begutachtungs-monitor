@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { fasseZusammen } from '../server/utils/zaehlung/statistik'
+import { HERKUNFT_MINDESTENS, fasseZusammen } from '../server/utils/zaehlung/statistik'
 import { ANDERE, erfasse, leererTag } from '../server/utils/zaehlung/tag'
 
 /** The public summary behind /statistik (docs/architecture.md §12.65). */
@@ -15,6 +15,9 @@ describe('fasseZusammen', () => {
     erfasse(d2, { klasse: 'entwurf-land', land: 'sbg', bot: false, herkunft: 'b.example' })
     erfasse(d2, { klasse: 'frist-kalender', bot: false, herkunft: 'b.example' })
     d2.herkunft[ANDERE] = 9
+    // Over the window, b reaches the minimum, a stays one short of it.
+    d1.herkunft['a.example'] = HERKUNFT_MINDESTENS - 1
+    d1.herkunft['b.example'] = HERKUNFT_MINDESTENS - 2
     d2.stand = '2026-10-30T12:00:00.000Z'
     const s = fasseZusammen([d2, d1], new Date('2026-10-30T15:00:00Z'))
     expect(s.seit).toBe('2026-10-28')
@@ -35,7 +38,7 @@ describe('fasseZusammen', () => {
     expect(s.nachAbo).toEqual([
       { klasse: 'feed', aufrufe: 1 }, { klasse: 'frist-kalender', aufrufe: 1 }, { klasse: 'kalender', aufrufe: 0 },
     ])
-    expect(s.herkunft).toEqual([{ host: 'b.example', aufrufe: 2 }, { host: 'a.example', aufrufe: 1 }])
+    expect(s.herkunft).toEqual([{ host: 'b.example', aufrufe: HERKUNFT_MINDESTENS }])
     expect(s.stand).toBe('2026-10-30T12:00:00.000Z')
   })
 

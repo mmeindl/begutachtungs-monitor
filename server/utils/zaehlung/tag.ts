@@ -49,18 +49,27 @@ export interface Erfassung extends Treffer {
   herkunft: string | null
 }
 
+/**
+ * A key's own entry. The keys come from outside (a referring host above
+ * all), and a plain object answers `constructor` with Object's own — read
+ * as a count, that turned the day's file into one `lies` refuses.
+ */
+function own<T>(map: Record<string, T>, key: string): T | undefined {
+  return Object.hasOwn(map, key) ? map[key] : undefined
+}
+
 function add(map: Record<string, Zaehler>, key: string, z: Zaehler): void {
-  const cur = map[key] ?? { aufrufe: 0, bots: 0 }
+  const cur = own(map, key) ?? { aufrufe: 0, bots: 0 }
   map[key] = { aufrufe: cur.aufrufe + z.aufrufe, bots: cur.bots + z.bots }
 }
 
 /** Adds `n` visits from `host`, under `ANDERE` once the day holds its cap of hosts. */
 function addHerkunft(map: Record<string, number>, host: string, n: number): void {
-  if (map[host] === undefined && host !== ANDERE) {
+  if (own(map, host) === undefined && host !== ANDERE) {
     const distinct = Object.keys(map).filter((h) => h !== ANDERE).length
     if (distinct >= HERKUNFT_HOECHSTENS) host = ANDERE
   }
-  map[host] = (map[host] ?? 0) + n
+  map[host] = (own(map, host) ?? 0) + n
 }
 
 /** Counts one request into `stand`, in place. */

@@ -8,6 +8,12 @@ import { ANDERE, utcTag, type Tagesstand } from './tag'
 
 export const STATISTIK_TAGE = 30
 export const STATISTIK_HERKUNFT = 20
+/**
+ * Visits a referring host needs before it is published: a single link from
+ * someone's own page or an intranet stays off the public page, and putting
+ * a name on it takes more than a handful of requests.
+ */
+export const HERKUNFT_MINDESTENS = 5
 
 /** Fetched by subscribed apps on a timer — counted apart from the pages, and listed in this order. */
 const ABOS: readonly Klasse[] = ['feed', 'kalender', 'frist-kalender']
@@ -68,6 +74,7 @@ export function fasseZusammen(days: readonly Tagesstand[], today: Date): Statist
   // `andere` is a bucket, not a host: it is not ranked.
   hosts.delete(ANDERE)
   const herkunft = [...hosts]
+    .filter(([, n]) => n >= HERKUNFT_MINDESTENS)
     .sort((a, b) => b[1] - a[1] || a[0].localeCompare(b[0]))
     .slice(0, STATISTIK_HERKUNFT)
     .map(([host, aufrufe]) => ({ host, aufrufe }))
