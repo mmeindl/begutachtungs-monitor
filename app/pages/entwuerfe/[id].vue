@@ -178,11 +178,13 @@ const ministryLinks = computed(() => {
   return [ministryLinkFor(d.ministryCode, d.ministryName ?? d.ministryCode, { art: 'verordnung' })]
 })
 
-/** The Begleitschreiben is the door: it names where a Stellungnahme goes. */
-const coverLetterHref = computed(() => {
+/** The Begleitschreiben is the door: it names where a Stellungnahme goes.
+ *  Without one the RIS record is (02.11.2026): it names the responsible
+ *  office, and a card that sends the reader there needs the way there. */
+const doorHref = computed(() => {
   const d = data.value
   const c = d?.coverLetter
-  return d && c ? c.pdf ?? c.html ?? d.risUrl : null
+  return d ? (c ? c.pdf ?? c.html ?? d.risUrl : d.risUrl) : null
 })
 </script>
 
@@ -295,7 +297,7 @@ const coverLetterHref = computed(() => {
           frist
           :deadline="data.deadline"
           :ics-href="`/entwuerfe/${data.id}/frist.ics`"
-          :filing-href="coverLetterHref"
+          :filing-href="doorHref"
         >
           <!-- „Ministerium" rather than „Ressort", here and in
              `risFilingNote`: one word per thing. The page carried both side by
@@ -304,16 +306,17 @@ const coverLetterHref = computed(() => {
           <!-- One sentence since 30.09.2026, and it knows whether there is a
              Begleitschreiben: the address is in it, or it is published
              nowhere. „es gibt kein Formular des Parlaments" went — the button
-             below is the Begleitschreiben, not a form. -->
+             below is the Begleitschreiben, not a form. Without one the button
+             opens the RIS record, so the sentence no longer has to send the
+             reader there (02.11.2026). -->
           <p class="mt-2 text-sm text-ink">
             <template v-if="data.coverLetter">
               Stellungnahmen gehen hier direkt an das Ministerium – an die Adresse
               im Begleitschreiben.
             </template>
             <template v-else>
-              Stellungnahmen gehen hier direkt an das Ministerium. Eine
-              Einreichadresse ist nicht veröffentlicht; die zuständige Stelle nennt
-              der RIS-Eintrag.
+              Stellungnahmen gehen hier direkt an das Ministerium; eine
+              Einreichadresse ist nicht veröffentlicht.
             </template>
           </p>
           <!-- Linked, never read out. Measured 2026-09-17 over 40 records:
@@ -322,7 +325,7 @@ const coverLetterHref = computed(() => {
              where it is needed most — and the six readable ones name an
              individual official's work address, which is a decision of
              its own, not a side effect of a parser. -->
-          <template #filing>Begleitschreiben öffnen</template>
+          <template #filing>{{ data.coverLetter ? 'Begleitschreiben öffnen' : 'RIS-Eintrag öffnen' }}</template>
         </DraftDoorCard>
 
         <!-- ONE chapter, „Der Entwurf", with h3 blocks — the draft page's

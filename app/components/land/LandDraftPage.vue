@@ -208,21 +208,27 @@ useSeoMeta({ ogTitle: () => draft.value?.title ?? 'Entwurf', ogType: 'article' }
           :filing-href="detail.filing.kind === 'form' ? detail.filing.url : null"
           :ics-href="`${landDraftPath(land, detail.draft.id)}/frist.ics`"
         >
-          <p class="mt-2 text-sm text-ink">
+          <!-- No sentence for a form (02.11.2026): „Stellungnahmen gehen über
+               das Formular des Landes" stood over a button that said the
+               same; the button now names the form itself. -->
+          <p v-if="detail.filing.kind !== 'form'" class="mt-2 text-sm text-ink">
             <template v-if="detail.filing.kind === 'email'">
               Stellungnahmen gehen per E-Mail an
               <template v-if="detail.filing.recipient">die {{ detail.filing.recipient }}</template><template v-else>das Land</template>:
               <a :href="`mailto:${detail.filing.address}`" class="link-inline font-medium">{{ detail.filing.address }}</a>.
             </template>
-            <template v-else-if="detail.filing.kind === 'form'">
-              Stellungnahmen gehen über das Formular des Landes.
-            </template>
             <template v-else>
               Wohin eine Stellungnahme geht, steht {{ detail.filing.in ?? 'im Entwurf' }}.
             </template>
-            <template v-if="publicationNote">{{ ` ${publicationNote}` }}</template>
           </p>
-          <template #filing>Stellungnahme einbringen</template>
+          <!-- A line of its own, secondary (02.11.2026): whether the Land
+               publishes a Stellungnahme — and a private person's name — is
+               worth knowing before submitting, but it is not where to submit,
+               and appended to that sentence it pushed the address down. -->
+          <p v-if="publicationNote" class="mt-2 text-sm text-ink-secondary">
+            {{ publicationNote }}
+          </p>
+          <template #filing>Formular des Landes öffnen</template>
           <!-- Both ways to the address: the link in the sentence opens the
                mail program, the button copies it for wherever one writes. -->
           <template v-if="detail.filing.kind === 'email'" #primary>
