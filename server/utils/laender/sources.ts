@@ -100,6 +100,9 @@ const LAND_POLICY: UpstreamPolicy = {
   backoffMs: () => 2_000,
   accept: 'text/html',
   maxBytes: 4 * 1024 * 1024,
+  // Every hop held to the allowlist: a Land's page redirecting to
+  // 127.0.0.1 or anywhere else ends the read instead of following it.
+  upstreamHostsOnly: true,
 }
 
 /**
