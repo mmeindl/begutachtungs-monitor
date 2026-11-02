@@ -81,7 +81,7 @@ import {
 import { TIROL_LIST, TIROL_NUMBER_RE, TIROL_VO_NUMBER_RE, TIROL_VO_PAGE, parseTirolList, parseTirolRecord, parseTirolVoSearch, tirolFilingEmail, tirolRecordUrl, tirolVoOf, tirolVoSearchUrl, type TirolVoDraft } from './tirol'
 import { BGLD_CURRENT, BGLD_FILING_EMAIL, BGLD_FIRST_YEAR, BGLD_NUMBER_RE, BGLD_ORIGIN, bgldArchiveUrl, bgldNextPage, bgldUnidYear, parseBgldPage, type BgldEntry } from './burgenland'
 import { NOE_FILING_EMAIL, NOE_LIST, NOE_NUMBER_RE, NOE_RETENTION, NOE_STATEMENTS_GAP, noeDraftUrl, parseNoeDraftPage, parseNoeList } from './niederoesterreich'
-import { STMK_LIST, STMK_NUMBER_RE, STMK_ORIGIN, STMK_PACER, STMK_PERIODS, parseStmkDraftPage, parseStmkRows, stmkDraftUrl, stmkListUrl, stmkPageSizes, stmkPartsOf, stmkRowCount, stmkRowsPostback, type StmkDraft, type StmkPeriod } from './steiermark'
+import { STMK_LIST, STMK_NUMBER_RE, STMK_ORIGIN, STMK_PACER, STMK_PERIODS, parseStmkDraftPage, parseStmkRows, stmkDraftUrl, stmkListUrl, stmkNumber, stmkPageSizes, stmkPartsOf, stmkRowCount, stmkRowsPostback, type StmkDraft, type StmkPeriod } from './steiermark'
 import { VBG_FORM, VBG_LIST, VBG_NUMBER_RE, VBG_RETENTION, VBG_STATEMENTS_GAP, parseVbgList } from './vorarlberg'
 import { LandSourceError } from './gate'
 import { draftKindOfTitle } from './draftKind'
@@ -996,6 +996,30 @@ const stmkPastPeriod = defineCachedFunction(
   { name: 'land-stmk-past-period', base: DERIVED_CACHE, getKey: (key: string) => key, maxAge: STMK_PAST_TTL_S, swr: true },
 )
 
+/**
+ * Whether PALLAST lists `ref` in its period, asked of the cached lists
+ * before a draft's own page is fetched: a made-up UUID would otherwise cost
+ * a request at PALLAST's pace, and a loop of them queue every reader behind
+ * it. The current period is the newest ten (read every half hour) and the
+ * whole list (every six hours), so a draft filed since the last full read
+ * is known too. Null while the list that would know is still being read.
+ */
+async function stmkKnows(ref: string, period: StmkPeriod): Promise<boolean | null> {
+  if (period.key) {
+    const drafts = await withinBudget(stmkPastPeriod(period.key), STMK_COLD_BUDGET_MS)
+    if (drafts === null) return null
+    const id = `stmk-${stmkNumber(ref, period)}`
+    return drafts.some((d) => d.id === id)
+  }
+  const lists = (html: string | null) => html !== null && parseStmkRows(html).some((r) => r.ref === ref)
+  const [newest, rows] = await Promise.all([
+    withinBudget(fetchStmkPage(STMK_LIST), STMK_COLD_BUDGET_MS),
+    withinBudget(fetchStmkRows(), STMK_COLD_BUDGET_MS),
+  ])
+  if (lists(newest)) return true
+  return rows === null ? null : lists(rows)
+}
+
 const steiermark: LandReader = {
   listUrl: STMK_LIST,
   /* The newest ten by the day they were filed: a running draft is among
@@ -1023,6 +1047,9 @@ const steiermark: LandReader = {
   detail: async (number) => {
     const parts = stmkPartsOf(number)
     if (!parts) return null
+    const known = await stmkKnows(parts.ref, parts.period)
+    if (known === null) throw new LandSourceError('stmk', 'Liste wird gerade gelesen')
+    if (!known) return null
     const parsed = parseStmkDraftPage(await fetchStmkPage(stmkDraftUrl(parts.ref, parts.period)), parts.ref, parts.period)
     if (!parsed) return null
     const hasLetter = parsed.draft.documents.some((d) => /versendeschreiben/i.test(d.title))

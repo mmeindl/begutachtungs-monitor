@@ -42,12 +42,19 @@ export class SitePacer {
   constructor(
     private readonly gapMs: number,
     private readonly pauseMs: number,
+    /**
+     * The longest a request waits for its turn. A booked turn is never
+     * given back, so without a ceiling a loop of requests from outside
+     * queues every reader behind it; past it the request fails at once.
+     */
+    private readonly maxWaitMs = 60_000,
   ) {}
 
-  /** Waits for this request's turn; throws while the site blocks us. */
+  /** Waits for this request's turn; throws while the site blocks us, or when the queue is full. */
   async turn(): Promise<void> {
     const now = Date.now()
     if (now < this.blockedUntil) throw new LandSiteBlockedError(this.blockedUntil)
+    if (this.next - now > this.maxWaitMs) throw new LandSiteBusyError()
     const at = Math.max(now, this.next)
     this.next = at + this.gapMs
     if (at > now) await sleep(at - now)
@@ -63,6 +70,14 @@ export class LandSiteBlockedError extends Error {
   constructor(readonly until: number) {
     super(`Seite sperrt Anfragen, Pause bis ${new Date(until).toISOString()}`)
     this.name = 'LandSiteBlockedError'
+  }
+}
+
+/** More requests to the site are waiting than its pace clears within `maxWaitMs`. */
+export class LandSiteBusyError extends Error {
+  constructor() {
+    super('Zu viele Anfragen warten auf die Seite')
+    this.name = 'LandSiteBusyError'
   }
 }
 

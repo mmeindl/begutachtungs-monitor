@@ -11,7 +11,7 @@ import { bgldNextPage, bgldSubmitter, bgldUnidYear, parseBgldPage } from '../ser
 import { draftKindOfTitle, landDate } from '../server/utils/laender/draftKind'
 import { LandSourceError } from '../server/utils/laender/gate'
 import { noeDraftUrl, parseNoeDraftPage, parseNoeList } from '../server/utils/laender/niederoesterreich'
-import { LandSiteBlockedError, SitePacer, documentLink, documentLinkParts } from '../server/utils/laender/session'
+import { LandSiteBlockedError, LandSiteBusyError, SitePacer, documentLink, documentLinkParts } from '../server/utils/laender/session'
 import { STMK_PERIODS, isStmkDocumentUrl, parseStmkDraftPage, parseStmkRows, stmkPageSizes, stmkPartsOf, stmkRowCount, stmkRowsPostback } from '../server/utils/laender/steiermark'
 import { parseVbgList } from '../server/utils/laender/vorarlberg'
 
@@ -216,5 +216,13 @@ describe('SitePacer', () => {
     expect(Date.now() - started).toBeGreaterThanOrEqual(95)
     pacer.block()
     await expect(pacer.turn()).rejects.toBeInstanceOf(LandSiteBlockedError)
+  })
+
+  it('refuses a turn at once when the queue is longer than it may wait', async () => {
+    const pacer = new SitePacer(1_000, 60_000, 2_500)
+    // Turns at 0, 1 and 2 s are booked; a fourth would wait 3 s.
+    const booked = [pacer.turn(), pacer.turn(), pacer.turn()]
+    await expect(pacer.turn()).rejects.toBeInstanceOf(LandSiteBusyError)
+    await booked[0]
   })
 })
