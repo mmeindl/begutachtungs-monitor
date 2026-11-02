@@ -28,6 +28,7 @@
  * IPv6 is keyed by its /64: one connection typically holds a whole /64, and
  * a per-address limit there is a limit nobody has to respect.
  */
+import { LAND_SLUG } from '#shared/utils/laender'
 
 /**
  * Whether a request is an in-process sub-request of a page being rendered —
@@ -104,19 +105,32 @@ export interface BucketRule {
  *   scrolling a 700-row list fast sends ~22 batches, which the burst of 30
  *   absorbs; 20 a minute after that caps a loop at ~640 upstream requests a
  *   minute in the worst case of all-cold refs.
+ * - `landDraft` is a Land's draft by its number: its page, its calendar
+ *   file and its API calls. Oberösterreich, Tirol and Niederösterreich read
+ *   a number the lists do not know from the Land's own site — a draft that
+ *   left the list is still linked — so each made-up number is an uncached
+ *   upstream page, and one more entry in the cache. A reader opening a
+ *   draft spends about five (page, detail, comparison, Erläuterungen,
+ *   Begründung): 60 at once and 30 a minute is a dozen drafts in a row,
+ *   then one every two seconds.
  */
 export const RATE_RULES = {
   global: { burst: 240, perMinute: 240 },
   search: { burst: 20, perMinute: 12 },
   statementDocs: { burst: 30, perMinute: 20 },
+  landDraft: { burst: 60, perMinute: 30 },
 } as const satisfies Record<string, BucketRule>
 
 export type RateClass = keyof typeof RATE_RULES
+
+/** `/api/laender/<land>/<number>…` and `/entwuerfe/<land>/<number>…` — not the Land lists, which are cached whole. */
+const LAND_DRAFT_RE = new RegExp(`^(?:/api/laender/[a-z]+|/entwuerfe/(?:${Object.values(LAND_SLUG).join('|')}))/[^/]+`)
 
 /** The strict bucket a path draws from in ADDITION to `global`, if any. */
 export function strictClassFor(path: string): RateClass | null {
   if (path === '/api/suche' || path === '/api/suche/') return 'search'
   if (path === '/api/stellungnahmen/dokumente' || path === '/api/stellungnahmen/dokumente/') return 'statementDocs'
+  if (LAND_DRAFT_RE.test(path)) return 'landDraft'
   return null
 }
 

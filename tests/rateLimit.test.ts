@@ -65,6 +65,14 @@ describe('which routes', () => {
     expect(strictClassFor('/api/suche')).toBe('search')
     expect(strictClassFor('/api/stellungnahmen/dokumente')).toBe('statementDocs')
     expect(strictClassFor('/api/drafts')).toBeNull()
+    expect(strictClassFor('/api/laender/ooe/2026-16124')).toBe('landDraft')
+    expect(strictClassFor('/api/laender/t/2026-135/vergleich')).toBe('landDraft')
+    expect(strictClassFor('/entwuerfe/steiermark/0a1b2c3d-0000-0000-0000-000000000000')).toBe('landDraft')
+    expect(strictClassFor('/entwuerfe/wien/123/frist.ics')).toBe('landDraft')
+    // The lists are cached whole, and the Bund's drafts are not a Land's.
+    expect(strictClassFor('/api/laender')).toBeNull()
+    expect(strictClassFor('/entwuerfe/salzburg')).toBeNull()
+    expect(strictClassFor('/entwuerfe/XXVIII/123'.toLowerCase())).toBeNull()
   })
 
   it('does not count assets', () => {
