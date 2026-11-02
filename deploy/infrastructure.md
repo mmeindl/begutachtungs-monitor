@@ -78,8 +78,10 @@ box only through the retrofit in [README.md](README.md) ("Retrofit
 - **unattended-upgrades** — automatic security patches from Ubuntu, and
   since 2026-10-04 every update from the NodeSource (22.x) and Caddy repos.
 - **1 GB swapfile** — headroom next to the 1 GB RAM.
+- **Journal capped at 500 MB** (`/etc/systemd/journald.conf.d/00-size.conf`,
+  since 02.11.2026) — the default 10 % of the disk had grown to 2.5 GB.
 
-Three systemd timers come with [deploy.sh](deploy.sh) rather than with
+Four systemd timers come with [deploy.sh](deploy.sh) rather than with
 bootstrap.sh, because their unit files live in git
 ([deploy/systemd/](systemd/)) and are reinstalled on every deploy:
 
@@ -103,12 +105,21 @@ bootstrap.sh, because their unit files live in git
   after three restarts in 24 hours — then its unit fails. Added after the
   hang of 29.09.2026 (TODO.md § 5d); `deploy/bin/watchdog.sh` has the
   reasoning.
+- **`begutachtungs-monitor-laender-archive.timer`** — daily 05:40 UTC, keeps
+  the app's `/api/laender?status=all` as one gzipped file a day and every
+  document it names, fetched once and stored by hash, in
+  `/var/lib/begutachtungs-monitor/laender/`. Several Länder take their drafts
+  offline after the Frist or the Beschluss; this is the copy that outlives
+  them. Started 02.11.2026, no planned end; `deploy/bin/laender-archive.mjs`
+  has the layout and the reasoning.
 
 Nothing the site serves comes from disk. What does live in
 `/var/lib/begutachtungs-monitor` is the last-good Stellungnahmen fallback
 (`server/utils/parliament/lastgood.ts`, losing it costs a degraded page) and
 the snapshot series above (losing it costs the measurement, and it is not
-republished anywhere — the licence question is open).
+republished anywhere — the licence question is open). The Länder archive is
+the one thing there that cannot be recovered at all once a Land has deleted
+its draft — it has no backup yet.
 
 Since 30.10.2026 it also holds `zaehlung/`, the page-view count
 (`server/plugins/zaehlung.ts`, `docs/architecture.md` §12.65): one JSON
@@ -133,6 +144,9 @@ VPS (the scripts are provider-agnostic).
 | Uptime: current state | open issues with label `downtime`: `gh issue list --repo mmeindl/begutachtungs-monitor --label downtime` — none means up. **Trap:** GitHub disables the schedule after 60 days without a commit and mails about it; re-enable in the Actions tab. **Timing:** GitHub's cron is best-effort — after the workflow was first pushed (08.09.2026, 11:35 UTC) the first scheduled run came at 15:17 UTC, six slots later, and runs start ~10 min after their slot. Good enough to catch an outage of hours, not one of minutes |
 | App logs | `ssh root@85.235.66.11 journalctl -u begutachtungs-monitor -f` |
 | Timers: when do they fire | `ssh root@85.235.66.11 'systemctl list-timers begutachtungs-monitor-*'` |
+| Länder archive: start it | after installing the timer on a fresh box, once: `ssh root@85.235.66.11 'systemctl start --no-block begutachtungs-monitor-laender-archive.service'` |
+| Länder archive: is it arriving | `ssh root@85.235.66.11 'ls /var/lib/begutachtungs-monitor/laender/lists/ \| tail -3; du -sh /var/lib/begutachtungs-monitor/laender/docs; journalctl -u begutachtungs-monitor-laender-archive -n 5 --no-pager'` — the last line counts stored, gone and failed documents |
+| Länder archive: pull a copy | `rsync -az root@85.235.66.11:/var/lib/begutachtungs-monitor/laender/ .cache/laender/` |
 | list-81 snapshots: start the series | after installing the timer on a fresh box, once: `ssh root@85.235.66.11 'systemctl start begutachtungs-monitor-list81-snapshot.service'` — the timer itself only waits for its next slot |
 | Watchdog: did it act | `ssh root@85.235.66.11 'journalctl -u begutachtungs-monitor-watchdog --since -7d --no-pager \| grep -E "HANG\|RESTART\|GIVING UP\|route\|report"'` — silence means every probe answered |
 | Watchdog: read a report | `ssh root@85.235.66.11 'ls -la /var/lib/begutachtungs-monitor/reports/'`, then `scp` one and look at `libuv` (open handles) and `javascriptHeap`; kept 30 days |

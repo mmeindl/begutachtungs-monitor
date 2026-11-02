@@ -1,0 +1,21 @@
+# Installed by deploy/deploy.sh on every deploy.
+#
+# 05:40 UTC: after the prewarm (04:30 + up to 20 min jitter), which warms the
+# very answer this job reads, and after the list-81 snapshot (05:10 + up to
+# 10 min), so the three never share a minute.
+#
+# Persistent=true catches up a missed run, but — as with the list-81 timer —
+# does not take the first one at `enable --now`. Start it once by hand after
+# the first install:
+#
+#   systemctl start --no-block begutachtungs-monitor-laender-archive.service
+[Unit]
+Description=Begutachtungs-Monitor: daily Länder archive
+
+[Timer]
+OnCalendar=*-*-* 05:40:00 UTC
+RandomizedDelaySec=10m
+Persistent=true
+
+[Install]
+WantedBy=timers.target

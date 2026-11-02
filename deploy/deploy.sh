@@ -87,6 +87,7 @@ install -o root -g root -m 0755 -t /usr/local/lib/begutachtungs-monitor "$STAGE"
 systemctl daemon-reload
 systemctl enable --now --quiet begutachtungs-monitor-prewarm.timer
 systemctl enable --now --quiet begutachtungs-monitor-list81-snapshot.timer
+systemctl enable --now --quiet begutachtungs-monitor-laender-archive.timer
 systemctl enable --now --quiet begutachtungs-monitor-watchdog.timer
 systemctl restart begutachtungs-monitor
 REMOTE

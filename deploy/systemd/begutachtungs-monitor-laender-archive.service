@@ -1,0 +1,47 @@
+# Installed by deploy/deploy.sh on every deploy (install + daemon-reload).
+# The Länder archive: one copy a day of what /api/laender reads, plus every
+# document it names, fetched once (deploy/bin/laender-archive.mjs says why and
+# how). Started 02.11.2026 — unlike the list-81 series not a measurement with
+# an end, but the free slice of the persistence package.
+#
+# Reads the app's warm answer, so it needs the app; `Wants=` and not
+# `Requires=`, because a restart of the app must not stop a half-done run of
+# document fetches — those go to the Länder, not to the app.
+[Unit]
+Description=Begutachtungs-Monitor: daily Länder archive (lists and documents)
+After=network-online.target begutachtungs-monitor.service
+Wants=network-online.target
+
+[Service]
+Type=oneshot
+User=app
+Group=app
+StateDirectory=begutachtungs-monitor
+ExecStart=/usr/bin/node /usr/local/lib/begutachtungs-monitor/laender-archive.mjs
+# The first run fetches ~800 documents a second apart, ~15 minutes; later runs
+# a handful. An hour leaves room for slow hosts at 120 s a request.
+TimeoutStartSec=3600
+# A separate process beside an app held to MemoryMax=512M on a 1-GB box.
+# Documents stream to disk; holding them whole took the first run to exactly
+# this ceiling plus 96 MB of swap (02.11.2026), streaming peaks at ~106 MB.
+MemoryMax=192M
+# MemoryMax caps RAM, not swap: without this the run swaps instead of ending.
+MemorySwapMax=0
+
+# The app's sandbox (deploy/bootstrap.sh): the job reads the app and the
+# Länder over HTTP and writes only its StateDirectory, which
+# ProtectSystem=strict keeps writable.
+NoNewPrivileges=true
+PrivateTmp=true
+ProtectSystem=strict
+ProtectHome=yes
+PrivateDevices=yes
+ProtectKernelTunables=yes
+ProtectKernelModules=yes
+ProtectControlGroups=yes
+RestrictAddressFamilies=AF_INET AF_INET6 AF_UNIX
+CapabilityBoundingSet=
+SystemCallFilter=@system-service
+SystemCallErrorNumber=EPERM
+LockPersonality=yes
+RestrictSUIDSGID=yes
