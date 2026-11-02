@@ -2,7 +2,7 @@
 import type { AmendedLawsResponse, DraftDetail, RvStatementsResponse } from '#shared/types'
 import type { ComparisonId, StationContext, StationId } from '~/utils/spine'
 import type { Fact } from '~/components/ui/FactList.vue'
-import { fristContextFor, fristFact } from '~/utils/deadlines'
+import { fristFact } from '~/utils/deadlines'
 import {
   SECOND_ROUND_CLAUSE,
   lastParliamentStation,
@@ -227,14 +227,6 @@ const divergence = computed(() =>
   fristDivergence(data.value?.risDraft ?? null, Boolean(data.value?.active)),
 )
 
-/** The yardstick behind the rail's „Kurze Frist" / „Volle Frist" — the rail
- *  says which, this sentence says against what. Null in the middle. */
-const fristContext = computed(() => {
-  const d = data.value
-  if (!d) return null
-  return fristContextFor(d.arrivedAt, d.deadline)
-})
-
 /* The credit line under the Begutachtung's frame (02.10.2026): Parliament's
  * Verlauf of the draft — Begutachtung data, which no open data grant covers.
  * The other frames name their own sources (`AmendedLawsFrame`,
@@ -406,7 +398,6 @@ const ministryLinks = computed(() => {
             v-if="windows.begutachtung || windows.vorlage"
             :frist="windows.begutachtung"
             :deadline="data.deadline"
-            :context="fristContext"
             :ics-href="`/entwuerfe/${gp}/${inr}/frist.ics`"
             :filing-href="data.parliamentUrl"
           >
@@ -463,22 +454,15 @@ const ministryLinks = computed(() => {
                 Stellungnahme zur Regierungsvorlage abgeben
               </DoorButton>
             </template>
-            <template #footer>
-              <!-- The documented base fact (drafts get revised routinely), no
-                 per-Stellungnahme causality — the honest interim form of
-                 "your input changed §5" until the diff layer exists. Once the
-                 Vorlage exists, that comparison IS on the page, so the card
-                 points at it instead. -->
-              <p v-if="windows.begutachtung && !data.enactment" class="mt-3 text-sm text-ink">
-                Ministerien überarbeiten Entwürfe nach der Begutachtung regelmäßig.
-                Der Monitor verfolgt auch bei diesem Entwurf, was daraus wird.
-              </p>
-            <!-- NO third pointer to #textvergleich (18.09.2026). Where a
-                 Vorlage exists, the bar directly above this card already shows
-                 „Was sich nach der Begutachtung geändert hat", and the
-                 Regierungsvorlage section links the same anchor once more. Three
-                 ways to one place are not an offer. -->
-            </template>
+            <!-- No footer (02.11.2026). It said that ministries revise drafts
+               routinely and that the monitor follows this one: a promise
+               about the product beside the button, not a fact about the
+               draft, and no win to show. Wins are shown where they are
+               measured — the comparison sections. NO pointer to
+               #textvergleich either (18.09.2026): where a Vorlage exists, the
+               bar directly above this card already shows „Was sich nach der
+               Begutachtung geändert hat", and the Regierungsvorlage section
+               links the same anchor once more. -->
           </DraftDoorCard>
 
           <section

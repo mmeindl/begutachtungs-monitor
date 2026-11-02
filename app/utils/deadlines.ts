@@ -4,7 +4,7 @@
  * (`EntryState`).
  */
 import { daysUntil, formatDateDe, spanInDays } from '#shared/utils/format'
-import { GP_STARTS, gpInSentenceDe, gpNameDe } from '#shared/utils/gp'
+import { GP_STARTS, gpNameDe } from '#shared/utils/gp'
 
 /** Deadline ends in ≤ N days → critical (red badge tone). */
 const DEADLINE_CRITICAL_DAYS = 3
@@ -270,8 +270,6 @@ export interface FristPeriod {
   practice: FristPractice
   /** „XXVIII. GP" — under the bar's tick (`gpNameDe`). */
   basisShort: string
-  /** „in der XXVIII. Gesetzgebungsperiode (seit Oktober 2024)" — in a sentence. */
-  basisLong: string
 }
 
 /**
@@ -289,14 +287,7 @@ export function fristPeriodFor(start: string | null | undefined, kind: FristKind
     .sort((a, b) => GP_STARTS[b]!.localeCompare(GP_STARTS[a]!))[0]
   const practice = gp ? FRIST_PRACTICE[kind][gp] : undefined
   if (!gp || !practice) return null
-  return { gp, practice, basisShort: gpNameDe(gp), basisLong: gpInSentenceDe(gp) }
-}
-
-const ORDINAL: Record<number, string> = { 3: 'dritte', 4: 'vierte', 5: 'fünfte', 6: 'sechste', 7: 'siebte', 8: 'achte' }
-
-/** „vierte" for a share of 0.25 — the „jeder n-te" a reader can picture. */
-function everyNthDe(share: number): string | null {
-  return share > 0 ? ORDINAL[Math.round(1 / share)] ?? null : null
+  return { gp, practice, basisShort: gpNameDe(gp) }
 }
 
 /**
@@ -338,42 +329,6 @@ export function fristClassLineDe(start: string | null | undefined, deadline: str
   return `${cls === 'short' ? 'Kurze' : 'Volle'} Frist: ${span}`
 }
 
-/**
- * The yardstick for the rail's „Kurze Frist" or „Volle Frist": how this
- * Frist compares with the Regelfall and with the practice of its own period
- * (`fristPeriodFor`, 21.10.2026 — „seit 2013" until then). Null in the
- * middle, and null without a measured period: a sentence about practice
- * needs the practice it names.
- *
- * A Verordnungsentwurf is compared with its own kind: it reaches the
- * Regelfall less often (one in five to one in seven, against one in four
- * for the Entwürfe of the last two periods).
- */
-function fristYardstickDe(cls: FristClass, kind: FristKind, period: FristPeriod | null): string | null {
-  if (!period) return null
-  const { practice, basisLong } = period
-  if (cls === 'short') {
-    const drafts = kind === 'verordnung' ? 'Verordnungsentwürfe' : 'Entwürfe'
-    return practice.median >= 28
-      ? `Im Regelfall vorgesehen sind sechs Wochen, und die Hälfte der ${drafts} ${basisLong} hatte mindestens vier.`
-      : 'Im Regelfall vorgesehen sind sechs Wochen.'
-  }
-  if (cls === 'full') {
-    const nth = everyNthDe(practice.fullShare)
-    if (!nth) return null
-    const draft = kind === 'verordnung' ? 'Verordnungsentwurf' : 'Entwurf'
-    return `Die im Regelfall vorgesehenen sechs Wochen erreicht nur etwa jeder ${nth} ${draft} ${basisLong}.`
-  }
-  return null
-}
-
-/** The yardstick as a sentence of its own, for the action card while the
- *  Frist runs: the countdown heads that card, the rail names the class. */
-export function fristContextDe(cls: FristClass, kind: FristKind, period: FristPeriod | null): string | null {
-  const yardstick = fristYardstickDe(cls, kind, period)
-  return yardstick ? `Zum Vergleich: ${yardstick}` : null
-}
-
 /** „03.06.–17.06.2026", the year once where both ends share it; the
  *  deadline alone („bis 17.06.2026") without a start. */
 export function fristRangeDe(start: string | null | undefined, deadline: string): string {
@@ -381,16 +336,6 @@ export function fristRangeDe(start: string | null | undefined, deadline: string)
   if (!start || spanInDays(start, deadline) === null) return `bis ${end}`
   const from = formatDateDe(start)
   return from.slice(-4) === end.slice(-4) ? `${from.slice(0, -4)}–${end}` : `${from} – ${end}`
-}
-
-/** The yardstick sentence for a Frist from its dates — `fristContextDe` on
- *  `fristClassOf`, the pair both detail pages put in their action card. */
-export function fristContextFor(
-  start: string | null | undefined,
-  deadline: string | null | undefined,
-  kind: FristKind = 'entwurf',
-): string | null {
-  return fristContextDe(fristClassOf(start, deadline), kind, fristPeriodFor(start, kind))
 }
 
 /**

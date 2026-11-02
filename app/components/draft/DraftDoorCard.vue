@@ -18,15 +18,13 @@ import { deadlineCardClass, deadlineTone } from '~/utils/deadlines'
  * to tone and keeps the plain card, and brings its own heading (`#heading`).
  *
  * Slots, in the card's order: `heading`; the default slot, the body under
- * it; the Frist's context line (`context`); `after-context`; the button row
+ * it; `after-context`; the button row
  * — `filing` (the door itself, a `DoorButton` while `filingHref` is set),
  * the .ics button, then `actions`; and `footer` under the row.
  */
 const props = defineProps<{
   frist: boolean
   deadline: string | null | undefined
-  /** The yardstick sentence (`fristContextFor`), shown while the Frist runs. */
-  context?: string | null
   /** The Frist's .ics; offered while it runs and has a date. */
   icsHref?: string | null
   /** Where the door leads; its label is the `filing` slot. Shown while the Frist runs. */
@@ -53,15 +51,6 @@ const doorClass = computed(() =>
       <slot name="heading">{{ fristLabel(deadline, true) }}</slot>
     </h2>
     <slot />
-    <!-- How long the window is, measured against practice and the
-         Verordnung — here while the Frist runs, because this card is
-         where a reader decides whether a Stellungnahme is still
-         feasible. When the window closes, the card goes and the sentence
-         moves back under „Die Begutachtung": one place at a time, the one
-         that matters now. -->
-    <p v-if="frist && context" class="mt-2 text-sm text-ink">
-      {{ context }}
-    </p>
     <slot name="after-context" />
     <div class="mt-3 flex flex-wrap items-center gap-3">
       <!-- The page's own primary action where it is not a link — a Land's

@@ -5,7 +5,7 @@ import { RIS_ID_RE } from '#shared/utils/risConsultations'
 import { citeLineDe } from '#shared/utils/citations'
 import type { Fact } from '~/components/ui/FactList.vue'
 import { ministryLinkFor } from '~/components/draft/MinistryLinks.vue'
-import { fristContextFor, fristFact, fristStateDe } from '~/utils/deadlines'
+import { fristFact, fristStateDe } from '~/utils/deadlines'
 import { regulationStations, regulationStatusDe } from '~/utils/spine'
 
 /**
@@ -103,15 +103,6 @@ const { data: fassung } = await useFetch<BgblLawsResponse>(
 
 const stationList = computed(() =>
   data.value?.kind === 'verordnung' ? regulationStations(data.value, outcome.value) : [])
-
-/* The yardstick behind the rail's „Kurze Frist" / „Volle Frist", as on the
-   draft page — measured against Verordnungsentwürfe, because only a
-   Verordnung has the rail that names the class (`fristContextDe`). */
-const fristContext = computed(() => {
-  const d = data.value
-  if (!d || !stationList.value.length) return null
-  return fristContextFor(d.startedAt, d.deadline, 'verordnung')
-})
 
 /* The Frist as a fact, as on the draft page: length and dates, drawn
    against the Regelfall under them (01.10.2026) — running or closed since
@@ -303,7 +294,6 @@ const coverLetterHref = computed(() => {
           v-if="data.active"
           frist
           :deadline="data.deadline"
-          :context="fristContext"
           :ics-href="`/entwuerfe/${data.id}/frist.ics`"
           :filing-href="coverLetterHref"
         >

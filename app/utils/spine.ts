@@ -120,7 +120,7 @@ export interface StationContext {
  */
 function fristDurationDe(start: string | null, deadline: string | null): string | null {
   // At the edges the class leads, so the row says at a glance what the
-  // sentence under „Die Begutachtung" explains (`fristClassLineDe`).
+  // bar under „Die Begutachtung" draws (`fristClassLineDe`, `FristBar`).
   const edge = fristClassLineDe(start, deadline)
   if (edge) return edge
   const span = fristSpanDe(start, deadline)
