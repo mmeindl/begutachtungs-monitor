@@ -67,6 +67,19 @@ if [ -z "$(swapon --show --noheadings)" ]; then
   echo '/swapfile none swap sw 0 0' >> /etc/fstab
 fi
 
+# --- journal cap (500 MB) ----------------------------------------------------
+# journald's default is 10 % of the filesystem, capped at 4 GB — 2.8 GB on the
+# pico's 28 GB, and the journal sat at that ceiling with 2.5 GB (02.11.2026).
+# The disk is now also the Länder archive's (deploy/bin/laender-archive.mjs),
+# which grows for years; 500 MB still holds months of the app's log.
+mkdir -p /etc/systemd/journald.conf.d
+cat > /etc/systemd/journald.conf.d/00-size.conf <<'JOURNALD'
+[Journal]
+SystemMaxUse=500M
+JOURNALD
+systemctl restart systemd-journald
+journalctl --vacuum-size=500M
+
 # --- SSH hardening: key-only logins -------------------------------------------
 # The netcup image leaves password auth on and root with a usable password —
 # on a public IPv4 that invites brute force. Keys are injected at install
