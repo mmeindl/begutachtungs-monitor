@@ -4,6 +4,7 @@
  * with their widths — from pdf.js's operator list, because the text layer
  * alone knows neither the rules nor where inside a run a character stands.
  */
+import { withPdf, type PdfDocument } from '../text/pdfDocument'
 import type { TguPage } from './landTgu'
 
 /** A rule is a filled rectangle at most this high, and wider than a speck. */
@@ -12,10 +13,13 @@ const RULE_MIN_WIDTH = 1.5
 
 /* eslint-disable @typescript-eslint/no-explicit-any -- pdf.js's operator arguments */
 export async function tguPages(bytes: Uint8Array): Promise<TguPage[]> {
-  const { getDocumentProxy, getResolvedPDFJS } = await import('unpdf')
+  return withPdf(bytes, pagesOfDocument)
+}
+
+async function pagesOfDocument(doc: PdfDocument): Promise<TguPage[]> {
+  const { getResolvedPDFJS } = await import('unpdf')
   const { OPS } = (await getResolvedPDFJS()) as any
   const showText = new Set([OPS.showText, OPS.showSpacedText, OPS.nextLineShowText, OPS.nextLineSetSpacingShowText])
-  const doc = await getDocumentProxy(bytes)
   const pages: TguPage[] = []
   for (let n = 1; n <= doc.numPages; n++) {
     const page = await doc.getPage(n)
@@ -47,9 +51,6 @@ export async function tguPages(bytes: Uint8Array): Promise<TguPage[]> {
     // The operator list of a long document is the bulk of its memory.
     page.cleanup()
   }
-  // Ended, not only cleaned up — nothing returned holds a pdf.js object — as
-  // unpdf ends every document it opens itself (`withDocument`). The proxy
-  // has no `destroy()` of its own in this pdf.js.
-  await doc.loadingTask.destroy()
+  // Ended by `withPdf`, not only cleaned up: nothing returned holds a pdf.js object.
   return pages
 }

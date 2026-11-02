@@ -47,6 +47,7 @@ import {
   type SearchTerm,
 } from './begutSearch'
 import { DERIVED_CACHE } from '../cache/base'
+import { withPdf } from '../text/pdfDocument'
 import { PUBLISHED_DOCUMENT_TTL_S } from '../cache/ttl'
 import type { TextBlock } from '../lawtext/lawUnits'
 import { parseRisXml } from '../lawtext/risXml'
@@ -196,8 +197,8 @@ const fetchBegutPdf = defineCachedFunction(
 const begutPdfText = defineCachedFunction(
   async (url: string): Promise<string> => {
     const bytes = new Uint8Array(Buffer.from(await fetchBegutPdf(url), 'base64'))
-    const { extractText, getDocumentProxy } = await import('unpdf')
-    const { text } = await extractText(await getDocumentProxy(bytes), { mergePages: true })
+    const { extractText } = await import('unpdf')
+    const { text } = await withPdf(bytes, (doc) => extractText(doc, { mergePages: true }))
     return typeof text === 'string' ? text : (text as string[]).join('\n')
   },
   {

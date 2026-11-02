@@ -11,6 +11,7 @@ import { landDraftUnits, lgblUnits } from '../landLawDiff'
 import { isStmkDocumentUrl, stmkDocumentBytes } from '../steiermark'
 import { isTirolDocumentUrl, tirolDocumentBytes } from '../tirol'
 import { styledPages, type StyledPages } from './styledPages'
+import { withPdf } from '../../text/pdfDocument'
 import { fromMacRoman } from '../../annex/annexPdfPages'
 
 export const TEXT_POLICY: UpstreamPolicy = { timeoutMs: 30_000, retries: 2, upstreamHostsOnly: true }
@@ -69,8 +70,7 @@ export async function landPdfBytes(url: string): Promise<Uint8Array> {
 export async function pdfPages(url: string): Promise<string[]> {
   const bytes = await landPdfBytes(url)
   const { extractText } = await import('unpdf')
-  // Bytes, not a proxy: a document unpdf opens itself it also destroys.
-  const { text } = await extractText(bytes, { mergePages: false })
+  const { text } = await withPdf(bytes, (doc) => extractText(doc, { mergePages: false }))
   return repairMacRoman(Array.isArray(text) ? text : [text])
 }
 

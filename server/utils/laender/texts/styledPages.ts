@@ -10,6 +10,8 @@
  * costs about as much again as the text alone, 16–128 ms a document.
  */
 
+import { withPdf, type PdfDocument } from '../../text/pdfDocument'
+
 export interface StyledPages {
   pages: string[]
   /** Per page, per line of `pages[n].split('\n')`: whether every glyph of it is set in bold. */
@@ -21,8 +23,10 @@ const BOLD_FONT_RE = /bold|black|heavy|semibold|demi/i
 
 /* eslint-disable @typescript-eslint/no-explicit-any -- pdf.js's text runs and font objects */
 export async function styledPages(bytes: Uint8Array): Promise<StyledPages> {
-  const { getDocumentProxy } = await import('unpdf')
-  const doc = await getDocumentProxy(bytes, { fontExtraProperties: true })
+  return withPdf(bytes, styledPagesOf, { fontExtraProperties: true })
+}
+
+async function styledPagesOf(doc: PdfDocument): Promise<StyledPages> {
   const pages: string[] = []
   const bold: boolean[][] = []
   for (let n = 1; n <= doc.numPages; n++) {
@@ -60,8 +64,6 @@ export async function styledPages(bytes: Uint8Array): Promise<StyledPages> {
     // The operator list of a long document is the bulk of its memory (`landTguPdf.ts`).
     page.cleanup()
   }
-  // Ended, not only cleaned up — nothing returned holds a pdf.js object — and
-  // the way unpdf ends every document it opens itself (`withDocument`).
-  await doc.loadingTask.destroy()
+  // Ended by `withPdf`, not only cleaned up: nothing returned holds a pdf.js object.
   return { pages, bold }
 }

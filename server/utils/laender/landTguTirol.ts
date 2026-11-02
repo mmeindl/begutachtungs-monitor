@@ -55,6 +55,7 @@
  * (`pagesOf`) knows neither rules nor colour.
  */
 import type { AnnexPage } from '../annex/annexPdf'
+import { withPdf, type PdfDocument } from '../text/pdfDocument'
 import { joinLines, tguParagraphKey, type TguParagraph, type TguReading } from './landTgu'
 
 /* ------------------------------------------------------------------ *
@@ -117,10 +118,13 @@ function isColoured(fill: string): boolean {
  * joined by the glyphs both draw in the same order.
  */
 export async function tirolTguPages(bytes: Uint8Array): Promise<TirolTguPage[]> {
-  const { getDocumentProxy, getResolvedPDFJS } = await import('unpdf')
+  return withPdf(bytes, tirolPagesOfDocument)
+}
+
+async function tirolPagesOfDocument(doc: PdfDocument): Promise<TirolTguPage[]> {
+  const { getResolvedPDFJS } = await import('unpdf')
   const { OPS } = (await getResolvedPDFJS()) as any
   const showText = new Set([OPS.showText, OPS.showSpacedText, OPS.nextLineShowText, OPS.nextLineSetSpacingShowText])
-  const doc = await getDocumentProxy(bytes)
   const pages: TirolTguPage[] = []
   for (let n = 1; n <= doc.numPages; n++) {
     const page = await doc.getPage(n)
@@ -158,10 +162,7 @@ export async function tirolTguPages(bytes: Uint8Array): Promise<TirolTguPage[]> 
     pages.push(upright(viewport, items, glyphs, rawRules))
     page.cleanup()
   }
-  // Ended, not only cleaned up — nothing returned holds a pdf.js object — as
-  // unpdf ends every document it opens itself (`withDocument`). The proxy
-  // has no `destroy()` of its own in this pdf.js.
-  await doc.loadingTask.destroy()
+  // Ended by `withPdf`, not only cleaned up: nothing returned holds a pdf.js object.
   return pages
 }
 

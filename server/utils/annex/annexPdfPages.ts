@@ -19,6 +19,7 @@
  * and pure so the rotation can be tested without a fixture binary.
  */
 import type { AnnexItem, AnnexPage } from './annexPdf'
+import { withPdf, type PdfDocument } from '../text/pdfDocument'
 
 /* eslint-disable @typescript-eslint/no-explicit-any */
 
@@ -136,8 +137,11 @@ export function uprightRuns(runs: readonly RawRun[], viewport: RawViewport): Ann
  * A run without a string `str` is a marked-content marker, not text.
  */
 export async function pagesOf(bytes: Uint8Array): Promise<AnnexPage[]> {
-  const { getDocumentProxy, getResolvedPDFJS } = await import('unpdf')
-  const doc = await getDocumentProxy(bytes)
+  return withPdf(bytes, annexPagesOf)
+}
+
+async function annexPagesOf(doc: PdfDocument): Promise<AnnexPage[]> {
+  const { getResolvedPDFJS } = await import('unpdf')
   const read = async (misread: boolean): Promise<AnnexPage[]> => {
     const pages: AnnexPage[] = []
     for (let n = 1; n <= doc.numPages; n++) {
