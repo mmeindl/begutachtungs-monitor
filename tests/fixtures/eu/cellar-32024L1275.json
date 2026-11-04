@@ -1,0 +1,5 @@
+
+{ "head": { "link": [], "vars": ["d"] },
+  "results": { "distinct": false, "ordered": true, "bindings": [
+    { "d": { "type": "literal", "datatype": "http://www.w3.org/2001/XMLSchema#date", "value": "2025-01-01" }},
+    { "d": { "type": "literal", "datatype": "http://www.w3.org/2001/XMLSchema#date", "value": "2026-05-29" }} ] } }

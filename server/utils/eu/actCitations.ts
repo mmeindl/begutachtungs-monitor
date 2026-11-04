@@ -1,0 +1,264 @@
+/**
+ * EU acts as German legal text cites them → CELEX number, ELI link and a
+ * label (docs/architecture.md §12.66).
+ *
+ * PURE MODULE — text in, acts out; no Nitro globals, relative imports only,
+ * so the corpus script (`scripts/corpus/eu.ts`) measures this file and not a
+ * copy of it, and the Länder can run it over Landesgesetz text unchanged.
+ *
+ * The forms, all measured over the RIS Begut corpus since 2024 (04.11.2026):
+ *
+ * - „Richtlinie (EU) 2024/1069", „Verordnung (EU) 2022/2065" — since 2015,
+ *   year first, the organisation in brackets;
+ * - „Verordnung (EG) Nr. 1907/2006", „Verordnung (EU) Nr. 517/2014" — the
+ *   old regulation form, number first, after „Nr.";
+ * - „Richtlinie 2014/36/EU", „Beschluss Nr. 1313/2013/EU" — the old
+ *   directive and decision form, organisation as a suffix;
+ * - „RL 2019/1937", „VO 2016/679" — abbreviated, four-digit year, no anchor;
+ * - lists that inherit the type: „der Richtlinien (EU) 2022/2464 und (EU)
+ *   2023/2775", „… und 2014/36/EU".
+ *
+ * Case-insensitive on purpose: „Saisonarbeiter-Richtlinien (2014/36/EU)" and
+ * „RL" both occur — the number with its (EU)/EU anchor keeps a national
+ * „Förderrichtlinie" out, not the capital R.
+ *
+ * NOT READ: acts named by a short name only („IE-Richtlinie", „DSGVO",
+ * „EMFA"). v1 resolves no short names (rule D7) — no lookup table to age.
+ */
+
+/** What kind of act — the CELEX type letter follows from it. */
+export type EuActKind = 'richtlinie' | 'verordnung' | 'beschluss' | 'rahmenbeschluss'
+
+export interface EuAct {
+  kind: EuActKind
+  year: number
+  number: number
+  /** „32024L1069" — sector 3, year, type letter, four-digit number. */
+  celex: string
+  /** The act in EUR-Lex, German: `https://eur-lex.europa.eu/eli/dir/2024/1069/oj/deu`. */
+  eli: string
+  /** How the page names it: „Richtlinie (EU) 2024/1069", „Richtlinie 2009/43/EG". */
+  label: string
+  /** As printed in the source, whitespace normalised — for the corpus run and the tests. */
+  raw: string
+}
+
+const TYPE_LETTER: Record<EuActKind, string> = { richtlinie: 'L', verordnung: 'R', beschluss: 'D', rahmenbeschluss: 'F' }
+const ELI_TYPE: Record<EuActKind, string> = { richtlinie: 'dir', verordnung: 'reg', beschluss: 'dec', rahmenbeschluss: 'dec_framw' }
+
+const ORG = String.raw`\((?:EU|EG|EWG|EGKS|Euratom)(?:\s*,\s*Euratom)?\)`
+const SUFFIX = String.raw`(?:EU|EG|EWG|EGKS|Euratom|JI|GASP)`
+/**
+ * The type word, inflected: „Richtlinie(n)", „Verordnung(en)", „Beschluss(es)",
+ * „Entscheidung(en)", with the Durchführungs-/Delegierte/Rahmen- forms.
+ */
+const TYPE = String.raw`(?:(?:Durchführungs|Rahmen)?(?:richtlinie|verordnung|beschluss|entscheidung)|Delegierte[nr]?\s+(?:Richtlinie|Verordnung|Beschluss)|(?<![A-Za-zÄÖÜäöüß])(?:RL|VO))(?:en|n|es|e)?`
+
+/** „Richtlinie (EU) 2024/1069", „Verordnung (EG) Nr. 1907/2006", „RL EU 2024/1069". */
+const ACT_ORG = new RegExp(String.raw`(${TYPE})\s*(?:${ORG}|EU)\s*(Nr\.\s*)?(\d{1,4})\s*/\s*(\d{1,4})(?!\s*/\s*\d)`, 'giu')
+/** „Richtlinie 2014/36/EU", „Richtlinien (2014/36/EU)", „Beschluss Nr. 1313/2013/EU". */
+const ACT_SUFFIX = new RegExp(String.raw`(${TYPE})\s*\(?\s*(Nr\.\s*)?(\d{2,4})\s*/\s*(\d{1,4})\s*/\s*${SUFFIX}\b`, 'giu')
+/** „RL 2019/1937", „VO 2016/679": the abbreviation with a four-digit year and no anchor at all. */
+const ACT_ABBREVIATED = /(?<![A-Za-zÄÖÜäöüß])(RL|VO)\s*(\d{4})\s*\/\s*(\d{1,4})\b(?!\s*\/)/gu
+/** „…, (EU) 2023/2775", „und 2014/36/EU" after a typed act: the list inherits the type. */
+const ACT_CONTINUATION = new RegExp(
+  String.raw`^\s*(?:,|und|sowie|oder|bzw\.)\s*(?:der|die|den|des)?\s*(?:${ORG}\s*(Nr\.\s*)?(\d{1,4})\s*/\s*(\d{1,4})(?!\s*/\s*\d)|\(?\s*(\d{2,4})\s*/\s*(\d{1,4})\s*/\s*${SUFFIX}\b)`,
+  'u',
+)
+
+/**
+ * An act named inside another act's title: „Richtlinie (EU) 2019/944 … und
+ * zur Änderung der Richtlinie 2012/27/EU", „… zur Aufhebung der Richtlinien
+ * 2006/48/EG und 2006/49/EG". The draft implements the first, not the
+ * second — one ElWG draft counted 34 acts before this rule (04.11.2026).
+ * „in der Fassung der Richtlinie (EU) 2024/1711" stays: that is usually the
+ * act the draft adds.
+ */
+const TITLE_REFERENCE = /(?:Änderung|Aufhebung|Ersetzung)\s+(?:der|des|von)\s*$/
+
+function kindOf(word: string): EuActKind {
+  const w = word.toLowerCase()
+  if (w.startsWith('rahmen')) return 'rahmenbeschluss'
+  if (w.includes('richtlinie') || w === 'rl') return 'richtlinie'
+  if (w.includes('verordnung') || w === 'vo' || w === 'voen') return 'verordnung'
+  return 'beschluss'
+}
+
+/** The type word as the label prints it, nominative singular: „Durchführungsverordnung", „Delegierte Richtlinie". */
+function wordOf(word: string, kind: EuActKind): string {
+  const w = word.toLowerCase().replace(/\s+/g, ' ')
+  if (w.startsWith('delegiert')) return kind === 'richtlinie' ? 'Delegierte Richtlinie' : kind === 'verordnung' ? 'Delegierte Verordnung' : 'Delegierter Beschluss'
+  if (w.startsWith('durchführungs')) return kind === 'richtlinie' ? 'Durchführungsrichtlinie' : kind === 'verordnung' ? 'Durchführungsverordnung' : 'Durchführungsbeschluss'
+  if (w.startsWith('entscheidung')) return 'Entscheidung'
+  return { richtlinie: 'Richtlinie', verordnung: 'Verordnung', beschluss: 'Beschluss', rahmenbeschluss: 'Rahmenbeschluss' }[kind]
+}
+
+function fullYear(y: number): number {
+  return y < 100 ? 1900 + y : y
+}
+
+function plausibleYear(y: number): boolean {
+  const full = fullYear(y)
+  return full >= 1952 && full <= 2030
+}
+
+/**
+ * Year and number from „a/b". „Nr." means the old order, number first
+ * („Verordnung (EU) Nr. 517/2014"); without it a four-digit year in front is
+ * the order since 2015 („Richtlinie (EU) 2024/1069"), and anything else is
+ * number/year written without the „Nr." („(EU) 1303/2013").
+ */
+function orderOrg(nr: boolean, a: number, b: number): { year: number; number: number } {
+  // „Verordnung (EU) Nr. 2022/2065": the „Nr." of the old form before the new
+  // order — read year first where the second number cannot be a year.
+  if (nr) return plausibleYear(b) || !plausibleYear(a) ? { year: fullYear(b), number: a } : { year: a, number: b }
+  if (a >= 1990 && a <= 2030) return { year: a, number: b }
+  return { year: fullYear(b), number: a }
+}
+
+/** The suffix form is year first („2014/36/EU") unless „Nr." says otherwise („Nr. 1313/2013/EU"). */
+function orderSuffix(nr: boolean, a: number, b: number): { year: number; number: number } {
+  return nr && plausibleYear(b) ? { year: fullYear(b), number: a } : { year: fullYear(a), number: b }
+}
+
+/**
+ * The organisation as the act's own title writes it: from the citation where
+ * it says one, else by date — EWG before the Maastricht treaty, EG until
+ * Lisbon (1 December 2009), EU after.
+ */
+function orgOf(raw: string, year: number): string {
+  const m = /\((EU|EG|EWG|EGKS|Euratom)\b|\/(EU|EG|EWG|EGKS|Euratom|JI|GASP)\b/.exec(raw)
+  if (m) return (m[1] ?? m[2])!
+  return year >= 2010 ? 'EU' : year >= 1993 ? 'EG' : 'EWG'
+}
+
+/**
+ * The label in the act's own citation form: since 2015 „Richtlinie (EU)
+ * 2024/1069"; before, „Richtlinie 2009/43/EG" and „Verordnung (EG) Nr.
+ * 1907/2006".
+ */
+function labelOf(word: string, kind: EuActKind, year: number, number: number, org: string): string {
+  if (year >= 2015) return `${word} (${org}) ${year}/${number}`
+  if (kind === 'verordnung') return `${word} (${org}) Nr. ${number}/${year}`
+  return `${word} ${year}/${number}/${org}`
+}
+
+/** CELEX of an act: `3` + year + type letter + four-digit number. */
+export function celexOf(kind: EuActKind, year: number, number: number): string {
+  return `3${year}${TYPE_LETTER[kind]}${String(number).padStart(4, '0')}`
+}
+
+/** The act's German page in EUR-Lex, by its ELI. */
+export function eliOf(kind: EuActKind, year: number, number: number): string {
+  return `https://eur-lex.europa.eu/eli/${ELI_TYPE[kind]}/${year}/${number}/oj/deu`
+}
+
+function makeAct(raw: string, typeWord: string, year: number, number: number): EuAct | null {
+  if (year < 1952 || year > 2030 || number < 1 || number > 9999) return null
+  const kind = kindOf(typeWord)
+  const text = raw.replace(/\s+/g, ' ').trim()
+  return {
+    kind,
+    year,
+    number,
+    celex: celexOf(kind, year, number),
+    eli: eliOf(kind, year, number),
+    label: labelOf(wordOf(typeWord, kind), kind, year, number, orgOf(text, year)),
+    raw: text,
+  }
+}
+
+export interface CitationOptions {
+  /**
+   * Drop acts named inside another act's title („zur Änderung der Richtlinie
+   * 2012/27/EU") — for the windows that say which act a draft implements,
+   * not for counting citations.
+   */
+  implemented?: boolean
+}
+
+/** What one reading found: the acts, and how many title references it dropped. */
+export interface Citations {
+  acts: EuAct[]
+  /** Every citation kept, in order of appearance, repeats included — with its offset in `text`. */
+  occurrences: { at: number; act: EuAct }[]
+  titleReferencesDropped: number
+}
+
+/** Every act cited in `text`, in order, with list continuations; deduped by CELEX. */
+export function readEuActCitations(text: string, options: CitationOptions = {}): Citations {
+  const found: { at: number; act: EuAct }[] = []
+  let dropped = 0
+  const take = (at: number, end: number, typeWord: string, order: { year: number; number: number }) => {
+    const act = makeAct(text.slice(at, end), typeWord, order.year, order.number)
+    if (!act) return
+    if (options.implemented && TITLE_REFERENCE.test(text.slice(Math.max(0, at - 40), at))) {
+      // The list after it belongs to the same title: skip it as well.
+      let rest = end
+      for (let guard = 0; guard < 12; guard++) {
+        const m = ACT_CONTINUATION.exec(text.slice(rest))
+        if (!m) break
+        rest += m[0].length
+        dropped++
+      }
+      dropped++
+      return
+    }
+    found.push({ at, act })
+    // The list after it: „der Richtlinien (EU) 2022/2464 und (EU) 2023/2775".
+    let rest = end
+    for (let guard = 0; guard < 12; guard++) {
+      const m = ACT_CONTINUATION.exec(text.slice(rest))
+      if (!m) break
+      const next = m[2] !== undefined
+        ? orderOrg(Boolean(m[1]), Number(m[2]), Number(m[3]))
+        : orderSuffix(false, Number(m[4]), Number(m[5]))
+      const cont = makeAct(m[0], typeWord, next.year, next.number)
+      if (cont) found.push({ at: rest, act: cont })
+      rest += m[0].length
+    }
+  }
+  for (const m of text.matchAll(ACT_ORG)) take(m.index!, m.index! + m[0].length, m[1]!, orderOrg(Boolean(m[2]), Number(m[3]), Number(m[4])))
+  for (const m of text.matchAll(ACT_SUFFIX)) take(m.index!, m.index! + m[0].length, m[1]!, orderSuffix(Boolean(m[2]), Number(m[3]), Number(m[4])))
+  for (const m of text.matchAll(ACT_ABBREVIATED)) take(m.index!, m.index! + m[0].length, m[1]!, { year: Number(m[2]), number: Number(m[3]) })
+  found.sort((a, b) => a.at - b.at)
+  return { acts: uniqueActs([found.map((f) => f.act)]), occurrences: found, titleReferencesDropped: dropped }
+}
+
+/** Every act cited in `text` — `readEuActCitations` without the bookkeeping. */
+export function parseEuActCitations(text: string, options: CitationOptions = {}): EuAct[] {
+  return readEuActCitations(text, options).acts
+}
+
+/** Several lists as one, first occurrence wins. */
+export function uniqueActs(lists: readonly (readonly EuAct[])[]): EuAct[] {
+  const seen = new Set<string>()
+  return lists.flat().filter((a) => !seen.has(a.celex) && seen.add(a.celex))
+}
+
+/**
+ * „X …, in der Fassung der Y", „X, (zuletzt) geändert durch Y": X is the base
+ * text, and Y the amendment the draft adds. The one place the law text says
+ * so itself — the EABG's „§ 3. Dieses Gesetz dient der Umsetzung der
+ * Richtlinie (EU) 2018/2001 …, in der Fassung der Richtlinie (EU) 2024/1711"
+ * is a 2026 draft for the 2024 amendment, and 2018/2001's deadline of 2021
+ * is not its deadline. The same class misled the Erläuterungen reading of
+ * the NLAV (04.11.2026).
+ */
+const AMENDED_BY = /(?:in\s+der\s+(?:jeweils\s+)?(?:geänderten\s+)?Fassung|(?:zuletzt\s+)?geändert\s+durch)\s+(?:der|des|die|den)?\s*$/
+
+/** The CELEX numbers `text` names as the base of an amending act it names next (`AMENDED_BY`). */
+export function baseActCelexes(text: string): Set<string> {
+  const { occurrences } = readEuActCitations(text, { implemented: true })
+  const base = new Set<string>()
+  for (let i = 0; i + 1 < occurrences.length; i++) {
+    const here = occurrences[i]!
+    const next = occurrences[i + 1]!
+    if (next.act.celex === here.act.celex) continue
+    // Between the two: the base's title and its OJ reference („ABl. Nr. L
+    // 328 vom 21.12.2018 S. 82" — full of points, so no sentence test), then
+    // the phrase, directly before the next act.
+    if (AMENDED_BY.test(text.slice(here.at, next.at))) base.add(here.act.celex)
+  }
+  return base
+}

@@ -48,8 +48,19 @@
  *   Land files its drafts (`server/utils/laender/steiermark.ts`).
  * - `vorarlberg.at`: Vorarlberg's page and its document library — the page
  *   links bare-domain (`server/utils/laender/vorarlberg.ts`).
+ * - `publications.europa.eu`: the EU Publications Office's Cellar, whose
+ *   SPARQL endpoint answers a directive's transposition dates
+ *   (`server/utils/eu/cellar.ts`). Its URL is a constant of ours; it stands
+ *   here so the fetch can hold every redirect hop to the list.
  *
  * A bare-domain variant is added only once upstream data is seen using it.
+ *
+ * NOT HERE: `eur-lex.europa.eu`. The page links each EU act there, but the
+ * server never fetches it, and those links are built from a validated CELEX
+ * (`server/utils/eu/actCitations.ts`), never taken from upstream data — so
+ * the browser-side `isSafeLinkHref`, which checks the scheme only, is the
+ * right and sufficient guard. Adding the host here would widen what the
+ * server may be pointed at for a link it never follows (04.11.2026).
  */
 export const UPSTREAM_HOSTS: ReadonlySet<string> = new Set([
   'www.parlament.gv.at',
@@ -70,6 +81,7 @@ export const UPSTREAM_HOSTS: ReadonlySet<string> = new Set([
   'www.noe.gv.at',
   'pallast2.stmk.gv.at',
   'vorarlberg.at',
+  'publications.europa.eu',
 ])
 
 /** Parliament's host — the one `/gegenstand/…` paths are read from. */
