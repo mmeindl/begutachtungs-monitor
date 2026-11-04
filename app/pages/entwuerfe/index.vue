@@ -128,7 +128,18 @@ const rowComparators: Record<SortKey, (a: DraftListRow, b: DraftListRow) => numb
 /* Filter state, URL binding and the query for both endpoints:
  * `useDraftFilters`, with the pure half in `app/utils/draftFilters.ts`. */
 const filters = useDraftFilters()
-const { statusFilter, art, gp, ministry, q, qDebounced, sort, stations, query, onNavigate } = filters
+const { statusFilter, art, gp, ministry, q, qDebounced, sort, stations, eu, query, onNavigate } = filters
+
+/**
+ * „Setzt EU-Recht um" (docs/architecture.md §12.66, Nachtrag 3): the drafts
+ * whose EU fact leads with those words. A chip beside „Stellungnahme
+ * möglich", off by default, available under every station and Art — a
+ * Verordnung implements directives too. The Bund's halves filter upstream
+ * (`eu` in `query`), the Länder's rows here (`landItems`).
+ */
+function toggleEu(): void {
+  eu.value = eu.value ? '' : 'umsetzung'
+}
 
 /* The station tabs (`stationTabsFor` says how a link naming several
  * stations keeps its set, and why two tabs stand unavailable under
@@ -325,6 +336,27 @@ const secondRoundFetch = useFetch<DashboardSecondRound>(
 await halves.ready
 const { data: secondRound } = await secondRoundFetch
 
+/**
+ * Where the EU map could not be read, per side, while „Setzt EU-Recht um" is
+ * on: the side's rows then stand UNFILTERED and the note above the list says
+ * so — the stations' rule (`stationsUnavailable`), for the same reason: a
+ * list standing unfiltered under an active filter is the one variant nobody
+ * notices. A Bund half answers `euAvailable: false`; the Länder answer
+ * counts only as `true` (`LaenderResponse.euAvailable` is optional).
+ */
+const bundEuMissing = computed(() =>
+  meData.value?.euAvailable === false || risData.value?.euAvailable === false,
+)
+const laenderEuMissing = computed(() => !!laenderData.value && laenderData.value.euAvailable !== true)
+const euUnavailable = computed<'alle' | 'bund' | 'laender' | null>(() => {
+  if (!eu.value) return null
+  const bundMissing = bund.value && bundEuMissing.value
+  const landMissing = landsApply.value && laenderEuMissing.value
+  if (bundMissing && (landMissing || !landsApply.value)) return 'alle'
+  if (landMissing && !bund.value) return 'alle'
+  return bundMissing ? 'bund' : landMissing ? 'laender' : null
+})
+
 /* Under the same controls as everything else, as far as they reach: the
  * Land chosen, the Art by the kind the Land names (`LandDraftKind`), the
  * search the same word rule (`matchesQuery`). Period and status went
@@ -341,6 +373,11 @@ const landItems = computed(() => {
       return stations.value.includes(item.stage?.station ?? 'begutachtung')
     })
     .filter((item) => !art.value || item.kind === art.value)
+    /* „Setzt EU-Recht um": the two markers the fact leads with those words.
+     * Without the map (`laenderEuMissing`) the rows stand unfiltered and the
+     * note above them says so — a filter that silently drops every Land
+     * row would read as „no Land implements anything". */
+    .filter((item) => !eu.value || laenderEuMissing.value || item.eu === 'umsetzung' || item.eu === 'ueber-umsetzung')
     .filter((item) => matchesQuery(item.title, qDebounced.value))
 })
 /* The station tabs: a row whose further way could not be read matches no
@@ -382,6 +419,10 @@ const unreadableLaender = computed(() => {
 const openVorlagen = computed(() => {
   const list = secondRound.value
   if (!list || !bund.value || statusFilter.value === 'closed' || art.value === 'verordnung' || ministry.value) return []
+  /* „Setzt EU-Recht um": a Vorlage carries no EU fact in the list, so it
+   * steps back — unless the Bund's map is missing and the list stands
+   * unfiltered anyway (`euUnavailable`). */
+  if (eu.value && !bundEuMissing.value) return []
   if (stations.value.length && !stations.value.includes('rv')) return []
   if (selectedGp.value && selectedGp.value !== list.gp) return []
   return list.items
@@ -701,6 +742,13 @@ const statementsSortNote = computed(() => {
           <ToggleChip :pressed="wantsOpen" :unavailable="openUnavailable" @toggle="toggleOpen">
             Stellungnahme möglich
           </ToggleChip>
+          <!-- What the draft does with EU law (§12.66): the same kind of
+               control, beside it — a property of the draft that narrows the
+               set. Never unavailable: every station and Art can hold a
+               draft that implements a directive. -->
+          <ToggleChip :pressed="eu === 'umsetzung'" @toggle="toggleEu">
+            Setzt EU-Recht um
+          </ToggleChip>
           <!-- Art, period and Ressort stand in the same line from `md`
                up (03.10.2026), each select stating its own value; on a
                phone four selects cannot share a line, so they open with
@@ -841,6 +889,16 @@ const statementsSortNote = computed(() => {
             Hier zählt nur, ob die Frist abgelaufen ist: Zu einzelnen
             Regierungsvorlagen kann im Nationalrat noch Stellung genommen
             werden.</template>
+        </p>
+        <!-- The EU map's gap, in the stations' register and place: the list
+             stands unfiltered and says so (`euUnavailable`). -->
+        <p v-if="euUnavailable" class="text-sm text-ink-muted">
+          Welche Entwürfe<template v-if="euUnavailable === 'bund'"> des Bundes</template><template
+            v-else-if="euUnavailable === 'laender'"
+          > der Länder</template> EU-Recht umsetzen, ist gerade nicht abrufbar;
+          <template v-if="euUnavailable === 'alle'">die Liste ist danach <span class="font-medium text-ink">nicht</span> gefiltert.</template><template
+            v-else
+          >sie stehen <span class="font-medium text-ink">ungefiltert</span> in der Liste.</template>
         </p>
         <!-- The gap is named rather than passed off as a finding: without this
                sentence a list without stations would read as if nothing had ever

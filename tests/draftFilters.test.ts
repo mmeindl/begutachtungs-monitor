@@ -22,6 +22,7 @@ const empty: DraftFilterValues = {
   ministry: '',
   q: '',
   sort: 'frist',
+  eu: '',
 }
 
 describe('draftFiltersFromQuery', () => {
@@ -35,6 +36,7 @@ describe('draftFiltersFromQuery', () => {
         ministry: 'BMF',
         q: 'klima',
         sort: 'stellungnahmen',
+        eu: 'umsetzung',
       }),
     ).toEqual({
       status: 'open',
@@ -44,12 +46,13 @@ describe('draftFiltersFromQuery', () => {
       ministry: 'BMF',
       q: 'klima',
       sort: 'stellungnahmen',
+      eu: 'umsetzung',
     })
   })
 
   it('falls back rather than erroring on a hand-typed link', () => {
     expect(
-      draftFiltersFromQuery({ status: 'halb', art: 'unbestimmt', sort: 'neu', station: 'mond' }),
+      draftFiltersFromQuery({ status: 'halb', art: 'unbestimmt', sort: 'neu', station: 'mond', eu: 'flankierend-vo' }),
     ).toEqual(empty)
   })
 
@@ -119,7 +122,9 @@ describe('the round trip', () => {
     { ...empty, stations: ['begutachtung', 'rv'] },
     { ...empty, art: 'gesetz', gp: 'XXVIII', ministry: 'BMJ' },
     { ...empty, q: 'klimaschutz', sort: 'stellungnahmen' },
-    { status: 'closed', stations: ['bgbl'], art: 'verordnung', gp: 'XXVII', ministry: 'BMF', q: 'x', sort: 'stellungnahmen' },
+    { status: 'closed', stations: ['bgbl'], art: 'verordnung', gp: 'XXVII', ministry: 'BMF', q: 'x', sort: 'stellungnahmen', eu: '' },
+    { ...empty, eu: 'umsetzung' },
+    { ...empty, status: 'open', art: 'verordnung', eu: 'umsetzung' },
   ]
 
   it('reopens the list the link was written from', () => {
@@ -130,6 +135,8 @@ describe('the round trip', () => {
 
   it('leaves every default out of the URL', () => {
     expect(draftUrlQuery(empty)).toEqual({})
+    // „Setzt EU-Recht um" off is the default: no `eu` in the link.
+    expect(draftUrlQuery({ ...empty, eu: 'umsetzung' })).toEqual({ eu: 'umsetzung' })
     expect(draftUrlQuery({ ...empty, sort: 'frist', status: 'all' })).toEqual({})
   })
 })
@@ -150,6 +157,7 @@ describe('sameDraftFilters', () => {
     expect(sameDraftFilters(open, { ...open, ministry: 'BMF' })).toBe(false)
     expect(sameDraftFilters(open, { ...open, sort: 'stellungnahmen' })).toBe(false)
     expect(sameDraftFilters({ ...open, q: 'klima' }, open)).toBe(false)
+    expect(sameDraftFilters({ ...open, eu: 'umsetzung' }, open)).toBe(false)
   })
 
   it('compares what a URL carries, not how a link spelled it', () => {
@@ -165,13 +173,14 @@ describe('draftApiQuery', () => {
       gp: undefined,
       ministry: undefined,
       q: undefined,
+      eu: undefined,
     })
   })
 
   it('joins the stations and passes the rest through', () => {
     expect(
-      draftApiQuery({ status: 'open', stations: ['rv', 'bgbl'], gp: 'XXVIII', ministry: 'BMF', q: 'klima' }),
-    ).toEqual({ status: 'open', station: 'rv,bgbl', gp: 'XXVIII', ministry: 'BMF', q: 'klima' })
+      draftApiQuery({ status: 'open', stations: ['rv', 'bgbl'], gp: 'XXVIII', ministry: 'BMF', q: 'klima', eu: 'umsetzung' }),
+    ).toEqual({ status: 'open', station: 'rv,bgbl', gp: 'XXVIII', ministry: 'BMF', q: 'klima', eu: 'umsetzung' })
   })
 })
 

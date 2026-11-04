@@ -25,6 +25,15 @@ const LEAD: Record<EuMarker, string> = {
   'flankierend-rl': 'Begleitet eine EU-Richtlinie',
 }
 
+/**
+ * The fact's lead words for a marker, or null without one — what the
+ * list's row says in zone 2 (`EntryView.eu`), so that row and page use
+ * the same words for the same fact.
+ */
+export function euLeadOf(marker: EuMarker | null | undefined): string | null {
+  return marker ? LEAD[marker] : null
+}
+
 /** Where the acts were named, for „… genannt:" — a Land's EU statement names them too (§12.66, Nachtrag 2). */
 const NAMED_IN: Record<NonNullable<EuRechtResponse['actsSource']>, string> = {
   gesetzestext: 'Im Gesetzestext',

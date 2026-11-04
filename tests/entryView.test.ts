@@ -15,13 +15,14 @@
  *    Verordnungsentwurf — its terminus is the Begutachtung itself.
  */
 import { describe, expect, it } from 'vitest'
-import type { ClosedOutcome, DraftChain, DraftDetail, DraftSummary, OpenVorlage, RisConsultation } from '../shared/types'
+import type { ClosedOutcome, DraftChain, DraftDetail, DraftSummary, LandConsultation, OpenVorlage, RisConsultation } from '../shared/types'
 import { todayIso } from '../shared/utils/format'
 import { NEW_ARRIVAL_DAYS } from '../app/utils/deadlines'
 import { isVorlageGpEnded } from '../server/utils/parliament/detailJson'
 import { procedureStatusDe, stations } from '../app/utils/spine'
 import {
   viewOfDraft,
+  viewOfLand,
   viewOfOutcome,
   viewOfRis,
   viewOfRow,
@@ -403,6 +404,25 @@ describe('Zone 2 — Kennung', () => {
     expect(v.to).toBeNull()
     expect(v.href).toContain('parlament.gv.at')
     expect(v.note).toBeNull()
+  })
+
+  /* The EU fact's own lead words (§12.66, Nachtrag 3), plain text in zone
+   * 2. An absent `eu` is a list that did not consult the map — no token,
+   * never a „kein EU-Bezug". */
+  it('names what the draft does with EU law in the fact\'s own words, and nothing without a marker', () => {
+    expect(viewOfDraft(draft({ eu: 'umsetzung' })).eu).toBe('Setzt EU-Recht um')
+    expect(viewOfDraft(draft({ eu: 'ueber-umsetzung' })).eu).toBe('Setzt EU-Recht um')
+    expect(viewOfRis(ris({ eu: 'flankierend-vo' })).eu).toBe('Begleitet EU-Verordnungen')
+    expect(viewOfRis(ris({ eu: 'flankierend-rl' })).eu).toBe('Begleitet eine EU-Richtlinie')
+    const land: LandConsultation = {
+      id: 'ooe-2026-16120', land: 'ooe', kind: 'gesetz', title: 'Oö. Gleichbehandlungsgesetz', startedAt: '2026-10-01',
+      deadline: '2026-11-12', url: 'https://www.land-oberoesterreich.gv.at/', documents: [], active: true, eu: 'umsetzung',
+    }
+    expect(viewOfLand(land).eu).toBe('Setzt EU-Recht um')
+    expect(viewOfLand({ ...land, eu: null }).eu).toBeNull()
+    expect(viewOfDraft(draft({ eu: null })).eu).toBeNull()
+    expect(viewOfDraft(draft()).eu).toBeNull()
+    expect(viewOfVorlage(vorlage()).eu).toBeNull()
   })
 
   /* „Neu" is tied to a running procedure: on a closed one it would mark the
