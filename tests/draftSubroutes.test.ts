@@ -67,6 +67,8 @@ const draftEvent = (inr: string) => ({ __params: { gp: 'XXVIII', inr }, __query:
 beforeEach(() => {
   // h3's wrapper is the identity for what is tested here: the handler itself.
   vi.stubGlobal('defineEventHandler', (handler: Handler) => handler)
+  // The EU fact's `related` from the map: no map here, the fact goes out as it is.
+  vi.stubGlobal('withRelated', async (fact: unknown) => fact)
 })
 
 afterEach(() => {
