@@ -79,6 +79,12 @@ describe('filterRisConsultations', () => {
     expect(ids(filterRisConsultations(rows, { ...ALL, art: 'gesetz' }))).toEqual(['BEGUT_2'])
   })
 
+  it('filters for implementing records only where the EU map was read', () => {
+    const eu = [rec({ id: 'BEGUT_EU', eu: 'umsetzung' }), rec({ id: 'BEGUT_FL', eu: 'flankierend-rl' }), rec({ id: 'BEGUT_NO', eu: null })]
+    expect(ids(filterRisConsultations(eu, { ...ALL, eu: 'umsetzung', euUsable: true }))).toEqual(['BEGUT_EU'])
+    expect(ids(filterRisConsultations(eu, { ...ALL, eu: 'umsetzung', euUsable: false }))).toHaveLength(3)
+  })
+
   it('does not search the ministry clause of the long title', () => {
     // "Landesverteidigung" appears only inside "Verordnung der
     // Bundesministerin für …", so the word must not pull the whole output

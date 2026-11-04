@@ -1,5 +1,5 @@
 /**
- * GET /api/ris-drafts?gp&status&ministry&art&q → RisConsultationsResponse.
+ * GET /api/ris-drafts?gp&status&ministry&art&q&eu → RisConsultationsResponse.
  *
  * The Begutachtungen RIS publishes that Parliament has no Gegenstand for —
  * mostly Verordnungsentwürfe (docs/architecture.md §12.16). Same query
@@ -28,6 +28,8 @@ import { getCarryOverRisConsultations, getRisOnlyForGp } from '../../utils/ris/r
 import { withRisActiveOn } from '../../utils/ris/risRecord'
 import { ministryTokens } from '../../utils/search/searchHaystack'
 import { previousGp } from '#shared/utils/gp'
+import { risKey } from '../../utils/eu/euMapStore'
+import { euMarkersForList } from '../../utils/eu/euMapService'
 
 /** How long the list waits for the outcome while it only fills a column. */
 const OUTCOMES_BUDGET_MS = 3_000
@@ -61,7 +63,12 @@ export default defineEventHandler(async (event): Promise<RisConsultationsRespons
    * eine Frist, die den Wechsel überlebt, läuft gerade. Im Normalbetrieb
    * leer — die Vorperiode hat dann keine offenen Records mehr. */
   const carried = query.gp === undefined ? await getCarryOverRisConsultations(currentGp) : []
-  const items = carried.length ? [...ownItems, ...carried].sort(sortConsultations) : ownItems
+  /* The EU map, as on `/api/drafts` (§12.66, Nachtrag 3): every record of
+   * the period's window carries `eu` where the map is at hand, the carried
+   * ones of the period before none. */
+  const markers = await euMarkersForList(gp)
+  const ownWithEu = markers ? ownItems.map((item) => ({ ...item, eu: markers.get(risKey(item.id)) ?? null })) : ownItems
+  const items = carried.length ? [...ownWithEu, ...carried].sort(sortConsultations) : ownWithEu
 
   const ministries = ministryFilterOptions(items)
   /* The same vocabulary once more, as a strike list for the search: a
@@ -88,7 +95,7 @@ export default defineEventHandler(async (event): Promise<RisConsultationsRespons
     ? await getBgblOutcomesForGp(gp)
     : (await withinBudget(getBgblOutcomesForGp(gp), OUTCOMES_BUDGET_MS)) ?? {}
 
-  const filtered = filterRisConsultations(items, { ...query, art, wants, ministryTokens: ministryTokenList, outcomes })
+  const filtered = filterRisConsultations(items, { ...query, art, wants, ministryTokens: ministryTokenList, outcomes, euUsable: markers !== null })
 
   const availableGps = listAvailableGps(currentGp)
   if (!availableGps.includes(gp)) availableGps.push(gp)
@@ -101,8 +108,7 @@ export default defineEventHandler(async (event): Promise<RisConsultationsRespons
      * Vorperiode gehören nicht hinein. */
     gpTotal: ownItems.length,
     gp,
-    // The EU map is not consulted yet (contract commit); the service that fills it follows.
-    euAvailable: false,
+    euAvailable: markers !== null,
     /* Gemeldet wird erst, was nach dem Filtern wirklich dasteht: ein
      * `status=closed` siebt die mitgelesenen Zeilen ohnehin alle aus, und
      * ein Hinweis über Zeilen, die niemand sieht, wäre falsch. */

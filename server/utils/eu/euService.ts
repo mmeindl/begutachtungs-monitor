@@ -379,7 +379,7 @@ async function assemble(docs: DraftDocuments): Promise<Gathered<EuRechtResponse>
 }
 
 /** The cached half of `getEuRecht`; an answer missing a read is served, not stored. */
-const readEuRecht = defineCachedFunction(
+export const readEuRecht = defineCachedFunction(
   async (gp: string, inr: number): Promise<Gathered<EuRechtResponse>> => {
     const row = (await getRisMapForGp(gp)).rows.find((r) => r.inr === inr) ?? null
     if (!row?.risId) {
@@ -411,7 +411,7 @@ export async function getEuRecht(gp: string, inr: number): Promise<EuRechtRespon
 }
 
 /** The cached half of `getRisEuRecht`, stored only when complete. */
-const readRisEuRecht = defineCachedFunction(
+export const readRisEuRecht = defineCachedFunction(
   async (id: string): Promise<Gathered<EuRechtResponse>> => {
     const record = await getRisBegutRecord(id)
     if (!record) throw createError({ statusCode: 404, statusMessage: 'Begutachtung nicht gefunden' })

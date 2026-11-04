@@ -5,6 +5,7 @@ import {
   gpFromParam,
   ministryFilterOptions,
   readGpParam,
+  readGpQuery,
   readLawStationPair,
   readListQuery,
   readRisId,
@@ -207,6 +208,16 @@ describe('readListQuery', () => {
     expect(refusal(() => readListQuery(query({ q: words(MAX_LIST_QUERY_TERMS, ',') })))).toBeNull()
   })
 
+  /* `?eu=` (§12.66, Nachtrag 3): one value; anything else is dropped like an
+   * unknown station, because the value travels in shared links too. */
+  it('reads the EU filter, and drops any other value', () => {
+    expect(readListQuery(query({ eu: 'umsetzung' })).eu).toBe('umsetzung')
+    expect(readListQuery(query({ eu: ' Umsetzung ' })).eu).toBe('umsetzung')
+    expect(readListQuery(query({ eu: 'flankierend-vo' })).eu).toBeUndefined()
+    expect(readListQuery(query({ eu: '' })).eu).toBeUndefined()
+    expect(readListQuery(query({})).eu).toBeUndefined()
+  })
+
   it('never silently drops a valid station', () => {
     // Every name in the vocabulary survives the round trip, one by one and
     // all at once — the half of the rule above that must NOT be lenient.
@@ -236,6 +247,18 @@ describe('readGpParam', () => {
   it('needs the param unless the caller says it defaults to the running period', () => {
     expect(refusal(() => readGpParam(params({})))?.statusCode).toBe(400)
     expect(readGpParam(params({}), { defaultsToCurrent: true })).toBeNull()
+  })
+})
+
+/* The same grammar from the query, for `/api/eu-recht/karte?gp=` — a route
+ * whose path names no period (§12.66, Nachtrag 3). Absent is the running one. */
+describe('readGpQuery', () => {
+  it('reads the three spellings and defaults to the running period', () => {
+    expect(readGpQuery(query({}))).toBeNull()
+    expect(readGpQuery(query({ gp: 'Aktuell' }))).toBeNull()
+    expect(readGpQuery(query({ gp: 'vorperiode' }))).toBe(PREVIOUS_PERIOD)
+    expect(readGpQuery(query({ gp: 'xxviii' }))).toBe('XXVIII')
+    expect(refusal(() => readGpQuery(query({ gp: '28' })))?.statusCode).toBe(400)
   })
 })
 

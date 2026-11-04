@@ -31,6 +31,10 @@ vi.mock('../server/utils/ris/risOnly', () => ({
   getRisOnlyForGp: vi.fn(),
   getCarryOverRisConsultations: vi.fn(async () => []),
 }))
+// No EU map behind it: the list answers without `eu` (§12.66, Nachtrag 3).
+vi.mock('../server/utils/eu/euMapService', () => ({
+  euMarkersForList: vi.fn(async () => null),
+}))
 vi.mock('../server/utils/ris/bgblService', () => ({
   getBgblOutcomesForGp: vi.fn(),
 }))

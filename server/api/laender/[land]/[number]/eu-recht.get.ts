@@ -13,6 +13,7 @@
 import type { EuRechtResponse, LandCode } from '#shared/types'
 import { LAND_CODES } from '#shared/utils/laender'
 import { getLandEuRecht } from '../../../../utils/eu/landEuService'
+import { landKey } from '../../../../utils/eu/euMapStore'
 import { isLandNumber, readLandDraft } from '../../../../utils/laender/sources'
 
 export default defineEventHandler(async (event): Promise<EuRechtResponse> => {
@@ -24,7 +25,9 @@ export default defineEventHandler(async (event): Promise<EuRechtResponse> => {
   try {
     const detail = await readLandDraft(land as LandCode, number)
     if (!detail) throw createError({ statusCode: 404, statusMessage: 'Entwurf nicht gefunden' })
-    return await getLandEuRecht(land as LandCode, number, detail)
+    const fact = await getLandEuRecht(land as LandCode, number, detail)
+    // `related` from the running period's EU map, never stored with the fact.
+    return await withRelated(fact, await getCurrentGp(), landKey(land, number))
   } catch (error) {
     if (isError(error)) throw error
     console.warn(`[laender] EU-Recht ${land}/${number}:`, error instanceof Error ? error.message : error)

@@ -1,5 +1,5 @@
 /**
- * GET /api/drafts?gp&status&station&ministry&q → DraftsResponse.
+ * GET /api/drafts?gp&status&station&ministry&q&eu → DraftsResponse.
  * Without `gp` the answer carries the Fristen that outlive a Periodenwechsel
  * (§12.36); with one it is strictly that period.
  * status: open|closed|all (default all); station: a comma list of
@@ -13,6 +13,7 @@ import { gpHasEnded } from '#shared/utils/gp'
 import { ministryFilterOptions, readListQuery, requirePlausibleGp } from '../../utils/http/params'
 import { dedupeDraftList, filterDraftList, sortDraftList } from '../../utils/parliament/draftList'
 import { getCarryOverDrafts } from '../../utils/parliament/carryOver'
+import { meKey } from '../../utils/eu/euMapStore'
 
 /** How long the list waits for the station map before answering without it.
  *  2,5 s: warm the map costs 8 ms, cold 35 s — there is nothing in between
@@ -81,13 +82,25 @@ export default defineEventHandler(async (event): Promise<DraftsResponse> => {
    * (`filterDraftList`), und das ist für eine laufende Frist die richtige
    * und schwächste Behauptung; eine zweite Stationskarte zu bauen wäre für
    * die paar Zeilen ein kalter 35-Sekunden-Lauf (§12.26). */
-  const items = speakable
+  const withChains = speakable
     ? rows.map((item) => (item.gp === gp ? { ...item, chain: chains[item.inr] } : item))
     : rows
 
+  /* THE EU MAP, the same construction (§12.66, Nachtrag 3): enrichment
+   * under the same brake, read from the store the prewarm built. With it,
+   * every row of the period carries `eu` — its marker, or null for a draft
+   * read and no EU matter (or not read: the map is the answer for the
+   * period). Without it no row carries `eu` and `?eu=` filters nothing; the
+   * response says so (`euAvailable`). A carried-over row of the period
+   * before is not in this map and gets no `eu`, as it gets no chain. */
+  const markers = await euMarkersForList(gp)
+  const items = markers
+    ? withChains.map((item) => (item.gp === gp ? { ...item, eu: markers.get(meKey(item.gp, item.inr)) ?? null } : item))
+    : withChains
+
   const ministries = ministryFilterOptions(items)
 
-  const filtered = filterDraftList(items, { ...query, stationsUsable: Boolean(speakable) })
+  const filtered = filterDraftList(items, { ...query, stationsUsable: Boolean(speakable), euUsable: markers !== null })
 
   const availableGps = listAvailableGps(currentGp)
   if (!availableGps.includes(gp)) availableGps.push(gp)
@@ -104,8 +117,7 @@ export default defineEventHandler(async (event): Promise<DraftsResponse> => {
     availableGps,
     ministries,
     stationsAvailable: Boolean(speakable),
-    // The EU map is not consulted yet (contract commit); the service that fills it follows.
-    euAvailable: false,
+    euAvailable: markers !== null,
     chainCoverage: coverage,
   }
 })

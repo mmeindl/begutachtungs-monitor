@@ -136,9 +136,18 @@ describe('buildSitemap', () => {
     expect(xml).toContain(`<loc>${SITE}/entwuerfe/XXVIII/88</loc>`)
   })
 
+  it('lists the EU overview always, and each act page the map knows', () => {
+    // §12.66, Nachtrag 3: without a map only the overview; with one, every act's page.
+    expect(buildSitemap(SITE, [])).toContain(`<loc>${SITE}/eu-recht</loc>`)
+    const xml = buildSitemap(SITE, [], [], ['/eu-recht/richtlinie/2024/1069', '/eu-recht/verordnung/2022/2554'])
+    expect(xml).toContain(`<loc>${SITE}/eu-recht/richtlinie/2024/1069</loc>`)
+    expect(xml).toContain(`<loc>${SITE}/eu-recht/verordnung/2022/2554</loc>`)
+    expect(xml.match(/<loc>/g)).toHaveLength(10)
+  })
+
   it('yields only the static pages for an empty list, well-formed', () => {
     const xml = buildSitemap(SITE, [])
-    expect(xml.match(/<loc>/g)).toHaveLength(7)
+    expect(xml.match(/<loc>/g)).toHaveLength(8)
     // `/suche` does NOT belong in here any more since 22.09.2026: the page
     // is gone, the field on `/entwuerfe` answers both (§12.31), and the path
     // 301s there — a sitemap must not advertise a redirect.
