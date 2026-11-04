@@ -234,7 +234,7 @@ async function enactmentOf(
       enactment.bgblRisUrl = bgbl.url
       // Its issue date, for the EU timeline's stand (auto-imported from
       // ../ris/bgblService, as `findBgblIForVorlage` above).
-      enactment.bgblDate = await withinBudget(getBgblIssueDate(bgbl.number), BGBL_DATE_BUDGET_MS)
+      if (bgbl.number) enactment.bgblDate = await withinBudget(getBgblIssueDate(bgbl.number), BGBL_DATE_BUDGET_MS)
     }
     // An empty array is an answer — „this Vorlage published no changed
     // text" — and null is the absence of one. Only the second lets the
