@@ -55,8 +55,8 @@ const { siteUrl } = useRuntimeConfig().public
         <ExternalLink
           href="https://www.ris.bka.gv.at"
           class="link-inline"
-        >Rechtsinformationssystems des Bundes</ExternalLink>; ob ein Entwurf
-        EU-Recht umsetzt, bis wann die Richtlinie umzusetzen war, kommt aus
+        >Rechtsinformationssystems des Bundes</ExternalLink>; bis wann eine
+        Richtlinie umzusetzen war, kommt aus
         <ExternalLink
           href="https://eur-lex.europa.eu"
           class="link-inline"

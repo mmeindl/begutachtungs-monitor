@@ -701,7 +701,7 @@ const waitMonths = Math.round(RV_LATENCY_CONTEXT_DAYS / 30.44)
          before changing them. -->
     <ProseSection id="eu-recht" heading="Welche Entwürfe EU-Recht umsetzen">
       <p>
-        Jedem Entwurf liegt ein Vorblatt mit der wirkungsorientierten
+        Fast jedem Entwurf liegt ein Vorblatt mit der wirkungsorientierten
         Folgenabschätzung bei. Unter der Überschrift „Verhältnis zu den
         Rechtsvorschriften der Europäischen Union“ steht dort einer von
         wenigen festen Sätzen, die das Werkzeug der Ministerien vorgibt:
