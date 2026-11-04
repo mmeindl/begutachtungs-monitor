@@ -27,9 +27,16 @@
  * a wall, not a fact. The first five stand, then „Alle 28 anzeigen" in the
  * site's list idiom — all at once, never ten more. Six acts are not folded
  * to five and one.
+ *
+ * THE WAY TO THE MAP (§12.66, Nachtrag 3): under the act list, one line per
+ * shown act that other drafts of the window implement too — „Weitere
+ * Entwürfe zur Richtlinie (EU) 2024/1069: Bund 1 · Länder 3", the phrase a
+ * link to the act's page (`euRelatedLines`). A folded act gets its line
+ * once the fold opens: the line names the act, and an act the sentence
+ * does not show yet would be named here first.
  */
 import type { EuRechtResponse } from '#shared/types'
-import { euFactView, euTimeline, type EuTimelineContext } from '~/utils/euRecht'
+import { euFactView, euRelatedLines, euTimeline, type EuTimelineContext } from '~/utils/euRecht'
 
 const props = defineProps<{
   data: EuRechtResponse | null | undefined
@@ -54,6 +61,8 @@ const shownActs = computed(() => {
   return expanded.value || acts.length <= FOLD_AT + 1 ? acts : acts.slice(0, FOLD_AT)
 })
 const folded = computed(() => (view.value?.acts.length ?? 0) > shownActs.value.length)
+/** „Weitere Entwürfe zur …" for the shown acts, where the map knows others. */
+const related = computed(() => euRelatedLines(shownActs.value, props.data?.related))
 /** Whether the fact has footnotes — a directive with further partial deadlines; the numbers at the acts and dates need none. */
 const hasNotes = computed(() => (view.value?.notes.length ?? 0) > 0)
 </script>
@@ -65,6 +74,9 @@ const hasNotes = computed(() => (view.value?.notes.length ?? 0) > 0)
       <template v-if="quote">
         Laut Vorblatt: „{{ quote }}“.
       </template>
+    </p>
+    <p v-for="line in related" :key="`related-${line.celex}`" class="mt-1 text-sm text-ink-secondary">
+      <NuxtLink :to="line.path" class="link-inline">{{ line.phrase }}</NuxtLink>: {{ line.counts }}
     </p>
     <DraftEuTimeline v-if="timeline" :view="timeline" />
     <p v-else-if="view.deadlines.length" class="mt-1 text-sm text-ink-secondary">

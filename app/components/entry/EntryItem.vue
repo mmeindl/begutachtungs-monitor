@@ -207,6 +207,16 @@ const externalHost = computed(() => {
           <span aria-hidden="true">·</span>
           <span>{{ entry.note }}</span>
         </template>
+        <!-- What the draft does with EU law, in the words of the fact on its
+             page („Setzt EU-Recht um", §12.66): a property of the draft,
+             not a state of the procedure, so plain text like the note and
+             not a chip — the box grammar reads bare text as „read this",
+             and a coloured marker would claim a status. Before the debate
+             name, which stays the line's last token. -->
+        <template v-if="entry.eu">
+          <span aria-hidden="true">·</span>
+          <span>{{ entry.eu }}</span>
+        </template>
         <template v-if="entry.alias">
           <span aria-hidden="true">·</span>
           <span class="text-ink">„<HighlightedText :text="entry.alias" :query="query" />“</span>

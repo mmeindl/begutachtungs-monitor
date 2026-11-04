@@ -45,7 +45,7 @@ export async function useFullTextSearch(
   /** The rows the list itself already shows, so a draft hit twice stands once. */
   entries: Ref<EntryView[]>,
 ) {
-  const { statusFilter, art, gp, ministry, q, qDebounced, stations } = filters
+  const { statusFilter, art, gp, ministry, q, qDebounced, stations, eu } = filters
 
   /** The running period is the newest one the filters know. */
   const currentGp = computed(() => availableGps.value[0] ?? '')
@@ -61,11 +61,17 @@ export async function useFullTextSearch(
    *
    * Art and Ressort are NOT part of this condition: they exclude no search,
    * they cut the hits (`fullTextHits`).
+   *
+   * „Setzt EU-Recht um" is (04.11.2026): the hits come from RIS's search
+   * and carry no EU fact, so they could not be cut by it — a block of hits
+   * under that chip would hold drafts the chip excludes. The list's rows,
+   * which carry the fact, are searched by title as everywhere.
    */
   const fullTextApplies = computed(() => {
     if (statusFilter.value === 'closed') return false
     if (gp.value && currentGp.value && gp.value !== currentGp.value) return false
     if (stations.value.length && !stations.value.includes('begutachtung')) return false
+    if (eu.value) return false
     return true
   })
 

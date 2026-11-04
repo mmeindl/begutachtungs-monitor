@@ -13,7 +13,7 @@
  * Pure: the component (`DraftEuFact.vue`) renders what this returns, and
  * the tests read it without a page.
  */
-import type { EuActView, EuMarker, EuRechtResponse } from '#shared/types'
+import type { EuActView, EuMarker, EuRechtResponse, EuRelatedAct } from '#shared/types'
 import { formatDateDe } from '#shared/utils/format'
 import { eurLexSource, risSource, type SourceEntry } from '#shared/utils/provenance'
 
@@ -23,6 +23,15 @@ const LEAD: Record<EuMarker, string> = {
   'ueber-umsetzung': 'Setzt EU-Recht um',
   'flankierend-vo': 'Begleitet EU-Verordnungen',
   'flankierend-rl': 'Begleitet eine EU-Richtlinie',
+}
+
+/**
+ * The fact's lead words for a marker, or null without one — what the
+ * list's row says in zone 2 (`EntryView.eu`), so that row and page use
+ * the same words for the same fact.
+ */
+export function euLeadOf(marker: EuMarker | null | undefined): string | null {
+  return marker ? LEAD[marker] : null
 }
 
 /** Where the acts were named, for „… genannt:" — a Land's EU statement names them too (§12.66, Nachtrag 2). */
@@ -74,7 +83,7 @@ export interface EuFactView {
   /** „Im Gesetzestext", „Im Titel", „Im Vorblatt", „In den Erläuterungen" — for the `named` form. */
   namedIn: string | null
   /** The acts, the dated ones first in the order of their deadlines, each with its superscript's number where the bar carries several days. */
-  acts: { label: string; url: string; note: number | null }[]
+  acts: { label: string; url: string; note: number | null; celex: string; kind: EuActView['kind'] }[]
   /** The Vorblatt's own sentence, for `ueber-umsetzung` only. */
   quote: string | null
   /** „beschlossen am 11.04.2024" — the one act whose deadline the row prints, where the Cellar has its day; null otherwise. */
@@ -142,7 +151,7 @@ export function euFactView(r: EuRechtResponse | null | undefined): EuFactView | 
     lead: LEAD[r.marker],
     attach,
     namedIn: NAMED_IN[r.actsSource ?? 'gesetzestext'],
-    acts: listed.map((a) => ({ label: a.label, url: a.eurLexUrl, note: days.length > 1 ? dated.get(a.celex) ?? null : null })),
+    acts: listed.map((a) => ({ label: a.label, url: a.eurLexUrl, note: days.length > 1 ? dated.get(a.celex) ?? null : null, celex: a.celex, kind: a.kind })),
     quote: r.marker === 'ueber-umsetzung' ? r.vorblattSentence : null,
     adoptedNote: due.length === 1 && acts.length === 1 && due[0]!.adopted ? `beschlossen am ${formatDateDe(due[0]!.adopted)}` : null,
     deadlines,
@@ -150,6 +159,54 @@ export function euFactView(r: EuRechtResponse | null | undefined): EuFactView | 
     start: deadlines.length && r.begutachtungStart ? formatDateDe(r.begutachtungStart) : null,
     sources: [...read.map(risSource), ...(deadlines.length ? [eurLexSource('Fristen')] : [])],
   }
+}
+
+/** One line „Weitere Entwürfe zur Richtlinie (EU) 2024/1069: Bund 1 · Länder 3" under the act list. */
+export interface EuRelatedLine {
+  celex: string
+  /** The act's page. */
+  path: string
+  /** „Weitere Entwürfe zur Richtlinie (EU) 2024/1069" — the link's words. */
+  phrase: string
+  /** „Bund 1 · Länder 3", each side only where it has any. */
+  counts: string
+}
+
+/** The article an act's noun takes after „zu": die Richtlinie, die Verordnung, der (Rahmen-)Beschluss. */
+const TO_THE: Record<EuActView['kind'], string> = {
+  richtlinie: 'zur',
+  verordnung: 'zur',
+  beschluss: 'zum',
+  rahmenbeschluss: 'zum',
+}
+
+/**
+ * The way from a draft's fact to the act's page in the EU map (§12.66,
+ * Nachtrag 3): for every act the fact SHOWS (the fold is the caller's) that
+ * other drafts of the window implement too, one line with the act in the
+ * fact's own words and how many drafts the Bund and the Länder have beside
+ * this one. A count of zero is left out, an act without others gets no
+ * line — „Länder 0" would be a sentence about an absence the map cannot
+ * vouch for (it reads only the Begutachtungen it knows).
+ *
+ * The label's own form is kept („Richtlinie (EU) 2024/1069"), declined only
+ * where the citation opens with an adjective: „zur Delegierten Verordnung".
+ */
+export function euRelatedLines(
+  acts: readonly { label: string; celex: string; kind: EuActView['kind'] }[],
+  related: readonly EuRelatedAct[] | null | undefined,
+): EuRelatedLine[] {
+  if (!related?.length) return []
+  const byCelex = new Map(related.map((r) => [r.celex, r]))
+  return acts.flatMap((act) => {
+    const r = byCelex.get(act.celex)
+    if (!r || r.others.bund + r.others.laender <= 0) return []
+    const label = act.label.replace(/^Delegierte\s/, 'Delegierten ')
+    const counts = [r.others.bund > 0 ? `Bund ${r.others.bund}` : null, r.others.laender > 0 ? `Länder ${r.others.laender}` : null]
+      .filter((x): x is string => x !== null)
+      .join(' · ')
+    return [{ celex: act.celex, path: r.path, phrase: `Weitere Entwürfe ${TO_THE[act.kind]} ${label}`, counts }]
+  })
 }
 
 /** What the page knows about its own side of the timeline. */
@@ -180,8 +237,9 @@ export interface EuTimelineView {
   marks: EuTimelineMark[]
 }
 
-const SUPERSCRIPT = ['', '¹', '²', '³', '⁴', '⁵', '⁶', '⁷', '⁸', '⁹']
-const dayOf = (iso: string) => Date.parse(`${iso}T00:00:00Z`) / 86_400_000
+export const SUPERSCRIPT = ['', '¹', '²', '³', '⁴', '⁵', '⁶', '⁷', '⁸', '⁹']
+/** An ISO day as a day number — the timeline's unit. */
+export const dayOf = (iso: string) => Date.parse(`${iso}T00:00:00Z`) / 86_400_000
 /** Umsetzungsfristen closer than this share one label — three weeks on a year-long track are 30 px (32/ME). */
 const CLUSTER = 12
 /** Two labels closer than this are aligned away from each other instead of over each other. */
@@ -196,14 +254,48 @@ const APART = 14
 const CHAR_PCT = 1.1
 
 /** Where a label's text lies on the track, in percent, by its alignment. */
-function extent(m: EuTimelineMark): [number, number] {
-  const w = Math.max(m.lines[0].length, m.lines[1].length) * CHAR_PCT
+function extent(m: EuTimelineMark, charPct = CHAR_PCT): [number, number] {
+  const w = Math.max(m.lines[0].length, m.lines[1].length) * charPct
   return m.align === 'start' ? [m.at, m.at + w] : m.align === 'end' ? [m.at - w, m.at] : [m.at - w / 2, m.at + w / 2]
 }
 
 /** Whether two labels' texts would meet, a percent of air between them. */
-function overlap(left: EuTimelineMark, right: EuTimelineMark): boolean {
-  return extent(left)[1] + 1 > extent(right)[0]
+function overlap(left: EuTimelineMark, right: EuTimelineMark, charPct = CHAR_PCT): boolean {
+  return extent(left, charPct)[1] + 1 > extent(right, charPct)[0]
+}
+
+/** A label within this distance of either end of the track aligns inward, as on the Frist bar. */
+export function edgeAlign(pos: number): EuTimelineMark['align'] {
+  return pos < 8 ? 'start' : pos > 92 ? 'end' : 'center'
+}
+
+/**
+ * Keeps a row of labels apart, in place: sorted by position, and two
+ * neighbours closer than `APART` or wider than their distance (`CHAR_PCT`)
+ * aligned away from each other — the one pinned to an end of the track
+ * stays, the other moves past its text. The EU timeline's rule, shared with
+ * the act page's axis (`euKarte.ts`), which passes its own `charPct`: its
+ * track is half a row wide, so a character takes more of it.
+ */
+export function spreadLabels(marks: EuTimelineMark[], charPct = CHAR_PCT): void {
+  marks.sort((a, b) => a.at - b.at)
+  for (let i = 1; i < marks.length; i++) {
+    const left = marks[i - 1]!
+    const right = marks[i]!
+    if (right.at - left.at >= APART && !overlap(left, right, charPct)) continue
+    if (left.align === 'start' && left.at < 8) {
+      // The left one is pinned to the track's start: the right one begins past it, and past its text.
+      right.align = 'start'
+      right.at = Math.max(right.at, left.at + APART, extent(left, charPct)[1] + 1)
+    } else if (right.align === 'end' && right.at > 92) {
+      // The right one is pinned to the track's end: the left one ends before it, and before its text.
+      left.align = 'end'
+      left.at = Math.min(left.at, right.at - APART, extent(right, charPct)[0] - 1)
+    } else {
+      if (left.align !== 'start') left.align = 'end'
+      if (right.align !== 'end') right.align = 'start'
+    }
+  }
 }
 
 /** „21.10.–10.11.2026", both dates in full across a year. */
@@ -246,7 +338,7 @@ export function euTimeline(fact: EuFactView | null | undefined, ctx: EuTimelineC
   const span = Math.max(...days) - first
   if (!(span > 0)) return null
   const at = (iso: string) => ((dayOf(iso) - first) / span) * 100
-  const edge = (pos: number): EuTimelineMark['align'] => (pos < 8 ? 'start' : pos > 92 ? 'end' : 'center')
+  const edge = edgeAlign
   const dated = (d: EuDeadlineView) => `${d.date}${d.note ? SUPERSCRIPT[d.note] ?? `(${d.note})` : ''}`
 
   // The deadlines, clustered where they would overlap, in date order.
@@ -276,24 +368,7 @@ export function euTimeline(fact: EuFactView | null | undefined, ctx: EuTimelineC
     const [pos, align]: [number, EuTimelineMark['align']] = centre > 60 ? [band[1], 'end'] : centre < 40 ? [band[0], 'start'] : [centre, 'center']
     marks.push({ key: 'begutachtung', at: pos, align, tick: false, lines: ['Begutachtung', dateRangeDe(start, end)] })
   }
-  marks.sort((a, b) => a.at - b.at)
-  for (let i = 1; i < marks.length; i++) {
-    const left = marks[i - 1]!
-    const right = marks[i]!
-    if (right.at - left.at >= APART && !overlap(left, right)) continue
-    if (left.align === 'start' && left.at < 8) {
-      // The left one is pinned to the track's start: the right one begins past it, and past its text.
-      right.align = 'start'
-      right.at = Math.max(right.at, left.at + APART, extent(left)[1] + 1)
-    } else if (right.align === 'end' && right.at > 92) {
-      // The right one is pinned to the track's end: the left one ends before it, and before its text.
-      left.align = 'end'
-      left.at = Math.min(left.at, right.at - APART, extent(right)[0] - 1)
-    } else {
-      if (left.align !== 'start') left.align = 'end'
-      if (right.align !== 'end') right.align = 'start'
-    }
-  }
+  spreadLabels(marks)
   // Every Umsetzungsfrist keeps its own tick on its own date, clustered or not.
   const ticks: EuTimelineMark[] = sorted.map((d) => ({ key: `tick-${d.iso}`, at: at(d.iso), align: 'center', tick: true, lines: ['', ''] }))
   return {

@@ -81,6 +81,18 @@ export const ART_OPTIONS: { value: ArtFilter; label: string }[] = [
  */
 export type SortKey = 'frist' | 'stellungnahmen'
 
+/**
+ * „Setzt EU-Recht um" (docs/architecture.md §12.66, Nachtrag 3): the drafts
+ * whose EU fact says they implement EU law — `umsetzung` and
+ * `ueber-umsetzung`, the two markers the fact leads with „Setzt EU-Recht
+ * um". One value, not the four markers: the question a reader brings is
+ * „which drafts implement EU law", and a draft that only accompanies a
+ * regulation answers no deadline. A chip, off by default, so it stays out
+ * of the URL while off. Available under every Art: a Verordnung can
+ * implement a directive as well as a law can.
+ */
+export type EuFilter = '' | 'umsetzung'
+
 /** What the two list endpoints are asked for. `art` is not among them: it
  *  selects the half, so the page leaves the excluded endpoint unasked
  *  instead of passing the value on. (`/api/ris-drafts` does take an `art`,
@@ -92,6 +104,7 @@ export interface DraftQueryFilters {
   ministry: string
   /** The debounced term, already trimmed. */
   q: string
+  eu: EuFilter
 }
 
 export interface DraftFilterValues extends DraftQueryFilters {
@@ -116,6 +129,10 @@ function parseArt(v: unknown): ArtFilter {
   const s = firstQueryValue(v)
   if (s === 'ministerialentwurf') return 'gesetz'
   return s === 'gesetz' || s === 'verordnung' ? s : ''
+}
+
+function parseEu(v: unknown): EuFilter {
+  return firstQueryValue(v) === 'umsetzung' ? 'umsetzung' : ''
 }
 
 function parseSort(v: unknown): SortKey {
@@ -156,6 +173,7 @@ export function draftFiltersFromQuery(query: Record<string, unknown>): DraftFilt
     ministry: firstQueryValue(query.ministry) ?? '',
     q: firstQueryValue(query.q) ?? '',
     sort: parseSort(query.sort),
+    eu: parseEu(query.eu),
   }
 }
 
@@ -165,6 +183,7 @@ export function draftApiQuery(f: DraftQueryFilters): {
   gp: string | undefined
   ministry: string | undefined
   q: string | undefined
+  eu: EuFilter | undefined
 } {
   return {
     status: f.status,
@@ -172,6 +191,7 @@ export function draftApiQuery(f: DraftQueryFilters): {
     gp: f.gp || undefined,
     ministry: f.ministry || undefined,
     q: f.q || undefined,
+    eu: f.eu || undefined,
   }
 }
 
@@ -185,6 +205,7 @@ export function draftUrlQuery(f: DraftFilterValues): Record<string, string> {
   if (f.ministry) query.ministry = f.ministry
   if (f.q) query.q = f.q
   if (f.sort !== 'frist') query.sort = f.sort
+  if (f.eu) query.eu = f.eu
   return query
 }
 

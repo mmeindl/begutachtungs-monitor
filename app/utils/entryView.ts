@@ -54,6 +54,7 @@ import { bgblShort, formatDateDe, formatDateWeekdayDe, fristEndedDe, fristLabel,
 import { promulgationState } from '#shared/utils/promulgation'
 import { RIS_KIND_LABEL } from '#shared/utils/risConsultations'
 import { LAND_NAME, landDraftPath, landPublisherDe, landShortTitle } from '#shared/utils/laender'
+import { euLeadOf } from './euRecht'
 
 /**
  * Zone 3 — what was filed in this Verfahren.
@@ -120,6 +121,15 @@ export interface EntryView {
    * Wochen" (`openFristNote`).
    */
   note: string | null
+  /**
+   * What the draft does with EU law, in the fact's own lead words — „Setzt
+   * EU-Recht um", „Begleitet EU-Verordnungen", „Begleitet eine
+   * EU-Richtlinie" (`euLeadOf`, docs/architecture.md §12.66). Null where
+   * the row carries no marker, and where the list did not consult the EU
+   * map at all (`eu` absent): that is no „kein EU-Bezug", and the row then
+   * says nothing.
+   */
+  eu: string | null
   /**
    * The „Neu" chip's text, null for no chip: „Neu: <Station>" for the
    * station the row reached this week, from „Neu: Begutachtung" to „Neu:
@@ -414,6 +424,7 @@ export function viewOfDraft(
       !draft.active && draft.chain?.antragCitation
         ? `als Initiativantrag ${draft.chain.antragCitation}`
         : openFristNote(draft.arrivedAt, draft.deadline, draft.active),
+    eu: euLeadOf(draft.eu),
     newLabel: draftNewLabel(draft, outcome),
     participation: { kind: 'count', count: draft.statementCount },
     state,
@@ -460,6 +471,7 @@ export function viewOfRis(c: RisConsultation): EntryView {
     coMinistries: [],
     alias: null,
     note: openFristNote(c.startedAt, c.deadline, c.active),
+    eu: euLeadOf(c.eu),
     // Its two events: the Begutachtung, and — the one later station such a
     // record can reach — the Kundmachung, dated by RIS's Ausgabedatum.
     newLabel: c.active
@@ -525,6 +537,8 @@ export function viewOfVorlage(v: OpenVorlage): EntryView {
     coMinistries: [],
     alias: null,
     note: c.kind === 'none' ? 'ohne Begutachtung' : null,
+    // A Vorlage carries no EU fact in the list; its draft's page has one.
+    eu: null,
     // „Neu: Regierungsvorlage" although zone 2 already says
     // „Regierungsvorlage": the chip names the station, the kind label the
     // document, and the rule has no exception (`stationNewLabel`).
@@ -563,6 +577,7 @@ export function viewOfLand(c: LandConsultation): EntryView {
     // No Frist class: „kurz" and „voll" are measured against the Bund's
     // Regelfall, which binds no Land.
     note: null,
+    eu: euLeadOf(c.eu),
     // A station the Land recorded this week, else a Begutachtung that began this week.
     newLabel: c.stage && c.stage !== 'unknown'
       ? stationNewLabel(c.stage.station, c.stage.date)

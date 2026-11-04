@@ -29,7 +29,7 @@ describe('fasseZusammen', () => {
     ])
     // Every page class, most views first, ties in KLASSEN order; bots never.
     expect(s.nachSeite.map((r) => r.klasse)).toEqual([
-      'entwurf-bund', 'entwurf-land', 'start', 'entwuerfe', 'so-funktionierts',
+      'entwurf-bund', 'entwurf-land', 'start', 'entwuerfe', 'eu-recht', 'so-funktionierts',
       'ueber', 'impressum', 'datenschutz', 'statistik', 'sonstige',
     ])
     expect(s.nachSeite.filter((r) => r.aufrufe)).toEqual([

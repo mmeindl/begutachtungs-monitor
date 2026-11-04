@@ -43,6 +43,8 @@ describe('klassifiziere', () => {
     expect(k('/impressum')).toEqual({ klasse: 'impressum' })
     expect(k('/datenschutz')).toEqual({ klasse: 'datenschutz' })
     expect(k('/statistik')).toEqual({ klasse: 'statistik' })
+    expect(k('/eu-recht')).toEqual({ klasse: 'eu-recht' })
+    expect(k('/eu-recht/richtlinie/2024/1069')).toEqual({ klasse: 'eu-recht' })
     expect(k('/feed.xml', 'application/rss+xml')).toEqual({ klasse: 'feed' })
     expect(k('/kalender.ics', 'text/calendar')).toEqual({ klasse: 'kalender' })
     expect(k('/entwuerfe/XXVIII/88/frist.ics', 'text/calendar')).toEqual({ klasse: 'frist-kalender' })

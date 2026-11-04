@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { deadlineActs, euFactView, euTimeline } from '../app/utils/euRecht'
+import { deadlineActs, euFactView, euLeadOf, euRelatedLines, euTimeline } from '../app/utils/euRecht'
 import type { EuActView, EuRechtResponse } from '../shared/types/eu'
 
 /* The ProcedureCard's EU line as words (§12.66): two dates, no verdict. */
@@ -170,5 +170,41 @@ describe('euFactView — two dates, no verdict', () => {
     expect(euFactView(response({ marker: null }))).toBeNull()
     expect(euFactView(response({ available: false }))).toBeNull()
     expect(euFactView(response({ markerSource: 'erlaeuterungen', acts: [], actsSource: null }))).toMatchObject({ attach: 'none', sources: [{ what: 'Erläuterungen', publisher: 'ris' }] })
+  })
+
+  /* The way to the EU map (§12.66, Nachtrag 3): one line per shown act that
+   * other drafts implement too, each side only where it has any. */
+  it('links the shown acts other drafts implement too, in the fact\'s own words, and leaves zero counts out', () => {
+    const v = euFactView(response({ acts: [
+      act({}),
+      act({ kind: 'verordnung', label: 'Verordnung (EU) 2023/1114', celex: '32023R1114', transposition: null }),
+      act({ kind: 'beschluss', label: 'Beschluss (EU) 2022/2481', celex: '32022D2481', transposition: null }),
+      act({ kind: 'verordnung', label: 'Delegierte Verordnung (EU) 2019/980', celex: '32019R0980', transposition: null }),
+      act({ label: 'Richtlinie 2009/43/EG', celex: '32009L0043', transposition: null }),
+    ] }))!
+    const related = [
+      { celex: '32024L1069', path: '/eu-recht/richtlinie/2024/1069', others: { bund: 1, laender: 3 } },
+      { celex: '32023R1114', path: '/eu-recht/verordnung/2023/1114', others: { bund: 0, laender: 2 } },
+      { celex: '32022D2481', path: '/eu-recht/beschluss/2022/2481', others: { bund: 2, laender: 0 } },
+      { celex: '32019R0980', path: '/eu-recht/verordnung/2019/980', others: { bund: 1, laender: 0 } },
+      { celex: '32009L0043', path: '/eu-recht/richtlinie/2009/43', others: { bund: 0, laender: 0 } },
+    ]
+    expect(euRelatedLines(v.acts, related)).toEqual([
+      { celex: '32024L1069', path: '/eu-recht/richtlinie/2024/1069', phrase: 'Weitere Entwürfe zur Richtlinie (EU) 2024/1069', counts: 'Bund 1 · Länder 3' },
+      { celex: '32023R1114', path: '/eu-recht/verordnung/2023/1114', phrase: 'Weitere Entwürfe zur Verordnung (EU) 2023/1114', counts: 'Länder 2' },
+      { celex: '32022D2481', path: '/eu-recht/beschluss/2022/2481', phrase: 'Weitere Entwürfe zum Beschluss (EU) 2022/2481', counts: 'Bund 2' },
+      { celex: '32019R0980', path: '/eu-recht/verordnung/2019/980', phrase: 'Weitere Entwürfe zur Delegierten Verordnung (EU) 2019/980', counts: 'Bund 1' },
+    ])
+    // Only the acts the caller shows: a folded act gets no line.
+    expect(euRelatedLines(v.acts.slice(0, 1), related).map((l) => l.celex)).toEqual(['32024L1069'])
+    expect(euRelatedLines(v.acts, undefined)).toEqual([])
+  })
+
+  it('gives the list row the fact\'s own lead words', () => {
+    expect(euLeadOf('umsetzung')).toBe('Setzt EU-Recht um')
+    expect(euLeadOf('ueber-umsetzung')).toBe('Setzt EU-Recht um')
+    expect(euLeadOf('flankierend-vo')).toBe('Begleitet EU-Verordnungen')
+    expect(euLeadOf(null)).toBeNull()
+    expect(euLeadOf(undefined)).toBeNull()
   })
 })

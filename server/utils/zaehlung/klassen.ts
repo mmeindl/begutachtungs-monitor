@@ -19,6 +19,7 @@ export const KLASSEN = [
   'entwurf-bund',
   'entwurf-land',
   'frist-kalender',
+  'eu-recht',
   'so-funktionierts',
   'ueber',
   'impressum',
@@ -40,6 +41,7 @@ export interface Treffer {
 const FIXED: Record<string, Klasse> = {
   '/': 'start',
   '/entwuerfe': 'entwuerfe',
+  '/eu-recht': 'eu-recht',
   '/so-funktionierts': 'so-funktionierts',
   '/ueber': 'ueber',
   '/impressum': 'impressum',
@@ -99,6 +101,9 @@ export function klassifiziere(path: string, contentType?: string | null): Treffe
     // `/entwuerfe/<id>`: a Bund draft without a Gegenstand at Parliament.
     if (rest.length === 1) return { klasse: 'entwurf-bund' }
   }
+
+  // The EU map: the overview above, one act's page `/eu-recht/<kind>/<year>/<number>` here.
+  if (parts[0] === 'eu-recht' && parts.length === 4) return { klasse: 'eu-recht' }
 
   // Anything else with a file extension is a file, not a page.
   if (/\.[a-z0-9]{1,8}$/.test(p)) return null

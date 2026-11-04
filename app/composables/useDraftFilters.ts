@@ -12,6 +12,7 @@ import type { DraftStation, DraftStatus } from '#shared/types'
 import {
   type ArtFilter,
   type DraftFilterValues,
+  type EuFilter,
   type SortKey,
   draftApiQuery,
   draftFiltersFromQuery,
@@ -31,6 +32,8 @@ export interface DraftFilters {
   qDebounced: Ref<string>
   sort: Ref<SortKey>
   stations: Ref<DraftStation[]>
+  /** „Setzt EU-Recht um" — goes to both Bund endpoints; the Länder rows are filtered on the page. */
+  eu: Ref<EuFilter>
   query: ComputedRef<ReturnType<typeof draftApiQuery>>
   /** Runs `handler` after a navigation has set the filters from its URL —
    *  for state the page keeps beside them. */
@@ -54,6 +57,7 @@ export function useDraftFilters(): DraftFilters {
    * the two halves happens in the page anyway (`rows`). */
   const sort = ref<SortKey>(initial.sort)
   const stations = ref<DraftStation[]>(initial.stations)
+  const eu = ref<EuFilter>(initial.eu)
 
   let qTimer: ReturnType<typeof setTimeout> | undefined
   watch(q, (value) => {
@@ -64,7 +68,7 @@ export function useDraftFilters(): DraftFilters {
   })
   onUnmounted(() => clearTimeout(qTimer))
 
-  /* Only the five the endpoints take. `sort` must not be in this computed,
+  /* Only the six the endpoints take. `sort` must not be in this computed,
    * or reordering would hand `useFetch` a new object and refetch both lists
    * for something the browser does. `art` stays out for a different reason:
    * neither endpoint takes it in this vocabulary — it decides which of the
@@ -76,6 +80,7 @@ export function useDraftFilters(): DraftFilters {
       gp: gp.value,
       ministry: ministry.value,
       q: qDebounced.value,
+      eu: eu.value,
     }),
   )
 
@@ -89,6 +94,7 @@ export function useDraftFilters(): DraftFilters {
     ministry: ministry.value,
     q: qDebounced.value,
     sort: sort.value,
+    eu: eu.value,
   })
 
   // Keep the URL in sync with the filters (defaults stay out of the URL).
@@ -129,6 +135,7 @@ export function useDraftFilters(): DraftFilters {
     qDebounced.value = next.q
     sort.value = next.sort
     stations.value = next.stations
+    eu.value = next.eu
     for (const handler of navigateHandlers) handler()
   })
 
@@ -141,6 +148,7 @@ export function useDraftFilters(): DraftFilters {
     qDebounced,
     sort,
     stations,
+    eu,
     query,
     onNavigate: (handler) => {
       navigateHandlers.push(handler)

@@ -781,6 +781,11 @@ const waitMonths = Math.round(RV_LATENCY_CONTEXT_DAYS / 30.44)
         Daten stammen und unter welchen Bedingungen, steht
         <NuxtLink to="/impressum#imp-eurlex" class="link-inline">im Impressum</NuxtLink>.
       </p>
+      <p>
+        Welche Richtlinien die Entwürfe des Bundes und der Länder umsetzen,
+        zeigt die Seite
+        <NuxtLink to="/eu-recht" class="link-inline">EU-Recht</NuxtLink>.
+      </p>
     </ProseSection>
 
     <!-- The waiting bar's yardstick (05.10.2026). Its base rate stood as a
