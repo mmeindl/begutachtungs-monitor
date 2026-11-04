@@ -101,6 +101,8 @@ export default defineEventHandler(async (event): Promise<RisConsultationsRespons
      * Vorperiode gehören nicht hinein. */
     gpTotal: ownItems.length,
     gp,
+    // The EU map is not consulted yet (contract commit); the service that fills it follows.
+    euAvailable: false,
     /* Gemeldet wird erst, was nach dem Filtern wirklich dasteht: ein
      * `status=closed` siebt die mitgelesenen Zeilen ohnehin alle aus, und
      * ein Hinweis über Zeilen, die niemand sieht, wäre falsch. */

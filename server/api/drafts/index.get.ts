@@ -104,6 +104,8 @@ export default defineEventHandler(async (event): Promise<DraftsResponse> => {
     availableGps,
     ministries,
     stationsAvailable: Boolean(speakable),
+    // The EU map is not consulted yet (contract commit); the service that fills it follows.
+    euAvailable: false,
     chainCoverage: coverage,
   }
 })

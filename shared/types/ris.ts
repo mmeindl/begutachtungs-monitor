@@ -1,4 +1,5 @@
 import type { BgblOutcome } from './bgbl'
+import type { EuMarker } from './eu'
 
 // ---------------------------------------------------------------------------
 // RIS ↔ ME mapping (docs/ris-join.md)
@@ -152,6 +153,8 @@ export interface RisConsultation {
    * `state: 'keine'` and stands inside the object.
    */
   outcome: BgblOutcome | null
+  /** The EU fact's marker, as on `DraftSummary.eu`; absent where the map was not consulted. */
+  eu?: EuMarker | null
 }
 
 /**
@@ -216,6 +219,8 @@ export interface RisConsultationsResponse {
   gpTotal: number
   /** The Gesetzgebungsperiode whose window was searched. */
   gp: string
+  /** Whether the EU map could be read — as `DraftsResponse.euAvailable`. */
+  euAvailable: boolean
   /**
    * The period whose still-running Fristen were read along, or null — set
    * only when the caller named NO period and such rows survived the filters

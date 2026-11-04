@@ -1,4 +1,5 @@
 import type { TraceLink } from './common'
+import type { LandCode } from './laender'
 
 // ---------------------------------------------------------------------------
 // EU-Recht (docs/architecture.md §12.66)
@@ -89,4 +90,130 @@ export interface EuRechtResponse {
   begutachtungStart: string | null
   /** The documents read, for the source line: the Vorblatt, the law text, the Erläuterungen. */
   sources: TraceLink[]
+  /**
+   * Other drafts in the EU map that implement one of this draft's acts
+   * (`EuRelatedAct`), one entry per act with any. Set by the endpoint from
+   * the map; absent where the map is not built, and never stored with the
+   * fact.
+   */
+  related?: EuRelatedAct[]
+}
+
+// ---------------------------------------------------------------------------
+// The EU map: one act, the Bund and the nine Länder (§12.66, Nachtrag 3)
+// ---------------------------------------------------------------------------
+
+/**
+ * Who published a draft in the map: the Bund (Parliament's list and RIS)
+ * or one Land. The same words as the list's source chips
+ * (`shared/utils/laender.ts`, `SourceCode`).
+ */
+export type EuPublisher = 'bund' | LandCode
+
+/**
+ * Where a draft's procedure stands, as its page computes it for the EU
+ * timeline (`DraftEuTimeline`): today while nothing came of it yet, the
+ * Beschluss where a house dated one, the Kundmachung where its day is
+ * known.
+ */
+export interface EuStand {
+  date: string
+  label: 'Heute' | 'Beschluss' | 'Bundesgesetzblatt' | 'Landesgesetzblatt'
+}
+
+/**
+ * One draft on an act's page: who, which draft, when its Begutachtung ran,
+ * where it stands — two dates and a stand, no verdict (rule D6).
+ */
+export interface EuActDraft {
+  /** `me:XXVIII-147`, `ris:<RIS id>`, `land:ooe-2026-16120` — the map's key for the draft. */
+  key: string
+  publisher: EuPublisher
+  /** The monitor's page of the draft. */
+  path: string
+  title: string
+  /** „147/ME" for a Ministerialentwurf; null for every other draft. */
+  citation: string | null
+  kind: 'gesetz' | 'verordnung' | 'unbestimmt'
+  begutachtung: { start: string | null; end: string | null }
+  stand: EuStand
+  marker: EuMarker
+  /**
+   * Rule D4 for THIS draft: true or null where the draft adds the act (an
+   * implementing row), false where it only restates the act that the law
+   * in force already names (a restating row, listed apart and without a
+   * bar).
+   */
+  isNew: boolean | null
+}
+
+/** An act as the map knows it: its citation, its EUR-Lex page, its dates. */
+export interface EuActHead {
+  celex: string
+  kind: EuActView['kind']
+  /** „Richtlinie (EU) 2024/1069" — the citation form the drafts use. */
+  label: string
+  eurLexUrl: string
+  /** The monitor's page of the act, `/eu-recht/richtlinie/2024/1069` (`euActPath`). */
+  path: string
+  adopted: string | null
+  /** Directives only: the latest Cellar date as the deadline, the others as the footnote (rule D3). */
+  transposition: { deadline: string; otherDates: string[] } | null
+}
+
+/**
+ * GET /api/eu-recht/akte/:celex — one act, every draft of the window that
+ * names it. Null `builtAt` never occurs here: without a map the endpoint
+ * answers 503.
+ */
+export interface EuActResponse {
+  gp: string
+  /** The Begutachtungen the map reads: those whose Begutachtung began in this window (`gpWindow`). */
+  window: { from: string; to: string | null }
+  /** When the map was last built, ISO. */
+  builtAt: string
+  act: EuActHead
+  /** Drafts that implement the act (`isNew` true or null): the Bund first, then the Länder in display order. */
+  implementing: EuActDraft[]
+  /** Drafts that only restate the act (`isNew` false), in the same order. */
+  restating: EuActDraft[]
+  /** The Länder with no draft naming the act in the window, in display order. */
+  landsWithout: LandCode[]
+  /**
+   * Publishers the last build could not read whole — their drafts may be
+   * missing from every list on this page. Said on the page, never hidden.
+   */
+  incomplete: EuPublisher[]
+}
+
+/** One act in the overview, with how many drafts implement it. */
+export interface EuActSummary extends EuActHead {
+  /** Implementing drafts (`isNew` true or null), by publisher. */
+  counts: { bund: number; laender: number }
+  /** The Länder with an implementing draft, display order. */
+  lands: LandCode[]
+}
+
+/** GET /api/eu-recht — every act a draft of the window implements. */
+export interface EuActsResponse {
+  gp: string
+  window: { from: string; to: string | null }
+  /** When the map was last built, ISO; null where no map exists yet (then `acts` is empty). */
+  builtAt: string | null
+  acts: EuActSummary[]
+  incomplete: EuPublisher[]
+}
+
+/**
+ * On a draft's own fact: other drafts in the map that implement one of
+ * its acts — the line „Weitere Entwürfe zur Richtlinie (EU) 2024/1069:
+ * Bund 1 · Länder 3" under the act list, linking to the act's page. Added
+ * by the endpoint from the map, never stored with the fact.
+ */
+export interface EuRelatedAct {
+  celex: string
+  /** The act's page (`euActPath`). */
+  path: string
+  /** Implementing drafts OTHER than this one, by publisher. */
+  others: { bund: number; laender: number }
 }

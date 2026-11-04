@@ -1,3 +1,4 @@
+import type { EuMarker } from './eu'
 import type { LawDiffUnit, ReasoningDiffEntry } from './lawDiff'
 
 /**
@@ -105,6 +106,8 @@ export interface LandConsultation {
   lgblSearch?: 'nicht-gefunden' | 'vor-ris' | 'nicht-abrufbar' | 'widerlegt'
   /** With `lgblSearch: 'widerlegt'`: what the search had found, „LGBl. Nr. 30/2026". */
   lgblRefuted?: string
+  /** The EU fact's marker, as on `DraftSummary.eu`; absent where the map was not consulted. */
+  eu?: EuMarker | null
 }
 
 /** A station a Land's draft reached, in the Bund's station vocabulary. */
@@ -179,6 +182,8 @@ export interface LaenderResponse {
    * (Kärnten's archive, 24.10.2026). The list says how many are missing.
    */
   undated?: Partial<Record<LandCode, number>>
+  /** In period mode: whether the EU map could be read — as `DraftsResponse.euAvailable`. Absent otherwise. */
+  euAvailable?: boolean
 }
 
 /**

@@ -1,4 +1,5 @@
 import type { DescriptionBlock, DraftDocument, TraceLink } from './common'
+import type { EuMarker } from './eu'
 import type { StatementsSummary } from './statements'
 import type { RisMapRow } from './ris'
 import type { LawStationId } from './lawDiff'
@@ -42,6 +43,14 @@ export interface DraftSummary {
    * over a corpus it failed to resolve.
    */
   chain?: DraftChain
+  /**
+   * What the draft's EU fact says, for the list's token and its filter
+   * (docs/architecture.md §12.66, Nachtrag 3): the marker where the Vorblatt
+   * gives one, null where the draft was read and is no EU matter or says
+   * nothing. ABSENT means the map was not consulted — never „kein
+   * EU-Bezug"; the response says so (`euAvailable`).
+   */
+  eu?: EuMarker | null
 }
 
 /**
@@ -499,6 +508,12 @@ export interface DraftsResponse {
    * says so instead of showing an unfiltered list under an active filter.
    */
   stationsAvailable: boolean
+  /**
+   * Whether the EU map could be read for this period (§12.66, Nachtrag 3).
+   * False means the rows carry no `eu` and an `eu` filter was NOT applied —
+   * the list says so instead of filtering silently.
+   */
+  euAvailable: boolean
   /**
    * Whether this period's ME→RV links are in the archive at all. `unlinked`
    * means the rows deliberately carry no `chain` although the map was read
