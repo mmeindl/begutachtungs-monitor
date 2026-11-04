@@ -155,6 +155,11 @@ describe('the Vorblatt', () => {
     expect(classifyVorblattSentence('Klimaziele 2040.')).toBe('freitext')
   })
 
+  it('finds the heading without „den" (Burgenland, Wien)', () => {
+    const r = classifyVorblatt(['Vorblatt', 'Verhältnis zu Rechtsvorschriften der Europäischen Union:', 'Die vorgesehenen Regelungen fallen nicht in den Anwendungsbereich des Rechts der Europäischen Union.', 'Besonderheiten des Normerzeugungsverfahrens:', 'Keine.'])
+    expect(r).toEqual({ sentence: 'Die vorgesehenen Regelungen fallen nicht in den Anwendungsbereich des Rechts der Europäischen Union.', cls: 'nicht-eu' })
+  })
+
   it('finds no section without the heading, and no text layer in a scan', () => {
     expect(classifyVorblatt(['Vorblatt', 'Ziele', 'Ziel 1: irgendwas'])).toEqual({ sentence: null, cls: null })
     expect(hasTextLayer(['1 von 3', '', '2 von 3'])).toBe(false)

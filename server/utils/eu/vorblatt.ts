@@ -36,7 +36,12 @@ export function isVorblattDocument(name: string): boolean {
   return VORBLATT_NAME.test(name.normalize('NFC'))
 }
 
-export const EU_HEADING = /Verhältnis\s+zu\s+den\s+Rechtsvorschriften\s+der\s+Europäischen\s+Union/
+/**
+ * The WFA tool's EU heading. „den" is optional: Burgenland's Vorblätter
+ * print „Verhältnis zu Rechtsvorschriften der Europäischen Union" in 51 of
+ * 105 cases, Wien's in all five (Länder measurement, 04.11.2026).
+ */
+export const EU_HEADING = /Verhältnis\s+zu\s+(?:den\s+)?Rechtsvorschriften\s+der\s+Europäischen\s+Union/
 /** What follows the EU section in the WFA tool's layout. */
 const AFTER_EU = /Besonderheiten\s+des\s+Normerzeugungsverfahrens|Vereinfachte\s+wirkungsorientierte|Wirkungsorientierte\s+Folgenabschätzung|Datenschutz-Folgenabschätzung|Inkrafttreten/
 /** The WFA tool's page footer and header lines, dropped before the lines are joined. */
