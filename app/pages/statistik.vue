@@ -26,6 +26,7 @@ const KLASSE_NAME: Record<string, string> = {
   entwuerfe: 'Liste der Entwürfe',
   'entwurf-bund': 'Entwürfe des Bundes',
   'entwurf-land': 'Entwürfe der Länder',
+  'eu-recht': 'EU-Recht',
   'so-funktionierts': 'So funktioniert’s',
   ueber: 'Über',
   impressum: 'Impressum',
