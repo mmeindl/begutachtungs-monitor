@@ -12,15 +12,25 @@
  * has no EU line — nothing that says „wird geladen" for a fact most drafts
  * do not have.
  */
-import type { EuRechtResponse } from '#shared/types'
+import type { EuRechtResponse, LandCode } from '#shared/types'
 
-/** As for the Erläuterungen: the page's own cold render is ~800 ms. */
+/** As for the Erläuterungen: the page's own cold render is ~800 ms. A Land's draft reads its PDFs cold, and is the same case. */
 const SSR_DEADLINE_MS = 800
 
-/** @param source The draft's address, as a getter — Ministerialentwurf by GP and number, a RIS-only Begutachtung by its id. */
-export function useEuRecht(source: () => { gp?: string; inr?: number; risId?: string }) {
+/** The draft's address: a Ministerialentwurf by GP and number, a RIS-only Begutachtung by its id, a Land's draft by Land and number. */
+export interface EuRechtSource {
+  gp?: string
+  inr?: number
+  risId?: string
+  land?: LandCode
+  number?: string
+}
+
+/** @param source The draft's address, as a getter (`EuRechtSource`). */
+export function useEuRecht(source: () => EuRechtSource) {
   const endpoint = computed(() => {
-    const { gp, inr, risId } = source()
+    const { gp, inr, risId, land, number } = source()
+    if (land && number) return `/api/laender/${land}/${encodeURIComponent(number)}/eu-recht`
     return risId ? `/api/ris-drafts/${risId}/eu-recht` : `/api/drafts/${gp}/${inr}/eu-recht`
   })
 

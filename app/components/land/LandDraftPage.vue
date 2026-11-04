@@ -4,7 +4,8 @@ import type { Fact } from '~/components/ui/FactList.vue'
 import { LAND_HOST, LAND_NAME, LAND_PUBLICATION_NOTE, landDraftPath, landPublisherDe, landShortTitle } from '#shared/utils/laender'
 import { RIS_KIND_LABEL } from '#shared/utils/risConsultations'
 import { citeLineDe } from '#shared/utils/citations'
-import { formatDateDe } from '#shared/utils/format'
+import { formatDateDe, todayIso } from '#shared/utils/format'
+import type { EuTimelineContext } from '~/utils/euRecht'
 import { fristFact, fristStateDe } from '~/utils/deadlines'
 import type { StationId } from '~/utils/spine'
 import { landStations, landStatusDe } from '~/utils/spine'
@@ -138,6 +139,30 @@ const stationAnchors = computed<Partial<Record<StationId, string>>>(() => {
   }
 })
 
+/* Whether the draft implements EU law — the Bund's fact in the same card,
+ * read from the Land's own documents (`DraftEuFact`, docs/architecture.md
+ * §12.66, Nachtrag 2). */
+const { data: euRecht } = useEuRecht(() => ({ land: props.land, number: props.number }))
+/* Who published what the fact read, for its credit line. */
+const landPublisher = computed(() => `Land ${landName.value}`)
+/* The page's side of the EU timeline: its Begutachtung, and where the
+ * procedure stands — the Landesgesetzblatt where the draft reached it with
+ * a date, else the Landtag's Beschluss where its record dates one (OÖ),
+ * else today. No bar without a start: Burgenland dates none, and the fact
+ * then keeps its row of text. */
+const euTimelineCtx = computed<EuTimelineContext | null>(() => {
+  const d = draft.value
+  if (!d?.startedAt) return null
+  const stage = d.stage && d.stage !== 'unknown' ? d.stage : null
+  const beschluss = data.value?.landtag?.decision?.date ?? null
+  const stand = stage?.station === 'bgbl' && stage.date
+    ? { date: stage.date, label: 'Landesgesetzblatt' }
+    : beschluss
+      ? { date: beschluss, label: 'Beschluss' }
+      : { date: todayIso(), label: 'Heute' }
+  return { begutachtung: { start: d.startedAt, end: d.deadline }, stand }
+})
+
 usePageSeo({
   title: () => truncate(shortTitle.value ?? draft.value?.title ?? 'Entwurf', 60),
   description: () => {
@@ -195,7 +220,14 @@ useSeoMeta({ ogTitle: () => draft.value?.title ?? 'Entwurf', ogType: 'article' }
           :anchors="stationAnchors"
           :comparison-anchors="comparisonAnchors"
           how-to="/so-funktionierts#laender"
-        />
+        >
+          <!-- Whether the draft implements EU law, the act, and its
+               transposition deadline beside the Begutachtung — the Bund's
+               fact, read from the Land's documents (§12.66). -->
+          <DraftEuFact :data="euRecht" :timeline="euTimelineCtx" />
+        </ProcedureCard>
+        <!-- The EU fact's source, under the card like every card's (§12.66). -->
+        <DraftEuCredits :data="euRecht" :publisher="landPublisher" />
 
         <!-- The one place to act, while the Frist runs — the RIS page's
              card. Where it goes is the Land's: an address (a mail link in
