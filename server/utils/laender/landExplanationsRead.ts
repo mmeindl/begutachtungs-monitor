@@ -100,7 +100,7 @@ const unavailable = (reason: string, publisher: string, document: LandExplanatio
  * The Land's Erläuterungen of one draft: from the draft's PDF, or from a
  * document of their own where the Land files them so (Salzburg).
  */
-export async function readLandExplanations(land: LandCode, detail: LandDraftRecord, bytesOf: LandBytesReader = landPdfBytes): Promise<LandExplanationsRead> {
+export async function readLandExplanations(land: LandCode, detail: { draft: Pick<LandDraftRecord['draft'], 'title' | 'documents'> }, bytesOf: LandBytesReader = landPdfBytes): Promise<LandExplanationsRead> {
   const publisher = `Land ${LAND_NAME[land]}`
   const pages = new Map<string, string[]>()
   const docs = detail.draft.documents
