@@ -28,6 +28,7 @@ const ROUTES = join(import.meta.dirname, '..', 'server', 'api', 'drafts', '[gp]'
 /** The sub-routes that check the draft before their cached function, and that function. */
 const GUARDED: Record<string, string> = {
   'erlaeuterungen.get.ts': 'getExplanations',
+  'eu-recht.get.ts': 'getEuRecht',
   'konsolidiert.get.ts': 'getConsolidatedText',
   'neue-gesetze.get.ts': 'getEnactedLaws',
 }

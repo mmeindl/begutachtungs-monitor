@@ -57,6 +57,10 @@ const FETCHED: Record<string, string> = {
   'land-stmk-rows': "the Steiermark Landtag's list of Begutachtungen, all rows in one partial response as PALLAST served it; parsed fresh on every call",
   'land-stmk-page': "a page of PALLAST as a reader's view serves it — the list's newest ten, a draft's own page; parsed fresh on every call",
   'land-stmk-draft-page': "one draft's PALLAST page, read by the list for its Frist (Steiermark); parsed fresh on every call",
+  'eu-vorblatt-pdf':
+    "a draft's Vorblatt/WFA PDF, byte for byte as base64 — its EU sentence is in the text layer only (§12.66). Cached in dev " +
+    'only, like the search\'s PDFs; production keeps the extracted page texts one layer up, which are derived and small.',
+  'eu-cellar': "the Cellar's SPARQL answer for one CELEX, as it arrived; the transposition dates are read from it fresh on every call (§12.66)",
 }
 
 const UTILS = join(import.meta.dirname, '..', 'server', 'utils')
