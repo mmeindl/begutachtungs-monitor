@@ -224,6 +224,20 @@ describe('readExplanationsEuSignal — whether only, never which act', () => {
     expect(r.signal).toBeNull()
     expect(r.unanchored).toBe(1)
   })
+
+  it('gives no signal from a negated sentence, and keeps a positive one beside it (Steiermark, 04.11.2026)', () => {
+    const read = (...text: string[]) => readExplanationsEuSignal([{ heading: 'Allgemeiner Teil', text }])
+    expect(read('Der Entwurf dient nicht der Durchführung oder Umsetzung von Unionsrecht.').signal).toBeNull()
+    expect(read('Der Entwurf dient nicht der Durchführung oder Umsetzung des Rechts der Europäischen Union.').signal).toBeNull()
+    expect(read('Mit dem Entwurf wird keine Umsetzung einer Richtlinie der Europäischen Union vorgenommen.').signal).toBeNull()
+    expect(read('Die Richtlinie (EU) 2024/1499 wird mit diesem Entwurf nicht umgesetzt.').signal).toBeNull()
+    expect(read('Der Entwurf dient nicht der Umsetzung von Unionsrecht. Mit § 5 wird jedoch die Richtlinie (EU) 2024/1499 umgesetzt.').signal).toBe('umsetzung')
+    expect(read('Der Entwurf dient nicht der Umsetzung von Unionsrecht.', 'Diese Novelle dient der Umsetzung der Richtlinie (EU) 2023/1791.').signal).toBe('umsetzung')
+    // The negated sentence's „Unionsrecht" anchors nothing beside it.
+    expect(readExplanationsEuSignal([{ heading: null, text: ['Der Entwurf dient nicht der Umsetzung von Unionsrecht. Mit dem Entwurf werden die Richtlinien des Fonds umgesetzt.'] }]).signal).toBeNull()
+    // „nicht nur" is a yes.
+    expect(read('Der Entwurf dient nicht nur der Umsetzung der Richtlinie (EU) 2023/1791, sondern auch der Verwaltungsvereinfachung.').signal).toBe('umsetzung')
+  })
 })
 
 describe('the Cellar', () => {

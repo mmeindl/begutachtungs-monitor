@@ -192,6 +192,24 @@ export function readUmsetzungshinweis(input: string | readonly LawTextBlock[]): 
  */
 const ERL_UMSETZUNG = /dient\s+(?:der|zur)\s+Umsetzung|(?:der|zur)\s+Umsetzung\s+(?:der|von|einer|dieser|des)\s+(?:[^.]{0,60}?\s)?(?:Richtlinie|RL\b|unionsrechtlich|Unionsrecht|EU-Richtlinie|Vorgaben\s+der\s+Richtlinie)|\b(?:Richtlinien?|RL)\b[\s\S]{0,300}?\b(?:umgesetzt|umzusetzen|Umsetzungsfrist)\b|in\s+(?:nationales|innerstaatliches|österreichisches)\s+Recht\s+(?:umgesetzt|umzusetzen|zu\s+übernehmen)/
 const ERL_DURCHFUEHRUNG = /begleitende[n]?\s+(?:Regelungen|Bestimmungen|Maßnahmen)\s+zu[rm]?\s+(?:unmittelbar\s+anwendbaren\s+)?(?:Verordnung|Durchführungsverordnung|Delegierten\s+Verordnung|EU-Verordnung)|Durchführung\s+(?:der|von|zur)\s+[\s\S]{0,40}?(?:Verordnung|Durchführungsverordnung)\s*\((?:EU|EG)|unmittelbar\s+anwendbare[nr]?\s+(?:Verordnung|Unionsrecht|EU-Verordnung)|flankierende[n]?\s+(?:Regelungen|Bestimmungen|Maßnahmen)/
+/**
+ * A negated signal, from the negation to the end of its sentence:
+ * Steiermark's house sentence „Der Entwurf dient nicht der Durchführung oder
+ * Umsetzung von Unionsrecht" fired ERL_UMSETZUNG (its „oder Umsetzung von
+ * Unionsrecht" holds „der Umsetzung"), and through rule D5 a „no" would
+ * print „Setzt EU-Recht um" (Länder measurement, 04.11.2026). Only this
+ * clause is blanked, so a positive sentence beside it in the same paragraph
+ * still speaks; the span stops at the first „." or „;", which may end it
+ * early (an „ABl." inside) but never runs it into the next sentence.
+ * „nicht nur der Umsetzung" is a yes and stays.
+ */
+const ERL_NEGATED = /\b(?:nicht(?!\s+nur\b)|keine[nrsm]?)\s+(?:(?:der|zur|einer|die)\s+)?(?:(?:Durchführung|Umsetzung)\s+(?:oder|und|bzw\.?|sowie)\s+)?(?:Durchführung|Umsetzung)\b[^.;]*|\bnicht(?!\s+nur\b)\s+[^.;]{0,120}?\b(?:umgesetzt|umzusetzen|durchgeführt)\b/g
+
+/** A paragraph with its negated signal clauses blanked (`ERL_NEGATED`). */
+export function withoutNegatedSignals(text: string): string {
+  return text.replace(ERL_NEGATED, ' ')
+}
+
 /** A passage heading of the Allgemeiner Teil that is the EU section itself. */
 const ERL_EU_HEADING = /Unionsrecht|Europäischen\s+Union|EU-Recht|Verhältnis\s+zu(?:m)?\s+(?:den\s+)?Rechtsvorschriften/i
 
@@ -223,10 +241,13 @@ export function readExplanationsEuSignal(passages: readonly ExplanationsPassageT
   for (const passage of passages) {
     const euHeading = ERL_EU_HEADING.test(passage.heading ?? '')
     for (const text of [...(passage.heading ? [passage.heading] : []), ...passage.text]) {
-      const ums = ERL_UMSETZUNG.test(text)
-      const dur = ERL_DURCHFUEHRUNG.test(text)
+      const read = withoutNegatedSignals(text)
+      const ums = ERL_UMSETZUNG.test(read)
+      const dur = ERL_DURCHFUEHRUNG.test(read)
       if (!ums && !dur) continue
-      if (!euHeading && !EU_ANCHOR.test(text)) {
+      // The anchor, too, only from what is left: a negated sentence's
+      // „Unionsrecht" must not anchor a national „Richtlinie" beside it.
+      if (!euHeading && !EU_ANCHOR.test(read)) {
         unanchored++
         continue
       }
