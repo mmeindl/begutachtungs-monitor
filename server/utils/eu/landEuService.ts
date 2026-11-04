@@ -187,7 +187,7 @@ export async function assembleLandEu(land: LandCode, detail: LandDraftRecord): P
 }
 
 /** The cached half of `getLandEuRecht`; an answer missing a read is served, not stored. */
-const readLandEuRecht = defineCachedFunction(
+export const readLandEuRecht = defineCachedFunction(
   (land: LandCode, number: string, detail: LandDraftRecord): Promise<Gathered<EuRechtResponse>> => assembleLandEu(land, detail),
   {
     name: 'land-eu-recht',
