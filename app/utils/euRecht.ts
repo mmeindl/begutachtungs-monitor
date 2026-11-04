@@ -13,7 +13,7 @@
  * Pure: the component (`DraftEuFact.vue`) renders what this returns, and
  * the tests read it without a page.
  */
-import type { EuActView, EuMarker, EuRechtResponse } from '#shared/types'
+import type { EuActView, EuMarker, EuRechtResponse, EuRelatedAct } from '#shared/types'
 import { formatDateDe } from '#shared/utils/format'
 import { eurLexSource, risSource, type SourceEntry } from '#shared/utils/provenance'
 
@@ -83,7 +83,7 @@ export interface EuFactView {
   /** „Im Gesetzestext", „Im Titel", „Im Vorblatt", „In den Erläuterungen" — for the `named` form. */
   namedIn: string | null
   /** The acts, the dated ones first in the order of their deadlines, each with its superscript's number where the bar carries several days. */
-  acts: { label: string; url: string; note: number | null }[]
+  acts: { label: string; url: string; note: number | null; celex: string; kind: EuActView['kind'] }[]
   /** The Vorblatt's own sentence, for `ueber-umsetzung` only. */
   quote: string | null
   /** „beschlossen am 11.04.2024" — the one act whose deadline the row prints, where the Cellar has its day; null otherwise. */
@@ -151,7 +151,7 @@ export function euFactView(r: EuRechtResponse | null | undefined): EuFactView | 
     lead: LEAD[r.marker],
     attach,
     namedIn: NAMED_IN[r.actsSource ?? 'gesetzestext'],
-    acts: listed.map((a) => ({ label: a.label, url: a.eurLexUrl, note: days.length > 1 ? dated.get(a.celex) ?? null : null })),
+    acts: listed.map((a) => ({ label: a.label, url: a.eurLexUrl, note: days.length > 1 ? dated.get(a.celex) ?? null : null, celex: a.celex, kind: a.kind })),
     quote: r.marker === 'ueber-umsetzung' ? r.vorblattSentence : null,
     adoptedNote: due.length === 1 && acts.length === 1 && due[0]!.adopted ? `beschlossen am ${formatDateDe(due[0]!.adopted)}` : null,
     deadlines,
@@ -159,6 +159,54 @@ export function euFactView(r: EuRechtResponse | null | undefined): EuFactView | 
     start: deadlines.length && r.begutachtungStart ? formatDateDe(r.begutachtungStart) : null,
     sources: [...read.map(risSource), ...(deadlines.length ? [eurLexSource('Fristen')] : [])],
   }
+}
+
+/** One line „Weitere Entwürfe zur Richtlinie (EU) 2024/1069: Bund 1 · Länder 3" under the act list. */
+export interface EuRelatedLine {
+  celex: string
+  /** The act's page. */
+  path: string
+  /** „Weitere Entwürfe zur Richtlinie (EU) 2024/1069" — the link's words. */
+  phrase: string
+  /** „Bund 1 · Länder 3", each side only where it has any. */
+  counts: string
+}
+
+/** The article an act's noun takes after „zu": die Richtlinie, die Verordnung, der (Rahmen-)Beschluss. */
+const TO_THE: Record<EuActView['kind'], string> = {
+  richtlinie: 'zur',
+  verordnung: 'zur',
+  beschluss: 'zum',
+  rahmenbeschluss: 'zum',
+}
+
+/**
+ * The way from a draft's fact to the act's page in the EU map (§12.66,
+ * Nachtrag 3): for every act the fact SHOWS (the fold is the caller's) that
+ * other drafts of the window implement too, one line with the act in the
+ * fact's own words and how many drafts the Bund and the Länder have beside
+ * this one. A count of zero is left out, an act without others gets no
+ * line — „Länder 0" would be a sentence about an absence the map cannot
+ * vouch for (it reads only the Begutachtungen it knows).
+ *
+ * The label's own form is kept („Richtlinie (EU) 2024/1069"), declined only
+ * where the citation opens with an adjective: „zur Delegierten Verordnung".
+ */
+export function euRelatedLines(
+  acts: readonly { label: string; celex: string; kind: EuActView['kind'] }[],
+  related: readonly EuRelatedAct[] | null | undefined,
+): EuRelatedLine[] {
+  if (!related?.length) return []
+  const byCelex = new Map(related.map((r) => [r.celex, r]))
+  return acts.flatMap((act) => {
+    const r = byCelex.get(act.celex)
+    if (!r || r.others.bund + r.others.laender <= 0) return []
+    const label = act.label.replace(/^Delegierte\s/, 'Delegierten ')
+    const counts = [r.others.bund > 0 ? `Bund ${r.others.bund}` : null, r.others.laender > 0 ? `Länder ${r.others.laender}` : null]
+      .filter((x): x is string => x !== null)
+      .join(' · ')
+    return [{ celex: act.celex, path: r.path, phrase: `Weitere Entwürfe ${TO_THE[act.kind]} ${label}`, counts }]
+  })
 }
 
 /** What the page knows about its own side of the timeline. */
