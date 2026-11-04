@@ -14333,9 +14333,14 @@ Verordnungen). Ein Lauf aus `.cache/eu/` dauert ~10 s.
 - **D5 Erläuterungen** entscheiden „ob“ nur, wo kein Vorblatt die
   Überschrift trägt, und nie welcher Akt: über sieben von Hand gelesene
   Fälle nannten sie den richtigen Akt viermal.
-- **D6 Zwei Daten, kein Urteil.** „Umsetzungsfrist war der …; die
-  Begutachtung begann am …“ — kein „verspätet“, keine Tageszahl, keine
-  Farbe. Ein Entwurf kann der zweite Schritt einer Umsetzung sein, und
+- **D6 Zwei Daten, kein Urteil.** Unter der Aktenliste eine Zeile im
+  Idiom der Stationen: „Umsetzungsfrist bis 07.05.2026 · Begutachtung ab
+  21.10.2026“ — kein „verspätet“, keine Tageszahl, keine Farbe, und keine
+  Zeitform: „bis“ und „ab“ tragen die Richtung jedes Datums. (Zuerst stand
+  es am selben Tag als Satz, „Umsetzungsfrist war der …; die Begutachtung
+  begann am …“; am Ende einer Liste von 28 Akten ging der Satz unter, die
+  eigene Zeile nicht.) Bei mehreren Fristen „Umsetzungsfristen 2024/1711
+  bis 17.07.2026¹, 2024/1069 bis 07.05.2026 · Begutachtung ab …“. Ein Entwurf kann der zweite Schritt einer Umsetzung sein, und
   welches Cellar-Datum die Frist ist, ist nicht beschriftet; der Rahmen ist
   Nachverfolgung, nicht ein Zähler für Schuld.
 - **D7 Kurznamen** („IE-Richtlinie“, „DSGVO“) bleiben in v1 unaufgelöst;

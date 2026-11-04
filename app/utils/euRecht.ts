@@ -1,19 +1,20 @@
 /**
  * The ProcedureCard's EU fact, as words (docs/architecture.md §12.66).
  *
- * TWO DATES, NO VERDICT (rule D6). The line states the transposition
- * deadline and the first day of the Begutachtung, and leaves the arithmetic
- * to the reader: no „verspätet", no count of days, no colour. Whether a
- * ministry was late is a judgement that needs more than two dates — a
- * directive's general deadline is not labelled in EUR-Lex, a draft may be the
- * second step of a transposition — and the site's frame is Nachverfolgung,
- * not a blame counter.
+ * TWO DATES, NO VERDICT (rule D6). Under the act list one row in the
+ * spine's own idiom — „Umsetzungsfrist bis 07.05.2026 · Begutachtung ab
+ * 21.10.2026" — and the arithmetic is left to the reader: no „verspätet",
+ * no count of days, no colour, and no tense either, since „bis" and „ab"
+ * say which way each date points. Whether a ministry was late is a
+ * judgement that needs more than two dates — a directive's general deadline
+ * is not labelled in EUR-Lex, a draft may be the second step of a
+ * transposition — and the site's frame is Nachverfolgung, not a blame counter.
  *
  * Pure: the component (`DraftEuFact.vue`) renders what this returns, and
  * the tests read it without a page.
  */
 import type { EuActView, EuMarker, EuRechtResponse } from '#shared/types'
-import { formatDateDe, todayIso } from '#shared/utils/format'
+import { formatDateDe } from '#shared/utils/format'
 
 /** The lead words in bold. */
 const LEAD: Record<EuMarker, string> = {
@@ -23,12 +24,10 @@ const LEAD: Record<EuMarker, string> = {
   'flankierend-rl': 'Begleitet eine EU-Richtlinie',
 }
 
-/** One act's deadline as the line states it. */
+/** One act's deadline as the row states it. */
 export interface EuDeadlineView {
-  /** „der Richtlinie (EU) 2024/1711" — only where the line names several acts; null otherwise. */
+  /** „2024/1711" — the act's number, only where the row carries several deadlines; null otherwise. */
   of: string | null
-  /** „war" for a date before today, „ist" from today on. */
-  verb: 'war' | 'ist'
   date: string
   /** The act's other transposition dates, formatted, for the footnote. */
   otherDates: string[]
@@ -64,20 +63,24 @@ function fits(marker: EuMarker, act: EuActView): boolean {
   return act.kind === 'richtlinie' || act.kind === 'rahmenbeschluss'
 }
 
-/** The acts whose deadline the line prints: new to the draft, not a base text, with a date (D3, D4). */
+/** The acts whose deadline the row prints: new to the draft, not a base text, with a date (D3, D4). */
 export function deadlineActs(acts: readonly EuActView[]): EuActView[] {
   return acts.filter((a) => a.isNew === true && !a.base && a.transposition !== null)
 }
 
+/** „2024/1711" out of „Richtlinie (EU) 2024/1711", „2009/43" out of „Richtlinie 2009/43/EG". */
+function numberOf(label: string): string {
+  return /\d{2,4}\/\d{1,4}/.exec(label)?.[0] ?? label
+}
+
 /** The fact as words, or null where the card shows none. */
-export function euFactView(r: EuRechtResponse | null | undefined, today: string = todayIso()): EuFactView | null {
+export function euFactView(r: EuRechtResponse | null | undefined): EuFactView | null {
   if (!r?.available || !r.marker) return null
   const acts = r.acts
   const attach = acts.length === 0 ? 'none' : acts.some((a) => fits(r.marker!, a)) ? 'colon' : 'named'
   const due = deadlineActs(acts)
   const deadlines = due.map((a): EuDeadlineView => ({
-    of: acts.length > 1 ? `der ${a.label}` : null,
-    verb: a.transposition!.deadline < today ? 'war' : 'ist',
+    of: due.length > 1 ? numberOf(a.label) : null,
     date: formatDateDe(a.transposition!.deadline),
     otherDates: a.transposition!.otherDates.map(formatDateDe),
     label: a.label,

@@ -7,8 +7,10 @@
  * BARE, LIKE THE PREDECESSOR LINE ABOVE IT. No pill, no colour, no icon: the
  * box grammar of this site reads a bare line as „read this", and a coloured
  * marker would make a property of the draft look like a status of the
- * procedure. Bold lead words, the acts as links to EUR-Lex, and the two dates
- * without a verdict between them (`utils/euRecht.ts`).
+ * procedure. Bold lead words, the acts as links to EUR-Lex, and under them
+ * the two dates as one row in the spine's idiom — „Umsetzungsfrist bis … ·
+ * Begutachtung ab …" — with no verdict between them (`utils/euRecht.ts`).
+ * A row of its own, so that a long act list (32/ME names 28) cannot bury it.
  *
  * Renders nothing while the answer is out, and nothing where the draft is no
  * EU matter — most drafts are not, and a line saying so on every page would be
@@ -39,9 +41,9 @@ const quote = computed(() => view.value?.quote?.replace(/[.\s]+$/, '') ?? null)
       <template v-if="quote">
         Laut Vorblatt: „{{ quote }}“.
       </template>
-      <template v-if="view.deadlines.length">
-        Umsetzungsfrist<template v-for="(d, i) in view.deadlines" :key="d.label"><template v-if="i > 0">,</template>{{ d.of ? ` ${d.of}` : '' }} {{ d.verb }} der {{ d.date }}<template v-if="notes[i]">{{ SUPERSCRIPT[notes[i]!] ?? `(${notes[i]})` }}</template></template><template v-if="view.start">; die Begutachtung begann am {{ view.start }}</template>.
-      </template>
+    </p>
+    <p v-if="view.deadlines.length" class="mt-1 text-sm text-ink-secondary">
+      {{ view.deadlines.length > 1 ? 'Umsetzungsfristen' : 'Umsetzungsfrist' }}<template v-for="(d, i) in view.deadlines" :key="d.label"><template v-if="i > 0">,</template>{{ d.of ? ` ${d.of}` : '' }} bis {{ d.date }}<template v-if="notes[i]">{{ SUPERSCRIPT[notes[i]!] ?? `(${notes[i]})` }}</template></template><template v-if="view.start"> · Begutachtung ab {{ view.start }}</template>
     </p>
     <p class="mt-1 text-xs text-ink-muted">
       <template v-for="(d, i) in view.deadlines" :key="`note-${d.label}`">
