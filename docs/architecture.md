@@ -14724,7 +14724,80 @@ Land ihn nirgends nennt. Dazu ein Merkmal und ein Filter in den Listen.
   fehlt das Feld), gezählt ohne den Entwurf selbst, nie mit dem Fakt
   gespeichert. Die Sitemap nennt `/eu-recht` und, mit Karte, jede Aktseite.
 
-**Gemessen:** (folgt)
+**Gemessen** am 04.11.2026 auf dem Produktions-Build (`pnpm build`, `node
+--max-old-space-size=320`, leere Caches, leerer Speicher, vom Arbeitsplatz
+aus): kalt 156 Ministerialentwürfe in 31,3 s, 219 RIS-Begutachtungen in
+12,7 s, 449 Landesentwürfe in 122,9 s (die Steiermark sperrte, daher
+`incomplete: ['stmk']` und 449 statt 489), zusammen 180,7 s bei einer
+Heap-Spitze von 185 MB; nach einem Neustart aus dem Speicher 33 s, nichts
+neu gelesen, Heap 151 MB — die Sekunden sind Stationskarte und
+RIS-Ergebnisse, die der Aufbau voll abwartet. Im Dev-Server davor
+(Dokumentcache auf der Platte) 235 s und 8 s. Die Datei `XXVIII.json` hat
+903 KB. Die Karte: 152 Entwürfe mit Merkmal (Bund 104: 63 ME, 41 RIS;
+Länder 48: Sbg 22, OÖ 9, Bgld 8, Ktn 6, T 2, Vbg 1), 85 davon mit Akt; 195
+Akte, 114 mit umsetzendem Entwurf; 141 umsetzende und 144 wiederholende
+Zeilen; Stand 41× Bundesgesetzblatt, 16× Landesgesetzblatt, 28× Heute, 0×
+Beschluss, 0× unbekannt; die ME-Merkmale wie oben (42/18/2/1, 93 ohne).
+Das RSS des Prozesses auf macOS (634 MB kalt, 479 MB aus dem Speicher, über
+den ganzen Lauf samt beiden Stationskarten) ist mit `MemoryMax` nicht
+vergleichbar; die Zahl, die zählt, ist der Heap, und das erste Deployment
+zeigt `MemoryCurrent` nach dem Prewarm. Die Prewarm-Unit ruft die Karte
+seither als siebte Zeile, nach der Stationskarte und den Ländern und vor
+der Vorperiode, mit 1.800 s Budget (`TimeoutStartSec` 5.120 s).
+
+**Die Seiten** (04.11.2026, Nachtrag zum Bau): `/eu-recht` ist die
+Übersicht — jeder Akt mit mindestens einem umsetzenden Entwurf, späteste
+Frist zuerst, je Zeile Bezeichnung, „Umsetzungsfrist bis …" oder „gilt
+unmittelbar" und „1 Entwurf des Bundes · 3 Entwürfe der Länder (Burgenland,
+Salzburg)"; gefaltet ab zwanzig im Listenidiom. `/eu-recht/richtlinie/2024/1069`
+ist die Seite eines Akts (`shared/utils/eu.ts`: Art, Jahr und Nummer wie im
+Zitat, nicht die CELEX — vor 2015 teilen sich Richtlinie und Verordnung
+Jahr und Nummer): Kopf mit „Beschlossen am … · Umsetzungsfrist bis …¹" und
+der D3-Fußnote, der EUR-Lex-Link; dann der Abschnitt „Entwürfe, die sie
+umsetzen", der mit der Liste beginnt — je Zeile Herausgeber fett, Titel,
+„Gesetzesentwurf 32/ME · Begutachtung 07.07.–15.08.2025 ·
+Bundesgesetzblatt am 23.12.2025" — und rechts je Zeile ein `ScaleBar` auf
+EINER Strecke für die ganze Seite (`app/utils/euKarte.ts`): der Strich der
+Umsetzungsfrist steht in jeder Zeile an derselben Stelle, das Band ist die
+Begutachtung, die Tintenlinie beginnt beim eigenen Beginn (`from` am
+`ScaleBar`, nicht am Anfang der fremden Strecke), der Punkt ist der Stand;
+die Beschriftung steht einmal unter der letzten Zeile (`EuScaleAxis`: die
+Frist wie auf dem Zeitstrahl des Entwurfs, die beiden Enden als Daten,
+Abstandsregeln aus `spreadLabels`, weil der halbe Zeilenraum je Zeichen
+mehr Prozent nimmt). Zeilen ohne Stand oder ohne Beginn (Burgenland datiert
+keinen) stehen als Text ohne Balken und dehnen die Strecke nicht. Darunter
+gedämpft die Entwürfe, die den Akt nur im geltenden Umsetzungshinweis
+wiederholen (D4 false), dann die Sätze: welche Länder im Fenster keinen
+Entwurf haben (ohne die ungelesenen), was das Fenster ist und dass ein
+fehlender Entwurf kein Befund über das Land ist, was gerade nicht abrufbar
+ist. Zwei Daten und ein Stand je Zeile, kein Urteil (D6). Die Zeilen tragen
+die Anatomie der Listen (`EntryItem`): die ganze Zeile ist der Link, der
+Titel Tinte mit Unterstrich unter dem Zeiger — blaue Inline-Links in einer
+Liste standen eine Stunde lang da. Der Punkt ist Gelb, solange das
+Verfahren sich bewegt (Heute, Beschluss), und Tinte, sobald ein Gesetzblatt
+ihn festhält (`euDotOf`), seither auch auf dem Zeitstrahl des Entwurfs. In
+der Liste `/entwuerfe` steht das Merkmal als nacktes Wort in Zone 2 — die
+Worte des Fakts selbst, „Setzt EU-Recht um", „Begleitet EU-Verordnungen" —
+vor dem Debattennamen, und der Chip „Setzt EU-Recht um" neben „Stellungnahme
+möglich" (`?eu=umsetzung`; Bund über die Endpunkte, Länder auf der Seite;
+die Volltextsuche steht unter dem Chip still, ihre Treffer tragen keinen
+Fakt); ist die Karte nicht da, sagt die Liste es in der Zeile der
+Stationshinweise. Unter dem Fakt eines Entwurfs eine Zeile je gezeigtem Akt,
+den andere Entwürfe umsetzen: „Weitere Entwürfe zur Richtlinie (EU)
+2024/1346: 1 des Bundes · 2 der Länder", die Phrase der Link zur Aktseite.
+Gezählt werden immer Entwürfe, nie Länder („Länder 3 (Burgenland,
+Salzburg)" las sich als drei Länder). Dabei gefunden und behoben: die Seite
+eines kundgemachten Ministerialentwurfs setzte den Punkt auf den Beschluss,
+weil ihr Detail die Kundmachungsnummer, aber nicht den Tag kannte — den
+liest `enactmentOf` seither unter Budget aus demselben RIS-Datensatz wie die
+Stationskarte (`EnactmentInfo.bgblDate`). Die Seiten zählen als eigene
+Klasse „EU-Recht" (`zaehlung/klassen.ts`).
+
+**Reste:** `related` eines RIS- oder Landesentwurfs liest die Karte der
+laufenden Periode; ein Akt, den nur wiederholende Entwürfe nennen, hat eine
+Seite, steht aber nicht in der Übersicht; die Quellenzeile der Aktseite
+nennt die Herkunft des Stands (Parlament, RIS, Land) nicht eigens, wie die
+des Fakts auch nicht.
 
 ## 13. Open questions
 
