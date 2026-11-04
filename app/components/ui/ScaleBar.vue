@@ -53,7 +53,14 @@ const props = withDefaults(defineProps<{
    * took the Median and Regelfall from under every Frist bar.
    */
   labels?: boolean
-}>(), { labels: true })
+  /**
+   * `auto`: the value label is centred on its dot except within 10 % of
+   * either end, where it would run off a long track. `center`: always
+   * centred — for a word short enough to fit anyway („Heute"), so it stands
+   * over its dot and not beside it.
+   */
+  valueAlign?: 'auto' | 'center'
+}>(), { labels: true, valueAlign: 'auto' })
 
 defineSlots<{
   mark(props: { mark: M }): unknown
@@ -63,7 +70,9 @@ const pct = (n: number) => `${Math.min(100, Math.max(0, n))}%`
 
 /* The value centred over its dot, except where centring would push it past
  * either end of the track. */
-const valueAlign = computed(() => (props.value < 10 ? '' : props.value > 90 ? '-translate-x-full' : '-translate-x-1/2'))
+const valueAlign = computed(() => (
+  props.valueAlign === 'center' ? '-translate-x-1/2' : props.value < 10 ? '' : props.value > 90 ? '-translate-x-full' : '-translate-x-1/2'
+))
 
 const MARK_ALIGN: Record<ScaleAlign, string> = {
   start: '',

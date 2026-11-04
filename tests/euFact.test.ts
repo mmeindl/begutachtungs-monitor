@@ -57,7 +57,7 @@ describe('euFactView — two dates, no verdict', () => {
 
   it('names a deadline\'s act by its number only where the row carries several, with the further dates for the footnote', () => {
     const one = euFactView(response({ acts: [act({ label: 'Richtlinie (EU) 2018/2001', base: true }), act({ label: 'Richtlinie (EU) 2024/1711', transposition: { deadline: '2026-07-17', otherDates: ['2025-01-17'] } })] }))!
-    expect(one.deadlines).toEqual([{ of: null, date: '17.07.2026', otherDates: ['17.01.2025'], label: 'Richtlinie (EU) 2024/1711' }])
+    expect(one.deadlines).toEqual([{ of: null, date: '17.07.2026', iso: '2026-07-17', otherDates: ['17.01.2025'], note: 1, label: 'Richtlinie (EU) 2024/1711' }])
     const two = euFactView(response({ acts: [act({}), act({ label: 'Richtlinie 2009/43/EG', celex: '32009L0043', transposition: { deadline: '2011-06-30', otherDates: [] } })] }))!
     expect(two.deadlines.map((d) => d.of)).toEqual(['2009/43', '2024/1069'])
   })
@@ -67,43 +67,65 @@ describe('euFactView — two dates, no verdict', () => {
     expect(v).toMatchObject({ lead: 'Begleitet EU-Verordnungen', attach: 'named', namedIn: 'Gesetzestext' })
   })
 
-  it('draws the dates that matter on one track: the deadline a tick, the Begutachtung the band, today the dot', () => {
+  it('draws the dates that matter on one track, labelled as the Frist bar: term over date under each mark', () => {
     const ctx = { begutachtung: { start: '2026-10-21', end: '2026-11-10' }, stand: { date: '2026-11-04', label: 'Heute' } }
-    const t = euTimeline(response({}), ctx)!
+    const t = euTimeline(euFactView(response({})), ctx)!
     // Track 07.05.2026 → 10.11.2026 with 4 % free at either end.
     const day = (iso: string) => Date.parse(`${iso}T00:00:00Z`) / 86_400_000
     const at = (iso: string) => 4 + ((day(iso) - day('2026-05-07')) / (day('2026-11-10') - day('2026-05-07'))) * 92
-    expect(t.ticks).toEqual([{ key: 'frist-2026-05-07', at: 4 }])
     expect(t.band![0]).toBeCloseTo(at('2026-10-21'), 9)
     expect(t.band![1]).toBe(96)
     expect(t.value).toBeCloseTo(at('2026-11-04'), 9)
     expect(t.valueLabel).toBe('Heute')
+    expect(t.marks).toEqual([
+      { key: 'frist-2026-05-07', at: 4, align: 'start', tick: true, lines: ['Umsetzungsfrist', '07.05.2026'] },
+      { key: 'begutachtung', at: (t.band![0] + 96) / 2, align: 'end', tick: false, lines: ['Begutachtung', '21.10.–10.11.2026'] },
+    ])
     expect(euFactView(response({}))!.adoptedNote).toBe('beschlossen am 11.04.2024')
   })
 
   it('ends the track at the later of today and the deadline, and names the Kundmachung where the procedure is over', () => {
     const ctx = { begutachtung: { start: '2026-10-22', end: '2026-11-05' }, stand: { date: '2026-11-04', label: 'Heute' } }
-    const ahead = euTimeline(response({ acts: [act({ transposition: { deadline: '2026-12-11', otherDates: [] } })] }), ctx)!
-    expect(ahead.ticks[0]!.at).toBe(96)
+    const ahead = euTimeline(euFactView(response({ acts: [act({ transposition: { deadline: '2026-12-11', otherDates: [] } })] })), ctx)!
+    expect(ahead.marks.find((m) => m.tick)).toMatchObject({ at: 96, align: 'end' })
     expect(ahead.band![0]).toBe(4)
     expect(ahead.value).toBeLessThan(96)
-    const over = euTimeline(response({}), { begutachtung: { start: '2025-07-07', end: '2025-08-15' }, stand: { date: '2025-12-30', label: 'Bundesgesetzblatt' } })!
+    const over = euTimeline(euFactView(response({})), { begutachtung: { start: '2025-07-07', end: '2025-08-15' }, stand: { date: '2025-12-30', label: 'Bundesgesetzblatt' } })!
     expect(over.valueLabel).toBe('Bundesgesetzblatt')
     // The deadline lies after the Kundmachung: the tick ends the track, the dot stands before it.
-    expect(over.ticks[0]!.at).toBe(96)
+    expect(over.marks.find((m) => m.tick)!.at).toBe(96)
     expect(over.value).toBeLessThan(96)
+  })
+
+  it('shares one label between deadlines that would overlap, aligns neighbours away from each other, and carries the footnote mark', () => {
+    const ctx = { begutachtung: { start: '2025-07-07', end: '2025-08-15' }, stand: { date: '2025-12-17', label: 'Beschluss' } }
+    const three = euFactView(response({ acts: [
+      act({ label: 'Richtlinie (EU) 2024/1711', celex: '32024L1711', transposition: { deadline: '2026-07-17', otherDates: ['2025-01-17'] } }),
+      act({ label: 'Richtlinie (EU) 2024/1788', celex: '32024L1788', transposition: { deadline: '2026-08-05', otherDates: [] } }),
+      act({ label: 'Richtlinie (EU) 2023/2413', celex: '32023L2413', transposition: { deadline: '2025-05-21', otherDates: [] } }),
+    ] }))!
+    const t = euTimeline(three, ctx)!
+    const labelled = t.marks.filter((m) => m.lines[0])
+    expect(labelled.map((m) => m.lines)).toEqual([
+      ['Umsetzungsfrist', '21.05.2025'],
+      ['Begutachtung', '07.07.–15.08.2025'],
+      ['Umsetzungsfristen', '17.07.2026¹, 05.08.2026'],
+    ])
+    // The first tick and the band stand within 14 %: the tick's label leans left, the band's right.
+    expect(labelled[0]!.align).toBe('start')
+    expect(labelled[1]!.align).toBe('start')
+    expect(labelled[2]!.align).toBe('end')
+    // Every deadline keeps a tick of its own.
+    expect(t.marks.filter((m) => m.tick)).toHaveLength(3)
+    expect(three.deadlines.map((d) => d.note)).toEqual([null, 1, null])
   })
 
   it('draws nothing without a deadline act or where every date falls on one day, and notes the adoption only for a single act', () => {
     const ctx = { begutachtung: { start: '2026-10-21', end: '2026-11-10' }, stand: { date: '2026-11-04', label: 'Heute' } }
-    expect(euTimeline(response({ acts: [act({ isNew: false })] }), ctx)).toBeNull()
-    expect(euTimeline(response({ marker: null }), ctx)).toBeNull()
-    expect(euTimeline(response({}), { begutachtung: { start: '2026-05-07', end: null }, stand: { date: '2026-05-07', label: 'Heute' } })).toBeNull()
+    expect(euTimeline(euFactView(response({ acts: [act({ isNew: false })] })), ctx)).toBeNull()
+    expect(euTimeline(euFactView(response({ marker: null })), ctx)).toBeNull()
+    expect(euTimeline(euFactView(response({})), { begutachtung: { start: '2026-05-07', end: null }, stand: { date: '2026-05-07', label: 'Heute' } })).toBeNull()
     const two = response({ acts: [act({}), act({ label: 'Richtlinie (EU) 2024/1711', celex: '32024L1711', adopted: '2024-06-13', transposition: { deadline: '2026-07-17', otherDates: [] } })] })
-    expect(euTimeline(two, ctx)!.ticks.map((x) => x.key)).toEqual(['frist-2026-05-07', 'frist-2026-07-17'])
-    // The row follows the track: deadlines in date order, whatever order the law text named the acts in.
-    const later = response({ acts: [act({ label: 'Richtlinie (EU) 2024/1711', celex: '32024L1711', transposition: { deadline: '2026-07-17', otherDates: [] } }), act({})] })
-    expect(euFactView(later)!.deadlines.map((d) => d.date)).toEqual(['07.05.2026', '17.07.2026'])
     expect(euFactView(two)!.adoptedNote).toBeNull()
     expect(euFactView(response({ acts: [act({ adopted: null })] }))!.adoptedNote).toBeNull()
   })

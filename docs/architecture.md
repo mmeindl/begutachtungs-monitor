@@ -14401,20 +14401,24 @@ läuft, in Gelb, weil er sich noch bewegt; die Kundmachung, wenn es vorbei
 ist. Die Strecke reicht vom frühesten dieser Daten bis zum spätesten, vier
 Prozent frei an jedem Rand, und nicht weiter. Auf welcher Seite der Frist
 der Entwurf kam und wie weit davon, sieht man; gesagt wird es nicht (D6).
-Keine Beschriftungen unter den Marken, sondern eine Legende unter dem
-Balken: je Form ein Eintrag, die Form neben ihren Worten so gezeichnet,
-wie sie auf der Linie steht — der Strich mit der Umsetzungsfrist und
-ihrem Fußnotenzeichen, das Band mit beiden Daten der Begutachtung, der
-gelbe Punkt mit „Heute" oder dem Beschluss samt Tag —, in Streckenreihenfolge
-in einer Zeile, die eintragsweise umbricht. Beschriftungen unter den
-Marken wie am Fristbalken sind gemessen verworfen: bei 32/ME stehen zwei
-Umsetzungsfristen drei Wochen auseinander auf einer Jahresstrecke, 30 px,
-und Frist und Begutachtung liegen oft Tage auseinander, das ist der
-Befund. Die Zeile „Umsetzungsfrist bis … · Begutachtung ab …" bleibt die
-Textform, wo kein Balken gezeichnet wird. Zwei Legenden davor taugten
-nicht: eine Kette aus Glyphen und Mittelpunkten in einem Satz, dann gar
-keine — die Daten standen da, welcher Strich und welches Band gemeint
-war, blieb zu raten.
+Beschriftet wie der Fristbalken: unter jeder Marke der Begriff über dem
+Datum — „Umsetzungsfrist" über „07.05.2026" unter dem Strich,
+„Begutachtung" über „21.10.–10.11.2026" unter der Mitte des Bands —, das
+Wort am Punkt darüber, mittig, weil „Heute" und „Beschluss" kurz genug
+sind, um überall zu stehen (`valueAlign="center"` am ScaleBar). Zwei
+Regeln halten die Beschriftungen auseinander, weil Frist und Begutachtung
+oft Tage auseinanderliegen, das ist der Befund: Umsetzungsfristen, die
+näher als 12 % der Strecke beieinanderstehen, teilen sich eine
+Beschriftung („Umsetzungsfristen 17.07.2026¹, 05.08.2026" bei 32/ME, drei
+Wochen auf einer Jahresstrecke), jeder Strich bleibt; und zwei
+Beschriftungen näher als 14 % werden voneinander weg ausgerichtet, die
+linke endet an ihrer Marke, die rechte beginnt dort. Am Rand richten sie
+sich nach innen. Die Zeile „Umsetzungsfrist bis … · Begutachtung ab …"
+bleibt die Textform, wo kein Balken gezeichnet wird. Drei Legenden davor
+taugten nicht: eine Kette aus Glyphen und Mittelpunkten in einem Satz,
+dann gar keine, dann ein Schlüssel je Form unter dem Balken — gegen die
+Sprache der anderen beiden Balken, die ihre Marken an Ort und Stelle
+beschriften.
 Der Tag, an dem die Richtlinie beschlossen wurde (`work_date_document`,
 seit diesem Abend aus dem Cellar mit abgefragt), steht im Satz: „Richtlinie
 (EU) 2024/1069, beschlossen am 11.04.2024."
