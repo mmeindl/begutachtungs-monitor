@@ -36,6 +36,15 @@
  *     pnpm corpus:eu -- --show BEGUT_…             # everything read from one record
  *     pnpm corpus:eu -- --out dir                  # drafts.csv, disagreements.md, handread.md
  *
+ * THE RULES ARE THE PRODUCT'S. Since Phase B (04.11.2026) every pattern —
+ * act citations, the Vorblatt classes, the Umsetzungshinweis windows, the
+ * Erläuterungen signal — comes from `server/utils/eu/`, the modules the
+ * draft page runs; this file only reads documents, counts and prints, so a
+ * run stays the oracle for the page. Section g applies the page's own
+ * decision (`euMarker.ts`) to the same readings. Kept here: the hand-count
+ * patterns (`HAND_LAW`, `HAND_ERL`) for the comparison, and the Cellar
+ * query, which asks for more than the page needs (entry into force, title).
+ *
  * Reads only. Every document, every PDF and every SPARQL answer is cached
  * under `.cache/eu/`, so the second run makes no request; the cost section
  * reads the fetch times the first run recorded beside each document.
@@ -51,6 +60,10 @@ import { parseRisXml } from '../../server/utils/lawtext/risXml'
 import type { TextBlock } from '../../server/utils/lawtext/lawUnits'
 import { mapDraftRow } from '../../server/utils/parliament/list81'
 import { withPdf } from '../../server/utils/text/pdfDocument'
+import { readEuActCitations, uniqueActs, type EuAct } from '../../server/utils/eu/actCitations'
+import { VORBLATT_CLASS_RANK, VORBLATT_EU_YES, classifyVorblatt, classifyVorblattSentence, hasTextLayer, isVorblattDocument, linesOfPages, type VorblattClass } from '../../server/utils/eu/vorblatt'
+import { readExplanationsEuSignal, readUmsetzungshinweis, type LawSignal } from '../../server/utils/eu/umsetzungshinweis'
+import { decideEuMarker } from '../../server/utils/eu/euMarker'
 import { fetchRisBegutCorpus } from '../lib/corpus'
 import { cachedJson } from '../lib/diskCache'
 import { PARLIAMENT, getBytes, getJson, getText, type HttpOptions } from '../lib/http'
@@ -154,192 +167,35 @@ async function pdfPages(bytes: Uint8Array): Promise<string[]> {
 }
 
 // ---------------------------------------------------------------------------
-// EU acts: citation → CELEX
+// EU acts: citation → CELEX — `server/utils/eu/actCitations.ts`
 // ---------------------------------------------------------------------------
 
-/** One EU act as a draft names it. */
-interface Act {
-  /** As printed, whitespace normalised */
-  raw: string
-  /** L Richtlinie, R Verordnung, D Beschluss/Entscheidung, F Rahmenbeschluss */
-  type: 'L' | 'R' | 'D' | 'F'
-  year: number
-  number: number
-  celex: string
-}
+/** One EU act as a draft names it — the production shape. */
+type Act = EuAct
+/** What a law-text window or an Erläuterungen paragraph says. */
+type Signal = LawSignal
 
-const ORG = String.raw`\((?:EU|EG|EWG|EGKS|Euratom)(?:\s*,\s*Euratom)?\)`
-const SUFFIX = String.raw`(?:EU|EG|EWG|EGKS|Euratom|JI|GASP)`
-/**
- * The type word, inflected: „Richtlinie(n)", „Verordnung(en)", „Beschluss(es)",
- * „Entscheidung(en)", with the Durchführungs-/Delegierte/Rahmen- forms.
- * Case-insensitive on purpose: „Saisonarbeiter-Richtlinien (2014/36/EU)" and
- * „RL" both occur — the act number with its (EU)/EU anchor is what keeps a
- * national „Förderrichtlinie" out, not the capital R.
- */
-const TYPE = String.raw`(?:(?:Durchführungs|Rahmen)?(?:richtlinie|verordnung|beschluss|entscheidung)|Delegierte[nr]?\s+(?:Richtlinie|Verordnung|Beschluss)|(?<![A-Za-zÄÖÜäöüß])(?:RL|VO))(?:en|n|es|e)?`
-
-/** „Richtlinie (EU) 2024/1069", „Verordnung (EG) Nr. 1907/2006", „RL EU 2024/1069". */
-const ACT_ORG = new RegExp(String.raw`(${TYPE})\s*(?:${ORG}|EU)\s*(Nr\.\s*)?(\d{1,4})\s*/\s*(\d{1,4})(?!\s*/\s*\d)`, 'giu')
-/** „Richtlinie 2014/36/EU", „Richtlinien (2014/36/EU)", „Beschluss Nr. 1313/2013/EU". */
-const ACT_SUFFIX = new RegExp(String.raw`(${TYPE})\s*\(?\s*(Nr\.\s*)?(\d{2,4})\s*/\s*(\d{1,4})\s*/\s*${SUFFIX}\b`, 'giu')
-/** „RL 2019/1937", „VO 2016/679": the abbreviation with a four-digit year and no anchor at all. */
-const ACT_ABBREVIATED = /(?<![A-Za-zÄÖÜäöüß])(RL|VO)\s*(\d{4})\s*\/\s*(\d{1,4})\b(?!\s*\/)/gu
-/** „…, (EU) 2023/2775", „und 2014/36/EU" after a typed act: the list inherits the type. */
-const ACT_CONTINUATION = new RegExp(
-  String.raw`^\s*(?:,|und|sowie|oder|bzw\.)\s*(?:der|die|den|des)?\s*(?:${ORG}\s*(Nr\.\s*)?(\d{1,4})\s*/\s*(\d{1,4})(?!\s*/\s*\d)|\(?\s*(\d{2,4})\s*/\s*(\d{1,4})\s*/\s*${SUFFIX}\b)`,
-  'u',
-)
-
-function typeLetter(word: string): Act['type'] {
-  const w = word.toLowerCase()
-  if (w.startsWith('rahmen')) return 'F'
-  if (w.includes('richtlinie') || w === 'rl') return 'L'
-  if (w.includes('verordnung') || w === 'vo' || w === 'voen') return 'R'
-  return 'D'
-}
-
-function fullYear(y: number): number {
-  return y < 100 ? 1900 + y : y
-}
-
-/**
- * Year and number from „a/b". „Nr." means the old order, number first
- * („Verordnung (EU) Nr. 517/2014"); without it a four-digit year in front is
- * the order since 2015 („Richtlinie (EU) 2024/1069"), and anything else is
- * number/year written without the „Nr." („(EU) 1303/2013").
- */
-function orderOrg(nr: boolean, a: number, b: number): { year: number; number: number } {
-  // „Verordnung (EU) Nr. 2022/2065": the „Nr." of the old form before the new
-  // order — read year first where the second number cannot be a year.
-  if (nr) return plausibleYear(b) || !plausibleYear(a) ? { year: fullYear(b), number: a } : { year: a, number: b }
-  if (a >= 1990 && a <= 2030) return { year: a, number: b }
-  return { year: fullYear(b), number: a }
-}
-
-/** The suffix form is year first („2014/36/EU") unless „Nr." says otherwise („Nr. 1313/2013/EU"). */
-function orderSuffix(nr: boolean, a: number, b: number): { year: number; number: number } {
-  return nr && plausibleYear(b) ? { year: fullYear(b), number: a } : { year: fullYear(a), number: b }
-}
-
-function plausibleYear(y: number): boolean {
-  const full = fullYear(y)
-  return full >= 1952 && full <= 2030
-}
-
-function makeAct(raw: string, type: Act['type'], year: number, number: number): Act | null {
-  if (year < 1952 || year > 2030 || number < 1 || number > 9999) return null
-  return { raw: raw.replace(/\s+/g, ' ').trim(), type, year, number, celex: `3${year}${type}${String(number).padStart(4, '0')}` }
-}
-
-/**
- * An act named inside another act's title: „Richtlinie (EU) 2019/944 … und
- * zur Änderung der Richtlinie 2012/27/EU", „… zur Aufhebung der Richtlinien
- * 2006/48/EG und 2006/49/EG". The draft implements the first, not the
- * second — run 5 (04.11.2026) counted 34 acts for one ElWG draft. „in der
- * Fassung der Richtlinie (EU) 2024/1711" stays: that is usually the act the
- * draft adds.
- */
-const TITLE_REFERENCE = /(?:Änderung|Aufhebung|Ersetzung)\s+(?:der|des|von)\s*$/
-/** Occurrences dropped by that rule, over the whole run. */
+/** Occurrences dropped as named inside another act's title, over the whole run. */
 let titleReferencesDropped = 0
 
 /**
- * Every act cited in `text`, in order, with list continuations; deduped by
- * CELEX. `implemented` drops the acts named inside another act's title — for
- * the windows that say which act a draft implements, not for counting
- * citations.
+ * Every act cited in `text` through the production parser; `implemented`
+ * drops the acts named inside another act's title and counts them for the
+ * EUR-Lex section.
  */
 function actsIn(text: string, implemented = false): Act[] {
-  const found: { at: number; act: Act }[] = []
-  const take = (at: number, end: number, type: Act['type'], order: { year: number; number: number }) => {
-    const act = makeAct(text.slice(at, end), type, order.year, order.number)
-    if (!act) return
-    if (implemented && TITLE_REFERENCE.test(text.slice(Math.max(0, at - 40), at))) {
-      // The list after it belongs to the same title: skip it as well.
-      let rest = end
-      for (let guard = 0; guard < 12; guard++) {
-        const m = ACT_CONTINUATION.exec(text.slice(rest))
-        if (!m) break
-        rest += m[0].length
-        titleReferencesDropped++
-      }
-      titleReferencesDropped++
-      return
-    }
-    found.push({ at, act })
-    // The list after it: „der Richtlinien (EU) 2022/2464 und (EU) 2023/2775".
-    let rest = end
-    for (let guard = 0; guard < 12; guard++) {
-      const m = ACT_CONTINUATION.exec(text.slice(rest))
-      if (!m) break
-      const next = m[2] !== undefined
-        ? orderOrg(Boolean(m[1]), Number(m[2]), Number(m[3]))
-        : orderSuffix(false, Number(m[4]), Number(m[5]))
-      const cont = makeAct(m[0], type, next.year, next.number)
-      if (cont) found.push({ at: rest, act: cont })
-      rest += m[0].length
-    }
-  }
-  for (const m of text.matchAll(ACT_ORG)) take(m.index!, m.index! + m[0].length, typeLetter(m[1]!), orderOrg(Boolean(m[2]), Number(m[3]), Number(m[4])))
-  for (const m of text.matchAll(ACT_SUFFIX)) take(m.index!, m.index! + m[0].length, typeLetter(m[1]!), orderSuffix(Boolean(m[2]), Number(m[3]), Number(m[4])))
-  for (const m of text.matchAll(ACT_ABBREVIATED)) take(m.index!, m.index! + m[0].length, typeLetter(m[1]!), { year: Number(m[2]), number: Number(m[3]) })
-  found.sort((a, b) => a.at - b.at)
-  const seen = new Set<string>()
-  return found.map((f) => f.act).filter((a) => !seen.has(a.celex) && seen.add(a.celex))
-}
-
-function uniqueActs(lists: Act[][]): Act[] {
-  const seen = new Set<string>()
-  return lists.flat().filter((a) => !seen.has(a.celex) && seen.add(a.celex))
+  const read = readEuActCitations(text, { implemented })
+  titleReferencesDropped += read.titleReferencesDropped
+  return read.acts
 }
 
 // ---------------------------------------------------------------------------
-// 1. The Vorblatt: the WFA tool's sentence
+// 1. The Vorblatt: the WFA tool's sentence — `server/utils/eu/vorblatt.ts`
 // ---------------------------------------------------------------------------
 
-/**
- * The Vorblatt/WFA by its document name — every form in the window since
- * 2024: „Vorblatt und WFA", „WFA samt Vorblatt", „Vorblatt + WFV", „WF mit
- * Vorblatt", „wirkungsorientierte Folgenabschätzung", „Ergbnisdokument"
- * (sic), „begVorblatt_WFA", „Vbl…".
- */
-const VORBLATT_NAME = /vorbl|wfa|wfv|(^|[^a-zäöüß])vbl|folgenabsch|^wf\b|erge?bnisdokument/i
-
-const EU_HEADING = /Verhältnis\s+zu\s+den\s+Rechtsvorschriften\s+der\s+Europäischen\s+Union/
-/** What follows the EU section in the WFA tool's layout. */
-const AFTER_EU = /Besonderheiten\s+des\s+Normerzeugungsverfahrens|Vereinfachte\s+wirkungsorientierte|Wirkungsorientierte\s+Folgenabschätzung|Datenschutz-Folgenabschätzung|Inkrafttreten/
-/** The WFA tool's page footer and header lines, cut per page before the pages are joined. */
-const PAGE_NOISE = /^\s*(?:\d+\s+von\s+\d+|Seite\s+\d+(?:\s+von\s+\d+)?|www\.ris\.bka\.gv\.at.*)\s*$/i
-
-/**
- * The fixed sentences of the WFA tool, as classes. Order matters only where
- * two could match the same sentence; none of these can.
- */
-const VORBLATT_CLASSES: { cls: VorblattClass; re: RegExp }[] = [
-  { cls: 'umsetzung', re: /dient\s+der\s+Umsetzung\s+(?:einer|von)\s+EU-Richtlinie/i },
-  { cls: 'flankierend-vo', re: /flankierenden?\s+Regelungen\s+zu\s+(?:den\s+)?Verordnungen\s+der\s+Europäischen\s+Union/i },
-  { cls: 'flankierend-rl', re: /flankierenden?\s+Regelungen\s+zu\s+(?:einer|der)\s+Richtlinie/i },
-  { cls: 'ueber-umsetzung', re: /geht\s+über\s+eine\s+verpflichtende\s+Umsetzung/i },
-  { cls: 'nur-zwingend', re: /ausschließlich\s+Maßnahmen\s+vor,\s+zu\s+denen\s+der\s+Bund\s+aufgrund\s+zwingender/i },
-  { cls: 'eu-keine-umsetzung', re: /fallen\s+(?:zum\s+Teil\s+)?in\s+den\s+Anwendungsbereich\s+des\s+Rechts\s+der\s+Europäischen\s+Union,\s+dienen\s+aber\s+nicht/i },
-  { cls: 'nicht-eu', re: /fallen\s+nicht\s+in\s+den\s+Anwendungsbereich\s+des\s+Rechts\s+der\s+Europäischen\s+Union/i },
-]
-
-type VorblattClass =
-  | 'umsetzung'
-  | 'flankierend-vo'
-  | 'flankierend-rl'
-  | 'ueber-umsetzung'
-  | 'nur-zwingend'
-  | 'eu-keine-umsetzung'
-  | 'nicht-eu'
-  /** free text that says it implements („dient der Umsetzung der Richtlinie (EU) 2024/2749") */
-  | 'frei-umsetzung'
-  /** free text that says no („Unionsrecht ist nicht betroffen", „steht im Einklang mit") */
-  | 'frei-nein'
-  /** any other free text — an aid, a goal, a mention */
-  | 'freitext'
+/** The production classes, plus the four ways a Vorblatt can be missing that only this run counts. */
+type ScriptClass =
+  | VorblattClass
   /** a text layer, but no EU heading */
   | 'ohne-ueberschrift'
   /** a PDF without text */
@@ -349,25 +205,10 @@ type VorblattClass =
   | 'kein-vorblatt'
 
 /** How firmly a class says „EU" — the order in which several Vorblätter of one draft are combined. */
-const CLASS_RANK: VorblattClass[] = [
-  'umsetzung',
-  'flankierend-rl',
-  'flankierend-vo',
-  'nur-zwingend',
-  'ueber-umsetzung',
-  'frei-umsetzung',
-  'freitext',
-  'eu-keine-umsetzung',
-  'frei-nein',
-  'nicht-eu',
-  'ohne-ueberschrift',
-  'kein-text',
-  'kein-pdf',
-  'kein-vorblatt',
-]
+const CLASS_RANK: ScriptClass[] = [...VORBLATT_CLASS_RANK, 'ohne-ueberschrift', 'kein-text', 'kein-pdf', 'kein-vorblatt']
 
 /** The marker classes: the Vorblatt says the draft implements or flanks EU law. */
-const EU_YES: ReadonlySet<VorblattClass> = new Set(['umsetzung', 'flankierend-rl', 'flankierend-vo', 'nur-zwingend', 'ueber-umsetzung', 'frei-umsetzung'])
+const EU_YES: ReadonlySet<ScriptClass> = VORBLATT_EU_YES
 
 interface VorblattRead {
   /** Vorblatt documents by name, with a PDF of them, with text, with the heading */
@@ -377,7 +218,9 @@ interface VorblattRead {
   withHeading: number
   /** Where the sentence came from when no Vorblatt document exists */
   source: 'vorblatt' | 'erl-pdf' | null
-  cls: VorblattClass
+  cls: ScriptClass
+  /** Every Vorblatt's class, in document order — the production decision (D2) reads them all */
+  classes: VorblattClass[]
   /** Every EU section's text, normalised */
   sentences: string[]
   /** Acts anywhere in the Vorblatt/WFA, and those in a „Ziel n:" line */
@@ -385,41 +228,6 @@ interface VorblattRead {
   actsZiele: Act[]
   ziele: string[]
   cost: FetchCost[]
-}
-
-/**
- * What the ressorts write instead of the tool's sentence — measured in the
- * first run (04.11.2026): „Das Vorhaben dient der Umsetzung der Richtlinie
- * (EU) 2024/2749 und …", „Dient auch der Umsetzung der Richtlinie
- * 2005/36/EG", „… ausschließlich zur Umsetzung von zwei EU- Richtlinien",
- * „… im Sinne der Durchführungsverordnung (EU) 2019/947 umgesetzt werden".
- */
-const FREE_YES = /\bUmsetzung\s+(?:einer|der|von|zweier|mehrerer)\s+[^.]{0,40}?(?:Richtlinie|Richtlinien)\b|\bUmsetzung\s+(?:von|der)\s+(?:zwei|mehreren)\s+EU-\s?Richtlinien|(?:Richtlinie|Verordnung)[^.]{0,120}?umgesetzt\s+werden|aus\s+zwingendem\s+Unionsrecht\s+ergeben/i
-/** „Unionsrecht wird nicht tangiert", „nicht berührt", „keine Auswirkungen", „im Einklang mit". */
-const FREE_NO = /nicht\s+(?:tangiert|betroffen|berührt)|keine\s+Auswirkungen\s+auf\s+Rechtsvorschriften|im\s+Einklang\s+mit|nicht\s+in\s+den\s+Anwendungsbereich/i
-
-function classify(sentence: string): VorblattClass {
-  const fixed = VORBLATT_CLASSES.find((c) => c.re.test(sentence))?.cls
-  // „… flankierenden Regelungen zu Verordnungen … und dient der Umsetzung
-  // mehrerer Richtlinien": the tool sentence plus an implementation.
-  if (fixed && fixed !== 'umsetzung' && EU_YES.has(fixed) && FREE_YES.test(sentence)) return 'umsetzung'
-  if (fixed) return fixed
-  if (FREE_YES.test(sentence)) return 'frei-umsetzung'
-  if (FREE_NO.test(sentence)) return 'frei-nein'
-  return 'freitext'
-}
-
-/** The EU section of one WFA text: everything between the heading and the next WFA heading. */
-function euSection(pages: string[]): string | null {
-  const text = pages
-    .map((p) => p.split('\n').filter((line) => !PAGE_NOISE.test(line)).join('\n'))
-    .join('\n')
-  const head = EU_HEADING.exec(text)
-  if (!head) return null
-  const rest = text.slice(head.index + head[0].length)
-  const end = AFTER_EU.exec(rest)
-  // „: Die vorgesehenen …", „[Profil] Suchwert: p Das Vorhaben …" — form residue before the sentence.
-  return rest.slice(0, end ? end.index : 600).replace(/\s+/g, ' ').replace(/^(?:\[Profil\]\s*Suchwert:\s*\S+\s*|[:\s])+/, '').trim()
 }
 
 /** „Ziel 1: vollständige und korrekte Umsetzung der RL EU 2024/1069 …" — one entry per Ziel. */
@@ -430,9 +238,9 @@ function zieleOf(pages: string[]): string[] {
 }
 
 async function readVorblatt(record: RisBegutFlat): Promise<VorblattRead> {
-  const docs = record.otherDocuments.filter((d) => VORBLATT_NAME.test(d.name.normalize('NFC')))
-  const out: VorblattRead = { docs: docs.length, withPdf: 0, withText: 0, withHeading: 0, source: null, cls: 'kein-vorblatt', sentences: [], actsAll: [], actsZiele: [], ziele: [], cost: [] }
-  const classes: VorblattClass[] = []
+  const docs = record.otherDocuments.filter((d) => isVorblattDocument(d.name))
+  const out: VorblattRead = { docs: docs.length, withPdf: 0, withText: 0, withHeading: 0, source: null, cls: 'kein-vorblatt', classes: [], sentences: [], actsAll: [], actsZiele: [], ziele: [], cost: [] }
+  const classes: ScriptClass[] = []
   const all: Act[][] = []
   const ziele: Act[][] = []
   // Without a Vorblatt of its own, the Erläuterungen PDF may carry it
@@ -455,21 +263,22 @@ async function readVorblatt(record: RisBegutFlat): Promise<VorblattRead> {
       classes.push('kein-text')
       continue
     }
-    const chars = pages.join('').replace(/\s/g, '').length
-    if (chars < 200) {
+    const lines = linesOfPages(pages)
+    if (!hasTextLayer(lines)) {
       if (source === 'vorblatt') classes.push('kein-text')
       continue
     }
     if (source === 'vorblatt') out.withText++
-    const section = euSection(pages)
-    if (section === null) {
+    const { sentence, cls } = classifyVorblatt(lines)
+    if (sentence === null || cls === null) {
       if (source === 'vorblatt') classes.push('ohne-ueberschrift')
       continue
     }
     if (source === 'vorblatt') out.withHeading++
     out.source ??= source
-    out.sentences.push(section)
-    classes.push(classify(section))
+    out.sentences.push(sentence)
+    out.classes.push(cls)
+    classes.push(cls)
     if (source === 'vorblatt') {
       all.push(actsIn(pages.join('\n').replace(/\s+/g, ' '), true))
       const z = zieleOf(pages)
@@ -485,34 +294,11 @@ async function readVorblatt(record: RisBegutFlat): Promise<VorblattRead> {
 }
 
 // ---------------------------------------------------------------------------
-// 2. The law text: the Umsetzungshinweis
+// 2. The law text: the Umsetzungshinweis — `server/utils/eu/umsetzungshinweis.ts`
 // ---------------------------------------------------------------------------
-
-type Signal = 'umsetzung' | 'durchfuehrung' | 'bezug'
-
-/** A § heading that announces the EU reference; its text follows in the next blocks. */
-const LAW_HEADING = /^(?:Umsetzungshinweis(?:e)?|Hinweis auf (?:die )?Umsetzung|Bezugnahmen? auf (?:das )?Unionsrecht|Bezugnahmen? auf Rechtsakte der (?:Europäischen )?Union|(?:Durchführung und )?Umsetzung von Rechtsakten der (?:Europäischen )?Union|Unionsrechtliche Bezugnahmen?|Bezugnahme auf Richtlinien|Umsetzung (?:von|der) (?:Unionsrecht|Richtlinien?|EU-Richtlinien?)(?:\b.*)?|Richtlinienumsetzung|Verweisungen? auf (?:das )?Unionsrecht|Unionsrecht|Durchführung (?:von|der) (?:Unionsrecht|Verordnungen?)(?:\b.*)?)\.?$/i
-/** The heading word inside a longer heading line. */
-const LAW_HEADING_WORD = /Umsetzungshinweis|Bezugnahmen?\s+auf\s+(?:das\s+)?Unionsrecht|Bezugnahmen?\s+auf\s+Rechtsakte\s+der\s+(?:Europäischen\s+)?Union|Umsetzung\s+von\s+(?:Unionsrecht|Rechtsakten\s+der\s+(?:Europäischen\s+)?Union)/
-/** A sentence inside one Absatz that implements or flanks. */
-// „wird/werden … Richtlinie … umgesetzt" with its subject, not any
-// „umgesetzt" after a Richtlinie: the WiEReG's „Staaten …, die den Nachweis
-// gemäß Verordnung (EU) Nr. 910/2014 nicht umgesetzt haben" is a provision,
-// not a hint (hand reading, 04.11.2026).
-// „werden die Vorgaben folgender Rechtsakte der Europäischen Union …
-// umgesetzt: 1. IE-Richtlinie" (the AEVs) and „werden folgende Rechtsakte
-// der Union umgesetzt bzw. berücksichtigt" (BVergG) name the act after the verb.
-// The act may stand far from the verb („werden für den Bereich des
-// Mineralrohstoffrechts Art. 3 … der Richtlinie 2010/75/EU … umgesetzt") and
-// may be a Durchführungsbeschluss (Tabak- und Nikotinsucht-Gesetz).
-const LAW_UMSETZUNG = /Umsetzungshinweis|\b(?:wird|werden)\s+[\s\S]{0,300}?\b(?:Richtlinien?|RL|Rechtsakte?|Durchführungsbeschlusses|Durchführungsbeschluss|Beschluss)\b[\s\S]{0,800}?(?<!nicht\s)\bumgesetzt\b|dient\s+(?:der|zur)\s+Umsetzung|zur\s+Umsetzung\s+(?:der|von|einer)\s+[\s\S]{0,60}?Richtlinie/
-const LAW_DURCHFUEHRUNG = /Bezugnahmen?\s+auf\s+(?:das\s+)?Unionsrecht|Durchführung\s+(?:der|von|zur)\s+[\s\S]{0,40}?(?:Verordnung|Durchführungsverordnung|Delegierten\s+Verordnung)\s*\((?:EU|EG)|begleitende[n]?\s+(?:Regelungen|Bestimmungen|Maßnahmen)\s+zu[rm]?\s+(?:unmittelbar\s+anwendbaren\s+)?(?:Verordnung|Durchführungsverordnung)|flankierende[n]?\s+(?:Regelungen|Bestimmungen)\s+zu/
 
 /** The hand count's law-text pattern of 04.11.2026, kept to show what the refinement changed. */
 const HAND_LAW = /Umsetzungshinweis|Bezugnahme auf (?:das )?Unionsrecht|wird die (?:Richtlinie|Durchführungsrichtlinie|Delegierte Richtlinie)[^.]{0,400}?umgesetzt|werden (?:die|folgende) Richtlinien[^.]{0,600}?umgesetzt|dient der Umsetzung der Richtlinie|Durchführung der Verordnung \(EU\)|begleitende(?:n)? (?:Regelungen|Bestimmungen|Maßnahmen) zur (?:unmittelbar anwendbaren )?(?:Verordnung|Durchführungsverordnung) \(EU\)/
-
-/** Kinds that end the window a heading opens. */
-const WINDOW_END: ReadonlySet<string> = new Set(['para_head', 'article', 'section', 'title', 'novao'])
 
 interface LawRead {
   available: boolean
@@ -535,80 +321,19 @@ function blockText(b: TextBlock): string {
   return [b.gld, b.text].filter(Boolean).join(' ')
 }
 
-/**
- * What a window says, with its heading word taken out first: under
- * „Umsetzungshinweis" the MiCA-Vollzugsgesetz writes „dient dem Wirksamwerden
- * der Verordnung (EU) 2023/1114" — that flanks a regulation, it implements
- * nothing.
- */
-function signalOf(text: string): Signal {
-  const body = text.replace(/Umsetzungshinweis(?:e)?/g, '')
-  if (/umgesetzt|\bUmsetzung\s+(?:der|von|einer|des)\b/.test(body)) return 'umsetzung'
-  if (/Durchführung|Wirksamwerden|begleitend|flankierend|unmittelbar anwendbar|Verordnung/.test(body)) return 'durchfuehrung'
-  return 'bezug'
-}
-
-const SIGNAL_RANK: Signal[] = ['umsetzung', 'durchfuehrung', 'bezug']
-const strongest = (s: Signal[]): Signal | null => SIGNAL_RANK.find((k) => s.includes(k)) ?? null
-
 function readLawBlocks(blocks: TextBlock[]): Omit<LawRead, 'available' | 'cost' | 'handHit'> {
-  const windows: string[] = []
-  const signals: Signal[] = []
-  let unanchored = 0
-  const dropped: string[] = []
-  for (let i = 0; i < blocks.length; i++) {
-    const b = blocks[i]!
-    const text = blockText(b)
-    // The table of contents names the Umsetzungshinweis without its text.
-    if (b.kind === 'toc') continue
-    // A heading, however RIS typed it: „Umsetzungshinweis" as a § heading,
-    // as a quoted heading inside a Novellierungsanordnung, as „§ 21a.
-    // Umsetzungshinweis", or in a combined heading („Vollziehung,
-    // Inkrafttreten, Übergangsbestimmungen, Umsetzungshinweis") — run 4.
-    const bare = b.text.replace(/^[\s"„]+|[\s"“]+$/g, '').replace(/^§\s*\d+[a-z]*\.\s*/, '').trim()
-    const headed = b.kind !== 'abs' && b.kind !== 'novao'
-      ? LAW_HEADING.test(bare) || (bare.length < 140 && LAW_HEADING_WORD.test(bare))
-      : bare.length < 60 && LAW_HEADING.test(bare)
-    const inline = LAW_UMSETZUNG.test(text) || LAW_DURCHFUEHRUNG.test(text)
-    if (!headed && !inline) continue
-    // A heading (or a Novellierungsanordnung naming one) opens a window to
-    // the next provision; a sentence is read in its own Absatz only.
-    let window = text
-    // „… werden folgende Richtlinien umgesetzt:" — the acts are the list below it.
-    // „… werden folgende Richtlinien umgesetzt:", „§ 327. Dieses Bundesgesetz
-    // dient der Umsetzung" — a sentence that does not end goes on below.
-    if (headed || b.kind === 'novao' || !/[.;]["“]?\s*$/.test(text)) {
-      const parts = [text]
-      for (let j = i + 1; j < blocks.length && j <= i + 12; j++) {
-        if (WINDOW_END.has(blocks[j]!.kind)) break
-        parts.push(blockText(blocks[j]!))
-      }
-      window = parts.join(' ')
-    }
-    window = window.replace(/\s+/g, ' ').trim()
-    // A sentence without anything European in it is a national „Richtlinie"
-    // („… Richtlinien zur Erstellung dieser Maßnahmenpakete …") or a national
-    // goal („dient der Umsetzung eines anbieterübergreifenden
-    // Einzahlungslimits") — first run, 04.11.2026. A heading is its own anchor.
-    if (!headed && !EU_ANCHOR.test(window) && !actsIn(window).length) {
-      unanchored++
-      dropped.push(window)
-      continue
-    }
-    // A window inside another is the same provision read twice — the
-    // table of contents' „Umsetzungshinweis" beside the § it names.
-    if (windows.some((w) => w.includes(window))) continue
-    for (let k = windows.length - 1; k >= 0; k--) {
-      if (window.includes(windows[k]!)) {
-        windows.splice(k, 1)
-        signals.splice(k, 1)
-      }
-    }
-    windows.push(window)
-    signals.push(signalOf(window))
-  }
+  const read = readUmsetzungshinweis(blocks)
+  const windows = read.windows.map((w) => w.text)
   const plain = blocks.map(blockText).join(' ')
-  return { signal: strongest(signals), windows, acts: uniqueActs(windows.map((w) => actsIn(w, true))), cited: actsIn(plain).length, unanchored, dropped }
+  return {
+    signal: read.signal,
+    windows,
+    // Through `actsIn` once more, for the title-reference count; the acts are the module's.
+    acts: uniqueActs(windows.map((w) => actsIn(w, true))),
+    cited: actsIn(plain).length,
+    unanchored: read.dropped.length,
+    dropped: read.dropped,
+  }
 }
 
 async function readLaw(record: RisBegutFlat): Promise<LawRead> {
@@ -621,20 +346,8 @@ async function readLaw(record: RisBegutFlat): Promise<LawRead> {
 }
 
 // ---------------------------------------------------------------------------
-// 3. The Erläuterungen: the Allgemeiner Teil
+// 3. The Erläuterungen: the Allgemeiner Teil — `readExplanationsEuSignal`
 // ---------------------------------------------------------------------------
-
-/**
- * Per Absatz of the Allgemeiner Teil. The bare „Umsetzungsfrist" of the hand
- * count is gone — it fired on „Umsetzungsfrist von 48 Monaten ab Gewährung
- * der Förderung"; a deadline counts only beside a Richtlinie.
- */
-const ERL_UMSETZUNG = /dient\s+(?:der|zur)\s+Umsetzung|(?:der|zur)\s+Umsetzung\s+(?:der|von|einer|dieser|des)\s+(?:[^.]{0,60}?\s)?(?:Richtlinie|RL\b|unionsrechtlich|Unionsrecht|EU-Richtlinie|Vorgaben\s+der\s+Richtlinie)|\b(?:Richtlinien?|RL)\b[\s\S]{0,300}?\b(?:umgesetzt|umzusetzen|Umsetzungsfrist)\b|in\s+(?:nationales|innerstaatliches|österreichisches)\s+Recht\s+(?:umgesetzt|umzusetzen|zu\s+übernehmen)/
-const ERL_DURCHFUEHRUNG = /begleitende[n]?\s+(?:Regelungen|Bestimmungen|Maßnahmen)\s+zu[rm]?\s+(?:unmittelbar\s+anwendbaren\s+)?(?:Verordnung|Durchführungsverordnung|Delegierten\s+Verordnung|EU-Verordnung)|Durchführung\s+(?:der|von|zur)\s+[\s\S]{0,40}?(?:Verordnung|Durchführungsverordnung)\s*\((?:EU|EG)|unmittelbar\s+anwendbare[nr]?\s+(?:Verordnung|Unionsrecht|EU-Verordnung)|flankierende[n]?\s+(?:Regelungen|Bestimmungen|Maßnahmen)/
-/** Without an EU anchor in the same Absatz a signal is a national „Richtlinie" or a programme. */
-const EU_ANCHOR = /\((?:EU|EG|EWG)\)|\/E(?:U|G|WG)\b|Europäische[nr]?\s+Union|Unionsrecht|unionsrechtlich|EU-|[A-Za-zÄÖÜäöüß]-Richtlinie\b/
-/** A passage heading of the Allgemeiner Teil that is the EU section itself. */
-const ERL_EU_HEADING = /Unionsrecht|Europäischen\s+Union|EU-Recht|Verhältnis\s+zu(?:m)?\s+(?:den\s+)?Rechtsvorschriften/i
 
 /** The hand count's Erläuterungen pattern of 04.11.2026, kept for the comparison. */
 const HAND_ERL = /dient der Umsetzung|Umsetzung (?:der|von) (?:Art\. \d+[^.]{0,40}der )?(?:Richtlinie|Unionsrecht|unionsrechtlich)|(?:Richtlinie|Delegierte Richtlinie|Durchführungsrichtlinie)[^.]{0,300}?(?:umgesetzt|umzusetzen)|begleitende(?:n)? (?:Regelungen|Bestimmungen|Maßnahmen) zur (?:unmittelbar anwendbaren )?(?:Verordnung|Durchführungsverordnung)|Durchführung der (?:Verordnung|Durchführungsverordnung) \(EU\)|unmittelbar anwendbare[nr]? (?:Verordnung|Unionsrecht)|Umsetzungsfrist/
@@ -658,29 +371,13 @@ interface ErlRead {
   cost: FetchCost[]
 }
 
-function partParagraphs(part: ExplanationsPart): { text: string; euHeading: boolean }[] {
-  return part.passages.flatMap((p) => {
-    const euHeading = ERL_EU_HEADING.test(p.heading ?? '')
-    return [...(p.heading ? [p.heading] : []), ...p.text].map((text) => ({ text, euHeading }))
-  })
+function partParagraphs(part: ExplanationsPart): string[] {
+  return part.passages.flatMap((p) => [...(p.heading ? [p.heading] : []), ...p.text])
 }
 
 function readErlParts(parts: ExplanationsPart[]): { signal: Signal | null; paragraphs: string[]; acts: Act[]; unanchored: number } {
-  const paragraphs: string[] = []
-  const signals: Signal[] = []
-  let unanchored = 0
-  for (const { text, euHeading } of parts.flatMap(partParagraphs)) {
-    const ums = ERL_UMSETZUNG.test(text)
-    const dur = ERL_DURCHFUEHRUNG.test(text)
-    if (!ums && !dur) continue
-    if (!euHeading && !EU_ANCHOR.test(text)) {
-      unanchored++
-      continue
-    }
-    paragraphs.push(text.replace(/\s+/g, ' ').trim())
-    signals.push(ums ? 'umsetzung' : 'durchfuehrung')
-  }
-  return { signal: strongest(signals), paragraphs, acts: uniqueActs(paragraphs.map((t) => actsIn(t, true))), unanchored }
+  const read = readExplanationsEuSignal(parts.flatMap((p) => p.passages))
+  return { signal: read.signal, paragraphs: read.paragraphs, acts: uniqueActs(read.paragraphs.map((t) => actsIn(t, true))), unanchored: read.unanchored }
 }
 
 async function readErl(record: RisBegutFlat): Promise<ErlRead> {
@@ -693,7 +390,7 @@ async function readErl(record: RisBegutFlat): Promise<ErlRead> {
   const general = doc.general
   const read = general ? readErlParts([general]) : { signal: null, paragraphs: [], acts: [], unanchored: 0 }
   const any = readErlParts(doc.parts.filter((p) => p.kind !== 'special' && p.kind !== 'wfa'))
-  const generalText = general ? partParagraphs(general).map((p) => p.text).join(' ') : ''
+  const generalText = general ? partParagraphs(general).join(' ') : ''
   const handHit = HAND_ERL.test(generalText)
   const bareFristOnly = handHit && /Umsetzungsfrist/.test(generalText) && !HAND_ERL.test(generalText.replace(/Umsetzungsfrist/g, ''))
   return {
@@ -802,7 +499,7 @@ const rows: Row[] = await pool(
     } catch (err) {
       return {
         ...base,
-        vorblatt: { docs: 0, withPdf: 0, withText: 0, withHeading: 0, source: null, cls: 'kein-vorblatt', sentences: [], actsAll: [], actsZiele: [], ziele: [], cost: [] },
+        vorblatt: { docs: 0, withPdf: 0, withText: 0, withHeading: 0, source: null, cls: 'kein-vorblatt', classes: [], sentences: [], actsAll: [], actsZiele: [], ziele: [], cost: [] },
         law: { available: false, signal: null, windows: [], acts: [], cited: 0, unanchored: 0, dropped: [], handHit: false, cost: [] },
         erl: { available: false, general: false, signal: null, signalAnyPart: null, paragraphs: [], acts: [], cited: 0, handHit: false, bareFristOnly: false, unanchored: 0, cost: [] },
         error: String(err).slice(0, 200),
@@ -914,7 +611,7 @@ function namedActs(r: Row): { acts: Act[]; source: string } {
 /** The earliest transposition date of every directive among `acts`, per directive. */
 function deadlines(acts: Act[]): { celex: string; deadline: string; last: string }[] {
   return acts
-    .filter((a) => a.type === 'L')
+    .filter((a) => a.kind === 'richtlinie')
     .map((a) => ({ celex: a.celex, deadline: answers.get(a.celex)?.transposition[0] ?? '', last: answers.get(a.celex)?.transposition.at(-1) ?? '' }))
     .filter((d) => d.deadline)
 }
@@ -979,7 +676,7 @@ const variants = new Map<string, { n: number; cls: VorblattClass }>()
 for (const r of rows) {
   for (const s of r.vorblatt.sentences) {
     const key = s.replace(/\s*\.$/, '').trim()
-    variants.set(key, { n: (variants.get(key)?.n ?? 0) + 1, cls: classify(s) })
+    variants.set(key, { n: (variants.get(key)?.n ?? 0) + 1, cls: classifyVorblattSentence(s) })
   }
 }
 console.log(`\n### Jede Satzvariante unter der EU-Überschrift (alle gelesenen Sätze, Punkt am Ende ignoriert)`)
@@ -1014,7 +711,7 @@ for (const p of populations) {
 }
 
 console.log(`\n## c. Übereinstimmung: Vorblatt × Gesetzestext × Erläuterungen`)
-function vGroup(c: VorblattClass): string {
+function vGroup(c: ScriptClass): string {
   if (c === 'umsetzung') return 'V:Umsetzung'
   if (c === 'frei-umsetzung') return 'V:Umsetzung(frei)'
   if (c === 'frei-nein') return 'V:nicht-EU(frei)'
@@ -1040,7 +737,7 @@ for (const p of populations) {
 /** Every disagreement, by kind — written out in full with `--out`. */
 const disagreements: { kind: string; row: Row }[] = []
 for (const r of rows) {
-  const v: VorblattClass = r.vorblatt.cls === 'frei-nein' ? 'nicht-eu' : r.vorblatt.cls === 'frei-umsetzung' ? 'umsetzung' : r.vorblatt.cls
+  const v: ScriptClass = r.vorblatt.cls === 'frei-nein' ? 'nicht-eu' : r.vorblatt.cls === 'frei-umsetzung' ? 'umsetzung' : r.vorblatt.cls
   if (v === 'nicht-eu' && r.law.signal) disagreements.push({ kind: 'Vorblatt „nicht im Anwendungsbereich", Gesetzestext mit Hinweis', row: r })
   if (v === 'nicht-eu' && r.erl.signal) disagreements.push({ kind: 'Vorblatt „nicht im Anwendungsbereich", Erläuterungen mit Signal', row: r })
   if (v === 'eu-keine-umsetzung' && r.law.signal === 'umsetzung') disagreements.push({ kind: 'Vorblatt „EU, dient nicht der Umsetzung", Gesetzestext sagt umgesetzt', row: r })
@@ -1086,14 +783,14 @@ for (const r of erlOnlyRows) console.log(`  nur Erl. ${r.record.id}  ${r.title.s
 for (const r of erlActRows) console.log(`  Akt/Erl. ${r.record.id}  ${r.title.slice(0, 70)}`)
 
 console.log(`\n## e. EUR-Lex`)
-const byType = (t: Act['type']) => allActs.filter((a) => a.type === t)
+const byType = (k: Act['kind']) => allActs.filter((a) => a.kind === k)
 console.log(`  Nennungen im Titel eines anderen Akts verworfen („zur Änderung der …"): ${titleReferencesDropped}`)
-console.log(`  genannte Akte gesamt ${allActs.length} (Richtlinien ${byType('L').length}, Verordnungen ${byType('R').length}, Beschlüsse ${byType('D').length}, Rahmenbeschlüsse ${byType('F').length})`)
+console.log(`  genannte Akte gesamt ${allActs.length} (Richtlinien ${byType('richtlinie').length}, Verordnungen ${byType('verordnung').length}, Beschlüsse ${byType('beschluss').length}, Rahmenbeschlüsse ${byType('rahmenbeschluss').length})`)
 console.log(`  Cellar antwortet mit einem Werk          ${allActs.filter((a) => answers.get(a.celex)?.found).length}`)
 console.log(`  nicht abgefragt (Cellar nicht erreicht)  ${notAsked.size}`)
 console.log(`  Cellar antwortet, aber kein Werk         ${allActs.filter((a) => answers.has(a.celex) && !answers.get(a.celex)!.found).length}`)
 for (const a of allActs.filter((x) => answers.has(x.celex) && !answers.get(x.celex)!.found)) console.log(`     ${a.celex}  „${a.raw}"`)
-const dirs = byType('L').filter((a) => answers.get(a.celex)?.found)
+const dirs = byType('richtlinie').filter((a) => answers.get(a.celex)?.found)
 console.log(`  Richtlinien mit Umsetzungsdatum          ${dirs.filter((a) => answers.get(a.celex)!.transposition.length).length} von ${dirs.length}`)
 console.log(`    davon mit mehreren Umsetzungsdaten     ${dirs.filter((a) => answers.get(a.celex)!.transposition.length > 1).length}`)
 console.log(`  Cellar-Laufzeit dieses Laufs ${cellarSeconds.toFixed(1)} s (0 bei voller Zwischenablage)`)
@@ -1162,6 +859,27 @@ const acts = new Set(rows.filter((r) => r.me).flatMap((r) => namedActs(r).acts.m
 console.log(`  Cellar je ${gp}: ${acts.size} Akte × 2 Abfragen`)
 console.log(`  Laufzeit dieses Laufs: Lesen ${readSeconds.toFixed(0)} s (inkl. PDF-Text), gesamt ${((Date.now() - started) / 1000).toFixed(0)} s`)
 
+// The page's own decision (`server/utils/eu/euMarker.ts`, rules D1, D2,
+// D5) over the same readings — what the ProcedureCard would show, without
+// the law-in-force check (D4), which needs RIS Bundesrecht and is not cached
+// here. Added 04.11.2026 with the feature; everything above is unchanged.
+console.log(`\n## g. Die Regel der Seite (euMarker.ts, ohne D4)`)
+for (const p of populations) {
+  const decided = p.rows.map((r) => decideEuMarker({
+    vorblatt: r.vorblatt.classes,
+    law: { signal: r.law.signal, acts: r.law.acts },
+    explanations: r.erl.signal === 'bezug' ? null : r.erl.signal,
+  }))
+  const n = p.rows.length
+  const count = new Map<string, number>()
+  for (const d of decided) {
+    const key = `${d.marker ?? 'kein Fakt'}${d.source && d.source !== 'vorblatt' ? ` (${d.source})` : ''}`
+    count.set(key, (count.get(key) ?? 0) + 1)
+  }
+  console.log(`  ${p.label} (n = ${n}) · widersprüchliche Vorblätter ${decided.filter((d) => d.contradicting).length}`)
+  for (const [k, v] of [...count].sort((a, b) => b[1] - a[1])) console.log(`    ${k.padEnd(36)} ${share(v, n)}`)
+}
+
 const failed = rows.filter((r) => r.error)
 if (failed.length) {
   console.log(`\n## Fehler (${failed.length})`)
@@ -1205,7 +923,7 @@ if (outDir) {
       named.acts.length,
       named.source,
       named.acts.map((a) => a.celex).join(' '),
-      named.acts.filter((a) => a.type === 'L').map((a) => `${a.celex}:${answers.get(a.celex)?.transposition.join('/') ?? '?'}`).join(' '),
+      named.acts.filter((a) => a.kind === 'richtlinie').map((a) => `${a.celex}:${answers.get(a.celex)?.transposition.join('/') ?? '?'}`).join(' '),
       newest && r.record.beginn ? days(newest, r.record.beginn) : '',
       earliest && r.record.beginn ? days(earliest, r.record.beginn) : '',
     ].map(csvCell).join(','))
