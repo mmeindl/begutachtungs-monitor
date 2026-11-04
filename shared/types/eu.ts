@@ -67,13 +67,24 @@ export interface EuRechtResponse {
   unavailableReason: string | null
   /** Null where the Vorblatt says the draft is no EU matter, or the Vorblätter contradict each other. */
   marker: EuMarker | null
-  /** Which document decided `marker`: the Vorblatt, or — only where none can be read — the Erläuterungen (rule D5). */
+  /**
+   * Which document decided `marker`: the Vorblatt, or — only where none can
+   * be read — the Erläuterungen (rule D5). On a Land's draft `vorblatt` is
+   * the Bund's WFA heading in the Land's documents, `erlaeuterungen` a headed
+   * EU passage of the general part or, without one, its prose.
+   */
   markerSource: 'vorblatt' | 'gesetzestext' | 'erlaeuterungen' | null
   /** The Vorblatt's EU sentence verbatim — printed for `ueber-umsetzung` only, „laut Vorblatt". */
   vorblattSentence: string | null
   acts: EuActView[]
-  /** Where the acts' names came from. Null when none is named. */
-  actsSource: 'gesetzestext' | 'titel' | null
+  /**
+   * Where the acts' names came from — the first source, where several
+   * named some. Null when none is named. `vorblatt` and `erlaeuterungen`
+   * occur on a Land's draft only: its EU statement names the acts it
+   * implements (Burgenland's Vorblatt, Oberösterreich's section V), and
+   * Oberösterreich writes an „Umsetzungshinweis:" per provision.
+   */
+  actsSource: 'gesetzestext' | 'titel' | 'vorblatt' | 'erlaeuterungen' | null
   /** The first day of the Begutachtungsfrist as RIS records it — the second date of the fact line. */
   begutachtungStart: string | null
   /** The documents read, for the source line: the Vorblatt, the law text, the Erläuterungen. */

@@ -61,7 +61,7 @@ const hasNotes = computed(() => view.value?.deadlines.some((d) => d.note !== nul
 <template>
   <div v-if="view" class="mt-4 border-t border-hairline pt-4">
     <p class="text-sm text-ink-secondary">
-      <strong class="font-semibold text-ink">{{ view.lead }}</strong><template v-if="view.attach === 'colon'">: </template><template v-else-if="view.attach === 'named'">. Im {{ view.namedIn }} genannt: </template><template v-for="(act, i) in shownActs" :key="act.url"><template v-if="i > 0">{{ i === shownActs.length - 1 && !folded ? ' und ' : ', ' }}</template><ExternalLink :href="act.url" class="link-inline">{{ act.label }}</ExternalLink></template><template v-if="folded">, … <button type="button" class="link-inline" :aria-expanded="expanded" @click="expanded = true">Alle {{ view.acts.length }} anzeigen</button></template><template v-if="view.adoptedNote">, {{ view.adoptedNote }}</template>.
+      <strong class="font-semibold text-ink">{{ view.lead }}</strong><template v-if="view.attach === 'colon'">: </template><template v-else-if="view.attach === 'named'">. {{ view.namedIn }} genannt: </template><template v-for="(act, i) in shownActs" :key="act.url"><template v-if="i > 0">{{ i === shownActs.length - 1 && !folded ? ' und ' : ', ' }}</template><ExternalLink :href="act.url" class="link-inline">{{ act.label }}</ExternalLink></template><template v-if="folded">, … <button type="button" class="link-inline" :aria-expanded="expanded" @click="expanded = true">Alle {{ view.acts.length }} anzeigen</button></template><template v-if="view.adoptedNote">, {{ view.adoptedNote }}</template>.
       <template v-if="quote">
         Laut Vorblatt: „{{ quote }}“.
       </template>

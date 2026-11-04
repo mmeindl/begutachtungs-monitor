@@ -64,7 +64,7 @@ describe('euFactView — two dates, no verdict', () => {
 
   it('quotes acts of another kind than the lead as named, not as what the lead says (81/ME)', () => {
     const v = euFactView(response({ marker: 'flankierend-vo', acts: [act({ label: 'Richtlinie 2009/43/EG', isNew: false })] }))!
-    expect(v).toMatchObject({ lead: 'Begleitet EU-Verordnungen', attach: 'named', namedIn: 'Gesetzestext' })
+    expect(v).toMatchObject({ lead: 'Begleitet EU-Verordnungen', attach: 'named', namedIn: 'Im Gesetzestext' })
   })
 
   it('draws the dates that matter on one track, labelled as the Frist bar: term over date under each mark', () => {

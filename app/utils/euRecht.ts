@@ -25,6 +25,14 @@ const LEAD: Record<EuMarker, string> = {
   'flankierend-rl': 'Begleitet eine EU-Richtlinie',
 }
 
+/** Where the acts were named, for „… genannt:" — a Land's EU statement names them too (§12.66, Nachtrag 2). */
+const NAMED_IN: Record<NonNullable<EuRechtResponse['actsSource']>, string> = {
+  gesetzestext: 'Im Gesetzestext',
+  titel: 'Im Titel',
+  vorblatt: 'Im Vorblatt',
+  erlaeuterungen: 'In den Erläuterungen',
+}
+
 /** One act's deadline as the row states it. */
 export interface EuDeadlineView {
   /** „2024/1711" — the act's number, only where the row carries several deadlines; null otherwise. */
@@ -49,7 +57,7 @@ export interface EuFactView {
    * text are each quoted for what they say, neither bent to the other.
    */
   attach: 'colon' | 'named' | 'none'
-  /** „Gesetzestext" or „Titel" — for the `named` form. */
+  /** „Im Gesetzestext", „Im Titel", „Im Vorblatt", „In den Erläuterungen" — for the `named` form. */
   namedIn: string | null
   acts: { label: string; url: string }[]
   /** The Vorblatt's own sentence, for `ueber-umsetzung` only. */
@@ -107,7 +115,7 @@ export function euFactView(r: EuRechtResponse | null | undefined): EuFactView | 
   return {
     lead: LEAD[r.marker],
     attach,
-    namedIn: r.actsSource === 'titel' ? 'Titel' : 'Gesetzestext',
+    namedIn: NAMED_IN[r.actsSource ?? 'gesetzestext'],
     acts: acts.map((a) => ({ label: a.label, url: a.eurLexUrl })),
     quote: r.marker === 'ueber-umsetzung' ? r.vorblattSentence : null,
     adoptedNote: due.length === 1 && acts.length === 1 && due[0]!.adopted ? `beschlossen am ${formatDateDe(due[0]!.adopted)}` : null,
