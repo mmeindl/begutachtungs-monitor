@@ -55,7 +55,13 @@ const { siteUrl } = useRuntimeConfig().public
         <ExternalLink
           href="https://www.ris.bka.gv.at"
           class="link-inline"
-        >Rechtsinformationssystems des Bundes</ExternalLink>. Der Monitor
+        >Rechtsinformationssystems des Bundes</ExternalLink>; ob ein Entwurf
+        EU-Recht umsetzt, bis wann die Richtlinie umzusetzen war, kommt aus
+        <ExternalLink
+          href="https://eur-lex.europa.eu"
+          class="link-inline"
+        >EUR-Lex</ExternalLink>, der Datenbank des Amts für
+        Veröffentlichungen der Europäischen Union. Der Monitor
         ruft sie bei Bedarf ab und hält sie rund 30 Minuten im
         Zwischenspeicher; eine eigene Datenbank gibt es nicht. Die
         Begutachtungen der Länder haben keine solche Schnittstelle: Der
@@ -126,6 +132,8 @@ const { siteUrl } = useRuntimeConfig().public
         Den Gesetzestext und die Erläuterungen eines Ministerialentwurfs
         liest der Textvergleich in der Fassung, die das Parlament
         veröffentlicht; dieselben Dokumente führt das RIS unter CC BY 4.0.
+        Die Umsetzungsfristen von EU-Richtlinien kommen aus EUR-Lex; dafür
+        beanspruchen wir keine Lizenz, übernommen werden nur Daten und Links.
       </p>
       <p>
         Für das Begutachtungsverfahren selbst – Ministerialentwürfe,

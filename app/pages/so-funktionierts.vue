@@ -180,6 +180,7 @@ const toc = [
   { to: '#ohne-stellungnahmen', label: 'Warum manche Entwürfe keine Stellungnahmen zeigen' },
   { to: '#laender', label: 'Begutachtungen der Länder' },
   { to: '#gegenueberstellung', label: 'Woher „Was ändert der Entwurf?“ kommt' },
+  { to: '#eu-recht', label: 'Welche Entwürfe EU-Recht umsetzen' },
   { to: '#wartezeit', label: 'Wie lange es bis zur Regierungsvorlage dauert' },
   { to: '#vergleich', label: 'Wie wir Entwurf und Regierungsvorlage vergleichen' },
 ]
@@ -689,6 +690,68 @@ const waitMonths = Math.round(RV_LATENCY_CONTEXT_DAYS / 30.44)
         der Entwurf ändert, zu denen wir in der Beilage aber keine
         Gegenüberstellung fanden, nennen wir am Ende ihres Gesetzes. Fehlt die
         Lesefassung, heißt das also nie, dass der Paragraph gleich bleibt.
+      </p>
+    </ProseSection>
+
+    <!-- The EU fact in the ProcedureCard (04.11.2026, docs/architecture.md
+         §12.66). The two shares are GP XXVIII as measured that day
+         (`pnpm corpus:eu`, drafts.csv): Vorblatt „Umsetzung" (tool sentence
+         or the ressort's own words) 43 of 154; any EU relation — Umsetzung,
+         flankierend, über die Umsetzung hinaus — 64 of 154. Re-measure
+         before changing them. -->
+    <ProseSection id="eu-recht" heading="Welche Entwürfe EU-Recht umsetzen">
+      <p>
+        Jedem Entwurf liegt ein Vorblatt mit der wirkungsorientierten
+        Folgenabschätzung bei. Unter der Überschrift „Verhältnis zu den
+        Rechtsvorschriften der Europäischen Union“ steht dort einer von
+        wenigen festen Sätzen, die das Werkzeug der Ministerien vorgibt:
+        etwa „Das Vorhaben dient der Umsetzung einer EU-Richtlinie“, „Das
+        Vorhaben enthält die erforderlichen flankierenden Regelungen zu
+        Verordnungen der Europäischen Union“ oder „Die vorgesehenen
+        Regelungen fallen nicht in den Anwendungsbereich des Rechts der
+        Europäischen Union“. Diesen Satz lesen wir aus dem PDF des Vorblatts
+        – im RIS liegt es sonst nur als Bild vor. Er entscheidet, ob auf der
+        Seite eines Entwurfs „Setzt EU-Recht um“ oder „Begleitet
+        EU-Verordnungen“ steht. Sagt das Vorblatt, der Entwurf gehe über
+        eine verpflichtende Umsetzung hinaus, zitieren wir den Satz wörtlich.
+        Widersprechen sich zwei Vorblätter eines Entwurfs, zeigen wir nichts,
+        solange der Gesetzestext keinen Rechtsakt nennt.
+      </p>
+      <p>
+        Welcher Rechtsakt gemeint ist, sagt das Vorblatt fast nie. Den Namen
+        lesen wir aus dem Gesetzestext des Entwurfs – aus dem
+        Umsetzungshinweis, etwa „Mit diesem Bundesgesetz wird die Richtlinie
+        (EU) 2024/1069 … umgesetzt“ –, sonst aus seinem Titel. Kurznamen wie
+        „IE-Richtlinie“ lösen wir nicht auf; dann bleibt der Akt ungenannt.
+      </p>
+      <p>
+        Bis wann eine Richtlinie umzusetzen war, steht in
+        EUR-Lex, der Rechtsdatenbank der Europäischen Union. Für manche
+        Richtlinien nennt EUR-Lex mehrere Daten, ohne zu sagen, welches die
+        allgemeine Frist ist; wir nennen das späteste als Umsetzungsfrist
+        und die übrigen in einer Fußnote als Fristen für einzelne
+        Bestimmungen. Verordnungen gelten unmittelbar und haben keine
+        Umsetzungsfrist.
+      </p>
+      <p>
+        Gemessen am 04.11.2026 über die 154 Ministerialentwürfe der
+        XXVIII.&nbsp;GP, zu denen es einen Datensatz im RIS gibt: Bei 43
+        sagt das Vorblatt, der Entwurf setze eine Richtlinie um (28&nbsp;%).
+        Einen Bezug zum EU-Recht – umsetzend, begleitend oder über die
+        Umsetzung hinaus – nennen 64 (42&nbsp;%).
+      </p>
+      <p>
+        Was die Seite nicht sagt: ob ein Ministerium zu spät dran war. Sie
+        stellt zwei Daten nebeneinander, die Umsetzungsfrist und den Beginn
+        der Begutachtung laut RIS, und überlässt die Rechnung den Lesenden –
+        ein Entwurf kann der zweite Schritt einer Umsetzung sein, und
+        welches Datum die eigentliche Frist ist, sagt EUR-Lex nicht immer.
+        Eine Novelle wiederholt oft den ganzen Umsetzungshinweis samt
+        Richtlinien, die vor Jahren umgesetzt wurden. Solche Akte nennen wir,
+        aber ohne Frist: Eine Frist steht nur bei einem Akt, den das geltende
+        Gesetz am ersten Tag der Begutachtung noch nicht nennt. Woher die
+        Daten stammen und unter welchen Bedingungen, steht
+        <NuxtLink to="/impressum#imp-eurlex" class="link-inline">im Impressum</NuxtLink>.
       </p>
     </ProseSection>
 

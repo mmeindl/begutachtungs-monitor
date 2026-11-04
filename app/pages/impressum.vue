@@ -194,10 +194,10 @@ usePageSeo({
            Regierungsvorlage stand where those zum Entwurf stand: no
            licence, and the same open question. -->
       <p>
-        Der Monitor bezieht Daten aus zwei amtlichen Quellen. Die
+        Der Monitor bezieht Daten aus amtlichen Quellen. Die
         Nutzungsbedingungen unterscheiden sich je nach Datensatz. Unter
-        jedem Text auf einer Entwurfsseite steht, aus welcher der beiden
-        er stammt; Gliederung und Markierung sind vom Monitor.
+        jedem Text auf einer Entwurfsseite steht, aus welcher Quelle er
+        stammt; Gliederung und Markierung sind vom Monitor.
       </p>
       <dl>
         <div>
@@ -273,6 +273,38 @@ usePageSeo({
               href="https://www.parlament.gv.at"
               class="link-inline"
             >parlament.gv.at</ExternalLink>. Namen von Privatpersonen veröffentlicht er nicht.
+          </dd>
+        </div>
+        <!-- EUR-Lex and the Cellar since 04.11.2026 (§12.66). No licence
+             claimed: the Publications Office's own copyright notice
+             (op.europa.eu, read 04.11.2026) points to EUR-Lex's legal notice
+             for EUR-Lex content and gives the Cellar's reuse terms only on
+             request. What the monitor takes is a date and a link — no text
+             of an act. The wording below says exactly that and no more. -->
+        <div id="imp-eurlex">
+          <dt>
+            Amt für Veröffentlichungen der Europäischen Union (EUR-Lex, Cellar)
+          </dt>
+          <dd>
+            Für Entwürfe, die EU-Recht umsetzen oder begleiten: das
+            Umsetzungsdatum einer Richtlinie, abgefragt aus dem Cellar des
+            Amts für Veröffentlichungen, und der Link auf den Rechtsakt bei
+            <ExternalLink
+              href="https://eur-lex.europa.eu"
+              class="link-inline"
+            >EUR-Lex</ExternalLink>. Texte von Rechtsakten übernimmt der
+            Monitor nicht. Die Bedingungen für die Weiterverwendung von
+            Inhalten aus EUR-Lex nennt dessen
+            <ExternalLink
+              href="https://eur-lex.europa.eu/content/legal-notice/legal-notice.html?locale=de"
+              class="link-inline"
+            >rechtlicher Hinweis</ExternalLink>; für den Cellar gibt das Amt
+            sie laut seinem
+            <ExternalLink
+              href="https://op.europa.eu/de/web/about-us/legal-notices/publications-office-of-the-european-union-copyright"
+              class="link-inline"
+            >Urheberrechtshinweis</ExternalLink> „auf Anfrage“ bekannt. Eine
+            Lizenz beanspruchen wir für diese Daten nicht.
           </dd>
         </div>
         <!-- The Länder since 22.10.2026 (Salzburg, then Wien and
