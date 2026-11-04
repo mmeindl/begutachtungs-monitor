@@ -14,7 +14,7 @@
  * the tests read it without a page.
  */
 import type { EuActView, EuMarker, EuRechtResponse } from '#shared/types'
-import { formatDateDe } from '#shared/utils/format'
+import { formatDateDe, todayIso } from '#shared/utils/format'
 
 /** The lead words in bold. */
 const LEAD: Record<EuMarker, string> = {
@@ -101,5 +101,67 @@ export function euFactView(r: EuRechtResponse | null | undefined): EuFactView | 
     deadlines,
     start: deadlines.length && r.begutachtungStart ? formatDateDe(r.begutachtungStart) : null,
     sourceLine: `${read} aus dem RIS${deadlines.length ? ', Fristen aus EUR-Lex' : ''}`,
+  }
+}
+
+/** What the page knows about its own side of the timeline. */
+export interface EuTimelineContext {
+  begutachtung: { start: string | null | undefined; end: string | null | undefined }
+  /** Where the procedure stands: today while it runs, the Kundmachung once it is over. */
+  stand: { date: string; label: string }
+}
+
+export type EuTimelineGlyph = 'start' | 'tick' | 'band' | 'dot'
+
+/** The EU timeline, as positions on a track (percent) and a legend (text). */
+export interface EuTimelineView {
+  /** The dot: where the procedure stands. */
+  value: number
+  valueLabel: string
+  /** The Begutachtung, as the band behind the line. */
+  band: [number, number] | null
+  /** One tick per Umsetzungsfrist. */
+  ticks: { key: string; at: number }[]
+  legend: { glyph: EuTimelineGlyph; text: string }[]
+}
+
+const dayOf = (iso: string) => Date.parse(`${iso}T00:00:00Z`) / 86_400_000
+
+/**
+ * The directive's time against the draft's (04.11.2026): from the day the
+ * directive was adopted to the later of today, its deadline and the draft's
+ * own dates. The Begutachtung is a band on that track, each Umsetzungsfrist
+ * a tick across it, and the dot stands where the procedure stands. The
+ * reader sees how much of the window was used and on which side of the
+ * deadline the draft came, and nobody wrote a verdict (rule D6).
+ *
+ * Null where there is nothing to draw: no act with a deadline, or no
+ * adoption day for the track to begin at.
+ */
+export function euTimeline(r: EuRechtResponse | null | undefined, ctx: EuTimelineContext, today: string = todayIso()): EuTimelineView | null {
+  if (!r?.available || !r.marker) return null
+  const due = deadlineActs(r.acts)
+  if (!due.length) return null
+  const adopted = due.map((a) => a.adopted).filter((d): d is string => !!d).sort()[0]
+  if (!adopted) return null
+  const deadlines = [...new Set(due.map((a) => a.transposition!.deadline))].sort()
+  const { start, end } = ctx.begutachtung
+  const last = [today, ctx.stand.date, ...deadlines, start, end].filter((d): d is string => !!d).sort().at(-1)!
+  const span = dayOf(last) - dayOf(adopted)
+  if (!(span > 0)) return null
+  const at = (iso: string) => Math.min(100, Math.max(0, ((dayOf(iso) - dayOf(adopted)) / span) * 100))
+  const several = due.length > 1
+  const number = (label: string) => /\d{2,4}\/\d{1,4}/.exec(label)?.[0] ?? label
+  return {
+    value: at(ctx.stand.date),
+    valueLabel: ctx.stand.label,
+    band: start ? [at(start), at(end ?? start)] : null,
+    ticks: deadlines.map((d) => ({ key: `frist-${d}`, at: at(d) })),
+    legend: [
+      { glyph: 'start', text: several ? `Richtlinien beschlossen ab ${formatDateDe(adopted)}` : `${due[0]!.label} beschlossen am ${formatDateDe(adopted)}` },
+      ...due.map((a) => ({ glyph: 'tick' as const, text: `Umsetzungsfrist${several ? ` ${number(a.label)}` : ''} ${formatDateDe(a.transposition!.deadline)}` })),
+      ...(start ? [{ glyph: 'band' as const, text: `Begutachtung ${formatDateDe(start)}${end ? `–${formatDateDe(end)}` : ''}` }] : []),
+      { glyph: 'dot', text: ctx.stand.label === 'Heute' ? 'Heute' : `${ctx.stand.label} ${formatDateDe(ctx.stand.date)}` },
+    ],
   }
 }

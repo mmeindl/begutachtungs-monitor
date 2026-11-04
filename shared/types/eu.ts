@@ -51,6 +51,8 @@ export interface EuActView {
    * directives without a date, and where the Cellar did not answer.
    */
   transposition: { deadline: string; otherDates: string[] } | null
+  /** The day the act was adopted, ISO, from the Cellar — where the EU timeline begins. Null where unknown. */
+  adopted: string | null
 }
 
 /**

@@ -1,0 +1,95 @@
+{
+ "OgdSearchResult": {
+  "OgdDocumentResults": {
+   "Hits": {
+    "#text": "18"
+   },
+   "OgdDocumentReference": [
+    {
+     "Data": {
+      "Metadaten": {
+       "Technisch": {
+        "ID": "NOR40239297"
+       },
+       "Bundesrecht": {
+        "Kurztitel": "Abfallwirtschaftsgesetz 2002",
+        "BrKons": {
+         "Typ": "BG"
+        }
+       }
+      },
+      "Dokumentliste": {
+       "ContentReference": {
+        "ContentType": "MainDocument",
+        "Urls": {
+         "ContentUrl": [
+          {
+           "DataType": "Xml",
+           "Url": "https://ogd.ris.bka.gv.at/Dokumente/Bundesnormen/NOR40239297/NOR40239297.xml"
+          }
+         ]
+        }
+       }
+      }
+     }
+    },
+    {
+     "Data": {
+      "Metadaten": {
+       "Technisch": {
+        "ID": "NOR40196325"
+       },
+       "Bundesrecht": {
+        "Kurztitel": "Assoziierungsabkommen zwischen EU, EURATOM, Mitgliedstaaten und Ukraine",
+        "BrKons": {
+         "Typ": "Vertrag – Multilateral"
+        }
+       }
+      },
+      "Dokumentliste": {
+       "ContentReference": {
+        "ContentType": "MainDocument",
+        "Urls": {
+         "ContentUrl": [
+          {
+           "DataType": "Xml",
+           "Url": "https://ogd.ris.bka.gv.at/Dokumente/Bundesnormen/NOR40196325/NOR40196325.xml"
+          }
+         ]
+        }
+       }
+      }
+     }
+    },
+    {
+     "Data": {
+      "Metadaten": {
+       "Technisch": {
+        "ID": "NOR40248949"
+       },
+       "Bundesrecht": {
+        "Kurztitel": "Kraftstoffverordnung 2012",
+        "BrKons": {
+         "Typ": "V"
+        }
+       }
+      },
+      "Dokumentliste": {
+       "ContentReference": {
+        "ContentType": "MainDocument",
+        "Urls": {
+         "ContentUrl": [
+          {
+           "DataType": "Xml",
+           "Url": "https://ogd.ris.bka.gv.at/Dokumente/Bundesnormen/NOR40248949/NOR40248949.xml"
+          }
+         ]
+        }
+       }
+      }
+     }
+    }
+   ]
+  }
+ }
+}

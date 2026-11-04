@@ -238,14 +238,24 @@ describe('the Cellar', () => {
 
   it('reads several transposition dates, sorted, and takes the latest as the deadline (2024/1275)', () => {
     const r = parseTranspositionAnswer(cellar('32024L1275'))
-    expect(r).toEqual({ found: true, dates: ['2025-01-01', '2026-05-29'] })
+    expect(r).toEqual({ found: true, dates: ['2025-01-01', '2026-05-29'], adopted: null, inForce: null })
     expect(deadlineOf(r.dates)).toEqual({ deadline: '2026-05-29', otherDates: ['2025-01-01'] })
   })
 
+  it('reads the adoption and entry-into-force days beside the deadlines, once each across the multiplied rows', () => {
+    const answer = { results: { bindings: [
+      { d: { value: '2025-01-01' }, adopted: { value: '2024-04-24' }, inforce: { value: '2024-05-28' } },
+      { d: { value: '2026-05-29' }, adopted: { value: '2024-04-24' }, inforce: { value: '2024-05-28' } },
+    ] } }
+    expect(parseTranspositionAnswer(answer)).toEqual({ found: true, dates: ['2025-01-01', '2026-05-29'], adopted: '2024-04-24', inForce: '2024-05-28' })
+    expect(parseTranspositionAnswer({ results: { bindings: [{ adopted: { value: '2022-05-30' } }] } })).toEqual({ found: true, dates: [], adopted: '2022-05-30', inForce: null })
+    expect(transpositionQuery('32024L1069')).toContain('cdm:work_date_document ?adopted')
+  })
+
   it('tells a regulation without a date from an act EUR-Lex does not know', () => {
-    expect(parseTranspositionAnswer(cellar('32022R0869'))).toEqual({ found: true, dates: [] })
+    expect(parseTranspositionAnswer(cellar('32022R0869'))).toEqual({ found: true, dates: [], adopted: null, inForce: null })
     // „Verordnung (EU) 2022/689" — a citation error in a draft, meant 2022/869.
-    expect(parseTranspositionAnswer(cellar('32022R0689'))).toEqual({ found: false, dates: [] })
+    expect(parseTranspositionAnswer(cellar('32022R0689'))).toEqual({ found: false, dates: [], adopted: null, inForce: null })
     expect(deadlineOf([])).toBeNull()
   })
 

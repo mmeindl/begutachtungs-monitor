@@ -11,11 +11,12 @@ import {
   stations,
 } from '~/utils/spine'
 import { relatedGpSuffixDe, rvStationView } from '~/utils/outcomes'
+import type { EuTimelineContext } from '~/utils/euRecht'
 import { withoutMainPoints } from '~/utils/kurzinfo'
 import { ministryLinkFor } from '~/components/draft/MinistryLinks.vue'
 import { aliasesFor } from '#shared/utils/draftAliases'
 import { citeLineDe, draftCitationDe } from '#shared/utils/citations'
-import { countLabelDe, formatDateDe } from '#shared/utils/format'
+import { countLabelDe, formatDateDe, todayIso } from '#shared/utils/format'
 import { GP_RE, parseInr } from '#shared/utils/gp'
 import type { SourceEntry } from '#shared/utils/provenance'
 
@@ -222,6 +223,14 @@ const { data: explanations } = useExplanations(() => ({ gp: gp.value, inr: inr.v
 /* Whether the draft implements EU law — one bare fact in the ProcedureCard,
  * under the predecessor line (`DraftEuFact`, docs/architecture.md §12.66). */
 const { data: euRecht } = useEuRecht(() => ({ gp: gp.value, inr: inr.value }))
+/* The page's side of the EU timeline: its Begutachtung, and where the
+ * procedure stands — today while it runs, the Kundmachung once it is over. */
+const euTimelineCtx = computed<EuTimelineContext | null>(() => (data.value
+  ? {
+      begutachtung: { start: data.value.arrivedAt, end: data.value.deadline },
+      stand: data.value.chain?.bgblDate ? { date: data.value.chain.bgblDate, label: 'Bundesgesetzblatt' } : { date: todayIso(), label: 'Heute' },
+    }
+  : null))
 const kurzinfoBlocks = computed(() => {
   const e = explanations.value
   return e?.available && e.passages.length ? withoutMainPoints(description.value) : description.value
@@ -384,7 +393,7 @@ const ministryLinks = computed(() => {
                transposition deadline beside the day the Begutachtung began —
                two dates, no verdict (§12.66). A fact of the card like the
                one above, so the same hairline. -->
-            <DraftEuFact :data="euRecht" />
+            <DraftEuFact :data="euRecht" :timeline="euTimelineCtx" />
           </ProcedureCard>
 
           <!-- Deadline, action and calendar welded into one card: the page's

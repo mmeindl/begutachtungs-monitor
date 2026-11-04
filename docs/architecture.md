@@ -14326,6 +14326,43 @@ Verordnungen). Ein Lauf aus `.cache/eu/` dauert ~10 s.
   beim neuen. Lässt sich das Gesetz nicht lesen, `isNew: null`, keine
   Frist; scheitert der Abruf, ist die Antwort unvollständig und wird nicht
   gespeichert (§12.13, `cache/gathered.ts`).
+  **Erweitert am selben Abend, nach 32/ME.** Das Elektrizitätswirtschaftsgesetz
+  ist ein neues Gesetz, das das ElWOG 2010 ersetzt: kein Paragraph, den eine
+  Novellierungsanordnung adressiert, also galt jeder der 28 genannten Akte
+  als neu, und die Seite druckte 13 Fristen — „Umsetzungsfrist bis
+  01.07.1995 · Begutachtung ab 07.07.2025". Genau die Gegenüberstellung,
+  die D4 verhindern soll. Die Regel fragt seither, worum es ihr geht: hat
+  die Republik diesen Akt schon irgendwo umgesetzt? Die Volltextsuche des
+  RIS über das konsolidierte Bundesrecht beantwortet das, zum ersten Tag der
+  Begutachtung (`server/utils/eu/bundesrecht.ts`, `docs/api-exploration.md`
+  §2d): Phrase „2009/31/EG" bzw. „2024/1069", gezählt werden Bundesgesetze,
+  Verordnungen und Kundmachungen, nicht die Staatsverträge, deren Anhänge
+  Richtlinien aufzählen. **Und ein Treffer zählt nur, wo der Paragraph den
+  Akt umsetzt.** Die erste Fassung der Erweiterung („irgendwo genannt")
+  nahm über die 64 EU-Entwürfe der XXVIII. GP 43 von 70 Fristenzeilen weg
+  — darunter die des Nachhaltigkeitsberichtsgesetzes (4/ME), weil das
+  CBCR-Veröffentlichungsgesetz die Richtlinie 2022/2464 in einer Definition
+  nennt, und drei weitere für eine Erwähnung im Bundesfinanzgesetz 2025,
+  in der FMA-Kostenverordnung und im Kreditdienstleistergesetz. Das RIS
+  antwortet je Paragraph, jeder ein kleines Dokument; der Dienst liest jeden
+  Treffer durch denselben Umsetzungshinweis-Leser wie den Entwurf
+  (`transposesAct`): „Mit diesem Bundesgesetz wird die Richtlinie …
+  umgesetzt" ist eine Umsetzung, „im Sinne der Richtlinie …" keine. Über
+  hundert Treffer gelten ungelesen als umgesetzt. Ein Akt, den ein
+  Paragraph des Bundesrechts umsetzt, ist alt (`isNew: false`); antwortet
+  das RIS nicht, bleibt er unbekannt und die Antwort unvollständig. Die
+  Paragraphenprüfung bleibt daneben bestehen; gefragt wird nur für
+  Richtlinien mit Datum, die sie nicht schon als alt erkannt hat.
+  **Gemessen** über die 64 EU-Entwürfe der XXVIII. GP (Endpunkt vorher und
+  nachher, 04.11.2026 abends): 70 Fristenzeilen vorher, 34 nachher, 0
+  unbekannt; 9 Entwürfe betroffen — 32/ME von 12 auf 3 (2024/1711,
+  2024/1788, 2023/2413 bleiben), 122/ME (Strafrechtsänderungsgesetz) von 12
+  auf 0, 2/ME von 13 auf 5. Die Phrase mit vierstelligem Jahr fand nichts
+  für Richtlinien bis 1998 („1994/22/EG"), die Gesetze schreiben „94/22/EG";
+  seither zweistellig bis 1998. **Restklasse:** Richtlinien, die das StGB
+  umsetzt, denn das StGB trägt keinen Umsetzungshinweis — 2/ME behält
+  2013/40/EU (Frist 2015) und 2014/57/EU (2016). Eine Heuristik nach dem
+  Alter der Frist wurde verworfen: sie würde echte Verspätungen verbergen.
 - **D4a Basistext** (geschärft beim Bau): „Richtlinie (EU) 2018/2001 …, in
   der Fassung der Richtlinie (EU) 2024/1711“ (EABG, 43/ME) nennt den
   Basistext und die Änderung. Umgesetzt wird die Änderung; die Frist der
@@ -14348,10 +14385,41 @@ Verordnungen). Ein Lauf aus `.cache/eu/` dauert ~10 s.
 
 **Form.** Die reinen Module unter `server/utils/eu/` nehmen Text und eine
 CELEX, nie einen RIS-Datensatz (`actCitations.ts`, `vorblatt.ts`,
-`umsetzungshinweis.ts`, `cellar.ts`, `euMarker.ts`) — die Länder sollen sie
-später unverändert über Landesgesetze laufen lassen. Nur `euService.ts`
-kennt RIS. Neu gelesen werden nur das Vorblatt-PDF (über `withPdf`) und der
-Cellar; Gesetzestext und Erläuterungen sind die Caches der Seite.
+`umsetzungshinweis.ts`, `cellar.ts`, `euMarker.ts`, `bundesrecht.ts`) — die
+Länder sollen sie später unverändert über Landesgesetze laufen lassen. Nur
+`euService.ts` kennt RIS. Neu gelesen werden nur das Vorblatt-PDF (über
+`withPdf`), der Cellar und je Richtlinie mit Datum eine RIS-Suche;
+Gesetzestext und Erläuterungen sind die Caches der Seite.
+
+**Die Frist als Zeitstrahl (am Abend des 04.11.2026).** Unter dem Fakt
+zeichnet `DraftEuTimeline` die Zeit der Richtlinie gegen die des Entwurfs,
+in der Anatomie von `ScaleBar` als Kalender: die Strecke vom Tag, an dem
+die Richtlinie beschlossen wurde (`work_date_document` aus dem Cellar, seit
+diesem Abend mit abgefragt), bis zum späteren von heute, ihrer
+Umsetzungsfrist und den Daten des Entwurfs; die Begutachtung als Band
+hinter der Linie, jede Umsetzungsfrist als Strich quer darüber — ein
+Maßstab, durch den der Entwurf nicht hindurchgeht, wie der Regelfall am
+Fristbalken —, und der Punkt dort, wo das Verfahren steht: heute, solange
+es läuft, in Gelb, weil er sich noch bewegt; die Kundmachung, wenn es
+vorbei ist. Wie viel vom Fenster verbraucht war, als der Entwurf kam, und
+auf welcher Seite der Frist, sieht man; gesagt wird es nicht (D6). Keine
+positionierten Beschriftungen wie am Fristbalken: Frist und Begutachtung
+liegen oft Tage auseinander — das ist der Befund —, und zwei Etiketten auf
+einem Punkt sind keines. Stattdessen eine Legende als Textzeile unter dem
+Balken, in Streckenreihenfolge, jedes Zeichen mit seinem Glyph. Ohne Tag
+des Beschlusses oder ohne Frist bleibt die Zeile „Umsetzungsfrist bis … ·
+Begutachtung ab …" die Textform. Davor stand die Frist für zwei Stunden
+als datierte Marke zwischen den Stationen der Leiste (ein Strich statt
+eines Punkts, nach Datum einsortiert): das zeigte die Reihenfolge, nicht
+das Maß, und nach dem ersten Blick auf die Seiten wurde das Maß gewünscht
+— die Marke ist wieder ausgebaut, die Septemberentscheidung „keine sechste
+Station" steht unverändert.
+
+**Lange Aktenlisten falten** (32/ME nennt 28, 58/ME 24): die ersten fünf
+stehen, dann „Alle 28 anzeigen" im Listenidiom der Seite — alles auf einmal,
+nie zehn weitere; sechs werden nicht auf fünf und einen gefaltet. Die
+Fristenzeile steht darunter in eigener Zeile und bleibt bei jeder Länge
+der Liste sichtbar.
 `publications.europa.eu` steht auf der Upstream-Liste, `eur-lex.europa.eu`
 nicht: dorthin wird nur verlinkt, aus einer geprüften CELEX gebaut.
 
@@ -14365,7 +14433,8 @@ Vorblatt.
 
 **Was v1 nicht tut:** kein Merkmal und kein Filter in der Liste, keine
 Länder, kein Art. 15a und keine Grundsatzgesetze, keine Benachrichtigung,
-keine eigene Station, kein zweiter Fristbalken, keine Verspätungsquote —
+keine eigene Station (die datierte Marke ist keine), kein zweiter
+Fristbalken, keine Verspätungsquote —
 die gemessenen 39–58 % „nach der Frist“ ruhen auf der jüngsten genannten
 Richtlinie ohne D4 und werden nicht veröffentlicht.
 

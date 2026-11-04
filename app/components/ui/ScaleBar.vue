@@ -39,6 +39,15 @@ const props = defineProps<{
   band?: [number, number] | null
   /** The labels under the track, filled through the `mark` slot. */
   marks?: M[]
+  /**
+   * The dot's fill: ink for a value that is fixed (a Frist's length), the
+   * rail's yellow for one that still moves — „where the procedure stands
+   * now", the one meaning the mark has on this site (04.11.2026,
+   * `DraftEuTimeline`).
+   */
+  dot?: 'ink' | 'mark'
+  /** Whether the label row under the track is drawn; a caller with a legend of its own drops it. */
+  labels?: boolean
 }>()
 
 defineSlots<{
@@ -59,7 +68,7 @@ const MARK_ALIGN: Record<ScaleAlign, string> = {
 
 const ticks = computed(() => (props.marks ?? []).filter((m) => m.tick))
 
-const DOT = 'absolute top-0 box-border size-3 -translate-x-1/2 rounded-full border-2 border-ink bg-ink'
+const DOT = computed(() => `absolute top-0 box-border size-3 -translate-x-1/2 rounded-full border-2 border-ink ${props.dot === 'mark' ? 'bg-mark' : 'bg-ink'}`)
 </script>
 
 <template>
@@ -87,7 +96,7 @@ const DOT = 'absolute top-0 box-border size-3 -translate-x-1/2 rounded-full bord
       />
       <span :class="DOT" :style="{ left: pct(value) }" />
     </div>
-    <div class="relative mt-2 h-8 text-xs leading-4 text-ink-muted">
+    <div v-if="labels !== false" class="relative mt-2 h-8 text-xs leading-4 text-ink-muted">
       <span
         v-for="mark in marks"
         :key="mark.key"

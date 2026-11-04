@@ -825,6 +825,27 @@ Answers in ~0,25 s; ~420 acts in 21 s at two in parallel. The corpus
 script asks two more properties (`resource_legal_date_entry-into-force`,
 `work_date_document`) and the German title.
 
+**Is the act already in Bundesrecht? — BrKons full-text search by phrase**
+(04.11.2026, rule D4 widened). `Applikation=BrKons&Suchworte="2009/31/EG"
+&Fassung.FassungVom=2025-07-07&DokumenteProSeite=OneHundred` — the phrase in
+double quotes, the act's number as the laws write it (`bundesrechtPhrase`:
+„2024/1069" for the form since 2015, „94/22/EG" for the old one, „1907/2006"
+for an old-form regulation). The document type stands at
+`Data.Metadaten.Bundesrecht.BrKons.Typ`: `BG`, `V`, `K`, `Vertrag –
+Multilateral`, … — the Staatsverträge list directives in their annexes
+without transposing any, so only the others count. Probed as of
+2025-07-07: „94/22/EG" 13 hits (8 BG, 5 Vertrag), „2009/31/EG" 18 (16 BG,
+1 V, 1 Vertrag), „2019/944" 5 (BG — among them the Bundesfinanzgesetz 2025,
+which only refers to it), „2024/1069" and „2023/2864" 0. The bare
+year/number phrase cannot collide with a BGBl citation, which runs
+number/year. Through `konsJson`, so a RIS error inside HTTP 200 throws
+(§2a). **Each hit is one Paragraph** (`Metadaten.Technisch.ID` = NOR, its
+XML under `Dokumentliste.ContentReference[MainDocument].Urls.ContentUrl
+[Xml]`), a few KB — so the service reads every hit and asks whether that
+Paragraph transposes the act or only refers to it (`transposesAct`,
+`server/utils/eu/bundesrecht.ts`); the `Hits.#text` total says whether more
+than the page's hundred exist.
+
 **CELEX and ELI from a citation.** CELEX = `3` + four-digit year + `L`
 (Richtlinie) / `R` (Verordnung) / `D` (Beschluss, Entscheidung) + four-digit
 zero-padded number — „Richtlinie (EU) 2024/1069“ → `32024L1069`, „Verordnung

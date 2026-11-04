@@ -7,6 +7,8 @@ import type { Fact } from '~/components/ui/FactList.vue'
 import { ministryLinkFor } from '~/components/draft/MinistryLinks.vue'
 import { fristFact, fristStateDe } from '~/utils/deadlines'
 import { regulationStations, regulationStatusDe } from '~/utils/spine'
+import type { EuTimelineContext } from '~/utils/euRecht'
+import { todayIso } from '#shared/utils/format'
 
 /**
  * One Begutachtung without a Gegenstand at Parliament
@@ -89,6 +91,14 @@ const outcome = computed(() => data.value?.outcome ?? fetchedOutcome.value ?? nu
  * Ministerialentwurf's card, read from this record (§12.66). A Verordnung
  * has a Vorblatt too. */
 const { data: euRecht } = useEuRecht(() => ({ risId: id.value }))
+const euTimelineCtx = computed<EuTimelineContext | null>(() => (data.value
+  ? {
+      begutachtung: { start: data.value.startedAt, end: data.value.deadline },
+      stand: outcome.value?.state === 'kundgemacht' && outcome.value.datum
+        ? { date: outcome.value.datum, label: 'Bundesgesetzblatt' }
+        : { date: todayIso(), label: 'Heute' },
+    }
+  : null))
 
 /* „Verordnungsentwurf „…"" — what the „Zitieren" buttons name the record as. */
 const citeAs = computed(() => (data.value ? `${RIS_KIND_LABEL[data.value.kind]} „${data.value.title}“` : ''))
@@ -291,7 +301,7 @@ const doorHref = computed(() => {
               {{ RIS_KIND_HINT[data.kind] }}
             </template>
           </p>
-          <DraftEuFact :data="euRecht" />
+          <DraftEuFact :data="euRecht" :timeline="euTimelineCtx" />
         </ProcedureCard>
 
         <!-- The one place to act, in the slot and the shape the draft page

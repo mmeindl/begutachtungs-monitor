@@ -28,6 +28,14 @@ import { upstreamJson, type UpstreamPolicy } from '../upstream/fetch'
 
 export const CELLAR_SPARQL = 'https://publications.europa.eu/webapi/rdf/sparql'
 
+/**
+ * Bumped whenever `transpositionQuery` asks for more: the service caches the
+ * raw answer per CELEX for a month, and an answer to the old query would be
+ * read as an act without the new columns (the adoption day was null on
+ * every page for an hour, 04.11.2026).
+ */
+export const CELLAR_QUERY_VERSION = 2
+
 /** Only a CELEX of this shape is ever put into a query — sector 3, a directive, regulation or decision. */
 export const CELEX_RE = /^3\d{4}[LRD]\d{4}$/
 
@@ -53,9 +61,11 @@ export function transpositionQuery(celex: string): string {
   return [
     'PREFIX cdm: <http://publications.europa.eu/ontology/cdm#>',
     'PREFIX owl: <http://www.w3.org/2002/07/owl#>',
-    'SELECT ?d WHERE {',
+    'SELECT ?d ?adopted ?inforce WHERE {',
     `  ?w owl:sameAs <http://publications.europa.eu/resource/celex/${celex}> .`,
     '  OPTIONAL { ?w cdm:directive_date_transposition ?d }',
+    '  OPTIONAL { ?w cdm:work_date_document ?adopted }',
+    '  OPTIONAL { ?w cdm:resource_legal_date_entry-into-force ?inforce }',
     '}',
   ].join('\n')
 }
@@ -71,6 +81,10 @@ export interface TranspositionDates {
   found: boolean
   /** Every transposition date, ISO, ascending, once each. Empty for a regulation. */
   dates: string[]
+  /** The day the act was adopted (`work_date_document`), ISO — the left edge of the EU timeline. Null where the Cellar has none. */
+  adopted: string | null
+  /** The day it entered into force, ISO, the earliest where several are listed. */
+  inForce: string | null
 }
 
 /** The JSON shape of a SPARQL SELECT answer, as far as it is read here. */
@@ -82,10 +96,11 @@ export interface SparqlAnswer {
 export function parseTranspositionAnswer(answer: SparqlAnswer): TranspositionDates {
   const bindings = answer?.results?.bindings
   if (!Array.isArray(bindings)) throw new Error('Cellar-Antwort ohne results.bindings')
-  const dates = bindings
-    .map((b) => b?.d?.value?.slice(0, 10) ?? null)
-    .filter((d): d is string => d !== null && /^\d{4}-\d{2}-\d{2}$/.test(d))
-  return { found: bindings.length > 0, dates: [...new Set(dates)].sort() }
+  const days = (key: string): string[] => [...new Set(bindings
+    .map((b) => b?.[key]?.value?.slice(0, 10) ?? null)
+    .filter((d): d is string => d !== null && /^\d{4}-\d{2}-\d{2}$/.test(d)))].sort()
+  // The OPTIONALs multiply the rows; each column is read as its own set.
+  return { found: bindings.length > 0, dates: days('d'), adopted: days('adopted')[0] ?? null, inForce: days('inforce')[0] ?? null }
 }
 
 /**

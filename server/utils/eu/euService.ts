@@ -18,7 +18,8 @@
  * the page shares (`getDraftArticles`, `draftArticlesOfXml`); the law in
  * force is the § comparison's own (`resolveKonsLaw`, `fetchParagraphXml`);
  * the Erläuterungen are their section's answer (`getExplanations`). New
- * reads are only the Vorblatt PDF and the Cellar.
+ * reads are only the Vorblatt PDF, the Cellar, and one RIS search per
+ * directive with a date (`bundesrecht.ts`).
  *
  * **A failure is not an answer** (§12.13). A Vorblatt that cannot be fetched
  * throws — whether the draft is an EU matter is the question itself. A
@@ -29,8 +30,11 @@ import type { EuActView, EuRechtResponse, ExplanationsResponse, TraceLink } from
 import { parseEuActCitations, baseActCelexes, uniqueActs, type EuAct } from './actCitations'
 import { classifyVorblatt, hasTextLayer, isVorblattDocument, linesOfPages, type VorblattClass } from './vorblatt'
 import { readExplanationsEuSignal, readUmsetzungshinweis, type LawWindow } from './umsetzungshinweis'
-import { CELEX_RE, deadlineOf, fetchTranspositionAnswer, parseTranspositionAnswer, type SparqlAnswer, type TranspositionDates } from './cellar'
+import { CELEX_RE, CELLAR_QUERY_VERSION, deadlineOf, fetchTranspositionAnswer, parseTranspositionAnswer, type SparqlAnswer, type TranspositionDates } from './cellar'
 import { combineVerdicts, decideEuMarker } from './euMarker'
+import { bundesrechtHits, bundesrechtPhrase, bundesrechtSearchParams, transposesAct, type BrKonsSearchAnswer, type BundesrechtHit } from './bundesrecht'
+import { konsJson, konsQuery } from '../ris/konsLaw'
+import { todayIso } from '#shared/utils/format'
 import type { TextBlock } from '../lawtext/lawUnits'
 import { articleBlocks, type DraftArticle } from '../lawtext/draftArticles'
 import { getDraftArticles, draftArticlesOfXml } from '../lawtext/draftArticlesService'
@@ -110,12 +114,48 @@ const vorblattPages = defineCachedFunction(
  */
 const fetchCellarAnswer = defineCachedFunction(
   (celex: string): Promise<SparqlAnswer> => fetchTranspositionAnswer(celex),
-  { name: 'eu-cellar', getKey: (celex: string) => celex, maxAge: PUBLISHED_DOCUMENT_TTL_S, swr: false },
+  { name: 'eu-cellar', getKey: (celex: string) => `${celex}|q${CELLAR_QUERY_VERSION}`, maxAge: PUBLISHED_DOCUMENT_TTL_S, swr: false },
 )
+
+/**
+ * The Paragraphs of Bundesrecht in force on one day that name an act — rule
+ * D4, widened (`bundesrecht.ts`). Cached as long as a document: the law as
+ * it stood on a past day does not change. Throws where RIS did not answer.
+ */
+const fetchBundesrechtHits = defineCachedFunction(
+  async (phrase: string, asOf: string): Promise<{ total: number; hits: BundesrechtHit[] }> =>
+    bundesrechtHits((await konsJson(konsQuery(bundesrechtSearchParams(phrase, asOf)))) as BrKonsSearchAnswer),
+  { name: 'eu-bundesrecht', getKey: (phrase: string, asOf: string) => `${phrase}|${asOf}`, maxAge: PUBLISHED_DOCUMENT_TTL_S, swr: false },
+)
+
+/** A Paragraph named in more hits than one page holds is transposed many times over; it is not read. */
+const MANY_HITS = 100
+
+/**
+ * True where a Paragraph of Bundesrecht in force transposes the act, false
+ * where none does, null where RIS did not answer. Every hit is read through
+ * the draft's own Umsetzungshinweis reader (`transposesAct`), because a
+ * mention in a definition is not a transposition.
+ */
+async function standingInBundesrecht(act: EuAct, asOf: string): Promise<boolean | null> {
+  const phrase = bundesrechtPhrase(act.label)
+  if (!phrase) return false
+  try {
+    const { total, hits } = await fetchBundesrechtHits(phrase, asOf)
+    if (!hits.length) return false
+    if (total > MANY_HITS) return true
+    for (const h of hits) {
+      if (h.xmlUrl && transposesAct(konsText(await fetchParagraphXml(h.nor, h.xmlUrl)), act.celex)) return true
+    }
+    return false
+  } catch {
+    return null
+  }
+}
 
 /** One act's dates, or null where the Cellar did not answer. */
 async function transpositionOf(celex: string): Promise<TranspositionDates | null> {
-  if (!CELEX_RE.test(celex)) return { found: true, dates: [] }
+  if (!CELEX_RE.test(celex)) return { found: true, dates: [], adopted: null, inForce: null }
   try {
     return parseTranspositionAnswer(await fetchCellarAnswer(celex))
   } catch {
@@ -303,11 +343,24 @@ async function assemble(docs: DraftDocuments): Promise<Gathered<EuRechtResponse>
     }
   }
 
-  // UNTIL WHEN: the Cellar, per act, side by side.
+  // UNTIL WHEN: the Cellar, per act, side by side — and, for a directive
+  // with a date that the draft's own text did not already show as old,
+  // whether Bundesrecht in force on the first day of the Begutachtung names
+  // it (D4, widened on 04.11.2026 after 32/ME: a new law that replaces an
+  // old one has no Paragraph to read, and every act it restates looked new).
   const acts: EuActView[] = []
-  const answers = await Promise.all(uniqueActs([named]).map(async (act) => ({ act, dates: await transpositionOf(act.celex) })))
-  for (const { act, dates } of answers) {
+  const asOf = start ?? todayIso()
+  const answers = await Promise.all(uniqueActs([named]).map(async (act) => {
+    // A title that names the act says the draft implements it.
+    const own = fromLaw ? (isNew.get(act.celex) ?? null) : true
+    const dates = await transpositionOf(act.celex)
+    const asked = act.kind === 'richtlinie' && own !== false && !!dates?.dates.length
+    const standing = asked ? await standingInBundesrecht(act, asOf) : null
+    return { act, dates, own, asked, standing }
+  }))
+  for (const { act, dates, own, asked, standing } of answers) {
     if (dates === null) complete = false
+    if (asked && standing === null) complete = false
     // EUR-Lex knows no such act: a citation error in the draft, not shown.
     if (dates && !dates.found) continue
     acts.push({
@@ -315,10 +368,10 @@ async function assemble(docs: DraftDocuments): Promise<Gathered<EuRechtResponse>
       label: act.label,
       celex: act.celex,
       eurLexUrl: act.eli,
-      // A title that names the act says the draft implements it.
-      isNew: fromLaw ? (isNew.get(act.celex) ?? null) : true,
+      isNew: standing === true ? false : asked && standing === null ? null : own,
       base: base.has(act.celex) && named.some((a) => a.celex !== act.celex && !base.has(a.celex)),
       transposition: act.kind === 'richtlinie' && dates ? deadlineOf(dates.dates) : null,
+      adopted: dates?.adopted ?? null,
     })
   }
 

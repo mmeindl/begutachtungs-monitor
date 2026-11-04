@@ -749,7 +749,11 @@ const waitMonths = Math.round(RV_LATENCY_CONTEXT_DAYS / 30.44)
         Eine Novelle wiederholt oft den ganzen Umsetzungshinweis samt
         Richtlinien, die vor Jahren umgesetzt wurden. Solche Akte nennen wir,
         aber ohne Frist: Eine Frist steht nur bei einem Akt, den das geltende
-        Gesetz am ersten Tag der Begutachtung noch nicht nennt. Woher die
+        Bundesrecht am ersten Tag der Begutachtung noch nirgends umsetzt. Zu
+        einer solchen Frist zeichnen wir einen Zeitstrahl: vom Tag, an dem
+        die Richtlinie beschlossen wurde, über die Umsetzungsfrist und die
+        Begutachtung bis heute – wie viel von der Frist verstrichen war, als
+        der Entwurf kam, sieht man dann, ohne dass wir es sagen. Woher die
         Daten stammen und unter welchen Bedingungen, steht
         <NuxtLink to="/impressum#imp-eurlex" class="link-inline">im Impressum</NuxtLink>.
       </p>
