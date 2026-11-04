@@ -42,7 +42,17 @@ export interface LandExplanationsParse {
 
 const PAGE_NOISE_RE = /^(?:Seite \d+(?: von \d+)?|\d+ von \d+|- ?\d+ ?-|\d+)$/
 const START_RE = /^(?:[A-Z]\.|[IVX]+\.|\d+\.)?\s*(?:Allgemeiner Teil|Allgemeines)\b/
-const TITLE_RE = /^(?:Erläuterungen|ERLÄUTERUNGEN|Erläuternde Bemerkungen)\b/
+/*
+ * The title over the Erläuterungen: the word alone, or „Erläuterungen zum
+ * Entwurf …", „ERLÄUTERUNGEN zur Verordnung …", „Erläuternde Bemerkungen
+ * Pilotregionen" — never a line of prose that happens to open with the word
+ * (04.11.2026): „Erläuterungen zu § 14 Oö. ADG." wrapped onto a line of its
+ * own in Oberösterreich's 16120, and the general part began behind it, at
+ * „Zu Art. III Z 28", its section V and every entry before it lost.
+ * Measured over the 489 drafts of GP XXVIII: 44 such lines open with the
+ * word — „… verwiesen.", „Erläuterungen dazu.", „Erläuterungen zu Abs. 5).".
+ */
+const TITLE_RE = /^(?:(?:Erläuterungen|ERLÄUTERUNGEN|Erläuternde Bemerkungen):?$|(?:Erläuterungen|ERLÄUTERUNGEN|Erläuternde Bemerkungen)\s+(?:zum|zur|ZUM|ZUR)\s(?![^]*(?:\bverwiesen\b|\bdargelegt\b|\bBGBl\b|[.;]$))|Erläuternde Bemerkungen\s(?![^]*[.;]$))/
 const PARTICULAR_RE = /^(?:[A-Z]\.|[IVX]+\.|\d+\.)?\s*(?:Besonderer Teil|Zu den einzelnen Bestimmungen)\b/
 /* „Zu Art. I Z 2", and in Salzburg's packages „Zu Art 2 Z 1" (23.10.2026). */
 const ENTRY_RE = /^Zu\s+(?:(?:Art(?:ikel)?\.?\s*(?:[IVXL]+|\d+)|Z(?:iffer)?n?\.?\s*\d|§§?\s*\d|den\s+Z|Abs)|Art\.)/
