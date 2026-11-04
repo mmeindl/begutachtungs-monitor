@@ -136,7 +136,12 @@ export interface EuActDraft {
   citation: string | null
   kind: 'gesetz' | 'verordnung' | 'unbestimmt'
   begutachtung: { start: string | null; end: string | null }
-  stand: EuStand
+  /**
+   * Null where the stand could not be read in time — the Bund's station
+   * map is cold after a restart — and the row then shows its dates
+   * without a bar. Never „Heute" for a law that may long be promulgated.
+   */
+  stand: EuStand | null
   marker: EuMarker
   /**
    * Rule D4 for THIS draft: true or null where the draft adds the act (an
