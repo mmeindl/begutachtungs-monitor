@@ -857,10 +857,20 @@ parameters with `Applikation=LrKons` and one `Bundesland_SucheIn<Land>=true`
 `LKT…`, its XML under `Dokumentliste.ContentReference` as in BrKons — but
 the metadata sit under `Data.Metadaten.Landesrecht` (`Kurztitel`,
 `Bundesland`, `LrKons.{Typ, ArtikelParagraphAnlage, Paragraphnummer, …}`,
-`Typ` „LG“), not `Metadaten.Bundesrecht.BrKons`. So **`bundesrechtHits`
-keeps none of them** (`typCountsAsBundesrecht(undefined)` is false), while
-`transposesAct` reads the Land XML unchanged. A Landesrecht variant beside
-`bundesrechtHits` is step-2 work of the EU feature, not built.
+`Typ` „LG“, „Gesetz“ or „V“), not `Metadaten.Bundesrecht.BrKons`. So
+**`bundesrechtHits` keeps none of them** (`typCountsAsBundesrecht(undefined)`
+is false); `landesrechtHits` (`server/utils/eu/landesrecht.ts`) reads them,
+and `transposesAct` reads the Land XML unchanged. **The nine flags,
+verified one probe each on 04.11.2026** („2006/123/EG“ as of that day,
+every hit's `Landesrecht.Bundesland` the Land asked for):
+`Bundesland_SucheInBurgenland` (13 hits), `…Kaernten` (45),
+`…Niederoesterreich` (9), `…Oberoesterreich` (9), `…Salzburg` (21),
+`…Steiermark` (20), `…Tirol` (14), `…Vorarlberg` (12), `…Wien` (6).
+**The head document** (`ArtikelParagraphAnlage` „§ 0“) carries the law's
+EU record — an „Umsetzungshinweis“ field and, per Novelle in „Änderung“,
+its Richtlinien („LGBl.Nr. 47/2023 (… [CELEX-Nr. 32019L1158])“, older
+entries without CELEX) — and is not versioned: asked with
+`Fassung.FassungVom` before a Novelle, it lists that Novelle already.
 
 **CELEX and ELI from a citation.** CELEX = `3` + four-digit year + `L`
 (Richtlinie) / `R` (Verordnung) / `D` (Beschluss, Entscheidung) + four-digit
