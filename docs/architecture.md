@@ -14631,6 +14631,98 @@ OÖ-Hinweisen 1; kein genannter Gesetzestext-Akt außerhalb des
 Gesetzestexts, kein Akt auf dem Fließtextweg. Nicht gelesen: 4
 Steiermark-PDFs, die nicht im Cache liegen. Zwei Läufe byte-gleich.
 
+#### Nachtrag 3 (die Karte), 04.11.2026
+
+Bis hierher kannte jeder Entwurf nur seinen eigenen Fakt. Die Karte dreht
+die Frage um: ein Rechtsakt, und jeder Entwurf des Fensters, der ihn nennt —
+der Bund, die neun Länder, wer ihn umsetzt, wer ihn nur wiederholt, welches
+Land ihn nirgends nennt. Dazu ein Merkmal und ein Filter in den Listen.
+
+- **Warum ein Speicher auf der Platte.** Beide Cache-Schichten sind in
+  Produktion Speicher, jeder Neustart und jedes Deployment leert sie
+  (`cache/base.ts`). Die Karte braucht den Fakt jedes Entwurfs im Fenster:
+  156 Ministerialentwürfe, die RIS-Begutachtungen ohne Gegenstand, 489
+  Landesentwürfe — kalt je ein Vorblatt-PDF, Gesetzestext, Erläuterungen,
+  Cellar und RIS-Suche, bei den Ländern ihre PDFs mit einer Anfrage pro
+  Sekunde (die Firewall der Steiermark sperrt Bursts). Das jede Nacht und
+  nach jedem Deployment neu zu lesen, geht nicht. Ein Fakt ist stabil, sobald
+  die Dokumente veröffentlicht sind, also liegt er auf der Platte und wird
+  einmal gelesen: `<stateDir>/eu-recht/<gp>.json` (`eu/euMapStore.ts`,
+  Verzeichnis wie `parliament/lastgood.ts`: `BM_STATE_DIR`, dann
+  `STATE_DIRECTORY`, dann `./.data`), atomar geschrieben (tmp + rename),
+  `{ version, builtAt, window, incomplete, entries }`.
+- **Schlüssel:** `me:<gp>-<inr>`, `ris:<RIS-ID>`, `land:<land>-<Nummer>`
+  (die Nummer des Landes wie in `landDraftPath`).
+- **Wann neu gelesen wird.** (1) `version` trägt `EU_READER_VERSION`
+  (`eu/readerVersion.ts`): wer einen Leser unter `server/utils/eu/` so
+  ändert, dass ein Fakt anders lautet, zählt sie hoch, und die Datei fällt
+  ganz. (2) Der **Fingerabdruck**: beim Bund die sortierten URLs von
+  Gesetzestext, Vorblättern und Erläuterungen des RIS-Datensatzes plus
+  `beginn` (ohne RIS-Zwilling der Status des Joins), beim Land die
+  sortierten Dokument-URLs plus `startedAt` und `deadline`. Ein anderer
+  Abdruck heißt: neu lesen. (3) Ein **offener** Entwurf wird nach 24 h neu
+  gelesen. Ein Fakt mit `complete: false` (§12.13) wird nicht gespeichert —
+  dafür liefern `readEuRecht`, `readRisEuRecht` und `readLandEuRecht` jetzt
+  ihr `Gathered` nach außen —, ein `available: false` sehr wohl: es ist eine
+  Antwort. Nichts Personenbezogenes: URLs, Merkmale, Akte, Daten.
+- **Drei Populationen** (`buildEuMap`, `eu/euMapService.ts`), in dieser
+  Reihenfolge, je mit eigener Berichtszeile `{ total, read, fromStore,
+  failed, partial, seconds }`: die Ministerialentwürfe (gefaltet, 4
+  gleichzeitig), die RIS-Begutachtungen ohne Gegenstand (4), die Länder über
+  `readLaenderInWindow(gpWindow(gp), 'all')` und je Entwurf `readLandDraft`
+  (2 gleichzeitig; Steiermark und Tirol taktet ihr `SitePacer`). Der
+  Speicher wird nach jeder Population geschrieben. Ein Fehler kostet den
+  einen Entwurf, nie die Population; sein Herausgeber steht dann in
+  `incomplete`, ebenso ein Land, dessen Liste nicht lesbar war. Der Cellar
+  bekommt dazu prozessweit höchstens zwei Abfragen gleichzeitig
+  (`cellarService.ts`), die Grenze der Korpusläufe — ein Entwurf nennt bis
+  zu 28 Akte. Der Bericht misst den Heap alle 500 ms (`heapPeakMb`).
+- **Die Karte** (`eu/euMap.ts`, rein) verbindet die gespeicherten Fakten mit
+  den **aktuellen** Listen: Titel, Begutachtung, Stand kommen aus der Liste,
+  nicht aus dem Speicher — eine verlängerte Frist, eine Kundmachung erscheint
+  ohne ein Dokument neu zu lesen. In der Karte steht nur, wessen Fakt
+  `available` ist und ein Merkmal trägt. **Stand**, wie die Seite ihn für
+  den Zeitstrahl rechnet: ME `chain.bgblDate` → „Bundesgesetzblatt", sonst
+  `bundesratDecidedAt ?? decidedAt` bei Kundmachungsnummer oder Station
+  jenseits der Vorlage → „Beschluss", sonst „Heute"; RIS kundgemacht mit
+  Datum → „Bundesgesetzblatt", sonst „Heute"; Land `bgbl` mit Datum →
+  „Landesgesetzblatt", `parlament` mit Datum → „Beschluss", sonst „Heute".
+  **`stand: null`**, wo die Grundlage fehlt: die Stationskarte nicht binnen
+  2,5 s (oder eine Periode, über die man nicht sprechen darf, §12.27), die
+  RIS-Ergebnisse nicht binnen 2,5 s, ein Land mit Stand `unknown` — nie
+  „Heute" für ein Gesetz, das längst kundgemacht sein kann. Das macht den
+  Bund nicht `incomplete`; nur ein gescheiterter Aufbau tut das. Umsetzend
+  ist ein Entwurf für einen Akt, wenn `isNew !== false && !base` (D4, D4a),
+  sonst wiederholt er ihn.
+- **Cache:** `eu-karte`, abgeleitet, je GP, sechs Stunden wie die
+  Stationskarte, nur vollständig gespeichert (eine Karte mit `stand: null`
+  aus verpasstem Budget nicht). Ohne Speicherdatei gibt es keine Karte
+  (`null`); mit Datei und kaltem Cache wird von der Platte zusammengesetzt.
+  Nach einem Aufbau wartet die Route Stationskarte und RIS-Ergebnisse voll
+  ab und setzt die Karte frisch zusammen (`shouldInvalidateCache`).
+- **Was die Listen sagen.** `/api/drafts` und `/api/ris-drafts` lesen die
+  Karte unter 2,5 s Budget: mit ihr trägt jede Zeile der Periode `eu`
+  (Merkmal oder `null` = gelesen, nichts), `euAvailable: true`, und
+  `?eu=umsetzung` (`umsetzung` oder `ueber-umsetzung`; jeder andere Wert
+  fällt still weg wie eine unbekannte Station) filtert; ohne sie
+  `euAvailable: false`, kein `eu`, kein Filter — die Liste sagt es, statt
+  still zu filtern. Mitgelesene Zeilen der Vorperiode tragen kein `eu` und
+  fallen unter dem Filter heraus. `/api/laender` reichert im
+  Periodenmodus an und setzt `euAvailable`, filtert aber nicht: die Seite
+  filtert die Länder selbst, wie die Stationen.
+- **Routen.** `/api/eu-recht/karte?gp=` (nur Prewarm, `PREWARM_ONLY`; baut
+  und liefert den Bericht), `/api/eu-recht` (`EuActsResponse`: Akte mit
+  mindestens einem umsetzenden Entwurf, späteste Frist zuerst, ohne Frist
+  nach Bezeichnung; `builtAt: null` ohne Karte), `/api/eu-recht/akte/:celex`
+  (`EuActResponse`; 400 für keine Akt-CELEX, 404 für einen Akt, den kein
+  Entwurf nennt, 503 ohne Karte; Bund zuerst, dann die Länder in
+  Anzeigereihenfolge, je Herausgeber jüngste Begutachtung zuerst). Die drei
+  Faktendpunkte hängen `related` an (Karte unter 1 s Budget; ohne Karte
+  fehlt das Feld), gezählt ohne den Entwurf selbst, nie mit dem Fakt
+  gespeichert. Die Sitemap nennt `/eu-recht` und, mit Karte, jede Aktseite.
+
+**Gemessen:** (folgt)
+
 ## 13. Open questions
 
 1. **Legal (restated 2026-09-16 — the old wording asked the wrong question).** It assumed the metadata was CC-BY and only the full texts excluded. Parliament's licence page for the Begutachtungsverfahren excludes *Beteiligungen zu Ministerialentwürfen* from open-data reuse as such, and no licensed dataset covers Ministerialentwürfe at all. So the question is now: **on what basis may the metadata of lists 81/142/305 be reused?** Two halves — the factual one (how is that sentence meant, is a case-by-case release possible) goes to the Parlamentsdirektion, the legal one (is factual metadata protectable at all; Datenbankherstellerrecht §§ 76c ff vs. § 42h UrhG) to a university partner. The inline web-form texts remain a sub-question of it, not a separate one. It blocks a blanket CC-BY claim on the site, which was removed on 2026-09-16. **And "stage 1 is metadata-only either way", which stood here until 2026-09-19, is not quite true — one block breaks it.** Under „Worum geht es?" the draft page prints Parliament's `shortinfo`: Ziele, Inhalt, Hauptgesichtspunkte. That is prose from the excluded dataset, and no enumeration of "Fristen, Geschäftszahlen, Anzahl" covers it. The obvious escape was measured and does not hold (`pnpm corpus:kurzinfo`, GP XXVII, 337 drafts): the Kurzinformation is *not* simply the ministry's text, which RIS publishes CC BY. 53 % of drafts carry no prose at all, only the Vorblatt lists (67 % of all characters, untested here because the Vorblatt is a RIS document the corpus mapper does not carry); where there is prose, a median of 60 % of its eight-word windows occur verbatim in the ministry's documents, p10 25 %, and only 6.6 % of drafts are covered to 90 % or more. It is Parliament's editorial work on the ministry's material — related, but not the same document, so it cannot be sourced from RIS instead. Consequence: `/impressum` and `/ueber` name it since 2026-09-19, and **the question to the Parlamentsdirektion has to name it too** — an answer of the form "only the contents of the Stellungnahmen are excluded" would not settle it, because the Kurzinformation is neither a Stellungnahme nor a metadatum. And a third block, found 23.09.2026, which unlike the Kurzinformation sits in code: the § comparison reads the Ministerialentwurf's Gesetzestext from Parliament's HTML wherever Parliament publishes one (`diff/lawDiffService.ts`, RIS XML only where it does not), and the Begründungsvergleich reads the draft's Erläuterungen from the same copy on both sides (`explanations/reasoningDiffService.ts`) — both for a measured reason, one Word template on both sides (§12.12, sixth measurement), and both against the source order the Textgegenüberstellung follows (`annex/annexSource.ts`). The argument that carries it is the one the annex switch refuses for the drafts RIS does not hold — the same documents stand in RIS under CC BY — and for those drafts (12 of 350 in GP XXVII) the comparison shows Parliament's text with no RIS twin. `/ueber` and `/impressum` name it since 23.09.2026. Open, and part of the question above: whether to read the draft's text RIS-first like the annex, at the measured cost to the alignment, or to keep the parser symmetry and say so — as the copy now does. Read live on 23.09.2026, Parliament's own dataset pages (Regierungsvorlagen, Anträge, Ausschussberichte, Beschlüsse — one template) call the documents of those items „freie Werke und somit ohne Lizenzierung frei nutzbar“ and license only the result lists, the API and the history pages as CC BY 4.0; the exclusion sentence on the Beteiligungen page names *Beteiligungen* zu Ministerialentwürfen, not the drafts or their documents. (What stood here until 30.09.2026 — that the Beteiligungen lists are CC BY and that the Stellungnahmen zur Regierungsvorlage, §12.14, run under that grant — was a misreading: the Beteiligungen dataset is „Aktuelle Beteiligungen", list 143, items open for participation on the day of the query, and its page says „Ministerialentwürfe und Stellungnahmen fallen nicht darunter"; the Regierungsvorlagen page excludes „sämtliche Informationen zu Stellungnahmen" from free use and licensing, for data protection and copyright. The Stellungnahmen zur Regierungsvorlage therefore carry no licence either, and `/impressum` says so since 30.09.2026.) So the sharp form of the question to the Parlamentsdirektion is whether „die Dokumente selbst sind freie Werke“ holds for a Ministerialentwurf's documents too — and, separately, on what basis list 81 as such and the Kurzinformation may be reused. **The § comparison's own credit line was corrected to those facts on 23.09.2026:** it claimed „CC BY 4.0" whenever neither side was the Ministerialentwurf (`isLicensedPair`), which named a licence Parliament does not grant for these documents — the correct note for a Regierungsvorlage, Ausschuss- or Plenarfassung read from Parliament is „Dokumente: freie Werke, § 7 UrhG", a RIS-sourced side stays CC BY 4.0, and the Ministerialentwurf is credited by name with no claim at all, because what may be claimed for it is precisely this open question (`lawDiffSourceCredit`).
