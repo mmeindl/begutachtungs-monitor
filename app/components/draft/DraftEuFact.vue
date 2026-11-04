@@ -54,21 +54,21 @@ const shownActs = computed(() => {
   return expanded.value || acts.length <= FOLD_AT + 1 ? acts : acts.slice(0, FOLD_AT)
 })
 const folded = computed(() => (view.value?.acts.length ?? 0) > shownActs.value.length)
-/** Whether the fact has footnotes — several deadline days, or further dates of one directive. */
+/** Whether the fact has footnotes — a directive with further partial deadlines; the numbers at the acts and dates need none. */
 const hasNotes = computed(() => (view.value?.notes.length ?? 0) > 0)
 </script>
 
 <template>
   <div v-if="view" class="mt-4 border-t border-hairline pt-4">
     <p class="text-sm text-ink-secondary">
-      <strong class="font-semibold text-ink">{{ view.lead }}</strong><template v-if="view.attach === 'colon'">: </template><template v-else-if="view.attach === 'named'">. {{ view.namedIn }} genannt: </template><template v-for="(act, i) in shownActs" :key="act.url"><template v-if="i > 0">{{ i === shownActs.length - 1 && !folded ? ' und ' : ', ' }}</template><ExternalLink :href="act.url" class="link-inline">{{ act.label }}</ExternalLink></template><template v-if="folded">, … <button type="button" class="link-inline" :aria-expanded="expanded" @click="expanded = true">Alle {{ view.acts.length }} anzeigen</button></template><template v-if="view.adoptedNote">, {{ view.adoptedNote }}</template>.
+      <strong class="font-semibold text-ink">{{ view.lead }}</strong><template v-if="view.attach === 'colon'">: </template><template v-else-if="view.attach === 'named'">. {{ view.namedIn }} genannt: </template><template v-for="(act, i) in shownActs" :key="act.url"><template v-if="i > 0">{{ i === shownActs.length - 1 && !folded ? ' und ' : ', ' }}</template><ExternalLink :href="act.url" class="link-inline">{{ act.label }}<template v-if="act.note">{{ SUPERSCRIPT[act.note] ?? `(${act.note})` }}</template></ExternalLink></template><template v-if="folded">, … <button type="button" class="link-inline" :aria-expanded="expanded" @click="expanded = true">Alle {{ view.acts.length }} anzeigen</button></template><template v-if="view.adoptedNote">, {{ view.adoptedNote }}</template>.
       <template v-if="quote">
         Laut Vorblatt: „{{ quote }}“.
       </template>
     </p>
     <DraftEuTimeline v-if="timeline" :view="timeline" />
     <p v-else-if="view.deadlines.length" class="mt-1 text-sm text-ink-secondary">
-      {{ view.deadlines.length > 1 ? 'Umsetzungsfristen' : 'Umsetzungsfrist' }}<template v-for="(d, i) in view.deadlines" :key="d.label"><template v-if="i > 0">,</template>{{ d.of && !d.note ? ` ${d.of}` : '' }} bis {{ d.date }}<template v-if="d.note">{{ SUPERSCRIPT[d.note] ?? `(${d.note})` }}</template></template><template v-if="view.start"> · Begutachtung ab {{ view.start }}</template>
+      {{ view.deadlines.length > 1 ? 'Umsetzungsfristen' : 'Umsetzungsfrist' }}<template v-for="(d, i) in view.deadlines" :key="d.label"><template v-if="i > 0">,</template> bis {{ d.date }}<template v-if="d.note">{{ SUPERSCRIPT[d.note] ?? `(${d.note})` }}</template></template><template v-if="view.start"> · Begutachtung ab {{ view.start }}</template>
     </p>
     <!-- The footnotes stay with the fact; the source stands under the card
          (`DraftEuCredits`), as every card's does. -->

@@ -35,26 +35,27 @@ const NAMED_IN: Record<NonNullable<EuRechtResponse['actsSource']>, string> = {
 
 /** One act's deadline as the row states it. */
 export interface EuDeadlineView {
-  /** „2024/1711" — the act's number, only where the row carries several deadlines; null otherwise. */
-  of: string | null
   date: string
   /** The same day, ISO — for placing it on the track. */
   iso: string
   /** The act's other transposition dates, formatted, for the footnote. */
   otherDates: string[]
   /**
-   * The footnote's number. Where the fact carries deadlines on several days,
-   * every day has one and the note names its directive — the bar lists
-   * dates, the sentence lists acts, and nothing else joins them (04.11.2026,
-   * a Land draft with four directives: „no clue why there are so many and
-   * for what"). Two directives due on one day share the number. Where there
-   * is one day, only a directive with further partial deadlines has a note.
+   * The superscript's number. Where the fact carries deadlines on several
+   * days, every day has one, and the same number stands at the act in the
+   * sentence — the bar lists dates, the sentence lists acts, and nothing
+   * else joined them (04.11.2026, a Land draft with four directives: „no
+   * clue why there are so many and for what"). Two directives due on one
+   * day share the number. Where there is one day, only a directive with
+   * further partial deadlines has a number, for its footnote. A footnote
+   * that named the directive per number stood here for an hour and
+   * repeated the sentence.
    */
   note: number | null
   label: string
 }
 
-/** One footnote under the fact: its number and its text, without the full stop. */
+/** One footnote under the fact — only the further partial deadlines of a directive; its number and its text, without the full stop. */
 export interface EuNoteView {
   number: number
   text: string
@@ -72,7 +73,8 @@ export interface EuFactView {
   attach: 'colon' | 'named' | 'none'
   /** „Im Gesetzestext", „Im Titel", „Im Vorblatt", „In den Erläuterungen" — for the `named` form. */
   namedIn: string | null
-  acts: { label: string; url: string }[]
+  /** The acts, the dated ones first in the order of their deadlines, each with its superscript's number where the bar carries several days. */
+  acts: { label: string; url: string; note: number | null }[]
   /** The Vorblatt's own sentence, for `ueber-umsetzung` only. */
   quote: string | null
   /** „beschlossen am 11.04.2024" — the one act whose deadline the row prints, where the Cellar has its day; null otherwise. */
@@ -117,19 +119,18 @@ export function euFactView(r: EuRechtResponse | null | undefined): EuFactView | 
     ? days.indexOf(a.transposition!.deadline) + 1
     : a.transposition!.otherDates.length ? 1 : null)
   const deadlines = due.map((a): EuDeadlineView => ({
-    of: due.length > 1 ? numberOf(a.label) : null,
     date: formatDateDe(a.transposition!.deadline),
     iso: a.transposition!.deadline,
     otherDates: a.transposition!.otherDates.map(formatDateDe),
     note: noteOf(a),
     label: a.label,
   }))
-  const notes: EuNoteView[] = [...new Set(deadlines.map((d) => d.note).filter((n): n is number => n !== null))].map((number) => {
-    const own = deadlines.filter((d) => d.note === number)
-    const further = own.filter((d) => d.otherDates.length).map((d) => `weitere Fristen für einzelne Bestimmungen${own.length > 1 ? ` (${numberOf(d.label)})` : ''}: ${d.otherDates.join(', ')}`)
-    const text = days.length > 1 ? [own.map((d) => d.label).join(' und '), ...further].join('; ') : further.join('; ')
-    return { number, text: text.charAt(0).toUpperCase() + text.slice(1) }
+  const notes: EuNoteView[] = [...new Set(deadlines.filter((d) => d.otherDates.length).map((d) => d.note!))].map((number) => {
+    const own = deadlines.filter((d) => d.note === number && d.otherDates.length)
+    return { number, text: `Weitere Fristen für einzelne Bestimmungen${own.map((d) => `${own.length > 1 ? ` (${numberOf(d.label)})` : ''}: ${d.otherDates.join(', ')}`).join(';')}` }
   })
+  const dated = new Map(due.map((a, i) => [a.celex, deadlines[i]!.note]))
+  const listed = [...due, ...acts.filter((a) => !dated.has(a.celex))]
   const read = r.markerSource === 'erlaeuterungen'
     ? ['Erläuterungen']
     : r.actsSource === 'gesetzestext'
@@ -141,7 +142,7 @@ export function euFactView(r: EuRechtResponse | null | undefined): EuFactView | 
     lead: LEAD[r.marker],
     attach,
     namedIn: NAMED_IN[r.actsSource ?? 'gesetzestext'],
-    acts: acts.map((a) => ({ label: a.label, url: a.eurLexUrl })),
+    acts: listed.map((a) => ({ label: a.label, url: a.eurLexUrl, note: days.length > 1 ? dated.get(a.celex) ?? null : null })),
     quote: r.marker === 'ueber-umsetzung' ? r.vorblattSentence : null,
     adoptedNote: due.length === 1 && acts.length === 1 && due[0]!.adopted ? `beschlossen am ${formatDateDe(due[0]!.adopted)}` : null,
     deadlines,

@@ -33,7 +33,7 @@ describe('euFactView — two dates, no verdict', () => {
     expect(v).toMatchObject({
       lead: 'Setzt EU-Recht um',
       attach: 'colon',
-      deadlines: [{ of: null, date: '07.05.2026', otherDates: [] }],
+      deadlines: [{ date: '07.05.2026', otherDates: [] }],
       start: '21.10.2026',
       sources: [{ what: 'Vorblatt', publisher: 'ris', terms: 'cc-by' }, { what: 'Gesetzestext', publisher: 'ris', terms: 'cc-by' }, { what: 'Fristen', publisher: 'eurlex', terms: 'cc0' }],
     })
@@ -55,11 +55,16 @@ describe('euFactView — two dates, no verdict', () => {
     expect(deadlineActs([act({ kind: 'verordnung', transposition: null })])).toEqual([])
   })
 
-  it('names a deadline\'s act by its number only where the row carries several, with the further dates for the footnote', () => {
+  it('numbers the dated acts in the sentence as the bar numbers their days, with the further dates for the footnote', () => {
     const one = euFactView(response({ acts: [act({ label: 'Richtlinie (EU) 2018/2001', base: true }), act({ label: 'Richtlinie (EU) 2024/1711', transposition: { deadline: '2026-07-17', otherDates: ['2025-01-17'] } })] }))!
-    expect(one.deadlines).toEqual([{ of: null, date: '17.07.2026', iso: '2026-07-17', otherDates: ['17.01.2025'], note: 1, label: 'Richtlinie (EU) 2024/1711' }])
+    expect(one.deadlines).toEqual([{ date: '17.07.2026', iso: '2026-07-17', otherDates: ['17.01.2025'], note: 1, label: 'Richtlinie (EU) 2024/1711' }])
+    // One day: the footnote alone carries the number, the act none (the base text is not listed).
+    expect(one.acts.map((a) => a.note)).toEqual([null])
+    expect(one.notes).toEqual([{ number: 1, text: 'Weitere Fristen für einzelne Bestimmungen: 17.01.2025' }])
     const two = euFactView(response({ acts: [act({}), act({ label: 'Richtlinie 2009/43/EG', celex: '32009L0043', transposition: { deadline: '2011-06-30', otherDates: [] } })] }))!
-    expect(two.deadlines.map((d) => d.of)).toEqual(['2009/43', '2024/1069'])
+    // Two days: the dated acts come first, in date order, numbered as their days are.
+    expect(two.acts.map((a) => [a.label, a.note])).toEqual([['Richtlinie 2009/43/EG', 1], ['Richtlinie (EU) 2024/1069', 2]])
+    expect(two.notes).toEqual([])
   })
 
   it('quotes acts of another kind than the lead as named, not as what the lead says (81/ME)', () => {
@@ -121,13 +126,10 @@ describe('euFactView — two dates, no verdict', () => {
     expect(labelled[2]!.align).toBe('end')
     // Every deadline keeps a tick of its own, on its own date.
     expect(t.marks.filter((m) => m.tick).map((m) => m.at)).toEqual([0, t.marks.filter((m) => m.tick)[1]!.at, 100])
-    // Several days: every day has a note naming its directive, and the one with further dates says so too.
+    // Several days: every day has a number, the same one stands at its act; only the further dates make a footnote.
     expect(three.deadlines.map((d) => d.note)).toEqual([1, 2, 3])
-    expect(three.notes.map((n) => n.text)).toEqual([
-      'Richtlinie (EU) 2023/2413',
-      'Richtlinie (EU) 2024/1711; weitere Fristen für einzelne Bestimmungen: 17.01.2025',
-      'Richtlinie (EU) 2024/1788',
-    ])
+    expect(three.acts.map((a) => a.note)).toEqual([1, 2, 3])
+    expect(three.notes).toEqual([{ number: 2, text: 'Weitere Fristen für einzelne Bestimmungen: 17.01.2025' }])
   })
 
   it('ends a wide cluster label before the band label pinned to the track end (a Land draft, 04.11.2026)', () => {
@@ -143,14 +145,10 @@ describe('euFactView — two dates, no verdict', () => {
     const t = euTimeline(fact, ctx)!
     const cluster = t.marks.find((m) => m.lines[0] === 'Umsetzungsfristen')!
     const band = t.marks.find((m) => m.key === 'begutachtung')!
-    // Two directives due on one day share the date and its note; the note names both.
+    // Two directives due on one day share the date and its number; no footnote repeats the sentence.
     expect(cluster.lines[1]).toBe('15.11.2024², 07.06.2026³, 19.06.2026⁴')
-    expect(fact.notes.map((n) => `${n.number} ${n.text}`)).toEqual([
-      '1 Richtlinie 2010/41/EU',
-      '2 Richtlinie (EU) 2022/2041',
-      '3 Richtlinie (EU) 2023/970',
-      '4 Richtlinie (EU) 2024/1499 und Richtlinie (EU) 2024/1500',
-    ])
+    expect(fact.acts.map((a) => `${a.label}${a.note ?? ''}`)).toEqual(['Richtlinie 2010/41/EU1', 'Richtlinie (EU) 2022/20412', 'Richtlinie (EU) 2023/9703', 'Richtlinie (EU) 2024/14994', 'Richtlinie (EU) 2024/15004'])
+    expect(fact.notes).toEqual([])
     expect(band).toMatchObject({ align: 'end' })
     // The cluster's text ends before the band label's text begins: 14 % apart was not enough for 34 characters.
     expect(cluster.align).toBe('end')

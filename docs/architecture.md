@@ -14450,15 +14450,21 @@ Veröffentlichungen der Public Domain (CC0 1.0); Rechtsakte selbst wären nach
 Beschluss 2011/833/EU weiterverwendbar, werden aber nur verlinkt, das Logo
 gar nicht. Das Impressum sagt es so. Die Fußnoten zu weiteren Fristen bleiben beim Fakt, sie erklären
 seine Hochzahlen. **Seit dem Abend des 04.11.2026 trägt jedes Datum eine
-Hochzahl, sobald der Fakt Fristen an mehreren Tagen hat,** und die Fußnote
-nennt die Richtlinie („¹ Richtlinie (EU) 2022/2041 · ² Richtlinie (EU)
-2023/970 · ³ Richtlinie (EU) 2024/1499 und Richtlinie (EU) 2024/1500"): der
-Balken zählte die Daten, der Satz die Akte, und nichts verband beide — auf
-einem Landesentwurf mit vier Richtlinien war nicht zu sehen, wofür die drei
-Fristen stehen. Zwei Richtlinien mit demselben Tag teilen sich Datum und
-Hochzahl; bei einem einzigen Tag bleibt es bei der Fußnote für die weiteren
-Fristen einer Richtlinie. Kein Schlüssel unter dem Balken, kein Tooltip:
-die Hochzahl ist die Grammatik, die der Fakt schon hatte (`EuNoteView`).
+Hochzahl, sobald der Fakt Fristen an mehreren Tagen hat, und dieselbe
+Hochzahl steht im Satz bei seiner Richtlinie** („Richtlinie (EU)
+2022/2041¹, Richtlinie (EU) 2023/970², Richtlinie (EU) 2024/1499³ und
+Richtlinie (EU) 2024/1500³" über „15.11.2024¹ · 07.06.2026², 19.06.2026³"):
+der Balken zählte die Daten, der Satz die Akte, und nichts verband beide —
+auf einem Landesentwurf mit vier Richtlinien war nicht zu sehen, wofür die
+drei Fristen stehen. Der Satz nennt die datierten Akte zuerst, in der Folge
+ihrer Fristen, dann die übrigen; zwei Richtlinien mit demselben Tag teilen
+sich Datum und Hochzahl; bei einem einzigen Tag bleibt es bei der Fußnote
+für die weiteren Fristen einer Richtlinie, und nur diese Fußnote gibt es
+noch. Eine Fußnote, die je Hochzahl die Richtlinie nannte, stand eine
+Stunde lang darunter und wiederholte den Satz („jedes Recht zweimal");
+verworfen wie der Schlüssel unter dem Balken und die Links in den
+Beschriftungen des Balkens, die drei Zeilen je Marke und keinen Platz für
+zwei Akte an einem Tag gehabt hätten.
 
 **Lange Aktenlisten falten** (32/ME nennt 28, 58/ME 24): die ersten fünf
 stehen, dann „Alle 28 anzeigen" im Listenidiom der Seite — alles auf einmal,

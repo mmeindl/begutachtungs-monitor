@@ -731,8 +731,8 @@ const waitMonths = Math.round(RV_LATENCY_CONTEXT_DAYS / 30.44)
         allgemeine Frist ist; wir nennen das späteste als Umsetzungsfrist
         und die übrigen in einer Fußnote als Fristen für einzelne
         Bestimmungen. Setzt ein Entwurf mehrere Richtlinien um, trägt jedes
-        Datum auf dem Zeitstrahl eine Hochzahl, und die Fußnote sagt, zu
-        welcher Richtlinie es gehört. Verordnungen gelten unmittelbar und
+        Datum auf dem Zeitstrahl eine Hochzahl, und dieselbe Hochzahl steht
+        im Satz bei seiner Richtlinie. Verordnungen gelten unmittelbar und
         haben keine Umsetzungsfrist.
       </p>
       <p>
