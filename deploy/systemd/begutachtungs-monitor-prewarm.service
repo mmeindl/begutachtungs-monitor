@@ -78,7 +78,7 @@
 # §§ (§12.12a). The first visitor of the day pays 12 s for a section that
 # says „lädt"; that is the right one to pay it.
 [Unit]
-Description=Begutachtungs-Monitor: warm the RIS corpus, BGBl volumes, both station maps and the Länder
+Description=Begutachtungs-Monitor: warm the RIS corpus, BGBl volumes, both station maps, the Länder and the EU map
 After=begutachtungs-monitor.service
 Requires=begutachtungs-monitor.service
 # Since 30.09.2026: the pages of the open drafts, in their own unit and
@@ -98,9 +98,9 @@ User=app
 Group=app
 NoNewPrivileges=true
 PrivateTmp=true
-# The unit's own worst case, stated rather than inherited: the seven --max-time
-# budgets below add up to 3.240 s, and deploy.sh blocks on this job.
-TimeoutStartSec=3320
+# The unit's own worst case, stated rather than inherited: the eight --max-time
+# budgets below add up to 5.040 s, and deploy.sh blocks on this job.
+TimeoutStartSec=5120
 # The first request waits for the port. `After=` orders this job behind the
 # app's START, not behind its LISTEN: after a hand-typed `systemctl restart`
 # the curl came at 16:56:15 and Node listened at 16:56:16 (29.09.2026,
@@ -114,4 +114,18 @@ ExecStart=/usr/bin/curl -fsS -o /dev/null --max-time 300 "http://127.0.0.1:3000/
 # The homepage's cut of the same Länder lists (30.10.2026): read right after them, it
 # costs the cut and nothing upstream.
 ExecStart=/usr/bin/curl -fsS -o /dev/null --max-time 120 http://127.0.0.1:3000/api/dashboard/laender
+# Seventh call since 04.11.2026: the EU map (docs/architecture.md §12.66,
+# Nachtrag 3) — which drafts of the running period implement EU law: the
+# list's token and its filter „Setzt EU-Recht um", the pages under
+# /eu-recht, the „Weitere Entwürfe" line under a draft's fact. After the
+# station map and the Länder lists, which the map joins for a draft's stand.
+# The one call here that keeps its work on disk (StateDirectory, eu-recht/):
+# cold it read 156 Ministerialentwürfe, 219 RIS records and 449 Länder
+# drafts in 181 s on the production build (04.11.2026, Steiermark blocked),
+# heap peak 185 MB; after a restart, from the store, 33 s and nothing
+# re-read. Only a draft that is new, still open or whose documents changed
+# is read again, so the nightly cost is the day's arrivals. --max-time 1800:
+# the Länder are paced at one request a second, and a Land that blocks is
+# retried the next night, not waited for.
+ExecStart=/usr/bin/curl -fsS -o /dev/null --max-time 1800 "http://127.0.0.1:3000/api/eu-recht/karte?gp=aktuell"
 ExecStart=/usr/bin/curl -fsS -o /dev/null --max-time 900 http://127.0.0.1:3000/api/stations/vorperiode

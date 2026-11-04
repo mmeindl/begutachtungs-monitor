@@ -4,9 +4,10 @@ Target: one small EU-owned VPS (settled: **netcup VPS pico G11s**, Nuremberg,
 DE — see `docs/architecture.md` §10/§13). The whole production setup is: Node
 runs the Nitro bundle as a systemd service, Caddy terminates TLS in front of
 it. No database — the only persistent state is the last-good Stellungnahmen
-fallback in `/var/lib/begutachtungs-monitor` (systemd `StateDirectory=`,
-architecture.md §5 cache rule 4). Nothing there needs backing up: losing it
-costs a degraded page until the next successful upstream fetch.
+fallback and the EU map's facts in `/var/lib/begutachtungs-monitor` (systemd
+`StateDirectory=`, architecture.md §5 cache rule 4; §12.66 Nachtrag 3).
+Nothing there needs backing up: losing it costs a degraded page until the
+next successful upstream fetch, or the next prewarm a cold read.
 
 The build runs **locally**; the self-contained `.output/` bundle (pure JS,
 platform-independent) is rsynced to the server. The server needs no git, pnpm,

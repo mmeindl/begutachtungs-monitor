@@ -113,9 +113,12 @@ bootstrap.sh, because their unit files live in git
   them. Started 02.11.2026, no planned end; `deploy/bin/laender-archive.mjs`
   has the layout and the reasoning.
 
-Nothing the site serves comes from disk. What does live in
+Almost nothing the site serves comes from disk. What does live in
 `/var/lib/begutachtungs-monitor` is the last-good Stellungnahmen fallback
-(`server/utils/parliament/lastgood.ts`, losing it costs a degraded page) and
+(`server/utils/parliament/lastgood.ts`, losing it costs a degraded page), the
+EU map's facts (`eu-recht/<GP>.json`, `server/utils/eu/euMapStore.ts`, since
+04.11.2026: losing it costs the next prewarm a cold read of every draft, about
+three minutes, and until then the lists say the map is not at hand) and
 the snapshot series above (losing it costs the measurement, and it is not
 republished anywhere — the licence question is open). The Länder archive is
 the one thing there that cannot be recovered at all once a Land has deleted
