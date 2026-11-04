@@ -218,6 +218,10 @@ const description = computed(() =>
  * the Erläuterungen arrive only after hydration, what disappears is one
  * closed row. */
 const { data: explanations } = useExplanations(() => ({ gp: gp.value, inr: inr.value }))
+
+/* Whether the draft implements EU law — one bare fact in the ProcedureCard,
+ * under the predecessor line (`DraftEuFact`, docs/architecture.md §12.66). */
+const { data: euRecht } = useEuRecht(() => ({ gp: gp.value, inr: inr.value }))
 const kurzinfoBlocks = computed(() => {
   const e = explanations.value
   return e?.available && e.passages.length ? withoutMainPoints(description.value) : description.value
@@ -376,6 +380,11 @@ const ministryLinks = computed(() => {
                 class="link-inline"
               >{{ data.predecessor.citation }}</NuxtLink>{{ relatedGpSuffixDe(data.predecessor.gp, data.gp) }}<template v-if="data.predecessor.deadline">, Frist bis {{ formatDateDe(data.predecessor.deadline) }}</template> – ohne Regierungsvorlage.
             </p>
+            <!-- Whether the draft implements EU law, the act, and its
+               transposition deadline beside the day the Begutachtung began —
+               two dates, no verdict (§12.66). A fact of the card like the
+               one above, so the same hairline. -->
+            <DraftEuFact :data="euRecht" />
           </ProcedureCard>
 
           <!-- Deadline, action and calendar welded into one card: the page's

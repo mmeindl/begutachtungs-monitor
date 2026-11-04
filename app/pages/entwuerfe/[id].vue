@@ -85,6 +85,11 @@ const { data: fetchedOutcome } = await useFetch<BgblOutcome>(
 )
 const outcome = computed(() => data.value?.outcome ?? fetchedOutcome.value ?? null)
 
+/* Whether the draft implements EU law — the same fact as on a
+ * Ministerialentwurf's card, read from this record (§12.66). A Verordnung
+ * has a Vorblatt too. */
+const { data: euRecht } = useEuRecht(() => ({ risId: id.value }))
+
 /* „Verordnungsentwurf „…"" — what the „Zitieren" buttons name the record as. */
 const citeAs = computed(() => (data.value ? `${RIS_KIND_LABEL[data.value.kind]} „${data.value.title}“` : ''))
 
@@ -286,6 +291,7 @@ const doorHref = computed(() => {
               {{ RIS_KIND_HINT[data.kind] }}
             </template>
           </p>
+          <DraftEuFact :data="euRecht" />
         </ProcedureCard>
 
         <!-- The one place to act, in the slot and the shape the draft page
