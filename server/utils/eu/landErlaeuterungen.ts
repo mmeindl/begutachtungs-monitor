@@ -40,10 +40,10 @@
  * The list matches the whole normalised heading, and a heading that cites
  * an act is none.
  */
-import { parseEuActCitations, type EuAct } from './actCitations'
+import { parseEuActCitations, type EuAct, uniqueActs } from './actCitations'
 import { decideEuMarker, type MarkerDecision } from './euMarker'
 import { readExplanationsEuSignal, type ExplanationsPassageText, type LawSignal } from './umsetzungshinweis'
-import { classifyVorblatt, classifyVorblattSentence, type VorblattClass } from './vorblatt'
+import { classifyVorblatt, classifyVorblattSentence, sentencesOf, type VorblattClass } from './vorblatt'
 
 /**
  * The Länder's EU headings, normalised (`normaliseLandHeading`) — every
@@ -199,9 +199,24 @@ export function entryHinweise(particular: readonly { heading: string; text: read
       if (!HINWEIS_LABEL.test(paragraph)) return
       const rest = paragraph.replace(HINWEIS_LABEL, '').trim()
       const text = (rest || entry.text[i + 1] || '').replace(/\s+/g, ' ').trim()
-      const acts = parseEuActCitations(text, { implemented: true })
+      const acts = uniqueActs(sentencesOf(text).filter((sentence) => IMPLEMENTING.test(sentence)).map((sentence) => parseEuActCitations(sentence, { implemented: true })))
       if (acts.length) out.push({ heading: entry.heading, text, acts })
     })
   }
   return out
 }
+
+/**
+ * The sentences of a hint that say what is implemented. A hint also
+ * describes what the directives demand, and such a sentence may list other
+ * acts as the scope of a measure: „Art. 5 Abs. 2 der Richtlinie (EU)
+ * 2024/1499 … sehen vor, dass Gleichbehandlungsstellen befugt sind,
+ * Maßnahmen … im Sinn der Richtlinien 79/7/EWG, 2000/43/EG, … und 2010/41/EU
+ * durchzuführen" named six directives the draft does not implement, and the
+ * one the Land never transposed put a deadline of 2012 on the bar
+ * (ooe-2026-16120, 04.11.2026). Only a sentence with the implementing verb
+ * names acts: „werden … umgesetzt", „dient der Umsetzung von", „setzt … um",
+ * „wird … entsprochen", „Rechnung tragen", „erfüllen die Vorgaben des",
+ * „resultiert aus".
+ */
+const IMPLEMENTING = /umgesetzt|umzusetzen|\bUmsetzung\s+(?:der|des|von|einer)\b|\bsetz(?:t|en)\b[^;]{0,160}?\bum\b|entsprochen|Rechnung\s+(?:zu\s+)?tragen|\bVorgaben\s+(?:des|der|gemäß)(?![\wäöüß])|resultiert\s+aus/
