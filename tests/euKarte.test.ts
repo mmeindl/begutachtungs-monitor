@@ -266,7 +266,10 @@ describe('assembling the map', () => {
     expect(map.drafts.map((d) => d.key).sort()).toEqual([
       'land:ktn-1-2026-1', 'land:ooe-2026-16120', 'land:sbg-35442', 'me:XXVIII-147', 'me:XXVIII-81', 'ris:BEGUT_R1',
     ])
-    expect(markersOf(map).get(meKey('XXVIII', 90))).toBeUndefined()
+    // Read, nothing: null. Not read at all (listed, no stored fact): no entry.
+    expect(markersOf(map).get(meKey('XXVIII', 90))).toBeNull()
+    expect(markersOf(map).get(meKey('XXVIII', 91))).toBeNull()
+    expect(markersOf(map).has(meKey('XXVIII', 100))).toBe(false)
     expect(markersOf(map).get(landKey('sbg', '35442'))).toBe('ueber-umsetzung')
   })
 
@@ -311,8 +314,9 @@ describe('assembling the map', () => {
     expect(page.implementing[1]!.isNew).toBeNull()
     expect(page.restating.map((d) => d.key)).toEqual(['me:XXVIII-81', 'land:ktn-1-2026-1'])
     expect(page.restating[0]!.isNew).toBe(false)
-    // Kärnten names the act, if only restating it: it is not „without".
-    expect(page.landsWithout).toEqual(['bgld', 'noe', 'stmk', 't', 'vbg', 'w'])
+    // Kärnten names the act, if only restating it: it is not „without"; the
+    // Steiermark and Tirol are unread (`incomplete`), which is not „without" either.
+    expect(page.landsWithout).toEqual(['bgld', 'noe', 'vbg', 'w'])
     expect(actPageOf(map, '32099L0001')).toBeNull()
   })
 

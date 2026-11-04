@@ -377,7 +377,7 @@ export async function withRelated(fact: EuRechtResponse, gp: string, key: string
 export const EU_MAP_LIST_BUDGET_MS = 2_500
 
 /** The map's markers for a list, by key, or null where the map is not at hand within the budget. */
-export async function euMarkersForList(gp: string): Promise<Map<string, EuMarker> | null> {
+export async function euMarkersForList(gp: string): Promise<Map<string, EuMarker | null> | null> {
   const map = await withinBudget(getEuMap(gp), EU_MAP_LIST_BUDGET_MS)
   return map ? markersOf(map) : null
 }

@@ -89,13 +89,17 @@ export default defineEventHandler(async (event): Promise<DraftsResponse> => {
   /* THE EU MAP, the same construction (§12.66, Nachtrag 3): enrichment
    * under the same brake, read from the store the prewarm built. With it,
    * every row of the period carries `eu` — its marker, or null for a draft
-   * read and no EU matter (or not read: the map is the answer for the
-   * period). Without it no row carries `eu` and `?eu=` filters nothing; the
-   * response says so (`euAvailable`). A carried-over row of the period
-   * before is not in this map and gets no `eu`, as it gets no chain. */
+   * read and no EU matter; a draft the build could not read carries none
+   * (`markersOf`). Without the map no row carries `eu` and `?eu=` filters
+   * nothing; the response says so (`euAvailable`). A carried-over row of
+   * the period before is not in this map and gets no `eu`, as it gets no
+   * chain. */
   const markers = await euMarkersForList(gp)
   const items = markers
-    ? withChains.map((item) => (item.gp === gp ? { ...item, eu: markers.get(meKey(item.gp, item.inr)) ?? null } : item))
+    ? withChains.map((item) => {
+        const eu = item.gp === gp ? markers.get(meKey(item.gp, item.inr)) : undefined
+        return eu === undefined ? item : { ...item, eu }
+      })
     : withChains
 
   const ministries = ministryFilterOptions(items)

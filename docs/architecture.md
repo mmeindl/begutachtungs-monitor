@@ -14701,8 +14701,9 @@ Land ihn nirgends nennt. Dazu ein Merkmal und ein Filter in den Listen.
   Nach einem Aufbau wartet die Route Stationskarte und RIS-Ergebnisse voll
   ab und setzt die Karte frisch zusammen (`shouldInvalidateCache`).
 - **Was die Listen sagen.** `/api/drafts` und `/api/ris-drafts` lesen die
-  Karte unter 2,5 s Budget: mit ihr trägt jede Zeile der Periode `eu`
-  (Merkmal oder `null` = gelesen, nichts), `euAvailable: true`, und
+  Karte unter 2,5 s Budget: mit ihr trägt jede gelesene Zeile der Periode
+  `eu` (Merkmal oder `null` = gelesen, nichts; ein Entwurf, den der Aufbau
+  nicht lesen konnte, trägt keines), `euAvailable: true`, und
   `?eu=umsetzung` (`umsetzung` oder `ueber-umsetzung`; jeder andere Wert
   fällt still weg wie eine unbekannte Station) filtert; ohne sie
   `euAvailable: false`, kein `eu`, kein Filter — die Liste sagt es, statt
@@ -14716,7 +14717,9 @@ Land ihn nirgends nennt. Dazu ein Merkmal und ein Filter in den Listen.
   nach Bezeichnung; `builtAt: null` ohne Karte), `/api/eu-recht/akte/:celex`
   (`EuActResponse`; 400 für keine Akt-CELEX, 404 für einen Akt, den kein
   Entwurf nennt, 503 ohne Karte; Bund zuerst, dann die Länder in
-  Anzeigereihenfolge, je Herausgeber jüngste Begutachtung zuerst). Die drei
+  Anzeigereihenfolge, je Herausgeber jüngste Begutachtung zuerst;
+  `landsWithout` nennt kein Land, das `incomplete` ist — ungelesen ist
+  nicht „ohne"). Die drei
   Faktendpunkte hängen `related` an (Karte unter 1 s Budget; ohne Karte
   fehlt das Feld), gezählt ohne den Entwurf selbst, nie mit dem Fakt
   gespeichert. Die Sitemap nennt `/eu-recht` und, mit Karte, jede Aktseite.

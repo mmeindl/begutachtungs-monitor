@@ -67,7 +67,12 @@ export default defineEventHandler(async (event): Promise<RisConsultationsRespons
    * the period's window carries `eu` where the map is at hand, the carried
    * ones of the period before none. */
   const markers = await euMarkersForList(gp)
-  const ownWithEu = markers ? ownItems.map((item) => ({ ...item, eu: markers.get(risKey(item.id)) ?? null })) : ownItems
+  const ownWithEu = markers
+    ? ownItems.map((item) => {
+        const eu = markers.get(risKey(item.id))
+        return eu === undefined ? item : { ...item, eu }
+      })
+    : ownItems
   const items = carried.length ? [...ownWithEu, ...carried].sort(sortConsultations) : ownWithEu
 
   const ministries = ministryFilterOptions(items)

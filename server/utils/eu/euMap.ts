@@ -54,6 +54,13 @@ export interface EuMap {
   /** Every act a draft of the map names, by CELEX. */
   acts: Record<string, EuActHead>
   /**
+   * Every key the store holds a fact for — with or without a marker. The
+   * lists tell by it „read, no EU matter" (`eu: null`) from „not read"
+   * (no `eu` at all): a draft whose fact failed or came back partial is
+   * not in here, and must not pass as one that was read.
+   */
+  read: string[]
+  /**
    * Publishers the last build could not read whole, plus the Länder whose
    * list could not be read for this assembly — their drafts are missing.
    */
@@ -210,6 +217,7 @@ export function assembleEuMap(inputs: EuMapInputs): EuMap {
     builtAt: store.builtAt ?? today,
     drafts,
     acts,
+    read: Object.keys(store.entries),
     incomplete: (['bund', ...LAND_CODES] as EuPublisher[]).filter((p) => incomplete.has(p)),
   }
 }
@@ -219,9 +227,16 @@ export function landNumberOf(id: string): string {
   return id.slice(id.indexOf('-') + 1)
 }
 
-/** The marker of every draft in the map, for the lists' token; a listed draft not in it is `null`. */
-export function markersOf(map: EuMap): Map<string, EuMarker> {
-  return new Map(map.drafts.map((d) => [d.key, d.marker]))
+/**
+ * The lists' `eu` per key: the marker of every draft in the map, `null` for
+ * every other draft whose fact was read (no EU matter, or nothing said),
+ * and no entry at all for a draft the build did not read — the lists then
+ * leave `eu` off that row rather than claim a reading nobody made.
+ */
+export function markersOf(map: EuMap): Map<string, EuMarker | null> {
+  const out = new Map<string, EuMarker | null>(map.read.map((key) => [key, null]))
+  for (const d of map.drafts) out.set(d.key, d.marker)
+  return out
 }
 
 const PUBLISHER_ORDER: readonly EuPublisher[] = ['bund', ...LAND_CODES]
@@ -260,7 +275,9 @@ export function actPageOf(map: EuMap, celex: string): Pick<EuActResponse, 'act' 
     act,
     implementing: implementing.sort(byPublisherThenStart),
     restating: restating.sort(byPublisherThenStart),
-    landsWithout: LAND_CODES.filter((l) => !naming.has(l)),
+    // A Land the map could not read is not „without" — it is unread, and the
+    // page says so from `incomplete`; naming it in both sentences contradicts.
+    landsWithout: LAND_CODES.filter((l) => !naming.has(l) && !map.incomplete.includes(l)),
   }
 }
 

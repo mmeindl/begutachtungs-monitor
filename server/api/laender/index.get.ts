@@ -42,6 +42,11 @@ export default defineEventHandler(async (event): Promise<LaenderResponse> => {
     // stations, so one cached answer serves every choice.
     window ? euMarkersForList(gp) : null,
   ])
-  const withEu = markers ? items.map((d) => ({ ...d, eu: markers.get(landKey(d.land, landNumberOf(d.id))) ?? null })) : items
+  const withEu = markers
+    ? items.map((d) => {
+        const eu = markers.get(landKey(d.land, landNumberOf(d.id)))
+        return eu === undefined ? d : { ...d, eu }
+      })
+    : items
   return { items: withEu, sources, undated, gp, availableGps: listAvailableGps(currentGp), euAvailable: markers !== null }
 })
