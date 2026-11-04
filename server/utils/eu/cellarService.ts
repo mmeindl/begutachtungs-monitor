@@ -8,12 +8,37 @@ import { CELEX_RE, CELLAR_QUERY_VERSION, fetchTranspositionAnswer, parseTranspos
 import { PUBLISHED_DOCUMENT_TTL_S } from '../cache/ttl'
 
 /**
+ * At most two Cellar queries in flight, process-wide — the limit the corpus
+ * runs held (`scripts/corpus/eu.ts`). A page asks for a handful of acts; the
+ * EU map's build asks four drafts at once, and one draft can name 28 acts
+ * (32/ME), each its own query. Only a miss waits here: a cached answer never
+ * reaches the queue.
+ */
+const CELLAR_IN_FLIGHT = 2
+let cellarActive = 0
+const cellarQueue: (() => void)[] = []
+
+async function inCellarTurn<T>(fn: () => Promise<T>): Promise<T> {
+  // A finished query hands its slot straight to the next in line, so a
+  // newcomer can never slip in between and make it three.
+  if (cellarActive >= CELLAR_IN_FLIGHT) await new Promise<void>((resolve) => cellarQueue.push(resolve))
+  else cellarActive++
+  try {
+    return await fn()
+  } finally {
+    const next = cellarQueue.shift()
+    if (next) next()
+    else cellarActive--
+  }
+}
+
+/**
  * The Cellar's answer for one CELEX, as it arrived. A month: a directive's
  * transposition dates are fixed in its own text; a later act that moves
  * them is an act of its own with its own CELEX.
  */
 const fetchCellarAnswer = defineCachedFunction(
-  (celex: string): Promise<SparqlAnswer> => fetchTranspositionAnswer(celex),
+  (celex: string): Promise<SparqlAnswer> => inCellarTurn(() => fetchTranspositionAnswer(celex)),
   { name: 'eu-cellar', getKey: (celex: string) => `${celex}|q${CELLAR_QUERY_VERSION}`, maxAge: PUBLISHED_DOCUMENT_TTL_S, swr: false },
 )
 
