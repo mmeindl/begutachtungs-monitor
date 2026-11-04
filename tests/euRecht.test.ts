@@ -6,6 +6,7 @@ import { classifyVorblatt, classifyVorblattSentence, hasTextLayer, isVorblattDoc
 import { readExplanationsEuSignal, readUmsetzungshinweis, type LawTextBlock } from '../server/utils/eu/umsetzungshinweis'
 import { CELEX_RE, deadlineOf, parseTranspositionAnswer, transpositionQuery, transpositionUrl, type SparqlAnswer } from '../server/utils/eu/cellar'
 import { combineVerdicts, decideEuMarker } from '../server/utils/eu/euMarker'
+import { lawBlocksFromPdfPages } from '../server/utils/laender/draftPdfLaw'
 
 /*
  * Fixtures from the Phase-A disk cache (`.cache/eu/`, 04.11.2026), read
@@ -240,6 +241,18 @@ describe('readUmsetzungshinweis', () => {
     const national = readUmsetzungshinweis('Mit dieser Verordnung werden die Richtlinien zur Erstellung dieser Maßnahmenpakete umgesetzt.')
     expect(national.signal).toBeNull()
     expect(national.dropped).toHaveLength(1)
+  })
+
+  it('reads a Land § whose title the PDF reader joined to its first sentence (Tirol, t-2026-588)', () => {
+    // Thirteen lines of the draft PDF's text layer (`tirol-588-durchfuehrung.txt`):
+    // the PDF reader gives one block „§ 13b Durchführung von Unionsrecht Durch
+    // dieses Gesetz werden …" — a Land's § without the Bund's period.
+    const pages = [readFileSync(join(FIXTURES, 'tirol-588-durchfuehrung.txt'), 'utf8')]
+    const blocks = lawBlocksFromPdfPages(pages)!
+    expect(blocks.some((b) => b.text.startsWith('§ 13b Durchführung von Unionsrecht Durch dieses Gesetz'))).toBe(true)
+    const r = readUmsetzungshinweis(blocks)
+    expect(r.signal).toBe('durchfuehrung')
+    expect(r.acts.map((a) => a.celex)).toEqual(['32024R1028'])
   })
 
   it('skips the table of contents', () => {

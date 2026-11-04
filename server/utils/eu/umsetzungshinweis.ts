@@ -138,7 +138,12 @@ export function readUmsetzungshinweis(input: string | readonly LawTextBlock[]): 
     // as a quoted heading inside a Novellierungsanordnung, as „§ 21a.
     // Umsetzungshinweis", or in a combined heading („Vollziehung,
     // Inkrafttreten, Übergangsbestimmungen, Umsetzungshinweis").
-    const bare = b.text.replace(/^[\s"„]+|[\s"“]+$/g, '').replace(/^§\s*\d+[a-z]*\.\s*/, '').trim()
+    // The § symbol goes with or without its period: RIS prints „§ 21a.",
+    // a Land's PDF „§ 13b" — and the Land PDF reader joins that § with its
+    // title and first sentence into one block („§ 13b Durchführung von
+    // Unionsrecht Durch dieses Gesetz werden …", Tirol t-2026-588), which
+    // LAW_HEADING's open-ended alternatives read once the symbol is off.
+    const bare = b.text.replace(/^[\s"„]+|[\s"“]+$/g, '').replace(/^§\s*\d+[a-z]*\.?\s*/, '').trim()
     const headed = b.kind !== 'abs' && b.kind !== 'novao'
       ? LAW_HEADING.test(bare) || (bare.length < 140 && LAW_HEADING_WORD.test(bare))
       : bare.length < 60 && LAW_HEADING.test(bare)
