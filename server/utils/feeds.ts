@@ -356,6 +356,12 @@ export function buildSitemap(
   siteUrl: string,
   items: DraftSummary[],
   risItems: RisConsultation[] = [],
+  /**
+   * The EU acts' pages (`euActPath`) from the period's EU map — empty where
+   * no map is built; the overview `/eu-recht` stands either way
+   * (docs/architecture.md §12.66, Nachtrag 3).
+   */
+  euActPaths: string[] = [],
 ): string {
   const urls = [
     siteUrl,
@@ -369,6 +375,8 @@ export function buildSitemap(
     `${siteUrl}/impressum`,
     `${siteUrl}/datenschutz`,
     `${siteUrl}/statistik`,
+    `${siteUrl}/eu-recht`,
+    ...euActPaths.map((path) => `${siteUrl}${path}`),
     ...items.map((item) => pageUrl(siteUrl, item)),
     // The same reasoning as for the drafts: searching a Verordnung by name
     // is how someone affected by it finds the consultation at all — and for
