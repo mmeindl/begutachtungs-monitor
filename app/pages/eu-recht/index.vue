@@ -86,11 +86,16 @@ const [bundItem, eurLexItem] = sourceItemsDe([risSource('Vorblatt'), risSource('
             <h2 id="eu-akte-heading" class="sr-only">Rechtsakte</h2>
             <div class="overflow-clip rounded-xl border border-hairline">
               <ul role="list" class="divide-y divide-hairline">
-                <li v-for="row in shown" :key="row.key" class="px-4 py-3">
-                  <NuxtLink :to="row.path" class="link-quiet font-medium">{{ row.label }}</NuxtLink>
-                  <p class="mt-0.5 text-sm text-ink-secondary">
-                    <template v-if="row.deadline">{{ row.deadline }} · </template>{{ row.counts }}<template v-if="row.lands.length"> ({{ row.lands.join(', ') }})</template>
-                  </p>
+                <!-- The list row's anatomy (`EntryItem`): the whole row is the
+                     link, the title ink and underlined under the pointer, the
+                     ground tinted — never a blue inline link inside a list. -->
+                <li v-for="row in shown" :key="row.key">
+                  <NuxtLink :to="row.path" class="group block px-4 py-3 hover:bg-hover">
+                    <h3 class="font-medium text-ink group-hover:underline group-hover:decoration-2">{{ row.label }}</h3>
+                    <p class="mt-0.5 text-sm text-ink-secondary">
+                      <template v-if="row.deadline">{{ row.deadline }} · </template>{{ row.counts }}<template v-if="row.lands.length"> ({{ row.lands.join(', ') }})</template>
+                    </p>
+                  </NuxtLink>
                 </li>
               </ul>
               <ListMore

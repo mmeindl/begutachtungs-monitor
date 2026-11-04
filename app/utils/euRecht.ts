@@ -161,14 +161,14 @@ export function euFactView(r: EuRechtResponse | null | undefined): EuFactView | 
   }
 }
 
-/** One line „Weitere Entwürfe zur Richtlinie (EU) 2024/1069: Bund 1 · Länder 3" under the act list. */
+/** One line „Weitere Entwürfe zur Richtlinie (EU) 2024/1069: 1 des Bundes · 3 der Länder" under the act list. */
 export interface EuRelatedLine {
   celex: string
   /** The act's page. */
   path: string
   /** „Weitere Entwürfe zur Richtlinie (EU) 2024/1069" — the link's words. */
   phrase: string
-  /** „Bund 1 · Länder 3", each side only where it has any. */
+  /** „1 des Bundes · 3 der Länder", each side only where it has any — the sentence already says „Entwürfe". */
   counts: string
 }
 
@@ -186,7 +186,7 @@ const TO_THE: Record<EuActView['kind'], string> = {
  * other drafts of the window implement too, one line with the act in the
  * fact's own words and how many drafts the Bund and the Länder have beside
  * this one. A count of zero is left out, an act without others gets no
- * line — „Länder 0" would be a sentence about an absence the map cannot
+ * line — „0 der Länder" would be a sentence about an absence the map cannot
  * vouch for (it reads only the Begutachtungen it knows).
  *
  * The label's own form is kept („Richtlinie (EU) 2024/1069"), declined only
@@ -202,11 +202,23 @@ export function euRelatedLines(
     const r = byCelex.get(act.celex)
     if (!r || r.others.bund + r.others.laender <= 0) return []
     const label = act.label.replace(/^Delegierte\s/, 'Delegierten ')
-    const counts = [r.others.bund > 0 ? `Bund ${r.others.bund}` : null, r.others.laender > 0 ? `Länder ${r.others.laender}` : null]
+    // Drafts are counted, never Länder — „Länder 3" read as three Länder (04.11.2026).
+    const counts = [r.others.bund > 0 ? `${r.others.bund} des Bundes` : null, r.others.laender > 0 ? `${r.others.laender} der Länder` : null]
       .filter((x): x is string => x !== null)
       .join(' · ')
     return [{ celex: act.celex, path: r.path, phrase: `Weitere Entwürfe ${TO_THE[act.kind]} ${label}`, counts }]
   })
+}
+
+/**
+ * The dot's fill by what the stand is — `ScaleBar`'s one rule for the mark:
+ * the rail's yellow while the procedure still moves (today, a Beschluss
+ * before its Kundmachung), ink once a Gesetzblatt fixed it. One function
+ * for the draft's timeline and the act page's rows (04.11.2026): until then
+ * the draft's dot was yellow over a Kundmachung too.
+ */
+export function euDotOf(standLabel: string): 'ink' | 'mark' {
+  return standLabel.endsWith('gesetzblatt') ? 'ink' : 'mark'
 }
 
 /** What the page knows about its own side of the timeline. */

@@ -30,9 +30,15 @@ function listDe(names: readonly string[]): string {
   return names.length < 2 ? (names[0] ?? '') : `${names.slice(0, -1).join(', ')} und ${names.at(-1)}`
 }
 
-/** „Bund 1 · Länder 3", each side only where it has any — a zero is no finding the map can vouch for. */
+/**
+ * „1 Entwurf des Bundes · 3 Entwürfe der Länder", each side only where it
+ * has any — a zero is no finding the map can vouch for. Drafts are counted,
+ * never Länder: „Länder 3 (Burgenland, Salzburg)" stood here for an hour
+ * and read as three Länder beside two names (04.11.2026).
+ */
 export function countsDe(counts: { bund: number; laender: number }): string {
-  return [counts.bund > 0 ? `Bund ${counts.bund}` : null, counts.laender > 0 ? `Länder ${counts.laender}` : null]
+  const n = (k: number) => (k === 1 ? '1 Entwurf' : `${k} Entwürfe`)
+  return [counts.bund > 0 ? `${n(counts.bund)} des Bundes` : null, counts.laender > 0 ? `${n(counts.laender)} der Länder` : null]
     .filter((x): x is string => x !== null)
     .join(' · ')
 }
@@ -60,7 +66,7 @@ export interface EuActsRowView {
   path: string
   /** „Umsetzungsfrist bis 07.05.2026", „gilt unmittelbar", or null. */
   deadline: string | null
-  /** „Bund 1 · Länder 3". */
+  /** „1 Entwurf des Bundes · 3 Entwürfe der Länder" (`countsDe`). */
   counts: string
   /** The Länder with an implementing draft, by name, in display order. */
   lands: string[]

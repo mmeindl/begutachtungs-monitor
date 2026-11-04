@@ -30,7 +30,7 @@
  *
  * THE WAY TO THE MAP (§12.66, Nachtrag 3): under the act list, one line per
  * shown act that other drafts of the window implement too — „Weitere
- * Entwürfe zur Richtlinie (EU) 2024/1069: Bund 1 · Länder 3", the phrase a
+ * Entwürfe zur Richtlinie (EU) 2024/1069: 1 des Bundes · 3 der Länder", the phrase a
  * link to the act's page (`euRelatedLines`). A folded act gets its line
  * once the fold opens: the line names the act, and an act the sentence
  * does not show yet would be named here first.

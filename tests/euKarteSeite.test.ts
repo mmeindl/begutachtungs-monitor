@@ -166,8 +166,8 @@ describe('euActsRows', () => {
       ],
     }
     expect(euActsRows(r)).toEqual([
-      { key: '32024L1069', label: 'Richtlinie (EU) 2024/1069', path: '/eu-recht/richtlinie/2024/1069', deadline: 'Umsetzungsfrist bis 07.05.2026', counts: 'Bund 1 · Länder 3', lands: ['Oberösterreich', 'Salzburg', 'Wien'] },
-      { key: '32023R1114', label: 'Verordnung (EU) 2023/1114', path: '/eu-recht/verordnung/2023/1114', deadline: 'gilt unmittelbar', counts: 'Bund 2', lands: [] },
+      { key: '32024L1069', label: 'Richtlinie (EU) 2024/1069', path: '/eu-recht/richtlinie/2024/1069', deadline: 'Umsetzungsfrist bis 07.05.2026', counts: '1 Entwurf des Bundes · 3 Entwürfe der Länder', lands: ['Oberösterreich', 'Salzburg', 'Wien'] },
+      { key: '32023R1114', label: 'Verordnung (EU) 2023/1114', path: '/eu-recht/verordnung/2023/1114', deadline: 'gilt unmittelbar', counts: '2 Entwürfe des Bundes', lands: [] },
     ])
   })
 })

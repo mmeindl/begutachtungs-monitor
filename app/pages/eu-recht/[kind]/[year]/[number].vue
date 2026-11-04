@@ -15,7 +15,8 @@
  * TWO DATES AND A STAND, NO VERDICT (rule D6): no colour on a row, no
  * „verspätet", no count of days. The dot is the rail's yellow where the
  * procedure still moves (today, a Beschluss before its Kundmachung) and ink
- * where it is fixed in a Gesetzblatt — the mark's one meaning.
+ * where it is fixed in a Gesetzblatt — the mark's one meaning, shared with
+ * the draft's own timeline (`euDotOf`).
  *
  * The drafts that only restate the act — a Novelle repeating the whole
  * Umsetzungshinweis (rule D4) — follow apart and muted, without a bar.
@@ -23,6 +24,7 @@
 import type { EuActResponse } from '#shared/types'
 import { euActCelex } from '#shared/utils/eu'
 import { eurLexSource, risSource, sourceItemsDe } from '#shared/utils/provenance'
+import { euDotOf } from '~/utils/euRecht'
 import { euActPageView } from '~/utils/euKarte'
 
 const route = useRoute()
@@ -63,8 +65,6 @@ const headLine = computed(() => {
 
 /** „Heute" fits over its dot anywhere; a Gesetzblatt's name takes the edge rule (`DraftEuTimeline`). */
 const valueAlign = (label: string) => (label.length <= 6 ? 'center' as const : 'auto' as const)
-/** Yellow while the procedure still moves, ink once a Gesetzblatt fixed it. */
-const dotOf = (label: string) => (label.endsWith('gesetzblatt') ? 'ink' as const : 'mark' as const)
 
 /* The credit line, as on the overview (`/eu-recht`). */
 const [bundItem, eurLexItem] = sourceItemsDe([risSource('Vorblatt'), risSource('Gesetzestext'), eurLexSource('Fristen')])
@@ -117,33 +117,37 @@ const [bundItem, eurLexItem] = sourceItemsDe([risSource('Vorblatt'), risSource('
                frame: rows to consult, side by side on one scale. -->
           <div v-if="page.rows.length" class="mt-4 rounded-xl border border-hairline">
             <ul role="list" class="divide-y divide-hairline">
-              <li
-                v-for="row in page.rows"
-                :key="row.key"
-                class="grid gap-x-6 gap-y-1 px-4 py-3 md:grid-cols-[minmax(0,1fr)_minmax(0,1fr)] md:items-center"
-              >
-                <div class="min-w-0">
-                  <p class="text-sm">
-                    <strong class="font-semibold text-ink">{{ row.publisher }}</strong>
-                  </p>
-                  <NuxtLink :to="row.path" class="link-quiet font-medium">{{ row.title }}</NuxtLink>
-                  <p class="mt-0.5 text-sm text-ink-secondary">
-                    {{ row.kennung }}
-                  </p>
-                </div>
-                <div v-if="row.bar" class="min-w-0" aria-hidden="true">
-                  <!-- Decoration beside the row's text, which says the same dates in words. -->
-                  <ScaleBar
-                    :value="row.bar.value"
-                    :value-label="row.bar.valueLabel"
-                    :value-align="valueAlign(row.bar.valueLabel)"
-                    :band="row.bar.band"
-                    :from="row.bar.from"
-                    :marks="row.bar.marks"
-                    :labels="false"
-                    :dot="dotOf(row.bar.valueLabel)"
-                  />
-                </div>
+              <!-- The list row's anatomy (`EntryItem`): the whole row — text and
+                   bar — is the link to the draft's page, the title ink and
+                   underlined under the pointer, the ground tinted. -->
+              <li v-for="row in page.rows" :key="row.key">
+                <NuxtLink
+                  :to="row.path"
+                  class="group grid gap-x-6 gap-y-1 px-4 py-3 hover:bg-hover md:grid-cols-[minmax(0,1fr)_minmax(0,1fr)] md:items-center"
+                >
+                  <div class="min-w-0">
+                    <p class="text-sm">
+                      <strong class="font-semibold text-ink">{{ row.publisher }}</strong>
+                    </p>
+                    <h3 class="font-medium text-ink group-hover:underline group-hover:decoration-2">{{ row.title }}</h3>
+                    <p class="mt-0.5 text-sm text-ink-secondary">
+                      {{ row.kennung }}
+                    </p>
+                  </div>
+                  <div v-if="row.bar" class="min-w-0" aria-hidden="true">
+                    <!-- Decoration beside the row's text, which says the same dates in words. -->
+                    <ScaleBar
+                      :value="row.bar.value"
+                      :value-label="row.bar.valueLabel"
+                      :value-align="valueAlign(row.bar.valueLabel)"
+                      :band="row.bar.band"
+                      :from="row.bar.from"
+                      :marks="row.bar.marks"
+                      :labels="false"
+                      :dot="euDotOf(row.bar.valueLabel)"
+                    />
+                  </div>
+                </NuxtLink>
               </li>
             </ul>
             <div v-if="page.axis.length" class="grid gap-x-6 border-t border-hairline px-4 pb-1 pt-2 md:grid-cols-[minmax(0,1fr)_minmax(0,1fr)]">
@@ -160,7 +164,7 @@ const [bundItem, eurLexItem] = sourceItemsDe([risSource('Vorblatt'), risSource('
             <PageSubsection heading="Weitere Entwürfe, die den Akt im geltenden Umsetzungshinweis nennen" class="mt-8">
               <ul role="list" class="space-y-1 text-sm text-ink-muted">
                 <li v-for="row in page.restating" :key="row.key">
-                  {{ row.publisher }} · <NuxtLink :to="row.path" class="link-quiet">{{ row.title }}</NuxtLink>
+                  {{ row.publisher }} · <NuxtLink :to="row.path" class="link-muted">{{ row.title }}</NuxtLink>
                 </li>
               </ul>
             </PageSubsection>

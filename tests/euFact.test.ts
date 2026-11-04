@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { deadlineActs, euFactView, euLeadOf, euRelatedLines, euTimeline } from '../app/utils/euRecht'
+import { deadlineActs, euDotOf, euFactView, euLeadOf, euRelatedLines, euTimeline } from '../app/utils/euRecht'
 import type { EuActView, EuRechtResponse } from '../shared/types/eu'
 
 /* The ProcedureCard's EU line as words (§12.66): two dates, no verdict. */
@@ -190,14 +190,21 @@ describe('euFactView — two dates, no verdict', () => {
       { celex: '32009L0043', path: '/eu-recht/richtlinie/2009/43', others: { bund: 0, laender: 0 } },
     ]
     expect(euRelatedLines(v.acts, related)).toEqual([
-      { celex: '32024L1069', path: '/eu-recht/richtlinie/2024/1069', phrase: 'Weitere Entwürfe zur Richtlinie (EU) 2024/1069', counts: 'Bund 1 · Länder 3' },
-      { celex: '32023R1114', path: '/eu-recht/verordnung/2023/1114', phrase: 'Weitere Entwürfe zur Verordnung (EU) 2023/1114', counts: 'Länder 2' },
-      { celex: '32022D2481', path: '/eu-recht/beschluss/2022/2481', phrase: 'Weitere Entwürfe zum Beschluss (EU) 2022/2481', counts: 'Bund 2' },
-      { celex: '32019R0980', path: '/eu-recht/verordnung/2019/980', phrase: 'Weitere Entwürfe zur Delegierten Verordnung (EU) 2019/980', counts: 'Bund 1' },
+      { celex: '32024L1069', path: '/eu-recht/richtlinie/2024/1069', phrase: 'Weitere Entwürfe zur Richtlinie (EU) 2024/1069', counts: '1 des Bundes · 3 der Länder' },
+      { celex: '32023R1114', path: '/eu-recht/verordnung/2023/1114', phrase: 'Weitere Entwürfe zur Verordnung (EU) 2023/1114', counts: '2 der Länder' },
+      { celex: '32022D2481', path: '/eu-recht/beschluss/2022/2481', phrase: 'Weitere Entwürfe zum Beschluss (EU) 2022/2481', counts: '2 des Bundes' },
+      { celex: '32019R0980', path: '/eu-recht/verordnung/2019/980', phrase: 'Weitere Entwürfe zur Delegierten Verordnung (EU) 2019/980', counts: '1 des Bundes' },
     ])
     // Only the acts the caller shows: a folded act gets no line.
     expect(euRelatedLines(v.acts.slice(0, 1), related).map((l) => l.celex)).toEqual(['32024L1069'])
     expect(euRelatedLines(v.acts, undefined)).toEqual([])
+  })
+
+  it('fills the dot by the stand: yellow while it moves, ink once a Gesetzblatt fixed it', () => {
+    expect(euDotOf('Heute')).toBe('mark')
+    expect(euDotOf('Beschluss')).toBe('mark')
+    expect(euDotOf('Bundesgesetzblatt')).toBe('ink')
+    expect(euDotOf('Landesgesetzblatt')).toBe('ink')
   })
 
   it('gives the list row the fact\'s own lead words', () => {
