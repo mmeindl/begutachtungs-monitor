@@ -30,7 +30,7 @@ export interface ScaleMark {
  * Line, dot, band and ticks are decoration (`aria-hidden`); the value above
  * and the labels below are text, so a screen reader loses nothing.
  */
-const props = defineProps<{
+const props = withDefaults(defineProps<{
   /** Percent of the track, 0–100. */
   value: number
   /** Stands over the dot, centred on it except near either end. */
@@ -46,9 +46,14 @@ const props = defineProps<{
    * `DraftEuTimeline`).
    */
   dot?: 'ink' | 'mark'
-  /** Whether the label row under the track is drawn; a caller with a legend of its own drops it. */
+  /**
+   * Whether the label row under the track is drawn; a caller with a legend
+   * of its own drops it. The default must be spelled out: Vue casts an
+   * absent Boolean prop to `false`, and for an afternoon (04.11.2026) that
+   * took the Median and Regelfall from under every Frist bar.
+   */
   labels?: boolean
-}>()
+}>(), { labels: true })
 
 defineSlots<{
   mark(props: { mark: M }): unknown
@@ -96,7 +101,7 @@ const DOT = computed(() => `absolute top-0 box-border size-3 -translate-x-1/2 ro
       />
       <span :class="DOT" :style="{ left: pct(value) }" />
     </div>
-    <div v-if="labels !== false" class="relative mt-2 h-8 text-xs leading-4 text-ink-muted">
+    <div v-if="labels" class="relative mt-2 h-8 text-xs leading-4 text-ink-muted">
       <span
         v-for="mark in marks"
         :key="mark.key"

@@ -18,8 +18,9 @@
  *
  * THE DATES AS A PICTURE where the page hands over its side (`timeline`):
  * the deadline, the Begutachtung and where the procedure stands, on one
- * calendar track (`DraftEuTimeline`), with the row of dates under it as its
- * legend — the row stays in any case, it is the text form.
+ * calendar track (`DraftEuTimeline`) with a key under it — one item per
+ * shape, the dates in the items. The row „Umsetzungsfrist bis … ·
+ * Begutachtung ab …" is the text form where the track cannot be drawn.
  *
  * FOLDED PAST FIVE ACTS (04.11.2026). The Elektrizitätswirtschaftsgesetz
  * (32/ME) names 28, the Vergaberechtsgesetz 24: a sentence of 28 links is
@@ -28,7 +29,9 @@
  * to five and one.
  */
 import type { EuRechtResponse } from '#shared/types'
+import { formatDateDe } from '#shared/utils/format'
 import { euFactView, euTimeline, type EuTimelineContext } from '~/utils/euRecht'
+import type { EuLegendItem } from '~/components/draft/DraftEuTimeline.vue'
 
 const props = defineProps<{
   data: EuRechtResponse | null | undefined
@@ -50,6 +53,26 @@ const SUPERSCRIPT = ['', '¹', '²', '³', '⁴', '⁵', '⁶', '⁷', '⁸', '�
 /** The Vorblatt's sentence without its own full stop — the line adds one after the quote. */
 const quote = computed(() => view.value?.quote?.replace(/[.\s]+$/, '') ?? null)
 
+/**
+ * The key under the bar, in track order: every Umsetzungsfrist with its
+ * footnote mark, the Begutachtung with both its dates, and the dot's word —
+ * „Heute" alone, a Beschluss or a Kundmachung with its day.
+ */
+const legend = computed<EuLegendItem[]>(() => {
+  const v = view.value
+  const ctx = props.timeline
+  if (!v || !ctx || !timeline.value) return []
+  const { start, end } = ctx.begutachtung
+  return [
+    ...v.deadlines.map((d, i): EuLegendItem => ({
+      glyph: 'tick',
+      text: `Umsetzungsfrist${d.of ? ` ${d.of}` : ''} ${d.date}${notes.value[i] ? SUPERSCRIPT[notes.value[i]!] ?? `(${notes.value[i]})` : ''}`,
+    })),
+    ...(start ? [{ glyph: 'band' as const, text: `Begutachtung ${formatDateDe(start)}${end ? `–${formatDateDe(end)}` : ''}` }] : []),
+    { glyph: 'dot', text: ctx.stand.label === 'Heute' ? 'Heute' : `${ctx.stand.label} ${formatDateDe(ctx.stand.date)}` },
+  ]
+})
+
 const FOLD_AT = 5
 const expanded = ref(false)
 /** The acts the line prints: all, or the first five with the rest behind „Alle N anzeigen". */
@@ -68,8 +91,8 @@ const folded = computed(() => (view.value?.acts.length ?? 0) > shownActs.value.l
         Laut Vorblatt: „{{ quote }}“.
       </template>
     </p>
-    <DraftEuTimeline v-if="timeline" :view="timeline" />
-    <p v-if="view.deadlines.length" :class="timeline ? 'mt-2 text-sm text-ink-secondary' : 'mt-1 text-sm text-ink-secondary'">
+    <DraftEuTimeline v-if="timeline" :view="timeline" :legend="legend" />
+    <p v-else-if="view.deadlines.length" class="mt-1 text-sm text-ink-secondary">
       {{ view.deadlines.length > 1 ? 'Umsetzungsfristen' : 'Umsetzungsfrist' }}<template v-for="(d, i) in view.deadlines" :key="d.label"><template v-if="i > 0">,</template>{{ d.of ? ` ${d.of}` : '' }} bis {{ d.date }}<template v-if="notes[i]">{{ SUPERSCRIPT[notes[i]!] ?? `(${notes[i]})` }}</template></template><template v-if="view.start"> · Begutachtung ab {{ view.start }}</template>
     </p>
     <p class="mt-1 text-xs text-ink-muted">
