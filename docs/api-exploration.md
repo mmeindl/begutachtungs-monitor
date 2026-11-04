@@ -846,6 +846,22 @@ Paragraph transposes the act or only refers to it (`transposesAct`,
 `server/utils/eu/bundesrecht.ts`); the `Hits.#text` total says whether more
 than the page's hundred exist.
 
+**The Länder: LrKons, the same search** (probe 04.11.2026, five Kärnten acts
+of one draft). `GET https://data.bka.gv.at/ris/api/v2.6/Landesrecht?
+Applikation=LrKons&Bundesland_SucheInKaernten=true&Suchworte="2000/43/EG"
+&Fassung.FassungVom=2026-09-08&DokumenteProSeite=OneHundred` — the BrKons
+parameters with `Applikation=LrKons` and one `Bundesland_SucheIn<Land>=true`
+(spelled as `RIS_LAND` in `server/utils/laender/landKons.ts`), the phrase from
+`bundesrechtPhrase` unchanged. Hits: 91/533/EWG 1, 97/81/EG 0, 1999/70/EG 1,
+2000/43/EG 3, 2000/78/EG 1. Each hit is one Paragraph or Anlage, ID
+`LKT…`, its XML under `Dokumentliste.ContentReference` as in BrKons — but
+the metadata sit under `Data.Metadaten.Landesrecht` (`Kurztitel`,
+`Bundesland`, `LrKons.{Typ, ArtikelParagraphAnlage, Paragraphnummer, …}`,
+`Typ` „LG“), not `Metadaten.Bundesrecht.BrKons`. So **`bundesrechtHits`
+keeps none of them** (`typCountsAsBundesrecht(undefined)` is false), while
+`transposesAct` reads the Land XML unchanged. A Landesrecht variant beside
+`bundesrechtHits` is step-2 work of the EU feature, not built.
+
 **CELEX and ELI from a citation.** CELEX = `3` + four-digit year + `L`
 (Richtlinie) / `R` (Verordnung) / `D` (Beschluss, Entscheidung) + four-digit
 zero-padded number — „Richtlinie (EU) 2024/1069“ → `32024L1069`, „Verordnung

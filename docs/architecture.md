@@ -14483,6 +14483,72 @@ Ausgabe, `drafts.csv`, `acts.csv` und `disagreements.md` mit dem Lauf davor
 identisch. Abschnitt g wendet `euMarker.ts` an; D4 misst der Lauf nicht
 (geltendes Recht liegt nicht im Cache).
 
+#### Nachtrag (Länder), 04.11.2026
+
+Vor Schritt 2 gemessen, ob die Module Landesentwürfe lesen: `pnpm
+corpus:eu-laender` über alle 489 Entwürfe im Fenster der XXVIII. GP (Bgld
+121, Ktn 60, NÖ 10, OÖ 36, Sbg 187, Stmk 40, T 28, Vbg 2, W 5), jede Lesung
+durch die ausgelieferten Module; ein zweiter Lauf aus `.cache/eu-laender/`
+stellt keine Anfrage.
+
+- **Das „ob“ hat kein Werkzeug.** EU-Überschrift in den Erläuterungen: Bgld
+  88 % („Verhältnis zu (den) Rechtsvorschriften der Europäischen Union“), OÖ
+  29 von 34 (fester Abschnitt V, gleicher Wortlaut), Sbg ≈61 % („3.
+  Übereinstimmung mit dem EU-Recht“, „EU-Konformität“), NÖ 5 von 10
+  („EU-Konformität“), Vbg 2 von 2 („EU-Recht“), Ktn 3 von 55, T 0.
+  Darunter freie Sätze: das Nein in Hausfloskeln („stehen – soweit
+  ersichtlich – keine zwingenden unionsrechtlichen Vorschriften entgegen“),
+  das Ja in Prosa, die den Akt nennt. Am nächsten am Bund die Steiermark:
+  „Allgemeiner Teil mit (vereinfachter) wirkungsorientierter
+  Folgenabschätzung“, die Überschrift des Bundes in 36 von 40, zwei
+  Satztypen. Bgld und W haben ein Vorblatt, die Überschrift ohne „den“.
+- **Das „welcher“:** der Gesetzestext nennt einen Akt in 37 von 489 (7,6 %),
+  nach den Korrekturen unten 39 (8,0 %; Sbg 18, Bgld 8, Ktn 4, Stmk 4, T 3,
+  OÖ 2); die Erläuterungen nennen irgendwo einen in 124. Zum Teil ist die
+  Lücke der Leser: OÖ schreibt „Umsetzungshinweis:“ je Bestimmung in den
+  Besonderen Teil, und OÖ wie Sbg ergänzen einen bestehenden Hinweis um eine
+  **zitierte Ziffer** („12. Richtlinie (EU) 2024/1385 …“) ohne „umgesetzt“
+  im Block — der größte einzelne Gewinn für Schritt 2.
+- **Bis wann:** 190 Akte, 182 kennt der Cellar (sechs Zitierfehler). Mit Akt
+  aus dem Gesetzestext und Beginndatum 24 Entwürfe (vorher 23): 14 nach der
+  spätesten Frist, 8 dazwischen, 2 vor allen; Median +55 Tage, gegen die
+  früheste +6.634 — die kumulativen Hinweise wie beim Bund (D4).
+- **D4 für die Länder** (Probe, fünf Kärntner Akte): die Suche über das
+  konsolidierte Landesrecht trägt mit den Parametern von BrKons
+  (`docs/api-exploration.md` §2d), `transposesAct` liest die Treffer unverändert;
+  `bundesrechtHits` behält von ihnen keinen. Die Variante ist Schritt 2.
+
+**Fehler der ausgelieferten Module, behoben** (das Beispiel jeweils zuerst
+als Test): (1) `readExplanationsEuSignal` las „Der Entwurf dient nicht der
+Durchführung oder Umsetzung von Unionsrecht“ als Umsetzung — über D5 eine
+falsche Aussage, wo kein Vorblatt gelesen wird; ein verneinter Satzteil wird
+jetzt bis zum Satzende ausgeblendet (Stmk 5 → 1 Signal). (2) `EU_HEADING`
+verlangte „zu den“ (Vorblätter mit Überschrift: Bgld 54 → 105, W 0 → 5).
+(3) `classifyVorblattSentence`: die Verneinung ist `frei-nein` (`nicht-eu`
+bleibt dem wörtlichen Werkzeugsatz), Listenform und langer Akttitel sind
+`frei-umsetzung` — FREE_YES liest satzweise statt in 120 Zeichen —, „werden
+folgende Verordnungen durchgeführt“ ist `flankierend-vo`, FREE_NO kennt die
+Floskeln der Länder (Stmk: freitext 35 · frei-umsetzung 1 → frei-nein 27 ·
+frei-umsetzung 7 · flankierend-vo 2). (4) „§ 13b Durchführung von
+Unionsrecht Durch dieses Gesetz …“ (Tirol): der PDF-Leser fügt Titel und
+Satz zu einem Block, `readUmsetzungshinweis` nahm das Paragraphzeichen nur
+mit Punkt ab — behoben im EU-Modul, weil die Blöcke des PDF-Lesers den
+Paragraphenvergleich der Länder tragen. (5) `AFTER_EU` kennt das Ende eines
+Landesabschnitts; OÖs Abschnitt V lief sonst in den Besonderen Teil.
+
+**Der Bund, aus dem Cache nachgemessen:** die Anteile auf
+`/so-funktionierts#eu-recht` (43 und 64 von 154) und jede Klasse der GP
+XXVIII unverändert. Eine Verordnung des RIS-Fensters (VbA/LF-VbA) verliert
+einen Erläuterungsabsatz, dessen Signal nur aus „nicht oder unzureichend
+umgesetzt“ kam; ihr Signal bleibt, aus der Messspalte fällt der Akt
+2019/1833 (die Seite nennt nach D5 keinen), p75/p90 der Fristabstände der
+Verordnungen verschieben sich.
+
+**Offen:** 30 steirische Erläuterungen hinter der Sperre der Landesseite
+(503); NÖs Gesetzestext ohne Einleitungssatz, nicht gelesen; Bgld ohne
+Beginndaten, also ohne Fristurteil; ≈25 falsche Salzburger Überschriften
+aus den zitierten Ziffern (`parseLandExplanations`).
+
 ## 13. Open questions
 
 1. **Legal (restated 2026-09-16 — the old wording asked the wrong question).** It assumed the metadata was CC-BY and only the full texts excluded. Parliament's licence page for the Begutachtungsverfahren excludes *Beteiligungen zu Ministerialentwürfen* from open-data reuse as such, and no licensed dataset covers Ministerialentwürfe at all. So the question is now: **on what basis may the metadata of lists 81/142/305 be reused?** Two halves — the factual one (how is that sentence meant, is a case-by-case release possible) goes to the Parlamentsdirektion, the legal one (is factual metadata protectable at all; Datenbankherstellerrecht §§ 76c ff vs. § 42h UrhG) to a university partner. The inline web-form texts remain a sub-question of it, not a separate one. It blocks a blanket CC-BY claim on the site, which was removed on 2026-09-16. **And "stage 1 is metadata-only either way", which stood here until 2026-09-19, is not quite true — one block breaks it.** Under „Worum geht es?" the draft page prints Parliament's `shortinfo`: Ziele, Inhalt, Hauptgesichtspunkte. That is prose from the excluded dataset, and no enumeration of "Fristen, Geschäftszahlen, Anzahl" covers it. The obvious escape was measured and does not hold (`pnpm corpus:kurzinfo`, GP XXVII, 337 drafts): the Kurzinformation is *not* simply the ministry's text, which RIS publishes CC BY. 53 % of drafts carry no prose at all, only the Vorblatt lists (67 % of all characters, untested here because the Vorblatt is a RIS document the corpus mapper does not carry); where there is prose, a median of 60 % of its eight-word windows occur verbatim in the ministry's documents, p10 25 %, and only 6.6 % of drafts are covered to 90 % or more. It is Parliament's editorial work on the ministry's material — related, but not the same document, so it cannot be sourced from RIS instead. Consequence: `/impressum` and `/ueber` name it since 2026-09-19, and **the question to the Parlamentsdirektion has to name it too** — an answer of the form "only the contents of the Stellungnahmen are excluded" would not settle it, because the Kurzinformation is neither a Stellungnahme nor a metadatum. And a third block, found 23.09.2026, which unlike the Kurzinformation sits in code: the § comparison reads the Ministerialentwurf's Gesetzestext from Parliament's HTML wherever Parliament publishes one (`diff/lawDiffService.ts`, RIS XML only where it does not), and the Begründungsvergleich reads the draft's Erläuterungen from the same copy on both sides (`explanations/reasoningDiffService.ts`) — both for a measured reason, one Word template on both sides (§12.12, sixth measurement), and both against the source order the Textgegenüberstellung follows (`annex/annexSource.ts`). The argument that carries it is the one the annex switch refuses for the drafts RIS does not hold — the same documents stand in RIS under CC BY — and for those drafts (12 of 350 in GP XXVII) the comparison shows Parliament's text with no RIS twin. `/ueber` and `/impressum` name it since 23.09.2026. Open, and part of the question above: whether to read the draft's text RIS-first like the annex, at the measured cost to the alignment, or to keep the parser symmetry and say so — as the copy now does. Read live on 23.09.2026, Parliament's own dataset pages (Regierungsvorlagen, Anträge, Ausschussberichte, Beschlüsse — one template) call the documents of those items „freie Werke und somit ohne Lizenzierung frei nutzbar“ and license only the result lists, the API and the history pages as CC BY 4.0; the exclusion sentence on the Beteiligungen page names *Beteiligungen* zu Ministerialentwürfen, not the drafts or their documents. (What stood here until 30.09.2026 — that the Beteiligungen lists are CC BY and that the Stellungnahmen zur Regierungsvorlage, §12.14, run under that grant — was a misreading: the Beteiligungen dataset is „Aktuelle Beteiligungen", list 143, items open for participation on the day of the query, and its page says „Ministerialentwürfe und Stellungnahmen fallen nicht darunter"; the Regierungsvorlagen page excludes „sämtliche Informationen zu Stellungnahmen" from free use and licensing, for data protection and copyright. The Stellungnahmen zur Regierungsvorlage therefore carry no licence either, and `/impressum` says so since 30.09.2026.) So the sharp form of the question to the Parlamentsdirektion is whether „die Dokumente selbst sind freie Werke“ holds for a Ministerialentwurf's documents too — and, separately, on what basis list 81 as such and the Kurzinformation may be reused. **The § comparison's own credit line was corrected to those facts on 23.09.2026:** it claimed „CC BY 4.0" whenever neither side was the Ministerialentwurf (`isLicensedPair`), which named a licence Parliament does not grant for these documents — the correct note for a Regierungsvorlage, Ausschuss- or Plenarfassung read from Parliament is „Dokumente: freie Werke, § 7 UrhG", a RIS-sourced side stays CC BY 4.0, and the Ministerialentwurf is credited by name with no claim at all, because what may be claimed for it is precisely this open question (`lawDiffSourceCredit`).
