@@ -303,6 +303,7 @@ const doorHref = computed(() => {
           </p>
           <DraftEuFact :data="euRecht" :timeline="euTimelineCtx" />
         </ProcedureCard>
+        <DraftEuCredits :data="euRecht" />
 
         <!-- The one place to act, in the slot and the shape the draft page
            uses for its Stellungnahme-CTA. Only while the Frist runs: an

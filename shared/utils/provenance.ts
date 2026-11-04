@@ -68,6 +68,29 @@ export function documentSource(what: string, station: LawStationId, publisher: P
 export const PUBLISHER_NAME_DE: Record<Publisher, string> = {
   ris: 'RIS',
   parlament: 'Parlament',
+  eurlex: 'EUR-Lex',
+}
+
+/**
+ * A directive's dates from EUR-Lex's Cellar (04.11.2026): named, no claim —
+ * what the monitor takes is a date and a link, and the Impressum says the
+ * reuse terms are EUR-Lex's own (`/impressum#imp-eurlex`).
+ */
+export function eurLexSource(what: string): SourceEntry {
+  return { what, publisher: 'eurlex', terms: 'keine-lizenz' }
+}
+
+/**
+ * The items after „Quellen:" where several publishers stand behind a
+ * section: what came from each, with its publisher in brackets
+ * („Vorblatt und Gesetzestext (RIS)", „Fristen (EUR-Lex)"); after
+ * „Quelle: RIS" the items name only what.
+ */
+export function sourceItemsDe(sources: readonly SourceEntry[]): string[] {
+  const mixed = mixedPublishers(sources)
+  const byPublisher = new Map<Publisher, string[]>()
+  for (const s of sources) byPublisher.set(s.publisher, [...(byPublisher.get(s.publisher) ?? []), s.what])
+  return [...byPublisher].map(([p, whats]) => `${whats.join(' und ')}${mixed ? ` (${PUBLISHER_NAME_DE[p]})` : ''}`)
 }
 
 /** Whether a section's documents come from more than one publisher — then each item has to name its own. */

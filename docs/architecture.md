@@ -14437,6 +14437,14 @@ Glyphenzeile war nicht zu lesen. Die Lehre steht hier, damit die
 Strecke nicht wieder beim Beschluss beginnt: das Fenster ist eine Zahl für
 den Satz, die Lage zur Frist ist das Bild.
 
+**Die Quelle unter der Karte** (am Abend des 04.11.2026), wie unter jeder
+Karte der Seite, in der einen Zeile von `SectionCredits`: „Quellen: Vorblatt
+und Gesetzestext (RIS) · Fristen (EUR-Lex) · Methode" (`DraftEuCredits`);
+sie stand zuerst im Fakt selbst. EUR-Lex ist seither der dritte Publisher
+in `provenance.ts`, ohne Anspruch (`keine-lizenz`), wie das Impressum es
+sagt. Die Fußnoten zu weiteren Fristen bleiben beim Fakt, sie erklären
+seine Hochzahlen.
+
 **Lange Aktenlisten falten** (32/ME nennt 28, 58/ME 24): die ersten fünf
 stehen, dann „Alle 28 anzeigen" im Listenidiom der Seite — alles auf einmal,
 nie zehn weitere; sechs werden nicht auf fünf und einen gefaltet. Die

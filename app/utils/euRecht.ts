@@ -15,6 +15,7 @@
  */
 import type { EuActView, EuMarker, EuRechtResponse } from '#shared/types'
 import { formatDateDe } from '#shared/utils/format'
+import { eurLexSource, risSource, type SourceEntry } from '#shared/utils/provenance'
 
 /** The lead words in bold. */
 const LEAD: Record<EuMarker, string> = {
@@ -58,8 +59,8 @@ export interface EuFactView {
   deadlines: EuDeadlineView[]
   /** The first day of the Begutachtung, formatted; null without deadlines or without a date. */
   start: string | null
-  /** „Vorblatt und Gesetzestext aus dem RIS, Fristen aus EUR-Lex". */
-  sourceLine: string
+  /** What the fact read and from whom, for the credit line under the card (`SectionCredits`). */
+  sources: SourceEntry[]
 }
 
 /** Whether the act's kind is what the lead says. */
@@ -97,12 +98,12 @@ export function euFactView(r: EuRechtResponse | null | undefined): EuFactView | 
     label: a.label,
   }))
   const read = r.markerSource === 'erlaeuterungen'
-    ? 'Erläuterungen'
+    ? ['Erläuterungen']
     : r.actsSource === 'gesetzestext'
-      ? 'Vorblatt und Gesetzestext'
+      ? ['Vorblatt', 'Gesetzestext']
       : r.actsSource === 'titel'
-        ? 'Vorblatt und Titel'
-        : 'Vorblatt'
+        ? ['Vorblatt', 'Titel']
+        : ['Vorblatt']
   return {
     lead: LEAD[r.marker],
     attach,
@@ -112,7 +113,7 @@ export function euFactView(r: EuRechtResponse | null | undefined): EuFactView | 
     adoptedNote: due.length === 1 && acts.length === 1 && due[0]!.adopted ? `beschlossen am ${formatDateDe(due[0]!.adopted)}` : null,
     deadlines,
     start: deadlines.length && r.begutachtungStart ? formatDateDe(r.begutachtungStart) : null,
-    sourceLine: `${read} aus dem RIS${deadlines.length ? ', Fristen aus EUR-Lex' : ''}`,
+    sources: [...read.map(risSource), ...(deadlines.length ? [eurLexSource('Fristen')] : [])],
   }
 }
 

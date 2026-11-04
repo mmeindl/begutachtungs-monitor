@@ -403,6 +403,8 @@ const ministryLinks = computed(() => {
                one above, so the same hairline. -->
             <DraftEuFact :data="euRecht" :timeline="euTimelineCtx" />
           </ProcedureCard>
+          <!-- The EU fact's source, under the card like every card's (§12.66). -->
+          <DraftEuCredits :data="euRecht" />
 
           <!-- Deadline, action and calendar welded into one card: the page's
              door, shown while any window for input is open. The Begutachtung

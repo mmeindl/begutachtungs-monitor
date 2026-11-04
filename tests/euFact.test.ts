@@ -35,7 +35,7 @@ describe('euFactView — two dates, no verdict', () => {
       attach: 'colon',
       deadlines: [{ of: null, date: '07.05.2026', otherDates: [] }],
       start: '21.10.2026',
-      sourceLine: 'Vorblatt und Gesetzestext aus dem RIS, Fristen aus EUR-Lex',
+      sources: [{ what: 'Vorblatt', publisher: 'ris', terms: 'cc-by' }, { what: 'Gesetzestext', publisher: 'ris', terms: 'cc-by' }, { what: 'Fristen', publisher: 'eurlex', terms: 'keine-lizenz' }],
     })
     expect(JSON.stringify(v)).not.toMatch(/\b(?:war|ist|begann)\b/)
   })
@@ -50,7 +50,7 @@ describe('euFactView — two dates, no verdict', () => {
       const v = euFactView(response({ acts: [act(over)] }))!
       expect(v.deadlines, JSON.stringify(over)).toEqual([])
       expect(v.start).toBeNull()
-      expect(v.sourceLine).toBe('Vorblatt und Gesetzestext aus dem RIS')
+      expect(v.sources.map((x) => x.publisher)).toEqual(['ris', 'ris'])
     }
     expect(deadlineActs([act({ kind: 'verordnung', transposition: null })])).toEqual([])
   })
@@ -137,6 +137,6 @@ describe('euFactView — two dates, no verdict', () => {
   it('shows nothing without a marker, and names no act on the Erläuterungen road', () => {
     expect(euFactView(response({ marker: null }))).toBeNull()
     expect(euFactView(response({ available: false }))).toBeNull()
-    expect(euFactView(response({ markerSource: 'erlaeuterungen', acts: [], actsSource: null }))).toMatchObject({ attach: 'none', sourceLine: 'Erläuterungen aus dem RIS' })
+    expect(euFactView(response({ markerSource: 'erlaeuterungen', acts: [], actsSource: null }))).toMatchObject({ attach: 'none', sources: [{ what: 'Erläuterungen', publisher: 'ris' }] })
   })
 })
