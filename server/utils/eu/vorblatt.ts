@@ -22,6 +22,7 @@
  * Verordnungen … und dient der Umsetzung mehrerer Richtlinien", which is an
  * implementation.
  */
+import { withoutNegatedSignals } from './umsetzungshinweis'
 
 /**
  * The Vorblatt/WFA by its document name — every form in the window since
@@ -106,20 +107,57 @@ export const VORBLATT_EU_YES: ReadonlySet<VorblattClass> = new Set(['umsetzung',
  * (EU) 2024/2749 und …", „Dient auch der Umsetzung der Richtlinie
  * 2005/36/EG", „… ausschließlich zur Umsetzung von zwei EU- Richtlinien",
  * „… im Sinne der Durchführungsverordnung (EU) 2019/947 umgesetzt werden".
+ *
+ * Tested per sentence (`sentencesOf`), not on the section: Steiermark writes
+ * „Mit dem Entwurf werden folgende Richtlinien umgesetzt: 1. Richtlinie …"
+ * and „Mit dem Entwurf wird die Richtlinie 2012/18/EU … („Seveso
+ * III-Richtlinie") umgesetzt", where the act's title stands between
+ * „Richtlinie" and „umgesetzt" — 230 characters in that case, beyond the
+ * 120-character window this used to allow, and full of the periods of „vom
+ * 4. Juli 2012" and „ABl.". The verb needs its subject („wird/werden …
+ * umgesetzt") or „umgesetzt werden", so „wurde bereits … umgesetzt" stays a
+ * past implementation.
  */
-const FREE_YES = /\bUmsetzung\s+(?:einer|der|von|zweier|mehrerer)\s+[^.]{0,40}?(?:Richtlinie|Richtlinien)\b|\bUmsetzung\s+(?:von|der)\s+(?:zwei|mehreren)\s+EU-\s?Richtlinien|(?:Richtlinie|Verordnung)[^.]{0,120}?umgesetzt\s+werden|aus\s+zwingendem\s+Unionsrecht\s+ergeben/i
-/** „Unionsrecht wird nicht tangiert", „nicht berührt", „keine Auswirkungen", „im Einklang mit". */
-const FREE_NO = /nicht\s+(?:tangiert|betroffen|berührt)|keine\s+Auswirkungen\s+auf\s+Rechtsvorschriften|im\s+Einklang\s+mit|nicht\s+in\s+den\s+Anwendungsbereich/i
+const FREE_YES = /\bUmsetzung\s+(?:einer|der|von|zweier|mehrerer)\s+[^.]{0,40}?(?:Richtlinie|Richtlinien)\b|\bUmsetzung\s+(?:von|der)\s+(?:zwei|mehreren)\s+EU-\s?Richtlinien|\b(?:wird|werden)\s[\s\S]*?\b(?:Richtlinien?|Rechtsakte?)\b[\s\S]*?\bumgesetzt\b|(?:Richtlinie|Verordnung)[\s\S]*?\bumgesetzt\s+werden|aus\s+zwingendem\s+Unionsrecht\s+ergeben/i
+/** A ressort's sentence that a regulation is carried out: „Mit dem Entwurf werden folgende Verordnungen durchgeführt: 1. …". */
+const FREE_DURCHFUEHRUNG = /\b(?:wird|werden)\s[\s\S]*?\b(?:Verordnung(?:en)?|Durchführungsverordnung(?:en)?)\b[\s\S]*?\bdurchgeführt\b/i
+/**
+ * „Unionsrecht wird nicht tangiert", „nicht berührt", „keine Auswirkungen",
+ * „im Einklang mit" — and the Länder's house phrases (04.11.2026): „stehen …
+ * keine zwingenden unionsrechtlichen Vorschriften entgegen", „Das
+ * Unionsrecht steht dem Vorhaben nicht entgegen", „stehen mit … im
+ * Einklang", „Unionsrechtliche Berührungspunkte liegen nicht vor", „steht
+ * mit keinen zwingenden unionsrechtlichen Vorschriften im Widerspruch",
+ * „werden keine Rechtsvorschriften der Europäischen Union berührt".
+ */
+const FREE_NO = /nicht\s+(?:tangiert|betroffen|berührt)|keine\s+Auswirkungen\s+auf\s+Rechtsvorschriften|im\s+Einklang\b|nicht\s+in\s+den\s+Anwendungsbereich|\b(?:nicht|keine[nm]?)\b[^.;]{0,120}?\bentgegen\b|Berührungspunkte\s+(?:liegen|bestehen)\s+nicht|keine\s+(?:unionsrechtlichen\s+)?Berührungspunkte|\b(?:nicht|keine[nm]?)\b[^.;]{0,120}?\bim\s+Widerspruch\b|\bkeine\s+(?:[\wäöüß-]+\s+){0,2}?(?:Rechtsvorschriften|Vorschriften|Regelungen)\b[^.;]{0,80}?\b(?:berührt|betroffen|tangiert)\b/i
+
+/**
+ * A section's sentences. A period ends one only before a capital and not
+ * after a number („vom 4. Juli", „1. Richtlinie") or an abbreviation of a
+ * citation („ABl.", „Nr.", „Abs.", „S.").
+ */
+export function sentencesOf(text: string): string[] {
+  return text.split(/(?<!\b(?:\d+|ABl|Nr|Abs|Art|lit|Z|S|bzw|vgl|idF|iVm|zB|ua|ff|Ziff|Pkt))[.!?]\s+(?=[A-ZÄÖÜ„"])/).map((t) => t.trim()).filter(Boolean)
+}
 
 /** The class of one EU section's text. */
 export function classifyVorblattSentence(sentence: string): VorblattClass {
   const fixed = VORBLATT_CLASSES.find((c) => c.re.test(sentence))?.cls
+  // A negated clause („dient nicht der Durchführung oder Umsetzung von
+  // Unionsrecht", Steiermark) is blanked before the yes is looked for, and
+  // is itself a no.
+  const affirmed = withoutNegatedSignals(sentence)
+  const sentences = sentencesOf(affirmed)
+  const freeYes = sentences.some((s) => FREE_YES.test(s))
   // „… flankierenden Regelungen zu Verordnungen … und dient der Umsetzung
   // mehrerer Richtlinien" (30/ME): the tool sentence plus an implementation.
-  if (fixed && fixed !== 'umsetzung' && VORBLATT_EU_YES.has(fixed) && FREE_YES.test(sentence)) return 'umsetzung'
+  if (fixed && fixed !== 'umsetzung' && VORBLATT_EU_YES.has(fixed) && freeYes) return 'umsetzung'
   if (fixed) return fixed
-  if (FREE_YES.test(sentence)) return 'frei-umsetzung'
-  if (FREE_NO.test(sentence)) return 'frei-nein'
+  if (freeYes) return 'frei-umsetzung'
+  // No free-text class for a regulation: carrying one out is flanking it.
+  if (sentences.some((s) => FREE_DURCHFUEHRUNG.test(s))) return 'flankierend-vo'
+  if (affirmed !== sentence || FREE_NO.test(sentence)) return 'frei-nein'
   return 'freitext'
 }
 

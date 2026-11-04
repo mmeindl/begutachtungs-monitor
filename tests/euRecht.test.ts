@@ -160,6 +160,37 @@ describe('the Vorblatt', () => {
     expect(r).toEqual({ sentence: 'Die vorgesehenen Regelungen fallen nicht in den Anwendungsbereich des Rechts der Europäischen Union.', cls: 'nicht-eu' })
   })
 
+  it('reads Steiermark\'s negation as a no, not as free text (04.11.2026)', () => {
+    expect(classifyVorblattSentence('Der Entwurf dient nicht der Durchführung oder Umsetzung von Unionsrecht.')).toBe('frei-nein')
+    expect(classifyVorblattSentence('Der Entwurf dient nicht der Durchführung oder Umsetzung des Rechts der Europäischen Union.')).toBe('frei-nein')
+    // A negated list of directives is still a no.
+    expect(classifyVorblattSentence('Mit dem Entwurf werden keine Richtlinien umgesetzt.')).toBe('frei-nein')
+  })
+
+  it('reads the list form and a long act title as an implementation, a regulation „durchgeführt" as flanking', () => {
+    expect(classifyVorblattSentence('Mit dem Entwurf werden folgende Richtlinien umgesetzt: 1. Richtlinie (EU) 2024/1499 des Rates vom 7. Mai 2024 über Standards für Gleichbehandlungsstellen im Bereich der Gleichbehandlung von Personen ungeachtet ihrer Rasse oder ethnischen Herkunft; 2. Richtlinie (EU) 2024/1500 des Europäischen Parlaments und des Rates vom 14. Mai 2024 über Standards für Gleichbehandlungsstellen.')).toBe('frei-umsetzung')
+    expect(classifyVorblattSentence('Mit dem Entwurf werden folgende Richtlinien umgesetzt: 1. Richtlinie 2009/147/EG des Europäischen Parlamentes und des Rates vom 30. November 2009 über die Erhaltung der wildlebenden Vogelarten (Vogelschutz-Richtlinie – VS- Richtlinie), ABl. Nr. L 20 vom 26.1.2010, S. 7, zuletzt geändert durch die Verordnung (EU) 2019/1010.')).toBe('frei-umsetzung')
+    // The title pushes „umgesetzt" 230 characters behind „Richtlinie".
+    expect(classifyVorblattSentence('Mit dem Entwurf wird die Richtlinie 2012/18/EU des Europäischen Parlaments und des Rates vom 4. Juli 2012 zur Beherrschung der Gefahren schwerer Unfälle mit gefährlichen Stoffen, zur Änderung und anschließenden Aufhebung der Richtlinie 96/82/EG des Rates („Seveso III-Richtlinie“) umgesetzt.')).toBe('frei-umsetzung')
+    expect(classifyVorblattSentence('Mit dem Entwurf werden folgende Verordnungen durchgeführt: 1. Durchführungsverordnung (EU) 2023/564 der Kommission betreffend den Inhalt und das Format der gemäß der Verordnung (EG) Nr. 1107/2009 des Europäischen Parlaments und des Rates von den beruflichen Verwendern geführten Aufzeichnungen über Pflanzenschutzmittel.')).toBe('flankierend-vo')
+    expect(classifyVorblattSentence('Im Hinblick auf die Änderung des Steiermärkischen Notifikationsgesetzes 2017 (Artikel 4) wird mit dem Entwurf die Verordnung (EU) 2023/988 des Europäischen Parlaments und des Rates vom 10. Mai 2023 über die allgemeine Produktsicherheit, ABl. L 135 vom 23.5.2023, S. 1, durchgeführt.')).toBe('flankierend-vo')
+    // A past implementation, and a sentence that ends before „umgesetzt", say nothing new.
+    expect(classifyVorblattSentence('Die Richtlinie 2005/36/EG wurde bereits mit BGBl. I Nr. 12/2020 umgesetzt.')).not.toBe('frei-umsetzung')
+    expect(classifyVorblattSentence('Mit dem Entwurf wird die Richtlinie 2005/36/EG zitiert. Sie ist seit Jahren umgesetzt.')).not.toBe('frei-umsetzung')
+  })
+
+  it('reads the Länder\'s house phrases for „no" (04.11.2026)', () => {
+    for (const no of [
+      'Diesem Landesgesetz stehen - soweit ersichtlich - keine zwingenden unionsrechtlichen Vorschriften entgegen.',
+      'Das Unionsrecht steht dem Vorhaben nicht entgegen.',
+      'Der Entwurf steht im Einklang mit den Rechtsvorschriften der Europäischen Union.',
+      'Die Regelungen der Novelle stehen mit den Rechtsvorschriften der Europäischen Union im Einklang.',
+      'Unionsrechtliche Berührungspunkte liegen nicht vor.',
+      'Dieser Verordnungsentwurf steht mit keinen zwingenden unionsrechtlichen Vorschriften im Widerspruch.',
+      'Durch den vorliegenden Verordnungsentwurf werden keine Rechtsvorschriften der Europäischen Union berührt.',
+    ]) expect(classifyVorblattSentence(no), no).toBe('frei-nein')
+  })
+
   it('finds no section without the heading, and no text layer in a scan', () => {
     expect(classifyVorblatt(['Vorblatt', 'Ziele', 'Ziel 1: irgendwas'])).toEqual({ sentence: null, cls: null })
     expect(hasTextLayer(['1 von 3', '', '2 von 3'])).toBe(false)

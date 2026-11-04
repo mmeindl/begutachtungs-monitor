@@ -203,7 +203,14 @@ const ERL_DURCHFUEHRUNG = /begleitende[n]?\s+(?:Regelungen|Bestimmungen|Maßnahm
  * early (an „ABl." inside) but never runs it into the next sentence.
  * „nicht nur der Umsetzung" is a yes and stays.
  */
-const ERL_NEGATED = /\b(?:nicht(?!\s+nur\b)|keine[nrsm]?)\s+(?:(?:der|zur|einer|die)\s+)?(?:(?:Durchführung|Umsetzung)\s+(?:oder|und|bzw\.?|sowie)\s+)?(?:Durchführung|Umsetzung)\b[^.;]*|\bnicht(?!\s+nur\b)\s+[^.;]{0,120}?\b(?:umgesetzt|umzusetzen|durchgeführt)\b/g
+const ERL_NEGATED = new RegExp([
+  // „dient nicht der (Durchführung oder) Umsetzung …", „keine Umsetzung …" — to the sentence end
+  String.raw`\b(?:nicht(?!\s+nur\b)|keine[nrsm]?)\s+(?:(?:der|zur|einer|die)\s+)?(?:(?:Durchführung|Umsetzung)\s+(?:oder|und|bzw\.?|sowie)\s+)?(?:Durchführung|Umsetzung)\b[^.;]*`,
+  // „… wird nicht umgesetzt" — within one clause
+  String.raw`\bnicht(?!\s+nur\b)\s+[^.;,]{0,120}?\b(?:umgesetzt|umzusetzen|durchgeführt)\b`,
+  // „werden keine Richtlinien umgesetzt" — „keine" before the act, not any „keine Kosten"
+  String.raw`\bkeine[nrsm]?\s+(?:[\wäöüß-]+\s+){0,2}?(?:Richtlinien?|Verordnungen?|Rechtsakte?|Rechtsvorschriften|Vorschriften|Vorgaben)\b[^.;,]{0,120}?\b(?:umgesetzt|umzusetzen|durchgeführt)\b`,
+].join('|'), 'g')
 
 /** A paragraph with its negated signal clauses blanked (`ERL_NEGATED`). */
 export function withoutNegatedSignals(text: string): string {
