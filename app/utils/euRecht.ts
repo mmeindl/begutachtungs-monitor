@@ -220,7 +220,8 @@ export function euTimeline(fact: EuFactView | null | undefined, ctx: EuTimelineC
       at: pos,
       align: edge(pos),
       tick: false,
-      lines: [c.length > 1 ? 'Umsetzungsfristen' : 'Umsetzungsfrist', c.map(dated).join(', ')],
+      // Two directives with one date (2024/1499 and 2024/1500: 19.06.2026) are one date in the label; each keeps its tick.
+      lines: [c.length > 1 ? 'Umsetzungsfristen' : 'Umsetzungsfrist', [...new Set(c.map(dated))].join(', ')],
     }
   })
   const band: [number, number] | null = start ? [at(start), at(end ?? start)] : null
