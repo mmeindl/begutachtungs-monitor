@@ -145,3 +145,43 @@ export function decideLandEuMarker(
   const signal = readExplanationsEuSignal(general).signal
   return { ...decideEuMarker({ vorblatt: [], law, explanations: signal }), actsAllowed: false }
 }
+
+// ---------------------------------------------------------------------------
+// Oberösterreich's Umsetzungshinweis per provision, in the Besonderer Teil
+// ---------------------------------------------------------------------------
+
+/** The fixed label: „Umsetzungshinweis:", „Umsetzungshinweise:", „Umsetzungshinweis zu Abs. 4:" — alone on its line, or opening the paragraph. */
+const HINWEIS_LABEL = /^Umsetzungshinweise?(?:\s+zu\s+[^:]{1,40})?:\s*/
+
+/** One „Umsetzungshinweis:" of the particular part: the entry it stands in, its text, its acts. */
+export interface EntryHinweis {
+  heading: string
+  text: string
+  acts: EuAct[]
+}
+
+/**
+ * The Umsetzungshinweise of the particular part (04.11.2026). Oberösterreich
+ * writes the hint per provision into its Erläuterungen, in a fixed form
+ * with the § it concerns: „Zu Art. II Z 11 (§ 14 Abs. 1): Umsetzungshinweis:
+ * Durch § 14 Abs. 1 Oö. ADG und § 27 Abs. 1 Oö. GBG 2021 werden Art. 4 der
+ * Richtlinie (EU) 2024/1499 sowie der gleichlautende Art. 4 der Richtlinie
+ * (EU) 2024/1500 umgesetzt." (ooe-2026-16120) — a labelled statement tied to
+ * a provision, so it names acts as the law text's hint does, and not as the
+ * prose of the general part (D5). The reader takes the paragraph after the
+ * label where the label stands alone, as the Erläuterungen' reader splits
+ * it.
+ */
+export function entryHinweise(particular: readonly { heading: string; text: readonly string[] }[]): EntryHinweis[] {
+  const out: EntryHinweis[] = []
+  for (const entry of particular) {
+    entry.text.forEach((paragraph, i) => {
+      if (!HINWEIS_LABEL.test(paragraph)) return
+      const rest = paragraph.replace(HINWEIS_LABEL, '').trim()
+      const text = (rest || entry.text[i + 1] || '').replace(/\s+/g, ' ').trim()
+      const acts = parseEuActCitations(text, { implemented: true })
+      if (acts.length) out.push({ heading: entry.heading, text, acts })
+    })
+  }
+  return out
+}
