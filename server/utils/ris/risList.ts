@@ -16,6 +16,7 @@ import type {
 } from '../../../shared/types'
 import { matchesQuery } from '../../../shared/utils/textMatch'
 import { stripMinistryMentions, type MinistryToken } from '../search/searchHaystack'
+import { passesEuFilter, type EuFilter } from '../eu/euFilter'
 
 /**
  * Which half of the station axis this request means.
@@ -62,6 +63,10 @@ export interface RisListFilter {
   ministryTokens: readonly MinistryToken[]
   /** Empty where the outcome did not arrive in time — `bgbl` then filters nothing. */
   outcomes: Record<string, BgblOutcome>
+  /** `?eu=umsetzung` (§12.66, Nachtrag 3); applied only where `euUsable`, as on `/api/drafts`. */
+  eu?: EuFilter
+  /** Whether the EU map was readable, so the rows carry `eu`. */
+  euUsable?: boolean
 }
 
 export function filterRisConsultations<T extends RisConsultation>(
@@ -75,6 +80,7 @@ export function filterRisConsultations<T extends RisConsultation>(
     if (status === 'closed' && item.active) return false
     if (art && item.kind !== art) return false
     if (ministry && item.ministryCode.toUpperCase() !== ministry) return false
+    if (filter.eu && filter.euUsable && !passesEuFilter(item.eu, filter.eu)) return false
     if (q) {
       // No aliases here: the alias file is keyed by gp/inr and these records
       // have neither. The long title is in the haystack instead — on a

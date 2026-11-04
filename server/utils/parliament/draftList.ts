@@ -11,6 +11,7 @@
 import type { DraftStation, DraftStatus, DraftSummary } from '../../../shared/types'
 import { aliasHaystack } from '../../../shared/utils/draftAliases'
 import { matchesQuery } from '../../../shared/utils/textMatch'
+import { passesEuFilter, type EuFilter } from '../eu/euFilter'
 
 export interface DraftListFilter {
   status: DraftStatus
@@ -25,6 +26,14 @@ export interface DraftListFilter {
    * filter off rather than applying it to rows that carry no station.
    */
   stationsUsable: boolean
+  /** `?eu=umsetzung` (§12.66, Nachtrag 3); applied only where `euUsable`. */
+  eu?: EuFilter
+  /**
+   * Whether the EU map was readable, so every row of the period carries
+   * `eu`. False turns the EU filter off rather than applying it to rows
+   * nobody looked up — the response says so (`euAvailable`).
+   */
+  euUsable?: boolean
 }
 
 /**
@@ -120,6 +129,10 @@ export function filterDraftList<T extends DraftSummary>(
     // so „Alle Entwürfe des Ministeriums BMJ" has to contain 302/ME whichever
     // of the two the fold put first.
     if (ministry && !ministryCodes(item).includes(ministry)) return false
+    // No map, no EU filter. With one, a row without `eu` (a carried-over
+    // row of the period before, which this map does not cover) is unknown
+    // and does not pass: the filter shows what is known to implement.
+    if (filter.eu && filter.euUsable && !passesEuFilter(item.eu, filter.eu)) return false
     if (q) {
       // Aliases are part of the haystack, not of the title: someone who only
       // knows "Bundestrojaner" has to find 8/ME (`shared/utils/draftAliases.ts`).

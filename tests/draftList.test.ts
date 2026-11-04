@@ -128,6 +128,24 @@ describe('filterDraftList', () => {
     expect(titles(filterDraftList(joint, { ...ALL, q: 'bmj' }))).toEqual(['302/ME'])
   })
 
+  /* `?eu=umsetzung` (§12.66, Nachtrag 3): „Setzt EU-Recht um", with or
+   * without the Vorblatt's „über die Umsetzung hinaus" — never a draft that
+   * only accompanies EU law, never one nobody looked up. */
+  it('filters for implementing drafts only where the EU map was read', () => {
+    const eu = [
+      draft({ inr: 10, citation: '10/ME', eu: 'umsetzung' }),
+      draft({ inr: 11, citation: '11/ME', eu: 'ueber-umsetzung' }),
+      draft({ inr: 12, citation: '12/ME', eu: 'flankierend-vo' }),
+      draft({ inr: 13, citation: '13/ME', eu: null }),
+      // A carried-over row of the period before: not in this map, no `eu`.
+      draft({ inr: 14, citation: '14/ME' }),
+    ]
+    expect(titles(filterDraftList(eu, { ...ALL, eu: 'umsetzung', euUsable: true }))).toEqual(['10/ME', '11/ME'])
+    // No map: the filter is not applied, and the response says so.
+    expect(titles(filterDraftList(eu, { ...ALL, eu: 'umsetzung', euUsable: false }))).toHaveLength(5)
+    expect(titles(filterDraftList(eu, { ...ALL, euUsable: true }))).toHaveLength(5)
+  })
+
   it('reads the query folded and with AND between the words', () => {
     expect(titles(filterDraftList(rows, { ...ALL, q: 'oekostrom' }))).toHaveLength(3)
     expect(titles(filterDraftList(rows, { ...ALL, q: 'ökostrom geändert' }))).toHaveLength(3)
