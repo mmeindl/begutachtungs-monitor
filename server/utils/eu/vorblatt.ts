@@ -43,8 +43,15 @@ export function isVorblattDocument(name: string): boolean {
  * 105 cases, Wien's in all five (Länder measurement, 04.11.2026).
  */
 export const EU_HEADING = /Verhältnis\s+zu\s+(?:den\s+)?Rechtsvorschriften\s+der\s+Europäischen\s+Union/
-/** What follows the EU section in the WFA tool's layout. */
-const AFTER_EU = /Besonderheiten\s+des\s+Normerzeugungsverfahrens|Vereinfachte\s+wirkungsorientierte|Wirkungsorientierte\s+Folgenabschätzung|Datenschutz-Folgenabschätzung|Inkrafttreten/
+/**
+ * What follows the EU section in the WFA tool's layout — and in the Länder's
+ * (04.11.2026): Burgenland's „Besonderheiten des Normsetzungsverfahrens",
+ * Burgenland's and Oberösterreich's „(VI.) Auswirkungen auf die
+ * verschiedenen Gruppen der Gesellschaft". Without them an Oberösterreich
+ * section V ran on into the Besonderer Teil and found an implementation
+ * there. A numbered heading's „VI." is left out of the section.
+ */
+const AFTER_EU = /(?:\b[IVX]+\.\s*|\b\d+\.\s*)?Auswirkungen\s+auf\s+die\s+verschiedenen\s+Gruppen|Besonderheiten\s+des\s+(?:Normerzeugungs|Normsetzungs|Gesetzgebungs)verfahrens|Vereinfachte\s+wirkungsorientierte|Wirkungsorientierte\s+Folgenabschätzung|Datenschutz-Folgenabschätzung|Inkrafttreten/
 /** The WFA tool's page footer and header lines, dropped before the lines are joined. */
 const PAGE_NOISE = /^\s*(?:\d+\s+von\s+\d+|Seite\s+\d+(?:\s+von\s+\d+)?|www\.ris\.bka\.gv\.at.*)\s*$/i
 
@@ -114,11 +121,25 @@ export const VORBLATT_EU_YES: ReadonlySet<VorblattClass> = new Set(['umsetzung',
  * III-Richtlinie") umgesetzt", where the act's title stands between
  * „Richtlinie" and „umgesetzt" — 230 characters in that case, beyond the
  * 120-character window this used to allow, and full of the periods of „vom
- * 4. Juli 2012" and „ABl.". The verb needs its subject („wird/werden …
- * umgesetzt") or „umgesetzt werden", so „wurde bereits … umgesetzt" stays a
- * past implementation.
+ * 4. Juli 2012" and „ABl.". The verb needs its auxiliary („wird/werden …
+ * umgesetzt", the act before or after it) or „umgesetzt werden", so „wurde
+ * bereits … umgesetzt" stays a past implementation. Oberösterreich names the
+ * act as a compound („der EU-Gebäuderichtlinie") or lists it after the verb
+ * („Folgende unionsrechtliche Vorschriften werden … umgesetzt: - Richtlinie
+ * …").
  */
-const FREE_YES = /\bUmsetzung\s+(?:einer|der|von|zweier|mehrerer)\s+[^.]{0,40}?(?:Richtlinie|Richtlinien)\b|\bUmsetzung\s+(?:von|der)\s+(?:zwei|mehreren)\s+EU-\s?Richtlinien|\b(?:wird|werden)\s[\s\S]*?\b(?:Richtlinien?|Rechtsakte?)\b[\s\S]*?\bumgesetzt\b|(?:Richtlinie|Verordnung)[\s\S]*?\bumgesetzt\s+werden|aus\s+zwingendem\s+Unionsrecht\s+ergeben/i
+/** An EU act as the subject or object of „umgesetzt" — not Austria's OIB-Richtlinien, which are national. */
+const FREE_ACT = String.raw`(?:(?<!OIB-)\bRichtlinien?|\bEU-[a-zäöüß]*richtlinien?|\bRechtsakte?|\bunionsrechtlichen?\s+Vorschriften)\b`
+const FREE_YES = new RegExp([
+  String.raw`\bUmsetzung\s+(?:einer|der|von|zweier|mehrerer)\s+[^.]{0,40}?(?:Richtlinie|Richtlinien)\b`,
+  String.raw`\bUmsetzung\s+(?:von|der)\s+(?:zwei|mehreren)\s+EU-\s?Richtlinien`,
+  // „Mit dem Entwurf wird die Richtlinie … umgesetzt", „werden … der EU-Gebäuderichtlinie umgesetzt"
+  String.raw`\b(?:wird|werden)\s[\s\S]*?${FREE_ACT}[\s\S]*?\bumgesetzt\b`,
+  // „Folgende unionsrechtliche Vorschriften werden … umgesetzt", „Die Richtlinie … wird … umgesetzt"
+  String.raw`${FREE_ACT}[\s\S]*?\b(?:wird|werden)\s[\s\S]*?\bumgesetzt\b`,
+  String.raw`(?:Richtlinie|Verordnung)[\s\S]*?\bumgesetzt\s+werden`,
+  String.raw`aus\s+zwingendem\s+Unionsrecht\s+ergeben`,
+].join('|'), 'i')
 /** A ressort's sentence that a regulation is carried out: „Mit dem Entwurf werden folgende Verordnungen durchgeführt: 1. …". */
 const FREE_DURCHFUEHRUNG = /\b(?:wird|werden)\s[\s\S]*?\b(?:Verordnung(?:en)?|Durchführungsverordnung(?:en)?)\b[\s\S]*?\bdurchgeführt\b/i
 /**

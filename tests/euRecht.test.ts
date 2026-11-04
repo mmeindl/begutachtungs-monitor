@@ -161,6 +161,25 @@ describe('the Vorblatt', () => {
     expect(r).toEqual({ sentence: 'Die vorgesehenen Regelungen fallen nicht in den Anwendungsbereich des Rechts der Europäischen Union.', cls: 'nicht-eu' })
   })
 
+  it('ends a Land\'s EU section at its next heading, not in the Besonderer Teil (Burgenland, Oberösterreich)', () => {
+    const ooe = classifyVorblatt([
+      'V. Verhältnis zu Rechtsvorschriften der Europäischen Union',
+      'Diesem Gesetzentwurf stehen - soweit ersichtlich - keine zwingenden unionsrechtlichen Vorschriften entgegen.',
+      'VI. Auswirkungen auf die verschiedenen Gruppen der Gesellschaft, insbesondere auf Frauen und Männer',
+      'Keine.',
+      'B. Besonderer Teil',
+      'Mit Art. II wird die Richtlinie (EU) 2024/1275 umgesetzt.',
+    ])
+    expect(ooe).toEqual({ sentence: 'Diesem Gesetzentwurf stehen - soweit ersichtlich - keine zwingenden unionsrechtlichen Vorschriften entgegen.', cls: 'frei-nein' })
+    const bgld = classifyVorblatt([
+      'Verhältnis zu Rechtsvorschriften der Europäischen Union:',
+      'Bestimmungen des Unionsrechts werden durch den vorliegenden Entwurf nicht berührt.',
+      'Besonderheiten des Normsetzungsverfahrens:',
+      'Keine.',
+    ])
+    expect(bgld.sentence).toBe('Bestimmungen des Unionsrechts werden durch den vorliegenden Entwurf nicht berührt.')
+  })
+
   it('reads Steiermark\'s negation as a no, not as free text (04.11.2026)', () => {
     expect(classifyVorblattSentence('Der Entwurf dient nicht der Durchführung oder Umsetzung von Unionsrecht.')).toBe('frei-nein')
     expect(classifyVorblattSentence('Der Entwurf dient nicht der Durchführung oder Umsetzung des Rechts der Europäischen Union.')).toBe('frei-nein')
@@ -175,6 +194,11 @@ describe('the Vorblatt', () => {
     expect(classifyVorblattSentence('Mit dem Entwurf wird die Richtlinie 2012/18/EU des Europäischen Parlaments und des Rates vom 4. Juli 2012 zur Beherrschung der Gefahren schwerer Unfälle mit gefährlichen Stoffen, zur Änderung und anschließenden Aufhebung der Richtlinie 96/82/EG des Rates („Seveso III-Richtlinie“) umgesetzt.')).toBe('frei-umsetzung')
     expect(classifyVorblattSentence('Mit dem Entwurf werden folgende Verordnungen durchgeführt: 1. Durchführungsverordnung (EU) 2023/564 der Kommission betreffend den Inhalt und das Format der gemäß der Verordnung (EG) Nr. 1107/2009 des Europäischen Parlaments und des Rates von den beruflichen Verwendern geführten Aufzeichnungen über Pflanzenschutzmittel.')).toBe('flankierend-vo')
     expect(classifyVorblattSentence('Im Hinblick auf die Änderung des Steiermärkischen Notifikationsgesetzes 2017 (Artikel 4) wird mit dem Entwurf die Verordnung (EU) 2023/988 des Europäischen Parlaments und des Rates vom 10. Mai 2023 über die allgemeine Produktsicherheit, ABl. L 135 vom 23.5.2023, S. 1, durchgeführt.')).toBe('flankierend-vo')
+    // Oberösterreich: the act as a compound, the subject before the verb, the list after it.
+    expect(classifyVorblattSentence('Dieser Gesetzesnovelle stehen - soweit ersichtlich - keine zwingenden unionsrechtlichen Vorschriften entgegen. Vielmehr werden mit der vorliegenden Novelle die baurechtlich relevanten Bestimmungen der EU-Gebäuderichtlinie umgesetzt.')).toBe('frei-umsetzung')
+    expect(classifyVorblattSentence('Folgende unionsrechtliche Vorschriften werden unmittelbar durch das vorliegende Landesgesetz umgesetzt: - Richtlinie (EU) 2024/1499 des Rates vom 7. Mai 2024 über Standards für Gleichbehandlungsstellen.')).toBe('frei-umsetzung')
+    // A national guideline is no EU act.
+    expect(classifyVorblattSentence('Mit dem Entwurf wird die OIB-Richtlinie 6 umgesetzt.')).toBe('freitext')
     // A past implementation, and a sentence that ends before „umgesetzt", say nothing new.
     expect(classifyVorblattSentence('Die Richtlinie 2005/36/EG wurde bereits mit BGBl. I Nr. 12/2020 umgesetzt.')).not.toBe('frei-umsetzung')
     expect(classifyVorblattSentence('Mit dem Entwurf wird die Richtlinie 2005/36/EG zitiert. Sie ist seit Jahren umgesetzt.')).not.toBe('frei-umsetzung')
