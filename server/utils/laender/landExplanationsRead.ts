@@ -126,10 +126,12 @@ export async function readLandExplanations(land: LandCode, detail: { draft: Pick
   let draftFailed = false
   let draftRead = inDraft
   if (!draftRead && parse && draftUrl) {
-    const draftPages = draftUrl === url ? read.pages : await bytesOf(draftUrl).then(pagesOfBytes).catch(() => {
-      draftFailed = true
-      return [] as string[]
-    })
+    const draftPages = draftUrl === url
+      ? read.pages
+      : await bytesOf(draftUrl).then(pagesOfBytes).catch(() => {
+          draftFailed = true
+          return [] as string[]
+        })
     if (!draftFailed) pages.set(draftUrl, draftPages)
     draftRead = ofDraft(draftPages)
   }

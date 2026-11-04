@@ -290,10 +290,10 @@ const ABBREVIATIONS = /\b(Abs|Nr|Art|lit|Z|ABl|bzw|vgl|idF|zB|ua|S|iVm|gem|Pkt|K
 
 /** The sentences of a passage — abbreviations protected so „Abs. 1" does not end one. */
 function sentencesOf(text: string): string[] {
-  const protectedText = text.replace(/\s+/g, ' ').replace(ABBREVIATIONS, '$1\u0000')
+  const protectedText = text.replace(/\s+/g, ' ').replace(ABBREVIATIONS, '$1\uE000')
   return protectedText
     .split(/(?<=[.;!?])\s+(?=[„"A-ZÄÖÜ])/)
-    .map((s) => s.replace(/\u0000/g, '.').trim())
+    .map((s) => s.replace(/\uE000/g, '.').trim())
     .filter((s) => s.length > 3)
 }
 
@@ -1086,4 +1086,3 @@ if (outDir) {
   await writeFile(join(outDir, 'drafts.csv'), `${lines.join('\n')}\n`)
   console.log(`\nFile: ${join(outDir, 'drafts.csv')}`)
 }
-
