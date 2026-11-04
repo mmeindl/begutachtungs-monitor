@@ -17,9 +17,9 @@
  * noise where it is not a finding.
  *
  * THE DATES AS A PICTURE where the page hands over its side (`timeline`):
- * the directive's adoption, its deadline, the Begutachtung and where the
- * procedure stands, on one calendar track (`DraftEuTimeline`). The row of
- * two dates stays the text form where the track cannot be drawn.
+ * the deadline, the Begutachtung and where the procedure stands, on one
+ * calendar track (`DraftEuTimeline`), with the row of dates under it as its
+ * legend — the row stays in any case, it is the text form.
  *
  * FOLDED PAST FIVE ACTS (04.11.2026). The Elektrizitätswirtschaftsgesetz
  * (32/ME) names 28, the Vergaberechtsgesetz 24: a sentence of 28 links is
@@ -63,13 +63,13 @@ const folded = computed(() => (view.value?.acts.length ?? 0) > shownActs.value.l
 <template>
   <div v-if="view" class="mt-4 border-t border-hairline pt-4">
     <p class="text-sm text-ink-secondary">
-      <strong class="font-semibold text-ink">{{ view.lead }}</strong><template v-if="view.attach === 'colon'">: </template><template v-else-if="view.attach === 'named'">. Im {{ view.namedIn }} genannt: </template><template v-for="(act, i) in shownActs" :key="act.url"><template v-if="i > 0">{{ i === shownActs.length - 1 && !folded ? ' und ' : ', ' }}</template><ExternalLink :href="act.url" class="link-inline">{{ act.label }}</ExternalLink></template><template v-if="folded">, … <button type="button" class="link-inline" :aria-expanded="expanded" @click="expanded = true">Alle {{ view.acts.length }} anzeigen</button></template>.
+      <strong class="font-semibold text-ink">{{ view.lead }}</strong><template v-if="view.attach === 'colon'">: </template><template v-else-if="view.attach === 'named'">. Im {{ view.namedIn }} genannt: </template><template v-for="(act, i) in shownActs" :key="act.url"><template v-if="i > 0">{{ i === shownActs.length - 1 && !folded ? ' und ' : ', ' }}</template><ExternalLink :href="act.url" class="link-inline">{{ act.label }}</ExternalLink></template><template v-if="folded">, … <button type="button" class="link-inline" :aria-expanded="expanded" @click="expanded = true">Alle {{ view.acts.length }} anzeigen</button></template><template v-if="view.adoptedNote">, {{ view.adoptedNote }}</template>.
       <template v-if="quote">
         Laut Vorblatt: „{{ quote }}“.
       </template>
     </p>
     <DraftEuTimeline v-if="timeline" :view="timeline" />
-    <p v-else-if="view.deadlines.length" class="mt-1 text-sm text-ink-secondary">
+    <p v-if="view.deadlines.length" :class="timeline ? 'mt-2 text-sm text-ink-secondary' : 'mt-1 text-sm text-ink-secondary'">
       {{ view.deadlines.length > 1 ? 'Umsetzungsfristen' : 'Umsetzungsfrist' }}<template v-for="(d, i) in view.deadlines" :key="d.label"><template v-if="i > 0">,</template>{{ d.of ? ` ${d.of}` : '' }} bis {{ d.date }}<template v-if="notes[i]">{{ SUPERSCRIPT[notes[i]!] ?? `(${notes[i]})` }}</template></template><template v-if="view.start"> · Begutachtung ab {{ view.start }}</template>
     </p>
     <p class="mt-1 text-xs text-ink-muted">

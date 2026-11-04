@@ -14392,28 +14392,33 @@ Länder sollen sie später unverändert über Landesgesetze laufen lassen. Nur
 Gesetzestext und Erläuterungen sind die Caches der Seite.
 
 **Die Frist als Zeitstrahl (am Abend des 04.11.2026).** Unter dem Fakt
-zeichnet `DraftEuTimeline` die Zeit der Richtlinie gegen die des Entwurfs,
-in der Anatomie von `ScaleBar` als Kalender: die Strecke vom Tag, an dem
-die Richtlinie beschlossen wurde (`work_date_document` aus dem Cellar, seit
-diesem Abend mit abgefragt), bis zum späteren von heute, ihrer
-Umsetzungsfrist und den Daten des Entwurfs; die Begutachtung als Band
-hinter der Linie, jede Umsetzungsfrist als Strich quer darüber — ein
-Maßstab, durch den der Entwurf nicht hindurchgeht, wie der Regelfall am
-Fristbalken —, und der Punkt dort, wo das Verfahren steht: heute, solange
-es läuft, in Gelb, weil er sich noch bewegt; die Kundmachung, wenn es
-vorbei ist. Wie viel vom Fenster verbraucht war, als der Entwurf kam, und
-auf welcher Seite der Frist, sieht man; gesagt wird es nicht (D6). Keine
-positionierten Beschriftungen wie am Fristbalken: Frist und Begutachtung
-liegen oft Tage auseinander — das ist der Befund —, und zwei Etiketten auf
-einem Punkt sind keines. Stattdessen eine Legende als Textzeile unter dem
-Balken, in Streckenreihenfolge, jedes Zeichen mit seinem Glyph. Ohne Tag
-des Beschlusses oder ohne Frist bleibt die Zeile „Umsetzungsfrist bis … ·
-Begutachtung ab …" die Textform. Davor stand die Frist für zwei Stunden
-als datierte Marke zwischen den Stationen der Leiste (ein Strich statt
-eines Punkts, nach Datum einsortiert): das zeigte die Reihenfolge, nicht
-das Maß, und nach dem ersten Blick auf die Seiten wurde das Maß gewünscht
-— die Marke ist wieder ausgebaut, die Septemberentscheidung „keine sechste
-Station" steht unverändert.
+zeichnet `DraftEuTimeline` die Daten, auf die es ankommt, auf eine Strecke,
+in der Anatomie von `ScaleBar` als Kalender: jede Umsetzungsfrist als
+Strich quer über die Linie — ein Maßstab, durch den der Entwurf nicht
+hindurchgeht, wie der Regelfall am Fristbalken —, die Begutachtung als Band
+dahinter, und der Punkt dort, wo das Verfahren steht: heute, solange es
+läuft, in Gelb, weil er sich noch bewegt; die Kundmachung, wenn es vorbei
+ist. Die Strecke reicht vom frühesten dieser Daten bis zum spätesten, vier
+Prozent frei an jedem Rand, und nicht weiter. Auf welcher Seite der Frist
+der Entwurf kam und wie weit davon, sieht man; gesagt wird es nicht (D6).
+Keine eigenen Beschriftungen: die Zeile „Umsetzungsfrist bis … ·
+Begutachtung ab …" steht darunter in derselben Reihenfolge und ist die
+Legende; nur das Wort am Punkt steht darüber, wie an jedem ScaleBar.
+Der Tag, an dem die Richtlinie beschlossen wurde (`work_date_document`,
+seit diesem Abend aus dem Cellar mit abgefragt), steht im Satz: „Richtlinie
+(EU) 2024/1069, beschlossen am 11.04.2024."
+
+Zwei Fassungen davor, beide am selben Abend verworfen. Erst eine datierte
+Marke zwischen den Stationen der Leiste (ein Strich statt eines Punkts,
+nach Datum einsortiert): sie zeigte die Reihenfolge, nicht das Maß, und
+nach dem ersten Blick auf die Seiten wurde das Maß gewünscht — die
+Septemberentscheidung „keine sechste Station" steht unverändert. Dann ein
+Zeitstrahl, der am Tag des Beschlusses der Richtlinie begann und unter dem
+eine Legende aus Glyphen stand: auf einem Fenster von zwei Jahren war die
+dreiwöchige Begutachtung ein unsichtbarer Splitter unter dem Punkt, und die
+Glyphenzeile war nicht zu lesen. Die Lehre steht hier, damit die
+Strecke nicht wieder beim Beschluss beginnt: das Fenster ist eine Zahl für
+den Satz, die Lage zur Frist ist das Bild.
 
 **Lange Aktenlisten falten** (32/ME nennt 28, 58/ME 24): die ersten fünf
 stehen, dann „Alle 28 anzeigen" im Listenidiom der Seite — alles auf einmal,

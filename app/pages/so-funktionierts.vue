@@ -750,10 +750,11 @@ const waitMonths = Math.round(RV_LATENCY_CONTEXT_DAYS / 30.44)
         Richtlinien, die vor Jahren umgesetzt wurden. Solche Akte nennen wir,
         aber ohne Frist: Eine Frist steht nur bei einem Akt, den das geltende
         Bundesrecht am ersten Tag der Begutachtung noch nirgends umsetzt. Zu
-        einer solchen Frist zeichnen wir einen Zeitstrahl: vom Tag, an dem
-        die Richtlinie beschlossen wurde, über die Umsetzungsfrist und die
-        Begutachtung bis heute – wie viel von der Frist verstrichen war, als
-        der Entwurf kam, sieht man dann, ohne dass wir es sagen. Woher die
+        einer solchen Frist zeichnen wir einen Zeitstrahl: die
+        Umsetzungsfrist als Strich, die Begutachtung als Band, der Punkt
+        dort, wo das Verfahren heute steht – auf welcher Seite der Frist der
+        Entwurf kam und wie weit davon, sieht man dann, ohne dass wir es
+        sagen. Woher die
         Daten stammen und unter welchen Bedingungen, steht
         <NuxtLink to="/impressum#imp-eurlex" class="link-inline">im Impressum</NuxtLink>.
       </p>

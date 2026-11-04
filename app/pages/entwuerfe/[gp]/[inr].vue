@@ -224,13 +224,21 @@ const { data: explanations } = useExplanations(() => ({ gp: gp.value, inr: inr.v
  * under the predecessor line (`DraftEuFact`, docs/architecture.md §12.66). */
 const { data: euRecht } = useEuRecht(() => ({ gp: gp.value, inr: inr.value }))
 /* The page's side of the EU timeline: its Begutachtung, and where the
- * procedure stands — today while it runs, the Kundmachung once it is over. */
-const euTimelineCtx = computed<EuTimelineContext | null>(() => (data.value
-  ? {
-      begutachtung: { start: data.value.arrivedAt, end: data.value.deadline },
-      stand: data.value.chain?.bgblDate ? { date: data.value.chain.bgblDate, label: 'Bundesgesetzblatt' } : { date: todayIso(), label: 'Heute' },
-    }
-  : null))
+ * procedure stands — today while it runs; once a law came out of it, the
+ * Kundmachung where its day is known, else the Beschluss (the detail's
+ * enactment carries the houses' days, the Gazette's only the list row). */
+const euTimelineCtx = computed<EuTimelineContext | null>(() => {
+  const d = data.value
+  if (!d) return null
+  const e = d.enactment
+  const beschluss = e?.bundesratDecidedAt ?? e?.decidedAt ?? null
+  const stand = d.chain?.bgblDate
+    ? { date: d.chain.bgblDate, label: 'Bundesgesetzblatt' }
+    : e?.bgblNumber && beschluss
+      ? { date: beschluss, label: 'Beschluss' }
+      : { date: todayIso(), label: 'Heute' }
+  return { begutachtung: { start: d.arrivedAt, end: d.deadline }, stand }
+})
 const kurzinfoBlocks = computed(() => {
   const e = explanations.value
   return e?.available && e.passages.length ? withoutMainPoints(description.value) : description.value

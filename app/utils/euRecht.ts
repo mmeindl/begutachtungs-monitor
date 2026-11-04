@@ -14,7 +14,7 @@
  * the tests read it without a page.
  */
 import type { EuActView, EuMarker, EuRechtResponse } from '#shared/types'
-import { formatDateDe, todayIso } from '#shared/utils/format'
+import { formatDateDe } from '#shared/utils/format'
 
 /** The lead words in bold. */
 const LEAD: Record<EuMarker, string> = {
@@ -49,6 +49,8 @@ export interface EuFactView {
   acts: { label: string; url: string }[]
   /** The Vorblatt's own sentence, for `ueber-umsetzung` only. */
   quote: string | null
+  /** „beschlossen am 11.04.2024" — the one act whose deadline the row prints, where the Cellar has its day; null otherwise. */
+  adoptedNote: string | null
   deadlines: EuDeadlineView[]
   /** The first day of the Begutachtung, formatted; null without deadlines or without a date. */
   start: string | null
@@ -63,9 +65,11 @@ function fits(marker: EuMarker, act: EuActView): boolean {
   return act.kind === 'richtlinie' || act.kind === 'rahmenbeschluss'
 }
 
-/** The acts whose deadline the row prints: new to the draft, not a base text, with a date (D3, D4). */
+/** The acts whose deadline the row prints: new to the draft, not a base text, with a date (D3, D4) — in the order of their deadlines, as the ticks stand on the track. */
 export function deadlineActs(acts: readonly EuActView[]): EuActView[] {
-  return acts.filter((a) => a.isNew === true && !a.base && a.transposition !== null)
+  return acts
+    .filter((a) => a.isNew === true && !a.base && a.transposition !== null)
+    .sort((a, b) => a.transposition!.deadline.localeCompare(b.transposition!.deadline))
 }
 
 /** „2024/1711" out of „Richtlinie (EU) 2024/1711", „2009/43" out of „Richtlinie 2009/43/EG". */
@@ -98,6 +102,7 @@ export function euFactView(r: EuRechtResponse | null | undefined): EuFactView | 
     namedIn: r.actsSource === 'titel' ? 'Titel' : 'Gesetzestext',
     acts: acts.map((a) => ({ label: a.label, url: a.eurLexUrl })),
     quote: r.marker === 'ueber-umsetzung' ? r.vorblattSentence : null,
+    adoptedNote: due.length === 1 && acts.length === 1 && due[0]!.adopted ? `beschlossen am ${formatDateDe(due[0]!.adopted)}` : null,
     deadlines,
     start: deadlines.length && r.begutachtungStart ? formatDateDe(r.begutachtungStart) : null,
     sourceLine: `${read} aus dem RIS${deadlines.length ? ', Fristen aus EUR-Lex' : ''}`,
@@ -111,9 +116,7 @@ export interface EuTimelineContext {
   stand: { date: string; label: string }
 }
 
-export type EuTimelineGlyph = 'start' | 'tick' | 'band' | 'dot'
-
-/** The EU timeline, as positions on a track (percent) and a legend (text). */
+/** The EU timeline, as positions on a track (percent). The dated row under it is its legend. */
 export interface EuTimelineView {
   /** The dot: where the procedure stands. */
   value: number
@@ -122,46 +125,40 @@ export interface EuTimelineView {
   band: [number, number] | null
   /** One tick per Umsetzungsfrist. */
   ticks: { key: string; at: number }[]
-  legend: { glyph: EuTimelineGlyph; text: string }[]
 }
 
 const dayOf = (iso: string) => Date.parse(`${iso}T00:00:00Z`) / 86_400_000
+/** The track keeps this much of its width free at either end, so no tick sits on an edge. */
+const EDGE = 4
 
 /**
- * The directive's time against the draft's (04.11.2026): from the day the
- * directive was adopted to the later of today, its deadline and the draft's
- * own dates. The Begutachtung is a band on that track, each Umsetzungsfrist
- * a tick across it, and the dot stands where the procedure stands. The
- * reader sees how much of the window was used and on which side of the
- * deadline the draft came, and nobody wrote a verdict (rule D6).
+ * The dates that matter, on one track (04.11.2026): the Umsetzungsfrist as
+ * a tick, the Begutachtung as the band, the dot where the procedure stands.
+ * The track runs from the earliest of those to the latest, no further — a
+ * first version began at the day the directive was adopted, and on a
+ * two-year window the three-week Begutachtung vanished under the dot. The
+ * reader sees on which side of the deadline the draft came and how far
+ * from it, and nobody wrote a verdict (rule D6). The row of dates under
+ * the bar names what the shapes are, in the same order.
  *
- * Null where there is nothing to draw: no act with a deadline, or no
- * adoption day for the track to begin at.
+ * Null where there is nothing to draw: no act with a deadline, or every
+ * date on one day.
  */
-export function euTimeline(r: EuRechtResponse | null | undefined, ctx: EuTimelineContext, today: string = todayIso()): EuTimelineView | null {
+export function euTimeline(r: EuRechtResponse | null | undefined, ctx: EuTimelineContext): EuTimelineView | null {
   if (!r?.available || !r.marker) return null
   const due = deadlineActs(r.acts)
   if (!due.length) return null
-  const adopted = due.map((a) => a.adopted).filter((d): d is string => !!d).sort()[0]
-  if (!adopted) return null
   const deadlines = [...new Set(due.map((a) => a.transposition!.deadline))].sort()
   const { start, end } = ctx.begutachtung
-  const last = [today, ctx.stand.date, ...deadlines, start, end].filter((d): d is string => !!d).sort().at(-1)!
-  const span = dayOf(last) - dayOf(adopted)
+  const days = [ctx.stand.date, ...deadlines, start, end].filter((d): d is string => !!d).map(dayOf)
+  const first = Math.min(...days)
+  const span = Math.max(...days) - first
   if (!(span > 0)) return null
-  const at = (iso: string) => Math.min(100, Math.max(0, ((dayOf(iso) - dayOf(adopted)) / span) * 100))
-  const several = due.length > 1
-  const number = (label: string) => /\d{2,4}\/\d{1,4}/.exec(label)?.[0] ?? label
+  const at = (iso: string) => EDGE + ((dayOf(iso) - first) / span) * (100 - 2 * EDGE)
   return {
     value: at(ctx.stand.date),
     valueLabel: ctx.stand.label,
     band: start ? [at(start), at(end ?? start)] : null,
     ticks: deadlines.map((d) => ({ key: `frist-${d}`, at: at(d) })),
-    legend: [
-      { glyph: 'start', text: several ? `Richtlinien beschlossen ab ${formatDateDe(adopted)}` : `${due[0]!.label} beschlossen am ${formatDateDe(adopted)}` },
-      ...due.map((a) => ({ glyph: 'tick' as const, text: `Umsetzungsfrist${several ? ` ${number(a.label)}` : ''} ${formatDateDe(a.transposition!.deadline)}` })),
-      ...(start ? [{ glyph: 'band' as const, text: `Begutachtung ${formatDateDe(start)}${end ? `–${formatDateDe(end)}` : ''}` }] : []),
-      { glyph: 'dot', text: ctx.stand.label === 'Heute' ? 'Heute' : `${ctx.stand.label} ${formatDateDe(ctx.stand.date)}` },
-    ],
   }
 }
