@@ -18,6 +18,7 @@ import {
   RIS_API_BASE,
   USER_AGENT,
   UpstreamUnreachableError,
+  upstreamBytes,
   upstreamJson,
   upstreamText,
   type UpstreamPolicy,
@@ -100,6 +101,15 @@ async function withMessage<T>(url: string, opts: HttpOptions, run: () => Promise
 /** The body as text, decoded the way `fetch` decodes it. */
 export function getText(url: string, opts: HttpOptions): Promise<string> {
   return withMessage(url, opts, () => upstreamText(url, policyOf(opts)))
+}
+
+/**
+ * The body as bytes — a PDF, which no text decoding may touch before pdf.js
+ * reads it. Same retries and identity as `getText`.
+ */
+export async function getBytes(url: string, opts: HttpOptions): Promise<Uint8Array> {
+  const body = await withMessage(url, opts, () => upstreamBytes(url, policyOf(opts)))
+  return new Uint8Array(body.bytes)
 }
 
 /** Parsed JSON. A body that does not parse counts as a failed attempt. */
