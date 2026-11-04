@@ -70,16 +70,18 @@ describe('euFactView — two dates, no verdict', () => {
   it('draws the dates that matter on one track, labelled as the Frist bar: term over date under each mark', () => {
     const ctx = { begutachtung: { start: '2026-10-21', end: '2026-11-10' }, stand: { date: '2026-11-04', label: 'Heute' } }
     const t = euTimeline(euFactView(response({})), ctx)!
-    // Track 07.05.2026 → 10.11.2026 with 4 % free at either end.
+    // Track 07.05.2026 → 10.11.2026, the first and last dates on its ends.
     const day = (iso: string) => Date.parse(`${iso}T00:00:00Z`) / 86_400_000
-    const at = (iso: string) => 4 + ((day(iso) - day('2026-05-07')) / (day('2026-11-10') - day('2026-05-07'))) * 92
+    const at = (iso: string) => ((day(iso) - day('2026-05-07')) / (day('2026-11-10') - day('2026-05-07'))) * 100
     expect(t.band![0]).toBeCloseTo(at('2026-10-21'), 9)
-    expect(t.band![1]).toBe(96)
+    expect(t.band![1]).toBe(100)
     expect(t.value).toBeCloseTo(at('2026-11-04'), 9)
     expect(t.valueLabel).toBe('Heute')
+    // The band lies in the right half: its label is anchored at its end and ends with it. The tick is a mark of its own.
     expect(t.marks).toEqual([
-      { key: 'frist-2026-05-07', at: 4, align: 'start', tick: true, lines: ['Umsetzungsfrist', '07.05.2026'] },
-      { key: 'begutachtung', at: (t.band![0] + 96) / 2, align: 'end', tick: false, lines: ['Begutachtung', '21.10.–10.11.2026'] },
+      { key: 'frist-2026-05-07', at: 0, align: 'start', tick: false, lines: ['Umsetzungsfrist', '07.05.2026'] },
+      { key: 'begutachtung', at: 100, align: 'end', tick: false, lines: ['Begutachtung', '21.10.–10.11.2026'] },
+      { key: 'tick-2026-05-07', at: 0, align: 'center', tick: true, lines: ['', ''] },
     ])
     expect(euFactView(response({}))!.adoptedNote).toBe('beschlossen am 11.04.2024')
   })
@@ -87,14 +89,16 @@ describe('euFactView — two dates, no verdict', () => {
   it('ends the track at the later of today and the deadline, and names the Kundmachung where the procedure is over', () => {
     const ctx = { begutachtung: { start: '2026-10-22', end: '2026-11-05' }, stand: { date: '2026-11-04', label: 'Heute' } }
     const ahead = euTimeline(euFactView(response({ acts: [act({ transposition: { deadline: '2026-12-11', otherDates: [] } })] })), ctx)!
-    expect(ahead.marks.find((m) => m.tick)).toMatchObject({ at: 96, align: 'end' })
-    expect(ahead.band![0]).toBe(4)
-    expect(ahead.value).toBeLessThan(96)
+    expect(ahead.marks.find((m) => m.tick)).toMatchObject({ at: 100 })
+    expect(ahead.marks.find((m) => m.lines[0] === 'Umsetzungsfrist')).toMatchObject({ at: 100, align: 'end' })
+    // The band lies in the left half: its label starts with it.
+    expect(ahead.marks.find((m) => !m.tick)).toMatchObject({ at: 0, align: 'start' })
+    expect(ahead.value).toBeLessThan(100)
     const over = euTimeline(euFactView(response({})), { begutachtung: { start: '2025-07-07', end: '2025-08-15' }, stand: { date: '2025-12-30', label: 'Bundesgesetzblatt' } })!
     expect(over.valueLabel).toBe('Bundesgesetzblatt')
     // The deadline lies after the Kundmachung: the tick ends the track, the dot stands before it.
-    expect(over.marks.find((m) => m.tick)!.at).toBe(96)
-    expect(over.value).toBeLessThan(96)
+    expect(over.marks.find((m) => m.tick)!.at).toBe(100)
+    expect(over.value).toBeLessThan(100)
   })
 
   it('shares one label between deadlines that would overlap, aligns neighbours away from each other, and carries the footnote mark', () => {
@@ -111,12 +115,12 @@ describe('euFactView — two dates, no verdict', () => {
       ['Begutachtung', '07.07.–15.08.2025'],
       ['Umsetzungsfristen', '17.07.2026¹, 05.08.2026'],
     ])
-    // The first tick and the band stand within 14 %: the tick's label leans left, the band's right.
-    expect(labelled[0]!.align).toBe('start')
-    expect(labelled[1]!.align).toBe('start')
+    // The first label is pinned to the track's start and the band begins within 14 % of it: the band's label is pushed to start 14 % in.
+    expect(labelled[0]).toMatchObject({ at: 0, align: 'start' })
+    expect(labelled[1]).toMatchObject({ at: 14, align: 'start' })
     expect(labelled[2]!.align).toBe('end')
-    // Every deadline keeps a tick of its own.
-    expect(t.marks.filter((m) => m.tick)).toHaveLength(3)
+    // Every deadline keeps a tick of its own, on its own date.
+    expect(t.marks.filter((m) => m.tick).map((m) => m.at)).toEqual([0, t.marks.filter((m) => m.tick)[1]!.at, 100])
     expect(three.deadlines.map((d) => d.note)).toEqual([null, 1, null])
   })
 

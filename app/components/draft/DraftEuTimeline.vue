@@ -17,8 +17,8 @@ import type { EuTimelineView } from '~/utils/euRecht'
 
 const props = defineProps<{ view: EuTimelineView }>()
 
-/** „Heute" and „Beschluss" fit over their dot wherever it stands; a label with a date in it takes the edge rule. */
-const valueAlign = computed(() => (props.view.valueLabel.length <= 12 ? 'center' as const : 'auto' as const))
+/** „Heute" fits over its dot wherever it stands, the track's very end included; a longer word takes the edge rule. */
+const valueAlign = computed(() => (props.view.valueLabel.length <= 6 ? 'center' as const : 'auto' as const))
 </script>
 
 <template>

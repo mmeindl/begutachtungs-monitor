@@ -146,8 +146,6 @@ export interface EuTimelineView {
 
 const SUPERSCRIPT = ['', '¹', '²', '³', '⁴', '⁵', '⁶', '⁷', '⁸', '⁹']
 const dayOf = (iso: string) => Date.parse(`${iso}T00:00:00Z`) / 86_400_000
-/** The track keeps this much of its width free at either end, so no tick sits on an edge. */
-const EDGE = 4
 /** Umsetzungsfristen closer than this share one label — three weeks on a year-long track are 30 px (32/ME). */
 const CLUSTER = 12
 /** Two labels closer than this are aligned away from each other instead of over each other. */
@@ -175,7 +173,11 @@ export function dateRangeDe(start: string, end: string | null | undefined): stri
  * Begutachtung are often days apart (that is the finding): Umsetzungsfristen
  * closer than `CLUSTER` share one label, and two labels closer than `APART`
  * are aligned away from each other. A label near either edge is aligned
- * inward, as on the Frist bar.
+ * inward, as on the Frist bar, and the Begutachtung's label is anchored at
+ * the band's end where the band lies in the right half, at its start in
+ * the left half — so it ends with the band, not short of it. No margin at
+ * the ends: the first and last dates sit on the track's ends, as the Frist
+ * bar's do (a 4 % margin stood here for an hour and read as empty line).
  *
  * Null where there is nothing to draw: no act with a deadline, or every
  * date on one day.
@@ -188,8 +190,8 @@ export function euTimeline(fact: EuFactView | null | undefined, ctx: EuTimelineC
   const first = Math.min(...days)
   const span = Math.max(...days) - first
   if (!(span > 0)) return null
-  const at = (iso: string) => EDGE + ((dayOf(iso) - first) / span) * (100 - 2 * EDGE)
-  const edge = (pos: number): EuTimelineMark['align'] => (pos < EDGE + 8 ? 'start' : pos > 100 - EDGE - 8 ? 'end' : 'center')
+  const at = (iso: string) => ((dayOf(iso) - first) / span) * 100
+  const edge = (pos: number): EuTimelineMark['align'] => (pos < 8 ? 'start' : pos > 92 ? 'end' : 'center')
   const dated = (d: EuDeadlineView) => `${d.date}${d.note ? SUPERSCRIPT[d.note] ?? `(${d.note})` : ''}`
 
   // The deadlines, clustered where they would overlap, in date order.
@@ -200,34 +202,44 @@ export function euTimeline(fact: EuFactView | null | undefined, ctx: EuTimelineC
     if (last && at(d.iso) - at(last[0]!.iso) < CLUSTER) last.push(d)
     else clusters.push([d])
   }
+  // Labels and ticks are separate marks: a label may be pushed aside to
+  // clear its neighbour, a tick never moves off its date.
   const marks: EuTimelineMark[] = clusters.map((c) => {
     const pos = c.reduce((sum, d) => sum + at(d.iso), 0) / c.length
     return {
       key: `frist-${c[0]!.iso}`,
       at: pos,
       align: edge(pos),
-      tick: true,
+      tick: false,
       lines: [c.length > 1 ? 'Umsetzungsfristen' : 'Umsetzungsfrist', c.map(dated).join(', ')],
     }
   })
   const band: [number, number] | null = start ? [at(start), at(end ?? start)] : null
   if (band && start) {
-    const pos = (band[0] + band[1]) / 2
-    marks.push({ key: 'begutachtung', at: pos, align: edge(pos), tick: false, lines: ['Begutachtung', dateRangeDe(start, end)] })
+    const centre = (band[0] + band[1]) / 2
+    const [pos, align]: [number, EuTimelineMark['align']] = centre > 60 ? [band[1], 'end'] : centre < 40 ? [band[0], 'start'] : [centre, 'center']
+    marks.push({ key: 'begutachtung', at: pos, align, tick: false, lines: ['Begutachtung', dateRangeDe(start, end)] })
   }
   marks.sort((a, b) => a.at - b.at)
   for (let i = 1; i < marks.length; i++) {
     const left = marks[i - 1]!
     const right = marks[i]!
-    if (right.at - left.at < APART) {
+    if (right.at - left.at >= APART) continue
+    if (left.align === 'start' && left.at < 8) {
+      // The left one is pinned to the track's start: the right one begins past it.
+      right.align = 'start'
+      right.at = Math.max(right.at, left.at + APART)
+    } else if (right.align === 'end' && right.at > 92) {
+      // The right one is pinned to the track's end: the left one ends before it.
+      left.align = 'end'
+      left.at = Math.min(left.at, right.at - APART)
+    } else {
       if (left.align !== 'start') left.align = 'end'
       if (right.align !== 'end') right.align = 'start'
     }
   }
-  // Every Umsetzungsfrist keeps its own tick, clustered or not.
-  const ticks: EuTimelineMark[] = sorted
-    .filter((d) => !marks.some((m) => m.tick && m.key === `frist-${d.iso}`))
-    .map((d) => ({ key: `tick-${d.iso}`, at: at(d.iso), align: 'center', tick: true, lines: ['', ''] }))
+  // Every Umsetzungsfrist keeps its own tick on its own date, clustered or not.
+  const ticks: EuTimelineMark[] = sorted.map((d) => ({ key: `tick-${d.iso}`, at: at(d.iso), align: 'center', tick: true, lines: ['', ''] }))
   return {
     value: at(ctx.stand.date),
     valueLabel: ctx.stand.label,

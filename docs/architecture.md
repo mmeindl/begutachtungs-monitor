@@ -14398,13 +14398,15 @@ Strich quer über die Linie — ein Maßstab, durch den der Entwurf nicht
 hindurchgeht, wie der Regelfall am Fristbalken —, die Begutachtung als Band
 dahinter, und der Punkt dort, wo das Verfahren steht: heute, solange es
 läuft, in Gelb, weil er sich noch bewegt; die Kundmachung, wenn es vorbei
-ist. Die Strecke reicht vom frühesten dieser Daten bis zum spätesten, vier
-Prozent frei an jedem Rand, und nicht weiter. Auf welcher Seite der Frist
+ist. Die Strecke reicht vom frühesten dieser Daten bis zum spätesten und
+nicht weiter; das erste und das letzte stehen auf ihren Enden, wie am
+Fristbalken (ein Rand von vier Prozent las sich als leere Linie). Auf welcher Seite der Frist
 der Entwurf kam und wie weit davon, sieht man; gesagt wird es nicht (D6).
 Beschriftet wie der Fristbalken: unter jeder Marke der Begriff über dem
 Datum — „Umsetzungsfrist" über „07.05.2026" unter dem Strich,
-„Begutachtung" über „21.10.–10.11.2026" unter der Mitte des Bands —, das
-Wort am Punkt darüber, mittig, weil „Heute" und „Beschluss" kurz genug
+„Begutachtung" über „21.10.–10.11.2026" am Ende des Bands, rechtsbündig,
+wo das Band in der rechten Hälfte liegt, an seinem Anfang in der linken —,
+das Wort am Punkt darüber, mittig, weil „Heute" und „Beschluss" kurz genug
 sind, um überall zu stehen (`valueAlign="center"` am ScaleBar). Zwei
 Regeln halten die Beschriftungen auseinander, weil Frist und Begutachtung
 oft Tage auseinanderliegen, das ist der Befund: Umsetzungsfristen, die
