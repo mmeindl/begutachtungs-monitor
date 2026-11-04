@@ -786,6 +786,54 @@ work e-mail address. Link the document, do not parse it
 - Docs: the HTML help pages are empty ASP.NET boilerplate. The real reference: `data.bka.gv.at/ris/api/v2.6/Content/Examples.zip` (→ `begut.html` with all enums) and the XSDs under `data.bka.gv.at/ris/ogd/v2.6/XSD/`.
 - **License:** the response carries no license field; the data.gv.at dataset "RIS Daten Version 2.6" (Bundeskanzleramt) licenses all distributions **CC-BY 4.0**.
 
+
+## 2d. EU-Bezug: das Vorblatt-PDF und der EUR-Lex-Cellar (04.11.2026)
+
+**The Vorblatt/WFA has a text layer only in its PDF.** Its RIS XML and HTML
+are page images. It is a `Material` document, found by name
+(`VORBLATT_NAME` in `server/utils/eu/vorblatt.ts`: „Vorblatt und WFA“,
+„WFA samt Vorblatt“, „Vorblatt + WFV“, „Ergbnisdokument“ …). In GP XXVIII
+151 of 154 MEs carry one, 149 with text, 146 with the heading
+„Verhältnis zu den Rechtsvorschriften der Europäischen Union“, followed by
+one of the WFA tool's fixed sentences. Read per page (unpdf,
+`mergePages: false`) so the footer „2 von 12“ can be dropped — it can stand
+between heading and sentence.
+
+**Cellar SPARQL** — `GET https://publications.europa.eu/webapi/rdf/sparql?query=…`,
+header `Accept: application/sparql-results+json`, no key. The query the
+site sends (`transpositionQuery`, CELEX validated against
+`^3\d{4}[LRD]\d{4}$` first):
+
+```sparql
+PREFIX cdm: <http://publications.europa.eu/ontology/cdm#>
+PREFIX owl: <http://www.w3.org/2002/07/owl#>
+SELECT ?d WHERE {
+  ?w owl:sameAs <http://publications.europa.eu/resource/celex/32024L1275> .
+  OPTIONAL { ?w cdm:directive_date_transposition ?d }
+}
+```
+
+- An act with dates: one binding per date, `{"d": {"datatype": "…#date", "value": "2026-05-29"}}`.
+- An act without a date (every regulation): one empty binding `{}`.
+- An unknown CELEX: no binding at all — a citation error in the draft
+  („Verordnung (EU) 2022/689“ for 2022/869).
+- **Several dates, unlabelled:** 50 of the 168 directives with a date
+  (04.11.2026). 2024/1275 → 2025-01-01 and 2026-05-29. Which one is the
+  general deadline the Cellar does not say; the site prints the latest.
+
+Answers in ~0,25 s; ~420 acts in 21 s at two in parallel. The corpus
+script asks two more properties (`resource_legal_date_entry-into-force`,
+`work_date_document`) and the German title.
+
+**CELEX and ELI from a citation.** CELEX = `3` + four-digit year + `L`
+(Richtlinie) / `R` (Verordnung) / `D` (Beschluss, Entscheidung) + four-digit
+zero-padded number — „Richtlinie (EU) 2024/1069“ → `32024L1069`, „Verordnung
+(EG) Nr. 1907/2006“ → `32006R1907` (number first after „Nr.“), „Richtlinie
+2009/43/EG“ → `32009L0043`. ELI link in German:
+`https://eur-lex.europa.eu/eli/dir/2024/1069/oj/deu` (`reg`, `dec` for the
+others). EUR-Lex pages are behind a bot check for scripted clients; the
+site only links there and never fetches.
+
 ---
 
 ## 3. Accountability chain: ME → RV → BGBl
