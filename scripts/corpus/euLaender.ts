@@ -24,6 +24,17 @@
  *     Burgenland as its general part): does it carry the Bund's heading
  *     (`vorblattEuSection`, `classifyVorblatt`)?
  *
+ * Since step 2 (04.11.2026, docs/architecture.md §12.66, Nachtrag 2) the run
+ * also takes THE PAGE'S OWN DECISION (phase C): the Erläuterungen read by the
+ * page's reader from the cached PDFs (`readLandExplanations`, not the dev
+ * server's stored answer, so a change of that reader shows here), then
+ * `readLandEu` — the statement, the fact, the acts the page names and where
+ * from — as `corpus:eu` applies `euMarker.ts` for the Bund (its section g).
+ * Section 5 prints it per Land, with the acts gained from the quoted hint
+ * Ziffern (c) and Oberösterreich's „Umsetzungshinweis:" entries (b), and
+ * checks that no named law-text act stands outside the law text's part.
+ * Sections 1–4 keep the measurement's own readings as diagnostics.
+ *
  * Every act found is looked up in the EUR-Lex Cellar (`transpositionUrl`,
  * `parseTranspositionAnswer`) for its transposition dates, and a handful are
  * probed in RIS's consolidated Landesrecht (`Applikation=LrKons`), to know
@@ -65,9 +76,12 @@ import { lawBlocksFromPdfPages } from '../../server/utils/laender/draftPdfLaw'
 import { baseActCelexes, readEuActCitations, uniqueActs, type EuAct } from '../../server/utils/eu/actCitations'
 import { EU_ANCHOR, readExplanationsEuSignal, readUmsetzungshinweis, type LawSignal } from '../../server/utils/eu/umsetzungshinweis'
 import { EU_HEADING, VORBLATT_CLASS_RANK, VORBLATT_EU_YES, classifyVorblatt, classifyVorblattSentence, linesOfPages, type VorblattClass } from '../../server/utils/eu/vorblatt'
-import { decideEuMarker } from '../../server/utils/eu/euMarker'
 import { deadlineOf, parseTranspositionAnswer, transpositionUrl, type SparqlAnswer, type TranspositionDates } from '../../server/utils/eu/cellar'
 import { bundesrechtHits, bundesrechtPhrase, transposesAct, type BrKonsSearchAnswer } from '../../server/utils/eu/bundesrecht'
+import { readLandEu, type LandEuReading } from '../../server/utils/eu/landEuReading'
+import { landLawPart } from '../../server/utils/eu/landGesetzestext'
+import { readLandExplanations } from '../../server/utils/laender/landExplanationsRead'
+import { safeExternalUrl } from '../../shared/utils/safeExternalUrl'
 import { getJson, getText, type HttpOptions } from '../lib/http'
 import { pool } from '../lib/async'
 import { argFlag, argPair } from '../lib/args'
@@ -515,6 +529,52 @@ process.stderr.write('\n')
 const readSeconds = (Date.now() - started) / 1000
 
 // ---------------------------------------------------------------------------
+// Phase C: the page's own reading (`landEuReading.ts`), over what the page reads
+// ---------------------------------------------------------------------------
+
+/**
+ * What the draft page decides, short of EUR-Lex and the law in force: the
+ * Erläuterungen read by the page's reader (`readLandExplanations`) from the
+ * cached PDFs — not the dev server's stored answer, so a change of that
+ * reader shows here —, then `readLandEu`. `lawPart` is the law text's
+ * part, for the prose check.
+ */
+interface PageRead {
+  reading: LandEuReading
+  lawPart: string | null
+}
+const pageReads = new Map<string, PageRead | string>()
+await pool(
+  rows,
+  PDF_CONCURRENCY,
+  async (r) => {
+    const documents = r.detail?.documents.length ? r.detail.documents : r.item.documents
+    try {
+      const read = await readLandExplanations(r.item.land, { draft: { title: r.detail?.title ?? r.item.title, documents } }, pdfBytes)
+      let draftPages = read.draftUrl ? read.pages.get(read.draftUrl) ?? null : null
+      if (read.draftUrl && !draftPages && !read.draftFailed) draftPages = await pagesOf(await pdfBytes(read.draftUrl))
+      const erl = read.response
+      const reading = readLandEu({
+        land: r.item.land,
+        documents: documents.map((d) => ({ title: d.title, url: safeExternalUrl(d.url) ?? d.url })),
+        pages: read.pages,
+        explanations: { available: erl.available, general: erl.general, particular: erl.particular, url: erl.document?.url ?? null },
+        draft: { url: read.draftUrl, pages: draftPages },
+      })
+      pageReads.set(r.item.id, { reading, lawPart: draftPages ? landLawPart(draftPages)?.join(' ').replace(/\s+/g, ' ') ?? null : null })
+    } catch (err) {
+      pageReads.set(r.item.id, String(err).slice(0, 160))
+    }
+  },
+  (done, total) => process.stderr.write(`\rPage: ${done}/${total}`),
+)
+process.stderr.write('\n')
+const pageOf = (r: Row): PageRead | null => {
+  const p = pageReads.get(r.item.id)
+  return p && typeof p !== 'string' ? p : null
+}
+
+// ---------------------------------------------------------------------------
 // --show: everything read from one draft
 // ---------------------------------------------------------------------------
 
@@ -809,15 +869,42 @@ for (const r of [...disErlOnly, ...disLawOnly].slice(0, 15)) {
   if (!r.law.windows.length) console.log(`    Gesetz: — (${lPart(r)}${r.law.plainSignal ? `, Klartext ${r.law.plainSignal}: ${q(r.law.plainWindows[0] ?? '', 300)}` : ''})`)
 }
 
-console.log(`\n### The page's own decision (euMarker.ts, no Vorblatt, Erläuterungen per D5), per Land`)
+console.log(`\n### The page's own decision (landEuReading.ts: the Land's EU statement, else the prose per D5), per Land`)
+const roadOf = (p: PageRead) => (p.reading.decision.source === 'erlaeuterungen' && !p.reading.found ? 'prosa' : p.reading.found?.statement.road === 'vorblatt' ? 'wfa' : p.reading.decision.source === 'erlaeuterungen' ? 'eu-abschnitt' : (p.reading.decision.source ?? '—'))
+console.log(`  Land  Fakten  (WFA / EU-Abschnitt / Prosa)  kein Fakt  nicht gelesen   Akt genannt   aus (c) zitierter Ziffer   aus (b) OÖ-Hinweis   Akt aus Prosa   Gesetzestext nennt Akt (mit/ohne Fakt)`)
 for (const land of LANDS) {
-  const count = new Map<string, number>()
-  for (const r of byLand(land)) {
-    const d = decideEuMarker({ vorblatt: r.vorblatt.classes, law: { signal: r.law.signal, acts: r.law.acts }, explanations: r.erl.signal })
-    const k = `${d.marker ?? 'kein Fakt'}${d.source ? ` (${d.source})` : ''}`
-    count.set(k, (count.get(k) ?? 0) + 1)
+  const rs = byLand(land)
+  const ps = rs.map(pageOf)
+  const facts = ps.filter((p): p is PageRead => !!p?.reading.decision.marker)
+  const roads = (k: string) => facts.filter((p) => roadOf(p) === k).length
+  const law = (p: PageRead) => new Set(p.reading.law.acts.map((a) => a.celex))
+  const stmt = (p: PageRead) => new Set(p.reading.found ? p.reading.named.filter((a) => p.reading.found!.statement.sentence.includes(a.raw)).map((a) => a.celex) : [])
+  const quotedGain = facts.filter((p) => p.reading.named.some((a) => p.reading.law.quotedOnly.some((q) => q.celex === a.celex) && !stmt(p).has(a.celex))).length
+  const entryGain = facts.filter((p) => p.reading.named.some((a) => p.reading.hinweise.some((h) => h.acts.some((x) => x.celex === a.celex)) && !law(p).has(a.celex) && !stmt(p).has(a.celex))).length
+  const prose = facts.filter((p) => roadOf(p) === 'prosa' && p.reading.named.length).length
+  console.log(`  ${land.padEnd(5)} ${pad(facts.length, 6)}  (${pad(roads('wfa'), 3)} / ${pad(roads('eu-abschnitt'), 3)} / ${pad(roads('prosa'), 3)})          ${pad(ps.filter((p) => p && !p.reading.decision.marker).length, 5)}  ${pad(ps.filter((p) => !p).length, 12)}   ${pad(facts.filter((p) => p.reading.named.length).length, 11)}   ${pad(quotedGain, 24)}   ${pad(entryGain, 18)}   ${pad(prose, 13)}   ${pad(ps.filter((p) => p?.reading.law.acts.length).length, 22)}`)
+}
+const pageFacts = rows.map((r) => ({ r, p: pageOf(r) })).filter((x): x is { r: Row; p: PageRead } => !!x.p?.reading.decision.marker)
+console.log(`  all   ${pad(pageFacts.length, 6)} facts · ${pageFacts.filter((x) => x.p.reading.named.length).length} name an act · law text names an act in ${rows.filter((r) => pageOf(r)?.reading.law.acts.length).length} drafts · not read ${rows.filter((r) => !pageOf(r)).length}`)
+console.log(`\n  Law-text acts the page names whose citation is not in the law text's part (must be none):`)
+let outsideLaw = 0
+for (const { r, p } of pageFacts) {
+  for (const a of p.reading.law.acts) {
+    if (!p.reading.named.some((n) => n.celex === a.celex)) continue
+    if (p.lawPart && p.lawPart.includes(a.raw.replace(/\s+/g, ' '))) continue
+    outsideLaw++
+    console.log(`    ${r.item.id}  ${a.celex}  „${a.raw}"`)
   }
-  console.log(`  ${land.padEnd(5)} ${[...count].sort((a, b) => b[1] - a[1]).map(([k, v]) => `${k} ${v}`).join(' · ')}`)
+}
+console.log(`    ${outsideLaw}`)
+console.log(`\n  Every fact by the page rule:`)
+for (const { r, p } of pageFacts.sort((a, b) => a.r.item.id.localeCompare(b.r.item.id))) {
+  console.log(`    ${r.item.id.padEnd(48)} ${p.reading.decision.marker!.padEnd(15)} ${roadOf(p).padEnd(12)} ${(p.reading.actsSource ?? '—').padEnd(14)} ${p.reading.named.map((a) => a.celex).join(' ') || '—'}`)
+}
+const unread = rows.filter((r) => !pageOf(r))
+if (unread.length) {
+  console.log(`\n  Not read by the page's reader (${unread.length}):`)
+  for (const r of unread) console.log(`    ${r.item.id}  ${pageReads.get(r.item.id)}`)
 }
 
 // ---------------------------------------------------------------------------
@@ -965,7 +1052,7 @@ if (outDir) {
     const s = String(v ?? '')
     return /[",\n;]/.test(s) ? `"${s.replace(/"/g, '""')}"` : s
   }
-  const header = ['id', 'land', 'kind', 'startedAt', 'deadline', 'explanations_available', 'eu_heading', 'heading_class', 'prose_eu', 'erl_signal', 'law_read', 'law_signal', 'acts', 'erl_acts', 'erl_signal_acts', 'cellar_deadlines', 'order_verdict', 'days_after_latest_deadline', 'deadline_source']
+  const header = ['id', 'land', 'kind', 'startedAt', 'deadline', 'explanations_available', 'eu_heading', 'heading_class', 'prose_eu', 'erl_signal', 'law_read', 'law_signal', 'acts', 'erl_acts', 'erl_signal_acts', 'cellar_deadlines', 'order_verdict', 'days_after_latest_deadline', 'deadline_source', 'page_marker', 'page_source', 'page_acts_source', 'page_acts']
   const lines = [header.join(',')]
   for (const r of rows) {
     const o = orderOf(r)
@@ -990,6 +1077,10 @@ if (outDir) {
       o?.verdict ?? '',
       o?.gapLatest ?? '',
       deadlineActs(r).source ?? '',
+      pageOf(r)?.reading.decision.marker ?? '',
+      pageOf(r)?.reading.decision.source ?? '',
+      pageOf(r)?.reading.actsSource ?? '',
+      pageOf(r)?.reading.named.map((a) => a.celex).join(' ') ?? '',
     ].map(cell).join(','))
   }
   await writeFile(join(outDir, 'drafts.csv'), `${lines.join('\n')}\n`)
