@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { decideLandEuMarker, isLandEuHeading, normaliseLandHeading, readLandEuStatement, statementActs } from '../server/utils/eu/landErlaeuterungen'
+import { decideLandEuMarker, entryHinweise, isLandEuHeading, normaliseLandHeading, readLandEuStatement, statementActs } from '../server/utils/eu/landErlaeuterungen'
 
 /*
  * Fixtures cut from the Länder corpus of GP XXVIII (`.cache/eu-laender/`,
@@ -137,5 +137,21 @@ describe('readLandEuStatement', () => {
     expect(readLandEuStatement(general, ['Allgemeines', 'Der vorliegende Gesetzesentwurf dient der Umsetzung.'])).toBeNull()
     const d = decideLandEuMarker(null, general, NO_LAW)
     expect([d.marker, d.source, d.actsAllowed]).toEqual(['umsetzung', 'erlaeuterungen', false])
+  })
+})
+
+describe('entryHinweise', () => {
+  const entry = (heading: string, ...text: string[]) => ({ heading, text })
+
+  it('names the acts of the implementing sentence, not a scope list in a sentence that describes the directives (ooe-2026-16120)', () => {
+    const hints = entryHinweise([
+      entry('Zu Art. II Z 11 (§ 14 Abs. 1):', 'Umsetzungshinweis: Durch § 14 Abs. 1 Oö. ADG und § 27 Abs. 1 Oö. GBG 2021 werden Art. 4 der Richtlinie (EU) 2024/1499 sowie der gleichlautende Art. 4 der Richtlinie (EU) 2024/1500 umgesetzt. Ziel dieser beiden Richtlinien ist es, die Wirksamkeit von Gleichbehandlungsstellen zu sichern.'),
+      entry('Zu Art. II Z 12 (§ 14 Abs. 5):', 'Umsetzungshinweis: Art. 5 Abs. 2 der Richtlinie (EU) 2024/1499 sowie Art. 5 Abs. 2 der Richtlinie (EU) 2024/1500 sehen vor, dass Mitgliedstaaten sicherstellen, dass Gleichbehandlungsstellen befugt sind, Maßnahmen zur Verhinderung von Diskriminierung im Sinn der Richtlinien 79/7/EWG, 2000/43/EG, 2000/78/EG, 2004/113/EG sowie 2006/54/EG und 2010/41/EU durchzuführen.'),
+      entry('Zu Art. III Z 27 (§ 27 Abs. 1):', 'Umsetzungshinweis: § 27 Abs. 1 setzt die Vorgaben gemäß Art. 4, Art. 5 Abs. 2 und 3 der Richtlinie (EU) 2024/1499 und (EU) 2024/1500 um; sh. Näheres in den Erläuterungen zu § 14 Oö. ADG.'),
+    ])
+    expect(hints.map((h) => h.acts.map((a) => a.celex))).toEqual([
+      ['32024L1499', '32024L1500'],
+      ['32024L1499', '32024L1500'],
+    ])
   })
 })
