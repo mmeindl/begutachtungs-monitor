@@ -42,6 +42,7 @@ describe('euActPageView', () => {
   it('heads the page with the adoption and the deadline, in the fact\'s words', () => {
     const v = euActPageView(response({}))
     expect(v.title).toBe('Richtlinie (EU) 2024/1069')
+    expect(v.implementingHeading).toBe('Entwürfe, die sie umsetzen')
     expect(v.head).toEqual(['beschlossen am 11.04.2024', 'Umsetzungsfrist bis 07.05.2026'])
     expect(v.footnote).toBeNull()
     const further = euActPageView(response({ act: { ...response({}).act, transposition: { deadline: '2026-05-29', otherDates: ['2025-01-01'] } } }))

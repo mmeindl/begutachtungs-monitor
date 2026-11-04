@@ -138,6 +138,8 @@ export interface EuRestatingRowView {
 
 export interface EuActPageView {
   title: string
+  /** „Entwürfe, die sie umsetzen" — the pronoun by the act's gender: die Richtlinie, die Verordnung, der Beschluss. */
+  implementingHeading: string
   eurLexUrl: string
   /** „beschlossen am 11.04.2024", „Umsetzungsfrist bis 07.05.2026¹" — one line, joined by „ · ". */
   head: string[]
@@ -251,6 +253,7 @@ export function euActPageView(r: EuActResponse): EuActPageView {
 
   return {
     title: act.label,
+    implementingHeading: `Entwürfe, die ${act.kind === 'beschluss' || act.kind === 'rahmenbeschluss' ? 'ihn' : 'sie'} umsetzen`,
     eurLexUrl: act.eurLexUrl,
     head,
     footnote,
