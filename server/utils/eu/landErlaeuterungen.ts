@@ -132,15 +132,35 @@ export interface LandMarkerDecision extends MarkerDecision {
  * The page's decision for a Land: the statement with the Vorblatt's weight
  * where the Land wrote one (D1, D2), the prose of the general part where it
  * did not (D5). `law` is what the draft's law text says.
+ *
+ * A STATEMENT IN WORDS THE CLASSIFIER DOES NOT KNOW (`freitext`) is not a
+ * „no" (04.11.2026). The Bund's Vorblatt prints one of a few fixed
+ * sentences, so there an unknown one says nothing; a Land writes its own,
+ * and Salzburg's „Die vorgeschlagenen Regelungen dienen der Umsetzung von
+ * Unionsrecht" (34443) or „… dient der Durchführung der Verordnung (EU)
+ * 2016/2031" are yes in words of their own. Read so, 15 Salzburg drafts
+ * lost a fact the general part's prose had given them. So an unknown
+ * statement is read with the prose reader (`readExplanationsEuSignal`):
+ * first itself — then it still speaks as the headed statement and may name
+ * acts —, then the whole general part, by rule D5, naming none. A
+ * statement the classifier reads as a no (`frei-nein`, `nicht-eu`) stays
+ * one, whatever the prose around it says.
  */
 export function decideLandEuMarker(
   statement: LandEuStatement | null,
   general: readonly ExplanationsPassageText[],
   law: { signal: LawSignal | null; acts: readonly EuAct[] },
 ): LandMarkerDecision {
-  if (statement) {
+  if (statement && statement.cls !== 'freitext') {
     const d = decideEuMarker({ vorblatt: [statement.cls], law, explanations: null })
     return { ...d, source: d.source === 'vorblatt' ? statement.road : d.source, actsAllowed: true }
+  }
+  if (statement) {
+    const own = readExplanationsEuSignal([{ heading: statement.heading, text: [statement.sentence] }]).signal
+    if (own) {
+      const d = decideEuMarker({ vorblatt: [], law, explanations: own })
+      return { ...d, source: statement.road, actsAllowed: true }
+    }
   }
   const signal = readExplanationsEuSignal(general).signal
   return { ...decideEuMarker({ vorblatt: [], law, explanations: signal }), actsAllowed: false }

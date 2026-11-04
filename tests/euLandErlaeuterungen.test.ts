@@ -112,6 +112,26 @@ describe('readLandEuStatement', () => {
     expect(decideLandEuMarker(s, SBG_FALSE, NO_LAW).marker).toBeNull()
   })
 
+  it('reads a statement in the Land\'s own words with the prose reader, still as the statement (sbg-34443)', () => {
+    const general = [
+      { heading: '1. Verordnungsinhalt', text: ['Die Richtlinie (EU) 2024/1233 ist bis 21. Mai 2026 umzusetzen.'] },
+      { heading: '3. Übereinstimmung mit EU-Recht', text: ['Die vorgeschlagenen Regelungen dienen der Umsetzung von Unionsrecht.'] },
+    ]
+    const s = readLandEuStatement(general, null)!
+    expect(s.cls).toBe('freitext')
+    const d = decideLandEuMarker(s, general, NO_LAW)
+    expect([d.marker, d.source, d.actsAllowed]).toEqual(['umsetzung', 'erlaeuterungen', true])
+  })
+
+  it('falls to the general part, naming nothing, where the unknown statement gives no signal either', () => {
+    const general = [
+      { heading: 'Allgemeines', text: ['Mit der Novelle wird die Richtlinie (EU) 2024/1233 umgesetzt.'] },
+      { heading: '3. Übereinstimmung mit EU-Recht', text: ['Siehe die Ausführungen oben.'] },
+    ]
+    const d = decideLandEuMarker(readLandEuStatement(general, null), general, NO_LAW)
+    expect([d.marker, d.source, d.actsAllowed]).toEqual(['umsetzung', 'erlaeuterungen', false])
+  })
+
   it('leaves prose without a heading to the D5 road, which names no act', () => {
     const general = [{ heading: 'Allgemeines', text: ['Der vorliegende Gesetzesentwurf dient der Umsetzung der Richtlinie (EU) 2024/1785 im Landesrecht.'] }]
     expect(readLandEuStatement(general, ['Allgemeines', 'Der vorliegende Gesetzesentwurf dient der Umsetzung.'])).toBeNull()
