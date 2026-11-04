@@ -35,7 +35,7 @@ describe('euFactView — two dates, no verdict', () => {
       attach: 'colon',
       deadlines: [{ of: null, date: '07.05.2026', otherDates: [] }],
       start: '21.10.2026',
-      sources: [{ what: 'Vorblatt', publisher: 'ris', terms: 'cc-by' }, { what: 'Gesetzestext', publisher: 'ris', terms: 'cc-by' }, { what: 'Fristen', publisher: 'eurlex', terms: 'keine-lizenz' }],
+      sources: [{ what: 'Vorblatt', publisher: 'ris', terms: 'cc-by' }, { what: 'Gesetzestext', publisher: 'ris', terms: 'cc-by' }, { what: 'Fristen', publisher: 'eurlex', terms: 'cc0' }],
     })
     expect(JSON.stringify(v)).not.toMatch(/\b(?:war|ist|begann)\b/)
   })

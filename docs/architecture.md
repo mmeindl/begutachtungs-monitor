@@ -14441,8 +14441,14 @@ den Satz, die Lage zur Frist ist das Bild.
 Karte der Seite, in der einen Zeile von `SectionCredits`: „Quellen: Vorblatt
 und Gesetzestext (RIS) · Fristen (EUR-Lex) · Methode" (`DraftEuCredits`);
 sie stand zuerst im Fakt selbst. EUR-Lex ist seither der dritte Publisher
-in `provenance.ts`, ohne Anspruch (`keine-lizenz`), wie das Impressum es
-sagt. Die Fußnoten zu weiteren Fristen bleiben beim Fakt, sie erklären
+in `provenance.ts`, zunächst ohne Anspruch (`keine-lizenz`); seit dem Abend
+des 04.11.2026, nachdem der rechtliche Hinweis von EUR-Lex im Browser
+gelesen war (Skripte bekommen dort einen Bot-Check, der nicht umgangen
+wird), als `cc0`: EUR-Lex-Metadaten – und nichts anderes übernimmt der
+Monitor von dort, Fristen und Beschlussdaten – widmet das Amt für
+Veröffentlichungen der Public Domain (CC0 1.0); Rechtsakte selbst wären nach
+Beschluss 2011/833/EU weiterverwendbar, werden aber nur verlinkt, das Logo
+gar nicht. Das Impressum sagt es so. Die Fußnoten zu weiteren Fristen bleiben beim Fakt, sie erklären
 seine Hochzahlen.
 
 **Lange Aktenlisten falten** (32/ME nennt 28, 58/ME 24): die ersten fünf

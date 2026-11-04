@@ -132,8 +132,9 @@ const { siteUrl } = useRuntimeConfig().public
         Den Gesetzestext und die Erläuterungen eines Ministerialentwurfs
         liest der Textvergleich in der Fassung, die das Parlament
         veröffentlicht; dieselben Dokumente führt das RIS unter CC BY 4.0.
-        Die Umsetzungsfristen von EU-Richtlinien kommen aus EUR-Lex; dafür
-        beanspruchen wir keine Lizenz, übernommen werden nur Daten und Links.
+        Die Umsetzungsfristen von EU-Richtlinien kommen aus EUR-Lex; das
+        sind Metadaten, die das Amt für Veröffentlichungen unter CC0 1.0
+        freigibt – übernommen werden nur Daten und Links.
       </p>
       <p>
         Für das Begutachtungsverfahren selbst – Ministerialentwürfe,

@@ -38,7 +38,7 @@ import type { LawStationId, Publisher } from '../types'
  */
 
 /** What may be said about a source: a licence, a status, or nothing. */
-export type SourceTerms = 'cc-by' | 'freies-werk' | 'keine-lizenz'
+export type SourceTerms = 'cc-by' | 'freies-werk' | 'keine-lizenz' | 'cc0'
 
 export interface SourceEntry {
   /** What the page shows from it, in the foot's words: „Textgegenüberstellung", „Regierungsvorlage". */
@@ -72,12 +72,14 @@ export const PUBLISHER_NAME_DE: Record<Publisher, string> = {
 }
 
 /**
- * A directive's dates from EUR-Lex's Cellar (04.11.2026): named, no claim —
- * what the monitor takes is a date and a link, and the Impressum says the
- * reuse terms are EUR-Lex's own (`/impressum#imp-eurlex`).
+ * A directive's dates from EUR-Lex's Cellar (04.11.2026): what the monitor
+ * takes is a date and a link, never an act's text. EUR-Lex's legal notice
+ * (read in a browser on 04.11.2026) dedicates EUR-Lex METADATA to the
+ * public domain, CC0 1.0 — so the dates carry no claim to clear, and the
+ * source is named anyway, as every source here is (`/impressum#imp-eurlex`).
  */
 export function eurLexSource(what: string): SourceEntry {
-  return { what, publisher: 'eurlex', terms: 'keine-lizenz' }
+  return { what, publisher: 'eurlex', terms: 'cc0' }
 }
 
 /**
