@@ -38,8 +38,8 @@ import { safeExternalUrl } from '#shared/utils/safeExternalUrl'
 import type { EuAct } from './actCitations'
 import { deadlineOf } from './cellar'
 import { transpositionOf } from './cellarService'
-import { transposesAct, bundesrechtPhrase, type BundesrechtHit } from './bundesrecht'
-import { LANDESRECHT_API, landesrechtHits, landesrechtSearchParams, type LrKonsSearchAnswer } from './landesrecht'
+import { transposesAct, bundesrechtPhrase } from './bundesrecht'
+import { headDocumentTransposes, LANDESRECHT_API, landesrechtHits, landesrechtSearchParams, lgblKey, type LrKonsSearchAnswer } from './landesrecht'
 import { landIsNew, readLandEu } from './landEuReading'
 import { konsJson } from '../ris/konsLaw'
 import { fetchParagraphXml } from '../kons/konsCache'
@@ -51,13 +51,14 @@ import { NOT_A_DRAFT, pdfPages } from '../laender/texts/read'
 import type { LandDraftRecord } from '../laender/texts/stations'
 
 /**
- * The Paragraphs of a Land's law in force on one day that name an act —
- * rule D4 (`landesrecht.ts`). Cached as long as a document: the law as it
- * stood on a past day does not change. Throws where RIS did not answer.
+ * RIS's answer for one phrase in one Land's law in force on one day — rule
+ * D4 (`landesrecht.ts`), as it arrived; the hits are read from it fresh on
+ * every call. Cached as long as a document: the law as it stood on a past
+ * day does not change. Throws where RIS did not answer.
  */
-const fetchLandesrechtHits = defineCachedFunction(
-  async (land: LandCode, phrase: string, asOf: string): Promise<{ total: number; hits: BundesrechtHit[] }> =>
-    landesrechtHits((await konsJson(`${LANDESRECHT_API}?${new URLSearchParams(landesrechtSearchParams(phrase, asOf, land))}`)) as LrKonsSearchAnswer),
+const fetchLandesrechtAnswer = defineCachedFunction(
+  async (land: LandCode, phrase: string, asOf: string): Promise<LrKonsSearchAnswer> =>
+    (await konsJson(`${LANDESRECHT_API}?${new URLSearchParams(landesrechtSearchParams(phrase, asOf, land))}`)) as LrKonsSearchAnswer,
   { name: 'eu-landesrecht', getKey: (land: LandCode, phrase: string, asOf: string) => `${land}|${phrase}|${asOf}`, maxAge: PUBLISHED_DOCUMENT_TTL_S, swr: false },
 )
 
@@ -74,15 +75,17 @@ function risText(xml: string): string {
  * false where none does, null where RIS did not answer — the Bund's
  * `standingInBundesrecht`, over Landesrecht.
  */
-async function standingInLandesrecht(act: EuAct, asOf: string, land: LandCode): Promise<boolean | null> {
+async function standingInLandesrecht(act: EuAct, asOf: string, land: LandCode, ownLgbl: string | null): Promise<boolean | null> {
   const phrase = bundesrechtPhrase(act.label)
   if (!phrase) return false
   try {
-    const { total, hits } = await fetchLandesrechtHits(land, phrase, asOf)
+    const { total, hits } = landesrechtHits(await fetchLandesrechtAnswer(land, phrase, asOf))
     if (!hits.length) return false
     if (total > MANY_HITS) return true
     for (const h of hits) {
-      if (h.xmlUrl && transposesAct(risText(await fetchParagraphXml(h.nor, h.xmlUrl)), act.celex)) return true
+      if (!h.xmlUrl) continue
+      const text = risText(await fetchParagraphXml(h.nor, h.xmlUrl))
+      if (h.head ? headDocumentTransposes(text, act.celex, asOf, ownLgbl, phrase) : transposesAct(text, act.celex)) return true
     }
     return false
   } catch {
@@ -140,11 +143,14 @@ export async function assembleLandEu(land: LandCode, detail: LandDraftRecord): P
   // Frist's end stands in; without either the question is not asked and no
   // deadline is printed.
   const asOf = start ?? detail.draft.deadline ?? null
+  // The draft's own Kundmachung, where it has one: a head document lists it already.
+  const stage = detail.draft.stage && detail.draft.stage !== 'unknown' ? detail.draft.stage : null
+  const ownLgbl = stage?.station === 'bgbl' ? lgblKey(stage.detail) : null
   const acts: EuActView[] = []
   const answers = await Promise.all(named.map(async (act) => {
     const dates = await transpositionOf(act.celex)
     const asked = act.kind === 'richtlinie' && !!dates?.dates.length && asOf !== null
-    const standing = asked ? await standingInLandesrecht(act, asOf!, land) : null
+    const standing = asked ? await standingInLandesrecht(act, asOf!, land, ownLgbl) : null
     return { act, dates, asked, standing }
   }))
   for (const { act, dates, asked, standing } of answers) {

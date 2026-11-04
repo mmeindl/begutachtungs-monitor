@@ -59,7 +59,7 @@ export interface LrKonsSearchAnswer {
 }
 interface LrKonsHit {
   Data?: {
-    Metadaten?: { Technisch?: { ID?: string }; Landesrecht?: { Kurztitel?: string; LrKons?: { Typ?: string } } }
+    Metadaten?: { Technisch?: { ID?: string }; Landesrecht?: { Kurztitel?: string; LrKons?: { Typ?: string; ArtikelParagraphAnlage?: string } } }
     Dokumentliste?: { ContentReference?: LrKonsContent | LrKonsContent[] | null }
   }
 }
@@ -74,21 +74,71 @@ function asList<T>(x: T | T[] | null | undefined): T[] {
 }
 
 /**
+ * A law's head document, „§ 0": no provision but the law's record — and in
+ * Landesrecht the place where a Land states what the law transposes
+ * (04.11.2026, Oberösterreich): an „Umsetzungshinweis" field, and per
+ * Novelle in the „Änderung" list its Richtlinien with their CELEX,
+ * „LGBl.Nr. 47/2023 (… RL (EU) 2019/1158 … [CELEX-Nr. 32019L1158] …)".
+ * The record is not versioned: asked as of a past day, it already lists
+ * the Novellen that came later — the draft's own among them (16120 asked
+ * as of its first day: the § 0 of four laws named 2023/970 through LGBl.
+ * Nr. 57/2026, kundgemacht two months later). So it is read apart
+ * (`headDocumentTransposes`), not by the hint reader.
+ */
+const HEAD_DOCUMENT_RE = /^§\s*0$/
+
+/** One hit of the search: a Paragraph or Anlage — or a law's head document (`head`). */
+export interface LandesrechtHit extends BundesrechtHit {
+  head: boolean
+}
+
+/** „LGBl.Nr. 57/2026", „LGBl. Nr. 57/2026" → „57/2026". */
+export function lgblKey(citation: string | null | undefined): string | null {
+  return /LGBl\.?\s*Nr\.?\s*(\d+\/\d{4})/.exec(citation ?? '')?.[1] ?? null
+}
+
+/**
+ * Whether a head document says the law transposed the act by `asOf`: in its
+ * Umsetzungshinweis field, or in a Novelle of its „Änderung" list that is
+ * neither the draft's own (`ownLgbl`) nor of a later year than `asOf`, by
+ * its CELEX or — older entries carry none — by `phrase` (`bundesrechtPhrase`); a
+ * Novelle of the same year may be either and is counted, the residual risk.
+ * `text` is the document's plain text.
+ */
+export function headDocumentTransposes(text: string, celex: string, asOf: string, ownLgbl: string | null, phrase: string | null = null): boolean {
+  const year = Number(asOf.slice(0, 4))
+  // Older entries name the act without its CELEX: „RL 2000/43/EG vom 29. Juni 2000".
+  const byPhrase = phrase ? new RegExp(`(?<![\\d/])${phrase.replace(/[.*+?^${}()|[\]\\/]/g, '\\$&')}(?![\\d/])`) : null
+  const names = (part: string) => part.includes(celex) || (byPhrase?.test(part) ?? false)
+  const langtitel = text.search(/\bLangtitel\b/)
+  const field = /Umsetzungshinweis([\s\S]*)/.exec(langtitel >= 0 ? text.slice(0, langtitel) : '')?.[1] ?? ''
+  if (names(field)) return true
+  const changes = text.slice(Math.max(0, langtitel))
+  const marks = [...changes.matchAll(/LGBl\.?\s*Nr\.?\s*(\d+)\/(\d{4})/g)]
+  return marks.some((m, i) => {
+    const key = `${m[1]}/${m[2]}`
+    if (key === ownLgbl || Number(m[2]) > year) return false
+    return names(changes.slice(m.index!, marks[i + 1]?.index ?? changes.length))
+  })
+}
+
+/**
  * The Paragraphs and Anlagen of Landesgesetze and Verordnungen the answer
  * holds (`Typ` „LG", „Gesetz", „V" — an Art.-15a-Vereinbarung lists acts and
- * transposes none), once each, and how many hits RIS counted in all.
+ * transposes none), and the laws' head documents marked as such, once
+ * each, and how many hits RIS counted in all.
  */
-export function landesrechtHits(answer: LrKonsSearchAnswer): { total: number; hits: BundesrechtHit[] } {
+export function landesrechtHits(answer: LrKonsSearchAnswer): { total: number; hits: LandesrechtHit[] } {
   const results = answer?.OgdSearchResult?.OgdDocumentResults
   const total = Number(results?.Hits?.['#text'] ?? 0) || 0
-  const hits = new Map<string, BundesrechtHit>()
+  const hits = new Map<string, LandesrechtHit>()
   for (const h of asList(results?.OgdDocumentReference)) {
     const meta = h?.Data?.Metadaten
     const id = meta?.Technisch?.ID
     if (!id || !typCountsAsBundesrecht(meta?.Landesrecht?.LrKons?.Typ) || hits.has(id)) continue
     const main = asList(h?.Data?.Dokumentliste?.ContentReference).find((c) => c?.ContentType === 'MainDocument')
     const xmlUrl = asList(main?.Urls?.ContentUrl).find((u) => u?.DataType === 'Xml')?.Url ?? null
-    hits.set(id, { nor: id, kurztitel: meta?.Landesrecht?.Kurztitel ?? '', xmlUrl })
+    hits.set(id, { nor: id, kurztitel: meta?.Landesrecht?.Kurztitel ?? '', xmlUrl, head: HEAD_DOCUMENT_RE.test(meta?.Landesrecht?.LrKons?.ArtikelParagraphAnlage?.trim() ?? '') })
   }
   return { total, hits: [...hits.values()] }
 }
