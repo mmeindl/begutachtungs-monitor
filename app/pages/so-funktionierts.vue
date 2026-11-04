@@ -741,6 +741,27 @@ const waitMonths = Math.round(RV_LATENCY_CONTEXT_DAYS / 30.44)
         Umsetzung hinaus – nennen 64 (42&nbsp;%).
       </p>
       <p>
+        Auf der Seite eines Landesentwurfs steht dieselbe Aussage, gelesen aus
+        den Dokumenten des Landes. Ein Werkzeug mit festen Sätzen haben die
+        Länder nicht, aber die meisten sagen es an eigener Stelle: die
+        Steiermark in der Folgenabschätzung ihrer Erläuterungen, Burgenland
+        und Wien in ihrem Vorblatt, Oberösterreich in Abschnitt V,
+        jeweils unter der Überschrift des Bundes; Salzburg, Niederösterreich
+        und Vorarlberg unter „Übereinstimmung mit dem EU-Recht“ oder
+        „EU-Konformität“. Was dort steht, entscheidet wie beim Bund das
+        Vorblatt, und die Akte, die es nennt, nennen wir. Kärnten und Tirol
+        schreiben es meist in den Fließtext; dann sagen wir nur, ob der
+        Entwurf EU-Recht umsetzt, nicht welches. Die Akte lesen wir sonst aus
+        dem Gesetzestext – auch dort, wo eine Novelle dem geltenden
+        Umsetzungshinweis eine Ziffer anfügt – und aus Oberösterreichs
+        „Umsetzungshinweis:“ je Bestimmung. Ob das Land einen Akt schon
+        umgesetzt hat, fragen wir im geltenden Landesrecht. Gemessen am
+        04.11.2026 über 489 Landesentwürfe der XXVIII.&nbsp;GP: 57 tragen die
+        Aussage (12&nbsp;%), 37 davon mit Akt. Den Gesetzestext
+        Niederösterreichs können wir nicht lesen, und Burgenland nennt keinen
+        Beginn der Begutachtung – dort steht die Frist ohne Zeitstrahl.
+      </p>
+      <p>
         Was die Seite nicht sagt: ob ein Ministerium zu spät dran war. Sie
         stellt zwei Daten nebeneinander, die Umsetzungsfrist und den Beginn
         der Begutachtung laut RIS, und überlässt die Rechnung den Lesenden –
@@ -749,7 +770,7 @@ const waitMonths = Math.round(RV_LATENCY_CONTEXT_DAYS / 30.44)
         Eine Novelle wiederholt oft den ganzen Umsetzungshinweis samt
         Richtlinien, die vor Jahren umgesetzt wurden. Solche Akte nennen wir,
         aber ohne Frist: Eine Frist steht nur bei einem Akt, den das geltende
-        Bundesrecht am ersten Tag der Begutachtung noch nirgends umsetzt. Zu
+        Bundesrecht (beim Land: das Landesrecht) am ersten Tag der Begutachtung noch nirgends umsetzt. Zu
         einer solchen Frist zeichnen wir einen Zeitstrahl: die
         Umsetzungsfrist als Strich, die Begutachtung als Band, der Punkt
         dort, wo das Verfahren heute steht – auf welcher Seite der Frist der

@@ -68,7 +68,11 @@ export async function landPdfBytes(url: string): Promise<Uint8Array> {
 }
 
 export async function pdfPages(url: string): Promise<string[]> {
-  const bytes = await landPdfBytes(url)
+  return pagesOfBytes(await landPdfBytes(url))
+}
+
+/** A Land PDF's text per page, from bytes already read — `pdfPages` without the fetch. */
+export async function pagesOfBytes(bytes: Uint8Array): Promise<string[]> {
   const { extractText } = await import('unpdf')
   const { text } = await withPdf(bytes, (doc) => extractText(doc, { mergePages: false }))
   return repairMacRoman(Array.isArray(text) ? text : [text])

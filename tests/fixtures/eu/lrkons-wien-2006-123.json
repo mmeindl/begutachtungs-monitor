@@ -1,0 +1,146 @@
+{
+ "OgdSearchResult": {
+  "OgdDocumentResults": {
+   "Hits": {
+    "@pageNumber": "1",
+    "@pageSize": "100",
+    "#text": "6"
+   },
+   "OgdDocumentReference": [
+    {
+     "Data": {
+      "Metadaten": {
+       "Technisch": {
+        "ID": "LWI40003714",
+        "Applikation": "LrKons",
+        "Organ": "LReg Wien",
+        "ImportTimestamp": {
+         "@xsi:nil": "true",
+         "@xmlns:xsi": "http://www.w3.org/2001/XMLSchema-instance"
+        }
+       },
+       "Allgemein": {
+        "Veroeffentlicht": "2014-04-24",
+        "Geaendert": "2014-05-19",
+        "DokumentUrl": "https://ogd.ris.bka.gv.at/eli/lgbl/WI/2002/37/P27/LWI40003714"
+       },
+       "Landesrecht": {
+        "Kurztitel": "Unterweisung in Wintersportarten",
+        "Bundesland": "Wien",
+        "LrKons": {
+         "Kundmachungsorgan": "LGBl. Nr. 37/2002",
+         "Typ": "Gesetz",
+         "Dokumenttyp": "Paragraph",
+         "ArtikelParagraphAnlage": "§ 27",
+         "Paragraphnummer": "27",
+         "StammnormPublikationsorgan": "LGBl. Nr.",
+         "StammnormBgblnummer": "37/2002",
+         "Inkrafttretensdatum": "2011-03-26",
+         "Aenderung": "",
+         "Gesetzesnummer": "20000195",
+         "GesamteRechtsvorschriftUrl": "https://ogd.ris.bka.gv.at/GeltendeFassung.wxe?Abfrage=LrW&Gesetzesnummer=20000195",
+         "Eli": "https://www.ris.bka.gv.at/eli/lgbl/WI/2002/37/P27/LWI40003714"
+        }
+       }
+      },
+      "Dokumentliste": {
+       "ContentReference": {
+        "ContentType": "MainDocument",
+        "Name": "Hauptdokument",
+        "Urls": {
+         "ContentUrl": [
+          {
+           "DataType": "Xml",
+           "Url": "https://ogd.ris.bka.gv.at/Dokumente/Landesnormen/LWI40003714/LWI40003714.xml"
+          },
+          {
+           "DataType": "Html",
+           "Url": "https://ogd.ris.bka.gv.at/Dokumente/Landesnormen/LWI40003714/LWI40003714.html"
+          },
+          {
+           "DataType": "Rtf",
+           "Url": "https://ogd.ris.bka.gv.at/Dokumente/Landesnormen/LWI40003714/LWI40003714.rtf"
+          },
+          {
+           "DataType": "Pdf",
+           "Url": "https://ogd.ris.bka.gv.at/Dokumente/Landesnormen/LWI40003714/LWI40003714.pdf"
+          }
+         ]
+        }
+       }
+      }
+     }
+    },
+    {
+     "Data": {
+      "Metadaten": {
+       "Technisch": {
+        "ID": "LWI40014561",
+        "Applikation": "LrKons",
+        "Organ": "LReg Wien",
+        "ImportTimestamp": {
+         "@xsi:nil": "true",
+         "@xmlns:xsi": "http://www.w3.org/2001/XMLSchema-instance"
+        }
+       },
+       "Allgemein": {
+        "Veroeffentlicht": "2021-02-15",
+        "Geaendert": "2021-02-15",
+        "DokumentUrl": "https://ogd.ris.bka.gv.at/eli/lgbl/WI/2012/19/P3/LWI40014561"
+       },
+       "Landesrecht": {
+        "Kurztitel": "Wiener Dienstleistungsgesetz",
+        "Bundesland": "Wien",
+        "LrKons": {
+         "Kundmachungsorgan": "LGBl. Nr. 19/2012 zuletzt geändert durch LGBl. Nr. 10/2021 ",
+         "Typ": "Gesetz",
+         "Dokumenttyp": "Paragraph",
+         "ArtikelParagraphAnlage": "§ 3",
+         "Paragraphnummer": "3",
+         "StammnormPublikationsorgan": "LGBl. Nr.",
+         "StammnormBgblnummer": "19/2012",
+         "NovellenPublikationsorgan": "LGBl. Nr.",
+         "NovellenBgblnummer": "10/2021",
+         "NovellenBeziehung": "zuletzt geändert durch",
+         "Inkrafttretensdatum": "2021-02-13",
+         "Abkuerzung": "W-DLG",
+         "Aenderung": "",
+         "Schlagworte": "Dienstleistung, Datenschutzgesetz, Allgemeines Verwaltungsverfahrensgesetz, Dienstleistungsempfänger, Dienstleistungsrichtlinie, Binnenmarkt",
+         "Gesetzesnummer": "20000046",
+         "GesamteRechtsvorschriftUrl": "https://ogd.ris.bka.gv.at/GeltendeFassung.wxe?Abfrage=LrW&Gesetzesnummer=20000046",
+         "Eli": "https://www.ris.bka.gv.at/eli/lgbl/WI/2012/19/P3/LWI40014561"
+        }
+       }
+      },
+      "Dokumentliste": {
+       "ContentReference": {
+        "ContentType": "MainDocument",
+        "Name": "Hauptdokument",
+        "Urls": {
+         "ContentUrl": [
+          {
+           "DataType": "Xml",
+           "Url": "https://ogd.ris.bka.gv.at/Dokumente/Landesnormen/LWI40014561/LWI40014561.xml"
+          },
+          {
+           "DataType": "Html",
+           "Url": "https://ogd.ris.bka.gv.at/Dokumente/Landesnormen/LWI40014561/LWI40014561.html"
+          },
+          {
+           "DataType": "Rtf",
+           "Url": "https://ogd.ris.bka.gv.at/Dokumente/Landesnormen/LWI40014561/LWI40014561.rtf"
+          },
+          {
+           "DataType": "Pdf",
+           "Url": "https://ogd.ris.bka.gv.at/Dokumente/Landesnormen/LWI40014561/LWI40014561.pdf"
+          }
+         ]
+        }
+       }
+      }
+     }
+    }
+   ]
+  }
+ }
+}

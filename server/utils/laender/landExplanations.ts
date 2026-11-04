@@ -42,12 +42,22 @@ export interface LandExplanationsParse {
 
 const PAGE_NOISE_RE = /^(?:Seite \d+(?: von \d+)?|\d+ von \d+|- ?\d+ ?-|\d+)$/
 const START_RE = /^(?:[A-Z]\.|[IVX]+\.|\d+\.)?\s*(?:Allgemeiner Teil|Allgemeines)\b/
-const TITLE_RE = /^(?:Erläuterungen|ERLÄUTERUNGEN|Erläuternde Bemerkungen)\b/
+/*
+ * The title over the Erläuterungen: the word alone, or „Erläuterungen zum
+ * Entwurf …", „ERLÄUTERUNGEN zur Verordnung …", „Erläuternde Bemerkungen
+ * Pilotregionen" — never a line of prose that happens to open with the word
+ * (04.11.2026): „Erläuterungen zu § 14 Oö. ADG." wrapped onto a line of its
+ * own in Oberösterreich's 16120, and the general part began behind it, at
+ * „Zu Art. III Z 28", its section V and every entry before it lost.
+ * Measured over the 489 drafts of GP XXVIII: 44 such lines open with the
+ * word — „… verwiesen.", „Erläuterungen dazu.", „Erläuterungen zu Abs. 5).".
+ */
+export const TITLE_RE = /^(?:(?:Erläuterungen|ERLÄUTERUNGEN|Erläuternde Bemerkungen):?$|(?:Erläuterungen|ERLÄUTERUNGEN|Erläuternde Bemerkungen)\s+(?:zum|zur|ZUM|ZUR)\s(?![^]*(?:\bverwiesen\b|\bdargelegt\b|\bBGBl\b|[.;]$))|Erläuternde Bemerkungen\s(?![^]*[.;]$))/
 const PARTICULAR_RE = /^(?:[A-Z]\.|[IVX]+\.|\d+\.)?\s*(?:Besonderer Teil|Zu den einzelnen Bestimmungen)\b/
 /* „Zu Art. I Z 2", and in Salzburg's packages „Zu Art 2 Z 1" (23.10.2026). */
 const ENTRY_RE = /^Zu\s+(?:(?:Art(?:ikel)?\.?\s*(?:[IVXL]+|\d+)|Z(?:iffer)?n?\.?\s*\d|§§?\s*\d|den\s+Z|Abs)|Art\.)/
 /* „TEXTGEGENÜBERSTELLUNG" in capitals in Wien's drafts (w-2026006); the last „Zu …" entry ran on into the table. */
-const END_RE = /^(?:Textgegenüberstellung|TEXTGEGENÜBERSTELLUNG|Der (?:Oö\. |Salzburger |Wiener )?Landtag hat beschlossen|Die (?:Oö\. |Salzburger |Wiener )?Landesregierung hat (?:beschlossen|verordnet)|Vorblatt)\b/
+export const END_RE = /^(?:Textgegenüberstellung|TEXTGEGENÜBERSTELLUNG|Der (?:Oö\. |Salzburger |Wiener )?Landtag hat beschlossen|Die (?:Oö\. |Salzburger |Wiener )?Landesregierung hat (?:beschlossen|verordnet)|Vorblatt)\b/
 const HEADING_RE = /^(?:[A-Z]|[IVX]+|\d+)\.\s+\S/
 
 /** A line of the document, and whether all of it is set in bold (`pdfStyledPages`). */
@@ -56,11 +66,19 @@ interface Line {
   bold: boolean
 }
 
+/**
+ * A label the Land repeats because it writes one per provision, not per
+ * page: Oberösterreich's „Umsetzungshinweis:" over each entry that
+ * transposes an article (16120 has eight) — read by the EU fact
+ * (`eu/landErlaeuterungen.ts`, 04.11.2026), and lost as furniture before.
+ */
+const REPEATED_LABEL_RE = /^Umsetzungshinweise?(?:\s+zu\s+[^:]{1,40})?:$/
+
 /** Lines a document repeats on most pages — address, file number, date — are page furniture, not prose. */
 function withoutFurniture(lines: readonly Line[]): Line[] {
   const counts = new Map<string, number>()
   for (const l of lines) counts.set(l.text, (counts.get(l.text) ?? 0) + 1)
-  return lines.filter(({ text: l }) => l && !PAGE_NOISE_RE.test(l) && !(l.length < 80 && (counts.get(l) ?? 0) >= 3))
+  return lines.filter(({ text: l }) => l && !PAGE_NOISE_RE.test(l) && !(l.length < 80 && (counts.get(l) ?? 0) >= 3 && !REPEATED_LABEL_RE.test(l)))
 }
 
 /**

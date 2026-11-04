@@ -4,9 +4,10 @@
  *
  * Nuxt-aware glue around the pure modules — `vorblatt.ts` (whether),
  * `umsetzungshinweis.ts` (which act), `cellar.ts` (until when),
- * `euMarker.ts` (the fact). This is the only file of the feature that knows
- * RIS: the modules below take text and a CELEX, so the Länder can run them
- * over Landesgesetz text unchanged.
+ * `euMarker.ts` (the fact). This is the only file of the Bund's side that
+ * knows RIS: the modules below take text and a CELEX, and the Länder run
+ * them over Landesgesetz text unchanged (`landEuService.ts`). The Cellar is
+ * shared with them (`cellarService.ts`).
  *
  * Two entry points on the road of the Erläuterungen
  * (`explanations/explanationsService.ts`): a Ministerialentwurf through the
@@ -30,7 +31,8 @@ import type { EuActView, EuRechtResponse, ExplanationsResponse, TraceLink } from
 import { parseEuActCitations, baseActCelexes, uniqueActs, type EuAct } from './actCitations'
 import { classifyVorblatt, hasTextLayer, isVorblattDocument, linesOfPages, type VorblattClass } from './vorblatt'
 import { readExplanationsEuSignal, readUmsetzungshinweis, type LawWindow } from './umsetzungshinweis'
-import { CELEX_RE, CELLAR_QUERY_VERSION, deadlineOf, fetchTranspositionAnswer, parseTranspositionAnswer, type SparqlAnswer, type TranspositionDates } from './cellar'
+import { deadlineOf } from './cellar'
+import { transpositionOf } from './cellarService'
 import { combineVerdicts, decideEuMarker } from './euMarker'
 import { bundesrechtHits, bundesrechtPhrase, bundesrechtSearchParams, transposesAct, type BrKonsSearchAnswer, type BundesrechtHit } from './bundesrecht'
 import { konsJson, konsQuery } from '../ris/konsLaw'
@@ -108,16 +110,6 @@ const vorblattPages = defineCachedFunction(
 )
 
 /**
- * The Cellar's answer for one CELEX, as it arrived. A month: a directive's
- * transposition dates are fixed in its own text; a later act that moves
- * them is an act of its own with its own CELEX.
- */
-const fetchCellarAnswer = defineCachedFunction(
-  (celex: string): Promise<SparqlAnswer> => fetchTranspositionAnswer(celex),
-  { name: 'eu-cellar', getKey: (celex: string) => `${celex}|q${CELLAR_QUERY_VERSION}`, maxAge: PUBLISHED_DOCUMENT_TTL_S, swr: false },
-)
-
-/**
  * The Paragraphs of Bundesrecht in force on one day that name an act — rule
  * D4, widened (`bundesrecht.ts`). Cached as long as a document: the law as
  * it stood on a past day does not change. Throws where RIS did not answer.
@@ -148,16 +140,6 @@ async function standingInBundesrecht(act: EuAct, asOf: string): Promise<boolean 
       if (h.xmlUrl && transposesAct(konsText(await fetchParagraphXml(h.nor, h.xmlUrl)), act.celex)) return true
     }
     return false
-  } catch {
-    return null
-  }
-}
-
-/** One act's dates, or null where the Cellar did not answer. */
-async function transpositionOf(celex: string): Promise<TranspositionDates | null> {
-  if (!CELEX_RE.test(celex)) return { found: true, dates: [], adopted: null, inForce: null }
-  try {
-    return parseTranspositionAnswer(await fetchCellarAnswer(celex))
   } catch {
     return null
   }

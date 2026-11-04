@@ -25,6 +25,14 @@ const LEAD: Record<EuMarker, string> = {
   'flankierend-rl': 'Begleitet eine EU-Richtlinie',
 }
 
+/** Where the acts were named, for „… genannt:" — a Land's EU statement names them too (§12.66, Nachtrag 2). */
+const NAMED_IN: Record<NonNullable<EuRechtResponse['actsSource']>, string> = {
+  gesetzestext: 'Im Gesetzestext',
+  titel: 'Im Titel',
+  vorblatt: 'Im Vorblatt',
+  erlaeuterungen: 'In den Erläuterungen',
+}
+
 /** One act's deadline as the row states it. */
 export interface EuDeadlineView {
   /** „2024/1711" — the act's number, only where the row carries several deadlines; null otherwise. */
@@ -49,7 +57,7 @@ export interface EuFactView {
    * text are each quoted for what they say, neither bent to the other.
    */
   attach: 'colon' | 'named' | 'none'
-  /** „Gesetzestext" or „Titel" — for the `named` form. */
+  /** „Im Gesetzestext", „Im Titel", „Im Vorblatt", „In den Erläuterungen" — for the `named` form. */
   namedIn: string | null
   acts: { label: string; url: string }[]
   /** The Vorblatt's own sentence, for `ueber-umsetzung` only. */
@@ -107,7 +115,7 @@ export function euFactView(r: EuRechtResponse | null | undefined): EuFactView | 
   return {
     lead: LEAD[r.marker],
     attach,
-    namedIn: r.actsSource === 'titel' ? 'Titel' : 'Gesetzestext',
+    namedIn: NAMED_IN[r.actsSource ?? 'gesetzestext'],
     acts: acts.map((a) => ({ label: a.label, url: a.eurLexUrl })),
     quote: r.marker === 'ueber-umsetzung' ? r.vorblattSentence : null,
     adoptedNote: due.length === 1 && acts.length === 1 && due[0]!.adopted ? `beschlossen am ${formatDateDe(due[0]!.adopted)}` : null,
@@ -151,6 +159,25 @@ const dayOf = (iso: string) => Date.parse(`${iso}T00:00:00Z`) / 86_400_000
 const CLUSTER = 12
 /** Two labels closer than this are aligned away from each other instead of over each other. */
 const APART = 14
+/**
+ * A label's width in percent of the track, from its longest line: about one
+ * percent per character at the card's width on a desktop. Needed since the
+ * Länder (04.11.2026): a cluster of three dates „15.11.2024, 07.06.2026,
+ * 19.06.2026" ran into the Begutachtung's label although the marks stood
+ * 14 % apart. The Frist bar's two labels never meet; this bar's three can.
+ */
+const CHAR_PCT = 1.1
+
+/** Where a label's text lies on the track, in percent, by its alignment. */
+function extent(m: EuTimelineMark): [number, number] {
+  const w = Math.max(m.lines[0].length, m.lines[1].length) * CHAR_PCT
+  return m.align === 'start' ? [m.at, m.at + w] : m.align === 'end' ? [m.at - w, m.at] : [m.at - w / 2, m.at + w / 2]
+}
+
+/** Whether two labels' texts would meet, a percent of air between them. */
+function overlap(left: EuTimelineMark, right: EuTimelineMark): boolean {
+  return extent(left)[1] + 1 > extent(right)[0]
+}
 
 /** „21.10.–10.11.2026", both dates in full across a year. */
 export function dateRangeDe(start: string, end: string | null | undefined): string {
@@ -173,7 +200,7 @@ export function dateRangeDe(start: string, end: string | null | undefined): stri
  * Two rules keep the labels apart, because the deadline and the
  * Begutachtung are often days apart (that is the finding): Umsetzungsfristen
  * closer than `CLUSTER` share one label, and two labels closer than `APART`
- * are aligned away from each other. A label near either edge is aligned
+ * or wider than their distance (`CHAR_PCT`) are aligned away from each other. A label near either edge is aligned
  * inward, as on the Frist bar, and the Begutachtung's label is anchored at
  * the band's end where the band lies in the right half, at its start in
  * the left half — so it ends with the band, not short of it. No margin at
@@ -212,7 +239,8 @@ export function euTimeline(fact: EuFactView | null | undefined, ctx: EuTimelineC
       at: pos,
       align: edge(pos),
       tick: false,
-      lines: [c.length > 1 ? 'Umsetzungsfristen' : 'Umsetzungsfrist', c.map(dated).join(', ')],
+      // Two directives with one date (2024/1499 and 2024/1500: 19.06.2026) are one date in the label; each keeps its tick.
+      lines: [c.length > 1 ? 'Umsetzungsfristen' : 'Umsetzungsfrist', [...new Set(c.map(dated))].join(', ')],
     }
   })
   const band: [number, number] | null = start ? [at(start), at(end ?? start)] : null
@@ -225,15 +253,15 @@ export function euTimeline(fact: EuFactView | null | undefined, ctx: EuTimelineC
   for (let i = 1; i < marks.length; i++) {
     const left = marks[i - 1]!
     const right = marks[i]!
-    if (right.at - left.at >= APART) continue
+    if (right.at - left.at >= APART && !overlap(left, right)) continue
     if (left.align === 'start' && left.at < 8) {
-      // The left one is pinned to the track's start: the right one begins past it.
+      // The left one is pinned to the track's start: the right one begins past it, and past its text.
       right.align = 'start'
-      right.at = Math.max(right.at, left.at + APART)
+      right.at = Math.max(right.at, left.at + APART, extent(left)[1] + 1)
     } else if (right.align === 'end' && right.at > 92) {
-      // The right one is pinned to the track's end: the left one ends before it.
+      // The right one is pinned to the track's end: the left one ends before it, and before its text.
       left.align = 'end'
-      left.at = Math.min(left.at, right.at - APART)
+      left.at = Math.min(left.at, right.at - APART, extent(right)[0] - 1)
     } else {
       if (left.align !== 'start') left.align = 'end'
       if (right.align !== 'end') right.align = 'start'

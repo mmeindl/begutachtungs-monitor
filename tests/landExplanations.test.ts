@@ -28,6 +28,24 @@ describe('a Land\'s Erläuterungen', () => {
     ])
   })
 
+  it('takes no line of prose for the title „Erläuterungen" (16120)', () => {
+    const parse = parseLandExplanations([[
+      'A. Allgemeiner Teil',
+      'I. Anlass und Inhalt des Gesetzentwurfs',
+      'Die Novelle setzt zwei Richtlinien um.',
+      'B. Besonderer Teil',
+      'Zu Art. III Z 26 (§ 21 Abs. 4):',
+      'Zur Zuständigkeit siehe die',
+      'Erläuterungen zu § 14 Oö. ADG.',
+      'Zu Art. III Z 28 (§ 27 Abs. 2):',
+      'Die Schriftlichkeit soll entfallen.',
+      'Der Oö. Landtag hat beschlossen:',
+    ].join('\n')])!
+    expect(parse.labelled).toBe(true)
+    expect(parse.general.map((p) => p.heading)).toEqual(['A. Allgemeiner Teil', 'I. Anlass und Inhalt des Gesetzentwurfs'])
+    expect(parse.particular.map((e) => e.heading)).toEqual(['Zu Art. III Z 26 (§ 21 Abs. 4):', 'Zu Art. III Z 28 (§ 27 Abs. 2):'])
+  })
+
   it('reads „Zu Art 2 Z 1" as an entry, and keeps a „Zu …" row of the general part in it', () => {
     const parse = parseLandExplanations([[
       'Erläuterungen',
