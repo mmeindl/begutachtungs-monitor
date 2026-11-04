@@ -42,9 +42,22 @@ export interface EuDeadlineView {
   iso: string
   /** The act's other transposition dates, formatted, for the footnote. */
   otherDates: string[]
-  /** The footnote's number, where there are other dates; null otherwise. */
+  /**
+   * The footnote's number. Where the fact carries deadlines on several days,
+   * every day has one and the note names its directive — the bar lists
+   * dates, the sentence lists acts, and nothing else joins them (04.11.2026,
+   * a Land draft with four directives: „no clue why there are so many and
+   * for what"). Two directives due on one day share the number. Where there
+   * is one day, only a directive with further partial deadlines has a note.
+   */
   note: number | null
   label: string
+}
+
+/** One footnote under the fact: its number and its text, without the full stop. */
+export interface EuNoteView {
+  number: number
+  text: string
 }
 
 export interface EuFactView {
@@ -65,6 +78,8 @@ export interface EuFactView {
   /** „beschlossen am 11.04.2024" — the one act whose deadline the row prints, where the Cellar has its day; null otherwise. */
   adoptedNote: string | null
   deadlines: EuDeadlineView[]
+  /** The footnotes, in the order of their numbers (`EuDeadlineView.note`). */
+  notes: EuNoteView[]
   /** The first day of the Begutachtung, formatted; null without deadlines or without a date. */
   start: string | null
   /** What the fact read and from whom, for the credit line under the card (`SectionCredits`). */
@@ -96,15 +111,25 @@ export function euFactView(r: EuRechtResponse | null | undefined): EuFactView | 
   const acts = r.acts
   const attach = acts.length === 0 ? 'none' : acts.some((a) => fits(r.marker!, a)) ? 'colon' : 'named'
   const due = deadlineActs(acts)
-  let notes = 0
+  // One note per day where there are several days; else one for further dates.
+  const days = [...new Set(due.map((a) => a.transposition!.deadline))]
+  const noteOf = (a: EuActView): number | null => (days.length > 1
+    ? days.indexOf(a.transposition!.deadline) + 1
+    : a.transposition!.otherDates.length ? 1 : null)
   const deadlines = due.map((a): EuDeadlineView => ({
     of: due.length > 1 ? numberOf(a.label) : null,
     date: formatDateDe(a.transposition!.deadline),
     iso: a.transposition!.deadline,
     otherDates: a.transposition!.otherDates.map(formatDateDe),
-    note: a.transposition!.otherDates.length ? ++notes : null,
+    note: noteOf(a),
     label: a.label,
   }))
+  const notes: EuNoteView[] = [...new Set(deadlines.map((d) => d.note).filter((n): n is number => n !== null))].map((number) => {
+    const own = deadlines.filter((d) => d.note === number)
+    const further = own.filter((d) => d.otherDates.length).map((d) => `weitere Fristen für einzelne Bestimmungen${own.length > 1 ? ` (${numberOf(d.label)})` : ''}: ${d.otherDates.join(', ')}`)
+    const text = days.length > 1 ? [own.map((d) => d.label).join(' und '), ...further].join('; ') : further.join('; ')
+    return { number, text: text.charAt(0).toUpperCase() + text.slice(1) }
+  })
   const read = r.markerSource === 'erlaeuterungen'
     ? ['Erläuterungen']
     : r.actsSource === 'gesetzestext'
@@ -120,6 +145,7 @@ export function euFactView(r: EuRechtResponse | null | undefined): EuFactView | 
     quote: r.marker === 'ueber-umsetzung' ? r.vorblattSentence : null,
     adoptedNote: due.length === 1 && acts.length === 1 && due[0]!.adopted ? `beschlossen am ${formatDateDe(due[0]!.adopted)}` : null,
     deadlines,
+    notes,
     start: deadlines.length && r.begutachtungStart ? formatDateDe(r.begutachtungStart) : null,
     sources: [...read.map(risSource), ...(deadlines.length ? [eurLexSource('Fristen')] : [])],
   }

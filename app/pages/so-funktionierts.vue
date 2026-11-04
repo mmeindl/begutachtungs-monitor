@@ -730,8 +730,10 @@ const waitMonths = Math.round(RV_LATENCY_CONTEXT_DAYS / 30.44)
         Richtlinien nennt EUR-Lex mehrere Daten, ohne zu sagen, welches die
         allgemeine Frist ist; wir nennen das späteste als Umsetzungsfrist
         und die übrigen in einer Fußnote als Fristen für einzelne
-        Bestimmungen. Verordnungen gelten unmittelbar und haben keine
-        Umsetzungsfrist.
+        Bestimmungen. Setzt ein Entwurf mehrere Richtlinien um, trägt jedes
+        Datum auf dem Zeitstrahl eine Hochzahl, und die Fußnote sagt, zu
+        welcher Richtlinie es gehört. Verordnungen gelten unmittelbar und
+        haben keine Umsetzungsfrist.
       </p>
       <p>
         Gemessen am 04.11.2026 über die 154 Ministerialentwürfe der

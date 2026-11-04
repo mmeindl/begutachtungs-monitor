@@ -111,9 +111,9 @@ describe('euFactView — two dates, no verdict', () => {
     const t = euTimeline(three, ctx)!
     const labelled = t.marks.filter((m) => m.lines[0])
     expect(labelled.map((m) => m.lines)).toEqual([
-      ['Umsetzungsfrist', '21.05.2025'],
+      ['Umsetzungsfrist', '21.05.2025¹'],
       ['Begutachtung', '07.07.–15.08.2025'],
-      ['Umsetzungsfristen', '17.07.2026¹, 05.08.2026'],
+      ['Umsetzungsfristen', '17.07.2026², 05.08.2026³'],
     ])
     // The first label is pinned to the track's start and the band begins within 14 % of it: the band's label is pushed to start past the first one's text („Umsetzungsfrist", 15 characters at 1,1 % each, and 1 % of air).
     expect(labelled[0]).toMatchObject({ at: 0, align: 'start' })
@@ -121,7 +121,13 @@ describe('euFactView — two dates, no verdict', () => {
     expect(labelled[2]!.align).toBe('end')
     // Every deadline keeps a tick of its own, on its own date.
     expect(t.marks.filter((m) => m.tick).map((m) => m.at)).toEqual([0, t.marks.filter((m) => m.tick)[1]!.at, 100])
-    expect(three.deadlines.map((d) => d.note)).toEqual([null, 1, null])
+    // Several days: every day has a note naming its directive, and the one with further dates says so too.
+    expect(three.deadlines.map((d) => d.note)).toEqual([1, 2, 3])
+    expect(three.notes.map((n) => n.text)).toEqual([
+      'Richtlinie (EU) 2023/2413',
+      'Richtlinie (EU) 2024/1711; weitere Fristen für einzelne Bestimmungen: 17.01.2025',
+      'Richtlinie (EU) 2024/1788',
+    ])
   })
 
   it('ends a wide cluster label before the band label pinned to the track end (a Land draft, 04.11.2026)', () => {
@@ -132,11 +138,19 @@ describe('euFactView — two dates, no verdict', () => {
       act({ label: 'Richtlinie (EU) 2022/2041', celex: '32022L2041', transposition: { deadline: '2024-11-15', otherDates: [] } }),
       act({ label: 'Richtlinie (EU) 2023/970', celex: '32023L0970', transposition: { deadline: '2026-06-07', otherDates: [] } }),
       act({ label: 'Richtlinie (EU) 2024/1499', celex: '32024L1499', transposition: { deadline: '2026-06-19', otherDates: [] } }),
+      act({ label: 'Richtlinie (EU) 2024/1500', celex: '32024L1500', transposition: { deadline: '2026-06-19', otherDates: [] } }),
     ] }))!
     const t = euTimeline(fact, ctx)!
     const cluster = t.marks.find((m) => m.lines[0] === 'Umsetzungsfristen')!
     const band = t.marks.find((m) => m.key === 'begutachtung')!
-    expect(cluster.lines[1]).toBe('15.11.2024, 07.06.2026, 19.06.2026')
+    // Two directives due on one day share the date and its note; the note names both.
+    expect(cluster.lines[1]).toBe('15.11.2024², 07.06.2026³, 19.06.2026⁴')
+    expect(fact.notes.map((n) => `${n.number} ${n.text}`)).toEqual([
+      '1 Richtlinie 2010/41/EU',
+      '2 Richtlinie (EU) 2022/2041',
+      '3 Richtlinie (EU) 2023/970',
+      '4 Richtlinie (EU) 2024/1499 und Richtlinie (EU) 2024/1500',
+    ])
     expect(band).toMatchObject({ align: 'end' })
     // The cluster's text ends before the band label's text begins: 14 % apart was not enough for 34 characters.
     expect(cluster.align).toBe('end')

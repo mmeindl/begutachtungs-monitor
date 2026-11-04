@@ -14449,7 +14449,16 @@ Monitor von dort, Fristen und Beschlussdaten – widmet das Amt für
 Veröffentlichungen der Public Domain (CC0 1.0); Rechtsakte selbst wären nach
 Beschluss 2011/833/EU weiterverwendbar, werden aber nur verlinkt, das Logo
 gar nicht. Das Impressum sagt es so. Die Fußnoten zu weiteren Fristen bleiben beim Fakt, sie erklären
-seine Hochzahlen.
+seine Hochzahlen. **Seit dem Abend des 04.11.2026 trägt jedes Datum eine
+Hochzahl, sobald der Fakt Fristen an mehreren Tagen hat,** und die Fußnote
+nennt die Richtlinie („¹ Richtlinie (EU) 2022/2041 · ² Richtlinie (EU)
+2023/970 · ³ Richtlinie (EU) 2024/1499 und Richtlinie (EU) 2024/1500"): der
+Balken zählte die Daten, der Satz die Akte, und nichts verband beide — auf
+einem Landesentwurf mit vier Richtlinien war nicht zu sehen, wofür die drei
+Fristen stehen. Zwei Richtlinien mit demselben Tag teilen sich Datum und
+Hochzahl; bei einem einzigen Tag bleibt es bei der Fußnote für die weiteren
+Fristen einer Richtlinie. Kein Schlüssel unter dem Balken, kein Tooltip:
+die Hochzahl ist die Grammatik, die der Fakt schon hatte (`EuNoteView`).
 
 **Lange Aktenlisten falten** (32/ME nennt 28, 58/ME 24): die ersten fünf
 stehen, dann „Alle 28 anzeigen" im Listenidiom der Seite — alles auf einmal,

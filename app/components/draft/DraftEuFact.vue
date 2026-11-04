@@ -54,8 +54,8 @@ const shownActs = computed(() => {
   return expanded.value || acts.length <= FOLD_AT + 1 ? acts : acts.slice(0, FOLD_AT)
 })
 const folded = computed(() => (view.value?.acts.length ?? 0) > shownActs.value.length)
-/** Whether any deadline carries further dates — the footnotes line stands only then. */
-const hasNotes = computed(() => view.value?.deadlines.some((d) => d.note !== null) ?? false)
+/** Whether the fact has footnotes — several deadline days, or further dates of one directive. */
+const hasNotes = computed(() => (view.value?.notes.length ?? 0) > 0)
 </script>
 
 <template>
@@ -68,15 +68,13 @@ const hasNotes = computed(() => view.value?.deadlines.some((d) => d.note !== nul
     </p>
     <DraftEuTimeline v-if="timeline" :view="timeline" />
     <p v-else-if="view.deadlines.length" class="mt-1 text-sm text-ink-secondary">
-      {{ view.deadlines.length > 1 ? 'Umsetzungsfristen' : 'Umsetzungsfrist' }}<template v-for="(d, i) in view.deadlines" :key="d.label"><template v-if="i > 0">,</template>{{ d.of ? ` ${d.of}` : '' }} bis {{ d.date }}<template v-if="d.note">{{ SUPERSCRIPT[d.note] ?? `(${d.note})` }}</template></template><template v-if="view.start"> · Begutachtung ab {{ view.start }}</template>
+      {{ view.deadlines.length > 1 ? 'Umsetzungsfristen' : 'Umsetzungsfrist' }}<template v-for="(d, i) in view.deadlines" :key="d.label"><template v-if="i > 0">,</template>{{ d.of && !d.note ? ` ${d.of}` : '' }} bis {{ d.date }}<template v-if="d.note">{{ SUPERSCRIPT[d.note] ?? `(${d.note})` }}</template></template><template v-if="view.start"> · Begutachtung ab {{ view.start }}</template>
     </p>
     <!-- The footnotes stay with the fact; the source stands under the card
          (`DraftEuCredits`), as every card's does. -->
     <p v-if="hasNotes" class="mt-1 text-xs text-ink-muted">
-      <template v-for="d in view.deadlines" :key="`note-${d.label}`">
-        <template v-if="d.note">
-          {{ SUPERSCRIPT[d.note] ?? `(${d.note})` }} Weitere Fristen{{ d.of ? ` ${d.of}` : '' }} für einzelne Bestimmungen: {{ d.otherDates.join(', ') }}.
-        </template>
+      <template v-for="n in view.notes" :key="`note-${n.number}`">
+        {{ SUPERSCRIPT[n.number] ?? `(${n.number})` }} {{ n.text }}.
       </template>
     </p>
   </div>
