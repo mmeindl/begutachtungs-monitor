@@ -321,6 +321,15 @@ export interface EnactmentInfo {
   bgblNumber: string | null
   bgblRisUrl: string | null
   /**
+   * The Kundmachung's issue date (Ausgabedatum), ISO, from RIS's record of
+   * `bgblNumber` — the day the EU timeline's dot stands on once the law is
+   * promulgated (04.11.2026: without it the dot stood at „Beschluss" under
+   * a spine that named the Bundesgesetzblatt, while the act page, which
+   * reads the list's chain, said Bundesgesetzblatt). Absent or null means
+   * not read in time, never „not promulgated"; that is `bgblNumber`'s to say.
+   */
+  bgblDate?: string | null
+  /**
    * Where the Vorlage NAMED ABOVE published a changed text — `['ausschuss']`,
    * `['ausschuss', 'plenum']`, or `[]` when it published none. Null when its
    * record could not be read; only then may the draft's own mirror of that

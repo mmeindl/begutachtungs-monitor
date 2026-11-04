@@ -75,6 +75,14 @@ const RIS_JOIN_BUDGET_MS = 2_000
  * anyway, so the branch that matters most is the one that is never cold.
  */
 const STATION_MAP_BUDGET_MS = 2_000
+/**
+ * How long the Kundmachung's issue date may take — one cached RIS record
+ * (`bgbl-dokument`, the same the station map reads for the list's „Neu"
+ * mark), so warm it costs nothing and cold one request. A date that does
+ * not arrive leaves `bgblDate` null, and the EU timeline's dot stands at
+ * the Beschluss instead of the Kundmachung: slower, not false.
+ */
+const BGBL_DATE_BUDGET_MS = 2_000
 
 /**
  * The Kundmachung of a Vorlage whose record at Parliament carries no link —
@@ -224,6 +232,9 @@ async function enactmentOf(
     if (bgbl) {
       enactment.bgblNumber = bgbl.number
       enactment.bgblRisUrl = bgbl.url
+      // Its issue date, for the EU timeline's stand (auto-imported from
+      // ../ris/bgblService, as `findBgblIForVorlage` above).
+      enactment.bgblDate = await withinBudget(getBgblIssueDate(bgbl.number), BGBL_DATE_BUDGET_MS)
     }
     // An empty array is an answer — „this Vorlage published no changed
     // text" — and null is the absence of one. Only the second lets the

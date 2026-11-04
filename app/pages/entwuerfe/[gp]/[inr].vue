@@ -225,15 +225,17 @@ const { data: explanations } = useExplanations(() => ({ gp: gp.value, inr: inr.v
 const { data: euRecht } = useEuRecht(() => ({ gp: gp.value, inr: inr.value }))
 /* The page's side of the EU timeline: its Begutachtung, and where the
  * procedure stands — today while it runs; once a law came out of it, the
- * Kundmachung where its day is known, else the Beschluss (the detail's
- * enactment carries the houses' days, the Gazette's only the list row). */
+ * Kundmachung where its day is known (the detail reads it since 04.11.2026,
+ * `enactment.bgblDate`; the list's chain carries it too), else the
+ * Beschluss. */
 const euTimelineCtx = computed<EuTimelineContext | null>(() => {
   const d = data.value
   if (!d) return null
   const e = d.enactment
   const beschluss = e?.bundesratDecidedAt ?? e?.decidedAt ?? null
-  const stand = d.chain?.bgblDate
-    ? { date: d.chain.bgblDate, label: 'Bundesgesetzblatt' }
+  const bgblDate = d.chain?.bgblDate ?? e?.bgblDate ?? null
+  const stand = bgblDate
+    ? { date: bgblDate, label: 'Bundesgesetzblatt' }
     : e?.bgblNumber && beschluss
       ? { date: beschluss, label: 'Beschluss' }
       : { date: todayIso(), label: 'Heute' }
