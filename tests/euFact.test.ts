@@ -115,13 +115,33 @@ describe('euFactView — two dates, no verdict', () => {
       ['Begutachtung', '07.07.–15.08.2025'],
       ['Umsetzungsfristen', '17.07.2026¹, 05.08.2026'],
     ])
-    // The first label is pinned to the track's start and the band begins within 14 % of it: the band's label is pushed to start 14 % in.
+    // The first label is pinned to the track's start and the band begins within 14 % of it: the band's label is pushed to start past the first one's text („Umsetzungsfrist", 15 characters at 1,1 % each, and 1 % of air).
     expect(labelled[0]).toMatchObject({ at: 0, align: 'start' })
-    expect(labelled[1]).toMatchObject({ at: 14, align: 'start' })
+    expect(labelled[1]).toMatchObject({ at: 15 * 1.1 + 1, align: 'start' })
     expect(labelled[2]!.align).toBe('end')
     // Every deadline keeps a tick of its own, on its own date.
     expect(t.marks.filter((m) => m.tick).map((m) => m.at)).toEqual([0, t.marks.filter((m) => m.tick)[1]!.at, 100])
     expect(three.deadlines.map((d) => d.note)).toEqual([null, 1, null])
+  })
+
+  it('ends a wide cluster label before the band label pinned to the track end (a Land draft, 04.11.2026)', () => {
+    // Oberösterreich 2026-16120: four deadlines from 2012 to 2026, the last three one label, the Begutachtung at the very end.
+    const ctx = { begutachtung: { start: '2026-05-20', end: '2026-06-18' }, stand: { date: '2026-07-10', label: 'Landesgesetzblatt' } }
+    const fact = euFactView(response({ acts: [
+      act({ label: 'Richtlinie 2010/41/EU', celex: '32010L0041', transposition: { deadline: '2012-08-05', otherDates: [] } }),
+      act({ label: 'Richtlinie (EU) 2022/2041', celex: '32022L2041', transposition: { deadline: '2024-11-15', otherDates: [] } }),
+      act({ label: 'Richtlinie (EU) 2023/970', celex: '32023L0970', transposition: { deadline: '2026-06-07', otherDates: [] } }),
+      act({ label: 'Richtlinie (EU) 2024/1499', celex: '32024L1499', transposition: { deadline: '2026-06-19', otherDates: [] } }),
+    ] }))!
+    const t = euTimeline(fact, ctx)!
+    const cluster = t.marks.find((m) => m.lines[0] === 'Umsetzungsfristen')!
+    const band = t.marks.find((m) => m.key === 'begutachtung')!
+    expect(cluster.lines[1]).toBe('15.11.2024, 07.06.2026, 19.06.2026')
+    expect(band).toMatchObject({ align: 'end' })
+    // The cluster's text ends before the band label's text begins: 14 % apart was not enough for 34 characters.
+    expect(cluster.align).toBe('end')
+    expect(cluster.at).toBeLessThanOrEqual(band.at - '20.05.–18.06.2026'.length * 1.1 - 1)
+    expect(cluster.at).toBeGreaterThan(50)
   })
 
   it('draws nothing without a deadline act or where every date falls on one day, and notes the adoption only for a single act', () => {
