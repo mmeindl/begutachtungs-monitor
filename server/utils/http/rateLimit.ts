@@ -59,7 +59,15 @@ export function normalisedPath(raw: string): string {
 }
 
 /** Routes that exist for the prewarm unit alone and fan out hundreds of upstream requests cold. */
-const PREWARM_ONLY = [/^\/api\/stations(?:\/|$)/, /^\/api\/ris-map(?:\/|$)/, /^\/api\/bgbl\/teil2\/?$/]
+const PREWARM_ONLY = [
+  /^\/api\/stations(?:\/|$)/,
+  /^\/api\/ris-map(?:\/|$)/,
+  /^\/api\/bgbl\/teil2\/?$/,
+  // The EU map's build: cold it reads every draft's Vorblatt, law text and
+  // Erläuterungen and the Länder's PDFs at one request a second (§12.66,
+  // Nachtrag 3) — a request from outside must never start it.
+  /^\/api\/eu-recht\/karte\/?$/,
+]
 
 export function isPrewarmOnlyPath(path: string): boolean {
   return PREWARM_ONLY.some((re) => re.test(path))

@@ -53,10 +53,10 @@ describe('who is outside', () => {
 
 describe('which routes', () => {
   it('knows the prewarm-only routes, and only those', () => {
-    for (const p of ['/api/stations/aktuell', '/api/stations/XXVII', '/api/ris-map/aktuell', '/api/bgbl/teil2', '/api/stations']) {
+    for (const p of ['/api/stations/aktuell', '/api/stations/XXVII', '/api/ris-map/aktuell', '/api/bgbl/teil2', '/api/stations', '/api/eu-recht/karte', '/api/eu-recht/karte/']) {
       expect(isPrewarmOnlyPath(p), p).toBe(true)
     }
-    for (const p of ['/api/drafts', '/api/ris-drafts', '/entwuerfe/XXVIII/8', '/api/stationsx', '/api/bgbl/teil2x']) {
+    for (const p of ['/api/drafts', '/api/ris-drafts', '/entwuerfe/XXVIII/8', '/api/stationsx', '/api/bgbl/teil2x', '/api/eu-recht', '/api/eu-recht/akte/32024L1069', '/api/eu-recht/kartex']) {
       expect(isPrewarmOnlyPath(p), p).toBe(false)
     }
   })

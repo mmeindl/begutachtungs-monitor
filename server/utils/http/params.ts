@@ -23,6 +23,7 @@ import {
 import { RIS_ID_RE } from '#shared/utils/risConsultations'
 import { firstQueryValue, MAX_LIST_QUERY_CHARS, MAX_LIST_QUERY_TERMS } from '#shared/utils/queryParams'
 import { queryReadings } from '#shared/utils/textMatch'
+import { readEuFilter, type EuFilter } from '../eu/euFilter'
 
 const INVALID_GP = 'Ungültige Gesetzgebungsperiode (römische Ziffern erwartet)'
 const STATUS_VALUES: DraftStatus[] = ['open', 'closed', 'all']
@@ -147,7 +148,20 @@ export function readGpParam(
   event: H3Event,
   options: { defaultsToCurrent?: boolean } = {},
 ): string | null | typeof PREVIOUS_PERIOD {
-  const raw = getRouterParam(event, 'gp') ?? (options.defaultsToCurrent ? 'aktuell' : '')
+  return parseGpWord(getRouterParam(event, 'gp') ?? (options.defaultsToCurrent ? 'aktuell' : ''))
+}
+
+/**
+ * The same grammar as a query value, `?gp=aktuell|vorperiode|XXVIII` — for
+ * a route whose path has no period in it (`/api/eu-recht/karte`). Absent
+ * means the running period.
+ */
+export function readGpQuery(event: H3Event): string | null | typeof PREVIOUS_PERIOD {
+  return parseGpWord(firstQueryValue(getQuery(event).gp) ?? 'aktuell')
+}
+
+/** `aktuell` → null, `vorperiode` → `PREVIOUS_PERIOD`, a period code as itself — else 400. */
+function parseGpWord(raw: string): string | null | typeof PREVIOUS_PERIOD {
   if (raw.toUpperCase() === 'AKTUELL') return null
   if (raw.toUpperCase() === 'VORPERIODE') return PREVIOUS_PERIOD
   const gp = raw.toUpperCase()
@@ -198,10 +212,15 @@ export interface ListQuery {
   ministry: string | undefined
   /** Already lowercased, for `matchesQuery`. */
   q: string | undefined
+  /**
+   * `?eu=umsetzung`: only drafts whose EU fact says „Setzt EU-Recht um"
+   * (§12.66, Nachtrag 3). Any other value is dropped like an unknown station.
+   */
+  eu?: EuFilter
 }
 
 /**
- * `?gp&status&station&ministry&q`, read the same way for `/api/drafts` and
+ * `?gp&status&station&ministry&q&eu`, read the same way for `/api/drafts` and
  * `/api/ris-drafts` — the two halves of one list, so a query that narrows
  * one has to narrow the other identically.
  *
@@ -238,6 +257,7 @@ export function readListQuery(event: H3Event): ListQuery {
     stations,
     ministry: firstQueryValue(query.ministry)?.toUpperCase(),
     q: readListSearch(firstQueryValue(query.q)),
+    eu: readEuFilter(firstQueryValue(query.eu)),
   }
 }
 

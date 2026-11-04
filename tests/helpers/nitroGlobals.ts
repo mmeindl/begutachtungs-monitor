@@ -78,6 +78,7 @@ declare global {
       swr?: boolean
       base?: string
       shouldBypassCache?: (...args: A) => boolean
+      shouldInvalidateCache?: (...args: A) => boolean
       validate?: (entry: { value?: T; mtime?: number }) => boolean
     },
   ) => (...args: A) => Promise<T>
