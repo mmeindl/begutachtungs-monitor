@@ -254,14 +254,14 @@ const APART = 14
 const CHAR_PCT = 1.1
 
 /** Where a label's text lies on the track, in percent, by its alignment. */
-function extent(m: EuTimelineMark): [number, number] {
-  const w = Math.max(m.lines[0].length, m.lines[1].length) * CHAR_PCT
+function extent(m: EuTimelineMark, charPct = CHAR_PCT): [number, number] {
+  const w = Math.max(m.lines[0].length, m.lines[1].length) * charPct
   return m.align === 'start' ? [m.at, m.at + w] : m.align === 'end' ? [m.at - w, m.at] : [m.at - w / 2, m.at + w / 2]
 }
 
 /** Whether two labels' texts would meet, a percent of air between them. */
-function overlap(left: EuTimelineMark, right: EuTimelineMark): boolean {
-  return extent(left)[1] + 1 > extent(right)[0]
+function overlap(left: EuTimelineMark, right: EuTimelineMark, charPct = CHAR_PCT): boolean {
+  return extent(left, charPct)[1] + 1 > extent(right, charPct)[0]
 }
 
 /** A label within this distance of either end of the track aligns inward, as on the Frist bar. */
@@ -274,22 +274,23 @@ export function edgeAlign(pos: number): EuTimelineMark['align'] {
  * neighbours closer than `APART` or wider than their distance (`CHAR_PCT`)
  * aligned away from each other — the one pinned to an end of the track
  * stays, the other moves past its text. The EU timeline's rule, shared with
- * the act page's axis (`euKarte.ts`).
+ * the act page's axis (`euKarte.ts`), which passes its own `charPct`: its
+ * track is half a row wide, so a character takes more of it.
  */
-export function spreadLabels(marks: EuTimelineMark[]): void {
+export function spreadLabels(marks: EuTimelineMark[], charPct = CHAR_PCT): void {
   marks.sort((a, b) => a.at - b.at)
   for (let i = 1; i < marks.length; i++) {
     const left = marks[i - 1]!
     const right = marks[i]!
-    if (right.at - left.at >= APART && !overlap(left, right)) continue
+    if (right.at - left.at >= APART && !overlap(left, right, charPct)) continue
     if (left.align === 'start' && left.at < 8) {
       // The left one is pinned to the track's start: the right one begins past it, and past its text.
       right.align = 'start'
-      right.at = Math.max(right.at, left.at + APART, extent(left)[1] + 1)
+      right.at = Math.max(right.at, left.at + APART, extent(left, charPct)[1] + 1)
     } else if (right.align === 'end' && right.at > 92) {
       // The right one is pinned to the track's end: the left one ends before it, and before its text.
       left.align = 'end'
-      left.at = Math.min(left.at, right.at - APART, extent(right)[0] - 1)
+      left.at = Math.min(left.at, right.at - APART, extent(right, charPct)[0] - 1)
     } else {
       if (left.align !== 'start') left.align = 'end'
       if (right.align !== 'end') right.align = 'start'

@@ -138,6 +138,7 @@ const [bundItem, eurLexItem] = sourceItemsDe([risSource('Vorblatt'), risSource('
                     :value-label="row.bar.valueLabel"
                     :value-align="valueAlign(row.bar.valueLabel)"
                     :band="row.bar.band"
+                    :from="row.bar.from"
                     :marks="row.bar.marks"
                     :labels="false"
                     :dot="dotOf(row.bar.valueLabel)"

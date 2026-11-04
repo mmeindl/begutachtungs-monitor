@@ -109,6 +109,8 @@ export function windowNoteDe(gp: string, window: { from: string; to: string | nu
 /** The bar beside one implementing draft, on the page's shared track. */
 export interface EuRowBar {
   band: [number, number]
+  /** Where the ink line begins: the draft's own Begutachtung, not the shared track's start. */
+  from: number
   value: number
   valueLabel: EuStand['label']
   /** The deadline's tick, the same on every row; no label — the axis carries it once. */
@@ -170,9 +172,21 @@ function standDe(stand: EuStand | null): string | null {
 function kennungDe(d: EuActDraft): string {
   const kind = d.citation ? `${KIND_WORD[d.kind]} ${d.citation}` : KIND_WORD[d.kind]
   const { start, end } = d.begutachtung
-  const begutachtung = start ? (end ? `Begutachtung ${dateRangeDe(start, end)}` : `Begutachtung ab ${formatDateDe(start)}`) : null
+  // Burgenland dates no start, only the Frist's end: „bis" says that much and no more.
+  const begutachtung = start
+    ? (end ? `Begutachtung ${dateRangeDe(start, end)}` : `Begutachtung ab ${formatDateDe(start)}`)
+    : end ? `Begutachtung bis ${formatDateDe(end)}` : null
   return [kind, begutachtung, standDe(d.stand)].filter((x): x is string => !!x).join(' · ')
 }
+
+/**
+ * A character's width in percent of the act page's track: half a row from
+ * `md` up (~410 px at the page's 4xl column), the phone's whole width
+ * below — about 6,5 px a character either way, against the draft card's
+ * 1.1 % (`CHAR_PCT`). Measured on the first build (04.11.2026), where
+ * „25.03.2025" and the deadline's date ran into each other at 1.1.
+ */
+const AXIS_CHAR_PCT = 1.7
 
 /** Rows that get a bar: a stand to place the dot, a start to place the band. */
 function barred(d: EuActDraft): d is EuActDraft & { stand: EuStand; begutachtung: { start: string } } {
@@ -230,6 +244,7 @@ export function euActPageView(r: EuActResponse): EuActPageView {
     bar: scaled && barred(d)
       ? {
           band: [at(d.begutachtung.start), at(d.begutachtung.end ?? d.begutachtung.start)],
+          from: at(d.begutachtung.start),
           value: at(d.stand.date),
           valueLabel: d.stand.label,
           marks: tick,
@@ -248,8 +263,13 @@ export function euActPageView(r: EuActResponse): EuActPageView {
     // The ends as dates — where the deadline is not itself the end.
     if (t?.deadline !== firstIso) axis.push({ key: 'anfang', at: 0, align: 'start', tick: false, lines: ['', formatDateDe(firstIso)] })
     if (t?.deadline !== lastIso) axis.push({ key: 'ende', at: 100, align: 'end', tick: false, lines: ['', formatDateDe(lastIso)] })
-    spreadLabels(axis)
+    spreadLabels(axis, AXIS_CHAR_PCT)
   }
+
+  /* A Land the build could not read whole is no Land „without a draft": the
+   * incomplete note names it instead (seen on the first real build,
+   * 04.11.2026: Steiermark stood in both sentences). */
+  const without = r.landsWithout.filter((l) => !r.incomplete.includes(l))
 
   return {
     title: act.label,
@@ -260,8 +280,8 @@ export function euActPageView(r: EuActResponse): EuActPageView {
     rows,
     axis,
     restating: r.restating.map((d) => ({ key: d.key, publisher: publisherDe(d.publisher), title: d.title, path: d.path })),
-    landsWithout: r.landsWithout.length
-      ? `Keine Entwürfe im Fenster der ${r.gp}. GP aus: ${listDe(r.landsWithout.map((l: LandCode) => LAND_NAME[l]))}.`
+    landsWithout: without.length
+      ? `Keine Entwürfe im Fenster der ${r.gp}. GP aus: ${listDe(without.map((l: LandCode) => LAND_NAME[l]))}.`
       : null,
     window: windowNoteDe(r.gp, r.window),
     incomplete: incompleteNoteDe(r.incomplete),

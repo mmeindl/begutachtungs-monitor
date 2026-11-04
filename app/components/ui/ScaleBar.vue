@@ -60,7 +60,14 @@ const props = withDefaults(defineProps<{
    * over its dot and not beside it.
    */
   valueAlign?: 'auto' | 'center'
-}>(), { labels: true, valueAlign: 'auto' })
+  /**
+   * Where the ink line begins, percent of the track — 0, its start, unless
+   * the track is shared by several rows (the EU act page, 04.11.2026): there
+   * a draft's way begins with its own Begutachtung, not with the earliest
+   * date of another row.
+   */
+  from?: number
+}>(), { labels: true, valueAlign: 'auto', from: 0 })
 
 defineSlots<{
   mark(props: { mark: M }): unknown
@@ -101,7 +108,7 @@ const DOT = computed(() => `absolute top-0 box-border size-3 -translate-x-1/2 ro
         class="absolute top-0 h-3 rounded-sm bg-ink-muted/25"
         :style="{ left: pct(band[0]), width: pct(band[1] - band[0]) }"
       />
-      <div class="absolute left-0 top-1/2 h-0.5 -translate-y-1/2 bg-ink" :style="{ width: pct(value) }" />
+      <div class="absolute top-1/2 h-0.5 -translate-y-1/2 bg-ink" :style="{ left: pct(from), width: pct(value - from) }" />
       <span
         v-for="mark in ticks"
         :key="mark.key"

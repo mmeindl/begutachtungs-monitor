@@ -65,6 +65,8 @@ describe('euActPageView', () => {
     expect(v.rows[0]!.bar).toMatchObject({ band: [at('2026-06-01'), at('2026-07-01')], value: 100, valueLabel: 'Heute' })
     // A Begutachtung without an end is a band of one day, at its start.
     expect(v.rows[1]!.bar).toMatchObject({ band: [at('2026-09-01'), at('2026-09-01')], value: at('2026-10-15'), valueLabel: 'Beschluss' })
+    // Each draft's way begins with its own Begutachtung, not at the shared track's start.
+    expect(v.rows.map((r) => r.bar!.from)).toEqual([at('2026-06-01'), at('2026-09-01')])
     for (const r of v.rows) expect(r.bar!.marks).toEqual([{ key: 'tick-frist', at: 0, align: 'center', tick: true, lines: ['', ''] }])
     // The axis once: the deadline is the first end and labels it; the last end as a date.
     expect(v.axis.map((m) => [m.key, m.align, m.lines])).toEqual([
@@ -112,6 +114,10 @@ describe('euActPageView', () => {
     expect(v.rows.map((r) => r.bar === null)).toEqual([false, true, true])
     expect(v.rows[1]!.kennung).toBe('Gesetzesentwurf 147/ME · Begutachtung 01.01.–01.02.2020')
     expect(v.rows[2]!.kennung).toBe('Gesetzesentwurf 147/ME')
+    // Burgenland dates only the Frist's end.
+    const bgld = euActPageView(response({ implementing: [draft({ begutachtung: { start: null, end: '2024-12-10' } })] }))
+    expect(bgld.rows[0]!.kennung).toBe('Gesetzesentwurf 147/ME · Begutachtung bis 10.12.2024')
+    expect(bgld.rows[0]!.bar).toBeNull()
     // The track still begins at the deadline, not in 2020.
     expect(v.axis[0]).toMatchObject({ key: 'frist', at: 0 })
   })
@@ -140,6 +146,8 @@ describe('euActPageView', () => {
     expect(v.window).toContain('nur die, die der Monitor kennt')
     expect(v.incomplete).toBe('Gerade nicht abrufbar: Steiermark – Entwürfe von dort können fehlen.')
     expect(euActPageView(response({})).landsWithout).toBeNull()
+    // A Land that could not be read is named as such, never as one without a draft.
+    expect(euActPageView(response({ landsWithout: ['ktn', 'stmk'], incomplete: ['stmk'] })).landsWithout).toBe('Keine Entwürfe im Fenster der XXVIII. GP aus: Kärnten.')
     expect(euActPageView(response({})).incomplete).toBeNull()
     expect(incompleteNoteDe(['bund', 'stmk'])).toBe('Gerade nicht abrufbar: Bund und Steiermark – Entwürfe von dort können fehlen.')
   })
