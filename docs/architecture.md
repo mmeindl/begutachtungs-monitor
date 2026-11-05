@@ -14799,6 +14799,67 @@ Seite, steht aber nicht in der Übersicht; die Quellenzeile der Aktseite
 nennt die Herkunft des Stands (Parlament, RIS, Land) nicht eigens, wie die
 des Fakts auch nicht.
 
+**Nachtrag 4 (05.11.2026): der Titel jedes Rechtsakts, und Quellen-Chips in
+der Übersicht.** Die Übersicht nannte einen Akt nur mit seinem Zitat —
+„Richtlinie (EU) 2024/1069" sagt nicht, wovon sie handelt. Jeder Akt hat im
+Cellar einen amtlichen deutschen Titel (`cdm:expression_title` der
+DEU-Expression), und dieselbe Abfrage, die seine Daten liest, liest ihn
+seither mit (`CELLAR_QUERY_VERSION` 3; `EU_READER_VERSION` 2, weil der Fakt
+ihn speichert — `EuActView.title`, `EuActHead.title`). Das Feld
+`expression_title_short` wäre der Kurzname gewesen, taugt aber nicht: nur
+manche Akte tragen es, und als Komma-Liste von Suchbegriffen („Datenschutz
+Grundverordnung, DSGVO, GDPR, datenschutzgrundverordnung, …"); die
+Anti-SLAPP-Richtlinie hat keins. D7 — Kurznamen, mit denen ein Entwurf einen
+Akt zitiert — bleibt davon unberührt offen.
+
+Gezeigt wird nicht der ganze Titel, sondern was er nach Name und Datum sagt
+(`euActSubject`, `shared/utils/eu.ts`): „über den Schutz von Personen, die
+sich öffentlich beteiligen, …" — das erste Wort klein, wie die amtliche
+Grammatik es hat, in der Übersicht als zweite Zeile der Reihe, auf der
+Aktseite unter der Überschrift; die Faktzeile des Entwurfs bleibt beim Zitat,
+die Aktseite ist einen Klick entfernt. Drei Funde beim Messen über die 114
+Akte der Übersicht: EUR-Lex setzt in 86 Titeln ein geschütztes Leerzeichen
+zwischen Tag und Monat („vom 22. November 2023"), das erste Muster mit
+ASCII-Leerzeichen verfehlte 49 Titel — `\s` an jeder Lücke; die EWR-Notiz
+kommt in vier Schreibweisen („(… EWR)" 58-mal, „(… EWR.)" dreimal, „(… EWR.
+)" einmal, nackt einmal); und der Rahmenbeschluss 2009/315/JI hatte weder
+Beschlusstag noch Titel, weil das CELEX-Muster der Cellar-Abfrage seit v1 nur
+L, R und D kannte — das Cellar kennt einen Rahmenbeschluss wie jeden Akt,
+nur die Umsetzungsfrist ist die Spalte einer Richtlinie. Der Gegenstand ist
+lang: Median 167 Zeichen, 25 von 114 über 240, der längste 515 (Richtlinie
+(EU) 2024/1499). Er steht trotzdem ganz da (§12.28): der Kurzname steht am
+ENDE dieser Titel — „(Datenschutz-Grundverordnung)" —, und ein Abschneiden
+von hinten verlöre genau ihn. Gegengeprüft: die Titel der Karte sind für
+alle 114 Akte der Übersicht die des direkten Cellar-Abrufs. Gemessen auf
+dem Produktionsbuild unter 320 MB Heap, zwei kalte Läufe mit
+Cellar-Neuabfrage aller Akte: 197 s und 255 s (ME 44/72 s, RIS 13/16 s,
+Länder 124/152 s — die Spanne ist das Cellar), Heap-Spitze 203/181 MB; aus
+dem Speicher 10 s, 139 MB.
+
+Die Quellen-Chips beantworten die Frage, die weder die Übersicht noch die
+Liste beantwortete: welche Richtlinien setzt ein bestimmtes Land gerade
+um — die Listenreihen tragen nur das EU-Merkmal, nicht die Akte. Die Zahlen,
+die die Form entschieden: 114 Akte, 5 mit Entwürfen des Bundes und eines
+Landes, 72 nur Bund, 37 nur Länder; je Land Burgenland 15, Kärnten 13,
+Salzburg 12, Oberösterreich 8, Vorarlberg 1, Wien, Niederösterreich und
+Tirol 0, Steiermark ungelesen. Die Chips sehen aus wie die Quellen-Chips
+der Listen und sprechen dasselbe `?quellen=`, sind aber die dieser Seite:
+nichts angekreuzt heißt alle, und sie schreiben nie das Cookie der
+Site-Wahl — die springt auf den Bund allein und hätte 37 Akte versteckt,
+während die Aktseite alle neun Länder zeigt. Einen Chip bekommt nur, wer
+einen Akt hat (ein Fehlen ist kein Befund, D6); ein in der Adresse
+angekreuztes Land ohne Akt behält seinen Chip, und die leere Liste sagt
+darunter, warum (`ListBoxNotice` im Rahmen, „Alle Quellen zeigen" — eine
+Karte im Rahmen wäre eine Box in der Box). Oder-Semantik wie in den Listen;
+die Chips wählen Reihen aus und ändern in keiner Reihe eine Zahl
+(`euSourceChips`, `filterEuActs`, rein, getestet).
+
+**Reste:** `scripts/corpus/euLaender.ts` cacht Cellar-Antworten ohne
+Abfrageversion auf der Platte — ein Korpuslauf zeigt `title: null`, bis
+dieser Cache geleert ist; ein Rahmenbeschluss hat im Cellar keine
+Umsetzungsfrist, seine Seite nennt nur den Beschlusstag.
+
+
 ## 13. Open questions
 
 1. **Legal (restated 2026-09-16 — the old wording asked the wrong question).** It assumed the metadata was CC-BY and only the full texts excluded. Parliament's licence page for the Begutachtungsverfahren excludes *Beteiligungen zu Ministerialentwürfen* from open-data reuse as such, and no licensed dataset covers Ministerialentwürfe at all. So the question is now: **on what basis may the metadata of lists 81/142/305 be reused?** Two halves — the factual one (how is that sentence meant, is a case-by-case release possible) goes to the Parlamentsdirektion, the legal one (is factual metadata protectable at all; Datenbankherstellerrecht §§ 76c ff vs. § 42h UrhG) to a university partner. The inline web-form texts remain a sub-question of it, not a separate one. It blocks a blanket CC-BY claim on the site, which was removed on 2026-09-16. **And "stage 1 is metadata-only either way", which stood here until 2026-09-19, is not quite true — one block breaks it.** Under „Worum geht es?" the draft page prints Parliament's `shortinfo`: Ziele, Inhalt, Hauptgesichtspunkte. That is prose from the excluded dataset, and no enumeration of "Fristen, Geschäftszahlen, Anzahl" covers it. The obvious escape was measured and does not hold (`pnpm corpus:kurzinfo`, GP XXVII, 337 drafts): the Kurzinformation is *not* simply the ministry's text, which RIS publishes CC BY. 53 % of drafts carry no prose at all, only the Vorblatt lists (67 % of all characters, untested here because the Vorblatt is a RIS document the corpus mapper does not carry); where there is prose, a median of 60 % of its eight-word windows occur verbatim in the ministry's documents, p10 25 %, and only 6.6 % of drafts are covered to 90 % or more. It is Parliament's editorial work on the ministry's material — related, but not the same document, so it cannot be sourced from RIS instead. Consequence: `/impressum` and `/ueber` name it since 2026-09-19, and **the question to the Parlamentsdirektion has to name it too** — an answer of the form "only the contents of the Stellungnahmen are excluded" would not settle it, because the Kurzinformation is neither a Stellungnahme nor a metadatum. And a third block, found 23.09.2026, which unlike the Kurzinformation sits in code: the § comparison reads the Ministerialentwurf's Gesetzestext from Parliament's HTML wherever Parliament publishes one (`diff/lawDiffService.ts`, RIS XML only where it does not), and the Begründungsvergleich reads the draft's Erläuterungen from the same copy on both sides (`explanations/reasoningDiffService.ts`) — both for a measured reason, one Word template on both sides (§12.12, sixth measurement), and both against the source order the Textgegenüberstellung follows (`annex/annexSource.ts`). The argument that carries it is the one the annex switch refuses for the drafts RIS does not hold — the same documents stand in RIS under CC BY — and for those drafts (12 of 350 in GP XXVII) the comparison shows Parliament's text with no RIS twin. `/ueber` and `/impressum` name it since 23.09.2026. Open, and part of the question above: whether to read the draft's text RIS-first like the annex, at the measured cost to the alignment, or to keep the parser symmetry and say so — as the copy now does. Read live on 23.09.2026, Parliament's own dataset pages (Regierungsvorlagen, Anträge, Ausschussberichte, Beschlüsse — one template) call the documents of those items „freie Werke und somit ohne Lizenzierung frei nutzbar“ and license only the result lists, the API and the history pages as CC BY 4.0; the exclusion sentence on the Beteiligungen page names *Beteiligungen* zu Ministerialentwürfen, not the drafts or their documents. (What stood here until 30.09.2026 — that the Beteiligungen lists are CC BY and that the Stellungnahmen zur Regierungsvorlage, §12.14, run under that grant — was a misreading: the Beteiligungen dataset is „Aktuelle Beteiligungen", list 143, items open for participation on the day of the query, and its page says „Ministerialentwürfe und Stellungnahmen fallen nicht darunter"; the Regierungsvorlagen page excludes „sämtliche Informationen zu Stellungnahmen" from free use and licensing, for data protection and copyright. The Stellungnahmen zur Regierungsvorlage therefore carry no licence either, and `/impressum` says so since 30.09.2026.) So the sharp form of the question to the Parlamentsdirektion is whether „die Dokumente selbst sind freie Werke“ holds for a Ministerialentwurf's documents too — and, separately, on what basis list 81 as such and the Kurzinformation may be reused. **The § comparison's own credit line was corrected to those facts on 23.09.2026:** it claimed „CC BY 4.0" whenever neither side was the Ministerialentwurf (`isLicensedPair`), which named a licence Parliament does not grant for these documents — the correct note for a Regierungsvorlage, Ausschuss- or Plenarfassung read from Parliament is „Dokumente: freie Werke, § 7 UrhG", a RIS-sourced side stays CC BY 4.0, and the Ministerialentwurf is credited by name with no claim at all, because what may be claimed for it is precisely this open question (`lawDiffSourceCredit`).
