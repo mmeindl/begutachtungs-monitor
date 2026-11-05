@@ -27,6 +27,10 @@ export default defineNuxtConfig({
     // Absolute base for links in RSS/ICS feeds; override via NUXT_PUBLIC_SITE_URL.
     public: { siteUrl: 'https://begutachtungs-monitor.at' },
   },
+  // Nuxt 4.6.4 resolves an unset devServer.host to `{}` — an empty config
+  // too — and `nuxt dev` dies on `options.hostname.toLowerCase` (05.11.2026).
+  // A string skips the broken default; drop this once Nuxt fixes it.
+  devServer: { host: 'localhost' },
   css: ['~/assets/css/main.css'],
   // Cached-function storage, split by provenance (server/utils/cache/base.ts):
   // the default `cache` mount keeps documents we fetched and stays on disk,
