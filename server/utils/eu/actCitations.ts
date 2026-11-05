@@ -221,9 +221,13 @@ function plausibleYear(y: number): boolean {
  * the order since 2015 („Richtlinie (EU) 2024/1069"), and anything else is
  * number/year written without the „Nr." („(EU) 1303/2013").
  */
-function orderOrg(nr: boolean, a: number, b: number): { year: number; number: number } {
+function orderOrg(nr: boolean, a: number, b: number, eu = false): { year: number; number: number } {
   // „Verordnung (EU) Nr. 2022/2065": the „Nr." of the old form before the new
-  // order — read year first where the second number cannot be a year.
+  // order — read year first where the second number cannot be a year, or
+  // where only the first fits „(EU)", which names acts from 2010 on:
+  // „Richtlinie (EU) Nr. 2018/2001" (the UVP-G's Umsetzungshinweis) is not
+  // act 2018 of 2001.
+  if (nr && eu && a >= 2010 && a <= 2030 && fullYear(b) < 2010) return { year: a, number: b }
   if (nr) return plausibleYear(b) || !plausibleYear(a) ? { year: fullYear(b), number: a } : { year: a, number: b }
   if (a >= 1990 && a <= 2030) return { year: a, number: b }
   return { year: fullYear(b), number: a }
@@ -351,7 +355,7 @@ export function readEuActCitations(text: string, options: CitationOptions = {}):
     }
     head.listEnd = rest
   }
-  for (const m of text.matchAll(ACT_ORG)) take(m.index!, m.index! + m[0].length, m[1]!, orderOrg(Boolean(m[2]), Number(m[3]), Number(m[4])))
+  for (const m of text.matchAll(ACT_ORG)) take(m.index!, m.index! + m[0].length, m[1]!, orderOrg(Boolean(m[2]), Number(m[3]), Number(m[4]), /\(EU\)/.test(m[0])))
   for (const m of text.matchAll(ACT_SUFFIX)) take(m.index!, m.index! + m[0].length, m[1]!, orderSuffix(Boolean(m[2]), Number(m[3]), Number(m[4])))
   for (const m of text.matchAll(ACT_ABBREVIATED)) take(m.index!, m.index! + m[0].length, m[1]!, { year: Number(m[2]), number: Number(m[3]) })
   for (const m of text.matchAll(ACT_BARE)) {

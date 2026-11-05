@@ -24,6 +24,12 @@ const cellar = (celex: string) => JSON.parse(readFileSync(join(FIXTURES, `cellar
 const celexes = (text: string, implemented = false) => parseEuActCitations(text, { implemented }).map((a) => a.celex)
 
 describe('parseEuActCitations', () => {
+  it('reads „(EU) Nr. a/b" year first where only the first number fits „(EU)" (UVP-G, 05.11.2026)', () => {
+    expect(celexes('Richtlinie (EU) Nr. 2018/2001 zur Förderung der Nutzung von Energie aus erneuerbaren Quellen')).toEqual(['32018L2001'])
+    expect(celexes('Verordnung (EU) Nr. 1025/2012')).toEqual(['32012R1025'])
+    expect(celexes('Verordnung (EG) Nr. 2018/2001')).toEqual(['32001R2018'])
+  })
+
   it('reads the citation form since 2015 and builds CELEX, ELI and label', () => {
     const [act] = parseEuActCitations('Mit diesem Bundesgesetz wird die Richtlinie (EU) 2024/1069 des Europäischen Parlaments umgesetzt.')
     expect(act).toMatchObject({
