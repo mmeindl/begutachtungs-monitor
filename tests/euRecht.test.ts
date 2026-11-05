@@ -356,6 +356,23 @@ describe('readUmsetzungshinweis', () => {
   it('skips the table of contents', () => {
     expect(readUmsetzungshinweis([{ kind: 'toc', text: '§ 21a. Umsetzungshinweis' }]).windows).toEqual([])
   })
+
+  it('names only the act „umgesetzt" governs — an act introduced by „nach der", „gemäß", „aufgrund" is a reference (bgld-c372, 05.11.2026)', () => {
+    const r = readUmsetzungshinweis([
+      { kind: 'abs', text: '(2) Die Landesregierung hat durch Verordnung nähere Vorschriften zu erlassen, soweit dies zur Umsetzung der Richtlinie (EU) Nr. 2016/2102 über den barrierefreien Zugang erforderlich ist. Dabei ist festzulegen, dass Inhalte den Teilen von harmonisierten Normen, deren Referenzen nach der Verordnung (EU) Nr. 1025/2012 im Amtsblatt der Europäischen Union veröffentlicht wurden, entsprechen, oder einer nach Art. 6 Abs. 4 der Richtlinie (EU) Nr. 2016/2102 festgelegten Fassung.' },
+    ])
+    expect(r.acts.map((a) => a.celex)).toEqual(['32016L2102'])
+    expect(readUmsetzungshinweis('Mit diesem Gesetz wird die Richtlinie (EU) 2019/1152 umgesetzt. Das Verfahren aufgrund der Richtlinie (EU) 2015/1535 wurde durchgeführt.').acts.map((a) => a.celex)).toEqual(['32019L1152'])
+  })
+
+  it('keeps an enumeration after the signal whole', () => {
+    const r = readUmsetzungshinweis([
+      { kind: 'abs', gld: '§ 65.', text: 'Durch dieses Gesetz werden folgende Richtlinien der Europäischen Union umgesetzt:' },
+      { kind: 'ziff', gld: '1.', text: 'Richtlinie 2000/43/EG zur Anwendung des Gleichbehandlungsgrundsatzes, ABl. Nr. L 180 vom 19.07.2000 S 22,' },
+      { kind: 'ziff', gld: '2.', text: 'Richtlinie (EU) 2024/1499 über Standards für Gleichbehandlungsstellen, ABl. L 2024/1499, 29.5.2024.' },
+    ])
+    expect(r.acts.map((a) => a.celex)).toEqual(['32000L0043', '32024L1499'])
+  })
 })
 
 describe('readExplanationsEuSignal — whether only, never which act', () => {

@@ -108,6 +108,20 @@ const ACT_CONTINUATION = new RegExp(
  */
 const TITLE_REFERENCE = /(?:Änderung|Aufhebung|Ersetzung)\s+(?:der|des|von)\s*$/
 
+/**
+ * An act a provision only REFERS to: introduced by „nach der", „gemäß",
+ * „im Sinne der", „entsprechend", „aufgrund", „laut" — directly, or through
+ * an article, annex or paragraph of it („nach Art. 6 Abs. 4 der Richtlinie
+ * …"). Inside an implementing window it is not the object of „umgesetzt":
+ * Burgenland's GADG (bgld-c372) writes „soweit dies zur Umsetzung der
+ * Richtlinie (EU) Nr. 2016/2102 … erforderlich ist … harmonisierten Normen,
+ * deren Referenzen nach der Verordnung (EU) Nr. 1025/2012 im Amtsblatt …
+ * veröffentlicht wurden", and 1025/2012 stood on the page as an act the draft
+ * implements (05.11.2026). An enumeration item („1. Richtlinie …") is never
+ * introduced so, and stays whole.
+ */
+const REFERENCE_PHRASE = /(?<![\p{L}])(?:nach|gemäß|im\s+Sinne?|entsprechend|aufgrund|auf\s+Grund|laut)\s+(?:(?:Art(?:ikel|\.)?|Anh(?:ang|\.)|Abs\.?|Z|lit\.?)\s*[\p{L}\d.()\s,]{0,40}?\s)?(?:der|des|dem|den)?\s*$/u
+
 function kindOf(word: string): EuActKind {
   const w = word.toLowerCase()
   if (w.startsWith('rahmen')) return 'rahmenbeschluss'
@@ -207,6 +221,12 @@ export interface CitationOptions {
    * not for counting citations.
    */
   implemented?: boolean
+  /**
+   * Drop acts a provision only refers to (`REFERENCE_PHRASE`: „nach der
+   * Verordnung …", „gemäß Richtlinie …") — for an implementing window,
+   * where they are not the object of the verb.
+   */
+  withoutReferences?: boolean
 }
 
 /** What one reading found: the acts, and how many title references it dropped. */
@@ -215,25 +235,36 @@ export interface Citations {
   /** Every citation kept, in order of appearance, repeats included — with its offset in `text`. */
   occurrences: { at: number; act: EuAct }[]
   titleReferencesDropped: number
+  /** Citations dropped as mere references (`withoutReferences`). */
+  referencesDropped: number
 }
 
 /** Every act cited in `text`, in order, with list continuations; deduped by CELEX. */
 export function readEuActCitations(text: string, options: CitationOptions = {}): Citations {
   const found: { at: number; act: EuAct }[] = []
   let dropped = 0
+  let references = 0
+  /** Skip the list after a dropped citation — it belongs to the same title or reference — and count it. */
+  const skipList = (end: number): number => {
+    let rest = end
+    let n = 1
+    for (let guard = 0; guard < 12; guard++) {
+      const m = ACT_CONTINUATION.exec(text.slice(rest))
+      if (!m) break
+      rest += m[0].length
+      n++
+    }
+    return n
+  }
   const take = (at: number, end: number, typeWord: string, order: { year: number; number: number }) => {
     const act = makeAct(text.slice(at, end), typeWord, order.year, order.number)
     if (!act) return
     if (options.implemented && TITLE_REFERENCE.test(text.slice(Math.max(0, at - 40), at))) {
-      // The list after it belongs to the same title: skip it as well.
-      let rest = end
-      for (let guard = 0; guard < 12; guard++) {
-        const m = ACT_CONTINUATION.exec(text.slice(rest))
-        if (!m) break
-        rest += m[0].length
-        dropped++
-      }
-      dropped++
+      dropped += skipList(end)
+      return
+    }
+    if (options.withoutReferences && REFERENCE_PHRASE.test(text.slice(Math.max(0, at - 80), at))) {
+      references += skipList(end)
       return
     }
     found.push({ at, act })
@@ -257,7 +288,7 @@ export function readEuActCitations(text: string, options: CitationOptions = {}):
     if (bareCitation(Number(m[2]))) take(m.index!, m.index! + m[0].length, m[1]!, { year: Number(m[2]), number: Number(m[3]) })
   }
   found.sort((a, b) => a.at - b.at)
-  return { acts: uniqueActs([found.map((f) => f.act)]), occurrences: found, titleReferencesDropped: dropped }
+  return { acts: uniqueActs([found.map((f) => f.act)]), occurrences: found, titleReferencesDropped: dropped, referencesDropped: references }
 }
 
 /** Every act cited in `text` — `readEuActCitations` without the bookkeeping. */

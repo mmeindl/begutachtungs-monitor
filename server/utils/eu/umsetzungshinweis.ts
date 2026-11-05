@@ -88,6 +88,13 @@ const WINDOW_END: ReadonlySet<string> = new Set(['para_head', 'article', 'sectio
 const NEXT_PARA = /^§\s*\d/
 const WINDOW_CEILING = 80
 
+/**
+ * How a window's acts are read: acts inside another act's title and acts
+ * the window only refers to („nach der Verordnung (EU) Nr. 1025/2012",
+ * `withoutReferences`) are not what it implements.
+ */
+const WINDOW_CITATIONS = { implemented: true, withoutReferences: true } as const
+
 /** One place the law text speaks of EU law. */
 export interface LawWindow {
   /** The window's text, whitespace normalised. */
@@ -95,7 +102,7 @@ export interface LawWindow {
   /** Index of the block it starts at — the service finds the Novellierungsanordnung above it. */
   start: number
   signal: LawSignal
-  /** The acts named in it, those named inside another act's title dropped. */
+  /** The acts named in it, those named inside another act's title or only referred to dropped. */
   acts: EuAct[]
 }
 
@@ -212,7 +219,7 @@ export function readUmsetzungshinweis(input: string | readonly LawTextBlock[]): 
     for (let k = windows.length - 1; k >= 0; k--) {
       if (window.includes(windows[k]!.text)) windows.splice(k, 1)
     }
-    windows.push({ text: window, start: i, signal: lawSignalOf(window), acts: parseEuActCitations(window, { implemented: true }) })
+    windows.push({ text: window, start: i, signal: lawSignalOf(window), acts: parseEuActCitations(window, WINDOW_CITATIONS) })
   }
   return {
     signal: strongestSignal(windows.map((w) => w.signal)),
