@@ -14863,6 +14863,22 @@ in ihrem Kopf wie die Quellen-Chips von `/entwuerfe`, der Hinweis zur leeren
 Auswahl und die Faltung an ihrem Fuß. Der EU-Fakt der Entwurfsseite bleibt
 im Rahmen, er wird nachgeschlagen.
 
+Ebenfalls am Abend, an der Achse der Aktseite (ein Akt mit Entwürfen von
+Bund, Burgenland und Salzburg): unter der letzten Zeile standen
+„25.03.2025 · Umsetzungsfrist 21.05.2025¹ · 23.12.2025" — drei Daten in
+einer Reihe, gelesen als drei Ereignisse, die ersten beiden dicht wie eine
+Spanne. Die Enden waren aber nur der Beginn der Salzburger Begutachtung und
+das Bundesgesetzblatt, Daten einer Zeile, die deren Text schon nennt. Die
+Achse trägt seither nur die Frist, an der jede Zeile gemessen wird; ohne
+Frist (Verordnung) keine Beschriftung. Und Burgenland stand als leere Zeile
+zwischen zwei Balken, obwohl sein Landesgesetzblatt (12.05.2025) mitten auf
+der Strecke lag — leer las sich wie fehlende Daten. Eine Zeile, deren
+Begutachtung nur ein Ende datiert, wird seither ab diesem Ende gezeichnet,
+ohne Band, und dehnt die Strecke (hier bis 10.12.2024); das „bis" im Text
+sagt, dass nur das Ende bekannt ist. Mit den Enden fiel auch der eigene
+Zeichenbreitenwert der Achse (`AXIS_CHAR_PCT`, `spreadLabels(…, charPct)`):
+ein Etikett hat nichts, dem es ausweichen muss.
+
 **Reste:** `scripts/corpus/euLaender.ts` cacht Cellar-Antworten ohne
 Abfrageversion auf der Platte — ein Korpuslauf zeigt `title: null`, bis
 dieser Cache geleert ist; ein Rahmenbeschluss hat im Cellar keine

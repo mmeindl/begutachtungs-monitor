@@ -78,23 +78,26 @@ describe('euActPageView', () => {
     // Each draft's way begins with its own Begutachtung, not at the shared track's start.
     expect(v.rows.map((r) => r.bar!.from)).toEqual([at('2026-06-01'), at('2026-09-01')])
     for (const r of v.rows) expect(r.bar!.marks).toEqual([{ key: 'tick-frist', at: 0, align: 'center', tick: true, lines: ['', ''] }])
-    // The axis once: the deadline is the first end and labels it; the last end as a date.
+    // The axis once: the deadline, on the first end, aligned inward.
     expect(v.axis.map((m) => [m.key, m.align, m.lines])).toEqual([
       ['frist', 'start', ['Umsetzungsfrist', '07.05.2026']],
-      ['ende', 'end', ['', '04.11.2026']],
     ])
   })
 
-  it('labels both ends where the deadline lies inside the track, and keeps the labels apart', () => {
+  it('labels only the deadline where it lies inside the track, never the ends', () => {
     const v = euActPageView(response({
       implementing: [draft({ begutachtung: { start: '2026-05-01', end: '2026-05-20' }, stand: { date: '2026-11-04', label: 'Heute' } })],
     }))
-    expect(v.axis.map((m) => m.key)).toEqual(['anfang', 'frist', 'ende'])
-    const [anfang, frist] = v.axis
-    // 07.05. is six days into a half-year track: the deadline's label is pushed past the start's date.
-    expect(anfang!.align).toBe('start')
-    expect(frist!.align).toBe('start')
-    expect(frist!.at).toBeGreaterThanOrEqual(anfang!.at + 14)
+    const at = ((day('2026-05-07') - day('2026-05-01')) / (day('2026-11-04') - day('2026-05-01'))) * 100
+    expect(v.axis).toEqual([{ key: 'frist', at, align: 'start', tick: false, lines: ['Umsetzungsfrist', '07.05.2026'] }])
+    const middle = euActPageView(response({
+      implementing: [draft({ begutachtung: { start: '2026-01-01', end: '2026-02-01' }, stand: { date: '2026-09-01', label: 'Heute' } })],
+    }))
+    expect(middle.axis.map((m) => [m.key, m.align])).toEqual([['frist', 'center']])
+    // An act without a deadline has nothing to label.
+    const reg = euActPageView(response({ act: { ...response({}).act, kind: 'verordnung', transposition: null } }))
+    expect(reg.rows[0]!.bar).not.toBeNull()
+    expect(reg.axis).toEqual([])
   })
 
   it('writes each row\'s Kennung with two dates and the stand, never a verdict', () => {
@@ -113,7 +116,7 @@ describe('euActPageView', () => {
     expect(JSON.stringify(v)).not.toMatch(/verspätet|säumig|zu spät|Tage\b|Gold/i)
   })
 
-  it('draws no bar for a row without a stand or a start, and lets it not stretch the track', () => {
+  it('draws no bar for a row without a stand or any Begutachtung date, and lets it not stretch the track', () => {
     const v = euActPageView(response({
       implementing: [
         draft({}),
@@ -124,12 +127,24 @@ describe('euActPageView', () => {
     expect(v.rows.map((r) => r.bar === null)).toEqual([false, true, true])
     expect(v.rows[1]!.kennung).toBe('Gesetzesentwurf 147/ME · Begutachtung 01.01.–01.02.2020')
     expect(v.rows[2]!.kennung).toBe('Gesetzesentwurf 147/ME')
-    // Burgenland dates only the Frist's end.
-    const bgld = euActPageView(response({ implementing: [draft({ begutachtung: { start: null, end: '2024-12-10' } })] }))
-    expect(bgld.rows[0]!.kennung).toBe('Gesetzesentwurf 147/ME · Begutachtung bis 10.12.2024')
-    expect(bgld.rows[0]!.bar).toBeNull()
     // The track still begins at the deadline, not in 2020.
     expect(v.axis[0]).toMatchObject({ key: 'frist', at: 0 })
+  })
+
+  it('draws a row with only the Frist\'s end from that end, without a band, and lets it stretch the track', () => {
+    // Burgenland dates only the Frist's end.
+    const v = euActPageView(response({
+      implementing: [
+        draft({}),
+        draft({ key: 'land:bgld-1', publisher: 'bgld', citation: null, begutachtung: { start: null, end: '2025-12-10' }, stand: { date: '2026-05-12', label: 'Landesgesetzblatt' } }),
+      ],
+    }))
+    const span = day('2026-11-04') - day('2025-12-10')
+    const at = (iso: string) => ((day(iso) - day('2025-12-10')) / span) * 100
+    expect(v.rows[1]!.kennung).toBe('Gesetzesentwurf · Begutachtung bis 10.12.2025 · Landesgesetzblatt am 12.05.2026')
+    expect(v.rows[1]!.bar).toMatchObject({ band: null, from: 0, value: at('2026-05-12'), valueLabel: 'Landesgesetzblatt' })
+    expect(v.rows[0]!.bar).toMatchObject({ from: at('2026-06-01') })
+    expect(v.axis).toEqual([{ key: 'frist', at: at('2026-05-07'), align: 'center', tick: false, lines: ['Umsetzungsfrist', '07.05.2026'] }])
   })
 
   it('draws no bars where every drawn date falls on one day, nor without any stand', () => {

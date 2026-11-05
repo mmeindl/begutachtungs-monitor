@@ -19,7 +19,7 @@ import type { EuActHead, EuActDraft, EuActResponse, EuActSummary, EuActsResponse
 import { euActSubject } from '#shared/utils/eu'
 import { formatDateDe } from '#shared/utils/format'
 import { LAND_CODES, LAND_NAME, type SourceCode } from '#shared/utils/laender'
-import { SUPERSCRIPT, dateRangeDe, dayOf, edgeAlign, spreadLabels, type EuTimelineMark } from './euRecht'
+import { SUPERSCRIPT, dateRangeDe, dayOf, edgeAlign, type EuTimelineMark } from './euRecht'
 
 /** „Bund" or the Land's name — the list's source chips' words. */
 export function publisherDe(p: EuPublisher): string {
@@ -139,7 +139,8 @@ export function windowNoteDe(gp: string, window: { from: string; to: string | nu
 
 /** The bar beside one implementing draft, on the page's shared track. */
 export interface EuRowBar {
-  band: [number, number]
+  /** The Begutachtung; null where it has no start, the line then begins at its end. */
+  band: [number, number] | null
   /** Where the ink line begins: the draft's own Begutachtung, not the shared track's start. */
   from: number
   value: number
@@ -157,7 +158,7 @@ export interface EuDraftRowView {
   path: string
   /** „Gesetzesentwurf 147/ME · Begutachtung 21.10.–10.11.2026 · Beschluss am 12.11.2026". */
   kennung: string
-  /** Null where the draft has no stand or no start: its dates stand as text, without a bar. */
+  /** Null where the draft has no stand or no Begutachtung date: its dates stand as text, without a bar. */
   bar: EuRowBar | null
 }
 
@@ -181,7 +182,7 @@ export interface EuActPageView {
   /** „¹ Weitere Fristen für einzelne Bestimmungen: 01.01.2025" — rule D3's footnote; null without further dates. */
   footnote: string | null
   rows: EuDraftRowView[]
-  /** The labels under the last row: the deadline, and the track's two ends as dates. Empty where no row has a bar. */
+  /** The label under the last row: the deadline. Empty where no row has a bar or the act has no deadline. */
   axis: EuTimelineMark[]
   restating: EuRestatingRowView[]
   /** „Keine Entwürfe im Fenster der XXVIII. GP aus: Kärnten und Tirol." — null where every Land has one. */
@@ -212,18 +213,9 @@ function kennungDe(d: EuActDraft): string {
   return [kind, begutachtung, standDe(d.stand)].filter((x): x is string => !!x).join(' · ')
 }
 
-/**
- * A character's width in percent of the act page's track: half a row from
- * `md` up (~410 px at the page's 4xl column), the phone's whole width
- * below — about 6,5 px a character either way, against the draft card's
- * 1.1 % (`CHAR_PCT`). Measured on the first build (04.11.2026), where
- * „25.03.2025" and the deadline's date ran into each other at 1.1.
- */
-const AXIS_CHAR_PCT = 1.7
-
-/** Rows that get a bar: a stand to place the dot, a start to place the band. */
-function barred(d: EuActDraft): d is EuActDraft & { stand: EuStand; begutachtung: { start: string } } {
-  return d.stand !== null && !!d.begutachtung.start
+/** Rows that get a bar: a stand to place the dot, and a Begutachtung date to begin the line at. */
+function barred(d: EuActDraft): d is EuActDraft & { stand: EuStand } {
+  return d.stand !== null && !!(d.begutachtung.start ?? d.begutachtung.end)
 }
 
 /**
@@ -232,17 +224,19 @@ function barred(d: EuActDraft): d is EuActDraft & { stand: EuStand; begutachtung
  * ONE TRACK FOR THE PAGE. It runs from the earliest to the latest of the
  * dates that are drawn — the deadline, and every barred row's Begutachtung
  * and stand — and no further, as the draft's own timeline does: the first
- * and the last date sit on the ends. A row without a stand (the Bund's
- * station map cold after a restart) or without a start is not drawn and
- * does not stretch the track; its dates stand in its text. Where every
- * drawn date falls on one day there is nothing to scale, and no row gets
- * a bar.
+ * and the last date sit on the ends. A row whose Begutachtung has only an
+ * end (Burgenland dates no start) is drawn from that end, without a band:
+ * an empty row beside drawn ones read as missing data (05.11.2026). A row
+ * without a stand (the Bund's station map cold after a restart) or without
+ * any Begutachtung date is not drawn and does not stretch the track; its
+ * dates stand in its text. Where every drawn date falls on one day there
+ * is nothing to scale, and no row gets a bar.
  *
- * The labels stand ONCE, under the last row: the deadline as on the
- * draft's timeline („Umsetzungsfrist" over its date) and the track's two
- * ends as dates; an end that IS the deadline is labelled by it. Each row
- * says its own Begutachtung in its text, so the axis need not. The edge and
- * spacing rules are the timeline's (`edgeAlign`, `spreadLabels`).
+ * ONE LABEL, under the last row: the deadline as on the draft's timeline
+ * („Umsetzungsfrist" over its date), the one date every row is read
+ * against. The track's ends are not labelled: they are some row's date,
+ * which that row's text already says, and as bare dates beside the
+ * deadline they read as events of their own (dropped 05.11.2026).
  */
 export function euActPageView(r: EuActResponse): EuActPageView {
   const act = r.act
@@ -276,8 +270,8 @@ export function euActPageView(r: EuActResponse): EuActPageView {
     kennung: kennungDe(d),
     bar: scaled && barred(d)
       ? {
-          band: [at(d.begutachtung.start), at(d.begutachtung.end ?? d.begutachtung.start)],
-          from: at(d.begutachtung.start),
+          band: d.begutachtung.start ? [at(d.begutachtung.start), at(d.begutachtung.end ?? d.begutachtung.start)] : null,
+          from: at((d.begutachtung.start ?? d.begutachtung.end)!),
           value: at(d.stand.date),
           valueLabel: d.stand.label,
           marks: tick,
@@ -285,19 +279,9 @@ export function euActPageView(r: EuActResponse): EuActPageView {
       : null,
   }))
 
-  const axis: EuTimelineMark[] = []
-  if (scaled) {
-    const firstIso = new Date(first * 86_400_000).toISOString().slice(0, 10)
-    const lastIso = new Date((first + span) * 86_400_000).toISOString().slice(0, 10)
-    const deadlineAt = t ? at(t.deadline) : null
-    if (t && deadlineAt !== null) {
-      axis.push({ key: 'frist', at: deadlineAt, align: edgeAlign(deadlineAt), tick: false, lines: ['Umsetzungsfrist', `${formatDateDe(t.deadline)}${note}`] })
-    }
-    // The ends as dates — where the deadline is not itself the end.
-    if (t?.deadline !== firstIso) axis.push({ key: 'anfang', at: 0, align: 'start', tick: false, lines: ['', formatDateDe(firstIso)] })
-    if (t?.deadline !== lastIso) axis.push({ key: 'ende', at: 100, align: 'end', tick: false, lines: ['', formatDateDe(lastIso)] })
-    spreadLabels(axis, AXIS_CHAR_PCT)
-  }
+  const axis: EuTimelineMark[] = scaled && t
+    ? [{ key: 'frist', at: at(t.deadline), align: edgeAlign(at(t.deadline)), tick: false, lines: ['Umsetzungsfrist', `${formatDateDe(t.deadline)}${note}`] }]
+    : []
 
   /* A Land the build could not read whole is no Land „without a draft": the
    * incomplete note names it instead (seen on the first real build,

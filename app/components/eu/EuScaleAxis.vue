@@ -1,16 +1,14 @@
 <script setup lang="ts">
 /**
- * The labels of the act page's shared track, once, under its last row
+ * The label of the act page's shared track, once, under its last row
  * (docs/architecture.md §12.66, Nachtrag 3): the deadline as on a draft's
- * EU timeline — „Umsetzungsfrist" over its date — and the track's two ends
- * as dates (`euActPageView`).
+ * EU timeline — „Umsetzungsfrist" over its date (`euActPageView`). The
+ * track's ends carry no date: each is some row's, and its text says it.
  *
  * `ScaleBar`'s label row on its own: the same geometry (its right inset,
  * its height, its alignments), so a label stands exactly under the tick it
  * names on every row above. Not a `ScaleBar` without a value — that would
- * draw a line and a dot that mean nothing. A one-line label (an end) stands
- * on the second line, beside the deadline's date, so the dates read as one
- * row.
+ * draw a line and a dot that mean nothing.
  */
 import type { EuTimelineMark } from '~/utils/euRecht'
 
