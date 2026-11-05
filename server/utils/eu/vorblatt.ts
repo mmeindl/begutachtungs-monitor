@@ -131,7 +131,8 @@ export const VORBLATT_EU_YES: ReadonlySet<VorblattClass> = new Set(['umsetzung',
 /** An EU act as the subject or object of „umgesetzt" — not Austria's OIB-Richtlinien, which are national. */
 const FREE_ACT = String.raw`(?:(?<!OIB-)\bRichtlinien?|\bEU-[a-zäöüß]*richtlinien?|\bRechtsakte?|\bunionsrechtlichen?\s+Vorschriften)\b`
 const FREE_YES = new RegExp([
-  String.raw`\bUmsetzung\s+(?:einer|der|von|zweier|mehrerer)\s+[^.]{0,40}?(?:Richtlinie|Richtlinien)\b`,
+  // „dient der Umsetzung folgender Rechtsakte der Europäischen Union: - Richtlinie …" (bgld-c372)
+  String.raw`\bUmsetzung\s+(?:einer|der|von|zweier|mehrerer|folgender)\s+[^.]{0,40}?(?:Richtlinie|Richtlinien)\b`,
   String.raw`\bUmsetzung\s+(?:von|der)\s+(?:zwei|mehreren)\s+EU-\s?Richtlinien`,
   // „Mit dem Entwurf wird die Richtlinie … umgesetzt", „werden … der EU-Gebäuderichtlinie umgesetzt"
   String.raw`\b(?:wird|werden)\s[\s\S]*?${FREE_ACT}[\s\S]*?\bumgesetzt\b`,

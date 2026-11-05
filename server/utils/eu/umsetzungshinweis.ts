@@ -128,7 +128,8 @@ function blockText(b: LawTextBlock): string {
  */
 export function lawSignalOf(text: string): LawSignal {
   const body = text.replace(/Umsetzungshinweis(?:e)?/g, '')
-  if (/umgesetzt|\bUmsetzung\s+(?:der|von|einer|des)\b/.test(body)) return 'umsetzung'
+  // „dient der Umsetzung folgender Richtlinien: 1. …" (sbg-35373) implements, too.
+  if (/umgesetzt|\bUmsetzung\s+(?:der|von|einer|des|folgender)\b/.test(body)) return 'umsetzung'
   if (/Durchführung|Wirksamwerden|begleitend|flankierend|unmittelbar anwendbar|Verordnung/.test(body)) return 'durchfuehrung'
   return 'bezug'
 }

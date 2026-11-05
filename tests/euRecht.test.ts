@@ -197,6 +197,8 @@ describe('the Vorblatt', () => {
     expect(classifyVorblattSentence('Im Hinblick auf die Änderung des Steiermärkischen Notifikationsgesetzes 2017 (Artikel 4) wird mit dem Entwurf die Verordnung (EU) 2023/988 des Europäischen Parlaments und des Rates vom 10. Mai 2023 über die allgemeine Produktsicherheit, ABl. L 135 vom 23.5.2023, S. 1, durchgeführt.')).toBe('flankierend-vo')
     // Oberösterreich: the act as a compound, the subject before the verb, the list after it.
     expect(classifyVorblattSentence('Dieser Gesetzesnovelle stehen - soweit ersichtlich - keine zwingenden unionsrechtlichen Vorschriften entgegen. Vielmehr werden mit der vorliegenden Novelle die baurechtlich relevanten Bestimmungen der EU-Gebäuderichtlinie umgesetzt.')).toBe('frei-umsetzung')
+    // bgld-c372: the „no" phrase („im Einklang") before the yes must not win over „Umsetzung folgender".
+    expect(classifyVorblattSentence('Der Entwurf steht im Einklang mit den Rechtsvorschriften der Europäischen Union. Der vorliegende Entwurf dient der Umsetzung folgender Rechtsakte der Europäischen Union: - Richtlinie 2023/970/EU zur Stärkung der Anwendung des Grundsatzes des gleichen Entgelts.')).toBe('frei-umsetzung')
     expect(classifyVorblattSentence('Folgende unionsrechtliche Vorschriften werden unmittelbar durch das vorliegende Landesgesetz umgesetzt: - Richtlinie (EU) 2024/1499 des Rates vom 7. Mai 2024 über Standards für Gleichbehandlungsstellen.')).toBe('frei-umsetzung')
     // A national guideline is no EU act.
     expect(classifyVorblattSentence('Mit dem Entwurf wird die OIB-Richtlinie 6 umgesetzt.')).toBe('freitext')
@@ -278,6 +280,15 @@ describe('readUmsetzungshinweis', () => {
     const r = readUmsetzungshinweis(blocks)
     expect(r.signal).toBe('durchfuehrung')
     expect(r.acts.map((a) => a.celex)).toEqual(['32024R1028'])
+  })
+
+  it('reads „dient der Umsetzung folgender Richtlinien" as implementing (sbg-35373)', () => {
+    const r = readUmsetzungshinweis([
+      { kind: 'para_head', text: 'Umsetzungshinweis' },
+      { kind: 'abs', gld: '§ 17a', text: 'Dieses Gesetz dient der Umsetzung folgender Richtlinien:' },
+      { kind: 'ziff', text: '1. Richtlinie (EU) 2024/1499 über Standards für Gleichbehandlungsstellen;' },
+    ])
+    expect(r.signal).toBe('umsetzung')
   })
 
   it('takes the deciding signal only from a window that names an act', () => {
