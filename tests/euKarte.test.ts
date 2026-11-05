@@ -26,6 +26,7 @@ import {
   markersOf,
   relatedActsOf,
   relatedPeriodOf,
+  restatingOnlySummariesOf,
   standOfLand,
   standOfMe,
   standOfRis,
@@ -350,6 +351,28 @@ describe('assembling the map', () => {
     expect(summaries.map((s) => s.celex)).toEqual(['32024L1069', '32022R2554'])
     expect(summaries[0]).toMatchObject({ counts: { bund: 1, laender: 2 }, lands: ['ooe', 'sbg'] })
     expect(summaries[1]).toMatchObject({ counts: { bund: 1, laender: 0 }, lands: [] })
+  })
+
+  it('lists apart the acts drafts only restate or name as a base, counted by those drafts, never one a draft implements', () => {
+    const only = restatingOnlySummariesOf(map)
+    // 32024L1069 is restated by 81/ME and Kärnten but implemented by 147/ME: not here.
+    expect(only.map((s) => s.celex)).toEqual(['32018L2001'])
+    expect(only[0]).toMatchObject({ counts: { bund: 1, laender: 0 }, lands: [] })
+    const restated = assembleEuMap(inputs({
+      store: storeWith({
+        [meKey('XXVIII', 81)]: fact('umsetzung', [act('32009L0043', { isNew: false, transposition: null })]),
+        [landKey('sbg', '1')]: fact('umsetzung', [act('32009L0043', { isNew: false, transposition: null }), act('32011L0093', { isNew: false, transposition: { deadline: '2013-12-18', otherDates: [] } })]),
+        [landKey('ktn', '2')]: fact('umsetzung', [act('32009L0043', { isNew: false, transposition: null })]),
+      }),
+      me: [{ gp: 'XXVIII', inr: 81, citation: '81/ME', title: 'Novelle', arrivedAt: '2026-01-01', deadline: null }],
+      laender: [land({ id: 'sbg-1', land: 'sbg' }), land({ id: 'ktn-2', land: 'ktn' })],
+    }))
+    expect(actSummariesOf(restated)).toEqual([])
+    // Sorted like the overview: a deadline first, then by label.
+    expect(restatingOnlySummariesOf(restated).map((s) => [s.celex, s.counts, s.lands])).toEqual([
+      ['32011L0093', { bund: 0, laender: 1 }, ['sbg']],
+      ['32009L0043', { bund: 1, laender: 2 }, ['ktn', 'sbg']],
+    ])
   })
 
   it('counts the OTHER implementing drafts of each act for a draft\'s own fact', () => {

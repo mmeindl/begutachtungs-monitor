@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { euActPageView, euActsRows, euSourceChips, filterEuActs, incompleteNoteDe } from '../app/utils/euKarte'
+import { euActPageView, euActsRows, euRestatingRows, euSourceChips, filterEuActs, incompleteNoteDe, restatingCountsDe, restatingFoldHeading } from '../app/utils/euKarte'
 import type { EuActDraft, EuActResponse, EuActsResponse } from '../shared/types/eu'
 import type { LandCode } from '../shared/types/laender'
 import type { SourceCode } from '../shared/utils/laender'
@@ -185,6 +185,7 @@ describe('euActsRows', () => {
       window: { from: '2024-10-24', to: null },
       builtAt: '2026-11-04T20:00:00Z',
       incomplete: [],
+      restatingOnly: [],
       acts: [
         { celex: '32024L1069', kind: 'richtlinie', label: 'Richtlinie (EU) 2024/1069', eurLexUrl: 'x', path: '/eu-recht/richtlinie/2024/1069', adopted: null, title: 'Richtlinie (EU) 2024/1069 des Europäischen Parlaments und des Rates vom 11.\u00a0April 2024 über den Schutz von Personen, die sich öffentlich beteiligen (Text von Bedeutung für den EWR)', transposition: { deadline: '2026-05-07', otherDates: [] }, counts: { bund: 1, laender: 3 }, lands: ['ooe', 'sbg', 'w'] },
         { celex: '32023R1114', kind: 'verordnung', label: 'Verordnung (EU) 2023/1114', eurLexUrl: 'y', path: '/eu-recht/verordnung/2023/1114', adopted: null, title: null, transposition: null, counts: { bund: 2, laender: 0 }, lands: [] },
@@ -194,6 +195,40 @@ describe('euActsRows', () => {
       { key: '32024L1069', label: 'Richtlinie (EU) 2024/1069', path: '/eu-recht/richtlinie/2024/1069', subject: 'über den Schutz von Personen, die sich öffentlich beteiligen', deadline: 'Umsetzungsfrist bis 07.05.2026', counts: '1 Entwurf des Bundes · 3 Entwürfe der Länder', lands: ['Oberösterreich', 'Salzburg', 'Wien'] },
       { key: '32023R1114', label: 'Verordnung (EU) 2023/1114', path: '/eu-recht/verordnung/2023/1114', subject: null, deadline: 'gilt unmittelbar', counts: '2 Entwürfe des Bundes', lands: [] },
     ])
+  })
+})
+
+describe('the fold of acts drafts only restate', () => {
+  const restating = [
+    { celex: '32009L0043', kind: 'richtlinie', label: 'Richtlinie 2009/43/EG', eurLexUrl: 'x', path: '/eu-recht/richtlinie/2009/43', adopted: null, title: null, transposition: { deadline: '2011-06-30', otherDates: [] }, counts: { bund: 3, laender: 1 }, lands: ['sbg'] },
+    { celex: '32016R0679', kind: 'verordnung', label: 'Verordnung (EU) 2016/679', eurLexUrl: 'y', path: '/eu-recht/verordnung/2016/679', adopted: null, title: null, transposition: null, counts: { bund: 1, laender: 0 }, lands: [] },
+    { celex: '32014L0024', kind: 'richtlinie', label: 'Richtlinie 2014/24/EU', eurLexUrl: 'z', path: '/eu-recht/richtlinie/2014/24', adopted: null, title: null, transposition: null, counts: { bund: 0, laender: 2 }, lands: ['bgld', 'ktn'] },
+  ] satisfies EuActsResponse['restatingOnly']
+
+  it('counts restating drafts, never Länder, in the dative after „wiederholt in"', () => {
+    expect(restatingCountsDe({ bund: 3, laender: 1 })).toBe('wiederholt in 3 Entwürfen des Bundes · 1 Entwurf der Länder')
+    expect(restatingCountsDe({ bund: 1, laender: 0 })).toBe('wiederholt in 1 Entwurf des Bundes')
+    expect(restatingCountsDe({ bund: 0, laender: 2 })).toBe('wiederholt in 2 Entwürfen der Länder')
+  })
+
+  it('gives the rows the overview\'s anatomy, in the API\'s order', () => {
+    expect(euRestatingRows({ restatingOnly: restating })).toEqual([
+      { key: '32009L0043', label: 'Richtlinie 2009/43/EG', path: '/eu-recht/richtlinie/2009/43', subject: null, deadline: 'Umsetzungsfrist bis 30.06.2011', counts: 'wiederholt in 3 Entwürfen des Bundes · 1 Entwurf der Länder', lands: ['Salzburg'] },
+      { key: '32016R0679', label: 'Verordnung (EU) 2016/679', path: '/eu-recht/verordnung/2016/679', subject: null, deadline: 'gilt unmittelbar', counts: 'wiederholt in 1 Entwurf des Bundes', lands: [] },
+      { key: '32014L0024', label: 'Richtlinie 2014/24/EU', path: '/eu-recht/richtlinie/2014/24', subject: null, deadline: null, counts: 'wiederholt in 2 Entwürfen der Länder', lands: ['Burgenland', 'Kärnten'] },
+    ])
+  })
+
+  it('is filtered by the same chips, and empty where the selection leaves none', () => {
+    expect(filterEuActs(restating, ['sbg']).map((a) => a.celex)).toEqual(['32009L0043'])
+    expect(filterEuActs(restating, ['bund']).map((a) => a.celex)).toEqual(['32009L0043', '32016R0679'])
+    expect(filterEuActs(restating, ['w'])).toEqual([])
+    // A Land with restating drafts only gets its chip.
+    expect(euSourceChips(restating)).toEqual(['bund', 'bgld', 'ktn', 'sbg'])
+  })
+
+  it('names its count in the heading, in brackets', () => {
+    expect(restatingFoldHeading(12)).toBe('Nur in Umsetzungshinweisen wiederholt (12)')
   })
 })
 

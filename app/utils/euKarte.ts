@@ -45,6 +45,19 @@ export function countsDe(counts: { bund: number; laender: number }): string {
 }
 
 /**
+ * „wiederholt in 3 Entwürfen des Bundes · 1 Entwurf der Länder" — the
+ * counts line of an act only restating drafts name (the overview's fold,
+ * `EuActsResponse.restatingOnly`). Drafts, never Länder, as in `countsDe`;
+ * the dative after „in".
+ */
+export function restatingCountsDe(counts: { bund: number; laender: number }): string {
+  const n = (k: number) => (k === 1 ? '1 Entwurf' : `${k} Entwürfen`)
+  const parts = [counts.bund > 0 ? `${n(counts.bund)} des Bundes` : null, counts.laender > 0 ? `${n(counts.laender)} der Länder` : null]
+    .filter((x): x is string => x !== null)
+  return parts.length ? `wiederholt in ${parts.join(' · ')}` : ''
+}
+
+/**
  * The act's deadline in the words of the draft's fact: „Umsetzungsfrist bis
  * 07.05.2026" for a directive with a Cellar date (the latest, rule D3), „gilt
  * unmittelbar, keine Umsetzungsfrist" for a regulation — the method page's
@@ -69,24 +82,41 @@ export interface EuActsRowView {
   subject: string | null
   /** „Umsetzungsfrist bis 07.05.2026", „gilt unmittelbar", or null. */
   deadline: string | null
-  /** „1 Entwurf des Bundes · 3 Entwürfe der Länder" (`countsDe`). */
+  /** „1 Entwurf des Bundes · 3 Entwürfe der Länder" (`countsDe`); in the fold „wiederholt in …" (`restatingCountsDe`). */
   counts: string
   /** The Länder with an implementing draft, by name, in display order. */
   lands: string[]
 }
 
-/** The overview's rows, in the order the API delivers them. */
-export function euActsRows(r: EuActsResponse): EuActsRowView[] {
-  return r.acts.map((a) => ({
+function actsRowOf(a: EuActSummary, counts: string): EuActsRowView {
+  return {
     key: a.celex,
     label: a.label,
     path: a.path,
     subject: euActSubject(a.title),
     // The short form in a list row: the act page says the rest.
     deadline: a.transposition ? `Umsetzungsfrist bis ${formatDateDe(a.transposition.deadline)}` : a.kind === 'verordnung' ? 'gilt unmittelbar' : null,
-    counts: countsDe(a.counts),
+    counts,
     lands: a.lands.map((l) => LAND_NAME[l]),
-  }))
+  }
+}
+
+/** The overview's rows, in the order the API delivers them. */
+export function euActsRows(r: Pick<EuActsResponse, 'acts'>): EuActsRowView[] {
+  return r.acts.map((a) => actsRowOf(a, countsDe(a.counts)))
+}
+
+/**
+ * The fold's rows under the overview — the acts drafts only restate, the
+ * same anatomy, the counts as „wiederholt in …" (`restatingCountsDe`).
+ */
+export function euRestatingRows(r: Pick<EuActsResponse, 'restatingOnly'>): EuActsRowView[] {
+  return r.restatingOnly.map((a) => actsRowOf(a, restatingCountsDe(a.counts)))
+}
+
+/** „Nur in Umsetzungshinweisen wiederholt (12)" — the fold's heading, the count in brackets as the site's folds have it. */
+export function restatingFoldHeading(count: number): string {
+  return `Nur in Umsetzungshinweisen wiederholt (${count})`
 }
 
 /**

@@ -199,11 +199,14 @@ export interface EuActResponse {
   incomplete: EuPublisher[]
 }
 
-/** One act in the overview, with how many drafts implement it. */
+/**
+ * One act in the overview, with how many drafts implement it — or, in
+ * `EuActsResponse.restatingOnly`, how many only restate it.
+ */
 export interface EuActSummary extends EuActHead {
-  /** Implementing drafts (`isNew` true or null), by publisher. */
+  /** Implementing drafts (`isNew` true or null), by publisher; in `restatingOnly` the restating drafts. */
   counts: { bund: number; laender: number }
-  /** The Länder with an implementing draft, display order. */
+  /** The Länder with an implementing draft, display order; in `restatingOnly` those with a restating one. */
   lands: LandCode[]
 }
 
@@ -214,6 +217,13 @@ export interface EuActsResponse {
   /** When the map was last built, ISO; null where no map exists yet (then `acts` is empty). */
   builtAt: string | null
   acts: EuActSummary[]
+  /**
+   * The acts no draft of the window implements, only restates (rule D4) or
+   * names as an amendment's base (D4a) — transposed before, listed so their
+   * pages are reachable, never counted as implemented. `counts` and `lands`
+   * are of the restating drafts; same order as `acts`.
+   */
+  restatingOnly: EuActSummary[]
   incomplete: EuPublisher[]
 }
 

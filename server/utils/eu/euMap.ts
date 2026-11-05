@@ -290,21 +290,38 @@ export function actPageOf(map: EuMap, celex: string): Pick<EuActResponse, 'act' 
  * from the implementing drafts.
  */
 export function actSummariesOf(map: EuMap): EuActSummary[] {
-  const counts = new Map<string, { bund: number; laender: number; lands: Set<LandCode> }>()
+  return summariesOf(map, (a) => isImplementing(a))
+}
+
+/**
+ * The acts the overview leaves out: those every draft of the window only
+ * restates (rule D4: an amendment restates the whole Umsetzungshinweis) or
+ * names as the base text of an amendment (D4a) — acts transposed before,
+ * which have a page but no implementing draft. Counts and Länder from
+ * those drafts, sorted like the overview; never counted as implemented.
+ */
+export function restatingOnlySummariesOf(map: EuMap): EuActSummary[] {
+  const implemented = new Set(map.drafts.flatMap((d) => d.acts.filter(isImplementing).map((a) => a.celex)))
+  return summariesOf(map, (a) => !implemented.has(a.celex))
+}
+
+/** Per act the drafts `counts` admits, by publisher, in the overview's order. */
+function summariesOf(map: EuMap, counts: (a: EuMapAct) => boolean): EuActSummary[] {
+  const tally = new Map<string, { bund: number; laender: number; lands: Set<LandCode> }>()
   for (const d of map.drafts) {
     for (const a of d.acts) {
-      if (!isImplementing(a)) continue
-      const c = counts.get(a.celex) ?? { bund: 0, laender: 0, lands: new Set<LandCode>() }
+      if (!counts(a)) continue
+      const c = tally.get(a.celex) ?? { bund: 0, laender: 0, lands: new Set<LandCode>() }
       if (d.publisher === 'bund') c.bund++
       else {
         c.laender++
         c.lands.add(d.publisher)
       }
-      counts.set(a.celex, c)
+      tally.set(a.celex, c)
     }
   }
   const out: EuActSummary[] = []
-  for (const [celex, c] of counts) {
+  for (const [celex, c] of tally) {
     const act = map.acts[celex]
     if (!act) continue
     out.push({ ...act, counts: { bund: c.bund, laender: c.laender }, lands: LAND_CODES.filter((l) => c.lands.has(l)) })

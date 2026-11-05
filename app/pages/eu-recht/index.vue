@@ -25,11 +25,17 @@
  * are of drafts that implement an act, never of acts not implemented — the
  * monitor reads only the Begutachtungen it knows, and an absence is no
  * finding.
+ *
+ * APART, FOLDED: the acts drafts only restate. An amendment restates the
+ * whole Umsetzungshinweis of the law it changes (rule D4), so these are
+ * acts transposed before — listed so their pages are reachable, never
+ * counted as implemented, and closed by default under the main list. The
+ * chips filter them too; the fold goes where the selection leaves none.
  */
 import type { EuActsResponse } from '#shared/types'
 import { SOURCE_NAME, SOURCE_PARAM, formatSourceList, parseSourceList, type SourceCode } from '#shared/utils/laender'
 import { risSource, eurLexSource, sourceItemsDe } from '#shared/utils/provenance'
-import { euActsRows, euSourceChips, filterEuActs, incompleteNoteDe } from '~/utils/euKarte'
+import { euActsRows, euRestatingRows, euSourceChips, filterEuActs, incompleteNoteDe, restatingFoldHeading } from '~/utils/euKarte'
 
 usePageSeo({
   title: 'EU-Recht in der Begutachtung',
@@ -57,15 +63,19 @@ function toggleSource(code: SourceCode): void {
   choose(chosen.value.includes(code) ? chosen.value.filter((c) => c !== code) : [...chosen.value, code])
 }
 
-const chips = computed(() => (data.value ? euSourceChips(data.value.acts, chosen.value) : []))
+// A Land whose drafts only restate acts gets its chip too: the chips filter both lists.
+const chips = computed(() => (data.value ? euSourceChips([...data.value.acts, ...data.value.restatingOnly], chosen.value) : []))
 const allRows = computed(() => (data.value ? euActsRows(data.value) : []))
-const rows = computed(() => (data.value ? euActsRows({ ...data.value, acts: filterEuActs(data.value.acts, chosen.value) }) : []))
+const rows = computed(() => (data.value ? euActsRows({ acts: filterEuActs(data.value.acts, chosen.value) }) : []))
+const restatingRows = computed(() => (data.value ? euRestatingRows({ restatingOnly: filterEuActs(data.value.restatingOnly, chosen.value) }) : []))
 const incomplete = computed(() => (data.value ? incompleteNoteDe(data.value.incomplete) : null))
 
-/** Twenty stand; the rest behind „Alle N anzeigen" (`ListMore`). */
+/** Twenty stand; the rest behind „Alle N anzeigen" (`ListMore`), in each list. */
 const STEP = 20
 const visible = ref(STEP)
 const shown = computed(() => rows.value.slice(0, visible.value))
+const visibleRestating = ref(STEP)
+const shownRestating = computed(() => restatingRows.value.slice(0, visibleRestating.value))
 
 /*
  * The credit line, as under a draft's EU fact (`DraftEuCredits`): what the
@@ -136,7 +146,7 @@ const [bundItem, eurLexItem] = sourceItemsDe([risSource('Vorblatt'), risSource('
                    sheet would be a box in a box (`ListBoxNotice`). -->
               <ListBoxNotice
                 v-if="!rows.length"
-                title="Kein Rechtsakt mit einem Entwurf aus dieser Auswahl."
+                title="Kein Rechtsakt, den ein Entwurf aus dieser Auswahl umsetzt."
               >
                 <template #action>
                   <button type="button" class="link-inline text-sm" @click="choose([])">
@@ -145,22 +155,7 @@ const [bundItem, eurLexItem] = sourceItemsDe([risSource('Vorblatt'), risSource('
                 </template>
               </ListBoxNotice>
               <ul v-else role="list" class="divide-y divide-hairline">
-                <!-- The list row's anatomy (`EntryItem`): the whole row is the
-                     link, the title ink and underlined under the pointer, the
-                     ground tinted — never a blue inline link inside a list. -->
-                <li v-for="row in shown" :key="row.key">
-                  <NuxtLink :to="row.path" class="group block px-4 py-3 hover:bg-hover">
-                    <h3 class="font-medium text-ink group-hover:underline group-hover:decoration-2">{{ row.label }}</h3>
-                    <!-- The act's subject from its official title: what the
-                         citation alone does not tell. Whole, no clamp. -->
-                    <p v-if="row.subject" class="mt-0.5 text-sm text-ink-secondary">
-                      {{ row.subject }}
-                    </p>
-                    <p class="mt-0.5 text-sm text-ink-muted">
-                      <template v-if="row.deadline">{{ row.deadline }} · </template>{{ row.counts }}<template v-if="row.lands.length"> ({{ row.lands.join(', ') }})</template>
-                    </p>
-                  </NuxtLink>
-                </li>
+                <EuActRow v-for="row in shown" :key="row.key" :row="row" />
               </ul>
               <ListMore
                 :visible="visible"
@@ -170,6 +165,23 @@ const [bundItem, eurLexItem] = sourceItemsDe([risSource('Vorblatt'), risSource('
                 @all="visible = rows.length"
               />
             </ListBox>
+            <!-- The acts drafts only restate (D4): apart, closed, the same rows. -->
+            <FoldSection v-if="restatingRows.length" :heading="restatingFoldHeading(restatingRows.length)" class="mt-6">
+              <div class="pb-2">
+                <ListBox>
+                  <ul role="list" class="divide-y divide-hairline">
+                    <EuActRow v-for="row in shownRestating" :key="row.key" :row="row" level="h4" />
+                  </ul>
+                  <ListMore
+                    :visible="visibleRestating"
+                    :total="restatingRows.length"
+                    :step="STEP"
+                    @more="visibleRestating += STEP"
+                    @all="visibleRestating = restatingRows.length"
+                  />
+                </ListBox>
+              </div>
+            </FoldSection>
             <SectionCredits :sources="[]" :marked="false" method="/so-funktionierts#eu-recht">
               <span>Quellen:</span>
               <span>{{ bundItem }}</span>
