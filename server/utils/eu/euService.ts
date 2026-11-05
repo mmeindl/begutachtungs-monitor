@@ -340,6 +340,8 @@ async function assemble(docs: DraftDocuments): Promise<Gathered<EuRechtResponse>
   // force (`newLawHint`): a restated hint decides nothing. Read only where
   // the law text would decide at all; a Vorblatt that decides needs no D4.
   let lawHint = newLawHint(law.windows)
+  // D4 per act where it was read for the decision — restated acts stay on the fact (below).
+  let refined: Map<string, boolean | null> | null = null
   if (decideEuMarker({ vorblatt: withHeading.map((r) => r.cls!), law: lawHint, explanations: null }).source === 'gesetzestext') {
     await readWindows()
     const isNew = new Map<string, boolean | null>()
@@ -350,6 +352,7 @@ async function assemble(docs: DraftDocuments): Promise<Gathered<EuRechtResponse>
       isNew.set(act.celex, n.isNew)
     }
     lawHint = newLawHint(law.windows, (celex) => isNew.get(celex) ?? null)
+    refined = isNew
   }
 
   // D5: the Erläuterungen only where neither a Vorblatt nor the law text's
@@ -386,8 +389,14 @@ async function assemble(docs: DraftDocuments): Promise<Gathered<EuRechtResponse>
   // draft whose Vorblatt cannot be read, and is kept that small.
   const titleActs = parseEuActCitations(`${record.kurztitel ?? ''} ${record.titel ?? ''}`, { implemented: true })
   const byExplanations = decision.source === 'erlaeuterungen'
-  const fromLaw = !byExplanations && law.acts.length > 0
-  const named: EuAct[] = byExplanations ? [] : fromLaw ? law.acts : titleActs
+  // A hint that restates only acts in force decides nothing (D4 before the
+  // decision), but its acts are the law text's own words: where the
+  // Erläuterungen decide, they stay on the fact as restated acts
+  // (05.11.2026, ktn-78379). An act the prose alone names stays out (D5),
+  // and so does a new one — a hint with a new act would have decided.
+  const restated = byExplanations && refined ? law.acts.filter((a) => refined!.get(a.celex) === false) : []
+  const fromLaw = byExplanations ? restated.length > 0 : law.acts.length > 0
+  const named: EuAct[] = byExplanations ? restated : fromLaw ? law.acts : titleActs
   const lawLink = record.mainDocument.html ?? record.mainDocument.pdf
   if (fromLaw && lawLink) sources.push({ label: 'Gesetzestext', url: lawLink })
 

@@ -107,7 +107,11 @@ export function readLandEu(input: LandEuInput, isNew?: (celex: string) => boolea
 
   const allowed = decision.marker !== null && decision.actsAllowed
   const fromStatement = allowed && !byLaw ? statementActs(found?.statement ?? null) : []
-  const fromLaw = allowed ? law.acts : []
+  // On the prose road the law text's restated acts stay on the fact (05.11.2026):
+  // a hint whose acts are all in force decided nothing, but they are its own words.
+  // Without `isNew` (the corpus run) nothing is known restated, and none is named.
+  const restated = decision.marker !== null && !decision.actsAllowed && isNew ? law.acts.filter((a) => isNew(a.celex) === false) : []
+  const fromLaw = allowed ? law.acts : restated
   const hinweise = allowed && input.explanations.available ? entryHinweise(input.explanations.particular) : []
   const fromEntries = uniqueActs(hinweise.map((h) => h.acts))
   const named = uniqueActs([fromStatement, fromLaw, fromEntries])

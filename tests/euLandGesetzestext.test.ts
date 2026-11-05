@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest'
 import { landLawPart, quotedHints, readLandLaw } from '../server/utils/eu/landGesetzestext'
 import { entryHinweise } from '../server/utils/eu/landErlaeuterungen'
+import { readLandEu } from '../server/utils/eu/landEuReading'
 import { parseLandExplanations } from '../server/utils/laender/landExplanations'
 
 /*
@@ -128,5 +129,39 @@ describe('Oberösterreich\'s Umsetzungshinweis per provision', () => {
   it('reads the label opening a paragraph too', () => {
     const hints = entryHinweise([{ heading: 'Zu Art. III Z 19 (§ 18 Abs. 4):', text: ['Umsetzungshinweis zu Abs. 4: Damit wird Art. 23 der Richtlinie (EU) 2023/970 umgesetzt.'] }])
     expect(hints.map((h) => h.acts.map((a) => a.celex))).toEqual([['32023L0970']])
+  })
+})
+
+describe('a restated hint on the prose road (readLandEu)', () => {
+  const draftUrl = 'https://example.at/entwurf.pdf'
+  const input = {
+    land: 'ktn' as const,
+    documents: [{ title: 'Entwurf', url: draftUrl }],
+    pages: new Map<string, readonly string[]>(),
+    explanations: {
+      available: true,
+      general: [{ heading: 'Allgemeines', text: ['Mit dem Entwurf werden Vorgaben der Richtlinie (EU) 2023/2413 der Europäischen Union umgesetzt.'] }],
+      particular: [],
+      url: null,
+    },
+    draft: {
+      url: draftUrl,
+      pages: ['Gesetz vom 1. Jänner 2025, mit dem das Kärntner Testgesetz geändert wird\nDer Landtag von Kärnten hat beschlossen:\nArtikel I\nDas Kärntner Testgesetz wird wie folgt geändert:\n1. § 5 lautet:\n„§ 5\nUmsetzungshinweis\nDurch dieses Gesetz wird die Richtlinie (EU) 2018/2001 der Europäischen Union umgesetzt.“'],
+    },
+  }
+
+  it('decides by the prose where the hint restates only acts in force, and keeps the hint\'s acts as restated', () => {
+    const plain = readLandEu(input)
+    expect([plain.decision.marker, plain.decision.source]).toEqual(['umsetzung', 'gesetzestext'])
+    const read = readLandEu(input, () => false)
+    expect([read.decision.marker, read.decision.source]).toEqual(['umsetzung', 'erlaeuterungen'])
+    expect(read.named.map((a) => a.celex)).toEqual(['32018L2001'])
+    expect(read.actsSource).toBe('gesetzestext')
+  })
+
+  it('names nothing on the prose road where nothing is known restated', () => {
+    const read = readLandEu(input, () => null)
+    expect(read.decision.source).toBe('gesetzestext')
+    expect(readLandEu({ ...input, draft: { url: draftUrl, pages: null } }, () => false).named).toEqual([])
   })
 })
