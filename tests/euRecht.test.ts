@@ -4,6 +4,7 @@ import { describe, expect, it } from 'vitest'
 import { baseActCelexes, celexOf, eliOf, parseEuActCitations, readEuActCitations } from '../server/utils/eu/actCitations'
 import { classifyVorblatt, classifyVorblattSentence, hasTextLayer, isVorblattDocument } from '../server/utils/eu/vorblatt'
 import { readExplanationsEuSignal, readUmsetzungshinweis, type LawTextBlock } from '../server/utils/eu/umsetzungshinweis'
+import { euActSubject } from '../shared/utils/eu'
 import { CELEX_RE, deadlineOf, parseTranspositionAnswer, transpositionQuery, transpositionUrl, type SparqlAnswer } from '../server/utils/eu/cellar'
 import { combineVerdicts, decideEuMarker } from '../server/utils/eu/euMarker'
 import { lawBlocksFromPdfPages } from '../server/utils/laender/draftPdfLaw'
@@ -325,7 +326,7 @@ describe('the Cellar', () => {
 
   it('reads several transposition dates, sorted, and takes the latest as the deadline (2024/1275)', () => {
     const r = parseTranspositionAnswer(cellar('32024L1275'))
-    expect(r).toEqual({ found: true, dates: ['2025-01-01', '2026-05-29'], adopted: null, inForce: null })
+    expect(r).toEqual({ found: true, dates: ['2025-01-01', '2026-05-29'], adopted: null, inForce: null, title: null })
     expect(deadlineOf(r.dates)).toEqual({ deadline: '2026-05-29', otherDates: ['2025-01-01'] })
   })
 
@@ -334,15 +335,30 @@ describe('the Cellar', () => {
       { d: { value: '2025-01-01' }, adopted: { value: '2024-04-24' }, inforce: { value: '2024-05-28' } },
       { d: { value: '2026-05-29' }, adopted: { value: '2024-04-24' }, inforce: { value: '2024-05-28' } },
     ] } }
-    expect(parseTranspositionAnswer(answer)).toEqual({ found: true, dates: ['2025-01-01', '2026-05-29'], adopted: '2024-04-24', inForce: '2024-05-28' })
-    expect(parseTranspositionAnswer({ results: { bindings: [{ adopted: { value: '2022-05-30' } }] } })).toEqual({ found: true, dates: [], adopted: '2022-05-30', inForce: null })
+    expect(parseTranspositionAnswer(answer)).toEqual({ found: true, dates: ['2025-01-01', '2026-05-29'], adopted: '2024-04-24', inForce: '2024-05-28', title: null })
+    expect(parseTranspositionAnswer({ results: { bindings: [{ adopted: { value: '2022-05-30' } }] } })).toEqual({ found: true, dates: [], adopted: '2022-05-30', inForce: null, title: null })
     expect(transpositionQuery('32024L1069')).toContain('cdm:work_date_document ?adopted')
   })
 
+  it('asks for the German expression\'s full title, and reads the first one there is, trimmed', () => {
+    const q = transpositionQuery('32024L1069')
+    expect(q).toContain('SELECT ?d ?adopted ?inforce ?title WHERE')
+    expect(q).toContain('?e cdm:expression_belongs_to_work ?w')
+    expect(q).toContain('?e cdm:expression_uses_language <http://publications.europa.eu/resource/authority/language/DEU>')
+    expect(q).toContain('?e cdm:expression_title ?title')
+    expect(q).not.toContain('expression_title_short')
+    const title = 'Richtlinie (EU) 2024/1069 des Europäischen Parlaments und des Rates vom 11. April 2024 über den Schutz von Personen, die sich öffentlich beteiligen, vor offensichtlich unbegründeten Klagen oder missbräuchlichen Gerichtsverfahren („strategische Klagen gegen öffentliche Beteiligung")'
+    const answer = { results: { bindings: [
+      { d: { value: '2026-05-07' }, adopted: { value: '2024-04-11' }, title: { value: '  ' } },
+      { d: { value: '2026-05-07' }, adopted: { value: '2024-04-11' }, title: { value: ` ${title}\n` } },
+    ] } }
+    expect(parseTranspositionAnswer(answer)).toEqual({ found: true, dates: ['2026-05-07'], adopted: '2024-04-11', inForce: null, title })
+  })
+
   it('tells a regulation without a date from an act EUR-Lex does not know', () => {
-    expect(parseTranspositionAnswer(cellar('32022R0869'))).toEqual({ found: true, dates: [], adopted: null, inForce: null })
+    expect(parseTranspositionAnswer(cellar('32022R0869'))).toEqual({ found: true, dates: [], adopted: null, inForce: null, title: null })
     // „Verordnung (EU) 2022/689" — a citation error in a draft, meant 2022/869.
-    expect(parseTranspositionAnswer(cellar('32022R0689'))).toEqual({ found: false, dates: [], adopted: null, inForce: null })
+    expect(parseTranspositionAnswer(cellar('32022R0689'))).toEqual({ found: false, dates: [], adopted: null, inForce: null, title: null })
     expect(deadlineOf([])).toBeNull()
   })
 
@@ -395,5 +411,34 @@ describe('combineVerdicts — is the act new to the draft (rule D4)', () => {
     expect(combineVerdicts(null, true)).toBe(true)
     expect(combineVerdicts(null, false)).toBe(false)
     expect(combineVerdicts(undefined, null)).toBeNull()
+  })
+})
+
+describe('euActSubject', () => {
+  it('keeps what the title says after the name and date, the first word lower case', () => {
+    expect(euActSubject('Richtlinie (EU) 2024/1069 des Europäischen Parlaments und des Rates vom 11. April 2024 über den Schutz von Personen, die sich öffentlich beteiligen, vor offensichtlich unbegründeten Klagen oder missbräuchlichen Gerichtsverfahren („strategische Klagen gegen öffentliche Beteiligung")'))
+      .toBe('über den Schutz von Personen, die sich öffentlich beteiligen, vor offensichtlich unbegründeten Klagen oder missbräuchlichen Gerichtsverfahren („strategische Klagen gegen öffentliche Beteiligung")')
+    expect(euActSubject('Verordnung (EU) 2022/2554 des Rates vom 14. Dezember 2022 zur Gewährleistung einer hohen Betriebsstabilität'))
+      .toBe('zur Gewährleistung einer hohen Betriebsstabilität')
+    expect(euActSubject('Richtlinie (EU) 2023/2225 des Europäischen Parlaments und des Rates vom 1. März 2023 zur Änderung der Richtlinie 2008/48/EG'))
+      .toBe('zur Änderung der Richtlinie 2008/48/EG')
+  })
+
+  it('matches the no-break space EUR-Lex writes in the date, and keeps those inside the subject', () => {
+    expect(euActSubject('Verordnung (EU) 2023/2631 des Europäischen Parlaments und des Rates vom 22.\u00a0November 2023 zur Änderung der Verordnung (EU) Nr.\u00a0909/2014 (Text von Bedeutung für den EWR)'))
+      .toBe('zur Änderung der Verordnung (EU) Nr.\u00a0909/2014')
+  })
+
+  it('drops the EEA note, with or without its parentheses', () => {
+    const gdpr = euActSubject('Verordnung (EU) 2016/679 des Europäischen Parlaments und des Rates vom 27. April 2016 zum Schutz natürlicher Personen bei der Verarbeitung personenbezogener Daten, zum freien Datenverkehr und zur Aufhebung der Richtlinie 95/46/EG (Datenschutz-Grundverordnung) (Text von Bedeutung für den EWR)')
+    expect(gdpr).toBe('zum Schutz natürlicher Personen bei der Verarbeitung personenbezogener Daten, zum freien Datenverkehr und zur Aufhebung der Richtlinie 95/46/EG (Datenschutz-Grundverordnung)')
+    expect(euActSubject('Richtlinie (EU) 2024/1 vom 2. Jänner 2024 über etwas Text von Bedeutung für den EWR ')).toBe('über etwas')
+  })
+
+  it('gives the whole title where no date stands, and null for none', () => {
+    expect(euActSubject('Beschluss über die Annahme eines Protokolls (Text von Bedeutung für den EWR)')).toBe('Beschluss über die Annahme eines Protokolls')
+    expect(euActSubject(null)).toBeNull()
+    expect(euActSubject('')).toBeNull()
+    expect(euActSubject('(Text von Bedeutung für den EWR)')).toBeNull()
   })
 })

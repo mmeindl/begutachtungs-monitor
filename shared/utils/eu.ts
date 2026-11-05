@@ -35,3 +35,29 @@ export function euActCelex(kind: string, year: string, number: string): string |
   if (!letter || !/^\d{4}$/.test(year) || !/^[1-9]\d{0,3}$/.test(number)) return null
   return `3${year}${letter}${number.padStart(4, '0')}`
 }
+
+const EEA_RE = /\s*\(?\s*Text von Bedeutung für den EWR\s*\)?\s*$/
+const MONTHS_DE = 'Januar|Jänner|Februar|März|April|Mai|Juni|Juli|August|September|Oktober|November|Dezember'
+// `\s` at every gap: EUR-Lex writes a no-break space between day and month
+// in most titles („vom 22.\u00a0November 2023"), an ASCII one in the rest.
+const DATED_RE = new RegExp(`\\svom\\s\\d{1,2}\\.\\s(?:${MONTHS_DE})\\s\\d{4}\\s`)
+
+/**
+ * What an act's official title says after its name and date — „über den
+ * Schutz von Personen, die sich öffentlich beteiligen, …" from „Richtlinie
+ * (EU) 2024/1069 des Europäischen Parlaments und des Rates vom 11. April
+ * 2024 über den Schutz …". The first word stays lower case, as the
+ * official grammar has it; a trailing „(Text von Bedeutung für den EWR)"
+ * goes. Where no „vom <Tag>" stands, the whole title — still right, only
+ * longer. Null for no title. Nothing else is touched: the no-break spaces
+ * inside stay („Nr.\u00a0909/2014" must not break), and EUR-Lex's own casing
+ * stays where it is odd. Never clamped where shown — the Kurzname stands at
+ * the END of these titles (§12.28).
+ */
+export function euActSubject(title: string | null): string | null {
+  if (!title) return null
+  const stripped = title.trim().replace(EEA_RE, '').trim()
+  const m = DATED_RE.exec(stripped)
+  const subject = (m ? stripped.slice(m.index + m[0].length) : stripped).trim()
+  return subject || null
+}

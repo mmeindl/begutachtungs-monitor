@@ -54,6 +54,12 @@ export interface EuActView {
   transposition: { deadline: string; otherDates: string[] } | null
   /** The day the act was adopted, ISO, from the Cellar — where the EU timeline begins. Null where unknown. */
   adopted: string | null
+  /**
+   * The act's official German title as EUR-Lex gives it („Richtlinie (EU)
+   * 2024/1069 des Europäischen Parlaments und des Rates vom 11. April 2024
+   * über den Schutz …"); null where the Cellar did not answer or has none.
+   */
+  title: string | null
 }
 
 /**
@@ -162,6 +168,8 @@ export interface EuActHead {
   /** The monitor's page of the act, `/eu-recht/richtlinie/2024/1069` (`euActPath`). */
   path: string
   adopted: string | null
+  /** The act's official German title as EUR-Lex gives it; null where the Cellar did not answer or has none (`EuActView.title`). */
+  title: string | null
   /** Directives only: the latest Cellar date as the deadline, the others as the footnote (rule D3). */
   transposition: { deadline: string; otherDates: string[] } | null
 }

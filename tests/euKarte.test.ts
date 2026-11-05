@@ -50,6 +50,7 @@ function act(celex: string, over: Partial<EuActView> = {}): EuActView {
     base: false,
     transposition: { deadline: '2026-05-07', otherDates: [] },
     adopted: '2024-04-11',
+    title: null,
     ...over,
   }
 }
@@ -299,6 +300,20 @@ describe('assembling the map', () => {
   it('collects each act once, keeping a date a later reading knows', () => {
     expect(Object.keys(map.acts).sort()).toEqual(['32018L2001', '32022R2554', '32024L1069'])
     expect(map.acts['32024L1069']).toMatchObject({ path: '/eu-recht/richtlinie/2024/1069', adopted: '2024-04-11', transposition: { deadline: '2026-05-07' } })
+  })
+
+  it('takes the act\'s title as it takes its dates: the first reading, or a later one where the first had none', () => {
+    const T = 'Richtlinie (EU) 2024/1069 des Europäischen Parlaments und des Rates vom 11. April 2024 über den Schutz …'
+    const titled = (first: EuActView, second: EuActView) => assembleEuMap(inputs({
+      store: storeWith({ [meKey('XXVIII', 147)]: fact('umsetzung', [first]), [meKey('XXVIII', 81)]: fact('umsetzung', [second]) }),
+      me: [147, 81].map((inr) => ({ gp: 'XXVIII', inr, citation: `${inr}/ME`, title: `Entwurf ${inr}`, arrivedAt: '2026-01-01', deadline: null })),
+    })).acts['32024L1069']!
+    expect(titled(act('32024L1069', { title: T }), act('32024L1069', { title: 'anders' })).title).toBe(T)
+    expect(titled(act('32024L1069'), act('32024L1069', { title: T })).title).toBe(T)
+    expect(titled(act('32024L1069'), act('32024L1069')).title).toBeNull()
+    // A fact stored before the title existed carries no key at all.
+    const { title: _, ...old } = act('32024L1069')
+    expect(titled(old as EuActView, old as EuActView).title).toBeNull()
   })
 
   it('splits implementing from restating by D4 and the base text', () => {

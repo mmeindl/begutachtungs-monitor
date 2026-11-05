@@ -53,7 +53,7 @@ if (import.meta.server && answer.value) {
 usePageSeo({
   title: () => view.value?.title ?? 'EU-Rechtsakt',
   description: () => (view.value
-    ? `${view.value.title}: welche Entwürfe des Bundes und der Länder den Rechtsakt umsetzen, mit ihrer Begutachtung neben der Umsetzungsfrist.`
+    ? `${view.value.subject ? `${view.value.title} ${view.value.subject}` : view.value.title}: welche Entwürfe des Bundes und der Länder den Rechtsakt umsetzen, mit ihrer Begutachtung neben der Umsetzungsfrist.`
     : 'Welche Entwürfe des Bundes und der Länder einen Rechtsakt der Europäischen Union umsetzen.'),
 })
 
@@ -100,6 +100,11 @@ const [bundItem, eurLexItem] = sourceItemsDe([risSource('Vorblatt'), risSource('
           <h1 class="page-title mt-1">
             {{ page.title }}
           </h1>
+          <!-- What the official title says after the name and date: the act's
+               subject, which the citation alone does not tell. -->
+          <p v-if="page.subject" class="mt-2 text-lg leading-snug text-ink-secondary">
+            {{ page.subject }}
+          </p>
           <p class="mt-3 text-ink-secondary">
             {{ headLine }}
           </p>

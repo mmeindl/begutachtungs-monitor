@@ -16,6 +16,7 @@
  * Pure: the pages render what this returns, the tests read it without one.
  */
 import type { EuActHead, EuActDraft, EuActResponse, EuActsResponse, EuPublisher, EuStand, LandCode } from '#shared/types'
+import { euActSubject } from '#shared/utils/eu'
 import { formatDateDe } from '#shared/utils/format'
 import { LAND_NAME } from '#shared/utils/laender'
 import { SUPERSCRIPT, dateRangeDe, dayOf, edgeAlign, spreadLabels, type EuTimelineMark } from './euRecht'
@@ -64,6 +65,8 @@ export interface EuActsRowView {
   key: string
   label: string
   path: string
+  /** What the official title says after the name and date, „über den Schutz …" (`euActSubject`); null without a title. */
+  subject: string | null
   /** „Umsetzungsfrist bis 07.05.2026", „gilt unmittelbar", or null. */
   deadline: string | null
   /** „1 Entwurf des Bundes · 3 Entwürfe der Länder" (`countsDe`). */
@@ -78,6 +81,7 @@ export function euActsRows(r: EuActsResponse): EuActsRowView[] {
     key: a.celex,
     label: a.label,
     path: a.path,
+    subject: euActSubject(a.title),
     // The short form in a list row: the act page says the rest.
     deadline: a.transposition ? `Umsetzungsfrist bis ${formatDateDe(a.transposition.deadline)}` : a.kind === 'verordnung' ? 'gilt unmittelbar' : null,
     counts: countsDe(a.counts),
@@ -146,6 +150,8 @@ export interface EuRestatingRowView {
 
 export interface EuActPageView {
   title: string
+  /** What the official title says after the name and date (`euActSubject`) — under the h1; null without a title. */
+  subject: string | null
   /** „Entwürfe, die sie umsetzen" — the pronoun by the act's gender: die Richtlinie, die Verordnung, der Beschluss. */
   implementingHeading: string
   eurLexUrl: string
@@ -279,6 +285,7 @@ export function euActPageView(r: EuActResponse): EuActPageView {
 
   return {
     title: act.label,
+    subject: euActSubject(act.title),
     implementingHeading: `Entwürfe, die ${act.kind === 'beschluss' || act.kind === 'rahmenbeschluss' ? 'ihn' : 'sie'} umsetzen`,
     eurLexUrl: act.eurLexUrl,
     head,

@@ -11,7 +11,8 @@
  *     Accept: application/sparql-results+json
  *
  * No key, no account. The query asks for the work whose `owl:sameAs` is the
- * CELEX resource and, optionally, its `cdm:directive_date_transposition`:
+ * CELEX resource and, optionally, its `cdm:directive_date_transposition`
+ * (beside the adoption and entry-into-force days and the German title):
  * a binding without a date means the act exists and names no deadline (every
  * regulation, some directives); no binding at all means EUR-Lex knows no such
  * act — a citation error in the draft („Verordnung (EU) 2022/689" for
@@ -32,9 +33,9 @@ export const CELLAR_SPARQL = 'https://publications.europa.eu/webapi/rdf/sparql'
  * Bumped whenever `transpositionQuery` asks for more: the service caches the
  * raw answer per CELEX for a month, and an answer to the old query would be
  * read as an act without the new columns (the adoption day was null on
- * every page for an hour, 04.11.2026).
+ * every page for an hour, 04.11.2026). 3: the German title (05.11.2026).
  */
-export const CELLAR_QUERY_VERSION = 2
+export const CELLAR_QUERY_VERSION = 3
 
 /** Only a CELEX of this shape is ever put into a query — sector 3, a directive, regulation or decision. */
 export const CELEX_RE = /^3\d{4}[LRD]\d{4}$/
@@ -61,11 +62,18 @@ export function transpositionQuery(celex: string): string {
   return [
     'PREFIX cdm: <http://publications.europa.eu/ontology/cdm#>',
     'PREFIX owl: <http://www.w3.org/2002/07/owl#>',
-    'SELECT ?d ?adopted ?inforce WHERE {',
+    'SELECT ?d ?adopted ?inforce ?title WHERE {',
     `  ?w owl:sameAs <http://publications.europa.eu/resource/celex/${celex}> .`,
     '  OPTIONAL { ?w cdm:directive_date_transposition ?d }',
     '  OPTIONAL { ?w cdm:work_date_document ?adopted }',
     '  OPTIONAL { ?w cdm:resource_legal_date_entry-into-force ?inforce }',
+    // The German expression's full title — never `expression_title_short`,
+    // which only some acts carry, as a comma list of search aliases.
+    '  OPTIONAL {',
+    '    ?e cdm:expression_belongs_to_work ?w .',
+    '    ?e cdm:expression_uses_language <http://publications.europa.eu/resource/authority/language/DEU> .',
+    '    ?e cdm:expression_title ?title',
+    '  }',
     '}',
   ].join('\n')
 }
@@ -85,6 +93,12 @@ export interface TranspositionDates {
   adopted: string | null
   /** The day it entered into force, ISO, the earliest where several are listed. */
   inForce: string | null
+  /**
+   * The act's official German title (`expression_title` of the German
+   * expression): „Richtlinie (EU) 2024/1069 des Europäischen Parlaments und
+   * des Rates vom 11. April 2024 über den Schutz …". Null where it has none.
+   */
+  title: string | null
 }
 
 /** The JSON shape of a SPARQL SELECT answer, as far as it is read here. */
@@ -99,8 +113,9 @@ export function parseTranspositionAnswer(answer: SparqlAnswer): TranspositionDat
   const days = (key: string): string[] => [...new Set(bindings
     .map((b) => b?.[key]?.value?.slice(0, 10) ?? null)
     .filter((d): d is string => d !== null && /^\d{4}-\d{2}-\d{2}$/.test(d)))].sort()
+  const title = bindings.map((b) => b?.title?.value?.trim() ?? '').find((t) => t.length > 0) ?? null
   // The OPTIONALs multiply the rows; each column is read as its own set.
-  return { found: bindings.length > 0, dates: days('d'), adopted: days('adopted')[0] ?? null, inForce: days('inforce')[0] ?? null }
+  return { found: bindings.length > 0, dates: days('d'), adopted: days('adopted')[0] ?? null, inForce: days('inforce')[0] ?? null, title }
 }
 
 /**

@@ -13,6 +13,7 @@ describe('euFactView — two dates, no verdict', () => {
     base: false,
     transposition: { deadline: '2026-05-07', otherDates: [] },
     adopted: '2024-04-11',
+    title: null,
     ...over,
   })
   const response = (over: Partial<EuRechtResponse>): EuRechtResponse => ({

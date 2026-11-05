@@ -29,6 +29,7 @@ describe('euActPageView', () => {
       eurLexUrl: 'https://eur-lex.europa.eu/eli/dir/2024/1069/oj/deu',
       path: '/eu-recht/richtlinie/2024/1069',
       adopted: '2024-04-11',
+      title: null,
       transposition: { deadline: '2026-05-07', otherDates: [] },
     },
     implementing: [draft({})],
@@ -50,6 +51,13 @@ describe('euActPageView', () => {
     expect(further.footnote).toBe('¹ Weitere Fristen für einzelne Bestimmungen: 01.01.2025')
     const reg = euActPageView(response({ act: { ...response({}).act, kind: 'verordnung', label: 'Verordnung (EU) 2023/1114', transposition: null, adopted: null } }))
     expect(reg.head).toEqual(['gilt unmittelbar, keine Umsetzungsfrist'])
+  })
+
+  it('puts the act\'s subject from its official title under the citation, none without a title', () => {
+    expect(euActPageView(response({})).subject).toBeNull()
+    const titled = euActPageView(response({ act: { ...response({}).act, title: 'Richtlinie (EU) 2024/1069 des Europäischen Parlaments und des Rates vom 11. April 2024 über den Schutz von Personen, die sich öffentlich beteiligen' } }))
+    expect(titled.title).toBe('Richtlinie (EU) 2024/1069')
+    expect(titled.subject).toBe('über den Schutz von Personen, die sich öffentlich beteiligen')
   })
 
   it('places every row on one track from the earliest drawn date to the latest, the deadline a tick on each', () => {
@@ -161,13 +169,13 @@ describe('euActsRows', () => {
       builtAt: '2026-11-04T20:00:00Z',
       incomplete: [],
       acts: [
-        { celex: '32024L1069', kind: 'richtlinie', label: 'Richtlinie (EU) 2024/1069', eurLexUrl: 'x', path: '/eu-recht/richtlinie/2024/1069', adopted: null, transposition: { deadline: '2026-05-07', otherDates: [] }, counts: { bund: 1, laender: 3 }, lands: ['ooe', 'sbg', 'w'] },
-        { celex: '32023R1114', kind: 'verordnung', label: 'Verordnung (EU) 2023/1114', eurLexUrl: 'y', path: '/eu-recht/verordnung/2023/1114', adopted: null, transposition: null, counts: { bund: 2, laender: 0 }, lands: [] },
+        { celex: '32024L1069', kind: 'richtlinie', label: 'Richtlinie (EU) 2024/1069', eurLexUrl: 'x', path: '/eu-recht/richtlinie/2024/1069', adopted: null, title: 'Richtlinie (EU) 2024/1069 des Europäischen Parlaments und des Rates vom 11.\u00a0April 2024 über den Schutz von Personen, die sich öffentlich beteiligen (Text von Bedeutung für den EWR)', transposition: { deadline: '2026-05-07', otherDates: [] }, counts: { bund: 1, laender: 3 }, lands: ['ooe', 'sbg', 'w'] },
+        { celex: '32023R1114', kind: 'verordnung', label: 'Verordnung (EU) 2023/1114', eurLexUrl: 'y', path: '/eu-recht/verordnung/2023/1114', adopted: null, title: null, transposition: null, counts: { bund: 2, laender: 0 }, lands: [] },
       ],
     }
     expect(euActsRows(r)).toEqual([
-      { key: '32024L1069', label: 'Richtlinie (EU) 2024/1069', path: '/eu-recht/richtlinie/2024/1069', deadline: 'Umsetzungsfrist bis 07.05.2026', counts: '1 Entwurf des Bundes · 3 Entwürfe der Länder', lands: ['Oberösterreich', 'Salzburg', 'Wien'] },
-      { key: '32023R1114', label: 'Verordnung (EU) 2023/1114', path: '/eu-recht/verordnung/2023/1114', deadline: 'gilt unmittelbar', counts: '2 Entwürfe des Bundes', lands: [] },
+      { key: '32024L1069', label: 'Richtlinie (EU) 2024/1069', path: '/eu-recht/richtlinie/2024/1069', subject: 'über den Schutz von Personen, die sich öffentlich beteiligen', deadline: 'Umsetzungsfrist bis 07.05.2026', counts: '1 Entwurf des Bundes · 3 Entwürfe der Länder', lands: ['Oberösterreich', 'Salzburg', 'Wien'] },
+      { key: '32023R1114', label: 'Verordnung (EU) 2023/1114', path: '/eu-recht/verordnung/2023/1114', subject: null, deadline: 'gilt unmittelbar', counts: '2 Entwürfe des Bundes', lands: [] },
     ])
   })
 })

@@ -158,8 +158,8 @@ export function assembleEuMap(inputs: EuMapInputs): EuMap {
       if (!path) continue
       named.push({ celex: a.celex, isNew: a.isNew, base: a.base })
       const known = acts[a.celex]
-      // The first reading wins, unless a later one knows a date the first did not.
-      if (!known || (!known.transposition && a.transposition) || (!known.adopted && a.adopted)) {
+      // The first reading wins, unless a later one knows a date or a title the first did not.
+      if (!known || (!known.transposition && a.transposition) || (!known.adopted && a.adopted) || (!known.title && a.title)) {
         acts[a.celex] = {
           celex: a.celex,
           kind: a.kind,
@@ -167,6 +167,8 @@ export function assembleEuMap(inputs: EuMapInputs): EuMap {
           eurLexUrl: a.eurLexUrl,
           path,
           adopted: known?.adopted ?? a.adopted,
+          // `?? null`: a fact stored before the title existed has none at all.
+          title: known?.title ?? a.title ?? null,
           transposition: known?.transposition ?? a.transposition,
         }
       }

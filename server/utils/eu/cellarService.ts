@@ -44,7 +44,7 @@ const fetchCellarAnswer = defineCachedFunction(
 
 /** One act's dates, or null where the Cellar did not answer. */
 export async function transpositionOf(celex: string): Promise<TranspositionDates | null> {
-  if (!CELEX_RE.test(celex)) return { found: true, dates: [], adopted: null, inForce: null }
+  if (!CELEX_RE.test(celex)) return { found: true, dates: [], adopted: null, inForce: null, title: null }
   try {
     return parseTranspositionAnswer(await fetchCellarAnswer(celex))
   } catch {

@@ -92,7 +92,12 @@ const [bundItem, eurLexItem] = sourceItemsDe([risSource('Vorblatt'), risSource('
                 <li v-for="row in shown" :key="row.key">
                   <NuxtLink :to="row.path" class="group block px-4 py-3 hover:bg-hover">
                     <h3 class="font-medium text-ink group-hover:underline group-hover:decoration-2">{{ row.label }}</h3>
-                    <p class="mt-0.5 text-sm text-ink-secondary">
+                    <!-- The act's subject from its official title: what the
+                         citation alone does not tell. Whole, no clamp. -->
+                    <p v-if="row.subject" class="mt-0.5 text-sm text-ink-secondary">
+                      {{ row.subject }}
+                    </p>
+                    <p class="mt-0.5 text-sm text-ink-muted">
                       <template v-if="row.deadline">{{ row.deadline }} · </template>{{ row.counts }}<template v-if="row.lands.length"> ({{ row.lands.join(', ') }})</template>
                     </p>
                   </NuxtLink>
