@@ -343,12 +343,10 @@ async function assembleFromStore(gp: string): Promise<Gathered<EuMap | null>> {
   // lookup; asked again here, patiently where a build waits — else a
   // promulgated law stood at „Beschluss" until the next build.
   let stands = speakable ? chains : null
-  let daysAnswered = true
   const missing = stands ? numbersWithoutDay(stands) : []
   if (stands && missing.length) {
     const { days, unanswered } = await lookupKundmachungDays(missing, getBgblIssueDate, kundmachungDayPlan(patient))
     stands = withKundmachungDays(stands, days)
-    daysAnswered = unanswered === 0
     if (patient && unanswered) console.warn(`[eu-karte] ${gp}: ${unanswered} von ${missing.length} Kundmachungstagen ohne Antwort`)
   }
   const map = assembleEuMap({
@@ -370,7 +368,11 @@ async function assembleFromStore(gp: string): Promise<Gathered<EuMap | null>> {
     unavailableLands: laender.sources.filter((s) => s.state === 'unavailable').map((s) => s.land),
     today: todayIso(),
   })
-  return { value: map, complete: chains !== null && outcomes !== null && daysAnswered }
+  // A day nobody answered is not a failure of the map: the row says
+  // „Beschluss" with its date, which is true, and the next build asks again.
+  // Calling the map incomplete here would keep it out of the cache and
+  // re-assemble it, with the wait, on every page view while RIS is slow.
+  return { value: map, complete: chains !== null && outcomes !== null }
 }
 
 const cachedEuMap = defineCachedFunction(assembleFromStore, {
