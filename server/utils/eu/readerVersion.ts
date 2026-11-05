@@ -16,4 +16,4 @@
  *
  * PURE MODULE — no imports at all.
  */
-export const EU_READER_VERSION = 2
+export const EU_READER_VERSION = 3

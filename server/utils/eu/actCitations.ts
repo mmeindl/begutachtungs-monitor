@@ -15,6 +15,9 @@
  * - „Richtlinie 2014/36/EU", „Beschluss Nr. 1313/2013/EU" — the old
  *   directive and decision form, organisation as a suffix;
  * - „RL 2019/1937", „VO 2016/679" — abbreviated, four-digit year, no anchor;
+ * - „Richtlinie 2024/1785", „Durchführungsbeschluss 2023/2749" — the kind
+ *   word alone, without organisation (a Land's AEV, 05.11.2026): only since
+ *   2015, year first (`ACT_BARE`);
  * - lists that inherit the type: „der Richtlinien (EU) 2022/2464 und (EU)
  *   2023/2775", „… und 2014/36/EU".
  *
@@ -60,6 +63,35 @@ const ACT_ORG = new RegExp(String.raw`(${TYPE})\s*(?:${ORG}|EU)\s*(Nr\.\s*)?(\d{
 const ACT_SUFFIX = new RegExp(String.raw`(${TYPE})\s*\(?\s*(Nr\.\s*)?(\d{2,4})\s*/\s*(\d{1,4})\s*/\s*${SUFFIX}\b`, 'giu')
 /** „RL 2019/1937", „VO 2016/679": the abbreviation with a four-digit year and no anchor at all. */
 const ACT_ABBREVIATED = /(?<![A-Za-zÄÖÜäöüß])(RL|VO)\s*(\d{4})\s*\/\s*(\d{1,4})\b(?!\s*\/)/gu
+/**
+ * „Richtlinie 2024/1785", „Durchführungsbeschluss 2023/2749", „Delegierte
+ * Verordnung 2024/1366": the kind word standing alone, then year/number with
+ * nothing after it — no organisation in brackets, no suffix. Only the
+ * numbering since 2015 (year first, `BARE_FIRST_YEAR`): before it, a/b is
+ * number/year for a regulation and year/number for a directive, and without
+ * the organisation nothing says which („Richtlinie 2014/36" stays out). The
+ * word must not end a compound („Förderrichtlinie 2024/12",
+ * „Sonder-Richtlinie 2024/3") — no letter and no hyphen directly before it — and is
+ * case-sensitive, as a noun opening the citation. Not after the number: a
+ * further „/" or digit (a suffix form or a Geschäftszahl, „2024/12/3"), or a
+ * decimal („2024/1.5").
+ */
+const BARE_TYPE = String.raw`(?:Durchführungs(?:richtlinie|verordnung|beschluss)|Delegierte[nr]?\s+(?:Richtlinie|Verordnung|Beschluss)|Richtlinie|Verordnung|Beschluss)(?:en|n|es|e)?`
+const ACT_BARE = new RegExp(String.raw`(?<![\p{L}\-])(${BARE_TYPE})\s+(\d{4})\s*\/\s*(\d{1,4})(?![\d/]|\s*\/|[.,]\d)`, 'gu')
+/** The first year of the numbering „year/number" for every kind of act. */
+const BARE_FIRST_YEAR = 2015
+
+/**
+ * Whether a bare „<year>/<number>" is a citation the bare form may read: a
+ * year from 2015 to this year. A rule against a span of years („Richtlinie
+ * 2024/25" for a funding year) was measured and dropped (05.11.2026): over
+ * both corpora it caught no national act and refused one real one,
+ * „Durchführungsverordnung 2025/26 vom 30.10.2024".
+ */
+function bareCitation(year: number): boolean {
+  return year >= BARE_FIRST_YEAR && year <= new Date().getUTCFullYear()
+}
+
 /** „…, (EU) 2023/2775", „und 2014/36/EU" after a typed act: the list inherits the type. */
 const ACT_CONTINUATION = new RegExp(
   String.raw`^\s*(?:,|und|sowie|oder|bzw\.)\s*(?:der|die|den|des)?\s*(?:${ORG}\s*(Nr\.\s*)?(\d{1,4})\s*/\s*(\d{1,4})(?!\s*/\s*\d)|\(?\s*(\d{2,4})\s*/\s*(\d{1,4})\s*/\s*${SUFFIX}\b)`,
@@ -221,6 +253,9 @@ export function readEuActCitations(text: string, options: CitationOptions = {}):
   for (const m of text.matchAll(ACT_ORG)) take(m.index!, m.index! + m[0].length, m[1]!, orderOrg(Boolean(m[2]), Number(m[3]), Number(m[4])))
   for (const m of text.matchAll(ACT_SUFFIX)) take(m.index!, m.index! + m[0].length, m[1]!, orderSuffix(Boolean(m[2]), Number(m[3]), Number(m[4])))
   for (const m of text.matchAll(ACT_ABBREVIATED)) take(m.index!, m.index! + m[0].length, m[1]!, { year: Number(m[2]), number: Number(m[3]) })
+  for (const m of text.matchAll(ACT_BARE)) {
+    if (bareCitation(Number(m[2]))) take(m.index!, m.index! + m[0].length, m[1]!, { year: Number(m[2]), number: Number(m[3]) })
+  }
   found.sort((a, b) => a.at - b.at)
   return { acts: uniqueActs([found.map((f) => f.act)]), occurrences: found, titleReferencesDropped: dropped }
 }

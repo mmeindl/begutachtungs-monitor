@@ -36,6 +36,28 @@ describe('parseEuActCitations', () => {
     })
   })
 
+  it('reads the bare form since 2015: the kind word alone, year first', () => {
+    expect(parseEuActCitations('geändert durch die Richtlinie 2024/1785 (ABl. L, 2024/1785, 15.07.2024)').map((a) => [a.celex, a.label])).toEqual([['32024L1785', 'Richtlinie (EU) 2024/1785']])
+    expect(parseEuActCitations('Durchführungsbeschluss 2023/2749 über Schlussfolgerungen zu den besten verfügbaren Techniken').map((a) => [a.celex, a.label])).toEqual([['32023D2749', 'Durchführungsbeschluss (EU) 2023/2749']])
+    expect(celexes('des Durchführungsbeschlusses 2025/1460 des Rates')).toEqual(['32025D1460'])
+    expect(celexes('Delegierte Verordnung 2025/27 vom 30.10.2024')).toEqual(['32025R0027'])
+    expect(celexes('Durchführungsverordnung 2023/138 der Kommission')).toEqual(['32023R0138'])
+  })
+
+  it('reads no bare form in a compound, before 2015, after this year, or with more behind the number', () => {
+    // A national funding guideline: the kind word ends a compound.
+    expect(celexes('nach der Förderrichtlinie 2024/12 des Landes')).toEqual([])
+    expect(celexes('nach der Sonder-Richtlinie 2024/3')).toEqual([])
+    // Before 2015 a/b is ambiguous without the organisation (number/year or year/number).
+    expect(celexes('die Richtlinie 2014/36 über Saisonarbeitnehmer')).toEqual([])
+    expect(celexes('Richtlinie 2009/73 umzusetzen')).toEqual([])
+    expect(celexes(`Richtlinie ${new Date().getUTCFullYear() + 1}/1`)).toEqual([])
+    // A Geschäftszahl, a decimal; the suffix form is read as before.
+    expect(celexes('Richtlinie 2024/12/3')).toEqual([])
+    expect(celexes('Richtlinie 2024/1.5')).toEqual([])
+    expect(celexes('Richtlinie 2019/1937/EU')).toEqual(['32019L1937'])
+  })
+
   it('reads the old forms: regulation number first after „Nr.", directive and decision with a suffix', () => {
     expect(parseEuActCitations('Verordnung (EG) Nr. 1907/2006').map((a) => [a.celex, a.label])).toEqual([['32006R1907', 'Verordnung (EG) Nr. 1907/2006']])
     expect(parseEuActCitations('Richtlinie 2009/43/EG zur Vereinfachung').map((a) => [a.celex, a.label])).toEqual([['32009L0043', 'Richtlinie 2009/43/EG']])
@@ -255,12 +277,14 @@ describe('readUmsetzungshinweis', () => {
     expect(r.acts.map((a) => a.celex)).toContain('32023L2864')
   })
 
-  it('does not resolve a short name, nor a directive cited without its organisation (AEV)', () => {
+  it('does not resolve a short name, but reads a directive and a decision cited without organisation (AEV)', () => {
     const r = readUmsetzungshinweis(law['AEV, short name and amending directive']!)
     expect(r.signal).toBe('umsetzung')
-    // „geändert durch die Richtlinie 2024/1785" and „Durchführungsbeschluss
-    // 2023/2749" carry no (EU) and no suffix: a known gap of v1, kept visible.
-    expect(r.acts.map((a) => a.celex)).toEqual(['32010L0075'])
+    // „IE-Richtlinie" stays unread (D7); „geändert durch die Richtlinie
+    // 2024/1785" and „Durchführungsbeschluss 2023/2749" are the bare form
+    // (05.11.2026), and 2010/75 is the base 2024/1785 amends.
+    expect(r.acts.map((a) => a.celex)).toEqual(['32010L0075', '32024L1785', '32023D2749'])
+    expect([...baseActCelexes(r.windows[0]!.text)]).toContain('32010L0075')
   })
 
   it('reads plain text, one Absatz per line, and drops a national „Richtlinie"', () => {
