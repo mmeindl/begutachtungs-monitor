@@ -15,10 +15,10 @@
  *
  * Pure: the pages render what this returns, the tests read it without one.
  */
-import type { EuActHead, EuActDraft, EuActResponse, EuActsResponse, EuPublisher, EuStand, LandCode } from '#shared/types'
+import type { EuActHead, EuActDraft, EuActResponse, EuActSummary, EuActsResponse, EuPublisher, EuStand, LandCode } from '#shared/types'
 import { euActSubject } from '#shared/utils/eu'
 import { formatDateDe } from '#shared/utils/format'
-import { LAND_NAME } from '#shared/utils/laender'
+import { LAND_CODES, LAND_NAME, type SourceCode } from '#shared/utils/laender'
 import { SUPERSCRIPT, dateRangeDe, dayOf, edgeAlign, spreadLabels, type EuTimelineMark } from './euRecht'
 
 /** „Bund" or the Land's name — the list's source chips' words. */
@@ -87,6 +87,27 @@ export function euActsRows(r: EuActsResponse): EuActsRowView[] {
     counts: countsDe(a.counts),
     lands: a.lands.map((l) => LAND_NAME[l]),
   }))
+}
+
+/**
+ * The overview's source chips: the Bund, and each Land that implements at
+ * least one act of the response, in display order. A Land without an act
+ * gets no chip — an absence is no finding (rule D6) — but a Land ticked in
+ * the URL keeps its chip, ticked, so the empty list says why it is empty.
+ */
+export function euSourceChips(acts: readonly Pick<EuActSummary, 'lands'>[], chosen: readonly SourceCode[] = []): SourceCode[] {
+  const present = new Set<SourceCode>(acts.flatMap((a) => a.lands))
+  return (['bund', ...LAND_CODES] as SourceCode[]).filter((c) => c === 'bund' || present.has(c) || chosen.includes(c))
+}
+
+/**
+ * The acts the chosen sources implement: one passes where the Bund is
+ * chosen and has an implementing draft, or any chosen Land is among its
+ * Länder. Nothing chosen is everyone. The rows themselves are untouched.
+ */
+export function filterEuActs<A extends Pick<EuActSummary, 'counts' | 'lands'>>(acts: readonly A[], chosen: readonly SourceCode[]): A[] {
+  if (!chosen.length) return [...acts]
+  return acts.filter((a) => (chosen.includes('bund') && a.counts.bund > 0) || a.lands.some((l) => chosen.includes(l)))
 }
 
 /**

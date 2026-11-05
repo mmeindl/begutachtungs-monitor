@@ -6,8 +6,17 @@
  * to its page, where the drafts stand on one track.
  *
  * The list in the unfilled frame — rows to consult, not an instrument to
- * operate (box grammar, §8): no sort, no filter, the order the map
- * delivers. Folded past twenty in the site's list idiom (`ListMore`).
+ * operate (box grammar, §8): no sort, the order the map delivers. Folded
+ * past twenty in the site's list idiom (`ListMore`).
+ *
+ * The source chips select rows and change nothing in a row: an act stays
+ * where the Bund (ticked) has an implementing draft or any ticked Land does.
+ * They look like the lists' `SourceChips` and speak the same `?quellen=`,
+ * but they are THIS page's: nothing ticked is everyone (the site's choice
+ * defaults to the Bund alone), and they never write the site's cookie — a
+ * map of Bund and Länder that opened on the Bund would hide half of what it
+ * is for. Only the Länder with an act get a chip; Steiermark, unread, is
+ * the incomplete note's.
  *
  * No verdict anywhere on it, as on the draft's fact (rule D6): the counts
  * are of drafts that implement an act, never of acts not implemented — the
@@ -15,8 +24,9 @@
  * finding.
  */
 import type { EuActsResponse } from '#shared/types'
+import { SOURCE_NAME, SOURCE_PARAM, formatSourceList, parseSourceList, type SourceCode } from '#shared/utils/laender'
 import { risSource, eurLexSource, sourceItemsDe } from '#shared/utils/provenance'
-import { euActsRows, incompleteNoteDe } from '~/utils/euKarte'
+import { euActsRows, euSourceChips, filterEuActs, incompleteNoteDe } from '~/utils/euKarte'
 
 usePageSeo({
   title: 'EU-Recht in der Begutachtung',
@@ -26,7 +36,27 @@ usePageSeo({
 
 const { data, status, error, refresh } = useFetch<EuActsResponse>('/api/eu-recht', { lazy: true })
 
-const rows = computed(() => (data.value ? euActsRows(data.value) : []))
+/*
+ * The chosen sources, from the URL alone — a view setting, so a chip
+ * replaces the history entry instead of adding one. Empty is everyone.
+ */
+const route = useRoute()
+const router = useRouter()
+const chosen = computed<SourceCode[]>(() => {
+  const raw = route.query[SOURCE_PARAM]
+  return parseSourceList(Array.isArray(raw) ? raw[0] : raw) ?? []
+})
+function choose(next: readonly SourceCode[]): void {
+  const value = formatSourceList(next)
+  router.replace({ query: { ...route.query, [SOURCE_PARAM]: value || undefined } })
+}
+function toggleSource(code: SourceCode): void {
+  choose(chosen.value.includes(code) ? chosen.value.filter((c) => c !== code) : [...chosen.value, code])
+}
+
+const chips = computed(() => (data.value ? euSourceChips(data.value.acts, chosen.value) : []))
+const allRows = computed(() => (data.value ? euActsRows(data.value) : []))
+const rows = computed(() => (data.value ? euActsRows({ ...data.value, acts: filterEuActs(data.value.acts, chosen.value) }) : []))
 const incomplete = computed(() => (data.value ? incompleteNoteDe(data.value.incomplete) : null))
 
 /** Twenty stand; the rest behind „Alle N anzeigen" (`ListMore`). */
@@ -78,14 +108,38 @@ const [bundItem, eurLexItem] = sourceItemsDe([risSource('Vorblatt'), risSource('
             {{ incomplete }}
           </p>
           <EmptyState
-            v-if="!rows.length"
+            v-if="!allRows.length"
             class="mt-8"
             title="Kein Entwurf dieser Periode setzt einen Rechtsakt um, den der Monitor kennt."
           />
           <section v-else aria-labelledby="eu-akte-heading" class="mt-8">
             <h2 id="eu-akte-heading" class="sr-only">Rechtsakte</h2>
+            <!-- Whose drafts, on a line of its own above the list it
+                 selects from, as the lists' source chips. -->
+            <div role="group" aria-label="Quellen der Liste" class="mb-4 flex flex-wrap items-center gap-2">
+              <ToggleChip
+                v-for="code in chips"
+                :key="code"
+                :pressed="chosen.includes(code)"
+                @toggle="toggleSource(code)"
+              >
+                {{ SOURCE_NAME[code] }}
+              </ToggleChip>
+            </div>
             <div class="overflow-clip rounded-xl border border-hairline">
-              <ul role="list" class="divide-y divide-hairline">
+              <!-- Inside the frame, as a list box's notice: a card in the
+                   frame would be a box in a box (`ListBoxNotice`). -->
+              <ListBoxNotice
+                v-if="!rows.length"
+                title="Kein Rechtsakt mit einem Entwurf aus dieser Auswahl."
+              >
+                <template #action>
+                  <button type="button" class="link-inline text-sm" @click="choose([])">
+                    Alle Quellen zeigen
+                  </button>
+                </template>
+              </ListBoxNotice>
+              <ul v-else role="list" class="divide-y divide-hairline">
                 <!-- The list row's anatomy (`EntryItem`): the whole row is the
                      link, the title ink and underlined under the pointer, the
                      ground tinted — never a blue inline link inside a list. -->

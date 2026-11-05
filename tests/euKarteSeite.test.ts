@@ -1,6 +1,8 @@
 import { describe, expect, it } from 'vitest'
-import { euActPageView, euActsRows, incompleteNoteDe } from '../app/utils/euKarte'
+import { euActPageView, euActsRows, euSourceChips, filterEuActs, incompleteNoteDe } from '../app/utils/euKarte'
 import type { EuActDraft, EuActResponse, EuActsResponse } from '../shared/types/eu'
+import type { LandCode } from '../shared/types/laender'
+import type { SourceCode } from '../shared/utils/laender'
 
 /* The EU map's act page (§12.66, Nachtrag 3): two dates and a stand per
  * draft on one track for the page, no verdict. */
@@ -177,5 +179,33 @@ describe('euActsRows', () => {
       { key: '32024L1069', label: 'Richtlinie (EU) 2024/1069', path: '/eu-recht/richtlinie/2024/1069', subject: 'über den Schutz von Personen, die sich öffentlich beteiligen', deadline: 'Umsetzungsfrist bis 07.05.2026', counts: '1 Entwurf des Bundes · 3 Entwürfe der Länder', lands: ['Oberösterreich', 'Salzburg', 'Wien'] },
       { key: '32023R1114', label: 'Verordnung (EU) 2023/1114', path: '/eu-recht/verordnung/2023/1114', subject: null, deadline: 'gilt unmittelbar', counts: '2 Entwürfe des Bundes', lands: [] },
     ])
+  })
+})
+
+describe('the overview\'s source chips', () => {
+  const acts = [
+    { celex: 'A', counts: { bund: 1, laender: 0 }, lands: [] },
+    { celex: 'B', counts: { bund: 0, laender: 2 }, lands: ['sbg', 'bgld'] },
+    { celex: 'C', counts: { bund: 2, laender: 1 }, lands: ['ktn'] },
+    { celex: 'D', counts: { bund: 0, laender: 1 }, lands: ['vbg'] },
+  ] as const satisfies readonly { celex: string; counts: { bund: number; laender: number }; lands: readonly LandCode[] }[]
+  const pick = (chosen: SourceCode[]) => filterEuActs(acts.map((a) => ({ ...a, lands: [...a.lands] })), chosen).map((a) => a.celex)
+
+  it('shows every act where nothing is chosen', () => {
+    expect(pick([])).toEqual(['A', 'B', 'C', 'D'])
+  })
+
+  it('keeps an act where the chosen Bund or any chosen Land implements it', () => {
+    expect(pick(['bund'])).toEqual(['A', 'C'])
+    expect(pick(['sbg'])).toEqual(['B'])
+    expect(pick(['bund', 'vbg'])).toEqual(['A', 'C', 'D'])
+    expect(pick(['w'])).toEqual([])
+  })
+
+  it('offers the Bund and the Länder with an act, in display order, and keeps a chosen one without', () => {
+    const lands = acts.map((a) => ({ lands: [...a.lands] }))
+    expect(euSourceChips(lands)).toEqual(['bund', 'bgld', 'ktn', 'sbg', 'vbg'])
+    expect(euSourceChips(lands, ['w'])).toEqual(['bund', 'bgld', 'ktn', 'sbg', 'vbg', 'w'])
+    expect(euSourceChips([])).toEqual(['bund'])
   })
 })
