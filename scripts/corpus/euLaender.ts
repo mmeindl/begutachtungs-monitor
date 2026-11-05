@@ -602,6 +602,20 @@ if (show) {
     console.log(`\n  Vorblatt: ${r.vorblatt.docsRead} Dokumente gelesen, ${r.vorblatt.withVorblatt} mit „Vorblatt", ${r.vorblatt.withEuHeading} mit der Bundesüberschrift`)
     for (const l of r.vorblatt.euLines) console.log(`    EU-Zeile im Vorblatt: ${l}`)
     for (const [i, s] of r.vorblatt.sentences.entries()) console.log(`    ${r.vorblatt.classes[i]} ${q(s)}`)
+    // The page's reading (`readLandEu`), every text in full: what the draft page decides and names.
+    const raw = pageReads.get(r.item.id)
+    if (typeof raw === 'string' || !raw) {
+      console.log(`\n  Seite: nicht gelesen ${raw ?? ''}`)
+      continue
+    }
+    const p = raw.reading
+    console.log(`\n  Seite: ${p.decision.marker ?? 'kein Fakt'} · Quelle ${p.decision.source ?? '—'} · Akte aus ${p.actsSource ?? '—'}${p.decision.contradicting ? ' · widersprüchlich' : ''}`)
+    if (p.found) console.log(`    Aussage (${p.found.label}, ${p.found.statement.road}, ${p.found.statement.cls}): ${q(p.found.statement.sentence, 100_000)}`)
+    console.log(`    Gesetzestext: ${p.law.read ? 'gelesen' : 'nicht gelesen'} · Signal ${p.law.signal ?? '—'} · Akt-Signal ${p.law.actSignal ?? '—'}`)
+    for (const w of p.law.windows) console.log(`      Fenster ${w.signal} [${w.acts.map((a) => a.celex).join(' ') || '—'}]: ${q(w.text, 100_000)}`)
+    for (const h of p.law.quoted) console.log(`      zitierte Ziffer [${h.acts.map((a) => a.celex).join(' ')}]: ${q(h.text, 100_000)}`)
+    for (const h of p.hinweise) console.log(`      OÖ-Hinweis [${h.acts.map((a) => a.celex).join(' ')}]: ${q(h.text, 100_000)}`)
+    console.log(`    Akte der Seite: ${p.named.map((a) => `${a.label} (${a.celex})`).join(' · ') || '—'}`)
   }
   process.exit(0)
 }

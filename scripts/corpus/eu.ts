@@ -867,12 +867,14 @@ console.log(`  Laufzeit dieses Laufs: Lesen ${readSeconds.toFixed(0)} s (inkl. P
 // the law-in-force check (D4), which needs RIS Bundesrecht and is not cached
 // here. Added 04.11.2026 with the feature; everything above is unchanged.
 console.log(`\n## g. Die Regel der Seite (euMarker.ts, ohne D4)`)
+/** The page's decision for one row — section g and the CSV's `page_marker`. */
+const pageDecision = (r: Row) => decideEuMarker({
+  vorblatt: r.vorblatt.classes,
+  law: { signal: r.law.actSignal, acts: r.law.acts },
+  explanations: r.erl.signal === 'bezug' ? null : r.erl.signal,
+})
 for (const p of populations) {
-  const decided = p.rows.map((r) => decideEuMarker({
-    vorblatt: r.vorblatt.classes,
-    law: { signal: r.law.actSignal, acts: r.law.acts },
-    explanations: r.erl.signal === 'bezug' ? null : r.erl.signal,
-  }))
+  const decided = p.rows.map(pageDecision)
   const n = p.rows.length
   const count = new Map<string, number>()
   for (const d of decided) {
@@ -899,7 +901,7 @@ if (outDir) {
     const s = String(v ?? '')
     return /[",\n;]/.test(s) ? `"${s.replace(/"/g, '""')}"` : s
   }
-  const header = ['id', 'me', 'title', 'kind', 'beginn', 'frist', 'frist_tage', 'vorblatt_class', 'vorblatt_sentence', 'law_signal', 'acts_law', 'erl_signal', 'acts_erl', 'acts_title', 'acts_vorblatt_ziele', 'marker', 'acts_named', 'acts_source', 'celex', 'transposition', 'days_after_newest_deadline', 'days_after_earliest_deadline']
+  const header = ['id', 'me', 'title', 'kind', 'beginn', 'frist', 'frist_tage', 'vorblatt_class', 'vorblatt_sentence', 'law_signal', 'acts_law', 'erl_signal', 'acts_erl', 'acts_title', 'acts_vorblatt_ziele', 'marker', 'acts_named', 'acts_source', 'celex', 'transposition', 'days_after_newest_deadline', 'days_after_earliest_deadline', 'page_marker', 'page_source']
   const lines = [header.join(',')]
   for (const r of [...rows].sort((a, b) => (a.record.beginn ?? '').localeCompare(b.record.beginn ?? ''))) {
     const named = namedActs(r)
@@ -929,6 +931,8 @@ if (outDir) {
       named.acts.filter((a) => a.kind === 'richtlinie').map((a) => `${a.celex}:${answers.get(a.celex)?.transposition.join('/') ?? '?'}`).join(' '),
       newest && r.record.beginn ? days(newest, r.record.beginn) : '',
       earliest && r.record.beginn ? days(earliest, r.record.beginn) : '',
+      pageDecision(r).marker,
+      pageDecision(r).source,
     ].map(csvCell).join(','))
   }
   await writeFile(join(outDir, 'drafts.csv'), `${lines.join('\n')}\n`)
