@@ -20,8 +20,8 @@
  *   Verordnung …".
  *
  * A heading opens a WINDOW to the next §, Artikel, section or
- * Novellierungsanordnung (at most 12 blocks); a sentence is read in its own
- * Absatz, and continues below only where it does not end. A signal outside a
+ * Novellierungsanordnung; a sentence is read in its own Absatz, and
+ * continues below only where it does not end — to the same end. A signal outside a
  * heading needs something European in its window (`EU_ANCHOR`) — without it,
  * „Richtlinie" is a national one and „Umsetzung" a national goal.
  *
@@ -67,6 +67,26 @@ export const EU_ANCHOR = /\((?:EU|EG|EWG)\)|\/E(?:U|G|WG)\b|Europäische[nr]?\s+
 
 /** Kinds that end the window a heading opens. */
 const WINDOW_END: ReadonlySet<string> = new Set(['para_head', 'article', 'section', 'title', 'novao'])
+
+/**
+ * Where a window ends besides `WINDOW_END` (05.11.2026). It ended after 12
+ * blocks, and Burgenland's GADG (bgld-c372) lists 17 directives under
+ * „Umsetzungshinweise § 65. Durch dieses Gesetz werden folgende Richtlinien
+ * … umgesetzt: 1. … 17. …" — the six newest, the ones the draft adds, fell
+ * off the end; the Vergaberechtsgesetz 2026 lists 37. The end is the
+ * structure instead: the next § (`NEXT_PARA`), past the first block below
+ * a heading, which carries the hint's own §. A Land's PDF has no heading
+ * block before every §, and the Bund's RIS has none in a law without §
+ * titles. The next Absatz does not end it: 32/ME writes „§ 2. (1) …
+ * folgende Richtlinien umgesetzt: … (2) … folgende Verordnungen
+ * durchgeführt: …", and „durchgeführt" opens no window of its own. In the
+ * Bund's RIS blocks the § is the Gliederungssymbol, in a Land's PDF blocks
+ * the text's start; a Novelle's quotes are taken off first.
+ * `WINDOW_CEILING` is a safety net only, for a text whose structure the
+ * block reader did not see.
+ */
+const NEXT_PARA = /^§\s*\d/
+const WINDOW_CEILING = 80
 
 /** One place the law text speaks of EU law. */
 export interface LawWindow {
@@ -162,10 +182,18 @@ export function readUmsetzungshinweis(input: string | readonly LawTextBlock[]): 
     // Bundesgesetz dient der Umsetzung").
     let window = text
     if (headed || b.kind === 'novao' || !/[.;]["“]?\s*$/.test(text)) {
+      // A sentence that does not end has its § already; a heading and a
+      // Novellierungsanordnung reach the hint's own § first.
+      const sentence = !headed && b.kind !== 'novao'
+      // The first § below a heading is the hint's own, unless the opening block carries it.
+      const ownPara = NEXT_PARA.test(text.replace(/^[\s"„»]+/, ''))
       const parts = [text]
-      for (let j = i + 1; j < blocks.length && j <= i + 12; j++) {
-        if (WINDOW_END.has(blocks[j]!.kind)) break
-        parts.push(blockText(blocks[j]!))
+      for (let j = i + 1; j < blocks.length && j <= i + WINDOW_CEILING; j++) {
+        const next = blocks[j]!
+        if (WINDOW_END.has(next.kind)) break
+        const start = blockText(next).replace(/^[\s"„»]+/, '')
+        if (NEXT_PARA.test(start) && (sentence || ownPara || j > i + 1)) break
+        parts.push(blockText(next))
       }
       window = parts.join(' ')
     }

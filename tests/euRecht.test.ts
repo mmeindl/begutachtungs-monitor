@@ -291,6 +291,33 @@ describe('readUmsetzungshinweis', () => {
     expect(r.acts.map((a) => a.celex)).toEqual(['32019L1937'])
   })
 
+  it('reads a hint list to its end, past twelve Ziffern, and stops at the next § (bgld-c372)', () => {
+    const years = [2000, 2001, 2002, 2003, 2004, 2005, 2006, 2007, 2008, 2009, 2010, 2011, 2012, 2013, 2014, 2016, 2019]
+    const blocks: LawTextBlock[] = [
+      { kind: 'para_head', text: 'Umsetzungshinweise' },
+      { kind: 'abs', gld: '§ 65.', text: 'Durch dieses Gesetz werden folgende Richtlinien der Europäischen Union umgesetzt:' },
+      ...years.map((y, n) => ({ kind: 'ziff', text: `${n + 1}. Richtlinie ${y}/${n + 1}/EG über etwas, ABl. Nr. L 1 vom 01.01.${y} S. 1,` })),
+      { kind: 'ziff', text: '18. Richtlinie (EU) 2024/1500 über Standards für Gleichbehandlungsstellen.' },
+      // A Land PDF gives the next § as an Absatz without a heading block.
+      { kind: 'abs', gld: '§ 66.', text: 'Soweit in diesem Gesetz auf die Verordnung (EU) 2016/679 verwiesen wird, ist sie in der geltenden Fassung anzuwenden.' },
+    ]
+    const r = readUmsetzungshinweis(blocks)
+    expect(r.acts).toHaveLength(18)
+    expect(r.acts.at(-1)!.celex).toBe('32024L1500')
+    expect(r.acts.map((a) => a.celex)).not.toContain('32016R0679')
+  })
+
+  it('keeps a hint\'s second Absatz in its window, where the § goes on (32/ME: „(2) … werden folgende Verordnungen durchgeführt")', () => {
+    const r = readUmsetzungshinweis([
+      { kind: 'abs', gld: '§ 2.', text: '(1) Durch dieses Bundesgesetz werden folgende Richtlinien umgesetzt:' },
+      { kind: 'ziff', gld: '1.', text: 'Richtlinie (EU) 2019/944 mit gemeinsamen Vorschriften für den Elektrizitätsbinnenmarkt;' },
+      { kind: 'abs', gld: '(2)', text: 'Durch dieses Bundesgesetz werden folgende Verordnungen durchgeführt:' },
+      { kind: 'ziff', gld: '1.', text: 'Verordnung (EU) 2019/943 über den Elektrizitätsbinnenmarkt.' },
+      { kind: 'abs', gld: '§ 3.', text: 'Die Verordnung (EU) 2024/1991 bleibt unberührt.' },
+    ])
+    expect(r.acts.map((a) => a.celex)).toEqual(['32019L0944', '32019R0943'])
+  })
+
   it('skips the table of contents', () => {
     expect(readUmsetzungshinweis([{ kind: 'toc', text: '§ 21a. Umsetzungshinweis' }]).windows).toEqual([])
   })
