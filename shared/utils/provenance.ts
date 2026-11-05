@@ -65,6 +65,21 @@ export function documentSource(what: string, station: LawStationId, publisher: P
   return publisher === 'ris' ? risSource(what) : parliamentDocumentSource(what, station)
 }
 
+/**
+ * A fact of Parliament's procedure data at a parliamentary station — the
+ * day the Nationalrat or the Bundesrat decided a Regierungsvorlage, read
+ * from the Vorlage's record (05.11.2026, the EU act page's stand). Data,
+ * not a document: Parliament's dataset pages for those items license the
+ * result lists, the API data and the history pages as CC BY (read
+ * 23.09.2026) — the grant `PARLIAMENT_HISTORY_SOURCES` (`app/utils/spine.ts`)
+ * claims for the Verlauf. Never for anything about Stellungnahmen, which
+ * the same pages exclude (30.09.2026), and never for the Begutachtung's
+ * own data, which carries no claim (rule three above).
+ */
+export function parliamentProcedureSource(what: string): SourceEntry {
+  return { what, publisher: 'parlament', terms: 'cc-by' }
+}
+
 export const PUBLISHER_NAME_DE: Record<Publisher, string> = {
   ris: 'RIS',
   parlament: 'Parlament',

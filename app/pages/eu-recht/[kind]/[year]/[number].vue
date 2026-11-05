@@ -23,9 +23,8 @@
  */
 import type { EuActResponse } from '#shared/types'
 import { euActCelex } from '#shared/utils/eu'
-import { eurLexSource, risSource, sourceItemsDe } from '#shared/utils/provenance'
 import { euDotOf } from '~/utils/euRecht'
-import { euActPageView } from '~/utils/euKarte'
+import { euActCredits, euActPageView } from '~/utils/euKarte'
 
 const route = useRoute()
 const celex = euActCelex(String(route.params.kind), String(route.params.year), String(route.params.number))
@@ -66,8 +65,9 @@ const headLine = computed(() => {
 /** „Heute" fits over its dot anywhere; a Gesetzblatt's name takes the edge rule (`DraftEuTimeline`). */
 const valueAlign = (label: string) => (label.length <= 6 ? 'center' as const : 'auto' as const)
 
-/* The credit line, as on the overview (`/eu-recht`). */
-const [bundItem, eurLexItem] = sourceItemsDe([risSource('Vorblatt'), risSource('Gesetzestext'), eurLexSource('Fristen')])
+/* The credit line, as on the overview (`/eu-recht`), plus where each stand
+ * on the page comes from — only the ones a row shows (`euActCredits`). */
+const credits = computed(() => (data.value ? euActCredits(data.value) : null))
 </script>
 
 <template>
@@ -186,11 +186,9 @@ const [bundItem, eurLexItem] = sourceItemsDe([risSource('Vorblatt'), risSource('
             </p>
           </div>
 
-          <SectionCredits :sources="[]" :marked="false" method="/so-funktionierts#eu-recht">
+          <SectionCredits v-if="credits" :sources="[]" :marked="false" method="/so-funktionierts#eu-recht">
             <span>Quellen:</span>
-            <span>{{ bundItem }}</span>
-            <span>Dokumente der Länder</span>
-            <span>{{ eurLexItem }}</span>
+            <span v-for="item in credits.items" :key="item">{{ item }}</span>
           </SectionCredits>
         </section>
       </template>

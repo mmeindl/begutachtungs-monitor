@@ -19,6 +19,7 @@ import type { EuActHead, EuActDraft, EuActResponse, EuActSummary, EuActsResponse
 import { euActSubject } from '#shared/utils/eu'
 import { formatDateDe } from '#shared/utils/format'
 import { LAND_CODES, LAND_NAME, type SourceCode } from '#shared/utils/laender'
+import { PUBLISHER_NAME_DE, eurLexSource, parliamentProcedureSource, risSource, type SourceEntry } from '#shared/utils/provenance'
 import { SUPERSCRIPT, dateRangeDe, dayOf, edgeAlign, type EuTimelineMark } from './euRecht'
 
 /** „Bund" or the Land's name — the list's source chips' words. */
@@ -333,5 +334,51 @@ export function euActPageView(r: EuActResponse): EuActPageView {
       : null,
     window: windowNoteDe(r.gp, r.window),
     incomplete: incompleteNoteDe(r.incomplete),
+  }
+}
+
+/* ------------------------------------------------------------------ *
+ * The act page's credit line
+ * ------------------------------------------------------------------ */
+
+export interface EuActCredits {
+  /** The sources with a publisher the site's list knows — RIS, Parliament, EUR-Lex — and what may be claimed of each (`provenance.ts`). */
+  sources: SourceEntry[]
+  /** The items after „Quellen:", in the order the map reads: RIS, Parliament, the Länder, EUR-Lex. */
+  items: string[]
+}
+
+/**
+ * The act page's credit line, with where each STAND comes from — derived
+ * from the stands the page shows (`EuStand.label` on the implementing
+ * rows; the restating rows show none), so an item stands only where its
+ * label does:
+ *
+ *  - „Bundesgesetzblatt" → RIS (the Kundmachung's day, from the BGBl
+ *    record — CC BY, `risSource`);
+ *  - „Beschluss" on a Bund row → Parliament (the house's decision on the
+ *    Regierungsvorlage, procedure data of a parliamentary station — CC BY,
+ *    `parliamentProcedureSource`);
+ *  - „Beschluss" on a Land row → the Landtag's record, and
+ *    „Landesgesetzblatt" → the Land's Gesetzblatt: named with the Länder's
+ *    documents, no publisher in the site's list and no licence claim, as
+ *    every Land document on the site.
+ *
+ * „Heute" is the day, no source. The line itself states no licence
+ * (`SectionCredits`): the claims stand once, in the Impressum.
+ */
+export function euActCredits(r: Pick<EuActResponse, 'implementing'>): EuActCredits {
+  const has = (label: EuStand['label'], bund: boolean) =>
+    r.implementing.some((d) => d.stand?.label === label && (d.publisher === 'bund') === bund)
+
+  const ris = [risSource('Vorblatt'), risSource('Gesetzestext'), ...(has('Bundesgesetzblatt', true) ? [risSource('Bundesgesetzblatt')] : [])]
+  const parliament = has('Beschluss', true) ? [parliamentProcedureSource('Beschluss')] : []
+  const eurLex = [eurLexSource('Fristen')]
+  const land = ['Dokumente', ...(has('Beschluss', false) ? ['Landtagsbeschlüsse'] : []), ...(has('Landesgesetzblatt', false) ? ['Landesgesetzblätter'] : [])]
+
+  const item = (entries: readonly SourceEntry[]) => `${listDe(entries.map((e) => e.what))} (${PUBLISHER_NAME_DE[entries[0]!.publisher]})`
+  return {
+    sources: [...ris, ...parliament, ...eurLex],
+    items: [item(ris), ...(parliament.length ? [item(parliament)] : []), `${listDe(land)} der Länder`, item(eurLex)],
   }
 }

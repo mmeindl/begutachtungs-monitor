@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { euActPageView, euActsRows, euRestatingRows, euSourceChips, filterEuActs, incompleteNoteDe, restatingCountsDe, restatingFoldHeading } from '../app/utils/euKarte'
+import { euActCredits, euActPageView, euActsRows, euRestatingRows, euSourceChips, filterEuActs, incompleteNoteDe, restatingCountsDe, restatingFoldHeading } from '../app/utils/euKarte'
 import type { EuActDraft, EuActResponse, EuActsResponse } from '../shared/types/eu'
 import type { LandCode } from '../shared/types/laender'
 import type { SourceCode } from '../shared/utils/laender'
@@ -257,5 +257,46 @@ describe('the overview\'s source chips', () => {
     expect(euSourceChips(lands)).toEqual(['bund', 'bgld', 'ktn', 'sbg', 'vbg'])
     expect(euSourceChips(lands, ['w'])).toEqual(['bund', 'bgld', 'ktn', 'sbg', 'vbg', 'w'])
     expect(euSourceChips([])).toEqual(['bund'])
+  })
+})
+
+describe('the act page\'s credit line', () => {
+  const row = (publisher: EuActDraft['publisher'], label: 'Heute' | 'Beschluss' | 'Bundesgesetzblatt' | 'Landesgesetzblatt' | null): EuActDraft => ({
+    key: `${publisher}-${label}`,
+    publisher,
+    path: '/x',
+    title: 't',
+    citation: null,
+    kind: 'gesetz',
+    begutachtung: { start: '2026-01-01', end: '2026-02-01' },
+    stand: label ? { date: '2026-03-01', label } : null,
+    marker: 'umsetzung',
+    isNew: true,
+  })
+
+  it('names only the documents and EUR-Lex where every stand is today or unknown', () => {
+    const c = euActCredits({ implementing: [row('bund', 'Heute'), row('sbg', null)] })
+    expect(c.items).toEqual(['Vorblatt und Gesetzestext (RIS)', 'Dokumente der Länder', 'Fristen (EUR-Lex)'])
+    expect(c.sources.map((s) => [s.what, s.publisher, s.terms])).toEqual([
+      ['Vorblatt', 'ris', 'cc-by'], ['Gesetzestext', 'ris', 'cc-by'], ['Fristen', 'eurlex', 'cc0'],
+    ])
+  })
+
+  it('names where each stand comes from, only where its label is on the page', () => {
+    const c = euActCredits({ implementing: [row('bund', 'Bundesgesetzblatt'), row('bund', 'Beschluss'), row('ooe', 'Beschluss'), row('bgld', 'Landesgesetzblatt')] })
+    expect(c.items).toEqual([
+      'Vorblatt, Gesetzestext und Bundesgesetzblatt (RIS)',
+      'Beschluss (Parlament)',
+      'Dokumente, Landtagsbeschlüsse und Landesgesetzblätter der Länder',
+      'Fristen (EUR-Lex)',
+    ])
+    // Parliament's Beschluss is procedure data of a parliamentary station: CC BY, as its Verlauf.
+    expect(c.sources.find((s) => s.publisher === 'parlament')).toEqual({ what: 'Beschluss', publisher: 'parlament', terms: 'cc-by' })
+  })
+
+  it('takes a Land\'s Beschluss for the Landtag\'s, never for Parliament\'s', () => {
+    const c = euActCredits({ implementing: [row('sbg', 'Beschluss')] })
+    expect(c.items).toEqual(['Vorblatt und Gesetzestext (RIS)', 'Dokumente und Landtagsbeschlüsse der Länder', 'Fristen (EUR-Lex)'])
+    expect(c.sources.some((s) => s.publisher === 'parlament')).toBe(false)
   })
 })
