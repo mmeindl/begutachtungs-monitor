@@ -29,7 +29,7 @@
  * the whole hint, directives transposed years ago included; that question is
  * the law in force's (`euService.ts`, rule D4).
  */
-import { parseEuActCitations, uniqueActs, type EuAct } from './actCitations'
+import { parseEuActCitations, uniqueActs, withoutActTitles, type EuAct } from './actCitations'
 
 /** What a window says: implements, flanks a regulation, or only refers. */
 export type LawSignal = 'umsetzung' | 'durchfuehrung' | 'bezug'
@@ -104,6 +104,12 @@ export interface LawWindow {
   signal: LawSignal
   /** The acts named in it, those named inside another act's title or only referred to dropped. */
   acts: EuAct[]
+  /**
+   * A Ziffer a Novelle quotes into a § in force (`readQuotedNovelleHints`):
+   * it is a hint only where that § is one (`isHintParagraph`), which the
+   * service reads from the law in force.
+   */
+  quoted?: true
 }
 
 export interface UmsetzungshinweisReading {
@@ -221,6 +227,138 @@ export function readUmsetzungshinweis(input: string | readonly LawTextBlock[]): 
     }
     windows.push({ text: window, start: i, signal: lawSignalOf(window), acts: parseEuActCitations(window, WINDOW_CITATIONS) })
   }
+  return {
+    signal: strongestSignal(windows.map((w) => w.signal)),
+    actSignal: strongestSignal(windows.filter((w) => w.acts.length).map((w) => w.signal)),
+    windows,
+    acts: uniqueActs(windows.map((w) => w.acts)),
+    dropped,
+  }
+}
+
+// ---------------------------------------------------------------------------
+// The quoted hint: a Ziffer a Novelle adds to the hint in force
+// ---------------------------------------------------------------------------
+
+/**
+ * A quoted Ziffer that opens with an EU act: its number, then the act —
+ * „Richtlinie 2024/1712/EU …", „Art. 15 und 16 der Richtlinie (EU)
+ * 2018/2001 …", „Durchführungsbeschluss 2019/2010 der Kommission …".
+ */
+const ACT_ZIFFER = /^\d+[a-z]*\.\s+(?:Art(?:ikel|\.)?\s*\d+[a-z]?\b[^„“"]{0,80}?\s(?:der|des)\s+)?(?:Richtlinie|Verordnung|Durchführungsverordnung|Delegierten?\s+Verordnung|Beschluss|Durchführungsbeschluss|Rahmenbeschluss)\b/
+/** A numbered Ziffer's start inside a quote. */
+const ZIFFER_START = /(?:^|\n)(?=\d+[a-z]*\.\s)/
+/** The lead of a list of references, not of implementations. */
+const REFERENCE_LEAD = /verwei|zu verstehen/i
+
+/** One quoted Ziffer read as a hint: its text and the acts it names. */
+export interface QuotedHint {
+  text: string
+  acts: EuAct[]
+}
+
+/**
+ * The Ziffern of one quote — its text without the quote marks, one line per
+ * block — that open with an EU act (Nachtrag 2 of §12.66, 04.11.2026; the
+ * Bund's since 05.11.2026). A Novelle adds an act to the hint in force as a
+ * quoted Ziffer, „12. Richtlinie 2024/1385/EU …" (Salzburg 34413), „3.
+ * Durchführungsbeschluss 2019/2010 …" (the Bund's AEV Verbrennungsgas):
+ * neither a hint word nor „umgesetzt" stands in it — the § the instruction
+ * names IS the hint, in the law in force. A national law lists bare acts
+ * as Ziffern only in its Umsetzungshinweis or in a list of its references;
+ * a quote that introduces its list as references („Dieses Gesetz verweist
+ * auf folgende Rechtsakte …", „… sind darunter zu verstehen:") is skipped,
+ * and a bare Ziffer replacing one in such a list is the residual risk.
+ */
+export function quotedZiffern(quote: string): QuotedHint[] {
+  const items = quote.split(ZIFFER_START)
+  if (REFERENCE_LEAD.test(items[0] ?? '')) return []
+  const out: QuotedHint[] = []
+  for (const item of items) {
+    const ziffer = item.replace(/\s+/g, ' ').trim()
+    if (!ACT_ZIFFER.test(ziffer)) continue
+    const acts = parseEuActCitations(ziffer, WINDOW_CITATIONS)
+    if (acts.length) out.push({ text: ziffer, acts })
+  }
+  return out
+}
+
+/** What quoted hint Ziffern say: a directive among them is implemented, else a regulation flanked. */
+export function quotedHintSignal(acts: readonly EuAct[]): LawSignal | null {
+  return !acts.length ? null : acts.some((a) => a.kind === 'richtlinie') ? 'umsetzung' : 'durchfuehrung'
+}
+
+/** Kinds that end what a Novellierungsanordnung quotes: the next instruction, Artikel or title. */
+const QUOTE_END: ReadonlySet<string> = new Set(['novao', 'article', 'title'])
+const QUOTE_MARK = /["„»“«]/
+
+/**
+ * The quoted hint Ziffern of a Bund law text: what each
+ * Novellierungsanordnung quotes — „25. § 6 Abs. 2 wird folgende Z 3
+ * angefügt" and below it `"3. Durchführungsbeschluss 2019/2010 der
+ * Kommission …"` (BEGUT_45BB5DFC, the AEV Verbrennungsgas), RIS's straight
+ * quotes — read by `quotedZiffern`. Each becomes a window that starts at
+ * its Novellierungsanordnung, so the law in force is asked about the §
+ * it addresses (rule D4), like any hint window.
+ *
+ * NOT A HINT BY ITSELF (measured 05.11.2026). The Länder take such a
+ * Ziffer as a hint, with a reference list as the residual risk; in the
+ * Bund that risk is the rule. Over the 512 RIS records since 2024 the reading
+ * named new acts in 24 drafts, and most were the Verweisungslisten of the
+ * financial-market laws („§ 190 Abs. 4 Z 16 lautet: "16. Richtlinie
+ * 2014/65/EU …"", „§ 71 Abs. 2 Z 22", „§ 196 Abs. 2 Z 32") and the legal
+ * bases of the statistics regulations („§ 14 Z 2 lautet: "2. Verordnung
+ * (EU) Nr. 549/2013 …""). Nothing in the draft tells them apart from „§ 6
+ * Abs. 2 wird folgende Z 3 angefügt"; the § in force does. So each window
+ * is marked `quoted`, and the service keeps it only where the § it
+ * addresses is a hint in the law in force (`isHintParagraph`).
+ */
+export function readQuotedNovelleHints(blocks: readonly LawTextBlock[]): LawWindow[] {
+  const windows: LawWindow[] = []
+  for (let i = 0; i < blocks.length; i++) {
+    if (blocks[i]!.kind !== 'novao') continue
+    const instruction = blockText(blocks[i]!)
+    const inline = QUOTE_MARK.exec(instruction)
+    const lines = inline ? [instruction.slice(inline.index)] : []
+    for (let j = i + 1; j < blocks.length && !QUOTE_END.has(blocks[j]!.kind); j++) lines.push(blockText(blocks[j]!))
+    if (!lines.length || !/^\s*["„»]/.test(lines[0]!)) continue
+    const quote = lines.map((l) => l.replace(/^[\s"„»]+|[\s"“«]+$/g, '')).join('\n')
+    for (const hint of quotedZiffern(quote)) windows.push({ text: hint.text, start: i, signal: quotedHintSignal(hint.acts)!, acts: hint.acts, quoted: true })
+  }
+  return windows
+}
+
+/**
+ * Whether a § of the law in force — its plain text, as RIS serves it — is
+ * an Umsetzungshinweis: a hint heading („Umsetzungshinweis", „Bezugnahme
+ * auf Unionsrecht", „Umsetzung von Rechtsakten der Europäischen Union"), or
+ * a sentence that implements or carries out („Durch diese Verordnung werden
+ * folgende Rechtsakte … umgesetzt:"). A list of references („Soweit in
+ * diesem Bundesgesetz auf … verwiesen wird") is none, and nor are the words
+ * of the act titles it lists (`withoutActTitles`).
+ */
+export function isHintParagraph(text: string): boolean {
+  // In its own words: a reference list's act titles say „zur Umsetzung der …" too.
+  const own = withoutActTitles(text)
+  if (LAW_HEADING_WORD.test(own)) return true
+  return readUmsetzungshinweis(own).windows.some((w) => w.signal === 'umsetzung' || w.signal === 'durchfuehrung')
+}
+
+/**
+ * What a Bund law text says about EU law: its hint windows
+ * (`readUmsetzungshinweis`) and the quoted Ziffern its Novellen add to a
+ * hint in force (`readQuotedNovelleHints`) — a Ziffer whose acts a window
+ * names already adds nothing.
+ */
+export function readBundLaw(blocks: readonly LawTextBlock[]): UmsetzungshinweisReading {
+  const law = readUmsetzungshinweis(blocks)
+  const named = new Set(law.acts.map((a) => a.celex))
+  const quoted = readQuotedNovelleHints(blocks).filter((w) => w.acts.some((a) => !named.has(a.celex)))
+  return quoted.length ? readingOfWindows([...law.windows, ...quoted], law.dropped) : law
+}
+
+/** A reading of some windows: their signals, the strongest of those naming an act, their acts. */
+export function readingOfWindows(windows: LawWindow[], dropped: string[] = []): UmsetzungshinweisReading {
   return {
     signal: strongestSignal(windows.map((w) => w.signal)),
     actSignal: strongestSignal(windows.filter((w) => w.acts.length).map((w) => w.signal)),

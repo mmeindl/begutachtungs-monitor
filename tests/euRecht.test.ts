@@ -3,7 +3,7 @@ import { join } from 'node:path'
 import { describe, expect, it } from 'vitest'
 import { baseActCelexes, celexOf, eliOf, parseEuActCitations, readEuActCitations } from '../server/utils/eu/actCitations'
 import { classifyVorblatt, classifyVorblattSentence, hasTextLayer, isVorblattDocument } from '../server/utils/eu/vorblatt'
-import { readExplanationsEuSignal, readUmsetzungshinweis, type LawTextBlock } from '../server/utils/eu/umsetzungshinweis'
+import { isHintParagraph, readBundLaw, readExplanationsEuSignal, readUmsetzungshinweis, type LawTextBlock } from '../server/utils/eu/umsetzungshinweis'
 import { euActSubject } from '../shared/utils/eu'
 import { CELEX_RE, deadlineOf, parseTranspositionAnswer, transpositionQuery, transpositionUrl, type SparqlAnswer } from '../server/utils/eu/cellar'
 import { combineVerdicts, decideEuMarker } from '../server/utils/eu/euMarker'
@@ -395,6 +395,40 @@ describe('readUmsetzungshinweis', () => {
       { kind: 'ziff', gld: '2.', text: 'Richtlinie (EU) 2024/1499 über Standards für Gleichbehandlungsstellen, ABl. L 2024/1499, 29.5.2024.' },
     ])
     expect(r.acts.map((a) => a.celex)).toEqual(['32000L0043', '32024L1499'])
+  })
+})
+
+describe('the Bund\'s quoted hint Ziffer (readBundLaw, isHintParagraph)', () => {
+  // BEGUT_45BB5DFC, the AEV Verbrennungsgas, as RIS blocks it: straight quotes, the number in the text.
+  const AEV: LawTextBlock[] = [
+    { kind: 'novao', text: '24. § 5 werden folgende Absätze 7 und 8 angefügt:' },
+    { kind: 'abs', text: '"(7) § 1 Abs. 1 Z 9 in der Fassung der Verordnung BGBl. II Nr. xxx/2023 tritt mit dem der Kundmachung folgenden Tag in Kraft."' },
+    { kind: 'novao', text: '25. § 6 Abs. 2 wird folgende Z 3 angefügt' },
+    { kind: 'ziff', text: '"3. Durchführungsbeschluss 2019/2010 der Kommission vom 12. November 2019 über Schlussfolgerungen zu den besten verfügbaren Techniken (BVT) gemäß der IE-RL in Bezug auf die Abfallverbrennung (Abl. Nr. L 312/55 vom 3. Dezember 2019)."' },
+    { kind: 'novao', text: '26. In Anlage A wird die Wortfolge "Dioxine und Furane" ersetzt.' },
+  ]
+
+  it('reads the Ziffer a Novellierungsanordnung quotes into a §, as a window marked quoted at that instruction', () => {
+    expect(readUmsetzungshinweis(AEV).acts).toEqual([])
+    const r = readBundLaw(AEV)
+    expect(r.acts.map((a) => a.celex)).toEqual(['32019D2010'])
+    expect(r.windows[0]).toMatchObject({ start: 2, signal: 'durchfuehrung', quoted: true })
+  })
+
+  it('skips a quoted list that introduces itself as references', () => {
+    expect(readBundLaw([
+      { kind: 'novao', text: '3. § 15 lautet:' },
+      { kind: 'abs', gld: '§ 15.', text: '"Soweit in dieser Verordnung auf andere Rechtsvorschriften verwiesen wird, sind diese in folgender Fassung anzuwenden:' },
+      { kind: 'ziff', text: '1. Verordnung (EU) 2016/792 über harmonisierte Verbraucherpreisindizes."' },
+    ]).acts).toEqual([])
+  })
+
+  it('takes a § of the law in force for a hint by its own words, not by the act titles it lists', () => {
+    expect(isHintParagraph('Umsetzungshinweis § 106. Dieses Bundesgesetz dient der Umsetzung folgender Richtlinien der Europäischen Union: 1. Richtlinie 96/23/EG …')).toBe(true)
+    expect(isHintParagraph('Bezugnahme auf Unionsrecht § 45. Durch dieses Bundesgesetz werden folgende Richtlinien in österreichisches Recht umgesetzt: 1. Richtlinie 2005/29/EG …')).toBe(true)
+    expect(isHintParagraph('§ 1. (1) Diese Verordnung dient der Durchführung der Bestimmungen der Delegierten Verordnung (EU) 2019/2090 …')).toBe(true)
+    // Börsegesetz 2018 § 190: a reference list whose items' titles say „zur Umsetzung der …".
+    expect(isHintParagraph('§ 190. (5) Soweit in diesem Bundesgesetz auf Verordnungen der Europäischen Union verwiesen wird, sind diese in der nachfolgend genannten Fassung anzuwenden: 19. Verordnung (EU) 2018/1212 zur Festlegung von Mindestanforderungen zur Umsetzung der Bestimmungen der Richtlinie 2007/36/EG in Bezug auf die Identifizierung der Aktionäre, ABl. Nr. L 223 vom 04.09.2018 S. 1; 20. Verordnung (EG) Nr. 2273/2003 zur Durchführung der Richtlinie 2003/6/EG, ABl. Nr. L 336 vom 22.12.2003 S. 33.')).toBe(false)
   })
 })
 

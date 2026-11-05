@@ -376,6 +376,22 @@ export function readEuActCitations(text: string, options: CitationOptions = {}):
   return { acts: uniqueActs([kept.map((f) => f.act)]), occurrences: kept.map(({ at, act }) => ({ at, act })), titleReferencesDropped: dropped, referencesDropped: references }
 }
 
+/**
+ * `text` with every act's title blanked (`titleSpanEnd`), its length kept:
+ * what a provision says in its own words. A reference list names „Verordnung
+ * (EU) 2018/1212 zur Festlegung von Mindestanforderungen zur Umsetzung der
+ * Bestimmungen der Richtlinie 2007/36/EG" — words of the act's title, not of
+ * the provision (Börsegesetz 2018 § 190, 05.11.2026).
+ */
+export function withoutActTitles(text: string): string {
+  let out = text
+  for (const { at, act } of readEuActCitations(text).occurrences) {
+    const end = titleSpanEnd(text, at + act.raw.length)
+    if (end > at + act.raw.length) out = out.slice(0, at + act.raw.length) + ' '.repeat(end - at - act.raw.length) + out.slice(end)
+  }
+  return out
+}
+
 /** Every act cited in `text` — `readEuActCitations` without the bookkeeping. */
 export function parseEuActCitations(text: string, options: CitationOptions = {}): EuAct[] {
   return readEuActCitations(text, options).acts

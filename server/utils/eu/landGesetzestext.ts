@@ -43,8 +43,8 @@
  * blocks of (1) are cut from this part too: the block reader alone ends at
  * the Erläuterungen and reads a Vorblatt as law.
  */
-import { parseEuActCitations, uniqueActs, type EuAct } from './actCitations'
-import { readUmsetzungshinweis, strongestSignal, type LawSignal, type LawWindow } from './umsetzungshinweis'
+import { uniqueActs, type EuAct } from './actCitations'
+import { quotedHintSignal, quotedZiffern, readUmsetzungshinweis, strongestSignal, type LawSignal, type LawWindow, type QuotedHint } from './umsetzungshinweis'
 import { AFTER_LAW_RE, ENACTING_RE, lawBlocksFromPdfPages, NOISE_RE } from '../laender/draftPdfLaw'
 import { END_RE, TITLE_RE } from '../laender/landExplanations'
 
@@ -72,47 +72,16 @@ export function landLawPart(pages: readonly string[]): string[] | null {
 }
 
 /**
- * A quoted Ziffer that opens with an EU act: its number, then the act —
- * „Richtlinie 2024/1712/EU …", „Art. 15 und 16 der Richtlinie (EU)
- * 2018/2001 …", „Durchführungsverordnung (EU) 2023/564 …".
- */
-const ACT_ZIFFER = /^\d+[a-z]*\.\s+(?:Art(?:ikel|\.)?\s*\d+[a-z]?\b[^„“"]{0,80}?\s(?:der|des)\s+)?(?:Richtlinie|Verordnung|Durchführungsverordnung|Delegierten?\s+Verordnung|Beschluss|Durchführungsbeschluss|Rahmenbeschluss)\b/
-/** A numbered Ziffer's start inside a quote. */
-const ZIFFER_START = /(?:^|\n)(?=\d+[a-z]*\.\s)/
-
-/** The lead of a list of references, not of implementations. */
-const REFERENCE_LEAD = /verwei|zu verstehen/i
-
-/** One quoted Ziffer read as a hint: its text and the acts it names. */
-export interface QuotedHint {
-  text: string
-  acts: EuAct[]
-}
-
-/**
  * Every quoted Ziffer of the law text that opens with an EU act. `lines`
- * are the law text's (`landLawPart`). The acts of each are read with the
+ * are the law text's (`landLawPart`). The Ziffern of each quote are read by
+ * the reader the Bund shares (`quotedZiffern`): the acts of each with the
  * title references left out („Richtlinie 2024/1712/EU zur Änderung der
- * Richtlinie 2011/36/EU" names 2024/1712).
+ * Richtlinie 2011/36/EU" names 2024/1712), a quote that introduces its list
+ * as references skipped.
  */
 export function quotedHints(lines: readonly string[]): QuotedHint[] {
   const text = lines.join('\n')
-  const out: QuotedHint[] = []
-  for (const quote of text.matchAll(/[„»]([^“«]{1,4000})[“«]/g)) {
-    const items = quote[1]!.split(ZIFFER_START)
-    // A list the quote introduces as references is none: „Dieses Gesetz
-    // verweist auf folgende Rechtsakte der Europäischen Union:" (Burgenland,
-    // Salzburg), „Soweit in diesem Gesetz auf Verordnungen (EU) verwiesen
-    // wird, sind darunter zu verstehen:" (Kärnten) — the Pflanzenschutz laws.
-    if (REFERENCE_LEAD.test(items[0] ?? '')) continue
-    for (const item of items) {
-      const ziffer = item.replace(/\s+/g, ' ').trim()
-      if (!ACT_ZIFFER.test(ziffer)) continue
-      const acts = parseEuActCitations(ziffer, { implemented: true })
-      if (acts.length) out.push({ text: ziffer, acts })
-    }
-  }
-  return out
+  return [...text.matchAll(/[„»]([^“«]{1,4000})[“«]/g)].flatMap((quote) => quotedZiffern(quote[1]!))
 }
 
 /** What a Land's law text says about EU law. */
@@ -140,7 +109,7 @@ export function readLandLaw(pages: readonly string[]): LandLawReading {
   const quoted = quotedHints(part)
   const quotedActs = uniqueActs(quoted.map((q) => q.acts))
   const quotedOnly = quotedActs.filter((a) => !law.acts.some((b) => b.celex === a.celex))
-  const quotedSignal: LawSignal | null = !quotedActs.length ? null : quotedActs.some((a) => a.kind === 'richtlinie') ? 'umsetzung' : 'durchfuehrung'
+  const quotedSignal = quotedHintSignal(quotedActs)
   return {
     read: true,
     signal: law.signal === 'umsetzung' || law.signal === 'durchfuehrung' ? law.signal : quotedSignal ?? law.signal,

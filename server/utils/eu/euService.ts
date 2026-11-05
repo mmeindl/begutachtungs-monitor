@@ -30,7 +30,7 @@
 import type { EuActView, EuRechtResponse, ExplanationsResponse, TraceLink } from '#shared/types'
 import { parseEuActCitations, baseActCelexes, uniqueActs, type EuAct } from './actCitations'
 import { classifyVorblatt, hasTextLayer, isVorblattDocument, linesOfPages, type VorblattClass } from './vorblatt'
-import { readExplanationsEuSignal, readUmsetzungshinweis, type LawWindow } from './umsetzungshinweis'
+import { isHintParagraph, readBundLaw, readExplanationsEuSignal, readingOfWindows, type LawWindow } from './umsetzungshinweis'
 import { deadlineOf } from './cellar'
 import { transpositionOf } from './cellarService'
 import { combineVerdicts, decideEuMarker, lawTextMarker } from './euMarker'
@@ -223,37 +223,52 @@ function placesOf(blocks: readonly TextBlock[]): (start: number) => Place | null
   }
 }
 
+/** What the law in force says about one window's § (rule D4, and the quoted Ziffer's gate). */
+interface WindowVerdict {
+  /** The acts the addressed § names today; empty for a new law; null where it could not be read. */
+  named: Set<string> | null
+  /** Whether the addressed § is an Umsetzungshinweis (`isHintParagraph`); null where none could be read. */
+  hint: boolean | null
+  /** RIS did not answer: not an answer, not stored. */
+  failed: boolean
+}
+
 /**
  * Whether the law in force already names each act a window names (rule D4):
  * the § the window's Novellierungsanordnung addresses, as it stood on the
  * first day of the Begutachtung — the version the ressort wrote against, and
- * the one the § comparison reads.
+ * the one the § comparison reads. And whether that § is a hint at all: a
+ * quoted Ziffer (`readQuotedNovelleHints`) is the draft's act only where it
+ * is (05.11.2026).
  *
  * Per CELEX: false where the standing § names it; true where the window
  * stands in a new law, or every § it addresses is new; null where the law
  * or the address could not be resolved (a stable answer, stored); `failed`
  * where RIS did not answer (not stored).
  */
-async function inForce(window: LawWindow, place: Place | null, asOf: string | null): Promise<{ named: Set<string> | null; failed: boolean }> {
+async function inForce(place: Place | null, asOf: string | null): Promise<WindowVerdict> {
   // Outside any amending Artikel the window is the draft's own new law.
-  if (!place || !place.article.amends) return { named: new Set(), failed: false }
-  if (!place.article.bgbl || !asOf || !place.instruction) return { named: null, failed: false }
+  if (!place || !place.article.amends) return { named: new Set(), hint: null, failed: false }
+  if (!place.article.bgbl || !asOf || !place.instruction) return { named: null, hint: null, failed: false }
   const paras = addressedUnits(place.instruction).paras
-  if (!paras.length) return { named: null, failed: false }
+  if (!paras.length) return { named: null, hint: null, failed: false }
   try {
     const { organ, nummer } = place.article.bgbl
     const law = await resolveKonsLaw(organ, nummer, asOf, place.article.title ?? '', place.article.clause)
-    if (!law) return { named: null, failed: false }
+    if (!law) return { named: null, hint: null, failed: false }
     const wanted = new Set(paras.map(anlageLabelKey))
     const refs = Object.entries(law.paragraphs).filter(([label]) => wanted.has(anlageLabelKey(label))).map(([, ref]) => ref)
     const named = new Set<string>()
+    let hint: boolean | null = null
     for (const ref of refs) {
       if (!ref.xmlUrl) continue
-      for (const act of parseEuActCitations(konsText(await fetchParagraphXml(ref.nor, ref.xmlUrl)))) named.add(act.celex)
+      const text = konsText(await fetchParagraphXml(ref.nor, ref.xmlUrl))
+      for (const act of parseEuActCitations(text)) named.add(act.celex)
+      hint = hint === true || isHintParagraph(text)
     }
-    return { named, failed: false }
+    return { named, hint, failed: false }
   } catch {
-    return { named: null, failed: true }
+    return { named: null, hint: null, failed: true }
   }
 }
 
@@ -265,7 +280,27 @@ async function assemble(docs: DraftDocuments): Promise<Gathered<EuRechtResponse>
   const withHeading = readable.filter((r) => r.cls !== null)
 
   const blocks = await docs.blocks()
-  const law = readUmsetzungshinweis(blocks)
+  const read = readBundLaw(blocks)
+  // The law in force per window, read once, when first asked.
+  const place = placesOf(blocks)
+  const verdicts = new Map<LawWindow, Promise<WindowVerdict>>()
+  const verdictOf = (w: LawWindow): Promise<WindowVerdict> => {
+    if (!verdicts.has(w)) verdicts.set(w, inForce(place(w.start), start))
+    return verdicts.get(w)!
+  }
+  let complete = true
+  // A quoted Ziffer counts where the § it is quoted into is a hint in force.
+  const kept: LawWindow[] = []
+  for (const w of read.windows) {
+    if (!w.quoted) {
+      kept.push(w)
+      continue
+    }
+    const v = await verdictOf(w)
+    if (v.failed) complete = false
+    if (v.hint === true) kept.push(w)
+  }
+  const law = kept.length === read.windows.length ? read : readingOfWindows(kept, read.dropped)
   // What may decide is a hint that names an act (`actSignal`), not any window.
   const lawHint = { signal: law.actSignal, acts: law.acts }
 
@@ -283,7 +318,7 @@ async function assemble(docs: DraftDocuments): Promise<Gathered<EuRechtResponse>
     if (!explanations) {
       return { value: empty(readable.length
         ? 'Das Vorblatt dieses Entwurfs nennt sein Verhältnis zum Unionsrecht nicht.'
-        : 'Zu diesem Entwurf ist kein lesbares Vorblatt veröffentlicht.', start), complete: true }
+        : 'Zu diesem Entwurf ist kein lesbares Vorblatt veröffentlicht.', start), complete }
     }
   }
 
@@ -295,7 +330,7 @@ async function assemble(docs: DraftDocuments): Promise<Gathered<EuRechtResponse>
   if (!decision.marker) {
     // Read, and no fact: the Vorblatt says it is no EU matter, or its
     // Vorblätter contradict each other and the law text names no act.
-    return { value: { ...empty('', start), available: true, unavailableReason: null, sources }, complete: true }
+    return { value: { ...empty('', start), available: true, unavailableReason: null, sources }, complete }
   }
 
   // WHICH ACT: the law text, then the title. Where the Erläuterungen
@@ -313,14 +348,12 @@ async function assemble(docs: DraftDocuments): Promise<Gathered<EuRechtResponse>
   // one law it cannot resolve must not take the deadline from the others
   // (30/ME: 2023/2864 in eleven Artikel). Old where every law that could be
   // read names it already; unknown where none could be read.
-  let complete = true
   const isNew = new Map<string, boolean | null>()
   const base = new Set<string>()
   if (fromLaw) {
-    const place = placesOf(blocks)
     for (const w of law.windows) {
       for (const c of baseActCelexes(w.text)) base.add(c)
-      const { named: standing, failed } = await inForce(w, place(w.start), start)
+      const { named: standing, failed } = await verdictOf(w)
       if (failed) complete = false
       for (const act of w.acts) {
         const verdict = standing === null ? null : !standing.has(act.celex)
