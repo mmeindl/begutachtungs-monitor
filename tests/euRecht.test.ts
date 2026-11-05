@@ -318,7 +318,10 @@ describe('the Cellar', () => {
   it('puts only a validated CELEX into a query', () => {
     expect(transpositionQuery('32024L1069')).toContain('<http://publications.europa.eu/resource/celex/32024L1069>')
     expect(transpositionUrl('32024L1069')).toMatch(/^https:\/\/publications\.europa\.eu\/webapi\/rdf\/sparql\?query=/)
-    for (const bad of ['32024L1069> . ?x ?y ?z', '32024F0584', '2024L1069', '32024L106', '']) {
+    // A Rahmenbeschluss is an act of the Cellar too (05.11.2026).
+    expect(CELEX_RE.test('32009F0315')).toBe(true)
+    expect(transpositionQuery('32009F0315')).toContain('/celex/32009F0315>')
+    for (const bad of ['32024L1069> . ?x ?y ?z', '32024X0584', '2024L1069', '32024L106', '']) {
       expect(CELEX_RE.test(bad), bad).toBe(false)
       expect(() => transpositionQuery(bad), bad).toThrow()
     }
@@ -433,6 +436,9 @@ describe('euActSubject', () => {
     const gdpr = euActSubject('Verordnung (EU) 2016/679 des Europäischen Parlaments und des Rates vom 27. April 2016 zum Schutz natürlicher Personen bei der Verarbeitung personenbezogener Daten, zum freien Datenverkehr und zur Aufhebung der Richtlinie 95/46/EG (Datenschutz-Grundverordnung) (Text von Bedeutung für den EWR)')
     expect(gdpr).toBe('zum Schutz natürlicher Personen bei der Verarbeitung personenbezogener Daten, zum freien Datenverkehr und zur Aufhebung der Richtlinie 95/46/EG (Datenschutz-Grundverordnung)')
     expect(euActSubject('Richtlinie (EU) 2024/1 vom 2. Jänner 2024 über etwas Text von Bedeutung für den EWR ')).toBe('über etwas')
+    // The note with a period inside the parentheses, and with a space before the closing one — both occur.
+    expect(euActSubject('Verordnung (EU) 2018/1999 des Europäischen parlaments und des Rates vom 11. Dezember 2018 über das Governance-System (Text von Bedeutung für den EWR.)')).toBe('über das Governance-System')
+    expect(euActSubject('Verordnung (EU) 2024/1 vom 1. März 2024 über etwas (Text von Bedeutung für den EWR. )')).toBe('über etwas')
   })
 
   it('gives the whole title where no date stands, and null for none', () => {

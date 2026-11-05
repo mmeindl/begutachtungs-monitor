@@ -37,8 +37,14 @@ export const CELLAR_SPARQL = 'https://publications.europa.eu/webapi/rdf/sparql'
  */
 export const CELLAR_QUERY_VERSION = 3
 
-/** Only a CELEX of this shape is ever put into a query — sector 3, a directive, regulation or decision. */
-export const CELEX_RE = /^3\d{4}[LRD]\d{4}$/
+/**
+ * Only a CELEX of this shape is ever put into a query — sector 3, a
+ * directive, regulation, decision or framework decision. F was missing until
+ * 05.11.2026: the Cellar knows a Rahmenbeschluss like any act (32009F0315
+ * answers with its adoption day and German title); only the transposition
+ * date is a directive's column.
+ */
+export const CELEX_RE = /^3\d{4}[LRDF]\d{4}$/
 
 /**
  * The Cellar answers in ~0,25 s (measured over ~420 acts, 04.11.2026). A

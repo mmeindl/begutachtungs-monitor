@@ -36,7 +36,9 @@ export function euActCelex(kind: string, year: string, number: string): string |
   return `3${year}${letter}${number.padStart(4, '0')}`
 }
 
-const EEA_RE = /\s*\(?\s*Text von Bedeutung für den EWR\s*\)?\s*$/
+// Four spellings among the 114 titles read on 05.11.2026: „(… EWR)" 58 times,
+// „(… EWR.)" three, „(… EWR. )" once, a bare „… EWR" once.
+const EEA_RE = /\s*\(?\s*Text von Bedeutung für den EWR\.?\s*\)?\.?\s*$/
 const MONTHS_DE = 'Januar|Jänner|Februar|März|April|Mai|Juni|Juli|August|September|Oktober|November|Dezember'
 // `\s` at every gap: EUR-Lex writes a no-break space between day and month
 // in most titles („vom 22.\u00a0November 2023"), an ASCII one in the rest.
