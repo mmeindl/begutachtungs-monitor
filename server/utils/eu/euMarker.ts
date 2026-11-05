@@ -1,6 +1,7 @@
 /**
  * The page's EU fact from the three readings — the rules D1, D2 and D5 of
- * docs/architecture.md §12.66, in one pure function.
+ * docs/architecture.md §12.66, and the law text's own hint between D1 and
+ * D5 (05.11.2026), in one pure function.
  *
  * PURE MODULE — no Nitro globals, relative imports only; the corpus script
  * runs the same decision over GP XXVIII.
@@ -29,9 +30,13 @@ const MARKER_OF: Partial<Record<VorblattClass, EuMarker>> = {
 export interface MarkerInput {
   /** The class of every Vorblatt that carried the EU heading — unreadable ones left out. */
   vorblatt: readonly VorblattClass[]
-  /** What the law text says, and the acts it names. */
+  /**
+   * What the law text says, and the acts it names. `signal` is the strongest
+   * signal of a window that names an act (`actSignal` of the readers) — the
+   * hint that may decide.
+   */
   law: { signal: LawSignal | null; acts: readonly EuAct[] }
-  /** The Erläuterungen' Allgemeiner Teil — consulted only where no Vorblatt could be read. */
+  /** The Erläuterungen' Allgemeiner Teil — consulted only where neither a Vorblatt nor the law text's hint decides. */
   explanations: 'umsetzung' | 'durchfuehrung' | null
 }
 
@@ -43,6 +48,25 @@ export interface MarkerDecision {
 }
 
 /**
+ * The fact the law text's own hint gives, or null: an Umsetzungshinweis
+ * that names an act implements it (`umsetzung`), one that flanks names a
+ * regulation (`flankierend-vo`, or `flankierend-rl` where every act is a
+ * directive). A „Bezugnahme" decides nothing, and nor does a hint that
+ * names no act.
+ */
+export function lawTextMarker(law: MarkerInput['law']): EuMarker | null {
+  if (!law.acts.length) return null
+  if (law.signal === 'umsetzung') return 'umsetzung'
+  if (law.signal === 'durchfuehrung') return law.acts.every((a) => a.kind === 'richtlinie') ? 'flankierend-rl' : 'flankierend-vo'
+  return null
+}
+
+/** The fact where the Erläuterungen' prose decides (D5). */
+export function explanationsMarker(signal: 'umsetzung' | 'durchfuehrung' | null): EuMarker | null {
+  return signal === 'umsetzung' ? 'umsetzung' : signal === 'durchfuehrung' ? 'flankierend-vo' : null
+}
+
+/**
  * The fact, or none.
  *
  * - One Vorblatt, or several that agree: their class decides (D1).
@@ -51,26 +75,26 @@ export interface MarkerDecision {
  *   Vorgaben" — decide nothing; the law text decides where it names an act,
  *   and otherwise there is no fact (D2). „Strongest class wins" fired a false
  *   marker on exactly that draft (04.11.2026).
- * - No Vorblatt with the EU heading at all: the Erläuterungen decide whether,
- *   never which act (D5).
+ * - No Vorblatt with the EU heading at all: the law text's own hint decides
+ *   where it names an act (05.11.2026) — Tirol's „§ 13b Durchführung
+ *   von Unionsrecht Durch dieses Gesetz werden die in der Verordnung (EU)
+ *   2024/1028 … vorgesehenen Durchführungsbestimmungen erlassen"
+ *   (t-2026-588) is the draft's own word, stronger than any prose about it.
+ * - Neither: the Erläuterungen decide whether, never which act (D5).
  */
 export function decideEuMarker(input: MarkerInput): MarkerDecision {
+  const byLaw = lawTextMarker(input.law)
   if (input.vorblatt.length) {
     const facts = new Set(input.vorblatt.map((c) => MARKER_OF[c] ?? null))
     if (facts.size === 1) {
       const marker = [...facts][0]!
       return { marker, source: marker ? 'vorblatt' : null, contradicting: false }
     }
-    if (input.law.acts.length && input.law.signal === 'umsetzung') return { marker: 'umsetzung', source: 'gesetzestext', contradicting: true }
-    if (input.law.acts.length && input.law.signal === 'durchfuehrung') {
-      const marker = input.law.acts.every((a) => a.kind === 'richtlinie') ? 'flankierend-rl' : 'flankierend-vo'
-      return { marker, source: 'gesetzestext', contradicting: true }
-    }
-    return { marker: null, source: null, contradicting: true }
+    return { marker: byLaw, source: byLaw ? 'gesetzestext' : null, contradicting: true }
   }
-  if (input.explanations === 'umsetzung') return { marker: 'umsetzung', source: 'erlaeuterungen', contradicting: false }
-  if (input.explanations === 'durchfuehrung') return { marker: 'flankierend-vo', source: 'erlaeuterungen', contradicting: false }
-  return { marker: null, source: null, contradicting: false }
+  if (byLaw) return { marker: byLaw, source: 'gesetzestext', contradicting: false }
+  const marker = explanationsMarker(input.explanations)
+  return { marker, source: marker ? 'erlaeuterungen' : null, contradicting: false }
 }
 
 /**

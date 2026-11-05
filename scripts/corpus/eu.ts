@@ -303,6 +303,8 @@ const HAND_LAW = /Umsetzungshinweis|Bezugnahme auf (?:das )?Unionsrecht|wird die
 interface LawRead {
   available: boolean
   signal: Signal | null
+  /** The strongest signal of a window that names an act — what the page decides on */
+  actSignal: Signal | null
   /** The text each signal was read from — a heading's window or one Absatz */
   windows: string[]
   /** Acts named inside those windows */
@@ -327,6 +329,7 @@ function readLawBlocks(blocks: TextBlock[]): Omit<LawRead, 'available' | 'cost' 
   const plain = blocks.map(blockText).join(' ')
   return {
     signal: read.signal,
+    actSignal: read.actSignal,
     windows,
     // Through `actsIn` once more, for the title-reference count; the acts are the module's.
     acts: uniqueActs(windows.map((w) => actsIn(w, true))),
@@ -338,7 +341,7 @@ function readLawBlocks(blocks: TextBlock[]): Omit<LawRead, 'available' | 'cost' 
 
 async function readLaw(record: RisBegutFlat): Promise<LawRead> {
   const url = record.mainDocument.xml
-  if (!url) return { available: false, signal: null, windows: [], acts: [], cited: 0, unanchored: 0, dropped: [], handHit: false, cost: [] }
+  if (!url) return { available: false, signal: null, actSignal: null, windows: [], acts: [], cited: 0, unanchored: 0, dropped: [], handHit: false, cost: [] }
   const { text, cost } = await fetchRisText(url)
   const blocks = parseRisXml(text)
   const plain = blocks.map(blockText).join(' ')
@@ -500,7 +503,7 @@ const rows: Row[] = await pool(
       return {
         ...base,
         vorblatt: { docs: 0, withPdf: 0, withText: 0, withHeading: 0, source: null, cls: 'kein-vorblatt', classes: [], sentences: [], actsAll: [], actsZiele: [], ziele: [], cost: [] },
-        law: { available: false, signal: null, windows: [], acts: [], cited: 0, unanchored: 0, dropped: [], handHit: false, cost: [] },
+        law: { available: false, signal: null, actSignal: null, windows: [], acts: [], cited: 0, unanchored: 0, dropped: [], handHit: false, cost: [] },
         erl: { available: false, general: false, signal: null, signalAnyPart: null, paragraphs: [], acts: [], cited: 0, handHit: false, bareFristOnly: false, unanchored: 0, cost: [] },
         error: String(err).slice(0, 200),
       }
@@ -867,7 +870,7 @@ console.log(`\n## g. Die Regel der Seite (euMarker.ts, ohne D4)`)
 for (const p of populations) {
   const decided = p.rows.map((r) => decideEuMarker({
     vorblatt: r.vorblatt.classes,
-    law: { signal: r.law.signal, acts: r.law.acts },
+    law: { signal: r.law.actSignal, acts: r.law.acts },
     explanations: r.erl.signal === 'bezug' ? null : r.erl.signal,
   }))
   const n = p.rows.length

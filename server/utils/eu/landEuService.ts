@@ -132,7 +132,7 @@ export async function assembleLandEu(land: LandCode, detail: LandDraftRecord): P
     draft: { url: read.draftUrl, pages: draftPages },
   })
   const { found, decision, named, base, sources } = reading
-  if (!erl.available && !found) return { value: empty(erl.unavailableReason ?? 'Zu diesem Entwurf sind keine Erläuterungen zu lesen.', start), complete }
+  if (!erl.available && !found && decision.source !== 'gesetzestext') return { value: empty(erl.unavailableReason ?? 'Zu diesem Entwurf sind keine Erläuterungen zu lesen.', start), complete }
   if (!decision.marker) {
     // Read, and no fact: the Land says it is no EU matter, or says nothing.
     return { value: { ...empty('', start), available: true, unavailableReason: null, sources }, complete }

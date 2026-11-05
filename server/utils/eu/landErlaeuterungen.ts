@@ -41,7 +41,7 @@
  * an act is none.
  */
 import { parseEuActCitations, type EuAct, uniqueActs } from './actCitations'
-import { decideEuMarker, type MarkerDecision } from './euMarker'
+import { decideEuMarker, explanationsMarker, type MarkerDecision } from './euMarker'
 import { readExplanationsEuSignal, type ExplanationsPassageText, type LawSignal } from './umsetzungshinweis'
 import { classifyVorblatt, classifyVorblattSentence, sentencesOf, type VorblattClass } from './vorblatt'
 
@@ -130,8 +130,12 @@ export interface LandMarkerDecision extends MarkerDecision {
 
 /**
  * The page's decision for a Land: the statement with the Vorblatt's weight
- * where the Land wrote one (D1, D2), the prose of the general part where it
- * did not (D5). `law` is what the draft's law text says.
+ * where the Land wrote one (D1, D2); where it did not, the law text's own
+ * hint where it names an act (05.11.2026: Tirol's „§ 13b Durchführung von
+ * Unionsrecht" in t-2026-588 named Verordnung (EU) 2024/1028, and the page
+ * printed the prose's fact without it); then the prose of the general part
+ * (D5). `law` is what the draft's law text says — its `signal` the strongest
+ * of a window or quoted hint that names an act (`actSignal`).
  *
  * A STATEMENT IN WORDS THE CLASSIFIER DOES NOT KNOW (`freitext`) is not a
  * „no" (04.11.2026). The Bund's Vorblatt prints one of a few fixed
@@ -156,14 +160,13 @@ export function decideLandEuMarker(
     return { ...d, source: d.source === 'vorblatt' ? statement.road : d.source, actsAllowed: true }
   }
   if (statement) {
+    // The statement in words of its own still speaks before the law text.
     const own = readExplanationsEuSignal([{ heading: statement.heading, text: [statement.sentence] }]).signal
-    if (own) {
-      const d = decideEuMarker({ vorblatt: [], law, explanations: own })
-      return { ...d, source: statement.road, actsAllowed: true }
-    }
+    if (own) return { marker: explanationsMarker(own), source: statement.road, contradicting: false, actsAllowed: true }
   }
   const signal = readExplanationsEuSignal(general).signal
-  return { ...decideEuMarker({ vorblatt: [], law, explanations: signal }), actsAllowed: false }
+  const d = decideEuMarker({ vorblatt: [], law, explanations: signal })
+  return { ...d, actsAllowed: d.source === 'gesetzestext' }
 }
 
 // ---------------------------------------------------------------------------

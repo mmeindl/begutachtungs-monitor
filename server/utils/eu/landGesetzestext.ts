@@ -44,7 +44,7 @@
  * the Erläuterungen and reads a Vorblatt as law.
  */
 import { parseEuActCitations, uniqueActs, type EuAct } from './actCitations'
-import { readUmsetzungshinweis, type LawSignal, type LawWindow } from './umsetzungshinweis'
+import { readUmsetzungshinweis, strongestSignal, type LawSignal, type LawWindow } from './umsetzungshinweis'
 import { AFTER_LAW_RE, ENACTING_RE, lawBlocksFromPdfPages, NOISE_RE } from '../laender/draftPdfLaw'
 import { END_RE, TITLE_RE } from '../laender/landExplanations'
 
@@ -120,6 +120,8 @@ export interface LandLawReading {
   /** The law text could be bounded and cut into blocks. */
   read: boolean
   signal: LawSignal | null
+  /** The strongest signal of a window or quoted hint that names an act (`UmsetzungshinweisReading.actSignal`). */
+  actSignal: LawSignal | null
   /** Every act named — the blocks' first, then the quoted hints'. */
   acts: EuAct[]
   windows: LawWindow[]
@@ -133,7 +135,7 @@ export interface LandLawReading {
 export function readLandLaw(pages: readonly string[]): LandLawReading {
   const part = landLawPart(pages)
   const blocks = part ? lawBlocksFromPdfPages([part.join('\n')]) : null
-  if (!part || !blocks) return { read: false, signal: null, acts: [], windows: [], quoted: [], quotedOnly: [] }
+  if (!part || !blocks) return { read: false, signal: null, actSignal: null, acts: [], windows: [], quoted: [], quotedOnly: [] }
   const law = readUmsetzungshinweis(blocks)
   const quoted = quotedHints(part)
   const quotedActs = uniqueActs(quoted.map((q) => q.acts))
@@ -142,6 +144,7 @@ export function readLandLaw(pages: readonly string[]): LandLawReading {
   return {
     read: true,
     signal: law.signal === 'umsetzung' || law.signal === 'durchfuehrung' ? law.signal : quotedSignal ?? law.signal,
+    actSignal: strongestSignal([law.actSignal, quotedSignal].filter((k): k is LawSignal => k !== null)),
     acts: uniqueActs([law.acts, quotedActs]),
     windows: law.windows,
     quoted,

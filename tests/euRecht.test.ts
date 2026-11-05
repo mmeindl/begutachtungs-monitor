@@ -280,6 +280,17 @@ describe('readUmsetzungshinweis', () => {
     expect(r.acts.map((a) => a.celex)).toEqual(['32024R1028'])
   })
 
+  it('takes the deciding signal only from a window that names an act', () => {
+    const r = readUmsetzungshinweis([
+      { kind: 'abs', text: 'Mit diesem Bundesgesetz wird die IE-Richtlinie umgesetzt.', gld: '§ 3.' },
+      { kind: 'para_head', text: 'Unionsrecht' },
+      { kind: 'abs', text: 'Soweit in diesem Bundesgesetz auf die Richtlinie (EU) 2019/1937 verwiesen wird, ist sie in der geltenden Fassung anzuwenden.', gld: '§ 4.' },
+    ])
+    expect(r.signal).toBe('umsetzung')
+    expect(r.actSignal).toBe('bezug')
+    expect(r.acts.map((a) => a.celex)).toEqual(['32019L1937'])
+  })
+
   it('skips the table of contents', () => {
     expect(readUmsetzungshinweis([{ kind: 'toc', text: '§ 21a. Umsetzungshinweis' }]).windows).toEqual([])
   })
@@ -404,6 +415,19 @@ describe('decideEuMarker', () => {
   it('asks the Erläuterungen only where no Vorblatt can be read', () => {
     expect(decideEuMarker({ vorblatt: [], law: noLaw, explanations: 'umsetzung' })).toMatchObject({ marker: 'umsetzung', source: 'erlaeuterungen' })
     expect(decideEuMarker({ vorblatt: [], law: noLaw, explanations: null }).marker).toBeNull()
+  })
+
+  it('lets the law text\'s hint decide before the prose where no Vorblatt speaks and it names an act (t-2026-588)', () => {
+    const vo = parseEuActCitations('Verordnung (EU) 2024/1028')
+    expect(decideEuMarker({ vorblatt: [], law: { signal: 'durchfuehrung', acts: vo }, explanations: 'umsetzung' })).toEqual({ marker: 'flankierend-vo', source: 'gesetzestext', contradicting: false })
+    const rl = parseEuActCitations('Richtlinie (EU) 2024/1069')
+    expect(decideEuMarker({ vorblatt: [], law: { signal: 'umsetzung', acts: rl }, explanations: null })).toEqual({ marker: 'umsetzung', source: 'gesetzestext', contradicting: false })
+  })
+
+  it('leaves the decision to the prose where the hint names no act, or only refers', () => {
+    const rl = parseEuActCitations('Richtlinie (EU) 2019/1937')
+    expect(decideEuMarker({ vorblatt: [], law: { signal: 'umsetzung', acts: [] }, explanations: 'durchfuehrung' })).toMatchObject({ marker: 'flankierend-vo', source: 'erlaeuterungen' })
+    expect(decideEuMarker({ vorblatt: [], law: { signal: 'bezug', acts: rl }, explanations: null }).marker).toBeNull()
   })
 })
 

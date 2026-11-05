@@ -1,4 +1,5 @@
 import { describe, expect, it } from 'vitest'
+import { parseEuActCitations } from '../server/utils/eu/actCitations'
 import { decideLandEuMarker, entryHinweise, isLandEuHeading, normaliseLandHeading, readLandEuStatement, statementActs } from '../server/utils/eu/landErlaeuterungen'
 
 /*
@@ -130,6 +131,23 @@ describe('readLandEuStatement', () => {
     ]
     const d = decideLandEuMarker(readLandEuStatement(general, null), general, NO_LAW)
     expect([d.marker, d.source, d.actsAllowed]).toEqual(['umsetzung', 'erlaeuterungen', false])
+  })
+
+  it('lets a law-text hint that names an act decide before the prose, and name it (t-2026-588)', () => {
+    const general = [{ heading: 'Allgemeines', text: ['Mit dem Entwurf soll die Durchführung der Verordnung (EU) 2024/1028 sichergestellt werden.'] }]
+    const law = { signal: 'durchfuehrung' as const, acts: parseEuActCitations('Verordnung (EU) 2024/1028') }
+    const d = decideLandEuMarker(null, general, law)
+    expect([d.marker, d.source, d.actsAllowed]).toEqual(['flankierend-vo', 'gesetzestext', true])
+    // Without prose, too: the hint is the draft's own word.
+    expect(decideLandEuMarker(null, [], law).source).toBe('gesetzestext')
+  })
+
+  it('keeps the statement before the law text: a no stays a no, a yes in own words stays the statement\'s', () => {
+    const law = { signal: 'umsetzung' as const, acts: parseEuActCitations('Richtlinie (EU) 2024/1233') }
+    expect(decideLandEuMarker(readLandEuStatement(SBG_FALSE, null), SBG_FALSE, law).marker).toBeNull()
+    const general = [{ heading: '3. Übereinstimmung mit EU-Recht', text: ['Die vorgeschlagenen Regelungen dienen der Umsetzung von Unionsrecht.'] }]
+    const d = decideLandEuMarker(readLandEuStatement(general, null), general, law)
+    expect([d.marker, d.source]).toEqual(['umsetzung', 'erlaeuterungen'])
   })
 
   it('leaves prose without a heading to the D5 road, which names no act', () => {

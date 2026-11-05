@@ -13,7 +13,9 @@
  * draft implements —, then the law text's (its blocks and quoted hint
  * Ziffern, `landGesetzestext.ts`), which restate every act the law ever
  * took in, then Oberösterreich's „Umsetzungshinweis:" per provision
- * (`entryHinweise`). None on the prose road (D5).
+ * (`entryHinweise`). None on the prose road (D5). Where the law text's
+ * hint decided (no statement, 05.11.2026), the statement's acts are not
+ * read: a statement the classifier could not read said nothing.
  */
 import type { EuRechtResponse, LandCode, TraceLink } from '../../../shared/types'
 import { baseActCelexes, uniqueActs, type EuAct } from './actCitations'
@@ -59,7 +61,7 @@ export interface LandEuReading {
   sources: TraceLink[]
 }
 
-const NO_LAW: LandLawReading = { read: false, signal: null, acts: [], windows: [], quoted: [], quotedOnly: [] }
+const NO_LAW: LandLawReading = { read: false, signal: null, actSignal: null, acts: [], windows: [], quoted: [], quotedOnly: [] }
 
 /**
  * The Land's EU statement: the WFA heading in each document read, the
@@ -82,16 +84,17 @@ export function readLandEu(input: LandEuInput): LandEuReading {
   const general = input.explanations.available ? input.explanations.general : []
   const found = findStatement(input, general)
   const law = input.draft.pages ? readLandLaw(input.draft.pages) : NO_LAW
-  const decision = decideLandEuMarker(found?.statement ?? null, general, law)
+  const decision = decideLandEuMarker(found?.statement ?? null, general, { signal: law.actSignal, acts: law.acts })
+  const byLaw = decision.source === 'gesetzestext'
   const sources: TraceLink[] = []
   const cite = (label: string, url: string | null) => {
     if (url && !sources.some((s) => s.label === label && s.url === url)) sources.push({ label, url })
   }
-  if (found) cite(found.label, found.url)
+  if (found && !byLaw) cite(found.label, found.url)
   else if (decision.source === 'erlaeuterungen') cite('Erläuterungen', input.explanations.url)
 
   const allowed = decision.marker !== null && decision.actsAllowed
-  const fromStatement = allowed ? statementActs(found?.statement ?? null) : []
+  const fromStatement = allowed && !byLaw ? statementActs(found?.statement ?? null) : []
   const fromLaw = allowed ? law.acts : []
   const hinweise = allowed && input.explanations.available ? entryHinweise(input.explanations.particular) : []
   const fromEntries = uniqueActs(hinweise.map((h) => h.acts))

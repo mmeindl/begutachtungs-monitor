@@ -33,7 +33,7 @@ import { classifyVorblatt, hasTextLayer, isVorblattDocument, linesOfPages, type 
 import { readExplanationsEuSignal, readUmsetzungshinweis, type LawWindow } from './umsetzungshinweis'
 import { deadlineOf } from './cellar'
 import { transpositionOf } from './cellarService'
-import { combineVerdicts, decideEuMarker } from './euMarker'
+import { combineVerdicts, decideEuMarker, lawTextMarker } from './euMarker'
 import { bundesrechtHits, bundesrechtPhrase, bundesrechtSearchParams, transposesAct, type BrKonsSearchAnswer, type BundesrechtHit } from './bundesrecht'
 import { konsJson, konsQuery } from '../ris/konsLaw'
 import { todayIso } from '#shared/utils/format'
@@ -266,11 +266,15 @@ async function assemble(docs: DraftDocuments): Promise<Gathered<EuRechtResponse>
 
   const blocks = await docs.blocks()
   const law = readUmsetzungshinweis(blocks)
+  // What may decide is a hint that names an act (`actSignal`), not any window.
+  const lawHint = { signal: law.actSignal, acts: law.acts }
 
-  // D5: the Erläuterungen only where no Vorblatt says anything.
+  // D5: the Erläuterungen only where neither a Vorblatt nor the law text's
+  // own hint says anything (05.11.2026: a hint that names an act decides
+  // before the prose, as for the Länder).
   let explanations: 'umsetzung' | 'durchfuehrung' | null = null
   let explanationsUrl: string | null = null
-  if (!withHeading.length) {
+  if (!withHeading.length && !lawTextMarker(lawHint)) {
     const erl = await docs.explanations()
     if (erl.available) {
       explanations = readExplanationsEuSignal(erl.passages).signal
@@ -283,7 +287,7 @@ async function assemble(docs: DraftDocuments): Promise<Gathered<EuRechtResponse>
     }
   }
 
-  const decision = decideEuMarker({ vorblatt: withHeading.map((r) => r.cls!), law, explanations })
+  const decision = decideEuMarker({ vorblatt: withHeading.map((r) => r.cls!), law: lawHint, explanations })
   const sources: TraceLink[] = [
     ...withHeading.map((r) => ({ label: 'Vorblatt', url: r.url })),
     ...(explanationsUrl && decision.source === 'erlaeuterungen' ? [{ label: 'Erläuterungen', url: explanationsUrl }] : []),

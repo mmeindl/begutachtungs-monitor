@@ -82,6 +82,13 @@ export interface LawWindow {
 export interface UmsetzungshinweisReading {
   /** The strongest signal of any window: umsetzung over durchfuehrung over bezug. */
   signal: LawSignal | null
+  /**
+   * The strongest signal of a window that names an act — what may decide
+   * „whether" (`euMarker.ts`): a window „… wird die Richtlinie … umgesetzt"
+   * whose act is a short name, beside a „Bezugnahme" that names one, says
+   * no act is implemented.
+   */
+  actSignal: LawSignal | null
   windows: LawWindow[]
   /** Every act any window names, in order, once. */
   acts: EuAct[]
@@ -180,6 +187,7 @@ export function readUmsetzungshinweis(input: string | readonly LawTextBlock[]): 
   }
   return {
     signal: strongestSignal(windows.map((w) => w.signal)),
+    actSignal: strongestSignal(windows.filter((w) => w.acts.length).map((w) => w.signal)),
     windows,
     acts: uniqueActs(windows.map((w) => w.acts)),
     dropped,
