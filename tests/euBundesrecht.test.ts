@@ -1,11 +1,18 @@
 import { readFileSync } from 'node:fs'
 import { describe, expect, it } from 'vitest'
-import { bundesrechtHits, bundesrechtPhrase, bundesrechtSearchParams, transposesAct, typCountsAsBundesrecht } from '../server/utils/eu/bundesrecht'
+import { askedOfLawInForce, bundesrechtHits, bundesrechtPhrase, bundesrechtSearchParams, transposesAct, typCountsAsBundesrecht } from '../server/utils/eu/bundesrecht'
 
 const fixture = (name: string) => JSON.parse(readFileSync(new URL(`./fixtures/eu/${name}`, import.meta.url), 'utf8'))
 
 /* Rule D4, widened (§12.66): an act a Paragraph of Bundesrecht in force transposes gets no deadline line. */
 describe('the law in force, asked over all of Bundesrecht', () => {
+  it('is asked about every transposed act, dated or not — not about a regulation carried out elsewhere too (05.11.2026)', () => {
+    expect(askedOfLawInForce('richtlinie')).toBe(true)
+    expect(askedOfLawInForce('rahmenbeschluss')).toBe(true)
+    expect(askedOfLawInForce('verordnung')).toBe(false)
+    expect(askedOfLawInForce('beschluss')).toBe(false)
+  })
+
   it('asks for the number as the laws write it, in both citation forms', () => {
     expect(bundesrechtPhrase('Richtlinie (EU) 2024/1069')).toBe('2024/1069')
     expect(bundesrechtPhrase('Richtlinie 2009/31/EG')).toBe('2009/31/EG')

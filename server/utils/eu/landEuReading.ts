@@ -117,9 +117,10 @@ export function readLandEu(input: LandEuInput): LandEuReading {
 
 /**
  * Whether the draft adds the act (D4 for the Länder): asked of the Land's
- * law in force for a directive with a date — old where a Paragraph of it
- * transposes the act, unknown where RIS did not answer or no day could be
- * asked for. No per-Paragraph check of the addressed § as the Bund has.
+ * law in force for every directive, dated or not (`askedOfLawInForce`,
+ * 05.11.2026) — old where a Paragraph of it transposes the act, unknown
+ * where RIS did not answer or no day could be asked for; a regulation is
+ * new. No per-Paragraph check of the addressed § as the Bund has.
  */
 export function landIsNew(act: EuAct, asked: boolean, standing: boolean | null, asOf: string | null): boolean | null {
   if (asked) return standing === true ? false : standing === null ? null : true

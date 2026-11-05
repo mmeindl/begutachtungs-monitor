@@ -38,7 +38,7 @@ import { safeExternalUrl } from '#shared/utils/safeExternalUrl'
 import type { EuAct } from './actCitations'
 import { deadlineOf } from './cellar'
 import { transpositionOf } from './cellarService'
-import { transposesAct, bundesrechtPhrase } from './bundesrecht'
+import { askedOfLawInForce, transposesAct, bundesrechtPhrase } from './bundesrecht'
 import { headDocumentTransposes, LANDESRECHT_API, landesrechtHits, landesrechtSearchParams, lgblKey, type LrKonsSearchAnswer } from './landesrecht'
 import { landIsNew, readLandEu } from './landEuReading'
 import { konsJson } from '../ris/konsLaw'
@@ -138,10 +138,13 @@ export async function assembleLandEu(land: LandCode, detail: LandDraftRecord): P
     return { value: { ...empty('', start), available: true, unavailableReason: null, sources }, complete }
   }
 
-  // UNTIL WHEN, and D4: has the Land transposed the directive already? Asked
-  // as of the first day of the Begutachtung — Burgenland dates none, so its
+  // UNTIL WHEN, and D4: has the Land transposed the act already? Asked as of
+  // the first day of the Begutachtung — Burgenland dates none, so its
   // Frist's end stands in; without either the question is not asked and no
-  // deadline is printed.
+  // deadline is printed. Asked for every directive since 05.11.2026, dated
+  // or not (`askedOfLawInForce`): 2002/73/EG has no deadline in the Cellar
+  // and counted new on bgld-c372 although the Landes-Gleichbehandlungsgesetz
+  // lists it in its Umsetzungshinweis.
   const asOf = start ?? detail.draft.deadline ?? null
   // The draft's own Kundmachung, where it has one: a head document lists it already.
   const stage = detail.draft.stage && detail.draft.stage !== 'unknown' ? detail.draft.stage : null
@@ -149,7 +152,7 @@ export async function assembleLandEu(land: LandCode, detail: LandDraftRecord): P
   const acts: EuActView[] = []
   const answers = await Promise.all(named.map(async (act) => {
     const dates = await transpositionOf(act.celex)
-    const asked = act.kind === 'richtlinie' && !!dates?.dates.length && asOf !== null
+    const asked = askedOfLawInForce(act.kind) && asOf !== null
     const standing = asked ? await standingInLandesrecht(act, asOf!, land, ownLgbl) : null
     return { act, dates, asked, standing }
   }))

@@ -32,6 +32,7 @@
  * through (`transposesAct`): „Mit diesem Bundesgesetz wird die Richtlinie …
  * umgesetzt" is a transposition, „im Sinne der Richtlinie …" is not.
  */
+import type { EuActKind } from './actCitations'
 import { readUmsetzungshinweis } from './umsetzungshinweis'
 
 /**
@@ -115,6 +116,25 @@ export function bundesrechtHits(answer: BrKonsSearchAnswer): { total: number; hi
     hits.set(nor, { nor, kurztitel: meta?.Bundesrecht?.Kurztitel ?? '', xmlUrl })
   }
   return { total, hits: [...hits.values()] }
+}
+
+/**
+ * Whether the law in force is asked about an act at all (05.11.2026): every
+ * act that is transposed — a directive, dated or not, and a framework
+ * decision —, not only a directive with a transposition date. 2002/73/EG
+ * has no deadline in the Cellar and counted new on bgld-c372 beside its
+ * restated siblings, though the Landes-Gleichbehandlungsgesetz lists it.
+ * NOT a regulation or a decision: they are carried out, often by several
+ * laws, and a draft that adds „begleitende Maßnahmen zur Durchführung der
+ * Verordnung (EU) 2024/1309" is a draft for it even where another law
+ * already flanks it (Tirol's Technische Bauvorschriften beside its
+ * Bauordnung 2022). Measured over the stored facts of GP XXVIII: of 82 acts
+ * counted new unasked, the search found 26 in force — 7 directives, all
+ * rightly old, and 19 regulations and decisions, mostly flanked elsewhere.
+ * The Bund's per-§ check of the addressed § still reads every kind.
+ */
+export function askedOfLawInForce(kind: EuActKind): boolean {
+  return kind === 'richtlinie' || kind === 'rahmenbeschluss'
 }
 
 /**

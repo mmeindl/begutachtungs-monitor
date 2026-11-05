@@ -20,7 +20,7 @@
  * force is the § comparison's own (`resolveKonsLaw`, `fetchParagraphXml`);
  * the Erläuterungen are their section's answer (`getExplanations`). New
  * reads are only the Vorblatt PDF, the Cellar, and one RIS search per
- * directive with a date (`bundesrecht.ts`).
+ * directive the draft's own text does not show as old (`bundesrecht.ts`).
  *
  * **A failure is not an answer** (§12.13). A Vorblatt that cannot be fetched
  * throws — whether the draft is an EU matter is the question itself. A
@@ -34,7 +34,7 @@ import { isHintParagraph, readBundLaw, readExplanationsEuSignal, readingOfWindow
 import { deadlineOf } from './cellar'
 import { transpositionOf } from './cellarService'
 import { combineVerdicts, decideEuMarker, lawTextMarker } from './euMarker'
-import { bundesrechtHits, bundesrechtPhrase, bundesrechtSearchParams, transposesAct, type BrKonsSearchAnswer, type BundesrechtHit } from './bundesrecht'
+import { askedOfLawInForce, bundesrechtHits, bundesrechtPhrase, bundesrechtSearchParams, transposesAct, type BrKonsSearchAnswer, type BundesrechtHit } from './bundesrecht'
 import { konsJson, konsQuery } from '../ris/konsLaw'
 import { todayIso } from '#shared/utils/format'
 import type { TextBlock } from '../lawtext/lawUnits'
@@ -362,18 +362,22 @@ async function assemble(docs: DraftDocuments): Promise<Gathered<EuRechtResponse>
     }
   }
 
-  // UNTIL WHEN: the Cellar, per act, side by side — and, for a directive
-  // with a date that the draft's own text did not already show as old,
-  // whether Bundesrecht in force on the first day of the Begutachtung names
-  // it (D4, widened on 04.11.2026 after 32/ME: a new law that replaces an
-  // old one has no Paragraph to read, and every act it restates looked new).
+  // UNTIL WHEN: the Cellar, per act, side by side — and, for every directive
+  // the draft's own text did not already show as old, whether Bundesrecht in
+  // force on the first day of the Begutachtung transposes or carries it out
+  // (D4, widened on 04.11.2026 after 32/ME: a new law that replaces an old
+  // one has no Paragraph to read, and every act it restates looked new).
+  // Asked for every transposed act since 05.11.2026, not only for a
+  // directive with a transposition date (`askedOfLawInForce`): `isNew`
+  // decides more than the deadline line — the map lists a draft under an
+  // act where it is not false.
   const acts: EuActView[] = []
   const asOf = start ?? todayIso()
   const answers = await Promise.all(uniqueActs([named]).map(async (act) => {
     // A title that names the act says the draft implements it.
     const own = fromLaw ? (isNew.get(act.celex) ?? null) : true
     const dates = await transpositionOf(act.celex)
-    const asked = act.kind === 'richtlinie' && own !== false && !!dates?.dates.length
+    const asked = askedOfLawInForce(act.kind) && own !== false
     const standing = asked ? await standingInBundesrecht(act, asOf) : null
     return { act, dates, own, asked, standing }
   }))
