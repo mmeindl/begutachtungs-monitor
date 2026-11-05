@@ -27,7 +27,7 @@ const BAR = 'animate-pulse rounded bg-hairline motion-reduce:animate-none'
 <template>
   <div role="status">
     <span class="sr-only">{{ label ?? 'Wird geladen …' }}</span>
-    <DraftBackLink />
+    <BackLink to="/entwuerfe" label="Alle Entwürfe" />
     <div aria-hidden="true">
       <div :class="[BAR, 'h-4 w-40']" />
       <!-- The h1's line height at both sizes, two lines: most titles wrap. -->

@@ -320,7 +320,7 @@ const ministryLinks = computed(() => {
       </template>
       <template #default="{ data }">
         <article>
-          <DraftBackLink />
+          <BackLink to="/entwuerfe" label="Alle Entwürfe" />
           <DraftHeader
             :title="data.shortTitle ?? data.title"
           >

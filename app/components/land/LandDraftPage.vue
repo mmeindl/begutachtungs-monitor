@@ -187,7 +187,7 @@ useSeoMeta({ ogTitle: () => draft.value?.title ?? 'Entwurf', ogType: 'article' }
         <DraftSkeleton :label="label" />
       </template>
       <template #default="{ data: detail }">
-        <DraftBackLink />
+        <BackLink to="/entwuerfe" label="Alle Entwürfe" />
 
         <DraftHeader :title="shortTitle ?? detail.draft.title">
           <template #source>

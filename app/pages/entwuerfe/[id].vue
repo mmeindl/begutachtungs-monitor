@@ -216,7 +216,7 @@ const doorHref = computed(() => {
         <DraftSkeleton :label="label" />
       </template>
       <template #default="{ data }">
-        <DraftBackLink />
+        <BackLink to="/entwuerfe" label="Alle Entwürfe" />
 
         <!-- Same header anatomy as the Ministerialentwurf page. The identity
            slot holds the type word where a draft holds its Geschäftszahl —

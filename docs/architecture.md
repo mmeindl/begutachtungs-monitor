@@ -278,6 +278,7 @@ name has to stay globally unique.
 
 | Component | Props | Purpose |
 |---|---|---|
+| `BackLink` | `to: string; label: string` | Back into a detail page's list, unfiltered — one target, one word, on every detail page („← Alle Entwürfe", „← Alle Rechtsakte"), because shared-link landers are the declared primary case. `DraftBackLink` until 05.11.2026, when the EU act page traded its muted eyebrow for it |
 | `EmptyState` | `title: string; description?: string` + default slot | Empty state |
 | `ErrorState` | – + emit `retry` | Error state with "Erneut versuchen" |
 | `LoadingState` | `label?: string` | Loading state |
@@ -315,7 +316,6 @@ name has to stay globally unique.
 | Component | Props | Purpose |
 |---|---|---|
 | `DraftHeader` | `title: string` + slots `identity`, `source`, default | The top of a detail page: one meta row carrying identity and the source link, then the title. `identity` is where the two pages differ — a Ministerialentwurf leads with its Geschäftszahl, a RIS record does not have one |
-| `DraftBackLink` | – | Back into the one list, unfiltered — one target, one word, on every detail page, because shared-link landers are the declared primary case |
 | `DraftDescription` | `blocks: DescriptionBlock[]` | The Kurzinformation of a Ministerialentwurf, grouped into its own sections; folded parts are a `FoldSection` (native `<details>`), so no hydration, keyboard access as-is and the text stays in the SSR HTML |
 | `DraftDoorCard` | `frist: boolean; deadline; icsHref?; filingHref?` + slots `heading`, default, `after-context`, `filing`, `actions`, `footer` | The door: deadline, action and calendar in one card, in the same slot and shape on both detail pages (03.10.2026); toned like the list row's countdown while the Begutachtung's window is open |
 | `ProcedureCard` | `status: string; stations: Station[]; anchors?; comparisonAnchors?; howTo?` + default slot | The bordered card with the procedure's status, the way to /so-funktionierts and the `SpineRail` — the same on both detail pages (03.10.2026) |

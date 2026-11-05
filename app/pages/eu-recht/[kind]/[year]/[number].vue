@@ -93,11 +93,9 @@ const [bundItem, eurLexItem] = sourceItemsDe([risSource('Vorblatt'), risSource('
       @retry="refresh()"
     >
       <template #default="{ data: page }">
+        <BackLink to="/eu-recht" label="Alle Rechtsakte" />
         <header>
-          <p class="text-sm text-ink-muted">
-            <NuxtLink to="/eu-recht" class="link-muted">EU-Recht in der Begutachtung</NuxtLink>
-          </p>
-          <h1 class="page-title mt-1">
+          <h1 class="page-title">
             {{ page.title }}
           </h1>
           <!-- What the official title says after the name and date: the act's
