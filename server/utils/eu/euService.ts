@@ -33,7 +33,7 @@ import { classifyVorblatt, hasTextLayer, isVorblattDocument, linesOfPages, type 
 import { isHintParagraph, readBundLaw, readExplanationsEuSignal, readingOfWindows, type LawWindow } from './umsetzungshinweis'
 import { deadlineOf } from './cellar'
 import { transpositionOf } from './cellarService'
-import { combineVerdicts, decideEuMarker, lawTextMarker } from './euMarker'
+import { combineVerdicts, decideEuMarker, lawTextMarker, newLawHint } from './euMarker'
 import { askedOfLawInForce, bundesrechtHits, bundesrechtPhrase, bundesrechtSearchParams, transposesAct, type BrKonsSearchAnswer, type BundesrechtHit } from './bundesrecht'
 import { konsJson, konsQuery } from '../ris/konsLaw'
 import { todayIso } from '#shared/utils/format'
@@ -301,8 +301,56 @@ async function assemble(docs: DraftDocuments): Promise<Gathered<EuRechtResponse>
     if (v.hint === true) kept.push(w)
   }
   const law = kept.length === read.windows.length ? read : readingOfWindows(kept, read.dropped)
-  // What may decide is a hint that names an act (`actSignal`), not any window.
-  const lawHint = { signal: law.actSignal, acts: law.acts }
+
+  // D4, per window and per act: is the act new to the law in force? Read
+  // where the decision turns on it (below) or where the acts are named.
+  // Per window: an act is new where ANY law of the draft gains it — a
+  // Sammelnovelle carries one directive into a dozen laws, and one law it
+  // cannot resolve must not take the deadline from the others (30/ME:
+  // 2023/2864 in eleven Artikel). Old where every law that could be read
+  // names it already; unknown where none could be read.
+  const windowVerdicts = new Map<string, boolean | null>()
+  let windowsRead: Promise<void> | null = null
+  const readWindows = () => (windowsRead ??= (async () => {
+    for (const w of law.windows) {
+      const { named: standing, failed } = await verdictOf(w)
+      if (failed) complete = false
+      for (const act of w.acts) {
+        const verdict = standing === null ? null : !standing.has(act.celex)
+        windowVerdicts.set(act.celex, combineVerdicts(windowVerdicts.get(act.celex), verdict))
+      }
+    }
+  })())
+  // Then all of Bundesrecht, for every transposed act the windows did not
+  // already show as old (widened on 04.11.2026 after 32/ME: a new law that
+  // replaces an old one has no Paragraph to read, and every act it restates
+  // looked new) — every directive since 05.11.2026, dated or not
+  // (`askedOfLawInForce`): `isNew` decides more than the deadline line.
+  const asOf = start ?? todayIso()
+  const standings = new Map<string, Promise<boolean | null>>()
+  const newnessOf = async (act: EuAct, own: boolean | null) => {
+    const asked = askedOfLawInForce(act.kind) && own !== false
+    if (asked && !standings.has(act.celex)) standings.set(act.celex, standingInBundesrecht(act, asOf))
+    const standing = asked ? await standings.get(act.celex)! : null
+    return { asked, standing, isNew: standing === true ? false : asked && standing === null ? null : own }
+  }
+
+  // What may decide is a hint that names an act (`actSignal`), not any
+  // window — and since 05.11.2026 one that names an act new to the law in
+  // force (`newLawHint`): a restated hint decides nothing. Read only where
+  // the law text would decide at all; a Vorblatt that decides needs no D4.
+  let lawHint = newLawHint(law.windows)
+  if (decideEuMarker({ vorblatt: withHeading.map((r) => r.cls!), law: lawHint, explanations: null }).source === 'gesetzestext') {
+    await readWindows()
+    const isNew = new Map<string, boolean | null>()
+    for (const act of law.acts) {
+      const n = await newnessOf(act, windowVerdicts.get(act.celex) ?? null)
+      // A decision on an unanswered question is served, not stored.
+      if (n.asked && n.standing === null) complete = false
+      isNew.set(act.celex, n.isNew)
+    }
+    lawHint = newLawHint(law.windows, (celex) => isNew.get(celex) ?? null)
+  }
 
   // D5: the Erläuterungen only where neither a Vorblatt nor the law text's
   // own hint says anything (05.11.2026: a hint that names an act decides
@@ -343,45 +391,22 @@ async function assemble(docs: DraftDocuments): Promise<Gathered<EuRechtResponse>
   const lawLink = record.mainDocument.html ?? record.mainDocument.pdf
   if (fromLaw && lawLink) sources.push({ label: 'Gesetzestext', url: lawLink })
 
-  // D4 per window, then per act. An act is new where ANY law of the draft
-  // gains it — a Sammelnovelle carries one directive into a dozen laws, and
-  // one law it cannot resolve must not take the deadline from the others
-  // (30/ME: 2023/2864 in eleven Artikel). Old where every law that could be
-  // read names it already; unknown where none could be read.
-  const isNew = new Map<string, boolean | null>()
+  // D4 for the acts named; D4a, the base an amendment is read against.
   const base = new Set<string>()
   if (fromLaw) {
-    for (const w of law.windows) {
-      for (const c of baseActCelexes(w.text)) base.add(c)
-      const { named: standing, failed } = await verdictOf(w)
-      if (failed) complete = false
-      for (const act of w.acts) {
-        const verdict = standing === null ? null : !standing.has(act.celex)
-        isNew.set(act.celex, combineVerdicts(isNew.get(act.celex), verdict))
-      }
-    }
+    for (const w of law.windows) for (const c of baseActCelexes(w.text)) base.add(c)
+    await readWindows()
   }
 
-  // UNTIL WHEN: the Cellar, per act, side by side — and, for every directive
-  // the draft's own text did not already show as old, whether Bundesrecht in
-  // force on the first day of the Begutachtung transposes or carries it out
-  // (D4, widened on 04.11.2026 after 32/ME: a new law that replaces an old
-  // one has no Paragraph to read, and every act it restates looked new).
-  // Asked for every transposed act since 05.11.2026, not only for a
-  // directive with a transposition date (`askedOfLawInForce`): `isNew`
-  // decides more than the deadline line — the map lists a draft under an
-  // act where it is not false.
+  // UNTIL WHEN: the Cellar, per act, side by side.
   const acts: EuActView[] = []
-  const asOf = start ?? todayIso()
   const answers = await Promise.all(uniqueActs([named]).map(async (act) => {
     // A title that names the act says the draft implements it.
-    const own = fromLaw ? (isNew.get(act.celex) ?? null) : true
+    const own = fromLaw ? (windowVerdicts.get(act.celex) ?? null) : true
     const dates = await transpositionOf(act.celex)
-    const asked = askedOfLawInForce(act.kind) && own !== false
-    const standing = asked ? await standingInBundesrecht(act, asOf) : null
-    return { act, dates, own, asked, standing }
+    return { act, dates, ...(await newnessOf(act, own)) }
   }))
-  for (const { act, dates, own, asked, standing } of answers) {
+  for (const { act, dates, asked, standing, isNew } of answers) {
     if (dates === null) complete = false
     if (asked && standing === null) complete = false
     // EUR-Lex knows no such act: a citation error in the draft, not shown.
@@ -391,7 +416,7 @@ async function assemble(docs: DraftDocuments): Promise<Gathered<EuRechtResponse>
       label: act.label,
       celex: act.celex,
       eurLexUrl: act.eli,
-      isNew: standing === true ? false : asked && standing === null ? null : own,
+      isNew,
       base: base.has(act.celex) && named.some((a) => a.celex !== act.celex && !base.has(a.celex)),
       transposition: act.kind === 'richtlinie' && dates ? deadlineOf(dates.dates) : null,
       adopted: dates?.adopted ?? null,

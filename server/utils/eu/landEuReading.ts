@@ -21,7 +21,8 @@ import type { EuRechtResponse, LandCode, TraceLink } from '../../../shared/types
 import { baseActCelexes, uniqueActs, type EuAct } from './actCitations'
 import { decideLandEuMarker, entryHinweise, readLandEuStatement, statementActs, type EntryHinweis, type LandEuStatement, type LandMarkerDecision } from './landErlaeuterungen'
 import { readLandLaw, type LandLawReading } from './landGesetzestext'
-import type { ExplanationsPassageText } from './umsetzungshinweis'
+import { newLawHint } from './euMarker'
+import { quotedHintSignal, type ExplanationsPassageText, type LawSignal } from './umsetzungshinweis'
 import { linesOfPages } from './vorblatt'
 
 /** The Länder that print a Vorblatt before or as their Erläuterungen. */
@@ -79,12 +80,23 @@ function findStatement(input: LandEuInput, general: readonly ExplanationsPassage
   return statement ? { statement, url: erlUrl, label: 'Erläuterungen' } : null
 }
 
-/** The page's reading of one Land's draft, short of EUR-Lex and the law in force. */
-export function readLandEu(input: LandEuInput): LandEuReading {
+/** The law text's hints as the decision weighs them: its windows and its quoted Ziffern. */
+export function landLawHints(law: LandLawReading): { signal: LawSignal; acts: EuAct[] }[] {
+  return [...law.windows, ...law.quoted.map((q) => ({ signal: quotedHintSignal(q.acts)!, acts: q.acts }))]
+}
+
+/**
+ * The page's reading of one Land's draft, short of EUR-Lex. `isNew` is
+ * rule D4 for the law text's acts where the service read the law in force:
+ * a hint that restates only old acts decides nothing (`newLawHint`,
+ * 05.11.2026). Without it — the corpus run — every hint that names an act
+ * may decide.
+ */
+export function readLandEu(input: LandEuInput, isNew?: (celex: string) => boolean | null): LandEuReading {
   const general = input.explanations.available ? input.explanations.general : []
   const found = findStatement(input, general)
   const law = input.draft.pages ? readLandLaw(input.draft.pages) : NO_LAW
-  const decision = decideLandEuMarker(found?.statement ?? null, general, { signal: law.actSignal, acts: law.acts })
+  const decision = decideLandEuMarker(found?.statement ?? null, general, newLawHint(landLawHints(law), isNew))
   const byLaw = decision.source === 'gesetzestext'
   const sources: TraceLink[] = []
   const cite = (label: string, url: string | null) => {

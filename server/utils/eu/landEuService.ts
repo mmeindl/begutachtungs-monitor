@@ -124,13 +124,45 @@ export async function assembleLandEu(land: LandCode, detail: LandDraftRecord): P
       return null
     })
   }
-  const reading = readLandEu({
+  const input = {
     land,
     documents: detail.draft.documents.map((d) => ({ title: d.title, url: safeExternalUrl(d.url) ?? d.url })),
     pages: read.pages,
     explanations: { available: erl.available, general: erl.general, particular: erl.particular, url: erl.document?.url ?? null },
     draft: { url: read.draftUrl, pages: draftPages },
-  })
+  }
+
+  // D4, has the Land transposed the act already? Asked as of the first day
+  // of the Begutachtung — Burgenland dates none, so its Frist's end stands
+  // in; without either the question is not asked and no deadline is
+  // printed. Asked for every directive since 05.11.2026, dated or not
+  // (`askedOfLawInForce`): 2002/73/EG has no deadline in the Cellar and
+  // counted new on bgld-c372 although the Landes-Gleichbehandlungsgesetz
+  // lists it in its Umsetzungshinweis.
+  const asOf = start ?? detail.draft.deadline ?? null
+  // The draft's own Kundmachung, where it has one: a head document lists it already.
+  const stage = detail.draft.stage && detail.draft.stage !== 'unknown' ? detail.draft.stage : null
+  const ownLgbl = stage?.station === 'bgbl' ? lgblKey(stage.detail) : null
+  const standings = new Map<string, Promise<boolean | null>>()
+  const newnessOf = async (act: EuAct) => {
+    const asked = askedOfLawInForce(act.kind) && asOf !== null
+    if (asked && !standings.has(act.celex)) standings.set(act.celex, standingInLandesrecht(act, asOf!, land, ownLgbl))
+    const standing = asked ? await standings.get(act.celex)! : null
+    return { asked, standing, isNew: landIsNew(act, asked, standing, asOf) }
+  }
+
+  // The decision, with D4 in front where the law text's hint decides: a
+  // hint that restates only acts in force decides nothing (05.11.2026).
+  let reading = readLandEu(input)
+  if (reading.decision.source === 'gesetzestext') {
+    const isNew = new Map<string, boolean | null>()
+    for (const act of reading.law.acts) {
+      const n = await newnessOf(act)
+      if (n.asked && n.standing === null) complete = false
+      isNew.set(act.celex, n.isNew)
+    }
+    reading = readLandEu(input, (celex) => isNew.get(celex) ?? null)
+  }
   const { found, decision, named, base, sources } = reading
   if (!erl.available && !found && decision.source !== 'gesetzestext') return { value: empty(erl.unavailableReason ?? 'Zu diesem Entwurf sind keine Erläuterungen zu lesen.', start), complete }
   if (!decision.marker) {
@@ -138,25 +170,13 @@ export async function assembleLandEu(land: LandCode, detail: LandDraftRecord): P
     return { value: { ...empty('', start), available: true, unavailableReason: null, sources }, complete }
   }
 
-  // UNTIL WHEN, and D4: has the Land transposed the act already? Asked as of
-  // the first day of the Begutachtung — Burgenland dates none, so its
-  // Frist's end stands in; without either the question is not asked and no
-  // deadline is printed. Asked for every directive since 05.11.2026, dated
-  // or not (`askedOfLawInForce`): 2002/73/EG has no deadline in the Cellar
-  // and counted new on bgld-c372 although the Landes-Gleichbehandlungsgesetz
-  // lists it in its Umsetzungshinweis.
-  const asOf = start ?? detail.draft.deadline ?? null
-  // The draft's own Kundmachung, where it has one: a head document lists it already.
-  const stage = detail.draft.stage && detail.draft.stage !== 'unknown' ? detail.draft.stage : null
-  const ownLgbl = stage?.station === 'bgbl' ? lgblKey(stage.detail) : null
+  // UNTIL WHEN: the Cellar, per act; D4 as above.
   const acts: EuActView[] = []
   const answers = await Promise.all(named.map(async (act) => {
     const dates = await transpositionOf(act.celex)
-    const asked = askedOfLawInForce(act.kind) && asOf !== null
-    const standing = asked ? await standingInLandesrecht(act, asOf!, land, ownLgbl) : null
-    return { act, dates, asked, standing }
+    return { act, dates, ...(await newnessOf(act)) }
   }))
-  for (const { act, dates, asked, standing } of answers) {
+  for (const { act, dates, asked, standing, isNew } of answers) {
     if (dates === null) complete = false
     if (asked && standing === null) complete = false
     // EUR-Lex knows no such act: a citation error in the draft, not shown.
@@ -166,7 +186,7 @@ export async function assembleLandEu(land: LandCode, detail: LandDraftRecord): P
       label: act.label,
       celex: act.celex,
       eurLexUrl: act.eli,
-      isNew: landIsNew(act, asked, standing, asOf),
+      isNew,
       base: base.has(act.celex) && named.some((a) => a.celex !== act.celex && !base.has(a.celex)),
       transposition: act.kind === 'richtlinie' && dates ? deadlineOf(dates.dates) : null,
       adopted: dates?.adopted ?? null,

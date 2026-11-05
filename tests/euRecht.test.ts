@@ -6,7 +6,7 @@ import { classifyVorblatt, classifyVorblattSentence, hasTextLayer, isVorblattDoc
 import { isHintParagraph, readBundLaw, readExplanationsEuSignal, readUmsetzungshinweis, type LawTextBlock } from '../server/utils/eu/umsetzungshinweis'
 import { euActSubject } from '../shared/utils/eu'
 import { CELEX_RE, deadlineOf, parseTranspositionAnswer, transpositionQuery, transpositionUrl, type SparqlAnswer } from '../server/utils/eu/cellar'
-import { combineVerdicts, decideEuMarker } from '../server/utils/eu/euMarker'
+import { combineVerdicts, decideEuMarker, lawTextMarker, newLawHint } from '../server/utils/eu/euMarker'
 import { lawBlocksFromPdfPages } from '../server/utils/laender/draftPdfLaw'
 
 /*
@@ -564,6 +564,26 @@ describe('decideEuMarker', () => {
     const rl = parseEuActCitations('Richtlinie (EU) 2019/1937')
     expect(decideEuMarker({ vorblatt: [], law: { signal: 'umsetzung', acts: [] }, explanations: 'durchfuehrung' })).toMatchObject({ marker: 'flankierend-vo', source: 'erlaeuterungen' })
     expect(decideEuMarker({ vorblatt: [], law: { signal: 'bezug', acts: rl }, explanations: null }).marker).toBeNull()
+  })
+})
+
+describe('newLawHint — a restated hint decides nothing (rule D4 before the decision)', () => {
+  // Tirol's t-v9cd2d26…: the Richtlinie restated, the Verordnung new.
+  const windows = [
+    { signal: 'umsetzung' as const, acts: parseEuActCitations('Durch diese Verordnung wird die Richtlinie (EU) 2018/2001 umgesetzt.') },
+    { signal: 'durchfuehrung' as const, acts: parseEuActCitations('begleitende Maßnahmen zur Durchführung der Verordnung (EU) 2024/1309') },
+    { signal: 'umsetzung' as const, acts: [] },
+  ]
+
+  it('reads every window that names an act where the law in force was not asked', () => {
+    expect(newLawHint(windows)).toEqual({ signal: 'umsetzung', acts: [...windows[0]!.acts, ...windows[1]!.acts] })
+  })
+
+  it('reads only windows with an act new to the law in force — unknown counts as new', () => {
+    const isNew = (celex: string) => (celex === '32018L2001' ? false : true)
+    expect(lawTextMarker(newLawHint(windows, isNew))).toBe('flankierend-vo')
+    expect(lawTextMarker(newLawHint(windows, () => null))).toBe('umsetzung')
+    expect(lawTextMarker(newLawHint(windows, () => false))).toBeNull()
   })
 })
 

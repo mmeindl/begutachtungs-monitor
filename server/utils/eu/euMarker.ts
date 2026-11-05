@@ -7,8 +7,8 @@
  * runs the same decision over GP XXVIII.
  */
 import type { EuMarker } from '../../../shared/types/eu'
-import type { EuAct } from './actCitations'
-import type { LawSignal } from './umsetzungshinweis'
+import { uniqueActs, type EuAct } from './actCitations'
+import { strongestSignal, type LawSignal } from './umsetzungshinweis'
 import type { VorblattClass } from './vorblatt'
 
 /**
@@ -59,6 +59,27 @@ export function lawTextMarker(law: MarkerInput['law']): EuMarker | null {
   if (law.signal === 'umsetzung') return 'umsetzung'
   if (law.signal === 'durchfuehrung') return law.acts.every((a) => a.kind === 'richtlinie') ? 'flankierend-rl' : 'flankierend-vo'
   return null
+}
+
+/**
+ * The law text's hint as the decision reads it: the strongest signal, and
+ * the acts, of the windows that name at least one act the law in force does
+ * not name already — `isNew` true, or null where the law in force could not
+ * be read, which counts as new as on the map (05.11.2026). A Novelle
+ * restates its whole hint: Tirol's regulation t-v9cd2d26… repeats „Durch
+ * diese Verordnung wird die Richtlinie (EU) 2018/2001 … umgesetzt" (old)
+ * and adds „begleitende Maßnahmen zur Durchführung der Verordnung (EU)
+ * 2024/1309" (new), and the restated sentence decided „Setzt EU-Recht um"
+ * where „Begleitet eine EU-Verordnung" is right. Without `isNew` every
+ * window that names an act counts — the reading before the law in force is
+ * asked, and what the corpus runs show.
+ */
+export function newLawHint(
+  windows: readonly { signal: LawSignal; acts: readonly EuAct[] }[],
+  isNew?: (celex: string) => boolean | null,
+): MarkerInput['law'] {
+  const deciding = windows.filter((w) => w.acts.some((a) => (isNew?.(a.celex) ?? null) !== false))
+  return { signal: strongestSignal(deciding.map((w) => w.signal)), acts: uniqueActs(deciding.map((w) => w.acts)) }
 }
 
 /** The fact where the Erläuterungen' prose decides (D5). */
