@@ -14885,6 +14885,92 @@ dieser Cache geleert ist; ein Rahmenbeschluss hat im Cellar keine
 Umsetzungsfrist, seine Seite nennt nur den Beschlusstag.
 
 
+**Nachtrag 5 (05.11.2026, spät): drei Leserlücken geschlossen, die
+Kurznamen gemessen.** Die drei Klassen aus Nachtrag 2 und 3, die ohne
+Entwurfsseite blieben oder ohne Akt, in einem Leserschritt
+(`EU_READER_VERSION` 3, ein kalter Aufbau für alle drei):
+
+1. **Ein Umsetzungshinweis im Gesetzestext entscheidet „ob".** Bisher
+   entschied das Vorblatt, sonst ein EU-Abschnitt der Erläuterungen, sonst
+   deren Prosa (D5), und auf dem Prosa-Weg wurden Akte verworfen. Tirols
+   2026-588 schreibt „§ 13b Durchführung von Unionsrecht. Durch dieses
+   Gesetz werden die in der Verordnung (EU) 2024/1028 … vorgesehenen
+   Durchführungsbestimmungen erlassen" und zeigte „begleitet eine
+   EU-Verordnung" ohne Akt. Seither steht der Hinweis des Gesetzestextes
+   zwischen Vorblatt und Prosa (`lawTextMarker` in `euMarker.ts`, für Bund
+   und Länder dieselbe Funktion): ein Fenster, das einen Akt nennt und
+   „umgesetzt" sagt, ist `umsetzung`, eines, das „durchgeführt" sagt,
+   `flankierend-vo` (D2); `actSignal` ist das stärkste Signal nur der
+   Fenster, die einen Akt nennen, damit ein Fenster ohne Akt sich nicht die
+   Akte einer bloßen Bezugnahme daneben borgt. Der Prosa-Weg allein nennt
+   weiter keinen Akt. 2026-588 trägt seither seinen Akt.
+2. **Das Fenster des Hinweises endet am nächsten Paragraphen, nicht nach
+   zwölf Blöcken.** Burgenlands c372 zählt unter „§ 65 Umsetzungshinweise"
+   17 Richtlinien auf, die sechs jüngsten — die der Entwurf hinzufügt —
+   fielen hinten ab; das Vergaberechtsgesetz 2026 zählt 37. Gemessen und
+   verworfen: das Ende der Aufzählung als Grenze, weil 32/ME „(2) … werden
+   folgende Verordnungen durchgeführt" im selben § anschließt und
+   „durchgeführt" kein eigenes Fenster öffnet — zwölf Verordnungen wären
+   verloren gewesen. Die Grenze ist der nächste „§ n" (`NEXT_PARA`), mit 80
+   Blöcken als Sicherheitsnetz (`WINDOW_CEILING`). Dazu musste „dient der
+   Umsetzung folgender Rechtsakte" als Umsetzung gelten, im Vorblatt
+   (`FREE_YES`) wie im Hinweis: c372s Vorblatt war bis dahin „frei-nein".
+3. **Akte ohne Organisation im Zitat.** „Richtlinie 2024/1785",
+   „Durchführungsbeschluss 2023/2749", „Delegierte Verordnung 2024/1366"
+   (`ACT_BARE`): das Artwort allein, ohne Buchstaben oder Bindestrich
+   davor („Förderrichtlinie 2024/12" bleibt draußen), großgeschrieben,
+   Jahr zuerst und erst ab 2015 (davor ist a/b je nach Art Nummer/Jahr
+   oder Jahr/Nummer, und ohne Organisation sagt nichts, welches), nach der
+   Nummer kein weiterer Schrägstrich, keine Ziffer, kein Dezimalpunkt.
+   Über beide Korpora (1.546 Bund-, 545 Länderdokumente) 41 Fundstellen,
+   keine falsche — keine nationale Nummer, kein Datum, keine
+   Geschäftszahl; 13 echte Akte vor 2015 ohne Suffix („Richtlinie
+   2009/72") bleiben absichtlich ungelesen. Eine Regel gegen Jahresspannen
+   („Richtlinie 2024/25") fing nichts Nationales und verwarf einen echten
+   Akt (Durchführungsverordnung 2025/26) — gestrichen.
+
+**Gemessen.** Bund-Korpus XXVIII: genannte Akte 361 → 380 (Richtlinien
+186 → 192, Verordnungen 165 → 169, Beschlüsse 9 → 18), die Merkmale der
+Ministerialentwürfe unverändert; kein Bund-Entwurf verlor Akt oder
+Merkmal. Länder (aus dem Cache): 57 → 62 Fakten, 37 → 48 mit Akt; fünf
+Entwürfe wechselten vom Prosa-Weg auf den Gesetzestext und tragen seither
+Akte, zwei bekamen erstmals einen Fakt. Karte (Produktionsbuild, 320 MB
+Heap): 152 → 157 Entwürfe mit Merkmal, 195 → 234 Akte, Übersicht 114 →
+132 (Bund und Land 5 → 9, nur Bund 72 → 84, nur Länder 37 → 39; Burgenland
+15 → 20, Kärnten 13 → 16, Salzburg 12 → 16, Tirol 0 → 4); kalt 154 s (ME
+36 s, RIS 14 s, Länder 90 s), Heap-Spitze 178 MB, aus dem Speicher 8 s.
+
+**D7 gemessen, nicht gebaut.** 50 Entwürfe tragen ein Merkmal und nennen
+keinen Akt (Bund 38, Länder 12). Kurznamen sind nicht der Grund: 35 davon
+zitieren einen Akt vollständig, aber in einer gewöhnlichen Bestimmung
+statt in einem Hinweis, 8 nur in Erläuterungen oder Vorblatt, 2 allein
+mit Kurznamen (EU-Bauprodukte-Verordnung, FFH-Richtlinie), 5 nirgends.
+Kein Kurzname steht in einem Umsetzungshinweis — eine Nachschlagetabelle
+jeder Größe löste über den Hinweisleser null der 50; die Namen sind dünn
+gestreut (DSGVO 4, RED 3, FFH, Vogelschutz, RKE, Emissionshandel je 2,
+alles andere einmal). D7 bleibt. Der Hebel läge in D5: ob ein Akt, den
+eine gewöhnliche Bestimmung vollständig zitiert, als der des Entwurfs
+gilt, wo das Vorblatt „umsetzung" sagt — eine Produktentscheidung mit
+Präzisionsrisiko, nicht ein Leserfehler.
+
+**Reste, neu sichtbar:** ein Akt, der neben der Aufzählung des Vorblatts
+steht (c372: „bzw. der Richtlinie 2018/958/EU über eine
+Verhältnismäßigkeitsprüfung" — landet durch D4 als wiederholend) oder in
+einem umsetzenden Absatz nur verwiesen wird (c372: Verordnung (EU) Nr.
+1025/2012), gilt als Akt des Entwurfs — zu probieren: in einer Aufzählung
+nur die aufgezählten; ein wiederholter Richtlinien-Hinweis kann
+„umsetzung" entscheiden, wo der einzige neue Akt die Durchführung einer
+Verordnung ist (Tiroler Verordnung v9cd2d26…: 2018/2001 wiederholt,
+2024/1309 neu) — das entscheidende Fenster sollte einen neuen Akt nennen,
+was D4 vor die Entscheidung zöge; der Korpus-Prüfstand liest dort einen
+anderen Gesetzestext-Kandidaten als der Dienst (ein Akt gegen zwei) —
+eine Lücke des Instruments; der Bund-Leser hat kein Gegenstück zur
+Ziffernlesung der Länder (`quotedHints`; BEGUT_45BB5DFC „Z 3
+Durchführungsbeschluss 2019/2010" ohne Akt); ein Zitat im Titel eines
+anderen Akts („… gemäß der Verordnung (EG) Nr. 1107/2009" im Titel der
+2023/564) wird als eigener Akt genannt (t-2026-734).
+
+
 ## 13. Open questions
 
 1. **Legal (restated 2026-09-16 — the old wording asked the wrong question).** It assumed the metadata was CC-BY and only the full texts excluded. Parliament's licence page for the Begutachtungsverfahren excludes *Beteiligungen zu Ministerialentwürfen* from open-data reuse as such, and no licensed dataset covers Ministerialentwürfe at all. So the question is now: **on what basis may the metadata of lists 81/142/305 be reused?** Two halves — the factual one (how is that sentence meant, is a case-by-case release possible) goes to the Parlamentsdirektion, the legal one (is factual metadata protectable at all; Datenbankherstellerrecht §§ 76c ff vs. § 42h UrhG) to a university partner. The inline web-form texts remain a sub-question of it, not a separate one. It blocks a blanket CC-BY claim on the site, which was removed on 2026-09-16. **And "stage 1 is metadata-only either way", which stood here until 2026-09-19, is not quite true — one block breaks it.** Under „Worum geht es?" the draft page prints Parliament's `shortinfo`: Ziele, Inhalt, Hauptgesichtspunkte. That is prose from the excluded dataset, and no enumeration of "Fristen, Geschäftszahlen, Anzahl" covers it. The obvious escape was measured and does not hold (`pnpm corpus:kurzinfo`, GP XXVII, 337 drafts): the Kurzinformation is *not* simply the ministry's text, which RIS publishes CC BY. 53 % of drafts carry no prose at all, only the Vorblatt lists (67 % of all characters, untested here because the Vorblatt is a RIS document the corpus mapper does not carry); where there is prose, a median of 60 % of its eight-word windows occur verbatim in the ministry's documents, p10 25 %, and only 6.6 % of drafts are covered to 90 % or more. It is Parliament's editorial work on the ministry's material — related, but not the same document, so it cannot be sourced from RIS instead. Consequence: `/impressum` and `/ueber` name it since 2026-09-19, and **the question to the Parlamentsdirektion has to name it too** — an answer of the form "only the contents of the Stellungnahmen are excluded" would not settle it, because the Kurzinformation is neither a Stellungnahme nor a metadatum. And a third block, found 23.09.2026, which unlike the Kurzinformation sits in code: the § comparison reads the Ministerialentwurf's Gesetzestext from Parliament's HTML wherever Parliament publishes one (`diff/lawDiffService.ts`, RIS XML only where it does not), and the Begründungsvergleich reads the draft's Erläuterungen from the same copy on both sides (`explanations/reasoningDiffService.ts`) — both for a measured reason, one Word template on both sides (§12.12, sixth measurement), and both against the source order the Textgegenüberstellung follows (`annex/annexSource.ts`). The argument that carries it is the one the annex switch refuses for the drafts RIS does not hold — the same documents stand in RIS under CC BY — and for those drafts (12 of 350 in GP XXVII) the comparison shows Parliament's text with no RIS twin. `/ueber` and `/impressum` name it since 23.09.2026. Open, and part of the question above: whether to read the draft's text RIS-first like the annex, at the measured cost to the alignment, or to keep the parser symmetry and say so — as the copy now does. Read live on 23.09.2026, Parliament's own dataset pages (Regierungsvorlagen, Anträge, Ausschussberichte, Beschlüsse — one template) call the documents of those items „freie Werke und somit ohne Lizenzierung frei nutzbar“ and license only the result lists, the API and the history pages as CC BY 4.0; the exclusion sentence on the Beteiligungen page names *Beteiligungen* zu Ministerialentwürfen, not the drafts or their documents. (What stood here until 30.09.2026 — that the Beteiligungen lists are CC BY and that the Stellungnahmen zur Regierungsvorlage, §12.14, run under that grant — was a misreading: the Beteiligungen dataset is „Aktuelle Beteiligungen", list 143, items open for participation on the day of the query, and its page says „Ministerialentwürfe und Stellungnahmen fallen nicht darunter"; the Regierungsvorlagen page excludes „sämtliche Informationen zu Stellungnahmen" from free use and licensing, for data protection and copyright. The Stellungnahmen zur Regierungsvorlage therefore carry no licence either, and `/impressum` says so since 30.09.2026.) So the sharp form of the question to the Parlamentsdirektion is whether „die Dokumente selbst sind freie Werke“ holds for a Ministerialentwurf's documents too — and, separately, on what basis list 81 as such and the Kurzinformation may be reused. **The § comparison's own credit line was corrected to those facts on 23.09.2026:** it claimed „CC BY 4.0" whenever neither side was the Ministerialentwurf (`isLicensedPair`), which named a licence Parliament does not grant for these documents — the correct note for a Regierungsvorlage, Ausschuss- or Plenarfassung read from Parliament is „Dokumente: freie Werke, § 7 UrhG", a RIS-sourced side stays CC BY 4.0, and the Ministerialentwurf is credited by name with no claim at all, because what may be claimed for it is precisely this open question (`lawDiffSourceCredit`).
