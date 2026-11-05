@@ -76,7 +76,7 @@ import { lawBlocksFromPdfPages } from '../../server/utils/laender/draftPdfLaw'
 import { baseActCelexes, readEuActCitations, uniqueActs, type EuAct } from '../../server/utils/eu/actCitations'
 import { EU_ANCHOR, readExplanationsEuSignal, readUmsetzungshinweis, type LawSignal } from '../../server/utils/eu/umsetzungshinweis'
 import { EU_HEADING, VORBLATT_CLASS_RANK, VORBLATT_EU_YES, classifyVorblatt, classifyVorblattSentence, linesOfPages, type VorblattClass } from '../../server/utils/eu/vorblatt'
-import { deadlineOf, parseTranspositionAnswer, transpositionUrl, type SparqlAnswer, type TranspositionDates } from '../../server/utils/eu/cellar'
+import { CELLAR_QUERY_VERSION, deadlineOf, parseTranspositionAnswer, transpositionUrl, type SparqlAnswer, type TranspositionDates } from '../../server/utils/eu/cellar'
 import { bundesrechtHits, bundesrechtPhrase, transposesAct, type BrKonsSearchAnswer } from '../../server/utils/eu/bundesrecht'
 import { readLandEu, type LandEuReading } from '../../server/utils/eu/landEuReading'
 import { landLawPart, readLandLaw } from '../../server/utils/eu/landGesetzestext'
@@ -642,7 +642,9 @@ await pool(
   CELLAR_CONCURRENCY,
   async (act) => {
     try {
-      const raw = await cachedFetchJson<SparqlAnswer>('cellar', 'cellar', act.celex, async () => {
+      // Keyed by the query's version (`CELLAR_QUERY_VERSION`): an answer to an
+      // older query lacks what the newer asks for, and a bump must refetch.
+      const raw = await cachedFetchJson<SparqlAnswer>('cellar', 'cellar', `${act.celex}.q${CELLAR_QUERY_VERSION}`, async () => {
         const data = await getJson<SparqlAnswer>(transpositionUrl(act.celex), CELLAR_FETCH)
         return { data, bytes: Buffer.byteLength(JSON.stringify(data)) }
       })

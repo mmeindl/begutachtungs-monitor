@@ -565,8 +565,17 @@ interface SparqlResult {
   results?: { bindings?: Record<string, { value: string }>[] }
 }
 
+/**
+ * The version of the two queries below, in the cache's file name: bump it
+ * with any change to what they ask, so a run refetches instead of reading
+ * an answer to the old query. Not the page's `CELLAR_QUERY_VERSION` — this
+ * run asks its own queries (entry into force, the title). 1 is the
+ * unsuffixed files of 04.11.2026.
+ */
+const CELLAR_CACHE_VERSION = 1
+
 async function cellar(celex: string): Promise<CellarAnswer> {
-  return cachedJson(join(CACHE, 'cellar', `${celex}.json`), async () => {
+  return cachedJson(join(CACHE, 'cellar', CELLAR_CACHE_VERSION === 1 ? `${celex}.json` : `${celex}.q${CELLAR_CACHE_VERSION}.json`), async () => {
     const work = `<http://publications.europa.eu/resource/celex/${celex}>`
     const dates = await getJson<SparqlResult>(
       `${SPARQL}?query=${encodeURIComponent(`${PREFIX}SELECT ?p ?o WHERE { ?w owl:sameAs ${work} . ?w ?p ?o . FILTER(?p IN (cdm:directive_date_transposition, cdm:resource_legal_date_entry-into-force, cdm:work_date_document)) }`)}`,
