@@ -40,7 +40,7 @@
  * The list matches the whole normalised heading, and a heading that cites
  * an act is none.
  */
-import { parseEuActCitations, type EuAct, uniqueActs } from './actCitations'
+import { parseEuActCitations, readEuActCitations, type EuAct, uniqueActs } from './actCitations'
 import { decideEuMarker, explanationsMarker, type MarkerDecision } from './euMarker'
 import { readExplanationsEuSignal, type ExplanationsPassageText, type LawSignal } from './umsetzungshinweis'
 import { classifyVorblatt, classifyVorblattSentence, sentencesOf, type VorblattClass } from './vorblatt'
@@ -117,9 +117,59 @@ export function readLandEuStatement(general: readonly ExplanationsPassageText[],
   return { road: 'erlaeuterungen', heading: passages[0]!.heading, sentence, cls: classifyVorblattSentence(sentence) }
 }
 
-/** The acts a statement names as implemented — acts in another act's title left out. */
+/**
+ * The lead of an enumeration: „dient der Umsetzung folgender Rechtsakte der
+ * Europäischen Union:", „Folgende unionsrechtliche Vorschriften werden …
+ * umgesetzt:" — not „(im Folgenden: EPBD)", which names a short form.
+ */
+const ENUMERATION_LEAD = /(?<!\bim\s)\b[Ff]olgende[rnsm]?\b[^:;]{0,200}:/g
+/** The enumeration's first act stands at most this far after its lead („1. Umsetzung von Bestimmungen der Richtlinie …"). */
+const FIRST_ITEM_REACH = 80
+/**
+ * Where an enumeration ends: the first sentence end after its lead — a
+ * point after anything but an abbreviation of a citation („ABl.", „Nr.",
+ * „S.", „Art.") or an item's number („1. Richtlinie …"), and before a
+ * capitalised word that is no month („vom 7. Mai 2024"). Items run on in „;", „, -", „S. 115. 2. Richtlinie …", none of
+ * which ends a sentence so.
+ */
+const SENTENCE_END = /(?<!\b(?:ABl|Nr|S|Art|Abs|lit|Z|vgl|bzw|idF|Pkt|Anh|iVm)|(?:^|\s)\d{1,3}[a-z]?)\.\s+(?!(?:Januar|Februar|März|April|Mai|Juni|Juli|August|September|Oktober|November|Dezember)\b)(?=[A-ZÄÖÜ][a-zäöüß])/g
+
+/**
+ * The enumerations of a statement, as text: each from its lead's colon to
+ * the end of its last item (`SENTENCE_END`) — only where the first act
+ * follows the lead directly, so a lead that introduces anything else is
+ * none. Empty where the statement enumerates no acts.
+ */
+export function enumerationsOf(text: string): string[] {
+  const out: string[] = []
+  for (const lead of text.matchAll(ENUMERATION_LEAD)) {
+    const from = lead.index! + lead[0].length
+    const rest = text.slice(from)
+    const first = readEuActCitations(rest).occurrences[0]
+    if (!first || first.at > FIRST_ITEM_REACH) continue
+    SENTENCE_END.lastIndex = 0
+    const end = SENTENCE_END.exec(rest)
+    out.push(rest.slice(0, end ? end.index + 1 : rest.length))
+  }
+  return out
+}
+
+/**
+ * The acts a statement names as implemented — acts in another act's title
+ * left out. Where the statement enumerates them („dient der Umsetzung
+ * folgender Rechtsakte …: - Richtlinie … - Richtlinie …", „1. … 2. …"),
+ * only the enumerated items count (05.11.2026): Burgenland's GADG (c372)
+ * goes on after its list „Die Durchführung einer Verhältnismäßigkeitsprüfung
+ * gemäß den Vorgaben … bzw. der Richtlinie 2018/958/EU … war nicht
+ * erforderlich", and 2018/958 stood on the page as an act of the draft.
+ * An item keeps its amendment („…, in der Fassung der Richtlinie (EU)
+ * 2023/2413"), which is usually the act the draft adds (D4a).
+ */
 export function statementActs(statement: LandEuStatement | null): EuAct[] {
-  return statement ? parseEuActCitations(statement.sentence, { implemented: true }) : []
+  if (!statement) return []
+  const enumerations = enumerationsOf(statement.sentence)
+  if (!enumerations.length) return parseEuActCitations(statement.sentence, { implemented: true })
+  return uniqueActs(enumerations.map((e) => parseEuActCitations(e, { implemented: true })))
 }
 
 /** The fact for a Land's draft, and whether its acts may be named. */

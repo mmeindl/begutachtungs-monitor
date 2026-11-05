@@ -99,6 +99,17 @@ describe('readLandEuStatement', () => {
     expect(statementActs(s).map((a) => a.celex)).toEqual(['32016R2031'])
   })
 
+  it('names only the enumerated acts where the statement enumerates them (bgld-c372, 05.11.2026)', () => {
+    const statement = (sentence: string) => ({ road: 'vorblatt' as const, heading: null, sentence, cls: 'frei-umsetzung' as const })
+    const c372 = statement('Der vorliegende Entwurf dient der Umsetzung folgender Rechtsakte der Europäischen Union: - Richtlinie 2023/970/EU zur Stärkung der Anwendung des Grundsatzes des gleichen Entgelts, ABl. Nr. L 132 vom 17.5.2023 S. 21, - Richtlinie 2024/1499/EU über Standards für Gleichbehandlungsstellen und zur Änderung der Richtlinien 2000/43/EG und 2004/113/EG, ABl. L 2024/1499, 29.5.2024, und - Richtlinie 2024/1500/EU über Standards für Gleichbehandlungsstellen, ABl. L 2024/1500, 29.5.2024. Die Durchführung einer Verhältnismäßigkeitsprüfung gemäß den Vorgaben des Burgenländischen EU-Berufsangelegenheitengesetzes bzw. der Richtlinie 2018/958/EU über eine Verhältnismäßigkeitsprüfung, ABl. Nr. L 173 vom 09.07.2018 S. 25, war nicht erforderlich.')
+    expect(statementActs(c372).map((a) => a.celex)).toEqual(['32023L0970', '32024L1499', '32024L1500'])
+    // Numbered items, an item's amendment kept (D4a), the month after a day's number no sentence end.
+    const sbg = statement('Dieses Sammelgesetz dient der Umsetzung folgender Richtlinien: 1. Richtlinie (EU) 2018/2001 des Europäischen Parlaments und des Rates vom 11. Dezember 2018 zur Förderung der Nutzung von Energie aus erneuerbaren Quellen, ABl Nr L 328 vom 21. Dezember 2018, in der Fassung der Richtlinie (EU) 2023/2413, ABl Nr L 2023/2413, 31. Oktober 2023; 2. Richtlinie (EU) 2023/1791 zur Energieeffizienz, ABl Nr L 231 vom 20. September 2023. Darüber hinaus wird die Verordnung (EU) 2024/1309 berücksichtigt.')
+    expect(statementActs(sbg).map((a) => a.celex)).toEqual(['32018L2001', '32023L2413', '32023L1791'])
+    // Without an enumeration the whole statement is read, as before.
+    expect(statementActs(statement('Mit dem Entwurf wird die Richtlinie 2012/18/EU umgesetzt. Die Richtlinie (EU) 2024/1309 bleibt unberührt.')).map((a) => a.celex)).toEqual(['32012L0018', '32024L1309'])
+  })
+
   it('reads Salzburg\'s headed passage as the Land\'s Vorblatt', () => {
     const s = readLandEuStatement(SBG_GENERAL, [])!
     expect([s.road, s.heading, s.cls]).toEqual(['erlaeuterungen', '3. Übereinstimmung mit dem Unionsrecht', 'frei-umsetzung'])
