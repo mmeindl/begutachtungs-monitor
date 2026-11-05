@@ -46,9 +46,9 @@ export interface LawTextBlock {
 }
 
 /** A § heading that announces the EU reference; its text follows in the next blocks. */
-const LAW_HEADING = /^(?:Umsetzungshinweis(?:e)?|Hinweis auf (?:die )?Umsetzung|Bezugnahmen? auf (?:das )?Unionsrecht|Bezugnahmen? auf Rechtsakte der (?:Europäischen )?Union|(?:Durchführung und )?Umsetzung von Rechtsakten der (?:Europäischen )?Union|Unionsrechtliche Bezugnahmen?|Bezugnahme auf Richtlinien|Umsetzung (?:von|der) (?:Unionsrecht|Richtlinien?|EU-Richtlinien?)(?:\b.*)?|Richtlinienumsetzung|Verweisungen? auf (?:das )?Unionsrecht|Unionsrecht|Durchführung (?:von|der) (?:Unionsrecht|Verordnungen?)(?:\b.*)?)\.?$/i
-/** The heading word inside a longer heading line. */
-const LAW_HEADING_WORD = /Umsetzungshinweis|Bezugnahmen?\s+auf\s+(?:das\s+)?Unionsrecht|Bezugnahmen?\s+auf\s+Rechtsakte\s+der\s+(?:Europäischen\s+)?Union|Umsetzung\s+von\s+(?:Unionsrecht|Rechtsakten\s+der\s+(?:Europäischen\s+)?Union)/
+const LAW_HEADING = /^(?:Umsetzungshinweis(?:e)?|Hinweis auf (?:die )?Umsetzung|Bezugnahmen? auf (?:das )?Unionsrecht|Bezugnahmen? auf Rechtsakte der (?:Europäischen )?Union|(?:Durchführung und )?Umsetzung von Rechtsakten der (?:Europäischen )?Union|Unionsrechtliche Bezugnahmen?|Bezugnahme auf Richtlinien|Umsetzung (?:von|der) (?:Unionsrecht|Gemeinschaftsrecht|Richtlinien?|EU-Richtlinien?)(?:\b.*)?|Richtlinienumsetzung|Verweisungen? auf (?:das )?Unionsrecht|Unionsrecht|Durchführung (?:von|der) (?:Unionsrecht|Verordnungen?)(?:\b.*)?)\.?$/i
+/** The heading word inside a longer heading line — „Umsetzung von Gemeinschaftsrecht" in the older laws (the EAG-VO's § 27). */
+const LAW_HEADING_WORD = /Umsetzungshinweis|Bezugnahmen?\s+auf\s+(?:das\s+)?Unionsrecht|Bezugnahmen?\s+auf\s+Rechtsakte\s+der\s+(?:Europäischen\s+)?Union|Umsetzung\s+von\s+(?:Unionsrecht|Gemeinschaftsrecht|Rechtsakten\s+der\s+(?:Europäischen\s+)?Union)/
 /**
  * A sentence inside one Absatz that implements: „wird/werden … Richtlinie …
  * umgesetzt" with its subject, not any „umgesetzt" after a Richtlinie — the
@@ -241,13 +241,20 @@ export function readUmsetzungshinweis(input: string | readonly LawTextBlock[]): 
 // ---------------------------------------------------------------------------
 
 /**
- * A quoted Ziffer that opens with an EU act: its number, then the act —
- * „Richtlinie 2024/1712/EU …", „Art. 15 und 16 der Richtlinie (EU)
- * 2018/2001 …", „Durchführungsbeschluss 2019/2010 der Kommission …".
+ * A quoted Ziffer that opens with an EU act: its number — or a Spiegelstrich
+ * („- Richtlinie (EU) 2023/175 …", the Extraktionslösungsmittelverordnung)
+ * —, an article where the list writes one („78. Die Richtlinie (EU)
+ * 2024/884 …", „3. die delegierte Richtlinie (EU) 2024/1262 …"), then the
+ * act — „Richtlinie 2024/1712/EU …", „Art. 15 und 16 der Richtlinie (EU)
+ * 2018/2001 …", „Durchführungsbeschluss 2019/2010 der Kommission …",
+ * „Durchführungsrichtlinie (EU) 2025/145 …". The article, the
+ * Durchführungsrichtlinie, the delegated act and the Spiegelstrich came in
+ * on 05.11.2026: four Bund drafts whose Vorblatt says „umsetzung" named no
+ * act for want of them.
  */
-const ACT_ZIFFER = /^\d+[a-z]*\.\s+(?:Art(?:ikel|\.)?\s*\d+[a-z]?\b[^„“"]{0,80}?\s(?:der|des)\s+)?(?:Richtlinie|Verordnung|Durchführungsverordnung|Delegierten?\s+Verordnung|Beschluss|Durchführungsbeschluss|Rahmenbeschluss)\b/
-/** A numbered Ziffer's start inside a quote. */
-const ZIFFER_START = /(?:^|\n)(?=\d+[a-z]*\.\s)/
+const ACT_ZIFFER = /^(?:\d+[a-z]*\.|[-–•])\s+(?:(?:[Dd]ie|[Dd]er|[Dd]as|[Dd]en)\s+)?(?:Art(?:ikel|\.)?\s*\d+[a-z]?\b[^„“"]{0,80}?\s(?:der|des)\s+)?(?:Richtlinie|Verordnung|Durchführungsrichtlinie|Durchführungsverordnung|[Dd]elegierte[nr]?\s+(?:Richtlinie|Verordnung|Beschluss)|Beschluss|Durchführungsbeschluss|Rahmenbeschluss)\b/
+/** A Ziffer's or a Spiegelstrich's start inside a quote. */
+const ZIFFER_START = /(?:^|\n)(?=(?:\d+[a-z]*\.|[-–•])\s)/
 /** The lead of a list of references, not of implementations. */
 const REFERENCE_LEAD = /verwei|zu verstehen/i
 

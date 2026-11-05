@@ -435,6 +435,18 @@ describe('the Bund\'s quoted hint Ziffer (readBundLaw, isHintParagraph)', () => 
     expect(r.windows[0]).toMatchObject({ start: 2, signal: 'durchfuehrung', quoted: true })
   })
 
+  it('reads an article before the act, a Durchführungsrichtlinie, a delegated directive and a Spiegelstrich (05.11.2026)', () => {
+    const quoted = (instruction: string, entry: string) => readBundLaw([{ kind: 'novao', text: instruction }, { kind: 'ziff', text: entry }]).acts.map((a) => a.celex)
+    expect(quoted('5. Im § 27 wird nach der Z 77 folgende Z 78 eingefügt:', '"78. Die Richtlinie (EU) 2024/884 zur Änderung der Richtlinie 2012/19/EU, ABl. L vom 19. 03. 2024,"')).toEqual(['32024L0884'])
+    expect(quoted('11. In § 24 wird folgende Z 3 angefügt:', '"3. die delegierte Richtlinie (EU) 2024/1262 der Kommission vom 13. März 2024 zur Änderung der Richtlinie 2010/63/EU."')).toEqual(['32024L1262'])
+    expect(quoted('2. In § 12 wird folgende Z 8 angefügt:', '"8. Durchführungsrichtlinie (EU) 2025/145 zur Änderung der Durchführungsrichtlinie 2014/98/EU."')).toEqual(['32025L0145'])
+    expect(quoted('2. In § 5 wird folgender Spiegelstrich angefügt:', '"- Richtlinie (EU) 2023/175 zur Änderung der Richtlinie 2009/32/EG, ABl. Nr. L 25 vom 27.1.2023 S. 67."')).toEqual(['32023L0175'])
+  })
+
+  it('takes „Umsetzung von Gemeinschaftsrecht" for a hint heading (EAG-VO § 27)', () => {
+    expect(isHintParagraph('Umsetzung von Gemeinschaftsrecht § 27. Mit dieser Verordnung werden 3. die Entscheidung 2005/618/EG …')).toBe(true)
+  })
+
   it('skips a quoted list that introduces itself as references', () => {
     expect(readBundLaw([
       { kind: 'novao', text: '3. § 15 lautet:' },
