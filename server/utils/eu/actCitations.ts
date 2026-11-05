@@ -122,6 +122,73 @@ const TITLE_REFERENCE = /(?:Änderung|Aufhebung|Ersetzung)\s+(?:der|des|von)\s*$
  */
 const REFERENCE_PHRASE = /(?<![\p{L}])(?:nach|gemäß|im\s+Sinne?|entsprechend|aufgrund|auf\s+Grund|laut)\s+(?:(?:Art(?:ikel|\.)?|Anh(?:ang|\.)|Abs\.?|Z|lit\.?)\s*[\p{L}\d.()\s,]{0,40}?\s)?(?:der|des|dem|den)?\s*$/u
 
+/**
+ * An act's title begins right after its citation: „… des Europäischen
+ * Parlaments und des Rates", „vom 10. März 2023", „über …", „zur …",
+ * „betreffend …". A citation followed by anything else has no title here.
+ */
+const TITLE_OPENER = /^\s*,?\s*(?:des\s+(?:Europäischen|Rates)|der\s+Kommission|des\s+Rates|vom\s+\d|über\s|zur\s|zum\s|betreffend\s|hinsichtlich\s|mit\s|für\s)/u
+/** An act's kind word ahead, an adjective allowed: „die delegierte RL (EU) 2022/2100". */
+const ACT_AHEAD = String.raw`(?=(?:[Dd]elegierte[nr]?\s+)?(?:[\p{L}-]*(?:[Rr]ichtlinie|[Vv]erordnung|[Bb]eschluss|[Ee]ntscheidung)|RL\b|VO\b))`
+const MONTH = String.raw`(?:Januar|Jänner|Februar|März|April|Mai|Juni|Juli|August|September|Oktober|November|Dezember)`
+/**
+ * What ends a title (05.11.2026), measured over both corpora: the OJ
+ * reference („ABl. L 2024/1309"), a „;", a sentence end, the next
+ * enumeration item, the amendment phrase („, in der Fassung der …" — D4a,
+ * the act the draft adds), and a second act joined as an object of its own
+ * („… sowie die delegierte RL (EU) 2022/2100"). A parenthesised short name
+ * ends it too (`SHORT_NAME`), and a genitive join before the title names an
+ * act (`GENITIVE_JOIN`).
+ */
+const TITLE_END = new RegExp([
+  String.raw`\bABl\b`,
+  ';',
+  String.raw`(?<!\b(?:Nr|S|Art|Abs|lit|Z|bzw|idF|vgl|iVm|Pkt|Anh)|(?:^|\s)\d{1,3}[a-z]?)\.(?=\s+[A-ZÄÖÜ„"]|\s*$)`,
+  String.raw`\s(?:\d{1,3}[a-z]?\.(?!\s*${MONTH}\b)|[a-z]\)|[-–•])\s`,
+  String.raw`(?:in\s+der\s+(?:jeweils\s+)?(?:geänderten\s+|geltenden\s+)?Fassung|(?:zuletzt\s+)?geändert\s+durch)\b`,
+  String.raw`(?:,|\s(?:und|sowie|bzw\.|oder))\s+(?:die|den)\s+${ACT_AHEAD}`,
+].join('|'), 'u')
+/**
+ * A second act in the genitive: „… über die Ausfuhr von Kulturgütern und
+ * der Richtlinie 2014/60/EU" joins an act of its own, „zur Änderung der
+ * Richtlinie 2003/59/EG über … und der Richtlinie 2006/126/EG" continues
+ * the title's own list. Which one it is shows in what came before: a title
+ * names an act before it lists a second (`titleSpanEnd`).
+ */
+const GENITIVE_JOIN = new RegExp(String.raw`(?:,|\s(?:und|sowie|bzw\.|oder))\s+(?:der|des)\s+${ACT_AHEAD}`, 'gu')
+/**
+ * A parenthesised short name that closes a title: „(Gigabit-Infrastrukturverordnung)",
+ * „(„FFH-Richtlinie“)", „(im Folgenden: EPBD)", „(RED III RL)" — never an
+ * organisation („Verordnungen (EG) Nr. 765/2008").
+ */
+const SHORT_NAME = /\((?!(?:EU|EG|EWG|EGKS|Euratom)(?:\s*,\s*Euratom)?\))(?:im\s+Folgenden:?\s*)?(?:[„"»][^()]{1,80}|[^()\d/]{0,60}(?:[Rr]ichtlinie|[Vv]erordnung|RL|VO|Beschluss)[“"«]?|[A-ZÄÖÜ][A-ZÄÖÜ0-9 .-]{1,15})\)/u
+/** A title never runs further than this; a text whose structure was not seen ends there. */
+const TITLE_CEILING = 800
+
+/**
+ * Where the title of the act whose citation (or list) ends at `from` ends —
+ * `from` itself where none begins (`TITLE_OPENER`). A citation inside it —
+ * „Durchführungsverordnung (EU) 2023/564 … betreffend … die gemäß der
+ * Verordnung (EG) Nr. 1107/2009 … geführten Aufzeichnungen" (t-2026-734),
+ * „Richtlinie (EU) 2023/2413 … zur Änderung der Richtlinie (EU) 2018/2001,
+ * der Verordnung (EU) 2018/1999 und der Richtlinie 98/70/EG …" — is part of
+ * the title, not an act of the draft.
+ */
+export function titleSpanEnd(text: string, from: number): number {
+  const after = text.slice(from, from + TITLE_CEILING)
+  if (!TITLE_OPENER.test(after)) return from
+  const ends = [TITLE_END.exec(after)?.index, (() => {
+    const m = SHORT_NAME.exec(after)
+    return m ? m.index + m[0].length : undefined
+  })()].filter((n): n is number => n !== undefined)
+  const end = ends.length ? Math.min(...ends) : after.length
+  // A genitive join before any act of the title's own joins a second act to the first.
+  for (const m of after.slice(0, end).matchAll(GENITIVE_JOIN)) {
+    if (!readEuActCitations(after.slice(0, m.index)).occurrences.length) return from + m.index
+  }
+  return from + end
+}
+
 function kindOf(word: string): EuActKind {
   const w = word.toLowerCase()
   if (w.startsWith('rahmen')) return 'rahmenbeschluss'
@@ -241,7 +308,8 @@ export interface Citations {
 
 /** Every act cited in `text`, in order, with list continuations; deduped by CELEX. */
 export function readEuActCitations(text: string, options: CitationOptions = {}): Citations {
-  const found: { at: number; act: EuAct }[] = []
+  /** Each citation, with the end of the list it heads (`listEnd`, on the head only). */
+  const found: { at: number; act: EuAct; listEnd?: number }[] = []
   let dropped = 0
   let references = 0
   /** Skip the list after a dropped citation — it belongs to the same title or reference — and count it. */
@@ -267,7 +335,8 @@ export function readEuActCitations(text: string, options: CitationOptions = {}):
       references += skipList(end)
       return
     }
-    found.push({ at, act })
+    const head: { at: number; act: EuAct; listEnd?: number } = { at, act, listEnd: end }
+    found.push(head)
     // The list after it: „der Richtlinien (EU) 2022/2464 und (EU) 2023/2775".
     let rest = end
     for (let guard = 0; guard < 12; guard++) {
@@ -280,6 +349,7 @@ export function readEuActCitations(text: string, options: CitationOptions = {}):
       if (cont) found.push({ at: rest, act: cont })
       rest += m[0].length
     }
+    head.listEnd = rest
   }
   for (const m of text.matchAll(ACT_ORG)) take(m.index!, m.index! + m[0].length, m[1]!, orderOrg(Boolean(m[2]), Number(m[3]), Number(m[4])))
   for (const m of text.matchAll(ACT_SUFFIX)) take(m.index!, m.index! + m[0].length, m[1]!, orderSuffix(Boolean(m[2]), Number(m[3]), Number(m[4])))
@@ -288,7 +358,22 @@ export function readEuActCitations(text: string, options: CitationOptions = {}):
     if (bareCitation(Number(m[2]))) take(m.index!, m.index! + m[0].length, m[1]!, { year: Number(m[2]), number: Number(m[3]) })
   }
   found.sort((a, b) => a.at - b.at)
-  return { acts: uniqueActs([found.map((f) => f.act)]), occurrences: found, titleReferencesDropped: dropped, referencesDropped: references }
+  // An act named inside another act's title is none of its own (`titleSpanEnd`).
+  let kept: { at: number; act: EuAct; listEnd?: number }[] = found
+  if (options.implemented) {
+    kept = []
+    // Each kept act's title, from the end of its list (whose items are acts of their own) to the title's end.
+    const titles: [number, number][] = []
+    for (const f of found) {
+      if (titles.some(([from, to]) => f.at >= from && f.at < to)) {
+        dropped++
+        continue
+      }
+      kept.push(f)
+      if (f.listEnd !== undefined) titles.push([f.listEnd, titleSpanEnd(text, f.listEnd)])
+    }
+  }
+  return { acts: uniqueActs([kept.map((f) => f.act)]), occurrences: kept.map(({ at, act }) => ({ at, act })), titleReferencesDropped: dropped, referencesDropped: references }
 }
 
 /** Every act cited in `text` — `readEuActCitations` without the bookkeeping. */

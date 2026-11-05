@@ -98,6 +98,29 @@ describe('parseEuActCitations', () => {
   })
 })
 
+describe('an act inside another act\'s title is none of its own (titleSpanEnd)', () => {
+  it('drops a citation in the title, up to its OJ reference or the sentence end (t-2026-734, RED III)', () => {
+    expect(celexes('Mit diesem Gesetz werden begleitende Maßnahmen zur Durchführung der Durchführungsverordnung (EU) 2023/564 der Kommission vom 10. März 2023 betreffend den Inhalt und das Format der gemäß der Verordnung (EG) Nr. 1107/2009 des Europäischen Parlaments und des Rates von den beruflichen Verwendern geführten Aufzeichnungen über Pflanzenschutzmittel, ABl. Nr. L 74 vom 13.03.2023 S. 4, getroffen.', true)).toEqual(['32023R0564'])
+    expect(celexes('Mit dem Entwurf wird die Richtlinie (EU) 2023/2413 des Europäischen Parlaments und des Rates vom 18. Oktober 2023 zur Änderung der Richtlinie (EU) 2018/2001, der Verordnung (EU) 2018/1999 und der Richtlinie 98/70/EG im Hinblick auf die Förderung von Energie aus erneuerbaren Quellen umgesetzt.', true)).toEqual(['32023L2413'])
+    expect(celexes('die Verordnung (EU) 2019/1020 über Marktüberwachung sowie zur Änderung der Richtlinie 2004/42/EG und der Verordnungen (EG) Nr. 765/2008 und (EU) Nr. 305/2011, ABl. Nr. L 169 vom 25.06.2019 S. 1, und die Verordnung (EU) 2024/573', true)).toEqual(['32019R1020', '32024R0573'])
+  })
+
+  it('ends the title at the next item, the amendment phrase and a short name', () => {
+    expect(celexes('1. Durchführungsverordnung (EU) 2023/564 der Kommission betreffend die Aufzeichnungen 2. Durchführungsverordnung (EU) 2025/2203 der Kommission zur Änderung der Durchführungsverordnung (EU) 2023/564', true)).toEqual(['32023R0564', '32025R2203'])
+    expect(celexes('Dieses Gesetz dient der Umsetzung der Richtlinie (EU) 2018/2001 zur Förderung der Nutzung von Energie aus erneuerbaren Quellen, in der Fassung der Richtlinie (EU) 2024/1711', true)).toEqual(['32018L2001', '32024L1711'])
+    expect(celexes('der Verordnung (EU) 2024/1309 über Maßnahmen zur Reduzierung der Kosten (Gigabit-Infrastrukturverordnung) und der Richtlinie (EU) 2018/1972', true)).toEqual(['32024R1309', '32018L1972'])
+  })
+
+  it('keeps a second act joined to the first, not to its title', () => {
+    // „die delegierte RL" — an object of its own (Tabak- und Nikotinsucht-Gesetz).
+    expect(celexes('der Durchführungsbeschluss (EU) 2016/586 der Kommission vom 14. April 2016 zu den technischen Normen sowie die delegierte RL (EU) 2022/2100 vom 29. Juni 2022 zur Änderung der RL 2014/40/EU', true)).toEqual(['32016D0586', '32022L2100'])
+    // A genitive join before the title names any act: the Kulturgüterrückgabegesetz.
+    expect(celexes('von der Verordnung (EG) Nr. 116/2009 des Rates vom 18. Dezember 2008 über die Ausfuhr von Kulturgütern und der Richtlinie 2014/60/EU des Europäischen Parlaments und des Rates abgedeckt', true)).toEqual(['32009R0116', '32014L0060'])
+    // After an act of the title's own, the join continues the title.
+    expect(celexes('Richtlinie (EU) 2018/645 zur Änderung der Richtlinie 2003/59/EG über die Grundqualifikation der Fahrer und der Richtlinie 2006/126/EG über den Führerschein, ABl. Nr. L 112 vom 02.05.2018', true)).toEqual(['32018L0645'])
+  })
+})
+
 describe('baseActCelexes — base directive vs amending directive', () => {
   it('reads „X …, in der Fassung der Y" as X the base and Y the amendment (43/ME EABG)', () => {
     const text = '§ 3. Dieses Gesetz dient der Umsetzung der Richtlinie (EU) 2018/2001 zur Förderung der Nutzung von Energie aus erneuerbaren Quellen (Neufassung), ABl. Nr. L 328 vom 21.12.2018 S. 82, in der Fassung der Richtlinie (EU) 2024/1711, ABl. Nr. L 1711 vom 26.6.2024 S. 1.'
