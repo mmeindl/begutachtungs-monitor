@@ -118,9 +118,10 @@ const [bundItem, eurLexItem] = sourceItemsDe([risSource('Vorblatt'), risSource('
 
         <section aria-labelledby="eu-umsetzung-heading" class="page-section">
           <h2 id="eu-umsetzung-heading" class="section-heading">{{ page.implementingHeading }}</h2>
-          <!-- The rows, then the axis once under the last — in the unfilled
-               frame: rows to consult, side by side on one scale. -->
-          <div v-if="page.rows.length" class="mt-4 rounded-xl border border-hairline">
+          <!-- The rows, then the axis once under the last — on the white
+               sheet of every list of rows (`ListBox`): rows that link, side
+               by side on one scale. -->
+          <ListBox v-if="page.rows.length" class="mt-4">
             <ul role="list" class="divide-y divide-hairline">
               <!-- The list row's anatomy (`EntryItem`): the whole row — text and
                    bar — is the link to the draft's page, the title ink and
@@ -159,7 +160,7 @@ const [bundItem, eurLexItem] = sourceItemsDe([risSource('Vorblatt'), risSource('
               <div class="hidden md:block" />
               <EuScaleAxis :marks="page.axis" />
             </div>
-          </div>
+          </ListBox>
           <p v-else class="mt-4 text-ink-secondary">
             Kein Entwurf im Fenster setzt den Rechtsakt neu um; die Entwürfe unten
             nennen ihn, weil das geltende Recht ihn schon umsetzt.

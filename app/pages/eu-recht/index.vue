@@ -5,9 +5,12 @@
  * deadline and how many drafts implement it on each side. Each act links
  * to its page, where the drafts stand on one track.
  *
- * The list in the unfilled frame — rows to consult, not an instrument to
- * operate (box grammar, §8): no sort, the order the map delivers. Folded
- * past twenty in the site's list idiom (`ListMore`).
+ * The list on the white sheet of every list of rows (`ListBox`, box
+ * grammar, §8): rows you operate — each links, the list folds past twenty
+ * in the site's idiom (`ListMore`), the chips filter it. Everything that
+ * operates on it stands inside the box, the chips in its head per
+ * `ListBox`'s rule, the empty selection and the fold at its foot; nothing
+ * floats above it. No sort, the order the map delivers.
  *
  * The source chips select rows and change nothing in a row: an act stays
  * where the Bund (ticked) has an implementing draft or any ticked Land does.
@@ -114,21 +117,23 @@ const [bundItem, eurLexItem] = sourceItemsDe([risSource('Vorblatt'), risSource('
           />
           <section v-else aria-labelledby="eu-akte-heading" class="mt-8">
             <h2 id="eu-akte-heading" class="sr-only">Rechtsakte</h2>
-            <!-- Whose drafts, on a line of its own above the list it
-                 selects from, as the lists' source chips. -->
-            <div role="group" aria-label="Quellen der Liste" class="mb-4 flex flex-wrap items-center gap-2">
-              <ToggleChip
-                v-for="code in chips"
-                :key="code"
-                :pressed="chosen.includes(code)"
-                @toggle="toggleSource(code)"
-              >
-                {{ SOURCE_NAME[code] }}
-              </ToggleChip>
-            </div>
-            <div class="overflow-clip rounded-xl border border-hairline">
-              <!-- Inside the frame, as a list box's notice: a card in the
-                   frame would be a box in a box (`ListBoxNotice`). -->
+            <ListBox>
+              <!-- Whose drafts, in the tool row, as the lists' source chips
+                   (`SourceChips`): they decide which rows exist at all. -->
+              <template #header>
+                <div role="group" aria-label="Quellen der Liste" class="flex flex-wrap items-center gap-2">
+                  <ToggleChip
+                    v-for="code in chips"
+                    :key="code"
+                    :pressed="chosen.includes(code)"
+                    @toggle="toggleSource(code)"
+                  >
+                    {{ SOURCE_NAME[code] }}
+                  </ToggleChip>
+                </div>
+              </template>
+              <!-- Inside the sheet, as a list box's notice: a card in the
+                   sheet would be a box in a box (`ListBoxNotice`). -->
               <ListBoxNotice
                 v-if="!rows.length"
                 title="Kein Rechtsakt mit einem Entwurf aus dieser Auswahl."
@@ -164,7 +169,7 @@ const [bundItem, eurLexItem] = sourceItemsDe([risSource('Vorblatt'), risSource('
                 @more="visible += STEP"
                 @all="visible = rows.length"
               />
-            </div>
+            </ListBox>
             <SectionCredits :sources="[]" :marked="false" method="/so-funktionierts#eu-recht">
               <span>Quellen:</span>
               <span>{{ bundItem }}</span>
