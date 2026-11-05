@@ -10,6 +10,6 @@ import { risKey } from '../../../utils/eu/euMapStore'
 export default defineEventHandler(async (event): Promise<EuRechtResponse> => {
   const id = readRisId(event)
   const fact = await getRisEuRecht(id)
-  // The running period's map: a record has no period of its own but its window.
-  return withRelated(fact, await getCurrentGp(), risKey(id))
+  // A record has no period of its own: the map of the one whose window holds its Beginn.
+  return withRelatedOfOwnPeriod(fact, risKey(id), await getCurrentGp())
 })

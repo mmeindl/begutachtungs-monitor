@@ -140,6 +140,22 @@ export function gpWindow(gp: string): { from: string; to: string | null } | null
   return { from, to: gpEndedOn(gp) }
 }
 
+/**
+ * The period whose window holds `day` (ISO, a timestamp is cut to its day):
+ * the latest `GP_STARTS` row on or before it. Null before GP XX, where the
+ * table does not reach. The day after the newest row falls to that row's
+ * period, whose window is open-ended (`gpEndedOn`) — the same answer
+ * `windowPeriodFor` gives a period that convened before its row was added.
+ */
+export function gpOfDay(day: string): string | null {
+  const d = day.slice(0, 10)
+  let best: string | null = null
+  for (const [gp, from] of Object.entries(GP_STARTS)) {
+    if (from <= d && (best === null || from > GP_STARTS[best]!)) best = gp
+  }
+  return best
+}
+
 const MONTHS = ['Jänner', 'Februar', 'März', 'April', 'Mai', 'Juni', 'Juli', 'August', 'September', 'Oktober', 'November', 'Dezember']
 
 /**

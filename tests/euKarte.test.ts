@@ -4,6 +4,7 @@ import { join } from 'node:path'
 import { afterEach, beforeEach, describe, expect, it } from 'vitest'
 import type { BgblOutcome, DraftChain, EuActView, EuMarker, EuRechtResponse, LandConsultation } from '../shared/types'
 import { euActCelex, euActPath } from '../shared/utils/eu'
+import { gpOfDay } from '../shared/utils/gp'
 import {
   OPEN_DRAFT_MAX_AGE_MS,
   STORE_VERSION,
@@ -24,6 +25,7 @@ import {
   isImplementing,
   markersOf,
   relatedActsOf,
+  relatedPeriodOf,
   standOfLand,
   standOfMe,
   standOfRis,
@@ -358,5 +360,28 @@ describe('assembling the map', () => {
       { celex: '32024L1069', path: '/eu-recht/richtlinie/2024/1069', others: { bund: 1, laender: 2 } },
     ])
     expect(relatedActsOf(map, 'ris:BEGUT_R1', ['32022R2554'])).toEqual([])
+  })
+})
+
+describe('the period a draft\'s related lines come from', () => {
+  it('places a day in the period whose window holds it, the open-ended newest one included', () => {
+    expect(gpOfDay('2024-10-24')).toBe('XXVIII')
+    expect(gpOfDay('2024-10-23')).toBe('XXVII')
+    expect(gpOfDay('2021-03-01T00:00:00')).toBe('XXVII')
+    expect(gpOfDay('2031-01-01')).toBe('XXVIII')
+    expect(gpOfDay('1995-12-31')).toBeNull()
+  })
+
+  it('takes the map of the Begutachtung\'s own period, not the running one\'s', () => {
+    expect(relatedPeriodOf('2023-05-02', 'XXVIII')).toEqual({ gp: 'XXVII', onlyIfRead: false })
+    expect(relatedPeriodOf('2026-02-01', 'XXVIII')).toEqual({ gp: 'XXVIII', onlyIfRead: false })
+  })
+
+  it('falls to the running period only for an undated draft, and then only if its build read it', () => {
+    expect(relatedPeriodOf(null, 'XXVIII')).toEqual({ gp: 'XXVIII', onlyIfRead: true })
+  })
+
+  it('has no period before the calendar — no map, no lines', () => {
+    expect(relatedPeriodOf('1990-01-01', 'XXVIII')).toBeNull()
   })
 })

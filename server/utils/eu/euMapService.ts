@@ -43,7 +43,7 @@ import { readLaenderInWindow, readLandDraft } from '../laender/sources'
 import { readEuRecht, readRisEuRecht } from './euService'
 import { readLandEuRecht } from './landEuService'
 import { isVorblattDocument } from './vorblatt'
-import { assembleEuMap, landNumberOf, markersOf, relatedActsOf, type EuMap } from './euMap'
+import { assembleEuMap, landNumberOf, markersOf, relatedActsOf, relatedPeriodOf, type EuMap } from './euMap'
 import { emptyStore, fingerprintOf, isFresh, landKey, loadEuStore, meKey, risKey, saveEuStore, type EuStoreFile } from './euMapStore'
 
 /** As long as the station map: the stand a row shows comes from it. */
@@ -370,6 +370,24 @@ const RELATED_BUDGET_MS = 1_000
 export async function withRelated(fact: EuRechtResponse, gp: string, key: string): Promise<EuRechtResponse> {
   const map = await withinBudget(getEuMap(gp), RELATED_BUDGET_MS)
   if (!map) return fact
+  return { ...fact, related: relatedActsOf(map, key, fact.acts.map((a) => a.celex)) }
+}
+
+/**
+ * `withRelated` for a draft without a period of its own — a RIS record, a
+ * Land's draft: the map of the period its Begutachtung began in
+ * (`relatedPeriodOf`), not the running one's.
+ *
+ * READ, NEVER BUILT. `getEuMap` only joins a store a prewarm build wrote
+ * (`assembleFromStore` → `loadEuStore`); a period without one answers null
+ * and the field stays off — no related lines, which is the honest answer
+ * for a period nobody mapped. Nothing on this path reaches `buildEuMap`.
+ */
+export async function withRelatedOfOwnPeriod(fact: EuRechtResponse, key: string, currentGp: string): Promise<EuRechtResponse> {
+  const period = relatedPeriodOf(fact.begutachtungStart, currentGp)
+  if (!period) return fact
+  const map = await withinBudget(getEuMap(period.gp), RELATED_BUDGET_MS)
+  if (!map || (period.onlyIfRead && !map.read.includes(key))) return fact
   return { ...fact, related: relatedActsOf(map, key, fact.acts.map((a) => a.celex)) }
 }
 

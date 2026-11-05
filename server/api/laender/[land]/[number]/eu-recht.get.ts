@@ -26,8 +26,8 @@ export default defineEventHandler(async (event): Promise<EuRechtResponse> => {
     const detail = await readLandDraft(land as LandCode, number)
     if (!detail) throw createError({ statusCode: 404, statusMessage: 'Entwurf nicht gefunden' })
     const fact = await getLandEuRecht(land as LandCode, number, detail)
-    // `related` from the running period's EU map, never stored with the fact.
-    return await withRelated(fact, await getCurrentGp(), landKey(land, number))
+    // `related` from the EU map of the period the Begutachtung began in, never stored with the fact.
+    return await withRelatedOfOwnPeriod(fact, landKey(land, number), await getCurrentGp())
   } catch (error) {
     if (isError(error)) throw error
     console.warn(`[laender] EU-Recht ${land}/${number}:`, error instanceof Error ? error.message : error)

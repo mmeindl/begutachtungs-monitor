@@ -30,6 +30,7 @@ import type {
   RisConsultation,
 } from '../../../shared/types'
 import { euActPath } from '../../../shared/utils/eu'
+import { gpOfDay } from '../../../shared/utils/gp'
 import { LAND_CODES, landDraftPath } from '../../../shared/utils/laender'
 import { landKey, meKey, risKey, type EuStoreFile } from './euMapStore'
 
@@ -341,4 +342,26 @@ export function relatedActsOf(map: EuMap, key: string, celexes: readonly string[
     if (others.bund + others.laender > 0) out.push({ celex, path: act.path, others })
   }
   return out
+}
+
+/**
+ * Which period's map a RIS record's or a Land draft's related lines come
+ * from — neither carries a Gesetzgebungsperiode, so the period is the one
+ * whose window holds the draft's Begutachtungsbeginn (`gpOfDay`), the rule
+ * the map's own build reads its windows by. A draft of an earlier period
+ * counted against today's map named „other drafts" of a window it was
+ * never part of.
+ *
+ * A draft that dates no start (Burgenland) cannot be placed by date: then
+ * the running period's map answers, but only if its build read the draft
+ * (`onlyIfRead` — `EuMap.read`), which is what places it in that window.
+ * Null where the day lies before the calendar: no map, no lines.
+ */
+export function relatedPeriodOf(
+  begutachtungStart: string | null,
+  currentGp: string,
+): { gp: string; onlyIfRead: boolean } | null {
+  if (!begutachtungStart) return { gp: currentGp, onlyIfRead: true }
+  const gp = gpOfDay(begutachtungStart)
+  return gp ? { gp, onlyIfRead: false } : null
 }
