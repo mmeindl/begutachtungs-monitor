@@ -79,7 +79,7 @@ import { EU_HEADING, VORBLATT_CLASS_RANK, VORBLATT_EU_YES, classifyVorblatt, cla
 import { deadlineOf, parseTranspositionAnswer, transpositionUrl, type SparqlAnswer, type TranspositionDates } from '../../server/utils/eu/cellar'
 import { bundesrechtHits, bundesrechtPhrase, transposesAct, type BrKonsSearchAnswer } from '../../server/utils/eu/bundesrecht'
 import { readLandEu, type LandEuReading } from '../../server/utils/eu/landEuReading'
-import { landLawPart } from '../../server/utils/eu/landGesetzestext'
+import { landLawPart, readLandLaw } from '../../server/utils/eu/landGesetzestext'
 import { readLandExplanations } from '../../server/utils/laender/landExplanationsRead'
 import { safeExternalUrl } from '../../shared/utils/safeExternalUrl'
 import { getJson, getText, type HttpOptions } from '../lib/http'
@@ -410,21 +410,31 @@ interface Row {
 
 const blockText = (b: { gld: string | null; text: string }) => [b.gld, b.text].filter(Boolean).join(' ')
 
+/**
+ * The law text as the page reads it (`readLandLaw`): the part between the
+ * promulgation clause and what follows the law, its hint windows and its
+ * quoted hint Ziffern. Until 05.11.2026 this column read the blocks of the
+ * whole PDF without the quoted Ziffern, and on t-v9cd2d26… it named one act
+ * where the page named two — same document, other reading. The raw block
+ * reading stays only for what it drops for want of an EU anchor.
+ */
 function readLawPages(pages: string[]): Omit<LawRead, 'doc' | 'candidates' | 'pdfRead' | 'error'> {
-  const blocks = lawBlocksFromPdfPages(pages)
+  const part = landLawPart(pages)
+  const blocks = part ? lawBlocksFromPdfPages([part.join('\n')]) : null
   const plain = readUmsetzungshinweis(pages.join('\n'))
   const plainPart = { plainSignal: plain.signal, plainWindows: plain.windows.map((w) => w.text), plainActs: plain.acts }
   if (!blocks) return { blocks: null, signal: null, windows: [], acts: [], baseActs: [], dropped: [], cited: 0, ...plainPart }
-  const read = readUmsetzungshinweis(blocks)
+  const read = readLandLaw(pages)
+  const windows = [...read.windows.map((w) => w.text), ...read.quoted.map((q) => q.text)]
   const base = new Set<string>()
-  for (const w of read.windows) for (const c of baseActCelexes(w.text)) base.add(c)
+  for (const w of windows) for (const c of baseActCelexes(w)) base.add(c)
   return {
     blocks: blocks.length,
     signal: read.signal,
-    windows: read.windows.map((w) => w.text),
+    windows,
     acts: read.acts,
     baseActs: [...base],
-    dropped: read.dropped,
+    dropped: readUmsetzungshinweis(blocks).dropped,
     cited: actsIn(blocks.map(blockText).join(' '), false).length,
     ...plainPart,
   }
@@ -911,6 +921,23 @@ for (const { r, p } of pageFacts) {
   }
 }
 console.log(`    ${outsideLaw}`)
+
+// The measurement's law-text columns against the page's own reading of the
+// same draft (A7, 05.11.2026): both read `readLandLaw`, the measurement over
+// the pages of Phase B, the page over those its Erläuterungen' reader read.
+// A row here is an instrument gap — other pages or another document.
+console.log(`\n  Measurement and page disagree on the law text's acts or signal (must be none):`)
+let disagree = 0
+for (const r of rows) {
+  const p = pageOf(r)
+  if (!p || !r.law.pdfRead) continue
+  const mine = r.law.acts.map((a) => a.celex).sort().join(' ')
+  const page = p.reading.law.acts.map((a) => a.celex).sort().join(' ')
+  if (mine === page && (r.law.signal ?? null) === (p.reading.law.signal ?? null)) continue
+  disagree++
+  console.log(`    ${r.item.id}  Messung ${r.law.signal ?? '—'} [${mine || '—'}] · Seite ${p.reading.law.signal ?? '—'} [${page || '—'}]`)
+}
+console.log(`    ${disagree}`)
 console.log(`\n  Every fact by the page rule:`)
 for (const { r, p } of pageFacts.sort((a, b) => a.r.item.id.localeCompare(b.r.item.id))) {
   console.log(`    ${r.item.id.padEnd(48)} ${p.reading.decision.marker!.padEnd(15)} ${roadOf(p).padEnd(12)} ${(p.reading.actsSource ?? '—').padEnd(14)} ${p.reading.named.map((a) => a.celex).join(' ') || '—'}`)
