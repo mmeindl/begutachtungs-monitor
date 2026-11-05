@@ -14854,6 +14854,15 @@ Karte im Rahmen wäre eine Box in der Box). Oder-Semantik wie in den Listen;
 die Chips wählen Reihen aus und ändern in keiner Reihe eine Zahl
 (`euSourceChips`, `filterEuActs`, rein, getestet).
 
+Am selben Abend korrigiert: Übersicht und Aktseite stellten ihre Reihen seit
+Nachtrag 3 in den ungefüllten Rahmen, das Register der Faktenlisten, und die
+Chips schwebten über ihm. Eine Liste von Reihen, die verlinken, sich falten
+und gefiltert werden, ist ein Ding, das man bedient — sie steht auf dem
+weißen Blatt (`ListBox`), und was auf ihr arbeitet, steht in ihr: die Chips
+in ihrem Kopf wie die Quellen-Chips von `/entwuerfe`, der Hinweis zur leeren
+Auswahl und die Faltung an ihrem Fuß. Der EU-Fakt der Entwurfsseite bleibt
+im Rahmen, er wird nachgeschlagen.
+
 **Reste:** `scripts/corpus/euLaender.ts` cacht Cellar-Antworten ohne
 Abfrageversion auf der Platte — ein Korpuslauf zeigt `title: null`, bis
 dieser Cache geleert ist; ein Rahmenbeschluss hat im Cellar keine
