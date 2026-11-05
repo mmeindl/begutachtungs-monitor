@@ -52,8 +52,13 @@ export function bundesrechtPhrase(label: string): string | null {
   const m = PHRASE_RE.exec(label)
   if (!m) return null
   const [, year, number, suffix = ''] = m
-  const twoDigit = suffix && year!.length === 4 && Number(year) <= 1998
-  return `${twoDigit ? year!.slice(2) : year}/${number}${suffix}`
+  if (!suffix) return `${year}/${number}`
+  // Up to 1998 the number alone: the laws write the organisation as they
+  // please — Burgenland's Landes-Gleichbehandlungsgesetz „76/207/EG" for
+  // 76/207/EWG, which the label now names right (05.11.2026). Every hit is
+  // read for the act's CELEX (`transposesAct`), so the suffix filtered nothing.
+  if (year!.length === 2 || Number(year) <= 1998) return `${year!.slice(-2)}/${number}`
+  return `${year}/${number}${suffix}`
 }
 
 /** The BrKons query for one phrase as of one day (`konsQuery` adds the application). */

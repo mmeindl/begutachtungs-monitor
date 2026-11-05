@@ -239,25 +239,40 @@ function orderSuffix(nr: boolean, a: number, b: number): { year: number; number:
 }
 
 /**
- * The organisation as the act's own title writes it: from the citation where
- * it says one, else by date — EWG before the Maastricht treaty, EG until
- * Lisbon (1 December 2009), EU after.
+ * The organisation as the act's own title writes it — by date: EWG before
+ * the Maastricht treaty (1 November 1993), EG until Lisbon (1 December
+ * 2009), EU after; Euratom, EGKS, JI and GASP as cited. The citation's own
+ * word is kept only where the date allows it (1993 and 2009 are either):
+ * Burgenland's GADG cites „Richtlinie 76/207/EG", the act is 76/207/EWG
+ * (05.11.2026).
  */
 function orgOf(raw: string, year: number): string {
   const m = /\((EU|EG|EWG|EGKS|Euratom)\b|\/(EU|EG|EWG|EGKS|Euratom|JI|GASP)\b/.exec(raw)
-  if (m) return (m[1] ?? m[2])!
-  return year >= 2010 ? 'EU' : year >= 1993 ? 'EG' : 'EWG'
+  const cited = m ? (m[1] ?? m[2])! : null
+  const fits = (org: string) => (org === 'EWG' ? year <= 1993 : org === 'EG' ? year >= 1993 && year <= 2009 : org === 'EU' ? year >= 2009 : true)
+  if (cited && fits(cited)) return cited
+  return year >= 2010 ? 'EU' : year >= 1994 ? 'EG' : 'EWG'
+}
+
+/**
+ * The year as the act's own number writes it: two digits up to 1998
+ * („76/207/EWG", „Verordnung (EWG) Nr. 1408/71"), four from 1999 on
+ * („1999/62/EG") — the numbering changed in 1999, not in 2000.
+ */
+function yearOfNumber(year: number): string {
+  return year <= 1998 ? String(year).slice(2) : String(year)
 }
 
 /**
  * The label in the act's own citation form: since 2015 „Richtlinie (EU)
- * 2024/1069"; before, „Richtlinie 2009/43/EG" and „Verordnung (EG) Nr.
- * 1907/2006".
+ * 2024/1069"; before, „Richtlinie 2009/43/EG", „Richtlinie 76/207/EWG" and
+ * „Verordnung (EG) Nr. 1907/2006", „Verordnung (EWG) Nr. 1408/71" — the form
+ * the Cellar's title and the drafts print.
  */
 function labelOf(word: string, kind: EuActKind, year: number, number: number, org: string): string {
   if (year >= 2015) return `${word} (${org}) ${year}/${number}`
-  if (kind === 'verordnung') return `${word} (${org}) Nr. ${number}/${year}`
-  return `${word} ${year}/${number}/${org}`
+  if (kind === 'verordnung') return `${word} (${org}) Nr. ${number}/${yearOfNumber(year)}`
+  return `${word} ${yearOfNumber(year)}/${number}/${org}`
 }
 
 /** CELEX of an act: `3` + year + type letter + four-digit number. */

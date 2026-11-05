@@ -24,6 +24,20 @@ const cellar = (celex: string) => JSON.parse(readFileSync(join(FIXTURES, `cellar
 const celexes = (text: string, implemented = false) => parseEuActCitations(text, { implemented }).map((a) => a.celex)
 
 describe('parseEuActCitations', () => {
+  it('labels an act in its own form, every era (the Cellar\'s title and the drafts\' citations)', () => {
+    const label = (t: string) => parseEuActCitations(t).map((a) => a.label)
+    expect(label('Richtlinie 76/207/EG zur Verwirklichung')).toEqual(['Richtlinie 76/207/EWG'])
+    expect(label('Richtlinie 92/43/EWG des Rates')).toEqual(['Richtlinie 92/43/EWG'])
+    expect(label('Richtlinie 1999/62/EG über die Erhebung')).toEqual(['Richtlinie 1999/62/EG'])
+    expect(label('Richtlinie 2000/43/EG zur Anwendung')).toEqual(['Richtlinie 2000/43/EG'])
+    expect(label('Richtlinie 2009/43/EG zur Vereinfachung')).toEqual(['Richtlinie 2009/43/EG'])
+    expect(label('Richtlinie 2010/41/EU zur Verwirklichung')).toEqual(['Richtlinie 2010/41/EU'])
+    expect(label('Richtlinie 2014/36/EU über die Bedingungen')).toEqual(['Richtlinie 2014/36/EU'])
+    expect(label('Richtlinie 2013/59/Euratom des Rates')).toEqual(['Richtlinie 2013/59/Euratom'])
+    expect(label('Verordnung (EWG) Nr. 1408/71 zur Anwendung')).toEqual(['Verordnung (EWG) Nr. 1408/71'])
+    expect(label('Verordnung (EG) Nr. 1907/2006')).toEqual(['Verordnung (EG) Nr. 1907/2006'])
+  })
+
   it('reads „(EU) Nr. a/b" year first where only the first number fits „(EU)" (UVP-G, 05.11.2026)', () => {
     expect(celexes('Richtlinie (EU) Nr. 2018/2001 zur Förderung der Nutzung von Energie aus erneuerbaren Quellen')).toEqual(['32018L2001'])
     expect(celexes('Verordnung (EU) Nr. 1025/2012')).toEqual(['32012R1025'])

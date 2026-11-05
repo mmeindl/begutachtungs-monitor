@@ -108,7 +108,7 @@ export function lgblKey(citation: string | null | undefined): string | null {
 export function headDocumentTransposes(text: string, celex: string, asOf: string, ownLgbl: string | null, phrase: string | null = null): boolean {
   const year = Number(asOf.slice(0, 4))
   // Older entries name the act without its CELEX: „RL 2000/43/EG vom 29. Juni 2000".
-  const byPhrase = phrase ? new RegExp(`(?<![\\d/])${phrase.replace(/[.*+?^${}()|[\]\\/]/g, '\\$&')}(?![\\d/])`) : null
+  const byPhrase = phrase ? new RegExp(`(?<![\\d/])${phrase.replace(/[.*+?^${}()|[\]\\/]/g, '\\$&')}(?!\\d|/\\d)`) : null
   const names = (part: string) => part.includes(celex) || (byPhrase?.test(part) ?? false)
   const langtitel = text.search(/\bLangtitel\b/)
   const field = /Umsetzungshinweis([\s\S]*)/.exec(langtitel >= 0 ? text.slice(0, langtitel) : '')?.[1] ?? ''

@@ -16,10 +16,12 @@ describe('the law in force, asked over all of Bundesrecht', () => {
   it('asks for the number as the laws write it, in both citation forms', () => {
     expect(bundesrechtPhrase('Richtlinie (EU) 2024/1069')).toBe('2024/1069')
     expect(bundesrechtPhrase('Richtlinie 2009/31/EG')).toBe('2009/31/EG')
-    expect(bundesrechtPhrase('Richtlinie 94/22/EG')).toBe('94/22/EG')
-    // The parser writes four-digit years; the laws write „94/22/EG" and „98/70/EG", four digits from 1999 on.
-    expect(bundesrechtPhrase('Richtlinie 1994/22/EG')).toBe('94/22/EG')
-    expect(bundesrechtPhrase('Richtlinie 1998/70/EG')).toBe('98/70/EG')
+    // Up to 1998 the number alone („94/22"), four digits and the suffix from 1999 on: the laws write
+    // the organisation as they please (Burgenland: „76/207/EG" for 76/207/EWG), every hit is read by CELEX.
+    expect(bundesrechtPhrase('Richtlinie 94/22/EG')).toBe('94/22')
+    expect(bundesrechtPhrase('Richtlinie 76/207/EWG')).toBe('76/207')
+    expect(bundesrechtPhrase('Richtlinie 1998/70/EG')).toBe('98/70')
+    expect(bundesrechtPhrase('Verordnung (EWG) Nr. 1408/71')).toBe('1408/71')
     expect(bundesrechtPhrase('Richtlinie 1999/62/EG')).toBe('1999/62/EG')
     expect(bundesrechtPhrase('Verordnung (EG) Nr. 1907/2006')).toBe('1907/2006')
     expect(bundesrechtPhrase('IE-Richtlinie')).toBeNull()
