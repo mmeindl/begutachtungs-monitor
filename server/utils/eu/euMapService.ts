@@ -35,7 +35,7 @@ import { withinBudget } from '../http/budget'
 import { getCurrentGp, getDraftsForGp, reconcileActive } from '../parliament/drafts'
 import { dedupeDraftList } from '../parliament/draftList'
 import { getStationMapForGp } from '../parliament/stationMap'
-import { getBgblOutcomesForGp } from '../ris/bgblService'
+import { getBgblIssueDate, getBgblOutcomesForGp } from '../ris/bgblService'
 import { getRisBegutRecord, getRisMapForGp } from '../ris/begutCorpus'
 import { getRisOnlyForGp } from '../ris/risOnly'
 import { withRisActiveOn, type RisBegutFlat } from '../ris/risRecord'
@@ -43,7 +43,18 @@ import { readLaenderInWindow, readLandDraft } from '../laender/sources'
 import { readEuRecht, readRisEuRecht } from './euService'
 import { readLandEuRecht } from './landEuService'
 import { isVorblattDocument } from './vorblatt'
-import { assembleEuMap, landNumberOf, markersOf, relatedActsOf, relatedPeriodOf, type EuMap } from './euMap'
+import {
+  assembleEuMap,
+  kundmachungDayPlan,
+  landNumberOf,
+  lookupKundmachungDays,
+  markersOf,
+  numbersWithoutDay,
+  relatedActsOf,
+  relatedPeriodOf,
+  withKundmachungDays,
+  type EuMap,
+} from './euMap'
 import { emptyStore, fingerprintOf, isFresh, landKey, loadEuStore, meKey, risKey, saveEuStore, type EuStoreFile } from './euMapStore'
 
 /** As long as the station map: the stand a row shows comes from it. */
@@ -212,6 +223,9 @@ const building = new Map<string, Promise<EuMapBuildReport>>()
 /** Asks the derived cache to assemble afresh on its next read — after a build. */
 const invalidated = new Set<string>()
 
+/** The next assembly of these periods is the build's: patient with a Kundmachung's day (`kundmachungDayPlan`). */
+const forBuild = new Set<string>()
+
 /**
  * Reads every draft of a period's window into the store, then assembles
  * the map with the station map and the outcomes awaited in full. The
@@ -283,6 +297,7 @@ async function runBuild(gp: string): Promise<EuMapBuildReport> {
     // the next read of the map assemble against it.
     await Promise.allSettled([getStationMapForGp(gp), getBgblOutcomesForGp(gp)])
     invalidated.add(gp)
+    forBuild.add(gp)
     const map = await getEuMap(gp)
 
     return {
@@ -304,9 +319,11 @@ async function runBuild(gp: string): Promise<EuMapBuildReport> {
 /**
  * The stored facts joined with today's lists. Incomplete — and so not
  * cached — where the station map or the outcomes missed their budget: the
- * rows then carry `stand: null`, and the next read tries again.
+ * rows then carry `stand: null`, and the next read tries again. Likewise
+ * where a Kundmachung's day went unanswered (`lookupKundmachungDays`).
  */
 async function assembleFromStore(gp: string): Promise<Gathered<EuMap | null>> {
+  const patient = forBuild.delete(gp)
   const store = await loadEuStore(gp)
   const window = gpWindow(gp)
   if (!store?.builtAt || !window) return { value: null, complete: true }
@@ -322,6 +339,18 @@ async function assembleFromStore(gp: string): Promise<Gathered<EuMap | null>> {
   // A readable map is not yet a period one may speak about (§12.27): where
   // it may not, no Ministerialentwurf gets a stand.
   const speakable = chains && mayClaimOutcome(chainCoverageOf(Object.values(chains), gpHasEnded(gp, currentGp)))
+  // A chain with a BGBl number and no day missed the station map's date
+  // lookup; asked again here, patiently where a build waits — else a
+  // promulgated law stood at „Beschluss" until the next build.
+  let stands = speakable ? chains : null
+  let daysAnswered = true
+  const missing = stands ? numbersWithoutDay(stands) : []
+  if (stands && missing.length) {
+    const { days, unanswered } = await lookupKundmachungDays(missing, getBgblIssueDate, kundmachungDayPlan(patient))
+    stands = withKundmachungDays(stands, days)
+    daysAnswered = unanswered === 0
+    if (patient && unanswered) console.warn(`[eu-karte] ${gp}: ${unanswered} von ${missing.length} Kundmachungstagen ohne Antwort`)
+  }
   const map = assembleEuMap({
     gp,
     window,
@@ -334,14 +363,14 @@ async function assembleFromStore(gp: string): Promise<Gathered<EuMap | null>> {
       arrivedAt: d.arrivedAt,
       deadline: d.deadline,
     })),
-    chains: speakable ? chains : null,
+    chains: stands,
     ris: risOnly.items,
     outcomes,
     laender: laender.items,
     unavailableLands: laender.sources.filter((s) => s.state === 'unavailable').map((s) => s.land),
     today: todayIso(),
   })
-  return { value: map, complete: chains !== null && outcomes !== null }
+  return { value: map, complete: chains !== null && outcomes !== null && daysAnswered }
 }
 
 const cachedEuMap = defineCachedFunction(assembleFromStore, {

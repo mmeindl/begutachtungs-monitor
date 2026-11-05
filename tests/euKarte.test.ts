@@ -22,7 +22,12 @@ import {
   actPageOf,
   actSummariesOf,
   assembleEuMap,
+  KUNDMACHUNG_DAY_LOOKUP,
   isImplementing,
+  kundmachungDayPlan,
+  lookupKundmachungDays,
+  numbersWithoutDay,
+  withKundmachungDays,
   markersOf,
   relatedActsOf,
   relatedPeriodOf,
@@ -406,5 +411,56 @@ describe('the period a draft\'s related lines come from', () => {
 
   it('has no period before the calendar — no map, no lines', () => {
     expect(relatedPeriodOf('1990-01-01', 'XXVIII')).toBeNull()
+  })
+})
+
+describe('a Kundmachung\'s day the station map missed', () => {
+  const chains = {
+    32: chain({ station: 'bgbl', bgblNumber: 'BGBl. I Nr. 140/2025', decidedAt: '2025-12-10' }),
+    33: chain({ station: 'bgbl', bgblNumber: 'BGBl. I Nr. 140/2025', decidedAt: '2025-12-10' }),
+    40: chain({ station: 'bgbl', bgblNumber: 'BGBl. I Nr. 1/2026', bgblDate: '2026-01-10' }),
+    41: chain({ station: 'parlament', decidedAt: '2026-02-01' }),
+  }
+
+  it('is patient only for the assembly a build asked for; a reader\'s keeps the stand\'s brake', () => {
+    expect(kundmachungDayPlan(true)).toEqual({ budgetMs: 20_000, attempts: 2 })
+    expect(kundmachungDayPlan(false)).toEqual({ budgetMs: 2_500, attempts: 1 })
+    expect(KUNDMACHUNG_DAY_LOOKUP.build.budgetMs).toBeGreaterThan(KUNDMACHUNG_DAY_LOOKUP.visit.budgetMs)
+  })
+
+  it('asks once per number that has no day', () => {
+    expect(numbersWithoutDay(chains)).toEqual(['BGBl. I Nr. 140/2025'])
+  })
+
+  it('fills the day in copies, and the stand becomes the Bundesgesetzblatt', () => {
+    const filled = withKundmachungDays(chains, new Map([['BGBl. I Nr. 140/2025', '2025-12-23']]))
+    expect(filled[32]!.bgblDate).toBe('2025-12-23')
+    expect(chains[32].bgblDate).toBeUndefined()
+    expect(filled[40]).toBe(chains[40])
+    expect(standOfMe(chains[32], true, TODAY)).toEqual({ date: '2025-12-10', label: 'Beschluss' })
+    expect(standOfMe(filled[32], true, TODAY)).toEqual({ date: '2025-12-23', label: 'Bundesgesetzblatt' })
+  })
+
+  it('retries a lookup that failed, not one that answered without a day', async () => {
+    const calls: string[] = []
+    let first = true
+    const lookup = async (n: string) => {
+      calls.push(n)
+      if (n === 'A' && first) {
+        first = false
+        throw new Error('RIS timeout')
+      }
+      return n === 'A' ? '2025-12-23' : null
+    }
+    const r = await lookupKundmachungDays(['A', 'B'], lookup, { budgetMs: 50, attempts: 2 })
+    expect(r.days).toEqual(new Map([['A', '2025-12-23']]))
+    expect(r.unanswered).toBe(0)
+    expect(calls.sort()).toEqual(['A', 'A', 'B'])
+  })
+
+  it('counts a number no try answered in time, so the map is not kept', async () => {
+    const slow = () => new Promise<string | null>((resolve) => setTimeout(() => resolve('2025-12-23'), 200))
+    const once = await lookupKundmachungDays(['A'], slow, { budgetMs: 10, attempts: 1 })
+    expect(once).toEqual({ days: new Map(), unanswered: 1 })
   })
 })

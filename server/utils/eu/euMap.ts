@@ -31,6 +31,7 @@ import type {
 } from '../../../shared/types'
 import { euActPath } from '../../../shared/utils/eu'
 import { gpOfDay } from '../../../shared/utils/gp'
+import { withinBudget } from '../http/budget'
 import { LAND_CODES, landDraftPath } from '../../../shared/utils/laender'
 import { landKey, meKey, risKey, type EuStoreFile } from './euMapStore'
 
@@ -381,4 +382,81 @@ export function relatedPeriodOf(
   if (!begutachtungStart) return { gp: currentGp, onlyIfRead: true }
   const gp = gpOfDay(begutachtungStart)
   return gp ? { gp, onlyIfRead: false } : null
+}
+
+/**
+ * How patient the map is with a Kundmachung's day (§12.66, Nachtrag 3,
+ * Reste): the station map asks RIS for it under 5 s per chain
+ * (`stationMap.ts`), and a cold build that missed it kept a promulgated
+ * law at „Beschluss" for six hours — 32/ME showed it. The map asks again
+ * for every chain with a BGBl number and no day:
+ *
+ *  - `build`: the assembly a prewarm build asks for, where nobody waits —
+ *    20 s, and once more after a miss (a lookup that threw is not cached,
+ *    so the second try is a new request);
+ *  - `visit`: an assembly a reader's request started — the stand's own
+ *    brake (`STAND_BUDGET_MS`, 2.5 s), once. It is mostly a warm read: the
+ *    record behind the day is cached for a month (`bgbl-dokument`), and the
+ *    build filled it. A miss there leaves the map incomplete, so it is
+ *    not cached and the next read asks again.
+ */
+export interface DayLookupPlan {
+  budgetMs: number
+  attempts: number
+}
+
+export const KUNDMACHUNG_DAY_LOOKUP: Readonly<Record<'build' | 'visit', DayLookupPlan>> = {
+  build: { budgetMs: 20_000, attempts: 2 },
+  visit: { budgetMs: 2_500, attempts: 1 },
+}
+
+/** The plan for an assembly: patient only for the one a build asked for. */
+export function kundmachungDayPlan(forBuild: boolean): DayLookupPlan {
+  return KUNDMACHUNG_DAY_LOOKUP[forBuild ? 'build' : 'visit']
+}
+
+/** The BGBl numbers of the chains that have one but no day, each once. */
+export function numbersWithoutDay(chains: Readonly<Record<number, DraftChain>>): string[] {
+  const out = new Set<string>()
+  for (const c of Object.values(chains)) if (c.bgblNumber && !c.bgblDate) out.add(c.bgblNumber)
+  return [...out]
+}
+
+/** The chains with the days found filled in — copies; the station map's own objects stay as they are. */
+export function withKundmachungDays(
+  chains: Readonly<Record<number, DraftChain>>,
+  days: ReadonlyMap<string, string>,
+): Record<number, DraftChain> {
+  const out: Record<number, DraftChain> = {}
+  for (const [inr, c] of Object.entries(chains)) {
+    const day = c.bgblNumber && !c.bgblDate ? days.get(c.bgblNumber) : undefined
+    out[Number(inr)] = day ? { ...c, bgblDate: day } : c
+  }
+  return out
+}
+
+/**
+ * Asks for each number's day under `plan`: a try that neither answered in
+ * time nor answered at all is retried up to `attempts`; an answer without
+ * a day (RIS knows no such Kundmachung) is an answer and not retried.
+ * `unanswered` counts the numbers no try answered — then the map is not
+ * complete.
+ */
+export async function lookupKundmachungDays(
+  numbers: readonly string[],
+  lookup: (bgblNumber: string) => Promise<string | null>,
+  plan: DayLookupPlan,
+): Promise<{ days: Map<string, string>; unanswered: number }> {
+  const days = new Map<string, string>()
+  let unanswered = 0
+  await Promise.all(numbers.map(async (n) => {
+    for (let i = 0; i < plan.attempts; i++) {
+      const answer = await withinBudget(lookup(n).then((day) => ({ day })), plan.budgetMs)
+      if (!answer) continue
+      if (answer.day) days.set(n, answer.day)
+      return
+    }
+    unanswered++
+  }))
+  return { days, unanswered }
 }
