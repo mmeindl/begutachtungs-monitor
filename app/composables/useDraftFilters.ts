@@ -31,6 +31,7 @@ export interface DraftFilters {
   /** The same term 300 ms later, trimmed — what actually filters. */
   qDebounced: Ref<string>
   sort: Ref<SortKey>
+  reversed: Ref<boolean>
   stations: Ref<DraftStation[]>
   /** „Setzt EU-Recht um" — goes to both Bund endpoints; the Länder rows are filtered on the page. */
   eu: Ref<EuFilter>
@@ -56,6 +57,7 @@ export function useDraftFilters(): DraftFilters {
    * whole filtered set, so reordering it costs no request — and the merge of
    * the two halves happens in the page anyway (`rows`). */
   const sort = ref<SortKey>(initial.sort)
+  const reversed = ref(initial.reversed)
   const stations = ref<DraftStation[]>(initial.stations)
   const eu = ref<EuFilter>(initial.eu)
 
@@ -94,13 +96,14 @@ export function useDraftFilters(): DraftFilters {
     ministry: ministry.value,
     q: qDebounced.value,
     sort: sort.value,
+    reversed: reversed.value,
     eu: eu.value,
   })
 
   // Keep the URL in sync with the filters (defaults stay out of the URL).
   /* `quellen` is not this list's filter but the site's choice of sources
    * (`useSourceChoice`), and the write-back must not drop it. */
-  watch([query, art, sort], () => {
+  watch([query, art, sort, reversed], () => {
     const quellen = route.query[SOURCE_PARAM]
     router.replace({ query: { ...draftUrlQuery(current()), ...(quellen !== undefined ? { [SOURCE_PARAM]: quellen } : {}) } })
   })
@@ -134,6 +137,7 @@ export function useDraftFilters(): DraftFilters {
     q.value = next.q
     qDebounced.value = next.q
     sort.value = next.sort
+    reversed.value = next.reversed
     stations.value = next.stations
     eu.value = next.eu
     for (const handler of navigateHandlers) handler()
@@ -147,6 +151,7 @@ export function useDraftFilters(): DraftFilters {
     q,
     qDebounced,
     sort,
+    reversed,
     stations,
     eu,
     query,

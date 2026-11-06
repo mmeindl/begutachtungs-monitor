@@ -79,10 +79,16 @@ interface SortableRow {
 }
 
 /** Both keys are always applied; the control only decides which one leads. */
-export function compareStatementRows(a: SortableRow, b: SortableRow, sort: StatementSort): number {
+export function compareStatementRows(a: SortableRow, b: SortableRow, sort: StatementSort, reversed = false): number {
   const byEndorsements = b.endorsements - a.endorsements
   const byDate = (b.date ?? '').localeCompare(a.date ?? '')
-  return sort === 'endorsements' ? byEndorsements || byDate : byDate || byEndorsements
+  if (!reversed) return sort === 'endorsements' ? byEndorsements || byDate : byDate || byEndorsements
+  // Reversed (`SortHeader`, 06.11.2026): fewest Zustimmungen or oldest first
+  // — the chosen column only, the tie-break stays newest first, and a row
+  // without a date stays last.
+  if (sort === 'endorsements') return -byEndorsements || byDate
+  if (!a.date !== !b.date) return a.date ? -1 : 1
+  return -byDate || byEndorsements
 }
 
 /* GDPR defense in depth: persons and non-public submissions always render a
@@ -186,13 +192,14 @@ export interface OrgRow {
  * their own rows, and the sum stays on the group row wearing the word
  * „gesamt".
  */
-export function orgRowsOf(summary: StatementsSummary, sort: StatementSort): OrgRow[] {
+export function orgRowsOf(summary: StatementsSummary, sort: StatementSort, reversed = false): OrgRow[] {
   const sorted = [...summary.organisationList].sort(
     (a, b) =>
       compareStatementRows(
         { endorsements: a.endorsements, date: orgSortDate(a) },
         { endorsements: b.endorsements, date: orgSortDate(b) },
         sort,
+        reversed,
       ) || a.name.localeCompare(b.name, 'de'),
   )
   return sorted.map((org) => {
@@ -206,7 +213,7 @@ export function orgRowsOf(summary: StatementsSummary, sort: StatementSort): OrgR
        * a multi-day group is there to show survives either way — reversed
        * under „Neueste", which is the direction the reader asked for.
        * (Copy, never a sort in place: the summary is a prop.) */
-      org: { ...org, statements: [...org.statements].sort((a, b) => compareStatementRows(a, b, sort)) },
+      org: { ...org, statements: [...org.statements].sort((a, b) => compareStatementRows(a, b, sort, reversed)) },
       expanded,
       row: {
         date: orgRowDate(org),

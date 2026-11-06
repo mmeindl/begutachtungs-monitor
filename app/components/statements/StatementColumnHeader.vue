@@ -26,6 +26,9 @@ import type { StatementSort } from '~/utils/statementRows'
  * nothing.
  */
 const sort = defineModel<StatementSort>('sort', { required: true })
+/* Turned round (`SortHeader`, 06.11.2026); the Länder's plain header leaves it. */
+const reversed = defineModel<boolean>('reversed', { default: false })
+const { choose } = useReversibleSort(sort, reversed)
 
 withDefaults(defineProps<{
   /** Without a second row there is nothing to order: plain labels then. */
@@ -44,9 +47,9 @@ withDefaults(defineProps<{
        the first screen of a long list the right-hand digits still have a
        name. -->
   <ColumnHeader :sortable="sortable" class="gap-x-3 row-cols:grid" :class="endorsements ? 'row-cols:statement-tracks' : 'row-cols:statement-tracks-files'">
-    <ColumnLabel label="Datum" :sort="sortable ? { order: 'neueste zuerst', active: sort === 'date' } : null" @choose="sort = 'date'" />
+    <ColumnLabel label="Datum" :sort="sortable ? { order: 'neueste zuerst', reverseOrder: 'älteste zuerst', active: sort === 'date', reversed } : null" @choose="choose('date')" />
     <ColumnLabel label="Eingebracht von" />
     <ColumnLabel label="Stellungnahme" :class="endorsements && 'col-span-2'" />
-    <ColumnLabel v-if="endorsements" label="Zustimmungen" :sort="sortable ? { order: 'meiste zuerst', active: sort === 'endorsements' } : null" align="end" class="text-right" @choose="sort = 'endorsements'" />
+    <ColumnLabel v-if="endorsements" label="Zustimmungen" :sort="sortable ? { order: 'meiste zuerst', reverseOrder: 'wenigste zuerst', active: sort === 'endorsements', reversed } : null" align="end" class="text-right" @choose="choose('endorsements')" />
   </ColumnHeader>
 </template>

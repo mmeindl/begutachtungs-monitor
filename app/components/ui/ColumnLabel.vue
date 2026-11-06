@@ -9,8 +9,12 @@
  */
 defineProps<{
   label: string
-  /** The order this column stands for: what it does, and whether it is on. */
-  sort?: { order: string; active: boolean } | null
+  /**
+   * The order this column stands for: what it does, whether it is on, and —
+   * reversible since 06.11.2026 — what it does the other way round and
+   * whether that way is on (`SortHeader`).
+   */
+  sort?: { order: string; reverseOrder: string; active: boolean; reversed?: boolean } | null
   /** Which edge the label sits on — the column's numbers are right-aligned. */
   align?: 'start' | 'end'
 }>()
@@ -24,7 +28,9 @@ defineEmits<{ choose: [] }>()
       v-if="sort"
       :label="label"
       :order="sort.order"
+      :reverse-order="sort.reverseOrder"
       :active="sort.active"
+      :reversed="sort.reversed ?? false"
       :align="align"
       @choose="$emit('choose')"
     />

@@ -1,8 +1,8 @@
 import { describe, expect, it } from 'vitest'
 import {
-  EU_SORT_DEFAULT,
   deadlineDirection,
   deadlineOrderDe,
+  deadlineReverseOrderDe,
   deadlineTabOf,
   euActComparator,
   euActHaystack,
@@ -294,12 +294,13 @@ describe('the overview\'s tabs and orders', () => {
     expect(deadlineTabOf(act('a', null), '2026-11-06')).toBe('ohne')
   })
 
-  it('opens each tab in its own order: by deadline, nearest or most recent first; without one, by name', () => {
-    expect(EU_SORT_DEFAULT).toEqual({ laufend: 'frist', abgelaufen: 'frist', ohne: 'name' })
+  it('gives each tab its deadline direction: nearest or most recent first, and the words both ways', () => {
     expect(deadlineDirection('laufend')).toBe('auf')
     expect(deadlineDirection('abgelaufen')).toBe('ab')
     expect(deadlineOrderDe('laufend')).toBe('nächste zuerst')
     expect(deadlineOrderDe('abgelaufen')).toBe('zuletzt abgelaufene zuerst')
+    expect(deadlineReverseOrderDe('laufend')).toBe('späteste zuerst')
+    expect(deadlineReverseOrderDe('abgelaufen')).toBe('am längsten abgelaufene zuerst')
   })
 
   it('orders by deadline either way, the acts without one last both ways, ties by name', () => {
@@ -311,6 +312,7 @@ describe('the overview\'s tabs and orders', () => {
   it('orders by name with numbers read as numbers — 2024/927 before 2024/1385', () => {
     const acts = [act('1', null, 'Richtlinie (EU) 2024/1385'), act('2', null, 'Richtlinie (EU) 2024/927'), act('3', null, 'Delegierte Richtlinie (EU) 2024/1262')]
     expect([...acts].sort(euActComparator('name')).map((a) => a.label)).toEqual(['Delegierte Richtlinie (EU) 2024/1262', 'Richtlinie (EU) 2024/927', 'Richtlinie (EU) 2024/1385'])
+    expect([...acts].sort(euActComparator('name', 'ab')).map((a) => a.label)).toEqual(['Richtlinie (EU) 2024/1385', 'Richtlinie (EU) 2024/927', 'Delegierte Richtlinie (EU) 2024/1262'])
   })
 
   it('searches the label, the official title and the CELEX', () => {

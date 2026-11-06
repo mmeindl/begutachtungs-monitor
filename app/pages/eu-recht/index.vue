@@ -18,10 +18,11 @@
  * (`deadlineTabOf`), without counts, as the station tabs of `/entwuerfe`
  * — the count line under the search says how many the tab holds. The order is the lists' own
  * (`SortHeader` in a `ColumnHeader`, as `/entwuerfe`): „Rechtsakt" orders by
- * name, „Umsetzungsfrist" by date, one direction per column — the tab's
+ * name, „Umsetzungsfrist" by date in the tab's direction
  * (`deadlineDirection`): what runs nearest first, what passed most recent
- * first. A select beside the count on a phone, where no header is drawn.
- * „Ohne Frist" has no date to order by: by name, nothing to choose.
+ * first. A second click turns a column round (`useReversibleSort`), as on
+ * every list. A select beside the count on a phone, where no header is
+ * drawn. „Ohne Frist" has no date to order by: only the names.
  * „Abgelaufen" names the day, never the transposition (D6), and no tab or
  * box carries a colour.
  *
@@ -60,7 +61,7 @@ import { risSource, eurLexSource, sourceItemsDe } from '#shared/utils/provenance
 import { MAX_LIST_QUERY_CHARS } from '#shared/utils/queryParams'
 import { matchesQuery } from '#shared/utils/textMatch'
 import { countLabelDe, todayIso } from '#shared/utils/format'
-import { EU_SORT_DEFAULT, deadlineDirection, deadlineOrderDe, deadlineTabOf, euActHaystack, euActsRows, euRestatingRows, euSourceUnavailable, filterEuActs, incompleteNoteDe, restatingFoldHeading, type EuActSort, type EuDeadlineTab } from '~/utils/euKarte'
+import { deadlineDirection, deadlineOrderDe, deadlineReverseOrderDe, deadlineTabOf, euActHaystack, euActsRows, euRestatingRows, euSourceUnavailable, filterEuActs, incompleteNoteDe, restatingFoldHeading, type EuActSort, type EuDeadlineTab } from '~/utils/euKarte'
 
 usePageSeo({
   title: 'EU-Recht in der Begutachtung',
@@ -90,14 +91,37 @@ const restatingLeft = computed(() => (data.value ? narrowed(data.value.restating
 /* The tabs, on the main list's acts, and the order; a tab opens in its own order. */
 const today = todayIso()
 const tab = ref<EuDeadlineTab>('laufend')
-const sortChoice = ref<EuActSort | null>(null)
-const sort = computed<EuActSort>(() => (tab.value === 'ohne' ? 'name' : sortChoice.value ?? EU_SORT_DEFAULT[tab.value]))
-const direction = computed(() => deadlineDirection(tab.value))
-const sortModel = computed({ get: () => sort.value, set: (v: string) => { sortChoice.value = v as EuActSort } })
-const SORT_OPTIONS: { value: EuActSort; label: string }[] = [
-  { value: 'frist', label: 'Umsetzungsfrist' },
-  { value: 'name', label: 'Rechtsakt' },
-]
+const sortChoice = ref<EuActSort>('frist')
+const reversed = ref(false)
+const { choose: chooseSort, selectValue: sortSelect } = useReversibleSort(sortChoice, reversed)
+/* „Ohne Frist" has no dates: a deadline order becomes the names there, and
+ * comes back on leaving — a name order chosen there stays. */
+let forcedToName = false
+watch(tab, (next) => {
+  if (next === 'ohne' && sortChoice.value === 'frist') {
+    sortChoice.value = 'name'
+    reversed.value = false
+    forcedToName = true
+  } else if (next !== 'ohne' && forcedToName) {
+    if (sortChoice.value === 'name' && !reversed.value) sortChoice.value = 'frist'
+    forcedToName = false
+  }
+})
+const sort = computed<EuActSort>(() => sortChoice.value)
+const direction = computed<'auf' | 'ab'>(() => {
+  const own = sort.value === 'name' ? 'auf' : deadlineDirection(tab.value)
+  return reversed.value ? (own === 'auf' ? 'ab' : 'auf') : own
+})
+const sortOptions = computed(() => [
+  ...(tab.value === 'ohne'
+    ? []
+    : [
+        { value: 'frist', label: tab.value === 'abgelaufen' ? 'Zuletzt abgelaufene zuerst' : 'Nächste Frist zuerst' },
+        { value: reversedOption('frist'), label: tab.value === 'abgelaufen' ? 'Am längsten abgelaufene zuerst' : 'Späteste Frist zuerst' },
+      ]),
+  { value: 'name', label: 'Name A–Z' },
+  { value: reversedOption('name'), label: 'Name Z–A' },
+])
 const TAB_LABEL: Record<EuDeadlineTab, string> = { laufend: 'Frist läuft', abgelaufen: 'Abgelaufen', ohne: 'Ohne Frist' }
 const TABS = (['laufend', 'abgelaufen', 'ohne'] as const).map((value) => ({ value, label: TAB_LABEL[value] }))
 const inTab = <A extends EuActSummary>(acts: readonly A[]): A[] => acts.filter((a) => deadlineTabOf(a, today) === tab.value)
@@ -214,10 +238,10 @@ const [bundItem, eurLexItem] = sourceItemsDe([risSource('Vorblatt'), risSource('
                   <p class="text-sm text-ink-muted" aria-live="polite">
                     {{ countLabelDe(rows.length, 'Rechtsakt', 'Rechtsakte') }}
                   </p>
-                  <div v-if="tab !== 'ohne'" class="flex min-w-0 items-center gap-2 md:hidden">
+                  <div class="flex min-w-0 items-center gap-2 md:hidden">
                     <label for="eu-sort" class="shrink-0 text-sm text-ink-secondary">Sortieren</label>
-                    <TokenSelect id="eu-sort" v-model="sortModel">
-                      <option v-for="opt in SORT_OPTIONS" :key="opt.value" :value="opt.value">
+                    <TokenSelect id="eu-sort" v-model="sortSelect">
+                      <option v-for="opt in sortOptions" :key="opt.value" :value="opt.value">
                         {{ opt.label }}
                       </option>
                     </TokenSelect>
@@ -258,21 +282,21 @@ const [bundItem, eurLexItem] = sourceItemsDe([risSource('Vorblatt'), risSource('
               </ListBoxNotice>
               <template v-else>
                 <!-- The lists' column header (`EntryList`): the labels over
-                     their columns, the sortable ones as buttons. Not under
-                     „Ohne Frist", which has one order and no dates. -->
-                <ColumnHeader :sortable="tab !== 'ohne'" class="gap-4 md:flex">
+                     their columns, the sortable ones as buttons. Under „Ohne
+                     Frist" only the names order — there are no dates. -->
+                <ColumnHeader sortable class="gap-4 md:flex">
                   <ColumnLabel
                     label="Rechtsakt"
-                    :sort="tab !== 'ohne' ? { order: 'nach Name', active: sort === 'name' } : null"
+                    :sort="{ order: 'A–Z', reverseOrder: 'Z–A', active: sort === 'name', reversed }"
                     class="min-w-0 flex-1"
-                    @choose="sortChoice = 'name'"
+                    @choose="chooseSort('name')"
                   />
                   <ColumnLabel
                     label="Umsetzungsfrist"
-                    :sort="tab !== 'ohne' ? { order: deadlineOrderDe(tab), active: sort === 'frist' } : null"
+                    :sort="tab !== 'ohne' ? { order: deadlineOrderDe(tab), reverseOrder: deadlineReverseOrderDe(tab), active: sort === 'frist', reversed } : null"
                     align="end"
                     class="entry-col-state flex justify-end"
-                    @choose="sortChoice = 'frist'"
+                    @choose="chooseSort('frist')"
                   />
                 </ColumnHeader>
                 <ul role="list" class="divide-y divide-hairline">

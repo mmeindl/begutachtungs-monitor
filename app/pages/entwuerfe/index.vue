@@ -109,9 +109,11 @@ const artOptions = ART_OPTIONS
  * of the titles start with „Änderung" or „Verordnung", and the search finds
  * a law by name faster than an alphabet does.
  */
-const sortOptions: { value: SortKey; label: string }[] = [
+const sortOptions: { value: string; label: string }[] = [
   { value: 'frist', label: 'Nach Frist' },
+  { value: reversedOption('frist'), label: 'Nach Frist, umgekehrt' },
   { value: 'stellungnahmen', label: 'Meiste Stellungnahmen' },
+  { value: reversedOption('stellungnahmen'), label: 'Wenigste Stellungnahmen' },
 ]
 
 /**
@@ -120,7 +122,7 @@ const sortOptions: { value: SortKey; label: string }[] = [
  * `shared/utils/draftOrder.ts`, next to the row kinds they order and where
  * vitest can reach them.
  */
-const rowComparators: Record<SortKey, (a: DraftListRow, b: DraftListRow) => number> = {
+const rowComparators: Record<SortKey, (a: DraftListRow, b: DraftListRow, reversed: boolean) => number> = {
   frist: compareRowsByFrist,
   stellungnahmen: compareRowsByStatements,
 }
@@ -128,7 +130,9 @@ const rowComparators: Record<SortKey, (a: DraftListRow, b: DraftListRow) => numb
 /* Filter state, URL binding and the query for both endpoints:
  * `useDraftFilters`, with the pure half in `app/utils/draftFilters.ts`. */
 const filters = useDraftFilters()
-const { statusFilter, art, gp, ministry, q, qDebounced, sort, stations, eu, query, onNavigate } = filters
+const { statusFilter, art, gp, ministry, q, qDebounced, sort, reversed, stations, eu, query, onNavigate } = filters
+/* Either column turned round by a second click (`SortHeader`, 06.11.2026). */
+const { choose: chooseColumn, selectValue: sortSelect } = useReversibleSort(sort, reversed)
 
 /**
  * „Setzt EU-Recht um" (docs/architecture.md §12.66, Nachtrag 3): the drafts
@@ -245,13 +249,13 @@ const shownFilterChips = computed(() =>
  * offers the same two as a select.
  */
 const SORT_COLUMNS = {
-  count: { key: 'stellungnahmen', order: 'meiste zuerst' },
-  state: { key: 'frist', order: 'nächste Frist zuerst' },
+  count: { key: 'stellungnahmen', order: 'meiste zuerst', reverseOrder: 'wenigste zuerst' },
+  state: { key: 'frist', order: 'nächste Frist zuerst', reverseOrder: 'späteste Frist zuerst' },
 } as const
 
 /* The header hands back one of `SORT_COLUMNS`' keys. */
 function chooseSort(key: string) {
-  sort.value = key as SortKey
+  chooseColumn(key as SortKey)
 }
 
 /**
@@ -434,7 +438,7 @@ const openVorlagen = computed(() => {
  * fetched, and `meData`/`risData` are null for it. */
 const rows = computed<DraftListRow[]>(() =>
   draftRows(meData.value?.items ?? [], risData.value?.items ?? [], openVorlagen.value, landItems.value)
-    .sort(rowComparators[sort.value]),
+    .sort((a, b) => rowComparators[sort.value](a, b, reversed.value)),
 )
 
 /**
@@ -472,7 +476,7 @@ const {
   shown: shownEntries,
   more: showMore,
   all: showAll,
-} = usePagedList(entries, LIST_PAGE_SIZE, [query, art, sort], listPaged)
+} = usePagedList(entries, LIST_PAGE_SIZE, [query, art, sort, reversed], listPaged)
 
 /**
  * … but in the history entry, since 22.10.2026: Back returns to the page as
@@ -693,6 +697,7 @@ const statementsSortNote = computed(() => {
       class="mt-6"
       :sortable="SORT_COLUMNS"
       :sort="sort"
+      :reversed="reversed"
       :query="qDebounced"
       :stale="refreshing"
       @update:sort="chooseSort"
@@ -866,7 +871,7 @@ const statementsSortNote = computed(() => {
           </p>
           <div class="flex min-w-0 items-center gap-2 md:hidden">
             <label for="filter-sort" class="shrink-0 text-sm text-ink-secondary">Sortieren</label>
-            <TokenSelect id="filter-sort" v-model="sort">
+            <TokenSelect id="filter-sort" v-model="sortSelect">
               <option v-for="opt in sortOptions" :key="opt.value" :value="opt.value">
                 {{ opt.label }}
               </option>

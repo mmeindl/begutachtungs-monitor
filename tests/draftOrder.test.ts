@@ -92,6 +92,23 @@ describe('compareDrafts', () => {
   })
 })
 
+describe('compareDrafts, turned round', () => {
+  const reversedOrder = (rows: (OrderedDraft & { tag: string })[]) =>
+    [...rows].sort((a, b) => compareDrafts(a, b, true)).map((r) => `${r.tag}:${r.title}`)
+
+  it('turns the dates round inside each block and keeps open before closed, an undated open row after the dated', () => {
+    expect(
+      reversedOrder([
+        ris('alt zu', { active: false, deadline: '2025-01-01' }),
+        me('bald', { deadline: '2026-09-20' }),
+        ris('ohne', { deadline: null }),
+        me('spät', { deadline: '2026-11-30' }),
+        me('neu zu', { active: false, deadline: '2026-08-01' }),
+      ]),
+    ).toEqual(['me:spät', 'me:bald', 'ris:ohne', 'ris:alt zu', 'me:neu zu'])
+  })
+})
+
 describe('draftOrderKey', () => {
   it('reads the Einlangen as the day the Begutachtung started', () => {
     expect(
@@ -262,6 +279,11 @@ describe('compareRowsByStatements', () => {
     // The normal case early in a period: a shelf of drafts at 0. Without the
     // tie-break the order would follow whatever order the corpus arrived in.
     expect(sorted([meRow(4, 0), meRow(9, 0)])).toEqual(['me-XXVIII-9', 'me-XXVIII-4'])
+  })
+
+  it('turned round, leads with the fewest and still keeps the unrankable half behind', () => {
+    const reversed = (rows: DraftListRow[]) => [...rows].sort((a, b) => compareRowsByStatements(a, b, true)).map((r) => r.key)
+    expect(reversed([risRow('BEGUT_1'), meRow(1, 3), meRow(2, 240), meRow(3, 12)])).toEqual(['me-XXVIII-1', 'me-XXVIII-3', 'me-XXVIII-2', 'ris-BEGUT_1'])
   })
 
   it('keeps the unrankable half behind, never interleaved at zero', () => {

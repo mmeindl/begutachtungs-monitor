@@ -110,6 +110,8 @@ export interface DraftQueryFilters {
 export interface DraftFilterValues extends DraftQueryFilters {
   art: ArtFilter
   sort: SortKey
+  /** The order turned round (`SortHeader`, 06.11.2026): `?reverse=1`. */
+  reversed: boolean
 }
 
 function parseStations(v: unknown): DraftStation[] {
@@ -173,6 +175,7 @@ export function draftFiltersFromQuery(query: Record<string, unknown>): DraftFilt
     ministry: firstQueryValue(query.ministry) ?? '',
     q: firstQueryValue(query.q) ?? '',
     sort: parseSort(query.sort),
+    reversed: firstQueryValue(query.reverse) === '1',
     eu: parseEu(query.eu),
   }
 }
@@ -205,6 +208,7 @@ export function draftUrlQuery(f: DraftFilterValues): Record<string, string> {
   if (f.ministry) query.ministry = f.ministry
   if (f.q) query.q = f.q
   if (f.sort !== 'frist') query.sort = f.sort
+  if (f.reversed) query.reverse = '1'
   if (f.eu) query.eu = f.eu
   return query
 }

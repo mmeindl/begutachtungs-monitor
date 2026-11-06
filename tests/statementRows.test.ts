@@ -113,6 +113,21 @@ describe('compareStatementRows', () => {
   })
 })
 
+describe('compareStatementRows, turned round', () => {
+  it('turns the chosen key round and keeps the tie-break newest first', () => {
+    const a = { endorsements: 3, date: '2026-09-01' }
+    const b = { endorsements: 1, date: '2026-09-09' }
+    expect(compareStatementRows(a, b, 'endorsements', true)).toBeGreaterThan(0)
+    expect(compareStatementRows(a, b, 'date', true)).toBeLessThan(0)
+    expect(compareStatementRows({ endorsements: 2, date: '2026-09-01' }, { endorsements: 2, date: '2026-09-09' }, 'endorsements', true)).toBeGreaterThan(0)
+  })
+
+  it('keeps a row without a date last, oldest first or not', () => {
+    expect(compareStatementRows({ endorsements: 0, date: null }, { endorsements: 0, date: '2020-01-01' }, 'date', true)).toBeGreaterThan(0)
+    expect(compareStatementRows({ endorsements: 0, date: '2020-01-01' }, { endorsements: 0, date: null }, 'date', true)).toBeLessThan(0)
+  })
+})
+
 describe('orgSortDate / orgRowDate', () => {
   const twoDays = org('Amt', 0, [
     { citation: '95/SN', date: '2026-09-03' },

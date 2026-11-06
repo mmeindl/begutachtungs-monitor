@@ -141,18 +141,23 @@ export function canRankPeriod(items: readonly { statementCount: number }[]): boo
  *    2026-10-16; without this their order depended on the corpus fetch and
  *    moved between visits.
  */
-export function compareDrafts(a: OrderedDraft, b: OrderedDraft): number {
+export function compareDrafts(a: OrderedDraft, b: OrderedDraft, reversed = false): number {
+  // Reversed (`SortHeader`, 06.11.2026): the dates turn round inside each
+  // block — the latest Frist first, the oldest closed one first — while
+  // open stays before closed and an open record without a Frist after the
+  // dated ones.
+  const dir = reversed ? -1 : 1
   if (a.active !== b.active) return a.active ? -1 : 1
   if (a.active) {
     if (a.deadline && b.deadline) {
-      return a.deadline.localeCompare(b.deadline) || a.title.localeCompare(b.title, 'de-AT')
+      return dir * a.deadline.localeCompare(b.deadline) || a.title.localeCompare(b.title, 'de-AT')
     }
     if (a.deadline !== b.deadline) return a.deadline ? -1 : 1
     return (b.startedAt ?? '').localeCompare(a.startedAt ?? '')
   }
   const aEnd = a.deadline ?? a.startedAt ?? ''
   const bEnd = b.deadline ?? b.startedAt ?? ''
-  return bEnd.localeCompare(aEnd) || a.title.localeCompare(b.title, 'de-AT')
+  return dir * bEnd.localeCompare(aEnd) || a.title.localeCompare(b.title, 'de-AT')
 }
 
 /**
@@ -226,8 +231,8 @@ export function draftRows(
 }
 
 /** The list's own order — open first, nearest Frist on top — over rows of any kind. */
-export function compareRowsByFrist(a: DraftListRow, b: DraftListRow): number {
-  return compareDrafts(rowOrderKey(a), rowOrderKey(b))
+export function compareRowsByFrist(a: DraftListRow, b: DraftListRow, reversed = false): number {
+  return compareDrafts(rowOrderKey(a), rowOrderKey(b), reversed)
 }
 
 /**
@@ -251,9 +256,11 @@ export function compareRowsByFrist(a: DraftListRow, b: DraftListRow): number {
  * followed the input, and the Vorlagen landed behind every RIS row, past
  * the first page.
  */
-export function compareRowsByStatements(a: DraftListRow, b: DraftListRow): number {
+export function compareRowsByStatements(a: DraftListRow, b: DraftListRow, reversed = false): number {
   if (a.kind === 'me' && b.kind === 'me') {
-    return b.draft.statementCount - a.draft.statementCount || b.draft.inr - a.draft.inr
+    // Reversed: fewest first; the rows nobody counts stay a block behind.
+    const byCount = b.draft.statementCount - a.draft.statementCount
+    return (reversed ? -byCount : byCount) || b.draft.inr - a.draft.inr
   }
   if (a.kind === 'me' || b.kind === 'me') return a.kind === 'me' ? -1 : 1
   return compareDrafts(rowOrderKey(a), rowOrderKey(b))

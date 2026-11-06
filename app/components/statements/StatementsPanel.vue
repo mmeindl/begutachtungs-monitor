@@ -123,12 +123,17 @@ const showSort = computed(() => props.summary.total > 1)
  * belongs: it carries no position in a chronology. The two keys themselves
  * are in `app/utils/statementRows.ts`, with the rows they order.
  */
-const sortOptions: { value: StatementSort; label: string }[] = [
+const sortOptions: { value: string; label: string }[] = [
   { value: 'endorsements', label: 'Meiste Zustimmungen' },
+  { value: reversedOption('endorsements'), label: 'Wenigste Zustimmungen' },
   { value: 'date', label: 'Neueste' },
+  { value: reversedOption('date'), label: 'Älteste' },
 ]
 
 const sort = ref<StatementSort>('endorsements')
+/* Either order turned round (`SortHeader`, 06.11.2026); the phone's select offers both ways. */
+const sortReversed = ref(false)
+const { selectValue: sortSelect } = useReversibleSort(sort, sortReversed)
 
 /* Lazy: nothing is requested until a segment needs the item list
  * (immediate: false leaves status at 'idle' until execute()) — unless the
@@ -171,7 +176,7 @@ watch(filter, async (value) => {
  * that filed twice therefore appears twice under "Alle", which is what a raw
  * list should show; the grouped view is the Organisationen segment. */
 const items = computed<StatementMeta[]>(() => {
-  const all = [...(props.items ?? data.value?.items ?? [])].sort((a, b) => compareStatementRows(a, b, sort.value))
+  const all = [...(props.items ?? data.value?.items ?? [])].sort((a, b) => compareStatementRows(a, b, sort.value, sortReversed.value))
   if (filter.value === 'persons') {
     return all.filter((s) => s.submitterKind === 'person')
   }
@@ -191,7 +196,7 @@ const {
   shown: visibleItems,
   more: showMore,
   all: showAll,
-} = usePagedList(items, PAGE_SIZE, [filter, orgQuery, sort])
+} = usePagedList(items, PAGE_SIZE, [filter, orgQuery, sort, sortReversed])
 
 /* One staleness sentence per page. When the summary above is already a
  * last-good fallback, the detail page states it under this panel and the
@@ -204,7 +209,7 @@ const listStaleAsOf = computed(() =>
 
 /* Sorting, grouping and the rows themselves live in
  * `app/utils/statementRows.ts`, where they are tested. */
-const orgRows = computed(() => orgRowsOf(props.summary, sort.value))
+const orgRows = computed(() => orgRowsOf(props.summary, sort.value, sortReversed.value))
 
 /* The name and every citation the row carries, so a reader who has the
  * citation and not the name ("21/SN-8/ME") lands on the same row. */
@@ -394,7 +399,7 @@ const showColumnHeader = computed(() =>
                above the rows it searches. -->
           <div v-if="showSort" class="flex min-w-0 items-center gap-2 row-cols:hidden">
             <label :for="sortId" class="shrink-0 text-sm text-ink-secondary">Sortieren</label>
-            <TokenSelect :id="sortId" v-model="sort">
+            <TokenSelect :id="sortId" v-model="sortSelect">
               <option v-for="opt in sortOptions" :key="opt.value" :value="opt.value">
                 {{ opt.label }}
               </option>
@@ -437,7 +442,7 @@ const showColumnHeader = computed(() =>
       </p>
       <!-- Over rows only: above a loading line, an error or „keine
            gefunden" it would name columns nothing stands in. -->
-      <StatementColumnHeader v-if="showColumnHeader" v-model:sort="sort" :sortable="showSort" />
+      <StatementColumnHeader v-if="showColumnHeader" v-model:sort="sort" v-model:reversed="sortReversed" :sortable="showSort" />
       <!-- Organisations: from the SSR summary, so they are in the HTML a
            crawler and a find-in-page see — which is what lets an organisation
            find itself on this page. -->

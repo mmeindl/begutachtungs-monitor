@@ -12,25 +12,41 @@
  * its own.
  *
  * The arrow is always drawn, muted where the column is not the order, so a
- * reader can see which labels are controls without hovering. The accessible
- * name is the label followed by what the order does („Datum: neueste
- * zuerst"), so it starts with the visible word (WCAG 2.5.3), and
- * `aria-pressed` says which order is on. One direction per column: each
- * order answers one question, and a second click that reverses it would be a
- * fourth order nobody asked for.
+ * reader can see which labels are controls without hovering: ↓ for the
+ * column's own direction, ↑ for its reverse. The accessible name is the
+ * label followed by the order that is on, or that a click turns on
+ * („Datum: neueste zuerst"), so it starts with the visible word (WCAG
+ * 2.5.3), and `aria-pressed` says which column orders. The title says what
+ * the next click does.
+ *
+ * REVERSIBLE since 06.11.2026, on every list at once: a click on the column
+ * that orders turns its direction round, a click on another column starts
+ * that one in its own direction. Until then each column had one direction,
+ * on the argument that a reversal is an order nobody asked for — readers
+ * asked for it (the EU map's deadlines, both ways). What a reversal flips is
+ * each list's to say, and none of them flips its blocks: running before
+ * closed, counted before uncounted, a missing value last (`compareDrafts`,
+ * `compareStatementRows`, `euActComparator`).
  *
  * The header rows it stands in are visual aids, `aria-hidden` label by
  * label; these buttons are the one part of them assistive tech must reach,
  * so a header with them hides its plain labels, not itself.
  */
-defineProps<{
+const props = defineProps<{
   label: string
   /** What the order does, completing the name: „neueste zuerst". */
   order: string
+  /** The same the other way round: „älteste zuerst". */
+  reverseOrder: string
   active: boolean
+  /** The column orders, turned round. */
+  reversed?: boolean
   /** Which edge the label sits on — the column's numbers are right-aligned. */
   align?: 'start' | 'end'
 }>()
+
+const shown = computed(() => (props.active && props.reversed ? props.reverseOrder : props.order))
+const next = computed(() => (!props.active ? `Sortieren: ${props.order}` : `Umkehren: ${props.reversed ? props.order : props.reverseOrder}`))
 
 defineEmits<{ choose: [] }>()
 </script>
@@ -39,14 +55,14 @@ defineEmits<{ choose: [] }>()
   <button
     type="button"
     :aria-pressed="active"
-    :title="`Sortieren: ${order}`"
+    :title="next"
     class="-mx-1 inline-flex items-center gap-1 rounded px-1 uppercase tracking-wide hover:text-ink"
     :class="[active ? 'text-ink' : 'text-ink-muted', align === 'end' && 'flex-row-reverse']"
     @click="$emit('choose')"
   >
-    {{ label }}<span class="sr-only">: {{ order }}</span>
+    {{ label }}<span class="sr-only">: {{ shown }}</span>
     <UIcon
-      :name="active ? 'i-lucide-arrow-down' : 'i-lucide-arrow-up-down'"
+      :name="!active ? 'i-lucide-arrow-up-down' : reversed ? 'i-lucide-arrow-up' : 'i-lucide-arrow-down'"
       class="size-3.5 shrink-0"
       :class="!active && 'opacity-70'"
       aria-hidden="true"

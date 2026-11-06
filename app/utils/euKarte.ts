@@ -144,17 +144,11 @@ export function deadlineTabOf(a: Pick<EuActSummary, 'transposition'>, today: str
 
 /**
  * The overview's orders, one per column as on every list (`SortHeader`,
- * 06.11.2026): by deadline, or by the act's name. One direction per column —
- * the tab decides the deadline's (`deadlineDirection`), so no second click
- * reverses it.
+ * 06.11.2026): by deadline, or by the act's name. The tab gives the
+ * deadline its own direction (`deadlineDirection`), a second click on the
+ * column turns it round, as it turns the names to Z–A.
  */
 export type EuActSort = 'frist' | 'name'
-
-/**
- * Each tab opens in the order its question asks for; „Ohne Frist" has no
- * date to order by and stays by name.
- */
-export const EU_SORT_DEFAULT: Record<EuDeadlineTab, EuActSort> = { laufend: 'frist', abgelaufen: 'frist', ohne: 'name' }
 
 /** What runs, nearest first; what passed, most recent first. */
 export function deadlineDirection(tab: EuDeadlineTab): 'auf' | 'ab' {
@@ -166,6 +160,11 @@ export function deadlineOrderDe(tab: EuDeadlineTab): string {
   return tab === 'abgelaufen' ? 'zuletzt abgelaufene zuerst' : 'nächste zuerst'
 }
 
+/** The same turned round. */
+export function deadlineReverseOrderDe(tab: EuDeadlineTab): string {
+  return tab === 'abgelaufen' ? 'am längsten abgelaufene zuerst' : 'späteste zuerst'
+}
+
 /**
  * By name with numbers read as numbers, so „2024/927" comes before
  * „2024/1385" — the names are mostly kind, year and number.
@@ -173,9 +172,9 @@ export function deadlineOrderDe(tab: EuDeadlineTab): string {
 const byName = (a: Pick<EuActSummary, 'label' | 'celex'>, b: Pick<EuActSummary, 'label' | 'celex'>): number =>
   a.label.localeCompare(b.label, 'de', { numeric: true }) || a.celex.localeCompare(b.celex)
 
-/** One order as a comparator; acts without a deadline last either way, ties by name. */
+/** One order as a comparator, `ab` the names Z–A; acts without a deadline last either way, ties by name A–Z. */
 export function euActComparator(sort: EuActSort, direction: 'auf' | 'ab' = 'auf'): (a: Pick<EuActSummary, 'transposition' | 'label' | 'celex'>, b: Pick<EuActSummary, 'transposition' | 'label' | 'celex'>) => number {
-  if (sort === 'name') return byName
+  if (sort === 'name') return direction === 'auf' ? byName : (a, b) => byName(b, a)
   return (a, b) => {
     const da = a.transposition?.deadline ?? null
     const db = b.transposition?.deadline ?? null

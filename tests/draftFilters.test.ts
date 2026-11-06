@@ -22,6 +22,7 @@ const empty: DraftFilterValues = {
   ministry: '',
   q: '',
   sort: 'frist',
+  reversed: false,
   eu: '',
 }
 
@@ -36,6 +37,7 @@ describe('draftFiltersFromQuery', () => {
         ministry: 'BMF',
         q: 'klima',
         sort: 'stellungnahmen',
+        reverse: '1',
         eu: 'umsetzung',
       }),
     ).toEqual({
@@ -46,6 +48,7 @@ describe('draftFiltersFromQuery', () => {
       ministry: 'BMF',
       q: 'klima',
       sort: 'stellungnahmen',
+      reversed: true,
       eu: 'umsetzung',
     })
   })
@@ -122,7 +125,8 @@ describe('the round trip', () => {
     { ...empty, stations: ['begutachtung', 'rv'] },
     { ...empty, art: 'gesetz', gp: 'XXVIII', ministry: 'BMJ' },
     { ...empty, q: 'klimaschutz', sort: 'stellungnahmen' },
-    { status: 'closed', stations: ['bgbl'], art: 'verordnung', gp: 'XXVII', ministry: 'BMF', q: 'x', sort: 'stellungnahmen', eu: '' },
+    { status: 'closed', stations: ['bgbl'], art: 'verordnung', gp: 'XXVII', ministry: 'BMF', q: 'x', sort: 'stellungnahmen', reversed: true, eu: '' },
+    { ...empty, reversed: true },
     { ...empty, eu: 'umsetzung' },
     { ...empty, status: 'open', art: 'verordnung', eu: 'umsetzung' },
   ]
@@ -138,6 +142,8 @@ describe('the round trip', () => {
     // „Setzt EU-Recht um" off is the default: no `eu` in the link.
     expect(draftUrlQuery({ ...empty, eu: 'umsetzung' })).toEqual({ eu: 'umsetzung' })
     expect(draftUrlQuery({ ...empty, sort: 'frist', status: 'all' })).toEqual({})
+    // Turned round is the one direction that is not the default.
+    expect(draftUrlQuery({ ...empty, reversed: true })).toEqual({ reverse: '1' })
   })
 })
 

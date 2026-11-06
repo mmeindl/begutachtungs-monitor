@@ -64,9 +64,11 @@ defineProps<{
    * one: neither the arrival order nor A–Z earned a place under „Entwurf"
    * (§12.22).
    */
-  sortable?: Partial<Record<'count' | 'state', { key: string; order: string }>>
+  sortable?: Partial<Record<'count' | 'state', { key: string; order: string; reverseOrder: string }>>
   /** The current order's key, with `sortable`. */
   sort?: string
+  /** The current order turned round (`SortHeader`, 06.11.2026). */
+  reversed?: boolean
   /** The search the rows were filtered by; each row marks its words. */
   query?: string | null
   /**
@@ -119,14 +121,14 @@ defineEmits<{ 'update:sort': [key: string] }>()
            `overflow-wrap: break-word` broke it as „STELLUNGNAHME / N". -->
       <ColumnLabel
         label="Stellungnahmen"
-        :sort="sortable?.count ? { order: sortable.count.order, active: sort === sortable.count.key } : null"
+        :sort="sortable?.count ? { order: sortable.count.order, reverseOrder: sortable.count.reverseOrder, active: sort === sortable.count.key, reversed } : null"
         align="end"
         class="entry-col-count flex justify-end whitespace-nowrap"
         @choose="sortable?.count && $emit('update:sort', sortable.count.key)"
       />
       <ColumnLabel
         label="Stand"
-        :sort="sortable?.state ? { order: sortable.state.order, active: sort === sortable.state.key } : null"
+        :sort="sortable?.state ? { order: sortable.state.order, reverseOrder: sortable.state.reverseOrder, active: sort === sortable.state.key, reversed } : null"
         align="end"
         class="entry-col-state"
         @choose="sortable?.state && $emit('update:sort', sortable.state.key)"
