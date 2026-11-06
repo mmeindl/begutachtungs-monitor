@@ -44,6 +44,7 @@
     "corpus:annex-census": "vite-node scripts/corpus/annexCensus.ts --",
     "corpus:eu": "vite-node scripts/corpus/eu.ts --",
     "corpus:eu-laender": "vite-node -c vitest.config.ts scripts/corpus/euLaender.ts --",
+    "corpus:bund-land": "vite-node -c vitest.config.ts scripts/corpus/bundLand.ts --",
     "ci:annex-drift": "vite-node scripts/ci/annexDrift.ts --",
     "ci:ssr-smoke": "vite-node scripts/ci/ssrSmoke.ts --",
     "ci:gate-record": "vite-node scripts/ci/gateGoldenRecord.ts --",

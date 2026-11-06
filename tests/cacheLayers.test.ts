@@ -44,6 +44,7 @@ const FETCHED: Record<string, string> = {
     'Begleitschreiben is a stub (943 characters against 12.223, §12.31). Cached in dev only; what production ' +
     'keeps is the extracted text one layer up, which is derived and small.',
   'bgbl-nummer-suche': 'the RIS answer for one Bgblnummer, as it arrived — the §-comparison looks the Kundmachung up by the citation Parliament gives it (§12.33)',
+  'bund-land-suche': 'the RIS full-text answer for one Grundsatz phrase in BGBl I since the window began, as it arrived — the Bund-zu-Land map reads the federal Grundsatzgesetze of the window from it (§12.67)',
   'bgbl-jahrgang-seite': 'one page of a CLOSED Bundesgesetzblatt year, as it arrived; that year is finished, so it keeps for a month',
   'bgbl-jahrgang-seite-laufend': 'the same page of the RUNNING year, which still grows — its own name because one cached function carries one maxAge (§12.32)',
   'ris-begut-page': 'one page of the RIS result set, as it arrived — cached in dev only',

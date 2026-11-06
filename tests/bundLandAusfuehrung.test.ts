@@ -5,7 +5,7 @@ import {
   nominativeName,
   readAusfuehrung,
   readAusfuehrungAll,
-  sentencesOf,
+  ausfuehrungSentences,
   vereinbarungActOf,
   type AusfuehrungDocument,
 } from '../server/utils/bund-land/ausfuehrung'
@@ -20,7 +20,7 @@ const erl = (text: string): AusfuehrungDocument => ({ pages: null, explanations:
 describe('Grundsatzgesetz: the enacting clause (strong)', () => {
   it('reads Steiermark\'s clause with the amending Kundmachung as the act (stmk-bf3fc21b)', () => {
     const [a] = readAusfuehrung([pdf('Gesetz vom …, mit dem das Steiermärkische Kinderbildungs- und -betreuungsgesetz geändert wird Der Landtag Steiermark hat in Ausführung des Anstellungserfordernisse-Grundsatzgesetzes, BGBl. Nr. 406/1968, in der Fassung BGBl. I Nr. 44/2025, beschlossen: Artikel 1')])
-    expect(a).toMatchObject({ kind: 'grundsatzgesetz', strength: 'strong', act: { name: 'Anstellungserfordernisse-Grundsatzgesetz', bgbl: { number: 44, year: 2025 }, partial: false } })
+    expect(a).toMatchObject({ kind: 'grundsatzgesetz', strength: 'strong', document: 0, inExplanations: false, act: { name: 'Anstellungserfordernisse-Grundsatzgesetz', bgbl: { number: 44, year: 2025 }, partial: false } })
   })
 
   it('marks „teilweise" as partial and takes the latest citation (stmk-205a2d0d)', () => {
@@ -132,7 +132,7 @@ describe('both kinds on one draft (sbg-34196)', () => {
 
 describe('helpers', () => {
   it('protects abbreviation stops and splits before a capital', () => {
-    expect(sentencesOf('Gemäß Art. 15a B-VG gilt dies. Der Landtag hat beschlossen: § 1 lautet')).toEqual(['Gemäß Art. 15a B-VG gilt dies.', 'Der Landtag hat beschlossen:', '§ 1 lautet'])
+    expect(ausfuehrungSentences('Gemäß Art. 15a B-VG gilt dies. Der Landtag hat beschlossen: § 1 lautet')).toEqual(['Gemäß Art. 15a B-VG gilt dies.', 'Der Landtag hat beschlossen:', '§ 1 lautet'])
   })
 
   it('puts a name in the nominative', () => {
@@ -151,8 +151,14 @@ describe('helpers', () => {
       draft: { url: 'a', pages: ['Text'] },
     })
     expect(docs).toEqual([
-      { pages: ['Text'], explanations: null },
-      { pages: ['Erl'], explanations: { general: [{ heading: 'I', text: ['x'] }], particular: [] } },
+      { url: 'a', title: 'Entwurf', pages: ['Text'], explanations: null },
+      { url: 'b', title: 'Erläuterungen', pages: ['Erl'], explanations: { general: [{ heading: 'I', text: ['x'] }], particular: [] } },
     ])
+  })
+})
+
+describe('an agreement\'s subject ends before a participle', () => {
+  it('reads „über die Kinder- und Jugendhilfe" (bgld-5bc8)', () => {
+    expect(vereinbarungActOf('Die der Kundmachung betreffend die Vereinbarung gemäß Art. 15a B-VG über die Kinder- und Jugendhilfe geschuldeten landesrechtlichen Bestimmungen werden umgesetzt.').name).toBe('über die Kinder- und Jugendhilfe')
   })
 })

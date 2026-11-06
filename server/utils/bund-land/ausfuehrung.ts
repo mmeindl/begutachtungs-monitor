@@ -41,22 +41,24 @@
  * The sentence a finding rests on travels with it for the measurement and
  * the tests; the endpoint does not print it.
  */
+import type { BgblICitation } from '../../../shared/types/bundLand'
 import type { LandEuInput } from '../eu/landEuReading'
 
 export type AusfuehrungKind = 'grundsatzgesetz' | 'vereinbarung'
 export type AusfuehrungStrength = 'strong' | 'medium'
 
-/** A BGBl. I citation: number and year. */
-export interface BgblCitation {
-  number: number
-  year: number
-}
+/** A BGBl. I citation: number and year (`BgblICitation`). */
+type BgblCitation = BgblICitation
 
 export interface Ausfuehrung {
   kind: AusfuehrungKind
   strength: AusfuehrungStrength
   /** The sentence or enacting clause the finding rests on — evidence, never printed. */
   sentence: string
+  /** Which document it was read from: the index into the documents the reader took. */
+  document: number
+  /** From the Erläuterungen' parts of that document, rather than its pages. */
+  inExplanations: boolean
   act: {
     /**
      * A Grundsatzgesetz's name in the nominative, „Anstellungserfordernisse-
@@ -74,6 +76,9 @@ export interface Ausfuehrung {
 
 /** One document as the reader takes it: its pages where read, and the Erläuterungen where they were read from it. */
 export interface AusfuehrungDocument {
+  /** The document's address and title, for the credit line; absent in tests. */
+  url?: string
+  title?: string
   pages: readonly string[] | null
   explanations: { general: readonly { heading: string | null; text: readonly string[] }[]; particular: readonly { law?: string | null; paras?: readonly string[]; heading: string; text: readonly string[] }[] } | null
 }
@@ -94,7 +99,7 @@ const ABBR_DOT = new RegExp(`${B}${ABBR}\\.`, 'gu')
 const HELD = '․'
 
 /** Sentences: abbreviation stops protected, split after .!?: before a capital, a quote or §. */
-export function sentencesOf(text: string): string[] {
+export function ausfuehrungSentences(text: string): string[] {
   const held = text.replace(ABBR_DOT, (m) => `${m.slice(0, -1)}${HELD}`)
   return held.split(/(?<=[.!?:])\s+(?=[A-ZÄÖÜ„»(§\d])/u).map((p) => p.replaceAll(HELD, '.'))
 }
@@ -110,20 +115,21 @@ function explanationsText(e: NonNullable<AusfuehrungDocument['explanations']>): 
 interface Text {
   kind: 'pdf' | 'erl'
   text: string
+  document: number
 }
 
 function textsOf(docs: readonly AusfuehrungDocument[]): Text[] {
   const out: Text[] = []
-  for (const d of docs) {
+  docs.forEach((d, document) => {
     if (d.pages?.length) {
       const t = d.pages.join('\n')
-      if (t) out.push({ kind: 'pdf', text: t.replace(WS, ' ') })
+      if (t) out.push({ kind: 'pdf', text: t.replace(WS, ' '), document })
     }
     if (d.explanations) {
       const t = explanationsText(d.explanations)
-      if (t) out.push({ kind: 'erl', text: t.replace(WS, ' ') })
+      if (t) out.push({ kind: 'erl', text: t.replace(WS, ' '), document })
     }
-  }
+  })
   return out
 }
 
@@ -136,6 +142,8 @@ export function ausfuehrungDocumentsOf(input: LandEuInput): AusfuehrungDocument[
   const urls = [...new Set([...input.documents.map((d) => d.url), ...input.pages.keys(), ...(input.draft.url ? [input.draft.url] : [])])]
   return urls
     .map((url) => ({
+      url,
+      title: input.documents.find((d) => d.url === url)?.title,
       pages: input.pages.get(url) ?? (url === input.draft.url ? input.draft.pages : null),
       explanations: erl && url === erl.url ? { general: erl.general, particular: erl.particular } : null,
     }))
@@ -261,7 +269,7 @@ export function grundsatzActOf(clause: string): { name: string | null; bgbl: Bgb
 }
 
 /** An agreement's subject, as it follows „Art. 15a B-VG": „über Sozialbetreuungsberufe", „Zielsteuerung-Gesundheit". */
-const A15_SUBJECT = /Art(?:ikel|\.)?\s*15\s*a\s*B-VG(?:\s+zwischen dem Bund und den Ländern)?\s+(über\s+[^,;()„"“.]{3,160}?|Zielsteuerung-Gesundheit)(?=\s*[,;()„"“.]|\s+(?:geändert|umgesetzt|werden|wird|ist|sind|vorgesehen|kundgemacht|BGBl|LGBl|sowie|und den)(?![\p{L}\p{N}_])|\s*$)/u
+const A15_SUBJECT = /Art(?:ikel|\.)?\s*15\s*a\s*B-VG(?:\s+zwischen dem Bund und den Ländern)?\s+(über\s+[^,;()„"“.]{3,160}?|Zielsteuerung-Gesundheit)(?=\s*[,;()„"“.]|\s+(?:geändert|umgesetzt|werden|wird|ist|sind|vorgesehen|kundgemacht|BGBl|LGBl|sowie|und den|geschuldeten|vorgesehenen|festgelegten|enthaltenen|getroffenen)(?![\p{L}\p{N}_])|\s*$)/u
 
 export function vereinbarungActOf(sentence: string): { name: string | null; bgbl: BgblCitation | null } {
   const m = A15_SUBJECT.exec(closeBreaks(sentence))
@@ -275,14 +283,14 @@ const PARTIAL = /teilweise/iu
 // ---------------------------------------------------------------------------
 
 function grundsatzSignal(texts: readonly Text[]): Ausfuehrung | null {
-  let best: { strength: AusfuehrungStrength; sentence: string; act: Ausfuehrung['act'] } | null = null
-  for (const { kind, text } of texts) {
+  let best: Omit<Ausfuehrung, 'kind'> | null = null
+  for (const { kind, text, document } of texts) {
     const m = kind === 'pdf' ? ENACT_GG.exec(text.slice(0, 6000)) : null
     if (m) {
       const act = grundsatzActOf(m[1]!)
-      return { kind: 'grundsatzgesetz', strength: 'strong', sentence: m[0].replace(WS, ' ').slice(0, EVIDENCE_CHARS), act: { ...act, partial: PARTIAL.test(m[0]) } }
+      return { kind: 'grundsatzgesetz', strength: 'strong', sentence: m[0].replace(WS, ' ').slice(0, EVIDENCE_CHARS), document, inExplanations: false, act: { ...act, partial: PARTIAL.test(m[0]) } }
     }
-    const ss = sentencesOf(text)
+    const ss = ausfuehrungSentences(text)
     for (let i = 0; i < ss.length; i++) {
       const s = ss[i]!
       if (!GG_TERM.test(s) || NEG.test(s)) continue
@@ -297,7 +305,7 @@ function grundsatzSignal(texts: readonly Text[]): Ausfuehrung | null {
       else if (hasChange && hasExec && hasAct && !(COMPETENCE_ONLY.test(s) && !cited)) take = true
       if (!take) continue
       const act = grundsatzActOf(s)
-      const cand = { strength: 'medium' as const, sentence: s.slice(0, EVIDENCE_CHARS), act: { ...act, partial: PARTIAL.test(s) } }
+      const cand = { strength: 'medium' as const, sentence: s.slice(0, EVIDENCE_CHARS), document, inExplanations: kind === 'erl', act: { ...act, partial: PARTIAL.test(s) } }
       // The first finding stands, unless a later one cites the act and it did not.
       if (!best || (act.bgbl && !best.act.bgbl)) best = cand
     }
@@ -306,31 +314,35 @@ function grundsatzSignal(texts: readonly Text[]): Ausfuehrung | null {
 }
 
 function vereinbarungSignal(texts: readonly Text[]): Ausfuehrung | null {
-  const found = (strength: AusfuehrungStrength, s: string): Ausfuehrung => ({
+  type Hit = { strength: AusfuehrungStrength; sentence: string; document: number; inExplanations: boolean }
+  const found = ({ strength, sentence: s, document, inExplanations }: Hit): Ausfuehrung => ({
     kind: 'vereinbarung',
     strength,
+    document,
+    inExplanations,
     sentence: s.slice(0, EVIDENCE_CHARS),
     act: { ...vereinbarungActOf(s), partial: PARTIAL.test(s) },
   })
-  let best: { strength: AusfuehrungStrength; sentence: string } | null = null
-  for (const { kind, text } of texts) {
-    const ss = sentencesOf(text)
+  let best: Hit | null = null
+  for (const { kind, text, document } of texts) {
+    const hit = (strength: AusfuehrungStrength, sentence: string): Hit => ({ strength, sentence, document, inExplanations: kind === 'erl' })
+    const ss = ausfuehrungSentences(text)
     for (let i = 0; i < ss.length; i++) {
       const s = ss[i]!
-      if (STMK_FIXED.test(s)) return found('strong', s)
+      if (STMK_FIXED.test(s)) return found(hit('strong', s))
       if (!A15.test(s) || A15_REF.test(s) || NEG.test(s)) continue
       const next = ss[i + 1]
       const ctx = `${s} ${next !== undefined && !A15_REF.test(next) ? next : ''}`
       if (A15_STRONG.test(ctx)) {
         // In the title or § 1 of the draft itself, the first strong finding decides.
-        if (kind === 'pdf' && i < 40) return found('strong', s)
-        if (best?.strength !== 'strong') best = { strength: 'strong', sentence: s }
+        if (kind === 'pdf' && i < 40) return found(hit('strong', s))
+        if (best?.strength !== 'strong') best = hit('strong', s)
       } else if (!best && A15_EXEC.test(s)) {
-        best = { strength: 'medium', sentence: s }
+        best = hit('medium', s)
       }
     }
   }
-  return best ? found(best.strength, best.sentence) : null
+  return best ? found(best) : null
 }
 
 /** Everything the reader finds, strong and medium — the measurement's view. */

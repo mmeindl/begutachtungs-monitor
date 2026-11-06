@@ -213,7 +213,7 @@ export function getBgblTeil1Year(year: number): Promise<BgblRecord[]> {
  * citation in structured form, we look the document up. No join, no
  * similarity (§12.33).
  */
-const fetchBgblByNumber = defineCachedFunction(
+export const fetchBgblByNumber = defineCachedFunction(
   async (nummer: string): Promise<any> => {
     const params = new URLSearchParams({
       Applikation: 'BgblAuth',

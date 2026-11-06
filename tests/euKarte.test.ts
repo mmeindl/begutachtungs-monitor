@@ -5,12 +5,10 @@ import { afterEach, beforeEach, describe, expect, it } from 'vitest'
 import type { BgblOutcome, DraftChain, DraftSummary, EuActView, EuMarker, EuRechtResponse, LandConsultation } from '../shared/types'
 import { euActCelex, euActPath } from '../shared/utils/eu'
 import { gpOfDay } from '../shared/utils/gp'
+import { OPEN_DRAFT_MAX_AGE_MS, fingerprintOf, isFresh } from '../server/utils/cache/factStore'
 import {
-  OPEN_DRAFT_MAX_AGE_MS,
   STORE_VERSION,
   emptyStore,
-  fingerprintOf,
-  isFresh,
   landKey,
   loadEuStore,
   meKey,

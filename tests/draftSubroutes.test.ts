@@ -49,6 +49,7 @@ const SAFE_WITHOUT_GUARD: Record<string, string> = {
   'gegenueberstellung.get.ts': 'an unmatched number falls through to Parliament\'s copy of the annex, which starts with the Gegenstand',
   'geltendesrecht.get.ts': 'the draft\'s own text is read first, through the Gegenstand',
   'paragraphtitel.get.ts': '`getParagraphTitles` starts with the Gegenstand',
+  'bundesrecht.get.ts': '`requireDraft` first; nothing it caches is keyed by the draft — the maps by period, an act\'s head by its Kundmachung (§12.67)',
   'rv-stellungnahmen.get.ts': 'the Vorlage is found through the Gegenstand; what is cached after it is keyed by the Vorlage, which exists',
 }
 

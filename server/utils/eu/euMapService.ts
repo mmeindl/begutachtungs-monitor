@@ -58,7 +58,10 @@ import {
   withVorlagenKundmachung,
   type EuMap,
 } from './euMap'
-import { emptyStore, fingerprintOf, isFresh, landKey, loadEuStore, meKey, risKey, saveEuStore, type EuStoreFile } from './euMapStore'
+import { emptyStore, landKey, loadEuStore, meKey, risKey, saveEuStore, type EuStoreFile } from './euMapStore'
+import { fingerprintOf } from '../cache/factStore'
+import { emptyReport, runAligned, runPopulation, type PopulationJob, type PopulationReport } from '../cache/population'
+import { bundLandPopulation, finishBundLandBuild, type BundLandBuildReport } from '../bund-land/bundLandMapService'
 
 /** As long as the station map: the stand a row shows comes from it. */
 const EU_MAP_TTL_S = 60 * 60 * 6
@@ -67,20 +70,6 @@ const STAND_BUDGET_MS = 2_500
 /** The concurrency the corpus runs held: 4 against RIS, 2 Länder drafts (their PDFs paced by `SitePacer`). */
 const RIS_CONCURRENCY = 4
 const LAND_CONCURRENCY = 2
-
-/** One population's line of the build report. */
-export interface PopulationReport {
-  total: number
-  /** Read now and stored. */
-  read: number
-  /** Taken from the store, unread. */
-  fromStore: number
-  /** Threw — not stored, the publisher is incomplete. */
-  failed: number
-  /** Read, but a part of it did not answer (`Gathered.complete: false`) — not stored either. */
-  partial: number
-  seconds: number
-}
 
 /** What the prewarm route returns. */
 export interface EuMapBuildReport {
@@ -93,15 +82,11 @@ export interface EuMapBuildReport {
   drafts: number
   acts: number
   incomplete: EuPublisher[]
+  /** The Bund-zu-Land map, built from the same Länder loop (§12.67); null where the Länder could not be read. */
+  bundLand: BundLandBuildReport | null
 }
 
-/** One draft to read: its key, what its fact rests on, whether its Begutachtung runs, and how to read it. */
-interface Job {
-  key: string
-  fingerprint: string
-  open: boolean
-  read: () => Promise<Gathered<EuRechtResponse>>
-}
+type Job = PopulationJob<EuRechtResponse>
 
 /** The documents a RIS record's fact rests on: the draft, its Vorblätter, its Erläuterungen — and the first day. */
 function recordFingerprint(record: RisBegutFlat): string {
@@ -120,47 +105,6 @@ function recordFingerprint(record: RisBegutFlat): string {
 function landFingerprint(d: LandConsultation): string {
   return fingerprintOf(d.documents.map((doc) => doc.url), { startedAt: d.startedAt, deadline: d.deadline })
 }
-
-/**
- * Reads one population into the store: a fresh entry is kept, every other
- * draft read with `limit` in flight. A throw costs that draft, never the
- * population (`failFast` is not wanted here, so each item catches its own).
- */
-async function runPopulation(store: EuStoreFile, jobs: readonly Job[], limit: number): Promise<PopulationReport> {
-  const t0 = Date.now()
-  const report: PopulationReport = { total: jobs.length, read: 0, fromStore: 0, failed: 0, partial: 0, seconds: 0 }
-  const now = Date.now()
-  let next = 0
-  const worker = async (): Promise<void> => {
-    while (next < jobs.length) {
-      const job = jobs[next++]!
-      if (isFresh(store.entries[job.key], job.fingerprint, job.open, now)) {
-        report.fromStore++
-        continue
-      }
-      try {
-        const g = await job.read()
-        if (g.complete) {
-          store.entries[job.key] = { fingerprint: job.fingerprint, readAt: new Date().toISOString(), fact: g.value }
-          report.read++
-        } else {
-          // Served on the page, never kept: the next build asks again.
-          Reflect.deleteProperty(store.entries, job.key)
-          report.partial++
-        }
-      } catch (err) {
-        Reflect.deleteProperty(store.entries, job.key)
-        report.failed++
-        console.warn(`[eu-karte] ${job.key}:`, err instanceof Error ? err.message : err)
-      }
-    }
-  }
-  await Promise.all(Array.from({ length: Math.min(limit, jobs.length) }, worker))
-  report.seconds = Math.round((Date.now() - t0) / 100) / 10
-  return report
-}
-
-const emptyReport = (): PopulationReport => ({ total: 0, read: 0, fromStore: 0, failed: 0, partial: 0, seconds: 0 })
 
 /** The Ministerialentwürfe of the period, folded, each through the RIS↔ME join to its record's documents. */
 async function meJobs(gp: string): Promise<Job[]> {
@@ -261,7 +205,7 @@ async function runBuild(gp: string): Promise<EuMapBuildReport> {
     // (a) The Ministerialentwürfe.
     let me = emptyReport()
     try {
-      me = await runPopulation(store, await meJobs(gp), RIS_CONCURRENCY)
+      me = await runPopulation(store, await meJobs(gp), RIS_CONCURRENCY, 'eu-karte')
     } catch (err) {
       console.warn('[eu-karte] Ministerialentwürfe nicht lesbar:', err instanceof Error ? err.message : err)
       incomplete.add('bund')
@@ -272,7 +216,7 @@ async function runBuild(gp: string): Promise<EuMapBuildReport> {
     // (b) The RIS records without a Gegenstand.
     let ris = emptyReport()
     try {
-      ris = await runPopulation(store, await risJobs(gp), RIS_CONCURRENCY)
+      ris = await runPopulation(store, await risJobs(gp), RIS_CONCURRENCY, 'eu-karte')
     } catch (err) {
       console.warn('[eu-karte] RIS-Begutachtungen nicht lesbar:', err instanceof Error ? err.message : err)
       incomplete.add('bund')
@@ -280,18 +224,24 @@ async function runBuild(gp: string): Promise<EuMapBuildReport> {
     if (ris.failed || ris.partial) incomplete.add('bund')
     await saveEuStore(gp, store)
 
-    // (c) The Länder, two drafts at a time — Steiermark and Tirol pace us.
+    // (c) The Länder, two drafts at a time — Steiermark and Tirol pace us —
+    // and with each draft its Bund-zu-Land finding (§12.67): one loop over
+    // both stores, so a changed draft's PDFs are read once for both facts
+    // (`runAligned`, `laender/landDraftTexts.ts`).
     let laender = emptyReport()
+    let bundLand: { run: () => Promise<BundLandBuildReport> } | null = null
     try {
       const { items, sources } = await readLaenderInWindow(window, 'all')
-      laender = await runPopulation(store, landJobs(items), LAND_CONCURRENCY)
       const unavailable = sources.filter((s) => s.state === 'unavailable').map((s) => s.land)
+      const bl = await bundLandPopulation(gp, items)
+      const [eu, blReport] = await runAligned([{ store, jobs: landJobs(items), label: 'eu-karte' }, bl], LAND_CONCURRENCY)
+      laender = eu!
       for (const land of landsMissing(items, store, unavailable)) incomplete.add(land)
+      bundLand = { run: () => finishBundLandBuild(gp, bl.store, blReport!, items, unavailable) }
     } catch (err) {
       console.warn('[eu-karte] Länder nicht lesbar:', err instanceof Error ? err.message : err)
       for (const land of LAND_CODES) incomplete.add(land)
     }
-
     store.builtAt = new Date().toISOString()
     store.incomplete = [...incomplete]
     await saveEuStore(gp, store)
@@ -302,6 +252,13 @@ async function runBuild(gp: string): Promise<EuMapBuildReport> {
     invalidated.add(gp)
     forBuild.add(gp)
     const map = await getEuMap(gp)
+    // The Bund-zu-Land map after the EU's: its acts' heads read the station map warmed above.
+    const bundLandReport = bundLand
+      ? await bundLand.run().catch((err) => {
+          console.warn('[bund-land] Karte nicht gebaut:', err instanceof Error ? err.message : err)
+          return null
+        })
+      : null
 
     return {
       gp,
@@ -313,6 +270,7 @@ async function runBuild(gp: string): Promise<EuMapBuildReport> {
       drafts: map?.drafts.length ?? 0,
       acts: map ? Object.keys(map.acts).length : 0,
       incomplete: map?.incomplete ?? [...incomplete],
+      bundLand: bundLandReport,
     }
   } finally {
     clearInterval(sampler)
