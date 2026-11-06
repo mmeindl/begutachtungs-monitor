@@ -34,13 +34,12 @@ import { isHintParagraph, readBundLaw, readExplanationsEuSignal, readingOfWindow
 import { deadlineOf } from './cellar'
 import { transpositionOf } from './cellarService'
 import { combineVerdicts, decideEuMarker, lawTextMarker, newLawHint } from './euMarker'
-import { askedOfLawInForce, bundesrechtHits, bundesrechtPhrase, bundesrechtSearchParams, transposesAct, type BrKonsSearchAnswer, type BundesrechtHit } from './bundesrecht'
+import { hintWindowParagraphs, askedOfLawInForce, bundesrechtHits, bundesrechtPhrase, bundesrechtSearchParams, transposesAct, type BrKonsSearchAnswer, type BundesrechtHit } from './bundesrecht'
 import { konsJson, konsQuery } from '../ris/konsLaw'
 import { todayIso } from '#shared/utils/format'
 import type { TextBlock } from '../lawtext/lawUnits'
 import { articleBlocks, type DraftArticle } from '../lawtext/draftArticles'
 import { getDraftArticles, draftArticlesOfXml } from '../lawtext/draftArticlesService'
-import { addressedUnits } from '../kons/novao'
 import { fetchParagraphXml, resolveKonsLaw } from '../kons/konsCache'
 import { anlageLabelKey } from '../text/designation'
 import { withPdf } from '../text/pdfDocument'
@@ -250,7 +249,7 @@ async function inForce(place: Place | null, asOf: string | null): Promise<Window
   // Outside any amending Artikel the window is the draft's own new law.
   if (!place || !place.article.amends) return { named: new Set(), hint: null, failed: false }
   if (!place.article.bgbl || !asOf || !place.instruction) return { named: null, hint: null, failed: false }
-  const paras = addressedUnits(place.instruction).paras
+  const paras = hintWindowParagraphs(place.instruction)
   if (!paras.length) return { named: null, hint: null, failed: false }
   try {
     const { organ, nummer } = place.article.bgbl

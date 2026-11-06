@@ -1991,7 +1991,7 @@ function parseOne(raw: string, inherited: NovaoAddress | null | undefined, whole
     // two Strich forms are perfectly readable addresses that this model has no
     // level for, and the refusal list is what decides what gets built next.
     const sub = unplaceableSubUnit(scope || head)
-    if (sub) return fail(`Untergliederung ohne eigene Ebene: ${sub}`)
+    if (sub) return fail(`${SUB_UNIT_REFUSAL}: ${sub}`)
     const unit = unrootedUnit(scope || head)
     return fail(unit ? `${unit} ohne eigene Ebene` : 'keine auflösbare Adresse')
   }
@@ -3187,6 +3187,13 @@ export function addressesWholeText(raw: string): boolean {
 
 /** The instruction was read and names no § because none is meant: the table of contents, the whole text. */
 export const NO_PARAGRAPH_ADDRESSED = 'kein Paragraph adressiert'
+
+/**
+ * The refusal of an address that is readable down to a unit this model has
+ * no level for — „sublit.", a Spiegelstrich, a Strich (`unplaceableSubUnit`).
+ * Its § is plain; only the place inside it is not.
+ */
+export const SUB_UNIT_REFUSAL = 'Untergliederung ohne eigene Ebene'
 
 export function addressedUnits(line: string, inherited?: NovaoAddress | null): AddressedUnits {
   const { ops, reason } = parseInstruction(line, inherited)

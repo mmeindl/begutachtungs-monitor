@@ -1,6 +1,6 @@
 import { readFileSync } from 'node:fs'
 import { describe, expect, it } from 'vitest'
-import { askedOfLawInForce, bundesrechtHits, bundesrechtPhrase, bundesrechtSearchParams, transposesAct, typCountsAsBundesrecht } from '../server/utils/eu/bundesrecht'
+import { hintWindowParagraphs, askedOfLawInForce, bundesrechtHits, bundesrechtPhrase, bundesrechtSearchParams, transposesAct, typCountsAsBundesrecht } from '../server/utils/eu/bundesrecht'
 
 const fixture = (name: string) => JSON.parse(readFileSync(new URL(`./fixtures/eu/${name}`, import.meta.url), 'utf8'))
 
@@ -52,5 +52,22 @@ describe('the law in force, asked over all of Bundesrecht', () => {
     expect(transposesAct(umsetzung, '32024L1069')).toBe(false)
     expect(transposesAct(bezug, '32022L2464')).toBe(false)
     expect(transposesAct('§ 2. Mit diesem Bundesgesetz werden die erforderlichen begleitenden Regelungen zur Verordnung (EU) 2023/2631 getroffen.', '32023R2631')).toBe(true)
+  })
+})
+
+/* The § a hint window's Novellierungsanordnung addresses — what D4 and the quoted Ziffer's gate read in force. */
+describe('hintWindowParagraphs', () => {
+  it('reads the § comparison\'s address where it has one', () => {
+    expect(hintWindowParagraphs('1. In § 3 wird folgender Abs. 3 angefügt:')).toEqual(['§ 3'])
+    expect(hintWindowParagraphs('3. In § 12 Z 4 wird folgender Spiegelstrich angefügt:')).toEqual(['§ 12'])
+  })
+
+  it('reads the § where only a unit below it has no level (Extraktionslösungsmittelverordnung, 06.11.2026)', () => {
+    expect(hintWindowParagraphs('2. In § 5 wird am Ende des dritten Spiegelstrichs der Punkt durch einen Beistrich ersetzt; danach wird folgender Spiegelstrich angefügt:')).toEqual(['§ 5'])
+    expect(hintWindowParagraphs('3. § 6 Abs. 2 sublit. aa lautet:')).toEqual(['§ 6'])
+  })
+
+  it('keeps any other refusal one — a renumbered § names the new number, not the § in force', () => {
+    expect(hintWindowParagraphs('17. Der bisherige "§ 7" erhält die Bezeichnung "§ 8" und lautet:')).toEqual([])
   })
 })

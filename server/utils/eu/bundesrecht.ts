@@ -34,6 +34,27 @@
  */
 import type { EuActKind } from './actCitations'
 import { readUmsetzungshinweis } from './umsetzungshinweis'
+import { SUB_UNIT_REFUSAL, addressedUnits, mentionedUnits } from '../kons/novao'
+
+/**
+ * The §§ of the law in force a hint window's Novellierungsanordnung
+ * addresses — what D4 and the quoted Ziffer's gate read (`euService.ts`).
+ * The § comparison's address (`addressedUnits`), and where it refuses an
+ * address only for a unit below the § it has no level for, the §§ the line
+ * names (`mentionedUnits`): „2. In § 5 wird am Ende des dritten
+ * Spiegelstrichs der Punkt durch einen Beistrich ersetzt; danach wird
+ * folgender Spiegelstrich angefügt: "- Richtlinie (EU) 2023/175 …""
+ * (Extraktionslösungsmittelverordnung, 06.11.2026) addresses § 5, and only
+ * the Spiegelstrich has no place in the annex's model — for the question
+ * whether § 5 is a hint, the § is all that is needed. Any other refusal
+ * stays one: „Der bisherige "§ 7" erhält die Bezeichnung "§ 8"" names the
+ * new § 8, and § 8 in force is another provision.
+ */
+export function hintWindowParagraphs(instruction: string): string[] {
+  const { paras, reason } = addressedUnits(instruction)
+  if (paras.length || !reason?.startsWith(SUB_UNIT_REFUSAL)) return paras
+  return mentionedUnits(instruction)
+}
 
 /**
  * The phrase RIS is asked for: the act's number as every law writes it —
