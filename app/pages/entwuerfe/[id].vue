@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import { originTokens, withOrigin } from '~/utils/origin'
 import type { BgblLawsResponse, BgblOutcome, DraftDocument, RisConsultationDetail, RisDocumentFormats } from '#shared/types'
 import type { ComparisonId, StationId } from '~/utils/spine'
 import { RIS_ID_RE } from '#shared/utils/risConsultations'
@@ -118,6 +119,8 @@ const { data: fassung } = await useFetch<BgblLawsResponse>(
 
 const stationList = computed(() =>
   data.value?.kind === 'verordnung' ? regulationStations(data.value, outcome.value) : [])
+/* Where the draft comes from, as Entwurf facts (`utils/origin.ts`, §12.66). */
+const spineStations = computed(() => withOrigin(stationList.value, originTokens(euRecht.value)))
 
 /* The Frist as a fact, as on the draft page: length and dates, drawn
    against the Regelfall under them (01.10.2026) — running or closed since
@@ -277,7 +280,7 @@ const doorHref = computed(() => {
            here that can be read to its end. -->
         <ProcedureCard
           :status="regulationStatusDe(data.active, outcome?.state === 'kundgemacht')"
-          :stations="stationList"
+          :stations="spineStations"
           :anchors="stationAnchors"
           :comparison-anchors="comparisonAnchors"
           :how-to="stationList.length ? '/so-funktionierts#wege' : '/so-funktionierts'"

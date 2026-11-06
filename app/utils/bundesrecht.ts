@@ -11,7 +11,7 @@
  *
  * Pure: the components render what this returns, the tests read it without one.
  */
-import type { BgblICitation, BundesrechtFinding, BundLandActResponse, LandBundesrechtResponse, MeBundesrechtLine } from '#shared/types'
+import type { BgblICitation, BundLandActResponse, LandBundesrechtResponse, MeBundesrechtLine } from '#shared/types'
 import { formatDateDe } from '#shared/utils/format'
 import { LAND_CODES, LAND_NAME } from '#shared/utils/laender'
 import { viewOfRow, type EntryView } from './entryView'
@@ -29,43 +29,33 @@ function listDe(names: readonly string[]): string {
   return names.length < 2 ? (names[0] ?? '') : `${names.slice(0, -1).join(', ')} und ${names.at(-1)}`
 }
 
-/** One line of the Land fact, in parts the component links. */
-export interface BundesrechtLineView {
+/** One row of the Land block „Bundesrecht:", in parts the component links. */
+export interface BundesrechtRowView {
   key: string
-  /** Before the linked part: „Führt das ", „Setzt die Vereinbarung gemäß Art. 15a B-VG ". */
-  before: string
-  /** The linked part — the law's name, or the citation where no name was read; null where there is nothing to link. */
-  linked: string | null
-  /** After it: „ aus", „ teilweise aus", „ um". */
-  after: string
-  /** „, BGBl. I Nr. 44/2025" after the name. */
+  /** The linked part, or the plain one where nothing links: „Anstellungserfordernisse-Grundsatzgesetz", „Vereinbarung gemäß Art. 15a B-VG über …". */
+  label: string
+  /** „, BGBl. I Nr. 44/2025" after it; null without a citation. */
   citation: string | null
+  /** „, teilweise" where the draft says so. */
+  partial: boolean
   /** The act page. */
   path: string | null
 }
 
 /**
- * The Land fact's lines. A Grundsatzgesetz is „ausgeführt", an agreement
- * „umgesetzt" — never „setzt … um" for a Grundsatzgesetz: a Land does not
- * transpose the Bund's law, it carries out its principles.
+ * The Land block's rows under the heading „Bundesrecht:" (06.11.2026). The
+ * verb — „führt das … aus", „setzt eine Art.-15a-Vereinbarung um" — stands
+ * once, as the Entwurf station's fact (`utils/origin.ts`); the block names
+ * the act. A Grundsatzgesetz is never „umgesetzt" anywhere on the page.
  */
-export function bundesrechtLines(r: LandBundesrechtResponse | null | undefined): BundesrechtLineView[] {
-  return (r?.findings ?? []).map((f, i) => (f.kind === 'grundsatzgesetz' ? grundsatzLine(f, i) : vereinbarungLine(f, i)))
-}
-
-function grundsatzLine(f: BundesrechtFinding, i: number): BundesrechtLineView {
-  const aus = f.partial ? ' teilweise aus' : ' aus'
-  const cite = f.bgbl ? bgblCitationDe(f.bgbl) : null
-  if (f.name) return { key: `gg-${i}`, before: 'Führt das ', linked: f.name, after: aus, citation: cite ? `, ${cite}` : null, path: f.path }
-  if (cite) return { key: `gg-${i}`, before: 'Führt ein Grundsatzgesetz des Bundes', after: aus, linked: null, citation: `, ${cite}`, path: f.path }
-  return { key: `gg-${i}`, before: 'Führt Grundsatzbestimmungen des Bundes', linked: null, after: aus, citation: null, path: null }
-}
-
-function vereinbarungLine(f: BundesrechtFinding, i: number): BundesrechtLineView {
-  const um = f.partial ? ' teilweise um' : ' um'
-  return f.name
-    ? { key: `va-${i}`, before: `Setzt die Vereinbarung gemäß Art. 15a B-VG ${f.name}`, linked: null, after: um, citation: null, path: null }
-    : { key: `va-${i}`, before: 'Setzt eine Vereinbarung gemäß Art. 15a B-VG', linked: null, after: um, citation: null, path: null }
+export function bundesrechtRows(r: LandBundesrechtResponse | null | undefined): BundesrechtRowView[] {
+  return (r?.findings ?? []).map((f, i) => {
+    const citation = f.bgbl ? `, ${bgblCitationDe(f.bgbl)}` : null
+    if (f.kind === 'vereinbarung') {
+      return { key: `va-${i}`, label: f.name ? `Vereinbarung gemäß Art. 15a B-VG ${f.name}` : 'Vereinbarung gemäß Art. 15a B-VG', citation: null, partial: f.partial, path: null }
+    }
+    return { key: `gg-${i}`, label: f.name ?? (f.bgbl ? 'Grundsatzgesetz des Bundes' : 'Grundsatzbestimmungen des Bundes'), citation, partial: f.partial, path: f.path }
+  })
 }
 
 /** „3 Entwürfen der Länder" (dative), „einem Entwurf der Länder". */
@@ -104,6 +94,9 @@ export function fristSpanOf(clause: string): string {
     .replace(/[\s,]+$/u, '')
 }
 
+/** The block „Ausführung durch die Länder" in the Bundesgesetzblatt section (`BgblLaenderBlock`). */
+export const LAENDER_BLOCK_ANCHOR = '#ausfuehrung-laender'
+
 /**
  * The Bundesgesetzblatt station's detail line on a Ministerialentwurf whose
  * Grundsatzgesetz is kundgemacht (§12.67): the procedure after the
@@ -111,9 +104,11 @@ export function fristSpanOf(clause: string): string {
  */
 export function bundesrechtFollowUp(line: MeBundesrechtLine | null | undefined): NonNullable<Station['followUp']> | null {
   if (!line) return null
-  if (line.drafts > 0) return { before: '', link: { href: line.path, label: `In ${draftsDative(line.drafts)} ausgeführt →` }, after: '' }
-  if (line.fristClause) return { before: 'Ausführung durch die Länder: noch kein Entwurf · ', link: { href: line.path, label: 'Frist' }, after: `: ${fristSpanOf(line.fristClause)}` }
-  return { before: '', link: { href: line.path, label: 'Ausführung durch die Länder: noch kein Entwurf' }, after: '' }
+  // In-page, as every link in the spine: the block in „Im Bundesgesetzblatt" carries the rows and the way to the act page.
+  const href = LAENDER_BLOCK_ANCHOR
+  if (line.drafts > 0) return { before: '', link: { href, label: `In ${draftsDative(line.drafts)} ausgeführt →` }, after: '' }
+  if (line.fristClause) return { before: 'Ausführung durch die Länder: noch kein Entwurf · ', link: { href, label: 'Frist' }, after: `: ${fristSpanOf(line.fristClause)}` }
+  return { before: '', link: { href, label: 'Ausführung durch die Länder: noch kein Entwurf' }, after: '' }
 }
 
 /** The stations with the follow-up at the Bundesgesetzblatt. */

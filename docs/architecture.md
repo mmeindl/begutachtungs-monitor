@@ -319,8 +319,9 @@ name has to stay globally unique.
 | `DraftDescription` | `blocks: DescriptionBlock[]` | The Kurzinformation of a Ministerialentwurf, grouped into its own sections; folded parts are a `FoldSection` (native `<details>`), so no hydration, keyboard access as-is and the text stays in the SSR HTML |
 | `DraftDoorCard` | `frist: boolean; deadline; icsHref?; filingHref?` + slots `heading`, default, `after-context`, `filing`, `actions`, `footer` | The door: deadline, action and calendar in one card, in the same slot and shape on both detail pages (03.10.2026); toned like the list row's countdown while the Begutachtung's window is open |
 | `ProcedureCard` | `status: string; stations: Station[]; anchors?; comparisonAnchors?; howTo?` + default slot | The bordered card with the procedure's status, the way to /so-funktionierts and the `SpineRail` — the same on both detail pages (03.10.2026) |
-| `DraftBundesrechtFact` | `data: LandBundesrechtResponse \| null \| undefined` | A Land draft's ProcedureCard, under the EU fact (§12.67): „Führt das <Grundsatzgesetz> aus, BGBl. I Nr. …" (the name links to `/bundesrecht/<Jahr>/<Nummer>` where the map has the act; „teilweise" where the draft says so) and „Setzt die Vereinbarung gemäß Art. 15a B-VG … um" (no link). The EU fact's register; nothing where nothing was found |
-| `SpineRail` (since 06.11.2026) | + `Station.followUp` | A station's detail line for what followed it elsewhere on the site, in-site link between two texts: the Bundesgesetzblatt station's Bund-zu-Land line (§12.67) |
+| `DraftBundesrechtFact` | `data: LandBundesrechtResponse \| null \| undefined` | A Land draft's ProcedureCard, under the EU block (§12.67): „Bundesrecht: Anstellungserfordernisse-Grundsatzgesetz, BGBl. I Nr. 44/2025" (the name links to `/bundesrecht/<Jahr>/<Nummer>` where the map has the act; „, teilweise" where the draft says so) and „Vereinbarung gemäß Art. 15a B-VG über …" (no link). The verb stands once, at the Entwurf station (`utils/origin.ts`); id `bundesrecht-fakt`. Nothing where nothing was found |
+| `BgblLaenderBlock` | `line: MeBundesrechtLine` | „Ausführung durch die Länder" (h3) in „Im Bundesgesetzblatt" on a Ministerialentwurf, where the station's follow-up jumps (§12.67): the Land drafts as list rows, or „Noch kein Entwurf der Länder im Fenster." with the Frist sentence quoted; then „Zum Grundsatzgesetz …→" and the credit line. Slot of `BgblStationSection` |
+| `SpineRail` (since 06.11.2026) | + `Station.followUp`, `Station.factLinks` | `followUp`: a station's detail line for what followed it, the Bundesgesetzblatt station's Bund-zu-Land line (§12.67); `factLinks`: linking facts after the plain ones, the Entwurf station's origin tokens (§12.66, §12.67). Both in-page anchors: links in the spine jump to a section below, never to another page |
 | `DraftBundesrechtCredits` | `data; publisher: string` | Its credit line under the card: the Land's documents it was read from, and „Bundesgesetzblatt (RIS)" where a Kundmachung was read |
 | `DoorButton` | `href: string; variant?: 'solid' \| 'outline'` + default slot | The door's button: a form or document opened in a new window, with ↗ and the sr-only warning (`FilingButton` until 04.10.2026 — it opens the Begleitschreiben too) |
 | `RvStationSection` | `draft; view: RvStationView; share; shareDe; reasoningDe; rvExplanations; rvStatements; filingOpen` | „Die Regierungsvorlage": the station's facts, counts and context from `rvStationView` (`app/utils/outcomes.ts`, tested), its statements and the ME→RV comparison. Split out of the draft page on 04.10.2026, like the two below |
@@ -14507,6 +14508,20 @@ Ausgabe, `drafts.csv`, `acts.csv` und `disagreements.md` mit dem Lauf davor
 identisch. Abschnitt g wendet `euMarker.ts` an; D4 misst der Lauf nicht
 (geltendes Recht liegt nicht im Cache).
 
+**Die Herkunft als Fakt der Station Entwurf (06.11.2026, Owner).** Der
+Marker steht seither als kurzer Fakt der Station „Entwurf" neben „ändert 1
+Gesetz" — „setzt EU-Recht um", „begleitet EU-Verordnungen", „begleitet eine
+EU-Richtlinie" —, als Sprung zum EU-Block in der Karte
+(`utils/origin.ts`). Grund: parallel zu „ändert N Gesetze" ist die Herkunft
+eine Eigenschaft des Textes, kein Schritt dieses Verfahrens, und sie hat
+ihre eigene Zeitskala — die Größenordnung zeigt der Zeitstrahl im Block,
+die Leiste nicht; keine sechste Station und nichts vor „Entwurf"
+(September-Entscheidung). Der Block wiederholt den Satz nicht mehr, er
+beginnt mit einem Nomen je Marker: „Umgesetztes EU-Recht" (`umsetzung`,
+`ueber-umsetzung`), „Begleitete EU-Verordnungen", „Begleitete
+EU-Richtlinie"; wo der Gesetzestext Akte einer anderen Art nennt, „Im
+Gesetzestext genannt:"; ohne Akt „…: kein Rechtsakt mit Nummer genannt".
+
 #### Nachtrag (Länder), 04.11.2026
 
 Vor Schritt 2 gemessen, ob die Module Landesentwürfe lesen: `pnpm
@@ -15549,7 +15564,22 @@ der Kundmachung.
   EU-Block:** die Zeile beschreibt das Verfahren nach der Kundmachung, keine
   Eigenschaft des Entwurfs, gehört also zur Station, an der es weitergeht;
   unter dem EU-Block las sie sich als Teil des EU-Rechts; und ihre Quellen
-  standen in keiner Quellenzeile.
+  standen in keiner Quellenzeile. **Links in der Leiste springen auf
+  derselben Seite** (Owner, 06.11.2026): „In 3 Entwürfen der Länder
+  ausgeführt →" und „Frist" führen zum Block „Ausführung durch die Länder"
+  im Abschnitt „Im Bundesgesetzblatt" (`BgblLaenderBlock`: die
+  Landesentwürfe als Listenzeilen, sonst „Noch kein Entwurf der Länder im
+  Fenster." mit dem ganzen Fristsatz), und erst von dort führt „Zum
+  Grundsatzgesetz →" auf die Aktseite.
+- **Die Herkunft als Fakt der Station Entwurf** (06.11.2026, Owner): neben
+  „ändert 1 Gesetz" stehen „setzt EU-Recht um" (§12.66), „führt das
+  Anstellungserfordernisse-Grundsatzgesetz aus" bzw. „führt ein
+  Grundsatzgesetz aus", „setzt eine Art.-15a-Vereinbarung um" — kurz, klein,
+  jeder ein Sprung zum Block in der Karte (`utils/origin.ts`,
+  `Station.factLinks`). Die Blöcke beginnen seither nicht mehr mit
+  demselben Satz, sondern mit einem Nomen: „Bundesrecht:" mit den Akten.
+  Die Leiste liest sich damit Herkunft → … → Folge (Station
+  Bundesgesetzblatt).
 - **Gezählt werden Entwürfe, nie Länder** („3 Entwürfe der Länder (Kärnten,
   Oberösterreich, Steiermark)"), wie auf der EU-Aktseite.
 - **Die Aktseite zeichnet die Kundmachung als Marke über den Bahnen**, im

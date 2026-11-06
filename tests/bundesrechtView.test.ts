@@ -1,50 +1,68 @@
 import { describe, expect, it } from 'vitest'
-import type { BundesrechtFinding, BundLandActResponse, LandConsultation } from '../shared/types'
-import { bundesrechtCreditItems, bundesrechtFollowUp, bundesrechtLines, bundLandActPageView, draftsCountDe, fristQuoteOf, fristSpanOf, withBundesrechtFollowUp } from '../app/utils/bundesrecht'
+import type { BundesrechtFinding, BundLandActResponse, EuRechtResponse, LandConsultation } from '../shared/types'
+import { LAENDER_BLOCK_ANCHOR, bundesrechtCreditItems, bundesrechtFollowUp, bundesrechtRows, bundLandActPageView, draftsCountDe, fristQuoteOf, fristSpanOf, withBundesrechtFollowUp } from '../app/utils/bundesrecht'
 import type { Station } from '../app/utils/spine'
+import { BUNDESRECHT_FACT_ANCHOR, EU_FACT_ANCHOR, originTokens, withOrigin } from '../app/utils/origin'
 
 const finding = (over: Partial<BundesrechtFinding>): BundesrechtFinding => ({ kind: 'grundsatzgesetz', name: null, bgbl: null, partial: false, path: null, kundmachung: null, risUrl: null, ...over })
-const text = (l: ReturnType<typeof bundesrechtLines>[number]) => `${l.before}${l.linked ?? ''}${l.after}${l.citation ?? ''}.`
+const text = (r: ReturnType<typeof bundesrechtRows>[number]) => `${r.label}${r.citation ?? ''}${r.partial ? ', teilweise' : ''}`
 
-describe('the Land fact', () => {
-  it('says „Führt das … aus, BGBl. …" with the name linked to the act page', () => {
-    const [l] = bundesrechtLines({ findings: [finding({ name: 'Anstellungserfordernisse-Grundsatzgesetz', bgbl: { number: 44, year: 2025 }, path: '/bundesrecht/2025/44' })], sources: [] })
-    expect(text(l!)).toBe('Führt das Anstellungserfordernisse-Grundsatzgesetz aus, BGBl. I Nr. 44/2025.')
-    expect(l).toMatchObject({ linked: 'Anstellungserfordernisse-Grundsatzgesetz', path: '/bundesrecht/2025/44' })
+describe('the Land block „Bundesrecht:"', () => {
+  it('names the act with its citation, linked to the act page', () => {
+    const [r] = bundesrechtRows({ findings: [finding({ name: 'Anstellungserfordernisse-Grundsatzgesetz', bgbl: { number: 44, year: 2025 }, path: '/bundesrecht/2025/44' })], sources: [] })
+    expect(text(r!)).toBe('Anstellungserfordernisse-Grundsatzgesetz, BGBl. I Nr. 44/2025')
+    expect(r!.path).toBe('/bundesrecht/2025/44')
   })
 
-  it('says „teilweise" where the draft does', () => {
-    expect(text(bundesrechtLines({ findings: [finding({ name: 'Sozialhilfe-Grundsatzgesetz', bgbl: { number: 25, year: 2025 }, partial: true })], sources: [] })[0]!)).toBe('Führt das Sozialhilfe-Grundsatzgesetz teilweise aus, BGBl. I Nr. 25/2025.')
-  })
-
-  it('never says „setzt … um" for a Grundsatzgesetz, and links no agreement', () => {
-    const lines = bundesrechtLines({ findings: [finding({}), finding({ kind: 'vereinbarung', name: 'über Sozialbetreuungsberufe', path: '/x' })], sources: [] })
-    expect(lines.map(text)).toEqual(['Führt Grundsatzbestimmungen des Bundes aus.', 'Setzt die Vereinbarung gemäß Art. 15a B-VG über Sozialbetreuungsberufe um.'])
-    expect(lines[1]!.path).toBeNull()
+  it('keeps „teilweise", names an agreement without a link, and never „umgesetzt" for a Grundsatzgesetz', () => {
+    const rows = bundesrechtRows({ findings: [finding({ name: 'Sozialhilfe-Grundsatzgesetz', bgbl: { number: 25, year: 2025 }, partial: true }), finding({ kind: 'vereinbarung', name: 'über Sozialbetreuungsberufe', path: '/x' }), finding({})], sources: [] })
+    expect(rows.map(text)).toEqual(['Sozialhilfe-Grundsatzgesetz, BGBl. I Nr. 25/2025, teilweise', 'Vereinbarung gemäß Art. 15a B-VG über Sozialbetreuungsberufe', 'Grundsatzbestimmungen des Bundes'])
+    expect(rows[1]!.path).toBeNull()
   })
 
   it('says nothing where nothing was found', () => {
-    expect(bundesrechtLines({ findings: [], sources: [] })).toEqual([])
-    expect(bundesrechtLines(null)).toEqual([])
+    expect(bundesrechtRows({ findings: [], sources: [] })).toEqual([])
+    expect(bundesrechtRows(null)).toEqual([])
+  })
+})
+
+describe('the origin at the Entwurf station', () => {
+  const eu = (marker: EuRechtResponse['marker']): EuRechtResponse => ({ available: true, unavailableReason: null, marker, markerSource: 'vorblatt', vorblattSentence: null, acts: [], actsSource: null, begutachtungStart: null, sources: [] })
+  it('names EU law, a Grundsatzgesetz and an agreement as short lower-case tokens', () => {
+    const tokens = originTokens(eu('umsetzung'), { findings: [finding({ name: 'Anstellungserfordernisse-Grundsatzgesetz', path: '/bundesrecht/2025/44' }), finding({ kind: 'vereinbarung' })], sources: [] })
+    expect(tokens).toEqual([
+      { label: 'setzt EU-Recht um', href: EU_FACT_ANCHOR },
+      { label: 'führt das Anstellungserfordernisse-Grundsatzgesetz aus', href: BUNDESRECHT_FACT_ANCHOR },
+      { label: 'setzt eine Art.-15a-Vereinbarung um', href: BUNDESRECHT_FACT_ANCHOR },
+    ])
+    expect(originTokens(eu('flankierend-vo'))[0]!.label).toBe('begleitet EU-Verordnungen')
+    expect(originTokens(null, { findings: [finding({})], sources: [] })).toEqual([{ label: 'führt ein Grundsatzgesetz aus', href: BUNDESRECHT_FACT_ANCHOR }])
+    expect(originTokens({ ...eu(null), available: true }, null)).toEqual([])
+  })
+
+  it('stands at „Entwurf" only', () => {
+    const st = (id: Station['id']): Station => ({ id, name: id, state: 'done', facts: ['01.01.2026'], comparison: null })
+    const out = withOrigin([st('entwurf'), st('begutachtung')], [{ label: 'setzt EU-Recht um', href: '#x' }])
+    expect(out.map((s) => s.factLinks?.length ?? 0)).toEqual([1, 0])
   })
 })
 
 describe('the Bundesgesetzblatt station\'s line on a Ministerialentwurf', () => {
   const station = (id: Station['id']): Station => ({ id, name: id, state: 'done', facts: [], comparison: null })
   it('counts drafts, never Länder, as a link at the station', () => {
-    expect(bundesrechtFollowUp({ path: '/bundesrecht/2025/44', drafts: 3, lands: ['ktn', 'ooe', 'stmk'], fristClause: null })).toEqual({ before: '', link: { href: '/bundesrecht/2025/44', label: 'In 3 Entwürfen der Länder ausgeführt →' }, after: '' })
-    expect(bundesrechtFollowUp({ path: '/p', drafts: 1, lands: ['w'], fristClause: null })?.link.label).toBe('In einem Entwurf der Länder ausgeführt →')
+    expect(bundesrechtFollowUp({ path: '/bundesrecht/2025/44', drafts: 3, lands: ['ktn', 'ooe', 'stmk'], fristClause: null, citation: 'BGBl. I Nr. 44/2025', rows: [] })).toEqual({ before: '', link: { href: LAENDER_BLOCK_ANCHOR, label: 'In 3 Entwürfen der Länder ausgeführt →' }, after: '' })
+    expect(bundesrechtFollowUp({ path: '/p', drafts: 1, lands: ['w'], fristClause: null, citation: 'c', rows: [] })?.link.label).toBe('In einem Entwurf der Länder ausgeführt →')
   })
 
   it('says „noch kein Entwurf" and the Frist span, the word „Frist" linked — no zero', () => {
-    const v = bundesrechtFollowUp({ path: '/p', drafts: 0, lands: [], fristClause: 'Die Ausführungsgesetze der Länder sind binnen sechs Monaten nach Inkrafttreten der Grundsatzbestimmungen gemäß Absatz 8, zu erlassen.' })
-    expect(v).toEqual({ before: 'Ausführung durch die Länder: noch kein Entwurf · ', link: { href: '/p', label: 'Frist' }, after: ': binnen sechs Monaten nach Inkrafttreten der Grundsatzbestimmungen' })
+    const v = bundesrechtFollowUp({ path: '/p', drafts: 0, lands: [], citation: 'c', rows: [], fristClause: 'Die Ausführungsgesetze der Länder sind binnen sechs Monaten nach Inkrafttreten der Grundsatzbestimmungen gemäß Absatz 8, zu erlassen.' })
+    expect(v).toEqual({ before: 'Ausführung durch die Länder: noch kein Entwurf · ', link: { href: LAENDER_BLOCK_ANCHOR, label: 'Frist' }, after: ': binnen sechs Monaten nach Inkrafttreten der Grundsatzbestimmungen' })
     expect(JSON.stringify(v)).not.toMatch(/\b0\b/)
-    expect(bundesrechtFollowUp({ path: '/p', drafts: 0, lands: [], fristClause: null })?.link.label).toBe('Ausführung durch die Länder: noch kein Entwurf')
+    expect(bundesrechtFollowUp({ path: '/p', drafts: 0, lands: [], fristClause: null, citation: 'c', rows: [] })?.link.label).toBe('Ausführung durch die Länder: noch kein Entwurf')
   })
 
   it('puts it at the Bundesgesetzblatt and nowhere without an answer', () => {
-    const line = { path: '/p', drafts: 2, lands: [], fristClause: null }
+    const line = { path: '/p', drafts: 2, lands: [], fristClause: null, citation: 'c', rows: [] }
     expect(withBundesrechtFollowUp([station('rv'), station('bgbl')], line).map((s) => Boolean(s.followUp))).toEqual([false, true])
     expect(withBundesrechtFollowUp([station('bgbl')], null)[0]!.followUp).toBeUndefined()
     expect(bundesrechtCreditItems(line)).toEqual(['Bundesgesetzblatt (RIS)', 'Dokumente der Länder'])

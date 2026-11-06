@@ -131,6 +131,10 @@ function bgblCite(number: string | null, risUrl: string | null): string | null {
            the number off the Vorlage's record itself (`lawDiffService`),
            and a successor Antrag is a text of its own: holding the
            Vorlage against it would compare two different bills. -->
+      <!-- What the Länder made of it, where the draft's Grundsatzgesetz
+           names it as its origin (§12.67): the page's own block for it,
+           passed in by the page. -->
+      <slot />
       <LawDiffSection
         v-if="enactment.bgblNumber"
         :gp="gp"

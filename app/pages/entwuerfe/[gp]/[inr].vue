@@ -13,6 +13,7 @@ import {
 import { relatedGpSuffixDe, rvStationView } from '~/utils/outcomes'
 import type { EuTimelineContext } from '~/utils/euRecht'
 import { bundesrechtCreditItems, withBundesrechtFollowUp } from '~/utils/bundesrecht'
+import { originTokens, withOrigin } from '~/utils/origin'
 import { withoutMainPoints } from '~/utils/kurzinfo'
 import { ministryLinkFor } from '~/components/draft/MinistryLinks.vue'
 import { aliasesFor } from '#shared/utils/draftAliases'
@@ -229,7 +230,8 @@ const { data: euRecht } = useEuRecht(() => ({ gp: gp.value, inr: inr.value }))
  * procedure after the Kundmachung, not a property of the draft
  * (docs/architecture.md §12.67). Its sources join the card's credit line. */
 const { line: bundesrechtLine } = useMeBundesrecht(() => ({ gp: gp.value, inr: inr.value }))
-const spineStations = computed(() => withBundesrechtFollowUp(stationList.value, bundesrechtLine.value))
+/* Where the draft comes from, as Entwurf facts beside „ändert N Gesetze" (`utils/origin.ts`). */
+const spineStations = computed(() => withOrigin(withBundesrechtFollowUp(stationList.value, bundesrechtLine.value), originTokens(euRecht.value)))
 const bundesrechtCredits = computed(() => bundesrechtCreditItems(bundesrechtLine.value))
 /* The page's side of the EU timeline: its Begutachtung, and where the
  * procedure stands — today while it runs; once a law came out of it, the
@@ -678,7 +680,9 @@ const ministryLinks = computed(() => {
             :gp="data.gp"
             :inr="data.inr"
             :parliament-texts="parliamentTextList"
-          />
+          >
+            <BgblLaenderBlock v-if="bundesrechtLine" :line="bundesrechtLine" />
+          </BgblStationSection>
 
         </article>
       </template>

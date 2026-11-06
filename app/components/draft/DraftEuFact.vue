@@ -80,10 +80,11 @@ const hasNotes = computed(() => (view.value?.notes.length ?? 0) > 0)
 </script>
 
 <template>
-  <div v-if="view" class="mt-4 border-t border-hairline pt-4">
+  <!-- The id: the Entwurf station's „setzt EU-Recht um" leads here (`utils/origin.ts`). -->
+  <div v-if="view" id="eu-recht-fakt" class="mt-4 scroll-mt-4 border-t border-hairline pt-4">
     <template v-if="asList">
       <p class="text-sm text-ink-secondary">
-        <strong class="font-semibold text-ink">{{ view.lead }}</strong><template v-if="view.attach === 'named'">. {{ view.namedIn }} genannt</template>:
+        <strong class="font-semibold text-ink">{{ view.heading }}</strong>:
       </p>
       <ul class="mt-1 space-y-1 text-sm text-ink-secondary">
         <li v-for="act in shownActs" :key="act.url">
@@ -98,7 +99,7 @@ const hasNotes = computed(() => (view.value?.notes.length ?? 0) > 0)
       </p>
     </template>
     <p v-else class="text-sm text-ink-secondary">
-      <strong class="font-semibold text-ink">{{ view.lead }}</strong><template v-if="view.attach === 'colon'">: </template><template v-else-if="view.attach === 'named'">. {{ view.namedIn }} genannt: </template><template v-for="act in shownActs" :key="act.url"><NuxtLink v-if="pageOf.get(act.celex)" :to="pageOf.get(act.celex)!" class="link-inline">{{ act.label }}</NuxtLink><ExternalLink v-else :href="act.url" class="link-inline">{{ act.label }}</ExternalLink><template v-if="view.adoptedNote">, {{ view.adoptedNote }}</template><span v-if="others.get(act.celex)" class="text-ink-muted"> · {{ others.get(act.celex) }}</span></template>.
+      <strong class="font-semibold text-ink">{{ view.heading }}</strong>: <template v-if="view.attach === 'none'">kein Rechtsakt mit Nummer genannt</template><template v-for="act in shownActs" :key="act.url"><NuxtLink v-if="pageOf.get(act.celex)" :to="pageOf.get(act.celex)!" class="link-inline">{{ act.label }}</NuxtLink><ExternalLink v-else :href="act.url" class="link-inline">{{ act.label }}</ExternalLink><template v-if="view.adoptedNote">, {{ view.adoptedNote }}</template><span v-if="others.get(act.celex)" class="text-ink-muted"> · {{ others.get(act.celex) }}</span></template>.
       <template v-if="quote">
         Laut Vorblatt: „{{ quote }}“.
       </template>

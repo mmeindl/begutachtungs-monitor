@@ -89,6 +89,12 @@ export interface Station {
    * `before` and `after`.
    */
   followUp?: { before: string; link: { href: string; label: string }; after: string }
+  /**
+   * Facts that link, after the plain ones in the same line — the Entwurf
+   * station's origin tokens („setzt EU-Recht um", „führt das … aus";
+   * `utils/origin.ts`, §12.66/§12.67). An in-page anchor or a site path.
+   */
+  factLinks?: { label: string; href: string }[]
 }
 
 /**

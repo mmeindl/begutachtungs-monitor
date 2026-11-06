@@ -28,7 +28,7 @@ import type { Population, PopulationJob, PopulationReport } from '../cache/popul
 import { PUBLISHED_DOCUMENT_TTL_S } from '../cache/ttl'
 import { withinBudget } from '../http/budget'
 import { getDraftArticles } from '../lawtext/draftArticlesService'
-import { readLaenderInWindow, readLandDraft } from '../laender/sources'
+import { readLaenderInWindow, readLandDraft, withLandActiveOn } from '../laender/sources'
 import { getStationMapForGp } from '../parliament/stationMap'
 import { RIS_API_BASE, risJson, type UpstreamPolicy } from '../upstream/fetch'
 import { landKey } from '../eu/euMapStore'
@@ -296,5 +296,13 @@ export async function meLineOf(gp: string, inr: number): Promise<MeBundesrechtLi
   if (!act) return null
   const head = await withinBudget(actHeadOf(act), LINE_BUDGET_MS)
   if (!head?.me || head.me.gp !== gp || head.me.inr !== inr) return null
-  return { path: head.path, drafts: act.drafts.length, lands: LAND_CODES.filter((l) => act.drafts.some((d) => d.publisher === l)), fristClause: head.fristClause }
+  return {
+    path: head.path,
+    drafts: act.drafts.length,
+    lands: LAND_CODES.filter((l) => act.drafts.some((d) => d.publisher === l)),
+    fristClause: head.fristClause,
+    citation: head.citation,
+    // `active` per request, as the lists decide it: the map is cached for hours.
+    rows: act.drafts.map((d) => (d.row.kind === 'land' ? { ...d.row, item: withLandActiveOn([d.row.item])[0]! } : d.row)),
+  }
 }

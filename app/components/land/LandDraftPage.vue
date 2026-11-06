@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import { originTokens, withOrigin } from '~/utils/origin'
 import type { DraftDocument, LandCode, LandDraftDetail } from '#shared/types'
 import type { Fact } from '~/components/ui/FactList.vue'
 import { LAND_HOST, LAND_NAME, LAND_PUBLICATION_NOTE, landDraftPath, landPublisherDe, landShortTitle } from '#shared/utils/laender'
@@ -149,6 +150,9 @@ const { data: euRecht } = useEuRecht(() => ({ land: props.land, number: props.nu
 const { data: bundesrecht } = useLandBundesrecht(() => ({ land: props.land, number: props.number }))
 /* Who published what the fact read, for its credit line. */
 const landPublisher = computed(() => `Land ${landName.value}`)
+/* Where the draft comes from — EU law, a Grundsatzgesetz, an agreement — as
+ * Entwurf facts, each jumping to its block in the card (`utils/origin.ts`). */
+const spineStations = computed(() => withOrigin(stationList.value, originTokens(euRecht.value, bundesrecht.value)))
 /* The page's side of the EU timeline: its Begutachtung, and where the
  * procedure stands — the Landesgesetzblatt where the draft reached it with
  * a date, else the Landtag's Beschluss where its record dates one (OÖ),
@@ -220,7 +224,7 @@ useSeoMeta({ ogTitle: () => draft.value?.title ?? 'Entwurf', ogType: 'article' }
              Begutachtung, the last row says so (`landStations`). -->
         <ProcedureCard
           :status="landStatusDe(detail.draft)"
-          :stations="stationList"
+          :stations="spineStations"
           :anchors="stationAnchors"
           :comparison-anchors="comparisonAnchors"
           how-to="/so-funktionierts#laender"

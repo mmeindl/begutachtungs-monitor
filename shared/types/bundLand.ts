@@ -99,4 +99,8 @@ export interface MeBundesrechtLine {
   drafts: number
   lands: LandCode[]
   fristClause: string | null
+  /** „BGBl. I Nr. 44/2025" — the act the block names. */
+  citation: string
+  /** The Land drafts as the lists carry them, for the block „Ausführung durch die Länder" in the Bundesgesetzblatt section. */
+  rows: EuListRow[]
 }
