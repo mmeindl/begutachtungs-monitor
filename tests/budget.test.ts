@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { withinBudget } from '../server/utils/http/budget'
+import { answerWithinBudget, withinBudget } from '../server/utils/http/budget'
 
 const later = <T>(value: T, ms: number): Promise<T> =>
   new Promise((resolve) => setTimeout(() => resolve(value), ms))
@@ -36,5 +36,14 @@ describe('withinBudget', () => {
     // Awaiting the same rejection again must still be handled, not a crash
     // in a later tick — that is what makes dropping the await safe.
     await expect(failing.catch(() => 'handled')).resolves.toBe('handled')
+  })
+})
+
+describe('answerWithinBudget', () => {
+  it('tells a null answer from no answer in time, and from a failure', async () => {
+    await expect(answerWithinBudget(later(null, 5), 200)).resolves.toEqual({ answered: true, value: null })
+    await expect(answerWithinBudget(later('2026-03-02', 5), 200)).resolves.toEqual({ answered: true, value: '2026-03-02' })
+    await expect(answerWithinBudget(later('too late', 5_000), 30)).resolves.toEqual({ answered: false })
+    await expect(answerWithinBudget(Promise.reject(new Error('RIS down')), 200)).resolves.toEqual({ answered: false })
   })
 })

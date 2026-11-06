@@ -41,6 +41,7 @@ vi.mock('../server/utils/ris/bgblService', () => ({
 }))
 
 const { getDraftsForGp, getGegenstand, getVorlagenForGp } = vi.mocked(await import('../server/utils/parliament/drafts'))
+const { findBgblIForVorlage, getBgblIssueDate } = vi.mocked(await import('../server/utils/ris/bgblService'))
 const { getStationMapForGp } = await import('../server/utils/parliament/stationMap')
 
 // ---------------------------------------------------------------------------
@@ -73,6 +74,13 @@ const VORLAGE: VorlageRow = {
 /** Which records do not arrive, by `ityp-inr`. */
 const unreachable = new Set<string>()
 
+/** The Vorlage's record where Parliament links its Kundmachung. */
+const ENACTED = {
+  content: {
+    status: { bgbllinks: [{ title: 'BGBl. I Nr. 5/2026', link: 'https://www.ris.bka.gv.at/Dokument.wxe?Abfrage=BgblAuth&Dokumentnummer=BGBLA_2026_I_5' }] },
+  },
+}
+
 /** The row as the list renders it, with the chain the map holds for it. */
 async function rowState(draft: DraftSummary): Promise<string> {
   const chains = await getStationMapForGp('XXVIII')
@@ -88,6 +96,8 @@ beforeEach(() => {
   unreachable.clear()
   getDraftsForGp.mockResolvedValue({ items: [WITH_RV, WITHOUT_RV] } as never)
   getVorlagenForGp.mockResolvedValue([VORLAGE])
+  findBgblIForVorlage.mockResolvedValue(null)
+  getBgblIssueDate.mockResolvedValue(null)
   getGegenstand.mockImplementation((async (_gp: string, ityp: string, inr: number) => {
     if (unreachable.has(`${ityp}-${inr}`)) throw new Error('Parlament: The operation was aborted due to timeout')
     return ityp === 'ME' ? meRecord(inr === WITH_RV.inr) : { content: {} }
@@ -173,5 +183,56 @@ describe('a Vorlage\'s record does not arrive', () => {
     vi.setSystemTime(Date.now() + 11 * MINUTE)
     await getStationMapForGp('XXVIII')
     expect(getVorlagenForGp).toHaveBeenCalledTimes(1)
+  })
+})
+
+describe('a Kundmachung whose day does not arrive (06.11.2026)', () => {
+  beforeEach(() => {
+    getGegenstand.mockImplementation((async (_gp: string, ityp: string, inr: number) => {
+      if (ityp === 'I') return ENACTED
+      return meRecord(inr === WITH_RV.inr)
+    }) as never)
+  })
+
+  it('keeps the number, and the map only ten minutes — the next build asks for the day again', async () => {
+    getBgblIssueDate.mockRejectedValueOnce(new Error('RIS: The operation was aborted due to timeout'))
+    const chains = await getStationMapForGp('XXVIII')
+    expect(chains[WITH_RV.inr]).toMatchObject({ station: 'bgbl', bgblNumber: 'BGBl. I Nr. 5/2026', bgblDate: null })
+
+    getBgblIssueDate.mockResolvedValue('2026-03-02')
+    vi.setSystemTime(Date.now() + 9 * MINUTE)
+    expect((await getStationMapForGp('XXVIII'))[WITH_RV.inr]!.bgblDate).toBeNull()
+    vi.setSystemTime(Date.now() + 2 * MINUTE)
+    expect((await getStationMapForGp('XXVIII'))[WITH_RV.inr]!.bgblDate).toBe('2026-03-02')
+  })
+
+  it('keeps six hours a Kundmachung RIS knows no day for — that is an answer', async () => {
+    getBgblIssueDate.mockResolvedValue(null)
+    await getStationMapForGp('XXVIII')
+    getBgblIssueDate.mockClear()
+    vi.setSystemTime(Date.now() + 5 * 60 * MINUTE)
+    expect((await getStationMapForGp('XXVIII'))[WITH_RV.inr]!.bgblDate).toBeNull()
+    expect(getBgblIssueDate).not.toHaveBeenCalled()
+  })
+})
+
+describe('a RIS search for a decided Vorlage\'s Kundmachung that does not answer (06.11.2026)', () => {
+  it('is a gap, not „not yet promulgated": the map is kept ten minutes, and the next build finds the number', async () => {
+    getVorlagenForGp.mockResolvedValue([{ ...VORLAGE, status: '5' }])
+    findBgblIForVorlage.mockRejectedValueOnce(new Error('RIS: fetch failed'))
+    expect((await getStationMapForGp('XXVIII'))[WITH_RV.inr]).toMatchObject({ bgblNumber: null })
+
+    findBgblIForVorlage.mockResolvedValue({ number: 'BGBl. I Nr. 5/2026', datum: '2026-03-02', url: 'https://www.ris.bka.gv.at/x' })
+    vi.setSystemTime(Date.now() + 11 * MINUTE)
+    expect((await getStationMapForGp('XXVIII'))[WITH_RV.inr]).toMatchObject({ station: 'bgbl', bgblNumber: 'BGBl. I Nr. 5/2026', bgblDate: '2026-03-02' })
+  })
+
+  it('a search that answers „none" keeps six hours', async () => {
+    getVorlagenForGp.mockResolvedValue([{ ...VORLAGE, status: '5' }])
+    expect((await getStationMapForGp('XXVIII'))[WITH_RV.inr]).toMatchObject({ bgblNumber: null })
+    findBgblIForVorlage.mockClear()
+    vi.setSystemTime(Date.now() + 5 * 60 * MINUTE)
+    await getStationMapForGp('XXVIII')
+    expect(findBgblIForVorlage).not.toHaveBeenCalled()
   })
 })

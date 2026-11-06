@@ -29,3 +29,18 @@ export function withinBudget<T>(promise: Promise<T>, ms: number): Promise<T | nu
     if (timer) clearTimeout(timer)
   })
 }
+
+/** What `answerWithinBudget` saw: an answer — null included —, or none in time. */
+export type Budgeted<T> = { answered: true; value: T } | { answered: false }
+
+/**
+ * `withinBudget` for a caller to whom „no answer in time" and „the answer is
+ * null" are NOT the same: the station map, which keeps a chain six hours when
+ * its reads answered and ten minutes when one did not (`stationMap.ts`). A
+ * Kundmachung RIS has no date for is a stable answer; a date lookup past its
+ * budget is a gap, and the chain that lacks it must be asked again soon.
+ * The promise runs on and fills its cache, as with `withinBudget`.
+ */
+export async function answerWithinBudget<T>(promise: Promise<T>, ms: number): Promise<Budgeted<T>> {
+  return (await withinBudget(promise.then((value) => ({ answered: true as const, value })), ms)) ?? { answered: false }
+}

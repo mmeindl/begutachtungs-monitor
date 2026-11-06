@@ -60,7 +60,7 @@ import {
 import { getCurrentGp, getDraftsForGp, getGegenstand, getVorlagenForGp } from './drafts'
 import type { VorlageRow } from './list101'
 import { mapWithConcurrency } from '../pool'
-import { withinBudget } from '../http/budget'
+import { answerWithinBudget, type Budgeted } from '../http/budget'
 import { DERIVED_CACHE } from '../cache/base'
 import { keepIncompleteFor, type Gathered } from '../cache/gathered'
 import { findBgblIForVorlage, getBgblIssueDate } from '../ris/bgblService'
@@ -105,12 +105,19 @@ const BGBL_DATE_BUDGET_MS = 5_000
  *
  * One cached RIS lookup per enacted Vorlage (`bgbl-dokument`, a month's
  * lifetime), in the background build only: the list waits for this map at
- * most its budget and answers without it, so no row waits for a date. Null
- * on any failure and past the budget — the chain must never fail, nor
- * stall, for its date.
+ * most its budget and answers without it, so no row waits for a date. The
+ * chain must never fail, nor stall, for its date — but a date that did not
+ * come is not a date RIS lacks (06.11.2026): until then the chain kept the
+ * number without its day, counted as complete, and the map held it six
+ * hours, the „Neu" mark of the lists and the draft page's stand without it.
+ * So the answer says whether there was one (`answerWithinBudget`): past the
+ * budget or on a failure the chain's read is incomplete, and the map is kept
+ * ten minutes (`INCOMPLETE_MAP_TTL_MS`). The lookup runs on and fills its
+ * cache, so the next build finds the day without waiting; a Kundmachung RIS
+ * knows no date for is an answer, and keeps the six hours.
  */
-function kundmachungDateOf(bgblNumber: string): Promise<string | null> {
-  return withinBudget(getBgblIssueDate(bgblNumber), BGBL_DATE_BUDGET_MS)
+function kundmachungDateOf(bgblNumber: string): Promise<Budgeted<string | null>> {
+  return answerWithinBudget(getBgblIssueDate(bgblNumber), BGBL_DATE_BUDGET_MS)
 }
 
 /**
@@ -168,16 +175,16 @@ async function chainOf(
        * Antrag route skips the Vorlage, so `rvCitation` stays null and the
        * Kundmachung is the Antrag's. A table lookup, no request. */
       const path = antragPathFor(gp, inr)
-      const chain: DraftChain = carriesDraft(path)
-        ? {
-            ...nothing,
-            station: 'bgbl',
-            bgblNumber: path.antrag.bgblNumber,
-            antragCitation: path.antrag.citation,
-            bgblDate: await kundmachungDateOf(path.antrag.bgblNumber),
-          }
-        : nothing
-      return { chain, complete: true }
+      if (!carriesDraft(path)) return { chain: nothing, complete: true }
+      const day = await kundmachungDateOf(path.antrag.bgblNumber)
+      const chain: DraftChain = {
+        ...nothing,
+        station: 'bgbl',
+        bgblNumber: path.antrag.bgblNumber,
+        antragCitation: path.antrag.citation,
+        bgblDate: day.answered ? day.value : null,
+      }
+      return { chain, complete: day.answered }
     }
 
     /* The Vorlage's OWN period, not the draft's: a carry-over names the
@@ -262,22 +269,29 @@ async function chainOf(
      * because no Kundmachung names them (docs/architecture.md §12.33,
      * Nachtrag 03.10.2026). Asked only where a Kundmachung can exist — a
      * Beschluss, or a status that means one — and within the date lookup's
-     * budget; the Jahrgang pages are the Verordnung join's, cached. */
+     * budget; the Jahrgang pages are the Verordnung join's, cached. A search
+     * past its budget is a gap, not „no Kundmachung yet": the read is
+     * incomplete, as for the day below (06.11.2026). */
     let bgblDate: string | null = null
     const decided = decidedAt || row?.status === STATUS_FINISHED || row?.status === STATUS_AT_BUNDESRAT
     const from = decidedAt || row?.date || rv.date
     // Not where Parliament says this Vorlage's text was not promulgated:
     // there is no Kundmachung of it to find.
     if (!bgblNumber && !notPromulgated && decided && from) {
-      const ris = await withinBudget(findBgblIForVorlage(rv.gp, rv.inr, from), BGBL_DATE_BUDGET_MS)
-      if (ris) {
-        bgblNumber = ris.number
-        bgblDate = ris.datum
+      const ris = await answerWithinBudget(findBgblIForVorlage(rv.gp, rv.inr, from), BGBL_DATE_BUDGET_MS)
+      if (!ris.answered) complete = false
+      else if (ris.value) {
+        bgblNumber = ris.value.number
+        bgblDate = ris.value.datum
       }
     }
 
     const station = stationFor(bgblNumber, row?.status ?? null, decidedAt)
-    if (bgblNumber && !bgblDate) bgblDate = await kundmachungDateOf(bgblNumber)
+    if (bgblNumber && !bgblDate) {
+      const day = await kundmachungDateOf(bgblNumber)
+      if (day.answered) bgblDate = day.value
+      else complete = false
+    }
     return {
       chain: {
         station,
