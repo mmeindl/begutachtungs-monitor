@@ -141,12 +141,12 @@ const stationAnchors = computed<Partial<Record<StationId, string>>>(() => {
 })
 
 /* Whether the draft implements EU law — the Bund's fact in the same card,
- * read from the Land's own documents (`DraftEuFact`, docs/architecture.md
+ * read from the Land's own documents (`DraftEuSection`, docs/architecture.md
  * §12.66, Nachtrag 2). */
 const { data: euRecht } = useEuRecht(() => ({ land: props.land, number: props.number }))
 /* What of the Bund's the draft carries out — a Grundsatzgesetz, an Art.-15a
  * agreement — under the EU fact, read from the same documents
- * (`DraftBundesrechtFact`, docs/architecture.md §12.67). */
+ * (`DraftBundesrechtSection`, docs/architecture.md §12.67). */
 const { data: bundesrecht } = useLandBundesrecht(() => ({ land: props.land, number: props.number }))
 /* Who published what the fact read, for its credit line. */
 const landPublisher = computed(() => `Land ${landName.value}`)
@@ -228,18 +228,7 @@ useSeoMeta({ ogTitle: () => draft.value?.title ?? 'Entwurf', ogType: 'article' }
           :anchors="stationAnchors"
           :comparison-anchors="comparisonAnchors"
           how-to="/so-funktionierts#laender"
-        >
-          <!-- Whether the draft implements EU law, the act, and its
-               transposition deadline beside the Begutachtung — the Bund's
-               fact, read from the Land's documents (§12.66). -->
-          <DraftEuFact :data="euRecht" :timeline="euTimelineCtx" />
-          <!-- What of the Bund's the draft carries out (§12.67), in the
-               EU fact's register, right under it. -->
-          <DraftBundesrechtFact :data="bundesrecht" />
-        </ProcedureCard>
-        <!-- The facts' sources, under the card like every card's (§12.66, §12.67). -->
-        <DraftEuCredits :data="euRecht" :publisher="landPublisher" />
-        <DraftBundesrechtCredits :data="bundesrecht" :publisher="landPublisher" />
+        />
 
         <!-- The one place to act, while the Frist runs — the RIS page's
              card. Where it goes is the Land's: an address (a mail link in
@@ -299,6 +288,12 @@ useSeoMeta({ ogTitle: () => draft.value?.title ?? 'Entwurf', ogType: 'article' }
               <p v-if="tguListed" class="text-sm text-ink-secondary">Das Land hat eine Textgegenüberstellung veröffentlicht; sie steht unter den Dokumenten. Ihre Form liest der Monitor noch nicht.</p>
               <p v-else class="text-sm text-ink-secondary">Das Land hat zu diesem Entwurf keine Textgegenüberstellung veröffentlicht.</p>
             </PageSubsection>
+            <!-- Where the draft comes from, after what it changes (§12.66,
+                 §12.67, 06.11.2026): EU law, then what of the Bund's it
+                 carries out — each its own section with its own source line,
+                 the Entwurf station's facts jumping here. -->
+            <DraftEuSection :data="euRecht" :timeline="euTimelineCtx" :publisher="landPublisher" />
+            <DraftBundesrechtSection :data="bundesrecht" :publisher="landPublisher" />
             <!-- The Land's reasons, after what the draft changes — the order of
                  the Ministerialentwurf's page. -->
             <LandExplanationsSection :land="land" :number="number" />

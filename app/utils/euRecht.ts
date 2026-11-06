@@ -26,15 +26,15 @@ const LEAD: Record<EuMarker, string> = {
 }
 
 /**
- * The block's heading under the spine, a noun for each marker (06.11.2026):
- * the verb — „setzt EU-Recht um" — stands once, as the Entwurf station's
- * fact (`utils/origin.ts`), and the block names what it lists.
+ * The h3 of the EU section in „Der Entwurf", a question by marker
+ * (06.11.2026): the verb in short — „setzt EU-Recht um" — stands as the
+ * Entwurf station's fact (`utils/origin.ts`), the section answers which.
  */
-const HEADING: Record<EuMarker, string> = {
-  umsetzung: 'Umgesetztes EU-Recht',
-  'ueber-umsetzung': 'Umgesetztes EU-Recht',
-  'flankierend-vo': 'Begleitete EU-Verordnungen',
-  'flankierend-rl': 'Begleitete EU-Richtlinie',
+const SECTION_HEADING: Record<EuMarker, string> = {
+  umsetzung: 'Welches EU-Recht der Entwurf umsetzt',
+  'ueber-umsetzung': 'Welches EU-Recht der Entwurf umsetzt',
+  'flankierend-vo': 'Welche EU-Verordnungen der Entwurf begleitet',
+  'flankierend-rl': 'Welche EU-Richtlinie der Entwurf begleitet',
 }
 
 /**
@@ -83,11 +83,7 @@ export interface EuNoteView {
 
 export interface EuFactView {
   lead: string
-  /**
-   * The block's heading: the marker's noun („Umgesetztes EU-Recht"), or —
-   * where the law text names acts of another kind than the marker —
-   * „Im Gesetzestext genannt" (`attach: 'named'`).
-   */
+  /** The section's h3 by marker („Welches EU-Recht der Entwurf umsetzt"). */
   heading: string
   /**
    * How the acts attach to the lead: `colon` where they are what the lead
@@ -165,7 +161,7 @@ export function euFactView(r: EuRechtResponse | null | undefined): EuFactView | 
         : ['Vorblatt']
   return {
     lead: LEAD[r.marker],
-    heading: attach === 'named' ? `${NAMED_IN[r.actsSource ?? 'gesetzestext']} genannt` : HEADING[r.marker],
+    heading: SECTION_HEADING[r.marker],
     attach,
     namedIn: NAMED_IN[r.actsSource ?? 'gesetzestext'],
     acts: listed.map((a) => ({ label: a.label, url: a.eurLexUrl, celex: a.celex, kind: a.kind })),

@@ -304,9 +304,7 @@ const doorHref = computed(() => {
               {{ RIS_KIND_HINT[data.kind] }}
             </template>
           </p>
-          <DraftEuFact :data="euRecht" :timeline="euTimelineCtx" />
         </ProcedureCard>
-        <DraftEuCredits :data="euRecht" />
 
         <!-- The one place to act, in the slot and the shape the draft page
            uses for its Stellungnahme-CTA. Only while the Frist runs: an
@@ -371,6 +369,11 @@ const doorHref = computed(() => {
             <PageSubsection id="gegenueberstellung" heading="Was ändert der Entwurf?">
               <TextComparisonSection :ris-id="data.id" />
             </PageSubsection>
+
+            <!-- Where the draft comes from, after what it changes (§12.66,
+               06.11.2026) — for a Gesetz without a station bar too, where
+               no Entwurf fact points here. -->
+            <DraftEuSection :data="euRecht" :timeline="euTimelineCtx" />
 
             <!-- It weighs more here than on the draft page: this Verfahren has no
                Kurzbeschreibung from Parliament, because it never reaches

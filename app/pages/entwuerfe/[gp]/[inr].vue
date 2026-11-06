@@ -223,7 +223,7 @@ const description = computed(() =>
 const { data: explanations } = useExplanations(() => ({ gp: gp.value, inr: inr.value }))
 
 /* Whether the draft implements EU law — one bare fact in the ProcedureCard,
- * under the predecessor line (`DraftEuFact`, docs/architecture.md §12.66). */
+ * an h3 section in „Der Entwurf" (`DraftEuSection`, docs/architecture.md §12.66). */
 const { data: euRecht } = useEuRecht(() => ({ gp: gp.value, inr: inr.value }))
 /* Once the draft's Grundsatzgesetz is kundgemacht: the Land drafts that
  * carry it out, as a detail line of the Bundesgesetzblatt station — the
@@ -409,14 +409,14 @@ const ministryLinks = computed(() => {
                 class="link-inline"
               >{{ data.predecessor.citation }}</NuxtLink>{{ relatedGpSuffixDe(data.predecessor.gp, data.gp) }}<template v-if="data.predecessor.deadline">, Frist bis {{ formatDateDe(data.predecessor.deadline) }}</template> – ohne Regierungsvorlage.
             </p>
-            <!-- Whether the draft implements EU law, the act, and its
-               transposition deadline beside the day the Begutachtung began —
-               two dates, no verdict (§12.66). A fact of the card like the
-               one above, so the same hairline. -->
-            <DraftEuFact :data="euRecht" :timeline="euTimelineCtx" />
           </ProcedureCard>
-          <!-- The EU fact's source, under the card like every card's (§12.66). -->
-          <DraftEuCredits :data="euRecht" :extra="bundesrechtCredits" />
+          <!-- The card's source line names only what the card shows: the
+               Bundesgesetzblatt station's Bund-zu-Land line (§12.67). The
+               EU fact moved into „Der Entwurf" with its own line (§12.66). -->
+          <SectionCredits v-if="bundesrechtCredits.length" :sources="[]" :marked="false" method="/so-funktionierts#bund-land">
+            <span>Quellen:</span>
+            <span v-for="item in bundesrechtCredits" :key="item">{{ item }}</span>
+          </SectionCredits>
 
           <!-- Deadline, action and calendar welded into one card: the page's
              door, shown while any window for input is open. The Begutachtung
@@ -566,6 +566,12 @@ const ministryLinks = computed(() => {
               <PageSubsection v-if="!amendedLaws?.createsNewLaw" id="gegenueberstellung" heading="Was ändert der Entwurf?">
                 <TextComparisonSection :gp="data.gp" :inr="data.inr" />
               </PageSubsection>
+
+              <!-- Where the draft comes from, after what it changes (§12.66,
+                 06.11.2026): the EU acts, their deadlines beside the
+                 Begutachtung, two dates and no verdict. Only with a named act;
+                 the Entwurf station's „setzt EU-Recht um" jumps here. -->
+              <DraftEuSection :data="euRecht" :timeline="euTimelineCtx" />
 
               <PageSubsection id="erlaeuterungen" heading="Was das Ressort begründet">
                 <ExplanationsSection :gp="data.gp" :inr="data.inr" />

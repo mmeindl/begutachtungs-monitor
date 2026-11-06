@@ -3,7 +3,8 @@
  * beside „ändert 1 Gesetz" (docs/architecture.md §12.66, §12.67): EU law it
  * implements or accompanies, a Grundsatzgesetz of the Bund it carries out,
  * an Art.-15a agreement it implements. Short, lower case, each a link to
- * the block that details it (or to the act's page); a Sammelnovelle may
+ * the section in „Der Entwurf" that details it — or plain text where no act
+ * is named and so no section exists; a Sammelnovelle may
  * carry all three. Every token is an in-page anchor: links in the spine jump
  * to a section below, never to another page (owner, 06.11.2026).
  *
@@ -18,9 +19,10 @@
  */
 import type { EuRechtResponse, LandBundesrechtResponse } from '#shared/types'
 import { euLeadOf } from './euRecht'
+import { isNamedFinding } from './bundesrecht'
 import type { Station } from './spine'
 
-/** The in-page anchors of the two blocks (`DraftEuFact`, `DraftBundesrechtFact`). */
+/** The in-page anchors of the two sections in „Der Entwurf" (`DraftEuSection`, `DraftBundesrechtSection`). */
 export const EU_FACT_ANCHOR = '#eu-recht-fakt'
 export const BUNDESRECHT_FACT_ANCHOR = '#bundesrecht-fakt'
 
@@ -30,12 +32,15 @@ export type OriginToken = NonNullable<Station['factLinks']>[number]
 export function originTokens(eu: EuRechtResponse | null | undefined, bund?: LandBundesrechtResponse | null): OriginToken[] {
   const out: OriginToken[] = []
   const lead = eu?.available ? euLeadOf(eu.marker) : null
-  if (lead) out.push({ label: lead[0]!.toLowerCase() + lead.slice(1), href: EU_FACT_ANCHOR })
+  // A token links only where its section exists — a named act (06.11.2026); else plain text.
+  if (lead) out.push({ label: lead[0]!.toLowerCase() + lead.slice(1), href: eu!.acts.length ? EU_FACT_ANCHOR : null })
   const gg = (bund?.findings ?? []).filter((f) => f.kind === 'grundsatzgesetz')
-  // In-page, as every link in the spine; the act page is linked from the block.
+  const bundHref = (named: boolean) => (named ? BUNDESRECHT_FACT_ANCHOR : null)
+  // In-page, as every link in the spine; the act page is linked from the section.
   if (gg.length === 1 && gg[0]!.name) out.push({ label: `führt das ${gg[0]!.name} aus`, href: BUNDESRECHT_FACT_ANCHOR })
-  else if (gg.length) out.push({ label: gg.length === 1 ? 'führt ein Grundsatzgesetz aus' : 'führt Grundsatzgesetze aus', href: BUNDESRECHT_FACT_ANCHOR })
-  if ((bund?.findings ?? []).some((f) => f.kind === 'vereinbarung')) out.push({ label: 'setzt eine Art.-15a-Vereinbarung um', href: BUNDESRECHT_FACT_ANCHOR })
+  else if (gg.length) out.push({ label: gg.length === 1 ? 'führt ein Grundsatzgesetz aus' : 'führt Grundsatzgesetze aus', href: bundHref(gg.some(isNamedFinding)) })
+  const va = (bund?.findings ?? []).filter((f) => f.kind === 'vereinbarung')
+  if (va.length) out.push({ label: 'setzt eine Art.-15a-Vereinbarung um', href: bundHref(va.some(isNamedFinding)) })
   return out
 }
 

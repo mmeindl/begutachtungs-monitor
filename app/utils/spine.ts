@@ -92,9 +92,10 @@ export interface Station {
   /**
    * Facts that link, after the plain ones in the same line — the Entwurf
    * station's origin tokens („setzt EU-Recht um", „führt das … aus";
-   * `utils/origin.ts`, §12.66/§12.67). An in-page anchor or a site path.
+   * `utils/origin.ts`, §12.66/§12.67). An in-page anchor; null where the
+   * fact has no section to jump to, then it is plain text.
    */
-  factLinks?: { label: string; href: string }[]
+  factLinks?: { label: string; href: string | null }[]
 }
 
 /**

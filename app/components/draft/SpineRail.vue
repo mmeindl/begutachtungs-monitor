@@ -253,8 +253,8 @@ const rows = computed(() => props.stations.map((s, i) => {
                Two calls, because FactLine sets its last dot by whether a
                slot was passed at all. -->
           <FactLine v-if="row.factLinks.length" :parts="row.facts">
-            <template v-for="(f, k) in row.factLinks" :key="f.href + f.label">
-              <span class="relative z-10 inline-block"><NuxtLink :to="f.href" :class="LINK">{{ f.label }}</NuxtLink><template v-if="k < row.factLinks.length - 1">&nbsp;·</template></span>{{ ' ' }}
+            <template v-for="(f, k) in row.factLinks" :key="f.label">
+              <span class="relative z-10 inline-block"><NuxtLink v-if="f.href" :to="f.href" :class="LINK">{{ f.label }}</NuxtLink><template v-else>{{ f.label }}</template><template v-if="k < row.factLinks.length - 1">&nbsp;·</template></span>{{ ' ' }}
             </template>
           </FactLine>
           <FactLine v-else :parts="row.facts" />

@@ -319,7 +319,8 @@ name has to stay globally unique.
 | `DraftDescription` | `blocks: DescriptionBlock[]` | The Kurzinformation of a Ministerialentwurf, grouped into its own sections; folded parts are a `FoldSection` (native `<details>`), so no hydration, keyboard access as-is and the text stays in the SSR HTML |
 | `DraftDoorCard` | `frist: boolean; deadline; icsHref?; filingHref?` + slots `heading`, default, `after-context`, `filing`, `actions`, `footer` | The door: deadline, action and calendar in one card, in the same slot and shape on both detail pages (03.10.2026); toned like the list row's countdown while the Begutachtung's window is open |
 | `ProcedureCard` | `status: string; stations: Station[]; anchors?; comparisonAnchors?; howTo?` + default slot | The bordered card with the procedure's status, the way to /so-funktionierts and the `SpineRail` — the same on both detail pages (03.10.2026) |
-| `DraftBundesrechtFact` | `data: LandBundesrechtResponse \| null \| undefined` | A Land draft's ProcedureCard, under the EU block (§12.67): „Bundesrecht: Anstellungserfordernisse-Grundsatzgesetz, BGBl. I Nr. 44/2025" (the name links to `/bundesrecht/<Jahr>/<Nummer>` where the map has the act; „, teilweise" where the draft says so) and „Vereinbarung gemäß Art. 15a B-VG über …" (no link). The verb stands once, at the Entwurf station (`utils/origin.ts`); id `bundesrecht-fakt`. Nothing where nothing was found |
+| `DraftEuSection` | `data; timeline?; publisher?` | „Welches EU-Recht der Entwurf umsetzt" (h3 by marker: „Welche EU-Verordnungen / EU-Richtlinie der Entwurf begleitet") in „Der Entwurf", after the comparison (§12.66): `DraftEuFact` (acts, related counts, deadline strip, footnotes, Vorblatt sentence) and its own `DraftEuCredits`. Only with a named act; id `eu-recht-fakt` |
+| `DraftBundesrechtSection` | `data: LandBundesrechtResponse \| null \| undefined; publisher: string` | „Welches Bundesgesetz der Entwurf ausführt" / „Welche Vereinbarung der Entwurf umsetzt" (one section, title by content) in a Land draft's „Der Entwurf" (§12.67): „Anstellungserfordernisse-Grundsatzgesetz, BGBl. I Nr. 44/2025" (linked to the act page where the map has it, „, teilweise" kept), „Vereinbarung gemäß Art. 15a B-VG über …", and its own `DraftBundesrechtCredits`. Only with a named act; id `bundesrecht-fakt` |
 | `BgblLaenderBlock` | `line: MeBundesrechtLine` | „Ausführung durch die Länder" (h3) in „Im Bundesgesetzblatt" on a Ministerialentwurf, where the station's follow-up jumps (§12.67): the Land drafts as list rows, or „Noch kein Entwurf der Länder im Fenster." with the Frist sentence quoted; then „Zum Grundsatzgesetz …→" and the credit line. Slot of `BgblStationSection` |
 | `SpineRail` (since 06.11.2026) | + `Station.followUp`, `Station.factLinks` | `followUp`: a station's detail line for what followed it, the Bundesgesetzblatt station's Bund-zu-Land line (§12.67); `factLinks`: linking facts after the plain ones, the Entwurf station's origin tokens (§12.66, §12.67). Both in-page anchors: links in the spine jump to a section below, never to another page |
 | `DraftBundesrechtCredits` | `data; publisher: string` | Its credit line under the card: the Land's documents it was read from, and „Bundesgesetzblatt (RIS)" where a Kundmachung was read |
@@ -14520,7 +14521,24 @@ die Leiste nicht; keine sechste Station und nichts vor „Entwurf"
 beginnt mit einem Nomen je Marker: „Umgesetztes EU-Recht" (`umsetzung`,
 `ueber-umsetzung`), „Begleitete EU-Verordnungen", „Begleitete
 EU-Richtlinie"; wo der Gesetzestext Akte einer anderen Art nennt, „Im
-Gesetzestext genannt:"; ohne Akt „…: kein Rechtsakt mit Nummer genannt".
+Gesetzestext genannt:".
+
+**Am selben Abend korrigiert (Owner): die Herkunft als Abschnitte in „Der
+Entwurf", nicht als Blöcke der Karte.** Der EU-Block steht seither als
+h3 „Welches EU-Recht der Entwurf umsetzt" (bzw. „Welche EU-Verordnungen /
+Welche EU-Richtlinie der Entwurf begleitet") in „Der Entwurf", nach „Was
+ändert der Entwurf?" — der Vergleich bleibt das Erste
+(„no-text-above-diffs") — und vor den Erläuterungen, mit allem, was er
+hatte, und einer eigenen Quellenzeile (`DraftEuSection`). Grund: die
+Herkunft ist eine Eigenschaft des Textes und gehört zum Text; die Karte ist
+die Leiste des Verfahrens, und zwei Blöcke darin mit je eigener
+Quellenzeile darunter (t-2026-728) machten aus der Karte einen
+Sammelkasten. Die Karte nennt nur noch, was sie zeigt. Der Fakt an der
+Station springt zum Abschnitt; **nennt der Entwurf keinen Akt, gibt es
+keinen Abschnitt, und der Fakt ist Text ohne Link** — das „kein Rechtsakt
+mit Nummer genannt" der Fassung davor ist wieder weg. Der Anker bleibt
+`#eu-recht-fakt`; von außen (Kartenzeilen, `EuMapLink`) verlinkte nie ein
+Anker auf den Block.
 
 #### Nachtrag (Länder), 04.11.2026
 
@@ -15577,7 +15595,14 @@ der Kundmachung.
   Grundsatzgesetz aus", „setzt eine Art.-15a-Vereinbarung um" — kurz, klein,
   jeder ein Sprung zum Block in der Karte (`utils/origin.ts`,
   `Station.factLinks`). Die Blöcke beginnen seither nicht mehr mit
-  demselben Satz, sondern mit einem Nomen: „Bundesrecht:" mit den Akten.
+  demselben Satz. **Am selben Abend korrigiert:** der Land-Block ist ein
+  eigener h3-Abschnitt in „Der Entwurf" nach dem Vergleich, „Welches
+  Bundesgesetz der Entwurf ausführt" / „Welche Vereinbarung der Entwurf
+  umsetzt" (beides in einem Titel, wo ein Entwurf beides tut), mit eigener
+  Quellenzeile (`DraftBundesrechtSection`), aus demselben Grund wie der
+  EU-Abschnitt (§12.66): die Herkunft gehört zum Text, die Karte ist die
+  Leiste. Nur mit benanntem Akt — „Grundsatzbestimmungen des Bundes" ohne
+  Namen und Fundstelle bleibt ein unverlinkter Fakt an der Station.
   Die Leiste liest sich damit Herkunft → … → Folge (Station
   Bundesgesetzblatt).
 - **Gezählt werden Entwürfe, nie Länder** („3 Entwürfe der Länder (Kärnten,

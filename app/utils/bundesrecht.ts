@@ -11,7 +11,7 @@
  *
  * Pure: the components render what this returns, the tests read it without one.
  */
-import type { BgblICitation, BundLandActResponse, LandBundesrechtResponse, MeBundesrechtLine } from '#shared/types'
+import type { BgblICitation, BundesrechtFinding, BundLandActResponse, LandBundesrechtResponse, MeBundesrechtLine } from '#shared/types'
 import { formatDateDe } from '#shared/utils/format'
 import { LAND_CODES, LAND_NAME } from '#shared/utils/laender'
 import { viewOfRow, type EntryView } from './entryView'
@@ -29,7 +29,26 @@ function listDe(names: readonly string[]): string {
   return names.length < 2 ? (names[0] ?? '') : `${names.slice(0, -1).join(', ')} und ${names.at(-1)}`
 }
 
-/** One row of the Land block „Bundesrecht:", in parts the component links. */
+/** Whether a finding names its act: a Grundsatzgesetz by name or Kundmachung, an agreement by its subject. */
+export function isNamedFinding(f: Pick<BundesrechtFinding, 'kind' | 'name' | 'bgbl'>): boolean {
+  return f.kind === 'vereinbarung' ? Boolean(f.name) : Boolean(f.name || f.bgbl)
+}
+
+/**
+ * The h3 of the Bund section in „Der Entwurf", by what it lists: „Welches
+ * Bundesgesetz der Entwurf ausführt", „Welche Vereinbarung der Entwurf
+ * umsetzt", both in one where a draft does both (sbg-34196 would). Null
+ * without a named act — then no section.
+ */
+export function bundesrechtSectionHeading(rows: readonly BundesrechtRowView[]): string | null {
+  const gg = rows.some((r) => r.key.startsWith('gg'))
+  const va = rows.some((r) => r.key.startsWith('va'))
+  if (gg && va) return 'Welches Bundesgesetz der Entwurf ausführt und welche Vereinbarung er umsetzt'
+  if (gg) return 'Welches Bundesgesetz der Entwurf ausführt'
+  return va ? 'Welche Vereinbarung der Entwurf umsetzt' : null
+}
+
+/** One row of the Land block „Der Entwurf", in parts the component links. */
 export interface BundesrechtRowView {
   key: string
   /** The linked part, or the plain one where nothing links: „Anstellungserfordernisse-Grundsatzgesetz", „Vereinbarung gemäß Art. 15a B-VG über …". */
@@ -43,13 +62,14 @@ export interface BundesrechtRowView {
 }
 
 /**
- * The Land block's rows under the heading „Bundesrecht:" (06.11.2026). The
+ * The rows of the Land's section in „Der Entwurf" (06.11.2026). The
  * verb — „führt das … aus", „setzt eine Art.-15a-Vereinbarung um" — stands
  * once, as the Entwurf station's fact (`utils/origin.ts`); the block names
  * the act. A Grundsatzgesetz is never „umgesetzt" anywhere on the page.
  */
 export function bundesrechtRows(r: LandBundesrechtResponse | null | undefined): BundesrechtRowView[] {
-  return (r?.findings ?? []).map((f, i) => {
+  // No named act, no row: „Grundsatzbestimmungen des Bundes" names nothing a reader could look up (06.11.2026).
+  return (r?.findings ?? []).filter(isNamedFinding).map((f, i) => {
     const citation = f.bgbl ? `, ${bgblCitationDe(f.bgbl)}` : null
     if (f.kind === 'vereinbarung') {
       return { key: `va-${i}`, label: f.name ? `Vereinbarung gemäß Art. 15a B-VG ${f.name}` : 'Vereinbarung gemäß Art. 15a B-VG', citation: null, partial: f.partial, path: null }

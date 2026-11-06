@@ -80,13 +80,14 @@ const hasNotes = computed(() => (view.value?.notes.length ?? 0) > 0)
 </script>
 
 <template>
-  <!-- The id: the Entwurf station's „setzt EU-Recht um" leads here (`utils/origin.ts`). -->
-  <div v-if="view" id="eu-recht-fakt" class="mt-4 scroll-mt-4 border-t border-hairline pt-4">
+  <!-- The section's body (`DraftEuSection`): its h3 names what is listed,
+       so the acts open the block, no lead above them. -->
+  <div v-if="view">
+    <p v-if="view.attach === 'named'" class="text-sm text-ink-secondary">
+      {{ view.namedIn }} genannt:
+    </p>
     <template v-if="asList">
-      <p class="text-sm text-ink-secondary">
-        <strong class="font-semibold text-ink">{{ view.heading }}</strong>:
-      </p>
-      <ul class="mt-1 space-y-1 text-sm text-ink-secondary">
+      <ul class="space-y-1 text-sm text-ink-secondary" :class="{ 'mt-1': view.attach === 'named' }">
         <li v-for="act in shownActs" :key="act.url">
           <NuxtLink v-if="pageOf.get(act.celex)" :to="pageOf.get(act.celex)!" class="link-inline">{{ act.label }}</NuxtLink><ExternalLink v-else :href="act.url" class="link-inline">{{ act.label }}</ExternalLink><span v-if="others.get(act.celex)" class="text-ink-muted"> · {{ others.get(act.celex) }}</span>
         </li>
@@ -98,8 +99,8 @@ const hasNotes = computed(() => (view.value?.notes.length ?? 0) > 0)
         Laut Vorblatt: „{{ quote }}“.
       </p>
     </template>
-    <p v-else class="text-sm text-ink-secondary">
-      <strong class="font-semibold text-ink">{{ view.heading }}</strong>: <template v-if="view.attach === 'none'">kein Rechtsakt mit Nummer genannt</template><template v-for="act in shownActs" :key="act.url"><NuxtLink v-if="pageOf.get(act.celex)" :to="pageOf.get(act.celex)!" class="link-inline">{{ act.label }}</NuxtLink><ExternalLink v-else :href="act.url" class="link-inline">{{ act.label }}</ExternalLink><template v-if="view.adoptedNote">, {{ view.adoptedNote }}</template><span v-if="others.get(act.celex)" class="text-ink-muted"> · {{ others.get(act.celex) }}</span></template>.
+    <p v-else class="text-sm text-ink-secondary" :class="{ 'mt-1': view.attach === 'named' }">
+      <template v-for="act in shownActs" :key="act.url"><NuxtLink v-if="pageOf.get(act.celex)" :to="pageOf.get(act.celex)!" class="link-inline">{{ act.label }}</NuxtLink><ExternalLink v-else :href="act.url" class="link-inline">{{ act.label }}</ExternalLink><template v-if="view.adoptedNote">, {{ view.adoptedNote }}</template><span v-if="others.get(act.celex)" class="text-ink-muted"> · {{ others.get(act.celex) }}</span></template>.
       <template v-if="quote">
         Laut Vorblatt: „{{ quote }}“.
       </template>
@@ -108,8 +109,8 @@ const hasNotes = computed(() => (view.value?.notes.length ?? 0) > 0)
     <p v-else-if="view.deadlines.length" class="mt-1 text-sm text-ink-secondary">
       {{ view.deadlines.length > 1 ? 'Umsetzungsfristen' : 'Umsetzungsfrist' }}<template v-for="(d, i) in view.deadlines" :key="d.label"><template v-if="i > 0">,</template><template v-if="d.number"> {{ d.number }}</template> bis {{ d.date }}<template v-if="d.note">{{ SUPERSCRIPT[d.note] ?? `(${d.note})` }}</template></template><template v-if="view.start"> · Begutachtung ab {{ view.start }}</template>
     </p>
-    <!-- The footnotes stay with the fact; the source stands under the card
-         (`DraftEuCredits`), as every card's does. -->
+    <!-- The footnotes stay with the fact; the source stands under the
+         section (`DraftEuCredits`), as under every section. -->
     <p v-if="hasNotes" class="mt-1 text-xs text-ink-muted">
       <template v-for="n in view.notes" :key="`note-${n.number}`">
         {{ SUPERSCRIPT[n.number] ?? `(${n.number})` }} {{ n.text }}.

@@ -1,6 +1,7 @@
 <script setup lang="ts">
 /**
- * The credit line under the ProcedureCard for the EU fact in it
+ * The credit line under the EU section in „Der Entwurf" (`DraftEuSection`;
+ * under the ProcedureCard until 06.11.2026)
  * (docs/architecture.md §12.66): what the fact read and from whom, in the
  * site's one credit grammar (`SectionCredits`), under the card and not in
  * it — a source statement is looked up while or after reading, never
@@ -26,12 +27,6 @@ const props = defineProps<{
   data: EuRechtResponse | null | undefined
   /** A Land's draft: who published the documents read, „Land Oberösterreich". */
   publisher?: string | null
-  /**
-   * What else in the card read a source — the Bundesgesetzblatt station's
-   * Bund-zu-Land line (§12.67): „Bundesgesetzblatt (RIS)", „Dokumente der
-   * Länder". One credit line per card; with no EU fact it stands alone.
-   */
-  extra?: readonly string[]
 }>()
 
 const view = computed(() => euFactView(props.data))
@@ -62,15 +57,5 @@ const landSuffix = computed(() => (withDeadlines.value ? ` (${props.publisher})`
     method="/so-funktionierts#eu-recht"
   >
     <span v-for="item in items" :key="item">{{ item }}</span>
-    <span v-for="item in extra ?? []" :key="item">{{ item }}</span>
-  </SectionCredits>
-  <SectionCredits
-    v-else-if="extra?.length"
-    :sources="[]"
-    :marked="false"
-    method="/so-funktionierts#bund-land"
-  >
-    <span>Quellen:</span>
-    <span v-for="item in extra" :key="item">{{ item }}</span>
   </SectionCredits>
 </template>

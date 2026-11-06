@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import type { BundesrechtFinding, BundLandActResponse, EuRechtResponse, LandConsultation } from '../shared/types'
-import { LAENDER_BLOCK_ANCHOR, bundesrechtCreditItems, bundesrechtFollowUp, bundesrechtRows, bundLandActPageView, draftsCountDe, fristQuoteOf, fristSpanOf, withBundesrechtFollowUp } from '../app/utils/bundesrecht'
+import { LAENDER_BLOCK_ANCHOR, bundesrechtSectionHeading, bundesrechtCreditItems, bundesrechtFollowUp, bundesrechtRows, bundLandActPageView, draftsCountDe, fristQuoteOf, fristSpanOf, withBundesrechtFollowUp } from '../app/utils/bundesrecht'
 import type { Station } from '../app/utils/spine'
 import { BUNDESRECHT_FACT_ANCHOR, EU_FACT_ANCHOR, originTokens, withOrigin } from '../app/utils/origin'
 
@@ -16,7 +16,12 @@ describe('the Land block „Bundesrecht:"', () => {
 
   it('keeps „teilweise", names an agreement without a link, and never „umgesetzt" for a Grundsatzgesetz', () => {
     const rows = bundesrechtRows({ findings: [finding({ name: 'Sozialhilfe-Grundsatzgesetz', bgbl: { number: 25, year: 2025 }, partial: true }), finding({ kind: 'vereinbarung', name: 'über Sozialbetreuungsberufe', path: '/x' }), finding({})], sources: [] })
-    expect(rows.map(text)).toEqual(['Sozialhilfe-Grundsatzgesetz, BGBl. I Nr. 25/2025, teilweise', 'Vereinbarung gemäß Art. 15a B-VG über Sozialbetreuungsberufe', 'Grundsatzbestimmungen des Bundes'])
+    // The unnamed finding gets no row: no act a reader could look up.
+    expect(rows.map(text)).toEqual(['Sozialhilfe-Grundsatzgesetz, BGBl. I Nr. 25/2025, teilweise', 'Vereinbarung gemäß Art. 15a B-VG über Sozialbetreuungsberufe'])
+    expect(bundesrechtSectionHeading(rows)).toBe('Welches Bundesgesetz der Entwurf ausführt und welche Vereinbarung er umsetzt')
+    expect(bundesrechtSectionHeading(rows.slice(0, 1))).toBe('Welches Bundesgesetz der Entwurf ausführt')
+    expect(bundesrechtSectionHeading(rows.slice(1))).toBe('Welche Vereinbarung der Entwurf umsetzt')
+    expect(bundesrechtSectionHeading(bundesrechtRows({ findings: [finding({})], sources: [] }))).toBeNull()
     expect(rows[1]!.path).toBeNull()
   })
 
@@ -31,12 +36,18 @@ describe('the origin at the Entwurf station', () => {
   it('names EU law, a Grundsatzgesetz and an agreement as short lower-case tokens', () => {
     const tokens = originTokens(eu('umsetzung'), { findings: [finding({ name: 'Anstellungserfordernisse-Grundsatzgesetz', path: '/bundesrecht/2025/44' }), finding({ kind: 'vereinbarung' })], sources: [] })
     expect(tokens).toEqual([
-      { label: 'setzt EU-Recht um', href: EU_FACT_ANCHOR },
+      // The EU fact names no act here: plain text.
+      { label: 'setzt EU-Recht um', href: null },
       { label: 'führt das Anstellungserfordernisse-Grundsatzgesetz aus', href: BUNDESRECHT_FACT_ANCHOR },
-      { label: 'setzt eine Art.-15a-Vereinbarung um', href: BUNDESRECHT_FACT_ANCHOR },
+      { label: 'setzt eine Art.-15a-Vereinbarung um', href: null },
     ])
     expect(originTokens(eu('flankierend-vo'))[0]!.label).toBe('begleitet EU-Verordnungen')
-    expect(originTokens(null, { findings: [finding({})], sources: [] })).toEqual([{ label: 'führt ein Grundsatzgesetz aus', href: BUNDESRECHT_FACT_ANCHOR }])
+    const named = { ...eu('umsetzung'), acts: [{ kind: 'richtlinie' as const, label: 'Richtlinie (EU) 2024/1069', celex: '32024L1069', eurLexUrl: 'https://eur-lex.europa.eu', isNew: true, base: false, transposition: null, adopted: null, title: null }] }
+    expect(originTokens(named)[0]).toEqual({ label: 'setzt EU-Recht um', href: EU_FACT_ANCHOR })
+    // No named act, no section: the token is plain text.
+    expect(originTokens(null, { findings: [finding({})], sources: [] })).toEqual([{ label: 'führt ein Grundsatzgesetz aus', href: null }])
+    expect(originTokens(null, { findings: [finding({ bgbl: { number: 191, year: 2023 } })], sources: [] })).toEqual([{ label: 'führt ein Grundsatzgesetz aus', href: BUNDESRECHT_FACT_ANCHOR }])
+    expect(originTokens(null, { findings: [finding({ kind: 'vereinbarung' })], sources: [] })).toEqual([{ label: 'setzt eine Art.-15a-Vereinbarung um', href: null }])
     expect(originTokens({ ...eu(null), available: true }, null)).toEqual([])
   })
 
