@@ -159,53 +159,33 @@ export function euFactView(r: EuRechtResponse | null | undefined): EuFactView | 
   }
 }
 
-/** One line „Weitere Entwürfe zur Richtlinie (EU) 2024/1069: 1 des Bundes · 3 der Länder" under the act list. */
-export interface EuRelatedLine {
-  celex: string
-  /** The act's page. */
-  path: string
-  /** „Weitere Entwürfe zur Richtlinie (EU) 2024/1069" — the link's words. */
-  phrase: string
-  /** „1 des Bundes · 3 der Länder", each side only where it has any — the sentence already says „Entwürfe". */
-  counts: string
-}
-
-/** The article an act's noun takes after „zu": die Richtlinie, die Verordnung, der (Rahmen-)Beschluss. */
-const TO_THE: Record<EuActView['kind'], string> = {
-  richtlinie: 'zur',
-  verordnung: 'zur',
-  beschluss: 'zum',
-  rahmenbeschluss: 'zum',
-}
-
 /**
  * The way from a draft's fact to the act's page in the EU map (§12.66,
- * Nachtrag 3): for every act the fact SHOWS (the fold is the caller's) that
- * other drafts of the window implement too, one line with the act in the
- * fact's own words and how many drafts the Bund and the Länder have beside
- * this one. A count of zero is left out, an act without others gets no
- * line — „0 der Länder" would be a sentence about an absence the map cannot
- * vouch for (it reads only the Begutachtungen it knows).
+ * Nachtrag 3): per act that other drafts of the window implement too, how
+ * many the Bund and the Länder have beside this one — „1 weiterer Entwurf
+ * des Bundes und 3 der Länder", standing at the act it counts for. The act
+ * itself is the link (it goes to the same page); the count is the reason
+ * to follow it, so it carries no link of its own. Until 06.11.2026 this was
+ * a line of its own per act, „Weitere Entwürfe zur …", under the act list:
+ * every act named twice, and both links led to the same page.
  *
- * The label's own form is kept („Richtlinie (EU) 2024/1069"), declined only
- * where the citation opens with an adjective: „zur Delegierten Verordnung".
+ * A count of zero is left out, an act without others gets nothing — „0 der
+ * Länder" would be a sentence about an absence the map cannot vouch for (it
+ * reads only the Begutachtungen it knows). Drafts are counted, never Länder
+ * — „Länder 3" read as three Länder (04.11.2026).
  */
-export function euRelatedLines(
-  acts: readonly { label: string; celex: string; kind: EuActView['kind'] }[],
-  related: readonly EuRelatedAct[] | null | undefined,
-): EuRelatedLine[] {
-  if (!related?.length) return []
-  const byCelex = new Map(related.map((r) => [r.celex, r]))
-  return acts.flatMap((act) => {
-    const r = byCelex.get(act.celex)
-    if (!r || r.others.bund + r.others.laender <= 0) return []
-    const label = act.label.replace(/^Delegierte\s/, 'Delegierten ')
-    // Drafts are counted, never Länder — „Länder 3" read as three Länder (04.11.2026).
-    const counts = [r.others.bund > 0 ? `${r.others.bund} des Bundes` : null, r.others.laender > 0 ? `${r.others.laender} der Länder` : null]
-      .filter((x): x is string => x !== null)
-      .join(' · ')
-    return [{ celex: act.celex, path: r.path, phrase: `Weitere Entwürfe ${TO_THE[act.kind]} ${label}`, counts }]
-  })
+export function euOtherDrafts(related: readonly EuRelatedAct[] | null | undefined): Map<string, string> {
+  const counts = new Map<string, string>()
+  for (const r of related ?? []) {
+    const sides = [r.others.bund > 0 ? [r.others.bund, 'des Bundes'] as const : null, r.others.laender > 0 ? [r.others.laender, 'der Länder'] as const : null]
+      .filter((x) => x !== null)
+    if (!sides.length) continue
+    // The noun agrees with the first count; the second elides it: „2 weitere Entwürfe des Bundes und 1 der Länder".
+    const [n, side] = sides[0]!
+    const head = `${n} ${n === 1 ? 'weiterer Entwurf' : 'weitere Entwürfe'} ${side}`
+    counts.set(r.celex, sides[1] ? `${head} und ${sides[1][0]} ${sides[1][1]}` : head)
+  }
+  return counts
 }
 
 /**

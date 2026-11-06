@@ -32,15 +32,19 @@
  * site's list idiom — all at once, never ten more. Six acts are not folded
  * to five and one.
  *
- * THE WAY TO THE MAP (§12.66, Nachtrag 3): under the act list, one line per
- * shown act that other drafts of the window implement too — „Weitere
- * Entwürfe zur Richtlinie (EU) 2024/1069: 1 des Bundes · 3 der Länder", the phrase a
- * link to the act's page (`euRelatedLines`). A folded act gets its line
- * once the fold opens: the line names the act, and an act the sentence
- * does not show yet would be named here first.
+ * ONE ACT IS A SENTENCE, SEVERAL ARE A LIST (06.11.2026): from two acts on,
+ * one act per row, which a reader scans where a comma sentence of long
+ * citations has to be parsed — and the fold becomes the list's footer.
+ *
+ * THE WAY TO THE MAP (§12.66, Nachtrag 3): an act the map has a page for
+ * links there, and where other drafts of the window implement it too, the
+ * count stands at the act — „· 1 weiterer Entwurf des Bundes und 3 der
+ * Länder" (`euOtherDrafts`). Plain text: the act is already the link to
+ * that page, and a second link to it was what the lines under the list
+ * were until 06.11.2026.
  */
 import type { EuRechtResponse } from '#shared/types'
-import { euFactView, euRelatedLines, euTimeline, type EuTimelineContext } from '~/utils/euRecht'
+import { euFactView, euOtherDrafts, euTimeline, type EuTimelineContext } from '~/utils/euRecht'
 
 const props = defineProps<{
   data: EuRechtResponse | null | undefined
@@ -65,8 +69,10 @@ const shownActs = computed(() => {
   return expanded.value || acts.length <= FOLD_AT + 1 ? acts : acts.slice(0, FOLD_AT)
 })
 const folded = computed(() => (view.value?.acts.length ?? 0) > shownActs.value.length)
-/** „Weitere Entwürfe zur …" for the shown acts, where the map knows others. */
-const related = computed(() => euRelatedLines(shownActs.value, props.data?.related))
+/** Several acts are a list, one act a sentence. */
+const asList = computed(() => (view.value?.acts.length ?? 0) > 1)
+/** „1 weiterer Entwurf des Bundes und 3 der Länder" per act, where the map knows others. */
+const others = computed(() => euOtherDrafts(props.data?.related))
 /** The monitor's page per act, where the map has one (`related` carries every act with a page). */
 const pageOf = computed(() => new Map((props.data?.related ?? []).map((r) => [r.celex, r.path])))
 /** Whether the fact has footnotes — a directive with further partial deadlines. */
@@ -75,14 +81,27 @@ const hasNotes = computed(() => (view.value?.notes.length ?? 0) > 0)
 
 <template>
   <div v-if="view" class="mt-4 border-t border-hairline pt-4">
-    <p class="text-sm text-ink-secondary">
-      <strong class="font-semibold text-ink">{{ view.lead }}</strong><template v-if="view.attach === 'colon'">: </template><template v-else-if="view.attach === 'named'">. {{ view.namedIn }} genannt: </template><template v-for="(act, i) in shownActs" :key="act.url"><template v-if="i > 0">{{ i === shownActs.length - 1 && !folded ? ' und ' : ', ' }}</template><NuxtLink v-if="pageOf.get(act.celex)" :to="pageOf.get(act.celex)!" class="link-inline">{{ act.label }}</NuxtLink><ExternalLink v-else :href="act.url" class="link-inline">{{ act.label }}</ExternalLink></template><template v-if="folded">, … <button type="button" class="link-inline" :aria-expanded="expanded" @click="expanded = true">Alle {{ view.acts.length }} anzeigen</button></template><template v-if="view.adoptedNote">, {{ view.adoptedNote }}</template>.
+    <template v-if="asList">
+      <p class="text-sm text-ink-secondary">
+        <strong class="font-semibold text-ink">{{ view.lead }}</strong><template v-if="view.attach === 'named'">. {{ view.namedIn }} genannt</template>:
+      </p>
+      <ul class="mt-1 space-y-1 text-sm text-ink-secondary">
+        <li v-for="act in shownActs" :key="act.url">
+          <NuxtLink v-if="pageOf.get(act.celex)" :to="pageOf.get(act.celex)!" class="link-inline">{{ act.label }}</NuxtLink><ExternalLink v-else :href="act.url" class="link-inline">{{ act.label }}</ExternalLink><span v-if="others.get(act.celex)" class="text-ink-muted"> · {{ others.get(act.celex) }}</span>
+        </li>
+      </ul>
+      <button v-if="folded" type="button" class="link-inline mt-1 text-sm" :aria-expanded="expanded" @click="expanded = true">
+        Alle {{ view.acts.length }} anzeigen
+      </button>
+      <p v-if="quote" class="mt-1 text-sm text-ink-secondary">
+        Laut Vorblatt: „{{ quote }}“.
+      </p>
+    </template>
+    <p v-else class="text-sm text-ink-secondary">
+      <strong class="font-semibold text-ink">{{ view.lead }}</strong><template v-if="view.attach === 'colon'">: </template><template v-else-if="view.attach === 'named'">. {{ view.namedIn }} genannt: </template><template v-for="act in shownActs" :key="act.url"><NuxtLink v-if="pageOf.get(act.celex)" :to="pageOf.get(act.celex)!" class="link-inline">{{ act.label }}</NuxtLink><ExternalLink v-else :href="act.url" class="link-inline">{{ act.label }}</ExternalLink><template v-if="view.adoptedNote">, {{ view.adoptedNote }}</template><span v-if="others.get(act.celex)" class="text-ink-muted"> · {{ others.get(act.celex) }}</span></template>.
       <template v-if="quote">
         Laut Vorblatt: „{{ quote }}“.
       </template>
-    </p>
-    <p v-for="line in related" :key="`related-${line.celex}`" class="mt-1 text-sm text-ink-secondary">
-      <NuxtLink :to="line.path" class="link-inline">{{ line.phrase }}</NuxtLink>: {{ line.counts }}
     </p>
     <EuTimelineChart v-if="timeline" :chart="timeline" class="mt-4" />
     <p v-else-if="view.deadlines.length" class="mt-1 text-sm text-ink-secondary">

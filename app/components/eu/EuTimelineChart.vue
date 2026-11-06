@@ -21,7 +21,13 @@
  *
  * On the act page a lane names its draft — Land or Bund, and the law's
  * short name (`laneNameOf`), whole — and links to it, as its row does
- * below; below `sm` the name stands over its lane, from `sm` beside it.
+ * below; below `lg` the name stands over its lane, from `lg` beside it.
+ * Beside it from `sm` until 06.11.2026: the 18 rem column left the track
+ * 282 px at 640 px and 410 at 768, where a label's character takes up to
+ * twice the share the tiering counts with (`CHAR_PCT`, about 550 px and
+ * up) — in Upper Austria's lane on 2024/1500 „Begutachtung bis 18.06.2026"
+ * ran into „Landesgesetzblatt". From `lg` the lane is 586 px, and over its
+ * lane at every width below the track is the card's.
  * The draft page's one lane has no name: the page is the draft.
  *
  * FOR A SCREEN READER the act page's lanes are hidden and out of the tab
@@ -40,7 +46,7 @@ const NuxtLink = resolveComponent('NuxtLink')
 
 /** The act page's lanes carry a name column; the draft page's one lane does not. */
 const named = computed(() => props.chart.lanes.some((l) => l.name))
-const GRID = 'grid sm:grid-cols-[minmax(0,18rem)_minmax(0,1fr)] sm:gap-x-4'
+const GRID = 'grid lg:grid-cols-[minmax(0,18rem)_minmax(0,1fr)] lg:gap-x-4'
 const grid = computed(() => (named.value ? GRID : ''))
 
 /** The deadlines' ticks as `ScaleBar` draws a tick. */
@@ -52,7 +58,7 @@ const TIERS = [0, 1] as const
 <template>
   <figure>
     <div v-if="chart.deadlines.length" class="mb-1" :class="grid">
-      <div v-if="named" class="hidden sm:block" />
+      <div v-if="named" class="hidden lg:block" />
       <EuScaleAxis :marks="chart.deadlines" :class="chart.narrowDeadlines ? 'hidden sm:block' : ''" />
       <EuScaleAxis v-if="chart.narrowDeadlines" :marks="chart.narrowDeadlines" class="sm:hidden" />
     </div>
@@ -68,8 +74,8 @@ const TIERS = [0, 1] as const
         >
           <!-- Whole, never truncated — the lists' rule for a title
                (§12.28); `laneNameOf` keeps it short instead. A long one
-               wraps; from `sm` its first line stands level with the track. -->
-          <span v-if="lane.name" class="pt-2 text-sm leading-snug text-ink-secondary sm:pt-0">
+               wraps; from `lg` its first line stands level with the track. -->
+          <span v-if="lane.name" class="pt-2 text-sm leading-snug text-ink-secondary lg:pt-0">
             <strong class="font-semibold text-ink">{{ lane.publisher }}</strong>
             {{ ' ' }}<span class="group-hover:underline group-hover:decoration-2">{{ lane.name }}</span>
           </span>
