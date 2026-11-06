@@ -10,8 +10,8 @@
  * rows, so the drafts can be compared by eye. No colour on a row, no „verspätet", no count of days:
  * on which side of the deadline a draft came is seen, never said. The
  * timeline's grammar is `euTimeline`'s (`utils/euRecht.ts`): the deadline
- * a tick across the line, the Begutachtung the band, the dot where the
- * procedure stands with its word over it.
+ * over the lanes and a tick across each, the Begutachtung the band, the dot
+ * where the procedure stands, and under each line the draft's own dates.
  *
  * Pure: the pages render what this returns, the tests read it without one.
  */
@@ -21,7 +21,7 @@ import { formatDateDe } from '#shared/utils/format'
 import { LAND_CODES, LAND_NAME, landShortTitle, type SourceCode } from '#shared/utils/laender'
 import { PUBLISHER_NAME_DE, eurLexSource, parliamentProcedureSource, risSource, type SourceEntry } from '#shared/utils/provenance'
 import { viewOfRow, type EntryView } from './entryView'
-import { SUPERSCRIPT, begutachtungMark, dateRangeDe, dayOf, edgeAlign, type EuTimelineMark } from './euRecht'
+import { SUPERSCRIPT, dateRangeDe, dayOf, edgeAlign, laneBarOf, type EuChartView } from './euRecht'
 
 /** „Bund" or the Land's name — the list's source chips' words. */
 export function publisherDe(p: EuPublisher): string {
@@ -164,56 +164,8 @@ export function incompleteNoteDe(incomplete: readonly EuPublisher[]): string | n
  * One act
  * ------------------------------------------------------------------ */
 
-/** One draft's lane in the act page's chart, on the page's shared track. */
-export interface EuRowBar {
-  /** The Begutachtung; null where it has no start, the line then begins at its end. */
-  band: [number, number] | null
-  /** Where the ink line begins: the draft's own Begutachtung, not the shared track's start. */
-  from: number
-  value: number
-  valueLabel: EuStand['label']
-  /**
-   * The Begutachtung's label under the lane („Begutachtung" over its
-   * dates, `begutachtungMark`) and the deadline's tick, the same on every
-   * lane — its label stands once, over the chart.
-   */
-  marks: EuTimelineMark[]
-}
-
-/** One lane of the chart: one implementing draft whose dates can be drawn. */
-export interface EuChartLane {
-  key: string
-  path: string
-  /** „Bund", „Salzburg" — the lane's first word, as the row's Kennung names it. */
-  publisher: string
-  /** The law's name, short where the title gives one (`laneNameOf`), whole. */
-  name: string
-  /** The full title, for `title=`. */
-  title: string
-  bar: EuRowBar
-}
-
-/** A time mark under the chart: the start of a year, a quarter or a month. */
-export interface EuAxisTick {
-  key: string
-  at: number
-  label: string
-}
-
-/**
- * The act page's chart: every drawable implementing draft as one lane on
- * one track, the deadline's label over it and the calendar under it — the
- * drafts side by side against the one deadline (05.11.2026). Null where
- * nothing can be drawn.
- */
-export interface EuActChartView {
-  lanes: EuChartLane[]
-  /** „Umsetzungsfrist" over its date, at the deadline's x; null for an act without one. */
-  deadline: EuTimelineMark | null
-  ticks: EuAxisTick[]
-  /** The further deadlines' footnote, under the chart beside its ¹; null without them or without a deadline label. */
-  footnote: string | null
-}
+/** The act page's chart: every drawable implementing draft a lane on one track (`EuTimelineChart`); null where nothing can be drawn. */
+export type EuActChartView = EuChartView
 
 export interface EuActPageView {
   title: string
@@ -301,45 +253,6 @@ function barred(d: EuActDraft): d is EuActDraft & { stand: EuStand } {
   return d.stand !== null && !!(d.begutachtung.start ?? d.begutachtung.end)
 }
 
-const MONTH_SHORT = ['Jän.', 'Feb.', 'März', 'Apr.', 'Mai', 'Juni', 'Juli', 'Aug.', 'Sep.', 'Okt.', 'Nov.', 'Dez.']
-/** Ticks closer than this keep only the first label, in percent of the track. */
-const TICK_GAP = 11
-/** A label that starts this close to the right end would run off the track. */
-const TICK_LAST = 90
-
-/**
- * The calendar under the chart: the years where the track spans more than
- * a year and a half, the quarters where it spans half a year, the months
- * below — so the marks are never so dense that they crowd, nor so rare
- * that none falls on the track. A label starts at its tick, as a calendar's
- * does; a tick too close to the one before goes without. The year stands at
- * January and at the first tick, so a month never floats without one.
- */
-export function axisTicksOf(first: number, span: number): EuAxisTick[] {
-  const step = span > 540 ? 12 : span > 180 ? 3 : 1
-  const begin = new Date(first * 86_400_000)
-  let year = begin.getUTCFullYear()
-  let month = begin.getUTCMonth() + 1
-  month = Math.ceil(month / step) * step
-  const ticks: EuAxisTick[] = []
-  for (;;) {
-    if (month >= 12) {
-      year += Math.floor(month / 12)
-      month %= 12
-    }
-    const day = Date.UTC(year, month, 1) / 86_400_000
-    const at = ((day - first) / span) * 100
-    if (at > TICK_LAST) break
-    const last = ticks.at(-1)
-    if (!last || at - last.at >= TICK_GAP) {
-      const label = step === 12 ? String(year) : month === 0 || !last ? `${MONTH_SHORT[month]} ${year}` : MONTH_SHORT[month]!
-      ticks.push({ key: `${year}-${month}`, at, label })
-    }
-    month += step
-  }
-  return ticks
-}
-
 /**
  * The act page (`/eu-recht/<kind>/<year>/<number>`).
  *
@@ -355,7 +268,7 @@ export function axisTicksOf(first: number, span: number): EuAxisTick[] {
  * all on ONE TRACK from the earliest to the latest drawn date — the
  * deadline, every lane's Begutachtung and stand — so the lanes compare by
  * eye; each lane names its own band and dot, the deadline's label stands
- * over the lanes, a calendar under them. A timeline in each row was built
+ * over the lanes, every date at its mark. A timeline in each row was built
  * and dropped the same night: separated by the rows' text, the drafts no
  * longer compared at a glance, which is what the page is for. A draft whose
  * Begutachtung has only an end (Burgenland dates no start) is drawn from
@@ -386,38 +299,18 @@ export function euActPageView(r: EuActResponse): EuActPageView {
 
   let chart: EuActChartView | null = null
   if (drawn.length && span > 0) {
-    const tick: EuTimelineMark[] = t ? [{ key: 'tick-frist', at: at(t.deadline), align: 'center', tick: true, lines: ['', ''] }] : []
     chart = {
-      lanes: drawn.map((d) => {
-        const { start, end } = d.begutachtung
-        const band: [number, number] | null = start ? [at(start), at(end ?? start)] : null
-        const from = at((start ?? end)!)
-        return {
-          key: d.key,
-          path: d.path,
-          publisher: publisherDe(d.publisher),
-          name: laneNameOf(d.title),
-          title: d.title,
-          bar: {
-            band,
-            from,
-            value: at(d.stand.date),
-            valueLabel: d.stand.label,
-            // The Begutachtung named under its band, as on the draft's
-            // timeline; „ab" where only its start is dated (Salzburg's
-            // register), „bis" under the line's start where only its end is
-            // (Burgenland) — never an invented date.
-            marks: [
-              begutachtungMark(band ?? [from, from], start ? (end ? dateRangeDe(start, end) : `ab ${formatDateDe(start)}`) : `bis ${formatDateDe(end!)}`),
-              ...tick,
-            ],
-          },
-        }
-      }),
-      deadline: t
-        ? { key: 'frist', at: at(t.deadline), align: edgeAlign(at(t.deadline)), tick: false, lines: ['Umsetzungsfrist', `${formatDateDe(t.deadline)}${note}`] }
-        : null,
-      ticks: axisTicksOf(first, span),
+      deadlines: t
+        ? [{ key: 'frist', at: at(t.deadline), align: edgeAlign(at(t.deadline)), lines: ['Umsetzungsfrist', `${formatDateDe(t.deadline)}${note}`] }]
+        : [],
+      lanes: drawn.map((d) => ({
+        key: d.key,
+        path: d.path,
+        publisher: publisherDe(d.publisher),
+        name: laneNameOf(d.title),
+        title: d.title,
+        bar: laneBarOf(at, d.begutachtung, d.stand, t ? [t.deadline] : []),
+      })),
       // Under the chart, beside the ¹ it explains — not as a mark: a second
       // tick on every lane would ask which deadline a draft is read against.
       footnote: t ? footnote : null,
@@ -428,7 +321,7 @@ export function euActPageView(r: EuActResponse): EuActPageView {
    * draw (the Bund's stand cold after a restart), or no deadline to label
    * („gilt unmittelbar"). The adoption stays up there: drawn, it would pull
    * the track back years and shrink every Begutachtung to a sliver. */
-  const deadline = chart?.deadline ? null : deadlineDe(act)
+  const deadline = chart?.deadlines.length ? null : deadlineDe(act)
   const head = [
     act.adopted ? `beschlossen am ${formatDateDe(act.adopted)}` : null,
     deadline ? `${deadline}${t ? note : ''}` : null,

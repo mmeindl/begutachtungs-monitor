@@ -1,19 +1,23 @@
 <script setup lang="ts">
 /**
- * The label of the act page's shared track, once, over the chart's first
- * lane (`EuActChart`; docs/architecture.md §12.66): the deadline as on a
- * draft's EU timeline — „Umsetzungsfrist" over its date (`euActPageView`).
- * Under the last row of a long list it stood screens away from the ticks it
- * named (05.11.2026).
+ * A row of labels on the EU chart's track (`EuTimelineChart`;
+ * docs/architecture.md §12.66): the Umsetzungsfristen over the lanes, and
+ * under each lane the Begutachtung and the stand — each term over its
+ * dates, one per line, as many lines as the label has (a cluster of
+ * deadlines names one day per line).
+ *
+ * With `tier`, the row is one tier under a lane and shows the labels of
+ * that tier only — by `narrowTier` below `sm`, by `tier` from it — and is
+ * itself gone where it has none at that width.
  *
  * `ScaleBar`'s label row on its own: the same geometry (its right inset,
- * its height, its alignments), so a label stands exactly under the tick it
- * names on every row above. Not a `ScaleBar` without a value — that would
- * draw a line and a dot that mean nothing.
+ * its alignments), so a label stands exactly at the tick it names. Not a
+ * `ScaleBar` without a value — that would draw a line and a dot that mean
+ * nothing.
  */
 import type { EuTimelineMark } from '~/utils/euRecht'
 
-defineProps<{ marks: EuTimelineMark[] }>()
+const props = defineProps<{ marks: EuTimelineMark[]; tier?: 0 | 1 }>()
 
 const ALIGN: Record<EuTimelineMark['align'], string> = {
   start: '',
@@ -21,18 +25,26 @@ const ALIGN: Record<EuTimelineMark['align'], string> = {
   end: '-translate-x-full text-right',
 }
 const pct = (n: number) => `${Math.min(100, Math.max(0, n))}%`
+/** The row is as tall as its tallest label, a line being 1rem (`leading-4`). */
+const height = computed(() => `${Math.max(...props.marks.map((m) => m.lines.length))}rem`)
+
+/** Shown below `sm` / from `sm`: without a tier, always. */
+const narrowIn = (m: EuTimelineMark) => props.tier === undefined || (m.narrowTier ?? 0) === props.tier
+const wideIn = (m: EuTimelineMark) => props.tier === undefined || (m.tier ?? 0) === props.tier
+const shown = (narrow: boolean, wide: boolean) => [narrow ? '' : 'hidden', wide ? 'sm:block' : 'sm:hidden']
+const rowClass = computed(() => shown(props.marks.some(narrowIn), props.marks.some(wideIn)))
 </script>
 
 <template>
-  <div class="w-full pr-1.5">
-    <div class="relative h-8 text-xs leading-4 text-ink-muted">
+  <div class="w-full pr-1.5" :class="rowClass">
+    <div class="relative text-xs leading-4 text-ink-muted" :style="{ height }">
       <span
         v-for="mark in marks"
         :key="mark.key"
         class="absolute whitespace-nowrap"
-        :class="ALIGN[mark.align]"
+        :class="[ALIGN[mark.align], ...shown(narrowIn(mark), wideIn(mark))]"
         :style="{ left: pct(mark.at) }"
-      ><template v-if="mark.lines[0]">{{ mark.lines[0] }}</template><template v-else>&nbsp;</template><br>{{ mark.lines[1] }}</span>
+      ><template v-for="(line, i) in mark.lines" :key="i"><br v-if="i > 0">{{ line }}</template></span>
     </div>
   </div>
 </template>

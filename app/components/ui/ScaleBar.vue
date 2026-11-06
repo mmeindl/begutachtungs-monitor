@@ -43,7 +43,7 @@ const props = withDefaults(defineProps<{
    * The dot's fill: ink for a value that is fixed (a Frist's length), the
    * rail's yellow for one that still moves — „where the procedure stands
    * now", the one meaning the mark has on this site (04.11.2026,
-   * `DraftEuTimeline`).
+   * `EuTimelineChart`).
    */
   dot?: 'ink' | 'mark'
   /**

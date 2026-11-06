@@ -20,10 +20,11 @@
  * noise where it is not a finding.
  *
  * THE DATES AS A PICTURE where the page hands over its side (`timeline`):
- * the deadline, the Begutachtung and where the procedure stands, on one
- * calendar track (`DraftEuTimeline`), labelled under the marks as the Frist
- * bar is. The row „Umsetzungsfrist bis … · Begutachtung ab …" is the text
- * form where the track cannot be drawn.
+ * the act page's chart with this draft as its one lane (`EuTimelineChart`)
+ * — the Umsetzungsfristen over the line, each with its act's number where
+ * the sentence names several, the Begutachtung and where the procedure
+ * stands under it. The row „Umsetzungsfrist bis … ·
+ * Begutachtung ab …" is the text form where the track cannot be drawn.
  *
  * FOLDED PAST FIVE ACTS (04.11.2026). The Elektrizitätswirtschaftsgesetz
  * (32/ME) names 28, the Vergaberechtsgesetz 24: a sentence of 28 links is
@@ -48,7 +49,7 @@ const props = defineProps<{
 }>()
 
 const view = computed(() => euFactView(props.data))
-/** The bar under the fact, where a directive's deadline and adoption day are known (`DraftEuTimeline`). */
+/** The chart under the fact, where a directive's deadline is known (`EuTimelineChart`). */
 const timeline = computed(() => (props.timeline ? euTimeline(view.value, props.timeline) : null))
 
 const SUPERSCRIPT = ['', '¹', '²', '³', '⁴', '⁵', '⁶', '⁷', '⁸', '⁹']
@@ -68,14 +69,14 @@ const folded = computed(() => (view.value?.acts.length ?? 0) > shownActs.value.l
 const related = computed(() => euRelatedLines(shownActs.value, props.data?.related))
 /** The monitor's page per act, where the map has one (`related` carries every act with a page). */
 const pageOf = computed(() => new Map((props.data?.related ?? []).map((r) => [r.celex, r.path])))
-/** Whether the fact has footnotes — a directive with further partial deadlines; the numbers at the acts and dates need none. */
+/** Whether the fact has footnotes — a directive with further partial deadlines. */
 const hasNotes = computed(() => (view.value?.notes.length ?? 0) > 0)
 </script>
 
 <template>
   <div v-if="view" class="mt-4 border-t border-hairline pt-4">
     <p class="text-sm text-ink-secondary">
-      <strong class="font-semibold text-ink">{{ view.lead }}</strong><template v-if="view.attach === 'colon'">: </template><template v-else-if="view.attach === 'named'">. {{ view.namedIn }} genannt: </template><template v-for="(act, i) in shownActs" :key="act.url"><template v-if="i > 0">{{ i === shownActs.length - 1 && !folded ? ' und ' : ', ' }}</template><NuxtLink v-if="pageOf.get(act.celex)" :to="pageOf.get(act.celex)!" class="link-inline">{{ act.label }}<template v-if="act.note">{{ SUPERSCRIPT[act.note] ?? `(${act.note})` }}</template></NuxtLink><ExternalLink v-else :href="act.url" class="link-inline">{{ act.label }}<template v-if="act.note">{{ SUPERSCRIPT[act.note] ?? `(${act.note})` }}</template></ExternalLink></template><template v-if="folded">, … <button type="button" class="link-inline" :aria-expanded="expanded" @click="expanded = true">Alle {{ view.acts.length }} anzeigen</button></template><template v-if="view.adoptedNote">, {{ view.adoptedNote }}</template>.
+      <strong class="font-semibold text-ink">{{ view.lead }}</strong><template v-if="view.attach === 'colon'">: </template><template v-else-if="view.attach === 'named'">. {{ view.namedIn }} genannt: </template><template v-for="(act, i) in shownActs" :key="act.url"><template v-if="i > 0">{{ i === shownActs.length - 1 && !folded ? ' und ' : ', ' }}</template><NuxtLink v-if="pageOf.get(act.celex)" :to="pageOf.get(act.celex)!" class="link-inline">{{ act.label }}</NuxtLink><ExternalLink v-else :href="act.url" class="link-inline">{{ act.label }}</ExternalLink></template><template v-if="folded">, … <button type="button" class="link-inline" :aria-expanded="expanded" @click="expanded = true">Alle {{ view.acts.length }} anzeigen</button></template><template v-if="view.adoptedNote">, {{ view.adoptedNote }}</template>.
       <template v-if="quote">
         Laut Vorblatt: „{{ quote }}“.
       </template>
@@ -83,9 +84,9 @@ const hasNotes = computed(() => (view.value?.notes.length ?? 0) > 0)
     <p v-for="line in related" :key="`related-${line.celex}`" class="mt-1 text-sm text-ink-secondary">
       <NuxtLink :to="line.path" class="link-inline">{{ line.phrase }}</NuxtLink>: {{ line.counts }}
     </p>
-    <DraftEuTimeline v-if="timeline" :view="timeline" />
+    <EuTimelineChart v-if="timeline" :chart="timeline" class="mt-4" />
     <p v-else-if="view.deadlines.length" class="mt-1 text-sm text-ink-secondary">
-      {{ view.deadlines.length > 1 ? 'Umsetzungsfristen' : 'Umsetzungsfrist' }}<template v-for="(d, i) in view.deadlines" :key="d.label"><template v-if="i > 0">,</template> bis {{ d.date }}<template v-if="d.note">{{ SUPERSCRIPT[d.note] ?? `(${d.note})` }}</template></template><template v-if="view.start"> · Begutachtung ab {{ view.start }}</template>
+      {{ view.deadlines.length > 1 ? 'Umsetzungsfristen' : 'Umsetzungsfrist' }}<template v-for="(d, i) in view.deadlines" :key="d.label"><template v-if="i > 0">,</template><template v-if="d.number"> {{ d.number }}</template> bis {{ d.date }}<template v-if="d.note">{{ SUPERSCRIPT[d.note] ?? `(${d.note})` }}</template></template><template v-if="view.start"> · Begutachtung ab {{ view.start }}</template>
     </p>
     <!-- The footnotes stay with the fact; the source stands under the card
          (`DraftEuCredits`), as every card's does. -->

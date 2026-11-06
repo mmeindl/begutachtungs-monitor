@@ -50,18 +50,17 @@ export interface EuDeadlineView {
   /** The act's other transposition dates, formatted, for the footnote. */
   otherDates: string[]
   /**
-   * The superscript's number. Where the fact carries deadlines on several
-   * days, every day has one, and the same number stands at the act in the
-   * sentence — the bar lists dates, the sentence lists acts, and nothing
-   * else joined them (04.11.2026, a Land draft with four directives: „no
-   * clue why there are so many and for what"). Two directives due on one
-   * day share the number. Where there is one day, only a directive with
-   * further partial deadlines has a number, for its footnote. A footnote
-   * that named the directive per number stood here for an hour and
-   * repeated the sentence.
+   * The footnote's number, for a directive with further partial deadlines
+   * only. Until 06.11.2026 every day had one where there were several, the
+   * same number at the act in the sentence, to join a date to its act (a
+   * Land draft with four directives: „no clue why there are so many and
+   * for what"); the act's `number` beside its date does that now, without
+   * a trip up to the sentence.
    */
   note: number | null
   label: string
+  /** „2023/970" — beside the date where the fact names several acts, so the date says whose it is; null for one act. */
+  number: string | null
 }
 
 /** One footnote under the fact — only the further partial deadlines of a directive; its number and its text, without the full stop. */
@@ -82,8 +81,8 @@ export interface EuFactView {
   attach: 'colon' | 'named' | 'none'
   /** „Im Gesetzestext", „Im Titel", „Im Vorblatt", „In den Erläuterungen" — for the `named` form. */
   namedIn: string | null
-  /** The acts, the dated ones first in the order of their deadlines, each with its superscript's number where the bar carries several days. */
-  acts: { label: string; url: string; note: number | null; celex: string; kind: EuActView['kind'] }[]
+  /** The acts, the dated ones first in the order of their deadlines. */
+  acts: { label: string; url: string; celex: string; kind: EuActView['kind'] }[]
   /** The Vorblatt's own sentence, for `ueber-umsetzung` only. */
   quote: string | null
   /** „beschlossen am 11.04.2024" — the one act whose deadline the row prints, where the Cellar has its day; null otherwise. */
@@ -122,23 +121,22 @@ export function euFactView(r: EuRechtResponse | null | undefined): EuFactView | 
   const acts = r.acts
   const attach = acts.length === 0 ? 'none' : acts.some((a) => fits(r.marker!, a)) ? 'colon' : 'named'
   const due = deadlineActs(acts)
-  // One note per day where there are several days; else one for further dates.
-  const days = [...new Set(due.map((a) => a.transposition!.deadline))]
-  const noteOf = (a: EuActView): number | null => (days.length > 1
-    ? days.indexOf(a.transposition!.deadline) + 1
-    : a.transposition!.otherDates.length ? 1 : null)
+  // The act's number beside its date where the sentence names several acts; a footnote only for further dates.
+  const numbered = acts.length > 1
+  let footnotes = 0
   const deadlines = due.map((a): EuDeadlineView => ({
     date: formatDateDe(a.transposition!.deadline),
     iso: a.transposition!.deadline,
     otherDates: a.transposition!.otherDates.map(formatDateDe),
-    note: noteOf(a),
+    note: a.transposition!.otherDates.length ? ++footnotes : null,
     label: a.label,
+    number: numbered ? numberOf(a.label) : null,
   }))
-  const notes: EuNoteView[] = [...new Set(deadlines.filter((d) => d.otherDates.length).map((d) => d.note!))].map((number) => {
-    const own = deadlines.filter((d) => d.note === number && d.otherDates.length)
-    return { number, text: `Weitere Fristen für einzelne Bestimmungen${own.map((d) => `${own.length > 1 ? ` (${numberOf(d.label)})` : ''}: ${d.otherDates.join(', ')}`).join(';')}` }
-  })
-  const dated = new Map(due.map((a, i) => [a.celex, deadlines[i]!.note]))
+  const notes: EuNoteView[] = deadlines.filter((d) => d.note).map((d) => ({
+    number: d.note!,
+    text: `Weitere Fristen für einzelne Bestimmungen${d.number ? ` (${d.number})` : ''}: ${d.otherDates.join(', ')}`,
+  }))
+  const dated = new Set(due.map((a) => a.celex))
   const listed = [...due, ...acts.filter((a) => !dated.has(a.celex))]
   const read = r.markerSource === 'erlaeuterungen'
     ? ['Erläuterungen']
@@ -151,7 +149,7 @@ export function euFactView(r: EuRechtResponse | null | undefined): EuFactView | 
     lead: LEAD[r.marker],
     attach,
     namedIn: NAMED_IN[r.actsSource ?? 'gesetzestext'],
-    acts: listed.map((a) => ({ label: a.label, url: a.eurLexUrl, note: days.length > 1 ? dated.get(a.celex) ?? null : null, celex: a.celex, kind: a.kind })),
+    acts: listed.map((a) => ({ label: a.label, url: a.eurLexUrl, celex: a.celex, kind: a.kind })),
     quote: r.marker === 'ueber-umsetzung' ? r.vorblattSentence : null,
     adoptedNote: due.length === 1 && acts.length === 1 && due[0]!.adopted ? `beschlossen am ${formatDateDe(due[0]!.adopted)}` : null,
     deadlines,
@@ -228,52 +226,98 @@ export interface EuTimelineContext {
   stand: { date: string; label: string }
 }
 
-/** One label under the track, as `ScaleBar` places it: the term over the dates. */
+/**
+ * One label at the track, as `EuScaleAxis` places it: the term over its
+ * dates, one per line. Tier 1 stands under tier 0, where two labels under
+ * one lane would meet however they are aligned — `tier` from `sm`,
+ * `narrowTier` below it, where a character takes twice the track.
+ */
 export interface EuTimelineMark {
   key: string
   /** Percent of the track. */
   at: number
   align: 'start' | 'center' | 'end'
-  /** A tick across the line — every Umsetzungsfrist; the Begutachtung is the band and has none. */
-  tick: boolean
-  lines: [string, string]
+  lines: string[]
+  tier?: 0 | 1
+  narrowTier?: 0 | 1
 }
 
-/** The EU timeline, as positions on a track (percent) with their labels. */
-export interface EuTimelineView {
-  /** The dot: where the procedure stands. */
-  value: number
-  valueLabel: string
-  /** The Begutachtung, as the band behind the line. */
+/**
+ * One draft's way on a track it may share with others (`EuTimelineChart`):
+ * the Begutachtung the band, the ink line from its start to the dot where
+ * the procedure stands, each Umsetzungsfrist a tick across the line — and
+ * under the line what is the draft's own, the Begutachtung and the stand,
+ * each term over its date.
+ */
+export interface EuLaneBar {
+  /** The Begutachtung; null where it has no start, the line then begins at its end. */
   band: [number, number] | null
+  /** Where the ink line begins: the draft's own Begutachtung, never the track's start. */
+  from: number
+  value: number
+  dot: 'ink' | 'mark'
+  /** Each Umsetzungsfrist's day, a tick across the line. */
+  ticks: number[]
+  /** Under the line: the Begutachtung and the stand. */
   marks: EuTimelineMark[]
+}
+
+/** One lane: a draft. The act page names and links it; the draft's own page has the one lane and no name. */
+export interface EuChartLane {
+  key: string
+  bar: EuLaneBar
+  path?: string
+  /** „Bund", „Salzburg" — the lane's first word, as the row's Kennung names it. */
+  publisher?: string
+  /** The law's name, short where the title gives one (`laneNameOf`), whole. */
+  name?: string
+  /** The full title, for `title=`. */
+  title?: string
+}
+
+/**
+ * The EU timeline as a chart (06.11.2026): ABOVE THE LINE THE EU, BELOW IT
+ * AUSTRIA. The Umsetzungsfristen are labelled over the lanes, each tick
+ * across them; each lane carries the draft's Begutachtung and stand under
+ * its line. Where a label stands says whose date it is, so the chart needs
+ * no key — until then the deadline and the Begutachtung shared the row
+ * under the line, the stand's word stood over the dot without its date,
+ * and the draft page's ink line ran from a deadline years before the draft
+ * existed. No calendar under it: every mark names its own date, and a row
+ * of years (the act page's until 06.11.2026) only repeated them.
+ */
+export interface EuChartView {
+  /** Over the lanes: the Umsetzungsfristen, the term over the dates — from `sm`, and below it too without `narrowDeadlines`. */
+  deadlines: EuTimelineMark[]
+  /** The same laid out for a phone's track, where more of them share a label (`layoutDeadlines`). */
+  narrowDeadlines?: EuTimelineMark[]
+  lanes: EuChartLane[]
+  /** A footnote under the chart, beside the ¹ it explains; null where the page says it elsewhere. */
+  footnote: string | null
 }
 
 export const SUPERSCRIPT = ['', '¹', '²', '³', '⁴', '⁵', '⁶', '⁷', '⁸', '⁹']
 /** An ISO day as a day number — the timeline's unit. */
 export const dayOf = (iso: string) => Date.parse(`${iso}T00:00:00Z`) / 86_400_000
-/** Umsetzungsfristen closer than this share one label — three weeks on a year-long track are 30 px (32/ME). */
-const CLUSTER = 12
-/** Two labels closer than this are aligned away from each other instead of over each other. */
-const APART = 14
 /**
  * A label's width in percent of the track, from its longest line: about one
  * percent per character at the card's width on a desktop. Needed since the
- * Länder (04.11.2026): a cluster of three dates „15.11.2024, 07.06.2026,
- * 19.06.2026" ran into the Begutachtung's label although the marks stood
- * 14 % apart. The Frist bar's two labels never meet; this bar's three can.
+ * Länder (04.11.2026): a cluster of three dates ran into the Begutachtung's
+ * label although the marks stood 14 % apart.
  */
 const CHAR_PCT = 1.1
+/** The same on a phone (390 px): a track of about 330 px, twice the share per character. */
+const NARROW_CHAR_PCT = 2.1
 
 /** Where a label's text lies on the track, in percent, by its alignment. */
-function extent(m: EuTimelineMark): [number, number] {
-  const w = Math.max(m.lines[0].length, m.lines[1].length) * CHAR_PCT
+function extent(m: EuTimelineMark, charPct = CHAR_PCT): [number, number] {
+  const w = Math.max(...m.lines.map((l) => l.length)) * charPct
   return m.align === 'start' ? [m.at, m.at + w] : m.align === 'end' ? [m.at - w, m.at] : [m.at - w / 2, m.at + w / 2]
 }
 
 /** Whether two labels' texts would meet, a percent of air between them. */
-function overlap(left: EuTimelineMark, right: EuTimelineMark): boolean {
-  return extent(left)[1] + 1 > extent(right)[0]
+function overlap(left: EuTimelineMark, right: EuTimelineMark, charPct = CHAR_PCT): boolean {
+  return extent(left, charPct)[1] + 1 > extent(right, charPct)[0]
 }
 
 /** A label within this distance of either end of the track aligns inward, as on the Frist bar. */
@@ -281,31 +325,86 @@ export function edgeAlign(pos: number): EuTimelineMark['align'] {
   return pos < 8 ? 'start' : pos > 92 ? 'end' : 'center'
 }
 
+/** A label of `lines` placed at `at`: its text's extent, for testing a placement before taking it. */
+function placed(lines: string[], at: number, align: EuTimelineMark['align'], charPct: number): [number, number] {
+  return extent({ key: '', at, align, lines }, charPct)
+}
+
 /**
- * Keeps a row of labels apart, in place: sorted by position, and two
- * neighbours closer than `APART` or wider than their distance (`CHAR_PCT`)
- * aligned away from each other — the one pinned to an end of the track
- * stays, the other moves past its text.
+ * Where a deadlines label stands: centred on its days' mean where it fits
+ * the track, else ending at its last day, else starting at its first,
+ * else from the track's start — never off its days, as long as it fits.
  */
-export function spreadLabels(marks: EuTimelineMark[]): void {
-  marks.sort((a, b) => a.at - b.at)
-  for (let i = 1; i < marks.length; i++) {
-    const left = marks[i - 1]!
-    const right = marks[i]!
-    if (right.at - left.at >= APART && !overlap(left, right)) continue
-    if (left.align === 'start' && left.at < 8) {
-      // The left one is pinned to the track's start: the right one begins past it, and past its text.
-      right.align = 'start'
-      right.at = Math.max(right.at, left.at + APART, extent(left)[1] + 1)
-    } else if (right.align === 'end' && right.at > 92) {
-      // The right one is pinned to the track's end: the left one ends before it, and before its text.
-      left.align = 'end'
-      left.at = Math.min(left.at, right.at - APART, extent(right)[0] - 1)
-    } else {
-      if (left.align !== 'start') left.align = 'end'
-      if (right.align !== 'end') right.align = 'start'
+function anchorOf(lines: string[], days: number[], charPct: number): Pick<EuTimelineMark, 'at' | 'align'> {
+  const mean = days.reduce((a, b) => a + b, 0) / days.length
+  const fits = ([a, b]: [number, number]) => a >= 0 && b <= 100
+  if (fits(placed(lines, mean, 'center', charPct))) return { at: mean, align: 'center' }
+  const last = Math.max(...days)
+  if (fits(placed(lines, last, 'end', charPct))) return { at: last, align: 'end' }
+  const first = Math.min(...days)
+  if (fits(placed(lines, first, 'start', charPct))) return { at: first, align: 'start' }
+  return { at: 0, align: 'start' }
+}
+
+/**
+ * The Umsetzungsfristen over the line, for a track where a character takes
+ * `charPct` of it (06.11.2026). Each day its own label first; two
+ * neighbours that would meet are aligned away from each other — the left
+ * ending at its day, the right starting at its own — and where even that
+ * does not part them, they become one label, one line per day, and the
+ * row is laid out again. A label never leaves its days: until then
+ * `spreadLabels` pushed a label aside to clear its neighbour, and on a
+ * draft with eight directives (58/ME) the correction of one pair pushed
+ * the next into its neighbour.
+ */
+function layoutDeadlines(groups: { iso: string; at: number; line: string }[], charPct: number): EuTimelineMark[] {
+  let clusters = groups.map((g) => [g])
+  for (;;) {
+    const marks = clusters.map((c): EuTimelineMark => {
+      const lines = [c.length > 1 ? 'Umsetzungsfristen' : 'Umsetzungsfrist', ...c.map((g) => g.line)]
+      return { key: `frist-${c[0]!.iso}`, lines, ...anchorOf(lines, c.map((g) => g.at), charPct) }
+    })
+    let meet = -1
+    for (let i = 1; i < marks.length && meet < 0; i++) {
+      const [left, right] = [marks[i - 1]!, marks[i]!]
+      if (!overlap(left, right, charPct)) continue
+      const days = (k: number) => clusters[k]!.map((g) => g.at)
+      // A label already turned away from its neighbour — starting at the track's start, ending at its end — stays.
+      const away: [EuTimelineMark, EuTimelineMark] = [
+        left.align === 'start' ? left : { ...left, at: Math.max(...days(i - 1)), align: 'end' },
+        right.align === 'end' ? right : { ...right, at: Math.min(...days(i)), align: 'start' },
+      ]
+      const inside = extent(away[0], charPct)[0] >= 0 && extent(away[1], charPct)[1] <= 100
+      const clear = i < 2 || !overlap(marks[i - 2]!, away[0], charPct)
+      if (inside && clear && !overlap(away[0], away[1], charPct)) [marks[i - 1], marks[i]] = away
+      else meet = i
+    }
+    if (meet < 0) return marks
+    clusters = [...clusters.slice(0, meet - 1), [...clusters[meet - 1]!, ...clusters[meet]!], ...clusters.slice(meet + 1)]
+  }
+}
+
+/**
+ * Keeps the two labels under a lane apart without moving either off its
+ * date: aligned away from each other where that suffices, else the stand a
+ * tier lower — the Begutachtung's label stays with its band. The
+ * Begutachtung and the Kundmachung are often weeks apart on a track of
+ * years; pushed aside, as `spreadLabels` did, the Begutachtung's label
+ * stood a fifth of the track left of its band. Decided for both widths,
+ * on the alignment the wide one chose: a phone tiers more often.
+ */
+function tierLabels(begutachtung: EuTimelineMark, stand: EuTimelineMark): void {
+  const [left, right] = begutachtung.at <= stand.at ? [begutachtung, stand] : [stand, begutachtung]
+  if (overlap(left, right)) {
+    const before = [left.align, right.align] as const
+    if (left.align === 'center') left.align = 'end'
+    if (right.align === 'center') right.align = 'start'
+    if (overlap(left, right)) {
+      ;[left.align, right.align] = before
+      stand.tier = 1
     }
   }
+  if (stand.tier || overlap(left, right, NARROW_CHAR_PCT)) stand.narrowTier = 1
 }
 
 /** „21.10.–10.11.2026", both dates in full across a year. */
@@ -320,40 +419,59 @@ export function dateRangeDe(start: string, end: string | null | undefined): stri
  * The Begutachtung's label under its band, „Begutachtung" over its dates:
  * anchored at the band's end where the band lies in the right half, at its
  * start in the left half — so it ends with the band, not short of it —
- * and centred in between. Shared by the draft's timeline (`euTimeline`) and
- * the lanes of the act page's chart (`euActPageView`), so the band reads
- * the same on both.
+ * and centred in between.
  */
 export function begutachtungMark(band: [number, number], dates: string): EuTimelineMark {
   const centre = (band[0] + band[1]) / 2
   const [pos, align]: [number, EuTimelineMark['align']] = centre > 60 ? [band[1], 'end'] : centre < 40 ? [band[0], 'start'] : [centre, 'center']
-  return { key: 'begutachtung', at: pos, align, tick: false, lines: ['Begutachtung', dates] }
+  return { key: 'begutachtung', at: pos, align, lines: ['Begutachtung', dates] }
 }
 
 /**
- * The dates that matter, on one track (04.11.2026): each Umsetzungsfrist a
- * tick with its label under it, the Begutachtung the band with its label
- * under its middle, the dot where the procedure stands with its word over
- * it — the Frist bar's grammar, term over value. The track runs from the
- * earliest of those dates to the latest, no further; a first version began
- * at the directive's adoption, and on a two-year window the three-week
- * Begutachtung vanished under the dot. The reader sees on which side of the
- * deadline the draft came and how far from it; nobody wrote a verdict (D6).
- *
- * Two rules keep the labels apart, because the deadline and the
- * Begutachtung are often days apart (that is the finding): Umsetzungsfristen
- * closer than `CLUSTER` share one label, and two labels closer than `APART`
- * or wider than their distance (`CHAR_PCT`) are aligned away from each other. A label near either edge is aligned
- * inward, as on the Frist bar, and the Begutachtung's label is anchored at
- * the band's end where the band lies in the right half, at its start in
- * the left half — so it ends with the band, not short of it. No margin at
- * the ends: the first and last dates sit on the track's ends, as the Frist
- * bar's do (a 4 % margin stood here for an hour and read as empty line).
+ * One draft's lane on a track (`at` places a day on it): band, line, dot,
+ * the deadlines' ticks, and under the line the Begutachtung — „ab" where
+ * only its start is dated (Salzburg's register), „bis" under the line's
+ * start where only its end is (Burgenland), never an invented date — and
+ * the stand with its date. The stand's word stood over the dot without a
+ * date until 06.11.2026: „Landesgesetzblatt" said what, not when.
+ */
+export function laneBarOf(
+  at: (iso: string) => number,
+  begutachtung: EuTimelineContext['begutachtung'],
+  stand: EuTimelineContext['stand'],
+  deadlines: readonly string[],
+): EuLaneBar {
+  const { start, end } = begutachtung
+  const value = at(stand.date)
+  const band: [number, number] | null = start ? [at(start), at(end ?? start)] : null
+  const first = start ?? end
+  const from = first ? at(first) : value
+  const standMark: EuTimelineMark = { key: 'stand', at: value, align: edgeAlign(value), lines: [stand.label, formatDateDe(stand.date)] }
+  const marks: EuTimelineMark[] = [standMark]
+  if (first) {
+    const dates = start ? (end ? dateRangeDe(start, end) : `ab ${formatDateDe(start)}`) : `bis ${formatDateDe(end!)}`
+    marks.unshift(begutachtungMark(band ?? [from, from], dates))
+    tierLabels(marks[0]!, standMark)
+  }
+  return { band, from, value, dot: euDotOf(stand.label), ticks: [...new Set(deadlines)].map(at), marks }
+}
+
+/**
+ * The draft's EU timeline (04.11.2026, as a chart of one lane since
+ * 06.11.2026): the act page's chart with the draft as its only lane, so the
+ * two pages draw one thing one way. The Umsetzungsfristen over the line,
+ * those that would meet under one label (`layoutDeadlines`, once for each
+ * width) — one line per day, in the D6 row's idiom: „2023/970 bis 07.06.2026", the act's number
+ * where the fact names several acts, so no superscript has to join a date
+ * to its act. The track runs from the earliest date to the latest, no
+ * further; a first version began at the directive's adoption, and on a
+ * two-year window the three-week Begutachtung vanished under the dot. The
+ * proportions show how far apart they are; nobody writes it (D6).
  *
  * Null where there is nothing to draw: no act with a deadline, or every
  * date on one day.
  */
-export function euTimeline(fact: EuFactView | null | undefined, ctx: EuTimelineContext): EuTimelineView | null {
+export function euTimeline(fact: EuFactView | null | undefined, ctx: EuTimelineContext): EuChartView | null {
   const due = fact?.deadlines ?? []
   if (!due.length) return null
   const { start, end } = ctx.begutachtung
@@ -362,39 +480,20 @@ export function euTimeline(fact: EuFactView | null | undefined, ctx: EuTimelineC
   const span = Math.max(...days) - first
   if (!(span > 0)) return null
   const at = (iso: string) => ((dayOf(iso) - first) / span) * 100
-  const edge = edgeAlign
-  const dated = (d: EuDeadlineView) => `${d.date}${d.note ? SUPERSCRIPT[d.note] ?? `(${d.note})` : ''}`
 
-  // The deadlines, clustered where they would overlap, in date order.
+  // One line per day, in date order; two directives due on one day (2024/1499 and 2024/1500: 19.06.2026) are one line.
   const sorted = [...due].sort((a, b) => a.iso.localeCompare(b.iso))
-  const clusters: EuDeadlineView[][] = []
-  for (const d of sorted) {
-    const last = clusters.at(-1)
-    if (last && at(d.iso) - at(last[0]!.iso) < CLUSTER) last.push(d)
-    else clusters.push([d])
-  }
-  // Labels and ticks are separate marks: a label may be pushed aside to
-  // clear its neighbour, a tick never moves off its date.
-  const marks: EuTimelineMark[] = clusters.map((c) => {
-    const pos = c.reduce((sum, d) => sum + at(d.iso), 0) / c.length
-    return {
-      key: `frist-${c[0]!.iso}`,
-      at: pos,
-      align: edge(pos),
-      tick: false,
-      // Two directives with one date (2024/1499 and 2024/1500: 19.06.2026) are one date in the label; each keeps its tick.
-      lines: [c.length > 1 ? 'Umsetzungsfristen' : 'Umsetzungsfrist', [...new Set(c.map(dated))].join(', ')],
-    }
+  const groups = [...new Set(sorted.map((d) => d.iso))].map((iso) => {
+    const same = sorted.filter((d) => d.iso === iso)
+    const notes = same.map((d) => (d.note ? SUPERSCRIPT[d.note] ?? `(${d.note})` : '')).join('')
+    const numbers = same.map((d) => d.number).filter((n): n is string => !!n)
+    return { iso, at: at(iso), line: `${numbers.length ? `${numbers.join(', ')} bis ` : ''}${same[0]!.date}${notes}` }
   })
-  const band: [number, number] | null = start ? [at(start), at(end ?? start)] : null
-  if (band && start) marks.push(begutachtungMark(band, dateRangeDe(start, end)))
-  spreadLabels(marks)
-  // Every Umsetzungsfrist keeps its own tick on its own date, clustered or not.
-  const ticks: EuTimelineMark[] = sorted.map((d) => ({ key: `tick-${d.iso}`, at: at(d.iso), align: 'center', tick: true, lines: ['', ''] }))
   return {
-    value: at(ctx.stand.date),
-    valueLabel: ctx.stand.label,
-    band,
-    marks: [...marks, ...ticks],
+    deadlines: layoutDeadlines(groups, CHAR_PCT),
+    narrowDeadlines: layoutDeadlines(groups, NARROW_CHAR_PCT),
+    lanes: [{ key: 'draft', bar: laneBarOf(at, ctx.begutachtung, ctx.stand, sorted.map((d) => d.iso)) }],
+    // The fact's own footnotes stand under it (`DraftEuFact`).
+    footnote: null,
   }
 }

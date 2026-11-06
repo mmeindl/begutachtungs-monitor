@@ -6,9 +6,9 @@
  *
  * THE DRAFTS FIRST, no text above them. The one caveat, what could not be
  * read, stands in the list box's head as on the overview; the window and
- * the Länder without a draft are the method's, not each act's (06.11.2026). The section opens with the timeline as one chart (`EuActChart`): a
+ * the Länder without a draft are the method's, not each act's (06.11.2026). The section opens with the timeline as one chart (`EuTimelineChart`): a
  * lane per draft, all on one track, each lane naming its own band and dot,
- * the deadline's label over the lanes and a calendar under them. Then the
+ * the deadline's label over the lanes. Then the
  * drafts as rows of the lists (`EntryList`, 05.11.2026) — the same anatomy
  * as on `/entwuerfe`, its Stellungnahmen and its Stand, instead of a row
  * grammar of this page's own.
@@ -140,10 +140,10 @@ const credits = computed(() => (data.value ? euActCredits(data.value) : null))
 
         <section aria-labelledby="eu-umsetzung-heading" class="page-section">
           <h2 id="eu-umsetzung-heading" class="section-heading">{{ page.implementingHeading }}</h2>
-          <!-- The timeline first, as one chart (`EuActChart`): the drafts
+          <!-- The timeline first, as one chart (`EuTimelineChart`): the drafts
                side by side against the one deadline. Then the drafts as
                every list of drafts shows them (`EntryList`). -->
-          <EuActChart v-if="page.chart" :chart="page.chart" class="mt-4" />
+          <EuTimelineChart v-if="page.chart" :chart="page.chart" class="mt-4" />
           <EntryList v-if="page.entries.length" :entries="page.entries" class="mt-6">
             <!-- What could not be read, in the box's head — where the
                  overview and `/entwuerfe` say it, above the rows it

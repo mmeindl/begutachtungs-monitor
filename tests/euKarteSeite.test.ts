@@ -1,6 +1,5 @@
 import { describe, expect, it } from 'vitest'
 import {
-  axisTicksOf,
   euActCredits,
   euActPageView,
   euActsRows,
@@ -66,12 +65,12 @@ describe('euActPageView', () => {
     expect(v.title).toBe('Richtlinie (EU) 2024/1069')
     expect(v.implementingHeading).toBe('Entwürfe, die sie umsetzen')
     expect(v.head).toEqual(['beschlossen am 11.04.2024'])
-    expect(v.chart!.deadline).toMatchObject({ lines: ['Umsetzungsfrist', '07.05.2026'] })
+    expect(v.chart!.deadlines).toMatchObject([{ lines: ['Umsetzungsfrist', '07.05.2026'] }])
     expect(v.footnote).toBeNull()
     expect(v.chart!.footnote).toBeNull()
     const further = euActPageView(response({ act: { ...response({}).act, transposition: { deadline: '2026-05-29', otherDates: ['2025-01-01'] } } }))
     expect(further.head).toEqual(['beschlossen am 11.04.2024'])
-    expect(further.chart!.deadline!.lines[1]).toBe('29.05.2026¹')
+    expect(further.chart!.deadlines[0]!.lines[1]).toBe('29.05.2026¹')
     expect(further.chart!.footnote).toBe('¹ Weitere Fristen für einzelne Bestimmungen: 01.01.2025')
     expect(further.footnote).toBeNull()
     const reg = euActPageView(response({ act: { ...response({}).act, kind: 'verordnung', label: 'Verordnung (EU) 2023/1114', transposition: null, adopted: null } }))
@@ -126,30 +125,36 @@ describe('euActPageView', () => {
     const at = (iso: string) => ((day(iso) - day('2026-05-07')) / span) * 100
     const lanes = v.chart!.lanes
     expect(lanes.map((l) => [l.publisher, l.name])).toEqual([['Bund', 'Plattformarbeitsgesetz'], ['Oberösterreich', 'Oö. Grundversorgungsgesetz 2026']])
-    expect(lanes[0]!.bar).toMatchObject({ band: [at('2026-06-01'), at('2026-07-01')], value: 100, valueLabel: 'Heute' })
+    expect(lanes[0]!.bar).toMatchObject({ band: [at('2026-06-01'), at('2026-07-01')], value: 100, dot: 'mark' })
     // A Begutachtung without an end is a band of one day, at its start.
-    expect(lanes[1]!.bar).toMatchObject({ band: [at('2026-09-01'), at('2026-09-01')], value: at('2026-10-15'), valueLabel: 'Beschluss' })
+    expect(lanes[1]!.bar).toMatchObject({ band: [at('2026-09-01'), at('2026-09-01')], value: at('2026-10-15'), dot: 'mark' })
     // Each draft's way begins with its own Begutachtung, not at the shared track's start.
     expect(lanes.map((l) => l.bar.from)).toEqual([at('2026-06-01'), at('2026-09-01')])
-    // Each lane names its Begutachtung under the band, as the draft's timeline does, „ab" where only the start is dated.
-    expect(lanes.map((l) => l.bar.marks[0])).toEqual([
-      { key: 'begutachtung', at: at('2026-06-01'), align: 'start', tick: false, lines: ['Begutachtung', '01.06.–01.07.2026'] },
-      { key: 'begutachtung', at: at('2026-09-01'), align: 'end', tick: false, lines: ['Begutachtung', 'ab 01.09.2026'] },
+    // Each lane names its Begutachtung under the band, as the draft's timeline does, „ab" where only the start is dated, and its stand with the date.
+    expect(lanes.map((l) => l.bar.marks)).toEqual([
+      [
+        { key: 'begutachtung', at: at('2026-06-01'), align: 'start', lines: ['Begutachtung', '01.06.–01.07.2026'] },
+        { key: 'stand', at: 100, align: 'end', lines: ['Heute', '04.11.2026'] },
+      ],
+      [
+        { key: 'begutachtung', at: at('2026-09-01'), align: 'end', lines: ['Begutachtung', 'ab 01.09.2026'] },
+        { key: 'stand', at: at('2026-10-15'), align: 'center', lines: ['Beschluss', '15.10.2026'] },
+      ],
     ])
-    for (const l of lanes) expect(l.bar.marks.slice(1)).toEqual([{ key: 'tick-frist', at: 0, align: 'center', tick: true, lines: ['', ''] }])
+    for (const l of lanes) expect(l.bar.ticks).toEqual([0])
     // The deadline's label once, over the lanes: on the first end, aligned inward.
-    expect(v.chart!.deadline).toMatchObject({ key: 'frist', align: 'start', lines: ['Umsetzungsfrist', '07.05.2026'] })
+    expect(v.chart!.deadlines).toMatchObject([{ key: 'frist', align: 'start', lines: ['Umsetzungsfrist', '07.05.2026'] }])
   })
 
   it('labels the deadline centred inside the track, and nothing for an act without one', () => {
     const middle = euActPageView(response({
       implementing: [draft({ begutachtung: { start: '2026-01-01', end: '2026-02-01' }, stand: { date: '2026-09-01', label: 'Heute' } })],
     }))
-    expect(middle.chart!.deadline).toMatchObject({ key: 'frist', align: 'center' })
+    expect(middle.chart!.deadlines).toMatchObject([{ key: 'frist', align: 'center' }])
     const reg = euActPageView(response({ act: { ...response({}).act, kind: 'verordnung', transposition: null } }))
     expect(reg.chart!.lanes).toHaveLength(1)
-    expect(reg.chart!.deadline).toBeNull()
-    expect(reg.chart!.lanes[0]!.bar.marks.map((m) => m.key)).toEqual(['begutachtung'])
+    expect(reg.chart!.deadlines).toEqual([])
+    expect(reg.chart!.lanes[0]!.bar.ticks).toEqual([])
   })
 
   it('says each row\'s dates in two dates and the stand, never a verdict, by the row\'s key', () => {
@@ -180,7 +185,7 @@ describe('euActPageView', () => {
     // Every draft is still a row.
     expect(v.entries).toHaveLength(3)
     // The track still begins at the deadline, not in 2020.
-    expect(v.chart!.deadline).toMatchObject({ key: 'frist', at: 0 })
+    expect(v.chart!.deadlines).toMatchObject([{ key: 'frist', at: 0 }])
   })
 
   it('draws a draft with only the Frist\'s end from that end, without a band, and lets it stretch the track', () => {
@@ -195,10 +200,10 @@ describe('euActPageView', () => {
     const at = (iso: string) => ((day(iso) - day('2025-12-10')) / span) * 100
     const [bund, bgld] = v.chart!.lanes
     expect(v.said[v.entries[1]!.key]).toBe('Begutachtung bis 10.12.2025 · Landesgesetzblatt am 12.05.2026')
-    expect(bgld!.bar).toMatchObject({ band: null, from: 0, value: at('2026-05-12'), valueLabel: 'Landesgesetzblatt' })
-    expect(bgld!.bar.marks[0]).toEqual({ key: 'begutachtung', at: 0, align: 'start', tick: false, lines: ['Begutachtung', 'bis 10.12.2025'] })
+    expect(bgld!.bar).toMatchObject({ band: null, from: 0, value: at('2026-05-12'), dot: 'ink' })
+    expect(bgld!.bar.marks[0]).toEqual({ key: 'begutachtung', at: 0, align: 'start', lines: ['Begutachtung', 'bis 10.12.2025'] })
     expect(bund!.bar).toMatchObject({ from: at('2026-06-01') })
-    expect(v.chart!.deadline).toEqual({ key: 'frist', at: at('2026-05-07'), align: 'center', tick: false, lines: ['Umsetzungsfrist', '07.05.2026'] })
+    expect(v.chart!.deadlines).toEqual([{ key: 'frist', at: at('2026-05-07'), align: 'center', lines: ['Umsetzungsfrist', '07.05.2026'] }])
   })
 
   it('draws no chart where every drawn date falls on one day, nor without any stand', () => {
@@ -249,23 +254,6 @@ describe('laneNameOf', () => {
     expect(laneNameOf('Wirtschaftliche Eigentümer Registergesetz, Änderung; Wirtschaftliche Eigentümer Registergesetz')).toBe('Wirtschaftliche Eigentümer Registergesetz')
     expect(laneNameOf('Landesgesetz, über die Gewährung von Grundversorgungsleistungen (Oö. Grundversorgungsgesetz 2026 - Oö. GVG 2026)')).toBe('Oö. Grundversorgungsgesetz 2026')
     expect(laneNameOf('Oö. EU -Gebäuderichtlinie-Baurechts-Umsetzungsgesetz')).toBe('Oö. EU -Gebäuderichtlinie-Baurechts-Umsetzungsgesetz')
-  })
-})
-
-describe('axisTicksOf', () => {
-  const day = (iso: string) => Date.parse(`${iso}T00:00:00Z`) / 86_400_000
-  const ticks = (from: string, to: string) => axisTicksOf(day(from), day(to) - day(from)).map((t) => t.label)
-
-  it('marks the years on a track longer than a year and a half', () => {
-    expect(ticks('2024-12-10', '2026-11-05')).toEqual(['2025', '2026'])
-  })
-
-  it('marks the quarters on a track of half a year or more, the year at January and on the first', () => {
-    expect(ticks('2025-03-25', '2026-03-20')).toEqual(['Apr. 2025', 'Juli', 'Okt.', 'Jän. 2026'])
-  })
-
-  it('marks the months on a short track, never past the right end\'s last tenth', () => {
-    expect(ticks('2026-03-03', '2026-06-20')).toEqual(['Apr. 2026', 'Mai', 'Juni'])
   })
 })
 
