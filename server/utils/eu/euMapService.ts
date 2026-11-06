@@ -35,7 +35,7 @@ import { withinBudget } from '../http/budget'
 import { getCurrentGp, getDraftsForGp, reconcileActive } from '../parliament/drafts'
 import { dedupeDraftList } from '../parliament/draftList'
 import { getStationMapForGp } from '../parliament/stationMap'
-import { getBgblIssueDate, getBgblOutcomesForGp } from '../ris/bgblService'
+import { findBgblIForVorlage, getBgblIssueDate, getBgblOutcomesForGp } from '../ris/bgblService'
 import { getRisBegutRecord, getRisMapForGp } from '../ris/begutCorpus'
 import { getRisOnlyForGp } from '../ris/risOnly'
 import { withRisActiveOn, type RisBegutFlat } from '../ris/risRecord'
@@ -48,11 +48,14 @@ import {
   kundmachungDayPlan,
   landNumberOf,
   lookupKundmachungDays,
+  lookupVorlagenKundmachung,
   markersOf,
   numbersWithoutDay,
   relatedActsOf,
   relatedPeriodOf,
+  vorlagenWithoutNumber,
   withKundmachungDays,
+  withVorlagenKundmachung,
   type EuMap,
 } from './euMap'
 import { emptyStore, fingerprintOf, isFresh, landKey, loadEuStore, meKey, risKey, saveEuStore, type EuStoreFile } from './euMapStore'
@@ -319,8 +322,9 @@ async function runBuild(gp: string): Promise<EuMapBuildReport> {
 /**
  * The stored facts joined with today's lists. Incomplete — and so not
  * cached — where the station map or the outcomes missed their budget: the
- * rows then carry `stand: null`, and the next read tries again. Likewise
- * where a Kundmachung's day went unanswered (`lookupKundmachungDays`).
+ * rows then carry `stand: null`, and the next read tries again. Not where
+ * a Kundmachung's day or a Vorlage's Kundmachung went unanswered: that is a
+ * soft gap (below).
  */
 async function assembleFromStore(gp: string): Promise<Gathered<EuMap | null>> {
   const patient = forBuild.delete(gp)
@@ -339,10 +343,21 @@ async function assembleFromStore(gp: string): Promise<Gathered<EuMap | null>> {
   // A readable map is not yet a period one may speak about (§12.27): where
   // it may not, no Ministerialentwurf gets a stand.
   const speakable = chains && mayClaimOutcome(chainCoverageOf(Object.values(chains), gpHasEnded(gp, currentGp)))
+  let stands = speakable ? chains : null
+  // A decided Vorlage the station map found no Kundmachung for — its RIS
+  // search missed the map's budget, or the law came out since: asked again
+  // by the Vorlage the chain names (`bgblSearch`), under the same plan as
+  // the day below. Before the day: a number found here comes with its day.
+  const searches = stands ? vorlagenWithoutNumber(stands) : []
+  if (stands && searches.length) {
+    const plan = kundmachungDayPlan(patient)
+    const { found, unanswered } = await lookupVorlagenKundmachung(searches, (s) => findBgblIForVorlage(s.gp, s.inr, s.from), plan)
+    stands = withVorlagenKundmachung(stands, found)
+    if (patient && unanswered) console.warn(`[eu-karte] ${gp}: ${unanswered} von ${searches.length} Kundmachungssuchen ohne Antwort`)
+  }
   // A chain with a BGBl number and no day missed the station map's date
   // lookup; asked again here, patiently where a build waits — else a
   // promulgated law stood at „Beschluss" until the next build.
-  let stands = speakable ? chains : null
   const missing = stands ? numbersWithoutDay(stands) : []
   if (stands && missing.length) {
     const { days, unanswered } = await lookupKundmachungDays(missing, getBgblIssueDate, kundmachungDayPlan(patient))
@@ -368,8 +383,9 @@ async function assembleFromStore(gp: string): Promise<Gathered<EuMap | null>> {
     unavailableLands: laender.sources.filter((s) => s.state === 'unavailable').map((s) => s.land),
     today: todayIso(),
   })
-  // A day nobody answered is not a failure of the map: the row says
-  // „Beschluss" with its date, which is true, and the next build asks again.
+  // A day — or a Vorlage's Kundmachung — nobody answered is not a failure
+  // of the map: the row says „Beschluss" with its date, which is true, and
+  // the next build asks again.
   // Calling the map incomplete here would keep it out of the cache and
   // re-assemble it, with the wait, on every page view while RIS is slow.
   return { value: map, complete: chains !== null && outcomes !== null }

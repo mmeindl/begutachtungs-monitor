@@ -26,8 +26,11 @@ import {
   isImplementing,
   kundmachungDayPlan,
   lookupKundmachungDays,
+  lookupVorlagenKundmachung,
   numbersWithoutDay,
+  vorlagenWithoutNumber,
   withKundmachungDays,
+  withVorlagenKundmachung,
   markersOf,
   relatedActsOf,
   relatedPeriodOf,
@@ -462,5 +465,55 @@ describe('a Kundmachung\'s day the station map missed', () => {
     const slow = () => new Promise<string | null>((resolve) => setTimeout(() => resolve('2025-12-23'), 200))
     const once = await lookupKundmachungDays(['A'], slow, { budgetMs: 10, attempts: 1 })
     expect(once).toEqual({ days: new Map(), unanswered: 1 })
+  })
+})
+
+describe('a decided Vorlage the station map found no Kundmachung for (06.11.2026)', () => {
+  const search = { gp: 'XXVIII', inr: 300, from: '2025-12-10' }
+  const chains = {
+    50: chain({ station: 'parlament', decidedAt: '2025-12-10', bgblSearch: search }),
+    51: chain({ station: 'parlament', decidedAt: '2025-12-10', bgblSearch: search }),
+    52: chain({ station: 'parlament', decidedAt: '2026-01-20', bgblSearch: { gp: 'XXVIII', inr: 301, from: '2026-01-20' } }),
+    53: chain({ station: 'parlament', decidedAt: '2026-02-01' }),
+    54: chain({ station: 'bgbl', bgblNumber: 'BGBl. I Nr. 1/2026', bgblDate: '2026-01-10' }),
+  }
+
+  it('asks once per Vorlage the chain names, and only for a chain without a number', () => {
+    expect(vorlagenWithoutNumber(chains)).toEqual([search, { gp: 'XXVIII', inr: 301, from: '2026-01-20' }])
+    expect(vorlagenWithoutNumber({ 1: chain({ station: 'bgbl', bgblNumber: 'BGBl. I Nr. 2/2026', bgblSearch: search }) })).toEqual([])
+  })
+
+  it('fills number, day and station in copies — the station map\'s objects untouched', () => {
+    const filled = withVorlagenKundmachung(chains, new Map([['XXVIII/300', { number: 'BGBl. I Nr. 140/2025', datum: '2025-12-23' }]]))
+    expect(filled[50]).toMatchObject({ station: 'bgbl', bgblNumber: 'BGBl. I Nr. 140/2025', bgblDate: '2025-12-23' })
+    expect(filled[51]!.bgblNumber).toBe('BGBl. I Nr. 140/2025')
+    expect(chains[50].bgblNumber).toBeNull()
+    expect(chains[50].station).toBe('parlament')
+    expect(filled[52]).toBe(chains[52])
+    expect(filled[54]).toBe(chains[54])
+    expect(standOfMe(chains[50], true, TODAY)).toEqual({ date: '2025-12-10', label: 'Beschluss' })
+    expect(standOfMe(filled[50], true, TODAY)).toEqual({ date: '2025-12-23', label: 'Bundesgesetzblatt' })
+    // Nothing left for the day lookup: the search brings its day.
+    expect(numbersWithoutDay(filled)).toEqual([])
+  })
+
+  it('retries a search that failed, not one that answered „none" — and counts the unanswered', async () => {
+    const calls: number[] = []
+    let first = true
+    const lookup = async (s: { inr: number }) => {
+      calls.push(s.inr)
+      if (s.inr === 300 && first) {
+        first = false
+        throw new Error('RIS timeout')
+      }
+      return s.inr === 300 ? { number: 'BGBl. I Nr. 140/2025', datum: '2025-12-23' } : null
+    }
+    const r = await lookupVorlagenKundmachung(vorlagenWithoutNumber(chains), lookup, { budgetMs: 50, attempts: 2 })
+    expect(r.found).toEqual(new Map([['XXVIII/300', { number: 'BGBl. I Nr. 140/2025', datum: '2025-12-23' }]]))
+    expect(r.unanswered).toBe(0)
+    expect(calls.sort()).toEqual([300, 300, 301])
+
+    const slow = () => new Promise<null>((resolve) => setTimeout(() => resolve(null), 200))
+    expect(await lookupVorlagenKundmachung([search], slow, { budgetMs: 10, attempts: 1 })).toEqual({ found: new Map(), unanswered: 1 })
   })
 })

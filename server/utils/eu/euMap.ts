@@ -397,8 +397,11 @@ export function relatedPeriodOf(
  *  - `visit`: an assembly a reader's request started — the stand's own
  *    brake (`STAND_BUDGET_MS`, 2.5 s), once. It is mostly a warm read: the
  *    record behind the day is cached for a month (`bgbl-dokument`), and the
- *    build filled it. A miss there leaves the map incomplete, so it is
- *    not cached and the next read asks again.
+ *    build filled it. A miss leaves the row at „Beschluss" and the map in
+ *    the cache; the next build asks again (`assembleFromStore`).
+ *
+ * The same plan asks for a decided Vorlage's Kundmachung the station map
+ * did not find (`lookupVorlagenKundmachung`, 06.11.2026).
  */
 export interface DayLookupPlan {
   budgetMs: number
@@ -447,16 +450,95 @@ export async function lookupKundmachungDays(
   lookup: (bgblNumber: string) => Promise<string | null>,
   plan: DayLookupPlan,
 ): Promise<{ days: Map<string, string>; unanswered: number }> {
-  const days = new Map<string, string>()
+  const { found, unanswered } = await askPatiently(numbers, (n) => n, lookup, plan)
+  return { days: found, unanswered }
+}
+
+/**
+ * Asks `lookup` for each item under `plan` — the rule of
+ * `lookupKundmachungDays` for any lookup: a try that neither answered in
+ * time nor answered at all is retried up to `attempts`, an answer of null is
+ * an answer. `found` holds the non-null answers by `keyOf`.
+ */
+async function askPatiently<T, V>(
+  items: readonly T[],
+  keyOf: (item: T) => string,
+  lookup: (item: T) => Promise<V | null>,
+  plan: DayLookupPlan,
+): Promise<{ found: Map<string, V>; unanswered: number }> {
+  const found = new Map<string, V>()
   let unanswered = 0
-  await Promise.all(numbers.map(async (n) => {
+  await Promise.all(items.map(async (item) => {
     for (let i = 0; i < plan.attempts; i++) {
-      const answer = await withinBudget(lookup(n).then((day) => ({ day })), plan.budgetMs)
+      const answer = await withinBudget(lookup(item).then((value) => ({ value })), plan.budgetMs)
       if (!answer) continue
-      if (answer.day) days.set(n, answer.day)
+      if (answer.value !== null) found.set(keyOf(item), answer.value)
       return
     }
     unanswered++
   }))
-  return { days, unanswered }
+  return { found, unanswered }
+}
+
+// ---------------------------------------------------------------------------
+// A decided Vorlage the station map found no Kundmachung for (06.11.2026)
+// ---------------------------------------------------------------------------
+
+/** What `findBgblIForVorlage` is asked with, as the chain carries it (`DraftChain.bgblSearch`). */
+export type VorlageSearch = NonNullable<DraftChain['bgblSearch']>
+
+/** What it answers: the Kundmachung in Parliament's spelling, and its day. */
+export interface VorlageKundmachung {
+  number: string
+  datum: string
+}
+
+const searchKey = (s: VorlageSearch): string => `${s.gp}/${s.inr}`
+
+/**
+ * The Vorlagen to ask RIS for once more: every chain the station map asked
+ * for its Kundmachung and that came back without a number — its search
+ * missed the map's budget (5 s per chain, `stationMap.ts`), or the law was
+ * promulgated since. Without the Vorlage's identity on the chain the
+ * assembly could not ask: a decided law stood at „Beschluss" until the next
+ * build of the station map. Each Vorlage once — two drafts can share one.
+ */
+export function vorlagenWithoutNumber(chains: Readonly<Record<number, DraftChain>>): VorlageSearch[] {
+  const out = new Map<string, VorlageSearch>()
+  for (const c of Object.values(chains)) {
+    if (c.bgblNumber || !c.bgblSearch) continue
+    out.set(searchKey(c.bgblSearch), c.bgblSearch)
+  }
+  return [...out.values()]
+}
+
+/**
+ * Asks RIS for each Vorlage's Kundmachung under `plan` — the day's plan
+ * (`kundmachungDayPlan`): patient for a build, the stand's brake for a
+ * reader. An answer of none is an answer (not yet promulgated);
+ * `unanswered` counts the Vorlagen no try answered.
+ */
+export async function lookupVorlagenKundmachung(
+  searches: readonly VorlageSearch[],
+  lookup: (search: VorlageSearch) => Promise<VorlageKundmachung | null>,
+  plan: DayLookupPlan,
+): Promise<{ found: Map<string, VorlageKundmachung>; unanswered: number }> {
+  return askPatiently(searches, searchKey, lookup, plan)
+}
+
+/**
+ * The chains with the Kundmachungen found filled in — number, day and the
+ * station `bgbl`, as the station map would have written them — copies; the
+ * station map's own objects stay as they are.
+ */
+export function withVorlagenKundmachung(
+  chains: Readonly<Record<number, DraftChain>>,
+  found: ReadonlyMap<string, VorlageKundmachung>,
+): Record<number, DraftChain> {
+  const out: Record<number, DraftChain> = {}
+  for (const [inr, c] of Object.entries(chains)) {
+    const hit = !c.bgblNumber && c.bgblSearch ? found.get(searchKey(c.bgblSearch)) : undefined
+    out[Number(inr)] = hit ? { ...c, station: 'bgbl', bgblNumber: hit.number, bgblDate: hit.datum } : c
+  }
+  return out
 }

@@ -273,6 +273,7 @@ async function chainOf(
      * past its budget is a gap, not „no Kundmachung yet": the read is
      * incomplete, as for the day below (06.11.2026). */
     let bgblDate: string | null = null
+    let bgblSearch: DraftChain['bgblSearch']
     const decided = decidedAt || row?.status === STATUS_FINISHED || row?.status === STATUS_AT_BUNDESRAT
     const from = decidedAt || row?.date || rv.date
     // Not where Parliament says this Vorlage's text was not promulgated:
@@ -284,6 +285,8 @@ async function chainOf(
         bgblNumber = ris.value.number
         bgblDate = ris.value.datum
       }
+      // Asked and not found: the key a later, more patient reader asks with.
+      if (!bgblNumber) bgblSearch = { gp: rv.gp, inr: rv.inr, from }
     }
 
     const station = stationFor(bgblNumber, row?.status ?? null, decidedAt)
@@ -306,6 +309,7 @@ async function chainOf(
         bundesratDecidedAt,
         notPromulgated,
         ...(antragCitation ? { antragCitation } : {}),
+        ...(bgblSearch ? { bgblSearch } : {}),
       },
       complete,
     }

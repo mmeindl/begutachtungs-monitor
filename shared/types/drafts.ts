@@ -182,6 +182,17 @@ export interface DraftChain {
    * Antrag as `antragCitation`.
    */
   notPromulgated?: NoPromulgation | null
+  /**
+   * The Vorlage whose Kundmachung RIS may be asked for, where Parliament's
+   * record links none: its period and number, and the earliest day a
+   * Kundmachung can carry (`findBgblIForVorlage`). Set where the station map
+   * asked — a decided Vorlage without a „Keine Kundmachung" stage — and came
+   * back without a number, whether RIS said none or did not answer within
+   * the map's budget; then a reader with more patience can ask again (the EU
+   * map's assembly, `vorlagenWithoutNumber`, 06.11.2026). Absent everywhere
+   * else. Identity only: no list or page reads it for what it shows.
+   */
+  bgblSearch?: { gp: string; inr: number; from: string }
 }
 
 /**

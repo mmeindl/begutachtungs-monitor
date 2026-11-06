@@ -220,7 +220,8 @@ describe('a RIS search for a decided Vorlage\'s Kundmachung that does not answer
   it('is a gap, not „not yet promulgated": the map is kept ten minutes, and the next build finds the number', async () => {
     getVorlagenForGp.mockResolvedValue([{ ...VORLAGE, status: '5' }])
     findBgblIForVorlage.mockRejectedValueOnce(new Error('RIS: fetch failed'))
-    expect((await getStationMapForGp('XXVIII'))[WITH_RV.inr]).toMatchObject({ bgblNumber: null })
+    // The chain names the Vorlage, so a more patient reader can ask again (the EU map).
+    expect((await getStationMapForGp('XXVIII'))[WITH_RV.inr]).toMatchObject({ bgblNumber: null, bgblSearch: { gp: 'XXVIII', inr: 10, from: '2026-02-01' } })
 
     findBgblIForVorlage.mockResolvedValue({ number: 'BGBl. I Nr. 5/2026', datum: '2026-03-02', url: 'https://www.ris.bka.gv.at/x' })
     vi.setSystemTime(Date.now() + 11 * MINUTE)
