@@ -91,7 +91,7 @@ const citation = computed(() => (view.value ? `${view.value.subject ? `${view.va
           </p>
           <!-- The Frist as the act sets it, in its own words (D6). -->
           <p v-if="page.fristClause" class="mt-2 text-sm text-ink-secondary">
-            Laut Grundsatzgesetz: „{{ page.fristClause.replace(/\.$/, '') }}“.
+            Laut Grundsatzgesetz: „{{ page.fristClause }}“
           </p>
         </DraftHeader>
 

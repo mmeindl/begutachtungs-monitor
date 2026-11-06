@@ -72,9 +72,20 @@ function draftsDative(n: number): string {
   return n === 1 ? 'einem Entwurf der Länder' : `${n} Entwürfen der Länder`
 }
 
-/** „binnen eines Jahres" out of „Die Ausführungsgesetze der Länder sind binnen eines Jahres zu erlassen." */
-export function fristWordsOf(clause: string): string {
-  return clause.replace(/^Die Ausführungsgesetze der Länder sind\s+/u, '').replace(/,?\s+zu erlassen\.$/u, '')
+/**
+ * The Frist clause as the page quotes it: the whole sentence, never a piece
+ * that ends on a comma. A reference a reader cannot resolve without the
+ * act — „gemäß Absatz 8", „gemäß § 41" — is cut out with „…": 91/2025's
+ * „… binnen sechs Monaten nach Inkrafttreten der Grundsatzbestimmungen
+ * gemäß Absatz 8, zu erlassen." is quoted „… nach Inkrafttreten der
+ * Grundsatzbestimmungen … zu erlassen."
+ */
+export function fristQuoteOf(clause: string): string {
+  return clause
+    .replace(/\s+gemäß\s+(?:Absatz|Abs\.|§|Artikel|Art\.)\s*[^,]*?(?=,|\s+zu erlassen)/gu, ' …')
+    .replace(/,\s+zu erlassen\.$/u, ' zu erlassen.')
+    .replace(/\s+/gu, ' ')
+    .trim()
 }
 
 /** The Ministerialentwurf's line: two facts, never „0 Länder" (D6). */
@@ -84,14 +95,14 @@ export interface MeLineView {
   path: string
   /** „Ausführungsgesetze der Länder: noch kein Entwurf im Fenster". */
   none: string | null
-  /** „binnen eines Jahres", the Grundsatzgesetz's own words, where none exists yet and it sets a Frist. */
+  /** The Grundsatzgesetz's Frist sentence (`fristQuoteOf`), where none exists yet and it sets a Frist. */
   frist: string | null
 }
 
 export function meLineView(line: MeBundesrechtLine | null | undefined): MeLineView | null {
   if (!line) return null
   if (line.drafts > 0) return { link: `Ausgeführt in ${draftsDative(line.drafts)}`, path: line.path, none: null, frist: null }
-  return { link: null, path: line.path, none: 'Ausführungsgesetze der Länder: noch kein Entwurf im Fenster', frist: line.fristClause ? fristWordsOf(line.fristClause) : null }
+  return { link: null, path: line.path, none: 'Ausführungsgesetze der Länder: noch kein Entwurf im Fenster', frist: line.fristClause ? fristQuoteOf(line.fristClause) : null }
 }
 
 /* ------------------------------------------------------------------ *
@@ -134,7 +145,12 @@ export function bundLandActPageView(r: BundLandActResponse): BundLandActPageView
   const entries = drafts.map((d) => viewOfRow(d.row))
 
   // One track, the Kundmachung the mark over the lanes (`EuTimelineChart`), as the act page of EU law draws its deadline.
-  const drawn = drafts.filter((d) => d.stand && (d.begutachtung.start ?? d.begutachtung.end))
+  // A draft gets a lane where its stand is known. Without Begutachtung dates
+  // (Kärnten's ktn-15193 dates none) its line runs from the Kundmachung to
+  // its stand — the Land follows the act, so that is where its way starts
+  // on this page; the EU act page draws no such lane, because there the
+  // deadline is no start. Without a stand only the row stands.
+  const drawn = drafts.filter((d) => d.stand && (d.begutachtung.start ?? d.begutachtung.end ?? act.kundmachung))
   const days = [
     ...(act.kundmachung ? [act.kundmachung] : []),
     ...drawn.flatMap((d) => [d.begutachtung.start, d.begutachtung.end, d.stand!.date]),
@@ -142,6 +158,13 @@ export function bundLandActPageView(r: BundLandActResponse): BundLandActPageView
   const first = days.length ? Math.min(...days) : 0
   const span = days.length ? Math.max(...days) - first : 0
   const at = (iso: string) => ((dayOf(iso) - first) / span) * 100
+  const ticks = act.kundmachung ? [act.kundmachung] : []
+  const laneOf = (d: (typeof drawn)[number]) => {
+    const bar = laneBarOf(at, d.begutachtung, d.stand!, ticks)
+    // No Begutachtung dates: the ink line from the Kundmachung, not a dot alone.
+    if (!(d.begutachtung.start ?? d.begutachtung.end) && act.kundmachung) bar.from = Math.min(at(act.kundmachung), bar.value)
+    return bar
+  }
   const chart: EuChartView | null = drawn.length && span > 0
     ? {
         deadlines: act.kundmachung ? [{ key: 'kundmachung', at: at(act.kundmachung), align: edgeAlign(at(act.kundmachung)), lines: ['Kundmachung', formatDateDe(act.kundmachung)] }] : [],
@@ -151,7 +174,7 @@ export function bundLandActPageView(r: BundLandActResponse): BundLandActPageView
           publisher: LAND_NAME[d.publisher],
           name: laneNameOf(d.title),
           title: d.title,
-          bar: laneBarOf(at, d.begutachtung, d.stand!, act.kundmachung ? [act.kundmachung] : []),
+          bar: laneOf(d),
         })),
         footnote: null,
       }
@@ -176,7 +199,7 @@ export function bundLandActPageView(r: BundLandActResponse): BundLandActPageView
     risUrl: act.risUrl,
     vorlage: act.vorlage,
     me: act.me ? { citation: act.me.citation, path: act.me.path } : null,
-    fristClause: act.fristClause,
+    fristClause: act.fristClause ? fristQuoteOf(act.fristClause) : null,
     count: draftsCountDe(LAND_CODES.filter((l) => drafts.some((d) => d.publisher === l)).map((l) => LAND_NAME[l]), drafts.length),
     entries,
     partial,

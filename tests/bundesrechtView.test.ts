@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import type { BundesrechtFinding, BundLandActResponse, LandConsultation } from '../shared/types'
-import { bundesrechtLines, bundLandActPageView, draftsCountDe, fristWordsOf, meLineView } from '../app/utils/bundesrecht'
+import { bundesrechtLines, bundLandActPageView, draftsCountDe, fristQuoteOf, meLineView } from '../app/utils/bundesrecht'
 
 const finding = (over: Partial<BundesrechtFinding>): BundesrechtFinding => ({ kind: 'grundsatzgesetz', name: null, bgbl: null, partial: false, path: null, kundmachung: null, risUrl: null, ...over })
 const text = (l: ReturnType<typeof bundesrechtLines>[number]) => `${l.before}${l.linked ?? ''}${l.after}${l.citation ?? ''}.`
@@ -36,7 +36,7 @@ describe('the Ministerialentwurf\'s line', () => {
 
   it('says „noch kein Entwurf im Fenster" and the act\'s own Frist words where none exists — no zero', () => {
     const v = meLineView({ path: '/p', drafts: 0, lands: [], fristClause: 'Die Ausführungsgesetze der Länder sind binnen eines Jahres zu erlassen.' })
-    expect(v).toEqual({ link: null, path: '/p', none: 'Ausführungsgesetze der Länder: noch kein Entwurf im Fenster', frist: 'binnen eines Jahres' })
+    expect(v).toEqual({ link: null, path: '/p', none: 'Ausführungsgesetze der Länder: noch kein Entwurf im Fenster', frist: 'Die Ausführungsgesetze der Länder sind binnen eines Jahres zu erlassen.' })
     expect(JSON.stringify(v)).not.toMatch(/\b0\b/)
   })
 
@@ -44,8 +44,14 @@ describe('the Ministerialentwurf\'s line', () => {
     expect(meLineView(null)).toBeNull()
   })
 
-  it('cuts the Frist words out of the clause', () => {
-    expect(fristWordsOf('Die Ausführungsgesetze der Länder sind binnen sechs Monaten nach Inkrafttreten der Grundsatzbestimmungen gemäß Absatz 8, zu erlassen.')).toBe('binnen sechs Monaten nach Inkrafttreten der Grundsatzbestimmungen gemäß Absatz 8')
+  it('quotes the whole Frist sentence, the unresolvable reference cut with „…", never ending on a comma', () => {
+    // The three clauses as RIS prints them (44/2025, 47/2026, 91/2025).
+    expect(fristQuoteOf('Die Ausführungsgesetze der Länder sind binnen eines Jahres zu erlassen.')).toBe('Die Ausführungsgesetze der Länder sind binnen eines Jahres zu erlassen.')
+    expect(fristQuoteOf('Die Ausführungsgesetze der Länder sind binnen neun Monaten zu erlassen.')).toBe('Die Ausführungsgesetze der Länder sind binnen neun Monaten zu erlassen.')
+    const q = fristQuoteOf('Die Ausführungsgesetze der Länder sind binnen sechs Monaten nach Inkrafttreten der Grundsatzbestimmungen gemäß Absatz 8, zu erlassen.')
+    expect(q).toBe('Die Ausführungsgesetze der Länder sind binnen sechs Monaten nach Inkrafttreten der Grundsatzbestimmungen … zu erlassen.')
+    expect(q).not.toMatch(/,\s*zu erlassen/)
+    expect(fristQuoteOf('Die Ausführungsgesetze der Länder sind binnen drei Monaten nach Inkrafttreten der Bestimmungen gemäß § 41 Abs. 2 zu erlassen.')).toBe('Die Ausführungsgesetze der Länder sind binnen drei Monaten nach Inkrafttreten der Bestimmungen … zu erlassen.')
   })
 })
 
@@ -71,6 +77,18 @@ describe('the act page', () => {
     expect(v.chart?.lanes).toHaveLength(3)
     expect(Object.values(v.partial)).toEqual(['führt es teilweise aus'])
     expect(JSON.stringify(v)).not.toMatch(/überfällig|verspätet|Tage/)
+  })
+
+  it('draws a lane from the Kundmachung for a draft without Begutachtung dates (ktn-15193), none without a stand', () => {
+    const undated = { ...draft('ktn-1', 'ktn'), begutachtung: { start: null, end: null }, stand: { date: '2026-07-30', label: 'Landesgesetzblatt' as const } }
+    const nostand = { ...draft('ooe-2', 'ooe'), stand: null }
+    const v = bundLandActPageView(response([undated, nostand, draft('w-3', 'w')]))
+    expect(v.chart?.lanes.map((l) => l.key)).toEqual(['land:ktn-1', 'land:w-3'])
+    const lane = v.chart!.lanes[0]!.bar
+    expect(lane.band).toBeNull()
+    expect(lane.from).toBe(0)
+    expect(lane.value).toBeGreaterThan(lane.from)
+    expect(v.entries).toHaveLength(3)
   })
 
   it('has no count and no chart without drafts', () => {
