@@ -15084,6 +15084,49 @@ Extraktionslösungsmittel-VO verliert 2023/175, weil ihr § 5 in Kraft nicht
 auflöst (Präzision zuerst).
 
 
+**Ergänzung (06.11.2026, früh): die vier Reste.** (1) Eine ändernde
+Richtlinie ohne Nummer („… wird die Richtlinie zur Änderung der Richtlinie
+2014/65/EU … umgesetzt", 28/ME GewO-EU-Finanzberufe): die Akte in ihrem
+Titel sind Basistexte (`base`, wie „in der Fassung der …") — ohne Frist,
+und ein Fenster, dessen Akte alle Basis sind, entscheidet nichts; 2009/138
+kommt dazu, das zuvor als Titelzitat fiel, damit nicht zwei von drei
+geänderten Richtlinien stehen. Zwei Wächter, beide gemessen: nach „in der
+Fassung" oder „geändert durch" bleibt ein nummernloser ändernder Akt ein
+Titelzitat (Vergaberechtsgesetz: „zuletzt geändert durch den Beschluss zur
+Änderung der Richtlinien 2009/12/EG, …"), und Basis ist nur, was der Text
+sonst nirgends nennt. Bund-Korpus 359 → 360 Akte, die Entscheidungen der
+Seiten unverändert. (2) Das Tor der zitierten Ziffer las § 5 der
+Extraktionslösungsmittelverordnung nicht, weil die Anweisung „In § 5 wird
+am Ende des dritten Spiegelstrichs … folgender Spiegelstrich angefügt" von
+`addressedUnits` als „Untergliederung ohne eigene Ebene" verworfen wird —
+richtig für den Paragraphenvergleich, aber das Tor braucht nur den §. Nur
+für diesen Grund (`SUB_UNIT_REFUSAL`) greift `hintWindowParagraphs` auf die
+genannten Einheiten zurück; § 5 ist ein Hinweis, 2023/175 kommt herein.
+Zensus über die 512 RIS-Datensätze: 192 Hinweisfenster in einem ändernden
+Artikel, zwei verworfen — dieser, gelöst, und die Konfitürenverordnung
+(„Der bisherige § 7 erhält die Bezeichnung § 8"), die verworfen bleibt,
+weil § 8 in Kraft eine andere Bestimmung ist. `EU_READER_VERSION` 5.
+(3) Die Stationskarte: ein Kundmachungstag oder eine RIS-Suche, die nicht
+im Budget antwortet, ist eine Lücke, kein „kein Tag" (`answerWithinBudget`,
+`Budgeted`): die Lesung der Kette gilt als unvollständig, die Karte hält
+zehn Minuten statt sechs Stunden (`INCOMPLETE_MAP_TTL_MS`, der bestehende
+Weg für jede fehlgeschlagene Parlamentslesung), die Abfrage läuft weiter
+und füllt ihren Monatscache, der nächste Aufbau findet den Tag ohne zu
+warten; ein Tag, den das RIS nicht kennt, ist eine Antwort und behält die
+sechs Stunden. Dasselbe für die BGBl-Suche einer beschlossenen Vorlage,
+die bis dahin nach einem Timeout sechs Stunden bei „Parlament" stand.
+Kosten: solange das RIS langsam ist, wird die Stationskarte alle zehn
+Minuten aus den Blattcaches neu zusammengesetzt, mit einem weiteren
+Versuch von 5 s. (4) Die Kette nennt ihre Vorlage, wo die Suche nichts fand
+(`bgblSearch {gp, inr, from}`), und die EU-Karte fragt beim Zusammensetzen
+geduldig nach (20 s, zweimal, nur für den Aufbau; 2,5 s einmal für einen
+Leser), auf Kopien, eine unbeantwortete Suche als weiche Lücke. Gemessen (Produktionsbuild, 320 MB
+Heap, Leser 5): kalt 208 s (ME 45 s, RIS 14 s, Länder 126 s), Heap-Spitze
+189 MB, aus dem Speicher 8 s; 156 Entwürfe mit Merkmal, 231 Akte, Übersicht
+125 und 106 gefaltet; 28/ME trägt 2009/138, 2014/65 und 2015/849 als
+Basistexte ohne Frist, das Merkmal weiter aus dem Vorblatt.
+
+
 ## 13. Open questions
 
 1. **Legal (restated 2026-09-16 — the old wording asked the wrong question).** It assumed the metadata was CC-BY and only the full texts excluded. Parliament's licence page for the Begutachtungsverfahren excludes *Beteiligungen zu Ministerialentwürfen* from open-data reuse as such, and no licensed dataset covers Ministerialentwürfe at all. So the question is now: **on what basis may the metadata of lists 81/142/305 be reused?** Two halves — the factual one (how is that sentence meant, is a case-by-case release possible) goes to the Parlamentsdirektion, the legal one (is factual metadata protectable at all; Datenbankherstellerrecht §§ 76c ff vs. § 42h UrhG) to a university partner. The inline web-form texts remain a sub-question of it, not a separate one. It blocks a blanket CC-BY claim on the site, which was removed on 2026-09-16. **And "stage 1 is metadata-only either way", which stood here until 2026-09-19, is not quite true — one block breaks it.** Under „Worum geht es?" the draft page prints Parliament's `shortinfo`: Ziele, Inhalt, Hauptgesichtspunkte. That is prose from the excluded dataset, and no enumeration of "Fristen, Geschäftszahlen, Anzahl" covers it. The obvious escape was measured and does not hold (`pnpm corpus:kurzinfo`, GP XXVII, 337 drafts): the Kurzinformation is *not* simply the ministry's text, which RIS publishes CC BY. 53 % of drafts carry no prose at all, only the Vorblatt lists (67 % of all characters, untested here because the Vorblatt is a RIS document the corpus mapper does not carry); where there is prose, a median of 60 % of its eight-word windows occur verbatim in the ministry's documents, p10 25 %, and only 6.6 % of drafts are covered to 90 % or more. It is Parliament's editorial work on the ministry's material — related, but not the same document, so it cannot be sourced from RIS instead. Consequence: `/impressum` and `/ueber` name it since 2026-09-19, and **the question to the Parlamentsdirektion has to name it too** — an answer of the form "only the contents of the Stellungnahmen are excluded" would not settle it, because the Kurzinformation is neither a Stellungnahme nor a metadatum. And a third block, found 23.09.2026, which unlike the Kurzinformation sits in code: the § comparison reads the Ministerialentwurf's Gesetzestext from Parliament's HTML wherever Parliament publishes one (`diff/lawDiffService.ts`, RIS XML only where it does not), and the Begründungsvergleich reads the draft's Erläuterungen from the same copy on both sides (`explanations/reasoningDiffService.ts`) — both for a measured reason, one Word template on both sides (§12.12, sixth measurement), and both against the source order the Textgegenüberstellung follows (`annex/annexSource.ts`). The argument that carries it is the one the annex switch refuses for the drafts RIS does not hold — the same documents stand in RIS under CC BY — and for those drafts (12 of 350 in GP XXVII) the comparison shows Parliament's text with no RIS twin. `/ueber` and `/impressum` name it since 23.09.2026. Open, and part of the question above: whether to read the draft's text RIS-first like the annex, at the measured cost to the alignment, or to keep the parser symmetry and say so — as the copy now does. Read live on 23.09.2026, Parliament's own dataset pages (Regierungsvorlagen, Anträge, Ausschussberichte, Beschlüsse — one template) call the documents of those items „freie Werke und somit ohne Lizenzierung frei nutzbar“ and license only the result lists, the API and the history pages as CC BY 4.0; the exclusion sentence on the Beteiligungen page names *Beteiligungen* zu Ministerialentwürfen, not the drafts or their documents. (What stood here until 30.09.2026 — that the Beteiligungen lists are CC BY and that the Stellungnahmen zur Regierungsvorlage, §12.14, run under that grant — was a misreading: the Beteiligungen dataset is „Aktuelle Beteiligungen", list 143, items open for participation on the day of the query, and its page says „Ministerialentwürfe und Stellungnahmen fallen nicht darunter"; the Regierungsvorlagen page excludes „sämtliche Informationen zu Stellungnahmen" from free use and licensing, for data protection and copyright. The Stellungnahmen zur Regierungsvorlage therefore carry no licence either, and `/impressum` says so since 30.09.2026.) So the sharp form of the question to the Parlamentsdirektion is whether „die Dokumente selbst sind freie Werke“ holds for a Ministerialentwurf's documents too — and, separately, on what basis list 81 as such and the Kurzinformation may be reused. **The § comparison's own credit line was corrected to those facts on 23.09.2026:** it claimed „CC BY 4.0" whenever neither side was the Ministerialentwurf (`isLicensedPair`), which named a licence Parliament does not grant for these documents — the correct note for a Regierungsvorlage, Ausschuss- or Plenarfassung read from Parliament is „Dokumente: freie Werke, § 7 UrhG", a RIS-sourced side stays CC BY 4.0, and the Ministerialentwurf is credited by name with no claim at all, because what may be claimed for it is precisely this open question (`lawDiffSourceCredit`).
