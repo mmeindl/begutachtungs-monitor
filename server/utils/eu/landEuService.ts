@@ -26,6 +26,8 @@
  * (`laender/landExplanationsRead.ts`) hands back the pages it read — the
  * Erläuterungen' document and the draft's, the same one where the Land
  * files both in one PDF — and every reading here runs over those pages.
+ * The read is shared with the Bund fact on the same draft
+ * (`laender/landDraftTexts.ts`, §12.67).
  *
  * **A failure is not an answer** (§12.13). A document that cannot be
  * fetched throws: whether the draft is an EU matter is the question
@@ -34,7 +36,6 @@
  * (`cache/gathered.ts`).
  */
 import type { EuActView, EuRechtResponse, LandCode } from '#shared/types'
-import { safeExternalUrl } from '#shared/utils/safeExternalUrl'
 import type { EuAct } from './actCitations'
 import { deadlineOf } from './cellar'
 import { transpositionOf } from './cellarService'
@@ -46,8 +47,8 @@ import { fetchParagraphXml } from '../kons/konsCache'
 import { DERIVED_CACHE } from '../cache/base'
 import { onlyComplete, type Gathered } from '../cache/gathered'
 import { PUBLISHED_DOCUMENT_TTL_S } from '../cache/ttl'
-import { readLandExplanations } from '../laender/landExplanationsRead'
-import { NOT_A_DRAFT, pdfPages } from '../laender/texts/read'
+import { readLandDraftTexts } from '../laender/landDraftTexts'
+import { NOT_A_DRAFT } from '../laender/texts/read'
 import type { LandDraftRecord } from '../laender/texts/stations'
 
 /**
@@ -110,27 +111,12 @@ function empty(reason: string, begutachtungStart: string | null = null): EuRecht
 /** The fact for one Land's draft. */
 export async function assembleLandEu(land: LandCode, detail: LandDraftRecord): Promise<Gathered<EuRechtResponse>> {
   const start = detail.draft.startedAt ?? null
-  const read = await readLandExplanations(land, detail)
-  const erl = read.response
+  // The pages and the Erläuterungen, read once for this fact and the Bund's (`landDraftTexts.ts`).
+  const texts = await readLandDraftTexts(land, detail)
+  const erl = texts.erl
   if (erl.unavailableReason === NOT_A_DRAFT) return { value: empty(NOT_A_DRAFT, start), complete: true }
-
-  // The draft's text: read with the Erläuterungen, or — where they could
-  // not be parsed and the draft is a document of its own — now, once.
-  let complete = !read.draftFailed
-  let draftPages = read.draftUrl ? read.pages.get(read.draftUrl) ?? null : null
-  if (read.draftUrl && !draftPages && !read.draftFailed) {
-    draftPages = await pdfPages(read.draftUrl).catch(() => {
-      complete = false
-      return null
-    })
-  }
-  const input = {
-    land,
-    documents: detail.draft.documents.map((d) => ({ title: d.title, url: safeExternalUrl(d.url) ?? d.url })),
-    pages: read.pages,
-    explanations: { available: erl.available, general: erl.general, particular: erl.particular, url: erl.document?.url ?? null },
-    draft: { url: read.draftUrl, pages: draftPages },
-  }
+  let complete = texts.complete
+  const input = texts.input
 
   // D4, has the Land transposed the act already? Asked as of the first day
   // of the Begutachtung — Burgenland dates none, so its Frist's end stands
