@@ -60,7 +60,7 @@ import { parseRisXml } from '../../server/utils/lawtext/risXml'
 import type { TextBlock } from '../../server/utils/lawtext/lawUnits'
 import { mapDraftRow } from '../../server/utils/parliament/list81'
 import { withPdf } from '../../server/utils/text/pdfDocument'
-import { readEuActCitations, uniqueActs, type EuAct } from '../../server/utils/eu/actCitations'
+import { baseActsOf, readEuActCitations, uniqueActs, type EuAct } from '../../server/utils/eu/actCitations'
 import { VORBLATT_CLASS_RANK, VORBLATT_EU_YES, classifyVorblatt, classifyVorblattSentence, hasTextLayer, isVorblattDocument, linesOfPages, type VorblattClass } from '../../server/utils/eu/vorblatt'
 import { readBundLaw, readExplanationsEuSignal, readingOfWindows, type LawSignal } from '../../server/utils/eu/umsetzungshinweis'
 import { decideEuMarker } from '../../server/utils/eu/euMarker'
@@ -317,6 +317,8 @@ interface LawRead {
   dropped: string[]
   /** Acts only a quoted Ziffer of a Novelle names — on the page where the § in force is a hint, which this run does not read */
   quoted: Act[]
+  /** The acts the page marks as base texts (D4a, `baseActsOf`) — no deadline of theirs is the draft's */
+  base: string[]
   handHit: boolean
   cost: FetchCost[]
 }
@@ -347,12 +349,13 @@ function readLawBlocks(blocks: TextBlock[]): Omit<LawRead, 'available' | 'cost' 
     unanchored: read.dropped.length,
     dropped: read.dropped,
     quoted,
+    base: [...baseActsOf(windows, read.acts)],
   }
 }
 
 async function readLaw(record: RisBegutFlat): Promise<LawRead> {
   const url = record.mainDocument.xml
-  if (!url) return { available: false, signal: null, actSignal: null, windows: [], acts: [], cited: 0, unanchored: 0, dropped: [], quoted: [], handHit: false, cost: [] }
+  if (!url) return { available: false, signal: null, actSignal: null, windows: [], acts: [], cited: 0, unanchored: 0, dropped: [], quoted: [], base: [], handHit: false, cost: [] }
   const { text, cost } = await fetchRisText(url)
   const blocks = parseRisXml(text)
   const plain = blocks.map(blockText).join(' ')
@@ -514,7 +517,7 @@ const rows: Row[] = await pool(
       return {
         ...base,
         vorblatt: { docs: 0, withPdf: 0, withText: 0, withHeading: 0, source: null, cls: 'kein-vorblatt', classes: [], sentences: [], actsAll: [], actsZiele: [], ziele: [], cost: [] },
-        law: { available: false, signal: null, actSignal: null, windows: [], acts: [], cited: 0, unanchored: 0, dropped: [], quoted: [], handHit: false, cost: [] },
+        law: { available: false, signal: null, actSignal: null, windows: [], acts: [], cited: 0, unanchored: 0, dropped: [], quoted: [], base: [], handHit: false, cost: [] },
         erl: { available: false, general: false, signal: null, signalAnyPart: null, paragraphs: [], acts: [], cited: 0, handHit: false, bareFristOnly: false, unanchored: 0, cost: [] },
         error: String(err).slice(0, 200),
       }
@@ -536,7 +539,7 @@ if (show) {
     console.log(`    Akte im Vorblatt: ${r.vorblatt.actsAll.map((a) => a.celex).join(', ') || '—'}`)
     console.log(`\n  Gesetzestext: ${r.law.available ? '' : 'nicht lesbar '}Signal ${r.law.signal ?? '—'} · ${r.law.cited} Akte zitiert · Handmuster ${r.law.handHit ? 'ja' : 'nein'}`)
     for (const w of r.law.windows) console.log(`    „${w.slice(0, 600)}"`)
-    console.log(`    Akte: ${r.law.acts.map((a) => `${a.raw} → ${a.celex}`).join(' · ') || '—'}`)
+    console.log(`    Akte: ${r.law.acts.map((a) => `${a.raw} → ${a.celex}${r.law.base.includes(a.celex) ? ' (Basis)' : ''}`).join(' · ') || '—'}`)
     if (r.law.quoted.length) console.log(`    Zitierte Ziffer einer Novelle (auf der Seite, wo der § in Kraft ein Hinweis ist): ${r.law.quoted.map((a) => `${a.raw} → ${a.celex}`).join(' · ')}`)
     console.log(`\n  Erläuterungen: ${r.erl.available ? '' : 'nicht lesbar '}Allg. Teil ${r.erl.general ? 'ja' : 'nein'} · Signal ${r.erl.signal ?? '—'} (alle Teile ${r.erl.signalAnyPart ?? '—'}) · ${r.erl.cited} Akte zitiert · ohne EU-Anker ${r.erl.unanchored}`)
     for (const p of r.erl.paragraphs) console.log(`    „${p.slice(0, 600)}"`)
@@ -922,7 +925,7 @@ if (outDir) {
     const s = String(v ?? '')
     return /[",\n;]/.test(s) ? `"${s.replace(/"/g, '""')}"` : s
   }
-  const header = ['id', 'me', 'title', 'kind', 'beginn', 'frist', 'frist_tage', 'vorblatt_class', 'vorblatt_sentence', 'law_signal', 'acts_law', 'erl_signal', 'acts_erl', 'acts_title', 'acts_vorblatt_ziele', 'marker', 'acts_named', 'acts_source', 'celex', 'transposition', 'days_after_newest_deadline', 'days_after_earliest_deadline', 'page_marker', 'page_source', 'acts_quoted']
+  const header = ['id', 'me', 'title', 'kind', 'beginn', 'frist', 'frist_tage', 'vorblatt_class', 'vorblatt_sentence', 'law_signal', 'acts_law', 'erl_signal', 'acts_erl', 'acts_title', 'acts_vorblatt_ziele', 'marker', 'acts_named', 'acts_source', 'celex', 'transposition', 'days_after_newest_deadline', 'days_after_earliest_deadline', 'page_marker', 'page_source', 'acts_quoted', 'acts_base']
   const lines = [header.join(',')]
   for (const r of [...rows].sort((a, b) => (a.record.beginn ?? '').localeCompare(b.record.beginn ?? ''))) {
     const named = namedActs(r)
@@ -955,6 +958,7 @@ if (outDir) {
       pageDecision(r).marker,
       pageDecision(r).source,
       r.law.quoted.map((a) => a.celex).join(' '),
+      r.law.base.join(' '),
     ].map(csvCell).join(','))
   }
   await writeFile(join(outDir, 'drafts.csv'), `${lines.join('\n')}\n`)

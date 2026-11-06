@@ -73,12 +73,18 @@ export function lawTextMarker(law: MarkerInput['law']): EuMarker | null {
  * where „Begleitet eine EU-Verordnung" is right. Without `isNew` every
  * window that names an act counts — the reading before the law in force is
  * asked, and what the corpus runs show.
+ *
+ * An act a window names only as the base of an amending act it cites
+ * without a number (`LawWindow.base`, 06.11.2026) is not what it implements:
+ * a window whose acts are all such bases decides nothing, like one that
+ * names no act — „wird die Richtlinie zur Änderung der Richtlinie 2014/65/EU
+ * … umgesetzt" does not say 2014/65 is implemented.
  */
 export function newLawHint(
-  windows: readonly { signal: LawSignal; acts: readonly EuAct[] }[],
+  windows: readonly { signal: LawSignal; acts: readonly EuAct[]; base?: readonly string[] }[],
   isNew?: (celex: string) => boolean | null,
 ): MarkerInput['law'] {
-  const deciding = windows.filter((w) => w.acts.some((a) => (isNew?.(a.celex) ?? null) !== false))
+  const deciding = windows.filter((w) => w.acts.some((a) => !w.base?.includes(a.celex) && (isNew?.(a.celex) ?? null) !== false))
   return { signal: strongestSignal(deciding.map((w) => w.signal)), acts: uniqueActs(deciding.map((w) => w.acts)) }
 }
 

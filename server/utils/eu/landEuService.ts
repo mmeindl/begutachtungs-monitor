@@ -187,7 +187,7 @@ export async function assembleLandEu(land: LandCode, detail: LandDraftRecord): P
       celex: act.celex,
       eurLexUrl: act.eli,
       isNew,
-      base: base.has(act.celex) && named.some((a) => a.celex !== act.celex && !base.has(a.celex)),
+      base: base.has(act.celex),
       transposition: act.kind === 'richtlinie' && dates ? deadlineOf(dates.dates) : null,
       adopted: dates?.adopted ?? null,
       title: dates?.title ?? null,

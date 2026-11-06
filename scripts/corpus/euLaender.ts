@@ -73,7 +73,7 @@ import { withPdf } from '../../server/utils/text/pdfDocument'
 import { fromMacRoman } from '../../server/utils/annex/annexPdfPages'
 import { draftCandidates, landPdfBytes } from '../../server/utils/laender/texts/read'
 import { lawBlocksFromPdfPages } from '../../server/utils/laender/draftPdfLaw'
-import { baseActCelexes, readEuActCitations, uniqueActs, type EuAct } from '../../server/utils/eu/actCitations'
+import { baseActsOf, readEuActCitations, uniqueActs, type EuAct } from '../../server/utils/eu/actCitations'
 import { EU_ANCHOR, readExplanationsEuSignal, readUmsetzungshinweis, type LawSignal } from '../../server/utils/eu/umsetzungshinweis'
 import { EU_HEADING, VORBLATT_CLASS_RANK, VORBLATT_EU_YES, classifyVorblatt, classifyVorblattSentence, linesOfPages, type VorblattClass } from '../../server/utils/eu/vorblatt'
 import { CELLAR_QUERY_VERSION, deadlineOf, parseTranspositionAnswer, transpositionUrl, type SparqlAnswer, type TranspositionDates } from '../../server/utils/eu/cellar'
@@ -426,8 +426,8 @@ function readLawPages(pages: string[]): Omit<LawRead, 'doc' | 'candidates' | 'pd
   if (!blocks) return { blocks: null, signal: null, windows: [], acts: [], baseActs: [], dropped: [], cited: 0, ...plainPart }
   const read = readLandLaw(pages)
   const windows = [...read.windows.map((w) => w.text), ...read.quoted.map((q) => q.text)]
-  const base = new Set<string>()
-  for (const w of windows) for (const c of baseActCelexes(w)) base.add(c)
+  // The page's D4a over the same windows (`baseActsOf`).
+  const base = baseActsOf(windows, read.acts)
   return {
     blocks: blocks.length,
     signal: read.signal,
@@ -676,7 +676,7 @@ const headingClass = (r: Row) => (!r.erl.available ? '' : r.erl.headingClasses[0
 
 /** The acts whose deadline counts: the law text's, base acts out (D4a); else the Erläuterungen signal's. */
 function deadlineActs(r: Row): { acts: EuAct[]; source: 'gesetz' | 'erl' | null } {
-  const law = r.law.acts.filter((a) => !r.law.baseActs.includes(a.celex) || r.law.acts.every((b) => r.law.baseActs.includes(b.celex)))
+  const law = r.law.acts.filter((a) => !r.law.baseActs.includes(a.celex))
   if (law.length) return { acts: law, source: 'gesetz' }
   if (r.erl.signalActs.length) return { acts: r.erl.signalActs, source: 'erl' }
   return { acts: [], source: null }

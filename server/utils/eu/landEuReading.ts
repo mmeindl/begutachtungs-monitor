@@ -18,7 +18,7 @@
  * read: a statement the classifier could not read said nothing.
  */
 import type { EuRechtResponse, LandCode, TraceLink } from '../../../shared/types'
-import { baseActCelexes, uniqueActs, type EuAct } from './actCitations'
+import { baseActsOf, uniqueActs, type EuAct } from './actCitations'
 import { decideLandEuMarker, entryHinweise, readLandEuStatement, statementActs, type EntryHinweis, type LandEuStatement, type LandMarkerDecision } from './landErlaeuterungen'
 import { readLandLaw, type LandLawReading } from './landGesetzestext'
 import { newLawHint } from './euMarker'
@@ -56,7 +56,7 @@ export interface LandEuReading {
   /** The acts the fact names, in the order it names them. */
   named: EuAct[]
   actsSource: EuRechtResponse['actsSource']
-  /** D4a: CELEX numbers named as the base of an amending act. */
+  /** D4a: CELEX numbers the fact marks as base texts (`baseActsOf`). */
   base: Set<string>
   /** The documents read for what the fact says, for the credit line. */
   sources: TraceLink[]
@@ -124,10 +124,7 @@ export function readLandEu(input: LandEuInput, isNew?: (celex: string) => boolea
       ? (found!.label === 'Vorblatt' ? 'vorblatt' : 'erlaeuterungen')
       : fromLaw.length ? 'gesetzestext' : 'erlaeuterungen'
 
-  const base = new Set<string>()
-  for (const text of [found?.statement.sentence ?? '', ...law.windows.map((w) => w.text), ...law.quoted.map((q) => q.text), ...hinweise.map((h) => h.text)]) {
-    for (const c of baseActCelexes(text)) base.add(c)
-  }
+  const base = baseActsOf([found?.statement.sentence ?? '', ...law.windows.map((w) => w.text), ...law.quoted.map((q) => q.text), ...hinweise.map((h) => h.text)], named)
   return { found, decision, law, hinweise, named, actsSource, base, sources }
 }
 

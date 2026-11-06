@@ -29,7 +29,7 @@
  * the whole hint, directives transposed years ago included; that question is
  * the law in force's (`euService.ts`, rule D4).
  */
-import { parseEuActCitations, uniqueActs, withoutActTitles, type EuAct } from './actCitations'
+import { parseEuActCitations, uniqueActs, unnamedAmendmentBases, withoutActTitles, type EuAct } from './actCitations'
 
 /** What a window says: implements, flanks a regulation, or only refers. */
 export type LawSignal = 'umsetzung' | 'durchfuehrung' | 'bezug'
@@ -110,13 +110,26 @@ export interface LawWindow {
    * service reads from the law in force.
    */
   quoted?: true
+  /**
+   * The CELEX numbers the window names only as base texts of an amending act
+   * it cites without a number (`unnamedAmendmentBases`, 06.11.2026): „wird
+   * die Richtlinie zur Änderung der Richtlinie 2014/65/EU … umgesetzt" does
+   * not implement 2014/65. Absent where there are none.
+   */
+  base?: string[]
+}
+
+/** Whether a window names an act it implements — one that is not only a base text (`LawWindow.base`). */
+export function namesOwnAct(w: Pick<LawWindow, 'acts' | 'base'>): boolean {
+  return w.acts.some((a) => !w.base?.includes(a.celex))
 }
 
 export interface UmsetzungshinweisReading {
   /** The strongest signal of any window: umsetzung over durchfuehrung over bezug. */
   signal: LawSignal | null
   /**
-   * The strongest signal of a window that names an act — what may decide
+   * The strongest signal of a window that names an act other than a base
+   * text (`namesOwnAct`) — what may decide
    * „whether" (`euMarker.ts`): a window „… wird die Richtlinie … umgesetzt"
    * whose act is a short name, beside a „Bezugnahme" that names one, says
    * no act is implemented.
@@ -225,11 +238,13 @@ export function readUmsetzungshinweis(input: string | readonly LawTextBlock[]): 
     for (let k = windows.length - 1; k >= 0; k--) {
       if (window.includes(windows[k]!.text)) windows.splice(k, 1)
     }
-    windows.push({ text: window, start: i, signal: lawSignalOf(window), acts: parseEuActCitations(window, WINDOW_CITATIONS) })
+    const acts = parseEuActCitations(window, WINDOW_CITATIONS)
+    const base = [...unnamedAmendmentBases(window)].filter((c) => acts.some((a) => a.celex === c))
+    windows.push({ text: window, start: i, signal: lawSignalOf(window), acts, ...(base.length ? { base } : {}) })
   }
   return {
     signal: strongestSignal(windows.map((w) => w.signal)),
-    actSignal: strongestSignal(windows.filter((w) => w.acts.length).map((w) => w.signal)),
+    actSignal: strongestSignal(windows.filter(namesOwnAct).map((w) => w.signal)),
     windows,
     acts: uniqueActs(windows.map((w) => w.acts)),
     dropped,
@@ -368,7 +383,7 @@ export function readBundLaw(blocks: readonly LawTextBlock[]): UmsetzungshinweisR
 export function readingOfWindows(windows: LawWindow[], dropped: string[] = []): UmsetzungshinweisReading {
   return {
     signal: strongestSignal(windows.map((w) => w.signal)),
-    actSignal: strongestSignal(windows.filter((w) => w.acts.length).map((w) => w.signal)),
+    actSignal: strongestSignal(windows.filter(namesOwnAct).map((w) => w.signal)),
     windows,
     acts: uniqueActs(windows.map((w) => w.acts)),
     dropped,

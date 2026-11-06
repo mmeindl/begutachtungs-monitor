@@ -1,7 +1,7 @@
 import { readFileSync } from 'node:fs'
 import { join } from 'node:path'
 import { describe, expect, it } from 'vitest'
-import { baseActCelexes, celexOf, eliOf, parseEuActCitations, readEuActCitations } from '../server/utils/eu/actCitations'
+import { baseActCelexes, baseActsOf, celexOf, eliOf, parseEuActCitations, readEuActCitations, unnamedAmendmentBases } from '../server/utils/eu/actCitations'
 import { classifyVorblatt, classifyVorblattSentence, hasTextLayer, isVorblattDocument } from '../server/utils/eu/vorblatt'
 import { isHintParagraph, readBundLaw, readExplanationsEuSignal, readUmsetzungshinweis, type LawTextBlock } from '../server/utils/eu/umsetzungshinweis'
 import { euActSubject } from '../shared/utils/eu'
@@ -154,6 +154,38 @@ describe('baseActCelexes — base directive vs amending directive', () => {
 
   it('marks no base where two acts merely stand side by side', () => {
     expect([...baseActCelexes('der Richtlinie (EU) 2023/2864 und dem wirksamen Vollzug der Verordnung (EU) 2023/2859')]).toEqual([])
+  })
+})
+
+describe('unnamedAmendmentBases — an amending act cited without its number (28/ME)', () => {
+  const GEWO = '(119) Durch das Bundesgesetz BGBl. I Nr. xxx/xxxx wird die Richtlinie zur Änderung der Richtlinie 2009/138/EG betreffend die Aufnahme und Ausübung der Versicherungs- und der Rückversicherungstätigkeit (Solvabilität II), der Richtlinie 2014/65/EU über Märkte für Finanzinstrumente, und der Richtlinie (EU) 2015/849 zur Verhinderung der Nutzung des Finanzsystems zum Zwecke der Geldwäsche und der Terrorismusfinanzierung, ABl. Nr. L 334 vom 27.12.2019 S. 155 umgesetzt.'
+
+  it('keeps every act of the unnamed act\'s title, and reads each as its base', () => {
+    expect(parseEuActCitations(GEWO, { implemented: true, withoutReferences: true }).map((a) => a.celex)).toEqual(['32009L0138', '32014L0065', '32015L0849'])
+    expect([...unnamedAmendmentBases(GEWO)]).toEqual(['32009L0138', '32014L0065', '32015L0849'])
+    // A base whatever else is named — the implemented act is not named at all.
+    expect([...baseActsOf([GEWO], parseEuActCitations(GEWO))]).toEqual(['32009L0138', '32014L0065', '32015L0849'])
+  })
+
+  it('ends at the title: an act joined as an object of its own is implemented', () => {
+    const text = 'Mit diesem Bundesgesetz werden die Richtlinie zur Änderung der Richtlinie 2014/65/EU über Märkte für Finanzinstrumente, ABl. Nr. L 334 vom 27.12.2019 S. 155, und die Richtlinie (EU) 2024/790 umgesetzt.'
+    expect([...unnamedAmendmentBases(text)]).toEqual(['32014L0065'])
+  })
+
+  it('is no base where the text also names the act as its own', () => {
+    expect([...unnamedAmendmentBases('Durch diese Verordnung werden die Richtlinie 2014/65/EU und die Richtlinie zur Änderung der Richtlinie 2014/65/EU umgesetzt.')]).toEqual([])
+  })
+
+  it('leaves the bases of an amending act that only amends a named base a title reference (Vergaberechtsgesetz)', () => {
+    const text = 'Dieses Bundesgesetz dient der Umsetzung der Richtlinie 2009/33/EG über die Förderung sauberer Straßenfahrzeuge, ABl. Nr. L 120 vom 15.5.2009 S. 5, zuletzt geändert durch den Beschluss zur Änderung der Richtlinien 2009/12/EG, 2009/33/EG und (EU) 2022/1999 des Europäischen Parlaments und des Rates.'
+    expect(parseEuActCitations(text, { implemented: true }).map((a) => a.celex)).toEqual(['32009L0033'])
+    expect([...unnamedAmendmentBases(text)]).toEqual([])
+  })
+
+  it('needs the kind word alone — a numbered act\'s title stays a title reference', () => {
+    const text = 'wird die Richtlinie (EU) 2019/2177 zur Änderung der Richtlinie 2009/138/EG umgesetzt'
+    expect(parseEuActCitations(text, { implemented: true }).map((a) => a.celex)).toEqual(['32019L2177'])
+    expect([...unnamedAmendmentBases(text)]).toEqual([])
   })
 })
 
@@ -596,6 +628,17 @@ describe('decideEuMarker', () => {
     const rl = parseEuActCitations('Richtlinie (EU) 2019/1937')
     expect(decideEuMarker({ vorblatt: [], law: { signal: 'umsetzung', acts: [] }, explanations: 'durchfuehrung' })).toMatchObject({ marker: 'flankierend-vo', source: 'erlaeuterungen' })
     expect(decideEuMarker({ vorblatt: [], law: { signal: 'bezug', acts: rl }, explanations: null }).marker).toBeNull()
+  })
+})
+
+describe('a window whose acts are all bases of an unnamed amending act decides nothing', () => {
+  it('reads the 28/ME window as umsetzung, with no act of its own to decide on', () => {
+    const r = readUmsetzungshinweis('(119) Durch das Bundesgesetz BGBl. I Nr. xxx/xxxx wird die Richtlinie zur Änderung der Richtlinie 2009/138/EG betreffend die Aufnahme (Solvabilität II), der Richtlinie 2014/65/EU über Märkte für Finanzinstrumente, ABl. Nr. L 334 vom 27.12.2019 S. 155 umgesetzt.')
+    expect(r.signal).toBe('umsetzung')
+    expect(r.windows[0]!.base).toEqual(['32009L0138', '32014L0065'])
+    expect(r.actSignal).toBeNull()
+    expect(lawTextMarker(newLawHint(r.windows))).toBeNull()
+    expect(lawTextMarker(newLawHint(r.windows, () => true))).toBeNull()
   })
 })
 

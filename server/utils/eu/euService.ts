@@ -28,7 +28,7 @@
  * the answer goes out without it and is not stored (`cache/gathered.ts`).
  */
 import type { EuActView, EuRechtResponse, ExplanationsResponse, TraceLink } from '#shared/types'
-import { parseEuActCitations, baseActCelexes, uniqueActs, type EuAct } from './actCitations'
+import { parseEuActCitations, baseActsOf, uniqueActs, type EuAct } from './actCitations'
 import { classifyVorblatt, hasTextLayer, isVorblattDocument, linesOfPages, type VorblattClass } from './vorblatt'
 import { isHintParagraph, readBundLaw, readExplanationsEuSignal, readingOfWindows, type LawWindow } from './umsetzungshinweis'
 import { deadlineOf } from './cellar'
@@ -401,11 +401,8 @@ async function assemble(docs: DraftDocuments): Promise<Gathered<EuRechtResponse>
   if (fromLaw && lawLink) sources.push({ label: 'Gesetzestext', url: lawLink })
 
   // D4 for the acts named; D4a, the base an amendment is read against.
-  const base = new Set<string>()
-  if (fromLaw) {
-    for (const w of law.windows) for (const c of baseActCelexes(w.text)) base.add(c)
-    await readWindows()
-  }
+  const base = fromLaw ? baseActsOf(law.windows.map((w) => w.text), named) : new Set<string>()
+  if (fromLaw) await readWindows()
 
   // UNTIL WHEN: the Cellar, per act, side by side.
   const acts: EuActView[] = []
@@ -426,7 +423,7 @@ async function assemble(docs: DraftDocuments): Promise<Gathered<EuRechtResponse>
       celex: act.celex,
       eurLexUrl: act.eli,
       isNew,
-      base: base.has(act.celex) && named.some((a) => a.celex !== act.celex && !base.has(a.celex)),
+      base: base.has(act.celex),
       transposition: act.kind === 'richtlinie' && dates ? deadlineOf(dates.dates) : null,
       adopted: dates?.adopted ?? null,
       title: dates?.title ?? null,

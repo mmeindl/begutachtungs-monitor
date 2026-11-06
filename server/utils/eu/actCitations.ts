@@ -109,6 +109,37 @@ const ACT_CONTINUATION = new RegExp(
 const TITLE_REFERENCE = /(?:Änderung|Aufhebung|Ersetzung)\s+(?:der|des|von)\s*$/
 
 /**
+ * An amending act cited without its number: „… wird die Richtlinie zur
+ * Änderung der Richtlinie 2009/138/EG …, der Richtlinie 2014/65/EU … und der
+ * Richtlinie (EU) 2015/849 …, ABl. Nr. L 334 vom 27.12.2019 S. 155
+ * umgesetzt" (28/ME, GewO-EU-Finanzberufsverordnungen, 06.11.2026). The
+ * draft implements the unnamed amending directive (2019/2177); the acts its
+ * title names are its base texts, as „in der Fassung der …" names one
+ * (`AMENDED_BY`) — so not dropped as a title reference, and read as base
+ * (`unnamedAmendmentBases`). The kind word stands alone: no number, no
+ * organisation, nothing between it and „zur Änderung".
+ */
+const UNNAMED_AMENDMENT = new RegExp(String.raw`(?<![\p{L}\-])${BARE_TYPE}\s+zur\s+Änderung\s+(?:der|des)\s+`, 'gu')
+/** The same phrase directly before a citation. */
+const UNNAMED_AMENDMENT_BEFORE = new RegExp(`${UNNAMED_AMENDMENT.source}$`, 'u')
+
+/**
+ * Whether the citation at `at` is the object of an unnumbered amending act
+ * the text itself implements — not one that only amends the base it named
+ * („Richtlinie 2009/33/EG …, zuletzt geändert durch den Beschluss zur
+ * Änderung der Richtlinien 2009/12/EG, 2009/33/EG und (EU) 2022/1999 …", the
+ * Vergaberechtsgesetz): after „in der Fassung", „geändert durch"
+ * (`AMENDED_BY`) the amending act's own bases are a title reference as
+ * before.
+ */
+function unnamedAmendmentAt(text: string, at: number): boolean {
+  const m = UNNAMED_AMENDMENT_BEFORE.exec(text.slice(Math.max(0, at - 80), at))
+  if (!m) return false
+  const start = Math.max(0, at - 80) + m.index
+  return !AMENDED_BY.test(text.slice(Math.max(0, start - 60), start))
+}
+
+/**
  * An act a provision only REFERS to: introduced by „nach der", „gemäß",
  * „im Sinne der", „entsprechend", „aufgrund", „laut" — directly, or through
  * an article, annex or paragraph of it („nach Art. 6 Abs. 4 der Richtlinie
@@ -346,7 +377,7 @@ export function readEuActCitations(text: string, options: CitationOptions = {}):
   const take = (at: number, end: number, typeWord: string, order: { year: number; number: number }) => {
     const act = makeAct(text.slice(at, end), typeWord, order.year, order.number)
     if (!act) return
-    if (options.implemented && TITLE_REFERENCE.test(text.slice(Math.max(0, at - 40), at))) {
+    if (options.implemented && TITLE_REFERENCE.test(text.slice(Math.max(0, at - 40), at)) && !unnamedAmendmentAt(text, at)) {
       dropped += skipList(end)
       return
     }
@@ -447,4 +478,52 @@ export function baseActCelexes(text: string): Set<string> {
     if (AMENDED_BY.test(text.slice(here.at, next.at))) base.add(here.act.celex)
   }
   return base
+}
+
+/**
+ * The CELEX numbers `text` names only as base texts of an amending act it
+ * cites without a number (`UNNAMED_AMENDMENT`): every act cited inside that
+ * act's title — from „zur Änderung der" to the title's end (`titleSpanEnd`:
+ * the OJ reference, a „;", the sentence end, „und die <Akt>"), and named
+ * nowhere else in it. Such a base is one whatever else the text names,
+ * because what the draft implements is not named at all.
+ */
+export function unnamedAmendmentBases(text: string): Set<string> {
+  const base = new Set<string>()
+  const spans: [number, number][] = []
+  for (const m of text.matchAll(UNNAMED_AMENDMENT)) {
+    if (AMENDED_BY.test(text.slice(Math.max(0, m.index! - 60), m.index!))) continue
+    // The title opens at „zur": `titleSpanEnd` reads from the end of the kind word.
+    const opens = m.index! + m[0].search(/\s+zur\s/u)
+    spans.push([m.index!, titleSpanEnd(text, opens)])
+  }
+  if (!spans.length) return base
+  const inside = (at: number) => spans.some(([from, to]) => at >= from && at < to)
+  const occurrences = readEuActCitations(text, { implemented: true }).occurrences
+  // A base only where the text names it nowhere else — „setzt die Richtlinie X um" beside it names X as its own.
+  for (const { at, act } of occurrences) {
+    if (inside(at) && occurrences.every((o) => o.act.celex !== act.celex || inside(o.at))) base.add(act.celex)
+  }
+  return base
+}
+
+/**
+ * The acts a fact marks as base texts (D4a), out of the texts that named
+ * them: „X …, in der Fassung der Y" makes X a base where the fact names an
+ * act besides the bases (`baseActCelexes` — otherwise nothing says which is
+ * the amendment), and an act in the title of an unnumbered amending act is
+ * one always (`unnamedAmendmentBases`).
+ */
+export function baseActsOf(texts: readonly string[], named: readonly EuAct[]): Set<string> {
+  const amended = new Set<string>()
+  const ofUnnamed = new Set<string>()
+  for (const text of texts) {
+    for (const c of baseActCelexes(text)) amended.add(c)
+    for (const c of unnamedAmendmentBases(text)) ofUnnamed.add(c)
+  }
+  const out = new Set(ofUnnamed)
+  for (const c of amended) {
+    if (named.some((a) => a.celex !== c && !amended.has(a.celex))) out.add(c)
+  }
+  return out
 }
