@@ -20,7 +20,7 @@ import { euActSubject } from '#shared/utils/eu'
 import { formatDateDe } from '#shared/utils/format'
 import { LAND_CODES, LAND_NAME, landShortTitle, type SourceCode } from '#shared/utils/laender'
 import { PUBLISHER_NAME_DE, eurLexSource, parliamentProcedureSource, risSource, type SourceEntry } from '#shared/utils/provenance'
-import { viewOfRow, type EntryView } from './entryView'
+import { viewOfRow, type EntryState, type EntryView } from './entryView'
 import { SUPERSCRIPT, dateRangeDe, dayOf, edgeAlign, laneBarOf, type EuChartView } from './euRecht'
 
 /** „Bund" or the Land's name — the list's source chips' words. */
@@ -82,8 +82,15 @@ export interface EuActsRowView {
   path: string
   /** What the official title says after the name and date, „über den Schutz …" (`euActSubject`); null without a title. */
   subject: string | null
-  /** „Umsetzungsfrist bis 07.05.2026", „gilt unmittelbar", or null. */
-  deadline: string | null
+  /**
+   * The deadline as the row's state box, in the column where `/entwuerfe`
+   * keeps its Stand (`EntryState`): „Umsetzungsfrist" over „bis 07.05.2026",
+   * „Gilt unmittelbar" for a regulation. Always grey and never counted (rule
+   * D6, reaffirmed 06.11.2026): the box carries the date, the order carries
+   * which comes next, and a passed date stays a date — whether the act was
+   * transposed in time is nothing the monitor can see.
+   */
+  state: EntryState
   /** „1 Entwurf des Bundes · 3 Entwürfe der Länder" (`countsDe`); in the fold „wiederholt in …" (`restatingCountsDe`). */
   counts: string
   /** The Länder with an implementing draft, by name, in display order. */
@@ -96,24 +103,102 @@ function actsRowOf(a: EuActSummary, counts: string): EuActsRowView {
     label: a.label,
     path: a.path,
     subject: euActSubject(a.title),
-    // The short form in a list row: the act page says the rest.
-    deadline: a.transposition ? `Umsetzungsfrist bis ${formatDateDe(a.transposition.deadline)}` : a.kind === 'verordnung' ? 'gilt unmittelbar' : null,
+    state: actStateOf(a),
     counts,
     lands: a.lands.map((l) => LAND_NAME[l]),
   }
 }
 
-/** The overview's rows, in the order the API delivers them. */
-export function euActsRows(r: Pick<EuActsResponse, 'acts'>): EuActsRowView[] {
-  return r.acts.map((a) => actsRowOf(a, countsDe(a.counts)))
+/**
+ * The state box's two lines. A directive or framework decision without a
+ * date says „keine bekannt", not „keine": the Cellar may have none, or may
+ * not have answered, and the two read the same here.
+ */
+function actStateOf(a: Pick<EuActSummary, 'kind' | 'transposition'>): EntryState {
+  const words = a.transposition
+    ? { label: 'Umsetzungsfrist', detail: `bis ${formatDateDe(a.transposition.deadline)}` }
+    : a.kind === 'verordnung'
+      ? { label: 'Gilt unmittelbar', detail: 'keine Umsetzungsfrist' }
+      : { label: 'Umsetzungsfrist', detail: 'keine bekannt' }
+  return { ...words, tone: 'inactive', actionable: false }
+}
+
+/** The words the overview's search reads (`matchesQuery`): the label, the official title, the CELEX — „NIS", „Asbest", „2022/2555". */
+export function euActHaystack(a: Pick<EuActSummary, 'label' | 'title' | 'celex'>): string {
+  return `${a.label} ${a.title ?? ''} ${a.celex}`
+}
+
+/**
+ * Which tab of the overview an act stands under (06.11.2026): its deadline
+ * still ahead (today included), passed, or none — a regulation, or a
+ * directive the Cellar names no date for. A fact about the date, never
+ * about the transposition (D6): „abgelaufen" says the day has passed, not
+ * that Austria missed it, and no tab carries a colour.
+ */
+export type EuDeadlineTab = 'laufend' | 'abgelaufen' | 'ohne'
+
+export function deadlineTabOf(a: Pick<EuActSummary, 'transposition'>, today: string): EuDeadlineTab {
+  const d = a.transposition?.deadline
+  return !d ? 'ohne' : d >= today ? 'laufend' : 'abgelaufen'
+}
+
+/**
+ * The overview's orders, one per column as on every list (`SortHeader`,
+ * 06.11.2026): by deadline, or by the act's name. One direction per column —
+ * the tab decides the deadline's (`deadlineDirection`), so no second click
+ * reverses it.
+ */
+export type EuActSort = 'frist' | 'name'
+
+/**
+ * Each tab opens in the order its question asks for; „Ohne Frist" has no
+ * date to order by and stays by name.
+ */
+export const EU_SORT_DEFAULT: Record<EuDeadlineTab, EuActSort> = { laufend: 'frist', abgelaufen: 'frist', ohne: 'name' }
+
+/** What runs, nearest first; what passed, most recent first. */
+export function deadlineDirection(tab: EuDeadlineTab): 'auf' | 'ab' {
+  return tab === 'abgelaufen' ? 'ab' : 'auf'
+}
+
+/** The deadline column's order, in the words of its sort button (`SortHeader`). */
+export function deadlineOrderDe(tab: EuDeadlineTab): string {
+  return tab === 'abgelaufen' ? 'zuletzt abgelaufene zuerst' : 'nächste zuerst'
+}
+
+/**
+ * By name with numbers read as numbers, so „2024/927" comes before
+ * „2024/1385" — the names are mostly kind, year and number.
+ */
+const byName = (a: Pick<EuActSummary, 'label' | 'celex'>, b: Pick<EuActSummary, 'label' | 'celex'>): number =>
+  a.label.localeCompare(b.label, 'de', { numeric: true }) || a.celex.localeCompare(b.celex)
+
+/** One order as a comparator; acts without a deadline last either way, ties by name. */
+export function euActComparator(sort: EuActSort, direction: 'auf' | 'ab' = 'auf'): (a: Pick<EuActSummary, 'transposition' | 'label' | 'celex'>, b: Pick<EuActSummary, 'transposition' | 'label' | 'celex'>) => number {
+  if (sort === 'name') return byName
+  return (a, b) => {
+    const da = a.transposition?.deadline ?? null
+    const db = b.transposition?.deadline ?? null
+    if (da !== db) {
+      if (da === null) return 1
+      if (db === null) return -1
+      return direction === 'auf' ? da.localeCompare(db) : db.localeCompare(da)
+    }
+    return byName(a, b)
+  }
+}
+
+/** The overview's rows, in the order chosen (`euActComparator`). */
+export function euActsRows(r: Pick<EuActsResponse, 'acts'>, sort: EuActSort = 'frist', direction: 'auf' | 'ab' = 'auf'): EuActsRowView[] {
+  return [...r.acts].sort(euActComparator(sort, direction)).map((a) => actsRowOf(a, countsDe(a.counts)))
 }
 
 /**
  * The fold's rows under the overview — the acts drafts only restate, the
- * same anatomy, the counts as „wiederholt in …" (`restatingCountsDe`).
+ * same anatomy and order, the counts as „wiederholt in …" (`restatingCountsDe`).
  */
-export function euRestatingRows(r: Pick<EuActsResponse, 'restatingOnly'>): EuActsRowView[] {
-  return r.restatingOnly.map((a) => actsRowOf(a, restatingCountsDe(a.counts)))
+export function euRestatingRows(r: Pick<EuActsResponse, 'restatingOnly'>, sort: EuActSort = 'frist', direction: 'auf' | 'ab' = 'auf'): EuActsRowView[] {
+  return [...r.restatingOnly].sort(euActComparator(sort, direction)).map((a) => actsRowOf(a, restatingCountsDe(a.counts)))
 }
 
 /** „Nur in Umsetzungshinweisen wiederholt (12)" — the fold's heading, the count in brackets as the site's folds have it. */

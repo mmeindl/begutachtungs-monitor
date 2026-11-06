@@ -192,6 +192,17 @@ export interface EuActHead {
 }
 
 /**
+ * Where an act stands in the Official Journal (Amtsblatt), as a footnote
+ * cites it (`euOjCiteDe`). Two forms, because the Journal changed form on
+ * 01.10.2023: until then an act stood in a numbered issue on a page
+ * („ABl. L 333 vom 27.12.2022, S. 80"), since then each act is its own
+ * publication („ABl. L, 2023/2413, 31.10.2023").
+ */
+export type EuOjReference =
+  | { form: 'issue'; series: 'L' | 'C'; issue: string; date: string; page: number | null }
+  | { form: 'act'; series: 'L' | 'C'; act: string; date: string }
+
+/**
  * GET /api/eu-recht/akte/:celex — one act, every draft of the window that
  * names it. Null `builtAt` never occurs here: without a map the endpoint
  * answers 503.
@@ -209,6 +220,13 @@ export interface EuActResponse {
   restating: EuActDraft[]
   /** The Länder with no draft naming the act in the window, in display order. */
   landsWithout: LandCode[]
+  /**
+   * The act's Amtsblatt reference and ELI, for the „Zitieren" button; each
+   * null where the Cellar did not answer or has none. Asked per request, not
+   * kept in the map: only this page cites (`ojReferenceOf`).
+   */
+  oj: EuOjReference | null
+  eli: string | null
   /**
    * Publishers the last build could not read whole — their drafts may be
    * missing from every list on this page. Said on the page, never hidden.

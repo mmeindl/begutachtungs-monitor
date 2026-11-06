@@ -1,5 +1,11 @@
 import { describe, expect, it } from 'vitest'
 import {
+  EU_SORT_DEFAULT,
+  deadlineDirection,
+  deadlineOrderDe,
+  deadlineTabOf,
+  euActComparator,
+  euActHaystack,
   euActCredits,
   euActPageView,
   euActsRows,
@@ -56,6 +62,8 @@ describe('euActPageView', () => {
     restating: [],
     landsWithout: [],
     incomplete: [],
+    oj: null,
+    eli: null,
     ...over,
   })
   const day = (iso: string) => Date.parse(`${iso}T00:00:00Z`) / 86_400_000
@@ -258,7 +266,7 @@ describe('laneNameOf', () => {
 })
 
 describe('euActsRows', () => {
-  it('lists each act with its deadline, its counts and the Länder by name, in the API\'s order', () => {
+  it('lists each act with its deadline as a grey state box, its counts and the Länder by name', () => {
     const r: EuActsResponse = {
       gp: 'XXVIII',
       window: { from: '2024-10-24', to: null },
@@ -271,9 +279,42 @@ describe('euActsRows', () => {
       ],
     }
     expect(euActsRows(r)).toEqual([
-      { key: '32024L1069', label: 'Richtlinie (EU) 2024/1069', path: '/eu-recht/richtlinie/2024/1069', subject: 'über den Schutz von Personen, die sich öffentlich beteiligen', deadline: 'Umsetzungsfrist bis 07.05.2026', counts: '1 Entwurf des Bundes · 3 Entwürfe der Länder', lands: ['Oberösterreich', 'Salzburg', 'Wien'] },
-      { key: '32023R1114', label: 'Verordnung (EU) 2023/1114', path: '/eu-recht/verordnung/2023/1114', subject: null, deadline: 'gilt unmittelbar', counts: '2 Entwürfe des Bundes', lands: [] },
+      { key: '32024L1069', label: 'Richtlinie (EU) 2024/1069', path: '/eu-recht/richtlinie/2024/1069', subject: 'über den Schutz von Personen, die sich öffentlich beteiligen', state: { label: 'Umsetzungsfrist', detail: 'bis 07.05.2026', tone: 'inactive', actionable: false }, counts: '1 Entwurf des Bundes · 3 Entwürfe der Länder', lands: ['Oberösterreich', 'Salzburg', 'Wien'] },
+      { key: '32023R1114', label: 'Verordnung (EU) 2023/1114', path: '/eu-recht/verordnung/2023/1114', subject: null, state: { label: 'Gilt unmittelbar', detail: 'keine Umsetzungsfrist', tone: 'inactive', actionable: false }, counts: '2 Entwürfe des Bundes', lands: [] },
     ])
+  })
+})
+
+describe('the overview\'s tabs and orders', () => {
+  const act = (celex: string, deadline: string | null, label = celex) => ({ celex, label, transposition: deadline ? { deadline, otherDates: [] } : null })
+
+  it('sorts a deadline today under „Frist läuft", a passed one under „Abgelaufen", none under „Ohne Frist"', () => {
+    expect(deadlineTabOf(act('a', '2026-11-06'), '2026-11-06')).toBe('laufend')
+    expect(deadlineTabOf(act('a', '2026-11-05'), '2026-11-06')).toBe('abgelaufen')
+    expect(deadlineTabOf(act('a', null), '2026-11-06')).toBe('ohne')
+  })
+
+  it('opens each tab in its own order: by deadline, nearest or most recent first; without one, by name', () => {
+    expect(EU_SORT_DEFAULT).toEqual({ laufend: 'frist', abgelaufen: 'frist', ohne: 'name' })
+    expect(deadlineDirection('laufend')).toBe('auf')
+    expect(deadlineDirection('abgelaufen')).toBe('ab')
+    expect(deadlineOrderDe('laufend')).toBe('nächste zuerst')
+    expect(deadlineOrderDe('abgelaufen')).toBe('zuletzt abgelaufene zuerst')
+  })
+
+  it('orders by deadline either way, the acts without one last both ways, ties by name', () => {
+    const acts = [act('x', '2029-12-21'), act('none', null), act('y', '2026-11-20'), act('b', '2027-01-01', 'B'), act('a', '2027-01-01', 'A')]
+    expect([...acts].sort(euActComparator('frist', 'auf')).map((a) => a.celex)).toEqual(['y', 'a', 'b', 'x', 'none'])
+    expect([...acts].sort(euActComparator('frist', 'ab')).map((a) => a.celex)).toEqual(['x', 'a', 'b', 'y', 'none'])
+  })
+
+  it('orders by name with numbers read as numbers — 2024/927 before 2024/1385', () => {
+    const acts = [act('1', null, 'Richtlinie (EU) 2024/1385'), act('2', null, 'Richtlinie (EU) 2024/927'), act('3', null, 'Delegierte Richtlinie (EU) 2024/1262')]
+    expect([...acts].sort(euActComparator('name')).map((a) => a.label)).toEqual(['Delegierte Richtlinie (EU) 2024/1262', 'Richtlinie (EU) 2024/927', 'Richtlinie (EU) 2024/1385'])
+  })
+
+  it('searches the label, the official title and the CELEX', () => {
+    expect(euActHaystack({ label: 'Richtlinie (EU) 2022/2555', title: 'Richtlinie … (NIS-2-Richtlinie)', celex: '32022L2555' })).toBe('Richtlinie (EU) 2022/2555 Richtlinie … (NIS-2-Richtlinie) 32022L2555')
   })
 })
 
@@ -290,11 +331,11 @@ describe('the fold of acts drafts only restate', () => {
     expect(restatingCountsDe({ bund: 0, laender: 2 })).toBe('wiederholt in 2 Entwürfen der Länder')
   })
 
-  it('gives the rows the overview\'s anatomy, in the API\'s order', () => {
+  it('gives the rows the overview\'s anatomy and order; a directive without a date says „keine bekannt"', () => {
     expect(euRestatingRows({ restatingOnly: restating })).toEqual([
-      { key: '32009L0043', label: 'Richtlinie 2009/43/EG', path: '/eu-recht/richtlinie/2009/43', subject: null, deadline: 'Umsetzungsfrist bis 30.06.2011', counts: 'wiederholt in 3 Entwürfen des Bundes · 1 Entwurf der Länder', lands: ['Salzburg'] },
-      { key: '32016R0679', label: 'Verordnung (EU) 2016/679', path: '/eu-recht/verordnung/2016/679', subject: null, deadline: 'gilt unmittelbar', counts: 'wiederholt in 1 Entwurf des Bundes', lands: [] },
-      { key: '32014L0024', label: 'Richtlinie 2014/24/EU', path: '/eu-recht/richtlinie/2014/24', subject: null, deadline: null, counts: 'wiederholt in 2 Entwürfen der Länder', lands: ['Burgenland', 'Kärnten'] },
+      { key: '32009L0043', label: 'Richtlinie 2009/43/EG', path: '/eu-recht/richtlinie/2009/43', subject: null, state: { label: 'Umsetzungsfrist', detail: 'bis 30.06.2011', tone: 'inactive', actionable: false }, counts: 'wiederholt in 3 Entwürfen des Bundes · 1 Entwurf der Länder', lands: ['Salzburg'] },
+      { key: '32014L0024', label: 'Richtlinie 2014/24/EU', path: '/eu-recht/richtlinie/2014/24', subject: null, state: { label: 'Umsetzungsfrist', detail: 'keine bekannt', tone: 'inactive', actionable: false }, counts: 'wiederholt in 2 Entwürfen der Länder', lands: ['Burgenland', 'Kärnten'] },
+      { key: '32016R0679', label: 'Verordnung (EU) 2016/679', path: '/eu-recht/verordnung/2016/679', subject: null, state: { label: 'Gilt unmittelbar', detail: 'keine Umsetzungsfrist', tone: 'inactive', actionable: false }, counts: 'wiederholt in 1 Entwurf des Bundes', lands: [] },
     ])
   })
 

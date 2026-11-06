@@ -1,0 +1,46 @@
+{
+ "head": {
+  "link": [],
+  "vars": [
+   "eli",
+   "ojid",
+   "num",
+   "pub",
+   "pf",
+   "apub",
+   "aref"
+  ]
+ },
+ "results": {
+  "distinct": false,
+  "ordered": true,
+  "bindings": [
+   {
+    "eli": {
+     "type": "literal",
+     "datatype": "http://www.w3.org/2001/XMLSchema#anyURI",
+     "value": "http://data.europa.eu/eli/dir/2022/2555/oj"
+    },
+    "ojid": {
+     "type": "uri",
+     "value": "http://publications.europa.eu/resource/oj/JOL_2022_333_R_0002"
+    },
+    "num": {
+     "type": "literal",
+     "datatype": "http://www.w3.org/2001/XMLSchema#positiveInteger",
+     "value": "333"
+    },
+    "pub": {
+     "type": "literal",
+     "datatype": "http://www.w3.org/2001/XMLSchema#date",
+     "value": "2022-12-27"
+    },
+    "pf": {
+     "type": "literal",
+     "datatype": "http://www.w3.org/2001/XMLSchema#string",
+     "value": "0080"
+    }
+   }
+  ]
+ }
+}

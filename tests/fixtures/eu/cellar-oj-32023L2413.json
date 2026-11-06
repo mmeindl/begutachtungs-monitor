@@ -1,0 +1,41 @@
+{
+ "head": {
+  "link": [],
+  "vars": [
+   "eli",
+   "ojid",
+   "num",
+   "pub",
+   "pf",
+   "apub",
+   "aref"
+  ]
+ },
+ "results": {
+  "distinct": false,
+  "ordered": true,
+  "bindings": [
+   {
+    "eli": {
+     "type": "literal",
+     "datatype": "http://www.w3.org/2001/XMLSchema#anyURI",
+     "value": "http://data.europa.eu/eli/dir/2023/2413/oj"
+    },
+    "ojid": {
+     "type": "uri",
+     "value": "http://publications.europa.eu/resource/oj/L_202302413"
+    },
+    "apub": {
+     "type": "literal",
+     "datatype": "http://www.w3.org/2001/XMLSchema#date",
+     "value": "2023-10-31"
+    },
+    "aref": {
+     "type": "literal",
+     "datatype": "http://www.w3.org/2001/XMLSchema#string",
+     "value": "2023/2413"
+    }
+   }
+  ]
+ }
+}

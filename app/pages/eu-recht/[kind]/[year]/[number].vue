@@ -24,6 +24,7 @@
  * the same rows (`EntryList`), without a lane in the chart.
  */
 import type { EuActResponse } from '#shared/types'
+import { euActCiteDe } from '#shared/utils/citations'
 import { euActCelex } from '#shared/utils/eu'
 import { euActCredits, euActPageView } from '~/utils/euKarte'
 
@@ -88,6 +89,11 @@ const headLine = computed(() => {
 /* The credit line, as on the overview (`/eu-recht`), plus where each stand
  * on the page comes from — only the ones a lane or row shows (`euActCredits`). */
 const credits = computed(() => (data.value ? euActCredits(data.value) : null))
+
+/* What „Zitieren" copies: the official title, the Amtsblatt reference, the
+ * ELI (`euActCiteDe`) — the footnote of a Stellungnahme that argues from
+ * the act, as on a draft's page (21.10.2026). */
+const citation = computed(() => (data.value ? euActCiteDe(data.value.act, data.value.oj, data.value.eli) : ''))
 </script>
 
 <template>
@@ -119,7 +125,12 @@ const credits = computed(() => (data.value ? euActCredits(data.value) : null))
              then the title and what qualifies it. -->
         <DraftHeader :title="page.title">
           <template #source>
-            <ExternalLink :href="page.eurLexUrl" class="link-inline tap-target">Auf EUR-Lex ansehen</ExternalLink>
+            <!-- The source link and the citation side by side, as on a
+                 draft's page. -->
+            <span class="inline-flex flex-wrap items-center gap-x-4">
+              <ExternalLink :href="page.eurLexUrl" class="link-inline tap-target">Auf EUR-Lex ansehen</ExternalLink>
+              <CiteButton :text="citation" subject="Den Rechtsakt" />
+            </span>
           </template>
           <template #identity>
             <span class="text-sm font-medium text-ink-muted">Rechtsakt der Europäischen Union</span>

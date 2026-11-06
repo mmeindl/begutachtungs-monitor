@@ -24,13 +24,15 @@ withDefaults(
     /** For an anchor that points at the heading (`/entwuerfe/[id]#dokumente`). */
     headingId?: string
     size?: 'lg' | 'base'
+    /** Opens the fold from outside — a search with hits inside (`/eu-recht`). Closing it stays the reader's. */
+    open?: boolean
   }>(),
-  { headingId: undefined, size: 'lg' },
+  { headingId: undefined, size: 'lg', open: false },
 )
 </script>
 
 <template>
-  <details class="group">
+  <details class="group" :open="open || undefined">
     <summary
       class="-mx-3 flex min-h-target cursor-pointer list-none items-center justify-between gap-3 rounded px-3 py-3 hover:bg-hover [&::-webkit-details-marker]:hidden"
     >

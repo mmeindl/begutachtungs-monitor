@@ -14,6 +14,7 @@ import { withRisActiveOn } from '../../../utils/ris/risRecord'
 import { withLandActiveOn } from '../../../utils/laender/sources'
 import { gpFromParam, readGpQuery, requirePlausibleGp } from '../../../utils/http/params'
 import { actPageOf } from '../../../utils/eu/euMap'
+import { ojReferenceOf } from '../../../utils/eu/cellarService'
 
 /** An act's CELEX: sector 3, year, L(Richtlinie) R(Verordnung) D(Beschluss) F(Rahmenbeschluss), number. */
 const ACT_CELEX_RE = /^3\d{4}[LRDF]\d{4}$/
@@ -27,6 +28,8 @@ export default defineEventHandler(async (event): Promise<EuActResponse> => {
   if (!map) throw createError({ statusCode: 503, statusMessage: 'Die EU-Übersicht wird gerade aufgebaut' })
   const page = actPageOf(map, celex)
   if (!page) throw createError({ statusCode: 404, statusMessage: 'Kein Entwurf nennt diesen Rechtsakt' })
+  // For the „Zitieren" button only; a Cellar that does not answer costs the citation its Amtsblatt reference, never the page.
+  const published = await ojReferenceOf(celex)
   return {
     gp,
     window: map.window,
@@ -35,6 +38,8 @@ export default defineEventHandler(async (event): Promise<EuActResponse> => {
     implementing: page.implementing.map(activeToday),
     restating: page.restating.map(activeToday),
     incomplete: map.incomplete,
+    oj: published?.oj ?? null,
+    eli: published?.eli ?? null,
   }
 })
 

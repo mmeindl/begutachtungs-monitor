@@ -25,6 +25,7 @@
  * therefore prints the LATEST as „Umsetzungsfrist" and the others as
  * „weitere Fristen für einzelne Bestimmungen" (rule D3).
  */
+import type { EuOjReference } from '../../../shared/types/eu'
 import { upstreamJson, type UpstreamPolicy } from '../upstream/fetch'
 
 export const CELLAR_SPARQL = 'https://publications.europa.eu/webapi/rdf/sparql'
@@ -136,6 +137,94 @@ export function fetchTranspositionAnswer(celex: string, policy: UpstreamPolicy =
 /** The transposition dates of one act, fetched and read. Throws on a failure, as above. */
 export async function fetchTranspositionDates(celex: string, policy: UpstreamPolicy = CELLAR_POLICY): Promise<TranspositionDates> {
   return parseTranspositionAnswer(await fetchTranspositionAnswer(celex, policy))
+}
+
+/*
+ * WHERE IT WAS PUBLISHED — the Amtsblatt reference a footnote cites
+ * (06.11.2026). A query of its own, not three more OPTIONALs in
+ * `transpositionQuery`: those multiply its rows, and a new column there
+ * would refetch every cached act for a fact only the act's page reads.
+ *
+ * Measured over the 230 acts of the map (06.11.2026): 153 in a numbered
+ * issue, 77 published act by act (the Journal's form since 01.10.2023),
+ * every one of them with its reference and an ELI.
+ *
+ *   - issue form: series and issue from the work's `oj:JOL_2022_333_R…`
+ *     alias, the date from that issue (`published_in_official-journal`),
+ *     the first page from the German manifestation. The alias decides the
+ *     issue because two acts of 2004 (2004/84, 2004/113) link a second
+ *     one, from 2006, beside the original.
+ *   - act form: `official-journal-act_date_publication` and
+ *     `resource_legal_reference_oj-act` („2023/2413"), the series from the
+ *     `oj:L_202302413` alias.
+ */
+
+/** The SPARQL text for one act's Amtsblatt reference. Throws on anything that is not a CELEX. */
+export function ojQuery(celex: string): string {
+  if (!CELEX_RE.test(celex)) throw new Error(`Keine CELEX-Nummer: ${celex}`)
+  return [
+    'PREFIX cdm: <http://publications.europa.eu/ontology/cdm#>',
+    'PREFIX owl: <http://www.w3.org/2002/07/owl#>',
+    'SELECT ?eli ?ojid ?num ?pub ?pf ?apub ?aref WHERE {',
+    `  ?w owl:sameAs <http://publications.europa.eu/resource/celex/${celex}> .`,
+    '  OPTIONAL { ?w cdm:resource_legal_eli ?eli }',
+    '  OPTIONAL { ?w owl:sameAs ?ojid FILTER(STRSTARTS(STR(?ojid), "http://publications.europa.eu/resource/oj/")) }',
+    '  OPTIONAL { ?w cdm:resource_legal_published_in_official-journal ?oj .',
+    '    ?oj cdm:official-journal_number ?num ; cdm:publication_general_date_publication ?pub }',
+    '  OPTIONAL { ?w cdm:official-journal-act_date_publication ?apub }',
+    '  OPTIONAL { ?w cdm:resource_legal_reference_oj-act ?aref }',
+    '  OPTIONAL {',
+    '    ?e cdm:expression_belongs_to_work ?w .',
+    '    ?e cdm:expression_uses_language <http://publications.europa.eu/resource/authority/language/DEU> .',
+    '    ?m cdm:manifestation_manifests_expression ?e ; cdm:manifestation_official-journal_part_page_first ?pf',
+    '  }',
+    '}',
+  ].join('\n')
+}
+
+/** What the Cellar says about where an act was published. */
+export interface OjAnswer {
+  oj: EuOjReference | null
+  /** „http://data.europa.eu/eli/dir/2022/2555/oj"; null where the Cellar has none. */
+  eli: string | null
+}
+
+const DAY_RE = /^\d{4}-\d{2}-\d{2}$/
+
+/** The answer of `ojQuery`, read. A malformed one throws, as `parseTranspositionAnswer`. */
+export function parseOjAnswer(answer: SparqlAnswer): OjAnswer {
+  const bindings = answer?.results?.bindings
+  if (!Array.isArray(bindings)) throw new Error('Cellar-Antwort ohne results.bindings')
+  const values = (key: string): string[] => [...new Set(bindings.map((b) => b?.[key]?.value?.trim() ?? '').filter((v) => v.length > 0))]
+  const day = (v: string | undefined): string | null => (v && DAY_RE.test(v.slice(0, 10)) ? v.slice(0, 10) : null)
+  const eli = values('eli')[0] ?? null
+  // `…/resource/oj/JOL_2022_333_R_0002` (issue) or `…/resource/oj/L_202302413` (act).
+  const ojIds = values('ojid').map((u) => u.slice(u.lastIndexOf('/') + 1))
+
+  const ref = values('aref')[0]
+  const actDate = day(values('apub')[0])
+  const actSeries = ojIds.map((id) => /^([LC])_\d+$/.exec(id)?.[1]).find(Boolean) as 'L' | 'C' | undefined
+  if (ref && actDate && actSeries) return { oj: { form: 'act', series: actSeries, act: ref, date: actDate }, eli }
+
+  for (const id of ojIds) {
+    const m = /^JO([LC])_\d{4}_(\d+)_/.exec(id)
+    if (!m) continue
+    const issue = String(Number(m[2]))
+    // The date of THAT issue: a second linked issue (a republication) has its own.
+    const date = bindings
+      .filter((b) => String(Number(b?.num?.value ?? NaN)) === issue)
+      .map((b) => day(b?.pub?.value))
+      .find((d): d is string => d !== null)
+    if (!date) continue
+    const pages = values('pf').map(Number).filter((n) => Number.isInteger(n) && n > 0)
+    return { oj: { form: 'issue', series: m[1] as 'L' | 'C', issue, date, page: pages.length ? Math.min(...pages) : null }, eli }
+  }
+  return { oj: null, eli }
+}
+
+/** The Cellar's answer to `ojQuery`, as it arrived. Throws on a failure, as `fetchTranspositionAnswer`. */
+export function fetchOjAnswer(celex: string, policy: UpstreamPolicy = CELLAR_POLICY): Promise<SparqlAnswer> {
+  return upstreamJson<SparqlAnswer>(`${CELLAR_SPARQL}?query=${encodeURIComponent(ojQuery(celex))}`, policy)
 }
 
 /** The deadline the page prints and the others for the footnote (rule D3). */

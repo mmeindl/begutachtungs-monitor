@@ -1,0 +1,72 @@
+{
+ "head": {
+  "link": [],
+  "vars": [
+   "eli",
+   "ojid",
+   "num",
+   "pub",
+   "pf",
+   "apub",
+   "aref"
+  ]
+ },
+ "results": {
+  "distinct": false,
+  "ordered": true,
+  "bindings": [
+   {
+    "eli": {
+     "type": "literal",
+     "datatype": "http://www.w3.org/2001/XMLSchema#anyURI",
+     "value": "http://data.europa.eu/eli/dir/2004/113/oj"
+    },
+    "ojid": {
+     "type": "uri",
+     "value": "http://publications.europa.eu/resource/oj/JOL_2004_373_R_0037_01"
+    },
+    "num": {
+     "type": "literal",
+     "datatype": "http://www.w3.org/2001/XMLSchema#positiveInteger",
+     "value": "153"
+    },
+    "pub": {
+     "type": "literal",
+     "datatype": "http://www.w3.org/2001/XMLSchema#date",
+     "value": "2006-06-07"
+    },
+    "pf": {
+     "type": "literal",
+     "datatype": "http://www.w3.org/2001/XMLSchema#string",
+     "value": "0037"
+    }
+   },
+   {
+    "eli": {
+     "type": "literal",
+     "datatype": "http://www.w3.org/2001/XMLSchema#anyURI",
+     "value": "http://data.europa.eu/eli/dir/2004/113/oj"
+    },
+    "ojid": {
+     "type": "uri",
+     "value": "http://publications.europa.eu/resource/oj/JOL_2004_373_R_0037_01"
+    },
+    "num": {
+     "type": "literal",
+     "datatype": "http://www.w3.org/2001/XMLSchema#positiveInteger",
+     "value": "373"
+    },
+    "pub": {
+     "type": "literal",
+     "datatype": "http://www.w3.org/2001/XMLSchema#date",
+     "value": "2004-12-21"
+    },
+    "pf": {
+     "type": "literal",
+     "datatype": "http://www.w3.org/2001/XMLSchema#string",
+     "value": "0037"
+    }
+   }
+  ]
+ }
+}

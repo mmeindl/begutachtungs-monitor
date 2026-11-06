@@ -61,6 +61,7 @@ const FETCHED: Record<string, string> = {
     "a draft's Vorblatt/WFA PDF, byte for byte as base64 — its EU sentence is in the text layer only (§12.66). Cached in dev " +
     'only, like the search\'s PDFs; production keeps the extracted page texts one layer up, which are derived and small.',
   'eu-cellar': "the Cellar's SPARQL answer for one CELEX, as it arrived; the transposition dates are read from it fresh on every call (§12.66)",
+  'eu-cellar-oj': "the Cellar's SPARQL answer on where one act was published, as it arrived; the Amtsblatt reference is read from it fresh on every call (§12.66)",
   'eu-bundesrecht': "whether Bundesrecht in force on one day names an EU act, from RIS's full-text search; the law as of a past day does not change (§12.66, D4)",
   'eu-landesrecht': "the same search over one Land's consolidated Landesrecht (LrKons) on one day, as RIS answered it — the hits are read fresh on every call (§12.66, D4, Nachtrag 2)",
 }

@@ -10,7 +10,28 @@
  * in the site's idiom (`ListMore`), the chips filter it. Everything that
  * operates on it stands inside the box, the chips in its head per
  * `ListBox`'s rule, the empty selection and the fold at its foot; nothing
- * floats above it. No sort, the order the map delivers.
+ * floats above it.
+ *
+ * THE DEADLINE AS TABS, THE ORDER IN THE COLUMN HEADER (06.11.2026). One
+ * list of deadlines ahead, passed and absent read as unsorted in any order,
+ * so the box opens with tabs — „Frist läuft", „Abgelaufen", „Ohne Frist"
+ * (`deadlineTabOf`), without counts, as the station tabs of `/entwuerfe`
+ * — the count line under the search says how many the tab holds. The order is the lists' own
+ * (`SortHeader` in a `ColumnHeader`, as `/entwuerfe`): „Rechtsakt" orders by
+ * name, „Umsetzungsfrist" by date, one direction per column — the tab's
+ * (`deadlineDirection`): what runs nearest first, what passed most recent
+ * first. A select beside the count on a phone, where no header is drawn.
+ * „Ohne Frist" has no date to order by: by name, nothing to choose.
+ * „Abgelaufen" names the day, never the transposition (D6), and no tab or
+ * box carries a colour.
+ *
+ * THE SEARCH (06.11.2026), under the chips as on `/entwuerfe`: the label,
+ * the official title and the CELEX, by the lists' word rule
+ * (`matchesQuery`, `euActHaystack`). Over both lists; the fold opens while
+ * it holds a hit, and under a query the lists stand uncut, the rule of every
+ * list (whoever searches gets the whole result). Tabs, order and search are
+ * not in the address: the page has one list, and the chips' `?quellen=` is
+ * the choice the site shares.
  *
  * The source chips select rows and change nothing in a row: an act stays
  * where the Bund (ticked) has an implementing draft or any ticked Land does.
@@ -34,9 +55,12 @@
  * counted as implemented, and closed by default under the main list. The
  * chips filter them too; the fold goes where the selection leaves none.
  */
-import type { EuActsResponse } from '#shared/types'
+import type { EuActSummary, EuActsResponse } from '#shared/types'
 import { risSource, eurLexSource, sourceItemsDe } from '#shared/utils/provenance'
-import { euActsRows, euRestatingRows, euSourceUnavailable, filterEuActs, incompleteNoteDe, restatingFoldHeading } from '~/utils/euKarte'
+import { MAX_LIST_QUERY_CHARS } from '#shared/utils/queryParams'
+import { matchesQuery } from '#shared/utils/textMatch'
+import { countLabelDe, todayIso } from '#shared/utils/format'
+import { EU_SORT_DEFAULT, deadlineDirection, deadlineOrderDe, deadlineTabOf, euActHaystack, euActsRows, euRestatingRows, euSourceUnavailable, filterEuActs, incompleteNoteDe, restatingFoldHeading, type EuActSort, type EuDeadlineTab } from '~/utils/euKarte'
 
 usePageSeo({
   title: 'EU-Recht in der Begutachtung',
@@ -53,16 +77,53 @@ const { chosen, bund, toggle } = useSourceChoice()
 const sourceUnavailable = computed(() =>
   data.value ? euSourceUnavailable([...data.value.acts, ...data.value.restatingOnly], data.value.incomplete) : {})
 const allRows = computed(() => (data.value ? euActsRows(data.value) : []))
-const rows = computed(() => (data.value ? euActsRows({ acts: filterEuActs(data.value.acts, chosen.value) }) : []))
-const restatingRows = computed(() => (data.value ? euRestatingRows({ restatingOnly: filterEuActs(data.value.restatingOnly, chosen.value) }) : []))
 const incomplete = computed(() => (data.value ? incompleteNoteDe(data.value.incomplete) : null))
 
-/** Twenty stand; the rest behind „Alle N anzeigen" (`ListMore`), in each list. */
+/* The chips, then the search: both narrow the set the tabs divide. */
+const q = ref('')
+const query = computed(() => q.value.trim())
+const narrowed = <A extends EuActSummary>(acts: readonly A[]): A[] =>
+  filterEuActs(acts, chosen.value).filter((a) => !query.value || matchesQuery(euActHaystack(a), query.value))
+const actsLeft = computed(() => (data.value ? narrowed(data.value.acts) : []))
+const restatingLeft = computed(() => (data.value ? narrowed(data.value.restatingOnly) : []))
+
+/* The tabs, on the main list's acts, and the order; a tab opens in its own order. */
+const today = todayIso()
+const tab = ref<EuDeadlineTab>('laufend')
+const sortChoice = ref<EuActSort | null>(null)
+const sort = computed<EuActSort>(() => (tab.value === 'ohne' ? 'name' : sortChoice.value ?? EU_SORT_DEFAULT[tab.value]))
+const direction = computed(() => deadlineDirection(tab.value))
+const sortModel = computed({ get: () => sort.value, set: (v: string) => { sortChoice.value = v as EuActSort } })
+const SORT_OPTIONS: { value: EuActSort; label: string }[] = [
+  { value: 'frist', label: 'Umsetzungsfrist' },
+  { value: 'name', label: 'Rechtsakt' },
+]
+const TAB_LABEL: Record<EuDeadlineTab, string> = { laufend: 'Frist läuft', abgelaufen: 'Abgelaufen', ohne: 'Ohne Frist' }
+const TABS = (['laufend', 'abgelaufen', 'ohne'] as const).map((value) => ({ value, label: TAB_LABEL[value] }))
+const inTab = <A extends EuActSummary>(acts: readonly A[]): A[] => acts.filter((a) => deadlineTabOf(a, today) === tab.value)
+const rows = computed(() => euActsRows({ acts: inTab(actsLeft.value) }, sort.value, direction.value))
+const restatingRows = computed(() => euRestatingRows({ restatingOnly: inTab(restatingLeft.value) }, sort.value, direction.value))
+
+/*
+ * Where a search's hits went, when the tab shows none: the tabs carry no
+ * counts, so the notice names them — another tab of the main list first,
+ * then the fold (the GDPR, restated by many drafts), in this tab or another.
+ */
+const hitsElsewhere = computed(() => {
+  const tabOf = (acts: readonly EuActSummary[]) => (['laufend', 'abgelaufen', 'ohne'] as const).filter((t) => acts.some((a) => deadlineTabOf(a, today) === t))
+  const main = tabOf(actsLeft.value)
+  if (main.length) return `Treffer unter ${main.map((t) => `„${TAB_LABEL[t]}“`).join(' und ')}.`
+  if (restatingRows.value.length) return 'Treffer unter „Nur in Umsetzungshinweisen wiederholt“.'
+  const fold = tabOf(restatingLeft.value)[0]
+  return fold ? `Treffer unter „${TAB_LABEL[fold]}“, in „Nur in Umsetzungshinweisen wiederholt“.` : null
+})
+
+/** Twenty stand; the rest behind „Alle N anzeigen" (`ListMore`), in each list — uncut under a query. */
 const STEP = 20
 const visible = ref(STEP)
-const shown = computed(() => rows.value.slice(0, visible.value))
+const shown = computed(() => (query.value ? rows.value : rows.value.slice(0, visible.value)))
 const visibleRestating = ref(STEP)
-const shownRestating = computed(() => restatingRows.value.slice(0, visibleRestating.value))
+const shownRestating = computed(() => (query.value ? restatingRows.value : restatingRows.value.slice(0, visibleRestating.value)))
 
 /*
  * The credit line, as under a draft's EU fact (`DraftEuCredits`): what the
@@ -119,6 +180,12 @@ const [bundItem, eurLexItem] = sourceItemsDe([risSource('Vorblatt'), risSource('
           <section v-else aria-labelledby="eu-akte-heading" class="mt-6">
             <h2 id="eu-akte-heading" class="sr-only">Rechtsakte</h2>
             <ListBox>
+              <!-- Where the deadline stands, as the box's tabs — the most
+                   prominent control belongs to the question the page is
+                   about. -->
+              <template #tabs>
+                <ListTabs v-model="tab" :options="TABS" group-label="Umsetzungsfrist" />
+              </template>
               <!-- Whose drafts, in the tool row, the lists' source chips
                    (`SourceChips`): they decide which rows exist at all. -->
               <template #header>
@@ -128,13 +195,59 @@ const [bundItem, eurLexItem] = sourceItemsDe([risSource('Vorblatt'), risSource('
                 <p v-if="incomplete" class="text-sm text-ink-muted">
                   {{ incomplete }}
                 </p>
+                <!-- The search on a line of its own, the whole width, after
+                     what fixes the set — as on `/entwuerfe`. Its placeholder
+                     counts what the chips left over. -->
+                <UInput
+                  v-model="q"
+                  type="search"
+                  :maxlength="MAX_LIST_QUERY_CHARS"
+                  icon="i-lucide-search"
+                  :placeholder="data ? `In ${countLabelDe(filterEuActs([...data.acts, ...data.restatingOnly], chosen).length, 'Rechtsakt', 'Rechtsakten')} suchen …` : 'Rechtsakte durchsuchen …'"
+                  aria-label="Rechtsakte durchsuchen"
+                  class="w-full"
+                  :ui="{ base: 'min-h-target' }"
+                />
+                <!-- The count line, and on a phone the order beside it, as on
+                     `/entwuerfe`: from `md` the column header orders. -->
+                <div class="flex flex-wrap items-center justify-between gap-x-4 gap-y-2">
+                  <p class="text-sm text-ink-muted" aria-live="polite">
+                    {{ countLabelDe(rows.length, 'Rechtsakt', 'Rechtsakte') }}
+                  </p>
+                  <div v-if="tab !== 'ohne'" class="flex min-w-0 items-center gap-2 md:hidden">
+                    <label for="eu-sort" class="shrink-0 text-sm text-ink-secondary">Sortieren</label>
+                    <TokenSelect id="eu-sort" v-model="sortModel">
+                      <option v-for="opt in SORT_OPTIONS" :key="opt.value" :value="opt.value">
+                        {{ opt.label }}
+                      </option>
+                    </TokenSelect>
+                  </div>
+                </div>
               </template>
               <!-- Inside the sheet, as a list box's notice: a card in the
                    sheet would be a box in a box (`ListBoxNotice`). Empty
                    only where the chosen Länder have no act and the Bund is
                    off; the Bund has acts, so it is the way back. -->
+              <!-- A search that found nothing in this tab says so, and where
+                   its hits are (`hitsElsewhere`). An empty tab and the chips' empty selection keep
+                   their own words, the latter its way back. -->
               <ListBoxNotice
-                v-if="!rows.length"
+                v-if="!rows.length && query"
+                :title="`Unter „${TAB_LABEL[tab]}“ passt kein Rechtsakt zu „${query}“.`"
+                :description="hitsElsewhere ?? undefined"
+              >
+                <template #action>
+                  <button type="button" class="link-inline text-sm" @click="q = ''">
+                    Suche löschen
+                  </button>
+                </template>
+              </ListBoxNotice>
+              <ListBoxNotice
+                v-else-if="!rows.length && actsLeft.length"
+                :title="`Kein Rechtsakt dieser Auswahl unter „${TAB_LABEL[tab]}“.`"
+              />
+              <ListBoxNotice
+                v-else-if="!rows.length"
                 title="Kein Rechtsakt, den ein Entwurf aus dieser Auswahl umsetzt."
               >
                 <template v-if="!bund" #action>
@@ -143,10 +256,31 @@ const [bundItem, eurLexItem] = sourceItemsDe([risSource('Vorblatt'), risSource('
                   </button>
                 </template>
               </ListBoxNotice>
-              <ul v-else role="list" class="divide-y divide-hairline">
-                <EuActRow v-for="row in shown" :key="row.key" :row="row" />
-              </ul>
+              <template v-else>
+                <!-- The lists' column header (`EntryList`): the labels over
+                     their columns, the sortable ones as buttons. Not under
+                     „Ohne Frist", which has one order and no dates. -->
+                <ColumnHeader :sortable="tab !== 'ohne'" class="gap-4 md:flex">
+                  <ColumnLabel
+                    label="Rechtsakt"
+                    :sort="tab !== 'ohne' ? { order: 'nach Name', active: sort === 'name' } : null"
+                    class="min-w-0 flex-1"
+                    @choose="sortChoice = 'name'"
+                  />
+                  <ColumnLabel
+                    label="Umsetzungsfrist"
+                    :sort="tab !== 'ohne' ? { order: deadlineOrderDe(tab), active: sort === 'frist' } : null"
+                    align="end"
+                    class="entry-col-state flex justify-end"
+                    @choose="sortChoice = 'frist'"
+                  />
+                </ColumnHeader>
+                <ul role="list" class="divide-y divide-hairline">
+                  <EuActRow v-for="row in shown" :key="row.key" :row="row" />
+                </ul>
+              </template>
               <ListMore
+                v-if="!query"
                 :visible="visible"
                 :total="rows.length"
                 :step="STEP"
@@ -155,13 +289,14 @@ const [bundItem, eurLexItem] = sourceItemsDe([risSource('Vorblatt'), risSource('
               />
             </ListBox>
             <!-- The acts drafts only restate (D4): apart, closed, the same rows. -->
-            <FoldSection v-if="restatingRows.length" :heading="restatingFoldHeading(restatingRows.length)" class="mt-6">
+            <FoldSection v-if="restatingRows.length" :heading="restatingFoldHeading(restatingRows.length)" :open="!!query" class="mt-6">
               <div class="pb-2">
                 <ListBox>
                   <ul role="list" class="divide-y divide-hairline">
                     <EuActRow v-for="row in shownRestating" :key="row.key" :row="row" level="h4" />
                   </ul>
                   <ListMore
+                    v-if="!query"
                     :visible="visibleRestating"
                     :total="restatingRows.length"
                     :step="STEP"

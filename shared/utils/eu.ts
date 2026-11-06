@@ -45,6 +45,16 @@ const MONTHS_DE = 'Januar|Jänner|Februar|März|April|Mai|Juni|Juli|August|Septe
 const DATED_RE = new RegExp(`\\svom\\s\\d{1,2}\\.\\s(?:${MONTHS_DE})\\s\\d{4}\\s`)
 
 /**
+ * The official title as a citation carries it: whole, without the trailing
+ * „(Text von Bedeutung für den EWR)" — a note on the act's scope, not part
+ * of its name, and on 126 of the map's 230 titles (06.11.2026). Null for no
+ * title.
+ */
+export function euActTitle(title: string | null): string | null {
+  return title?.trim().replace(EEA_RE, '').trim() || null
+}
+
+/**
  * What an act's official title says after its name and date — „über den
  * Schutz von Personen, die sich öffentlich beteiligen, …" from „Richtlinie
  * (EU) 2024/1069 des Europäischen Parlaments und des Rates vom 11. April
@@ -58,7 +68,7 @@ const DATED_RE = new RegExp(`\\svom\\s\\d{1,2}\\.\\s(?:${MONTHS_DE})\\s\\d{4}\\s
  */
 export function euActSubject(title: string | null): string | null {
   if (!title) return null
-  const stripped = title.trim().replace(EEA_RE, '').trim()
+  const stripped = euActTitle(title) ?? ''
   const m = DATED_RE.exec(stripped)
   const subject = (m ? stripped.slice(m.index + m[0].length) : stripped).trim()
   return subject || null

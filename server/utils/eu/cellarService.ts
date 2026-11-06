@@ -4,7 +4,7 @@
  * asked for by a Ministerialentwurf and a Landesgesetz is one entry, under
  * one name (docs/architecture.md §12.66).
  */
-import { CELEX_RE, CELLAR_QUERY_VERSION, fetchTranspositionAnswer, parseTranspositionAnswer, type SparqlAnswer, type TranspositionDates } from './cellar'
+import { CELEX_RE, CELLAR_QUERY_VERSION, fetchOjAnswer, fetchTranspositionAnswer, parseOjAnswer, parseTranspositionAnswer, type OjAnswer, type SparqlAnswer, type TranspositionDates } from './cellar'
 import { PUBLISHED_DOCUMENT_TTL_S } from '../cache/ttl'
 
 /**
@@ -47,6 +47,26 @@ export async function transpositionOf(celex: string): Promise<TranspositionDates
   if (!CELEX_RE.test(celex)) return { found: true, dates: [], adopted: null, inForce: null, title: null }
   try {
     return parseTranspositionAnswer(await fetchCellarAnswer(celex))
+  } catch {
+    return null
+  }
+}
+
+/**
+ * Where an act was published, as it arrived — a month, like the dates: an
+ * Amtsblatt reference never changes once printed. Only the act's page asks
+ * (its „Zitieren" button), one query per page view at most.
+ */
+const fetchOjAnswerCached = defineCachedFunction(
+  (celex: string): Promise<SparqlAnswer> => inCellarTurn(() => fetchOjAnswer(celex)),
+  { name: 'eu-cellar-oj', getKey: (celex: string) => celex, maxAge: PUBLISHED_DOCUMENT_TTL_S, swr: false },
+)
+
+/** One act's Amtsblatt reference and ELI, or null where the Cellar did not answer — the page then cites without them. */
+export async function ojReferenceOf(celex: string): Promise<OjAnswer | null> {
+  if (!CELEX_RE.test(celex)) return null
+  try {
+    return parseOjAnswer(await fetchOjAnswerCached(celex))
   } catch {
     return null
   }

@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { beilageOfUrl, bgblEliUrl, bgblShortDe, blgNrDe, citeLineDe, draftCitationDe, erlRvPassageDe, latestAmendmentOf, lawCiteDe, lgblEliUrl, rvCitationDe } from '../shared/utils/citations'
+import { euActCiteDe, euOjCiteDe, beilageOfUrl, bgblEliUrl, bgblShortDe, blgNrDe, citeLineDe, draftCitationDe, erlRvPassageDe, latestAmendmentOf, lawCiteDe, lgblEliUrl, rvCitationDe } from '../shared/utils/citations'
 
 describe('citations', () => {
   it('cites a draft as Parliament does, a Vorlage as a footnote does', () => {
@@ -93,5 +93,24 @@ describe('lgblEliUrl — a Landesgesetzblatt in RIS', () => {
   it('builds the address from RIS’s Land code and the number', () => {
     expect(lgblEliUrl('OB', 'LGBl. Nr. 45/2026')).toBe('https://www.ris.bka.gv.at/eli/lgbl/OB/2026/45')
     expect(lgblEliUrl('OB', 'kein Blatt')).toBeNull()
+  })
+})
+
+describe('EU acts — the Amtsblatt reference and the footnote', () => {
+  it('cites a numbered issue with its page, and an act published on its own by its own number', () => {
+    expect(euOjCiteDe({ form: 'issue', series: 'L', issue: '333', date: '2022-12-27', page: 80 })).toBe('ABl. L 333 vom 27.12.2022, S. 80')
+    expect(euOjCiteDe({ form: 'issue', series: 'L', issue: '373', date: '2004-12-21', page: null })).toBe('ABl. L 373 vom 21.12.2004')
+    expect(euOjCiteDe({ form: 'act', series: 'L', act: '2023/2413', date: '2023-10-31' })).toBe('ABl. L, 2023/2413, 31.10.2023')
+  })
+
+  it('copies the title without the EEA note, the reference and the ELI; label and EUR-Lex where the Cellar gave none', () => {
+    const act = {
+      label: 'Richtlinie (EU) 2022/2555',
+      title: 'Richtlinie (EU) 2022/2555 des Europäischen Parlaments und des Rates vom 14. Dezember 2022 über Maßnahmen für ein hohes gemeinsames Cybersicherheitsniveau in der Union (NIS-2-Richtlinie) (Text von Bedeutung für den EWR)',
+      eurLexUrl: 'https://eur-lex.europa.eu/eli/dir/2022/2555/oj/deu',
+    }
+    expect(euActCiteDe(act, { form: 'issue', series: 'L', issue: '333', date: '2022-12-27', page: 80 }, 'http://data.europa.eu/eli/dir/2022/2555/oj'))
+      .toBe('Richtlinie (EU) 2022/2555 des Europäischen Parlaments und des Rates vom 14. Dezember 2022 über Maßnahmen für ein hohes gemeinsames Cybersicherheitsniveau in der Union (NIS-2-Richtlinie), ABl. L 333 vom 27.12.2022, S. 80, http://data.europa.eu/eli/dir/2022/2555/oj')
+    expect(euActCiteDe({ ...act, title: null }, null, null)).toBe('Richtlinie (EU) 2022/2555, https://eur-lex.europa.eu/eli/dir/2022/2555/oj/deu')
   })
 })

@@ -14,6 +14,9 @@
  *
  * Pure module so vitest can import it relatively.
  */
+import type { EuOjReference } from '../types/eu'
+import { euActTitle } from './eu'
+import { formatDateDe } from './format'
 import { romanToInt } from './gp'
 
 /** „Ministerialentwurf 115/ME XXVIII. GP" — the draft as Parliament cites it. */
@@ -136,4 +139,28 @@ export function latestAmendmentOf(organs: readonly (string | null | undefined)[]
 /** „Universitätsgesetz 2002, BGBl. I Nr. 120/2002 idF BGBl. I Nr. 50/2024, <URL>". */
 export function lawCiteDe(title: string, stammnorm: string, amendedBy: string | null, url: string): string {
   return citeLineDe(title, amendedBy ? `${stammnorm} idF ${amendedBy}` : stammnorm, url)
+}
+
+/**
+ * The Amtsblatt reference as EUR-Lex prints it under a German act
+ * (06.11.2026): „ABl. L 333 vom 27.12.2022, S. 80" for an act in a numbered
+ * issue, „ABl. L, 2023/2413, 31.10.2023" for one published on its own, the
+ * Journal's form since 01.10.2023. Without a page, the issue alone.
+ */
+export function euOjCiteDe(oj: EuOjReference): string {
+  if (oj.form === 'act') return `ABl. ${oj.series}, ${oj.act}, ${formatDateDe(oj.date)}`
+  return `ABl. ${oj.series} ${oj.issue} vom ${formatDateDe(oj.date)}${oj.page ? `, S. ${oj.page}` : ''}`
+}
+
+/**
+ * An EU act as a footnote cites it (06.11.2026): the official title, the
+ * Amtsblatt reference, the ELI — „Richtlinie (EU) 2022/2555 des
+ * Europäischen Parlaments und des Rates vom 14. Dezember 2022 über …, ABl. L
+ * 333 vom 27.12.2022, S. 80, http://data.europa.eu/eli/dir/2022/2555/oj".
+ * The reference is the part looked up by hand; the title alone is copied
+ * from any page. The short label and the EUR-Lex address where the Cellar
+ * gave no title or ELI.
+ */
+export function euActCiteDe(act: { label: string; title: string | null; eurLexUrl: string }, oj: EuOjReference | null, eli: string | null): string {
+  return citeLineDe(euActTitle(act.title) ?? act.label, oj ? euOjCiteDe(oj) : null, eli ?? act.eurLexUrl)
 }

@@ -4,8 +4,8 @@ import { describe, expect, it } from 'vitest'
 import { baseActCelexes, baseActsOf, celexOf, eliOf, parseEuActCitations, readEuActCitations, unnamedAmendmentBases } from '../server/utils/eu/actCitations'
 import { classifyVorblatt, classifyVorblattSentence, hasTextLayer, isVorblattDocument } from '../server/utils/eu/vorblatt'
 import { isHintParagraph, readBundLaw, readExplanationsEuSignal, readUmsetzungshinweis, type LawTextBlock } from '../server/utils/eu/umsetzungshinweis'
-import { euActSubject } from '../shared/utils/eu'
-import { CELEX_RE, deadlineOf, parseTranspositionAnswer, transpositionQuery, transpositionUrl, type SparqlAnswer } from '../server/utils/eu/cellar'
+import { euActSubject, euActTitle } from '../shared/utils/eu'
+import { CELEX_RE, deadlineOf, ojQuery, parseOjAnswer, parseTranspositionAnswer, transpositionQuery, transpositionUrl, type SparqlAnswer } from '../server/utils/eu/cellar'
 import { combineVerdicts, decideEuMarker, lawTextMarker, newLawHint } from '../server/utils/eu/euMarker'
 import { lawBlocksFromPdfPages } from '../server/utils/laender/draftPdfLaw'
 
@@ -701,5 +701,44 @@ describe('euActSubject', () => {
     expect(euActSubject(null)).toBeNull()
     expect(euActSubject('')).toBeNull()
     expect(euActSubject('(Text von Bedeutung für den EWR)')).toBeNull()
+  })
+})
+
+describe('parseOjAnswer — where an act was published, for its citation', () => {
+  const oj = (celex: string) => JSON.parse(readFileSync(join(FIXTURES, `cellar-oj-${celex}.json`), 'utf8')) as SparqlAnswer
+
+  it('reads a numbered issue: series and issue from the alias, the date of that issue, the first page (2022/2555)', () => {
+    expect(parseOjAnswer(oj('32022L2555'))).toEqual({
+      oj: { form: 'issue', series: 'L', issue: '333', date: '2022-12-27', page: 80 },
+      eli: 'http://data.europa.eu/eli/dir/2022/2555/oj',
+    })
+  })
+
+  it('takes the issue the alias names, not a second linked one — 2004/113 also links an issue of 2006, listed first', () => {
+    expect(parseOjAnswer(oj('32004L0113')).oj).toEqual({ form: 'issue', series: 'L', issue: '373', date: '2004-12-21', page: 37 })
+  })
+
+  it('reads an act published on its own, the Journal\'s form since 01.10.2023 (2023/2413)', () => {
+    expect(parseOjAnswer(oj('32023L2413'))).toEqual({
+      oj: { form: 'act', series: 'L', act: '2023/2413', date: '2023-10-31' },
+      eli: 'http://data.europa.eu/eli/dir/2023/2413/oj',
+    })
+  })
+
+  it('answers null where nothing pins the reference down, and throws on a malformed answer', () => {
+    expect(parseOjAnswer({ results: { bindings: [] } })).toEqual({ oj: null, eli: null })
+    // An issue alias without the issue's date is no reference.
+    expect(parseOjAnswer({ results: { bindings: [{ ojid: { value: 'http://publications.europa.eu/resource/oj/JOL_2022_333_R_0002' } }] } }).oj).toBeNull()
+    expect(() => parseOjAnswer({} as SparqlAnswer)).toThrow()
+    expect(() => ojQuery('2022/2555')).toThrow()
+  })
+})
+
+describe('euActTitle — the title as a citation carries it', () => {
+  it('drops the EEA note and keeps the rest whole', () => {
+    expect(euActTitle('Richtlinie (EU) 2023/2668 des Europäischen Parlaments und des Rates vom 22. November 2023 zur Änderung der Richtlinie 2009/148/EG (Text von Bedeutung für den EWR)'))
+      .toBe('Richtlinie (EU) 2023/2668 des Europäischen Parlaments und des Rates vom 22. November 2023 zur Änderung der Richtlinie 2009/148/EG')
+    expect(euActTitle(null)).toBeNull()
+    expect(euActTitle('(Text von Bedeutung für den EWR)')).toBeNull()
   })
 })
