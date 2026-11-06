@@ -15371,6 +15371,128 @@ eine Angabe verworfen, die nur eine Seite liest. Die Ausgabe kommt aus dem
 Antwort nennt sie zuerst. Antwortet der Cellar nicht, zitiert der Knopf
 Titel und EUR-Lex-Adresse.
 
+**Nachtrag 10 (06.11.2026): Bund zu Land gemessen — Art. 15a und
+Grundsatzgesetze in den Entwürfen der Länder.** „Was v1 nicht tut" schloss
+beides aus, bis der Länder-Schritt zeigt, was die Erläuterungen hergeben.
+Gezählt über den Cache der Länder-Messung (`.cache/eu-laender`, GP XXVIII,
+489 Entwürfe, 485 mit lesbarem Text; Entwurfs-PDFs und Erläuterungen-
+Antworten, ohne Abruf), dann jeder Treffer von Hand nach seiner Rolle
+gelesen — ein Leser, Ausschnitte, Rückruf unbekannt („Bund-Länder-
+Vereinbarung" ohne „15a" fällt durch).
+
+*Art. 15a:* 45 Entwürfe nennen eine Vereinbarung; 21 setzen eine um, 7
+teilweise, 17 verweisen nur (Begriffsbestimmung, Kompetenzbegründung,
+Fördermittel). Die Umsetzungen ballen sich: Sozialbetreuungsberufe
+(Änderung 2025) 9 Entwürfe in sechs Ländern, Transparenzdatenbank 5 in
+fünf, Gesundheit (Finanzausgleich 2024–2028) 5 in vier, Grundversorgung
+(Kostenhöchstsätze) 2.
+
+*Grundsatzgesetze:* 44 Entwürfe nennen eines oder Art. 12 B-VG; rund
+17–20 führen ein geändertes aus, der Rest begründet nur die Zuständigkeit.
+Die Annahme in TODO Teil 6 („nach 2019 fast nur Krankenanstalten und
+Elektrizität") greift zu kurz: der größte Teil ist Art. 14 B-VG, Schule und
+Kindergarten — Anstellungserfordernisse-Grundsatzgesetz (BGBl. I Nr.
+44/2025) 6 Entwürfe in fünf Ländern, Schulorganisationsgesetz (BGBl. I Nr.
+2/2026) 4 sicher und 3 wahrscheinlich, Sozialhilfe-Grundsatzgesetz 4,
+KAKuG/VUG 2024 3. Zusammen führen etwa 35 der 489 Entwürfe (~7 %) etwas
+vom Bund aus — dieselbe Größe wie die 57 Länder-Entwürfe mit EU-Fakt.
+
+*Umgekehrt zum EU-Fall:* der Akt ist leicht, das „ob" ist schwer. Das
+Grundsatzgesetz steht meist mit Fundstelle in der Promulgationsklausel
+(„Der Landtag hat in Ausführung des …, BGBl. I Nr. 44/2025, beschlossen"),
+die Vereinbarung in § 1 („Mit diesem Gesetz werden die Verpflichtungen …
+aus der Vereinbarung gemäß Artikel 15a B-VG … umgesetzt"); aber die Hälfte
+der Nennungen sind Verweise, und kein Vorblatt-Satz entscheidet wie beim
+EU-Werkzeugsatz. *Fristen* stehen fast nie im Land: 2 von ~35 Entwürfen
+(beide Transparenzdatenbank, „bis spätestens zum 28. …"). Sie stünden in
+der Vereinbarung oder im Grundsatzgesetz selbst (Art. 15 Abs. 6 B-VG), und
+für beide gibt es kein Register wie den Cellar.
+
+*Die Kette nach unten trägt — für die Grundsatzgesetze.* Über `BgblAuth`
+(`Regierungsvorlage`/`Initiativantrag`) und die Seite der Vorlage:
+44/2025 ← 128 d.B. ← 13/ME (und 26/ME), 2/2026 ← 368 d.B. ← 66/ME, 25/2025
+(Budgetbegleitgesetz 2025, darin die Sozialhilfe-Änderung) ← 69 d.B. ←
+15/ME (und 16/ME) — alle drei Entwürfe der eigenen Periode. Ohne
+Ministerialentwurf: VUG 2024 (2310 d.B., XXVII) und die Vereinbarung über
+die Transparenzdatenbank (2314 d.B., XXVII; Vereinbarungen nach Art. 15a
+gehen als Vorlage, nicht in Begutachtung), SH-GG 20/2024 (3816/A) und
+KAKuG 24/2024 (3867/A) als Initiativanträge. Was das Stück also neu
+könnte: an einem Bundesentwurf zeigen, welche Länder sein Grundsatzgesetz
+ausführen — die Kette ME → RV → BGBl um eine Station verlängert, in der
+Gestalt der EU-Karte („ein Akt, neun Länder"). Für Art. 15a fehlt der
+Bundesentwurf; dort bliebe es ein Fakt am Landesentwurf.
+
+**Gegenprüfung am selben Tag (unabhängiger Durchgang mit Prototyp-Leser,
+Kernaussagen hier nachgemessen) — drei Korrekturen an der Empfehlung
+„Kette am Bundesentwurf":**
+
+1. *Der Schlüssel ist die Kundmachung (BGBl. I), nicht der ME.* Die
+   Sozialhilfe-Änderung, die Salzburg und die Steiermark ausführen, steht
+   weder in 15/ME noch in 16/ME — sie kam erst mit 69 d.B. in den Text.
+   Eine Kette ME → Land hätte zwei Länder-Entwürfe an einen Entwurf
+   gehängt, der die Bestimmung nie trug. Und die Art.-15a-Vereinbarungen
+   haben sehr wohl einen Bundesanker: einen eigenen BGBl.-I-Eintrag mit
+   Vorlage (Sozialbetreuungsberufe 152/2024 ← 2613 d.B.,
+   Transparenzdatenbank 138/2024 ← 2314 d.B., Grundversorgung 3/2025 ←
+   2657 d.B.), nur keinen ME. Eine Aktseite je BGBl.-I-Nummer — wie die
+   CELEX für das EU-Recht — trägt beide Arten; der ME wird nur angehängt,
+   wo sein eigener Text Grundsatzbestimmungen enthält.
+2. *Die Promulgationsklausel „in Ausführung des …" schreiben nur Steiermark
+   und Kärnten;* alle anderen „Der Landtag hat beschlossen:". Und eine
+   bloße BGBl.-Zitierung ist kein Schlüssel: BGBl. I Nr. 50/2025
+   (IFG-Anpassung) zitieren 26 Länder-Entwürfe, fast alle in
+   Verweislisten. Ausführung ist nur die Zitierung im Satz, der die
+   Ausführung aussagt.
+3. *Der Bundesentwurf ist während seines eigenen Lebens die falsche
+   Heimat.* Gemessene Abstände Kundmachung → Länder-Entwurf: 5–10 Wochen
+   (Sozialhilfe), 2–9 Monate (44/2025, 2/2026, EABG). Der ME zeigte über
+   Begutachtung und Parlament hinweg „0 Länder" — und D6 verbietet genau
+   diese Lesart. Also: Aktseite als Ansicht, Fakt am Landesentwurf, am ME
+   eine Zeile in zwei Tatsachen („noch kein Entwurf der Länder im Fenster ·
+   Frist laut Grundsatzgesetz binnen eines Jahres"), nie „0 Länder".
+
+Weitere Befunde des Durchgangs: Grundsatzgesetze der XXVIII mit Inhalt
+im ME auch 54/ME (117/2025, ohne Markerwort), 32/ME ElWG (91/2025), 43/ME
+EABG (47/2026; t-2026-728 führt es aus — in der ersten Zählung verfehlt),
+19+20/ME (50/2025, zwei Ein-§-Grundsatzbestimmungen), 150/ME (SH-GG, noch
+ohne RV); 5 von 8 Akten haben schon ≥ 1 Länder-Entwurf. Die Fristformel
+„Die Ausführungsgesetze der Länder sind binnen … zu erlassen." steht in
+44/2025, 47/2026 und 91/2025 (dort ab Inkrafttreten), nicht in 2/2026 und
+117/2025 — gedruckt als Wortlaut des Grundsatzgesetzes, kein errechnetes
+Datum. Prototyp gegen die Handlabels: Grundsatzgesetz P 0,82 / R 0,90
+(Abweichungen überwiegend Lücken der Labels: ktn-4095 und ooe-16085 führen
+zusätzlich Grundsatzbestimmungen aus, ooe-2025-16101 trägt im Text keinen
+Grundsatzbezug — eine Landes-Novelle eines Ausführungsgesetzes, die nicht
+gezeigt wird); Art. 15a, nur feste Formen, P 0,95 / R 0,86. Gemessen über
+`pdftotext`, nicht über den Seitenpfad der Produktion.
+
+**Die drei Messungen vor dem Bau (06.11.2026 abends).** (1) *Produktions-
+pfad:* derselbe Prototyp-Leser über den Seitentext aus `pagesOfBytes`
+statt `pdftotext` — kein einziger Entwurf wechselt die Klasse, die Werte
+oben gelten. (2) *Steiermark:* die vier ungelesenen Entwürfe über
+`landPdfBytes` nachgeholt (8 PDFs, kein Fehler); keiner führt etwas vom
+Bund aus (das Grundversorgungsgesetz ist EU-getrieben, „Grundsatz" dort
+nur im Wortsinn). (3) *Rückblick, wie viele Akte eine Periode trägt*
+(RIS-Volltextsuche in `BgblAuth`, Teil I: „Ausführungsgesetze der
+Länder", „Grundsatzbestimmung(en)", Titel „Vereinbarung gemäß Art. 15a";
+Länder als Obergrenze über `LgblAuth`-Zitate der BGBl.-Nummer): GP XXVII
+23 Bundesgesetze mit Grundsatzinhalt in fünf Jahren, GP XXVIII bisher 6
+(54/ME, 117/2025, fehlt — Grundsatzgesetz als Ganzes, ohne Markerwort);
+dazu 13 bzw. 6 Vereinbarungen nach Art. 15a im BGBl., davon mehr als die
+Hälfte zweiseitig (Bund und ein Land). Länder mit einem LGBl., das die
+Nummer zitiert, je Grundsatzgesetz meist 3–9 (Median 5), wenige 0–1.
+Die Obergrenze täuscht in beide Richtungen: Sammelgesetze werden aus
+anderen Gründen zitiert (50/2025: 97 LGBl., aber keine Ausführung unter
+den 26 zitierenden Entwürfen), Vereinbarungen zitiert das Land meist nach
+ihrer LGBl.-Kundmachung, nicht nach dem BGBl. Folgerung: etwa fünf
+Grundsatzgesetze und zwei, drei mehrseitige Vereinbarungen im Jahr, jedes
+mit einigen Ländern — eine Aktseite trägt, eine eigene Übersicht wie
+`/eu-recht` (125 Akte) nicht; zweiseitige Vereinbarungen gehören nur als
+Fakt an den Landesentwurf.
+
+Skript und Ergebnisse liegen nicht im Repo (Wegwerfmessung); die Zahlen
+hier sind der Stand. Ob und wie gebaut wird: TODO Teil 6.
+
 ## 13. Open questions
 
 1. **Legal (restated 2026-09-16 — the old wording asked the wrong question).** It assumed the metadata was CC-BY and only the full texts excluded. Parliament's licence page for the Begutachtungsverfahren excludes *Beteiligungen zu Ministerialentwürfen* from open-data reuse as such, and no licensed dataset covers Ministerialentwürfe at all. So the question is now: **on what basis may the metadata of lists 81/142/305 be reused?** Two halves — the factual one (how is that sentence meant, is a case-by-case release possible) goes to the Parlamentsdirektion, the legal one (is factual metadata protectable at all; Datenbankherstellerrecht §§ 76c ff vs. § 42h UrhG) to a university partner. The inline web-form texts remain a sub-question of it, not a separate one. It blocks a blanket CC-BY claim on the site, which was removed on 2026-09-16. **And "stage 1 is metadata-only either way", which stood here until 2026-09-19, is not quite true — one block breaks it.** Under „Worum geht es?" the draft page prints Parliament's `shortinfo`: Ziele, Inhalt, Hauptgesichtspunkte. That is prose from the excluded dataset, and no enumeration of "Fristen, Geschäftszahlen, Anzahl" covers it. The obvious escape was measured and does not hold (`pnpm corpus:kurzinfo`, GP XXVII, 337 drafts): the Kurzinformation is *not* simply the ministry's text, which RIS publishes CC BY. 53 % of drafts carry no prose at all, only the Vorblatt lists (67 % of all characters, untested here because the Vorblatt is a RIS document the corpus mapper does not carry); where there is prose, a median of 60 % of its eight-word windows occur verbatim in the ministry's documents, p10 25 %, and only 6.6 % of drafts are covered to 90 % or more. It is Parliament's editorial work on the ministry's material — related, but not the same document, so it cannot be sourced from RIS instead. Consequence: `/impressum` and `/ueber` name it since 2026-09-19, and **the question to the Parlamentsdirektion has to name it too** — an answer of the form "only the contents of the Stellungnahmen are excluded" would not settle it, because the Kurzinformation is neither a Stellungnahme nor a metadatum. And a third block, found 23.09.2026, which unlike the Kurzinformation sits in code: the § comparison reads the Ministerialentwurf's Gesetzestext from Parliament's HTML wherever Parliament publishes one (`diff/lawDiffService.ts`, RIS XML only where it does not), and the Begründungsvergleich reads the draft's Erläuterungen from the same copy on both sides (`explanations/reasoningDiffService.ts`) — both for a measured reason, one Word template on both sides (§12.12, sixth measurement), and both against the source order the Textgegenüberstellung follows (`annex/annexSource.ts`). The argument that carries it is the one the annex switch refuses for the drafts RIS does not hold — the same documents stand in RIS under CC BY — and for those drafts (12 of 350 in GP XXVII) the comparison shows Parliament's text with no RIS twin. `/ueber` and `/impressum` name it since 23.09.2026. Open, and part of the question above: whether to read the draft's text RIS-first like the annex, at the measured cost to the alignment, or to keep the parser symmetry and say so — as the copy now does. Read live on 23.09.2026, Parliament's own dataset pages (Regierungsvorlagen, Anträge, Ausschussberichte, Beschlüsse — one template) call the documents of those items „freie Werke und somit ohne Lizenzierung frei nutzbar“ and license only the result lists, the API and the history pages as CC BY 4.0; the exclusion sentence on the Beteiligungen page names *Beteiligungen* zu Ministerialentwürfen, not the drafts or their documents. (What stood here until 30.09.2026 — that the Beteiligungen lists are CC BY and that the Stellungnahmen zur Regierungsvorlage, §12.14, run under that grant — was a misreading: the Beteiligungen dataset is „Aktuelle Beteiligungen", list 143, items open for participation on the day of the query, and its page says „Ministerialentwürfe und Stellungnahmen fallen nicht darunter"; the Regierungsvorlagen page excludes „sämtliche Informationen zu Stellungnahmen" from free use and licensing, for data protection and copyright. The Stellungnahmen zur Regierungsvorlage therefore carry no licence either, and `/impressum` says so since 30.09.2026.) So the sharp form of the question to the Parlamentsdirektion is whether „die Dokumente selbst sind freie Werke“ holds for a Ministerialentwurf's documents too — and, separately, on what basis list 81 as such and the Kurzinformation may be reused. **The § comparison's own credit line was corrected to those facts on 23.09.2026:** it claimed „CC BY 4.0" whenever neither side was the Ministerialentwurf (`isLicensedPair`), which named a licence Parliament does not grant for these documents — the correct note for a Regierungsvorlage, Ausschuss- or Plenarfassung read from Parliament is „Dokumente: freie Werke, § 7 UrhG", a RIS-sourced side stays CC BY 4.0, and the Ministerialentwurf is credited by name with no claim at all, because what may be claimed for it is precisely this open question (`lawDiffSourceCredit`).
