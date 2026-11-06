@@ -322,7 +322,7 @@ name has to stay globally unique.
 | `DraftEuSection` | `data; timeline?; publisher?` | „Welches EU-Recht der Entwurf umsetzt" (h3 by marker: „Welche EU-Verordnungen / EU-Richtlinie der Entwurf begleitet") in „Der Entwurf", after the comparison (§12.66): `DraftEuFact` (acts, related counts, deadline strip, footnotes, Vorblatt sentence) and its own `DraftEuCredits`. Only with a named act; id `eu-recht-fakt` |
 | `DraftBundesrechtSection` | `data: LandBundesrechtResponse \| null \| undefined; publisher: string` | „Welches Bundesgesetz der Entwurf ausführt" / „Welche Vereinbarung der Entwurf umsetzt" (one section, title by content) in a Land draft's „Der Entwurf" (§12.67): „Anstellungserfordernisse-Grundsatzgesetz, BGBl. I Nr. 44/2025" (linked to the act page where the map has it, „, teilweise" kept), „Vereinbarung gemäß Art. 15a B-VG über …", and its own `DraftBundesrechtCredits`. Only with a named act; id `bundesrecht-fakt` |
 | `BgblLaenderBlock` | `line: MeBundesrechtLine` | „Ausführung durch die Länder" (h3) in „Im Bundesgesetzblatt" on a Ministerialentwurf, where the station's follow-up jumps (§12.67): the Land drafts as list rows, or „Noch kein Entwurf der Länder im Fenster." with the Frist sentence quoted; then „Zum Grundsatzgesetz …→" and the credit line. Slot of `BgblStationSection` |
-| `SpineRail` (since 06.11.2026) | + `Station.followUp`, `Station.factLinks` | `followUp`: a station's detail line for what followed it, the Bundesgesetzblatt station's Bund-zu-Land line (§12.67); `factLinks`: linking facts after the plain ones, the Entwurf station's origin tokens (§12.66, §12.67). Both in-page anchors: links in the spine jump to a section below, never to another page |
+| `SpineRail` (since 06.11.2026) | + `Station.followUp` | `followUp`: a station's detail line for what followed it, the Bundesgesetzblatt station's Bund-zu-Land line (§12.67) — a link line with its arrow („In 3 Entwürfen der Länder ausgeführt →", in-page to „Ausführung durch die Länder") where there are rows, a plain fact otherwise. The Entwurf station's origin („setzt EU-Recht um", „führt das … aus") is plain text in `facts` (`utils/origin.ts`): facts never link, links get their own line with an arrow |
 | `DraftBundesrechtCredits` | `data; publisher: string` | Its credit line under the card: the Land's documents it was read from, and „Bundesgesetzblatt (RIS)" where a Kundmachung was read |
 | `DoorButton` | `href: string; variant?: 'solid' \| 'outline'` + default slot | The door's button: a form or document opened in a new window, with ↗ and the sr-only warning (`FilingButton` until 04.10.2026 — it opens the Begleitschreiben too) |
 | `RvStationSection` | `draft; view: RvStationView; share; shareDe; reasoningDe; rvExplanations; rvStatements; filingOpen` | „Die Regierungsvorlage": the station's facts, counts and context from `rvStationView` (`app/utils/outcomes.ts`, tested), its statements and the ME→RV comparison. Split out of the draft page on 04.10.2026, like the two below |
@@ -15738,6 +15738,22 @@ nur nebenbei genannt wird; ein Entwurf trägt höchstens ein Grundsatzgesetz
 und eine Vereinbarung (ktn-4095 führt zwei Gesetze aus, gezeigt wird das
 erste Segment, 191/2023); die Fundstelle ist die jüngste im Segment, auch
 wo der Entwurf eine ältere Fassung ausführt.
+
+**Stand am Abend des 06.11.2026: Fakten verlinken nicht.** Die Zeilen der
+Leiste haben eine Grammatik: die Faktenzeile ist Text („07.07.2025 · ändert
+1 Gesetz"), ein Link steht in einer eigenen Zeile mit Pfeil („Was ändert der
+Entwurf? →"). Die Herkunft an der Station Entwurf („setzt EU-Recht um",
+„führt das Erneuerbaren-Ausbau-Beschleunigungsgesetz aus") war
+zwischenzeitlich als Sprung verlinkt, ohne Pfeil — ein Link mitten in einer
+Faktenzeile; ein Pfeil hätte den Fakt zur Linkzeile gemacht. Sie ist jetzt
+Text wie „ändert 1 Gesetz" (`withOrigin` hängt sie an `facts`,
+`Station.factLinks` ist entfallen); die Abschnitte, die sie ausführen,
+folgen in „Der Entwurf" gleich nach dem Vergleich, zu dem „Was ändert der
+Entwurf? →" führt. Dasselbe am Bundesgesetzblatt: „In 3 Entwürfen der
+Länder ausgeführt →" bleibt eine Linkzeile; „Ausführung durch die Länder:
+noch kein Entwurf · Frist: binnen …" ist ein Fakt ohne Link (das verlinkte
+„Frist" fiel weg), der ganze Fristsatz und der Weg zur Aktseite stehen im
+Block „Ausführung durch die Länder".
 
 ## 13. Open questions
 

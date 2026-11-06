@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest'
 import type { BundesrechtFinding, BundLandActResponse, EuRechtResponse, LandConsultation } from '../shared/types'
 import { LAENDER_BLOCK_ANCHOR, bundesrechtSectionHeading, bundesrechtCreditItems, bundesrechtFollowUp, bundesrechtRows, bundLandActPageView, draftsCountDe, fristQuoteOf, fristSpanOf, withBundesrechtFollowUp } from '../app/utils/bundesrecht'
 import type { Station } from '../app/utils/spine'
-import { BUNDESRECHT_FACT_ANCHOR, EU_FACT_ANCHOR, originTokens, withOrigin } from '../app/utils/origin'
+import { originTokens, withOrigin } from '../app/utils/origin'
 
 const finding = (over: Partial<BundesrechtFinding>): BundesrechtFinding => ({ kind: 'grundsatzgesetz', name: null, bgbl: null, partial: false, path: null, kundmachung: null, risUrl: null, ...over })
 const text = (r: ReturnType<typeof bundesrechtRows>[number]) => `${r.label}${r.citation ?? ''}${r.partial ? ', teilweise' : ''}`
@@ -33,28 +33,19 @@ describe('the Land block „Bundesrecht:"', () => {
 
 describe('the origin at the Entwurf station', () => {
   const eu = (marker: EuRechtResponse['marker']): EuRechtResponse => ({ available: true, unavailableReason: null, marker, markerSource: 'vorblatt', vorblattSentence: null, acts: [], actsSource: null, begutachtungStart: null, sources: [] })
-  it('names EU law, a Grundsatzgesetz and an agreement as short lower-case tokens', () => {
+  it('names EU law, a Grundsatzgesetz and an agreement as short lower-case facts, never links', () => {
     const tokens = originTokens(eu('umsetzung'), { findings: [finding({ name: 'Anstellungserfordernisse-Grundsatzgesetz', path: '/bundesrecht/2025/44' }), finding({ kind: 'vereinbarung' })], sources: [] })
-    expect(tokens).toEqual([
-      // The EU fact names no act here: plain text.
-      { label: 'setzt EU-Recht um', href: null },
-      { label: 'führt das Anstellungserfordernisse-Grundsatzgesetz aus', href: BUNDESRECHT_FACT_ANCHOR },
-      { label: 'setzt eine Art.-15a-Vereinbarung um', href: null },
-    ])
-    expect(originTokens(eu('flankierend-vo'))[0]!.label).toBe('begleitet EU-Verordnungen')
-    const named = { ...eu('umsetzung'), acts: [{ kind: 'richtlinie' as const, label: 'Richtlinie (EU) 2024/1069', celex: '32024L1069', eurLexUrl: 'https://eur-lex.europa.eu', isNew: true, base: false, transposition: null, adopted: null, title: null }] }
-    expect(originTokens(named)[0]).toEqual({ label: 'setzt EU-Recht um', href: EU_FACT_ANCHOR })
-    // No named act, no section: the token is plain text.
-    expect(originTokens(null, { findings: [finding({})], sources: [] })).toEqual([{ label: 'führt ein Grundsatzgesetz aus', href: null }])
-    expect(originTokens(null, { findings: [finding({ bgbl: { number: 191, year: 2023 } })], sources: [] })).toEqual([{ label: 'führt ein Grundsatzgesetz aus', href: BUNDESRECHT_FACT_ANCHOR }])
-    expect(originTokens(null, { findings: [finding({ kind: 'vereinbarung' })], sources: [] })).toEqual([{ label: 'setzt eine Art.-15a-Vereinbarung um', href: null }])
+    expect(tokens).toEqual(['setzt EU-Recht um', 'führt das Anstellungserfordernisse-Grundsatzgesetz aus', 'setzt eine Art.-15a-Vereinbarung um'])
+    expect(originTokens(eu('flankierend-vo'))).toEqual(['begleitet EU-Verordnungen'])
+    expect(originTokens(null, { findings: [finding({})], sources: [] })).toEqual(['führt ein Grundsatzgesetz aus'])
+    expect(originTokens(null, { findings: [finding({}), finding({ name: 'Schulorganisationsgesetz' })], sources: [] })).toEqual(['führt Grundsatzgesetze aus'])
     expect(originTokens({ ...eu(null), available: true }, null)).toEqual([])
   })
 
-  it('stands at „Entwurf" only', () => {
+  it('stands at „Entwurf" only, after its own facts', () => {
     const st = (id: Station['id']): Station => ({ id, name: id, state: 'done', facts: ['01.01.2026'], comparison: null })
-    const out = withOrigin([st('entwurf'), st('begutachtung')], [{ label: 'setzt EU-Recht um', href: '#x' }])
-    expect(out.map((s) => s.factLinks?.length ?? 0)).toEqual([1, 0])
+    const out = withOrigin([st('entwurf'), st('begutachtung')], ['setzt EU-Recht um'])
+    expect(out.map((s) => s.facts)).toEqual([['01.01.2026', 'setzt EU-Recht um'], ['01.01.2026']])
   })
 })
 
@@ -62,14 +53,14 @@ describe('the Bundesgesetzblatt station\'s line on a Ministerialentwurf', () => 
   const station = (id: Station['id']): Station => ({ id, name: id, state: 'done', facts: [], comparison: null })
   it('counts drafts, never Länder, as a link at the station', () => {
     expect(bundesrechtFollowUp({ path: '/bundesrecht/2025/44', drafts: 3, lands: ['ktn', 'ooe', 'stmk'], fristClause: null, citation: 'BGBl. I Nr. 44/2025', rows: [] })).toEqual({ before: '', link: { href: LAENDER_BLOCK_ANCHOR, label: 'In 3 Entwürfen der Länder ausgeführt →' }, after: '' })
-    expect(bundesrechtFollowUp({ path: '/p', drafts: 1, lands: ['w'], fristClause: null, citation: 'c', rows: [] })?.link.label).toBe('In einem Entwurf der Länder ausgeführt →')
+    expect(bundesrechtFollowUp({ path: '/p', drafts: 1, lands: ['w'], fristClause: null, citation: 'c', rows: [] })?.link?.label).toBe('In einem Entwurf der Länder ausgeführt →')
   })
 
-  it('says „noch kein Entwurf" and the Frist span, the word „Frist" linked — no zero', () => {
+  it('says „noch kein Entwurf" and the Frist span as a plain fact — no link, no zero', () => {
     const v = bundesrechtFollowUp({ path: '/p', drafts: 0, lands: [], citation: 'c', rows: [], fristClause: 'Die Ausführungsgesetze der Länder sind binnen sechs Monaten nach Inkrafttreten der Grundsatzbestimmungen gemäß Absatz 8, zu erlassen.' })
-    expect(v).toEqual({ before: 'Ausführung durch die Länder: noch kein Entwurf · ', link: { href: LAENDER_BLOCK_ANCHOR, label: 'Frist' }, after: ': binnen sechs Monaten nach Inkrafttreten der Grundsatzbestimmungen' })
+    expect(v).toEqual({ before: 'Ausführung durch die Länder: noch kein Entwurf · Frist: binnen sechs Monaten nach Inkrafttreten der Grundsatzbestimmungen', link: null, after: '' })
     expect(JSON.stringify(v)).not.toMatch(/\b0\b/)
-    expect(bundesrechtFollowUp({ path: '/p', drafts: 0, lands: [], fristClause: null, citation: 'c', rows: [] })?.link.label).toBe('Ausführung durch die Länder: noch kein Entwurf')
+    expect(bundesrechtFollowUp({ path: '/p', drafts: 0, lands: [], fristClause: null, citation: 'c', rows: [] })).toEqual({ before: 'Ausführung durch die Länder: noch kein Entwurf', link: null, after: '' })
   })
 
   it('puts it at the Bundesgesetzblatt and nowhere without an answer', () => {

@@ -124,11 +124,12 @@ export const LAENDER_BLOCK_ANCHOR = '#ausfuehrung-laender'
  */
 export function bundesrechtFollowUp(line: MeBundesrechtLine | null | undefined): NonNullable<Station['followUp']> | null {
   if (!line) return null
-  // In-page, as every link in the spine: the block in „Im Bundesgesetzblatt" carries the rows and the way to the act page.
-  const href = LAENDER_BLOCK_ANCHOR
-  if (line.drafts > 0) return { before: '', link: { href, label: `In ${draftsDative(line.drafts)} ausgeführt →` }, after: '' }
-  if (line.fristClause) return { before: 'Ausführung durch die Länder: noch kein Entwurf · ', link: { href, label: 'Frist' }, after: `: ${fristSpanOf(line.fristClause)}` }
-  return { before: '', link: { href, label: 'Ausführung durch die Länder: noch kein Entwurf' }, after: '' }
+  // A link line of its own where there are rows to jump to — in-page, as every
+  // link in the spine: the block in „Im Bundesgesetzblatt" carries the rows and
+  // the way to the act page. Without rows a plain fact, like the rest of a row.
+  if (line.drafts > 0) return { before: '', link: { href: LAENDER_BLOCK_ANCHOR, label: `In ${draftsDative(line.drafts)} ausgeführt →` }, after: '' }
+  const frist = line.fristClause ? ` · Frist: ${fristSpanOf(line.fristClause)}` : ''
+  return { before: `Ausführung durch die Länder: noch kein Entwurf${frist}`, link: null, after: '' }
 }
 
 /** The stations with the follow-up at the Bundesgesetzblatt. */

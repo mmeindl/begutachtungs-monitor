@@ -165,7 +165,6 @@ const rows = computed(() => props.stations.map((s, i) => {
     // would be the only thing it says.
     source: silent ? null : s.source ?? null,
     followUp: silent ? null : s.followUp ?? null,
-    factLinks: silent ? [] : s.factLinks ?? [],
     announce: facts.length
       ? null
       : s.state === 'open' ? 'ausstehend' : s.state === 'never' ? 'nicht erreicht' : null,
@@ -247,17 +246,8 @@ const rows = computed(() => props.stations.map((s, i) => {
           <a v-if="row.href" :href="row.href" :class="STATION">{{ row.name }}</a>
           <template v-else>{{ row.name }}</template>
         </p>
-        <p v-if="row.facts.length || row.factLinks.length" class="mt-0.5 leading-snug" :class="row.factClass">
-          <!-- The linking facts after the plain ones, one fact each, above
-               the row's overlay like the question below (§12.66/§12.67).
-               Two calls, because FactLine sets its last dot by whether a
-               slot was passed at all. -->
-          <FactLine v-if="row.factLinks.length" :parts="row.facts">
-            <template v-for="(f, k) in row.factLinks" :key="f.label">
-              <span class="relative z-10 inline-block"><NuxtLink v-if="f.href" :to="f.href" :class="LINK">{{ f.label }}</NuxtLink><template v-else>{{ f.label }}</template><template v-if="k < row.factLinks.length - 1">&nbsp;·</template></span>{{ ' ' }}
-            </template>
-          </FactLine>
-          <FactLine v-else :parts="row.facts" />
+        <p v-if="row.facts.length" class="mt-0.5 leading-snug" :class="row.factClass">
+          <FactLine :parts="row.facts" />
         </p>
         <!-- Above the row's overlay, so the question keeps its own target,
              its own focus ring and its own destination. -->
@@ -277,7 +267,7 @@ const rows = computed(() => props.stations.map((s, i) => {
         <!-- What followed the station elsewhere on the site (§12.67), above
              the overlay like the question, in the same link style. -->
         <p v-if="row.followUp" class="relative z-10 mt-1 leading-snug text-ink-secondary">
-          {{ row.followUp.before }}<NuxtLink :to="row.followUp.link.href" :class="LINK">{{ row.followUp.link.label }}</NuxtLink>{{ row.followUp.after }}
+          {{ row.followUp.before }}<NuxtLink v-if="row.followUp.link" :to="row.followUp.link.href" :class="LINK">{{ row.followUp.link.label }}</NuxtLink>{{ row.followUp.after }}
         </p>
         <p v-if="row.announce" class="sr-only">{{ row.announce }}</p>
       </div>

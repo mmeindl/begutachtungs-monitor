@@ -85,17 +85,11 @@ export interface Station {
   /**
    * What followed the station on another page of the site, as one detail
    * line — the Bundesgesetzblatt station's „In 3 Entwürfen der Länder
-   * ausgeführt →" (docs/architecture.md §12.67). `link` is in-site, between
-   * `before` and `after`.
+   * ausgeführt →" (docs/architecture.md §12.67). `link` is in-page, between
+   * `before` and `after`, and only where the line is a link line of its own
+   * (with its arrow); null where it is a plain fact.
    */
-  followUp?: { before: string; link: { href: string; label: string }; after: string }
-  /**
-   * Facts that link, after the plain ones in the same line — the Entwurf
-   * station's origin tokens („setzt EU-Recht um", „führt das … aus";
-   * `utils/origin.ts`, §12.66/§12.67). An in-page anchor; null where the
-   * fact has no section to jump to, then it is plain text.
-   */
-  factLinks?: { label: string; href: string | null }[]
+  followUp?: { before: string; link: { href: string; label: string } | null; after: string }
 }
 
 /**
