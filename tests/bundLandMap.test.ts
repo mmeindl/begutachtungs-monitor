@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest'
 import type { LandConsultation } from '../shared/types'
 import { bgblActOf, bgblKeyOf, bgblOfKey, fristClauseOf, meCarriesGrundsatz, vorlageDe } from '../server/utils/bund-land/bundesgesetzblatt'
-import { assembleBundLandMap } from '../server/utils/bund-land/bundLandMap'
+import { assembleBundLandMap, federalActNamed } from '../server/utils/bund-land/bundLandMap'
 import { bundLandStore, type LandAusfuehrungFact } from '../server/utils/bund-land/bundLandStore'
 import { runAligned } from '../server/utils/cache/population'
 import { createFactStore } from '../server/utils/cache/factStore'
@@ -94,7 +94,7 @@ describe('the map', () => {
       store,
       laender: [land({ id: 'stmk-a', land: 'stmk' }), land({ id: 'ktn-b', land: 'ktn', stage: { station: 'bgbl', date: '2026-01-15', detail: 'LGBl. Nr. 1/2026' } as LandConsultation['stage'] }), land({ id: 'ooe-c', land: 'ooe' }), land({ id: 'w-d', land: 'w' })],
       unavailableLands: ['t'],
-      federal: [{ year: 2025, number: 44 }, { year: 2025, number: 117 }],
+      federal: [{ bgbl: { year: 2025, number: 44 }, title: null, datum: null }, { bgbl: { year: 2025, number: 117 }, title: null, datum: null }],
       today: '2026-11-06',
     })
     expect(Object.keys(map.acts).sort()).toEqual(['2025-117', '2025-44'])
@@ -121,5 +121,22 @@ describe('aligned populations', () => {
     expect(ra).toMatchObject({ total: 2, read: 2 })
     expect(rb).toMatchObject({ total: 2, read: 1, partial: 1 })
     expect(Object.keys(b.entries)).toEqual(['1'])
+  })
+})
+
+describe('a finding that names its act without citing it', () => {
+  const federal = [
+    { bgbl: { year: 2026, number: 47 }, title: 'Bundesgesetz, mit dem das Erneuerbaren-Ausbau-Beschleunigungsgesetz erlassen und … geändert wird', datum: '2026-03-01' },
+    { bgbl: { year: 2026, number: 2 }, title: 'Bundesgesetz, mit dem das Schulorganisationsgesetz … geändert werden', datum: '2026-01-10' },
+    { bgbl: { year: 2025, number: 99 }, title: 'Bundesgesetz, mit dem das Schulorganisationsgesetz geändert wird', datum: '2025-05-01' },
+  ]
+
+  it('takes the one federal act of the window whose RIS title names the law (t-2026-728 → 47/2026)', () => {
+    expect(federalActNamed('Erneuerbaren-Ausbau-Beschleunigungsgesetz', federal, '2026-06-01')?.bgbl).toEqual({ year: 2026, number: 47 })
+  })
+
+  it('takes none where two fit, or where the act came after the Land\'s Begutachtung', () => {
+    expect(federalActNamed('Schulorganisationsgesetz', federal, '2026-06-01')).toBeNull()
+    expect(federalActNamed('Erneuerbaren-Ausbau-Beschleunigungsgesetz', federal, '2026-01-01')).toBeNull()
   })
 })

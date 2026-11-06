@@ -17,7 +17,7 @@
  * A failure is not an answer (§12.13): a draft PDF that did not arrive
  * leaves the finding incomplete, served and not stored.
  */
-import type { BundesrechtFinding, LandBundesrechtResponse, LandCode, TraceLink } from '#shared/types'
+import type { BgblICitation, BundesrechtFinding, LandBundesrechtResponse, LandCode, TraceLink } from '#shared/types'
 import { DERIVED_CACHE } from '../cache/base'
 import { onlyComplete, type Gathered } from '../cache/gathered'
 import { readLandDraftTexts } from '../laender/landDraftTexts'
@@ -61,18 +61,22 @@ export const readLandAusfuehrung = defineCachedFunction(
 /**
  * The page's view of a finding: the Kundmachung's day and RIS page where
  * the clause cites one, the act page where `hasPage` says the map has it.
- * A RIS record that does not answer costs the view its date, not its line.
+ * A Grundsatzgesetz the draft names without citing it takes the act the
+ * map placed the draft under (`mapped`, `federalActNamed`) — the same
+ * resolution, so the fact and the act page never disagree. A RIS record
+ * that does not answer costs the view its date, not its line.
  */
-export async function viewOfFact(fact: LandAusfuehrungFact, hasPage: (key: string) => boolean): Promise<LandBundesrechtResponse> {
+export async function viewOfFact(fact: LandAusfuehrungFact, hasPage: (key: string) => boolean, mapped: BgblICitation | null = null): Promise<LandBundesrechtResponse> {
   const findings: BundesrechtFinding[] = await Promise.all(fact.findings.map(async (f) => {
-    const act = f.act.bgbl ? await bgblActFor(f.act.bgbl).catch(() => null) : null
-    const key = f.act.bgbl ? `${f.act.bgbl.year}-${f.act.bgbl.number}` : null
+    const bgbl = f.act.bgbl ?? (f.kind === 'grundsatzgesetz' ? mapped : null)
+    const act = bgbl ? await bgblActFor(bgbl).catch(() => null) : null
+    const key = bgbl ? `${bgbl.year}-${bgbl.number}` : null
     return {
       kind: f.kind,
       name: f.act.name,
-      bgbl: f.act.bgbl,
+      bgbl,
       partial: f.act.partial,
-      path: f.kind === 'grundsatzgesetz' && f.act.bgbl && key && hasPage(key) ? `/bundesrecht/${f.act.bgbl.year}/${f.act.bgbl.number}` : null,
+      path: f.kind === 'grundsatzgesetz' && bgbl && key && hasPage(key) ? `/bundesrecht/${bgbl.year}/${bgbl.number}` : null,
       kundmachung: act?.datum ?? null,
       risUrl: act?.page ?? null,
     }

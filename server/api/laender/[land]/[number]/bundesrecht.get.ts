@@ -18,6 +18,7 @@ import { LAND_CODES } from '#shared/utils/laender'
 import { withinBudget } from '../../../../utils/http/budget'
 import { isLandNumber, readLandDraft } from '../../../../utils/laender/sources'
 import { relatedPeriodOf } from '../../../../utils/eu/euMap'
+import { landKey } from '../../../../utils/eu/euMapStore'
 import { readLandAusfuehrung, viewOfFact } from '../../../../utils/bund-land/landBundesrechtService'
 import { getBundLandMap } from '../../../../utils/bund-land/bundLandMapService'
 
@@ -37,7 +38,9 @@ export default defineEventHandler(async (event): Promise<LandBundesrechtResponse
     // The map of the period the Begutachtung began in, as the EU fact's `related`.
     const period = relatedPeriodOf(detail.draft.startedAt ?? null, await getCurrentGp())
     const map = period ? await withinBudget(getBundLandMap(period.gp), MAP_BUDGET_MS) : null
-    return await viewOfFact(value, (key) => Boolean(map?.acts[key]))
+    const key = landKey(land, number)
+    const mapped = Object.values(map?.acts ?? {}).find((a) => a.drafts.some((d) => d.key === key))?.bgbl ?? null
+    return await viewOfFact(value, (k) => Boolean(map?.acts[k]), mapped)
   } catch (error) {
     if (isError(error)) throw error
     console.warn(`[laender] Bundesrecht ${land}/${number}:`, error instanceof Error ? error.message : error)

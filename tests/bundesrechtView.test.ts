@@ -45,7 +45,7 @@ describe('the Ministerialentwurf\'s line', () => {
   })
 
   it('cuts the Frist words out of the clause', () => {
-    expect(fristWordsOf('Die Ausführungsgesetze der Länder sind binnen sechs Monaten nach Inkrafttreten der Grundsatzbestimmungen gemäß Absatz 8, zu erlassen.')).toBe('binnen sechs Monaten nach Inkrafttreten der Grundsatzbestimmungen gemäß Absatz 8,')
+    expect(fristWordsOf('Die Ausführungsgesetze der Länder sind binnen sechs Monaten nach Inkrafttreten der Grundsatzbestimmungen gemäß Absatz 8, zu erlassen.')).toBe('binnen sechs Monaten nach Inkrafttreten der Grundsatzbestimmungen gemäß Absatz 8')
   })
 })
 

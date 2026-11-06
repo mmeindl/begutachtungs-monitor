@@ -74,7 +74,7 @@ function draftsDative(n: number): string {
 
 /** „binnen eines Jahres" out of „Die Ausführungsgesetze der Länder sind binnen eines Jahres zu erlassen." */
 export function fristWordsOf(clause: string): string {
-  return clause.replace(/^Die Ausführungsgesetze der Länder sind\s+/u, '').replace(/\s+zu erlassen\.$/u, '')
+  return clause.replace(/^Die Ausführungsgesetze der Länder sind\s+/u, '').replace(/,?\s+zu erlassen\.$/u, '')
 }
 
 /** The Ministerialentwurf's line: two facts, never „0 Länder" (D6). */

@@ -127,5 +127,10 @@ ExecStart=/usr/bin/curl -fsS -o /dev/null --max-time 120 http://127.0.0.1:3000/a
 # is read again, so the nightly cost is the day's arrivals. --max-time 1800:
 # the Länder are paced at one request a second, and a Land that blocks is
 # retried the next night, not waited for.
+# Since 06.11.2026 the same call builds the Bund-zu-Land map (§12.67,
+# bund-land/ beside eu-recht/): the Länder run as one loop over both
+# stores, so a changed draft's PDFs are read once for both facts. No line
+# of its own — a second route would fetch every Land's PDFs again. The first
+# build after that deploy reads all Land drafts for the new store once.
 ExecStart=/usr/bin/curl -fsS -o /dev/null --max-time 1800 "http://127.0.0.1:3000/api/eu-recht/karte?gp=aktuell"
 ExecStart=/usr/bin/curl -fsS -o /dev/null --max-time 900 http://127.0.0.1:3000/api/stations/vorperiode

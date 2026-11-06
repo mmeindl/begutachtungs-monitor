@@ -17,7 +17,7 @@
  * its RIS record, its Frist clause, its Ministerialentwurf — is
  * `getActHead`, cached on its own and warmed by the build.
  */
-import type { BgblICitation, BundLandActHead, LandCode, LandConsultation, MeBundesrechtLine } from '#shared/types'
+import type { BundLandActHead, LandCode, LandConsultation, MeBundesrechtLine } from '#shared/types'
 import { bgblLong, todayIso } from '#shared/utils/format'
 import { gpWindow } from '#shared/utils/gp'
 import { LAND_CODES } from '#shared/utils/laender'
@@ -34,7 +34,7 @@ import { RIS_API_BASE, risJson, type UpstreamPolicy } from '../upstream/fetch'
 import { landKey } from '../eu/euMapStore'
 import { landNumberOf } from '../eu/euMap'
 import { bgblActFor, getFristClause } from './bgblActService'
-import { assembleBundLandMap, type BundLandMap, type BundLandMapAct } from './bundLandMap'
+import { assembleBundLandMap, type BundLandMap, type BundLandMapAct, type FederalAct } from './bundLandMap'
 import { bundLandStore, type BundLandStoreFile, type LandAusfuehrungFact } from './bundLandStore'
 import { bgblActOf, bgblCitationDe, bgblKeyOf, meCarriesGrundsatz, vorlageDe } from './bundesgesetzblatt'
 import { readLandAusfuehrung } from './landBundesrechtService'
@@ -138,14 +138,15 @@ const searchBgbl = defineCachedFunction(
 )
 
 /** Every Grundsatzgesetz in BGBl I since `from`; null where RIS did not answer. */
-async function federalGrundsatzgesetze(from: string): Promise<BgblICitation[] | null> {
+async function federalGrundsatzgesetze(from: string): Promise<FederalAct[] | null> {
   try {
-    const out = new Map<string, BgblICitation>()
+    const out = new Map<string, FederalAct>()
     for (const words of GRUNDSATZ_WORDS) {
       const refs: any[] = [(await searchBgbl(words, from))?.OgdDocumentResults?.OgdDocumentReference ?? []].flat()
       for (const ref of refs) {
-        const m = /^BGBl\. I Nr\. (\d+)\/(\d{4})$/.exec(bgblActOf(ref)?.nummer ?? '')
-        if (m) out.set(`${m[2]}-${m[1]}`, { number: Number(m[1]), year: Number(m[2]) })
+        const act = bgblActOf(ref)
+        const m = /^BGBl\. I Nr\. (\d+)\/(\d{4})$/.exec(act?.nummer ?? '')
+        if (m) out.set(`${m[2]}-${m[1]}`, { bgbl: { number: Number(m[1]), year: Number(m[2]) }, title: act?.titel ?? null, datum: act?.datum ?? null })
       }
     }
     return [...out.values()]

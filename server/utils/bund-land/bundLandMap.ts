@@ -38,14 +38,39 @@ export interface BundLandMap {
   incomplete: LandCode[]
 }
 
+/** A federal Grundsatzgesetz of the window, from RIS's full-text search. */
+export interface FederalAct {
+  bgbl: BgblICitation
+  title: string | null
+  datum: string | null
+}
+
+/** Text as compared: lower case, hyphens and spaces closed. */
+const collapse = (text: string): string => text.toLowerCase().replace(/[\s-]+/g, '')
+
+/**
+ * The federal act a finding names without citing it — „… enthält das
+ * Erneuerbaren-Ausbau-Beschleunigungsgesetz Planungsgrundsätze …"
+ * (t-2026-728, 47/2026): the one Grundsatzgesetz of the window whose RIS
+ * title names the law and that was promulgated before the Land's
+ * Begutachtung began. None where two would fit, or none: a name alone
+ * decides only where it is unambiguous, and it is read from RIS, not from
+ * a table that ages.
+ */
+export function federalActNamed(name: string, federal: readonly FederalAct[], landDay: string | null): FederalAct | null {
+  const key = collapse(name)
+  const fits = federal.filter((f) => f.title && collapse(f.title).includes(key) && (!landDay || !f.datum || f.datum <= landDay))
+  return fits.length === 1 ? fits[0]! : null
+}
+
 export interface BundLandMapInputs {
   gp: string
   window: { from: string; to: string | null }
   store: BundLandStoreFile
   laender: readonly LandConsultation[]
   unavailableLands: readonly LandCode[]
-  /** Grundsatzgesetze the Bund promulgated in the window. */
-  federal: readonly BgblICitation[]
+  /** Grundsatzgesetze the Bund promulgated in the window, with RIS's title and day where read. */
+  federal: readonly FederalAct[]
   today: string
 }
 
@@ -63,14 +88,16 @@ export function assembleBundLandMap(inputs: BundLandMapInputs): BundLandMap {
     acts[key] ??= { key, bgbl: { number: bgbl.number, year: bgbl.year }, names: [], drafts: [] }
     return acts[key]
   }
-  for (const b of inputs.federal) actOf(b)
+  for (const f of inputs.federal) actOf(f.bgbl)
 
   for (const l of inputs.laender) {
     const key = landKey(l.land, landNumberOf(l.id))
     const fact = inputs.store.entries[key]?.fact
     for (const f of fact?.findings ?? []) {
-      if (f.kind !== 'grundsatzgesetz' || !f.act.bgbl) continue
-      const act = actOf(f.act.bgbl)
+      if (f.kind !== 'grundsatzgesetz') continue
+      const bgbl = f.act.bgbl ?? (f.act.name ? federalActNamed(f.act.name, inputs.federal, l.startedAt ?? l.deadline)?.bgbl ?? null : null)
+      if (!bgbl) continue
+      const act = actOf(bgbl)
       if (act.drafts.some((d) => d.key === key)) continue
       if (f.act.name) {
         const counts = nameCount.get(act.key) ?? new Map<string, number>()
