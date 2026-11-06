@@ -373,16 +373,22 @@ const oberoesterreich: LandReader = {
      * one page per draft on the Land's lists, 91 on 22.10.2026, cached like
      * every page. A page that fails leaves the station unknown, never the
      * first one. Verordnungen have no Landtag page and no station after
-     * their Begutachtung that the monitor reads. */
+     * their Begutachtung that the monitor reads.
+     *
+     * The same page dates the Begutachtung's start (its first document, as
+     * in `current`), taken along since 06.11.2026: until then only a
+     * running Gesetz had it, under the garnish budget, and the EU map drew
+     * every Upper Austrian lane from its end alone — six of six, while
+     * each draft's own page named both days. */
     return Promise.all(all.map(async (d) => {
       if (d.kind !== 'gesetz') return d
-      const stage = await fetchLandRecord(d.url)
+      const read = await fetchLandRecord(d.url)
         .then((html) => {
           const detail = parseOoeDetail(html)
-          return detail ? ooeStageOf(detail.procedure) : ('unknown' as const)
+          return detail ? { stage: ooeStageOf(detail.procedure), startedAt: detail.startedAt } : null
         })
-        .catch(() => 'unknown' as const)
-      return { ...d, stage }
+        .catch(() => null)
+      return { ...d, stage: read ? read.stage : ('unknown' as const), startedAt: read?.startedAt ?? d.startedAt }
     }))
   },
   detail: async (number) => {
