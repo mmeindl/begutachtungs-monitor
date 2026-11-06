@@ -317,6 +317,20 @@ export function dateRangeDe(start: string, end: string | null | undefined): stri
 }
 
 /**
+ * The Begutachtung's label under its band, „Begutachtung" over its dates:
+ * anchored at the band's end where the band lies in the right half, at its
+ * start in the left half — so it ends with the band, not short of it —
+ * and centred in between. Shared by the draft's timeline (`euTimeline`) and
+ * the lanes of the act page's chart (`euActPageView`), so the band reads
+ * the same on both.
+ */
+export function begutachtungMark(band: [number, number], dates: string): EuTimelineMark {
+  const centre = (band[0] + band[1]) / 2
+  const [pos, align]: [number, EuTimelineMark['align']] = centre > 60 ? [band[1], 'end'] : centre < 40 ? [band[0], 'start'] : [centre, 'center']
+  return { key: 'begutachtung', at: pos, align, tick: false, lines: ['Begutachtung', dates] }
+}
+
+/**
  * The dates that matter, on one track (04.11.2026): each Umsetzungsfrist a
  * tick with its label under it, the Begutachtung the band with its label
  * under its middle, the dot where the procedure stands with its word over
@@ -373,11 +387,7 @@ export function euTimeline(fact: EuFactView | null | undefined, ctx: EuTimelineC
     }
   })
   const band: [number, number] | null = start ? [at(start), at(end ?? start)] : null
-  if (band && start) {
-    const centre = (band[0] + band[1]) / 2
-    const [pos, align]: [number, EuTimelineMark['align']] = centre > 60 ? [band[1], 'end'] : centre < 40 ? [band[0], 'start'] : [centre, 'center']
-    marks.push({ key: 'begutachtung', at: pos, align, tick: false, lines: ['Begutachtung', dateRangeDe(start, end)] })
-  }
+  if (band && start) marks.push(begutachtungMark(band, dateRangeDe(start, end)))
   spreadLabels(marks)
   // Every Umsetzungsfrist keeps its own tick on its own date, clustered or not.
   const ticks: EuTimelineMark[] = sorted.map((d) => ({ key: `tick-${d.iso}`, at: at(d.iso), align: 'center', tick: true, lines: ['', ''] }))

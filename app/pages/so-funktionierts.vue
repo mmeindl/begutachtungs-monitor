@@ -785,6 +785,10 @@ const waitMonths = Math.round(RV_LATENCY_CONTEXT_DAYS / 30.44)
         Welche Richtlinien die Entwürfe des Bundes und der Länder umsetzen,
         zeigt die Seite
         <NuxtLink to="/eu-recht" class="link-inline">EU-Recht</NuxtLink>.
+        Sie liest die Begutachtungen, die in der laufenden
+        Gesetzgebungsperiode begonnen haben, und nur die, die der Monitor
+        kennt. Dass ein Land dort keinen Entwurf zu einem Rechtsakt hat,
+        heißt nicht, dass es ihn nicht umsetzt.
       </p>
     </ProseSection>
 

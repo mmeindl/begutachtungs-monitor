@@ -14970,8 +14970,144 @@ Durchführungsbeschluss 2019/2010" ohne Akt); ein Zitat im Titel eines
 anderen Akts („… gemäß der Verordnung (EG) Nr. 1107/2009" im Titel der
 2023/564) wird als eigener Akt genannt (t-2026-734).
 
+**Nachtrag 6 (05.11.2026, Nacht): die Aktseite mit den Reihen der Listen,
+der Zeitstrahl als ein Diagramm darüber.** Zwei Befunde an derselben Seite.
+Die Beschriftung der gemeinsamen Strecke stand einmal unter der letzten
+Zeile; bei vier Entwürfen ging das, bei einer langen Liste stand sie
+Bildschirme entfernt von den Strichen, die sie benennt — man wusste nicht
+mehr, was der Strich in Zeile zwei ist. Und die Zeilen hatten eine eigene
+Grammatik: das Land fett über dem Titel, die Daten in der Kennung, ein
+Balken neben jeder Zeile, keine Stellungnahmen — dieselben Entwürfe, die
+auf `/entwuerfe` in der Anatomie von `EntryItem` stehen (§12.28: Titel,
+Kennung mit Ressort oder Land, Stellungnahmen, Stand; Daten nur in Zone 4).
 
-**Nachtrag 6 (06.11.2026, nachts): die Reste aus Nachtrag 5, in zwei
+**Die Reihen sind die der Listen.** Jeder Entwurf der Karte trägt seither
+die Listenzeile, aus der er stammt (`EuActDraft.row`, Typ `EuListRow` —
+`DraftListRow` ohne die Vorlage): der Ministerialentwurf als
+`DraftSummary` mit seiner Kette, wo die Stationskarte sprechbar ist, der
+RIS-Datensatz mit seinem Gesetzblatt-Ergebnis, der Landesentwurf als
+`LandConsultation`; das EU-Merkmal ist abgezogen, weil „Setzt EU-Recht um"
+auf jeder Zeile nur die Überschrift wiederholte (`assembleEuMap`). Die
+Seite rendert sie mit `viewOfRow` in `EntryList`, also mit demselben Code
+wie die Liste — die Wortwahl kann nicht mehr auseinanderlaufen, weil es
+keine zweite gibt. Der Endpunkt entscheidet `active` je Anfrage neu
+(`reconcileActive`, `withRisActiveOn`), wie die Listen es tun: die Karte
+liegt Stunden im Cache, und eine Zeile darf keine Frist herunterzählen, die
+seit dem Zusammenbau abgelaufen ist.
+
+**Der Zeitstrahl ist ein Diagramm über den Reihen** (`EuActChart`). Eine
+dünne Bahn je zeichenbarem Entwurf, alle auf einer Strecke wie bisher;
+jede Bahn ist ein `ScaleBar` ohne Beschriftung — Band, Tintenlinie, Punkt
+und Fristenstrich wie auf dem Zeitstrahl des Entwurfs, also ohne neue
+Legende. Die Frist ist ein Strich auf jeder Bahn an derselben Stelle, was
+sich als eine Linie durch das Diagramm liest; ihre Beschriftung steht
+einmal über der ersten Bahn (`EuScaleAxis`, von unten nach oben gezogen),
+darunter ein Kalender (`axisTicksOf`): Jahre ab anderthalb Jahren Strecke,
+Quartale ab einem halben, sonst Monate, das Jahr am Jänner und an der
+ersten Marke, eine Marke ohne Etikett, wo sie der vorigen zu nahe käme.
+Die Achse steht damit neben den Daten, die sie skaliert, wie lang die Liste
+darunter auch wird. Ein Kopf, der beim Scrollen kleben bleibt, war die
+Alternative und wurde verworfen: er hätte das Symptom behoben und die
+zweite Zeilengrammatik behalten.
+
+Die Bahn nennt den Entwurf mit Land oder Bund und einem kurzen Namen und
+verlinkt wie die Reihe darunter (`laneNameOf`): der Kurzname am Ende des
+Titels, auch mit Ordnungszahl („(1. Salzburger Erneuerbaren
+Ausbaugesetz)") und mit verirrtem Strichpunkt danach; sonst das erste
+Gesetz eines Änderungstitels („mit dem das Salzburger Raumordnungsgesetz
+2009 geändert wird"), wobei ein „und" nach einem Bindestrich den Namen
+nicht beendet („Kinder- und Jugendhilfegesetz"); sonst der Titel bis zum
+ersten Strichpunkt — die Sammeltitel des Parlaments nennen das führende
+Gesetz zuerst; dann ohne „, Änderung" und ohne die Abkürzung nach dem
+Gedankenstrich. Das Land allein reicht nicht: drei Salzburger Bahnen
+müssen unterscheidbar sein. Gemessen über die 78 umsetzenden Entwürfe der
+Karte: Median 39 Zeichen, die vier längsten (111–149) sind Titel ohne
+eine dieser Formen. Der Name steht ganz und bricht um, wie ein Titel der
+Listen (§12.28); die Strecke bleibt auf Höhe seiner ersten Zeile. Mit 14rem
+Namensspalte und Abschneiden stand „Burgenländisches E…" da.
+
+**D6 hält.** Erwogen wurde, in Zone 4 die Lage zur Frist zu sagen („9
+Monate nach der Frist"), lesbar in jeder Listenlänge und für
+Bildschirmleser. Das ist die Tageszählung, die D6 ausschließt; Zone 4 trägt
+den Stand in den Worten der Listen, und auf welcher Seite der Frist eine
+Bahn endet, sieht man im Diagramm. Für Bildschirmleser sagt jede Reihe die
+zwei Daten und den Stand ihrer Bahn in einem Satz (`said`), ohne Urteil.
+
+**Die Übersicht `/eu-recht` behält ihre Reihen.** Ein Akt ist kein Entwurf:
+Zone 3 von `EntryItem` ist die Spalte „Stellungnahmen", und für einen Akt
+stünde dort nichts, unter einem Kopf, der etwas anderes behauptet — der
+Fall, gegen den `EntryList` den Parameter `lead` hat.
+
+**Am selben Abend nachgezogen.** Der Kopf der Seite trug „Beschlossen am
+18.10.2023 · Umsetzungsfrist bis 21.05.2025¹" und darunter die Fußnote der
+weiteren Fristen, das Diagramm dieselbe Frist mit demselben ¹. Die Frist
+steht seither nur im Diagramm, wo es sie beschriftet, und die Fußnote unter
+seinem Kalender, neben ihrem ¹; der Kopf behält sie, wo kein Diagramm sie
+trägt (keine zeichenbare Bahn, etwa bei kalter Stationskarte) — sonst nennte
+die Seite ihre Frist nirgends. Der Beschlusstag bleibt oben: gezeichnet
+zöge er die Strecke um Jahre zurück und machte jede Begutachtung zum
+Strich, der Fehler des ersten Zeitstrahls am Entwurf. Die weiteren Fristen
+werden nicht gezeichnet: ein zweiter Strich je Bahn fragte, an welcher
+Frist ein Entwurf gemessen wird (wie am 04.11. für den Fakt entschieden),
+und 01.07.2024 hätte die Strecke um fünf Monate gedehnt.
+
+Das Band hieß im Diagramm zunächst nirgends; eine Bildunterschrift in
+Worten („Grau die Begutachtung, der Punkt der Stand …") stand eine Stunde
+lang darunter und wich einer Lösung ohne Legende: jede Bahn ist seither
+der Zeitstrahl des Entwurfs auf der gemeinsamen Strecke — das Wort des
+Stands über dem Punkt („Bundesgesetzblatt", „Heute"), unter dem Band
+„Begutachtung" über ihren Daten, verankert nach derselben Regel
+(`begutachtungMark`, aus `euTimeline` gezogen und von beiden benutzt);
+„ab" wo nur der Beginn datiert ist (Salzburgs Register), „bis" am Anfang
+der Linie, wo nur das Ende (Burgenland). Jede Marke steht benannt, wo sie
+steht; nur die Frist einmal oben, denn N Kopien desselben Datums sagten
+nichts Neues. Die Bahnen nennen damit auch die Begutachtungsdaten wieder,
+die die Reihen seit dem Wechsel zur Listenanatomie nicht mehr tragen.
+Kosten: eine Bahn ist rund 80 statt 30 px hoch, vier Entwürfe brauchen
+etwa 330 px; die längste Aktliste der Karte hat vier Entwürfe. (Zuerst 94
+px: `ScaleBar`s eigener oberer Rand kam zum Wort über dem Punkt hinzu, das
+schon Luft ist; am 06.11. gestrichen, innen bleibt die Leiste der
+Zeitstrahl des Entwurfs mit denselben Abständen. Einzeilige Etiketten
+hätten 60 px erlaubt, aber den Stil vom Zeitstrahl des Entwurfs getrennt,
+dessen zweizeilige Etiketten seitlich schon eng stehen.)
+
+Für Bildschirmleser sind die Bahnen verborgen und aus der Tab-Reihenfolge
+(`aria-hidden`, `tabindex="-1"`): jeder Entwurf ist seine Reihe, und die
+zwei Daten und den Stand, die die Bahn zeichnet, sagt die Reihe in einem
+unsichtbaren Satz (`said`, über den Slot `evidence` von `EntryList`). Lesbar
+bleiben das Etikett der Frist und die Fußnote. Und
+der Endpunkt entscheidet `active` auch für Landesentwürfe je Anfrage neu
+(`withLandActiveOn`), wie für Bund und RIS.
+
+Gemessen, was die Listenzeilen kosten: über die 84 Entwürfe der
+Aktseiten 64 KB JSON (Median 742 Byte je Zeile, höchstens 1.521); auf die
+157 Entwürfe der Karte hochgerechnet rund 120 KB — gegen 384 MB Heap nicht
+der Rede wert.
+
+Danach gebaut und am selben Abend verworfen: der Zeitstrahl zurück in jede
+Reihe, über die ganze Breite unter Text, Stellungnahmen und Stand (ein Slot
+`below` in `EntryItem`), jede Reihe mit eigener Fristbeschriftung. Jede
+Reihe stand für sich, aber der Vergleich ging verloren, für den die Seite da
+ist — wann Bund und Länder sich bewegt haben, gegen die eine Frist: zwischen
+den Strecken lagen rund 150 px Text, „Umsetzungsfrist 21.05.2025¹" stand
+viermal da, vier Entwürfe brauchten rund 800 px, und wo Begutachtung und
+Frist links nah beieinander liegen, rückte die Fristbeschriftung von ihrem
+Strich weg. Das Diagramm blieb; seine Schwächen waren mit den benannten
+Bahnen weg, und die Achse steht neben den Bahnen, solange die Liste kurz ist
+— die längste Aktliste der Karte hat vier Entwürfe.
+
+**Reste:** das Diagramm zeigt keinen Entwurf ohne Stand oder Begutachtungs-
+datum; er steht nur als Reihe. Und gefunden, nicht von diesem Umbau
+verursacht: auf der Seite von 58/ME überlappen „Umsetzungsfristen
+21.05.2026, 07.06.2026" und „Begutachtung 10.10.–07.11.2025" —
+`spreadLabels` ordnet in einem Durchgang von links nach rechts, und bei vier
+dichten Clustern verdrängt die Korrektur eines Paars das nächste. Eine
+Umstellung der Reihenfolge seiner Fälle wurde probiert und verschob den
+Fehler nur (die letzte Frist lief über den Rand); braucht einen eigenen
+Ansatz, etwa Etiketten auf zwei Zeilen statt seitlich auszuweichen.
+
+
+**Nachtrag 7 (06.11.2026, nachts): die Reste aus Nachtrag 5, in zwei
 Runden.** Zwei Agenten in zwei Worktrees, einer am Leser, einer an Karte
 und Seiten; beides in einem Leserschritt (`EU_READER_VERSION` 4).
 

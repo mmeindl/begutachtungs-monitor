@@ -1,9 +1,10 @@
 <script setup lang="ts">
 /**
- * The label of the act page's shared track, once, under its last row
- * (docs/architecture.md §12.66, Nachtrag 3): the deadline as on a draft's
- * EU timeline — „Umsetzungsfrist" over its date (`euActPageView`). The
- * track's ends carry no date: each is some row's, and its text says it.
+ * The label of the act page's shared track, once, over the chart's first
+ * lane (`EuActChart`; docs/architecture.md §12.66): the deadline as on a
+ * draft's EU timeline — „Umsetzungsfrist" over its date (`euActPageView`).
+ * Under the last row of a long list it stood screens away from the ticks it
+ * named (05.11.2026).
  *
  * `ScaleBar`'s label row on its own: the same geometry (its right inset,
  * its height, its alignments), so a label stands exactly under the tick it

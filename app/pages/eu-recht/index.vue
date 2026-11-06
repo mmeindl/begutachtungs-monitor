@@ -14,12 +14,14 @@
  *
  * The source chips select rows and change nothing in a row: an act stays
  * where the Bund (ticked) has an implementing draft or any ticked Land does.
- * They look like the lists' `SourceChips` and speak the same `?quellen=`,
- * but they are THIS page's: nothing ticked is everyone (the site's choice
- * defaults to the Bund alone), and they never write the site's cookie — a
- * map of Bund and Länder that opened on the Bund would hide half of what it
- * is for. Only the Länder with an act get a chip; Steiermark, unread, is
- * the incomplete note's.
+ * They are the site's (`SourceChips`, `useSourceChoice`, 06.11.2026): one
+ * choice, one `?quellen=`, on the homepage, the list and here — so the map
+ * opens on the Bund alone, as every list does, and a reader who ticked
+ * Salzburg anywhere finds Salzburg here. Until then the page had chips of
+ * its own, nothing ticked meaning everyone, which gave the same address two
+ * meanings. A Land without an act stands unavailable with its reason
+ * (`euSourceUnavailable`), as the list draws a Land a station does not
+ * reach.
  *
  * No verdict anywhere on it, as on the draft's fact (rule D6): the counts
  * are of drafts that implement an act, never of acts not implemented — the
@@ -33,9 +35,8 @@
  * chips filter them too; the fold goes where the selection leaves none.
  */
 import type { EuActsResponse } from '#shared/types'
-import { SOURCE_NAME, SOURCE_PARAM, formatSourceList, parseSourceList, type SourceCode } from '#shared/utils/laender'
 import { risSource, eurLexSource, sourceItemsDe } from '#shared/utils/provenance'
-import { euActsRows, euRestatingRows, euSourceChips, filterEuActs, incompleteNoteDe, restatingFoldHeading } from '~/utils/euKarte'
+import { euActsRows, euRestatingRows, euSourceUnavailable, filterEuActs, incompleteNoteDe, restatingFoldHeading } from '~/utils/euKarte'
 
 usePageSeo({
   title: 'EU-Recht in der Begutachtung',
@@ -45,26 +46,12 @@ usePageSeo({
 
 const { data, status, error, refresh } = useFetch<EuActsResponse>('/api/eu-recht', { lazy: true })
 
-/*
- * The chosen sources, from the URL alone — a view setting, so a chip
- * replaces the history entry instead of adding one. Empty is everyone.
- */
-const route = useRoute()
-const router = useRouter()
-const chosen = computed<SourceCode[]>(() => {
-  const raw = route.query[SOURCE_PARAM]
-  return parseSourceList(Array.isArray(raw) ? raw[0] : raw) ?? []
-})
-function choose(next: readonly SourceCode[]): void {
-  const value = formatSourceList(next)
-  router.replace({ query: { ...route.query, [SOURCE_PARAM]: value || undefined } })
-}
-function toggleSource(code: SourceCode): void {
-  choose(chosen.value.includes(code) ? chosen.value.filter((c) => c !== code) : [...chosen.value, code])
-}
+/* The site's choice of sources, never empty (`useSourceChoice`). */
+const { chosen, bund, toggle } = useSourceChoice()
 
-// A Land whose drafts only restate acts gets its chip too: the chips filter both lists.
-const chips = computed(() => (data.value ? euSourceChips([...data.value.acts, ...data.value.restatingOnly], chosen.value) : []))
+// A Land whose drafts only restate acts is available too: the chips filter both lists.
+const sourceUnavailable = computed(() =>
+  data.value ? euSourceUnavailable([...data.value.acts, ...data.value.restatingOnly], data.value.incomplete) : {})
 const allRows = computed(() => (data.value ? euActsRows(data.value) : []))
 const rows = computed(() => (data.value ? euActsRows({ acts: filterEuActs(data.value.acts, chosen.value) }) : []))
 const restatingRows = computed(() => (data.value ? euRestatingRows({ restatingOnly: filterEuActs(data.value.restatingOnly, chosen.value) }) : []))
@@ -87,17 +74,21 @@ const [bundItem, eurLexItem] = sourceItemsDe([risSource('Vorblatt'), risSource('
 </script>
 
 <template>
-  <div class="mx-auto w-full max-w-3xl">
-    <h1 class="page-title">
-      EU-Recht in der Begutachtung
-    </h1>
-    <p class="mt-4 leading-relaxed text-ink-secondary">
-      Jeder Rechtsakt der Europäischen Union, den ein Entwurf dieser
-      Gesetzgebungsperiode umsetzt – beim Bund und in den Ländern –, mit seiner
-      Umsetzungsfrist und den Entwürfen, die ihn umsetzen. Woher die Angaben
-      stammen und was sie nicht sagen, steht unter
-      <NuxtLink to="/so-funktionierts#eu-recht" class="link-inline">So funktioniert’s</NuxtLink>.
-    </p>
+  <div class="mx-auto w-full max-w-4xl">
+    <!-- A list page, so the list's frame (`/entwuerfe`): its width, and the
+         title with its lede in a header. -->
+    <header>
+      <h1 class="page-title">
+        EU-Recht in der Begutachtung
+      </h1>
+      <p class="mt-2 text-ink-secondary">
+        Jeder Rechtsakt der Europäischen Union, den ein Entwurf dieser
+        Gesetzgebungsperiode umsetzt – beim Bund und in den Ländern –, mit seiner
+        Umsetzungsfrist und den Entwürfen, die ihn umsetzen. Woher die Angaben
+        stammen und was sie nicht sagen, steht unter
+        <NuxtLink to="/so-funktionierts#eu-recht" class="link-inline">So funktioniert’s</NuxtLink>.
+      </p>
+    </header>
 
     <FetchGate
       :status="status"
@@ -115,42 +106,40 @@ const [bundItem, eurLexItem] = sourceItemsDe([risSource('Vorblatt'), risSource('
           description="Sobald der Monitor die Entwürfe dieser Gesetzgebungsperiode einmal gelesen hat, stehen hier die Rechtsakte, die sie umsetzen."
         />
         <template v-else>
-          <!-- A rare caveat, and about the whole list: above it, in the
-               register of the list's Land notes. -->
-          <p v-if="incomplete" class="mt-8 text-sm text-ink-muted">
+          <!-- Without a list, the caveat stands above the empty state; with
+               one, in its head, as on `/entwuerfe`. -->
+          <p v-if="incomplete && !allRows.length" class="mt-6 text-sm text-ink-muted">
             {{ incomplete }}
           </p>
           <EmptyState
             v-if="!allRows.length"
-            class="mt-8"
+            class="mt-6"
             title="Kein Entwurf dieser Periode setzt einen Rechtsakt um, den der Monitor kennt."
           />
-          <section v-else aria-labelledby="eu-akte-heading" class="mt-8">
+          <section v-else aria-labelledby="eu-akte-heading" class="mt-6">
             <h2 id="eu-akte-heading" class="sr-only">Rechtsakte</h2>
             <ListBox>
-              <!-- Whose drafts, in the tool row, as the lists' source chips
+              <!-- Whose drafts, in the tool row, the lists' source chips
                    (`SourceChips`): they decide which rows exist at all. -->
               <template #header>
-                <div role="group" aria-label="Quellen der Liste" class="flex flex-wrap items-center gap-2">
-                  <ToggleChip
-                    v-for="code in chips"
-                    :key="code"
-                    :pressed="chosen.includes(code)"
-                    @toggle="toggleSource(code)"
-                  >
-                    {{ SOURCE_NAME[code] }}
-                  </ToggleChip>
-                </div>
+                <SourceChips :unavailable="sourceUnavailable" />
+                <!-- A Land that could not be read, under the chips — where
+                     the list names its unreadable Länder. -->
+                <p v-if="incomplete" class="text-sm text-ink-muted">
+                  {{ incomplete }}
+                </p>
               </template>
               <!-- Inside the sheet, as a list box's notice: a card in the
-                   sheet would be a box in a box (`ListBoxNotice`). -->
+                   sheet would be a box in a box (`ListBoxNotice`). Empty
+                   only where the chosen Länder have no act and the Bund is
+                   off; the Bund has acts, so it is the way back. -->
               <ListBoxNotice
                 v-if="!rows.length"
                 title="Kein Rechtsakt, den ein Entwurf aus dieser Auswahl umsetzt."
               >
-                <template #action>
-                  <button type="button" class="link-inline text-sm" @click="choose([])">
-                    Alle Quellen zeigen
+                <template v-if="!bund" #action>
+                  <button type="button" class="link-inline text-sm" @click="toggle('bund')">
+                    Bund dazunehmen
                   </button>
                 </template>
               </ListBoxNotice>

@@ -7,7 +7,10 @@
  * BARE, LIKE THE PREDECESSOR LINE ABOVE IT. No pill, no colour, no icon: the
  * box grammar of this site reads a bare line as „read this", and a coloured
  * marker would make a property of the draft look like a status of the
- * procedure. Bold lead words, the acts as links to EUR-Lex, and under them
+ * procedure. Bold lead words, the acts as links — to the act's page where
+ * the map has one, as the site links what it has a page for (the Ressort to
+ * its list, a predecessor to its draft; 06.11.2026), to EUR-Lex where it
+ * has none, the act page carrying EUR-Lex in its head — and under them
  * the two dates as one row in the spine's idiom — „Umsetzungsfrist bis … ·
  * Begutachtung ab …" — with no verdict between them (`utils/euRecht.ts`).
  * A row of its own, so that a long act list (32/ME names 28) cannot bury it.
@@ -63,6 +66,8 @@ const shownActs = computed(() => {
 const folded = computed(() => (view.value?.acts.length ?? 0) > shownActs.value.length)
 /** „Weitere Entwürfe zur …" for the shown acts, where the map knows others. */
 const related = computed(() => euRelatedLines(shownActs.value, props.data?.related))
+/** The monitor's page per act, where the map has one (`related` carries every act with a page). */
+const pageOf = computed(() => new Map((props.data?.related ?? []).map((r) => [r.celex, r.path])))
 /** Whether the fact has footnotes — a directive with further partial deadlines; the numbers at the acts and dates need none. */
 const hasNotes = computed(() => (view.value?.notes.length ?? 0) > 0)
 </script>
@@ -70,7 +75,7 @@ const hasNotes = computed(() => (view.value?.notes.length ?? 0) > 0)
 <template>
   <div v-if="view" class="mt-4 border-t border-hairline pt-4">
     <p class="text-sm text-ink-secondary">
-      <strong class="font-semibold text-ink">{{ view.lead }}</strong><template v-if="view.attach === 'colon'">: </template><template v-else-if="view.attach === 'named'">. {{ view.namedIn }} genannt: </template><template v-for="(act, i) in shownActs" :key="act.url"><template v-if="i > 0">{{ i === shownActs.length - 1 && !folded ? ' und ' : ', ' }}</template><ExternalLink :href="act.url" class="link-inline">{{ act.label }}<template v-if="act.note">{{ SUPERSCRIPT[act.note] ?? `(${act.note})` }}</template></ExternalLink></template><template v-if="folded">, … <button type="button" class="link-inline" :aria-expanded="expanded" @click="expanded = true">Alle {{ view.acts.length }} anzeigen</button></template><template v-if="view.adoptedNote">, {{ view.adoptedNote }}</template>.
+      <strong class="font-semibold text-ink">{{ view.lead }}</strong><template v-if="view.attach === 'colon'">: </template><template v-else-if="view.attach === 'named'">. {{ view.namedIn }} genannt: </template><template v-for="(act, i) in shownActs" :key="act.url"><template v-if="i > 0">{{ i === shownActs.length - 1 && !folded ? ' und ' : ', ' }}</template><NuxtLink v-if="pageOf.get(act.celex)" :to="pageOf.get(act.celex)!" class="link-inline">{{ act.label }}<template v-if="act.note">{{ SUPERSCRIPT[act.note] ?? `(${act.note})` }}</template></NuxtLink><ExternalLink v-else :href="act.url" class="link-inline">{{ act.label }}<template v-if="act.note">{{ SUPERSCRIPT[act.note] ?? `(${act.note})` }}</template></ExternalLink></template><template v-if="folded">, … <button type="button" class="link-inline" :aria-expanded="expanded" @click="expanded = true">Alle {{ view.acts.length }} anzeigen</button></template><template v-if="view.adoptedNote">, {{ view.adoptedNote }}</template>.
       <template v-if="quote">
         Laut Vorblatt: „{{ quote }}“.
       </template>
