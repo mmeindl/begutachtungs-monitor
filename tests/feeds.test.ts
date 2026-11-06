@@ -145,6 +145,14 @@ describe('buildSitemap', () => {
     expect(xml.match(/<loc>/g)).toHaveLength(10)
   })
 
+  it('lists each Grundsatzgesetz page the Bund-zu-Land map knows, and no overview (§12.67)', () => {
+    expect(buildSitemap(SITE, [])).not.toContain('/bundesrecht')
+    const xml = buildSitemap(SITE, [], [], [], ['/bundesrecht/2025/44', '/bundesrecht/2026/2'])
+    expect(xml).toContain(`<loc>${SITE}/bundesrecht/2025/44</loc>`)
+    expect(xml).toContain(`<loc>${SITE}/bundesrecht/2026/2</loc>`)
+    expect(xml.match(/<loc>/g)).toHaveLength(10)
+  })
+
   it('yields only the static pages for an empty list, well-formed', () => {
     const xml = buildSitemap(SITE, [])
     expect(xml.match(/<loc>/g)).toHaveLength(8)

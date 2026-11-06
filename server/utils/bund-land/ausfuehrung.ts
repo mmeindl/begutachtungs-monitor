@@ -93,7 +93,12 @@ const W = '[\\p{L}\\p{N}_]'
 const B = `(?<!${W})`
 const WS = /\s+/g
 
-const ABBR = '(?:Art|Abs|Nr|BGBl|LGBl|lit|Z|vgl|bzw|ua|zB|gem|iVm|idF|Hrsg|Dr|Mag|Jän|Jan|Dez|Nov|Okt|Sept|Sep|Aug|Jul|Jun|Mai|Apr|Mär|Feb|ca|dh|ds|usw|etc|insb|iSd|leg|cit|S|Rz|Pkt|sog|gg|I|II|III|IV|V|VI|VII|VIII|IX|X|\\d{1,3})'
+/**
+ * Stops that end no sentence: the prototype's list, and since 06.11.2026
+ * the Länder' own abbreviations — „… (KAKuG) werden im Oö.
+ * Krankenanstaltengesetz umgesetzt“ was cut at „Oö.“ and lost its verb.
+ */
+const ABBR = '(?:Oö|NÖ|Stmk|Bgld|Ktn|Sbg|Vbg|Tir|Wr|Art|Abs|Nr|BGBl|LGBl|lit|Z|vgl|bzw|ua|zB|gem|iVm|idF|Hrsg|Dr|Mag|Jän|Jan|Dez|Nov|Okt|Sept|Sep|Aug|Jul|Jun|Mai|Apr|Mär|Feb|ca|dh|ds|usw|etc|insb|iSd|leg|cit|S|Rz|Pkt|sog|gg|I|II|III|IV|V|VI|VII|VIII|IX|X|\\d{1,3})'
 const ABBR_DOT = new RegExp(`${B}${ABBR}\\.`, 'gu')
 /** A stand-in for a protected full stop (ONE DOT LEADER), as the prototype used. */
 const HELD = '․'
@@ -191,6 +196,35 @@ const A15_STRONG = new RegExp(
   `(?:zur Umsetzung|Umsetzung|Erfüllung|Durchführung)\\s+(?:der|des)\\s+(?:\\(geänderten\\)\\s+|geänderten\\s+)?(?:Verpflichtungen\\s+aus\\s+der\\s+)?(?:${W}+\\s+){0,3}?Vereinbarung|Verpflichtungen[^;]{0,80}?Vereinbarung[^;]{0,200}?(?:umgesetzt|umzusetzen|erfüllt|durchgeführt)|Vereinbarung[^;]{0,160}?(?:umgesetzt|umzusetzen|nachvollzogen|legistisch)|(?:Durchführungsbestimmungen|Anpassung|Umsetzung) (?:zur|an|der) [^;]{0,60}?Vereinbarung|Änderungsvereinbarung vorgesehenen Anpassungen`,
   'iu',
 )
+
+/**
+ * A medium finding must say in its own sentence that something is carried
+ * out or changed (06.11.2026, after review): the neighbours' words were
+ * enough in the prototype, and two norm citations without any such
+ * statement would have been published — a numbered list of laws „in der
+ * Fassung …“ (bgld-011af, 121/2024) and a quoted norm „Nach § 13 Abs. 1 …
+ * Pflichtschulerhaltungs-Grundsatzgesetz … hat für jede … zu bestehen“
+ * (ktn-83484, 37/2023).
+ */
+const CHANGE_STATEMENT = /geändert|novelliert|Novelle|Umsetzung|umgesetzt|umzusetzen|Ausführung|auszuführen|ausgeführt|nachvollz|Anpassung|angepasst|Grundsatzbestimmungen[^.]{0,80}?erlassen/iu
+/**
+ * „auszuführen“ that means „to explain“: „Zu den grundsatzgesetzlichen
+ * Rahmenbedingungen … ist Folgendes auszuführen:“ (ktn-83484) states nothing.
+ */
+const EXPLAINING = /(?:Folgendes|wie folgt|dazu|hiezu|hierzu)\s+auszuführen/giu
+/** A numbered list of citations, „1. … ; 2. …“. */
+const ENUMERATION = /(?:^|\s)1\.\s[^;]{3,}?;\s*2\.\s/u
+/** Two „in der Fassung“/„idF“ citations in one sentence are a list of laws. */
+const IN_DER_FASSUNG = /in der Fassung|idF/giu
+/** A norm quoted for its content: „Nach § … <Gesetz> … hat/ist/sind/darf“. */
+const NORM_QUOTATION = new RegExp(`^\\s*Nach §[^.]{0,240}?${B}(?:hat|ist|sind|darf)(?!${W})`, 'u')
+
+/** Whether a medium sentence itself states a change or an execution, and is no citation list or norm quotation. */
+export function carriesOutInSentence(s: string): boolean {
+  if (!CHANGE_STATEMENT.test(s.replace(EXPLAINING, ''))) return false
+  if (ENUMERATION.test(s) || (s.match(IN_DER_FASSUNG) ?? []).length >= 2) return false
+  return !NORM_QUOTATION.test(s)
+}
 
 /** How much of a sentence travels as evidence. */
 const EVIDENCE_CHARS = 400
@@ -303,7 +337,7 @@ function grundsatzSignal(texts: readonly Text[]): Ausfuehrung | null {
       let take = false
       if (close && !NEG.test(ctx)) take = true
       else if (hasChange && hasExec && hasAct && !(COMPETENCE_ONLY.test(s) && !cited)) take = true
-      if (!take) continue
+      if (!take || !carriesOutInSentence(s)) continue
       const act = grundsatzActOf(s)
       const cand = { strength: 'medium' as const, sentence: s.slice(0, EVIDENCE_CHARS), document, inExplanations: kind === 'erl', act: { ...act, partial: PARTIAL.test(s) } }
       // The first finding stands, unless a later one cites the act and it did not.

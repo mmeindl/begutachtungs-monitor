@@ -794,7 +794,7 @@ const waitMonths = Math.round(RV_LATENCY_CONTEXT_DAYS / 30.44)
 
     <!-- Bund zu Land (06.11.2026, docs/architecture.md §12.67). The counts
          are GP XXVIII as measured that day over the 489 Land drafts of the
-         window (`pnpm corpus:bund-land`): 22 drafts carrying out a
+         window (`pnpm corpus:bund-land`, reader version 2): 20 drafts carrying out a
          Grundsatzgesetz, 21 implementing an agreement in its fixed form.
          Re-measure before changing them. -->
     <ProseSection id="bund-land" heading="Welche Landesentwürfe Bundesrecht ausführen">
@@ -821,7 +821,7 @@ const waitMonths = Math.round(RV_LATENCY_CONTEXT_DAYS / 30.44)
         Ausführung aussagt – nicht aus einer Liste von Verweisen, in der
         dieselbe Nummer auch stehen kann. Die Kundmachung lesen wir im RIS.
         Gemessen am 06.11.2026 über 489 Landesentwürfe der
-        XXVIII.&nbsp;GP: 22 führen ein Grundsatzgesetz aus, 21 setzen eine
+        XXVIII.&nbsp;GP: 20 führen ein Grundsatzgesetz aus, 21 setzen eine
         Vereinbarung um.
       </p>
       <p>

@@ -162,3 +162,29 @@ describe('an agreement\'s subject ends before a participle', () => {
     expect(vereinbarungActOf('Die der Kundmachung betreffend die Vereinbarung gemäß Art. 15a B-VG über die Kinder- und Jugendhilfe geschuldeten landesrechtlichen Bestimmungen werden umgesetzt.').name).toBe('über die Kinder- und Jugendhilfe')
   })
 })
+
+describe('a medium finding states the change in its own sentence (review 06.11.2026)', () => {
+  it('reads no numbered list of citations (bgld-011af)', () => {
+    expect(readAusfuehrungAll([erl('Die Verweisungen beziehen sich auf folgende Fassungen, die geändert wurden: 1. Schulorganisationsgesetz, BGBl. Nr. 242/1962, in der Fassung des Bundesgesetzes BGBl. I Nr. 121/2024; 2. Pflichtschulerhaltungs-Grundsatzgesetz, BGBl. Nr. 163/1955, in der Fassung des Bundesgesetzes BGBl. I Nr. 37/2023; 3. Landeslehrer-Dienstrechtsgesetz - LDG 1984, BGBl. Nr. 302/1984.')])).toEqual([])
+  })
+
+  it('reads no quoted norm (ktn-83484)', () => {
+    expect(readAusfuehrungAll([erl('Nach § 13 Abs. 1 erster Satz Pflichtschulerhaltungs-Grundsatzgesetz, BGBl. Nr. 163/1955 idF BGBl. I Nr. 37/2023, hat für jede öffentliche Pflichtschule ein Schulsprengel zu bestehen. Die Novelle des Schulgesetzes ist erforderlich.')])).toEqual([])
+  })
+
+  it('reads no „ist Folgendes auszuführen" (ktn-83484)', () => {
+    expect(readAusfuehrungAll([erl('Zu den grundsatzgesetzlichen Rahmenbedingungen für die vorgeschlagene Änderung ist Folgendes auszuführen: Das Schulgesetz bleibt.')])).toEqual([])
+  })
+})
+
+describe('the Länder\' own abbreviations end no sentence', () => {
+  it('keeps „im Oö. Krankenanstaltengesetz" in the sentence (ooe-2024-16085)', () => {
+    expect(ausfuehrungSentences('Die grundsatzgesetzlichen Bestimmungen des KAKuG werden im Oö. Krankenanstaltengesetz 1997 ausgeführt. Weiters gilt NÖ. Recht.')).toEqual([
+      'Die grundsatzgesetzlichen Bestimmungen des KAKuG werden im Oö. Krankenanstaltengesetz 1997 ausgeführt.',
+      'Weiters gilt NÖ. Recht.',
+    ])
+    for (const abbr of ['Stmk.', 'Bgld.', 'Ktn.', 'Sbg.', 'Vbg.', 'Tir.', 'Wr.', 'idF', 'lit.', 'Z', 'Abs.', 'Art.']) {
+      expect(ausfuehrungSentences(`Gilt im ${abbr} 1 Gesetz.`)).toHaveLength(1)
+    }
+  })
+})

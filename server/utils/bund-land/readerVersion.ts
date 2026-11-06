@@ -15,4 +15,4 @@
  *
  * PURE MODULE — no imports at all.
  */
-export const BUND_LAND_READER_VERSION = 1
+export const BUND_LAND_READER_VERSION = 2

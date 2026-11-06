@@ -362,6 +362,12 @@ export function buildSitemap(
    * (docs/architecture.md §12.66, Nachtrag 3).
    */
   euActPaths: string[] = [],
+  /**
+   * The Grundsatzgesetze' pages (`/bundesrecht/2025/44`) from the period's
+   * Bund-zu-Land map — empty where none is built; there is no overview to
+   * stand either way (docs/architecture.md §12.67).
+   */
+  bundesrechtPaths: string[] = [],
 ): string {
   const urls = [
     siteUrl,
@@ -377,6 +383,7 @@ export function buildSitemap(
     `${siteUrl}/statistik`,
     `${siteUrl}/eu-recht`,
     ...euActPaths.map((path) => `${siteUrl}${path}`),
+    ...bundesrechtPaths.map((path) => `${siteUrl}${path}`),
     ...items.map((item) => pageUrl(siteUrl, item)),
     // The same reasoning as for the drafts: searching a Verordnung by name
     // is how someone affected by it finds the consultation at all — and for

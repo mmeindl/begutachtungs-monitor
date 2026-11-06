@@ -15609,21 +15609,35 @@ EU-Aktseite), `/api/drafts/:gp/:inr/bundesrecht` (`{ line }`).
 **Gemessen** (`pnpm corpus:bund-land -- --prototype <reader.out.json>`, über
 den Cache der Länder-Messung, 489 Entwürfe, 4 ohne gecachte PDFs — die vier
 steirischen, die die Messung nachgeholt hatte, ohne Befund): Grundsatzgesetz
-6 stark + 16 mittel = 22 gezeigt, Vereinbarung 21 stark gezeigt, 10 mittel
-nicht gezeigt; 39 Entwürfe mit mindestens einem gezeigten Befund. Gegen den
-Prototyp: **0 Abweichungen** in der Klasse. Mit Kundmachung: 44/2025 4
-Entwürfe, 2/2026 4, 24/2024 2, 25/2025 2, je einer 121/2024, 191/2023,
-37/2023, 144/2024; sechs Grundsatz-Befunde ohne Fundstelle im Satz
+6 stark + 14 mittel = 20 gezeigt, Vereinbarung 21 stark gezeigt, 10 mittel
+nicht gezeigt; 37 Entwürfe mit mindestens einem gezeigten Befund. Gegen den
+Prototyp **zwei Abweichungen, beide gewollt** (Durchsicht am Abend, Leser-
+version 2): ein mittlerer Befund muss die Änderung oder Ausführung in
+seinem eigenen Satz aussagen (`carriesOutInSentence`: geändert, Novelle,
+Umsetzung, Ausführung, nachvollzogen, Anpassung, „Grundsatzbestimmungen …
+erlassen“), und keine nummerierte Zitatliste („1. … ; 2. …“ oder zwei „in
+der Fassung“/„idF“), kein zitierter Normtext („Nach § … hat/ist/sind/darf“)
+und kein „ist Folgendes auszuführen“ zählen. So fallen bgld-011af (eine
+Verweisliste, 121/2024) und ktn-83484 (§ 13 Pflichtschulerhaltungs-
+Grundsatzgesetz zitiert, 37/2023; danach „Folgendes auszuführen“) weg; sonst
+ändert sich kein Befund. Dazu hält die Satzteilung die Abkürzungen der
+Länder (Oö., NÖ., Stmk., Bgld., Ktn., Sbg., Vbg., Tir., Wr.): „… (KAKuG)
+werden im Oö.“ endete vorher dort, ohne Verb. Mit Kundmachung: 44/2025 4
+Entwürfe, 2/2026 4, 24/2024 2, 25/2025 2, je einer 191/2023, 144/2024; sechs
+Grundsatz-Befunde ohne Fundstelle im Satz
 (Schulorganisationsgesetz bgld-9b098, KAKuG ooe-16082/-16085, EABG
 t-2026-728, sbg-32879, sbg-34196) — sie stehen am Landesentwurf; zwei davon
 findet die Karte über den Namen (unten).
 
 **Die Karte, gebaut im Dev-Server und auf dem Produktions-Build**
 (06.11.2026 abends; die Steiermark war in jedem Lauf gesperrt,
-`incomplete: ['stmk']`, ihre Entwürfe fehlen den Zeilen): 12 Akte. Mit
+`incomplete: ['stmk']`, ihre Entwürfe fehlen den Zeilen): 12 Akte unter
+Leserversion 1. Mit
 Zeilen: 2/2026 4 Entwürfe (Kärnten, Oberösterreich, Wien, Burgenland — dieser
 über den Namen), 44/2025 3, 24/2024 2, je einer 25/2025, 47/2026 (t-2026-728
-über den Namen), 121/2024, 37/2023, 191/2023, 144/2024. Ohne Zeilen, aus der
+über den Namen), 191/2023, 144/2024 (gebaut mit Leserversion 1, damals noch
+mit 121/2024 und 37/2023 je einem Entwurf; beide fallen mit Version 2 weg,
+die Karte hat dann 10 Akte). Ohne Zeilen, aus der
 Bundessuche: 91/2025, 50/2025, 117/2025. Mit ME: 44/2025 ← 13/ME, 2/2026 ←
 66/ME, 47/2026 ← 43/ME, 91/2025 ← 32/ME, 50/2025 ← 20/ME (die
 Grundsatzbestimmung zur Auskunftspflicht; der Marker entscheidet, weil kein
@@ -15650,9 +15664,7 @@ Ausführungsgesetzes aus eigenem Anlass des Landes; keine Vereinbarung, die
 nur nebenbei genannt wird; ein Entwurf trägt höchstens ein Grundsatzgesetz
 und eine Vereinbarung (ktn-4095 führt zwei Gesetze aus, gezeigt wird das
 erste Segment, 191/2023); die Fundstelle ist die jüngste im Segment, auch
-wo der Entwurf eine ältere Fassung ausführt (bgld-011af, eine Verweisliste,
-die der Leser als mittleren Befund nimmt — eine Lücke der Ausschlüsse,
-wie im Prototyp).
+wo der Entwurf eine ältere Fassung ausführt.
 
 ## 13. Open questions
 

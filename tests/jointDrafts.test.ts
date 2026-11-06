@@ -75,6 +75,7 @@ beforeEach(() => {
   vi.stubGlobal('getCarryOverRisConsultations', async () => [])
   // The sitemap's EU pages: no map built, only `/eu-recht`.
   vi.stubGlobal('getEuMap', async () => null)
+  vi.stubGlobal('getBundLandMap', async () => null)
   vi.stubGlobal('withinBudget', <T>(p: Promise<T>) => p)
 })
 
