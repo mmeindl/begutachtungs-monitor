@@ -286,6 +286,26 @@ describe('assembling the map', () => {
     expect(byKey.get('land:ktn-1-2026-1')?.stand).toBeNull()
   })
 
+  it('carries each draft\'s list row, with its chain or outcome as the list has it and without its EU token', () => {
+    const withRows = assembleEuMap(inputs({
+      store,
+      me: me.map((d) => ({ ...d, eu: 'umsetzung' as const })),
+      chains: { 81: chain({ station: 'bgbl', bgblNumber: 'BGBl. I Nr. 1/2026', bgblDate: '2026-01-10' }) },
+      ris: [risConsultation({ id: 'BEGUT_R1', startedAt: '2026-03-01', deadline: '2026-04-01' })],
+      outcomes: { BEGUT_R1: { state: 'kundgemacht', nummer: 'BGBl. II Nr. 5/2026', datum: '2026-05-01' } as BgblOutcome },
+      laender: [land({ id: 'ooe-2026-16120', land: 'ooe' })],
+    }))
+    const byKey = new Map(withRows.drafts.map((d) => [d.key, d.row]))
+    const r81 = byKey.get('me:XXVIII-81')!
+    expect(r81.kind === 'me' && r81.draft.chain?.bgblDate).toBe('2026-01-10')
+    expect(r81.kind === 'me' && 'eu' in r81.draft).toBe(false)
+    const r147 = byKey.get('me:XXVIII-147')!
+    expect(r147.kind === 'me' && 'chain' in r147.draft).toBe(false)
+    const ris = byKey.get('ris:BEGUT_R1')!
+    expect(ris.kind === 'ris' && ris.item.outcome?.nummer).toBe('BGBl. II Nr. 5/2026')
+    expect(byKey.get('land:ooe-2026-16120')).toMatchObject({ kind: 'land', item: { id: 'ooe-2026-16120' } })
+  })
+
   it('names the Bund\'s stand unknown when the station map is not at hand, without calling the Bund incomplete', () => {
     const cold = assembleEuMap(inputs({ store, me, chains: null, outcomes: null }))
     expect(cold.drafts.filter((d) => d.publisher === 'bund').map((d) => d.stand)).toEqual([null, null])
@@ -353,10 +373,14 @@ describe('assembling the map', () => {
   it('counts the OTHER implementing drafts of each act for a draft\'s own fact', () => {
     expect(relatedActsOf(map, 'me:XXVIII-147', ['32024L1069', '32018L2001'])).toEqual([
       { celex: '32024L1069', path: '/eu-recht/richtlinie/2024/1069', others: { bund: 0, laender: 2 } },
+      { celex: '32018L2001', path: '/eu-recht/richtlinie/2018/2001', others: { bund: 0, laender: 0 } },
     ])
     expect(relatedActsOf(map, 'land:ktn-1-2026-1', ['32024L1069'])).toEqual([
       { celex: '32024L1069', path: '/eu-recht/richtlinie/2024/1069', others: { bund: 1, laender: 2 } },
     ])
-    expect(relatedActsOf(map, 'ris:BEGUT_R1', ['32022R2554'])).toEqual([])
+    // The only draft of its act still gets the entry: it tells the fact the act's page exists.
+    expect(relatedActsOf(map, 'ris:BEGUT_R1', ['32022R2554'])).toEqual([
+      { celex: '32022R2554', path: '/eu-recht/verordnung/2022/2554', others: { bund: 0, laender: 0 } },
+    ])
   })
 })

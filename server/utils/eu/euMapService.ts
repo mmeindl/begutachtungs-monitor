@@ -24,7 +24,7 @@
  * small facts. PDFs and page texts live inside the services, which read
  * and drop them; the report samples the heap to show it.
  */
-import type { DraftSummary, EuMarker, EuPublisher, EuRechtResponse, LandCode, LandConsultation } from '#shared/types'
+import type { EuMarker, EuPublisher, EuRechtResponse, LandCode, LandConsultation } from '#shared/types'
 import { chainCoverageOf, mayClaimOutcome } from '#shared/utils/draftStations'
 import { todayIso } from '#shared/utils/format'
 import { gpHasEnded, gpWindow } from '#shared/utils/gp'
@@ -326,14 +326,7 @@ async function assembleFromStore(gp: string): Promise<Gathered<EuMap | null>> {
     gp,
     window,
     store,
-    me: dedupeDraftList(drafts.items).map((d: DraftSummary) => ({
-      gp: d.gp,
-      inr: d.inr,
-      citation: d.citation,
-      title: d.title,
-      arrivedAt: d.arrivedAt,
-      deadline: d.deadline,
-    })),
+    me: dedupeDraftList(drafts.items),
     chains: speakable ? chains : null,
     ris: risOnly.items,
     outcomes,

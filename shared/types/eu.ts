@@ -1,5 +1,7 @@
 import type { TraceLink } from './common'
-import type { LandCode } from './laender'
+import type { DraftSummary } from './drafts'
+import type { LandCode, LandConsultation } from './laender'
+import type { RisConsultation } from './ris'
 
 // ---------------------------------------------------------------------------
 // EU-Recht (docs/architecture.md §12.66)
@@ -97,10 +99,11 @@ export interface EuRechtResponse {
   /** The documents read, for the source line: the Vorblatt, the law text, the Erläuterungen. */
   sources: TraceLink[]
   /**
-   * Other drafts in the EU map that implement one of this draft's acts
-   * (`EuRelatedAct`), one entry per act with any. Set by the endpoint from
-   * the map; absent where the map is not built, and never stored with the
-   * fact.
+   * This draft's acts that have a page in the EU map, each with the other
+   * drafts that implement it (`EuRelatedAct`; zero others included — the
+   * entry is also how the fact knows the act's page). Set by the endpoint
+   * from the map; absent where the map is not built, and never stored with
+   * the fact.
    */
   related?: EuRelatedAct[]
 }
@@ -156,7 +159,21 @@ export interface EuActDraft {
    * bar).
    */
   isNew: boolean | null
+  /**
+   * The draft as the lists carry it, so the act page renders the very row
+   * `/entwuerfe` renders (`viewOfRow`, 05.11.2026): its Ressort, its
+   * Stellungnahmen, its Stand in the lists' words — one anatomy, not a
+   * second one written for this page. The Ministerialentwurf carries its
+   * chain where the station map may be spoken about, as in the list.
+   */
+  row: EuListRow
 }
+
+/** A list row of the three kinds the map reads (`DraftListRow` without the Vorlage). */
+export type EuListRow =
+  | { kind: 'me'; key: string; draft: DraftSummary }
+  | { kind: 'ris'; key: string; item: RisConsultation }
+  | { kind: 'land'; key: string; item: LandConsultation }
 
 /** An act as the map knows it: its citation, its EUR-Lex page, its dates. */
 export interface EuActHead {

@@ -643,6 +643,9 @@ const statementsSortNote = computed(() => {
       <div class="mt-2">
         <SubscribeLinks :ministry="ministry" />
         <LaenderCoverageFold :undated-ktn="laenderData?.undated?.ktn" />
+        <!-- The same drafts by EU act, always offered — not only beside
+             „Setzt EU-Recht um" (`EuMapLink`). -->
+        <EuMapLink />
       </div>
       <!-- THE WAY TO THE SEARCH STOOD HERE UNTIL 21.09.2026 — a link to
            `/suche` plus two sentences on what is different there from the

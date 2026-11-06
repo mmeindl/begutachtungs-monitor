@@ -7,6 +7,7 @@ import type {
   DashboardPayload,
   DashboardSecondRound,
   DraftStation,
+  EuActsResponse,
   LaenderResponse,
   LandCode,
   LandConsultation,
@@ -21,6 +22,7 @@ import { listDe } from '~/utils/geltendeFassung'
 import { gpWindow } from '#shared/utils/gp'
 import { MAX_LIST_QUERY_CHARS } from '#shared/utils/queryParams'
 import { SECOND_ROUND_WINDOW } from '~/utils/spine'
+import { euActsRows, euSourceUnavailable, filterEuActs } from '~/utils/euKarte'
 import type { AsyncDataRequestStatus } from '#app'
 
 /* „Gesetzes- und Verordnungsentwürfe" since 18.09.2026. It said
@@ -164,7 +166,7 @@ const { data: risOnly, status: risStatus } = await useFetch<RisConsultationsResp
  * when the choice goes from none to some, never on a switch between Länder:
  * watching the list itself refetched on every chip and blanked the list
  * while it did (25.10.2026). */
-const { bund, laender: chosenLaender, queryValue: sourcesQuery } = useSourceChoice()
+const { chosen: chosenSources, bund, laender: chosenLaender, queryValue: sourcesQuery } = useSourceChoice()
 const wantsLaender = computed(() => chosenLaender.value.length > 0)
 const { data: laender, status: laenderStatus } = await useAsyncData<LaenderResponse | null>(
   'home-laender',
@@ -440,6 +442,18 @@ const enactedHref = computed(
   () => '/entwuerfe?station=bgbl' + (enactedIsFallback.value ? `&gp=${enactedGp.value}` : '') + sourcesParam.value,
 )
 const decidedHref = computed(() => `/entwuerfe?station=parlament&status=closed${sourcesParam.value}`)
+
+/* The EU map's window (docs/architecture.md §12.66, 06.11.2026): the
+ * overview's first rows, in its own order and for the same choice of
+ * sources — the five `/eu-recht` opens with, as every section here shows
+ * the first rows of the list it links. Client-side: the map is no part of
+ * the homepage's first paint, and the section is the page's last. */
+const { data: euActs } = useFetch<EuActsResponse>('/api/eu-recht', { lazy: true, server: false })
+const euChosenActs = computed(() => (euActs.value ? filterEuActs(euActs.value.acts, chosenSources.value) : []))
+const euRows = computed(() =>
+  euActs.value ? euActsRows({ ...euActs.value, acts: euChosenActs.value.slice(0, HOME_LIST_LENGTH) }) : [])
+const euUnavailable = computed(() => (euActs.value ? euSourceUnavailable(euActs.value.acts, euActs.value.incomplete) : {}))
+const euHref = computed(() => (sourcesQuery.value ? `/eu-recht?quellen=${sourcesQuery.value}` : '/eu-recht'))
 
 /* „Zuletzt Gesetz geworden" with Länder chosen (30.10.2026). The Bund's
  * sentences below stay as they were for the Bund alone; with a Land the
@@ -1029,6 +1043,32 @@ function submitSearch() {
             Das Land {{ LAND_NAME[s.land] }} ist gerade nicht abrufbar – seine Kundmachungen fehlen hier.
           </p>
         </template>
+      </section>
+      <!-- The same drafts by EU act (§12.66): a window onto `/eu-recht`
+           like every section onto its list — its first rows, its chips.
+           Last, a cross-section of every station rather than one of them;
+           gone where no map is built yet, never a promise of rows. -->
+      <section v-if="euActs?.builtAt && euActs.acts.length" class="page-section" aria-labelledby="eu-heading">
+        <ListHeader
+          id="eu-heading"
+          :to="euHref"
+          noun="Rechtsakte"
+          :total="euChosenActs.length"
+          :visible="euRows.length"
+        >
+          EU-Recht in der Begutachtung
+        </ListHeader>
+        <ListBox class="mt-4">
+          <template #header>
+            <SourceChips :unavailable="euUnavailable" />
+          </template>
+          <p v-if="!euRows.length" class="p-4 text-sm text-ink-muted">
+            Kein Rechtsakt mit einem Entwurf aus dieser Auswahl.
+          </p>
+          <ul v-else role="list" class="divide-y divide-hairline">
+            <EuActRow v-for="row in euRows" :key="row.key" :row="row" />
+          </ul>
+        </ListBox>
       </section>
 
       <!-- NO credit line of its own (03.10.2026, tried and removed within

@@ -4,13 +4,14 @@
  * (docs/architecture.md §12.66, Nachtrag 3) — `/eu-recht/richtlinie/2024/1069`,
  * the act's kind, year and number as its citation reads (`euActCelex`).
  *
- * THE ROWS FIRST. The section opens with the drafts that implement the act
- * — no text above the list; what the list cannot say (the window, the
- * Länder without a draft, what could not be read) stands under it. Each
- * row is its text on the left — who, which draft, its Begutachtung and
- * stand — and from `md` up its bar on the right, ALL ON ONE TRACK, so the
- * rows compare by eye; the labels stand once, under the last row
- * (`EuScaleAxis`). Below `md` the bar stands under its text.
+ * THE DRAFTS FIRST, no text above them. The one caveat, what could not be
+ * read, stands in the list box's head as on the overview; the window and
+ * the Länder without a draft are the method's, not each act's (06.11.2026). The section opens with the timeline as one chart (`EuActChart`): a
+ * lane per draft, all on one track, each lane naming its own band and dot,
+ * the deadline's label over the lanes and a calendar under them. Then the
+ * drafts as rows of the lists (`EntryList`, 05.11.2026) — the same anatomy
+ * as on `/entwuerfe`, its Stellungnahmen and its Stand, instead of a row
+ * grammar of this page's own.
  *
  * TWO DATES AND A STAND, NO VERDICT (rule D6): no colour on a row, no
  * „verspätet", no count of days. The dot is the rail's yellow where the
@@ -19,13 +20,35 @@
  * the draft's own timeline (`euDotOf`).
  *
  * The drafts that only restate the act — a Novelle repeating the whole
- * Umsetzungshinweis (rule D4) — follow apart and muted, without a bar.
+ * Umsetzungshinweis (rule D4) — follow apart under their own heading, in
+ * the same rows (`EntryList`), without a lane in the chart.
  */
 import type { EuActResponse } from '#shared/types'
 import { euActCelex } from '#shared/utils/eu'
 import { eurLexSource, risSource, sourceItemsDe } from '#shared/utils/provenance'
-import { euDotOf } from '~/utils/euRecht'
 import { euActPageView } from '~/utils/euKarte'
+
+definePageMeta({
+  // One address per act, as per draft (`/entwuerfe/[gp]/[inr]`): a kind in
+  // capitals („/Richtlinie/", autocorrect) or a number with leading zeros
+  // 301s to the canonical path, query and anchor along; anything that names
+  // no act still 404s below.
+  middleware: [
+    (to) => {
+      const kind = String(to.params.kind ?? '')
+      const year = String(to.params.year ?? '')
+      const number = String(to.params.number ?? '')
+      const canonical = { kind: kind.toLowerCase(), number: number.replace(/^0+(?=\d)/, '') }
+      if (!euActCelex(canonical.kind, year, canonical.number)) return
+      if (kind !== canonical.kind || number !== canonical.number) {
+        return navigateTo(
+          { path: `/eu-recht/${canonical.kind}/${year}/${canonical.number}`, query: to.query, hash: to.hash },
+          { redirectCode: 301 },
+        )
+      }
+    },
+  ],
+})
 
 const route = useRoute()
 const celex = euActCelex(String(route.params.kind), String(route.params.year), String(route.params.number))
@@ -63,9 +86,6 @@ const headLine = computed(() => {
   return line ? line[0]!.toUpperCase() + line.slice(1) : ''
 })
 
-/** „Heute" fits over its dot anywhere; a Gesetzblatt's name takes the edge rule (`DraftEuTimeline`). */
-const valueAlign = (label: string) => (label.length <= 6 ? 'center' as const : 'auto' as const)
-
 /* The credit line, as on the overview (`/eu-recht`). */
 const [bundItem, eurLexItem] = sourceItemsDe([risSource('Vorblatt'), risSource('Gesetzestext'), eurLexSource('Fristen')])
 </script>
@@ -94,97 +114,64 @@ const [bundItem, eurLexItem] = sourceItemsDe([risSource('Vorblatt'), risSource('
     >
       <template #default="{ data: page }">
         <BackLink to="/eu-recht" label="Alle Rechtsakte" />
-        <header>
-          <h1 class="page-title">
-            {{ page.title }}
-          </h1>
+        <!-- The detail pages' head (`DraftHeader`), as on a draft: the type
+             word in the identity row, the record at its source beside it,
+             then the title and what qualifies it. -->
+        <DraftHeader :title="page.title">
+          <template #source>
+            <ExternalLink :href="page.eurLexUrl" class="link-inline tap-target">Auf EUR-Lex ansehen</ExternalLink>
+          </template>
+          <template #identity>
+            <span class="text-sm font-medium text-ink-muted">Rechtsakt der Europäischen Union</span>
+          </template>
           <!-- What the official title says after the name and date: the act's
-               subject, which the citation alone does not tell. -->
-          <p v-if="page.subject" class="mt-2 text-lg leading-snug text-ink-secondary">
+               subject, which the citation alone does not tell — where a
+               draft's page sets its long title. -->
+          <p v-if="page.subject" class="mt-1 text-sm text-ink-secondary">
             {{ page.subject }}
           </p>
-          <p class="mt-3 text-ink-secondary">
+          <p class="mt-2 text-sm text-ink-secondary">
             {{ headLine }}
           </p>
           <p v-if="page.footnote" class="mt-1 text-xs text-ink-muted">
             {{ page.footnote }}.
           </p>
-          <p class="mt-2 text-sm">
-            <ExternalLink :href="page.eurLexUrl" class="link-quiet font-medium">Auf EUR-Lex ansehen</ExternalLink>
-          </p>
-        </header>
+        </DraftHeader>
 
         <section aria-labelledby="eu-umsetzung-heading" class="page-section">
           <h2 id="eu-umsetzung-heading" class="section-heading">{{ page.implementingHeading }}</h2>
-          <!-- The rows, then the axis once under the last — on the white
-               sheet of every list of rows (`ListBox`): rows that link, side
-               by side on one scale. -->
-          <ListBox v-if="page.rows.length" class="mt-4">
-            <ul role="list" class="divide-y divide-hairline">
-              <!-- The list row's anatomy (`EntryItem`): the whole row — text and
-                   bar — is the link to the draft's page, the title ink and
-                   underlined under the pointer, the ground tinted. -->
-              <li v-for="row in page.rows" :key="row.key">
-                <NuxtLink
-                  :to="row.path"
-                  class="group grid gap-x-6 gap-y-1 px-4 py-3 hover:bg-hover md:grid-cols-[minmax(0,1fr)_minmax(0,1fr)] md:items-center"
-                >
-                  <div class="min-w-0">
-                    <p class="text-sm">
-                      <strong class="font-semibold text-ink">{{ row.publisher }}</strong>
-                    </p>
-                    <h3 class="font-medium text-ink group-hover:underline group-hover:decoration-2">{{ row.title }}</h3>
-                    <p class="mt-0.5 text-sm text-ink-secondary">
-                      {{ row.kennung }}
-                    </p>
-                  </div>
-                  <div v-if="row.bar" class="min-w-0" aria-hidden="true">
-                    <!-- Decoration beside the row's text, which says the same dates in words. -->
-                    <ScaleBar
-                      :value="row.bar.value"
-                      :value-label="row.bar.valueLabel"
-                      :value-align="valueAlign(row.bar.valueLabel)"
-                      :band="row.bar.band"
-                      :from="row.bar.from"
-                      :marks="row.bar.marks"
-                      :labels="false"
-                      :dot="euDotOf(row.bar.valueLabel)"
-                    />
-                  </div>
-                </NuxtLink>
-              </li>
-            </ul>
-            <div v-if="page.axis.length" class="grid gap-x-6 border-t border-hairline px-4 pb-1 pt-2 md:grid-cols-[minmax(0,1fr)_minmax(0,1fr)]">
-              <div class="hidden md:block" />
-              <EuScaleAxis :marks="page.axis" />
-            </div>
-          </ListBox>
-          <p v-else class="mt-4 text-ink-secondary">
+          <!-- The timeline first, as one chart (`EuActChart`): the drafts
+               side by side against the one deadline. Then the drafts as
+               every list of drafts shows them (`EntryList`). -->
+          <EuActChart v-if="page.chart" :chart="page.chart" class="mt-4" />
+          <EntryList v-if="page.entries.length" :entries="page.entries" class="mt-6">
+            <!-- What could not be read, in the box's head — where the
+                 overview and `/entwuerfe` say it, above the rows it
+                 concerns. -->
+            <template v-if="page.incomplete" #header>
+              <p class="text-sm text-ink-muted">
+                {{ page.incomplete }}
+              </p>
+            </template>
+            <!-- The dates the chart draws, said with the row: the lanes are
+                 hidden from a screen reader, which hears each draft once. -->
+            <template #evidence="{ entry }">
+              <span v-if="page.said[entry.key]" class="sr-only">{{ page.said[entry.key] }}</span>
+            </template>
+          </EntryList>
+          <p v-if="!page.entries.length && page.incomplete" class="mt-4 text-sm text-ink-muted">
+            {{ page.incomplete }}
+          </p>
+          <p v-if="!page.entries.length" class="mt-4 text-ink-secondary">
             Kein Entwurf im Fenster setzt den Rechtsakt neu um; die Entwürfe unten
             nennen ihn, weil das geltende Recht ihn schon umsetzt.
           </p>
 
-          <template v-if="page.restating.length">
-            <PageSubsection heading="Weitere Entwürfe, die den Akt im geltenden Umsetzungshinweis nennen" class="mt-8">
-              <ul role="list" class="space-y-1 text-sm text-ink-muted">
-                <li v-for="row in page.restating" :key="row.key">
-                  {{ row.publisher }} · <NuxtLink :to="row.path" class="link-muted">{{ row.title }}</NuxtLink>
-                </li>
-              </ul>
-            </PageSubsection>
-          </template>
-
-          <!-- What the list cannot say, under it: who has no draft, what
-               the window is, what could not be read. -->
-          <div class="mt-6 space-y-2 text-sm text-ink-muted">
-            <p v-if="page.landsWithout">
-              {{ page.landsWithout }}
-            </p>
-            <p>{{ page.window }}</p>
-            <p v-if="page.incomplete">
-              {{ page.incomplete }}
-            </p>
-          </div>
+          <!-- The same rows as above and on every list (`EntryList`), apart
+               under their heading and without a lane in the chart. -->
+          <PageSubsection v-if="page.restating.length" heading="Weitere Entwürfe, die den Akt im geltenden Umsetzungshinweis nennen" class="mt-8">
+            <EntryList :entries="page.restating" />
+          </PageSubsection>
 
           <SectionCredits :sources="[]" :marked="false" method="/so-funktionierts#eu-recht">
             <span>Quellen:</span>

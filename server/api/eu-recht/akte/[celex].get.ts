@@ -8,7 +8,10 @@
  * an act no draft of the map names, 503 while no build has finished — the
  * page must not say „no draft" where nobody has looked.
  */
-import type { EuActResponse } from '#shared/types'
+import type { EuActDraft, EuActResponse } from '#shared/types'
+import { reconcileActive } from '../../../utils/parliament/drafts'
+import { withRisActiveOn } from '../../../utils/ris/risRecord'
+import { withLandActiveOn } from '../../../utils/laender/sources'
 import { gpFromParam, readGpQuery, requirePlausibleGp } from '../../../utils/http/params'
 import { actPageOf } from '../../../utils/eu/euMap'
 
@@ -24,5 +27,25 @@ export default defineEventHandler(async (event): Promise<EuActResponse> => {
   if (!map) throw createError({ statusCode: 503, statusMessage: 'Die EU-Übersicht wird gerade aufgebaut' })
   const page = actPageOf(map, celex)
   if (!page) throw createError({ statusCode: 404, statusMessage: 'Kein Entwurf nennt diesen Rechtsakt' })
-  return { gp, window: map.window, builtAt: map.builtAt, ...page, incomplete: map.incomplete }
+  return {
+    gp,
+    window: map.window,
+    builtAt: map.builtAt,
+    ...page,
+    implementing: page.implementing.map(activeToday),
+    restating: page.restating.map(activeToday),
+    incomplete: map.incomplete,
+  }
 })
+
+/**
+ * `active` decided per request, as the lists decide it (`reconcileActive`,
+ * `withRisActiveOn`, `withLandActiveOn`): the map is cached for hours, and a
+ * row must not count down a Frist that ended since it was assembled.
+ */
+function activeToday(d: EuActDraft): EuActDraft {
+  const row = d.row
+  if (row.kind === 'me') return { ...d, row: { ...row, draft: reconcileActive(row.draft) } }
+  if (row.kind === 'ris') return { ...d, row: { ...row, item: withRisActiveOn([row.item])[0]! } }
+  return { ...d, row: { ...row, item: withLandActiveOn([row.item])[0]! } }
+}

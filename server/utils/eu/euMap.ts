@@ -16,10 +16,12 @@
 import type {
   BgblOutcome,
   DraftChain,
+  DraftSummary,
   EuActDraft,
   EuActHead,
   EuActResponse,
   EuActSummary,
+  EuListRow,
   EuMarker,
   EuPublisher,
   EuRelatedAct,
@@ -67,21 +69,12 @@ export interface EuMap {
   incomplete: EuPublisher[]
 }
 
-/** A Ministerialentwurf as the map joins it: list 81's row, folded. */
-export interface MeListing {
-  gp: string
-  inr: number
-  citation: string
-  title: string
-  arrivedAt: string
-  deadline: string | null
-}
-
 export interface EuMapInputs {
   gp: string
   window: { from: string; to: string | null }
   store: EuStoreFile
-  me: readonly MeListing[]
+  /** List 81's rows, folded (`dedupeDraftList`) — the act page renders them as the list does. */
+  me: readonly DraftSummary[]
   /**
    * The station map, where it could be read in time AND the period may be
    * spoken about (`mayClaimOutcome`); null otherwise — then every
@@ -149,7 +142,7 @@ export function assembleEuMap(inputs: EuMapInputs): EuMap {
   const drafts: EuMapDraft[] = []
   const acts: Record<string, EuActHead> = {}
 
-  const add = (key: string, row: Omit<EuMapDraft, 'key' | 'marker' | 'acts'>): void => {
+  const add = (key: string, row: Omit<EuMapDraft, 'key' | 'marker' | 'acts' | 'row'>, listRow: EuListRow): void => {
     const fact = store.entries[key]?.fact
     if (!fact?.available || !fact.marker) return
     const named: EuMapAct[] = []
@@ -173,11 +166,12 @@ export function assembleEuMap(inputs: EuMapInputs): EuMap {
         }
       }
     }
-    drafts.push({ key, marker: fact.marker, acts: named, ...row })
+    drafts.push({ key, marker: fact.marker, acts: named, ...row, row: listRow })
   }
 
   const chainsRead = inputs.chains !== null
   for (const d of inputs.me) {
+    const chain = inputs.chains?.[d.inr]
     add(meKey(d.gp, d.inr), {
       publisher: 'bund',
       path: `/entwuerfe/${d.gp}/${d.inr}`,
@@ -185,8 +179,8 @@ export function assembleEuMap(inputs: EuMapInputs): EuMap {
       citation: d.citation,
       kind: 'gesetz',
       begutachtung: { start: d.arrivedAt || null, end: d.deadline },
-      stand: standOfMe(inputs.chains?.[d.inr], chainsRead, today),
-    })
+      stand: standOfMe(chain, chainsRead, today),
+    }, { kind: 'me', key: meKey(d.gp, d.inr), draft: withoutEu(chain ? { ...d, chain } : d) })
   }
   const outcomesRead = inputs.outcomes !== null
   for (const r of inputs.ris) {
@@ -198,7 +192,7 @@ export function assembleEuMap(inputs: EuMapInputs): EuMap {
       kind: r.kind,
       begutachtung: { start: r.startedAt, end: r.deadline },
       stand: standOfRis(inputs.outcomes?.[r.id], outcomesRead, today),
-    })
+    }, { kind: 'ris', key: risKey(r.id), item: withoutEu({ ...r, outcome: inputs.outcomes?.[r.id] ?? r.outcome ?? null }) })
   }
   for (const l of inputs.laender) {
     add(landKey(l.land, landNumberOf(l.id)), {
@@ -209,7 +203,7 @@ export function assembleEuMap(inputs: EuMapInputs): EuMap {
       kind: l.kind,
       begutachtung: { start: l.startedAt, end: l.deadline },
       stand: standOfLand(l.stage, today),
-    })
+    }, { kind: 'land', key: landKey(l.land, landNumberOf(l.id)), item: withoutEu(l) })
   }
 
   const incomplete = new Set<EuPublisher>([...store.incomplete, ...inputs.unavailableLands])
@@ -222,6 +216,16 @@ export function assembleEuMap(inputs: EuMapInputs): EuMap {
     read: Object.keys(store.entries),
     incomplete: (['bund', ...LAND_CODES] as EuPublisher[]).filter((p) => incomplete.has(p)),
   }
+}
+
+/**
+ * A list row without its EU token: on the act's page every row implements
+ * the act, and „Setzt EU-Recht um" on each would say what the heading
+ * already says.
+ */
+function withoutEu<T extends { eu?: EuMarker | null }>(row: T): T {
+  const { eu: _eu, ...rest } = row
+  return rest as T
 }
 
 /** A Land's own number from its list id (`ooe-2026-16120` → `2026-16120`), as `landDraftPath` cuts it. */
@@ -321,9 +325,10 @@ export function actSummariesOf(map: EuMap): EuActSummary[] {
 }
 
 /**
- * For a draft's own fact: per act it names, the OTHER drafts of the map
- * that implement that act, by publisher. Acts no other draft implements are
- * left out.
+ * For a draft's own fact: per act it names that has a page in the map, the
+ * OTHER drafts of the map that implement that act, by publisher — zero
+ * included, since the entry also tells the fact that the act's page exists
+ * (its name links there, 06.11.2026). Acts not in the map are left out.
  */
 export function relatedActsOf(map: EuMap, key: string, celexes: readonly string[]): EuRelatedAct[] {
   const out: EuRelatedAct[] = []
@@ -338,7 +343,7 @@ export function relatedActsOf(map: EuMap, key: string, celexes: readonly string[
       if (d.publisher === 'bund') others.bund++
       else others.laender++
     }
-    if (others.bund + others.laender > 0) out.push({ celex, path: act.path, others })
+    out.push({ celex, path: act.path, others })
   }
   return out
 }
