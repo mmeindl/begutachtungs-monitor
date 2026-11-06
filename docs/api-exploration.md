@@ -335,6 +335,38 @@ Useful filter for a harness: the title of a single-law amendment is
 formulaic, `Bundesgesetz, mit dem das <Gesetz> geändert wird`. Those are the
 cases whose result can be scored against one law.
 
+### `BgblAuth` full-text search and the exact number (06.11.2026)
+
+Read for the Bund-zu-Land map (architecture §12.67), live:
+
+- **`Suchworte` works in `BgblAuth`** (and in `LgblAuth`): a phrase in
+  quotes is a phrase — `Suchworte="Ausführungsgesetze der Länder"` —, a
+  bare word is a word form (`Grundsatzbestimmung` and
+  `Grundsatzbestimmungen` answer differently). A document ID works as a
+  search word too: `Suchworte=BGBLA_2025_I_44` returns that one record.
+- **`Teil` and `Jahrgang` are ignored** beside `Suchworte`, as on the year
+  pages: `Suchworte="Ausführungsgesetze der Länder"&Teil=1&Jahrgang=2025`
+  answers 61 records from 2004 to 2026. What narrows is
+  `VonKundmachungsdatum`/`BisKundmachungsdatum`; the Teil is filtered after
+  reading.
+- **`Bgblnummer` is exact only in the full citation:** `Bgblnummer=BGBl. I
+  Nr. 44/2025` returns one record, `Bgblnummer=44/2025` three (Teil I, II
+  and III of that number). The services always send the full citation
+  (`fetchBgblByNumber`).
+- **The Frist the Länder are set** stands in the Kundmachung's HTML as
+  „Die Ausführungsgesetze der Länder sind binnen … zu erlassen." — in 44/2025
+  („binnen eines Jahres"), 47/2026 („binnen neun Monaten"), 91/2025
+  („binnen sechs Monaten nach Inkrafttreten der Grundsatzbestimmungen gemäß
+  Absatz 8") and 25/2025 („binnen vier Monaten ab diesem Zeitpunkt"); not
+  in 2/2026 and 117/2025. RIS prints each Absatz twice in the HTML, once
+  with abbreviations („Abs. 8") and once spelled out for screen readers
+  („Absatz 8"); the spelled-out twin is the one without a full stop inside.
+
+Over the window of GP XXVIII (from 2024-10-24) the four searches
+`"Ausführungsgesetze der Länder"`, `Grundsatzbestimmung`,
+`Grundsatzbestimmungen` and `Grundsatzgesetz` together return seven Teil-I
+laws: 2/2026, 25/2025, 44/2025, 47/2026, 50/2025, 91/2025, 117/2025.
+
 ### The exact join from a Bundesgesetzblatt to the text it produced
 
 Every consolidated paragraph version (`BrKons`, §2a) carries in

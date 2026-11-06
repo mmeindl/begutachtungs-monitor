@@ -319,6 +319,9 @@ name has to stay globally unique.
 | `DraftDescription` | `blocks: DescriptionBlock[]` | The Kurzinformation of a Ministerialentwurf, grouped into its own sections; folded parts are a `FoldSection` (native `<details>`), so no hydration, keyboard access as-is and the text stays in the SSR HTML |
 | `DraftDoorCard` | `frist: boolean; deadline; icsHref?; filingHref?` + slots `heading`, default, `after-context`, `filing`, `actions`, `footer` | The door: deadline, action and calendar in one card, in the same slot and shape on both detail pages (03.10.2026); toned like the list row's countdown while the Begutachtung's window is open |
 | `ProcedureCard` | `status: string; stations: Station[]; anchors?; comparisonAnchors?; howTo?` + default slot | The bordered card with the procedure's status, the way to /so-funktionierts and the `SpineRail` — the same on both detail pages (03.10.2026) |
+| `DraftBundesrechtFact` | `data: LandBundesrechtResponse \| null \| undefined` | A Land draft's ProcedureCard, under the EU fact (§12.67): „Führt das <Grundsatzgesetz> aus, BGBl. I Nr. …" (the name links to `/bundesrecht/<Jahr>/<Nummer>` where the map has the act; „teilweise" where the draft says so) and „Setzt die Vereinbarung gemäß Art. 15a B-VG … um" (no link). The EU fact's register; nothing where nothing was found |
+| `DraftBundesrechtCredits` | `data; publisher: string` | Its credit line under the card: the Land's documents it was read from, and „Bundesgesetzblatt (RIS)" where a Kundmachung was read |
+| `DraftBundesrechtLine` | `line: MeBundesrechtLine \| null \| undefined` | A Ministerialentwurf's ProcedureCard once its Grundsatzgesetz is kundgemacht and names it as its origin (§12.67): „Ausgeführt in 3 Entwürfen der Länder →", or „Ausführungsgesetze der Länder: noch kein Entwurf im Fenster · Frist laut Grundsatzgesetz: „binnen eines Jahres"" — never „0 Länder" |
 | `DoorButton` | `href: string; variant?: 'solid' \| 'outline'` + default slot | The door's button: a form or document opened in a new window, with ↗ and the sr-only warning (`FilingButton` until 04.10.2026 — it opens the Begleitschreiben too) |
 | `RvStationSection` | `draft; view: RvStationView; share; shareDe; reasoningDe; rvExplanations; rvStatements; filingOpen` | „Die Regierungsvorlage": the station's facts, counts and context from `rvStationView` (`app/utils/outcomes.ts`, tested), its statements and the ME→RV comparison. Split out of the draft page on 04.10.2026, like the two below |
 | `ParliamentStationSection` | `draft; enactment; showDiff; parliamentTexts` | „Im Parlament": the Stand (`parliamentStandDe`), the vote, the parliamentary documents and the committee's and plenary's comparison |
@@ -15492,6 +15495,164 @@ Fakt an den Landesentwurf.
 
 Skript und Ergebnisse liegen nicht im Repo (Wegwerfmessung); die Zahlen
 hier sind der Stand. Ob und wie gebaut wird: TODO Teil 6.
+
+### 12.67 Bund zu Land: Grundsatzgesetze und Art.-15a-Vereinbarungen am Landesentwurf (06.11.2026)
+
+Gebaut auf der Messung von §12.66 Nachtrag 10 und ihren drei Korrekturen.
+Ein Landesentwurf sagt seit heute unter dem EU-Fakt, was er vom Bund
+ausführt: „Führt das Anstellungserfordernisse-Grundsatzgesetz aus, BGBl. I
+Nr. 44/2025" oder „Setzt die Vereinbarung gemäß Art. 15a B-VG über
+Sozialbetreuungsberufe um". Je Grundsatzgesetz gibt es eine Aktseite
+`/bundesrecht/<Jahr>/<Nummer>`, am Ministerialentwurf eine Zeile — erst nach
+der Kundmachung.
+
+**Die Entscheidungen, mit Grund:**
+
+- **Der Schlüssel ist die Kundmachung (BGBl. I), nicht der ME** (Korrektur 1
+  des Nachtrags). Die Aktseite heißt nach der Nummer; der ME wird nur
+  angehängt, wo sein eigener Text den Grundsatzinhalt trug
+  (`meCarriesGrundsatz`): die Länder nennen das Gesetz, das sie ausführen
+  („Sozialhilfe-Grundsatzgesetz", „Schulorganisationsgesetz"); der ME trug
+  es, wenn sein Gesetzestext einen dieser Namen nennt und — trägt der Name
+  nicht selbst „Grundsatz" — irgendwo einen Grundsatzmarker
+  („Grundsatzbestimmung", „Ausführungsgesetze der Länder"). Ohne Länder-
+  Namen entscheidet der Marker allein. Der Fall, den die Regel verhindert:
+  25/2025 (Budgetbegleitgesetz 2025) änderte das Sozialhilfe-
+  Grundsatzgesetz erst mit 69 d.B.; 15/ME nennt es nicht und wird nicht
+  als Ursprung der Länder-Entwürfe genannt.
+- **Ein Grundsatzgesetz wird „ausgeführt", eine Vereinbarung „umgesetzt"** —
+  nie „setzt … um" für ein Grundsatzgesetz. „teilweise", wo der Entwurf es
+  sagt. Kein „keine Bundesvorgaben", wo nichts gefunden wurde.
+- **Vereinbarungen nur in den festen Formen** (§ 1, „zur Umsetzung der
+  Verpflichtungen aus …", „Erfüllung der … Vereinbarung", die steirische
+  Zeile zur Volksabstimmung). Die mittlere Stufe — ein Ausführungsverb nahe
+  einer Vereinbarung — war ein Drittel Verweise und wird gelesen, nicht
+  gezeigt. Vereinbarungen haben in v1 keine Aktseite: viele sind
+  zweiseitig, und eine Seite je BGBl.-Nummer trüge für sie kaum Zeilen.
+- **Die Frist im Wortlaut** des Grundsatzgesetzes, als Zitat (D6): kein
+  errechnetes Datum, kein Countdown, kein „überfällig", keine Tageszahl. Der
+  Satz zählt oft ab einem Tag, den das Gesetz selbst setzt („binnen sechs
+  Monaten nach Inkrafttreten der Grundsatzbestimmungen gemäß Absatz 8").
+- **Am ME nie „0 Länder"** (Korrektur 3): die Zeile steht erst, wenn die
+  Kette des ME eine Kundmachung erreicht, die eine Akte der Karte ist, und
+  der Akt den ME als Ursprung nennt. Mit Zeilen „Ausgeführt in 3 Entwürfen
+  der Länder →"; ohne „Ausführungsgesetze der Länder: noch kein Entwurf im
+  Fenster · Frist laut Grundsatzgesetz: „binnen eines Jahres"".
+- **Gezählt werden Entwürfe, nie Länder** („3 Entwürfe der Länder (Kärnten,
+  Oberösterreich, Steiermark)"), wie auf der EU-Aktseite.
+- **Keine Übersicht, kein Menüpunkt**: rund fünf Grundsatzgesetze im Jahr
+  (Nachtrag 10, Rückblick) — ein Verzeichnis sähe leer aus. Die Aktseiten
+  erreicht man über den Fakt am Landesentwurf und die Zeile am ME.
+
+**Der Leser** (`server/utils/bund-land/ausfuehrung.ts`, rein) ist der Prototyp
+der Messung, übertragen: dieselben Muster, dieselbe Satzteilung, dieselben
+Ausschlüsse (Verneinung und Vergangenheit, ein laufender Bundesentwurf, ein
+VfGH-Erkenntnis, eine bloße Kompetenzaussage ohne Fundstelle, bei
+Vereinbarungen Begriffsbestimmung, Fördermittel, Zweckzuschuss,
+Verhandlungen). `\w` und `\b` aus Python sind in JavaScript ASCII; der
+Port schreibt sie als `\p{L}`-Klassen aus. Neu gegenüber dem Prototyp ist
+nur, **wie der Akt gelesen wird**: aus dem Satz des Signals selbst, nie aus
+einer Zitierung anderswo im Entwurf (BGBl. I Nr. 50/2025 zitieren 26
+Entwürfe in Verweislisten, ausgeführt von keinem); in einer Gesetzesliste
+das Segment des genannten Gesetzes, darin die jüngste Kundmachung in Teil I
+(„…, BGBl. Nr. 406/1968, in der Fassung BGBl. I Nr. 44/2025" → 44/2025);
+der Name ist der, der zuletzt vor dieser Zitierung steht („… des mit dem
+VUG 2024 novellierten Kranken- und Kuranstaltengesetz – KAKuG, … BGBl. I Nr.
+24/2024" ist das KAKuG), sonst der erste danach. Der Prototyp nahm die
+Fundstellen aus dem Satz und seinen Nachbarn.
+
+**Eine Lesung für beide Fakten** (`laender/landDraftTexts.ts`). Weder die
+PDF-Bytes noch die Seiten eines Landesentwurfs waren für einen zweiten
+Leser gehalten; der EU-Fakt las sie auch neben dem Erläuterungen-Abschnitt
+selbst. Jetzt liest ein Schritt die Erläuterungen mit ihren Seiten und den
+Gesetzestext und hält das Ergebnis fünf Minuten (höchstens acht Entwürfe;
+das laufende Versprechen teilen gleichzeitige Aufrufer). Der EU-Fakt und
+der Bundesrechts-Fakt lesen daraus; das Verhalten des EU-Fakts ist
+unverändert (`EU_READER_VERSION` bleibt 5).
+
+**Speicher und Karte.** `euMapStore` ist verallgemeinert
+(`cache/factStore.ts`, `createFactStore`): `eu-recht/<GP>.json` und
+`bund-land/<GP>.json` sind zwei Instanzen mit denselben Frische-Regeln
+(Fingerabdruck aus Dokumenten und Daten, offene Entwürfe nach 24 h neu,
+Datei mit Lese-Version). Der Befund hat eine eigene Version,
+`BUND_LAND_READER_VERSION` (`bund-land/readerVersion.ts`): **zu erhöhen im
+selben Commit wie jede Änderung, die ändert, was ein Befund sagt** — am
+Leser, an den Erläuterungen der Länder oder am Seitentext. Gebaut wird
+**im Bau der EU-Karte**, nicht in einer eigenen Route: die Länder laufen als
+eine Schleife über beide Speicher (`cache/population.ts`, `runAligned`),
+Entwurf für Entwurf erst der EU-Job, dann der Bundesrechts-Job — der zweite
+findet die Lesung des ersten. Eine eigene Route hätte jede PDF eines Landes
+ein zweites Mal geholt, im Takt von einer Anfrage je Sekunde. Die
+Prewarm-Unit braucht keine neue Zeile; `/api/eu-recht/karte` berichtet
+beide (`bundLand` im Bericht). Einmalig nach dem ersten Deploy liest der Bau
+alle Landesentwürfe für den neuen Speicher, auch wo der EU-Speicher frisch
+ist.
+
+Die Karte (`bund-land/bundLandMap.ts`, rein) ist je BGBl.-I-Nummer: jedes
+Grundsatzgesetz, das ein gespeicherter Befund zitiert, und jedes, das der
+Bund im Fenster kundgemacht hat — aus der RIS-Volltextsuche in `BgblAuth`
+(„Ausführungsgesetze der Länder", Grundsatzbestimmung(en),
+Grundsatzgesetz; ab Fensterbeginn; `docs/api-exploration.md`), damit die
+ME-Zeile „noch kein Entwurf" sagen kann. Der Kopf eines Akts
+(`readActHead`): RIS-Datensatz (Titel, Ausgabedatum, Vorlage d.B. oder
+Initiativantrag), der Fristsatz aus dem HTML (nur der Satz wird gehalten),
+der ME über die Stationskarte der Periode des Akts und
+`meCarriesGrundsatz` über `getDraftArticles`. Der Bau wartet geduldig; eine
+Seite gibt der Stationskarte 2,5 s und hält ohne sie nichts.
+
+**Routen.** `/api/laender/:land/:number/bundesrecht`
+(`LandBundesrechtResponse`, Cache `land-bundesrecht`, ein Tag; der Link zur
+Aktseite nur, wo die Karte den Akt hat, gelesen in einer Sekunde),
+`/api/bundesrecht/:year/:number` (`BundLandActResponse`; 400/404/503 wie die
+EU-Aktseite), `/api/drafts/:gp/:inr/bundesrecht` (`{ line }`).
+
+**Gemessen** (`pnpm corpus:bund-land -- --prototype <reader.out.json>`, über
+den Cache der Länder-Messung, 489 Entwürfe, 4 ohne gecachte PDFs — die vier
+steirischen, die die Messung nachgeholt hatte, ohne Befund): Grundsatzgesetz
+6 stark + 16 mittel = 22 gezeigt, Vereinbarung 21 stark gezeigt, 10 mittel
+nicht gezeigt; 39 Entwürfe mit mindestens einem gezeigten Befund. Gegen den
+Prototyp: **0 Abweichungen** in der Klasse. Mit Kundmachung: 44/2025 4
+Entwürfe, 2/2026 4, 24/2024 2, 25/2025 2, je einer 121/2024, 191/2023,
+37/2023, 144/2024; sechs Grundsatz-Befunde ohne Fundstelle im Satz
+(Schulorganisationsgesetz bgld-9b098, KAKuG ooe-16082/-16085, EABG
+t-2026-728, sbg-32879, sbg-34196) — sie stehen am Landesentwurf; zwei davon
+findet die Karte über den Namen (unten).
+
+**Die Karte, gebaut im Dev-Server und auf dem Produktions-Build**
+(06.11.2026 abends; die Steiermark war in jedem Lauf gesperrt,
+`incomplete: ['stmk']`, ihre Entwürfe fehlen den Zeilen): 12 Akte. Mit
+Zeilen: 2/2026 4 Entwürfe (Kärnten, Oberösterreich, Wien, Burgenland — dieser
+über den Namen), 44/2025 3, 24/2024 2, je einer 25/2025, 47/2026 (t-2026-728
+über den Namen), 121/2024, 37/2023, 191/2023, 144/2024. Ohne Zeilen, aus der
+Bundessuche: 91/2025, 50/2025, 117/2025. Mit ME: 44/2025 ← 13/ME, 2/2026 ←
+66/ME, 47/2026 ← 43/ME, 91/2025 ← 32/ME, 50/2025 ← 20/ME (die
+Grundsatzbestimmung zur Auskunftspflicht; der Marker entscheidet, weil kein
+Land es nennt), 117/2025 ← 54/ME; **nicht** 25/2025 (15/ME nennt das
+Sozialhilfe-Grundsatzgesetz nicht) und 26/ME nicht an 44/2025. Mit
+Fristsatz: 44/2025, 47/2026, 91/2025, 50/2025, 25/2025, 144/2024. Zeilen am
+ME: 13/ME und 66/ME „Ausgeführt in 3 Entwürfen", 43/ME „in einem Entwurf",
+32/, 20/, 54/ME „noch kein Entwurf im Fenster", 15/ME keine. **Kosten** auf
+dem Produktions-Build unter `--max-old-space-size=384`, mit warmem
+EU-Speicher und leerem `bund-land/` — dem Fall des ersten Deploys: 189 s,
+die Länderschleife 121 s für 447 Entwürfe (jeder einmal gelesen), Heap-
+Spitze 149 MB; danach aus beiden Speichern 6 s, 143 MB. Der kalte Lauf im
+Dev-Server über beide Speicher: 292 s (Länder 124 s), Dev-Heap 496 MB (mit
+dem EU-Bau nicht vergleichbar, der Dev-Server trägt Vite).
+
+**Was v1 nicht tut:** keine Aktseite für Vereinbarungen; keine Übersicht und
+kein Filter in den Listen; keine errechnete Frist; keine Sitemap-Einträge
+für die Aktseiten; kein Akt aus einem Namen ohne Fundstelle außer über den
+RIS-Titel eines Grundsatzgesetzes im Fenster (`federalActNamed`: genau eines,
+vor der Begutachtung des Landes kundgemacht — so findet t-2026-728 47/2026;
+KAKuG-Befunde von 2024 bleiben ohne Akt, weil 24/2024 vor dem Fenster
+liegt); keine Änderung eines
+Ausführungsgesetzes aus eigenem Anlass des Landes; keine Vereinbarung, die
+nur nebenbei genannt wird; ein Entwurf trägt höchstens ein Grundsatzgesetz
+und eine Vereinbarung (ktn-4095 führt zwei Gesetze aus, gezeigt wird das
+erste Segment, 191/2023); die Fundstelle ist die jüngste im Segment, auch
+wo der Entwurf eine ältere Fassung ausführt (bgld-011af, eine Verweisliste,
+die der Leser als mittleren Befund nimmt — eine Lücke der Ausschlüsse,
+wie im Prototyp).
 
 ## 13. Open questions
 
