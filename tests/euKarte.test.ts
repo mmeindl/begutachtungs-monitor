@@ -2,7 +2,7 @@ import { mkdtemp, readdir, readFile, writeFile } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { afterEach, beforeEach, describe, expect, it } from 'vitest'
-import type { BgblOutcome, DraftChain, EuActView, EuMarker, EuRechtResponse, LandConsultation } from '../shared/types'
+import type { BgblOutcome, DraftChain, DraftSummary, EuActView, EuMarker, EuRechtResponse, LandConsultation } from '../shared/types'
 import { euActCelex, euActPath } from '../shared/utils/eu'
 import { gpOfDay } from '../shared/utils/gp'
 import {
@@ -89,6 +89,24 @@ function land(over: Partial<LandConsultation> & Pick<LandConsultation, 'id' | 'l
     url: 'https://example.org',
     documents: [],
     active: false,
+    ...over,
+  }
+}
+
+/** A Ministerialentwurf's list row, its Ressort and counts filler — the map reads number, title and dates. */
+function meDraft(over: Partial<DraftSummary> & Pick<DraftSummary, 'inr'>): DraftSummary {
+  return {
+    gp: 'XXVIII',
+    citation: `${over.inr}/ME`,
+    title: `Entwurf ${over.inr}`,
+    ministryCode: 'BMJ',
+    ministryName: 'Bundesministerium für Justiz',
+    coMinistries: [],
+    arrivedAt: '2026-01-01',
+    deadline: null,
+    active: false,
+    statementCount: 0,
+    parliamentUrl: 'https://www.parlament.gv.at',
     ...over,
   }
 }
@@ -259,7 +277,7 @@ describe('assembling the map', () => {
     // A stored fact whose draft is no longer listed: not in the map.
     [meKey('XXVIII', 999)]: fact('umsetzung', [L1069]),
   }, { incomplete: ['stmk'] })
-  const me = [147, 81, 90, 91, 100].map((inr) => ({ gp: 'XXVIII', inr, citation: `${inr}/ME`, title: `Entwurf ${inr}`, arrivedAt: `2026-0${(inr % 9) + 1}-01`, deadline: '2026-10-01' }))
+  const me = [147, 81, 90, 91, 100].map((inr) => meDraft({ inr, arrivedAt: `2026-0${(inr % 9) + 1}-01`, deadline: '2026-10-01' }))
   const map = assembleEuMap(inputs({
     store,
     me,
@@ -337,7 +355,7 @@ describe('assembling the map', () => {
     const T = 'Richtlinie (EU) 2024/1069 des Europäischen Parlaments und des Rates vom 11. April 2024 über den Schutz …'
     const titled = (first: EuActView, second: EuActView) => assembleEuMap(inputs({
       store: storeWith({ [meKey('XXVIII', 147)]: fact('umsetzung', [first]), [meKey('XXVIII', 81)]: fact('umsetzung', [second]) }),
-      me: [147, 81].map((inr) => ({ gp: 'XXVIII', inr, citation: `${inr}/ME`, title: `Entwurf ${inr}`, arrivedAt: '2026-01-01', deadline: null })),
+      me: [147, 81].map((inr) => meDraft({ inr })),
     })).acts['32024L1069']!
     expect(titled(act('32024L1069', { title: T }), act('32024L1069', { title: 'anders' })).title).toBe(T)
     expect(titled(act('32024L1069'), act('32024L1069', { title: T })).title).toBe(T)
@@ -392,7 +410,7 @@ describe('assembling the map', () => {
         [landKey('sbg', '1')]: fact('umsetzung', [act('32009L0043', { isNew: false, transposition: null }), act('32011L0093', { isNew: false, transposition: { deadline: '2013-12-18', otherDates: [] } })]),
         [landKey('ktn', '2')]: fact('umsetzung', [act('32009L0043', { isNew: false, transposition: null })]),
       }),
-      me: [{ gp: 'XXVIII', inr: 81, citation: '81/ME', title: 'Novelle', arrivedAt: '2026-01-01', deadline: null }],
+      me: [meDraft({ inr: 81, title: 'Novelle' })],
       laender: [land({ id: 'sbg-1', land: 'sbg' }), land({ id: 'ktn-2', land: 'ktn' })],
     }))
     expect(actSummariesOf(restated)).toEqual([])

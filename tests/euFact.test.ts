@@ -170,7 +170,7 @@ describe('euFactView — two dates, no verdict', () => {
         const w = Math.max(...m.lines.map((l) => l.length)) * charPct
         return m.align === 'start' ? [m.at, m.at + w] : m.align === 'end' ? [m.at - w, m.at] : [m.at - w / 2, m.at + w / 2]
       })
-      for (let i = 1; i < spans.length; i++) expect(spans[i - 1]![1] + 1, `${charPct}: ${marks[i]!.key}`).toBeLessThanOrEqual(spans[i]![0]!)
+      for (let i = 1; i < spans.length; i++) expect(spans[i - 1]![1]! + 1, `${charPct}: ${marks[i]!.key}`).toBeLessThanOrEqual(spans[i]![0]!)
       // Every day is named once, in date order.
       expect(marks.flatMap((m) => m.lines.slice(1)).map((l) => l.split(' bis ')[0])).toEqual(due.map(([n]) => n))
     }
