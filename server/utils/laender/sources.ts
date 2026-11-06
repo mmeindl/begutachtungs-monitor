@@ -176,6 +176,12 @@ interface LandReader {
    * of one Land would claim they do not exist.
    */
   all: () => Promise<LandConsultation[]>
+  /**
+   * Every draft that may still be running, where that is a cheaper read
+   * than `all` — what the lists ask for under „Frist läuft". Without it,
+   * that tab reads `all`.
+   */
+  open?: () => Promise<LandConsultation[]>
   /** One draft by the Land's number; null when unknown (404). */
   detail: (number: string) => Promise<LandDraftRecord | null>
 }
@@ -1026,17 +1032,23 @@ async function stmkKnows(ref: string, period: StmkPeriod): Promise<boolean | nul
   return rows === null ? null : lists(rows)
 }
 
+/* The newest ten by the day they were filed: a running draft is among
+ * them unless more than ten run at once — then the whole list. */
+async function stmkCurrent(): Promise<LandConsultation[]> {
+  const first = await stmkDrafts(parseStmkRows(await fetchStmkPage(STMK_LIST)).map((r) => r.ref))
+  const today = todayIso()
+  const oldest = first.at(-1)?.draft.deadline
+  const drafts = oldest && oldest >= today ? await stmkDrafts(parseStmkRows(await fetchStmkRows()).map((r) => r.ref)) : first
+  return drafts.map((d) => d.draft)
+}
+
 const steiermark: LandReader = {
   listUrl: STMK_LIST,
-  /* The newest ten by the day they were filed: a running draft is among
-   * them unless more than ten run at once — then the whole list. */
-  current: async () => {
-    const first = await stmkDrafts(parseStmkRows(await fetchStmkPage(STMK_LIST)).map((r) => r.ref))
-    const today = todayIso()
-    const oldest = first.at(-1)?.draft.deadline
-    const drafts = oldest && oldest >= today ? await stmkDrafts(parseStmkRows(await fetchStmkRows()).map((r) => r.ref)) : first
-    return drafts.map((d) => d.draft)
-  },
+  current: stmkCurrent,
+  /* A closed period runs nothing: „Frist läuft" need not wait for their
+   * cold read after a restart, which kept the tab „nicht abrufbar" for
+   * minutes (06.11.2026). */
+  open: stmkCurrent,
   all: async () => {
     /* A cold read of a period takes a minute or more at PALLAST's pace —
      * the current one's 38 pages, the closed ones' 170 — and a draft's page
@@ -1205,8 +1217,10 @@ export async function readLaenderInWindow(
   /** The Länder to read; one for a Land's own feed (`feed.xml?quelle=`). */
   lands: readonly LandCode[] = LAND_CODES,
 ): Promise<Pick<LaenderResponse, 'items' | 'sources' | 'undated'>> {
-  const results = await Promise.allSettled(lands.map(async (land) =>
-    withLgblSearch(land, withLandActiveOn(await READERS[land].all()))))
+  const results = await Promise.allSettled(lands.map(async (land) => {
+    const reader = READERS[land]
+    return withLgblSearch(land, withLandActiveOn(await (status === 'open' && reader.open ? reader.open() : reader.all())))
+  }))
   const items: LandConsultation[] = []
   const sources: LandSourceState[] = lands.map((land, i) => {
     const result = results[i]!

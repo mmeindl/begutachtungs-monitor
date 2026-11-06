@@ -140,6 +140,13 @@ describe('Vorarlberg', () => {
     expect(list[0]!.documents.map((d) => d.title)).toEqual(['Begutachtungsentwurf', 'Erläuternde Bemerkungen', 'Textgegenüberstellung (Kunsttext)'])
   })
 
+  it('reads past an empty heading under the title, as served on 06.11.2026', () => {
+    const page = '<h2>Begutachtungsverfahren zu einem Gesetzesentwurf</h2> <hr /> <h4>Gesetz über eine Änderung des Baugesetzes</h4> <h4> </h4>' +
+      ' <p><a href="/documents/302033/34853902/Begutachtungsentwurf.pdf/a5640b3d">Begutachtungsentwurf</a></p>' +
+      ' <p>Ende der Begutachtungsfrist: <strong>9. Dezember 2026</strong></p> <div class="contacts"></div>'
+    expect(parseVbgList(page).map((d) => [d.id, d.title, d.deadline])).toEqual([['vbg-34853902', 'Gesetz über eine Änderung des Baugesetzes', '2026-12-09']])
+  })
+
   it('refuses a page without its heading', () => {
     expect(() => parseVbgList('<h1>Seite nicht gefunden</h1>')).toThrow(LandSourceError)
   })

@@ -55,7 +55,8 @@ export function parseVbgList(html: string): LandConsultation[] {
   if (start < 0) throw new LandSourceError('vbg', 'Überschrift der Begutachtungen fehlt')
   // The blocks end where the article does; the page's „Downloads" repeat the documents.
   const end = html.indexOf('class="contacts', start)
-  const body = html.slice(start, end > 0 ? end : undefined)
+  // An empty heading under a title (`<h4>&nbsp;</h4>`, 06.11.2026) would split one entry in two.
+  const body = html.slice(start, end > 0 ? end : undefined).replace(/<h4>(?:\s|&nbsp;)*<\/h4>/g, '')
   const out: LandConsultation[] = []
   for (const block of body.split(/<h4>/).slice(1)) {
     const title = text(block.slice(0, block.indexOf('</h4>')))
