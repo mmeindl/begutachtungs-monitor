@@ -366,14 +366,13 @@ const doorHref = computed(() => {
                says what would change. Shown since 26.09.2026; until then both
                services were keyed on (GP, Nummer) and two thirds of the corpus
                had no section at all (§12.16). -->
+            <!-- The section's lede (`EntwurfFrame`): where the draft comes from
+               — EU law, with its deadlines (§12.66). Only with a named act. -->
+            <EntwurfFrame :eu="euRecht" :timeline="euTimelineCtx" />
+
             <PageSubsection id="gegenueberstellung" heading="Was ändert der Entwurf?">
               <TextComparisonSection :ris-id="data.id" />
             </PageSubsection>
-
-            <!-- Where the draft comes from, after what it changes (§12.66,
-               06.11.2026) — for a Gesetz without a station bar too, where
-               no Entwurf fact points here. -->
-            <DraftEuSection :data="euRecht" :timeline="euTimelineCtx" />
 
             <!-- It weighs more here than on the draft page: this Verfahren has no
                Kurzbeschreibung from Parliament, because it never reaches

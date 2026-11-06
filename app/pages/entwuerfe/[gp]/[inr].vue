@@ -223,7 +223,7 @@ const description = computed(() =>
 const { data: explanations } = useExplanations(() => ({ gp: gp.value, inr: inr.value }))
 
 /* Whether the draft implements EU law — one bare fact in the ProcedureCard,
- * an h3 section in „Der Entwurf" (`DraftEuSection`, docs/architecture.md §12.66). */
+ * a row of „Der Entwurf"'s opening frame (`EntwurfFrame`, docs/architecture.md §12.66). */
 const { data: euRecht } = useEuRecht(() => ({ gp: gp.value, inr: inr.value }))
 /* Once the draft's Grundsatzgesetz is kundgemacht: the Land drafts that
  * carry it out, as a detail line of the Bundesgesetzblatt station — the
@@ -262,7 +262,7 @@ const divergence = computed(() =>
 
 /* The credit line under the Begutachtung's frame (02.10.2026): Parliament's
  * Verlauf of the draft — Begutachtung data, which no open data grant covers.
- * The other frames name their own sources (`AmendedLawsFrame`,
+ * The other frames name their own sources (`EntwurfFrame`,
  * `PARLIAMENT_HISTORY_SOURCES`, `DraftStatementsBlock`). */
 const DRAFT_HISTORY_SOURCES: SourceEntry[] = [{ what: 'Verlauf des Entwurfs', publisher: 'parlament', terms: 'keine-lizenz' }]
 
@@ -551,9 +551,12 @@ const ministryLinks = computed(() => {
                  Erläuterungen are the Ressort's own reasoning, and they belong
                  to the draft, not to the procedure. -->
 
-              <!-- The section's lede: the law in force the draft would change
-                 (`AmendedLawsFrame`). -->
-              <AmendedLawsFrame v-if="amendedLaws" :laws="amendedLaws" />
+              <!-- The section's lede (`EntwurfFrame`): the law in force the
+                 draft would change, then where it comes from — the EU acts it
+                 implements, their deadlines beside the Begutachtung (§12.66) —
+                 in the order of the Entwurf station's line, one credit line
+                 under the frame. -->
+              <EntwurfFrame :laws="amendedLaws" :eu="euRecht" :timeline="euTimelineCtx" />
 
               <!-- The ressort's own comparison, available from day one.
                  `#gegenueberstellung` is kept as the anchor because that link is
@@ -566,12 +569,6 @@ const ministryLinks = computed(() => {
               <PageSubsection v-if="!amendedLaws?.createsNewLaw" id="gegenueberstellung" heading="Was ändert der Entwurf?">
                 <TextComparisonSection :gp="data.gp" :inr="data.inr" />
               </PageSubsection>
-
-              <!-- Where the draft comes from, after what it changes (§12.66,
-                 06.11.2026): the EU acts, their deadlines beside the
-                 Begutachtung, two dates and no verdict. Only with a named act;
-                 the Entwurf station's „setzt EU-Recht um" jumps here. -->
-              <DraftEuSection :data="euRecht" :timeline="euTimelineCtx" />
 
               <PageSubsection id="erlaeuterungen" heading="Was das Ressort begründet">
                 <ExplanationsSection :gp="data.gp" :inr="data.inr" />

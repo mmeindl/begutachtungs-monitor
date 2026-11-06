@@ -319,16 +319,13 @@ name has to stay globally unique.
 | `DraftDescription` | `blocks: DescriptionBlock[]` | The Kurzinformation of a Ministerialentwurf, grouped into its own sections; folded parts are a `FoldSection` (native `<details>`), so no hydration, keyboard access as-is and the text stays in the SSR HTML |
 | `DraftDoorCard` | `frist: boolean; deadline; icsHref?; filingHref?` + slots `heading`, default, `after-context`, `filing`, `actions`, `footer` | The door: deadline, action and calendar in one card, in the same slot and shape on both detail pages (03.10.2026); toned like the list row's countdown while the Begutachtung's window is open |
 | `ProcedureCard` | `status: string; stations: Station[]; anchors?; comparisonAnchors?; howTo?` + default slot | The bordered card with the procedure's status, the way to /so-funktionierts and the `SpineRail` — the same on both detail pages (03.10.2026) |
-| `DraftEuSection` | `data; timeline?; publisher?` | „Welches EU-Recht der Entwurf umsetzt" (h3 by marker: „Welche EU-Verordnungen / EU-Richtlinie der Entwurf begleitet") in „Der Entwurf", after the comparison (§12.66): `DraftEuFact` (acts, related counts, deadline strip, footnotes, Vorblatt sentence) and its own `DraftEuCredits`. Only with a named act; id `eu-recht-fakt` |
-| `DraftBundesrechtSection` | `data: LandBundesrechtResponse \| null \| undefined; publisher: string` | „Welches Bundesgesetz der Entwurf ausführt" / „Welche Vereinbarung der Entwurf umsetzt" (one section, title by content) in a Land draft's „Der Entwurf" (§12.67): „Anstellungserfordernisse-Grundsatzgesetz, BGBl. I Nr. 44/2025" (linked to the act page where the map has it, „, teilweise" kept), „Vereinbarung gemäß Art. 15a B-VG über …", and its own `DraftBundesrechtCredits`. Only with a named act; id `bundesrecht-fakt` |
 | `BgblLaenderBlock` | `line: MeBundesrechtLine` | „Ausführung durch die Länder" (h3) in „Im Bundesgesetzblatt" on a Ministerialentwurf, where the station's follow-up jumps (§12.67): the Land drafts as list rows, or „Noch kein Entwurf der Länder im Fenster." with the Frist sentence quoted; then „Zum Grundsatzgesetz …→" and the credit line. Slot of `BgblStationSection` |
 | `SpineRail` (since 06.11.2026) | + `Station.followUp` | `followUp`: a station's detail line for what followed it, the Bundesgesetzblatt station's Bund-zu-Land line (§12.67) — a link line with its arrow („In 3 Entwürfen der Länder ausgeführt →", in-page to „Ausführung durch die Länder") where there are rows, a plain fact otherwise. The Entwurf station's origin („setzt EU-Recht um", „führt das … aus") is plain text in `facts` (`utils/origin.ts`): facts never link, links get their own line with an arrow |
-| `DraftBundesrechtCredits` | `data; publisher: string` | Its credit line under the card: the Land's documents it was read from, and „Bundesgesetzblatt (RIS)" where a Kundmachung was read |
 | `DoorButton` | `href: string; variant?: 'solid' \| 'outline'` + default slot | The door's button: a form or document opened in a new window, with ↗ and the sr-only warning (`FilingButton` until 04.10.2026 — it opens the Begleitschreiben too) |
 | `RvStationSection` | `draft; view: RvStationView; share; shareDe; reasoningDe; rvExplanations; rvStatements; filingOpen` | „Die Regierungsvorlage": the station's facts, counts and context from `rvStationView` (`app/utils/outcomes.ts`, tested), its statements and the ME→RV comparison. Split out of the draft page on 04.10.2026, like the two below |
 | `ParliamentStationSection` | `draft; enactment; showDiff; parliamentTexts` | „Im Parlament": the Stand (`parliamentStandDe`), the vote, the parliamentary documents and the committee's and plenary's comparison |
 | `BgblStationSection` | `enactment; gp; inr; parliamentTexts` | „Im Bundesgesetzblatt": the Kundmachung and the whole way from the draft |
-| `AmendedLawsFrame` | `laws` | Which laws the draft amends, folded above `LAW_FOLD_AT` (`Disclosure`) |
+| `EntwurfFrame` | `laws?; eu?; bundesrecht?; timeline?; publisher?` | The opening frame of „Der Entwurf" (`AmendedLawsFrame` until 06.11.2026; §12.66, §12.67): the unfilled `FactList` frame with rows in the order of the Entwurf station's line — „Ändert …" (laws folded above five), the EU marker's words („Setzt EU-Recht um"; acts, related counts, fold, deadline strip and footnotes inside, `DraftEuFact`), on a Land's draft „Führt aus" (Grundsatzgesetze, BGBl link to the act page, „teilweise") and „Setzt um" (Art.-15a agreements); named acts only; ONE `SectionCredits` under the edge naming every source once. Ids `recht`, `eu-recht-fakt`, `bundesrecht-fakt` |
 | `DraftStatementsBlock` | `draft; listUrl; filingOpen` | The Begutachtung's Stellungnahmen block around `StatementsPanel` |
 | `DocumentList` | `documents: DraftDocument[]; source?: string` | Document rows: title plus hint line (`DOC_HINTS`), formats as small bordered accent tags with ↗ in two fixed columns (PDF, HTML). Tags, not buttons: buttons act inside the page, accent + ↗ leaves it. Used for Entwurfsdokumente, RIS documents and Spätere Textfassungen |
 | `SpineRail` | `stations: Station[]; anchors?; comparisonAnchors?` | Where does this draft stand: one row per station — five for a Ministerialentwurf (`stations`), three for a Verordnungsentwurf (`regulationStations`, since 26.09.2026). The page builds the list; the bar answers three things and nothing else — where the text is now, what happened at each station it passed, what is still ahead — and each station links into the section that carries it (§12.26), or, where its record lives off the page, out to it (`Station.source`) |
@@ -14540,6 +14537,19 @@ mit Nummer genannt" der Fassung davor ist wieder weg. Der Anker bleibt
 `#eu-recht-fakt`; von außen (Kartenzeilen, `EuMapLink`) verlinkte nie ein
 Anker auf den Block.
 
+**Noch am selben Abend (Owner): die Herkunft als Zeilen des Rahmens, mit
+dem „Der Entwurf" beginnt.** Die h3-Abschnitte sind wieder weg; der EU-Fakt
+ist eine Zeile im ungefüllten Rahmen der nachzuschlagenden Fakten
+(`EntwurfFrame`, bis dahin `AmendedLawsFrame` mit „Ändert …"), beschriftet
+mit den Worten des Markers („Setzt EU-Recht um", „Begleitet
+EU-Verordnungen", „Begleitet eine EU-Richtlinie"), mit Akten, Zählern,
+Faltung ab fünf und dem Zeitstrahl samt Fußnoten im Rahmen — wie der
+Fristbalken im Rahmen der Begutachtung. Gründe: der Rahmen ist der Lede des
+Abschnitts (Box-Grammatik), der Zeitstrahl bekommt eine Kante, und der
+Rahmen spiegelt die Zeile der Station: „ändert · setzt EU-Recht um · führt
+… aus". Eine Quellenzeile unter dem Rahmen nennt jede Quelle einmal. Der
+Vergleich steht direkt darunter. Ohne benannten Akt keine Zeile.
+
 #### Nachtrag (Länder), 04.11.2026
 
 Vor Schritt 2 gemessen, ob die Module Landesentwürfe lesen: `pnpm
@@ -15603,6 +15613,13 @@ der Kundmachung.
   EU-Abschnitt (§12.66): die Herkunft gehört zum Text, die Karte ist die
   Leiste. Nur mit benanntem Akt — „Grundsatzbestimmungen des Bundes" ohne
   Namen und Fundstelle bleibt ein unverlinkter Fakt an der Station.
+  **Noch am selben Abend (Owner):** keine eigenen Abschnitte mehr, sondern
+  Zeilen des Rahmens, mit dem „Der Entwurf" beginnt (`EntwurfFrame`, wie
+  §12.66): „Führt aus" (Grundsatzgesetze, BGBl. I mit Link zur Aktseite,
+  „teilweise") und „Setzt um" (Vereinbarungen nach Art. 15a), nach der
+  EU-Zeile — die Reihenfolge der Stationszeile. Auf Länderseiten steht der
+  Rahmen direkt über dem Vergleich (die Kurzinformation des Landes bleibt
+  darüber, wo es eine gibt).
   Die Leiste liest sich damit Herkunft → … → Folge (Station
   Bundesgesetzblatt).
 - **Gezählt werden Entwürfe, nie Länder** („3 Entwürfe der Länder (Kärnten,

@@ -150,7 +150,7 @@ const visibleRestating = ref(STEP)
 const shownRestating = computed(() => (query.value ? restatingRows.value : restatingRows.value.slice(0, visibleRestating.value)))
 
 /*
- * The credit line, as under a draft's EU fact (`DraftEuCredits`): what the
+ * The credit line, as under a draft's EU fact (`EntwurfFrame`): what the
  * map read and from whom. The Länder's documents carry no licence claim and
  * are named plainly, between the Bund's and EUR-Lex's, in the order the
  * map reads them.

@@ -21,7 +21,7 @@ import type { EuRechtResponse, LandBundesrechtResponse } from '#shared/types'
 import { euLeadOf } from './euRecht'
 import type { Station } from './spine'
 
-/** The in-page anchors of the two sections in „Der Entwurf" (`DraftEuSection`, `DraftBundesrechtSection`). */
+/** The ids of the EU row and the Bund rows in „Der Entwurf"'s opening frame (`EntwurfFrame`). */
 export const EU_FACT_ANCHOR = '#eu-recht-fakt'
 export const BUNDESRECHT_FACT_ANCHOR = '#bundesrecht-fakt'
 

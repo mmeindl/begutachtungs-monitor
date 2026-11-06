@@ -80,8 +80,8 @@ const hasNotes = computed(() => (view.value?.notes.length ?? 0) > 0)
 </script>
 
 <template>
-  <!-- The section's body (`DraftEuSection`): its h3 names what is listed,
-       so the acts open the block, no lead above them. -->
+  <!-- The value of the row „Setzt EU-Recht um" in „Der Entwurf"'s frame
+       (`EntwurfFrame`): the label names the marker, so the acts open it. -->
   <div v-if="view">
     <p v-if="view.attach === 'named'" class="text-sm text-ink-secondary">
       {{ view.namedIn }} genannt:
@@ -110,7 +110,7 @@ const hasNotes = computed(() => (view.value?.notes.length ?? 0) > 0)
       {{ view.deadlines.length > 1 ? 'Umsetzungsfristen' : 'Umsetzungsfrist' }}<template v-for="(d, i) in view.deadlines" :key="d.label"><template v-if="i > 0">,</template><template v-if="d.number"> {{ d.number }}</template> bis {{ d.date }}<template v-if="d.note">{{ SUPERSCRIPT[d.note] ?? `(${d.note})` }}</template></template><template v-if="view.start"> · Begutachtung ab {{ view.start }}</template>
     </p>
     <!-- The footnotes stay with the fact; the source stands under the
-         section (`DraftEuCredits`), as under every section. -->
+         frame (`EntwurfFrame`), one line for every row. -->
     <p v-if="hasNotes" class="mt-1 text-xs text-ink-muted">
       <template v-for="n in view.notes" :key="`note-${n.number}`">
         {{ SUPERSCRIPT[n.number] ?? `(${n.number})` }} {{ n.text }}.

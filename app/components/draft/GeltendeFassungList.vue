@@ -8,7 +8,7 @@ import { formatDateDe } from '#shared/utils/format'
  * value of „Geltende Fassung" in both BGBl sections, the law's
  * (`BgblStationSection`) and the Verordnung's (`RegulationBgblSection`),
  * 21.10.2026. A Sammelgesetz changes a hundred; past five the rest fold, as
- * „Geltendes Recht" on the draft does (`AmendedLawsFrame`).
+ * „Geltendes Recht" on the draft does (`EntwurfFrame`).
  */
 defineProps<{
   laws: BgblLaw[]

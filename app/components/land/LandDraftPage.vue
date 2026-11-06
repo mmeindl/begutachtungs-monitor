@@ -141,12 +141,12 @@ const stationAnchors = computed<Partial<Record<StationId, string>>>(() => {
 })
 
 /* Whether the draft implements EU law — the Bund's fact in the same card,
- * read from the Land's own documents (`DraftEuSection`, docs/architecture.md
+ * read from the Land's own documents (`EntwurfFrame`, docs/architecture.md
  * §12.66, Nachtrag 2). */
 const { data: euRecht } = useEuRecht(() => ({ land: props.land, number: props.number }))
 /* What of the Bund's the draft carries out — a Grundsatzgesetz, an Art.-15a
  * agreement — under the EU fact, read from the same documents
- * (`DraftBundesrechtSection`, docs/architecture.md §12.67). */
+ * (`EntwurfFrame`, docs/architecture.md §12.67). */
 const { data: bundesrecht } = useLandBundesrecht(() => ({ land: props.land, number: props.number }))
 /* Who published what the fact read, for its credit line. */
 const landPublisher = computed(() => `Land ${landName.value}`)
@@ -283,17 +283,16 @@ useSeoMeta({ ogTitle: () => draft.value?.title ?? 'Entwurf', ogType: 'article' }
                  from the Land's own Textgegenüberstellung — where the
                  Ministerialentwurf's page asks the same question, after the
                  summary and before the documents (22.10.2026). -->
+            <!-- The section's lede (`EntwurfFrame`), directly over the
+                 comparison: where the draft comes from — EU law, a
+                 Grundsatzgesetz it carries out, an Art.-15a agreement it
+                 implements (§12.66, §12.67) — one credit line under it. -->
+            <EntwurfFrame :eu="euRecht" :bundesrecht="bundesrecht" :timeline="euTimelineCtx" :publisher="landPublisher" />
             <LandLawDiffSection v-if="hasTgu" :land="land" :number="number" from="geltend" to="entwurf" />
             <PageSubsection v-else-if="amends" id="gegenueberstellung" heading="Was ändert der Entwurf?">
               <p v-if="tguListed" class="text-sm text-ink-secondary">Das Land hat eine Textgegenüberstellung veröffentlicht; sie steht unter den Dokumenten. Ihre Form liest der Monitor noch nicht.</p>
               <p v-else class="text-sm text-ink-secondary">Das Land hat zu diesem Entwurf keine Textgegenüberstellung veröffentlicht.</p>
             </PageSubsection>
-            <!-- Where the draft comes from, after what it changes (§12.66,
-                 §12.67, 06.11.2026): EU law, then what of the Bund's it
-                 carries out — each its own section with its own source line,
-                 the Entwurf station's facts jumping here. -->
-            <DraftEuSection :data="euRecht" :timeline="euTimelineCtx" :publisher="landPublisher" />
-            <DraftBundesrechtSection :data="bundesrecht" :publisher="landPublisher" />
             <!-- The Land's reasons, after what the draft changes — the order of
                  the Ministerialentwurf's page. -->
             <LandExplanationsSection :land="land" :number="number" />
