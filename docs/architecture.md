@@ -288,8 +288,8 @@ name has to stay globally unique.
 | `ListBox` | `headerClass?: string \| false` + slots `tabs`, `header` + default slot | The sheet a list of rows stands on, with what operates on the list inside it (02.10.2026), in three layers every box shares: `tabs` chooses WHAT is listed (`ListTabs`), `header` is one tool row that narrows and searches, the column header inside the sheet orders (`SortHeader`). White head, a hairline under each layer; its controls in the head, the pager and the ways to more as rows at the foot, each with its own `border-t` (`ListMore`). The caption (`SectionCredits`) stays under the frame, warnings above it. Used by the draft lists (`EntryList`), the Stellungnahmen panel and both comparison sections |
 | `ListTabs` | `v-model: T; options: { value: T; label: string; count?: number }[]; groupLabel: string; collapse?: boolean` | The first layer of a list box: underlined tabs with counts, buttons with `aria-pressed` in a labelled group (not `role="tablist"` — they switch a filter, not panels). `collapse` turns them into one native select below `sm`; without it they wrap |
 | `ColumnHeader` | `sortable?: boolean` + default slot | The third layer of a list box, the one that orders the rows: sticky inside its own sheet, a visual aid (`aria-hidden` whole unless a label is a sort button). Display and grid tracks come in through `class` — the draft lists and the Stellungnahmen panel drew the same row twice until 03.10.2026 |
-| `ColumnLabel` | `label: string; sort?: { order: string; active: boolean } \| null; align?: 'start' \| 'end'` + emit `choose` | One cell of a `ColumnHeader`: a plain `aria-hidden` label, or with `sort` the `SortHeader` |
-| `SortHeader` | `label: string; order: string; active: boolean; align?: 'start' \| 'end'` + emit `choose` | A column label that orders the list by its column — the third layer of a list box. One direction per column; the name reads „Datum: neueste zuerst" (label first, WCAG 2.5.3) |
+| `ColumnLabel` | `label: string; sort?: { order: string; reverseOrder: string; active: boolean; reversed?: boolean } \| null; align?: 'start' \| 'end'` + emit `choose` | One cell of a `ColumnHeader`: a plain `aria-hidden` label, or with `sort` the `SortHeader` |
+| `SortHeader` | `label: string; order: string; reverseOrder: string; active: boolean; reversed?: boolean; align?: 'start' \| 'end'` + emit `choose` | A column label that orders the list by its column — the third layer of a list box. Reversible since 06.11.2026: a second click on the active column turns it round (↑), the caller toggles (`useReversibleSort`); the name reads „Datum: neueste zuerst" (label first, WCAG 2.5.3), the title what the next click does (§12.66 Nachtrag 9) |
 | `ListMore` | `visible: number; total: number; step: number; allAbove?: number` + emits `more`, `all` | The foot of a client-paginated list, as a row of its `ListBox` (`usePagedList` holds the count): "10 von 42 angezeigt" as the live region, the step button, and "Alle N anzeigen" above `allAbove` remaining |
 | `Disclosure` | `size?: 'xs' \| 'sm'; tone?: 'ink' \| 'secondary' \| 'muted'` + slots `summary`, default | The quiet toggle under running text — chevron first, the label, only as wide as its label, ground on hover (main.css hover grammar). „Weiterlesen", „Alle N Gesetze anzeigen", the Begründung at a change, context lines (04.10.2026; the summary was written out six times and had drifted) |
 | `FoldSection` | `heading: string; headingId?: string; size?: 'lg' \| 'base'` + default slot | A folded sub-section with its heading IN the summary, chevron right, no border-t: the „Dokumente" folds and the Kurzinformation's folded parts (04.10.2026) |
@@ -15303,6 +15303,73 @@ das Bild zeigt; ein ausgeschriebener Abstand („18 Monate nach der Frist")
 und eine Farbe für „vor/nach der Frist" — beides das Urteil, das D6
 ausschließt. Der Preis: auf einer Strecke von Jahren bleibt eine
 dreiwöchige Begutachtung schmal; das ist ihr wahres Verhältnis.
+
+**Nachtrag 9 (06.11.2026): die Übersicht nach Fristen, die Aktseite zum
+Zitieren.** Die Übersicht stand nach der spätesten Frist geordnet, ohne es
+zu sagen, und so las sie sich als ungeordnet: von 124 Akten haben 11 eine
+Frist vor sich, 55 eine vergangene, 58 keine (Verordnungen), und die vier
+Fristen der nächsten fünf Wochen standen auf Platz 8 bis 11 unter drei
+Richtlinien für 2029. Keine Reihenfolge einer gemischten Liste behebt das,
+also teilen Reiter sie: „Frist läuft · Abgelaufen · Ohne Frist"
+(`deadlineTabOf`), ohne Zählung an den Reitern wie die Stationen auf
+`/entwuerfe`; die Zahl steht in der Zeile unter der Suche. Geordnet wird im
+Spaltenkopf der Listen (`ColumnHeader`, `SortHeader`): „Rechtsakt" nach
+Name, die Nummern als Zahlen (2024/927 vor 2024/1385), „Umsetzungsfrist"
+nach Datum in der Richtung des Reiters (`deadlineDirection`) — was läuft,
+die nächste zuerst; was abgelaufen ist, die zuletzt abgelaufene zuerst.
+Die Frist steht im grauen Kasten in der Spalte des Stands (`EntryState`,
+`entry-col-state`). Eine Suche über Name, amtlichen Titel und CELEX
+(`euActHaystack`) öffnet die Falte, wenn sie dort trifft, und sagt, unter
+welchem Reiter die Treffer stehen, wo der gewählte keine hat.
+
+**D6 bleibt, mit seinem Grund.** Erwogen und abgelehnt: ein Countdown mit
+Farbe, der nahe Fristen orange und vergangene rot zeigt. „Abgelaufen" ist
+ein Satz über den Tag; ein rotes „überfällig" wäre einer über Österreich —
+dass die Richtlinie nicht rechtzeitig umgesetzt wurde —, und das kann der
+Monitor nicht sehen: umgesetzt kann sie durch ein Gesetz vor dem Fenster
+sein, durch eine Verordnung, in einem Land, und ob ein kundgemachter
+Entwurf sie ganz umsetzt, weiß er nicht. 55 rote Zeilen ohne ein mögliches
+Gegenstück „rechtzeitig" wären der Fehlschlagzähler, den die
+Rahmungsregel ausschließt; und die Töne der Fristen bedeuten auf der Seite
+„dein Fenster für eine Stellungnahme", was eine Umsetzungsfrist nicht ist.
+Eine Tageszahl nur für kommende Fristen wäre kein Urteil — der Ausschluss
+in D6 galt dem Abstand des Entwurfs zur Frist —, gebaut ist sie nicht. Ein
+echtes „überfällig" hätte eine Quelle, die nicht unsere Folgerung ist: die
+von den Mitgliedstaaten gemeldeten Umsetzungsmaßnahmen auf EUR-Lex und die
+Vertragsverletzungsverfahren der Kommission. Nicht gemessen.
+
+**Umkehrbar, auf allen Listen.** Mit der Übersicht fiel die Regel „eine
+Richtung je Spalte" (02.10.2026, `SortHeader`): ein zweiter Klick auf die
+sortierende Spalte dreht ihre Richtung (Pfeil ↑), ein Klick auf eine andere
+beginnt dort in ihrer eigenen (`useReversibleSort`) — auf `/entwuerfe`
+(`?reverse=1` in der Adresse), im Stellungnahmen-Panel und hier; auf dem
+Telefon bietet die Auswahl jede Spalte in beiden Richtungen. Gedreht wird
+nur die Richtung innerhalb der Blöcke, nie die Blöcke: offen vor
+abgeschlossen und ein offener Eintrag ohne Frist nach den datierten
+(`compareDrafts`), die ungezählten Einträge hinter den gezählten
+(`compareRowsByStatements`), eine Stellungnahme ohne Datum zuletzt
+(`compareStatementRows`), ein Akt ohne Frist zuletzt (`euActComparator`).
+Ein Umdrehen der ganzen Ordnung hätte abgeschlossene Begutachtungen über
+die laufenden gestellt.
+
+**Zitieren auf der Aktseite.** Neben „Auf EUR-Lex ansehen" kopiert
+„Zitieren" den amtlichen Titel ohne „(Text von Bedeutung für den EWR)"
+(`euActTitle`; an 126 der 230 Titel), die Amtsblatt-Fundstelle und die ELI
+(`euActCiteDe`) — die Fundstelle ist der Teil, der von Hand nachgeschlagen
+wird. Zwei Formen, weil das Amtsblatt am 01.10.2023 die Form gewechselt
+hat: „ABl. L 333 vom 27.12.2022, S. 80" für einen Akt in einer
+nummerierten Ausgabe, „ABl. L, 2023/2413, 31.10.2023" für einen, der
+einzeln erscheint (`euOjCiteDe`). Gemessen über die 230 Akte der Karte:
+153 in einer Ausgabe, 77 einzeln, jeder mit Fundstelle und ELI. Eine
+eigene Cellar-Abfrage (`ojQuery`, `parseOjAnswer`), einen Monat gecacht
+(`eu-cellar-oj`) und nur von der Aktseite gefragt, nicht in der Karte:
+drei weitere OPTIONALs in `transpositionQuery` hätten deren Zeilen
+vervielfacht, und eine neue Spalte dort hätte jede gecachte Antwort für
+eine Angabe verworfen, die nur eine Seite liest. Die Ausgabe kommt aus dem
+`oj:JOL_…`-Alias des Werks, nicht aus `published_in_official-journal`:
+2004/84 und 2004/113 verlinken dort eine zweite Ausgabe von 2006, und die
+Antwort nennt sie zuerst. Antwortet der Cellar nicht, zitiert der Knopf
+Titel und EUR-Lex-Adresse.
 
 ## 13. Open questions
 
