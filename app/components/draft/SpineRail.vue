@@ -164,6 +164,7 @@ const rows = computed(() => props.stations.map((s, i) => {
     // Silent with the facts: a link out of a row that says nothing yet
     // would be the only thing it says.
     source: silent ? null : s.source ?? null,
+    followUp: silent ? null : s.followUp ?? null,
     announce: facts.length
       ? null
       : s.state === 'open' ? 'ausstehend' : s.state === 'never' ? 'nicht erreicht' : null,
@@ -262,6 +263,11 @@ const rows = computed(() => props.stations.map((s, i) => {
                the link („jede –im"). -->
           <template v-if="row.source.lead">{{ `${row.source.lead} ` }}</template>
           <ExternalLink :href="row.source.href" :class="LINK">{{ row.source.label }}</ExternalLink>
+        </p>
+        <!-- What followed the station elsewhere on the site (§12.67), above
+             the overlay like the question, in the same link style. -->
+        <p v-if="row.followUp" class="relative z-10 mt-1 leading-snug text-ink-secondary">
+          {{ row.followUp.before }}<NuxtLink :to="row.followUp.link.href" :class="LINK">{{ row.followUp.link.label }}</NuxtLink>{{ row.followUp.after }}
         </p>
         <p v-if="row.announce" class="sr-only">{{ row.announce }}</p>
       </div>

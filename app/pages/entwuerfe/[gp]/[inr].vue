@@ -12,6 +12,7 @@ import {
 } from '~/utils/spine'
 import { relatedGpSuffixDe, rvStationView } from '~/utils/outcomes'
 import type { EuTimelineContext } from '~/utils/euRecht'
+import { bundesrechtCreditItems, withBundesrechtFollowUp } from '~/utils/bundesrecht'
 import { withoutMainPoints } from '~/utils/kurzinfo'
 import { ministryLinkFor } from '~/components/draft/MinistryLinks.vue'
 import { aliasesFor } from '#shared/utils/draftAliases'
@@ -224,8 +225,12 @@ const { data: explanations } = useExplanations(() => ({ gp: gp.value, inr: inr.v
  * under the predecessor line (`DraftEuFact`, docs/architecture.md §12.66). */
 const { data: euRecht } = useEuRecht(() => ({ gp: gp.value, inr: inr.value }))
 /* Once the draft's Grundsatzgesetz is kundgemacht: the Land drafts that
- * carry it out (`DraftBundesrechtLine`, docs/architecture.md §12.67). */
+ * carry it out, as a detail line of the Bundesgesetzblatt station — the
+ * procedure after the Kundmachung, not a property of the draft
+ * (docs/architecture.md §12.67). Its sources join the card's credit line. */
 const { line: bundesrechtLine } = useMeBundesrecht(() => ({ gp: gp.value, inr: inr.value }))
+const spineStations = computed(() => withBundesrechtFollowUp(stationList.value, bundesrechtLine.value))
+const bundesrechtCredits = computed(() => bundesrechtCreditItems(bundesrechtLine.value))
 /* The page's side of the EU timeline: its Begutachtung, and where the
  * procedure stands — today while it runs; once a law came out of it, the
  * Kundmachung where its day is known (the detail reads it since 04.11.2026,
@@ -384,7 +389,7 @@ const ministryLinks = computed(() => {
              the bar is this page's table of contents, in the page's order. -->
           <ProcedureCard
             :status="procedureStatusDe(data)"
-            :stations="stationList"
+            :stations="spineStations"
             :anchors="stationAnchors"
             :comparison-anchors="comparisonAnchors"
           >
@@ -407,13 +412,9 @@ const ministryLinks = computed(() => {
                two dates, no verdict (§12.66). A fact of the card like the
                one above, so the same hairline. -->
             <DraftEuFact :data="euRecht" :timeline="euTimelineCtx" />
-            <!-- The Länder after the Kundmachung: how many of their drafts
-                 carry the Grundsatzgesetz out, or that none is in the
-                 window yet — two facts, never „0 Länder" (§12.67). -->
-            <DraftBundesrechtLine :line="bundesrechtLine" />
           </ProcedureCard>
           <!-- The EU fact's source, under the card like every card's (§12.66). -->
-          <DraftEuCredits :data="euRecht" />
+          <DraftEuCredits :data="euRecht" :extra="bundesrechtCredits" />
 
           <!-- Deadline, action and calendar welded into one card: the page's
              door, shown while any window for input is open. The Begutachtung

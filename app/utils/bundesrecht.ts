@@ -17,6 +17,7 @@ import { LAND_CODES, LAND_NAME } from '#shared/utils/laender'
 import { viewOfRow, type EntryView } from './entryView'
 import { dayOf, edgeAlign, laneBarOf, type EuChartView } from './euRecht'
 import { laneNameOf } from './euKarte'
+import type { Station } from './spine'
 
 /** „BGBl. I Nr. 44/2025". */
 export function bgblCitationDe(c: BgblICitation): string {
@@ -88,21 +89,43 @@ export function fristQuoteOf(clause: string): string {
     .trim()
 }
 
-/** The Ministerialentwurf's line: two facts, never „0 Länder" (D6). */
-export interface MeLineView {
-  /** „Ausgeführt in 3 Entwürfen der Länder" — the link — or null where none exists yet. */
-  link: string | null
-  path: string
-  /** „Ausführungsgesetze der Länder: noch kein Entwurf im Fenster". */
-  none: string | null
-  /** The Grundsatzgesetz's Frist sentence (`fristQuoteOf`), where none exists yet and it sets a Frist. */
-  frist: string | null
+/**
+ * The span of a Frist clause the Bundesgesetzblatt station names: „binnen
+ * eines Jahres", „binnen sechs Monaten nach Inkrafttreten der
+ * Grundsatzbestimmungen" — the sentence without its frame („Die
+ * Ausführungsgesetze der Länder sind … zu erlassen.") and without a
+ * reference the reader cannot resolve here („gemäß Absatz 8"). The act page
+ * quotes the whole sentence (`fristQuoteOf`).
+ */
+export function fristSpanOf(clause: string): string {
+  return fristQuoteOf(clause)
+    .replace(/^Die Ausführungsgesetze der Länder sind\s+/u, '')
+    .replace(/\s*…?\s*zu erlassen\.$/u, '')
+    .replace(/[\s,]+$/u, '')
 }
 
-export function meLineView(line: MeBundesrechtLine | null | undefined): MeLineView | null {
+/**
+ * The Bundesgesetzblatt station's detail line on a Ministerialentwurf whose
+ * Grundsatzgesetz is kundgemacht (§12.67): the procedure after the
+ * Kundmachung, so it stands at that station — never „0 Länder" (D6).
+ */
+export function bundesrechtFollowUp(line: MeBundesrechtLine | null | undefined): NonNullable<Station['followUp']> | null {
   if (!line) return null
-  if (line.drafts > 0) return { link: `Ausgeführt in ${draftsDative(line.drafts)}`, path: line.path, none: null, frist: null }
-  return { link: null, path: line.path, none: 'Ausführungsgesetze der Länder: noch kein Entwurf im Fenster', frist: line.fristClause ? fristQuoteOf(line.fristClause) : null }
+  if (line.drafts > 0) return { before: '', link: { href: line.path, label: `In ${draftsDative(line.drafts)} ausgeführt →` }, after: '' }
+  if (line.fristClause) return { before: 'Ausführung durch die Länder: noch kein Entwurf · ', link: { href: line.path, label: 'Frist' }, after: `: ${fristSpanOf(line.fristClause)}` }
+  return { before: '', link: { href: line.path, label: 'Ausführung durch die Länder: noch kein Entwurf' }, after: '' }
+}
+
+/** The stations with the follow-up at the Bundesgesetzblatt. */
+export function withBundesrechtFollowUp(stations: readonly Station[], line: MeBundesrechtLine | null | undefined): Station[] {
+  const followUp = bundesrechtFollowUp(line)
+  return followUp ? stations.map((s) => (s.id === 'bgbl' ? { ...s, followUp } : s)) : [...stations]
+}
+
+/** The credit items the line adds to the card's source line: RIS always, the Länder' documents where it counts drafts. */
+export function bundesrechtCreditItems(line: MeBundesrechtLine | null | undefined): string[] {
+  if (!line) return []
+  return ['Bundesgesetzblatt (RIS)', ...(line.drafts > 0 ? ['Dokumente der Länder'] : [])]
 }
 
 /* ------------------------------------------------------------------ *
@@ -146,10 +169,10 @@ export function bundLandActPageView(r: BundLandActResponse): BundLandActPageView
 
   // One track, the Kundmachung the mark over the lanes (`EuTimelineChart`), as the act page of EU law draws its deadline.
   // A draft gets a lane where its stand is known. Without Begutachtung dates
-  // (Kärnten's ktn-15193 dates none) its line runs from the Kundmachung to
-  // its stand — the Land follows the act, so that is where its way starts
-  // on this page; the EU act page draws no such lane, because there the
-  // deadline is no start. Without a stand only the row stands.
+  // (Kärnten's ktn-15193 dates none) the lane is the grey track and its
+  // stand dot: ink is reserved for the span from the draft's own
+  // Begutachtung (owner's decision 06.11.2026). Without a stand only the
+  // row stands.
   const drawn = drafts.filter((d) => d.stand && (d.begutachtung.start ?? d.begutachtung.end ?? act.kundmachung))
   const days = [
     ...(act.kundmachung ? [act.kundmachung] : []),
@@ -159,12 +182,7 @@ export function bundLandActPageView(r: BundLandActResponse): BundLandActPageView
   const span = days.length ? Math.max(...days) - first : 0
   const at = (iso: string) => ((dayOf(iso) - first) / span) * 100
   const ticks = act.kundmachung ? [act.kundmachung] : []
-  const laneOf = (d: (typeof drawn)[number]) => {
-    const bar = laneBarOf(at, d.begutachtung, d.stand!, ticks)
-    // No Begutachtung dates: the ink line from the Kundmachung, not a dot alone.
-    if (!(d.begutachtung.start ?? d.begutachtung.end) && act.kundmachung) bar.from = Math.min(at(act.kundmachung), bar.value)
-    return bar
-  }
+  const laneOf = (d: (typeof drawn)[number]) => laneBarOf(at, d.begutachtung, d.stand!, ticks)
   const chart: EuChartView | null = drawn.length && span > 0
     ? {
         deadlines: act.kundmachung ? [{ key: 'kundmachung', at: at(act.kundmachung), align: edgeAlign(at(act.kundmachung)), lines: ['Kundmachung', formatDateDe(act.kundmachung)] }] : [],

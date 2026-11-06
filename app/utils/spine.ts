@@ -82,6 +82,13 @@ export interface Station {
    * finishes, where the link alone would not say why it is there.
    */
   source?: { lead: string | null; href: string; label: string }
+  /**
+   * What followed the station on another page of the site, as one detail
+   * line — the Bundesgesetzblatt station's „In 3 Entwürfen der Länder
+   * ausgeführt →" (docs/architecture.md §12.67). `link` is in-site, between
+   * `before` and `after`.
+   */
+  followUp?: { before: string; link: { href: string; label: string }; after: string }
 }
 
 /**

@@ -320,8 +320,8 @@ name has to stay globally unique.
 | `DraftDoorCard` | `frist: boolean; deadline; icsHref?; filingHref?` + slots `heading`, default, `after-context`, `filing`, `actions`, `footer` | The door: deadline, action and calendar in one card, in the same slot and shape on both detail pages (03.10.2026); toned like the list row's countdown while the Begutachtung's window is open |
 | `ProcedureCard` | `status: string; stations: Station[]; anchors?; comparisonAnchors?; howTo?` + default slot | The bordered card with the procedure's status, the way to /so-funktionierts and the `SpineRail` — the same on both detail pages (03.10.2026) |
 | `DraftBundesrechtFact` | `data: LandBundesrechtResponse \| null \| undefined` | A Land draft's ProcedureCard, under the EU fact (§12.67): „Führt das <Grundsatzgesetz> aus, BGBl. I Nr. …" (the name links to `/bundesrecht/<Jahr>/<Nummer>` where the map has the act; „teilweise" where the draft says so) and „Setzt die Vereinbarung gemäß Art. 15a B-VG … um" (no link). The EU fact's register; nothing where nothing was found |
+| `SpineRail` (since 06.11.2026) | + `Station.followUp` | A station's detail line for what followed it elsewhere on the site, in-site link between two texts: the Bundesgesetzblatt station's Bund-zu-Land line (§12.67) |
 | `DraftBundesrechtCredits` | `data; publisher: string` | Its credit line under the card: the Land's documents it was read from, and „Bundesgesetzblatt (RIS)" where a Kundmachung was read |
-| `DraftBundesrechtLine` | `line: MeBundesrechtLine \| null \| undefined` | A Ministerialentwurf's ProcedureCard once its Grundsatzgesetz is kundgemacht and names it as its origin (§12.67): „Ausgeführt in 3 Entwürfen der Länder →", or „Ausführungsgesetze der Länder: noch kein Entwurf im Fenster · Frist laut Grundsatzgesetz: „binnen eines Jahres"" — never „0 Länder" |
 | `DoorButton` | `href: string; variant?: 'solid' \| 'outline'` + default slot | The door's button: a form or document opened in a new window, with ↗ and the sr-only warning (`FilingButton` until 04.10.2026 — it opens the Begleitschreiben too) |
 | `RvStationSection` | `draft; view: RvStationView; share; shareDe; reasoningDe; rvExplanations; rvStatements; filingOpen` | „Die Regierungsvorlage": the station's facts, counts and context from `rvStationView` (`app/utils/outcomes.ts`, tested), its statements and the ME→RV comparison. Split out of the draft page on 04.10.2026, like the two below |
 | `ParliamentStationSection` | `draft; enactment; showDiff; parliamentTexts` | „Im Parlament": the Stand (`parliamentStandDe`), the vote, the parliamentary documents and the committee's and plenary's comparison |
@@ -15535,11 +15535,29 @@ der Kundmachung.
   Monaten nach Inkrafttreten der Grundsatzbestimmungen gemäß Absatz 8").
 - **Am ME nie „0 Länder"** (Korrektur 3): die Zeile steht erst, wenn die
   Kette des ME eine Kundmachung erreicht, die eine Akte der Karte ist, und
-  der Akt den ME als Ursprung nennt. Mit Zeilen „Ausgeführt in 3 Entwürfen
-  der Länder →"; ohne „Ausführungsgesetze der Länder: noch kein Entwurf im
-  Fenster · Frist laut Grundsatzgesetz: „binnen eines Jahres"".
+  der Akt den ME als Ursprung nennt. **Sie ist eine Detailzeile der Station
+  Bundesgesetzblatt** in der Leiste (`Station.followUp`, keine neue
+  Station): mit Zeilen „In 3 Entwürfen der Länder ausgeführt →"; ohne
+  „Ausführung durch die Länder: noch kein Entwurf · Frist: binnen sechs
+  Monaten nach Inkrafttreten der Grundsatzbestimmungen" — der Abschnitt des
+  Fristsatzes ohne seinen Rahmen und ohne den Verweis, den man hier nicht
+  auflösen kann (`fristSpanOf`); „Frist" führt zur Aktseite, wo der ganze
+  Satz zitiert steht (`fristQuoteOf`). Die Quellenzeile der Karte nennt dann
+  „Bundesgesetzblatt (RIS)" und, mit Zeilen, „Dokumente der Länder"
+  (`DraftEuCredits`, `extra`). **Entschieden am 06.11.2026 abends (Owner),
+  nach einer ersten Fassung als eigene Zeile unten in der Karte, unter dem
+  EU-Block:** die Zeile beschreibt das Verfahren nach der Kundmachung, keine
+  Eigenschaft des Entwurfs, gehört also zur Station, an der es weitergeht;
+  unter dem EU-Block las sie sich als Teil des EU-Rechts; und ihre Quellen
+  standen in keiner Quellenzeile.
 - **Gezählt werden Entwürfe, nie Länder** („3 Entwürfe der Länder (Kärnten,
   Oberösterreich, Steiermark)"), wie auf der EU-Aktseite.
+- **Die Aktseite zeichnet die Kundmachung als Marke über den Bahnen**, im
+  Diagramm der EU-Aktseite (`EuTimelineChart`). Ein Entwurf ohne
+  Begutachtungsdaten (ktn-15193 auf 44/2025) bekommt eine Bahn mit grauer
+  Spur und seinem Standpunkt, ohne Tinte: Tinte bleibt der Strecke ab der
+  eigenen Begutachtung vorbehalten (Owner, 06.11.2026; eine Fassung mit
+  Tinte ab der Kundmachung wurde verworfen). Ohne Stand nur die Zeile.
 - **Keine Übersicht, kein Menüpunkt**: rund fünf Grundsatzgesetze im Jahr
   (Nachtrag 10, Rückblick) — ein Verzeichnis sähe leer aus. Die Aktseiten
   erreicht man über den Fakt am Landesentwurf und die Zeile am ME.
