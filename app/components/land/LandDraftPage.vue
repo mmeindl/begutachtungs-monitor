@@ -143,6 +143,10 @@ const stationAnchors = computed<Partial<Record<StationId, string>>>(() => {
  * read from the Land's own documents (`DraftEuFact`, docs/architecture.md
  * §12.66, Nachtrag 2). */
 const { data: euRecht } = useEuRecht(() => ({ land: props.land, number: props.number }))
+/* What of the Bund's the draft carries out — a Grundsatzgesetz, an Art.-15a
+ * agreement — under the EU fact, read from the same documents
+ * (`DraftBundesrechtFact`, docs/architecture.md §12.67). */
+const { data: bundesrecht } = useLandBundesrecht(() => ({ land: props.land, number: props.number }))
 /* Who published what the fact read, for its credit line. */
 const landPublisher = computed(() => `Land ${landName.value}`)
 /* The page's side of the EU timeline: its Begutachtung, and where the
@@ -225,9 +229,13 @@ useSeoMeta({ ogTitle: () => draft.value?.title ?? 'Entwurf', ogType: 'article' }
                transposition deadline beside the Begutachtung — the Bund's
                fact, read from the Land's documents (§12.66). -->
           <DraftEuFact :data="euRecht" :timeline="euTimelineCtx" />
+          <!-- What of the Bund's the draft carries out (§12.67), in the
+               EU fact's register, right under it. -->
+          <DraftBundesrechtFact :data="bundesrecht" />
         </ProcedureCard>
-        <!-- The EU fact's source, under the card like every card's (§12.66). -->
+        <!-- The facts' sources, under the card like every card's (§12.66, §12.67). -->
         <DraftEuCredits :data="euRecht" :publisher="landPublisher" />
+        <DraftBundesrechtCredits :data="bundesrecht" :publisher="landPublisher" />
 
         <!-- The one place to act, while the Frist runs — the RIS page's
              card. Where it goes is the Land's: an address (a mail link in

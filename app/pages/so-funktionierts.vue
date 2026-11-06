@@ -792,6 +792,54 @@ const waitMonths = Math.round(RV_LATENCY_CONTEXT_DAYS / 30.44)
       </p>
     </ProseSection>
 
+    <!-- Bund zu Land (06.11.2026, docs/architecture.md §12.67). The counts
+         are GP XXVIII as measured that day over the 489 Land drafts of the
+         window (`pnpm corpus:bund-land`): 22 drafts carrying out a
+         Grundsatzgesetz, 21 implementing an agreement in its fixed form.
+         Re-measure before changing them. -->
+    <ProseSection id="bund-land" heading="Welche Landesentwürfe Bundesrecht ausführen">
+      <p>
+        Manches regelt der Bund nur in Grundsätzen, und die Länder erlassen
+        dazu ihre Ausführungsgesetze – im Schul- und Kindergartenwesen, bei
+        Krankenanstalten, Sozialhilfe und Elektrizität (Art.&nbsp;12 und 14
+        B-VG). Anderes vereinbaren Bund und Länder in einer Vereinbarung
+        nach Art.&nbsp;15a B-VG, die jedes Land in seinem Recht umsetzt. Auf
+        der Seite eines Landesentwurfs steht unter dem EU-Recht, wenn der
+        Entwurf das eine oder das andere tut: „Führt das
+        Anstellungserfordernisse-Grundsatzgesetz aus, BGBl.&nbsp;I
+        Nr.&nbsp;44/2025“ oder „Setzt die Vereinbarung gemäß Art.&nbsp;15a
+        B-VG über Sozialbetreuungsberufe um“.
+      </p>
+      <p>
+        Wir lesen das aus den Dokumenten des Landes: aus der
+        Promulgationsklausel („Der Landtag hat in Ausführung des … beschlossen“
+        – so schreiben es die Steiermark und Kärnten), aus §&nbsp;1 eines
+        Gesetzes („Mit diesem Landesgesetz werden die Verpflichtungen aus der
+        Vereinbarung … umgesetzt“) und aus den Erläuterungen, wo sie sagen,
+        dass eine Änderung des Bundes nachvollzogen wird. Welches
+        Bundesgesetzblatt gemeint ist, nehmen wir nur aus dem Satz, der die
+        Ausführung aussagt – nicht aus einer Liste von Verweisen, in der
+        dieselbe Nummer auch stehen kann. Die Kundmachung lesen wir im RIS.
+        Gemessen am 06.11.2026 über 489 Landesentwürfe der
+        XXVIII.&nbsp;GP: 22 führen ein Grundsatzgesetz aus, 21 setzen eine
+        Vereinbarung um.
+      </p>
+      <p>
+        Was die Seite nicht zeigt: wenn ein Land sein Ausführungsgesetz aus
+        eigenem Anlass ändert; Vereinbarungen, die ein Entwurf nur nebenbei
+        nennt – für eine Begriffsbestimmung, für Fördermittel –; und keine
+        Frist, die wir selbst berechnen. Wo ein Grundsatzgesetz den Ländern
+        eine Frist setzt („Die Ausführungsgesetze der Länder sind binnen
+        eines Jahres zu erlassen.“), zitieren wir den Satz wörtlich auf der
+        Seite des Gesetzes; er zählt oft ab einem Tag, den das Gesetz selbst
+        bestimmt. Die Länder folgen der Kundmachung meist erst Monate
+        später – in der laufenden Periode nach fünf Wochen bis neun Monaten. Darum steht
+        am Ministerialentwurf eine Zeile erst, wenn sein Grundsatzgesetz
+        kundgemacht ist – und dort „noch kein Entwurf im Fenster“, solange
+        kein Land so weit ist, nie eine Null.
+      </p>
+    </ProseSection>
+
     <!-- The waiting bar's yardstick (05.10.2026). Its base rate stood as a
          sentence under the Vorlage's frame on every waiting draft; there it
          described the population, not the draft, so it moved here and the

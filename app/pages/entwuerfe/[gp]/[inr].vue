@@ -223,6 +223,9 @@ const { data: explanations } = useExplanations(() => ({ gp: gp.value, inr: inr.v
 /* Whether the draft implements EU law — one bare fact in the ProcedureCard,
  * under the predecessor line (`DraftEuFact`, docs/architecture.md §12.66). */
 const { data: euRecht } = useEuRecht(() => ({ gp: gp.value, inr: inr.value }))
+/* Once the draft's Grundsatzgesetz is kundgemacht: the Land drafts that
+ * carry it out (`DraftBundesrechtLine`, docs/architecture.md §12.67). */
+const { line: bundesrechtLine } = useMeBundesrecht(() => ({ gp: gp.value, inr: inr.value }))
 /* The page's side of the EU timeline: its Begutachtung, and where the
  * procedure stands — today while it runs; once a law came out of it, the
  * Kundmachung where its day is known (the detail reads it since 04.11.2026,
@@ -404,6 +407,10 @@ const ministryLinks = computed(() => {
                two dates, no verdict (§12.66). A fact of the card like the
                one above, so the same hairline. -->
             <DraftEuFact :data="euRecht" :timeline="euTimelineCtx" />
+            <!-- The Länder after the Kundmachung: how many of their drafts
+                 carry the Grundsatzgesetz out, or that none is in the
+                 window yet — two facts, never „0 Länder" (§12.67). -->
+            <DraftBundesrechtLine :line="bundesrechtLine" />
           </ProcedureCard>
           <!-- The EU fact's source, under the card like every card's (§12.66). -->
           <DraftEuCredits :data="euRecht" />
