@@ -426,6 +426,33 @@ export function withoutNegatedSignals(text: string): string {
   return text.replace(ERL_NEGATED, ' ')
 }
 
+/**
+ * A signal about another text than the draft, blanked like a negated one:
+ * t-2026-728 printed „Setzt EU-Recht um" for a draft that REPEALS Tirol's
+ * RED III provisions because the Bund's EABG took them over (07.11.2026).
+ * Both of its signals spoke of other laws — „Mit dem Ersten und Zweiten
+ * Tiroler Erneuerbaren Ausbaugesetz … wurden … Maßnahmen zur Umsetzung der
+ * Richtlinie (EU) 2023/2413 … umgesetzt" (what earlier laws did) and „Das
+ * EABG dient gleichermaßen der Umsetzung …" (what the Bund's law does).
+ * The past tense of the implementing verb, from „wurde(n)" to its participle
+ * within the sentence, and a sentence whose subject is another named law —
+ * an abbreviation or a word ending in „-gesetz"/„-verordnung" after the
+ * article, never „Der Entwurf", „Das vorliegende Gesetz", „Diese Novelle" —
+ * to the sentence end. Only the Erläuterungen' prose road: a Vorblatt
+ * sentence speaks of its own draft by form.
+ */
+const ERL_ELSEWHERE = new RegExp([
+  // „… wurden … umgesetzt", „wurde in Umsetzung … erlassen"
+  String.raw`\bwurden?\b[^.;]{0,300}?\b(?:umgesetzt|erlassen)\b`,
+  // „Das EABG dient …", „Das Erneuerbaren-Ausbau-Gesetz dient …"
+  String.raw`\b(?:Das|Der|Die)\s+(?:[A-ZÄÖÜ][\wäöüß-]*\s+){0,2}?(?:[A-ZÄÖÜ]{2,}[\wäöüß-]*|[\wäöüß-]+-?(?:gesetz|verordnung)(?:es)?)\s+(?:dient|diente)\b[^.;]*`,
+].join('|'), 'g')
+
+/** A paragraph with its negated clauses and its clauses about other texts blanked. */
+export function withoutForeignSignals(text: string): string {
+  return withoutNegatedSignals(text).replace(ERL_ELSEWHERE, ' ')
+}
+
 /** A passage heading of the Allgemeiner Teil that is the EU section itself. */
 const ERL_EU_HEADING = /Unionsrecht|Europäischen\s+Union|EU-Recht|Verhältnis\s+zu(?:m)?\s+(?:den\s+)?Rechtsvorschriften/i
 
@@ -457,7 +484,7 @@ export function readExplanationsEuSignal(passages: readonly ExplanationsPassageT
   for (const passage of passages) {
     const euHeading = ERL_EU_HEADING.test(passage.heading ?? '')
     for (const text of [...(passage.heading ? [passage.heading] : []), ...passage.text]) {
-      const read = withoutNegatedSignals(text)
+      const read = withoutForeignSignals(text)
       const ums = ERL_UMSETZUNG.test(read)
       const dur = ERL_DURCHFUEHRUNG.test(read)
       if (!ums && !dur) continue

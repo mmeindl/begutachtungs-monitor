@@ -15539,6 +15539,29 @@ Fakt an den Landesentwurf.
 Skript und Ergebnisse liegen nicht im Repo (Wegwerfmessung); die Zahlen
 hier sind der Stand. Ob und wie gebaut wird: TODO Teil 6.
 
+**Nachtrag 11 (07.11.2026): ein Satz über andere Texte ist kein Signal.**
+t-2026-728 (Drittes Tiroler Erneuerbaren Ausbaugesetz) stand mit „Setzt
+EU-Recht um" auf der Seite, und der Entwurf tut das Gegenteil: weil das
+EABG des Bundes RED III übernommen hat, hebt er Tirols Umsetzungs-
+bestimmungen auf, samt dem Umsetzungshinweis im TNSchG 2005. Das Merkmal
+kam über den Freitext-Weg der Erläuterungen (D5, „ob" ohne Akt) aus zwei
+Sätzen, die von anderen Texten sprechen: „Mit dem Ersten und Zweiten
+Tiroler Erneuerbaren Ausbaugesetz … wurden … Maßnahmen zur Umsetzung der
+Richtlinie (EU) 2023/2413 … umgesetzt" und „Das EABG dient gleichermaßen
+der Umsetzung …". Der Weg blendet solche Sätze nun aus wie verneinte
+(`withoutForeignSignals`, `ERL_ELSEWHERE`): das Präteritum des
+Umsetzungsverbs („wurde(n) … umgesetzt/erlassen") und ein Satz, dessen
+Subjekt ein anderes benanntes Gesetz ist (Abkürzung oder „-gesetz"/
+„-verordnung" nach dem Artikel; nie „Der Entwurf", „Das vorliegende
+Gesetz", „Diese Novelle"). Nur der Freitext-Weg — ein Vorblatt-Satz spricht
+der Form nach vom eigenen Entwurf. Gemessen aus dem Cache über beide
+Korpora (512 Bund, 489 Länder): drei Entwürfe ändern sich, eine Seite —
+t-2026-728 verliert das falsche Merkmal; noe-Dienstausweis (Seite ohnehin
+ohne Fakt, die EU-Aussage des Landes entscheidet) und die Pflanzgut-
+verordnung (Merkmal aus dem Vorblatt, 2025/145 aus dem Gesetzestext;
+verworfen wird nur ein Erläuterungen-Satz über die Stammrichtlinie
+2008/90) bleiben auf der Seite gleich. `EU_READER_VERSION` 6.
+
 ### 12.67 Bund zu Land: Grundsatzgesetze und Art.-15a-Vereinbarungen am Landesentwurf (06.11.2026)
 
 Gebaut auf der Messung von §12.66 Nachtrag 10 und ihren drei Korrekturen.

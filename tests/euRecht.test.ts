@@ -523,6 +523,19 @@ describe('readExplanationsEuSignal — whether only, never which act', () => {
     // „nicht nur" is a yes.
     expect(read('Der Entwurf dient nicht nur der Umsetzung der Richtlinie (EU) 2023/1791, sondern auch der Verwaltungsvereinfachung.').signal).toBe('umsetzung')
   })
+
+  it('does not count what other texts did or do (t-2026-728, 07.11.2026)', () => {
+    const read = (...text: string[]) => readExplanationsEuSignal([{ heading: 'Allgemeines', text }])
+    // What earlier laws did — the draft repeals those provisions.
+    expect(read('Mit dem Ersten und Zweiten Tiroler Erneuerbaren Ausbaugesetz, LGBl. Nr. 73/2024 bzw. LGBl. Nr. 72/2025 wurden die in die Zuständigkeit der Landesgesetzgebung fallenden Maßnahmen zur Umsetzung der Richtlinie (EU) 2023/2413 (RED III-Richtlinie) umgesetzt.').signal).toBeNull()
+    // What the Bund's law does.
+    expect(read('Das EABG dient gleichermaßen der Umsetzung der genannten unionsrechtlichen Vorgaben und führt zudem ein konzentriertes Genehmigungsverfahren für bestimmte Energieanlagen ein.').signal).toBeNull()
+    expect(read('Die Richtlinie wurde bereits mit der letzten Novelle in der NÖ Jagdverordnung inhaltlich umgesetzt.').signal).toBeNull()
+    // The draft's own statements still count, beside a sentence about the past.
+    expect(read('Mit dem Gesetz LGBl. Nr. 12/2020 wurde die Richtlinie 2018/2001 umgesetzt. Der Entwurf dient der Umsetzung der Richtlinie (EU) 2023/2413.').signal).toBe('umsetzung')
+    expect(read('Das vorliegende Landesgesetz dient der Umsetzung der Richtlinie (EU) 2023/2413.').signal).toBe('umsetzung')
+    expect(read('Mit diesem Entwurf wird die Richtlinie (EU) 2024/1499 umgesetzt.').signal).toBe('umsetzung')
+  })
 })
 
 describe('the Cellar', () => {
