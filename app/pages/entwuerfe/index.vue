@@ -778,15 +778,19 @@ const statementsSortNote = computed(() => {
             >{{ moreFilters }}<span class="sr-only"> aktiv</span></span>
           </UButton>
           <!-- Set widths and `block` selects: a native <select> sizes
-               itself by its LONGEST option, so the widths are set here
-               and the line holds — 190 + 240 + 112 px plus gaps, and
-               the Ressort fills the rest of the 864 px of the box. -->
+               itself by its LONGEST option, so the widths are set here.
+               From `md` up the selects take a line of their own (since
+               09.11.2026): with two chips beside them the old shared line
+               needed ~740 px before the Ressort got any, and the panel —
+               flex-1, basis 0 — overflowed the box instead of wrapping.
+               Now 240 + 128 px, and the Ressort fills the rest, so the
+               line ends where the search below ends. -->
           <div
             id="filter-more-panel"
-            class="w-full gap-2 md:flex md:w-auto md:min-w-0 md:flex-1 md:items-center"
+            class="w-full gap-2 md:flex md:items-center"
             :class="filtersOpen ? 'grid grid-cols-1' : 'hidden'"
           >
-            <div class="min-w-0 md:w-60">
+            <div class="min-w-0 md:w-60 md:shrink-0">
               <label for="filter-art" class="sr-only">Art des Entwurfs</label>
               <TokenSelect id="filter-art" v-model="art" block>
                 <option v-for="opt in artOptions" :key="opt.value" :value="opt.value">
@@ -794,7 +798,7 @@ const statementsSortNote = computed(() => {
                 </option>
               </TokenSelect>
             </div>
-            <div class="min-w-0 md:w-28">
+            <div class="min-w-0 md:w-32 md:shrink-0">
               <label for="filter-gp" class="sr-only">Gesetzgebungsperiode</label>
               <TokenSelect id="filter-gp" v-model="selectedGp" block>
                 <option v-for="g in gpOptions" :key="g" :value="g">
