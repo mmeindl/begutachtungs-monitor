@@ -57,3 +57,24 @@ export function mapVorlageRow(row: unknown[]): VorlageRow {
     parliamentUrl: absolutizeUrl(asString(row[14]) || own) ?? `${PARLIAMENT_BASE}${own}`,
   }
 }
+
+/**
+ * The Klubs list 101 appends to an Antrag's Betreff — „ORF-Gesetz, Änderung
+ * (ÖVP, SPÖ, NEOS)" (read 09.11.2026: every one of GP XXVIII's 183
+ * selbständigen Anträge ends in such a list, no Vorlage does). Known codes
+ * only, so a title that really ends in parentheses („… (EU)") keeps them.
+ */
+const CLUB_SUFFIX = /\s*\((?:ÖVP|SPÖ|FPÖ|NEOS|GRÜNE|JETZT|PILZ|STRONACH|BZÖ|LIF)(?:,\s*(?:ÖVP|SPÖ|FPÖ|NEOS|GRÜNE|JETZT|PILZ|STRONACH|BZÖ|LIF))*\)\s*$/
+
+/**
+ * One Antrag row of list 101 — the Vorlage mapper, with the movers' Klubs
+ * taken off the title. Two reasons: the title check against list 81
+ * (`findPrecedingDraft`) was calibrated on titles without them, and party
+ * names there would only LOWER the similarity — the direction in which a
+ * row says „ohne Begutachtung" too readily; and the row names a procedural
+ * fact, not who moved it.
+ */
+export function mapAntragRow(row: unknown[]): VorlageRow {
+  const v = mapVorlageRow(row)
+  return { ...v, title: v.title.replace(CLUB_SUFFIX, ''), parliamentUrl: absolutizeUrl(asString(row[14])) ?? `${PARLIAMENT_BASE}/gegenstand/${v.gp}/A/${v.inr}` }
+}

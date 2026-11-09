@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { mapVorlageRow } from '../server/utils/parliament/list101'
+import { mapAntragRow, mapVorlageRow } from '../server/utils/parliament/list101'
 
 /* One real list-101 row, GP XXVIII, as the API returned it on 2026-09-15
  * (trailing columns the mapper does not read are dropped). */
@@ -44,5 +44,38 @@ describe('mapVorlageRow', () => {
     const row = [...LIST101_ROW]
     row[10] = '2'
     expect(mapVorlageRow(row).status).toBe('2')
+  })
+})
+
+/* An Antrag row of list 101, GP XXVIII, as the API returned it on 2026-11-09. */
+const ANTRAG_ROW: unknown[] = [
+  'XXVIII', 'A', '409', null, '24.09.2025', 'A',
+  'ORF-Gesetz, Änderung (ÖVP, SPÖ, NEOS)', '409/A', '20250924', '05', '5', 'A',
+  'N', 'Selbständiger Antrag', '/gegenstand/XXVIII/A/409',
+]
+
+describe('mapAntragRow', () => {
+  it('takes the movers\' Klubs off the title and keeps the Antrag\'s page', () => {
+    expect(mapAntragRow(ANTRAG_ROW)).toMatchObject({
+      inr: 409,
+      citation: '409/A',
+      title: 'ORF-Gesetz, Änderung',
+      date: '2025-09-24',
+      parliamentUrl: 'https://www.parlament.gv.at/gegenstand/XXVIII/A/409',
+    })
+  })
+
+  it('keeps parentheses that are part of the title', () => {
+    const row = [...ANTRAG_ROW]
+    row[6] = 'Notarversorgungsgesetz (2.Novelle zum NVG 2020) (GRÜNE)'
+    expect(mapAntragRow(row).title).toBe('Notarversorgungsgesetz (2.Novelle zum NVG 2020)')
+    row[6] = 'Durchführung der Verordnung (EU)'
+    expect(mapAntragRow(row).title).toBe('Durchführung der Verordnung (EU)')
+  })
+
+  it('falls back to the Antrag path, not the Vorlage path', () => {
+    const row = [...ANTRAG_ROW]
+    row[14] = ''
+    expect(mapAntragRow(row).parliamentUrl).toBe('https://www.parlament.gv.at/gegenstand/XXVIII/A/409')
   })
 })

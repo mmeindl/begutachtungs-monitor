@@ -53,6 +53,16 @@ export interface BgblRecord {
    */
   gp: string | null
   regierungsvorlagen: number[]
+  /**
+   * The Initiativanträge it enacts (408 for „408/A"), read from
+   * `BgblAuth.Initiativantrag` — the same repeatable-field shape as
+   * `Regierungsvorlage` (verified 09.11.2026 on BGBl. I Nr. 12–14/2026).
+   * Empty for a law from a Vorlage and on every Teil-II record. The input of
+   * the list of laws without a Begutachtung (`skippedLaws.ts`).
+   */
+  initiativantraege: number[]
+  /** `BgblAuth.Typ` — „Bundesgesetz", „Verordnung", …; null where RIS carries none. */
+  typ: string | null
   datumNationalrat: string | null
 }
 
@@ -69,6 +79,20 @@ function vorlagenOf(field: any): number[] {
   return raw
     .map((v: unknown) => String(v ?? '').trim())
     .filter((v: string) => /^\d+$/.test(v))
+    .map(Number)
+}
+
+/**
+ * The Antrag numbers of an `Initiativantrag` field — `{ item: "408/A" }` or
+ * `{ item: ["408/A", "409/A"] }`. Only the selbständiger Antrag on a law
+ * („…/A") is read; an `A(E)` cannot carry a law and anything else is
+ * dropped rather than guessed at.
+ */
+export function antraegeOf(field: any): number[] {
+  const raw = [field?.item ?? []].flat()
+  return raw
+    .map((v: unknown) => /^(\d+)\/A$/.exec(String(v ?? '').trim())?.[1])
+    .filter((v: string | undefined): v is string => v !== undefined)
     .map(Number)
 }
 
@@ -93,6 +117,8 @@ export function bgblRecordOf(doc: any): BgblRecord | null {
     stelle: m?.Technisch?.Einbringer ?? m?.Technisch?.Organ ?? null,
     gp: String(b?.Gesetzgebungsperiode ?? '').trim() || null,
     regierungsvorlagen: vorlagenOf(b?.Regierungsvorlage),
+    initiativantraege: antraegeOf(b?.Initiativantrag),
+    typ: String(b?.Typ ?? '').trim() || null,
     datumNationalrat: String(b?.DatumNationalrat ?? '').slice(0, 10) || null,
   }
 }

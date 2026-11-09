@@ -192,6 +192,17 @@ export interface DraftChain {
    * else. Identity only: no list or page reads it for what it shows.
    */
   bgblSearch?: { gp: string; inr: number; from: string }
+  /**
+   * EVERY Regierungsvorlage the draft's stage record links, in stage order,
+   * as period and number (`findRvLinks`, 09.11.2026) — `rvCitation` names
+   * only the last of them, and ME→RV is 1:n (XXVIII/26/ME → 128, 130 and
+   * 129 d.B.). Read by the list of laws without a Begutachtung
+   * (`server/utils/ris/skippedLaws.ts`): a Vorlage any draft points at was
+   * consulted, and the Vorlage's own period is needed because a carry-over
+   * names the next one. Absent on a chain without a Vorlage and on an older
+   * payload — never „no Vorlage"; that is `rvCitation`'s to say.
+   */
+  rvLinks?: { gp: string; inr: number }[]
 }
 
 /**

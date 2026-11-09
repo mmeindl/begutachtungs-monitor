@@ -46,6 +46,8 @@ const record = (over: Partial<BgblRecord>): BgblRecord => ({
   stelle: null,
   gp: 'XXVIII',
   regierungsvorlagen: [525],
+  initiativantraege: [],
+  typ: 'Bundesgesetz',
   datumNationalrat: '2026-07-07',
   ...over,
 })
@@ -71,8 +73,22 @@ describe('bgblRecordOf — the parliamentary key of a law', () => {
   /* BGBl. I Nr. 65/2025: Initiativantrag 416/A, no Vorlage. */
   it('leaves the key empty where RIS has none, and needs an ID', () => {
     const rec = bgblRecordOf(reference({ Bgblnummer: 'BGBl. I Nr. 65/2025', Teil: 'Teil1', Ausgabedatum: '2025-10-31', Initiativantrag: { item: '416/A' } }))
-    expect(rec).toMatchObject({ gp: null, regierungsvorlagen: [], datumNationalrat: null })
+    expect(rec).toMatchObject({ gp: null, regierungsvorlagen: [], initiativantraege: [416], typ: null, datumNationalrat: null })
     expect(bgblRecordOf({ Data: { Metadaten: { Technisch: {} } } })).toBeNull()
+  })
+})
+
+/* BGBl. I Nr. 14/2026 as RIS records it (read 09.11.2026): Initiativantrag 667/A. */
+describe('bgblRecordOf — the Initiativanträge of a law', () => {
+  it('reads the Antrag number and the Typ', () => {
+    const rec = bgblRecordOf(reference({ Bgblnummer: 'BGBl. I Nr. 14/2026', Teil: 'Teil1', Ausgabedatum: '2026-03-31', Typ: 'Bundesgesetz', Gesetzgebungsperiode: 'XXVIII', Initiativantrag: { item: '667/A' } }))
+    expect(rec).toMatchObject({ regierungsvorlagen: [], initiativantraege: [667], typ: 'Bundesgesetz' })
+  })
+
+  it('reads several Anträge when the field repeats, and only selbständige Anträge', () => {
+    const rec = bgblRecordOf(reference({ ...NR_69, Initiativantrag: { item: ['763/A', ' 764/A ', '12/A(E)', 'x/A', ''] } }))
+    expect(rec?.initiativantraege).toEqual([763, 764])
+    expect(rec?.regierungsvorlagen).toEqual([525])
   })
 })
 

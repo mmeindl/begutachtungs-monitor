@@ -27,6 +27,8 @@ function record(over: Partial<BgblRecord> = {}): BgblRecord {
     stelle: 'BMASGPK (Bundesministerium für Arbeit, Soziales, Gesundheit, Pflege und Konsumentenschutz)',
     gp: null,
     regierungsvorlagen: [],
+    initiativantraege: [],
+    typ: 'Verordnung',
     datumNationalrat: null,
     ...over,
   }

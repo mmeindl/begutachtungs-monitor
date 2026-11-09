@@ -173,6 +173,53 @@ export interface DashboardSecondRound {
 }
 
 /**
+ * A federal law that reached the Bundesgesetzblatt without a Begutachtung —
+ * a row behind the chip „Ohne Begutachtung" on `/entwuerfe`
+ * (docs/architecture.md §12.68). Its own type, not an `OpenVorlage`: the
+ * window for Stellungnahmen is over, the carrying item may be an Antrag, and
+ * nothing here is counted (`server/utils/ris/skippedLaws.ts`).
+ */
+export interface LawWithoutBegutachtung {
+  /** „BGBl. I Nr. 14/2026", as RIS spells it. */
+  bgblNumber: string
+  /** The Kundmachung's issue date (Ausgabedatum), ISO. */
+  bgblDate: string
+  /** The item the law came to the Nationalrat as — the page the row links. */
+  item: {
+    kind: 'rv' | 'antrag'
+    gp: string
+    inr: number
+    /** „253 d.B.", „408/A". */
+    citation: string
+    /** `https://www.parlament.gv.at/gegenstand/<GP>/<I|A>/<inr>`. */
+    parliamentUrl: string
+  }
+  /** Parliament's title of that item. */
+  title: string
+  /** The day of the Nationalrat's Beschluss, ISO; null where RIS carries none. */
+  decidedAt: string | null
+}
+
+/**
+ * Why a period carries no such rows although it may have such laws — the
+ * chip's reason. `unlinked`: the period's drafts are not linked to Vorlagen
+ * in the archive (`mayClaimOutcome`), so „no draft behind it" would be a
+ * claim nobody can support. `unread`: a source the check stands on did not
+ * answer just now.
+ */
+export type LawsWithoutBegutachtungGap = 'unlinked' | 'unread'
+
+/** Payload of /api/ohne-begutachtung. */
+export interface LawsWithoutBegutachtung {
+  gp: string
+  /** False: no rows, and `gap` says why — never an empty list passed off as „keine". */
+  available: boolean
+  gap: LawsWithoutBegutachtungGap | null
+  /** Newest Kundmachung first. Only laws whose every check ran and found no draft. */
+  items: LawWithoutBegutachtung[]
+}
+
+/**
  * Payload of /api/dashboard/laender — the Länder's rows for the homepage's
  * two track sections (30.10.2026, `shared/utils/landRecent.ts`).
  *

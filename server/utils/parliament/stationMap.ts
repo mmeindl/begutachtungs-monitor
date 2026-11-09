@@ -50,8 +50,8 @@ import {
   findBundesratArrival,
   findBundesratDecisionDate,
   findHouseDecisionDate,
-  findLastRvLink,
   findNoPromulgation,
+  findRvLinks,
   isVorlageFilingOpen,
   isVorlageGpEnded,
   parseStages,
@@ -165,7 +165,10 @@ async function chainOf(
   }
   try {
     const detail = await getGegenstand(gp, 'ME', inr)
-    const rv = findLastRvLink(parseStages(detail.content?.stages))
+    // Every Vorlage the stage record links; the outcome hangs off the last
+    // (`findLastRvLink`), the list of laws without a Begutachtung reads all.
+    const rvLinks = findRvLinks(parseStages(detail.content?.stages))
+    const rv = rvLinks.at(-1) ?? null
     if (!rv) {
       /* No Vorlage in the stage record — but the text may have come as an
        * Initiativantrag, which no pointer records (`antragPath.ts`). Only
@@ -303,6 +306,7 @@ async function chainOf(
         bundesratArrivedAt,
         bundesratDecidedAt,
         notPromulgated,
+        rvLinks: rvLinks.map((l) => ({ gp: l.gp, inr: l.inr })),
         ...(antragCitation ? { antragCitation } : {}),
         ...(bgblSearch ? { bgblSearch } : {}),
       },

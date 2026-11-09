@@ -29,6 +29,7 @@
  * could hang on.
  */
 import type { DashboardSecondRound, OpenVorlage } from '#shared/types'
+import { budgetExemptReason } from '#shared/utils/budgetExempt'
 
 /**
  * Upstream's "still in the parliamentary procedure" (`mapVorlageRow`) —
@@ -82,6 +83,11 @@ export default defineEventHandler(async (): Promise<DashboardSecondRound> => {
           .then((s) => s.total)
           .catch(() => null)
 
+        /* The budget procedure skips the Begutachtung by design
+         * (`shared/utils/budgetExempt.ts`, 09.11.2026): such a Vorlage
+         * never says „ohne Begutachtung" and is not cross-checked — it says
+         * nothing, like a Vorlage with a plausible draft. */
+        const exempt = !me && budgetExemptReason(gp, [{ ityp: 'I', inr: v.inr }], [v.title]) !== null
         return {
           citation: v.citation,
           title: v.title,
@@ -90,7 +96,9 @@ export default defineEventHandler(async (): Promise<DashboardSecondRound> => {
           statementCount,
           consultation: me
             ? { kind: 'draft' as const, gp: String(me.gp_code), inr: Number(me.inr) }
-            : { kind: 'unresolved' as const },
+            : exempt
+              ? { kind: 'unknown' as const }
+              : { kind: 'unresolved' as const },
         }
       } catch {
         // Per-item tolerance, as in the outcomes section: one failing

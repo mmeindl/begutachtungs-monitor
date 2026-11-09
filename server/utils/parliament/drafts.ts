@@ -12,7 +12,7 @@ import { GP_RE, intToRoman, romanToInt } from '#shared/utils/gp'
 import { daysUntil } from '#shared/utils/format'
 import { foldJointDraft } from './draftList'
 import { mapDraftRow } from './list81'
-import { mapVorlageRow, type VorlageRow } from './list101'
+import { mapAntragRow, mapVorlageRow, type VorlageRow } from './list101'
 import {
   assertListHeader,
   assertRowsMatchGp,
@@ -138,6 +138,35 @@ export const getVorlagenForGp = defineCachedFunction(
     return rows.map(mapVorlageRow)
   },
   { name: 'vorlagen-gp', base: DERIVED_CACHE, getKey: (gp: string) => gp, maxAge: UPSTREAM_LIST_TTL_S, swr: false },
+)
+
+/**
+ * Every selbständiger Antrag on a law of one Gesetzgebungsperiode, from list
+ * 101 — the titles and Einlangen of the Initiativanträge for the check
+ * behind „ohne Begutachtung" (`server/utils/ris/skippedLaws.ts`).
+ *
+ * ONE call per period, like the Vorlagen above, narrowed upstream by `ART`:
+ * `ITYP: ['A']` alone also brings every Entschließungsantrag and
+ * Ministeranklage — 1.163 rows for GP XXVIII against 183 with `ART: ['A']`
+ * (measured 09.11.2026), about 125 KB. The API silently ignores a key it
+ * does not know, so the narrowing is asserted like the period: a row of
+ * another `Art` (column 5) means the filter did not grip, and the answer is
+ * refused before it is cached. The calibration of `findPrecedingDraft` was
+ * Parliament title against Parliament title, which is why the title comes
+ * from here and not from RIS.
+ */
+export const getAntraegeForGp = defineCachedFunction(
+  async (gp: string): Promise<VorlageRow[]> => {
+    const res = await fetchFilterList(101, { GP_CODE: [gp], ITYP: ['A'], ART: ['A'] })
+    const rows = res.rows ?? []
+    assertRowsMatchGp(rows, gp, 101)
+    assertListHeader(101, res)
+    if (rows.some((r) => !Array.isArray(r) || r[5] !== 'A')) {
+      throw createError({ statusCode: 502, statusMessage: `Upstream-Filter hat nicht gegriffen (Liste 101, ART A, GP ${gp})` })
+    }
+    return rows.map(mapAntragRow)
+  },
+  { name: 'antraege-gp', base: DERIVED_CACHE, getKey: (gp: string) => gp, maxAge: UPSTREAM_LIST_TTL_S, swr: false },
 )
 
 /**

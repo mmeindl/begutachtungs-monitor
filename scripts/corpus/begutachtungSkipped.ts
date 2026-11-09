@@ -55,7 +55,7 @@
  * Preisauszeichnungsgesetz, which are ordinary consumer law. A keyword or
  * THEMEN rule would exempt precisely the cases that are the finding.
  *
- * Hence EXEMPT below: explicit, per item, with a reason — and the script
+ * Hence EXEMPT (`shared/utils/budgetExempt.ts`): explicit, per item, with a reason — and the script
  * prints every non-exempt skipper in full so the list is maintained by
  * READING the corpus, not by guessing a rule. Same review loop as
  * `scripts/audit/classifier.ts`.
@@ -66,101 +66,16 @@ import { PARLIAMENT as BASE, getJson } from '../lib/http'
 import { cachedJson } from '../lib/diskCache'
 import { pool } from '../lib/async'
 import type { MeAntragReport, SkippedRow } from '../lib/skippedReport'
+import { exemptReasonFor } from '../../shared/utils/budgetExempt'
 
 const SCRIPT = 'corpus/begutachtungSkipped'
 const CONCURRENCY = 4
 
-/**
- * Laws that reach the Nationalrat without Begutachtung by design, keyed
- * `<GP>/<ITYP>/<INR>`. Every entry needs a reason — an exemption without one
- * is indistinguishable from a case someone found inconvenient.
- *
- * Reviewed for GP XXVIII on 2026-09-15. Deliberately NOT exempt:
- *  - 10 d.B. Bundeshaushaltsgesetz 2013, Änderung — the BHG is the organic
- *    budget law, but an amendment to it is ordinary legislation and could
- *    have been consulted. Flagged for review rather than waved through.
- *  - 87/91 d.B. Budgetsanierungsmaßnahmengesetz II — budget-flavoured by
- *    title, but substantively an omnibus (pensions, fees). The budget
- *    exemption covers the Bundesfinanzgesetz procedure, not everything with
- *    "Budget" in its name.
- *
- * TWO CANDIDATE CLASSES the first run surfaced, left in the count on purpose
- * until someone who knows the procedure rules on them — an open question for
- * a procedural expert, not one this script can settle:
- *
- *  a) **Budgetprovisorium** — 71/A and 123/A (Gesetzliches Budgetprovisorium
- *     2025). Budget procedure like the BFG, but filed as an Initiativantrag
- *     during government formation. If the budget exemption is about the
- *     subject matter it applies; if it is about the Art-51 timetable it does
- *     not.
- *  b) **Parliament's own organisational law** — Geschäftsordnungsgesetz
- *     (322/A), Informationsordnungsgesetz (323/A), Bundesbezügegesetz
- *     (562/A, 935/A), Klubfinanzierungsgesetz (950/A), Parteienfinanzierung
- *     (353/A), Parlamentsmitarbeitergesetz. Here the Initiativantrag is
- *     arguably the constitutionally CORRECT route — these are the
- *     Nationalrat's own affairs, and a ministerial draft would be the odd
- *     thing. Roughly six of the 87.
- *
- * Both classes move the headline by a few points, not by half. Whichever way
- * they are ruled, the finding survives — which is the point of listing them
- * openly rather than tuning the number.
- */
-const EXEMPT: Record<string, string> = {
-  'XXVIII/I/66': 'Bundesfinanzrahmengesetz 2025–2028 — Budgetverfahren (Art 51 B-VG)',
-  'XXVIII/I/67': 'Bundesfinanzgesetz 2025 — Budgetverfahren (Art 51 B-VG)',
-  'XXVIII/I/68': 'Bundesfinanzgesetz 2026 — Budgetverfahren (Art 51 B-VG)',
-  'XXVIII/I/88': 'Begründung von Vorbelastungen — Budgetvollzug, kein Gesetzesvorhaben im üblichen Sinn',
-  'XXVIII/I/494': 'Bundesfinanzgesetz 2027 — Budgetverfahren (Art 51 B-VG)',
-  'XXVIII/I/495': 'Bundesfinanzgesetz 2028 — Budgetverfahren (Art 51 B-VG)',
-  'XXVIII/I/496': 'Bundesfinanzrahmengesetz 2027–2030 — Budgetverfahren (Art 51 B-VG)',
-
-  /* GP XXVII, curated 2026-09-16 by reading all 535 skipped titles. 27 items
-   * carry a budget-procedure title, 21 of them are exempt. The other six stay
-   * in the count with a reason — see below, right after the list. */
-  'XXVII/I/55': 'Bundesfinanzgesetz 2020 — Budgetverfahren (Art 51 B-VG)',
-  'XXVII/I/380': 'Bundesfinanzgesetz 2021 — Budgetverfahren (Art 51 B-VG)',
-  'XXVII/I/1034': 'Bundesfinanzgesetz 2022 — Budgetverfahren (Art 51 B-VG)',
-  'XXVII/I/1669': 'Bundesfinanzgesetz 2023 — Budgetverfahren (Art 51 B-VG)',
-  'XXVII/I/2178': 'Bundesfinanzgesetz 2024 — Budgetverfahren (Art 51 B-VG)',
-  'XXVII/I/56': 'Bundesfinanzrahmengesetz 2020–2023 — Budgetverfahren (Art 51 B-VG)',
-  'XXVII/I/484': 'Bundesfinanzrahmengesetz 2021–2024 — Budgetverfahren (Art 51 B-VG)',
-  'XXVII/I/811': 'BFRG 2021–2024 und BFG 2021, Änderung — Änderung innerhalb des Budgetverfahrens',
-  'XXVII/I/1035': 'Bundesfinanzrahmengesetz 2022–2025 — Budgetverfahren (Art 51 B-VG)',
-  'XXVII/I/1444': 'BFRG 2022–2025 und BFG 2022, Änderung — Änderung innerhalb des Budgetverfahrens',
-  'XXVII/I/1670': 'Bundesfinanzrahmengesetz 2023–2026 — Budgetverfahren (Art 51 B-VG)',
-  'XXVII/I/2170': 'BFRG 2023–2026 und BFG 2023, Änderung — Änderung innerhalb des Budgetverfahrens',
-  'XXVII/I/2179': 'Bundesfinanzrahmengesetz 2024–2027 — Budgetverfahren (Art 51 B-VG)',
-  'XXVII/I/343': 'Vorbelastungen BM Digitalisierung und Wirtschaftsstandort — Budgetvollzug',
-  'XXVII/I/412': 'Vorbelastungen BM Klimaschutz — Budgetvollzug',
-  'XXVII/I/1144': 'Vorbelastungen BM Klimaschutz — Budgetvollzug',
-  'XXVII/I/1745': 'Vorbelastungen BM Klimaschutz — Budgetvollzug',
-  'XXVII/I/1770': 'Vorbelastungen BM Klimaschutz — Budgetvollzug',
-  'XXVII/I/2269': 'Vorbelastungen BM Klimaschutz — Budgetvollzug',
-  'XXVII/I/2270': 'Vorbelastungen BM Klimaschutz — Budgetvollzug',
-  'XXVII/A/1560': 'Vorbelastungen BM Digitalisierung und Wirtschaftsstandort, Änderung — Budgetvollzug',
-}
-
-/* GP XXVII — the six budget titles that are NOT exempt, each with its reason.
- * They stand here and not in EXEMPT because not exempting something is just as
- * much a decision as exempting it and has to be just as readable.
- *
- * a) VORBELASTUNG PLUS A SUBSTANTIVE LAW — the authorisation is Budgetvollzug,
- *    the law carried along with it is not, and the substantive part could have
- *    gone to Begutachtung. Same line as with the Budgetsanierungsmaßnahmen-
- *    gesetz II in GP XXVIII: a title with „Budget" in it does not yet make a
- *    Budgetverfahren.
- *      3656/A  Vorbelastungen BMAW; CHIP-GESETZ-BEGLEITMASSNAHMENGESETZ
- *      3085/A  Vorbelastungen BMAW; Unternehmens-Energiekostenzuschussgesetz, Änderung
- *      2829/A  Vorbelastungen BMDW; Unternehmens-Energiekostenzuschussgesetz u.a., Änderung
- *      1778/A  Vorbelastungen; COVID-19-Bundesvermögen-Ermächtigungen, Änderung
- *
- * b) BUDGETPROVISORIUM — budget matter, but filed as an Initiativantrag during
- *    the formation of a government. Identical to 71/A and 123/A in GP XXVIII,
- *    which stay in the count there too for as long as nobody with knowledge of
- *    the procedure has decided otherwise — another of the open questions for
- *    a procedural expert.
- *      282/A, 112/A  Gesetzliches Budgetprovisorium 2020
- */
+/* The exemption table moved to `shared/utils/budgetExempt.ts` on 09.11.2026:
+ * the list `/entwuerfe` reads it too (laws without a Begutachtung behind the
+ * chip „Ohne Begutachtung"), and two copies of a hand-maintained table drift.
+ * The reasoning, the deliberately NOT exempt items and the two open
+ * candidate classes stand there with it. */
 
 /**
  * Which Klubs were in government, and when? Needed to answer the question
@@ -360,7 +275,7 @@ const resolved: Resolved[] = await pool([...rvItems, ...antragItems], CONCURRENC
     me: me ? `${me.gp_code}/ME/${me.inr}` : null,
     meVerified,
     consulted: item.ityp === 'I' && me !== null && meVerified,
-    exemptReason: EXEMPT[`${gp}/${item.ityp}/${item.inr}`] ?? null,
+    exemptReason: exemptReasonFor(gp, item.ityp, item.inr),
   }
 })
 
