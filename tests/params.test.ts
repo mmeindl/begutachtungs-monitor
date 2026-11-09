@@ -14,6 +14,7 @@ import {
 } from '../server/utils/http/params'
 import type { FakeError, FakeEvent } from './helpers/nitroGlobals'
 import { MAX_LIST_QUERY_CHARS, MAX_LIST_QUERY_TERMS } from '../shared/utils/queryParams'
+import { itemLawScope } from '../shared/utils/lawStations'
 
 /**
  * What a handler reads out of a request (`server/utils/http/params.ts`).
@@ -150,6 +151,19 @@ describe('readLawStationPair', () => {
     expect(bis?.statusCode).toBe(400)
     expect(bis?.statusMessage).toContain('me, rv, ausschuss, plenum, bgbl')
     expect(refusal(() => readLawStationPair(query({ von: 'senat', bis: 'rv' })))?.statusCode).toBe(400)
+  })
+
+  it('refuses the Antrag’s station on a draft, as before it existed', () => {
+    const err = refusal(() => readLawStationPair(query({ von: 'antrag', bis: 'bgbl' })))
+    expect(err?.statusCode).toBe(400)
+    expect(err?.statusMessage).toBe('Unbekannte Station für „von“ (me, rv, ausschuss, plenum, bgbl)')
+  })
+
+  it('reads an item’s own vocabulary and default pair (10.11.2026)', () => {
+    expect(readLawStationPair(query({}), itemLawScope('A'))).toEqual({ from: 'antrag', to: 'bgbl' })
+    expect(readLawStationPair(query({ von: 'antrag', bis: 'ausschuss' }), itemLawScope('A'))).toEqual({ from: 'antrag', to: 'ausschuss' })
+    expect(refusal(() => readLawStationPair(query({ von: 'me', bis: 'bgbl' }), itemLawScope('I')))?.statusCode).toBe(400)
+    expect(refusal(() => readLawStationPair(query({ von: 'antrag', bis: 'bgbl' }), itemLawScope('I')))?.statusCode).toBe(400)
   })
 
   it('reads the first value of a repeated param and ignores an empty one', () => {

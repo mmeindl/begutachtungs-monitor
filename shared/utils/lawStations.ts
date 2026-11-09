@@ -31,6 +31,20 @@ export const LAW_STATION_ORDER: readonly LawStationId[] = ['me', 'antrag', 'rv',
 export const DRAFT_LAW_STATIONS: readonly LawStationId[] = LAW_STATION_ORDER.filter((id) => id !== 'antrag')
 
 /**
+ * The same for the page of a Vorlage or Antrag without a Begutachtung
+ * (10.11.2026): its own first text, Parliament's two versions, the
+ * Kundmachung — and the whole way from the first text to the law as the
+ * default pair, the comparison that page is about.
+ */
+export function itemLawScope(ityp: 'I' | 'A'): {
+  stations: readonly LawStationId[]
+  defaultPair: { from: LawStationId; to: LawStationId }
+} {
+  const first: LawStationId = ityp === 'I' ? 'rv' : 'antrag'
+  return { stations: [first, 'ausschuss', 'plenum', 'bgbl'], defaultPair: { from: first, to: 'bgbl' } }
+}
+
+/**
  * The label names the VERSION, not the event: "Ausschussfassung", not
  * "Geändert im Ausschuss" (upstream's wording). Since 01.10.2026 the document
  * list under „Im Parlament" uses these names too: it is folded under the

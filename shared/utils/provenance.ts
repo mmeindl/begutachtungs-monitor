@@ -47,8 +47,10 @@ export interface SourceEntry {
   terms: SourceTerms
 }
 
-/** The stations whose documents Parliament itself calls freie Werke — the Ministerialentwurf is not one. */
-const PARLIAMENTARY_STATIONS: ReadonlySet<LawStationId> = new Set<LawStationId>(['rv', 'ausschuss', 'plenum'])
+/** The stations whose documents Parliament itself calls freie Werke — the Ministerialentwurf is not one.
+ *  The Antrag is (10.11.2026): its dataset page uses the same template as the
+ *  Regierungsvorlage's, documents free, lists and API CC BY. */
+const PARLIAMENTARY_STATIONS: ReadonlySet<LawStationId> = new Set<LawStationId>(['antrag', 'rv', 'ausschuss', 'plenum'])
 
 /** A text read from RIS. */
 export function risSource(what: string): SourceEntry {

@@ -32,6 +32,10 @@ const props = defineProps<{
   showDiff: boolean
   /** Parliament's versions, in order (`parliamentTexts`). */
   parliamentTexts: LawStationId[]
+  /** The root's API base and first text for the comparison — a draft's by
+   *  default (`LawDiffSection`). */
+  apiBase?: string
+  origin?: 'me' | 'rv' | 'antrag'
 }>()
 
 /* How the clubs voted on it — the same phrase the bar's row carries, here as
@@ -150,6 +154,8 @@ const documents = computed(() =>
         :inr="draft.inr"
         scope="parlament"
         :parliament-texts="parliamentTexts"
+        :api-base="apiBase"
+        :origin="origin"
         deferred
       />
       <!-- The versions themselves, folded at the end as under „Der

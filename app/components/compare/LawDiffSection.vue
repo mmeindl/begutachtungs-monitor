@@ -53,6 +53,10 @@ const props = defineProps<{
    *  is the second comparison of the page, two more documents to parse, and
    *  most readers of a draft page never scroll that far. */
   deferred?: boolean
+  /** The root's API base and first text, for the page of a Vorlage or Antrag
+   *  without a Begutachtung (10.11.2026); a draft's by default. */
+  apiBase?: string
+  origin?: 'me' | 'rv' | 'antrag'
 }>()
 
 const scope: LawDiffScope = props.scope ?? 'rv'
@@ -83,6 +87,8 @@ const {
   scope,
   parliamentTexts: props.parliamentTexts,
   deferred: props.deferred,
+  apiBase: props.apiBase,
+  origin: props.origin,
 })
 
 const root = useTemplateRef<HTMLElement>('root')

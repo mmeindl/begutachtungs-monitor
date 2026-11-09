@@ -68,6 +68,12 @@ export interface FilterListResponse {
 export interface GegenstandResponse {
   content?: {
     stages?: RawStage[] | null
+    /** Einlangen (Vorlage) or Einbringung (Antrag), ISO with a time part. */
+    einlangen?: string | null
+    /** The document kind: `RV`, `A`, `AUB`, `A(E)`, `ME`, … */
+    doktyp?: string | null
+    title?: string | null
+    description?: string | null
     /** The Verlauf of a Vorlage, phase by phase — where a committee's own consultation is recorded (`readCommitteeConsultation`). */
     phase?: RawPhase[] | null
     documents?: RawDocumentGroup[] | null

@@ -151,6 +151,8 @@ function bgblCite(number: string | null, risUrl: string | null): string | null {
         :inr="inr"
         scope="bgbl"
         :parliament-texts="parliamentTexts"
+        :api-base="apiBase"
+        :origin="origin"
         deferred
       />
     </div>

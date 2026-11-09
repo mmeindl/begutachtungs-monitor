@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import type { RvStatementsResponse, VorlageDetail } from '#shared/types'
-import type { StationId } from '~/utils/spine'
-import { parliamentTexts, vorlageStations, vorlageStatusDe, SECOND_ROUND_CLAUSE } from '~/utils/spine'
+import type { ComparisonId, StationId } from '~/utils/spine'
+import { lastParliamentStation, parliamentTexts, vorlageStations, vorlageStatusDe, SECOND_ROUND_CLAUSE } from '~/utils/spine'
 import { citeLineDe, rvCitationDe } from '#shared/utils/citations'
 import { GP_RE, parseInr } from '#shared/utils/gp'
 import { itypOfKind, vorlageApiBase } from '#shared/utils/procedureRoot'
@@ -80,6 +80,12 @@ const stationList = computed(() =>
     : [],
 )
 const parliamentTextList = computed(() => (data.value ? parliamentTexts(data.value) : []))
+const parliamentStation = computed(() => (data.value ? lastParliamentStation(data.value) : null))
+/* The procedure's first text, where every comparison on this page starts. */
+const origin = computed(() => (isAntrag.value ? 'antrag' as const : 'rv' as const))
+const comparisonAnchors = computed<Partial<Record<ComparisonId, string>>>(() =>
+  parliamentStation.value ? { parlament: '#textvergleich-parlament' } : {},
+)
 
 /* Which station sections render — the bar's anchors read the same. */
 const sections = computed(() => {
@@ -181,6 +187,7 @@ useSeoMeta({
             :status="vorlageStatusDe(data)"
             :stations="stationList"
             :anchors="stationAnchors"
+            :comparison-anchors="comparisonAnchors"
           />
 
           <!-- The door while the Nationalrat takes Stellungnahmen, as on the
@@ -241,8 +248,10 @@ useSeoMeta({
             :draft="data"
             :enactment="sections.parlament"
             :item="isAntrag ? 'antrag' : 'rv'"
-            :show-diff="false"
+            :show-diff="Boolean(parliamentStation)"
             :parliament-texts="parliamentTextList"
+            :api-base="url"
+            :origin="origin"
           />
 
           <BgblStationSection
@@ -252,8 +261,7 @@ useSeoMeta({
             :inr="data.inr"
             :parliament-texts="parliamentTextList"
             :api-base="url"
-            :origin="isAntrag ? 'antrag' : 'rv'"
-            :comparison="false"
+            :origin="origin"
           />
         </article>
       </template>

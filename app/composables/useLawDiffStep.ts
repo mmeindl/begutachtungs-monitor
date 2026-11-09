@@ -39,9 +39,14 @@ export function useLawDiffStep(options: {
   parliamentTexts?: readonly LawStationId[]
   /** Fetch only once `enable` is called. */
   deferred?: boolean
+  /** The root's API base — a draft's (`/api/drafts/<gp>/<inr>`) by default;
+   *  a Vorlage or Antrag without a Begutachtung passes its own (10.11.2026). */
+  apiBase?: string
+  /** The procedure's first text (`lawDiffSteps`): the draft by default. */
+  origin?: 'me' | 'rv' | 'antrag'
 }) {
   const scope: LawDiffScope = options.scope ?? 'rv'
-  const steps: LawStationPair[] = lawDiffSteps(scope, options.parliamentTexts ?? [])
+  const steps: LawStationPair[] = lawDiffSteps(scope, options.parliamentTexts ?? [], options.origin)
   /** The pair this instance shows when the URL names none of its own. */
   const scopeDefault: LawStationPair = steps[0] ?? { from: 'me', to: 'rv' }
 
@@ -71,7 +76,11 @@ export function useLawDiffStep(options: {
   /** Whether the three requests below may go out — at once, unless `deferred`. */
   const enabled = ref(!options.deferred)
 
-  const base = () => `/api/drafts/${toValue(options.gp)}/${toValue(options.inr)}`
+  const base = () => options.apiBase ?? `/api/drafts/${toValue(options.gp)}/${toValue(options.inr)}`
+  /* A draft keeps its keys; another root's carry its base, because the
+   * number spaces overlap and Nuxt's payload cache outlives a navigation —
+   * 97 d.B.'s comparison must not answer for XXVIII/97/ME's. */
+  const cacheKeyOf = (key: string) => (options.apiBase ? `${options.apiBase}|${key}` : key)
   const pairQuery = () => `von=${requested.value.from}&bis=${requested.value.to}`
 
   /* Keyed by draft and pair, so the Regierungsvorlage's station frame, which
@@ -81,7 +90,7 @@ export function useLawDiffStep(options: {
   const diffFetch = useFetch<LawDiffResponse>(
     () => `${base()}/diff?${pairQuery()}`,
     {
-      key: () => lawDiffKey(toValue(options.gp), toValue(options.inr), requested.value.from, requested.value.to),
+      key: () => cacheKeyOf(lawDiffKey(toValue(options.gp), toValue(options.inr), requested.value.from, requested.value.to)),
       lazy: true,
       server: false,
       dedupe: 'defer',
@@ -119,7 +128,7 @@ export function useLawDiffStep(options: {
     {
       // Shared with the Vorlage's station frame, which counts the same
       // Begründungen (`useVorlageOutcome`, 02.10.2026).
-      key: () => lawReasoningKey(toValue(options.gp), toValue(options.inr), requested.value.from, requested.value.to),
+      key: () => cacheKeyOf(lawReasoningKey(toValue(options.gp), toValue(options.inr), requested.value.from, requested.value.to)),
       lazy: true,
       server: false,
       dedupe: 'defer',

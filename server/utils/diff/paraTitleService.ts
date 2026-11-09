@@ -33,8 +33,9 @@
  * standing, but the answer is then not stored (`cache/gathered.ts`), so the
  * next request asks for the missing name again.
  */
-import type { LawStationId, ParagraphTitlesResponse } from '#shared/types'
-import { getLawDiff } from './lawDiffService'
+import type { LawStationId, ParagraphTitlesResponse, ProcedureRoot } from '#shared/types'
+import { meRoot, rootKey } from '#shared/utils/procedureRoot'
+import { getLawDiff, getRootLawDiff } from './lawDiffService'
 import { findLawStations } from './stationDocuments'
 import { fetchDocument } from '../upstream/fetchDocument'
 import type { TextBlock } from '../lawtext/lawUnits'
@@ -76,13 +77,13 @@ async function fetchHeading(ref: KonsParagraphRef): Promise<string | null> {
  * numbering the units carry.
  */
 async function clauseBlocks(
-  gp: string,
-  inr: number,
+  root: ProcedureRoot,
   detail: Awaited<ReturnType<typeof getGegenstand>>,
   from: LawStationId,
   to: LawStationId,
 ): Promise<TextBlock[][]> {
-  const stations = findLawStations(detail.content ?? {})
+  const { gp, inr } = root
+  const stations = findLawStations(detail.content ?? {}, root.ityp)
   const out: TextBlock[][] = []
   for (const id of [from, to]) {
     const html = stations.get(id)?.html
@@ -93,7 +94,7 @@ async function clauseBlocks(
     // Only the draft has a second source; the parliamentary stations are
     // published as HTML throughout the measured periods. No catch: a map
     // that did not load is not a draft without a clause.
-    if (id !== 'me') continue
+    if (id !== 'me' || root.ityp !== 'ME') continue
     const row = (await getRisMapForGp(gp)).rows.find((r) => r.inr === inr) ?? null
     const xml = row?.risDocument?.xml
     if (xml) out.push(parseRisXml(await fetchDocument(xml)))
@@ -103,17 +104,20 @@ async function clauseBlocks(
 
 /** The names of one pair — cached, and stored only when complete (`getParagraphTitles`). */
 const readParagraphTitles = defineCachedFunction(
-  async (gp: string, inr: number, from: LawStationId, to: LawStationId): Promise<Gathered<ParagraphTitlesResponse>> => {
-    const detail = await getGegenstand(gp, 'ME', inr)
+  async (root: ProcedureRoot, from: LawStationId, to: LawStationId): Promise<Gathered<ParagraphTitlesResponse>> => {
+    const { gp, inr } = root
+    const detail = await getGegenstand(gp, root.ityp, inr)
     // The reference date is the draft's Einlangen — the law as the draft
     // found it, not as it stands today. It lives on the list row, not on the
-    // Gegenstand, and the list is cached anyway.
-    const listed = (await getDraftsForGp(gp)).items.find((i) => i.inr === inr) ?? null
-    const asOf = listed?.arrivedAt || null
+    // Gegenstand, and the list is cached anyway. A Vorlage or Antrag without
+    // a Begutachtung has no list row; its own record dates it (10.11.2026).
+    const asOf = root.ityp === 'ME'
+      ? (await getDraftsForGp(gp)).items.find((i) => i.inr === inr)?.arrivedAt || null
+      : detail.content?.einlangen?.slice(0, 10) || null
 
     // Throws only where the comparison itself could not be made; every
     // „not comparable" is an answer with `available: false` (`lawDiffService`).
-    const diff = await getLawDiff(gp, inr, from, to)
+    const diff = root.ityp === 'ME' ? await getLawDiff(gp, inr, from, to) : await getRootLawDiff(root, from, to)
     // The addressed Paragraph stands in the instruction itself and hangs on
     // no resolution. It therefore goes out even where RIS owes the name — the
     // display puts it in front of the name, because „Z 2" is the number of
@@ -131,7 +135,7 @@ const readParagraphTitles = defineCachedFunction(
     // station wins where both name an Artikel, because the diff's articles
     // are the later side's.
     const clauses = new Map<string | null, ReturnType<typeof promulgationByArticle> extends Map<infer _K, infer V> ? V : never>()
-    for (const blocks of await clauseBlocks(gp, inr, detail, from, to)) {
+    for (const blocks of await clauseBlocks(root, detail, from, to)) {
       for (const [article, bgbl] of promulgationByArticle(blocks)) clauses.set(article, bgbl)
     }
     if (clauses.size === 0) return empty
@@ -196,7 +200,8 @@ const readParagraphTitles = defineCachedFunction(
     // Per pair: a Ziffer renumbered between two stations addresses a
     // different § there, and a § name carried over from another pair would
     // be exactly the wrong name this module refuses to produce.
-    getKey: (gp: string, inr: number, from: LawStationId, to: LawStationId) => `${gp}-${inr}-${from}-${to}`,
+    // `rootKey` keeps a draft's key what it always was.
+    getKey: (root: ProcedureRoot, from: LawStationId, to: LawStationId) => `${rootKey(root)}-${from}-${to}`,
     maxAge: DERIVED_ANALYSIS_TTL_S,
     swr: false,
     validate: onlyComplete,
@@ -205,5 +210,10 @@ const readParagraphTitles = defineCachedFunction(
 
 /** The § names of one pair, for the route — the cached half above, unwrapped. */
 export async function getParagraphTitles(gp: string, inr: number, from: LawStationId, to: LawStationId): Promise<ParagraphTitlesResponse> {
-  return (await readParagraphTitles(gp, inr, from, to)).value
+  return (await readParagraphTitles(meRoot(gp, inr), from, to)).value
+}
+
+/** The same for any root — a Vorlage or Antrag without a Begutachtung. */
+export async function getRootParagraphTitles(root: ProcedureRoot, from: LawStationId, to: LawStationId): Promise<ParagraphTitlesResponse> {
+  return (await readParagraphTitles(root, from, to)).value
 }

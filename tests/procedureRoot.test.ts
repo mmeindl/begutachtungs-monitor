@@ -10,7 +10,8 @@ import {
   parseVote,
 } from '../server/utils/parliament/detailJson'
 import { statementRowMatchesParent } from '../server/utils/parliament/list142'
-import { DRAFT_LAW_STATIONS, LAW_STATION_LABEL, lawDiffScopeOf, lawDiffSteps } from '../shared/utils/lawStations'
+import { DRAFT_LAW_STATIONS, LAW_STATION_LABEL, itemLawScope, lawDiffScopeOf, lawDiffSteps } from '../shared/utils/lawStations'
+import { parliamentDocumentSource } from '../shared/utils/provenance'
 import { itypOfKind, meRoot, rootCitation, rootKey, vorlagePath } from '../shared/utils/procedureRoot'
 
 /* Live detail JSON of six laws of GP XXVIII without a Begutachtung, cut to
@@ -115,5 +116,16 @@ describe('stations of a comparison by origin', () => {
     // A draft's page asks what it always asked.
     expect(lawDiffSteps('bgbl', [])).toEqual([{ from: 'me', to: 'bgbl' }])
     expect(lawDiffSteps('parlament', ['plenum'])).toEqual([{ from: 'rv', to: 'plenum' }])
+  })
+})
+
+describe('the comparison vocabulary of an item without a Begutachtung', () => {
+  it('names the item’s own first text and defaults to the whole way to the law', () => {
+    expect(itemLawScope('I')).toEqual({ stations: ['rv', 'ausschuss', 'plenum', 'bgbl'], defaultPair: { from: 'rv', to: 'bgbl' } })
+    expect(itemLawScope('A').defaultPair).toEqual({ from: 'antrag', to: 'bgbl' })
+  })
+  it('credits an Antrag’s text as a freies Werk, as a Vorlage’s — never CC BY', () => {
+    expect(parliamentDocumentSource('Antragsfassung', 'antrag').terms).toBe('freies-werk')
+    expect(parliamentDocumentSource('Ministerialentwurf', 'me').terms).toBe('keine-lizenz')
   })
 })
