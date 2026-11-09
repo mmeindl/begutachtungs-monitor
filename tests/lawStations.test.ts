@@ -29,7 +29,7 @@ const ALL = LAW_STATION_ORDER
 describe('vocabulary', () => {
   it('names every station and orders them by the procedure', () => {
     for (const id of ALL) expect(LAW_STATION_LABEL[id]).toBeTruthy()
-    expect([...ALL]).toEqual(['me', 'rv', 'ausschuss', 'plenum', 'bgbl'])
+    expect([...ALL]).toEqual(['me', 'antrag', 'rv', 'ausschuss', 'plenum', 'bgbl'])
   })
 
   it('labels the version, not the event upstream names', () => {

@@ -16,7 +16,7 @@ import type { LawDiffSegment, Publisher, TraceLink } from './common'
  * version is not at Parliament but in RIS, and between it and the Plenum
  * version NO actor negotiates any more.
  */
-export type LawStationId = 'me' | 'rv' | 'ausschuss' | 'plenum' | 'bgbl'
+export type LawStationId = 'me' | 'antrag' | 'rv' | 'ausschuss' | 'plenum' | 'bgbl'
 
 export type LawUnitChange = 'unchanged' | 'changed' | 'inserted' | 'removed'
 

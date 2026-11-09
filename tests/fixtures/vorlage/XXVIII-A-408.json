@@ -1,0 +1,873 @@
+{
+ "content": {
+  "ityp": "A",
+  "inr": 408,
+  "gp_code": "XXVIII",
+  "zitation": "408/A",
+  "title": "Bundesvergabegesetz, Änderung",
+  "description": "Antrag der Abgeordneten Mag. Klaus Fürlinger, Mag. Selma Yildirim, Dominik Oberhofer, Kolleginnen und Kollegen betreffend ein Bundesgesetz, mit dem das Bundesvergabegesetz 2018 geändert wird",
+  "einlangen": "2025-07-11T00:00:00",
+  "doktyp": "A",
+  "statementsstate": "0",
+  "documents": [
+   {
+    "title": "Selbständiger Antrag (gescanntes Original)",
+    "documents": [
+     {
+      "link": "/dokument/XXVIII/A/408/imfname_1702087.pdf",
+      "type": "PDF"
+     }
+    ]
+   },
+   {
+    "title": "Initiativantrag (elektr. übermittelte Version)",
+    "documents": [
+     {
+      "link": "/dokument/XXVIII/A/408/fname_1702713.pdf",
+      "type": "PDF"
+     },
+     {
+      "link": "/dokument/XXVIII/A/408/fnameorig_1702713.html",
+      "type": "HTML"
+     }
+    ]
+   },
+   {
+    "title": "Gesetzestext (Arbeitsdokument ParlDion)",
+    "documents": [
+     {
+      "link": "/dokument/XXVIII/A/408/fname_1702775.pdf",
+      "type": "PDF"
+     },
+     {
+      "link": "/dokument/XXVIII/A/408/fnameorig_1702775.html",
+      "type": "HTML"
+     }
+    ]
+   },
+   {
+    "title": "Textgegenüberstellung (Arbeitsdokument ParlDion)",
+    "documents": [
+     {
+      "link": "/dokument/XXVIII/A/408/fname_1703598.pdf",
+      "type": "PDF"
+     },
+     {
+      "link": "/dokument/XXVIII/A/408/fnameorig_1703598.html",
+      "type": "HTML"
+     }
+    ],
+    "infolink": "/services/hilfe/website-funktionen/textgegenueberstellung#was_sind_textgegenuberstellungen?",
+    "infolinktext": "Was sind Textgegenüberstellungen?"
+   }
+  ],
+  "statements": {
+   "documents": [
+    {
+     "title": "Gesetzestext (Arbeitsdokument ParlDion)",
+     "documents": [
+      {
+       "link": "/dokument/XXVIII/A/408/fname_1702775.pdf",
+       "type": "PDF"
+      },
+      {
+       "link": "/dokument/XXVIII/A/408/fnameorig_1702775.html",
+       "type": "HTML"
+      }
+     ]
+    }
+   ]
+  },
+  "phase": [
+   {
+    "name": "Einbringung NR",
+    "id": 1,
+    "stages": [
+     {
+      "date": "11.07.2025",
+      "text": "Einbringung im Nationalrat",
+      "priority": 1
+     },
+     {
+      "date": "11.07.2025",
+      "text": "Übermittlung an das Bundesministerium für Justiz"
+     },
+     {
+      "date": "11.07.2025",
+      "text": "Vorgesehen für den <a href=\"/ausschuss/XXVIII/A-JU/1/00926\">Justizausschuss</a>"
+     },
+     {
+      "date": "11.07.2025",
+      "text": "<a href=\"/gegenstand/XXVIII/NRSITZ/39\">39. Sitzung des Nationalrates</a>: Mitteilung der Einbringung",
+      "fsth": [
+       {
+        "gp_code": "XXVIII",
+        "sitzung_id": 39,
+        "fund_von": null,
+        "fund_bis": null,
+        "url": "/dokument/XXVIII/NRSITZ/39/fnameorig_1754594.html#147",
+        "title": "18:53:18 - Präsidium (RN/147)",
+        "text": "RN/147"
+       }
+      ]
+     }
+    ],
+    "documents": []
+   },
+   {
+    "name": "Ausschussberatungen NR",
+    "id": 3,
+    "stages": [
+     {
+      "date": "11.07.2025",
+      "text": "<a href=\"/gegenstand/XXVIII/NRSITZ/40\">40. Sitzung des Nationalrates</a>: Zuweisung an den <a href=\"/ausschuss/XXVIII/A-JU/1/00926\">Justizausschuss</a>",
+      "fsth": [
+       {
+        "gp_code": "XXVIII",
+        "sitzung_id": 40,
+        "fund_von": null,
+        "fund_bis": null,
+        "url": "/dokument/XXVIII/NRSITZ/40/fnameorig_1755013.html#2.3",
+        "title": "18:55:35 - Walter Rosenkranz, Präsident des Nationalrates - Präsidium (RN/2.3)",
+        "text": "RN/2.3"
+       }
+      ]
+     },
+     {
+      "date": "30.09.2025",
+      "text": "Justizausschuss: auf <a href=\"/dokument/XXVIII/A-JU/1/00926/TO_16672827.html\">Tagesordnung</a> in der <a href=\"/ausschuss/XXVIII/A-JU/1/00926?selectedStage=105&selectedSession=4&selectedDate=30092025\">4. Sitzung des Ausschusses</a>"
+     },
+     {
+      "date": "30.09.2025",
+      "text": "Justizausschuss: Bericht <a href=\"/gegenstand/XXVIII/I/214\">214 d.B.</a>",
+      "priority": 1
+     }
+    ],
+    "documents": [
+     {
+      "title": "Berichterstattung",
+      "documents": [
+       {
+        "link": "/dokument/XXVIII/I/214/fname_1714128.pdf",
+        "type": "PDF"
+       },
+       {
+        "link": "/dokument/XXVIII/I/214/fnameorig_1714128.html",
+        "type": "HTML"
+       }
+      ]
+     },
+     {
+      "title": "Gesetzestext",
+      "documents": [
+       {
+        "link": "/dokument/XXVIII/I/214/fname_1714129.pdf",
+        "type": "PDF"
+       },
+       {
+        "link": "/dokument/XXVIII/I/214/fnameorig_1714129.html",
+        "type": "HTML"
+       }
+      ]
+     }
+    ],
+    "correspondence": [
+     {
+      "additional": false,
+      "title": "Erwachsenenvertretung: Breite Mehrheit für neuerliche Gesetzesanpassungen ",
+      "date": "30.09.2025",
+      "url": "/aktuelles/pk/jahr_2025/pk0825#XXVIII_A_00408"
+     }
+    ]
+   },
+   {
+    "name": "Plenarberatungen NR",
+    "id": 4,
+    "stages": [
+     {
+      "date": "15.10.2025",
+      "text": "Auf der <a href=\"/dokument/XXVIII/NRSITZ/44/TO_16447534.html\">Tagesordnung</a> der <a href=\"/gegenstand/XXVIII/NRSITZ/44\">44. Sitzung des Nationalrates</a>"
+     },
+     {
+      "date": "15.10.2025",
+      "text": "Wortmeldungen in der Debatte",
+      "reden": {
+       "rendertype": "table",
+       "data": {
+        "header": [
+         {
+          "label": "Name und Klub",
+          "sortable": false,
+          "filterable": false,
+          "hidden": false,
+          "additionalInfo": false,
+          "class": "his-col-namefraktion"
+         },
+         {
+          "label": "Wortmeldungsart",
+          "sortable": false,
+          "filterable": false,
+          "hidden": false,
+          "additionalInfo": false,
+          "class": "his-col-wortmeldungsart"
+         },
+         {
+          "label": "Protokoll",
+          "sortable": false,
+          "filterable": false,
+          "hidden": false,
+          "additionalInfo": false,
+          "class": "his-col-protokoll"
+         },
+         {
+          "label": "Video",
+          "sortable": false,
+          "filterable": false,
+          "hidden": false,
+          "additionalInfo": false,
+          "class": "his-col-video"
+         }
+        ],
+        "rows": [
+         [
+          "<a href=\"/person/1972\" target=\"_blank\">Dr. Markus Tschank (F)</a>",
+          "Pro",
+          [
+           {
+            "gp_code": "XXVIII",
+            "sitzung_id": 44,
+            "fund_von": null,
+            "fund_bis": null,
+            "url": "/dokument/XXVIII/NRSITZ/44/fnameorig_1764795.html#150",
+            "title": "17:48:38 - Markus Tschank (FPÖ) - TOP 10 Anpassungen zu Vergabeverfahren für Verkehrsnetze (RN/150)",
+            "text": "RN/150"
+           }
+          ],
+          {
+           "url": "/aktuelles/mediathek/XXVIII/NRSITZ/44?DEBATTE=9&TS=1760550527"
+          }
+         ],
+         [
+          "<a href=\"/person/30706\" target=\"_blank\">Mag. Manfred Sams (S)</a>",
+          "Pro",
+          [
+           {
+            "gp_code": "XXVIII",
+            "sitzung_id": 44,
+            "fund_von": null,
+            "fund_bis": null,
+            "url": "/dokument/XXVIII/NRSITZ/44/fnameorig_1764795.html#151",
+            "title": "17:52:45 - Manfred Sams (SPÖ) - TOP 10 Anpassungen zu Vergabeverfahren für Verkehrsnetze (RN/151)",
+            "text": "RN/151"
+           }
+          ],
+          {
+           "url": "/aktuelles/mediathek/XXVIII/NRSITZ/44?DEBATTE=9&TS=1760550773"
+          }
+         ],
+         [
+          "<a href=\"/person/32570\" target=\"_blank\">MMag. Jakob Grüner, LL.M. (V)</a>",
+          "Pro",
+          [
+           {
+            "gp_code": "XXVIII",
+            "sitzung_id": 44,
+            "fund_von": null,
+            "fund_bis": null,
+            "url": "/dokument/XXVIII/NRSITZ/44/fnameorig_1764795.html#152",
+            "title": "17:55:56 - Jakob Grüner (ÖVP) - TOP 10 Anpassungen zu Vergabeverfahren für Verkehrsnetze (RN/152)",
+            "text": "RN/152"
+           }
+          ],
+          {
+           "url": "/aktuelles/mediathek/XXVIII/NRSITZ/44?DEBATTE=9&TS=1760550965"
+          }
+         ],
+         [
+          "<a href=\"/person/30681\" target=\"_blank\">Dominik Oberhofer (N)</a>",
+          "Pro",
+          [
+           {
+            "gp_code": "XXVIII",
+            "sitzung_id": 44,
+            "fund_von": null,
+            "fund_bis": null,
+            "url": "/dokument/XXVIII/NRSITZ/44/fnameorig_1764795.html#153",
+            "title": "17:58:22 - Dominik Oberhofer (NEOS) - TOP 10 Anpassungen zu Vergabeverfahren für Verkehrsnetze (RN/153)",
+            "text": "RN/153"
+           }
+          ],
+          {
+           "url": "/aktuelles/mediathek/XXVIII/NRSITZ/44?DEBATTE=9&TS=1760551113"
+          }
+         ],
+         [
+          "<a href=\"/person/2345\" target=\"_blank\">Dr. Alma Zadić, LL.M. (G)</a>",
+          "Pro",
+          [
+           {
+            "gp_code": "XXVIII",
+            "sitzung_id": 44,
+            "fund_von": null,
+            "fund_bis": null,
+            "url": "/dokument/XXVIII/NRSITZ/44/fnameorig_1764795.html#154",
+            "title": "17:59:27 - Alma Zadić (Grüne) - TOP 10 Anpassungen zu Vergabeverfahren für Verkehrsnetze (RN/154)",
+            "text": "RN/154"
+           }
+          ],
+          {
+           "url": "/aktuelles/mediathek/XXVIII/NRSITZ/44?DEBATTE=9&TS=1760551178"
+          }
+         ],
+         [
+          "<a href=\"/person/32507\" target=\"_blank\">BM Dr. Anna Sporrer (S)</a>",
+          "Regierungsbank",
+          [
+           {
+            "gp_code": "XXVIII",
+            "sitzung_id": 44,
+            "fund_von": null,
+            "fund_bis": null,
+            "url": "/dokument/XXVIII/NRSITZ/44/fnameorig_1764795.html#155",
+            "title": "18:02:08 - Anna Sporrer, Bundesministerin - TOP 10 Anpassungen zu Vergabeverfahren für Verkehrsnetze (RN/155)",
+            "text": "RN/155"
+           }
+          ],
+          {
+           "url": "/aktuelles/mediathek/XXVIII/NRSITZ/44?DEBATTE=9&TS=1760551339"
+          }
+         ],
+         [
+          "<a href=\"/person/5643\" target=\"_blank\">Mag.<sup>a</sup> Dr.<sup>in</sup> Petra Oberrauner (S)</a>",
+          "Pro",
+          [
+           {
+            "gp_code": "XXVIII",
+            "sitzung_id": 44,
+            "fund_von": null,
+            "fund_bis": null,
+            "url": "/dokument/XXVIII/NRSITZ/44/fnameorig_1764795.html#156",
+            "title": "18:04:10 - Petra Oberrauner (SPÖ) - TOP 10 Anpassungen zu Vergabeverfahren für Verkehrsnetze (RN/156)",
+            "text": "RN/156"
+           }
+          ],
+          {
+           "url": "/aktuelles/mediathek/XXVIII/NRSITZ/44?DEBATTE=9&TS=1760551460"
+          }
+         ]
+        ]
+       }
+      }
+     },
+     {
+      "date": "15.10.2025",
+      "text": "44. Sitzung des Nationalrates: Gesetzesvorschlag in zweiter Lesung <b>angenommen</b><br>Dafür: FPÖ, ÖVP, SPÖ, NEOS, GRÜNE, dagegen: -",
+      "fsth": [
+       {
+        "gp_code": "XXVIII",
+        "sitzung_id": 44,
+        "fund_von": null,
+        "fund_bis": null,
+        "url": "/dokument/XXVIII/NRSITZ/44/fnameorig_1764795.html#157",
+        "title": "18:06:54 - Abstimmung - TOP 10 Anpassungen zu Vergabeverfahren für Verkehrsnetze (RN/157)",
+        "text": "RN/157"
+       }
+      ]
+     },
+     {
+      "date": "15.10.2025",
+      "text": "44. Sitzung des Nationalrates: Gesetzesvorschlag in dritter Lesung <b>angenommen</b><br>Dafür: FPÖ, ÖVP, SPÖ, NEOS, GRÜNE, dagegen: -",
+      "fsth": [
+       {
+        "gp_code": "XXVIII",
+        "sitzung_id": 44,
+        "fund_von": null,
+        "fund_bis": null,
+        "url": "/dokument/XXVIII/NRSITZ/44/fnameorig_1764795.html#157",
+        "title": "18:06:54 - Abstimmung - TOP 10 Anpassungen zu Vergabeverfahren für Verkehrsnetze (RN/157)",
+        "text": "RN/157"
+       }
+      ]
+     },
+     {
+      "date": "15.10.2025",
+      "text": "Beschluss im Nationalrat <a href=\"/gegenstand/XXVIII/BNR/74\">74/BNR</a>",
+      "priority": 1
+     },
+     {
+      "date": "16.10.2025",
+      "text": "Übermittlung des Beschlusses an den Bundesrat"
+     }
+    ],
+    "documents": [
+     {
+      "title": "Gesetzestext",
+      "documents": [
+       {
+        "link": "/dokument/XXVIII/BNR/74/fname_1717034.pdf",
+        "type": "PDF"
+       },
+       {
+        "link": "/dokument/XXVIII/BNR/74/fnameorig_1717034.html",
+        "type": "HTML"
+       }
+      ]
+     },
+     {
+      "title": "Beschlussformel NR",
+      "documents": [
+       {
+        "link": "/dokument/XXVIII/BNR/74/fname_1717035.pdf",
+        "type": "PDF"
+       },
+       {
+        "link": "/dokument/XXVIII/BNR/74/fnameorig_1717035.html",
+        "type": "HTML"
+       }
+      ]
+     },
+     {
+      "title": "Beschlussformel BR",
+      "documents": [
+       {
+        "link": "/dokument/XXVIII/BNR/74/fname_1718879.pdf",
+        "type": "PDF"
+       },
+       {
+        "link": "/dokument/XXVIII/BNR/74/fnameorig_1718879.html",
+        "type": "HTML"
+       }
+      ]
+     }
+    ],
+    "correspondence": [
+     {
+      "additional": false,
+      "title": "Nationalrat beschließt mehr Mitbestimmung im Erwachsenenschutz",
+      "date": "15.10.2025",
+      "url": "/aktuelles/pk/jahr_2025/pk0900#XXVIII_A_00408"
+     }
+    ],
+    "vote": {
+     "result": [
+      {
+       "text": "FPÖ",
+       "code": "F",
+       "color": "#0052FB",
+       "fraction": 57,
+       "infavor": true
+      },
+      {
+       "text": "ÖVP",
+       "code": "V",
+       "color": "#62C3D0",
+       "fraction": 51,
+       "infavor": true
+      },
+      {
+       "text": "SPÖ",
+       "code": "S",
+       "color": "#FF0000",
+       "fraction": 41,
+       "infavor": true
+      },
+      {
+       "text": "NEOS",
+       "code": "N",
+       "color": "#E3257B",
+       "fraction": 18,
+       "infavor": true
+      },
+      {
+       "text": "GRÜNE",
+       "code": "G",
+       "color": "#69B12E",
+       "fraction": 16,
+       "infavor": true
+      }
+     ],
+     "infavor": true,
+     "code": "FVSNG",
+     "text": "Dafür: F, V, S, N, G, Dagegen: -",
+     "comment": null
+    }
+   },
+   {
+    "name": "Einlangen BR",
+    "id": 5,
+    "stages": [
+     {
+      "date": "16.10.2025",
+      "text": "Einlangen im Bundesrat (Frist: 11.12.2025)"
+     },
+     {
+      "date": "16.10.2025",
+      "text": "Mitwirkungsrecht des Bundesrates",
+      "priority": 1
+     }
+    ],
+    "documents": []
+   },
+   {
+    "name": "Ausschussberatungen BR",
+    "id": 6,
+    "stages": [
+     {
+      "date": "16.10.2025",
+      "text": "Zuweisung an den <a href=\"/ausschuss/BR/A-JU-BR/1/00114\">Justizausschuss des Bundesrates</a>"
+     },
+     {
+      "date": "21.10.2025",
+      "text": "Justizausschuss des Bundesrates: Bericht <a href=\"/gegenstand/BR/I-BR/11705\">11705/BR d.B.</a>",
+      "priority": 1
+     },
+     {
+      "date": "21.10.2025",
+      "text": "Justizausschuss des Bundesrates: auf <a href=\"/dokument/BR/A-JU-BR/1/00114/TO_16692645.html\">Tagesordnung</a> in der <a href=\"/ausschuss/BR/A-JU-BR/1/00114?selectedStage=105&selectedSession=3&selectedDate=21102025\">3. Sitzung des Ausschusses</a>"
+     }
+    ],
+    "documents": [
+     {
+      "title": "Berichterstattung",
+      "documents": [
+       {
+        "link": "/dokument/BR/I-BR/11705/fname_1718219.pdf",
+        "type": "PDF"
+       },
+       {
+        "link": "/dokument/BR/I-BR/11705/fnameorig_1718219.html",
+        "type": "HTML"
+       }
+      ]
+     }
+    ]
+   },
+   {
+    "name": "Plenarberatungen BR",
+    "id": 7,
+    "stages": [
+     {
+      "date": "23.10.2025",
+      "text": "Auf der Tagesordnung der <a href=\"/gegenstand/BR/BRSITZ/982\">982. Sitzung</a>"
+     },
+     {
+      "date": "23.10.2025",
+      "text": "982. Sitzung: Berichterstattung durch die Bundesrätin <a href=\"/person/33455\" target=\"_blank\">Verena Schweiger, BA MA MA</a>",
+      "fsth": [
+       {
+        "gp_code": "BR",
+        "sitzung_id": 982,
+        "fund_von": null,
+        "fund_bis": null,
+        "url": "/dokument/BR/BRSITZ/982/fnameorig_1768518.html#36",
+        "title": "13:14:50 - Berichterstatterin Verena Schweiger - TOP 3 Anpassungen zu Vergabeverfahren für Verkehrsnetze (RN/36)",
+        "text": "RN/36"
+       }
+      ]
+     },
+     {
+      "date": "23.10.2025",
+      "text": "982. Sitzung: Debatte",
+      "fsth": [
+       {
+        "gp_code": "BR",
+        "sitzung_id": 982,
+        "fund_von": null,
+        "fund_bis": null,
+        "url": "/dokument/BR/BRSITZ/982/fnameorig_1768518.html#37",
+        "title": "13:15:34 - Thomas Schmid (SPÖ/Bgld.) - TOP 3 Anpassungen zu Vergabeverfahren für Verkehrsnetze (RN/37)",
+        "text": "RN/37"
+       },
+       {
+        "gp_code": "BR",
+        "sitzung_id": 982,
+        "fund_von": null,
+        "fund_bis": null,
+        "url": "/dokument/BR/BRSITZ/982/fnameorig_1768518.html#41",
+        "title": "13:35:39 - Christoph Matznetter (SPÖ/W) - TOP 3 Anpassungen zu Vergabeverfahren für Verkehrsnetze (RN/41)",
+        "text": "RN/41"
+       }
+      ]
+     },
+     {
+      "date": "23.10.2025",
+      "text": "Wortmeldungen in der Debatte",
+      "reden": {
+       "rendertype": "table",
+       "data": {
+        "header": [
+         {
+          "label": "Name und Fraktion",
+          "sortable": false,
+          "filterable": false,
+          "hidden": false,
+          "additionalInfo": false,
+          "class": "his-col-namefraktion"
+         },
+         {
+          "label": "Wortmeldungsart",
+          "sortable": false,
+          "filterable": false,
+          "hidden": false,
+          "additionalInfo": false,
+          "class": "his-col-wortmeldungsart"
+         },
+         {
+          "label": "Protokoll",
+          "sortable": false,
+          "filterable": false,
+          "hidden": false,
+          "additionalInfo": false,
+          "class": "his-col-protokoll"
+         },
+         {
+          "label": "Video",
+          "sortable": false,
+          "filterable": false,
+          "hidden": false,
+          "additionalInfo": false,
+          "class": "his-col-video"
+         }
+        ],
+        "rows": [
+         [
+          "<a href=\"/person/32337\" target=\"_blank\">Ing. Thomas Schmid (S/B)</a>",
+          "Pro",
+          [
+           {
+            "gp_code": "BR",
+            "sitzung_id": 982,
+            "fund_von": null,
+            "fund_bis": null,
+            "url": "/dokument/BR/BRSITZ/982/fnameorig_1768518.html#37",
+            "title": "13:15:34 - Thomas Schmid (SPÖ/Bgld.) - TOP 3 Anpassungen zu Vergabeverfahren für Verkehrsnetze (RN/37)",
+            "text": "RN/37"
+           }
+          ],
+          {
+           "url": "/aktuelles/mediathek/BR/BRSITZ/982?DEBATTE=3&TS=1761225210"
+          }
+         ],
+         [
+          "<a href=\"/person/6534\" target=\"_blank\">Mag. Christine Schwarz-Fuchs (V/V)</a>",
+          "Pro",
+          [
+           {
+            "gp_code": "BR",
+            "sitzung_id": 982,
+            "fund_von": null,
+            "fund_bis": null,
+            "url": "/dokument/BR/BRSITZ/982/fnameorig_1768518.html#38",
+            "title": "13:21:37 - Christine Schwarz-Fuchs (ÖVP/Vbg.) - TOP 3 Anpassungen zu Vergabeverfahren für Verkehrsnetze (RN/38)",
+            "text": "RN/38"
+           }
+          ],
+          {
+           "url": "/aktuelles/mediathek/BR/BRSITZ/982?DEBATTE=3&TS=1761225577"
+          }
+         ],
+         [
+          "<a href=\"/person/3459\" target=\"_blank\">Andreas Arthur Spanring (F/N)</a>",
+          "Pro",
+          [
+           {
+            "gp_code": "BR",
+            "sitzung_id": 982,
+            "fund_von": null,
+            "fund_bis": null,
+            "url": "/dokument/BR/BRSITZ/982/fnameorig_1768518.html#39",
+            "title": "13:26:37 - Andreas Arthur Spanring (FPÖ/NÖ) - TOP 3 Anpassungen zu Vergabeverfahren für Verkehrsnetze (RN/39)",
+            "text": "RN/39"
+           }
+          ],
+          {
+           "url": "/aktuelles/mediathek/BR/BRSITZ/982?DEBATTE=3&TS=1761225877"
+          }
+         ],
+         [
+          "<a href=\"/person/32507\" target=\"_blank\">BM Dr. Anna Sporrer (S)</a>",
+          "Regierungsbank",
+          [
+           {
+            "gp_code": "BR",
+            "sitzung_id": 982,
+            "fund_von": null,
+            "fund_bis": null,
+            "url": "/dokument/BR/BRSITZ/982/fnameorig_1768518.html#40",
+            "title": "13:33:24 - Anna Sporrer, Bundesministerin - TOP 3 Anpassungen zu Vergabeverfahren für Verkehrsnetze (RN/40)",
+            "text": "RN/40"
+           }
+          ],
+          {
+           "url": "/aktuelles/mediathek/BR/BRSITZ/982?DEBATTE=3&TS=1761226282"
+          }
+         ],
+         [
+          "<a href=\"/person/14844\" target=\"_blank\">Dr. Christoph Matznetter (S/W)</a>",
+          "Pro",
+          [
+           {
+            "gp_code": "BR",
+            "sitzung_id": 982,
+            "fund_von": null,
+            "fund_bis": null,
+            "url": "/dokument/BR/BRSITZ/982/fnameorig_1768518.html#41",
+            "title": "13:35:39 - Christoph Matznetter (SPÖ/W) - TOP 3 Anpassungen zu Vergabeverfahren für Verkehrsnetze (RN/41)",
+            "text": "RN/41"
+           }
+          ],
+          {
+           "url": "/aktuelles/mediathek/BR/BRSITZ/982?DEBATTE=3&TS=1761226417"
+          }
+         ]
+        ]
+       }
+      }
+     },
+     {
+      "date": "23.10.2025",
+      "text": "982. Sitzung: Antrag, keinen Einspruch zu erheben, <b>angenommen</b><br>Einstimmig",
+      "fsth": [
+       {
+        "gp_code": "BR",
+        "sitzung_id": 982,
+        "fund_von": null,
+        "fund_bis": null,
+        "url": "/dokument/BR/BRSITZ/982/fnameorig_1768518.html#42",
+        "title": "13:37:19 - Abstimmung - TOP 3 Anpassungen zu Vergabeverfahren für Verkehrsnetze (RN/42)",
+        "text": "RN/42"
+       }
+      ]
+     },
+     {
+      "date": "23.10.2025",
+      "text": "Beschluss im Bundesrat <a href=\"/gegenstand/XXVIII/BNR/74\">74/BNR</a>",
+      "priority": 1
+     }
+    ],
+    "documents": [
+     {
+      "title": "Gesetzestext",
+      "documents": [
+       {
+        "link": "/dokument/XXVIII/BNR/74/fname_1717034.pdf",
+        "type": "PDF"
+       },
+       {
+        "link": "/dokument/XXVIII/BNR/74/fnameorig_1717034.html",
+        "type": "HTML"
+       }
+      ]
+     },
+     {
+      "title": "Beschlussformel NR",
+      "documents": [
+       {
+        "link": "/dokument/XXVIII/BNR/74/fname_1717035.pdf",
+        "type": "PDF"
+       },
+       {
+        "link": "/dokument/XXVIII/BNR/74/fnameorig_1717035.html",
+        "type": "HTML"
+       }
+      ]
+     },
+     {
+      "title": "Beschlussformel BR",
+      "documents": [
+       {
+        "link": "/dokument/XXVIII/BNR/74/fname_1718879.pdf",
+        "type": "PDF"
+       },
+       {
+        "link": "/dokument/XXVIII/BNR/74/fnameorig_1718879.html",
+        "type": "HTML"
+       }
+      ]
+     }
+    ],
+    "correspondence": [
+     {
+      "additional": false,
+      "title": "Debatte zu Wissenschaftsfreiheit und Demokratie im Bundesrat ",
+      "date": "23.10.2025",
+      "url": "/aktuelles/pk/jahr_2025/pk0953#XXVIII_A_00408"
+     }
+    ]
+   }
+  ],
+  "status": {
+   "number": 5,
+   "description": "Beschlossen im Bundesrat <a href=\"/gegenstand/XXVIII/BNR/74\">74/BNR</a><br>Einstimmig<br>Beschlossen im Nationalrat <a href=\"/gegenstand/XXVIII/BNR/74\">74/BNR</a>, Dafür: FPÖ, ÖVP, SPÖ, NEOS, GRÜNE, dagegen: -",
+   "bgbllinks": [
+    {
+     "title": "Bundesgesetzblatt I Nr. 121/2025",
+     "link": "http://www.ris.bka.gv.at/Dokument.wxe?Abfrage=BgblAuth&Dokumentnummer=BGBLA_2025_I_121",
+     "type": "DEFAULT"
+    },
+    {
+     "title": "Kunsttext",
+     "link": "http://www.ris.bka.gv.at/Ergebnis.wxe?Abfrage=Bundesnormen&Kundmachungsorgan=BGBl.+I+Nr.&Kundmachungsnummer=121%2f2025&Suchworte=&ReturnUrl=%2fSuchen.wxe%3fQueryID%3dBundesnormen",
+     "type": "DEFAULT"
+    }
+   ]
+  },
+  "vote": {
+   "result": [
+    {
+     "text": "FPÖ",
+     "code": "F",
+     "color": "#0052FB",
+     "fraction": 57,
+     "infavor": true
+    },
+    {
+     "text": "ÖVP",
+     "code": "V",
+     "color": "#62C3D0",
+     "fraction": 51,
+     "infavor": true
+    },
+    {
+     "text": "SPÖ",
+     "code": "S",
+     "color": "#FF0000",
+     "fraction": 41,
+     "infavor": true
+    },
+    {
+     "text": "NEOS",
+     "code": "N",
+     "color": "#E3257B",
+     "fraction": 18,
+     "infavor": true
+    },
+    {
+     "text": "GRÜNE",
+     "code": "G",
+     "color": "#69B12E",
+     "fraction": 16,
+     "infavor": true
+    }
+   ],
+   "infavor": true,
+   "code": "FVSNG",
+   "text": "Dafür: F, V, S, N, G, Dagegen: -",
+   "comment": null
+  },
+  "names": [
+   {
+    "funktext": "Eingebracht von",
+    "frak_code": "V"
+   },
+   {
+    "funktext": "Eingebracht von",
+    "frak_code": "S"
+   },
+   {
+    "funktext": "Eingebracht von",
+    "frak_code": "N"
+   }
+  ]
+ }
+}

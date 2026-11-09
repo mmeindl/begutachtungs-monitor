@@ -71,8 +71,10 @@ export function statementPageUrl(gp: string, ityp: StatementItemType, inr: numbe
   return `${PARLIAMENT_BASE}/gegenstand/${gp}/${ityp}/${inr}`
 }
 
-/** The item types list 142 can be filtered by here: a draft, or the Vorlage it became. */
-export type StatementParentType = 'ME' | 'I'
+/** The item types list 142 can be filtered by here: a draft, the Vorlage it
+ *  became, or a selbständiger Antrag (10.11.2026 — same item type `SN`, same
+ *  row shape: XXVIII 372/A answers 466 rows, columns 9 and 18 naming `A`). */
+export type StatementParentType = 'ME' | 'I' | 'A'
 
 /**
  * Does this row really hang off the parent it was asked for?

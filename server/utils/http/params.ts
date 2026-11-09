@@ -15,7 +15,7 @@ import { DRAFT_STATION_ORDER } from '#shared/utils/draftStations'
 import { GP_RE, isPlausibleGp, parseInr, previousGp } from '#shared/utils/gp'
 import {
   DEFAULT_LAW_STATION_PAIR,
-  LAW_STATION_ORDER,
+  DRAFT_LAW_STATIONS,
   defaultFromFor,
   isLawStationId,
   isLawStationPair,
@@ -72,21 +72,33 @@ export function requirePlausibleGp(gp: string, currentGp: string): string {
  * for the other question, whether the Begutachtungsergebnis survived to the
  * end.
  */
-export function readLawStationPair(event: H3Event): { from: LawStationId; to: LawStationId } {
+export function readLawStationPair(
+  event: H3Event,
+  /**
+   * The stations this root's comparison can name, and its default pair —
+   * a draft's by default (`DRAFT_LAW_STATIONS`, me→rv). A Vorlage or Antrag
+   * without a Begutachtung passes its own (10.11.2026).
+   */
+  scope: {
+    stations: readonly LawStationId[]
+    defaultPair: { from: LawStationId; to: LawStationId }
+  } = { stations: DRAFT_LAW_STATIONS, defaultPair: DEFAULT_LAW_STATION_PAIR },
+): { from: LawStationId; to: LawStationId } {
   const query = getQuery(event)
-  const vocabulary = LAW_STATION_ORDER.join(', ')
+  const vocabulary = scope.stations.join(', ')
+  const known = (value: string) => isLawStationId(value) && scope.stations.includes(value)
 
   const bis = firstQueryValue(query.bis)
-  if (bis !== undefined && !isLawStationId(bis)) {
+  if (bis !== undefined && !known(bis)) {
     throw createError({ statusCode: 400, statusMessage: `Unbekannte Station für „bis“ (${vocabulary})` })
   }
-  const to = bis ?? DEFAULT_LAW_STATION_PAIR.to
+  const to = (bis as LawStationId | undefined) ?? scope.defaultPair.to
 
   const von = firstQueryValue(query.von)
-  if (von !== undefined && !isLawStationId(von)) {
+  if (von !== undefined && !known(von)) {
     throw createError({ statusCode: 400, statusMessage: `Unbekannte Station für „von“ (${vocabulary})` })
   }
-  const from = von ?? defaultFromFor(to)
+  const from = (von as LawStationId | undefined) ?? (bis === undefined ? scope.defaultPair.from : defaultFromFor(to))
 
   // A flipped pair is not harmless input: the word diff calls one side
   // removed and the other inserted, so it would report every amendment

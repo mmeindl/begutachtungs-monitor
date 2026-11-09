@@ -5,9 +5,21 @@
  * Named apart from `shared/utils/lawStations.ts`, which holds the station
  * vocabulary both runtimes share; this one resolves the documents.
  */
-import type { DraftDocument, LawStationId } from '#shared/types'
+import type { DraftDocument, LawStationId, ProcedureItemType } from '#shared/types'
 import { meTextTitleRank } from '#shared/utils/lawStations'
 import { mapDocuments, mapTextEvolution, type RawDocumentGroup } from '../parliament/detailJson'
+
+/**
+ * The Antrag's law text alone, by the exact title Parliament gives it.
+ *
+ * An Antrag publishes its text twice in HTML: inside „Initiativantrag
+ * (elektr. übermittelte Version)", which also carries the Zuweisung and the
+ * Begründung, and as „Gesetzestext (Arbeitsdokument ParlDion)", Parliament's
+ * working copy of the text alone. Only the second is offered: the first would
+ * hand the Begründung to a § parser (read on XXVIII 1007/A, 372/A and 408/A,
+ * 10.11.2026 — both parse to the same units today, which is luck, not a rule).
+ */
+export const ANTRAG_TEXT_TITLE = 'Gesetzestext (Arbeitsdokument ParlDion)'
 
 /** One station's published law text, as the comparison can use it. */
 interface ResolvedLawStation {
@@ -39,10 +51,21 @@ interface ResolvedLawStation {
  * GP-XXVI drafts publish "Gesetzestext, Vorblatt und Erläuterungen" as one
  * file, and a prefix match would feed the Erläuterungen to a § parser.
  */
-export function findLawStations(content: {
-  documents?: RawDocumentGroup[] | null
-  statements?: { documents?: RawDocumentGroup[] | null } | null
-}): Map<LawStationId, ResolvedLawStation> {
+export function findLawStations(
+  content: {
+    documents?: RawDocumentGroup[] | null
+    statements?: { documents?: RawDocumentGroup[] | null } | null
+  },
+  /**
+   * Whose record this is (10.11.2026). On a Regierungsvorlage's own record
+   * its „Gesetzestext" is the `rv` station — read as a draft's text, the
+   * title whitelist would have filed it as `me` — and on an Antrag's the
+   * ParlDion text is `antrag`. The parliamentary stations come from the same
+   * `statements.documents` list on all three records.
+   */
+  ityp: ProcedureItemType = 'ME',
+): Map<LawStationId, ResolvedLawStation> {
+  if (ityp !== 'ME') return findItemStations(content, ityp)
   const out = new Map<LawStationId, ResolvedLawStation>()
   const documents = mapDocuments(content.documents)
 
@@ -74,6 +97,40 @@ export function findLawStations(content: {
   return out
 }
 
+/** The same for a Vorlage's or an Antrag's own record. */
+function findItemStations(
+  content: {
+    documents?: RawDocumentGroup[] | null
+    statements?: { documents?: RawDocumentGroup[] | null } | null
+  },
+  ityp: 'I' | 'A',
+): Map<LawStationId, ResolvedLawStation> {
+  const out = new Map<LawStationId, ResolvedLawStation>()
+  const put = (id: LawStationId, formats: readonly { type: string; url: string }[]) => {
+    const station = out.get(id) ?? { id, html: null, xml: null, fallbackUrl: null }
+    for (const f of formats) {
+      if (f.type === 'html' || f.url.endsWith('.html')) station.html ??= f.url
+      else station.fallbackUrl ??= f.url
+    }
+    out.set(id, station)
+  }
+  const documents = mapDocuments(content.documents)
+  // The first text, from the item's own document list: a Vorlage's
+  // „Gesetzestext", an Antrag's ParlDion text — exact titles, for the reason
+  // the draft's whitelist is exact.
+  const firstId: LawStationId = ityp === 'I' ? 'rv' : 'antrag'
+  const firstTitle = ityp === 'I' ? 'Gesetzestext' : ANTRAG_TEXT_TITLE
+  const first = documents.find((d) => d.title.trim() === firstTitle)
+  if (first) put(firstId, first.formats)
+  // The later versions. The list opens with the same first text (renamed to
+  // „Regierungsvorlage" on a Vorlage, unmapped on an Antrag), so only the
+  // two parliamentary stations are taken from it.
+  for (const v of mapTextEvolution(content.statements?.documents)) {
+    if (v.stationId === 'ausschuss' || v.stationId === 'plenum') put(v.stationId, [{ type: v.url.endsWith('.html') ? 'html' : 'pdf', url: v.url }])
+  }
+  return out
+}
+
 /**
  * Why a station carries nothing to compare — absent and PDF-only are two
  * different answers, and a reader who is told "only a PDF" knows there is a
@@ -81,6 +138,7 @@ export function findLawStations(content: {
  */
 export const MISSING_STATION_REASON: Record<LawStationId, string> = {
   me: 'Zu diesem Entwurf ist kein Gesetzestext als eigenes Dokument veröffentlicht.',
+  antrag: 'Zu diesem Antrag ist kein Gesetzestext als eigenes Dokument veröffentlicht.',
   rv: 'Es liegt noch keine Regierungsvorlage vor, mit der sich der Entwurf vergleichen ließe.',
   ausschuss: 'Der Ausschuss hat keine geänderte Fassung des Gesetzestexts veröffentlicht.',
   plenum: 'Im Plenum wurde keine geänderte Fassung des Gesetzestexts veröffentlicht.',

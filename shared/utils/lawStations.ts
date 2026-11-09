@@ -20,7 +20,15 @@ import type { LawStationId } from '../types'
  * calls one side removed and the other inserted and a flipped pair would
  * report every amendment backwards.
  */
-export const LAW_STATION_ORDER: readonly LawStationId[] = ['me', 'rv', 'ausschuss', 'plenum', 'bgbl']
+export const LAW_STATION_ORDER: readonly LawStationId[] = ['me', 'antrag', 'rv', 'ausschuss', 'plenum', 'bgbl']
+
+/**
+ * The stations a Ministerialentwurf's comparison can name — every station but
+ * `antrag`, which exists only on an Antrag's own record. The draft endpoints
+ * validate against this list, so they refuse `antrag` with the same 400 and
+ * the same vocabulary as before the Antrag's station existed (10.11.2026).
+ */
+export const DRAFT_LAW_STATIONS: readonly LawStationId[] = LAW_STATION_ORDER.filter((id) => id !== 'antrag')
 
 /**
  * The label names the VERSION, not the event: "Ausschussfassung", not
@@ -32,6 +40,14 @@ export const LAW_STATION_ORDER: readonly LawStationId[] = ['me', 'rv', 'ausschus
  */
 export const LAW_STATION_LABEL: Record<LawStationId, string> = {
   me: 'Ministerialentwurf',
+  // The text of a selbständiger Antrag as introduced — Parliament's own
+  // working copy of it („Gesetzestext (Arbeitsdokument ParlDion)"), the one
+  // document of an Antrag that is the law text alone (10.11.2026). It stands
+  // where the Regierungsvorlage stands for a Vorlage: the first text the
+  // Nationalrat has, and an alternative to it, never both on one record.
+  // „Antragsfassung", not „Initiativantrag": the label has to decline like
+  // the -ung names beside it (see below).
+  antrag: 'Antragsfassung',
   rv: 'Regierungsvorlage',
   ausschuss: 'Ausschussfassung',
   plenum: 'Plenarfassung',
@@ -215,7 +231,8 @@ export const DEFAULT_LAW_STATION_PAIR: { from: LawStationId; to: LawStationId } 
 export type LawDiffScope = 'rv' | 'parlament' | 'bgbl'
 
 export function lawDiffScopeOf(to: LawStationId): LawDiffScope | null {
-  if (to === 'me') return null
+  // The two first texts: nothing leads into them.
+  if (to === 'me' || to === 'antrag') return null
   if (to === 'rv') return 'rv'
   return to === 'bgbl' ? 'bgbl' : 'parlament'
 }
@@ -223,15 +240,26 @@ export function lawDiffScopeOf(to: LawStationId): LawDiffScope | null {
 export interface LawStationPair { from: LawStationId; to: LawStationId }
 
 /** The comparisons of one section, in procedural order; the first is its
- *  default. `parliamentTexts` are the parliamentary versions the draft has. */
-export function lawDiffSteps(scope: LawDiffScope, parliamentTexts: readonly LawStationId[]): LawStationPair[] {
-  if (scope === 'rv') return [{ from: 'me', to: 'rv' }]
-  if (scope === 'bgbl') return [{ from: 'me', to: 'bgbl' }]
+ *  default. `parliamentTexts` are the parliamentary versions the draft has.
+ *
+ *  `origin` is the procedure's first text (10.11.2026): the draft on a
+ *  Ministerialentwurf's page, the Vorlage or the Antrag on the page of a law
+ *  that came to the Nationalrat without a Begutachtung. There the
+ *  Bundesgesetzblatt holds the whole way from that text, and the
+ *  parliamentary steps start at it — an Antrag has no Regierungsvorlage. */
+export function lawDiffSteps(
+  scope: LawDiffScope,
+  parliamentTexts: readonly LawStationId[],
+  origin: 'me' | 'rv' | 'antrag' = 'me',
+): LawStationPair[] {
+  if (scope === 'rv') return origin === 'me' ? [{ from: 'me', to: 'rv' }] : []
+  if (scope === 'bgbl') return [{ from: origin, to: 'bgbl' }]
+  const start: LawStationId = origin === 'antrag' ? 'antrag' : 'rv'
   const ausschuss = parliamentTexts.includes('ausschuss')
   const plenum = parliamentTexts.includes('plenum')
-  if (ausschuss && plenum) return [{ from: 'rv', to: 'ausschuss' }, { from: 'ausschuss', to: 'plenum' }]
-  if (ausschuss) return [{ from: 'rv', to: 'ausschuss' }]
-  if (plenum) return [{ from: 'rv', to: 'plenum' }]
+  if (ausschuss && plenum) return [{ from: start, to: 'ausschuss' }, { from: 'ausschuss', to: 'plenum' }]
+  if (ausschuss) return [{ from: start, to: 'ausschuss' }]
+  if (plenum) return [{ from: start, to: 'plenum' }]
   return []
 }
 
@@ -278,6 +306,9 @@ const PAIR_QUESTIONS: Readonly<Record<string, string>> = {
   'me>bgbl': 'Was sich vom Entwurf bis zum kundgemachten Gesetz geändert hat',
   'rv>bgbl': 'Was sich von der Regierungsvorlage bis zum Gesetz geändert hat',
   'ausschuss>bgbl': 'Was sich nach dem Ausschuss bis zum Gesetz geändert hat',
+  'antrag>ausschuss': 'Was der Ausschuss am Antrag geändert hat',
+  'antrag>plenum': 'Was das Parlament am Antrag geändert hat',
+  'antrag>bgbl': 'Was sich vom Antrag bis zum Gesetz geändert hat',
 }
 
 export function lawStationPairQuestion(from: LawStationId, to: LawStationId): string {

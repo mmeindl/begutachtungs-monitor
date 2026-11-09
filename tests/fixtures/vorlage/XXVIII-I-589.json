@@ -1,0 +1,835 @@
+{
+ "content": {
+  "ityp": "I",
+  "inr": 589,
+  "gp_code": "XXVIII",
+  "zitation": "589 d.B.",
+  "title": "Behinderteneinstellungsgesetz, Änderung",
+  "description": "Bundesgesetz, mit dem das Behinderteneinstellungsgesetz geändert wird",
+  "einlangen": "2026-07-08T00:00:00",
+  "doktyp": "RV",
+  "statementsstate": "0",
+  "documents": [
+   {
+    "title": "Gesetzestext",
+    "documents": [
+     {
+      "link": "/dokument/XXVIII/I/589/fname_1770355.pdf",
+      "type": "PDF"
+     },
+     {
+      "link": "/dokument/XXVIII/I/589/fnameorig_1770355.html",
+      "type": "HTML"
+     }
+    ]
+   },
+   {
+    "title": "Erläuterungen",
+    "documents": [
+     {
+      "link": "/dokument/XXVIII/I/589/fname_1770357.pdf",
+      "type": "PDF"
+     },
+     {
+      "link": "/dokument/XXVIII/I/589/fnameorig_1770357.html",
+      "type": "HTML"
+     }
+    ]
+   },
+   {
+    "title": "Vorblatt und WFA",
+    "documents": [
+     {
+      "link": "/dokument/XXVIII/I/589/imfname_1770359.pdf",
+      "type": "PDF"
+     }
+    ]
+   },
+   {
+    "title": "Textgegenüberstellung",
+    "documents": [
+     {
+      "link": "/dokument/XXVIII/I/589/fname_1770358.pdf",
+      "type": "PDF"
+     },
+     {
+      "link": "/dokument/XXVIII/I/589/fnameorig_1770358.html",
+      "type": "HTML"
+     }
+    ]
+   }
+  ],
+  "statements": {
+   "documents": [
+    {
+     "title": "Gesetzestext",
+     "documents": [
+      {
+       "link": "/dokument/XXVIII/I/589/fname_1770355.pdf",
+       "type": "PDF"
+      },
+      {
+       "link": "/dokument/XXVIII/I/589/fnameorig_1770355.html",
+       "type": "HTML"
+      }
+     ]
+    }
+   ]
+  },
+  "phase": [
+   {
+    "name": "Einlangen NR",
+    "id": 1,
+    "stages": [
+     {
+      "date": "08.07.2026",
+      "text": "Einlangen im Nationalrat",
+      "priority": 1
+     },
+     {
+      "date": "08.07.2026",
+      "text": "Vorgesehen für den <a href=\"/ausschuss/XXVIII/A-AS/1/00917\">Ausschuss für Arbeit und Soziales</a>"
+     },
+     {
+      "date": "08.07.2026",
+      "text": "<a href=\"/gegenstand/XXVIII/NRSITZ/90\">90. Sitzung des Nationalrates</a>: Mitteilung des Einlangens",
+      "fsth": [
+       {
+        "gp_code": "XXVIII",
+        "sitzung_id": 90,
+        "fund_von": null,
+        "fund_bis": null,
+        "url": "/dokument/XXVIII/NRSITZ/90/A_-_14_35_50_00994405.html#2",
+        "title": "14:35:50 - Doris Bures, Dritte Präsidentin des Nationalrates - Präsidium (RN/2)",
+        "text": "RN/2"
+       }
+      ]
+     }
+    ],
+    "documents": []
+   },
+   {
+    "name": "Ausschussberatungen NR",
+    "id": 3,
+    "stages": [
+     {
+      "date": "08.07.2026",
+      "text": "<a href=\"/gegenstand/XXVIII/NRSITZ/91\">91. Sitzung des Nationalrates</a>: Zuweisung an den <a href=\"/ausschuss/XXVIII/A-AS/1/00917\">Ausschuss für Arbeit und Soziales</a>",
+      "fsth": [
+       {
+        "gp_code": "XXVIII",
+        "sitzung_id": 91,
+        "fund_von": null,
+        "fund_bis": null,
+        "url": "/dokument/XXVIII/NRSITZ/91/A_-_14_36_32_00994403.html#2.3",
+        "title": "14:36:32 - Doris Bures, Dritte Präsidentin des Nationalrates - Präsidium (RN/2.3)",
+        "text": "RN/2.3"
+       }
+      ]
+     },
+     {
+      "date": "09.09.2026",
+      "text": "Ausschuss für Arbeit und Soziales: auf <a href=\"/dokument/XXVIII/A-AS/1/00917/TO_16904239.html\">Tagesordnung</a> in der <a href=\"/ausschuss/XXVIII/A-AS/1/00917?selectedStage=105&selectedSession=10&selectedDate=09092026\">10. Sitzung des Ausschusses</a>"
+     },
+     {
+      "date": "09.09.2026",
+      "text": "Ausschuss für Arbeit und Soziales: Bericht <a href=\"/gegenstand/XXVIII/I/608\">608 d.B.</a>",
+      "priority": 1
+     }
+    ],
+    "documents": [
+     {
+      "title": "Berichterstattung",
+      "documents": [
+       {
+        "link": "/dokument/XXVIII/I/608/fname_1777985.pdf",
+        "type": "PDF"
+       },
+       {
+        "link": "/dokument/XXVIII/I/608/fnameorig_1777985.html",
+        "type": "HTML"
+       }
+      ]
+     }
+    ],
+    "correspondence": [
+     {
+      "additional": false,
+      "title": "Sozialausschuss einstimmig für Sondermittel für den Ausgleichstaxfonds",
+      "date": "09.09.2026",
+      "url": "/aktuelles/pk/jahr_2026/pk0808#XXVIII_I_00589"
+     }
+    ]
+   },
+   {
+    "name": "Plenarberatungen NR",
+    "id": 4,
+    "stages": [
+     {
+      "date": "23.09.2026",
+      "text": "Auf der <a href=\"/dokument/XXVIII/NRSITZ/96/TO_16770183.html\">Tagesordnung</a> der <a href=\"/gegenstand/XXVIII/NRSITZ/96\">96. Sitzung des Nationalrates</a>"
+     },
+     {
+      "date": "23.09.2026",
+      "text": "Wortmeldungen in der Debatte",
+      "reden": {
+       "rendertype": "table",
+       "data": {
+        "header": [
+         {
+          "label": "Name und Klub",
+          "sortable": false,
+          "filterable": false,
+          "hidden": false,
+          "additionalInfo": false,
+          "class": "his-col-namefraktion"
+         },
+         {
+          "label": "Wortmeldungsart",
+          "sortable": false,
+          "filterable": false,
+          "hidden": false,
+          "additionalInfo": false,
+          "class": "his-col-wortmeldungsart"
+         },
+         {
+          "label": "Protokoll",
+          "sortable": false,
+          "filterable": false,
+          "hidden": false,
+          "additionalInfo": false,
+          "class": "his-col-protokoll"
+         },
+         {
+          "label": "Video",
+          "sortable": false,
+          "filterable": false,
+          "hidden": false,
+          "additionalInfo": false,
+          "class": "his-col-video"
+         }
+        ],
+        "rows": [
+         [
+          "<a href=\"/person/35468\" target=\"_blank\">Dr. Dagmar Belakowitsch (F)</a>",
+          "Pro",
+          [
+           {
+            "gp_code": "XXVIII",
+            "sitzung_id": 96,
+            "fund_von": null,
+            "fund_bis": null,
+            "url": "/dokument/XXVIII/NRSITZ/96/A_-_14_28_22_01017367.html#72",
+            "title": "14:28:22 - Dagmar Belakowitsch (FPÖ) - TOP 4 Weitere Sondermittel für den Ausgleichstaxfonds (RN/72)",
+            "text": "RN/72"
+           }
+          ],
+          {
+           "url": "/aktuelles/mediathek/XXVIII/NRSITZ/96?DEBATTE=3&TS=1790173710"
+          }
+         ],
+         [
+          "<a href=\"/person/2334\" target=\"_blank\">Mag.<sup>a</sup> Verena Nussbaum (S)</a>",
+          "Pro",
+          [
+           {
+            "gp_code": "XXVIII",
+            "sitzung_id": 96,
+            "fund_von": null,
+            "fund_bis": null,
+            "url": "/dokument/XXVIII/NRSITZ/96/A_-_14_29_43_01017370.html#73",
+            "title": "14:29:43 - Verena Nussbaum (SPÖ) - TOP 4 Weitere Sondermittel für den Ausgleichstaxfonds (RN/73)",
+            "text": "RN/73"
+           }
+          ],
+          {
+           "url": "/aktuelles/mediathek/XXVIII/NRSITZ/96?DEBATTE=3&TS=1790173792"
+          }
+         ],
+         [
+          "<a href=\"/person/6151\" target=\"_blank\">Heike Eder, BSc MBA (V)</a>",
+          "Pro",
+          [
+           {
+            "gp_code": "XXVIII",
+            "sitzung_id": 96,
+            "fund_von": null,
+            "fund_bis": null,
+            "url": "/dokument/XXVIII/NRSITZ/96/A_-_14_33_24_01017397.html#74",
+            "title": "14:33:24 - Heike Eder (ÖVP) - TOP 4 Weitere Sondermittel für den Ausgleichstaxfonds (RN/74)",
+            "text": "RN/74"
+           }
+          ],
+          {
+           "url": "/aktuelles/mediathek/XXVIII/NRSITZ/96?DEBATTE=3&TS=1790174012"
+          }
+         ],
+         [
+          "<a href=\"/person/5684\" target=\"_blank\">Fiona Fiedler, BEd (N)</a>",
+          "Pro",
+          [
+           {
+            "gp_code": "XXVIII",
+            "sitzung_id": 96,
+            "fund_von": null,
+            "fund_bis": null,
+            "url": "/dokument/XXVIII/NRSITZ/96/A_-_14_36_32_01017410.html#75",
+            "title": "14:36:32 - Fiona Fiedler (NEOS) - TOP 4 Weitere Sondermittel für den Ausgleichstaxfonds (RN/75)",
+            "text": "RN/75"
+           }
+          ],
+          {
+           "url": "/aktuelles/mediathek/XXVIII/NRSITZ/96?DEBATTE=3&TS=1790174200"
+          }
+         ],
+         [
+          "<a href=\"/person/5676\" target=\"_blank\">Ralph Schallmeiner (G)</a>",
+          "Pro",
+          [
+           {
+            "gp_code": "XXVIII",
+            "sitzung_id": 96,
+            "fund_von": null,
+            "fund_bis": null,
+            "url": "/dokument/XXVIII/NRSITZ/96/A_-_14_39_48_01017416.html#76",
+            "title": "14:39:48 - Ralph Schallmeiner (Grüne) - TOP 4 Weitere Sondermittel für den Ausgleichstaxfonds (RN/76)",
+            "text": "RN/76"
+           }
+          ],
+          {
+           "url": "/aktuelles/mediathek/XXVIII/NRSITZ/96?DEBATTE=3&TS=1790174397"
+          }
+         ],
+         [
+          "<a href=\"/person/3677\" target=\"_blank\">BM Korinna Schumann (S)</a>",
+          "Regierungsbank",
+          [
+           {
+            "gp_code": "XXVIII",
+            "sitzung_id": 96,
+            "fund_von": null,
+            "fund_bis": null,
+            "url": "/dokument/XXVIII/NRSITZ/96/A_-_14_42_42_01017427.html#77",
+            "title": "14:42:42 - Korinna Schumann, Bundesministerin - TOP 4 Weitere Sondermittel für den Ausgleichstaxfonds (RN/77)",
+            "text": "RN/77"
+           }
+          ],
+          {
+           "url": "/aktuelles/mediathek/XXVIII/NRSITZ/96?DEBATTE=3&TS=1790174568"
+          }
+         ]
+        ]
+       }
+      }
+     },
+     {
+      "date": "23.09.2026",
+      "text": "96. Sitzung des Nationalrates: Gesetzesvorschlag in zweiter Lesung <b>angenommen</b><br>Dafür: FPÖ, ÖVP, SPÖ, NEOS, GRÜNE, dagegen: -",
+      "fsth": [
+       {
+        "gp_code": "XXVIII",
+        "sitzung_id": 96,
+        "fund_von": null,
+        "fund_bis": null,
+        "url": "/dokument/XXVIII/NRSITZ/96/A_-_14_46_49_01017450.html#78",
+        "title": "14:46:49 - Abstimmung - TOP 4 Weitere Sondermittel für den Ausgleichstaxfonds (RN/78)",
+        "text": "RN/78"
+       }
+      ]
+     },
+     {
+      "date": "23.09.2026",
+      "text": "96. Sitzung des Nationalrates: Gesetzesvorschlag in dritter Lesung <b>angenommen</b><br>Dafür: FPÖ, ÖVP, SPÖ, NEOS, GRÜNE, dagegen: -",
+      "fsth": [
+       {
+        "gp_code": "XXVIII",
+        "sitzung_id": 96,
+        "fund_von": null,
+        "fund_bis": null,
+        "url": "/dokument/XXVIII/NRSITZ/96/A_-_14_46_49_01017450.html#78",
+        "title": "14:46:49 - Abstimmung - TOP 4 Weitere Sondermittel für den Ausgleichstaxfonds (RN/78)",
+        "text": "RN/78"
+       }
+      ]
+     },
+     {
+      "date": "23.09.2026",
+      "text": "Beschluss im Nationalrat <a href=\"/gegenstand/XXVIII/BNR/206\">206/BNR</a>",
+      "priority": 1
+     },
+     {
+      "date": "24.09.2026",
+      "text": "Übermittlung des Beschlusses an den Bundesrat"
+     }
+    ],
+    "documents": [
+     {
+      "title": "Gesetzestext",
+      "documents": [
+       {
+        "link": "/dokument/XXVIII/BNR/206/fname_1780099.pdf",
+        "type": "PDF"
+       },
+       {
+        "link": "/dokument/XXVIII/BNR/206/fnameorig_1780099.html",
+        "type": "HTML"
+       }
+      ]
+     },
+     {
+      "title": "Beschlussformel NR",
+      "documents": [
+       {
+        "link": "/dokument/XXVIII/BNR/206/fname_1780100.pdf",
+        "type": "PDF"
+       },
+       {
+        "link": "/dokument/XXVIII/BNR/206/fnameorig_1780100.html",
+        "type": "HTML"
+       }
+      ]
+     },
+     {
+      "title": "Beschlussformel BR",
+      "documents": [
+       {
+        "link": "/dokument/XXVIII/BNR/206/fname_1782523.pdf",
+        "type": "PDF"
+       },
+       {
+        "link": "/dokument/XXVIII/BNR/206/fnameorig_1782523.html",
+        "type": "HTML"
+       }
+      ]
+     }
+    ],
+    "correspondence": [
+     {
+      "additional": false,
+      "title": "Nationalrat setzt Steuerfreibetrag für Erwerbstägige im Pensionsalter auf Schiene",
+      "date": "23.09.2026",
+      "url": "/aktuelles/pk/jahr_2026/pk0840#XXVIII_I_00589"
+     }
+    ],
+    "vote": {
+     "result": [
+      {
+       "text": "FPÖ",
+       "code": "F",
+       "color": "#0052FB",
+       "fraction": 57,
+       "infavor": true
+      },
+      {
+       "text": "ÖVP",
+       "code": "V",
+       "color": "#62C3D0",
+       "fraction": 51,
+       "infavor": true
+      },
+      {
+       "text": "SPÖ",
+       "code": "S",
+       "color": "#FF0000",
+       "fraction": 41,
+       "infavor": true
+      },
+      {
+       "text": "NEOS",
+       "code": "N",
+       "color": "#E3257B",
+       "fraction": 17,
+       "infavor": true
+      },
+      {
+       "text": "GRÜNE",
+       "code": "G",
+       "color": "#69B12E",
+       "fraction": 16,
+       "infavor": true
+      }
+     ],
+     "infavor": true,
+     "code": "FVSNG",
+     "text": "Dafür: F, V, S, N, G, Dagegen: -",
+     "comment": null
+    }
+   },
+   {
+    "name": "Einlangen BR",
+    "id": 5,
+    "stages": [
+     {
+      "date": "24.09.2026",
+      "text": "Einlangen im Bundesrat (Frist: 19.11.2026)"
+     },
+     {
+      "date": "24.09.2026",
+      "text": "Mitwirkungsrecht des Bundesrates",
+      "priority": 1
+     }
+    ],
+    "documents": []
+   },
+   {
+    "name": "Ausschussberatungen BR",
+    "id": 6,
+    "stages": [
+     {
+      "date": "24.09.2026",
+      "text": "Zuweisung an den <a href=\"/ausschuss/BR/A-AK-BR/1/00311\">Ausschuss für Arbeit, Soziales und Konsumentenschutz des Bundesrates</a>"
+     },
+     {
+      "date": "06.10.2026",
+      "text": "Ausschuss für Arbeit, Soziales und Konsumentenschutz des Bundesrates: auf <a href=\"/dokument/BR/A-AK-BR/1/00311/TO_16995604.html\">Tagesordnung</a> in der <a href=\"/ausschuss/BR/A-AK-BR/1/00311?selectedStage=105&selectedSession=8&selectedDate=06102026\">8. Sitzung des Ausschusses</a>"
+     },
+     {
+      "date": "06.10.2026",
+      "text": "Ausschuss für Arbeit, Soziales und Konsumentenschutz des Bundesrates: Bericht <a href=\"/gegenstand/BR/I-BR/11873\">11873/BR d.B.</a>",
+      "priority": 1
+     }
+    ],
+    "documents": [
+     {
+      "title": "Berichterstattung",
+      "documents": [
+       {
+        "link": "/dokument/BR/I-BR/11873/fname_1782060.pdf",
+        "type": "PDF"
+       },
+       {
+        "link": "/dokument/BR/I-BR/11873/fnameorig_1782060.html",
+        "type": "HTML"
+       }
+      ]
+     }
+    ]
+   },
+   {
+    "name": "Plenarberatungen BR",
+    "id": 7,
+    "stages": [
+     {
+      "date": "08.10.2026",
+      "text": "Auf der Tagesordnung der <a href=\"/gegenstand/BR/BRSITZ/996\">996. Sitzung</a>"
+     },
+     {
+      "date": "08.10.2026",
+      "text": "996. Sitzung: Berichterstattung durch die Bundesrätin <a href=\"/person/24110\" target=\"_blank\">Mag. Claudia Arpa</a>",
+      "fsth": [
+       {
+        "gp_code": "BR",
+        "sitzung_id": 996,
+        "fund_von": null,
+        "fund_bis": null,
+        "url": "/dokument/BR/BRSITZ/996/A_-_13_19_11_01027353.html#46",
+        "title": "13:19:11 - Berichterstatterin Claudia Arpa - TOP 4 Weitere Sondermittel für den Ausgleichstaxfonds (RN/46)",
+        "text": "RN/46"
+       }
+      ]
+     },
+     {
+      "date": "08.10.2026",
+      "text": "996. Sitzung: Debatte",
+      "fsth": [
+       {
+        "gp_code": "BR",
+        "sitzung_id": 996,
+        "fund_von": null,
+        "fund_bis": null,
+        "url": "/dokument/BR/BRSITZ/996/A_-_13_20_05_01027289.html#47",
+        "title": "13:20:05 - Gabriele Kolar (SPÖ/Stmk.) - TOP 4 Weitere Sondermittel für den Ausgleichstaxfonds (RN/47)",
+        "text": "RN/47"
+       },
+       {
+        "gp_code": "BR",
+        "sitzung_id": 996,
+        "fund_von": null,
+        "fund_bis": null,
+        "url": "/dokument/BR/BRSITZ/996/A_-_13_47_00_01027388.html#51",
+        "title": "13:47:00 - Korinna Schumann, Bundesministerin - TOP 4 Weitere Sondermittel für den Ausgleichstaxfonds (RN/51)",
+        "text": "RN/51"
+       }
+      ]
+     },
+     {
+      "date": "08.10.2026",
+      "text": "Wortmeldungen in der Debatte",
+      "reden": {
+       "rendertype": "table",
+       "data": {
+        "header": [
+         {
+          "label": "Name und Fraktion",
+          "sortable": false,
+          "filterable": false,
+          "hidden": false,
+          "additionalInfo": false,
+          "class": "his-col-namefraktion"
+         },
+         {
+          "label": "Wortmeldungsart",
+          "sortable": false,
+          "filterable": false,
+          "hidden": false,
+          "additionalInfo": false,
+          "class": "his-col-wortmeldungsart"
+         },
+         {
+          "label": "Protokoll",
+          "sortable": false,
+          "filterable": false,
+          "hidden": false,
+          "additionalInfo": false,
+          "class": "his-col-protokoll"
+         },
+         {
+          "label": "Video",
+          "sortable": false,
+          "filterable": false,
+          "hidden": false,
+          "additionalInfo": false,
+          "class": "his-col-video"
+         }
+        ],
+        "rows": [
+         [
+          "<a href=\"/person/31956\" target=\"_blank\">Gabriele Kolar (S/St)</a>",
+          "Pro",
+          [
+           {
+            "gp_code": "BR",
+            "sitzung_id": 996,
+            "fund_von": null,
+            "fund_bis": null,
+            "url": "/dokument/BR/BRSITZ/996/A_-_13_20_05_01027289.html#47",
+            "title": "13:20:05 - Gabriele Kolar (SPÖ/Stmk.) - TOP 4 Weitere Sondermittel für den Ausgleichstaxfonds (RN/47)",
+            "text": "RN/47"
+           }
+          ],
+          {
+           "url": "/aktuelles/mediathek/BR/BRSITZ/996?DEBATTE=3&TS=1791465611"
+          }
+         ],
+         [
+          "<a href=\"/person/20230\" target=\"_blank\">Mag. Franz Ebner (V/O)</a>",
+          "Pro",
+          [
+           {
+            "gp_code": "BR",
+            "sitzung_id": 996,
+            "fund_von": null,
+            "fund_bis": null,
+            "url": "/dokument/BR/BRSITZ/996/A_-_13_28_03_01027319.html#48",
+            "title": "13:28:03 - Franz Ebner (ÖVP/OÖ) - TOP 4 Weitere Sondermittel für den Ausgleichstaxfonds (RN/48)",
+            "text": "RN/48"
+           }
+          ],
+          {
+           "url": "/aktuelles/mediathek/BR/BRSITZ/996?DEBATTE=3&TS=1791466090"
+          }
+         ],
+         [
+          "<a href=\"/person/31965\" target=\"_blank\">Manfred Repolust (F/St)</a>",
+          "Pro",
+          [
+           {
+            "gp_code": "BR",
+            "sitzung_id": 996,
+            "fund_von": null,
+            "fund_bis": null,
+            "url": "/dokument/BR/BRSITZ/996/A_-_13_32_15_01027343.html#49",
+            "title": "13:32:15 - Manfred Repolust (FPÖ/Stmk.) - TOP 4 Weitere Sondermittel für den Ausgleichstaxfonds (RN/49)",
+            "text": "RN/49"
+           }
+          ],
+          {
+           "url": "/aktuelles/mediathek/BR/BRSITZ/996?DEBATTE=3&TS=1791466341"
+          }
+         ],
+         [
+          "<a href=\"/person/5932\" target=\"_blank\">Claudia Hauschildt-Buschberger (G/O)</a>",
+          "Pro",
+          [
+           {
+            "gp_code": "BR",
+            "sitzung_id": 996,
+            "fund_von": null,
+            "fund_bis": null,
+            "url": "/dokument/BR/BRSITZ/996/A_-_13_41_28_01027372.html#50",
+            "title": "13:41:28 - Claudia Hauschildt-Buschberger (Grüne/OÖ) - TOP 4 Weitere Sondermittel für den Ausgleichstaxfonds (RN/50)",
+            "text": "RN/50"
+           }
+          ],
+          {
+           "url": "/aktuelles/mediathek/BR/BRSITZ/996?DEBATTE=3&TS=1791466895"
+          }
+         ],
+         [
+          "<a href=\"/person/3677\" target=\"_blank\">BM Korinna Schumann (S)</a>",
+          "Regierungsbank",
+          [
+           {
+            "gp_code": "BR",
+            "sitzung_id": 996,
+            "fund_von": null,
+            "fund_bis": null,
+            "url": "/dokument/BR/BRSITZ/996/A_-_13_47_00_01027388.html#51",
+            "title": "13:47:00 - Korinna Schumann, Bundesministerin - TOP 4 Weitere Sondermittel für den Ausgleichstaxfonds (RN/51)",
+            "text": "RN/51"
+           }
+          ],
+          {
+           "url": "/aktuelles/mediathek/BR/BRSITZ/996?DEBATTE=3&TS=1791467227"
+          }
+         ]
+        ]
+       }
+      }
+     },
+     {
+      "date": "08.10.2026",
+      "text": "996. Sitzung: Antrag, keinen Einspruch zu erheben, <b>angenommen</b><br>Einstimmig",
+      "fsth": [
+       {
+        "gp_code": "BR",
+        "sitzung_id": 996,
+        "fund_von": null,
+        "fund_bis": null,
+        "url": "/dokument/BR/BRSITZ/996/A_-_13_52_54_01027416.html#52",
+        "title": "13:52:54 - Abstimmung - TOP 4 Weitere Sondermittel für den Ausgleichstaxfonds (RN/52)",
+        "text": "RN/52"
+       }
+      ]
+     },
+     {
+      "date": "08.10.2026",
+      "text": "Beschluss im Bundesrat <a href=\"/gegenstand/XXVIII/BNR/206\">206/BNR</a>",
+      "priority": 1
+     }
+    ],
+    "documents": [
+     {
+      "title": "Gesetzestext",
+      "documents": [
+       {
+        "link": "/dokument/XXVIII/BNR/206/fname_1780099.pdf",
+        "type": "PDF"
+       },
+       {
+        "link": "/dokument/XXVIII/BNR/206/fnameorig_1780099.html",
+        "type": "HTML"
+       }
+      ]
+     },
+     {
+      "title": "Beschlussformel NR",
+      "documents": [
+       {
+        "link": "/dokument/XXVIII/BNR/206/fname_1780100.pdf",
+        "type": "PDF"
+       },
+       {
+        "link": "/dokument/XXVIII/BNR/206/fnameorig_1780100.html",
+        "type": "HTML"
+       }
+      ]
+     },
+     {
+      "title": "Beschlussformel BR",
+      "documents": [
+       {
+        "link": "/dokument/XXVIII/BNR/206/fname_1782523.pdf",
+        "type": "PDF"
+       },
+       {
+        "link": "/dokument/XXVIII/BNR/206/fnameorig_1782523.html",
+        "type": "HTML"
+       }
+      ]
+     }
+    ],
+    "correspondence": [
+     {
+      "additional": false,
+      "title": "Bundesrat legt steuerlich begünstigter \"Aktivpension\" keine Steine in den Weg",
+      "date": "08.10.2026",
+      "url": "/aktuelles/pk/jahr_2026/pk0922#XXVIII_I_00589"
+     }
+    ]
+   }
+  ],
+  "status": {
+   "number": 5,
+   "description": "Beschlossen im Bundesrat <a href=\"/gegenstand/XXVIII/BNR/206\">206/BNR</a><br>Einstimmig<br>Beschlossen im Nationalrat <a href=\"/gegenstand/XXVIII/BNR/206\">206/BNR</a>, Dafür: FPÖ, ÖVP, SPÖ, NEOS, GRÜNE, dagegen: -",
+   "bgbllinks": [
+    {
+     "title": "Bundesgesetzblatt I Nr. 85/2026",
+     "link": "http://www.ris.bka.gv.at/Dokument.wxe?Abfrage=BgblAuth&Dokumentnummer=BGBLA_2026_I_85",
+     "type": "DEFAULT"
+    },
+    {
+     "title": "Kunsttext",
+     "link": "http://www.ris.bka.gv.at/Ergebnis.wxe?Abfrage=Bundesnormen&Kundmachungsorgan=BGBl.+I+Nr.&Kundmachungsnummer=85%2f2026&Suchworte=&ReturnUrl=%2fSuchen.wxe%3fQueryID%3dBundesnormen",
+     "type": "DEFAULT"
+    }
+   ]
+  },
+  "vote": {
+   "result": [
+    {
+     "text": "FPÖ",
+     "code": "F",
+     "color": "#0052FB",
+     "fraction": 57,
+     "infavor": true
+    },
+    {
+     "text": "ÖVP",
+     "code": "V",
+     "color": "#62C3D0",
+     "fraction": 51,
+     "infavor": true
+    },
+    {
+     "text": "SPÖ",
+     "code": "S",
+     "color": "#FF0000",
+     "fraction": 41,
+     "infavor": true
+    },
+    {
+     "text": "NEOS",
+     "code": "N",
+     "color": "#E3257B",
+     "fraction": 17,
+     "infavor": true
+    },
+    {
+     "text": "GRÜNE",
+     "code": "G",
+     "color": "#69B12E",
+     "fraction": 16,
+     "infavor": true
+    }
+   ],
+   "infavor": true,
+   "code": "FVSNG",
+   "text": "Dafür: F, V, S, N, G, Dagegen: -",
+   "comment": null
+  },
+  "names": [
+   {
+    "funktext": "Mitglied der Bundesregierung",
+    "frak_code": null,
+    "ltext": "Bundesministerium für Arbeit, Soziales, Gesundheit, Pflege und Konsumentenschutz"
+   }
+  ],
+  "shortinfo": {
+   "titel": "Kurzinformation",
+   "teil1": "Zus&auml;tzliche (&uuml;ber das Ausma&szlig; gem. &sect; 10 Abs. 1a BEinstG geb&uuml;hrende) Budgetmittel an den Ausgleichstaxfonds&nbsp;",
+   "teil2": null,
+   "stand": "08.07.2026"
+  }
+ }
+}

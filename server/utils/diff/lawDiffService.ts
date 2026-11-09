@@ -33,8 +33,9 @@
  * not stored (`cache/gathered.ts`).
  */
 
-import type { LawDiffResponse, LawPackageEntry, LawStationId, LawStationOption, TraceLink } from '#shared/types'
+import type { LawDiffResponse, LawPackageEntry, LawStationId, LawStationOption, ProcedureRoot, TraceLink } from '#shared/types'
 import { bgblShort } from '#shared/utils/format'
+import { meRoot, rootKey } from '#shared/utils/procedureRoot'
 import { LAW_STATION_LABEL, LAW_STATION_ORDER } from '#shared/utils/lawStations'
 import { diffLawPackage, scopeToDraft, summarizeDiff } from './lawDiff'
 import { findLawStations, missingStationReason } from './stationDocuments'
@@ -70,12 +71,22 @@ async function readDraftUnits(station: { html: string | null; xml: string | null
   }
 }
 
-/** The comparison of one pair — cached, and stored only when complete (`getLawDiff`). */
+/**
+ * The comparison of one pair — cached, and stored only when complete (`getLawDiff`).
+ *
+ * Rooted on a Gegenstand (10.11.2026): a Ministerialentwurf as always, or a
+ * Regierungsvorlage or Antrag that came to the Nationalrat without one. On
+ * those two the item IS the Vorlage the draft's branches below look for —
+ * its Kundmachung is its own `status.bgbllinks`, it bundles no draft, and
+ * there is no draft text to fall back to in RIS.
+ */
 const readLawDiff = defineCachedFunction(
-  async (gp: string, inr: number, from: LawStationId, to: LawStationId): Promise<Gathered<LawDiffResponse>> => {
-    const detail = await getGegenstand(gp, 'ME', inr)
+  async (root: ProcedureRoot, from: LawStationId, to: LawStationId): Promise<Gathered<LawDiffResponse>> => {
+    const { gp, inr } = root
+    const isMe = root.ityp === 'ME'
+    const detail = await getGegenstand(gp, root.ityp, inr)
     const content = detail.content ?? {}
-    const found = findLawStations(content)
+    const found = findLawStations(content, root.ityp)
 
     // The draft's fallback: Parliament serves a PDF for about a fifth of the
     // GP-XXVII drafts (77 of 353, scripts/corpus/stationen.ts), and the RIS
@@ -90,7 +101,7 @@ const readLawDiff = defineCachedFunction(
     const meStation = found.get('me')
     let risLink: TraceLink | null = null
     let risRowExists = false
-    if (meStation && !meStation.html) {
+    if (isMe && meStation && !meStation.html) {
       const row = (await getRisMapForGp(gp)).rows.find((r) => r.inr === inr) ?? null
       risRowExists = Boolean(row?.risId)
       meStation.xml = row?.risDocument?.xml ?? null
@@ -126,15 +137,15 @@ const readLawDiff = defineCachedFunction(
     // The Kundmachung of the Vorlage whose text this comparison reads, not
     // of the latest one: a split draft has one per Vorlage.
     const rvText = found.get('rv')
-    const rvLink = findComparisonRvLink(parseStages(content.stages), rvText?.html ?? rvText?.fallbackUrl)
-    if (rvLink) {
+    const rvLink = isMe ? findComparisonRvLink(parseStages(content.stages), rvText?.html ?? rvText?.fallbackUrl) : null
+    if (rvLink || !isMe) {
       // No catch: the record decides `bundled`, and with it what this
       // comparison counts (`scopeToDraft`, `keepAddedLaws`) and whether the
       // page names the act. Parliament not answering throws, as it does for
-      // the draft's own record above.
-      const rv = await getGegenstand(rvLink.gp, 'I', rvLink.inr)
-      bundled = bundlesOtherDrafts(rv.content?.preconst, gp, inr)
-      otherDrafts = otherBundledDrafts(rv.content?.preconst, gp, inr)
+      // the draft's own record above. A Vorlage or Antrag is its own record.
+      const rv = rvLink ? await getGegenstand(rvLink.gp, 'I', rvLink.inr) : detail
+      bundled = isMe ? bundlesOtherDrafts(rv.content?.preconst, gp, inr) : false
+      otherDrafts = isMe ? otherBundledDrafts(rv.content?.preconst, gp, inr) : []
       const nummer = extractBgblLink(rv.content?.status?.bgbllinks)?.number
       promulgatedAs = nummer ? bgblShort(nummer) : null
       let doc: Awaited<ReturnType<typeof getBgblDocument>> = null
@@ -205,9 +216,9 @@ const readLawDiff = defineCachedFunction(
     // Whether the stage record links a Vorlage, asked apart from the text
     // documents: a Vorlage without an accepted Gesetzestext is not „noch
     // keine Regierungsvorlage" (`missingStationReason`).
-    let rvLinked = false
+    let rvLinked = root.ityp === 'I'
     try {
-      rvLinked = findLastRvLink(parseStages(content.stages)) !== null
+      if (isMe) rvLinked = findLastRvLink(parseStages(content.stages)) !== null
     } catch {
       // An unreadable stage record claims nothing either way.
     }
@@ -281,7 +292,7 @@ const readLawDiff = defineCachedFunction(
     // into two (XXVII 21/ME, XXVIII 74/ME) can carry it in the other.
     let rvCount = 0
     try {
-      rvCount = new Set(findRvLinks(parseStages(content.stages)).map((l) => `${l.gp}/${l.inr}`)).size
+      if (isMe) rvCount = new Set(findRvLinks(parseStages(content.stages)).map((l) => `${l.gp}/${l.inr}`)).size
     } catch {
       // An unreadable stage record proves nothing; the law stays named, not shown.
     }
@@ -315,7 +326,8 @@ const readLawDiff = defineCachedFunction(
   {
     name: 'law-diff',
     base: DERIVED_CACHE,
-    getKey: (gp: string, inr: number, from: LawStationId, to: LawStationId) => `${gp}-${inr}-${from}-${to}`,
+    // `rootKey` keeps a draft's key what it always was (`${gp}-${inr}`).
+    getKey: (root: ProcedureRoot, from: LawStationId, to: LawStationId) => `${rootKey(root)}-${from}-${to}`,
     maxAge: DERIVED_ANALYSIS_TTL_S,
     swr: false,
     // An answer without the Kundmachung, for want of RIS, is not kept.
@@ -330,5 +342,10 @@ const readLawDiff = defineCachedFunction(
  * without the Kundmachung carries in full.
  */
 export async function getLawDiff(gp: string, inr: number, from: LawStationId, to: LawStationId): Promise<LawDiffResponse> {
-  return (await readLawDiff(gp, inr, from, to)).value
+  return (await readLawDiff(meRoot(gp, inr), from, to)).value
+}
+
+/** The same for any root — a Vorlage or Antrag without a Begutachtung. */
+export async function getRootLawDiff(root: ProcedureRoot, from: LawStationId, to: LawStationId): Promise<LawDiffResponse> {
+  return (await readLawDiff(root, from, to)).value
 }

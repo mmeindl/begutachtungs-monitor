@@ -1,0 +1,1496 @@
+{
+ "content": {
+  "ityp": "I",
+  "inr": 309,
+  "gp_code": "XXVIII",
+  "zitation": "309 d.B.",
+  "title": "Anti-Mogelpackungs-Gesetz",
+  "description": "Bundesgesetz, mit dem das Bundesgesetz über die Kennzeichnung von Waren, deren Menge sich ohne entsprechende Preissenkung verringert hat (Anti-Mogelpackungs-Gesetz), erlassen wird",
+  "einlangen": "2025-11-20T00:00:00",
+  "doktyp": "RV",
+  "statementsstate": "0",
+  "documents": [
+   {
+    "title": "Gesetzestext",
+    "documents": [
+     {
+      "link": "/dokument/XXVIII/I/309/fname_1723253.pdf",
+      "type": "PDF"
+     },
+     {
+      "link": "/dokument/XXVIII/I/309/fnameorig_1723253.html",
+      "type": "HTML"
+     }
+    ]
+   },
+   {
+    "title": "Erläuterungen",
+    "documents": [
+     {
+      "link": "/dokument/XXVIII/I/309/fname_1723255.pdf",
+      "type": "PDF"
+     },
+     {
+      "link": "/dokument/XXVIII/I/309/fnameorig_1723255.html",
+      "type": "HTML"
+     }
+    ]
+   },
+   {
+    "title": "Vorblatt und WFA",
+    "documents": [
+     {
+      "link": "/dokument/XXVIII/I/309/imfname_1723256.pdf",
+      "type": "PDF"
+     }
+    ]
+   }
+  ],
+  "statements": {
+   "documents": [
+    {
+     "title": "Gesetzestext",
+     "documents": [
+      {
+       "link": "/dokument/XXVIII/I/309/fname_1723253.pdf",
+       "type": "PDF"
+      },
+      {
+       "link": "/dokument/XXVIII/I/309/fnameorig_1723253.html",
+       "type": "HTML"
+      }
+     ]
+    }
+   ]
+  },
+  "phase": [
+   {
+    "name": "Einlangen NR",
+    "id": 1,
+    "stages": [
+     {
+      "date": "20.11.2025",
+      "text": "Einlangen im Nationalrat",
+      "priority": 1
+     },
+     {
+      "date": "20.11.2025",
+      "text": "Vorgesehen für den <a href=\"/ausschuss/XXVIII/A-WH/1/00940\">Ausschuss für Wirtschaft, Industrie und Energie</a>"
+     },
+     {
+      "date": "20.11.2025",
+      "text": "<a href=\"/gegenstand/XXVIII/NRSITZ/53\">53. Sitzung des Nationalrates</a>: Mitteilung des Einlangens",
+      "fsth": [
+       {
+        "gp_code": "XXVIII",
+        "sitzung_id": 53,
+        "fund_von": null,
+        "fund_bis": null,
+        "url": "/dokument/XXVIII/NRSITZ/53/fnameorig_1777371.html#2",
+        "title": "20:53:38 - Doris Bures, Dritte Präsidentin des Nationalrates - Präsidium (RN/2)",
+        "text": "RN/2"
+       }
+      ]
+     }
+    ],
+    "documents": [],
+    "correspondence": [
+     {
+      "additional": false,
+      "title": "Betrugsbekämpfung, Preistransparenz und Co: Wirtschafts- und Finanzausschuss schicken sechs Regierungsvorlagen in Begutachtung",
+      "date": "20.11.2025",
+      "url": "/aktuelles/pk/jahr_2025/pk1053#XXVIII_I_00309"
+     }
+    ]
+   },
+   {
+    "name": "Ausschussberatungen NR",
+    "id": 3,
+    "stages": [
+     {
+      "date": "20.11.2025",
+      "text": "<a href=\"/gegenstand/XXVIII/NRSITZ/54\">54. Sitzung des Nationalrates</a>: Zuweisung an den <a href=\"/ausschuss/XXVIII/A-WH/1/00940\">Ausschuss für Wirtschaft, Industrie und Energie</a>",
+      "fsth": [
+       {
+        "gp_code": "XXVIII",
+        "sitzung_id": 54,
+        "fund_von": null,
+        "fund_bis": null,
+        "url": "/dokument/XXVIII/NRSITZ/54/fnameorig_1777373.html#2",
+        "title": "20:54:14 - Doris Bures, Dritte Präsidentin des Nationalrates - Präsidium (RN/2)",
+        "text": "RN/2"
+       }
+      ]
+     },
+     {
+      "date": "20.11.2025",
+      "text": "Ausschuss für Wirtschaft, Industrie und Energie: auf <a href=\"/dokument/XXVIII/A-WH/1/00940/TO_16720339.html\">Tagesordnung</a> in der <a href=\"/ausschuss/XXVIII/A-WH/1/00940?selectedStage=105&selectedSession=5&selectedDate=20112025\">5. Sitzung des Ausschusses</a><br>In der Sitzung vom 20. November 2025 vertagt"
+     },
+     {
+      "date": "20.11.2025",
+      "text": "Ausschuss für Wirtschaft, Industrie und Energie: Beschlussfassung auf Einholung schriftlicher Stellungnahmen im Rahmen eines \"Ausschussbegutachtungsverfahrens\""
+     },
+     {
+      "date": "20.11.2025",
+      "text": "Antrag auf Ausschussbegutachtung der Vorlage (<a href=\"/gegenstand/XXVIII/AUA/51\">51/AUA</a>)"
+     },
+     {
+      "date": "20.11.2025",
+      "text": "Antrag auf Einholung einer Stellungnahme von Bundeskanzleramt - <b>angenommen</b>"
+     },
+     {
+      "date": "20.11.2025",
+      "text": "Antrag auf Einholung einer Stellungnahme von Bundesministerium für Arbeit, Soziales, Gesundheit, Pflege und Konsumentenschutz - <b>angenommen</b>"
+     },
+     {
+      "date": "20.11.2025",
+      "text": "Antrag auf Einholung einer Stellungnahme von Bundesministerium für Bildung - <b>angenommen</b>"
+     },
+     {
+      "date": "20.11.2025",
+      "text": "Antrag auf Einholung einer Stellungnahme von Bundesministerium für europäische und internationale Angelegenheiten - <b>angenommen</b>"
+     },
+     {
+      "date": "20.11.2025",
+      "text": "Antrag auf Einholung einer Stellungnahme von Bundesministerium für Finanzen - <b>angenommen</b>"
+     },
+     {
+      "date": "20.11.2025",
+      "text": "Antrag auf Einholung einer Stellungnahme von Bundesministerium für Frauen, Wissenschaft und Forschung - <b>angenommen</b>"
+     },
+     {
+      "date": "20.11.2025",
+      "text": "Antrag auf Einholung einer Stellungnahme von Bundesministerium für Inneres - <b>angenommen</b>"
+     },
+     {
+      "date": "20.11.2025",
+      "text": "Antrag auf Einholung einer Stellungnahme von Bundesministerium für Innovation, Mobilität und Infrastruktur - <b>angenommen</b>"
+     },
+     {
+      "date": "20.11.2025",
+      "text": "Antrag auf Einholung einer Stellungnahme von Bundesministerium für Justiz - <b>angenommen</b>"
+     },
+     {
+      "date": "20.11.2025",
+      "text": "Antrag auf Einholung einer Stellungnahme von Bundesministerium für Land- und Forstwirtschaft, Klima- und Umweltschutz, Regionen und Wasserwirtschaft - <b>angenommen</b>"
+     },
+     {
+      "date": "20.11.2025",
+      "text": "Antrag auf Einholung einer Stellungnahme von Bundesministerium für Landesverteidigung - <b>angenommen</b>"
+     },
+     {
+      "date": "20.11.2025",
+      "text": "Antrag auf Einholung einer Stellungnahme von Bundesministerium für Wirtschaft, Energie und Tourismus - <b>angenommen</b>"
+     },
+     {
+      "date": "20.11.2025",
+      "text": "Antrag auf Einholung einer Stellungnahme von Bundesministerium für Wohnen, Kunst, Kultur, Medien und Sport - <b>angenommen</b>"
+     },
+     {
+      "date": "20.11.2025",
+      "text": "Antrag auf Einholung einer Stellungnahme von Amt der Burgenländischen Landesregierung - <b>angenommen</b>"
+     },
+     {
+      "date": "20.11.2025",
+      "text": "Antrag auf Einholung einer Stellungnahme von Amt der Kärntner Landesregierung - <b>angenommen</b>"
+     },
+     {
+      "date": "20.11.2025",
+      "text": "Antrag auf Einholung einer Stellungnahme von Amt der Niederösterreichischen Landesregierung - <b>angenommen</b>"
+     },
+     {
+      "date": "20.11.2025",
+      "text": "Antrag auf Einholung einer Stellungnahme von Amt der Oberösterreichischen Landesregierung - <b>angenommen</b>"
+     },
+     {
+      "date": "20.11.2025",
+      "text": "Antrag auf Einholung einer Stellungnahme von Amt der Salzburger Landesregierung - <b>angenommen</b>"
+     },
+     {
+      "date": "20.11.2025",
+      "text": "Antrag auf Einholung einer Stellungnahme von Amt der Steiermärkischen Landesregierung - <b>angenommen</b>"
+     },
+     {
+      "date": "20.11.2025",
+      "text": "Antrag auf Einholung einer Stellungnahme von Amt der Tiroler Landesregierung - <b>angenommen</b>"
+     },
+     {
+      "date": "20.11.2025",
+      "text": "Antrag auf Einholung einer Stellungnahme von Amt der Vorarlberger Landesregierung - <b>angenommen</b>"
+     },
+     {
+      "date": "20.11.2025",
+      "text": "Antrag auf Einholung einer Stellungnahme von Amt der Wiener Landesregierung - <b>angenommen</b>"
+     },
+     {
+      "date": "20.11.2025",
+      "text": "Antrag auf Einholung einer Stellungnahme von Bundesarbeitskammer - <b>angenommen</b>"
+     },
+     {
+      "date": "20.11.2025",
+      "text": "Antrag auf Einholung einer Stellungnahme von Bundesarbeitskammer; Abteilung Konsument:innenpolitik\t - <b>angenommen</b>"
+     },
+     {
+      "date": "20.11.2025",
+      "text": "Antrag auf Einholung einer Stellungnahme von Bundesarbeitskammer; Abteilung Wirtschaftspolitik - <b>angenommen</b>"
+     },
+     {
+      "date": "20.11.2025",
+      "text": "Antrag auf Einholung einer Stellungnahme von Bundes-Gleichbehandlungskommission - <b>angenommen</b>"
+     },
+     {
+      "date": "20.11.2025",
+      "text": "Antrag auf Einholung einer Stellungnahme von Bundeskartellanwalt - <b>angenommen</b>"
+     },
+     {
+      "date": "20.11.2025",
+      "text": "Antrag auf Einholung einer Stellungnahme von Bundeskonferenz der Freien Berufe Österreichs - <b>angenommen</b>"
+     },
+     {
+      "date": "20.11.2025",
+      "text": "Antrag auf Einholung einer Stellungnahme von Bundesseniorenbeirat beim Bundesministerium für Arbeit, Soziales, Gesundheit, Pflege und Konsumentenschutz - <b>angenommen</b>"
+     },
+     {
+      "date": "20.11.2025",
+      "text": "Antrag auf Einholung einer Stellungnahme von Bundessparte Handel - <b>angenommen</b>"
+     },
+     {
+      "date": "20.11.2025",
+      "text": "Antrag auf Einholung einer Stellungnahme von Bundesverwaltungsgericht - <b>angenommen</b>"
+     },
+     {
+      "date": "20.11.2025",
+      "text": "Antrag auf Einholung einer Stellungnahme von Bundeswettbewerbsbehörde - <b>angenommen</b>"
+     },
+     {
+      "date": "20.11.2025",
+      "text": "Antrag auf Einholung einer Stellungnahme von Datenschutzrat - <b>angenommen</b>"
+     },
+     {
+      "date": "20.11.2025",
+      "text": "Antrag auf Einholung einer Stellungnahme von Energie-Control - <b>angenommen</b>"
+     },
+     {
+      "date": "20.11.2025",
+      "text": "Antrag auf Einholung einer Stellungnahme von Fachverband Gas Wärme - <b>angenommen</b>"
+     },
+     {
+      "date": "20.11.2025",
+      "text": "Antrag auf Einholung einer Stellungnahme von Fachverband Gas Wärme; Geschäftsführung - <b>angenommen</b>"
+     },
+     {
+      "date": "20.11.2025",
+      "text": "Antrag auf Einholung einer Stellungnahme von Fachverband Lebensmitteleinzelhandel - <b>angenommen</b>"
+     },
+     {
+      "date": "20.11.2025",
+      "text": "Antrag auf Einholung einer Stellungnahme von Fachverband Lebensmittelindustrie - <b>angenommen</b>"
+     },
+     {
+      "date": "20.11.2025",
+      "text": "Antrag auf Einholung einer Stellungnahme von Finanzmarktaufsicht - <b>angenommen</b>"
+     },
+     {
+      "date": "20.11.2025",
+      "text": "Antrag auf Einholung einer Stellungnahme von Foodwatch Austria - <b>angenommen</b>"
+     },
+     {
+      "date": "20.11.2025",
+      "text": "Antrag auf Einholung einer Stellungnahme von Generalprokuratur - <b>angenommen</b>"
+     },
+     {
+      "date": "20.11.2025",
+      "text": "Antrag auf Einholung einer Stellungnahme von Geschäftsstelle der Bioethikkommission beim Bundeskanzleramt - <b>angenommen</b>"
+     },
+     {
+      "date": "20.11.2025",
+      "text": "Antrag auf Einholung einer Stellungnahme von Gleichbehandlungsanwaltschaft - <b>angenommen</b>"
+     },
+     {
+      "date": "20.11.2025",
+      "text": "Antrag auf Einholung einer Stellungnahme von Handel mit Arzneimitteln, Drogerie- und Parfümeriewaren sowie Chemikalien und Farben, Bundesgremium - <b>angenommen</b>"
+     },
+     {
+      "date": "20.11.2025",
+      "text": "Antrag auf Einholung einer Stellungnahme von Handelsverband - <b>angenommen</b>"
+     },
+     {
+      "date": "20.11.2025",
+      "text": "Antrag auf Einholung einer Stellungnahme von Industriellenvereinigung - <b>angenommen</b>"
+     },
+     {
+      "date": "20.11.2025",
+      "text": "Antrag auf Einholung einer Stellungnahme von Industriellenvereinigung; Wirtschafts-, Finanz- & Rechtspolitik - <b>angenommen</b>"
+     },
+     {
+      "date": "20.11.2025",
+      "text": "Antrag auf Einholung einer Stellungnahme von Institut f. Europarecht der Universität Graz - <b>angenommen</b>"
+     },
+     {
+      "date": "20.11.2025",
+      "text": "Antrag auf Einholung einer Stellungnahme von Institut f. Europarecht der Universität Linz - <b>angenommen</b>"
+     },
+     {
+      "date": "20.11.2025",
+      "text": "Antrag auf Einholung einer Stellungnahme von Institut f. Europarecht und Völkerrecht Universität Innsbruck - <b>angenommen</b>"
+     },
+     {
+      "date": "20.11.2025",
+      "text": "Antrag auf Einholung einer Stellungnahme von Institut für Höhere Studien (IHS) - <b>angenommen</b>"
+     },
+     {
+      "date": "20.11.2025",
+      "text": "Antrag auf Einholung einer Stellungnahme von Kammer der Wirtschaftstreuhänder - <b>angenommen</b>"
+     },
+     {
+      "date": "20.11.2025",
+      "text": "Antrag auf Einholung einer Stellungnahme von Landesverwaltungsgericht Burgenland - <b>angenommen</b>"
+     },
+     {
+      "date": "20.11.2025",
+      "text": "Antrag auf Einholung einer Stellungnahme von Landesverwaltungsgericht Kärnten - <b>angenommen</b>"
+     },
+     {
+      "date": "20.11.2025",
+      "text": "Antrag auf Einholung einer Stellungnahme von Landesverwaltungsgericht Niederösterreich - <b>angenommen</b>"
+     },
+     {
+      "date": "20.11.2025",
+      "text": "Antrag auf Einholung einer Stellungnahme von Landesverwaltungsgericht Oberösterreich - <b>angenommen</b>"
+     },
+     {
+      "date": "20.11.2025",
+      "text": "Antrag auf Einholung einer Stellungnahme von Landesverwaltungsgericht Salzburg - <b>angenommen</b>"
+     },
+     {
+      "date": "20.11.2025",
+      "text": "Antrag auf Einholung einer Stellungnahme von Landesverwaltungsgericht Steiermark - <b>angenommen</b>"
+     },
+     {
+      "date": "20.11.2025",
+      "text": "Antrag auf Einholung einer Stellungnahme von Landesverwaltungsgericht Tirol - <b>angenommen</b>"
+     },
+     {
+      "date": "20.11.2025",
+      "text": "Antrag auf Einholung einer Stellungnahme von Landesverwaltungsgericht Vorarlberg - <b>angenommen</b>"
+     },
+     {
+      "date": "20.11.2025",
+      "text": "Antrag auf Einholung einer Stellungnahme von Landwirtschaftskammer - <b>angenommen</b>"
+     },
+     {
+      "date": "20.11.2025",
+      "text": "Antrag auf Einholung einer Stellungnahme von Lehrstuhl Abfallverwertungstechnik und Abfallwirtschaft der Montanuniversität Leoben - <b>angenommen</b>"
+     },
+     {
+      "date": "20.11.2025",
+      "text": "Antrag auf Einholung einer Stellungnahme von Markenartikelverband - <b>angenommen</b>"
+     },
+     {
+      "date": "20.11.2025",
+      "text": "Antrag auf Einholung einer Stellungnahme von Oberster Gerichtshof - <b>angenommen</b>"
+     },
+     {
+      "date": "20.11.2025",
+      "text": "Antrag auf Einholung einer Stellungnahme von Oesterreichische Nationalbank - <b>angenommen</b>"
+     },
+     {
+      "date": "20.11.2025",
+      "text": "Antrag auf Einholung einer Stellungnahme von Österr. Rechtsanwaltskammertag - <b>angenommen</b>"
+     },
+     {
+      "date": "20.11.2025",
+      "text": "Antrag auf Einholung einer Stellungnahme von Österreichische Datenschutzbehörde - <b>angenommen</b>"
+     },
+     {
+      "date": "20.11.2025",
+      "text": "Antrag auf Einholung einer Stellungnahme von Österreichische Notariatskammer - <b>angenommen</b>"
+     },
+     {
+      "date": "20.11.2025",
+      "text": "Antrag auf Einholung einer Stellungnahme von Österreichische Universitätenkonferenz - <b>angenommen</b>"
+     },
+     {
+      "date": "20.11.2025",
+      "text": "Antrag auf Einholung einer Stellungnahme von Österreichische Vereinigung für Gas und Wasser - <b>angenommen</b>"
+     },
+     {
+      "date": "20.11.2025",
+      "text": "Antrag auf Einholung einer Stellungnahme von Österreichischer Gemeindebund - <b>angenommen</b>"
+     },
+     {
+      "date": "20.11.2025",
+      "text": "Antrag auf Einholung einer Stellungnahme von Österreichischer Gewerkschaftsbund - <b>angenommen</b>"
+     },
+     {
+      "date": "20.11.2025",
+      "text": "Antrag auf Einholung einer Stellungnahme von Österreichischer Städtebund - <b>angenommen</b>"
+     },
+     {
+      "date": "20.11.2025",
+      "text": "Antrag auf Einholung einer Stellungnahme von Österreichisches Institut für Wirtschaftsforschung - <b>angenommen</b>"
+     },
+     {
+      "date": "20.11.2025",
+      "text": "Antrag auf Einholung einer Stellungnahme von Österreichs E-Wirtschaft - <b>angenommen</b>"
+     },
+     {
+      "date": "20.11.2025",
+      "text": "Antrag auf Einholung einer Stellungnahme von Parlamentarisches Datenschutzkommitee - <b>angenommen</b>"
+     },
+     {
+      "date": "20.11.2025",
+      "text": "Antrag auf Einholung einer Stellungnahme von Präsidentschaftskanzlei - <b>angenommen</b>"
+     },
+     {
+      "date": "20.11.2025",
+      "text": "Antrag auf Einholung einer Stellungnahme von Präsidium der Finanzprokuratur - <b>angenommen</b>"
+     },
+     {
+      "date": "20.11.2025",
+      "text": "Antrag auf Einholung einer Stellungnahme von Rechnungshof - <b>angenommen</b>"
+     },
+     {
+      "date": "20.11.2025",
+      "text": "Antrag auf Einholung einer Stellungnahme von Rechtsanwaltskammer Wien - <b>angenommen</b>"
+     },
+     {
+      "date": "20.11.2025",
+      "text": "Antrag auf Einholung einer Stellungnahme von Rechtswissenschaftliche Fakultät der Universität Wien - <b>angenommen</b>"
+     },
+     {
+      "date": "20.11.2025",
+      "text": "Antrag auf Einholung einer Stellungnahme von Rundfunk und Telekom Regulierungs-GmbH - <b>angenommen</b>"
+     },
+     {
+      "date": "20.11.2025",
+      "text": "Antrag auf Einholung einer Stellungnahme von Schutzverband gegen unlauteren Wettbewerb - <b>angenommen</b>"
+     },
+     {
+      "date": "20.11.2025",
+      "text": "Antrag auf Einholung einer Stellungnahme von Statistik Austria - <b>angenommen</b>"
+     },
+     {
+      "date": "20.11.2025",
+      "text": "Antrag auf Einholung einer Stellungnahme von Statistikrat - <b>angenommen</b>"
+     },
+     {
+      "date": "20.11.2025",
+      "text": "Antrag auf Einholung einer Stellungnahme von Verbindungsstelle der Bundesländer beim Amt der Niederösterreichischen Landesregierung - <b>angenommen</b>"
+     },
+     {
+      "date": "20.11.2025",
+      "text": "Antrag auf Einholung einer Stellungnahme von Verein für Konsumenteninformation - <b>angenommen</b>"
+     },
+     {
+      "date": "20.11.2025",
+      "text": "Antrag auf Einholung einer Stellungnahme von Vereinigung österreichischer Bezirkshauptleute - <b>angenommen</b>"
+     },
+     {
+      "date": "20.11.2025",
+      "text": "Antrag auf Einholung einer Stellungnahme von Vereinigung Österreichischer Elektrizitätswerke - <b>angenommen</b>"
+     },
+     {
+      "date": "20.11.2025",
+      "text": "Antrag auf Einholung einer Stellungnahme von Vereinigung Österreichischer Elektrizitätswerke, Geschäftsführung - <b>angenommen</b>"
+     },
+     {
+      "date": "20.11.2025",
+      "text": "Antrag auf Einholung einer Stellungnahme von Vereinigung Österreichischer Richter - <b>angenommen</b>"
+     },
+     {
+      "date": "20.11.2025",
+      "text": "Antrag auf Einholung einer Stellungnahme von Verfassungsgerichtshof - <b>angenommen</b>"
+     },
+     {
+      "date": "20.11.2025",
+      "text": "Antrag auf Einholung einer Stellungnahme von Verwaltungsgericht Wien - <b>angenommen</b>"
+     },
+     {
+      "date": "20.11.2025",
+      "text": "Antrag auf Einholung einer Stellungnahme von Verwaltungsgerichtshof - <b>angenommen</b>"
+     },
+     {
+      "date": "20.11.2025",
+      "text": "Antrag auf Einholung einer Stellungnahme von Volksanwaltschaft - <b>angenommen</b>"
+     },
+     {
+      "date": "20.11.2025",
+      "text": "Antrag auf Einholung einer Stellungnahme von Wettbewerbskommission - <b>angenommen</b>"
+     },
+     {
+      "date": "20.11.2025",
+      "text": "Antrag auf Einholung einer Stellungnahme von Wiener Institut für Internationale Wirtschaftsvergleiche - <b>angenommen</b>"
+     },
+     {
+      "date": "20.11.2025",
+      "text": "Antrag auf Einholung einer Stellungnahme von Wirtschaftskammer Österreich; Abteilung für Rechtspolitik - <b>angenommen</b>"
+     },
+     {
+      "date": "20.11.2025",
+      "text": "Antrag auf Einholung einer Stellungnahme von Wirtschaftskammer Österreich; Abteilung für Rechtspolitik (Abteilungsleitung) - <b>angenommen</b>"
+     },
+     {
+      "date": "09.12.2025",
+      "text": "Ausschuss für Wirtschaft, Industrie und Energie: auf <a href=\"/dokument/XXVIII/A-WH/1/00940/TO_16703411.html\">Tagesordnung</a> in der <a href=\"/ausschuss/XXVIII/A-WH/1/00940?selectedStage=105&selectedSession=6&selectedDate=09122025\">6. Sitzung des Ausschusses</a><br>Wiederaufnahme der am 20. November 2025 vertagten Verhandlungen"
+     },
+     {
+      "date": "09.12.2025",
+      "text": "Ausschuss für Wirtschaft, Industrie und Energie: Bericht <a href=\"/gegenstand/XXVIII/I/359\">359 d.B.</a>",
+      "priority": 1
+     }
+    ],
+    "documents": [
+     {
+      "title": "Berichterstattung",
+      "documents": [
+       {
+        "link": "/dokument/XXVIII/I/359/fname_1728613.pdf",
+        "type": "PDF"
+       },
+       {
+        "link": "/dokument/XXVIII/I/359/fnameorig_1728613.html",
+        "type": "HTML"
+       }
+      ]
+     }
+    ],
+    "correspondence": [
+     {
+      "additional": false,
+      "title": "Betrugsbekämpfung, Preistransparenz und Co: Wirtschafts- und Finanzausschuss schicken sechs Regierungsvorlagen in Begutachtung",
+      "date": "20.11.2025",
+      "url": "/aktuelles/pk/jahr_2025/pk1053#XXVIII_I_00309"
+     },
+     {
+      "additional": false,
+      "title": "Wirtschaftsausschuss: Breite Mehrheit für Anti-Mogelpackungs-Gesetz und Klarstellungen im Preisauszeichnungsgesetz",
+      "date": "09.12.2025",
+      "url": "/aktuelles/pk/jahr_2025/pk1154#XXVIII_I_00309"
+     }
+    ]
+   },
+   {
+    "name": "Plenarberatungen NR",
+    "id": 4,
+    "stages": [
+     {
+      "date": "25.02.2026",
+      "text": "Beschluss im Nationalrat <a href=\"/gegenstand/XXVIII/BNR/135\">135/BNR</a>"
+     },
+     {
+      "date": "25.02.2026",
+      "text": "Auf der <a href=\"/dokument/XXVIII/NRSITZ/66/TO_16604166.html\">Tagesordnung</a> der <a href=\"/gegenstand/XXVIII/NRSITZ/66\">66. Sitzung des Nationalrates</a>"
+     },
+     {
+      "date": "25.02.2026",
+      "text": "Wortmeldungen in der Debatte",
+      "reden": {
+       "rendertype": "table",
+       "data": {
+        "header": [
+         {
+          "label": "Name und Klub",
+          "sortable": false,
+          "filterable": false,
+          "hidden": false,
+          "additionalInfo": false,
+          "class": "his-col-namefraktion"
+         },
+         {
+          "label": "Wortmeldungsart",
+          "sortable": false,
+          "filterable": false,
+          "hidden": false,
+          "additionalInfo": false,
+          "class": "his-col-wortmeldungsart"
+         },
+         {
+          "label": "Protokoll",
+          "sortable": false,
+          "filterable": false,
+          "hidden": false,
+          "additionalInfo": false,
+          "class": "his-col-protokoll"
+         },
+         {
+          "label": "Video",
+          "sortable": false,
+          "filterable": false,
+          "hidden": false,
+          "additionalInfo": false,
+          "class": "his-col-video"
+         }
+        ],
+        "rows": [
+         [
+          "<a href=\"/person/30655\" target=\"_blank\">Dr. Barbara Kolm (F)</a>",
+          "Contra",
+          [
+           {
+            "gp_code": "XXVIII",
+            "sitzung_id": 66,
+            "fund_von": null,
+            "fund_bis": null,
+            "url": "/dokument/XXVIII/NRSITZ/66/A_-_12_16_47_00911674.html#36",
+            "title": "12:16:47 - Barbara Kolm (FPÖ) - TOP 1 Anti-Mogelpackungs-Gesetz (RN/36)",
+            "text": "RN/36"
+           }
+          ],
+          {
+           "url": "/aktuelles/mediathek/XXVIII/NRSITZ/66?DEBATTE=1&TS=1772021815"
+          }
+         ],
+         [
+          "<a href=\"/person/1981\" target=\"_blank\">Mag. Carmen Jeitler-Cincelli, BA (V)</a>",
+          "Pro",
+          [
+           {
+            "gp_code": "XXVIII",
+            "sitzung_id": 66,
+            "fund_von": null,
+            "fund_bis": null,
+            "url": "/dokument/XXVIII/NRSITZ/66/A_-_12_21_32_00911687.html#37",
+            "title": "12:21:32 - Carmen Jeitler-Cincelli (ÖVP) - TOP 1 Anti-Mogelpackungs-Gesetz (RN/37)",
+            "text": "RN/37"
+           }
+          ],
+          {
+           "url": "/aktuelles/mediathek/XXVIII/NRSITZ/66?DEBATTE=1&TS=1772022101"
+          }
+         ],
+         [
+          "<a href=\"/person/83137\" target=\"_blank\">Peter Wurm (F)</a>",
+          "Contra",
+          [
+           {
+            "gp_code": "XXVIII",
+            "sitzung_id": 66,
+            "fund_von": null,
+            "fund_bis": null,
+            "url": "/dokument/XXVIII/NRSITZ/66/A_-_12_25_06_00911698.html#38",
+            "title": "12:25:06 - Peter Wurm (FPÖ) - TOP 1 Anti-Mogelpackungs-Gesetz (RN/38)",
+            "text": "RN/38"
+           }
+          ],
+          {
+           "url": "/aktuelles/mediathek/XXVIII/NRSITZ/66?DEBATTE=1&TS=1772022314"
+          }
+         ],
+         [
+          "<a href=\"/person/5639\" target=\"_blank\">Julia Elisabeth Herr (S)</a>",
+          "Pro",
+          [
+           {
+            "gp_code": "XXVIII",
+            "sitzung_id": 66,
+            "fund_von": null,
+            "fund_bis": null,
+            "url": "/dokument/XXVIII/NRSITZ/66/A_-_12_30_52_00911722.html#39",
+            "title": "12:30:52 - Julia Elisabeth Herr (SPÖ) - TOP 1 Anti-Mogelpackungs-Gesetz (RN/39)",
+            "text": "RN/39"
+           }
+          ],
+          {
+           "url": "/aktuelles/mediathek/XXVIII/NRSITZ/66?DEBATTE=1&TS=1772022661"
+          }
+         ],
+         [
+          "<a href=\"/person/30663\" target=\"_blank\">Mag. Arnold Schiefer (F)</a>",
+          "Contra",
+          [
+           {
+            "gp_code": "XXVIII",
+            "sitzung_id": 66,
+            "fund_von": null,
+            "fund_bis": null,
+            "url": "/dokument/XXVIII/NRSITZ/66/A_-_12_35_40_00911737.html#40",
+            "title": "12:35:40 - Arnold Schiefer (FPÖ) - TOP 1 Anti-Mogelpackungs-Gesetz (RN/40)",
+            "text": "RN/40"
+           }
+          ],
+          {
+           "url": "/aktuelles/mediathek/XXVIII/NRSITZ/66?DEBATTE=1&TS=1772022949"
+          }
+         ],
+         [
+          "<a href=\"/person/30680\" target=\"_blank\">MMag. Markus Hofer (N)</a>",
+          "Pro",
+          [
+           {
+            "gp_code": "XXVIII",
+            "sitzung_id": 66,
+            "fund_von": null,
+            "fund_bis": null,
+            "url": "/dokument/XXVIII/NRSITZ/66/A_-_12_38_22_00911749.html#41",
+            "title": "12:38:22 - Markus Hofer (NEOS) - TOP 1 Anti-Mogelpackungs-Gesetz (RN/41)",
+            "text": "RN/41"
+           }
+          ],
+          {
+           "url": "/aktuelles/mediathek/XXVIII/NRSITZ/66?DEBATTE=1&TS=1772023109"
+          }
+         ],
+         [
+          "<a href=\"/person/30647\" target=\"_blank\">Michael Fürtbauer (F)</a>",
+          "Contra",
+          [
+           {
+            "gp_code": "XXVIII",
+            "sitzung_id": 66,
+            "fund_von": null,
+            "fund_bis": null,
+            "url": "/dokument/XXVIII/NRSITZ/66/A_-_12_43_31_00911800.html#42",
+            "title": "12:43:31 - Michael Fürtbauer (FPÖ) - TOP 1 Anti-Mogelpackungs-Gesetz (RN/42)",
+            "text": "RN/42"
+           }
+          ],
+          {
+           "url": "/aktuelles/mediathek/XXVIII/NRSITZ/66?DEBATTE=1&TS=1772023419"
+          }
+         ],
+         [
+          "<a href=\"/person/2345\" target=\"_blank\">Dr. Alma Zadić, LL.M. (G)</a>",
+          "Pro",
+          [
+           {
+            "gp_code": "XXVIII",
+            "sitzung_id": 66,
+            "fund_von": null,
+            "fund_bis": null,
+            "url": "/dokument/XXVIII/NRSITZ/66/A_-_12_46_54_00911812.html#43",
+            "title": "12:46:54 - Alma Zadić (Grüne) - TOP 1 Anti-Mogelpackungs-Gesetz (RN/43)",
+            "text": "RN/43"
+           }
+          ],
+          {
+           "url": "/aktuelles/mediathek/XXVIII/NRSITZ/66?DEBATTE=1&TS=1772023621"
+          }
+         ],
+         [
+          "<a href=\"/person/32510\" target=\"_blank\">StS Mag. Elisabeth Zehetner (V)</a>",
+          "Regierungsbank",
+          [
+           {
+            "gp_code": "XXVIII",
+            "sitzung_id": 66,
+            "fund_von": null,
+            "fund_bis": null,
+            "url": "/dokument/XXVIII/NRSITZ/66/A_-_12_52_01_00911828.html#44",
+            "title": "12:52:01 - Elisabeth Zehetner, Staatssekretärin im Bundesministerium - TOP 1 Anti-Mogelpackungs-Gesetz (RN/44)",
+            "text": "RN/44"
+           }
+          ],
+          {
+           "url": "/aktuelles/mediathek/XXVIII/NRSITZ/66?DEBATTE=1&TS=1772023929"
+          }
+         ],
+         [
+          "<a href=\"/person/30722\" target=\"_blank\">Klaus Mair (V)</a>",
+          "Pro",
+          [
+           {
+            "gp_code": "XXVIII",
+            "sitzung_id": 66,
+            "fund_von": null,
+            "fund_bis": null,
+            "url": "/dokument/XXVIII/NRSITZ/66/A_-_12_56_48_00911846.html#45",
+            "title": "12:56:48 - Klaus Mair (ÖVP) - TOP 1 Anti-Mogelpackungs-Gesetz (RN/45)",
+            "text": "RN/45"
+           }
+          ],
+          {
+           "url": "/aktuelles/mediathek/XXVIII/NRSITZ/66?DEBATTE=1&TS=1772024216"
+          }
+         ],
+         [
+          "<a href=\"/person/5645\" target=\"_blank\">Michael Seemayer (S)</a>",
+          "Pro",
+          [
+           {
+            "gp_code": "XXVIII",
+            "sitzung_id": 66,
+            "fund_von": null,
+            "fund_bis": null,
+            "url": "/dokument/XXVIII/NRSITZ/66/A_-_12_59_58_00911861.html#46",
+            "title": "12:59:58 - Michael Seemayer (SPÖ) - TOP 1 Anti-Mogelpackungs-Gesetz (RN/46)",
+            "text": "RN/46"
+           }
+          ],
+          {
+           "url": "/aktuelles/mediathek/XXVIII/NRSITZ/66?DEBATTE=1&TS=1772024407"
+          }
+         ],
+         [
+          "<a href=\"/person/2327\" target=\"_blank\">Christoph Stark (V)</a>",
+          "Pro",
+          [
+           {
+            "gp_code": "XXVIII",
+            "sitzung_id": 66,
+            "fund_von": null,
+            "fund_bis": null,
+            "url": "/dokument/XXVIII/NRSITZ/66/A_-_13_04_38_00911882.html#47",
+            "title": "13:04:38 - Christoph Stark (ÖVP) - TOP 1 Anti-Mogelpackungs-Gesetz (RN/47)",
+            "text": "RN/47"
+           }
+          ],
+          {
+           "url": "/aktuelles/mediathek/XXVIII/NRSITZ/66?DEBATTE=1&TS=1772024686"
+          }
+         ],
+         [
+          "<a href=\"/person/14841\" target=\"_blank\">StS Ulrike Königsberger-Ludwig (S)</a>",
+          "Regierungsbank",
+          [
+           {
+            "gp_code": "XXVIII",
+            "sitzung_id": 66,
+            "fund_von": null,
+            "fund_bis": null,
+            "url": "/dokument/XXVIII/NRSITZ/66/A_-_13_07_55_00911909.html#48",
+            "title": "13:07:55 - Ulrike Königsberger-Ludwig, Staatssekretärin im Bundesministerium - TOP 1 Anti-Mogelpackungs-Gesetz (RN/48)",
+            "text": "RN/48"
+           }
+          ],
+          {
+           "url": "/aktuelles/mediathek/XXVIII/NRSITZ/66?DEBATTE=1&TS=1772024882"
+          }
+         ],
+         [
+          "<a href=\"/person/30708\" target=\"_blank\">Barbara Teiber, MA (S)</a>",
+          "Pro",
+          [
+           {
+            "gp_code": "XXVIII",
+            "sitzung_id": 66,
+            "fund_von": null,
+            "fund_bis": null,
+            "url": "/dokument/XXVIII/NRSITZ/66/A_-_13_17_49_00911936.html#49",
+            "title": "13:17:49 - Barbara Teiber (SPÖ) - TOP 1 Anti-Mogelpackungs-Gesetz (RN/49)",
+            "text": "RN/49"
+           }
+          ],
+          {
+           "url": "/aktuelles/mediathek/XXVIII/NRSITZ/66?DEBATTE=1&TS=1772025476"
+          }
+         ],
+         [
+          "<a href=\"/person/1987\" target=\"_blank\">Andreas Kühberger (V)</a>",
+          "Pro",
+          [
+           {
+            "gp_code": "XXVIII",
+            "sitzung_id": 66,
+            "fund_von": null,
+            "fund_bis": null,
+            "url": "/dokument/XXVIII/NRSITZ/66/A_-_13_22_17_00911960.html#50",
+            "title": "13:22:17 - Andreas Kühberger (ÖVP) - TOP 1 Anti-Mogelpackungs-Gesetz (RN/50)",
+            "text": "RN/50"
+           }
+          ],
+          {
+           "url": "/aktuelles/mediathek/XXVIII/NRSITZ/66?DEBATTE=1&TS=1772025745"
+          }
+         ],
+         [
+          "<a href=\"/person/30701\" target=\"_blank\">Franz Jantscher (S)</a>",
+          "Pro",
+          [
+           {
+            "gp_code": "XXVIII",
+            "sitzung_id": 66,
+            "fund_von": null,
+            "fund_bis": null,
+            "url": "/dokument/XXVIII/NRSITZ/66/A_-_13_25_30_00911969.html#51",
+            "title": "13:25:30 - Franz Jantscher (SPÖ) - TOP 1 Anti-Mogelpackungs-Gesetz (RN/51)",
+            "text": "RN/51"
+           }
+          ],
+          {
+           "url": "/aktuelles/mediathek/XXVIII/NRSITZ/66?DEBATTE=1&TS=1772025938"
+          }
+         ]
+        ]
+       }
+      }
+     },
+     {
+      "date": "25.02.2026",
+      "text": "66. Sitzung des Nationalrates: Gesetzesvorschlag in zweiter Lesung <b>angenommen</b><br>Dafür: ÖVP, SPÖ, NEOS, GRÜNE, dagegen: FPÖ",
+      "fsth": [
+       {
+        "gp_code": "XXVIII",
+        "sitzung_id": 66,
+        "fund_von": null,
+        "fund_bis": null,
+        "url": "/dokument/XXVIII/NRSITZ/66/A_-_13_28_39_00911976.html#52",
+        "title": "13:28:39 - Abstimmung - TOP 1 Anti-Mogelpackungs-Gesetz (RN/52)",
+        "text": "RN/52"
+       }
+      ]
+     },
+     {
+      "date": "25.02.2026",
+      "text": "66. Sitzung des Nationalrates: Gesetzesvorschlag in dritter Lesung <b>angenommen</b><br>Dafür: ÖVP, SPÖ, NEOS, GRÜNE, dagegen: FPÖ",
+      "priority": 1,
+      "fsth": [
+       {
+        "gp_code": "XXVIII",
+        "sitzung_id": 66,
+        "fund_von": null,
+        "fund_bis": null,
+        "url": "/dokument/XXVIII/NRSITZ/66/A_-_13_28_39_00911976.html#52",
+        "title": "13:28:39 - Abstimmung - TOP 1 Anti-Mogelpackungs-Gesetz (RN/52)",
+        "text": "RN/52"
+       }
+      ]
+     },
+     {
+      "date": "27.02.2026",
+      "text": "Übermittlung des Beschlusses an den Bundesrat"
+     }
+    ],
+    "documents": [
+     {
+      "title": "Gesetzestext",
+      "documents": [
+       {
+        "link": "/dokument/XXVIII/BNR/135/fname_1742241.pdf",
+        "type": "PDF"
+       },
+       {
+        "link": "/dokument/XXVIII/BNR/135/fnameorig_1742241.html",
+        "type": "HTML"
+       }
+      ]
+     },
+     {
+      "title": "Beschlussformel NR",
+      "documents": [
+       {
+        "link": "/dokument/XXVIII/BNR/135/fname_1742242.pdf",
+        "type": "PDF"
+       },
+       {
+        "link": "/dokument/XXVIII/BNR/135/fnameorig_1742242.html",
+        "type": "HTML"
+       }
+      ]
+     },
+     {
+      "title": "Beschlussformel BR",
+      "documents": [
+       {
+        "link": "/dokument/XXVIII/BNR/135/fname_1744547.pdf",
+        "type": "PDF"
+       },
+       {
+        "link": "/dokument/XXVIII/BNR/135/fnameorig_1744547.html",
+        "type": "HTML"
+       }
+      ]
+     }
+    ],
+    "correspondence": [
+     {
+      "additional": false,
+      "title": "Nationalrat gibt grünes Licht für Anti-Mogelpackungs-Gesetz",
+      "date": "25.02.2026",
+      "url": "/aktuelles/pk/jahr_2026/pk0133#XXVIII_I_00309"
+     }
+    ],
+    "vote": {
+     "result": [
+      {
+       "text": "FPÖ",
+       "code": "F",
+       "color": "#0052FB",
+       "fraction": 57,
+       "infavor": false
+      },
+      {
+       "text": "ÖVP",
+       "code": "V",
+       "color": "#62C3D0",
+       "fraction": 51,
+       "infavor": true
+      },
+      {
+       "text": "SPÖ",
+       "code": "S",
+       "color": "#FF0000",
+       "fraction": 41,
+       "infavor": true
+      },
+      {
+       "text": "NEOS",
+       "code": "N",
+       "color": "#E3257B",
+       "fraction": 18,
+       "infavor": true
+      },
+      {
+       "text": "GRÜNE",
+       "code": "G",
+       "color": "#69B12E",
+       "fraction": 16,
+       "infavor": true
+      }
+     ],
+     "infavor": true,
+     "code": "fVSNG",
+     "text": "Dafür: V, S, N, G, Dagegen: F",
+     "comment": null
+    }
+   },
+   {
+    "name": "Einlangen BR",
+    "id": 5,
+    "stages": [
+     {
+      "date": "27.02.2026",
+      "text": "Einlangen im Bundesrat (Frist: 24.04.2026)"
+     },
+     {
+      "date": "27.02.2026",
+      "text": "Mitwirkungsrecht des Bundesrates",
+      "priority": 1
+     }
+    ],
+    "documents": []
+   },
+   {
+    "name": "Ausschussberatungen BR",
+    "id": 6,
+    "stages": [
+     {
+      "date": "27.02.2026",
+      "text": "Zuweisung an den <a href=\"/ausschuss/BR/A-WR-BR/1/00312\">Wirtschaftsausschuss des Bundesrates</a>"
+     },
+     {
+      "date": "10.03.2026",
+      "text": "Wirtschaftsausschuss des Bundesrates: auf <a href=\"/dokument/BR/A-WR-BR/1/00312/TO_16809243.html\">Tagesordnung</a> in der <a href=\"/ausschuss/BR/A-WR-BR/1/00312?selectedStage=105&selectedSession=3&selectedDate=10032026\">3. Sitzung des Ausschusses</a>"
+     },
+     {
+      "date": "10.03.2026",
+      "text": "Wirtschaftsausschuss des Bundesrates: Bericht <a href=\"/gegenstand/BR/I-BR/11774\">11774/BR d.B.</a>",
+      "priority": 1
+     }
+    ],
+    "documents": [
+     {
+      "title": "Berichterstattung",
+      "documents": [
+       {
+        "link": "/dokument/BR/I-BR/11774/fname_1744146.pdf",
+        "type": "PDF"
+       },
+       {
+        "link": "/dokument/BR/I-BR/11774/fnameorig_1744146.html",
+        "type": "HTML"
+       }
+      ]
+     }
+    ]
+   },
+   {
+    "name": "Plenarberatungen BR",
+    "id": 7,
+    "stages": [
+     {
+      "date": "12.03.2026",
+      "text": "Auf der Tagesordnung der <a href=\"/gegenstand/BR/BRSITZ/987\">987. Sitzung</a>"
+     },
+     {
+      "date": "12.03.2026",
+      "text": "987. Sitzung: Berichterstattung durch den Bundesrat <a href=\"/person/33346\" target=\"_blank\">Mag. Karl Weber, MSc</a>",
+      "fsth": [
+       {
+        "gp_code": "BR",
+        "sitzung_id": 987,
+        "fund_von": null,
+        "fund_bis": null,
+        "url": "/dokument/BR/BRSITZ/987/A_-_14_06_52_00921333.html#57",
+        "title": "14:06:52 - Berichterstatter Karl Weber - TOP 5 Anti-Mogelpackungs-Gesetz (RN/57)",
+        "text": "RN/57"
+       }
+      ]
+     },
+     {
+      "date": "12.03.2026",
+      "text": "987. Sitzung: Debatte",
+      "fsth": [
+       {
+        "gp_code": "BR",
+        "sitzung_id": 987,
+        "fund_von": null,
+        "fund_bis": null,
+        "url": "/dokument/BR/BRSITZ/987/A_-_14_07_45_00921259.html#58",
+        "title": "14:07:45 - Günter Pröller (FPÖ/OÖ) - TOP 5 Anti-Mogelpackungs-Gesetz (RN/58)",
+        "text": "RN/58"
+       },
+       {
+        "gp_code": "BR",
+        "sitzung_id": 987,
+        "fund_von": null,
+        "fund_bis": null,
+        "url": "/dokument/BR/BRSITZ/987/A_-_14_53_19_00921424.html#66",
+        "title": "14:53:19 - Peter Samt (FPÖ/Stmk.) - TOP 5 Anti-Mogelpackungs-Gesetz (RN/66)",
+        "text": "RN/66"
+       }
+      ]
+     },
+     {
+      "date": "12.03.2026",
+      "text": "Wortmeldungen in der Debatte",
+      "reden": {
+       "rendertype": "table",
+       "data": {
+        "header": [
+         {
+          "label": "Name und Fraktion",
+          "sortable": false,
+          "filterable": false,
+          "hidden": false,
+          "additionalInfo": false,
+          "class": "his-col-namefraktion"
+         },
+         {
+          "label": "Wortmeldungsart",
+          "sortable": false,
+          "filterable": false,
+          "hidden": false,
+          "additionalInfo": false,
+          "class": "his-col-wortmeldungsart"
+         },
+         {
+          "label": "Protokoll",
+          "sortable": false,
+          "filterable": false,
+          "hidden": false,
+          "additionalInfo": false,
+          "class": "his-col-protokoll"
+         },
+         {
+          "label": "Video",
+          "sortable": false,
+          "filterable": false,
+          "hidden": false,
+          "additionalInfo": false,
+          "class": "his-col-video"
+         }
+        ],
+        "rows": [
+         [
+          "<a href=\"/person/20233\" target=\"_blank\">Günter Pröller (F/O)</a>",
+          "Contra",
+          [
+           {
+            "gp_code": "BR",
+            "sitzung_id": 987,
+            "fund_von": null,
+            "fund_bis": null,
+            "url": "/dokument/BR/BRSITZ/987/A_-_14_07_45_00921259.html#58",
+            "title": "14:07:45 - Günter Pröller (FPÖ/OÖ) - TOP 5 Anti-Mogelpackungs-Gesetz (RN/58)",
+            "text": "RN/58"
+           }
+          ],
+          {
+           "url": "/aktuelles/mediathek/BR/BRSITZ/987?DEBATTE=5&TS=1773324473"
+          }
+         ],
+         [
+          "<a href=\"/person/31470\" target=\"_blank\">Christoph Thoma (V/V)</a>",
+          "Pro",
+          [
+           {
+            "gp_code": "BR",
+            "sitzung_id": 987,
+            "fund_von": null,
+            "fund_bis": null,
+            "url": "/dokument/BR/BRSITZ/987/A_-_14_13_52_00921267.html#59",
+            "title": "14:13:52 - Christoph Thoma (ÖVP/Vbg.) - TOP 5 Anti-Mogelpackungs-Gesetz (RN/59)",
+            "text": "RN/59"
+           }
+          ],
+          {
+           "url": "/aktuelles/mediathek/BR/BRSITZ/987?DEBATTE=5&TS=1773324840"
+          }
+         ],
+         [
+          "<a href=\"/person/33455\" target=\"_blank\">Verena Schweiger, BA MA MA (S/W)</a>",
+          "Pro",
+          [
+           {
+            "gp_code": "BR",
+            "sitzung_id": 987,
+            "fund_von": null,
+            "fund_bis": null,
+            "url": "/dokument/BR/BRSITZ/987/A_-_14_17_15_00921280.html#60",
+            "title": "14:17:15 - Verena Schweiger (SPÖ/W) - TOP 5 Anti-Mogelpackungs-Gesetz (RN/60)",
+            "text": "RN/60"
+           }
+          ],
+          {
+           "url": "/aktuelles/mediathek/BR/BRSITZ/987?DEBATTE=5&TS=1773325044"
+          }
+         ],
+         [
+          "<a href=\"/person/23967\" target=\"_blank\">Simone Jagl (G/N)</a>",
+          "Pro",
+          [
+           {
+            "gp_code": "BR",
+            "sitzung_id": 987,
+            "fund_von": null,
+            "fund_bis": null,
+            "url": "/dokument/BR/BRSITZ/987/A_-_14_22_49_00921308.html#61",
+            "title": "14:22:49 - Simone Jagl (Grüne/NÖ) - TOP 5 Anti-Mogelpackungs-Gesetz (RN/61)",
+            "text": "RN/61"
+           }
+          ],
+          {
+           "url": "/aktuelles/mediathek/BR/BRSITZ/987?DEBATTE=5&TS=1773325377"
+          }
+         ],
+         [
+          "<a href=\"/person/32510\" target=\"_blank\">StS Mag. Elisabeth Zehetner (V)</a>",
+          "Regierungsbank",
+          [
+           {
+            "gp_code": "BR",
+            "sitzung_id": 987,
+            "fund_von": null,
+            "fund_bis": null,
+            "url": "/dokument/BR/BRSITZ/987/A_-_14_30_21_00921337.html#62",
+            "title": "14:30:21 - Elisabeth Zehetner, Staatssekretärin im Bundesministerium - TOP 5 Anti-Mogelpackungs-Gesetz (RN/62)",
+            "text": "RN/62"
+           }
+          ],
+          {
+           "url": "/aktuelles/mediathek/BR/BRSITZ/987?DEBATTE=5&TS=1773325830"
+          }
+         ],
+         [
+          "<a href=\"/person/24113\" target=\"_blank\">Sandra Lassnig (V/K)</a>",
+          "Pro",
+          [
+           {
+            "gp_code": "BR",
+            "sitzung_id": 987,
+            "fund_von": null,
+            "fund_bis": null,
+            "url": "/dokument/BR/BRSITZ/987/A_-_14_36_55_00921357.html#63",
+            "title": "14:36:55 - Sandra Lassnig (ÖVP/Ktn.) - TOP 5 Anti-Mogelpackungs-Gesetz (RN/63)",
+            "text": "RN/63"
+           }
+          ],
+          {
+           "url": "/aktuelles/mediathek/BR/BRSITZ/987?DEBATTE=5&TS=1773326224"
+          }
+         ],
+         [
+          "<a href=\"/person/31956\" target=\"_blank\">Gabriele Kolar (S/St)</a>",
+          "Pro",
+          [
+           {
+            "gp_code": "BR",
+            "sitzung_id": 987,
+            "fund_von": null,
+            "fund_bis": null,
+            "url": "/dokument/BR/BRSITZ/987/A_-_14_40_09_00921376.html#64",
+            "title": "14:40:09 - Gabriele Kolar (SPÖ/Stmk.) - TOP 5 Anti-Mogelpackungs-Gesetz (RN/64)",
+            "text": "RN/64"
+           }
+          ],
+          {
+           "url": "/aktuelles/mediathek/BR/BRSITZ/987?DEBATTE=5&TS=1773326417"
+          }
+         ],
+         [
+          "<a href=\"/person/14844\" target=\"_blank\">Dr. Christoph Matznetter (S/W)</a>",
+          "Pro",
+          [
+           {
+            "gp_code": "BR",
+            "sitzung_id": 987,
+            "fund_von": null,
+            "fund_bis": null,
+            "url": "/dokument/BR/BRSITZ/987/A_-_14_48_56_00921407.html#65",
+            "title": "14:48:56 - Christoph Matznetter (SPÖ/W) - TOP 5 Anti-Mogelpackungs-Gesetz (RN/65)",
+            "text": "RN/65"
+           }
+          ],
+          {
+           "url": "/aktuelles/mediathek/BR/BRSITZ/987?DEBATTE=5&TS=1773326945"
+          }
+         ],
+         [
+          "<a href=\"/person/86618\" target=\"_blank\">Peter Samt (F/St)</a>",
+          "Contra",
+          [
+           {
+            "gp_code": "BR",
+            "sitzung_id": 987,
+            "fund_von": null,
+            "fund_bis": null,
+            "url": "/dokument/BR/BRSITZ/987/A_-_14_53_19_00921424.html#66",
+            "title": "14:53:19 - Peter Samt (FPÖ/Stmk.) - TOP 5 Anti-Mogelpackungs-Gesetz (RN/66)",
+            "text": "RN/66"
+           }
+          ],
+          {
+           "url": "/aktuelles/mediathek/BR/BRSITZ/987?DEBATTE=5&TS=1773327208"
+          }
+         ]
+        ]
+       }
+      }
+     },
+     {
+      "date": "12.03.2026",
+      "text": "987. Sitzung: Antrag, keinen Einspruch zu erheben, <b>angenommen</b><br>Dafür: ÖVP, SPÖ, GRÜNE, NEOS, dagegen: FPÖ",
+      "fsth": [
+       {
+        "gp_code": "BR",
+        "sitzung_id": 987,
+        "fund_von": null,
+        "fund_bis": null,
+        "url": "/dokument/BR/BRSITZ/987/A_-_15_02_04_00921454.html#67",
+        "title": "15:02:04 - Abstimmung - TOP 5 Anti-Mogelpackungs-Gesetz (RN/67)",
+        "text": "RN/67"
+       }
+      ]
+     },
+     {
+      "date": "12.03.2026",
+      "text": "Beschluss im Bundesrat <a href=\"/gegenstand/XXVIII/BNR/135\">135/BNR</a>",
+      "priority": 1
+     }
+    ],
+    "documents": [
+     {
+      "title": "Gesetzestext",
+      "documents": [
+       {
+        "link": "/dokument/XXVIII/BNR/135/fname_1742241.pdf",
+        "type": "PDF"
+       },
+       {
+        "link": "/dokument/XXVIII/BNR/135/fnameorig_1742241.html",
+        "type": "HTML"
+       }
+      ]
+     },
+     {
+      "title": "Beschlussformel NR",
+      "documents": [
+       {
+        "link": "/dokument/XXVIII/BNR/135/fname_1742242.pdf",
+        "type": "PDF"
+       },
+       {
+        "link": "/dokument/XXVIII/BNR/135/fnameorig_1742242.html",
+        "type": "HTML"
+       }
+      ]
+     },
+     {
+      "title": "Beschlussformel BR",
+      "documents": [
+       {
+        "link": "/dokument/XXVIII/BNR/135/fname_1744547.pdf",
+        "type": "PDF"
+       },
+       {
+        "link": "/dokument/XXVIII/BNR/135/fnameorig_1744547.html",
+        "type": "HTML"
+       }
+      ]
+     }
+    ],
+    "correspondence": [
+     {
+      "additional": false,
+      "title": "Bundesrat: Anti-Mogelpackungs-Gesetz kann mit April in Kraft treten",
+      "date": "12.03.2026",
+      "url": "/aktuelles/pk/jahr_2026/pk0200#XXVIII_I_00309"
+     }
+    ]
+   }
+  ],
+  "status": {
+   "number": 5,
+   "description": "Beschlossen im Bundesrat <a href=\"/gegenstand/XXVIII/BNR/135\">135/BNR</a><br>Dafür: ÖVP, SPÖ, GRÜNE, NEOS, dagegen: FPÖ<br>66. Sitzung des Nationalrates: Gesetzesvorschlag in dritter Lesung <b>angenommen</b>, Dafür: ÖVP, SPÖ, NEOS, GRÜNE, dagegen: FPÖ",
+   "bgbllinks": [
+    {
+     "title": "Bundesgesetzblatt I Nr. 9/2026",
+     "link": "http://www.ris.bka.gv.at/Dokument.wxe?Abfrage=BgblAuth&Dokumentnummer=BGBLA_2026_I_9",
+     "type": "DEFAULT"
+    },
+    {
+     "title": "Kunsttext",
+     "link": "http://www.ris.bka.gv.at/Ergebnis.wxe?Abfrage=Bundesnormen&Kundmachungsorgan=BGBl.+I+Nr.&Kundmachungsnummer=9%2f2026&Suchworte=&ReturnUrl=%2fSuchen.wxe%3fQueryID%3dBundesnormen",
+     "type": "DEFAULT"
+    }
+   ]
+  },
+  "vote": {
+   "result": [
+    {
+     "text": "FPÖ",
+     "code": "F",
+     "color": "#0052FB",
+     "fraction": 57,
+     "infavor": false
+    },
+    {
+     "text": "ÖVP",
+     "code": "V",
+     "color": "#62C3D0",
+     "fraction": 51,
+     "infavor": true
+    },
+    {
+     "text": "SPÖ",
+     "code": "S",
+     "color": "#FF0000",
+     "fraction": 41,
+     "infavor": true
+    },
+    {
+     "text": "NEOS",
+     "code": "N",
+     "color": "#E3257B",
+     "fraction": 18,
+     "infavor": true
+    },
+    {
+     "text": "GRÜNE",
+     "code": "G",
+     "color": "#69B12E",
+     "fraction": 16,
+     "infavor": true
+    }
+   ],
+   "infavor": true,
+   "code": "fVSNG",
+   "text": "Dafür: V, S, N, G, Dagegen: F",
+   "comment": null
+  },
+  "names": [
+   {
+    "funktext": "Mitglied der Bundesregierung",
+    "frak_code": null,
+    "ltext": "Bundesministerium für Wirtschaft, Energie und Tourismus"
+   }
+  ],
+  "shortinfo": {
+   "titel": "Kurzinformation",
+   "teil1": "<p>Einf&uuml;hrung einer Kennzeichnungspflicht f&uuml;r Produkte, die von &bdquo;Shrinkflation&ldquo; betroffen sind.</p>\n",
+   "teil2": null,
+   "stand": "20.11.2025"
+  }
+ }
+}

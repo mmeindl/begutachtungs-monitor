@@ -1,0 +1,1001 @@
+{
+ "content": {
+  "ityp": "A",
+  "inr": 1007,
+  "gp_code": "XXVIII",
+  "zitation": "1007/A",
+  "title": "Elektrizitätswirtschaftsgesetz, Energielenkungsgesetz u.a., Änderung",
+  "description": "Antrag der Abgeordneten Laurenz Pöttinger, Alois Schroll, Dipl.-Ing. Karin Doppelbauer, Kolleginnen und Kollegen betreffend ein Bundesgesetz, mit dem das Elektrizitätswirtschaftsgesetz, das Energielenkungsgesetz 2012, das Erdölbevorratungsgesetz 2012 und das Gaswirtschaftsgesetz 2011 geändert werden",
+  "einlangen": "2026-09-23T00:00:00",
+  "doktyp": "A",
+  "statementsstate": "0",
+  "documents": [
+   {
+    "title": "Selbständiger Antrag (gescanntes Original)",
+    "documents": [
+     {
+      "link": "/dokument/XXVIII/A/1007/imfname_1779565.pdf",
+      "type": "PDF"
+     }
+    ]
+   },
+   {
+    "title": "Initiativantrag (elektr. übermittelte Version)",
+    "documents": [
+     {
+      "link": "/dokument/XXVIII/A/1007/fname_1779836.pdf",
+      "type": "PDF"
+     },
+     {
+      "link": "/dokument/XXVIII/A/1007/fnameorig_1779836.html",
+      "type": "HTML"
+     }
+    ]
+   },
+   {
+    "title": "Gesetzestext (Arbeitsdokument ParlDion)",
+    "documents": [
+     {
+      "link": "/dokument/XXVIII/A/1007/fname_1779907.pdf",
+      "type": "PDF"
+     },
+     {
+      "link": "/dokument/XXVIII/A/1007/fnameorig_1779907.html",
+      "type": "HTML"
+     }
+    ]
+   },
+   {
+    "title": "Textgegenüberstellung (Arbeitsdokument ParlDion)",
+    "documents": [
+     {
+      "link": "/dokument/XXVIII/A/1007/fname_1780413.pdf",
+      "type": "PDF"
+     },
+     {
+      "link": "/dokument/XXVIII/A/1007/fnameorig_1780413.html",
+      "type": "HTML"
+     }
+    ],
+    "infolink": "/services/hilfe/website-funktionen/textgegenueberstellung#was_sind_textgegenuberstellungen?",
+    "infolinktext": "Was sind Textgegenüberstellungen?"
+   }
+  ],
+  "statements": {
+   "documents": [
+    {
+     "title": "Gesetzestext (Arbeitsdokument ParlDion)",
+     "documents": [
+      {
+       "link": "/dokument/XXVIII/A/1007/fname_1779907.pdf",
+       "type": "PDF"
+      },
+      {
+       "link": "/dokument/XXVIII/A/1007/fnameorig_1779907.html",
+       "type": "HTML"
+      }
+     ]
+    }
+   ]
+  },
+  "phase": [
+   {
+    "name": "Einbringung NR",
+    "id": 1,
+    "stages": [
+     {
+      "date": "23.09.2026",
+      "text": "Einbringung im Nationalrat",
+      "priority": 1
+     },
+     {
+      "date": "23.09.2026",
+      "text": "Übermittlung an das Bundesministerium für Wirtschaft, Energie und Tourismus"
+     },
+     {
+      "date": "23.09.2026",
+      "text": "Vorgesehen für den <a href=\"/ausschuss/XXVIII/A-WH/1/00940\">Ausschuss für Wirtschaft, Industrie und Energie</a>"
+     },
+     {
+      "date": "23.09.2026",
+      "text": "Gesetzesvorschlag enthält Verfassungsbestimmungen"
+     },
+     {
+      "date": "23.09.2026",
+      "text": "Mehrheit von zwei Dritteln der abgegebenen Stimmen erforderlich"
+     },
+     {
+      "date": "23.09.2026",
+      "text": "<a href=\"/gegenstand/XXVIII/NRSITZ/96\">96. Sitzung des Nationalrates</a>: Mitteilung der Einbringung",
+      "fsth": [
+       {
+        "gp_code": "XXVIII",
+        "sitzung_id": 96,
+        "fund_von": null,
+        "fund_bis": null,
+        "url": "/dokument/XXVIII/NRSITZ/96/A_-_23_56_28_01020712.html#262",
+        "title": "23:56:28 - Präsidium (RN/262)",
+        "text": "RN/262"
+       }
+      ]
+     }
+    ],
+    "documents": []
+   },
+   {
+    "name": "Ausschussberatungen NR",
+    "id": 3,
+    "stages": [
+     {
+      "date": "23.09.2026",
+      "text": "<a href=\"/gegenstand/XXVIII/NRSITZ/97\">97. Sitzung des Nationalrates</a>: Zuweisung an den <a href=\"/ausschuss/XXVIII/A-WH/1/00940\">Ausschuss für Wirtschaft, Industrie und Energie</a>",
+      "fsth": [
+       {
+        "gp_code": "XXVIII",
+        "sitzung_id": 97,
+        "fund_von": null,
+        "fund_bis": null,
+        "url": "/dokument/XXVIII/NRSITZ/97/A_-_23_56_57_01020618.html#2.3",
+        "title": "23:56:57 - Peter Haubner, Zweiter Präsident des Nationalrates - Präsidium (RN/2.3)",
+        "text": "RN/2.3"
+       }
+      ]
+     },
+     {
+      "date": "07.10.2026",
+      "text": "Ausschuss für Wirtschaft, Industrie und Energie: auf <a href=\"/dokument/XXVIII/A-WH/1/00940/TO_16951180.html\">Tagesordnung</a> in der <a href=\"/ausschuss/XXVIII/A-WH/1/00940?selectedStage=105&selectedSession=11&selectedDate=07102026\">11. Sitzung des Ausschusses</a>"
+     },
+     {
+      "date": "07.10.2026",
+      "text": "Ausschuss für Wirtschaft, Industrie und Energie: Bericht <a href=\"/gegenstand/XXVIII/I/651\">651 d.B.</a>",
+      "priority": 1
+     }
+    ],
+    "documents": [
+     {
+      "title": "Berichterstattung",
+      "documents": [
+       {
+        "link": "/dokument/XXVIII/I/651/fname_1782654.pdf",
+        "type": "PDF"
+       },
+       {
+        "link": "/dokument/XXVIII/I/651/fnameorig_1782654.html",
+        "type": "HTML"
+       }
+      ]
+     },
+     {
+      "title": "Gesetzestext",
+      "documents": [
+       {
+        "link": "/dokument/XXVIII/I/651/fname_1782655.pdf",
+        "type": "PDF"
+       },
+       {
+        "link": "/dokument/XXVIII/I/651/fnameorig_1782655.html",
+        "type": "HTML"
+       }
+      ]
+     }
+    ],
+    "correspondence": [
+     {
+      "additional": false,
+      "title": "Wirtschaftsausschuss: Grünes Licht für Paket zu Versorgungssicherheit bei Energie",
+      "date": "07.10.2026",
+      "url": "/aktuelles/pk/jahr_2026/pk0918#XXVIII_A_01007"
+     }
+    ]
+   },
+   {
+    "name": "Plenarberatungen NR",
+    "id": 4,
+    "stages": [
+     {
+      "date": "14.10.2026",
+      "text": "Auf der <a href=\"/dokument/XXVIII/NRSITZ/101/TO_16770188.html\">Tagesordnung</a> der <a href=\"/gegenstand/XXVIII/NRSITZ/101\">101. Sitzung des Nationalrates</a>"
+     },
+     {
+      "date": "14.10.2026",
+      "text": "Wortmeldungen in der Debatte",
+      "reden": {
+       "rendertype": "table",
+       "data": {
+        "header": [
+         {
+          "label": "Name und Klub",
+          "sortable": false,
+          "filterable": false,
+          "hidden": false,
+          "additionalInfo": false,
+          "class": "his-col-namefraktion"
+         },
+         {
+          "label": "Wortmeldungsart",
+          "sortable": false,
+          "filterable": false,
+          "hidden": false,
+          "additionalInfo": false,
+          "class": "his-col-wortmeldungsart"
+         },
+         {
+          "label": "Protokoll",
+          "sortable": false,
+          "filterable": false,
+          "hidden": false,
+          "additionalInfo": false,
+          "class": "his-col-protokoll"
+         },
+         {
+          "label": "Video",
+          "sortable": false,
+          "filterable": false,
+          "hidden": false,
+          "additionalInfo": false,
+          "class": "his-col-video"
+         }
+        ],
+        "rows": [
+         [
+          "<a href=\"/person/87001\" target=\"_blank\">David Stögmüller (G)</a>",
+          "Contra",
+          [
+           {
+            "gp_code": "XXVIII",
+            "sitzung_id": 101,
+            "fund_von": null,
+            "fund_bis": null,
+            "url": "/dokument/XXVIII/NRSITZ/101/A_-_17_45_05_01032506.html#131",
+            "title": "17:45:05 - David Stögmüller (Grüne) - TOP 13-14 Versorgungssicherheit bei Energie (RN/131)",
+            "text": "RN/131"
+           }
+          ],
+          {
+           "url": "/aktuelles/mediathek/XXVIII/NRSITZ/101?DEBATTE=9&DEBATTE_TEIL=2&TS=1791999914"
+          }
+         ],
+         [
+          "<a href=\"/person/30649\" target=\"_blank\">Mag. Paul Hammerl, MA (F)</a>",
+          "Pro",
+          [
+           {
+            "gp_code": "XXVIII",
+            "sitzung_id": 101,
+            "fund_von": null,
+            "fund_bis": null,
+            "url": "/dokument/XXVIII/NRSITZ/101/A_-_17_49_45_01032530.html#132",
+            "title": "17:49:45 - Paul Hammerl (FPÖ) - TOP 13-14 Versorgungssicherheit bei Energie (RN/132)",
+            "text": "RN/132"
+           }
+          ],
+          {
+           "url": "/aktuelles/mediathek/XXVIII/NRSITZ/101?DEBATTE=9&DEBATTE_TEIL=2&TS=1792000193"
+          }
+         ],
+         [
+          "<a href=\"/person/5486\" target=\"_blank\">Laurenz Pöttinger (V)</a>",
+          "Pro",
+          [
+           {
+            "gp_code": "XXVIII",
+            "sitzung_id": 101,
+            "fund_von": null,
+            "fund_bis": null,
+            "url": "/dokument/XXVIII/NRSITZ/101/A_-_17_54_43_01032541.html#133",
+            "title": "17:54:43 - Laurenz Pöttinger (ÖVP) - TOP 13-14 Versorgungssicherheit bei Energie (RN/133)",
+            "text": "RN/133"
+           }
+          ],
+          {
+           "url": "/aktuelles/mediathek/XXVIII/NRSITZ/101?DEBATTE=9&DEBATTE_TEIL=2&TS=1792000492"
+          }
+         ],
+         [
+          "<a href=\"/person/5644\" target=\"_blank\">Alois Schroll (S)</a>",
+          "Pro",
+          [
+           {
+            "gp_code": "XXVIII",
+            "sitzung_id": 101,
+            "fund_von": null,
+            "fund_bis": null,
+            "url": "/dokument/XXVIII/NRSITZ/101/A_-_18_02_08_01032584.html#134",
+            "title": "18:02:08 - Alois Schroll (SPÖ) - TOP 13-14 Versorgungssicherheit bei Energie (RN/134)",
+            "text": "RN/134"
+           }
+          ],
+          {
+           "url": "/aktuelles/mediathek/XXVIII/NRSITZ/101?DEBATTE=9&DEBATTE_TEIL=2&TS=1792000936"
+          }
+         ],
+         [
+          "<a href=\"/person/65219\" target=\"_blank\">Mag. Lukas Hammer (G)</a>",
+          "Contra",
+          [
+           {
+            "gp_code": "XXVIII",
+            "sitzung_id": 101,
+            "fund_von": null,
+            "fund_bis": null,
+            "url": "/dokument/XXVIII/NRSITZ/101/A_-_18_06_25_01032597.html#135",
+            "title": "18:06:25 - Lukas Hammer (Grüne) - TOP 13-14 Versorgungssicherheit bei Energie (RN/135)",
+            "text": "RN/135"
+           }
+          ],
+          {
+           "url": "/aktuelles/mediathek/XXVIII/NRSITZ/101?DEBATTE=9&DEBATTE_TEIL=2&TS=1792001194"
+          }
+         ],
+         [
+          "<a href=\"/person/91141\" target=\"_blank\">Dipl.-Ing. Karin Doppelbauer (N)</a>",
+          "Pro",
+          [
+           {
+            "gp_code": "XXVIII",
+            "sitzung_id": 101,
+            "fund_von": null,
+            "fund_bis": null,
+            "url": "/dokument/XXVIII/NRSITZ/101/A_-_18_11_40_01032621.html#136",
+            "title": "18:11:40 - Karin Doppelbauer (NEOS) - TOP 13-14 Versorgungssicherheit bei Energie (RN/136)",
+            "text": "RN/136"
+           }
+          ],
+          {
+           "url": "/aktuelles/mediathek/XXVIII/NRSITZ/101?DEBATTE=9&DEBATTE_TEIL=2&TS=1792001508"
+          }
+         ],
+         [
+          "<a href=\"/person/30720\" target=\"_blank\">BM Mag. Dr. Wolfgang Hattmannsdorfer (V)</a>",
+          "Regierungsbank",
+          [
+           {
+            "gp_code": "XXVIII",
+            "sitzung_id": 101,
+            "fund_von": null,
+            "fund_bis": null,
+            "url": "/dokument/XXVIII/NRSITZ/101/A_-_18_14_52_01032646.html#137",
+            "title": "18:14:52 - Wolfgang Hattmannsdorfer, Bundesminister - TOP 13-14 Versorgungssicherheit bei Energie (RN/137)",
+            "text": "RN/137"
+           }
+          ],
+          {
+           "url": "/aktuelles/mediathek/XXVIII/NRSITZ/101?DEBATTE=9&DEBATTE_TEIL=2&TS=1792001700"
+          }
+         ],
+         [
+          "<a href=\"/person/2998\" target=\"_blank\">Alois Kainz (F)</a>",
+          "Pro",
+          [
+           {
+            "gp_code": "XXVIII",
+            "sitzung_id": 101,
+            "fund_von": null,
+            "fund_bis": null,
+            "url": "/dokument/XXVIII/NRSITZ/101/A_-_18_21_32_01032663.html#138",
+            "title": "18:21:32 - Alois Kainz (FPÖ) - TOP 13-14 Versorgungssicherheit bei Energie (RN/138)",
+            "text": "RN/138"
+           }
+          ],
+          {
+           "url": "/aktuelles/mediathek/XXVIII/NRSITZ/101?DEBATTE=9&DEBATTE_TEIL=2&TS=1792002101"
+          }
+         ],
+         [
+          "<a href=\"/person/30649\" target=\"_blank\">Mag. Paul Hammerl, MA (F)</a>",
+          "Pro",
+          [
+           {
+            "gp_code": "XXVIII",
+            "sitzung_id": 101,
+            "fund_von": null,
+            "fund_bis": null,
+            "url": "/dokument/XXVIII/NRSITZ/101/A_-_18_24_41_01032702.html#139",
+            "title": "18:24:41 - Paul Hammerl (FPÖ) - TOP 13-14 Versorgungssicherheit bei Energie (RN/139)",
+            "text": "RN/139"
+           }
+          ],
+          {
+           "url": "/aktuelles/mediathek/XXVIII/NRSITZ/101?DEBATTE=9&DEBATTE_TEIL=2&TS=1792002290"
+          }
+         ],
+         [
+          "<a href=\"/person/65219\" target=\"_blank\">Mag. Lukas Hammer (G)</a>",
+          "tatsächliche Berichtigung",
+          [
+           {
+            "gp_code": "XXVIII",
+            "sitzung_id": 101,
+            "fund_von": null,
+            "fund_bis": null,
+            "url": "/dokument/XXVIII/NRSITZ/101/A_-_18_27_55_01032725.html#141",
+            "title": "18:27:55 - Lukas Hammer (Grüne) - TOP 13-14 Versorgungssicherheit bei Energie (RN/141)",
+            "text": "RN/141"
+           }
+          ],
+          {
+           "url": "/aktuelles/mediathek/XXVIII/NRSITZ/101?DEBATTE=9&DEBATTE_TEIL=2&TS=1792002484"
+          }
+         ]
+        ]
+       }
+      }
+     },
+     {
+      "date": "14.10.2026",
+      "text": "Beschluss im Nationalrat <a href=\"/gegenstand/XXVIII/BNR/223\">223/BNR</a>",
+      "priority": 1
+     },
+     {
+      "date": "14.10.2026",
+      "text": "101. Sitzung des Nationalrates: Abänderungsantrag der Abgeordneten <a href=\"/person/65219\" target=\"_blank\">Mag. Lukas Hammer</a>, Kolleginnen und Kollegen (<a href=\"/gegenstand/XXVIII/AA/85\">AA-85</a>)<br><b>abgelehnt</b><br>Dafür: GRÜNE, dagegen: FPÖ, ÖVP, SPÖ, NEOS",
+      "fsth": [
+       {
+        "gp_code": "XXVIII",
+        "sitzung_id": 101,
+        "fund_von": null,
+        "fund_bis": null,
+        "url": "/dokument/XXVIII/NRSITZ/101/A_-_18_06_25_01032597.html#135.1",
+        "title": "18:06:25 - Lukas Hammer (Grüne) - TOP 13-14 Versorgungssicherheit bei Energie (RN/135.1)",
+        "text": "RN/135.1"
+       },
+       {
+        "gp_code": "XXVIII",
+        "sitzung_id": 101,
+        "fund_von": null,
+        "fund_bis": null,
+        "url": "/dokument/XXVIII/NRSITZ/101/A_-_18_06_25_01032597.html#135.2",
+        "title": "18:06:25 - Lukas Hammer (Grüne) - TOP 13-14 Versorgungssicherheit bei Energie (RN/135.2)",
+        "text": "RN/135.2"
+       }
+      ]
+     },
+     {
+      "date": "14.10.2026",
+      "text": "101. Sitzung des Nationalrates: Gesetzesvorschlag in zweiter Lesung <b>angenommen</b><br>Getrennte Abstimmung (teils einstimmig, teils mehrstimmig (dafür: F, V, S, N))",
+      "fsth": [
+       {
+        "gp_code": "XXVIII",
+        "sitzung_id": 101,
+        "fund_von": null,
+        "fund_bis": null,
+        "url": "/dokument/XXVIII/NRSITZ/101/A_-_18_28_57_01032726.html#142.1",
+        "title": "18:28:57 - Abstimmung - TOP 13-14 Versorgungssicherheit bei Energie (RN/142.1)",
+        "text": "RN/142.1"
+       }
+      ]
+     },
+     {
+      "date": "14.10.2026",
+      "text": "101. Sitzung des Nationalrates: Gesetzesvorschlag in dritter Lesung <b>angenommen</b><br>Dafür: FPÖ, ÖVP, SPÖ, NEOS, dagegen: GRÜNE",
+      "fsth": [
+       {
+        "gp_code": "XXVIII",
+        "sitzung_id": 101,
+        "fund_von": null,
+        "fund_bis": null,
+        "url": "/dokument/XXVIII/NRSITZ/101/A_-_18_28_57_01032726.html#142.1",
+        "title": "18:28:57 - Abstimmung - TOP 13-14 Versorgungssicherheit bei Energie (RN/142.1)",
+        "text": "RN/142.1"
+       }
+      ]
+     },
+     {
+      "date": "15.10.2026",
+      "text": "Übermittlung des Beschlusses an den Bundesrat"
+     }
+    ],
+    "documents": [
+     {
+      "title": "Gesetzestext",
+      "documents": [
+       {
+        "link": "/dokument/XXVIII/BNR/223/fname_1783828.pdf",
+        "type": "PDF"
+       },
+       {
+        "link": "/dokument/XXVIII/BNR/223/fnameorig_1783828.html",
+        "type": "HTML"
+       }
+      ]
+     },
+     {
+      "title": "Beschlussformel NR",
+      "documents": [
+       {
+        "link": "/dokument/XXVIII/BNR/223/fname_1783829.pdf",
+        "type": "PDF"
+       },
+       {
+        "link": "/dokument/XXVIII/BNR/223/fnameorig_1783829.html",
+        "type": "HTML"
+       }
+      ]
+     },
+     {
+      "title": "Beschlussformel BR",
+      "documents": [
+       {
+        "link": "/dokument/XXVIII/BNR/223/fname_1785247.pdf",
+        "type": "PDF"
+       },
+       {
+        "link": "/dokument/XXVIII/BNR/223/fnameorig_1785247.html",
+        "type": "HTML"
+       }
+      ]
+     },
+     {
+      "title": "Abänderungsantrag (gescanntes Original)",
+      "documents": [
+       {
+        "link": "/dokument/XXVIII/AA/85/imfname_1783661.pdf",
+        "type": "PDF"
+       }
+      ]
+     }
+    ],
+    "correspondence": [
+     {
+      "additional": false,
+      "title": "Nationalrat: Grünes Licht für Regelungen zur Versorgungssicherheit bei Energie, Wirtschafts- und Bedarfsgütern",
+      "date": "14.10.2026",
+      "url": "/aktuelles/pk/jahr_2026/pk0942#XXVIII_A_01007"
+     }
+    ],
+    "vote": {
+     "result": [
+      {
+       "text": "FPÖ",
+       "code": "F",
+       "color": "#0052FB",
+       "fraction": 57,
+       "infavor": true
+      },
+      {
+       "text": "ÖVP",
+       "code": "V",
+       "color": "#62C3D0",
+       "fraction": 51,
+       "infavor": true
+      },
+      {
+       "text": "SPÖ",
+       "code": "S",
+       "color": "#FF0000",
+       "fraction": 41,
+       "infavor": true
+      },
+      {
+       "text": "NEOS",
+       "code": "N",
+       "color": "#E3257B",
+       "fraction": 17,
+       "infavor": true
+      },
+      {
+       "text": "GRÜNE",
+       "code": "G",
+       "color": "#69B12E",
+       "fraction": 16,
+       "infavor": false
+      }
+     ],
+     "infavor": true,
+     "code": "FVSNg",
+     "text": "Dafür: F, V, S, N, Dagegen: G",
+     "comment": null
+    }
+   },
+   {
+    "name": "Einlangen BR",
+    "id": 5,
+    "stages": [
+     {
+      "date": "15.10.2026",
+      "text": "Einlangen im Bundesrat (Frist: 10.12.2026)"
+     },
+     {
+      "date": "15.10.2026",
+      "text": "Mitwirkungsrecht des Bundesrates",
+      "priority": 1
+     }
+    ],
+    "documents": []
+   },
+   {
+    "name": "Ausschussberatungen BR",
+    "id": 6,
+    "stages": [
+     {
+      "date": "15.10.2026",
+      "text": "Zuweisung an den <a href=\"/ausschuss/BR/A-WR-BR/1/00312\">Wirtschaftsausschuss des Bundesrates</a>"
+     },
+     {
+      "date": "20.10.2026",
+      "text": "Wirtschaftsausschuss des Bundesrates: Bericht <a href=\"/gegenstand/BR/I-BR/11876\">11876/BR d.B.</a>",
+      "priority": 1
+     },
+     {
+      "date": "20.10.2026",
+      "text": "Wirtschaftsausschuss des Bundesrates: auf <a href=\"/dokument/BR/A-WR-BR/1/00312/TO_17007695.html\">Tagesordnung</a> in der <a href=\"/ausschuss/BR/A-WR-BR/1/00312?selectedStage=105&selectedSession=7&selectedDate=20102026\">7. Sitzung des Ausschusses</a>"
+     }
+    ],
+    "documents": [
+     {
+      "title": "Berichterstattung",
+      "documents": [
+       {
+        "link": "/dokument/BR/I-BR/11876/fname_1784748.pdf",
+        "type": "PDF"
+       },
+       {
+        "link": "/dokument/BR/I-BR/11876/fnameorig_1784748.html",
+        "type": "HTML"
+       }
+      ]
+     }
+    ]
+   },
+   {
+    "name": "Plenarberatungen BR",
+    "id": 7,
+    "stages": [
+     {
+      "date": "22.10.2026",
+      "text": "Auf der Tagesordnung der <a href=\"/gegenstand/BR/BRSITZ/997\">997. Sitzung</a>"
+     },
+     {
+      "date": "22.10.2026",
+      "text": "997. Sitzung: Berichterstattung durch den Bundesrat <a href=\"/person/18446\" target=\"_blank\">Ferdinand Tiefnig</a>",
+      "fsth": [
+       {
+        "gp_code": "BR",
+        "sitzung_id": 997,
+        "fund_von": null,
+        "fund_bis": null,
+        "url": "/dokument/BR/BRSITZ/997/A_-_13_17_39_01041308.html#46",
+        "title": "13:17:39 - Berichterstatter Ferdinand Tiefnig - TOP 5-6 Versorgungssicherheit bei Energie (RN/46)",
+        "text": "RN/46"
+       }
+      ]
+     },
+     {
+      "date": "22.10.2026",
+      "text": "997. Sitzung: Debatte",
+      "fsth": [
+       {
+        "gp_code": "BR",
+        "sitzung_id": 997,
+        "fund_von": null,
+        "fund_bis": null,
+        "url": "/dokument/BR/BRSITZ/997/A_-_13_19_29_01041162.html#47",
+        "title": "13:19:29 - Simone Jagl (Grüne/NÖ) - TOP 5-6 Versorgungssicherheit bei Energie (RN/47)",
+        "text": "RN/47"
+       },
+       {
+        "gp_code": "BR",
+        "sitzung_id": 997,
+        "fund_von": null,
+        "fund_bis": null,
+        "url": "/dokument/BR/BRSITZ/997/A_-_13_58_11_01041322.html#52",
+        "title": "13:58:11 - Sebastian Forstner (SPÖ/OÖ) - TOP 5-6 Versorgungssicherheit bei Energie (RN/52)",
+        "text": "RN/52"
+       }
+      ]
+     },
+     {
+      "date": "22.10.2026",
+      "text": "Wortmeldungen in der Debatte",
+      "reden": {
+       "rendertype": "table",
+       "data": {
+        "header": [
+         {
+          "label": "Name und Fraktion",
+          "sortable": false,
+          "filterable": false,
+          "hidden": false,
+          "additionalInfo": false,
+          "class": "his-col-namefraktion"
+         },
+         {
+          "label": "Wortmeldungsart",
+          "sortable": false,
+          "filterable": false,
+          "hidden": false,
+          "additionalInfo": false,
+          "class": "his-col-wortmeldungsart"
+         },
+         {
+          "label": "Protokoll",
+          "sortable": false,
+          "filterable": false,
+          "hidden": false,
+          "additionalInfo": false,
+          "class": "his-col-protokoll"
+         },
+         {
+          "label": "Video",
+          "sortable": false,
+          "filterable": false,
+          "hidden": false,
+          "additionalInfo": false,
+          "class": "his-col-video"
+         }
+        ],
+        "rows": [
+         [
+          "<a href=\"/person/23967\" target=\"_blank\">Simone Jagl (G/N)</a>",
+          "Contra",
+          [
+           {
+            "gp_code": "BR",
+            "sitzung_id": 997,
+            "fund_von": null,
+            "fund_bis": null,
+            "url": "/dokument/BR/BRSITZ/997/A_-_13_19_29_01041162.html#47",
+            "title": "13:19:29 - Simone Jagl (Grüne/NÖ) - TOP 5-6 Versorgungssicherheit bei Energie (RN/47)",
+            "text": "RN/47"
+           }
+          ],
+          {
+           "url": "/aktuelles/mediathek/BR/BRSITZ/997?DEBATTE=4&TS=1792675177"
+          }
+         ],
+         [
+          "<a href=\"/person/33346\" target=\"_blank\">Mag. Karl Weber, MSc (V/N)</a>",
+          "Pro",
+          [
+           {
+            "gp_code": "BR",
+            "sitzung_id": 997,
+            "fund_von": null,
+            "fund_bis": null,
+            "url": "/dokument/BR/BRSITZ/997/A_-_13_28_28_01041208.html#48",
+            "title": "13:28:28 - Karl Weber (ÖVP/NÖ) - TOP 5-6 Versorgungssicherheit bei Energie (RN/48)",
+            "text": "RN/48"
+           }
+          ],
+          {
+           "url": "/aktuelles/mediathek/BR/BRSITZ/997?DEBATTE=4&TS=1792675727"
+          }
+         ],
+         [
+          "<a href=\"/person/32336\" target=\"_blank\">Mario Trinkl (S/B)</a>",
+          "Pro",
+          [
+           {
+            "gp_code": "BR",
+            "sitzung_id": 997,
+            "fund_von": null,
+            "fund_bis": null,
+            "url": "/dokument/BR/BRSITZ/997/A_-_13_31_23_01041223.html#49",
+            "title": "13:31:23 - Mario Trinkl (SPÖ/Bgld.) - TOP 5-6 Versorgungssicherheit bei Energie (RN/49)",
+            "text": "RN/49"
+           }
+          ],
+          {
+           "url": "/aktuelles/mediathek/BR/BRSITZ/997?DEBATTE=4&TS=1792675890"
+          }
+         ],
+         [
+          "<a href=\"/person/3460\" target=\"_blank\">Michael Bernard (F/N)</a>",
+          "Pro",
+          [
+           {
+            "gp_code": "BR",
+            "sitzung_id": 997,
+            "fund_von": null,
+            "fund_bis": null,
+            "url": "/dokument/BR/BRSITZ/997/A_-_13_36_55_01041271.html#50",
+            "title": "13:36:55 - Michael Bernard (FPÖ/NÖ) - TOP 5-6 Versorgungssicherheit bei Energie (RN/50)",
+            "text": "RN/50"
+           }
+          ],
+          {
+           "url": "/aktuelles/mediathek/BR/BRSITZ/997?DEBATTE=4&TS=1792676222"
+          }
+         ],
+         [
+          "<a href=\"/person/32510\" target=\"_blank\">StS Mag. Elisabeth Zehetner (V)</a>",
+          "Regierungsbank",
+          [
+           {
+            "gp_code": "BR",
+            "sitzung_id": 997,
+            "fund_von": null,
+            "fund_bis": null,
+            "url": "/dokument/BR/BRSITZ/997/A_-_13_48_56_01041301.html#51",
+            "title": "13:48:56 - Elisabeth Zehetner, Staatssekretärin im Bundesministerium - TOP 5-6 Versorgungssicherheit bei Energie (RN/51)",
+            "text": "RN/51"
+           }
+          ],
+          {
+           "url": "/aktuelles/mediathek/BR/BRSITZ/997?DEBATTE=4&TS=1792676944"
+          }
+         ],
+         [
+          "<a href=\"/person/31905\" target=\"_blank\">Sebastian Forstner (S/O)</a>",
+          "Pro",
+          [
+           {
+            "gp_code": "BR",
+            "sitzung_id": 997,
+            "fund_von": null,
+            "fund_bis": null,
+            "url": "/dokument/BR/BRSITZ/997/A_-_13_58_11_01041322.html#52",
+            "title": "13:58:11 - Sebastian Forstner (SPÖ/OÖ) - TOP 5-6 Versorgungssicherheit bei Energie (RN/52)",
+            "text": "RN/52"
+           }
+          ],
+          {
+           "url": "/aktuelles/mediathek/BR/BRSITZ/997?DEBATTE=4&TS=1792677492"
+          }
+         ]
+        ]
+       }
+      }
+     },
+     {
+      "date": "22.10.2026",
+      "text": "997. Sitzung: Antrag, keinen Einspruch zu erheben, <b>angenommen</b><br>Dafür: ÖVP, SPÖ, FPÖ, NEOS, dagegen: GRÜNE",
+      "fsth": [
+       {
+        "gp_code": "BR",
+        "sitzung_id": 997,
+        "fund_von": null,
+        "fund_bis": null,
+        "url": "/dokument/BR/BRSITZ/997/A_-_14_03_14_01041335.html#53.1",
+        "title": "14:03:14 - Abstimmung - TOP 5-6 Versorgungssicherheit bei Energie (RN/53.1)",
+        "text": "RN/53.1"
+       }
+      ]
+     },
+     {
+      "date": "22.10.2026",
+      "text": "997. Sitzung: Antrag, Zustimmung zu Verfassungsgesetzen bzw. -bestimmungen, <b>angenommen</b><br>Dafür: ÖVP, SPÖ, FPÖ, NEOS, dagegen: GRÜNE",
+      "fsth": [
+       {
+        "gp_code": "BR",
+        "sitzung_id": 997,
+        "fund_von": null,
+        "fund_bis": null,
+        "url": "/dokument/BR/BRSITZ/997/A_-_14_03_14_01041335.html#53.1",
+        "title": "14:03:14 - Abstimmung - TOP 5-6 Versorgungssicherheit bei Energie (RN/53.1)",
+        "text": "RN/53.1"
+       }
+      ]
+     },
+     {
+      "date": "22.10.2026",
+      "text": "Beschluss im Bundesrat <a href=\"/gegenstand/XXVIII/BNR/223\">223/BNR</a>",
+      "priority": 1
+     }
+    ],
+    "documents": [
+     {
+      "title": "Gesetzestext",
+      "documents": [
+       {
+        "link": "/dokument/XXVIII/BNR/223/fname_1783828.pdf",
+        "type": "PDF"
+       },
+       {
+        "link": "/dokument/XXVIII/BNR/223/fnameorig_1783828.html",
+        "type": "HTML"
+       }
+      ]
+     },
+     {
+      "title": "Beschlussformel NR",
+      "documents": [
+       {
+        "link": "/dokument/XXVIII/BNR/223/fname_1783829.pdf",
+        "type": "PDF"
+       },
+       {
+        "link": "/dokument/XXVIII/BNR/223/fnameorig_1783829.html",
+        "type": "HTML"
+       }
+      ]
+     },
+     {
+      "title": "Beschlussformel BR",
+      "documents": [
+       {
+        "link": "/dokument/XXVIII/BNR/223/fname_1785247.pdf",
+        "type": "PDF"
+       },
+       {
+        "link": "/dokument/XXVIII/BNR/223/fnameorig_1785247.html",
+        "type": "HTML"
+       }
+      ]
+     }
+    ],
+    "correspondence": [
+     {
+      "additional": false,
+      "title": "Bundesrat: Breite Zustimmung zu Regelungen für Versorgungssicherheit bei Energie, Wirtschafts- und Bedarfsgütern",
+      "date": "22.10.2026",
+      "url": "/aktuelles/pk/jahr_2026/pk1005#XXVIII_A_01007"
+     }
+    ]
+   }
+  ],
+  "status": {
+   "number": 5,
+   "description": "Beschlossen im Bundesrat <a href=\"/gegenstand/XXVIII/BNR/223\">223/BNR</a><br>Dafür: ÖVP, SPÖ, FPÖ, NEOS, dagegen: GRÜNE<br>Beschlossen im Nationalrat <a href=\"/gegenstand/XXVIII/BNR/223\">223/BNR</a>, Dafür: FPÖ, ÖVP, SPÖ, NEOS, dagegen: GRÜNE",
+   "bgbllinks": [
+    {
+     "title": "Bundesgesetzblatt I Nr. 98/2026",
+     "link": "http://www.ris.bka.gv.at/Dokument.wxe?Abfrage=BgblAuth&Dokumentnummer=BGBLA_2026_I_98",
+     "type": "DEFAULT"
+    },
+    {
+     "title": "Kunsttext",
+     "link": "http://www.ris.bka.gv.at/Ergebnis.wxe?Abfrage=Bundesnormen&Kundmachungsorgan=BGBl.+I+Nr.&Kundmachungsnummer=98%2f2026&Suchworte=&ReturnUrl=%2fSuchen.wxe%3fQueryID%3dBundesnormen",
+     "type": "DEFAULT"
+    }
+   ]
+  },
+  "vote": {
+   "result": [
+    {
+     "text": "FPÖ",
+     "code": "F",
+     "color": "#0052FB",
+     "fraction": 57,
+     "infavor": true
+    },
+    {
+     "text": "ÖVP",
+     "code": "V",
+     "color": "#62C3D0",
+     "fraction": 51,
+     "infavor": true
+    },
+    {
+     "text": "SPÖ",
+     "code": "S",
+     "color": "#FF0000",
+     "fraction": 41,
+     "infavor": true
+    },
+    {
+     "text": "NEOS",
+     "code": "N",
+     "color": "#E3257B",
+     "fraction": 17,
+     "infavor": true
+    },
+    {
+     "text": "GRÜNE",
+     "code": "G",
+     "color": "#69B12E",
+     "fraction": 16,
+     "infavor": false
+    }
+   ],
+   "infavor": true,
+   "code": "FVSNg",
+   "text": "Dafür: F, V, S, N, Dagegen: G",
+   "comment": null
+  },
+  "names": [
+   {
+    "funktext": "Eingebracht von",
+    "frak_code": "V"
+   },
+   {
+    "funktext": "Eingebracht von",
+    "frak_code": "S"
+   },
+   {
+    "funktext": "Eingebracht von",
+    "frak_code": "N"
+   }
+  ]
+ }
+}

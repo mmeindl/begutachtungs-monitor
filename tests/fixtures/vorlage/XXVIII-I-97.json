@@ -1,0 +1,919 @@
+{
+ "content": {
+  "ityp": "I",
+  "inr": 97,
+  "gp_code": "XXVIII",
+  "zitation": "97 d.B.",
+  "title": "Ehe- und Partnerschaftsrechts-Änderungsgesetz 2025 – EPaRÄG 2025",
+  "description": "Bundesgesetz, mit dem das Ehegesetz und das Eingetragene Partnerschaft-Gesetz geändert werden (Ehe- und Partnerschaftsrechts-Änderungsgesetz 2025 – EPaRÄG 2025)",
+  "einlangen": "2025-05-28T00:00:00",
+  "doktyp": "RV",
+  "statementsstate": "0",
+  "documents": [
+   {
+    "title": "Gesetzestext",
+    "documents": [
+     {
+      "link": "/dokument/XXVIII/I/97/fname_1690003.pdf",
+      "type": "PDF"
+     },
+     {
+      "link": "/dokument/XXVIII/I/97/fnameorig_1690003.html",
+      "type": "HTML"
+     }
+    ]
+   },
+   {
+    "title": "Erläuterungen",
+    "documents": [
+     {
+      "link": "/dokument/XXVIII/I/97/fname_1690005.pdf",
+      "type": "PDF"
+     },
+     {
+      "link": "/dokument/XXVIII/I/97/fnameorig_1690005.html",
+      "type": "HTML"
+     }
+    ]
+   },
+   {
+    "title": "TGÜ",
+    "documents": [
+     {
+      "link": "/dokument/XXVIII/I/97/fname_1690006.pdf",
+      "type": "PDF"
+     },
+     {
+      "link": "/dokument/XXVIII/I/97/fnameorig_1690006.html",
+      "type": "HTML"
+     }
+    ]
+   },
+   {
+    "title": "Vorblatt und WFA",
+    "documents": [
+     {
+      "link": "/dokument/XXVIII/I/97/imfname_1690007.pdf",
+      "type": "PDF"
+     }
+    ]
+   }
+  ],
+  "statements": {
+   "documents": [
+    {
+     "title": "Gesetzestext",
+     "documents": [
+      {
+       "link": "/dokument/XXVIII/I/97/fname_1690003.pdf",
+       "type": "PDF"
+      },
+      {
+       "link": "/dokument/XXVIII/I/97/fnameorig_1690003.html",
+       "type": "HTML"
+      }
+     ]
+    }
+   ]
+  },
+  "phase": [
+   {
+    "name": "Einlangen NR",
+    "id": 1,
+    "stages": [
+     {
+      "date": "28.05.2025",
+      "text": "Einlangen im Nationalrat",
+      "priority": 1
+     },
+     {
+      "date": "30.05.2025",
+      "text": "Vorgesehen für den <a href=\"/ausschuss/XXVIII/A-JU/1/00926\">Justizausschuss</a>"
+     },
+     {
+      "date": "16.06.2025",
+      "text": "<a href=\"/gegenstand/XXVIII/NRSITZ/30\">30. Sitzung des Nationalrates</a>: Mitteilung des Einlangens",
+      "fsth": [
+       {
+        "gp_code": "XXVIII",
+        "sitzung_id": 30,
+        "fund_von": null,
+        "fund_bis": null,
+        "url": "/dokument/XXVIII/NRSITZ/30/fnameorig_1739891.html#4",
+        "title": "09:11:14 - Präsidium (RN/4)",
+        "text": "RN/4"
+       }
+      ]
+     }
+    ],
+    "documents": []
+   },
+   {
+    "name": "Ausschussberatungen NR",
+    "id": 3,
+    "stages": [
+     {
+      "date": "16.06.2025",
+      "text": "<a href=\"/gegenstand/XXVIII/NRSITZ/31\">31. Sitzung des Nationalrates</a>: Zuweisung an den <a href=\"/ausschuss/XXVIII/A-JU/1/00926\">Justizausschuss</a>",
+      "fsth": [
+       {
+        "gp_code": "XXVIII",
+        "sitzung_id": 31,
+        "fund_von": null,
+        "fund_bis": null,
+        "url": "/dokument/XXVIII/NRSITZ/31/fnameorig_1732753.html#2",
+        "title": "18:51:22 - Walter Rosenkranz, Präsident des Nationalrates - Präsidium (RN/2)",
+        "text": "RN/2"
+       }
+      ]
+     },
+     {
+      "date": "24.06.2025",
+      "text": "Justizausschuss: auf <a href=\"/dokument/XXVIII/A-JU/1/00926/TO_16588613.html\">Tagesordnung</a> in der <a href=\"/ausschuss/XXVIII/A-JU/1/00926?selectedStage=105&selectedSession=3&selectedDate=24062025\">3. Sitzung des Ausschusses</a>"
+     },
+     {
+      "date": "24.06.2025",
+      "text": "Justizausschuss: Bericht <a href=\"/gegenstand/XXVIII/I/147\">147 d.B.</a>",
+      "priority": 1
+     }
+    ],
+    "documents": [
+     {
+      "title": "Berichterstattung",
+      "documents": [
+       {
+        "link": "/dokument/XXVIII/I/147/fname_1696058.pdf",
+        "type": "PDF"
+       },
+       {
+        "link": "/dokument/XXVIII/I/147/fnameorig_1696058.html",
+        "type": "HTML"
+       }
+      ]
+     }
+    ],
+    "correspondence": [
+     {
+      "additional": false,
+      "title": "Justizausschuss: Einstimmigkeit für Eheverbot unter 18 samt Ausweitung des Verwandten-Eheverbots",
+      "date": "24.06.2025",
+      "url": "/aktuelles/pk/jahr_2025/pk0597#XXVIII_I_00097"
+     }
+    ]
+   },
+   {
+    "name": "Plenarberatungen NR",
+    "id": 4,
+    "stages": [
+     {
+      "date": "10.07.2025",
+      "text": "Auf der <a href=\"/dokument/XXVIII/NRSITZ/37/TO_16447530.html\">Tagesordnung</a> der <a href=\"/gegenstand/XXVIII/NRSITZ/37\">37. Sitzung des Nationalrates</a>"
+     },
+     {
+      "date": "10.07.2025",
+      "text": "Wortmeldungen in der Debatte",
+      "reden": {
+       "rendertype": "table",
+       "data": {
+        "header": [
+         {
+          "label": "Name und Klub",
+          "sortable": false,
+          "filterable": false,
+          "hidden": false,
+          "additionalInfo": false,
+          "class": "his-col-namefraktion"
+         },
+         {
+          "label": "Wortmeldungsart",
+          "sortable": false,
+          "filterable": false,
+          "hidden": false,
+          "additionalInfo": false,
+          "class": "his-col-wortmeldungsart"
+         },
+         {
+          "label": "Protokoll",
+          "sortable": false,
+          "filterable": false,
+          "hidden": false,
+          "additionalInfo": false,
+          "class": "his-col-protokoll"
+         },
+         {
+          "label": "Video",
+          "sortable": false,
+          "filterable": false,
+          "hidden": false,
+          "additionalInfo": false,
+          "class": "his-col-video"
+         }
+        ],
+        "rows": [
+         [
+          "<a href=\"/person/51571\" target=\"_blank\">Mag. Harald Stefan (F)</a>",
+          "Pro",
+          [
+           {
+            "gp_code": "XXVIII",
+            "sitzung_id": 37,
+            "fund_von": null,
+            "fund_bis": null,
+            "url": "/dokument/XXVIII/NRSITZ/37/fnameorig_1752158.html#168",
+            "title": "19:58:40 - Harald Stefan (FPÖ) - TOP 15 Eheverbot für Minderjährige (RN/168)",
+            "text": "RN/168"
+           }
+          ],
+          {
+           "url": "/aktuelles/mediathek/XXVIII/NRSITZ/37?DEBATTE=11&TS=1752177526"
+          }
+         ],
+         [
+          "<a href=\"/person/30696\" target=\"_blank\">Mag. Elke Hanel-Torsch (S)</a>",
+          "Pro",
+          [
+           {
+            "gp_code": "XXVIII",
+            "sitzung_id": 37,
+            "fund_von": null,
+            "fund_bis": null,
+            "url": "/dokument/XXVIII/NRSITZ/37/fnameorig_1752158.html#169",
+            "title": "20:02:56 - Elke Hanel-Torsch (SPÖ) - TOP 15 Eheverbot für Minderjährige (RN/169)",
+            "text": "RN/169"
+           }
+          ],
+          {
+           "url": "/aktuelles/mediathek/XXVIII/NRSITZ/37?DEBATTE=11&TS=1752177781"
+          }
+         ],
+         [
+          "<a href=\"/person/1980\" target=\"_blank\">Mag. Johanna Jachs (V)</a>",
+          "Pro",
+          [
+           {
+            "gp_code": "XXVIII",
+            "sitzung_id": 37,
+            "fund_von": null,
+            "fund_bis": null,
+            "url": "/dokument/XXVIII/NRSITZ/37/fnameorig_1752158.html#170",
+            "title": "20:05:26 - Johanna Jachs (ÖVP) - TOP 15 Eheverbot für Minderjährige (RN/170)",
+            "text": "RN/170"
+           }
+          ],
+          {
+           "url": "/aktuelles/mediathek/XXVIII/NRSITZ/37?DEBATTE=11&TS=1752177933"
+          }
+         ],
+         [
+          "<a href=\"/person/2344\" target=\"_blank\">Dr. Stephanie Krisper (N)</a>",
+          "Pro",
+          [
+           {
+            "gp_code": "XXVIII",
+            "sitzung_id": 37,
+            "fund_von": null,
+            "fund_bis": null,
+            "url": "/dokument/XXVIII/NRSITZ/37/fnameorig_1752158.html#171",
+            "title": "20:09:42 - Stephanie Krisper (NEOS) - TOP 15 Eheverbot für Minderjährige (RN/171)",
+            "text": "RN/171"
+           }
+          ],
+          {
+           "url": "/aktuelles/mediathek/XXVIII/NRSITZ/37?DEBATTE=11&TS=1752178188"
+          }
+         ],
+         [
+          "<a href=\"/person/2345\" target=\"_blank\">Dr. Alma Zadić, LL.M. (G)</a>",
+          "Pro",
+          [
+           {
+            "gp_code": "XXVIII",
+            "sitzung_id": 37,
+            "fund_von": null,
+            "fund_bis": null,
+            "url": "/dokument/XXVIII/NRSITZ/37/fnameorig_1752158.html#172",
+            "title": "20:11:40 - Alma Zadić (Grüne) - TOP 15 Eheverbot für Minderjährige (RN/172)",
+            "text": "RN/172"
+           }
+          ],
+          {
+           "url": "/aktuelles/mediathek/XXVIII/NRSITZ/37?DEBATTE=11&TS=1752178308"
+          }
+         ],
+         [
+          "<a href=\"/person/32507\" target=\"_blank\">BM Dr. Anna Sporrer (S)</a>",
+          "Regierungsbank",
+          [
+           {
+            "gp_code": "XXVIII",
+            "sitzung_id": 37,
+            "fund_von": null,
+            "fund_bis": null,
+            "url": "/dokument/XXVIII/NRSITZ/37/fnameorig_1752158.html#173",
+            "title": "20:15:29 - Anna Sporrer, Bundesministerin - TOP 15 Eheverbot für Minderjährige (RN/173)",
+            "text": "RN/173"
+           }
+          ],
+          {
+           "url": "/aktuelles/mediathek/XXVIII/NRSITZ/37?DEBATTE=11&TS=1752178536"
+          }
+         ],
+         [
+          "<a href=\"/person/5672\" target=\"_blank\">Barbara Neßler (G)</a>",
+          "Pro",
+          [
+           {
+            "gp_code": "XXVIII",
+            "sitzung_id": 37,
+            "fund_von": null,
+            "fund_bis": null,
+            "url": "/dokument/XXVIII/NRSITZ/37/fnameorig_1752158.html#174",
+            "title": "20:19:08 - Barbara Neßler (Grüne) - TOP 15 Eheverbot für Minderjährige (RN/174)",
+            "text": "RN/174"
+           }
+          ],
+          {
+           "url": "/aktuelles/mediathek/XXVIII/NRSITZ/37?DEBATTE=11&TS=1752178755"
+          }
+         ]
+        ]
+       }
+      }
+     },
+     {
+      "date": "10.07.2025",
+      "text": "37. Sitzung des Nationalrates: Unselbständiger Entschließungsantrag der Abgeordneten <a href=\"/person/2345\" target=\"_blank\">Dr. Alma Zadić, LL.M.</a>, Kolleginnen und Kollegen betreffend <a href=\"/gegenstand/XXVIII/UEA/106\">Umwandlung von Eingetragener Partnerschaft in Ehe ermöglichen! (106/UEA)</a><br><b>abgelehnt</b><br>Dafür: GRÜNE, dagegen: FPÖ, ÖVP, SPÖ, NEOS",
+      "fsth": [
+       {
+        "gp_code": "XXVIII",
+        "sitzung_id": 37,
+        "fund_von": null,
+        "fund_bis": null,
+        "url": "/dokument/XXVIII/NRSITZ/37/fnameorig_1752158.html#172",
+        "title": "20:11:40 - Alma Zadić (Grüne) - TOP 15 Eheverbot für Minderjährige (RN/172)",
+        "text": "RN/172"
+       },
+       {
+        "gp_code": "XXVIII",
+        "sitzung_id": 37,
+        "fund_von": null,
+        "fund_bis": null,
+        "url": "/dokument/XXVIII/NRSITZ/37/fnameorig_1752158.html#172.1",
+        "title": "20:11:40 - Alma Zadić (Grüne) - TOP 15 Eheverbot für Minderjährige (RN/172.1)",
+        "text": "RN/172.1"
+       }
+      ]
+     },
+     {
+      "date": "10.07.2025",
+      "text": "37. Sitzung des Nationalrates: Gesetzesvorschlag in zweiter Lesung <b>angenommen</b><br>Dafür: FPÖ, ÖVP, SPÖ, NEOS, GRÜNE, dagegen: -",
+      "fsth": [
+       {
+        "gp_code": "XXVIII",
+        "sitzung_id": 37,
+        "fund_von": null,
+        "fund_bis": null,
+        "url": "/dokument/XXVIII/NRSITZ/37/fnameorig_1752158.html#175",
+        "title": "20:22:08 - Abstimmung - TOP 15 Eheverbot für Minderjährige (RN/175)",
+        "text": "RN/175"
+       }
+      ]
+     },
+     {
+      "date": "10.07.2025",
+      "text": "37. Sitzung des Nationalrates: Gesetzesvorschlag in dritter Lesung <b>angenommen</b><br>Dafür: FPÖ, ÖVP, SPÖ, NEOS, GRÜNE, dagegen: -",
+      "fsth": [
+       {
+        "gp_code": "XXVIII",
+        "sitzung_id": 37,
+        "fund_von": null,
+        "fund_bis": null,
+        "url": "/dokument/XXVIII/NRSITZ/37/fnameorig_1752158.html#175",
+        "title": "20:22:08 - Abstimmung - TOP 15 Eheverbot für Minderjährige (RN/175)",
+        "text": "RN/175"
+       }
+      ]
+     },
+     {
+      "date": "10.07.2025",
+      "text": "Beschluss im Nationalrat <a href=\"/gegenstand/XXVIII/BNR/50\">50/BNR</a>",
+      "priority": 1
+     },
+     {
+      "date": "11.07.2025",
+      "text": "Übermittlung des Beschlusses an den Bundesrat"
+     }
+    ],
+    "documents": [
+     {
+      "title": "Entschließungsantrag (gescanntes Original)",
+      "documents": [
+       {
+        "link": "/dokument/XXVIII/UEA/106/imfname_1701763.pdf",
+        "type": "PDF"
+       }
+      ]
+     },
+     {
+      "title": "Gesetzestext",
+      "documents": [
+       {
+        "link": "/dokument/XXVIII/BNR/50/fname_1701897.pdf",
+        "type": "PDF"
+       },
+       {
+        "link": "/dokument/XXVIII/BNR/50/fnameorig_1701897.html",
+        "type": "HTML"
+       }
+      ]
+     },
+     {
+      "title": "Beschlussformel NR",
+      "documents": [
+       {
+        "link": "/dokument/XXVIII/BNR/50/fname_1701898.pdf",
+        "type": "PDF"
+       },
+       {
+        "link": "/dokument/XXVIII/BNR/50/fnameorig_1701898.html",
+        "type": "HTML"
+       }
+      ]
+     },
+     {
+      "title": "Beschlussformel BR",
+      "documents": [
+       {
+        "link": "/dokument/XXVIII/BNR/50/fname_1703516.pdf",
+        "type": "PDF"
+       },
+       {
+        "link": "/dokument/XXVIII/BNR/50/fnameorig_1703516.html",
+        "type": "HTML"
+       }
+      ]
+     }
+    ],
+    "correspondence": [
+     {
+      "additional": false,
+      "title": "Nationalrat beschließt Eheverbot für Unter-18-Jährige",
+      "date": "10.07.2025",
+      "url": "/aktuelles/pk/jahr_2025/pk0681#XXVIII_I_00097"
+     }
+    ],
+    "vote": {
+     "result": [
+      {
+       "text": "FPÖ",
+       "code": "F",
+       "color": "#0052FB",
+       "fraction": 57,
+       "infavor": true
+      },
+      {
+       "text": "ÖVP",
+       "code": "V",
+       "color": "#62C3D0",
+       "fraction": 51,
+       "infavor": true
+      },
+      {
+       "text": "SPÖ",
+       "code": "S",
+       "color": "#FF0000",
+       "fraction": 41,
+       "infavor": true
+      },
+      {
+       "text": "NEOS",
+       "code": "N",
+       "color": "#E3257B",
+       "fraction": 18,
+       "infavor": true
+      },
+      {
+       "text": "GRÜNE",
+       "code": "G",
+       "color": "#69B12E",
+       "fraction": 16,
+       "infavor": true
+      }
+     ],
+     "infavor": true,
+     "code": "FVSNG",
+     "text": "Dafür: F, V, S, N, G, Dagegen: -",
+     "comment": null
+    }
+   },
+   {
+    "name": "Einlangen BR",
+    "id": 5,
+    "stages": [
+     {
+      "date": "11.07.2025",
+      "text": "Einlangen im Bundesrat (Frist: 05.09.2025)"
+     },
+     {
+      "date": "11.07.2025",
+      "text": "Mitwirkungsrecht des Bundesrates",
+      "priority": 1
+     }
+    ],
+    "documents": []
+   },
+   {
+    "name": "Ausschussberatungen BR",
+    "id": 6,
+    "stages": [
+     {
+      "date": "11.07.2025",
+      "text": "Zuweisung an den <a href=\"/ausschuss/BR/A-JU-BR/1/00114\">Justizausschuss des Bundesrates</a>"
+     },
+     {
+      "date": "15.07.2025",
+      "text": "Justizausschuss des Bundesrates: auf <a href=\"/dokument/BR/A-JU-BR/1/00114/TO_16617066.html\">Tagesordnung</a> in der <a href=\"/ausschuss/BR/A-JU-BR/1/00114?selectedStage=105&selectedSession=2&selectedDate=15072025\">2. Sitzung des Ausschusses</a>"
+     },
+     {
+      "date": "15.07.2025",
+      "text": "Justizausschuss des Bundesrates: Bericht <a href=\"/gegenstand/BR/I-BR/11668\">11668/BR d.B.</a>",
+      "priority": 1
+     }
+    ],
+    "documents": [
+     {
+      "title": "Berichterstattung",
+      "documents": [
+       {
+        "link": "/dokument/BR/I-BR/11668/fname_1702922.pdf",
+        "type": "PDF"
+       },
+       {
+        "link": "/dokument/BR/I-BR/11668/fnameorig_1702922.html",
+        "type": "HTML"
+       }
+      ]
+     }
+    ]
+   },
+   {
+    "name": "Plenarberatungen BR",
+    "id": 7,
+    "stages": [
+     {
+      "date": "17.07.2025",
+      "text": "Auf der Tagesordnung der <a href=\"/gegenstand/BR/BRSITZ/980\">980. Sitzung</a>"
+     },
+     {
+      "date": "17.07.2025",
+      "text": "980. Sitzung: Berichterstattung durch den Bundesrat <a href=\"/person/31679\" target=\"_blank\">Sandro Beer</a>",
+      "fsth": [
+       {
+        "gp_code": "BR",
+        "sitzung_id": 980,
+        "fund_von": null,
+        "fund_bis": null,
+        "url": "/dokument/BR/BRSITZ/980/fnameorig_1752660.html#122",
+        "title": "17:59:39 - Berichterstatter Sandro Beer - TOP 18 Eheverbot für Minderjährige (RN/122)",
+        "text": "RN/122"
+       }
+      ]
+     },
+     {
+      "date": "17.07.2025",
+      "text": "980. Sitzung: Debatte",
+      "fsth": [
+       {
+        "gp_code": "BR",
+        "sitzung_id": 980,
+        "fund_von": null,
+        "fund_bis": null,
+        "url": "/dokument/BR/BRSITZ/980/fnameorig_1752660.html#123",
+        "title": "18:00:34 - Verena Schweiger (SPÖ/W) - TOP 18 Eheverbot für Minderjährige (RN/123)",
+        "text": "RN/123"
+       },
+       {
+        "gp_code": "BR",
+        "sitzung_id": 980,
+        "fund_von": null,
+        "fund_bis": null,
+        "url": "/dokument/BR/BRSITZ/980/fnameorig_1752660.html#127",
+        "title": "18:23:25 - Anna Sporrer, Bundesministerin - TOP 18 Eheverbot für Minderjährige (RN/127)",
+        "text": "RN/127"
+       }
+      ]
+     },
+     {
+      "date": "17.07.2025",
+      "text": "Wortmeldungen in der Debatte",
+      "reden": {
+       "rendertype": "table",
+       "data": {
+        "header": [
+         {
+          "label": "Name und Fraktion",
+          "sortable": false,
+          "filterable": false,
+          "hidden": false,
+          "additionalInfo": false,
+          "class": "his-col-namefraktion"
+         },
+         {
+          "label": "Wortmeldungsart",
+          "sortable": false,
+          "filterable": false,
+          "hidden": false,
+          "additionalInfo": false,
+          "class": "his-col-wortmeldungsart"
+         },
+         {
+          "label": "Protokoll",
+          "sortable": false,
+          "filterable": false,
+          "hidden": false,
+          "additionalInfo": false,
+          "class": "his-col-protokoll"
+         },
+         {
+          "label": "Video",
+          "sortable": false,
+          "filterable": false,
+          "hidden": false,
+          "additionalInfo": false,
+          "class": "his-col-video"
+         }
+        ],
+        "rows": [
+         [
+          "<a href=\"/person/33455\" target=\"_blank\">Verena Schweiger, BA MA MA (S/W)</a>",
+          "Pro",
+          [
+           {
+            "gp_code": "BR",
+            "sitzung_id": 980,
+            "fund_von": null,
+            "fund_bis": null,
+            "url": "/dokument/BR/BRSITZ/980/fnameorig_1752660.html#123",
+            "title": "18:00:34 - Verena Schweiger (SPÖ/W) - TOP 18 Eheverbot für Minderjährige (RN/123)",
+            "text": "RN/123"
+           }
+          ],
+          {
+           "url": "/aktuelles/mediathek/BR/BRSITZ/980?DEBATTE=12&TS=1752775243"
+          }
+         ],
+         [
+          "<a href=\"/person/20236\" target=\"_blank\">Barbara Prügl (V/O)</a>",
+          "Pro",
+          [
+           {
+            "gp_code": "BR",
+            "sitzung_id": 980,
+            "fund_von": null,
+            "fund_bis": null,
+            "url": "/dokument/BR/BRSITZ/980/fnameorig_1752660.html#124",
+            "title": "18:05:30 - Barbara Prügl (ÖVP/OÖ) - TOP 18 Eheverbot für Minderjährige (RN/124)",
+            "text": "RN/124"
+           }
+          ],
+          {
+           "url": "/aktuelles/mediathek/BR/BRSITZ/980?DEBATTE=12&TS=1752775538"
+          }
+         ],
+         [
+          "<a href=\"/person/3459\" target=\"_blank\">Andreas Arthur Spanring (F/N)</a>",
+          "Pro",
+          [
+           {
+            "gp_code": "BR",
+            "sitzung_id": 980,
+            "fund_von": null,
+            "fund_bis": null,
+            "url": "/dokument/BR/BRSITZ/980/fnameorig_1752660.html#125",
+            "title": "18:09:20 - Andreas Arthur Spanring (FPÖ/NÖ) - TOP 18 Eheverbot für Minderjährige (RN/125)",
+            "text": "RN/125"
+           }
+          ],
+          {
+           "url": "/aktuelles/mediathek/BR/BRSITZ/980?DEBATTE=12&TS=1752775767"
+          }
+         ],
+         [
+          "<a href=\"/person/5932\" target=\"_blank\">Claudia Hauschildt-Buschberger (G/O)</a>",
+          "Pro",
+          [
+           {
+            "gp_code": "BR",
+            "sitzung_id": 980,
+            "fund_von": null,
+            "fund_bis": null,
+            "url": "/dokument/BR/BRSITZ/980/fnameorig_1752660.html#126",
+            "title": "18:17:27 - Claudia Hauschildt-Buschberger (Grüne/OÖ) - TOP 18 Eheverbot für Minderjährige (RN/126)",
+            "text": "RN/126"
+           }
+          ],
+          {
+           "url": "/aktuelles/mediathek/BR/BRSITZ/980?DEBATTE=12&TS=1752776255"
+          }
+         ],
+         [
+          "<a href=\"/person/32507\" target=\"_blank\">BM Dr. Anna Sporrer (S)</a>",
+          "Regierungsbank",
+          [
+           {
+            "gp_code": "BR",
+            "sitzung_id": 980,
+            "fund_von": null,
+            "fund_bis": null,
+            "url": "/dokument/BR/BRSITZ/980/fnameorig_1752660.html#127",
+            "title": "18:23:25 - Anna Sporrer, Bundesministerin - TOP 18 Eheverbot für Minderjährige (RN/127)",
+            "text": "RN/127"
+           }
+          ],
+          {
+           "url": "/aktuelles/mediathek/BR/BRSITZ/980?DEBATTE=12&TS=1752776614"
+          }
+         ]
+        ]
+       }
+      }
+     },
+     {
+      "date": "17.07.2025",
+      "text": "980. Sitzung: Antrag, keinen Einspruch zu erheben, <b>angenommen</b><br>Einstimmig",
+      "fsth": [
+       {
+        "gp_code": "BR",
+        "sitzung_id": 980,
+        "fund_von": null,
+        "fund_bis": null,
+        "url": "/dokument/BR/BRSITZ/980/fnameorig_1752660.html#128",
+        "title": "18:27:58 - Abstimmung - TOP 18 Eheverbot für Minderjährige (RN/128)",
+        "text": "RN/128"
+       }
+      ]
+     },
+     {
+      "date": "17.07.2025",
+      "text": "980. Sitzung: Unselbständiger Entschließungsantrag der Bundesräte <a href=\"/person/5932\" target=\"_blank\">Claudia Hauschildt-Buschberger</a>, Kolleginnen und Kollegen betreffend <a href=\"/gegenstand/BR/UEA-BR/767\">Umwandlung von Eingetragener Partnerschaft in Ehe ermöglichen! (767/UEA-BR/2025)</a><br><b>abgelehnt</b><br>Dafür: GRÜNE, dagegen: ÖVP, SPÖ, FPÖ, NEOS",
+      "fsth": [
+       {
+        "gp_code": "BR",
+        "sitzung_id": 980,
+        "fund_von": null,
+        "fund_bis": null,
+        "url": "/dokument/BR/BRSITZ/980/fnameorig_1752660.html#126",
+        "title": "18:17:27 - Claudia Hauschildt-Buschberger (Grüne/OÖ) - TOP 18 Eheverbot für Minderjährige (RN/126)",
+        "text": "RN/126"
+       },
+       {
+        "gp_code": "BR",
+        "sitzung_id": 980,
+        "fund_von": null,
+        "fund_bis": null,
+        "url": "/dokument/BR/BRSITZ/980/fnameorig_1752660.html#126.1",
+        "title": "18:17:27 - Claudia Hauschildt-Buschberger (Grüne/OÖ) - TOP 18 Eheverbot für Minderjährige (RN/126.1)",
+        "text": "RN/126.1"
+       }
+      ]
+     },
+     {
+      "date": "17.07.2025",
+      "text": "Beschluss im Bundesrat <a href=\"/gegenstand/XXVIII/BNR/50\">50/BNR</a>",
+      "priority": 1
+     }
+    ],
+    "documents": [
+     {
+      "title": "Unselbstständiger Entschließungsantrag (gescanntes Original)",
+      "documents": [
+       {
+        "link": "/dokument/BR/UEA-BR/767/imfname_1703531.pdf",
+        "type": "PDF"
+       }
+      ]
+     },
+     {
+      "title": "Gesetzestext",
+      "documents": [
+       {
+        "link": "/dokument/XXVIII/BNR/50/fname_1701897.pdf",
+        "type": "PDF"
+       },
+       {
+        "link": "/dokument/XXVIII/BNR/50/fnameorig_1701897.html",
+        "type": "HTML"
+       }
+      ]
+     },
+     {
+      "title": "Beschlussformel NR",
+      "documents": [
+       {
+        "link": "/dokument/XXVIII/BNR/50/fname_1701898.pdf",
+        "type": "PDF"
+       },
+       {
+        "link": "/dokument/XXVIII/BNR/50/fnameorig_1701898.html",
+        "type": "HTML"
+       }
+      ]
+     },
+     {
+      "title": "Beschlussformel BR",
+      "documents": [
+       {
+        "link": "/dokument/XXVIII/BNR/50/fname_1703516.pdf",
+        "type": "PDF"
+       },
+       {
+        "link": "/dokument/XXVIII/BNR/50/fnameorig_1703516.html",
+        "type": "HTML"
+       }
+      ]
+     }
+    ],
+    "correspondence": [
+     {
+      "additional": false,
+      "title": "Bundesrat finalisiert Strafbarkeit von Dick-Pics",
+      "date": "17.07.2025",
+      "url": "/aktuelles/pk/jahr_2025/pk0721#XXVIII_I_00097"
+     }
+    ]
+   }
+  ],
+  "status": {
+   "number": 5,
+   "description": "Beschlossen im Bundesrat <a href=\"/gegenstand/XXVIII/BNR/50\">50/BNR</a><br>Einstimmig<br>Beschlossen im Nationalrat <a href=\"/gegenstand/XXVIII/BNR/50\">50/BNR</a>, Dafür: FPÖ, ÖVP, SPÖ, NEOS, GRÜNE, dagegen: -",
+   "bgbllinks": [
+    {
+     "title": "Bundesgesetzblatt I Nr. 46/2025",
+     "link": "http://www.ris.bka.gv.at/Dokument.wxe?Abfrage=BgblAuth&Dokumentnummer=BGBLA_2025_I_46",
+     "type": "DEFAULT"
+    },
+    {
+     "title": "Kunsttext",
+     "link": "http://www.ris.bka.gv.at/Ergebnis.wxe?Abfrage=Bundesnormen&Kundmachungsorgan=BGBl.+I+Nr.&Kundmachungsnummer=46%2f2025&Suchworte=&ReturnUrl=%2fSuchen.wxe%3fQueryID%3dBundesnormen",
+     "type": "DEFAULT"
+    }
+   ]
+  },
+  "vote": {
+   "result": [
+    {
+     "text": "FPÖ",
+     "code": "F",
+     "color": "#0052FB",
+     "fraction": 57,
+     "infavor": true
+    },
+    {
+     "text": "ÖVP",
+     "code": "V",
+     "color": "#62C3D0",
+     "fraction": 51,
+     "infavor": true
+    },
+    {
+     "text": "SPÖ",
+     "code": "S",
+     "color": "#FF0000",
+     "fraction": 41,
+     "infavor": true
+    },
+    {
+     "text": "NEOS",
+     "code": "N",
+     "color": "#E3257B",
+     "fraction": 18,
+     "infavor": true
+    },
+    {
+     "text": "GRÜNE",
+     "code": "G",
+     "color": "#69B12E",
+     "fraction": 16,
+     "infavor": true
+    }
+   ],
+   "infavor": true,
+   "code": "FVSNG",
+   "text": "Dafür: F, V, S, N, G, Dagegen: -",
+   "comment": null
+  },
+  "names": [
+   {
+    "funktext": "Mitglied der Bundesregierung",
+    "frak_code": null,
+    "ltext": "Bundesministerium für Justiz"
+   }
+  ],
+  "shortinfo": {
+   "titel": "Kurzinformation",
+   "teil1": "<ul class=\"unordered-list\">\n\t<li>Abschaffung der M&ouml;glichkeit, minderj&auml;hrige Personen f&uuml;r ehef&auml;hig erkl&auml;ren zu lassen&nbsp;</li>\n\t<li>Verbot der Eheschlie&szlig;ung und Begr&uuml;ndung einer eingetragenen Partnerschaft zwischen Verwandten bis zum vierten Grad der Seitenlinie</li>\n</ul>\n",
+   "teil2": "<ul class=\"unordered-list\">\n\t<li>Wiedereinf&uuml;hrung der Klagebefugnis der Staatsanwaltschaft zur Nichtigerkl&auml;rung einer Ehe oder eingetragenen Partnerschaft bei fehlender Ehef&auml;higkeit</li>\n</ul>\n",
+   "stand": "28.05.2025"
+  }
+ }
+}

@@ -7,6 +7,7 @@ import type {
   DraftSummary,
   EnactmentInfo,
   NoPromulgation,
+  ProcedureRoot,
   RelatedDraft,
 } from '#shared/types'
 import { antragPathFor, carriesDraft } from '#shared/utils/antragPath'
@@ -96,7 +97,7 @@ const BGBL_DATE_BUDGET_MS = 2_000
  * reason given at `getRisMapForGp` below.)
  */
 async function bgblFromRis(
-  rvLink: RvLink,
+  rvLink: Pick<RvLink, 'gp' | 'inr' | 'date'>,
   content: { phase?: RawPhase[] | null; status?: { number?: unknown } | null } | null | undefined,
 ): Promise<{ number: string; url: string } | null> {
   const decidedAt = findHouseDecisionDate(content?.phase)
@@ -185,14 +186,41 @@ async function enactmentOf(
 ): Promise<EnactmentInfo | null> {
   const rvLink = rvLinks.at(-1)
   if (!rvLink) return null
-  const enactment: EnactmentInfo = {
-    rvCitation: rvLink.label,
-    rvUrl: rvLink.url,
-    rvTextUrl: null,
-    rvDate: rvLink.date,
+  return enactmentOfItem(
+    { gp: rvLink.gp, ityp: 'I', inr: rvLink.inr },
+    rvLink,
     // Everything before the latest one — the 1:n split, which used to be
     // visible only in the raw stage list.
-    furtherRv: rvLinks.slice(0, -1).map((rv) => ({ label: rv.label, url: rv.url })),
+    rvLinks.slice(0, -1).map((rv) => ({ label: rv.label, url: rv.url })),
+    currentGp,
+  )
+}
+
+/**
+ * The same five-fields-one-record reading for ANY item that went through the
+ * Nationalrat as a Gesetzesvorschlag — a Regierungsvorlage, or a
+ * selbständiger Antrag (10.11.2026, the page of a law without a
+ * Begutachtung). The Antrag's record carries the same `phase`, `status`,
+ * `vote` and `statements.documents` as a Vorlage's (read live on six of each
+ * kind's laws of GP XXVIII, 09.11.2026), so every reader below applies as
+ * is. One difference: RIS is asked for a missing Kundmachung only for a
+ * Vorlage — `findBgblIForVorlage` is keyed on the Vorlage, and an Antrag
+ * has no such key. The item's record is read through the Gegenstand leaf
+ * cache, so a caller that fetched it already pays nothing here.
+ */
+export async function enactmentOfItem(
+  item: ProcedureRoot,
+  link: { label: string; url: string; date: string | null },
+  furtherRv: EnactmentInfo['furtherRv'],
+  currentGp: string,
+): Promise<EnactmentInfo> {
+  const rvLink = { gp: item.gp, inr: item.inr, date: link.date }
+  const enactment: EnactmentInfo = {
+    rvCitation: link.label,
+    rvUrl: link.url,
+    rvTextUrl: null,
+    rvDate: link.date,
+    furtherRv,
     bgblNumber: null,
     bgblRisUrl: null,
     amendedIn: null,
@@ -212,7 +240,7 @@ async function enactmentOf(
     successor: null,
   }
   try {
-    const rv = await getGegenstand(rvLink.gp, 'I', rvLink.inr)
+    const rv = await getGegenstand(item.gp, item.ityp, item.inr)
     // Parliament's link first; without one, RIS by the exact key — the
     // address is then RIS's own document page, the same shape as the link.
     // The procedure's dates after the Ausschuss, and whether Parliament
@@ -228,7 +256,7 @@ async function enactmentOf(
     // there is no Kundmachung of it to find.
     const bgbl =
       extractBgblLink(rv.content?.status?.bgbllinks) ??
-      (enactment.notPromulgated ? null : await bgblFromRis(rvLink, rv.content))
+      (enactment.notPromulgated || item.ityp !== 'I' ? null : await bgblFromRis(rvLink, rv.content))
     if (bgbl) {
       enactment.bgblNumber = bgbl.number
       enactment.bgblRisUrl = bgbl.url

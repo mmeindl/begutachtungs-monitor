@@ -349,25 +349,35 @@ function assertInstitutionRows(rows: unknown[][]): void {
  * No last-good fallback here — this enriches a station the page already
  * draws, so a failed fetch costs one line, not the page.
  */
-export const getStatementsForRv = defineCachedFunction(
-  async (gp: string, inr: number): Promise<RvStatements> => {
-    const body = { BEZUG_GP_CODE: [gp], BEZUG_ITYP: ['I'], BEZUG_INR: [inr] }
+export function getStatementsForRv(gp: string, inr: number): Promise<RvStatements> {
+  return getStatementsForItem(gp, 'I', inr)
+}
+
+/**
+ * The same for a Vorlage or a selbständiger Antrag — the Stellungnahmen to the
+ * Nationalrat under § 23b GOG-NR, which an Antrag takes like a Vorlage
+ * (10.11.2026). The Vorlage keeps its cache key (`${gp}-${inr}`); the Antrag's
+ * carries its type, since the two number spaces overlap.
+ */
+export const getStatementsForItem = defineCachedFunction(
+  async (gp: string, ityp: 'I' | 'A', inr: number): Promise<RvStatements> => {
+    const body = { BEZUG_GP_CODE: [gp], BEZUG_ITYP: [ityp], BEZUG_INR: [inr] }
     const head = await fetchFilterList(142, body, {}, { all: false })
     const total = countOf(head)
     if (total === 0) return { total: 0, items: [], unlisted: 0 }
     if (total > STATEMENTS_CAP) {
-      const institutions = (await fetchInstitutionStatements(body, gp, 'I', inr))?.map(servedStatement) ?? null
+      const institutions = (await fetchInstitutionStatements(body, gp, ityp, inr))?.map(servedStatement) ?? null
       return { total, items: institutions, unlisted: Math.max(0, total - (institutions?.length ?? 0)) }
     }
 
-    const rows = await fetchWholeList(body, head, gp, 'I', inr)
+    const rows = await fetchWholeList(body, head, gp, ityp, inr)
     const items = sortByDateDesc(rows.map(mapStatementRow))
     return { total: items.length, items, unlisted: 0 }
   },
   {
     name: 'statements-rv',
     base: DERIVED_CACHE,
-    getKey: (gp: string, inr: number) => `${gp}-${inr}`,
+    getKey: (gp: string, ityp: 'I' | 'A', inr: number) => (ityp === 'I' ? `${gp}-${inr}` : `${gp}-${ityp}-${inr}`),
     maxAge: UPSTREAM_LIST_TTL_S,
     swr: false,
   },
