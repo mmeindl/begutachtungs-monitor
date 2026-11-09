@@ -359,8 +359,10 @@ const externalHost = computed(() => {
           <span class="md:hidden">Stellungnahmen </span>nicht gezählt
         </p>
         <!-- The temporary absence, said differently from the permanent one:
-             we asked and could not read it. -->
-        <p v-else class="text-sm leading-tight text-ink-muted">
+             we asked and could not read it. `unasked` (a law without a
+             Begutachtung, §12.68) draws nothing: its Stellungnahmen exist
+             and are published, this list just does not count them. -->
+        <p v-else-if="entry.participation.kind === 'unavailable'" class="text-sm leading-tight text-ink-muted">
           <span class="md:hidden">Stellungnahmen </span>nicht abrufbar
         </p>
       </div>

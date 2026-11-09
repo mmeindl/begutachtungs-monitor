@@ -4,6 +4,7 @@ import {
   type DraftFilterValues,
   SEVERAL_STATIONS,
   activeFilterChips,
+  begutachtungGapReason,
   draftApiQuery,
   draftCountLabel,
   draftFiltersFromQuery,
@@ -24,6 +25,7 @@ const empty: DraftFilterValues = {
   sort: 'frist',
   reversed: false,
   eu: '',
+  begutachtung: '',
 }
 
 describe('draftFiltersFromQuery', () => {
@@ -39,6 +41,7 @@ describe('draftFiltersFromQuery', () => {
         sort: 'stellungnahmen',
         reverse: '1',
         eu: 'umsetzung',
+        begutachtung: 'ohne',
       }),
     ).toEqual({
       status: 'open',
@@ -50,12 +53,13 @@ describe('draftFiltersFromQuery', () => {
       sort: 'stellungnahmen',
       reversed: true,
       eu: 'umsetzung',
+      begutachtung: 'ohne',
     })
   })
 
   it('falls back rather than erroring on a hand-typed link', () => {
     expect(
-      draftFiltersFromQuery({ status: 'halb', art: 'unbestimmt', sort: 'neu', station: 'mond', eu: 'flankierend-vo' }),
+      draftFiltersFromQuery({ status: 'halb', art: 'unbestimmt', sort: 'neu', station: 'mond', eu: 'flankierend-vo', begutachtung: 'mit' }),
     ).toEqual(empty)
   })
 
@@ -125,10 +129,12 @@ describe('the round trip', () => {
     { ...empty, stations: ['begutachtung', 'rv'] },
     { ...empty, art: 'gesetz', gp: 'XXVIII', ministry: 'BMJ' },
     { ...empty, q: 'klimaschutz', sort: 'stellungnahmen' },
-    { status: 'closed', stations: ['bgbl'], art: 'verordnung', gp: 'XXVII', ministry: 'BMF', q: 'x', sort: 'stellungnahmen', reversed: true, eu: '' },
+    { status: 'closed', stations: ['bgbl'], art: 'verordnung', gp: 'XXVII', ministry: 'BMF', q: 'x', sort: 'stellungnahmen', reversed: true, eu: '', begutachtung: '' },
     { ...empty, reversed: true },
     { ...empty, eu: 'umsetzung' },
     { ...empty, status: 'open', art: 'verordnung', eu: 'umsetzung' },
+    { ...empty, begutachtung: 'ohne' },
+    { ...empty, begutachtung: 'ohne', stations: ['bgbl'], gp: 'XXVII', q: 'orf' },
   ]
 
   it('reopens the list the link was written from', () => {
@@ -141,6 +147,8 @@ describe('the round trip', () => {
     expect(draftUrlQuery(empty)).toEqual({})
     // „Setzt EU-Recht um" off is the default: no `eu` in the link.
     expect(draftUrlQuery({ ...empty, eu: 'umsetzung' })).toEqual({ eu: 'umsetzung' })
+    // „Ohne Begutachtung" likewise: off is absent, on is `begutachtung=ohne`.
+    expect(draftUrlQuery({ ...empty, begutachtung: 'ohne' })).toEqual({ begutachtung: 'ohne' })
     expect(draftUrlQuery({ ...empty, sort: 'frist', status: 'all' })).toEqual({})
     // Turned round is the one direction that is not the default.
     expect(draftUrlQuery({ ...empty, reversed: true })).toEqual({ reverse: '1' })
@@ -164,6 +172,7 @@ describe('sameDraftFilters', () => {
     expect(sameDraftFilters(open, { ...open, sort: 'stellungnahmen' })).toBe(false)
     expect(sameDraftFilters({ ...open, q: 'klima' }, open)).toBe(false)
     expect(sameDraftFilters({ ...open, eu: 'umsetzung' }, open)).toBe(false)
+    expect(sameDraftFilters({ ...open, begutachtung: 'ohne' }, open)).toBe(false)
   })
 
   it('compares what a URL carries, not how a link spelled it', () => {
@@ -323,6 +332,18 @@ describe('draftCountLabel', () => {
     )
   })
 
+  it('counts the laws without a Begutachtung as a term of their own, never added up', () => {
+    const none = { consultation: { kind: 'none' as const } }
+    expect(draftCountLabel({ me: null, vorlagen: [none], ris: null, laterStationsOnly: false, laws: 80 })).toBe(
+      '1 Regierungsvorlage ohne Begutachtung · 80 Gesetze ohne Begutachtung',
+    )
+    expect(draftCountLabel({ me: null, vorlagen: [], ris: null, laterStationsOnly: false, laws: 1 })).toBe('1 Gesetz ohne Begutachtung')
+    // None in view: one zero, not a missing line.
+    expect(draftCountLabel({ me: null, vorlagen: [], ris: null, laterStationsOnly: false, laws: 0 })).toBe('0 Entwürfe')
+    // Absent while the chip is off: the line is what it was.
+    expect(draftCountLabel(both)).toBe('152 Gesetzesentwürfe · 206 Verordnungsentwürfe')
+  })
+
   it('claims „ohne Begutachtung" only where every Vorlage is checked', () => {
     const vorlagen = [{ consultation: { kind: 'none' as const } }, { consultation: { kind: 'unknown' as const } }]
     expect(draftCountLabel({ ...both, ris: null, vorlagen })).toBe('148 Gesetzesentwürfe · 2 Regierungsvorlagen')
@@ -338,5 +359,14 @@ describe('draftCountLabel', () => {
     expect(draftCountLabel({ me: 1, vorlagen: [{ consultation: { kind: 'none' } }], ris: null, laterStationsOnly: false })).toBe(
       '1 Gesetzesentwurf · 1 Regierungsvorlage ohne Begutachtung',
     )
+  })
+})
+
+describe('begutachtungGapReason', () => {
+  it('names why a period carries no rows, and nothing where it does', () => {
+    expect(begutachtungGapReason('unlinked')).toMatch(/nicht erfasst/)
+    expect(begutachtungGapReason('unread')).toBe('Gerade nicht abrufbar')
+    expect(begutachtungGapReason(null)).toBeNull()
+    expect(begutachtungGapReason(undefined)).toBeNull()
   })
 })

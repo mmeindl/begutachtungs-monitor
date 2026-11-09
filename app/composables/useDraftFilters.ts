@@ -11,6 +11,7 @@ import type { ComputedRef, Ref } from 'vue'
 import type { DraftStation, DraftStatus } from '#shared/types'
 import {
   type ArtFilter,
+  type BegutachtungFilter,
   type DraftFilterValues,
   type EuFilter,
   type SortKey,
@@ -35,6 +36,8 @@ export interface DraftFilters {
   stations: Ref<DraftStation[]>
   /** „Setzt EU-Recht um" — goes to both Bund endpoints; the Länder rows are filtered on the page. */
   eu: Ref<EuFilter>
+  /** „Ohne Begutachtung" — the page's own filter, no endpoint takes it (`BegutachtungFilter`). */
+  begutachtung: Ref<BegutachtungFilter>
   query: ComputedRef<ReturnType<typeof draftApiQuery>>
   /** Runs `handler` after a navigation has set the filters from its URL —
    *  for state the page keeps beside them. */
@@ -60,6 +63,7 @@ export function useDraftFilters(): DraftFilters {
   const reversed = ref(initial.reversed)
   const stations = ref<DraftStation[]>(initial.stations)
   const eu = ref<EuFilter>(initial.eu)
+  const begutachtung = ref<BegutachtungFilter>(initial.begutachtung)
 
   let qTimer: ReturnType<typeof setTimeout> | undefined
   watch(q, (value) => {
@@ -98,12 +102,13 @@ export function useDraftFilters(): DraftFilters {
     sort: sort.value,
     reversed: reversed.value,
     eu: eu.value,
+    begutachtung: begutachtung.value,
   })
 
   // Keep the URL in sync with the filters (defaults stay out of the URL).
   /* `quellen` is not this list's filter but the site's choice of sources
    * (`useSourceChoice`), and the write-back must not drop it. */
-  watch([query, art, sort, reversed], () => {
+  watch([query, art, sort, reversed, begutachtung], () => {
     const quellen = route.query[SOURCE_PARAM]
     router.replace({ query: { ...draftUrlQuery(current()), ...(quellen !== undefined ? { [SOURCE_PARAM]: quellen } : {}) } })
   })
@@ -140,6 +145,7 @@ export function useDraftFilters(): DraftFilters {
     reversed.value = next.reversed
     stations.value = next.stations
     eu.value = next.eu
+    begutachtung.value = next.begutachtung
     for (const handler of navigateHandlers) handler()
   })
 
@@ -154,6 +160,7 @@ export function useDraftFilters(): DraftFilters {
     reversed,
     stations,
     eu,
+    begutachtung,
     query,
     onNavigate: (handler) => {
       navigateHandlers.push(handler)

@@ -12,7 +12,7 @@
  * endpoints validate the same query independently, because a request can
  * arrive without this page.
  */
-import type { DraftStation, DraftStatus, OpenVorlage, RisConsultationKind } from '#shared/types'
+import type { DraftStation, DraftStatus, LawsWithoutBegutachtungGap, OpenVorlage, RisConsultationKind } from '#shared/types'
 import { DRAFT_STATION_LABEL, DRAFT_STATION_ORDER } from '#shared/utils/draftStations'
 import { countLabelDe } from '#shared/utils/format'
 import { GP_STARTS, intToRoman, isPlausibleGp, romanToInt } from '#shared/utils/gp'
@@ -93,6 +93,16 @@ export type SortKey = 'frist' | 'stellungnahmen'
  */
 export type EuFilter = '' | 'umsetzung'
 
+/**
+ * „Ohne Begutachtung" (docs/architecture.md §12.68): the list shows only the
+ * procedures without a Begutachtung — the enacted laws of the period and the
+ * open Vorlagen without a draft behind them. A chip, off by default and out
+ * of the URL while off, like `EuFilter`: `?begutachtung=ohne`. Not passed
+ * to the list endpoints — the page asks its own (`/api/ohne-begutachtung`)
+ * and steps the other halves back, as `art` decides which halves are asked.
+ */
+export type BegutachtungFilter = '' | 'ohne'
+
 /** What the two list endpoints are asked for. `art` is not among them: it
  *  selects the half, so the page leaves the excluded endpoint unasked
  *  instead of passing the value on. (`/api/ris-drafts` does take an `art`,
@@ -109,6 +119,7 @@ export interface DraftQueryFilters {
 
 export interface DraftFilterValues extends DraftQueryFilters {
   art: ArtFilter
+  begutachtung: BegutachtungFilter
   sort: SortKey
   /** The order turned round (`SortHeader`, 06.11.2026): `?reverse=1`. */
   reversed: boolean
@@ -135,6 +146,10 @@ function parseArt(v: unknown): ArtFilter {
 
 function parseEu(v: unknown): EuFilter {
   return firstQueryValue(v) === 'umsetzung' ? 'umsetzung' : ''
+}
+
+function parseBegutachtung(v: unknown): BegutachtungFilter {
+  return firstQueryValue(v) === 'ohne' ? 'ohne' : ''
 }
 
 function parseSort(v: unknown): SortKey {
@@ -177,6 +192,7 @@ export function draftFiltersFromQuery(query: Record<string, unknown>): DraftFilt
     sort: parseSort(query.sort),
     reversed: firstQueryValue(query.reverse) === '1',
     eu: parseEu(query.eu),
+    begutachtung: parseBegutachtung(query.begutachtung),
   }
 }
 
@@ -210,6 +226,7 @@ export function draftUrlQuery(f: DraftFilterValues): Record<string, string> {
   if (f.sort !== 'frist') query.sort = f.sort
   if (f.reversed) query.reverse = '1'
   if (f.eu) query.eu = f.eu
+  if (f.begutachtung) query.begutachtung = f.begutachtung
   return query
 }
 
@@ -332,6 +349,8 @@ export function draftCountLabel(c: {
   me: number | null
   /** The Regierungsvorlagen without a draft that stand in the list. */
   vorlagen: readonly Pick<OpenVorlage, 'consultation'>[]
+  /** The enacted laws without a Begutachtung that stand in the list (`?begutachtung=ohne`). */
+  laws?: number
   /** The RIS half, counted per kind; `failed`, or null where it is not
    *  asked for. */
   ris: Partial<Record<RisConsultationKind, number>> | 'failed' | null
@@ -372,8 +391,12 @@ export function draftCountLabel(c: {
     const allChecked = c.vorlagen.every((v) => v.consultation.kind === 'none')
     parts.push(allChecked ? `${count} ohne Begutachtung` : count)
   }
+  /* A fourth, never added up either: an enacted law is no draft, and only
+   * a law whose every check found no draft stands in the list — so the
+   * addition holds for every one of them by construction. */
+  if (c.laws) parts.push(`${countLabelDe(c.laws, 'Gesetz', 'Gesetze')} ohne Begutachtung`)
   /* Something was asked for and nothing came: one zero, in the Art's noun. */
-  const asked = c.me !== null || ris !== null || (c.laender !== null && c.laender !== undefined)
+  const asked = c.me !== null || ris !== null || (c.laender !== null && c.laender !== undefined) || c.laws !== undefined
   if (!parts.length && asked) parts.push(EMPTY_TERM[art])
   /* `failed` only reaches this line while another source is asked for too.
    * Where the RIS half carries the page alone, its failure is the page's
@@ -381,4 +404,18 @@ export function draftCountLabel(c: {
    * says it is short. */
   if (ris === 'failed') parts.push(RIS_FAILED[art])
   return parts.join(' · ')
+}
+
+/* ------------------------------------------------------------------ *
+ * The chip „Ohne Begutachtung"
+ * ------------------------------------------------------------------ */
+
+/** Why the period in view carries no such rows — the chip's reason (`ToggleChip`). */
+const BEGUTACHTUNG_GAP_REASON: Record<LawsWithoutBegutachtungGap, string> = {
+  unlinked: 'Für diese Gesetzgebungsperiode ist nicht erfasst, welche Gesetze auf einen Ministerialentwurf zurückgehen',
+  unread: 'Gerade nicht abrufbar',
+}
+
+export function begutachtungGapReason(gap: LawsWithoutBegutachtungGap | null | undefined): string | null {
+  return gap ? BEGUTACHTUNG_GAP_REASON[gap] : null
 }

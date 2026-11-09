@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import type { DraftSummary, OpenVorlage, RisConsultation } from '../shared/types'
+import type { DraftSummary, LawWithoutBegutachtung, OpenVorlage, RisConsultation } from '../shared/types'
 import {
   canRankPeriod,
   compareDrafts,
@@ -9,6 +9,7 @@ import {
   draftOrderKey,
   draftRows,
   HOME_LIST_LENGTH,
+  lawRow,
   type OrderedDraft,
   rowOrderKey,
 } from '../shared/utils/draftOrder'
@@ -243,6 +244,16 @@ const vorlageRow = (citation: string, date: string): DraftListRow => ({
   } as OpenVorlage,
 })
 
+/** BGBl. I Nr. 14/2026, from Initiativantrag 667/A (RIS, read 09.11.2026). */
+const law = (o: Partial<LawWithoutBegutachtung> = {}): LawWithoutBegutachtung => ({
+  bgblNumber: 'BGBl. I Nr. 14/2026',
+  bgblDate: '2026-03-31',
+  item: { kind: 'antrag', gp: 'XXVIII', inr: 667, citation: '667/A', parliamentUrl: 'https://www.parlament.gv.at/gegenstand/XXVIII/A/667' },
+  title: 'Allgemeines Sozialversicherungsgesetz u.a., Änderung',
+  decidedAt: '2026-02-25',
+  ...o,
+})
+
 describe('rowOrderKey', () => {
   it('reads each kind through its own field', () => {
     expect(rowOrderKey(meRow(7, 0)).startedAt).toBe('2026-09-08')
@@ -261,6 +272,23 @@ describe('rowOrderKey', () => {
 
   it('reads a missing Einlangen as no date rather than as an empty string', () => {
     expect(rowOrderKey(vorlageRow('594 d.B.', '')).startedAt).toBeNull()
+  })
+
+  it('dates a law without a Begutachtung by its Kundmachung, among the closed rows', () => {
+    expect(rowOrderKey(lawRow(law()))).toEqual({
+      active: false,
+      deadline: null,
+      startedAt: '2026-03-31',
+      title: 'Allgemeines Sozialversicherungsgesetz u.a., Änderung',
+    })
+    // Newest Kundmachung first, behind every running Frist.
+    const older = lawRow(law({ bgblNumber: 'BGBl. I Nr. 6/2025', bgblDate: '2025-03-01', title: 'Älter' }))
+    const sorted = [older, meRow(1, 0), lawRow(law())].sort(compareRowsByFrist).map((r) => r.key)
+    expect(sorted).toEqual(['me-XXVIII-1', 'law-BGBl. I Nr. 14/2026', 'law-BGBl. I Nr. 6/2025'])
+  })
+
+  it('keeps a law behind the ranked rows under „Meiste Stellungnahmen" — nothing is counted on it', () => {
+    expect([lawRow(law()), meRow(1, 0)].sort(compareRowsByStatements).map((r) => r.kind)).toEqual(['me', 'law'])
   })
 })
 
@@ -410,12 +438,17 @@ describe('draftRows', () => {
   const ris = risRow('BEGUT_1')
   const rv = vorlageRow('594 d.B.', '2026-09-11')
   const unwrap = (r: DraftListRow) =>
-    (r.kind === 'me' ? r.draft : r.kind === 'ris' ? r.item : r.kind === 'vorlage' ? r.vorlage : r.item)
+    (r.kind === 'me' ? r.draft : r.kind === 'ris' ? r.item : r.kind === 'vorlage' ? r.vorlage : r.kind === 'law' ? r.law : r.item)
 
   it('keys each kind the way the entry it becomes is keyed', () => {
     const rows = draftRows([unwrap(me) as DraftSummary], [unwrap(ris) as RisConsultation], [unwrap(rv) as OpenVorlage])
     expect(rows.map((r) => r.key)).toEqual(['me-XXVIII-7', 'ris-BEGUT_1', 'rv-594 d.B.'])
     expect(rows.map((r) => r.kind)).toEqual(['me', 'ris', 'vorlage'])
+  })
+
+  it('keys a law by its Kundmachung, after every other kind', () => {
+    const rows = draftRows([], [], [], [], [law()])
+    expect(rows).toEqual([{ kind: 'law', key: 'law-BGBl. I Nr. 14/2026', law: law() }])
   })
 
   it('leaves the order to the caller and the Vorlagen optional', () => {

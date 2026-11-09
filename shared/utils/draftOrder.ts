@@ -11,7 +11,7 @@
  * Pure module: no Nuxt auto-imports, so the server list, the client merge
  * and vitest all run the same function.
  */
-import type { DraftSummary, LandConsultation, OpenVorlage, RisConsultation } from '../types'
+import type { DraftSummary, LandConsultation, LawWithoutBegutachtung, OpenVorlage, RisConsultation } from '../types'
 
 /**
  * What ordering needs from a row, and nothing else.
@@ -173,6 +173,7 @@ export type DraftListRow =
   | { kind: 'ris'; key: string; item: RisConsultation }
   | { kind: 'vorlage'; key: string; vorlage: OpenVorlage }
   | { kind: 'land'; key: string; item: LandConsultation }
+  | { kind: 'law'; key: string; law: LawWithoutBegutachtung }
 
 /**
  * What the list's order asks of a row, whichever kind it is.
@@ -189,6 +190,11 @@ export function rowOrderKey(row: DraftListRow): OrderedDraft {
   if (row.kind === 'ris') return row.item
   // A closed Land row without a Frist (Salzburg's register) is ordered by its start.
   if (row.kind === 'land') return { active: row.item.active, deadline: row.item.deadline, startedAt: row.item.startedAt, title: row.item.title }
+  /* An enacted law without a Begutachtung (§12.68): nothing can be filed
+   * any more, and the day that pins it down is its Kundmachung — so it sorts
+   * among the closed rows by that day, beside the drafts that became law the
+   * same week. */
+  if (row.kind === 'law') return { active: false, deadline: null, startedAt: row.law.bgblDate, title: row.law.title }
   return { active: false, deadline: null, startedAt: row.vorlage.date || null, title: row.vorlage.title }
 }
 
@@ -210,6 +216,11 @@ export function vorlageRow(vorlage: OpenVorlage): DraftListRow {
   return { kind: 'vorlage', key: `rv-${vorlage.citation}`, vorlage }
 }
 
+/* Keyed by the Kundmachung: one law, one row, whichever item carried it. */
+export function lawRow(law: LawWithoutBegutachtung): DraftListRow {
+  return { kind: 'law', key: `law-${law.bgblNumber}`, law }
+}
+
 /**
  * The halves merged into one list of rows, UNORDERED — the caller sorts,
  * because the homepage knows one order and `/entwuerfe` two.
@@ -223,8 +234,9 @@ export function draftRows(
   ris: readonly RisConsultation[],
   vorlagen: readonly OpenVorlage[] = [],
   laender: readonly LandConsultation[] = [],
+  laws: readonly LawWithoutBegutachtung[] = [],
 ): DraftListRow[] {
-  return [...me.map(meRow), ...ris.map(risRow), ...vorlagen.map(vorlageRow), ...laender.map(landRow)]
+  return [...me.map(meRow), ...ris.map(risRow), ...vorlagen.map(vorlageRow), ...laender.map(landRow), ...laws.map(lawRow)]
 }
 
 /** The list's own order — open first, nearest Frist on top — over rows of any kind. */

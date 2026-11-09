@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import type { DashboardSecondRound, DraftStation, LandCode, RisConsultationKind } from '#shared/types'
+import type { DashboardSecondRound, DraftStation, LandCode, LawsWithoutBegutachtung, RisConsultationKind } from '#shared/types'
 import { LAND_CODES, LAND_NAME, landStationsReason } from '#shared/utils/laender'
 import { formatNumberDe } from '#shared/utils/format'
 import {
@@ -15,6 +15,7 @@ import {
   SEVERAL_STATIONS,
   type SortKey,
   activeFilterChips,
+  begutachtungGapReason,
   draftCountLabel,
   stationTabsFor,
 } from '~/utils/draftFilters'
@@ -128,7 +129,7 @@ const rowComparators: Record<SortKey, (a: DraftListRow, b: DraftListRow, reverse
 /* Filter state, URL binding and the query for both endpoints:
  * `useDraftFilters`, with the pure half in `app/utils/draftFilters.ts`. */
 const filters = useDraftFilters()
-const { statusFilter, art, gp, ministry, q, qDebounced, sort, reversed, stations, eu, query, onNavigate } = filters
+const { statusFilter, art, gp, ministry, q, qDebounced, sort, reversed, stations, eu, begutachtung, query, onNavigate } = filters
 /* Either column turned round by a second click (`SortHeader`, 06.11.2026). */
 const { choose: chooseColumn, selectValue: sortSelect } = useReversibleSort(sort, reversed)
 
@@ -141,6 +142,12 @@ const { choose: chooseColumn, selectValue: sortSelect } = useReversibleSort(sort
  */
 function toggleEu(): void {
   eu.value = eu.value ? '' : 'umsetzung'
+}
+
+/* „Ohne Begutachtung" (§12.68): the chip beside it — see `ohneApplied`. */
+function toggleBegutachtung(): void {
+  if (ohneUnavailable.value) return
+  begutachtung.value = begutachtung.value ? '' : 'ohne'
 }
 
 /* The station tabs (`stationTabsFor` says how a link naming several
@@ -334,8 +341,22 @@ const secondRoundFetch = useFetch<DashboardSecondRound>(
   { lazy: true, server: false },
 )
 
+/**
+ * The enacted laws of the period without a Begutachtung (§12.68), for the
+ * chip „Ohne Begutachtung" — fetched like the open Vorlagen above: on the
+ * client, lazily, so nothing above it waits, and for the period in view
+ * (the chosen one, else the running one). Fetched while the chip is off
+ * too: the chip states the count of its rows.
+ */
+const lawsFetch = useFetch<LawsWithoutBegutachtung>('/api/ohne-begutachtung', {
+  query: computed(() => ({ gp: gp.value || undefined })),
+  lazy: true,
+  server: false,
+})
+
 await halves.ready
 const { data: secondRound } = await secondRoundFetch
+const { data: lawsData } = await lawsFetch
 
 /**
  * Where the EU map could not be read, per side, while „Setzt EU-Recht um" is
@@ -350,7 +371,7 @@ const bundEuMissing = computed(() =>
 )
 const laenderEuMissing = computed(() => !!laenderData.value && laenderData.value.euAvailable !== true)
 const euUnavailable = computed<'alle' | 'bund' | 'laender' | null>(() => {
-  if (!eu.value) return null
+  if (!eu.value || ohneApplied.value) return null
   const bundMissing = bund.value && bundEuMissing.value
   const landMissing = landsApply.value && laenderEuMissing.value
   if (bundMissing && (landMissing || !landsApply.value)) return 'alle'
@@ -427,14 +448,63 @@ const openVorlagen = computed(() => {
   if (stations.value.length && !stations.value.includes('rv')) return []
   if (selectedGp.value && selectedGp.value !== list.gp) return []
   return list.items
-    .filter((v) => v.consultation.kind !== 'draft')
+    // Under „Ohne Begutachtung" only the rows that say so (`none`).
+    .filter((v) => (ohneApplied.value ? v.consultation.kind === 'none' : v.consultation.kind !== 'draft'))
     .filter((v) => matchesQuery(`${v.title} ${v.citation}`, qDebounced.value))
+})
+
+/**
+ * „Ohne Begutachtung" (docs/architecture.md §12.68): the list shows ONLY
+ * the procedures without a Begutachtung — the period's enacted laws from
+ * `/api/ohne-begutachtung` (station Bundesgesetzblatt) and the open Vorlagen
+ * that say „ohne Begutachtung" (station Regierungsvorlage). The
+ * Ministerialentwürfe, the RIS records and the Länder step back. A
+ * procedural fact per row, never a ranking.
+ *
+ * Unavailable — with its reason, keeping its state, like „Stellungnahme
+ * möglich" under „Bundesgesetzblatt" — without the Bund, and where the
+ * period cannot carry the claim (`LawsWithoutBegutachtung.gap`): then the
+ * filter steps back and the list is what it is without it.
+ */
+const ohneUnavailable = computed(() => {
+  if (!bund.value) return 'Nur für Gesetze des Bundes'
+  return lawsData.value?.available === false ? begutachtungGapReason(lawsData.value.gap) : null
+})
+const ohneApplied = computed(() => begutachtung.value === 'ohne' && !ohneUnavailable.value)
+
+/* The chip's count: the rows it would show for the period in view, once
+ * the laws are there. */
+const ohneCount = computed(() => {
+  const laws = lawsData.value
+  if (!laws?.available) return null
+  const vorlagen = secondRound.value?.gp === laws.gp
+    ? secondRound.value.items.filter((v) => v.consultation.kind === 'none').length
+    : 0
+  return laws.items.length + vorlagen
+})
+
+/**
+ * The laws under the other controls, as far as they reach — the rules
+ * written above `openVorlagen`. Status: nothing can be filed any more, so
+ * they stand under no filter and under „Nicht möglich". Station: the
+ * Bundesgesetzblatt. Art: they are laws. Ressort: they carry none. „Setzt
+ * EU-Recht um": they carry no EU fact. Search: the same word rule.
+ */
+const lawRows = computed(() => {
+  const laws = lawsData.value
+  if (!ohneApplied.value || !laws?.available) return []
+  if (statusFilter.value === 'open' || art.value === 'verordnung' || ministry.value || eu.value) return []
+  if (stations.value.length && !stations.value.includes('bgbl')) return []
+  if (selectedGp.value && selectedGp.value !== laws.gp) return []
+  return laws.items.filter((l) => matchesQuery(`${l.title} ${l.item.citation} ${l.bgblNumber}`, qDebounced.value))
 })
 
 /* No Art test of its own any more: a half that this `art` excludes was never
  * fetched, and `meData`/`risData` are null for it. */
 const rows = computed<DraftListRow[]>(() =>
-  draftRows(meData.value?.items ?? [], risData.value?.items ?? [], openVorlagen.value, landItems.value)
+  (ohneApplied.value
+    ? draftRows([], [], openVorlagen.value, [], lawRows.value)
+    : draftRows(meData.value?.items ?? [], risData.value?.items ?? [], openVorlagen.value, landItems.value))
     .sort((a, b) => rowComparators[sort.value](a, b, reversed.value)),
 )
 
@@ -519,7 +589,11 @@ const {
  * `draftCountLabel`). */
 const meTotal = computed(() => meData.value?.total ?? 0)
 const risTotal = computed(() => risData.value?.total ?? 0)
-const visibleTotal = computed(() => meTotal.value + risTotal.value + landItems.value.length)
+const visibleTotal = computed(() =>
+  ohneApplied.value
+    ? lawRows.value.length + openVorlagen.value.length
+    : meTotal.value + risTotal.value + landItems.value.length,
+)
 
 /**
  * Only stations selected that a record WITHOUT a Gegenstand at Parliament
@@ -565,8 +639,8 @@ const chainUnlinkedPeriod = computed(() => meData.value?.chainCoverage === 'unli
  * Aufruf gar keine Periode genannt hat — sobald jemand oben eine auswählt,
  * ist die Antwort wieder periodenrein und dieser Satz verschwindet von
  * selbst. */
-const carriedOverFrom = computed(
-  () => meData.value?.carriedOverFrom ?? risData.value?.carriedOverFrom ?? null,
+const carriedOverFrom = computed(() =>
+  ohneApplied.value ? null : (meData.value?.carriedOverFrom ?? risData.value?.carriedOverFrom ?? null),
 )
 
 /* The station map costs hundreds of fetches on a cold build and can fail
@@ -586,7 +660,7 @@ const stationsMissing = computed(
  * for the prewarm since the same day, `deploy/deploy.sh`) and therefore
  * worth one sentence rather than a second data path. */
 const stationsUnavailable = computed(
-  () => stationsMissing.value && (stations.value.length > 0 || statusFilter.value === 'closed'),
+  () => !ohneApplied.value && stationsMissing.value && (stations.value.length > 0 || statusFilter.value === 'closed'),
 )
 
 /* Rows per kind — each set is the filtered one as it stands in the list. */
@@ -598,14 +672,16 @@ function countByKind(items: readonly { kind: RisConsultationKind }[]) {
 
 /* The rows by kind, summed over the sources (`draftCountLabel`). */
 const countLabel = computed(() =>
-  draftCountLabel({
-    me: wantsMe.value ? meTotal.value : null,
-    vorlagen: openVorlagen.value,
-    ris: !wantsRis.value ? null : risError.value ? 'failed' : countByKind(risData.value?.items ?? []),
-    laterStationsOnly: laterStationsOnly.value,
-    art: art.value,
-    laender: landsApply.value ? countByKind(landItems.value) : null,
-  }) || (landUnavailable.value ?? ''),
+  ohneApplied.value
+    ? draftCountLabel({ me: null, vorlagen: openVorlagen.value, ris: null, laterStationsOnly: false, art: art.value, laws: lawRows.value.length })
+    : draftCountLabel({
+      me: wantsMe.value ? meTotal.value : null,
+      vorlagen: openVorlagen.value,
+      ris: !wantsRis.value ? null : risError.value ? 'failed' : countByKind(risData.value?.items ?? []),
+      laterStationsOnly: laterStationsOnly.value,
+      art: art.value,
+      laender: landsApply.value ? countByKind(landItems.value) : null,
+    }) || (landUnavailable.value ?? ''),
 )
 
 /* What „Meiste Stellungnahmen" does with the rows it cannot rank: only a
@@ -731,6 +807,11 @@ const statementsSortNote = computed(() => {
                draft that implements a directive. -->
           <ToggleChip :pressed="eu === 'umsetzung'" @toggle="toggleEu">
             Setzt EU-Recht um
+          </ToggleChip>
+          <!-- How the procedure began (§12.68): the same kind of control,
+               off by default; its count in the tabs' form (`ListTabs`). -->
+          <ToggleChip :pressed="begutachtung === 'ohne'" :unavailable="ohneUnavailable" @toggle="toggleBegutachtung">
+            Ohne Begutachtung<span v-if="ohneCount !== null" class="font-normal tabular-nums text-ink-muted">{{ formatNumberDe(ohneCount) }}</span>
           </ToggleChip>
           <!-- Art, period and Ressort stand in the same line from `md`
                up (03.10.2026), each select stating its own value; on a
@@ -864,6 +945,13 @@ const statementsSortNote = computed(() => {
           Begutachtungsfrist noch läuft – eine Frist endet nicht damit, dass eine
           neue Gesetzgebungsperiode beginnt. Über die Auswahl oben lässt sich
           jede Periode für sich ansehen.
+        </p>
+        <!-- What „ohne Begutachtung" means and does not mean, once (§12.68). -->
+        <p v-if="ohneApplied" class="text-sm text-ink-muted">
+          Vor diesen Gesetzen und Vorlagen ist kein Ministerialentwurf in
+          Begutachtung erkennbar – vorgeschrieben ist eine Begutachtung nicht,
+          Stellungnahmen an den Nationalrat sind während des Verfahrens möglich
+          (§ 23b GOG-NR), und Budgetgesetze sind nicht aufgeführt.
         </p>
         <!-- Like the sort caveat below it: a statement about what the list is
                NOT doing stands above the rows — read afterwards it is

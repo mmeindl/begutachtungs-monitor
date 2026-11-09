@@ -43,6 +43,7 @@ import type {
   DraftStation,
   DraftSummary,
   LandConsultation,
+  LawWithoutBegutachtung,
   OpenVorlage,
   RisConsultation,
 } from '#shared/types'
@@ -70,6 +71,15 @@ export type Participation =
   | { kind: 'count'; count: number }
   | { kind: 'unpublished' }
   | { kind: 'unavailable' }
+  /**
+   * The fourth, and the only one that draws an EMPTY zone (09.11.2026): the
+   * Stellungnahmen exist and Parliament publishes them — § 23b GOG-NR, on
+   * the Vorlage or the Antrag a law without a Begutachtung came as — but
+   * this list does not ask for them (§12.68). Neither `unpublished` (they
+   * are published) nor `unavailable` (nothing failed) would be true, and a
+   * cell that says nothing claims nothing.
+   */
+  | { kind: 'unasked' }
 
 /**
  * Zone 4 — where the Verfahren stands, in two lines: line 1 the state,
@@ -599,14 +609,46 @@ export function viewOfLand(c: LandConsultation): EntryView {
 }
 
 /**
- * A row of the merged lists (`draftRows`), through the adapter of its kind.
+ * A federal law that reached the Bundesgesetzblatt without a Begutachtung
+ * (docs/architecture.md §12.68) — a row only under the chip „Ohne
+ * Begutachtung".
  *
- * The one dispatch over the three kinds; the pages and the full-text search
- * each wrote it themselves until 03.10.2026.
+ * Zone 2 names the item the law came to the Nationalrat as — „Regierungs-
+ * vorlage 253 d.B." or „Initiativantrag 408/A" — and the procedural fact
+ * beside it, as on an open Vorlage without a draft: „ohne Begutachtung". No
+ * Ressort: the data carries none, and a row of this kind is no entry in a
+ * ranking by ministry. The target is Parliament's page of the item: the
+ * monitor has no page for it.
+ *
+ * Zone 4 states it the way a Ministerialentwurf at the station
+ * Bundesgesetzblatt does (`outcomeState`): „Kundgemacht" over the
+ * Fundstelle, and the „Neu" chip by the same rule, dated by the Kundmachung.
+ * Zone 3 stays empty (`unasked`).
  */
+export function viewOfLaw(law: LawWithoutBegutachtung): EntryView {
+  return {
+    key: `law-${law.bgblNumber}`,
+    to: null,
+    href: law.item.parliamentUrl,
+    title: law.title,
+    titleFull: law.title,
+    kindLabel: law.item.kind === 'rv' ? 'Regierungsvorlage' : 'Initiativantrag',
+    citation: law.item.citation,
+    ministry: null,
+    coMinistries: [],
+    alias: null,
+    note: 'ohne Begutachtung',
+    eu: null,
+    newLabel: stationNewLabel('bgbl', law.bgblDate),
+    participation: { kind: 'unasked' },
+    state: outcomeState({ rvCitation: null, bgblNumber: law.bgblNumber }, null),
+  }
+}
+
 export function viewOfRow(row: DraftListRow): EntryView {
   if (row.kind === 'me') return viewOfDraft(row.draft)
   if (row.kind === 'ris') return viewOfRis(row.item)
   if (row.kind === 'land') return viewOfLand(row.item)
+  if (row.kind === 'law') return viewOfLaw(row.law)
   return viewOfVorlage(row.vorlage)
 }

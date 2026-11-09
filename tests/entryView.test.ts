@@ -15,7 +15,7 @@
  *    Verordnungsentwurf — its terminus is the Begutachtung itself.
  */
 import { describe, expect, it } from 'vitest'
-import type { ClosedOutcome, DraftChain, DraftDetail, DraftSummary, LandConsultation, OpenVorlage, RisConsultation } from '../shared/types'
+import type { ClosedOutcome, DraftChain, DraftDetail, DraftSummary, LandConsultation, LawWithoutBegutachtung, OpenVorlage, RisConsultation } from '../shared/types'
 import { todayIso } from '../shared/utils/format'
 import { NEW_ARRIVAL_DAYS } from '../app/utils/deadlines'
 import { isVorlageGpEnded } from '../server/utils/parliament/detailJson'
@@ -23,6 +23,7 @@ import { procedureStatusDe, stations } from '../app/utils/spine'
 import {
   viewOfDraft,
   viewOfLand,
+  viewOfLaw,
   viewOfOutcome,
   viewOfRis,
   viewOfRow,
@@ -507,5 +508,62 @@ describe('viewOfRow', () => {
     for (const row of draftRows([draft()], [ris()], [vorlage()])) {
       expect(viewOfRow(row).key).toBe(row.key)
     }
+  })
+})
+
+/** BGBl. I Nr. 14/2026 from Initiativantrag 667/A (RIS, read 09.11.2026). */
+function law(overrides: Partial<LawWithoutBegutachtung> = {}): LawWithoutBegutachtung {
+  return {
+    bgblNumber: 'BGBl. I Nr. 14/2026',
+    bgblDate: '2026-03-31',
+    item: { kind: 'antrag', gp: 'XXVIII', inr: 667, citation: '667/A', parliamentUrl: 'https://www.parlament.gv.at/gegenstand/XXVIII/A/667' },
+    title: 'Allgemeines Sozialversicherungsgesetz u.a., Änderung',
+    decidedAt: '2026-02-25',
+    ...overrides,
+  }
+}
+
+describe('viewOfLaw — a law without a Begutachtung', () => {
+  it('names the item it came as, the procedural fact, and no Ressort', () => {
+    const v = viewOfLaw(law())
+    expect(v).toMatchObject({
+      key: 'law-BGBl. I Nr. 14/2026',
+      kindLabel: 'Initiativantrag',
+      citation: '667/A',
+      note: 'ohne Begutachtung',
+      ministry: null,
+      coMinistries: [],
+      eu: null,
+    })
+    const rv = viewOfLaw(law({ item: { kind: 'rv', gp: 'XXVIII', inr: 253, citation: '253 d.B.', parliamentUrl: 'https://www.parlament.gv.at/gegenstand/XXVIII/I/253' } }))
+    expect(rv.kindLabel).toBe('Regierungsvorlage')
+    expect(rv.citation).toBe('253 d.B.')
+  })
+
+  it('links out to Parliament — the monitor has no page for it', () => {
+    const v = viewOfLaw(law())
+    expect(v.to).toBeNull()
+    expect(v.href).toBe('https://www.parlament.gv.at/gegenstand/XXVIII/A/667')
+  })
+
+  it('states the Kundmachung the way an enacted draft does', () => {
+    expect(viewOfLaw(law()).state).toEqual({ label: 'Kundgemacht', detail: 'BGBl. I Nr. 14/2026', tone: 'inactive', actionable: false })
+    // The same words as a Ministerialentwurf at the station Bundesgesetzblatt.
+    expect(viewOfLaw(law()).state).toEqual(viewOfOutcome({ ...draft(), rvCitation: '1 d.B.', bgblNumber: 'Bundesgesetzblatt I Nr. 14/2026' } as ClosedOutcome).state)
+  })
+
+  it('counts nothing, and claims neither „nicht gezählt" nor „nicht abrufbar"', () => {
+    expect(viewOfLaw(law()).participation).toEqual({ kind: 'unasked' })
+  })
+
+  it('marks a Kundmachung of this week by the Bundesgesetzblatt\'s rule, and only then', () => {
+    expect(viewOfLaw(law({ bgblDate: daysAgo(0) })).newLabel).toBe('Neu: Kundgemacht')
+    expect(viewOfLaw(law({ bgblDate: daysAgo(NEW_ARRIVAL_DAYS + 1) })).newLabel).toBeNull()
+  })
+
+  it('goes through viewOfRow with its own key', () => {
+    const [row] = draftRows([], [], [], [], [law()])
+    expect(viewOfRow(row!)).toEqual(viewOfLaw(law()))
+    expect(viewOfRow(row!).key).toBe(row!.key)
   })
 })
