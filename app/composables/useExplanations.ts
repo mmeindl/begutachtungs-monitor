@@ -35,9 +35,11 @@ const SSR_DEADLINE_MS = 800
  * navigation from draft to draft it changes under the component. The key
  * follows it.
  */
-export function useExplanations(source: () => { gp?: string; inr?: number; risId?: string }) {
+export function useExplanations(source: () => { gp?: string; inr?: number; risId?: string; apiBase?: string }) {
   const endpoint = computed(() => {
-    const { gp, inr, risId } = source()
+    const { gp, inr, risId, apiBase } = source()
+    // `apiBase`: the page of a Vorlage without a Begutachtung (10.11.2026).
+    if (apiBase) return `${apiBase}/erlaeuterungen`
     return risId ? `/api/ris-drafts/${risId}/erlaeuterungen` : `/api/drafts/${gp}/${inr}/erlaeuterungen`
   })
 

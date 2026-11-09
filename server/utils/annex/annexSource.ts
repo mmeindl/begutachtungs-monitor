@@ -61,8 +61,14 @@ export const NO_ANNEX = 'Zu diesem Entwurf gibt es keine Textgegenüberstellung.
  * are not caught: a Parliament timeout is not a statement about the draft,
  * and this function's answer is cached for a day.
  */
-export async function parliamentAnnex(gp: string, inr: number): Promise<{ pdf: TraceLink | null; html: TraceLink | null }> {
-  const detail = await getGegenstand(gp, 'ME', inr)
+export async function parliamentAnnex(
+  gp: string,
+  inr: number,
+  /** Whose document list: a draft's, or (10.11.2026) a Regierungsvorlage's
+   *  own — the page of a Vorlage without a Begutachtung reads its annex. */
+  ityp: 'ME' | 'I' = 'ME',
+): Promise<{ pdf: TraceLink | null; html: TraceLink | null }> {
+  const detail = await getGegenstand(gp, ityp, inr)
   // The RIS side's rule, imported: over GP XXVIII every group it matches is
   // titled „Textgegenüberstellung" exactly, so it costs nothing here, and two
   // vocabularies that drift apart are the expensive kind of difference.

@@ -22,7 +22,7 @@
  * „Zu Z 4 (§ 54c Abs. 1a und 1b):" has to mean the same Paragraph on both
  * sides, or the Begründung hangs on the wrong §.
  */
-import { headingAddress, ARTICLE_HEADING_RE, isAddressHeading, splitHeading, ziffernOf } from './risExplanations'
+import { headingAddress, ARTICLE_HEADING_RE, isAddressHeading, splitHeading, ziffernOf, type ExplanationsDocument, type ExplanationsPart } from './risExplanations'
 import { articleNumberKey, leadingArticleKey } from '../text/designation'
 import { normalizeText } from '../lawtext/normalize'
 import { parseParliamentHtml } from '../lawtext/parliamentHtml'
@@ -322,4 +322,55 @@ export function passagesByParagraph(doc: HtmlExplanations): Map<string, HtmlPass
     }
   }
   return out
+}
+
+/**
+ * Parliament's HTML Erläuterungen in the shape the RIS reader produces
+ * (`ExplanationsDocument`), so the section and the join at the Paragraph
+ * (`explanationsByParagraph`) read them unchanged — for a Regierungsvorlage
+ * without a Begutachtung, which has no Begut record in RIS (10.11.2026,
+ * docs/architecture.md §12.69).
+ *
+ * What does not carry over is said by the fields, not hidden: the HTML reader
+ * keeps no table cells or figures apart, so `dropped` is 0 — the section
+ * links the document all the same — and `labelled` is the caller's reading of
+ * whether the ressort headed an Allgemeiner Teil at all.
+ */
+export function explanationsDocumentOfHtml(h: HtmlExplanations, labelled: boolean): ExplanationsDocument {
+  const chars = (texts: readonly string[]) => texts.reduce((n, t) => n + t.length, 0)
+  const general: ExplanationsPart | null = h.general.length
+    ? {
+        kind: 'general',
+        heading: labelled ? 'Allgemeiner Teil' : null,
+        passages: [{ heading: null, article: null, paragraphs: [], items: [], text: h.general }],
+        chars: chars(h.general),
+        dropped: 0,
+      }
+    : null
+  const special: ExplanationsPart | null = h.special.length
+    ? {
+        kind: 'special',
+        heading: 'Besonderer Teil',
+        passages: h.special.map((p) => ({
+          heading: p.heading,
+          // The join matches the Artikel by its number in a heading or by the
+          // law's name (`articleKeyOf`): the key as „Artikel 2", else the name.
+          article: p.article ? `Artikel ${p.article}` : p.law,
+          paragraphs: p.paragraphs,
+          items: p.ziffern.map((z) => `Z ${z.ziffer}`),
+          text: p.text,
+        })),
+        chars: h.special.reduce((n, p) => n + chars(p.text), 0),
+        dropped: 0,
+      }
+    : null
+  const parts = [general, special].filter((p): p is ExplanationsPart => p !== null)
+  return {
+    parts,
+    general,
+    generalInferred: !labelled,
+    special,
+    specialInferred: false,
+    chars: parts.reduce((n, p) => n + p.chars, 0),
+  }
 }

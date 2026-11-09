@@ -24,6 +24,14 @@ export interface ExplanationsPassageView {
  */
 export interface ExplanationsResponse {
   available: boolean
+  /**
+   * Where the document was read: RIS (absent — every draft's Erläuterungen
+   * since they were shown) or Parliament (10.11.2026, a Regierungsvorlage
+   * without a Begutachtung, whose Erläuterungen RIS carries only under a
+   * record this site does not join). The credit line follows it: a
+   * Vorlage's documents are freie Werke at Parliament, not CC BY.
+   */
+  publisher?: 'ris' | 'parlament'
   /** Why nothing is shown, as a sentence the page prints. Null when available. */
   unavailableReason: string | null
   /** The document these paragraphs were read from (RIS), for the source line. */

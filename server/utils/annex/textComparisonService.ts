@@ -46,7 +46,7 @@ import { identityKey, type DraftIdentity } from '../ris/draftIdentity'
 import { DERIVED_ANALYSIS_TTL_S } from '../cache/ttl'
 
 /** The section with nothing in it, and the sentence that says why. */
-function emptyComparison(who: DraftIdentity, reason: string, source: TraceLink | null = null, pdf: TraceLink | null = null): TextComparisonResponse {
+export function emptyComparison(who: DraftIdentity, reason: string, source: TraceLink | null = null, pdf: TraceLink | null = null): TextComparisonResponse {
   return {
     ...who,
     available: false,
@@ -71,13 +71,17 @@ function emptyComparison(who: DraftIdentity, reason: string, source: TraceLink |
  * sentences they can offer when nothing can be read. From here down there is
  * one question, and it is answered once.
  */
-async function readAndCheck(
+export async function readAndCheck(
   who: DraftIdentity,
   parts: readonly RisDocumentUrls[],
   asOf: string,
   draft: DraftText,
   chosen: Awaited<ReturnType<typeof annexSourceFor>>,
   pdfFallback: TraceLink | null,
+  /** The verification's cache key — the draft's identity by default. A
+   *  Vorlage without a Begutachtung passes its `rootKey`, because its
+   *  (GP, Nummer) is a draft's too (10.11.2026). */
+  cacheKey: string = identityKey(who),
 ): Promise<TextComparisonResponse | string> {
   if (typeof chosen === 'string') return chosen
   const { parsed, source, publisher, readFrom, droppedPages } = chosen
@@ -89,7 +93,7 @@ async function readAndCheck(
   // the Begutachtungsfrist — the day the ministry wrote the annex, not
   // today. Called even without one: `verifyAnnex` then reports why it could
   // check nothing, which the page needs to be able to say.
-  const verification = await getAnnexVerification(identityKey(who), asOf, rows, draft.articles, draft.blocks)
+  const verification = await getAnnexVerification(cacheKey, asOf, rows, draft.articles, draft.blocks)
   const checked = checkAnnexRows(rows, verification)
   return {
     ...who,

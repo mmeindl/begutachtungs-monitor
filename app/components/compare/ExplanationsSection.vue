@@ -21,7 +21,7 @@
  * only while RIS answers within 800 ms. Why the deadline and why not longer
  * stands in `useExplanations`.
  */
-import { risSource, type SourceEntry } from '#shared/utils/provenance'
+import { parliamentDocumentSource, risSource, type SourceEntry } from '#shared/utils/provenance'
 import { foldByBudget } from '~/utils/foldByBudget'
 
 /**
@@ -29,11 +29,24 @@ import { foldByBudget } from '~/utils/foldByBudget'
  * differently: the Ministerialentwurf through the RIS↔ME join, a Begutachtung
  * without a Gegenstand straight through its RIS id.
  */
-const props = defineProps<{ gp?: string; inr?: number; risId?: string }>()
+const props = defineProps<{
+  gp?: string
+  inr?: number
+  risId?: string
+  /** The page of a Regierungsvorlage without a Begutachtung (10.11.2026). */
+  apiBase?: string
+}>()
 
-const { data, status } = useExplanations(() => ({ gp: props.gp, inr: props.inr, risId: props.risId }))
+const { data, status } = useExplanations(() => ({ gp: props.gp, inr: props.inr, risId: props.risId, apiBase: props.apiBase }))
 
-const sources = computed<SourceEntry[]>(() => (data.value?.available ? [risSource('Erläuterungen')] : []))
+/** Always RIS (`risExplanations.ts`), for the credit line (`#shared/utils/provenance`). */
+/* Read from RIS (CC BY) — or, for a Vorlage without a Begutachtung, from
+ * Parliament's copy, which is a freies Werk and claims no licence. */
+const sources = computed<SourceEntry[]>(() =>
+  !data.value?.available
+    ? []
+    : [data.value.publisher === 'parlament' ? parliamentDocumentSource('Erläuterungen', 'rv') : risSource('Erläuterungen')],
+)
 
 /** One paragraph or subheading of the Ressort, in printing order. */
 interface Item {

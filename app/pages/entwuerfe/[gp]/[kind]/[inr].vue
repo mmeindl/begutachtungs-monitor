@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import type { RvStatementsResponse, VorlageDetail } from '#shared/types'
+import type { AmendedLawsResponse, RvStatementsResponse, VorlageDetail } from '#shared/types'
 import type { ComparisonId, StationId } from '~/utils/spine'
 import { lastParliamentStation, parliamentTexts, vorlageStations, vorlageStatusDe, SECOND_ROUND_CLAUSE } from '~/utils/spine'
 import { citeLineDe, rvCitationDe } from '#shared/utils/citations'
@@ -72,20 +72,37 @@ const { data: statements } = await useFetch<RvStatementsResponse>(() => `${url.v
   server: false,
 })
 
+/* The laws in force the item would change, read off its own first text —
+ * client-side and lazy, as on the draft page. */
+const { data: amendedLaws } = await useFetch<AmendedLawsResponse>(() => `${url.value}/geltendesrecht`, {
+  lazy: true,
+  server: false,
+})
+
+/* A Vorlage's own Textgegenüberstellung and Erläuterungen. Not for an
+ * Antrag: its annex and its Begründung are open experiments (§12.69). */
+const showsAnnex = computed(() => !isAntrag.value && !amendedLaws.value?.createsNewLaw)
+
 const kindWord = computed(() => (isAntrag.value ? 'Initiativantrag' : 'Regierungsvorlage'))
 
 const stationList = computed(() =>
   data.value
-    ? vorlageStations(data.value, { statementTotal: statements.value?.total })
+    ? vorlageStations(data.value, {
+        createsNewLaw: amendedLaws.value?.createsNewLaw,
+        amendedLawCount: amendedLaws.value?.laws.length,
+        statementTotal: statements.value?.total,
+        showsAnnex: showsAnnex.value,
+      })
     : [],
 )
 const parliamentTextList = computed(() => (data.value ? parliamentTexts(data.value) : []))
 const parliamentStation = computed(() => (data.value ? lastParliamentStation(data.value) : null))
 /* The procedure's first text, where every comparison on this page starts. */
 const origin = computed(() => (isAntrag.value ? 'antrag' as const : 'rv' as const))
-const comparisonAnchors = computed<Partial<Record<ComparisonId, string>>>(() =>
-  parliamentStation.value ? { parlament: '#textvergleich-parlament' } : {},
-)
+const comparisonAnchors = computed<Partial<Record<ComparisonId, string>>>(() => ({
+  ...(showsAnnex.value ? { vorschlag: '#gegenueberstellung' } : {}),
+  ...(parliamentStation.value ? { parlament: '#textvergleich-parlament' } : {}),
+}))
 
 /* Which station sections render — the bar's anchors read the same. */
 const sections = computed(() => {
@@ -214,6 +231,16 @@ useSeoMeta({
           <section id="entwurf" class="page-section scroll-mt-6" aria-labelledby="entwurf-heading">
             <h2 id="entwurf-heading" class="section-heading">Der Entwurf</h2>
             <div class="mt-4 space-y-8">
+              <!-- The law in force it would change, as on the draft page. -->
+              <EntwurfFrame :laws="amendedLaws" />
+              <template v-if="!isAntrag">
+                <PageSubsection v-if="showsAnnex" id="gegenueberstellung" heading="Was ändert der Entwurf?">
+                  <TextComparisonSection :gp="data.gp" :inr="data.inr" :api-base="url" :layers="false" />
+                </PageSubsection>
+                <PageSubsection id="erlaeuterungen" heading="Was das Ressort begründet">
+                  <ExplanationsSection :gp="data.gp" :inr="data.inr" :api-base="url" />
+                </PageSubsection>
+              </template>
               <FoldSection
                 v-if="data.documents.length"
                 :heading="`Dokumente (${data.documents.length})`"

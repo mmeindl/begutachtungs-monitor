@@ -16,6 +16,8 @@
  * the two documents are not guaranteed to segment alike — so the source is
  * part of the key rather than a choice made here.
  */
+import type { ProcedureRoot } from '#shared/types'
+import { rootKey } from '#shared/utils/procedureRoot'
 import { DERIVED_CACHE } from '../cache/base'
 import { DERIVED_ANALYSIS_TTL_S } from '../cache/ttl'
 import { findLawStations } from '../diff/stationDocuments'
@@ -87,3 +89,27 @@ export async function draftArticlesOfXml(xmlUrl: string): Promise<DraftText> {
   const blocks = parseRisXml(await fetchDocument(xmlUrl))
   return { blocks, articles: draftArticles(blocks) }
 }
+
+/**
+ * The first text of a Regierungsvorlage or Antrag without a Begutachtung, as
+ * Artikel (10.11.2026) — its own Gesetzestext at Parliament (`findLawStations`
+ * with the item's type: the Vorlage's „Gesetzestext", the Antrag's ParlDion
+ * text). No RIS fallback: RIS has no Begut record of an item that never had a
+ * Begutachtung, and its RegV record is not joined (docs/architecture.md
+ * §12.69). A draft's text stays `getDraftArticles`.
+ */
+export const getRootDraftArticles = defineCachedFunction(
+  async (root: ProcedureRoot): Promise<DraftText> => {
+    const detail = await getGegenstand(root.gp, root.ityp, root.inr)
+    const first = findLawStations(detail.content ?? {}, root.ityp).get(root.ityp === 'A' ? 'antrag' : 'rv')
+    const blocks = first?.html ? parseParliamentHtml(await fetchDocument(first.html)) : []
+    return { blocks, articles: draftArticles(blocks) }
+  },
+  {
+    name: 'draft-articles-item',
+    base: DERIVED_CACHE,
+    getKey: (root: ProcedureRoot) => rootKey(root),
+    maxAge: DERIVED_ANALYSIS_TTL_S,
+    swr: false,
+  },
+)

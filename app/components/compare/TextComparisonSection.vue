@@ -43,12 +43,18 @@ const props = defineProps<{
   gp?: string
   inr?: number
   risId?: string
-  /** The draft as its page cites it (`draftCitationDe`, or the type word and title of a RIS draft), for „Zitieren" at a §; without it no § is cited. */
-  citeAs?: string
+  /**
+   * The page of a Regierungsvorlage without a Begutachtung (10.11.2026): its
+   * API base, and no Lesefassung and no new-law text — both are built from
+   * the draft's RIS record, which such a Vorlage does not have, so the two
+   * layers are not asked for and say nothing.
+   */
+  apiBase?: string
+  layers?: boolean
 }>()
 
 /** `/api/drafts/XXVIII/40` or `/api/ris-drafts/BEGUT_…` — the section's two endpoints hang off it. */
-const base = computed(() => (props.risId ? `/api/ris-drafts/${props.risId}` : `/api/drafts/${props.gp}/${props.inr}`))
+const base = computed(() => props.apiBase ?? (props.risId ? `/api/ris-drafts/${props.risId}` : `/api/drafts/${props.gp}/${props.inr}`))
 
 const { data, status } = await useFetch<TextComparisonResponse>(() => `${base.value}/gegenueberstellung`, {
   lazy: true,
@@ -64,7 +70,7 @@ const { data, status } = await useFetch<TextComparisonResponse>(() => `${base.va
  * this section caring: the Textgegenüberstellung is the information, the
  * reasoning is the addition.
  */
-const { data: explanations } = useExplanations(() => ({ gp: props.gp, inr: props.inr, risId: props.risId }))
+const { data: explanations } = useExplanations(() => ({ gp: props.gp, inr: props.inr, risId: props.risId, apiBase: props.apiBase }))
 
 /**
  * The konsolidierte Lesefassung — a third layer on the same Paragraph.
@@ -80,7 +86,7 @@ const { data: explanations } = useExplanations(() => ({ gp: props.gp, inr: props
  */
 const { data: consolidated, status: consolidatedStatus } = await useFetch<ConsolidatedTextResponse>(
   () => `${base.value}/konsolidiert`,
-  { lazy: true, server: false },
+  { lazy: true, server: false, immediate: props.layers !== false },
 )
 
 /**
@@ -121,7 +127,7 @@ const enactedLaws = computed(() => new Set(explanations.value?.enactedLaws ?? []
  */
 const { data: enacted } = await useFetch<EnactedLawsResponse>(
   () => `${base.value}/neue-gesetze`,
-  { lazy: true, server: false },
+  { lazy: true, server: false, immediate: props.layers !== false },
 )
 
 /**
@@ -306,7 +312,9 @@ const loadAnnouncement = computed(() => {
 const sources = computed<SourceEntry[]>(() => {
   const d = data.value
   if (!d?.available) return []
-  const out = [d.publisher === 'ris' ? risSource('Textgegenüberstellung') : parliamentDocumentSource('Textgegenüberstellung', 'me')]
+  // Parliament's copy of a draft's annex claims nothing; of a Vorlage's
+  // (`apiBase`), it is a freies Werk like every document of that station.
+  const out = [d.publisher === 'ris' ? risSource('Textgegenüberstellung') : parliamentDocumentSource('Textgegenüberstellung', props.apiBase ? 'rv' : 'me')]
   if (consolidated.value?.paragraphs.some((p) => p.risUrl)) out.push(risSource('Geltender Text'))
   if (newLaws.value.length) out.push(risSource('Gesetzestext des Entwurfs'))
   return out

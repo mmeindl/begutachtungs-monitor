@@ -19,12 +19,13 @@
  * is no BGBl and yields no Gesetzesnummer (`lawtext/bgblCitation.ts`), and a
  * silently shortened list would misstate what the draft touches.
  */
-import type { AmendedLaw, AmendedLawsResponse } from '#shared/types'
+import type { AmendedLaw, AmendedLawsResponse, ProcedureRoot } from '#shared/types'
+import { meRoot, rootKey } from '#shared/utils/procedureRoot'
 import type { TextBlock } from './lawUnits'
 import { sameRisStammnorm, stammnormOf, type BgblCitation } from './bgblCitation'
 import { clauseNameOf, isAmendmentClause, type ClauseName } from './draftArticles'
-import { getDraftArticles } from './draftArticlesService'
-import { getDraftsForGp } from '../parliament/drafts'
+import { getDraftArticles, getRootDraftArticles } from './draftArticlesService'
+import { getDraftsForGp, getGegenstand } from '../parliament/drafts'
 import { resolveKonsLaw } from '../kons/konsCache'
 import { konsLawUrl } from '../ris/konsLaw'
 import { mapWithConcurrency } from '../pool'
@@ -82,19 +83,24 @@ function leadingStammnorm(blocks: readonly TextBlock[]): { title: string | null;
  * next request tries again. The section arrives client-side and lazily, so
  * the page simply renders without it (`app/pages/entwuerfe/[gp]/[inr].vue`).
  */
-export const getAmendedLaws = defineCachedFunction(
-  async (gp: string, inr: number): Promise<AmendedLawsResponse> => {
+const readAmendedLaws = defineCachedFunction(
+  async (root: ProcedureRoot): Promise<AmendedLawsResponse> => {
+    const { gp, inr } = root
+    const isMe = root.ityp === 'ME'
     // A draft missing from its own GP's list is an answer (`asOf` stays
-    // null); a list that cannot be read is not.
-    const listed = (await getDraftsForGp(gp)).items.find((i) => i.inr === inr) ?? null
-    const asOf = listed?.arrivedAt || null
+    // null); a list that cannot be read is not. A Vorlage or Antrag without
+    // a Begutachtung has no list row: its own record dates it (10.11.2026).
+    const asOf = isMe
+      ? (await getDraftsForGp(gp)).items.find((i) => i.inr === inr)?.arrivedAt || null
+      : (await getGegenstand(gp, root.ityp, inr)).content?.einlangen?.slice(0, 10) || null
 
     // The draft's own text — never the Regierungsvorlage's: the question is
     // what the DRAFT proposed to change. Its own source reading, and its own
     // cache entry under it: this section prefers the Parliament copy of the
     // Ministerialentwurf, the three sections of the draft page read the RIS
     // XML (`lawtext/draftArticlesService.ts`).
-    const { blocks, articles } = await getDraftArticles(gp, inr, 'parliament-first')
+    // Without a draft, the item's own first text is the proposal.
+    const { blocks, articles } = isMe ? await getDraftArticles(gp, inr, 'parliament-first') : await getRootDraftArticles(root)
     let wanted = articles.filter((a) => a.amends).map((a) => ({ title: a.title, bgbl: a.bgbl, clause: a.clause }))
 
     // A single-law Novelle prints no "Artikel" line, and its
@@ -155,5 +161,15 @@ export const getAmendedLaws = defineCachedFunction(
 
     return { gp, inr, asOf, createsNewLaw: articles.length > 0 && laws.length === 0, laws }
   },
-  { name: 'amended-laws', base: DERIVED_CACHE, getKey: (gp: string, inr: number) => `${gp}-${inr}`, maxAge: DERIVED_ANALYSIS_TTL_S, swr: false },
+  // `rootKey` keeps a draft's key what it always was.
+  { name: 'amended-laws', base: DERIVED_CACHE, getKey: (root: ProcedureRoot) => rootKey(root), maxAge: DERIVED_ANALYSIS_TTL_S, swr: false },
 )
+
+export function getAmendedLaws(gp: string, inr: number): Promise<AmendedLawsResponse> {
+  return readAmendedLaws(meRoot(gp, inr))
+}
+
+/** The same for a Vorlage or Antrag without a Begutachtung. */
+export function getRootAmendedLaws(root: ProcedureRoot): Promise<AmendedLawsResponse> {
+  return readAmendedLaws(root)
+}

@@ -99,6 +99,16 @@ export function officialTitleOf(ityp: 'I' | 'A', description: string | null | un
   return m?.[1] ? m[1].trim() : null
 }
 
+/**
+ * The Erläuterungen group of a document list — the title starts with the
+ * word, because a Vorlage of several parts names them „Erläuterungen
+ * Sozialabgaben" (311 d.B. XXVIII); an exact match read that Vorlage as one
+ * without Erläuterungen. The first such group, as Parliament orders them.
+ */
+export function explanationsGroup(documents: readonly DraftDocument[]): DraftDocument | null {
+  return documents.find((d) => /^Erläuterungen\b/i.test(d.title.trim())) ?? null
+}
+
 /** The item's first text as one PDF link — `enactment.rvTextUrl`. */
 function firstTextPdf(ityp: 'I' | 'A', documents: readonly DraftDocument[]): string | null {
   // The titles `findLawStations` reads (`server/utils/diff/stationDocuments.ts`),
