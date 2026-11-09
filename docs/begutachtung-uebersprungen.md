@@ -562,6 +562,17 @@ this dataset would make it trivially easy to build.
   such histories stays invisible to it — which is why the wording stays
   procedural and per-row, and why no aggregate is derived from it in the
   product.
+  **Stand 09.11.2026: the enacted laws are rows too, behind a chip.**
+  `/entwuerfe?begutachtung=ohne` lists the federal laws of a period that
+  reached the Bundesgesetzblatt without a Begutachtung, beside the open
+  Vorlagen above — off by default, one procedural fact per row, no total
+  beside the list's own count line. Built from RIS's Teil-I records rather
+  than this memo's detail calls, and stricter than it: a law is a row only
+  where no draft's stage record links its Vorlage, the Antrag table does not
+  name its Antrag, no budget rule applies and the title check above finds no
+  plausible draft — 69 rows for GP XXVIII on 09.11.2026, 66 of them among
+  this memo's 173 laws against its corrected 80, every difference in the
+  direction of saying less (`architecture.md` §12.68).
 - **An open question, not a claim:** whether Austria has any legal duty to
   hold a Begutachtung, and what the status of the six-week Frist actually is.
   The memo's argument is strongest if the answer is "none, and a
