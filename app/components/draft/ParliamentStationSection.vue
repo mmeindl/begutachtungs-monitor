@@ -3,7 +3,7 @@ import type { DraftDetail, EnactmentInfo, LawStationId } from '#shared/types'
 import type { Fact } from '~/components/ui/FactList.vue'
 import { LAW_STATION_LABEL, lawStationOf } from '#shared/utils/lawStations'
 import { blgNrDe, citeLineDe, rvCitationDe } from '#shared/utils/citations'
-import { PARLIAMENT_HISTORY_SOURCES, parliamentStandDe, voteLineDe } from '~/utils/spine'
+import { PARLIAMENT_HISTORY_SOURCES, parliamentStandDe, voteLineDe, type ParliamentFacts } from '~/utils/spine'
 
 /**
  * „Im Parlament" of the draft page (04.10.2026, out of the page).
@@ -19,7 +19,12 @@ import { PARLIAMENT_HISTORY_SOURCES, parliamentStandDe, voteLineDe } from '~/uti
  * bar's anchors read too) and hands in the Vorlage it renders for.
  */
 const props = defineProps<{
-  draft: DraftDetail
+  /** What the section reads of the page's item — a draft's `DraftDetail`, or
+   *  the record of a Vorlage or Antrag without a Begutachtung (10.11.2026). */
+  draft: ParliamentFacts & Pick<DraftDetail, 'gp' | 'inr'>
+  /** Whose text parliament had: a Regierungsvorlage (every draft's) or an
+   *  Antrag — the frame's sentence and the documents' citation name it. */
+  item?: 'rv' | 'antrag'
   /** The draft's Regierungsvorlage — `draft.enactment`, known to be there. */
   enactment: EnactmentInfo
   /** Parliament published a changed text, so the bar links the comparison
@@ -42,7 +47,7 @@ const facts = computed<Fact[]>(() => {
     // What parliament did, as the frame's first row — the function the bar's
     // fact line reads (`parliamentStandDe`), so the row and the bar cannot
     // disagree.
-    { key: 'stand', title: 'Stand', text: parliamentStandDe(props.draft) },
+    { key: 'stand', title: 'Stand', text: parliamentStandDe(props.draft, undefined, props.item) },
     // Where the Abänderungsanträge are named, in procedural order between
     // the state and the vote (02.10.2026). Values in the template's slots,
     // they carry links. A row is missing where the Verlauf names nothing —
@@ -66,7 +71,8 @@ const citeAs = computed(() => {
   const e = props.enactment
   if (!e.rvCitation) return undefined
   const gp = /\/gegenstand\/([IVXLC]+)\//.exec(e.rvUrl)?.[1] ?? props.draft.gp
-  return rvCitationDe(e.rvCitation, gp)
+  // An Antrag is no Beilage: no „BlgNR" form to cite it by.
+  return props.item === 'antrag' ? `Antrag ${e.rvCitation} ${gp}. GP` : rvCitationDe(e.rvCitation, gp)
 })
 
 /* „AB 567 BlgNR 28. GP, <link>" — the committee report as a footnote

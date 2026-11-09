@@ -56,6 +56,7 @@ import { promulgationState } from '#shared/utils/promulgation'
 import { RIS_KIND_LABEL } from '#shared/utils/risConsultations'
 import { LAND_NAME, landDraftPath, landPublisherDe, landShortTitle } from '#shared/utils/laender'
 import { euLeadOf } from './euRecht'
+import { vorlagePath } from '#shared/utils/procedureRoot'
 
 /**
  * Zone 3 — what was filed in this Verfahren.
@@ -533,12 +534,22 @@ export function viewOfRis(c: RisConsultation): EntryView {
  * 18.09.2026 both were one row and the missing pointer alone carried the
  * sentence (`OpenVorlage` in `shared/types/dashboard.ts`).
  */
+/** Period and number of a Vorlage, read off its Parliament address. */
+function vorlageOf(url: string): { gp: string; inr: number } | null {
+  const m = /\/gegenstand\/([IVXLC]+)\/I\/(\d+)(?:\/|$)/.exec(url)
+  return m?.[1] && m[2] ? { gp: m[1], inr: Number(m[2]) } : null
+}
+
 export function viewOfVorlage(v: OpenVorlage): EntryView {
   const c = v.consultation
+  // A Vorlage without a draft page has a page of its own since 10.11.2026
+  // (`vorlagePath`, docs/architecture.md §12.69) — whatever the evidence
+  // says about a Begutachtung, which stays the note's business below.
+  const own = c.kind === 'draft' ? null : vorlageOf(v.parliamentUrl)
   return {
     key: `rv-${v.citation}`,
-    to: c.kind === 'draft' ? `/entwuerfe/${c.gp}/${c.inr}` : null,
-    href: c.kind === 'draft' ? null : v.parliamentUrl,
+    to: c.kind === 'draft' ? `/entwuerfe/${c.gp}/${c.inr}` : own ? vorlagePath(own.gp, 'I', own.inr) : null,
+    href: c.kind === 'draft' || own ? null : v.parliamentUrl,
     title: v.title,
     titleFull: v.title,
     kindLabel: 'Regierungsvorlage',
@@ -628,8 +639,9 @@ export function viewOfLand(c: LandConsultation): EntryView {
 export function viewOfLaw(law: LawWithoutBegutachtung): EntryView {
   return {
     key: `law-${law.bgblNumber}`,
-    to: null,
-    href: law.item.parliamentUrl,
+    // Our page of the item since 10.11.2026 (docs/architecture.md §12.69).
+    to: vorlagePath(law.item.gp, law.item.kind === 'rv' ? 'I' : 'A', law.item.inr),
+    href: null,
     title: law.title,
     titleFull: law.title,
     kindLabel: law.item.kind === 'rv' ? 'Regierungsvorlage' : 'Initiativantrag',

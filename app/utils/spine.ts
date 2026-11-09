@@ -41,7 +41,7 @@
  * (the amended laws, the Regierungsvorlage's own Stellungnahmen count), so
  * the values are handed in rather than guessed or fetched here.
  */
-import type { BgblOutcome, DraftDetail, EnactmentInfo, HouseVote, LandCode, LandConsultation, LandProcedureStep, LandTextStation, LawStationId, RisConsultation } from '#shared/types'
+import type { BgblOutcome, DraftDetail, EnactmentInfo, HouseVote, LandCode, LandConsultation, LandProcedureStep, LandTextStation, LawStationId, RisConsultation, VorlageDetail } from '#shared/types'
 import { carriesDraft } from '#shared/utils/antragPath'
 import { bgblShort, formatDateDe, formatNumberDe, fristEndedDe, spanInDays, todayIso } from '#shared/utils/format'
 import { promulgationState } from '#shared/utils/promulgation'
@@ -196,6 +196,50 @@ function daysAfterFristDe(days: number | null): string | null {
 }
 
 /**
+ * The card's opening line once the text is in the Nationalrat — the branch of
+ * `procedureStatusDe` that reads the outcome's record alone, out of it on
+ * 10.11.2026 so the page of a Vorlage or Antrag without a Begutachtung heads
+ * its card with the same words.
+ */
+export function enactmentStatusDe(
+  d: ParliamentFacts & { enactment: EnactmentInfo },
+  today: string = todayIso(),
+): string {
+  const e = d.enactment
+  // A Gesetzesbeschluss that was not promulgated (§12.33, Nachtrag
+  // 03.10.2026): where Parliament's record says so and names a successor
+  // that reached the Bundesgesetzblatt, the draft's text did become law —
+  // on the route the headline already has words for. Otherwise the gap is
+  // stated, temporal and without a cause: the cause stands in the
+  // Parlament row, and only where Parliament gives one.
+  const unpromulgated = promulgationState(e, today)
+  if (unpromulgated === 'explicit' && e.successor?.bgblNumber) return 'Gesetz geworden – als Initiativantrag'
+  if (unpromulgated) return 'Beschlossen – nicht kundgemacht'
+  // Each of these four used to read „Im Parlament" or, after the period,
+  // „Ohne Beschluss" — both wrong in a different direction. Temporal and
+  // factual (framing rule, docs/architecture.md §4): what the house did,
+  // never why. „Beschlossen – Kundmachung ausständig" is the one that
+  // states a gap, and it states it about the Kundmachung, not about the
+  // Vorlage.
+  switch (parliamentOutcome(d)) {
+    case 'rejected': return 'Im Nationalrat abgelehnt'
+    case 'withdrawn': return 'Zurückgezogen'
+    case 'decided': return 'Beschlossen – Kundmachung ausständig'
+    // Sent back to committee and never decided: „Im Parlament" while the
+    // Vorlage's period runs, „Ohne Beschluss" once it has ended — the
+    // calendar below decides, as for any undecided Vorlage. Until
+    // 02.10.2026 this case returned „Im Parlament" for good, while the
+    // Parlament station already turned `never`.
+    case 'recommitted': break
+    default: break
+  }
+  // The VORLAGE's period, not the draft's (§12.14, 02.10.2026): a
+  // carry-over (XXVII/352/ME → 127 d.B./XXVIII. GP) is still before the
+  // house, and its list row says „liegt vor" by the same calendar.
+  return e.rvGpEnded ? 'Ohne Beschluss – Gesetzgebungsperiode beendet' : 'Im Parlament'
+}
+
+/**
  * The card's opening line: where the text stands, in one phrase.
  *
  * It replaces the label "Der Text im Verfahren", which named the card
@@ -208,38 +252,7 @@ function daysAfterFristDe(days: number | null): string | null {
 export function procedureStatusDe(d: DraftDetail, today: string = todayIso()): string {
   const e = d.enactment
   if (e?.bgblNumber) return 'Gesetz geworden'
-  if (e) {
-    // A Gesetzesbeschluss that was not promulgated: where Parliament's record says so and names a successor
-    // that reached the Bundesgesetzblatt, the draft's text did become law —
-    // on the route the headline already has words for. Otherwise the gap is
-    // stated, temporal and without a cause: the cause stands in the
-    // Parlament row, and only where Parliament gives one.
-    const unpromulgated = promulgationState(e, today)
-    if (unpromulgated === 'explicit' && e.successor?.bgblNumber) return 'Gesetz geworden – als Initiativantrag'
-    if (unpromulgated) return 'Beschlossen – nicht kundgemacht'
-    // Each of these four used to read „Im Parlament" or, after the period,
-    // „Ohne Beschluss" — both wrong in a different direction. Temporal and
-    // factual (framing rule): what the house did,
-    // never why. „Beschlossen – Kundmachung ausständig" is the one that
-    // states a gap, and it states it about the Kundmachung, not about the
-    // Vorlage.
-    switch (parliamentOutcome(d)) {
-      case 'rejected': return 'Im Nationalrat abgelehnt'
-      case 'withdrawn': return 'Zurückgezogen'
-      case 'decided': return 'Beschlossen – Kundmachung ausständig'
-      // Sent back to committee and never decided: „Im Parlament" while the
-      // Vorlage's period runs, „Ohne Beschluss" once it has ended — the
-      // calendar below decides, as for any undecided Vorlage. Until
-      // 02.10.2026 this case returned „Im Parlament" for good, while the
-      // Parlament station already turned `never`.
-      case 'recommitted': break
-      default: break
-    }
-    // The VORLAGE's period, not the draft's (02.10.2026): a
-    // carry-over (XXVII/352/ME → 127 d.B./XXVIII. GP) is still before the
-    // house, and its list row says „liegt vor" by the same calendar.
-    return e.rvGpEnded ? 'Ohne Beschluss – Gesetzgebungsperiode beendet' : 'Im Parlament'
-  }
+  if (e) return enactmentStatusDe({ enactment: e, textEvolution: d.textEvolution }, today)
   if (d.active) return 'In Begutachtung'
   // The Antrag route (30.09.2026): no Vorlage,
   // and still a law — matched by wording, so the headline names the route
@@ -303,7 +316,12 @@ export const SECOND_ROUND_WINDOW =
 const AUSSCHUSS = UPSTREAM_AUSSCHUSS_TITLE
 const PLENUM = UPSTREAM_PLENUM_TITLE
 
-const carries = (d: DraftDetail, prefix: string) =>
+/** What the parliamentary readers below need — the outcome's record and
+ *  the list of Parliament's versions (10.11.2026: no whole `DraftDetail`, so
+ *  the page of a Vorlage or Antrag without a Begutachtung reads them too). */
+export type ParliamentFacts = Pick<DraftDetail, 'enactment' | 'textEvolution'>
+
+const carries = (d: Pick<DraftDetail, 'textEvolution'>, prefix: string) =>
   d.textEvolution.some((doc) => doc.title.startsWith(prefix))
 
 /**
@@ -321,7 +339,7 @@ const carries = (d: DraftDetail, prefix: string) =>
  * `amendedIn === null` means the Vorlage's record was unreadable, never that
  * it changed nothing; the mirror is then the best evidence left.
  */
-function amendedStations(d: DraftDetail): readonly LawStationId[] {
+function amendedStations(d: ParliamentFacts): readonly LawStationId[] {
   const fromRv = d.enactment?.amendedIn
   if (fromRv) return fromRv
   const mirrored: LawStationId[] = []
@@ -346,13 +364,13 @@ function amendedStations(d: DraftDetail): readonly LawStationId[] {
  * further on. The fact line says what happened; the link is only offered
  * where there is a text behind it.
  */
-export function lastParliamentStation(d: DraftDetail): LawStationId | null {
+export function lastParliamentStation(d: Pick<DraftDetail, 'textEvolution'>): LawStationId | null {
   return parliamentTexts(d).at(-1) ?? null
 }
 
 /** The parliamentary texts on this page, in procedural order — what the
  *  steps under „Im Parlament" are built from (`lawDiffSteps`). */
-export function parliamentTexts(d: DraftDetail): LawStationId[] {
+export function parliamentTexts(d: Pick<DraftDetail, 'textEvolution'>): LawStationId[] {
   const texts: LawStationId[] = []
   if (carries(d, AUSSCHUSS)) texts.push('ausschuss')
   if (carries(d, PLENUM)) texts.push('plenum')
@@ -413,7 +431,7 @@ export function houseOutcomeOf(
  * beschlossen.
  */
 export function parliamentOutcome(
-  d: DraftDetail,
+  d: ParliamentFacts,
 ): 'unchanged' | 'amended' | 'pending' | 'lapsed' | HouseOutcome | null {
   const e = d.enactment
   if (!e) return null
@@ -489,6 +507,17 @@ const PARLIAMENT_OUTCOME_DE: Record<NonNullable<ReturnType<typeof parliamentOutc
  * gone from the plain case: it promised a Kundmachung for the texts that
  * never got one.
  */
+/** The same sentences about a selbständiger Antrag (10.11.2026) — only the
+ *  ones that name the item change; the others are about the text. */
+const PARLIAMENT_OUTCOME_ANTRAG_DE: Record<NonNullable<ReturnType<typeof parliamentOutcome>>, string> = {
+  ...PARLIAMENT_OUTCOME_DE,
+  unchanged: 'Der Nationalrat hat den Text des Antrags unverändert beschlossen.',
+  rejected: 'Der Antrag wurde im Nationalrat abgelehnt.',
+  withdrawn: 'Der Antrag wurde zurückgezogen.',
+  recommitted: 'Der Antrag wurde an den Ausschuss zurückverwiesen.',
+  pending: 'Der Antrag ist im Nationalrat in Behandlung.',
+}
+
 function decidedStandDe(e: EnactmentInfo, today: string): string {
   const state = promulgationState(e, today)
   if (state === 'explicit') {
@@ -522,12 +551,17 @@ function decidedStandDe(e: EnactmentInfo, today: string): string {
  * „beschlossen" goes through `decidedStandDe`. Without a Vorlage it says
  * what a page without one never asks for: the lapsed sentence.
  */
-export function parliamentStandDe(d: DraftDetail, today: string = todayIso()): string {
+export function parliamentStandDe(
+  d: ParliamentFacts,
+  today: string = todayIso(),
+  /** Whose text it is: a Regierungsvorlage (every draft's) or an Antrag. */
+  item: 'rv' | 'antrag' = 'rv',
+): string {
   const outcome = parliamentOutcome(d) ?? 'lapsed'
   const e = d.enactment
   return e && (outcome === 'decided' || promulgationState(e, today))
     ? decidedStandDe(e, today)
-    : PARLIAMENT_OUTCOME_DE[outcome]
+    : (item === 'antrag' ? PARLIAMENT_OUTCOME_ANTRAG_DE : PARLIAMENT_OUTCOME_DE)[outcome]
 }
 
 /* The credit line under the frames of „Die Regierungsvorlage" and „Im
@@ -541,7 +575,18 @@ export const PARLIAMENT_HISTORY_SOURCES: SourceEntry[] = [{ what: 'Verlauf', pub
 const kept = (...facts: (string | null | undefined)[]): string[] =>
   facts.filter((f): f is string => Boolean(f))
 
-export function stations(d: DraftDetail, ctx: StationContext = {}, today: string = todayIso()): Station[] {
+/**
+ * What a page's Parlament and Bundesgesetzblatt stations need — the
+ * outcome's record and the draft's few facts that bound it. A
+ * Ministerialentwurf's page passes its `DraftDetail`; the page of a Vorlage
+ * or Antrag without a Begutachtung passes its own record with `active`
+ * false and no `antragPath` (10.11.2026), so both pages say the same thing
+ * about the same stations.
+ */
+export type LaterStationFacts = Pick<DraftDetail, 'enactment' | 'textEvolution' | 'gpEnded' | 'active' | 'antragPath'>
+
+/** The Parlament and Bundesgesetzblatt stations, out of `stations()`. */
+export function laterStations(d: LaterStationFacts, today: string = todayIso()): [Station, Station] {
   const e = d.enactment
 
   /** A Gesetzesbeschluss that was not promulgated — Parliament's own stage (`explicit`) or the calendar past
@@ -589,109 +634,10 @@ export function stations(d: DraftDetail, ctx: StationContext = {}, today: string
    *  exactly where there is one. */
   const voteLine = voteLineDe(e?.vote)
 
-  /** The head of the old chain, as a fact of the draft that produces it. */
-  const changes = ctx.createsNewLaw
-    ? 'neues Gesetz'
-    : ctx.amendedLawCount === 1
-      ? 'ändert 1 Gesetz'
-      : ctx.amendedLawCount
-        ? `ändert ${ctx.amendedLawCount} Gesetze`
-        : null
-
-  const fristLine = fristLineDe(d.arrivedAt, d.deadline, d.active)
-
-  /** The Initiativantrag route: no Vorlage, and the text reached the house
-   *  and the Bundesgesetzblatt anyway (`antragPath.ts`). Only where the
-   *  Antrag carries the draft; a partial match stays a sentence on the page
-   *  and moves no station. */
+  /** As in `stations()`: the Initiativantrag route of a draft. */
   const viaAntrag = !e && !d.active && carriesDraft(d.antragPath) ? d.antragPath : null
 
-  /** The RV's date with its distance to the Fristende as an apposition —
-   *  one fact, not two, so the row does not grow a third middot. */
-  const latency = e ? afterFristDe(d.deadline, e.rvDate, d.arrivedAt) : null
-  const rvWhen = e
-    ? e.rvDate
-      ? latency ? `${formatDateDe(e.rvDate)}, ${latency}` : formatDateDe(e.rvDate)
-      : e.rvCitation
-    : null
-
-  const n = d.statements.total
-  const count = n === 0
-    ? d.active ? 'noch keine Stellungnahmen' : 'keine Stellungnahmen'
-    : n === 1
-      ? '1 Stellungnahme'
-      : `${formatNumberDe(n)} Stellungnahmen`
-
-  /** The Vorlage's own count, bare. It said „zur Vorlage" until 01.10.2026,
-   *  so that two bare counts in two rows would not read as one number said
-   *  twice; since both stand last in their rows, under the station names
-   *  „Begutachtung" and „Regierungsvorlage", the row names whose count it is.
-   *  Zero is not stated: most Vorlagen get none, and a row that said so on
-   *  every page would be noise where it is not a finding. */
-  const rvN = ctx.rvStatementTotal ?? 0
-  const rvCount = rvN === 0
-    ? null
-    : rvN === 1
-      ? '1 Stellungnahme'
-      : `${formatNumberDe(rvN)} Stellungnahmen`
-
   return [
-    {
-      id: 'entwurf',
-      name: 'Entwurf',
-      state: 'done',
-      facts: kept(formatDateDe(d.arrivedAt), changes),
-      // Nothing to hold a new law against, so the question is not asked:
-      // the annex would answer with a generic "not available", which reads
-      // as a gap in our data instead of a fact about the draft.
-      comparison: ctx.createsNewLaw
-        ? null
-        : { id: 'vorschlag', question: 'Was ändert der Entwurf?' },
-    },
-    {
-      id: 'begutachtung',
-      name: 'Begutachtung',
-      state: d.active ? 'current' : 'done',
-      // The countdown deliberately stays with the badge and the CTA —
-      // repeating "Noch 1 Tag" here put the same three words on the page
-      // three times. The bar carries the date, and since 16.09.2026 the
-      // LENGTH of the Frist with it: how long a ministry gave is the fact
-      // that separates a consultation from a formality, and it was the one
-      // thing five dates on this card left the reader to work out.
-      //
-      // The Frist first and the count last, in every state, as on every
-      // row: the station's own fact, then how many took part (01.10.2026).
-      // Until then the count led once the Frist had closed, so the two
-      // counts on the card — here and „zur Vorlage" — stood at opposite
-      // ends of their rows, and the row changed shape with the state.
-      facts: kept(...fristLine, count),
-      comparison: null,
-    },
-    {
-      id: 'rv',
-      name: 'Regierungsvorlage',
-      state: e ? 'done' : d.active ? 'open' : d.gpEnded || viaAntrag ? 'never' : 'current',
-      // "bisher keine" is temporal, never accusatory (framing rule), and it
-      // is only claimed once the Frist has ended — while it runs the
-      // Vorlage is simply not due yet. Once the GP itself is over the
-      // temporal word would mislead the other way, and the boundary becomes
-      // the state.
-      facts: e
-        ? kept(rvWhen, rvCount)
-        : d.active
-          ? ['ausstehend']
-          : viaAntrag
-            ? ['keine – als Initiativantrag eingebracht']
-            : d.gpEnded
-              ? ['keine – GP beendet']
-              : kept(
-                  'bisher keine',
-                  d.handoff?.date ? `seit ${formatDateDe(d.handoff.date)} beim Ressort` : null,
-                ),
-      comparison: e
-        ? { id: 'begutachtung', question: 'Was sich nach der Begutachtung geändert hat' }
-        : null,
-    },
     {
       id: 'parlament',
       name: 'Parlament',
@@ -827,6 +773,174 @@ export function stations(d: DraftDetail, ctx: StationContext = {}, today: string
           }),
       comparison: null,
     },
+  ]
+}
+
+export function stations(d: DraftDetail, ctx: StationContext = {}, today: string = todayIso()): Station[] {
+  const e = d.enactment
+
+  /** The head of the old chain, as a fact of the draft that produces it. */
+  const changes = ctx.createsNewLaw
+    ? 'neues Gesetz'
+    : ctx.amendedLawCount === 1
+      ? 'ändert 1 Gesetz'
+      : ctx.amendedLawCount
+        ? `ändert ${ctx.amendedLawCount} Gesetze`
+        : null
+
+  const fristLine = fristLineDe(d.arrivedAt, d.deadline, d.active)
+
+  /** The Initiativantrag route: no Vorlage, and the text reached the house
+   *  and the Bundesgesetzblatt anyway (`antragPath.ts`). Only where the
+   *  Antrag carries the draft; a partial match stays a sentence on the page
+   *  and moves no station. */
+  const viaAntrag = !e && !d.active && carriesDraft(d.antragPath) ? d.antragPath : null
+
+  /** The RV's date with its distance to the Fristende as an apposition —
+   *  one fact, not two, so the row does not grow a third middot. */
+  const latency = e ? afterFristDe(d.deadline, e.rvDate, d.arrivedAt) : null
+  const rvWhen = e
+    ? e.rvDate
+      ? latency ? `${formatDateDe(e.rvDate)}, ${latency}` : formatDateDe(e.rvDate)
+      : e.rvCitation
+    : null
+
+  const n = d.statements.total
+  const count = n === 0
+    ? d.active ? 'noch keine Stellungnahmen' : 'keine Stellungnahmen'
+    : n === 1
+      ? '1 Stellungnahme'
+      : `${formatNumberDe(n)} Stellungnahmen`
+
+  /** The Vorlage's own count, bare. It said „zur Vorlage" until 01.10.2026,
+   *  so that two bare counts in two rows would not read as one number said
+   *  twice; since both stand last in their rows, under the station names
+   *  „Begutachtung" and „Regierungsvorlage", the row names whose count it is.
+   *  Zero is not stated: most Vorlagen get none, and a row that said so on
+   *  every page would be noise where it is not a finding. */
+  const rvN = ctx.rvStatementTotal ?? 0
+  const rvCount = rvN === 0
+    ? null
+    : rvN === 1
+      ? '1 Stellungnahme'
+      : `${formatNumberDe(rvN)} Stellungnahmen`
+
+  return [
+    {
+      id: 'entwurf',
+      name: 'Entwurf',
+      state: 'done',
+      facts: kept(formatDateDe(d.arrivedAt), changes),
+      // Nothing to hold a new law against, so the question is not asked:
+      // the annex would answer with a generic "not available", which reads
+      // as a gap in our data instead of a fact about the draft.
+      comparison: ctx.createsNewLaw
+        ? null
+        : { id: 'vorschlag', question: 'Was ändert der Entwurf?' },
+    },
+    {
+      id: 'begutachtung',
+      name: 'Begutachtung',
+      state: d.active ? 'current' : 'done',
+      // The countdown deliberately stays with the badge and the CTA —
+      // repeating "Noch 1 Tag" here put the same three words on the page
+      // three times. The bar carries the date, and since 16.09.2026 the
+      // LENGTH of the Frist with it: how long a ministry gave is the fact
+      // that separates a consultation from a formality, and it was the one
+      // thing five dates on this card left the reader to work out.
+      //
+      // The Frist first and the count last, in every state, as on every
+      // row: the station's own fact, then how many took part (01.10.2026).
+      // Until then the count led once the Frist had closed, so the two
+      // counts on the card — here and „zur Vorlage" — stood at opposite
+      // ends of their rows, and the row changed shape with the state.
+      facts: kept(...fristLine, count),
+      comparison: null,
+    },
+    {
+      id: 'rv',
+      name: 'Regierungsvorlage',
+      state: e ? 'done' : d.active ? 'open' : d.gpEnded || viaAntrag ? 'never' : 'current',
+      // "bisher keine" is temporal, never accusatory (framing rule), and it
+      // is only claimed once the Frist has ended — while it runs the
+      // Vorlage is simply not due yet. Once the GP itself is over the
+      // temporal word would mislead the other way, and the boundary becomes
+      // the state.
+      facts: e
+        ? kept(rvWhen, rvCount)
+        : d.active
+          ? ['ausstehend']
+          : viaAntrag
+            ? ['keine – als Initiativantrag eingebracht']
+            : d.gpEnded
+              ? ['keine – GP beendet']
+              : kept(
+                  'bisher keine',
+                  d.handoff?.date ? `seit ${formatDateDe(d.handoff.date)} beim Ressort` : null,
+                ),
+      comparison: e
+        ? { id: 'begutachtung', question: 'Was sich nach der Begutachtung geändert hat' }
+        : null,
+    },
+    ...laterStations(d, today),
+  ]
+}
+
+/**
+ * The card's opening line on the page of a Vorlage or Antrag without a
+ * Begutachtung (docs/architecture.md §12.69) — the words a draft's page uses
+ * once its Vorlage exists (`enactmentStatusDe`).
+ */
+export function vorlageStatusDe(d: VorlageDetail, today: string = todayIso()): string {
+  if (d.enactment.bgblNumber) return 'Gesetz geworden'
+  return enactmentStatusDe(d, today)
+}
+
+/** What only the page's lazy requests can tell `vorlageStations`. */
+export interface VorlageStationContext {
+  createsNewLaw?: boolean
+  amendedLawCount?: number
+  /** Stellungnahmen to the Nationalrat on the item; undefined while unknown. */
+  statementTotal?: number | null
+  /** Whether the page shows „Was ändert der Entwurf?" (a Vorlage's own
+   *  Textgegenüberstellung); the first station links it only then. */
+  showsAnnex?: boolean
+}
+
+/**
+ * The stations of a law that came to the Nationalrat without a Begutachtung
+ * (10.11.2026): the item itself, then Parlament and Bundesgesetzblatt exactly
+ * as a draft's page has them (`laterStations`, same record, same words).
+ *
+ * No Begutachtung station, not even an empty one: a station the procedure
+ * never had is not a step left out, and a row reading „keine" under it would
+ * be the reproach the framing rule forbids. Where the evidence carries it
+ * (`withoutBegutachtung`), the first station says „ohne Begutachtung" as a
+ * fact of the item, like its date.
+ *
+ * The first station keeps the id `rv` for both kinds — the bar's vocabulary
+ * (`StationId`) has one slot for the text the Nationalrat receives — and
+ * names itself by what the item is.
+ */
+export function vorlageStations(d: VorlageDetail, ctx: VorlageStationContext = {}, today: string = todayIso()): Station[] {
+  const changes = ctx.createsNewLaw
+    ? 'neues Gesetz'
+    : ctx.amendedLawCount === 1
+      ? 'ändert 1 Gesetz'
+      : ctx.amendedLawCount
+        ? `ändert ${ctx.amendedLawCount} Gesetze`
+        : null
+  const n = ctx.statementTotal ?? 0
+  const count = n === 0 ? null : n === 1 ? '1 Stellungnahme' : `${formatNumberDe(n)} Stellungnahmen`
+  return [
+    {
+      id: 'rv',
+      name: d.ityp === 'I' ? 'Regierungsvorlage' : 'Initiativantrag',
+      state: 'done',
+      facts: kept(d.arrivedAt ? formatDateDe(d.arrivedAt) : d.citation, changes, d.withoutBegutachtung ? 'ohne Begutachtung' : null, count),
+      comparison: ctx.showsAnnex && !ctx.createsNewLaw ? { id: 'vorschlag', question: 'Was ändert der Entwurf?' } : null,
+    },
+    ...laterStations({ enactment: d.enactment, textEvolution: d.textEvolution, gpEnded: d.gpEnded, active: false, antragPath: null }, today),
   ]
 }
 

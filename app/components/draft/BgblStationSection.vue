@@ -29,7 +29,17 @@ const props = defineProps<{
   inr: number
   /** Parliament's versions, in order (`parliamentTexts`). */
   parliamentTexts: LawStationId[]
+  /** The item's API base — a draft's by default; the page of a Vorlage or
+   *  Antrag without a Begutachtung passes its own (10.11.2026). */
+  apiBase?: string
+  /** The first text of the procedure, where the whole-way comparison starts
+   *  (`lawDiffSteps`): the draft by default. */
+  origin?: 'me' | 'rv' | 'antrag'
+  /** Whether the comparison is offered at all. */
+  comparison?: boolean
 }>()
+
+const base = computed(() => props.apiBase ?? `/api/drafts/${props.gp}/${props.inr}`)
 
 /* „BGBl. I Nr. 69/2026, https://www.ris.bka.gv.at/eli/bgbl/I/2026/69" — the
  * ELI address, where the link beside it opens the same document through
@@ -43,7 +53,7 @@ const props = defineProps<{
  * not the draft's list — Artikel come and go between the two
  * (`ris/bgblLaws.ts`). */
 const { data: fassung } = await useFetch<BgblLawsResponse>(
-  () => `/api/drafts/${props.gp}/${props.inr}/geltende-fassung`,
+  () => `${base.value}/geltende-fassung`,
   { lazy: true, server: false },
 )
 
@@ -136,7 +146,7 @@ function bgblCite(number: string | null, risUrl: string | null): string | null {
            passed in by the page. -->
       <slot />
       <LawDiffSection
-        v-if="enactment.bgblNumber"
+        v-if="enactment.bgblNumber && comparison !== false"
         :gp="gp"
         :inr="inr"
         scope="bgbl"

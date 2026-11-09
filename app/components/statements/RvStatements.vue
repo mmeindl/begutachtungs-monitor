@@ -36,7 +36,21 @@ const props = defineProps<{
    *  block by the page itself (`DoorButton`, 03.10.2026) — not in here,
    *  because this block renders only once its data has loaded. */
   filingOpen?: boolean
+  /** Whose Stellungnahmen: a Regierungsvorlage's (every draft's) or an
+   *  Antrag's (10.11.2026) — the heading, the link and the credit name it. */
+  item?: 'rv' | 'antrag'
+  /** Without its own heading, for a page whose section heading already says
+   *  what this is („Stellungnahmen an den Nationalrat"). */
+  bare?: boolean
 }>()
+
+const noun = computed(() => (props.item === 'antrag' ? 'zum Antrag' : 'zur Regierungsvorlage'))
+const sources = computed<SourceEntry[]>(() =>
+  props.item === 'antrag'
+    ? [{ what: 'Stellungnahmen zum Antrag', publisher: 'parlament', terms: 'keine-lizenz' }]
+    : STATEMENTS_SOURCES,
+)
+const wrapper = computed(() => (props.bare ? 'div' : PageSubsection))
 
 const summary = computed(() => props.data.summary)
 
@@ -93,7 +107,7 @@ const consultationSentence = computed<string | null>(() => {
 </script>
 
 <template>
-  <PageSubsection heading="Stellungnahmen zur Regierungsvorlage">
+  <component :is="wrapper" v-bind="bare ? {} : { heading: `Stellungnahmen ${noun}` }">
     <!-- The fact alone since 30.09.2026. That one can file on a
          Regierungsvorlage, until when, and the button to do it stand in the
          action card at the top of the page whenever `filingOpen` is true —
@@ -150,12 +164,12 @@ const consultationSentence = computed<string | null>(() => {
       >
         <template #footer>
           <p class="flex border-t border-hairline px-4 py-3 text-sm sm:justify-end">
-            <ExternalLink :href="data.rvUrl" class="tap-target font-medium link-quiet">Alle Stellungnahmen zur Vorlage auf parlament.gv.at</ExternalLink>
+            <ExternalLink :href="data.rvUrl" class="tap-target font-medium link-quiet">Alle Stellungnahmen {{ item === 'antrag' ? 'zum Antrag' : 'zur Vorlage' }} auf parlament.gv.at</ExternalLink>
           </p>
         </template>
       </StatementsPanel>
       <p v-else class="mt-3 text-sm">
-        <ExternalLink :href="data.rvUrl" class="tap-target font-medium link-quiet">Alle Stellungnahmen zur Vorlage auf parlament.gv.at</ExternalLink>
+        <ExternalLink :href="data.rvUrl" class="tap-target font-medium link-quiet">Alle Stellungnahmen {{ item === 'antrag' ? 'zum Antrag' : 'zur Vorlage' }} auf parlament.gv.at</ExternalLink>
       </p>
       <!-- The same credit line as under the Begutachtung's list (03.10.2026):
            the rows are Parliament's, the Einordnung and the nameless
@@ -164,12 +178,12 @@ const consultationSentence = computed<string | null>(() => {
            sentence already names upstream. -->
       <SectionCredits
         v-if="summary && summary.total > 0"
-        :sources="STATEMENTS_SOURCES"
+        :sources="sources"
         :marked="false"
         own="Einordnung der Einbringer:innen"
       >
         <NuxtLink to="/ueber#about-privacy" class="link-muted">Warum ohne Namen</NuxtLink>
       </SectionCredits>
     </template>
-  </PageSubsection>
+  </component>
 </template>

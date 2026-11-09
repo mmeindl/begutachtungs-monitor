@@ -21,12 +21,26 @@ import {
   isLawStationPair,
 } from '#shared/utils/lawStations'
 import { RIS_ID_RE } from '#shared/utils/risConsultations'
+import { itypOfKind } from '#shared/utils/procedureRoot'
 import { firstQueryValue, MAX_LIST_QUERY_CHARS, MAX_LIST_QUERY_TERMS } from '#shared/utils/queryParams'
 import { queryReadings } from '#shared/utils/textMatch'
 import { readEuFilter, type EuFilter } from '../eu/euFilter'
 
 const INVALID_GP = 'Ungültige Gesetzgebungsperiode (römische Ziffern erwartet)'
 const STATUS_VALUES: DraftStatus[] = ['open', 'closed', 'all']
+
+/**
+ * The root of a Vorlage's or Antrag's page (`/api/verfahren/<gp>/<vorlage|antrag>/<inr>`,
+ * 10.11.2026): the period and number as for a draft, and the kind segment.
+ */
+export function validateVorlageParams(event: H3Event): { gp: string; ityp: 'I' | 'A'; inr: number } {
+  const { gp, inr } = validateGpInrParams(event)
+  const ityp = itypOfKind(getRouterParam(event, 'kind') ?? '')
+  if (!ityp) {
+    throw createError({ statusCode: 400, statusMessage: 'Unbekannte Art des Gegenstands (vorlage oder antrag erwartet)' })
+  }
+  return { gp, ityp, inr }
+}
 
 export function validateGpInrParams(event: H3Event): { gp: string; inr: number } {
   const gpRaw = (getRouterParam(event, 'gp') ?? '').toUpperCase()

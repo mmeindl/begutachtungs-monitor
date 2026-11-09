@@ -152,7 +152,7 @@ export function assembleDraftDetail(input: DraftDetailInputs): DraftDetail {
 }
 
 /** One DocumentList row per station ("Geändert im Plenum") with its PDF/HTML formats. */
-function groupVersionsByStation(versions: readonly { station: string; url: string }[]): DraftDocument[] {
+export function groupVersionsByStation(versions: readonly { station: string; url: string }[]): DraftDocument[] {
   const out: DraftDocument[] = []
   for (const v of versions) {
     let doc = out.find((d) => d.title === v.station)

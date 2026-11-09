@@ -381,12 +381,12 @@ describe('Zone 2 — Kennung', () => {
     expect(viewOfVorlage(vorlage()).coMinistries).toEqual([])
   })
 
-  /* The procedural fact, never as an accusation: the Vorlage never went to
-   * Begutachtung, so the monitor has no page for it. */
-  it('sends a Vorlage without a Begutachtung outside, and says so', () => {
+  /* The procedural fact, never as an accusation. Since 10.11.2026 the
+   * Vorlage has a page of its own (docs/architecture.md §12.69). */
+  it('sends a Vorlage without a Begutachtung to its own page, and says so', () => {
     const v = viewOfVorlage(vorlage())
-    expect(v.to).toBeNull()
-    expect(v.href).toContain('parlament.gv.at')
+    expect(v.to).toBe('/entwuerfe/XXVIII/vorlage/594')
+    expect(v.href).toBeNull()
     expect(v.note).toBe('ohne Begutachtung')
 
     const withDraft = viewOfVorlage(
@@ -397,13 +397,17 @@ describe('Zone 2 — Kennung', () => {
   })
 
   /* The third possibility, and the reason for the whole state: no pointer in
-   * the Gegenstand, but a draft that might fit it. The row then leads out
-   * just the same — but claims nothing. */
+   * the Gegenstand, but a draft that might fit it. The row leads to the
+   * same page — but claims nothing. */
   it('withholds the claim where the Vorgeschichte is only unverified', () => {
     const v = viewOfVorlage(vorlage({ consultation: { kind: 'unknown' } }))
-    expect(v.to).toBeNull()
-    expect(v.href).toContain('parlament.gv.at')
+    expect(v.to).toBe('/entwuerfe/XXVIII/vorlage/594')
+    expect(v.href).toBeNull()
     expect(v.note).toBeNull()
+    // An address that names no Vorlage keeps the outside link.
+    const odd = viewOfVorlage(vorlage({ consultation: { kind: 'unknown' }, parliamentUrl: 'https://www.parlament.gv.at/' }))
+    expect(odd.to).toBeNull()
+    expect(odd.href).toBe('https://www.parlament.gv.at/')
   })
 
   /* The EU fact's own lead words, plain text in zone
@@ -540,10 +544,11 @@ describe('viewOfLaw — a law without a Begutachtung', () => {
     expect(rv.citation).toBe('253 d.B.')
   })
 
-  it('links out to Parliament — the monitor has no page for it', () => {
+  it('links to the item’s own page (10.11.2026)', () => {
     const v = viewOfLaw(law())
-    expect(v.to).toBeNull()
-    expect(v.href).toBe('https://www.parlament.gv.at/gegenstand/XXVIII/A/667')
+    expect(v.to).toBe('/entwuerfe/XXVIII/antrag/667')
+    expect(v.href).toBeNull()
+    expect(viewOfLaw(law({ item: { kind: 'rv', gp: 'XXVIII', inr: 253, citation: '253 d.B.', parliamentUrl: '' } })).to).toBe('/entwuerfe/XXVIII/vorlage/253')
   })
 
   it('states the Kundmachung the way an enacted draft does', () => {
