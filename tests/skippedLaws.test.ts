@@ -194,6 +194,22 @@ describe('classifySkippedLaws — unknown', () => {
     expect(classOf(input({ records: [r], vorlagen: null }))[0]).toEqual({ kind: 'unknown', reason: 'unchecked' })
   })
 
+  it('where a part of a consulted draft\'s text stands in the Antrag (below the table\'s step)', () => {
+    // 667/A: 30 % of 20/ME — too little for consulted, too much for „ohne".
+    expect(classOf(input({ antragPartial: { XXVIII: [667] } }))[0]).toEqual({ kind: 'unknown', reason: 'partial-text' })
+    // Keyed by the Antrag's period: the same number in another period is another Antrag.
+    expect(classOf(input({ antragPartial: { XXVII: [667] } }))[0]!.kind).toBe('none')
+    // Even where the title check could not have run.
+    expect(classOf(input({ antragPartial: { XXVIII: [667] }, drafts: null }))[0]).toEqual({ kind: 'unknown', reason: 'partial-text' })
+  })
+
+  it('but consulted and exempt still win over a partial text', () => {
+    const partial = { XXVIII: [667] }
+    expect(classOf(input({ antragPartial: partial, chains: [{ bgblNumber: 'Bundesgesetzblatt I Nr. 14/2026' }] }))[0]).toEqual({ kind: 'consulted', via: 'bgbl' })
+    const budget = record({ kurztitel: 'Bundesfinanzgesetz 2029' })
+    expect(classOf(input({ records: [budget], antragPartial: partial }))[0]!.kind).toBe('exempt')
+  })
+
   it('where RIS names no item at all', () => {
     expect(classOf(input({ records: [record({ initiativantraege: [] })] }))[0]).toEqual({ kind: 'unknown', reason: 'no-item' })
   })

@@ -30,7 +30,7 @@
 import { readFile, mkdir } from 'node:fs/promises'
 import { join } from 'node:path'
 import type { DraftSummary } from '../../shared/types'
-import { ANTRAG_PATHS } from '../../shared/utils/antragPathTable'
+import { ANTRAG_PARTIAL, ANTRAG_PATHS } from '../../shared/utils/antragPathTable'
 import { previousGp } from '../../shared/utils/gp'
 import { todayIso } from '../../shared/utils/format'
 import { findRvLinks, parseStages, type RawStage } from '../../server/utils/parliament/detailJson'
@@ -119,7 +119,7 @@ const chains = await pool(unique, CONCURRENCY, async (me) => {
 // 2. The production classification
 // ---------------------------------------------------------------------------
 
-const classified = classifySkippedLaws({ gp, records, chains, antragPaths: ANTRAG_PATHS, vorlagen, antraege, drafts })
+const classified = classifySkippedLaws({ gp, records, chains, antragPaths: ANTRAG_PATHS, antragPartial: ANTRAG_PARTIAL, vorlagen, antraege, drafts })
 
 const label = (c: ClassifiedLaw['class']): string =>
   c.kind === 'consulted' ? `consulted (${c.via})` : c.kind === 'unknown' ? `unknown (${c.reason})` : c.kind

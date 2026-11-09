@@ -570,9 +570,10 @@ this dataset would make it trivially easy to build.
   than this memo's detail calls, and stricter than it: a law is a row only
   where no draft's stage record links its Vorlage, the Antrag table does not
   name its Antrag, no budget rule applies and the title check above finds no
-  plausible draft — 69 rows for GP XXVIII on 09.11.2026, 66 of them among
-  this memo's 173 laws against its corrected 80, every difference in the
-  direction of saying less (`architecture.md` §12.68).
+  plausible draft, and no part of a consulted draft's text stands in its
+  Antrag (the weak tier of §4a) — 67 rows for GP XXVIII on 09.11.2026, 64
+  of them among this memo's 173 laws against its corrected 80, every
+  difference in the direction of saying less (`architecture.md` §12.68).
 - **An open question, not a claim:** whether Austria has any legal duty to
   hold a Begutachtung, and what the status of the six-week Frist actually is.
   The memo's argument is strongest if the answer is "none, and a

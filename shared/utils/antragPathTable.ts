@@ -61,3 +61,15 @@ export const ANTRAG_PATHS: Readonly<Record<string, Readonly<Record<number, Antra
     105: { antrag: { citation: '952/A', inr: 952, title: 'Kraftfahrgesetz, Änderung (42.KFG-Novelle)', einlangen: '2026-06-11', bgblNumber: 'Bundesgesetzblatt I Nr. 79/2026' }, draftShare: 1, antragShare: 1, duringFrist: false },
   },
 }
+
+/**
+ * The Anträge, keyed by THEIR period, in which a part of a consulted
+ * draft's text stands — a hit below the „belegt" step of `meAntragJoin.ts`
+ * (containment 0,25–0,6). No claim in either direction: not that the Antrag
+ * continues the draft, not that it does not. Read as a doubt by the list of
+ * laws without a Begutachtung, which says nothing about such a law.
+ */
+export const ANTRAG_PARTIAL: Readonly<Record<string, readonly number[]>> = {
+  XXVII: [1466, 1572, 1780, 1824, 1969, 2070, 2085, 2192, 2484, 2591, 2658, 2717, 2980, 3003, 3255, 3294, 3464, 3734, 3950, 4066],
+  XXVIII: [413, 628, 667],
+}

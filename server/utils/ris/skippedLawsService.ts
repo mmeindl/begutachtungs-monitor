@@ -21,7 +21,7 @@
  * not hours (`keepIncompleteFor`).
  */
 import type { LawWithoutBegutachtung, LawsWithoutBegutachtung, LawsWithoutBegutachtungGap } from '#shared/types'
-import { ANTRAG_PATHS } from '#shared/utils/antragPathTable'
+import { ANTRAG_PARTIAL, ANTRAG_PATHS } from '#shared/utils/antragPathTable'
 import { chainCoverageOf, mayClaimOutcome } from '#shared/utils/draftStations'
 import { gpHasEnded, previousGp } from '#shared/utils/gp'
 import { todayIso } from '#shared/utils/format'
@@ -106,6 +106,7 @@ const buildSkippedLaws = defineCachedFunction(
       records,
       chains: [...Object.values(own.chains), ...(before?.ok ? Object.values(before.chains) : [])],
       antragPaths: ANTRAG_PATHS,
+      antragPartial: ANTRAG_PARTIAL,
       vorlagen,
       antraege,
       drafts,

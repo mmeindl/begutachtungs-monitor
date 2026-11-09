@@ -37,6 +37,12 @@
  *
  * Which side is the shorter one is read off the word counts of the cached
  * texts.
+ *
+ * AND A SECOND EXPORT, `ANTRAG_PARTIAL` (09.11.2026): every Antrag whose hit
+ * stays BELOW the „belegt" step (`strong: false`, containment 0,25–0,6) —
+ * a part of a consulted draft's text stands in it. It carries no claim in
+ * either direction; the list of laws without a Begutachtung reads it as a
+ * doubt and says nothing about such a law (`server/utils/ris/skippedLaws.ts`).
  */
 import { readFile, writeFile } from 'node:fs/promises'
 import { join } from 'node:path'
@@ -60,12 +66,15 @@ const lit = (x: string): string => `'${x.replace(/\\/g, '\\\\').replace(/'/g, "\
 
 const blocks: string[] = []
 const measured: string[] = []
+const partial: string[] = []
 for (const gp of gps) {
   const report = JSON.parse(await readFile(join(cacheDir, `${gp}-me-antrag.json`), 'utf8')) as MeAntragReport & {
     hits: (MeAntragReport['hits'][number])[]
   }
   measured.push(`  ${gp}: '${report.measuredAt}',`)
   const rows: string[] = []
+  const weak = [...new Set(report.hits.filter((h) => !h.strong).map((h) => Number(h.inr)))].sort((a, b) => a - b)
+  partial.push(`  ${gp}: [${weak.join(', ')}],`)
   for (const h of report.hits) {
     if (!h.strong || h.meBecameRv) continue
     const wa = await words(join(cacheDir, gp, 'text', `A-${h.inr}.txt`))
@@ -101,6 +110,17 @@ ${measured.join('\n')}
 
 export const ANTRAG_PATHS: Readonly<Record<string, Readonly<Record<number, AntragPath>>>> = {
 ${blocks.join('\n')}
+}
+
+/**
+ * The Anträge, keyed by THEIR period, in which a part of a consulted
+ * draft's text stands — a hit below the „belegt" step of \`meAntragJoin.ts\`
+ * (containment 0,25–0,6). No claim in either direction: not that the Antrag
+ * continues the draft, not that it does not. Read as a doubt by the list of
+ * laws without a Begutachtung, which says nothing about such a law.
+ */
+export const ANTRAG_PARTIAL: Readonly<Record<string, readonly number[]>> = {
+${partial.join('\n')}
 }
 `)
 console.error(`Geschrieben: ${OUT}`)

@@ -27,7 +27,9 @@
  *    when a record names several items.
  *  - `exempt` — the budget procedure (`shared/utils/budgetExempt.ts`): the
  *    hand-kept table, plus one title rule for the years nobody curated.
- *  - `unknown` — none of the above, and the claim cannot be carried: a
+ *  - `unknown` — none of the above, and the claim cannot be carried: an
+ *    Antrag in which a part of a consulted draft's text stands
+ *    (`ANTRAG_PARTIAL`, below the table's „belegt" step), a
  *    plausible preceding draft by title (`findPrecedingDraft`, the open
  *    Vorlagen' check), a check that could not run (a list unread, an item
  *    Parliament's list does not hold), or no carrying item at all. Says
@@ -90,6 +92,12 @@ export interface SkippedLawsInput {
   chains: readonly { rvLinks?: readonly { gp: string; inr: number }[]; bgblNumber?: string | null }[]
   /** `ANTRAG_PATHS` — by draft period, then draft number. */
   antragPaths: Readonly<Record<string, Readonly<Record<number, AntragPath>>>>
+  /**
+   * `ANTRAG_PARTIAL` — by the Antrag's period: Anträge in which a part of a
+   * consulted draft's text stands, below the „belegt" step. A doubt, so
+   * such a law says nothing (`partial-text`). Optional: absent means none.
+   */
+  antragPartial?: Readonly<Record<string, readonly number[]>>
   /** List 101's Regierungsvorlagen of `gp`; null where the list could not be read. */
   vorlagen: readonly ParliamentItem[] | null
   /** List 101's selbständige Anträge of `gp`; null where unread. */
@@ -105,7 +113,7 @@ export interface CarryingItem {
   citation: string
 }
 
-export type UnknownReason = 'preceding-draft' | 'unchecked' | 'no-item'
+export type UnknownReason = 'preceding-draft' | 'partial-text' | 'unchecked' | 'no-item'
 
 export type SkippedClass =
   | { kind: 'consulted'; via: 'vorlage' | 'bgbl' | 'antrag' }
@@ -189,6 +197,11 @@ function classifyOne(
   const own = items.map((i) => (i.ityp === 'I' ? vorlagen : antraege)?.get(i.inr) ?? null)
   const exempt = budgetExemptReason(gp, items, [r.kurztitel, r.titel, ...own.map((o) => o?.title)])
   if (exempt) return { kind: 'exempt', reason: exempt }
+
+  // A third of a consulted draft's text in the Antrag (09.11.2026): too
+  // little to call it consulted, too much to call it „ohne Begutachtung".
+  const partial = new Set(input.antragPartial?.[gp] ?? [])
+  if (r.initiativantraege.some((inr) => partial.has(inr))) return { kind: 'unknown', reason: 'partial-text' }
 
   // No item, no page to link and no title to check — a law from an
   // Ausschussantrag, or a record RIS keyed incompletely. Nothing to say.
