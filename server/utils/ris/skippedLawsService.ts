@@ -27,7 +27,7 @@ import { gpHasEnded, previousGp } from '#shared/utils/gp'
 import { todayIso } from '#shared/utils/format'
 import { DERIVED_CACHE } from '../cache/base'
 import { keepIncompleteFor, type Gathered } from '../cache/gathered'
-import { withinBudget } from '../http/budget'
+import { settleWithinBudget } from '../http/budget'
 import { getAntraegeForGp, getDraftsForGp, getVorlagenForGp } from '../parliament/drafts'
 import { getStationMapForGp } from '../parliament/stationMap'
 import { getBgblTeil1Year } from './bgblService'
@@ -38,29 +38,41 @@ const SKIPPED_TTL_S = 60 * 60 * 6
 /** Ten minutes for an answer that rests on a failed read — the station map's rule. */
 const INCOMPLETE_TTL_MS = 10 * 60 * 1000
 /**
+ * Five seconds for an answer that only waited for a station map still being
+ * built (`gap: 'pending'`): after a cold start the maps take 10 and 44 s
+ * (09.11.2026), and the ten minutes of a failure kept the chip unavailable
+ * long after they were done. Short enough that the next request after the
+ * build answers; long enough that the readers of one moment share one
+ * answer. A new attempt costs little: the map's build is one per key, and
+ * Nitro hands every concurrent caller the same pending call.
+ */
+const PENDING_TTL_MS = 5_000
+/**
  * How long the station maps may take. They are prewarmed for the running
  * period and the one before; cold, GP XXVII costs 35 s (§12.26), and the
  * chip must not wait that long — the build carries on and fills the cache.
  */
 const STATION_MAP_BUDGET_MS = 2_500
 
-/** `null` → the gap it stands for; anything else → the chains. */
+/** The chains of a period, or why there are none: still building (`pending`) or failed. */
 async function chainsOf(gp: string): Promise<
   | { ok: true; chains: Awaited<ReturnType<typeof getStationMapForGp>>; complete: boolean }
-  | { ok: false }
+  | { ok: false; pending: boolean }
 > {
-  const [chains, drafts] = await Promise.all([
-    withinBudget(getStationMapForGp(gp), STATION_MAP_BUDGET_MS),
+  const [map, drafts] = await Promise.all([
+    settleWithinBudget(getStationMapForGp(gp), STATION_MAP_BUDGET_MS),
     getDraftsForGp(gp).then((d) => d.items).catch(() => null),
   ])
-  if (!chains || !drafts) return { ok: false }
+  if (!drafts || map.state === 'failed') return { ok: false, pending: false }
+  if (map.state === 'pending') return { ok: false, pending: true }
+  const chains = map.value
   // A draft without a chain is a record that could not be read — and could
   // be the very draft behind a law (`stationMap.chainOf`).
   return { ok: true, chains, complete: drafts.every((d) => chains[d.inr] !== undefined) }
 }
 
 function unavailable(gp: string, gap: LawsWithoutBegutachtungGap, complete: boolean): Gathered<LawsWithoutBegutachtung> {
-  return { value: { gp, available: false, gap, items: [] }, complete }
+  return { value: { gp, available: false, gap, items: [] }, complete, ...(gap === 'pending' ? { pending: true } : {}) }
 }
 
 const toItem = (v: { inr: number; citation: string; title: string; date: string }): ParliamentItem => ({
@@ -76,7 +88,13 @@ const buildSkippedLaws = defineCachedFunction(
     const prev = previousGp(gp)
 
     const [own, before] = await Promise.all([chainsOf(gp), prev ? chainsOf(prev) : null])
-    if (!own.ok || (before && !before.ok)) return unavailable(gp, 'unread', false)
+    /* A map that only did not answer in time is still building (a cold
+     * start): `pending`, kept seconds. A map or list that failed: `unread`,
+     * kept ten minutes. A failure on either side outranks a pending one. */
+    if (!own.ok || (before && !before.ok)) {
+      const failed = (!own.ok && !own.pending) || (before !== null && !before.ok && !before.pending)
+      return unavailable(gp, failed ? 'unread' : 'pending', false)
+    }
     /* A period whose drafts are not linked to Vorlagen (§12.27) cannot say
      * that no draft stood behind a law — the link is missing, not the
      * draft. The same gate for the period before: a carry-over from an
@@ -143,7 +161,7 @@ const buildSkippedLaws = defineCachedFunction(
     getKey: (gp: string) => gp,
     maxAge: SKIPPED_TTL_S,
     swr: false,
-    validate: keepIncompleteFor(INCOMPLETE_TTL_MS),
+    validate: keepIncompleteFor(INCOMPLETE_TTL_MS, PENDING_TTL_MS),
   },
 )
 

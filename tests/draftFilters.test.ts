@@ -366,6 +366,8 @@ describe('begutachtungGapReason', () => {
   it('names why a period carries no rows, and nothing where it does', () => {
     expect(begutachtungGapReason('unlinked')).toMatch(/nicht erfasst/)
     expect(begutachtungGapReason('unread')).toBe('Gerade nicht abrufbar')
+    // Still being read after a start: its own, calm reason — the page asks again.
+    expect(begutachtungGapReason('pending')).toMatch(/gerade eingelesen/)
     expect(begutachtungGapReason(null)).toBeNull()
     expect(begutachtungGapReason(undefined)).toBeNull()
   })

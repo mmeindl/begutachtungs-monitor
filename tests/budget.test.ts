@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { answerWithinBudget, withinBudget } from '../server/utils/http/budget'
+import { answerWithinBudget, settleWithinBudget, withinBudget } from '../server/utils/http/budget'
 
 const later = <T>(value: T, ms: number): Promise<T> =>
   new Promise((resolve) => setTimeout(() => resolve(value), ms))
@@ -45,5 +45,18 @@ describe('answerWithinBudget', () => {
     await expect(answerWithinBudget(later('2026-03-02', 5), 200)).resolves.toEqual({ answered: true, value: '2026-03-02' })
     await expect(answerWithinBudget(later('too late', 5_000), 30)).resolves.toEqual({ answered: false })
     await expect(answerWithinBudget(Promise.reject(new Error('RIS down')), 200)).resolves.toEqual({ answered: false })
+  })
+})
+
+/* „Not yet" and „failed" are two answers here (the list of laws without a
+ * Begutachtung keeps the first seconds, the second ten minutes). */
+describe('settleWithinBudget', () => {
+  it('passes the value through, null included', async () => {
+    await expect(settleWithinBudget(later(null, 5), 200)).resolves.toEqual({ state: 'answered', value: null })
+  })
+
+  it('tells a promise still running from one that failed', async () => {
+    await expect(settleWithinBudget(later('map', 5_000), 20)).resolves.toEqual({ state: 'pending' })
+    await expect(settleWithinBudget(Promise.reject(new Error('502')), 200)).resolves.toEqual({ state: 'failed' })
   })
 })

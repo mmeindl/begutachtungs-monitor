@@ -35,11 +35,19 @@ export interface Gathered<T> {
   value: T
   /** False where something optional failed: served as it is, not stored for the TTL. */
   complete: boolean
+  /**
+   * True where what is missing has not FAILED but is still being built
+   * elsewhere and will be there in seconds — a station map past its budget
+   * after a cold start (09.11.2026). Only read on an incomplete value, and
+   * only by `keepIncompleteFor` with a `pendingMs`: such a value is kept
+   * for seconds, a failure for the full `ms`.
+   */
+  pending?: boolean
 }
 
 /** Nitro's cache entry, as far as `validate` reads it. */
 interface Entry {
-  value?: { complete: boolean }
+  value?: { complete: boolean; pending?: boolean }
   /** When the value was computed, ms — Nitro sets it before it asks `validate`. */
   mtime?: number
 }
@@ -54,7 +62,15 @@ export function onlyComplete(entry: Entry): boolean {
  * every request while something upstream keeps failing: an incomplete value
  * IS stored, and counts as expired after `ms` instead of the function's
  * `maxAge`. A complete one keeps the `maxAge`.
+ *
+ * `pendingMs` (09.11.2026) for an incomplete value marked `pending`: what it
+ * lacks is still being built, not failed, and holding it for the failure's
+ * `ms` would keep a cold start's gap long after the build finished.
  */
-export function keepIncompleteFor(ms: number): (entry: Entry) => boolean {
-  return (entry) => entry.value !== undefined && (entry.value.complete || Date.now() - (entry.mtime ?? 0) < ms)
+export function keepIncompleteFor(ms: number, pendingMs: number = ms): (entry: Entry) => boolean {
+  return (entry) => {
+    if (entry.value === undefined) return false
+    if (entry.value.complete) return true
+    return Date.now() - (entry.mtime ?? 0) < (entry.value.pending ? pendingMs : ms)
+  }
 }

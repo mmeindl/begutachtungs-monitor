@@ -205,9 +205,11 @@ export interface LawWithoutBegutachtung {
  * chip's reason. `unlinked`: the period's drafts are not linked to Vorlagen
  * in the archive (`mayClaimOutcome`), so „no draft behind it" would be a
  * claim nobody can support. `unread`: a source the check stands on did not
- * answer just now.
+ * answer just now. `pending` (09.11.2026): a station map is still being
+ * built after a cold start — the answer changes within a minute, and the
+ * page asks again.
  */
-export type LawsWithoutBegutachtungGap = 'unlinked' | 'unread'
+export type LawsWithoutBegutachtungGap = 'unlinked' | 'unread' | 'pending'
 
 /** Payload of /api/ohne-begutachtung. */
 export interface LawsWithoutBegutachtung {

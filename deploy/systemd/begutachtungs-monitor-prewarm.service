@@ -98,9 +98,9 @@ User=app
 Group=app
 NoNewPrivileges=true
 PrivateTmp=true
-# The unit's own worst case, stated rather than inherited: the eight --max-time
-# budgets below add up to 5.040 s, and deploy.sh blocks on this job.
-TimeoutStartSec=5120
+# The unit's own worst case, stated rather than inherited: the nine --max-time
+# budgets below add up to 5.160 s, and deploy.sh blocks on this job.
+TimeoutStartSec=5240
 # The first request waits for the port. `After=` orders this job behind the
 # app's START, not behind its LISTEN: after a hand-typed `systemctl restart`
 # the curl came at 16:56:15 and Node listened at 16:56:16 (29.09.2026,
@@ -134,3 +134,14 @@ ExecStart=/usr/bin/curl -fsS -o /dev/null --max-time 120 http://127.0.0.1:3000/a
 # build after that deploy reads all Land drafts for the new store once.
 ExecStart=/usr/bin/curl -fsS -o /dev/null --max-time 1800 "http://127.0.0.1:3000/api/eu-recht/karte?gp=aktuell"
 ExecStart=/usr/bin/curl -fsS -o /dev/null --max-time 900 http://127.0.0.1:3000/api/stations/vorperiode
+# Ninth call since 09.11.2026: the laws of the running period without a
+# Begutachtung, behind the chip „Ohne Begutachtung" on /entwuerfe
+# (docs/architecture.md §12.68). LAST on purpose: it reads both station maps
+# above under a 2.5 s budget and answers `gap: 'pending'` while either is
+# cold — ExecStart= lines of a oneshot run one after the other, so here
+# both are warm and the answer is the six-hour one. Its own reads are the
+# Teil-I halves of the Jahrgang pages the BGBl call above already fetched,
+# list 81 and 101 (cached) and one list call for the period's Anträge — a
+# few MB. The running period only: an older one would build a third
+# station map on the 320 MB heap, and nobody needs it warm.
+ExecStart=/usr/bin/curl -fsS -o /dev/null --max-time 120 http://127.0.0.1:3000/api/ohne-begutachtung

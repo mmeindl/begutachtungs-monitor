@@ -414,6 +414,7 @@ export function draftCountLabel(c: {
 const BEGUTACHTUNG_GAP_REASON: Record<LawsWithoutBegutachtungGap, string> = {
   unlinked: 'Für diese Gesetzgebungsperiode ist nicht erfasst, welche Gesetze auf einen Ministerialentwurf zurückgehen',
   unread: 'Gerade nicht abrufbar',
+  pending: 'Die Daten werden gerade eingelesen – gleich verfügbar',
 }
 
 export function begutachtungGapReason(gap: LawsWithoutBegutachtungGap | null | undefined): string | null {

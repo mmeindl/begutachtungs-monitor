@@ -44,3 +44,22 @@ export type Budgeted<T> = { answered: true; value: T } | { answered: false }
 export async function answerWithinBudget<T>(promise: Promise<T>, ms: number): Promise<Budgeted<T>> {
   return (await withinBudget(promise.then((value) => ({ answered: true as const, value })), ms)) ?? { answered: false }
 }
+
+/** What `settleWithinBudget` saw: an answer, a rejection, or neither yet. */
+export type Settled<T> = { state: 'answered'; value: T } | { state: 'failed' } | { state: 'pending' }
+
+/**
+ * `answerWithinBudget` for a caller to whom „not yet" and „failed" are NOT
+ * the same either (09.11.2026): the list of laws without a Begutachtung
+ * keeps an answer that waited for a station map still being built for
+ * seconds, and one whose map failed for ten minutes
+ * (`skippedLawsService.ts`). Both of the other helpers fold a rejection
+ * into „no answer in time". The promise runs on and fills its cache.
+ */
+export async function settleWithinBudget<T>(promise: Promise<T>, ms: number): Promise<Settled<T>> {
+  const settled = promise.then(
+    (value): Settled<T> => ({ state: 'answered', value }),
+    (): Settled<T> => ({ state: 'failed' }),
+  )
+  return (await withinBudget(settled, ms)) ?? { state: 'pending' }
+}

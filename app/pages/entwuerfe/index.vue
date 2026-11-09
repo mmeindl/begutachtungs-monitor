@@ -356,7 +356,26 @@ const lawsFetch = useFetch<LawsWithoutBegutachtung>('/api/ohne-begutachtung', {
 
 await halves.ready
 const { data: secondRound } = await secondRoundFetch
-const { data: lawsData } = await lawsFetch
+const { data: lawsData, refresh: refreshLaws } = await lawsFetch
+
+/**
+ * `gap: 'pending'`: after a cold start the station maps are still being
+ * built, and the answer changes within a minute (§12.68). Ask again, a
+ * bounded number of times with a pause, so the chip does not stay
+ * unavailable until a reload — no loop without an end, stopped on unmount.
+ */
+const LAWS_RETRY_MS = 20_000
+const LAWS_RETRIES = 6
+let lawsRetries = 0
+let lawsTimer: ReturnType<typeof setTimeout> | undefined
+watch(lawsData, (laws) => {
+  clearTimeout(lawsTimer)
+  if (laws?.gap !== 'pending' || lawsRetries >= LAWS_RETRIES) return
+  lawsRetries++
+  lawsTimer = setTimeout(() => void refreshLaws(), LAWS_RETRY_MS)
+}, { immediate: true })
+watch(gp, () => { lawsRetries = 0 })
+onUnmounted(() => clearTimeout(lawsTimer))
 
 /**
  * Where the EU map could not be read, per side, while „Setzt EU-Recht um" is
