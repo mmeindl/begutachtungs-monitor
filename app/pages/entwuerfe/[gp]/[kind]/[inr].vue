@@ -4,7 +4,6 @@ import type { ComparisonId, StationId } from '~/utils/spine'
 import { lastParliamentStation, parliamentTexts, vorlageStations, vorlageStatusDe, SECOND_ROUND_CLAUSE } from '~/utils/spine'
 import { citeLineDe, rvCitationDe } from '#shared/utils/citations'
 import { GP_RE, parseInr } from '#shared/utils/gp'
-import { countLabelDe, formatDateDe } from '#shared/utils/format'
 import { itypOfKind, vorlageApiBase } from '#shared/utils/procedureRoot'
 
 /**
@@ -117,6 +116,7 @@ const sections = computed(() => {
 const stationAnchors = computed<Partial<Record<StationId, string>>>(() => {
   if (!data.value) return {}
   return {
+    ...(data.value.committeeConsultation ? { begutachtung: '#stellungnahmen' } : {}),
     rv: '#entwurf',
     ...(sections.value.parlament ? { parlament: '#parlament' } : {}),
     ...(sections.value.bgbl ? { bgbl: '#bundesgesetzblatt' } : {}),
@@ -144,18 +144,6 @@ const citeAs = computed(() => {
 })
 
 const filingOpen = computed(() => Boolean(data.value?.enactment.filingOpen))
-
-/* „Der Ausschuss für … hat am … beschlossen, schriftliche Stellungnahmen
- * einzuholen, und dafür 58 Stellen angeschrieben (Ausschussbegutachtung)." —
- * the statements block's words, as a fact of the procedure. */
-const committeeSentence = computed(() => {
-  const c = data.value?.committeeConsultation
-  if (!c) return ''
-  const who = c.committee ? `Der ${c.committee}` : 'Der Ausschuss'
-  const when = c.date ? ` am ${formatDateDe(c.date)}` : ''
-  const whom = c.invited > 0 ? `, und dafür ${countLabelDe(c.invited, 'Stelle', 'Stellen')} angeschrieben` : ''
-  return `${who} hat${when} selbst beschlossen, schriftliche Stellungnahmen einzuholen${whom} (Ausschussbegutachtung).`
-})
 
 useSeoMeta({
   title: () => (data.value ? `${data.value.citation}: ${data.value.title}` : kindWord.value),
@@ -203,21 +191,12 @@ useSeoMeta({
             <p v-if="byline" class="mt-2 text-sm text-ink-secondary">{{ byline }}</p>
           </DraftHeader>
 
-          <!-- The fact, where the evidence carries it — the list's sentence,
-               said of this one law. Nowhere else does the page say anything
-               about a Begutachtung, in either direction. -->
-          <!-- The committee's own consultation, where the item's record shows
-               one — in place of the sentence below, never beside it. -->
-          <p v-if="data.committeeConsultation" class="mt-4 text-sm text-ink-secondary">
-            Vor {{ isAntrag ? 'diesem Antrag' : 'dieser Regierungsvorlage' }} ist kein Ministerialentwurf
-            in Begutachtung erkennbar. {{ committeeSentence }}
-          </p>
-          <p v-else-if="data.withoutBegutachtung" class="mt-4 text-sm text-ink-secondary">
-            Vor {{ isAntrag ? 'diesem Antrag' : 'dieser Regierungsvorlage' }} ist kein Ministerialentwurf
-            in Begutachtung erkennbar – vorgeschrieben ist eine Begutachtung nicht.
-            Stellungnahmen an den Nationalrat {{ filingOpen ? 'sind' : 'waren' }} während des
-            Verfahrens möglich (§ 23b GOG-NR).
-          </p>
+          <!-- What is known about a Begutachtung stands once, as the card's
+               first station (`vorlageStations`, 10.11.2026): pale „keine ·
+               kein Ministerialentwurf" on the list's evidence, the committee's
+               own consultation as an ordinary station, pale „nicht
+               feststellbar" otherwise. The sentence that stood here said the
+               same fact a second time. -->
 
           <ProcedureCard
             :status="vorlageStatusDe(data)"

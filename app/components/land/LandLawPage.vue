@@ -8,7 +8,6 @@ import { citeLineDe } from '#shared/utils/citations'
 import { formatDateDe } from '#shared/utils/format'
 import { risSource } from '#shared/utils/provenance'
 import { displayId } from '#shared/utils/unitName'
-import { landLawGapDe, landLawStatementDe } from '~/utils/landLaw'
 
 /**
  * A Landesgesetz without a draft in the Land's register (10.11.2026,
@@ -16,9 +15,9 @@ import { landLawGapDe, landLawStatementDe } from '~/utils/landLaw'
  * — from RIS alone, for every Land.
  *
  * The Land draft page's frame and the Bund's page of a law without a
- * Begutachtung (§12.69) in one: header, one sentence about the Begutachtung
- * where the sources carry one (and where they do not, why), the procedure
- * card, „Das Gesetz", „Im Landtag", „Im Landesgesetzblatt". What RIS does not
+ * Begutachtung (§12.69) in one: header, the procedure
+ * card (its first station the Begutachtung, pale where none is known),
+ * „Das Gesetz", „Im Landtag", „Im Landesgesetzblatt". What RIS does not
  * hold for this Land or year, the section says in one neutral sentence —
  * never a gap left blank that would read as „none".
  *
@@ -67,11 +66,6 @@ const heading = computed(() => (law.value ? landLawName(law.value) : 'Landesgese
 const citeAs = computed(() => (law.value ? `${law.value.nr} (${landName.value})` : ''))
 /* The law's address in the comparison API (`LandLawDiffSection`): its page's own. */
 const lawNumber = computed(() => `lgbl/${props.year}/${props.nr}`)
-
-/* The sentence about a Begutachtung: the statement where the sources carry
-   one (Salzburg), else why they do not (`utils/landLaw.ts`). */
-const statement = computed(() => (law.value ? landLawStatementDe(law.value) : null))
-const gap = computed(() => (law.value && law.value.begutachtung.kind === 'silent' && law.value.begutachtung.reason === 'unsupported' ? landLawGapDe(props.land) : null))
 
 const stations = computed(() => (data.value ? landLawStations(data.value.law, data.value.procedure, data.value.comparisons) : []))
 const offersVorlage = computed(() => (data.value?.comparisons ?? []).some(([a, b]) => a === 'rv' && b === 'lgbl'))
@@ -148,14 +142,9 @@ useSeoMeta({
             </p>
           </DraftHeader>
 
-          <!-- What is known about a Begutachtung before the law, in one
-               place and nowhere else: the statement where the sources carry
-               one, else why they cannot. -->
-          <p v-if="statement" class="mt-4 text-sm text-ink-secondary">{{ statement }}</p>
-          <p v-if="gap" class="mt-4 text-sm text-ink-secondary">
-            Ob vor diesem Gesetz eine Begutachtung stattfand, lässt sich aus den verfügbaren Quellen nicht feststellen: {{ gap }}
-          </p>
-
+          <!-- What is known about a Begutachtung before the law stands once,
+               as the card's first station (`landLawBegutachtungFacts`): pale
+               where none took place or none can be told. -->
           <ProcedureCard
             status="Gesetz geworden"
             :stations="stations"

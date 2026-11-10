@@ -1,37 +1,49 @@
 /**
- * The page's sentence about a Begutachtung before a Landesgesetz
- * (`app/utils/landLaw.ts`, §12.70): „ohne Begutachtung" only for `none`,
- * never the words the product does not use, and every other Land told why.
+ * The Begutachtung station of a Landesgesetz (`app/utils/landLaw.ts`,
+ * §12.70): „ohne Begutachtung" only for `none`, never the words the product
+ * does not use, pale wherever nothing or nothing certain is known, ink only
+ * where a Begutachtung took place.
  */
 import { describe, expect, it } from 'vitest'
 import type { LandLaw, LandLawBegutachtung } from '../shared/types'
 import { LAND_CODES } from '../shared/utils/laender'
-import { landLawGapDe, landLawStatementDe } from '../app/utils/landLaw'
+import { landLawBegutachtungFacts } from '../app/utils/landLaw'
+import { landLawStations } from '../app/utils/spine'
 
 const FORBIDDEN = /übersprungen|umgangen|ohne Öffentlichkeit|keine Möglichkeit|Paragraf/i
 const ALL: LandLawBegutachtung[] = [
   { kind: 'consulted', by: 'draft' }, { kind: 'consulted', by: 'heading' }, { kind: 'none' },
-  ...(['unsupported', 'budget', 'similar-draft', 'mentions', 'contradictory', 'unread', 'no-route', 'pending'] as const).map((reason) => ({ kind: 'silent' as const, reason })),
+  ...(['unsupported', 'register-reach', 'budget', 'similar-draft', 'mentions', 'contradictory', 'unread', 'no-route', 'pending'] as const).map((reason) => ({ kind: 'silent' as const, reason })),
 ]
 const route = (kind: 'vorlage' | 'antrag'): LandLaw['route'] => ({ kind, number: '1', url: 'https://example.invalid/1.pdf' })
 
-describe('landLawStatementDe', () => {
-  it('says „ohne Begutachtung" for none and for nothing else', () => {
-    for (const b of ALL) {
-      for (const r of [route('vorlage'), route('antrag'), null]) {
-        const s = landLawStatementDe({ route: r, begutachtung: b }) ?? ''
-        expect(s).not.toMatch(FORBIDDEN)
-        expect(s.includes('ohne Begutachtung')).toBe(b.kind === 'none')
-      }
+describe('landLawBegutachtungFacts', () => {
+  it('says „ohne Begutachtung" for none and for nothing else, pale unless one took place', () => {
+    for (const land of LAND_CODES) for (const b of ALL) for (const r of [route('vorlage'), route('antrag'), null]) for (const covers of [true, false, null]) {
+      const { facts, pale } = landLawBegutachtungFacts({ land, route: r, begutachtung: b, registerCovers: covers })
+      const s = facts.join(' · ')
+      expect(s).not.toMatch(FORBIDDEN)
+      expect(s.includes('ohne Begutachtung')).toBe(b.kind === 'none')
+      expect(pale).toBe(b.kind !== 'consulted')
     }
   })
 
-  it('states an Initiativantrag where RIS does, even without a statement', () => {
-    expect(landLawStatementDe({ route: route('antrag'), begutachtung: { kind: 'silent', reason: 'unsupported' } })).toBe('Das Gesetz kam als Initiativantrag in den Landtag.')
-    expect(landLawStatementDe({ route: route('vorlage'), begutachtung: { kind: 'silent', reason: 'unsupported' } })).toBeNull()
+  it('says a draft may have existed where the register does not reach back', () => {
+    expect(landLawBegutachtungFacts({ land: 'w', route: null, begutachtung: { kind: 'silent', reason: 'unsupported' }, registerCovers: false }).facts)
+      .toEqual(['nicht feststellbar', 'Wien veröffentlicht Entwürfe höchstens ein Jahr lang', 'ein Entwurf kann es gegeben haben und ist nicht mehr veröffentlicht'])
+    expect(landLawBegutachtungFacts({ land: 'bgld', route: null, begutachtung: { kind: 'silent', reason: 'unsupported' }, registerCovers: true }).facts)
+      .toEqual(['nicht feststellbar', 'kein Entwurf im Register des Landes zugeordnet'])
   })
 
-  it('gives every Land a reason', () => {
-    for (const land of LAND_CODES) expect(landLawGapDe(land)).toMatch(/\.$/)
+  it('makes the heading a win: an ordinary station', () => {
+    expect(landLawBegutachtungFacts({ land: 'sbg', route: route('vorlage'), begutachtung: { kind: 'consulted', by: 'heading' }, registerCovers: true }))
+      .toEqual({ facts: ['laut Erläuterungen der Regierungsvorlage durchgeführt'], pale: false })
+  })
+
+  it('opens the bar, and the Initiativantrag station no longer says „ohne Begutachtung"', () => {
+    const stations = landLawStations({ land: 'sbg', route: route('antrag'), begutachtung: { kind: 'none' }, registerCovers: true, decidedAt: '2025-07-02', nr: 'LGBl. Nr. 68/2025', date: '2025-07-21' })
+    expect(stations.map((s) => s.id)).toEqual(['begutachtung', 'rv', 'parlament', 'bgbl'])
+    expect(stations[0]).toMatchObject({ state: 'never' })
+    expect(stations[1]!.facts).not.toContain('ohne Begutachtung')
   })
 })

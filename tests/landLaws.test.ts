@@ -36,7 +36,7 @@ const ANTRAG = { kind: 'antrag' as const, number: '12', url: 'https://www.salzbu
 const noSignal = { heading: false, negative: false, mentions: false }
 
 const facts = (over: Partial<LawFacts> = {}): LawFacts => ({
-  land: 'sbg', joined: false, budget: false, similarDraft: false, route: VORLAGE, vorlage: noSignal, antrag: null, ...over,
+  land: 'sbg', joined: false, covered: true, budget: false, similarDraft: false, route: VORLAGE, vorlage: noSignal, antrag: null, ...over,
 })
 
 describe('classifyLandLaw', () => {
@@ -66,6 +66,8 @@ describe('classifyLandLaw', () => {
     expect(classifyLandLaw(facts({ similarDraft: null }))).toEqual({ kind: 'silent', reason: 'unread' })
     expect(classifyLandLaw(facts({ vorlage: null }))).toEqual({ kind: 'silent', reason: 'unread' })
     expect(classifyLandLaw(facts({ route: null }))).toEqual({ kind: 'silent', reason: 'no-route' })
+    // A law older than the register's reach: no draft in it proves nothing.
+    expect(classifyLandLaw(facts({ covered: false }))).toEqual({ kind: 'silent', reason: 'register-reach' })
     expect(classifyLandLaw(facts({ route: { ...VORLAGE, url: null } }))).toEqual({ kind: 'silent', reason: 'no-route' })
   })
 
@@ -137,8 +139,8 @@ describe('the law and its row', () => {
     expect(titleDecisionDate('Landesverfassungsgesetz vom 1. Jänner 2025, mit dem …')).toBe('2025-01-01')
     expect(titleDecisionDate('Änderung des NÖ Pflichtschulgesetzes 2018')).toBeNull()
     const entry = { nr: 'LGBl. Nr. 57/2026', typ: 'Landesgesetz', titel: 'Gesetz vom 7. Juli 2026, mit dem …', datum: '2026-07-20', url: null, meta: meta() }
-    expect(landLawOf('stmk', entry, { kind: 'silent', reason: 'unsupported' })).toMatchObject({ year: 2026, number: 57, decidedAt: '2026-07-07' })
-    expect(landLawOf('w', { ...entry, meta: meta({ beschluss: '2026-07-08' }) }, { kind: 'silent', reason: 'unsupported' })?.decidedAt).toBe('2026-07-08')
+    expect(landLawOf('stmk', entry, { kind: 'silent', reason: 'unsupported' }, true)).toMatchObject({ year: 2026, number: 57, decidedAt: '2026-07-07' })
+    expect(landLawOf('w', { ...entry, meta: meta({ beschluss: '2026-07-08' }) }, { kind: 'silent', reason: 'unsupported' }, false)?.decidedAt).toBe('2026-07-08')
   })
 
   it('keys a number the same whoever spells it', () => {

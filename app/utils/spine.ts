@@ -49,11 +49,15 @@ import { PARLIAMENT_COMPARISON_QUESTION, UPSTREAM_AUSSCHUSS_TITLE, UPSTREAM_PLEN
 import type { SourceEntry } from '#shared/utils/provenance'
 import { LAND_NAME } from '#shared/utils/laender'
 import { fristClassLineDe, fristRangeDe, fristSpanDe } from './deadlines'
+import { landLawBegutachtungFacts } from './landLaw'
 
 export type StationId = 'entwurf' | 'begutachtung' | 'rv' | 'parlament' | 'bgbl'
 
 /** done: happened. current: where the procedure is now. open: still ahead.
- *  never: can no longer be reached (GP over). */
+ *  never: can no longer be reached (GP over) — and, since 10.11.2026, the
+ *  pale Begutachtung of a law without a draft: a step that did not take
+ *  place or cannot be told (`begutachtungStation`, §12.70). The SpineRail
+ *  draws it hollow and grey, the facts say which in words. */
 export type StationState = 'done' | 'current' | 'open' | 'never'
 
 /** All three are in use since 17.09.2026: the diff endpoint takes a pair of
@@ -896,11 +900,38 @@ export function vorlageStatusDe(d: VorlageDetail, today: string = todayIso()): s
   return enactmentStatusDe(d, today)
 }
 
-/** The Parlament station with Parliament's own word for a committee's
- *  consultation, „Ausschussbegutachtung", leading its facts (10.11.2026). */
-function withCommitteeFact(later: [Station, Station], consulted: boolean): [Station, Station] {
-  const [parlament, bgbl] = later
-  return consulted ? [{ ...parlament, facts: ['Ausschussbegutachtung', ...parlament.facts] }, bgbl] : later
+/**
+ * The first station of a law without a draft (§12.70): „Begutachtung", in
+ * one fact and a short reason. `pale` — none took place, or none can be
+ * told — draws it hollow and grey (state `never`), never as a verdict; a
+ * Begutachtung that took place is an ordinary station. It replaced the
+ * sentence that stood above the card, so the page says it once.
+ */
+export function begutachtungStation(facts: string[], pale: boolean): Station {
+  return { id: 'begutachtung', name: 'Begutachtung', state: pale ? 'never' : 'done', facts, comparison: null }
+}
+
+/**
+ * The Bund's: none (`withoutBegutachtung`) — „keine · kein
+ * Ministerialentwurf"; the committee's own (`committeeConsultation`) — an
+ * ordinary station with the committee, the day and the institutions
+ * written to; anything else — the list's evidence did not arrive in time,
+ * or the item is one the list does not class (an open Vorlage of class
+ * `unknown`, a link typed by hand) — pale, „nicht feststellbar". Never
+ * „keine" without the list's evidence.
+ */
+function vorlageBegutachtung(d: VorlageDetail): Station {
+  const c = d.committeeConsultation
+  if (c) {
+    return begutachtungStation(kept(
+      'Ausschussbegutachtung',
+      c.committee,
+      c.date ? `beschlossen am ${formatDateDe(c.date)}` : null,
+      c.invited > 0 ? `${formatNumberDe(c.invited)} ${c.invited === 1 ? 'Stelle' : 'Stellen'} angeschrieben` : null,
+    ), false)
+  }
+  if (d.withoutBegutachtung) return begutachtungStation(['keine', 'kein Ministerialentwurf'], true)
+  return begutachtungStation(['nicht feststellbar', 'ob ein Ministerialentwurf vorausging, ist hier nicht belegt'], true)
 }
 
 /** What only the page's lazy requests can tell `vorlageStations`. */
@@ -919,17 +950,23 @@ export interface VorlageStationContext {
  * (10.11.2026): the item itself, then Parlament and Bundesgesetzblatt exactly
  * as a draft's page has them (`laterStations`, same record, same words).
  *
- * No Begutachtung station, not even an empty one: a station the procedure
- * never had is not a step left out, and a row reading „keine" under it would
- * be the reproach the framing rule forbids. Where the evidence carries it
- * (`withoutBegutachtung`), the first station says „ohne Begutachtung" as a
- * fact of the item, like its date.
+ * A Begutachtung station first since 10.11.2026 (§12.70, the owner's
+ * decision), replacing the sentence above the card: pale where none took
+ * place or none can be told — grey, hollow, no verdict colour —, ordinary
+ * where the committee consulted (`vorlageBegutachtung`). Until then the bar
+ * had none, for fear a row „keine" would read as a reproach; the pale state
+ * is the answer to that fear, and the sentence it replaces said the same
+ * fact a second time.
  *
  * The first station keeps the id `rv` for both kinds — the bar's vocabulary
  * (`StationId`) has one slot for the text the Nationalrat receives — and
  * names itself by what the item is.
  */
 export function vorlageStations(d: VorlageDetail, ctx: VorlageStationContext = {}, today: string = todayIso()): Station[] {
+  return [vorlageBegutachtung(d), ...vorlageItemStations(d, ctx, today)]
+}
+
+function vorlageItemStations(d: VorlageDetail, ctx: VorlageStationContext, today: string): Station[] {
   const changes = ctx.createsNewLaw
     ? 'neues Gesetz'
     : ctx.amendedLawCount === 1
@@ -944,13 +981,10 @@ export function vorlageStations(d: VorlageDetail, ctx: VorlageStationContext = {
       id: 'rv',
       name: d.ityp === 'I' ? 'Regierungsvorlage' : 'Initiativantrag',
       state: 'done',
-      facts: kept(d.arrivedAt ? formatDateDe(d.arrivedAt) : d.citation, changes, d.withoutBegutachtung ? 'ohne Begutachtung' : null, count),
+      facts: kept(d.arrivedAt ? formatDateDe(d.arrivedAt) : d.citation, changes, count),
       comparison: ctx.showsAnnex && !ctx.createsNewLaw ? { id: 'vorschlag', question: 'Was ändert der Entwurf?' } : null,
     },
-    ...withCommitteeFact(
-      laterStations({ enactment: d.enactment, textEvolution: d.textEvolution, gpEnded: d.gpEnded, active: false, antragPath: null }, today),
-      d.committeeConsultation !== null,
-    ),
+    ...laterStations({ enactment: d.enactment, textEvolution: d.textEvolution, gpEnded: d.gpEnded, active: false, antragPath: null }, today),
   ]
 }
 
@@ -1293,16 +1327,17 @@ export function markedStation(list: Station[]): StationId | null {
  * stations RIS dates, in the Land draft's words — the route where RIS
  * states it (a Regierungsvorlage, or an Initiativantrag under its own
  * name, as on the Bund's page of a law without a Begutachtung), the
- * Landtag's Beschluss, the Landesgesetzblatt. No Entwurf and no
- * Begutachtung row, not even an empty one: the page says in a sentence
- * what is known about a Begutachtung, and a hollow row would say „none".
+ * Landtag's Beschluss, the Landesgesetzblatt — after a first station
+ * „Begutachtung" that says what is known about one, pale where nothing or
+ * nothing certain is (`landLawBegutachtungFacts`). No Entwurf row.
  */
 export function landLawStations(
-  law: Pick<LandLaw, 'route' | 'decidedAt' | 'nr' | 'date' | 'begutachtung'>,
+  law: Pick<LandLaw, 'land' | 'route' | 'decidedAt' | 'nr' | 'date' | 'begutachtung' | 'registerCovers'>,
   steps: readonly LandProcedureStep[] = [],
   comparisons: readonly (readonly [LandTextStation, LandTextStation])[] = [],
 ): Station[] {
-  const out: Station[] = []
+  const b = landLawBegutachtungFacts(law)
+  const out: Station[] = [begutachtungStation(b.facts, b.pale)]
   const r = law.route
   if (r) {
     const step = steps.find((s) => s.station === 'rv')
@@ -1311,7 +1346,7 @@ export function landLawStations(
       id: 'rv',
       name: r.kind === 'vorlage' ? 'Regierungsvorlage' : 'Initiativantrag',
       state: 'done',
-      facts: kept(beilage, law.begutachtung.kind === 'none' ? 'ohne Begutachtung' : null),
+      facts: kept(beilage),
       comparison: null,
     })
   }

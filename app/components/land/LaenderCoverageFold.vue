@@ -53,7 +53,9 @@ const rows = computed(() => LAND_CODES.map((land: LandCode) => {
         (Niederösterreich, Vorarlberg, Wien und die Gesetze Tirols), stünde
         sonst fast jedes Gesetz ohne Entwurf da; ihre Gesetze haben eine
         eigene Seite, aber keine Zeile. Ob es eine Begutachtung gab, sagt die
-        Zeile nur für Salzburg.
+        Zeile nur für Salzburg: Dort berichten die Erläuterungen der
+        Regierungsvorlage darüber. Die Unterlagen der anderen Landtage liest
+        der Monitor für diese Frage nicht.
       </p>
       <p>
         <NuxtLink to="/so-funktionierts#laender" class="link-inline">Wie weit der Monitor jedem Land folgt</NuxtLink>

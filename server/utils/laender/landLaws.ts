@@ -233,6 +233,12 @@ export interface LawFacts {
   land: LandCode
   /** A draft of the register joins (the Land's record or the title search); null where the join could not be read. */
   joined: boolean | null
+  /**
+   * The register still shows every draft that could be this law's
+   * (`rowsFrom`). Where it does not, no draft in it proves nothing: a law
+   * of 2005 may have had a draft of 2003 the register never held.
+   */
+  covered: boolean
   budget: boolean
   /** A draft of the register with a similar title (`hasSimilarDraft`); null where the register could not be read. */
   similarDraft: boolean | null
@@ -265,6 +271,7 @@ export function classifyLandLaw(f: LawFacts): LandLawBegutachtung {
     return f.vorlage.negative ? { kind: 'silent', reason: 'contradictory' } : { kind: 'consulted', by: 'heading' }
   }
   if (f.budget) return { kind: 'silent', reason: 'budget' }
+  if (!f.covered) return { kind: 'silent', reason: 'register-reach' }
   if (f.joined === null || f.similarDraft === null) return { kind: 'silent', reason: 'unread' }
   if (f.similarDraft) return { kind: 'silent', reason: 'similar-draft' }
   if (!f.route) return { kind: 'silent', reason: 'no-route' }
@@ -305,7 +312,7 @@ export function lgblNrKey(nr: string): string | null {
 }
 
 /** The law as a row and a page know it, before the statement. */
-export function landLawOf(land: LandCode, e: LawEntry, begutachtung: LandLawBegutachtung): LandLaw | null {
+export function landLawOf(land: LandCode, e: LawEntry, begutachtung: LandLawBegutachtung, registerCovers: boolean | null): LandLaw | null {
   const parts = lgblParts(e.nr)
   if (!parts) return null
   return {
@@ -321,6 +328,7 @@ export function landLawOf(land: LandCode, e: LawEntry, begutachtung: LandLawBegu
     url: e.url,
     route: routeOf(land, e.meta),
     begutachtung,
+    registerCovers,
   }
 }
 

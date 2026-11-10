@@ -102,7 +102,11 @@ interface LandRead {
   laws: LawEntry[]
   joins: Map<string, string> | null
   drafts: Parameters<typeof hasSimilarDraft>[2] | null
+  /** `rowsFrom`: from this day the register covers a law; null where nothing is known. */
+  coversFrom: string | null
 }
+
+const covers = (read: LandRead, e: LawEntry) => read.coversFrom !== null && e.datum >= read.coversFrom
 
 function classifyEntry(land: LandCode, e: LawEntry, read: LandRead, signal: (url: string) => Read<DocSignal> | undefined): { begutachtung: LandLawBegutachtung; pending: boolean } {
   const key = lgblNrKey(e.nr)
@@ -115,6 +119,7 @@ function classifyEntry(land: LandCode, e: LawEntry, read: LandRead, signal: (url
   const begutachtung = classifyLandLaw({
     land,
     joined,
+    covered: covers(read, e),
     budget: isLandBudgetLaw(e.titel, e.meta.kurztitel),
     similarDraft: read.drafts ? hasSimilarDraft(e, e.meta.beschluss, read.drafts) : null,
     route,
@@ -136,14 +141,14 @@ function classifyEntry(land: LandCode, e: LawEntry, read: LandRead, signal: (url
 async function readLandWindow(land: LandCode, window: { from: string; to: string | null }): Promise<{ items: LandLaw[]; source: LandLawSource; tally: Record<string, number> }> {
   const [index, { drafts, joins }] = await Promise.all([fetchLgblIndex(land), landJoins(land)])
   const laws = index.filter(isLawEntry).filter((e) => e.datum >= window.from && (window.to === null || e.datum <= window.to))
-  const read: LandRead = { laws, joins, drafts }
+  const from = rowsFrom(drafts)
+  const read: LandRead = { laws, joins, drafts, coversFrom: from }
   const urls = new Map<string, Promise<DocSignal>>()
   for (const e of laws) {
     const key = lgblNrKey(e.nr)
     for (const url of docsNeeded(land, e, key !== null && joins.has(key))) if (!urls.has(url)) urls.set(url, landDocSignal(url))
   }
   const signals = urls.size ? await settleWithin(urls, SIGNAL_BUDGET_MS) : new Map<string, Read<DocSignal>>()
-  const from = rowsFrom(drafts)
   const tally: Record<string, number> = {}
   const items: LandLaw[] = []
   let pending = false
@@ -156,7 +161,7 @@ async function readLandWindow(land: LandCode, window: { from: string; to: string
     tally[cls] = (tally[cls] ?? 0) + 1
     const isRow = c.begutachtung.kind !== 'consulted' || c.begutachtung.by !== 'draft'
     if (!isRow || from === null || e.datum < from) continue
-    const law = landLawOf(land, e, c.begutachtung)
+    const law = landLawOf(land, e, c.begutachtung, covers(read, e))
     if (law) items.push(law)
   }
   return {
@@ -272,8 +277,9 @@ export async function readLandLawPage(land: LandCode, year: number, number: numb
   const urls = new Map<string, Promise<DocSignal>>()
   for (const url of docsNeeded(land, e, draftId !== null)) urls.set(url, landDocSignal(url))
   const signals = urls.size ? await settleWithin(urls, PAGE_SIGNAL_BUDGET_MS) : new Map<string, Read<DocSignal>>()
-  const { begutachtung } = classifyEntry(land, e, { laws: [e], joins: joined?.joins ?? null, drafts: joined?.drafts ?? null }, (url) => signals.get(url))
-  const law = landLawOf(land, e, begutachtung)
+  const read: LandRead = { laws: [e], joins: joined?.joins ?? null, drafts: joined?.drafts ?? null, coversFrom: joined ? rowsFrom(joined.drafts) : null }
+  const { begutachtung } = classifyEntry(land, e, read, (url) => signals.get(url))
+  const law = landLawOf(land, e, begutachtung, joined ? covers(read, e) : null)
   if (!law) return null
 
   // RIS's record for the XML; Salzburg's Landtag off its links.

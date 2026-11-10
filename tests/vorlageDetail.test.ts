@@ -104,16 +104,17 @@ describe('vorlageStations', () => {
     ...overrides,
   })
 
-  it('has no Begutachtung station, not even an empty one', () => {
-    expect(vorlageStations(d()).map((s) => s.id)).toEqual(['rv', 'parlament', 'bgbl'])
+  it('opens with a pale Begutachtung station, „keine" only on the list’s evidence (§12.70)', () => {
+    expect(vorlageStations(d()).map((s) => s.id)).toEqual(['begutachtung', 'rv', 'parlament', 'bgbl'])
+    expect(vorlageStations(d())[0]).toMatchObject({ name: 'Begutachtung', state: 'never', facts: ['keine', 'kein Ministerialentwurf'] })
+    expect(vorlageStations(d({ withoutBegutachtung: false }))[0]).toMatchObject({ state: 'never', facts: ['nicht feststellbar', 'ob ein Ministerialentwurf vorausging, ist hier nicht belegt'] })
   })
-  it('names the first station by the item and carries the fact only on evidence', () => {
-    const [first] = vorlageStations(d(), { statementTotal: 466 })
-    expect(first).toMatchObject({ name: 'Initiativantrag', state: 'done', facts: ['09.07.2025', 'ohne Begutachtung', '466 Stellungnahmen'] })
-    expect(vorlageStations(d({ withoutBegutachtung: false }))[0]!.facts).toEqual(['09.07.2025'])
+  it('names the item station by the item; „ohne Begutachtung" no longer stands there', () => {
+    const [, item] = vorlageStations(d(), { statementTotal: 466 })
+    expect(item).toMatchObject({ name: 'Initiativantrag', state: 'done', facts: ['09.07.2025', '466 Stellungnahmen'] })
   })
   it('says what a draft’s page says about Parlament and Bundesgesetzblatt', () => {
-    const [, parlament, bgbl] = vorlageStations(d())
+    const [, , parlament, bgbl] = vorlageStations(d())
     expect(parlament).toMatchObject({ state: 'done', facts: ['im Ausschuss und im Plenum geändert'] })
     expect(bgbl).toMatchObject({ state: 'done', facts: ['BGBl. I Nr. 56/2025'] })
     expect(vorlageStatusDe(d())).toBe('Gesetz geworden')
@@ -121,7 +122,7 @@ describe('vorlageStations', () => {
   it('heads an open Vorlage’s card as a draft’s page heads its Vorlage', () => {
     const open = d({ enactment: enactment({ bgblNumber: null, houseStatus: '2', houseStatusText: null, amendedIn: [], filingOpen: true }) })
     expect(vorlageStatusDe(open)).toBe('Im Parlament')
-    expect(vorlageStations(open)[1]).toMatchObject({ state: 'current', facts: ['in Behandlung'] })
+    expect(vorlageStations(open)[2]).toMatchObject({ state: 'current', facts: ['in Behandlung'] })
   })
 })
 
@@ -137,9 +138,10 @@ describe('the committee’s own consultation (10.11.2026)', () => {
     expect(at('XXVIII-A-372', 'A', 372).withoutBegutachtung).toBe(false)
     expect(at('XXVIII-I-589', 'I', 589).withoutBegutachtung).toBe(true)
   })
-  it('puts Parliament’s word at the Parlament station, not at the first', () => {
-    const [first, parlament] = vorlageStations(at('XXVIII-A-372', 'A', 372))
-    expect(first!.facts).not.toContain('ohne Begutachtung')
-    expect(parlament!.facts[0]).toBe('Ausschussbegutachtung')
+  it('makes the Begutachtung station an ordinary one, with Parliament’s word, and says it nowhere else', () => {
+    const [begutachtung, item, parlament] = vorlageStations(at('XXVIII-A-372', 'A', 372))
+    expect(begutachtung).toMatchObject({ state: 'done', facts: ['Ausschussbegutachtung', 'Ausschuss für innere Angelegenheiten', 'beschlossen am 04.09.2025', '58 Stellen angeschrieben'] })
+    expect(item!.facts).not.toContain('ohne Begutachtung')
+    expect(parlament!.facts).not.toContain('Ausschussbegutachtung')
   })
 })

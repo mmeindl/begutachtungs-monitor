@@ -483,7 +483,7 @@ export interface LandLawLinkedDoc {
 export type LandLawBegutachtung =
   | { kind: 'consulted'; by: 'draft' | 'heading' }
   | { kind: 'none' }
-  | { kind: 'silent'; reason: 'unsupported' | 'budget' | 'similar-draft' | 'mentions' | 'contradictory' | 'unread' | 'no-route' | 'pending' }
+  | { kind: 'silent'; reason: 'unsupported' | 'register-reach' | 'budget' | 'similar-draft' | 'mentions' | 'contradictory' | 'unread' | 'no-route' | 'pending' }
 
 /** One Landesgesetz, as a row of the list and the head of its page know it. */
 export interface LandLaw {
@@ -505,6 +505,13 @@ export interface LandLaw {
   url: string | null
   route: LandLawRoute | null
   begutachtung: LandLawBegutachtung
+  /**
+   * Whether the Land's register still shows every draft that could be this
+   * law's — begun up to two years before it (`rowsFrom`). False: a draft may
+   * have existed and been taken down; the page says so, and the row makes no
+   * claim about a draft. Null: the register could not be read just now.
+   */
+  registerCovers: boolean | null
 }
 
 /** Per Land, whether its laws could be read for the list, and from when they are rows (`rowsFrom`). */
