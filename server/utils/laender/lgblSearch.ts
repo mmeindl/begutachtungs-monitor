@@ -35,6 +35,7 @@
  * „nicht kundgemacht".
  */
 import type { LandConsultation, LandStage } from '#shared/types'
+import type { LgblLawMeta } from './landLaws'
 
 export interface LgblEntry {
   /** „LGBl. Nr. 57/2026" */
@@ -46,6 +47,8 @@ export interface LgblEntry {
   datum: string
   /** The ELI link RIS gives. */
   url: string | null
+  /** A law's further fields — route, Beschluss, materials (`lawMetaOf`, 10.11.2026); absent on Verordnungen. */
+  meta?: LgblLawMeta
 }
 
 /** Per draft: the find, or why there is none. */

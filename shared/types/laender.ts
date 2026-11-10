@@ -454,3 +454,104 @@ export interface LandReasoningResponse {
   entries: Record<string, ReasoningDiffEntry>
   stats: { compared: number; changed: number; editorial: number; uncompared: number }
 }
+
+/* ------------------------------------------------------------------ *
+ * Landesgesetze without a draft in the register (10.11.2026, §12.70)
+ * ------------------------------------------------------------------ */
+
+/** How a law came to the Landtag, as RIS states it — and only where it does. */
+export interface LandLawRoute {
+  kind: 'vorlage' | 'antrag'
+  /** „520", „75/2026", „EZ 1409/1"; null where RIS names the kind only. */
+  number: string | null
+  /** The Landtag's PDF, where RIS links it (Salzburg, Oberösterreich until 2024). */
+  url: string | null
+}
+
+/** A Landtag document RIS links, with the label it gives. */
+export interface LandLawLinkedDoc {
+  label: string
+  url: string
+}
+
+/**
+ * What the row and the page may say about a Begutachtung before the law
+ * (`classifyLandLaw`). `none` is „ohne Begutachtung" and exists for
+ * Salzburg only; `silent` says nothing, and `reason` is for the page's one
+ * neutral sentence, never a claim.
+ */
+export type LandLawBegutachtung =
+  | { kind: 'consulted'; by: 'draft' | 'heading' }
+  | { kind: 'none' }
+  | { kind: 'silent'; reason: 'unsupported' | 'budget' | 'similar-draft' | 'mentions' | 'contradictory' | 'unread' | 'no-route' | 'pending' }
+
+/** One Landesgesetz, as a row of the list and the head of its page know it. */
+export interface LandLaw {
+  land: LandCode
+  /** „LGBl. Nr. 57/2026", as RIS spells it. */
+  nr: string
+  year: number
+  number: number
+  typ: 'Landesgesetz' | 'Landesverfassungsgesetz'
+  /** RIS's title („Gesetz vom …, mit dem …"). */
+  title: string
+  /** RIS's Kurztitel; null where it gives none. */
+  shortTitle: string | null
+  /** Kundmachungsdatum (Ausgabedatum), ISO. */
+  date: string
+  /** The Landtag's Beschluss: `BeschlussDatum`, else the title's „Gesetz vom …"; null where neither. */
+  decidedAt: string | null
+  /** The ELI link in RIS. */
+  url: string | null
+  route: LandLawRoute | null
+  begutachtung: LandLawBegutachtung
+}
+
+/** Per Land, whether its laws could be read for the list, and from when they are rows (`rowsFrom`). */
+export interface LandLawSource {
+  land: LandCode
+  state: 'ok' | 'unavailable'
+  /** Laws kundgemacht from this day on are rows; null: none are (the register reaches too short). */
+  rowsFrom: string | null
+  /**
+   * Salzburg: whether every statement of the window was decided. `pending`:
+   * the Landtag documents are still being read, rows stand without a
+   * statement meanwhile and the page asks again.
+   */
+  statements?: 'complete' | 'pending' | 'unread'
+}
+
+/** Payload of /api/laender/gesetze?gp=. */
+export interface LandLawsResponse {
+  gp: string
+  /** Laws without a joined draft, kundgemacht in the period's window, from each Land's `rowsFrom`. Newest first. */
+  items: LandLaw[]
+  sources: LandLawSource[]
+  /**
+   * Every law of the window per Land and class, joined ones included — the
+   * measurement the documentation reports, never shown as a figure.
+   */
+  tally: Partial<Record<LandCode, Record<string, number>>>
+}
+
+/** Payload of /api/laender/:land/lgbl/:year/:nr — a law's page. */
+export interface LandLawDetail {
+  law: LandLaw
+  /** The draft the law joins to; the page then moves to the draft's page. */
+  draftPath: string | null
+  /** The Landtag's procedure and facts where RIS links the documents (Salzburg), else from RIS's fields. */
+  procedure: LandProcedureStep[]
+  landtag: LandLandtag | null
+  /** The Landtag's item, where RIS links one that lands on it (`materialsOf`). */
+  materials: LandLawLinkedDoc | null
+  /** Steiermark's materials as RIS writes them, without a link. */
+  materialsText: string | null
+  /** Where the procedure was read: the committee report's text (Salzburg, `salzburgLandtag`) or RIS's fields alone. */
+  procedureFrom: 'bericht' | 'ris'
+  /** The Landtag's period, as RIS writes it. */
+  periode: string | null
+  /** The comparisons this law's texts allow: `rv → lgbl` where the Vorlage is linked. */
+  comparisons: [LandTextStation, LandTextStation][]
+  /** The law text as promulgated, grouped by Artikel where it has them; null where RIS's XML could not be read. */
+  text: { article: string | null; units: { id: string; heading: string | null; text: string }[] }[] | null
+}

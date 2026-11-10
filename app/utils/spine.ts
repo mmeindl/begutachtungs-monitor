@@ -41,7 +41,7 @@
  * (the amended laws, the Regierungsvorlage's own Stellungnahmen count), so
  * the values are handed in rather than guessed or fetched here.
  */
-import type { BgblOutcome, DraftDetail, EnactmentInfo, HouseVote, LandCode, LandConsultation, LandProcedureStep, LandTextStation, LawStationId, RisConsultation, VorlageDetail } from '#shared/types'
+import type { BgblOutcome, DraftDetail, EnactmentInfo, HouseVote, LandCode, LandConsultation, LandLaw, LandProcedureStep, LandTextStation, LawStationId, RisConsultation, VorlageDetail } from '#shared/types'
 import { carriesDraft } from '#shared/utils/antragPath'
 import { bgblShort, formatDateDe, formatNumberDe, fristEndedDe, spanInDays, todayIso } from '#shared/utils/format'
 import { promulgationState } from '#shared/utils/promulgation'
@@ -1267,4 +1267,62 @@ export function markedStation(list: Station[]): StationId | null {
   if (current) return current.id
   const done = list.filter((s) => s.state === 'done')
   return done[done.length - 1]?.id ?? null
+}
+
+/* There was a `stationPositionDe` here that rendered „Station 2 von 5" on
+ * the detail page, on the claim that the mark otherwise rode on colour
+ * alone. Removed 18.09.2026, because none of that claim survived contact
+ * with the three things that carry it already:
+ *
+ *  - `reached` states form a PREFIX of the list, so the marked station is
+ *    always the last row the bar sets in `font-medium text-ink`. That
+ *    boundary is weight, not colour. (One exception since 30.09.2026: the
+ *    Initiativantrag route skips the Vorlage row, and the headline names
+ *    that route in words — „Gesetz geworden – als Initiativantrag".)
+ *  - `procedureStatusDe` heads the same card and names the station in
+ *    words — that is the sentence that takes the mark off colour.
+ *  - The bar is an <ol> with `aria-current="step"`, so assistive tech
+ *    announces the position per row without being told.
+ *
+ * What was left was a number counting the list the reader is looking at,
+ * for a line of card height. If it ever comes back, it belongs ON the
+ * marked row, not above or below the list. */
+
+/**
+ * The bar of a Landesgesetz without a draft in the register (§12.70): the
+ * stations RIS dates, in the Land draft's words — the route where RIS
+ * states it (a Regierungsvorlage, or an Initiativantrag under its own
+ * name, as on the Bund's page of a law without a Begutachtung), the
+ * Landtag's Beschluss, the Landesgesetzblatt. No Entwurf and no
+ * Begutachtung row, not even an empty one: the page says in a sentence
+ * what is known about a Begutachtung, and a hollow row would say „none".
+ */
+export function landLawStations(
+  law: Pick<LandLaw, 'route' | 'decidedAt' | 'nr' | 'date' | 'begutachtung'>,
+  steps: readonly LandProcedureStep[] = [],
+  comparisons: readonly (readonly [LandTextStation, LandTextStation])[] = [],
+): Station[] {
+  const out: Station[] = []
+  const r = law.route
+  if (r) {
+    const step = steps.find((s) => s.station === 'rv')
+    const beilage = /\bNr\s+\d+ der Beilagen\b/.exec(step?.label ?? '')?.[0] ?? (r.number ? (/^EZ\b/.test(r.number) ? r.number : `Nr. ${r.number}`) : null)
+    out.push({
+      id: 'rv',
+      name: r.kind === 'vorlage' ? 'Regierungsvorlage' : 'Initiativantrag',
+      state: 'done',
+      facts: kept(beilage, law.begutachtung.kind === 'none' ? 'ohne Begutachtung' : null),
+      comparison: null,
+    })
+  }
+  const toLgbl = comparisons.some(([a, b]) => a === 'rv' && b === 'lgbl')
+  out.push({
+    id: 'parlament',
+    name: 'Landtag',
+    state: 'done',
+    facts: kept(law.decidedAt ? `beschlossen am ${formatDateDe(law.decidedAt)}` : null),
+    comparison: toLgbl ? { id: 'parlament', question: lawStationPairQuestion('rv', 'bgbl') } : null,
+  })
+  out.push({ id: 'bgbl', name: 'Landesgesetzblatt', state: 'done', facts: kept(law.nr, formatDateDe(law.date)), comparison: null })
+  return out
 }

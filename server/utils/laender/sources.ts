@@ -93,6 +93,7 @@ import { resolveKundmachung } from './texts/kundmachung'
 import { listVerdictOf, withListVerdicts, withVerdict } from './verdicts'
 import { comparisonsOf, type LandDraftRecord } from './texts/stations'
 import { matchLgbl, type LgblResult } from './lgblSearch'
+import { lgblNrKey } from './landLaws'
 
 const LAND_POLICY: UpstreamPolicy = {
   timeoutMs: 15_000,
@@ -1303,4 +1304,34 @@ export async function readLandDraft(land: LandCode, number: string): Promise<Lan
     detail = { ...detail, procedure: resolved.landtag.procedure, landtag: resolved.landtag.landtag }
   }
   return { ...detail, comparisons: comparisonsOf(land, detail, hasTgu(land, detail.draft.documents)) }
+}
+
+/**
+ * Which Landesgesetzblätter a draft of the Land's register is joined to
+ * (§12.70): those the Land's own record names (Oberösterreich, Tirol,
+ * Kärnten's chain) and those the title search found (`lgblAssignment`) —
+ * keyed by the LGBl number („57/2026", `lgblNrKey`), valued by the draft. A law here keeps its
+ * draft's page; a law not here gets one of its own.
+ *
+ * The title search's find, not the page's decision about it
+ * (`withListVerdicts` is per window and budgeted): a find the page refutes
+ * still counts as joined here — the law then has neither row nor statement,
+ * the under-claiming side — and one the page moves to another
+ * Landesgesetzblatt leaves that one without a join, where Salzburg's
+ * Vorlage heading still says „consulted". Throws where the register or the
+ * index could not be read: then nothing about joins is known.
+ */
+export async function landJoins(land: LandCode): Promise<{ drafts: LandConsultation[]; joins: Map<string, string> }> {
+  const [drafts, assigned] = await Promise.all([READERS[land].all(), lgblAssignment(land)])
+  const joins = new Map<string, string>()
+  for (const d of drafts) {
+    const s = d.stage
+    const key = s && s !== 'unknown' && s.station === 'bgbl' && s.detail ? lgblNrKey(s.detail) : null
+    if (key) joins.set(key, d.id)
+  }
+  for (const [id, r] of Object.entries(assigned)) {
+    const key = r.state === 'gefunden' && r.stage.detail ? lgblNrKey(r.stage.detail) : null
+    if (key && !joins.has(key)) joins.set(key, id)
+  }
+  return { drafts, joins }
 }

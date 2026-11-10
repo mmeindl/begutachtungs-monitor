@@ -58,6 +58,16 @@ export function landDraftPath(land: LandCode, id: string): string {
   return `/entwuerfe/${LAND_SLUG[land]}/${id.slice(id.indexOf('-') + 1)}`
 }
 
+/** A Landesgesetz's own page (§12.70): `/entwuerfe/salzburg/lgbl/2026/57`. */
+export function landLawPath(land: LandCode, law: { year: number; number: number }): string {
+  return `/entwuerfe/${LAND_SLUG[land]}/lgbl/${law.year}/${law.number}`
+}
+
+/** A law's name for a row or a heading: RIS's Kurztitel without the separators it leaves at the end („…; Erlassung; "), else the title. */
+export function landLawName(law: { shortTitle: string | null; title: string }): string {
+  return law.shortTitle?.replace(/[;,\s]+$/, '') || law.title
+}
+
 /**
  * Where the lists' drafts come from: the Bund (Parliament's list and RIS),
  * and each Land the monitor reads. The reader's choice among them — since

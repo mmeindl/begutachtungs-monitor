@@ -9,6 +9,7 @@ import { DERIVED_CACHE } from '../cache/base'
 import { asArray } from '../ris/risRecord'
 import { risJson, type UpstreamPolicy } from '../upstream/fetch'
 import type { LgblEntry } from './lgblSearch'
+import { LAW_TYPES, lawMetaOf } from './landLaws'
 
 /** RIS's name for each Land in `Bundesland_SucheIn…`. */
 const RIS_LAND: Record<LandCode, string> = { bgld: 'Burgenland', ktn: 'Kaernten', noe: 'Niederoesterreich', ooe: 'Oberoesterreich', sbg: 'Salzburg', stmk: 'Steiermark', t: 'Tirol', vbg: 'Vorarlberg', w: 'Wien' }
@@ -46,6 +47,8 @@ function entriesOf(result: any): LgblEntry[] {
       titel: titel.replace(/\s+/g, ' ').trim(),
       datum,
       url: typeof eli === 'string' ? safeExternalUrl(eli) : null,
+      // A law's route and materials, for its page and the list's rows (§12.70).
+      ...(LAW_TYPES.has(String(m?.LgblAuth?.Typ ?? '')) ? { meta: lawMetaOf(m) } : {}),
     }]
   })
 }
@@ -73,7 +76,9 @@ async function readIndex(land: LandCode): Promise<LgblEntry[]> {
  */
 export const fetchLgblIndex = defineCachedFunction(
   (land: LandCode): Promise<LgblEntry[]> => readIndex(land),
-  { name: 'land-lgbl-index', base: DERIVED_CACHE, getKey: (land: LandCode) => land, maxAge: 60 * 60 * 6, swr: true },
+  /* `-v2` since 10.11.2026: the entries carry a law's fields (`meta`), and
+     an entry held from before would hand every law a page without them. */
+  { name: 'land-lgbl-index-v2', base: DERIVED_CACHE, getKey: (land: LandCode) => land, maxAge: 60 * 60 * 6, swr: true },
 )
 
 /** One Landesgesetzblatt as the OGD API describes it: where its XML is, and the Landtag's Regierungsvorlage it was built from. */
