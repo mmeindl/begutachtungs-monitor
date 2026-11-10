@@ -10,14 +10,14 @@ import {
 } from '#shared/utils/draftOrder'
 import { viewOfRow } from '~/utils/entryView'
 import {
-  ART_OPTIONS,
+  artOptionsFor,
   type FilterChipKey,
   SEVERAL_STATIONS,
   type SortKey,
   activeFilterChips,
   begutachtungGapReason,
   draftCountLabel,
-  ohneChipCount,
+  ohneArtAllows,
   stationTabsFor,
 } from '~/utils/draftFilters'
 import { matchesQuery } from '#shared/utils/textMatch'
@@ -88,8 +88,10 @@ const OPEN_UNAVAILABLE: Partial<Record<DraftStation, string>> = {
 }
 
 /* The Art filter's options and the nouns it shares with the count line live
- * in `app/utils/draftFilters.ts` (`ART_OPTIONS`, `RIS_KIND_TERM`). */
-const artOptions = ART_OPTIONS
+ * in `app/utils/draftFilters.ts` (`ART_OPTIONS`, `RIS_KIND_TERM`). Under the
+ * chip „Ohne Ministerialentwurf" the select offers the item a row came as
+ * instead (`artOptionsFor`, 10.11.2026). */
+const artOptions = computed(() => artOptionsFor(begutachtung.value))
 
 /**
  * Two orders, and each of them answers a question this page is actually
@@ -346,13 +348,18 @@ const secondRoundFetch = useFetch<DashboardSecondRound>(
  * The enacted laws of the period without a Begutachtung (§12.68), for the
  * chip „Ohne Ministerialentwurf" — fetched like the open Vorlagen above: on the
  * client, lazily, so nothing above it waits, and for the period in view
- * (the chosen one, else the running one). Fetched while the chip is off
- * too: the chip states the count of its rows.
+ * (the chosen one, else the running one). Only while the chip is on and the
+ * Bund is among the sources (10.11.2026): the chip carries no count any
+ * more, and its unavailable states come from this answer once it is on —
+ * the chip keeps its state and says why (`ohneUnavailable`).
  */
+const lawsWanted = computed(() => begutachtung.value === 'ohne' && bund.value)
 const lawsFetch = useFetch<LawsWithoutBegutachtung>('/api/ohne-begutachtung', {
   query: computed(() => ({ gp: gp.value || undefined })),
   lazy: true,
   server: false,
+  enabled: lawsWanted,
+  watch: [lawsWanted],
 })
 
 await halves.ready
@@ -461,6 +468,8 @@ const unreadableLaender = computed(() => {
 const openVorlagen = computed(() => {
   const list = secondRound.value
   if (!list || !bund.value || statusFilter.value === 'closed' || art.value === 'verordnung' || ministry.value) return []
+  // Under the chip's Art an open Vorlage's row is a Regierungsvorlage.
+  if (!ohneArtAllows(art.value, 'rv')) return []
   /* „Setzt EU-Recht um": a Vorlage carries no EU fact in the list, so it
    * steps back — unless the Bund's map is missing and the list stands
    * unfiltered anyway (`euUnavailable`). */
@@ -496,7 +505,6 @@ const ohneApplied = computed(() => begutachtung.value === 'ohne' && !ohneUnavail
 
 /* The chip's count: the rows it would show for the period in view, once
  * the laws are there. */
-const ohneCount = computed(() => ohneChipCount(lawsData.value, secondRound.value))
 
 /**
  * The laws under the other controls, as far as they reach — the rules
@@ -511,7 +519,9 @@ const lawRows = computed(() => {
   if (statusFilter.value === 'open' || art.value === 'verordnung' || ministry.value || eu.value) return []
   if (stations.value.length && !stations.value.includes('bgbl')) return []
   if (selectedGp.value && selectedGp.value !== laws.gp) return []
-  return laws.items.filter((l) => matchesQuery(`${l.title} ${l.item.citation} ${l.bgblNumber}`, qDebounced.value))
+  return laws.items
+    .filter((l) => ohneArtAllows(art.value, l.item.kind))
+    .filter((l) => matchesQuery(`${l.title} ${l.item.citation} ${l.bgblNumber}`, qDebounced.value))
 })
 
 /* No Art test of its own any more: a half that this `art` excludes was never
@@ -824,9 +834,9 @@ const statementsSortNote = computed(() => {
             Setzt EU-Recht um
           </ToggleChip>
           <!-- How the procedure began (§12.68): the same kind of control,
-               off by default; its count in the tabs' form (`ListTabs`). -->
+               off by default, without a count since 10.11.2026. -->
           <ToggleChip :pressed="begutachtung === 'ohne'" :unavailable="ohneUnavailable" @toggle="toggleBegutachtung">
-            Ohne Ministerialentwurf<span v-if="ohneCount !== null" class="font-normal tabular-nums text-ink-muted">{{ formatNumberDe(ohneCount) }}</span>
+            Ohne Ministerialentwurf
           </ToggleChip>
           <!-- Art, period and Ressort stand in the same line from `md`
                up (03.10.2026), each select stating its own value; on a

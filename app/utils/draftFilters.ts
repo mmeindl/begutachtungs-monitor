@@ -39,7 +39,16 @@ import { firstQueryValue } from '#shared/utils/queryParams'
  * `verordnung`. The value also goes to `/api/ris-drafts?art=` unchanged —
  * the same words there (`useDraftHalves`).
  */
-export type ArtFilter = '' | 'gesetz' | 'verordnung'
+export type ArtFilter = '' | 'gesetz' | 'verordnung' | OhneArt
+
+/**
+ * The Art under the chip „Ohne Ministerialentwurf" (10.11.2026): the item a
+ * row came to the Nationalrat as — a Regierungsvorlage or an Initiativantrag
+ * (`item.kind`; an open Vorlage's row is a Regierungsvorlage). The same
+ * parameter `art`, valid only together with `begutachtung=ohne`; the two
+ * draft kinds are valid only without it (`coherentArt`).
+ */
+export type OhneArt = 'vorlage' | 'antrag'
 
 /* The count line's terms, one per kind and in the Art filter's words. A
  * kind that counts none stays out; „andere" is the RIS kind `unbestimmt`,
@@ -56,6 +65,8 @@ const EMPTY_TERM: Record<ArtFilter, string> = {
   '': '0 Entwürfe',
   gesetz: '0 Gesetzesentwürfe',
   verordnung: '0 Verordnungsentwürfe',
+  vorlage: '0 Regierungsvorlagen',
+  antrag: '0 Initiativanträge',
 }
 
 /* The RIS half's failure, named by what it would have brought: the Bund's
@@ -65,6 +76,10 @@ const RIS_FAILED: Record<ArtFilter, string> = {
   '': 'die Verordnungs- und einzelne Gesetzesentwürfe des Bundes sind gerade nicht abrufbar',
   gesetz: 'einzelne Gesetzesentwürfe des Bundes sind gerade nicht abrufbar',
   verordnung: 'die Verordnungsentwürfe des Bundes sind gerade nicht abrufbar',
+  // Under the chip the RIS half is not asked for (`draftKindArt`); the
+  // sentence of „Alle Arten" stands in should it ever be.
+  vorlage: 'die Verordnungs- und einzelne Gesetzesentwürfe des Bundes sind gerade nicht abrufbar',
+  antrag: 'die Verordnungs- und einzelne Gesetzesentwürfe des Bundes sind gerade nicht abrufbar',
 }
 
 export const ART_OPTIONS: { value: ArtFilter; label: string }[] = [
@@ -72,6 +87,41 @@ export const ART_OPTIONS: { value: ArtFilter; label: string }[] = [
   { value: 'gesetz', label: 'Gesetzesentwürfe' },
   { value: 'verordnung', label: 'Verordnungsentwürfe' },
 ]
+
+/** The same select under the chip „Ohne Ministerialentwurf". */
+export const OHNE_ART_OPTIONS: { value: ArtFilter; label: string }[] = [
+  { value: '', label: 'Alle Arten' },
+  { value: 'vorlage', label: 'Regierungsvorlagen' },
+  { value: 'antrag', label: 'Initiativanträge' },
+]
+
+/** The select's options in the state the list is in. */
+export function artOptionsFor(begutachtung: BegutachtungFilter): { value: ArtFilter; label: string }[] {
+  return begutachtung === 'ohne' ? OHNE_ART_OPTIONS : ART_OPTIONS
+}
+
+/**
+ * An Art the current state does not offer reads as „Alle Arten" — in both
+ * directions: the chip turned on with `gesetz`/`verordnung`, turned off with
+ * `vorlage`/`antrag`, or a link that pairs them wrongly. A leftover value
+ * must never empty the list.
+ */
+export function coherentArt(art: ArtFilter, begutachtung: BegutachtungFilter): ArtFilter {
+  return artOptionsFor(begutachtung).some((o) => o.value === art) ? art : ''
+}
+
+/** The Art the draft halves are asked for: a draft kind, or none — the
+ *  chip's two values are no instrument kind `/api/ris-drafts` knows. */
+export function draftKindArt(art: ArtFilter): '' | 'gesetz' | 'verordnung' {
+  return art === 'gesetz' || art === 'verordnung' ? art : ''
+}
+
+/** Whether a row under the chip, by the item it came as, passes the Art. */
+export function ohneArtAllows(art: ArtFilter, kind: 'rv' | 'antrag'): boolean {
+  if (art === 'vorlage') return kind === 'rv'
+  if (art === 'antrag') return kind === 'antrag'
+  return true
+}
 
 /**
  * Two orders since 02.10.2026, each a column of the list. „Zuletzt
@@ -141,7 +191,7 @@ function parseStatus(v: unknown): DraftStatus {
 function parseArt(v: unknown): ArtFilter {
   const s = firstQueryValue(v)
   if (s === 'ministerialentwurf') return 'gesetz'
-  return s === 'gesetz' || s === 'verordnung' ? s : ''
+  return s === 'gesetz' || s === 'verordnung' || s === 'vorlage' || s === 'antrag' ? s : ''
 }
 
 function parseEu(v: unknown): EuFilter {
@@ -182,17 +232,18 @@ function parseGp(v: unknown): string {
 }
 
 export function draftFiltersFromQuery(query: Record<string, unknown>): DraftFilterValues {
+  const begutachtung = parseBegutachtung(query.begutachtung)
   return {
     status: parseStatus(query.status),
     stations: parseStations(query.station),
-    art: parseArt(query.art),
+    art: coherentArt(parseArt(query.art), begutachtung),
     gp: parseGp(query.gp),
     ministry: firstQueryValue(query.ministry) ?? '',
     q: firstQueryValue(query.q) ?? '',
     sort: parseSort(query.sort),
     reversed: firstQueryValue(query.reverse) === '1',
     eu: parseEu(query.eu),
-    begutachtung: parseBegutachtung(query.begutachtung),
+    begutachtung,
   }
 }
 
@@ -219,7 +270,8 @@ export function draftUrlQuery(f: DraftFilterValues): Record<string, string> {
   const query: Record<string, string> = {}
   if (f.status !== 'all') query.status = f.status
   if (f.stations.length) query.station = f.stations.join(',')
-  if (f.art) query.art = f.art
+  const art = coherentArt(f.art, f.begutachtung)
+  if (art) query.art = art
   if (f.gp) query.gp = f.gp
   if (f.ministry) query.ministry = f.ministry
   if (f.q) query.q = f.q
@@ -324,7 +376,7 @@ export function activeFilterChips(
 ): { key: FilterChipKey; label: string }[] {
   const out: { key: FilterChipKey; label: string }[] = []
   if (f.status === 'closed') out.push({ key: 'status', label: 'Nicht möglich' })
-  if (f.art) out.push({ key: 'art', label: ART_OPTIONS.find((o) => o.value === f.art)?.label ?? f.art })
+  if (f.art) out.push({ key: 'art', label: [...ART_OPTIONS, ...OHNE_ART_OPTIONS].find((o) => o.value === f.art)?.label ?? f.art })
   if (f.gp) out.push({ key: 'gp', label: `GP ${f.gp}` })
   if (f.ministry) out.push({ key: 'ministry', label: f.ministry })
   return out
@@ -419,22 +471,6 @@ export function draftCountLabel(c: {
 /* ------------------------------------------------------------------ *
  * The chip „Ohne Ministerialentwurf"
  * ------------------------------------------------------------------ */
-
-/**
- * The chip's count: the rows it would show for the period of the laws — both
- * classes of law, and the open Vorlagen of the same period that carry one of
- * the two notes (10.11.2026). Null until the laws are there.
- */
-export function ohneChipCount(
-  laws: { available: boolean; gp: string; items: readonly unknown[] } | null | undefined,
-  secondRound: { gp: string; items: readonly Pick<OpenVorlage, 'consultation'>[] } | null | undefined,
-): number | null {
-  if (!laws?.available) return null
-  const vorlagen = secondRound?.gp === laws.gp
-    ? secondRound.items.filter((v) => v.consultation.kind === 'none' || v.consultation.kind === 'committee').length
-    : 0
-  return laws.items.length + vorlagen
-}
 
 /** Why the period in view carries no such rows — the chip's reason (`ToggleChip`). */
 const BEGUTACHTUNG_GAP_REASON: Record<LawsWithoutBegutachtungGap, string> = {

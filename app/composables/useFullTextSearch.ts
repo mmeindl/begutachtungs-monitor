@@ -32,6 +32,7 @@ import type { EntryView } from '~/utils/entryView'
 import { viewOfRow } from '~/utils/entryView'
 import { meRow, risRow } from '#shared/utils/draftOrder'
 import type { DraftFilters } from '~/composables/useDraftFilters'
+import { draftKindArt } from '~/utils/draftFilters'
 
 const FULLTEXT_MIN_LEN = 3
 const FULLTEXT_DEBOUNCE_MS = 700
@@ -147,8 +148,9 @@ export async function useFullTextSearch(
   const fullTextHits = computed<BegutSearchHit[]>(() =>
     (fullText.value?.hits ?? []).filter((hit) => {
       /* A Ministerialentwurf is a law draft; a RIS record names its kind. */
-      if (art.value === 'verordnung' && hit.entry.kind === 'draft') return false
-      if (art.value && hit.entry.kind === 'ris' && hit.entry.consultation.kind !== art.value) return false
+      const kindArt = draftKindArt(art.value)
+      if (kindArt === 'verordnung' && hit.entry.kind === 'draft') return false
+      if (kindArt && hit.entry.kind === 'ris' && hit.entry.consultation.kind !== kindArt) return false
       if (ministry.value) {
         const code =
           hit.entry.kind === 'draft' ? hit.entry.draft.ministryCode : hit.entry.consultation.ministryCode

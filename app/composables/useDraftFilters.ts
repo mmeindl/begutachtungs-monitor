@@ -19,6 +19,7 @@ import {
   draftFiltersFromQuery,
   draftUrlQuery,
   sameDraftFilters,
+  coherentArt,
 } from '~/utils/draftFilters'
 import { SOURCE_PARAM } from '#shared/utils/laender'
 
@@ -105,12 +106,26 @@ export function useDraftFilters(): DraftFilters {
     begutachtung: begutachtung.value,
   })
 
+  /* An Art the new state does not offer reads as „Alle Arten" — the chip
+   * „Ohne Ministerialentwurf" has its own two (`coherentArt`, 10.11.2026). */
+  watch(begutachtung, (b) => { art.value = coherentArt(art.value, b) })
+
   // Keep the URL in sync with the filters (defaults stay out of the URL).
   /* `quellen` is not this list's filter but the site's choice of sources
    * (`useSourceChoice`), and the write-back must not drop it. */
-  watch([query, art, sort, reversed, begutachtung], () => {
+  function writeUrl(): void {
     const quellen = route.query[SOURCE_PARAM]
     router.replace({ query: { ...draftUrlQuery(current()), ...(quellen !== undefined ? { [SOURCE_PARAM]: quellen } : {}) } })
+  }
+  watch([query, art, sort, reversed, begutachtung], writeUrl)
+
+  /* A link whose `art` the state does not offer (`coherentArt`) is read as
+   * „Alle Arten" — and the value leaves the URL too, so the address says
+   * what the list shows (10.11.2026). Nothing else is rewritten. */
+  const strayArt = (routeQuery: Record<string, unknown>): boolean =>
+    routeQuery.art !== undefined && draftUrlQuery(draftFiltersFromQuery(routeQuery)).art === undefined
+  onMounted(() => {
+    if (strayArt(route.query)) writeUrl()
   })
 
   /**
@@ -133,7 +148,11 @@ export function useDraftFilters(): DraftFilters {
   const navigateHandlers: (() => void)[] = []
   watch(() => route.query, (routeQuery) => {
     const next = draftFiltersFromQuery(routeQuery)
-    if (sameDraftFilters(next, current())) return
+    if (sameDraftFilters(next, current())) {
+      // Same state, but a stray `art` in the address: take it out.
+      if (strayArt(routeQuery)) writeUrl()
+      return
+    }
     clearTimeout(qTimer)
     statusFilter.value = next.status
     art.value = next.art

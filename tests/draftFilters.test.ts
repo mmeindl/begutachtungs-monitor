@@ -4,16 +4,19 @@ import {
   type DraftFilterValues,
   SEVERAL_STATIONS,
   activeFilterChips,
+  artOptionsFor,
   begutachtungGapReason,
+  coherentArt,
+  draftKindArt,
   draftApiQuery,
   draftCountLabel,
   draftFiltersFromQuery,
   draftUrlQuery,
+  ohneArtAllows,
   sameDraftFilters,
   stationTabsFor,
   unionGps,
   unionMinistries,
-  ohneChipCount,
 } from '../app/utils/draftFilters'
 
 const empty: DraftFilterValues = {
@@ -35,7 +38,7 @@ describe('draftFiltersFromQuery', () => {
       draftFiltersFromQuery({
         status: 'open',
         station: 'rv,bgbl',
-        art: 'verordnung',
+        art: 'antrag',
         gp: 'XXVIII',
         ministry: 'BMF',
         q: 'klima',
@@ -47,7 +50,7 @@ describe('draftFiltersFromQuery', () => {
     ).toEqual({
       status: 'open',
       stations: ['rv', 'bgbl'],
-      art: 'verordnung',
+      art: 'antrag',
       gp: 'XXVIII',
       ministry: 'BMF',
       q: 'klima',
@@ -388,15 +391,42 @@ describe('begutachtungGapReason', () => {
   })
 })
 
-describe('ohneChipCount — the rows under „Ohne Ministerialentwurf" (10.11.2026)', () => {
-  const laws = { available: true, gp: 'XXVIII', items: new Array(67).fill(null) }
-  it('counts both classes of law and the open Vorlagen carrying either note', () => {
-    const vorlagen = [{ consultation: { kind: 'none' as const } }, { consultation: { kind: 'committee' as const } }, { consultation: { kind: 'unknown' as const } }, { consultation: { kind: 'draft' as const, gp: 'XXVIII', inr: 1 } }]
-    expect(ohneChipCount(laws, { gp: 'XXVIII', items: vorlagen })).toBe(69)
+describe('the Art under „Ohne Ministerialentwurf" (10.11.2026)', () => {
+  it('offers the item a row came as while the chip is on, the draft kinds while it is off', () => {
+    expect(artOptionsFor('ohne').map((o) => o.label)).toEqual(['Alle Arten', 'Regierungsvorlagen', 'Initiativanträge'])
+    expect(artOptionsFor('').map((o) => o.label)).toEqual(['Alle Arten', 'Gesetzesentwürfe', 'Verordnungsentwürfe'])
   })
-  it('leaves out Vorlagen of another period and says nothing before the laws arrive', () => {
-    expect(ohneChipCount(laws, { gp: 'XXVII', items: [{ consultation: { kind: 'none' } }] })).toBe(67)
-    expect(ohneChipCount({ available: false, gp: 'XXVIII', items: [] }, null)).toBeNull()
-    expect(ohneChipCount(null, null)).toBeNull()
+  it('reads its values only together with the chip, from a link and back into one', () => {
+    const on = draftFiltersFromQuery({ begutachtung: 'ohne', art: 'antrag' })
+    expect(on.art).toBe('antrag')
+    expect(draftUrlQuery(on)).toEqual({ art: 'antrag', begutachtung: 'ohne' })
+    expect(draftFiltersFromQuery(draftUrlQuery(on))).toEqual(on)
+  })
+  it('drops a value the state does not offer, in both directions', () => {
+    // An old or hand-typed link with a mismatched pair.
+    expect(draftFiltersFromQuery({ begutachtung: 'ohne', art: 'gesetz' }).art).toBe('')
+    expect(draftFiltersFromQuery({ art: 'vorlage' }).art).toBe('')
+    expect(draftUrlQuery({ ...draftFiltersFromQuery({}), art: 'verordnung', begutachtung: 'ohne' })).toEqual({ begutachtung: 'ohne' })
+    expect(draftUrlQuery({ ...draftFiltersFromQuery({}), art: 'antrag', begutachtung: '' })).toEqual({})
+    // The chip turned on with a draft kind, off with an item kind.
+    expect(coherentArt('gesetz', 'ohne')).toBe('')
+    expect(coherentArt('vorlage', '')).toBe('')
+    expect(coherentArt('vorlage', 'ohne')).toBe('vorlage')
+    expect(coherentArt('verordnung', '')).toBe('verordnung')
+  })
+  it('filters the rows by the item they came as', () => {
+    expect(ohneArtAllows('vorlage', 'rv')).toBe(true)
+    expect(ohneArtAllows('vorlage', 'antrag')).toBe(false)
+    expect(ohneArtAllows('antrag', 'rv')).toBe(false)
+    expect(ohneArtAllows('', 'antrag')).toBe(true)
+  })
+  it('asks the draft halves for no kind of its own', () => {
+    expect(draftKindArt('vorlage')).toBe('')
+    expect(draftKindArt('gesetz')).toBe('gesetz')
+  })
+  it('names its values in the active-filter chips and in an empty count line', () => {
+    expect(activeFilterChips({ status: 'all', art: 'vorlage', gp: '', ministry: '' })).toEqual([{ key: 'art', label: 'Regierungsvorlagen' }])
+    expect(activeFilterChips({ status: 'all', art: 'antrag', gp: '', ministry: '' })).toEqual([{ key: 'art', label: 'Initiativanträge' }])
+    expect(draftCountLabel({ me: null, vorlagen: [], ris: null, laterStationsOnly: false, art: 'antrag', laws: [] })).toBe('0 Initiativanträge')
   })
 })

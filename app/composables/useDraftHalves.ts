@@ -14,7 +14,7 @@
 import type { Ref } from 'vue'
 import type { DraftsResponse, LaenderResponse, RisConsultationsResponse } from '#shared/types'
 import type { ArtFilter } from '~/utils/draftFilters'
-import { unionGps, unionMinistries } from '~/utils/draftFilters'
+import { draftKindArt, unionGps, unionMinistries } from '~/utils/draftFilters'
 import type { DraftFilters } from '~/composables/useDraftFilters'
 
 export function useDraftHalves(filters: {
@@ -45,9 +45,12 @@ export function useDraftHalves(filters: {
    * words, so „Gesetzesentwürfe" ships four records, not 210. Under „Alle
    * Arten" it goes without `art`, the records of kind `unbestimmt` included.
    */
-  const wantsMe = computed(() => bund.value && art.value !== 'verordnung')
+  /* The chip's two Art values (`vorlage`, `antrag`) are no draft kind: the
+   * halves read them as „Alle Arten" (`draftKindArt`). */
+  const kindArt = computed(() => draftKindArt(art.value))
+  const wantsMe = computed(() => bund.value && kindArt.value !== 'verordnung')
   const wantsRis = computed(() => bund.value)
-  const risQuery = computed(() => (art.value ? { ...query.value, art: art.value } : query.value))
+  const risQuery = computed(() => (kindArt.value ? { ...query.value, art: kindArt.value } : query.value))
 
   /* `enabled` keeps the request from being made at all, on the server too, so
    * a filtered list ships only the half it renders. Watched is the half's own
