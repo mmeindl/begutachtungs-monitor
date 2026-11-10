@@ -47,3 +47,19 @@ describe('landLawBegutachtungFacts', () => {
     expect(stations[1]!.facts).not.toContain('ohne Begutachtung')
   })
 })
+
+describe('the count line for Land laws (second round)', () => {
+  it('counts covered and uncovered laws apart, never added', async () => {
+    const { draftCountLabel } = await import('../app/utils/draftFilters')
+    const silent = { kind: 'silent', reason: 'unsupported' } as const
+    expect(draftCountLabel({
+      me: null, vorlagen: [], ris: null, laterStationsOnly: false,
+      landLaws: [
+        { begutachtung: { kind: 'none' }, registerCovers: true },
+        { begutachtung: silent, registerCovers: true },
+        { begutachtung: silent, registerCovers: false },
+        { begutachtung: silent, registerCovers: false },
+      ],
+    })).toBe('1 Gesetz ohne Begutachtung · 1 Landesgesetz ohne zugeordneten Entwurf · 2 Landesgesetze')
+  })
+})

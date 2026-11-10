@@ -235,7 +235,7 @@ export interface LawFacts {
   joined: boolean | null
   /**
    * The register still shows every draft that could be this law's
-   * (`rowsFrom`). Where it does not, no draft in it proves nothing: a law
+   * (`registerCoversFrom`). Where it does not, no draft in it proves nothing: a law
    * of 2005 may have had a draft of 2003 the register never held.
    */
   covered: boolean
@@ -333,14 +333,17 @@ export function landLawOf(land: LandCode, e: LawEntry, begutachtung: LandLawBegu
 }
 
 /**
- * Where the Land's register begins, as the list may use it: a law is a row
- * only where every draft that could join it — begun up to two years before
- * it — would still stand in the register. Wien keeps a year, Niederösterreich
- * and Vorarlberg only what runs: their laws get a page, and no row that
- * would read as „no draft before it" where the Land simply took the draft
- * down. Null: the register holds nothing dated.
+ * From which day the Land's register covers a law: every draft that could
+ * join it — begun up to two years before it — would still stand there.
+ * Before that day, no draft in the register proves nothing: Wien keeps a
+ * year, Niederösterreich and Vorarlberg only what runs, Tirol its
+ * Gesetzesentwürfe some weeks. It decides the WORDING, never whether a law
+ * is a row (since 10.11.2026, second round): a covered law without a draft
+ * is „ohne zugeordneten Entwurf", an uncovered one a plain „Landesgesetz",
+ * and its page says a draft may have existed and been taken down. Null:
+ * the register holds nothing dated.
  */
-export function rowsFrom(drafts: readonly LandConsultation[]): string | null {
+export function registerCoversFrom(drafts: readonly LandConsultation[]): string | null {
   let first: string | null = null
   for (const d of drafts) {
     if (d.kind !== 'gesetz') continue

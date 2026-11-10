@@ -507,19 +507,19 @@ export interface LandLaw {
   begutachtung: LandLawBegutachtung
   /**
    * Whether the Land's register still shows every draft that could be this
-   * law's — begun up to two years before it (`rowsFrom`). False: a draft may
+   * law's — begun up to two years before it (`registerCoversFrom`). False: a draft may
    * have existed and been taken down; the page says so, and the row makes no
    * claim about a draft. Null: the register could not be read just now.
    */
   registerCovers: boolean | null
 }
 
-/** Per Land, whether its laws could be read for the list, and from when they are rows (`rowsFrom`). */
+/** Per Land, whether its laws could be read for the list, and from when its register covers them (`registerCoversFrom`). */
 export interface LandLawSource {
   land: LandCode
   state: 'ok' | 'unavailable'
-  /** Laws kundgemacht from this day on are rows; null: none are (the register reaches too short). */
-  rowsFrom: string | null
+  /** From this day on the register covers a law (`LandLaw.registerCovers`); null: for no day. */
+  registerCoversFrom: string | null
   /**
    * Salzburg: whether every statement of the window was decided. `pending`:
    * the Landtag documents are still being read, rows stand without a
@@ -531,7 +531,7 @@ export interface LandLawSource {
 /** Payload of /api/laender/gesetze?gp=. */
 export interface LandLawsResponse {
   gp: string
-  /** Laws without a joined draft, kundgemacht in the period's window, from each Land's `rowsFrom`. Newest first. */
+  /** Every law without a joined draft, kundgemacht in the period's window. Newest first. */
   items: LandLaw[]
   sources: LandLawSource[]
   /**

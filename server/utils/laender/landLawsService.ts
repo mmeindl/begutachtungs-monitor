@@ -46,7 +46,7 @@ import {
   lgblNrKey,
   materialsOf,
   routeOf,
-  rowsFrom,
+  registerCoversFrom,
   STATEMENT_LANDS,
   type DocSignal,
   type LawEntry,
@@ -102,7 +102,7 @@ interface LandRead {
   laws: LawEntry[]
   joins: Map<string, string> | null
   drafts: Parameters<typeof hasSimilarDraft>[2] | null
-  /** `rowsFrom`: from this day the register covers a law; null where nothing is known. */
+  /** `registerCoversFrom`: from this day the register covers a law; null where nothing is known. */
   coversFrom: string | null
 }
 
@@ -134,14 +134,15 @@ function classifyEntry(land: LandCode, e: LawEntry, read: LandRead, signal: (url
 
 /**
  * The laws of one Land kundgemacht in `window`, as rows: those without a
- * joined draft, from the day its register reaches (`rowsFrom`). Throws
+ * joined draft — every one of them; the register's reach (`registerCoversFrom`)
+ * decides only what the row and the page may say about a draft. Throws
  * where the index or the register could not be read — then nothing about
  * that Land's laws is known, and its state says so.
  */
 async function readLandWindow(land: LandCode, window: { from: string; to: string | null }): Promise<{ items: LandLaw[]; source: LandLawSource; tally: Record<string, number> }> {
   const [index, { drafts, joins }] = await Promise.all([fetchLgblIndex(land), landJoins(land)])
   const laws = index.filter(isLawEntry).filter((e) => e.datum >= window.from && (window.to === null || e.datum <= window.to))
-  const from = rowsFrom(drafts)
+  const from = registerCoversFrom(drafts)
   const read: LandRead = { laws, joins, drafts, coversFrom: from }
   const urls = new Map<string, Promise<DocSignal>>()
   for (const e of laws) {
@@ -160,7 +161,7 @@ async function readLandWindow(land: LandCode, window: { from: string; to: string
     const cls = c.begutachtung.kind === 'consulted' ? `consulted-${c.begutachtung.by}` : c.begutachtung.kind === 'none' ? 'none' : `silent-${c.begutachtung.reason}`
     tally[cls] = (tally[cls] ?? 0) + 1
     const isRow = c.begutachtung.kind !== 'consulted' || c.begutachtung.by !== 'draft'
-    if (!isRow || from === null || e.datum < from) continue
+    if (!isRow) continue
     const law = landLawOf(land, e, c.begutachtung, covers(read, e))
     if (law) items.push(law)
   }
@@ -169,7 +170,7 @@ async function readLandWindow(land: LandCode, window: { from: string; to: string
     source: {
       land,
       state: 'ok',
-      rowsFrom: from,
+      registerCoversFrom: from,
       ...(STATEMENT_LANDS.has(land) ? { statements: pending ? 'pending' : failed ? 'unread' : 'complete' } : {}),
     },
     tally,
@@ -178,7 +179,7 @@ async function readLandWindow(land: LandCode, window: { from: string; to: string
 
 /** Every Land's rows for a period's window (`/api/laender/gesetze`), each Land on its own: one failing takes only its rows. */
 export async function readLandLaws(gp: string, window: { from: string; to: string | null } | null, lands: readonly LandCode[] = LAND_CODES): Promise<LandLawsResponse> {
-  if (!window) return { gp, items: [], sources: lands.map((land) => ({ land, state: 'ok', rowsFrom: null })), tally: {} }
+  if (!window) return { gp, items: [], sources: lands.map((land) => ({ land, state: 'ok', registerCoversFrom: null })), tally: {} }
   const results = await Promise.allSettled(lands.map((land) => readLandWindow(land, window)))
   const items: LandLaw[] = []
   const tally: LandLawsResponse['tally'] = {}
@@ -190,7 +191,7 @@ export async function readLandLaws(gp: string, window: { from: string; to: strin
       return r.value.source
     }
     console.warn(`[laender] Gesetze ${land} nicht abrufbar:`, r.reason instanceof Error ? r.reason.message : r.reason)
-    return { land, state: 'unavailable', rowsFrom: null }
+    return { land, state: 'unavailable', registerCoversFrom: null }
   })
   items.sort((a, b) => b.date.localeCompare(a.date) || b.year - a.year || b.number - a.number)
   return { gp, items, sources, tally }
@@ -277,7 +278,7 @@ export async function readLandLawPage(land: LandCode, year: number, number: numb
   const urls = new Map<string, Promise<DocSignal>>()
   for (const url of docsNeeded(land, e, draftId !== null)) urls.set(url, landDocSignal(url))
   const signals = urls.size ? await settleWithin(urls, PAGE_SIGNAL_BUDGET_MS) : new Map<string, Read<DocSignal>>()
-  const read: LandRead = { laws: [e], joins: joined?.joins ?? null, drafts: joined?.drafts ?? null, coversFrom: joined ? rowsFrom(joined.drafts) : null }
+  const read: LandRead = { laws: [e], joins: joined?.joins ?? null, drafts: joined?.drafts ?? null, coversFrom: joined ? registerCoversFrom(joined.drafts) : null }
   const { begutachtung } = classifyEntry(land, e, read, (url) => signals.get(url))
   const law = landLawOf(land, e, begutachtung, joined ? covers(read, e) : null)
   if (!law) return null

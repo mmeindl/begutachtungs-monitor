@@ -19,7 +19,7 @@ import {
   lgblNrKey,
   materialsOf,
   routeOf,
-  rowsFrom,
+  registerCoversFrom,
   titleDecisionDate,
   type LawFacts,
   type LgblLawMeta,
@@ -155,8 +155,8 @@ describe('the law and its row', () => {
 
   it('rows start where the register reaches two years before', () => {
     const d = (startedAt: string | null, kind: 'gesetz' | 'verordnung' = 'gesetz') => ({ id: 'x', land: 'sbg', kind, title: '', startedAt, deadline: null, url: '', documents: [], active: false }) as LandConsultation
-    expect(rowsFrom([d('2004-03-01'), d('2010-01-01'), d('2001-01-01', 'verordnung')])).toBe('2006-03-01')
-    expect(rowsFrom([d(null)])).toBeNull()
+    expect(registerCoversFrom([d('2004-03-01'), d('2010-01-01'), d('2001-01-01', 'verordnung')])).toBe('2006-03-01')
+    expect(registerCoversFrom([d(null)])).toBeNull()
   })
 
   it('a similar draft before the Beschluss, within two years', () => {

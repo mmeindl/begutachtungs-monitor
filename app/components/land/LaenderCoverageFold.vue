@@ -48,11 +48,11 @@ const rows = computed(() => LAND_CODES.map((land: LandCode) => {
            rows begin, and why some Länder have none. -->
       <p>
         Ein Landesgesetz, dem kein Entwurf des Landes zugeordnet ist, steht hier
-        mit seiner Kundmachung – aber nur, wo das Land seine Entwürfe zwei
-        Jahre vor dem Gesetz noch zeigt. Wo es sie früher abnimmt
-        (Niederösterreich, Vorarlberg, Wien und die Gesetze Tirols), stünde
-        sonst fast jedes Gesetz ohne Entwurf da; ihre Gesetze haben eine
-        eigene Seite, aber keine Zeile. Ob es eine Begutachtung gab, sagt die
+        mit seiner Kundmachung. „Ohne zugeordneten Entwurf“ heißt es nur, wo
+        das Land seine Entwürfe zwei Jahre vor dem Gesetz noch zeigt; wo es
+        sie früher abnimmt (Niederösterreich, Vorarlberg, Wien und die Gesetze
+        Tirols), steht es als „Landesgesetz“, weil ein Entwurf es gegeben
+        haben kann. Ob es eine Begutachtung gab, sagt die
         Zeile nur für Salzburg: Dort berichten die Erläuterungen der
         Regierungsvorlage darüber. Die Unterlagen der anderen Landtage liest
         der Monitor für diese Frage nicht.

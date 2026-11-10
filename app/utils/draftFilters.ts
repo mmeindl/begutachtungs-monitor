@@ -430,7 +430,7 @@ export function draftCountLabel(c: {
    * term — the same claim, wherever the law was made —, the rest are counted
    * as what they are, laws without an assigned draft, claiming nothing.
    */
-  landLaws?: readonly Pick<LandLaw, 'begutachtung'>[]
+  landLaws?: readonly Pick<LandLaw, 'begutachtung' | 'registerCovers'>[]
   /** The RIS half, counted per kind; `failed`, or null where it is not
    *  asked for. */
   ris: Partial<Record<RisConsultationKind, number>> | 'failed' | null
@@ -481,12 +481,17 @@ export function draftCountLabel(c: {
    * is no draft, and only a law whose every check ran stands in the list —
    * so each addition holds for every row it counts by construction. */
   const landNone = c.landLaws?.filter((l) => l.begutachtung.kind === 'none').length ?? 0
-  const landOther = (c.landLaws?.length ?? 0) - landNone
+  /* Where the register does not reach back, „ohne zugeordneten Entwurf"
+   * would say what nobody can see: a plain count of its own, never added
+   * to the other (second round, 10.11.2026). */
+  const landPlain = c.landLaws?.filter((l) => l.begutachtung.kind !== 'none' && l.registerCovers !== true).length ?? 0
+  const landOther = (c.landLaws?.length ?? 0) - landNone - landPlain
   const lawsNone = (c.laws?.filter((l) => l.consultation === 'none').length ?? 0) + landNone
   const lawsCommittee = c.laws?.filter((l) => l.consultation === 'committee').length ?? 0
   if (lawsNone) parts.push(`${countLabelDe(lawsNone, 'Gesetz', 'Gesetze')} ohne Begutachtung`)
   if (lawsCommittee) parts.push(`${countLabelDe(lawsCommittee, 'Gesetz', 'Gesetze')} mit Ausschussbegutachtung`)
   if (landOther) parts.push(`${countLabelDe(landOther, 'Landesgesetz', 'Landesgesetze')} ohne zugeordneten Entwurf`)
+  if (landPlain) parts.push(countLabelDe(landPlain, 'Landesgesetz', 'Landesgesetze'))
   /* Something was asked for and nothing came: one zero, in the Art's noun. */
   const asked = c.me !== null || ris !== null || (c.laender !== null && c.laender !== undefined) || c.laws !== undefined || c.landLaws !== undefined
   if (!parts.length && asked) parts.push(EMPTY_TERM[art])
