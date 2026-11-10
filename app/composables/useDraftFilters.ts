@@ -19,7 +19,7 @@ import {
   draftFiltersFromQuery,
   draftUrlQuery,
   sameDraftFilters,
-  coherentArt,
+  coherentFilters,
 } from '~/utils/draftFilters'
 import { SOURCE_PARAM } from '#shared/utils/laender'
 
@@ -108,7 +108,7 @@ export function useDraftFilters(): DraftFilters {
 
   /* An Art the new state does not offer reads as „Alle Arten" — the chip
    * „Ohne Ministerialentwurf" has its own two (`coherentArt`, 10.11.2026). */
-  watch(begutachtung, (b) => { art.value = coherentArt(art.value, b) })
+  watch(begutachtung, (b) => { art.value = coherentFilters({ art: art.value, ministry: ministry.value }, b, false).art })
 
   // Keep the URL in sync with the filters (defaults stay out of the URL).
   /* `quellen` is not this list's filter but the site's choice of sources

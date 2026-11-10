@@ -110,6 +110,26 @@ export function coherentArt(art: ArtFilter, begutachtung: BegutachtungFilter): A
   return artOptionsFor(begutachtung).some((o) => o.value === art) ? art : ''
 }
 
+/** Why the Ressort select is unavailable under the chip (`coherentFilters`). */
+export const OHNE_MINISTRY_REASON = 'Gesetze ohne Ministerialentwurf sind keinem Ressort zugeordnet'
+
+/**
+ * The one rule for what the chip „Ohne Ministerialentwurf" takes from the
+ * other filters (10.11.2026): the Art it does not offer (`coherentArt`), and
+ * the Ressort — its rows carry none, so a Ressort could only empty the list,
+ * and a per-ministry filter over them would be the ranking by ministry this
+ * product does not make. Only while the chip applies (`chipApplies`: on, and
+ * not unavailable for the period or the sources); turning it off restores
+ * nothing.
+ */
+export function coherentFilters<T extends { art: ArtFilter; ministry: string }>(
+  f: T,
+  begutachtung: BegutachtungFilter,
+  chipApplies: boolean = begutachtung === 'ohne',
+): T {
+  return { ...f, art: coherentArt(f.art, begutachtung), ministry: begutachtung === 'ohne' && chipApplies ? '' : f.ministry }
+}
+
 /** The Art the draft halves are asked for: a draft kind, or none — the
  *  chip's two values are no instrument kind `/api/ris-drafts` knows. */
 export function draftKindArt(art: ArtFilter): '' | 'gesetz' | 'verordnung' {

@@ -7,6 +7,7 @@ import {
   artOptionsFor,
   begutachtungGapReason,
   coherentArt,
+  coherentFilters,
   draftKindArt,
   draftApiQuery,
   draftCountLabel,
@@ -428,5 +429,26 @@ describe('the Art under „Ohne Ministerialentwurf" (10.11.2026)', () => {
     expect(activeFilterChips({ status: 'all', art: 'vorlage', gp: '', ministry: '' })).toEqual([{ key: 'art', label: 'Regierungsvorlagen' }])
     expect(activeFilterChips({ status: 'all', art: 'antrag', gp: '', ministry: '' })).toEqual([{ key: 'art', label: 'Initiativanträge' }])
     expect(draftCountLabel({ me: null, vorlagen: [], ris: null, laterStationsOnly: false, art: 'antrag', laws: [] })).toBe('0 Initiativanträge')
+  })
+})
+
+describe('the Ressort under „Ohne Ministerialentwurf" (10.11.2026)', () => {
+  const f = { art: '' as const, ministry: 'BMF' }
+  it('is dropped while the chip applies — its rows carry no Ressort', () => {
+    expect(coherentFilters(f, 'ohne', true).ministry).toBe('')
+    // A link carrying both reads the same way once the chip applies.
+    expect(coherentFilters({ ...draftFiltersFromQuery({ begutachtung: 'ohne', ministry: 'BMF' }) }, 'ohne', true).ministry).toBe('')
+  })
+  it('stays where the chip does not apply: off, or unavailable for the period or the sources', () => {
+    expect(coherentFilters(f, '', false).ministry).toBe('BMF')
+    expect(coherentFilters(f, 'ohne', false).ministry).toBe('BMF')
+  })
+  it('is one rule with the Art: both in one pass, nothing restored when the chip goes off', () => {
+    expect(coherentFilters({ art: 'gesetz' as const, ministry: 'BMF' }, 'ohne', true)).toEqual({ art: '', ministry: '' })
+    expect(coherentFilters({ art: 'vorlage' as const, ministry: '' }, '', false)).toEqual({ art: '', ministry: '' })
+  })
+  it('leaves no Ressort among the active-filter chips once dropped', () => {
+    const dropped = coherentFilters({ status: 'all' as const, art: '' as const, gp: '', ministry: 'BMF' }, 'ohne', true)
+    expect(activeFilterChips(dropped)).toEqual([])
   })
 })

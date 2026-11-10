@@ -11,6 +11,8 @@ import {
 import { viewOfRow } from '~/utils/entryView'
 import {
   artOptionsFor,
+  coherentFilters,
+  OHNE_MINISTRY_REASON,
   type FilterChipKey,
   SEVERAL_STATIONS,
   type SortKey,
@@ -503,6 +505,16 @@ const ohneUnavailable = computed(() => {
 })
 const ohneApplied = computed(() => begutachtung.value === 'ohne' && !ohneUnavailable.value)
 
+/* While the chip applies, no Ressort (`coherentFilters`): one chosen before,
+ * or carried by a link, is dropped — from the state, and so from the URL. */
+watch([ohneApplied, ministry], ([applies]) => {
+  ministry.value = coherentFilters({ art: art.value, ministry: ministry.value }, begutachtung.value, applies).ministry
+}, { immediate: true })
+/* The Ressort select's reason where it cannot be used (`TokenSelect`). */
+const ministryUnavailable = computed(() =>
+  !bund.value ? 'Nur für Entwürfe des Bundes' : ohneApplied.value ? OHNE_MINISTRY_REASON : null,
+)
+
 /* The chip's count: the rows it would show for the period in view, once
  * the laws are there. */
 
@@ -891,13 +903,13 @@ const statementsSortNote = computed(() => {
                  where the search below ends; its names are the longest. -->
             <div class="min-w-0 md:flex-1">
               <label for="filter-ministry" class="sr-only">Ministerium</label>
-              <!-- Off with the Bund: a Land's draft has no Ministerium. -->
+              <!-- Off with the Bund: a Land's draft has no Ministerium; and
+                   under the chip „Ohne Ministerialentwurf" its rows carry none. -->
               <TokenSelect
                 id="filter-ministry"
                 v-model="ministry"
                 block
-                :disabled="!bund"
-                :title="bund ? undefined : 'Nur für Entwürfe des Bundes'"
+                :unavailable="ministryUnavailable"
               >
                 <option value="">Alle Ministerien</option>
                 <option v-for="m in ministries" :key="m.code" :value="m.code">

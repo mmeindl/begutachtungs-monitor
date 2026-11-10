@@ -26,7 +26,19 @@ const model = defineModel<string>({ required: true })
  */
 /* `disabled` reaches the <select> itself (22.10.2026): attributes fall
  * through to the wrapper, and a disabled wrapper disables nothing. */
-defineProps<{ id?: string; block?: boolean; disabled?: boolean }>()
+const props = defineProps<{
+  id?: string
+  block?: boolean
+  disabled?: boolean
+  /**
+   * Why the select cannot be used here, or null/absent when it can — the
+   * `unavailable` of `ToggleChip` (10.11.2026): the select stays in place,
+   * keeps its value, cannot be changed, and states the reason as its title
+   * and, through `aria-describedby`, to assistive technology.
+   */
+  unavailable?: string | null
+}>()
+const reasonId = computed(() => (props.id ? `${props.id}-reason` : undefined))
 </script>
 
 <template>
@@ -39,11 +51,14 @@ defineProps<{ id?: string; block?: boolean; disabled?: boolean }>()
     <select
       :id="id"
       v-model="model"
-      :disabled="disabled"
+      :disabled="disabled || !!unavailable"
+      :title="unavailable ?? undefined"
+      :aria-describedby="unavailable ? reasonId : undefined"
       class="min-h-target w-full min-w-0 appearance-none truncate rounded-md border border-baseline bg-surface py-2 pl-3 pr-9 text-sm text-ink hover:border-hover-edge hover:bg-hover disabled:cursor-not-allowed disabled:border-dashed disabled:bg-page disabled:text-ink-muted disabled:hover:bg-page"
     >
       <slot />
     </select>
+    <span v-if="unavailable" :id="reasonId" class="sr-only">{{ unavailable }}</span>
     <UIcon
       name="i-lucide-chevron-down"
       class="pointer-events-none absolute right-3 top-1/2 size-4 -translate-y-1/2 text-ink-muted"
