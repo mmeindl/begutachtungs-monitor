@@ -254,7 +254,7 @@ useSeoMeta({
               <EntwurfFrame :laws="amendedLaws" />
               <template v-if="!isAntrag">
                 <PageSubsection v-if="showsAnnex" id="gegenueberstellung" heading="Was ändert der Entwurf?">
-                  <TextComparisonSection :gp="data.gp" :inr="data.inr" :api-base="url" :layers="false" />
+                  <TextComparisonSection :gp="data.gp" :inr="data.inr" :api-base="url" without-layers />
                 </PageSubsection>
                 <PageSubsection id="erlaeuterungen" heading="Was das Ressort begründet">
                   <ExplanationsSection :gp="data.gp" :inr="data.inr" :api-base="url" />

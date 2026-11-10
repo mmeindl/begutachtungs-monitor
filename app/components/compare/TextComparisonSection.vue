@@ -43,14 +43,20 @@ const props = defineProps<{
   gp?: string
   inr?: number
   risId?: string
+  /** The draft as its page cites it (`draftCitationDe`, or the type word and title of a RIS draft), for „Zitieren" at a §; without it no § is cited. */
+  citeAs?: string
   /**
    * The page of a Regierungsvorlage without a Begutachtung (10.11.2026): its
    * API base, and no Lesefassung and no new-law text — both are built from
    * the draft's RIS record, which such a Vorlage does not have, so the two
    * layers are not asked for and say nothing.
+   *
+   * An opt-OUT, because Vue casts an absent boolean prop to `false`: the
+   * first version was `layers?: boolean` read as `layers !== false`, which
+   * switched both layers off on every draft page that did not pass it.
    */
   apiBase?: string
-  layers?: boolean
+  withoutLayers?: boolean
 }>()
 
 /** `/api/drafts/XXVIII/40` or `/api/ris-drafts/BEGUT_…` — the section's two endpoints hang off it. */
@@ -86,7 +92,7 @@ const { data: explanations } = useExplanations(() => ({ gp: props.gp, inr: props
  */
 const { data: consolidated, status: consolidatedStatus } = await useFetch<ConsolidatedTextResponse>(
   () => `${base.value}/konsolidiert`,
-  { lazy: true, server: false, immediate: props.layers !== false },
+  { lazy: true, server: false, immediate: !props.withoutLayers },
 )
 
 /**
@@ -127,7 +133,7 @@ const enactedLaws = computed(() => new Set(explanations.value?.enactedLaws ?? []
  */
 const { data: enacted } = await useFetch<EnactedLawsResponse>(
   () => `${base.value}/neue-gesetze`,
-  { lazy: true, server: false, immediate: props.layers !== false },
+  { lazy: true, server: false, immediate: !props.withoutLayers },
 )
 
 /**
