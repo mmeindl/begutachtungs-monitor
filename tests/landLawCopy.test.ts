@@ -63,3 +63,12 @@ describe('the count line for Land laws (second round)', () => {
     })).toBe('1 Gesetz ohne Begutachtung · 1 Landesgesetz ohne zugeordneten Entwurf · 2 Landesgesetze')
   })
 })
+
+describe('landFassungFacts', () => {
+  it('says „noch nicht eingearbeitet" only while that is likely', async () => {
+    const { landFassungFacts } = await import('../app/utils/landLaw')
+    const empty = { bgbl: 'LGBl. Nr. 1/2026', laws: [], repealed: [] }
+    expect(landFassungFacts(empty, '2026-11-01', '2026-11-10')[0]!.text).toMatch(/noch nicht eingearbeitet/)
+    expect(landFassungFacts(empty, '2020-01-01', '2026-11-10')[0]!.text).toBe('Im RIS ist keine konsolidierte Fassung verzeichnet, die dieses Landesgesetzblatt nennt.')
+  })
+})

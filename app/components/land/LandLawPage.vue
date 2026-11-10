@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import type { LandCode, LandLawDetail } from '#shared/types'
+import type { BgblLawsResponse, LandCode, LandLawDetail } from '#shared/types'
 import type { Fact } from '~/components/ui/FactList.vue'
 import type { ComparisonId, StationId } from '~/utils/spine'
 import { landLawStations } from '~/utils/spine'
@@ -8,6 +8,8 @@ import { citeLineDe } from '#shared/utils/citations'
 import { formatDateDe } from '#shared/utils/format'
 import { risSource } from '#shared/utils/provenance'
 import { displayId } from '#shared/utils/unitName'
+import { fassungSources } from '~/utils/geltendeFassung'
+import { landFassungFacts } from '~/utils/landLaw'
 
 /**
  * A Landesgesetz without a draft in the Land's register (10.11.2026,
@@ -95,8 +97,11 @@ const reportName = computed(() => {
 const fromReport = computed(() => data.value?.procedureFrom === 'bericht')
 const steps = computed(() => (fromReport.value ? data.value!.procedure : []))
 
-/* The Artikel that name what they change („Artikel I – Änderung des …"); a number alone names nothing. */
-const namedArticles = computed(() => (data.value?.text ?? []).map((g) => g.article).filter((a): a is string => !!a && a.includes(' – ')))
+/* The laws it changed, at their geltende Fassung — lazy, client-side, as on
+   the Bund's page (`BgblStationSection`). */
+const { data: fassung, error: fassungError } = useFetch<BgblLawsResponse>(() => `${url.value}/geltende-fassung`, { lazy: true, server: false })
+const fassungRows = computed<Fact[]>(() => landFassungFacts(fassung.value, law.value?.date ?? null))
+const fassungCredits = computed(() => fassungSources(fassung.value))
 
 const lgblFacts: Fact[] = [{ key: 'kundmachung', title: 'Kundgemacht' }]
 
@@ -159,16 +164,25 @@ useSeoMeta({
               <!-- What it changes: the Artikel of a package name each law;
                    a law without Artikel names its law in the title — no
                    reader of ours derives more, and the page says so. -->
+              <!-- What it changed, created or repealed, each law at its
+                   geltende Fassung — as RIS's consolidation itself ties them
+                   to this Landesgesetzblatt (`landKonsLaws.ts`), never a name
+                   read off a title. Lazy, as on the Bund's page. -->
               <PageSubsection heading="Was das Gesetz ändert">
-                <ul v-if="namedArticles.length > 1" class="list-disc space-y-1 pl-5 text-sm text-ink">
-                  <li v-for="a in namedArticles" :key="a">{{ a }}</li>
-                </ul>
-                <p v-else class="text-sm text-ink-secondary">
-                  Welches Gesetz es ändert oder erlässt, steht in seinem Titel; eine eigene Aufstellung leitet der Monitor für Landesgesetze nicht ab.
+                <div v-if="fassung">
+                  <FactList :facts="fassungRows">
+                    <template v-if="fassung.laws.length" #value-fassung>
+                      <GeltendeFassungList :laws="fassung.laws" noun="Gesetze" />
+                    </template>
+                  </FactList>
+                  <SectionCredits v-if="fassungCredits.length" :sources="fassungCredits" :marked="false">
+                    <span v-if="fassung.laws.length">Verlinkt in der heute geltenden Fassung</span>
+                  </SectionCredits>
+                </div>
+                <p v-else-if="fassungError" class="text-sm text-ink-secondary">
+                  Welche Gesetze es ändert, ist gerade nicht aus dem Rechtsinformationssystem abrufbar.
                 </p>
-                <p class="mt-3 text-sm text-ink-secondary">
-                  Die geltende Fassung der betroffenen Gesetze zeigt der Monitor für Landesgesetze nicht; sie steht im Rechtsinformationssystem.
-                </p>
+                <div v-else class="h-12 animate-pulse rounded-xl bg-hairline motion-reduce:animate-none" aria-hidden="true" />
               </PageSubsection>
               <FoldSection v-if="detail.text?.length" :heading="`Gesetzestext, wie kundgemacht (${detail.text.reduce((n, g) => n + g.units.length, 0)})`">
                 <div class="space-y-6 pb-2">

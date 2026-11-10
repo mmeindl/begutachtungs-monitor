@@ -33,6 +33,7 @@ import { createSlots } from '../upstream/slots'
 import { upstreamText } from '../upstream/fetch'
 import { fetchLgblIndex, lgblRecord, type LgblRecord } from './lgblIndex'
 import { lgblUnits } from './landLawDiff'
+import { landLawsOfLgbl } from './landKonsLaws'
 import { landJoins } from './sources'
 import { pdfPages, TEXT_POLICY } from './texts/read'
 import { salzburgLandtag } from './texts/salzburgLandtag'
@@ -338,3 +339,14 @@ export function lawAsDraftDetail(d: LandLawDetail): LandDraftDetail {
     comparisons: d.comparisons,
   }
 }
+
+/**
+ * The laws a Landesgesetzblatt changed, created or repealed, at their
+ * geltende Fassung (`landKonsLaws.ts`) — a day in the derived layer, as the
+ * Bund's (`readBgblLaws`): an empty answer (RIS has not consolidated yet) is
+ * an answer for that long and no longer; a failure throws and is not stored.
+ */
+export const readLandKonsLaws = defineCachedFunction(
+  (land: LandCode, nr: string) => landLawsOfLgbl(land, nr),
+  { name: 'land-kons-gesetze', base: DERIVED_CACHE, getKey: (land: LandCode, nr: string) => `${land}-${nr.replace(/\D+/g, '-')}`, maxAge: 60 * 60 * 24, swr: false },
+)

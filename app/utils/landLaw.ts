@@ -9,7 +9,8 @@
  * as prominent as the rest — a Vorlage that reports its Begutachtung is an
  * ordinary, ink station.
  */
-import type { LandCode, LandLaw } from '#shared/types'
+import type { BgblLawsResponse, LandCode, LandLaw } from '#shared/types'
+import { fassungFacts, type FassungFact } from './geltendeFassung'
 
 /**
  * Why a draft may have existed and is no longer to be seen, where the
@@ -66,4 +67,22 @@ export function landLawBegutachtungFacts(law: Pick<LandLaw, 'land' | 'route' | '
       }
   }
   return unknown('kein Beleg')
+}
+
+/** How long RIS's consolidation may trail a Kundmachung before „noch nicht eingearbeitet" stops being the likely reading. */
+const CONSOLIDATION_DAYS = 60
+
+/**
+ * The Bund's three cases (`fassungFacts`) for a Landesgesetz — with one
+ * difference: a law RIS has not consolidated after two months may never
+ * be (a Landesverfassungsgesetz, a law RIS keeps outside LrKons), and
+ * „folgt mit einigen Tagen Verzug" would then promise what does not come.
+ * Then the fact says only what the search found: nothing.
+ */
+export function landFassungFacts(fassung: BgblLawsResponse | null | undefined, kundgemacht: string | null, today: string = new Date().toISOString().slice(0, 10)): FassungFact[] {
+  const facts = fassungFacts(fassung, 'Gesetze')
+  const old = kundgemacht !== null && Date.parse(today) - Date.parse(kundgemacht) > CONSOLIDATION_DAYS * 86_400_000
+  return facts.map((f) => (f.key === 'fassung' && f.text && old
+    ? { ...f, text: 'Im RIS ist keine konsolidierte Fassung verzeichnet, die dieses Landesgesetzblatt nennt.' }
+    : f))
 }
