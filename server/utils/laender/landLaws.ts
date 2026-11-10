@@ -29,7 +29,7 @@
  * outcome this layer can produce, a missing one costs a sentence.
  */
 import type { LandCode, LandConsultation, LandLaw, LandLawBegutachtung, LandLawLinkedDoc, LandLawRoute } from '#shared/types'
-import { safeExternalUrl } from '#shared/utils/safeExternalUrl'
+import { isSafeLinkHref, safeExternalUrl } from '#shared/utils/safeExternalUrl'
 import { lgblWords, type LgblEntry } from './lgblSearch'
 
 /** The two RIS types that are laws; Verordnungen and Kundmachungen have no Landtag. */
@@ -79,7 +79,9 @@ export function lawMetaOf(m: any): LgblLawMeta {
     ausschuss: str(a.Ausschussbericht),
     ausschussUrl: link(a.AusschussberichtLink),
     materialien: str(a.Materialien),
-    materialienUrl: link(a.MaterialienLink),
+    // Only ever a link for the reader, never fetched: the scheme is checked,
+    // not the server's host list (Niederösterreich's Landtag is not on it).
+    materialienUrl: isSafeLinkHref(str(a.MaterialienLink)) ? str(a.MaterialienLink) : null,
   }
 }
 
@@ -95,7 +97,8 @@ const STMK_ROUTE_RE = /\b(RV|IA)\s+EZ\s+(\d+\/\d+)/
  */
 export function routeOf(land: LandCode, meta: LgblLawMeta): LandLawRoute | null {
   if (meta.vorlage || meta.vorlageUrl) {
-    return { kind: 'vorlage', number: wienLabel(meta.vorlage), url: meta.vorlageUrl }
+    // Kärnten's link (eight laws of 2023) is the year's list of Vorlagen, not this one.
+    return { kind: 'vorlage', number: wienLabel(meta.vorlage), url: land === 'ktn' ? null : meta.vorlageUrl }
   }
   if (meta.antrag || meta.antragUrl) {
     return { kind: 'antrag', number: wienLabel(meta.antrag), url: meta.antragUrl }

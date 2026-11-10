@@ -215,7 +215,7 @@ useSeoMeta({
                       {{ detail.law.route.kind === 'vorlage' ? 'Die Regierungsvorlage' : 'Der Initiativantrag' }} ist im RIS nicht verlinkt.
                     </p>
                     <p v-if="!detail.law.route" class="text-ink-secondary">
-                      Ob das Gesetz als Regierungsvorlage oder als Initiativantrag in den Landtag kam, nennt das RIS {{ land === 'w' ? 'nur bei Initiativanträgen' : 'für dieses Land nicht' }}.
+                      Ob das Gesetz als Regierungsvorlage oder als Initiativantrag in den Landtag kam, nennt das RIS {{ land === 'w' ? 'nur bei Initiativanträgen' : 'für dieses Gesetz nicht' }}.
                     </p>
                   </template>
                   <template #value-ausschuss>

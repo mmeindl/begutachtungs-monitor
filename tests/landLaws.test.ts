@@ -120,6 +120,7 @@ describe('routeOf and materialsOf', () => {
     expect(routeOf('stmk', meta({ materialien: 'XIX. GPStLT IA EZ 1498/1 AB EZ 1498/2' }))).toEqual({ kind: 'antrag', number: 'EZ 1498/1', url: null })
     expect(routeOf('stmk', meta({ materialien: 'XIX. GPStLT RV EZ 1409/1 AB EZ 1409/3' }))).toEqual({ kind: 'vorlage', number: 'EZ 1409/1', url: null })
     expect(routeOf('ktn', meta())).toBeNull()
+    expect(routeOf('ktn', meta({ vorlage: 'Materialien zur RV; 1. Sitzg. d. Ktn. LReg', vorlageUrl: 'https://www.ktn.gv.at/Verwaltung/Regierungsvorlagen%202023' }))).toEqual({ kind: 'vorlage', number: null, url: null })
   })
 
   it('offers the Landtag item only where the link lands on it', () => {
