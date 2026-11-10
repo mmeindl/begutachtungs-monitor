@@ -112,7 +112,7 @@ export const getVorlageExplanations = defineCachedFunction(
     // Whether the ressort headed an Allgemeiner Teil — the section says
     // whether it shows a named part or our reading of the document.
     const labelled = /Allgemeiner\s+Teil/i.test(stripHtmlToText(text))
-    const doc = explanationsDocumentOfHtml(parseExplanationsHtml(text), labelled)
+    const doc = explanationsDocumentOfHtml(parseExplanationsHtml(text, { generalAsHeaded: true }), labelled)
     if (!doc.general) {
       return emptyExplanations(
         'Die Erläuterungen dieser Regierungsvorlage heben keinen Allgemeinen Teil hervor. Was das Ressort schreibt, steht im Dokument selbst.',

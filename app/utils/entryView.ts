@@ -557,7 +557,7 @@ export function viewOfVorlage(v: OpenVorlage): EntryView {
     ministry: null,
     coMinistries: [],
     alias: null,
-    note: c.kind === 'none' ? 'ohne Begutachtung' : null,
+    note: c.kind === 'none' ? 'ohne Begutachtung' : c.kind === 'committee' ? 'Ausschussbegutachtung' : null,
     // A Vorlage carries no EU fact in the list; its draft's page has one.
     eu: null,
     // „Neu: Regierungsvorlage" although zone 2 already says
@@ -649,7 +649,8 @@ export function viewOfLaw(law: LawWithoutBegutachtung): EntryView {
     ministry: null,
     coMinistries: [],
     alias: null,
-    note: 'ohne Begutachtung',
+    // The row's class (10.11.2026): never both notes on one row.
+    note: law.consultation === 'committee' ? 'Ausschussbegutachtung' : 'ohne Begutachtung',
     eu: null,
     newLabel: stationNewLabel('bgbl', law.bgblDate),
     participation: { kind: 'unasked' },

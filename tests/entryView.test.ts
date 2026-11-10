@@ -522,6 +522,8 @@ function law(overrides: Partial<LawWithoutBegutachtung> = {}): LawWithoutBegutac
     bgblDate: '2026-03-31',
     item: { kind: 'antrag', gp: 'XXVIII', inr: 667, citation: '667/A', parliamentUrl: 'https://www.parlament.gv.at/gegenstand/XXVIII/A/667' },
     title: 'Allgemeines Sozialversicherungsgesetz u.a., Änderung',
+    consultation: 'none',
+    committee: null,
     decidedAt: '2026-02-25',
     ...overrides,
   }
@@ -542,6 +544,16 @@ describe('viewOfLaw — a law without a Begutachtung', () => {
     const rv = viewOfLaw(law({ item: { kind: 'rv', gp: 'XXVIII', inr: 253, citation: '253 d.B.', parliamentUrl: 'https://www.parlament.gv.at/gegenstand/XXVIII/I/253' } }))
     expect(rv.kindLabel).toBe('Regierungsvorlage')
     expect(rv.citation).toBe('253 d.B.')
+  })
+
+  it('says „Ausschussbegutachtung" where the committee consulted, never „ohne Begutachtung" (10.11.2026)', () => {
+    const v = viewOfLaw(law({ consultation: 'committee', committee: { committee: 'Ausschuss für innere Angelegenheiten', date: '2025-09-04', invited: 58 } }))
+    expect(v.note).toBe('Ausschussbegutachtung')
+    expect(v.to).toBe('/entwuerfe/XXVIII/antrag/667')
+    expect(viewOfLaw(law()).note).toBe('ohne Begutachtung')
+    const open = viewOfVorlage(vorlage({ consultation: { kind: 'committee' } }))
+    expect(open.note).toBe('Ausschussbegutachtung')
+    expect(open.to).toBe('/entwuerfe/XXVIII/vorlage/594')
   })
 
   it('links to the item’s own page (10.11.2026)', () => {

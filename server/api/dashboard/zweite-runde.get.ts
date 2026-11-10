@@ -88,6 +88,9 @@ export default defineEventHandler(async (): Promise<DashboardSecondRound> => {
          * never says „ohne Begutachtung" and is not cross-checked — it says
          * nothing, like a Vorlage with a plausible draft. */
         const exempt = !me && budgetExemptReason(gp, [{ ityp: 'I', inr: v.inr }], [v.title]) !== null
+        // The committee's own consultation, from the same record: such a
+        // Vorlage went through a Begutachtung, if not the ministry's.
+        const committee = !me && !exempt && readCommitteeConsultation(detail.content?.phase) !== null
         return {
           citation: v.citation,
           title: v.title,
@@ -98,7 +101,9 @@ export default defineEventHandler(async (): Promise<DashboardSecondRound> => {
             ? { kind: 'draft' as const, gp: String(me.gp_code), inr: Number(me.inr) }
             : exempt
               ? { kind: 'unknown' as const }
-              : { kind: 'unresolved' as const },
+              : committee
+                ? { kind: 'committee' as const }
+                : { kind: 'unresolved' as const },
         }
       } catch {
         // Per-item tolerance, as in the outcomes section: one failing

@@ -20,7 +20,7 @@
  * Either way the answer is incomplete and stays in the cache for minutes,
  * not hours (`keepIncompleteFor`).
  */
-import type { LawWithoutBegutachtung, LawsWithoutBegutachtung, LawsWithoutBegutachtungGap } from '#shared/types'
+import type { CommitteeConsultation, LawWithoutBegutachtung, LawsWithoutBegutachtung, LawsWithoutBegutachtungGap } from '#shared/types'
 import { ANTRAG_PARTIAL, ANTRAG_PATHS } from '#shared/utils/antragPathTable'
 import { chainCoverageOf, mayClaimOutcome } from '#shared/utils/draftStations'
 import { gpHasEnded, previousGp } from '#shared/utils/gp'
@@ -28,10 +28,12 @@ import { todayIso } from '#shared/utils/format'
 import { DERIVED_CACHE } from '../cache/base'
 import { keepIncompleteFor, type Gathered } from '../cache/gathered'
 import { settleWithinBudget } from '../http/budget'
-import { getAntraegeForGp, getDraftsForGp, getVorlagenForGp } from '../parliament/drafts'
+import { getAntraegeForGp, getDraftsForGp, getGegenstand, getVorlagenForGp } from '../parliament/drafts'
 import { getStationMapForGp } from '../parliament/stationMap'
 import { getBgblTeil1Year } from './bgblService'
-import { classifySkippedLaws, yearsOfPeriod, type ParliamentItem } from './skippedLaws'
+import { classifySkippedLaws, refineByCommittee, yearsOfPeriod, type CarryingItem, type ParliamentItem } from './skippedLaws'
+import { readCommitteeConsultation } from '../parliament/detailJson'
+import { mapWithConcurrency } from '../pool'
 
 /** Six hours, the station map's lifetime: a law arrives a few times a week. */
 const SKIPPED_TTL_S = 60 * 60 * 6
@@ -53,6 +55,17 @@ const PENDING_TTL_MS = 5_000
  * chip must not wait that long — the build carries on and fills the cache.
  */
 const STATION_MAP_BUDGET_MS = 2_500
+
+/**
+ * The committee check (10.11.2026): one detail record per `none` candidate
+ * (67 in GP XXVIII, ~340 in XXVII), through the Gegenstand leaf cache, four
+ * at a time like the station maps' detail reads. Within the same budget as a
+ * station map; past it the answer is `pending` — not stored, the page asks
+ * again — and the reads go on filling the leaf cache, so the next request
+ * finds them warm.
+ */
+const COMMITTEE_BUDGET_MS = 2_500
+const COMMITTEE_CONCURRENCY = 4
 
 /** The chains of a period, or why there are none: still building (`pending`) or failed. */
 async function chainsOf(gp: string): Promise<
@@ -130,9 +143,31 @@ const buildSkippedLaws = defineCachedFunction(
       drafts,
     })
 
+    // Every `none` against its carrying item's own Verlauf: a committee that
+    // invited written Stellungnahmen ran an Ausschussbegutachtung. A record
+    // that cannot be read leaves its law out (`refineByCommittee`).
+    const candidates = classified.flatMap((l) => (l.class.kind === 'none' ? [l.class.item] : []))
+    const keyOf = (item: CarryingItem) => `${item.kind}-${item.inr}`
+    const readings = await settleWithinBudget(
+      mapWithConcurrency(candidates, COMMITTEE_CONCURRENCY, async (item) => {
+        try {
+          const detail = await getGegenstand(gp, item.kind === 'rv' ? 'I' : 'A', item.inr)
+          return [keyOf(item), readCommitteeConsultation(detail.content?.phase)] as const
+        } catch {
+          return [keyOf(item), undefined] as const
+        }
+      }),
+      COMMITTEE_BUDGET_MS,
+    )
+    if (readings.state === 'pending') return unavailable(gp, 'pending', false)
+    if (readings.state === 'failed') return unavailable(gp, 'unread', false)
+    const consultations = new Map<string, CommitteeConsultation | null | undefined>(readings.value)
+    const refined = refineByCommittee(classified, (item) => consultations.get(keyOf(item)))
+    const unread = [...consultations.values()].some((c) => c === undefined)
+
     const items: LawWithoutBegutachtung[] = []
-    for (const { record, class: c } of classified) {
-      if (c.kind !== 'none') continue
+    for (const { record, class: c } of refined) {
+      if (c.kind !== 'none' && c.kind !== 'committee') continue
       const ityp = c.item.kind === 'rv' ? 'I' : 'A'
       items.push({
         bgblNumber: record.nummer,
@@ -146,13 +181,15 @@ const buildSkippedLaws = defineCachedFunction(
         },
         title: c.title,
         decidedAt: record.datumNationalrat,
+        consultation: c.kind,
+        committee: c.kind === 'committee' ? c.consultation : null,
       })
     }
     items.sort((a, b) => b.bgblDate.localeCompare(a.bgblDate) || b.bgblNumber.localeCompare(a.bgblNumber, 'de-AT', { numeric: true }))
 
     return {
       value: { gp, available: true, gap: null, items },
-      complete: vorlagen !== null && antraege !== null && drafts !== null,
+      complete: vorlagen !== null && antraege !== null && drafts !== null && !unread,
     }
   },
   {

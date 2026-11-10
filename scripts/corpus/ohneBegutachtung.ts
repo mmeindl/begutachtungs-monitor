@@ -29,14 +29,14 @@
  */
 import { readFile, mkdir } from 'node:fs/promises'
 import { join } from 'node:path'
-import type { DraftSummary } from '../../shared/types'
+import type { CommitteeConsultation, DraftSummary } from '../../shared/types'
 import { ANTRAG_PARTIAL, ANTRAG_PATHS } from '../../shared/utils/antragPathTable'
 import { previousGp } from '../../shared/utils/gp'
 import { todayIso } from '../../shared/utils/format'
-import { findRvLinks, parseStages, type RawStage } from '../../server/utils/parliament/detailJson'
+import { findRvLinks, parseStages, readCommitteeConsultation, type RawPhase, type RawStage } from '../../server/utils/parliament/detailJson'
 import { mapDraftRow } from '../../server/utils/parliament/list81'
 import { mapAntragRow, mapVorlageRow } from '../../server/utils/parliament/list101'
-import { bgblIKey, classifySkippedLaws, yearsOfPeriod, type ClassifiedLaw, type ParliamentItem } from '../../server/utils/ris/skippedLaws'
+import { bgblIKey, classifySkippedLaws, refineByCommittee, yearsOfPeriod, type ClassifiedLaw, type ParliamentItem } from '../../server/utils/ris/skippedLaws'
 import { PARLIAMENT, getJson } from '../lib/http'
 import { cachedJson } from '../lib/diskCache'
 import { fetchBgblRecords } from '../lib/corpus'
@@ -119,7 +119,26 @@ const chains = await pool(unique, CONCURRENCY, async (me) => {
 // 2. The production classification
 // ---------------------------------------------------------------------------
 
-const classified = classifySkippedLaws({ gp, records, chains, antragPaths: ANTRAG_PATHS, antragPartial: ANTRAG_PARTIAL, vorlagen, antraege, drafts })
+const firstPass = classifySkippedLaws({ gp, records, chains, antragPaths: ANTRAG_PATHS, antragPartial: ANTRAG_PARTIAL, vorlagen, antraege, drafts })
+
+// The committee check (10.11.2026): every `none` against its carrying item's
+// Verlauf, as the endpoint does it (`refineByCommittee`).
+const candidates = firstPass.flatMap((l) => (l.class.kind === 'none' ? [l.class.item] : []))
+console.error(`Lade ${candidates.length} Detaildatensätze der tragenden Gegenstände …`)
+const consultations = new Map<string, CommitteeConsultation | null | undefined>()
+await pool(candidates, CONCURRENCY, async (item) => {
+  const ityp = item.kind === 'rv' ? 'I' : 'A'
+  try {
+    const detail = await cachedJson<{ content?: { phase?: RawPhase[] } }>(
+      join(cacheDir, gp, `${ityp}-${item.inr}.json`),
+      () => getJson(`${PARLIAMENT}/gegenstand/${gp}/${ityp}/${item.inr}?json=True`, http),
+    )
+    consultations.set(`${item.kind}-${item.inr}`, readCommitteeConsultation(detail.content?.phase))
+  } catch {
+    consultations.set(`${item.kind}-${item.inr}`, undefined)
+  }
+})
+const classified = refineByCommittee(firstPass, (item) => consultations.get(`${item.kind}-${item.inr}`))
 
 const label = (c: ClassifiedLaw['class']): string =>
   c.kind === 'consulted' ? `consulted (${c.via})` : c.kind === 'unknown' ? `unknown (${c.reason})` : c.kind
@@ -142,6 +161,13 @@ say(`--- Alle ${none.length} Zeilen „ohne Begutachtung" ---`)
 for (const { record, class: c } of none) {
   if (c.kind !== 'none') continue
   say(`  ${record.nummer.padEnd(20)} ${record.datum}  ${c.item.citation.padEnd(10)} ${c.title}`)
+}
+const committee = classified.filter((c) => c.class.kind === 'committee')
+say()
+say(`--- Ausschussbegutachtung, kein Ministerialentwurf (${committee.length}) ---`)
+for (const { record, class: c } of committee) {
+  if (c.kind !== 'committee') continue
+  say(`  ${record.nummer.padEnd(20)} ${record.datum}  ${c.item.citation.padEnd(10)} ${(c.consultation.date ?? '').padEnd(10)} ${String(c.consultation.invited).padStart(3)} Stellen  ${c.title}`)
 }
 const exempt = classified.filter((c) => c.class.kind === 'exempt')
 say()
@@ -170,7 +196,7 @@ try {
 if (memo) {
   const memoClass = (r: SkippedRow) => (r.consulted ? 'consulted' : r.exemptReason ? 'exempt' : 'skipped')
   const oursClass = (c: ClassifiedLaw['class']) =>
-    c.kind === 'none' ? 'skipped' : c.kind === 'unknown' ? `unknown/${c.reason}` : c.kind
+    c.kind === 'none' || c.kind === 'committee' ? 'skipped' : c.kind === 'unknown' ? `unknown/${c.reason}` : c.kind
   const memoBy = new Map(memo.rows.map((r) => [`I ${r.bgbl.replace(/^I\s+/, '')}`, r]))
   const oursBy = new Map(classified.map((c) => [bgblIKey(c.record.nummer)!, c]))
 

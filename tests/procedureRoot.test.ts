@@ -10,6 +10,7 @@ import {
   parseVote,
 } from '../server/utils/parliament/detailJson'
 import { statementRowMatchesParent } from '../server/utils/parliament/list142'
+import { refineByCommittee } from '../server/utils/ris/skippedLaws'
 import { DRAFT_LAW_STATIONS, LAW_STATION_LABEL, itemLawScope, lawDiffScopeOf, lawDiffSteps } from '../shared/utils/lawStations'
 import { parliamentDocumentSource } from '../shared/utils/provenance'
 import { itypOfKind, meRoot, rootCitation, rootKey, vorlagePath } from '../shared/utils/procedureRoot'
@@ -127,5 +128,17 @@ describe('the comparison vocabulary of an item without a Begutachtung', () => {
   it('credits an Antrag’s text as a freies Werk, as a Vorlage’s — never CC BY', () => {
     expect(parliamentDocumentSource('Antragsfassung', 'antrag').terms).toBe('freies-werk')
     expect(parliamentDocumentSource('Ministerialentwurf', 'me').terms).toBe('keine-lizenz')
+  })
+})
+
+describe('refineByCommittee', () => {
+  const record = { nummer: 'BGBl. I Nr. 56/2025' } as never
+  const none = (inr: number) => ({ record, class: { kind: 'none' as const, item: { kind: 'antrag' as const, inr, citation: `${inr}/A` }, title: 'T' } })
+  const consultation = { committee: null, date: '2025-09-04', invited: 58 }
+  it('moves a law whose committee consulted, leaves the others, and says nothing where the record was not read', () => {
+    const out = refineByCommittee([none(1), none(2), none(3)], (item) => (item.inr === 1 ? consultation : item.inr === 2 ? null : undefined))
+    expect(out.map((l) => l.class.kind)).toEqual(['committee', 'none', 'unknown'])
+    expect(out[0]!.class).toMatchObject({ consultation })
+    expect(out[2]!.class).toEqual({ kind: 'unknown', reason: 'unchecked' })
   })
 })

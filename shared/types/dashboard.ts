@@ -1,3 +1,4 @@
+import type { CommitteeConsultation } from './statements'
 import type { DraftSummary } from './drafts'
 import type { LandCode, LandConsultation, LandSourceState } from './laender'
 
@@ -157,6 +158,10 @@ export interface OpenVorlage {
     | { kind: 'draft'; gp: string; inr: number }
     | { kind: 'none' }
     | { kind: 'unknown' }
+    /** No draft, but the Nationalrat's committee invited written
+     *  Stellungnahmen on it (Ausschussbegutachtung, 10.11.2026): the row says
+     *  „Ausschussbegutachtung", never „ohne Begutachtung". */
+    | { kind: 'committee' }
 }
 
 export interface DashboardSecondRound {
@@ -198,6 +203,16 @@ export interface LawWithoutBegutachtung {
   title: string
   /** The day of the Nationalrat's Beschluss, ISO; null where RIS carries none. */
   decidedAt: string | null
+  /**
+   * Which of the two classes under the chip „Ohne Ministerialentwurf" the
+   * row is (10.11.2026): `none` — no Begutachtung at all, the note „ohne
+   * Begutachtung"; `committee` — no draft, but the Nationalrat's committee
+   * itself invited written Stellungnahmen, the note „Ausschussbegutachtung".
+   * Never both: one is a claim the other would contradict.
+   */
+  consultation: 'none' | 'committee'
+  /** The committee's decision, where `consultation` is `committee`; null otherwise. */
+  committee: CommitteeConsultation | null
 }
 
 /**

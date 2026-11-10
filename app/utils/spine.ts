@@ -896,6 +896,13 @@ export function vorlageStatusDe(d: VorlageDetail, today: string = todayIso()): s
   return enactmentStatusDe(d, today)
 }
 
+/** The Parlament station with Parliament's own word for a committee's
+ *  consultation, „Ausschussbegutachtung", leading its facts (10.11.2026). */
+function withCommitteeFact(later: [Station, Station], consulted: boolean): [Station, Station] {
+  const [parlament, bgbl] = later
+  return consulted ? [{ ...parlament, facts: ['Ausschussbegutachtung', ...parlament.facts] }, bgbl] : later
+}
+
 /** What only the page's lazy requests can tell `vorlageStations`. */
 export interface VorlageStationContext {
   createsNewLaw?: boolean
@@ -940,7 +947,10 @@ export function vorlageStations(d: VorlageDetail, ctx: VorlageStationContext = {
       facts: kept(d.arrivedAt ? formatDateDe(d.arrivedAt) : d.citation, changes, d.withoutBegutachtung ? 'ohne Begutachtung' : null, count),
       comparison: ctx.showsAnnex && !ctx.createsNewLaw ? { id: 'vorschlag', question: 'Was ändert der Entwurf?' } : null,
     },
-    ...laterStations({ enactment: d.enactment, textEvolution: d.textEvolution, gpEnded: d.gpEnded, active: false, antragPath: null }, today),
+    ...withCommitteeFact(
+      laterStations({ enactment: d.enactment, textEvolution: d.textEvolution, gpEnded: d.gpEnded, active: false, antragPath: null }, today),
+      d.committeeConsultation !== null,
+    ),
   ]
 }
 

@@ -250,6 +250,8 @@ const law = (o: Partial<LawWithoutBegutachtung> = {}): LawWithoutBegutachtung =>
   bgblDate: '2026-03-31',
   item: { kind: 'antrag', gp: 'XXVIII', inr: 667, citation: '667/A', parliamentUrl: 'https://www.parlament.gv.at/gegenstand/XXVIII/A/667' },
   title: 'Allgemeines Sozialversicherungsgesetz u.a., Änderung',
+  consultation: 'none',
+  committee: null,
   decidedAt: '2026-02-25',
   ...o,
 })

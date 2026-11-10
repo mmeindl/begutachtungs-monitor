@@ -9,7 +9,7 @@
 import type { DraftDocument, EnactmentInfo, ProcedureRoot, VorlageDetail } from '../../../shared/types'
 import { gpHasEnded } from '../../../shared/utils/gp'
 import { parliamentItemUrl, rootCitation } from '../../../shared/utils/procedureRoot'
-import { mapDocuments, mapTextEvolution, type RawDocumentGroup } from './detailJson'
+import { mapDocuments, mapTextEvolution, readCommitteeConsultation, type RawDocumentGroup, type RawPhase } from './detailJson'
 import { groupVersionsByStation } from './draftDetailAssembly'
 import { stripHtmlToText } from './htmlText'
 
@@ -24,6 +24,7 @@ export interface VorlageContent {
   names?: { funktext?: string | null; frak_code?: string | null; ltext?: string | null }[] | null
   vote?: { result?: { code?: unknown; text?: unknown }[] | null } | null
   preconst?: { ityp?: string | null; gp_code?: string | null; inr?: number | string | null }[] | null
+  phase?: RawPhase[] | null
 }
 
 /**
@@ -131,6 +132,7 @@ export function assembleVorlageDetail(input: VorlageDetailInputs): VorlageDetail
   const documents = mapDocuments(content.documents)
   const enactment: EnactmentInfo = { ...input.enactment, rvTextUrl: firstTextPdf(root.ityp, documents) }
   const draft = root.ityp === 'I' ? draftOfPreconst(content.preconst) : null
+  const committeeConsultation = readCommitteeConsultation(content.phase)
   return {
     gp: root.gp,
     ityp: root.ityp,
@@ -149,7 +151,10 @@ export function assembleVorlageDetail(input: VorlageDetailInputs): VorlageDetail
       mapTextEvolution(content.statements?.documents).filter((v) => v.stationId === 'ausschuss' || v.stationId === 'plenum'),
     ),
     enactment,
-    withoutBegutachtung: input.withoutBegutachtung,
+    // The item's own record outranks the list: a committee consultation is a
+    // Begutachtung, so „ohne Begutachtung" is never said beside it.
+    withoutBegutachtung: input.withoutBegutachtung && committeeConsultation === null,
+    committeeConsultation,
     gpEnded: gpHasEnded(root.gp, currentGp),
     draftPath: draft ? `/entwuerfe/${draft.gp}/${draft.inr}` : null,
   }

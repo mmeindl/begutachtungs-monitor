@@ -1,4 +1,5 @@
 import type { DraftDocument } from './common'
+import type { CommitteeConsultation } from './statements'
 import type { EnactmentInfo } from './drafts'
 
 /**
@@ -66,6 +67,13 @@ export interface VorlageDetail {
    * nothing about it, neither way.
    */
   withoutBegutachtung: boolean
+  /**
+   * The committee's own consultation, read from the item's Verlauf
+   * (`readCommitteeConsultation`) — an Ausschussbegutachtung. Where it is
+   * there, `withoutBegutachtung` is false whatever the list says, and the
+   * page states this instead (10.11.2026).
+   */
+  committeeConsultation: CommitteeConsultation | null
   /** The item's Gesetzgebungsperiode is over. */
   gpEnded: boolean
   /** A Vorlage whose record names its Ministerialentwurf (`preconst`): the

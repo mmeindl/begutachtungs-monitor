@@ -65,3 +65,23 @@ describe('the Erläuterungen of a Vorlage among its documents', () => {
     expect(explanationsGroup([doc('Gesetzestext, Vorblatt und Erläuterungen')])).toBeNull()
   })
 })
+
+describe('an address heading inside a headed Allgemeiner Teil (589 d.B., 10.11.2026)', () => {
+  const page = html('XXVIII-I-589-erlaeuterungen.html')
+  it('stays in the general part where that part is shown', () => {
+    const general = parseExplanationsHtml(page, { generalAsHeaded: true }).general
+    expect(general.some((t) => t.startsWith('Zur Sicherstellung der Maßnahmen'))).toBe(true)
+    expect(general.length).toBeGreaterThan(2)
+  })
+  it('leaves the reasoning comparison’s reading as it was measured', () => {
+    expect(parseExplanationsHtml(page).general).toEqual(['Erläuterungen', 'Hauptgesichtspunkte des Entwurfes:'])
+  })
+})
+
+describe('the document title in the general part', () => {
+  it('is not printed as its first paragraph', () => {
+    const doc = explanationsDocumentOfHtml({ general: ['Erläuterungen', 'Hauptgesichtspunkte des Entwurfes:', 'Text'], special: [] }, true)
+    expect(doc.general?.passages[0]?.text).toEqual(['Hauptgesichtspunkte des Entwurfes:', 'Text'])
+    expect(explanationsDocumentOfHtml({ general: ['Erläuterungen'], special: [] }, true).general).toBeNull()
+  })
+})

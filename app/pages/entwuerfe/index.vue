@@ -17,6 +17,7 @@ import {
   activeFilterChips,
   begutachtungGapReason,
   draftCountLabel,
+  ohneChipCount,
   stationTabsFor,
 } from '~/utils/draftFilters'
 import { matchesQuery } from '#shared/utils/textMatch'
@@ -144,7 +145,7 @@ function toggleEu(): void {
   eu.value = eu.value ? '' : 'umsetzung'
 }
 
-/* „Ohne Begutachtung" (§12.68): the chip beside it — see `ohneApplied`. */
+/* „Ohne Ministerialentwurf" (§12.68, chip „Ohne Begutachtung" until 10.11.2026): the chip beside it — see `ohneApplied`. */
 function toggleBegutachtung(): void {
   if (ohneUnavailable.value) return
   begutachtung.value = begutachtung.value ? '' : 'ohne'
@@ -343,7 +344,7 @@ const secondRoundFetch = useFetch<DashboardSecondRound>(
 
 /**
  * The enacted laws of the period without a Begutachtung (§12.68), for the
- * chip „Ohne Begutachtung" — fetched like the open Vorlagen above: on the
+ * chip „Ohne Ministerialentwurf" — fetched like the open Vorlagen above: on the
  * client, lazily, so nothing above it waits, and for the period in view
  * (the chosen one, else the running one). Fetched while the chip is off
  * too: the chip states the count of its rows.
@@ -467,16 +468,18 @@ const openVorlagen = computed(() => {
   if (stations.value.length && !stations.value.includes('rv')) return []
   if (selectedGp.value && selectedGp.value !== list.gp) return []
   return list.items
-    // Under „Ohne Begutachtung" only the rows that say so (`none`).
-    .filter((v) => (ohneApplied.value ? v.consultation.kind === 'none' : v.consultation.kind !== 'draft'))
+    // Under „Ohne Ministerialentwurf" only the rows that carry one of its two
+    // notes (`none`, `committee`).
+    .filter((v) => (ohneApplied.value ? v.consultation.kind === 'none' || v.consultation.kind === 'committee' : v.consultation.kind !== 'draft'))
     .filter((v) => matchesQuery(`${v.title} ${v.citation}`, qDebounced.value))
 })
 
 /**
- * „Ohne Begutachtung" (docs/architecture.md §12.68): the list shows ONLY
- * the procedures without a Begutachtung — the period's enacted laws from
- * `/api/ohne-begutachtung` (station Bundesgesetzblatt) and the open Vorlagen
- * that say „ohne Begutachtung" (station Regierungsvorlage). The
+ * „Ohne Ministerialentwurf" (docs/architecture.md §12.68, §12.69): the list shows ONLY
+ * the procedures without a Ministerialentwurf — the period's enacted laws
+ * from `/api/ohne-begutachtung` (station Bundesgesetzblatt) and the open
+ * Vorlagen that say „ohne Begutachtung" or „Ausschussbegutachtung" (station
+ * Regierungsvorlage). The
  * Ministerialentwürfe, the RIS records and the Länder step back. A
  * procedural fact per row, never a ranking.
  *
@@ -493,14 +496,7 @@ const ohneApplied = computed(() => begutachtung.value === 'ohne' && !ohneUnavail
 
 /* The chip's count: the rows it would show for the period in view, once
  * the laws are there. */
-const ohneCount = computed(() => {
-  const laws = lawsData.value
-  if (!laws?.available) return null
-  const vorlagen = secondRound.value?.gp === laws.gp
-    ? secondRound.value.items.filter((v) => v.consultation.kind === 'none').length
-    : 0
-  return laws.items.length + vorlagen
-})
+const ohneCount = computed(() => ohneChipCount(lawsData.value, secondRound.value))
 
 /**
  * The laws under the other controls, as far as they reach — the rules
@@ -692,7 +688,7 @@ function countByKind(items: readonly { kind: RisConsultationKind }[]) {
 /* The rows by kind, summed over the sources (`draftCountLabel`). */
 const countLabel = computed(() =>
   ohneApplied.value
-    ? draftCountLabel({ me: null, vorlagen: openVorlagen.value, ris: null, laterStationsOnly: false, art: art.value, laws: lawRows.value.length })
+    ? draftCountLabel({ me: null, vorlagen: openVorlagen.value, ris: null, laterStationsOnly: false, art: art.value, laws: lawRows.value })
     : draftCountLabel({
       me: wantsMe.value ? meTotal.value : null,
       vorlagen: openVorlagen.value,
@@ -830,7 +826,7 @@ const statementsSortNote = computed(() => {
           <!-- How the procedure began (§12.68): the same kind of control,
                off by default; its count in the tabs' form (`ListTabs`). -->
           <ToggleChip :pressed="begutachtung === 'ohne'" :unavailable="ohneUnavailable" @toggle="toggleBegutachtung">
-            Ohne Begutachtung<span v-if="ohneCount !== null" class="font-normal tabular-nums text-ink-muted">{{ formatNumberDe(ohneCount) }}</span>
+            Ohne Ministerialentwurf<span v-if="ohneCount !== null" class="font-normal tabular-nums text-ink-muted">{{ formatNumberDe(ohneCount) }}</span>
           </ToggleChip>
           <!-- Art, period and Ressort stand in the same line from `md`
                up (03.10.2026), each select stating its own value; on a
@@ -965,12 +961,15 @@ const statementsSortNote = computed(() => {
           neue Gesetzgebungsperiode beginnt. Über die Auswahl oben lässt sich
           jede Periode für sich ansehen.
         </p>
-        <!-- What „ohne Begutachtung" means and does not mean, once (§12.68). -->
+        <!-- What the chip's rows have in common and what their two notes
+             mean, once (§12.68, §12.69). -->
         <p v-if="ohneApplied" class="text-sm text-ink-muted">
           Vor diesen Gesetzen und Vorlagen ist kein Ministerialentwurf in
           Begutachtung erkennbar – vorgeschrieben ist eine Begutachtung nicht,
           Stellungnahmen an den Nationalrat sind während des Verfahrens möglich
-          (§ 23b GOG-NR), und Budgetgesetze sind nicht aufgeführt.
+          (§ 23b GOG-NR), bei manchen hat der Ausschuss selbst Stellungnahmen
+          eingeholt (Ausschussbegutachtung), und Budgetgesetze sind nicht
+          aufgeführt.
         </p>
         <!-- Like the sort caveat below it: a statement about what the list is
                NOT doing stands above the rows — read afterwards it is

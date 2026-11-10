@@ -4,6 +4,7 @@ import type { ComparisonId, StationId } from '~/utils/spine'
 import { lastParliamentStation, parliamentTexts, vorlageStations, vorlageStatusDe, SECOND_ROUND_CLAUSE } from '~/utils/spine'
 import { citeLineDe, rvCitationDe } from '#shared/utils/citations'
 import { GP_RE, parseInr } from '#shared/utils/gp'
+import { countLabelDe, formatDateDe } from '#shared/utils/format'
 import { itypOfKind, vorlageApiBase } from '#shared/utils/procedureRoot'
 
 /**
@@ -144,6 +145,18 @@ const citeAs = computed(() => {
 
 const filingOpen = computed(() => Boolean(data.value?.enactment.filingOpen))
 
+/* „Der Ausschuss für … hat am … beschlossen, schriftliche Stellungnahmen
+ * einzuholen, und dafür 58 Stellen angeschrieben (Ausschussbegutachtung)." —
+ * the statements block's words, as a fact of the procedure. */
+const committeeSentence = computed(() => {
+  const c = data.value?.committeeConsultation
+  if (!c) return ''
+  const who = c.committee ? `Der ${c.committee}` : 'Der Ausschuss'
+  const when = c.date ? ` am ${formatDateDe(c.date)}` : ''
+  const whom = c.invited > 0 ? `, und dafür ${countLabelDe(c.invited, 'Stelle', 'Stellen')} angeschrieben` : ''
+  return `${who} hat${when} selbst beschlossen, schriftliche Stellungnahmen einzuholen${whom} (Ausschussbegutachtung).`
+})
+
 useSeoMeta({
   title: () => (data.value ? `${data.value.citation}: ${data.value.title}` : kindWord.value),
   description: () =>
@@ -193,7 +206,13 @@ useSeoMeta({
           <!-- The fact, where the evidence carries it — the list's sentence,
                said of this one law. Nowhere else does the page say anything
                about a Begutachtung, in either direction. -->
-          <p v-if="data.withoutBegutachtung" class="mt-4 text-sm text-ink-secondary">
+          <!-- The committee's own consultation, where the item's record shows
+               one — in place of the sentence below, never beside it. -->
+          <p v-if="data.committeeConsultation" class="mt-4 text-sm text-ink-secondary">
+            Vor {{ isAntrag ? 'diesem Antrag' : 'dieser Regierungsvorlage' }} ist kein Ministerialentwurf
+            in Begutachtung erkennbar. {{ committeeSentence }}
+          </p>
+          <p v-else-if="data.withoutBegutachtung" class="mt-4 text-sm text-ink-secondary">
             Vor {{ isAntrag ? 'diesem Antrag' : 'dieser Regierungsvorlage' }} ist kein Ministerialentwurf
             in Begutachtung erkennbar – vorgeschrieben ist eine Begutachtung nicht.
             Stellungnahmen an den Nationalrat {{ filingOpen ? 'sind' : 'waren' }} während des

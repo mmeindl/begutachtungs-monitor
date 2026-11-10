@@ -46,7 +46,7 @@
  * `precedingDraft.ts`), or a draft of the period before that the title check
  * does not see.
  */
-import type { AntragPath, DraftSummary } from '../../../shared/types'
+import type { AntragPath, CommitteeConsultation, DraftSummary } from '../../../shared/types'
 import { budgetExemptReason } from '../../../shared/utils/budgetExempt'
 import { GP_STARTS, gpEndedOn } from '../../../shared/utils/gp'
 import { findPrecedingDraft } from '../parliament/precedingDraft'
@@ -120,6 +120,9 @@ export type SkippedClass =
   | { kind: 'exempt'; reason: string }
   | { kind: 'unknown'; reason: UnknownReason }
   | { kind: 'none'; item: CarryingItem; title: string }
+  /** No draft either — but the Nationalrat's committee itself invited written
+   *  Stellungnahmen (Ausschussbegutachtung, `readCommitteeConsultation`). */
+  | { kind: 'committee'; item: CarryingItem; title: string; consultation: CommitteeConsultation }
 
 export interface ClassifiedLaw {
   record: BgblRecord
@@ -238,4 +241,26 @@ export function classifySkippedLaws(input: SkippedLawsInput): ClassifiedLaw[] {
     out.push({ record: r, class: classifyOne(r, input, idx, vorlagen, antraege) })
   }
   return out.sort((a, b) => a.record.datum.localeCompare(b.record.datum) || a.record.nummer.localeCompare(b.record.nummer))
+}
+
+/**
+ * The second look at every `none` (10.11.2026): its carrying item's own
+ * Verlauf. A committee that decided to invite written Stellungnahmen ran an
+ * Ausschussbegutachtung — a Begutachtung, if not the ministry's — so the law
+ * moves to `committee`. `consultationOf` answers `null` where the record
+ * shows none and `undefined` where it could not be read: then the check did
+ * not run, and the law says nothing (`unknown`/`unchecked`).
+ */
+export function refineByCommittee(
+  classified: readonly ClassifiedLaw[],
+  consultationOf: (item: CarryingItem) => CommitteeConsultation | null | undefined,
+): ClassifiedLaw[] {
+  return classified.map((law) => {
+    const c = law.class
+    if (c.kind !== 'none') return law
+    const consultation = consultationOf(c.item)
+    if (consultation === undefined) return { record: law.record, class: { kind: 'unknown', reason: 'unchecked' } }
+    if (consultation === null) return law
+    return { record: law.record, class: { kind: 'committee', item: c.item, title: c.title, consultation } }
+  })
 }

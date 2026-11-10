@@ -98,6 +98,9 @@ describe('assembleVorlageDetail', () => {
 describe('vorlageStations', () => {
   const d = (overrides: Partial<VorlageDetail> = {}): VorlageDetail => ({
     ...assembleVorlageDetail({ root: { gp: 'XXVIII', ityp: 'A', inr: 372 }, content: record('XXVIII-A-372'), enactment: enactment(), currentGp: 'XXVIII', withoutBegutachtung: true }),
+    // 372/A's committee did consult (see below); these cases are about the rest.
+    withoutBegutachtung: true,
+    committeeConsultation: null,
     ...overrides,
   })
 
@@ -119,5 +122,24 @@ describe('vorlageStations', () => {
     const open = d({ enactment: enactment({ bgblNumber: null, houseStatus: '2', houseStatusText: null, amendedIn: [], filingOpen: true }) })
     expect(vorlageStatusDe(open)).toBe('Im Parlament')
     expect(vorlageStations(open)[1]).toMatchObject({ state: 'current', facts: ['in Behandlung'] })
+  })
+})
+
+describe('the committee’s own consultation (10.11.2026)', () => {
+  const at = (name: string, ityp: 'I' | 'A', inr: number) =>
+    assembleVorlageDetail({ root: { gp: 'XXVIII', ityp, inr }, content: record(name), enactment: enactment(), currentGp: 'XXVIII', withoutBegutachtung: true })
+  it('is read from the item’s Verlauf — 309 d.B. and 372/A, not 589 d.B.', () => {
+    expect(at('XXVIII-I-309', 'I', 309).committeeConsultation).toEqual({ committee: 'Ausschuss für Wirtschaft, Industrie und Energie', date: '2025-11-20', invited: 99 })
+    expect(at('XXVIII-A-372', 'A', 372).committeeConsultation).toEqual({ committee: 'Ausschuss für innere Angelegenheiten', date: '2025-09-04', invited: 58 })
+    expect(at('XXVIII-I-589', 'I', 589).committeeConsultation).toBeNull()
+  })
+  it('outranks the list: never „ohne Begutachtung" beside it', () => {
+    expect(at('XXVIII-A-372', 'A', 372).withoutBegutachtung).toBe(false)
+    expect(at('XXVIII-I-589', 'I', 589).withoutBegutachtung).toBe(true)
+  })
+  it('puts Parliament’s word at the Parlament station, not at the first', () => {
+    const [first, parlament] = vorlageStations(at('XXVIII-A-372', 'A', 372))
+    expect(first!.facts).not.toContain('ohne Begutachtung')
+    expect(parlament!.facts[0]).toBe('Ausschussbegutachtung')
   })
 })

@@ -13,6 +13,7 @@ import {
   stationTabsFor,
   unionGps,
   unionMinistries,
+  ohneChipCount,
 } from '../app/utils/draftFilters'
 
 const empty: DraftFilterValues = {
@@ -334,14 +335,28 @@ describe('draftCountLabel', () => {
 
   it('counts the laws without a Begutachtung as a term of their own, never added up', () => {
     const none = { consultation: { kind: 'none' as const } }
-    expect(draftCountLabel({ me: null, vorlagen: [none], ris: null, laterStationsOnly: false, laws: 80 })).toBe(
+    const laws = (n: number, consultation: 'none' | 'committee' = 'none') => Array.from({ length: n }, () => ({ consultation }))
+    expect(draftCountLabel({ me: null, vorlagen: [none], ris: null, laterStationsOnly: false, laws: laws(80) })).toBe(
       '1 Regierungsvorlage ohne Begutachtung · 80 Gesetze ohne Begutachtung',
     )
-    expect(draftCountLabel({ me: null, vorlagen: [], ris: null, laterStationsOnly: false, laws: 1 })).toBe('1 Gesetz ohne Begutachtung')
+    expect(draftCountLabel({ me: null, vorlagen: [], ris: null, laterStationsOnly: false, laws: laws(1) })).toBe('1 Gesetz ohne Begutachtung')
     // None in view: one zero, not a missing line.
-    expect(draftCountLabel({ me: null, vorlagen: [], ris: null, laterStationsOnly: false, laws: 0 })).toBe('0 Entwürfe')
+    expect(draftCountLabel({ me: null, vorlagen: [], ris: null, laterStationsOnly: false, laws: [] })).toBe('0 Entwürfe')
     // Absent while the chip is off: the line is what it was.
     expect(draftCountLabel(both)).toBe('152 Gesetzesentwürfe · 206 Verordnungsentwürfe')
+  })
+
+  it('counts an Ausschussbegutachtung in a term of its own, never added to „ohne Begutachtung" (10.11.2026)', () => {
+    const laws = [...Array.from({ length: 59 }, () => ({ consultation: 'none' as const })), ...Array.from({ length: 8 }, () => ({ consultation: 'committee' as const }))]
+    expect(draftCountLabel({ me: null, vorlagen: [], ris: null, laterStationsOnly: false, laws })).toBe(
+      '59 Gesetze ohne Begutachtung · 8 Gesetze mit Ausschussbegutachtung',
+    )
+    expect(draftCountLabel({ me: null, vorlagen: [], ris: null, laterStationsOnly: false, laws: [{ consultation: 'committee' }] })).toBe(
+      '1 Gesetz mit Ausschussbegutachtung',
+    )
+    expect(
+      draftCountLabel({ me: null, vorlagen: [{ consultation: { kind: 'none' } }, { consultation: { kind: 'committee' } }], ris: null, laterStationsOnly: false, laws: [] }),
+    ).toBe('1 Regierungsvorlage ohne Begutachtung · 1 Regierungsvorlage mit Ausschussbegutachtung')
   })
 
   it('claims „ohne Begutachtung" only where every Vorlage is checked', () => {
@@ -370,5 +385,18 @@ describe('begutachtungGapReason', () => {
     expect(begutachtungGapReason('pending')).toMatch(/gerade eingelesen/)
     expect(begutachtungGapReason(null)).toBeNull()
     expect(begutachtungGapReason(undefined)).toBeNull()
+  })
+})
+
+describe('ohneChipCount — the rows under „Ohne Ministerialentwurf" (10.11.2026)', () => {
+  const laws = { available: true, gp: 'XXVIII', items: new Array(67).fill(null) }
+  it('counts both classes of law and the open Vorlagen carrying either note', () => {
+    const vorlagen = [{ consultation: { kind: 'none' as const } }, { consultation: { kind: 'committee' as const } }, { consultation: { kind: 'unknown' as const } }, { consultation: { kind: 'draft' as const, gp: 'XXVIII', inr: 1 } }]
+    expect(ohneChipCount(laws, { gp: 'XXVIII', items: vorlagen })).toBe(69)
+  })
+  it('leaves out Vorlagen of another period and says nothing before the laws arrive', () => {
+    expect(ohneChipCount(laws, { gp: 'XXVII', items: [{ consultation: { kind: 'none' } }] })).toBe(67)
+    expect(ohneChipCount({ available: false, gp: 'XXVIII', items: [] }, null)).toBeNull()
+    expect(ohneChipCount(null, null)).toBeNull()
   })
 })

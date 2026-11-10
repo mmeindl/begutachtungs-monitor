@@ -12,7 +12,7 @@
  * endpoints validate the same query independently, because a request can
  * arrive without this page.
  */
-import type { DraftStation, DraftStatus, LawsWithoutBegutachtungGap, OpenVorlage, RisConsultationKind } from '#shared/types'
+import type { DraftStation, DraftStatus, LawWithoutBegutachtung, LawsWithoutBegutachtungGap, OpenVorlage, RisConsultationKind } from '#shared/types'
 import { DRAFT_STATION_LABEL, DRAFT_STATION_ORDER } from '#shared/utils/draftStations'
 import { countLabelDe } from '#shared/utils/format'
 import { GP_STARTS, intToRoman, isPlausibleGp, romanToInt } from '#shared/utils/gp'
@@ -94,8 +94,8 @@ export type SortKey = 'frist' | 'stellungnahmen'
 export type EuFilter = '' | 'umsetzung'
 
 /**
- * „Ohne Begutachtung" (docs/architecture.md §12.68): the list shows only the
- * procedures without a Begutachtung — the enacted laws of the period and the
+ * „Ohne Ministerialentwurf" (docs/architecture.md §12.68, §12.69): the list shows only the
+ * procedures without a Ministerialentwurf — the enacted laws of the period and the
  * open Vorlagen without a draft behind them. A chip, off by default and out
  * of the URL while off, like `EuFilter`: `?begutachtung=ohne`. Not passed
  * to the list endpoints — the page asks its own (`/api/ohne-begutachtung`)
@@ -349,8 +349,9 @@ export function draftCountLabel(c: {
   me: number | null
   /** The Regierungsvorlagen without a draft that stand in the list. */
   vorlagen: readonly Pick<OpenVorlage, 'consultation'>[]
-  /** The enacted laws without a Begutachtung that stand in the list (`?begutachtung=ohne`). */
-  laws?: number
+  /** The enacted laws without a Ministerialentwurf that stand in the list
+   *  (`?begutachtung=ohne`), each with its class (`consultation`). */
+  laws?: readonly Pick<LawWithoutBegutachtung, 'consultation'>[]
   /** The RIS half, counted per kind; `failed`, or null where it is not
    *  asked for. */
   ris: Partial<Record<RisConsultationKind, number>> | 'failed' | null
@@ -386,15 +387,24 @@ export function draftCountLabel(c: {
    * row, so it must not reach further either: as soon as one Vorlage is in
    * whose history is merely unevidenced (`unknown`), the number counts rows
    * and claims nothing about them. */
-  if (c.vorlagen.length) {
-    const count = countLabelDe(c.vorlagen.length, 'Regierungsvorlage', 'Regierungsvorlagen')
-    const allChecked = c.vorlagen.every((v) => v.consultation.kind === 'none')
+  /* A Vorlage whose committee invited Stellungnahmen (10.11.2026) is
+   * counted in a term of its own: „ohne Begutachtung" would be false about
+   * it, and the two are never added up. */
+  const committeeVorlagen = c.vorlagen.filter((v) => v.consultation.kind === 'committee').length
+  const otherVorlagen = c.vorlagen.filter((v) => v.consultation.kind !== 'committee')
+  if (otherVorlagen.length) {
+    const count = countLabelDe(otherVorlagen.length, 'Regierungsvorlage', 'Regierungsvorlagen')
+    const allChecked = otherVorlagen.every((v) => v.consultation.kind === 'none')
     parts.push(allChecked ? `${count} ohne Begutachtung` : count)
   }
-  /* A fourth, never added up either: an enacted law is no draft, and only
-   * a law whose every check found no draft stands in the list — so the
-   * addition holds for every one of them by construction. */
-  if (c.laws) parts.push(`${countLabelDe(c.laws, 'Gesetz', 'Gesetze')} ohne Begutachtung`)
+  if (committeeVorlagen) parts.push(`${countLabelDe(committeeVorlagen, 'Regierungsvorlage', 'Regierungsvorlagen')} mit Ausschussbegutachtung`)
+  /* The enacted laws, in the same two terms, never added up: an enacted law
+   * is no draft, and only a law whose every check ran stands in the list —
+   * so each addition holds for every row it counts by construction. */
+  const lawsNone = c.laws?.filter((l) => l.consultation === 'none').length ?? 0
+  const lawsCommittee = c.laws?.filter((l) => l.consultation === 'committee').length ?? 0
+  if (lawsNone) parts.push(`${countLabelDe(lawsNone, 'Gesetz', 'Gesetze')} ohne Begutachtung`)
+  if (lawsCommittee) parts.push(`${countLabelDe(lawsCommittee, 'Gesetz', 'Gesetze')} mit Ausschussbegutachtung`)
   /* Something was asked for and nothing came: one zero, in the Art's noun. */
   const asked = c.me !== null || ris !== null || (c.laender !== null && c.laender !== undefined) || c.laws !== undefined
   if (!parts.length && asked) parts.push(EMPTY_TERM[art])
@@ -407,8 +417,24 @@ export function draftCountLabel(c: {
 }
 
 /* ------------------------------------------------------------------ *
- * The chip „Ohne Begutachtung"
+ * The chip „Ohne Ministerialentwurf"
  * ------------------------------------------------------------------ */
+
+/**
+ * The chip's count: the rows it would show for the period of the laws — both
+ * classes of law, and the open Vorlagen of the same period that carry one of
+ * the two notes (10.11.2026). Null until the laws are there.
+ */
+export function ohneChipCount(
+  laws: { available: boolean; gp: string; items: readonly unknown[] } | null | undefined,
+  secondRound: { gp: string; items: readonly Pick<OpenVorlage, 'consultation'>[] } | null | undefined,
+): number | null {
+  if (!laws?.available) return null
+  const vorlagen = secondRound?.gp === laws.gp
+    ? secondRound.items.filter((v) => v.consultation.kind === 'none' || v.consultation.kind === 'committee').length
+    : 0
+  return laws.items.length + vorlagen
+}
 
 /** Why the period in view carries no such rows — the chip's reason (`ToggleChip`). */
 const BEGUTACHTUNG_GAP_REASON: Record<LawsWithoutBegutachtungGap, string> = {

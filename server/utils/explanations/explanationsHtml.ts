@@ -209,8 +209,23 @@ function lawOf(heading: string): string | null {
  * the first address heading — one fifth of the documents do it that way
  * (`explanations/risExplanations.ts`, the same finding on the XML).
  */
-export function parseExplanationsHtml(html: string): HtmlExplanations {
+export function parseExplanationsHtml(
+  html: string,
+  /**
+   * Keep an address heading that stands inside an Allgemeiner Teil the
+   * ressort headed as such — „Zu Artikel X (Änderung des …):" before
+   * „Besonderer Teil" (589 d.B. XXVIII) — and the prose under it in the
+   * general part (10.11.2026). Off for the reasoning comparison, which reads
+   * only the Besonderer Teil and was measured as it is; on where the general
+   * part is shown (`server/utils/parliament/vorlageTexts.ts`): without it
+   * that Vorlage's Allgemeiner Teil read „Erläuterungen", „Hauptgesichtspunkte
+   * des Entwurfes:" and nothing else.
+   */
+  options: { generalAsHeaded?: boolean } = {},
+): HtmlExplanations {
   const general: string[] = []
+  /** An Allgemeiner Teil heading was read and no Besonderer Teil yet. */
+  let inHeadedGeneral = false
   const special: HtmlPassage[] = []
   let inSpecial = false
   let current: HtmlPassage | null = null
@@ -228,10 +243,16 @@ export function parseExplanationsHtml(html: string): HtmlExplanations {
     const part = partKind(text)
     if (part) {
       inSpecial = part === 'special'
+      inHeadedGeneral = part === 'general'
       current = null
       mark = null
       section = null
       law = null
+      continue
+    }
+
+    if (options.generalAsHeaded && inHeadedGeneral) {
+      general.push(text)
       continue
     }
 
@@ -338,12 +359,14 @@ export function passagesByParagraph(doc: HtmlExplanations): Map<string, HtmlPass
  */
 export function explanationsDocumentOfHtml(h: HtmlExplanations, labelled: boolean): ExplanationsDocument {
   const chars = (texts: readonly string[]) => texts.reduce((n, t) => n + t.length, 0)
-  const general: ExplanationsPart | null = h.general.length
+  // The document's own title („Erläuterungen") is no paragraph of the part.
+  const generalText = /^Erläuterungen$/i.test(h.general[0] ?? '') ? h.general.slice(1) : h.general
+  const general: ExplanationsPart | null = generalText.length
     ? {
         kind: 'general',
         heading: labelled ? 'Allgemeiner Teil' : null,
-        passages: [{ heading: null, article: null, paragraphs: [], items: [], text: h.general }],
-        chars: chars(h.general),
+        passages: [{ heading: null, article: null, paragraphs: [], items: [], text: generalText }],
+        chars: chars(generalText),
         dropped: 0,
       }
     : null
