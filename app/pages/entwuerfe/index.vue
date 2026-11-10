@@ -347,15 +347,17 @@ const secondRoundFetch = useFetch<DashboardSecondRound>(
 )
 
 /**
- * The enacted laws of the period without a Begutachtung (§12.68), for the
- * chip „Ohne Ministerialentwurf" — fetched like the open Vorlagen above: on the
- * client, lazily, so nothing above it waits, and for the period in view
- * (the chosen one, else the running one). Only while the chip is on and the
- * Bund is among the sources (10.11.2026): the chip carries no count any
- * more, and its unavailable states come from this answer once it is on —
- * the chip keeps its state and says why (`ohneUnavailable`).
+ * The enacted laws of the period without a Ministerialentwurf (§12.68) —
+ * rows of the default list since 10.11.2026 (§12.70), next to the drafts,
+ * and what the chip „Ohne Ministerialentwurf" narrows to. Fetched like the
+ * open Vorlagen above: on the client, lazily, so the drafts never wait for
+ * them, and for the period in view (the chosen one, else the running one),
+ * whenever the Bund is among the sources. An answer that is `pending` or
+ * `unread` brings no row and no statement; the drafts stand as they are and
+ * the laws join when the answer is complete (`lawsRetries`). The chip's
+ * unavailable states come from the same answer (`ohneUnavailable`).
  */
-const lawsWanted = computed(() => begutachtung.value === 'ohne' && bund.value)
+const lawsWanted = computed(() => bund.value)
 const lawsFetch = useFetch<LawsWithoutBegutachtung>('/api/ohne-begutachtung', {
   query: computed(() => ({ gp: gp.value || undefined })),
   lazy: true,
@@ -562,12 +564,17 @@ const ministryUnavailable = computed(() =>
  * The laws under the other controls, as far as they reach — the rules
  * written above `openVorlagen`. Status: nothing can be filed any more, so
  * they stand under no filter and under „Nicht möglich". Station: the
- * Bundesgesetzblatt. Art: they are laws. Ressort: they carry none. „Setzt
- * EU-Recht um": they carry no EU fact. Search: the same word rule.
+ * Bundesgesetzblatt. Art: they are laws — under „Gesetzesentwürfe" too, not
+ * under „Verordnungsentwürfe"; under the chip by the item they came as.
+ * Ressort: they carry none, so a chosen Ressort leaves them out of the mixed
+ * list (and under the chip no Ressort can be chosen). „Setzt EU-Recht um":
+ * they carry no EU fact. Search: the same word rule. In the default list
+ * and under the chip alike (§12.70); without the Bund, or while the answer
+ * is incomplete, none.
  */
 const lawRows = computed(() => {
   const laws = lawsData.value
-  if (!ohneApplied.value || !laws?.available) return []
+  if (!bund.value || !laws?.available) return []
   if (statusFilter.value === 'open' || art.value === 'verordnung' || ministry.value || eu.value) return []
   if (stations.value.length && !stations.value.includes('bgbl')) return []
   if (selectedGp.value && selectedGp.value !== laws.gp) return []
@@ -608,7 +615,7 @@ const unreadableLandLaws = computed(() =>
 const rows = computed<DraftListRow[]>(() =>
   (ohneApplied.value
     ? draftRows([], [], openVorlagen.value, [], [...lawRows.value, ...landLawRows.value])
-    : draftRows(meData.value?.items ?? [], risData.value?.items ?? [], openVorlagen.value, landItems.value, landLawRows.value))
+    : draftRows(meData.value?.items ?? [], risData.value?.items ?? [], openVorlagen.value, landItems.value, [...lawRows.value, ...landLawRows.value]))
     .sort((a, b) => rowComparators[sort.value](a, b, reversed.value)),
 )
 
@@ -700,7 +707,7 @@ const visibleTotal = computed(() =>
     ? openVorlagen.value.length
     : meTotal.value + risTotal.value + landItems.value.length,
 )
-const visibleLaws = computed(() => (ohneApplied.value ? lawRows.value.length : 0) + landLawRows.value.length)
+const visibleLaws = computed(() => lawRows.value.length + landLawRows.value.length)
 const searchPlaceholder = computed(() => {
   if (!gateData.value) return 'Entwürfe durchsuchen …'
   const parts = [
@@ -796,6 +803,7 @@ const countLabel = computed(() =>
       laterStationsOnly: laterStationsOnly.value,
       art: art.value,
       laender: landsApply.value ? countByKind(landItems.value) : null,
+      laws: bund.value && lawsData.value?.available ? lawRows.value : undefined,
       landLaws: landsApply.value && landLawsData.value ? landLawRows.value : undefined,
     }) || (landUnavailable.value ?? ''),
 )
