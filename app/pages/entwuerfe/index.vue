@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import type { DashboardSecondRound, DraftStation, LandCode, LawsWithoutBegutachtung, RisConsultationKind } from '#shared/types'
+import type { DashboardSecondRound, DraftStation, LandCode, LandLawsResponse, LawsWithoutBegutachtung, RisConsultationKind } from '#shared/types'
 import { LAND_CODES, LAND_NAME, landStationsReason } from '#shared/utils/laender'
 import { formatNumberDe } from '#shared/utils/format'
 import {
@@ -364,9 +364,25 @@ const lawsFetch = useFetch<LawsWithoutBegutachtung>('/api/ohne-begutachtung', {
   watch: [lawsWanted],
 })
 
+/**
+ * The Länder's laws without a draft in their register (§12.70): rows by
+ * default, next to the Länder's drafts, for the period in view — fetched
+ * like the Bund's laws, on the client and lazily, so the drafts never wait
+ * for them; only while a Land applies.
+ */
+const landLawsWanted = computed(() => landsApply.value)
+const landLawsFetch = useFetch<LandLawsResponse>('/api/laender/gesetze', {
+  query: computed(() => ({ gp: gp.value || undefined })),
+  lazy: true,
+  server: false,
+  enabled: landLawsWanted,
+  watch: [landLawsWanted],
+})
+
 await halves.ready
 const { data: secondRound } = await secondRoundFetch
 const { data: lawsData, refresh: refreshLaws } = await lawsFetch
+const { data: landLawsData, refresh: refreshLandLaws } = await landLawsFetch
 
 /**
  * `gap: 'pending'`: after a cold start the station maps are still being
@@ -386,6 +402,20 @@ watch(lawsData, (laws) => {
 }, { immediate: true })
 watch(gp, () => { lawsRetries = 0 })
 onUnmounted(() => clearTimeout(lawsTimer))
+
+/* Salzburg's statements wait for the Landtag documents after a cold start
+   (`LandLawSource.statements: 'pending'`): asked again as the Bund's laws
+   are, a bounded number of times. */
+let landLawsRetries = 0
+let landLawsTimer: ReturnType<typeof setTimeout> | undefined
+watch(landLawsData, (laws) => {
+  clearTimeout(landLawsTimer)
+  if (!laws?.sources.some((s) => s.statements === 'pending') || landLawsRetries >= LAWS_RETRIES) return
+  landLawsRetries++
+  landLawsTimer = setTimeout(() => void refreshLandLaws(), LAWS_RETRY_MS)
+})
+watch(gp, () => { landLawsRetries = 0 })
+onUnmounted(() => clearTimeout(landLawsTimer))
 
 /**
  * Where the EU map could not be read, per side, while „Setzt EU-Recht um" is
@@ -499,10 +529,20 @@ const openVorlagen = computed(() => {
  * period cannot carry the claim (`LawsWithoutBegutachtung.gap`): then the
  * filter steps back and the list is what it is without it.
  */
+/* The Länder whose sources carry the statement per law (§12.70): Salzburg. */
+const OHNE_LANDS: readonly LandCode[] = ['sbg']
+const ohneLandsApply = computed(() => applyingLaender.value.some((land) => OHNE_LANDS.includes(land)))
 const ohneUnavailable = computed(() => {
-  if (!bund.value) return 'Nur für Gesetze des Bundes'
-  return lawsData.value?.available === false ? begutachtungGapReason(lawsData.value.gap) : null
+  if (!bund.value && !ohneLandsApply.value) return 'Nur für Gesetze des Bundes und Salzburgs feststellbar'
+  if (bund.value) return lawsData.value?.available === false ? begutachtungGapReason(lawsData.value.gap) : null
+  // Salzburg alone: its laws' answer decides.
+  const sbg = landLawsData.value?.sources.find((src) => src.land === 'sbg')
+  if (sbg?.state === 'unavailable') return begutachtungGapReason('unread')
+  return sbg?.statements === 'pending' ? begutachtungGapReason('pending') : null
 })
+/* Its name says what the rows under it share: no Ministerialentwurf for the
+   Bund's; for Salzburg's alone, no Begutachtung. */
+const ohneLabel = computed(() => (bund.value ? 'Ohne Ministerialentwurf' : 'Ohne Begutachtung'))
 const ohneApplied = computed(() => begutachtung.value === 'ohne' && !ohneUnavailable.value)
 
 /* While the chip applies, no Ressort (`coherentFilters`): one chosen before,
@@ -536,12 +576,39 @@ const lawRows = computed(() => {
     .filter((l) => matchesQuery(`${l.title} ${l.item.citation} ${l.bgblNumber}`, qDebounced.value))
 })
 
+/**
+ * The Länder's laws under the other controls, as far as they reach — the
+ * rules of `lawRows`: nothing can be filed (no „Stellungnahme möglich"),
+ * station Bundesgesetzblatt (the Landesgesetzblatt is that station for a
+ * Land), they are laws (not under „Verordnungsentwürfe"), no EU fact, the
+ * Land chosen, the same word rule. Under the chip only those that say „ohne
+ * Begutachtung", by the item they came as where the Art asks for one.
+ */
+const landLawRows = computed(() => {
+  const data = landLawsData.value
+  if (!landsApply.value || !data) return []
+  if (selectedGp.value && selectedGp.value !== data.gp) return []
+  if (statusFilter.value === 'open' || art.value === 'verordnung') return []
+  if (eu.value && !laenderEuMissing.value) return []
+  if (stations.value.length && !stations.value.includes('bgbl')) return []
+  return data.items
+    .filter((l) => applyingLaender.value.includes(l.land))
+    .filter((l) => !ohneApplied.value || l.begutachtung.kind === 'none')
+    .filter((l) => !ohneApplied.value || !art.value || (l.route !== null && ohneArtAllows(art.value, l.route.kind === 'vorlage' ? 'rv' : 'antrag')))
+    .filter((l) => matchesQuery(`${l.title} ${l.shortTitle ?? ''} ${l.nr}`, qDebounced.value))
+})
+/* A chosen Land whose drafts came but whose laws could not be read: said, as an unreadable Land is. */
+const unreadableLandLaws = computed(() =>
+  landsApply.value && landLawsData.value
+    ? landLawsData.value.sources.filter((src) => src.state === 'unavailable' && applyingLaender.value.includes(src.land) && !unreadableLaender.value.some((u) => u.land === src.land))
+    : [])
+
 /* No Art test of its own any more: a half that this `art` excludes was never
  * fetched, and `meData`/`risData` are null for it. */
 const rows = computed<DraftListRow[]>(() =>
   (ohneApplied.value
-    ? draftRows([], [], openVorlagen.value, [], lawRows.value)
-    : draftRows(meData.value?.items ?? [], risData.value?.items ?? [], openVorlagen.value, landItems.value))
+    ? draftRows([], [], openVorlagen.value, [], [...lawRows.value, ...landLawRows.value])
+    : draftRows(meData.value?.items ?? [], risData.value?.items ?? [], openVorlagen.value, landItems.value, landLawRows.value))
     .sort((a, b) => rowComparators[sort.value](a, b, reversed.value)),
 )
 
@@ -626,11 +693,22 @@ const {
  * `draftCountLabel`). */
 const meTotal = computed(() => meData.value?.total ?? 0)
 const risTotal = computed(() => risData.value?.total ?? 0)
+/* Drafts and laws apart, never one pooled number (§12.19): the
+   placeholder names both where both stand in the list (10.11.2026). */
 const visibleTotal = computed(() =>
   ohneApplied.value
-    ? lawRows.value.length + openVorlagen.value.length
+    ? openVorlagen.value.length
     : meTotal.value + risTotal.value + landItems.value.length,
 )
+const visibleLaws = computed(() => (ohneApplied.value ? lawRows.value.length : 0) + landLawRows.value.length)
+const searchPlaceholder = computed(() => {
+  if (!gateData.value) return 'Entwürfe durchsuchen …'
+  const parts = [
+    ...(visibleTotal.value || !visibleLaws.value ? [countLabelDe(visibleTotal.value, 'Entwurf', 'Entwürfen')] : []),
+    ...(visibleLaws.value ? [countLabelDe(visibleLaws.value, 'Gesetz', 'Gesetzen')] : []),
+  ]
+  return `In ${parts.join(' und ')} suchen …`
+})
 
 /**
  * Only stations selected that a record WITHOUT a Gegenstand at Parliament
@@ -710,7 +788,7 @@ function countByKind(items: readonly { kind: RisConsultationKind }[]) {
 /* The rows by kind, summed over the sources (`draftCountLabel`). */
 const countLabel = computed(() =>
   ohneApplied.value
-    ? draftCountLabel({ me: null, vorlagen: openVorlagen.value, ris: null, laterStationsOnly: false, art: art.value, laws: lawRows.value })
+    ? draftCountLabel({ me: null, vorlagen: openVorlagen.value, ris: null, laterStationsOnly: false, art: art.value, laws: bund.value ? lawRows.value : undefined, landLaws: ohneLandsApply.value ? landLawRows.value : undefined })
     : draftCountLabel({
       me: wantsMe.value ? meTotal.value : null,
       vorlagen: openVorlagen.value,
@@ -718,6 +796,7 @@ const countLabel = computed(() =>
       laterStationsOnly: laterStationsOnly.value,
       art: art.value,
       laender: landsApply.value ? countByKind(landItems.value) : null,
+      landLaws: landsApply.value && landLawsData.value ? landLawRows.value : undefined,
     }) || (landUnavailable.value ?? ''),
 )
 
@@ -818,6 +897,9 @@ const statementsSortNote = computed(() => {
              decide which rows exist at all, the filters below narrow
              them — and the chips stand in the same place on both pages. -->
         <SourceChips :unavailable="sourceUnavailable" />
+        <p v-for="s in unreadableLandLaws" :key="`gesetze-${s.land}`" class="text-sm text-ink-muted">
+          Die Gesetze {{ s.land === 'w' ? 'Wiens' : `des Landes ${LAND_NAME[s.land]}` }} ohne zugeordneten Entwurf sind gerade nicht abrufbar.
+        </p>
         <p v-for="s in unreadableLaender" :key="s.land" class="text-sm text-ink-muted">
           {{ LAND_NAME[s.land] }} ist gerade nicht abrufbar<template v-if="s.listUrl"> –
             <ExternalLink :href="s.listUrl" class="link-inline font-medium">beim Land nachsehen</ExternalLink></template>.
@@ -848,7 +930,7 @@ const statementsSortNote = computed(() => {
           <!-- How the procedure began (§12.68): the same kind of control,
                off by default, without a count since 10.11.2026. -->
           <ToggleChip :pressed="begutachtung === 'ohne'" :unavailable="ohneUnavailable" @toggle="toggleBegutachtung">
-            Ohne Ministerialentwurf
+            {{ ohneLabel }}
           </ToggleChip>
           <!-- Art, period and Ressort stand in the same line from `md`
                up (03.10.2026), each select stating its own value; on a
@@ -952,7 +1034,7 @@ const statementsSortNote = computed(() => {
           type="search"
           :maxlength="MAX_LIST_QUERY_CHARS"
           icon="i-lucide-search"
-          :placeholder="gateData ? `In ${countLabelDe(visibleTotal, 'Entwurf', 'Entwürfen')} suchen …` : 'Entwürfe durchsuchen …'"
+          :placeholder="searchPlaceholder"
           aria-label="Entwürfe durchsuchen"
           class="w-full"
           :ui="{ base: 'min-h-target' }"
@@ -985,13 +1067,23 @@ const statementsSortNote = computed(() => {
         </p>
         <!-- What the chip's rows have in common and what their two notes
              mean, once (§12.68, §12.69). -->
-        <p v-if="ohneApplied" class="text-sm text-ink-muted">
+        <p v-if="ohneApplied && bund" class="text-sm text-ink-muted">
           Vor diesen Gesetzen und Vorlagen ist kein Ministerialentwurf in
           Begutachtung erkennbar – vorgeschrieben ist eine Begutachtung nicht,
           Stellungnahmen an den Nationalrat sind während des Verfahrens möglich
           (§ 23b GOG-NR), bei manchen hat der Ausschuss selbst Stellungnahmen
           eingeholt (Ausschussbegutachtung), und Budgetgesetze sind nicht
           aufgeführt.
+        </p>
+        <!-- Salzburg's laws under the chip (§12.70): what „ohne
+             Begutachtung" rests on there, and that the other Länder cannot
+             say it. -->
+        <p v-if="ohneApplied && ohneLandsApply" class="text-sm text-ink-muted">
+          Bei den Salzburger Landesgesetzen heißt „ohne Begutachtung“: Im
+          Register des Landes steht kein zugeordneter oder ähnlich benannter
+          Entwurf, und die Unterlagen des Landtags berichten über keine
+          Begutachtung; Budgetgesetze sind nicht aufgeführt. Für die anderen
+          Länder lässt sich das aus den verfügbaren Quellen nicht feststellen.
         </p>
         <!-- Like the sort caveat below it: a statement about what the list is
                NOT doing stands above the rows — read afterwards it is

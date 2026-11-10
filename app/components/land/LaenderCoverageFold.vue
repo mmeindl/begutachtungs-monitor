@@ -44,6 +44,17 @@ const rows = computed(() => LAND_CODES.map((land: LandCode) => {
           <span><span v-if="r.complete" class="font-medium text-ink">Vollständig: </span>{{ r.text }}</span>
         </li>
       </ul>
+      <!-- The laws without a draft in the register (§12.70): where their
+           rows begin, and why some Länder have none. -->
+      <p>
+        Ein Landesgesetz, dem kein Entwurf des Landes zugeordnet ist, steht hier
+        mit seiner Kundmachung – aber nur, wo das Land seine Entwürfe zwei
+        Jahre vor dem Gesetz noch zeigt. Wo es sie früher abnimmt
+        (Niederösterreich, Vorarlberg, Wien und die Gesetze Tirols), stünde
+        sonst fast jedes Gesetz ohne Entwurf da; ihre Gesetze haben eine
+        eigene Seite, aber keine Zeile. Ob es eine Begutachtung gab, sagt die
+        Zeile nur für Salzburg.
+      </p>
       <p>
         <NuxtLink to="/so-funktionierts#laender" class="link-inline">Wie weit der Monitor jedem Land folgt</NuxtLink>
       </p>

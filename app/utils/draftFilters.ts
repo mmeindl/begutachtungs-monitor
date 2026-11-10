@@ -12,7 +12,7 @@
  * endpoints validate the same query independently, because a request can
  * arrive without this page.
  */
-import type { DraftStation, DraftStatus, LawWithoutBegutachtung, LawsWithoutBegutachtungGap, OpenVorlage, RisConsultationKind } from '#shared/types'
+import type { DraftStation, DraftStatus, LandLaw, LawWithoutBegutachtung, LawsWithoutBegutachtungGap, OpenVorlage, RisConsultationKind } from '#shared/types'
 import { DRAFT_STATION_LABEL, DRAFT_STATION_ORDER } from '#shared/utils/draftStations'
 import { countLabelDe } from '#shared/utils/format'
 import { GP_STARTS, intToRoman, isPlausibleGp, romanToInt } from '#shared/utils/gp'
@@ -424,6 +424,13 @@ export function draftCountLabel(c: {
   /** The enacted laws without a Ministerialentwurf that stand in the list
    *  (`?begutachtung=ohne`), each with its class (`consultation`). */
   laws?: readonly Pick<LawWithoutBegutachtung, 'consultation'>[]
+  /**
+   * The Länder's laws without a draft in the register that stand in the list
+   * (§12.70): those that say „ohne Begutachtung" (Salzburg) join the Bund's
+   * term — the same claim, wherever the law was made —, the rest are counted
+   * as what they are, laws without an assigned draft, claiming nothing.
+   */
+  landLaws?: readonly Pick<LandLaw, 'begutachtung'>[]
   /** The RIS half, counted per kind; `failed`, or null where it is not
    *  asked for. */
   ris: Partial<Record<RisConsultationKind, number>> | 'failed' | null
@@ -473,12 +480,15 @@ export function draftCountLabel(c: {
   /* The enacted laws, in the same two terms, never added up: an enacted law
    * is no draft, and only a law whose every check ran stands in the list —
    * so each addition holds for every row it counts by construction. */
-  const lawsNone = c.laws?.filter((l) => l.consultation === 'none').length ?? 0
+  const landNone = c.landLaws?.filter((l) => l.begutachtung.kind === 'none').length ?? 0
+  const landOther = (c.landLaws?.length ?? 0) - landNone
+  const lawsNone = (c.laws?.filter((l) => l.consultation === 'none').length ?? 0) + landNone
   const lawsCommittee = c.laws?.filter((l) => l.consultation === 'committee').length ?? 0
   if (lawsNone) parts.push(`${countLabelDe(lawsNone, 'Gesetz', 'Gesetze')} ohne Begutachtung`)
   if (lawsCommittee) parts.push(`${countLabelDe(lawsCommittee, 'Gesetz', 'Gesetze')} mit Ausschussbegutachtung`)
+  if (landOther) parts.push(`${countLabelDe(landOther, 'Landesgesetz', 'Landesgesetze')} ohne zugeordneten Entwurf`)
   /* Something was asked for and nothing came: one zero, in the Art's noun. */
-  const asked = c.me !== null || ris !== null || (c.laender !== null && c.laender !== undefined) || c.laws !== undefined
+  const asked = c.me !== null || ris !== null || (c.laender !== null && c.laender !== undefined) || c.laws !== undefined || c.landLaws !== undefined
   if (!parts.length && asked) parts.push(EMPTY_TERM[art])
   /* `failed` only reaches this line while another source is asked for too.
    * Where the RIS half carries the page alone, its failure is the page's

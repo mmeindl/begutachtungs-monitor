@@ -43,18 +43,19 @@ import type {
   DraftStation,
   DraftSummary,
   LandConsultation,
+  LandLaw,
   LawWithoutBegutachtung,
   OpenVorlage,
   RisConsultation,
 } from '#shared/types'
 import { aliasesFor } from '#shared/utils/draftAliases'
-import type { DraftListRow } from '#shared/utils/draftOrder'
+import { isLandLaw, type DraftListRow } from '#shared/utils/draftOrder'
 import { DRAFT_STATION_LABEL } from '#shared/utils/draftStations'
 import { type DeadlineTone, deadlineTone, fristClassLineDe, isNewArrival, isWithinNewWindow } from './deadlines'
 import { bgblShort, formatDateDe, formatDateWeekdayDe, fristEndedDe, fristLabel, todayIso } from '#shared/utils/format'
 import { promulgationState } from '#shared/utils/promulgation'
 import { RIS_KIND_LABEL } from '#shared/utils/risConsultations'
-import { LAND_NAME, landDraftPath, landPublisherDe, landShortTitle } from '#shared/utils/laender'
+import { LAND_NAME, landDraftPath, landLawName, landLawPath, landPublisherDe, landShortTitle } from '#shared/utils/laender'
 import { euLeadOf } from './euRecht'
 import { vorlagePath } from '#shared/utils/procedureRoot'
 
@@ -658,10 +659,43 @@ export function viewOfLaw(law: LawWithoutBegutachtung): EntryView {
   }
 }
 
+/**
+ * A Land's law without a draft in its register (§12.70) — a row by
+ * default, next to the Land's drafts.
+ *
+ * Zone 2: „Landesgesetz" and the Land, as a Land's draft names its Land;
+ * the note only where the sources carry a fact — „ohne Begutachtung"
+ * (Salzburg, `classifyLandLaw`), else „Initiativantrag" where RIS states
+ * that route. Nothing about a Begutachtung otherwise, in either direction.
+ * Zone 3 empty (`unasked`): a Land counts and publishes no Stellungnahmen to
+ * its Landtag that the list could ask for. Zone 4 as the Bund's law:
+ * „Kundgemacht" over the Fundstelle. The target is the law's own page.
+ */
+export function viewOfLandLaw(law: LandLaw): EntryView {
+  const name = LAND_NAME[law.land]
+  return {
+    key: `law-${law.land}-${law.year}-${law.number}`,
+    to: landLawPath(law.land, law),
+    href: null,
+    title: landLawName(law),
+    titleFull: law.title,
+    kindLabel: law.typ,
+    citation: null,
+    ministry: { code: name, name: `Land ${name}` },
+    coMinistries: [],
+    alias: null,
+    note: law.begutachtung.kind === 'none' ? 'ohne Begutachtung' : law.route?.kind === 'antrag' ? 'Initiativantrag' : null,
+    eu: null,
+    newLabel: stationNewLabel('bgbl', law.date),
+    participation: { kind: 'unasked' },
+    state: { label: 'Kundgemacht', detail: law.nr, tone: 'inactive', actionable: false },
+  }
+}
+
 export function viewOfRow(row: DraftListRow): EntryView {
   if (row.kind === 'me') return viewOfDraft(row.draft)
   if (row.kind === 'ris') return viewOfRis(row.item)
   if (row.kind === 'land') return viewOfLand(row.item)
-  if (row.kind === 'law') return viewOfLaw(row.law)
+  if (row.kind === 'law') return isLandLaw(row.law) ? viewOfLandLaw(row.law) : viewOfLaw(row.law)
   return viewOfVorlage(row.vorlage)
 }
