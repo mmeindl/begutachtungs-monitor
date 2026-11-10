@@ -140,10 +140,10 @@ function unitCite(u: LawDiffUnit): { text: string; subject: string } | null {
 }
 
 /* The Bund's question for the same pair, word for word (`lawStationPairQuestion`). */
-const AS_LAW_STATION: Record<Exclude<LandTextStation, 'geltend'>, LawStationId> = { entwurf: 'me', rv: 'rv', ausschuss: 'ausschuss', lgbl: 'bgbl' }
-const LABEL: Record<LandTextStation, string> = { geltend: 'Geltende Fassung', entwurf: 'Entwurf', rv: 'Regierungsvorlage', ausschuss: 'Ausschussfassung', lgbl: 'Kundmachung' }
+const AS_LAW_STATION: Record<Exclude<LandTextStation, 'geltend'>, LawStationId> = { entwurf: 'me', rv: 'rv', antrag: 'antrag', ausschuss: 'ausschuss', lgbl: 'bgbl' }
+const LABEL: Record<LandTextStation, string> = { geltend: 'Geltende Fassung', entwurf: 'Entwurf', rv: 'Regierungsvorlage', antrag: 'Initiativantrag', ausschuss: 'Ausschussfassung', lgbl: 'Kundmachung' }
 /* „im Entwurf" — where the earlier text has a law the later one does not. */
-const IN_FROM: Record<LandTextStation, string> = { geltend: 'in der geltenden Fassung', entwurf: 'im Entwurf', rv: 'in der Regierungsvorlage', ausschuss: 'in der Ausschussfassung', lgbl: 'in der Kundmachung' }
+const IN_FROM: Record<LandTextStation, string> = { geltend: 'in der geltenden Fassung', entwurf: 'im Entwurf', rv: 'in der Regierungsvorlage', antrag: 'im Initiativantrag', ausschuss: 'in der Ausschussfassung', lgbl: 'in der Kundmachung' }
 /* A unit the later text numbers otherwise: „§ 13 → § 9", for every pair of
    texts this section compares (26.10.2026) — the federal Beilage's form
    (`TextComparisonSection`), which replaced „(in der geltenden Fassung § 13)". */
@@ -158,6 +158,7 @@ const ANCHOR: Record<string, string> = {
   'entwurf>rv': 'textvergleich-rv',
   'rv>ausschuss': 'textvergleich-ausschuss',
   'rv>lgbl': 'textvergleich-landtag',
+  'antrag>lgbl': 'textvergleich-landtag',
   'entwurf>lgbl': 'textvergleich-lgbl',
 }
 const anchor = ANCHOR[`${props.from}>${props.to}`] ?? `textvergleich-${props.from}-${props.to}`

@@ -41,6 +41,7 @@ export const LAND_TEXT_PAIRS: readonly (readonly [LandTextStation, LandTextStati
   ['entwurf', 'rv'],
   ['rv', 'ausschuss'],
   ['rv', 'lgbl'],
+  ['antrag', 'lgbl'],
   ['entwurf', 'lgbl'],
 ]
 

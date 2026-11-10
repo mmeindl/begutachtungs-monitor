@@ -312,3 +312,22 @@ export function ooeStageOf(procedure: readonly LandProcedureStep[]): LandStage |
   }
   return null
 }
+
+/**
+ * The Beilage's own PDF on the page RIS links for a Landesgesetz's route
+ * (`RegierungsvorlageLink`, `InitiativantragLink`, §12.70) — „Beilage
+ * 632/2023 - Regierungsvorlage.pdf?id=19672…", beside its
+ * Textgegenüberstellung. Null where the page offers no PDF of that kind:
+ * then the law has no first text to compare.
+ */
+export function ooeBeilagePdf(html: string, pageUrl: string, kind: 'vorlage' | 'antrag'): string | null {
+  const word = kind === 'vorlage' ? 'Regierungsvorlage' : '(?:Initiativantrag|Antrag)'
+  const m = new RegExp(`href='(Beilage [^']*? - ${word}\\.pdf\\?[^'#]*)`).exec(html)
+  if (!m) return null
+  const href = m[1]!.replace(/&#x2f;/gi, '/').replace(/&amp;/g, '&')
+  try {
+    return new URL(href, pageUrl).href
+  } catch {
+    return null
+  }
+}

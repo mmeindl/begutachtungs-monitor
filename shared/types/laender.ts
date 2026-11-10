@@ -227,6 +227,12 @@ export interface LandProcedureStep {
    * reads.
    */
   linkText?: string
+  /**
+   * The step that is an Initiativantrag (§12.70): its text is the law's
+   * first text where no Regierungsvorlage is (`texts/stations.ts`,
+   * `antrag → lgbl`). No station of the bar: the Landtag's steps hold it.
+   */
+  kind?: 'antrag'
 }
 
 /**
@@ -286,7 +292,7 @@ export interface LandDraftDetail {
  * `geltend` is the law in force as the Land's Textgegenüberstellung prints
  * it, held against RIS (`landTgu.ts`) — compared only with `entwurf`.
  */
-export type LandTextStation = 'geltend' | 'entwurf' | 'rv' | 'ausschuss' | 'lgbl'
+export type LandTextStation = 'geltend' | 'entwurf' | 'rv' | 'antrag' | 'ausschuss' | 'lgbl'
 
 /**
  * Two texts of a Land's draft, § by § (`landLawDiffService`): the
@@ -557,8 +563,14 @@ export interface LandLawDetail {
   procedureFrom: 'bericht' | 'ris'
   /** The Landtag's period, as RIS writes it. */
   periode: string | null
-  /** The comparisons this law's texts allow: `rv → lgbl` where the Vorlage is linked. */
+  /** The comparisons this law's texts allow: the first text (`rv` or `antrag`) → `lgbl`, where it is a PDF the monitor can fetch. */
   comparisons: [LandTextStation, LandTextStation][]
+  /**
+   * The first text the comparison reads, where it is not the step's own
+   * link: Oberösterreich's RIS link is the Beilage's page, whose PDF is
+   * read off it (`ooeBeilagePdf`). Null where there is none to read.
+   */
+  firstText: { station: 'rv' | 'antrag'; label: string; url: string } | null
   /** The law text as promulgated, grouped by Artikel where it has them; null where RIS's XML could not be read. */
   text: { article: string | null; units: { id: string; heading: string | null; text: string }[] }[] | null
 }

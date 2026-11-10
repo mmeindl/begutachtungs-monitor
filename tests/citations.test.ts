@@ -140,6 +140,10 @@ describe('a unit of a Land’s comparison, and a § of a Textgegenüberstellung'
 
   it('cites no Land text without a number to cite it by, an address, or the draft’s citation', () => {
     expect(landTextCiteDe('rv', { label: 'Regierungsvorlage, GZ 135/2026', url: pdf }, citeAs)).toBeNull()
+    // An Initiativantrag only by a number that names one Beilage.
+    expect(landTextCiteDe('antrag', { label: 'Initiativantrag, Beilage 703/2023', url: pdf }, citeAs)?.cited).toBe('Initiativantrag, Beilage 703/2023')
+    expect(landTextCiteDe('antrag', { label: 'Initiativantrag, Nr 547 der Beilagen (4. Session der 17. GP)', url: pdf }, citeAs)?.cited).toBe('Initiativantrag, Nr 547 der Beilagen (4. Session der 17. GP)')
+    expect(landTextCiteDe('antrag', { label: 'Initiativantrag, Nr. 547', url: pdf }, citeAs)).toBeNull()
     expect(landTextCiteDe('lgbl', { label: 'LGBl. Nr. 95/2024', url: null }, citeAs)).toBeNull()
     expect(landTextCiteDe('entwurf', { label: 'Begutachtungsentwurf', url: pdf }, '')).toBeNull()
     expect(landTextCiteDe('geltend', { label: 'Oö. Landesrecht, Fassung vom 09.02.2024 (Abgleich)', url: null }, citeAs)).toBeNull()

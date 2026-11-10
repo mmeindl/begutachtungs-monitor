@@ -70,7 +70,9 @@ const citeAs = computed(() => (law.value ? `${law.value.nr} (${landName.value})`
 const lawNumber = computed(() => `lgbl/${props.year}/${props.nr}`)
 
 const stations = computed(() => (data.value ? landLawStations(data.value.law, data.value.procedure, data.value.comparisons) : []))
-const offersVorlage = computed(() => (data.value?.comparisons ?? []).some(([a, b]) => a === 'rv' && b === 'lgbl'))
+/* The first text against the Kundmachung: the Vorlage's or the Antrag's (§12.70). */
+const toLgbl = computed(() => (data.value?.comparisons ?? []).find(([a, b]) => (a === 'rv' || a === 'antrag') && b === 'lgbl')?.[0] ?? null)
+const offersVorlage = computed(() => toLgbl.value !== null)
 const anchors = computed<Partial<Record<StationId, string>>>(() => ({ rv: '#landtag', parlament: '#landtag', bgbl: '#landesgesetzblatt' }))
 const comparisonAnchors = computed<Partial<Record<ComparisonId, string>>>(() => (offersVorlage.value ? { parlament: '#textvergleich-landtag' } : {}))
 
@@ -251,7 +253,7 @@ useSeoMeta({
               </div>
               <!-- What the Landtag changed: the Vorlage against the
                    Kundmachung, as on a Salzburg draft's page (`rv → lgbl`). -->
-              <LandLawDiffSection v-if="offersVorlage" :land="land" :number="lawNumber" from="rv" to="lgbl" />
+              <LandLawDiffSection v-if="toLgbl" :land="land" :number="lawNumber" :from="toLgbl" to="lgbl" />
               <FoldSection v-if="steps.length" :heading="`Alle Schritte im Landtag (${steps.length})`">
                 <ol class="space-y-1.5 pb-2 text-sm">
                   <li v-for="(step, i) in steps" :key="i" class="grid grid-cols-[6rem_minmax(0,1fr)] gap-x-3">

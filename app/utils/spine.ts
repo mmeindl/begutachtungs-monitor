@@ -1350,13 +1350,13 @@ export function landLawStations(
       comparison: null,
     })
   }
-  const toLgbl = comparisons.some(([a, b]) => a === 'rv' && b === 'lgbl')
+  const toLgbl = comparisons.find(([a, b]) => (a === 'rv' || a === 'antrag') && b === 'lgbl')?.[0] ?? null
   out.push({
     id: 'parlament',
     name: 'Landtag',
     state: 'done',
     facts: kept(law.decidedAt ? `beschlossen am ${formatDateDe(law.decidedAt)}` : null),
-    comparison: toLgbl ? { id: 'parlament', question: lawStationPairQuestion('rv', 'bgbl') } : null,
+    comparison: toLgbl ? { id: 'parlament', question: lawStationPairQuestion(toLgbl === 'antrag' ? 'antrag' : 'rv', 'bgbl') } : null,
   })
   out.push({ id: 'bgbl', name: 'Landesgesetzblatt', state: 'done', facts: kept(law.nr, formatDateDe(law.date)), comparison: null })
   return out

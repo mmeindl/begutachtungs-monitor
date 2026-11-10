@@ -53,6 +53,11 @@ export function textSources(land: LandCode, detail: LandDraftRecord): Partial<Re
   const rvUrl = rv?.url ? safeExternalUrl(rv.url) : null
   if (rv && rvUrl) out.rv = pdfSource(vorlageLabel(rv.label), rvUrl, LANDTAG[land])
 
+  // An Initiativantrag's text, where the procedure names one as a step of its own (a law's page, §12.70).
+  const antrag = detail.procedure?.find((s) => s.kind === 'antrag')
+  const antragUrl = antrag?.url ? safeExternalUrl(antrag.url) : null
+  if (antrag && antragUrl) out.antrag = pdfSource(antrag.label, antragUrl, LANDTAG[land])
+
   const report = detail.landtag?.report
   const reportUrl = report?.url ? safeExternalUrl(report.url) : null
   if (report && reportUrl && REPORT_HAS_TEXT[land]) out.ausschuss = pdfSource(report.label, reportUrl, LANDTAG[land])
@@ -73,6 +78,7 @@ export function comparisonsOf(land: LandCode, detail: LandDraftRecord, tgu: bool
   if (t.entwurf && t.rv) pairs.push(['entwurf', 'rv'])
   if (t.rv && t.ausschuss) pairs.push(['rv', 'ausschuss'])
   if (t.rv && t.lgbl && !t.ausschuss) pairs.push(['rv', 'lgbl'])
+  if (t.antrag && t.lgbl && !t.rv) pairs.push(['antrag', 'lgbl'])
   if (t.entwurf && t.lgbl) pairs.push(['entwurf', 'lgbl'])
   return pairs
 }

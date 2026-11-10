@@ -34,7 +34,8 @@ import { upstreamText } from '../upstream/fetch'
 import { fetchLgblIndex, lgblRecord, type LgblRecord } from './lgblIndex'
 import { lgblUnits } from './landLawDiff'
 import { landLawsOfLgbl } from './landKonsLaws'
-import { landJoins } from './sources'
+import { fetchLandPage, landJoins } from './sources'
+import { ooeBeilagePdf } from './oberoesterreich'
 import { pdfPages, TEXT_POLICY } from './texts/read'
 import { salzburgLandtag } from './texts/salzburgLandtag'
 import {
@@ -252,7 +253,7 @@ function risProcedure(law: LandLaw, report: LandProcedureStep | null): LandProce
   const steps: LandProcedureStep[] = []
   const r = law.route
   if (r?.kind === 'vorlage') steps.push({ date: null, label: r.number ? `Regierungsvorlage, Nr. ${r.number}` : 'Regierungsvorlage', url: r.url, station: 'rv' })
-  if (r?.kind === 'antrag') steps.push({ date: null, label: r.number ? `Initiativantrag, Nr. ${r.number}` : 'Initiativantrag', url: r.url })
+  if (r?.kind === 'antrag') steps.push({ date: null, label: r.number ? `Initiativantrag, Nr. ${r.number}` : 'Initiativantrag', url: r.url, kind: 'antrag' })
   if (report) steps.push(report)
   if (law.decidedAt) steps.push({ date: law.decidedAt, label: 'Beschluss des Landtags', url: null, station: 'parlament' })
   steps.push({ date: law.date, label: `Kundmachung, ${law.nr}`, url: law.url, station: 'bgbl' })
@@ -291,7 +292,8 @@ export async function readLandLawPage(land: LandCode, year: number, number: numb
   const report = risReport(e)
   const procedure = sbg?.procedure ?? risProcedure(law, report)
   const landtag: LandLandtag | null = sbg?.landtag ?? (law.decidedAt || report ? { committee: null, subcommittee: false, report, motions: [], decision: law.decidedAt ? { date: law.decidedAt, vote: null } : null } : null)
-  const comparisons: [LandTextStation, LandTextStation][] = sbg && record?.xmlUrl ? [['rv', 'lgbl']] : []
+  const firstText = await firstTextOf(land, law, e.meta.periode).catch(() => null)
+  const comparisons: [LandTextStation, LandTextStation][] = firstText && record?.xmlUrl ? [[firstText.station, 'lgbl']] : []
   return {
     law,
     draftPath: draftId ? landDraftPath(land, draftId) : null,
@@ -302,8 +304,44 @@ export async function readLandLawPage(land: LandCode, year: number, number: numb
     procedureFrom: sbg ? 'bericht' : 'ris',
     periode: e.meta.periode,
     comparisons,
+    firstText,
     text,
   }
+}
+
+/**
+ * The law's first text, where the monitor can fetch it as a PDF (§12.70,
+ * second round): Salzburg links the Vorlage's or the Antrag's PDF itself;
+ * Oberösterreich links the Beilage's page (until 2023), whose PDF is read
+ * off it (`ooeBeilagePdf`, the page cached like every Land page). Nothing
+ * for the other Länder: their links lead to the Landtag's item, not to a
+ * text (measured, §12.70).
+ */
+async function firstTextOf(land: LandCode, law: LandLaw, periode: string | null): Promise<LandLawDetail['firstText']> {
+  const r = law.route
+  if (!r?.url) return null
+  const station = r.kind === 'vorlage' ? 'rv' as const : 'antrag' as const
+  const word = r.kind === 'vorlage' ? 'Regierungsvorlage' : 'Initiativantrag'
+  if (land === 'sbg') return { station, label: `${word}${salzburgBeilage(r.number, r.url, periode)}`, url: r.url }
+  if (land === 'ooe') {
+    const pdf = ooeBeilagePdf(await fetchLandPage(r.url), r.url, r.kind)
+    // „Regierungsvorlage, Beilage 632/2023" — the Landtag's own citation, which „Zitieren" reads (`landTextCiteDe`).
+    return pdf ? { station, label: r.number && /^\d+\/\d{4}$/.test(r.number) ? `${word}, Beilage ${r.number}` : word, url: pdf } : null
+  }
+  return null
+}
+
+/**
+ * „, Nr 547 der Beilagen (4. Session der 17. GP)" — how Salzburg's Landtag
+ * cites a Beilage (`salzburgLandtag`), the session read off the PDF's
+ * address; without session or period only „, Nr. 547", which „Zitieren"
+ * does not cite: the numbers start again each session.
+ */
+function salzburgBeilage(number: string | null, url: string, periode: string | null): string {
+  if (!number) return ''
+  const session = /\/(\d+)Session\//.exec(url)?.[1]
+  const gp = periode?.replace(/\.$/, '')
+  return session && gp ? `, Nr ${number} der Beilagen (${session}. Session der ${gp}. GP)` : `, Nr. ${number}`
 }
 
 /**
@@ -332,7 +370,15 @@ export function lawAsDraftDetail(d: LandLawDetail): LandDraftDetail {
     statementsGap: null,
     filing: { kind: 'document' },
     summary: null,
-    procedure: d.procedure,
+    // The first text the comparison reads (`firstText`) in the step `textSources` looks for.
+    procedure: d.firstText
+      ? [
+          d.firstText.station === 'rv'
+            ? { date: null, label: d.firstText.label, url: d.firstText.url, station: 'rv' as const }
+            : { date: null, label: d.firstText.label, url: d.firstText.url, kind: 'antrag' as const },
+          ...d.procedure.filter((s) => s.station !== 'rv' && s.kind !== 'antrag'),
+        ]
+      : d.procedure.filter((s) => s.station !== 'rv' && s.kind !== 'antrag'),
     landtag: d.landtag,
     retentionNote: null,
     listUrl: '',

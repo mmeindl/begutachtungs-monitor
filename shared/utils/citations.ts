@@ -173,7 +173,7 @@ export function annexParagraphCiteDe(
  * document without an address.
  */
 export function landTextCiteDe(
-  station: 'geltend' | 'entwurf' | 'rv' | 'ausschuss' | 'lgbl',
+  station: 'geltend' | 'entwurf' | 'rv' | 'antrag' | 'ausschuss' | 'lgbl',
   document: { label: string; url: string | null } | null | undefined,
   citeAs: string | null | undefined,
 ): { cited: string; url: string } | null {
@@ -185,6 +185,11 @@ export function landTextCiteDe(
   if (station === 'geltend') cited = citeAs ? `${label} zu ${citeAs}` : null
   else if (station === 'entwurf') cited = citeAs || null
   else if (station === 'rv') cited = BEILAGE.test(label) || /Nr\.?\s+\d+ der Beilagen/.test(label) ? label : null
+  // An Initiativantrag (a Landesgesetz's page): only with a number that
+  // names one Beilage — Oberösterreich's „Beilage 703/2023", Salzburg's
+  // „Nr 547 der Beilagen (4. Session der 17. GP)"; a bare „Nr. 547" repeats
+  // every session.
+  else if (station === 'antrag') cited = BEILAGE.test(label) || /Nr\.?\s+\d+ der Beilagen \(\d+\. Session der \d+\. GP\)/.test(label) ? label : null
   else if (station === 'ausschuss') cited = BEILAGE.test(label) ? label : null
   else cited = /^LGBl\.?\s*Nr\.\s*\d+\/\d{4}$/.test(label) ? label : null
   return cited ? { cited, url } : null
