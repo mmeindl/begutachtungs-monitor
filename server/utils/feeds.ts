@@ -367,6 +367,14 @@ export function buildSitemap(
    * stand either way.
    */
   bundesrechtPaths: string[] = [],
+  /**
+   * The pages of the period's laws without a draft: the Bund's laws without
+   * a Ministerialentwurf (`/entwuerfe/XXVIII/antrag/408`) and the Länder's
+   * laws without a draft in their register (`/entwuerfe/wien/lgbl/2026/44`)
+   * — each the only page the monitor has for that law. Empty where their
+   * lists are not built in time; never a precondition.
+   */
+  lawPaths: string[] = [],
 ): string {
   const urls = [
     siteUrl,
@@ -388,6 +396,7 @@ export function buildSitemap(
     // is how someone affected by it finds the consultation at all — and for
     // these there is no parliament page competing for the result.
     ...risItems.map((item) => risPageUrl(siteUrl, item)),
+    ...lawPaths.map((path) => `${siteUrl}${path}`),
   ]
   return [
     '<?xml version="1.0" encoding="UTF-8"?>',

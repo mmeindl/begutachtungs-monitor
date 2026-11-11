@@ -76,6 +76,9 @@ beforeEach(() => {
   // The sitemap's EU pages: no map built, only `/eu-recht`.
   vi.stubGlobal('getEuMap', async () => null)
   vi.stubGlobal('getBundLandMap', async () => null)
+  // The laws without a draft: not built, so none.
+  vi.stubGlobal('getLawsWithoutBegutachtung', async () => ({ gp: 'XXVIII', available: false, gap: 'pending', items: [] }))
+  vi.stubGlobal('readLandLaws', async () => ({ gp: 'XXVIII', items: [], sources: [], tally: {} }))
   vi.stubGlobal('withinBudget', <T>(p: Promise<T>) => p)
 })
 

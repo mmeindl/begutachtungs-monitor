@@ -124,6 +124,12 @@ describe('buildRssFeed', () => {
 })
 
 describe('buildSitemap', () => {
+  it('adds the pages of the laws without a draft after the drafts', () => {
+    const xml = buildSitemap(SITE, [draft()], [], [], [], ['/entwuerfe/XXVIII/antrag/408', '/entwuerfe/wien/lgbl/2026/44'])
+    expect(xml).toContain(`<loc>${SITE}/entwuerfe/XXVIII/antrag/408</loc>`)
+    expect(xml).toContain(`<loc>${SITE}/entwuerfe/wien/lgbl/2026/44</loc>`)
+  })
+
   it('lists the static pages plus one loc per consultation', () => {
     const xml = buildSitemap(SITE, [draft()])
     expect(xml).toContain(`<loc>${SITE}</loc>`)
