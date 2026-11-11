@@ -1,8 +1,7 @@
 /**
  * GET /api/ohne-begutachtung?gp= → LawsWithoutBegutachtung: the federal laws
  * of a period that reached the Bundesgesetzblatt without a Begutachtung —
- * the rows behind the chip „Ohne Begutachtung" on `/entwuerfe`
- * (docs/architecture.md §12.68).
+ * the rows behind the chip „Ohne Begutachtung" on `/entwuerfe`.
  *
  * A procedural fact per row, never a ranking: no Ressort, no count of
  * Stellungnahmen, no total beside the list's own count line. Every class is

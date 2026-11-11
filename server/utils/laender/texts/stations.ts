@@ -53,7 +53,7 @@ export function textSources(land: LandCode, detail: LandDraftRecord): Partial<Re
   const rvUrl = rv?.url ? safeExternalUrl(rv.url) : null
   if (rv && rvUrl) out.rv = pdfSource(vorlageLabel(rv.label), rvUrl, LANDTAG[land])
 
-  // An Initiativantrag's text, where the procedure names one as a step of its own (a law's page, §12.70).
+  // An Initiativantrag's text, where the procedure names one as a step of its own (a law's page).
   const antrag = detail.procedure?.find((s) => s.kind === 'antrag')
   const antragUrl = antrag?.url ? safeExternalUrl(antrag.url) : null
   if (antrag && antragUrl) out.antrag = pdfSource(antrag.label, antragUrl, LANDTAG[land])

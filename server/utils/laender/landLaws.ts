@@ -1,6 +1,5 @@
 /**
- * Landesgesetze without a draft in the Land's register (10.11.2026,
- * docs/architecture.md §12.70): what RIS says about each law, which of them
+ * Landesgesetze without a draft in the Land's register (10.11.2026): what RIS says about each law, which of them
  * the list carries as rows, and — for Salzburg alone — whether the page may
  * say „ohne Begutachtung".
  *
@@ -37,7 +36,7 @@ export const LAW_TYPES: ReadonlySet<string> = new Set(['Landesgesetz', 'Landesve
 
 /**
  * What a law's RIS record says beyond the index's title and date — the
- * `LgblAuth` fields the survey of 10.11.2026 found per Land (§12.70):
+ * `LgblAuth` fields the survey of 10.11.2026 found per Land:
  * Salzburg and Oberösterreich (until 2024) link Vorlage, Antrag and report;
  * Burgenland and Vorarlberg give their numbers; Wien names an
  * Initiativantrag only; Steiermark writes the route into `Materialien`
@@ -105,7 +104,7 @@ export function routeOf(land: LandCode, meta: LgblLawMeta): LandLawRoute | null 
   }
   if (land === 'stmk' && meta.materialien) {
     const m = STMK_ROUTE_RE.exec(meta.materialien)
-    // The link redirects to the archive's search, not to the item: not offered (§12.70).
+    // The link redirects to the archive's search, not to the item: not offered.
     if (m) return { kind: m[1] === 'RV' ? 'vorlage' : 'antrag', number: `EZ ${m[2]}`, url: null }
   }
   return null

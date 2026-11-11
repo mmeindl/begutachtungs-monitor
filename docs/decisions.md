@@ -119,6 +119,51 @@ change belongs here.
   one total** and never share a schema with invented empty fields (§12.19,
   §12.28).
 
+### Ohne Begutachtung
+
+- **„Ohne Begutachtung" is said only on evidence, and never as a reproach.**
+  A procedural fact per law, no total beside the list's count, no ranking
+  or filter by Ressort (a Ressort filter over these rows would be that
+  ranking). Doubt says nothing: a missing, late or failed read is silence,
+  never „keine".
+- **Bund, four classes in this order:** consulted (a draft's stage record
+  links the Vorlage, a chain reached it, or the Antrag table names the
+  Antrag), exempt (the budget procedure: `shared/utils/budgetExempt.ts` and
+  titles that start with „Bundesfinanz(rahmen)gesetz"), unknown (part of a
+  consulted draft's text in the Antrag, a plausible draft by title, a check
+  that did not run, no Gegenstand), none. Only none says „ohne
+  Begutachtung"; a law whose Nationalrat committee itself invited written
+  Stellungnahmen is „Ausschussbegutachtung", never both. A period whose
+  drafts are not linked to Vorlagen carries no such rows at all.
+- **Salzburg, the one Land with a statement, in this order of evidence:** a
+  draft of the register joined to the law (the Land's record or the title
+  search) — consulted; the Regierungsvorlage's Erläuterungen carry
+  „Ergebnis(se) des Begutachtungsverfahrens" and do not also say there was
+  none — consulted, shown as a win; then silent for a budget law
+  (Landeshaushaltsgesetz, not the Allgemeines Landeshaushaltsgesetz), a law
+  older than the register's reach, a draft with a similar title before the
+  Beschluss, a document not read, no route in RIS; „ohne Begutachtung" only
+  last, with the Vorlage read in full without the heading — or the
+  Initiativantrag read in full without the word „Begutachtung" — and a
+  committee report that names none except to say there was none.
+- **Every other Land says „nicht feststellbar"** and why: its register keeps
+  drafts too briefly to be joined (a draft may have existed and been taken
+  down), or no Landtag document RIS links is read for this question.
+- **Said once, as the first station of the card.** Pale (the rail's
+  hollow, grey state, no warning colour) where none took place or none can
+  be told; an ordinary station where one took place. Never a sentence above
+  the card beside it.
+- **Every law gets a page; no row links out.** A Land's law without a joined
+  draft is a row of the Länder list by default, its page built from RIS; a
+  law with a joined draft moves to the draft's page (301). The register's
+  reach decides the wording, not whether a law is a row: before it a plain
+  „Landesgesetz", counted under its own term and never added to „ohne
+  zugeordneten Entwurf". The Bund's laws without a Ministerialentwurf stand
+  in the default list too; the chip only narrows to them.
+- **A Land law's changed laws come from RIS's consolidated Landesrecht,
+  filtered by the Landesgesetzblatt** (`Kundmachungsorgannummer`), never from
+  an Artikel heading or a title.
+
 ### Joins
 
 - **A positive from a constructed join (title similarity) may be shown with a
@@ -410,6 +455,16 @@ circular of 10.12.2015).
 | Deadline stated in the Land draft | 2 of about 35 | same |
 | Feed and calendar polls among reader requests | 89 of 186 | 31.10.2026 (§12.65) |
 
+### Laws without a Begutachtung
+
+| What | Value | Sample, date |
+|---|---|---|
+| Bund laws „ohne Begutachtung" + „Ausschussbegutachtung" | XXVIII 59 + 8, XXVII 331 + 8 | 205 and 923 federal laws · 10.11.2026 |
+| Salzburg „ohne Begutachtung" | 41 of 452 laws, all Initiativanträge | GP XXV–XXVIII · 10.11.2026 |
+| Salzburg Vorlagen joined by title that carry the heading | 264 of 264 | laws since 2016 · 10.11.2026 |
+| Land laws with ≥ 1 law at its geltende Fassung in RIS | 98.0 % of amending laws (2,720 of 2,776), 97.5 % of all | all nine Länder since 2016 · 10.11.2026 |
+| First text → Kundmachung comparison shown | Salzburg Initiativantrag 87 of 103, Oberösterreich Beilage 181 of 201 | since 2016 · 10.11.2026 |
+
 ## 3. Rejected alternatives
 
 ### The engine and the annex
@@ -455,6 +510,21 @@ circular of 10.12.2015).
   the Bund → Land key.** Amendments enter at the RV, only two Länder write
   the phrase, and reference lists cite everything (§12.67).
 - **An overview page for Grundsatzgesetze.** About five a year (§12.67).
+
+- **Old against new wording from RIS's consolidated Landesrecht as every
+  Land's „what changed".** 94 % of changed §§ have their previous version,
+  but the changed § set matches the Landesgesetzblatt's instructions in only
+  57 of 176 laws (20 Novellen per Land, 10.11.2026). Oberösterreich (14 of
+  19) and Tirol (10 of 19) would be the place to try again.
+- **The changed laws of a Land law derived from Artikel headings or the
+  title.** Genitives („Änderung des NÖ Pflichtschulgesetzes") and
+  Sammelnovellen need guessing; the consolidated records name them directly.
+- **A per-law Begutachtung statement for Burgenland.** Its register does not
+  carry the key Salzburg's Vorlagen do, and the hand sample of „none" laws
+  found 1 of 25 wrong.
+- **A first text from the Landtag item RIS links** (Wien, Niederösterreich,
+  Tirol). Wien's Beilagen read as law text 3 of 10, Niederösterreich's 0 of
+  10 (10.11.2026).
 
 ### Operations and data
 
@@ -533,5 +603,14 @@ circular of 10.12.2015).
 - **One Ministerialentwurf, several Regierungsvorlagen.** The page uses the
   RV whose text Parliament attaches; whether to show every strand is open.
 - **Rate limits of the Parliament API** are undocumented.
+- **Whether a Begutachtung is required at all,** federally or in any Land,
+  and in what form. The product's wording („ohne Begutachtung", never
+  „übersprungen") does not depend on it, but any public claim beyond it does.
+- **A consulted draft under another title.** A Bund law whose draft was
+  consulted under a different title and whose text took a path no record
+  links still reads „keine · kein Ministerialentwurf" (126 d.B.,
+  Tabakgesetz, after 5/ME). Whether the Vorlage's own documents carry a
+  usable signal, as Salzburg's do, is measured below the rule's evidence and
+  open.
 - **„Upcoming" Begutachtungen** have no verified data source: the Parliament
   API knows a consultation only once it starts.

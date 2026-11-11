@@ -1,6 +1,6 @@
 /**
  * What the page of a Regierungsvorlage or Antrag without a Begutachtung says,
- * once its record has arrived (docs/architecture.md §12.69) — the assembly
+ * once its record has arrived — the assembly
  * step of `getVorlageDetail`.
  *
  * PURE MODULE — no Nuxt auto-imports, only relative imports, so vitest can

@@ -1,8 +1,7 @@
 #!/usr/bin/env node
 /**
  * The laws of one period without a Begutachtung, through the PRODUCTION
- * classification (`server/utils/ris/skippedLaws.ts`, docs/architecture.md
- * §12.68) — and every row it would show, printed in full, because the list
+ * classification (`server/utils/ris/skippedLaws.ts`) — and every row it would show, printed in full, because the list
  * is validated by reading it.
  *
  * Usage:   pnpm corpus:ohne-begutachtung -- XXVIII [cacheDir] [memoJson]

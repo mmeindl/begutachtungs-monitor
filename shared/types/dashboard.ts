@@ -179,8 +179,7 @@ export interface DashboardSecondRound {
 
 /**
  * A federal law that reached the Bundesgesetzblatt without a Begutachtung —
- * a row behind the chip „Ohne Begutachtung" on `/entwuerfe`
- * (docs/architecture.md §12.68). Its own type, not an `OpenVorlage`: the
+ * a row behind the chip „Ohne Begutachtung" on `/entwuerfe`. Its own type, not an `OpenVorlage`: the
  * window for Stellungnahmen is over, the carrying item may be an Antrag, and
  * nothing here is counted (`server/utils/ris/skippedLaws.ts`).
  */

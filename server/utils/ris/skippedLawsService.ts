@@ -1,6 +1,5 @@
 /**
- * The laws of one period without a Begutachtung, gathered for the list
- * (docs/architecture.md §12.68). Nuxt-aware glue around the pure module
+ * The laws of one period without a Begutachtung, gathered for the list. Nuxt-aware glue around the pure module
  * `skippedLaws.ts`, which decides every class.
  *
  * WHAT IT READS, all of it cached elsewhere already: the BGBl Teil-I
@@ -9,7 +8,7 @@
  * the period (every list page reads them) — and one list call of its own,
  * the period's Anträge (`getAntraegeForGp`). No detail call per Gegenstand.
  *
- * A FAILURE IS NOT AN ANSWER (§12.13), and here it has two forms:
+ * A FAILURE IS NOT AN ANSWER, and here it has two forms:
  *  - a source the WHOLE claim stands on — the Jahrgänge, a station map —
  *    did not answer, or a map lacks a draft whose record could not be read:
  *    no rows at all, `available: false`, `gap: 'unread'`. A missing chain
@@ -51,7 +50,7 @@ const INCOMPLETE_TTL_MS = 10 * 60 * 1000
 const PENDING_TTL_MS = 5_000
 /**
  * How long the station maps may take. They are prewarmed for the running
- * period and the one before; cold, GP XXVII costs 35 s (§12.26), and the
+ * period and the one before; cold, GP XXVII costs 35 s, and the
  * chip must not wait that long — the build carries on and fills the cache.
  */
 const STATION_MAP_BUDGET_MS = 2_500
@@ -108,7 +107,7 @@ const buildSkippedLaws = defineCachedFunction(
       const failed = (!own.ok && !own.pending) || (before !== null && !before.ok && !before.pending)
       return unavailable(gp, failed ? 'unread' : 'pending', false)
     }
-    /* A period whose drafts are not linked to Vorlagen (§12.27) cannot say
+    /* A period whose drafts are not linked to Vorlagen cannot say
      * that no draft stood behind a law — the link is missing, not the
      * draft. The same gate for the period before: a carry-over from an
      * unlinked archive would be invisible. Stable, so it is kept. */

@@ -382,7 +382,7 @@ describe('Zone 2 — Kennung', () => {
   })
 
   /* The procedural fact, never as an accusation. Since 10.11.2026 the
-   * Vorlage has a page of its own (docs/architecture.md §12.69). */
+   * Vorlage has a page of its own. */
   it('sends a Vorlage without a Begutachtung to its own page, and says so', () => {
     const v = viewOfVorlage(vorlage())
     expect(v.to).toBe('/entwuerfe/XXVIII/vorlage/594')

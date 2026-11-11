@@ -1,5 +1,5 @@
 /**
- * A law's address, checked before anything is read (§12.70): a Land the
+ * A law's address, checked before anything is read: a Land the
  * monitor knows, a year of four digits, a number without leading zeros —
  * `/entwuerfe/salzburg/lgbl/2026/57`. Pure.
  */

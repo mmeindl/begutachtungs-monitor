@@ -1,7 +1,7 @@
 /**
  * A Regierungsvorlage's own Erläuterungen (`getVorlageExplanations`). 404 for
  * an Antrag: its Begründung stands inside the Antrag's document, and cutting
- * it out is not built (docs/architecture.md §12.69).
+ * it out is not built.
  */
 import type { ExplanationsResponse } from '#shared/types'
 import { validateVorlageParams } from '../../../../../utils/http/params'

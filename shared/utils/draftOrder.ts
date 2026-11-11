@@ -174,8 +174,8 @@ export type DraftListRow =
   | { kind: 'vorlage'; key: string; vorlage: OpenVorlage }
   | { kind: 'land'; key: string; item: LandConsultation }
   /* A law without a Begutachtungsentwurf in the list: the Bund's without a
-     Ministerialentwurf (§12.68), or a Land's without a draft in its
-     register (§12.70) — one row kind, told apart by `isLandLaw`. */
+     Ministerialentwurf, or a Land's without a draft in its
+     register — one row kind, told apart by `isLandLaw`. */
   | { kind: 'law'; key: string; law: LawWithoutBegutachtung | LandLaw }
 
 /**
@@ -193,7 +193,7 @@ export function rowOrderKey(row: DraftListRow): OrderedDraft {
   if (row.kind === 'ris') return row.item
   // A closed Land row without a Frist (Salzburg's register) is ordered by its start.
   if (row.kind === 'land') return { active: row.item.active, deadline: row.item.deadline, startedAt: row.item.startedAt, title: row.item.title }
-  /* An enacted law without a Begutachtung (§12.68): nothing can be filed
+  /* An enacted law without a Begutachtung: nothing can be filed
    * any more, and the day that pins it down is its Kundmachung — so it sorts
    * among the closed rows by that day, beside the drafts that became law the
    * same week. */

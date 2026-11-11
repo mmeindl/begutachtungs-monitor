@@ -1,6 +1,5 @@
 /**
- * Which laws may say „ohne Begutachtung" (`server/utils/ris/skippedLaws.ts`,
- * docs/architecture.md §12.68).
+ * Which laws may say „ohne Begutachtung" (`server/utils/ris/skippedLaws.ts`).
  *
  * The four classes are claims about a named law on a public page, so what
  * these tests guard is the DIRECTION: every doubt — a draft behind it, a

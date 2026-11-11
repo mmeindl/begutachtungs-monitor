@@ -1,6 +1,6 @@
 <script setup lang="ts">
 /**
- * A Landesgesetz without a draft in the register (`LandLawPage`, §12.70):
+ * A Landesgesetz without a draft in the register (`LandLawPage`):
  * `/entwuerfe/steiermark/lgbl/<year>/<nr>`. One file per Land, as the drafts' `[id].vue`.
  */
 definePageMeta({

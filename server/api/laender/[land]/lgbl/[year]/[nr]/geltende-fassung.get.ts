@@ -1,7 +1,7 @@
 /**
  * GET /api/laender/:land/lgbl/:year/:nr/geltende-fassung → BgblLawsResponse:
  * the laws this Landesgesetzblatt changed, created or repealed, each at its
- * geltende Fassung in RIS (`landKonsLaws.ts`, §12.70) — the Bund's endpoint
+ * geltende Fassung in RIS (`landKonsLaws.ts`) — the Bund's endpoint
  * of the same name, for a Landesgesetz. Fetched lazily by the law's page.
  */
 import type { BgblLawsResponse, LandCode } from '#shared/types'

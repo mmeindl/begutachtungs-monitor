@@ -95,8 +95,7 @@ export async function draftArticlesOfXml(xmlUrl: string): Promise<DraftText> {
  * Artikel (10.11.2026) — its own Gesetzestext at Parliament (`findLawStations`
  * with the item's type: the Vorlage's „Gesetzestext", the Antrag's ParlDion
  * text). No RIS fallback: RIS has no Begut record of an item that never had a
- * Begutachtung, and its RegV record is not joined (docs/architecture.md
- * §12.69). A draft's text stays `getDraftArticles`.
+ * Begutachtung, and its RegV record is not joined. A draft's text stays `getDraftArticles`.
  */
 export const getRootDraftArticles = defineCachedFunction(
   async (root: ProcedureRoot): Promise<DraftText> => {

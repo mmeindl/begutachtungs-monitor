@@ -1,6 +1,5 @@
 /**
- * „Der Entwurf" on the page of a Regierungsvorlage without a Begutachtung
- * (docs/architecture.md §12.69): the Vorlage's own Textgegenüberstellung and
+ * „Der Entwurf" on the page of a Regierungsvorlage without a Begutachtung: the Vorlage's own Textgegenüberstellung and
  * Erläuterungen, read from Parliament's copy.
  *
  * WHY PARLIAMENT'S COPY HERE, when a draft's annex is read from RIS first

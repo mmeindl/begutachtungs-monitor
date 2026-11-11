@@ -12,12 +12,11 @@ import { fassungSources } from '~/utils/geltendeFassung'
 import { landFassungFacts } from '~/utils/landLaw'
 
 /**
- * A Landesgesetz without a draft in the Land's register (10.11.2026,
- * docs/architecture.md §12.70), behind `/entwuerfe/<land>/lgbl/<year>/<nr>`
+ * A Landesgesetz without a draft in the Land's register (10.11.2026), behind `/entwuerfe/<land>/lgbl/<year>/<nr>`
  * — from RIS alone, for every Land.
  *
  * The Land draft page's frame and the Bund's page of a law without a
- * Begutachtung (§12.69) in one: header, the procedure
+ * Begutachtung in one: header, the procedure
  * card (its first station the Begutachtung, pale where none is known),
  * „Das Gesetz", „Im Landtag", „Im Landesgesetzblatt". What RIS does not
  * hold for this Land or year, the section says in one neutral sentence —
@@ -70,7 +69,7 @@ const citeAs = computed(() => (law.value ? `${law.value.nr} (${landName.value})`
 const lawNumber = computed(() => `lgbl/${props.year}/${props.nr}`)
 
 const stations = computed(() => (data.value ? landLawStations(data.value.law, data.value.procedure, data.value.comparisons) : []))
-/* The first text against the Kundmachung: the Vorlage's or the Antrag's (§12.70). */
+/* The first text against the Kundmachung: the Vorlage's or the Antrag's. */
 const toLgbl = computed(() => (data.value?.comparisons ?? []).find(([a, b]) => (a === 'rv' || a === 'antrag') && b === 'lgbl')?.[0] ?? null)
 const offersVorlage = computed(() => toLgbl.value !== null)
 const anchors = computed<Partial<Record<StationId, string>>>(() => ({ rv: '#landtag', parlament: '#landtag', bgbl: '#landesgesetzblatt' }))

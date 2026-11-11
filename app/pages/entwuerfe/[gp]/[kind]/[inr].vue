@@ -9,7 +9,7 @@ import { itypOfKind, vorlageApiBase } from '#shared/utils/procedureRoot'
 /**
  * The page of a law that came to the Nationalrat without a Begutachtung — a
  * Regierungsvorlage (`/entwuerfe/<GP>/vorlage/<nr>`) or a selbständiger
- * Antrag (`/entwuerfe/<GP>/antrag/<nr>`), docs/architecture.md §12.69.
+ * Antrag (`/entwuerfe/<GP>/antrag/<nr>`)
  *
  * ONE FILE FOR BOTH, with the kind as a validated segment: the two differ in
  * a handful of words and in which sections have something to show, not in
@@ -80,7 +80,7 @@ const { data: amendedLaws } = await useFetch<AmendedLawsResponse>(() => `${url.v
 })
 
 /* A Vorlage's own Textgegenüberstellung and Erläuterungen. Not for an
- * Antrag: its annex and its Begründung are open experiments (§12.69). */
+ * Antrag: its annex and its Begründung are open experiments. */
 const showsAnnex = computed(() => !isAntrag.value && !amendedLaws.value?.createsNewLaw)
 
 const kindWord = computed(() => (isAntrag.value ? 'Initiativantrag' : 'Regierungsvorlage'))

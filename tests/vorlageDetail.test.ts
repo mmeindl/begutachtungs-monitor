@@ -104,7 +104,7 @@ describe('vorlageStations', () => {
     ...overrides,
   })
 
-  it('opens with a pale Begutachtung station, „keine" only on the list’s evidence (§12.70)', () => {
+  it('opens with a pale Begutachtung station, „keine" only on the list’s evidence', () => {
     expect(vorlageStations(d()).map((s) => s.id)).toEqual(['begutachtung', 'rv', 'parlament', 'bgbl'])
     expect(vorlageStations(d())[0]).toMatchObject({ name: 'Begutachtung', state: 'never', facts: ['keine', 'kein Ministerialentwurf'] })
     expect(vorlageStations(d({ withoutBegutachtung: false }))[0]).toMatchObject({ state: 'never', facts: ['nicht feststellbar', 'ob ein Ministerialentwurf vorausging, ist hier nicht belegt'] })

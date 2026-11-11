@@ -1,7 +1,7 @@
 /**
  * A Regierungsvorlage's own Textgegenüberstellung (`getVorlageTextComparison`).
  * 404 for an Antrag: its annex is Parliament's working copy in a template
- * this site does not read (docs/architecture.md §12.69).
+ * this site does not read.
  */
 import type { TextComparisonResponse } from '#shared/types'
 import { validateVorlageParams } from '../../../../../utils/http/params'

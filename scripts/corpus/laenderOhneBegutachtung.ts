@@ -1,12 +1,12 @@
 /**
  * Landesgesetze without a Begutachtung — may a list say so per law, as the
- * Bund's does (`ohneBegutachtung.ts`, docs/architecture.md §12.68)? The
+ * Bund's does (`ohneBegutachtung.ts`)? The
  * measurement before anything is built, for Salzburg and Burgenland
  * (10.11.2026).
  *
  * The Bund has a hard key: a Ministerialentwurf's stage record links its
  * Regierungsvorlage. A Land has none — the app joins a Land's draft to its
- * Landesgesetzblatt BY TITLE (`matchLgbl`, §12.43), and every consulted
+ * Landesgesetzblatt BY TITLE (`matchLgbl`), and every consulted
  * draft that join misses would make its law look unconsulted. So each law
  * is put in one of three tiers, never blended:
  *
@@ -35,7 +35,7 @@
  * ten lines inside a Nitro module, mirrored), and the text decision that
  * moves or refutes a Salzburg title find (`texts/kundmachung.ts`, which
  * reads the draft PDF and up to five Vorlagen per draft) — measured on
- * 153 finds at 2 moved and 3 refuted (§12.47), so the `consulted` tier here
+ * 153 finds at 2 moved and 3 refuted, so the `consulted` tier here
  * can hold a handful of laws the page would not join, and miss as many.
  *
  * Usage:

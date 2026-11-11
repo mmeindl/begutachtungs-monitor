@@ -228,7 +228,7 @@ export interface LandProcedureStep {
    */
   linkText?: string
   /**
-   * The step that is an Initiativantrag (§12.70): its text is the law's
+   * The step that is an Initiativantrag: its text is the law's
    * first text where no Regierungsvorlage is (`texts/stations.ts`,
    * `antrag → lgbl`). No station of the bar: the Landtag's steps hold it.
    */
@@ -462,7 +462,7 @@ export interface LandReasoningResponse {
 }
 
 /* ------------------------------------------------------------------ *
- * Landesgesetze without a draft in the register (10.11.2026, §12.70)
+ * Landesgesetze without a draft in the register (10.11.2026)
  * ------------------------------------------------------------------ */
 
 /** How a law came to the Landtag, as RIS states it — and only where it does. */

@@ -1,6 +1,5 @@
 /**
- * Landesgesetze without a draft in the register (`server/utils/laender/landLaws.ts`,
- * docs/architecture.md §12.70).
+ * Landesgesetze without a draft in the register (`server/utils/laender/landLaws.ts`).
  *
  * What these tests guard is the DIRECTION, as for the Bund's laws: every
  * doubt — a join that could not be read, a budget law, a similar draft, a

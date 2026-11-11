@@ -44,7 +44,7 @@ const rows = computed(() => LAND_CODES.map((land: LandCode) => {
           <span><span v-if="r.complete" class="font-medium text-ink">Vollständig: </span>{{ r.text }}</span>
         </li>
       </ul>
-      <!-- The laws without a draft in the register (§12.70): where their
+      <!-- The laws without a draft in the register: where their
            rows begin, and why some Länder have none. -->
       <p>
         Ein Landesgesetz, dem kein Entwurf des Landes zugeordnet ist, steht hier

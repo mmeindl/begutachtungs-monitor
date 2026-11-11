@@ -1,6 +1,5 @@
 /**
- * The Begutachtung station of a Landesgesetz (`app/utils/landLaw.ts`,
- * §12.70): „ohne Begutachtung" only for `none`, never the words the product
+ * The Begutachtung station of a Landesgesetz (`app/utils/landLaw.ts`): „ohne Begutachtung" only for `none`, never the words the product
  * does not use, pale wherever nothing or nothing certain is known, ink only
  * where a Begutachtung took place.
  */

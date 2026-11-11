@@ -1,5 +1,5 @@
 /**
- * The geltende Fassung of a Landesgesetz's laws (`landKonsLaws.ts`, §12.70):
+ * The geltende Fassung of a Landesgesetz's laws (`landKonsLaws.ts`):
  * only records that name THIS Landesgesetzblatt, in either spelling RIS uses.
  */
 import { describe, expect, it } from 'vitest'

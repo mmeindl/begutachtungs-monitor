@@ -3,7 +3,7 @@ import type { CommitteeConsultation } from './statements'
 import type { EnactmentInfo } from './drafts'
 
 /**
- * The Gegenstand a procedure page starts from (docs/architecture.md §12.69).
+ * The Gegenstand a procedure page starts from.
  *
  * Until 10.11.2026 every procedure page was rooted on a Ministerialentwurf,
  * and every service took `(gp, inr)` with the item type implied. A law that
@@ -25,8 +25,7 @@ export type VorlageKind = 'vorlage' | 'antrag'
 
 /**
  * The page of a Regierungsvorlage or selbständiger Antrag that came to the
- * Nationalrat without a Begutachtung (`/entwuerfe/<GP>/vorlage|antrag/<nr>`,
- * docs/architecture.md §12.69). Everything here is read from the item's own
+ * Nationalrat without a Begutachtung (`/entwuerfe/<GP>/vorlage|antrag/<nr>`). Everything here is read from the item's own
  * detail JSON — there is no list-81 row, no Frist, no draft documents.
  */
 export interface VorlageDetail {

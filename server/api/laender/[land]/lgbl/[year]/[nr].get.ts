@@ -1,6 +1,6 @@
 /**
  * GET /api/laender/:land/lgbl/:year/:nr → LandLawDetail: one Landesgesetz's
- * page, from RIS (docs/architecture.md §12.70). 404 where RIS holds no
+ * page, from RIS. 404 where RIS holds no
  * Landesgesetz of that number in the Land; 503 where its index could not be
  * read.
  */

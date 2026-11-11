@@ -1,8 +1,7 @@
 /**
  * GET /api/laender/:land/lgbl/:year/:nr/vergleich?von=rv&bis=lgbl →
  * LandLawDiffResponse: what the Landtag changed in the Regierungsvorlage,
- * § by §, for a law without a draft in the register (docs/architecture.md
- * §12.70) — the draft page's comparison (`landLawDiffService`), on the
+ * § by §, for a law without a draft in the register — the draft page's comparison (`landLawDiffService`), on the
  * law's own texts. Only the pairs the law's page offers (`comparisons`).
  */
 import type { LandCode, LandLawDiffResponse, LandTextStation } from '#shared/types'

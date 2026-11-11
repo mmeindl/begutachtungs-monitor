@@ -58,7 +58,7 @@ export function landDraftPath(land: LandCode, id: string): string {
   return `/entwuerfe/${LAND_SLUG[land]}/${id.slice(id.indexOf('-') + 1)}`
 }
 
-/** A Landesgesetz's own page (§12.70): `/entwuerfe/salzburg/lgbl/2026/57`. */
+/** A Landesgesetz's own page: `/entwuerfe/salzburg/lgbl/2026/57`. */
 export function landLawPath(land: LandCode, law: { year: number; number: number }): string {
   return `/entwuerfe/${LAND_SLUG[land]}/lgbl/${law.year}/${law.number}`
 }

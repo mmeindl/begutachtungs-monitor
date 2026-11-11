@@ -1307,8 +1307,7 @@ export async function readLandDraft(land: LandCode, number: string): Promise<Lan
 }
 
 /**
- * Which Landesgesetzblätter a draft of the Land's register is joined to
- * (§12.70): those the Land's own record names (Oberösterreich, Tirol,
+ * Which Landesgesetzblätter a draft of the Land's register is joined to: those the Land's own record names (Oberösterreich, Tirol,
  * Kärnten's chain) and those the title search found (`lgblAssignment`) —
  * keyed by the LGBl number („57/2026", `lgblNrKey`), valued by the draft. A law here keeps its
  * draft's page; a law not here gets one of its own.

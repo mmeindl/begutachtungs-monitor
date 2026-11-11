@@ -135,8 +135,7 @@ ExecStart=/usr/bin/curl -fsS -o /dev/null --max-time 120 http://127.0.0.1:3000/a
 ExecStart=/usr/bin/curl -fsS -o /dev/null --max-time 1800 "http://127.0.0.1:3000/api/eu-recht/karte?gp=aktuell"
 ExecStart=/usr/bin/curl -fsS -o /dev/null --max-time 900 http://127.0.0.1:3000/api/stations/vorperiode
 # Ninth call since 09.11.2026: the laws of the running period without a
-# Begutachtung, behind the chip „Ohne Begutachtung" on /entwuerfe
-# (docs/architecture.md §12.68). LAST on purpose: it reads both station maps
+# Begutachtung, behind the chip „Ohne Begutachtung" on /entwuerfe. LAST on purpose: it reads both station maps
 # above under a 2.5 s budget and answers `gap: 'pending'` while either is
 # cold — ExecStart= lines of a oneshot run one after the other, so here
 # both are warm and the answer is the six-hour one. Its own reads are the

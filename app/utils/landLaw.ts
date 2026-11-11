@@ -1,5 +1,5 @@
 /**
- * What a Landesgesetz's page says about a Begutachtung (§12.70) — the first
+ * What a Landesgesetz's page says about a Begutachtung — the first
  * station of its card, one fact and a short reason, pale where none took
  * place or none can be told (`begutachtungStation`). Pure: the bar and
  * vitest read the same words.

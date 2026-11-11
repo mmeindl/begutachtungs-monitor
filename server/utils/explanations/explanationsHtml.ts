@@ -349,8 +349,7 @@ export function passagesByParagraph(doc: HtmlExplanations): Map<string, HtmlPass
  * Parliament's HTML Erläuterungen in the shape the RIS reader produces
  * (`ExplanationsDocument`), so the section and the join at the Paragraph
  * (`explanationsByParagraph`) read them unchanged — for a Regierungsvorlage
- * without a Begutachtung, which has no Begut record in RIS (10.11.2026,
- * docs/architecture.md §12.69).
+ * without a Begutachtung, which has no Begut record in RIS (10.11.2026).
  *
  * What does not carry over is said by the fields, not hidden: the HTML reader
  * keeps no table cells or figures apart, so `dropped` is 0 — the section

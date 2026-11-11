@@ -77,7 +77,7 @@ export type Participation =
    * The fourth, and the only one that draws an EMPTY zone (09.11.2026): the
    * Stellungnahmen exist and Parliament publishes them — § 23b GOG-NR, on
    * the Vorlage or the Antrag a law without a Begutachtung came as — but
-   * this list does not ask for them (§12.68). Neither `unpublished` (they
+   * this list does not ask for them. Neither `unpublished` (they
    * are published) nor `unavailable` (nothing failed) would be true, and a
    * cell that says nothing claims nothing.
    */
@@ -544,7 +544,7 @@ function vorlageOf(url: string): { gp: string; inr: number } | null {
 export function viewOfVorlage(v: OpenVorlage): EntryView {
   const c = v.consultation
   // A Vorlage without a draft page has a page of its own since 10.11.2026
-  // (`vorlagePath`, docs/architecture.md §12.69) — whatever the evidence
+  // (`vorlagePath`) — whatever the evidence
   // says about a Begutachtung, which stays the note's business below.
   const own = c.kind === 'draft' ? null : vorlageOf(v.parliamentUrl)
   return {
@@ -622,7 +622,7 @@ export function viewOfLand(c: LandConsultation): EntryView {
 
 /**
  * A federal law that reached the Bundesgesetzblatt without a Begutachtung
- * (docs/architecture.md §12.68) — a row only under the chip „Ohne
+ * — a row only under the chip „Ohne
  * Begutachtung".
  *
  * Zone 2 names the item the law came to the Nationalrat as — „Regierungs-
@@ -640,7 +640,7 @@ export function viewOfLand(c: LandConsultation): EntryView {
 export function viewOfLaw(law: LawWithoutBegutachtung): EntryView {
   return {
     key: `law-${law.bgblNumber}`,
-    // Our page of the item since 10.11.2026 (docs/architecture.md §12.69).
+    // Our page of the item since 10.11.2026.
     to: vorlagePath(law.item.gp, law.item.kind === 'rv' ? 'I' : 'A', law.item.inr),
     href: null,
     title: law.title,
@@ -660,7 +660,7 @@ export function viewOfLaw(law: LawWithoutBegutachtung): EntryView {
 }
 
 /**
- * A Land's law without a draft in its register (§12.70) — a row by
+ * A Land's law without a draft in its register — a row by
  * default, next to the Land's drafts.
  *
  * Zone 2: „Landesgesetz" and the Land, as a Land's draft names its Land;

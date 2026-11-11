@@ -47,7 +47,7 @@ function entriesOf(result: any): LgblEntry[] {
       titel: titel.replace(/\s+/g, ' ').trim(),
       datum,
       url: typeof eli === 'string' ? safeExternalUrl(eli) : null,
-      // A law's route and materials, for its page and the list's rows (§12.70).
+      // A law's route and materials, for its page and the list's rows.
       ...(LAW_TYPES.has(String(m?.LgblAuth?.Typ ?? '')) ? { meta: lawMetaOf(m) } : {}),
     }]
   })

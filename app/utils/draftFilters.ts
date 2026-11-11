@@ -164,7 +164,7 @@ export type SortKey = 'frist' | 'stellungnahmen'
 export type EuFilter = '' | 'umsetzung'
 
 /**
- * „Ohne Ministerialentwurf" (docs/architecture.md §12.68, §12.69): the list shows only the
+ * „Ohne Ministerialentwurf": the list shows only the
  * procedures without a Ministerialentwurf — the enacted laws of the period and the
  * open Vorlagen without a draft behind them. A chip, off by default and out
  * of the URL while off, like `EuFilter`: `?begutachtung=ohne`. Not passed
@@ -425,8 +425,7 @@ export function draftCountLabel(c: {
    *  (`?begutachtung=ohne`), each with its class (`consultation`). */
   laws?: readonly Pick<LawWithoutBegutachtung, 'consultation'>[]
   /**
-   * The Länder's laws without a draft in the register that stand in the list
-   * (§12.70): those that say „ohne Begutachtung" (Salzburg) join the Bund's
+   * The Länder's laws without a draft in the register that stand in the list: those that say „ohne Begutachtung" (Salzburg) join the Bund's
    * term — the same claim, wherever the law was made —, the rest are counted
    * as what they are, laws without an assigned draft, claiming nothing.
    */

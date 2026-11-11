@@ -573,7 +573,7 @@ this dataset would make it trivially easy to build.
   plausible draft, and no part of a consulted draft's text stands in its
   Antrag (the weak tier of §4a) — 67 rows for GP XXVIII on 09.11.2026, 64
   of them among this memo's 173 laws against its corrected 80, every
-  difference in the direction of saying less (`architecture.md` §12.68).
+  difference in the direction of saying less (`docs/decisions.md`, „Ohne Begutachtung").
   **Nachtrag 10.11.2026: „never in Begutachtung" counts laws a committee
   consulted.** This memo measures the ministerial stage — whether a
   Ministerialentwurf went out — and so counts as skipped every law whose
@@ -586,7 +586,14 @@ this dataset would make it trivially easy to build.
   Ministerialentwurf" and these laws carry the note „Ausschussbegutachtung".
   Measured 10.11.2026 (`pnpm corpus:ohne-begutachtung`): 8 of the 67 rows of
   GP XXVIII (167/A, 372/A, 306, 307, 309, 310 and 311 d.B., 865/A; 35 to
-  496 bodies invited) and 8 of 339 in GP XXVII (`architecture.md` §12.69).
+  496 bodies invited) and 8 of 339 in GP XXVII.
+  **Stand 11.11.2026: no longer behind a chip.** Since 10.11.2026 these
+  laws stand in `/entwuerfe`'s default list beside the drafts, as do the
+  Länder's laws without a draft in their register; the chip „Ohne
+  Ministerialentwurf" only narrows the list to them. Each law has a page of
+  its own, and the page's first station says what is known about a
+  Begutachtung — pale where none took place or none can be told
+  (`docs/decisions.md`, „Ohne Begutachtung").
 - **An open question, not a claim:** whether Austria has any legal duty to
   hold a Begutachtung, and what the status of the six-week Frist actually is.
   The memo's argument is strongest if the answer is "none, and a

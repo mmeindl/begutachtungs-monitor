@@ -1,6 +1,6 @@
 /**
  * Which laws in force a Landesgesetzblatt changed, created or repealed — the
- * „Geltende Fassung" of a Landesgesetz's page (10.11.2026, §12.70), the
+ * „Geltende Fassung" of a Landesgesetz's page (10.11.2026), the
  * Bund's `ris/bgblLaws.ts` for RIS's consolidated Landesrecht (`LrKons`).
  *
  * The same key, and the reason it beats reading names: RIS's consolidated
@@ -17,8 +17,7 @@
  * name: a law whose consolidation RIS has not done yet (days to weeks, „im
  * RIS noch nicht eingearbeitet"). And what the Bund's list pays too
  * (`bgblLaws.ts`, „NO DATE FILTER"): a law a later Landesgesetzblatt
- * repealed is still linked, unless this one created it. Measured per Land
- * in §12.70.
+ * repealed is still linked, unless this one created it. Measured per Land.
  *
  * PURE but `landLawsOfLgbl`, which fetches.
  */

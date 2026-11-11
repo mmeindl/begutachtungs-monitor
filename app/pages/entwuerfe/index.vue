@@ -149,7 +149,7 @@ function toggleEu(): void {
   eu.value = eu.value ? '' : 'umsetzung'
 }
 
-/* „Ohne Ministerialentwurf" (§12.68, chip „Ohne Begutachtung" until 10.11.2026): the chip beside it — see `ohneApplied`. */
+/* „Ohne Ministerialentwurf" (chip „Ohne Begutachtung" until 10.11.2026): the chip beside it — see `ohneApplied`. */
 function toggleBegutachtung(): void {
   if (ohneUnavailable.value) return
   begutachtung.value = begutachtung.value ? '' : 'ohne'
@@ -347,8 +347,8 @@ const secondRoundFetch = useFetch<DashboardSecondRound>(
 )
 
 /**
- * The enacted laws of the period without a Ministerialentwurf (§12.68) —
- * rows of the default list since 10.11.2026 (§12.70), next to the drafts,
+ * The enacted laws of the period without a Ministerialentwurf —
+ * rows of the default list since 10.11.2026, next to the drafts,
  * and what the chip „Ohne Ministerialentwurf" narrows to. Fetched like the
  * open Vorlagen above: on the client, lazily, so the drafts never wait for
  * them, and for the period in view (the chosen one, else the running one),
@@ -367,7 +367,7 @@ const lawsFetch = useFetch<LawsWithoutBegutachtung>('/api/ohne-begutachtung', {
 })
 
 /**
- * The Länder's laws without a draft in their register (§12.70): rows by
+ * The Länder's laws without a draft in their register: rows by
  * default, next to the Länder's drafts, for the period in view — fetched
  * like the Bund's laws, on the client and lazily, so the drafts never wait
  * for them; only while a Land applies.
@@ -388,7 +388,7 @@ const { data: landLawsData, refresh: refreshLandLaws } = await landLawsFetch
 
 /**
  * `gap: 'pending'`: after a cold start the station maps are still being
- * built, and the answer changes within a minute (§12.68). Ask again, a
+ * built, and the answer changes within a minute. Ask again, a
  * bounded number of times with a pause, so the chip does not stay
  * unavailable until a reload — no loop without an end, stopped on unmount.
  */
@@ -518,7 +518,7 @@ const openVorlagen = computed(() => {
 })
 
 /**
- * „Ohne Ministerialentwurf" (docs/architecture.md §12.68, §12.69): the list shows ONLY
+ * „Ohne Ministerialentwurf": the list shows ONLY
  * the procedures without a Ministerialentwurf — the period's enacted laws
  * from `/api/ohne-begutachtung` (station Bundesgesetzblatt) and the open
  * Vorlagen that say „ohne Begutachtung" or „Ausschussbegutachtung" (station
@@ -531,7 +531,7 @@ const openVorlagen = computed(() => {
  * period cannot carry the claim (`LawsWithoutBegutachtung.gap`): then the
  * filter steps back and the list is what it is without it.
  */
-/* The Länder whose sources carry the statement per law (§12.70): Salzburg. */
+/* The Länder whose sources carry the statement per law: Salzburg. */
 const OHNE_LANDS: readonly LandCode[] = ['sbg']
 const ohneLandsApply = computed(() => applyingLaender.value.some((land) => OHNE_LANDS.includes(land)))
 const ohneUnavailable = computed(() => {
@@ -569,7 +569,7 @@ const ministryUnavailable = computed(() =>
  * Ressort: they carry none, so a chosen Ressort leaves them out of the mixed
  * list (and under the chip no Ressort can be chosen). „Setzt EU-Recht um":
  * they carry no EU fact. Search: the same word rule. In the default list
- * and under the chip alike (§12.70); without the Bund, or while the answer
+ * and under the chip alike; without the Bund, or while the answer
  * is incomplete, none.
  */
 const lawRows = computed(() => {
@@ -700,7 +700,7 @@ const {
  * `draftCountLabel`). */
 const meTotal = computed(() => meData.value?.total ?? 0)
 const risTotal = computed(() => risData.value?.total ?? 0)
-/* Drafts and laws apart, never one pooled number (§12.19): the
+/* Drafts and laws apart, never one pooled number: the
    placeholder names both where both stand in the list (10.11.2026). */
 const visibleTotal = computed(() =>
   ohneApplied.value
@@ -935,7 +935,7 @@ const statementsSortNote = computed(() => {
           <ToggleChip :pressed="eu === 'umsetzung'" @toggle="toggleEu">
             Setzt EU-Recht um
           </ToggleChip>
-          <!-- How the procedure began (§12.68): the same kind of control,
+          <!-- How the procedure began: the same kind of control,
                off by default, without a count since 10.11.2026. -->
           <ToggleChip :pressed="begutachtung === 'ohne'" :unavailable="ohneUnavailable" @toggle="toggleBegutachtung">
             {{ ohneLabel }}
@@ -1074,7 +1074,7 @@ const statementsSortNote = computed(() => {
           jede Periode für sich ansehen.
         </p>
         <!-- What the chip's rows have in common and what their two notes
-             mean, once (§12.68, §12.69). -->
+             mean, once. -->
         <p v-if="ohneApplied && bund" class="text-sm text-ink-muted">
           Vor diesen Gesetzen und Vorlagen ist kein Ministerialentwurf in
           Begutachtung erkennbar – vorgeschrieben ist eine Begutachtung nicht,
@@ -1083,7 +1083,7 @@ const statementsSortNote = computed(() => {
           eingeholt (Ausschussbegutachtung), und Budgetgesetze sind nicht
           aufgeführt.
         </p>
-        <!-- Salzburg's laws under the chip (§12.70): what „ohne
+        <!-- Salzburg's laws under the chip: what „ohne
              Begutachtung" rests on there, and that the other Länder cannot
              say it. -->
         <p v-if="ohneApplied && ohneLandsApply" class="text-sm text-ink-muted">

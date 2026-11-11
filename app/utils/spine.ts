@@ -56,7 +56,7 @@ export type StationId = 'entwurf' | 'begutachtung' | 'rv' | 'parlament' | 'bgbl'
 /** done: happened. current: where the procedure is now. open: still ahead.
  *  never: can no longer be reached (GP over) — and, since 10.11.2026, the
  *  pale Begutachtung of a law without a draft: a step that did not take
- *  place or cannot be told (`begutachtungStation`, §12.70). The SpineRail
+ *  place or cannot be told (`begutachtungStation`). The SpineRail
  *  draws it hollow and grey, the facts say which in words. */
 export type StationState = 'done' | 'current' | 'open' | 'never'
 
@@ -210,8 +210,7 @@ export function enactmentStatusDe(
   today: string = todayIso(),
 ): string {
   const e = d.enactment
-  // A Gesetzesbeschluss that was not promulgated (§12.33, Nachtrag
-  // 03.10.2026): where Parliament's record says so and names a successor
+  // A Gesetzesbeschluss that was not promulgated (03.10.2026): where Parliament's record says so and names a successor
   // that reached the Bundesgesetzblatt, the draft's text did become law —
   // on the route the headline already has words for. Otherwise the gap is
   // stated, temporal and without a cause: the cause stands in the
@@ -221,7 +220,7 @@ export function enactmentStatusDe(
   if (unpromulgated) return 'Beschlossen – nicht kundgemacht'
   // Each of these four used to read „Im Parlament" or, after the period,
   // „Ohne Beschluss" — both wrong in a different direction. Temporal and
-  // factual (framing rule, docs/architecture.md §4): what the house did,
+  // factual (framing rule): what the house did,
   // never why. „Beschlossen – Kundmachung ausständig" is the one that
   // states a gap, and it states it about the Kundmachung, not about the
   // Vorlage.
@@ -237,7 +236,7 @@ export function enactmentStatusDe(
     case 'recommitted': break
     default: break
   }
-  // The VORLAGE's period, not the draft's (§12.14, 02.10.2026): a
+  // The VORLAGE's period, not the draft's (02.10.2026): a
   // carry-over (XXVII/352/ME → 127 d.B./XXVIII. GP) is still before the
   // house, and its list row says „liegt vor" by the same calendar.
   return e.rvGpEnded ? 'Ohne Beschluss – Gesetzgebungsperiode beendet' : 'Im Parlament'
@@ -892,7 +891,7 @@ export function stations(d: DraftDetail, ctx: StationContext = {}, today: string
 
 /**
  * The card's opening line on the page of a Vorlage or Antrag without a
- * Begutachtung (docs/architecture.md §12.69) — the words a draft's page uses
+ * Begutachtung — the words a draft's page uses
  * once its Vorlage exists (`enactmentStatusDe`).
  */
 export function vorlageStatusDe(d: VorlageDetail, today: string = todayIso()): string {
@@ -901,7 +900,7 @@ export function vorlageStatusDe(d: VorlageDetail, today: string = todayIso()): s
 }
 
 /**
- * The first station of a law without a draft (§12.70): „Begutachtung", in
+ * The first station of a law without a draft: „Begutachtung", in
  * one fact and a short reason. `pale` — none took place, or none can be
  * told — draws it hollow and grey (state `never`), never as a verdict; a
  * Begutachtung that took place is an ordinary station. It replaced the
@@ -950,7 +949,7 @@ export interface VorlageStationContext {
  * (10.11.2026): the item itself, then Parlament and Bundesgesetzblatt exactly
  * as a draft's page has them (`laterStations`, same record, same words).
  *
- * A Begutachtung station first since 10.11.2026 (§12.70, the owner's
+ * A Begutachtung station first since 10.11.2026 (the owner's
  * decision), replacing the sentence above the card: pale where none took
  * place or none can be told — grey, hollow, no verdict colour —, ordinary
  * where the committee consulted (`vorlageBegutachtung`). Until then the bar
@@ -1323,7 +1322,7 @@ export function markedStation(list: Station[]): StationId | null {
  * marked row, not above or below the list. */
 
 /**
- * The bar of a Landesgesetz without a draft in the register (§12.70): the
+ * The bar of a Landesgesetz without a draft in the register: the
  * stations RIS dates, in the Land draft's words — the route where RIS
  * states it (a Regierungsvorlage, or an Initiativantrag under its own
  * name, as on the Bund's page of a law without a Begutachtung), the

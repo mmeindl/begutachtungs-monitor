@@ -1,6 +1,6 @@
 /**
  * Landesgesetze without a draft in the register — the list's rows and a
- * law's page (10.11.2026, docs/architecture.md §12.70). The pure half is
+ * law's page (10.11.2026). The pure half is
  * `landLaws.ts`; this one reads RIS, the register and the Landtag's PDFs,
  * and caches.
  *
@@ -310,12 +310,11 @@ export async function readLandLawPage(land: LandCode, year: number, number: numb
 }
 
 /**
- * The law's first text, where the monitor can fetch it as a PDF (§12.70,
- * second round): Salzburg links the Vorlage's or the Antrag's PDF itself;
+ * The law's first text, where the monitor can fetch it as a PDF: Salzburg links the Vorlage's or the Antrag's PDF itself;
  * Oberösterreich links the Beilage's page (until 2023), whose PDF is read
  * off it (`ooeBeilagePdf`, the page cached like every Land page). Nothing
  * for the other Länder: their links lead to the Landtag's item, not to a
- * text (measured, §12.70).
+ * text (measured).
  */
 async function firstTextOf(land: LandCode, law: LandLaw, periode: string | null): Promise<LandLawDetail['firstText']> {
   const r = law.route

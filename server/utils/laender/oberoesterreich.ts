@@ -315,7 +315,7 @@ export function ooeStageOf(procedure: readonly LandProcedureStep[]): LandStage |
 
 /**
  * The Beilage's own PDF on the page RIS links for a Landesgesetz's route
- * (`RegierungsvorlageLink`, `InitiativantragLink`, §12.70) — „Beilage
+ * (`RegierungsvorlageLink`, `InitiativantragLink`) — „Beilage
  * 632/2023 - Regierungsvorlage.pdf?id=19672…", beside its
  * Textgegenüberstellung. Null where the page offers no PDF of that kind:
  * then the law has no first text to compare.

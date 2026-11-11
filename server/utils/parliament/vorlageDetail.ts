@@ -1,6 +1,6 @@
 /**
  * The page of a Regierungsvorlage or Antrag that came to the Nationalrat
- * without a Begutachtung (docs/architecture.md §12.69): its record, the
+ * without a Begutachtung: its record, the
  * procedure read off it, and whether the evidence carries „ohne
  * Begutachtung".
  *
@@ -21,7 +21,7 @@ export type VorlageRoot = ProcedureRoot & { ityp: 'I' | 'A' }
 /**
  * How long the page waits for the evidence behind „ohne Begutachtung". The
  * period's list of such laws is prewarmed, so warm it costs a lookup; cold it
- * is a minute (§12.68). Past the budget the page renders without the fact —
+ * is a minute. Past the budget the page renders without the fact —
  * it is a claim, and an unanswered check claims nothing — and the fetch keeps
  * filling the cache for the next reader.
  */
@@ -44,7 +44,7 @@ export async function requireVorlageItem(root: VorlageRoot): Promise<VorlageCont
  * Whether „ohne Begutachtung" may be said — true only on evidence.
  *
  * A promulgated law: it is a row of the period's list of laws without a
- * Begutachtung, which ran every check there is (§12.68). A Vorlage not yet
+ * Begutachtung, which ran every check there is. A Vorlage not yet
  * promulgated: the second round's check (`zweite-runde.get.ts`) — no draft
  * in its record, not a budget law, and no draft of the period plausibly
  * behind it by title. An Antrag not yet promulgated: no check exists, so no

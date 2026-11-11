@@ -1,4 +1,4 @@
-/** Oberösterreich's Beilage page, as RIS links it for a Landesgesetz (§12.70). */
+/** Oberösterreich's Beilage page, as RIS links it for a Landesgesetz. */
 import { describe, expect, it } from 'vitest'
 import { ooeBeilagePdf } from '../server/utils/laender/oberoesterreich'
 
