@@ -609,8 +609,11 @@ circular of 10.12.2015).
 - **A consulted draft under another title.** A Bund law whose draft was
   consulted under a different title and whose text took a path no record
   links still reads „ohne Begutachtung · kein Ministerialentwurf" (126 d.B.,
-  Tabakgesetz, after 5/ME). Whether the Vorlage's own documents carry a
-  usable signal, as Salzburg's do, is measured below the rule's evidence and
-  open.
+  Tabakgesetz, after 5/ME). The Vorlage's own documents carry no general
+  signal: of the 59 such laws of GP XXVIII, 2 mention a Begutachtung in
+  their Erläuterungen or Antrag text (11.11.2026) — 15/A („im
+  Begutachtungsverfahren geäußerte Bedenken", most likely a consulted
+  predecessor) and 607/A (another law's Begutachtung) — and 126 d.B. is not
+  among them. Not a rule; 15/A needs a look by hand.
 - **„Upcoming" Begutachtungen** have no verified data source: the Parliament
   API knows a consultation only once it starts.
