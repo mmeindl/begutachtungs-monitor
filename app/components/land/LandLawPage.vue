@@ -104,6 +104,14 @@ const { data: fassung, error: fassungError } = useFetch<BgblLawsResponse>(() => 
 const fassungRows = computed<Fact[]>(() => landFassungFacts(fassung.value, law.value?.date ?? null))
 const fassungCredits = computed(() => fassungSources(fassung.value))
 
+/* „Initiativantrag 547", „Regierungsvorlage EZ 1409/1" — how the law came, in RIS's words. */
+const routeName = computed(() => {
+  const r = law.value?.route
+  if (!r) return ''
+  const word = r.kind === 'vorlage' ? 'Regierungsvorlage' : 'Initiativantrag'
+  return r.number ? `${word} ${r.number}` : word
+})
+
 const lgblFacts: Fact[] = [{ key: 'kundmachung', title: 'Kundgemacht' }]
 
 useSeoMeta({
@@ -213,7 +221,9 @@ useSeoMeta({
                   <template #value-weg>
                     <p v-if="detail.law.route">
                       Als
-                      <ExternalLink v-if="detail.law.route.url" :href="detail.law.route.url" class="link-inline">{{ detail.law.route.kind === 'vorlage' ? 'Regierungsvorlage' : 'Initiativantrag' }}<template v-if="detail.law.route.number"> {{ detail.law.route.number }}</template></ExternalLink><template v-else>{{ detail.law.route.kind === 'vorlage' ? 'Regierungsvorlage' : 'Initiativantrag' }}<template v-if="detail.law.route.number"> {{ detail.law.route.number }}</template></template>
+                      <!-- One string with its space: Vue's whitespace condensing dropped the
+                           space before a nested <template> („Initiativantrag547"). -->
+                      <ExternalLink v-if="detail.law.route.url" :href="detail.law.route.url" class="link-inline">{{ routeName }}</ExternalLink><template v-else>{{ routeName }}</template>
                     </p>
                     <p v-if="detail.law.route && !detail.law.route.url" class="text-ink-secondary">
                       {{ detail.law.route.kind === 'vorlage' ? 'Die Regierungsvorlage' : 'Der Initiativantrag' }} ist im RIS nicht verlinkt.
