@@ -371,7 +371,7 @@ const doorHref = computed(() => {
             <EntwurfFrame :eu="euRecht" :timeline="euTimelineCtx" />
 
             <PageSubsection id="gegenueberstellung" heading="Was ändert der Entwurf?">
-              <TextComparisonSection :ris-id="data.id" />
+              <TextComparisonSection :ris-id="data.id" :cite-as="citeAs" />
             </PageSubsection>
 
             <!-- It weighs more here than on the draft page: this Verfahren has no

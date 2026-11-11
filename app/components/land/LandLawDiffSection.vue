@@ -10,6 +10,7 @@ import { displayId, extraHeading, unitName } from '#shared/utils/unitName'
 import { BADGE_CLASS, type DiffBadge, PILL_CLASS, badgeCounts, badgeLabels } from '~/utils/diffBadges'
 import { IN_FORCE_MARK, moveTargets, reachesGroups, renumberedNote, withheldGroups, type Reach } from '~/utils/landWithheld'
 import { annexDroppedPagesNote } from '~/utils/annexNotes'
+import { citeLineDe, dividedText, landTextCiteDe, lawUnitCiteDe } from '#shared/utils/citations'
 import { readsSideBySide, splitSegments } from '~/utils/diffSides'
 import ListBox from '~/components/ui/ListBox.vue'
 import LandWithheldNotes from '~/components/land/LandWithheldNotes.vue'
@@ -45,6 +46,8 @@ const props = withDefaults(defineProps<{
   /** The two texts; the draft against the Kundmachung unless said. */
   from?: LandTextStation
   to?: LandTextStation
+  /** The draft as its page cites it (`LandDraftPage.citeAs`), for „Zitieren" at a unit; without it the Entwurf and the Textgegenüberstellung are cited nowhere. */
+  citeAs?: string
 }>(), { from: 'entwurf', to: 'lgbl' })
 
 /* Keyed by draft and pair: the Vorlage's frame reads the same request for
@@ -105,6 +108,35 @@ function reasoningOf(u: LawDiffUnit): ReasoningDiffEntry | null {
   const key = reasoning.value?.units?.[diffUnitKey(u)]
   const entry = key ? reasoning.value?.entries?.[key] : null
   return entry && (entry.changed || !entry.comparable) ? entry : null
+}
+
+/**
+ * „Zitieren" at a unit (11.11.2026), as at the Bund's (`LawDiffSection.unitCite`):
+ * the document the unit's text stands in — the later one, the earlier for a
+ * unit that is gone; against the law in force the Land's
+ * Textgegenüberstellung, which prints both columns — and the unit by its
+ * own designation (`landTextCiteDe`, `lawUnitCiteDe`). No button where
+ * either has no citation.
+ */
+const sideCites = computed(() => {
+  const d = data.value
+  if (!d?.available) return null
+  const tgu = props.from === 'geltend' ? landTextCiteDe('geltend', d.fromDocument, props.citeAs) : null
+  return {
+    from: props.from === 'geltend' ? tgu : landTextCiteDe(props.from, d.fromDocument, props.citeAs),
+    to: props.from === 'geltend' ? tgu : props.to === 'geltend' ? null : landTextCiteDe(props.to, d.toDocument, props.citeAs),
+    fromDivided: dividedText(d.units.filter((u) => u.fromId !== null).map((u) => ({ key: u.fromArticleKey, law: u.fromArticle ?? u.article }))),
+    toDivided: dividedText(d.units.filter((u) => u.change !== 'removed').map((u) => ({ key: u.articleKey, law: u.article }))),
+  }
+})
+function unitCite(u: LawDiffUnit): { text: string; subject: string } | null {
+  const s = sideCites.value
+  const removed = u.change === 'removed'
+  const doc = removed ? s?.from : s?.to
+  // „§ 33 (alt)": the number a moved § takes too — „§ 33" would name both.
+  if (!s || !doc || inForceNumber(u)) return null
+  const cited = lawUnitCiteDe(doc.cited, u.id, u.articleKey, removed ? s.fromDivided : s.toDivided, removed ? (u.fromArticle ?? u.article) : u.article)
+  return cited ? { text: citeLineDe(cited, doc.url), subject: cited.slice(doc.cited.length + 2) } : null
 }
 
 /* The Bund's question for the same pair, word for word (`lawStationPairQuestion`). */
@@ -168,7 +200,7 @@ interface UnitView { unit: LawDiffUnit; label: string | null }
    reason): the template asked for the Begründung up to five times a row, on
    every keystroke of the search. */
 type Block =
-  | ({ kind: 'unit'; from: LawDiffSegment[]; to: LawDiffSegment[]; split: boolean; reasoning: ReasoningDiffEntry | null; reasons: ReturnType<typeof reasonsFor> } & UnitView)
+  | ({ kind: 'unit'; from: LawDiffSegment[]; to: LawDiffSegment[]; split: boolean; reasoning: ReasoningDiffEntry | null; reasons: ReturnType<typeof reasonsFor>; cite: { text: string; subject: string } | null } & UnitView)
   | { kind: 'context'; units: UnitView[] }
 
 const viewOf = (u: LawDiffUnit): UnitView => ({ unit: u, label: unitName(u, null, diffUnitKey(u)) ?? extraHeading(u) })
@@ -279,6 +311,7 @@ const groups = computed(() => {
         split: readsSideBySide(u.segments),
         reasoning: reasoningOf(u),
         reasons: reasonsFor(u),
+        cite: unitCite(u),
       })
       shown++
     }
@@ -397,13 +430,19 @@ const hasUnits = computed(() => units.value.length > 0)
               </div>
             </details>
             <div v-else class="border-b border-hairline px-4 py-3 last:border-b-0">
-              <p class="mb-1 flex flex-wrap items-baseline gap-x-2 gap-y-1 text-sm">
-                <!-- A § the later text numbers otherwise says so where its number
-                     stands, as the Bund's Beilage does: the arrow is for the eye,
-                     a screen reader hears „wird zu". -->
-                <span class="font-medium text-ink"><template v-if="movedFrom(b.unit)">{{ movedFrom(b.unit) }}<span aria-hidden="true">&nbsp;→ </span><span class="sr-only"> wird zu </span></template>{{ displayId(b.unit.id) }}<template v-if="inForceNumber(b.unit)">&nbsp;{{ IN_FORCE_MARK }}</template></span>
-                <span v-if="b.label" class="min-w-0 text-ink-secondary">{{ b.label }}</span>
-              </p>
+              <!-- „Zitieren" at the row's right edge, as at the Bund's (`LawDiffSection`). -->
+              <div class="mb-1 flex items-start gap-x-3 text-sm">
+                <p class="flex min-w-0 flex-wrap items-baseline gap-x-2 gap-y-1">
+                  <!-- A § the later text numbers otherwise says so where its number
+                       stands, as the Bund's Beilage does: the arrow is for the eye,
+                       a screen reader hears „wird zu". -->
+                  <span class="font-medium text-ink"><template v-if="movedFrom(b.unit)">{{ movedFrom(b.unit) }}<span aria-hidden="true">&nbsp;→ </span><span class="sr-only"> wird zu </span></template>{{ displayId(b.unit.id) }}<template v-if="inForceNumber(b.unit)">&nbsp;{{ IN_FORCE_MARK }}</template></span>
+                  <span v-if="b.label" class="min-w-0 text-ink-secondary">{{ b.label }}</span>
+                </p>
+                <span v-if="b.cite" class="ml-auto flex h-5 shrink-0 items-center">
+                  <CiteButton :text="b.cite.text" :subject="b.cite.subject" />
+                </span>
+              </div>
               <!-- The Land's reasoning, where the question arises: under the
                    §'s own line, in ink, indented and without a gutter — the
                    ministry's disclosure on the Bund's page, same shape. -->

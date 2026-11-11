@@ -38,7 +38,7 @@ import {
   lawStationPairQuestion,
 } from '#shared/utils/lawStations'
 import { mixedPublishers } from '#shared/utils/provenance'
-import { beilageOfUrl, blgNrDe, citeLineDe, erlRvPassageDe } from '#shared/utils/citations'
+import { beilageOfUrl, blgNrDe, citeLineDe, dividedText, erlRvPassageDe, lawTextCiteDe, lawUnitCiteDe } from '#shared/utils/citations'
 
 const props = defineProps<{
   gp: string
@@ -141,6 +141,37 @@ const erlRv = computed(() => {
 function reasoningCite(entry: ReasoningDiffEntry): string | null {
   const e = erlRv.value
   return e ? citeLineDe(erlRvPassageDe(e.cited, entry.label), e.url) : null
+}
+
+/**
+ * „Zitieren" at a changed unit (11.11.2026), for whoever cites one Paragraph
+ * or one Ziffer in a Stellungnahme: the document the unit's text stands in —
+ * the later side, the earlier one for a unit that is gone — and the unit by
+ * its own designation (`lawTextCiteDe`, `lawUnitCiteDe`). No button where
+ * either has no citation: the Plenarfassung, an Artikel the comparison could
+ * not read, a Ziffer number that recurs.
+ */
+const sideCites = computed(() => {
+  const d = data.value
+  if (!d?.available) return null
+  const draft = { citation: `${props.inr}/ME`, gp: props.gp }
+  const rvDocument = d.stations.find((s) => s.id === 'rv')?.document ?? null
+  return {
+    from: lawTextCiteDe(d.from, d.fromDocument, draft, rvDocument),
+    to: lawTextCiteDe(d.to, d.toDocument, draft, rvDocument),
+    // Whether that side's text is divided into Artikel or laws: then a unit without an Artikel cannot be found by its Ziffer.
+    fromDivided: dividedText(d.units.filter((u) => u.fromId !== null).map((u) => ({ key: u.fromArticleKey, law: u.fromArticle ?? u.article }))),
+    toDivided: dividedText(d.units.filter((u) => u.change !== 'removed').map((u) => ({ key: u.articleKey, law: u.article }))),
+  }
+})
+
+function unitCite(u: LawDiffUnit): { text: string; subject: string } | null {
+  const s = sideCites.value
+  const removed = u.change === 'removed'
+  const doc = removed ? s?.from : s?.to
+  if (!s || !doc) return null
+  const cited = lawUnitCiteDe(doc.cited, u.id, u.articleKey, removed ? s.fromDivided : s.toDivided, removed ? (u.fromArticle ?? u.article) : u.article)
+  return cited ? { text: citeLineDe(cited, doc.url), subject: cited.slice(doc.cited.length + 2) } : null
 }
 
 /** ME→RV states its counts in the Regierungsvorlage's station frame
@@ -359,7 +390,7 @@ interface UnitView {
 
 type Block =
   /** `split`: this unit reads better as two columns (`readsSideBySide`). */
-  | ({ kind: 'unit'; from: LawDiffSegment[]; to: LawDiffSegment[]; split: boolean; reasoning: ReasoningDiffEntry | null } & UnitView)
+  | ({ kind: 'unit'; from: LawDiffSegment[]; to: LawDiffSegment[]; split: boolean; reasoning: ReasoningDiffEntry | null; cite: { text: string; subject: string } | null } & UnitView)
   | { kind: 'context'; units: UnitView[] }
 
 function viewOf(u: LawDiffUnit): UnitView {
@@ -396,6 +427,7 @@ function blocksOf(units: readonly LawDiffUnit[], article: string): { blocks: Blo
       ...splitSegments(u.segments, u.fromText, u.toText),
       split: readsSideBySide(u.segments),
       reasoning: reasoningOf(u),
+      cite: unitCite(u),
     })
     shown++
   }
@@ -578,12 +610,21 @@ const droppedNote = computed(() =>
                        token — and the Textgegenüberstellung, where a § heads
                        several Absätze, cannot put them there at all. One shape
                        for both sections: what this is, then how it changed. -->
-                  <p class="mb-1 flex flex-wrap items-baseline gap-x-2 gap-y-1 text-sm">
-                    <!-- The arrow is for the eye; a screen reader hears „wird zu". -->
-                    <span class="font-medium text-ink"><template v-if="movedFrom(b.unit)">{{ movedFrom(b.unit) }}<span aria-hidden="true">&nbsp;→ </span><span class="sr-only"> wird zu </span></template>{{ displayId(b.unit.id) }}</span>
-                    <span v-if="b.label" class="min-w-0 text-ink-secondary">{{ b.label }}</span>
-                    <span v-else-if="b.extra" class="min-w-0 text-ink-secondary">{{ b.extra }}</span>
-                  </p>
+                  <!-- „Zitieren" at the row's right edge, in every comparison
+                       the same spot (`unitCite`): centred on the first line
+                       (`h-5`, the line of `text-sm`) and kept there when the
+                       name wraps; its overhang (`CiteButton`) adds no height. -->
+                  <div class="mb-1 flex items-start gap-x-3 text-sm">
+                    <p class="flex min-w-0 flex-wrap items-baseline gap-x-2 gap-y-1">
+                      <!-- The arrow is for the eye; a screen reader hears „wird zu". -->
+                      <span class="font-medium text-ink"><template v-if="movedFrom(b.unit)">{{ movedFrom(b.unit) }}<span aria-hidden="true">&nbsp;→ </span><span class="sr-only"> wird zu </span></template>{{ displayId(b.unit.id) }}</span>
+                      <span v-if="b.label" class="min-w-0 text-ink-secondary">{{ b.label }}</span>
+                      <span v-else-if="b.extra" class="min-w-0 text-ink-secondary">{{ b.extra }}</span>
+                    </p>
+                    <span v-if="b.cite" class="ml-auto flex h-5 shrink-0 items-center">
+                      <CiteButton :text="b.cite.text" :subject="b.cite.subject" />
+                    </span>
+                  </div>
                   <DiffBody
                     :badge="badgeOf(b.unit)"
                     :label="BADGE_LABEL[badgeOf(b.unit)]"

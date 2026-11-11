@@ -20,6 +20,7 @@ import { mixedPublishers, parliamentDocumentSource, PUBLISHER_NAME_DE, risSource
 import { UNCHECKED_PILL, badgeCounts, badgeLabels } from '~/utils/diffBadges'
 import { annexBadge, annexParas, groupAnnexRows, placeAtParagraphs, type AnnexPara, type PlacedLesefassung } from '~/utils/annexGroups'
 import { enactedHaystack, newLawGroups } from '~/utils/newLawGroups'
+import { annexParagraphCiteDe, citeLineDe } from '#shared/utils/citations'
 import { NOTICE_LESEFASSUNG_TOO, lesefassungLine, lesefassungNotRunText, mergesIntoNotice } from '~/utils/lesefassung'
 import {
   annexDoubtfulGroupNote,
@@ -38,7 +39,13 @@ import {
  * through its RIS id (docs/architecture.md §12.16). Everything this component
  * renders is identical for both; only the endpoint differs.
  */
-const props = defineProps<{ gp?: string; inr?: number; risId?: string }>()
+const props = defineProps<{
+  gp?: string
+  inr?: number
+  risId?: string
+  /** The draft as its page cites it (`draftCitationDe`, or the type word and title of a RIS draft), for „Zitieren" at a §; without it no § is cited. */
+  citeAs?: string
+}>()
 
 /** `/api/drafts/XXVIII/40` or `/api/ris-drafts/BEGUT_…` — the section's two endpoints hang off it. */
 const base = computed(() => (props.risId ? `/api/ris-drafts/${props.risId}` : `/api/drafts/${props.gp}/${props.inr}`))
@@ -226,6 +233,23 @@ const renderedGroups = computed(() =>
   })),
 )
 
+/**
+ * „Zitieren" at a § (11.11.2026), as at a unit of the § comparison
+ * (`LawDiffSection.unitCite`): the annex as `DocumentList` names it, the law
+ * under the annex's own heading where it has several, and the § it prints
+ * (`annexParagraphCiteDe`), at the annex's address. Several laws are judged
+ * over the whole annex, so a search cannot make „§ 5" look unambiguous; an
+ * annex whose laws could not be told apart (`boundaryNote`) cites none.
+ */
+const annexUrl = computed(() => data.value?.pdf?.url ?? data.value?.source?.url ?? null)
+const severalLaws = computed(() => placed.value.groupKeys.length > 1 || !!data.value?.boundaryNote)
+function paraCite(g: { key: string; article: string }, p: AnnexPara): { text: string; subject: string } | null {
+  if (!props.citeAs || !annexUrl.value) return null
+  const law = g.article.trim() || (g.key.startsWith('#') ? null : g.key)
+  const cited = annexParagraphCiteDe(props.citeAs, p.gld, law, { severalLaws: severalLaws.value, repeated: p.key.includes('#') })
+  return cited ? { text: citeLineDe(cited, annexUrl.value), subject: cited.slice(cited.lastIndexOf(', ') + 2) } : null
+}
+
 /** Whether the annex has rows at all — the toolbar's condition, unfiltered,
  *  so a search that finds nothing cannot remove the control that caused it. */
 const hasRows = computed(() => (data.value?.rows ?? []).some((r) => r.kind !== 'article' && !r.elided))
@@ -409,14 +433,24 @@ function withheldReason(cause: AnnexWithheldCause | null): string {
                  because the line belongs to what follows it rather than
                  heading a band of its own. LawDiffSection sets a unit's
                  designation and name the same way. -->
-            <p v-if="p.gld || p.heading" class="mb-1 flex flex-wrap items-baseline gap-x-2 gap-y-1 text-sm">
-              <!-- A § the draft renumbers says so where its number stands: the
-                   right column's text opens with the new one, which read as an
-                   inserted word and nothing more (26.10.2026). The arrow is for
-                   the eye; a screen reader hears „wird zu". -->
-              <span v-if="p.gld" class="font-medium text-ink">{{ p.gld }}<template v-if="p.renumberedTo"><span aria-hidden="true">&nbsp;→ </span><span class="sr-only"> wird zu </span>{{ p.renumberedTo }}</template></span>
-              <span v-if="p.heading" class="min-w-0 text-ink-secondary">{{ p.heading }}</span>
-            </p>
+            <!-- „Zitieren" at the row's right edge, as at a unit of the §
+                 comparison (`LawDiffSection`). -->
+            <div v-if="p.gld || p.heading" class="mb-1 flex items-start gap-x-3 text-sm">
+              <p class="flex min-w-0 flex-wrap items-baseline gap-x-2 gap-y-1">
+                <!-- A § the draft renumbers says so where its number stands: the
+                     right column's text opens with the new one, which read as an
+                     inserted word and nothing more (26.10.2026). The arrow is for
+                     the eye; a screen reader hears „wird zu". -->
+                <span v-if="p.gld" class="font-medium text-ink">{{ p.gld }}<template v-if="p.renumberedTo"><span aria-hidden="true">&nbsp;→ </span><span class="sr-only"> wird zu </span>{{ p.renumberedTo }}</template></span>
+                <span v-if="p.heading" class="min-w-0 text-ink-secondary">{{ p.heading }}</span>
+              </p>
+              <!-- One call per §, not three: the blocks re-render on every keystroke of the search. -->
+              <template v-for="c in [paraCite(g, p)]" :key="c?.text ?? ''">
+                <span v-if="c" class="ml-auto flex h-5 shrink-0 items-center">
+                  <CiteButton :text="c.text" :subject="c.subject" />
+                </span>
+              </template>
+            </div>
 
             <!-- Why this change — the Besonderer Teil's passage on this very
                  Paragraph (docs/architecture.md §12.30).

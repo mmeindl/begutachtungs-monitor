@@ -39,6 +39,8 @@ const props = defineProps<{
   number?: string
   /** The comparisons the draft's texts allow (`LandDraftDetail.comparisons`): rendered where their station is, and only these. */
   comparisons?: [LandTextStation, LandTextStation][]
+  /** The draft as its page cites it, for „Zitieren" at a unit of the comparisons. */
+  citeAs?: string
 }>()
 
 /* Whether the server offers this pair for this draft. */
@@ -136,7 +138,7 @@ const reportName = computed(() => {
     <!-- What changed after the Begutachtung: the draft against the
          Vorlage, the comparison the Bund's drafts lead with. -->
     <div v-if="offers('entwurf', 'rv')" class="mt-8">
-      <LandLawDiffSection :land="land!" :number="number!" from="entwurf" to="rv" />
+      <LandLawDiffSection :land="land!" :number="number!" :cite-as="citeAs" from="entwurf" to="rv" />
     </div>
   </section>
 
@@ -185,11 +187,11 @@ const reportName = computed(() => {
       <!-- What the committee changed: the Vorlage against the text in its
            report. Not against the Kundmachung, which adds the editing for
            publication („Hektar" → „ha") — not the committee's (§12.44). -->
-      <LandLawDiffSection v-if="offers('rv', 'ausschuss')" :land="land!" :number="number!" from="rv" to="ausschuss" />
+      <LandLawDiffSection v-if="offers('rv', 'ausschuss')" :land="land!" :number="number!" :cite-as="citeAs" from="rv" to="ausschuss" />
       <!-- Where the committee's report carries no text (Salzburg), what the
            Landtag changed is read against the Kundmachung, the Landtag's own
            text with the editing for publication in it (`texts/stations.ts`). -->
-      <LandLawDiffSection v-if="offers('rv', 'lgbl')" :land="land!" :number="number!" from="rv" to="lgbl" />
+      <LandLawDiffSection v-if="offers('rv', 'lgbl')" :land="land!" :number="number!" :cite-as="citeAs" from="rv" to="lgbl" />
       <!-- Every step, in the Landtag's order and words: the sittings,
            agendas and Wortprotokolle the frame leaves out. On the sheet the
            Land's Stellungnahmen stand on (22.10.2026), with their date
@@ -305,7 +307,7 @@ const reportName = computed(() => {
          says so where it does not compare; against a wrong match the
          comparison would report a whole law rewritten. -->
     <div v-if="offers('entwurf', 'lgbl')" class="mt-8">
-      <LandLawDiffSection :land="land!" :number="number!" from="entwurf" to="lgbl" />
+      <LandLawDiffSection :land="land!" :number="number!" :cite-as="citeAs" from="entwurf" to="lgbl" />
     </div>
   </section>
 </template>

@@ -567,7 +567,7 @@ const ministryLinks = computed(() => {
                  accepted, the alternative is asking a question we know is
                  wrong on every other draft's first paint. -->
               <PageSubsection v-if="!amendedLaws?.createsNewLaw" id="gegenueberstellung" heading="Was ändert der Entwurf?">
-                <TextComparisonSection :gp="data.gp" :inr="data.inr" />
+                <TextComparisonSection :gp="data.gp" :inr="data.inr" :cite-as="draftCitationDe(data.citation, data.gp)" />
               </PageSubsection>
 
               <PageSubsection id="erlaeuterungen" heading="Was das Ressort begründet">

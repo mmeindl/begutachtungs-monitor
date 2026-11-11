@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { euActCiteDe, euOjCiteDe, beilageOfUrl, bgblEliUrl, bgblShortDe, blgNrDe, citeLineDe, draftCitationDe, erlRvPassageDe, latestAmendmentOf, lawCiteDe, lgblEliUrl, rvCitationDe } from '../shared/utils/citations'
+import { euActCiteDe, euOjCiteDe, beilageOfUrl, bgblEliUrl, bgblShortDe, blgNrDe, citeLineDe, draftCitationDe, erlRvPassageDe, latestAmendmentOf, lawCiteDe, annexParagraphCiteDe, landTextCiteDe, lawTextCiteDe, lawUnitCiteDe, lgblEliUrl, rvCitationDe } from '../shared/utils/citations'
 
 describe('citations', () => {
   it('cites a draft as Parliament does, a Vorlage as a footnote does', () => {
@@ -86,6 +86,83 @@ describe('BlgNR — the Beilagen as a footnote cites them', () => {
 
   it('keeps Parliament’s form for a Vorlage it cannot cite as a Beilage', () => {
     expect(rvCitationDe('525 d.B.', 'XXVIII')).toBe('RV 525 BlgNR 28. GP')
+  })
+})
+
+describe('a changed unit of the § comparison, in the document it stands in', () => {
+  const draft = { citation: '18/ME', gp: 'XXVIII' }
+  const me = { label: 'Ministerialentwurf, Gesetzestext', url: 'https://www.parlament.gv.at/dokument/XXVIII/ME/18/fnameorig_1683900.html' }
+  const rv = { label: 'Regierungsvorlage, Gesetzestext', url: 'https://www.parlament.gv.at/dokument/XXVIII/I/129/fnameorig_1693598.html' }
+  const ab = { label: 'Ausschussfassung, Gesetzestext', url: 'https://www.parlament.gv.at/dokument/XXVIII/I/151/fnameorig_1696440.html' }
+  const plenum = { label: 'Plenarfassung, Gesetzestext', url: 'https://www.parlament.gv.at/dokument/XXVIII/BNR/47/fnameorig_1701617.html' }
+  const bgbl = { label: 'Bundesgesetzblatt I Nr. 50/2025 (RIS)', url: 'https://www.ris.bka.gv.at/Dokument.wxe?Abfrage=BgblAuth&Dokumentnummer=BGBLA_2025_I_50' }
+
+  it('cites each version by its document, the Kundmachung at its ELI', () => {
+    expect(lawTextCiteDe('me', me, draft)).toEqual({ cited: 'Ministerialentwurf 18/ME XXVIII. GP', url: me.url })
+    expect(lawTextCiteDe('rv', rv, draft)).toEqual({ cited: 'RV 129 BlgNR 28. GP', url: rv.url })
+    expect(lawTextCiteDe('ausschuss', ab, draft, rv)).toEqual({ cited: 'AB 151 BlgNR 28. GP', url: ab.url })
+    expect(lawTextCiteDe('bgbl', bgbl, draft)).toEqual({ cited: 'BGBl. I Nr. 50/2025', url: 'https://www.ris.bka.gv.at/eli/bgbl/I/2025/50' })
+  })
+
+  it('cites nothing it cannot name: the Plenarfassung, a missing document, a committee text at the Vorlage’s address', () => {
+    expect(lawTextCiteDe('plenum', plenum, draft)).toBeNull()
+    expect(lawTextCiteDe('rv', null, draft)).toBeNull()
+    expect(lawTextCiteDe('rv', plenum, draft)).toBeNull()
+    expect(lawTextCiteDe('ausschuss', { ...ab, url: rv.url }, draft, rv)).toBeNull()
+    expect(lawTextCiteDe('bgbl', { label: 'Bundesgesetzblatt (RIS)', url: bgbl.url }, draft)).toBeNull()
+  })
+
+  it('names the unit after the document: Artikel and Ziffer, or the Paragraph', () => {
+    expect(lawUnitCiteDe('RV 129 BlgNR 28. GP', 'Z1', '106', true)).toBe('RV 129 BlgNR 28. GP, Art. 106 Z 1')
+    expect(lawUnitCiteDe('Ministerialentwurf 18/ME XXVIII. GP', '§5a', null, false)).toBe('Ministerialentwurf 18/ME XXVIII. GP, § 5a')
+    expect(lawUnitCiteDe('BGBl. I Nr. 50/2025', 'Z12', null, false)).toBe('BGBl. I Nr. 50/2025, Z 12')
+  })
+
+  it('refuses a designation that would not find the unit', () => {
+    expect(lawUnitCiteDe('RV 129 BlgNR 28. GP', 'Z18#dup', '1', true)).toBeNull()
+    expect(lawUnitCiteDe('RV 129 BlgNR 28. GP', 'Z1', null, true)).toBeNull()
+    expect(lawUnitCiteDe('RV 129 BlgNR 28. GP', 'Anlage 1', null, false)).toBeNull()
+  })
+})
+
+describe('a unit of a Land’s comparison, and a § of a Textgegenüberstellung', () => {
+  const citeAs = 'Gesetzesentwurf „Landesgesetz, mit dem das Oö. Feuerwehrgesetz 2015 geändert wird (Oö. Feuerwehrgesetz-Novelle 2024)“ (Land Oberösterreich)'
+  const pdf = 'https://www2.land-oberoesterreich.gv.at/internetltgbeilagen/x.pdf'
+
+  it('cites each of a Land’s texts in the record’s own words', () => {
+    expect(landTextCiteDe('entwurf', { label: 'Begutachtungsentwurf', url: pdf }, citeAs)).toEqual({ cited: citeAs, url: pdf })
+    expect(landTextCiteDe('rv', { label: 'Regierungsvorlage, Beilage 898/2024', url: pdf }, citeAs)?.cited).toBe('Regierungsvorlage, Beilage 898/2024')
+    expect(landTextCiteDe('rv', { label: 'Regierungsvorlage, Nr 148 der Beilagen (6. Session der 16. GP)', url: pdf }, citeAs)?.cited).toBe('Regierungsvorlage, Nr 148 der Beilagen (6. Session der 16. GP)')
+    expect(landTextCiteDe('ausschuss', { label: 'Ausschussbericht Beilage 951/2024', url: pdf }, citeAs)?.cited).toBe('Ausschussbericht Beilage 951/2024')
+    expect(landTextCiteDe('lgbl', { label: 'LGBl. Nr. 95/2024', url: 'https://www.ris.bka.gv.at/eli/lgbl/OB/2024/95' }, citeAs)?.cited).toBe('LGBl. Nr. 95/2024')
+    expect(landTextCiteDe('geltend', { label: 'Textgegenüberstellung', url: pdf }, citeAs)?.cited).toBe(`Textgegenüberstellung zu ${citeAs}`)
+  })
+
+  it('cites no Land text without a number to cite it by, an address, or the draft’s citation', () => {
+    expect(landTextCiteDe('rv', { label: 'Regierungsvorlage, GZ 135/2026', url: pdf }, citeAs)).toBeNull()
+    expect(landTextCiteDe('lgbl', { label: 'LGBl. Nr. 95/2024', url: null }, citeAs)).toBeNull()
+    expect(landTextCiteDe('entwurf', { label: 'Begutachtungsentwurf', url: pdf }, '')).toBeNull()
+    expect(landTextCiteDe('geltend', { label: 'Oö. Landesrecht, Fassung vom 09.02.2024 (Abgleich)', url: null }, citeAs)).toBeNull()
+  })
+
+  it('writes the Artikel as the document prints it where its title says so', () => {
+    expect(lawUnitCiteDe('Regierungsvorlage, Beilage 898/2024', 'Z1', '1', true, 'Artikel I')).toBe('Regierungsvorlage, Beilage 898/2024, Art. I Z 1')
+    expect(lawUnitCiteDe('RV 129 BlgNR 28. GP', 'Z1', '106', true, 'Änderung des Arbeits- und Sozialgerichtsgesetzes')).toBe('RV 129 BlgNR 28. GP, Art. 106 Z 1')
+    expect(lawUnitCiteDe('X', 'Z1', '2', true, 'Artikel I')).toBe('X, Art. 2 Z 1')
+  })
+
+  it('cites a § of an annex, with its law where the annex has several', () => {
+    expect(annexParagraphCiteDe('Ministerialentwurf 18/ME XXVIII. GP', '§ 29.', 'Artikel 1 Änderung des Arbeits- und Sozialgerichtsgesetzes', { severalLaws: true })).toBe(
+      'Textgegenüberstellung zu Ministerialentwurf 18/ME XXVIII. GP, Artikel 1 Änderung des Arbeits- und Sozialgerichtsgesetzes, § 29',
+    )
+    expect(annexParagraphCiteDe('Ministerialentwurf 115/ME XXVIII. GP', '§ 207s.', null, { severalLaws: false })).toBe('Textgegenüberstellung zu Ministerialentwurf 115/ME XXVIII. GP, § 207s')
+  })
+
+  it('cites no § of an annex it could not be found by', () => {
+    expect(annexParagraphCiteDe('Ministerialentwurf 18/ME XXVIII. GP', '§ 29.', null, { severalLaws: true })).toBeNull()
+    expect(annexParagraphCiteDe('Ministerialentwurf 18/ME XXVIII. GP', '§ 5.', null, { severalLaws: false, repeated: true })).toBeNull()
+    expect(annexParagraphCiteDe('Ministerialentwurf 18/ME XXVIII. GP', 'Anlage 1', null, { severalLaws: false })).toBeNull()
+    expect(annexParagraphCiteDe('', '§ 5.', null, { severalLaws: false })).toBeNull()
   })
 })
 

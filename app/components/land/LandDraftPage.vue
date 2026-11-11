@@ -288,7 +288,7 @@ useSeoMeta({ ogTitle: () => draft.value?.title ?? 'Entwurf', ogType: 'article' }
                  Grundsatzgesetz it carries out, an Art.-15a agreement it
                  implements (§12.66, §12.67) — one credit line under it. -->
             <EntwurfFrame :eu="euRecht" :bundesrecht="bundesrecht" :timeline="euTimelineCtx" :publisher="landPublisher" />
-            <LandLawDiffSection v-if="hasTgu" :land="land" :number="number" from="geltend" to="entwurf" />
+            <LandLawDiffSection v-if="hasTgu" :land="land" :number="number" from="geltend" to="entwurf" :cite-as="citeAs" />
             <PageSubsection v-else-if="amends" id="gegenueberstellung" heading="Was ändert der Entwurf?">
               <p v-if="tguListed" class="text-sm text-ink-secondary">Das Land hat eine Textgegenüberstellung veröffentlicht; sie steht unter den Dokumenten. Ihre Form liest der Monitor noch nicht.</p>
               <p v-else class="text-sm text-ink-secondary">Das Land hat zu diesem Entwurf keine Textgegenüberstellung veröffentlicht.</p>
@@ -377,7 +377,7 @@ useSeoMeta({ ogTitle: () => draft.value?.title ?? 'Entwurf', ogType: 'article' }
 
         <!-- The stations after the Begutachtung, one section each, where
              the Land records them (OÖ). -->
-        <LandStationSections :draft="detail.draft" :procedure="detail.procedure" :landtag="detail.landtag" :land-name="landName" :land="land" :number="number" :comparisons="detail.comparisons" />
+        <LandStationSections :draft="detail.draft" :procedure="detail.procedure" :landtag="detail.landtag" :land-name="landName" :land="land" :number="number" :comparisons="detail.comparisons" :cite-as="citeAs" />
       </template>
     </FetchGate>
   </div>

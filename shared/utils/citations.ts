@@ -14,6 +14,7 @@
  *
  * Pure module so vitest can import it relatively.
  */
+import type { LawStationId, TraceLink } from '../types'
 import type { EuOjReference } from '../types/eu'
 import { euActTitle } from './eu'
 import { formatDateDe } from './format'
@@ -61,6 +62,132 @@ export function rvCitationDe(citation: string, gp: string): string {
 export function erlRvPassageDe(erlRv: string, heading: string | null | undefined): string {
   const h = (heading ?? '').trim().replace(/:\s*$/, '').replace(/^Zu\b/, 'zu')
   return h ? `${erlRv}, ${/^zu\b/.test(h) ? h : `zu ${h}`}` : erlRv
+}
+
+/**
+ * The document a version of the law text in the § comparison stands in, as
+ * cited, and its address (11.11.2026): „Ministerialentwurf 115/ME XXVIII.
+ * GP", „RV 129 BlgNR 28. GP", „AB 151 BlgNR 28. GP", „BGBl. I Nr. 50/2025"
+ * at its ELI. The Ausschussfassung is the Gesetzestext of the committee
+ * report's Beilage, so it is cited by that report — and refused where its
+ * address is the Vorlage's Beilage, which would cite the Vorlage as „AB".
+ * Null for the Plenarfassung, a Beschluss of the Nationalrat that is no
+ * Beilage and has no citation of its kind here, and wherever the address
+ * says nothing that can be cited.
+ */
+export function lawTextCiteDe(
+  station: LawStationId,
+  document: TraceLink | null | undefined,
+  draft: { citation: string; gp: string },
+  rvDocument?: TraceLink | null,
+): { cited: string; url: string } | null {
+  if (!document) return null
+  const { url } = document
+  if (station === 'me') return { cited: draftCitationDe(draft.citation, draft.gp), url }
+  if (station === 'bgbl') {
+    const cited = bgblShortDe(document.label)
+    return cited ? { cited, url: bgblEliUrl(document.label) ?? url } : null
+  }
+  if (station === 'plenum') return null
+  const b = beilageOfUrl(url)
+  if (!b) return null
+  if (station === 'ausschuss') {
+    const rv = beilageOfUrl(rvDocument?.url)
+    if (rv && rv.citation === b.citation && rv.gp === b.gp) return null
+  }
+  const cited = blgNrDe(station === 'rv' ? 'RV' : 'AB', b.citation, b.gp)
+  return cited ? { cited, url } : null
+}
+
+/**
+ * One changed unit of that text by its own designation, after the document
+ * (11.11.2026): „RV 129 BlgNR 28. GP, Art. 106 Z 1" — the Novellierungs-
+ * anordnung of a Sammelgesetz — or „…, § 5" for a Paragraph of a new law.
+ * The form of `erlRvPassageDe`: the document, then the passage.
+ *
+ * Null where the designation would not find the unit: an Artikel-divided
+ * text without the unit's Artikel (`divided` and no key), a Ziffer whose
+ * number recurs inside its Artikel (`#dup`, the numbering starts over at
+ * the next law), and any id that is neither „§ …" nor „Z …". The Artikel is
+ * the number the comparison keys it by, in Arabic numerals.
+ */
+export function lawUnitCiteDe(cited: string, id: string, articleKey: string | null, divided: boolean, articleTitle?: string | null): string | null {
+  const m = /^(§|Z)\s*(\d+[a-z]*)$/.exec(id)
+  if (!m || (divided && !articleKey)) return null
+  const unit = `${m[1]} ${m[2]}`
+  return `${cited}, ${articleKey ? `Art. ${articleNumeral(articleKey, articleTitle)} ${unit}` : unit}`
+}
+
+/**
+ * Whether one side's text is divided into Artikel or laws — the `divided`
+ * of `lawUnitCiteDe`: any unit with an Artikel, or units of more than one
+ * law. Then a Ziffer or § without its Artikel names no single place.
+ */
+export function dividedText(units: readonly { key: string | null; law: string | null | undefined }[]): boolean {
+  return units.some((u) => u.key) || new Set(units.map((u) => u.law ?? '')).size > 1
+}
+
+/**
+ * The Artikel as the document prints it, where its title says so: a Land's
+ * Novelle heads its one Artikel „Artikel I", and „Art. 1" would not be found
+ * in it. Only where the title's numeral is the key; the key otherwise.
+ */
+function articleNumeral(key: string, title: string | null | undefined): string {
+  const n = /^Art(?:ikel|\.)\s*([IVXLC]+|\d+)\b/.exec(title?.trim() ?? '')?.[1]
+  if (!n) return key
+  const value = /^\d+$/.test(n) ? Number(n) : romanToInt(n)
+  return value !== null && String(value) === key ? n : key
+}
+
+/**
+ * One § of a Textgegenüberstellung (11.11.2026): the annex named as
+ * `DocumentList` names a draft's document, „Textgegenüberstellung zu
+ * Ministerialentwurf 18/ME XXVIII. GP", then — in an annex of several laws —
+ * the law under the heading the annex prints, then the §: „…, Artikel 1
+ * Änderung des Arbeits- und Sozialgerichtsgesetzes, § 29".
+ *
+ * Null where the § could not be found by it: a designation that is no „§ n",
+ * one the annex prints twice (`repeated`), and a § of an annex of several
+ * laws that names none (`severalLaws` and no `law`).
+ */
+export function annexParagraphCiteDe(
+  citeAs: string,
+  designation: string | null,
+  law: string | null,
+  opts: { severalLaws: boolean; repeated?: boolean },
+): string | null {
+  const m = /^§\s*(\d+[a-z]*)\.?$/.exec(designation?.trim() ?? '')
+  if (!m || !citeAs || opts.repeated || (opts.severalLaws && !law)) return null
+  return citeLineDe(`Textgegenüberstellung zu ${citeAs}`, opts.severalLaws ? law : null, `§ ${m[1]}`)
+}
+
+/**
+ * The document a version of a Land's law text stands in, as the Land's
+ * pages cite it (11.11.2026): the draft as `LandDraftPage` cites it
+ * (`citeAs`), the Landtag's Beilagen in the record's own words
+ * („Regierungsvorlage, Beilage 898/2024", „Nr 148 der Beilagen …",
+ * „Ausschussbericht Beilage 951/2024"), the Kundmachung by its number, and
+ * the Land's Textgegenüberstellung — which prints both columns of the
+ * comparison against the law in force — as `DocumentList` names a document
+ * of the draft. Null for a label that carries no such number, and for a
+ * document without an address.
+ */
+export function landTextCiteDe(
+  station: 'geltend' | 'entwurf' | 'rv' | 'ausschuss' | 'lgbl',
+  document: { label: string; url: string | null } | null | undefined,
+  citeAs: string | null | undefined,
+): { cited: string; url: string } | null {
+  const url = document?.url
+  if (!document || !url) return null
+  const label = document.label.trim()
+  const BEILAGE = /Beilage\s+\d+\/\d{4}/
+  let cited: string | null = null
+  if (station === 'geltend') cited = citeAs ? `${label} zu ${citeAs}` : null
+  else if (station === 'entwurf') cited = citeAs || null
+  else if (station === 'rv') cited = BEILAGE.test(label) || /Nr\.?\s+\d+ der Beilagen/.test(label) ? label : null
+  else if (station === 'ausschuss') cited = BEILAGE.test(label) ? label : null
+  else cited = /^LGBl\.?\s*Nr\.\s*\d+\/\d{4}$/.test(label) ? label : null
+  return cited ? { cited, url } : null
 }
 
 const BGBL = /\b(I{1,3})\s+Nr\.\s*(\d+)\/(\d{4})\b/
