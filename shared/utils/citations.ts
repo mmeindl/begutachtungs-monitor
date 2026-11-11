@@ -181,7 +181,7 @@ export function landTextCiteDe(
   if (!document || !url) return null
   const label = document.label.trim()
   const BEILAGE = /Beilage\s+\d+\/\d{4}/
-  let cited: string | null = null
+  let cited: string | null
   if (station === 'geltend') cited = citeAs ? `${label} zu ${citeAs}` : null
   else if (station === 'entwurf') cited = citeAs || null
   else if (station === 'rv') cited = BEILAGE.test(label) || /Nr\.?\s+\d+ der Beilagen/.test(label) ? label : null
