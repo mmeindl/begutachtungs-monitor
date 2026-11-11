@@ -132,6 +132,19 @@ describe('routeOf and materialsOf', () => {
   })
 })
 
+describe('isLawEntry', () => {
+  it('takes RIS’s type, unless the title begins as an ordinance or announcement', async () => {
+    const { isLawEntry } = await import('../server/utils/laender/landLaws')
+    const e = (titel: string, typ = 'Landesgesetz') => ({ nr: 'LGBl. Nr. 88/2026', typ, titel, datum: '2026-11-05', url: null, meta: meta() })
+    expect(isLawEntry(e('Gesetz vom 1. Juli 2026, mit dem …'))).toBe(true)
+    expect(isLawEntry(e('Landesgesetz, mit dem das NÖ Pflanzenschutzmittelgesetz geändert wird'))).toBe(true)
+    expect(isLawEntry(e('Kundmachung der Landesregierung vom 4. November 2026 betreffend die Aufhebung des Flächenwidmungsplanes'))).toBe(false)
+    expect(isLawEntry(e('Verordnung der Landesregierung …'))).toBe(false)
+    expect(isLawEntry(e('Verlautbarung …'))).toBe(false)
+    expect(isLawEntry(e('Gesetz …', 'Verordnung'))).toBe(false)
+  })
+})
+
 describe('the law and its row', () => {
   it('reads the Beschluss from the field, else from the title', () => {
     expect(titleDecisionDate('Gesetz vom 7. Juli 2026, mit dem das Steiermärkische Feuerwehrgesetz geändert wird')).toBe('2026-07-07')

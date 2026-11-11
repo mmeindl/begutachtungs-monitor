@@ -294,8 +294,22 @@ export function classifyLandLaw(f: LawFacts): LandLawBegutachtung {
 /** An index entry that carries a law's fields (`lgblIndex.ts`). */
 export type LawEntry = LgblEntry & { meta: LgblLawMeta }
 
+/**
+ * Whether an index entry is a law — the one place that decides it, for the
+ * rows, the page and the tallies. RIS's type, and a title that does not
+ * contradict it: RIS types a handful of Kundmachungen, Verordnungen and
+ * Verlautbarungen as laws („Kundmachung der Landesregierung vom 4.
+ * November 2026 betreffend die Aufhebung des Flächenwidmungsplanes …",
+ * Tirol, LGBl. Nr. 88/2026), and such a record has no Landtag: its page
+ * would say „Gesetz geworden" over an empty Landtag station.
+ */
 export function isLawEntry(e: LgblEntry): e is LawEntry {
-  return LAW_TYPES.has(e.typ) && !!e.meta
+  return LAW_TYPES.has(e.typ) && !!e.meta && isLawTitle(e.titel)
+}
+
+/** A title that begins as an ordinance or announcement does: no law, whatever RIS types it. */
+export function isLawTitle(title: string): boolean {
+  return !/^\s*(?:Kundmachung|Verordnung|Verlautbarung)\b/i.test(title)
 }
 
 /** „LGBl. Nr. 57/2026" → { year: 2026, number: 57 }. */
