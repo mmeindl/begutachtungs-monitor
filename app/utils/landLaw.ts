@@ -39,9 +39,10 @@ export function landLawBegutachtungFacts(law: Pick<LandLaw, 'land' | 'route' | '
         : { facts: ['durchgeführt', 'Entwurf im Register des Landes'], pale: false }
     case 'none':
       return {
+        // One fact and its reason, in the Bund's grammar („ohne Begutachtung · kein Ministerialentwurf").
         facts: ['ohne Begutachtung', law.route?.kind === 'antrag'
-          ? 'keine erkennbar: kein Entwurf im Register, Antrag und Ausschussbericht nennen keine'
-          : 'keine erkennbar: kein Entwurf im Register, Regierungsvorlage und Ausschussbericht nennen keine'],
+          ? 'kein Entwurf im Register, Antrag und Ausschussbericht nennen keine'
+          : 'kein Entwurf im Register, Regierungsvorlage und Ausschussbericht nennen keine'],
         pale: true,
       }
     case 'silent':

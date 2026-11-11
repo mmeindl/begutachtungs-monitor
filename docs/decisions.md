@@ -608,7 +608,7 @@ circular of 10.12.2015).
   „übersprungen") does not depend on it, but any public claim beyond it does.
 - **A consulted draft under another title.** A Bund law whose draft was
   consulted under a different title and whose text took a path no record
-  links still reads „keine · kein Ministerialentwurf" (126 d.B.,
+  links still reads „ohne Begutachtung · kein Ministerialentwurf" (126 d.B.,
   Tabakgesetz, after 5/ME). Whether the Vorlage's own documents carry a
   usable signal, as Salzburg's do, is measured below the rule's evidence and
   open.

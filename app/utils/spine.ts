@@ -911,8 +911,8 @@ export function begutachtungStation(facts: string[], pale: boolean): Station {
 }
 
 /**
- * The Bund's: none (`withoutBegutachtung`) — „keine · kein
- * Ministerialentwurf"; the committee's own (`committeeConsultation`) — an
+ * The Bund's: none (`withoutBegutachtung`) — „ohne Begutachtung · kein
+ * Ministerialentwurf", the grammar of Salzburg's (`landLawBegutachtungFacts`): the fact, then its reason; the committee's own (`committeeConsultation`) — an
  * ordinary station with the committee, the day and the institutions
  * written to; anything else — the list's evidence did not arrive in time,
  * or the item is one the list does not class (an open Vorlage of class
@@ -929,7 +929,7 @@ function vorlageBegutachtung(d: VorlageDetail): Station {
       c.invited > 0 ? `${formatNumberDe(c.invited)} ${c.invited === 1 ? 'Stelle' : 'Stellen'} angeschrieben` : null,
     ), false)
   }
-  if (d.withoutBegutachtung) return begutachtungStation(['keine', 'kein Ministerialentwurf'], true)
+  if (d.withoutBegutachtung) return begutachtungStation(['ohne Begutachtung', 'kein Ministerialentwurf'], true)
   return begutachtungStation(['nicht feststellbar', 'ob ein Ministerialentwurf vorausging, ist hier nicht belegt'], true)
 }
 
