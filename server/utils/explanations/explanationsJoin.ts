@@ -1,6 +1,6 @@
 /**
  * The passages of the Besonderer Teil at their Paragraph
- * (docs/architecture.md §12.30) — the second half of the Erläuterungen
+ * — the second half of the Erläuterungen
  * package.
  *
  * PURE MODULE — relative imports only, so vitest runs it directly.

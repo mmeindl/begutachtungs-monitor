@@ -11,7 +11,7 @@ import {
  * The licence rules of every page (`shared/utils/provenance.ts`): RIS is
  * CC BY 4.0, Parliament's documents of the parliamentary stations are freie
  * Werke, and nothing of the Begutachtungsverfahren read from Parliament
- * carries a claim (docs/architecture.md §13.1).
+ * carries a claim.
  */
 describe('documentSource', () => {
   it('claims CC BY 4.0 for RIS only', () => {

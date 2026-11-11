@@ -1,6 +1,6 @@
 /**
  * RSS 2.0 and iCalendar (RFC 5545) feed builders — the "subscribe" layer
- * (docs/architecture.md §12.3: feeds now, e-mail alerts later).
+ * (feeds now, e-mail alerts later).
  *
  * PURE MODULE — no Nuxt auto-imports, only relative imports, so vitest can
  * execute it directly. Both builders are deterministic for a given item
@@ -23,7 +23,7 @@ function pageUrl(siteUrl: string, item: DraftSummary): string {
 /**
  * Page URL of a Begutachtung without a parliamentary Gegenstand — the same
  * `/entwuerfe/` namespace as a draft's since 18.09.2026, told apart by the
- * RIS id instead of by a second path (docs/architecture.md §12.19). The
+ * RIS id instead of by a second path. The
  * feed UIDs below deliberately do not derive from this, so the move costs
  * subscribers nothing.
  */
@@ -327,7 +327,7 @@ export function buildRssFeed(
     // "Gesetzes- und Verordnungsentwürfen": the feed stopped being about
     // Parliament's half only when the RIS records joined it, and a channel
     // description that names one half is the same wrong claim the homepage
-    // heading carried (docs/architecture.md §12.16).
+    // heading carried.
     `    <description>${escapeXml(land
       ? `Neue Begutachtungen des Landes ${LAND_NAME[land.code]} zu Gesetzes- und Verordnungsentwürfen: Fristen und was daraus wurde.`
       : 'Neue Begutachtungsverfahren zu Gesetzes- und Verordnungsentwürfen des Bundes: Fristen, Stellungnahmen und was daraus wurde.')}</description>`,
@@ -358,21 +358,20 @@ export function buildSitemap(
   risItems: RisConsultation[] = [],
   /**
    * The EU acts' pages (`euActPath`) from the period's EU map — empty where
-   * no map is built; the overview `/eu-recht` stands either way
-   * (docs/architecture.md §12.66, Nachtrag 3).
+   * no map is built; the overview `/eu-recht` stands either way.
    */
   euActPaths: string[] = [],
   /**
    * The Grundsatzgesetze' pages (`/bundesrecht/2025/44`) from the period's
    * Bund-zu-Land map — empty where none is built; there is no overview to
-   * stand either way (docs/architecture.md §12.67).
+   * stand either way.
    */
   bundesrechtPaths: string[] = [],
 ): string {
   const urls = [
     siteUrl,
     // One list for both kinds since 17.09.2026 and one URL namespace since
-    // 18.09.2026 (docs/architecture.md §12.19); everything under
+    // 18.09.2026; everything under
     // `/weitere-entwuerfe` 301s into it and a sitemap must not advertise a
     // redirect.
     `${siteUrl}/entwuerfe`,

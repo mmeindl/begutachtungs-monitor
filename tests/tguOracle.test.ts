@@ -383,7 +383,7 @@ describe('a result that holds more than the annex proposes (01.10.2026)', () => 
 })
 
 // The group headings the PDF path prints into a row, in the shapes the corpus
-// showed on 05.10.2026 (docs/architecture.md §12.12) — and the shapes that
+// showed on 05.10.2026 — and the shapes that
 // must stay foreign.
 describe('oracleVerdict — group headings in the row', () => {
   const before = 'Verfahren Zuständig ist die Behörde am Sitz der Partei. Sie entscheidet binnen sechs Wochen.'

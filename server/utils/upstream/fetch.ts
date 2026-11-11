@@ -1,5 +1,5 @@
 /**
- * The one HTTP client for both upstreams (docs/architecture.md §2).
+ * The one HTTP client for both upstreams.
  *
  * Seven hand-written clients used to carry their own timeout, their own
  * retry loop, their own `sleep` and their own User-Agent — eleven `fetch(`

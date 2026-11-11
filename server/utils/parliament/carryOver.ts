@@ -1,6 +1,5 @@
 /**
- * Die Begutachtungen, deren Frist über den Periodenwechsel hinausläuft
- * (docs/architecture.md §12.35).
+ * Die Begutachtungen, deren Frist über den Periodenwechsel hinausläuft.
  *
  * Liste 81 ist hart nach Gesetzgebungsperiode partitioniert, und jede Seite,
  * die „was ist gerade offen" beantwortet, liest die laufende Periode. In dem

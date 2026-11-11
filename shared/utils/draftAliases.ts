@@ -5,14 +5,14 @@
  * "Staatsschutz- und Nachrichtendienst-Gesetz, Sicherheitspolizeigesetz u.a.,
  * Änderung" — so the tool was unfindable under the only name most people
  * know. Reported before launch and confirmed unprompted by a user on
- * 2026-09-08 (`docs/architecture.md` §12.11).
+ * 2026-09-08.
  *
  * Hand-curated, like the base rates in `outcomes.ts`: a generated list would
  * need a press corpus and would still need review. Add an entry when a name
  * is demonstrably in public use — not a description someone could have
  * written, and never a campaign slogan.
  *
- * FRAMING RULE (docs/architecture.md §4): these are terms of the public debate, not the
+ * FRAMING RULE: these are terms of the public debate, not the
  * tool's own naming. The UI says so ("In der öffentlichen Debatte: …"); the
  * heading stays the official title. Search matches them, so a reader who
  * only knows the debate term finds the procedure.

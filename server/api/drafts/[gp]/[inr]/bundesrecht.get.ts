@@ -1,8 +1,8 @@
 /**
  * GET /api/drafts/:gp/:inr/bundesrecht → { line }: on a Ministerialentwurf
  * whose Grundsatzgesetz is kundgemacht, how many Land drafts of the window
- * carry it out, and the Frist clause of the act (docs/architecture.md
- * §12.67). `line: null` for every other draft — one still in Begutachtung
+ * carry it out, and the Frist clause of the act.
+ * `line: null` for every other draft — one still in Begutachtung
  * or in Parliament, one whose Kundmachung is no Grundsatzgesetz, one the act
  * does not name as its origin (`meCarriesGrundsatz`) — and where the maps
  * are not at hand within their budget.

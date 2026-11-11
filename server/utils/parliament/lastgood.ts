@@ -1,6 +1,6 @@
 /**
  * On-disk store for the last-good Stellungnahmen aggregation of one ME
- * (docs/architecture.md §5, cache rule 4).
+ * (cache rule 4 in `parliament/drafts.ts`).
  *
  * WHY THIS EXISTS: list 142 does not merely hiccup, it loses whole
  * Ministerialentwürfe for days. Measured 2026-08-31 for GP XXVIII: list 81
@@ -16,8 +16,7 @@
  * need a real store, not this.
  *
  * GDPR: what lands here is what the API hands the client — `mapStatementRow`
- * has already dropped the names of private persons (privacy.ts,
- * architecture.md §3) — plus list 142's `TYP` flag beside each
+ * has already dropped the names of private persons (privacy.ts) — plus list 142's `TYP` flag beside each
  * organisation's name, how its submitter registered. No new class of
  * personal data on disk.
  *

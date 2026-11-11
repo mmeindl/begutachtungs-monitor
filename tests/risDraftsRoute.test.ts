@@ -6,8 +6,7 @@ import type { FakeEvent } from './helpers/nitroGlobals'
 
 /**
  * `GET /api/ris-drafts?station=bgbl` when RIS fails — an error, never „0
- * Verordnungsentwürfe" (`server/api/ris-drafts/index.get.ts`, the §12.13
- * rule).
+ * Verordnungsentwürfe" (`server/api/ris-drafts/index.get.ts`).
  *
  * Under the station „Bundesgesetzblatt" the Kundmachung is not a column, it
  * is the FILTER: only what was promulgated stands in the list. Until
@@ -31,7 +30,7 @@ vi.mock('../server/utils/ris/risOnly', () => ({
   getRisOnlyForGp: vi.fn(),
   getCarryOverRisConsultations: vi.fn(async () => []),
 }))
-// No EU map behind it: the list answers without `eu` (§12.66, Nachtrag 3).
+// No EU map behind it: the list answers without `eu`.
 vi.mock('../server/utils/eu/euMapService', () => ({
   euMarkersForList: vi.fn(async () => null),
 }))

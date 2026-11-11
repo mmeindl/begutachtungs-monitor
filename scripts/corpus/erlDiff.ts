@@ -2,7 +2,7 @@
 /**
  * Does the ressort's reasoning change between the draft and the
  * Regierungsvorlage? — the measurement that gates the last open piece of the
- * diff layer (docs/architecture.md §12.10).
+ * diff layer.
  *
  * Usage:  npx vite-node scripts/corpus/erlDiff.ts XXVIII [anzahl] [cacheDir]
  *
@@ -10,12 +10,12 @@
  * and an explanation; it only pays off where the two documents diverge at
  * all. Where they are almost always the same, the result is a sentence in the
  * docs and not a feature — the same order as with the second verification
- * signal (§12.12b), where half a day of measuring saved a whole package.
+ * signal, where half a day of measuring saved a whole package.
  *
  * BOTH SIDES FROM PARLIAMENT, on purpose. The draft's Erläuterungen would
  * also be in RIS as typed XML; the Regierungsvorlage's would not. A
- * comparison of XML against Word HTML measures the two converters first —
- * the lesson of the sixth measurement in §12.12. So the same source, the same
+ * comparison of XML against Word HTML measures the two converters first.
+ * So the same source, the same
  * parser (`parseParliamentHtml`), and what is left over is content.
  *
  * The join draft → Regierungsvorlage is the one from
@@ -52,7 +52,6 @@ function fetchJson(url: string, body?: unknown): Promise<any> {
   return getJson(url, { script: SCRIPT, ...(body === undefined ? {} : { method: 'POST' as const, body }) })
 }
 
-/** A Gegenstand's Erläuterungen document, as HTML. */
 async function explanationsHtml(kind: 'ME' | 'I', inr: number): Promise<string | null> {
   const detail = await cachedJson(join(cacheDir, gp, `${kind}-${inr}.json`), () => fetchJson(`${BASE}/gegenstand/${gp}/${kind}/${inr}?json=True`))
   const group = (detail?.content?.documents ?? []).find((g: any) => /^Erläuterungen$/i.test(String(g?.title ?? '').trim()))
@@ -90,7 +89,7 @@ function captureRate(html: string, parsedWords: number): number {
  * The split decides where a comparison would belong: if the Allgemeiner Teil
  * changes, that is a statement about the draft as a whole; if only the
  * Besonderer Teil changes, it belongs at the Paragraph, where the passages
- * already stand anyway (§12.30).
+ * already stand anyway.
  */
 function parts(html: string): { general: string; special: string; words: number } {
   const blocks = parseParliamentHtml(html)
@@ -99,7 +98,7 @@ function parts(html: string): { general: string; special: string; words: number 
   const special: string[] = []
   for (const b of blocks) {
     // „B e s o n d e r e r  T e i l" occurs letterspaced; the spaces between
-    // the letters are typography, not text (§12.29).
+    // the letters are typography, not text.
     const flat = b.text.replace(/\s+/g, '')
     if (/^Besonderer\s*Teil/i.test(b.text) || /^BesondererTeil/i.test(flat)) { inSpecial = true; continue }
     if (/^Allgemeiner\s*Teil/i.test(b.text) || /^AllgemeinerTeil/i.test(flat)) { inSpecial = false; continue }
@@ -158,7 +157,7 @@ async function worker(): Promise<void> {
       }
       scored++
       // The level a comparison would end up on: Paragraph by Paragraph, the
-      // way the Gegenüberstellung already carries it (§12.30).
+      // way the Gegenüberstellung already carries it.
       const meP = passagesByParagraph(parseExplanationsHtml(meHtml))
       const rvP = passagesByParagraph(parseExplanationsHtml(rvHtml))
       const both = [...meP.keys()].filter((id) => rvP.has(id))

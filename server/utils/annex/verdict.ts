@@ -1,6 +1,6 @@
 /**
  * Is the annex's "Geltende Fassung" really the law as it stands?
- * (docs/api-exploration.md §2c, docs/architecture.md §12.13)
+ * (docs/api-exploration.md §2c)
  *
  * PURE MODULE — relative imports only, so vitest runs it directly.
  *
@@ -29,7 +29,7 @@
  * drafts, 964 §§ with real prose): 86,9 % cover the standing § to 99 % or
  * better, and 45 §§ (4,7 %) fall below 80 %. A few fail in clusters, a whole
  * law at a time (the IVS-Gesetz annex, 51/ME, scores 9 of 16); most fail one
- * or two §§ per draft (docs/architecture.md §12.13).
+ * or two §§ per draft.
  *
  * **Why this is not a text comparison.** The annex abbreviates unchanged
  * stretches by the Rundschreiben ("(2) bis (4) …"), prints markers RIS keeps
@@ -157,7 +157,7 @@ export interface AnnexSources {
   standingText: (ref: KonsParagraphRef) => Promise<StandingText | null>
   /**
    * The version of a § that stood on `date` where RIS has a hole there
-   * (`bridgeVersionGap`, §12.42), or that was promulgated but not yet in
+   * (`bridgeVersionGap`), or that was promulgated but not yet in
    * force (`promulgatedBeforeInForce`) — asked only for a § the law lacks on the
    * Stichtag and that owes a check. Optional: without it a missing § stays
    * missing, as it always did.
@@ -241,7 +241,7 @@ export interface AnnexCheckOptions {
  * geprüft werden: …". Each names a state that is genuinely ours to explain —
  * a RIS outage is deliberately *not* among them, because a failing upstream
  * throws out of this module instead of answering, so no cache ever holds a
- * definitive-sounding sentence about a network hiccup (§12.13).
+ * definitive-sounding sentence about a network hiccup.
  */
 export const REASON_NO_PARAGRAPHS = 'die Beilage nennt keine Paragraphen'
 export const REASON_NO_ASOF = 'im RIS fehlt der Beginn der Begutachtungsfrist'
@@ -258,7 +258,7 @@ export const REASON_NO_SUCH_PARAGRAPH = 'das RIS Bundesrecht führt diese Paragr
  * same draft writes (126/ME XXVIII: Artikel 3 inserts § 8b, Artikel 4 „Teil
  * II" amends it) or text the ressort moved there from another §. Until
  * 04.10.2026 these said „das RIS führt diese Paragraphen nicht", true and
- * misleading: it read as a gap in RIS or in our lookup (§12.41).
+ * misleading: it read as a gap in RIS or in our lookup.
  */
 export const REASON_INSERTED_BY_DRAFT = 'der Entwurf fügt diese Paragraphen erst ein — im geltenden Recht gibt es sie noch nicht'
 /**
@@ -283,8 +283,8 @@ export const REASON_TOO_SHORT = 'die gezeigten Änderungen tragen zu wenig Text 
  * Fassung" to check — which is the point of an insertion — and so has one
  * whose only displayed change is elision syntax.
  *
- * Split off on 2026-09-10 because the page started printing these reasons
- * (§12.13): 99/ME inserts §§ and nothing else, and telling its reader that
+ * Split off on 2026-09-10 because the page started printing these reasons:
+ * 99/ME inserts §§ and nothing else, and telling its reader that
  * "die gezeigten Änderungen tragen zu wenig Text" about a screen full of new
  * provisions is false in the ordinary reading of it.
  */
@@ -374,9 +374,7 @@ function indexOf(law: KonsLawAtDate): LawIndex {
     // First wins — and since 30.09.2026 no key of the offline corpus is
     // claimed by two labels. The 14 that were came from one shape, a
     // schedule cut into lettered parts („Anl. 1/e", „Anl. 1/01.1"), whose
-    // suffix `DESIGNATION_PART_RE` now reads whole; the measurement across
-    // all three sides — labels, annex, draft — is in docs/architecture.md
-    // §12.13. First wins stays as the rule for a collision the corpus has
+    // suffix `DESIGNATION_PART_RE` now reads whole. First wins stays as the rule for a collision the corpus has
     // not shown yet.
     if (key !== null && !paragraphs.has(key)) paragraphs.set(key, ref)
   }
@@ -395,8 +393,7 @@ const ARTICLE_PARAGRAPH_KEY_RE = /^Art \S+ (§ \S+)$/
  * number their §§ straight through as „Art. N § M" (Preisgesetz 1992 § 13 is
  * „Art. 2 § 13", Finanzstrafgesetz § 57a „Art. 1 § 57a", Nationalbankgesetz
  * 1984 § 45 „Art. 9 § 45"), and the annex cites them as plain §§: 68 §§ of
- * GP XXVIII went unchecked as „führt diese Paragraphen nicht" (03.10.2026,
- * §12.41).
+ * GP XXVIII went unchecked as „führt diese Paragraphen nicht" (03.10.2026).
  *
  * The test is the whole law, not the one §: no plain „§ N" label besides
  * § 0, and no § number under two Artikel. Then a bare key names exactly one
@@ -414,7 +411,6 @@ function addBareParagraphKeys(paragraphs: Map<string, KonsParagraphRef>): void {
   for (const [key, ref] of bare) if (!paragraphs.has(key)) paragraphs.set(key, ref)
 }
 
-/** Every pair row of a §, grouped by the law it belongs to. */
 /**
  * What rule 2 holds a § group's right column against: the draft's
  * instructions for the §, and — where the annex says the § stands under

@@ -10,7 +10,7 @@ import { parseRisXml } from '../server/utils/lawtext/risXml'
  * reason it is shared. The annex's left column is scored against the standing
  * § from RIS and against the draft's Gesetzestext, so a reading that differs
  * between them is not a parser detail — it is a word the check reports as
- * missing (`docs/architecture.md` §12.13, 2026-09-11).
+ * missing (2026-09-11).
  */
 describe('stripMarkup', () => {
   it('makes a space of a block tag, because that is where one sentence ends', () => {
@@ -77,7 +77,7 @@ describe('compareKey', () => {
     // Parliament's HTML carries a soft hyphen where the Bundesgesetzblatt has
     // a hard one; `normalizeText` strips soft hyphens, so the sides read
     // „OTCDerivaten" against „OTC-Derivaten". 9/ME reported 11 of 58 units
-    // changed that way, all false (§12.33).
+    // changed that way, all false.
     expect(compareKey('OTC­Derivaten')).toBe(compareKey('OTC-Derivaten'))
     expect(compareKey('EWR-ISIN')).toBe(compareKey('EWRISIN'))
     // The price, named: whatever differs ONLY in its hyphenation counts as

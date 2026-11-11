@@ -49,7 +49,7 @@ const BR_RE = /<br\b[^>]*>/i
  * took the first heading *after* it as the law's name — for a new law that is
  * its first Abschnitt. XXVI 77/ME called its PLABG „1. Abschnitt Prüfdienst
  * für lohnabhängige Abgaben und Beiträge", and its 26 §§ stood under ME → RV
- * as removed and again as new (docs/architecture.md §12.18, 02.10.2026).
+ * as removed and again as new (02.10.2026).
  * For an amending Artikel no heading follows before the first instruction,
  * so its key was the whole line („Artikel 2 Änderung des
  * Einkommensteuergesetzes 1988") and paired by the name inside it.

@@ -1,5 +1,5 @@
 /**
- * The one anatomy (§12.28) — and precisely the half of it that can be
+ * The one anatomy — and precisely the half of it that can be
  * tested: WHAT stands in which zone, per kind.
  *
  * These tests exist because exactly these decisions used to lie spread over
@@ -8,7 +8,7 @@
  *
  *  - A Verordnungsentwurf row NEVER carries a number. „0" would mean „nobody
  *    is interested" over two thirds of the corpus, where the truth is
- *    „nobody counts" (§12.16).
+ *    „nobody counts".
  *  - „Bisher keine Regierungsvorlage" may only stand where we looked. Without
  *    a chain that was read, the row states the last documented status.
  *  - A station AFTER the Begutachtung does not exist for a
@@ -89,8 +89,7 @@ describe('Zone 3 — Stellungnahmen', () => {
   })
 
   /* The core: there is no state in which this row carries a number — open
-   * or closed. A „0" here would be the false statement §12.16 was written
-   * against. */
+   * or closed. A „0" here would be a false statement. */
   it('never gives a record without a Gegenstand a number, in either state', () => {
     expect(viewOfRis(ris({ active: true })).participation).toEqual({ kind: 'unpublished' })
     expect(viewOfRis(ris({ active: false })).participation).toEqual({ kind: 'unpublished' })
@@ -153,7 +152,7 @@ describe('Zone 4 — Stand', () => {
     })
   })
 
-  /* The window runs to the end of the procedure (§12.26, 03.10.2026): at
+  /* The window runs to the end of the procedure (03.10.2026): at
    * the Bundesrat the form is still open, dated by the step the text is at. */
   it('keeps the window open at the Bundesrat, dated by its arrival there', () => {
     const atBundesrat = (over: Partial<DraftChain>) => viewOfDraft(draft({
@@ -226,7 +225,7 @@ describe('Zone 4 — Stand', () => {
   })
 
   /* Without a chain that was read, the row says what it can evidence — not
-   * that no Vorlage exists (§12.27). */
+   * that no Vorlage exists. */
   it('claims no missing Vorlage when the chain was never read', () => {
     expect(viewOfDraft(draft()).state).toMatchObject({
       label: 'Begutachtung abgeschlossen',
@@ -257,7 +256,7 @@ describe('Zone 4 — Stand', () => {
     })
   })
 
-  /* The archive row (§12.10, 30.09.2026): a Vorlage whose period is over
+  /* The archive row (30.09.2026): a Vorlage whose period is over
    * and that the house never decided does not „liegen vor". A carry-over
    * Vorlage in the running period still does — the flag is the Vorlage's
    * period, not the draft's. */
@@ -276,7 +275,7 @@ describe('Zone 4 — Stand', () => {
    * the one function both payloads are filled with (`isVorlageGpEnded`).
    * Until 02.10.2026 the page judged by the draft's period, and a carry-over
    * the house still had read „liegt vor" here and „Ohne Beschluss –
-   * Gesetzgebungsperiode beendet" there (docs/architecture.md §12.14). */
+   * Gesetzgebungsperiode beendet" there. */
   it('says the same as the detail page about a carried-over Vorlage', () => {
     const both = (rvGp: string, currentGp: string) => {
       const rvGpEnded = isVorlageGpEnded(rvGp, currentGp)
@@ -406,7 +405,7 @@ describe('Zone 2 — Kennung', () => {
     expect(v.note).toBeNull()
   })
 
-  /* The EU fact's own lead words (§12.66, Nachtrag 3), plain text in zone
+  /* The EU fact's own lead words, plain text in zone
    * 2. An absent `eu` is a list that did not consult the map — no token,
    * never a „kein EU-Bezug". */
   it('names what the draft does with EU law in the fact\'s own words, and nothing without a marker', () => {

@@ -62,9 +62,9 @@ export function isFilingOpen(content: { statementsstate?: unknown } | null | und
  * `rvGp` is the period the Vorlage's own link names, never the draft's: a
  * carry-over (XXVII/352/ME → 127 d.B./XXVIII. GP) lives in the next period,
  * and judged by the draft's calendar it would read as lapsed while the house
- * still has it (docs/architecture.md §12.14, 01.10. and 02.10.2026). Where a
+ * still has it (01.10. and 02.10.2026). Where a
  * draft has no Vorlage, the draft's own period is the boundary
- * (`DraftDetail.gpEnded`, §12.10 Nr. 10) — that statement is about the draft.
+ * (`DraftDetail.gpEnded`) — that statement is about the draft.
  */
 export function isVorlageGpEnded(rvGp: string, currentGp: string | null | undefined): boolean {
   return gpHasEnded(rvGp, currentGp)
@@ -80,7 +80,7 @@ export function isVorlageGpEnded(rvGp: string, currentGp: string | null | undefi
  * `rvGp` is the period the Vorlage's own link names, never the draft's:
  * a carry-over (XXVII/352/ME → 127 d.B./XXVIII. GP) lives in the next
  * period, and judged by the draft's calendar its open window would read as
- * closed (docs/architecture.md §12.14, 01.10.2026).
+ * closed (01.10.2026).
  */
 export function isVorlageFilingOpen(
   content: { statementsstate?: unknown } | null | undefined,
@@ -130,8 +130,7 @@ const CONSULTATION_ADDRESSEE = /Antrag auf Einholung einer Stellungnahme von .+ 
 /**
  * The Ausschussbegutachtung of a Vorlage, read from its Verlauf — or null.
  *
- * STRUCTURED, unlike the oral hearing (docs/architecture.md §12.14, counted
- * 26.09.2026): one stage „…: Beschlussfassung auf Einholung schriftlicher
+ * STRUCTURED, unlike the oral hearing (counted 26.09.2026): one stage „…: Beschlussfassung auf Einholung schriftlicher
  * Stellungnahmen im Rahmen einer Ausschussbegutachtung" and one stage per
  * addressee, „Antrag auf Einholung einer Stellungnahme von <Institution> -
  * angenommen". Field and report prose agreed on 8 of 8 Vorlagen of GP XXVIII.
@@ -291,7 +290,7 @@ const BR_DECISION_STAGE = /^Beschluss im Bundesrat\b/
  * The day the Bundesrat received the Nationalrat's Beschluss, ISO — or
  * null. One stage „Einlangen im Bundesrat (Frist: 05.09.2025)" in the phase
  * „Einlangen BR" (80 d.B. of GP XXVIII: 11.07.2025). The window for
- * Stellungnahmen is still open then (§12.26, Nachtrag 03.10.2026); this is
+ * Stellungnahmen is still open then (03.10.2026); this is
  * the date the list states for it.
  */
 export function findBundesratArrival(phases: RawPhase[] | null | undefined): string | null {
@@ -357,8 +356,7 @@ export interface RvLink {
 
 /**
  * Every /gegenstand/{gp}/I/{nr} link on Parliament's host in the process history, in stage order
- * = the Regierungsvorlagen this draft produced (ME→RV is 1:n,
- * docs/architecture.md §5). Each carries the date of the stage it sits in —
+ * = the Regierungsvorlagen this draft produced (ME→RV is 1:n). Each carries the date of the stage it sits in —
  * the RV station's date in the SpineRail, available nowhere else.
  */
 export function findRvLinks(trace: TraceStep[]): RvLink[] {
@@ -398,7 +396,7 @@ export function findLastRvLink(trace: TraceStep[]): RvLink | null {
  * Kundmachung compared beside it have to come from the same Vorlage — by
  * stage order alone, 26/ME compared the Bildungsdirektionen-Einrichtungsgesetz
  * against the Erläuterungen and the Bundesgesetzblatt of the
- * Informationsfreiheits-Anpassungsgesetz (docs/architecture.md §13.4).
+ * Informationsfreiheits-Anpassungsgesetz.
  */
 export function findComparisonRvLink(trace: TraceStep[], rvTextUrl: string | null | undefined): RvLink | null {
   const links = findRvLinks(trace)
@@ -410,7 +408,7 @@ export function findComparisonRvLink(trace: TraceStep[], rvTextUrl: string | nul
 /**
  * Does this Regierungsvorlage bundle the draft with OTHER
  * Ministerialentwürfe? Read off the Vorlage's `preconst[]`
- * (docs/architecture.md §12.33, 30.09.2026).
+ * (30.09.2026).
  *
  * The question behind it is whose laws the later texts carry. A Vorlage can
  * hold more laws than its draft for two reasons, and the page must treat them
@@ -675,7 +673,7 @@ const PARLIAMENT_LAW_STATIONS: readonly LawStationId[] = ['ausschuss', 'plenum']
  * changed text, read from its OWN document list.
  *
  * Why not from the Ministerialentwurf's copy of the same list, which is what
- * the detail page renders: ME→RV is 1:n (§13.4), and the mirror on the draft
+ * the detail page renders: ME→RV is 1:n, and the mirror on the draft
  * belongs to exactly one of the Vorlagen. XXVIII/26/ME links three, filed the
  * same day (128, 130, 129 d.B.); its mirror carries 130 d.B.'s Gesetzestext
  * alone, while 129 d.B. — the one whose BGBl number the page states — lists

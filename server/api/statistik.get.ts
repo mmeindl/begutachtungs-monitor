@@ -1,6 +1,6 @@
 /**
  * GET /api/statistik → StatistikPayload: the page-view counts of the last
- * 30 days and since counting began (docs/architecture.md §12.65).
+ * 30 days and since counting began.
  */
 import type { StatistikPayload } from '#shared/types'
 import { getStatistik } from '../utils/zaehlung/statistikService'

@@ -4,7 +4,7 @@ import type { ChangeShareRate } from '~/utils/outcomes'
 
 /**
  * How much of the draft the Regierungsvorlage changed, against the middle
- * half of a whole period (docs/architecture.md §12.38) — under the row
+ * half of a whole period — under the row
  * „Umgeschrieben oder gestrichen" of the Vorlage's station frame
  * (02.10.2026). Until then the comparison said it in a sentence („Üblich in
  * der XXVII. GP: 46–75 %"), which the reader had to turn into a picture.
@@ -17,7 +17,7 @@ import type { ChangeShareRate } from '~/utils/outcomes'
  *
  * Neutral on purpose, as the Frist's bar: no colour for a share above or
  * below the band. A large change is not a failure of the draft and a small
- * one no win (framing rule, §4); the band says what is usual, not what is
+ * one no win (framing rule); the band says what is usual, not what is
  * right.
  *
  * Line, dot and band are decoration; the count above it and the band's label

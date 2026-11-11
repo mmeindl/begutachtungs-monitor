@@ -1,6 +1,6 @@
 /**
- * The monitor's address of an EU act (docs/architecture.md §12.66,
- * Nachtrag 3): `/eu-recht/richtlinie/2024/1069` — the act's kind, year and
+ * The monitor's address of an EU act:
+ * `/eu-recht/richtlinie/2024/1069` — the act's kind, year and
  * number as its citation reads, not its CELEX. Year and number alone would
  * not do: before 2015 a directive and a regulation could share both
  * („Richtlinie 2009/43/EG", „Verordnung (EG) Nr. 43/2009"), so the kind
@@ -64,7 +64,7 @@ export function euActTitle(title: string | null): string | null {
  * longer. Null for no title. Nothing else is touched: the no-break spaces
  * inside stay („Nr.\u00a0909/2014" must not break), and EUR-Lex's own casing
  * stays where it is odd. Never clamped where shown — the Kurzname stands at
- * the END of these titles (§12.28).
+ * the END of these titles.
  */
 export function euActSubject(title: string | null): string | null {
   if (!title) return null

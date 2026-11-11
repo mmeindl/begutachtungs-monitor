@@ -1,6 +1,6 @@
 #!/usr/bin/env vite-node
 /**
- * Audit of the § names shown beside a change (docs/architecture.md §12.11).
+ * Audit of the § names shown beside a change.
  *
  * Usage:  npx vite-node scripts/audit/paraTitle.ts [GP] [maxDrafts]
  *         (needs a running server for the API routes: the dev server on :3000,
@@ -10,7 +10,7 @@
  * report says over how many it ran.
  *
  * It prints two blocks. The first is **coverage**, counted with the rule the
- * page itself uses (`shared/utils/unitName`), so the §12.11 figure has a command
+ * page itself uses (`shared/utils/unitName`), so the coverage figure has a command
  * behind it instead of being re-derived by hand. The second is the older and
  * more important question:
  *
@@ -89,7 +89,7 @@ function paraOf(text: string): string | null {
 
 let names = 0, ok = 0, badLaw = 0, badHeading = 0, skipped = 0, noClause = 0, ambiguous = 0
 // Coverage, counted with the rule the page itself uses (`shared/utils/unitName`)
-// rather than with a second one: the §12.11 numbers had no command behind
+// rather than with a second one: the coverage numbers had no command behind
 // them and were re-derived by hand every time.
 let drafts = 0, unanswered = 0, changed = 0, byQuoted = 0, byLookup = 0, byOwn = 0
 const shares: number[] = []

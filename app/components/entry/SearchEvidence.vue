@@ -3,7 +3,7 @@ import type { BegutSearchHit } from '#shared/types'
 
 /**
  * The evidence under a full-text hit — the Fundstelle plus the sentence the
- * word stands in (docs/architecture.md §12.31).
+ * word stands in.
  *
  * Its own component, because the evidence is the reason a row is there: it
  * belongs to the row, not to the page, and in a mixed list it stands beside

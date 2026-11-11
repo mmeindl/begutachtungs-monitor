@@ -148,7 +148,7 @@ function titleNameTokens(title: string): Set<string> {
   // Short words are filler („des", „vom") — except an abbreviation, which is
   // the most specific word a title has: „BFW-Gesetz", „SCE-Gesetz",
   // „ORF-Gesetz" scored 0 against their own Kurztitel while „BFW" was dropped
-  // and „gesetz" is a stop word (03.10.2026, §12.41). Recognised by its
+  // and „gesetz" is a stop word (03.10.2026). Recognised by its
   // capitals before the text is lowered.
   const words = normalizeText(title)
     .replace(/[^\p{L}\p{N}]+/gu, ' ')
@@ -200,7 +200,7 @@ function longestSharedRun(a: string, b: string): number {
  * Zivildienstgesetz 1986, „… über die Errichtung einer Buchhaltungsagentur
  * des Bundes" for the Buchhaltungsagenturgesetz, „Waldfondsgesetz" for a law
  * since renamed Waldresilienzfondsgesetz — all four scored 0 by
- * `lawNameScore` and were the right law (03.10.2026, §12.41). So: strip the
+ * `lawNameScore` and were the right law (03.10.2026). So: strip the
  * generic ends („Bundes-", „-gesetz", „-ordnung"), and call two names
  * compatible when any two word cores share five letters in a row. The
  * Bundesvergabegesetz and the Bundesverwaltungsgerichtsgesetz share „ver".

@@ -189,7 +189,7 @@ export interface KonsLawAtDate {
  * a wrong name on someone's paragraph is worse than no name.
  *
  * `clause` is the law as the Promulgationsklausel names it — a second
- * witness, asked only where `name` decided nothing (04.10.2026, §12.41): the
+ * witness, asked only where `name` decided nothing (04.10.2026): the
  * Artikel title may be a whole Novelle's name („GewO-EU-Finanzberufs-
  * verordnungen Novelle 2025", 28/ME) or misspelt („Gewerbeordung", 55/ME).
  * And where the cited Stammnorm finds no law at all, the clause is what
@@ -245,7 +245,7 @@ const normName = (s: string) => s.replace(/\s+/g, ' ').trim().toLowerCase()
  * The law a draft names correctly and cites with a mistyped Stammnorm.
  * 58/ME XXVIII cites the BVergGVS 2012 as „BGBl. I Nr. 10/2013" (it is
  * 10/2012), 108/ME the KKG as „BGBl. I Nr. 6/2015" (6/2025) — and every §
- * of both went unchecked as „ließ sich nicht auflösen" (§12.41).
+ * of both went unchecked as „ließ sich nicht auflösen".
  *
  * Searched by the clause's name, and taken only when all of it holds: the
  * RIS Kurztitel or Abkürzung **equals** the clause's (not a score — a near
@@ -280,8 +280,7 @@ async function misquotedStammnorm(bgbl: BgblCitation, date: string, clause: Clau
  * that cites the wrong Stammnorm then got the wrong law: 58/ME XXVIII cites
  * the BVergGVS 2012 as „BGBl. I Nr. 10/2013", which is the
  * Bundesverwaltungsgerichtsgesetz — 21 §§ were withheld against that law's
- * text and the page called the ministry's annex doubtful (03.10.2026,
- * §12.41).
+ * text and the page called the ministry's annex doubtful (03.10.2026).
  *
  * Zero, not a threshold: a sole candidate needs no proof against rivals, only
  * no contradiction, and noisy titles score low without being wrong
@@ -361,7 +360,7 @@ const yearOf = (nummer: string | null) => Number(/\/(\d{4})\b/.exec(nummer ?? ''
  * force after it — or null. Not a hole in RIS, a fact of the law: ÄrzteG
  * § 260 came by BGBl. I Nr. 21/2024 and applies from 2026-06-01, so on 95/ME's
  * Stichtag, 2026-04-10, RIS had no version of it, and the ressort quoted the
- * promulgated text as „geltende Fassung" — correctly (04.10.2026, §12.41).
+ * promulgated text as „geltende Fassung" — correctly (04.10.2026).
  *
  * Only where the § has no version before the date at all (otherwise that one
  * stood, or `bridgeVersionGap` decides), and only where the BGBl's YEAR lies
@@ -384,7 +383,7 @@ export function promulgatedBeforeInForce(versions: readonly KonsVersion[], date:
  * null.
  *
  * The hole is a data error with one signature, and only that signature is
- * bridged (03.10.2026, §12.42). The Kulturgüterrückgabegesetz's §§ 1, 2, 20
+ * bridged (03.10.2026). The Kulturgüterrückgabegesetz's §§ 1, 2, 20
  * … end on 2025-03-24, their successors begin on 2026-03-25 by BGBl. I Nr.
  * 10/2026, and § 0 of the same law ends on 2026-03-24 — a year typed wrong.
  * On 34/ME's Stichtag, 2025-07-22, eleven §§ had no version at all.

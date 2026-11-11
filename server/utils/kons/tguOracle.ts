@@ -1,6 +1,6 @@
 /**
  * The ressort's Textgegenüberstellung as an oracle for the engine
- * (docs/architecture.md §12.12, docs/api-exploration.md §2c).
+ * (docs/api-exploration.md §2c).
  *
  * PURE MODULE — relative imports only, so vitest runs it directly.
  *
@@ -360,7 +360,7 @@ function soleSchedule(byParagraph: ReadonlyMap<string, ComparisonRow[]>, law?: s
 /**
  * The same map read by § alone — built once per map instead of materialised
  * and filtered per §. On a single-law draft this ran for every § of the
- * annex, over every key of the map (`docs/refactor-plan.md` §6.8).
+ * annex, over every key of the map.
  *
  * Keyed on the map object, so the index dies with it. The map is built once
  * per request by `rowsByParagraph` and not written to afterwards; an index
@@ -414,7 +414,7 @@ const PARAGRAPH_MARKER_RE = new RegExp(String.raw`§+\s*(?=(${PARAGRAPH_NUMBER})
  * dropped, whitespace and quotes normalised the way `plainText` does.
  *
  * **The Paragraphenkennung is dropped wherever it stands, not only at the
- * head of the cell** (26.09.2026, §12.12a). The anchor was right while a cell
+ * head of the cell** (26.09.2026). The anchor was right while a cell
  * was an Absatz: there „§ 5." can only be the first thing printed. On the PDF
  * path a cell is a whole §, and the Beilage prints the §'s own Überschrift
  * *before* the designation — „Spielbedingungen und Vertrieb § 16. (1) Der
@@ -468,7 +468,7 @@ const CITATION_BEFORE_RE = /(?:(?<!\p{L})(?:Abs|Art|lit|Nr|Z|Ziff|Pkt|Tz|Rz)\.?|
  * against „Schieneninfrastruktur-Dienstleistungsgesellschaft", „wenn sie -
  * im Falle" against „wenn sie im Falle", „F&E" against „FE", „(Anm.: Abs. 7
  * aufgehoben durch …)", which `plainText` never prints. 17 `fremd` over 140
- * drafts were nothing else (06.10.2026, §12.12).
+ * drafts were nothing else (06.10.2026).
  */
 function key(t: string): string {
   return stripMarkers(sameText(t)).replace(/[\s"'„“‚‘\-‐‑–—&]/g, '')
@@ -564,7 +564,7 @@ const DESIGNATION_DOT_RE = /(?:\d+[a-z]*|[IVXLCDM]+|(?<!\p{L})\p{Lu})\./gu
  * „3. Abschnitt Antragstellung Inhalt des Mehrfachantrags § 34. (1) …" where
  * the standing text begins at the §'s own heading. RIS carries the stack for
  * this § in only a small minority of documents, so asking it is no answer —
- * measured 26.09.2026, §12.12a.
+ * measured 26.09.2026.
  *
  * **The rule is structural, and both halves of it carry weight.** What is
  * dropped has to *open like a heading* and contain no sentence punctuation
@@ -588,7 +588,7 @@ function withoutHeadingStack(piece: string, text: string, from: number): { piece
   // §'s own heading twice — „1. Abschnitt Status des Asylberechtigten Status
   // des Asylberechtigten § 3." — and cutting at the first copy leaves a
   // remainder that starts with the heading and still is not the standing
-  // text (05.10.2026, §12.12).
+  // text (05.10.2026).
   for (let cut = 1; cut <= piece.length - MIN_HEAD_REST; cut++) {
     const rest = piece.slice(cut)
     // The §'s own heading may be all the stretch has left — „2. Abschnitt
@@ -775,7 +775,7 @@ export const KEPT_DELETION_NOTE = 'Gestrichener Text steht noch im Ergebnis'
 
 /**
  * Check 4's numbers, measured by `harness/faultInjection.ts` (class E,
- * docs/architecture.md §12.12a, 01.10.2026).
+ * 01.10.2026).
  *
  * - `ANCHOR`: an equal run of the row's own diff this long is a word the row
  *   keeps. A single equal word is the LCS pairing „die" or „ist" across a
@@ -832,8 +832,7 @@ function words4(t: string): string[] {
  * `printedLayout`, the cut `printedStretches` makes, so the designation chain
  * that announces a mark („(3) bis (7) …") is gone exactly where checks 1 and
  * 2 drop it.
- */
-/**
+ *
  * Through `sameText` like every other comparison, and check 4 is where it
  * mattered most (06.10.2026): once check 2 read „(2) Aufgehoben." as the
  * repealed Absatz it is, this check still looked for „Aufgehoben" in the
@@ -964,7 +963,7 @@ function regionsOf(runs: readonly TokenRun[]): Region[] {
  * Check 4: text a changed row strikes, still standing in the result where
  * the row took it out — the words found, or null.
  *
- * **The one direction checks 1 to 3 never asked** (§12.12, 30.09.2026). Check 2
+ * **The one direction checks 1 to 3 never asked** (30.09.2026). Check 2
  * asks whether the proposed column is IN the result, never whether the result
  * holds MORE; check 3 counts only words the engine inserted or removed, and a
  * deletion the engine did not carry out inserts and removes nothing. So a

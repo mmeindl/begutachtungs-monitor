@@ -1,7 +1,6 @@
 <script setup lang="ts">
 /**
- * „Was das Ressort begründet" — the Erläuterungen's Allgemeiner Teil
- * (docs/architecture.md §12.29).
+ * „Was das Ressort begründet" — the Erläuterungen's Allgemeiner Teil.
  *
  * WHY THIS SECTION EXISTS: a reader's relevance check starts here — skim the
  * Allgemeiner Teil (what is the law for?), then the Gesetzestext or the
@@ -34,7 +33,6 @@ const props = defineProps<{ gp?: string; inr?: number; risId?: string }>()
 
 const { data, status } = useExplanations(() => ({ gp: props.gp, inr: props.inr, risId: props.risId }))
 
-/** Always RIS (`risExplanations.ts`), for the credit line (`#shared/utils/provenance`). */
 const sources = computed<SourceEntry[]>(() => (data.value?.available ? [risSource('Erläuterungen')] : []))
 
 /** One paragraph or subheading of the Ressort, in printing order. */
@@ -165,15 +163,7 @@ const loadAnnouncement = computed(() => {
 
       <!-- What deliberately does NOT stand here: tables and figures (we do
            not print image file paths as sentences). Named, not passed over in
-           silence — it is a gap in what the reader sees.
-
-           The Besonderer Teil is no longer announced (30.09.2026). „Die
-           Erläuterungen zu den einzelnen Paragraphen stehen unten bei der
-           Gegenüberstellung … und vollständig im Dokument selbst" stood here
-           since 19.09.2026 and pointed down at a section that has stood ABOVE
-           this one since the section was reordered. Each § of the comparison
-           carries its own „Erläuterungen" disclosure, and the whole document
-           is one link away — in the credit line below and in „Dokumente". -->
+           silence — it is a gap in what the reader sees. -->
       <p v-if="data.dropped" class="mt-4 text-sm text-ink-muted">
         Tabellen und Abbildungen des Dokuments stehen hier nicht.
       </p>

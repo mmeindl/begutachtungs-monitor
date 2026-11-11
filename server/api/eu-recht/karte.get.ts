@@ -1,6 +1,5 @@
 /**
- * GET /api/eu-recht/karte?gp= → the EU map's build report
- * (docs/architecture.md §12.66, Nachtrag 3).
+ * GET /api/eu-recht/karte?gp= → the EU map's build report.
  *
  * PREWARM-ONLY, like `/api/stations/:gp`: no page calls this. Cold it reads
  * every draft of the period's window — Vorblätter, law texts, Erläuterungen,

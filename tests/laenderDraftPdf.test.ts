@@ -5,7 +5,7 @@ import { draftDocument, notADraft } from '../server/utils/laender/texts/read'
 
 /* Pages as the PDF's text layer gives them: one string per page, a line per
    printed line, „Seite n" on top. The texts are built for the rules, each
-   after a draft the measurement read (docs/architecture.md §12.44). */
+   after a real draft. */
 const page = (...lines: string[]) => lines.join('\n')
 const ids = (pages: string[]) => landDraftUnits(pages)!.map((u) => `${(u.articleNumber ?? '').split(' ').slice(0, 2).join(' ')} ${u.id}`)
 
@@ -111,7 +111,7 @@ describe('diffLandDraft — the draft against the Landesgesetzblatt', () => {
       '3. Im § 5 wird das Wort "Median- Entgelthöhe" eingefügt.',
     )))
     // „§ 4 entfällt" against „§ 4 lautet: …": the same place, now one
-    // changed instruction (the address pass, §12.44 Nachtrag 3).
+    // changed instruction (the address pass).
     expect(units.map((u) => [u.id, u.change])).toEqual([['Z1', 'unchanged'], ['Z2', 'changed'], ['Z3', 'unchanged']])
   })
 

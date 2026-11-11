@@ -1,5 +1,5 @@
 /**
- * The Initiativantrag route (docs/architecture.md §12.10, 30.09.2026): what
+ * The Initiativantrag route (30.09.2026): what
  * the table claims, and what each surface makes of it.
  *
  * The table is generated (`scripts/corpus/meAntragTable.ts`), so these tests

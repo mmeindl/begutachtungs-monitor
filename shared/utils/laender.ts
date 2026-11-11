@@ -169,7 +169,7 @@ export const LAND_PUBLICATION_NOTE: Record<LandCode, string | null> = {
  * Tirol's Landtag record every step after the Begutachtung (`ooeStageOf`,
  * `parseTirolRecord`), Kärnten's pages the Vorlage and the Beschluss
  * (`ktnChainOf`); for the other Länder the monitor finds the Kundmachung
- * itself (`matchLgbl`, §12.43) and nothing in between — so under
+ * itself (`matchLgbl`) and nothing in between — so under
  * „Regierungsvorlage" or „Parlament" alone they have no rows to give, and
  * the chip says why. Niederösterreich and Vorarlberg show a draft only while
  * its Begutachtung runs (30.10.2026): nothing of theirs reaches a later

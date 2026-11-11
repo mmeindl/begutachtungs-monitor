@@ -1,5 +1,5 @@
 /**
- * What a search field does with a space (docs/architecture.md §12.31).
+ * What a search field does with a space.
  *
  * Since 22.09.2026 both halves link the tokens with AND — before that the
  * list searched the whole input as ONE substring while the full text beside
@@ -33,7 +33,7 @@
  *     then leaves visually clipped; a filter puts the row on screen.
  *   - Searched for a private person's name it answers with silence, which
  *     reads as "did not file" when the truth is "we do not publish that"
- *     (GDPR, docs/architecture.md §3). A field of ours can say which one it is.
+ *     (GDPR). A field of ours can say which one it is.
  *
  * The overflow rows stay findable all the same — `hidden="until-found"` in
  * the panel — because the field needs JavaScript and the SSR HTML does not.

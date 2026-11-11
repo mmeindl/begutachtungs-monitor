@@ -64,8 +64,8 @@ const PREWARM_ONLY = [
   /^\/api\/ris-map(?:\/|$)/,
   /^\/api\/bgbl\/teil2\/?$/,
   // The EU map's build: cold it reads every draft's Vorblatt, law text and
-  // Erläuterungen and the Länder's PDFs at one request a second (§12.66,
-  // Nachtrag 3) — a request from outside must never start it.
+  // Erläuterungen and the Länder's PDFs at one request a second
+  // — a request from outside must never start it.
   /^\/api\/eu-recht\/karte\/?$/,
 ]
 

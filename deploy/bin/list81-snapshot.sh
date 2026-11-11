@@ -2,8 +2,8 @@
 # One daily copy of list 81, kept on the server — the measurement behind two
 # open questions that no single reading of the API can answer.
 #
-#   1. Is `Frist` updated when a Begutachtung is extended? (docs/architecture.md
-#      §13.3.) A No reshapes the alerts package: a deadline that silently moves
+#   1. Is `Frist` updated when a Begutachtung is extended?
+#      A No reshapes the alerts package: a deadline that silently moves
 #      cannot be alerted on from the list alone. The same question is put to
 #      the Parlamentsdirektion directly — this is the independent evidence,
 #      and it is worth more measured than answered.

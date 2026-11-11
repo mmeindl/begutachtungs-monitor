@@ -84,7 +84,7 @@ export function bgldUnidYear(unid: string): number | null {
  * Gemeinde, but that is an inference — and every surname. The expanded name
  * must still pass `classifySubmitter` — expansions it refused („Seniorenrat",
  * „Land&Forst Betriebe", „Die Grünen") were dropped rather than reworded to
- * pass. Reviewed label by label on that day's archive, old against new (docs/architecture.md §12.64):
+ * pass. Reviewed label by label on that day's archive, old against new:
  * named 175 → 672 of 910, none named before lost or changed, every newly
  * named one an organisation or a public body.
  */

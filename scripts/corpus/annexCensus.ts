@@ -1,10 +1,9 @@
 /**
  * „Nicht geprüft", counted the way the page counts it — and the old-against-new
- * comparison per § that every change to the annex check is measured with
- * (docs/architecture.md §12.41, §12.42).
+ * comparison per § that every change to the annex check is measured with.
  *
  * Until 04.10.2026 this lived as three Python files in a session scratchpad;
- * §12.41's figures (624 → 407 §§) had no command in the repo behind them.
+ * the figures (624 → 407 §§) had no command in the repo behind them.
  *
  *     pnpm corpus:annex-census -- --out .cache/annex-census/before.json
  *     pnpm corpus:annex-census -- --out .cache/annex-census/after.json
@@ -13,7 +12,7 @@
  * The first form reads `/gegenueberstellung` for every draft of the period
  * through a RUNNING server (dev on :3000, or `AUDIT_ORIGIN` for a production
  * build with cold caches — `PORT=3002 node .output/server/index.mjs`; measure
- * chain figures on that one, §12.37), writes one row per annex row to `--out`,
+ * chain figures on that one), writes one row per annex row to `--out`,
  * and prints:
  *
  *  - **Page view**: §§ shown as „nicht geprüft" — a (law, §) group with at

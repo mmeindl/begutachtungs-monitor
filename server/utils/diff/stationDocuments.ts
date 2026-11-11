@@ -19,8 +19,8 @@ interface ResolvedLawStation {
    *
    * Two stations arrive this way, for different reasons: the draft, where
    * Parliament carries it only as a PDF (the older fallback), and the
-   * Kundmachung, which does not exist at Parliament at all
-   * (docs/architecture.md §12.33). That is why the field sits on the station
+   * Kundmachung, which does not exist at Parliament at all.
+   * That is why the field sits on the station
    * rather than as a special variable beside `me`.
    */
   xml: string | null
@@ -96,7 +96,7 @@ export const MISSING_STATION_REASON: Record<LawStationId, string> = {
  * GP-XXVI Art.-15a-Vereinbarungen (79/ME → 331 d.B., 97/ME → 383 d.B.)
  * publish theirs as „Vertragstext", which is rightly not offered for a §
  * comparison. The table's sentence then denied a Vorlage that the same page
- * names two sections higher (docs/architecture.md §12.18, Nachtrag) — the
+ * names two sections higher — the
  * false accusation `parliament/stationMap.ts` exists to avoid.
  */
 export function missingStationReason(id: LawStationId, rvLinked: boolean, promulgatedAs: string | null = null): string {

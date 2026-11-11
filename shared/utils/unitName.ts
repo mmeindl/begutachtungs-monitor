@@ -1,5 +1,5 @@
 /**
- * What a changed unit is called on screen (docs/architecture.md §12.11).
+ * What a changed unit is called on screen.
  *
  * Three sources, in this order, and all three are quoted from an official
  * text — none is generated, so none carries a machine-generated marking:
@@ -70,8 +70,7 @@ const HEADING_DESIGNATION_RE = new RegExp(String.raw`^\s*§\s*\.?\s*(${PARAGRAPH
  * Sonderformen der allgemeinbildenden höheren Schulen", SchOG). The card
  * puts the addressed § in front of the name, so such a heading read
  * „§ 37 § 37. Sonderformen …". Measured 01.10.2026 over 2.973 cached RIS
- * headings: 60 carry their own designation, none another one
- * (docs/architecture.md §12.11).
+ * headings: 60 carry their own designation, none another one.
  *
  * Only the SAME § is removed — `para` is the one the instruction addresses
  * („§ 37"). A heading that opens with any other designation keeps it: that

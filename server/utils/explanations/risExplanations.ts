@@ -1,6 +1,6 @@
 /**
  * The Erläuterungen of a draft, read from the RIS XML (docs/api-exploration.md
- * §2, docs/architecture.md §12.29).
+ * §2).
  *
  * PURE MODULE — relative imports only, so vitest runs it directly.
  *
@@ -218,7 +218,7 @@ const MAX_ZIFFER_RANGE = 80
 
 /**
  * Every Ziffer a passage heading names, in the order printed, read as the
- * Novellierungsanordnung it is (docs/architecture.md §12.10b, 01.10.2026):
+ * Novellierungsanordnung it is (01.10.2026):
  * „Zu Z 4 (§ 54c Abs. 1a):", „Zu Art. 2 Z 1 (§ 7):", „Zu Z 1 bis 3:",
  * „Zu Z 1, 3 und 5 (…)", „Zu Z 2 (…) und 3 (…)", „Zu Art. 1 Z 5 sowie zu
  * Art. 13 Z 1 bis 3".
@@ -473,7 +473,7 @@ export interface SplitHeading {
  * ressort wrote on the same line behind it — „Zu Z 5 (Aggregierung): Durch
  * die Wortfolge … soll zum Ausdruck gebracht werden …" (32/ME XXVIII) is the
  * address „Zu Z 5 (Aggregierung):" and the first paragraph of the passage
- * (docs/architecture.md §12.10b, 02.10.2026). Left in the heading, that prose
+ * (02.10.2026). Left in the heading, that prose
  * was in no passage's text: 803 headings in 66 of 688 Parliament
  * Erläuterungen, most of them the sub-headings of a new law's § („Zu Abs. 3:
  * …", a definition's „Zu Z 4: Diese Definition …").

@@ -5,15 +5,14 @@ import { bgblShort, formatDateDe } from '#shared/utils/format'
 
 /**
  * The Initiativantrag route, under „Die Regierungsvorlage" on a draft that
- * has none (docs/architecture.md §12.10, 30.09.2026).
+ * has none (30.09.2026).
  *
  * THREE SENTENCES, each a fact the reader can check: which Antrag carried
  * the text and where it was promulgated; how that was matched — by wording,
  * because no pointer in the data connects the two, with the share that
  * matched; and, where it applies, that the Antrag was filed while the
  * Begutachtung still ran. Temporal, never causal: the page says WHEN, not
- * why, and not what the Stellungnahmen could have changed (framing rule,
- * §4).
+ * why, and not what the Stellungnahmen could have changed (framing rule).
  *
  * TWO STRENGTHS. Where the Antrag carries most of the draft (`carriesDraft`)
  * the route is the draft's; where it carries only a part (XXVIII/6/ME: 3 % of

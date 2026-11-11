@@ -1,6 +1,6 @@
 /**
  * A Grundsatzgesetz's Kundmachung from RIS — its record and the Frist
- * clause in its text (docs/architecture.md §12.67). Nuxt-aware glue around
+ * clause in its text. Nuxt-aware glue around
  * `bundesgesetzblatt.ts`.
  *
  * The record comes through the exact `Bgblnummer` search the § comparison's

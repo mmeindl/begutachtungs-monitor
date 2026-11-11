@@ -91,7 +91,7 @@ export function useLawDiffStep(options: {
   const { data: fetchedDiff, status: fetchStatus, execute: executeDiff } = diffFetch
 
   /**
-   * The name of each amended § (docs/architecture.md §12.11), fetched
+   * The name of each amended §, fetched
    * separately so a slow lookup never delays the comparison and a failing one
    * never takes it down. Names appear when they arrive.
    *
@@ -106,8 +106,7 @@ export function useLawDiffStep(options: {
   const { data: fetchedTitles, execute: executeTitles } = titlesFetch
 
   /**
-   * And whether the Ressort changed its **reasoning** for this provision
-   * (docs/architecture.md §12.10b).
+   * And whether the Ressort changed its **reasoning** for this provision.
    *
    * Measured over GP XXVIII: for 48 % of the Paragraphen carrying a reasoning
    * on both sides it became a different one — so the question is worth asking.

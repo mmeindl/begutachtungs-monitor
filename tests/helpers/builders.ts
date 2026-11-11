@@ -183,8 +183,8 @@ export function draftSummary(over: Partial<DraftSummary> = {}): DraftSummary {
 }
 
 /**
- * A Begutachtung without a parliamentary Gegenstand (docs/architecture.md
- * §12.16). `outcome: null` is the normal case and means "not determined",
+ * A Begutachtung without a parliamentary Gegenstand. `outcome: null` is
+ * the normal case and means "not determined",
  * never "nothing came of it".
  */
 export function risConsultation(over: Partial<RisConsultation> = {}): RisConsultation {

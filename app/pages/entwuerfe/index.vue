@@ -23,8 +23,7 @@ import { MAX_LIST_QUERY_CHARS } from '#shared/utils/queryParams'
 
 /**
  * Every Begutachtung of a period, in ONE list — Ministerialentwürfe and the
- * Begutachtungen Parliament has no Gegenstand for (docs/architecture.md
- * §12.19).
+ * Begutachtungen Parliament has no Gegenstand for.
  *
  * Two pages until 17.09.2026. The objection to merging was to POOLING THE
  * NUMBERS, not to sharing a page, and as an argument about the page it lost:
@@ -44,7 +43,7 @@ usePageSeo({
 })
 
 /**
- * Two axes, not one (docs/architecture.md §12.26).
+ * Two axes, not one.
  *
  * **Where it stands** is the station: Begutachtung, Regierungsvorlage,
  * Parlament, Bundesgesetzblatt — the same vocabulary as the detail page's
@@ -75,8 +74,7 @@ usePageSeo({
  * Nationalrat done with the Vorlage (its Beschluss, or list-101 status 5, 4
  * or 3; `stationFor`) — but the window does not close with that Beschluss:
  * it runs to the end of the parliamentary procedure, through the Bundesrat
- * (Parliament's own description of it, § 23b Abs. 1 GOG-NR;
- * docs/architecture.md §12.26). That day 4 rows of GP XXVIII stood at
+ * (Parliament's own description of it, § 23b Abs. 1 GOG-NR). That day 4 rows of GP XXVIII stood at
  * Parlament with the form open; until then the chip was unavailable there
  * with the reason „Der Nationalrat hat über die Vorlage schon entschieden",
  * and the measurement „Parlament + open is 0" only held because those
@@ -93,7 +91,7 @@ const artOptions = ART_OPTIONS
 
 /**
  * Two orders, and each of them answers a question this page is actually
- * asked (§12.24, §12.22).
+ * asked.
  *
  * „Frist" is the list's own order and the default everywhere: open first,
  * nearest deadline on top (`compareDrafts`). „Meiste Stellungnahmen" exists
@@ -103,7 +101,7 @@ const artOptions = ART_OPTIONS
  * instead of at the list. It is the same comparator the ranking uses
  * (`rankByStatements`), so the first five rows here ARE those five rows.
  *
- * No third since 02.10.2026. „Zuletzt dazugekommen" (26.09.2026, §12.22)
+ * No third since 02.10.2026. „Zuletzt dazugekommen" (26.09.2026)
  * went when the column headers took over the sorting: no column fits it.
  * A title order under „Entwurf" replaced it for a day and went too — a third
  * of the titles start with „Änderung" or „Verordnung", and the search finds
@@ -135,7 +133,7 @@ const { statusFilter, art, gp, ministry, q, qDebounced, sort, reversed, stations
 const { choose: chooseColumn, selectValue: sortSelect } = useReversibleSort(sort, reversed)
 
 /**
- * „Setzt EU-Recht um" (docs/architecture.md §12.66, Nachtrag 3): the drafts
+ * „Setzt EU-Recht um": the drafts
  * whose EU fact leads with those words. A chip beside „Stellungnahme
  * möglich", off by default, available under every station and Art — a
  * Verordnung implements directives too. The Bund's halves filter upstream
@@ -209,7 +207,7 @@ onNavigate(() => {
  * 390 px it was 432 px tall and the first viewport showed not one row) and
  * took the station chips with it. Now the three selects go behind „Filter"
  * at every width, and the stations stay out from `md` up — they are the axis
- * the product is about (§12.26). On a phone they still open with the panel:
+ * the product is about. On a phone they still open with the panel:
  * out there they cost two rows before the first card (measured 02.10.2026).
  *
  * A shared link must never hide an active filter: while the panel is closed,
@@ -245,7 +243,7 @@ const shownFilterChips = computed(() =>
 /**
  * The two orders as the column header carries them (`EntryList`,
  * `SortHeader`): Frist is the Stand column, the ranking the Stellungnahmen
- * column. The Entwurf column orders nothing (§12.22). Below `md` the page
+ * column. The Entwurf column orders nothing. Below `md` the page
  * offers the same two as a select.
  */
 const SORT_COLUMNS = {
@@ -311,8 +309,7 @@ const {
 const gpOptions = computed(() => (availableGps.value.length ? availableGps.value : [selectedGp.value]))
 
 /**
- * The second open window — and since 18.09.2026 these are rows, not a section
- * (docs/architecture.md §12.26).
+ * The second open window — and since 18.09.2026 these are rows, not a section.
  *
  * Whoever lands here under „Stellungnahme möglich" is asking where they can
  * say something now, and a Regierungsvorlage in the Nationalrat is such a
@@ -407,8 +404,8 @@ const unreadableLaender = computed(() => {
  * homepage's six open Vorlagen against the section's one read as a defect
  * whatever the heading said.
  *
- * So it belongs in the same list. That does not soften §12.19 („two row
- * shapes, never a pooled total"), it applies the same rule a third time: its
+ * So it belongs in the same list. That does not soften „two row
+ * shapes, never a pooled total", it applies the same rule a third time: its
  * own row shape, its own count term, a shared order. The row shape and both
  * orders are in `shared/utils/draftOrder.ts`, next to the comparator they
  * call.
@@ -442,18 +439,18 @@ const rows = computed<DraftListRow[]>(() =>
 )
 
 /**
- * The ordered rows, put through one anatomy (docs/architecture.md §12.28).
+ * The ordered rows, put through one anatomy.
  *
  * The split is deliberate and it is the lesson of the six components this
  * replaced: `rows` decides WHAT stands in which order — with three row kinds
- * that keep their own types (§12.19) — and the adapter decides HOW each kind
+ * that keep their own types — and the adapter decides HOW each kind
  * falls onto the four zones. Both used to live in two components per kind,
  * which is why the same number could stand in six places in one list.
  */
 const entries = computed(() => rows.value.map(viewOfRow))
 
 /**
- * How much of the list stands on the page (§12.24: `ListMore` belongs where
+ * How much of the list stands on the page (`ListMore` belongs where
  * a list is worked through).
  *
  * All rows stood in the SSR HTML until 30.09.2026, and each of them twice —
@@ -463,8 +460,8 @@ const entries = computed(() => rows.value.map(viewOfRow))
  * s). The rows are cut in the render only: counts, the Ressort menu and the
  * full-text hits keep reading `entries` whole.
  *
- * Uncut under a search query, the rule of the Stellungnahmen lists
- * (§12.15): whoever searches gets the whole result, and the full-text block
+ * Uncut under a search query, the rule of the Stellungnahmen lists:
+ * whoever searches gets the whole result, and the full-text block
  * below may only say „stehen schon in der Liste oben" of rows that are on
  * the page. Not in the URL, like the panel's count: a link shares the
  * filter, not how far somebody scrolled.
@@ -497,7 +494,7 @@ if (import.meta.client) {
 }
 
 /* ------------------------------------------------------------------ *
- * The search's second half: the full text (docs/architecture.md §12.31)
+ * The search's second half: the full text
  *
  * Its own debounce, its own fetch, its own counts — all in
  * `useFullTextSearch`, because it is a second, differently cut answer to the
@@ -530,7 +527,7 @@ const visibleTotal = computed(() => meTotal.value + risTotal.value + landItems.v
  *
  * „Everything but Begutachtung" was the rule while the Verordnung half
  * appeared nowhere after the Frist. But it is kundgemacht, in part II of the
- * Bundesgesetzblatt (docs/architecture.md §12.32), and „Bundesgesetzblatt"
+ * Bundesgesetzblatt, and „Bundesgesetzblatt"
  * now carries 159 rows of the running period. The note „Diese Auswahl passt
  * nicht zu Verordnungsentwürfen" stood above exactly those rows for one
  * version.
@@ -554,18 +551,17 @@ const stationConflict = computed(() => laterStationsOnly.value && art.value === 
 /* Two reasons why the rows carry no station, and they say fundamentally
  * different things: the map was not reachable just now (temporary, our
  * fault) — or the period does not link its drafts to Vorlagen at all
- * (permanent, the archive's, §12.27). Only the second case needs the
+ * (permanent, the archive's). Only the second case needs the
  * explanation without an active station filter too, because a whole column
  * would otherwise vanish wordlessly. */
 const chainUnlinkedPeriod = computed(() => meData.value?.chainCoverage === 'unlinked')
 
-/* Zeilen der Vorperiode, deren Frist noch läuft (§12.36) — beide Hälften
+/* Zeilen der Vorperiode, deren Frist noch läuft — beide Hälften
  * melden das für sich, und gemeldet wird nur, was das Filtern überlebt hat.
  *
  * Die Liste MUSS das sagen. Sie trägt einen sichtbaren Periodenwähler, der
  * in diesen Wochen die laufende Periode zeigt, während ein paar Zeilen aus
- * der davor stammen; zwei Perioden stillschweigend unter einem Etikett ist
- * genau das, was §12.21 ablehnt. Die Endpunkte lesen nur mit, wenn der
+ * der davor stammen. Die Endpunkte lesen nur mit, wenn der
  * Aufruf gar keine Periode genannt hat — sobald jemand oben eine auswählt,
  * ist die Antwort wieder periodenrein und dieser Satz verschwindet von
  * selbst. */
@@ -651,12 +647,6 @@ const statementsSortNote = computed(() => {
              „Setzt EU-Recht um" (`EuMapLink`). -->
         <EuMapLink />
       </div>
-      <!-- THE WAY TO THE SEARCH STOOD HERE UNTIL 21.09.2026 — a link to
-           `/suche` plus two sentences on what is different there from the
-           field below. It is gone because the field below does both since
-           then (docs/architecture.md §12.31): a note explaining which of a
-           page's two searches you are currently using is the manual for a
-           separation that no longer has to exist. -->
     </header>
 
     <!-- NO FetchGate around the list since 23.10.2026: the box, its controls
@@ -664,21 +654,6 @@ const statementsSortNote = computed(() => {
          failure states take the rows' place inside the sheet (`#state`
          below). Behind a gate a changed filter took the filters themselves
          away until the answer came. -->
-    <!-- NO EXPLANATORY BOX any more, since 18.09.2026. It stood between the
-         heading and the filters — at 390 px eight lines of prose about the
-         data's provenance before any row of the list was visible — and it
-         explained what the rows now say themselves: each carries its type
-         word and, where there are no Stellungnahmen, why („nicht gezählt",
-         §12.28). The procedure behind it stands on /so-funktionierts.
-
-         Its numbers had to go regardless. „201 Entwürfe ohne Gegenstand
-         gegen 134 mit einem" read as a corpus figure but was a join
-         statistic: `withGegenstand` counts RIS records a Ministerialentwurf
-         could be matched to, while the line 40 px below counts
-         Ministerialentwürfe of list 81 — on 18.09.2026 134 against 135.
-         Both are right, and the difference is the documented case of an ME
-         without a RIS record (`docs/ris-join.md` §2). Writing that down
-         correctly would take a subordinate clause nobody reads. -->
 
     <!-- THREE LAYERS, the grammar of every list box (`ListBox`,
          02.10.2026), in the list's own sheet: „was kann ich
@@ -705,13 +680,13 @@ const statementsSortNote = computed(() => {
       <!-- WHERE IT STANDS as the tabs (02.10.2026): the stations are the
              axis this product is about — what became of a draft — and the
              most prominent control in the box belongs to it. Single-select,
-             a reversal of §12.26's multi-select chips: tabs that hold
+             a reversal of the earlier multi-select chips: tabs that hold
              several values are no tabs. A shared link naming several
              stations still works and says so as a tab of its own. No counts,
              unlike the Stellungnahmen: each would be one pooled total over
-             Ministerialentwürfe and Verordnungsentwürfe (§12.19). Five tabs
+             Ministerialentwürfe and Verordnungsentwürfe. Five tabs
              do not fit a phone, so below `sm` they are a select. Gone where
-             the period cannot answer the question (§12.27): the slot
+             the period cannot answer the question: the slot
              itself goes, so the box draws no empty tab row. -->
       <template v-if="!chainUnlinkedPeriod" #tabs>
         <ListTabs
@@ -736,7 +711,7 @@ const statementsSortNote = computed(() => {
         </p>
         <div class="flex flex-wrap items-center gap-2">
           <!-- „Was kann ich tun", reduced to its one value that matters:
-               the question people arrive with (§12.26), and the filter
+               the question people arrive with, and the filter
                the homepage's sections link through
                (`?status=open&station=begutachtung`, `…&station=rv`).
                „Nicht möglich" was only the rest; it survives as a chip
@@ -750,7 +725,7 @@ const statementsSortNote = computed(() => {
           <ToggleChip :pressed="wantsOpen" :unavailable="openUnavailable" @toggle="toggleOpen">
             Stellungnahme möglich
           </ToggleChip>
-          <!-- What the draft does with EU law (§12.66): the same kind of
+          <!-- What the draft does with EU law: the same kind of
                control, beside it — a property of the draft that narrows the
                set. Never unavailable: every station and Art can hold a
                draft that implements a directive. -->
@@ -914,7 +889,7 @@ const statementsSortNote = computed(() => {
         </p>
         <!-- The gap is named rather than passed off as a finding: without this
                sentence a list without stations would read as if nothing had ever
-               become of any of these drafts (docs/architecture.md §12.27). -->
+               become of any of these drafts. -->
         <p v-if="chainUnlinkedPeriod" class="text-sm text-ink-muted">
           Was aus diesen Entwürfen wurde, ist für diese Gesetzgebungsperiode
           nicht erfasst – der Bezug zwischen Ministerialentwurf und
@@ -944,10 +919,6 @@ const statementsSortNote = computed(() => {
           >alle Stationen</button>
           zeigen wieder Zeilen.
         </p>
-        <!-- No „Darunter N in zweiter Runde" line since 03.10.2026: each of
-             those rows carries its „Zweite Runde" chip, „Regierungsvorlage"
-             with „Stellungnahme möglich" IS that list, and why there is no
-             Frist for it is the detail page's to say. -->
         <!-- What the sort order does with the half it cannot sort — above the
                list, not below it: a caveat on what the order claims has to be read
                before the rows are. -->
@@ -1038,7 +1009,7 @@ const statementsSortNote = computed(() => {
         />
       </template>
     </EntryList>
-    <!-- THE SAME FIELD'S SECOND ANSWER (docs/architecture.md §12.31). Its
+    <!-- THE SAME FIELD'S SECOND ANSWER. Its
          own section with its own heading, never mixed into the list: the
          list searches a whole Gesetzgebungsperiode by title, this block the
          documents of what is open today. -->
@@ -1060,7 +1031,7 @@ const statementsSortNote = computed(() => {
       </p>
 
       <LoadingState v-if="fullTextPending" label="Im Volltext wird gesucht …" />
-      <!-- AN ERROR IS NOT AN ANSWER (docs/architecture.md §12.13): „kommt
+      <!-- AN ERROR IS NOT AN ANSWER: „kommt
            nicht vor" would be this product's most expensive lie. -->
       <p v-else-if="fullTextError" class="mt-3 text-sm text-ink-secondary">
         Im Volltext konnte gerade nicht gesucht werden – das RIS hat nicht

@@ -4,7 +4,7 @@
  * (30.10.2026, `utils/laender/recent.ts`).
  *
  * `gp` is the period the Bund's half of „Zuletzt Gesetz geworden" answered
- * with: the running one, or the one before during its fallback (§12.35) —
+ * with: the running one, or the one before during its fallback —
  * and nothing else, so the cache holds two keys at most.
  */
 import type { DashboardLaender } from '#shared/types'

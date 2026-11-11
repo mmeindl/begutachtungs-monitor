@@ -5,7 +5,7 @@ import { draftArticles as draft } from './helpers/builders'
 
 /**
  * The Gegenüberstellung under an older name — „begtxt", „GGUe" — decided by
- * content (`server/utils/annex/olderAnnex.ts`, docs/architecture.md §12.13).
+ * content (`server/utils/annex/olderAnnex.ts`).
  *
  * The name no longer vouches for the document, so the table path asks for
  * the mandated header pair: the row-shape fallback that reads a header-less

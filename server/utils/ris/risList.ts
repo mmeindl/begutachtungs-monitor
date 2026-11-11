@@ -1,6 +1,6 @@
 /**
  * The filter of `/api/ris-drafts` — the half of the list RIS publishes and
- * Parliament does not know (docs/architecture.md §12.16).
+ * Parliament does not know.
  *
  * Pure, so it is under test: which rows a station chip shows is a statement
  * about the Verfahren, not a layout question.
@@ -22,7 +22,7 @@ import { passesEuFilter, type EuFilter } from '../eu/euFilter'
  * Which half of the station axis this request means.
  *
  * This half stands at the Begutachtung and never moves on: no Gegenstand at
- * Parliament, so never a Regierungsvorlage (§12.16).
+ * Parliament, so never a Regierungsvorlage.
  *
  * Decision: under `begutachtung` they belong, because that is where they
  * stand; out of `rv` and `parlament` they stay, because they cannot reach
@@ -35,13 +35,12 @@ import { passesEuFilter, type EuFilter } from '../eu/euFilter'
  * of them Verordnungsentwürfe. The number is the corpus, not a fault, and
  * the price was high — „Begutachtung + Stellungnahme möglich" showed 4 rows
  * instead of 7, three running Verordnungs-Begutachtungen disappeared, and
- * the start page's link („Alle 7 offenen Entwürfe") led to a list of 4
- * (docs/architecture.md §12.26).
+ * the start page's link („Alle 7 offenen Entwürfe") led to a list of 4.
  *
  * SINCE 19.09.2026 THAT NO LONGER HOLDS FOR `bgbl`. "They cannot reach the
  * later stations" was true only as long as nobody read the
  * Bundesgesetzblatt: a Verordnung does not pass through Parliament, but it
- * is very much promulgated — in Teil II (§12.32). Whoever filters for the
+ * is very much promulgated — in Teil II. Whoever filters for the
  * station „Bundesgesetzblatt" means both halves, and the half that was
  * silently missing there is the larger one.
  */
@@ -63,7 +62,7 @@ export interface RisListFilter {
   ministryTokens: readonly MinistryToken[]
   /** Empty where the outcome did not arrive in time — `bgbl` then filters nothing. */
   outcomes: Record<string, BgblOutcome>
-  /** `?eu=umsetzung` (§12.66, Nachtrag 3); applied only where `euUsable`, as on `/api/drafts`. */
+  /** `?eu=umsetzung`; applied only where `euUsable`, as on `/api/drafts`. */
   eu?: EuFilter
   /** Whether the EU map was readable, so the rows carry `eu`. */
   euUsable?: boolean
@@ -86,8 +85,7 @@ export function filterRisConsultations<T extends RisConsultation>(
       // have neither. The long title is in the haystack instead — on a
       // Verordnung it is where the subject matter actually appears.
       //
-      // WITHOUT THE RESSORT MENTION, since 21.09.2026
-      // (docs/architecture.md §12.31). The rule behind it is **what is
+      // WITHOUT THE RESSORT MENTION, since 21.09.2026. The rule behind it is **what is
       // searched is what the row shows**: a Verordnung's long title begins
       // with „Verordnung des Bundesministers für <the whole portfolio>", the
       // Ressort name carries the same thing once more, and neither stands

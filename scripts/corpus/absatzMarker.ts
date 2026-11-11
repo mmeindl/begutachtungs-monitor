@@ -1,8 +1,7 @@
 #!/usr/bin/env vite-node
 /**
  * Wo die Lesefassung gliedern darf: welche Gliederungsmarken ein reiner
- * Textblick zurückgewinnt, und was er dabei erfindet
- * (docs/architecture.md §12.12a).
+ * Textblick zurückgewinnt, und was er dabei erfindet.
  *
  * Usage:  npx vite-node scripts/corpus/absatzMarker.ts -- [--limit=300] [--laws=40] [--paras=0]
  *

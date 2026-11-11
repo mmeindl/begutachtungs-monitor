@@ -1,7 +1,7 @@
 /**
  * What a Land's draft says, read once for every fact drawn from it: the
  * Erläuterungen' reading with the pages it opened, and the draft's own
- * text where that is a document of its own (docs/architecture.md §12.67).
+ * text where that is a document of its own.
  *
  * TWO CALLERS, ONE READ. The EU fact (`eu/landEuService.ts`) and the Bund
  * fact (`bund-land/landBundesrechtService.ts`) read the same pages — the

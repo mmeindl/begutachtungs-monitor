@@ -15,7 +15,7 @@ const pdf = (text: string): AusfuehrungDocument => ({ pages: [text], explanation
 /** Erläuterungen with one general passage. */
 const erl = (text: string): AusfuehrungDocument => ({ pages: null, explanations: { general: [{ heading: null, text: [text] }], particular: [] } })
 
-// Excerpts from the Länder corpus of GP XXVIII (§12.66 Nachtrag 10), shortened.
+// Excerpts from the Länder corpus of GP XXVIII, shortened.
 
 describe('Grundsatzgesetz: the enacting clause (strong)', () => {
   it('reads Steiermark\'s clause with the amending Kundmachung as the act (stmk-bf3fc21b)', () => {

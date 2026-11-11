@@ -203,7 +203,7 @@ describe('columnBoundary', () => {
 /**
  * The gutter is measured over the lines that part two columns, not over all
  * the ink — the EU-ESG-Rating-Verordnung-Vollzugsgesetz in miniature
- * (2026-09-11, §12.13).
+ * (2026-09-11).
  *
  * That annex sets two pages, one of them a title page whose blocks run the
  * full width of the paper. Counted as ink, those blocks are most of the
@@ -326,7 +326,7 @@ describe('a document whose left column is nearly empty', () => {
 })
 
 /**
- * The agreed band is a band and not an answer (2026-09-11, §12.13).
+ * The agreed band is a band and not an answer (2026-09-11).
  *
  * Only lines printing in *both* columns vote, so a one-sided continuation line
  * may begin inside the band they agree on. On the annex to the Gewerbeordnung/
@@ -358,7 +358,7 @@ describe('a band with a one-sided line inside it', () => {
 })
 
 /**
- * The seam gates the pages; the ink cuts them. Measured 2026-09-11, §12.13.
+ * The seam gates the pages; the ink cuts them. Measured 2026-09-11.
  *
  * The header pair states where a page's columns lie and is what `parseAnnexPdf`
  * holds every page against — but it is not the gutter, and the difference is
@@ -533,7 +533,7 @@ describe('what looks like a provision but is not', () => {
     expect(rows[0]!.current).toContain('Art. 92 Abs. 1 Buchstabe d')
   })
 
-  // The shapes GP XXVIII still filed as provisions (§12.41): a treaty, a
+  // The shapes GP XXVIII still filed as provisions: a treaty, a
   // directive by name, a lowercase continuation. And the two that must stay
   // headings: a title, and „zu § 14".
   it.each([

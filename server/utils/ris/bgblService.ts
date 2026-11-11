@@ -1,6 +1,5 @@
 /**
- * The Kundmachung of a Verordnungsentwurf in BGBl II
- * (docs/architecture.md §12.32).
+ * The Kundmachung of a Verordnungsentwurf in BGBl II.
  *
  * Nuxt-aware glue around the pure module `bgblJoin.ts`.
  *
@@ -211,7 +210,7 @@ export function getBgblTeil1Year(year: number): Promise<BgblRecord[]> {
  * 69/2026" returns exactly one record (checked 18.09.2026). For the BGBl
  * station of the § comparison that is the whole path: Parliament names the
  * citation in structured form, we look the document up. No join, no
- * similarity (§12.33).
+ * similarity.
  */
 export const fetchBgblByNumber = defineCachedFunction(
   async (nummer: string): Promise<any> => {
@@ -239,8 +238,7 @@ interface BgblDocument {
   page: string
   /**
    * The act's Kurztitel („Informationsfreiheits-Anpassungsgesetz"), from the
-   * same record — named on the draft page when the draft is one part of it
-   * (docs/architecture.md §12.33).
+   * same record — named on the draft page when the draft is one part of it.
    */
   kurztitel: string | null
   /**
@@ -343,7 +341,7 @@ function yearsFor(ende: string): number[] {
  * What became of a Verordnungsentwurf — the fourth state, for what the
  * window cannot decide at all. The other three are
  * `bgblJoin.bgblOutcomeState`, where the 180-day rule sits since 23.09.2026
- * so a test can execute it: **a failure is not an answer** (§12.13), and
+ * so a test can execute it: **a failure is not an answer**, and
  * here that rule has a name, `ausstehend`. A draft whose Frist ended six
  * weeks ago is not „nicht kundgemacht" — it is young, and telling the two
  * apart is the whole difference between an accountability statement and an

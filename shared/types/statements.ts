@@ -115,8 +115,8 @@ export interface RvStatementsResponse {
   /**
    * One row per Stellungnahme, so the panel can list the anonymous ones and
    * not merely count them — a private person's submission has a date, a
-   * Geschäftszahl and a public document, and only the NAME is withheld
-   * (§12.14). Never carries a name for a person: `StatementMeta.submitterName`
+   * Geschäftszahl and a public document, and only the NAME is withheld.
+   * Never carries a name for a person: `StatementMeta.submitterName`
    * is null for everything but an organisation. Null where `summary` is.
    */
   items: StatementMeta[] | null
@@ -131,8 +131,7 @@ export interface RvStatementsResponse {
    * The committee's own call for Stellungnahmen on this Vorlage, when it made
    * one (Ausschussbegutachtung, § 40 Abs. 1 GOG-NR) — the invited answers
    * then stand among `items`. Null where the Verlauf records none, which is
-   * the rule: GP XXVIII 2 of 79 Vorlagen from a Ministerialentwurf
-   * (docs/architecture.md §12.14).
+   * the rule: GP XXVIII 2 of 79 Vorlagen from a Ministerialentwurf.
    */
   committeeConsultation: CommitteeConsultation | null
 }

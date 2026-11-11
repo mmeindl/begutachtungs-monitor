@@ -2,12 +2,12 @@
  * GET /api/ris-drafts?gp&status&ministry&art&q&eu → RisConsultationsResponse.
  *
  * The Begutachtungen RIS publishes that Parliament has no Gegenstand for —
- * mostly Verordnungsentwürfe (docs/architecture.md §12.16). Same query
+ * mostly Verordnungsentwürfe. Same query
  * vocabulary as `/api/drafts`, so the two lists are filtered the same way;
  * `art` is the one addition, because here the kind of instrument varies.
  *
  * Named for its SOURCE, like `/api/ris-map`, since the pages stopped being
- * named for it on 18.09.2026 (§12.19): one link namespace for readers,
+ * named for it on 18.09.2026: one link namespace for readers,
  * because a URL is something we hand out — two endpoints underneath,
  * because the data really is two halves and that is not a layout choice.
  * Never `/api/weitere-…`: „weiter als was" was the word's whole problem.
@@ -57,13 +57,13 @@ export default defineEventHandler(async (event): Promise<RisConsultationsRespons
    * place as `reconcileActive` for list 81. */
   const ownItems = withRisActiveOn(cached.items).sort(sortConsultations)
 
-  /* CARRY-OVER, und nur wenn der Aufruf KEINE Periode genannt hat
-   * (§12.36). `?gp=XXVII` ist eine Frage nach einer Periode und wird
+  /* CARRY-OVER, und nur wenn der Aufruf KEINE Periode genannt hat.
+   * `?gp=XXVII` ist eine Frage nach einer Periode und wird
    * periodenrein beantwortet; ohne `gp` fragt jemand „was läuft gerade", und
    * eine Frist, die den Wechsel überlebt, läuft gerade. Im Normalbetrieb
    * leer — die Vorperiode hat dann keine offenen Records mehr. */
   const carried = query.gp === undefined ? await getCarryOverRisConsultations(currentGp) : []
-  /* The EU map, as on `/api/drafts` (§12.66, Nachtrag 3): every record of
+  /* The EU map, as on `/api/drafts`: every record of
    * the period's window carries `eu` where the map is at hand, the carried
    * ones of the period before none. */
   const markers = await euMarkersForList(gp)
@@ -90,7 +90,7 @@ export default defineEventHandler(async (event): Promise<RisConsultationsRespons
    * abgeschlossen" instead of „Kundgemacht", which is incomplete and not
    * wrong. As a FILTER it may not be missing — an exhausted budget would
    * produce an empty list, and „keine kundgemachten Verordnungen" would be
-   * an answer we never checked (§12.13). There it waits, and a failure
+   * an answer we never checked. There it waits, and a failure
    * throws: the page then says the Verordnungsentwürfe are „gerade nicht
    * abrufbar". Until 22.10.2026 a `.catch(() => ({}))` stood here and turned
    * every RIS failure into exactly the empty list this comment rules out —

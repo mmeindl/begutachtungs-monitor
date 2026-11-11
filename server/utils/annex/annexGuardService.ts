@@ -1,5 +1,5 @@
 /**
- * The annex's RIS check in the request path (docs/architecture.md §12.13).
+ * The annex's RIS check in the request path.
  *
  * Nitro glue around `verifyAnnex` (`annex/verdict.ts`), which holds all of the logic
  * and none of the caching. The two layers are the ones `cache/base.ts`
@@ -82,7 +82,7 @@ const sources: AnnexSources = {
  *
  * `draft` is the draft's identity as ONE string — „XXVIII-40" for a
  * Ministerialentwurf, the RIS document id for a Begutachtung without a
- * Gegenstand (§12.16). One cached function for both, because it is one
+ * Gegenstand. One cached function for both, because it is one
  * question; two would be two chances for the caching to drift apart while
  * the logic stays shared.
  */

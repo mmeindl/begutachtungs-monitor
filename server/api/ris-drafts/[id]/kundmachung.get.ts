@@ -1,7 +1,6 @@
 /**
  * GET /api/ris-drafts/:id/kundmachung → BgblOutcome: whether this
- * Verordnungsentwurf became a Kundmachung in BGBl II
- * (docs/architecture.md §12.32).
+ * Verordnungsentwurf became a Kundmachung in BGBl II.
  *
  * Its own endpoint and not part of the detail response: the answer costs a
  * whole year of the Bundesgesetzblatt, and the page should render before it

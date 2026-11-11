@@ -3,8 +3,7 @@ import type { LawUnitChange } from './lawDiff'
 
 /**
  * Why a Paragraph of our own konsolidierte Lesefassung is not shown
- * (`server/utils/kons/konsGate.ts`, `server/utils/kons/consolidate.ts`,
- * docs/architecture.md §12.12).
+ * (`server/utils/kons/konsGate.ts`, `server/utils/kons/consolidate.ts`).
  *
  * The first six are the gate's verdict on a § the engine produced; the rest
  * are the steps before it, where no text was produced at all. Until
@@ -78,7 +77,7 @@ export interface ConsolidatedParagraph {
   /**
    * The law the annex files this § under — the key the Textgegenüberstellung
    * is looked up with, and deliberately the gate's key rather than a second
-   * one (docs/architecture.md §12.12a).
+   * one.
    *
    * NOT the same as `law`: that carries the Kurztitel („Richter- und
    * Staatsanwaltschaftsdienstgesetz"), this one the annex's line („Änderung
@@ -95,12 +94,11 @@ export interface ConsolidatedParagraph {
 }
 
 /**
- * A draft's own konsolidierte Lesefassung — „so läse sich das Gesetz danach"
- * (docs/architecture.md §12.12).
+ * A draft's own konsolidierte Lesefassung — „so läse sich das Gesetz danach".
  *
  * `touched` is the denominator without which `paragraphs` would be a lie: a
  * draft amends two dozen Paragraphen, a median 12 % of them are shown, and
- * absence must never look like „unverändert" on this page (§12.27).
+ * absence must never look like „unverändert" on this page.
  */
 export interface ConsolidatedTextResponse {
   /** As on `TextComparisonResponse`: (GP, Nummer) or a RIS document id. */
@@ -137,7 +135,7 @@ export type ConsolidatedNotRun = 'zuordnung' | 'stichtag' | 'kein-xml' | 'keine-
 
 /**
  * Why a § of the Textgegenüberstellung is not shown
- * (`server/utils/annex/verdict.ts`, docs/architecture.md §12.13).
+ * (`server/utils/annex/verdict.ts`).
  *
  * Three findings the page keeps apart: they mean different things to a
  * reader, and two of them can just as well be *our* reading of a PDF as the
@@ -168,8 +166,7 @@ export interface TextComparisonRow {
    * one law, and null when the annex does not mark its boundaries: § 5 of the
    * second law of a package is a different provision from § 5 of the first,
    * and 15,1 % of designations in the multi-law annexes recur in another law
-   * of the same package — so an unattributed row is the honest answer
-   * (docs/architecture.md §12.13).
+   * of the same package — so an unattributed row is the honest answer.
    */
   law: string | null
   heading: string | null
@@ -202,7 +199,7 @@ export interface TextComparisonRow {
   elisionRange: boolean
   /**
    * How the row's "Geltende Fassung" fared against the standing law in RIS
-   * (`server/utils/annex/verdict.ts`, docs/architecture.md §12.13).
+   * (`server/utils/annex/verdict.ts`).
    *
    * - `verified` — the row's § carried enough prose to judge, the standing §
    *   accounts for its left column, and neither right-column rule fired; the
@@ -225,7 +222,7 @@ export interface TextComparisonRow {
    * whose left column is elision alone owe none. Decided on the server only —
    * the page counts „nicht geprüft" as `check === 'unchecked' && owesCheck`.
    * Until 03.10.2026 the page kept its own copy of the rule, which had
-   * drifted: it counted elided rows the server never owed (§12.41).
+   * drifted: it counted elided rows the server never owed.
    */
   owesCheck: boolean
   /**
@@ -256,7 +253,7 @@ export interface TextComparisonResponse {
   /**
    * Who the draft is. A Ministerialentwurf answers with (GP, Nummer), a
    * Begutachtung that RIS carries alone with its RIS document id and nulls
-   * for the other two (§12.16) — the same three fields either way, so the
+   * for the other two — the same three fields either way, so the
    * section does not have to know which half of the corpus it is rendering.
    */
   gp: string | null
@@ -371,7 +368,7 @@ export interface TextComparisonResponse {
      * version of the law. A sentence for the reader, not a withholding: the
      * §§ that verified are still shown, because they verified against the
      * standing text. A first version refused the whole law and withheld 59 §§
-     * that had passed individually (docs/architecture.md §12.13).
+     * that had passed individually.
      */
     doubtfulLaws: string[]
     /**
@@ -391,8 +388,7 @@ export interface TextComparisonResponse {
      *
      * A property of the table path. Measured 2026-09-10: 285 rows without a
      * designation, 83 of them shown as a change; on the PDF path a row *is* a
-     * provision, cut at the § marker, so this is 0 (docs/architecture.md
-     * §12.13).
+     * provision, cut at the § marker, so this is 0.
      */
     rowsWithoutParagraph: number
   } | null

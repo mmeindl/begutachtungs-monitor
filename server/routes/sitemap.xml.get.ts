@@ -1,8 +1,8 @@
 /**
  * GET /sitemap.xml — static pages plus every detail page of the current GP,
  * from both halves of the Begutachtung: the Ministerialentwürfe and the
- * records that have no Gegenstand at Parliament (docs/architecture.md
- * §12.16). Reuses cached leaves (no extra upstream load); same ETag pattern
+ * records that have no Gegenstand at Parliament.
+ * Reuses cached leaves (no extra upstream load); same ETag pattern
  * as /feed.xml. Referenced from public/robots.txt.
  */
 import { dedupeDraftList } from '../utils/parliament/draftList'

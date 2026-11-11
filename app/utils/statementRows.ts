@@ -9,7 +9,7 @@
  * component, where nothing could reach it: a rule that decides whether a
  * private person's name appears on a public page has to be executable by a
  * test, not only by a browser. The rule itself is unchanged and is not to be
- * simplified (CLAUDE.md, GDPR; refactor-plan.md §9).
+ * simplified (CLAUDE.md, GDPR).
  */
 import type { StatementMeta, StatementsSummary } from '#shared/types'
 import { countLabelDe, formatNumberDe } from '#shared/utils/format'

@@ -1,6 +1,5 @@
 /**
- * Full-text search over the running Begutachtungen
- * (docs/architecture.md §12.31).
+ * Full-text search over the running Begutachtungen.
  *
  * Nuxt-aware glue around the pure module `begutSearch.ts`. Three steps, and
  * none of them builds an index: RIS searches (`Suchworte` and
@@ -103,6 +102,15 @@ const PDF_BUDGET = 48
 /** As with the Beilagen: a document larger than this we do not read. */
 const PDF_MAX_BYTES = 16 * 1024 * 1024
 
+/** A record's document fields — exactly those `RisConsultationDetail` carries. */
+type DocumentKey = 'mainDocument' | 'explanations' | 'textComparison' | 'coverLetter'
+
+/** A document as this search sees it: a label and a few URLs. */
+interface SearchDocument {
+  label: string
+  formats: RisDocumentFormats | null
+}
+
 /**
  * The documents of a record in the order in which they can serve as the
  * place of a hit — a ranking of what a finding means, not one of
@@ -115,15 +123,6 @@ const PDF_MAX_BYTES = 16 * 1024 * 1024
  * stops at the first hit in this list: it names the strongest place, not all
  * of them.
  */
-/** A record's document fields — exactly those `RisConsultationDetail` carries. */
-type DocumentKey = 'mainDocument' | 'explanations' | 'textComparison' | 'coverLetter'
-
-/** A document as this search sees it: a label and a few URLs. */
-interface SearchDocument {
-  label: string
-  formats: RisDocumentFormats | null
-}
-
 const DOCUMENT_ORDER: readonly { key: DocumentKey; label: string }[] = [
   { key: 'mainDocument', label: 'im Entwurfstext' },
   { key: 'explanations', label: 'in den Erläuterungen' },
@@ -142,8 +141,7 @@ const DOCUMENT_ORDER: readonly { key: DocumentKey; label: string }[] = [
  * What was missing before is measured: the 8 running records carry 41 text
  * documents, the four fields reach 25. A hit that stands only in a WFA or a
  * Digicheck therefore ended as „wir konnten nichts benennen" — checked
- * against all three unnamed „datenschutz" hits, which stood exactly there
- * (docs/architecture.md §12.31).
+ * against all three unnamed „datenschutz" hits, which stood exactly there.
  *
  * THE RESSORT'S OWN NAME IS THE LABEL („in „WFA UVP-G-Novelle 2026""),
  * because we cannot read it better than the ressort chose it. That is also
@@ -223,7 +221,7 @@ const fetchBegutDocument = defineCachedFunction(
  *
  * Uncached (see the header) and without retries: this request hangs off a
  * page someone is waiting on. If RIS fails, that is a 502 with a sentence,
- * not an empty hit list — **a failure is not an answer** (§12.13), and „zu
+ * not an empty hit list — **a failure is not an answer**, and „zu
  * ‚Klimaschutz' gibt es nichts" would be this product's costliest lie.
  */
 async function searchRisIds(terms: readonly SearchTerm[], day: string): Promise<string[]> {
@@ -309,9 +307,8 @@ async function blocksOf(
  * the substring search, and run inside one document right after the strict
  * one, an Entwurfstext carrying only „Klimaschutzgesetz" would beat the
  * Erläuterungen where „Klimaschutz" really stands — the ranking of the
- * documents would beat the precision of the rule
- * (docs/architecture.md §12.31). This way the rule wins first, the ranking
- * second.
+ * documents would beat the precision of the rule. This way the rule wins
+ * first, the ranking second.
  *
  * `tokens` null means: search WITH the Ressort mentions. That is the last
  * pass and it answers a different question — not „wovon handelt der

@@ -1,5 +1,5 @@
 /**
- * Related drafts by title (docs/architecture.md §12.10): the earlier or
+ * Related drafts by title: the earlier or
  * later Ministerialentwurf whose title names the same laws.
  *
  * PURE MODULE — relative imports only, so vitest runs it directly.

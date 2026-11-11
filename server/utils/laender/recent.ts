@@ -27,7 +27,7 @@ const rowOnly = (d: LandConsultation): LandConsultation => ({ ...d, documents: [
 /**
  * `enactedGp` is the period the Bund's half of „Zuletzt Gesetz geworden"
  * speaks about — the running one, or the one before while the running one
- * has promulgated nothing (§12.35). The decided rows always come from the
+ * has promulgated nothing. The decided rows always come from the
  * running period's window, like the Bund's (`DashboardDecided.gp`).
  */
 const recentLandStations = defineCachedFunction(

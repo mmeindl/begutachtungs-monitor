@@ -1,6 +1,6 @@
 /**
  * Who a draft is, for the two sections that can be shown for both halves of
- * the corpus (docs/architecture.md §12.16).
+ * the corpus.
  *
  * PURE MODULE — relative imports only.
  *

@@ -1,6 +1,6 @@
 /**
  * WHETHER a Land's draft implements EU law — the Länder's counterpart of the
- * Bund's Vorblatt (docs/architecture.md §12.66, Nachtrag 2 of 04.11.2026).
+ * Bund's Vorblatt (04.11.2026).
  *
  * PURE MODULE — passages and lines in, a reading out; no Nitro globals,
  * relative imports only. The service (`landEuService.ts`) hands in what the

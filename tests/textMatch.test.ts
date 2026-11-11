@@ -1,5 +1,5 @@
 /**
- * One field, one rule for spaces (§12.31).
+ * One field, one rule for spaces.
  *
  * The case that triggered it: „klima gesetz" found nothing in the list while
  * the full-text block below it showed two drafts — the same input, two rules,

@@ -1,7 +1,7 @@
 /**
  * Which versions of the law text a Begutachtung actually produces after the
  * Regierungsvorlage — the evidence behind the station selector of the §
- * comparison (docs/architecture.md §12.18).
+ * comparison.
  *
  * The comparison shipped hard-wired to ME→RV. The later texts have been on
  * the page as documents all along ("Geändert im Ausschuss", "Geändert im

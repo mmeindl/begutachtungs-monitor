@@ -1,13 +1,12 @@
 /**
- * Which law a draft's Artikel amends, read from its Promulgationsklausel
- * (docs/architecture.md §12.11).
+ * Which law a draft's Artikel amends, read from its Promulgationsklausel.
  *
  * PURE MODULE — relative imports only, so vitest runs it directly.
  *
  * A change reads as legistic noise until the § it touches has a name: "In
  * § 9 Abs. 1 …" means nothing, "§ 9 Sofortlotterien" means something. That
- * name is the § heading in RIS Bundesrecht — a lookup, not a summary
- * (§12.11). The lookup needs to know *which* law, and every amending Artikel
+ * name is the § heading in RIS Bundesrecht — a lookup, not a summary.
+ * The lookup needs to know *which* law, and every amending Artikel
  * opens by saying so:
  *
  *   "Das Audiovisuelle Mediendienste-Gesetz – AMD-G, BGBl. I Nr. 84/2001,
@@ -193,8 +192,7 @@ export function clauseNameOf(text: string): ClauseName | null {
  * rule accepted as an Artikel's name, **649 stand before the Artikel's first
  * Novellierungsanordnung**, of the **405 title blocks 390** — and all 17 late
  * ones open with a quotation mark, the second, independent signal that they
- * are text rather than structure. Which drafts those are:
- * docs/architecture.md §12.13.
+ * are text rather than structure.
  *
  * The same window is applied a second time in `segmentUnits`
  * (`lawtext/lawUnits.ts`); the two copies are one rule and neither may move

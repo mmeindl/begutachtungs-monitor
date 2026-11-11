@@ -1,7 +1,6 @@
 /**
  * An answer that may go out, but must not be kept — the third way between
- * throwing and catching (the §12.13 rule, docs/architecture.md: real states
- * answer, failures throw).
+ * throwing and catching (the rule: real states answer, failures throw).
  *
  * Throwing is the rule, and it stays the rule wherever the failed read IS
  * the question: a comparison against the Kundmachung cannot be answered

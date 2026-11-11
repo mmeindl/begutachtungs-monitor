@@ -1,7 +1,6 @@
 /**
  * Nitro's `defineCachedFunction` as a cache that KEEPS — for the tests of
- * the §12.13 rule (docs/architecture.md): a failure must never be stored as
- * an answer.
+ * the rule that a failure must never be stored as an answer.
  *
  * `bgblService.test.ts` replaces the wrapper with a pass-through, which is
  * right for what that file reads (which cache NAME ran). A failure test

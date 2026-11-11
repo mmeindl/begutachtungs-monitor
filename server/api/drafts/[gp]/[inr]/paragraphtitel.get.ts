@@ -1,7 +1,7 @@
 /**
  * GET /api/drafts/:gp/:inr/paragraphtitel?von&bis → ParagraphTitlesResponse:
- * the heading of each § a change amends, from the standing law in RIS
- * (docs/architecture.md §12.11). Unresolved paragraphs are absent from the
+ * the heading of each § a change amends, from the standing law in RIS.
+ * Unresolved paragraphs are absent from the
  * map rather than guessed.
  *
  * Takes the same pair as the comparison it names, for the same reason the

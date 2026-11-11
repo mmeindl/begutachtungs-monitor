@@ -1,6 +1,5 @@
 /**
- * What of our own konsolidierte Lesefassung may be shown
- * (docs/architecture.md §12.12, §12.12a).
+ * What of our own konsolidierte Lesefassung may be shown.
  *
  * PURE MODULE — relative imports only, so vitest runs it directly.
  *
@@ -343,7 +342,7 @@ export function addressedParagraphs(
 
 /**
  * The label RIS files each addressed § under — „§ 3" ordinarily, „Art. 2 § 3"
- * where the standing law is itself divided into Artikel (§12.12a).
+ * where the standing law is itself divided into Artikel.
  *
  * Two keys for one § that must not be conflated, which is why this is a map
  * and not a renaming: the DISPLAY keys a § by its bare number („3"), because
@@ -356,8 +355,8 @@ export function addressedParagraphs(
  * labels.** The stock is held by bare id, so two Artikel with a § 3 would put
  * two documents under one key and the first one fetched would answer for
  * both — a § with the wrong law's text under a right-looking number. The same
- * trade as everywhere in this engine: a refusal beats half an application
- * (§12.12). Costs nothing measurable — no Ministerialentwurf of the corpus
+ * trade as everywhere in this engine: a refusal beats half an application.
+ * Costs nothing measurable — no Ministerialentwurf of the corpus
  * addresses two Artikel of one law (300 Entwürfe, 25.09.2026).
  */
 export function addressedLabels(

@@ -1,6 +1,6 @@
 /**
  * Where a keyword stands inside a draft document — the place of the hit for
- * the full-text search (docs/architecture.md §12.31).
+ * the full-text search.
  *
  * PURE MODULE — relative imports only, so vitest runs it directly.
  *
@@ -220,8 +220,7 @@ export function locateInBlocks(
 const PDF_BLOCK_MAX = 400
 
 /**
- * PDF text as blocks — the second source for the same place of a hit
- * (docs/architecture.md §12.31).
+ * PDF text as blocks — the second source for the same place of a hit.
  *
  * WHY IT EXISTS: the XML of a Begleitschreiben is a stub. On the DGAV draft
  * it has 943 characters, the PDF of the same document 12.223 — and only

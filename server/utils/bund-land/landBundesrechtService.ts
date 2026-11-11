@@ -1,7 +1,7 @@
 /**
  * Whether a Land's draft carries out a Grundsatzgesetz or implements a
  * Vereinbarung gemäß Art. 15a B-VG — the fact on every Land draft page
- * under the EU fact (docs/architecture.md §12.67). Nuxt-aware glue around
+ * under the EU fact. Nuxt-aware glue around
  * the pure reader (`ausfuehrung.ts`).
  *
  * READS NOTHING THE EU FACT DOES NOT. The pages and the Erläuterungen come
@@ -14,7 +14,7 @@
  * the VIEW adds the Kundmachung's day and RIS page, and the act's page where
  * the map has one — read per request, never stored with the finding.
  *
- * A failure is not an answer (§12.13): a draft PDF that did not arrive
+ * A failure is not an answer: a draft PDF that did not arrive
  * leaves the finding incomplete, served and not stored.
  */
 import type { BgblICitation, BundesrechtFinding, LandBundesrechtResponse, LandCode, TraceLink } from '#shared/types'

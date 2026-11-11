@@ -1,7 +1,7 @@
 /**
  * Can the promulgated text be read as a station — and does the comparison
  * against it say anything sensible? The measurement that gates the BGBl
- * station (docs/architecture.md §12.33).
+ * station.
  *
  * The station bar of the § comparison ends at the Plenum version today. The
  * last version, though, is the promulgated one, and it is exactly the one
@@ -24,7 +24,7 @@
  *     pnpm corpus:bgbl-station -- --cache      # RIS traffic from disk
  *     pnpm corpus:bgbl-station -- --scope      # the draft's laws only (below)
  *
- * `--scope` asks a fourth question (docs/architecture.md §12.33, 30.09.2026):
+ * `--scope` asks a fourth question (30.09.2026):
  * where the act carries more laws than the draft — a ministry's draft
  * kundgemacht inside someone else's Sammelgesetz —, what do the pairs between
  * two LATER stations count? Every such pair runs twice through the shipped

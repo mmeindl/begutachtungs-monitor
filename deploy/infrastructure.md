@@ -15,8 +15,7 @@ is [README.md](README.md). Last verified: 2026-08-26.
 | **Total** | | | **≈ €41/year** |
 
 Both providers are EU-owned — INWX (Berlin, DE); netcup (Karlsruhe, DE,
-part of the Austrian Anexia group). The sovereignty invariant is in
-`docs/architecture.md` §10. There is deliberately **no** other
+part of the Austrian Anexia group). There is deliberately **no** other
 infrastructure: no database, no object storage, no CDN, no own mail server.
 
 ## Domain & DNS — INWX
@@ -92,7 +91,7 @@ bootstrap.sh, because their unit files live in git
   one copy of Parliament's list 81 in
   `/var/lib/begutachtungs-monitor/list81/`. A measurement, not a feature: it
   answers whether `Frist` moves when a Begutachtung is extended
-  (`docs/architecture.md` §13.3) and how many rows change per day at all.
+  and how many rows change per day at all.
   Started 24.09.2026 and planned for about two weeks;
   `deploy/bin/list81-snapshot.sh` says how to stop it.
 - **`begutachtungs-monitor-watchdog.timer`** — every five minutes, probes
@@ -125,7 +124,7 @@ the one thing there that cannot be recovered at all once a Land has deleted
 its draft — it has no backup yet.
 
 Since 30.10.2026 it also holds `zaehlung/`, the page-view count
-(`server/plugins/zaehlung.ts`, `docs/architecture.md` §12.65): one JSON
+(`server/plugins/zaehlung.ts`): one JSON
 file per UTC day, `YYYY-MM-DD.json`, written by the app itself every five
 minutes and at shutdown — sums per page class, per Land and per referring
 host name, and nothing else. **No personal data**: no IP address, no user

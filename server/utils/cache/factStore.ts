@@ -1,8 +1,7 @@
 /**
  * A period's facts on disk — one file per Gesetzgebungsperiode, one
- * directory per kind of fact (docs/architecture.md §12.66 Nachtrag 3,
- * §12.67): the EU map's (`eu/euMapStore.ts`) and the Bund-zu-Land map's
- * (`bund-land/bundLandStore.ts`).
+ * directory per kind of fact: the EU map's (`eu/euMapStore.ts`) and the
+ * Bund-zu-Land map's (`bund-land/bundLandStore.ts`).
  *
  * WHY THIS EXISTS: both production cache layers are memory, and every
  * restart and every deploy empties them (`cache/base.ts`). A map needs the

@@ -240,7 +240,7 @@ describe('parseKonsParagraph', () => {
   // Gliederungssymbol. The id was read off the FIRST number, so the third § of
   // the second Artikel arrived as "2" — a twin of the same law's § 2. Nothing
   // noticed while `kons/novao.ts` refused every address into such a law
-  // (§12.12a, Lebensmittelbewirtschaftungsgesetz 1997).
+  // (Lebensmittelbewirtschaftungsgesetz 1997).
   it('reads the § of an article-qualified designation, not the Artikel', () => {
     const xml = `<risdok><nutzdaten><abschnitt>
       <absatz typ="erltext" ct="artikel_anlage">Art. 2 § 3</absatz>
@@ -371,7 +371,7 @@ describe('parseKonsParagraph', () => {
   // over 40 Sammelnovellen — identisch 762 → 764, „kein geltender Text"
   // 27 → 25 — and the variant that files a clause ENDING its list on the
   // Absatz instead is worse (763 / 26), so it closes its Ziffer like any
-  // other (docs/architecture.md §12.13).
+  // other.
   it('reads the level of a closing clause from `ebene`, list ended or not', () => {
     const xml = (tail: string): string => `<risdok><nutzdaten><abschnitt>
       <absatz typ="erltext" ct="artikel_anlage">§ 7</absatz>
@@ -1130,7 +1130,7 @@ describe('forms from the held-out corpus (2026-09-09)', () => {
     expect(instructions).toHaveLength(0)
     expect(refused[0]!.reason).toMatch(/Tabelle/)
     // The standing § is read since 26.09.2026 — the table as ONE opaque
-    // block, its cells never as Absätze (§12.12).
+    // block, its cells never as Absätze.
     const node = parseKonsParagraph('<risdok><nutzdaten><abschnitt><absatz typ="abs" ct="text"><gldsym>§ 26.</gldsym> Text</absatz><table><tr><td><absatz typ="tabtext" ct="text">Zelle</absatz></td></tr></table></abschnitt></nutzdaten></risdok>')!
     expect(node.children.map((c) => `${c.level}:${c.id}`)).toEqual(['abs:'])
     expect(node.children[0]!.children.map((c) => `${c.level}:${c.id}`)).toEqual(['schluss:tabelle'])

@@ -92,7 +92,7 @@ export function checkAnnexRows(rows: readonly ComparisonRow[], verification: Ann
    * A § whose displayed changes carry no comparable word of text in force —
    * every change an insertion, or the left column elision alone („§ 20. (1)
    * bis (5) …"). It shows a change but owes no check: there is nothing in
-   * force to hold it against (`REASON_NOTHING_TO_COMPARE`, §12.41).
+   * force to hold it against (`REASON_NOTHING_TO_COMPARE`).
    */
   const nothingOwed = (key: string) => verification.uncheckedReasons[key] === REASON_NOTHING_TO_COMPARE
   /** §§ the page shows at least one change for — the only ones a check is owed. */

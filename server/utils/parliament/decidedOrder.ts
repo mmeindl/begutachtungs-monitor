@@ -1,6 +1,6 @@
 /**
  * Which drafts the homepage's „Im Nationalrat beschlossen" section shows,
- * and in which order (docs/architecture.md §12.21, Nachtrag 03.10.2026).
+ * and in which order (03.10.2026).
  *
  * PURE MODULE — no Nuxt auto-imports, only relative imports, so vitest can
  * execute it directly, like `enactedOrder.ts` beside it. The section claims
@@ -40,7 +40,7 @@ import { promulgationState } from '../../../shared/utils/promulgation'
  * filed — its Vorlage under „Regierungsvorlage: Stellungnahme im Parlament
  * möglich", which runs to the Bundesrat's Beschluss — and here, in the track
  * half, only afterwards. The same rule the Stand box follows: one question
- * at a time, and what can still be done goes first (§12.26).
+ * at a time, and what can still be done goes first.
  *
  * Ties are the normal case — one plenary day decides several Vorlagen, four
  * of these on 23.09.2026 — and break by the draft's number, newest first:

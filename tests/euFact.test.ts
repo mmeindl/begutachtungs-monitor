@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest'
 import { dayOf, deadlineActs, euDotOf, euFactView, euLeadOf, euOtherDrafts, euTimeline, laneBarOf } from '../app/utils/euRecht'
 import type { EuActView, EuRechtResponse } from '../shared/types/eu'
 
-/* The ProcedureCard's EU line as words (§12.66): two dates, no verdict. */
+/* The ProcedureCard's EU line as words: two dates, no verdict. */
 describe('euFactView — two dates, no verdict', () => {
   const act = (over: Partial<EuActView>): EuActView => ({
     kind: 'richtlinie',
@@ -204,7 +204,7 @@ describe('euFactView — two dates, no verdict', () => {
     expect(euFactView(response({ markerSource: 'erlaeuterungen', acts: [], actsSource: null }))).toMatchObject({ attach: 'none', sources: [{ what: 'Erläuterungen', publisher: 'ris' }] })
   })
 
-  /* The way to the EU map (§12.66, Nachtrag 3): the count of other drafts
+  /* The way to the EU map: the count of other drafts
    * stands at the act, each side only where it has any. */
   it('counts the other drafts per act, the noun agreeing with the first count, and leaves zero counts out', () => {
     const counts = euOtherDrafts([

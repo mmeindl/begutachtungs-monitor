@@ -2,7 +2,7 @@
 /**
  * One fact in the ProcedureCard: whether the draft implements EU law, which
  * act, and the act's transposition deadline beside the day the Begutachtung
- * began (docs/architecture.md §12.66).
+ * began.
  *
  * BARE, LIKE THE PREDECESSOR LINE ABOVE IT. No pill, no colour, no icon: the
  * box grammar of this site reads a bare line as „read this", and a coloured
@@ -36,7 +36,7 @@
  * one act per row, which a reader scans where a comma sentence of long
  * citations has to be parsed — and the fold becomes the list's footer.
  *
- * THE WAY TO THE MAP (§12.66, Nachtrag 3): an act the map has a page for
+ * THE WAY TO THE MAP: an act the map has a page for
  * links there, and where other drafts of the window implement it too, the
  * count stands at the act — „· 1 weiterer Entwurf des Bundes und 3 der
  * Länder" (`euOtherDrafts`). Plain text: the act is already the link to

@@ -45,7 +45,7 @@ export const MIN_STANDING_STRETCH = 6
  * found in the draft's own Gesetzestext is 100 % at the median and 98 % at
  * p10 — the reference is that tight. Exactly **6 §§** have ≥ 8 missing words
  * *and* a ratio below 0,9, and each one is a genuine right-column
- * contamination; the six are read one by one in docs/architecture.md §12.13.
+ * contamination.
  *
  * The absolute floor of 8 is what separates those from the next candidates
  * below 0,9, which are all false positives with two or three missing words:
@@ -170,9 +170,7 @@ export interface WordBag {
  * Novellierungsanordnung is in the draft, only in the wrong §. Measured by
  * fault injection over GP XXVIII (`scripts/harness/faultInjection.ts`), the
  * whole-draft bag was the weakest number the gate had and the per-§ reference
- * is by far its strongest; the catch rates per path are the table in
- * docs/architecture.md §12.13, and they are not repeated here, because two
- * copies of one measurement drift apart.
+ * is by far its strongest.
  *
  * `general` is what keeps the narrowing honest. An instruction whose address
  * could not be read contributes its words to every § of its law, so a parse
@@ -493,8 +491,7 @@ export interface RightColumnCheck {
  * left check alone. Of rule 1's 628 misses, 464 are no misses at all (the
  * draft changes that sentence too) and 29 are stretch boundaries; on the
  * subset where the rule can apply it catches 464 of 628, 74 %. Those are the
- * whole-draft numbers; the per-path table for the per-§ reference is
- * docs/architecture.md §12.13 and is deliberately not copied here.
+ * whole-draft numbers.
  *
  * **Variants measured and rejected — so nobody re-invents them:**
  *

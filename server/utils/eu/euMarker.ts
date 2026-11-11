@@ -1,7 +1,7 @@
 /**
- * The page's EU fact from the three readings — the rules D1, D2 and D5 of
- * docs/architecture.md §12.66, and the law text's own hint between D1 and
- * D5 (05.11.2026), in one pure function.
+ * The page's EU fact from the three readings — the rules D1, D2 and D5, and
+ * the law text's own hint between D1 and D5 (05.11.2026), in one pure
+ * function.
  *
  * PURE MODULE — no Nitro globals, relative imports only; the corpus script
  * runs the same decision over GP XXVIII.

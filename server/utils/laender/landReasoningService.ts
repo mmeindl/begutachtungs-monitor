@@ -1,7 +1,7 @@
 /**
  * The Land's reasoning between its draft and the Regierungsvorlage, at the
  * changes of that comparison (23.10.2026) — the Ministerialentwurf's
- * Begründungsvergleich (§12.10b) for a Land's draft. Both documents carry
+ * Begründungsvergleich for a Land's draft. Both documents carry
  * their Erläuterungen (`landExplanations.ts`); each side's passages per §
  * go to the Bund's § join (`compareReasoningByParagraph`), which compares
  * only where BOTH sides have one.

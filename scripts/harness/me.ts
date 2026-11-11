@@ -1,8 +1,7 @@
 #!/usr/bin/env vite-node
 /**
  * The amendment engine on the input the *site* would give it: the
- * Novellierungsanordnungen of a Ministerialentwurf (docs/architecture.md
- * §12.12).
+ * Novellierungsanordnungen of a Ministerialentwurf.
  *
  * Usage:  npx vite-node scripts/harness/me.ts --discover=40 [--cache] [--quiet]
  *         npx vite-node scripts/harness/me.ts BEGUT_COO_2026_… [--oracle-debug]
@@ -94,7 +93,7 @@ const annexSource = (argAssigned('annex') ?? 'ris') as 'ris' | 'parlament'
  * coverage is the annex's coverage today (41 % of the §§ with an annex, 0 %
  * without), and half the drafts have none. The Besonderer Teil is the nearest
  * candidate: it addresses its passages by the same address („Zu Z 4 (§ 54c
- * Abs. 1a und 1b):") the tool computes anyway (§12.30, coverage 77,8 %), and
+ * Abs. 1a und 1b):") the tool computes anyway (coverage 77,8 %), and
  * it comes from the ressort rather than from us.
  *
  * NOTHING is decided here: the script lays the passages beside the annex's
@@ -121,7 +120,7 @@ const harnessKey = (label: string): string | null => touchedKey(label)
  * (`2026-10-05`) or an offset from that day (`beginn+60`, `beginn-180`).
  * A probe, not a reading: the site always uses the first day. It exists to
  * ask whether an annex whose geltende Fassung is `fremd` was written against
- * another version (docs/architecture.md §12.12, Nachtrag 05.10.2026).
+ * another version (05.10.2026).
  */
 const standingAt = argAssigned('standing-at') ?? null
 function standingDate(beginn: string): string {
@@ -564,21 +563,9 @@ async function verifyLaw(
 }
 
 /**
- * The law an amending Artikel names, as it stood when the consultation opened.
- *
- * The Stammnorm is the join, and the Artikel's own heading separates the laws
- * one BGBl created in the same breath. The Kurztitel lookup is the fallback
- * for a law whose Stammnorm is not a Bundesgesetzblatt at all — the ABGB is
- * JGS Nr. 946/1811, the ZPO RGBl. Nr. 113/1895 — and it fails for exactly
- * those laws, because RIS carries them under their abbreviation ("ZPO") while
- * the Artikel says "Änderung der Zivilprozessordnung". Measured and left
- * failing on purpose: a name the lookup cannot confirm must not become a
- * confident wrong law.
- */
-/**
  * The row check 1 stops at, with the whole stretch it could not find — the
  * verdict's note carries only 60 characters of it, too few to sort `fremd`
- * by cause (docs/architecture.md §12.12, Nachtrag 05.10.2026).
+ * by cause (05.10.2026).
  */
 function fremdRow(before: string, rows: readonly ComparisonRow[]): { stretch: string; current: string } | null {
   const text = containmentKey(before)
@@ -605,6 +592,18 @@ function missingRow(got: string, rows: readonly ComparisonRow[]): { stretch: str
   return null
 }
 
+/**
+ * The law an amending Artikel names, as it stood when the consultation opened.
+ *
+ * The Stammnorm is the join, and the Artikel's own heading separates the laws
+ * one BGBl created in the same breath. The Kurztitel lookup is the fallback
+ * for a law whose Stammnorm is not a Bundesgesetzblatt at all — the ABGB is
+ * JGS Nr. 946/1811, the ZPO RGBl. Nr. 113/1895 — and it fails for exactly
+ * those laws, because RIS carries them under their abbreviation ("ZPO") while
+ * the Artikel says "Änderung der Zivilprozessordnung". Measured and left
+ * failing on purpose: a name the lookup cannot confirm must not become a
+ * confident wrong law.
+ */
 async function resolveLaw(article: DraftArticle, date: string): Promise<{ gesetzesnummer: string; kurztitel: string; paragraphs: Record<string, KonsParagraphRef> } | string> {
   if (article.bgbl) {
     const law = await resolveLawByBgbl(article.bgbl, date, article.title)

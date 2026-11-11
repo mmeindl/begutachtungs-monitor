@@ -68,7 +68,7 @@ describe('absaetze', () => {
 })
 
 /**
- * Die Ziffern und Litera, seit 26.09.2026 (docs/architecture.md §12.12a).
+ * Die Ziffern und Litera, seit 26.09.2026.
  *
  * `(1)` ist selbstbegrenzend, `1.` nicht — deshalb steht hier neben jedem
  * Fall, der trennen MUSS, einer, der nicht trennen darf. Die Zahlen hinter

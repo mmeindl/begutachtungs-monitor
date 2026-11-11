@@ -1,6 +1,5 @@
 /**
- * Die Lesefassung nach Gliederungseinheiten, nicht als eine Wand
- * (docs/architecture.md §12.12a).
+ * Die Lesefassung nach Gliederungseinheiten, nicht als eine Wand.
  *
  * `bodyText` in `lawtext/konsTree.ts` trennt jeden Block des Baums mit einem
  * Zeilenumbruch — der Baum weiß genau, wo ein Absatz, eine Ziffer, eine

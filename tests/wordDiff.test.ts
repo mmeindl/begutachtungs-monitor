@@ -17,7 +17,7 @@ describe('diffTokens', () => {
     // The two forms disagreed until 23.09.2026, so once a unit was „geändert"
     // for any other reason these counted as changed WORDS. Measured in
     // rv→bgbl over GP XXVIII: 51/ME, 58/ME and 60/ME reported substantive
-    // changes that are nothing but this (docs/architecture.md §12.33).
+    // changes that are nothing but this.
     expect(diffTokens('die Absatzbezeichnung "(1)" ;', 'die Absatzbezeichnung "(1)";').segments).toEqual([
       { type: 'equal', text: 'die Absatzbezeichnung "(1)";' },
     ])
@@ -180,7 +180,7 @@ describe('editorial vs substantive', () => {
     // through to `word`, which ends the check at once: the comparison
     // Plenarfassung → Kundmachung then reported 136 of 626 units as
     // substantive (Budgetbegleitgesetz 2025), where nothing but the citation
-    // had been filled in (§12.33).
+    // had been filled in.
     expect(
       isEditorialChange(seg('in der Fassung des Bundesgesetzes BGBl. I Nr. xxx/2025 tritt', 'in der Fassung des Bundesgesetzes BGBl. I Nr. 50/2025 tritt')),
     ).toBe(true)

@@ -1,6 +1,6 @@
 <script setup lang="ts">
 /**
- * The EU timeline, as one chart (docs/architecture.md §12.66): the act
+ * The EU timeline, as one chart: the act
  * page's, one lane per implementing draft on one track (`euActPageView`),
  * and since 06.11.2026 the draft page's too, its draft the only lane
  * (`euTimeline`) — one thing drawn one way on both pages. Until then the
@@ -72,8 +72,8 @@ const TIERS = [0, 1] as const
           class="group pb-3"
           :class="grid"
         >
-          <!-- Whole, never truncated — the lists' rule for a title
-               (§12.28); `laneNameOf` keeps it short instead. A long one
+          <!-- Whole, never truncated — the lists' rule for a title;
+               `laneNameOf` keeps it short instead. A long one
                wraps; from `lg` its first line stands level with the track. -->
           <span v-if="lane.name" class="pt-2 text-sm leading-snug text-ink-secondary lg:pt-0">
             <strong class="font-semibold text-ink">{{ lane.publisher }}</strong>

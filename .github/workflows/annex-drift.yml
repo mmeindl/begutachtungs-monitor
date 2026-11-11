@@ -1,5 +1,4 @@
-# Weekly drift alarm for the Textgegenüberstellung (docs/architecture.md
-# §12.13).
+# Weekly drift alarm for the Textgegenüberstellung.
 #
 # What it does: once a week it measures both annex paths over the 400 most
 # recent Begut records, applies class A and class B from
@@ -183,7 +182,7 @@ jobs:
                 cat drift.md
                 echo
                 echo "---"
-                echo "Was die Klassen bedeuten, steht in \`scripts/lib/annexReport.ts\`; die Engine selbst in \`docs/architecture.md\` §12.13."
+                echo "Was die Klassen bedeuten, steht in \`scripts/lib/annexReport.ts\`."
                 echo "Nachmessen lässt sich das lokal offline: \`pnpm harness:annex --xml\` und ohne \`--xml\` (braucht \`.harness-cache\`)."
               } > body.md
               gh issue create --repo "$GITHUB_REPOSITORY" --label "$LABEL" \

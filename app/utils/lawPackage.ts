@@ -6,13 +6,13 @@
  * Regierungsvorlage that merges several drafts carries over a hundred of
  * them, and "die … nicht vorkommt" is wrong German for all but one of them.
  *
- * Framing rule (docs/architecture.md §4): both sentences state what the two texts contain,
+ * Framing rule: both sentences state what the two texts contain,
  * never a verdict. A law missing from this Regierungsvorlage is not a law
- * that was dropped — a draft can end up in more than one (architecture.md
- * §13.4), and the sentence says so.
+ * that was dropped — a draft can end up in more than one, and the
+ * sentence says so.
  *
  * Both take the compared pair, because the comparison is no longer fixed to
- * Ministerialentwurf → Regierungsvorlage (docs/architecture.md §12.18) and
+ * Ministerialentwurf → Regierungsvorlage and
  * these sentences name the two sides out loud.
  */
 import type { LawDiffResponse, LawPackageEntry, LawStationId } from '#shared/types'
@@ -51,8 +51,7 @@ type LargerAct = LawDiffResponse['largerAct']
  * Anpassungsgesetz, BGBl. I Nr. 50/2025" — the act after a colon, never in
  * the genitive. A Kurztitel is any noun phrase („Budgetbegleitgesetz 2025",
  * „Resilienz kritischer Einrichtungen-Gesetz sowie Änderung des …"), and
- * declining it is exactly the mistake the station's own label made once
- * (docs/architecture.md §12.33).
+ * declining it is exactly the mistake the station's own label made once.
  */
 const actPhrase = (act: NonNullable<LargerAct>) =>
   `als Teil eines größeren Gesetzes kundgemacht: ${act.title ? `${act.title}, ` : ''}${act.citation}`
@@ -136,7 +135,7 @@ export function droppedLawsNote(
 /**
  * Laws BOTH compared texts carry and the draft does not — cut from a pair of
  * two later stations, because the Regierungsvorlage bundles this draft with
- * other Ministerialentwürfe (`scopeToDraft`, docs/architecture.md §12.33).
+ * other Ministerialentwürfe (`scopeToDraft`).
  *
  * The one sentence that must stand wherever a later pair runs over such a
  * Vorlage, because it says whose counts the reader sees: without it, „3
@@ -144,7 +143,7 @@ export function droppedLawsNote(
  * reads as the whole Vorlage — or, where nothing could be cut, as the
  * draft's. Where the pair ends at the Bundesgesetzblatt it names the act.
  *
- * Framing rule (docs/architecture.md §4): what the texts contain, never a
+ * Framing rule: what the texts contain, never a
  * verdict on a draft that went into a larger act.
  */
 export function outsideDraftNote(laws: readonly LawPackageEntry[], act: LargerAct): string {

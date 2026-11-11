@@ -1,8 +1,8 @@
 /**
- * The three inferences behind the station filter (docs/architecture.md
- * §12.26): which station a Vorlage puts its draft at, which of two chains
+ * The three inferences behind the station filter: which station a Vorlage
+ * puts its draft at, which of two chains
  * for the same draft survives, and whether the period may be spoken about
- * at all (§12.27).
+ * at all.
  *
  * Pure module: no Nuxt auto-imports, so the server map
  * (`server/utils/parliament/stationMap.ts`) and vitest run the same
@@ -69,7 +69,7 @@ export const DRAFT_STATION_LABEL: Record<DraftStation, string> = {
 }
 
 /** Furthest wins when a draft produced more than one Vorlage (ME→RV is
- *  1:n, §13.4): the chain reached the Bundesgesetzblatt even if only one
+ *  1:n): the chain reached the Bundesgesetzblatt even if only one
  *  strand did. */
 const REACH: Record<DraftStation, number> = { begutachtung: 0, rv: 1, parlament: 2, bgbl: 3 }
 
@@ -116,7 +116,7 @@ export function furtherChain(a: DraftChain | undefined, b: DraftChain): DraftCha
 
 /**
  * Whether a Gesetzgebungsperiode's ME→RV links exist at all — the guard
- * against the one claim this product must never invent (§12.27).
+ * against the one claim this product must never invent.
  *
  * „Bisher keine Regierungsvorlage" is read off the draft's own stage
  * record. In the older periods that record stops at the Begutachtung for

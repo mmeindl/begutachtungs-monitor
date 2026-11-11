@@ -1,6 +1,6 @@
 /**
  * The Bund-zu-Land map: built with the EU map, read by the act page and the
- * Ministerialentwurf's line (docs/architecture.md §12.67).
+ * Ministerialentwurf's line.
  *
  * BUILT IN THE EU MAP'S BUILD, not in a route of its own. Both maps read
  * the same Länder drafts, and both facts rest on one read of each draft's
@@ -123,9 +123,8 @@ const SEARCH_POLICY: UpstreamPolicy = { timeoutMs: 20_000, retries: 2, backoffMs
 /**
  * The words a Grundsatzgesetz carries, for RIS's full-text search in
  * `BgblAuth` (measured 06.11.2026 over the window of GP XXVIII: together
- * 2/2026, 25/2025, 44/2025, 47/2026, 50/2025, 91/2025, 117/2025 — the
- * seven acts of §12.66 Nachtrag 10). `Suchworte` works there; `Teil` and
- * `Jahrgang` are ignored, so Teil I is filtered here and the window by
+ * 2/2026, 25/2025, 44/2025, 47/2026, 50/2025, 91/2025, 117/2025). `Suchworte`
+ * works there; `Teil` and `Jahrgang` are ignored, so Teil I is filtered here and the window by
  * `VonKundmachungsdatum` (docs/api-exploration.md).
  */
 const GRUNDSATZ_WORDS = ['"Ausführungsgesetze der Länder"', 'Grundsatzbestimmung', 'Grundsatzbestimmungen', 'Grundsatzgesetz']
@@ -270,7 +269,6 @@ export function readActHead(year: number, number: number, names: readonly string
   return cachedActHead(year, number, names, patient)
 }
 
-/** The head of a map act. */
 export async function actHeadOf(act: BundLandMapAct): Promise<BundLandActHead | null> {
   return (await readActHead(act.bgbl.year, act.bgbl.number, act.names)).value
 }

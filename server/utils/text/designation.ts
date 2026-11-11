@@ -103,7 +103,7 @@ export function unitKey(label: string | null): string | null {
  * writes the numeral in roman („Artikel II § 3"), RIS arabic („Art. 2 § 3"),
  * and the two have to be joined before a § of such a law can be looked up at
  * all — leaving the Artikel off does not widen the search, it finds nothing,
- * because under „§ 3" RIS carries no document in that law (§12.12a). A join
+ * because under „§ 3" RIS carries no document in that law. A join
  * that guessed at an unreadable numeral would edit another Artikel's § 3
  * instead, which is the one outcome `kons/novao.ts` exists to prevent.
  *

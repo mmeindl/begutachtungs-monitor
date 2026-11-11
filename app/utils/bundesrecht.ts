@@ -1,5 +1,5 @@
 /**
- * Bund zu Land in words and positions (docs/architecture.md §12.67): the
+ * Bund zu Land in words and positions: the
  * fact on a Land's draft, the line on a Ministerialentwurf, the act page.
  *
  * NACHVERFOLGUNG, NO VERDICT (rule D6, as for EU law). The fact says what
@@ -119,7 +119,7 @@ export const LAENDER_BLOCK_ANCHOR = '#ausfuehrung-laender'
 
 /**
  * The Bundesgesetzblatt station's detail line on a Ministerialentwurf whose
- * Grundsatzgesetz is kundgemacht (§12.67): the procedure after the
+ * Grundsatzgesetz is kundgemacht: the procedure after the
  * Kundmachung, so it stands at that station — never „0 Länder" (D6).
  */
 export function bundesrechtFollowUp(line: MeBundesrechtLine | null | undefined): NonNullable<Station['followUp']> | null {

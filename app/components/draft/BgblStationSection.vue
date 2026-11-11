@@ -15,7 +15,7 @@ import { fassungFacts, fassungSources } from '~/utils/geltendeFassung'
  *
  * Also where the Vorlage's own Beschluss was not promulgated and Parliament
  * names the Antrag that replaced it, once that Antrag is in the
- * Bundesgesetzblatt (80 d.B. → 416/A → BGBl. I Nr. 65/2025, §12.33,
+ * Bundesgesetzblatt (80 d.B. → 416/A → BGBl. I Nr. 65/2025,
  * 03.10.2026): the text did become law, on a route Parliament states. The
  * section says which route.
  *
@@ -132,7 +132,7 @@ function bgblCite(number: string | null, risUrl: string | null): string | null {
            and a successor Antrag is a text of its own: holding the
            Vorlage against it would compare two different bills. -->
       <!-- What the Länder made of it, where the draft's Grundsatzgesetz
-           names it as its origin (§12.67): the page's own block for it,
+           names it as its origin: the page's own block for it,
            passed in by the page. -->
       <slot />
       <LawDiffSection

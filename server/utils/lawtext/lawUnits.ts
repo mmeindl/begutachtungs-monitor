@@ -61,8 +61,7 @@ export interface LawUnit {
    * law or a clause that cites none. The clause is no unit of its own — it
    * stands before the first instruction — so this is where it survives
    * segmentation. `pairArticles` reads it: „Änderung des EU-JZG" and the long
-   * title of the same law both cite its Stammnorm, 36/2004 (XXVI 162/ME,
-   * docs/architecture.md §12.18).
+   * title of the same law both cite its Stammnorm, 36/2004 (XXVI 162/ME).
    */
   stammnorm: BgblCitation | null
 }
@@ -293,8 +292,7 @@ export function segmentUnits(blocks: readonly TextBlock[]): LawUnit[] {
         // **A law is named before its first instruction, and only there.**
         // Later a heading of the same RIS type is quoted payload, and read as
         // a name it renames the law half way through the draft. Measured over
-        // 400 GP-XXVIII drafts on 2026-09-11; the numbers and the cases are in
-        // docs/architecture.md §12.13.
+        // 400 GP-XXVIII drafts on 2026-09-11.
         //
         // `draftArticles` in `lawtext/draftArticles.ts` carries the same
         // window, because the annex's rows are keyed from there and the two

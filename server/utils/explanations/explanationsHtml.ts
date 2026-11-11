@@ -1,6 +1,6 @@
 /**
  * The Erläuterungen as **Parliament** publishes them — Word HTML instead of
- * typed RIS XML (docs/architecture.md §12.10b).
+ * typed RIS XML.
  *
  * PURE MODULE — relative imports only, so vitest runs it directly.
  *
@@ -13,8 +13,8 @@
  *
  * **So this parser reads BOTH sides, the draft included.** A comparison of
  * XML against Word HTML measures the two converters first and the content
- * only afterwards — the same lesson as with the Textgegenüberstellung
- * (§12.12, sixth measurement). Same source, same parser, and what is left is
+ * only afterwards — the same lesson as with the Textgegenüberstellung.
+ * Same source, same parser, and what is left is
  * the change.
  *
  * **A passage's address comes from `explanations/risExplanations.ts`**
@@ -51,7 +51,7 @@ export interface HtmlPassage {
    *
    * The § a passage names is not unique in a Sammelgesetz: two Artikel each
    * amend a § 15, and the passage says only „§ 15" — 14,7 % of the comparable
-   * §§ of GP XXVII (§12.10b). The Artikel comes from the passage's own
+   * §§ of GP XXVII. The Artikel comes from the passage's own
    * heading („Zu Art. 2 Z 1 (§ 5)") or from the Artikel heading above it,
    * which a ressort types either as a passage („Zu Art. 5 (Änderung des …)")
    * or as a bare „Artikel 5" line. Null where the heading names several
@@ -64,7 +64,7 @@ export interface HtmlPassage {
    * each under its Artikel: the one the heading names before it, else
    * `article`. Empty for a passage titled by § alone („Zu § 9:"), which is
    * how a new law is explained; an amendment is explained by Ziffer
-   * (docs/architecture.md §12.10b, 01.10.2026).
+   * (01.10.2026).
    */
   ziffern: { article: string | null; ziffer: string }[]
   /**
@@ -75,7 +75,7 @@ export interface HtmlPassage {
    * (…)", the summary over a bundle). Unlike `article`, a passage's own
    * „Zu Art. 3 Z 48 (§ 40 BSFG 2017 …):" does not change it: a Sammelvorlage
    * may keep the numbering of the draft it took a law from inside its own
-   * Artikel heading (129 d.B. XXVIII, docs/architecture.md §12.10b,
+   * Artikel heading (129 d.B. XXVIII,
    * 01.10.2026), and then the two disagree.
    */
   section: string[] | null
@@ -99,8 +99,8 @@ export interface HtmlExplanations {
 
 /**
  * „B e s o n d e r e r  T e i l" — letter-spaced headings are the rule in
- * these documents, and between the letters stands typography, not text
- * (§12.29). So the comparison drops the spaces.
+ * these documents, and between the letters stands typography, not text.
+ * So the comparison drops the spaces.
  */
 function partKind(text: string): 'general' | 'special' | null {
   const flat = normalizeText(text).replace(/\s+/g, '').toLowerCase().replace(/[:.]+$/, '')
@@ -141,7 +141,7 @@ const ARTICLE_AND_NEXT_RE = /(?<![a-zäöü])art(?:ikel)?\.?\s*([0-9]+|[ivxlcdm]
  * verpflichtet …", „Zu Art. 79 Abs. 2 Z 2:" of a B-VG amendment: an Absatz,
  * a „der"/„des", or the act's abbreviation (two capitals, „RL", „B-VG").
  * A package's own Artikel is followed by its law in brackets, a Ziffer, a §,
- * a colon or nothing (docs/architecture.md §12.10b, 02.10.2026).
+ * a colon or nothing (02.10.2026).
  */
 const CITATION_WORD_RE = /^(?:abs|absatz|uabs|unterabs|lit|satz|buchst|der|des)\b/i
 const ACT_ABBREVIATION_RE = /^[A-ZÄÖÜ][A-Za-zÄÖÜäöüß-]*[A-ZÄÖÜ]/

@@ -1,8 +1,8 @@
 /**
- * GET /api/dashboard → DashboardPayload (docs/architecture.md §5, §7).
+ * GET /api/dashboard → DashboardPayload.
  * Source: list 81 of the current GP (leaf-cached) — plus list 81 of the one
- * before it in two independent places, both only around a Periodenwechsel
- * (§12.35): the still-running Fristen it carries over into `open`, and, while
+ * before it in two independent places, both only around a Periodenwechsel:
+ * the still-running Fristen it carries over into `open`, and, while
  * the new period is too young to be ranked, the volume ranking.
  */
 import type { DashboardPayload } from '#shared/types'
@@ -18,8 +18,8 @@ export default defineEventHandler(async (): Promise<DashboardPayload> => {
 
   /* Open consultations, deadline ascending (no deadline sorts last) — and
    * ACROSS THE PERIOD BOUNDARY. A Frist that outlives the Wechsel is still a
-   * Frist, and „Jetzt in Begutachtung" claims a moment, not a period
-   * (§12.35). Empty in normal operation, measured over four finished
+   * Frist, and „Jetzt in Begutachtung" claims a moment, not a period.
+   * Empty in normal operation, measured over four finished
    * periods, so this adds rows only in the weeks where it is the difference
    * between a list and a wrong list.
    *

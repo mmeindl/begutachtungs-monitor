@@ -1,7 +1,7 @@
 /**
  * GET /api/drafts/:gp/:inr/diff?von&bis → LawDiffResponse: what changed in
  * the law text between two stations of the procedure, § by §
- * (docs/ris-join.md §6, docs/architecture.md §12.18).
+ * (docs/ris-join.md §6).
  *
  * `available: false` with a German reason is a normal answer, and it
  * distinguishes three cases the reader can act on differently: the station

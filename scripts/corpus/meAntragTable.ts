@@ -2,7 +2,7 @@
 /**
  * Writes `shared/utils/antragPathTable.ts` — the Ministerialentwürfe whose
  * Gesetzestext came to the Nationalrat as an Initiativantrag and not as a
- * Regierungsvorlage (docs/architecture.md §12.10, 30.09.2026).
+ * Regierungsvorlage (30.09.2026).
  *
  * Usage:   npx vite-node scripts/corpus/meAntragTable.ts [cacheDir] XXVI XXVII XXVIII
  *          (reads `<cacheDir>/<GP>-me-antrag.json` and the Gesetzestexte
@@ -22,8 +22,8 @@
  * ≥ 0,6, read off a gap in the data, 0 of 482 shifted false pairs above
  * 0,25 over the three periods), and only for drafts WITHOUT any
  * Regierungsvorlage. A draft with a Vorlage keeps the documented chain; that
- * the same text also went as an Antrag (XXVII/171, 240, 259/ME) is a finding
- * for the docs, not for the station.
+ * the same text also went as an Antrag (XXVII/171, 240, 259/ME) is a finding,
+ * but not for the station.
  *
  * TWO SHARES, because containment alone does not say which way round. It is
  * the share of the SHORTER text found in the longer one — 72/A (570 words)

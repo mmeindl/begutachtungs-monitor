@@ -141,12 +141,11 @@ const stationAnchors = computed<Partial<Record<StationId, string>>>(() => {
 })
 
 /* Whether the draft implements EU law — the Bund's fact in the same card,
- * read from the Land's own documents (`EntwurfFrame`, docs/architecture.md
- * §12.66, Nachtrag 2). */
+ * read from the Land's own documents (`EntwurfFrame`). */
 const { data: euRecht } = useEuRecht(() => ({ land: props.land, number: props.number }))
 /* What of the Bund's the draft carries out — a Grundsatzgesetz, an Art.-15a
  * agreement — under the EU fact, read from the same documents
- * (`EntwurfFrame`, docs/architecture.md §12.67). */
+ * (`EntwurfFrame`). */
 const { data: bundesrecht } = useLandBundesrecht(() => ({ land: props.land, number: props.number }))
 /* Who published what the fact read, for its credit line. */
 const landPublisher = computed(() => `Land ${landName.value}`)
@@ -286,7 +285,7 @@ useSeoMeta({ ogTitle: () => draft.value?.title ?? 'Entwurf', ogType: 'article' }
             <!-- The section's lede (`EntwurfFrame`), directly over the
                  comparison: where the draft comes from — EU law, a
                  Grundsatzgesetz it carries out, an Art.-15a agreement it
-                 implements (§12.66, §12.67) — one credit line under it. -->
+                 implements — one credit line under it. -->
             <EntwurfFrame :eu="euRecht" :bundesrecht="bundesrecht" :timeline="euTimelineCtx" :publisher="landPublisher" />
             <LandLawDiffSection v-if="hasTgu" :land="land" :number="number" from="geltend" to="entwurf" :cite-as="citeAs" />
             <PageSubsection v-else-if="amends" id="gegenueberstellung" heading="Was ändert der Entwurf?">

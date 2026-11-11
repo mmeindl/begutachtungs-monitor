@@ -1,6 +1,6 @@
 /**
- * Counts page views per UTC day, without anything personal
- * (docs/architecture.md §12.65): no address, no user agent, no cookie, no
+ * Counts page views per UTC day, without anything personal:
+ * no address, no user agent, no cookie, no
  * log line — one number per kind of page grows, and the referring host's.
  * The rules are in `server/utils/zaehlung/`; this file only wires them to
  * the response and to the clock.

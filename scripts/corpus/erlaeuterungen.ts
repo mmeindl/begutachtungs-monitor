@@ -1,6 +1,6 @@
 /**
  * Can the Erläuterungen be read, or only linked? — the measurement that gates
- * the Erläuterungen package (docs/architecture.md §12.29).
+ * the Erläuterungen package.
  *
  * The relevance check starts at the Allgemeiner Teil: what is this law
  * supposed to do. The page has been offering that document as a PDF link and

@@ -7,8 +7,7 @@
  * corpus. A back link that leads somewhere else depending on the record
  * (until 18.09.2026: filtered to the draft's GP on one page and to
  * `art=verordnung` on the other) claims an origin the lander never had —
- * and the list's own filter bar is where narrowing belongs
- * (docs/architecture.md §12.19). `DraftBackLink` until 05.11.2026, when the
+ * and the list's own filter bar is where narrowing belongs. `DraftBackLink` until 05.11.2026, when the
  * EU act page traded its eyebrow for the same link.
  */
 defineProps<{ to: string; label: string }>()

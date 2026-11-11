@@ -4,7 +4,7 @@ import type { LandCode, LandConsultation } from './laender'
 import type { RisConsultation } from './ris'
 
 // ---------------------------------------------------------------------------
-// EU-Recht (docs/architecture.md §12.66)
+// EU-Recht
 // ---------------------------------------------------------------------------
 
 /**
@@ -109,7 +109,7 @@ export interface EuRechtResponse {
 }
 
 // ---------------------------------------------------------------------------
-// The EU map: one act, the Bund and the nine Länder (§12.66, Nachtrag 3)
+// The EU map: one act, the Bund and the nine Länder
 // ---------------------------------------------------------------------------
 
 /**

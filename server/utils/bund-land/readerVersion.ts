@@ -1,6 +1,6 @@
 /**
- * The version of what the Bund-zu-Land reader says (docs/architecture.md
- * §12.67) — the EU reader's rule (`eu/readerVersion.ts`), for its own store.
+ * The version of what the Bund-zu-Land reader says — the EU reader's rule
+ * (`eu/readerVersion.ts`), for its own store.
  *
  * The Bund-zu-Land map keeps every Land draft's finding on disk
  * (`bundLandStore.ts`), and a finding on disk outlives the code that read

@@ -6,7 +6,7 @@
  * PURE MODULE — no Nuxt auto-imports, only relative imports,
  * so vitest can execute the module directly.
  *
- * Hard invariant (docs/architecture.md §3): the name of a private person
+ * Hard invariant: the name of a private person
  * must NEVER leave the server. The safe default is therefore `person` with
  * `name: null` — an organisation misclassified as a person is a cosmetic
  * bug, the opposite direction would publish a name.

@@ -1,9 +1,9 @@
 /**
  * The EU map's facts on disk — one file per Gesetzgebungsperiode under
- * `<stateDir>/eu-recht/` (docs/architecture.md §12.66, Nachtrag 3). The
+ * `<stateDir>/eu-recht/`. The
  * store itself, its freshness rules and why it exists are `cache/
- * factStore.ts`'s, shared since 06.11.2026 with the Bund-zu-Land map
- * (§12.67); this file names the EU's instance and the map's keys.
+ * factStore.ts`'s, shared since 06.11.2026 with the Bund-zu-Land map;
+ * this file names the EU's instance and the map's keys.
  *
  * PURE MODULE — only relative imports, so vitest can execute it directly.
  */

@@ -1,6 +1,6 @@
 /**
  * Every Landesgesetzblatt of a Land, from the RIS OGD API — the index
- * `matchLgbl` searches (docs/architecture.md §12.43). Apart from the
+ * `matchLgbl` searches. Apart from the
  * matcher because it is cached, and the matcher is tested without Nitro.
  */
 import type { LandCode } from '#shared/types'
@@ -82,7 +82,7 @@ export interface LgblRecord {
   datum: string | null
   url: string | null
   xmlUrl: string | null
-  /** Salzburg's `RegierungsvorlageLink`: the Landtag's PDF, where the law came from one (§12.47). */
+  /** Salzburg's `RegierungsvorlageLink`: the Landtag's PDF, where the law came from one. */
   vorlageUrl: string | null
   /** „26": the Vorlage's number among the Landtag's Beilagen. */
   vorlageNr: string | null

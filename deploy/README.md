@@ -1,11 +1,11 @@
 # Deployment
 
-Target: one small EU-owned VPS (settled: **netcup VPS pico G11s**, Nuremberg,
-DE — see `docs/architecture.md` §10/§13). The whole production setup is: Node
+Target: one small EU-owned VPS (**netcup VPS pico G11s**, Nuremberg,
+DE). The whole production setup is: Node
 runs the Nitro bundle as a systemd service, Caddy terminates TLS in front of
 it. No database — the only persistent state is the last-good Stellungnahmen
 fallback and the EU map's facts in `/var/lib/begutachtungs-monitor` (systemd
-`StateDirectory=`, architecture.md §5 cache rule 4; §12.66 Nachtrag 3).
+`StateDirectory=`).
 Nothing there needs backing up: losing it costs a degraded page until the
 next successful upstream fetch, or the next prewarm a cold read.
 
@@ -221,7 +221,7 @@ the two backups in `/root` for a week.
 - On the 1 GB pico the local-build + rsync flow is not just the default but
   required — `pnpm build` needs more RAM than the server has. `bootstrap.sh`
   adds a 1 GB swapfile as headroom for the running app.
-- Before a public launch: uptime monitoring (architecture.md §12.7 — the
+- Before a public launch: uptime monitoring (the
   predecessor died in operation).
 - **The uptime job goes quiet on its own:** GitHub disables a scheduled
   workflow after 60 days without a commit in the repo and mails about it —

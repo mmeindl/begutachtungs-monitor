@@ -68,8 +68,7 @@ export interface Station {
   state: StationState
   /**
    * Plain-text facts, rendered joined by " · ". Temporal, never causal:
-   * "nach der Begutachtung", not "durch die Stellungnahmen" (framing rule,
-   * docs/architecture.md §4).
+   * "nach der Begutachtung", not "durch die Stellungnahmen" (framing rule).
    */
   facts: string[]
   /** The comparison this station produced, as the question it answers; null
@@ -85,7 +84,7 @@ export interface Station {
   /**
    * What followed the station on another page of the site, as one detail
    * line — the Bundesgesetzblatt station's „In 3 Entwürfen der Länder
-   * ausgeführt →" (docs/architecture.md §12.67). `link` is in-page, between
+   * ausgeführt →". `link` is in-page, between
    * `before` and `after`, and only where the line is a link line of its own
    * (with its arrow); null where it is a plain fact.
    */
@@ -210,8 +209,7 @@ export function procedureStatusDe(d: DraftDetail, today: string = todayIso()): s
   const e = d.enactment
   if (e?.bgblNumber) return 'Gesetz geworden'
   if (e) {
-    // A Gesetzesbeschluss that was not promulgated (§12.33, Nachtrag
-    // 03.10.2026): where Parliament's record says so and names a successor
+    // A Gesetzesbeschluss that was not promulgated: where Parliament's record says so and names a successor
     // that reached the Bundesgesetzblatt, the draft's text did become law —
     // on the route the headline already has words for. Otherwise the gap is
     // stated, temporal and without a cause: the cause stands in the
@@ -221,7 +219,7 @@ export function procedureStatusDe(d: DraftDetail, today: string = todayIso()): s
     if (unpromulgated) return 'Beschlossen – nicht kundgemacht'
     // Each of these four used to read „Im Parlament" or, after the period,
     // „Ohne Beschluss" — both wrong in a different direction. Temporal and
-    // factual (framing rule, docs/architecture.md §4): what the house did,
+    // factual (framing rule): what the house did,
     // never why. „Beschlossen – Kundmachung ausständig" is the one that
     // states a gap, and it states it about the Kundmachung, not about the
     // Vorlage.
@@ -237,13 +235,13 @@ export function procedureStatusDe(d: DraftDetail, today: string = todayIso()): s
       case 'recommitted': break
       default: break
     }
-    // The VORLAGE's period, not the draft's (§12.14, 02.10.2026): a
+    // The VORLAGE's period, not the draft's (02.10.2026): a
     // carry-over (XXVII/352/ME → 127 d.B./XXVIII. GP) is still before the
     // house, and its list row says „liegt vor" by the same calendar.
     return e.rvGpEnded ? 'Ohne Beschluss – Gesetzgebungsperiode beendet' : 'Im Parlament'
   }
   if (d.active) return 'In Begutachtung'
-  // The Antrag route (docs/architecture.md §12.10, 30.09.2026): no Vorlage,
+  // The Antrag route (30.09.2026): no Vorlage,
   // and still a law — matched by wording, so the headline names the route
   // it rests on instead of reading like the Vorlage's „Gesetz geworden".
   if (carriesDraft(d.antragPath)) return 'Gesetz geworden – als Initiativantrag'
@@ -253,7 +251,7 @@ export function procedureStatusDe(d: DraftDetail, today: string = todayIso()): s
   // Ressort", so the longer headline was the same two facts twice, 40px
   // apart. The headline states the finding, the row says since when.
   //
-  // No Vorlage, so the boundary is the DRAFT's period (§12.10 Nr. 10).
+  // No Vorlage, so the boundary is the DRAFT's period.
   return d.gpEnded
     ? 'Ohne Regierungsvorlage – Gesetzgebungsperiode beendet'
     : 'Bisher keine Regierungsvorlage'
@@ -261,7 +259,7 @@ export function procedureStatusDe(d: DraftDetail, today: string = todayIso()): s
 
 /**
  * The same line for a Verordnungsentwurf — and an asymmetry that is
- * deliberate (docs/architecture.md §12.32).
+ * deliberate.
  *
  * ONLY AN EVIDENCED OUTCOME GOES TO THE TOP. „Bisher nicht kundgemacht"
  * would be the obvious counter-direction and is NOT said here: the
@@ -314,7 +312,7 @@ const carries = (d: DraftDetail, prefix: string) =>
  * same list.
  *
  * The two are the same list for a draft with one Regierungsvorlage, which is
- * nearly all of them. They come apart where ME→RV is 1:n (§13.4): the mirror
+ * nearly all of them. They come apart where ME→RV is 1:n: the mirror
  * carries ONE Vorlage's documents, `enactment` names the LAST one, and on
  * XXVIII/26/ME those are 130 d.B. and 129 d.B. — the mirror silent, 129 d.B.
  * changed in committee and in the plenary and promulgated as BGBl. I 50/2025.
@@ -482,7 +480,7 @@ const PARLIAMENT_OUTCOME_DE: Record<NonNullable<ReturnType<typeof parliamentOutc
 /**
  * „Beschlossen" in the states it can be in after 03.10.2026 — one sentence
  * each, chosen by the same rule the spine and the list row read
- * (`promulgationState`, §12.33).
+ * (`promulgationState`).
  *
  * Temporal, never causal, except where Parliament's own record names the
  * cause („Formalfehler") or the successor (80 d.B. → 416/A): what we infer
@@ -508,7 +506,7 @@ function decidedStandDe(e: EnactmentInfo, today: string): string {
       ? `Nationalrat und Bundesrat haben den Text beschlossen; kundgemacht ist er seit dem ${since} nicht.`
       : `Der Nationalrat hat den Text beschlossen; kundgemacht ist er seit dem ${since} nicht.`
   }
-  // At the Bundesrat: the window is still open there (§12.26), and this is
+  // At the Bundesrat: the window is still open there, and this is
   // the step the text is at.
   if ((e.filingOpen || e.houseStatus === '4') && e.bundesratArrivedAt && !e.bundesratDecidedAt) {
     return `Der Nationalrat hat den Text beschlossen; der Bundesrat befasst sich seit ${formatDateDe(e.bundesratArrivedAt)} damit.`
@@ -546,8 +544,7 @@ const kept = (...facts: (string | null | undefined)[]): string[] =>
 export function stations(d: DraftDetail, ctx: StationContext = {}, today: string = todayIso()): Station[] {
   const e = d.enactment
 
-  /** A Gesetzesbeschluss that was not promulgated (§12.33, Nachtrag
-   *  03.10.2026) — Parliament's own stage (`explicit`) or the calendar past
+  /** A Gesetzesbeschluss that was not promulgated — Parliament's own stage (`explicit`) or the calendar past
    *  every measured Kundmachung (`overdue`). The same reading as the list
    *  row's (`promulgationState`). */
   const unpromulgated = e ? promulgationState(e, today) : null
@@ -583,7 +580,7 @@ export function stations(d: DraftDetail, ctx: StationContext = {}, today: string
   const running = e && !e.bgblNumber ? (e.rvGpEnded ? 'GP beendet' : 'in Behandlung') : null
 
   /** The period that bounds where the text now stands: the Vorlage's once
-   *  there is one, the draft's while there is none (§12.14, 02.10.2026).
+   *  there is one, the draft's while there is none (02.10.2026).
    *  Only the rows that can stand on either side of that line read it; the
    *  ones that are about the draft alone keep `d.gpEnded`. */
   const periodEnded = e ? e.rvGpEnded : d.gpEnded
@@ -761,7 +758,7 @@ export function stations(d: DraftDetail, ctx: StationContext = {}, today: string
       ),
       // Only where a changed text is ON THIS PAGE — `lastParliamentStation`,
       // not the fact line above it. Where parliament changed the text of a
-      // sibling Vorlage (§13.4) the fact is true and the comparison still has
+      // sibling Vorlage the fact is true and the comparison still has
       // nothing to read, and a link to a comparison of nothing would be the
       // empty promise this model exists to avoid.
       comparison: lastParliamentStation(d)
@@ -835,8 +832,7 @@ export function stations(d: DraftDetail, ctx: StationContext = {}, today: string
 
 /**
  * The same bar for a Verordnungsentwurf: three stations, the Verordnung path
- * of /so-funktionierts — Entwurf · Begutachtung · Bundesgesetzblatt II
- * (docs/architecture.md §12.32).
+ * of /so-funktionierts — Entwurf · Begutachtung · Bundesgesetzblatt II.
  *
  * It had no bar until 26.09.2026, and for a reason that held until the
  * 19th: the monitor did not follow a Verordnung past its Frist, and a last
@@ -881,7 +877,7 @@ export function regulationStations(
         }
       : o?.state === 'ausstehend'
         // It names the usual span, because without it the absence after six
-        // weeks looks like a finding and is none (median 57 days, §12.32).
+        // weeks looks like a finding and is none (median 57 days).
         ? { state: 'current', facts: ['bisher keine Kundmachung', 'üblich sind rund zwei Monate nach Fristende'] }
         : o?.state === 'keine'
           ? {
@@ -961,7 +957,7 @@ function risLgblSearchUrl(land: LandCode): string {
 
 /**
  * The last row where the Land records nothing after the Begutachtung, and
- * the monitor searched the Landesgesetzblatt itself (`matchLgbl`, §12.43).
+ * the monitor searched the Landesgesetzblatt itself (`matchLgbl`).
  *
  * The asymmetry of the Bund's Verordnungen (`regulationStations`): a find
  * stands as done, with the number and the date, and the section below says
@@ -1148,22 +1144,3 @@ export function markedStation(list: Station[]): StationId | null {
   const done = list.filter((s) => s.state === 'done')
   return done[done.length - 1]?.id ?? null
 }
-
-/* There was a `stationPositionDe` here that rendered „Station 2 von 5" on
- * the detail page, on the claim that the mark otherwise rode on colour
- * alone. Removed 18.09.2026, because none of that claim survived contact
- * with the three things that carry it already:
- *
- *  - `reached` states form a PREFIX of the list, so the marked station is
- *    always the last row the bar sets in `font-medium text-ink`. That
- *    boundary is weight, not colour. (One exception since 30.09.2026: the
- *    Initiativantrag route skips the Vorlage row, and the headline names
- *    that route in words — „Gesetz geworden – als Initiativantrag".)
- *  - `procedureStatusDe` heads the same card and names the station in
- *    words — that is the sentence that takes the mark off colour.
- *  - The bar is an <ol> with `aria-current="step"`, so assistive tech
- *    announces the position per row without being told.
- *
- * What was left was a number counting the list the reader is looking at,
- * for a line of card height. If it ever comes back, it belongs ON the
- * marked row, not above or below the list. */

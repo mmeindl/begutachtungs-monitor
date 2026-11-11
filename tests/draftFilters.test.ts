@@ -251,8 +251,8 @@ describe('activeFilterChips', () => {
 })
 
 /**
- * The count line — by kind, summed over the sources, never one pooled total
- * (docs/architecture.md §12.19). A headline „336 Entwürfe" would put the
+ * The count line — by kind, summed over the sources, never one pooled total.
+ * A headline „336 Entwürfe" would put the
  * Stellungnahmen figures of a third of the rows over all of them.
  */
 describe('draftCountLabel', () => {

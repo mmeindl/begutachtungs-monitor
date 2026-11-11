@@ -137,7 +137,7 @@ describe('buildSitemap', () => {
   })
 
   it('lists the EU overview always, and each act page the map knows', () => {
-    // §12.66, Nachtrag 3: without a map only the overview; with one, every act's page.
+    // Without a map only the overview; with one, every act's page.
     expect(buildSitemap(SITE, [])).toContain(`<loc>${SITE}/eu-recht</loc>`)
     const xml = buildSitemap(SITE, [], [], ['/eu-recht/richtlinie/2024/1069', '/eu-recht/verordnung/2022/2554'])
     expect(xml).toContain(`<loc>${SITE}/eu-recht/richtlinie/2024/1069</loc>`)
@@ -145,7 +145,7 @@ describe('buildSitemap', () => {
     expect(xml.match(/<loc>/g)).toHaveLength(10)
   })
 
-  it('lists each Grundsatzgesetz page the Bund-zu-Land map knows, and no overview (§12.67)', () => {
+  it('lists each Grundsatzgesetz page the Bund-zu-Land map knows, and no overview', () => {
     expect(buildSitemap(SITE, [])).not.toContain('/bundesrecht')
     const xml = buildSitemap(SITE, [], [], [], ['/bundesrecht/2025/44', '/bundesrecht/2026/2'])
     expect(xml).toContain(`<loc>${SITE}/bundesrecht/2025/44</loc>`)
@@ -157,7 +157,7 @@ describe('buildSitemap', () => {
     const xml = buildSitemap(SITE, [])
     expect(xml.match(/<loc>/g)).toHaveLength(8)
     // `/suche` does NOT belong in here any more since 22.09.2026: the page
-    // is gone, the field on `/entwuerfe` answers both (§12.31), and the path
+    // is gone, the field on `/entwuerfe` answers both, and the path
     // 301s there — a sitemap must not advertise a redirect.
     expect(xml).not.toContain(`${SITE}/suche`)
     // Nothing under `/weitere-entwuerfe` belongs in a sitemap: the list is

@@ -14,7 +14,7 @@ import {
 } from '../shared/utils/draftOrder'
 
 /**
- * The one order both kinds of row use (docs/architecture.md §12.19).
+ * The one order both kinds of row use.
  *
  * `risConsultations.test.ts` covers the rule itself through
  * `sortConsultations`, which delegates here. What earns its own tests is the
@@ -356,7 +356,7 @@ describe('compareRowsByStatements', () => {
 
 /**
  * When a Gesetzgebungsperiode may carry „Wo am meisten mitgeredet wurde" —
- * the condition the Periodenwechsel fallback switches on (§12.35).
+ * the condition the Periodenwechsel fallback switches on.
  *
  * The states below are the measured ones, not invented: on 25.09.2026 the
  * last two Wechsel were read out of list 81, and GP XXVIII's first

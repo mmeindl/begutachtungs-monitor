@@ -17,11 +17,11 @@
 
 /*
  * Design tokens — light mode only for the prototype (dark mode is a
- * deliberate later step, see docs/architecture.md).
+ * deliberate later step).
  * Identity: Tinte, Papier, Textmarker — warm black ink and white sheets
  * on a deeper warm paper.
  *
- * TWO HUES, ONE MEANING EACH (03.10.2026, docs/architecture.md §8):
+ * TWO HUES, ONE MEANING EACH (03.10.2026):
  *
  *   blue (accent)    YOU CAN DO SOMETHING HERE — on the page (links,
  *                    buttons) and in the procedure (an open Frist, a
@@ -73,7 +73,7 @@
   --color-surface: #ffffff;
 
   /* Ink — AAA contrast system (WCAG 2.2, 1.4.6: 7:1 for body text,
-     computationally verified, see docs/architecture.md §8):
+     computationally verified):
        ink            16.9:1 on page, 18.4:1 on surface
        ink-secondary   8.2:1 on page,  9.0:1 on surface
      ink-muted is an ALIAS of ink-secondary: the two old grays were
@@ -364,7 +364,7 @@
 
 /*
  * The dense row's two fixed columns — width, alignment and the no-shrink
- * rule, in ONE place (docs/architecture.md §12.28).
+ * rule, in ONE place.
  *
  * They stand here because they have to hold in two places and match exactly:
  * the cells in `EntryItem`, the column header above them in `EntryList`.

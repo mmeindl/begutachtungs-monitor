@@ -13,7 +13,7 @@
  *
  * Pure, so the rules are pinned by a test (tests/lesefassung.test.ts). The
  * sentences are here too: they are about what WE could not do, and each one
- * names that — never the ministry (docs/architecture.md §4).
+ * names that — never the ministry.
  */
 import type { AnnexWithheldCause, ConsolidatedNotRun, ConsolidatedParagraph, ConsolidatedTextResponse, ConsolidatedWithheldCause, ParagraphExplanationView, TextComparisonRow } from '#shared/types'
 import { annexUnitId, explanationKey } from '#shared/utils/explanationKey'
@@ -67,7 +67,7 @@ export interface OutcomeIndex {
    *  1. law and unit, the key the gate asked the annex with (`annexLaw`);
    *  2. the unit alone where the server filed the § under no law — a
    *     single-law Novelle asks the annex without one, while its row carries
-   *     one anyway (§12.12a);
+   *     one anyway;
    *  3. the unnumbered schedule („Anl.") at the law's numbered one: an
    *     instruction „des Anhangs" can only mean a law's only schedule, and the
    *     annex prints its number;

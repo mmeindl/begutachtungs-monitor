@@ -111,8 +111,8 @@ const paths: { id: string; name: string; count: string; lede: string; steps: Ste
            pages and not at all on the page that explains the procedure. */
         text: `Nationalrat und Bundesrat beraten die Vorlage; im Ausschuss und im Plenum kann sich der Text weiter ändern. Auch zur Vorlage selbst sind noch Stellungnahmen möglich. ${SECOND_ROUND_WINDOW} Freigegebene Stellungnahmen gehen an die parlamentarischen Klubs und an das zuständige Ministerium und werden bei der Vorlage veröffentlicht; ein eigenes Verfahren im Ausschuss sieht die Geschäftsordnung dafür nicht vor – außer der Ausschuss holt selbst Stellungnahmen ein (Ausschussbegutachtung). Am Ende steht eine einzige Abstimmung über das ganze Gesetz, die dritte Lesung.`,
         /* „welche Klubs" und nicht „wie das Parlament abgestimmt hat": das
-           Parlament zählt das Handzeichen je Klub, nicht je Abgeordnetem
-           (`docs/architecture.md` §12.34). Der Satz über der Zeile sagt, dass
+           Parlament zählt das Handzeichen je Klub, nicht je Abgeordnetem.
+           Der Satz über der Zeile sagt, dass
            es eine Abstimmung über das ganze Gesetz ist — damit die Klubs
            neben den Fassungen nicht als Urteil über einen Paragraphen
            gelesen werden. */
@@ -139,7 +139,7 @@ const paths: { id: string; name: string; count: string; lede: string; steps: Ste
     name: 'Weg einer Verordnung',
     count: 'eine weitere Station',
     /* „Mehr als die Hälfte" rather than „zwei Drittel": the yearly share has
-       been between 54 % and 75 % since 2016 (docs/architecture.md §12.16). On
+       been between 54 % and 75 % since 2016. On
        a static page the figure has to be right in five years too. The sentence
        stays regardless — without it the shorter path reads as the exception,
        and it is the more common case. */
@@ -693,8 +693,8 @@ const waitMonths = Math.round(RV_LATENCY_CONTEXT_DAYS / 30.44)
       </p>
     </ProseSection>
 
-    <!-- The EU fact in the ProcedureCard (04.11.2026, docs/architecture.md
-         §12.66). The two shares are GP XXVIII as measured that day
+    <!-- The EU fact in the ProcedureCard (04.11.2026).
+         The two shares are GP XXVIII as measured that day
          (`pnpm corpus:eu`, drafts.csv): Vorblatt „Umsetzung" (tool sentence
          or the ressort's own words) 43 of 154; any EU relation — Umsetzung,
          flankierend, über die Umsetzung hinaus — 64 of 154. Re-measure
@@ -792,7 +792,7 @@ const waitMonths = Math.round(RV_LATENCY_CONTEXT_DAYS / 30.44)
       </p>
     </ProseSection>
 
-    <!-- Bund zu Land (06.11.2026, docs/architecture.md §12.67). The counts
+    <!-- Bund zu Land (06.11.2026). The counts
          are GP XXVIII as measured that day over the 489 Land drafts of the
          window (`pnpm corpus:bund-land`, reader version 2): 20 drafts carrying out a
          Grundsatzgesetz, 21 implementing an agreement in its fixed form.

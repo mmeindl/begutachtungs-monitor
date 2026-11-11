@@ -12,7 +12,7 @@ import {
 
 /**
  * Vocabulary and order of the Begutachtungen without a parliamentary
- * Gegenstand (docs/architecture.md §12.16).
+ * Gegenstand.
  */
 
 /** Short ids, because every test below sorts by them and reads the order back. */
@@ -56,7 +56,7 @@ describe('RIS kind vocabulary', () => {
   })
 
   it('never frames a kind as a failing — Nachverfolgung, not blame', () => {
-    // The framing rule (docs/architecture.md §4), pinned where the words live.
+    // The framing rule, pinned where the words live.
     for (const hint of Object.values(RIS_KIND_HINT)) {
       if (hint === null) continue
       expect(hint).not.toMatch(/versäum|verheimlich|umgeh|vermeid|trick/i)

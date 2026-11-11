@@ -1,6 +1,6 @@
 /**
  * Where does Parliament's Kurzinformation come from? — the measurement behind
- * a licence question (`docs/architecture.md` §13.1).
+ * a licence question.
  *
  * WHY THE QUESTION IS ASKED. Under „Worum geht es?" the draft page prints
  * Parliament's `content.shortinfo` — Ziele, Inhalt, Hauptgesichtspunkte. That

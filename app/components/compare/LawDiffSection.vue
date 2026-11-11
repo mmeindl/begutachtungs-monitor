@@ -1,7 +1,7 @@
 <script setup lang="ts">
 /**
  * The § comparison between two versions of the law text (docs/ris-join.md
- * §6, docs/architecture.md §12.18). Framing rule: shows both what moved and
+ * §6). Framing rule: shows both what moved and
  * what stayed, never a blame counter. Loaded lazily on the client: the first
  * request per pair fetches and parses two documents, and the page must not
  * wait for that.
@@ -115,7 +115,7 @@ useNearViewport(root, enable, '600px 0px', () => enabled.value)
  *
  * Two steps, because there are two levels: computed per passage — the one on
  * the instruction's Ziffer, or where the Erläuterungen are titled by § the
- * Paragraph's (docs/architecture.md §12.10b, 01.10.2026) — and shown at the
+ * Paragraph's (01.10.2026) — and shown at the
  * Novellierungsanordnung; one passage „Zu Z 1 bis 3" serves three.
  */
 function reasoningOf(u: LawDiffUnit): ReasoningDiffEntry | null {
@@ -464,7 +464,7 @@ function unitParagraph(u: LawDiffUnit): string | null {
 /**
  * Paragraph and name as one line: „§ 6 Erweiterte Gefahrenerforschung" —
  * and the Paragraph alone where no name is known. „§ 6" is already the
- * answer to which provision a Ziffer changes (§12.11); until 01.10.2026 the
+ * answer to which provision a Ziffer changes; until 01.10.2026 the
  * label went with the name, so a nameless Ziffer said only „Z 28".
  */
 function unitLabel(u: LawDiffUnit): string | null {
@@ -493,15 +493,15 @@ const mergedNote = computed(() =>
  * Laws the Regierungsvorlage added to a draft it was built from alone. They
  * stand in the list as groups of their own, every unit „neu" — and the
  * group says why, or „3 neu" reads as three new §§ in a law the draft
- * already changed (docs/architecture.md §12.40).
+ * already changed.
  */
 const addedLaws = computed(() => new Set((data.value?.addedLaws ?? []).map((l) => l.article)))
 /** The same for a law the Ressort took out of its own bill: said as a fact about the two texts, nothing about where it went. */
 const droppedLaws = computed(() => new Set((data.value?.droppedLaws ?? []).map((l) => l.article)))
 /**
  * Between two later stations of a Vorlage that bundles this draft with
- * others, the counts are the draft's — and this sentence is what says so
- * (docs/architecture.md §12.33). From the draft, `mergedNote` names the act.
+ * others, the counts are the draft's — and this sentence is what says so.
+ * From the draft, `mergedNote` names the act.
  */
 const outsideNote = computed(() =>
   pair.value.from === 'me' || !data.value?.bundledWithOtherDrafts
@@ -641,7 +641,7 @@ const droppedNote = computed(() =>
                     <!-- What the Ressort says about it — and whether it says
                          so differently after the Begutachtung than before.
                          Closed, like the reasoning at the
-                         Textgegenüberstellung (docs/architecture.md §12.30):
+                         Textgegenüberstellung:
                          it answers a second question, not the first. A native
                          <details>, so the browser's find-in-page opens it
                          instead of running past it. -->

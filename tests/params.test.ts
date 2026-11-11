@@ -208,7 +208,7 @@ describe('readListQuery', () => {
     expect(refusal(() => readListQuery(query({ q: words(MAX_LIST_QUERY_TERMS, ',') })))).toBeNull()
   })
 
-  /* `?eu=` (§12.66, Nachtrag 3): one value; anything else is dropped like an
+  /* `?eu=`: one value; anything else is dropped like an
    * unknown station, because the value travels in shared links too. */
   it('reads the EU filter, and drops any other value', () => {
     expect(readListQuery(query({ eu: 'umsetzung' })).eu).toBe('umsetzung')
@@ -251,7 +251,7 @@ describe('readGpParam', () => {
 })
 
 /* The same grammar from the query, for `/api/eu-recht/karte?gp=` — a route
- * whose path names no period (§12.66, Nachtrag 3). Absent is the running one. */
+ * whose path names no period. Absent is the running one. */
 describe('readGpQuery', () => {
   it('reads the three spellings and defaults to the running period', () => {
     expect(readGpQuery(query({}))).toBeNull()

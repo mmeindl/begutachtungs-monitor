@@ -1,6 +1,5 @@
 /**
- * The second half of the search on `/entwuerfe`: the full text
- * (docs/architecture.md §12.31).
+ * The second half of the search on `/entwuerfe`: the full text.
  *
  * ONE FIELD, TWO ANSWERS — since 21.09.2026, and the second one prevents the
  * false inference the field alone produces. The field searches title,
@@ -25,8 +24,7 @@
  *    client-side and lazy — it never holds the list up.
  *
  * `/suche` was the second address for this question until 22.09.2026 and now
- * 301s onto the list — the argument that made two lists one on 17.09.2026
- * (§12.19).
+ * 301s onto the list — the argument that made two lists one on 17.09.2026.
  */
 import type { Ref } from 'vue'
 import type { BegutSearchHit, BegutSearchResponse } from '#shared/types'
@@ -193,7 +191,7 @@ export async function useFullTextSearch(
    * Begutachtungen nicht vor" — and the word occurred in three of them, which
    * the Art filter had removed. A statement about the corpus where the reader
    * had only seen his own filter: exactly the kind of sentence this product
-   * must never invent (docs/architecture.md §12.13). So both are counted
+   * must never invent. So both are counted
    * separately and said separately, with the way back.
    */
   const fullTextFilteredOut = computed(

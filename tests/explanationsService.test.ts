@@ -5,8 +5,7 @@ import { clearNitroCache, nitroCacheKeys, nitroCachedFunction } from './helpers/
 
 /**
  * The Erläuterungen when the draft's own text does not arrive
- * (`server/utils/explanations/explanationsService.ts`, `articlesOf`; the
- * §12.13 rule).
+ * (`server/utils/explanations/explanationsService.ts`, `articlesOf`).
  *
  * The draft's Artikel are only the key that places the Besonderer Teil's
  * passages at their Paragraph — the section must not fall for them, so their

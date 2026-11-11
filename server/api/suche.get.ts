@@ -1,7 +1,6 @@
 /**
  * GET /api/suche?q=… → BegutSearchResponse: which of the running
- * Begutachtungen carry this keyword in their documents
- * (docs/architecture.md §12.31).
+ * Begutachtungen carry this keyword in their documents.
  *
  * Without `q` the answer is the empty search with `corpusSize` — the page
  * can say what is being searched before anyone has typed anything.

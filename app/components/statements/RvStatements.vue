@@ -20,7 +20,7 @@ const STATEMENTS_SOURCES: SourceEntry[] = [{ what: 'Stellungnahmen zur Regierung
  * round until a reader pointed at the second (September 2026). In the
  * Nachverfolgung reading this is the input that can still change the text
  * in the Ausschuss, so it belongs on the Vorlage's card, phrased as what was
- * filed — never as what it achieved (framing rule, docs/architecture.md §4).
+ * filed — never as what it achieved (framing rule).
  *
  * THE LIST IS THE BEGUTACHTUNG'S PANEL since 02.10.2026 — same segments,
  * same sort, same search (StatementsPanel says why). What stays here is what
@@ -57,14 +57,14 @@ const summary = computed(() => props.data.summary)
 const organisationsOnly = computed(() => Boolean(summary.value) && props.data.unlisted > 0)
 
 /* WHERE A STELLUNGNAHME ZUR VORLAGE GOES (Klubs, Ministerium, published at
- * the Gegenstand, no committee procedure — read from sources on 24.09.2026,
- * docs/architecture.md §12.14) stood here as a sentence until 03.10.2026.
+ * the Gegenstand, no committee procedure — read from sources on 24.09.2026)
+ * stood here as a sentence until 03.10.2026.
  * It is a rule of procedure, the same for every Vorlage, and stood word for
  * word on /so-funktionierts#parlament already. Not linked beside the
  * filing button either: there its last clause reads as „filing is
  * pointless", and the publication it names is asked on Parliament's form,
  * at the moment of filing. Whatever replaces it may not grow into a sentence
- * about what statements achieve (framing rule, docs/architecture.md §4). */
+ * about what statements achieve (framing rule). */
 
 /**
  * UNLESS THE COMMITTEE ASKED (27.09.2026). A committee can call for written

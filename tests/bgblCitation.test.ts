@@ -53,7 +53,7 @@ describe('stammnormOf', () => {
 
   // Measured over GP XXVIII on 25.09.2026: nine of 511 amending Artikel cited
   // their Stammnorm in a spelling this parser refused, and every one of them
-  // was the ordinary citation typed differently (docs/architecture.md §12.11).
+  // was the ordinary citation typed differently.
   it('liest die Schreibvarianten der Ressorts, ohne die Teile zu verlieren', () => {
     // "BGBI" is no organ; it is the l typed as a capital i (20/ME).
     expect(stammnormOf('Das Bundesbehindertengesetz, BGBI. Nr. 283/1990, wird wie folgt geändert:'))

@@ -1,6 +1,6 @@
 /**
  * How much of a client-side list stands on the page — the state behind a
- * `ListMore` (docs/architecture.md §12.24).
+ * `ListMore`.
  *
  * `/entwuerfe` and the Stellungnahmen panel each kept a count, a slice and
  * a reset watcher per input until 03.10.2026; the panel had three watchers
@@ -10,7 +10,7 @@
  * order open under the top of the other.
  *
  * `paged` switches the cut off without forgetting the count: uncut under a
- * search query on `/entwuerfe` (§12.15).
+ * search query on `/entwuerfe`.
  */
 import type { MaybeRefOrGetter, WatchSource } from 'vue'
 

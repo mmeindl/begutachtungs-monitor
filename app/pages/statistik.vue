@@ -1,12 +1,12 @@
 <script setup lang="ts">
 /**
- * The page-view counts, public (docs/architecture.md §12.65). The counting
+ * The page-view counts, public. The counting
  * is the one thing the site stores about its visits, so what it stores is
  * shown whole: the same sums the day files hold, per day and per referring
  * host, and nothing the files do not hold.
  *
  * Plain tables in the unfilled frame — figures to consult, not an
- * instrument (box grammar, §8). No chart: thirty rows of four numbers read
+ * instrument (box grammar). No chart: thirty rows of four numbers read
  * fine as numbers, and a chart would be the one on the site.
  */
 import type { StatistikPayload } from '#shared/types'

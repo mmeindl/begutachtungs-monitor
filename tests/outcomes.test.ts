@@ -124,7 +124,7 @@ describe('GP-ended copy', () => {
   })
 })
 
-describe("the Regierungsvorlage card's counts (§12.38, 02.10.2026)", () => {
+describe("the Regierungsvorlage card's counts (02.10.2026)", () => {
   it('one form for every count, zero and all included', () => {
     expect(changeShareValueDe(12, 21, 'Änderungen')).toBe('12 von 21 Änderungen des Entwurfs (57 %)')
     expect(changeShareValueDe(0, 5, 'Paragraphen')).toBe('0 von 5 Paragraphen des Entwurfs (0 %)')

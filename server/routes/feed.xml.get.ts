@@ -1,8 +1,8 @@
 /**
  * GET /feed.xml — RSS 2.0 feed of the current GP's consultations, plus any
- * whose Frist is still running from the period before (§12.35), newest
+ * whose Frist is still running from the period before, newest
  * arrival first. Reuses the cached list-81 leaf (no extra
- * upstream load); the route itself is uncached (architecture.md §5).
+ * upstream load); the route itself is uncached.
  * Feed readers poll frequently — the deterministic body makes a strong
  * ETag effective, so conditional GETs answer 304 without the payload.
  *
@@ -37,11 +37,11 @@ export default defineEventHandler(async (event) => {
   const gp = await getCurrentGp()
   // The Begutachtungen without a parliamentary Gegenstand ride along: a
   // subscriber asked what is in Begutachtung, and Parliament's half alone
-  // was the wrong answer to that (docs/architecture.md §12.16). They obey
+  // was the wrong answer to that. They obey
   // the ?ressort= scope like every other item — the RIS ministry code is
   // the same vocabulary.
   // Both halves carry over the Fristen that outlive a Periodenwechsel
-  // (§12.36) — the RIS half is the bigger one (20 records at the 2019
+  // — the RIS half is the bigger one (20 records at the 2019
   // boundary against 4 Ministerialentwürfe). Empty except in the weeks
   // after a Wechsel, and there the difference between a feed and a feed
   // that dropped a running Frist.

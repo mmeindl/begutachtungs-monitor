@@ -1,6 +1,6 @@
 /**
- * Whether Bundesrecht in force already names an EU act — rule D4 of
- * docs/architecture.md §12.66, widened on 04.11.2026.
+ * Whether Bundesrecht in force already names an EU act — rule D4, widened
+ * on 04.11.2026.
  *
  * PURE MODULE — a label in, a search phrase out; a RIS answer in, a verdict
  * out. The service (`euService.ts`) runs the query and caches it.

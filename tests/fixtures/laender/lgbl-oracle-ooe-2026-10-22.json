@@ -1,5 +1,5 @@
 {
-"note": "Oracle for matchLgbl (docs/architecture.md §12.43): the Oberösterreich Gesetze whose Landtag record names the LGBl, read 22.10.2026, and the Land's Landes(verfassungs)gesetze from the RIS OGD API (CC BY 4.0, Bundeskanzleramt), same day.",
+"note": "Oracle for matchLgbl: the Oberösterreich Gesetze whose Landtag record names the LGBl, read 22.10.2026, and the Land's Landes(verfassungs)gesetze from the RIS OGD API (CC BY 4.0, Bundeskanzleramt), same day.",
 "drafts": [
 {
 "id": "ooe-2024-16080",

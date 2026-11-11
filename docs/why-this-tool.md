@@ -29,8 +29,8 @@ it did not.*
 Verified 2026-08-23 against a real procedure (8/ME, XXVIII. GP — the
 "Bundestrojaner" package, and 88/ME, the VAT reduction with 707 statements).
 Differences 1 (comparison) and 5 (the two sources) were added later and rest
-on their own corpus measurements: `docs/ris-join.md` for the join and its
-gaps, `docs/architecture.md` §12.13 for the Textgegenüberstellung.
+on their own corpus measurements (for the join and its gaps:
+`docs/ris-join.md`).
 
 ### 1. The whole chain on one page
 

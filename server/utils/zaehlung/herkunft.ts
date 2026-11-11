@@ -1,6 +1,6 @@
 /**
- * The referring site of a visit, reduced to its host name
- * (docs/architecture.md §12.65): no scheme, port, path or query, so a link
+ * The referring site of a visit, reduced to its host name:
+ * no scheme, port, path or query, so a link
  * from a search result or a private document says „google.com“ or
  * „docs.example.org“ and nothing about what was searched or which document
  * it was. Browsers mostly send no more than the origin across sites anyway

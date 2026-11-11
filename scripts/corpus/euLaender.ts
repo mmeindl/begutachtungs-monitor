@@ -1,8 +1,8 @@
 /**
  * Does a Land's draft implement EU law, which act, and by when was it due?
  * — the measurement before step 2 of the EU feature (the Länder) is built
- * (04.11.2026). The Bund's measurement is `scripts/corpus/eu.ts`
- * (docs/architecture.md §12.66); this is the same question over every
+ * (04.11.2026). The Bund's measurement is `scripts/corpus/eu.ts`; this is
+ * the same question over every
  * Landesgesetz- and Verordnungsentwurf whose Begutachtung the monitor places
  * in the current Gesetzgebungsperiode's window.
  *
@@ -24,7 +24,7 @@
  *     Burgenland as its general part): does it carry the Bund's heading
  *     (`vorblattEuSection`, `classifyVorblatt`)?
  *
- * Since step 2 (04.11.2026, docs/architecture.md §12.66, Nachtrag 2) the run
+ * Since step 2 (04.11.2026) the run
  * also takes THE PAGE'S OWN DECISION (phase C): the Erläuterungen read by the
  * page's reader from the cached PDFs (`readLandExplanations`, not the dev
  * server's stored answer, so a change of that reader shows here), then

@@ -356,17 +356,6 @@ const showColumnHeader = computed(() =>
 
 <template>
   <div>
-    <!-- NO ROW OF COUNT TILES since 30.09.2026. „Gesamt · Organisationen ·
-         Privatpersonen · Nicht öffentlich" stood here as four figures, and
-         the filter group below repeated the same four labels one line
-         further down. The counts now ride on the filter buttons; the total
-         stands in the bar's Begutachtung row and on „Alle". Where only one
-         segment exists it is still shown, as the list's label and count. -->
-    <!-- NO MIX BAR since 01.10.2026. The org/private split stood here as a
-         stacked bar whose legend was the tile row removed on 30.09.2026;
-         after that it was a picture of the two counts the filter buttons
-         state exactly one line below, and a second bar a few lines under
-         the Frist's, counting something else. -->
     <component :is="`h${headingLevel}`" class="sr-only">Liste der Stellungnahmen</component>
     <!-- Named query container: the rows inside decide their layout on THIS
          box's width (row-cols in main.css), not on the window's — the panel
@@ -480,7 +469,7 @@ const showColumnHeader = computed(() =>
         <!-- The one thing find-in-page can never say. A reader searching for
              a private individual's name gets silence from Cmd+F, and silence
              here reads as "did not file" when the truth is that we do not
-             publish that name (GDPR, docs/architecture.md §3). The field is ours, so it
+             publish that name (GDPR). The field is ours, so it
              can say which of the two it is. -->
         <ListBoxNotice
           v-else-if="searchActive"

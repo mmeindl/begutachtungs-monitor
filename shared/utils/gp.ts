@@ -193,7 +193,7 @@ export function gpInSentenceDe(gp: string): string {
  * period before.
  *
  * ARITHMETIC ON THE NUMERAL, not a lookup in `GP_STARTS`, and that is the
- * point: the one caller is the Periodenwechsel fallback (§12.35), which has
+ * point: the one caller is the Periodenwechsel fallback, which has
  * to work on the day GP XXIX constitutes itself — before anybody has added
  * a row to the table above. A fallback that needed maintenance at the
  * cutover would need it on exactly the day it exists to survive.
@@ -212,8 +212,7 @@ export function previousGp(gp: string): string | null {
  * (`server/utils/ris/risOnly.ts`). So a period the calendar above has no row
  * for gets no records — not a thin list but no list, and it would stay that
  * way until someone edited the table. On the day a new period convenes that
- * is exactly the wrong dependency, and it costs roughly half of what is open
- * (§12.16, §12.35).
+ * is exactly the wrong dependency, and it costs roughly half of what is open.
  *
  * The predecessor answers for it, because its window is open-ended by
  * construction: `gpEndedOn` reads the successor's start, which is precisely

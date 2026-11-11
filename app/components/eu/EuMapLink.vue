@@ -1,6 +1,6 @@
 <script setup lang="ts">
 /**
- * The way to the EU map (`/eu-recht`, docs/architecture.md §12.66) from a
+ * The way to the EU map (`/eu-recht`) from a
  * page header — always there, not only while „Setzt EU-Recht um" is on: the
  * map is a view of the drafts by act, and a door that appears only after a
  * filter is one most readers never see (06.11.2026).

@@ -1,8 +1,7 @@
 /**
  * Everything a Land's EU fact reads, before EUR-Lex and the law in force
  * are asked — the one decision the page (`landEuService.ts`) and the corpus
- * script (`scripts/corpus/euLaender.ts`) both take (docs/architecture.md
- * §12.66, Nachtrag 2 of 04.11.2026).
+ * script (`scripts/corpus/euLaender.ts`) both take (04.11.2026).
  *
  * PURE MODULE — the pages the Erläuterungen' reader read and its answer in;
  * the statement, the decision, the acts and the documents to credit out.

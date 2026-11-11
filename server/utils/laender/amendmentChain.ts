@@ -15,7 +15,7 @@
  *
  * Measured against an oracle that does not use the title at all — the
  * Regierungsvorlage whose text the draft is, linked to its
- * Landesgesetzblatt in RIS's own metadata (docs/architecture.md §12.47).
+ * Landesgesetzblatt in RIS's own metadata.
  */
 
 /** Each amended law's Stammnorm number → the last amendment the text names for it. */
@@ -54,8 +54,7 @@ export function amendmentChain(draftText: string, kundmachungText: string): Chai
  * name the same last amendment of the law, or — where they name none to
  * compare — the search had a single candidate. Against the Regierungsvorlage
  * oracle, with the guard against comparisons in which nothing pairs: 188
- * shown, all right; all five wrong finds held back (docs/architecture.md
- * §12.47).
+ * shown, all right; all five wrong finds held back.
  */
 export function followsOn(chain: ChainVerdict, unique: boolean): boolean {
   return chain === 'same' || (chain === 'none' && unique)

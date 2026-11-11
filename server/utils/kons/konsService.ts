@@ -1,6 +1,6 @@
 /**
  * „So läse sich das Gesetz nach dem Entwurf" — our own konsolidierte
- * Lesefassung of a Ministerialentwurf (docs/architecture.md §12.12, §12.12a).
+ * Lesefassung of a Ministerialentwurf.
  *
  * Nuxt glue around the pure modules: `kons/novao.ts` reads the
  * Novellierungsanordnungen, `ris/konsLaw.ts` and `kons/konsCache.ts` fetch the
@@ -85,7 +85,7 @@ export const getConsolidatedText = defineCachedFunction(
 
 /**
  * The same reading for a Begutachtung without a Gegenstand at Parliament
- * (§12.16) — Verordnungsentwürfe above all.
+ * — Verordnungsentwürfe above all.
  *
  * A sibling for the same reason as `getRisTextComparison`: what differs is
  * everything ABOVE the reading (no join to doubt, no second copy of the annex

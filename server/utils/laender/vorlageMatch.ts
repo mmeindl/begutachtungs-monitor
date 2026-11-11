@@ -2,7 +2,7 @@
  * Which Landesgesetzblatt is a draft's own? Decided by its text: the
  * Regierungsvorlage the Landtag received is the draft, bar what changed
  * after the Begutachtung, and RIS links each Salzburg Landesgesetzblatt to
- * its Regierungsvorlage (22.10.2026, docs/architecture.md §12.47–48).
+ * its Regierungsvorlage (22.10.2026).
  *
  * PURE MODULE — no imports, so vitest runs it directly.
  */
@@ -35,7 +35,7 @@ export function containedIn(draft: ReadonlySet<string>, other: ReadonlySet<strin
 
 /** A draft shorter than this says too little to be recognised in anything. */
 export const MIN_SHINGLES = 20
-/** The oracle's threshold and margin (§12.47): at least 60 % of the draft, and twice the runner-up. */
+/** The oracle's threshold and margin: at least 60 % of the draft, and twice the runner-up. */
 export const VORLAGE_CONTAINED = 0.6
 
 /**
@@ -51,7 +51,7 @@ export function pickByVorlage<T>(scored: readonly { candidate: T; share: number 
   return best.candidate
 }
 
-/** Title words two Landesgesetzblätter must share to be candidates for one Verordnung (§12.50: covers 356 of 357). */
+/** Title words two Landesgesetzblätter must share to be candidates for one Verordnung (covers 356 of 357). */
 export const SAME_TITLE_JACCARD = 0.6
 
 export function titleJaccard(a: ReadonlySet<string>, b: ReadonlySet<string>): number {

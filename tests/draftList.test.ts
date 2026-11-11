@@ -128,7 +128,7 @@ describe('filterDraftList', () => {
     expect(titles(filterDraftList(joint, { ...ALL, q: 'bmj' }))).toEqual(['302/ME'])
   })
 
-  /* `?eu=umsetzung` (§12.66, Nachtrag 3): „Setzt EU-Recht um", with or
+  /* `?eu=umsetzung`: „Setzt EU-Recht um", with or
    * without the Vorblatt's „über die Umsetzung hinaus" — never a draft that
    * only accompanies EU law, never one nobody looked up. */
   it('filters for implementing drafts only where the EU map was read', () => {

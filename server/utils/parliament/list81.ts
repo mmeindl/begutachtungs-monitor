@@ -5,7 +5,7 @@
  * PURE MODULE — no Nuxt auto-imports, only relative imports,
  * so vitest can execute the module directly.
  *
- * Row indices: docs/architecture.md §5 / docs/api-exploration.md §1,
+ * Row indices: docs/api-exploration.md §1,
  * verified live on 2026-08-15 (list 81: 18 columns).
  */
 import type { DraftSummary } from '../../../shared/types'

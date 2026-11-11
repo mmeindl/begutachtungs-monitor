@@ -23,7 +23,7 @@ import type { SourceCode } from '../shared/utils/laender'
 import { viewOfRow } from '../app/utils/entryView'
 import { draftSummary } from './helpers/builders'
 
-/* The EU map's act page (§12.66, Nachtrag 3): the drafts as the lists'
+/* The EU map's act page: the drafts as the lists'
  * rows, and a chart of one lane per draft on one track, no verdict. */
 describe('euActPageView', () => {
   // Each draft its own list row, as in the map: a row's key is its draft's.

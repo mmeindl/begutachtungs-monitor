@@ -6,7 +6,7 @@
  * what differ — a feed, a calendar, a sitemap — and a poller that gets an
  * unchanged one should pay for the headers only.
  *
- * Uncached on purpose (`docs/architecture.md` §5): the routes read cached
+ * Uncached on purpose: the routes read cached
  * leaves and assemble per request, so the ETag says "nothing changed" about
  * the assembled document, not about the cache.
  */

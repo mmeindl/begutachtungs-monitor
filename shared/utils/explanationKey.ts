@@ -1,7 +1,6 @@
 /**
  * The key under which an Erläuterungen passage and a row of the
- * Textgegenüberstellung mean the same Paragraph (docs/architecture.md
- * §12.30).
+ * Textgegenüberstellung mean the same Paragraph.
  *
  * Shared, because both sides have to build it: the server when it resolves
  * the passages (`server/utils/explanations/explanationsJoin.ts`) and the page
@@ -76,8 +75,8 @@ export function explanationKey(law: string | null, paraId: string): string {
 }
 
 /**
- * The second key, for a § number two Artikel of one draft share
- * (docs/architecture.md §12.10b): the Artikel as `leadingArticleKey` writes it
+ * The second key, for a § number two Artikel of one draft share: the
+ * Artikel as `leadingArticleKey` writes it
  * („2"), then the § key above. Both sides of the Begründungsvergleich build it
  * here, so the passage and the unit cannot be keyed two ways.
  */

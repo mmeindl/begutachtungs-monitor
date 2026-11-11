@@ -5,8 +5,7 @@
  *
  * Generic over two unit lists, `from` (the earlier version) and `to` (the
  * later one). It was written for Ministerialentwurf → Regierungsvorlage and
- * named after that pair until the station selector shipped
- * (docs/architecture.md §12.18); nothing in the algorithm ever depended on
+ * named after that pair until the station selector shipped; nothing in the algorithm ever depended on
  * which two stations they are, and the Ausschuss- and Plenarfassung come off
  * the same Word legistics template.
  *
@@ -722,8 +721,7 @@ function lawsOf(units: readonly LawUnit[], keep: (article: string) => boolean): 
  * `addedLaws` names them.
  *
  * `keepDroppedLaws` is the same for the earlier side: a law the Ressort took
- * out of its own bill. The caller decides when that is known — it needs one
- * more fact than the added case (§12.40).
+ * out of its own bill. The caller decides when that is known.
  */
 export function diffLawPackage(
   from: readonly LawUnit[],
@@ -764,11 +762,11 @@ export function addressOf(heading: string | null): string | null {
 }
 
 /** Lower than the engine's 0.6, because the address already says it is the
- *  same place (§12.44 Nachtrag 3, raised from 0.35 in §12.46). */
+ *  same place (raised from 0.35). */
 export const SAME_PLACE_SIMILARITY = 0.4
 /** Or the shorter of the two stands almost whole in the longer: the same
  *  intervention, extended — „der Punkt wird durch einen Strichpunkt ersetzt"
- *  against „… ersetzt und folgende Z 3 angefügt" (§12.46). */
+ *  against „… ersetzt und folgende Z 3 angefügt". */
 export const SAME_PLACE_CONTAINED = 0.8
 
 /** The share of the shorter word list's words the longer one has too, counted with multiplicity. */
@@ -796,8 +794,8 @@ function wordContainment(a: readonly string[], b: readonly string[]): number {
  * ONLY such pair at that address in its Artikel and the two still share a
  * third of their words. Done by giving the later one the earlier one's
  * instruction line, which the engine's first rule (same Artikel, same
- * heading) pairs. Measured on the Länder first (§12.44 Nachtrag 3), then for
- * the Bund (§12.46).
+ * heading) pairs. Measured on the Länder first, then for
+ * the Bund.
  */
 export function diffAtSamePlace(from: readonly LawUnit[], to: readonly LawUnit[]): LawDiffUnit[] {
   const first = diffLawUnits(from, to)
@@ -845,7 +843,7 @@ export interface DraftScope {
 
 /**
  * A comparison between two LATER stations, cut to the laws of the draft
- * (docs/architecture.md §12.33, 30.09.2026).
+ * (30.09.2026).
  *
  * `diffLawPackage` scopes a pair to the laws both sides carry. That is enough
  * as long as one side is the draft; between two later stations it is not.

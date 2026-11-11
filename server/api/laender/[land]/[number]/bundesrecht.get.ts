@@ -1,8 +1,8 @@
 /**
  * GET /api/laender/:land/:number/bundesrecht → LandBundesrechtResponse:
  * whether a Land's draft carries out a Grundsatzgesetz of the Bund or
- * implements a Vereinbarung gemäß Art. 15a B-VG, and which act
- * (docs/architecture.md §12.67). Read from the same pages as the EU fact,
+ * implements a Vereinbarung gemäß Art. 15a B-VG, and which act.
+ * Read from the same pages as the EU fact,
  * in one shared read (`laender/landDraftTexts.ts`); asked by the
  * ProcedureCard after first paint where the server does not have it fast.
  *

@@ -10,7 +10,7 @@
  *
  * Nothing here decides differently than it did there: the class order of
  * `classifyToken`, the placeholder slash, `MAX_DP_CELLS` and every word list
- * are measured decisions (`docs/refactor-plan.md` §9).
+ * are measured decisions.
  */
 import type { LawDiffSegment } from '../../../shared/types'
 import { compareToken, displayTokens } from '../lawtext/normalize'
@@ -172,7 +172,7 @@ export function diffTokens(aText: string, bText: string): TokenDiff {
  * then the bound, which is below the threshold by construction — no caller
  * may read it as a score, and none does: both compare it against exactly this
  * threshold. Measured cause: step 3 ran a full LCS per remaining pair, 240×240
- * units = 2,0 s (`docs/refactor-plan.md` §6.3).
+ * units = 2,0 s.
  */
 export function tokenSimilarity(a: readonly string[], b: readonly string[], minimum = 0): number {
   const n = a.length

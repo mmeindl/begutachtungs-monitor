@@ -1,6 +1,5 @@
 /**
- * The order every list of Begutachtungen uses, for both kinds of row
- * (docs/architecture.md §12.19).
+ * The order every list of Begutachtungen uses, for both kinds of row.
  *
  * Extracted when `/entwuerfe` became one list holding Ministerialentwürfe
  * and the Begutachtungen without a Gegenstand at Parliament. Interleaving
@@ -53,8 +52,7 @@ export function draftOrderKey(draft: {
 }
 
 /**
- * How many rows a list on the homepage shows — all four of them
- * (docs/architecture.md §12.24).
+ * How many rows a list on the homepage shows — all four of them.
  *
  * It was four numbers until 18.09.2026: 6 open rows, 3 Vorlagen, 5 ranked,
  * 4 Kundmachungen, each with its own argument and two of them living in an
@@ -63,8 +61,8 @@ export function draftOrderKey(draft: {
  * the reader learns a length per section instead of learning it once.
  *
  * Five, because the ranking cannot sensibly be shorter (a top 3 is an
- * anecdote) and the cap of the open list may not be longer: §12.20 measured
- * what pushes the accountability sections below the third viewport.
+ * anecdote) and the cap of the open list may not be longer: measured, a
+ * longer one pushes the accountability sections below the third viewport.
  *
  * Also one constant because two endpoints read the ranking — `/api/dashboard`
  * ships the rows, `/api/dashboard/outcomes` the outcomes belonging to them —
@@ -96,7 +94,7 @@ export function rankByStatements<T extends { inr: number; statementCount: number
 
 /**
  * Whether a Gesetzgebungsperiode can carry „Wo am meisten mitgeredet wurde"
- * at all — the condition behind the Periodenwechsel fallback (§12.35).
+ * at all — the condition behind the Periodenwechsel fallback.
  *
  * Two clauses, and both are needed because they fail at different moments
  * of a new period (measured 2026-09-25 over the last two Wechsel):
@@ -161,8 +159,7 @@ export function compareDrafts(a: OrderedDraft, b: OrderedDraft, reversed = false
 }
 
 /**
- * One row of the corpus list — three kinds, one order (docs/architecture.md
- * §12.19).
+ * One row of the corpus list — three kinds, one order.
  *
  * NOT a common row shape: a Ministerialentwurf has a Geschäftszahl and a
  * Stellungnahmen count, a record without a Gegenstand has neither and never
@@ -219,7 +216,7 @@ export function vorlageRow(vorlage: OpenVorlage): DraftListRow {
  *
  * Written three times until 03.10.2026 (the homepage's open list, the corpus
  * list, the full-text hits), the homepage with a row type of its own. The
- * kinds stay apart (§12.19); only the merge is shared.
+ * kinds stay apart; only the merge is shared.
  */
 export function draftRows(
   me: readonly DraftSummary[],
@@ -240,7 +237,7 @@ export function compareRowsByFrist(a: DraftListRow, b: DraftListRow, reversed = 
  * block, it does not get interleaved at zero.
  *
  * A record without a Gegenstand carries no Stellungnahmen count and never
- * will (nobody publishes who filed one, §12.16). Sorting it in at 0 would
+ * will (nobody publishes who filed one). Sorting it in at 0 would
  * read as "nobody cared" about two thirds of the corpus, which is the one
  * misreading this list is built to prevent — so those rows follow all the
  * ranked ones, in the list's own Frist order, and the line above the list

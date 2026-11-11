@@ -36,7 +36,7 @@ const NAMED_ENTITIES: Record<string, string> = {
   // carry them as an entity, RIS as the character. Without these three
   // lines the comparison read „&deg;C" against „°C" and reported
   // three units of the Nachhaltigkeitsberichtsgesetz on 4/ME as changed
-  // in substance (docs/architecture.md §12.33).
+  // in substance.
   deg: '°',
   permil: '‰',
   ordm: 'º',

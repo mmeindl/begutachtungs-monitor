@@ -1,6 +1,6 @@
 /**
  * Eine Zeile, vier Zonen — the one anatomy every list entry is rendered
- * from (docs/architecture.md §12.28).
+ * from.
  *
  * History: until 18.09.2026 the lists carried six components for three kinds
  * of row (`DraftCard`/`DraftRow`, `RisConsultationCard`/`Row`,
@@ -24,10 +24,10 @@
  * Rejected with it: promoting the count into the right-hand slot in the
  * ranked section, where it EVICTED the station chip — „846 Stellungnahmen →
  * bisher keine Regierungsvorlage" is the accountability story and not a
- * leaderboard entry (§12.21). A ranked list shows its key by order; the
+ * leaderboard entry. A ranked list shows its key by order; the
  * count needs alignment, not size.
  *
- * WHAT THIS DOES NOT DO — and §12.19 is still right about it: there is no
+ * WHAT THIS DOES NOT DO: there is no
  * single row TYPE. `RisConsultation` does not grow nullable `citation`,
  * `statementCount` and `chain` fields so that one shape fits all; inventing
  * empty fields is what produces „0 Stellungnahmen" over two thirds of the
@@ -62,7 +62,7 @@ import { euLeadOf } from './euRecht'
  * Three states, and the third is the one the old rows got wrong. A record
  * without a Gegenstand at Parliament carries no Stellungnahmen count and
  * never will: they are filed with the Ressort, Parliament never sees them,
- * so nobody counts them (§12.16). That is `unpublished` — a permanent
+ * so nobody counts them. That is `unpublished` — a permanent
  * property of the kind, not a missing value. `unavailable` is the temporary
  * one: we asked and could not read it.
  */
@@ -124,7 +124,7 @@ export interface EntryView {
   /**
    * What the draft does with EU law, in the fact's own lead words — „Setzt
    * EU-Recht um", „Begleitet EU-Verordnungen", „Begleitet eine
-   * EU-Richtlinie" (`euLeadOf`, docs/architecture.md §12.66). Null where
+   * EU-Richtlinie" (`euLeadOf`). Null where
    * the row carries no marker, and where the list did not consult the EU
    * map at all (`eu` absent): that is no „kein EU-Bezug", and the row then
    * says nothing.
@@ -215,7 +215,7 @@ function endedState(deadline: string | null, label: string): EntryState {
  * statement.
  *
  * „Bisher" survives every shortening: it is the word that makes „keine
- * Regierungsvorlage" a state and not a verdict (framing rule, docs/architecture.md §4).
+ * Regierungsvorlage" a state and not a verdict (framing rule).
  * Nothing is abbreviated here any more — the column may wrap since the pill
  * went, and the old short forms („Bisher keine Vorlage", „Im Parlament") were
  * owed to its `whitespace-nowrap` alone.
@@ -246,7 +246,7 @@ function outcomeState(
 /**
  * The open window at the Bundesrat (03.10.2026): the Nationalrat has
  * decided, the form is still open — it is until the end of the
- * parliamentary procedure (§12.26). The parallel of „zur Vorlage seit …",
+ * parliamentary procedure. The parallel of „zur Vorlage seit …",
  * dated by the step the text is at: its arrival in the Bundesrat, or failing
  * that the Nationalrat's Beschluss.
  */
@@ -268,7 +268,7 @@ function chainState(chain: DraftChain, deadline: string | null, today: string): 
   if (chain.filingOpen) {
     return chain.station === 'parlament' ? bundesratWindowState(chain) : openVorlageState(chain.rvDate)
   }
-  /* Decided and not promulgated (§12.33, Nachtrag 03.10.2026) — Parliament's
+  /* Decided and not promulgated — Parliament's
    * stage or the calendar past every measured Kundmachung, by the one rule
    * the spine reads too (`promulgationState`). Dated, never explained: the
    * cause belongs to the detail page, and only where Parliament gives one.
@@ -299,7 +299,7 @@ function chainState(chain: DraftChain, deadline: string | null, today: string): 
    * (`procedureStatusDe`: „Ohne Beschluss – Gesetzgebungsperiode beendet"),
    * shortened the way the spine shortens them. Measured 30.09.2026: 1 row in
    * GP XXVII, 3 in XXV, 8 in XXIV — every one of them said „liegt vor"
-   * about a Vorlage of a closed period (docs/architecture.md §12.10). */
+   * about a Vorlage of a closed period. */
   if (chain.station === 'rv' && chain.rvGpEnded) {
     return { label: 'Ohne Beschluss – GP beendet', detail: chain.rvCitation, tone: 'inactive', actionable: false }
   }
@@ -318,7 +318,7 @@ function chainState(chain: DraftChain, deadline: string | null, today: string): 
  * WHY EVERY STATION (03.10.2026): the weekly reader's question is not only
  * which Begutachtung began, but which Vorlage arrived and what became law
  * this week. A win on the list has to be as visible as a shelving (framing
- * rule, docs/architecture.md §4), and a Kundmachung this week is one.
+ * rule), and a Kundmachung this week is one.
  *
  * ONE RULE, NO EXCEPTION: the chip names the station reached, the kind label
  * in zone 2 names the document. So the Begutachtung says „Neu: Begutachtung"
@@ -486,7 +486,7 @@ export function viewOfRis(c: RisConsultation): EntryView {
      * Until 19.09.2026 every closed row said „Begutachtung abgeschlossen",
      * on the reasoning that without a Gegenstand at Parliament that is the
      * true terminus. True, as long as nobody read the Bundesgesetzblatt. The
-     * Kundmachung exists now (docs/architecture.md §12.32), so the same rule
+     * Kundmachung exists now, so the same rule
      * holds for these rows as for the Ministerialentwürfe beside them:
      * station reached on top, Fundstelle beneath.
      *
@@ -550,12 +550,6 @@ export function viewOfVorlage(v: OpenVorlage): EntryView {
 }
 
 /**
- * A row of the merged lists (`draftRows`), through the adapter of its kind.
- *
- * The one dispatch over the three kinds; the pages and the full-text search
- * each wrote it themselves until 03.10.2026.
- */
-/**
  * A Land's draft (22.10.2026). The Land stands where a Bund row names its
  * Ressort: who put it out.
  */
@@ -604,6 +598,12 @@ export function viewOfLand(c: LandConsultation): EntryView {
   }
 }
 
+/**
+ * A row of the merged lists (`draftRows`), through the adapter of its kind.
+ *
+ * The one dispatch over the three kinds; the pages and the full-text search
+ * each wrote it themselves until 03.10.2026.
+ */
 export function viewOfRow(row: DraftListRow): EntryView {
   if (row.kind === 'me') return viewOfDraft(row.draft)
   if (row.kind === 'ris') return viewOfRis(row.item)

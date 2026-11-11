@@ -1,5 +1,5 @@
 /**
- * Applies Novellierungsanordnungen to the standing law (docs/architecture.md §12.12).
+ * Applies Novellierungsanordnungen to the standing law.
  *
  * PURE MODULE — relative imports only, so vitest runs it directly.
  *

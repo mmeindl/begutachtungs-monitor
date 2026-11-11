@@ -1,5 +1,5 @@
 /**
- * The lists' EU filter (docs/architecture.md §12.66, Nachtrag 3): `?eu=`
+ * The lists' EU filter: `?eu=`
  * has one value, `umsetzung` — the drafts whose fact says „Setzt EU-Recht
  * um", with or without the Vorblatt's „über die Umsetzung hinaus" (rule
  * D1: both put the same words on the page). Drafts that only accompany EU

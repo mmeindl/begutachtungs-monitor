@@ -8,21 +8,21 @@
  * of them with an HTML version. **Measured again 27.09.2026: all eleven are
  * in RIS**, under names the anchored rule did not read („TGÜ Anpassung
  * QJF-G", „IFG-TGÜ (…)"); since `textComparisonNameRank` reads them, not one
- * GP-XXVIII draft is a Parliament-only case (docs/architecture.md §12.13). Saying „keine Textgegenüberstellung" about a draft that
+ * GP-XXVIII draft is a Parliament-only case. Saying „keine Textgegenüberstellung" about a draft that
  * has one, on a page whose whole claim is that it traces documents, is the
  * worst kind of wrong answer here. So the Parliament copy is always
  * **linked**. Whether its content is also **read** is `READ_PARLIAMENT_COPY`
  * below, and that switch is off since 19.09.2026: the reading path exists and
  * works — `annex/comparisonRows.ts` knows the Word template's
- * Gliederungssymbol (`991GldSymbol`, §12.12 sixth measurement) — it is simply
+ * Gliederungssymbol (`991GldSymbol`) — it is simply
  * not taken.
  *
  * **The order of the two sources is a licence decision, not a technical
  * one.** Measured, the Parliament copy is the more complete and the more
  * finely cut. But RIS publishes the annex as CC BY (Bundeskanzleramt), while
  * Parliament explicitly excludes the Begutachtungsverfahren from reuse as
- * open data — the open licence question over that data
- * (docs/architecture.md §13.1). Where both hold the same document the
+ * open data — the open licence question over that data.
+ * Where both hold the same document the
  * site reads the settled source; where RIS holds none, it says so instead of
  * keeping quiet about a Gegenüberstellung that exists. Which copy was read
  * therefore travels with the source (`publisher`), and the page derives the
@@ -59,7 +59,7 @@ export const NO_ANNEX = 'Zu diesem Entwurf gibt es keine Textgegenüberstellung.
  * Fetched only where RIS has nothing to show, because it is one more upstream
  * call and the RIS record answers for 109 of 132 drafts on its own. Failures
  * are not caught: a Parliament timeout is not a statement about the draft,
- * and this function's answer is cached for a day (§12.13).
+ * and this function's answer is cached for a day.
  */
 export async function parliamentAnnex(gp: string, inr: number): Promise<{ pdf: TraceLink | null; html: TraceLink | null }> {
   const detail = await getGegenstand(gp, 'ME', inr)
@@ -91,8 +91,8 @@ export async function parliamentAnnex(gp: string, inr: number): Promise<{ pdf: T
  * holds anyway, and `getGegenstand` has already fetched the detail page for
  * the same draft.
  *
- * Meant for sections that want to **point** at the Gegenüberstellung
- * (docs/architecture.md §12.30), not as a gate in front of it. A pointer to a
+ * Meant for sections that want to **point** at the Gegenüberstellung,
+ * not as a gate in front of it. A pointer to a
  * section that then says itself why it can show nothing is a cheap mistake; a
  * pointer into the PDF while the passage sits two screens further down is the
  * expensive one.
@@ -232,7 +232,7 @@ async function readOlder(candidates: readonly RisDocumentUrls[], articles: reado
 
 /**
  * The bundles, one at a time: the first whose cut yields rows is the annex
- * (`annexSection` in `annex/comparisonRows.ts`, docs/architecture.md §12.13).
+ * (`annexSection` in `annex/comparisonRows.ts`).
  *
  * The table path only. Of the rasterised bundles, the PDF reader finds the
  * column headings in none — the prose pages set the geometry — so a scan
@@ -272,8 +272,7 @@ async function readBundle(bundles: readonly RisDocumentUrls[], articles: readonl
  *
  * It is off because Parliament expressly excludes the data of the
  * Begutachtungsverfahren from reuse — the open licence question over that
- * data (docs/architecture.md §13.1) — and the hard
- * line drawn from that is „Stufe 1 bleibt metadaten-only". Reading the text
+ * data — and the hard line drawn from that is „Stufe 1 bleibt metadaten-only". Reading the text
  * of an annex out of a parlament.gv.at document and displaying it is not a
  * metadatum. For exactly these drafts the usual argument does not hold
  * either — „the same document is in RIS under CC BY" — because they are
@@ -282,8 +281,8 @@ async function readBundle(bundles: readonly RisDocumentUrls[], articles: readonl
  * **The document stays linked**, in every branch below. What is not shown is
  * its content.
  *
- * TURN IT BACK ON as soon as that licence question is answered
- * (docs/architecture.md §13.1). It is then three moves, and all three belong
+ * TURN IT BACK ON as soon as that licence question is answered.
+ * It is then three moves, and all three belong
  * together:
  *  1. this constant to `true`,
  *  2. the licence lines on `/impressum` and `/ueber` — they say
@@ -291,7 +290,7 @@ async function readBundle(bundles: readonly RisDocumentUrls[], articles: readonl
  *  3. the sentence under `typeof chosen === 'string'` in
  *     `annex/textComparisonService.ts` that explains why nothing stands here:
  *     „lesen wir nicht aus" becomes „ließ sich nicht auslesen" again.
- * Then `pnpm test`, and re-measure the coverage figure in §12.12.
+ * Then `pnpm test`.
  */
 export const READ_PARLIAMENT_COPY = false
 
@@ -299,7 +298,7 @@ export const READ_PARLIAMENT_COPY = false
  * Parliament: the same document, published a second time — the fallback.
  *
  * The scan case gains nothing here: 41 of 42 scans are PDF-only at Parliament
- * as well (§12.12, sixth measurement).
+ * as well.
  */
 async function readParliament(gp: string, inr: number, articles: readonly DraftArticle[]): Promise<AnnexSource | null> {
   const parl = await parliamentAnnex(gp, inr)
@@ -328,7 +327,7 @@ export async function annexSourceFor(
    * The second copy, for a draft that HAS a Gegenstand — null where there is
    * none. A Begutachtung that Parliament does not carry cannot have a copy
    * there, and asking would be one upstream call for a document that cannot
-   * exist (`ris/risOnly.ts`, §12.16).
+   * exist (`ris/risOnly.ts`).
    */
   atParliament: (() => Promise<AnnexSource | null>) | null = null,
 ): Promise<AnnexSource | string> {

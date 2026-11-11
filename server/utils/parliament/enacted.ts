@@ -1,6 +1,6 @@
 /**
  * "Zuletzt Gesetz geworden" — the drafts whose law reached the
- * Bundesgesetzblatt (docs/architecture.md §12.23).
+ * Bundesgesetzblatt.
  *
  * Why it reads list 101 and not our own closed drafts: what the section
  * needs is the END of the chain, and the Ministerialentwurf does not know
@@ -154,7 +154,7 @@ async function enactedOf(gp: string): Promise<ClosedOutcome[]> {
 
 /**
  * The section as the page gets it: the newest Kundmachungen, and the period
- * they came out of (docs/architecture.md §12.35).
+ * they came out of.
  *
  * A new Gesetzgebungsperiode promulgates nothing for months — measured
  * 2026-09-25, GP XXVIII's first law out of a Ministerialentwurf was BGBl. I

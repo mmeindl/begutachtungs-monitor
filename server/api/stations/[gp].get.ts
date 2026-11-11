@@ -1,6 +1,6 @@
 /**
  * GET /api/stations/:gp → how many drafts of a period stand at each station,
- * and the map warmed as a side effect (docs/architecture.md §12.26).
+ * and the map warmed as a side effect.
  *
  * TWO JOBS, one of them the reason it exists. `/api/drafts` reads the same
  * map under a 2.5 s budget and answers without it when the build is cold, so

@@ -1,5 +1,5 @@
 /**
- * Novellierungsanordnungen → typed operations (docs/architecture.md §12.12).
+ * Novellierungsanordnungen → typed operations.
  *
  * PURE MODULE — relative imports only, so vitest runs it directly.
  *
@@ -47,7 +47,7 @@ export interface NovaoAddress {
    * written, and every reader of it downstream — `bareParaId`, the annex's
    * `§ 3.`, `addressedParagraphs` — wants the § alone. The Artikel is the
    * SCOPE the § is unique in, so it belongs beside the designation rather
-   * than inside it (§12.12a).
+   * than inside it.
    */
   artikel: string | null
   abs: string | null
@@ -324,6 +324,12 @@ export function articleQualifier(text: string): string | null {
 const HEADING_TARGET_RE = /Überschrift(?:en)?\s+(?:zu|des|der|von|zum|im|dieses)\b|erhäl?t folgende Überschrift|Anlagenbezeichnung/i
 
 /**
+ * „die Überschrift vor § 3", „die Zwischenüberschrift vor § 48a" — a heading
+ * named by the § below it. Group 1 is set for the heading of a group of §§.
+ */
+const HEADING_ABOVE_RE = /(?:(Zwischen|Abschnitts|Unterabschnitts|Gliederungs|Teil|Hauptstück)(?:überschrift|bezeichnung)|(?<![\p{L}])Überschrift)(?:en)?\s+vor\s+(?:dem\s+)?§/iu
+
+/**
  * "samt Überschrift" *inside an address* — the heading comes along, the text
  * stays addressed. For a Neufassung that is the `withHeading` flag on the
  * operation; for a phrase operation it is a second place to act on, which
@@ -333,12 +339,6 @@ const HEADING_TARGET_RE = /Überschrift(?:en)?\s+(?:zu|des|der|von|zum|im|dieses
  * tiny, and both were half-applied before this existed: the body renamed,
  * the heading left standing. One of the two passed the Anhang gate that way.
  */
-/**
- * „die Überschrift vor § 3", „die Zwischenüberschrift vor § 48a" — a heading
- * named by the § below it. Group 1 is set for the heading of a group of §§.
- */
-const HEADING_ABOVE_RE = /(?:(Zwischen|Abschnitts|Unterabschnitts|Gliederungs|Teil|Hauptstück)(?:überschrift|bezeichnung)|(?<![\p{L}])Überschrift)(?:en)?\s+vor\s+(?:dem\s+)?§/iu
-
 const ALSO_HEADING_RE = /samt\s+(?:der\s+|den\s+)?Überschrift(?:en)?/i
 
 /** Quoted spans are operands, never addresses — "…den Ausdruck 'Abs. 1 Z 1 bis 5'…". */
@@ -464,7 +464,7 @@ const OWN_COMPONENT_RE = /^\s*(?:Abs(?:\.|atz)|Z(?:iff(?:er)?)?\b|lit(?:\.|era))
  * An address over several Paragraphen is not representable in this model (an
  * operation has one `target`), so it is refused rather than guessed — the
  * same decision as for the article-structured laws. A refusal always beats
- * half an application („Verweigern schlägt Deckung", §12.12).
+ * half an application („Verweigern schlägt Deckung").
  */
 function siblingsAfter(rest: string, first: string, level: EnumLevel = 'abs'): { ids: string[]; consumed: number } | null {
   const id = ENUM_ID[level]
@@ -1643,7 +1643,6 @@ export function tocSequence(items: readonly { line: string | null; law: string |
   return out
 }
 
-/** The verbs of an append. */
 const APPEND_VERB_RE = /\bangefügt\b|\bhinzugefügt\b|\bangeschlossen\b/i
 /** „… ersetzt und (danach) folgender (Halb)Satz angefügt", „…; folgender Satz wird angefügt". */
 const APPENDS_SENTENCE_RE = /\bersetzt\b[^"]*?(?:\bund\b|\bsowie\b|;)\s*(?:danach\s+)?(?:wird\s+)?folgende[rn]?\s+(?:Halbs(?:atz|ätze)|S(?:atz|ätze))\b/i
@@ -2452,12 +2451,6 @@ function opContext(op: NovaoOp): NovaoAddress | null {
 }
 
 /**
- * One Novellierungsanordnung line → its operations, or a reason why not.
- *
- * `inherited` carries the address of an enclosing container instruction, so
- * that "a) In Abs. 5 wird …" under "§ 12 wird wie folgt geändert:" resolves.
- */
-/**
  * A place of its own at the head of a segment behind the verb: „in Z 1",
  * „in der lit. d", „in Abs. 3", „im Schlussteil", „im Einleitungsteil",
  * „im zweiten Satz".
@@ -2531,6 +2524,12 @@ export function splitPlaces(line: string): string[] {
   return parts
 }
 
+/**
+ * One Novellierungsanordnung line → its operations, or a reason why not.
+ *
+ * `inherited` carries the address of an enclosing container instruction, so
+ * that "a) In Abs. 5 wird …" under "§ 12 wird wie folgt geändert:" resolves.
+ */
 export function parseInstruction(raw: string, inherited?: NovaoAddress | null): ParsedInstruction {
   const line = rejoinBrokenNouns(normalizeText(raw).replace(NUMBER_PREFIX, ''))
   // „Im Inhaltsverzeichnis entfällt der Eintrag zu § 17; die Einträge zu den

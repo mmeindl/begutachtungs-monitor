@@ -1,6 +1,5 @@
 /**
- * The EU map's pages as words and positions (docs/architecture.md §12.66,
- * Nachtrag 3): the overview of every act a draft of the window implements
+ * The EU map's pages as words and positions: the overview of every act a draft of the window implements
  * (`/eu-recht`) and one act with its drafts, Bund and Länder
  * (`/eu-recht/richtlinie/2024/1069`).
  *

@@ -1,12 +1,12 @@
 <script setup lang="ts">
 /**
- * The EU map's overview (docs/architecture.md §12.66, Nachtrag 3): every EU
+ * The EU map's overview: every EU
  * act that a draft of the window implements, Bund and Länder, with its
  * deadline and how many drafts implement it on each side. Each act links
  * to its page, where the drafts stand on one track.
  *
  * The list on the white sheet of every list of rows (`ListBox`, box
- * grammar, §8): rows you operate — each links, the list folds past twenty
+ * grammar): rows you operate — each links, the list folds past twenty
  * in the site's idiom (`ListMore`), the chips filter it. Everything that
  * operates on it stands inside the box, the chips in its head per
  * `ListBox`'s rule, the empty selection and the fold at its foot; nothing

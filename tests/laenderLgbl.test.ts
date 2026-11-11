@@ -23,7 +23,7 @@ const lgbl = (o: Partial<LgblEntry>): LgblEntry => ({ nr: 'LGBl. Nr. 1/2025', ty
 const FIRST_IN_RIS = lgbl({ nr: 'LGBl. Nr. 1/2015', typ: 'Sonstiges', titel: 'Kundmachung', datum: '2015-01-09' })
 const match = (drafts: LandConsultation[], entries: LgblEntry[]) => matchLgbl(drafts, [FIRST_IN_RIS, ...entries], TODAY)
 
-describe('matchLgbl — the oracle (docs/architecture.md §12.43)', () => {
+describe('matchLgbl — the oracle', () => {
   /* The 83 Oberösterreich Gesetze whose Landtag record names the LGBl,
      matched blind. Measured on 22.10.2026: 77 right, 2 wrong, 4 not found
      — and the same through this module.

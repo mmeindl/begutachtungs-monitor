@@ -1,6 +1,5 @@
 /**
- * Whether a draft implements EU law, which act, and until when
- * (docs/architecture.md §12.66).
+ * Whether a draft implements EU law, which act, and until when.
  *
  * Nuxt-aware glue around the pure modules — `vorblatt.ts` (whether),
  * `umsetzungshinweis.ts` (which act), `cellar.ts` (until when),
@@ -22,7 +21,7 @@
  * reads are only the Vorblatt PDF, the Cellar, and one RIS search per
  * directive the draft's own text does not show as old (`bundesrecht.ts`).
  *
- * **A failure is not an answer** (§12.13). A Vorblatt that cannot be fetched
+ * **A failure is not an answer**. A Vorblatt that cannot be fetched
  * throws — whether the draft is an EU matter is the question itself. A
  * Cellar or law-in-force read that fails costs one act its deadline line:
  * the answer goes out without it and is not stored (`cache/gathered.ts`).

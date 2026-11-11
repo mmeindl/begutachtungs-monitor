@@ -12,8 +12,7 @@ import type { EuTimelineContext } from '~/utils/euRecht'
 import { todayIso } from '#shared/utils/format'
 
 /**
- * One Begutachtung without a Gegenstand at Parliament
- * (docs/architecture.md §12.16).
+ * One Begutachtung without a Gegenstand at Parliament.
  *
  * ONE LINK SHAPE FOR EVERY ENTWURF since 18.09.2026: this page lives at
  * `/entwuerfe/:id`, next to the Ministerialentwurf's `/entwuerfe/:gp/:inr`,
@@ -21,7 +20,7 @@ import { todayIso } from '#shared/utils/format'
  * know which half of the corpus a draft is in to guess its URL, and a link
  * we hand out never carries the word „weitere" about two thirds of the
  * data. The difference is real and stays visible — in the page, not in the
- * path (docs/architecture.md §12.19).
+ * path.
  *
  * WHAT THIS PAGE DELIBERATELY DOES NOT HAVE: the five-station bar, the Stellungnahmen
  * panel, the submitter counts, the ME→RV comparison. Not one of them is
@@ -89,7 +88,7 @@ const { data: fetchedOutcome } = await useFetch<BgblOutcome>(
 const outcome = computed(() => data.value?.outcome ?? fetchedOutcome.value ?? null)
 
 /* Whether the draft implements EU law — the same fact as on a
- * Ministerialentwurf's card, read from this record (§12.66). A Verordnung
+ * Ministerialentwurf's card, read from this record. A Verordnung
  * has a Vorblatt too. */
 const { data: euRecht } = useEuRecht(() => ({ risId: id.value }))
 const euTimelineCtx = computed<EuTimelineContext | null>(() => (data.value
@@ -119,7 +118,7 @@ const { data: fassung } = await useFetch<BgblLawsResponse>(
 
 const stationList = computed(() =>
   data.value?.kind === 'verordnung' ? regulationStations(data.value, outcome.value) : [])
-/* Where the draft comes from, as Entwurf facts (`utils/origin.ts`, §12.66). */
+/* Where the draft comes from, as Entwurf facts (`utils/origin.ts`). */
 const spineStations = computed(() => withOrigin(stationList.value, originTokens(euRecht.value)))
 
 /* The Frist as a fact, as on the draft page: length and dates, drawn
@@ -275,7 +274,7 @@ const doorHref = computed(() => {
            Since the BGBl-II match of 19.09.2026 it is followed, so the
            argument had lapsed and the card was the counter the draft page
            dropped on 18.09.2026, standing in for rows it never drew
-           (`regulationStations`, docs/architecture.md §12.32). A Gesetz or
+           (`regulationStations`). A Gesetz or
            an untyped record keeps the card in words: neither has a path
            here that can be read to its end. -->
         <ProcedureCard
@@ -365,9 +364,9 @@ const doorHref = computed(() => {
                Kurzinformation above it, so this is the only place the procedure
                says what would change. Shown since 26.09.2026; until then both
                services were keyed on (GP, Nummer) and two thirds of the corpus
-               had no section at all (§12.16). -->
+               had no section at all. -->
             <!-- The section's lede (`EntwurfFrame`): where the draft comes from
-               — EU law, with its deadlines (§12.66). Only with a named act. -->
+               — EU law, with its deadlines. Only with a named act. -->
             <EntwurfFrame :eu="euRecht" :timeline="euTimelineCtx" />
 
             <PageSubsection id="gegenueberstellung" heading="Was ändert der Entwurf?">
@@ -395,8 +394,7 @@ const doorHref = computed(() => {
             >
               <div class="pb-2">
                 <!-- THE ZITIERFORM, since 26.09.2026 — the one deliberate gap the
-                   anatomy comparison of 17.09.2026 left open
-                   (docs/architecture.md §12.16).
+                   anatomy comparison of 17.09.2026 left open.
 
                    These Verfahren have no Geschäftszahl, so „132/ME" — the string
                    a reader quotes and a lawyer cites — had no counterpart on the

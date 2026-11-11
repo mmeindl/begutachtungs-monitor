@@ -1,6 +1,6 @@
 /**
  * What the corpus says about "bisher keine Regierungsvorlage" — the base
- * rates behind the wording on the detail page (docs/architecture.md §12.10).
+ * rates behind the wording on the detail page.
  *
  * Measured with `scripts/corpus/rvLatency.ts` from the Parliament API: every
  * Ministerialentwurf of a closed Gesetzgebungsperiode, Fristende → first
@@ -9,7 +9,7 @@
  * depend on 350 upstream fetches. Re-run the script and add a row when GP
  * XXVIII ends.
  *
- * Framing rule (docs/architecture.md §4): these sentences give the reader the base rate,
+ * Framing rule: these sentences give the reader the base rate,
  * never a verdict. "4 von 61" says how likely a late Regierungsvorlage is;
  * it does not say the draft failed.
  */
@@ -100,7 +100,7 @@ export function daysSinceFristDe(days: number): string {
 
 /**
  * How much of a draft its Regierungsvorlage changed, across a whole closed
- * Gesetzgebungsperiode — the second base rate (docs/architecture.md §12.38).
+ * Gesetzgebungsperiode — the second base rate.
  *
  * Measured with `scripts/corpus/aenderungsrate.ts` through the page's own
  * formula (`ownChangeShare`): per comparable draft, the share of its own
@@ -110,7 +110,7 @@ export function daysSinceFristDe(days: number): string {
  * Why a range and not a yes/no: 280 of 283 comparable drafts of GP XXVII
  * changed at all, so „geändert" separates nothing, while the share runs from
  * a few percent to all of them. The middle half (p25–p75) is what a reader
- * can hold one draft against — a range, not a verdict (framing rule, §4):
+ * can hold one draft against — a range, not a verdict (framing rule):
  * a large change is not a failure of the draft and a small one no win.
  */
 export interface ChangeShareRate {
@@ -127,7 +127,7 @@ export interface ChangeShareRate {
 /** Newest GP first. */
 export const CHANGE_SHARE_RATES: readonly ChangeShareRate[] = [
   // Re-run 03.10.2026: a law the Ressort dropped from its own bill counts
-  // as dropped since §12.40 (XXVII p75 75 → 77, XXVI p25 34 → 35).
+  // as dropped (XXVII p75 75 → 77, XXVI p25 34 → 35).
   { gp: 'XXVII', drafts: 283, p25: 46, median: 63, p75: 77 },
   { gp: 'XXVI', drafts: 104, p25: 35, median: 50, p75: 73 },
 ]
@@ -159,7 +159,7 @@ const SINGULAR_DE: Readonly<Record<string, string>> = { Paragraphen: 'Paragraph'
 
 /**
  * The value of the card's row „Begründung": how many of the Begründungen in
- * both Erläuterungen the Ressort changed (docs/architecture.md §12.10b) —
+ * both Erläuterungen the Ressort changed —
  * editorial changes not counted, as in the row above
  * (`substantiveReasoningChanges`). Counted over the passages both versions
  * carry — the restriction stands on /so-funktionierts; the row's footnote
@@ -176,7 +176,7 @@ export function reasoningShareValueDe(changed: number, compared: number): string
  * Then the period's range is the wrong yardstick. It was measured on drafts
  * whose Vorlage came after the Begutachtung, and set beside a Vorlage the
  * Stellungnahmen could not have shaped, „im Wortlaut" reads as input
- * ignored — the blame reading the framing rule forbids (§4). Measured
+ * ignored — the blame reading the framing rule forbids. Measured
  * 29.09.2026: 7 of 91 drafts with a Vorlage in GP XXVIII (33, 45, 46, 92,
  * 115, 116, 117/ME; median share 0 % against 60 % for the other 84), 1 of
  * 296 in XXVII — so the XXVII range above is not skewed by them.
@@ -209,7 +209,7 @@ export function earlyVorlageWhenDe(dates: { arrivedAt: string | null; deadline: 
 
 /**
  * What the outcome card says INSTEAD of all of the above when the period
- * links no draft to a Vorlage at all (§12.27, `chainCoverageOf`).
+ * links no draft to a Vorlage at all (`chainCoverageOf`).
  *
  * Every other sentence in this file rests on absence being evidence. Where
  * the archive never recorded the link, it is not: the card would otherwise
@@ -285,9 +285,9 @@ export interface RvStationView {
   showOutcome: boolean
   /** The GP ended without a Vorlage. */
   lapsed: boolean
-  /** The period records no draft→Vorlage link at all (§12.27). */
+  /** The period records no draft→Vorlage link at all. */
   chainUnlinked: boolean
-  /** The text became law through an Initiativantrag instead (§12.10). */
+  /** The text became law through an Initiativantrag instead. */
   viaAntrag: boolean
   /** The verdict sentence, in the frame's „Stand" row. */
   noRvVerdict: string | null
@@ -345,14 +345,14 @@ export function rvStationView(d: DraftDetail | null | undefined, vorlage: Vorlag
   const lapsed = !d.enactment && !d.active && d.gpEnded
 
   /* Fourth state, and it overrides the other three: the period records no
-   * link from ANY of its drafts to a Regierungsvorlage (§12.27). Everything
+   * link from ANY of its drafts to a Regierungsvorlage. Everything
    * above reads absence as evidence — here absence is the archive, so the
    * card states that instead and claims nothing. `unknown` counts as unlinked:
    * when the map was not there to ask, silence is the recoverable mistake. */
   const chainUnlinked = !d.enactment && !d.active && !mayClaimOutcome(d.chainCoverage)
 
   /* The Initiativantrag route replaces all three sentences below: no Vorlage,
-   * and still a law (docs/architecture.md §12.10, `AntragPathNote`). */
+   * and still a law (`AntragPathNote`). */
   const viaAntrag = carriesDraft(d.antragPath)
 
   const noRvVerdict = viaAntrag

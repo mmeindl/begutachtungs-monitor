@@ -86,7 +86,7 @@ describe('addressedLabels — unter welchem Etikett das RIS den § führt', () =
   })
 
   // Under "§ 3" RIS carries no document in such a law at all — leaving the
-  // Artikel off does not widen the search, it empties it (§12.12a).
+  // Artikel off does not widen the search, it empties it.
   it('keys a § of a law divided into Artikel the way RIS prints it', () => {
     const labels = addressedLabels(instr('Art. II § 3 Abs. 2 lautet:', ['(2) Neu.']), [])
     expect(labels?.get('3')).toBe('Art. 2 § 3')

@@ -51,7 +51,7 @@ export interface RisBegutFlat extends RisBegutRecord {
    *
    * The further parts deliberately stay in `otherDocuments` as well. That is
    * where a reader finds them under the ressort's own name today, and where
-   * the full-text search reads them (§12.31); taking them out would remove a
+   * the full-text search reads them; taking them out would remove a
    * document from the page in the name of classifying it better.
    */
   textComparisonParts: RisDocumentUrls[]
@@ -91,7 +91,7 @@ export interface RisBegutFlat extends RisBegutRecord {
   coverLetter: RisDocumentUrls | null
   /**
    * EVERYTHING ELSE the record carries as text — and the reason for it is
-   * measured (22.09.2026, docs/architecture.md §12.31).
+   * measured (22.09.2026).
    *
    * Across the 8 consultations running that day the records carry **41 text
    * documents**, the four fields above reach **25**. What the full-text
@@ -152,8 +152,7 @@ const NOT_LETTER = '[^A-Za-zÄÖÜäöüß]'
 
 /**
  * **The abbreviation anywhere in the name, measured 27.09.2026**
- * (`pnpm corpus:dokument-namen`, docs/architecture.md §12.13 „Die Abkürzung
- * mitten im Namen"). The anchored rule above missed „TGÜ Anpassung QJF-G",
+ * (`pnpm corpus:dokument-namen`). The anchored rule above missed „TGÜ Anpassung QJF-G",
  * „42. KFG-Nov.TGÜ.11.05.2026", „IFG-TGÜ (2025-05-07)", „TxtGGÜ", „TextGG":
  * 11 of 139 Gesetzesentwürfe of GP XXVIII whose RIS record carries the
  * Gegenüberstellung — every one of the drafts `annex/annexSource.ts` had
@@ -163,7 +162,7 @@ const NOT_LETTER = '[^A-Za-zÄÖÜäöüß]'
 const TEXT_COMPARISON_TOKEN = new RegExp(`(^|${NOT_LETTER})(TG(Ü|G|UE)|TxtGGÜ|TxTGGÜ|TxtGG|TextGG|TGGÜ)($|${NOT_LETTER})`, 'i')
 
 /**
- * The Erläuterungen under an abbreviation (same measurement, §12.31): „EB",
+ * The Erläuterungen under an abbreviation (same measurement): „EB",
  * „EBs", „Erl", „Erl.", „Erläut", „Erläuternde Bemerkungen", and the old BMF
  * form „begerl". „EB" only in capitals — as a lower-case token it is a
  * syllable. „Erledigung" and „Erlass" stay out because a letter follows.
@@ -236,8 +235,7 @@ export function pickTextComparisons<T>(items: readonly T[], nameOf: (item: T) =>
 
 /**
  * The older names of the annex, before the ressorts wrote „TGÜ" — measured
- * 30.09.2026 over the whole RIS Begut corpus (docs/architecture.md §12.13,
- * „Die älteren Formen"). „begtxt" is the BMF's Begutachtungstext beside
+ * 30.09.2026 over the whole RIS Begut corpus. „begtxt" is the BMF's Begutachtungstext beside
  * „begmat" (the Materialien, i.e. the Erläuterungen) and „begVorblatt_WFA";
  * „GGUe" and „Textüberstellung" are other ressorts' forms. 80 records carry
  * one of them and no name the rule above reads, GP XXIV to XXVII.
@@ -265,7 +263,7 @@ export function pickOlderTextComparisons<T>(items: readonly T[], nameOf: (item: 
 /**
  * The bundle — „begmat", „Materialien", „Material": Vorblatt, Erläuterungen
  * and Gegenüberstellung in one document, the normal form before GP XXVI
- * (docs/architecture.md §12.13, „Das Bündel, geschnitten", 02.10.2026). 894
+ * (02.10.2026). 894
  * of the 4.578 Begut records carry one and no name either rule above reads.
  *
  * Offered last: only where neither the name rule nor an older name picks

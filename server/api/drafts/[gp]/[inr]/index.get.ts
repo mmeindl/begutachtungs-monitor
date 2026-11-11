@@ -1,7 +1,7 @@
 /**
  * GET /api/drafts/:gp/:inr → DraftDetail.
  * 400 for invalid params, 404 for an unknown item
- * (lookup via the GP's list-81 row, docs/architecture.md §5).
+ * (lookup via the GP's list-81 row).
  */
 import type { DraftDetail } from '#shared/types'
 import { validateGpInrParams } from '../../../../utils/http/params'

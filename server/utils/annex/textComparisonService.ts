@@ -1,6 +1,6 @@
 /**
  * The ressort's Textgegenüberstellung for one consultation
- * (docs/api-exploration.md §2c, docs/architecture.md §12.12, §12.13).
+ * (docs/api-exploration.md §2c).
  *
  * Nuxt-aware glue around the pure modules of `annex/` — the row parsers
  * (`comparisonRows.ts`, `annexPdf.ts`), the gate (`verdict.ts`) and its
@@ -207,7 +207,7 @@ export const getTextComparison = defineCachedFunction(
       // it may stand only where Parliament carries none either. Where it is
       // there as a PDF only, the page says exactly that: it exists, we did
       // not read it — Parliament's PDF is not read, and 41 of 42 scans are
-      // the same on both sides (§12.12).
+      // the same on both sides.
       if (!annex && atParliament) {
         return empty(
           parl.html
@@ -238,8 +238,7 @@ export const getTextComparison = defineCachedFunction(
 )
 
 /**
- * The same section for a Begutachtung without a Gegenstand at Parliament
- * (§12.16).
+ * The same section for a Begutachtung without a Gegenstand at Parliament.
  *
  * **Why it is a sibling and not a parameter.** Everything that differs sits
  * ABOVE the reading: a Ministerialentwurf is found through the RIS↔ME map and

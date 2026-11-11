@@ -1,7 +1,7 @@
 /**
  * The EU map: every draft of a period's window whose fact names an EU act,
  * joined with the lists for its dates and its stand — and the three views
- * the routes serve from it (docs/architecture.md §12.66, Nachtrag 3).
+ * the routes serve from it.
  *
  * The facts come from the store (`euMapStore.ts`), the dates and the stand
  * from the CURRENT lists: a Frist that moves, a law that gets promulgated,
@@ -390,8 +390,7 @@ export function relatedPeriodOf(
 }
 
 /**
- * How patient the map is with a Kundmachung's day (§12.66, Nachtrag 3,
- * Reste): the station map asks RIS for it under 5 s per chain
+ * How patient the map is with a Kundmachung's day: the station map asks RIS for it under 5 s per chain
  * (`stationMap.ts`), and a cold build that missed it kept a promulgated
  * law at „Beschluss" for six hours — 32/ME showed it. The map asks again
  * for every chain with a BGBl number and no day:

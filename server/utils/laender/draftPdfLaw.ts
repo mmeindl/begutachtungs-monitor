@@ -117,7 +117,7 @@ export function lawBlocksFromPdfPages(pages: readonly string[]): TextBlock[] | n
   /* A NEW law (no amending clause): „§ 2" opens a §, the line after it is
      its title, the paragraph after that carries the symbol — the shape the
      Landesgesetzblatt's XML has once its heading is taken apart
-     (`lgblUnits`). Measured on the seven new laws of the oracle, §12.44. */
+     (`lgblUnits`). Measured on the seven new laws of the oracle. */
   let paraGld: string | null = null
   let pendingGld: string | null = null
   let title: string | null = null

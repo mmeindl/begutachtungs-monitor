@@ -1,7 +1,6 @@
 <script setup lang="ts">
 /**
- * A row of labels on the EU chart's track (`EuTimelineChart`;
- * docs/architecture.md §12.66): the Umsetzungsfristen over the lanes, and
+ * A row of labels on the EU chart's track (`EuTimelineChart`): the Umsetzungsfristen over the lanes, and
  * under each lane the Begutachtung and the stand — each term over its
  * dates, one per line, as many lines as the label has (a cluster of
  * deadlines names one day per line).

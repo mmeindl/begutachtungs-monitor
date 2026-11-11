@@ -1,7 +1,7 @@
 /**
  * Whether a Land's draft implements EU law, which act, and until when —
  * the Bund's fact (`euService.ts`) on the nine Länder's draft pages
- * (docs/architecture.md §12.66, Nachtrag 2 of 04.11.2026).
+ * (04.11.2026).
  *
  * Nuxt-aware glue around pure modules, the Bund's and three of the Länder's:
  *
@@ -27,9 +27,9 @@
  * Erläuterungen' document and the draft's, the same one where the Land
  * files both in one PDF — and every reading here runs over those pages.
  * The read is shared with the Bund fact on the same draft
- * (`laender/landDraftTexts.ts`, §12.67).
+ * (`laender/landDraftTexts.ts`).
  *
- * **A failure is not an answer** (§12.13). A document that cannot be
+ * **A failure is not an answer**. A document that cannot be
  * fetched throws: whether the draft is an EU matter is the question
  * itself. A Cellar or Landesrecht read that fails costs one act its
  * deadline: the answer goes out without it and is not stored

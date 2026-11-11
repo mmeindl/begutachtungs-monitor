@@ -1,11 +1,10 @@
 /* ------------------------------------------------------------------ *
  * Verordnungsentwurf → Kundmachung in the BGBl II
- * (docs/architecture.md §12.32)
  * ------------------------------------------------------------------ */
 
 /**
  * What became of a Verordnungsentwurf — and the two states that must NOT be
- * thrown together (docs/architecture.md §12.32).
+ * thrown together.
  *
  * `ausstehend` against `keine` is the whole point of this type. A median 57
  * days pass between Fristende and Kundmachung, and of the drafts whose Frist

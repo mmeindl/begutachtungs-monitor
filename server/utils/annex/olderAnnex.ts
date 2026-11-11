@@ -1,7 +1,7 @@
 /**
  * The Gegenüberstellung under an older name — „begtxt", „GGUe",
  * „Textüberstellung" — decided by what the document contains
- * (docs/architecture.md §12.13, „Die älteren Formen", 30.09.2026).
+ * (30.09.2026).
  *
  * PURE MODULE — relative imports only, so the harness runs the same decision
  * the request path does (`scripts/harness/annexPdf.ts`).

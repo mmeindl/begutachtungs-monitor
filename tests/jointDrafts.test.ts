@@ -35,7 +35,7 @@ const joint = [
 const others = [1, 2, 3, 4, 5].map((n) =>
   draftSummary({ ...open, inr: n, citation: `${n}/ME`, title: `Entwurf ${n}`, statementCount: n }),
 )
-/** The period before, with a jointly issued draft whose Frist outlives the Wechsel (§12.35). */
+/** The period before, with a jointly issued draft whose Frist outlives the Wechsel. */
 const carried = joint.map((row) => ({ ...row, gp: 'XXVII', inr: 352, citation: '352/ME', statementCount: 0 }))
 const LIST_81: Record<string, DraftSummary[]> = { XXVIII: [...joint, ...others], XXVII: carried }
 

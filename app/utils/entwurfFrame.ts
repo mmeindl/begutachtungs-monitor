@@ -1,5 +1,5 @@
 /**
- * The opening frame of „Der Entwurf" (docs/architecture.md §12.66, §12.67):
+ * The opening frame of „Der Entwurf":
  * the facts of the draft as a reader consults them, in the order of the
  * Entwurf station's line — „Ändert …" · „Setzt EU-Recht um" · „Führt aus"
  * · „Setzt um" —, in the unfilled hairline frame of the box grammar, with

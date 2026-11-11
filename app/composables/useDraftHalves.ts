@@ -1,7 +1,7 @@
 /**
  * The halves `/entwuerfe` merges — the Ministerialentwürfe, the
  * Begutachtungen without a Gegenstand and, since 22.10.2026, the Länder — fetched, gated and retried as the
- * page needs them (docs/architecture.md §7, §12.19).
+ * page needs them.
  *
  * Synchronous on purpose: both fetches start here and the page awaits
  * `ready` once its own fetch is started too, so all of them overlap instead
@@ -30,7 +30,7 @@ export function useDraftHalves(filters: {
 
   /**
    * WHICH HALVES THIS `art` ASKS FOR — the filter decides the REQUEST, not
-   * just the rows, since 23.09.2026 (docs/architecture.md §7).
+   * just the rows, since 23.09.2026.
    *
    * `/api/drafts` holds Ministerialentwürfe and nothing else, all of them
    * law drafts, so under „Verordnungsentwürfe" there is nothing for it to

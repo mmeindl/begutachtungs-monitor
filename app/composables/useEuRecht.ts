@@ -1,6 +1,6 @@
 /**
- * Whether a draft implements EU law — one fact in the ProcedureCard
- * (docs/architecture.md §12.66), fetched on the pattern of
+ * Whether a draft implements EU law — one fact in the ProcedureCard,
+ * fetched on the pattern of
  * `useExplanations`: on the server only while it stays fast, after the
  * first paint otherwise.
  *
@@ -26,7 +26,6 @@ export interface EuRechtSource {
   number?: string
 }
 
-/** @param source The draft's address, as a getter (`EuRechtSource`). */
 export function useEuRecht(source: () => EuRechtSource) {
   const endpoint = computed(() => {
     const { gp, inr, risId, land, number } = source()

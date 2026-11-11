@@ -1130,7 +1130,7 @@ const READERS: Record<LandCode, LandReader> = {
 }
 
 /* ------------------------------------------------------------------ *
- * The Kundmachung, searched where the Land records none (§12.43)
+ * The Kundmachung, searched where the Land records none
  * ------------------------------------------------------------------ */
 
 /**

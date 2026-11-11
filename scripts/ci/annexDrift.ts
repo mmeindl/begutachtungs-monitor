@@ -1,6 +1,6 @@
 #!/usr/bin/env vite-node
 /**
- * The drift alarm for the annex (§12.13).
+ * The drift alarm for the annex.
  *
  * Reads the reports `harness/annexPdf.ts --json=` writes, applies class A and
  * (with `--grundlinie=`) class B from `lib/annexReport.ts`, and exits with

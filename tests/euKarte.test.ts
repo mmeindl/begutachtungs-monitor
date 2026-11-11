@@ -41,7 +41,7 @@ import {
 import { risConsultation } from './helpers/builders'
 
 /*
- * The EU map (docs/architecture.md §12.66, Nachtrag 3): the facts on disk,
+ * The EU map: the facts on disk,
  * the join with the lists, and the three views the routes serve. Every
  * module here is pure; the store writes into a temp directory.
  */

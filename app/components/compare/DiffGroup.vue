@@ -4,9 +4,6 @@
  * the chevron that opens it, and — once open — its body. Both sections built
  * this frame character for character; since 30.09.2026 it is one component.
  *
- * A pinned one-line bar with the law's name stood here from 30.09. to
- * 01.10.2026 and was taken out again; why was not recorded.
- *
  * Since 02.10.2026 the header itself sticks while its group is open, so
  * the group can be closed, and its law named, from anywhere inside it. 58/ME is
  * one law with 413 units, and the way back up to the chevron was the whole

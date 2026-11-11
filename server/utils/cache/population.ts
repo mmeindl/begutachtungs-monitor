@@ -1,6 +1,6 @@
 /**
  * Reading one population of drafts into a fact store (`factStore.ts`) — the
- * map builders' loop (docs/architecture.md §12.66 Nachtrag 3, §12.67).
+ * map builders' loop.
  *
  * A fresh entry is kept, every other draft read with `limit` in flight. A
  * throw costs that draft, never the population; an incomplete answer

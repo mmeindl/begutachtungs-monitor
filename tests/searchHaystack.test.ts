@@ -1,5 +1,5 @@
 /**
- * Taking the ressort mention out of the search field (§12.31) — and the two
+ * Taking the ressort mention out of the search field — and the two
  * mistakes this rule could make.
  *
  * TOO LITTLE: every Verordnung's long title begins with its house's whole

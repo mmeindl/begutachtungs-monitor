@@ -1,7 +1,7 @@
 <script setup lang="ts">
 /**
  * „Ganzer Paragraph danach (nicht amtlich)" — one § of our own Lesefassung,
- * folded (docs/architecture.md §12.12a).
+ * folded.
  *
  * Its own component since 26.10.2026, because it now stands in two places:
  * under the § of the Textgegenüberstellung it was checked against, and — for

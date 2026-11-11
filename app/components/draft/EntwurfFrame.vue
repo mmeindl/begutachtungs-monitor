@@ -9,8 +9,7 @@ import { BUNDESRECHT_FACT_ANCHOR, EU_FACT_ANCHOR } from '~/utils/origin'
  * The opening frame of „Der Entwurf" — the section's lede, in the unfilled
  * hairline frame of the facts you consult (box grammar, 03.10.2026), with
  * its credit line under the edge. `AmendedLawsFrame` until 06.11.2026, when
- * the draft's origin joined the law it changes (docs/architecture.md
- * §12.66, §12.67): the rows mirror the Entwurf station's line — „Ändert" ·
+ * the draft's origin joined the law it changes: the rows mirror the Entwurf station's line — „Ändert" ·
  * „Setzt EU-Recht um" (the marker's own words: acts, related counts, the
  * deadline strip and its footnotes inside the frame, as the Frist bar sits
  * in the Begutachtung's) · on a Land's draft „Führt aus" (Grundsatzgesetze)

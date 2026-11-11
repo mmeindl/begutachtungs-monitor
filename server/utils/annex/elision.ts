@@ -133,7 +133,7 @@ export function isElisionRangeOnly(current: string, proposed: string): boolean {
  * silence the old „both cells end in dots" rule produced over 919 rows.
  *
  * The row stays elided only where the numbers agree; where they do not, it is
- * a changed row and has to be visible. The 48 rows §12.12 records as
+ * a changed row and has to be visible. The 48 rows
  * elided-and-changed are differences in the elision itself ("1. bis 59. …"
  * against "1. bis 60. …"), and they now say so instead of vanishing.
  */

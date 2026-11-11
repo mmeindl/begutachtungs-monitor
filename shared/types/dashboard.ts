@@ -13,7 +13,7 @@ export interface DashboardPayload {
  * „Wo am meisten mitgeredet wurde", and the period it speaks about.
  *
  * The period is carried rather than assumed to be `DashboardPayload.gp`,
- * because during a Periodenwechsel it is not (§12.35): a period too young to
+ * because during a Periodenwechsel it is not: a period too young to
  * be ranked hands the section to the one before it, and the page has to name
  * which one it is showing. The three fields travel together for the same
  * reason — rows, their period and the size of the set behind the section's
@@ -75,7 +75,7 @@ export interface DashboardOutcomes {
 export interface DashboardEnacted {
   /**
    * The period whose Regierungsvorlagen were scanned — the running one, or,
-   * while it has promulgated nothing, the one before it (§12.35).
+   * while it has promulgated nothing, the one before it.
    *
    * NOT the period of the rows: a Vorlage may carry a Ministerialentwurf
    * from the period before it, and regularly does around a Wechsel. This is
@@ -88,7 +88,7 @@ export interface DashboardEnacted {
 
 /**
  * Payload of /api/dashboard/beschlossen — "Im Nationalrat beschlossen"
- * (docs/architecture.md §12.21, Nachtrag 03.10.2026).
+ * (03.10.2026).
  *
  * The rows are Ministerialentwürfe again, with their chain attached: the
  * drafts whose Vorlage the Nationalrat has decided and the Bundesgesetzblatt

@@ -1,6 +1,6 @@
 /**
  * EU acts as German legal text cites them → CELEX number, ELI link and a
- * label (docs/architecture.md §12.66).
+ * label.
  *
  * PURE MODULE — text in, acts out; no Nitro globals, relative imports only,
  * so the corpus script (`scripts/corpus/eu.ts`) measures this file and not a

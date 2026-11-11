@@ -1,6 +1,6 @@
 /**
  * Where a draft comes from, as facts of the Entwurf station's line — beside
- * „ändert 1 Gesetz" (docs/architecture.md §12.66, §12.67): EU law it
+ * „ändert 1 Gesetz": EU law it
  * implements or accompanies, a Grundsatzgesetz of the Bund it carries out,
  * an Art.-15a agreement it implements. Short, lower case; a Sammelnovelle
  * may carry all three. Plain text like every fact of the spine: a link there
@@ -12,7 +12,7 @@
  * the laws it amends, not a step of this procedure, and it runs on its own
  * time scale — the EU strip shows the magnitude, the spine does not try to.
  * No station before „Entwurf" (spine decisions of September 2026); the
- * Bundesgesetzblatt station carries the follow-up downstream (§12.67), so
+ * Bundesgesetzblatt station carries the follow-up downstream, so
  * the spine reads origin → … → follow-up.
  *
  * Pure: the pages pass their facts, the tests read it without one.

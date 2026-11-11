@@ -173,7 +173,7 @@ RestartSec=3
 # out of memory" exit and a restart. MemorySwapMax=0 makes that true:
 # MemoryMax caps RAM, not swap, and until 27.10.2026 the app swapped instead
 # (512 MB peak, 385 MB in swap over 34 hours) with a 384 MB heap. Measured
-# under the production sequence (docs/architecture.md §10): heap peak
+# under the production sequence: heap peak
 # 217 MB, live ~137 MB. The ~440 MB left over are Caddy, sshd, journald and
 # apt.
 MemoryMax=512M

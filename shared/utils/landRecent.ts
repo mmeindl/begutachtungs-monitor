@@ -24,7 +24,7 @@ const stageOf = (d: LandConsultation): LandStage | null =>
  * THE BAR IS THE LISTS' BAR, minus one case. The Land's own record, a find
  * decided by text (`certainBy`), and the search's single candidate stand as
  * „Gesetz geworden" on every list; the single candidate held 57 of 57 times
- * over Oberösterreich's oracle (§12.44). Left out: a find among several
+ * over Oberösterreich's oracle. Left out: a find among several
  * candidates that no text has decided — the lists show it, the front door
  * does not pick among guesses. Holding the front door to certain finds only
  * would drop Burgenland outright, where no text decides yet, and Salzburg

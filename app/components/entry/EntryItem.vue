@@ -5,8 +5,7 @@ import type { EntryView } from '~/utils/entryView'
 import { keepDashWithPrecedingWord } from '~/utils/typography'
 
 /**
- * Eine Zeile, vier Zonen — every list entry on the site, in one anatomy
- * (docs/architecture.md §12.28).
+ * Eine Zeile, vier Zonen — every list entry on the site, in one anatomy.
  *
  * ZONES, left to right, in fixed order and fixed places:
  *
@@ -127,7 +126,7 @@ const externalHost = computed(() => {
   >
     <div class="flex min-w-0 flex-1 flex-col gap-1">
       <!-- ZONE 1 — the title, WHOLE, in both densities. No `truncate`, no
-           `line-clamp` (docs/architecture.md §12.28).
+           `line-clamp`.
 
            Measured 18.09.2026 over all 336 titles: median 50 characters, p90
            117, maximum 497. A truncated line therefore showed only 31 % of
@@ -208,7 +207,7 @@ const externalHost = computed(() => {
           <span>{{ entry.note }}</span>
         </template>
         <!-- What the draft does with EU law, in the words of the fact on its
-             page („Setzt EU-Recht um", §12.66): a property of the draft,
+             page („Setzt EU-Recht um"): a property of the draft,
              not a state of the procedure, so plain text like the note and
              not a chip — the box grammar reads bare text as „read this",
              and a coloured marker would claim a status. Before the debate
@@ -236,7 +235,7 @@ const externalHost = computed(() => {
              the event itself: the chip names the station and the kind label
              the document, one rule without an exception.
 
-             WHY A MARKER AND NOT A LIST (§12.21): the question "was ist seit
+             WHY A MARKER AND NOT A LIST: the question "was ist seit
              meinem letzten Besuch dazugekommen" is a real one, but its rows
              are the same rows the open list already holds — a second list
              would show them twice. The marker travels with the row instead,
@@ -258,7 +257,7 @@ const externalHost = computed(() => {
       </p>
 
       <!-- THE EVIDENCE, and only where the row has one: the full-text
-           search's Fundstelle (docs/architecture.md §12.31). Left empty the
+           search's Fundstelle. Left empty the
            slot renders nothing, so it changes none of the existing lists.
 
            It sits IN zone 1/2 and not in a fifth zone, because it is not a
@@ -273,8 +272,7 @@ const externalHost = computed(() => {
          was wrong: the most important thing about a row is whether I can
          still do something, not how many others already did. The number is
          the second question in every section, including the one that ranks by
-         it — there the ORDER carries the ranking (docs/architecture.md
-         §12.28).
+         it — there the ORDER carries the ranking.
 
          One arrangement for every card width, with no `sm:` branch — what
          stands on top must not depend on how wide the window is. The dense
@@ -295,8 +293,7 @@ const externalHost = computed(() => {
            against its own content and sits right inside the column. Equating
            the two was the same mistake twice — the box grew as wide as the
            Stellungnahmen line below it on the card, as wide as the 14 rem
-           column in the dense row, and a state became a grey bar
-           (docs/architecture.md §12.28). -->
+           column in the dense row, and a state became a grey bar. -->
       <div class="md:entry-col-state md:order-2 md:flex md:justify-end">
         <EntryState :state="entry.state" />
       </div>
@@ -333,7 +330,7 @@ const externalHost = computed(() => {
         </p>
         <!-- No digit, on purpose. These records carry no count and never
              will: Stellungnahmen go to the Ministerium, Parliament never
-             sees them, so nobody counts them (§12.16). „0" would read as
+             sees them, so nobody counts them. „0" would read as
              „niemanden interessiert" over two thirds of the corpus, and a
              dash is Statistik Austria's symbol for exactly zero.
 
@@ -352,7 +349,7 @@ const externalHost = computed(() => {
 
              `text-sm` like the number, not a step smaller: the cell stands in
              the same place for the same question, and a second type size in
-             ONE column is exactly the variance §12.28 is written against.
+             ONE column is exactly the variance this anatomy is written against.
              That no number stands here is already said by the colour
              (`ink-secondary` against ink) and by the missing digits. -->
         <p

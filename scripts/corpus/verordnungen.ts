@@ -1,6 +1,6 @@
 /**
  * What the RIS Begut corpus holds beyond the Ministerialentwürfe — the
- * evidence behind the Verordnungen facet (docs/architecture.md §12.16).
+ * evidence behind the Verordnungen facet.
  *
  * The monitor's list of open consultations comes from Parliament's list 81,
  * which knows Ministerialentwürfe only. RIS publishes the *whole*

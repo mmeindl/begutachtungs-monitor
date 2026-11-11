@@ -6,7 +6,7 @@
  * PURE MODULE — no Nuxt auto-imports, only relative imports,
  * so vitest can execute the module directly.
  *
- * Row indices: docs/architecture.md §5 / docs/api-exploration.md §1,
+ * Row indices: docs/api-exploration.md §1,
  * verified live on 2026-08-15 (list 142: 23 columns).
  */
 import type { StatementDocument, StatementMeta } from '../../../shared/types'
@@ -29,7 +29,7 @@ import { asNumber, asString } from './rowCells'
 // 15 citation ("476/SN-88/ME" on an ME, "277139/SN" on an RV) ·
 // 18 Bezug_Link — the same parent as one path · 19 TYP — upstream's
 // organisation ('I') / person ('P') flag
-// Deviation from §5 noted: [5] DATUM_SORT is ISO and preferred;
+// [5] DATUM_SORT is ISO and preferred;
 // [4] (dd.mm.yyyy) serves only as fallback.
 // The positions are asserted against the header at fetch time
 // (`listHeaders.ts`), so a reorder upstream fails loudly instead of turning

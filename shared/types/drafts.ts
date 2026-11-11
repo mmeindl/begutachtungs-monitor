@@ -44,8 +44,8 @@ export interface DraftSummary {
    */
   chain?: DraftChain
   /**
-   * What the draft's EU fact says, for the list's token and its filter
-   * (docs/architecture.md §12.66, Nachtrag 3): the marker where the Vorblatt
+   * What the draft's EU fact says, for the list's token and its filter: the
+   * marker where the Vorblatt
    * gives one, null where the draft was read and is no EU matter or says
    * nothing. ABSENT means the map was not consulted — never „kein
    * EU-Bezug"; the response says so (`euAvailable`).
@@ -57,14 +57,14 @@ export interface DraftSummary {
  * Where a draft stands now — the detail page's stations
  * (`app/utils/spine.ts`) minus `entwurf`, which is a document, not a
  * place the procedure can be at. One vocabulary for the spine and the list
- * filter (docs/architecture.md §12.26).
+ * filter.
  */
 export type DraftStation = 'begutachtung' | 'rv' | 'parlament' | 'bgbl'
 
 /**
  * Whether a Gesetzgebungsperiode's ME→RV links are in the archive at all,
  * and therefore whether absence of a Vorlage carries any meaning there
- * (`shared/utils/draftStations.ts`, docs/architecture.md §12.27). `unknown`
+ * (`shared/utils/draftStations.ts`). `unknown`
  * is treated as `unlinked` at every point where a claim would be made.
  */
 export type ChainCoverage = 'linked' | 'unlinked' | 'unknown'
@@ -72,8 +72,8 @@ export type ChainCoverage = 'linked' | 'unlinked' | 'unknown'
 /**
  * A Gesetzesbeschluss that Parliament's own record says was NOT promulgated
  * — the stage „Keine Kundmachung des Gesetzesbeschlusses …" that follows
- * the Bundesrat's Beschluss (`findNoPromulgation`, docs/architecture.md
- * §12.33, Nachtrag 03.10.2026). A fact read upstream, like everything in
+ * the Bundesrat's Beschluss (`findNoPromulgation`,
+ * 03.10.2026). A fact read upstream, like everything in
  * the chain: the cause is named only where that stage names it
  * (`formalfehler`), and the successor only where it names an Antrag — no
  * similarity, unlike `AntragPath`.
@@ -101,8 +101,7 @@ export interface DraftChain {
    * house status, so it costs no upstream request. It exists because a row
    * whose window is the zweite Runde has no Frist to date itself by — the
    * form closes with the end of the parliamentary procedure — and the one
-   * date it does have is this one
-   * (docs/architecture.md §12.28).
+   * date it does have is this one.
    */
   rvDate: string | null
   /**
@@ -123,7 +122,7 @@ export interface DraftChain {
    * period does not „liegen vor" any more — the house never decided it and
    * the period took it with it, which the detail page has called „Ohne
    * Beschluss – Gesetzgebungsperiode beendet" since 23.09.2026
-   * (docs/architecture.md §12.10) — and since 02.10.2026 decides by the same
+   * — and since 02.10.2026 decides by the same
    * function (`isVorlageGpEnded`, `EnactmentInfo.rvGpEnded`). Absent where no
    * Vorlage exists or the period runs: the list then says what it said before.
    */
@@ -169,7 +168,7 @@ export interface DraftChain {
    * `findBundesratDecisionDate`): the stage „Einlangen im Bundesrat" and the
    * stage „Beschluss im Bundesrat". Absent means not read, never „did not
    * happen". The window for Stellungnahmen runs through this phase — until
-   * the end of the parliamentary procedure (§12.26, Nachtrag 03.10.2026) —
+   * the end of the parliamentary procedure (03.10.2026) —
    * so the list dates an open window here by its arrival in the Bundesrat.
    */
   bundesratArrivedAt?: string | null
@@ -198,8 +197,8 @@ export interface DraftChain {
 /**
  * A Ministerialentwurf whose Gesetzestext came to the Nationalrat as an
  * Initiativantrag instead of a Regierungsvorlage — matched by wording, since
- * no pointer in the data connects the two (docs/architecture.md §12.10,
- * `scripts/corpus/meAntragJoin.ts`).
+ * no pointer in the data connects the two
+ * (`scripts/corpus/meAntragJoin.ts`).
  */
 export interface AntragPath {
   antrag: {
@@ -258,7 +257,7 @@ export interface Handoff {
 
 /**
  * Another Ministerialentwurf whose title names the same laws — equal
- * normalised title tokens (docs/architecture.md §12.10), nearest by
+ * normalised title tokens, nearest by
  * arrival. The claim the UI may make is exactly that, "gleichlautend", never
  * "the same text": "Tierschutzgesetz, Änderung" recurs every few years.
  */
@@ -302,7 +301,6 @@ export interface HouseVote {
   passed: boolean
 }
 
-/** "Was wurde daraus" — filled once a Regierungsvorlage exists */
 /** The plenary's adopted Abänderungsanträge on a Vorlage
  *  (`parliament/detailJson.ts` findPlenaryAmendments). */
 export interface PlenaryAmendments {
@@ -314,6 +312,7 @@ export interface PlenaryAmendments {
   amendments: TraceLink[]
 }
 
+/** "Was wurde daraus" — filled once a Regierungsvorlage exists */
 export interface EnactmentInfo {
   /** e.g. "2238 d.B." */
   rvCitation: string
@@ -347,7 +346,7 @@ export interface EnactmentInfo {
    * list answer instead.
    *
    * It exists because the mirror belongs to one Vorlage and the BGBl number
-   * above to another whenever a draft produced several (ME→RV is 1:n, §13.4).
+   * above to another whenever a draft produced several (ME→RV is 1:n).
    * XXVIII/26/ME mirrors 130 d.B. and cites 129 d.B.'s Kundmachung, and the
    * page read „Text unverändert beschlossen" over a text the Ausschuss and
    * the Plenum had both changed.
@@ -387,7 +386,7 @@ export interface EnactmentInfo {
    * carry only upstream's prose vocabulary instead of the club lists
    * (`parseVote`). Read from the Vorlage's own record, like the four fields
    * above it, so the vote and the Kundmachung beside it are about the same
-   * Vorlage (ME→RV is 1:n, §13.4).
+   * Vorlage (ME→RV is 1:n).
    */
   vote: HouseVote | null
   /**
@@ -397,7 +396,7 @@ export interface EnactmentInfo {
    * 4) until its Beschluss, "0" once the procedure has ended (status 5). The
    * second window for input; false when the RV record could not be read.
    * Corrected 03.10.2026 — this said „until the Nationalrat voted", which
-   * Parliament's own description of the window does not support (§12.26).
+   * Parliament's own description of the window does not support.
    */
   filingOpen: boolean
   /**
@@ -409,7 +408,7 @@ export interface EnactmentInfo {
    * Every statement the page makes about the Vorlage reads THIS, not
    * `DraftDetail.gpEnded`: „Ohne Beschluss – Gesetzgebungsperiode beendet",
    * the Parlament row's „GP beendet", the Kundmachung that will not come
-   * (docs/architecture.md §12.14, 02.10.2026). The draft's period stays the
+   * (02.10.2026). The draft's period stays the
    * boundary only where there is no Vorlage.
    */
   rvGpEnded: boolean
@@ -433,7 +432,7 @@ export interface EnactmentInfo {
    * it: its page and — from ITS record — its Kundmachung. Null without a
    * named successor; the two BGBl fields null while the Antrag links none or
    * its record could not be read. 80 d.B. → 416/A → BGBl. I Nr. 65/2025
-   * (§12.33, Nachtrag 03.10.2026).
+   * (03.10.2026).
    */
   successor: { citation: string; url: string; bgblNumber: string | null; bgblRisUrl: string | null } | null
 }
@@ -484,8 +483,8 @@ export interface DraftDetail extends Omit<DraftSummary, 'statementCount'> {
       in shared/utils/gp.ts (before GP XX). */
   gpEndedOn: string | null
   /** Whether this GP's ME→RV links exist at all — the gate on every "no
-      Regierungsvorlage" statement this page would otherwise make
-      (docs/architecture.md §12.27). Enrichment, so `unknown` is the
+      Regierungsvorlage" statement this page would otherwise make.
+      Enrichment, so `unknown` is the
       answer whenever the station map was not there to ask. */
   chainCoverage: ChainCoverage
   /** Earlier same-title draft that produced NO Regierungsvorlage — the
@@ -510,12 +509,11 @@ export interface DraftsResponse {
   gp: string
   /**
    * The period whose still-running Fristen were read along, or null — set
-   * only when the caller named NO period and such rows survived the filters
-   * (docs/architecture.md §12.36).
+   * only when the caller named NO period and such rows survived the filters.
    *
    * The page needs it because the period selector shows the running period
    * while these rows belong to the one before: a list that quietly mixes two
-   * periods under one label is exactly what §12.21 refuses. It names them
+   * periods under one label is exactly what this product refuses. It names them
    * instead.
    */
   carriedOverFrom: string | null
@@ -529,7 +527,7 @@ export interface DraftsResponse {
    */
   stationsAvailable: boolean
   /**
-   * Whether the EU map could be read for this period (§12.66, Nachtrag 3).
+   * Whether the EU map could be read for this period.
    * False means the rows carry no `eu` and an `eu` filter was NOT applied —
    * the list says so instead of filtering silently.
    */
@@ -539,7 +537,7 @@ export interface DraftsResponse {
    * means the rows deliberately carry no `chain` although the map was read
    * fine: not one draft of the period links to a Vorlage, so a station on
    * every row would have read as "all of them shelved" — a claim list 101
-   * contradicts (docs/architecture.md §12.27).
+   * contradicts.
    */
   chainCoverage: ChainCoverage
 }

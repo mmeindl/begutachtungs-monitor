@@ -1,6 +1,6 @@
 /**
  * „Hat sich die Begründung geändert?" — the comparison of the Erläuterungen
- * between draft and Regierungsvorlage (docs/architecture.md §12.10b).
+ * between draft and Regierungsvorlage.
  *
  * PURE MODULE — relative imports only, so vitest runs it directly. The Nuxt
  * half is `explanations/reasoningDiffService.ts`.
@@ -39,7 +39,7 @@
  * draft one of whose documents titles no passage by Ziffer at all, and an
  * inserted or removed instruction, which has no Ziffer on the other side to
  * be held against: the § join as before, unchanged — below. Measured old
- * against new over GP XXVI–XXVIII (`aenderungsrate.ts --ziffer`, §12.10b):
+ * against new over GP XXVI–XXVIII (`aenderungsrate.ts --ziffer`):
  * units with a Begründung shown, compared or not, 2.036 → 2.461, 4.864 →
  * 5.772, 2.272 → 2.455.
  *
@@ -77,7 +77,7 @@
  *
  * **Unless the Artikel says which (27.09.2026).** Measured, the rule was not
  * a margin: 14,7 % of the comparable §§ of GP XXVII (413 of 2.801), 22,4 % of
- * GP XXVI (§12.10b). Where both documents set the passage under an Artikel
+ * GP XXVI. Where both documents set the passage under an Artikel
  * (`HtmlPassage.article`) and the unit carries its Artikel number on each
  * side (`articleKey`, `fromArticleKey` — renumbered between draft and
  * Vorlage, 18/ME: 3 → 6), the § is compared under that pair; measured, 292
@@ -869,8 +869,7 @@ export interface ReasoningComparisonAtZiffer extends ReasoningComparison {
 
 /**
  * The comparison the service ships (01.10.2026) — see the file header for
- * the rule, and docs/architecture.md §12.10b for the measurement behind
- * each branch:
+ * the rule:
  *
  *  1. A Novellierungsanordnung present on both sides, where both documents
  *     title passages by Ziffer: on each side the passages of its Ziffer —
@@ -902,11 +901,6 @@ export function compareReasoning(units: readonly LawDiffUnit[], before: HtmlExpl
   const guarded = new Map<string, { unit: string; side: Side; heading: string }>()
   const scopes: { unit: string; before: string[]; after: string[] }[] = []
   /**
-   * The first of the unit's keys that finds passages that fit its §§
-   * (`fitsParagraphs`). A key two units share (a duplicate „Z 3" in one
-   * Artikel) is refused: its passage would be the other's too.
-   */
-  /**
    * The passages under one key that can be this unit's. One passage is taken
    * as it is: its § list is the ressort's shorthand for a run of Ziffern
    * („Zu Z 54 bis 58 (§ 40 Abs. 1, 3 bis 5 und § 48 Abs. 9)" explains Z 54 on
@@ -931,6 +925,11 @@ export function compareReasoning(units: readonly LawDiffUnit[], before: HtmlExpl
   }
   /** `diffUnitKey|side` of every unit a side found through the other document's numbering (`foreignNumbered`). */
   const viaForeign = new Set<string>()
+  /**
+   * The first of the unit's keys that finds passages that fit its §§
+   * (`fitsParagraphs`). A key two units share (a duplicate „Z 3" in one
+   * Artikel) is refused: its passage would be the other's too.
+   */
   const lookup = (side: ZifferSide, unit: LawDiffUnit): number[] => {
     for (const key of sideKeys(unit, side.side, side.mode, ambiguous, read)) {
       if ((side.units.get(key)?.length ?? 0) !== 1) continue

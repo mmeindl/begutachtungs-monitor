@@ -88,7 +88,7 @@ export interface RisMapResponse {
 }
 
 // ---------------------------------------------------------------------------
-// Begutachtungen without a parliamentary Gegenstand (docs/architecture.md §12.16)
+// Begutachtungen without a parliamentary Gegenstand
 // ---------------------------------------------------------------------------
 
 /**
@@ -141,7 +141,7 @@ export interface RisConsultation {
   /** The record's human-readable page on ris.bka.gv.at. */
   risUrl: string
   /**
-   * The outcome: kundgemacht, and where (docs/architecture.md §12.32).
+   * The outcome: kundgemacht, and where.
    *
    * On the BASE record and not only on the detail one, because the list needs
    * it just as much — the „Stand" column said „Begutachtung abgeschlossen" on
@@ -190,7 +190,7 @@ export interface RisConsultationDetail extends RisConsultation {
    * Anhänge — and now and then a Textgegenüberstellung or Erläuterungen under
    * a name our rules do not know („SAG_TGÜ", „EB"). Measured 22.09.2026: 16
    * of 41 text documents of the running records. Only the full-text search
-   * reads them (docs/architecture.md §12.31).
+   * reads them.
    */
   otherDocuments: RisNamedDocument[]
 }
@@ -223,12 +223,11 @@ export interface RisConsultationsResponse {
   euAvailable: boolean
   /**
    * The period whose still-running Fristen were read along, or null — set
-   * only when the caller named NO period and such rows survived the filters
-   * (docs/architecture.md §12.36).
+   * only when the caller named NO period and such rows survived the filters.
    *
    * The page needs it because the period selector shows the running period
    * while these rows belong to the one before: a list that quietly mixes two
-   * periods under one label is exactly what §12.21 refuses. It names them
+   * periods under one label is exactly what this product refuses. It names them
    * instead.
    */
   carriedOverFrom: string | null

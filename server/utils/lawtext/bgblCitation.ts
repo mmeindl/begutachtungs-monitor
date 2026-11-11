@@ -134,25 +134,13 @@ function organParts(organ: string): { series: string; teil: string | null } {
   return { series: tokens.join(''), teil }
 }
 
-/**
- * Two legislative texts citing the same Stammnorm, where one dropped the Teil
- * or added one (01.10.2026). Not for the RIS join — there `sameBgbl` holds,
- * because RIS always writes the Teil and „BGBl. I" against „BGBl. III" is two
- * laws. Between a draft and its Vorlage the Teil is typed by hand: of the
- * 1.620 Artikel pairs of GP XXVI–XXVIII where both clauses cite a Stammnorm,
- * 26 differ in nothing but a Teil one side left out or added — „BGBl. Nr.
- * 36/2004" for the EU-JZG (XXVI 162/ME), „BGBl. Nr. 53/2016" for the
- * Familienzeitbonusgesetz, „BGBl. I Nr. 839/1992" for the Passgesetz, which
- * predates the Teile. A missing Teil is therefore no contradiction; two
- * different Teile still are.
- */
 /** The year the Bundesgesetzblatt was divided into Teile I–III. */
 const TEILE_SINCE = 1997
 
 /**
- * A citation from a draft against the Stammnorm RIS stores (03.10.2026,
- * §12.41) — the RIS join's rule, stricter than `sameStammnormCited` and
- * looser than `sameBgbl`.
+ * A citation from a draft against the Stammnorm RIS stores (03.10.2026)
+ * — the RIS join's rule, stricter than `sameStammnormCited` and looser than
+ * `sameBgbl`.
  *
  * RIS writes the Teil exactly; a ministry does not. 18 laws of GP XXVIII
  * failed to resolve on nothing else: „BGBl. I Nr. 532/1993" for the
@@ -175,6 +163,18 @@ export function sameRisStammnorm(ris: BgblCitation, cited: BgblCitation): boolea
   return r.teil === teil
 }
 
+/**
+ * Two legislative texts citing the same Stammnorm, where one dropped the Teil
+ * or added one (01.10.2026). Not for the RIS join — there `sameBgbl` holds,
+ * because RIS always writes the Teil and „BGBl. I" against „BGBl. III" is two
+ * laws. Between a draft and its Vorlage the Teil is typed by hand: of the
+ * 1.620 Artikel pairs of GP XXVI–XXVIII where both clauses cite a Stammnorm,
+ * 26 differ in nothing but a Teil one side left out or added — „BGBl. Nr.
+ * 36/2004" for the EU-JZG (XXVI 162/ME), „BGBl. Nr. 53/2016" for the
+ * Familienzeitbonusgesetz, „BGBl. I Nr. 839/1992" for the Passgesetz, which
+ * predates the Teile. A missing Teil is therefore no contradiction; two
+ * different Teile still are.
+ */
 export function sameStammnormCited(a: BgblCitation, b: BgblCitation): boolean {
   if (a.nummer !== b.nummer) return false
   const x = organParts(a.organ)

@@ -654,8 +654,8 @@ console.log(`    Adressierung der Anordnungen: ${addressed} von ${units} nennen 
 // Inhaltsverzeichnis, a Titel and an Abschnitt heading have no § to name and
 // belong in the general bag whatever the grammar learns.
 console.log(`      davon ohne Paragraph zu Recht (Inhaltsverzeichnis, Titel, Abschnitt, ganzer Text): ${rightly}; ungelesen: ${units - addressed - rightly}`)
-// What the left check never looks at. Measured and left out (§12.13,
-// 11.09.2026), so the numbers have to stand where the decision can be
+// What the left check never looks at. Measured and left out
+// (11.09.2026), so the numbers have to stand where the decision can be
 // re-checked: `unchangedBelow` is what a rule over these rows would withhold,
 // and the second number what it would cost — a § the gate confirms today loses
 // its whole word diff, not just the unchanged line.
@@ -703,8 +703,8 @@ if (calibrate) {
 // report above. In addition, not instead: the prose report is what stands in
 // the CI log when the alarm fires and somebody wants to know why.
 //
-// The verdicts are not here but in `lib/annexReport.ts` — the same lesson
-// §12.13 already draws twice: logic in a CLI script is logic no test reaches.
+// The verdicts are not here but in `lib/annexReport.ts`: logic in a CLI
+// script is logic no test reaches.
 // All that happens here is the pouring over.
 const jsonPath = argAssigned('json') ?? null
 if (jsonPath) {

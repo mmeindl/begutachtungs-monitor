@@ -9,8 +9,8 @@ pulled from upstream; a document recorded again later shows up as a commit, not
 as a silent overwrite.
 
 The monitor draws on two upstreams and their terms are not the same, so the
-per-dataset split the site prints on `/impressum` holds here too
-(`docs/architecture.md` §13.1). `data/ris-me-map-gp27.json` is listed with them
+per-dataset split the site prints on `/impressum` holds here too.
+`data/ris-me-map-gp27.json` is listed with them
 because it is a test artefact in everything but its location:
 `tests/risJoin.test.ts` measures the join rule against it.
 
@@ -29,14 +29,14 @@ because it is a test artefact in everything but its location:
 | `../../data/ris-me-map-gp27.json` | The RIS↔ME join map for GP XXVII, 350 rows with status, tier, RIS id, score and date offsets — the corpus ground truth of `tests/risJoin.test.ts`, regenerated with `REGEN_RIS_MAP=1 pnpm vitest run tests/risJoin.test.ts` | Derived from `me-gp27.json` and `ris-begut-gp27.json` | Parliament half: none — see below | 2026-09-07 |
 | `eu/tirol-588-durchfuehrung.txt` | Thirteen lines of the text layer of a Tirol draft law (Tiroler Aufenthaltsabgabegesetz 2003, Novelle, Begutachtung 2026, Geschäftszahl 588/2026): the enacting clause, the amending clause, and the instruction adding § 13b „Durchführung von Unionsrecht" — the rest of the draft left out | Land Tirol, Landtag document portal — `https://lte.tirol.gv.at/public/ggs/risLink.xhtml?gn=588&gj=2026#dok=Begutachtungsentwurf` | No licence stated; the text of a draft law, quoted in the extent the test needs | 2026-11-04 |
 | `eu/lrkons-wien-2006-123.json` | One answer of RIS's full-text search over Wien's consolidated Landesrecht for „2006/123/EG“ as of 2026-11-04, trimmed to its first two of six hits (the `Indizes` dropped) — the shape `landesrechtHits` reads | RIS OGD API — `GET https://data.bka.gv.at/ris/api/v2.6/Landesrecht?Applikation=LrKons&Bundesland_SucheInWien=true&Suchworte="2006/123/EG"&Fassung.FassungVom=2026-11-04&DokumenteProSeite=OneHundred` | CC BY 4.0 | 2026-11-04 |
-| `laender/lgbl-oracle-ooe-2026-10-22.json` | The oracle of `matchLgbl` (`docs/architecture.md` §12.43): the 83 Oberösterreich Gesetzesentwürfe whose Landtag record names their LGBl — id, title, dates, the LGBl number — and the Land's 300 Landes(verfassungs)gesetze in RIS — number, type, title, date | Drafts: Land Oberösterreich, Landtag pages — `https://www2.land-oberoesterreich.gv.at/internetltgbeilagen/…`; LGBl: RIS OGD API — `GET https://data.bka.gv.at/ris/api/v2.6/Landesrecht?Applikation=LgblAuth&Bundesland_SucheInOberoesterreich=true` | Drafts: no licence stated, titles and numbers only; LGBl: CC BY 4.0 | 2026-10-22 |
+| `laender/lgbl-oracle-ooe-2026-10-22.json` | The oracle of `matchLgbl`: the 83 Oberösterreich Gesetzesentwürfe whose Landtag record names their LGBl — id, title, dates, the LGBl number — and the Land's 300 Landes(verfassungs)gesetze in RIS — number, type, title, date | Drafts: Land Oberösterreich, Landtag pages — `https://www2.land-oberoesterreich.gv.at/internetltgbeilagen/…`; LGBl: RIS OGD API — `GET https://data.bka.gv.at/ris/api/v2.6/Landesrecht?Applikation=LgblAuth&Bundesland_SucheInOberoesterreich=true` | Drafts: no licence stated, titles and numbers only; LGBl: CC BY 4.0 | 2026-10-22 |
 
 **The last three rows.** They hold factual metadata of the Begutachtungsverfahren
 itself — citation, title, ministry, dates — and for that dataset Parliament
 grants no open-data licence: it excludes the Begutachtungsverfahren from reuse
 as open data expressly, and no licensed dataset covers Ministerialentwürfe. On
-what basis such metadata may be reused is the open question of
-`docs/architecture.md` §13.1, and it is not settled here. They are kept because
+what basis such metadata may be reused is an open question
+(`docs/decisions.md`, Open questions), and it is not settled here. They are kept because
 the join rule's corpus test needs a fixed population to measure against: a rule
 whose ground truth moves is a rule nobody can re-check.
 

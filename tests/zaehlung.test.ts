@@ -19,7 +19,7 @@ import {
 } from '../server/utils/zaehlung/tag'
 
 /**
- * The page-view count (docs/architecture.md §12.65). What costs the most if
+ * The page-view count. What costs the most if
  * it breaks: something personal reaching the file — a referrer's path, an
  * IP-literal host — or the prewarm's pages inflating the count. The second
  * is the plugin's job and is checked on a production build; these hold the

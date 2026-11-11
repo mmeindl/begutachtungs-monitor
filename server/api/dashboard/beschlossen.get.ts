@@ -1,9 +1,8 @@
 /**
  * GET /api/dashboard/beschlossen → DashboardDecided: the drafts of the
  * running period whose Vorlage the Nationalrat has decided and the
- * Bundesgesetzblatt has not yet carried — „Im Nationalrat beschlossen"
- * (docs/architecture.md §12.21, Nachtrag 03.10.2026). Which rows, in which
- * order: `utils/parliament/decidedOrder.ts`.
+ * Bundesgesetzblatt has not yet carried — „Im Nationalrat beschlossen".
+ * Which rows, in which order: `utils/parliament/decidedOrder.ts`.
  *
  * NO UPSTREAM REQUEST OF ITS OWN. The rows are list 81, the dates are the
  * station map's (`DraftChain.decidedAt`, read from the Vorlage's `phase`

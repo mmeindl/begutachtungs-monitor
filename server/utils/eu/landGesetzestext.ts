@@ -1,6 +1,5 @@
 /**
- * WHICH EU act a Land's draft names in its own law text (docs/architecture.md
- * §12.66, Nachtrag 2 of 04.11.2026).
+ * WHICH EU act a Land's draft names in its own law text (04.11.2026).
  *
  * PURE MODULE — a PDF's page texts in, acts out; no Nitro globals, relative
  * imports only. The service (`landEuService.ts`) and the corpus script
@@ -28,7 +27,7 @@
  *     of its references; a quote that introduces its list as references
  *     („Dieses Gesetz verweist auf folgende Rechtsakte …") is skipped, and a
  *     bare Ziffer replacing one in such a list is the residual risk, read
- *     over the corpus (§12.66, Nachtrag 2).
+ *     over the corpus.
  *
  * ONLY THE LAW TEXT. Oberösterreich prints its Erläuterungen before the law
  * in the same PDF, Salzburg, Burgenland and Wien after it — Burgenland and

@@ -64,7 +64,7 @@ const RIS_JOIN_BUDGET_MS = 2_000
 /**
  * Same bargain for the period's station map, which the detail page needs for
  * one question only: may this page say „bisher keine Regierungsvorlage" at
- * all (§12.27)? Per draft the question is undecidable — an archive gap and a
+ * all? Per draft the question is undecidable — an archive gap and a
  * shelved draft leave the identical two-entry stage record — so the answer
  * has to come from the period.
  *
@@ -87,7 +87,7 @@ const BGBL_DATE_BUDGET_MS = 2_000
 /**
  * The Kundmachung of a Vorlage whose record at Parliament carries no link —
  * from RIS, by the exact key of period and Vorlage (`findBgblIForVorlage`,
- * docs/architecture.md §12.33, Nachtrag 03.10.2026) — or null.
+ * 03.10.2026) — or null.
  *
  * Asked only where a Kundmachung can exist: a „Beschluss im Nationalrat" in
  * the record, or a status that means one (`5`, `4`). Enrichment like the
@@ -168,7 +168,7 @@ export async function getDraftOutcome(
  * ALL OF IT FROM THE SAME VORLAGE. The BGBl number was always read from the
  * last Vorlage in the stage list; what parliament did with the text was read
  * from the draft's own mirror of a document list — which belongs to one
- * Vorlage among several whenever a draft produced more than one (§13.4). On
+ * Vorlage among several whenever a draft produced more than one. On
  * XXVIII/26/ME those are two different Vorlagen, and the page put one's
  * silence under the other's Kundmachung: „Text unverändert beschlossen"
  * about a text the Ausschuss and the Plenum had both changed. Five fields,
@@ -273,7 +273,7 @@ async function enactmentOf(
 }
 
 /**
- * Detail assembly (docs/architecture.md §5):
+ * Detail assembly:
  * list-81 row (404 if absent) + detail JSON + statements summary +
  * RV enrichment (latest RV; BGBl via Abfrage=BgblAuth; RV errors → nulls).
  *
@@ -303,7 +303,7 @@ export async function getDraftDetail(
     // would be a cycle.)
     withinBudget(getRisMapForGp(gp), RIS_JOIN_BUDGET_MS),
     // Whether the period links its drafts to Vorlagen at all — the gate on
-    // every "no Regierungsvorlage" sentence below (§12.27). Auto-imported
+    // every "no Regierungsvorlage" sentence below. Auto-imported
     // from ./stationMap for the same reason as the RIS map above: an
     // explicit import would be a cycle.
     withinBudget(getStationMapForGp(gp), STATION_MAP_BUDGET_MS),
@@ -344,7 +344,7 @@ export async function getDraftDetail(
 
 /**
  * Same-title drafts in this, the previous and — once this GP is over — the
- * next Gesetzgebungsperiode (docs/architecture.md §12.10). Pure composition
+ * next Gesetzgebungsperiode. Pure composition
  * over the list-81 leaf caches: the extra lists cost one upstream call per
  * GP per TTL, the adjacent GPs are where re-submissions happen (310/ME
  * XXVII → 32/ME XXVIII after the change of government), and further back

@@ -2,10 +2,9 @@
  * The cached leaves of the Parliament API: the ME list (81), the Vorlagen
  * list (101) and the detail JSON of one Gegenstand.
  *
- * The five cache rules these leaves follow — cache leaves only, `swr: false`
+ * The five cache rules these leaves follow: cache leaves only, `swr: false`
  * explicitly, one fact one source, stale served as stale, two layers by
- * provenance — are in `docs/architecture.md` §5, each with the failure that
- * forced it. `cache/base.ts` says which layer a value belongs in,
+ * provenance. `cache/base.ts` says which layer a value belongs in,
  * `cache/ttl.ts` for how long, `lastgood.ts` holds what rule 4 falls back to.
  */
 import type { DraftSummary } from '#shared/types'

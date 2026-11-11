@@ -1,6 +1,5 @@
 /**
- * GET /api/statistik — the public page-view counts (docs/architecture.md
- * §12.65). Sums per day, per kind of page and per referring host; nothing in
+ * GET /api/statistik — the public page-view counts. Sums per day, per kind of page and per referring host; nothing in
  * it can name or single out a visitor.
  */
 

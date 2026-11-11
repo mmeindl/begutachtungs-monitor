@@ -1,6 +1,6 @@
 /**
  * The Vorblatt/WFA of a draft: WHETHER it implements EU law, in the WFA
- * tool's own sentence (docs/architecture.md §12.66).
+ * tool's own sentence.
  *
  * PURE MODULE — lines of text in, a class out; no Nitro globals, relative
  * imports only. The service reads the PDF (`euService.ts`), the corpus
@@ -108,6 +108,8 @@ export const VORBLATT_CLASS_RANK: readonly VorblattClass[] = [
 /** The classes in which the Vorblatt says the draft implements or flanks EU law. */
 export const VORBLATT_EU_YES: ReadonlySet<VorblattClass> = new Set(['umsetzung', 'flankierend-rl', 'flankierend-vo', 'nur-zwingend', 'ueber-umsetzung', 'frei-umsetzung'])
 
+/** An EU act as the subject or object of „umgesetzt" — not Austria's OIB-Richtlinien, which are national. */
+const FREE_ACT = String.raw`(?:(?<!OIB-)\bRichtlinien?|\bEU-[a-zäöüß]*richtlinien?|\bRechtsakte?|\bunionsrechtlichen?\s+Vorschriften)\b`
 /**
  * What the ressorts write instead of the tool's sentence — measured in the
  * first run (04.11.2026): „Das Vorhaben dient der Umsetzung der Richtlinie
@@ -128,8 +130,6 @@ export const VORBLATT_EU_YES: ReadonlySet<VorblattClass> = new Set(['umsetzung',
  * („Folgende unionsrechtliche Vorschriften werden … umgesetzt: - Richtlinie
  * …").
  */
-/** An EU act as the subject or object of „umgesetzt" — not Austria's OIB-Richtlinien, which are national. */
-const FREE_ACT = String.raw`(?:(?<!OIB-)\bRichtlinien?|\bEU-[a-zäöüß]*richtlinien?|\bRechtsakte?|\bunionsrechtlichen?\s+Vorschriften)\b`
 const FREE_YES = new RegExp([
   // „dient der Umsetzung folgender Rechtsakte der Europäischen Union: - Richtlinie …" (bgld-c372)
   String.raw`\bUmsetzung\s+(?:einer|der|von|zweier|mehrerer|folgender)\s+[^.]{0,40}?(?:Richtlinie|Richtlinien)\b`,

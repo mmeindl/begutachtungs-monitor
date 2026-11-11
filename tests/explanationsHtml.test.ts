@@ -35,7 +35,7 @@ describe('parseExplanationsHtml', () => {
   })
 
   // „B e s o n d e r e r  T e i l" — letterspaced headings are the rule in
-  // these documents (§12.29).
+  // these documents.
   it('recognises a letter-spaced part heading', () => {
     const parsed = parseExplanationsHtml(doc('B e s o n d e r e r  T e i l', 'Zu § 2:', 'Text.'))
     expect(parsed.general).toEqual([])
@@ -69,7 +69,7 @@ describe('passagesByParagraph', () => {
    * The enumeration, read since 22.09.2026: „Zu §§ 12 und 13" explains both
    * Paragraphen in one breath, and before that only the first one got the
    * passage. Shared code with the RIS path, which is why it was measured
-   * there (`pnpm corpus:erlaeuterungen -- --join`, §12.30).
+   * there (`pnpm corpus:erlaeuterungen -- --join`).
    */
   it('reads an enumeration as well as a range', () => {
     const byPara = passagesByParagraph(parseExplanationsHtml(doc('Besonderer Teil', 'Zu §§ 12 und 13:', 'Gemeinsame Begründung.')))

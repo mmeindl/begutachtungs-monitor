@@ -1,5 +1,5 @@
 /**
- * Which page a counted request belongs to (docs/architecture.md §12.65).
+ * Which page a counted request belongs to.
  *
  * The classes follow `app/pages/**` and `server/routes/**`, one per kind of
  * page rather than one per address: the count says which parts of the site

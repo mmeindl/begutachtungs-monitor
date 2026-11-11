@@ -1,8 +1,7 @@
 /**
  * The Bund's side of a Grundsatzgesetz a Land carries out: its
  * Bundesgesetzblatt record, the Frist clause in its own words, and whether
- * a Ministerialentwurf carried its Grundsatz content (docs/architecture.md
- * §12.67).
+ * a Ministerialentwurf carried its Grundsatz content.
  *
  * PURE MODULE — a RIS record, a document's HTML or a draft's text in;
  * relative imports only. The service around it is
@@ -84,7 +83,6 @@ export function vorlageDe(act: Pick<BgblAct, 'gp' | 'regierungsvorlagen' | 'init
   return all.length ? `${all.join(', ')}${gp}` : null
 }
 
-/** The HTML as plain text. */
 function plainText(html: string): string {
   return html
     .replace(/<[^>]+>/g, ' ')

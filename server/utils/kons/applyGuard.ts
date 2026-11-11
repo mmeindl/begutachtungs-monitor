@@ -1,5 +1,5 @@
 /**
- * Draft-time plausibility checks on an engine result (docs/architecture.md §12.12).
+ * Draft-time plausibility checks on an engine result.
  *
  * PURE MODULE — relative imports only, so vitest runs it directly.
  *

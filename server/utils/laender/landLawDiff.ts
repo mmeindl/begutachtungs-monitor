@@ -2,8 +2,7 @@
  * A Land's draft against its Kundmachung, § by § (22.10.2026): the draft
  * from the Land's PDF (`draftPdfLaw`), the Kundmachung from the
  * Landesgesetzblatt's RIS XML, and the comparison the Bund's drafts use
- * (`diffLawUnits`). Measured before it was built — docs/architecture.md
- * §12.44.
+ * (`diffLawUnits`).
  *
  * PURE MODULE — the PDF's pages and the XML come in as text.
  *
@@ -78,7 +77,6 @@ function unquoted(units: LawUnit[]): LawUnit[] {
   }))
 }
 
-/** The Kundmachung's units, from the Landesgesetzblatt's RIS XML. */
 /**
  * A NEW law sets „§ 1" inside its § heading („§ 1<br />Ziel und
  * Anwendungsbereich"); the federal XML carries it as `<gldsym>` in the first
@@ -92,6 +90,7 @@ const SIGNATURE_TABLE_RE = /<table\b(?:(?!<\/table>)[\s\S])*?(?:Präsident|Lande
 
 const DIVISION_HEAD_RE = /<ueberschrift typ="(?:g1|g1min|g2|art)"[^>]*>(?!\s*(?:<[^>]+>\s*)*Artikel\b)(?:(?!<\/ueberschrift>)[\s\S])*?\b(?:Abschnitt|Unterabschnitt|Teil|Hauptstück|ABSCHNITT|TEIL|HAUPTSTÜCK)\b(?:(?!<\/ueberschrift>)[\s\S])*<\/ueberschrift>/g
 
+/** The Kundmachung's units, from the Landesgesetzblatt's RIS XML. */
 export function lgblUnits(xml: string): LawUnit[] {
   // Per Artikel, not per document: a package can enact a law in Artikel I
   // and amend another in Artikel II (16087, 16099, 16022 read one to two
@@ -125,7 +124,7 @@ export function lgblUnits(xml: string): LawUnit[] {
     .replace(/<ueberschrift typ="art"/g, '<ueberschrift typ="g1"')
     // The signatures under the law („Der Erste Präsident des Oö. Landtags: /
     // Der Landeshauptmann:"), a table the parser would append to the last
-    // unit — seen in the committee-report cross-check (§12.44).
+    // unit.
     .replace(SIGNATURE_TABLE_RE, '')
     // A sub-instruction („2.2. Im Abs 2 lautet …", Salzburg) is part of its
     // instruction: as plain text it joins it, as the PDF side reads it.
@@ -190,8 +189,7 @@ const PAIR_MARK_RE = / artikelpaar\d+$/
 
 /**
  * The comparison, with the engine's pass that pairs an instruction reworded
- * at the same place (`diffAtSamePlace`; first measured here, 16101, §12.44
- * Nachtrag 3).
+ * at the same place (`diffAtSamePlace`; first measured here, 16101).
  */
 export function diffLandDraft(draftAsRead: LawUnit[], kundmachungAsRead: LawUnit[]): LawDiffUnit[] {
   const draft = romanArticles(draftAsRead)

@@ -10,7 +10,7 @@
  * It matters more here than there. On a Ministerialentwurf the Frist is one
  * of several ways to act — parliament's form, the Stellungnahmen list, the
  * later stations. On these pages the Frist plus the Begleitschreiben is the
- * whole of it (docs/architecture.md §12.16), so the calendar file is half
+ * whole of it, so the calendar file is half
  * the page's actionable surface, not a convenience.
  */
 import { readRisId } from '../../../utils/http/params'

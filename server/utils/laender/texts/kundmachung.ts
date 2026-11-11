@@ -1,7 +1,6 @@
 /**
  * Which Landesgesetzblatt is a draft's own, where the Land does not say and
- * only our title search names one (Salzburg; docs/architecture.md
- * §12.47–50). Decided by text, once per draft, and held a week: the list
+ * only our title search names one (Salzburg). Decided by text, once per draft, and held a week: the list
  * reads the title search, the draft's page reads this.
  *
  *  - A Gesetz: the candidates are the title search's find and every
@@ -153,7 +152,7 @@ async function resolve(land: LandCode, draft: LandConsultation, reads: Reads): P
  * Whose finds are decided by text, and of which kind. Salzburg names no
  * Kundmachung at all; Oberösterreich's Landtag names every Gesetz's, so only
  * its Verordnungen rest on the search — decided by the method measured on
- * Salzburg's 371 (§12.50), which reads the texts and nothing of the Land.
+ * Salzburg's 371, which reads the texts and nothing of the Land.
  */
 export const RESOLVED: Partial<Record<LandCode, readonly LandConsultation['kind'][]>> = { sbg: ['gesetz', 'verordnung'], ooe: ['verordnung'] }
 

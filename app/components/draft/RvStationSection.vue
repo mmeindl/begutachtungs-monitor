@@ -210,8 +210,7 @@ const credit = computed(() => {
         </div>
       </div>
       <!-- The accountability core: what became of the draft, § by §, both
-           ways — changed and unchanged alike (framing rule,
-           docs/architecture.md §4). Only
+           ways — changed and unchanged alike (framing rule). Only
            once a Regierungsvorlage exists; before that there is nothing to
            hold the draft against. Before the Vorlage's own Stellungnahmen
            since 01.10.2026: the comparison is what led into this station,

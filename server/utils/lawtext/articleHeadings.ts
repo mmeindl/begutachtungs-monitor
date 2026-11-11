@@ -6,7 +6,7 @@
  * `refineArticleHeadings`, so every consumer of their blocks — `segmentUnits`,
  * `draftArticles`, the annex engine, the search — sees one and the same
  * package structure. That is also what keeps the two copies of the name
- * window (`segmentUnits` and `draftArticles`, docs/architecture.md §12.13)
+ * window (`segmentUnits` and `draftArticles`)
  * one rule: neither changes, both read the kinds set here.
  *
  * **Why a pass after the readers and not a class table.** The class mapping
@@ -162,7 +162,7 @@ function tocArticleFor(blocks: readonly TextBlock[], name: string): string | nul
  * Gebrauchsmustergesetzes" and that law's Promulgationsklausel. Every reader
  * after this point closes a law's name window at its first instruction, so
  * the second law had no boundary: its §§ were filed under the first, and the
- * annex held five of them against the PatV-EG and withheld them (§12.41).
+ * annex held five of them against the PatV-EG and withheld them.
  *
  * Inserted only where three things agree: a heading outside quoted text after
  * an instruction of the same Artikel (a heading an instruction installs is

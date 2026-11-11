@@ -42,8 +42,8 @@
  * Reproduced since 03.10.2026, because it now changes an ME→RV answer: the
  * Regierungsvorlage's detail, whose `preconst` says whether it bundles other
  * drafts. Where it does not, `getLawDiff` keeps the laws the Vorlage added
- * (and, with a single Vorlage, the laws it dropped) in the comparison
- * (docs/architecture.md §12.40). Not reproduced, because it cannot change an
+ * (and, with a single Vorlage, the laws it dropped) in the comparison.
+ * Not reproduced, because it cannot change an
  * ME→RV answer: the BgblAuth lookup, which `getLawDiff` only uses for the
  * `bgbl` station.
  *
@@ -336,7 +336,7 @@ interface Row {
   substantive: number
   lawsOnlyInTo: LawPackageEntry[]
   lawsOnlyInFrom: LawPackageEntry[]
-  /** Laws kept in the comparison because the Vorlage bundles no other draft (`getLawDiff`, §12.40). */
+  /** Laws kept in the comparison because the Vorlage bundles no other draft (`getLawDiff`). */
   addedLaws: LawPackageEntry[]
   droppedLaws: LawPackageEntry[]
   copyMismatch: boolean
@@ -555,7 +555,7 @@ async function measure(rows: unknown[][], inr: number, citation: string, title: 
   parsed.set(inr, { fromUnits, toUnits })
 
   // getLawDiff: the Vorlage's record decides whether the laws only one side
-  // carries are the Ressort's own (§12.40). Its detail failing to load counts
+  // carries are the Ressort's own. Its detail failing to load counts
   // as no record, as getLawDiff's try/catch does.
   const rvLink = findComparisonRvLink(parseStages(content.stages), found.get('rv')?.html ?? found.get('rv')?.fallbackUrl)
   const bundled = rvLink ? await rvDetailOf(rvLink).then((d) => bundlesOtherDrafts(d.preconst, gp, inr)).catch(() => null) : null
@@ -725,7 +725,7 @@ const robustShare = b5.map((r) => Math.max(0, r.diag!.robust) / r.stats!.total)
 console.log(`    Anteil mit Wortänderung/echt neu/entfallen  p10 ${q(robustShare, 0.1)} · Median ${q(robustShare, 0.5)} · p90 ${q(robustShare, 0.9)}`)
 
 {
-  // The base rate the page prints (§12.38), through the page's own formula.
+  // The base rate the page prints, through the page's own formula.
   const shares = results
     .filter((r) => r.bucket === 3 || r.bucket === 4 || r.bucket === 5)
     .map((r) => (r.stats ? ownChangeShare(r.stats) : null))
@@ -1330,7 +1330,7 @@ async function zifferReport(): Promise<void> {
       if (fb) fallbackTally.set(fb, (fallbackTally.get(fb) ?? 0) + 1)
       const a = state(old, u)
       const b = state(neu, u)
-      // The instruction over several §§ (§12.11): no single § to join at, so the § join gave it nothing.
+      // The instruction over several §§: no single § to join at, so the § join gave it nothing.
       if (zOf(u.id) && isPairedUnit(u) && instructionParagraphs(u.toText ?? u.fromText ?? '').length > 1) {
         tally.multi++
         if (b !== 'keine') tally.multiShown++
@@ -1525,14 +1525,6 @@ if (argFlag('multi')) await multiReport()
 if (argFlag('pairs')) pairsReport()
 if (argFlag('unpaired')) unpairedReport()
 
-/**
- * `--pairs` (27.09.2026): which rule of `pairArticles` made each pair, over
- * every draft that reached the diff. The question behind it is the number
- * fallback — an Artikel paired by its number because the titles did not
- * match (XXVI 76/ME: Notarversorgungsgesetz → GSVG after renumbering). A
- * number pair whose two titles share no word of a law name is printed in
- * full, to be read by eye.
- */
 /** The §§ an article's Novellierungsanordnungen address, as a set. */
 function addressesOf(units: readonly LawUnit[], article: string | null): Set<string> {
   const out = new Set<string>()
@@ -1552,6 +1544,14 @@ function addressOverlap(a: ReadonlySet<string>, b: ReadonlySet<string>): number 
   return n / small.size
 }
 
+/**
+ * `--pairs` (27.09.2026): which rule of `pairArticles` made each pair, over
+ * every draft that reached the diff. The question behind it is the number
+ * fallback — an Artikel paired by its number because the titles did not
+ * match (XXVI 76/ME: Notarversorgungsgesetz → GSVG after renumbering). A
+ * number pair whose two titles share no word of a law name is printed in
+ * full, to be read by eye.
+ */
 function pairsReport(): void {
   const byVia = new Map<string, number>()
   const numberPairs: { alternative: string | null; draft: string; from: string; to: string; shared: number; fromUnits: number; toUnits: number; overlap: number | null; sizes: string }[] = []

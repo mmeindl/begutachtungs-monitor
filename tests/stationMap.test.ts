@@ -8,7 +8,7 @@ import { clearNitroCache, nitroCacheKeys, nitroCachedFunction } from './helpers/
 
 /**
  * The station map when a draft's own record cannot be read
- * (`server/utils/parliament/stationMap.ts`; the §12.13 rule).
+ * (`server/utils/parliament/stationMap.ts`).
  *
  * Until 22.10.2026 `chainOf` answered a failed `getGegenstand` with a chain
  * at `begutachtung`, and the map kept it six hours. A chain at

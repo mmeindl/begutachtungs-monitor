@@ -4,7 +4,7 @@ import { clearNitroCache, nitroCacheKeys, nitroCachedFunction } from './helpers/
 
 /**
  * RIS's HTTP-200 error envelope on the BrKons path — read as a failure, not
- * as „no such law" (`ris/konsLaw.ts`, `konsJson`; the §12.13 rule).
+ * as „no such law" (`ris/konsLaw.ts`, `konsJson`).
  *
  * RIS answers a failure on its side with HTTP 200 and
  * `{"OgdSearchResult":{"Error":…}}`. Until 22.10.2026 `konsJson` read BrKons

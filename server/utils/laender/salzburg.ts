@@ -148,7 +148,7 @@ export function parseSalzburgRegister(html: string, registerUrl: string): RawEnt
  * a list of words alone, because the Land's words do not end — measured
  * over the register on 22.10.2026, 139 entries stood as drafts of their own
  * with Plan, Lageplan, TGÜ, Übersichtskarte, Planmappe, Gutachten, a
- * misspelt „Textgegenüerstellung" and more (docs/architecture.md §12.43).
+ * misspelt „Textgegenüerstellung" and more.
  * A bare space is no separator: „… geändert wird und das Y …" would be
  * another law.
  *

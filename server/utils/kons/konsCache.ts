@@ -1,6 +1,6 @@
 /**
  * The two cached RIS Bundesrecht lookups, shared by everything that needs
- * the standing law (docs/architecture.md §5, cache rule 5).
+ * the standing law.
  *
  * `ris/konsLaw.ts` is deliberately free of Nitro globals so the harnesses can
  * run it directly, which leaves the caching to be done somewhere else. It
@@ -60,7 +60,7 @@ export const resolveKonsLaw = defineCachedFunction(
 
 /**
  * A law's version history, for the one case that needs it: a § missing on
- * the Stichtag (`bridgeVersionGap`, §12.42). **Derived**, like the law
+ * the Stichtag (`bridgeVersionGap`). **Derived**, like the law
  * resolution above: it walks result pages and keeps our reading of each
  * record, not a document RIS sent. RIS adds versions as laws are amended, so
  * a day. Null (too long a history) is an answer like any other.

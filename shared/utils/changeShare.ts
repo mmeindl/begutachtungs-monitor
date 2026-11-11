@@ -1,6 +1,6 @@
 /**
  * How much of a draft the Regierungsvorlage changed — the measure behind the
- * base rate of docs/architecture.md §12.38, defined once for the page and for
+ * base rate, defined once for the page and for
  * the script that measures the rate (`scripts/corpus/aenderungsrate.ts`), so
  * the number on a draft and the number it is compared with cannot mean two
  * things.
@@ -12,7 +12,7 @@
  * what the Vorlage ADDS, which is its own question. What stays is the share
  * of the draft's own units — the ones a Stellungnahme could have been about —
  * that the Vorlage changed in wording or dropped: p25 46 %, median 63 %,
- * p75 77 % in XXVII (75 % until §12.40 counted dropped laws, 03.10.2026), and the spread is wide enough to say something about a
+ * p75 77 % in XXVII (75 % until dropped laws were counted, 03.10.2026), and the spread is wide enough to say something about a
  * single draft.
  *
  * Changes the page marks as merely editorial (punctuation, articles, citation

@@ -87,7 +87,7 @@ export function coverageOf(column: string, standing: string): Coverage {
  * row is the annex saying it left text out.
  *
  * **`unchanged` rows are the third exclusion, and it is a decision rather
- * than a triviality** (measured 2026-09-11, docs/architecture.md §12.13). A
+ * than a triviality** (measured 2026-09-11). A
  * row printing the same text in both columns shows no change, but its left
  * text *is* on the page — folded behind „N Stellen unverändert", then printed
  * — and nothing here ever holds it against RIS, so a mirrored row filed under

@@ -1,5 +1,5 @@
-# Uptime check without a monitoring account (docs/architecture.md §12.7,
-# deploy/infrastructure.md): GitHub's runners probe the live site twice an
+# Uptime check without a monitoring account (deploy/infrastructure.md):
+# GitHub's runners probe the live site twice an
 # hour. On failure the workflow opens ONE issue labelled `downtime` and
 # @mentions the owner — GitHub mails that — and closes it when the site
 # answers again. The job itself stays green so a night of downtime is one

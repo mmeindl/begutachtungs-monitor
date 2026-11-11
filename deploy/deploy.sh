@@ -119,7 +119,7 @@ ssh "$SERVER" \
 # budget and answered "gerade nicht abrufbar" — honest, and avoidable. Same
 # window, same minute: without the station map the list cannot tell a draft
 # whose Vorlage still takes Stellungnahmen from a closed one
-# (`canParticipate`, docs/architecture.md §12.26).
+# (`canParticipate`).
 #
 # A failed prewarm does NOT fail the deploy. The app is up — that was checked
 # above — and what is lost is a warm cache, not a release; rolling back would

@@ -4,8 +4,8 @@
 # nothing ran the 500-odd tests, so a red suite could reach `main` and only be
 # noticed on the next local run. This is the cheap half of that gap.
 #
-# Four commands, and the third one exists because of a hole the docs blame
-# twice for shipped bugs (`docs/architecture.md` §12.12, §12.13): `nuxt
+# Four commands, and the third one exists because of a hole that twice let
+# bugs ship: `nuxt
 # typecheck` sees the app, the server and `shared/`, but neither `scripts/`
 # nor `tests/`. `tsconfig.tools.json` covers those, and both projects need
 # `.nuxt/tsconfig*.json`, which `nuxt prepare` writes — `pnpm install` runs it

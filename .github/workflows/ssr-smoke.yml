@@ -1,5 +1,5 @@
 # Nächtlicher SSR-Rauchtest über das gebaute Artefakt
-# (`scripts/ci/ssrSmoke.ts`, docs/architecture.md §10).
+# (`scripts/ci/ssrSmoke.ts`).
 #
 # Was hier geprüft wird und in `ci.yml` nicht: ob die Seiten RENDERN. Die
 # Fehlerklasse heißt „vue-tsc grün, Laufzeit 500" und ist zweimal

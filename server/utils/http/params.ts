@@ -1,5 +1,5 @@
 /**
- * What a handler reads out of a request (docs/architecture.md §5): gp =
+ * What a handler reads out of a request: gp =
  * Roman numerals, inr = positive integer, otherwise 400.
  *
  * **The rule on a malformed id, stated once for all of them:** an API
@@ -60,8 +60,8 @@ export function requirePlausibleGp(gp: string, currentGp: string): string {
 }
 
 /**
- * `?von=…&bis=…` → the pair of stations to compare
- * (docs/architecture.md §12.18). Shared by the comparison and the § title
+ * `?von=…&bis=…` → the pair of stations to compare.
+ * Shared by the comparison and the § title
  * lookup, which must always answer about the same two texts.
  *
  * `bis` defaults to the Regierungsvorlage, the comparison this product is
@@ -95,7 +95,7 @@ export function readLawStationPair(event: H3Event): { from: LawStationId; to: La
   // Since the BGBl station there is a second reason to refuse a pair, and it
   // needs a sentence of its own: `plenum→bgbl` runs the right way round and
   // is still not a question — between the Beschluss and the Kundmachung no
-  // actor changes the text (docs/architecture.md §12.33). The older reason
+  // actor changes the text. The older reason
   // would simply be wrong there, and an error message that names the wrong
   // reason sends the reader searching in the wrong direction.
   if (!from) {
@@ -213,8 +213,8 @@ export interface ListQuery {
   /** Already lowercased, for `matchesQuery`. */
   q: string | undefined
   /**
-   * `?eu=umsetzung`: only drafts whose EU fact says „Setzt EU-Recht um"
-   * (§12.66, Nachtrag 3). Any other value is dropped like an unknown station.
+   * `?eu=umsetzung`: only drafts whose EU fact says „Setzt EU-Recht um".
+   * Any other value is dropped like an unknown station.
    */
   eu?: EuFilter
 }

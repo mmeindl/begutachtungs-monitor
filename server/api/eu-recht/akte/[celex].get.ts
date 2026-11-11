@@ -1,8 +1,7 @@
 /**
  * GET /api/eu-recht/akte/:celex?gp= → EuActResponse: one EU act and every
  * draft of the window that names it — those that implement it, those that
- * only restate it, the Länder with none (docs/architecture.md §12.66,
- * Nachtrag 3). Two dates and a stand per draft, no verdict (rule D6).
+ * only restate it, the Länder with none. Two dates and a stand per draft, no verdict (rule D6).
  *
  * 400 for a CELEX that is no act's (`3` + year + L/R/D/F + number), 404 for
  * an act no draft of the map names, 503 while no build has finished — the

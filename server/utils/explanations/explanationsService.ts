@@ -1,6 +1,5 @@
 /**
- * The Allgemeiner Teil of the Erläuterungen for one Begutachtung
- * (docs/architecture.md §12.29).
+ * The Allgemeiner Teil of the Erläuterungen for one Begutachtung.
  *
  * Nuxt-aware glue around the pure module `explanations/risExplanations.ts`.
  * Two entry points, because the two kinds of draft reach their RIS document
@@ -15,7 +14,7 @@
  * every detail render, including the visits that never scroll this far. The
  * page asks for it after first paint, like the Textgegenüberstellung.
  *
- * **A failure is not an answer** (the §12.13 rule, applied again). The
+ * **A failure is not an answer** (applied again). The
  * `available: false` states below are the ones RIS really has — no document,
  * a scan, a document without a general part. A timeout or a 500 throws and is
  * not cached, so a bad minute upstream cannot be served as "dieser Entwurf hat
@@ -251,9 +250,9 @@ const readRisExplanations = defineCachedFunction(
     const detail = await getRisConsultation(id)
     if (!detail) throw createError({ statusCode: 404, statusMessage: 'Begutachtung nicht gefunden' })
     // **At the Paragraph since 26.09.2026.** These pages render the
-    // Gegenüberstellung now instead of only linking it (§12.16), so the
+    // Gegenüberstellung now instead of only linking it, so the
     // passages of the Besonderer Teil have a § to stand at, exactly as on a
-    // Ministerialentwurf's page (§12.30).
+    // Ministerialentwurf's page.
     //
     // The cheap half of the question, like there: whether a Gegenüberstellung
     // exists at all — never whether it can also be *read*, which only the

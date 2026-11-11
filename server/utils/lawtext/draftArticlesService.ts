@@ -7,7 +7,7 @@
  * the Erläuterungen kept a second 30-day copy of the bytes under
  * `entwurfstext-xml` beside the 24-hour `law-html` that already held the same
  * URL. The fetch stays a fetched document, the parse moves here and dies with
- * the worker (`cache/base.ts`, rule 5).
+ * the worker (`cache/base.ts`).
  *
  * **Two sources, cached apart, and not unified.** Three callers read the RIS
  * XML of the draft; `amendedLawsService` reads the Parliament copy first and

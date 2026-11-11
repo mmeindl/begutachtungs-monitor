@@ -1,8 +1,7 @@
 <script setup lang="ts">
 /**
  * One Grundsatzgesetz by its Kundmachung — `/bundesrecht/2025/44` — and the
- * Land drafts of the window that carry it out (docs/architecture.md
- * §12.67). The EU act page's anatomy (`/eu-recht/<kind>/<year>/<number>`):
+ * Land drafts of the window that carry it out. The EU act page's anatomy (`/eu-recht/<kind>/<year>/<number>`):
  * the detail pages' head, then the drafts — one chart with the Kundmachung
  * as the mark over the lanes (`EuTimelineChart`), then the drafts as the
  * lists' rows (`EntryList`).

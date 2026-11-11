@@ -1,6 +1,6 @@
 /**
  * WHICH EU act a draft implements, read from its own law text — the
- * Umsetzungshinweis (docs/architecture.md §12.66).
+ * Umsetzungshinweis.
  *
  * PURE MODULE — text in, windows and acts out; no Nitro globals, relative
  * imports only, so the corpus script measures this file and the Länder can
@@ -281,7 +281,7 @@ export interface QuotedHint {
 
 /**
  * The Ziffern of one quote — its text without the quote marks, one line per
- * block — that open with an EU act (Nachtrag 2 of §12.66, 04.11.2026; the
+ * block — that open with an EU act (04.11.2026; the
  * Bund's since 05.11.2026). A Novelle adds an act to the hint in force as a
  * quoted Ziffer, „12. Richtlinie 2024/1385/EU …" (Salzburg 34413), „3.
  * Durchführungsbeschluss 2019/2010 …" (the Bund's AEV Verbrennungsgas):

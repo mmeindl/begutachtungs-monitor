@@ -1,7 +1,6 @@
 /**
- * Whether a request came from a program rather than a reader
- * (docs/architecture.md §12.65). The user-agent string is read here and
- * nowhere else, and it is neither stored nor logged: the answer is one
+ * Whether a request came from a program rather than a reader.
+ * The user-agent string is read here and nowhere else, and it is neither stored nor logged: the answer is one
  * boolean that decides which of two numbers grows.
  *
  * Conservative in the direction that matters: a crawler mistaken for a

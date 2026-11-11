@@ -13,7 +13,7 @@ import { draftSummary } from './helpers/builders'
  * Four decisions are asserted here, and all four are about what the page
  * may CLAIM when something is missing — the half of this product that has
  * to be careful, because a false accusation is not recoverable and silence
- * is (docs/architecture.md §12.27):
+ * is:
  *
  *  1. a failed list 142 degrades to the list-81 count, flagged;
  *  2. „bisher keine Regierungsvorlage" needs a period that links its drafts

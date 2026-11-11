@@ -3,7 +3,7 @@
  * for the list row (`entryView.ts`), the spine and the page's headline
  * (`spine.ts`), and the homepage's „Im Nationalrat beschlossen"
  * (`decidedOrder.ts`), so none of them can say it differently
- * (docs/architecture.md §12.33, Nachtrag 03.10.2026).
+ * (03.10.2026).
  *
  * TWO SIGNALS, AND THEY ARE NOT THE SAME KIND OF FACT.
  *  - `explicit`: Parliament's record carries the stage „Keine Kundmachung

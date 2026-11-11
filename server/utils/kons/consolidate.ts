@@ -1,7 +1,6 @@
 /**
  * The engine run behind the page's Lesefassung: a draft's blocks and the day
- * the law is read at in, one outcome for every § the draft amends out
- * (docs/architecture.md §12.12, §12.12a).
+ * the law is read at in, one outcome for every § the draft amends out.
  *
  * NO NITRO IN HERE — explicit imports only. The page reaches this through
  * `kons/konsService.ts`, which adds the caches and hands in the sources; the
@@ -256,7 +255,7 @@ export async function consolidate(
     // with the container a refused sub-instruction stands under.
     // The RIS labels beside the denominator, and from the same pure step:
     // a law divided into Artikel files its § 3 as „Art. 2 § 3", and null
-    // here means two addressed §§ would collide under one id (§12.12a).
+    // here means two addressed §§ would collide under one id.
     return [{ index, article, instructions, refused, addressed: addressedParagraphs(instructions, refused), labels: addressedLabels(instructions, refused), locked: new Set<string>() }]
   })
   /**
@@ -276,7 +275,7 @@ export async function consolidate(
   const result = (): ConsolidatedTextResponse => ({
     ...who,
     // An empty list is not an error but the normal case: in half of the
-    // drafts the annex confirms not a single paragraph (§12.12).
+    // drafts the annex confirms not a single paragraph.
     paragraphs: works.flatMap((w) => shownBy.get(w) ?? []),
     withheld: [...works.flatMap((w) => withheldBy.get(w) ?? []), ...enacted],
     // Summed at the end: an instruction on the whole text adds the §§ the
@@ -475,8 +474,7 @@ export async function consolidate(
       for (const id of w.locked) refusedIds.add(id)
 
       // Read once instead of once per §: the designation every instruction
-      // addresses, and the §§ its payload inserts (80 §§ × 500 instructions,
-      // `docs/refactor-plan.md` §6.8).
+      // addresses, and the §§ its payload inserts (80 §§ × 500 instructions).
       const analysed = instructions.map((instruction, i) => {
         const { op, payload, line } = instruction
         const address = opAddress(op)
@@ -538,7 +536,7 @@ export async function consolidate(
         // sets its markers differently. Both forms out of the same tree, but
         // never the same function — until 19.09.2026 the display ran through
         // the comparison form, and a § without Absatz numbers read as if half
-        // of it were missing (§12.12a).
+        // of it were missing.
         //
         // Heading and body kept apart, because the heading has a word diff of
         // its own on the page; in running text it stuck to the first
@@ -582,7 +580,7 @@ export async function consolidate(
           risUrl: konsLawUrl(law.gesetzesnummer, asOf),
           // The same value `paragraphRows` asked the annex with above — not
           // `law.kurztitel` but the Beilage's own law line. The page hangs
-          // the § under exactly the § group it was checked against (§12.12a).
+          // the § under exactly the § group it was checked against.
           annexLaw: annexLawOf(w),
         })
       }

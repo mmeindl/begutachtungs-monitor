@@ -192,7 +192,6 @@ async function pdfText(url: string): Promise<string> {
   throw last
 }
 
-/** The verdict on one document's text. */
 function verdictOf(plain: string, fromPdf: boolean): ProbeVerdict {
   if (HEADER_ROW.test(plain.replace(/\s+/g, ' '))) return 'enthält TGÜ'
   if (HEADINGS.every((re) => re.test(plain))) return 'Spaltenwörter nur im Fließtext'

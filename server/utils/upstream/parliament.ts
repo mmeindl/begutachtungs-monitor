@@ -1,5 +1,5 @@
 /**
- * Upstream client for the Parliament API (docs/architecture.md §2/§5).
+ * Upstream client for the Parliament API.
  *
  * The Nitro server is a caching proxy in front of POST /Filter/api/filter/
  * data/{81,142} and GET /gegenstand/…. Rules: showAll=true WITHOUT pagesize,
@@ -177,7 +177,6 @@ export function fetchFilterList(
   })
 }
 
-/** GET /gegenstand/{gp}/{ityp}/{inr}?json=True */
 export function fetchGegenstand(gp: string, ityp: string, inr: number): Promise<GegenstandResponse> {
   const url = `${PARLIAMENT_BASE}/gegenstand/${gp}/${ityp}/${inr}?json=True`
   return parliamentJson<GegenstandResponse>(url)

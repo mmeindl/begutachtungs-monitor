@@ -150,7 +150,7 @@ const STRIP = [
  * attribute, entities and all. `lawtext/parliamentHtml.ts` has known the
  * second form since it learned to read Parliament HTML; this module did not,
  * so every row of a Parliament annex came back without a designation and the
- * oracle was silent on every § (18.09.2026, docs/architecture.md §12.12).
+ * oracle was silent on every § (18.09.2026).
  * Same shape of bug as `<schlussteil>` against `<schluss typ="…">`: two names
  * for one thing, one of them unknown to one of the two modules that need it.
  */
@@ -258,8 +258,7 @@ interface Parsed {
 
 /**
  * An Artikel line set across the column seam without reaching the edge — a
- * boundary the reader used to read as a one-sided pair row (30.09.2026,
- * docs/architecture.md §12.13).
+ * boundary the reader used to read as a one-sided pair row (30.09.2026).
  *
  * Some templates head a four-column table 1 + 3 and then set the Artikel line
  * `colspan="3"` with an empty spacer cell behind it: not the full width, so
@@ -313,8 +312,7 @@ const ANNEX_SECTION_TITLE_RE = /überstellung/i
 
 /**
  * The Gegenüberstellung inside a bundle — „begmat", „Materialien": Vorblatt,
- * Erläuterungen and annex in one document (docs/architecture.md §12.13, „Das
- * Bündel, geschnitten", 02.10.2026) — or null where the document prints the
+ * Erläuterungen and annex in one document (02.10.2026) — or null where the document prints the
  * header pair in no table.
  *
  * Read whole, the bundle gave the reader two kinds of noise: the Vorblatt's
@@ -464,7 +462,7 @@ export function parseTextComparison(xml: string | readonly string[], articles: r
    * that shipped. **Rejected variant:** filing them under the § below without
    * making them its heading leaves them text that claims to be the provision,
    * and RIS's own § documents mostly carry no group headings to hold that text
-   * against (docs/architecture.md §12.13).
+   * against.
    *
    * **Only where both columns print it.** A heading printed on one side is the
    * change itself and stays a row (`heldHeadings`); a heading that *differs*
@@ -764,7 +762,7 @@ export function designateAfter(rows: readonly ComparisonRow[], renamed: Readonly
  * compared against Parliament's HTML. A soft hyphen where the other side has
  * a hard one, or a run of leader dots one character longer, was enough to
  * report an annex row as „geändert": typography from the source format, and a
- * verdict on the ressort that nobody had earned (`lawtext/normalize.ts`, §12.33).
+ * verdict on the ressort that nobody had earned (`lawtext/normalize.ts`).
  *
  * Only the verdict. The word diff keeps running on the displayed text, so the
  * reader still sees exactly what the document prints.

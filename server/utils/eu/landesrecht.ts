@@ -1,6 +1,6 @@
 /**
- * Whether a Land's law in force already transposes an EU act — rule D4 of
- * docs/architecture.md §12.66 for the Länder (Nachtrag 2, 04.11.2026).
+ * Whether a Land's law in force already transposes an EU act — rule D4 for
+ * the Länder (04.11.2026).
  *
  * PURE MODULE — a phrase in, query parameters out; a RIS answer in, the
  * hits out. The service (`landEuService.ts`) runs the query and caches it.

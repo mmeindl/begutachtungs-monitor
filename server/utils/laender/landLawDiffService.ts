@@ -9,10 +9,9 @@
  * The Begutachtungsentwurf is the Land's PDF; the Regierungsvorlage and the
  * committee report are the Landtag's PDFs (the same reader,
  * `landLawDiff.ts`); the Kundmachung is the Landesgesetzblatt's XML in RIS.
- * Measured before it was built — docs/architecture.md §12.44.
  *
  * THE KUNDMACHUNG MUST BE CERTAIN — named by the Land, or decided by text
- * (`texts/kundmachung.ts`, §12.47–50). `textSources` offers no other. Held
+ * (`texts/kundmachung.ts`). `textSources` offers no other. Held
  * against the wrong law a comparison would report a whole draft rewritten:
  * the one error this layer must not make.
  *

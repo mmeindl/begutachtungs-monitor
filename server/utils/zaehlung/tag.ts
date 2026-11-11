@@ -1,7 +1,6 @@
 /**
- * One UTC day of page-view counts, as kept in memory and on disk
- * (docs/architecture.md §12.65). Counts and host names, nothing else: no
- * address, no user agent, no time finer than the day.
+ * One UTC day of page-view counts, as kept in memory and on disk.
+ * Counts and host names, nothing else: no address, no user agent, no time finer than the day.
  *
  * `aufrufe` counts readers, `bots` the requests `istBot` attributed to
  * programs — the two never overlap, so their sum is every counted request.

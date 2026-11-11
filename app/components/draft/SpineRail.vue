@@ -139,7 +139,7 @@ const rows = computed(() => props.stations.map((s, i) => {
   const reached = (state: string) => state === 'done' || state === 'current'
   // A station that WAS reached speaks even behind one that was not — the
   // Initiativantrag route skips the Vorlage and still reaches the house and
-  // the Bundesgesetzblatt (docs/architecture.md §12.10, 30.09.2026).
+  // the Bundesgesetzblatt (30.09.2026).
   const silent = !reached(s.state) && props.stations.slice(0, i).some((earlier) => !reached(earlier.state))
   const facts = silent ? [] : s.facts
   const href = s.comparison ? props.comparisonAnchors?.[s.comparison.id] : undefined
@@ -264,7 +264,7 @@ const rows = computed(() => props.stations.map((s, i) => {
           <template v-if="row.source.lead">{{ `${row.source.lead} ` }}</template>
           <ExternalLink :href="row.source.href" :class="LINK">{{ row.source.label }}</ExternalLink>
         </p>
-        <!-- What followed the station elsewhere on the site (§12.67), above
+        <!-- What followed the station elsewhere on the site, above
              the overlay like the question, in the same link style. -->
         <p v-if="row.followUp" class="relative z-10 mt-1 leading-snug text-ink-secondary">
           {{ row.followUp.before }}<NuxtLink v-if="row.followUp.link" :to="row.followUp.link.href" :class="LINK">{{ row.followUp.link.label }}</NuxtLink>{{ row.followUp.after }}

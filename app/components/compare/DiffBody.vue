@@ -37,8 +37,8 @@ const props = defineProps<{
 
 /*
  * Every text here in its Absätze, Ziffern and Litera, not as one wall
- * (22.10.2026) — by the rule measured for the Lesefassung (`absaetze`,
- * docs/architecture.md §12.12a), which until then was the only place that
+ * (22.10.2026) — by the rule measured for the Lesefassung (`absaetze`),
+ * which until then was the only place that
  * broke a § up. In columns each side is cut on its own text: a struck „(2)"
  * must not open a block on the side that no longer has it.
  */

@@ -172,7 +172,7 @@ describe('procedureStatusDe — the card\'s one-line answer', () => {
 /**
  * Where parliament changed the text, read from the Vorlage that supplies the
  * BGBl number — not from the draft's mirror of one sibling's document list
- * (ME→RV is 1:n, §13.4). Verified live 23.09.2026 on XXVIII/26/ME.
+ * (ME→RV is 1:n). Verified live 23.09.2026 on XXVIII/26/ME.
  */
 describe('stations — what parliament did with the Vorlage', () => {
   const doc = (title: string) => ({ title, formats: [{ type: 'pdf' as const, url: `https://x/${title}.pdf` }] })
@@ -396,7 +396,7 @@ describe('the four house outcomes on the page', () => {
  * the Vorlage is judged by ITS period, the one its link names — the list row
  * says „liegt vor" by that calendar (`stationMap.ts`, `entryView.ts`), and
  * the page read „Ohne Beschluss – Gesetzgebungsperiode beendet" by the
- * draft's until 02.10.2026 (docs/architecture.md §12.14). Today no page is
+ * draft's until 02.10.2026. Today no page is
  * affected — all 23 carry-overs in XXV–XXVII are kundgemacht — so these
  * cases are the proof.
  */
@@ -451,7 +451,7 @@ describe('the Vorlage\'s period, not the draft\'s', () => {
   })
 
   it('keeps the draft\'s period as the boundary where there is no Vorlage', () => {
-    // §12.10 Nr. 10: the boundary statement is about the draft.
+    // The boundary statement is about the draft.
     const none = draft({ enactment: null, gpEnded: true })
     expect(procedureStatusDe(none)).toBe('Ohne Regierungsvorlage – Gesetzgebungsperiode beendet')
     expect(row(none, 'rv')).toMatchObject({ state: 'never', facts: ['keine – GP beendet'] })
@@ -718,7 +718,7 @@ describe('landStations — a Land\'s draft', () => {
   })
 })
 
-/* A Gesetzesbeschluss that was not promulgated (03.10.2026, §12.33): two
+/* A Gesetzesbeschluss that was not promulgated (03.10.2026): two
  * signals, two wordings. Parliament's own stage may say why and what came
  * instead; the calendar alone may only say since when. */
 describe('a Gesetzesbeschluss that was not promulgated', () => {

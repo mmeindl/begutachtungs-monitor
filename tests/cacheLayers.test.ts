@@ -36,17 +36,17 @@ const FETCHED: Record<string, string> = {
   'erlaeuterungen-xml': "the ressort's Erläuterungen as RIS sent them; the parse above is derived",
   'begut-dokument-xml':
     'any document of a Begut record as RIS sent it — the full-text search reads whichever one holds the ' +
-    'word (§12.31). Deliberately its own entry and not the two above: those belong to the Erläuterungen ' +
+    'word. Deliberately its own entry and not the two above: those belong to the Erläuterungen ' +
     'section and are keyed by the same URLs, so a search may hold a second copy of a document. One cache ' +
     'name per consumer is the cheaper mistake — sharing one would tie the search to that section\'s TTL.',
   'begut-dokument-pdf':
     'the same document as a PDF, byte for byte as base64 — the search falls back to it because the XML of a ' +
-    'Begleitschreiben is a stub (943 characters against 12.223, §12.31). Cached in dev only; what production ' +
+    'Begleitschreiben is a stub (943 characters against 12.223). Cached in dev only; what production ' +
     'keeps is the extracted text one layer up, which is derived and small.',
-  'bgbl-nummer-suche': 'the RIS answer for one Bgblnummer, as it arrived — the §-comparison looks the Kundmachung up by the citation Parliament gives it (§12.33)',
-  'bund-land-suche': 'the RIS full-text answer for one Grundsatz phrase in BGBl I since the window began, as it arrived — the Bund-zu-Land map reads the federal Grundsatzgesetze of the window from it (§12.67)',
+  'bgbl-nummer-suche': 'the RIS answer for one Bgblnummer, as it arrived — the §-comparison looks the Kundmachung up by the citation Parliament gives it',
+  'bund-land-suche': 'the RIS full-text answer for one Grundsatz phrase in BGBl I since the window began, as it arrived — the Bund-zu-Land map reads the federal Grundsatzgesetze of the window from it',
   'bgbl-jahrgang-seite': 'one page of a CLOSED Bundesgesetzblatt year, as it arrived; that year is finished, so it keeps for a month',
-  'bgbl-jahrgang-seite-laufend': 'the same page of the RUNNING year, which still grows — its own name because one cached function carries one maxAge (§12.32)',
+  'bgbl-jahrgang-seite-laufend': 'the same page of the RUNNING year, which still grows — its own name because one cached function carries one maxAge',
   'ris-begut-page': 'one page of the RIS result set, as it arrived — cached in dev only',
   'annex-pdf': "the ressort's annex PDF, byte for byte as base64 — cached in dev only",
   'drafts-list': 'list 81 of one GP, exactly as the API answered',
@@ -59,21 +59,21 @@ const FETCHED: Record<string, string> = {
   'land-stmk-page': "a page of PALLAST as a reader's view serves it — the list's newest ten, a draft's own page; parsed fresh on every call",
   'land-stmk-draft-page': "one draft's PALLAST page, read by the list for its Frist (Steiermark); parsed fresh on every call",
   'eu-vorblatt-pdf':
-    "a draft's Vorblatt/WFA PDF, byte for byte as base64 — its EU sentence is in the text layer only (§12.66). Cached in dev " +
+    "a draft's Vorblatt/WFA PDF, byte for byte as base64 — its EU sentence is in the text layer only. Cached in dev " +
     'only, like the search\'s PDFs; production keeps the extracted page texts one layer up, which are derived and small.',
-  'eu-cellar': "the Cellar's SPARQL answer for one CELEX, as it arrived; the transposition dates are read from it fresh on every call (§12.66)",
-  'eu-cellar-oj': "the Cellar's SPARQL answer on where one act was published, as it arrived; the Amtsblatt reference is read from it fresh on every call (§12.66)",
-  'eu-bundesrecht': "whether Bundesrecht in force on one day names an EU act, from RIS's full-text search; the law as of a past day does not change (§12.66, D4)",
-  'eu-landesrecht': "the same search over one Land's consolidated Landesrecht (LrKons) on one day, as RIS answered it — the hits are read fresh on every call (§12.66, D4, Nachtrag 2)",
+  'eu-cellar': "the Cellar's SPARQL answer for one CELEX, as it arrived; the transposition dates are read from it fresh on every call",
+  'eu-cellar-oj': "the Cellar's SPARQL answer on where one act was published, as it arrived; the Amtsblatt reference is read from it fresh on every call",
+  'eu-bundesrecht': "whether Bundesrecht in force on one day names an EU act, from RIS's full-text search; the law as of a past day does not change (D4)",
+  'eu-landesrecht': "the same search over one Land's consolidated Landesrecht (LrKons) on one day, as RIS answered it — the hits are read fresh on every call (D4)",
 }
 
 const UTILS = join(import.meta.dirname, '..', 'server', 'utils')
 
 /**
  * Every `.ts` file under server/utils, at any depth. Recursive on purpose:
- * the folder moves of the refactor (`docs/refactor-plan.md` §0) put cached
+ * the folder moves of the refactor put cached
  * functions into subfolders, and a flat read would walk past them without a
- * word — cache rule 5 would stop being enforced and nothing would say so.
+ * word — the rule would stop being enforced and nothing would say so.
  */
 function utilsFiles(): string[] {
   return readdirSync(UTILS, { encoding: 'utf8', recursive: true }).filter((f) => f.endsWith('.ts'))

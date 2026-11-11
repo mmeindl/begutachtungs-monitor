@@ -1,7 +1,7 @@
 /**
  * GET /api/eu-recht?gp= → EuActsResponse: every EU act a draft of the
  * period's window implements, the latest transposition deadline first
- * (docs/architecture.md §12.66, Nachtrag 3) — and apart, `restatingOnly`,
+ * — and apart, `restatingOnly`,
  * the acts drafts only restate, so their pages are reachable.
  *
  * Read from the map only (`getEuMap`); where no build has finished, the

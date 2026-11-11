@@ -13,8 +13,8 @@ import {
  * The RIS Begut record mapper (docs/api-exploration.md §2).
  *
  * The documents are what earn the tests here: the Erläuterungen and the
- * Begleitschreiben were added for the Verordnungen facet
- * (docs/architecture.md §12.16), and on a Verordnungsentwurf they are the
+ * Begleitschreiben were added for the Verordnungen facet,
+ * and on a Verordnungsentwurf they are the
  * whole page — there is no parliamentary Gegenstand carrying a document
  * list beside them.
  */
@@ -162,7 +162,7 @@ describe('flattenRisRecord', () => {
   it('reads the abbreviation anywhere in the name, but not inside a word (27.09.2026)', () => {
     // Measured over the whole RIS corpus: 11 of 139 GP-XXVIII Gesetzesentwürfe
     // carried the Gegenüberstellung under names the anchored rule missed —
-    // every one of the drafts counted as „nur beim Parlament" (§12.13).
+    // every one of the drafts counted as „nur beim Parlament".
     for (const name of ['TGÜ Anpassung QJF-G', '42. KFG-Nov.TGÜ.11.05.2026', 'IFG-TGÜ (2025-05-07)', 'BBG 2027-2028, BMFWF, TGÜ', 'TxtGGÜ', 'UbG-IPG-Nov TextGG', 'CBDF_TGUe_201008', 'Beilage TGÜ-Vergleich']) {
       const flat = flattenRisRecord(record([{ ...urls('Material', 'Xml', 'https://ogd.ris.bka.gv.at/t.xml'), Name: name }]))!
       expect(flat.textComparison?.xml, name).toBe('https://ogd.ris.bka.gv.at/t.xml')
@@ -255,8 +255,8 @@ describe('flattenRisRecord', () => {
 
   it('sammelt alles Übrige, was der Satz an Text führt', () => {
     // Measured on 22.09.2026: 41 text documents over the running records,
-    // the four named fields catch 25. The full-text search reads the rest
-    // (§12.31), and one record can have several of them.
+    // the four named fields catch 25. The full-text search reads the rest,
+    // and one record can have several of them.
     const flat = flattenRisRecord(
       record([
         urls('MainDocument', 'Xml', 'https://ogd.ris.bka.gv.at/m.xml'),
@@ -271,7 +271,7 @@ describe('flattenRisRecord', () => {
   })
 
   it('liest die Erläuterungen unter der Abkürzung des Ressorts (27.09.2026)', () => {
-    // „EB" is not one form but three with „Erl" and the decomposed „ä" (§12.31):
+    // „EB" is not one form but three with „Erl" and the decomposed „ä":
     // 6 of 139 GP-XXVIII Gesetzesentwürfe showed no Allgemeiner Teil for it.
     for (const name of ['Entwurf EB Klimagesetz', 'SVÄG_2024_EB_19.04.2024', 'EBs_TAMG_final', '42. KFG-Nov. Erl. 11.05.2026', 'Pol-W-G Erl', 'Erläuternde Bemerkungen', 'Mobilpaket  Erläut', 'begerl']) {
       const flat = flattenRisRecord(record([{ ...urls('Material', 'Xml', 'https://ogd.ris.bka.gv.at/eb.xml'), Name: name }]))!

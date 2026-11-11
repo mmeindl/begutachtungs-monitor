@@ -1,7 +1,7 @@
 import type { TraceLink } from './common'
 
 // ---------------------------------------------------------------------------
-// Erläuterungen (docs/architecture.md §12.29)
+// Erläuterungen
 // ---------------------------------------------------------------------------
 
 /** One passage of the Erläuterungen: a heading and the prose under it. */
@@ -52,8 +52,7 @@ export interface ExplanationsResponse {
   hasSpecial: boolean
   /**
    * The Besonderer Teil resolved onto (law, §) — the ministry's reasoning for
-   * one provision, to stand beside that provision in the Textgegenüberstellung
-   * (docs/architecture.md §12.30).
+   * one provision, to stand beside that provision in the Textgegenüberstellung.
    *
    * `law` is `ComparisonRow.law` and `para` the normalised designation, so the
    * page looks entries up rather than matching text. A passage naming several
@@ -65,7 +64,8 @@ export interface ExplanationsResponse {
   /**
    * Whether those passages really stand at a § on this page.
    *
-   * The general part names what it does not print, and since §12.30 that
+   * The general part names what it does not print, and since the Besonderer Teil is
+   * resolved onto the §§, that
    * sentence has two true versions: „steht im Dokument selbst", and „steht
    * unten an den Paragraphen". Which one is true is not a property of the
    * Erläuterungen — it is a property of the page, so it is decided where the

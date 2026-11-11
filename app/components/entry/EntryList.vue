@@ -3,7 +3,7 @@ import type { EntryView } from '~/utils/entryView'
 
 /**
  * A list of entries, two densities, one column header — every list on the
- * site (docs/architecture.md §12.28).
+ * site.
  *
  * `EntryItem` settles what stands IN a row; this component settles what a
  * list of rows is: ONE SHEET at every width, rows parted by rules, with a
@@ -35,7 +35,7 @@ import type { EntryView } from '~/utils/entryView'
  *
  * The `evidence` slot is the one exception to „a row says about the draft
  * what there is about it": it carries the reason the row IS THERE — a
- * full-text hit's Fundstelle (§12.31). Passed through and evaluated per
+ * full-text hit's Fundstelle. Passed through and evaluated per
  * entry, because in a mixed list only some rows have one.
  *
  * The title stands whole in both densities and wraps as often as it must; the
@@ -61,8 +61,7 @@ defineProps<{
    * order's key and what it does. Only `/entwuerfe` passes it; every other
    * list keeps plain labels. Below `md` there is no header to carry it, and
    * the page offers the same order as a select. The first column is never
-   * one: neither the arrival order nor A–Z earned a place under „Entwurf"
-   * (§12.22).
+   * one: neither the arrival order nor A–Z earned a place under „Entwurf".
    */
   sortable?: Partial<Record<'count' | 'state', { key: string; order: string; reverseOrder: string }>>
   /** The current order's key, with `sortable`. */

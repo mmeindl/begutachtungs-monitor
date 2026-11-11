@@ -1,6 +1,6 @@
 /**
  * Which laws the „Zuletzt Gesetz geworden" section shows, and in which
- * order (docs/architecture.md §12.23).
+ * order.
  *
  * PURE MODULE — no Nuxt auto-imports, only relative imports, so vitest can
  * execute the module directly. It sat inside `enacted.ts` until 23.09.2026,
@@ -27,7 +27,7 @@ export interface EnactedCandidate {
  *
  * THE DEDUPLICATION is not cosmetic. ME → RV is 1:n and both strands can
  * reach the Bundesgesetzblatt — 74/ME produced 443 and 444 d.B., promulgated
- * as BGBl. I 81/2026 and 39/2026 (§13.4) — so as soon as two laws of one
+ * as BGBl. I 81/2026 and 39/2026 — so as soon as two laws of one
  * draft fall into the same window the same card would render twice. The
  * NEWEST Kundmachung wins, which needs no extra rule: the list is already in
  * that order, so the first occurrence is the newest one.

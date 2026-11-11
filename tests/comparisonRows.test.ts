@@ -147,7 +147,7 @@ describe('parseTextComparison', () => {
 
   it('does not call a row changed over a soft hyphen or a run of leader dots', () => {
     // `classify` compared the raw strings while `lawDiff.ts` has compared
-    // `compareKey` since §12.33: the Word template sets U+00AD where the other
+    // `compareKey`: the Word template sets U+00AD where the other
     // side has a hard hyphen, and amount tables carry a run of dots the other
     // side does not print.
     const rows = parse(
@@ -657,7 +657,7 @@ describe('a heading of the law printed in both columns', () => {
     // and stays a row of its own, where the word diff can see it. 119 rows of
     // GP XXVIII. Until 04.10.2026 it kept the § above; that moved a displayed
     // change into the wrong paragraph bag, measured over GP XXVIII with
-    // `pnpm corpus:annex-census` (§12.41), so it now waits for the § below.
+    // `pnpm corpus:annex-census`, so it now waits for the § below.
     const rows = parse(annex([
       pair(para('12', '(1) Alt.'), para('12', '(1) Neu.')),
       pair(heading('g2', 'Alte Abschnittsüberschrift'), heading('g2', 'Neue Abschnittsüberschrift')),
@@ -992,7 +992,7 @@ describe('isElidedPair — a number is not elision syntax', () => {
     expect(isElidedPair('20 v.H. ... 2026', '50 v.H. ... 2026')).toBe(false)
     expect(isElidedPair('............ 500', '............ 700')).toBe(false)
     // The same test catches the one-sided elision the corpus really has
-    // („1. bis 59. …" against „1. bis 60. …", §12.12).
+    // („1. bis 59. …" against „1. bis 60. …").
     expect(isElidedPair('1. bis 59. …', '1. bis 60. …')).toBe(false)
   })
 

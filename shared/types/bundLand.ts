@@ -1,5 +1,5 @@
 /**
- * Bund zu Land (docs/architecture.md §12.67): which Land drafts carry out a
+ * Bund zu Land: which Land drafts carry out a
  * Grundsatzgesetz of the Bund or implement a Vereinbarung gemäß Art. 15a
  * B-VG, and — per Grundsatzgesetz, keyed by its Kundmachung in BGBl I —
  * which Land drafts follow it.

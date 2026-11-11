@@ -37,7 +37,7 @@ export default defineEventHandler(async (event): Promise<LaenderResponse> => {
   // by an empty list and the period's own answer, not by an error.
   const [{ items, sources, undated }, markers] = await Promise.all([
     window ? readLaenderInWindow(window, status) : { items: [], sources: (await readLaender()).sources, undated: {} },
-    // The EU map, as on `/api/drafts` (§12.66, Nachtrag 3) — but never a
+    // The EU map, as on `/api/drafts` — but never a
     // filter here: the page filters the Länder rows itself, as it does the
     // stations, so one cached answer serves every choice.
     window ? euMarkersForList(gp) : null,

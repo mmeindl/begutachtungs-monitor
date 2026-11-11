@@ -446,7 +446,7 @@ describe('isRunningYear', () => {
     // would pin the year that ended hours ago for 30 days, and a Kundmachung
     // of 30.12. that RIS indexes after that first read would surface in
     // February — by when `stateOf` says „keine" about a Verordnung that has
-    // been in force all along (§12.32).
+    // been in force all along.
     expect(isRunningYear(2026, '2027-01-15')).toBe(true)
     expect(isRunningYear(2027, '2027-01-15')).toBe(true)
     // Two years back is closed even in January: the grace is one year wide.
@@ -509,7 +509,7 @@ describe('bgblOutcomeState', () => {
     expect(bgblOutcomeState('2026-09-23', false, false, on('2026-09-23'))).toBe('ausstehend')
   })
 
-  /* A failure is not an answer (§12.13): a Frist we cannot read must not
+  /* A failure is not an answer: a Frist we cannot read must not
    * become „nicht kundgemacht" — it reads as young instead. */
   it('treats an absent or unparseable Frist as no statement, never as keine', () => {
     expect(bgblOutcomeState(null, false, false, on('2026-09-23'))).toBe('begutachtung')

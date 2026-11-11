@@ -50,7 +50,7 @@ describe('risStationWants', () => {
   it('answers both halves of the axis these records can reach', () => {
     expect(risStationWants(['begutachtung'])).toEqual({ begutachtung: true, bgbl: false })
     expect(risStationWants(['bgbl'])).toEqual({ begutachtung: false, bgbl: true })
-    // Neither is reachable without a Gegenstand at Parliament (§12.16).
+    // Neither is reachable without a Gegenstand at Parliament.
     expect(risStationWants(['rv'])).toEqual({ begutachtung: false, bgbl: false })
   })
 })
@@ -70,7 +70,7 @@ describe('filterRisConsultations', () => {
     const wants = { begutachtung: false, bgbl: true }
     expect(ids(filterRisConsultations(rows, { ...ALL, wants, outcomes: kundgemacht }))).toEqual(['BEGUT_2'])
     // No outcome resolved is not a promulgation: the empty budget must not
-    // answer "keine kundgemachten Verordnungen" (§12.13).
+    // answer "keine kundgemachten Verordnungen".
     expect(ids(filterRisConsultations(rows, { ...ALL, wants }))).toEqual([])
   })
 
@@ -88,7 +88,7 @@ describe('filterRisConsultations', () => {
   it('does not search the ministry clause of the long title', () => {
     // "Landesverteidigung" appears only inside "Verordnung der
     // Bundesministerin für …", so the word must not pull the whole output
-    // of that house (§12.31).
+    // of that house.
     expect(ids(filterRisConsultations(rows, { ...ALL, q: 'landesverteidigung' }))).toEqual([])
     expect(ids(filterRisConsultations(rows, { ...ALL, q: 'krankentransport' }))).toHaveLength(2)
     expect(ids(filterRisConsultations(rows, { ...ALL, q: 'bmlv' }))).toHaveLength(2)

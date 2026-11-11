@@ -1,7 +1,7 @@
 /**
  * GET /api/drafts/:gp/:inr/begruendung?von=me&bis=rv → ReasoningDiffResponse:
  * whether the ressort's Begründung for each changed Paragraph changed
- * between Entwurf and Regierungsvorlage (docs/architecture.md §12.10b).
+ * between Entwurf and Regierungsvorlage.
  *
  * Its own endpoint like `paragraphtitel`, and for the same reason: two more
  * documents from Parliament may neither hold the comparison up nor take it

@@ -3,8 +3,8 @@
  * `server/utils/http/params.ts` can be executed by vitest at all.
  *
  * WHY THIS EXISTS AND WHAT IT IS NOT. The rule of this suite is that what is
- * under test is a pure module with relative imports (docs/architecture.md
- * §9), and almost everything follows it. `params.ts` cannot: reading a
+ * under test is a pure module with relative imports, and almost everything
+ * follows it. `params.ts` cannot: reading a
  * request IS the Nitro boundary — `getQuery`, `getRouterParam` and
  * `createError` are the whole job — so the choice is between faking those
  * three names and leaving the file untested. It was untested, and it decides

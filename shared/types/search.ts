@@ -3,7 +3,6 @@ import type { RisConsultation } from './ris'
 
 /* ------------------------------------------------------------------ *
  * Full-text search over the running Begutachtungen
- * (docs/architecture.md §12.31)
  * ------------------------------------------------------------------ */
 
 /**
@@ -22,7 +21,7 @@ export interface BegutSearchSnippet {
 /**
  * A hit as what it is: a draft — with a Gegenstand at Parliament or without.
  * No shared row type with empty fields; the two kinds differ in what EXISTS
- * about them (docs/architecture.md §12.28).
+ * about them.
  */
 export type BegutSearchEntry =
   | { kind: 'draft'; draft: DraftSummary }

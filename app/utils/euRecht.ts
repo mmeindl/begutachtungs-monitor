@@ -1,5 +1,5 @@
 /**
- * The ProcedureCard's EU fact, as words (docs/architecture.md §12.66).
+ * The ProcedureCard's EU fact, as words.
  *
  * TWO DATES, NO VERDICT (rule D6). Under the act list one row in the
  * spine's own idiom — „Umsetzungsfrist bis 07.05.2026 · Begutachtung ab
@@ -46,7 +46,7 @@ export function euLeadOf(marker: EuMarker | null | undefined): string | null {
   return marker ? LEAD[marker] : null
 }
 
-/** Where the acts were named, for „… genannt:" — a Land's EU statement names them too (§12.66, Nachtrag 2). */
+/** Where the acts were named, for „… genannt:" — a Land's EU statement names them too. */
 const NAMED_IN: Record<NonNullable<EuRechtResponse['actsSource']>, string> = {
   gesetzestext: 'Im Gesetzestext',
   titel: 'Im Titel',
@@ -175,8 +175,7 @@ export function euFactView(r: EuRechtResponse | null | undefined): EuFactView | 
 }
 
 /**
- * The way from a draft's fact to the act's page in the EU map (§12.66,
- * Nachtrag 3): per act that other drafts of the window implement too, how
+ * The way from a draft's fact to the act's page in the EU map: per act that other drafts of the window implement too, how
  * many the Bund and the Länder have beside this one — „1 weiterer Entwurf
  * des Bundes und 3 der Länder", standing at the act it counts for. The act
  * itself is the link (it goes to the same page); the count is the reason

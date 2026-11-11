@@ -2,9 +2,9 @@ import { describe, expect, it } from 'vitest'
 import { HERKUNFT_MINDESTENS, fasseZusammen } from '../server/utils/zaehlung/statistik'
 import { ANDERE, erfasse, leererTag } from '../server/utils/zaehlung/tag'
 
-/** The public summary behind /statistik (docs/architecture.md §12.65). */
 const tag = leererTag
 
+/** The public summary behind /statistik. */
 describe('fasseZusammen', () => {
   it('sums the window and the totals, newest day first, hosts ranked without „andere“', () => {
     const d1 = tag('2026-10-28')

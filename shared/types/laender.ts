@@ -129,7 +129,7 @@ export interface LandStage {
   via?: 'suche'
   /**
    * With `via: 'suche'`: the search had exactly one candidate in its
-   * window. Over Oberösterreich's oracle (§12.44, Nachtrag 6) 57 of 57 such
+   * window. Over Oberösterreich's oracle 57 of 57 such
    * finds were right — and still not certain: Salzburg holds a 2022 draft
    * matched to the 2024 amendment of the same law (sbg-27156). Recorded, not
    * yet used to compare (`landLawDiffService`).
@@ -137,11 +137,11 @@ export interface LandStage {
   unique?: boolean
   /**
    * With `via: 'suche'`: how the find became certain — decided by text on
-   * the draft's page (`laender/texts/kundmachung.ts`, §12.47–50). Absent:
+   * the draft's page (`laender/texts/kundmachung.ts`). Absent:
    * not decided, and nothing is compared against it.
    */
   certainBy?: LandKundmachungCertainty
-  /** The title search's find, where the text decided on another (§12.48). */
+  /** The title search's find, where the text decided on another. */
   searched?: string
   /**
    * The station is the monitor's own join of the Land's lists, not a record
@@ -289,8 +289,8 @@ export interface LandDraftDetail {
 export type LandTextStation = 'geltend' | 'entwurf' | 'rv' | 'ausschuss' | 'lgbl'
 
 /**
- * Two texts of a Land's draft, § by § (`landLawDiffService`,
- * docs/architecture.md §12.44): the Begutachtungsentwurf and the
+ * Two texts of a Land's draft, § by § (`landLawDiffService`): the
+ * Begutachtungsentwurf and the
  * Regierungsvorlage and the committee's text from the Land's PDFs, the
  * Kundmachung from the Landesgesetzblatt in RIS.
  */
@@ -404,8 +404,8 @@ export type LandWithheldReason = 'unread' | 'wording' | 'unsure' | 'inserted' | 
  * How a Kundmachung became certain: named by the Land; the Regierungsvorlage
  * RIS links it to holds the draft's text; the Landesgesetzblatt itself holds
  * it (a Verordnung); both texts name the same last amendment of the law; the
- * search's single candidate, with nothing in the texts against it
- * (§12.47–50); or — Kärnten, 23.10.2026 — the one Landesgesetzblatt whose
+ * search's single candidate, with nothing in the texts against it;
+ * or — Kärnten, 23.10.2026 — the one Landesgesetzblatt whose
  * title carries the date of the Landtag's Beschluss the Land records for the
  * draft, and the draft's words (`ktnKundmachung`).
  */
@@ -420,7 +420,7 @@ export interface LandTextDocument {
 
 /**
  * What a Land gives as its reasons — the Erläuterungen of its draft
- * (`laender/landExplanations.ts`, docs/architecture.md §12.53): the general
+ * (`laender/landExplanations.ts`): the general
  * part for „Was das Land begründet", the particular part at the §§ of the
  * comparison.
  */
@@ -440,8 +440,8 @@ export interface LandExplanationsResponse {
 
 /**
  * The Land's reasoning between its draft and the Regierungsvorlage, at the
- * changes of that comparison (`laender/landReasoningService.ts`,
- * docs/architecture.md §12.54) — the Ministerialentwurf's
+ * changes of that comparison (`laender/landReasoningService.ts`) — the
+ * Ministerialentwurf's
  * Begründungsvergleich (`ReasoningDiffResponse`), keyed the same way.
  */
 export interface LandReasoningResponse {

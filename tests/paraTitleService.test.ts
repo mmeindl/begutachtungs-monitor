@@ -5,8 +5,7 @@ import { draftSummary } from './helpers/builders'
 import { clearNitroCache, nitroCacheKeys, nitroCachedFunction } from './helpers/nitroCache'
 
 /**
- * The § names when an upstream read fails (`server/utils/diff/paraTitleService.ts`;
- * the §12.13 rule).
+ * The § names when an upstream read fails (`server/utils/diff/paraTitleService.ts`).
  *
  * „Anything unresolved is simply absent from the map" — and until
  * 22.10.2026 anything UNREACHABLE was too, for a day: the list row, the

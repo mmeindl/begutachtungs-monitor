@@ -1,6 +1,5 @@
 /**
- * Which §§ of a draft each Novellierungsanordnung may print text for
- * (docs/architecture.md §12.13).
+ * Which §§ of a draft each Novellierungsanordnung may print text for.
  *
  * PURE MODULE — relative imports only, so vitest runs it directly.
  *

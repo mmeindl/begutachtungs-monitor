@@ -1,9 +1,9 @@
 /**
  * A draft's Erläuterungen: fetched once, read by two sections — and on the
- * server only for as long as it stays fast (docs/architecture.md §12.29).
+ * server only for as long as it stays fast.
  *
  * TWO READERS, ONE FETCH. The Allgemeiner Teil above and the Besonderer
- * Teil's passages at the §§ of the Textgegenüberstellung (§12.30) come from
+ * Teil's passages at the §§ of the Textgegenüberstellung come from
  * one document. That it stays one request used to rest on `useFetch` keying
  * by URL — a property of the library neither section stated. The key stands
  * here now.

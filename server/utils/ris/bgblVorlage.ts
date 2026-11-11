@@ -1,8 +1,7 @@
 /**
  * From a Regierungsvorlage to its Kundmachung in BGBl I, through RIS — the
  * second source for the BGBl number, used where Parliament's record of the
- * Vorlage carries no `bgbllinks` (docs/architecture.md §12.33, Nachtrag
- * 03.10.2026).
+ * Vorlage carries no `bgbllinks` (03.10.2026).
  *
  * PURE MODULE — relative imports only, so vitest can execute it directly.
  *

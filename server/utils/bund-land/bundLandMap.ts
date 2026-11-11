@@ -1,8 +1,7 @@
 /**
  * The Bund-zu-Land map: per Grundsatzgesetz — keyed by its Kundmachung in
- * BGBl I, never by the Ministerialentwurf (§12.66 Nachtrag 10, correction
- * 1) — the Land drafts of the window that carry it out
- * (docs/architecture.md §12.67).
+ * BGBl I, never by the Ministerialentwurf — the Land drafts of the window
+ * that carry it out.
  *
  * PURE MODULE — the stored findings, the Länder' list and the federal acts
  * in; the map out. Relative imports only.

@@ -101,7 +101,7 @@ Works on every `/gegenstand/{GP}/{ITYP}/{INR}` (also `?json=true`). Payload unde
 - **A Gesetzesbeschluss that was not promulgated:** a further stage, in the observed case in „Plenarberatungen BR" after the Bundesrat's Beschluss: „Keine Kundmachung des Gesetzesbeschlusses aufgrund eines Formalfehlers sowie Einbringung eines neuen Antrages (416/A) (`<a …>615/GO</a>`)" (80 d.B., GP XXVIII, dated 2025-09-24; the named Antrag carries its own `bgbllinks`). Not every such case is recorded: XXVII/1435 d.B., decided in both chambers in June 2022 and never promulgated, has no stage after the Bundesrat's Beschluss. Read by `findNoPromulgation` (2026-10-03).
 - **Proposers with their club:** `.content.names[]` with `funktext: "Eingebracht von"` carries `frak_code` (`V`, `S`, `F`, `G`, `N`) on Anträge. Named proposers only — the "Kolleginnen und Kollegen" of the motion text are not enumerated, so any count is over the named ones.
 - **`Gesetzestext` exists as HTML on every type** — ME, Antrag ("Gesetzestext (Arbeitsdokument ParlDion)") and Regierungsvorlage. Comparable across types, which is what makes a text join between them possible; Erläuterungen and Textgegenüberstellung differ in scope between the types and are not comparable.
-- **How the clubs voted:** `.content.vote` on a **Regierungsvorlage** — `result[]` with one entry per Klub (`text`, `infavor`, plus `fraction` = its mandates and a `color`), `infavor` at the top level for whether the vote carried, and `text`/`comment` as upstream's own prose. `null` until the third reading. Where upstream has no club record it ships `result: []` and a word in `text` instead („Namentliche Abstimmung", „mehrstimmig", „Einstimmig"; `code` then starts with `_`). Coverage, the two shapes and what the field does NOT say: §101 below.
+- **How the clubs voted:** `.content.vote` on a **Regierungsvorlage** — `result[]` with one entry per Klub (`text`, `infavor`, plus `fraction` = its mandates and a `color`), `infavor` at the top level for whether the vote carried, and `text`/`comment` as upstream's own prose. `null` until the third reading. Where upstream has no club record it ships `result: []` and a word in `text` instead („Namentliche Abstimmung", „mehrstimmig", „Einstimmig"; `code` then starts with `_`). Coverage, the two shapes and what the field does NOT say: List 101 below.
 
 - **Accountability gold mine:** `.content.statements.documents[]` (misleading key!) lists the **text evolution** right on the ME page: "Gesetzestext" → RV document, "Geändert im Ausschuss", "Geändert im Plenum". The diff chain for the accountability layer is delivered for free.
 - **Measured over GP XXVI–XXVIII** (651 Ministerialentwürfe, `pnpm corpus:stationen`, 17.09.2026), because the station selector reads exactly this list:
@@ -240,8 +240,8 @@ For the ME→RV direction the detail JSONs via `preconst` remain the better rout
 
 ## 2a. RIS OGD API — `Applikation=BrKons` (konsolidiertes Bundesrecht)
 
-Explored 2026-09-08 for the consolidated-text package (`architecture.md`
-§12.12) and the § title lookup speaking names need (§12.11). Same endpoint and
+Explored 2026-09-08 for the consolidated-text package
+and the § title lookup speaking names need. Same endpoint and
 version as `Begut`, no auth:
 
 ```
@@ -284,8 +284,8 @@ class as the list-142 gap, `§list 142`).
 
 ## 2b. RIS OGD API — die übrigen `Bundesrecht`-Anwendungen
 
-Explored 2026-09-08 while building the amendment engine (`architecture.md`
-§12.12). The complete list is not in the documentation but falls out of an
+Explored 2026-09-08 while building the amendment engine.
+The complete list is not in the documentation but falls out of an
 error message: an invalid child element makes the endpoint answer with
 **every** application it accepts.
 
@@ -337,7 +337,7 @@ cases whose result can be scored against one law.
 
 ### `BgblAuth` full-text search and the exact number (06.11.2026)
 
-Read for the Bund-zu-Land map (architecture §12.67), live:
+Read for the Bund-zu-Land map, live:
 
 - **`Suchworte` works in `BgblAuth`** (and in `LgblAuth`): a phrase in
   quotes is a phrase — `Suchworte="Ausführungsgesetze der Länder"` —, a
@@ -393,7 +393,7 @@ find the pair.
   so a version can also carry a long-dated change from an earlier amendment
   (GSpG § 17 in the 2022-12-07 cut). Ground truth at paragraph level is
   therefore slightly coarser than the question "what did *this* amendment
-  do" — see `architecture.md` §12.12 for how the harness handles it.
+  do".
 
 ## 2c. Die amtliche Textgegenüberstellung
 
@@ -435,8 +435,7 @@ Three things follow, and each one contradicts a sentence that was here before:
    HTML, 3 only as an `imfname_` scan. Reading the annex from RIS alone is
    therefore right for the *rows* and wrong for the *sentence*: until
    2026-09-10 those 11 were told "Keine Textgegenüberstellung", which is a
-   statement about RIS dressed up as one about the draft
-   (`architecture.md` §12.13).
+   statement about RIS dressed up as one about the draft.
 
 Also measured, and worth writing down because §2c has an open item about it:
 **no** GP-XXVIII ME carries two Textgegenüberstellung documents at Parliament.
@@ -471,7 +470,7 @@ the page since 2026-09-09; no draft is refused as "nur ein Scan" any more,
 and of the 23 that stay unavailable 21 carry no annex at all.
 
 **Both paths need the RIS check before anything is shown**
-(`annex/verdict.ts`, `architecture.md` §12.13). Neither is a parse that can be
+(`annex/verdict.ts`). Neither is a parse that can be
 trusted on sight: the left column claims to be the standing law, and holding
 that claim against RIS Bundesrecht is the only self-check either path has.
 Measured over the readable XML annexes on 2026-09-09, 86,9 % of paragraphs
@@ -480,7 +479,7 @@ below 80 %; on the PDF path the same ruler gave 70,2 %. **After that day's
 parser corrections it reads 88,9 % (930 of 1.046 §§ with prose) on the table
 path and 76,1 % (1.421 of 1.867) on the PDF path** (2026-09-10) — the PDF
 path gained six points from the per-page geometry gate, the per-column edges
-and the hyphen rule (`architecture.md` §12.13), and stays the rougher of the
+and the hyphen rule, and stays the rougher of the
 two. **The table path reads 91,4 % (955 of 1.045) since 2026-09-11**, when
 inline markup stopped being a word boundary on all three sides of the
 comparison at once; the PDF number is unchanged, because a text layer carries
@@ -508,8 +507,7 @@ whole draft as the reference and 62,1 % (PDF) / 69,5 % (table) with it per §
 — the table figure over 246 injection sites since 2026-09-11, three more than
 the run it was first measured on, because §§ the left check used to fail now
 reach the injection at all.
-Thresholds, the honest reach, the addressing coverage and the rejected
-variants: `architecture.md` §12.13. A parser detail
+A parser detail
 found on the way: the PDF text layer writes RIS's editorial note as
 "(Anm. **:** aufgehoben durch …)", with a space before the colon, so a
 pattern built for the XML spelling leaves it in the column while the standing
@@ -526,14 +524,14 @@ ours.
 - **a row can carry two `<gldsym>`, one per column, and they need not agree**:
   where the draft renumbers a provision the annex prints the standing "§ 7."
   on the left and the proposed "§ 8." on the right, in one and the same row
-  (42 rows in GP XXVIII, 2026-09-11 — `architecture.md` §12.13)
+  (42 rows in GP XXVIII, 2026-09-11)
 - **`<span style="background:yellow">` is the ministry's own change marking** —
   8.769 of them across 9.142 rows in the sample
 
 That last point is the valuable part: the author marks what changed, so the
 comparison needs no engine and carries no risk of inventing law text.
 
-**Als Orakel für die Engine (2026-09-09, `architecture.md` §12.12).** Drei
+**Als Orakel für die Engine (2026-09-09).** Drei
 Dinge, die der Prüfstand auf dem Weg dorthin gelernt hat:
 
 - **Der Rückweg BGBl → Entwurf ist exakt.** `Aenderung` im BrKons nennt die
@@ -628,7 +626,7 @@ die fünf Befunde.
   und `parseAnnexPdf` liest eine Seite nicht, deren Breite um mehr als 1 % von
   der des Dokuments abweicht, die einen schrägen Lauf trägt oder deren
   abweichend gedrehte Läufe 5 % überschreiten — `AnnexParse.droppedPages`,
-  heute 0 für alle 114 (`architecture.md` §12.13).
+  heute 0 für alle 114.
 - **XML: verschachtelte Inhaltstabellen wurden zu erfundenen Änderungen.**
   Der Lift war für den Layout-Fall gebaut — eine Wrapper-Zeile, eine Zelle über
   die volle Breite, die Gegenüberstellung darin — und feuerte auf *jede*
@@ -694,7 +692,7 @@ Zahlen in Klammern über die 400 jüngsten, das Fenster der Tabellen oben):
   zusteht.
 
 Und drei Befunde, die nur den PDF-Weg betreffen (2026-09-10, über die 114
-PDF-Beilagen der GP XXVIII; Zahlen und Varianten in `architecture.md` §12.13):
+PDF-Beilagen der GP XXVIII):
 
 - **Die Spaltenkante muss aus der Spalte kommen.** „Diese Zeile ist
   umbrochen" entschied sich links am Bundsteg und rechts am *Seitenrand* —
@@ -771,7 +769,7 @@ Bundesrecht: Kurztitel, Titel,
 
 There is **no document-type field** (bill draft vs. regulation draft only derivable from the title) and **no parliament reference whatsoever** (no GP, no ME number, no parlament.gv.at URL — verified by grepping full records).
 
-**The type split, measured 2026-09-17** over all 4.574 records with `classifyRisRecord`: **3.012 Verordnungen (65,9 %)**, 1.527 Gesetze (33,4 %), 35 with no type word in the title (0,8 %). The Verordnungen share sits between 54 % and 75 % in every year since 2016 — Parliament's list 81 therefore knows roughly a third of the pre-parliamentary Begutachtung, and that third is the only part with a Gegenstand, Stellungnahmen and an ME→RV chain (`docs/architecture.md` §12.16).
+**The type split, measured 2026-09-17** over all 4.574 records with `classifyRisRecord`: **3.012 Verordnungen (65,9 %)**, 1.527 Gesetze (33,4 %), 35 with no type word in the title (0,8 %). The Verordnungen share sits between 54 % and 75 % in every year since 2016 — Parliament's list 81 therefore knows roughly a third of the pre-parliamentary Begutachtung, and that third is the only part with a Gegenstand, Stellungnahmen and an ME→RV chain.
 
 ### Attached documents
 
@@ -805,8 +803,7 @@ Verordnungsentwurf it is the only published answer to "where do I send my
 Stellungnahme?" — there is no parliamentary form. Reading it out is not
 viable: in a sample of 40 records **34 cover letters had no text layer at
 all** (pure images), and the six readable ones name an individual official's
-work e-mail address. Link the document, do not parse it
-(`docs/architecture.md` §12.16).
+work e-mail address. Link the document, do not parse it.
 
 ### RIS quirks
 
@@ -950,7 +947,7 @@ Both corpora are well populated from GP XVI on — **what is missing is the link
 
 Three consequences:
 
-1. **Absence of a Vorlage is only evidence where the period links any at all.** Per draft the two cases are indistinguishable — a GP XVI draft and a genuinely shelved GP XX draft both carry exactly two stage entries. Only the period separates them. What the product does with that: `docs/architecture.md` §12.27.
+1. **Absence of a Vorlage is only evidence where the period links any at all.** Per draft the two cases are indistinguishable — a GP XVI draft and a genuinely shelved GP XX draft both carry exactly two stage entries. Only the period separates them.
 2. **GP XIV and XV are stubs on the ME side** — 19 and 5 drafts for eight years. Incomplete digitisation, not history.
 3. **A full ME→RV→BGBl chain exists for ~2 183 Verfahren, GP XXII onward.** That is the sample a base-rate claim may be built on, and the boundary it has to name.
 
@@ -985,6 +982,6 @@ Old-vs-new corpus comparison on adoption (2026-09-16, all three corpora): **0 na
 2. ~~Type-filter syntax on list 101~~ **Resolved 2026-09-06:** the type filter is `VHG` (or `DOKTYP`) with values such as `VOLKBG`, `E`, `PET`, `BI` — see `docs/volksbegehren.md` §5.1.
 3. ~~RSS export of the filter lists~~ **Resolved 2026-09-06:** `GET /Filter/api/filter/rss/{listId}?FIELD=value` honours the same filter dimensions, e.g. `rss/81?AKTIV=J` — see `docs/volksbegehren.md` §5.1.
 4. Is `Allgemein.Geaendert` bumped on deadline extensions (is history polling enough)? Does `IncludeDeletedDocuments` return withdrawn drafts?
-5. ~~How to recognize dead MEs (never became an RV)? Watch the `vhg_fertig` field on the ME detail.~~ **Resolved 2026-09-08 — negatively for the field:** `content.vhg_fertig` (and `vhg_fertig_docs`, `process`, `approvalstate`) is `J` / identical on every ME sampled across GP XXVI–XXVIII, running Frist included; nothing upstream marks a draft as dead. What works instead: the GP boundary (a draft stays with its GP; constituent-session dates in `shared/utils/gp.ts`) plus base rates measured with `scripts/corpus/rvLatency.ts` — GP XXVII: 296 of 353 MEs got an RV, median 40 days after Fristende, p90 189 days; **4 of the 61 drafts still without RV at the GP's end got one in GP XXVIII**, linked in the old ME's own stage list (209, 326, 351, 352/ME) — so the stage record does carry cross-GP RVs, and "GP over" must never be rendered as "impossible". GP XXVI: 114 of 163, 14 late RVs of 63. Detail: `docs/architecture.md` §12.10.
+5. ~~How to recognize dead MEs (never became an RV)? Watch the `vhg_fertig` field on the ME detail.~~ **Resolved 2026-09-08 — negatively for the field:** `content.vhg_fertig` (and `vhg_fertig_docs`, `process`, `approvalstate`) is `J` / identical on every ME sampled across GP XXVI–XXVIII, running Frist included; nothing upstream marks a draft as dead. What works instead: the GP boundary (a draft stays with its GP; constituent-session dates in `shared/utils/gp.ts`) plus base rates measured with `scripts/corpus/rvLatency.ts` — GP XXVII: 296 of 353 MEs got an RV, median 40 days after Fristende, p90 189 days; **4 of the 61 drafts still without RV at the GP's end got one in GP XXVIII**, linked in the old ME's own stage list (209, 326, 351, 352/ME) — so the stage record does carry cross-GP RVs, and "GP over" must never be rendered as "impossible". GP XXVI: 114 of 163, 14 late RVs of 63.
 6. Rate limits are undocumented; ~40-request sessions ran unthrottled. Test a nightly full sync (Parliament ~1 request via `showAll`, RIS ~46). Occasional 502s observed → plan retry logic.
 7. Semantics of list-81 column 12 "Engagement" (0 everywhere) and `content.status.number` (5 = promulgated?).

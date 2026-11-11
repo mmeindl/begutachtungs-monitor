@@ -116,7 +116,7 @@ function baselines(page: AnnexPage): AnnexItem[][] {
   // have joined the first — so a bucket one tolerance wide holds at most one
   // group, and a y's own bucket plus its two neighbours hold every candidate.
   // The scan was quadratic in a page's lines and ran two to four times per
-  // page (`docs/refactor-plan.md` §6.8).
+  // page.
   const nearby = new Map<number, number[]>()
   for (const item of page.items) {
     if (!item.text.trim()) continue
@@ -352,7 +352,7 @@ function gutterBand(pages: readonly AnnexPage[], from: number, to: number): [num
  * character, so the same lines still straddled it.
  *
  * **And the reason that midpoint fails is arithmetic, not luck** (measured
- * again over all 114 GP-XXVIII annexes on 2026-09-11, §12.13). Both labels are
+ * again over all 114 GP-XXVIII annexes on 2026-09-11). Both labels are
  * centred over their cells, so `headerSeam` is the mean of the two column
  * *centres* — and that equals the gutter only where the two columns are the
  * same width. Otherwise it sits a quarter of the width difference away from
@@ -393,8 +393,8 @@ function gutterBand(pages: readonly AnnexPage[], from: number, to: number): [num
  * nothing follows — not a §'s text, not a verdict. The two that carry
  * something are the EU-ESG annex, 381 → 438, and the
  * Informationsfreiheits-Anpassungsgesetz BMWET, 421 → 419, whose gutter is
- * 0,1 pt wide and whose right column had 30 lines read as spanning headings
- * (§12.13). The bands are 1 to 13 pt wide, median 7.
+ * 0,1 pt wide and whose right column had 30 lines read as spanning headings.
+ * The bands are 1 to 13 pt wide, median 7.
  */
 export function columnBoundary(pages: readonly AnnexPage[]): number {
   const width = pages[0]?.width ?? 842
@@ -674,7 +674,7 @@ const UNIT_RE = new RegExp(String.raw`^(?:\[\s*(?:\.\.\.|…)\s*\]\s*|(?:\.\.\.|
  * of something else. 23 of the worst-scoring rows carrying real prose were
  * this one shape (2026-09-09).
  *
- * Widened on 04.10.2026 from a word list to its shape (§12.41, five groups in
+ * Widened on 04.10.2026 from a word list to its shape (five groups in
  * GP XXVIII): a heading's tail is a capitalised title, „zu § 5", a bracket or
  * nothing. So a tail that opens with any other lowercase word („Anhang XVI
  * gelten …", „Art. 6 oder Art. 7"), a comma, an EU act („Art. 39 Richtlinie
@@ -1950,7 +1950,7 @@ export function parseAnnexPdf(pages: readonly AnnexPage[], articles: readonly Dr
   // only worth it when the gate actually took one — today it never does.
   //
   // **The seam gates the pages; it does not cut them**, and that was measured
-  // rather than assumed (2026-09-11, §12.13). Over the 114 annexes the ink
+  // rather than assumed (2026-09-11). Over the 114 annexes the ink
   // estimate and the document's seam agree within 0,5 pt in 100 of them and
   // within 4 pt in 112; the two that disagree are the
   // EU-ESG-Rating-Verordnung-Vollzugsgesetz (57,0 pt, where the seam is right)

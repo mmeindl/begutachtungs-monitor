@@ -71,9 +71,8 @@ describe('the notes name the pair they are about', () => {
   })
 })
 
-// A draft kundgemacht as one part of a larger act (docs/architecture.md
-// §12.33): the act after a colon, never declined — a Kurztitel is any noun
-// phrase, and the genitive is the mistake the station label made once.
+// A draft kundgemacht as one part of a larger act: the act after a colon,
+// never declined — a Kurztitel is any noun phrase, and the genitive is the mistake the station label made once.
 describe('a draft inside a larger act', () => {
   const act = { citation: 'BGBl. I Nr. 50/2025', title: 'Informationsfreiheits-Anpassungsgesetz' }
 

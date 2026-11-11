@@ -423,7 +423,7 @@ describe('extractBgblLink', () => {
 /**
  * Which stations a Regierungsvorlage published a changed text at — read from
  * ITS list, because the draft's mirror of the same list belongs to one
- * Vorlage among several (ME→RV is 1:n, §13.4).
+ * Vorlage among several (ME→RV is 1:n).
  */
 describe('amendedStationsOf', () => {
   const group = (title: string) => ({
@@ -636,7 +636,7 @@ describe('readCommitteeConsultation (27.09.2026)', () => {
   })
 })
 
-// The Vorlage names every draft it absorbed (docs/architecture.md §12.33):
+// The Vorlage names every draft it absorbed:
 // 129 d.B. XXVIII lists twelve, 186 d.B. only 1/ME.
 describe('bundlesOtherDrafts', () => {
   it('true where the Vorlage names another Ministerialentwurf', () => {

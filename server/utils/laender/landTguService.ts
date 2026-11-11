@@ -12,12 +12,12 @@
  * withholds the rows its RIS check does not carry. What the check cannot see is the draft's side alone;
  * measured against the sentences the Begutachtungsentwurf itself quotes as
  * new wording, 94 % stand in it verbatim and the losses read were the
- * measurement's or the Land's own (docs/architecture.md §12.45).
+ * measurement's or the Land's own.
  *
  * Two formats. Oberösterreich's is its own (one column, underline and
  * strike, `landTgu.ts`); Wien's is the Bund's two-column template at the end
  * of the draft's PDF, read by the Bund's reader (`annex/annexPdf.ts`) and
- * checked stretch by stretch between its elisions (`standsInRis`, §12.49).
+ * checked stretch by stretch between its elisions (`standsInRis`).
  * Salzburg publishes none in a form measured here.
  *
  * A READ THAT FAILED IS NO VERDICT (25.10.2026). Every RIS read was caught

@@ -6,7 +6,7 @@ import type { LawDiffSegment, Publisher, TraceLink } from './common'
 
 /**
  * A station of the procedure whose law text can be one side of the §
- * comparison (`shared/utils/lawStations.ts`, docs/architecture.md §12.18).
+ * comparison (`shared/utils/lawStations.ts`).
  *
  * Not the same list as the five reader-facing stations in
  * `app/utils/spine.ts`: Begutachtung and Bundesgesetzblatt publish no
@@ -14,7 +14,7 @@ import type { LawDiffSegment, Publisher, TraceLink } from './common'
  *
  * `bgbl` joined on 19.09.2026 and differs from the four before it: its
  * version is not at Parliament but in RIS, and between it and the Plenum
- * version NO actor negotiates any more (docs/architecture.md §12.33).
+ * version NO actor negotiates any more.
  */
 export type LawStationId = 'me' | 'rv' | 'ausschuss' | 'plenum' | 'bgbl'
 
@@ -35,7 +35,7 @@ export interface AmendedLaw {
    * The Stammnorm RIS holds for the law, set ONLY where it differs from
    * `bgbl` — the draft cited it with a misprint („BGBl. I Nr. 10/2013" for
    * 10/2012, 58/ME XXVIII) and the law was found by its name instead
-   * (`resolveLawByBgbl`, §12.41). Null everywhere else, including where the
+   * (`resolveLawByBgbl`). Null everywhere else, including where the
    * two differ only in how the Teil is written.
    */
   risBgbl: string | null
@@ -110,8 +110,7 @@ export interface BgblLawsResponse {
 
 /**
  * Whether the Ressort's reasoning for one change changed between the
- * Ministerialentwurf and the Regierungsvorlage (docs/architecture.md
- * §12.10b).
+ * Ministerialentwurf and the Regierungsvorlage.
  */
 export interface ReasoningDiffEntry {
   /**
@@ -162,8 +161,7 @@ export interface ReasoningDiffEntry {
 
 /**
  * The Ressort's reasoning between the Ministerialentwurf and the
- * Regierungsvorlage, at the changes of the § comparison
- * (docs/architecture.md §12.10b).
+ * Regierungsvorlage, at the changes of the § comparison.
  *
  * Measured over GP XXVIII: 1.515 §§ stand on both sides, and for 728 of them
  * (48 %) the reasoning changed — the section has something to show, often.
@@ -203,7 +201,7 @@ export interface ReasoningDiffResponse {
 
 /**
  * GET /api/drafts/:gp/:inr/paragraphtitel — the heading of each § a
- * change amends, looked up in the standing law (docs/architecture.md §12.11).
+ * change amends, looked up in the standing law.
  *
  * Keyed by `diffUnitKey` (shared/utils/diffKey.ts) so it merges straight onto the
  * diff units — `article|id|change`, because a Regierungsvorlage can carry a
@@ -232,7 +230,7 @@ export interface LawDiffUnit {
   /**
    * The Artikel number of the side `id` refers to, as a key („2" for
    * „Artikel II"); null outside an Artikel-divided package. The Erläuterungen
-   * key a passage by it where a § number alone is ambiguous (§12.10b).
+   * key a passage by it where a § number alone is ambiguous.
    */
   articleKey: string | null
   /** The same for the earlier side — an Artikel is renumbered between draft and Vorlage (18/ME: 3 → 6). */
@@ -242,7 +240,7 @@ export interface LawDiffUnit {
    * `article`, which is the later side's: 22/ME XXVIII titles its „Art. X3"
    * „Änderung des Bundesgesetzes über den Zivildienst", the Vorlage the same
    * law „Änderung des Zivildienstgesetzes 1986" — and the draft's
-   * Erläuterungen head it in the draft's words (§12.10b, 02.10.2026).
+   * Erläuterungen head it in the draft's words (02.10.2026).
    */
   fromArticle?: string
   /** Unit id on the later side of the pair (or the earlier one, for removed units): "§5", "Z3" */
@@ -253,7 +251,7 @@ export interface LawDiffUnit {
   /**
    * The § heading(s) the unit quotes — a readable name for a change whose own
    * text is a legistic instruction. Quoted from the law, never generated, so
-   * it needs no machine-generated marking (docs/architecture.md §12.11).
+   * it needs no machine-generated marking.
    */
   quotedHeading: string | null
   change: LawUnitChange
@@ -319,8 +317,8 @@ export interface LawDiffResponse {
   fromSource: Publisher | null
   /**
    * The same for the later side. Since the BGBl station exists a RIS document
-   * can stand on the RIGHT too — the Kundmachung is not at Parliament at all
-   * (docs/architecture.md §12.33), and the credit line has to be able to say
+   * can stand on the RIGHT too — the Kundmachung is not at Parliament at
+   * all, and the credit line has to be able to say
    * so.
    */
   toSource: Publisher | null
@@ -336,8 +334,7 @@ export interface LawDiffResponse {
    * Laws the Regierungsvorlage adds to a draft it was built from alone
    * (`bundlesOtherDrafts` false; ME→RV only). Unlike `lawsOnlyInTo`, their
    * units ARE in `units` and `stats`, as inserted: the Ressort extended its
-   * own bill, and that is a change like any other (docs/architecture.md
-   * §12.40).
+   * own bill, and that is a change like any other.
    */
   addedLaws: LawPackageEntry[]
   /**
@@ -351,7 +348,7 @@ export interface LawDiffResponse {
    * Laws BOTH texts carry and the draft does not — the rest of a
    * Regierungsvorlage that bundles this draft with other
    * Ministerialentwürfe, cut from a pair of two later stations
-   * (`scopeToDraft`, docs/architecture.md §12.33). Their units are NOT in
+   * (`scopeToDraft`). Their units are NOT in
    * `units` or `stats`. Empty wherever one side is the draft: there
    * `lawsOnlyInTo` already names them.
    */

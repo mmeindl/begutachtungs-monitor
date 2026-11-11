@@ -1,7 +1,7 @@
 <script setup lang="ts">
 /**
  * „Ausführung durch die Länder" in a Ministerialentwurf's section „Im
- * Bundesgesetzblatt" (docs/architecture.md §12.67): where the station's
+ * Bundesgesetzblatt": where the station's
  * detail line („In 3 Entwürfen der Länder ausgeführt →", „Frist") jumps —
  * links in the spine stay on the page (owner, 06.11.2026). Rendered exactly
  * when the station carries that line.

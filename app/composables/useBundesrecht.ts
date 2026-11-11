@@ -1,5 +1,5 @@
 /**
- * Bund zu Land on a draft page (docs/architecture.md §12.67), on the
+ * Bund zu Land on a draft page, on the
  * pattern of `useEuRecht`: on the server only while it stays fast, after
  * the first paint otherwise. Two addresses: a Land's draft gets its fact
  * (what of the Bund's it carries out), a Ministerialentwurf its line (how

@@ -17,7 +17,7 @@ import { lawNameScore } from '../lawtext/lawNames'
  * The best score of `name` against any of a candidate's names. A law answers
  * to its Kurztitel and to its Abkürzung („Einrichtung und Betrieb einer
  * Abbaumanagementgesellschaft des Bundes" is the „ABBAG-Gesetz"), and a
- * draft may use either (03.10.2026, §12.41).
+ * draft may use either (03.10.2026).
  */
 export function bestNameScore(name: string, names: string | readonly string[]): number {
   const list = typeof names === 'string' ? [names] : names

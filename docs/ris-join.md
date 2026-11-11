@@ -13,7 +13,7 @@ Parliament (list 81 + `/gegenstand/{GP}/ME/{INR}`) knows the *procedure*:
 arrival, Frist, Stellungnahmen, the ME→RV→BGBl chain. RIS
 (`Applikation=Begut`) knows the *text*: draft, Erläuterungen,
 Textgegenüberstellung as HTML/XML back to about 2004. Neither side carries
-the other's identifier. The diff layer (architecture §12.2) needs the text
+the other's identifier. The diff layer needs the text
 of the ME next to the text of the RV, so it needs this join, or a
 Parliament-only source for the text (see §6).
 
@@ -317,7 +317,7 @@ more than doubled the StVO-Novelle). Units without an article always stay in,
 and when no article pairs at all the scoping is skipped — an empty comparison
 helps nobody.
 
-**Consequence for §13.4 of `architecture.md` (ME→RV 1:n).** The run produced
+**Consequence for ME→RV 1:n.** The run produced
 the evidence that question was waiting for: 27/ME (IFG-Anpassung BMF) has two
 Regierungsvorlagen, 134 d.B. and 129 d.B., both dated 2025-06-18. Against the
 one the tool picks, 25 of its laws look absent — they are plausibly in the

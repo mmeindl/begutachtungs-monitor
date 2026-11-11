@@ -1,6 +1,6 @@
 #!/usr/bin/env vite-node
 /**
- * Verification harness for the amendment engine (docs/architecture.md §12.12).
+ * Verification harness for the amendment engine.
  *
  * Usage:  npx vite-node scripts/harness/kons.ts BGBLA_2022_I_187 [Kurztitel]
  *         npx vite-node scripts/harness/kons.ts --discover=12 [--sammel]
@@ -133,6 +133,21 @@ if (argFlag('cache')) installFetchCache(process.env.HARNESS_CACHE ?? '.harness-c
 const risJson = (params: Record<string, string>): Promise<any> => risQuery(params, { script: 'harness/kons' })
 
 /**
+ * The captured name is only a *hint* for the title fallback in `resolveLaw`;
+ * the law's identity comes from its Promulgationsklausel. "das", "die" and
+ * "der": the first version of this filter took only neuter laws and so
+ * skipped every -ordnung (Gewerbeordnung, Exekutionsordnung,
+ * Strafprozeßordnung …), a quarter of the corpus. The optional "das X
+ * erlassen und" skips a Stammgesetz enacted in the same BGBl ("… mit dem das
+ * ESG-Rating-Verordnung-Vollzugsgesetz erlassen und das Finanzmarkt-
+ * aufsichtsbehördengesetz geändert wird", BGBl. I Nr. 28/2026): one law is
+ * amended, which is what the harness needs, and the old capture swallowed
+ * both names into one unusable title (2026-09-09).
+ */
+const SINGLE_LAW_TITLE = /^Bundesgesetz, mit dem (?:(?:das|die|der) \S[^,]*? erlassen und )?(?:das|die|der) ([^,]+?) geändert wird$/
+const AMENDING_TITLE = /^Bundesgesetz\b[\s\S]*\bgeändert\b/
+
+/**
  * The Bundesgesetze that amend standing law, with or without a title that
  * says which.
  *
@@ -153,21 +168,6 @@ const risJson = (params: Record<string, string>): Promise<any> => risQuery(param
  * narrow filter takes 107 of the 356 Bundesgesetze; the broad one takes 320
  * (measured 2026-09-18).
  */
-/**
- * The captured name is only a *hint* for the title fallback in `resolveLaw`;
- * the law's identity comes from its Promulgationsklausel. "das", "die" and
- * "der": the first version of this filter took only neuter laws and so
- * skipped every -ordnung (Gewerbeordnung, Exekutionsordnung,
- * Strafprozeßordnung …), a quarter of the corpus. The optional "das X
- * erlassen und" skips a Stammgesetz enacted in the same BGBl ("… mit dem das
- * ESG-Rating-Verordnung-Vollzugsgesetz erlassen und das Finanzmarkt-
- * aufsichtsbehördengesetz geändert wird", BGBl. I Nr. 28/2026): one law is
- * amended, which is what the harness needs, and the old capture swallowed
- * both names into one unusable title (2026-09-09).
- */
-const SINGLE_LAW_TITLE = /^Bundesgesetz, mit dem (?:(?:das|die|der) \S[^,]*? erlassen und )?(?:das|die|der) ([^,]+?) geändert wird$/
-const AMENDING_TITLE = /^Bundesgesetz\b[\s\S]*\bgeändert\b/
-
 async function discoverAmendments(count: number, sammel: boolean): Promise<{ id: string; law?: string }[]> {
   const out: { id: string; law?: string }[] = []
   for (let page = 1; page <= 40 && out.length < count; page++) {
@@ -850,8 +850,7 @@ const ids = argv.filter((a) => /^BGBLA_/.test(a))
  * — and every `--discover=N` ran the default 10 from 5b61d95 (22.09.2026) to
  * 23.09.2026. Silent, because a tenth of the corpus still prints a complete,
  * plausible report: the documented command line measured 10 Bundesgesetz-
- * blätter / 14 Gesetze / 205 Paragraphen where §12.12's tenth measurement
- * reads 60 / 206 / 1.751. Hence the corpus size in the header line below —
+ * blätter / 14 Gesetze / 205 Paragraphen instead of 60 / 206 / 1.751. Hence the corpus size in the header line below —
  * a run that shrinks must say so.
  */
 const wanted = discover === null ? null : Number(discover)

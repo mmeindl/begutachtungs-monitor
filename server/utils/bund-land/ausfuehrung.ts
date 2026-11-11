@@ -1,8 +1,7 @@
 /**
  * Whether a Land's draft carries out something of the Bund's — a
  * Grundsatzgesetz (Art. 12, 14 B-VG) or a Vereinbarung gemäß Art. 15a B-VG
- * — and which act (docs/architecture.md §12.67, measured in §12.66
- * Nachtrag 10).
+ * — and which act.
  *
  * PURE MODULE — text in, findings out; no Nitro globals, relative imports
  * only. It reads what the Land's EU fact reads (`LandEuInput`): the pages
@@ -10,7 +9,7 @@
  * general and particular part. The service (`landBundesrechtService.ts`)
  * and the corpus script (`scripts/corpus/bundLand.ts`) both run it.
  *
- * THE PROTOTYPE'S RULES, PORTED (the measurement's `reader.py`). Unlike
+ * THE PROTOTYPE'S RULES, PORTED. Unlike
  * the EU case the act is easy and the „whether" is hard: half of all
  * mentions are references, and no Vorblatt sentence decides.
  *
@@ -47,7 +46,6 @@ import type { LandEuInput } from '../eu/landEuReading'
 export type AusfuehrungKind = 'grundsatzgesetz' | 'vereinbarung'
 export type AusfuehrungStrength = 'strong' | 'medium'
 
-/** A BGBl. I citation: number and year (`BgblICitation`). */
 type BgblCitation = BgblICitation
 
 export interface Ausfuehrung {

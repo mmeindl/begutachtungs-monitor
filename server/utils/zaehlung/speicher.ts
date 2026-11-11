@@ -1,6 +1,5 @@
 /**
- * Where the day files live and how they get there (docs/architecture.md
- * §12.65): one JSON file per UTC day, `<dir>/YYYY-MM-DD.json`, written
+ * Where the day files live and how they get there: one JSON file per UTC day, `<dir>/YYYY-MM-DD.json`, written
  * whole and atomically every few minutes, at the change of day and at
  * shutdown.
  *

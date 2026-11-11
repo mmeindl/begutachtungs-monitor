@@ -1,6 +1,6 @@
 /**
  * GET /api/bgbl/teil2 → how many Kundmachungen of Bundesgesetzblatt Teil II
- * exist per year (docs/architecture.md §12.32).
+ * exist per year.
  *
  * THIS IS THE PREWARM, and that is why it exists. Matching one Verordnung
  * page reads up to three years, which is around 21 requests to RIS when

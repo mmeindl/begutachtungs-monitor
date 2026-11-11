@@ -107,7 +107,7 @@ export default withNuxt(
     name: 'begut/deferred-findings',
     // Two dead stores the linter found when it was introduced. Removing
     // them means editing logic, which the pass that added the linter did
-    // not do, and `refactor-plan.md` §3 did not list them either — so they
+    // not do — so they
     // report and do not block until someone touches the code around them.
     files: ['server/utils/kons/lawApply.ts', 'scripts/corpus/bgblStation.ts'],
     rules: { 'no-useless-assignment': 'warn' },
@@ -118,7 +118,7 @@ export default withNuxt(
     // It escapes `[` inside the character class for symmetry with the `]`
     // that has to be escaped — the merged `text/punctuationTokens.ts` drops
     // the escape, proven to match the same characters; a regex in the report
-    // engine is not something the refactor edits (`refactor-plan.md` §9).
+    // engine is not something the refactor edits.
     name: 'begut/tokenizer-brackets',
     files: ['server/utils/harness/applyReport.ts'],
     rules: { 'no-useless-escape': 'off' },

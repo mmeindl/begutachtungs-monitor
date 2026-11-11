@@ -178,7 +178,7 @@ A keyword or THEMEN rule would therefore exempt precisely the cases that are
 the finding. The exemption list is consequently explicit, per item, with a
 reason per entry, and the script prints every non-exempt skipper in full so
 the list is maintained by reading the corpus rather than by guessing a rule —
-the same review loop as the classifier audit (`architecture.md` §12.9).
+the same review loop as the classifier audit.
 
 Seven items are exempt for GP XXVIII (BFG 2025–2028, BFRG ×2, Vorbelastungen).
 
@@ -517,7 +517,8 @@ parties file their bills this way" is a description of a practice. It becomes
 a charge only once someone establishes what the practice is owed, and that is
 not this document's call to make.
 
-Accordingly, and per the framing rule (`docs/architecture.md` §4): this
+Accordingly, and per the framing rule (`docs/decisions.md`, Framing and
+what the page may claim): this
 number belongs in
 the product, if at all, as *a fact on an individual procedure* ("dieser
 Entwurf ging ohne Begutachtung ins Parlament") and as *a system-level
@@ -569,7 +570,7 @@ this dataset would make it trivially easy to build.
 
 ## 7. API by-products
 
-- **List 101's type filter is solved** (it was open as §13.7): `ITYP` takes
+- **List 101's type filter is solved**: `ITYP` takes
   `I` (Verhandlungsgegenstand) and `A` (Antrag); `VHG` takes `RV`, `ANTR`;
   `ART` distinguishes `RV`, `A`, `A(E)`, `AMIN`. One call enumerates every
   Regierungsvorlage of a period.

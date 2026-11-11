@@ -11,7 +11,7 @@ import { draftSummary } from './helpers/builders'
  * Every row is a claim, decided and not yet promulgated, so what matters
  * is what does NOT get in: a law already in the Bundesgesetzblatt, a
  * running Begutachtung, and a Beschluss old enough that no Kundmachung is
- * on its way any more (80 d.B., §12.21).
+ * on its way any more (80 d.B.).
  */
 
 const TODAY = '2026-10-03'

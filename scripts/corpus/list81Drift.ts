@@ -6,7 +6,7 @@
  * WHY THE SERIES EXISTS. Two questions cannot be answered by reading the API
  * once, however carefully:
  *
- *   §13.3 — is `Frist` updated when a Begutachtung is extended? The list shows
+ *   Is `Frist` updated when a Begutachtung is extended? The list shows
  *   a deadline, never its history. If an extension leaves the field untouched,
  *   an alert built on it announces a date that has passed and a deadline that
  *   has not — which decides the shape of the alerts package, not just a field.
@@ -130,7 +130,7 @@ interface Change {
   column: number
   before: string
   after: string
-  /** `AKTIV` of the later row — a Frist that moves while open is the case §13.3 asks about. */
+  /** `AKTIV` of the later row — a Frist that moves while open is the case the Frist question asks about. */
   activeAfter: boolean
 }
 
@@ -242,9 +242,9 @@ function main(): void {
     console.log(`  ${String(c).padStart(2)} ${String(names[c] ?? '').padEnd(22)} ${changes(n)}`)
   }
 
-  // §13.3. The display Frist and the sortable Fristsort are reported together
+  // The display Frist and the sortable Fristsort are reported together
   // and apart: a change in one without the other would itself be the finding.
-  console.log('\n## §13.3 — bewegt sich die Frist?')
+  console.log('\n## Bewegt sich die Frist?')
   const fristChanges = allChanges.filter((c) => c.column === COL.frist || c.column === COL.fristsort)
   const openDays = snaps.map((s) => s.rows.filter((r) => r[COL.aktiv] === 'J').length)
   if (!fristChanges.length) {
@@ -279,14 +279,14 @@ function main(): void {
     console.log(`  ${c.to}  ${c.cite.padEnd(9)} „${c.before}" → „${c.after}"  ${c.title}`)
   }
 
-  // §13.10 — the meaning of „Engagement" is an open question. If it moves with
+  // The meaning of „Engagement" is an open question. If it moves with
   // the statement counter and never alone, that is an observation about it.
   const statements = allChanges.filter((c) => c.column === COL.stellungnahmen)
   const engagement = allChanges.filter((c) => c.column === COL.engagement)
   console.log('\n## Zähler')
   const delta = statements.reduce((sum, c) => sum + (Number(c.after) - Number(c.before)), 0)
   console.log(`  Stellungnahmen: ${changes(statements.length)}, netto ${delta > 0 ? '+' : ''}${delta}`)
-  console.log(`  Engagement (§13.10): ${changes(engagement.length)}`)
+  console.log(`  Engagement: ${changes(engagement.length)}`)
   const engagementAlone = engagement.filter(
     (e) => !statements.some((s) => s.key === e.key && s.to === e.to),
   ).length

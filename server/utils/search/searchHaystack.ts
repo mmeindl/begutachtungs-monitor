@@ -1,6 +1,5 @@
 /**
- * What the search field may NOT search: the Ressort mention
- * (docs/architecture.md §12.31).
+ * What the search field may NOT search: the Ressort mention.
  *
  * THE DECISION: only the **Ministerklausel** — „des Bundesministers für
  * <Portfolio>" — is struck, never the portfolio on its own. Measured
@@ -10,9 +9,8 @@
  * (BMLUK is „Bundesministerium für Land- und Forstwirtschaft, Klima- und
  * Umweltschutz, Regionen und Wasserwirtschaft") and the official Langtitel,
  * which on every Verordnung begins with „Verordnung des Bundesministers für
- * <the same portfolio>, mit der …". The whole table of measured words is in
- * §12.31; the Ressort has its own filter axis beside the field, so the free
- * text does not have to double it.
+ * <the same portfolio>, mit der …". The Ressort has its own filter axis
+ * beside the field, so the free text does not have to double it.
  *
  * WHY THE RULE IS THIS NARROW: „Finanzen", „Justiz", „Inneres" are ordinary
  * subject words as well, and a Verordnung ABOUT the finances of something

@@ -2,14 +2,14 @@
  * The organisations the name heuristic of `privacy.ts` cannot recognise,
  * each verified by hand — DATA, apart from the rules that use it. It grew to
  * more than 180 entries when the classifier's review queue was worked
- * through (28.09.2026, docs/architecture.md §12.14), and a list that size
+ * through (28.09.2026), and a list that size
  * buried the rules it serves.
  *
  * PURE MODULE — no imports at all.
  */
 
 /**
- * Known organisations the heuristic cannot recognize (architecture.md §12.9):
+ * Known organisations the heuristic cannot recognize:
  * brand-style names without any legal form or org keyword, and — since the
  * upstream `TYP` flag started vetoing (`classifySubmitter`) — organisations
  * whose staff filed through the private-person registration. Matched

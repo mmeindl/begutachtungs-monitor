@@ -15,7 +15,7 @@ import { describe, expect, it } from 'vitest'
  * way round — so the test reads the file.
  *
  * WHY THE CONSTANT IS WATCHED AT ALL. It is off for a licence reason, not a
- * technical one (docs/architecture.md §13.1): the reading path works, and
+ * technical one: the reading path works, and
  * measured, 3 GP-XXVIII drafts would gain a Gegenüberstellung through it.
  * Flipping it alone would print the text of a parlament.gv.at document on a
  * site whose Impressum says it shows metadata only — two claims that would
@@ -51,7 +51,7 @@ describe('annexSource — the Parliament copy stays linked, not read', () => {
       'annex/textComparisonService.ts: „lesen wir nicht aus" becomes ' +
       '„ließ sich nicht auslesen" again.\n' +
       'And it presupposes an answer to the open licence question ' +
-      '(docs/architecture.md §13.1). Then re-measure the coverage figure in §12.12.',
+      '(docs/decisions.md, Open questions). Then re-measure the annex coverage.',
     ).toBe(true)
   })
 

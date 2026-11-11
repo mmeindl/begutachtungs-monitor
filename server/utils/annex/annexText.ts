@@ -130,7 +130,7 @@ export function annexParagraphKey(law: string | null, para: string): string {
  * Lehrplan-Verordnungen, where „first wins" decided which fraction of the
  * schedule a § was held against. Measured over every label of the offline
  * corpus: 32 labels change their key, all of them in those four laws, and no
- * key collides afterwards (docs/architecture.md §12.13).
+ * key collides afterwards.
  */
 const DESIGNATION_PART_RE = /(§|Art|Anl|Anh)[a-zäöüß.]*\s*(\d+(?:\.\d+)?[a-z]*\d*(?:\/[\da-z]+(?:\.\d+)*)?)/gi
 /** A Gliederungssymbol that dropped its sign: "5.", "12a". */
@@ -150,8 +150,7 @@ const BARE_NUMERAL_RE = /^\s*(\d+(?:\.\d+)?[a-z]*\d*)\s*\.?\s*$/i
  * 1.534 are RIS's "Art. 3 § 5" joined by a plain space and the other 12 are
  * the annex's schedule headings, every one of them joined by " zu ". Over
  * every RIS label occurrence of the offline corpus **not one contains "zu" at
- * all**, so the lookup side of the key cannot move (docs/architecture.md
- * §12.13).
+ * all**, so the lookup side of the key cannot move.
  */
 const CITATION_JOINER_RE = /\bzu\b/i
 
@@ -181,8 +180,7 @@ const CITATION_JOINER_RE = /\bzu\b/i
  * making. `CITATION_JOINER_RE` is where the cut is and why it is safe.
  *
  * Measured against every RIS label of the cached corpus (2026-09-11): none is
- * unreadable here, so the exactness costs no coverage. The counts and the
- * affected drafts are in docs/architecture.md §12.13.
+ * unreadable here, so the exactness costs no coverage.
  *
  * Null for a text carrying no designation at all.
  */

@@ -236,7 +236,7 @@ describe('laws organised in Artikel', () => {
   // "Art. II § 1" resolved to the document's first § — Art. 1's
   // Verfassungsbestimmung — and only missed editing it because that § had no
   // Abs. 5. Refused until 25.09.2026; now the Artikel is part of the address,
-  // normalised to the arabic form RIS keys its documents by (§12.12a).
+  // normalised to the arabic form RIS keys its documents by.
   it('carries the Artikel of a § addressed inside one', () => {
     expect(op('Art. II § 1 Abs. 5 lautet:')).toMatchObject({ target: { artikel: '2', para: '§ 1', abs: '5' } })
     expect(op('In Art. 2 § 7 Abs. 1 entfällt die Wortfolge "und".')).toMatchObject({ target: { artikel: '2', para: '§ 7', abs: '1' } })

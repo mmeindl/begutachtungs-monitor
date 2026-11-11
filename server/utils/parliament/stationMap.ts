@@ -1,7 +1,6 @@
 /**
  * Where every Ministerialentwurf of one Gesetzgebungsperiode stands — the
- * station map behind the station filter on `/entwuerfe`
- * (docs/architecture.md §12.26).
+ * station map behind the station filter on `/entwuerfe`.
  *
  * The four stations are the detail page's own (`app/utils/spine.ts`,
  * minus `entwurf`, which is not a place a draft can stand): Begutachtung,
@@ -87,8 +86,7 @@ const INCOMPLETE_MAP_TTL_MS = 10 * 60 * 1000
 
 /** How many drafts are asked about at once. The annex pipeline uses the
  *  same worker-pool shape; 12 builds GP XXVII's 650 requests in 35.6 s
- *  without opening 353 sockets on a service that documents no rate limit
- *  (§13.6). */
+ *  without opening 353 sockets on a service that documents no rate limit. */
 const CONCURRENCY = 12
 
 /**
@@ -188,8 +186,7 @@ async function chainOf(
     }
 
     /* The Vorlage's OWN period, not the draft's: a carry-over names the
-     * next one, and there the Vorlage is alive (docs/architecture.md
-     * §12.10, 30.09.2026). The same function the detail page's headline
+     * next one, and there the Vorlage is alive (30.09.2026). The same function the detail page's headline
      * and rail read (`enactmentOf`), so row and page say the same word. */
     const rvGpEnded = isVorlageGpEnded(rv.gp, currentGp)
     let bgblNumber: string | null = null
@@ -215,8 +212,7 @@ async function chainOf(
        * Gesetzesinitiativen"), and § 23b Abs. 1 GOG-NR admits Stellungnahmen
        * „während des parlamentarischen Gesetzgebungsverfahrens" (BGBl. I Nr.
        * 81/2024). A gate that closed it with the Nationalrat's Beschluss
-       * stood here for an afternoon on 03.10.2026 and went the same day
-       * (docs/architecture.md §12.26). */
+       * stood here for an afternoon on 03.10.2026 and went the same day. */
       filingOpen = isVorlageFilingOpen(rvDetail.content, rv.gp, currentGp)
       // The procedure's dates after the Ausschuss — the `parlament`
       // station's fact and dates (`stationFor`, the „Neu" mark, the open
@@ -227,8 +223,8 @@ async function chainOf(
       bundesratDecidedAt = findBundesratDecisionDate(phase)
       notPromulgated = findNoPromulgation(phase, rv.gp)
       /* A Gesetzesbeschluss Parliament records as not promulgated, and the
-       * Antrag it names as the text's successor (80 d.B. → 416/A, §12.33,
-       * Nachtrag 03.10.2026). Where that Antrag's own record links a
+       * Antrag it names as the text's successor (80 d.B. → 416/A,
+       * 03.10.2026). Where that Antrag's own record links a
        * Kundmachung, the draft did reach the Bundesgesetzblatt — on the
        * route Parliament states, not one we infer — and the chain says so
        * the way the Antrag route does. One extra fetch, only in this rare
@@ -266,8 +262,7 @@ async function chainOf(
      * 81 enacted drafts of GP XXVIII. What it guards is the lag between a
      * Kundmachung and Parliament's link to it; it does NOT resolve the two
      * decided Vorlagen known to lack one (80 d.B., XXVIII; 1435 d.B., XXVII),
-     * because no Kundmachung names them (docs/architecture.md §12.33,
-     * Nachtrag 03.10.2026). Asked only where a Kundmachung can exist — a
+     * because no Kundmachung names them (03.10.2026). Asked only where a Kundmachung can exist — a
      * Beschluss, or a status that means one — and within the date lookup's
      * budget; the Jahrgang pages are the Verordnung join's, cached. A search
      * past its budget is a gap, not „no Kundmachung yet": the read is
@@ -329,7 +324,7 @@ const buildStationMap = defineCachedFunction(
      * detail JSON does not carry in a form we read: whether the house is
      * done with it, and when it arrived there. One call per period, cached
      * — and a period is fetched only if a Vorlage actually points into it,
-     * which for the carry-over case (§13.4) is at most one extra list. */
+     * which for the carry-over case is at most one extra list. */
     const houseLists = new Map<string, Promise<Map<number, VorlageRow>>>()
     // A list that failed costs the rows their house status and date, so the
     // map that read without it counts as incomplete.

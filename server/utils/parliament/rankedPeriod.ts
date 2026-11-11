@@ -1,13 +1,12 @@
 /**
- * Which Gesetzgebungsperiode „Wo am meisten mitgeredet wurde" speaks about
- * (docs/architecture.md §12.35).
+ * Which Gesetzgebungsperiode „Wo am meisten mitgeredet wurde" speaks about.
  *
  * Normally the running one. On the day a new period constitutes itself it
  * has no Ministerialentwürfe at all, and for weeks after that too few to
  * rank — so the section falls back to the period before it, NAMED. The
- * naming is the whole design: §12.21 argues at length why this ranking may
- * not span periods (across GP XXVII the top five are 106.184, 35.296,
- * 19.026, 16.534 and 14.334 Stellungnahmen, four of them
+ * naming is the whole design: this ranking may not span periods (across
+ * GP XXVII the top five are 106.184, 35.296, 19.026, 16.534 and 14.334
+ * Stellungnahmen, four of them
  * Epidemiegesetz-Novellen — a COVID monument that can never change again),
  * and a fallback that merged the two would be that ranking by accident.
  * What falls back is the WINDOW, one period at a time, and the page says

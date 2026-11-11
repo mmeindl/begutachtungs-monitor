@@ -65,7 +65,7 @@ export const PILL_CLASS = 'inline-flex items-center rounded-full px-2 py-0.5 tex
  * „Geändert" was blue until 03.10.2026 — blue means "you can do something
  * here", wrong on a fact — then ink until 21.10.2026, which made the
  * substance the quietest row. Amber is neither: not an action, and not
- * `mark` either, which stays the highlighter (docs/architecture.md §8).
+ * `mark` either, which stays the highlighter.
  */
 export const GUTTER_CLASS: Record<DiffBadge, string> = {
   changed: 'border-diff-changed',

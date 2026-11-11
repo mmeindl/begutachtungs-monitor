@@ -171,9 +171,8 @@ export function compareKey(t: string): string {
  * from the result, so the page published „BundesKinder- und
  * Jugendhilfegesetzes" for „Bundes-Kinder- und Jugendhilfegesetzes" — the law's
  * own name misspelt in a law text (126/ME § 9, found 25.09.2026; across that
- * draft's whole Lesefassung not one inner hyphen survived). The same mistake
- * as the comparison form on the page in §12.12a, one level further down: a
- * form that is right for a judgement is not thereby right for a text.
+ * draft's whole Lesefassung not one inner hyphen survived). A form that is
+ * right for a judgement is not thereby right for a text.
  */
 export function displayTokens(t: string): string[] {
   return foldLeaders(normalizeText(t))
@@ -243,9 +242,7 @@ const INLINE_MARKUP_RE = /<\/?(?:i|b|u|em|strong|span|font|sub)\b[^>]*>/gi
  * against 11 of 4.664 in the standing law, `span` 3.155 times against 0. The
  * rule costs the other two sides 12 of 202.966 standing blocks and 6 of
  * 48.355 draft blocks; making it shared is the point, because those 18 are
- * exactly the cases that would otherwise become the asymmetry. The full
- * table and the six §§ that changed their verdict are in
- * docs/architecture.md §12.13.
+ * exactly the cases that would otherwise become the asymmetry.
  *
  * **Two failure modes were looked for and do not exist in the corpus:**
  * zero-width markup fusing two words (`Wort<span></span>zwei`, 0 runs on any
@@ -263,8 +260,7 @@ const INLINE_MARKUP_RE = /<\/?(?:i|b|u|em|strong|span|font|sub)\b[^>]*>/gi
  * „*)", the digits of a Lehrplan's Stundentafel) *and* the exponents (m³,
  * km², 10⁻³⁴, „Abs. 2bis"), which shape cannot separate. So the index joins
  * its word, as the PDF text layer — which has no markup at all — already
- * joins it, and the footnote stays apart. The measurement and what the
- * welding moved are in docs/architecture.md §12.13.
+ * joins it, and the footnote stays apart.
  */
 export function stripMarkup(html: string): string {
   return html.replace(INLINE_MARKUP_RE, '').replace(/<[^>]*>/g, ' ')

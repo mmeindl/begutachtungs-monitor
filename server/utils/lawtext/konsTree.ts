@@ -1,5 +1,5 @@
 /**
- * The standing law as an addressable tree (docs/architecture.md §12.12).
+ * The standing law as an addressable tree.
  *
  * PURE MODULE — relative imports only, so vitest runs it directly.
  *
@@ -68,9 +68,8 @@ const STRIP = [/<kzinhalt[\s\S]*?<\/kzinhalt>/g, /<fzinhalt[\s\S]*?<\/fzinhalt>/
  * `<schlussteil>`, 402 carry `<schluss>`, and **not one carries both** — so
  * reading only the newer name ended those 402 §§ with their enumeration and
  * dropped 880 blocks, 23.578 comparable words of standing law, silently. The
- * §§ this cost, and the document-order measurement behind it (15.290 of
- * 15.510 representable documents in order, against 14.906, none short of
- * text any more), are in docs/architecture.md §12.13.
+ * document-order measurement behind it: 15.290 of 15.510 representable
+ * documents in order, against 14.906, none short of text any more.
  * `lawtext/risXml.ts` reads both names for the same reason, on the other
  * kind of document.
  */
@@ -163,8 +162,7 @@ function lastChild(node: LawNode, level: NodeLevel): LawNode | null {
  * them all on the Absatz puts a Ziffer's or Litera's clause in that slot in
  * **89 §§**. Reading the level takes that to zero, and it never *empties* a
  * slot: over the 16.073 documents the Absatz's clause changes in 317 of them
- * and in every one of those it was empty before (docs/architecture.md
- * §12.13).
+ * and in every one of those it was empty before.
  *
  * **`<schlussteil>` names it in `ebene`, and since 26.09.2026 that is read**
  * — 0 and 0.5 for the Absatz (4.792 blocks), 1 for the Ziffer (2.640), 2 and
@@ -178,7 +176,7 @@ function lastChild(node: LawNode, level: NodeLevel): LawNode | null {
  * close the Ziffer or the Absatz was the question `ebene` cannot answer on
  * its own: the variant that files an ending clause on the Absatz was built
  * and measured on the same bench and is **worse** (763 / 26), so they close
- * the Ziffer like every other one. Protocol: docs/architecture.md §12.13.
+ * the Ziffer like every other one.
  */
 function closingHost(abs: LawNode, typ: string, ebene: string | null = null): LawNode {
   const depth = /^e(\d+)$/i.exec(typ)
@@ -212,7 +210,7 @@ export function parseKonsParagraph(xml: string): LawNode | null {
   // Absätze of the §. The whole document used to be dropped for that (NEHG
   // §§ 24, 26, 27, 2026-09-09), which took its prose with it — 693 of 20.419
   // fetched documents in 151 of 607 laws, and a § that is not loaded can
-  // never be shown either (26.09.2026, §12.12).
+  // never be shown either (26.09.2026).
   //
   // **So the table is read as ONE opaque block** and its inner blocks are
   // not read at all: `BLOCK_RE` matches `<table>…</table>` whole, and the
@@ -232,7 +230,7 @@ export function parseKonsParagraph(xml: string): LawNode | null {
   // that § arrived as id „2" — the Artikel's number, and therefore as a twin
   // of the same law's § 2. It stayed invisible while `kons/novao.ts` refused
   // every address into such a law; the moment the Artikel became part of an
-  // address (§12.12a, 25.09.2026), it would have been a wrong § with a
+  // address (25.09.2026), it would have been a wrong § with a
   // correct-looking text. „Anlage 5 zu § 14" is NOT this shape — the § there
   // is a cross-reference and the Anlage keeps its own number — so the § is
   // read only where it stands directly behind the Artikel.
@@ -476,7 +474,7 @@ export function renderNode(node: LawNode): string {
 
 /**
  * DISPLAY FORM of a §'s body — with the Gliederungsmarker, without the §
- * designation and without the Überschrift (docs/architecture.md §12.12a).
+ * designation and without the Überschrift.
  *
  * Kept apart from `plainText`, and the difference is not taste: this file
  * knows two forms of the same text. The comparison form leaves „(1)", „3."

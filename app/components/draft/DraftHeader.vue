@@ -21,7 +21,7 @@
  * set differently — and a different provenance line, pointing at a different
  * document in a different link style. A shell for that would be four more
  * exclusive slots, which is the shape this page anatomy was explicitly not
- * to grow (refactor-plan.md §4.3).
+ * to grow.
  */
 import { keepDashWithPrecedingWord } from '~/utils/typography'
 

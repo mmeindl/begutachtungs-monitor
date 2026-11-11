@@ -4,7 +4,7 @@ import { hintWindowParagraphs, askedOfLawInForce, bundesrechtHits, bundesrechtPh
 
 const fixture = (name: string) => JSON.parse(readFileSync(new URL(`./fixtures/eu/${name}`, import.meta.url), 'utf8'))
 
-/* Rule D4, widened (§12.66): an act a Paragraph of Bundesrecht in force transposes gets no deadline line. */
+/* Rule D4, widened: an act a Paragraph of Bundesrecht in force transposes gets no deadline line. */
 describe('the law in force, asked over all of Bundesrecht', () => {
   it('is asked about every transposed act, dated or not — not about a regulation carried out elsewhere too (05.11.2026)', () => {
     expect(askedOfLawInForce('richtlinie')).toBe(true)

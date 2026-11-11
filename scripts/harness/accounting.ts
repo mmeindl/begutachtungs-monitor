@@ -5,7 +5,7 @@
  * Usage:  npx vite-node -c vitest.config.ts scripts/harness/accounting.ts -- [--base=http://localhost:3000] [--gp=XXVIII] [--only=48,126] [--ris] [--json=report.json]
  *
  * `--ris` runs the Begutachtungen RIS carries without a Gegenstand at
- * Parliament (Verordnungsentwürfe above all, §12.16) instead of the
+ * Parliament (Verordnungsentwürfe above all) instead of the
  * Ministerialentwürfe — the same section, behind `/api/ris-drafts/:id`.
  *
  * **What it measures is the page, not the engine.** It asks a running server

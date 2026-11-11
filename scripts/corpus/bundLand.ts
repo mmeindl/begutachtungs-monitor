@@ -1,8 +1,6 @@
 /**
  * Bund zu Land through the production modules — which Land drafts carry
- * out a Grundsatzgesetz or implement an Art.-15a agreement, and which act
- * (docs/architecture.md §12.67; the measurement before the build is §12.66
- * Nachtrag 10).
+ * out a Grundsatzgesetz or implement an Art.-15a agreement, and which act.
  *
  * READS ONLY THE CACHE of the Länder' EU measurement (`.cache/eu-laender`,
  * `pnpm corpus:eu-laender`): the list, each draft's detail and its PDFs.

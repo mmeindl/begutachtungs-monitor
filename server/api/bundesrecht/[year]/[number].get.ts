@@ -3,7 +3,7 @@
  * Grundsatzgesetz by its Kundmachung in BGBl I — its record, its Frist
  * clause in its own words, the Ministerialentwurf where its text carried
  * the Grundsatz content — and the Land drafts of the window that carry it
- * out (docs/architecture.md §12.67). Two dates and a stand per draft, no
+ * out. Two dates and a stand per draft, no
  * verdict (rule D6).
  *
  * 400 for a number that is none, 404 for an act the map does not hold, 503

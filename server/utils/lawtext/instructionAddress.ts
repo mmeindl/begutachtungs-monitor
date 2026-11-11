@@ -43,7 +43,7 @@ export function addressedParagraph(line: string): string | null {
   // which § it does not address.
   //
   // Not in `instructionParagraphs`: the Artikel pairing is calibrated on the
-  // typed reading (docs/architecture.md §12.11, 28.09.2026), and this is a
+  // typed reading (28.09.2026), and this is a
   // question of the name, not of which Artikel is which.
   //
   // Five forms stay unread, each met in the corpus as a wrong § (GP

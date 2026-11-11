@@ -7,29 +7,29 @@
 # reports success in the middle of it hands that minute to the first visitor.
 #
 # Second call since 2026-09-17: the homepage now also states what is in
-# Begutachtung WITHOUT a Gegenstand at Parliament (docs/architecture.md
-# §12.16). It reads the same corpus the first call warms, so it adds no
+# Begutachtung WITHOUT a Gegenstand at Parliament.
+# It reads the same corpus the first call warms, so it adds no
 # upstream traffic — but it has its own 30-minute derived cache, and that
 # section is a correction to a claim the page makes, so it must not be the
 # one part of the start page that arrives cold. (Its path followed the
-# rename to /api/ris-drafts on 2026-09-18 — §12.19.)
+# rename to /api/ris-drafts on 2026-09-18.)
 #
-# Third call since 2026-09-18: the station map behind the station filter
-# (§12.26). This is the expensive one — 227 upstream requests for GP XXVIII,
+# Third call since 2026-09-18: the station map behind the station filter.
+# This is the expensive one — 227 upstream requests for GP XXVIII,
 # 650 for XXVII, 35.6 s cold — and the only one that MUST run here: the list
 # reads the map under a 2.5 s budget and simply answers without stations when
 # it is cold, so a map nobody warms is a filter nobody sees. --max-time 900
 # rather than 600 because the timer may fire on a period twice that size.
 #
 # Fourth call since 2026-09-19: the Bundesgesetzblatt Teil II volumes the
-# Verordnung pages read their Kundmachung from (§12.32). Three volumes are
+# Verordnung pages read their Kundmachung from. Three volumes are
 # about 21 requests to RIS when cold — and unlike the other sections, the
 # result of a cold run would not merely be slow but a statement: whoever does
 # not have the volumes finds no Kundmachung and would write „nicht
 # kundgemacht" under a Verordnung that has been in force for a long time.
 #
 # It stands BEFORE the list call, ever since the list shows the outcome per
-# row (§12.32): the list waits only 3 s for it and otherwise renders without
+# row: the list waits only 3 s for it and otherwise renders without
 # the column — which is right, but avoidable when the volumes are already in.
 #
 # Fifth call since 2026-09-26: the station map of the PREVIOUS period. Same
@@ -41,7 +41,7 @@
 # question „was ist daraus geworden" has an answer at all.
 #
 # It is the expensive line — 650 upstream requests against 227 for the
-# running period, 35,6 s cold (§12.26) — and it stands LAST because of it:
+# running period, 35,6 s cold — and it stands LAST because of it:
 # every call before it serves a page somebody reaches without choosing
 # anything, and a deploy that breaks off in the middle of this unit should
 # lose the least-visited warm-up, not the start page's.
@@ -56,7 +56,7 @@
 # draft open and closed — what `/entwuerfe` shows once a Land is chosen, and
 # what every closed Land draft page reads. Cold it is the Salzburg register
 # (13 s), the Landesgesetzblatt of three Länder from RIS (about 40 requests)
-# and the title search over all of it (docs/architecture.md §12.43). All
+# and the title search over all of it. All
 # three are held stale-while-revalidate, so one warm run after the restart
 # keeps them warm. It stands before the previous period's map: a Land is a
 # choice too, but a cheaper one to have ready. `status=all` without `gp` is
@@ -75,7 +75,7 @@
 # with the ME count — a deploy that gets slower every month is a deploy that
 # stops being run. Third, each draft pulls every § of every law it amends
 # from RIS, nightly, for a layer that is opened on a median 12 % of a draft's
-# §§ (§12.12a). The first visitor of the day pays 12 s for a section that
+# §§. The first visitor of the day pays 12 s for a section that
 # says „lädt"; that is the right one to pay it.
 [Unit]
 Description=Begutachtungs-Monitor: warm the RIS corpus, BGBl volumes, both station maps, the Länder and the EU map
@@ -114,8 +114,8 @@ ExecStart=/usr/bin/curl -fsS -o /dev/null --max-time 300 "http://127.0.0.1:3000/
 # The homepage's cut of the same Länder lists (30.10.2026): read right after them, it
 # costs the cut and nothing upstream.
 ExecStart=/usr/bin/curl -fsS -o /dev/null --max-time 120 http://127.0.0.1:3000/api/dashboard/laender
-# Seventh call since 04.11.2026: the EU map (docs/architecture.md §12.66,
-# Nachtrag 3) — which drafts of the running period implement EU law: the
+# Seventh call since 04.11.2026: the EU map —
+# which drafts of the running period implement EU law: the
 # list's token and its filter „Setzt EU-Recht um", the pages under
 # /eu-recht, the „Weitere Entwürfe" line under a draft's fact. After the
 # station map and the Länder lists, which the map joins for a draft's stand.
@@ -127,8 +127,8 @@ ExecStart=/usr/bin/curl -fsS -o /dev/null --max-time 120 http://127.0.0.1:3000/a
 # is read again, so the nightly cost is the day's arrivals. --max-time 1800:
 # the Länder are paced at one request a second, and a Land that blocks is
 # retried the next night, not waited for.
-# Since 06.11.2026 the same call builds the Bund-zu-Land map (§12.67,
-# bund-land/ beside eu-recht/): the Länder run as one loop over both
+# Since 06.11.2026 the same call builds the Bund-zu-Land map
+# (bund-land/ beside eu-recht/): the Länder run as one loop over both
 # stores, so a changed draft's PDFs are read once for both facts. No line
 # of its own — a second route would fetch every Land's PDFs again. The first
 # build after that deploy reads all Land drafts for the new store once.

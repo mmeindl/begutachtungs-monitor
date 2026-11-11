@@ -364,8 +364,7 @@ describe('a Regierungsvorlage that merges several drafts', () => {
 
   // Two LATER stations of the same Sammelgesetz: both carry every Artikel,
   // so `diffLawPackage` alone scopes nothing and the draft's page counts the
-  // whole act (17/ME XXVIII: 629 units for a draft that brought 39,
-  // docs/architecture.md §12.33).
+  // whole act (17/ME XXVIII: 629 units for a draft that brought 39).
   describe('scopeToDraft — a later pair cut to the draft’s laws', () => {
     const later = pkg([
       { title: 'Bundesgesetz, mit dem das Auskunftspflichtgesetz ge&auml;ndert wird', ziffern: ['1. &sect;&nbsp;1 lautet: &bdquo;neuer&ldquo;', '2. &sect;&nbsp;2 lautet: &bdquo;gleich&ldquo;'] },
@@ -913,7 +912,7 @@ describe('the Stammnorm stands in for the name: a long title against an abbrevia
     expect(d.lawsOnlyInTo.map((l) => l.article)).toEqual(['Änderung des Bundesgesetzes über die Zusammenarbeit mit dem Internationalen Strafgerichtshof'])
     // The unit names the Vorlage's title, and the draft's where it is
     // another — the draft's Erläuterungen head the law in the draft's words
-    // (§12.10b, 02.10.2026). Where both print the same, nothing is added.
+    // (02.10.2026). Where both print the same, nothing is added.
     const units = diffLawPackage(me, rv).units
     const paired = units.filter((x) => x.article === SHORT && x.fromId !== null)
     expect(paired.length).toBeGreaterThan(0)
@@ -943,7 +942,7 @@ describe('the Stammnorm stands in for the name: a long title against an abbrevia
   })
 })
 
-describe('diffAtSamePlace — an instruction reworded at the same place (§12.46)', () => {
+describe('diffAtSamePlace — an instruction reworded at the same place', () => {
   const z = (n: number, heading: string, text: string): LawUnit => ({
     article: 'Artikel 1', articleNumber: 'Artikel 1', id: `Z${n}`, heading, quotedHeadings: [], text,
     blocks: [{ kind: 'novao', cls: 'novao', text, gld: null }], stammnorm: null,

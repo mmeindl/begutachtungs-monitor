@@ -3,7 +3,7 @@
  * Landesgesetzblatt (22.10.2026) — for the Länder whose own pages stop at
  * the Begutachtung (Salzburg, Wien, Oberösterreich's Verordnungen).
  *
- * BY TITLE, and measured before it was built (docs/architecture.md §12.43):
+ * BY TITLE, and measured before it was built:
  * on the 83 Oberösterreich Gesetze whose Landtag record names the LGBl, 77
  * right, 2 wrong, 4 not found; on Salzburg's closed drafts since 2015,
  * 91,5 % found. The rule that carried it:
@@ -30,7 +30,7 @@
  *
  * What it cannot see: the same law amended twice inside the window takes
  * the earlier Kundmachung (both oracle errors). Hence the asymmetry the
- * page keeps, as for the Bund's Verordnungen (§12.32): a find stands with
+ * page keeps, as for the Bund's Verordnungen: a find stands with
  * its link, to be checked; a miss is „keine Kundmachung gefunden", never
  * „nicht kundgemacht".
  */

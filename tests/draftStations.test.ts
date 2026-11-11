@@ -3,8 +3,8 @@ import type { DraftChain } from '../shared/types'
 import { chainCoverageOf, furtherChain, mayClaimOutcome, stationFor } from '../shared/utils/draftStations'
 
 /**
- * The three inferences behind the station filter (docs/architecture.md
- * §12.26, §12.27). Everything else in `parliament/stationMap.ts` is fetching and
+ * The three inferences behind the station filter.
+ * Everything else in `parliament/stationMap.ts` is fetching and
  * folding; these decide what the list CLAIMS about a draft, which is the
  * part that must not drift.
  *
@@ -83,7 +83,7 @@ describe('furtherChain', () => {
     expect(furtherChain(undefined, chain('rv'))).toEqual(chain('rv'))
   })
 
-  it('keeps the further station when a draft produced two Vorlagen (§13.4)', () => {
+  it('keeps the further station when a draft produced two Vorlagen', () => {
     expect(furtherChain(chain('rv'), chain('bgbl')).station).toBe('bgbl')
     expect(furtherChain(chain('bgbl'), chain('rv')).station).toBe('bgbl')
   })
@@ -104,7 +104,7 @@ describe('furtherChain', () => {
 })
 
 /**
- * The guard against the one claim this product must never invent (§12.27):
+ * The guard against the one claim this product must never invent:
  * "bisher keine Regierungsvorlage" about a period whose archive never
  * recorded the link. Measured 18.09.2026 — GP XVI has 297 Ministerialentwürfe
  * of which not one links to a Vorlage, while list 101 holds 270

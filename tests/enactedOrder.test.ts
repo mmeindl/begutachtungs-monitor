@@ -37,8 +37,8 @@ describe('pickEnacted', () => {
   })
 
   /* ME → RV is 1:n and both strands can reach the Bundesgesetzblatt: 74/ME
-   * produced 443 and 444 d.B., promulgated as BGBl. I 81/2026 and 39/2026
-   * (§13.4). Without the dedup the same card renders twice as soon as both
+   * produced 443 and 444 d.B., promulgated as BGBl. I 81/2026 and 39/2026.
+   * Without the dedup the same card renders twice as soon as both
    * fall into the window. */
   it('shows one row per draft, and it is the newest Kundmachung', () => {
     const out = pickEnacted([

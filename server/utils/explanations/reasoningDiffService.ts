@@ -1,7 +1,6 @@
 /**
  * „Hat sich die Begründung geändert?" — the ressort's Erläuterungen from the
- * draft to the Regierungsvorlage, at each change of the § comparison
- * (docs/architecture.md §12.10b).
+ * draft to the Regierungsvorlage, at each change of the § comparison.
  *
  * Nuxt glue around `explanations/explanationsHtml.ts`. Measured before this
  * existed: over 64 evaluable pairs of GP XXVIII, 1.515 Paragraphen stand on
@@ -12,8 +11,8 @@
  *
  * BOTH SIDES FROM PARLIAMENT, with the same parser. The draft's Erläuterungen
  * would also be in RIS as typed XML, the Regierungsvorlage's would not. A
- * comparison of XML against Word HTML measures the converters first (§12.12,
- * sixth measurement), so `parseParliamentHtml` reads both.
+ * comparison of XML against Word HTML measures the converters first,
+ * so `parseParliamentHtml` reads both.
  *
  * KEYED BY `unitKey` like the § names (`diff/paraTitleService.ts`), for the
  * same reason: the comparison's units carry the Regierungsvorlage's

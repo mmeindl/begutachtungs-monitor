@@ -102,7 +102,7 @@ const outcomesFetch = useFetch<DashboardOutcomes>('/api/dashboard/outcomes', {
   lazy: true,
 })
 
-/* The end of the chain, read from the Vorlage side (§12.23). Server-rendered
+/* The end of the chain, read from the Vorlage side. Server-rendered
  * for the same reason as the outcomes above it: this is the section that
  * shows participation arriving somewhere, and it may not depend on
  * JavaScript. Measured cold on 2026-09-18: 0.93 s for the whole endpoint —
@@ -113,7 +113,7 @@ const enactedFetch = useFetch<DashboardEnacted>('/api/dashboard/enacted', {
   lazy: true,
 })
 
-/* „Beschlossen, noch nicht kundgemacht" (§12.21, Nachtrag 03.10.2026) —
+/* „Beschlossen, noch nicht kundgemacht" —
  * server-rendered like the sections around it, and for their reason: it is
  * the accountability layer. It pays no upstream request of its own (list 81
  * and the station map are cached leaves), and its endpoint answers empty
@@ -137,7 +137,7 @@ const { data: secondRound } = await useFetch<DashboardSecondRound>(
 )
 
 /* The Begutachtungen Parliament has no Gegenstand for — mostly
- * Verordnungsentwürfe (docs/architecture.md §12.16).
+ * Verordnungsentwürfe.
  *
  * SERVER-RENDERED, unlike the section above it, and that is the point. This
  * is not a bonus section: without it "Jetzt in Begutachtung" names a
@@ -183,7 +183,7 @@ const { data: decided } = await decidedFetch
  * Kundmachungen beside the Bund's, and their Landtag decisions still
  * awaiting one. Asked only when a Land is chosen, like the open list's
  * Länder, and after the Bund's Kundmachungen, because their period is the
- * window the Länder are read over (§12.35) — 0.5 s warm, a cached cut of the
+ * window the Länder are read over — 0.5 s warm, a cached cut of the
  * lists behind the section's link (`/api/dashboard/laender`). */
 const { data: landRecent, status: landRecentStatus } = await useAsyncData<DashboardLaender | null>(
   'home-laender-recent',
@@ -255,15 +255,14 @@ const sourcesParam = computed(() => (sourcesQuery.value ? `&quellen=${sourcesQue
 const openListHref = computed(() => `/entwuerfe?status=open&station=begutachtung${sourcesParam.value}`)
 
 /**
- * What is open right now, both kinds, in ONE deadline-ordered list
- * (docs/architecture.md §12.20).
+ * What is open right now, both kinds, in ONE deadline-ordered list.
  *
  * Same rows as `/entwuerfe` (`draftRows`): two row types, one order, never a
  * pooled total. What differs is the cap — this is the front door, not the
  * corpus view.
  *
  * Five rows, then out to the filter — `HOME_LIST_LENGTH`, the same length
- * every list on this page is cut to (§12.24).
+ * every list on this page is cut to.
  *
  * Measured 2026-09-17 over 2025-01-01 → today: 6 Ministerialentwürfe are
  * open at the median (p90 10, max 15) and 7 RIS-only records (p90 18, max
@@ -322,7 +321,7 @@ const rankedRows = computed(() => {
 
 /**
  * Five Vorlagen, and the rest on `/entwuerfe` — no longer three with a
- * „weitere anzeigen" button under them (§12.24).
+ * „weitere anzeigen" button under them.
  *
  * The section has no Frist to rank by — the door closes with the end of the
  * parliamentary procedure, the Bundesrat's Beschluss — so
@@ -375,7 +374,7 @@ const decidedTotal = computed(() =>
 /**
  * The Gesetzgebungsperiode each accountability section is counted over,
  * spelled out rather than implied — and read PER SECTION, not once for the
- * page (§12.35).
+ * page.
  *
  * Until 18.09.2026 the page said it once, in a subline, as „in dieser
  * Gesetzgebungsperiode" — a demonstrative pronoun pointing at nothing the
@@ -428,7 +427,7 @@ const rankedIsFallback = computed(() => isFallbackGp(rankedGp.value))
 const enactedIsFallback = computed(() => isFallbackGp(enactedGp.value))
 
 /* The section's one way out points at the filter that shows the same list
- * uncut (§12.24) — and during a fallback that filter needs the period
+ * uncut — and during a fallback that filter needs the period
  * spelled into it, because `/entwuerfe` defaults to the RUNNING one and
  * would otherwise answer the link with an empty list. Only during the
  * fallback: in the ordinary case the period is already the default, and the
@@ -443,7 +442,7 @@ const enactedHref = computed(
 )
 const decidedHref = computed(() => `/entwuerfe?station=parlament&status=closed${sourcesParam.value}`)
 
-/* The EU map's window (docs/architecture.md §12.66, 06.11.2026): the
+/* The EU map's window (06.11.2026): the
  * overview's first rows, in its own order and for the same choice of
  * sources — the five `/eu-recht` opens with, as every section here shows
  * the first rows of the list it links. Client-side: the map is no part of
@@ -597,7 +596,7 @@ function submitSearch() {
       @retry="refresh()"
     >
       <!-- ONE list, because the question is one: "was läuft gerade, wo kann
-           ich noch mitreden?" (docs/architecture.md §12.20). Which official
+           ich noch mitreden?". Which official
            register happens to carry a record is plumbing, and plumbing does
            not belong in the page skeleton — it belongs on the row, which is
            why both row kinds now lead their meta line with the type word.
@@ -684,19 +683,6 @@ function submitSearch() {
           </template>
         </EntryList>
 
-        <!-- NO second link under the list since 18.09.2026: what sits
-             behind the cap is the number in the link above („Alle 13
-             offenen Entwürfe →"), and both pointed at the same URL
-             (§12.24). -->
-
-        <!-- NO gloss under the list since 18.09.2026. It explained
-             „nicht im Parlament" with „Gegenstand", a word the site
-             defines nowhere — a gloss that needs a gloss. The rows now
-             state the fact the absence is made of („Stellungnahme direkt
-             nicht gezählt"), so there is nothing left
-             to explain here; the procedure behind it belongs on
-             /so-funktionierts, not under the front door's list. -->
-
       </section>
 
       <!-- The second window for input, directly under the first. Both
@@ -724,8 +710,8 @@ function submitSearch() {
         >
           <!-- Led by the station, „Regierungsvorlage", not by „Zweite
                Runde" (03.10.2026): the page names its sections in the words
-               the tabs, the spine and the „Neu" chip share (§12.26, „ein
-               Vokabular"). „Zweite Runde" stays the name of the SET, in
+               the tabs, the spine and the „Neu" chip share.
+               „Zweite Runde" stays the name of the SET, in
                code and docs. „im Parlament", not „im Nationalrat", since the
                same day: the window runs through the Bundesrat's phase, and
                the section lists those Vorlagen too.
@@ -768,7 +754,7 @@ function submitSearch() {
       </section>
 
       <!-- The accountability layer opens HERE, not with the recency list
-           below it (§12.21). On an ordinary day that list is four rows of
+           below it. On an ordinary day that list is four rows of
            „bisher keine Regierungsvorlage" — ME→RV latency, not shelving —
            and whichever section comes first teaches the reader what the
            tool is about. These five rows carry both directions with the
@@ -785,7 +771,7 @@ function submitSearch() {
              it was drawn from: `?sort=stellungnahmen` is the same order,
              uncut, and `?art=gesetz` keeps the Verordnungen out, which
              the sort cannot speak about — a draft without a Gegenstand has
-             no Stellungnahmen count and never will (§12.24). The count is
+             no Stellungnahmen count and never will. The count is
              the GP's Ministerialentwürfe: the ranked rows behind the link,
              ahead of the few law drafts without a Gegenstand (and any
              chosen Land's) that stand unranked after them since
@@ -808,7 +794,7 @@ function submitSearch() {
              open and closed — the Frist line under each count says which
              is which. -->
         <!-- The fallback says itself, in its own sentence and BEFORE the
-             claim it qualifies (§12.35). Naming the period inside the
+             claim it qualifies. Naming the period inside the
              existing sentence would have been enough to be accurate and not
              enough to be read: „der XXVIII." where the reader expects
              „XXIX." is a single changed numeral in the middle of a line.
@@ -832,14 +818,13 @@ function submitSearch() {
         </p>
         <!-- The same anatomy as everywhere, and here that is the point: the
              number that is ranked by stands in THE SAME column as in every
-             other section, and the outcome beside it rather than in its place
-             (docs/architecture.md §12.28).
+             other section, and the outcome beside it rather than in its place.
 
              Until 18.09.2026 this section promoted the number into the
              right-hand slot and thereby EVICTED the outcome. But „846
              Stellungnahmen → Bisher keine Regierungsvorlage" IS the tracking;
-             the pair is the statement, not the number alone (§12.21 says it
-             itself: what stopped this section being a leaderboard were the
+             the pair is the statement, not the number alone (what stopped
+             this section being a leaderboard were the
              chips). A ranked list shows its key by ORDER — the number needs
              alignment, not enlargement. An ordered list, because the order
              carries meaning here. -->
@@ -853,7 +838,7 @@ function submitSearch() {
         </EntryList>
       </section>
 
-      <!-- THE ONE STATION WITHOUT A LIST, until 03.10.2026 (§12.21). Between
+      <!-- THE ONE STATION WITHOUT A LIST, until 03.10.2026. Between
            the Nationalrat's Beschluss and the Kundmachung lie three weeks at
            the median, and in those weeks the decision stood nowhere on this
            page once the procedure was over: the Regierungsvorlage section
@@ -877,7 +862,7 @@ function submitSearch() {
            the heading says what this section's rows have in common: the
            procedure is over, the Kundmachung is not. The link goes to the
            same set, the Parlament tab without open windows
-           (`status=closed`, a link-only value, §12.26). -->
+           (`status=closed`, a link-only value). -->
       <section
         v-if="decided?.items.length || decidedEntries.length"
         class="page-section"
@@ -892,9 +877,9 @@ function submitSearch() {
         >
           Beschlossen, noch nicht kundgemacht
         </ListHeader>
-        <!-- The period is named, not pointed at (§12.35), and taken from the
+        <!-- The period is named, not pointed at, and taken from the
              payload like every other section's. The median, though, is a
-             measurement over GP XXVIII (§12.21, Nachtrag 03.10.2026): once
+             measurement over GP XXVIII: once
              the next period has laws of its own, re-measure it, or the
              sentence claims a number nobody took. A fact about the
              procedure, no verdict on the wait. -->
@@ -936,8 +921,8 @@ function submitSearch() {
         </p>
       </section>
 
-      <!-- The end of the chain, and the page's last word on purpose
-           (§12.23): participation that arrived somewhere. What stood here
+      <!-- The end of the chain, and the page's last word on purpose:
+           participation that arrived somewhere. What stood here
            until 18.09.2026 was the most recently CLOSED Begutachtungen —
            four rows whose chip said "bisher keine Regierungsvorlage"
            because they were two weeks old and the median wait is 40 days.
@@ -947,8 +932,8 @@ function submitSearch() {
       <section class="page-section" aria-labelledby="enacted-heading">
         <!-- This link pointed at „?status=closed" because the filter „im
              Bundesgesetzblatt" did not exist: it would have needed a station
-             per row, which was a work package rather than a link (§12.24).
-             The station map exists since 18.09.2026 (§12.26), so the link now
+             per row, which was a work package rather than a link.
+             The station map exists since 18.09.2026, so the link now
              points at exactly the set the heading names. Still without a
              number: the section shows the newest Kundmachungen, and a number
              beside it would be the number of all of them. -->
@@ -1014,8 +999,8 @@ function submitSearch() {
                  fact about us. -->
             <!-- Reached only when the period before has nothing either — the
                  fallback has already run by the time the page sees this. It
-                 names the period rather than saying „dieser", for the reason
-                 §12.21 gives: a demonstrative here points at nothing the reader
+                 names the period rather than saying „dieser":
+                 a demonstrative here points at nothing the reader
                  can see, and now there are two periods it could mean. -->
             <p v-if="!bund && noneApply(ENACTED_UNAVAILABLE)" class="p-4 text-sm text-ink-muted">
               {{ noneApply(ENACTED_UNAVAILABLE) }}
@@ -1044,7 +1029,7 @@ function submitSearch() {
           </p>
         </template>
       </section>
-      <!-- The same drafts by EU act (§12.66): a window onto `/eu-recht`
+      <!-- The same drafts by EU act: a window onto `/eu-recht`
            like every section onto its list — its first rows, its chips.
            Last, a cross-section of every station rather than one of them;
            gone where no map is built yet, never a promise of rows. -->

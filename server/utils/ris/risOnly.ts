@@ -1,6 +1,5 @@
 /**
- * Begutachtungen that RIS publishes and Parliament has no Gegenstand for
- * (docs/architecture.md §12.16).
+ * Begutachtungen that RIS publishes and Parliament has no Gegenstand for.
  *
  * The monitor's list of consultations comes from Parliament's list 81, which
  * carries Ministerialentwürfe and nothing else. RIS publishes the whole
@@ -71,7 +70,7 @@ function toConsultation(r: RisBegutFlat): RisConsultation {
     // The outcome is not determined here: this module reads the corpus the
     // page holds anyway, while the match costs whole years of the
     // Bundesgesetzblatt. Whoever needs it mixes it in under a time budget
-    // (`bgblService.getBgblOutcomesForGp`, §12.32).
+    // (`bgblService.getBgblOutcomesForGp`).
     outcome: null,
     risUrl: risDocumentUrl(r.id),
   }
@@ -106,7 +105,7 @@ interface RisOnlyResult {
 export const getRisOnlyForGp = defineCachedFunction(
   async (gp: string): Promise<RisOnlyResult> => {
     /* NO CALENDAR ROW YET — the period that convened before anybody
-     * extended `GP_STARTS` (§12.35). The predecessor then answers for it,
+     * extended `GP_STARTS`. The predecessor then answers for it,
      * WHOLE: window and join map together, never this period's map on the
      * predecessor's window. The map decides which records a
      * Ministerialentwurf has already claimed, and an empty one would
@@ -118,8 +117,8 @@ export const getRisOnlyForGp = defineCachedFunction(
     const w = bearer === null ? null : gpWindow(bearer)
     if (!w) return { items: [], withGegenstand: 0, undecided: 0 }
 
-    /* ZWEI KARTEN, und die zweite ist keine Vorsicht, sondern eine Korrektur
-     * (§12.36). Ein Record wird nach seinem RIS-**Beginn** einer Periode
+    /* ZWEI KARTEN, und die zweite ist keine Vorsicht, sondern eine Korrektur.
+     * Ein Record wird nach seinem RIS-**Beginn** einer Periode
      * zugeschlagen, sein Ministerialentwurf nach dem **Einlangen** im
      * Parlament — und die beiden Daten liegen ein paar Tage auseinander. An
      * einer Periodengrenze fallen sie damit auf verschiedene Seiten: der
@@ -181,8 +180,7 @@ export const getRisOnlyForGp = defineCachedFunction(
 )
 
 /**
- * Die RIS-Begutachtungen der Vorperiode, deren Frist noch läuft
- * (docs/architecture.md §12.36).
+ * Die RIS-Begutachtungen der Vorperiode, deren Frist noch läuft.
  *
  * Die zweite Hälfte des Carry-over, und die GRÖSSERE: `inWindow` verankert
  * einen Record an seinem **Beginn**, nicht an der Überlappung — eine
@@ -244,7 +242,7 @@ export async function getRisConsultation(id: string): Promise<RisConsultationDet
     textComparisonBundles: (r.textComparisonBundles ?? []).filter(hasDocument),
     coverLetter: hasDocument(r.coverLetter) ? r.coverLetter : null,
     // Everything else the record carries — WFA, Vorblatt, Digicheck,
-    // Anhänge. Only the full-text search reads it (§12.31); the draft page
+    // Anhänge. Only the full-text search reads it; the draft page
     // still shows the four named documents, because those are the ones it
     // can say something about.
     otherDocuments: r.otherDocuments.map((d) => ({ name: d.name, formats: d.urls })),

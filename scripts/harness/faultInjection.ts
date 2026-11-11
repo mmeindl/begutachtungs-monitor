@@ -1,7 +1,6 @@
 #!/usr/bin/env vite-node
 /**
- * What the annex gate catches when the annex is deliberately broken
- * (docs/architecture.md §12.13).
+ * What the annex gate catches when the annex is deliberately broken.
  *
  * `harness/annexPdf.ts` measures the gate against the corpus as it is, so it
  * can only ever report what the ressorts happen to have got wrong. That is
@@ -91,8 +90,7 @@
  * 1.452 of the table path): **21 and 19** §§ on the PDF path (rule 1 and
  * rule 2 per §) and **6 and 4** on the table path — 19 and 22 / 5 and 4 on
  * 2026-09-11; rule 2 stood at 7 and 0 with the
- * whole-draft reference; sixteen of the extra ones are named in
- * docs/architecture.md §12.13, the seventeenth is the one the better
+ * whole-draft reference; of the extra ones, the seventeenth is the one the better
  * addressing of 2026-09-11 uncovered (Obstweinverordnung § 13, whose right
  * column carries the start of the next Novellierungsanordnung — whether our
  * line reading or the annex's print put it there, the PDF decides; the R-neu
@@ -104,12 +102,8 @@
  * 942/905/904 and the table path 244/236/235 → 246/238/237; by 26.09.2026
  * they stand at 971/932/931 and 272/263/262 — §§ that used to fail the left
  * check now reach the injection site at all, most recently through the two
- * rules for the head of a Ganz-§-Zeile (§12.12a). The rates stayed put, which
- * is the finding: a bigger corpus, the same gate. Which
- * change moved which cell, and every corpus alarm it added or removed by
- * name, is in docs/architecture.md §12.13 — kept there rather than here,
- * because the doc records it per change and a second copy would have to be
- * pulled up twice.
+ * rules for the head of a Ganz-§-Zeile. The rates stayed put, which
+ * is the finding: a bigger corpus, the same gate.
  *
  * The reach stated in `annex/rightColumn.ts` — 1.019 of 1.092, rule 1 464,
  * rule 2 181, together 567 — was measured over both paths at once and with a
@@ -129,7 +123,7 @@
  * no request reaches. With the ceiling emulated the two numbers are equal.
  *
  * **And two faults in the engine's RESULT, since 01.10.2026** — the other gate,
- * the one in front of the consolidated text (`kons/tguOracle.ts`, §12.12a).
+ * the one in front of the consolidated text (`kons/tguOracle.ts`).
  * The annex is its witness there, and the question is whether the oracle
  * notices a result that holds MORE than the annex proposes. The engine runs
  * over every draft as in `harness/me.ts` (same modules), and in each § the
@@ -138,7 +132,7 @@
  * - **E** — one of the engine's deletions undone: a whole struck unit of at
  *   least six words is put back where it stood. The Seilbahn-Entwurf § 10
  *   shape, where the engine kept an Absatz the Beilage strikes in a changed
- *   row and the oracle confirmed it (§12.12, 30.09.2026).
+ *   row and the oracle confirmed it (30.09.2026).
  * - **E-neben** — a replaced stretch put back beside its replacement:
  *   „ersetzt" read as „eingefügt".
  *
@@ -148,7 +142,7 @@
  * | Tabellenpfad | 69/89 (77,5 %) | 85/87 (97,7 %) | 109/113 (96,5 %) | 112/113 (99,1 %) |
  *
  * „Nachher" is with check 4 (`keptDeletion`). Without injection it withdraws
- * five of 1.948 confirmations; every one is named in §12.12a, and `--alarme`
+ * five of 1.948 confirmations; `--alarme`
  * prints each with its annex rows and the result, because a count cannot be
  * inspected. `--misses` lists what still gets through.
  *
@@ -584,7 +578,7 @@ const oracleTally = (label: string): OracleTally => ({ label, tried: 0, caught: 
 
 /**
  * The result with ONE of the engine's deletions undone — the fault class
- * „eine Einheit zu viel" (§12.12, 30.09.2026).
+ * „eine Einheit zu viel" (30.09.2026).
  *
  * Built from the engine's own word diff of the standing § against its result,
  * so the stretch put back is text the engine removed and the annex confirmed

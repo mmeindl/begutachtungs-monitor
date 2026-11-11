@@ -1,7 +1,6 @@
 /**
  * The Bund-zu-Land map's findings on disk — one file per
- * Gesetzgebungsperiode under `<stateDir>/bund-land/` (docs/architecture.md
- * §12.67), the EU map's store (`cache/factStore.ts`) with its own reader
+ * Gesetzgebungsperiode under `<stateDir>/bund-land/`, the EU map's store (`cache/factStore.ts`) with its own reader
  * version (`BUND_LAND_READER_VERSION`). Keyed like the EU map's Länder
  * entries (`landKey`), fingerprinted the same way, so one build reads both
  * facts of a changed draft from one read of its PDFs.

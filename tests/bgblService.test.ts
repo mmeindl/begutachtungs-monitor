@@ -4,7 +4,7 @@ import { risConsultation } from './helpers/builders'
 
 /**
  * The Nitro-aware half of the Kundmachung lookup, under a pinned clock
- * (`server/utils/ris/bgblService.ts`, docs/architecture.md §12.32).
+ * (`server/utils/ris/bgblService.ts`).
  *
  * WHY THIS FILE EXISTS. Every rule this module *decides* is pure and tested
  * next door — `isRunningYear`, `bgblOutcomeState` and the join itself are
@@ -381,7 +381,7 @@ describe('der Stand einer Verordnung', () => {
 
   /* Die 180-Tage-Regel, an der Grenze und durch den Dienst gelesen: eine
    * Frist, die sechs Wochen her ist, ist nicht „nicht kundgemacht", sondern
-   * jung. Ein Scheitern ist keine Antwort (§12.13). */
+   * jung. Ein Scheitern ist keine Antwort. */
   it('sagt „ausstehend" bis zum 180. Tag und danach „keine"', async () => {
     getRisConsultation.mockResolvedValue(detail())
     pin('2026-12-09') // 179 Tage nach dem 13.06.

@@ -1,8 +1,7 @@
 #!/usr/bin/env vite-node
 /**
  * Binnenauslassungen in Ganz-§-Zeilen: wie oft sie vorkommen, und was die
- * Segmentierung an den Auslassungsmarken dem Orakel einbringt
- * (docs/architecture.md §12.12a).
+ * Segmentierung an den Auslassungsmarken dem Orakel einbringt.
  *
  * Usage:  npx vite-node scripts/corpus/innerElision.ts -- [--limit=400]
  *
@@ -20,7 +19,7 @@
  * Kopie davon, die auseinanderlaufen kann. Was das **Tor** am Ende zeigt,
  * sagt diese Messung nicht: dazu gehören Verweigerung, Plausibilität und
  * Check 3, und die Vorhersage „hebt, was das Tor zeigen kann" war an dieser
- * Stelle schon einmal falsch (§12.12a).
+ * Stelle schon einmal falsch.
  */
 import { parseAnnexPdf } from '../../server/utils/annex/annexPdf'
 import { pagesOf } from '../../server/utils/annex/annexPdfPages'

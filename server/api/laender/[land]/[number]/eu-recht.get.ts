@@ -1,7 +1,7 @@
 /**
  * GET /api/laender/:land/:number/eu-recht → EuRechtResponse: whether a
  * Land's draft implements EU law, which act, and the act's transposition
- * deadline (docs/architecture.md §12.66, Nachtrag 2) — the Bund's fact, read
+ * deadline — the Bund's fact, read
  * from the Land's own documents (`eu/landEuService.ts`). Asked by the
  * ProcedureCard after first paint where the server does not have it fast.
  *

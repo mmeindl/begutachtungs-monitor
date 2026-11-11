@@ -226,7 +226,6 @@ export function divisionOf(text: string): DivisionSpec | null {
   return up && parentDesignation ? { level, designation, parent: { level: up[2]!.replace(/^Teils$/, 'Teil') as Level, designation: parentDesignation } } : { level, designation }
 }
 
-/** Does a § stand in the division? */
 const inDivision = (path: DivisionPath, spec: DivisionSpec) =>
   path[spec.level] === spec.designation && (!spec.parent || path[spec.parent.level] === spec.parent.designation)
 

@@ -1,6 +1,5 @@
 /**
- * Scoring an engine run against the law that actually exists
- * (docs/architecture.md §12.12).
+ * Scoring an engine run against the law that actually exists.
  *
  * PURE MODULE — relative imports only, so vitest runs it directly.
  *
@@ -10,9 +9,8 @@
  * `removed`. Both sets came out empty, every divergence looked harmless, and
  * the harness reported 0,9 % dangerous instead of the 23,9 % of the first
  * measurement of 08.09.2026. That figure is history, not the engine's: it
- * measures 2,8 % own deviations and 7,3 % residual risk today
- * (docs/architecture.md §12.12). `scripts/` is outside the typecheck, so
- * nothing caught it.
+ * measures 2,8 % own deviations and 7,3 % residual risk today.
+ * `scripts/` is outside the typecheck, so nothing caught it.
  *
  * Harness-only: nothing on the request path imports this; the harnesses and
  * their tests do.

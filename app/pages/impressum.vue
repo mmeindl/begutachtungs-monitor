@@ -155,8 +155,8 @@ usePageSeo({
            carry no prose at all but only the lists from the Vorblatt, and
            where there is prose a median 60 % of its eight-word windows
            occur verbatim in the Ressort's documents, for a third of them
-           less than half (`pnpm corpus:kurzinfo`, docs/architecture.md
-           §13.1). The Kurzinformation is therefore Parliament's editorial
+           less than half (`pnpm corpus:kurzinfo`).
+           The Kurzinformation is therefore Parliament's editorial
            work on the Ressort's material — and belongs named rather than
            carried along under „Metadaten".
 
@@ -168,8 +168,8 @@ usePageSeo({
            which reads RIS first for the licence. The same documents stand
            in RIS under CC BY, so the copy names what it shows rather than
            claiming a licence for it; whether the exclusion reaches these
-           documents at all is part of the open question
-           (docs/architecture.md §13.1).
+           documents at all is part of the open licence question
+           (docs/decisions.md, Open questions).
 
            And the Beteiligungen became a block of their own the same day,
            after the dataset pages were read line by line: Parliament
@@ -275,7 +275,7 @@ usePageSeo({
             >parlament.gv.at</ExternalLink>. Namen von Privatpersonen veröffentlicht er nicht.
           </dd>
         </div>
-        <!-- EUR-Lex and the Cellar since 04.11.2026 (§12.66). EUR-Lex's
+        <!-- EUR-Lex and the Cellar since 04.11.2026. EUR-Lex's
              legal notice (read in a browser on 04.11.2026 — scripts get a
              bot check) dedicates EUR-Lex METADATA to the public domain
              (CC0 1.0); legal documents are reusable under Decision

@@ -13,10 +13,6 @@
  * against each other rather than two readings of one.
  */
 
-/**
- * Split on whitespace, strip opening and closing punctuation from each
- * token's edges, drop what is left empty.
- */
 export function punctuationTokens(t: string): string[] {
   return t
     .split(/\s+/)

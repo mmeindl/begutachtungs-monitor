@@ -10,9 +10,9 @@ import {
 /**
  * A Land's published Stellungnahmen, in the sheet the Ministerialentwurf's
  * have (22.10.2026): a statements table is something to operate, so it is
- * the white card (docs/architecture.md §12.39), with the same rows
+ * the white card, with the same rows
  * (`StatementRow`) and columns. Until then it was a bare list ruled by
- * full-width hairlines — the variant §12.39 rejected, because such lines
+ * full-width hairlines — rejected, because such lines
  * read as slices of the page and echo its section dividers.
  *
  * The panel's tabs and pager since 23.10.2026: Organisationen,

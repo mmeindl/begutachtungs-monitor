@@ -194,7 +194,7 @@ describe('classifySubmitter', () => {
       })
     })
 
-    it('allowlisted brand-style names without org keywords (§12.9)', () => {
+    it('allowlisted brand-style names without org keywords', () => {
       expect(classifySubmitter('epicenter.works')).toEqual({
         kind: 'organisation',
         name: 'epicenter.works',

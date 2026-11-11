@@ -1,10 +1,10 @@
 /**
- * What the harness measures, as a record — and the verdict over it (§12.13).
+ * What the harness measures, as a record — and the verdict over it.
  *
  * `harness/annexPdf.ts` writes the report (`--json=`), `ci/annexDrift.ts`
  * reads it and raises the alarm. The verdict logic lives **here** and not in
  * the harness: it has already sat there twice, which is where it can neither
- * be tested nor applied (§12.13 for the annex, §12.12 for the apply report).
+ * be tested nor applied (for the annex, and for the apply report).
  * Pure and importable means `tests/annexReport.test.ts` can hold every rule
  * against an invented report, without RIS.
  *
@@ -312,8 +312,7 @@ export function classBFindings(report: AnnexReport, baseline: AnnexBaseline): Fi
  * remember than two.
  *
  * It is pulled up by hand, not by the workflow: a baseline that writes
- * itself forward could absorb exactly the shift it exists to discover
- * (§12.13).
+ * itself forward could absorb exactly the shift it exists to discover.
  */
 export const MAX_BASELINE_AGE_DAYS = 60
 

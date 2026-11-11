@@ -3,7 +3,7 @@ import { clearNitroCache, nitroCacheKeys, nitroCachedFunction } from './helpers/
 
 /**
  * The § comparison when an upstream read fails
- * (`server/utils/diff/lawDiffService.ts`; the §12.13 rule).
+ * (`server/utils/diff/lawDiffService.ts`).
  *
  * Every case below was, until 22.10.2026, a catch whose leftover was cached
  * for a day as a statement about the draft:

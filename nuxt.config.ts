@@ -1,7 +1,7 @@
 export default defineNuxtConfig({
   compatibilityDate: '2026-08-15',
   modules: ['@nuxt/ui', '@nuxt/eslint'],
-  // One tool for lint and formatting, no Prettier (docs/refactor-plan.md §2).
+  // One tool for lint and formatting, no Prettier.
   // The stylistic options are not a taste decision — each one was measured
   // against the existing code so the linter enforces what is already there:
   // 2-space indent, single quotes, no semicolons, trailing commas in
@@ -107,9 +107,9 @@ export default defineNuxtConfig({
     '/begutachtungen/**': { redirect: { to: '/entwuerfe/**', statusCode: 301 } },
     // The Begutachtungen without a Gegenstand had their own list for a few
     // hours on 17.09.2026 and their own detail path until 18.09.2026; the
-    // list is a filter on /entwuerfe and the pages are `/entwuerfe/:id`
-    // (docs/architecture.md §12.19). They are still their own kind of
-    // object with their own page anatomy (§12.16) — that difference belongs
+    // list is a filter on /entwuerfe and the pages are `/entwuerfe/:id`.
+    // They are still their own kind of
+    // object with their own page anatomy — that difference belongs
     // in the page, not in a second URL prefix that calls two thirds of the
     // corpus „weitere". Both rules: the bare path lands on the filter, and
     // everything beneath it — detail pages and their `.ics` — keeps its
@@ -117,7 +117,7 @@ export default defineNuxtConfig({
     '/weitere-entwuerfe': { redirect: { to: '/entwuerfe?art=verordnung', statusCode: 301 } },
     '/weitere-entwuerfe/**': { redirect: { to: '/entwuerfe/**', statusCode: 301 } },
     // `/suche` was its own page from 19. to 22.09.2026. Now that the field
-    // on `/entwuerfe` gives both answers (docs/architecture.md §12.31) it
+    // on `/entwuerfe` gives both answers it
     // would be a second address for the same question — the very thing
     // abolished there. The 301 stays anyway: the page stood in the sitemap,
     // and a link is the one thing this project cannot re-issue. `?q=` travels

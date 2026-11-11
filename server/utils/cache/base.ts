@@ -1,6 +1,5 @@
 /**
- * Two cache layers, split by who produced the value
- * (docs/architecture.md §5, cache rule 5).
+ * Two cache layers, split by who produced the value.
  *
  * Nitro's dev cache is a directory: `defineCachedFunction` writes to
  * `.nuxt/cache/nitro/functions/<name>/`, and the entries outlive the dev

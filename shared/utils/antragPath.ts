@@ -1,8 +1,7 @@
 /**
  * The Initiativantrag path: a Ministerialentwurf that went through
  * Begutachtung and whose Gesetzestext then came to the Nationalrat as a
- * motion of MPs instead of a Regierungsvorlage (docs/architecture.md
- * §12.10, 30.09.2026).
+ * motion of MPs instead of a Regierungsvorlage (30.09.2026).
  *
  * WHY IT MATTERS FOR THIS PRODUCT: without it such a draft reads „bisher
  * keine Regierungsvorlage" — true, and still the wrong story. Measured

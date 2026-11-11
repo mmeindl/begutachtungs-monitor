@@ -1,6 +1,5 @@
 /**
- * The EU map: built where nobody waits, read by the lists under a budget
- * (docs/architecture.md §12.66, Nachtrag 3).
+ * The EU map: built where nobody waits, read by the lists under a budget.
  *
  * TWO HALVES, like the station map (`parliament/stationMap.ts`):
  *
@@ -14,7 +13,7 @@
  *    hours. Without a store file there is no map: `null`, and every list
  *    says „not consulted" instead of „no EU matter".
  *
- * A FAILURE IS NOT AN ANSWER (§12.13). A draft whose fact threw, or came
+ * A FAILURE IS NOT AN ANSWER. A draft whose fact threw, or came
  * back incomplete (`Gathered.complete`), is not stored; its publisher is
  * named `incomplete` on every page the map feeds, until a build reads it.
  * An `available: false` fact IS an answer — no Vorblatt, no EU matter — and
@@ -82,7 +81,7 @@ export interface EuMapBuildReport {
   drafts: number
   acts: number
   incomplete: EuPublisher[]
-  /** The Bund-zu-Land map, built from the same Länder loop (§12.67); null where the Länder could not be read. */
+  /** The Bund-zu-Land map, built from the same Länder loop; null where the Länder could not be read. */
   bundLand: BundLandBuildReport | null
 }
 
@@ -225,7 +224,7 @@ async function runBuild(gp: string): Promise<EuMapBuildReport> {
     await saveEuStore(gp, store)
 
     // (c) The Länder, two drafts at a time — Steiermark and Tirol pace us —
-    // and with each draft its Bund-zu-Land finding (§12.67): one loop over
+    // and with each draft its Bund-zu-Land finding: one loop over
     // both stores, so a changed draft's PDFs are read once for both facts
     // (`runAligned`, `laender/landDraftTexts.ts`).
     let laender = emptyReport()
@@ -298,7 +297,7 @@ async function assembleFromStore(gp: string): Promise<Gathered<EuMap | null>> {
     withinBudget(getBgblOutcomesForGp(gp), STAND_BUDGET_MS),
     getCurrentGp(),
   ])
-  // A readable map is not yet a period one may speak about (§12.27): where
+  // A readable map is not yet a period one may speak about: where
   // it may not, no Ministerialentwurf gets a stand.
   const speakable = chains && mayClaimOutcome(chainCoverageOf(Object.values(chains), gpHasEnded(gp, currentGp)))
   let stands = speakable ? chains : null

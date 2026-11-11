@@ -82,7 +82,7 @@ export const ART_OPTIONS: { value: ArtFilter; label: string }[] = [
 export type SortKey = 'frist' | 'stellungnahmen'
 
 /**
- * „Setzt EU-Recht um" (docs/architecture.md §12.66, Nachtrag 3): the drafts
+ * „Setzt EU-Recht um": the drafts
  * whose EU fact says they implement EU law — `umsetzung` and
  * `ueber-umsetzung`, the two markers the fact leads with „Setzt EU-Recht
  * um". One value, not the four markers: the question a reader brings is
@@ -323,8 +323,7 @@ export function activeFilterChips(
  * Gesetzesentwürfe · 206 Verordnungsentwürfe · 282 Entwürfe aus den
  * Ländern" — the Bund split by data half and kind, the Länder by neither,
  * and „weitere" asked the reader to know where Parliament's data ends. The
- * rule of §12.19 is not touched by the sum: it forbids pooling figures only
- * one half carries (the Stellungnahmen), and a count of law drafts is a
+ * sum pools no figure only one half carries (the Stellungnahmen), and a count of law drafts is a
  * count of law drafts wherever they were published.
  */
 export function draftCountLabel(c: {
@@ -360,7 +359,7 @@ export function draftCountLabel(c: {
   const parts = KIND_ORDER
     .filter((kind) => (kinds[kind] ?? 0) > 0)
     .map((kind) => countLabelDe(kinds[kind]!, ...KIND_TERM[kind]))
-  /* A third term, never added up (§12.19): a Regierungsvorlage without a
+  /* A third term, never added up: a Regierungsvorlage without a
    * Begutachtung is no draft in Begutachtung — folding it into the law
    * drafts would claim about it what holds for them. */
   /* The addition „ohne Begutachtung" only where it is evidenced for EVERY

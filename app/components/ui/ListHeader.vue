@@ -1,7 +1,6 @@
 <script setup lang="ts">
 /**
- * The head of a list section: its heading, and the one way out of it
- * (docs/architecture.md §12.24).
+ * The head of a list section: its heading, and the one way out of it.
  *
  * The counterpart to `ListMore`, and the division of labour between them is
  * the rule this component exists to enforce: `ListMore` belongs where
@@ -40,7 +39,7 @@ const props = defineProps<{
  *
  * „Alle 7 offenen Entwürfe →" above five cards says what the cap costs —
  * the one thing the section cannot show. „Alle 5 offenen Entwürfe →" above
- * five cards counts what the eye has already counted (§12.20), so the link
+ * five cards counts what the eye has already counted, so the link
  * falls back to naming its destination.
  *
  * Unknown total, or a destination broader than the section („Zuletzt Gesetz

@@ -2,7 +2,7 @@
 /**
  * Harvests Novellierungsanordnungen from the RIS `Begut` corpus into one
  * JSONL file, so the instruction grammar can be measured against real text
- * instead of guessed (docs/architecture.md §12.12: the cost is verification).
+ * instead of guessed (the cost is verification).
  *
  * Usage:  npx vite-node scripts/corpus/novao.ts [sampleSize] [cacheDir]
  *

@@ -14,8 +14,8 @@
  * strike. Leave out the underlined characters and the text in force
  * remains; leave out the struck ones and the draft's text remains.
  *
- * Measured over all 73 OÖ Textgegenüberstellungen before it was built
- * (docs/architecture.md §12.45): the text in force read this way stands word
+ * Measured over all 73 OÖ Textgegenüberstellungen before it was built:
+ * the text in force read this way stands word
  * for word in RIS's consolidated version at the draft's date for 859 of 923
  * §§ RIS carries, and nearly all the rest is the measurement's own noise; the
  * draft's text contains 3.632 of 3.872 sentences the Begutachtungsentwurf
@@ -647,7 +647,7 @@ function lcsShare(text: string, risText: string): number | null {
   return prevRow[b.length]! / a.length
 }
 
-/** At or above this share a § counts as the law in force (§12.45: the corpus parts at 0.98). */
+/** At or above this share a § counts as the law in force (the corpus parts at 0.98). */
 export const STANDS_IN_RIS = 0.98
 
 /**

@@ -21,7 +21,7 @@ export default defineEventHandler(async (event): Promise<RisConsultationDetail> 
     throw createError({ statusCode: 404, statusMessage: 'Begutachtung nicht gefunden' })
   }
   // The outcome belongs in THIS response, because the card's heading needs
-  // it (§12.32) — a heading that changes what it says after loading
+  // it — a heading that changes what it says after loading
   // („Begutachtung beendet" → „Kundgemacht") is worse than one that waits.
   //
   // With a budget, because cold the match fetches three years of the

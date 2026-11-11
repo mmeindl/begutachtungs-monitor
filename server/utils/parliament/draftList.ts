@@ -26,7 +26,7 @@ export interface DraftListFilter {
    * filter off rather than applying it to rows that carry no station.
    */
   stationsUsable: boolean
-  /** `?eu=umsetzung` (§12.66, Nachtrag 3); applied only where `euUsable`. */
+  /** `?eu=umsetzung`; applied only where `euUsable`. */
   eu?: EuFilter
   /**
    * Whether the EU map was readable, so every row of the period carries
@@ -137,8 +137,8 @@ export function filterDraftList<T extends DraftSummary>(
       // Aliases are part of the haystack, not of the title: someone who only
       // knows "Bundestrojaner" has to find 8/ME (`shared/utils/draftAliases.ts`).
       //
-      // THE RESSORT NAME IS NO LONGER IN IT, since 21.09.2026
-      // (docs/architecture.md §12.31), and the rule behind that is: **what
+      // THE RESSORT NAME IS NO LONGER IN IT, since 21.09.2026, and the rule
+      // behind that is: **what
       // is searched is what the row shows.** The name carries the whole
       // portfolio („… Klima- und Umweltschutz …") but appears nowhere on
       // the page — it matched invisibly and pulled 36 rows for „klima", 2

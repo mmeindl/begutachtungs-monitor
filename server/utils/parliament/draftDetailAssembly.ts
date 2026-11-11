@@ -1,6 +1,6 @@
 /**
  * What a detail page says, once every fetch has answered — the assembly
- * step of `getDraftDetail` (docs/architecture.md §5).
+ * step of `getDraftDetail`.
  *
  * PURE MODULE — no Nuxt auto-imports, only relative imports, so vitest can
  * execute the module directly. It stood inside `draftDetail.ts` until
@@ -146,7 +146,7 @@ export function assembleDraftDetail(input: DraftDetailInputs): DraftDetail {
         },
     enactment,
     // The documented chain wins: a draft with a Vorlage keeps it, even where
-    // the same text ALSO went as an Antrag (docs/architecture.md §12.10).
+    // the same text ALSO went as an Antrag.
     antragPath: enactment ? null : antragPathFor(gp, summary.inr),
   }
 }

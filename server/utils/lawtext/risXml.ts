@@ -49,7 +49,7 @@ const RIS_ABSATZ_KIND: Record<string, BlockKind> = {
  * its closing clause, so the draft bags of the annex check („nicht im
  * Entwurf") lacked words the annex rightly shows as new, and the ME→RV units
  * lacked the same words on both sides. The corpus measurement is in
- * `lawtext/konsTree.ts` (docs/architecture.md §12.13).
+ * `lawtext/konsTree.ts`.
  */
 const RIS_BLOCK_RE = /<(ueberschrift|absatz|listelem|schlussteil|schluss|inhaltsvz)\b([^>]*)>([\s\S]*?)<\/\1>/g
 const RIS_GLD_RE = /<gldsym>([\s\S]*?)<\/gldsym>/

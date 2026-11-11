@@ -94,7 +94,7 @@ function reasonsFor(u: LawDiffUnit) {
 /* The Land's reasoning, draft against Vorlage, at each change after the
    Begutachtung — the Ministerialentwurf's Begründungsvergleich, by the same
    rule: shown where it changed, or where the two group it differently
-   (`LawDiffSection.reasoningOf`, §12.54). */
+   (`LawDiffSection.reasoningOf`). */
 const vorlageStep = props.from === 'entwurf' && props.to === 'rv'
 // Shared with the Vorlage's frame, which counts the same Begründungen.
 const reasoning: Ref<LandReasoningResponse | null | undefined> = vorlageStep
@@ -503,7 +503,7 @@ const hasUnits = computed(() => units.value.length > 0)
       </ListBox>
       <!-- Whose texts and whose reading: the Land's and the Landtag's PDFs,
            RIS's Kundmachung, and the comparison ours — read from PDFs,
-           which the Bund's drafts are not (§12.44). -->
+           which the Bund's drafts are not. -->
       <SectionCredits :sources="[]" :marked="false" method="/so-funktionierts#laender">
         <span v-for="doc in [data.fromDocument, data.toDocument]" :key="doc?.label">
           <template v-if="doc">

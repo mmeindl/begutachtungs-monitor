@@ -1,6 +1,5 @@
 /**
- * The version of what the EU readers say (docs/architecture.md §12.66,
- * Nachtrag 3).
+ * The version of what the EU readers say.
  *
  * The EU map keeps every draft's fact on disk (`euMapStore.ts`), and a fact
  * on disk outlives the code that read it: a reader that learns a new

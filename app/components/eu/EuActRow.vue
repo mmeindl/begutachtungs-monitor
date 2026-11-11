@@ -6,7 +6,7 @@
  * The list row's anatomy (`EntryItem`): the whole row is the link, the
  * label ink and underlined under the pointer, the ground tinted — never a
  * blue inline link inside a list. The act's subject from its official
- * title stands whole, no clamp (§12.28: the short name sits at its end).
+ * title stands whole, no clamp (the short name sits at its end).
  *
  * The deadline in the right-hand column, as `/entwuerfe` keeps its Stand
  * (06.11.2026): the same box (`EntryState`) in the same column

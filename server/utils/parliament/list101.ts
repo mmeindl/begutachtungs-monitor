@@ -4,7 +4,7 @@
  * PURE MODULE — no Nuxt auto-imports, only relative imports,
  * so vitest can execute the module directly.
  *
- * Row indices: docs/architecture.md §5 / docs/api-exploration.md §101.
+ * Row indices: docs/api-exploration.md §101.
  */
 import { parseFristsort } from './dates'
 import { absolutizeUrl, PARLIAMENT_BASE, stripHtmlToText } from './htmlText'
@@ -49,7 +49,7 @@ export function mapVorlageRow(row: unknown[]): VorlageRow {
     citation: asString(row[7]),
     title: stripHtmlToText(asString(row[6])),
     // DATUMSORT is the same yyyymmdd shape as list 81's Fristsort — the
-    // display column next to it is dd.mm.yyyy and stays unread (§5).
+    // display column next to it is dd.mm.yyyy and stays unread.
     date: parseFristsort(row[8] as number | string | null | undefined) ?? '',
     status: asString(row[10]),
     // Upstream's own path where it passes the guard, else the one its

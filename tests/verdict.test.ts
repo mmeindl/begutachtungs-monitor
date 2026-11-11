@@ -226,7 +226,7 @@ describe('verifyAnnex', () => {
   it('says a § shows no standing text at all rather than "too little text"', async () => {
     // Two ways to reach zero comparable words, and both used to borrow the
     // sentence about too little text. That sentence only started reaching
-    // readers on 2026-09-10 (§12.13), and 99/ME — an annex that inserts §§
+    // readers on 2026-09-10, and 99/ME — an annex that inserts §§
     // and does nothing else — is where it read false: a screenful of new
     // provisions is not "zu wenig Text".
     const rows = [
@@ -308,7 +308,7 @@ describe('verifyAnnex', () => {
     // became a space, the row read "§ 1 3 ." and the key came out as § 1: the
     // left column of § 13 was then held against the standing § 1 and its
     // right column against § 1's instructions. Blutspenderverordnung and two
-    // others, GP XXVIII (2026-09-10, docs/architecture.md §12.13).
+    // others, GP XXVIII (2026-09-10).
     const annex = `<risdok><nutzdaten><abschnitt>
       <ueberschrift typ="g2">Textgegenüberstellung</ueberschrift>
       <table>
@@ -389,7 +389,7 @@ describe('verifyAnnex', () => {
   it('says the draft inserts a § RIS does not hold, where the draft prints it under an inserting instruction', async () => {
     // 45/ME, 48/ME, 131/ME XXVIII: a new § whose annex row shows text on the
     // left read „das RIS führt diese Paragraphen nicht" — true, and taken for
-    // a gap in RIS (§12.41).
+    // a gap in RIS.
     const rows = [row({ gld: '§ 9.', para: '§ 9.', current: PROSE })]
     const blocks: TextBlock[] = [
       { kind: 'article', cls: 'ueberschrift/g1', text: 'Artikel 1', gld: null },

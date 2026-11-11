@@ -36,7 +36,7 @@ import {
  * The draft's address, in the two shapes the corpus has — the same parameter
  * `useExplanations` takes, and for the same reason: a Ministerialentwurf is
  * reached through the RIS↔ME join, a Begutachtung without a Gegenstand
- * through its RIS id (docs/architecture.md §12.16). Everything this component
+ * through its RIS id. Everything this component
  * renders is identical for both; only the endpoint differs.
  */
 const props = defineProps<{
@@ -56,8 +56,7 @@ const { data, status } = await useFetch<TextComparisonResponse>(() => `${base.va
 })
 
 /**
- * The Ressort's reasoning for the individual Paragraphen
- * (docs/architecture.md §12.30).
+ * The Ressort's reasoning for the individual Paragraphen.
  *
  * The same document `ExplanationsSection` reads further up the page anyway —
  * one shared key in `useExplanations`, so one request for both sections,
@@ -68,8 +67,7 @@ const { data, status } = await useFetch<TextComparisonResponse>(() => `${base.va
 const { data: explanations } = useExplanations(() => ({ gp: props.gp, inr: props.inr, risId: props.risId }))
 
 /**
- * The konsolidierte Lesefassung — a third layer on the same Paragraph
- * (docs/architecture.md §12.12a).
+ * The konsolidierte Lesefassung — a third layer on the same Paragraph.
  *
  * WHY HERE AND NOT IN A SECTION OF ITS OWN: a Paragraph is shown only where
  * the annex confirms it, so the Lesefassung is **always** a subset of this
@@ -453,7 +451,7 @@ function withheldReason(cause: AnnexWithheldCause | null): string {
             </div>
 
             <!-- Why this change — the Besonderer Teil's passage on this very
-                 Paragraph (docs/architecture.md §12.30).
+                 Paragraph.
 
                  CLOSED and directly under the § line: the reader's question
                  here is „was ändert sich", answered by the rows below;
@@ -555,8 +553,7 @@ function withheldReason(cause: AnnexWithheldCause | null): string {
             </div>
 
             <!-- The third layer on the same Paragraph: not what changes and
-                 not why, but how it reads afterwards (docs/architecture.md
-                 §12.12a).
+                 not why, but how it reads afterwards.
 
                  BELOW the changed rows, not above them (19.09.2026): the
                  rows are the information somebody opens the § for; the whole
@@ -632,13 +629,6 @@ function withheldReason(cause: AnnexWithheldCause | null): string {
           class="link-muted"
         >Geltender Text im RIS</ExternalLink>
         <ExternalLink v-if="newLaws.length && enacted?.source" :href="enacted.source.url" class="link-muted">{{ enacted.source.label }}</ExternalLink>
-        <!-- Gone on 30.09.2026, both added the same morning: the Stichtag
-             of the RIS check („RIS-Abgleich: Stand …") — the rule stands on
-             /so-funktionierts#gegenueberstellung and the date itself in the
-             bar and under „Geltendes Recht"; and the Lesefassung's
-             denominator („bei 6 von 14"), which is no source, and whose
-             worry — the other §§ read as unchanged (§12.27) — does not arise
-             in a diff that marks every change. -->
       </SectionCredits>
     </template>
   </div>

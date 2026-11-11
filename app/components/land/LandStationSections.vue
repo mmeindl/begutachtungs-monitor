@@ -18,7 +18,7 @@ import ListBox from '~/components/ui/ListBox.vue'
  * fact the list only implied — how it stood to the Frist, which on
  * 16120 was ten days BEFORE it ended — and the Kundmachung will exist
  * without any Landtag record once the Landesgesetzblatt is searched for the
- * other Länder (docs/architecture.md §12.43). „Im Landtag" then became
+ * other Länder. „Im Landtag" then became
  * what „Im Parlament" is (22.10.2026): a frame of the facts — committee,
  * report, motions, vote — with the whole record folded under it, in the
  * Landtag's order and words.
@@ -143,7 +143,7 @@ const reportName = computed(() => {
   </section>
 
   <!-- What the Landtag did, as „Im Parlament" says what Parliament did: a
-       frame of facts to consult (§12.39), each in the record's words, and
+       frame of facts to consult, each in the record's words, and
        the record itself folded under it — until 22.10.2026 the record WAS
        the section, a ruled log of sittings and agendas in which the
        committee and the vote had to be found. -->
@@ -186,7 +186,7 @@ const reportName = computed(() => {
       </div>
       <!-- What the committee changed: the Vorlage against the text in its
            report. Not against the Kundmachung, which adds the editing for
-           publication („Hektar" → „ha") — not the committee's (§12.44). -->
+           publication („Hektar" → „ha") — not the committee's. -->
       <LandLawDiffSection v-if="offers('rv', 'ausschuss')" :land="land!" :number="number!" :cite-as="citeAs" from="rv" to="ausschuss" />
       <!-- Where the committee's report carries no text (Salzburg), what the
            Landtag changed is read against the Kundmachung, the Landtag's own
@@ -247,7 +247,7 @@ const reportName = computed(() => {
         </template>
       </FactList>
       <!-- Whose finding it is: the Land records nothing after the
-           Begutachtung, so the assignment is ours, by title (§12.43) — and
+           Begutachtung, so the assignment is ours, by title — and
            can be wrong where the same law changed twice within two years. -->
       <template v-if="kundmachung.via === 'suche'">
         <p v-if="kundmachung.searched" class="mt-3 text-sm text-ink-secondary">
@@ -284,7 +284,7 @@ const reportName = computed(() => {
           einzige Treffer der Suche, und nichts in den Texten spricht dagegen.
         </p>
         <!-- Whose finding it is: the Land records nothing after the
-             Begutachtung, so the assignment is ours, by title (§12.43) — and
+             Begutachtung, so the assignment is ours, by title — and
              can be wrong where the same law changed twice within two years.
              And why nothing is compared against it (23.10.2026): the
              comparisons below it on other drafts would otherwise make its

@@ -1,6 +1,5 @@
 /**
- * From a Verordnungsentwurf to its Kundmachung in BGBl II
- * (docs/architecture.md §12.32).
+ * From a Verordnungsentwurf to its Kundmachung in BGBl II.
  *
  * PURE MODULE — relative imports only, so vitest and the measurement
  * scripts can execute it directly.
@@ -132,8 +131,7 @@ export interface BgblJoinDraft {
  * delay: by then the Frist of the draft behind it can be older than 180 days,
  * and `stateOf` stops saying `ausstehend` and says `keine` — „bisher nicht
  * kundgemacht" about a Verordnung that has been in force since New Year's
- * Eve. §12.32 forbids exactly that sentence, and a wrong one is worse than a
- * missing one, because it reads as a statement about the Ressort.
+ * Eve. A wrong sentence of that kind is worse than a missing one, because it reads as a statement about the Ressort.
  *
  * So a Jahrgang stays running for a grace period: until the end of January
  * the year before is still asked on the six-hour lifetime. The price is one
@@ -164,7 +162,7 @@ export const BGBL_SILENCE_MEANS_SOMETHING_DAYS = 180
 /**
  * What became of a Verordnungsentwurf, as a state the page may print.
  *
- * **A failure is not an answer** (docs/architecture.md §12.13), and here
+ * **A failure is not an answer**, and here
  * that rule has a name: `ausstehend`. A draft whose Frist ended six weeks
  * ago is not „nicht kundgemacht" — it is young. Telling the two apart is the
  * whole difference between an accountability statement and an insinuation,
@@ -187,7 +185,7 @@ export function bgblOutcomeState(
   // (`daysUntil`). The rounded millisecond difference this used to take
   // crossed the threshold in the middle of the afternoon, and a day early on
   // the UTC server. A Frist that will not parse now reads as young rather
-  // than as „keine": a failure is not an answer (§12.13).
+  // than as „keine": a failure is not an answer.
   const days = -(daysUntil(ende, now) ?? 0)
   return days < BGBL_SILENCE_MEANS_SOMETHING_DAYS ? 'ausstehend' : 'keine'
 }
@@ -241,8 +239,7 @@ export const BGBL_WINDOW_DAYS: readonly [number, number] = [-30, 540]
 
 /**
  * The title similarity at which a match counts, and how far ahead of the
- * second it has to lie. Both values are measured, not set — the calibration
- * is in `docs/architecture.md` §12.32.
+ * second it has to lie. Both values are measured, not set.
  */
 export const BGBL_ACCEPT = 0.72
 export const BGBL_MARGIN = 0.08
@@ -255,7 +252,7 @@ export const BGBL_MARGIN = 0.08
  * below that the order says nothing either (a Berichtigung or a second part
  * can come out of the same Begutachtung). The first version refused exactly
  * these cases as ambiguous, which cost 21 drafts, among them candidates
- * scoring 1,000 (docs/architecture.md §12.32).
+ * scoring 1,000.
  *
  * „Apart" is the distance in days, either way round — since 22.10.2026, when
  * the Kundmachungen from before the end of the Frist moved to the back of

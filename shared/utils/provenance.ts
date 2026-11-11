@@ -29,7 +29,7 @@ import type { LawStationId, Publisher } from '../types'
  *     draft's own documents, the Kurzinformation, the procedure's data, the
  *     Stellungnahmen — carries NO licence claim. Parliament publishes no
  *     open-data licence for it, and how far its exclusion reaches is the
- *     open question (docs/architecture.md §13.1). It is named, nothing more.
+ *     open question. It is named, nothing more.
  *
  * The same document can exist under both (the Textgegenüberstellung in RIS
  * and in Parliament's copy): then the claim follows the copy that was READ,

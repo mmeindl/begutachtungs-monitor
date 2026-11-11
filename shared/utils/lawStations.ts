@@ -1,6 +1,6 @@
 /**
  * The stations a law text passes through, as the § comparison can select
- * them (docs/architecture.md §12.18).
+ * them.
  *
  * More than the one shipped pair, because a Begutachtungsergebnis disappears
  * exactly where nobody compares any more: in committee or in the plenary.
@@ -159,7 +159,7 @@ function lawStationIndex(id: LawStationId): number {
  * changes for ten of fourteen drafts, once the inserted Fundstelle is
  * discounted. A pair that promises an answer it cannot give teaches nothing
  * about the procedure; `rv→bgbl` carries the same statement without costing
- * a menu entry (docs/architecture.md §12.33).
+ * a menu entry.
  */
 export function isLawStationPair(from: LawStationId, to: LawStationId): boolean {
   if (from === 'plenum' && to === 'bgbl') return false
@@ -261,7 +261,7 @@ export const PARLIAMENT_COMPARISON_QUESTION = 'Was das Parlament am Text geände
  * rather than as the name of a procedure — the wording rule the station bar
  * already follows (`app/utils/spine.ts`).
  *
- * Temporal, never causal (framing rule, docs/architecture.md §4): a text changed after the
+ * Temporal, never causal (framing rule): a text changed after the
  * Begutachtung is not a text changed BY it, and the comparison cannot know
  * which it was. The ME→RV wording is unchanged because the outcome card
  * links to it by that name. The `bgbl` pairs follow the same rule: „Was vom

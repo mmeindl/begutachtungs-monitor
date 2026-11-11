@@ -1,6 +1,6 @@
 /**
- * The public summary of the day files (`/api/statistik`,
- * docs/architecture.md §12.65), pure so a test can hold it to its sums.
+ * The public summary of the day files (`/api/statistik`),
+ * pure so a test can hold it to its sums.
  */
 import type { StatistikPayload, StatistikSeite, StatistikTag } from '#shared/types'
 import { KLASSEN, type Klasse } from './klassen'

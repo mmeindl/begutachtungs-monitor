@@ -1,6 +1,6 @@
 /**
  * The § comparison of one consultation, between two stations of its law text
- * (docs/ris-join.md §6, docs/architecture.md §12.18).
+ * (docs/ris-join.md §6).
  *
  * Nuxt-aware glue around the pure modules in `lawtext/` and `diff/lawDiff.ts`:
  * each station to the document Parliament publishes for it, fetches the two
@@ -19,7 +19,7 @@
  * HTML, and every single one of the 296 Regierungsvorlagen, 80 Ausschuss- and
  * 59 Plenarfassungen does.
  *
- * **A failure is not an answer** (the §12.13 rule, 22.10.2026). Four reads
+ * **A failure is not an answer** (22.10.2026). Four reads
  * here ended in a catch, and the answer they left was cached for a day: a
  * RIS timeout became „ist bisher nicht als Gesetz kundgemacht worden" on the
  * Kundmachung's own comparison, a RIS map that did not load became „ist im
@@ -99,7 +99,7 @@ const readLawDiff = defineCachedFunction(
 
     /**
      * The kundgemachte Fassung — the one station that does not live at
-     * Parliament (docs/architecture.md §12.33).
+     * Parliament.
      *
      * The way there is a lookup, not a search: the Regierungsvorlage carries
      * the Fundstelle as structured data (`status.bgbllinks`), and RIS returns
@@ -244,8 +244,7 @@ const readLawDiff = defineCachedFunction(
 
     /*
      * Between two LATER stations of a Vorlage that bundles this draft with
-     * others, only the draft's laws (docs/architecture.md §12.33,
-     * 30.09.2026). Both sides then carry the whole Sammelgesetz, every
+     * others, only the draft's laws (30.09.2026). Both sides then carry the whole Sammelgesetz, every
      * Artikel pairs, and `diffLawPackage` has nothing to cut — 17/ME XXVIII
      * counted 629 units of the Informationsfreiheits-Anpassungsgesetz for a
      * draft that brought 39 of them.
@@ -291,7 +290,7 @@ const readLawDiff = defineCachedFunction(
     if (unpaired) {
       // Showing the units here would put the whole draft under „entfallen"
       // and the whole later text under „neu" — a claim about the draft the
-      // documents do not make (docs/architecture.md §12.18, Nachtrag).
+      // documents do not make.
       return answer(
         'Die Artikel der beiden Texte ließen sich keinem gemeinsamen Gesetz zuordnen. Ein Vergleich Paragraph für Paragraph würde deshalb jede Bestimmung als entfallen und als neu zeigen.',
         { fromSource, toSource },

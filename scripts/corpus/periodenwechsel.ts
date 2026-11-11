@@ -2,7 +2,7 @@
 /**
  * What a Periodenwechsel does to the Startseite — the measurement behind the
  * named fallback of „Wo am meisten mitgeredet wurde" and „Zuletzt Gesetz
- * geworden" (docs/architecture.md §12.35).
+ * geworden".
  *
  * Usage:   npx vite-node scripts/corpus/periodenwechsel.ts XXVII XXVIII
  *          (the period that ended, then the one that convened)
@@ -20,7 +20,7 @@
  *  (a) OFFENE LISTE — Begutachtungen of the old period whose Frist was still
  *      running on the cutover day. They vanish from `/`, `/feed.xml` and
  *      `/kalender.ics` the moment `getCurrentGp()` flips, while anyone can
- *      still file a Stellungnahme on them. NOT fixed by §12.35; open item.
+ *      still file a Stellungnahme on them. NOT fixed by the fallback; open item.
  *  (b) RANGLISTE — when the new period's list 81 first holds one row and
  *      when it holds five, in days after the konstituierende Sitzung.
  *  (c) KUNDMACHUNGEN — the first law of the new period that came out of a
@@ -42,7 +42,7 @@ const CONCURRENCY = 4
 /**
  * How many of the new period's finished Vorlagen are opened looking for the
  * first Kundmachung. Generous on purpose — Einlangen does not order
- * promulgations (up to 91 days apart, §12.23), and this runs once.
+ * promulgations (up to 91 days apart), and this runs once.
  */
 const SCAN = 45
 

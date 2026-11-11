@@ -1,5 +1,5 @@
 /**
- * Review loop for the submitter classifier (docs/architecture.md §12.9).
+ * Review loop for the submitter classifier.
  *
  * Fetches list 142 for one Gesetzgebungsperiode, runs `classifySubmitter`
  * over every row and prints two lists:

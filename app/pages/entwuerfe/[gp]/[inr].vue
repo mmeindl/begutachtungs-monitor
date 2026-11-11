@@ -145,7 +145,7 @@ const sections = computed(() => {
     rv: rvView.value.showOutcome,
     parlament: e,
     // Also the Antrag that replaced a Beschluss never promulgated, once it
-    // is in the Bundesgesetzblatt (§12.33).
+    // is in the Bundesgesetzblatt.
     bgbl: e && (e.bgblNumber || e.successor?.bgblNumber) ? e : null,
   }
 })
@@ -223,12 +223,11 @@ const description = computed(() =>
 const { data: explanations } = useExplanations(() => ({ gp: gp.value, inr: inr.value }))
 
 /* Whether the draft implements EU law — one bare fact in the ProcedureCard,
- * a row of „Der Entwurf"'s opening frame (`EntwurfFrame`, docs/architecture.md §12.66). */
+ * a row of „Der Entwurf"'s opening frame (`EntwurfFrame`). */
 const { data: euRecht } = useEuRecht(() => ({ gp: gp.value, inr: inr.value }))
 /* Once the draft's Grundsatzgesetz is kundgemacht: the Land drafts that
  * carry it out, as a detail line of the Bundesgesetzblatt station — the
- * procedure after the Kundmachung, not a property of the draft
- * (docs/architecture.md §12.67). Its sources join the card's credit line. */
+ * procedure after the Kundmachung, not a property of the draft. Its sources join the card's credit line. */
 const { line: bundesrechtLine } = useMeBundesrecht(() => ({ gp: gp.value, inr: inr.value }))
 /* Where the draft comes from, as Entwurf facts beside „ändert N Gesetze" (`utils/origin.ts`). */
 const spineStations = computed(() => withOrigin(withBundesrechtFollowUp(stationList.value, bundesrechtLine.value), originTokens(euRecht.value)))
@@ -411,8 +410,8 @@ const ministryLinks = computed(() => {
             </p>
           </ProcedureCard>
           <!-- The card's source line names only what the card shows: the
-               Bundesgesetzblatt station's Bund-zu-Land line (§12.67). The
-               EU fact moved into „Der Entwurf" with its own line (§12.66). -->
+               Bundesgesetzblatt station's Bund-zu-Land line. The
+               EU fact moved into „Der Entwurf" with its own line. -->
           <SectionCredits v-if="bundesrechtCredits.length" :sources="[]" :marked="false" method="/so-funktionierts#bund-land">
             <span>Quellen:</span>
             <span v-for="item in bundesrechtCredits" :key="item">{{ item }}</span>
@@ -494,15 +493,6 @@ const ministryLinks = computed(() => {
                 Stellungnahme zur Regierungsvorlage abgeben
               </DoorButton>
             </template>
-            <!-- No footer (02.11.2026). It said that ministries revise drafts
-               routinely and that the monitor follows this one: a promise
-               about the product beside the button, not a fact about the
-               draft, and no win to show. Wins are shown where they are
-               measured — the comparison sections. NO pointer to
-               #textvergleich either (18.09.2026): where a Vorlage exists, the
-               bar directly above this card already shows „Was sich nach der
-               Begutachtung geändert hat", and the Regierungsvorlage section
-               links the same anchor once more. -->
           </DraftDoorCard>
 
           <section
@@ -553,7 +543,7 @@ const ministryLinks = computed(() => {
 
               <!-- The section's lede (`EntwurfFrame`): the law in force the
                  draft would change, then where it comes from — the EU acts it
-                 implements, their deadlines beside the Begutachtung (§12.66) —
+                 implements, their deadlines beside the Begutachtung —
                  in the order of the Entwurf station's line, one credit line
                  under the frame. -->
               <EntwurfFrame :laws="amendedLaws" :eu="euRecht" :timeline="euTimelineCtx" />
@@ -645,13 +635,6 @@ const ministryLinks = computed(() => {
                 :list-url="`${url}/statements`"
                 :filing-open="windows.begutachtung"
               />
-            <!-- No closing line since 02.10.2026. „Die Regierungsvorlage hat
-                 193 von 311 Paragraphen … umgeschrieben oder gestrichen" stood
-                 here from 01.10.2026, to answer „und dann?" under the
-                 Stellungnahmen. Since the next day the same count is the first
-                 figure of the Regierungsvorlage's station frame, one section
-                 down, and the spine links the comparison: the line said it a
-                 third time, and was the only sentence trailing a section. -->
             </div>
           </section>
 

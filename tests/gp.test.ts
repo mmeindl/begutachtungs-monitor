@@ -106,7 +106,7 @@ describe('Gesetzgebungsperioden calendar', () => {
 
 /**
  * The period before a period — the arithmetic the Periodenwechsel fallback
- * stands on (§12.35, `server/utils/parliament/rankedPeriod.ts`).
+ * stands on (`server/utils/parliament/rankedPeriod.ts`).
  *
  * Its whole job is to work on a day nobody prepared for, so the case that
  * matters most is the one the calendar above does NOT know: on the day GP
@@ -133,7 +133,7 @@ describe('previousGp', () => {
 })
 
 /**
- * Which period's date window answers for a period (§12.35).
+ * Which period's date window answers for a period.
  *
  * This is what keeps the RIS half of „Jetzt in Begutachtung" alive across a
  * Periodenwechsel. Those records carry no GP and are dated into one, so a

@@ -4,7 +4,7 @@ import type { EntryState } from '~/utils/entryView'
 
 /**
  * Zone 4 — „wo steht es", as ONE box of two lines: the state, and beneath it
- * what pins it down (docs/architecture.md §12.28).
+ * what pins it down.
  *
  * ONE COMPONENT FOR EVERY STATE. It replaces `DeadlineBlock`, `StationBlock`
  * and `OutcomeChip`, all three of which claimed to share "the same two-line
@@ -19,7 +19,7 @@ import type { EntryState } from '~/utils/entryView'
  * open window without haste — blue being "you can do something here",
  * main.css), everything closed gets the same grey —
  * highlighting success or muting silence would both be a verdict (framing
- * rule, docs/architecture.md §4). Rejected: `mark-wash` (yellow), the highlighter, whose
+ * rule). Rejected: `mark-wash` (yellow), the highlighter, whose
  * job in lists is „Neu", and which would be 84 yellow boxes on
  * `/entwuerfe?station=bgbl`; a larger size for the running countdown, a
  * second carrier of what the colour already says; the dot, a third one.

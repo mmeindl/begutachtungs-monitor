@@ -1,7 +1,7 @@
 <script setup lang="ts">
 /**
  * One EU act and every draft of the window that names it, Bund and Länder
- * (docs/architecture.md §12.66, Nachtrag 3) — `/eu-recht/richtlinie/2024/1069`,
+ * — `/eu-recht/richtlinie/2024/1069`,
  * the act's kind, year and number as its citation reads (`euActCelex`).
  *
  * THE DRAFTS FIRST, no text above them. The one caveat, what could not be

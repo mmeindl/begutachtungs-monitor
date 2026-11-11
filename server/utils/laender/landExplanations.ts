@@ -3,7 +3,7 @@
  * read from the PDF's lines (23.10.2026): the general part as passages for
  * „Was das Land begründet", the particular part one entry per „Zu …"
  * heading, for the § it explains — as the Ministerialentwurf's page shows
- * the ressort's (docs/architecture.md §12.29–30, §12.53).
+ * the ressort's.
  *
  * PURE MODULE — no imports, so vitest runs it directly.
  *
@@ -90,7 +90,7 @@ function withoutFurniture(lines: readonly Line[]): Line[] {
  * sentence: a bold sentence is emphasis, not a heading. A rule by the text
  * alone — a short line without a full stop — found headings in 375 of 540
  * documents, nearly all of them wrong. Only Wien's lines carry a weight
- * here (`HEADINGS_BY_WEIGHT`, docs/architecture.md §12.62).
+ * here (`HEADINGS_BY_WEIGHT`).
  */
 function boldHeading(l: Line): boolean {
   return l.bold && l.text.length < 120 && /^\p{Lu}/u.test(l.text) && !/[.;,]$/.test(l.text)

@@ -1,11 +1,10 @@
 /**
  * GET /api/drafts?gp&status&station&ministry&q&eu → DraftsResponse.
- * Without `gp` the answer carries the Fristen that outlive a Periodenwechsel
- * (§12.36); with one it is strictly that period.
+ * Without `gp` the answer carries the Fristen that outlive a Periodenwechsel;
+ * with one it is strictly that period.
  * status: open|closed|all (default all); station: a comma list of
  * begutachtung|rv|parlament|bgbl (default all); q searches title, citation,
- * ministry CODE and aliases server-side — never the ministry name
- * (docs/architecture.md §5, §12.26, §12.31).
+ * ministry CODE and aliases server-side — never the ministry name.
  */
 import type { DraftsResponse } from '#shared/types'
 import { chainCoverageOf, mayClaimOutcome } from '#shared/utils/draftStations'
@@ -32,8 +31,8 @@ export default defineEventHandler(async (event): Promise<DraftsResponse> => {
    * reported 353 of 350 entries for GP XXVII (`dedupeDraftList`). Every
    * list answer this endpoint gives — the rows, `total`, the Ressort
    * options — comes through here, so the fold belongs at this one point. */
-  /* CARRY-OVER, und nur wenn der Aufruf KEINE Periode genannt hat
-   * (§12.36). `?gp=XXVII` ist eine Frage nach einer Periode und wird
+  /* CARRY-OVER, und nur wenn der Aufruf KEINE Periode genannt hat.
+   * `?gp=XXVII` ist eine Frage nach einer Periode und wird
    * periodenrein beantwortet — sonst hieße der sichtbare Periodenwähler auf
    * `/entwuerfe` etwas anderes, als er sagt. Ohne `gp` fragt jemand „was
    * gibt es gerade", und dann ist eine Frist, die den Wechsel überlebt, Teil
@@ -56,12 +55,12 @@ export default defineEventHandler(async (event): Promise<DraftsResponse> => {
    * (650 fetches, measured 18.09.2026), and nobody may wait that long for a
    * list that is complete without stations. When the budget runs out the
    * page answers without the map — the build carries on in the background
-   * and fills the cache, the next request has it
-   * (docs/architecture.md §12.26). Same construction as `RIS_JOIN_BUDGET_MS`
+   * and fills the cache, the next request has it.
+   * Same construction as `RIS_JOIN_BUDGET_MS`
    * in `parliament/draftDetail.ts`. */
   const chains = await withinBudget(getStationMapForGp(gp), STATION_MAP_BUDGET_MS)
-  /* A READABLE MAP IS NOT THE SAME AS A PERIOD ONE MAY SPEAK ABOUT
-   * (docs/architecture.md §12.27). In the old periods every draft's
+  /* A READABLE MAP IS NOT THE SAME AS A PERIOD ONE MAY SPEAK ABOUT.
+   * In the old periods every draft's
    * Verfahrensdatensatz ends at the Begutachtung — not because nothing came
    * of it, but because the link to the Regierungsvorlage is missing from the
    * archive: for GP XVI list 101 records 270 Regierungsvorlagen and not one
@@ -81,12 +80,12 @@ export default defineEventHandler(async (event): Promise<DraftsResponse> => {
    * über ihren Weg. Ohne Chain fällt sie auf `begutachtung` zurück
    * (`filterDraftList`), und das ist für eine laufende Frist die richtige
    * und schwächste Behauptung; eine zweite Stationskarte zu bauen wäre für
-   * die paar Zeilen ein kalter 35-Sekunden-Lauf (§12.26). */
+   * die paar Zeilen ein kalter 35-Sekunden-Lauf. */
   const withChains = speakable
     ? rows.map((item) => (item.gp === gp ? { ...item, chain: chains[item.inr] } : item))
     : rows
 
-  /* THE EU MAP, the same construction (§12.66, Nachtrag 3): enrichment
+  /* THE EU MAP, the same construction: enrichment
    * under the same brake, read from the store the prewarm built. With it,
    * every row of the period carries `eu` — its marker, or null for a draft
    * read and no EU matter; a draft the build could not read carries none

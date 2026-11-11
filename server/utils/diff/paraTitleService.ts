@@ -1,5 +1,5 @@
 /**
- * The name of each § a change amends (docs/architecture.md §12.11).
+ * The name of each § a change amends.
  *
  * "In § 9 Abs. 1 wird die Wortfolge …" is unreadable; "§ 9 Sofortlotterien"
  * is not. That name is the § heading in the standing law, so this is a
@@ -23,7 +23,7 @@
  * matching, and `resolveLawByBgbl` returns nothing when the match is
  * ambiguous. Anything unresolved is simply absent from the map.
  *
- * **Unresolved is not unreachable** (the §12.13 rule, 22.10.2026). Four reads
+ * **Unresolved is not unreachable** (22.10.2026). Four reads
  * here ended in `.catch(() => null)`, and a day's cache kept what they left:
  * the list row, the comparison or the RIS map not arriving meant no names
  * for the whole draft until tomorrow, one § document not arriving meant that
@@ -167,7 +167,7 @@ const readParagraphTitles = defineCachedFunction(
       // "Änderung"/"des" as stopwords, so the raw heading is the right input
       // and an Artikel that carries only a number scores 0 and still refuses
       // (measured: 90 of 342 laws in this period's packages failed on exactly
-      // this ambiguity, §12.12).
+      // this ambiguity).
       const law = await resolveKonsLaw(bgbl.organ, bgbl.nummer, asOf, article ?? '')
       if (!law) continue
       const jobs = [...byPara].filter(([para]) => law.paragraphs[para] !== undefined)

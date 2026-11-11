@@ -1,8 +1,8 @@
 /**
  * GET /kalender.ics — Begutachtungsfristen of the current GP, plus the ones
- * still running from the period before (§12.35), as an iCalendar
+ * still running from the period before, as an iCalendar
  * subscription (all-day events, stable UIDs). Reuses the cached
- * list-81 leaf; the route itself is uncached (architecture.md §5).
+ * list-81 leaf; the route itself is uncached.
  * Calendar apps refresh on a schedule — ETag/304 keeps that cheap.
  *
  * Optional ?quelle=t (or any Land's code): that Land's Fristen instead
@@ -22,11 +22,11 @@ export default defineEventHandler(async (event) => {
   }
   // Verordnungsfristen too — they are deadlines like any other, and this
   // calendar is the account-free substitute for the alerts that are not
-  // built (docs/architecture.md §12.3, §12.16).
+  // built.
   const [{ items }, risOnly, carryOver, risCarryOver] = await Promise.all([
     getDraftsForGp(gp),
     getRisOnlyForGp(gp),
-    /* The Fristen that outlive a Periodenwechsel (§12.35). This is the
+    /* The Fristen that outlive a Periodenwechsel. This is the
      * subscription that makes the case: a calendar app replaces the whole
      * event set on every refresh, so without this a Frist still 18 days away
      * would simply have fallen out of the subscriber's calendar on the day

@@ -16,7 +16,7 @@ import {
 } from '../shared/utils/lawStations'
 
 /**
- * The station vocabulary of the § comparison (docs/architecture.md §12.18).
+ * The station vocabulary of the § comparison.
  *
  * Measured over GP XXVI–XXVIII (651 Ministerialentwürfe,
  * scripts/corpus/stationen.ts). What earns tests here is the whitelist: the
@@ -58,7 +58,7 @@ describe('vocabulary', () => {
 
   it('refuses the one pair that no actor stands behind', () => {
     // Between the Plenum version and the Kundmachung nobody changes anything
-    // any more; the pair would be systematically empty (§12.33).
+    // any more; the pair would be systematically empty.
     expect(isLawStationPair('plenum', 'bgbl')).toBe(false)
     expect(isLawStationPair('me', 'bgbl')).toBe(true)
     expect(isLawStationPair('rv', 'bgbl')).toBe(true)
@@ -159,7 +159,7 @@ describe('lawStationPairQuestion', () => {
   })
 
   it('stays temporal, never causal or accusatory', () => {
-    // Framing rule (docs/architecture.md §4): a text changed after the
+    // Framing rule: a text changed after the
     // Begutachtung is not a text changed BY it, and no pair may read as a
     // verdict.
     for (const [from, to] of pairs) {
