@@ -396,13 +396,23 @@ const LAWS_RETRY_MS = 20_000
 const LAWS_RETRIES = 6
 let lawsRetries = 0
 let lawsTimer: ReturnType<typeof setTimeout> | undefined
+/* `unread` too (12.11.2026), with a longer pause and fewer tries: a read
+   that failed after a restart was often only the start-up's load, and the
+   chip stood unavailable until a reload. */
+const LAWS_UNREAD_RETRY_MS = 60_000
+const LAWS_UNREAD_RETRIES = 3
+let lawsUnreadRetries = 0
 watch(lawsData, (laws) => {
   clearTimeout(lawsTimer)
-  if (laws?.gap !== 'pending' || lawsRetries >= LAWS_RETRIES) return
-  lawsRetries++
-  lawsTimer = setTimeout(() => void refreshLaws(), LAWS_RETRY_MS)
+  if (laws?.gap === 'pending' && lawsRetries < LAWS_RETRIES) {
+    lawsRetries++
+    lawsTimer = setTimeout(() => void refreshLaws(), LAWS_RETRY_MS)
+  } else if (laws?.gap === 'unread' && lawsUnreadRetries < LAWS_UNREAD_RETRIES) {
+    lawsUnreadRetries++
+    lawsTimer = setTimeout(() => void refreshLaws(), LAWS_UNREAD_RETRY_MS)
+  }
 }, { immediate: true })
-watch(gp, () => { lawsRetries = 0 })
+watch(gp, () => { lawsRetries = 0; lawsUnreadRetries = 0 })
 onUnmounted(() => clearTimeout(lawsTimer))
 
 /* Salzburg's statements wait for the Landtag documents after a cold start

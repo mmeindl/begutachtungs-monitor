@@ -186,9 +186,14 @@ const buildSkippedLaws = defineCachedFunction(
     }
     items.sort((a, b) => b.bgblDate.localeCompare(a.bgblDate) || b.bgblNumber.localeCompare(a.bgblNumber, 'de-AT', { numeric: true }))
 
+    // A committee read that failed is mostly the start-up's load (four
+    // parallel detail reads on a cold Gegenstand cache): held seconds, like
+    // a pending answer, not ten minutes — those laws are left out meanwhile
+    // and come back on the next request, from the leaf cache.
     return {
       value: { gp, available: true, gap: null, items },
       complete: vorlagen !== null && antraege !== null && drafts !== null && !unread,
+      ...(unread ? { pending: true } : {}),
     }
   },
   {
