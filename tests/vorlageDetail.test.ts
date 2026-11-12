@@ -107,7 +107,8 @@ describe('vorlageStations', () => {
   it('opens with a pale Begutachtung station, „ohne Begutachtung" only on the list’s evidence', () => {
     expect(vorlageStations(d()).map((s) => s.id)).toEqual(['begutachtung', 'rv', 'parlament', 'bgbl'])
     expect(vorlageStations(d())[0]).toMatchObject({ name: 'Begutachtung', state: 'never', facts: ['ohne Begutachtung', 'kein Ministerialentwurf'] })
-    expect(vorlageStations(d({ withoutBegutachtung: false }))[0]).toMatchObject({ state: 'never', facts: ['nicht feststellbar', 'ob ein Ministerialentwurf vorausging, ist hier nicht belegt'] })
+    expect(vorlageStations(d({ withoutBegutachtung: false }))[0]).toMatchObject({ state: 'never', trail: 'unknown', facts: ['nicht feststellbar', 'ob ein Ministerialentwurf vorausging, ist hier nicht belegt'] })
+    expect(vorlageStations(d())[0]!.trail).toBe('not-walked')
   })
   it('names the item station by the item; „ohne Begutachtung" no longer stands there', () => {
     const [, item] = vorlageStations(d(), { statementTotal: 466 })

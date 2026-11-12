@@ -93,6 +93,14 @@ export interface Station {
    * (with its arrow); null where it is a plain fact.
    */
   followUp?: { before: string; link: { href: string; label: string } | null; after: string }
+  /**
+   * Only on the Begutachtung station of a law without a draft: whether the
+   * procedure did not pass a Begutachtung (`not-walked`, a known „ohne
+   * Begutachtung") or whether nobody can tell (`unknown`, „nicht
+   * feststellbar"). Absent: an ordinary station. The rail says it in a
+   * word for screen readers, beside the facts.
+   */
+  trail?: 'not-walked' | 'unknown'
 }
 
 /**
@@ -906,8 +914,10 @@ export function vorlageStatusDe(d: VorlageDetail, today: string = todayIso()): s
  * Begutachtung that took place is an ordinary station. It replaced the
  * sentence that stood above the card, so the page says it once.
  */
-export function begutachtungStation(facts: string[], pale: boolean): Station {
-  return { id: 'begutachtung', name: 'Begutachtung', state: pale ? 'never' : 'done', facts, comparison: null }
+export function begutachtungStation(facts: string[], trail: 'walked' | 'not-walked' | 'unknown'): Station {
+  return trail === 'walked'
+    ? { id: 'begutachtung', name: 'Begutachtung', state: 'done', facts, comparison: null }
+    : { id: 'begutachtung', name: 'Begutachtung', state: 'never', facts, comparison: null, trail }
 }
 
 /**
@@ -927,10 +937,10 @@ function vorlageBegutachtung(d: VorlageDetail): Station {
       c.committee,
       c.date ? `beschlossen am ${formatDateDe(c.date)}` : null,
       c.invited > 0 ? `${formatNumberDe(c.invited)} ${c.invited === 1 ? 'Stelle' : 'Stellen'} angeschrieben` : null,
-    ), false)
+    ), 'walked')
   }
-  if (d.withoutBegutachtung) return begutachtungStation(['ohne Begutachtung', 'kein Ministerialentwurf'], true)
-  return begutachtungStation(['nicht feststellbar', 'ob ein Ministerialentwurf vorausging, ist hier nicht belegt'], true)
+  if (d.withoutBegutachtung) return begutachtungStation(['ohne Begutachtung', 'kein Ministerialentwurf'], 'not-walked')
+  return begutachtungStation(['nicht feststellbar', 'ob ein Ministerialentwurf vorausging, ist hier nicht belegt'], 'unknown')
 }
 
 /** What only the page's lazy requests can tell `vorlageStations`. */
@@ -1336,7 +1346,7 @@ export function landLawStations(
   comparisons: readonly (readonly [LandTextStation, LandTextStation])[] = [],
 ): Station[] {
   const b = landLawBegutachtungFacts(law)
-  const out: Station[] = [begutachtungStation(b.facts, b.pale)]
+  const out: Station[] = [begutachtungStation(b.facts, !b.pale ? 'walked' : law.begutachtung.kind === 'none' ? 'not-walked' : 'unknown')]
   const r = law.route
   if (r) {
     const step = steps.find((s) => s.station === 'rv')

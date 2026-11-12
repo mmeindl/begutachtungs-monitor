@@ -42,7 +42,12 @@ describe('landLawBegutachtungFacts', () => {
   it('opens the bar, and the Initiativantrag station no longer says „ohne Begutachtung"', () => {
     const stations = landLawStations({ land: 'sbg', route: route('antrag'), begutachtung: { kind: 'none' }, registerCovers: true, decidedAt: '2025-07-02', nr: 'LGBl. Nr. 68/2025', date: '2025-07-21' })
     expect(stations.map((s) => s.id)).toEqual(['begutachtung', 'rv', 'parlament', 'bgbl'])
-    expect(stations[0]).toMatchObject({ state: 'never' })
+    expect(stations[0]).toMatchObject({ state: 'never', trail: 'not-walked' })
+    const unknown = landLawStations({ land: 'w', route: null, begutachtung: { kind: 'silent', reason: 'unsupported' }, registerCovers: false, decidedAt: null, nr: 'LGBl. Nr. 44/2026', date: '2026-11-09' })
+    expect(unknown[0]!.trail).toBe('unknown')
+    const walked = landLawStations({ land: 'sbg', route: route('vorlage'), begutachtung: { kind: 'consulted', by: 'heading' }, registerCovers: true, decidedAt: null, nr: 'LGBl. Nr. 31/2026', date: '2026-04-14' })
+    expect(walked[0]).toMatchObject({ state: 'done' })
+    expect(walked[0]!.trail).toBeUndefined()
     expect(stations[1]!.facts).not.toContain('ohne Begutachtung')
   })
 })

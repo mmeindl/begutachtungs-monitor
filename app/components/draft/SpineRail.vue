@@ -168,6 +168,11 @@ const rows = computed(() => props.stations.map((s, i) => {
     announce: facts.length
       ? null
       : s.state === 'open' ? 'ausstehend' : s.state === 'never' ? 'nicht erreicht' : null,
+    /* The Begutachtung of a law without a draft (`trail`): a word of its
+       own beside the facts, so the three cases differ without the line —
+       „nicht erreicht" for a known „ohne Begutachtung", „unbekannt" where
+       nobody can tell, nothing where one took place. */
+    trailWord: s.trail === 'not-walked' ? 'nicht erreicht' : s.trail === 'unknown' ? 'unbekannt' : null,
     // The segment into the next station is ink once that station has been
     // reached, so the line and the dots can never disagree about how far
     // the text got. The last station has nothing to connect to.
@@ -270,6 +275,7 @@ const rows = computed(() => props.stations.map((s, i) => {
           {{ row.followUp.before }}<NuxtLink v-if="row.followUp.link" :to="row.followUp.link.href" :class="LINK">{{ row.followUp.link.label }}</NuxtLink>{{ row.followUp.after }}
         </p>
         <p v-if="row.announce" class="sr-only">{{ row.announce }}</p>
+        <p v-if="row.trailWord" class="sr-only">{{ row.trailWord }}</p>
       </div>
     </li>
   </ol>
