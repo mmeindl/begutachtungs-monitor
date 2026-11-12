@@ -638,5 +638,13 @@ circular of 10.12.2015).
   Tabakgesetz, after 5/ME). Its own documents do not mention a Begutachtung,
   so the mention rule (above) does not reach it; a draft under another title
   has no safe join yet.
+- **The path word `/entwuerfe`.** Kept on purpose: every page tells the
+  story of one bill, the address was renamed once already (from
+  `/begutachtungen`), and a restructure with a country segment is planned —
+  rename at most once, then. Candidate `/verfahren`: a page is one
+  procedure, which holds for drafts that end, laws without a draft and
+  Verordnungen, and the new pages' API already says `verfahren`. `/gesetze`
+  is rejected: most drafts never become one. The address it fits worst:
+  `/entwuerfe/<land>/lgbl/<year>/<nr>`.
 - **„Upcoming" Begutachtungen** have no verified data source: the Parliament
   API knows a consultation only once it starts.

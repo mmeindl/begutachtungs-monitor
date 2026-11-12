@@ -43,7 +43,7 @@ import { MAX_LIST_QUERY_CHARS } from '#shared/utils/queryParams'
 usePageSeo({
   title: 'Entwürfe',
   description:
-    'Alle Begutachtungen: Gesetzes- und Verordnungsentwürfe, filterbar nach Art, Status, Gesetzgebungsperiode und Ministerium.',
+    'Alle Entwürfe – Gesetzes- und Verordnungsentwürfe – und die Gesetze, zu denen kein Entwurf in Begutachtung bekannt ist, filterbar nach Art, Status, Gesetzgebungsperiode und Ministerium.',
 })
 
 /**
@@ -841,8 +841,9 @@ const statementsSortNote = computed(() => {
         Entwürfe
       </h1>
       <p class="mt-2 text-ink-secondary">
-        Alle Begutachtungen einer Gesetzgebungsperiode – in Begutachtung und
-        abgeschlossen, Gesetzes- wie Verordnungsentwürfe.
+        Alle Entwürfe einer Gesetzgebungsperiode – in Begutachtung und
+        abgeschlossen, Gesetzes- wie Verordnungsentwürfe – und die Gesetze, zu
+        denen kein Entwurf in Begutachtung bekannt ist.
       </p>
       <!-- Subscribing belongs to the page, not to the list's controls
            (02.10.2026): between the count line and the rows it split the
