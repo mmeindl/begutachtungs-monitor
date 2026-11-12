@@ -164,7 +164,9 @@ export function konsUnit(xml: string, version: Pick<LandKonsVersion, 'key' | 'la
   let heading: string | null = null
   for (const m of body.matchAll(/<(ueberschrift|absatz|listelem)\b([^>]*)>([\s\S]*?)<\/\1>/g)) {
     if (!/\bct="text"/.test(m[2]!)) continue
-    const text = decode(m[3]!).replace(RIS_NOTE, '').trim()
+    let text = decode(m[3]!).replace(RIS_NOTE, '').trim()
+    // The designation leading the first Absatz („§ 5. (1) Wer …" in Wien's records), or standing alone: the unit's id, not its text.
+    if (m[1] !== 'ueberschrift' && !blocks.length) text = text.replace(/^(?:§|Art(?:ikel|\.))\s*\d+[a-z]*\.(?:\s+|$)/, '')
     if (!text || RIS_NOTE_LINE.test(text)) continue
     if (m[1] === 'ueberschrift') {
       // The designation line („§ 5") is the unit's id; any other heading its title.

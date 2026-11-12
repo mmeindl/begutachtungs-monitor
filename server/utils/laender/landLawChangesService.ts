@@ -163,5 +163,5 @@ export async function compareLandLawChanges(land: LandCode, nr: string, lgblXmlU
 /** Held a week in the derived layer; an answer resting on a failed read is not held. */
 export const readLandLawChanges = defineCachedFunction(
   (land: LandCode, nr: string, lgblXmlUrl: string | null, url: string | null, promulgated: string | null) => compareLandLawChanges(land, nr, lgblXmlUrl, url, promulgated),
-  { name: 'land-law-changes-4', base: DERIVED_CACHE, getKey: (land: LandCode, nr: string) => `${land}-${nr.replace(/\D+/g, '-')}`, maxAge: WEEK_S, swr: false, validate: onlyComplete },
+  { name: 'land-law-changes-6', base: DERIVED_CACHE, getKey: (land: LandCode, nr: string) => `${land}-${nr.replace(/\D+/g, '-')}`, maxAge: WEEK_S, swr: false, validate: onlyComplete },
 )

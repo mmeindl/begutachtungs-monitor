@@ -68,7 +68,7 @@ describe('konsUnit', () => {
     expect(u.blocks.map((b) => b.text)).toEqual(['(1) Die Bedarfsplanung …', '1. die Bestandserhebung,'])
   })
   it('drops RIS’s notes on Landesgesetzblätter, never the law’s own words about them', () => {
-    const xml = '<nutzdaten><absatz typ="abs" ct="text">(1) Der Fonds trägt die Bezeichnung „Fonds“. <i>(Anm: LGBl.Nr. 96/2017, 22/2025)</i></absatz>' +
+    const xml = '<nutzdaten><absatz typ="abs" ct="text"><gldsym>§ 5.</gldsym> (1) Der Fonds trägt die Bezeichnung „Fonds“. <i>(Anm: LGBl.Nr. 96/2017, 22/2025)</i></absatz>' +
       '<absatz typ="satz" ct="text">*) Fassung LGBl.Nr. 2/2006, 55/2011, 27/2019</absatz>' +
       '<absatz typ="satz" ct="text">Anm.: in der Fassung LGBl. Nr.&#160;102/2005, LGBl. Nr. 103/2018</absatz>' +
       '<absatz typ="satz" ct="text">Anm.: in der Fassung LGBl. Nr. 136/2016, (seit LGBl. Nr. 97/2020 Steiermärkisches Gesetz)</absatz>' +
