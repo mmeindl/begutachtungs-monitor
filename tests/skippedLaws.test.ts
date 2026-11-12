@@ -226,3 +226,28 @@ describe('classifySkippedLaws — the row', () => {
     expect(classifySkippedLaws(input({ records })).map((c) => c.record.id)).toEqual(['a', 'b'])
   })
 })
+
+describe('a mention silences (12.11.2026)', () => {
+  it('reads the item’s own documents but its Gesetzestext and TGÜ', async () => {
+    const { mentionDocuments, mentionsBegutachtung } = await import('../server/utils/ris/skippedLaws')
+    expect(mentionDocuments([
+      { title: 'Gesetzestext', formats: [{ type: 'html', url: 'g' }] },
+      { title: 'Erläuterungen', formats: [{ type: 'pdf', url: 'e.pdf' }, { type: 'html', url: 'e.html' }] },
+      { title: 'TGÜ', formats: [{ type: 'html', url: 't' }] },
+      { title: 'Initiativantrag (elektr. übermittelte Version)', formats: [{ type: 'html', url: 'a' }] },
+    ])).toEqual(['e.html', 'a'])
+    expect(mentionsBegutachtung('… der im Begutachtungsverfahren geäußerten Bedenken …')).toBe(true)
+    expect(mentionsBegutachtung('… im Rahmen der Begutachtung der rezenten Novelle …')).toBe(true)
+    expect(mentionsBegutachtung('Der Nationalrat wolle beschließen')).toBe(false)
+  })
+  it('turns a none into unknown on a mention, and on a failed read', async () => {
+    const { refineByMention } = await import('../server/utils/ris/skippedLaws')
+    const law = (inr: number) => ({ record: record(), class: { kind: 'none' as const, item: { kind: 'antrag' as const, inr, citation: `${inr}/A` }, title: 'X' } })
+    const out = refineByMention([law(1), law(2), law(3)], (item) => (item.inr === 1 ? true : item.inr === 2 ? undefined : false))
+    expect(out.map((l) => l.class)).toEqual([
+      { kind: 'unknown', reason: 'mentions' },
+      { kind: 'unknown', reason: 'unchecked' },
+      law(3).class,
+    ])
+  })
+})

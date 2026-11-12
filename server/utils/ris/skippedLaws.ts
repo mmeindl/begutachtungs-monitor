@@ -113,7 +113,7 @@ export interface CarryingItem {
   citation: string
 }
 
-export type UnknownReason = 'preceding-draft' | 'partial-text' | 'unchecked' | 'no-item'
+export type UnknownReason = 'preceding-draft' | 'partial-text' | 'unchecked' | 'no-item' | 'mentions'
 
 export type SkippedClass =
   | { kind: 'consulted'; via: 'vorlage' | 'bgbl' | 'antrag' }
@@ -241,6 +241,45 @@ export function classifySkippedLaws(input: SkippedLawsInput): ClassifiedLaw[] {
     out.push({ record: r, class: classifyOne(r, input, idx, vorlagen, antraege) })
   }
   return out.sort((a, b) => a.record.datum.localeCompare(b.record.datum) || a.record.nummer.localeCompare(b.record.nummer))
+}
+
+/**
+ * The documents a mention is looked for in (12.11.2026): every HTML
+ * document of the carrying item but its Gesetzestext and its
+ * Textgegenüberstellung — the Erläuterungen of a Vorlage, the Antrag with
+ * its Begründung. Pure.
+ */
+export function mentionDocuments(documents: readonly { title: string; formats: readonly { type: string; url: string }[] }[]): string[] {
+  return documents
+    .filter((d) => !/Gesetzestext|TGÜ|Textgegenüberstellung/i.test(d.title))
+    .flatMap((d) => d.formats.filter((f) => f.type === 'html').map((f) => f.url))
+}
+
+/** Whether a document's text refers to a Begutachtung at all — any form of the word. Pure. */
+export function mentionsBegutachtung(text: string): boolean {
+  return /Begutacht/i.test(text)
+}
+
+/**
+ * The third look at every `none` (12.11.2026): its own text. Where the
+ * Erläuterungen or the Antrag mention a Begutachtung(sverfahren), the text
+ * itself refers to one — a consulted predecessor, or another law's — and
+ * the law says nothing (`unknown`/`mentions`). Measured on GP XXVIII: 2 of
+ * 59 (15/A, „im Begutachtungsverfahren geäußerte Bedenken"; 607/A, another
+ * law's Begutachtung). `mentionOf` answers `undefined` where a document
+ * could not be read: the check did not run, and the law says nothing.
+ */
+export function refineByMention(
+  classified: readonly ClassifiedLaw[],
+  mentionOf: (item: CarryingItem) => boolean | undefined,
+): ClassifiedLaw[] {
+  return classified.map((law) => {
+    const c = law.class
+    if (c.kind !== 'none') return law
+    const mentions = mentionOf(c.item)
+    if (mentions === undefined) return { record: law.record, class: { kind: 'unknown', reason: 'unchecked' } }
+    return mentions ? { record: law.record, class: { kind: 'unknown', reason: 'mentions' } } : law
+  })
 }
 
 /**

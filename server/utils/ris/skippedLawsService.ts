@@ -30,8 +30,10 @@ import { settleWithinBudget } from '../http/budget'
 import { getAntraegeForGp, getDraftsForGp, getGegenstand, getVorlagenForGp } from '../parliament/drafts'
 import { getStationMapForGp } from '../parliament/stationMap'
 import { getBgblTeil1Year } from './bgblService'
-import { classifySkippedLaws, refineByCommittee, yearsOfPeriod, type CarryingItem, type ParliamentItem } from './skippedLaws'
-import { readCommitteeConsultation } from '../parliament/detailJson'
+import { classifySkippedLaws, mentionDocuments, mentionsBegutachtung, refineByCommittee, refineByMention, yearsOfPeriod, type CarryingItem, type ParliamentItem } from './skippedLaws'
+import { mapDocuments, readCommitteeConsultation } from '../parliament/detailJson'
+import { stripHtmlToText } from '../parliament/htmlText'
+import { fetchDocument } from '../upstream/fetchDocument'
 import { mapWithConcurrency } from '../pool'
 
 /** Six hours, the station map's lifetime: a law arrives a few times a week. */
@@ -151,18 +153,27 @@ const buildSkippedLaws = defineCachedFunction(
       mapWithConcurrency(candidates, COMMITTEE_CONCURRENCY, async (item) => {
         try {
           const detail = await getGegenstand(gp, item.kind === 'rv' ? 'I' : 'A', item.inr)
-          return [keyOf(item), readCommitteeConsultation(detail.content?.phase)] as const
+          // And the item's own text (12.11.2026): a mention of a
+          // Begutachtung silences the law; a document that fails to read is
+          // a check that did not run (`refineByMention`).
+          const mention = await Promise.all(mentionDocuments(mapDocuments(detail.content?.documents)).map((url) => fetchDocument(url)))
+            .then((texts) => texts.some((t) => mentionsBegutachtung(stripHtmlToText(t))), () => undefined)
+          return [keyOf(item), readCommitteeConsultation(detail.content?.phase), mention] as const
         } catch {
-          return [keyOf(item), undefined] as const
+          return [keyOf(item), undefined, undefined] as const
         }
       }),
       COMMITTEE_BUDGET_MS,
     )
     if (readings.state === 'pending') return unavailable(gp, 'pending', false)
     if (readings.state === 'failed') return unavailable(gp, 'unread', false)
-    const consultations = new Map<string, CommitteeConsultation | null | undefined>(readings.value)
-    const refined = refineByCommittee(classified, (item) => consultations.get(keyOf(item)))
-    const unread = [...consultations.values()].some((c) => c === undefined)
+    const consultations = new Map<string, CommitteeConsultation | null | undefined>(readings.value.map(([k, c]) => [k, c]))
+    const mentions = new Map<string, boolean | undefined>(readings.value.map(([k, , m]) => [k, m]))
+    const refined = refineByMention(
+      refineByCommittee(classified, (item) => consultations.get(keyOf(item))),
+      (item) => mentions.get(keyOf(item)),
+    )
+    const unread = [...consultations.values()].some((c) => c === undefined) || [...mentions.values()].some((m) => m === undefined)
 
     const items: LawWithoutBegutachtung[] = []
     for (const { record, class: c } of refined) {
