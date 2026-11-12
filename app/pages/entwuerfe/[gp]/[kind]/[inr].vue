@@ -79,9 +79,10 @@ const { data: amendedLaws } = await useFetch<AmendedLawsResponse>(() => `${url.v
   server: false,
 })
 
-/* A Vorlage's own Textgegenüberstellung and Erläuterungen. Not for an
- * Antrag: its annex and its Begründung are open experiments. */
-const showsAnnex = computed(() => !isAntrag.value && !amendedLaws.value?.createsNewLaw)
+/* The item's own Textgegenüberstellung — a Vorlage's from the ressort, an
+ * Antrag's Parliament's working copy (12.11.2026). The Erläuterungen only
+ * for a Vorlage: an Antrag's Begründung stands inside the Antrag. */
+const showsAnnex = computed(() => !amendedLaws.value?.createsNewLaw)
 
 const kindWord = computed(() => (isAntrag.value ? 'Initiativantrag' : 'Regierungsvorlage'))
 
@@ -231,14 +232,15 @@ useSeoMeta({
             <div class="mt-4 space-y-8">
               <!-- The law in force it would change, as on the draft page. -->
               <EntwurfFrame :laws="amendedLaws" />
-              <template v-if="!isAntrag">
-                <PageSubsection v-if="showsAnnex" id="gegenueberstellung" heading="Was ändert der Entwurf?">
-                  <TextComparisonSection :gp="data.gp" :inr="data.inr" :api-base="url" without-layers />
-                </PageSubsection>
-                <PageSubsection id="erlaeuterungen" heading="Was das Ressort begründet">
-                  <ExplanationsSection :gp="data.gp" :inr="data.inr" :api-base="url" />
-                </PageSubsection>
-              </template>
+              <!-- „Zitieren" at a § only for a Vorlage's annex, which cites as
+                   its Beilage; an Antrag's is Parliament's working copy, no
+                   document of the Antrag to cite it by. -->
+              <PageSubsection v-if="showsAnnex" id="gegenueberstellung" heading="Was ändert der Entwurf?">
+                <TextComparisonSection :gp="data.gp" :inr="data.inr" :api-base="url" :cite-as="isAntrag ? undefined : citeAs" without-layers />
+              </PageSubsection>
+              <PageSubsection v-if="!isAntrag" id="erlaeuterungen" heading="Was das Ressort begründet">
+                <ExplanationsSection :gp="data.gp" :inr="data.inr" :api-base="url" />
+              </PageSubsection>
               <FoldSection
                 v-if="data.documents.length"
                 :heading="`Dokumente (${data.documents.length})`"

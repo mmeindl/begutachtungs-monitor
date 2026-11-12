@@ -66,7 +66,7 @@ export async function parliamentAnnex(
   inr: number,
   /** Whose document list: a draft's, or (10.11.2026) a Regierungsvorlage's
    *  own — the page of a Vorlage without a Begutachtung reads its annex. */
-  ityp: 'ME' | 'I' = 'ME',
+  ityp: 'ME' | 'I' | 'A' = 'ME',
 ): Promise<{ pdf: TraceLink | null; html: TraceLink | null }> {
   const detail = await getGegenstand(gp, ityp, inr)
   // The RIS side's rule, imported: over GP XXVIII every group it matches is

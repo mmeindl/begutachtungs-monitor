@@ -26,39 +26,50 @@ import { explanationsDocumentOfHtml, parseExplanationsHtml } from '../explanatio
 import { getRootDraftArticles } from '../lawtext/draftArticlesService'
 import type { DraftIdentity } from '../ris/draftIdentity'
 import { fetchDocument } from '../upstream/fetchDocument'
+import { isParlDionAnnex, parlDionTwoColumns } from '../annex/parlDionAnnex'
 import { mapDocuments } from './detailJson'
 import { getGegenstand } from './drafts'
 import { stripHtmlToText } from './htmlText'
 import type { VorlageRoot } from './vorlageDetail'
 import { explanationsGroup } from './vorlageDetailAssembly'
 
-const NO_VORLAGE_ANNEX = 'Zu dieser Regierungsvorlage gibt es keine Textgegenüberstellung.'
-
-/** The Vorlage's Textgegenüberstellung, with the same checks as a draft's (`readAndCheck`). */
+/**
+ * The item's Textgegenüberstellung, with the same checks as a draft's
+ * (`readAndCheck`): a Vorlage's from the ressort, an Antrag's Parliament's
+ * own working copy (`parlDionAnnex.ts`, since 12.11.2026), turned into the
+ * two-column form first. Where neither is there to read, one sentence.
+ */
 export const getVorlageTextComparison = defineCachedFunction(
   async (root: VorlageRoot): Promise<TextComparisonResponse> => {
     const who: DraftIdentity = { gp: root.gp, inr: root.inr, risId: null }
-    const annex = await parliamentAnnex(root.gp, root.inr, 'I')
+    const what = root.ityp === 'A' ? 'zu diesem Antrag' : 'zu dieser Regierungsvorlage'
+    const annex = await parliamentAnnex(root.gp, root.inr, root.ityp)
     if (!annex.html) {
       return emptyComparison(
         who,
-        annex.pdf ? 'Die Textgegenüberstellung dieser Regierungsvorlage liegt nur als PDF vor.' : NO_VORLAGE_ANNEX,
+        annex.pdf
+          ? `Die Textgegenüberstellung ${what} hat das Parlament nur als PDF veröffentlicht, nicht in lesbarer Form.`
+          : `Eine Textgegenüberstellung ${what} hat das Parlament nicht in lesbarer Form veröffentlicht.`,
         null,
         annex.pdf,
       )
     }
-    const [draft, detail] = await Promise.all([getRootDraftArticles(root), getGegenstand(root.gp, 'I', root.inr)])
-    const parsed = parseTextComparison(await fetchDocument(annex.html.url), draft.articles)
-    if (parsed.rows.length === 0) {
-      return emptyComparison(who, 'Die Textgegenüberstellung dieser Regierungsvorlage ließ sich nicht auslesen.', null, annex.pdf)
+    const [draft, detail, html] = await Promise.all([getRootDraftArticles(root), getGegenstand(root.gp, root.ityp, root.inr), fetchDocument(annex.html.url)])
+    // Parliament's three-column working copy, as two columns; any other document as it is.
+    const parlDion = isParlDionAnnex(html)
+    const twoColumns = parlDion ? parlDionTwoColumns(html) : html
+    const parsed = twoColumns ? parseTextComparison(twoColumns, draft.articles) : null
+    if (!parsed || parsed.rows.length === 0) {
+      return emptyComparison(who, `Die Textgegenüberstellung ${what} ließ sich nicht auslesen.`, null, annex.pdf)
     }
+    const source = parlDion ? { label: 'Textgegenüberstellung (Arbeitsdokument ParlDion)', url: annex.html.url } : annex.html
     const asOf = detail.content?.einlangen?.slice(0, 10) ?? ''
     const out = await readAndCheck(
       who,
       [],
       asOf,
       draft,
-      { parsed, source: annex.html, publisher: 'parlament', readFrom: 'table', droppedPages: 0 },
+      { parsed, source, publisher: 'parlament', readFrom: 'table', droppedPages: 0 },
       annex.pdf,
       // Its (GP, Nummer) is a draft's too: the verification is cached under the root.
       rootKey(root),
