@@ -124,6 +124,21 @@ const LINK = 'link-inline'
 const marked = computed(() => markedStation(props.stations))
 
 /**
+ * The segment into the next station. Ink once that station has been
+ * reached, so the line and the dots can never disagree about how far the
+ * text got — except out of the Begutachtung of a law without a draft
+ * (`trail`): the path did not run through it (pale, `not-walked`), or
+ * nobody can tell whether it did (pale and dashed, `unknown`). The dashed
+ * one is a 2px left border on the same 2px-wide box, so the rail keeps its
+ * geometry; every other station's line is drawn as before.
+ */
+function railOf(s: Station, next: Station): string {
+  if (s.trail === 'not-walked') return 'bg-hairline'
+  if (s.trail === 'unknown') return 'border-l-2 border-dashed border-hairline'
+  return next.state === 'done' || next.state === 'current' ? 'bg-ink' : 'bg-hairline'
+}
+
+/**
  * Everything a row shows, decided here so the template only places it.
  *
  * The display rule: only the NEXT station that has not happened says
@@ -176,7 +191,7 @@ const rows = computed(() => props.stations.map((s, i) => {
     // The segment into the next station is ink once that station has been
     // reached, so the line and the dots can never disagree about how far
     // the text got. The last station has nothing to connect to.
-    rail: next ? (reached(next.state) ? 'bg-ink' : 'bg-hairline') : null,
+    rail: next ? railOf(s, next) : null,
   }
 }))
 </script>

@@ -149,6 +149,10 @@ change belongs here.
 - **Every other Land says „nicht feststellbar"** and why: its register keeps
   drafts too briefly to be joined (a draft may have existed and been taken
   down), or no Landtag document RIS links is read for this question.
+- **The rail out of that station says it in shape too, never alone:** pale =
+  not walked (a known „ohne Begutachtung"), pale and dashed = not known
+  („nicht feststellbar"), ink = walked; the words and a screen-reader word
+  („nicht erreicht", „unbekannt") carry the fact.
 - **Said once, as the first station of the card.** Pale (the rail's
   hollow, grey state, no warning colour) where none took place or none can
   be told; an ordinary station where one took place. Never a sentence above
