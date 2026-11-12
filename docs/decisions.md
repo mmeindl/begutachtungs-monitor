@@ -131,10 +131,17 @@ change belongs here.
   Antrag), exempt (the budget procedure: `shared/utils/budgetExempt.ts` and
   titles that start with „Bundesfinanz(rahmen)gesetz"), unknown (part of a
   consulted draft's text in the Antrag, a plausible draft by title, a check
-  that did not run, no Gegenstand), none. Only none says „ohne
+  that did not run, no Gegenstand, the law's own Erläuterungen or Antrag
+  text mentioning a Begutachtung), none. Only none says „ohne
   Begutachtung"; a law whose Nationalrat committee itself invited written
   Stellungnahmen is „Ausschussbegutachtung", never both. A period whose
   drafts are not linked to Vorlagen carries no such rows at all.
+- **A mention silences.** Every HTML document of the carrying Gegenstand
+  except Gesetzestext and Textgegenüberstellung is read; „Begutacht…"
+  anywhere in it makes the law „nicht feststellbar" (no row, no count; the
+  page says so). Read like the committee check: same round, same budget, an
+  unreadable document is a check that did not run and the law is left out.
+  It errs towards silence: 607/A mentions another law's Begutachtung.
 - **Salzburg, the one Land with a statement, in this order of evidence:** a
   draft of the register joined to the law (the Land's record or the title
   search) — consulted; the Regierungsvorlage's Erläuterungen carry
@@ -167,6 +174,18 @@ change belongs here.
 - **A Land law's changed laws come from RIS's consolidated Landesrecht,
   filtered by the Landesgesetzblatt** (`Kundmachungsorgannummer`), never from
   an Artikel heading or a title.
+- **What a Land law changed is compared per §, and only where three sources
+  agree** (`landLawChanges.ts`): the new wording is a version RIS ties to
+  the Landesgesetzblatt (named last in its Kundmachungsorgan); the old one is
+  the same §'s version that ended the day before (none at all → „neu"; a
+  gap, several candidates, no date → not compared); and an instruction of
+  the Landesgesetzblatt names the §. A version that began before the
+  Kundmachung and has since been replaced is not taken — RIS Kärnten names
+  the amendment on the wording it replaced. RIS's notes on
+  Landesgesetzblätter („(Anm: LGBl.Nr. …)", „*) Fassung LGBl.Nr. …") are not
+  the law's wording and are dropped. What is not compared is counted and
+  named in the frame, never dropped. More than 150 §§ → the Landesgesetzblatt
+  is the place to read it.
 
 ### Joins
 
@@ -463,11 +482,14 @@ circular of 10.12.2015).
 
 | What | Value | Sample, date |
 |---|---|---|
-| Bund laws „ohne Begutachtung" + „Ausschussbegutachtung" | XXVIII 59 + 8, XXVII 331 + 8 | 205 and 923 federal laws · 10.11.2026 |
+| Bund laws „ohne Begutachtung" + „Ausschussbegutachtung" | XXVIII 57 + 8, XXVII 320 + 8 (59 and 331 before a mention silenced) | 205 and 923 federal laws · 12.11.2026 |
+| Bund Initiativanträge with a readable ParlDion Textgegenüberstellung | XXVIII 23 of 44 (11 unreadable, 10 none), XXVII 127 of 293 (73, 93) | enacted laws without a Ministerialentwurf · 12.11.2026 |
+| Bund Vorlagen with a readable Textgegenüberstellung | XXVIII 8 of 21 (12 PDF only, 1 none), XXVII 13 of 35 (13, 9) | same |
 | Salzburg „ohne Begutachtung" | 41 of 452 laws, all Initiativanträge | GP XXV–XXVIII · 10.11.2026 |
 | Salzburg Vorlagen joined by title that carry the heading | 264 of 264 | laws since 2016 · 10.11.2026 |
 | Land laws with ≥ 1 law at its geltende Fassung in RIS | 98.0 % of amending laws (2,720 of 2,776), 97.5 % of all | all nine Länder since 2016 · 10.11.2026 |
 | First text → Kundmachung comparison shown | Salzburg Initiativantrag 87 of 103, Oberösterreich Beilage 181 of 201 | since 2016 · 10.11.2026 |
+| Land law „Was das Gesetz geändert hat": laws with ≥ 1 § compared / named §§ compared | Burgenland 19 / 86 %, Wien 14 / 77 %, Tirol 17 / 69 %, Niederösterreich 16 / 60 %, Steiermark 18 / 58 %, Oberösterreich 15 / 49 %, Vorarlberg 17 / 43 %, Salzburg 13 / 34 %, Kärnten 10 / 23 % | 20 laws per Land since 2016, 5 per Land checked against the instructions · 12.11.2026 |
 
 ## 3. Rejected alternatives
 
@@ -515,11 +537,11 @@ circular of 10.12.2015).
   the phrase, and reference lists cite everything (§12.67).
 - **An overview page for Grundsatzgesetze.** About five a year (§12.67).
 
-- **Old against new wording from RIS's consolidated Landesrecht as every
-  Land's „what changed".** 94 % of changed §§ have their previous version,
-  but the changed § set matches the Landesgesetzblatt's instructions in only
-  57 of 176 laws (20 Novellen per Land, 10.11.2026). Oberösterreich (14 of
-  19) and Tirol (10 of 19) would be the place to try again.
+- **Old against new wording from RIS's consolidated Landesrecht as a set
+  per law.** 94 % of changed §§ have their previous version, but the changed
+  § set matches the Landesgesetzblatt's instructions in only 57 of 176 laws
+  (20 Novellen per Land, 10.11.2026). Built instead per §, each one checked
+  against an instruction (Länder above).
 - **The changed laws of a Land law derived from Artikel headings or the
   title.** Genitives („Änderung des NÖ Pflichtschulgesetzes") and
   Sammelnovellen need guessing; the consolidated records name them directly.
@@ -613,11 +635,8 @@ circular of 10.12.2015).
 - **A consulted draft under another title.** A Bund law whose draft was
   consulted under a different title and whose text took a path no record
   links still reads „ohne Begutachtung · kein Ministerialentwurf" (126 d.B.,
-  Tabakgesetz, after 5/ME). The Vorlage's own documents carry no general
-  signal: of the 59 such laws of GP XXVIII, 2 mention a Begutachtung in
-  their Erläuterungen or Antrag text (11.11.2026) — 15/A („im
-  Begutachtungsverfahren geäußerte Bedenken", most likely a consulted
-  predecessor) and 607/A (another law's Begutachtung) — and 126 d.B. is not
-  among them. Not a rule; 15/A needs a look by hand.
+  Tabakgesetz, after 5/ME). Its own documents do not mention a Begutachtung,
+  so the mention rule (above) does not reach it; a draft under another title
+  has no safe join yet.
 - **„Upcoming" Begutachtungen** have no verified data source: the Parliament
   API knows a consultation only once it starts.
