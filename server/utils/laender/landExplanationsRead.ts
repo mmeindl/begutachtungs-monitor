@@ -7,7 +7,12 @@
  *
  * No Nitro globals: the bytes come through `bytesOf` — the Land's door
  * (`landPdfBytes`) in the server, the corpus script's disk cache in
- * `scripts/corpus/euLaender.ts`, which so runs the page's own reading.
+ * `scripts/corpus/euLaender.ts`, which so runs the page's own reading. The
+ * plain pages may come through `pagesOf` instead: the page's section hands
+ * in the server's cached read (`texts/pdfPagesService.ts`), so the draft's
+ * PDF it shares with the comparison and the Begründungsvergleich is fetched
+ * and parsed once. The pages with their weights (`styledPages`) always come
+ * from the bytes.
  *
  * A „Zu …" entry names its §§ in brackets — „Zu Art. I Z 2 (§ 1 Abs. 3):" —
  * or only the draft's Ziffern, „Zu Z 1 und 3:" (Salzburg, about half of its
@@ -22,7 +27,7 @@ import { landDraftUnits } from './landLawDiff'
 import { headingZiffern, parseLandExplanations, type LandExplanationsParse } from './landExplanations'
 import type { LawUnit } from '../lawtext/lawUnits'
 import { amendedLawsOf } from './landTgu'
-import { draftCandidates, isDraftWithExplanations, landPdfBytes, NOT_A_DRAFT, notADraft, pagesOfBytes } from './texts/read'
+import { draftCandidates, isDraftWithExplanations, landPdfBytes, NOT_A_DRAFT, notADraft, pagesOfBytes, type PagesReader } from './texts/read'
 import { styledPages } from './texts/styledPages'
 import type { LandDraftRecord } from './texts/stations'
 
@@ -100,7 +105,12 @@ const unavailable = (reason: string, publisher: string, document: LandExplanatio
  * The Land's Erläuterungen of one draft: from the draft's PDF, or from a
  * document of their own where the Land files them so (Salzburg).
  */
-export async function readLandExplanations(land: LandCode, detail: { draft: Pick<LandDraftRecord['draft'], 'title' | 'documents'> }, bytesOf: LandBytesReader = landPdfBytes): Promise<LandExplanationsRead> {
+export async function readLandExplanations(
+  land: LandCode,
+  detail: { draft: Pick<LandDraftRecord['draft'], 'title' | 'documents'> },
+  bytesOf: LandBytesReader = landPdfBytes,
+  pagesOf: PagesReader = async (url) => pagesOfBytes(await bytesOf(url)),
+): Promise<LandExplanationsRead> {
   const publisher = `Land ${LAND_NAME[land]}`
   const pages = new Map<string, string[]>()
   const docs = detail.draft.documents
@@ -113,7 +123,7 @@ export async function readLandExplanations(land: LandCode, detail: { draft: Pick
   const done = (response: LandExplanationsResponse, draftFailed = false): LandExplanationsRead => ({ response, pages, draftUrl, draftFailed })
   if (!doc || !url) return done(unavailable('Das Land hat zu diesem Entwurf keine Erläuterungen veröffentlicht.', publisher))
   const document = { label: own ? doc.title : `${doc.title} (Erläuterungen)`, url }
-  const read = HEADINGS_BY_WEIGHT.has(land) ? await styledPages(await bytesOf(url)) : { pages: await pagesOfBytes(await bytesOf(url)), bold: undefined }
+  const read = HEADINGS_BY_WEIGHT.has(land) ? await styledPages(await bytesOf(url)) : { pages: await pagesOf(url), bold: undefined }
   pages.set(url, read.pages)
   const ofDraft = (draftPages: string[]) => ({ units: landDraftUnits(draftPages), text: draftPages.join('\n') })
   // Erläuterungen in the draft's PDF are none where the one document the Land filed as the draft evidently is none (`notADraft`, `draftSource`).
@@ -128,7 +138,7 @@ export async function readLandExplanations(land: LandCode, detail: { draft: Pick
   if (!draftRead && parse && draftUrl) {
     const draftPages = draftUrl === url
       ? read.pages
-      : await bytesOf(draftUrl).then(pagesOfBytes).catch(() => {
+      : await pagesOf(draftUrl).catch(() => {
           draftFailed = true
           return [] as string[]
         })

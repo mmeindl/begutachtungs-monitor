@@ -37,6 +37,17 @@ const props = defineProps<{
   number: string
 }>()
 
+/* Whether the draft implements EU law — the Bund's fact in the same card,
+ * read from the Land's own documents (`EntwurfFrame`). Both facts need only
+ * the address, so they start before the two awaits below, as on the
+ * Ministerialentwurf's page: after them their server deadline began only
+ * once the draft had arrived. */
+const { data: euRecht } = useEuRecht(() => ({ land: props.land, number: props.number }))
+/* What of the Bund's the draft carries out — a Grundsatzgesetz, an Art.-15a
+ * agreement — under the EU fact, read from the same documents
+ * (`EntwurfFrame`). */
+const { data: bundesrecht } = useLandBundesrecht(() => ({ land: props.land, number: props.number }))
+
 const { data, error, refresh, status } = await useFetch<LandDraftDetail>(
   () => `/api/laender/${props.land}/${props.number}`,
   { lazy: true },
@@ -140,13 +151,6 @@ const stationAnchors = computed<Partial<Record<StationId, string>>>(() => {
   }
 })
 
-/* Whether the draft implements EU law — the Bund's fact in the same card,
- * read from the Land's own documents (`EntwurfFrame`). */
-const { data: euRecht } = useEuRecht(() => ({ land: props.land, number: props.number }))
-/* What of the Bund's the draft carries out — a Grundsatzgesetz, an Art.-15a
- * agreement — under the EU fact, read from the same documents
- * (`EntwurfFrame`). */
-const { data: bundesrecht } = useLandBundesrecht(() => ({ land: props.land, number: props.number }))
 /* Who published what the fact read, for its credit line. */
 const landPublisher = computed(() => `Land ${landName.value}`)
 /* Where the draft comes from — EU law, a Grundsatzgesetz, an agreement — as

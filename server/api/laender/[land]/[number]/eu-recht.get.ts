@@ -10,27 +10,16 @@
  * Erläuterungen: a made-up number must leave nothing in the derived LRU.
  * The rate rule is the Land drafts' (`RATE_RULES.landDraft`, by path).
  */
-import type { EuRechtResponse, LandCode } from '#shared/types'
-import { LAND_CODES } from '#shared/utils/laender'
+import type { EuRechtResponse } from '#shared/types'
 import { getLandEuRecht } from '../../../../utils/eu/landEuService'
 import { landKey } from '../../../../utils/eu/euMapStore'
-import { isLandNumber, readLandDraft } from '../../../../utils/laender/sources'
+import { landDraftParams, withLandDraft } from '../../../../utils/laender/landRoute'
 
 export default defineEventHandler(async (event): Promise<EuRechtResponse> => {
-  const land = getRouterParam(event, 'land') ?? ''
-  const number = getRouterParam(event, 'number') ?? ''
-  if (!(LAND_CODES as readonly string[]).includes(land) || !isLandNumber(land as LandCode, number)) {
-    throw createError({ statusCode: 404, statusMessage: 'Entwurf nicht gefunden' })
-  }
-  try {
-    const detail = await readLandDraft(land as LandCode, number)
-    if (!detail) throw createError({ statusCode: 404, statusMessage: 'Entwurf nicht gefunden' })
-    const fact = await getLandEuRecht(land as LandCode, number, detail)
+  const { land, number } = landDraftParams(event)
+  return withLandDraft(land, number, 'EU-Recht', async (detail) => {
+    const fact = await getLandEuRecht(land, number, detail)
     // `related` from the EU map of the period the Begutachtung began in, never stored with the fact.
     return await withRelatedOfOwnPeriod(fact, landKey(land, number), await getCurrentGp())
-  } catch (error) {
-    if (isError(error)) throw error
-    console.warn(`[laender] EU-Recht ${land}/${number}:`, error instanceof Error ? error.message : error)
-    throw createError({ statusCode: 503, statusMessage: 'Gerade nicht abrufbar' })
-  }
+  })
 })

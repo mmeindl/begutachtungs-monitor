@@ -109,9 +109,10 @@ onMounted(() => {
   }
 })
 
-// A deferred instance asks once it comes within 600 px — registered after
-// the redirect above, which may have enabled it already.
-useNearViewport(root, enable, '600px 0px', () => enabled.value)
+// A deferred instance asks once it comes within 600 px, or at once while
+// Back or Forward restores a position (`useNearViewportSection`) —
+// registered after the redirect above, which may have enabled it already.
+useNearViewportSection(root, enable, () => enabled.value)
 
 /**
  * The reasoning to show at one unit: a changed one, or one shown without a

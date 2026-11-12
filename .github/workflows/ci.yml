@@ -4,14 +4,17 @@
 # nothing ran the 500-odd tests, so a red suite could reach `main` and only be
 # noticed on the next local run. This is the cheap half of that gap.
 #
-# Four commands, and the third one exists because of a hole that twice let
-# bugs ship: `nuxt
-# typecheck` sees the app, the server and `shared/`, but neither `scripts/`
-# nor `tests/`. `tsconfig.tools.json` covers those, and both projects need
+# Five commands, and two of them exist because of holes that let bugs ship:
+# `nuxt typecheck` sees the app and `shared/`, and nothing else. `scripts/`
+# and `tests/` are `tsconfig.tools.json`'s (twice a shipped bug lived there),
+# and `server/` is a TypeScript program of its own, `.nuxt/tsconfig.server.json`,
+# which nothing ran until 12.11.2026 — a real type error in the server's
+# middleware had passed every check. All three projects need
 # `.nuxt/tsconfig*.json`, which `nuxt prepare` writes — `pnpm install` runs it
-# as `postinstall`, so the install step is also the generate step.
+# as `postinstall`, so the install step is also the generate step, and every
+# typecheck below must stay after it.
 #
-# The fourth is `pnpm lint`. It fails on errors only; warnings are what the
+# The last is `pnpm lint`. It fails on errors only; warnings are what the
 # linter is allowed to say without stopping anyone (`eslint.config.mjs`).
 #
 # Node 22 is what the server runs (`deploy/infrastructure.md`); pnpm 10 is
@@ -54,8 +57,11 @@ jobs:
       - name: Tests
         run: pnpm test
 
-      - name: Typecheck (app, server, shared)
+      - name: Typecheck (app, shared)
         run: pnpm typecheck
+
+      - name: Typecheck (server)
+        run: pnpm typecheck:server
 
       - name: Typecheck (scripts, tests)
         run: pnpm typecheck:tools

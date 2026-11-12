@@ -15,7 +15,8 @@ import { gpWindow } from '#shared/utils/gp'
 import { isDecidedLandLaw, isEnactedLandLaw, newestPerLand } from '#shared/utils/landRecent'
 import { DERIVED_CACHE } from '../cache/base'
 import { keepIncompleteFor, type Gathered } from '../cache/gathered'
-import { UPSTREAM_LIST_TTL_S } from '../cache/ttl'
+import { LIST_STALE_S, UPSTREAM_LIST_TTL_S } from '../cache/ttl'
+import { staleWithin } from '../cache/stale'
 import { readLaenderInWindow } from './sources'
 
 /** A Land that could not be read is retried after this, not after the list's TTL. */
@@ -60,9 +61,9 @@ const recentLandStations = defineCachedFunction(
     name: 'dashboard-laender',
     base: DERIVED_CACHE,
     getKey: (currentGp: string, enactedGp: string) => `${currentGp}-${enactedGp}`,
-    maxAge: UPSTREAM_LIST_TTL_S,
-    swr: false,
-    validate: keepIncompleteFor(INCOMPLETE_TTL_MS),
+    // Complete: served up to three hours old while it rebuilds. With a Land
+    // unreadable: its own short window, never stale past it.
+    ...staleWithin(UPSTREAM_LIST_TTL_S, LIST_STALE_S, keepIncompleteFor(INCOMPLETE_TTL_MS)),
   },
 )
 

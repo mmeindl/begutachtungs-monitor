@@ -25,6 +25,7 @@ import type { BgblLaw, LandCode, RepealedLaw } from '#shared/types'
 import { todayIso } from '#shared/utils/format'
 import { asArray } from '../ris/risRecord'
 import { risJson, type UpstreamPolicy } from '../upstream/fetch'
+import { readPages, risPageCount } from '../upstream/pages'
 
 const RIS_LAND: Record<LandCode, string> = { bgld: 'Burgenland', ktn: 'Kaernten', noe: 'Niederoesterreich', ooe: 'Oberoesterreich', sbg: 'Salzburg', stmk: 'Steiermark', t: 'Tirol', vbg: 'Vorarlberg', w: 'Wien' }
 /** RIS's query name of each Land's consolidated law, where a record's own link does not say it. */
@@ -118,11 +119,14 @@ export function landRepealedOfRefs(refs: readonly any[], nummer: string): Repeal
     .sort(byTitle)
 }
 
-/** Every consolidated record that names this Landesgesetzblatt, all pages; `complete`: the search returned as many as it counted. Throws when RIS fails. */
+/**
+ * Every consolidated record that names this Landesgesetzblatt, all pages;
+ * `complete`: the search returned as many as it counted. Throws when RIS
+ * fails. The pages after the first come together (`upstream/pages.ts`); the
+ * walk is the loop's as it was.
+ */
 export async function konsRefsOfLgbl(land: LandCode, nummer: string): Promise<{ refs: any[]; complete: boolean }> {
-  const refs: any[] = []
-  let hits = 0
-  for (let page = 1; page <= MAX_PAGES; page++) {
+  const fetchPage = (page: number) => {
     const params = new URLSearchParams({
       Applikation: 'LrKons',
       [`Bundesland_SucheIn${RIS_LAND[land]}`]: 'true',
@@ -130,7 +134,13 @@ export async function konsRefsOfLgbl(land: LandCode, nummer: string): Promise<{ 
       DokumenteProSeite: 'OneHundred',
       Seitennummer: String(page),
     })
-    const body = await risJson<any>(`${LANDESRECHT_API}?${params}`, POLICY)
+    return risJson<any>(`${LANDESRECHT_API}?${params}`, POLICY)
+  }
+  const pages = await readPages(fetchPage, (first) => risPageCount(Number(first?.OgdDocumentResults?.Hits?.['#text'] ?? 0)), MAX_PAGES)
+  const refs: any[] = []
+  let hits = 0
+  for (let page = 1; page <= MAX_PAGES; page++) {
+    const body = await pages.get(page)
     const results = body?.OgdDocumentResults
     hits = Number(results?.Hits?.['#text'] ?? 0)
     const pageRefs = asArray<any>(results?.OgdDocumentReference)

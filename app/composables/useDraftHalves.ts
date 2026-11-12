@@ -10,12 +10,24 @@
  * from the other — the homepage's pattern, for the same reason. (And an
  * `await` inside a composable would leave everything built after it outside
  * the component's scope.)
+ *
+ * THE LIST NO LONGER WAITS FOR EVERY HALF (12.11.2026). Until then it
+ * showed rows only once each half asked for had answered — on the server
+ * too, which ignores `lazy`. The Länder half carries a 30 s budget for a
+ * cold read (Salzburg's register), so a reader with a Land chosen could
+ * look at a skeleton for up to 30 s, and a shared link's HTML waited as
+ * long. Now the rows that are there stand, and a half on its way is said
+ * in the count line, in the register of a failed one (`draftCountLabel`).
+ * The RIS and Länder halves race a server deadline (`useLateFetch`, which
+ * was this file's `useLateHalf` until the homepage needed it too); the
+ * Ministerialentwürfe do not — they carry the page.
  */
 import type { Ref } from 'vue'
 import type { DraftsResponse, LaenderResponse, RisConsultationsResponse } from '#shared/types'
 import type { ArtFilter } from '~/utils/draftFilters'
-import { draftKindArt, unionGps, unionMinistries } from '~/utils/draftFilters'
+import { draftKindArt, halfState, lateHalves, unionGps, unionMinistries } from '~/utils/draftFilters'
 import type { DraftFilters } from '~/composables/useDraftFilters'
+import { useLateFetch } from '~/composables/useLateFetch'
 
 export function useDraftHalves(filters: {
   art: Ref<ArtFilter>
@@ -81,9 +93,10 @@ export function useDraftHalves(filters: {
    * stands beside it there, so it carries the page and the gate follows it
    * (`gateStatus`).
    */
-  const risFetch = useFetch<RisConsultationsResponse>(
+  const risFetch = useLateFetch<RisConsultationsResponse>(
     '/api/ris-drafts',
-    { query: risQuery, timeout: 8000, enabled: wantsRis, watch: [wantsRis], lazy: true },
+    () => risQuery.value,
+    { timeout: 8000, wanted: wantsRis },
   )
 
   /* The THIRD half since 22.10.2026: the Länder's drafts for the period,
@@ -91,15 +104,13 @@ export function useDraftHalves(filters: {
    * status go upstream; the Land, the Art and the search apply on the page,
    * so one answer serves every choice. The generous timeout is Salzburg's
    * register, thirteen seconds cold — prewarmed, but a list may not cut it
-   * off, or a period would lose Salzburg's closed drafts without a word. */
-  const laenderQuery = computed(() => ({ gp: query.value.gp, status: query.value.status }))
-  const laenderFetch = useFetch<LaenderResponse>('/api/laender', {
-    query: laenderQuery,
-    timeout: 30000,
-    enabled: wantsLaender,
-    watch: [wantsLaender],
-    lazy: true,
-  })
+   * off, or a period would lose Salzburg's closed drafts without a word.
+   * Since 12.11.2026 that budget no longer holds the list (`useLateFetch`). */
+  const laenderFetch = useLateFetch<LaenderResponse>(
+    '/api/laender',
+    () => ({ gp: query.value.gp, status: query.value.status }),
+    { timeout: 30000, wanted: wantsLaender },
+  )
 
   const { data: meFetched, error, refresh, status } = draftsFetch
   const { data: risFetched, error: risError, status: risStatus, refresh: risRefresh } = risFetch
@@ -114,22 +125,26 @@ export function useDraftHalves(filters: {
   const laenderData = computed(() => (wantsLaender.value ? laenderFetched.value : null))
 
   /**
-   * Both fetches are `lazy` (04.10.2026): a click shows the page at once
-   * instead of holding the previous one until the halves have answered — the
-   * RIS half's 8 s budget included. The server ignores `lazy` and waits, so
-   * the HTML of a shared link or a crawl is what it was.
+   * Every fetch is `lazy` (04.10.2026): a click shows the page at once
+   * instead of holding the previous one until the halves have answered.
    *
-   * After a click the gate therefore holds until every half that is asked
-   * for has its FIRST answer: the RIS rows sort in between the others by
-   * Frist, and a list drawn from one half would reorder under the reader and
-   * count „0" of the other in the meantime. Only the first: a filter that
-   * refetches keeps the rows standing, as before (`FetchGate`).
+   * Where each half stands (`halfState`). Until 12.11.2026 the gate held
+   * until EVERY half asked for had its first answer, on the argument that
+   * the RIS and Länder rows sort in between the others by Frist, and a list
+   * drawn from one half would reorder under the reader and count „0" of the
+   * other meantime. Revised because the wait it bought was measured at up to
+   * 30 s (a cold Länder read): the gate follows the lead half only. The
+   * other two arguments are answered where they arise — the count line says
+   * which half is still on its way instead of counting it as 0
+   * (`draftCountLabel`), and the rows sorting in keep the reader's cut and
+   * scroll position (`/entwuerfe`, `cutKeeping`). Once per page load: a
+   * filter that refetches keeps the rows standing, as before.
    */
-  const firstAnswerPending = computed(() =>
-    (wantsMe.value && !meFetched.value && !error.value) ||
-    (wantsRis.value && !risFetched.value && !risError.value) ||
-    (wantsLaender.value && !laenderFetched.value && !laenderError.value),
-  )
+  const states = computed(() => ({
+    me: halfState(wantsMe.value, meFetched.value, error.value),
+    ris: halfState(wantsRis.value, risFetched.value, risError.value),
+    laender: halfState(wantsLaender.value, laenderFetched.value, laenderError.value),
+  }))
 
   /**
    * The gate follows the half that carries the page.
@@ -148,25 +163,25 @@ export function useDraftHalves(filters: {
   const nothingWanted = computed(() => !wantsMe.value && !wantsRis.value && !wantsLaender.value)
   const gateStatus = computed(() => {
     if (nothingWanted.value) return 'success'
-    if (firstAnswerPending.value) return 'pending'
-    return { me: status.value, ris: risStatus.value, laender: laenderStatus.value }[lead.value]
+    return ({ off: 'idle', loading: 'pending', ready: 'success', failed: 'error' } as const)[states.value[lead.value]]
   })
   const gateData = computed(() => {
     if (nothingWanted.value) return {}
-    if (firstAnswerPending.value) return null
+    if (states.value[lead.value] !== 'ready') return null
     return { me: meData.value, ris: risData.value, laender: laenderData.value }[lead.value]
   })
+  /** The halves still on their way beside rows already shown (12.11.2026). */
+  const pendingHalves = computed(() => lateHalves(lead.value, states.value))
   /* The rows on screen answer the PREVIOUS filter (24.10.2026): some half
-   * that is asked for is fetching again after its first answer. The list
-   * keeps them standing and marks them stale instead of passing them off as
-   * the answer — any half, not only the lead, because the RIS and Länder
-   * rows sort in among the others. */
+   * that is asked for is fetching again after an answer. The list keeps
+   * them standing and marks them stale instead of passing them off as the
+   * answer — any half, not only the lead, because the RIS and Länder rows
+   * sort in among the others. A half with no answer yet is not stale but
+   * pending (`pendingHalves`). */
   const refreshing = computed(() =>
-    !firstAnswerPending.value && (
-      (wantsMe.value && status.value === 'pending') ||
-      (wantsRis.value && risStatus.value === 'pending') ||
-      (wantsLaender.value && laenderStatus.value === 'pending')
-    ),
+    (states.value.me === 'ready' && status.value === 'pending') ||
+    (states.value.ris === 'ready' && risStatus.value === 'pending') ||
+    (states.value.laender === 'ready' && laenderStatus.value === 'pending'),
   )
 
   /* Retries whichever halves this `art` asks for — a switched-off handle
@@ -188,7 +203,8 @@ export function useDraftHalves(filters: {
   const availableGps = computed(() => unionGps(meData.value?.availableGps, risData.value?.availableGps, laenderData.value?.availableGps))
   const ministries = computed(() => unionMinistries(meData.value?.ministries, risData.value?.ministries))
 
-  /** Both fetches settled — the page awaits this beside its own fetch. */
+  /** The fetches settled — on the server, the late halves at their
+   *  deadline at most. The page awaits this beside its own fetch. */
   const ready: Promise<void> = Promise.all([draftsFetch, risFetch, laenderFetch]).then(() => {})
 
   return {
@@ -201,6 +217,8 @@ export function useDraftHalves(filters: {
     laenderData,
     laenderStatus,
     laenderError,
+    states,
+    pendingHalves,
     gateStatus,
     gateData,
     refreshing,

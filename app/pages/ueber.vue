@@ -62,8 +62,10 @@ const { siteUrl } = useRuntimeConfig().public
           class="link-inline"
         >EUR-Lex</ExternalLink>, der Datenbank des Amts für
         Veröffentlichungen der Europäischen Union. Der Monitor
-        ruft sie bei Bedarf ab und hält sie rund 30 Minuten im
-        Zwischenspeicher; eine eigene Datenbank gibt es nicht. Die
+        ruft sie bei Bedarf ab und hält sie im Zwischenspeicher –
+        Listen und Verfahrensstände höchstens wenige Stunden,
+        veröffentlichte Texte bis zu 30 Tage; eine eigene Datenbank
+        gibt es nicht. Die
         Begutachtungen der Länder haben keine solche Schnittstelle: Der
         Monitor liest sie von den Seiten der Länder selbst, von allen neun –
         jedes so weit, wie seine Seite es zulässt; die Steiermark von der Seite

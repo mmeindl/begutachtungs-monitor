@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest'
-import { ministryCodeOf, ministryNameOf, ministryScore } from '../server/utils/ris/ministryCodes'
+import { ministryCodeOf, ministryScore } from '../server/utils/ris/ministryCodes'
+import { ministryNameOf } from '../shared/utils/searchHaystack'
 
 describe('ministry codes', () => {
   it('extracts the RIS ministry code and maps the two long-name variants', () => {

@@ -20,6 +20,7 @@
 import type { BgblICitation, BundesrechtFinding, LandBundesrechtResponse, LandCode, TraceLink } from '#shared/types'
 import { DERIVED_CACHE } from '../cache/base'
 import { onlyComplete, type Gathered } from '../cache/gathered'
+import { DERIVED_ANALYSIS_TTL_S } from '../cache/ttl'
 import { readLandDraftTexts } from '../laender/landDraftTexts'
 import { NOT_A_DRAFT } from '../laender/texts/read'
 import type { LandDraftRecord } from '../laender/texts/stations'
@@ -52,7 +53,7 @@ export const readLandAusfuehrung = defineCachedFunction(
     name: 'land-bundesrecht',
     base: DERIVED_CACHE,
     getKey: (land: LandCode, number: string) => `${land}-${number}`,
-    maxAge: 60 * 60 * 24,
+    maxAge: DERIVED_ANALYSIS_TTL_S,
     swr: false,
     validate: onlyComplete,
   },

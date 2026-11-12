@@ -29,6 +29,8 @@ import type {
 import { LAND_CODES, landDraftPath } from '#shared/utils/laender'
 import { DERIVED_CACHE } from '../cache/base'
 import { onlyComplete, type Gathered } from '../cache/gathered'
+import { storageKeyOf } from '../cache/key'
+import { DERIVED_ANALYSIS_TTL_S, SETTLED_TTL_S } from '../cache/ttl'
 import { createSlots } from '../upstream/slots'
 import { upstreamText } from '../upstream/fetch'
 import { fetchLgblIndex, lgblRecord, type LgblRecord } from './lgblIndex'
@@ -54,15 +56,12 @@ import {
   type LawEntry,
 } from './landLaws'
 
-const WEEK_S = 60 * 60 * 24 * 7
 /** How long the list waits for the Landtag documents' signals. */
 const SIGNAL_BUDGET_MS = 2_000
 /** How long a law's page waits for its own Vorlage. */
 const PAGE_SIGNAL_BUDGET_MS = 8_000
 /** One PDF at a time, across every request (the heap note of `verdicts.ts`). */
 const READING = createSlots(1)
-
-const urlKey = (url: string) => encodeURIComponent(url)
 
 /** What a Landtag PDF says about a Begutachtung (`docSignalOf`), held a week; a failed read throws and is held nowhere. */
 export const landDocSignal = defineCachedFunction(
@@ -74,7 +73,7 @@ export const landDocSignal = defineCachedFunction(
       release()
     }
   },
-  { name: 'land-doc-signal', base: DERIVED_CACHE, getKey: urlKey, maxAge: WEEK_S, swr: false },
+  { name: 'land-doc-signal', base: DERIVED_CACHE, getKey: storageKeyOf, maxAge: SETTLED_TTL_S, swr: false },
 )
 
 type Read<T> = { state: 'ok'; value: T } | { state: 'failed' } | { state: 'pending' }
@@ -224,7 +223,7 @@ export const landLawText = defineCachedFunction(
     }
     return groups
   },
-  { name: 'land-law-text', base: DERIVED_CACHE, getKey: urlKey, maxAge: WEEK_S, swr: false },
+  { name: 'land-law-text', base: DERIVED_CACHE, getKey: storageKeyOf, maxAge: SETTLED_TTL_S, swr: false },
 )
 
 /** Salzburg's Landtag, read off the law's own record (`salzburgLandtag`) — a day, and only when the report was read. */
@@ -234,7 +233,7 @@ const salzburgLawLandtag = defineCachedFunction(
     const value = await salzburgLandtag(record, reads)
     return { value, complete: reads.complete }
   },
-  { name: 'land-law-sbg-landtag', base: DERIVED_CACHE, getKey: (nr: string) => nr.replace(/\D+/g, '-'), maxAge: 60 * 60 * 24, swr: false, validate: onlyComplete },
+  { name: 'land-law-sbg-landtag', base: DERIVED_CACHE, getKey: (nr: string) => nr.replace(/\D+/g, '-'), maxAge: DERIVED_ANALYSIS_TTL_S, swr: false, validate: onlyComplete },
 )
 
 /**
@@ -397,5 +396,5 @@ export function lawAsDraftDetail(d: LandLawDetail): LandDraftDetail {
  */
 export const readLandKonsLaws = defineCachedFunction(
   (land: LandCode, nr: string) => landLawsOfLgbl(land, nr),
-  { name: 'land-kons-gesetze', base: DERIVED_CACHE, getKey: (land: LandCode, nr: string) => `${land}-${nr.replace(/\D+/g, '-')}`, maxAge: 60 * 60 * 24, swr: false },
+  { name: 'land-kons-gesetze', base: DERIVED_CACHE, getKey: (land: LandCode, nr: string) => `${land}-${nr.replace(/\D+/g, '-')}`, maxAge: DERIVED_ANALYSIS_TTL_S, swr: false },
 )

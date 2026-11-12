@@ -45,8 +45,9 @@ import { landIsNew, readLandEu } from './landEuReading'
 import { konsJson } from '../ris/konsLaw'
 import { fetchParagraphXml } from '../kons/konsCache'
 import { DERIVED_CACHE } from '../cache/base'
+import { storageKeyOf } from '../cache/key'
 import { onlyComplete, type Gathered } from '../cache/gathered'
-import { PUBLISHED_DOCUMENT_TTL_S } from '../cache/ttl'
+import { DERIVED_ANALYSIS_TTL_S, PUBLISHED_DOCUMENT_TTL_S } from '../cache/ttl'
 import { readLandDraftTexts } from '../laender/landDraftTexts'
 import { NOT_A_DRAFT } from '../laender/texts/read'
 import type { LandDraftRecord } from '../laender/texts/stations'
@@ -60,7 +61,7 @@ import type { LandDraftRecord } from '../laender/texts/stations'
 const fetchLandesrechtAnswer = defineCachedFunction(
   async (land: LandCode, phrase: string, asOf: string): Promise<LrKonsSearchAnswer> =>
     (await konsJson(`${LANDESRECHT_API}?${new URLSearchParams(landesrechtSearchParams(phrase, asOf, land))}`)) as LrKonsSearchAnswer,
-  { name: 'eu-landesrecht', getKey: (land: LandCode, phrase: string, asOf: string) => `${land}|${phrase}|${asOf}`, maxAge: PUBLISHED_DOCUMENT_TTL_S, swr: false },
+  { name: 'eu-landesrecht', getKey: (land: LandCode, phrase: string, asOf: string) => storageKeyOf(`${land}|${phrase}|${asOf}`), maxAge: PUBLISHED_DOCUMENT_TTL_S, swr: false },
 )
 
 /** A Paragraph named in more hits than one page holds is transposed many times over; it is not read. */
@@ -203,7 +204,7 @@ export const readLandEuRecht = defineCachedFunction(
     name: 'land-eu-recht',
     base: DERIVED_CACHE,
     getKey: (land: LandCode, number: string) => `${land}-${number}`,
-    maxAge: 60 * 60 * 24,
+    maxAge: DERIVED_ANALYSIS_TTL_S,
     swr: false,
     validate: onlyComplete,
   },

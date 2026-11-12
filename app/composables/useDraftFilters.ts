@@ -30,7 +30,8 @@ export interface DraftFilters {
   ministry: Ref<string>
   /** What is in the search box right now. */
   q: Ref<string>
-  /** The same term 300 ms later, trimmed — what actually filters. */
+  /** The same term 300 ms later, trimmed — what actually filters, on the
+   *  page and not upstream (`searchBundHalves`, 12.11.2026). */
   qDebounced: Ref<string>
   sort: Ref<SortKey>
   reversed: Ref<boolean>
@@ -75,18 +76,20 @@ export function useDraftFilters(): DraftFilters {
   })
   onUnmounted(() => clearTimeout(qTimer))
 
-  /* Only the six the endpoints take. `sort` must not be in this computed,
-   * or reordering would hand `useFetch` a new object and refetch both lists
-   * for something the browser does. `art` stays out for a different reason:
-   * neither endpoint takes it in this vocabulary — it decides which of the
-   * two the page asks at all, and the page watches it for that. */
+  /* Only the five the endpoints are asked with. `sort` must not be in this
+   * computed, or reordering would hand `useFetch` a new object and refetch
+   * both lists for something the browser does. `art` stays out for a
+   * different reason: neither endpoint takes it in this vocabulary — it
+   * decides which of the two the page asks at all, and the page watches it
+   * for that. And `qDebounced` since 12.11.2026, for `sort`'s reason: the
+   * page searches the halves itself (`searchBundHalves`), so a term is no
+   * request. */
   const query = computed(() =>
     draftApiQuery({
       status: statusFilter.value,
       stations: stations.value,
       gp: gp.value,
       ministry: ministry.value,
-      q: qDebounced.value,
       eu: eu.value,
     }),
   )
@@ -117,7 +120,7 @@ export function useDraftFilters(): DraftFilters {
     const quellen = route.query[SOURCE_PARAM]
     router.replace({ query: { ...draftUrlQuery(current()), ...(quellen !== undefined ? { [SOURCE_PARAM]: quellen } : {}) } })
   }
-  watch([query, art, sort, reversed, begutachtung], writeUrl)
+  watch([query, qDebounced, art, sort, reversed, begutachtung], writeUrl)
 
   /* A link whose `art` the state does not offer (`coherentArt`) is read as
    * „Alle Arten" — and the value leaves the URL too, so the address says

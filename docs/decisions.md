@@ -34,6 +34,12 @@ change belongs here.
 - **No page may wait on hundreds of upstream fetches.** Station maps are
   cached, time-budgeted and prewarmed; when the budget runs out the list
   stays unfiltered and says so (§12.26).
+- **The list waits only for the half that carries it** (12.11.2026). Rows
+  that arrived render; a half still loading is named in the count line and
+  never counted as 0. The server's render gives the other halves 2 s
+  (`useDraftHalves.ts`); a cold Länder read was measured at up to 30 s.
+  Rows that sort in later keep the reader's cut (`cutKeeping`), and the cut
+  holds under a search query too.
 - **Upstream calls identify themselves** with one `User-Agent`, retry twice
   on 5xx, and time out after 8 s per attempt, because timeout × 3 is how long
   an SSR render blocks before the error page.
@@ -42,6 +48,15 @@ change belongs here.
   silently ignores unknown filter keys and `showAll` silently stops at
   100,000 rows. Positional list headers are asserted before anything is
   cached (§12.14).
+- **A paged upstream read fetches its remaining pages together once page 1
+  states the total** (`upstream/pages.ts`, 12.11.2026): four at a time,
+  inside a RIS host's 24 slots. The walk over them stays the loop's — the
+  count check on every page, the breaks, the ceiling — and one failed page
+  fails the read. 95/ME's Textgegenüberstellung, cold, three pages of a
+  law's §§ and twelve of its history: 8.5 s one after another, 3.7 s
+  together. Sequential on purpose, and named in `tests/pages.test.ts`: the
+  Begut corpus (paced) and a Bundesgesetzblatt year (pages of up to 3.6 MB
+  on a 320 MB heap).
 - **The current legislative period is never hardcoded without a fallback
   path.** Units and scripts say `aktuell` and `vorperiode`, because a roman
   numeral in a unit file turns wrong on the day nobody is looking.
@@ -294,6 +309,20 @@ change belongs here.
   shown only where RIS confirms its current wording on the document's date
   (≥ 0.98 word match) or the § is new; the rest is withheld and counted
   (§12.45, §12.52).
+- **A Land's Textgegenüberstellung confirms text, it never supplies it**
+  (12.11.2026), as the Bund's annex. A § it shows as changed or new is held
+  against the draft's own Gesetzestext with the Bund's thresholds,
+  unchanged; where part of its new text is not in the draft it is withheld,
+  said as the monitor's own finding. Below the word floor nothing is said. A
+  draft that could not be read disarms the rule, and the answer is not
+  stored. Kärnten is not asked: its right column is the Novelle's
+  instructions. Extraction noise is answered in the reader, never by
+  loosening thresholds.
+- **The draft reader drops only real division headings:** a Roman numeral
+  in capitals with a capitalised title, never one the next word declines
+  („des I. Teiles") or counts („I. Dienstklasse"). Until 12.11.2026 a line
+  opening „lit." read as one and was dropped with everything up to the next
+  opener — law text gone from the Länder comparison and the EU reader.
 - **„Entfallen" only where the draft says so.** An empty right column can be
   text the reader missed (§12.52).
 - **A failed fetch never counts as empty** and refutes nothing (§12.58).
@@ -350,6 +379,11 @@ The code names the EU rules D1 to D7; this is where they are defined
 - **Full-text search matches only what a result row shows.** A hit that sits
   only in a ministry's name is labelled and sorted last, not deleted
   (§12.31).
+- **The list search on `/entwuerfe` is filtered on the page, with the same
+  per-row predicate the endpoints use** (`shared/utils/searchHaystack.ts`,
+  12.11.2026): one search, one code path, no refetch per term. The
+  endpoints still accept `q` and answer with the rows the page shows for
+  it. The row prints every alias the search reads.
 
 ### Design and accessibility
 
@@ -368,12 +402,36 @@ The code names the EU rules D1 to D7; this is where they are defined
 
 ### Operations
 
-- **The deploy waits for the prewarm.** A restart empties every cache, so
+- **The deploy waits for the prewarm.** A restart empties every memory cache, so
   warming before it is pointless; `✔ deployed` means the next visitor finds a
   warm server. A failed prewarm does not fail the deploy.
-- **The consolidated reading is deliberately not prewarmed:** it is the one
-  section fetched lazily on the client, and warming it per open draft would
-  make every deploy longer each month.
+- **The consolidated reading is deliberately not prewarmed:** it is fetched
+  on the client, after the Textgegenüberstellung it sits in, and warming it
+  per open draft would make every deploy longer each month. Revised
+  12.11.2026: it is no longer the only section fetched on the client — the
+  Textgegenüberstellung, the Land comparisons, „Im Bundesgesetzblatt" and
+  the § names ask when they come near the viewport
+  (`useNearViewportSection`).
+- **A cache that pays an upstream round trip or a fan-out is served stale
+  while it refreshes, up to a limit named per cache** (`cache/ttl.ts`);
+  past the limit a request waits for the fresh value. On a quiet site the
+  request after an expiry was nearly always a visitor's: cold 4–13 s against
+  0.1 s warm (12.11.2026). Never for the Stellungnahmen, whose count is a
+  claim the page makes about now, and never on a layer that only recomputes
+  cached inputs, because limits along a chain add up. Requests that reach
+  the server directly — prewarm, watchdog, archive — always wait for the
+  fresh value, so the prewarm's builds keep running one after another
+  instead of all at once on one heap.
+- **Published documents are kept on disk across restarts, for 30 days** —
+  law texts, § versions, Erläuterungen, closed Bundesgesetzblatt years, in
+  the StateDirectory (`cache/documentDriver.ts`). Upstream payloads only,
+  never a list or search answer, never a Stellungnahme; the names are a
+  hard-coded list in `tests/cacheLayers.test.ts`, and the prewarm unit
+  deletes files past 32 days. It saves the document fetches after a deploy,
+  not the cold wait of a comparison: 95/ME's Textgegenüberstellung took
+  7.6 s cold before the disk and 8.2 s after a restart with its documents on
+  it, because the wait is RIS's query answers, which stay in memory
+  (12.11.2026).
 - **Memory:** `--max-old-space-size=320`, `MemoryMax=512M`,
   `MemorySwapMax=0`, so a leak hits V8's clean limit and restarts instead of
   swapping. Measured peak of the deploy sequence: 217 MB (26.10.2026).
@@ -477,6 +535,9 @@ circular of 10.12.2015).
 | Länder drafts that carry out something federal | about 7 % | 489 drafts · 06.11.2026 (§12.66) |
 | Deadline stated in the Land draft | 2 of about 35 | same |
 | Feed and calendar polls among reader requests | 89 of 186 | 31.10.2026 (§12.65) |
+| Land Textgegenüberstellung, right column found in the draft | 550 of 550 judgeable §§ (549 before the reader fix; the one alarm was our reader's) | 63 documents, Oberösterreich, Salzburg, Tirol, Wien, 1,156 §§ shown, GP XXVIII · 12.11.2026 |
+| The same check under fault injection, caught | another § of the same draft appended 57.8 % (315/545), another draft's sentence 76.4 % (420/550); by design none of a number changed, one word swapped, a sentence dropped (0 of 474 / 549 / 336) | same |
+| Draft reader fix („lit.", declined or counted numerals) | 16 of 1,232 cached Land PDFs changed, 0 lines newly dropped; 0 of 1,005 EU law-text readings changed | 12.11.2026 |
 
 ### Laws without a Begutachtung
 
@@ -551,6 +612,10 @@ circular of 10.12.2015).
 - **A first text from the Landtag item RIS links** (Wien, Niederösterreich,
   Tirol). Wien's Beilagen read as law text 3 of 10, Niederösterreich's 0 of
   10 (10.11.2026).
+- **Kärnten's instruction heads read through the Bund's `novao` grammar.**
+  Over 121 documents and 3,350 instructions (12.11.2026): 163 heads read
+  differently, 13 documents change, one § would be shown wrong (only its
+  heading) and two correct §§ withheld — for about 40 lines saved.
 
 ### Operations and data
 
@@ -562,6 +627,10 @@ circular of 10.12.2015).
   documents are cached instead (§12.31).
 - **A language model for the Erläuterungen.** The typed RIS XML is parsed
   (§12.29).
+- **Two lanes in the upstream slot queue** (`upstream/fetch.ts`). A cold
+  draft request took ~0.8 s idle and the same during one station-map build;
+  only several fan-outs at once add 0.5–2 s (12.11.2026). Not built until a
+  slow Parliament shows a queue in practice.
 
 ### Privacy
 

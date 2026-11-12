@@ -21,6 +21,7 @@ import type { ClauseName } from '../lawtext/draftArticles'
 import { bestNameScore, pickClearWinner } from '../text/clearWinner'
 import { namesCompatible } from '../lawtext/lawNames'
 import { RIS_API_BASE, risJson, upstreamText, type UpstreamPolicy } from '../upstream/fetch'
+import { readPages, risPageCount } from '../upstream/pages'
 import { safeExternalUrl } from '../../../shared/utils/safeExternalUrl'
 
 const TIMEOUT_MS = 20_000
@@ -195,32 +196,20 @@ export interface KonsLawAtDate {
  * And where the cited Stammnorm finds no law at all, the clause is what
  * `misquotedStammnorm` searches by.
  */
-export async function resolveLawByBgbl(bgbl: BgblCitation, date: string, name?: string | null, clause?: ClauseName | null): Promise<KonsLawAtDate | null> {
+export async function resolveLawByBgbl(
+  bgbl: BgblCitation,
+  date: string,
+  name?: string | null,
+  clause?: ClauseName | null,
+  read: KonsRecordsRead = konsRecordsOfNummer,
+): Promise<KonsLawAtDate | null> {
   const byLaw = new Map<string, { kurztitel: string; abkuerzung: string; paragraphs: Record<string, KonsParagraphRef> }>()
-  let seen = 0
-  for (let page = 1; page <= 20; page++) {
-    const body = await konsJson(
-      konsQuery({ Kundmachungsorgannummer: bgbl.nummer, 'Fassung.FassungVom': date, DokumenteProSeite: 'OneHundred', Seitennummer: String(page) }),
-    )
-    const results = body?.OgdSearchResult?.OgdDocumentResults
-    const hits = Number(results?.Hits?.['#text'] ?? 0)
-    if (hits > IMPLAUSIBLE_HITS) throw new Error(`RIS ignorierte den Filter: ${hits} Treffer für ${bgbl.organ} ${bgbl.nummer}`)
-    const refs = asArray<any>(results?.OgdDocumentReference)
-    for (const r of refs) {
-      const p = konsRefOf(r)
-      if (!p?.gesetzesnummer || !p.stammnorm || !sameRisStammnorm(p.stammnorm, bgbl)) continue
-      const meta = r?.Data?.Metadaten?.Bundesrecht
-      const entry = byLaw.get(p.gesetzesnummer) ?? {
-        kurztitel: meta?.Kurztitel ?? '',
-        abkuerzung: typeof meta?.BrKons?.Abkuerzung === 'string' ? meta.BrKons.Abkuerzung : '',
-        paragraphs: {} as Record<string, KonsParagraphRef>,
-      }
-      // One version per label at a given date; keep the first RIS returns.
-      entry.paragraphs[p.label] ??= p
-      byLaw.set(p.gesetzesnummer, entry)
-    }
-    seen += refs.length
-    if (seen >= hits || refs.length === 0) break
+  for (const { ref: p, kurztitel, abkuerzung } of await read(bgbl.nummer, date)) {
+    if (!sameRisStammnorm(p.stammnorm!, bgbl)) continue
+    const entry = byLaw.get(p.gesetzesnummer!) ?? { kurztitel, abkuerzung, paragraphs: {} as Record<string, KonsParagraphRef> }
+    // One version per label at a given date; keep the first RIS returns.
+    entry.paragraphs[p.label] ??= p
+    byLaw.set(p.gesetzesnummer!, entry)
   }
   const choose = (by: string | null | undefined) => (byLaw.size === 0 ? null : byLaw.size === 1 ? soleUnlessContradicted([...byLaw][0]!, by) : by ? pickByName(byLaw, by) : null)
   const chosen = choose(name) ?? (clause ? (choose(clause.name) ?? (clause.abbreviation ? choose(clause.abbreviation) : null)) : null)
@@ -228,7 +217,76 @@ export async function resolveLawByBgbl(bgbl: BgblCitation, date: string, name?: 
     const [gesetzesnummer, entry] = chosen
     return { gesetzesnummer, kurztitel: entry.kurztitel, paragraphs: entry.paragraphs }
   }
-  return clause ? misquotedStammnorm(bgbl, date, clause) : null
+  return clause ? misquotedStammnorm(bgbl, date, clause, read) : null
+}
+
+/** One consolidated § version as `resolveLawByBgbl` weighs it: the ref, and the law's names as RIS prints them on it. */
+export interface KonsRecord {
+  /** Always with `gesetzesnummer` and `stammnorm` — a record without either names no law. */
+  ref: KonsParagraphRef
+  kurztitel: string
+  abkuerzung: string
+}
+
+/** The read under `resolveLawByBgbl` — `konsRecordsOfNummer`, or the request path's cached copy of it (`kons/konsCache.ts`). */
+export type KonsRecordsRead = (nummer: string, date: string) => Promise<KonsRecord[]>
+
+/** RIS answers a page past the last with a 500; twenty pages of one BGBl number on one day is a different query. */
+const NUMMER_PAGES = 20
+
+/**
+ * Every consolidated § version in force on `date` whose Kundmachung carries
+ * the BGBl number `nummer`, in RIS's order — the one upstream read under
+ * `resolveLawByBgbl`, and the part of it that does not depend on who asks.
+ *
+ * Its own function since 12.11.2026, so the request path can cache it once
+ * per (number, day): the Gegenüberstellung, the § names, the Lesefassung and
+ * the amended laws each resolve the same law with a different name or
+ * clause, which made four cache entries of the resolution — and the § names
+ * paid the same three RIS pages a second time a second after the
+ * Gegenüberstellung had (XXVIII/95, 169/1998 on 2026-04-10).
+ *
+ * The number alone, not the Stammnorm pair: the query filters on nothing
+ * else, and the Teil is weighed above (`sameRisStammnorm`). Pages after the
+ * first come four at a time (`upstream/pages.ts`); the walk over them, its
+ * `Hits` check and its breaks are the loop's as it was.
+ */
+export async function konsRecordsOfNummer(nummer: string, date: string): Promise<KonsRecord[]> {
+  const fetchPage = (page: number) =>
+    konsJson(konsQuery({ Kundmachungsorgannummer: nummer, 'Fassung.FassungVom': date, DokumenteProSeite: 'OneHundred', Seitennummer: String(page) }))
+  const pages = await readPages(fetchPage, konsPageCount, NUMMER_PAGES)
+  const out: KonsRecord[] = []
+  let seen = 0
+  for (let page = 1; page <= NUMMER_PAGES; page++) {
+    const body = await pages.get(page)
+    const results = body?.OgdSearchResult?.OgdDocumentResults
+    const hits = Number(results?.Hits?.['#text'] ?? 0)
+    if (hits > IMPLAUSIBLE_HITS) throw new Error(`RIS ignorierte den Filter: ${hits} Treffer für ${nummer}`)
+    const refs = asArray<any>(results?.OgdDocumentReference)
+    for (const r of refs) {
+      const p = konsRefOf(r)
+      if (!p?.gesetzesnummer || !p.stammnorm) continue
+      const meta = r?.Data?.Metadaten?.Bundesrecht
+      out.push({
+        ref: p,
+        kurztitel: meta?.Kurztitel ?? '',
+        abkuerzung: typeof meta?.BrKons?.Abkuerzung === 'string' ? meta.BrKons.Abkuerzung : '',
+      })
+    }
+    seen += refs.length
+    if (seen >= hits || refs.length === 0) break
+  }
+  return out
+}
+
+/**
+ * How many pages a BrKons answer has, read off its first — one where the
+ * hits are implausible, so the walk throws on page 1 as it always did
+ * rather than after fetching twenty pages of the whole corpus.
+ */
+export function konsPageCount(body: any): number {
+  const hits = Number(body?.OgdSearchResult?.OgdDocumentResults?.Hits?.['#text'] ?? 0)
+  return hits > IMPLAUSIBLE_HITS ? 1 : risPageCount(hits)
 }
 
 /** Two BGBl numbers that differ in exactly one character: „10/2013" and „10/2012", „6/2015" and „6/2025". */
@@ -254,7 +312,7 @@ const normName = (s: string) => s.replace(/\s+/g, ' ').trim().toLowerCase()
  * passes. 30/ME's WPFG fails on purpose: it cites the Wertpapierfirmengesetz
  * as 135/2013, RIS's is 237/2022 — a re-enacted law, not a typo.
  */
-async function misquotedStammnorm(bgbl: BgblCitation, date: string, clause: ClauseName): Promise<KonsLawAtDate | null> {
+async function misquotedStammnorm(bgbl: BgblCitation, date: string, clause: ClauseName, read: KonsRecordsRead): Promise<KonsLawAtDate | null> {
   const body = await konsJson(konsQuery({ Titel: clause.name, 'Fassung.FassungVom': date, DokumenteProSeite: 'OneHundred' }))
   const found = new Map<string, BgblCitation>()
   for (const r of asArray<any>(body?.OgdSearchResult?.OgdDocumentResults?.OgdDocumentReference)) {
@@ -271,7 +329,7 @@ async function misquotedStammnorm(bgbl: BgblCitation, date: string, clause: Clau
   if (found.size !== 1) return null
   const [stammnorm] = [...found.values()]
   // Read the law in full, by its own Stammnorm, the same way as any other.
-  return resolveLawByBgbl(stammnorm!, date, clause.name)
+  return resolveLawByBgbl(stammnorm!, date, clause.name, undefined, read)
 }
 
 /**
@@ -332,11 +390,18 @@ const HISTORY_PAGES = 20
  * walk is per law, and the caller asks only for the gaps it needs.
  */
 export async function paragraphHistory(gesetzesnummer: string): Promise<KonsVersion[] | null> {
+  // Pages after the first four at a time (`upstream/pages.ts`): the
+  // Ärztegesetz's twelve were the longer half of 95/ME's cold comparison.
+  const pages = await readPages(
+    (page) => konsJson(konsQuery({ Gesetzesnummer: gesetzesnummer, DokumenteProSeite: 'OneHundred', Seitennummer: String(page) })),
+    konsPageCount,
+    HISTORY_PAGES,
+  )
   const out: KonsVersion[] = []
   let seen = 0
   for (let page = 1; ; page++) {
     if (page > HISTORY_PAGES) return null
-    const body = await konsJson(konsQuery({ Gesetzesnummer: gesetzesnummer, DokumenteProSeite: 'OneHundred', Seitennummer: String(page) }))
+    const body = await pages.get(page)
     const results = body?.OgdSearchResult?.OgdDocumentResults
     const hits = Number(results?.Hits?.['#text'] ?? 0)
     if (hits > IMPLAUSIBLE_HITS) throw new Error(`RIS ignorierte den Filter: ${hits} Treffer für Gesetzesnummer ${gesetzesnummer}`)

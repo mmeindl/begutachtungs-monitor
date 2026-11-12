@@ -9,6 +9,7 @@
  * as a published document, since a Bundesgesetzblatt does not change.
  */
 import { DERIVED_CACHE } from '../cache/base'
+import { storageKeyOf } from '../cache/key'
 import { PUBLISHED_DOCUMENT_TTL_S } from '../cache/ttl'
 import { fetchBgblByNumber } from '../ris/bgblService'
 import { upstreamText, type UpstreamPolicy } from '../upstream/fetch'
@@ -37,5 +38,5 @@ export function bgblActFor(c: BgblCitation): Promise<BgblAct | null> {
 export const getFristClause = defineCachedFunction(
   // Only the sentence is kept: the HTML (up to a megabyte for a Sammelgesetz) is read and dropped.
   async (html: string): Promise<string | null> => fristClauseOf(await upstreamText(html, HTML_POLICY)),
-  { name: 'bund-land-frist', base: DERIVED_CACHE, getKey: (html: string) => html, maxAge: PUBLISHED_DOCUMENT_TTL_S, swr: false },
+  { name: 'bund-land-frist', base: DERIVED_CACHE, getKey: (html: string) => storageKeyOf(html), maxAge: PUBLISHED_DOCUMENT_TTL_S, swr: false },
 )

@@ -24,7 +24,11 @@ definePageMeta({
 })
 
 const route = useRoute()
-const { data, status, error, refresh } = await useFetch<BundLandActResponse>(`/api/bundesrecht/${route.params.year}/${route.params.number}`)
+/* `lazy` (12.11.2026), as on the draft pages: a click shows this page at
+ * once, in `FetchGate`'s loading state, instead of holding the previous one
+ * until the answer is there. The server waits all the same, so the status
+ * below is still set where the answer is known. */
+const { data, status, error, refresh } = await useFetch<BundLandActResponse>(`/api/bundesrecht/${route.params.year}/${route.params.number}`, { lazy: true })
 const view = computed(() => (data.value ? bundLandActPageView(data.value) : null))
 
 /* An act the map does not hold (404) and a map not built yet (503) are no

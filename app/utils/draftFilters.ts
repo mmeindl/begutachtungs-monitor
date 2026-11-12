@@ -12,10 +12,12 @@
  * endpoints validate the same query independently, because a request can
  * arrive without this page.
  */
-import type { DraftStation, DraftStatus, LandLaw, LawWithoutBegutachtung, LawsWithoutBegutachtungGap, OpenVorlage, RisConsultationKind } from '#shared/types'
+import type { DraftStation, DraftStatus, DraftsResponse, DraftSummary, LandCode, LandLaw, LawWithoutBegutachtung, LawsWithoutBegutachtungGap, OpenVorlage, RisConsultation, RisConsultationKind, RisConsultationsResponse } from '#shared/types'
+import { searchDrafts, searchRis } from '#shared/utils/searchHaystack'
 import { DRAFT_STATION_LABEL, DRAFT_STATION_ORDER } from '#shared/utils/draftStations'
 import { countLabelDe } from '#shared/utils/format'
 import { GP_STARTS, intToRoman, isPlausibleGp, romanToInt } from '#shared/utils/gp'
+import { LAND_NAME } from '#shared/utils/laender'
 import { firstQueryValue } from '#shared/utils/queryParams'
 
 /**
@@ -80,6 +82,104 @@ const RIS_FAILED: Record<ArtFilter, string> = {
   // sentence of „Alle Arten" stands in should it ever be.
   vorlage: 'die Verordnungs- und einzelne Gesetzesentwürfe des Bundes sind gerade nicht abrufbar',
   antrag: 'die Verordnungs- und einzelne Gesetzesentwürfe des Bundes sind gerade nicht abrufbar',
+}
+
+/* The same half still on its way (12.11.2026): the failure's register, so
+ * „noch geladen" and „nicht abrufbar" stand in the same place and differ
+ * only in what they say (`HalfState`). */
+const RIS_PENDING: Record<ArtFilter, string> = {
+  '': 'die Verordnungs- und einzelne Gesetzesentwürfe des Bundes werden noch geladen',
+  gesetz: 'einzelne Gesetzesentwürfe des Bundes werden noch geladen',
+  verordnung: 'die Verordnungsentwürfe des Bundes werden noch geladen',
+  vorlage: 'die Verordnungs- und einzelne Gesetzesentwürfe des Bundes werden noch geladen',
+  antrag: 'die Verordnungs- und einzelne Gesetzesentwürfe des Bundes werden noch geladen',
+}
+
+/* The Länder's half on its way, named by the Länder it brings — Wien in
+ * the genitive of its own, as the list's other Land sentences say it. */
+function laenderPendingTerm(lands: readonly LandCode[]): string {
+  if (lands.length !== 1) return 'die Entwürfe der Länder werden noch geladen'
+  const land = lands[0]!
+  return `die Entwürfe ${land === 'w' ? 'Wiens' : `des Landes ${LAND_NAME[land]}`} werden noch geladen`
+}
+
+/**
+ * The count line's pending terms as a line of their own (12.11.2026): the
+ * homepage has no count line, and its open list stands with the
+ * Ministerialentwürfe while the RIS half or the chosen Länder are still on
+ * their way. Same words as `/entwuerfe`, so „noch geladen" reads the same
+ * on both pages and stays apart from „gerade nicht abrufbar". Null when
+ * nothing is pending.
+ */
+export function pendingHalvesLine(ris: boolean, laender: readonly LandCode[] | null, art: ArtFilter = ''): string | null {
+  const parts = [ris ? RIS_PENDING[art] : null, laender?.length ? laenderPendingTerm(laender) : null]
+    .filter((part): part is string => part !== null)
+  if (!parts.length) return null
+  const label = parts.join(' · ')
+  return `${label.charAt(0).toUpperCase()}${label.slice(1)}.`
+}
+
+/**
+ * Where one half of `/entwuerfe` stands (12.11.2026): not asked for, on its
+ * way, there, or failed.
+ *
+ * `loading` covers two cases the page treats alike: the first answer is
+ * still out, and the server's render passed its deadline without it — the
+ * payload then carries `null`, so the browser starts in the same state the
+ * server rendered (`useDraftHalves`). An error wins over stale data: a half
+ * that failed is said to have failed, never counted from an older answer.
+ */
+export type HalfState = 'off' | 'loading' | 'ready' | 'failed'
+
+export function halfState(wanted: boolean, data: unknown, error: unknown): HalfState {
+  if (!wanted) return 'off'
+  if (error) return 'failed'
+  return data ? 'ready' : 'loading'
+}
+
+/**
+ * The halves the list is still waiting for while it already shows rows:
+ * every half on its way except the one that carries the page, whose wait
+ * is the list's own loading state.
+ */
+/* `NoInfer`: the halves are the keys of `states`, never only the lead's
+ * literal — inferred from `lead`, a literal `{ me, ris }` failed the check. */
+export function lateHalves<H extends string>(lead: NoInfer<H>, states: Record<H, HalfState>): H[] {
+  return (Object.keys(states) as H[]).filter((half) => half !== lead && states[half] === 'loading')
+}
+
+/**
+ * The Bund halves under the search term — filtered here, not upstream, since
+ * 12.11.2026.
+ *
+ * Until then `q` went to both endpoints: every settled term re-fetched both
+ * halves and faded the list while it waited, while the Länder rows, the open
+ * Vorlagen and the laws were filtered on the page at once — one search, two
+ * code paths, two latencies. The halves now come unsearched and every row
+ * kind is searched here, with the predicates the endpoints use
+ * (`shared/utils/searchHaystack.ts`), so the same term finds the same rows.
+ *
+ * What the endpoints computed AFTER their filter has to be computed after
+ * this one: the rows and their count (the count line, the placeholder) and
+ * `carriedOverFrom` — a sentence about rows of the period before must not
+ * stand when the term removed them all. What they compute before any filter
+ * stays theirs: the Ressort and period menus, `stationsAvailable`,
+ * `euAvailable`, `chainCoverage`. The order is untouched — a filter keeps
+ * it, and the page sorts the merged rows anyway.
+ *
+ * `null` for a half that is not there.
+ */
+export function searchBundHalves(
+  me: Pick<DraftsResponse, 'items' | 'gp'> | null | undefined,
+  ris: Pick<RisConsultationsResponse, 'items' | 'ministries' | 'carriedOverFrom' | 'carriedOverIds'> | null | undefined,
+  q: string,
+): { me: DraftSummary[] | null; ris: RisConsultation[] | null; carriedOverFrom: string | null } {
+  const meItems = me ? searchDrafts(me.items, q) : null
+  const risItems = ris ? searchRis(ris.items, q, ris.ministries) : null
+  const carried = new Set(ris?.carriedOverIds ?? [])
+  const meCarried = me ? (meItems!.find((item) => item.gp !== me.gp)?.gp ?? null) : null
+  const risCarried = ris?.carriedOverFrom && risItems!.some((item) => carried.has(item.id)) ? ris.carriedOverFrom : null
+  return { me: meItems, ris: risItems, carriedOverFrom: meCarried ?? risCarried }
 }
 
 export const ART_OPTIONS: { value: ArtFilter; label: string }[] = [
@@ -173,10 +273,11 @@ export type EuFilter = '' | 'umsetzung'
  */
 export type BegutachtungFilter = '' | 'ohne'
 
-/** What the two list endpoints are asked for. `art` is not among them: it
- *  selects the half, so the page leaves the excluded endpoint unasked
- *  instead of passing the value on. (`/api/ris-drafts` does take an `art`,
- *  but it means the instrument kind — a different vocabulary.) */
+/** The filters the URL shares besides the page's own. `art` is not among
+ *  them: it selects the half, so the page leaves the excluded endpoint
+ *  unasked instead of passing the value on. (`/api/ris-drafts` does take an
+ *  `art`, but it means the instrument kind — a different vocabulary.) `q`
+ *  is, but the endpoints are not asked with it (`draftApiQuery`). */
 export interface DraftQueryFilters {
   status: DraftStatus
   stations: DraftStation[]
@@ -267,12 +368,17 @@ export function draftFiltersFromQuery(query: Record<string, unknown>): DraftFilt
   }
 }
 
-export function draftApiQuery(f: DraftQueryFilters): {
+/**
+ * What the two list endpoints are asked for — WITHOUT the search term since
+ * 12.11.2026: the page searches the halves itself (`searchBundHalves`), so
+ * a new term costs no request and the rows do not fade while it is typed.
+ * The endpoints still take `q` for every other caller.
+ */
+export function draftApiQuery(f: Omit<DraftQueryFilters, 'q'>): {
   status: DraftStatus
   station: string | undefined
   gp: string | undefined
   ministry: string | undefined
-  q: string | undefined
   eu: EuFilter | undefined
 } {
   return {
@@ -280,7 +386,6 @@ export function draftApiQuery(f: DraftQueryFilters): {
     station: f.stations.length ? f.stations.join(',') : undefined,
     gp: f.gp || undefined,
     ministry: f.ministry || undefined,
-    q: f.q || undefined,
     eu: f.eu || undefined,
   }
 }
@@ -430,16 +535,18 @@ export function draftCountLabel(c: {
    * as what they are, laws without an assigned draft, claiming nothing.
    */
   landLaws?: readonly Pick<LandLaw, 'begutachtung' | 'registerCovers'>[]
-  /** The RIS half, counted per kind; `failed`, or null where it is not
+  /** The RIS half, counted per kind; `failed`, `pending` while it is on its
+   *  way beside rows already shown (12.11.2026), or null where it is not
    *  asked for. */
-  ris: Partial<Record<RisConsultationKind, number>> | 'failed' | null
+  ris: Partial<Record<RisConsultationKind, number>> | 'failed' | 'pending' | null
   /** The Art filter: what an empty list or a failed half says. */
   art?: ArtFilter
   /** Only stations selected that a record without a Gegenstand cannot reach. */
   laterStationsOnly: boolean
   /** The chosen Länder's rows in the list, per kind; null where none is
-   *  chosen or the view cannot carry them (`LandChips`). */
-  laender?: Partial<Record<RisConsultationKind, number>> | null
+   *  chosen or the view cannot carry them (`LandChips`); `{ pending }`, with
+   *  the Länder it will bring, while their half is on its way (12.11.2026). */
+  laender?: Partial<Record<RisConsultationKind, number>> | { pending: readonly LandCode[] } | null
 }): string {
   const art = c.art ?? ''
   /* Under a station filter the RIS half does not count — neither as rows
@@ -451,8 +558,12 @@ export function draftCountLabel(c: {
   const kinds: Partial<Record<RisConsultationKind, number>> = {}
   const add = (kind: RisConsultationKind, n: number) => { kinds[kind] = (kinds[kind] ?? 0) + n }
   if (c.me !== null) add('gesetz', c.me)
-  if (ris && ris !== 'failed') for (const kind of KIND_ORDER) add(kind, ris[kind] ?? 0)
-  if (c.laender) for (const kind of KIND_ORDER) add(kind, c.laender[kind] ?? 0)
+  if (ris && ris !== 'failed' && ris !== 'pending') for (const kind of KIND_ORDER) add(kind, ris[kind] ?? 0)
+  const laenderPending = c.laender && 'pending' in c.laender ? c.laender.pending : null
+  if (c.laender && !laenderPending) {
+    const laender = c.laender as Partial<Record<RisConsultationKind, number>>
+    for (const kind of KIND_ORDER) add(kind, laender[kind] ?? 0)
+  }
 
   const parts = KIND_ORDER
     .filter((kind) => (kinds[kind] ?? 0) > 0)
@@ -493,13 +604,26 @@ export function draftCountLabel(c: {
   if (landPlain) parts.push(countLabelDe(landPlain, 'Landesgesetz', 'Landesgesetze'))
   /* Something was asked for and nothing came: one zero, in the Art's noun. */
   const asked = c.me !== null || ris !== null || (c.laender !== null && c.laender !== undefined) || c.laws !== undefined || c.landLaws !== undefined
-  if (!parts.length && asked) parts.push(EMPTY_TERM[art])
+  /* No zero while a half is on its way (12.11.2026): „0 Entwürfe" is a
+   * claim about the whole list, and the late half may falsify it a second
+   * later. The pending term then stands alone. */
+  const pending = ris === 'pending' || !!laenderPending
+  if (!parts.length && asked && !pending) parts.push(EMPTY_TERM[art])
+  const counted = parts.length
   /* `failed` only reaches this line while another source is asked for too.
    * Where the RIS half carries the page alone, its failure is the page's
    * failure and the gate says so. The sum stands without it, and this term
    * says it is short. */
   if (ris === 'failed') parts.push(RIS_FAILED[art])
-  return parts.join(' · ')
+  /* `pending` likewise, in the same place and register (12.11.2026): the
+   * counts before it are those of the rows already in the list, and this
+   * term says the sum is not complete yet — the reader tells „noch geladen"
+   * from „nicht abrufbar" by the words. */
+  if (ris === 'pending') parts.push(RIS_PENDING[art])
+  if (laenderPending) parts.push(laenderPendingTerm(laenderPending))
+  const label = parts.join(' · ')
+  /* Nothing counted before it: the term opens the line, as a sentence. */
+  return counted ? label : label.charAt(0).toUpperCase() + label.slice(1)
 }
 
 /* ------------------------------------------------------------------ *

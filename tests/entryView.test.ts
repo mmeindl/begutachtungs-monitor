@@ -28,8 +28,11 @@ import {
   viewOfRis,
   viewOfRow,
   viewOfVorlage,
+  splitByListed,
 } from '../app/utils/entryView'
 import { draftRows } from '../shared/utils/draftOrder'
+import { DRAFT_ALIASES } from '../shared/utils/draftAliases'
+import { draftHaystack } from '../shared/utils/searchHaystack'
 import { draftSummary, risConsultation } from './helpers/builders'
 
 /** A deadline far in the past, so `active` never has a say. */
@@ -429,6 +432,30 @@ describe('Zone 2 — Kennung', () => {
     expect(viewOfVorlage(vorlage()).eu).toBeNull()
   })
 
+  /* The search reads every debate name (`draftHaystack`), so the row prints
+   * every one — until 12.11.2026 it printed only the first, and
+   * „Staatstrojaner" found an 8/ME row that did not say it. */
+  it('prints every debate name, one or none as before', () => {
+    expect(viewOfDraft(draft({ inr: 8, citation: '8/ME' })).aliases).toEqual(['Bundestrojaner', 'Staatstrojaner'])
+    expect(viewOfDraft(draft({ inr: 125, citation: '125/ME' })).aliases).toEqual(['Netzsperren'])
+    expect(viewOfDraft(draft()).aliases).toEqual([])
+    expect(viewOfRis(ris()).aliases).toEqual([])
+    expect(viewOfVorlage(vorlage()).aliases).toEqual([])
+  })
+
+  it('prints every alias the search reads, for every curated draft', () => {
+    for (const key of Object.keys(DRAFT_ALIASES)) {
+      const [gp, inr] = key.split('/') as [string, string]
+      const summary = draft({ gp, inr: Number(inr), citation: `${inr}/ME` })
+      const haystack = draftHaystack(summary).toLowerCase()
+      const printed = viewOfDraft(summary).aliases
+      for (const alias of DRAFT_ALIASES[key]!) {
+        expect(haystack).toContain(alias.toLowerCase())
+        expect(printed).toContain(alias)
+      }
+    }
+  })
+
   /* „Neu" is tied to a running procedure: on a closed one it would mark the
    * one thing nobody can change any more. */
   it('never marks a closed entry as new', () => {
@@ -512,6 +539,29 @@ describe('viewOfRow', () => {
     for (const row of draftRows([draft()], [ris()], [vorlage()])) {
       expect(viewOfRow(row).key).toBe(row.key)
     }
+  })
+})
+
+/* 12.11.2026: the list is cut under a query too, so „stehen schon in der
+ * Liste oben" must test against every matching row, not the cut. */
+describe('splitByListed', () => {
+  const listed = Array.from({ length: 80 }, (_, i) => viewOfDraft(draft({ inr: 100 + i })))
+  const hit = (inr: number) => ({ view: viewOfDraft(draft({ inr })) })
+
+  it('counts a hit whose row waits behind the pager as in the list', () => {
+    const cut = listed.slice(0, 50)
+    const behindPager = hit(170) // row 71 of 80
+    expect(cut.some((e) => e.key === behindPager.view.key)).toBe(false)
+    const { extra, inList } = splitByListed([behindPager, hit(101)], listed)
+    expect(extra).toEqual([])
+    expect(inList).toBe(2)
+  })
+
+  it('keeps a hit no row carries as a row of its own', () => {
+    const outside = hit(999)
+    const { extra, inList } = splitByListed([outside, hit(101)], listed)
+    expect(extra).toEqual([outside])
+    expect(inList).toBe(1)
   })
 })
 

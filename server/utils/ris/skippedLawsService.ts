@@ -26,6 +26,8 @@ import { gpHasEnded, previousGp } from '#shared/utils/gp'
 import { todayIso } from '#shared/utils/format'
 import { DERIVED_CACHE } from '../cache/base'
 import { keepIncompleteFor, type Gathered } from '../cache/gathered'
+import { staleWithin } from '../cache/stale'
+import { DAY_STALE_S } from '../cache/ttl'
 import { settleWithinBudget } from '../http/budget'
 import { getAntraegeForGp, getDraftsForGp, getGegenstand, getVorlagenForGp } from '../parliament/drafts'
 import { getStationMapForGp } from '../parliament/stationMap'
@@ -211,9 +213,9 @@ const buildSkippedLaws = defineCachedFunction(
     name: 'ohne-begutachtung-gp',
     base: DERIVED_CACHE,
     getKey: (gp: string) => gp,
-    maxAge: SKIPPED_TTL_S,
-    swr: false,
-    validate: keepIncompleteFor(INCOMPLETE_TTL_MS, PENDING_TTL_MS),
+    // Complete: served up to a day old while it rebuilds. Unread or pending:
+    // ten minutes or five seconds, as before, and never stale past them.
+    ...staleWithin(SKIPPED_TTL_S, DAY_STALE_S, keepIncompleteFor(INCOMPLETE_TTL_MS, PENDING_TTL_MS)),
   },
 )
 

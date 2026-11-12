@@ -22,6 +22,7 @@
 import type { RouterConfig } from 'nuxt/schema'
 import { START_LOCATION, type RouteLocationNormalized } from 'vue-router'
 import { isChangingPage } from '#app/components/utils'
+import { RESTORE_MS, markScrollRestore } from '~/utils/scrollRestore'
 
 /**
  * Back and Forward land where the reader left: once the page has grown back
@@ -50,8 +51,8 @@ import { isChangingPage } from '#app/components/utils'
  * Five seconds, enough for a cold cache's one to four, was the first choice
  * and too long (22.10.2026). A page still too short when the window closes
  * scrolls as far as it reaches, the nearest point to where the reader was.
+ * (`RESTORE_MS` lives in `scrollRestore.ts`, which the popstate mark shares.)
  */
-const RESTORE_MS = 2_500
 const USER_INPUT = ['wheel', 'touchstart', 'keydown', 'pointerdown'] as const
 
 function restorePosition({ left, top }: { left: number; top: number }, isCurrent: () => boolean): void {
@@ -118,6 +119,11 @@ export default <RouterConfig>{
 
     const scrollToTop = typeof to.meta.scrollToTop === 'function' ? to.meta.scrollToTop(to, from) : to.meta.scrollToTop
     if (scrollToTop === false) return false
+
+    // Those sections that ask only on approach ask at once while a position
+    // is put back (`scrollRestore.ts`). The popstate listener marked the
+    // window already, before anything mounted; this extends it from here.
+    if (savedPosition) markScrollRestore(RESTORE_MS)
 
     const position = () => {
       if (savedPosition) return savedPosition

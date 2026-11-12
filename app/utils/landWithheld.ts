@@ -65,6 +65,13 @@ const NOTES: Record<WithheldCause, { lead: string; one: string; many: string }> 
     one: 'Für ihn fand der Monitor weder einen neuen Text noch im Entwurf die Anordnung, dass er entfällt – das kann daran liegen, wie der Monitor das PDF liest',
     many: 'Für sie fand der Monitor weder einen neuen Text noch im Entwurf die Anordnung, dass sie entfallen – das kann daran liegen, wie der Monitor das PDF liest',
   },
+  // The Bund's „nicht im Entwurf" (12.11.2026): said as our finding, with our reading named as a cause.
+  // „Einen Teil": the rule fires where too much is missing (`landTguGuard.ts`), not only where all is.
+  notInDraft: {
+    lead: 'Nicht gezeigt:',
+    one: 'Einen Teil dessen, was die Textgegenüberstellung bei ihm als neu zeigt, fand der Monitor im Entwurf an dieser Stelle nicht – das kann daran liegen, wie der Monitor die beiden Texte liest',
+    many: 'Einen Teil dessen, was die Textgegenüberstellung bei ihnen als neu zeigt, fand der Monitor im Entwurf an diesen Stellen nicht – das kann daran liegen, wie der Monitor die beiden Texte liest',
+  },
   twice: {
     lead: 'Nicht gezeigt:',
     one: 'Er steht in der Textgegenüberstellung mehrfach, und welche Stelle welche Fassung zeigt, liest der Monitor nicht sicher heraus',
@@ -125,7 +132,7 @@ const NOTES: Record<WithheldCause, { lead: string; one: string; many: string }> 
 }
 
 /** The order the causes stand in under a law: what RIS or the reading refused, then what the reader does not compose. */
-const ORDER: WithheldCause[] = ['unchecked', 'unpaired', 'uninstructed', 'standing', 'inserted', 'elided', 'deletion', 'twice', 'unsure', 'division', 'gap', 'wording', 'unread', 'annex', 'title']
+const ORDER: WithheldCause[] = ['unchecked', 'unpaired', 'uninstructed', 'standing', 'inserted', 'elided', 'deletion', 'notInDraft', 'twice', 'unsure', 'division', 'gap', 'wording', 'unread', 'annex', 'title']
 
 /**
  * The numbers other §§ of a group move to: „§ 34 → § 33" makes § 33 one

@@ -67,6 +67,15 @@ export async function landPdfBytes(url: string): Promise<Uint8Array> {
   return new Uint8Array(bytes)
 }
 
+/** How a reader gets a PDF's text per page: `pdfPages`, or the server's cached read of it (`pdfPagesService.ts`). */
+export type PagesReader = (url: string) => Promise<string[]>
+
+/**
+ * A Land PDF's text per page, fetched and parsed on every call. The draft
+ * page's readers go through the cached read instead (`pdfPagesService.ts`),
+ * which they are handed as a `PagesReader`; this module stays free of Nitro
+ * for the corpus scripts and the tests.
+ */
 export async function pdfPages(url: string): Promise<string[]> {
   return pagesOfBytes(await landPdfBytes(url))
 }
@@ -104,8 +113,8 @@ export async function pdfStyledPages(url: string): Promise<StyledPages> {
   return styledPages(await landPdfBytes(url))
 }
 
-export async function readPdf(url: string): Promise<ReadText> {
-  const pages = await pdfPages(url)
+export async function readPdf(url: string, pagesOf: PagesReader = pdfPages): Promise<ReadText> {
+  const pages = await pagesOf(url)
   return { units: landDraftUnits(pages), text: pages.join('\n') }
 }
 
@@ -115,8 +124,8 @@ export async function readLgbl(xmlUrl: string | null): Promise<ReadText> {
   return { units: lgblUnits(xml), text: xml.replace(/<[^>]+>/g, ' ') }
 }
 
-export function pdfSource(label: string, url: string, publisher: string): TextSource {
-  return { document: { label, url, publisher }, read: () => readPdf(url) }
+export function pdfSource(label: string, url: string, publisher: string, pagesOf?: PagesReader): TextSource {
+  return { document: { label, url, publisher }, read: () => readPdf(url, pagesOf) }
 }
 
 /**
@@ -162,7 +171,7 @@ export function draftCandidates(documents: readonly LandDocument[]): LandDocumen
  * Begutachtung" and the Verordnung under its own name — and the page's
  * sentence would not be true.
  */
-export function draftSource(documents: readonly LandDocument[], publisher: string): TextSource | null {
+export function draftSource(documents: readonly LandDocument[], publisher: string, pagesOf?: PagesReader): TextSource | null {
   const candidates = draftCandidates(documents)
   const doc = candidates[0]
   const url = doc ? safeExternalUrl(doc.url) : null
@@ -170,7 +179,7 @@ export function draftSource(documents: readonly LandDocument[], publisher: strin
   return {
     document: { label: doc.title, url, publisher },
     read: async () => {
-      const read = await readPdf(url)
+      const read = await readPdf(url, pagesOf)
       return candidates.length === 1 && notADraft(read) ? { ...read, notDraft: true } : read
     },
   }

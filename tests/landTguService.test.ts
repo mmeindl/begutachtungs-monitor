@@ -427,3 +427,97 @@ describe('compareTgu — a renumbering the draft\'s own text orders, read into t
     expect(r.renumbered).toBeUndefined()
   })
 })
+
+describe('compareTgu — the right column held against the draft\'s own text (12.11.2026)', () => {
+  const SBG_LAW = 'Salzburger Beispielgesetz'
+  const TEXT_6 = 'Pflichten (1) Jede Person hat die Pflichten nach diesem Gesetz zu erfüllen.'
+  /* What the Land's document shows as § 6's new text: fourteen words the text in force does not carry. */
+  const NEW_6 = 'Pflichten § 6. (1) Jede Person hat die Pflichten nach diesem Gesetz und nach der Verordnung über die Meldung gefährlicher Tiere binnen vierzehn Tagen schriftlich zu erfüllen.'
+  const PAYLOAD_6 = '(1) Jede Person hat die Pflichten nach diesem Gesetz und nach der Verordnung über die Meldung gefährlicher Tiere binnen vierzehn Tagen schriftlich zu erfüllen.'
+  const sbg = (): LandDraftDetail => {
+    const d = detail(`Gesetz, mit dem das ${SBG_LAW} geändert wird`)
+    return { ...d, draft: { ...d.draft, id: 'sbg-1', land: 'sbg', documents: [{ title: 'Entwurf', url: 'https://service.salzburg.gv.at/pub/get/1' }, { title: 'Textgegenüberstellung', url: 'https://service.salzburg.gv.at/pub/get/2' }] } } as unknown as LandDraftDetail
+  }
+  const row = (para: string, current: string, proposed: string) => ({ kind: 'pair', law: null, heading: null, para, current, proposed, change: current && proposed ? 'changed' : proposed ? 'inserted' : 'removed' })
+  const rows = (...r: ReturnType<typeof row>[]) => parseAnnexPdf.mockReturnValue({ rows: r, droppedPages: 0 } as never)
+  /** The draft as its PDF's text reads: the enacting clause, the amending clause, one instruction per §. */
+  const draft = (...instructions: string[]) => draftSource.mockReturnValue({
+    document: { label: 'Entwurf', url: 'https://service.salzburg.gv.at/pub/get/1', publisher: 'Land Salzburg' },
+    read: async () => ({ units: null, text: ['Der Salzburger Landtag hat beschlossen:', `Das ${SBG_LAW}, LGBl Nr 1/2000, wird geändert wie folgt:`, ...instructions].join('\n') }),
+  })
+
+  beforeEach(() => {
+    lawInForce.mockImplementation(async (_land, law) => (law === SBG_LAW ? new Map([['5', 'ris:5'], ['6', 'ris:6']]) : new Map()))
+    paragraphText.mockImplementation(async (url: string) => ris({ 5: TEXT_5, 6: TEXT_6 }[url.slice('ris:'.length)] ?? ''))
+    rows(
+      row('§ 5.', `Begriffe § 5. ${TEXT_5.slice('Begriffe '.length)}`, 'Begriffe § 5. (1) Begriffe sind in diesem Gesetz so zu verstehen, wie sie hier stehen und gelten.'),
+      row('§ 6.', `Pflichten § 6. ${TEXT_6.slice('Pflichten '.length)}`, NEW_6),
+    )
+  })
+
+  it('shows a § whose new text the draft carries, as before', async () => {
+    draft('1. Im § 5 Abs. 1 wird nach dem Wort „stehen“ die Wortfolge „und gelten“ eingefügt.', '2. § 6 Abs. 1 lautet:', `„${PAYLOAD_6}“`)
+    const r = await compareTgu('sbg', sbg())
+    expect(r.complete).toBe(true)
+    expect(r.value.units.map((u) => [u.id, u.change])).toEqual([['§5', 'changed'], ['§6', 'changed']])
+    expect(r.value.withheld).toEqual([])
+    expect(r.value.stats).toMatchObject({ total: 2, changed: 2 })
+  })
+
+  it('withholds a § whose new text the draft does not carry, named with the reason, and counts it no more', async () => {
+    draft('1. Im § 5 Abs. 1 wird nach dem Wort „stehen“ die Wortfolge „und gelten“ eingefügt.', '2. § 6 Abs. 1 lautet:', '„(1) Jede Person hat die Pflichten nach diesem Gesetz zu erfüllen.“')
+    const r = await compareTgu('sbg', sbg())
+    expect(r.complete).toBe(true)
+    expect(r.value.available).toBe(true)
+    expect(r.value.units.map((u) => u.id)).toEqual(['§5'])
+    expect(r.value.withheld).toEqual([{ law: SBG_LAW, id: '§6', reason: 'notInDraft' }])
+    expect(r.value.stats).toMatchObject({ total: 1, changed: 1 })
+  })
+
+  it('says nothing shown, and names the §, where it was the only one', async () => {
+    rows(row('§ 6.', `Pflichten § 6. ${TEXT_6.slice('Pflichten '.length)}`, NEW_6))
+    draft('1. § 6 Abs. 1 lautet:', '„(1) Jede Person hat die Pflichten nach diesem Gesetz zu erfüllen.“')
+    const r = (await compareTgu('sbg', sbg())).value
+    expect(r.available).toBe(false)
+    expect(r.withheld).toEqual([{ law: SBG_LAW, id: '§6', reason: 'notInDraft' }])
+  })
+
+  it('leaves a § it cannot judge as it is: too few new words', async () => {
+    // § 5 shows two new words the draft does not carry — under `MIN_NEW_WORDS`, no verdict.
+    draft('1. § 7 entfällt.')
+    rows(row('§ 5.', `Begriffe § 5. ${TEXT_5.slice('Begriffe '.length)}`, 'Begriffe § 5. (1) Begriffe sind in diesem Gesetz so zu verstehen, wie sie hier stehen und gelten.'))
+    const r = (await compareTgu('sbg', sbg())).value
+    expect(r.units.map((u) => [u.id, u.change])).toEqual([['§5', 'changed']])
+    expect(r.withheld).toEqual([])
+  })
+
+  it('withholds nothing and stores nothing where the draft could not be read', async () => {
+    let calls = 0
+    draftSource.mockReturnValue({
+      document: { label: 'Entwurf', url: 'https://service.salzburg.gv.at/pub/get/1', publisher: 'Land Salzburg' },
+      // The reader's own read of the draft answers; the guard's does not.
+      read: () => (++calls === 1 ? Promise.resolve({ units: null, text: '' }) : Promise.reject(new Error('timeout'))),
+    })
+    const r = await compareTgu('sbg', sbg())
+    expect(r.complete).toBe(false)
+    expect(r.value.units.map((u) => u.id)).toEqual(['§5', '§6'])
+    expect(r.value.withheld).toEqual([])
+  })
+
+  it('does not ask Kärnten: its right column is the Novelle\'s own instructions', async () => {
+    ktnTguParagraphs.mockReturnValue([para('6', { old: [TEXT_6], neu: [NEW_6.replace(' § 6.', '')] })])
+    risKnows({ 6: TEXT_6 })
+    // A draft the rule could read, and whose § 6 carries none of the new words.
+    draftSource.mockReturnValue({ document: { label: 'Entwurf', url: 'https://www.ktn.gv.at/e.pdf', publisher: 'Land Kärnten' }, read: async () => ({ units: null, text: `Der Kärntner Landtag hat beschlossen:\nDas ${LAW} wird wie folgt geändert:\n1. § 6 Abs. 1 lautet:\n„(1) Jede Person hat die Pflichten zu erfüllen.“` }) })
+    const r = (await compareTgu('ktn', detail())).value
+    expect(r.units.map((u) => [u.id, u.change])).toEqual([['§6', 'changed']])
+    expect(r.withheld).toEqual([])
+  })
+
+  it('keeps the response\'s shape: the same keys as before, the reason one more value', async () => {
+    draft('1. Im § 5 Abs. 1 wird nach dem Wort „stehen“ die Wortfolge „und gelten“ eingefügt.', '2. § 6 Abs. 1 lautet:', '„(1) Jede Person hat die Pflichten nach diesem Gesetz zu erfüllen.“')
+    const r = (await compareTgu('sbg', sbg())).value
+    expect(Object.keys(r).sort()).toEqual(['addedLaws', 'available', 'droppedLaws', 'from', 'fromDocument', 'sharedWith', 'stats', 'to', 'toDocument', 'unavailableReason', 'units', 'withheld'])
+    expect(Object.keys(r.withheld[0]!).sort()).toEqual(['id', 'law', 'reason'])
+  })
+})

@@ -62,11 +62,15 @@ import { mapWithConcurrency } from '../pool'
 import { answerWithinBudget, type Budgeted } from '../http/budget'
 import { DERIVED_CACHE } from '../cache/base'
 import { keepIncompleteFor, type Gathered } from '../cache/gathered'
+import { staleWithin } from '../cache/stale'
+import { DAY_STALE_S } from '../cache/ttl'
 import { findBgblIForVorlage, getBgblIssueDate } from '../ris/bgblService'
 
-/** Six hours: a station moves on the scale of days, and this way at most
- *  four cold builds a day can land on a visitor — the nightly prewarm
- *  takes the first (`deploy/systemd/…-prewarm.service`). */
+/** Six hours: a station moves on the scale of days. Past them the map is
+ *  still served, up to a day old (`DAY_STALE_S`), while it rebuilds behind
+ *  the request — a cold build lands on a visitor only when nobody asked for
+ *  a day; after a restart the prewarm takes it
+ *  (`deploy/systemd/…-prewarm.service`). */
 const STATION_MAP_TTL_S = 60 * 60 * 6
 
 /**
@@ -79,7 +83,8 @@ const STATION_MAP_TTL_S = 60 * 60 * 6
  * every rebuild asking once more for every record that failed, and the
  * list answering without stations each time the rebuild outlasts its
  * budget. One rebuild per ten minutes is cheap: what did answer comes from
- * its own 30-minute leaf cache (`getGegenstand`), so it asks again only for
+ * its own leaf cache (`getGegenstand`, 30 minutes, served up to three hours
+ * while it refreshes), so it asks again only for
  * what failed.
  */
 const INCOMPLETE_MAP_TTL_MS = 10 * 60 * 1000
@@ -365,9 +370,9 @@ const buildStationMap = defineCachedFunction(
     name: 'stations-gp',
     base: DERIVED_CACHE,
     getKey: (gp: string) => gp,
-    maxAge: STATION_MAP_TTL_S,
-    swr: false,
-    validate: keepIncompleteFor(INCOMPLETE_MAP_TTL_MS),
+    // A complete map is served up to a day old while it rebuilds; one with a
+    // gap only for its ten minutes, and never stale past them.
+    ...staleWithin(STATION_MAP_TTL_S, DAY_STALE_S, keepIncompleteFor(INCOMPLETE_MAP_TTL_MS)),
   },
 )
 

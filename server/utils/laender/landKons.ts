@@ -6,6 +6,7 @@
 import type { LandCode } from '#shared/types'
 import { asArray } from '../ris/risRecord'
 import { risJson, upstreamText, type UpstreamPolicy } from '../upstream/fetch'
+import { readPages, risPageCount } from '../upstream/pages'
 import { shortTitleKey } from './landTgu'
 
 const RIS_LAND: Record<LandCode, string> = { bgld: 'Burgenland', ktn: 'Kaernten', noe: 'Niederoesterreich', ooe: 'Oberoesterreich', sbg: 'Salzburg', stmk: 'Steiermark', t: 'Tirol', vbg: 'Vorarlberg', w: 'Wien' }
@@ -56,8 +57,7 @@ async function lawInForceAs(land: LandCode, shortTitle: string, date: string): P
   const want = shortTitleKey(shortTitle)
   /** Each short title the search returned for this law, with its §§. */
   const byTitle = new Map<string, Map<string, string>>()
-  let pages = 1
-  for (let page = 1; page <= pages; page++) {
+  const fetchPage = (page: number) => {
     const params = new URLSearchParams({
       Applikation: 'LrKons',
       [`Bundesland_SucheIn${RIS_LAND[land]}`]: 'true',
@@ -66,11 +66,17 @@ async function lawInForceAs(land: LandCode, shortTitle: string, date: string): P
       Seitennummer: String(page),
       'Fassung.FassungVom': date,
     })
+    /* eslint-disable-next-line @typescript-eslint/no-explicit-any -- RIS's envelope */
+    return risJson<any>(`${LANDESRECHT_API}?${params}`, POLICY)
+  }
+  // Asked past the last page, RIS answers 500 rather than an empty list — so
+  // exactly the pages page 1's count names, and those after the first
+  // together (`upstream/pages.ts`).
+  const pages = await readPages(fetchPage, (first) => risPageCount(Number(first?.OgdDocumentResults?.Hits?.['#text'] ?? 0)), MAX_PAGES)
+  for (let page = 1; page <= pages.prefetched; page++) {
     /* eslint-disable @typescript-eslint/no-explicit-any -- RIS's envelope */
-    const body = await risJson<any>(`${LANDESRECHT_API}?${params}`, POLICY)
+    const body = await pages.get(page)
     const refs = asArray<any>(body?.OgdDocumentResults?.OgdDocumentReference)
-    // Asked past the last page, RIS answers 500 rather than an empty list.
-    if (page === 1) pages = Math.min(Math.ceil(Number(body?.OgdDocumentResults?.Hits?.['#text'] ?? 0) / 100), MAX_PAGES)
     for (const ref of refs) {
       const meta = ref?.Data?.Metadaten?.Landesrecht
       const title = String(meta?.Kurztitel ?? '').replace(/\s+/g, ' ').trim()

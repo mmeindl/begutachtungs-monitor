@@ -13,10 +13,9 @@
  * The act's page is linked only where the Bund-zu-Land map has it — read
  * within a second, never built here.
  */
-import type { LandBundesrechtResponse, LandCode } from '#shared/types'
-import { LAND_CODES } from '#shared/utils/laender'
+import type { LandBundesrechtResponse } from '#shared/types'
 import { withinBudget } from '../../../../utils/http/budget'
-import { isLandNumber, readLandDraft } from '../../../../utils/laender/sources'
+import { landDraftParams, withLandDraft } from '../../../../utils/laender/landRoute'
 import { relatedPeriodOf } from '../../../../utils/eu/euMap'
 import { landKey } from '../../../../utils/eu/euMapStore'
 import { readLandAusfuehrung, viewOfFact } from '../../../../utils/bund-land/landBundesrechtService'
@@ -26,24 +25,14 @@ import { getBundLandMap } from '../../../../utils/bund-land/bundLandMapService'
 const MAP_BUDGET_MS = 1_000
 
 export default defineEventHandler(async (event): Promise<LandBundesrechtResponse> => {
-  const land = getRouterParam(event, 'land') ?? ''
-  const number = getRouterParam(event, 'number') ?? ''
-  if (!(LAND_CODES as readonly string[]).includes(land) || !isLandNumber(land as LandCode, number)) {
-    throw createError({ statusCode: 404, statusMessage: 'Entwurf nicht gefunden' })
-  }
-  try {
-    const detail = await readLandDraft(land as LandCode, number)
-    if (!detail) throw createError({ statusCode: 404, statusMessage: 'Entwurf nicht gefunden' })
-    const { value } = await readLandAusfuehrung(land as LandCode, number, detail)
+  const { land, number } = landDraftParams(event)
+  return withLandDraft(land, number, 'Bundesrecht', async (detail) => {
+    const { value } = await readLandAusfuehrung(land, number, detail)
     // The map of the period the Begutachtung began in, as the EU fact's `related`.
     const period = relatedPeriodOf(detail.draft.startedAt ?? null, await getCurrentGp())
     const map = period ? await withinBudget(getBundLandMap(period.gp), MAP_BUDGET_MS) : null
     const key = landKey(land, number)
     const mapped = Object.values(map?.acts ?? {}).find((a) => a.drafts.some((d) => d.key === key))?.bgbl ?? null
     return await viewOfFact(value, (k) => Boolean(map?.acts[k]), mapped)
-  } catch (error) {
-    if (isError(error)) throw error
-    console.warn(`[laender] Bundesrecht ${land}/${number}:`, error instanceof Error ? error.message : error)
-    throw createError({ statusCode: 503, statusMessage: 'Gerade nicht abrufbar' })
-  }
+  })
 })

@@ -211,14 +211,17 @@ const externalHost = computed(() => {
              not a state of the procedure, so plain text like the note and
              not a chip — the box grammar reads bare text as „read this",
              and a coloured marker would claim a status. Before the debate
-             name, which stays the line's last token. -->
+             names, which stay the line's last tokens. -->
         <template v-if="entry.eu">
           <span aria-hidden="true">·</span>
           <span>{{ entry.eu }}</span>
         </template>
-        <template v-if="entry.alias">
+        <!-- Every debate name, one token each, as the draft's header joins
+             them („A“ · „B“): the search reads all of them, so the row prints
+             all of them (12.11.2026; it printed only the first). -->
+        <template v-for="alias in entry.aliases" :key="alias">
           <span aria-hidden="true">·</span>
-          <span class="text-ink">„<HighlightedText :text="entry.alias" :query="query" />“</span>
+          <span class="text-ink">„<HighlightedText :text="alias" :query="query" />“</span>
         </template>
         <!-- „Neu" on a row whose current station was reached inside the last
              week. Until 03.10.2026 only a Begutachtung that began in it

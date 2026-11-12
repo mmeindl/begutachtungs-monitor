@@ -3,8 +3,9 @@
  * directory per kind of fact: the EU map's (`eu/euMapStore.ts`) and the
  * Bund-zu-Land map's (`bund-land/bundLandStore.ts`).
  *
- * WHY THIS EXISTS: both production cache layers are memory, and every
- * restart and every deploy empties them (`cache/base.ts`). A map needs the
+ * WHY THIS EXISTS: the production caches of what we fetch from lists and
+ * what we derive are memory, and every restart and every deploy empties
+ * them (`cache/base.ts`; only published documents stay on disk). A map needs the
  * fact of every draft of the window, and a cold fact costs PDFs, law
  * texts and searches — a Land's at one request a second where its firewall
  * blocks bursts. A draft's fact is stable once its documents are
@@ -23,11 +24,12 @@
  *
  * PURE MODULE — only relative imports and node: builtins, so vitest can
  * execute it directly. The state directory is resolved exactly like the
- * last-good store's (`parliament/lastgood.ts`).
+ * last-good store's (`stateDir.ts`).
  */
 import { mkdir, readFile, rename, rm, writeFile } from 'node:fs/promises'
 import { join } from 'node:path'
 import { GP_RE } from '../../../shared/utils/gp'
+import { stateDir } from './stateDir'
 
 /** How long an open draft's fact is trusted. */
 export const OPEN_DRAFT_MAX_AGE_MS = 24 * 60 * 60 * 1000
@@ -76,18 +78,6 @@ export function isFresh<F>(entry: StoreEntry<F> | undefined, fingerprint: string
   if (!open) return true
   const readAt = Date.parse(entry.readAt)
   return Number.isFinite(readAt) && now - readAt < OPEN_DRAFT_MAX_AGE_MS
-}
-
-/**
- * Where files live — `BM_STATE_DIR`, then systemd's `STATE_DIRECTORY`, then
- * `./.data` (the order and the reasons are `parliament/lastgood.ts`'s).
- */
-function stateDir(subdir: string): string {
-  const explicit = process.env.BM_STATE_DIR?.trim()
-  if (explicit) return join(explicit, subdir)
-  const systemd = process.env.STATE_DIRECTORY?.split(':')[0]?.trim()
-  if (systemd) return join(systemd, subdir)
-  return join(process.cwd(), '.data', subdir)
 }
 
 /** One kind of fact's store. */

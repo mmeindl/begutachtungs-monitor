@@ -63,11 +63,27 @@
  * `useStorage` came with the RIS corpus's index (26.10.2026): it asks the
  * cache whether the corpus is still there (`ris/begutCorpus.ts`). Written out
  * for the same reason as `defineCachedFunction`, and only as far as it is read.
+ *
+ * `getRequestHeader` and `setResponseHeader` came with the waiting context of
+ * 12.11.2026: `tests/staleWithin.test.ts` runs the real `middleware/guard.ts`
+ * in h3's chain. Declared only — that test puts h3's own functions on
+ * `globalThis` for its run and restores what stood there, since what it
+ * asserts IS h3's behaviour, which a fake here would replace.
+ *
+ * `isError` came with the Länder routes (`tests/landRoute.test.ts`): a route
+ * rethrows an H3 error as it is and answers 503 for anything else. Declared
+ * only; that test stubs it for its run as „carries a status code", which is
+ * what tells the fake `createError`'s answers from a thrown `Error`.
  */
 declare global {
   const createError: typeof import('h3').createError
   const getQuery: typeof import('h3').getQuery
   const getRouterParam: typeof import('h3').getRouterParam
+  const getRequestHeader: typeof import('h3').getRequestHeader
+  const setResponseHeader: typeof import('h3').setResponseHeader
+  // For the Länder routes' rethrow of an H3 error as it is
+  // (`laender/landRoute.ts`, `tests/landRoute.test.ts`).
+  const isError: typeof import('h3').isError
   const defineEventHandler: typeof import('h3').defineEventHandler
   const defineCachedFunction: <T, A extends unknown[]>(
     fn: (...args: A) => Promise<T>,

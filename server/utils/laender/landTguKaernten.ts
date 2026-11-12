@@ -13,8 +13,9 @@
  * beside the place of the left column it amends. The left column prints the
  * law in force — the §§ the Novelle touches with their neighbours, often the
  * whole law with its table of contents, under its title and „StF: LGBl …".
- * Measured over the 120 landscape TGÜs of 2021–2026 (3.158 instructions):
- * 8 % replace, insert or delete a whole § (or a whole Abschnitt), 25 % a
+ * Measured over the 120 landscape TGÜs of 2021–2026 (3.350 instructions,
+ * counted 12.11.2026; 3.158 before the reader learnt the out-of-turn and
+ * unnumbered ones on 26.10.2026, and the shares are of those): 8 % replace, insert or delete a whole § (or a whole Abschnitt), 25 % a
  * whole Absatz, 59 % something finer — a word, a sentence, a Ziffer, a
  * citation. The Bund's reader, which pairs the two columns row by row, made
  * of that pairs of an Absatz against an instruction („removed", „§ 50.

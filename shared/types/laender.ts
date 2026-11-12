@@ -402,9 +402,12 @@ export interface LandLawDiffResponse {
  *    the document (its numbering skips);
  *  - `annex`: an Anlage or Anhang — the RIS check is for §§ and articles;
  *  - `title`: the law's title, which the draft changes (id `Titel`) — RIS
- *    keeps no title to check it against (26.10.2026).
+ *    keeps no title to check it against (26.10.2026);
+ *  - `notInDraft`: what the document shows as new at it is, too much of it,
+ *    not in the draft's own Gesetzestext — the Bund's rule of the same name
+ *    (`laender/landTguGuard.ts`, 12.11.2026). Not Kärnten's.
  */
-export type LandWithheldReason = 'unread' | 'wording' | 'unsure' | 'inserted' | 'elided' | 'twice' | 'deletion' | 'unchecked' | 'division' | 'gap' | 'annex' | 'title' | 'uninstructed' | 'unpaired'
+export type LandWithheldReason = 'unread' | 'wording' | 'unsure' | 'inserted' | 'elided' | 'twice' | 'deletion' | 'unchecked' | 'division' | 'gap' | 'annex' | 'title' | 'uninstructed' | 'unpaired' | 'notInDraft'
 
 /**
  * How a Kundmachung became certain: named by the Land; the Regierungsvorlage

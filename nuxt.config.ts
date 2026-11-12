@@ -33,11 +33,31 @@ export default defineNuxtConfig({
   devServer: { host: 'localhost' },
   css: ['~/assets/css/main.css'],
   // Cached-function storage, split by provenance (server/utils/cache/base.ts):
-  // the default `cache` mount keeps documents we fetched and stays on disk,
+  // the default `cache` mount keeps what we fetched and stays on disk in dev,
   // `derived` keeps what we computed and is memory, so a parser change shows
   // on the next request instead of in 24 hours.
   //
-  // Production mounts both as bounded LRUs. Without a mount they fall to the
+  // `documents` is the third, since 12.11.2026: the published documents that
+  // never change (a law text, a § version, the Erläuterungen, a closed
+  // Bundesgesetzblatt year) — on disk in production too, so a deploy no
+  // longer empties them and the first reader after it does not fetch them
+  // again. It saves requests, not the cold wait of a draft's comparisons:
+  // that is RIS's query answers, which stay in memory (`cache/base.ts`). The
+  // directory is the systemd StateDirectory, which the
+  // server learns only when it starts — this file is evaluated at build time,
+  // on another machine — so the driver resolves it at mount time
+  // (`server/utils/cache/documentDriver.ts`, `stateDir.ts`); it is bundled by
+  // path like the memory driver. Dev mounts unstorage's `fs-lite` there
+  // instead, at the same `.data/documents` the driver would resolve in dev
+  // and in the same layout (a file per key, `:` as directories, no watcher):
+  // Nitro's builder process opens every mount of `storage` merged with
+  // `devStorage` by a plain `import()`, where a `#server/…` specifier does
+  // not resolve — dev answered 500 until 12.11.2026. `cache` and `derived`
+  // never met this because dev replaces both. Which functions may sit
+  // there is a hard-coded list in `tests/cacheLayers.test.ts`; never a
+  // Stellungnahme, never a list, never a derived value.
+  //
+  // Production mounts `cache` and `derived` as bounded LRUs. Without a mount they fall to the
   // root memory driver, a plain Map that never evicts — `maxAge` only decides
   // whether an entry is fresh, not whether it is kept — so every document
   // ever fetched and every key a visitor can mint stayed resident until the
@@ -77,9 +97,13 @@ export default defineNuxtConfig({
     storage: {
       cache: { driver: '#server/utils/cache/memoryDriver', maxSize: 64 * 1024 * 1024, max: 20_000 },
       derived: { driver: '#server/utils/cache/memoryDriver', maxSize: 48 * 1024 * 1024, max: 20_000 },
+      documents: { driver: '#server/utils/cache/documentDriver' },
       'cache:nuxt:icon': { driver: 'lru-cache', maxSize: 1024 * 1024, max: 100 },
     },
-    devStorage: { derived: { driver: 'memory' } },
+    devStorage: {
+      derived: { driver: 'memory' },
+      documents: { driver: 'fs-lite', base: '.data/documents' },
+    },
   },
   // The object of a detail page is the Entwurf, not the Begutachtung, and
   // the URL now says so. Links from the first weeks are in circulation —

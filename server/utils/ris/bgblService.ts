@@ -18,8 +18,10 @@
 import type { BgblOutcome, RisConsultation } from '#shared/types'
 import { bgblRecordOf, bgblVerdict, bgblVerdictState, isRunningYear, type BgblJoinDraft, type BgblRecord, type BgblVerdict } from './bgblJoin'
 import { pickBgblIForVorlage } from './bgblVorlage'
-import { DERIVED_CACHE } from '../cache/base'
-import { PUBLISHED_DOCUMENT_TTL_S } from '../cache/ttl'
+import { DERIVED_CACHE, DOCUMENT_CACHE } from '../cache/base'
+import { BGBL_RUNNING_STALE_S, PUBLISHED_DOCUMENT_TTL_S } from '../cache/ttl'
+import { staleWithin } from '../cache/stale'
+import { storageKeyOf } from '../cache/key'
 import { getRisConsultation, getRisOnlyForGp } from './risOnly'
 import { withRisActiveOn } from './risRecord'
 import { RIS_API_BASE, risJson, type UpstreamPolicy } from '../upstream/fetch'
@@ -95,9 +97,15 @@ async function loadBgblPage(key: string): Promise<any> {
  * takes one fixed `maxAge`, so the caller decides which of the two it asks
  * — which is more honest than a predicate pretending it could bend the
  * lifetime.
+ *
+ * The closed year's pages are on disk (`DOCUMENT_CACHE`, 12.11.2026) — up to
+ * 3,6 MB a page, read only where the derived Teil-I/II year above them is
+ * missing, which after a restart is once. The running year's stay in memory:
+ * a list that still grows is not a document that never changes (`base.ts`).
  */
 const fetchClosedYearPage = defineCachedFunction(loadBgblPage, {
   name: 'bgbl-jahrgang-seite',
+  base: DOCUMENT_CACHE,
   getKey: (key: string) => key,
   maxAge: PUBLISHED_DOCUMENT_TTL_S,
   swr: false,
@@ -106,8 +114,12 @@ const fetchClosedYearPage = defineCachedFunction(loadBgblPage, {
 const fetchCurrentYearPage = defineCachedFunction(loadBgblPage, {
   name: 'bgbl-jahrgang-seite-laufend',
   getKey: (key: string) => key,
-  maxAge: CURRENT_YEAR_TTL_S,
-  swr: false,
+  // Served stale while it refreshes, but only up to twice its six hours: a
+  // Kundmachung missing from a stale page reads „nicht kundgemacht"
+  // (`BGBL_RUNNING_STALE_S`). The years and the join above stay `swr:
+  // false` — they re-derive from these pages in well under a second, and
+  // SWR there would add their limit to this one (`cache/stale.ts`).
+  ...staleWithin(CURRENT_YEAR_TTL_S, BGBL_RUNNING_STALE_S),
 })
 
 function fetchBgblPage(key: string): Promise<any> {
@@ -224,7 +236,7 @@ export const fetchBgblByNumber = defineCachedFunction(
     })
     return risJson<any>(`${RIS_API_BASE}?${params}`, BGBL_POLICY)
   },
-  { name: 'bgbl-nummer-suche', getKey: (nummer: string) => nummer, maxAge: PUBLISHED_DOCUMENT_TTL_S, swr: false },
+  { name: 'bgbl-nummer-suche', getKey: (nummer: string) => storageKeyOf(nummer), maxAge: PUBLISHED_DOCUMENT_TTL_S, swr: false },
 )
 
 /** A Kundmachung's main document, in the formats the comparison needs. */
@@ -276,7 +288,7 @@ export const getBgblDocument = defineCachedFunction(
       datum: String(ref?.Data?.Metadaten?.Bundesrecht?.BgblAuth?.Ausgabedatum ?? '').slice(0, 10) || null,
     }
   },
-  { name: 'bgbl-dokument', base: DERIVED_CACHE, getKey: (nummer: string) => nummer, maxAge: PUBLISHED_DOCUMENT_TTL_S, swr: false },
+  { name: 'bgbl-dokument', base: DERIVED_CACHE, getKey: (nummer: string) => storageKeyOf(nummer), maxAge: PUBLISHED_DOCUMENT_TTL_S, swr: false },
 )
 
 /**

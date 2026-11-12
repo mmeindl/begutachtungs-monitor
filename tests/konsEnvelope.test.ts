@@ -182,7 +182,8 @@ describe('through the day-long caches (`kons/konsCache.ts`): nothing is stored, 
   it('and a real „no such law" IS kept — null is an answer, a failure is not', async () => {
     ris = NO_HITS
     await expect(settled(resolveKonsLaw('BGBl. I Nr.', '120/2002', '2026-06-01', 'Universitätsgesetz 2002'))).resolves.toBeNull()
-    expect(nitroCacheKeys()).toHaveLength(1)
+    // The resolution and, since 12.11.2026, the records under it (`readKonsRecords`).
+    expect(nitroCacheKeys().map((k) => k.split(':')[0]).sort()).toEqual(['kons-bgbl-fassung', 'kons-law-by-bgbl'])
 
     ris = ANSWER
     const before = requests

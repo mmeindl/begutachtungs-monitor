@@ -2,10 +2,11 @@
  * The cached leaves of the Parliament API: the ME list (81), the Vorlagen
  * list (101) and the detail JSON of one Gegenstand.
  *
- * The five cache rules these leaves follow: cache leaves only, `swr: false`
- * explicitly, one fact one source, stale served as stale, two layers by
- * provenance. `cache/base.ts` says which layer a value belongs in,
- * `cache/ttl.ts` for how long, `lastgood.ts` holds what rule 4 falls back to.
+ * The five cache rules these leaves follow: cache leaves only, SWR only
+ * bounded (`cache/stale.ts`) and only where the rebuild goes upstream, one
+ * fact one source, stale served as stale, two layers by provenance.
+ * `cache/base.ts` says which layer a value belongs in, `cache/ttl.ts` for how
+ * long, `lastgood.ts` holds what rule 4 falls back to.
  */
 import type { DraftSummary } from '#shared/types'
 import { GP_RE, intToRoman, romanToInt } from '#shared/utils/gp'
@@ -22,7 +23,8 @@ import {
   type FilterListResponse,
   type GegenstandResponse,
 } from '../upstream/parliament'
-import { UPSTREAM_LIST_TTL_S } from '../cache/ttl'
+import { LIST_STALE_S, UPSTREAM_LIST_TTL_S } from '../cache/ttl'
+import { staleWithin } from '../cache/stale'
 
 const FALLBACK_GP = 'XXVIII'
 /** Oldest GP with Ministerialentwürfe in the Parliament API (XIV, 1979). */
@@ -100,10 +102,17 @@ const consultationRows = defineCachedFunction(
     assertListHeader(81, res)
     return res
   },
-  { name: 'drafts-list', getKey: (gp: string) => gp, maxAge: UPSTREAM_LIST_TTL_S, swr: false },
+  { name: 'drafts-list', getKey: (gp: string) => gp, ...staleWithin(UPSTREAM_LIST_TTL_S, LIST_STALE_S) },
 )
 
-/** The same list, mapped to our types. Derived — `mapDraftRow` is ours. */
+/**
+ * The same list, mapped to our types. Derived — `mapDraftRow` is ours.
+ *
+ * `swr: false` on purpose, over an SWR leaf: the rebuild is a map over rows
+ * the leaf answers at once, milliseconds — and SWR here too would let this
+ * entry re-stamp the leaf's stale rows as fresh, adding its limit to theirs
+ * (`cache/stale.ts`).
+ */
 export const getDraftsForGp = defineCachedFunction(
   async (gp: string): Promise<GpDrafts> => {
     const res = await consultationRows(gp)
@@ -137,7 +146,7 @@ export const getVorlagenForGp = defineCachedFunction(
     assertListHeader(101, res)
     return rows.map(mapVorlageRow)
   },
-  { name: 'vorlagen-gp', base: DERIVED_CACHE, getKey: (gp: string) => gp, maxAge: UPSTREAM_LIST_TTL_S, swr: false },
+  { name: 'vorlagen-gp', base: DERIVED_CACHE, getKey: (gp: string) => gp, ...staleWithin(UPSTREAM_LIST_TTL_S, LIST_STALE_S) },
 )
 
 /**
@@ -166,7 +175,7 @@ export const getAntraegeForGp = defineCachedFunction(
     }
     return rows.map(mapAntragRow)
   },
-  { name: 'antraege-gp', base: DERIVED_CACHE, getKey: (gp: string) => gp, maxAge: UPSTREAM_LIST_TTL_S, swr: false },
+  { name: 'antraege-gp', base: DERIVED_CACHE, getKey: (gp: string) => gp, ...staleWithin(UPSTREAM_LIST_TTL_S, LIST_STALE_S) },
 )
 
 /**
@@ -179,14 +188,14 @@ export const getGegenstand = defineCachedFunction(
   {
     name: 'gegenstand',
     getKey: (gp: string, ityp: string, inr: number) => `${gp}-${ityp}-${inr}`,
-    maxAge: UPSTREAM_LIST_TTL_S,
-    swr: false,
+    ...staleWithin(UPSTREAM_LIST_TTL_S, LIST_STALE_S),
   },
 )
 
 /**
  * Upstream AKTIV can lag behind an already-passed deadline (computed
- * upstream + 30-min leaf cache): an expired Frist beats the flag. Runs at
+ * upstream, plus the leaf cache — 30 minutes fresh, served up to three hours
+ * while it refreshes): an expired Frist beats the flag. Runs at
  * request time (not in the mapper) so the day boundary is never frozen into
  * the cache. All consumers of `active` (dashboard, status filter, detail
  * CTA) read the same reconciled state this way.

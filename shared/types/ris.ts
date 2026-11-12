@@ -231,6 +231,14 @@ export interface RisConsultationsResponse {
    * instead.
    */
   carriedOverFrom: string | null
+  /**
+   * The ids of `items` that are such carried-over rows (12.11.2026). A RIS
+   * record names no period, and `/entwuerfe` filters its search in the
+   * browser now: it asks without `q` and must tell for itself whether a
+   * carried row survived the term, so `carriedOverFrom` says the right thing
+   * (`carriedOverAfterSearch`). Empty outside the transition window.
+   */
+  carriedOverIds: string[]
   availableGps: string[]
   /** Distinct ministries present in the result's GP (for the filter UI). */
   ministries: { code: string; name: string }[]

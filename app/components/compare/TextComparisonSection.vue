@@ -62,10 +62,17 @@ const props = defineProps<{
 /** `/api/drafts/XXVIII/40` or `/api/ris-drafts/BEGUT_…` — the section's two endpoints hang off it. */
 const base = computed(() => props.apiBase ?? (props.risId ? `/api/ris-drafts/${props.risId}` : `/api/drafts/${props.gp}/${props.inr}`))
 
-const { data, status } = await useFetch<TextComparisonResponse>(() => `${base.value}/gegenueberstellung`, {
+/* Asked once the section nears the viewport (12.11.2026,
+ * `useNearViewportSection`), not on mount: the slowest request of a cold
+ * draft page, sent while the reader is still at the header. Until then the
+ * skeleton stands, as it did while the answer was on its way. */
+const root = useTemplateRef<HTMLElement>('root')
+const { data, status, execute } = await useFetch<TextComparisonResponse>(() => `${base.value}/gegenueberstellung`, {
   lazy: true,
   server: false,
+  immediate: false,
 })
+useNearViewportSection(root, () => void execute(), () => status.value !== 'idle')
 
 /**
  * The Ressort's reasoning for the individual Paragraphen.
@@ -90,9 +97,9 @@ const { data: explanations } = useExplanations(() => ({ gp: props.gp, inr: props
  * Bestimmung dann" arises right here, at the §, and is answered here instead
  * of two screens further down.
  */
-const { data: consolidated, status: consolidatedStatus } = await useFetch<ConsolidatedTextResponse>(
+const { data: consolidated, status: consolidatedStatus, execute: executeConsolidated } = await useFetch<ConsolidatedTextResponse>(
   () => `${base.value}/konsolidiert`,
-  { lazy: true, server: false, immediate: !props.withoutLayers },
+  { lazy: true, server: false, immediate: false },
 )
 
 /**
@@ -131,10 +138,24 @@ const enactedLaws = computed(() => new Set(explanations.value?.enactedLaws ?? []
  * no annex covers them. Client-side and lazy like the Lesefassung: the
  * ElWG alone is 190 §§, and the annex must not wait for them.
  */
-const { data: enacted } = await useFetch<EnactedLawsResponse>(
+const { data: enacted, status: enactedStatus, execute: executeEnacted } = await useFetch<EnactedLawsResponse>(
   () => `${base.value}/neue-gesetze`,
-  { lazy: true, server: false, immediate: !props.withoutLayers },
+  { lazy: true, server: false, immediate: false },
 )
+
+/**
+ * The two layers wait for the comparison (12.11.2026): both are drawn only
+ * once it has answered — the Lesefassung at its §§, or the one line under an
+ * unreadable annex (`touched`), the new laws' text only beside a readable
+ * one — and the Lesefassung reads the same annex on the server, which the
+ * comparison has then just warmed. Each asked once; a later draft under the
+ * same instance changes their keys, and Nuxt asks again by itself.
+ */
+watch([status, data], () => {
+  if (props.withoutLayers || status.value !== 'success') return
+  if (consolidatedStatus.value === 'idle') void executeConsolidated()
+  if (data.value?.available && enactedStatus.value === 'idle') void executeEnacted()
+}, { immediate: true })
 
 /**
  * Why the Lesefassung is missing as a whole — the run did not happen
@@ -351,7 +372,7 @@ function withheldReason(cause: AnnexWithheldCause | null): string {
 </script>
 
 <template>
-  <div>
+  <div ref="root">
     <!-- Announces the end of loading, which otherwise happens silently.
          Stays in the DOM and empty rather than appearing only when done: a
          live region that does not yet exist when the change occurs is not

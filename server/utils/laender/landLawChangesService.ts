@@ -14,6 +14,7 @@
 import type { LandCode, LandLawDiffResponse } from '#shared/types'
 import { DERIVED_CACHE } from '../cache/base'
 import { onlyComplete, type Gathered } from '../cache/gathered'
+import { SETTLED_TTL_S } from '../cache/ttl'
 import { summarizeDiff } from '../diff/lawDiff'
 import type { LawUnit } from '../lawtext/lawUnits'
 import { mapWithConcurrency } from '../pool'
@@ -36,7 +37,6 @@ import { TEXT_POLICY } from './texts/read'
 
 const MAX_PARAGRAPHS = 150
 const CONCURRENCY = 3
-const WEEK_S = 60 * 60 * 24 * 7
 
 const empty = { total: 0, unchanged: 0, changed: 0, editorial: 0, inserted: 0, removed: 0 }
 
@@ -163,5 +163,5 @@ export async function compareLandLawChanges(land: LandCode, nr: string, lgblXmlU
 /** Held a week in the derived layer; an answer resting on a failed read is not held. */
 export const readLandLawChanges = defineCachedFunction(
   (land: LandCode, nr: string, lgblXmlUrl: string | null, url: string | null, promulgated: string | null) => compareLandLawChanges(land, nr, lgblXmlUrl, url, promulgated),
-  { name: 'land-law-changes-6', base: DERIVED_CACHE, getKey: (land: LandCode, nr: string) => `${land}-${nr.replace(/\D+/g, '-')}`, maxAge: WEEK_S, swr: false, validate: onlyComplete },
+  { name: 'land-law-changes-6', base: DERIVED_CACHE, getKey: (land: LandCode, nr: string) => `${land}-${nr.replace(/\D+/g, '-')}`, maxAge: SETTLED_TTL_S, swr: false, validate: onlyComplete },
 )

@@ -42,7 +42,7 @@
  */
 import type { TextBlock } from '../lawtext/lawUnits'
 import { normalizeText } from '../lawtext/normalize'
-import { stripMinistryMentions, type MinistryToken } from './searchHaystack'
+import { stripMinistryMentions, type MinistryToken } from '../../../shared/utils/searchHaystack'
 
 /** One search term, as the reader typed it. */
 export interface SearchTerm {

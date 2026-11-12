@@ -24,8 +24,10 @@ import { LAND_CODES } from '#shared/utils/laender'
 import { DERIVED_CACHE } from '../cache/base'
 import { fingerprintOf } from '../cache/factStore'
 import { onlyComplete, type Gathered } from '../cache/gathered'
+import { storageKeyOf } from '../cache/key'
+import { rebuildMark, staleWithin } from '../cache/stale'
 import type { Population, PopulationJob, PopulationReport } from '../cache/population'
-import { PUBLISHED_DOCUMENT_TTL_S } from '../cache/ttl'
+import { DAY_SCALE_TTL_S, DAY_STALE_S, PUBLISHED_DOCUMENT_TTL_S } from '../cache/ttl'
 import { withinBudget } from '../http/budget'
 import { getDraftArticles } from '../lawtext/draftArticlesService'
 import { readLaenderInWindow, readLandDraft, withLandActiveOn } from '../laender/sources'
@@ -39,8 +41,6 @@ import { bundLandStore, type BundLandStoreFile, type LandAusfuehrungFact } from 
 import { bgblActOf, bgblCitationDe, bgblKeyOf, meCarriesGrundsatz, vorlageDe } from './bundesgesetzblatt'
 import { readLandAusfuehrung } from './landBundesrechtService'
 
-/** As long as the EU map. */
-const MAP_TTL_S = 60 * 60 * 6
 /** How long a page waits for the station map an act's Ministerialentwurf is read from. */
 const HEAD_BUDGET_MS = 2_500
 
@@ -88,8 +88,8 @@ export interface BundLandBuildReport {
   incomplete: LandCode[]
 }
 
-/** Asks the derived cache to assemble afresh on its next read — after a build. */
-const invalidated = new Set<string>()
+/** Refuses every map assembled before a build replaced the store, so the build's own read assembles afresh (`rebuildMark`). */
+const storeReplaced = rebuildMark()
 
 /**
  * Saves the store after the Länder ran, assembles the map and warms each
@@ -101,7 +101,7 @@ export async function finishBundLandBuild(gp: string, store: BundLandStoreFile, 
   store.builtAt = new Date().toISOString()
   store.incomplete = LAND_CODES.filter((l) => missing.has(l))
   await bundLandStore.save(gp, store)
-  invalidated.add(gp)
+  storeReplaced.set()
   const map = await getBundLandMap(gp)
   const heads = map ? await Promise.all(Object.values(map.acts).map(async (a) => ({ a, head: (await readActHead(a.bgbl.year, a.bgbl.number, a.names, true).catch(() => null))?.value ?? null }))) : []
   return {
@@ -133,7 +133,7 @@ const GRUNDSATZ_WORDS = ['"Ausführungsgesetze der Länder"', 'Grundsatzbestimmu
 const searchBgbl = defineCachedFunction(
   (words: string, from: string): Promise<any> =>
     risJson<any>(`${RIS_API_BASE}?${new URLSearchParams({ Applikation: 'BgblAuth', DokumenteProSeite: 'OneHundred', Seitennummer: '1', Suchworte: words, VonKundmachungsdatum: from })}`, SEARCH_POLICY),
-  { name: 'bund-land-suche', getKey: (words: string, from: string) => `${words}|${from}`, maxAge: MAP_TTL_S, swr: false },
+  { name: 'bund-land-suche', getKey: (words: string, from: string) => storageKeyOf(`${words}|${from}`), maxAge: DAY_SCALE_TTL_S, swr: false },
 )
 
 /** Every Grundsatzgesetz in BGBl I since `from`; null where RIS did not answer. */
@@ -181,10 +181,12 @@ const cachedMap = defineCachedFunction(assembleFromStore, {
   name: 'bund-land-karte',
   base: DERIVED_CACHE,
   getKey: (gp: string) => gp,
-  maxAge: MAP_TTL_S,
-  swr: false,
-  validate: onlyComplete,
-  shouldInvalidateCache: (gp: string) => invalidated.delete(gp),
+  // Complete: served up to a day old while it reassembles; without the
+  // federal search: served, never kept. Assembled before the last build
+  // replaced the store: refused, so the build reads its own map back.
+  // As long as the EU map, the same constant.
+  ...staleWithin(DAY_SCALE_TTL_S, DAY_STALE_S, (entry: Parameters<typeof onlyComplete>[0]) =>
+    storeReplaced.accepts(entry) && onlyComplete(entry)),
 })
 
 /** The period's map, or null where no build has finished yet. Read, never built. */
@@ -258,7 +260,7 @@ async function assembleActHead(year: number, number: number, names: readonly str
 const cachedActHead = defineCachedFunction(assembleActHead, {
   name: 'bund-land-akt',
   base: DERIVED_CACHE,
-  getKey: (year: number, number: number, names: readonly string[]) => `${year}-${number}|${names.join(';')}`,
+  getKey: (year: number, number: number, names: readonly string[]) => storageKeyOf(`${year}-${number}|${names.join(';')}`),
   maxAge: PUBLISHED_DOCUMENT_TTL_S,
   swr: false,
   validate: onlyComplete,

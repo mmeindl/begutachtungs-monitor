@@ -135,7 +135,7 @@ export function useLawDiffStep(options: {
       immediate: enabled.value,
     },
   )
-  const { data: fetchedReasoning, execute: executeReasoning } = reasoningFetch
+  const { data: fetchedReasoning, status: reasoningStatus, execute: executeReasoning } = reasoningFetch
 
   /**
    * What is on screen: one step with its comparison, its § names and its
@@ -179,9 +179,13 @@ export function useLawDiffStep(options: {
   function enable() {
     if (enabled.value) return
     enabled.value = true
-    void executeDiff()
+    // Not the two the Vorlage's frame has asked already under the shared key
+    // (`useVorlageOutcome`), where the deferred instance is the Vorlage's own
+    // (12.11.2026): `execute` on an answer that is there asks again. One that
+    // is on its way is handed over (`dedupe: 'defer'`).
+    if (fetchStatus.value !== 'success') void executeDiff()
     void executeTitles()
-    void executeReasoning()
+    if (reasoningStatus.value !== 'success') void executeReasoning()
   }
 
   /**

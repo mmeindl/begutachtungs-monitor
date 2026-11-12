@@ -34,7 +34,8 @@ import { hasReadableText, parseExplanations, type ExplanationsDocument, type Exp
 import { explanationsByParagraph } from './explanationsJoin'
 import type { DraftArticle } from '../lawtext/draftArticles'
 import { draftArticlesOfXml, getDraftArticles, type DraftText } from '../lawtext/draftArticlesService'
-import { DERIVED_CACHE } from '../cache/base'
+import { DERIVED_CACHE, DOCUMENT_CACHE } from '../cache/base'
+import { storageKeyOf } from '../cache/key'
 import { onlyComplete, type Gathered } from '../cache/gathered'
 import { DERIVED_ANALYSIS_TTL_S, PUBLISHED_DOCUMENT_TTL_S } from '../cache/ttl'
 import { getText } from '../ris/konsLaw'
@@ -42,10 +43,11 @@ import { getRisMapForGp } from '../ris/begutCorpus'
 import { getRisConsultation } from '../ris/risOnly'
 import { hasAnnexDocument } from '../annex/annexSource'
 
-/** One Erläuterungen document as RIS sent it, keyed by URL — parsed fresh above. */
+/** One Erläuterungen document as RIS sent it, keyed by URL — parsed fresh above. On disk (`DOCUMENT_CACHE`): a Begut document is written once. */
 const fetchExplanationsXml = defineCachedFunction((url: string): Promise<string> => getText(url), {
   name: 'erlaeuterungen-xml',
-  getKey: (url: string) => url,
+  base: DOCUMENT_CACHE,
+  getKey: (url: string) => storageKeyOf(url),
   maxAge: PUBLISHED_DOCUMENT_TTL_S,
   swr: false,
 })

@@ -5,7 +5,7 @@
  * false inference the field alone produces. The field searches title,
  * citation, debate name and the Ressort's short code (the Ressort NAME no
  * longer, since 21.09.2026: it carried the whole portfolio and matched
- * invisibly — `server/utils/search/searchHaystack.ts`). A title does not say
+ * invisibly — `shared/utils/searchHaystack.ts`). A title does not say
  * what a Sammelgesetz all amends: type „Klimaschutz", get two rows, conclude
  * „that is all there is" — and never see the third, open draft that carries
  * the word in its § 6. A false negative the reader cannot notice.
@@ -29,7 +29,7 @@
 import type { Ref } from 'vue'
 import type { BegutSearchHit, BegutSearchResponse } from '#shared/types'
 import type { EntryView } from '~/utils/entryView'
-import { viewOfRow } from '~/utils/entryView'
+import { splitByListed, viewOfRow } from '~/utils/entryView'
 import { meRow, risRow } from '#shared/utils/draftOrder'
 import type { DraftFilters } from '~/composables/useDraftFilters'
 import { draftKindArt } from '~/utils/draftFilters'
@@ -41,7 +41,8 @@ export async function useFullTextSearch(
   filters: DraftFilters,
   /** Newest period first — the first is the running one. */
   availableGps: Ref<string[]>,
-  /** The rows the list itself already shows, so a draft hit twice stands once. */
+  /** Every row the list carries under the filters — not only the cut on the
+   *  page —, so a draft hit twice stands once. */
   entries: Ref<EntryView[]>,
 ) {
   const { statusFilter, art, gp, ministry, q, qDebounced, stations, eu } = filters
@@ -177,14 +178,14 @@ export async function useFullTextSearch(
    * comes from the same adapter as the row (`entryView`), so the two halves
    * cannot drift apart.
    */
-  const listedKeys = computed(() => new Set(entries.value.map((e) => e.key)))
+  /* Against `entries` whole, not the page's cut (`splitByListed`). */
+  const split = computed(() => splitByListed(fullTextViews.value, entries.value))
   /** One key, one piece of evidence — the same map for both lists. */
   const hitByKey = computed(() => new Map(fullTextViews.value.map((v) => [v.view.key, v.hit])))
-  const fullTextExtra = computed(() => fullTextViews.value.filter((v) => !listedKeys.value.has(v.view.key)))
   /** The second list's rows — as a computed, not a `.map()` in the prop: an
    *  array the template builds is a new one on every render. */
-  const fullTextExtraEntries = computed(() => fullTextExtra.value.map((v) => v.view))
-  const fullTextInList = computed(() => fullTextViews.value.length - fullTextExtra.value.length)
+  const fullTextExtraEntries = computed(() => split.value.extra.map((v) => v.view))
+  const fullTextInList = computed(() => split.value.inList)
   /**
    * WHAT THE FILTERS TOOK AWAY, and why that is a number of its own.
    *

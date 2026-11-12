@@ -12,7 +12,7 @@
  * clause, never on its own.
  */
 import { describe, expect, it } from 'vitest'
-import { ministryToken, ministryTokens, stripMinistryMentions } from '../server/utils/search/searchHaystack'
+import { ministryToken, ministryTokens, stripMinistryMentions } from '../shared/utils/searchHaystack'
 
 const BMLUK = 'Bundesministerium für Land- und Forstwirtschaft, Klima- und Umweltschutz, Regionen und Wasserwirtschaft'
 const BMF = 'Bundesministerium für Finanzen'

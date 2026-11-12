@@ -1,15 +1,17 @@
 {
   // Scripts and tests are outside `nuxt typecheck` — that one only sees the
-  // app, the server and `shared/`, because `tsconfig.json` extends
-  // `.nuxt/tsconfig.json` and Nuxt builds that from its own source
-  // directories. Twice now a shipped bug lived in the half nothing checked:
+  // app and `shared/`, because `tsconfig.json` extends `.nuxt/tsconfig.json`
+  // and Nuxt builds that from its own source directories. (The server is not
+  // in it either: `.nuxt/tsconfig.server.json` is a program of its own, run
+  // by `pnpm typecheck:server` since 12.11.2026.) Twice now a shipped bug
+  // lived in the half nothing checked:
   // the verdict logic in `scripts/harness/annexPdf.ts` and the apply
   // report before it. So the tools get their own project.
   //
   // It extends the *server* config, not the app one: these files import
   // `server/utils/*` and `shared/*` and never a Vue component, and the server
   // config is the one that carries `#shared/*` and the Nitro auto-import
-  // types. Run with `pnpm typecheck:tools`; CI runs both.
+  // types. Run with `pnpm typecheck:tools`; CI runs all three.
   "extends": "./.nuxt/tsconfig.server.json",
   // A dead local in this half was invisible twice over: `nuxt typecheck`
   // never looked here, and until 2026-09-22 no linter did either. The flag

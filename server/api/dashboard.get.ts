@@ -13,7 +13,24 @@ import { getRankedPeriod } from '../utils/parliament/rankedPeriod'
 
 export default defineEventHandler(async (): Promise<DashboardPayload> => {
   const gp = await getCurrentGp()
-  const { items: rawItems } = await getDraftsForGp(gp)
+  /* THREE READS AT ONCE: list 81 of the period, the carry-over and the
+   * ranked period. The last reads the same list 81 again — Nitro answers
+   * the concurrent identical call from the one in flight — and the period
+   * before it, as the carry-over does, so around a Periodenwechsel the
+   * second list is read once for both instead of after the first one.
+   * Only list 81 of the running period can throw: the carry-over and the
+   * ranking's fallback swallow their own failures, and the ranking's read
+   * of the running period is the same call that fails first. */
+  const [{ items: rawItems }, carried, ranked] = await Promise.all([
+    getDraftsForGp(gp),
+    getCarryOverDrafts(gp),
+    /* The rows of the volume ranking, and the period they belong to — which
+     * is the running one except during a Periodenwechsel. Its outcomes come
+     * from /api/dashboard/outcomes, which derives the same ranking from the
+     * same period through the same two functions (`rankedPeriod.ts`,
+     * `shared/utils/draftOrder.ts`). */
+    getRankedPeriod(gp),
+  ])
   const items = rawItems.map(reconcileActive)
 
   /* Open consultations, deadline ascending (no deadline sorts last) — and
@@ -25,16 +42,9 @@ export default defineEventHandler(async (): Promise<DashboardPayload> => {
    *
    * Folded after the merge, as `/api/drafts` does: a draft two Ressorts sent
    * stands in list 81 once per Ressort and would be listed twice. */
-  const open = dedupeDraftList([...items.filter((item) => item.active), ...(await getCarryOverDrafts(gp))]).sort(
+  const open = dedupeDraftList([...items.filter((item) => item.active), ...carried]).sort(
     (a, b) => (a.deadline ?? '9999-12-31').localeCompare(b.deadline ?? '9999-12-31'),
   )
-
-  /* The rows of the volume ranking, and the period they belong to — which
-   * is the running one except during a Periodenwechsel. Its outcomes come
-   * from /api/dashboard/outcomes, which derives the same ranking from the
-   * same period through the same two functions (`rankedPeriod.ts`,
-   * `shared/utils/draftOrder.ts`). */
-  const ranked = await getRankedPeriod(gp)
 
   return {
     gp,

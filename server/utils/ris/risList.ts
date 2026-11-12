@@ -14,8 +14,7 @@ import type {
   RisConsultation,
   RisConsultationKind,
 } from '../../../shared/types'
-import { matchesQuery } from '../../../shared/utils/textMatch'
-import { stripMinistryMentions, type MinistryToken } from '../search/searchHaystack'
+import { risMatches, type MinistryToken } from '../../../shared/utils/searchHaystack'
 import { passesEuFilter, type EuFilter } from '../eu/euFilter'
 
 /**
@@ -80,27 +79,12 @@ export function filterRisConsultations<T extends RisConsultation>(
     if (art && item.kind !== art) return false
     if (ministry && item.ministryCode.toUpperCase() !== ministry) return false
     if (filter.eu && filter.euUsable && !passesEuFilter(item.eu, filter.eu)) return false
-    if (q) {
-      // No aliases here: the alias file is keyed by gp/inr and these records
-      // have neither. The long title is in the haystack instead — on a
-      // Verordnung it is where the subject matter actually appears.
-      //
-      // WITHOUT THE RESSORT MENTION, since 21.09.2026. The rule behind it is **what is
-      // searched is what the row shows**: a Verordnung's long title begins
-      // with „Verordnung des Bundesministers für <the whole portfolio>", the
-      // Ressort name carries the same thing once more, and neither stands
-      // anywhere on the page. „klima" matched 36 rows that way, 2 of which
-      // carried the word in the short title.
-      //
-      // The SHORT TITLE is therefore NOT struck, even where it carries the
-      // same clause („Verordnung der Bundesministerin für Landesverteidigung
-      // über den Krankentransport") — it stands in the row, the reader sees
-      // the word, so they must be able to search for it. The code stays for
-      // the same reason; for the Ressort as such there is its own filter.
-      // Several words joined by AND, the same rule as in `/api/drafts`.
-      const haystack = `${item.title} ${stripMinistryMentions(item.longTitle ?? '', filter.ministryTokens)} ${item.ministryCode}`
-      if (!matchesQuery(haystack, q)) return false
-    }
+    // Kurztitel, Langtitel without the Ressort mention, code — never the
+    // Ressort name (21.09.2026: what is searched is what the row shows). The
+    // haystack and the predicate are `shared/utils/searchHaystack.ts` since
+    // 12.11.2026, because `/entwuerfe` filters these rows in the browser now
+    // and must find what this finds.
+    if (q && !risMatches(item, q, filter.ministryTokens)) return false
     return true
   })
 }

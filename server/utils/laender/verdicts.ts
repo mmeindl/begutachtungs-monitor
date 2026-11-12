@@ -26,6 +26,8 @@
 import type { LandCode, LandConsultation, LandStage } from '#shared/types'
 import { DERIVED_CACHE } from '../cache/base'
 import { keepIncompleteFor, type Gathered } from '../cache/gathered'
+import { staleWithin } from '../cache/stale'
+import { DAY_SCALE_TTL_S, DAY_STALE_S } from '../cache/ttl'
 import { withinBudget } from '../http/budget'
 import { mapWithConcurrency } from '../pool'
 import { createSlots } from '../upstream/slots'
@@ -91,7 +93,6 @@ export function decidedByText(land: LandCode, d: LandConsultation): boolean {
  */
 const CONCURRENCY = 1
 const DECIDING = createSlots(1)
-const VERDICT_MAP_TTL_S = 60 * 60 * 6
 const INCOMPLETE_MAP_TTL_MS = 10 * 60 * 1000
 /** How long a list waits for the map before it answers with the title search. */
 const VERDICT_BUDGET_MS = 2_000
@@ -120,9 +121,9 @@ const landVerdictMap = defineCachedFunction(
     name: 'land-verdicts',
     base: DERIVED_CACHE,
     getKey: (land: LandCode, windowKey: string) => `${land}-${windowKey}`,
-    maxAge: VERDICT_MAP_TTL_S,
-    swr: true,
-    validate: keepIncompleteFor(INCOMPLETE_MAP_TTL_MS),
+    // Bounded since 12.11.2026: a complete map up to a day old, one with a
+    // gap only for its ten minutes — Nitro's plain SWR served both at any age.
+    ...staleWithin(DAY_SCALE_TTL_S, DAY_STALE_S, keepIncompleteFor(INCOMPLETE_MAP_TTL_MS)),
   },
 )
 

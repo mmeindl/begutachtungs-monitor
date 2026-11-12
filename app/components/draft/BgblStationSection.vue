@@ -49,11 +49,17 @@ const base = computed(() => props.apiBase ?? `/api/drafts/${props.gp}/${props.in
  * amendment. Client-side and lazy like „Geltendes Recht" on the draft: the
  * RIS search behind it walks pages for a Sammelgesetz. Read from the BGBl,
  * not the draft's list — Artikel come and go between the two
- * (`ris/bgblLaws.ts`). */
-const { data: fassung } = await useFetch<BgblLawsResponse>(
+ * (`ris/bgblLaws.ts`).
+ *
+ * Asked once the section nears the viewport (12.11.2026,
+ * `useNearViewportSection`): the last section of the page, and nothing
+ * above it reads the answer. Its facts appear when it arrives, as before. */
+const root = useTemplateRef<HTMLElement>('root')
+const { data: fassung, status: fassungStatus, execute: executeFassung } = await useFetch<BgblLawsResponse>(
   () => `${base.value}/geltende-fassung`,
-  { lazy: true, server: false },
+  { lazy: true, server: false, immediate: false },
 )
+useNearViewportSection(root, () => void executeFassung(), () => fassungStatus.value !== 'idle')
 
 /* What „Geltende Fassung" counts, one word for its title and the list's
  * fold (`GeltendeFassungList`); the Verordnung's section counts
@@ -76,6 +82,7 @@ function bgblCite(number: string | null, risUrl: string | null): string | null {
 <template>
   <section
     id="bundesgesetzblatt"
+    ref="root"
     class="page-section scroll-mt-6"
     aria-labelledby="bgbl-heading"
   >

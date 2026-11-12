@@ -6,8 +6,11 @@
 import type { LandCode } from '#shared/types'
 import { safeExternalUrl } from '#shared/utils/safeExternalUrl'
 import { DERIVED_CACHE } from '../cache/base'
+import { staleWithin } from '../cache/stale'
+import { DAY_SCALE_TTL_S, DAY_STALE_S } from '../cache/ttl'
 import { asArray } from '../ris/risRecord'
 import { risJson, type UpstreamPolicy } from '../upstream/fetch'
+import { readPages, risPageCount } from '../upstream/pages'
 import type { LgblEntry } from './lgblSearch'
 import { LAW_TYPES, lawMetaOf } from './landLaws'
 
@@ -53,14 +56,19 @@ function entriesOf(result: any): LgblEntry[] {
   })
 }
 
+const totalOf = (result: any) => Number(result?.OgdDocumentResults?.Hits?.['#text'] ?? 0)
+
+/**
+ * Page 1, then the rest together — as it always was, but four at a time
+ * since 12.11.2026 (`upstream/pages.ts`) and no longer all at once: eight
+ * to nineteen pages a Land took that many of RIS's 24 slots in one go, and
+ * the prewarm reads every Land's.
+ */
 async function readIndex(land: LandCode): Promise<LgblEntry[]> {
-  const first = await risJson<any>(indexUrl(land, 1), INDEX_POLICY)
-  const total = Number(first?.OgdDocumentResults?.Hits?.['#text'] ?? 0)
-  const pages = Math.min(Math.ceil(total / 100), MAX_PAGES)
-  const rest = await Promise.all(
-    Array.from({ length: Math.max(0, pages - 1) }, (_, i) => risJson<any>(indexUrl(land, i + 2), INDEX_POLICY)),
-  )
-  const entries = [first, ...rest].flatMap(entriesOf)
+  const pages = await readPages((page) => risJson<any>(indexUrl(land, page), INDEX_POLICY), (first) => risPageCount(totalOf(first)), MAX_PAGES)
+  const read = await Promise.all(Array.from({ length: pages.prefetched }, (_, i) => pages.get(i + 1)))
+  const total = totalOf(read[0])
+  const entries = read.flatMap(entriesOf)
   // A short read must not pass for the Land's whole gazette: a miss would
   // then read „keine Kundmachung gefunden" for what was never searched.
   if (entries.length < total * 0.98) throw new Error(`LGBl ${land}: ${entries.length} von ${total} gelesen`)
@@ -70,15 +78,15 @@ async function readIndex(land: LandCode): Promise<LgblEntry[]> {
 
 /**
  * The Land's whole Landesgesetzblatt, held like the Salzburg register: six
- * hours, served stale while it refreshes — a gazette hours old is right for
- * every draft but one kundgemacht this afternoon. In the derived layer:
+ * hours, then served stale up to a day while it refreshes — a gazette hours
+ * old is right for every draft but one kundgemacht this afternoon. In the derived layer:
  * what is held is the parsed index of fifteen pages, not a document.
  */
 export const fetchLgblIndex = defineCachedFunction(
   (land: LandCode): Promise<LgblEntry[]> => readIndex(land),
   /* `-v2` since 10.11.2026: the entries carry a law's fields (`meta`), and
      an entry held from before would hand every law a page without them. */
-  { name: 'land-lgbl-index-v2', base: DERIVED_CACHE, getKey: (land: LandCode) => land, maxAge: 60 * 60 * 6, swr: true },
+  { name: 'land-lgbl-index-v2', base: DERIVED_CACHE, getKey: (land: LandCode) => land, ...staleWithin(DAY_SCALE_TTL_S, DAY_STALE_S) },
 )
 
 /** One Landesgesetzblatt as the OGD API describes it: where its XML is, and the Landtag's Regierungsvorlage it was built from. */

@@ -86,7 +86,8 @@ bootstrap.sh, because their unit files live in git
 
 - **`begutachtungs-monitor-prewarm.timer`** — nightly 04:30, warms the
   RIS↔ME map, the BGBl volumes, the Verordnungen and the station map; the
-  Nitro cache is in memory, so a restart empties it.
+  Nitro cache is in memory, so a restart empties it. Its first line deletes
+  the published documents on disk (below) that are older than 32 days.
 - **`begutachtungs-monitor-list81-snapshot.timer`** — daily 05:10 UTC, keeps
   one copy of Parliament's list 81 in
   `/var/lib/begutachtungs-monitor/list81/`. A measurement, not a feature: it
@@ -112,7 +113,20 @@ bootstrap.sh, because their unit files live in git
   them. Started 02.11.2026, no planned end; `deploy/bin/laender-archive.mjs`
   has the layout and the reasoning.
 
-Almost nothing the site serves comes from disk. What does live in
+Since 12.11.2026 one cache is on disk: `documents/`, the published
+documents that never change — law texts and Erläuterungen as Parliament and
+RIS published them, RIS § versions, the pages of closed Bundesgesetzblatt
+years (`server/utils/cache/documentDriver.ts`). Upstream payloads only, kept
+30 days and deleted after 32 by the prewarm unit; never a Stellungnahme,
+never a list. Losing it costs the next readers the document fetches a
+deploy used to cost them — requests more than time: a draft's comparisons
+waited on RIS's query answers, which were never on the disk (95/ME: 7,6 s
+cold before it, 8,2 s after a restart with its documents on it, 12.11.2026).
+Expect a few hundred MB: the
+dev copy of the same caches held 174 MB of entries younger than a month on
+12.11.2026.
+
+Almost nothing else the site serves comes from disk. What does live in
 `/var/lib/begutachtungs-monitor` is the last-good Stellungnahmen fallback
 (`server/utils/parliament/lastgood.ts`, losing it costs a degraded page), the
 EU map's facts (`eu-recht/<GP>.json`, `server/utils/eu/euMapStore.ts`, since
@@ -149,6 +163,7 @@ VPS (the scripts are provider-agnostic).
 | Länder archive: start it | after installing the timer on a fresh box, once: `ssh root@85.235.66.11 'systemctl start --no-block begutachtungs-monitor-laender-archive.service'` |
 | Länder archive: is it arriving | `ssh root@85.235.66.11 'ls /var/lib/begutachtungs-monitor/laender/lists/ \| tail -3; du -sh /var/lib/begutachtungs-monitor/laender/docs; journalctl -u begutachtungs-monitor-laender-archive -n 5 --no-pager'` — the last line counts stored, gone and failed documents |
 | Länder archive: pull a copy | `rsync -az root@85.235.66.11:/var/lib/begutachtungs-monitor/laender/ .cache/laender/` |
+| Document disk: size and the disk | `ssh root@85.235.66.11 'du -sh /var/lib/begutachtungs-monitor/documents/nitro/functions/*; df -h /'` — grows with the drafts read in 30 days, emptied of older files nightly |
 | list-81 snapshots: start the series | after installing the timer on a fresh box, once: `ssh root@85.235.66.11 'systemctl start begutachtungs-monitor-list81-snapshot.service'` — the timer itself only waits for its next slot |
 | Watchdog: did it act | `ssh root@85.235.66.11 'journalctl -u begutachtungs-monitor-watchdog --since -7d --no-pager \| grep -E "HANG\|RESTART\|GIVING UP\|route\|report"'` — silence means every probe answered |
 | Watchdog: read a report | `ssh root@85.235.66.11 'ls -la /var/lib/begutachtungs-monitor/reports/'`, then `scp` one and look at `libuv` (open handles) and `javascriptHeap`; kept 30 days |

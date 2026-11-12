@@ -59,6 +59,23 @@ const gp = computed(() => String(route.params.gp ?? ''))
 const inr = computed(() => Number(route.params.inr ?? 0))
 const url = computed(() => `/api/drafts/${gp.value}/${inr.value}`)
 
+/* The three fetches with a server deadline (`useExplanations`, `useEuRecht`,
+ * `useMeBundesrecht`) need nothing but the address, so they start BEFORE the
+ * draft's awaited fetch (12.11.2026): on the server that await holds setup,
+ * and registered after it each began its ~800 ms deadline only once the
+ * draft had arrived — the page waited for the sum, not the longer of the two.
+ *
+ * The Erläuterungen: read by `kurzinfoBlocks` below and by
+ * ExplanationsSection under the same key — one request. */
+const { data: explanations } = useExplanations(() => ({ gp: gp.value, inr: inr.value }))
+/* Whether the draft implements EU law — one bare fact in the ProcedureCard,
+ * a row of „Der Entwurf"'s opening frame (`EntwurfFrame`). */
+const { data: euRecht } = useEuRecht(() => ({ gp: gp.value, inr: inr.value }))
+/* Once the draft's Grundsatzgesetz is kundgemacht: the Land drafts that
+ * carry it out, as a detail line of the Bundesgesetzblatt station — the
+ * procedure after the Kundmachung, not a property of the draft. Its sources join the card's credit line. */
+const { line: bundesrechtLine } = useMeBundesrecht(() => ({ gp: gp.value, inr: inr.value }))
+
 /* `lazy` (04.10.2026): a click shows this page at once, as `DraftSkeleton`,
  * instead of holding the previous one until the draft has arrived — on a
  * cold cache a second or more in which the click looked like it had done
@@ -208,27 +225,6 @@ const description = computed(() =>
   Array.isArray(data.value?.description) ? data.value.description : [],
 )
 
-/* The Kurzinformation's „Hauptgesichtspunkte" is, on most drafts, the
- * Allgemeiner Teil of the Erläuterungen in shorter words — and that part
- * stands in „Was das Ressort begründet" further down, from the ministry's own
- * document. Two versions of one text on one page (30.09.2026), so the
- * section goes where the Erläuterungen are there to carry it
- * (`withoutMainPoints`); Ziele and Inhalt stay as the quick overview. Only
- * the rendered blocks: the SEO snippet still reads the whole Kurzinformation.
- *
- * Same key as ExplanationsSection, so one request (`useExplanations`). The
- * section is folded by default (`DraftDescription`, OPEN_SECTIONS), so where
- * the Erläuterungen arrive only after hydration, what disappears is one
- * closed row. */
-const { data: explanations } = useExplanations(() => ({ gp: gp.value, inr: inr.value }))
-
-/* Whether the draft implements EU law — one bare fact in the ProcedureCard,
- * a row of „Der Entwurf"'s opening frame (`EntwurfFrame`). */
-const { data: euRecht } = useEuRecht(() => ({ gp: gp.value, inr: inr.value }))
-/* Once the draft's Grundsatzgesetz is kundgemacht: the Land drafts that
- * carry it out, as a detail line of the Bundesgesetzblatt station — the
- * procedure after the Kundmachung, not a property of the draft. Its sources join the card's credit line. */
-const { line: bundesrechtLine } = useMeBundesrecht(() => ({ gp: gp.value, inr: inr.value }))
 /* Where the draft comes from, as Entwurf facts beside „ändert N Gesetze" (`utils/origin.ts`). */
 const spineStations = computed(() => withOrigin(withBundesrechtFollowUp(stationList.value, bundesrechtLine.value), originTokens(euRecht.value)))
 const bundesrechtCredits = computed(() => bundesrechtCreditItems(bundesrechtLine.value))
@@ -250,6 +246,18 @@ const euTimelineCtx = computed<EuTimelineContext | null>(() => {
       : { date: todayIso(), label: 'Heute' }
   return { begutachtung: { start: d.arrivedAt, end: d.deadline }, stand }
 })
+/* The Kurzinformation's „Hauptgesichtspunkte" is, on most drafts, the
+ * Allgemeiner Teil of the Erläuterungen in shorter words — and that part
+ * stands in „Was das Ressort begründet" further down, from the ministry's own
+ * document. Two versions of one text on one page (30.09.2026), so the
+ * section goes where the Erläuterungen are there to carry it
+ * (`withoutMainPoints`); Ziele and Inhalt stay as the quick overview. Only
+ * the rendered blocks: the SEO snippet still reads the whole Kurzinformation.
+ *
+ * Same key as ExplanationsSection, so one request (`useExplanations`, at
+ * the top). The section is folded by default (`DraftDescription`,
+ * OPEN_SECTIONS), so where the Erläuterungen arrive only after hydration,
+ * what disappears is one closed row. */
 const kurzinfoBlocks = computed(() => {
   const e = explanations.value
   return e?.available && e.passages.length ? withoutMainPoints(description.value) : description.value

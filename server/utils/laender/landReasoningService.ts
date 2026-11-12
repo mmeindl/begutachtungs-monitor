@@ -9,13 +9,15 @@
 import type { LandCode, LandDraftDetail, LandReasoningResponse } from '#shared/types'
 import { safeExternalUrl } from '#shared/utils/safeExternalUrl'
 import { DERIVED_CACHE } from '../cache/base'
+import { DERIVED_ANALYSIS_TTL_S } from '../cache/ttl'
 import { compareReasoningByParagraph } from '../explanations/reasoningDiff'
 import { landDraftUnits } from './landLawDiff'
 import { cachedLandComparison } from './landLawDiffService'
 import { parseLandExplanations } from './landExplanations'
 import { explainedParagraphs } from './landExplanationsRead'
 import { amendedLawsOf } from './landTgu'
-import { NOT_A_DRAFT, pdfPages } from './texts/read'
+import { NOT_A_DRAFT } from './texts/read'
+import { cachedPdfPages } from './texts/pdfPagesService'
 import { textSources } from './texts/stations'
 
 const emptyStats = { compared: 0, changed: 0, editorial: 0, uncompared: 0 }
@@ -25,10 +27,12 @@ const unavailable = (reason: string): LandReasoningResponse => ({ available: fal
  * One text's reasoning per § number, its passages joined in order. The
  * Erläuterungen stand in the law's own PDF (Oberösterreich, Salzburg's
  * Vorlagen) or in one of their own (Kärnten, Tirol: `explanationsUrl`) —
- * then the Ziffern a „Zu Z 3:" names are read off the law's PDF.
+ * then the Ziffern a „Zu Z 3:" names are read off the law's PDF. Both
+ * through the cached read: the comparison beside it reads the same two
+ * PDFs, the Erläuterungen section the draft's (`pdfPagesService.ts`).
  */
 async function reasonsByParagraph(lawUrl: string, explanationsUrl: string | null, laws: readonly string[]): Promise<Map<string, string>> {
-  const [pages, lawPages] = await Promise.all([pdfPages(explanationsUrl ?? lawUrl), explanationsUrl ? pdfPages(lawUrl) : null])
+  const [pages, lawPages] = await Promise.all([cachedPdfPages(explanationsUrl ?? lawUrl), explanationsUrl ? cachedPdfPages(lawUrl) : null])
   const parse = parseLandExplanations(pages)
   const out = new Map<string, string>()
   if (!parse) return out
@@ -73,5 +77,5 @@ export async function compareLandReasoning(land: LandCode, number: string, detai
 /** Held a day in the derived layer, like the comparison it reads. */
 export const cachedLandReasoning = defineCachedFunction(
   (land: LandCode, number: string, detail: LandDraftDetail): Promise<LandReasoningResponse> => compareLandReasoning(land, number, detail),
-  { name: 'land-reasoning', base: DERIVED_CACHE, getKey: (land: LandCode, number: string) => `${land}-${number}`, maxAge: 60 * 60 * 24, swr: false },
+  { name: 'land-reasoning', base: DERIVED_CACHE, getKey: (land: LandCode, number: string) => `${land}-${number}`, maxAge: DERIVED_ANALYSIS_TTL_S, swr: false },
 )

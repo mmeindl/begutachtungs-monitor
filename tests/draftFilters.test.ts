@@ -13,6 +13,8 @@ import {
   draftCountLabel,
   draftFiltersFromQuery,
   draftUrlQuery,
+  halfState,
+  lateHalves,
   ohneArtAllows,
   sameDraftFilters,
   stationTabsFor,
@@ -192,15 +194,21 @@ describe('draftApiQuery', () => {
       station: undefined,
       gp: undefined,
       ministry: undefined,
-      q: undefined,
       eu: undefined,
     })
   })
 
   it('joins the stations and passes the rest through', () => {
     expect(
-      draftApiQuery({ status: 'open', stations: ['rv', 'bgbl'], gp: 'XXVIII', ministry: 'BMF', q: 'klima', eu: 'umsetzung' }),
-    ).toEqual({ status: 'open', station: 'rv,bgbl', gp: 'XXVIII', ministry: 'BMF', q: 'klima', eu: 'umsetzung' })
+      draftApiQuery({ status: 'open', stations: ['rv', 'bgbl'], gp: 'XXVIII', ministry: 'BMF', eu: 'umsetzung' }),
+    ).toEqual({ status: 'open', station: 'rv,bgbl', gp: 'XXVIII', ministry: 'BMF', eu: 'umsetzung' })
+  })
+
+  /* The page searches the halves itself since 12.11.2026 (`searchBundHalves`):
+   * a term is no request, so the halves are not re-fetched per term. */
+  it('never carries the search term', () => {
+    const searching: DraftFilterValues = { ...empty, q: 'klima' }
+    expect(draftApiQuery(searching)).not.toHaveProperty('q')
   })
 })
 
@@ -330,6 +338,42 @@ describe('draftCountLabel', () => {
     )
   })
 
+  /* 12.11.2026: the list shows the rows that came while a half is on its
+   * way. The count must say so rather than count the missing half as 0 —
+   * and it must read differently from a failure. */
+  it('says a half on its way in the failure register, never as a count', () => {
+    expect(draftCountLabel({ ...both, ris: 'pending' })).toBe(
+      '148 Gesetzesentwürfe · die Verordnungs- und einzelne Gesetzesentwürfe des Bundes werden noch geladen',
+    )
+    expect(draftCountLabel({ ...both, ris: 'pending', art: 'verordnung', me: null })).toBe(
+      'Die Verordnungsentwürfe des Bundes werden noch geladen',
+    )
+    expect(draftCountLabel({ ...both, laender: { pending: ['sbg'] } })).toBe(
+      '152 Gesetzesentwürfe · 206 Verordnungsentwürfe · die Entwürfe des Landes Salzburg werden noch geladen',
+    )
+    expect(draftCountLabel({ ...both, laender: { pending: ['w'] } })).toContain('die Entwürfe Wiens werden noch geladen')
+    expect(draftCountLabel({ ...both, laender: { pending: ['sbg', 'w'] } })).toContain('die Entwürfe der Länder werden noch geladen')
+  })
+
+  it('tells „noch geladen" from „nicht abrufbar"', () => {
+    const pending = draftCountLabel({ ...both, ris: 'pending' })
+    const failed = draftCountLabel({ ...both, ris: 'failed' })
+    expect(pending).not.toBe(failed)
+    expect(pending).not.toContain('nicht abrufbar')
+    expect(failed).not.toContain('geladen')
+  })
+
+  it('states no zero while a half is on its way', () => {
+    /* The Bund's rows filtered to none, the Länder still loading: „0
+     * Entwürfe" would be falsified a moment later. */
+    expect(draftCountLabel({ ...both, me: 0, ris: {}, laender: { pending: ['sbg'] } })).toBe(
+      'Die Entwürfe des Landes Salzburg werden noch geladen',
+    )
+    expect(draftCountLabel({ ...both, me: 0, ris: 'pending' })).not.toMatch(/^0 /)
+    // Without anything pending, the zero stands as before.
+    expect(draftCountLabel({ ...both, me: 0, ris: {}, laender: {} })).toBe('0 Entwürfe')
+  })
+
   it('counts the Regierungsvorlagen as a term of their own', () => {
     const none = { consultation: { kind: 'none' as const } }
     expect(draftCountLabel({ ...both, vorlagen: [none, none] })).toBe(
@@ -450,5 +494,43 @@ describe('the Ressort under „Ohne Ministerialentwurf" (10.11.2026)', () => {
   it('leaves no Ressort among the active-filter chips once dropped', () => {
     const dropped = coherentFilters({ status: 'all' as const, art: '' as const, gp: '', ministry: 'BMF' }, 'ohne', true)
     expect(activeFilterChips(dropped)).toEqual([])
+  })
+})
+
+/**
+ * Where a half of `/entwuerfe` stands (12.11.2026). The case that matters:
+ * the server's render passed its deadline, the payload carries `null`, and
+ * the browser must start in „loading" — not in „failed", not in „ready with
+ * nothing".
+ */
+describe('halfState', () => {
+  it('is off where the half is not asked for, whatever it holds', () => {
+    expect(halfState(false, { items: [] }, null)).toBe('off')
+    expect(halfState(false, null, new Error('x'))).toBe('off')
+  })
+
+  it('reads a missed server deadline (null) and a first answer still out (undefined) as loading', () => {
+    expect(halfState(true, null, undefined)).toBe('loading')
+    expect(halfState(true, undefined, undefined)).toBe('loading')
+  })
+
+  it('says failed over any answer it may still hold', () => {
+    expect(halfState(true, { items: [] }, new Error('timeout'))).toBe('failed')
+  })
+
+  it('is ready with an answer, an empty one included', () => {
+    expect(halfState(true, { items: [] }, null)).toBe('ready')
+  })
+})
+
+describe('lateHalves', () => {
+  it('lists the halves on their way beside the lead, never the lead', () => {
+    expect(lateHalves('me', { me: 'ready', ris: 'loading', laender: 'loading' })).toEqual(['ris', 'laender'])
+    expect(lateHalves('me', { me: 'loading', ris: 'ready', laender: 'off' })).toEqual([])
+    expect(lateHalves('ris', { me: 'off', ris: 'ready', laender: 'loading' })).toEqual(['laender'])
+  })
+
+  it('does not count a failed half as late', () => {
+    expect(lateHalves('me', { me: 'ready', ris: 'failed', laender: 'loading' })).toEqual(['laender'])
   })
 })

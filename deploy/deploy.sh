@@ -104,9 +104,11 @@ ssh "$SERVER" \
 
 # THE COLD MINUTE — and the deploy waits it out since 24.09.2026.
 #
-# `systemctl restart` empties every cache: production mounts no storage, so
-# both layers are memory in the very process systemd has just replaced
-# (`server/utils/cache/base.ts`). Warming BEFORE the restart would therefore
+# `systemctl restart` empties every cache but one: both layers are memory in
+# the very process systemd has just replaced (`server/utils/cache/base.ts`);
+# only the published documents that never change stay on disk, since
+# 12.11.2026 — of what the prewarm reads, the closed Bundesgesetzblatt years.
+# Warming BEFORE the restart would therefore
 # warm the process that is about to die; the only thing a deploy can do about
 # the cold window is not to walk away in the middle of it.
 #

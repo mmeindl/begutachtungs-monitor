@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import type { Ref } from 'vue'
+import type { ComponentPublicInstance, Ref } from 'vue'
 import type { LandCode, LandExplanationsResponse, LandLawDiffResponse, LandReasoningResponse, ReasoningDiffEntry, LandTextStation, LawDiffSegment, LawDiffUnit, LawStationId } from '#shared/types'
 import { isNovelleUnits } from '#shared/utils/changeShare'
 import { diffUnitKey } from '#shared/utils/diffKey'
@@ -51,8 +51,15 @@ const props = withDefaults(defineProps<{
 }>(), { from: 'entwurf', to: 'lgbl' })
 
 /* Keyed by draft and pair: the Vorlage's frame reads the same request for
-   its counts (`useLandVorlageOutcome`). */
-const { data, status } = useFetch<LandLawDiffResponse>(
+   its counts (`useLandVorlageOutcome`).
+
+   Asked once the section nears the viewport (12.11.2026,
+   `useNearViewportSection`): up to five of these stand on one page, and
+   most lie far below the fold. `immediate`, not `enabled`: a shared key
+   keeps the options of whoever registers it first, and the frame, which
+   registers the Vorlage's pair before this section, still asks at once for
+   the row it draws above — the section then finds the answer there. */
+const { data, status, execute } = useFetch<LandLawDiffResponse>(
   () => `/api/laender/${props.land}/${props.number}/vergleich`,
   {
     query: { von: props.from, bis: props.to },
@@ -60,8 +67,11 @@ const { data, status } = useFetch<LandLawDiffResponse>(
     lazy: true,
     server: false,
     dedupe: 'defer',
+    immediate: false,
   },
 )
+const sub = useTemplateRef<ComponentPublicInstance>('sub')
+useNearViewportSection(() => sub.value?.$el as HTMLElement | undefined, () => void execute(), () => status.value !== 'idle')
 
 /* The Land's reasoning at each § of its Textgegenüberstellung, as the
    ministry's stands at each § of its own (`TextComparisonSection`) — the
@@ -335,7 +345,7 @@ const hasUnits = computed(() => units.value.length > 0)
 </script>
 
 <template>
-  <PageSubsection :id="anchor" :heading="heading">
+  <PageSubsection :id="anchor" ref="sub" :heading="heading">
     <ListSkeleton v-if="status === 'pending' || status === 'idle'" class="mt-3">
       {{ FROM_LABEL }} und {{ TO_LABEL }} werden verglichen …
     </ListSkeleton>

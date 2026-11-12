@@ -23,7 +23,9 @@ import { gpWindow } from '#shared/utils/gp'
 import { MAX_LIST_QUERY_CHARS } from '#shared/utils/queryParams'
 import { SECOND_ROUND_WINDOW } from '~/utils/spine'
 import { euActsRows, euSourceUnavailable, filterEuActs } from '~/utils/euKarte'
-import type { AsyncDataRequestStatus } from '#app'
+import { halfState, pendingHalvesLine, type HalfState } from '~/utils/draftFilters'
+import { blockStateLine, settledCount } from '~/utils/lateBlocks'
+import { useLateFetch } from '~/composables/useLateFetch'
 
 /* „Gesetzes- und Verordnungsentwürfe" since 18.09.2026. It said
    „Gesetzesentwürfe" from before the RIS half shipped, and then went on
@@ -68,16 +70,40 @@ useHead({
  * /api/dashboard, and awaiting them one after the other would add its
  * latency to the page's instead of hiding inside it.
  *
- * EVERY FETCH ON THIS PAGE IS `lazy` (04.10.2026), and that changes nothing
- * the comments below say about the server: there `lazy` is ignored, the
- * render waits for each of them, and the HTML a crawler, a link preview or a
- * reader without JavaScript gets is the same as before. It changes the
- * click: the page appears at once and its sections fill in, instead of the
- * previous page standing still until the slowest endpoint — up to the 4 s
- * budgets below — has answered. So a missing answer on the client may also
- * mean „still on its way", and every „nicht abrufbar" in the template asks
- * the fetch's status before it says so (`loading`). */
-const dashboardFetch = useFetch<DashboardPayload>('/api/dashboard', { lazy: true })
+ * EVERY FETCH ON THIS PAGE IS `lazy` (04.10.2026). That changes the click:
+ * the page appears at once and its sections fill in, instead of the
+ * previous page standing still until the slowest endpoint has answered. It
+ * changes nothing on the server, where `lazy` is ignored and the render
+ * waits for every fetch that is not `server: false`.
+ *
+ * ONE BLOCK CARRIES THE PAGE, THE REST RACE A DEADLINE (12.11.2026). The
+ * render used to wait for all of them, so the slowest addition held the
+ * whole HTML: measured cold, 7,7 s on the live site and 6,1 s on a built
+ * server — the RIS half's 6 s budget running out, after which the page
+ * even said the Verordnungsentwürfe were „nicht abrufbar" when they were
+ * only slow (56 s cold, 33 s for the Länder). Warm the page took 0,02–0,04 s
+ * and still does. Now only `/api/dashboard` — the open Ministerialentwürfe,
+ * the reason the page exists, and the ranking's rows — is awaited in full;
+ * every other block goes through `useLateFetch`: the server waits for it two
+ * seconds at most, and a block that misses them is rendered in the state a
+ * click shows while it loads, and fetched by the browser after hydration.
+ *
+ * The trade-off: the HTML a crawler, a link preview or a reader without
+ * JavaScript gets from a COLD server lacks the late blocks. Cold is rare —
+ * the caches serve stale while they refresh, and the watchdog probes every
+ * five minutes — and a page that takes six seconds to say anything was the
+ * worse answer for every one of those readers too.
+ *
+ * So a missing block may mean „still on its way" on the server too, and
+ * nothing here reads a fetch's `status` for that: a deadline the server
+ * missed is `success` with `null`. Every state is read through `halfState`
+ * (`… werden noch geladen` vs. `… gerade nicht abrufbar`), and no count
+ * stands while a block it sums over is pending (`settledCount`). */
+/* The carrying block's bound (12.11.2026): it had none, so a hanging list 81
+ * held the page for the upstream's worst case, three attempts of 8 s. Cold
+ * it answers in 0,15 s. Past 10 s the gate shows its failure and the way to
+ * retry — the state it already had for an error. */
+const dashboardFetch = useFetch<DashboardPayload>('/api/dashboard', { lazy: true, timeout: 10000 })
 
 /* Server-rendered on purpose. This section IS the product's point
  * (mechanism 1: shelving visible, mechanism 3: wins equally visible), and
@@ -92,14 +118,18 @@ const dashboardFetch = useFetch<DashboardPayload>('/api/dashboard', { lazy: true
  * answers in 0.41 s fully cold — extension probe included — and 5 ms warm.
  * The request count was never the latency.
  *
- * `timeout` is what keeps that judgement safe if upstream ever turns slow:
- * past it useFetch reports an error and the section falls back to its
- * "derzeit nicht abrufbar" line rather than holding the whole page. No
- * automatic client retry — during a real upstream outage that would add one
- * uncached fan-out per visitor and change nothing. */
-const outcomesFetch = useFetch<DashboardOutcomes>('/api/dashboard/outcomes', {
-  timeout: 4000,
-  lazy: true,
+ * Since 12.11.2026 the server's deadline (`useLateFetch`) is what keeps
+ * that judgement safe if upstream turns slow, and the `timeout` is the
+ * BROWSER's budget. It was 4 s while it guarded the server's render; in the
+ * browser nothing waits for it any more, and this is the block that shows
+ * the wins beside the shelving — it must not fall silent because a cold
+ * cache took five seconds. 10 s, then the failure is said under the list.
+ * No automatic retry beyond the one after hydration — during a real
+ * upstream outage that would add one uncached fan-out per visitor and
+ * change nothing. */
+const outcomesFetch = useLateFetch<DashboardOutcomes>('/api/dashboard/outcomes', () => ({}), {
+  timeout: 10000,
+  key: 'home',
 })
 
 /* The end of the chain, read from the Vorlage side. Server-rendered
@@ -107,10 +137,13 @@ const outcomesFetch = useFetch<DashboardOutcomes>('/api/dashboard/outcomes', {
  * shows participation arriving somewhere, and it may not depend on
  * JavaScript. Measured cold on 2026-09-18: 0.93 s for the whole endpoint —
  * one list-101 call plus 30 parallel Gegenstand fetches at 0.54 s — and
- * 14 ms warm, so the 4 s budget is a guard, not a plan. */
-const enactedFetch = useFetch<DashboardEnacted>('/api/dashboard/enacted', {
-  timeout: 4000,
-  lazy: true,
+ * 14 ms warm, so the 4 s budget is a guard, not a plan. Since 12.11.2026
+ * the server waits two seconds at most (`useLateFetch`), and the browser's
+ * budget is the outcomes' 10 s, for their reason: the end of the chain is
+ * the other half of what the page promises. */
+const enactedFetch = useLateFetch<DashboardEnacted>('/api/dashboard/enacted', () => ({}), {
+  timeout: 10000,
+  key: 'home',
 })
 
 /* „Beschlossen, noch nicht kundgemacht" —
@@ -118,10 +151,13 @@ const enactedFetch = useFetch<DashboardEnacted>('/api/dashboard/enacted', {
  * the accountability layer. It pays no upstream request of its own (list 81
  * and the station map are cached leaves), and its endpoint answers empty
  * rather than wait for a cold map, which hides the section; the 4 s budget
- * only guards against a stalled server. */
-const decidedFetch = useFetch<DashboardDecided>('/api/dashboard/beschlossen', {
+ * only guards against a stalled server. That cold map costs the endpoint
+ * its own 2,5 s budget before it answers empty, which is past the server's
+ * deadline (`useLateFetch`, 12.11.2026): on a cold server the section is
+ * absent from the HTML, as it is during a click, and the browser asks. */
+const decidedFetch = useLateFetch<DashboardDecided>('/api/dashboard/beschlossen', () => ({}), {
   timeout: 4000,
-  lazy: true,
+  key: 'home',
 })
 
 /* The second window for input: Regierungsvorlagen that are taking
@@ -146,16 +182,21 @@ const { data: secondRound } = await useFetch<DashboardSecondRound>(
  * of the page that needs JavaScript to appear.
  *
  * It costs no upstream request the page does not already pay: the RIS corpus
- * and the GP's join map are the same cached leaves the draft pages read. */
-const { data: risOnly, status: risStatus } = await useFetch<RisConsultationsResponse>(
+ * and the GP's join map are the same cached leaves the draft pages read.
+ *
+ * Server-rendered when it is warm, that is — since 12.11.2026 it races the
+ * server's deadline (`useLateFetch`), and the open list stands with the
+ * Ministerialentwürfe meanwhile and says under the box that these rows are
+ * still on their way (`pendingHalvesLine`), as `/entwuerfe` does. Until
+ * then the list waited for this half, and on a cold server its 6 s budget
+ * was the page's delivery time. */
+const { data: risOnly, error: risError } = useLateFetch<RisConsultationsResponse>(
   '/api/ris-drafts',
-  // 4 s is the outcomes section's budget, and that endpoint answers in
-  // 0.41 s cold. This one sits on the RIS corpus — 46 upstream requests with
-  // a politeness pause, warmed nightly by the prewarm unit and held for 20 h.
-  // Warm it is milliseconds; cold it is a minute, and no homepage may wait
-  // for that. 6 s covers a slow-but-answering upstream without ever being
-  // the reason first paint is late.
-  { query: { status: 'open' }, timeout: 6000, lazy: true },
+  () => ({ status: 'open' }),
+  // The browser's budget. This one sits on the RIS corpus — 46 upstream
+  // requests with a politeness pause, warmed nightly by the prewarm unit and
+  // held for 20 h. Warm it is milliseconds; cold it is a minute.
+  { timeout: 6000, key: 'home' },
 )
 
 /* The Länder the reader chose (`useSourceChoice`, 22.10.2026). Server-rendered
@@ -165,36 +206,53 @@ const { data: risOnly, status: risStatus } = await useFetch<RisConsultationsResp
  * carries every Land; the choice is applied below. So it is asked again only
  * when the choice goes from none to some, never on a switch between Länder:
  * watching the list itself refetched on every chip and blanked the list
- * while it did (25.10.2026). */
+ * while it did (25.10.2026). Since 12.11.2026 a late block like the RIS
+ * half (`useLateFetch`) — except where the Bund is unticked: then the
+ * Länder are the list, and it shows its loading state until they come. */
 const { chosen: chosenSources, bund, laender: chosenLaender, queryValue: sourcesQuery } = useSourceChoice()
 const wantsLaender = computed(() => chosenLaender.value.length > 0)
-const { data: laender, status: laenderStatus } = await useAsyncData<LaenderResponse | null>(
-  'home-laender',
-  () => (wantsLaender.value ? $fetch<LaenderResponse>('/api/laender', { timeout: 6000 }) : Promise.resolve(null)),
-  { watch: [wantsLaender], lazy: true },
+const { data: laender, error: laenderError } = useLateFetch<LaenderResponse>(
+  '/api/laender',
+  () => ({}),
+  { timeout: 6000, wanted: wantsLaender, key: 'home' },
 )
 
 const { data, error, refresh, status } = await dashboardFetch
-const { data: outcomes } = await outcomesFetch
-const { data: enacted, status: enactedStatus } = await enactedFetch
-const { data: decided } = await decidedFetch
+const { data: outcomes, error: outcomesError } = await outcomesFetch
+const { data: enacted, error: enactedError } = await enactedFetch
+const { data: decided, error: decidedError } = await decidedFetch
 
 /* The chosen Länder in the two track sections (30.10.2026): their newest
  * Kundmachungen beside the Bund's, and their Landtag decisions still
  * awaiting one. Asked only when a Land is chosen, like the open list's
  * Länder, and after the Bund's Kundmachungen, because their period is the
  * window the Länder are read over — 0.5 s warm, a cached cut of the
- * lists behind the section's link (`/api/dashboard/laender`). */
-const { data: landRecent, status: landRecentStatus } = await useAsyncData<DashboardLaender | null>(
-  'home-laender-recent',
-  () => (wantsLaender.value
-    ? $fetch<DashboardLaender>('/api/dashboard/laender', { query: { gp: enacted.value?.gp }, timeout: 4000 })
-    : Promise.resolve(null)),
-  { watch: [wantsLaender, () => enacted.value?.gp], lazy: true },
+ * lists behind the section's link (`/api/dashboard/laender`).
+ *
+ * Registered after the Kundmachungen have settled, not beside them: the
+ * period is part of the key, and the key the server rendered under must be
+ * the key the browser hydrates with. When the Kundmachungen missed the
+ * server's deadline it asks without a period (the endpoint's default, the
+ * running one) and asks again once they arrive. So with a Land chosen and
+ * both cold the server may wait two deadlines (12.11.2026). */
+const { data: landRecent, error: landRecentError } = await useLateFetch<DashboardLaender>(
+  '/api/dashboard/laender',
+  () => ({ gp: enacted.value?.gp }),
+  { timeout: 4000, wanted: wantsLaender, key: 'home' },
 )
 const chosenOf = (rows: readonly LandConsultation[] | undefined) =>
   (rows ?? []).filter((d) => chosenLaender.value.includes(d.land))
-const unreadableRecent = computed(() => unreadableOf(landRecent.value?.sources, landRecentStatus.value))
+
+/* Where each late block stands (`halfState`): not asked for, on its way,
+ * there, or failed — never read from the fetch's `status` (see above). */
+const risState = computed(() => halfState(true, risOnly.value, risError.value))
+const laenderState = computed(() => halfState(wantsLaender.value, laender.value, laenderError.value))
+const outcomesState = computed(() => halfState(true, outcomes.value, outcomesError.value))
+const enactedState = computed(() => halfState(true, enacted.value, enactedError.value))
+const decidedState = computed(() => halfState(true, decided.value, decidedError.value))
+const landRecentState = computed(() => halfState(wantsLaender.value, landRecent.value, landRecentError.value))
+
+const unreadableRecent = computed(() => unreadableOf(landRecent.value?.sources, landRecentState.value))
 
 /**
  * Which sources each box can draw from (30.10.2026). Every box whose rows
@@ -233,22 +291,20 @@ function noneApply(reasons: SourceReasons): string | null {
 }
 const applying = (reasons: SourceReasons) => chosenLaender.value.filter((land) => !reasons[land])
 
-/** No answer yet, as opposed to none: only after a click, never on the
- *  server, which waits (see `dashboardFetch`). */
-const loading = (s: AsyncDataRequestStatus) => s === 'idle' || s === 'pending'
-
 /* The chosen Länder's rows, and the chosen Länder that could not be read —
- * a failed fetch counts as every chosen Land unreadable, never as none open. */
+ * a failed fetch counts as every chosen Land unreadable, never as none open;
+ * one still on its way counts as none unreadable (12.11.2026: that includes
+ * the server's missed deadline, `success` with `null`). */
 const chosenLandItems = computed(() =>
   (laender.value?.items ?? []).filter((item) => chosenLaender.value.includes(item.land)),
 )
-function unreadableOf(sources: readonly LandSourceState[] | undefined, status: AsyncDataRequestStatus) {
-  if (!chosenLaender.value.length || loading(status)) return []
+function unreadableOf(sources: readonly LandSourceState[] | undefined, state: HalfState) {
+  if (!chosenLaender.value.length || state === 'off' || state === 'loading') return []
   return chosenLaender.value
     .map((land) => sources?.find((s) => s.land === land) ?? { land, state: 'unavailable' as const, listUrl: null })
     .filter((s) => s.state === 'unavailable')
 }
-const unreadableLaender = computed(() => unreadableOf(laender.value?.sources, laenderStatus.value))
+const unreadableLaender = computed(() => unreadableOf(laender.value?.sources, laenderState.value))
 /* The list links carry the choice when it came from the address alone: the
  * cookie would carry it otherwise, a shared link has none. */
 const sourcesParam = computed(() => (sourcesQuery.value ? `&quellen=${sourcesQuery.value}` : ''))
@@ -284,6 +340,26 @@ const openRows = computed(() =>
  * `EntryList` receives finished `EntryView`s, and every section of the page
  * says in one line which adapter is responsible for its kind. */
 const visibleOpenRows = computed(() => openRows.value.slice(0, HOME_LIST_LENGTH).map(viewOfRow))
+
+/**
+ * The open list's late halves (12.11.2026). With the Bund ticked the
+ * Ministerialentwürfe carry the list, and the RIS half and the chosen
+ * Länder sort in when they come — said under the box meanwhile, never
+ * counted as none. With the Bund unticked the Länder ARE the list, and its
+ * wait is the list's own loading state. The rows' number in the header waits
+ * for every half, like the count line on `/entwuerfe`.
+ */
+const openRisPending = computed(() => bund.value && risState.value === 'loading')
+const openLaenderPending = computed(() => bund.value && laenderState.value === 'loading')
+const openWaiting = computed(() =>
+  (!bund.value && laenderState.value === 'loading') ||
+  (!visibleOpenRows.value.length && (openRisPending.value || openLaenderPending.value)))
+const openPendingLine = computed(() =>
+  pendingHalvesLine(openRisPending.value, openLaenderPending.value ? chosenLaender.value : null))
+const openTotal = computed(() => settledCount(openRows.value.length, [
+  bund.value ? risState.value : 'off',
+  laenderState.value,
+]))
 
 /**
  * NO count line on this page, unlike `/entwuerfe`.
@@ -335,6 +411,15 @@ const rankedRows = computed(() => {
 /* The Bund's alone, and so empty while the Bund is unticked: the box then
  * stays, with its chips and the reason, rather than ignore the choice. */
 const rankedShown = computed(() => (bund.value ? rankedRows.value : []))
+/* The outcomes on their way or failed, said under the ranking
+ * (12.11.2026). The rows stand without their chips meanwhile, which claims
+ * nothing — but the sentence above them promises „was aus ihnen geworden
+ * ist", and the wins must not go missing in silence. Only where a closed
+ * row is shown: an open draft has no outcome to wait for. */
+const outcomesLine = computed(() =>
+  bund.value && (data.value?.ranked.items ?? []).some((d) => !d.active)
+    ? blockStateLine('Was aus den Entwürfen wurde,', 'singular', outcomesState.value)
+    : null)
 const visibleSecondRound = computed(
   () => (bund.value ? secondRound.value?.items.slice(0, HOME_LIST_LENGTH).map(viewOfVorlage) ?? [] : []),
 )
@@ -367,9 +452,13 @@ const decidedEntries = computed(() =>
   decidedMerged.value.map((m) => (m.from === 'a' ? viewOfDraft(m.item) : viewOfLand(m.item))))
 const decidedShowsBund = computed(() => decidedMerged.value.some((m) => m.from === 'a'))
 const decidedShowsLaender = computed(() => decidedMerged.value.some((m) => m.from === 'b'))
-const decidedTotal = computed(() =>
+/* No number while one of the two halves it sums is on its way (12.11.2026):
+ * the Länder's rows can stand before the Bund's arrive. */
+const decidedTotal = computed(() => settledCount(
   (bund.value ? (decided.value?.total ?? 0) : 0) +
-  chosenLaender.value.reduce((n, land) => n + (landRecent.value?.decidedTotal[land] ?? 0), 0))
+  chosenLaender.value.reduce((n, land) => n + (landRecent.value?.decidedTotal[land] ?? 0), 0),
+  [bund.value ? decidedState.value : 'off', landRecentState.value],
+))
 
 /**
  * The Gesetzgebungsperiode each accountability section is counted over,
@@ -446,8 +535,16 @@ const decidedHref = computed(() => `/entwuerfe?station=parlament&status=closed${
  * overview's first rows, in its own order and for the same choice of
  * sources — the five `/eu-recht` opens with, as every section here shows
  * the first rows of the list it links. Client-side: the map is no part of
- * the homepage's first paint, and the section is the page's last. */
-const { data: euActs } = useFetch<EuActsResponse>('/api/eu-recht', { lazy: true, server: false })
+ * the homepage's first paint, and the section is the page's last.
+ *
+ * And asked only once the page's end nears the viewport (12.11.2026,
+ * `useNearViewportSection`): the whole map for five rows, on a page most
+ * readers leave above it. The section exists only with an answer, so a
+ * mark of no height stands where it will — at the end, after „Zuletzt
+ * Gesetz geworden". */
+const euMark = useTemplateRef<HTMLElement>('euMark')
+const { data: euActs, status: euStatus, execute: executeEu } = useFetch<EuActsResponse>('/api/eu-recht', { lazy: true, server: false, immediate: false })
+useNearViewportSection(euMark, () => void executeEu(), () => euStatus.value !== 'idle')
 const euChosenActs = computed(() => (euActs.value ? filterEuActs(euActs.value.acts, chosenSources.value) : []))
 const euRows = computed(() =>
   euActs.value ? euActsRows({ ...euActs.value, acts: euChosenActs.value.slice(0, HOME_LIST_LENGTH) }) : [])
@@ -460,7 +557,7 @@ const euHref = computed(() => (sourcesQuery.value ? `/eu-recht?quellen=${sources
  * is read over. A Land's window is the Bund's period as a time span
  * (`readLaenderInWindow`): it has its own legislative periods. */
 const enactedLoading = computed(() =>
-  (bund.value && loading(enactedStatus.value)) || (wantsLaender.value && loading(landRecentStatus.value)))
+  (bund.value && enactedState.value === 'loading') || landRecentState.value === 'loading')
 const enactedAnswered = computed(() => (!bund.value || !!enacted.value) && (!wantsLaender.value || !!landRecent.value))
 
 /* As the gazettes call themselves: „Landesgesetzblatt für das Burgenland",
@@ -478,6 +575,13 @@ function landWindowDe(gp: string | null): string | null {
     : `aus Begutachtungen seit dem ${formatDateDe(w.from)}`
 }
 const enactedLaender = computed(() => applying(ENACTED_UNAVAILABLE))
+/* One half still on its way while the other has rows (12.11.2026): said
+ * under the box where a failed half is, in the words that tell the two
+ * apart. The Bund's failure keeps its own line in the template. */
+const enactedPendingLines = computed(() => [
+  bund.value && enactedState.value === 'loading' ? blockStateLine('Die Kundmachungen des Bundes', 'plural', 'loading') : null,
+  enactedLaender.value.length && landRecentState.value === 'loading' ? blockStateLine('Die Kundmachungen der Länder', 'plural', 'loading') : null,
+].filter((line): line is string => line !== null))
 const enactedLandLine = computed(() => {
   if (!enactedLaender.value.length) return null
   const gp = enactedGp.value ?? currentGp.value
@@ -610,7 +714,7 @@ function submitSearch() {
           id="open-heading"
           :to="openListHref"
           noun="offenen Entwürfe"
-          :total="openRows.length"
+          :total="openTotal"
           :visible="visibleOpenRows.length"
         >
           Jetzt in Begutachtung
@@ -632,7 +736,7 @@ function submitSearch() {
           {{ LAND_NAME[s.land] }} ist gerade nicht abrufbar<template v-if="s.listUrl"> –
             <ExternalLink :href="s.listUrl" class="link-inline font-medium">beim Land nachsehen</ExternalLink></template>.
         </p>
-        <p v-if="bund && !risOnly && !loading(risStatus)" class="mt-2 text-sm text-ink-muted">
+        <p v-if="bund && risState === 'failed'" class="mt-2 text-sm text-ink-muted">
           Die Verordnungsentwürfe aus dem RIS sind gerade nicht abrufbar –
           <NuxtLink
             to="/entwuerfe?art=verordnung&status=open"
@@ -656,10 +760,15 @@ function submitSearch() {
           <template #header>
             <SourceChips />
           </template>
-          <!-- Until both halves are here: the RIS rows sort in between the
-               others by Frist, so a list drawn from one half would reorder
-               under the reader's eyes. -->
-          <template v-if="(bund && loading(risStatus)) || (wantsLaender && loading(laenderStatus))" #state>
+          <!-- Until 12.11.2026 the list waited here for every half, because
+               the RIS rows sort in between the others by Frist and a list
+               drawn from one half reorders when they come. On the server
+               that wait was the page's delivery time, so the
+               Ministerialentwürfe stand now, and the halves on their way
+               are said under the box (`openPendingLine`). The skeleton
+               stays where nothing could stand yet: the Länder alone, or no
+               row at all while a half is pending — never „keine offen". -->
+          <template v-if="openWaiting" #state>
             <LoadingState label="Offene Entwürfe werden geladen …" />
           </template>
           <template #empty>
@@ -682,7 +791,13 @@ function submitSearch() {
             </div>
           </template>
         </EntryList>
-
+        <!-- UNDER the box, not above it (12.11.2026): the line goes when the
+             rows come, and above the list it would pull the list up with it.
+             Where a failed half's line stands above, this one is not a
+             correction to the list but a note on its way to completion. -->
+        <p v-if="openPendingLine && !openWaiting" class="mt-2 text-sm text-ink-muted">
+          {{ openPendingLine }}
+        </p>
       </section>
 
       <!-- The second window for input, directly under the first. Both
@@ -836,6 +951,9 @@ function submitSearch() {
             <p class="p-4 text-sm text-ink-muted">{{ noneApply(RANKED_UNAVAILABLE) }}</p>
           </template>
         </EntryList>
+        <p v-if="outcomesLine" class="mt-2 text-sm text-ink-muted">
+          {{ outcomesLine }}
+        </p>
       </section>
 
       <!-- THE ONE STATION WITHOUT A LIST, until 03.10.2026. Between
@@ -1021,8 +1139,11 @@ function submitSearch() {
         <!-- One half missing while the other has rows: said, so the list does
              not read as if that half had promulgated nothing. -->
         <template v-if="enactedEntries.length">
-          <p v-if="bund && !enacted && !loading(enactedStatus)" class="mt-2 text-sm text-ink-muted">
+          <p v-if="bund && enactedState === 'failed'" class="mt-2 text-sm text-ink-muted">
             Die Kundmachungen des Bundes sind gerade nicht abrufbar.
+          </p>
+          <p v-for="line in enactedPendingLines" :key="line" class="mt-2 text-sm text-ink-muted">
+            {{ line }}
           </p>
           <p v-for="s in unreadableRecent" :key="s.land" class="mt-2 text-sm text-ink-muted">
             Das Land {{ LAND_NAME[s.land] }} ist gerade nicht abrufbar – seine Kundmachungen fehlen hier.
@@ -1033,6 +1154,7 @@ function submitSearch() {
            like every section onto its list — its first rows, its chips.
            Last, a cross-section of every station rather than one of them;
            gone where no map is built yet, never a promise of rows. -->
+      <div ref="euMark" aria-hidden="true" />
       <section v-if="euActs?.builtAt && euActs.acts.length" class="page-section" aria-labelledby="eu-heading">
         <ListHeader
           id="eu-heading"

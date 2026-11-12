@@ -29,6 +29,7 @@
 import { parseAnnexPdf, sameTypesetting, type AnnexPage, type AnnexParse } from './annexPdf'
 import { pagesOf } from './annexPdfPages'
 import { DERIVED_CACHE } from '../cache/base'
+import { storageKeyOf } from '../cache/key'
 import { DERIVED_ANALYSIS_TTL_S, PUBLISHED_DOCUMENT_TTL_S } from '../cache/ttl'
 import type { DraftArticle } from '../lawtext/draftArticles'
 import { upstreamBytes, UpstreamHttpError, UpstreamTooLargeError, type UpstreamPolicy } from '../upstream/fetch'
@@ -69,7 +70,7 @@ const fetchAnnexPdf = defineCachedFunction(
   },
   {
     name: 'annex-pdf',
-    getKey: (url: string) => url,
+    getKey: (url: string) => storageKeyOf(url),
     maxAge: PUBLISHED_DOCUMENT_TTL_S,
     swr: false,
     shouldBypassCache: () => !import.meta.dev,
@@ -165,7 +166,7 @@ export const annexFromPdf = defineCachedFunction(
   {
     name: 'annex-pdf-parse',
     base: DERIVED_CACHE,
-    getKey: (urls: readonly string[], articles: readonly DraftArticle[]) => `${urls.join('|')}|${articlesKey(articles)}`,
+    getKey: (urls: readonly string[], articles: readonly DraftArticle[]) => storageKeyOf(`${urls.join('|')}|${articlesKey(articles)}`),
     maxAge: DERIVED_ANALYSIS_TTL_S,
     swr: false,
   },

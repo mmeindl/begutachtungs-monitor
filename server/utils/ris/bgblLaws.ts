@@ -23,7 +23,8 @@
  */
 import type { BgblLaw, RepealedLaw } from '../../../shared/types'
 import { todayIso } from '../../../shared/utils/format'
-import { IMPLAUSIBLE_HITS, konsJson, konsQuery } from './konsLaw'
+import { IMPLAUSIBLE_HITS, konsJson, konsPageCount, konsQuery } from './konsLaw'
+import { readPages } from '../upstream/pages'
 import { asArray } from './risRecord'
 
 const BGBL = /\b(I{1,3})\s+Nr\.\s*(\d+\/\d{4})\b/
@@ -151,14 +152,26 @@ export function repealedOfRefs(refs: readonly any[], teil: string, nummer: strin
     .sort(byTitle)
 }
 
-/** Every page of the search, then both readings. Throws when RIS fails or ignores the filter. */
+/** Twenty pages of one BGBl number is a different query (`konsLaw.ts`, `NUMMER_PAGES`). */
+const MAX_PAGES = 20
+
+/**
+ * Every page of the search, then both readings. Throws when RIS fails or
+ * ignores the filter. The pages after the first come together
+ * (`upstream/pages.ts`); the walk is the loop's as it was.
+ */
 export async function lawsOfBgbl(number: string): Promise<BgblLawsResult> {
   const parts = bgblParts(number)
   if (!parts) return { laws: [], repealed: [] }
+  const pages = await readPages(
+    (page) => konsJson(konsQuery({ Kundmachungsorgannummer: parts.nummer, DokumenteProSeite: 'OneHundred', Seitennummer: String(page) })),
+    konsPageCount,
+    MAX_PAGES,
+  )
   const refs: any[] = []
   let hits = 0
-  for (let page = 1; page <= 20; page++) {
-    const body = await konsJson(konsQuery({ Kundmachungsorgannummer: parts.nummer, DokumenteProSeite: 'OneHundred', Seitennummer: String(page) }))
+  for (let page = 1; page <= MAX_PAGES; page++) {
+    const body = await pages.get(page)
     const results = body?.OgdSearchResult?.OgdDocumentResults
     hits = Number(results?.Hits?.['#text'] ?? 0)
     if (hits > IMPLAUSIBLE_HITS) throw new Error(`RIS ignorierte den Filter: ${hits} Treffer für ${parts.nummer}`)

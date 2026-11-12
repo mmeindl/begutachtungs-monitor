@@ -69,7 +69,21 @@ const OPENS_RE = /^(?:\d+\.\s?\d+\.\s|\d+\s+(?:Im|Dem|Nach|Vor)\s|[„"»]?\d+[a
  * which RIS sets as a heading and `segmentUnits` drops as payload, and the
  * § entries of a table of contents, which RIS sets as `inhaltsvz`.
  */
-const DIVISION_RE = /^[„"»]?(?:(?:\d+[a-z]?|[IVXL]+)\.\s*(?:Abschnitt|Unterabschnitt|Hauptstück|Teil)(?:\s.*)?|[IVXL]+[a-z]?\.\s+\p{Lu}\D*)$/iu
+const DIVISION_RE = /^[„"»]?(?:\d+[a-z]?|[IVXL]+)\.\s*(?:Abschnitt|Unterabschnitt|Hauptstück|Teil)(?:\s.*)?$/i
+/* A Roman numeral and a title on the same line („IVa. Umsetzungshinweis,
+   Verweisungen auf das Unionsrecht", „VIIa. ABSCHNITT") — case-sensitive
+   (12.11.2026): under the `i` the first pattern needs, „lit. a, …" and „lt.
+   Verteiler" read as a numeral „li"/„l", a letter and a title, and the reader
+   dropped them and every line after them up to the next opener — law text,
+   gone from the Länder comparison and the EU reader (ooe-2025-16101 § 12
+   Abs. 1). Nor is it a numeral the next word declines or counts — a
+   cross-reference wrapped onto its own line („I. Teiles dieses Hauptstückes
+   zuzulassen, …", „IV. Abschnitts, soweit …") or a row of a salary table
+   („I. Dienstklasse"), whose cells RIS reads as text (`risXml.ts`). Measured
+   over 1.232 cached Land PDFs: 16 change, every change law text restored,
+   no line dropped that was kept before. */
+const ROMAN_DIVISION_RE = /^[„"»]?[IVXL]+[a-z]?\.\s+(?!(?:Abschnitt|Unterabschnitt|Hauptstück|Teil)e?s\b|Ordnung\b|Dienstklasse\b)\p{Lu}\D*$/u
+const isDivision = (line: string) => DIVISION_RE.test(line) || ROMAN_DIVISION_RE.test(line)
 const TOC_ENTRY_RE = /^[„"»]?§{1,2}\s*\d+[a-z]*(?:\s+\S|[“"«]?$)/
 
 /** A new law's § designation alone on its line („§ 2"); its title follows. */
@@ -184,7 +198,7 @@ export function lawBlocksFromPdfPages(pages: readonly string[]): TextBlock[] | n
     // A paragraph that ends in a colon is complete: settle it before the
     // payload under it is weighed.
     if (para !== null && /:$/.test(para) && !ARTICLE_LINE_RE.test(line)) flush()
-    if (DIVISION_RE.test(line) && !INSTRUCTION_VERB_RE.test(line)) {
+    if (isDivision(line) && !INSTRUCTION_VERB_RE.test(line)) {
       inDivisionTitle = true
       drop(line)
       continue
@@ -225,7 +239,7 @@ export function lawBlocksFromPdfPages(pages: readonly string[]): TextBlock[] | n
       // („Landesgesetz über … / (Oö. Energieeffizienzgesetz - Oö. EEffG)")
       // up to its first §, division or clause.
       const titled = article.text !== article.text.replace(/^(Artikel\s+\S+).*$/, '$1')
-      const continues = titled && !OPENS_RE.test(line) && !DIVISION_RE.test(line) && !BARE_PARAGRAPH_RE.test(line) &&
+      const continues = titled && !OPENS_RE.test(line) && !isDivision(line) && !BARE_PARAGRAPH_RE.test(line) &&
         !/^Inhaltsverzeichnis$/i.test(line) &&
         !/^(?:Das|Die|Der|Dieses|Diese)\s/.test(line) && !line.endsWith(':')
       if ((!titled && ARTICLE_TITLE_RE.test(line) && !line.endsWith(':')) || continues) {

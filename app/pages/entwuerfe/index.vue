@@ -20,8 +20,10 @@ import {
   begutachtungGapReason,
   draftCountLabel,
   ohneArtAllows,
+  searchBundHalves,
   stationTabsFor,
 } from '~/utils/draftFilters'
+import { cutKeeping } from '~/utils/pagedList'
 import { matchesQuery } from '#shared/utils/textMatch'
 import { MAX_LIST_QUERY_CHARS } from '#shared/utils/queryParams'
 
@@ -307,14 +309,40 @@ const {
   risError,
   laenderData,
   laenderStatus,
+  states: halfStates,
+  pendingHalves,
   gateStatus,
   gateData,
   refreshing,
   retry,
   selectedGp,
   availableGps,
-  ministries,
+  ministries: ministriesFetched,
 } = halves
+
+/**
+ * The Bund halves under the search term, searched HERE since 12.11.2026
+ * (`searchBundHalves`): the endpoints are asked without `q`, so a term costs
+ * no request and the rows stand instead of fading while it is typed — the
+ * Länder rows, the open Vorlagen and the laws below were already searched on
+ * the page, now every row kind is. Same predicates as the endpoints
+ * (`shared/utils/searchHaystack.ts`), so a term finds the rows it found.
+ *
+ * A `?q=` link renders the same rows on the server: its render fetches the
+ * unsearched halves and filters in setup, the payload carries them whole and
+ * the browser hydrates into the same cut. The price: under a term the
+ * payload holds the whole period instead of the matches — exactly what the
+ * page ships without a term, so no page grows past its unsearched size.
+ */
+const searched = computed(() => searchBundHalves(meData.value, risData.value, qDebounced.value))
+/* While the RIS half is still on its way, a Ressort only it knows would
+ * stand as a blank select (12.11.2026): the chosen one stands as its code
+ * meanwhile — the period menu's rule (`gpOptions`). */
+const ministries = computed(() =>
+  ministry.value && !ministriesFetched.value.some((m) => m.code === ministry.value)
+    ? [...ministriesFetched.value, { code: ministry.value, name: '' }]
+    : ministriesFetched.value,
+)
 /* Before the first answer the menu is not there yet: the chosen period
  * stands alone meanwhile, or „GP …" where none is chosen and the server
  * has not said which is current — never a blank select. */
@@ -481,9 +509,12 @@ const unreadStageCount = computed(() => {
 })
 
 /* A chosen Land that could not be read — a failed fetch counts as every
- * chosen Land unreadable, never as none open. */
+ * chosen Land unreadable, never as none open. A half the server's render
+ * did not wait for (12.11.2026) is `success` with no answer: on its way,
+ * not unreadable. */
 const unreadableLaender = computed(() => {
   if (!landsApply.value || laenderStatus.value === 'pending' || laenderStatus.value === 'idle') return []
+  if (halfStates.value.laender === 'loading') return []
   const sources = laenderData.value?.sources
   return chosenLaender.value
     .map((land) => sources?.find((s) => s.land === land) ?? { land, state: 'unavailable' as const, listUrl: null })
@@ -625,7 +656,7 @@ const unreadableLandLaws = computed(() =>
 const rows = computed<DraftListRow[]>(() =>
   (ohneApplied.value
     ? draftRows([], [], openVorlagen.value, [], [...lawRows.value, ...landLawRows.value])
-    : draftRows(meData.value?.items ?? [], risData.value?.items ?? [], openVorlagen.value, landItems.value, [...lawRows.value, ...landLawRows.value]))
+    : draftRows(searched.value.me ?? [], searched.value.ris ?? [], openVorlagen.value, landItems.value, [...lawRows.value, ...landLawRows.value]))
     .sort((a, b) => rowComparators[sort.value](a, b, reversed.value)),
 )
 
@@ -651,20 +682,64 @@ const entries = computed(() => rows.value.map(viewOfRow))
  * s). The rows are cut in the render only: counts, the Ressort menu and the
  * full-text hits keep reading `entries` whole.
  *
- * Uncut under a search query, the rule of the Stellungnahmen lists:
- * whoever searches gets the whole result, and the full-text block
- * below may only say „stehen schon in der Liste oben" of rows that are on
- * the page. Not in the URL, like the panel's count: a link shares the
- * filter, not how far somebody scrolled.
+ * Cut under a search query too, since 12.11.2026. It stood uncut there,
+ * the rule of the Stellungnahmen lists — whoever searches gets the whole
+ * result — and so typing „S", „St", „Str" put hundreds of rows on the page
+ * per settled step. A query is a new first page like any other filter
+ * (`qDebounced`, beside `query`, which no longer carries it); the full-text block's „stehen schon in der Liste
+ * oben" is checked against every matching row, not the cut, so it holds for
+ * a row behind „Weitere" as well (`splitByListed`). Not in the URL, like the
+ * panel's count: a link shares the filter, not how far somebody scrolled.
  */
 const LIST_PAGE_SIZE = 50
-const listPaged = computed(() => !qDebounced.value)
 const {
   visible: visibleCount,
   shown: shownEntries,
   more: showMore,
   all: showAll,
-} = usePagedList(entries, LIST_PAGE_SIZE, [query, art, sort, reversed], listPaged)
+} = usePagedList(entries, LIST_PAGE_SIZE, [query, qDebounced, art, sort, reversed])
+
+/**
+ * A late half's rows sort in (12.11.2026) — once per page load, between
+ * the rows the reader may be looking at. Two things keep that from costing
+ * the reader their place, and nothing is animated:
+ *
+ *  - the cut keeps every row it showed (`cutKeeping`), so none of them
+ *    drops behind the pager; an opened „Alle" stays open;
+ *  - the row at the top of the viewport stays where it stood. Browsers with
+ *    scroll anchoring (`overflow-anchor: auto`, nowhere switched off here)
+ *    do this themselves, and then the measured shift below is 0; the
+ *    others are moved by it. Only once the reader is inside the list —
+ *    above it, rows coming in below move nothing they are reading.
+ *
+ * Only on an arrival: a filter that changes the rows starts a new first
+ * page (`usePagedList`) and is not held.
+ */
+function viewportAnchor(): { key: string; top: number } | null {
+  if (!import.meta.client) return null
+  const rows = document.querySelectorAll<HTMLElement>('[data-entry-key]')
+  if (!rows.length || rows[0]!.getBoundingClientRect().top >= 0) return null
+  for (const row of rows) {
+    const rect = row.getBoundingClientRect()
+    if (rect.bottom > 0) return { key: row.dataset.entryKey!, top: rect.top }
+  }
+  return null
+}
+
+watch(
+  [entries, () => pendingHalves.value.join()],
+  async ([next, nowPending], [before, wasPending]) => {
+    const arrived = wasPending.split(',').some((half) => half && !nowPending.split(',').includes(half))
+    if (!arrived || next === before) return
+    visibleCount.value = cutKeeping(before.map((e) => e.key), next.map((e) => e.key), visibleCount.value)
+    const anchor = viewportAnchor()
+    if (!anchor) return
+    await nextTick()
+    const row = document.querySelector<HTMLElement>(`[data-entry-key="${CSS.escape(anchor.key)}"]`)
+    const shift = row ? row.getBoundingClientRect().top - anchor.top : 0
+    if (Math.abs(shift) >= 1) window.scrollBy({ top: shift, behavior: 'instant' })
+  },
+)
 
 /**
  * … but in the history entry, since 22.10.2026: Back returns to the page as
@@ -707,9 +782,10 @@ const {
 
 /* Both are 0 for a half that was not fetched, so the sum is what stands in
  * the list — the search placeholder may name it (never the count line,
- * `draftCountLabel`). */
-const meTotal = computed(() => meData.value?.total ?? 0)
-const risTotal = computed(() => risData.value?.total ?? 0)
+ * `draftCountLabel`). Counted after the search (12.11.2026): the endpoints'
+ * `total` no longer knows the term. */
+const meTotal = computed(() => searched.value.me?.length ?? 0)
+const risTotal = computed(() => searched.value.ris?.length ?? 0)
 /* Drafts and laws apart, never one pooled number: the
    placeholder names both where both stand in the list (10.11.2026). */
 const visibleTotal = computed(() =>
@@ -719,7 +795,9 @@ const visibleTotal = computed(() =>
 )
 const visibleLaws = computed(() => lawRows.value.length + landLawRows.value.length)
 const searchPlaceholder = computed(() => {
-  if (!gateData.value) return 'Entwürfe durchsuchen …'
+  /* No count while a half is on its way (12.11.2026): the number would
+   * grow under the reader's cursor. */
+  if (!gateData.value || pendingHalves.value.length) return 'Entwürfe durchsuchen …'
   const parts = [
     ...(visibleTotal.value || !visibleLaws.value ? [countLabelDe(visibleTotal.value, 'Entwurf', 'Entwürfen')] : []),
     ...(visibleLaws.value ? [countLabelDe(visibleLaws.value, 'Gesetz', 'Gesetzen')] : []),
@@ -771,8 +849,10 @@ const chainUnlinkedPeriod = computed(() => meData.value?.chainCoverage === 'unli
  * Aufruf gar keine Periode genannt hat — sobald jemand oben eine auswählt,
  * ist die Antwort wieder periodenrein und dieser Satz verschwindet von
  * selbst. */
+/* Nach der Suche festgestellt (12.11.2026, `searchBundHalves`): die
+ * Endpunkte kennen den Suchbegriff nicht mehr. */
 const carriedOverFrom = computed(() =>
-  ohneApplied.value ? null : (meData.value?.carriedOverFrom ?? risData.value?.carriedOverFrom ?? null),
+  ohneApplied.value ? null : searched.value.carriedOverFrom,
 )
 
 /* The station map costs hundreds of fetches on a cold build and can fail
@@ -802,17 +882,23 @@ function countByKind(items: readonly { kind: RisConsultationKind }[]) {
   return counts
 }
 
-/* The rows by kind, summed over the sources (`draftCountLabel`). */
+/* The rows by kind, summed over the sources (`draftCountLabel`). A half
+ * still on its way is said as such (12.11.2026), never counted: a number
+ * that grows a moment later was false in the moment it stood. */
 const countLabel = computed(() =>
   ohneApplied.value
     ? draftCountLabel({ me: null, vorlagen: openVorlagen.value, ris: null, laterStationsOnly: false, art: art.value, laws: bund.value ? lawRows.value : undefined, landLaws: ohneLandsApply.value ? landLawRows.value : undefined })
     : draftCountLabel({
       me: wantsMe.value ? meTotal.value : null,
       vorlagen: openVorlagen.value,
-      ris: !wantsRis.value ? null : risError.value ? 'failed' : countByKind(risData.value?.items ?? []),
+      ris: !wantsRis.value
+        ? null
+        : risError.value ? 'failed' : pendingHalves.value.includes('ris') ? 'pending' : countByKind(searched.value.ris ?? []),
       laterStationsOnly: laterStationsOnly.value,
       art: art.value,
-      laender: landsApply.value ? countByKind(landItems.value) : null,
+      laender: !landsApply.value
+        ? null
+        : pendingHalves.value.includes('laender') ? { pending: applyingLaender.value } : countByKind(landItems.value),
       laws: bund.value && lawsData.value?.available ? lawRows.value : undefined,
       landLaws: landsApply.value && landLawsData.value ? landLawRows.value : undefined,
     }) || (landUnavailable.value ?? ''),
@@ -1187,9 +1273,12 @@ const statementsSortNote = computed(() => {
       <!-- The gate's two answers before there are rows, in the sheet's
            grammar: `status === pending && !data` as in `FetchGate`, so a
            refresh keeps the rows the reader is looking at. -->
-      <template v-if="!gateData" #state>
+      <!-- And while the rows that came are none but a half is still on its
+           way (12.11.2026): „Keine Entwürfe gefunden" would be a claim the
+           late half may falsify a second later. -->
+      <template v-if="!gateData || (!entries.length && pendingHalves.length)" #state>
         <LoadingState
-          v-if="gateStatus === 'pending' || gateStatus === 'idle'"
+          v-if="gateData || gateStatus === 'pending' || gateStatus === 'idle'"
           label="Entwürfe werden geladen …"
         />
         <ListBoxNotice
@@ -1239,7 +1328,7 @@ const statementsSortNote = computed(() => {
            panel (03.10.2026). -->
       <template #foot>
         <ListMore
-          v-if="listPaged && entries.length"
+          v-if="entries.length"
           :visible="visibleCount"
           :total="entries.length"
           :step="LIST_PAGE_SIZE"

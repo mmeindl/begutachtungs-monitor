@@ -4,7 +4,8 @@
  *
  * Bounded by construction — the ranking is five rows and only the closed
  * ones are resolved, so this costs at most five Gegenstand fetches plus
- * their RV leg, all through the 30-min leaf caches.
+ * their RV leg, all through the leaf caches (fresh for 30 minutes, served
+ * stale up to three hours while they refresh, `cache/ttl.ts`).
  *
  * WHAT IT NO LONGER DOES (18.09.2026): resolve a pool of the most recently
  * CLOSED consultations for a "Zuletzt abgeschlossen" section — median ME→RV

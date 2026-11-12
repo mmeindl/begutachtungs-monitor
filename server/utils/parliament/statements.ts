@@ -388,8 +388,10 @@ export const getStatementsForItem = defineCachedFunction(
  * the live list-142 fetch fails — an upstream outage must not delete the
  * flagship aggregation (88/ME, the showcase, degraded exactly this way in
  * practice). Deliberately NOT Nitro staleMaxAge: that is the stale-served-
- * as-fresh SWR behavior this codebase banned after being burned. Staleness
- * stays visible instead — `staleAsOf` travels to the UI.
+ * as-fresh SWR behavior, unbounded, this codebase banned after being
+ * burned — and the Stellungnahmen take no SWR at all, not even the bounded
+ * kind (`cache/ttl.ts`). Staleness stays visible instead — `staleAsOf`
+ * travels to the UI.
  *
  * Two layers over ONE record: this map is the hot path, `lastgood.ts`
  * persists it. The map alone died on every restart and every deploy, so a

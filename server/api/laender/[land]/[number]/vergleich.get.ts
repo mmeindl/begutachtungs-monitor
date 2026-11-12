@@ -5,28 +5,16 @@
  * PDF parse, which the page must not wait for. Without parameters: the
  * draft against the Kundmachung.
  */
-import type { LandCode, LandLawDiffResponse, LandTextStation } from '#shared/types'
-import { LAND_CODES } from '#shared/utils/laender'
+import type { LandLawDiffResponse, LandTextStation } from '#shared/types'
 import { cachedLandComparison, LAND_TEXT_PAIRS } from '../../../../utils/laender/landLawDiffService'
-import { isLandNumber, readLandDraft } from '../../../../utils/laender/sources'
+import { landDraftParams, withLandDraft } from '../../../../utils/laender/landRoute'
 
 export default defineEventHandler(async (event): Promise<LandLawDiffResponse> => {
-  const land = getRouterParam(event, 'land') ?? ''
-  const number = getRouterParam(event, 'number') ?? ''
-  if (!(LAND_CODES as readonly string[]).includes(land) || !isLandNumber(land as LandCode, number)) {
-    throw createError({ statusCode: 404, statusMessage: 'Entwurf nicht gefunden' })
-  }
+  const { land, number } = landDraftParams(event)
+  // The pair before the Land is read: an unknown pair costs no request.
   const query = getQuery(event)
   const pair = LAND_TEXT_PAIRS.find(([a, b]) => a === (query.von ?? 'entwurf') && b === (query.bis ?? 'lgbl'))
   if (!pair) throw createError({ statusCode: 400, statusMessage: 'Unbekanntes Textpaar' })
   const [from, to] = pair as [LandTextStation, LandTextStation]
-  try {
-    const detail = await readLandDraft(land as LandCode, number)
-    if (!detail) throw createError({ statusCode: 404, statusMessage: 'Entwurf nicht gefunden' })
-    return await cachedLandComparison(land as LandCode, number, from, to, detail)
-  } catch (error) {
-    if (isError(error)) throw error
-    console.warn(`[laender] Vergleich ${land}/${number}:`, error instanceof Error ? error.message : error)
-    throw createError({ statusCode: 503, statusMessage: 'Gerade nicht abrufbar' })
-  }
+  return withLandDraft(land, number, 'Vergleich', (detail) => cachedLandComparison(land, number, from, to, detail))
 })

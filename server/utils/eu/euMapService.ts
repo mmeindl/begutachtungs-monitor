@@ -29,8 +29,10 @@ import { todayIso } from '#shared/utils/format'
 import { gpHasEnded, gpWindow } from '#shared/utils/gp'
 import { LAND_CODES } from '#shared/utils/laender'
 import { DERIVED_CACHE } from '../cache/base'
-import { onlyComplete, type Gathered } from '../cache/gathered'
-import { withinBudget } from '../http/budget'
+import { keepIncompleteFor, type Gathered } from '../cache/gathered'
+import { rebuildMark, staleWithin } from '../cache/stale'
+import { DAY_SCALE_TTL_S, DAY_STALE_S } from '../cache/ttl'
+import { settleWithinBudget, withinBudget } from '../http/budget'
 import { getCurrentGp, getDraftsForGp, reconcileActive } from '../parliament/drafts'
 import { dedupeDraftList } from '../parliament/draftList'
 import { getStationMapForGp } from '../parliament/stationMap'
@@ -62,8 +64,23 @@ import { fingerprintOf } from '../cache/factStore'
 import { emptyReport, runAligned, runPopulation, type PopulationJob, type PopulationReport } from '../cache/population'
 import { bundLandPopulation, finishBundLandBuild, type BundLandBuildReport } from '../bund-land/bundLandMapService'
 
-/** As long as the station map: the stand a row shows comes from it. */
-const EU_MAP_TTL_S = 60 * 60 * 6
+/**
+ * A minute for a map assembled without the station map or the outcomes
+ * because one of them FAILED — the station map's rule (`INCOMPLETE_MAP_TTL_MS`
+ * there) at the scale of this join. Not zero: until 12.11.2026 such a map was
+ * never kept, so while a source kept failing every list request assembled it
+ * again and read the 1 MB store each time. Not ten minutes either: the
+ * assembly is cheap next to a station map, and the rows say „stand unknown"
+ * meanwhile.
+ */
+const INCOMPLETE_MAP_TTL_MS = 60 * 1000
+/**
+ * Five seconds for one assembled while they were only still BUILDING — a
+ * cold start (`settleWithinBudget`): short enough that the first list after
+ * the build finished has its stands, long enough that the readers of one
+ * moment share one assembly (`skippedLawsService.ts`, `PENDING_TTL_MS`).
+ */
+const PENDING_MAP_TTL_MS = 5_000
 /** The lists' brake on the station map and the outcomes inside an assembly — `/api/drafts`'s. */
 const STAND_BUDGET_MS = 2_500
 /** The concurrency the corpus runs held: 4 against RIS, 2 Länder drafts (their PDFs paced by `SitePacer`). */
@@ -166,8 +183,8 @@ function landsMissing(items: readonly LandConsultation[], store: EuStoreFile, un
 /** One build per period at a time: a second call waits for the first. */
 const building = new Map<string, Promise<EuMapBuildReport>>()
 
-/** Asks the derived cache to assemble afresh on its next read — after a build. */
-const invalidated = new Set<string>()
+/** Refuses every map assembled before a build replaced the store, so the build's own read assembles afresh (`rebuildMark`). */
+const storeReplaced = rebuildMark()
 
 /** The next assembly of these periods is the build's: patient with a Kundmachung's day (`kundmachungDayPlan`). */
 const forBuild = new Set<string>()
@@ -248,7 +265,7 @@ async function runBuild(gp: string): Promise<EuMapBuildReport> {
     // Warm what the stand rests on, in full — nobody waits here — and let
     // the next read of the map assemble against it.
     await Promise.allSettled([getStationMapForGp(gp), getBgblOutcomesForGp(gp)])
-    invalidated.add(gp)
+    storeReplaced.set()
     forBuild.add(gp)
     const map = await getEuMap(gp)
     // The Bund-zu-Land map after the EU's: its acts' heads read the station map warmed above.
@@ -277,9 +294,10 @@ async function runBuild(gp: string): Promise<EuMapBuildReport> {
 }
 
 /**
- * The stored facts joined with today's lists. Incomplete — and so not
- * cached — where the station map or the outcomes missed their budget: the
- * rows then carry `stand: null`, and the next read tries again. Not where
+ * The stored facts joined with today's lists. Incomplete where the station
+ * map or the outcomes missed their budget: the rows then carry `stand: null`,
+ * and the map is kept a minute where one failed and seconds where it was
+ * still building (`INCOMPLETE_MAP_TTL_MS`, `PENDING_MAP_TTL_MS`). Not where
  * a Kundmachung's day or a Vorlage's Kundmachung went unanswered: that is a
  * soft gap (below).
  */
@@ -289,14 +307,16 @@ async function assembleFromStore(gp: string): Promise<Gathered<EuMap | null>> {
   const window = gpWindow(gp)
   if (!store?.builtAt || !window) return { value: null, complete: true }
 
-  const [drafts, risOnly, laender, chains, outcomes, currentGp] = await Promise.all([
+  const [drafts, risOnly, laender, chainsRead, outcomesRead, currentGp] = await Promise.all([
     getDraftsForGp(gp),
     getRisOnlyForGp(gp),
     readLaenderInWindow(window, 'all'),
-    withinBudget(getStationMapForGp(gp), STAND_BUDGET_MS),
-    withinBudget(getBgblOutcomesForGp(gp), STAND_BUDGET_MS),
+    settleWithinBudget(getStationMapForGp(gp), STAND_BUDGET_MS),
+    settleWithinBudget(getBgblOutcomesForGp(gp), STAND_BUDGET_MS),
     getCurrentGp(),
   ])
+  const chains = chainsRead.state === 'answered' ? chainsRead.value : null
+  const outcomes = outcomesRead.state === 'answered' ? outcomesRead.value : null
   // A readable map is not yet a period one may speak about: where
   // it may not, no Ministerialentwurf gets a stand.
   const speakable = chains && mayClaimOutcome(chainCoverageOf(Object.values(chains), gpHasEnded(gp, currentGp)))
@@ -336,19 +356,27 @@ async function assembleFromStore(gp: string): Promise<Gathered<EuMap | null>> {
   // A day — or a Vorlage's Kundmachung — nobody answered is not a failure
   // of the map: the row says „Beschluss" with its date, which is true, and
   // the next build asks again.
-  // Calling the map incomplete here would keep it out of the cache and
-  // re-assemble it, with the wait, on every page view while RIS is slow.
-  return { value: map, complete: chains !== null && outcomes !== null }
+  // Calling the map incomplete here would hold it a minute only and
+  // re-assemble it, with the wait, every minute while RIS is slow.
+  const complete = chains !== null && outcomes !== null
+  // Only still building, nothing failed: kept seconds, not the failure's minute.
+  const pending = !complete && chainsRead.state !== 'failed' && outcomesRead.state !== 'failed'
+  return { value: map, complete, ...(pending ? { pending: true } : {}) }
 }
+
+const keepIncomplete = keepIncompleteFor(INCOMPLETE_MAP_TTL_MS, PENDING_MAP_TTL_MS)
 
 const cachedEuMap = defineCachedFunction(assembleFromStore, {
   name: 'eu-karte',
   base: DERIVED_CACHE,
   getKey: (gp: string) => gp,
-  maxAge: EU_MAP_TTL_S,
-  swr: false,
-  validate: onlyComplete,
-  shouldInvalidateCache: (gp: string) => invalidated.delete(gp),
+  // Complete: served up to a day old while it reassembles. Without the
+  // stands: a minute, or seconds while they build, never stale past that.
+  // Assembled before the last build replaced the store: refused, so the
+  // build's read and the next list's assemble against the new store.
+  // As long as the station map — the stand a row shows comes from it.
+  ...staleWithin(DAY_SCALE_TTL_S, DAY_STALE_S, (entry: Parameters<typeof keepIncomplete>[0]) =>
+    storeReplaced.accepts(entry) && keepIncomplete(entry)),
 })
 
 /** The period's EU map, or null where no build has finished yet. */

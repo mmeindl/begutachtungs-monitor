@@ -9,8 +9,7 @@
 // Pure module, relative imports only (`ris/risRecord.ts`): what a query shows is
 // a rule vitest has to be able to execute without Nuxt's aliases.
 import type { DraftStation, DraftStatus, DraftSummary } from '../../../shared/types'
-import { aliasHaystack } from '../../../shared/utils/draftAliases'
-import { matchesQuery } from '../../../shared/utils/textMatch'
+import { draftMatches } from '../../../shared/utils/searchHaystack'
 import { passesEuFilter, type EuFilter } from '../eu/euFilter'
 
 export interface DraftListFilter {
@@ -133,34 +132,19 @@ export function filterDraftList<T extends DraftSummary>(
     // row of the period before, which this map does not cover) is unknown
     // and does not pass: the filter shows what is known to implement.
     if (filter.eu && filter.euUsable && !passesEuFilter(item.eu, filter.eu)) return false
-    if (q) {
-      // Aliases are part of the haystack, not of the title: someone who only
-      // knows "Bundestrojaner" has to find 8/ME (`shared/utils/draftAliases.ts`).
-      //
-      // THE RESSORT NAME IS NO LONGER IN IT, since 21.09.2026, and the rule
-      // behind that is: **what
-      // is searched is what the row shows.** The name carries the whole
-      // portfolio („… Klima- und Umweltschutz …") but appears nowhere on
-      // the page — it matched invisibly and pulled 36 rows for „klima", 2
-      // of which carried the word in the title. The code stays, because that
-      // does stand in the row, and the Ressort has a filter of its own. The
-      // title is untouched for the same reason: if it names a Ressort, the
-      // reader sees it.
-      //
-      // SEVERAL WORDS ARE JOINED BY AND, since 22.09.2026: „klima gesetz"
-      // used to search for those eleven characters in one piece and found
-      // nothing, while the full-text block under the same field showed two
-      // drafts (`shared/utils/textMatch.ts`).
-      //
-      // AND READ FOLDED, since the same day: „oekostrom" finds the
-      // Ökostromförderung, as the Stellungnahmen list always did. Folded OR
-      // raw — folded alone would have cost matches inside a word.
-      //
-      // AND THE CO-RESSORT IS IN IT, since 23.09.2026, by the same rule: the
-      // row now prints „BMFFIM · BMJ", so „bmj" has to find that row.
-      const haystack = `${item.title} ${item.citation} ${ministryCodes(item).join(' ')} ${aliasHaystack(item.gp, item.inr)}`
-      if (!matchesQuery(haystack, q)) return false
-    }
+    // What the term is matched against — title, citation, every Ressort
+    // code, the debate names, never the Ressort name — and how: in
+    // `shared/utils/searchHaystack.ts` since 12.11.2026, because `/entwuerfe`
+    // filters the same rows in the browser and must find what this finds.
+    // The page no longer sends `q`; feeds and scripts may.
+    //
+    // SEVERAL WORDS ARE JOINED BY AND, since 22.09.2026: „klima gesetz"
+    // used to search for those eleven characters in one piece and found
+    // nothing, while the full-text block under the same field showed two
+    // drafts (`shared/utils/textMatch.ts`). AND READ FOLDED, since the same
+    // day: „oekostrom" finds the Ökostromförderung. Folded OR raw — folded
+    // alone would have cost matches inside a word.
+    if (q && !draftMatches(item, q)) return false
     return true
   })
 }

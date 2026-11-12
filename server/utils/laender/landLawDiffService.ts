@@ -28,11 +28,13 @@ import type { LandCode, LandDraftDetail, LandLawDiffResponse, LandTextStation } 
 import { landDraftPath } from '#shared/utils/laender'
 import { DERIVED_CACHE } from '../cache/base'
 import { onlyComplete, type Gathered } from '../cache/gathered'
+import { DERIVED_ANALYSIS_TTL_S } from '../cache/ttl'
 import { summarizeDiff } from '../diff/lawDiff'
 import { diffLandDraft, packageChanges } from './landLawDiff'
 import { compareTgu } from './landTguService'
 import { draftsSharingKundmachung } from './sources'
 import { NOT_A_DRAFT } from './texts/read'
+import { cachedPdfPages } from './texts/pdfPagesService'
 import { textSources } from './texts/stations'
 
 /** Every pair a Land's page can ask for; which a draft has, `comparisonsOf` says. */
@@ -69,8 +71,10 @@ export async function compareLandTexts(
   if (!detail.comparisons.some(([a, b]) => a === from && b === to)) {
     return whole(unavailable(from, to, 'Für diesen Entwurf gibt es diese beiden Texte nicht.'))
   }
-  if (from === 'geltend') return compareTgu(land, detail)
-  const sources = textSources(land, detail)
+  // The PDFs through the cached read: the Erläuterungen and the
+  // Begründungsvergleich read the same documents (`pdfPagesService.ts`).
+  if (from === 'geltend') return compareTgu(land, detail, cachedPdfPages)
+  const sources = textSources(land, detail, cachedPdfPages)
   const a = sources[from]
   const b = sources[to]
   if (!a || !b) return whole(unavailable(from, to, 'Das Land hat einen der beiden Texte nicht veröffentlicht.'))
@@ -128,7 +132,7 @@ const readLandComparison = defineCachedFunction(
     name: 'land-law-diff',
     base: DERIVED_CACHE,
     getKey: (land: LandCode, number: string, from: LandTextStation, to: LandTextStation) => `${land}-${number}-${from}-${to}`,
-    maxAge: 60 * 60 * 24,
+    maxAge: DERIVED_ANALYSIS_TTL_S,
     swr: false,
     // An answer with a § unchecked for want of RIS, or without the drafts
     // sharing its Kundmachung, goes out once and is not kept. An entry of

@@ -125,8 +125,11 @@ export interface EntryView {
    * is not a state the data has.
    */
   coMinistries: { code: string; name: string }[]
-  /** Zone 2, last token — the debate name, quoted, ink. */
-  alias: string | null
+  /**
+   * Zone 2, last tokens — the debate names, each quoted, ink, in the order
+   * of `draftAliases.ts`. Empty on every row without one.
+   */
+  aliases: readonly string[]
   /**
    * A procedural fact that belongs to the identity, e.g. „ohne Begutachtung"
    * — or, on an open Entwurf, „Kurze Frist: 2 Wochen" / „Volle Frist: 6
@@ -427,7 +430,10 @@ export function viewOfDraft(
     citation: draft.citation,
     ministry: { code: draft.ministryCode, name: draft.ministryName },
     coMinistries: draft.coMinistries,
-    alias: aliasesFor(draft.gp, draft.inr)[0] ?? null,
+    /* All of them, not the first (12.11.2026): the search reads every alias
+     * (`draftHaystack`), and a row must show what found it — „Staatstrojaner"
+     * found 8/ME while the row printed only „Bundestrojaner". */
+    aliases: aliasesFor(draft.gp, draft.inr),
     /* The Antrag route is named in zone 2, because zone 4 then reads like
      * the Vorlage route („Kundgemacht") and the station is OUR inference —
      * matched by wording, not read off a pointer (`antragPath.ts`). A
@@ -481,7 +487,7 @@ export function viewOfRis(c: RisConsultation): EntryView {
     ministry: c.ministryCode ? { code: c.ministryCode, name: c.ministryName ?? c.ministryCode } : null,
     // One record, one Stelle: RIS has no joint Begutachtung.
     coMinistries: [],
-    alias: null,
+    aliases: [],
     note: openFristNote(c.startedAt, c.deadline, c.active),
     eu: euLeadOf(c.eu),
     // Its two events: the Begutachtung, and — the one later station such a
@@ -557,7 +563,7 @@ export function viewOfVorlage(v: OpenVorlage): EntryView {
     citation: v.citation,
     ministry: null,
     coMinistries: [],
-    alias: null,
+    aliases: [],
     note: c.kind === 'none' ? 'ohne Begutachtung' : c.kind === 'committee' ? 'Ausschussbegutachtung' : null,
     // A Vorlage carries no EU fact in the list; its draft's page has one.
     eu: null,
@@ -589,7 +595,7 @@ export function viewOfLand(c: LandConsultation): EntryView {
     citation: null,
     ministry: { code: name, name: landPublisherDe(c) },
     coMinistries: [],
-    alias: null,
+    aliases: [],
     // No Frist class: „kurz" and „voll" are measured against the Bund's
     // Regelfall, which binds no Land.
     note: null,
@@ -649,7 +655,7 @@ export function viewOfLaw(law: LawWithoutBegutachtung): EntryView {
     citation: law.item.citation,
     ministry: null,
     coMinistries: [],
-    alias: null,
+    aliases: [],
     // The row's class (10.11.2026): never both notes on one row.
     note: law.consultation === 'committee' ? 'Ausschussbegutachtung' : 'ohne Begutachtung',
     eu: null,
@@ -683,7 +689,7 @@ export function viewOfLandLaw(law: LandLaw): EntryView {
     citation: null,
     ministry: { code: name, name: `Land ${name}` },
     coMinistries: [],
-    alias: null,
+    aliases: [],
     note: law.begutachtung.kind === 'none' ? 'ohne Begutachtung' : law.route?.kind === 'antrag' ? 'Initiativantrag' : null,
     eu: null,
     newLabel: stationNewLabel('bgbl', law.date),
@@ -698,4 +704,23 @@ export function viewOfRow(row: DraftListRow): EntryView {
   if (row.kind === 'land') return viewOfLand(row.item)
   if (row.kind === 'law') return isLandLaw(row.law) ? viewOfLandLaw(row.law) : viewOfLaw(row.law)
   return viewOfVorlage(row.vorlage)
+}
+
+/**
+ * Full-text hits split by whether the list already carries their row — by
+ * the same key the row has, so the two halves cannot drift apart
+ * (`useFullTextSearch`).
+ *
+ * `listed` is EVERY row matching the filters, never the cut on the page
+ * (12.11.2026, since the list is cut under a query too): a hit whose row
+ * waits behind „Weitere" is in the list, with its Fundstelle on its row,
+ * and a second row for it below would read as a duplicate.
+ */
+export function splitByListed<T extends { view: { key: string } }>(
+  hits: readonly T[],
+  listed: readonly { key: string }[],
+): { extra: T[]; inList: number } {
+  const keys = new Set(listed.map((e) => e.key))
+  const extra = hits.filter((h) => !keys.has(h.view.key))
+  return { extra, inList: hits.length - extra.length }
 }

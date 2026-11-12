@@ -26,7 +26,9 @@ import { todayIso } from '#shared/utils/format'
 import { type UpstreamPolicy, UpstreamHttpError, upstreamText } from '../upstream/fetch'
 import { mapWithConcurrency } from '../pool'
 import { DERIVED_CACHE } from '../cache/base'
-import { UPSTREAM_LIST_TTL_S } from '../cache/ttl'
+import { DAY_SCALE_TTL_S, DAY_STALE_S, DERIVED_ANALYSIS_TTL_S, LIST_STALE_S, SETTLED_STALE_S, SETTLED_TTL_S, UPSTREAM_LIST_TTL_S } from '../cache/ttl'
+import { storageKeyOf } from '../cache/key'
+import { staleWithin } from '../cache/stale'
 import { withinBudget } from '../http/budget'
 import {
   SALZBURG_FILING_EMAIL,
@@ -106,51 +108,67 @@ const LAND_POLICY: UpstreamPolicy = {
   upstreamHostsOnly: true,
 }
 
-/**
- * The cache key for a URL. Not the URL itself: unstorage cuts a key at its
- * first „?" (`normalizeKey`), and Oberösterreich's Landtag pages differ only
- * in `?jahr=…&nummer=…` — every one of them was served the first one's
- * content (22.10.2026). Encoded, the query is part of the key.
+/*
+ * Every key below is a URL, and a URL is never a key as it stands: unstorage
+ * cuts a key at its first „?" — Oberösterreich's Landtag pages differ only in
+ * `?jahr=…&nummer=…`, and every one of them was served the first one's
+ * content (22.10.2026). `storageKeyOf` (`cache/key.ts`) encodes it.
  */
-const urlKey = (url: string) => encodeURIComponent(url)
 
-/** One list page, or one draft's page, as the Land served it (UTF-8). */
+/**
+ * One list page, or a draft's page that names no Stellungnahmen, as the Land
+ * served it (UTF-8). Served up to three hours old while it refreshes
+ * (`LIST_STALE_S`).
+ */
 export const fetchLandPage = defineCachedFunction(
   (url: string): Promise<string> => upstreamText(url, LAND_POLICY),
-  { name: 'land-list-page', getKey: urlKey, maxAge: UPSTREAM_LIST_TTL_S, swr: false },
+  { name: 'land-list-page', getKey: storageKeyOf, ...staleWithin(UPSTREAM_LIST_TTL_S, LIST_STALE_S) },
+)
+
+/**
+ * Every page a Land's Stellungnahmen are read from — their own page, or the
+ * draft's page that lists them — as the Land served it. `swr: false`, the
+ * rule list 142 follows for the Bund: a stale list of Stellungnahmen is a
+ * claim the page makes about now (`cache/ttl.ts`, stale limits). It also
+ * keeps the order the Landtag pages rely on: a draft's own page is never
+ * older than the list's copy of it (`fetchLandRecord`).
+ */
+const fetchLandStatementsPage = defineCachedFunction(
+  (url: string): Promise<string> => upstreamText(url, LAND_POLICY),
+  { name: 'land-statements-page', getKey: storageKeyOf, maxAge: UPSTREAM_LIST_TTL_S, swr: false },
 )
 
 /**
  * A Land's whole register (Salzburg: every draft since 2004, 1,7 MB and
  * 12,7 s for the Verordnungen on 22.10.2026).
  *
- * THE ONE `swr: true` in this code base, on purpose. `ttl.ts` explains why
- * every other cache refuses it: an expired entry keeps serving the old
- * value. Here that is the right answer — a register a few hours old is
- * still correct for every draft it holds, and a draft too new for it comes
- * from the current list, which is fresh. Without SWR the first request
- * after expiry would wait thirteen seconds.
+ * Served stale while it refreshes — the first cache here to be, on
+ * purpose: a register a few hours old is still correct for every draft it
+ * holds, and a draft too new for it comes from the current list. Without
+ * SWR the first request after expiry would wait thirteen seconds. Bounded
+ * since 12.11.2026 (`staleWithin`, a day): Nitro's plain SWR served it at
+ * any age, the failure `ttl.ts` describes.
  */
-const REGISTER_TTL_S = 60 * 60 * 6
 const REGISTER_POLICY: UpstreamPolicy = { ...LAND_POLICY, timeoutMs: 45_000, maxBytes: 16 * 1024 * 1024 }
 export const fetchLandRegister = defineCachedFunction(
   (url: string): Promise<string> => upstreamText(url, REGISTER_POLICY),
-  { name: 'land-register-page', getKey: urlKey, maxAge: REGISTER_TTL_S, swr: true },
+  { name: 'land-register-page', getKey: storageKeyOf, ...staleWithin(DAY_SCALE_TTL_S, DAY_STALE_S) },
 )
 
 /**
  * One draft's Landtag page, for the LIST only (Oberösterreich, 22.10.2026):
  * what station each of the Land's 91 drafts reached. Held like the register
- * — two hours, served stale while it refreshes — because the list reads all
- * of them at once, and with the page cache's 30 minutes and no SWR every
- * period list after half an hour waited five seconds for 91 pages again.
- * The draft's own page reads the same document fresh (`fetchLandPage`), so
- * the list can trail the page by those two hours and never the other way.
+ * — two hours, then served stale up to a day while it refreshes — because
+ * the list reads all of them at once, and with the page cache's 30 minutes
+ * and no SWR every period list after half an hour waited five seconds for 91
+ * pages again. The draft's own page reads the same document fresh
+ * (`fetchLandStatementsPage`), so the list can trail the page by up to that
+ * day and never the other way.
  */
 const RECORD_TTL_S = 60 * 60 * 2
 export const fetchLandRecord = defineCachedFunction(
   (url: string): Promise<string> => upstreamText(url, LAND_POLICY),
-  { name: 'land-record-page', getKey: urlKey, maxAge: RECORD_TTL_S, swr: true },
+  { name: 'land-record-page', getKey: storageKeyOf, ...staleWithin(RECORD_TTL_S, DAY_STALE_S) },
 )
 
 /** How long a LIST waits for what only garnishes it: start dates. */
@@ -282,7 +300,7 @@ const salzburg: LandReader = {
       return null
     }
     const statementsUrl = salzburgStatementsUrl(draft.id.slice('sbg-'.length))
-    const statements: LandStatement[] | null = await fetchLandPage(statementsUrl)
+    const statements: LandStatement[] | null = await fetchLandStatementsPage(statementsUrl)
       .then((html) => parseSalzburgStatements(html, statementsUrl))
       .catch(() => null)
     return {
@@ -324,7 +342,7 @@ const wien: LandReader = {
       }
       return null
     }
-    const statements: LandStatement[] | null = await fetchLandPage(WIEN_STATEMENTS)
+    const statements: LandStatement[] | null = await fetchLandStatementsPage(WIEN_STATEMENTS)
       .then((html) => parseWienStatements(html, number))
       .catch(() => null)
     return {
@@ -427,7 +445,7 @@ const oberoesterreich: LandReader = {
      * the current list or, once closed, on the archive. A page whose Frist
      * neither knows is still the draft — it then shows without one. */
     const [detail, listed] = await Promise.all([
-      fetchLandPage(url).then(parseOoeDetail),
+      fetchLandStatementsPage(url).then(parseOoeDetail),
       Promise.all([
         fetchLandPage(OOE_GESETZE).then((h) => parseOoeGesetze(h, OOE_GESETZE_HEADING)).catch(() => []),
         fetchLandPage(OOE_GESETZE_ARCHIV).then((h) => parseOoeGesetze(h, OOE_ARCHIV_HEADING)).catch(() => []),
@@ -549,7 +567,7 @@ const KTN_NO_CHAIN: ReturnType<typeof ktnChainOf> = { procedure: [], stage: null
 /** The Landtag president's letter, for the day its committee decided the Begutachtung (`ktnLandtagLetter`). A day, as the Verordnungen' letters. */
 const ktnLandtagLetterOf = defineCachedFunction(
   async (url: string) => ktnLandtagLetter((await pdfPages(url)).join('\n')),
-  { name: 'ktn-landtag-letter', base: DERIVED_CACHE, getKey: urlKey, maxAge: 60 * 60 * 24, swr: true },
+  { name: 'ktn-landtag-letter', base: DERIVED_CACHE, getKey: storageKeyOf, ...staleWithin(DERIVED_ANALYSIS_TTL_S, SETTLED_STALE_S) },
 )
 
 /**
@@ -559,7 +577,7 @@ const ktnLandtagLetterOf = defineCachedFunction(
  */
 const ktnVoLetterOf = defineCachedFunction(
   async (url: string) => ktnVoLetter((await pdfPages(url)).join('\n')),
-  { name: 'ktn-vo-letter', base: DERIVED_CACHE, getKey: urlKey, maxAge: 60 * 60 * 24, swr: true },
+  { name: 'ktn-vo-letter', base: DERIVED_CACHE, getKey: storageKeyOf, ...staleWithin(DERIVED_ANALYSIS_TTL_S, SETTLED_STALE_S) },
 )
 
 /** Every Verordnung draft on the Land's tiles, with the Frist its page or its letter sets (`kaernten.ts`, „Verordnungen"). */
@@ -631,7 +649,7 @@ const kaernten: LandReader = {
     const { entry, draft, chain } = found
     // The running list publishes no Stellungnahmen; the archive links their page.
     const statements: LandStatement[] | null = entry.statementsUrl
-      ? await fetchLandPage(entry.statementsUrl).then(parseKtnStatements).catch(() => null)
+      ? await fetchLandStatementsPage(entry.statementsUrl).then(parseKtnStatements).catch(() => null)
       : []
     return {
       draft: withLandActiveOn([{ ...draft, documents: [...draft.documents, ...chain.documents] }])[0]!,
@@ -661,11 +679,17 @@ const TIROL_FILING_FALLBACK = 'verfassungsdienst@tirol.gv.at'
  * short read would make drafts disappear without a word.
  */
 const TIROL_VO_MAX_PAGES = 20
-async function tirolVerordnungen(): Promise<TirolVoDraft[]> {
-  const first = parseTirolVoSearch(JSON.parse(await fetchLandRecord(tirolVoSearchUrl(0))))
+/**
+ * Every Verordnung in Tirol's Informationsregister. The list reads it as it
+ * reads a Landtag page (`fetchLandRecord`, served stale while it refreshes);
+ * a draft's page reads it as the page of its Stellungnahmen, which it is
+ * (`fetchLandStatementsPage`).
+ */
+async function tirolVerordnungen(read: (url: string) => Promise<string> = fetchLandRecord): Promise<TirolVoDraft[]> {
+  const first = parseTirolVoSearch(JSON.parse(await read(tirolVoSearchUrl(0))))
   const pages = Math.min(Math.ceil(first.count / 50), TIROL_VO_MAX_PAGES)
   const rest = await Promise.all(Array.from({ length: Math.max(0, pages - 1) }, async (_, i) =>
-    parseTirolVoSearch(JSON.parse(await fetchLandRecord(tirolVoSearchUrl(i + 1)))).results))
+    parseTirolVoSearch(JSON.parse(await read(tirolVoSearchUrl(i + 1)))).results))
   const all = [...first.results, ...rest.flat()]
   if (all.length < first.count) throw new Error(`Tirol: Informationsregister ${all.length} von ${first.count} gelesen`)
   return all.map(tirolVoOf).filter((v): v is TirolVoDraft => v !== null)
@@ -692,7 +716,7 @@ const tirol: LandReader = {
   },
   detail: async (number) => {
     if (TIROL_VO_NUMBER_RE.test(number)) {
-      const found = (await tirolVerordnungen()).find((v) => v.draft.id === `t-${number}`)
+      const found = (await tirolVerordnungen(fetchLandStatementsPage)).find((v) => v.draft.id === `t-${number}`)
       if (!found) return null
       return {
         draft: withLandActiveOn([found.draft])[0]!,
@@ -711,7 +735,7 @@ const tirol: LandReader = {
     if (!m) return null
     const url = tirolRecordUrl(m[1]!, m[2]!)
     const [record, listHtml] = await Promise.all([
-      fetchLandPage(url).then((html) => parseTirolRecord(html, url)),
+      fetchLandStatementsPage(url).then((html) => parseTirolRecord(html, url)),
       fetchLandPage(TIROL_LIST).catch(() => null),
     ])
     const listed = listHtml ? parseTirolList(listHtml).find((d) => d.id === `t-${number}`) : undefined
@@ -773,8 +797,12 @@ async function readBgldPages(url: string): Promise<string[]> {
   throw new LandSourceError('bgld', `mehr als ${BGLD_MAX_PAGES} Seiten: ${url}`)
 }
 
-/** The running list and this year's archive, as the Land served them. */
-const fetchBgldPages = defineCachedFunction(readBgldPages, { name: 'land-bgld-pages', getKey: urlKey, maxAge: UPSTREAM_LIST_TTL_S, swr: false })
+/**
+ * The running list and this year's archive, as the Land served them.
+ * `swr: false`: the archive lists each closed draft's Stellungnahmen, and
+ * this year's drafts are still collecting them (`fetchLandStatementsPage`).
+ */
+const fetchBgldPages = defineCachedFunction(readBgldPages, { name: 'land-bgld-pages', getKey: storageKeyOf, maxAge: UPSTREAM_LIST_TTL_S, swr: false })
 
 /**
  * A past year of the archive, parsed — held a week, in the derived layer:
@@ -783,13 +811,12 @@ const fetchBgldPages = defineCachedFunction(readBgldPages, { name: 'land-bgld-pa
  * trade Salzburg's register makes, `registerDrafts`). The current year is
  * read fresh, as pages (`fetchBgldPages`).
  */
-const BGLD_PAST_TTL_S = 60 * 60 * 24 * 7
 const bgldPastYear = defineCachedFunction(
   async (year: number, kind: LandDraftKind): Promise<BgldEntry[]> => {
     const url = bgldArchiveUrl(year, kind)
     return (await readBgldPages(url)).flatMap((html) => parseBgldPage(html, url, kind))
   },
-  { name: 'land-bgld-past-year', base: DERIVED_CACHE, getKey: (year: number, kind: LandDraftKind) => `${year}-${kind}`, maxAge: BGLD_PAST_TTL_S, swr: true },
+  { name: 'land-bgld-past-year', base: DERIVED_CACHE, getKey: (year: number, kind: LandDraftKind) => `${year}-${kind}`, ...staleWithin(SETTLED_TTL_S, SETTLED_STALE_S) },
 )
 
 async function bgldYear(year: number, kind: LandDraftKind): Promise<BgldEntry[]> {
@@ -962,18 +989,21 @@ async function readStmkRows(period: StmkPeriod): Promise<string> {
 }
 
 /** The current period's rows, as PALLAST served them. */
-const fetchStmkRows = defineCachedFunction(() => readStmkRows(STMK_PERIODS[0]!), { name: 'land-stmk-rows', getKey: () => 'current', maxAge: STMK_TTL_S, swr: true })
+const fetchStmkRows = defineCachedFunction(() => readStmkRows(STMK_PERIODS[0]!), { name: 'land-stmk-rows', getKey: () => 'current', ...staleWithin(STMK_TTL_S, DAY_STALE_S) })
 
-/** A page as a reader's view of it is served: the list's newest ten (`current`), a draft's own page (`detail`). */
-const fetchStmkPage = defineCachedFunction(readStmkPage, { name: 'land-stmk-page', getKey: urlKey, maxAge: UPSTREAM_LIST_TTL_S, swr: false })
+/**
+ * A page as a reader's view of it is served: the list's newest ten
+ * (`current`), a draft's own page (`detail`). `swr: false`: the draft's page
+ * lists its Stellungnahmen (`fetchLandStatementsPage`).
+ */
+const fetchStmkPage = defineCachedFunction(readStmkPage, { name: 'land-stmk-page', getKey: storageKeyOf, maxAge: UPSTREAM_LIST_TTL_S, swr: false })
 
 /** One draft's page as the lists read it — in the batch's session (`stmkDrafts`), held for hours. */
 const fetchStmkDraftPage = defineCachedFunction(readStmkPage, {
   name: 'land-stmk-draft-page',
   // The session is how the page is fetched, not which page it is.
-  getKey: (url: string, _session?: LandSession) => urlKey(url),
-  maxAge: STMK_TTL_S,
-  swr: true,
+  getKey: (url: string, _session?: LandSession) => storageKeyOf(url),
+  ...staleWithin(STMK_TTL_S, DAY_STALE_S),
 })
 
 async function stmkDrafts(refs: readonly string[]): Promise<StmkDraft[]> {
@@ -992,7 +1022,6 @@ async function stmkDrafts(refs: readonly string[]): Promise<StmkDraft[]> {
  * a cold read is some 170 pages for XVIII. and XVII. Its pages are not held;
  * the drafts are.
  */
-const STMK_PAST_TTL_S = 60 * 60 * 24 * 7
 const stmkPastPeriod = defineCachedFunction(
   async (key: string): Promise<LandConsultation[]> => {
     const period = STMK_PERIODS.find((p) => p.key === key)!
@@ -1006,7 +1035,7 @@ const stmkPastPeriod = defineCachedFunction(
     }
     return out
   },
-  { name: 'land-stmk-past-period', base: DERIVED_CACHE, getKey: (key: string) => key, maxAge: STMK_PAST_TTL_S, swr: true },
+  { name: 'land-stmk-past-period', base: DERIVED_CACHE, getKey: (key: string) => key, ...staleWithin(SETTLED_TTL_S, SETTLED_STALE_S) },
 )
 
 /**
@@ -1144,7 +1173,7 @@ const lgblAssignment = defineCachedFunction(
     const [drafts, index] = await Promise.all([READERS[land].all(), fetchLgblIndex(land)])
     return Object.fromEntries(matchLgbl(drafts, index, todayIso()))
   },
-  { name: 'land-lgbl-assignment', base: DERIVED_CACHE, getKey: (land: LandCode) => land, maxAge: 60 * 60 * 6, swr: true },
+  { name: 'land-lgbl-assignment', base: DERIVED_CACHE, getKey: (land: LandCode) => land, ...staleWithin(DAY_SCALE_TTL_S, DAY_STALE_S) },
 )
 
 /**

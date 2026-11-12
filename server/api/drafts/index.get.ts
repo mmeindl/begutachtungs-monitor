@@ -4,9 +4,12 @@
  * with one it is strictly that period.
  * status: open|closed|all (default all); station: a comma list of
  * begutachtung|rv|parlament|bgbl (default all); q searches title, citation,
- * ministry CODE and aliases server-side — never the ministry name.
+ * ministry CODE and aliases server-side — never the ministry name. Since
+ * 12.11.2026 `/entwuerfe` asks without `q` and searches the rows itself with
+ * the same predicate (`shared/utils/searchHaystack.ts`); `q` stays for every
+ * other caller.
  */
-import type { DraftsResponse } from '#shared/types'
+import type { DraftSummary, DraftsResponse } from '#shared/types'
 import { chainCoverageOf, mayClaimOutcome } from '#shared/utils/draftStations'
 import { gpHasEnded } from '#shared/utils/gp'
 import { ministryFilterOptions, readListQuery, requirePlausibleGp } from '../../utils/http/params'
@@ -26,39 +29,58 @@ export default defineEventHandler(async (event): Promise<DraftsResponse> => {
   const currentGp = await getCurrentGp()
   // Before the cached functions below: their key is the period.
   const gp = requirePlausibleGp(query.gp ?? currentGp, currentGp)
+
+  /* FOUR INDEPENDENT READS, started together and awaited together: none
+   * needs another's answer, so their times overlap instead of adding up —
+   * a cold station map and a cold EU map under their 2,5-s brakes cost
+   * 2,5 s, not 5, and both brakes now run while list 81 is read. The
+   * failure behaviour is the one the reads had one after another: only
+   * list 81 throws; the carry-over never throws, and both enrichments fold
+   * a failure into `null` (`withinBudget`), so `Promise.all` cannot reject
+   * for any of them. */
+  const [{ items: ownItems }, carried, chains, markers] = await Promise.all([
+    getDraftsForGp(gp),
+    /* CARRY-OVER, und nur wenn der Aufruf KEINE Periode genannt hat.
+     * `?gp=XXVII` ist eine Frage nach einer Periode und wird
+     * periodenrein beantwortet — sonst hieße der sichtbare Periodenwähler auf
+     * `/entwuerfe` etwas anderes, als er sagt. Ohne `gp` fragt jemand „was
+     * gibt es gerade", und dann ist eine Frist, die den Wechsel überlebt, Teil
+     * der Antwort: genau daran hing der eine Weg aus „Jetzt in Begutachtung"
+     * heraus, der im Übergangsfenster ins Leere lief. */
+    query.gp === undefined ? getCarryOverDrafts(currentGp) : Promise.resolve<DraftSummary[]>([]),
+    /* The station map is ENRICHMENT, never a precondition: a cold build costs
+     * hundreds of upstream fetches (`parliament/stationMap.ts`), and a list
+     * that fails on it would be worse than one without stations. If it fails,
+     * the response says so — `stationsAvailable: false` — instead of silently
+     * marking every row „Begutachtung" or running an active station filter
+     * against an empty list.
+     *
+     * AND IT GETS A BUDGET, for the same reason: cold, GP XXVII needs 35,6 s
+     * (650 fetches, measured 18.09.2026), and nobody may wait that long for a
+     * list that is complete without stations. When the budget runs out the
+     * page answers without the map — the build carries on in the background
+     * and fills the cache, the next request has it.
+     * Same construction as `RIS_JOIN_BUDGET_MS`
+     * in `parliament/draftDetail.ts`. */
+    withinBudget(getStationMapForGp(gp), STATION_MAP_BUDGET_MS),
+    /* THE EU MAP, the same construction: enrichment
+     * under the same brake, read from the store the prewarm built. With it,
+     * every row of the period carries `eu` — its marker, or null for a draft
+     * read and no EU matter; a draft the build could not read carries none
+     * (`markersOf`). Without the map no row carries `eu` and `?eu=` filters
+     * nothing; the response says so (`euAvailable`). A carried-over row of
+     * the period before is not in this map and gets no `eu`, as it gets no
+     * chain. */
+    euMarkersForList(gp),
+  ])
+
   /* Folded before anything counts or filters: a draft two ressorts sent
    * jointly stands in list 81 twice, and the list showed it twice and
    * reported 353 of 350 entries for GP XXVII (`dedupeDraftList`). Every
    * list answer this endpoint gives — the rows, `total`, the Ressort
    * options — comes through here, so the fold belongs at this one point. */
-  /* CARRY-OVER, und nur wenn der Aufruf KEINE Periode genannt hat.
-   * `?gp=XXVII` ist eine Frage nach einer Periode und wird
-   * periodenrein beantwortet — sonst hieße der sichtbare Periodenwähler auf
-   * `/entwuerfe` etwas anderes, als er sagt. Ohne `gp` fragt jemand „was
-   * gibt es gerade", und dann ist eine Frist, die den Wechsel überlebt, Teil
-   * der Antwort: genau daran hing der eine Weg aus „Jetzt in Begutachtung"
-   * heraus, der im Übergangsfenster ins Leere lief. */
-  const carried = query.gp === undefined ? await getCarryOverDrafts(currentGp) : []
-  const rows = dedupeDraftList([
-    ...(await getDraftsForGp(gp)).items.map(reconcileActive),
-    ...carried,
-  ])
+  const rows = dedupeDraftList([...ownItems.map(reconcileActive), ...carried])
 
-  /* The station map is ENRICHMENT, never a precondition: a cold build costs
-   * hundreds of upstream fetches (`parliament/stationMap.ts`), and a list
-   * that fails on it would be worse than one without stations. If it fails,
-   * the response says so — `stationsAvailable: false` — instead of silently
-   * marking every row „Begutachtung" or running an active station filter
-   * against an empty list.
-   *
-   * AND IT GETS A BUDGET, for the same reason: cold, GP XXVII needs 35,6 s
-   * (650 fetches, measured 18.09.2026), and nobody may wait that long for a
-   * list that is complete without stations. When the budget runs out the
-   * page answers without the map — the build carries on in the background
-   * and fills the cache, the next request has it.
-   * Same construction as `RIS_JOIN_BUDGET_MS`
-   * in `parliament/draftDetail.ts`. */
-  const chains = await withinBudget(getStationMapForGp(gp), STATION_MAP_BUDGET_MS)
   /* A READABLE MAP IS NOT THE SAME AS A PERIOD ONE MAY SPEAK ABOUT.
    * In the old periods every draft's
    * Verfahrensdatensatz ends at the Begutachtung — not because nothing came
@@ -85,15 +107,6 @@ export default defineEventHandler(async (event): Promise<DraftsResponse> => {
     ? rows.map((item) => (item.gp === gp ? { ...item, chain: chains[item.inr] } : item))
     : rows
 
-  /* THE EU MAP, the same construction: enrichment
-   * under the same brake, read from the store the prewarm built. With it,
-   * every row of the period carries `eu` — its marker, or null for a draft
-   * read and no EU matter; a draft the build could not read carries none
-   * (`markersOf`). Without the map no row carries `eu` and `?eu=` filters
-   * nothing; the response says so (`euAvailable`). A carried-over row of
-   * the period before is not in this map and gets no `eu`, as it gets no
-   * chain. */
-  const markers = await euMarkersForList(gp)
   const items = markers
     ? withChains.map((item) => {
         const eu = item.gp === gp ? markers.get(meKey(item.gp, item.inr)) : undefined

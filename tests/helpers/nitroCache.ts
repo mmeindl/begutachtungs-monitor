@@ -7,7 +7,7 @@
  * reads something else: whether the second call, after upstream recovered,
  * still gets the first call's answer. That needs a cache, and one that
  * decides the way Nitro's does — nitropack 2.13, runtime/internal/cache.mjs,
- * with `swr: false` as every cached function here sets it:
+ * as it behaves under `swr: false`:
  *
  *  - a throw stores nothing;
  *  - a value is stored unless `validate` refuses it, and by default it
@@ -19,7 +19,11 @@
  *    Nitro's storage (a Map returns as `{}`, `ris/konsLaw.ts` learned that).
  *
  * Not modelled: SWR, the integrity hash, the in-flight dedup. None of them
- * decides whether a failure is kept.
+ * decides whether a failure is kept. A function on `staleWithin`
+ * (`server/utils/cache/stale.ts`) therefore recomputes here where Nitro
+ * would serve the expired entry and refresh behind the request; its
+ * `validate` — limit and inner rule — is asked as Nitro asks it, and the
+ * limit itself is `staleWithin.test.ts`'s subject.
  *
  * Install it before the module under test is imported — the wrapper runs at
  * module load:

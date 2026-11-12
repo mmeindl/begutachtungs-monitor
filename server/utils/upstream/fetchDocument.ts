@@ -12,14 +12,22 @@ import {
   UpstreamTooLargeError,
   type UpstreamPolicy,
 } from './fetch'
+import { storageKeyOf } from '../cache/key'
+import { DOCUMENT_CACHE } from '../cache/base'
+import { PUBLISHED_DOCUMENT_TTL_S } from '../cache/ttl'
 
-/**
- * Its own name, because neither shared one describes it: the value is a
- * published document, but kept for a day and not for a month. Whether it
- * could take `PUBLISHED_DOCUMENT_TTL_S` is a question nobody has measured,
- * and this refactor does not answer it.
+/*
+ * A month and on disk (`DOCUMENT_CACHE`) since 12.11.2026, a day in memory
+ * before. Every URL its callers hand it is a published document's own
+ * address — Parliament's `/dokument/<GP>/…` (a draft's, a Vorlage's or an
+ * Antrag's Gesetzestext, Erläuterungen, Textgegenüberstellung), RIS's
+ * `Dokumente/Begut/…` and `Dokumente/BgblAuth/…` — and such a document is
+ * written once: a changed text is published as a document of its own
+ * („Geändert im Ausschuss", a new Begut record). Read off the 1.788 URLs in
+ * the dev cache that day, eight path shapes, all of them documents. No
+ * Stellungnahme comes this way: those are read through
+ * `parliament/statementDocument.ts`, uncached.
  */
-const HTML_TTL_S = 60 * 60 * 24
 const HTML_TIMEOUT_MS = 20_000
 const HTML_MAX_BYTES = 8 * 1024 * 1024
 /** Three attempts without a pause between them, as this client always had. */
@@ -54,7 +62,7 @@ export const fetchDocument = defineCachedFunction(
     const charset = /charset=([\w-]+)/i.exec(body.contentType ?? '')?.[1]
     return decodeHtml(body.bytes, charset)
   },
-  { name: 'law-html', getKey: (url: string) => url, maxAge: HTML_TTL_S, swr: false },
+  { name: 'law-html', base: DOCUMENT_CACHE, getKey: (url: string) => storageKeyOf(url), maxAge: PUBLISHED_DOCUMENT_TTL_S, swr: false },
 )
 
 function decodeHtml(buf: ArrayBuffer, headerCharset: string | undefined): string {

@@ -155,9 +155,11 @@ ExecStart=/usr/bin/node --max-old-space-size=320 $APP_DIR/server/index.mjs
 # Persistent app state in /var/lib/begutachtungs-monitor (created and
 # chowned to the service user by systemd, exported as \$STATE_DIRECTORY).
 # Must live OUTSIDE $APP_DIR: deploy.sh rsyncs .output/ with --delete.
-# Currently used for the last-good Stellungnahmen fallback
-# (server/utils/parliament/lastgood.ts) — losing it costs a degraded page,
-# not data.
+# Used for the last-good Stellungnahmen fallback
+# (server/utils/parliament/lastgood.ts), the EU map's facts and the
+# published documents that never change (documents/, since 12.11.2026,
+# server/utils/cache/documentDriver.ts) — losing it costs a degraded page or
+# a cold read, not data.
 StateDirectory=begutachtungs-monitor
 Environment=NODE_ENV=production
 Environment=NITRO_HOST=127.0.0.1

@@ -1,0 +1,318 @@
+/**
+ * What the search field on `/entwuerfe` reads of a Bund row — one haystack
+ * per row kind, and the one place it is built.
+ *
+ * IN `shared` SINCE 12.11.2026, moved from `server/utils/search/`. Until
+ * then the term went to both list endpoints, which filtered their halves on
+ * the server, while the page filtered the Länder rows, the open Vorlagen and
+ * the laws itself: one search, two code paths, two latencies — every settled
+ * term re-fetched both Bund halves and faded the list while it waited. Now
+ * the halves come unsearched and the page filters every row in the browser
+ * (and in the server's render, for a `?q=` link). The endpoints still take
+ * `q` and call the SAME functions, so a feed or script asking them with a
+ * term gets the rows the page shows for it.
+ *
+ * THE RULE BEHIND EVERY FIELD: **what is searched is what the row shows**
+ * (21.09.2026). The Ressort NAME is not in any haystack — it carries the
+ * whole portfolio („… Klima- und Umweltschutz …"), stands nowhere on the
+ * row, and pulled 36 rows for „klima", 2 of which carried the word in their
+ * title. The Ressort CODE is in, because the row prints it, and the Ressort
+ * has a filter of its own.
+ *
+ * The matching itself is `matchesQuery` (`textMatch.ts`): AND over the
+ * words, each a substring, raw or folded. This file only decides WHAT it is
+ * matched against.
+ *
+ * Pure, relative imports only, so vitest and the server's pure filters
+ * (`server/utils/parliament/draftList.ts`, `server/utils/ris/risList.ts`)
+ * reach it without Nuxt's aliases; auto-imported in `app/` and imported
+ * there as `#shared/utils/searchHaystack`.
+ */
+import type { DraftSummary, RisConsultation } from '../types'
+import { aliasHaystack } from './draftAliases'
+import { MAX_LIST_QUERY_CHARS, MAX_LIST_QUERY_TERMS } from './queryParams'
+import { matchesQuery, queryReadings } from './textMatch'
+
+/* ------------------------------------------------------------------ *
+ * The haystacks
+ * ------------------------------------------------------------------ */
+
+/** The fields of a Ministerialentwurf the search reads. */
+export type DraftSearchFields = Pick<DraftSummary, 'gp' | 'inr' | 'title' | 'citation' | 'ministryCode' | 'coMinistries'>
+
+/**
+ * A Ministerialentwurf: title, Geschäftszahl, every Ressort code it carries,
+ * and its debate names.
+ *
+ * - **Aliases** are part of the haystack, not of the title: someone who only
+ *   knows „Bundestrojaner" has to find 8/ME (`draftAliases.ts`).
+ * - **The co-ressort** since 23.09.2026: the row prints „BMFFIM · BMJ", so
+ *   „bmj" has to find it, whichever of the two the fold put first.
+ * - **Never the Ressort name**, since 21.09.2026 (above).
+ */
+export function draftHaystack(item: DraftSearchFields): string {
+  const codes = [item.ministryCode, ...item.coMinistries.map((m) => m.code)].map((c) => c.toUpperCase())
+  return `${item.title} ${item.citation} ${codes.join(' ')} ${aliasHaystack(item.gp, item.inr)}`
+}
+
+/** The fields of a RIS record the search reads. */
+export type RisSearchFields = Pick<RisConsultation, 'title' | 'longTitle' | 'ministryCode'>
+
+/**
+ * A Begutachtung without a Gegenstand: Kurztitel, Langtitel without the
+ * Ressort mention, Ressort code.
+ *
+ * No aliases: the alias file is keyed by gp/inr and these records have
+ * neither. The Langtitel is in instead — on a Verordnung the subject matter
+ * stands there and only there, the Kurztitel often names no more than the
+ * amended Verordnung. The row shows it as the title's long form.
+ *
+ * The Kurztitel is NOT struck, even where it carries the Ministerklausel
+ * („Verordnung der Bundesministerin für Landesverteidigung über den
+ * Krankentransport"): it stands in the row, the reader sees the word.
+ */
+export function risHaystack(item: RisSearchFields, tokens: readonly MinistryToken[]): string {
+  return `${item.title} ${stripMinistryMentions(item.longTitle ?? '', tokens)} ${item.ministryCode}`
+}
+
+/* ------------------------------------------------------------------ *
+ * The list filters — what the page and the endpoints both call
+ * ------------------------------------------------------------------ */
+
+/** Whether a Ministerialentwurf carries every word of `q` (lowercased, as
+ *  `readListQuery` hands it on). The one predicate both sides call. */
+export function draftMatches(item: DraftSearchFields, q: string): boolean {
+  return matchesQuery(draftHaystack(item), q)
+}
+
+/** The same for a RIS record, with the period's strike list. */
+export function risMatches(item: RisSearchFields, q: string, tokens: readonly MinistryToken[]): boolean {
+  return matchesQuery(risHaystack(item, tokens), q)
+}
+
+/**
+ * Whether a term stays within the list endpoints' caps (`readListQuery`):
+ * 1.000 characters, 100 words. Beyond them the endpoints answer 400 — the
+ * cap protects the event loop, and since 12.11.2026 the page filters in the
+ * server's render too, so it holds the same line (`searchDrafts`).
+ */
+export function withinListSearchCaps(q: string): boolean {
+  if (q.length > MAX_LIST_QUERY_CHARS) return false
+  const { raw, folded } = queryReadings(q.toLowerCase())
+  return Math.max(raw.length, folded.length) <= MAX_LIST_QUERY_TERMS
+}
+
+/**
+ * The Ministerialentwürfe a term finds, in their order. An empty term finds
+ * all of them; a term beyond the caps none.
+ */
+export function searchDrafts<T extends DraftSearchFields>(items: readonly T[], q: string): T[] {
+  if (!q.trim()) return [...items]
+  if (!withinListSearchCaps(q)) return []
+  // Lowercased once, as `readListQuery` hands it to the server's filter: the
+  // one-entry memo in `queryReadings` then serves every row.
+  const term = q.toLowerCase()
+  return items.filter((item) => draftMatches(item, term))
+}
+
+/**
+ * The RIS records a term finds, in their order. `ministries` is the
+ * period's Ressort menu as the endpoint ships it (`ministryFilterOptions`,
+ * computed before any filter): its names are the strike list for the
+ * Langtitel, the same vocabulary the endpoint builds from them.
+ */
+export function searchRis<T extends RisSearchFields>(
+  items: readonly T[],
+  q: string,
+  ministries: readonly { name: string }[],
+): T[] {
+  if (!q.trim()) return [...items]
+  if (!withinListSearchCaps(q)) return []
+  const term = q.toLowerCase()
+  const tokens = ministryTokens(ministries.map((m) => m.name))
+  return items.filter((item) => risMatches(item, term, tokens))
+}
+
+/* ------------------------------------------------------------------ *
+ * What the search may NOT search: the Ressort mention
+ * ------------------------------------------------------------------ */
+
+/*
+ * THE DECISION: only the **Ministerklausel** — „des Bundesministers für
+ * <Portfolio>" — is struck, never the portfolio on its own. Measured
+ * 21.09.2026 over GP XXVIII: „klima" pulled 36 rows, and in exactly 2 of
+ * them the word stood in the Kurztitel, the text the row actually shows. The
+ * rest matched through two fields the reader never sees — the Ressort name
+ * (BMLUK is „Bundesministerium für Land- und Forstwirtschaft, Klima- und
+ * Umweltschutz, Regionen und Wasserwirtschaft") and the official Langtitel,
+ * which on every Verordnung begins with „Verordnung des Bundesministers für
+ * <the same portfolio>, mit der …". The Ressort has its own filter axis
+ * beside the field, so the free text does not have to double it.
+ *
+ * WHY THE RULE IS THIS NARROW: „Finanzen", „Justiz", „Inneres" are ordinary
+ * subject words as well, and a Verordnung ABOUT the finances of something
+ * has to stay findable under „Finanzen". What is built without „für"
+ * („Bundeskanzleramt") is a proper name and is struck as one. The Langtitel
+ * otherwise STAYS in the haystack: on a Verordnung the subject matter stands
+ * there and only there — the Kurztitel often names no more than the amended
+ * Verordnung.
+ *
+ * The full-text search strikes with the same tokens
+ * (`server/utils/search/begutSearch.ts`).
+ */
+
+/**
+ * "BMLUK (Bundesministerium für …)" → the long name alone.
+ * Falls back to the whole string, never to an empty label.
+ *
+ * Here since 12.11.2026 (from `server/utils/ris/ministryCodes.ts`): the
+ * strike tokens need it, and they are built in the browser now too.
+ */
+export function ministryNameOf(stelle: string | null): string {
+  const m = /^[A-ZÄÖÜ]{2,8}\s*\((.+)\)\s*$/.exec(stelle ?? '')
+  return m ? m[1]! : (stelle ?? '')
+}
+
+/** A Ressort name without „für" is a proper name; shorter than that is no name. */
+const MIN_TOKEN_LEN = 4
+
+/**
+ * The form of address before the portfolio, in the spellings that occur in
+ * the titles: „des Bundesministers für", „der Bundesministerin für", „dem
+ * Bundesminister für", „Bundesministerium für".
+ */
+const MINISTER_CLAUSE = String.raw`(?:(?:des|der|dem|den|das|vom|beim)\s+)?Bundesminister(?:iums|ium|innen|in|s|n)?\s+für\s+`
+
+function escapeRegExp(s: string): string {
+  return s.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
+}
+
+/** What may stand between two words of a portfolio: „- ", ", ", " ". */
+const SEP = String.raw`[\s,-]+`
+
+/**
+ * A portfolio as a pattern that survives its own spellings.
+ *
+ * THE RIGID VERSION MISSED TWO REAL TITLES (measured 21.09.2026):
+ *
+ *  - „Land- und Forstwirtschaft, **Klima und** Umweltschutz, …" — the
+ *    ministry spells itself „Klima- und Umweltschutz", the title drops the
+ *    hyphen. One character of difference, and the clause stayed in.
+ *  - „des Bundesministers für Land- und Forstwirtschaft, Klima- und
+ *    Umweltschutz" — the same house, but only half the name.
+ *
+ * So the portfolio is built word by word: the separators may vary and the
+ * tail may be missing (nested optionality). It stays anchored to the REAL
+ * words of the Ressort — it guesses no grammar and therefore cannot take
+ * away more than a Ressort name gives.
+ */
+function portfolioPattern(portfolio: string): string | null {
+  const words = portfolio
+    .split(/[\s,]+/)
+    .map((w) => w.replace(/^-+|-+$/g, '').trim())
+    .filter(Boolean)
+    .map(escapeRegExp)
+  if (!words.length) return null
+  let tail = ''
+  for (let i = words.length - 1; i >= 1; i--) tail = `(?:${SEP}${words[i]}${tail})?`
+  return `${words[0]}${tail}`
+}
+
+/**
+ * A Ressort text to be struck — and the one property that decides how far
+ * the striking may go.
+ */
+export interface MinistryToken {
+  text: string
+  /**
+   * `true` for a portfolio („Finanzen"): it may fall ONLY inside the
+   * Ministerklausel, because on its own it is an ordinary subject word.
+   * `false` for a proper name („Bundeskanzleramt"): that one falls everywhere.
+   */
+  clauseOnly: boolean
+}
+
+// --- Measured surface: exported for tests and harness scripts, not for the app. ---
+/**
+ * The Ressort name as a strike token: whatever stands behind the „für",
+ * otherwise the name itself.
+ *
+ * Both spellings carry the same portfolio — „Bundesministerium für X" in the
+ * record, „Bundesministers für X" in the title — so one token covers both.
+ */
+export function ministryToken(name: string): MinistryToken | null {
+  // „BMLUK (Bundesministerium für …)" is the RIS record's spelling,
+  // „Bundesministerium für …" the mapped row's. Both arrive here —
+  // `ministryNameOf` reads the same bracket.
+  const trimmed = ministryNameOf((name ?? '').trim()).trim()
+  const m = /\bfür\s+(.+)$/s.exec(trimmed)
+  const text = (m ? m[1]! : trimmed).trim().replace(/\s+/g, ' ')
+  if (text.length < MIN_TOKEN_LEN) return null
+  return { text, clauseOnly: m !== null }
+}
+
+/**
+ * One Gesetzgebungsperiode's vocabulary, longest token first.
+ *
+ * The order is not a detail: with „Finanzen" before „Finanzen und
+ * Wirtschaft", a remainder of the longer clause would stay behind, and on
+ * the next pass it is no longer recognisable as a clause.
+ */
+export function ministryTokens(names: Iterable<string>): MinistryToken[] {
+  const byText = new Map<string, MinistryToken>()
+  for (const name of names) {
+    const token = ministryToken(name)
+    if (token && !byText.has(token.text)) byText.set(token.text, token)
+  }
+  return [...byText.values()].sort((a, b) => b.text.length - a.text.length)
+}
+
+/**
+ * A token's finished strike pattern, built once.
+ *
+ * `stripMinistryMentions` runs per row of a filtered list and per block of a
+ * searched document; with the period's fifteen Ressorts that was fifteen new
+ * `RegExp` per call for fifteen unchanging patterns. The key is the token
+ * together with its reach, and the pattern depends on nothing else — so it
+ * cannot go stale, and nothing beyond the corpus's Ressort names ever gets
+ * in.
+ *
+ * `null` for a portfolio without words: then nothing is struck.
+ */
+const STRIKE_PATTERNS = new Map<string, RegExp | null>()
+
+function strikePattern(token: MinistryToken): RegExp | null {
+  const key = `${token.clauseOnly ? 'klausel' : 'name'}:${token.text}`
+  const known = STRIKE_PATTERNS.get(key)
+  if (known !== undefined) return known
+  let pattern: RegExp | null = null
+  if (token.clauseOnly) {
+    const portfolio = portfolioPattern(token.text)
+    if (portfolio) pattern = new RegExp(`${MINISTER_CLAUSE}${portfolio}`, 'gi')
+  } else {
+    pattern = new RegExp(escapeRegExp(token.text), 'gi')
+  }
+  STRIKE_PATTERNS.set(key, pattern)
+  return pattern
+}
+
+/**
+ * The Ressort mentions out of a title — for the search, not for display. The
+ * result need not be readable, only free of what every Verordnung of one
+ * house spells the same way.
+ *
+ * The second house is taken along too: „im Einvernehmen mit dem
+ * Bundesminister für Finanzen" stands in many Verordnungen and would
+ * otherwise spring the same trap a second time.
+ */
+export function stripMinistryMentions(text: string, tokens: readonly MinistryToken[]): string {
+  if (!text) return ''
+  let out = text
+  for (const token of tokens) {
+    // A global pattern resets `lastIndex` on every `replace` by itself, so
+    // reusing it is stateless.
+    const pattern = strikePattern(token)
+    if (pattern) out = out.replace(pattern, ' ')
+  }
+  return out
+}

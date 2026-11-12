@@ -68,6 +68,50 @@ describe('lawBlocksFromPdfPages — a Land draft from its PDF', () => {
     expect(blocks.filter((b) => b.kind === 'novao')).toHaveLength(2)
   })
 
+  it('takes a line opening with „lit." for text, not for a Roman division heading (ooe-2025-16101 § 12 Abs. 1, 12.11.2026)', () => {
+    const blocks = lawBlocksFromPdfPages([page('Der Oö. Landtag hat beschlossen:', 'Artikel I', 'Das Oö. Sozialhilfe-Ausführungsgesetz wird wie folgt geändert:',
+      '1. § 12 Abs. 1 lautet:', '„(1) Voraussetzung für die Leistung der Sozialhilfe ist insbesondere',
+      'b) die aktive Arbeitssuche durch Bewerbungen von sich aus unabhängig von den Pflichten nach',
+      'lit. a,',
+      'c) die Bereitschaft, die für die Vermittelbarkeit am österreichischen Arbeitsmarkt erforderlichen',
+      'Sprachkenntnisse zu erwerben,',
+      'd) die Teilnahme an Maßnahmen der Hilfe zur Arbeit gemäß § 18 Abs. 1 Oö. SHG 1998 sowie',
+      'e) die Inanspruchnahme einer Begleitung.“',
+      '2. § 13 entfällt.')])!
+    const text = blocks.map((b) => b.text).join(' | ')
+    expect(text).toContain('nach lit. a, c) die Bereitschaft')
+    expect(text).toContain('e) die Inanspruchnahme einer Begleitung.“')
+    expect(blocks.filter((b) => b.kind === 'novao')).toHaveLength(2)
+  })
+
+  it('keeps a wrapped cross-reference and a table row that open with a Roman numeral (Stmk. Baugesetz § 97, Salzburg 34402)', () => {
+    const blocks = lawBlocksFromPdfPages([page('Der Landtag hat beschlossen:', 'Artikel I', 'Das X-Gesetz wird wie folgt geändert:',
+      '1. § 97 lautet:', '„§ 97', 'Für Gebäude hat die Behörde Erleichterungen gegenüber den Vorschriften des',
+      'I. Teiles dieses Hauptstückes zuzulassen, wenn die Einhaltung dieser Vorschriften unter Berücksichtigung',
+      'der Eigenart des Gebäudes entbehrlich ist.“',
+      '2. Die Anlage lautet:', '„Gehaltsstufe Verwendungsgruppe D C B A', 'I. Dienstklasse', '1 2.221,40 2.287,90 - -', 'II. Dienstklasse', '1 2.370,60 2.490,40 2.490,40 -“')])!
+    const text = blocks.map((b) => b.text).join(' | ')
+    expect(text).toContain('des I. Teiles dieses Hauptstückes zuzulassen')
+    expect(text).toContain('der Eigenart des Gebäudes entbehrlich ist.“')
+    expect(text).toContain('I. Dienstklasse 1 2.221,40 2.287,90 - - II. Dienstklasse 1 2.370,60')
+  })
+
+  it('still leaves out a Roman division heading and its title: „IVa. Umsetzungshinweis, …", „VIIa. ABSCHNITT", „V. ABSCHNITT"', () => {
+    // Salzburg's Benützungsgebührengesetz-Novelle, as its PDF prints it.
+    const salzburg = lawBlocksFromPdfPages([page('Der Salzburger Landtag hat beschlossen:', 'Artikel I', 'Das Benützungsgebührengesetz wird geändert wie folgt:',
+      '1. Der IVa. Abschnitt lautet:', '„IVa. Umsetzungshinweis, Verweisungen auf Unionsrecht, Verweisungen auf Bundesrecht',
+      'Umsetzungshinweis, Verweisungen auf Unionsrecht', '§ 14c', '(1) Durch dieses Gesetz wird die Richtlinie umgesetzt.“', '2. § 15 entfällt.')])!
+    const text = salzburg.map((b) => b.text).join(' | ')
+    expect(text).not.toMatch(/IVa\. Umsetzungshinweis|\| Umsetzungshinweis, Verweisungen/)
+    expect(text).toContain('§ 14c')
+    expect(salzburg.filter((b) => b.kind === 'novao')).toHaveLength(2)
+    for (const heading of ['„VIIa. ABSCHNITT', '„V. ABSCHNITT']) {
+      const blocks = lawBlocksFromPdfPages([page('Der Landtag hat beschlossen:', 'Artikel I', 'Das X-Gesetz wird wie folgt geändert:',
+        '1. Nach § 40 wird eingefügt:', heading, 'Sonderbestimmungen', '§ 41', '(1) Text.“')])!
+      expect(blocks.map((b) => b.text).join(' | ')).not.toMatch(/ABSCHNITT|Sonderbestimmungen/)
+    }
+  })
+
   it('joins a word split at the line end, and keeps a compound and a suspended part', () => {
     const blocks = lawBlocksFromPdfPages([page('Der Oö. Landtag hat beschlossen:', 'Artikel I', 'Das Oö. X-Gesetz wird wie folgt geändert:',
       '1. Im § 1 wird die Gleich-', 'behandlung im Oö. Agrarrecht-', 'Organisationsgesetz für die Land-', 'und Forstwirtschaft geregelt.')])!

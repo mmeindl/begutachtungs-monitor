@@ -150,7 +150,10 @@ defineEmits<{ 'update:sort': [key: string] }>()
       :data-stale="stale || undefined"
       :aria-busy="stale || undefined"
     >
-      <li v-for="entry in entries" :key="entry.key">
+      <!-- `data-entry-key`: the row a caller finds again after rows sorted
+           in above it, to hold the reader's place (`/entwuerfe`,
+           12.11.2026). -->
+      <li v-for="entry in entries" :key="entry.key" :data-entry-key="entry.key">
         <EntryItem :entry="entry" :query="query">
           <template v-if="$slots.evidence" #evidence>
             <slot name="evidence" :entry="entry" />

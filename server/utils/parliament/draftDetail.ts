@@ -52,8 +52,11 @@ import { withinBudget } from '../http/budget'
  * not: the corpus is ~46 paged RIS requests, and on 2026-09-07 the first
  * detail-page hit after a deploy took **61 s** in production while the
  * prewarm unit was still running (it starts with --no-block after the
- * restart, so a visitor can arrive first — and the 20 h corpus TTL expires
- * during the day too, where swr:false makes the next request pay).
+ * restart, so a visitor can arrive first). The 20 h corpus TTL expires
+ * during the day too; until 12.11.2026, under `swr: false`, the next
+ * request then paid the fetch. Now a visitor is served the expired corpus
+ * while it refreshes, up to its two-day limit (`RIS_CORPUS_STALE_S`), so
+ * the budget bites where there is no corpus at all or one past that limit.
  *
  * Past the budget the reader gets the page and the fetch keeps running, so
  * the cache still fills — whoever pays the cold cost, it is never a visitor.
@@ -315,6 +318,17 @@ export async function getDraftDetail(
   gp: string,
   inr: number,
 ): Promise<DraftDetail> {
+  // The list of the period before, which `findRelated` reads after the
+  // calls below: it depends on nothing they answer, so it starts with them
+  // and `findRelated` joins the call in flight (or finds it cached) instead
+  // of opening a second upstream hop after them. Only a head start —
+  // nothing is decided on this promise: `findRelated` reads the list
+  // itself, and a failure (never cached) reaches it there, as before.
+  // A small saving: the hop is on the critical path only where the draft
+  // has no Vorlage (the RV leg is longer otherwise) and the list has gone
+  // cold — the carry-over read of `/api/dashboard` keeps it warm.
+  const previous = relatedPreviousGp(gp)
+  if (previous) void getDraftsForGp(previous).catch(() => {})
   // All three leaf calls are independent → parallel. For an unknown INR the
   // first failing 404 wins (list 81 or Gegenstand) — equivalent for the
   // client. List 142 refuses an unknown INR as well, and caches nothing.
@@ -370,6 +384,13 @@ export async function getDraftDetail(
   })
 }
 
+/** The period before `gp` that `findRelated` searches — none before the
+ *  first period with Ministerialentwürfe in list 81. */
+function relatedPreviousGp(gp: string): string | null {
+  const n = romanToInt(gp)
+  return n !== null && n - 1 >= OLDEST_GP_WITH_ME ? intToRoman(n - 1) : null
+}
+
 /**
  * Same-title drafts in this, the previous and — once this GP is over — the
  * next Gesetzgebungsperiode. Pure composition
@@ -390,7 +411,8 @@ async function findRelated(
 ): Promise<{ predecessor: RelatedDraft | null; successor: RelatedDraft | null }> {
   const n = romanToInt(summary.gp)
   const gps = [summary.gp]
-  if (n !== null && n - 1 >= OLDEST_GP_WITH_ME) gps.push(intToRoman(n - 1))
+  const previous = relatedPreviousGp(summary.gp)
+  if (previous) gps.push(previous)
   if (n !== null && gpHasEnded(summary.gp, currentGp)) gps.push(intToRoman(n + 1))
   const lists = await Promise.all(
     gps.map((g) =>

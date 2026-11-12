@@ -45,12 +45,13 @@ import {
   withoutMinistryMentions,
   type SearchTerm,
 } from './begutSearch'
-import { DERIVED_CACHE } from '../cache/base'
+import { DERIVED_CACHE, DOCUMENT_CACHE } from '../cache/base'
+import { storageKeyOf } from '../cache/key'
 import { withPdf } from '../text/pdfDocument'
 import { PUBLISHED_DOCUMENT_TTL_S } from '../cache/ttl'
 import type { TextBlock } from '../lawtext/lawUnits'
 import { parseRisXml } from '../lawtext/risXml'
-import { ministryTokens, type MinistryToken } from './searchHaystack'
+import { ministryTokens, type MinistryToken } from '#shared/utils/searchHaystack'
 import { getDraftsForGp, getCurrentGp, reconcileActive } from '../parliament/drafts'
 import { getRisBegutCorpus, getRisMapForGp } from '../ris/begutCorpus'
 import { mapWithConcurrency } from '../pool'
@@ -175,7 +176,7 @@ const fetchBegutPdf = defineCachedFunction(
   },
   {
     name: 'begut-dokument-pdf',
-    getKey: (url: string) => url,
+    getKey: (url: string) => storageKeyOf(url),
     maxAge: PUBLISHED_DOCUMENT_TTL_S,
     swr: false,
     shouldBypassCache: () => !import.meta.dev,
@@ -202,18 +203,18 @@ const begutPdfText = defineCachedFunction(
   {
     name: 'begut-dokument-pdf-text',
     base: DERIVED_CACHE,
-    getKey: (url: string) => url,
+    getKey: (url: string) => storageKeyOf(url),
     maxAge: PUBLISHED_DOCUMENT_TTL_S,
     swr: false,
   },
 )
 
-/** A Begut document as XML, as RIS sends it — the parse stays fresh. */
+/** A Begut document as XML, as RIS sends it — the parse stays fresh. On disk (`DOCUMENT_CACHE`): a Begut document is written once. */
 const fetchBegutDocument = defineCachedFunction(
   async (url: string): Promise<string> => {
     return upstreamText(url, SEARCH_POLICY)
   },
-  { name: 'begut-dokument-xml', getKey: (url: string) => url, maxAge: PUBLISHED_DOCUMENT_TTL_S, swr: false },
+  { name: 'begut-dokument-xml', base: DOCUMENT_CACHE, getKey: (url: string) => storageKeyOf(url), maxAge: PUBLISHED_DOCUMENT_TTL_S, swr: false },
 )
 
 /**

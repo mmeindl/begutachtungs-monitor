@@ -7,15 +7,19 @@
  */
 import type { LandCode, LandExplanationsResponse } from '#shared/types'
 import { DERIVED_CACHE } from '../cache/base'
+import { DERIVED_ANALYSIS_TTL_S } from '../cache/ttl'
 import { readLandExplanations } from './landExplanationsRead'
+import { landPdfBytes } from './texts/read'
+import { cachedPdfPages } from './texts/pdfPagesService'
 import type { LandDraftRecord } from './texts/stations'
 
+/** The plain pages through the cached read: the comparison and the Begründungsvergleich read the same draft (`pdfPagesService.ts`). */
 export async function landExplanations(land: LandCode, detail: LandDraftRecord): Promise<LandExplanationsResponse> {
-  return (await readLandExplanations(land, detail)).response
+  return (await readLandExplanations(land, detail, landPdfBytes, cachedPdfPages)).response
 }
 
 /** Held a day in the derived layer: the documents stay, the reader may change. */
 export const cachedLandExplanations = defineCachedFunction(
   (land: LandCode, number: string, detail: LandDraftRecord): Promise<LandExplanationsResponse> => landExplanations(land, detail),
-  { name: 'land-explanations', base: DERIVED_CACHE, getKey: (land: LandCode, number: string) => `${land}-${number}`, maxAge: 60 * 60 * 24, swr: false },
+  { name: 'land-explanations', base: DERIVED_CACHE, getKey: (land: LandCode, number: string) => `${land}-${number}`, maxAge: DERIVED_ANALYSIS_TTL_S, swr: false },
 )

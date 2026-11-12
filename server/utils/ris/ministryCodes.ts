@@ -41,14 +41,9 @@ export function ministryCodeOf(stelle: string | null): string {
   return stelle ?? ''
 }
 
-/**
- * "BMLUK (Bundesministerium für …)" → the long name alone.
- * Falls back to the whole string, never to an empty label.
- */
-export function ministryNameOf(stelle: string | null): string {
-  const m = /^[A-ZÄÖÜ]{2,8}\s*\((.+)\)\s*$/.exec(stelle ?? '')
-  return m ? m[1]! : (stelle ?? '')
-}
+/* The long name's reader, `ministryNameOf`, lives in
+ * `shared/utils/searchHaystack.ts` since 12.11.2026: the search's strike
+ * tokens need it, and they are built in the browser now too. */
 
 export function ministryScore(meCodes: ReadonlySet<string>, risCode: string): number {
   const rc = SPELLING[risCode] ?? risCode

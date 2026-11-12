@@ -54,7 +54,11 @@ const route = useRoute()
 const celex = euActCelex(String(route.params.kind), String(route.params.year), String(route.params.number))
 if (!celex) throw createError({ statusCode: 404, statusMessage: 'Rechtsakt nicht gefunden', fatal: true })
 
-const { data, status, error, refresh } = await useFetch<EuActResponse>(`/api/eu-recht/akte/${celex}`)
+/* `lazy` (12.11.2026), as on the draft pages: a click shows this page at
+ * once, in `FetchGate`'s loading state, instead of holding the previous one
+ * until the answer is there. The server waits all the same, so the status
+ * below is still set where the answer is known. */
+const { data, status, error, refresh } = await useFetch<EuActResponse>(`/api/eu-recht/akte/${celex}`, { lazy: true })
 
 const view = computed(() => (data.value ? euActPageView(data.value) : null))
 

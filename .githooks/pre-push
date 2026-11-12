@@ -1,15 +1,17 @@
 #!/bin/sh
-# Runs, before every push, exactly the four commands that
+# Runs, before every push, exactly the five commands that
 # `.github/workflows/ci.yml` runs — so "green here" means "green on the
 # runner". Roughly ten seconds when the caches are warm.
 #
 # Why it exists: `pnpm typecheck:tools` is the only check that sees `tests/`
-# and `scripts/` — `nuxt typecheck` covers the app, the server and `shared/`,
-# and vitest does not typecheck at all. So a type error in a test file was
-# invisible locally and could only be found on the runner. On 25.09.2026 a
-# field added to `EnactmentInfo` left a test builder behind exactly that way,
-# and two pushes went red one after the other, the second inheriting the
-# first.
+# and `scripts/` — `nuxt typecheck` covers the app and `shared/`, and vitest
+# does not typecheck at all. So a type error in a test file was invisible
+# locally and could only be found on the runner. On 25.09.2026 a field added
+# to `EnactmentInfo` left a test builder behind exactly that way, and two
+# pushes went red one after the other, the second inheriting the first.
+# `server/` was the same kind of blind spot until 12.11.2026 — its own
+# program, `.nuxt/tsconfig.server.json`, which `nuxt typecheck` never ran —
+# and has its own check since (`pnpm typecheck:server`).
 #
 # What it does NOT do, said plainly: it checks the working tree, not the
 # commits being pushed. Uncommitted work is therefore part of the verdict —
@@ -67,8 +69,9 @@ run() {
   exit 1
 }
 
-echo "pre-push: the four checks from ci.yml"
+echo "pre-push: the five checks from ci.yml"
 run "Tests"                       test
-run "Typecheck app/server"        typecheck
+run "Typecheck app/shared"        typecheck
+run "Typecheck server"            typecheck:server
 run "Typecheck scripts/tests"     typecheck:tools
 run "Lint"                        lint

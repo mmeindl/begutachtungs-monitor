@@ -2,8 +2,8 @@
  * Upstream client for the RIS OGD API, Applikation=Begut
  * (docs/api-exploration.md §2, docs/ris-join.md §4).
  *
- * Same cache rules as parliament/drafts.ts: caching only at the leaves, swr:false,
- * errors thrown rather than cached. RIS reports errors inside an HTTP-200
+ * Same cache rules as parliament/drafts.ts: caching only at the leaves, SWR
+ * only bounded (`cache/stale.ts`), errors thrown rather than cached. RIS reports errors inside an HTTP-200
  * envelope (`OgdSearchResult.Error`), so success is checked on the body.
  * The full Begut corpus is ~4,600 records = 46 pages of 100; it changes a
  * few times a week, so one fetch per day is plenty.
@@ -24,6 +24,8 @@ import {
 import { asArray, flattenRisRecord, risDocumentUrl, type RisBegutFlat } from './risRecord'
 import { RIS_API_BASE, risJson, sleep, type UpstreamPolicy } from '../upstream/fetch'
 import { unpack } from '../cache/memoryDriver'
+import { staleWithin } from '../cache/stale'
+import { RIS_CORPUS_STALE_S, RIS_JOIN_STALE_S } from '../cache/ttl'
 
 const RIS_PAGE_SIZE = 100
 const RIS_MAX_PAGES = 80
@@ -32,7 +34,10 @@ const RIS_MAX_RETRIES = 2
 const RIS_RETRY_BACKOFF_MS = 1_000
 const RIS_PAGE_PAUSE_MS = 300
 // 20 h, not 24: the prewarm timer fires daily, and a TTL equal to its period
-// would let the timer find a still-valid cache and refresh nothing.
+// would let the timer find a still-valid cache and refresh nothing. Since the
+// corpus is served stale up to its limit (`RIS_CORPUS_STALE_S`), the timer
+// finds it expired and gets it at once; the refresh runs behind its request.
+// Only after a restart, with nothing to serve, does the prewarm wait for it.
 const RIS_CORPUS_TTL_S = 60 * 60 * 20
 const RIS_MAP_TTL_S = 60 * 30
 const RIS_POLICY: UpstreamPolicy = {
@@ -133,7 +138,7 @@ export const getRisBegutCorpus = defineCachedFunction(
     corpusIndex = indexOf(corpus)
     return corpus
   },
-  { name: 'ris-begut-corpus', base: DERIVED_CACHE, getKey: () => 'all', maxAge: RIS_CORPUS_TTL_S, swr: false },
+  { name: 'ris-begut-corpus', base: DERIVED_CACHE, getKey: () => 'all', ...staleWithin(RIS_CORPUS_TTL_S, RIS_CORPUS_STALE_S) },
 )
 
 /**
@@ -263,5 +268,5 @@ export const getRisMapForGp = defineCachedFunction(
       rows,
     }
   },
-  { name: 'ris-map-gp', base: DERIVED_CACHE, getKey: (gp: string) => gp, maxAge: RIS_MAP_TTL_S, swr: false },
+  { name: 'ris-map-gp', base: DERIVED_CACHE, getKey: (gp: string) => gp, ...staleWithin(RIS_MAP_TTL_S, RIS_JOIN_STALE_S) },
 )

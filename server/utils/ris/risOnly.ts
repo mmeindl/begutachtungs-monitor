@@ -37,9 +37,12 @@ import type {
 import { gpWindow, previousGp, windowPeriodFor } from '#shared/utils/gp'
 import { sortConsultations } from '#shared/utils/risConsultations'
 import { classifyRisRecord, type RisClass } from './risJoin'
-import { ministryCodeOf, ministryNameOf } from './ministryCodes'
+import { ministryCodeOf } from './ministryCodes'
+import { ministryNameOf } from '#shared/utils/searchHaystack'
 import { getRisBegutCorpus, getRisBegutRecord, getRisMapForGp } from './begutCorpus'
 import { hasDocument, risDocumentUrl, withRisActiveOn, type RisBegutFlat } from './risRecord'
+import { staleWithin } from '../cache/stale'
+import { RIS_JOIN_STALE_S } from '../cache/ttl'
 
 const RIS_ONLY_TTL_S = 60 * 30
 
@@ -176,7 +179,7 @@ export const getRisOnlyForGp = defineCachedFunction(
 
     return { items, withGegenstand: inGp.length - items.length, undecided }
   },
-  { name: 'ris-only-gp', base: DERIVED_CACHE, getKey: (gp: string) => gp, maxAge: RIS_ONLY_TTL_S, swr: false },
+  { name: 'ris-only-gp', base: DERIVED_CACHE, getKey: (gp: string) => gp, ...staleWithin(RIS_ONLY_TTL_S, RIS_JOIN_STALE_S) },
 )
 
 /**

@@ -18,6 +18,9 @@
 import type { LandCode, LandConsultation, LandKundmachungCertainty, LandLandtag, LandProcedureStep } from '#shared/types'
 import { DERIVED_CACHE } from '../../cache/base'
 import { keepIncompleteFor, type Gathered } from '../../cache/gathered'
+import { storageKeyOf } from '../../cache/key'
+import { staleWithin } from '../../cache/stale'
+import { SETTLED_STALE_S, SETTLED_TTL_S } from '../../cache/ttl'
 import { upstreamText } from '../../upstream/fetch'
 import { amendmentChain, followsOn, lastAmendments } from '../amendmentChain'
 import { fetchLgblIndex, lgblFullText, lgblRecord, type LgblRecord } from '../lgblIndex'
@@ -175,9 +178,11 @@ export const resolveKundmachung = defineCachedFunction(
   {
     name: 'land-kundmachung',
     base: DERIVED_CACHE,
-    getKey: (land: LandCode, draft: LandConsultation) => `${land}-${draft.id}-${draft.stage && draft.stage !== 'unknown' ? draft.stage.detail : ''}`,
-    maxAge: 60 * 60 * 24 * 7,
-    swr: true,
-    validate: keepIncompleteFor(INCOMPLETE_MS),
+    // The stage's detail is free text („LGBl. Nr. 45/2026"): encoded (`cache/key.ts`).
+    getKey: (land: LandCode, draft: LandConsultation) => storageKeyOf(`${land}-${draft.id}-${draft.stage && draft.stage !== 'unknown' ? draft.stage.detail : ''}`),
+    // Bounded since 12.11.2026: a decision up to a fortnight old while it is
+    // rebuilt, one on a failed read only for its hour — Nitro's plain SWR
+    // served both at any age.
+    ...staleWithin(SETTLED_TTL_S, SETTLED_STALE_S, keepIncompleteFor(INCOMPLETE_MS)),
   },
 )

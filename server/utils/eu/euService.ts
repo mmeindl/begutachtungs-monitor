@@ -44,6 +44,7 @@ import { anlageLabelKey } from '../text/designation'
 import { withPdf } from '../text/pdfDocument'
 import { upstreamBytes, type UpstreamPolicy } from '../upstream/fetch'
 import { DERIVED_CACHE } from '../cache/base'
+import { storageKeyOf } from '../cache/key'
 import { onlyComplete, type Gathered } from '../cache/gathered'
 import { DERIVED_ANALYSIS_TTL_S, PUBLISHED_DOCUMENT_TTL_S } from '../cache/ttl'
 import { getRisMapForGp, getRisBegutRecord } from '../ris/begutCorpus'
@@ -74,7 +75,7 @@ const fetchVorblattPdf = defineCachedFunction(
   },
   {
     name: 'eu-vorblatt-pdf',
-    getKey: (url: string) => url,
+    getKey: (url: string) => storageKeyOf(url),
     maxAge: PUBLISHED_DOCUMENT_TTL_S,
     swr: false,
     shouldBypassCache: () => !import.meta.dev,
@@ -101,7 +102,7 @@ const vorblattPages = defineCachedFunction(
   {
     name: 'eu-vorblatt-text',
     base: DERIVED_CACHE,
-    getKey: (url: string) => url,
+    getKey: (url: string) => storageKeyOf(url),
     maxAge: PUBLISHED_DOCUMENT_TTL_S,
     swr: false,
   },
@@ -115,7 +116,7 @@ const vorblattPages = defineCachedFunction(
 const fetchBundesrechtHits = defineCachedFunction(
   async (phrase: string, asOf: string): Promise<{ total: number; hits: BundesrechtHit[] }> =>
     bundesrechtHits((await konsJson(konsQuery(bundesrechtSearchParams(phrase, asOf)))) as BrKonsSearchAnswer),
-  { name: 'eu-bundesrecht', getKey: (phrase: string, asOf: string) => `${phrase}|${asOf}`, maxAge: PUBLISHED_DOCUMENT_TTL_S, swr: false },
+  { name: 'eu-bundesrecht', getKey: (phrase: string, asOf: string) => storageKeyOf(`${phrase}|${asOf}`), maxAge: PUBLISHED_DOCUMENT_TTL_S, swr: false },
 )
 
 /** A Paragraph named in more hits than one page holds is transposed many times over; it is not read. */

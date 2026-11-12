@@ -13,6 +13,7 @@
  * `skip`, read at mount: nothing to ask for, or it was asked already.
  */
 import type { MaybeRefOrGetter } from 'vue'
+import { isRestoringScroll } from '~/utils/scrollRestore'
 
 export function useNearViewport(
   target: MaybeRefOrGetter<HTMLElement | null | undefined>,
@@ -46,4 +47,37 @@ export function useNearViewport(
   })
 
   onBeforeUnmount(stop)
+}
+
+/**
+ * A section of a page that asks for its content on approach — 600 px ahead,
+ * so a reader scrolling at reading speed meets a list, not a skeleton
+ * (`LawDiffSection` first; the Textgegenüberstellung, a Land's comparisons
+ * and „Im Bundesgesetzblatt" since 12.11.2026, when a cold draft page sent
+ * nine to twelve requests on mount to one single-core server, most of them
+ * for sections below the fold).
+ *
+ * Its root must stand in the page before the answer, at its place: an
+ * anchor jump or a deep link to the section scrolls to it, and the
+ * observer then sees it.
+ *
+ * While Back or Forward puts a position back, the section asks at once
+ * (`scrollRestore.ts`): the restore waits for the page to grow back to it,
+ * and a section waiting for the reader would never let it. Not for the
+ * Stellungnahmen's PDF tags — fifty of them asking at once is what the
+ * plain `useNearViewport` is there to avoid.
+ */
+const SECTION_NEAR_MARGIN = '600px 0px'
+
+export function useNearViewportSection(
+  target: MaybeRefOrGetter<HTMLElement | null | undefined>,
+  onNear: () => void,
+  skip?: () => boolean,
+) {
+  useNearViewport(target, onNear, SECTION_NEAR_MARGIN, () => {
+    if (skip?.()) return true
+    if (!isRestoringScroll()) return false
+    onNear()
+    return true
+  })
 }

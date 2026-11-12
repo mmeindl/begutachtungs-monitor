@@ -20,7 +20,7 @@ import type { LandCode, LandDraftDetail, LandTextStation } from '#shared/types'
 import { LAND_NAME } from '#shared/utils/laender'
 import { safeExternalUrl } from '#shared/utils/safeExternalUrl'
 import { lgblXmlUrl } from '../lgblIndex'
-import { draftSource, pdfSource, readLgbl, type TextSource } from './read'
+import { draftSource, pdfSource, readLgbl, type PagesReader, type TextSource } from './read'
 
 /** A draft as its Land records it, before its comparisons are known. */
 export type LandDraftRecord = Omit<LandDraftDetail, 'comparisons'>
@@ -44,23 +44,24 @@ function vorlageLabel(label: string): string {
   return label.replace(/,\s*(?:eingebracht|beschlossen in der .+)$/, '')
 }
 
-export function textSources(land: LandCode, detail: LandDraftRecord): Partial<Record<LandTextStation, TextSource>> {
+/** The texts of a draft's stations. `pagesOf`: how their PDFs are read — the comparison hands in the cached read (`pdfPagesService.ts`). */
+export function textSources(land: LandCode, detail: LandDraftRecord, pagesOf?: PagesReader): Partial<Record<LandTextStation, TextSource>> {
   const out: Partial<Record<LandTextStation, TextSource>> = {}
-  const entwurf = draftSource(detail.draft.documents, `Land ${LAND_NAME[land]}`)
+  const entwurf = draftSource(detail.draft.documents, `Land ${LAND_NAME[land]}`, pagesOf)
   if (entwurf) out.entwurf = entwurf
 
   const rv = detail.procedure?.find((s) => s.station === 'rv')
   const rvUrl = rv?.url ? safeExternalUrl(rv.url) : null
-  if (rv && rvUrl) out.rv = pdfSource(vorlageLabel(rv.label), rvUrl, LANDTAG[land])
+  if (rv && rvUrl) out.rv = pdfSource(vorlageLabel(rv.label), rvUrl, LANDTAG[land], pagesOf)
 
   // An Initiativantrag's text, where the procedure names one as a step of its own (a law's page).
   const antrag = detail.procedure?.find((s) => s.kind === 'antrag')
   const antragUrl = antrag?.url ? safeExternalUrl(antrag.url) : null
-  if (antrag && antragUrl) out.antrag = pdfSource(antrag.label, antragUrl, LANDTAG[land])
+  if (antrag && antragUrl) out.antrag = pdfSource(antrag.label, antragUrl, LANDTAG[land], pagesOf)
 
   const report = detail.landtag?.report
   const reportUrl = report?.url ? safeExternalUrl(report.url) : null
-  if (report && reportUrl && REPORT_HAS_TEXT[land]) out.ausschuss = pdfSource(report.label, reportUrl, LANDTAG[land])
+  if (report && reportUrl && REPORT_HAS_TEXT[land]) out.ausschuss = pdfSource(report.label, reportUrl, LANDTAG[land], pagesOf)
 
   const stage = detail.draft.stage
   if (stage && stage !== 'unknown' && stage.station === 'bgbl' && stage.detail && (stage.via !== 'suche' || stage.certainBy)) {

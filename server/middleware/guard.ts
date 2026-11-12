@@ -12,9 +12,18 @@
  *    stricter one as well. A page's in-process API calls are not external
  *    requests: the page was admitted, its parts are not counted again.
  *
+ * 3. A request that did not come through the proxy — the prewarm, the
+ *    watchdog, the Länder archive, every request in dev — waits for fresh
+ *    cache values instead of taking a stale one (`cache/stale.ts`): the
+ *    prewarm unit runs its builds one after another only because each curl
+ *    returns when its build is done. A page's in-process API calls return
+ *    early below and keep the context of the request that rendered it, so a
+ *    prewarmed page waits all the way down and a visitor's page does not.
+ *
  * In memory, per process — one Node process serves the site, and a restart
  * forgetting the counts is harmless.
  */
+import { waitForFresh } from '../utils/cache/stale'
 import {
   RATE_RULES,
   clientKeyFromForwardedFor,
@@ -32,9 +41,14 @@ const limiters = Object.fromEntries(
 ) as Record<RateClass, ReturnType<typeof createRateLimiter>>
 
 export default defineEventHandler((event) => {
+  // Before anything else, and without entering anything: an in-process call
+  // inherits its page's context, waiting or not.
   if (isInProcessRequest(event.node.req.socket?.remoteAddress)) return
   const key = clientKeyFromForwardedFor(getRequestHeader(event, 'x-forwarded-for'))
-  if (key === null) return
+  if (key === null) {
+    waitForFresh()
+    return
+  }
 
   const path = normalisedPath(event.path)
   if (isPrewarmOnlyPath(path)) {
@@ -47,7 +61,7 @@ export default defineEventHandler((event) => {
   // reader's general budget.
   const wait = (strict ? limiters[strict].take(key) : 0) || limiters.global.take(key)
   if (wait > 0) {
-    setResponseHeader(event, 'Retry-After', String(wait))
+    setResponseHeader(event, 'Retry-After', wait)
     throw createError({ statusCode: 429, statusMessage: 'Zu viele Anfragen, bitte kurz warten' })
   }
 })

@@ -215,10 +215,14 @@ const credit = computed(() => {
            hold the draft against. Before the Vorlage's own Stellungnahmen
            since 01.10.2026: the comparison is what led into this station,
            they are the input to the next one. -->
+      <!-- Deferred (12.11.2026): the comparison and the Begründungen are
+           asked by the frame above anyway (`useVorlageOutcome`), so what
+           waits for the approach is the § names alone. -->
       <LawDiffSection
         v-if="draft.enactment"
         :gp="draft.gp"
         :inr="draft.inr"
+        deferred
       />
       <!-- The second window for input: what was filed on the Vorlage itself,
            through the same panel as the Begutachtung's. Client-side

@@ -206,9 +206,12 @@ usePageSeo({
         E-Mail-Weiterleitung liegen bei der INWX GmbH &amp; Co. KG (Berlin,
         Deutschland). Beide sind Auftragsverarbeiter im Sinn des Art 28
         DSGVO und verarbeiten ausschließlich innerhalb der EU. Eine eigene
-        Datenbank gibt es nicht; die Parlamentsdaten liegen nur im
+        Datenbank gibt es nicht; die Parlamentsdaten liegen im
         Arbeitsspeicher des Servers und in einer kleinen Datei mit dem
-        zuletzt erfolgreich abgerufenen Stand. Die Zählung der
+        zuletzt erfolgreich abgerufenen Stand. Veröffentlichte Gesetzes-
+        und Entwurfstexte aus dem Parlament und dem RIS werden zusätzlich
+        bis zu 30 Tage auf dem Server zwischengespeichert; Stellungnahmen
+        sind nicht darunter. Die Zählung der
         Seitenaufrufe liegt als eine kleine Datei je Tag auf demselben
         Server.
       </p>

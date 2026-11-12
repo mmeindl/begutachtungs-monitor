@@ -48,6 +48,13 @@ definePageMeta({
 const route = useRoute()
 const id = computed(() => String(route.params.id ?? ''))
 
+/* Whether the draft implements EU law — the same fact as on a
+ * Ministerialentwurf's card, read from this record. A Verordnung
+ * has a Vorblatt too. Above the awaited fetch, as on the
+ * Ministerialentwurf's page: it needs only the id, and after the await its
+ * server deadline would start only once the record had arrived. */
+const { data: euRecht } = useEuRecht(() => ({ risId: id.value }))
+
 /* `lazy` (04.10.2026), as on the Ministerialentwurf's page and for its
  * reason: a click shows this page at once as `DraftSkeleton`, and the server
  * still waits for the data, so a shared link and a crawler get it whole. */
@@ -87,10 +94,6 @@ const { data: fetchedOutcome } = await useFetch<BgblOutcome>(
 )
 const outcome = computed(() => data.value?.outcome ?? fetchedOutcome.value ?? null)
 
-/* Whether the draft implements EU law — the same fact as on a
- * Ministerialentwurf's card, read from this record. A Verordnung
- * has a Vorblatt too. */
-const { data: euRecht } = useEuRecht(() => ({ risId: id.value }))
 const euTimelineCtx = computed<EuTimelineContext | null>(() => (data.value
   ? {
       begutachtung: { start: data.value.startedAt, end: data.value.deadline },

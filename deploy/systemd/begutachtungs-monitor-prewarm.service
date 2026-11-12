@@ -65,9 +65,10 @@
 # MEASURED AND DELIBERATELY NOT DONE: warming
 # `/api/drafts/:gp/:inr/konsolidiert` for the drafts in Begutachtung (cold
 # ~12 s, warm 10 ms, day cache). Three reasons, and the first is the one that
-# decides. That section is the ONLY one on the page that is fetched lazily
-# and client-side (`compare/TextComparisonSection.vue`,
-# `server: false, lazy: true`): the page renders and reads without it and
+# decides. That section is fetched lazily and client-side
+# (`compare/TextComparisonSection.vue`, `server: false, lazy: true`; since
+# 12.11.2026 not the only one — the sections below the fold ask on approach,
+# `useNearViewportSection`): the page renders and reads without it and
 # then fills in — nobody is told something false in the meantime, which is
 # what separates it from the station map and the BGBl volumes above. Second,
 # it is per draft and unbounded: 19 drafts were open on 26.09.2026, so a good
@@ -101,6 +102,21 @@ PrivateTmp=true
 # The unit's own worst case, stated rather than inherited: the ten --max-time
 # budgets below add up to 5.460 s, and deploy.sh blocks on this job.
 TimeoutStartSec=5540
+# First, and no curl (12.11.2026): the published documents the app keeps on
+# disk (server/utils/cache/documentDriver.ts) — law texts, § versions,
+# Erläuterungen, closed Bundesgesetzblatt years, upstream payloads only and
+# never a Stellungnahme. The driver ignores TTLs: Nitro checks the 30 days on
+# every read and overwrites what has expired, so no answer is ever too old,
+# but a file nobody asks for again would stay forever. This deletes what is
+# older than the 30 days plus a margin — `-mtime +31` is 32 whole days, so
+# nothing still valid goes. The path is the app's StateDirectory, which
+# systemd always puts at /var/lib/<name> for a system unit; written out like
+# the report directory in the diagnostics drop-in, because a `$` in an
+# ExecStart line is systemd's expansion before it is anyone else's. The `-`
+# makes a failure harmless: before the app's first write the directory does
+# not exist yet, find says so in the journal, and the warm-up below still
+# runs and OnSuccess= still fires. First, so a curl that fails cannot skip it.
+ExecStart=-/usr/bin/find /var/lib/begutachtungs-monitor/documents -type f -mtime +31 -delete
 # The first request waits for the port. `After=` orders this job behind the
 # app's START, not behind its LISTEN: after a hand-typed `systemctl restart`
 # the curl came at 16:56:15 and Node listened at 16:56:16 (29.09.2026,

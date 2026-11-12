@@ -56,6 +56,17 @@ describe('withheldNotes — the causes of 26.10.2026', () => {
     expect(notes[2]).toMatchObject({ lead: 'Nicht gezeigt:', text: 'Anlagen und Anhänge gleicht der Monitor nicht mit dem RIS ab und zeigt sie deshalb nicht' })
   })
 
+  it('words „nicht im Entwurf" as the monitor\'s finding, after the RIS causes and before the reader\'s (12.11.2026)', () => {
+    const notes = withheldNotes([
+      { law: 'K', id: '§9', reason: 'twice' },
+      { law: 'K', id: '§6', reason: 'notInDraft' },
+      { law: 'K', id: '§5', reason: 'deletion' },
+    ])
+    expect(notes.map((n) => [n.cause, n.ids])).toEqual([['deletion', ['§5']], ['notInDraft', ['§6']], ['twice', ['§9']]])
+    expect(notes[1]).toMatchObject({ lead: 'Nicht gezeigt:', pronoun: 'ihn', text: 'Einen Teil dessen, was die Textgegenüberstellung bei ihm als neu zeigt, fand der Monitor im Entwurf an dieser Stelle nicht – das kann daran liegen, wie der Monitor die beiden Texte liest' })
+    expect(withheldNotes([{ law: null, id: '§1', reason: 'notInDraft' }, { law: null, id: '§2', reason: 'notInDraft' }])[0]!.text).toMatch(/^Einen Teil dessen, was die Textgegenüberstellung bei ihnen als neu zeigt, fand der Monitor im Entwurf an diesen Stellen nicht/)
+  })
+
   it('refers to one § as „ihn", to several and to an Anlage as „sie"', () => {
     expect(withheldNotes([{ law: null, id: '§1', reason: 'division' }])[0]!.pronoun).toBe('ihn')
     expect(withheldNotes([{ law: null, id: '§1', reason: 'division' }, { law: null, id: '§2', reason: 'division' }])[0]!.pronoun).toBe('sie')
