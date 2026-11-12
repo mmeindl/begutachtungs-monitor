@@ -118,10 +118,8 @@ export function landRepealedOfRefs(refs: readonly any[], nummer: string): Repeal
     .sort(byTitle)
 }
 
-/** Every page of the search, then both readings. Throws when RIS fails. */
-export async function landLawsOfLgbl(land: LandCode, nr: string): Promise<{ laws: BgblLaw[]; repealed: RepealedLaw[] }> {
-  const nummer = lgblNummer(nr)
-  if (!nummer) return { laws: [], repealed: [] }
+/** Every consolidated record that names this Landesgesetzblatt, all pages; `complete`: the search returned as many as it counted. Throws when RIS fails. */
+export async function konsRefsOfLgbl(land: LandCode, nummer: string): Promise<{ refs: any[]; complete: boolean }> {
   const refs: any[] = []
   let hits = 0
   for (let page = 1; page <= MAX_PAGES; page++) {
@@ -139,8 +137,33 @@ export async function landLawsOfLgbl(land: LandCode, nr: string): Promise<{ laws
     refs.push(...pageRefs)
     if (refs.length >= hits || pageRefs.length === 0) break
   }
-  const context = { today: todayIso(), complete: refs.length >= hits }
+  return { refs, complete: refs.length >= hits }
+}
+
+/** Every page of the search, then both readings. Throws when RIS fails. */
+export async function landLawsOfLgbl(land: LandCode, nr: string): Promise<{ laws: BgblLaw[]; repealed: RepealedLaw[] }> {
+  const nummer = lgblNummer(nr)
+  if (!nummer) return { laws: [], repealed: [] }
+  const { refs, complete } = await konsRefsOfLgbl(land, nummer)
+  const context = { today: todayIso(), complete }
   return { laws: landLawsOfRefs(land, refs, nummer, context), repealed: landRepealedOfRefs(refs, nummer) }
+}
+
+/** Every version of one § of one law (`Abschnitt` = that § number), for the comparison's earlier wording. Throws when RIS fails. */
+export async function konsParagraphHistory(land: LandCode, gesetzesnummer: string, key: string): Promise<any[]> {
+  const m = /^(§|Art\.)(\d+)/.exec(key)
+  if (!m) return []
+  const params = new URLSearchParams({
+    Applikation: 'LrKons',
+    [`Bundesland_SucheIn${RIS_LAND[land]}`]: 'true',
+    Gesetzesnummer: gesetzesnummer,
+    'Abschnitt.Typ': m[1] === '§' ? 'Paragraph' : 'Artikel',
+    'Abschnitt.Von': m[2]!,
+    'Abschnitt.Bis': m[2]!,
+    DokumenteProSeite: 'OneHundred',
+  })
+  const body = await risJson<any>(`${LANDESRECHT_API}?${params}`, POLICY)
+  return asArray<any>(body?.OgdDocumentResults?.OgdDocumentReference)
 }
 
 /* eslint-enable @typescript-eslint/no-explicit-any */

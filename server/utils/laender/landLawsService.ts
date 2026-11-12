@@ -293,7 +293,11 @@ export async function readLandLawPage(land: LandCode, year: number, number: numb
   const procedure = sbg?.procedure ?? risProcedure(law, report)
   const landtag: LandLandtag | null = sbg?.landtag ?? (law.decidedAt || report ? { committee: null, subcommittee: false, report, motions: [], decision: law.decidedAt ? { date: law.decidedAt, vote: null } : null } : null)
   const firstText = await firstTextOf(land, law, e.meta.periode).catch(() => null)
-  const comparisons: [LandTextStation, LandTextStation][] = firstText && record?.xmlUrl ? [[firstText.station, 'lgbl']] : []
+  // What the law changed (RIS, § by §), where its own text can be read for the instructions; then the first text against it.
+  const comparisons: [LandTextStation, LandTextStation][] = [
+    ...(record?.xmlUrl ? [['vorher', 'nachher'] as [LandTextStation, LandTextStation]] : []),
+    ...(firstText && record?.xmlUrl ? [[firstText.station, 'lgbl'] as [LandTextStation, LandTextStation]] : []),
+  ]
   return {
     law,
     draftPath: draftId ? landDraftPath(land, draftId) : null,

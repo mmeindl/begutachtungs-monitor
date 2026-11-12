@@ -105,6 +105,17 @@ const NOTES: Record<WithheldCause, { lead: string; one: string; many: string }> 
     one: 'Anlagen und Anhänge gleicht der Monitor nicht mit dem RIS ab und zeigt sie deshalb nicht',
     many: 'Anlagen und Anhänge gleicht der Monitor nicht mit dem RIS ab und zeigt sie deshalb nicht',
   },
+  // A Landesgesetz's page (12.11.2026): what RIS and the Landesgesetzblatt do not agree on is not compared.
+  uninstructed: {
+    lead: 'Nicht verglichen:',
+    one: 'Das RIS ordnet seine Fassung diesem Landesgesetzblatt zu, aber keine Anweisung des Landesgesetzblatts nennt ihn',
+    many: 'Das RIS ordnet ihre Fassung diesem Landesgesetzblatt zu, aber keine Anweisung des Landesgesetzblatts nennt sie',
+  },
+  unpaired: {
+    lead: 'Nicht verglichen:',
+    one: 'Eine Anweisung des Landesgesetzblatts nennt ihn; seine Fassung davor und danach fand der Monitor im RIS nicht eindeutig',
+    many: 'Anweisungen des Landesgesetzblatts nennen sie; ihre Fassung davor und danach fand der Monitor im RIS nicht eindeutig',
+  },
   // One per law (`tguParagraphs`): the id is „Titel".
   title: {
     lead: 'Nicht gezeigt:',
@@ -114,7 +125,7 @@ const NOTES: Record<WithheldCause, { lead: string; one: string; many: string }> 
 }
 
 /** The order the causes stand in under a law: what RIS or the reading refused, then what the reader does not compose. */
-const ORDER: WithheldCause[] = ['unchecked', 'standing', 'inserted', 'elided', 'deletion', 'twice', 'unsure', 'division', 'gap', 'wording', 'unread', 'annex', 'title']
+const ORDER: WithheldCause[] = ['unchecked', 'unpaired', 'uninstructed', 'standing', 'inserted', 'elided', 'deletion', 'twice', 'unsure', 'division', 'gap', 'wording', 'unread', 'annex', 'title']
 
 /**
  * The numbers other §§ of a group move to: „§ 34 → § 33" makes § 33 one

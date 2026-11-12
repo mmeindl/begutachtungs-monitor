@@ -173,7 +173,7 @@ export function annexParagraphCiteDe(
  * document without an address.
  */
 export function landTextCiteDe(
-  station: 'geltend' | 'entwurf' | 'rv' | 'antrag' | 'ausschuss' | 'lgbl',
+  station: 'geltend' | 'entwurf' | 'rv' | 'antrag' | 'ausschuss' | 'lgbl' | 'vorher' | 'nachher',
   document: { label: string; url: string | null } | null | undefined,
   citeAs: string | null | undefined,
 ): { cited: string; url: string } | null {
@@ -191,6 +191,10 @@ export function landTextCiteDe(
   // every session.
   else if (station === 'antrag') cited = BEILAGE.test(label) || /Nr\.?\s+\d+ der Beilagen \(\d+\. Session der \d+\. GP\)/.test(label) ? label : null
   else if (station === 'ausschuss') cited = BEILAGE.test(label) ? label : null
+  // A Landesgesetz's page (12.11.2026): the § after the change, as „Salzburger … idF LGBl. Nr. 31/2026" —
+  // only where the Landesgesetzblatt changed one law; the wording before it has no single citation.
+  else if (station === 'nachher') cited = /\sidF LGBl\.?\s*Nr\.\s*\d+\/\d{4}$/.test(label) ? label : null
+  else if (station === 'vorher') cited = null
   else cited = /^LGBl\.?\s*Nr\.\s*\d+\/\d{4}$/.test(label) ? label : null
   return cited ? { cited, url } : null
 }

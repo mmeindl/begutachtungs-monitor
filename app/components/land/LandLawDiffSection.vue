@@ -140,10 +140,10 @@ function unitCite(u: LawDiffUnit): { text: string; subject: string } | null {
 }
 
 /* The Bund's question for the same pair, word for word (`lawStationPairQuestion`). */
-const AS_LAW_STATION: Record<Exclude<LandTextStation, 'geltend'>, LawStationId> = { entwurf: 'me', rv: 'rv', antrag: 'antrag', ausschuss: 'ausschuss', lgbl: 'bgbl' }
-const LABEL: Record<LandTextStation, string> = { geltend: 'Geltende Fassung', entwurf: 'Entwurf', rv: 'Regierungsvorlage', antrag: 'Initiativantrag', ausschuss: 'Ausschussfassung', lgbl: 'Kundmachung' }
+const AS_LAW_STATION: Record<Exclude<LandTextStation, 'geltend' | 'vorher' | 'nachher'>, LawStationId> = { entwurf: 'me', rv: 'rv', antrag: 'antrag', ausschuss: 'ausschuss', lgbl: 'bgbl' }
+const LABEL: Record<LandTextStation, string> = { geltend: 'Geltende Fassung', entwurf: 'Entwurf', rv: 'Regierungsvorlage', antrag: 'Initiativantrag', ausschuss: 'Ausschussfassung', lgbl: 'Kundmachung', vorher: 'Fassung davor', nachher: 'Fassung danach' }
 /* „im Entwurf" — where the earlier text has a law the later one does not. */
-const IN_FROM: Record<LandTextStation, string> = { geltend: 'in der geltenden Fassung', entwurf: 'im Entwurf', rv: 'in der Regierungsvorlage', antrag: 'im Initiativantrag', ausschuss: 'in der Ausschussfassung', lgbl: 'in der Kundmachung' }
+const IN_FROM: Record<LandTextStation, string> = { geltend: 'in der geltenden Fassung', entwurf: 'im Entwurf', rv: 'in der Regierungsvorlage', antrag: 'im Initiativantrag', ausschuss: 'in der Ausschussfassung', lgbl: 'in der Kundmachung', vorher: 'in der Fassung davor', nachher: 'in der Fassung danach' }
 /* A unit the later text numbers otherwise: „§ 13 → § 9", for every pair of
    texts this section compares (26.10.2026) — the federal Beilage's form
    (`TextComparisonSection`), which replaced „(in der geltenden Fassung § 13)". */
@@ -160,15 +160,20 @@ const ANCHOR: Record<string, string> = {
   'rv>lgbl': 'textvergleich-landtag',
   'antrag>lgbl': 'textvergleich-landtag',
   'entwurf>lgbl': 'textvergleich-lgbl',
+  'vorher>nachher': 'textvergleich-gesetz',
 }
 const anchor = ANCHOR[`${props.from}>${props.to}`] ?? `textvergleich-${props.from}-${props.to}`
 
 /* The law in force against the draft is the Ministerialentwurf's
    „Was ändert der Entwurf?" — its heading and its anchor. */
 const ofDraft = computed(() => props.from === 'geltend')
+/* A Landesgesetz's page (12.11.2026): the wording before it against the wording it brought, from RIS. */
+const ofLaw = computed(() => props.from === 'vorher')
 const heading = computed(() => (props.from === 'geltend' || props.to === 'geltend'
   ? 'Was ändert der Entwurf?'
-  : lawStationPairQuestion(AS_LAW_STATION[props.from], AS_LAW_STATION[props.to])))
+  : props.from === 'vorher' || props.to === 'nachher' || props.from === 'nachher' || props.to === 'vorher'
+    ? 'Was das Gesetz geändert hat'
+    : lawStationPairQuestion(AS_LAW_STATION[props.from], AS_LAW_STATION[props.to])))
 const FROM_LABEL = computed(() => LABEL[props.from])
 const TO_LABEL = computed(() => LABEL[props.to])
 const isNovelle = computed(() => isNovelleUnits(units.value))
@@ -355,7 +360,7 @@ const hasUnits = computed(() => units.value.length > 0)
           :open="groupOpen(law)"
           @toggle="toggleGroup(law)"
         >
-          <LandWithheldNotes :items="unshownByLaw.get(law) ?? []" :reaches="reachesByGroup.get(law) ?? []" :enacted="enactedLaws.has(law)" :moved-to="movedToByGroup.get(law)" :document-url="data.fromDocument?.url ?? null" alone />
+          <LandWithheldNotes :items="unshownByLaw.get(law) ?? []" :reaches="reachesByGroup.get(law) ?? []" :enacted="enactedLaws.has(law)" :moved-to="movedToByGroup.get(law)" :document-url="(ofLaw ? data.toDocument?.url : data.fromDocument?.url) ?? null" :lgbl="ofLaw" alone />
         </DiffGroup>
       </ListBox>
     </template>
@@ -408,7 +413,7 @@ const hasUnits = computed(() => units.value.length > 0)
                text. Named where the header counts it, each cause in its own
                words (`withheldNotes`), with the way to the document that does
                show it — so the §§ shown are not read as all the draft changes. -->
-          <LandWithheldNotes :items="g.withheld" :reaches="g.reaches" :enacted="enactedLaws.has(g.article)" :moved-to="movedToByGroup.get(g.article)" :document-url="data.fromDocument?.url ?? null" />
+          <LandWithheldNotes :items="g.withheld" :reaches="g.reaches" :enacted="enactedLaws.has(g.article)" :moved-to="movedToByGroup.get(g.article)" :document-url="(ofLaw ? data.toDocument?.url : data.fromDocument?.url) ?? null" :lgbl="ofLaw" />
           <p v-if="addedLaws.has(g.article)" class="border-b border-hairline px-4 py-2.5 text-sm text-ink-secondary">
             Dieses Gesetz kommt {{ IN_FROM[from] }} nicht vor; es ist auf dem Weg hinzugekommen.
           </p>

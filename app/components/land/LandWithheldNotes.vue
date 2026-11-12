@@ -22,6 +22,8 @@ const props = defineProps<{
   enacted?: boolean
   /** The numbers other §§ of this law move to (`moveTargets`): a § withheld under one is named „§ 33 (alt)" */
   movedTo?: ReadonlySet<string>
+  /** The document that shows them is the Landesgesetzblatt (a Landesgesetz's page), not the Land's Textgegenüberstellung. */
+  lgbl?: boolean
 }>()
 
 const notes = computed(() => withheldNotes(props.items, { alone: props.alone, movedTo: props.movedTo }))
@@ -34,7 +36,9 @@ const joint = (k: number, n: number) => (k === 0 ? '' : k === n - 1 ? ' und ' : 
 <template>
   <p v-for="n in notes" :key="n.cause" class="border-b border-hairline px-4 py-2.5 text-sm text-ink-secondary">
     {{ n.lead }} <template v-for="(id, k) in n.ids" :key="k">{{ joint(k, n.ids.length) }}<!-- A renumbered § as the comparison names it, „§ 13 → § 9" (26.10.2026). --><template v-if="n.fromIds[k]">{{ displayId(n.fromIds[k]!) }}<span aria-hidden="true">&nbsp;→ </span><span class="sr-only"> wird zu </span></template>{{ displayId(id) }}<template v-if="n.inForce[k]">&nbsp;{{ IN_FORCE_MARK }}</template></template>. <template v-if="n.text">{{ n.text }}. </template>
-    <template v-if="documentUrl">Die <ExternalLink :href="documentUrl" class="link-inline">Textgegenüberstellung des Landes</ExternalLink> zeigt {{ n.pronoun }}.</template>
+    <template v-if="lgbl && documentUrl">Das <ExternalLink :href="documentUrl" class="link-inline">Landesgesetzblatt</ExternalLink> zeigt die Anweisungen.</template>
+    <template v-else-if="lgbl">Das Landesgesetzblatt zeigt die Anweisungen.</template>
+    <template v-else-if="documentUrl">Die <ExternalLink :href="documentUrl" class="link-inline">Textgegenüberstellung des Landes</ExternalLink> zeigt {{ n.pronoun }}.</template>
     <template v-else>Die Textgegenüberstellung des Landes zeigt {{ n.pronoun }}.</template>
   </p>
   <p v-if="enacted" class="border-b border-hairline px-4 py-2.5 text-sm text-ink-secondary">{{ enactedNote() }}</p>

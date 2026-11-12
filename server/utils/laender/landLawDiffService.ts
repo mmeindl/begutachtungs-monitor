@@ -42,6 +42,8 @@ export const LAND_TEXT_PAIRS: readonly (readonly [LandTextStation, LandTextStati
   ['rv', 'ausschuss'],
   ['rv', 'lgbl'],
   ['antrag', 'lgbl'],
+  // A Landesgesetz's page: the wording before it against the wording it brought (`landLawChangesService.ts`).
+  ['vorher', 'nachher'],
   ['entwurf', 'lgbl'],
 ]
 

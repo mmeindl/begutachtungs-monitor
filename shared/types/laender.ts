@@ -292,7 +292,7 @@ export interface LandDraftDetail {
  * `geltend` is the law in force as the Land's Textgegenüberstellung prints
  * it, held against RIS (`landTgu.ts`) — compared only with `entwurf`.
  */
-export type LandTextStation = 'geltend' | 'entwurf' | 'rv' | 'antrag' | 'ausschuss' | 'lgbl'
+export type LandTextStation = 'geltend' | 'entwurf' | 'rv' | 'antrag' | 'ausschuss' | 'lgbl' | 'vorher' | 'nachher'
 
 /**
  * Two texts of a Land's draft, § by § (`landLawDiffService`): the
@@ -404,7 +404,7 @@ export interface LandLawDiffResponse {
  *  - `title`: the law's title, which the draft changes (id `Titel`) — RIS
  *    keeps no title to check it against (26.10.2026).
  */
-export type LandWithheldReason = 'unread' | 'wording' | 'unsure' | 'inserted' | 'elided' | 'twice' | 'deletion' | 'unchecked' | 'division' | 'gap' | 'annex' | 'title'
+export type LandWithheldReason = 'unread' | 'wording' | 'unsure' | 'inserted' | 'elided' | 'twice' | 'deletion' | 'unchecked' | 'division' | 'gap' | 'annex' | 'title' | 'uninstructed' | 'unpaired'
 
 /**
  * How a Kundmachung became certain: named by the Land; the Regierungsvorlage

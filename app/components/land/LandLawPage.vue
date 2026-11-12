@@ -72,6 +72,7 @@ const stations = computed(() => (data.value ? landLawStations(data.value.law, da
 /* The first text against the Kundmachung: the Vorlage's or the Antrag's. */
 const toLgbl = computed(() => (data.value?.comparisons ?? []).find(([a, b]) => (a === 'rv' || a === 'antrag') && b === 'lgbl')?.[0] ?? null)
 const offersVorlage = computed(() => toLgbl.value !== null)
+const changesLaw = computed(() => (data.value?.comparisons ?? []).some(([a, b]) => a === 'vorher' && b === 'nachher'))
 const anchors = computed<Partial<Record<StationId, string>>>(() => ({ rv: '#landtag', parlament: '#landtag', bgbl: '#landesgesetzblatt' }))
 const comparisonAnchors = computed<Partial<Record<ComparisonId, string>>>(() => (offersVorlage.value ? { parlament: '#textvergleich-landtag' } : {}))
 
@@ -193,6 +194,12 @@ useSeoMeta({
                 </p>
                 <div v-else class="h-12 animate-pulse rounded-xl bg-hairline motion-reduce:animate-none" aria-hidden="true" />
               </PageSubsection>
+              <!-- What the law changed, § by §: the wording before it against
+                   the wording it brought, both from RIS, where the
+                   Landesgesetzblatt's instructions name the § — the white
+                   card every other comparison of the site is. The
+                   instructions themselves stay in the fold below. -->
+              <LandLawDiffSection v-if="changesLaw" :land="land" :number="lawNumber" from="vorher" to="nachher" />
               <FoldSection v-if="detail.text?.length" :heading="`Gesetzestext, wie kundgemacht (${detail.text.reduce((n, g) => n + g.units.length, 0)})`">
                 <div class="space-y-6 pb-2">
                   <div v-for="(g, i) in detail.text" :key="i">

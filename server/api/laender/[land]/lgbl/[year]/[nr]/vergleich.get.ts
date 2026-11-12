@@ -9,6 +9,8 @@ import { LAND_CODES } from '#shared/utils/laender'
 import { cachedLandComparison, LAND_TEXT_PAIRS } from '../../../../../../utils/laender/landLawDiffService'
 import { lawAsDraftDetail, readLandLawPage } from '../../../../../../utils/laender/landLawsService'
 import { lawParams } from '../../../../../../utils/laender/landLawParams'
+import { readLandLawChanges } from '../../../../../../utils/laender/landLawChangesService'
+import { lgblRecord } from '../../../../../../utils/laender/lgblIndex'
 
 export default defineEventHandler(async (event): Promise<LandLawDiffResponse> => {
   const p = lawParams(getRouterParam(event, 'land'), getRouterParam(event, 'year'), getRouterParam(event, 'nr'), LAND_CODES)
@@ -20,6 +22,11 @@ export default defineEventHandler(async (event): Promise<LandLawDiffResponse> =>
   try {
     const detail = await readLandLawPage(p.land as LandCode, p.year, p.number)
     if (!detail) throw createError({ statusCode: 404, statusMessage: 'Gesetz nicht gefunden' })
+    // What the law changed, from RIS's consolidated Landesrecht (`landLawChangesService.ts`).
+    if (from === 'vorher' && to === 'nachher') {
+      const record = await lgblRecord(p.land as LandCode, detail.law.nr)
+      return (await readLandLawChanges(p.land as LandCode, detail.law.nr, record?.xmlUrl ?? null, detail.law.url, record?.datum?.slice(0, 10) ?? null)).value
+    }
     return await cachedLandComparison(p.land as LandCode, `lgbl/${p.year}/${p.number}`, from, to, lawAsDraftDetail(detail))
   } catch (error) {
     if (isError(error)) throw error
