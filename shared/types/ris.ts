@@ -2,7 +2,7 @@ import type { BgblOutcome } from './bgbl'
 import type { EuMarker } from './eu'
 
 // ---------------------------------------------------------------------------
-// RIS ↔ ME mapping (docs/ris-join.md)
+// RIS ↔ ME mapping (server/utils/ris/risJoin.ts)
 // ---------------------------------------------------------------------------
 
 export type RisJoinStatus = 'matched' | 'matched_weak' | 'ambiguous' | 'unmatched'

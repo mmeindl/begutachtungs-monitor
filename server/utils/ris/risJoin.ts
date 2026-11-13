@@ -1,14 +1,43 @@
 /**
- * RIS Begut ↔ Parliament ME join (docs/ris-join.md).
+ * RIS Begut ↔ Parliament ME join.
+ *
+ * Parliament knows the procedure (arrival, Frist, Stellungnahmen, the later
+ * stations), RIS knows the text (draft, Erläuterungen, Textgegenüberstellung).
+ * Neither carries the other's identifier, so the pair is constructed from
+ * dates, ministry and title.
  *
  * PURE MODULE — no Nuxt auto-imports, no I/O, so vitest can execute it
  * directly and the regression test can replay the GP XXVII corpus.
  *
  * ruleVersion 1 (2026-09-06) is the corpus-test scorer; ruleVersion 2
- * (2026-09-07) adds what the first live GP XXVIII run taught (docs/ris-join.md
- * §3a). Any change to weights, bands or normalisation must keep
- * tests/risJoin.test.ts green on BOTH GPs or bump `RULE_VERSION` and
- * regenerate data/ris-me-map-gp27.json.
+ * (2026-09-07) adds what the first live GP XXVIII run taught — each change
+ * is marked „v2" below with the draft that forced it. Any change to weights,
+ * bands or normalisation must keep tests/risJoin.test.ts green on BOTH GPs
+ * or bump `RULE_VERSION` and regenerate data/ris-me-map-gp27.json
+ * (`REGEN_RIS_MAP=1 pnpm vitest run tests/risJoin.test.ts`); read that diff
+ * before committing, every changed RIS id is a claim that needs a look.
+ *
+ * WHAT EACH SIGNAL IS WORTH, measured on the 337 true pairs of GP XXVII
+ * (results and hand checks: docs/decisions.md, Joins and measured figures):
+ *  - Ende == Frist: equal in 336. The one deviation is a RIS typo one month
+ *    off (84/ME), proven by the cover letters. The strongest signal; no
+ *    one-sided deadline extension occurred in the whole period.
+ *  - Beginn vs Einlangen: exact or minus one day in 72 %. RIS publishes
+ *    first, Parliament's Einlangen lags 1–14 days in the rest. Never alone.
+ *  - Dates + ministry: not unique. The same ministry routinely opens several
+ *    consultations on one day.
+ *  - Title: containment beats Jaccard. RIS `Titel` enumerates every amended
+ *    law, Parliament writes „X, Y u.a., Änderung" and appends a package
+ *    abbreviation after „ – " that RIS omits. Digits and roman numerals
+ *    matter („Teil I/II/III" packages).
+ *  - Ministry code: 19 codes map 1:1. The exceptions are spelling
+ *    (BMKOES/BMKÖS), state-secretary drafts filed under BKA and competence
+ *    moves between periods — hence the lineage groups in `ministryCodes.ts`.
+ *  - The full title from the ME detail JSON equals RIS `Titel` or `Kurztitel`
+ *    after normalisation in 317 — `exactTitle` below.
+ *
+ * RIS re-publishes records with identical dates and title; those are
+ * `duplicates` on the row, never an ambiguity.
  */
 
 import type { DraftSummary } from '../../../shared/types'

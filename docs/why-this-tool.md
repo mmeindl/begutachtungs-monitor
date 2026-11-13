@@ -60,8 +60,8 @@ copied.
 
 A federal consultation is published in two places: at Parliament (the
 procedure) and in RIS (the texts). Neither list is complete. Across the whole
-XXVII. period, 12 of 350 Ministerialentwürfe have no RIS record
-(`docs/ris-join.md`). Consultations on draft ordinances appear in RIS only
+XXVII. period, 12 of 350 Ministerialentwürfe have no RIS record.
+Consultations on draft ordinances appear in RIS only
 and make up about two thirds of its consultation records. Anyone watching one
 source misses consultations, and neither source says when.
 

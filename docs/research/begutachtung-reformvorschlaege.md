@@ -31,7 +31,7 @@ original language. Each item carries a verification mark:
    resolution (200/E, 16.05.2017) asked ministries to state in each
    Regierungsvorlage which Begutachtung input they followed; a BKA circular of
    06.11.2017 turned that into an "Ersuchen". A sample of 17 GP XXVIII bills
-   found zero such statements (`docs/ris-join.md` §6c).
+   found zero such statements (`docs/decisions.md`, measured figures).
 3. **The six-week period is Verordnungsrecht since 2013, as a Soll-Vorschrift
    without consequence** (§ 9 Abs 3 WFA-Grundsatz-Verordnung). The one
    proposal with a sanction (NEOS 64/A, 2019) was never deliberated.
@@ -74,7 +74,7 @@ weeks in GP XXVI, 9 % in GP XXVII — RLW Fachinfo, [read]).
 | 06.11.2017 | BKA-VD Rundschreiben, Pkt 3 | „Sinnvollerweise wird diese Darstellung auf Anregungen inhaltlicher Natur zu beschränken sein. Überdies ist ein Eingehen auch auf nicht berücksichtigte Anregungen keineswegs ausgeschlossen." — recommended place: Allgemeiner Teil der Erläuterungen. | [read] |
 | Dec 2018 | Austria's report to GRECO (GrecoRC4(2018)15, § 8 lit c) | „in den Erläuterungen zu einer Regierungsvorlage sind die im Zuge des Begutachtungsverfahrens eingegangenen und berücksichtigten Vorschläge darzustellen. Dies dient der erhöhten Transparenz [...] und erleichtert es den Bürgerinnen und Bürgern, die Wirkung ihrer Stellungnahmen nachzuvollziehen." | [agent] |
 | 22.01.2020 | Eva Blimlinger (Grüne), first reading of 64/A, 10. Sitzung XXVII. GP | Stellungnahmen „in den meisten Fällen ignoriert worden sind, und zwar ganz unabhängig davon, welche Regierung im Amt war" — „aus meiner Sicht geht es schon auch darum, zu fragen, wie man mit diesen Stellungnahmen umgeht" — how much of the Begutachtung flowed into the law „wäre auch eine Vorstudie wert" | [agent] |
-| 2026-09-08 | This project, `docs/ris-join.md` §6c | 18 GP XXVIII Regierungsvorlagen sampled, 17 with HTML Erläuterungen, zero account for the Begutachtungsverfahren | [read] |
+| 2026-09-08 | This project, `docs/decisions.md` (measured figures) | 18 GP XXVIII Regierungsvorlagen sampled, 17 with HTML Erläuterungen, zero account for the Begutachtungsverfahren | [read] |
 
 Assessment. Point 2e is the respond-half of a respond-or-explain rule, and it
 was never measured by anyone. GRECO's 2016 report had already noted the gap
@@ -333,7 +333,7 @@ Read by the author (primary source, quoted passage): RLW Fachinfo
 Verlauf, BKA circulars 2017 and 2021, § 9 WFA-GV (RIS, both versions), GRECO
 4th round evaluation report (BMJ mirror), GRECO interim compliance report
 2020, GRECO 5th round compliance report 2024, BMJ GRECO overview page,
-`docs/ris-join.md` §6c.
+`docs/decisions.md` (measured figures).
 
 Agent-verified only (URLs recorded, quotes not re-read): NEOS 1252/A and 64/A
 with the 22.01.2020 debate, 1178/A and § 23b history, Antikorruptions-

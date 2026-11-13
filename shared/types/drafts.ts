@@ -474,7 +474,7 @@ export interface DraftDetail extends Omit<DraftSummary, 'statementCount'> {
   textEvolution: DraftDocument[]
   statements: StatementsSummary
   enactment: EnactmentInfo | null
-  /** The RIS Begut record of this draft (docs/ris-join.md); null when the
+  /** The RIS Begut record of this draft (the RIS↔ME join); null when the
       RIS map was unavailable. `status` says whether RIS has the draft at all. */
   risDraft: RisMapRow | null
   /**

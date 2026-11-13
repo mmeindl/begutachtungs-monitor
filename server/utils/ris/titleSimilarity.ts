@@ -6,7 +6,7 @@
  *
  * PURE MODULE — no Nuxt auto-imports, no I/O, so vitest can execute it
  * directly. Every threshold that reads these numbers is measured
- * (docs/ris-join.md); changing a stop word or a stem changes four joins at
+ * (`risJoin.ts`); changing a stop word or a stem changes four joins at
  * once.
  */
 

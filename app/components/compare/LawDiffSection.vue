@@ -1,7 +1,7 @@
 <script setup lang="ts">
 /**
- * The § comparison between two versions of the law text (docs/ris-join.md
- * §6). Framing rule: shows both what moved and
+ * The § comparison between two versions of the law text.
+ * Framing rule: shows both what moved and
  * what stayed, never a blame counter. Loaded lazily on the client: the first
  * request per pair fetches and parses two documents, and the page must not
  * wait for that.

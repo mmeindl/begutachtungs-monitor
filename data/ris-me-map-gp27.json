@@ -1,5 +1,5 @@
 {
- "_comment": "RIS Begut <-> Parliament ME mapping for GP XXVII under the rule in server/utils/risJoin.ts (see ruleVersion). First produced 2026-09-06 by the corpus test in docs/ris-join.md (25/25 sampled matches and 12/12 absences verified by hand); regenerated 2026-09-07 for ruleVersion 2 with identical RIS ids. Regenerate: REGEN_RIS_MAP=1 pnpm vitest run tests/risJoin.test.ts",
+ "_comment": "RIS Begut <-> Parliament ME mapping for GP XXVII under the rule in server/utils/risJoin.ts (see ruleVersion). First produced 2026-09-06 by the corpus test recorded in docs/decisions.md (25/25 sampled matches and 12/12 absences verified by hand); regenerated 2026-09-07 for ruleVersion 2 with identical RIS ids. Regenerate: REGEN_RIS_MAP=1 pnpm vitest run tests/risJoin.test.ts",
  "generated": "2026-09-07",
  "gp": "XXVII",
  "ruleVersion": 2,

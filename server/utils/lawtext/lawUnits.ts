@@ -1,5 +1,5 @@
 /**
- * Parliament Gesetzestext HTML → structured law units (docs/ris-join.md §6).
+ * Parliament Gesetzestext HTML → structured law units.
  *
  * PURE MODULE — relative imports only, so vitest runs it directly.
  *

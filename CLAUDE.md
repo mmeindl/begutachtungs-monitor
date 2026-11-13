@@ -143,8 +143,8 @@ Deployment: `deploy/README.md`.
 
 The clients are the reference: `server/utils/parliament`, `server/utils/ris`,
 `server/utils/laender` (one file per Land) and `server/utils/eu`. Verified
-field maps and the upstream APIs' traps are in `docs/api-exploration.md` and
-`docs/ris-join.md`. Which licence a source carries is stated under "Legal"
+field maps and the upstream APIs' traps are in `docs/api-exploration.md`.
+Which licence a source carries is stated under "Legal"
 above, not derivable from code.
 
 ## Deferred on purpose: do not build these in a session

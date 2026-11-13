@@ -1,7 +1,7 @@
 import type { LawDiffSegment, Publisher, TraceLink } from './common'
 
 // ---------------------------------------------------------------------------
-// ME → RV text comparison (docs/ris-join.md §6)
+// Text comparison between two stations (server/utils/diff/lawDiff.ts)
 // ---------------------------------------------------------------------------
 
 /**

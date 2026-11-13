@@ -26,7 +26,7 @@ export interface KonsLaw {
 
 /**
  * Resolves a law to its RIS Gesetzesnummer by Kurztitel. `Titel` matches
- * loosely — the same trap as the Begut join (docs/ris-join.md §4) — so the
+ * loosely — the same trap as the Begut join (`ris/risJoin.ts`) — so the
  * result is accepted only on an exact Kurztitel match.
  */
 export async function resolveGesetzesnummer(kurztitel: string): Promise<string | null> {

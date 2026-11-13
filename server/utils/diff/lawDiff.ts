@@ -1,5 +1,5 @@
 /**
- * Comparison of two versions of one law text at § level (docs/ris-join.md §6).
+ * Comparison of two versions of one law text at § level.
  *
  * PURE MODULE — relative imports only.
  *

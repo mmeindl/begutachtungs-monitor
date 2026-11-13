@@ -1,6 +1,6 @@
 /**
  * GET /api/ris-map/{gp} → RisMapResponse: which RIS Begut record belongs to
- * which Ministerialentwurf of the GP (docs/ris-join.md). The consultation
+ * which Ministerialentwurf of the GP (`ris/risJoin.ts`). The consultation
  * detail reads the same map. `{gp}` may be `aktuell` or `vorperiode` — the
  * nightly prewarm timer calls those so no GP is hardcoded on the server.
  */

@@ -591,7 +591,7 @@ const ministryLinks = computed(() => {
                      carries text, Erläuterungen and Gegenüberstellung itself,
                      and whoever works from RIS needs the door, not a copy of
                      its catalogue. "Not in RIS" is a state worth showing, not
-                     an error (docs/ris-join.md §2). -->
+                     an error (docs/decisions.md, Joins). -->
                   <p v-if="data.risDraft" class="mt-4 text-sm text-ink-secondary">
                     <ExternalLink
                       v-if="data.risDraft.risUrl"

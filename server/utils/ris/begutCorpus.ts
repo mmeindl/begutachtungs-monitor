@@ -1,6 +1,6 @@
 /**
  * Upstream client for the RIS OGD API, Applikation=Begut
- * (docs/api-exploration.md §2, docs/ris-join.md §4).
+ * (docs/api-exploration.md §2).
  *
  * Same cache rules as parliament/drafts.ts: caching only at the leaves, SWR
  * only bounded (`cache/stale.ts`), errors thrown rather than cached. RIS reports errors inside an HTTP-200

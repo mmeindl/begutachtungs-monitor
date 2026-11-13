@@ -1,6 +1,6 @@
 /**
  * The two sentences above the § comparison that name laws only one of the
- * two documents carries (docs/ris-join.md §6d).
+ * two documents carries.
  *
  * Here rather than in the component so the number agreement is testable: a
  * Regierungsvorlage that merges several drafts carries over a hundred of

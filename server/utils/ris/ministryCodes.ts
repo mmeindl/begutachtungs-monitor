@@ -3,8 +3,8 @@
  * code, the long name, and how close two ministries are to each other.
  *
  * PURE MODULE — no Nuxt auto-imports, no I/O, so vitest can execute it
- * directly. `MINISTRY_LINEAGE` is measured per GP (docs/ris-join.md §4) and
- * feeds the join's ministry weight.
+ * directly. `MINISTRY_LINEAGE` is measured per GP and feeds the join's
+ * ministry weight.
  */
 
 /** RIS spells some codes without umlauts. */
@@ -13,7 +13,8 @@ const SPELLING: Record<string, string> = { BMKOES: 'BMKÖS' }
 /**
  * Ministry lineage groups for GP XXVII (competence moves, state-secretary
  * drafts filed under BKA). Derived from co-occurrence on the corpus — must
- * be re-derived per GP, see docs/ris-join.md §4.
+ * be re-derived per GP and its exceptions reviewed: every new government
+ * brings new codes, and a hardcoded group is wrong for the next one.
  */
 const MINISTRY_LINEAGE: readonly (readonly string[])[] = [
   ['BMA', 'BMAW', 'BMDW', 'BMAFJ', 'BMASGK'],

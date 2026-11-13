@@ -631,7 +631,7 @@ this dataset would make it trivially easy to build.
 - **A Ministerialentwurf's `stages` carry a forward pointer to its successor**
   — "Regierungsvorlage (186 d.B.)" with a `/gegenstand/…` href, plus the end
   of the Begutachtungsfrist as text. Useful beyond this memo: it is a second,
-  independent path for the ME→RV join in `docs/ris-join.md`, which today works off
+  independent path for the ME→RV join, which today works off
   the Regierungsvorlage's `preconst`. **But it only ever points at a
   Regierungsvorlage** (96/96 on GP XXVIII) — a draft that resurfaces as an
   Initiativantrag has no forward link at all.

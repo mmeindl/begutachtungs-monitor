@@ -13,6 +13,12 @@ section numbers:
 git show architecture-archive-2026-11:docs/architecture.md
 ```
 
+`docs/ris-join.md`, the record of the RIS↔Parliament join and of the first
+weeks of the § comparison, was retired the same way on 14.11.2026: its rules
+and figures are below, the reasoning behind each weight is in
+`server/utils/ris/risJoin.ts`, and the document is kept under the tag
+`ris-join-archive-2026-11`.
+
 The story of a change belongs in its commit message. A rule that outlives the
 change belongs here.
 
@@ -212,6 +218,21 @@ change belongs here.
 - **Whether a RIS record has a Gegenstand is decided by the RIS↔ME join;**
   the title classifier only labels. Errors must fall on the harmless side:
   call a Verordnung a law, never take a law's Parliament page away (§12.16).
+- **The RIS↔ME join weighs the end of the Frist highest and never trusts its
+  start alone.** Parliament and RIS share no identifier, so a draft is
+  matched to its RIS record by dates, ministry and title. The end date is
+  equal in 336 of 337 true pairs; the start lags by 1 to 14 days in 28 %,
+  because RIS publishes first; dates and ministry together are not unique. A
+  change to a weight, a band or the title normalisation keeps the regression
+  on both periods green (`tests/risJoin.test.ts`) or raises `RULE_VERSION`
+  and regenerates `data/ris-me-map-gp27.json`, whose diff is read row by row:
+  every changed RIS id is a claim.
+- **A draft without a RIS record is a state the page shows, not an error.**
+  The twelve of GP XXVII are an upstream gap: the transport section of the
+  BMK between March 2020 and April 2021, and two drafts of the BMEIA.
+- **Where RIS and Parliament state different deadlines for the same draft,
+  the draft stays matched and the difference is shown** (84/ME XXVII, 56/ME
+  XXVIII: one month apart, start, ministry and title equal).
 - **Never link a chain by short title** (§12.21). Laws in BGBl I are ordered
   by BGBl number, not by decision date (§12.23).
 - **A Länder § comparison runs only against a promulgation the Land itself
@@ -228,6 +249,13 @@ change belongs here.
 - **Each side of a comparison carries its own licence credit.** RIS documents
   are CC BY 4.0, parliamentary documents free works, the Ministerialentwurf
   carries no licence claim (§12.18).
+- **Units are aligned by article and heading, never by § number alone.** In
+  one chain the Regierungsvorlage inserted two paragraphs, and a comparison
+  by number marked 41 of 45 merely shifted paragraphs as changed. The number
+  stays out of the compared text, so a renumbered § compares as unchanged.
+- **„Redaktionell" is decided by what changed, never by how much.** A change
+  is editorial only if every inserted or removed piece is a citation, a
+  number, a date, a single letter or punctuation; „und" → „oder" is not.
 - **The comparison key may fold typography; the displayed text never does**
   (§12.33).
 - **A changed cross-reference is editorial only where this comparison itself
@@ -455,6 +483,7 @@ Ministerialentwurf, RV = Regierungsvorlage.
 | Nationalrat decision → promulgation | median 20 days, p90 29, max 82 | 84 laws, GP XXVIII · 03.10.2026 (§12.21) |
 | Drafts changed again in Parliament after the RV | 52 of 91 | GP XXVIII (§12.18) |
 | Of the 30 most recent laws, never in Begutachtung | 6 | 18.09.2026 (§12.23) |
+| Regierungsvorlagen whose Erläuterungen say what became of the Begutachtung | 0 of 17 | 18 Vorlagen of GP XXVIII sampled, 17 with readable Erläuterungen · 08.09.2026 |
 | Statements on Regierungsvorlagen | 555 on 68 Vorlagen | GP XXVIII · 15.09.2026 (§12.14) |
 | Oral hearings in committee on ME-derived Vorlagen | XXVIII 1 of 79, XXVII 8 of 286 | 26.09.2026 (§12.14) |
 | Votes: coalition only / no club against | XXVIII 32 % / 26 %, XXVII 15 % / 36 % | 110 and 361 decided RVs (§12.34) |
@@ -477,6 +506,8 @@ Ministerialentwurf, RV = Regierungsvorlage.
 
 | What | Value | Sample, date |
 |---|---|---|
+| RIS↔ME join, GP XXVII | 337 of 350 matched, 1 weakly, 0 ambiguous, 12 without any RIS record; by hand 25 of 25 sampled matches right, 12 of 12 absences confirmed | 350 Ministerialentwürfe, 966 RIS records in the period · 06.09.2026 |
+| RIS↔ME join, GP XXVIII, first live run | 130 of 132 matched, 1 weakly, 1 without a RIS record | 07.09.2026 |
 | Ordinance → BGBl II join found | 85.4 %; 91.1 % where the Frist is over a year old | 251/294, 163/179 · 22.10.2026 (§12.32) |
 | Länder LGBl title match (Oberösterreich oracle) | 77 of 83 right, at most 2 wrong | (§12.43) |
 | Oberösterreich draft → promulgation comparable | 83 of 83 | 22.10.2026 (§12.44) |
@@ -664,6 +695,15 @@ circular of 10.12.2015).
   (§12.43).
 - **Trusting a unique title-search candidate for the Länder diff.** Fails
   when the right promulgation lies outside the window (§12.44).
+- **A similarity threshold for „redaktionell".** Wrong in both directions:
+  of 26 units above 0.95 only 3 were editorial and 13 hid a change of term;
+  one unit below it was pure reference shifting.
+- **Quoting what the Regierungsvorlage's Erläuterungen say about the
+  Begutachtung.** They say nothing: 0 of 17. The section would read „nothing
+  here" on almost every draft.
+- **Matching RIS to Parliament on the start of the Frist,** distrusting its
+  end because of one-sided extensions. The corpus showed the opposite: no
+  one-sided extension in a whole period, and the end is the sharpest signal.
 - **Pairing articles by Stammnorm alone.** One BGBl often creates several
   laws, and the cited numbers contain typos (§12.18).
 - **A threshold on the new period's age for carrying over open deadlines.**

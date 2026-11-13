@@ -44,7 +44,7 @@ describe('RIS record classification', () => {
   })
 })
 
-describe('GP XXVII corpus regression (docs/ris-join.md)', () => {
+describe('GP XXVII corpus regression', () => {
   const ris = read<RisBegutRecord[]>('./fixtures/ris-begut-gp27.json')
   const meRows = read<MeListRow[]>('./fixtures/me-gp27.json')
   const expected = read<MapFile>('../data/ris-me-map-gp27.json')
@@ -93,7 +93,7 @@ describe('GP XXVII corpus regression (docs/ris-join.md)', () => {
   })
 })
 
-describe('GP XXVIII first live run (docs/ris-join.md §6a)', () => {
+describe('GP XXVIII first live run (07.09.2026)', () => {
   const ris = read<RisBegutRecord[]>('./fixtures/ris-begut-gp28.json')
   const meRows = read<MeListRow[]>('./fixtures/me-gp28.json')
   const rows = joinRisToMe(dedupeMeRows(meRows), ris)

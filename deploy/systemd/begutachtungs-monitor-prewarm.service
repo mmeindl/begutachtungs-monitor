@@ -1,6 +1,6 @@
 # Installed by deploy/deploy.sh on every deploy (install + daemon-reload).
 # Warms the RIS↔ME map of the current GP: ~46 upstream requests that must
-# not land on a visitor (docs/ris-join.md §4a). Started by the timer nightly
+# not land on a visitor. Started by the timer nightly
 # and by deploy.sh after each restart, because the Nitro cache is in-memory.
 # Since 24.09.2026 the deploy WAITS for this unit instead of firing it with
 # --no-block: it is the cold minute after the restart, and a deploy that

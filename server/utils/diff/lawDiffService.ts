@@ -1,6 +1,5 @@
 /**
- * The § comparison of one consultation, between two stations of its law text
- * (docs/ris-join.md §6).
+ * The § comparison of one consultation, between two stations of its law text.
  *
  * Nuxt-aware glue around the pure modules in `lawtext/` and `diff/lawDiff.ts`:
  * each station to the document Parliament publishes for it, fetches the two

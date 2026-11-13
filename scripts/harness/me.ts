@@ -204,7 +204,7 @@ async function fetchDraft(id: string): Promise<Draft | null> {
  * RIS Begut id → the Ministerialentwurf Parliament files it under.
  *
  * Built from the committed GP-XXVIII fixtures through the production join
- * (`ris/risJoin.ts`, 99 % precision on the GP-XXVII corpus test, `docs/ris-join.md`),
+ * (`ris/risJoin.ts`, 99 % precision on the GP-XXVII corpus test, `docs/decisions.md`),
  * so this costs no requests and is reproducible offline. The fixtures were
  * taken on 07.09.2026: drafts published after that have no entry and fall
  * back to the RIS annex, which is the safe direction — a missing join reads
