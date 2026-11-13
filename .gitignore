@@ -15,7 +15,7 @@ dist/
 # CLAUDE.md is public since 13.11.2026 and must not name anything from these.
 TODO.md
 outreach/
-CLAUDE.local.md
+timeline/
 
 # Corpus caches of the measurement scripts (`.cache/<corpus>/`) and the SSR
 # smoke test's cassette (`.cache/ssr-cassette/`, carried in GitHub's cache)
