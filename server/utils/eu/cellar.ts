@@ -1,6 +1,6 @@
 /**
  * UNTIL WHEN a directive had to be transposed — EUR-Lex's Cellar, the
- * Publications Office's SPARQL endpoint (docs/api-exploration.md §9).
+ * Publications Office's SPARQL endpoint (docs/api-exploration.md §2d).
  *
  * PURE MODULE — a CELEX in, dates out; no Nitro globals, relative imports
  * only. The service caches the answer per CELEX (`euService.ts`); the corpus

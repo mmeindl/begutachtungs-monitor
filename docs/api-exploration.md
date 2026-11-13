@@ -1,15 +1,15 @@
-# API exploration: Parliament JSON API & RIS OGD `Begut`
+# Upstream APIs: Parliament, RIS and the EU Cellar
 
-**As of 2026-08-15.** All requests were executed live and subsequently
-re-verified independently by a second pass. Every `curl` here is copy-paste-ready.
+How the official interfaces behave: endpoints, field maps and the traps that
+return a wrong answer without an error. Everything here was measured live;
+each figure carries the day it was measured. None of the interfaces needs a
+key. Rules that follow from these findings are in `docs/decisions.md`; the
+code that reads each interface is named where it matters.
 
-**Overall verdict:** both APIs fully carry stage 1. No auth, open CORS,
-JSON everywhere. The biggest positive surprise: Parliament maintains a dedicated
-Begutachtung list (filter list 81) with a server-computed "deadline running" flag
-and statement counts right in the row. The accountability chain
-ME → RV → BGBl is machine-traversable.
+The section numbers are referenced from code comments. Keep them.
 
 ---
+
 
 ## 1. Parliament filter API
 
@@ -71,7 +71,7 @@ Confirmed filter keys: `GP_CODE` (e.g. `["XXVIII"]`), `AKTIV`, `MIN` (ministry s
 
 Always parse date fields from `Datesort`/`Fristsort`, never from the `dd.mm.yyyy` display strings.
 
-**⚠️ Lists do not share a column layout, and the collision is silent.** In list 81 the title is index **4** and index **6** is the ministry code; in list 101 index **6** is the title. Reading one list with the other's indices compares law titles against `BMJ`/`BMF` and returns a confident, clean zero — no error, no empty field, just a wrong answer that looks like a real one (paid for on 2026-09-16, `docs/research/begutachtung-uebersprungen.md` §2). Two habits that would have caught it: take titles from the detail JSON rather than the row where the cost allows, and give every matching pass a control that is *supposed* to produce hits — a zero in the control is the alarm.
+**⚠️ Lists do not share a column layout, and the collision is silent.** In list 81 the title is index **4** and index **6** is the ministry code; in list 101 index **6** is the title. Reading one list with the other's indices compares law titles against `BMJ`/`BMF` and returns a confident, clean zero — no error, no empty field, just a wrong answer that looks like a real one (`docs/research/begutachtung-uebersprungen.md` §2). Two habits that would have caught it: take titles from the detail JSON rather than the row where the cost allows, and give every matching pass a control that is *supposed* to produce hits — a zero in the control is the alarm.
 
 **History:** 4,204 MEs in total, back to GP XIV (oldest: 1/ME, arrived 1979-01-05). GP XXVIII: 132 MEs (as of 2026-08-15); front-runners by volume: 88/ME 707 SN, 44/ME 616, 32/ME 572, 126/ME 450.
 
@@ -92,10 +92,11 @@ curl -s "https://www.parlament.gv.at/gegenstand/XXVIII/ME/88?json=True"
 
 Works on every `/gegenstand/{GP}/{ITYP}/{INR}` (also `?json=true`). Payload under `.content`:
 
+- **Nothing marks a draft as dead.** `content.vhg_fertig` (and `vhg_fertig_docs`, `process`, `approvalstate`) is `J` / identical on every ME sampled across GP XXVI–XXVIII, running Frist included (2026-09-08). A draft of an ended period can still get its Regierungsvorlage in the next one, linked in the old draft's own stage list (209, 326, 351, 352/ME of GP XXVII); the base rates are in `docs/decisions.md`, section 2.
 - **The Begutachtung deadline is NOT structured here** — it only exists as German prose in `.content.stages[].text` ("Ende der Begutachtungsfrist 08.04.2026"). Structured deadline ⇒ list 81 (index 8/14).
 - **Ministry:** `.content.names[]` with `funktext: "Übermittelt von"` (minister + `ltext` = ministry).
 - **Draft documents:** `.content.documents[]` — Kurzinformation, Begleitschreiben, Gesetzestext, Vorblatt/WFA, Erläuterungen, Textgegenüberstellung. **Gesetzestext and Erläuterungen exist as PDF and HTML**, the rest PDF only. Links are site-relative.
-- **Filing open or closed:** `.content.statementsstate` is `"1"` while the item takes Stellungnahmen and `"0"` afterwards — on a Ministerialentwurf while the Frist runs, on a Regierungsvorlage for the whole parliamentary procedure — through the Bundesrat's phase (list-101 status `4`) until the procedure ends (status `5`), as Parliament describes the window (parlament.gv.at, „Stellung nehmen zu Gesetzesinitiativen") and § 23b Abs. 1 GOG-NR provides; corrected 2026-10-03, it said „while the Nationalrat has the text" (verified 2026-09-15: 132/ME with running Frist `"1"`, the six newest GP-XXVIII Vorlagen `"1"`, the enacted 2238 d.B. and the closed 95/ME `"0"`). `.content.statements.new` mirrors it as 1/0. No deadline is published for the Vorlage; the form closes with the end of the parliamentary procedure. The monitor shows the Vorlage's door from this flag (`enactment.filingOpen`), gated on the GP still running.
+- **Filing open or closed:** `.content.statementsstate` is `"1"` while the item takes Stellungnahmen and `"0"` afterwards — on a Ministerialentwurf while the Frist runs, on a Regierungsvorlage for the whole parliamentary procedure — through the Bundesrat's phase (list-101 status `4`) until the procedure ends (status `5`), as Parliament describes the window (parlament.gv.at, „Stellung nehmen zu Gesetzesinitiativen") and § 23b Abs. 1 GOG-NR provides (verified 2026-09-15: 132/ME with running Frist `"1"`, the six newest GP-XXVIII Vorlagen `"1"`, the enacted 2238 d.B. and the closed 95/ME `"0"`). `.content.statements.new` mirrors it as 1/0. No deadline is published for the Vorlage; the form closes with the end of the parliamentary procedure. The monitor shows the Vorlage's door from this flag (`enactment.filingOpen`), gated on the GP still running.
 - **Process history:** `.content.stages[]` — arrival → deadline end → transmission → "Regierungsvorlage (`<a href="/gegenstand/XXVIII/I/474">474 d.B.</a>`)". The RV link is an href inside HTML text (regex-parseable). It is a second, independent path for the ME→RV join, which today runs off the Regierungsvorlage's `preconst`. **But it only ever names a Regierungsvorlage:** on GP XXVIII, 96 of 132 drafts carry a forward pointer and all 96 point at an `I`, none at an `A`. A draft that resurfaces as an Initiativantrag has no forward link at all, and its Antrag does not mention it either — that path has to be recovered from the text (`scripts/corpus/meAntragJoin.ts`, `docs/research/begutachtung-uebersprungen.md` §4a).
 - **The Vorlage's Verlauf, phase by phase:** `.content.phase[]` — `{ name, stages[] }`, each stage `{ date: "dd.mm.yyyy", text, priority }`, the text HTML with links. After the Ausschuss: „Plenarberatungen NR" ends with „Beschluss im Nationalrat `<a …>48/BNR</a>`" and „Übermittlung des Beschlusses an den Bundesrat"; „Einlangen BR" with „Einlangen im Bundesrat (Frist: dd.mm.yyyy)" and „Mitwirkungsrecht des Bundesrates"; „Ausschussberatungen BR" with the Bundesrat committee's report; „Plenarberatungen BR" with „…: Antrag, keinen Einspruch zu erheben, `<b>angenommen</b>`" and „Beschluss im Bundesrat `<a …>48/BNR</a>`". Read by `findHouseDecisionDate`, `findBundesratArrival`, `findBundesratDecisionDate` (2026-10-03).
 - **A Gesetzesbeschluss that was not promulgated:** a further stage, in the observed case in „Plenarberatungen BR" after the Bundesrat's Beschluss: „Keine Kundmachung des Gesetzesbeschlusses aufgrund eines Formalfehlers sowie Einbringung eines neuen Antrages (416/A) (`<a …>615/GO</a>`)" (80 d.B., GP XXVIII, dated 2025-09-24; the named Antrag carries its own `bgbllinks`). Not every such case is recorded: XXVII/1435 d.B., decided in both chambers in June 2022 and never promulgated, has no stage after the Bundesrat's Beschluss. Read by `findNoPromulgation` (2026-10-03).
@@ -106,7 +107,7 @@ Works on every `/gegenstand/{GP}/{ITYP}/{INR}` (also `?json=true`). Payload unde
 - **Accountability gold mine:** `.content.statements.documents[]` (misleading key!) lists the **text evolution** right on the ME page: "Gesetzestext" → RV document, "Geändert im Ausschuss", "Geändert im Plenum". The diff chain for the accountability layer is delivered for free.
 - **Measured over GP XXVI–XXVIII** (651 Ministerialentwürfe, `pnpm corpus:stationen`, 17.09.2026), because the station selector reads exactly this list:
   - **The three station titles above are the whole vocabulary** and stable across all three periods. Per period: 112/296/91 drafts carry an RV text, 40/80/40 an Ausschussfassung, 34/59/29 a Plenarfassung.
-  - **Every one of them is published as HTML** — 154 Ausschuss- and 122 Plenarfassungen, not a single PDF-only case. PDF-only is a property of the *draft's own* text in the older periods (77 of 353 in GP XXVII), never of the later stations, and never of the period as such: 276 of those 353 GP-XXVII drafts do offer HTML. A note in `lawDiffService.ts` claimed the opposite ("GP XXVII and earlier are PDF-only") and was corrected.
+  - **Every one of them is published as HTML** — 154 Ausschuss- and 122 Plenarfassungen, not a single PDF-only case. PDF-only is a property of the *draft's own* text in the older periods (77 of 353 in GP XXVII), never of the later stations, and never of the period as such: 276 of those 353 GP-XXVII drafts do offer HTML.
   - **The list also carries documents that are not versions of the law text:** "Verhältnismäßigkeitsprüfung" (the EU assessment for regulated professions — 171/ME, 309/ME XXVII, 160/ME XXVI) and "Vertragstext" (a Staatsvertrag — 79/ME, 97/ME XXVI). Read as a station, a § parser turns an annex into paragraphs. Hence an exact-title whitelist, the same rule §1 already states for document names and shortinfo headings.
   - **The draft's own text is titled freely too:** "Gesetzestext" (647×), plus "Gesetzestext (korrigierte Version)" and "(ursprüngliche Version)" on one draft that was corrected mid-Begutachtung (315/ME XXVII), and — the trap — "Gesetzestext, Vorblatt und Erläuterungen" as ONE document on three GP-XXVI drafts. Those three have no isolated law text; a prefix match would compare explanatory prose against law text.
   - The Plenarfassung is filed under a `/BNR/` document path (Beschluss des Nationalrats), not under the Vorlage's `/I/` — irrelevant for reading it, but it means the URL prefix is not a reliable station signal either.
@@ -135,49 +136,17 @@ curl -s -X POST "https://www.parlament.gv.at/Filter/api/filter/data/142?js=eval&
 - **`TYP` is a FILTER dimension, not only a column** (measured live 2026-09-26). The hidden `I`/`P` flag of column 19 can be posted like any other key: `{"BEZUG_GP_CODE":["XXVII"],"BEZUG_ITYP":["I"],"BEZUG_INR":[1289],"TYP":["I"]}` answers **17** rows where the unfiltered query answers 41,376, and `TYP:["P"]` the other **41,359** — the two partition the list exactly. That is what lets a list above `STATEMENTS_CAP` (a Vorlage, and since 2026-10-22 a Ministerialentwurf: 164/ME of GP XXVII answers 117 institutions against 106,183) still name its organisations instead of showing a bare count (`parliament/statements.ts`, `fetchInstitutionStatements`). Two things to keep in mind when using it. **It is not the classifier:** `TYP` records how the submitter REGISTERED, and a non-public submission can sit on either side of it — over the 6,325 SNME rows of GP XXVIII, 955 of the 3,459 `P` rows and 13 of the 2,866 `I` rows read "Nicht-öffentliche Stellungnahme", so `TYP:["P"]` may not be reported as "Privatpersonen". And because **the API silently ignores keys it does not know**, a `TYP` that stopped working would return the whole list under the heading "Organisationen": the monitor therefore asserts the flag on every returned row and refuses anything above the cap.
 - **Header shape:** every entry carries `feldId`, `label` and — for the filterable dimensions only — `feld_name` (`GP_CODE`, `ITYP`, `INR`, `DATUM`, `DATUM_SORT`; the computed columns such as `Von`, `Unterstützungen`, `Nr` have a `label` only). One exception, and it matters: column 19 is hidden and its `label` is literally `"?"`, but it does carry `feld_name: "TYP"` — which is the only identity the header check can assert it by. The monitor asserts the positions it reads against this header on every fetch (`server/utils/parliament/listHeaders.ts`, lists 81 and 142): a reordered column used to degrade silently into "every submitter is a Privatperson", because that is the classifier's safe default.
 
-**The same list holds the Stellungnahmen on Regierungsvorlagen** (found 2026-09-15 after a user pointed at 2238 d.B. — until then the monitor showed only the first round). `BEZUG_ITYP: ["I"]` with the RV's INR; the rows have item type `SN` instead of `SNME`, the citation is bare (`277139/SN`, no `-95/ME` tail), `Zu` reads `2238/I`, and the SN page is `/gegenstand/{GP}/SN/{inr}`. The RV detail JSON embeds the ready-made definition under `.content.statements.filter.data.definition`. Header identical to the ME case (same 23 columns). Sizes: GP XXVIII **555 on 68 Regierungsvorlagen**; GP XXVII **92,037 on 174**, dominated by the COVID-era Vorlagen (1289 d.B. alone: 41,376) — which is why the monitor sizes the list with the paging call above and fetches the breakdown only below a cap (`STATEMENTS_CAP`, `parliament/list142.ts`; until 2026-10-22 `RV_STATEMENTS_CAP`, for the Vorlage alone). Odd but real: `[12]` Unterstützungen is populated on SN rows (4 on 277139/SN) although the RV detail's `approvalstate` says no endorsement is possible for the type. Shown as upstream counts it.
+**The same list holds the Stellungnahmen on Regierungsvorlagen.** `BEZUG_ITYP: ["I"]` with the RV's INR; the rows have item type `SN` instead of `SNME`, the citation is bare (`277139/SN`, no `-95/ME` tail), `Zu` reads `2238/I`, and the SN page is `/gegenstand/{GP}/SN/{inr}`. The RV detail JSON embeds the ready-made definition under `.content.statements.filter.data.definition`. Header identical to the ME case (same 23 columns). Sizes: GP XXVIII **555 on 68 Regierungsvorlagen**; GP XXVII **92,037 on 174**, dominated by the COVID-era Vorlagen (1289 d.B. alone: 41,376) — which is why the monitor sizes the list with the paging call above and fetches the breakdown only below a cap (`STATEMENTS_CAP`, `parliament/list142.ts`; until 2026-10-22 `RV_STATEMENTS_CAP`, for the Vorlage alone). Odd but real: `[12]` Unterstützungen is populated on SN rows (4 on 277139/SN) although the RV detail's `approvalstate` says no endorsement is possible for the type. Shown as upstream counts it.
 
-**Upstream index gap — RESOLVED 2026-09-01** (first observed 2026-08-27). Parliament
-rebuilt the index and confirmed the fix by mail; re-measured the same day:
-88/ME returns its full 707 rows, and `{GP: XXVIII, ITYP: ME}` returns 6,008
-rows against list 81's 5,977. The incident stays documented because the
-failure mode is silent and can recur — that is what the last-good store
-guards against, and question 2 below is still unanswered upstream.
-List 142 silently under-delivers when filtered via `BEZUG_*`. For GP XXVIII
-list 81 counts **5,977** Stellungnahmen, list 142 returns **2,916** rows:
-
-| | MEs | missing SN |
-|---|---|---|
-| absent from the index entirely | 47 | 1,705 |
-| partial, delta > 5 | 42 | 1,303 |
-| partial, delta ≤ 5 (plausibly the normal publication lag) | 26 | 53 |
-| complete | 17 | – |
-
-Worst cases: **88/ME 707 → 0**, 8/ME 143 → 1, 104/ME 101 → 0, 62/ME 101 → 1,
-44/ME 616 → 485, 32/ME 572 → 484. Both of the demo links used in outreach
-(8/ME, 88/ME) are affected.
-
-- Not a request-shape problem: the body above is byte-identical to the
-  `fixedParams` parliament.gv.at embeds in its own 88/ME page, and the
-  variants (with/without `js=eval`, `sortrnr`, `pagesize`) all return 0.
-- Not a filter that fails to grip: `{"BEZUG_GP_CODE":["XXVIII"],
-  "BEZUG_ITYP":["ME"]}` returns 2,916 rows, and **none** of them carries
-  `BEZUG_INR = "88"` (85 distinct MEs present, 88 not among them).
-- The items themselves are intact: `GET /gegenstand/XXVIII/SNME/3699?json=True`
-  still resolves to `476/SN-88/ME`. Data is not deleted, the index is
-  incomplete.
-- `lastSync` is current (identical on lists 81 and 142), so nothing in the
-  response signals the gap — a consumer cannot tell "0 rows" from "0
-  Stellungnahmen" without the list-81 counter.
-- Consequence for us: `getStatementsForMe` throws rather than caching a
-  zero, and the persisted last-good store (`server/utils/parliament/lastgood.ts`)
-  keeps the aggregation alive across restarts — the defence that outlives
-  this incident.
-- Open question the fix does not answer: an API consumer still cannot
-  distinguish "0 rows" from "0 Stellungnahmen" without cross-checking the
-  list-81 counter. Worth raising if there is ever a second occasion.
-- Evidence of the outage: a per-ME comparison of 2026-08-31, recorded
-  outside this repository.
+**List 142 can under-deliver silently.** Between 2026-08-27 and 2026-09-01
+its index was incomplete: for GP XXVIII list 81 counted 5,977 Stellungnahmen
+and list 142 returned 2,916 rows. 47 Ministerialentwürfe were absent entirely
+(88/ME: 707 → 0) and 42 were short by more than five. The items themselves
+still resolved, `lastSync` was current, and nothing in the response marked
+the gap, so "0 rows" was indistinguishable from "0 Stellungnahmen". Parliament
+rebuilt the index. The only cross-check is the counter in list 81. The
+monitor therefore throws rather than caching a zero and keeps the last good
+aggregation on disk (`server/utils/parliament/lastgood.ts`).
 
 ### SNME detail — a Stellungnahme as its own item
 
@@ -204,7 +173,7 @@ One row per endorser: `[0]` full name, `[1]` postal code, `[2]` town, `[5]` date
 
 MEs are **not** included here (all type filters with `ME` → `count=0`); the list covers the formal parliamentary procedure (RV, resolutions, …). `{"GP_CODE":["XXVII"]}` filters (388,778 → 76,395 rows).
 
-**Type filter — fully solved 2026-09-15** (partially on 2026-09-06, `docs/research/volksbegehren.md` §5.1). `ITYP` takes the item type, `VHG` the procedure, and the `ART` column (index 5) separates the subtypes:
+**Type filter** (`docs/research/volksbegehren.md` §5.1). `ITYP` takes the item type, `VHG` the procedure, and the `ART` column (index 5) separates the subtypes:
 
 ```bash
 # Every Regierungsvorlage of a period — 117 in GP XXVIII, 365 in GP XXVII:
@@ -224,7 +193,7 @@ curl -s -X POST "https://www.parlament.gv.at/Filter/api/filter/data/101?js=eval&
   - **`4` = observed: Nationalrat Beschluss taken, Bundesrat seized** — an inference from 4 cases, not a documented value (GP XXVIII, 2026-10-03: 539, 589, 590 and 592 d.B., each with „Beschluss im Nationalrat" on 2026-09-23 and „Einlangen im Bundesrat" the day after). All four still carry `statementsstate` `"1"`, and that is the rule, not a lag: the window runs until the end of the parliamentary procedure (Parliament's own description; § 23b Abs. 1 GOG-NR), so the equivalence above reads `1`, `2` and `4` = open, `5` = closed. `1` (Einlangen im Nationalrat) and `3` (zurückverwiesen an den Ausschuss) were read live on 2026-09-23 (`server/utils/parliament/list101.ts`).
 - **`Gruppe` (index 30) is null on all 117 rows**, and `THEMEN` (index 22) does not separate procedure classes: the tag "Budget und Finanzen" covers both the Bundesfinanzgesetz 2026 (exempt from Begutachtung by design) and the Anti-Mogelpackungs-Gesetz (ordinary consumer law). There is **no structured signal for "exempt from Begutachtung"** — it has to be curated by hand.
 
-- **`VOTE` … `VOTE_COMMENT` (indices 31–35) carry the third-reading vote, club by club** (added here 2026-09-24). The header labels them „Abstimmung 3. Lesung", „Dafür", „Dagegen", „Abstimmungstext", „Abstimmungskommentar"; `VOTE` is `1`/`0` for carried/not, `VOTE_YES`/`VOTE_NO` are JSON arrays of club names (`["ÖVP","SPÖ","NEOS"]`), `VOTE_TEXT` upstream's own summary („Dafür: V, S, N, Dagegen: F, G"). The same record sits in each item's detail JSON under `content.vote` (§3), which is where the monitor reads it — no request of its own, since the RV detail is already fetched for the BGBl link.
+- **`VOTE` … `VOTE_COMMENT` (indices 31–35) carry the third-reading vote, club by club**. The header labels them „Abstimmung 3. Lesung", „Dafür", „Dagegen", „Abstimmungstext", „Abstimmungskommentar"; `VOTE` is `1`/`0` for carried/not, `VOTE_YES`/`VOTE_NO` are JSON arrays of club names (`["ÖVP","SPÖ","NEOS"]`), `VOTE_TEXT` upstream's own summary („Dafür: V, S, N, Dagegen: F, G"). The same record sits in each item's detail JSON under `content.vote` (§3), which is where the monitor reads it — no request of its own, since the RV detail is already fetched for the BGBl link.
 
   **Coverage, measured 2026-09-24 over nine periods** (Regierungsvorlagen, `ITYP=I`, `VHG=RV`): of the Vorlagen whose `Status` is `5`, **110 of 111** (GP XXVIII) and **361 of 362** (XXVII) carry a vote — the ones without were still in Behandlung. Club-level arrays are present on 108/110 (XXVIII), 360/361 (XXVII), 107/115 (XXVI), and still 398/423 in GP XX. The residue is upstream's *prose* vocabulary instead of the arrays: „Namentliche Abstimmung" (then `VOTE_COMMENT` has the Ja/Nein counts), „mehrstimmig", „Einstimmig". Nothing is parsed out of that comment — its format shifts between periods and once even misspells itself („abgegene Stimmen", GP XXV).
 
@@ -232,17 +201,105 @@ curl -s -X POST "https://www.parlament.gv.at/Filter/api/filter/data/101?js=eval&
 
   The vote is a property of the **Regierungsvorlage**, not of the procedure: the 459 Ausschussberichte of GP XXVIII carry none, and neither do the BNR items; among Anträge only the few voted in plenary directly have one (64 of 1.047 in GP XXVIII).
 
-  **Licence:** Parliament's own dataset page for Regierungsvorlagen puts „die Ergebnislisten der Filter und der API" and the Geschichtsseiten under CC BY 4.0, so this field is covered — it is a station *after* the Begutachtung, outside question E3.
+  **Licence:** Parliament's own dataset page for Regierungsvorlagen puts „die Ergebnislisten der Filter und der API" and the Geschichtsseiten under CC BY 4.0, so this field is covered — it is a station *after* the Begutachtung, outside the open licence question (`docs/decisions.md`, Open questions).
 
 For the ME→RV direction the detail JSONs via `preconst` remain the better route (§3) — but note `preconst` is **not a universal field**: 126 d.B. carries no `preconst` key at all (and no `stages`), so its absence is not proof of "no Ministerialentwurf" on its own. Cross-check against list 81.
 
 ---
 
+## 2. RIS OGD API — `Applikation=Begut`
+
+```
+GET https://data.bka.gv.at/ris/api/v2.6/Bundesrecht?Applikation=Begut&...
+```
+
+`Begut` is a **parameter of the `Bundesrecht` resource**, not its own endpoint. 4,566 documents (as of 2026-08-15), one `OgdDocumentReference` = **one consultation** (not one file).
+
+### Query parameters (complete per the official example form, all verified live)
+
+| Parameter | Values | Purpose |
+|---|---|---|
+| `Suchworte` | free text | full-text search (452 hits for "Klimaschutz") |
+| `Titel` | free text | title search — **matches loosely**, never use as a join |
+| `InBegutachtungAm` | `yyyy-MM-dd` | deadline covers the reference date (2026-08-15: 13 open) |
+| `EinbringendeStelle` | short code (`BMF`, `BKA`, …) | ministry — codes change with every government, **do not hardcode** (the new BMWKMS is already missing from the official list) |
+| `ImRisSeit` | `EinerWoche`…`EinemJahr` | coarse relative interval |
+| `Seitennummer` | 1-based | paging |
+| `DokumenteProSeite` | `Ten`/`Twenty`/`Fifty`/`OneHundred` | max. 100 ⇒ full sync = ~46 requests |
+| `Sortierung.SortedByColumn` | `Kurztitel`/`EinbringendeStelle`/`EndeBegutachtungsfrist` | + `Sortierung.SortDirection=Ascending\|Descending` |
+
+**No from/to date range** on the main endpoint. Incremental sync via the history endpoint:
+
+```bash
+curl -s "https://data.bka.gv.at/ris/api/v2.6/History?Anwendung=Begut&AenderungenVon=2026-08-01&DokumenteProSeite=Ten&Seitennummer=1"
+```
+
+(`AenderungenVon`/`AenderungenBis`, optionally `IncludeDeletedDocuments` — deleted behavior untested.)
+
+### Metadata schema (complete, union over 100 records)
+
+```
+Technisch:   ID, Applikation="Begut", Organ, ImportTimestamp (always xsi:nil)
+Allgemein:   Geaendert (yyyy-MM-dd), DokumentUrl
+Bundesrecht: Kurztitel, Titel,
+             Begut: EinbringendeStelle, BeginnBegutachtungsfrist*, EndeBegutachtungsfrist*,
+                    Abkuerzung (optional), Schlagworte (optional)
+```
+
+\* **The deadline fields are optional** — at least one record has neither, and null sorts first under `EndeBegutachtungsfrist Ascending`. Oldest non-null value: 2002-09-20; practical coverage from ~2004. Historical/closed consultations are retained.
+
+There is **no document-type field** (bill draft vs. regulation draft only derivable from the title) and **no parliament reference whatsoever** (no GP, no ME number, no parlament.gv.at URL — verified by grepping full records).
+
+**The type split, measured 2026-09-17** over all 4.574 records with `classifyRisRecord`: **3.012 Verordnungen (65,9 %)**, 1.527 Gesetze (33,4 %), 35 with no type word in the title (0,8 %). The Verordnungen share sits between 54 % and 75 % in every year since 2016 — Parliament's list 81 therefore knows roughly a third of the pre-parliamentary Begutachtung, and that third is the only part with a Gegenstand, Stellungnahmen and an ME→RV chain.
+
+### Attached documents
+
+`Data.Dokumentliste.ContentReference[]`, `ContentType`:
+
+- `MainDocument` — exactly 1 per record, `Name="Hauptdokument"` = the draft text. Always Html+Pdf+Rtf+Xml.
+- `Letter` — 1 per record, cover letter. **Sometimes PDF only** (4 of 39 in the verification sample).
+- `Material` — Erläuterungen, Textgegenüberstellung, Vorblatt/WFA. Names are ministries' free text ("Vorblatt und WFA", "WFA samt Vorblatt", "TGÜ") — **classify by ContentType, never by name**. The one exception is *within* `Material`, where the name is all there is: `flattenRisRecord` picks the Erläuterungen and the Textgegenüberstellung by loose name patterns, because `Material` covers both.
+- `Attachment` — annexes.
+- `EmbeddedAttachment` — inline images, massive noise (~5,000 per 100 records), filter out early.
+
+Every format incl. Html/Xml is **optional per file**. URL pattern: `https://www.ris.bka.gv.at/Dokumente/Begut/{ID}/{datei}.{ext}` (PDF download verified: 200, `application/pdf`).
+
+**How often each document is actually there** — whole corpus, 4.574 records, 2026-09-17 (`pnpm corpus:verordnungen`, which runs the shipped mapper rather than a second copy of it):
+
+| | Verordnungen (3.012) | Gesetze (1.527) |
+|---|---|---|
+| `MainDocument`, Xml **and** Html | 100 % | 100 % |
+| Erläuterungen | **72,1 %** | 68,2 % |
+| Begleitschreiben (`Letter`) | **79,4 %** | 84,8 % |
+| Textgegenüberstellung | 16,1 % | 44,8 % |
+
+So a Verordnungsentwurf is **not** the thin record it looks like from one
+sample — it carries Erläuterungen slightly *more* often than a
+Gesetzesentwurf. Only the Gegenüberstellung is genuinely rarer, and for a
+sound reason: many Verordnungen are new instruments with no standing text to
+hold against.
+
+**The Begleitschreiben is the Einreichweg, and it is mostly a scan.** For a
+Verordnungsentwurf it is the only published answer to "where do I send my
+Stellungnahme?" — there is no parliamentary form. Reading it out is not
+viable: in a sample of 40 records **34 cover letters had no text layer at
+all** (pure images), and the six readable ones name an individual official's
+work e-mail address. Link the document, do not parse it.
+
+### RIS quirks
+
+- **XML-to-JSON trap:** `ContentReference`, `ContentUrl` etc. are an array for several elements, a **bare object for one**. Every parser needs an as-array normalizer.
+- `Hits` is `{"@pageNumber":"1","@pageSize":"10","#text":"4566"}` — numbers as strings.
+- **Errors arrive as HTTP 200** with an `OgdSearchResult.Error` object (SOAP schema message) — check every response for it. Useful: a deliberately invalid enum value returns the valid values in the error text.
+- Record IDs: new `BEGUT_{GUID}`, old `BEGUT_COO_2026_100_2_{n}` — the "2026" is **not a year**, never parse data out of IDs.
+- **`Begut.Gesetzgebungsperiode` is silently ignored** (verified 2026-09-10): `?Applikation=Begut&Begut.Gesetzgebungsperiode=XXVIII` and the same query without it both return 4.570 hits. Unknown filter keys are dropped without an error — the same trap the Parliament API has (§1), and the reason `assertRowsMatchGp` exists there. Consequence for the record: `scripts/harness/annexPdf.ts` passes that parameter and takes the first four pages, so what it labels "GP XXVIII" is really **the 400 most recent Begut records** (default sort is newest first; their Begutachtungsbeginn runs 2024-04-29 … 2026-09-08, so roughly a quarter of them predate GP XXVIII). Corpus figures quoted from that harness — 240 Beilagen, 126 lesbare XML-Tabellen, 114 PDF — carry that caveat. Numbers about *the 132 Ministerialentwürfe* are joined through Parliament's list 81 instead and are exact.
+- Docs: the HTML help pages are empty ASP.NET boilerplate. The real reference: `data.bka.gv.at/ris/api/v2.6/Content/Examples.zip` (→ `begut.html` with all enums) and the XSDs under `data.bka.gv.at/ris/ogd/v2.6/XSD/`.
+- **License:** the response carries no license field; the data.gv.at dataset "RIS Daten Version 2.6" (Bundeskanzleramt) licenses all distributions **CC-BY 4.0**.
+
+
 ## 2a. RIS OGD API — `Applikation=BrKons` (konsolidiertes Bundesrecht)
 
-Explored 2026-09-08 for the consolidated-text package
-and the § title lookup speaking names need. Same endpoint and
-version as `Begut`, no auth:
+Same endpoint and version as `Begut`:
 
 ```
 GET https://data.bka.gv.at/ris/api/v2.6/Bundesrecht?Applikation=BrKons&Titel=…
@@ -261,14 +318,11 @@ block `Bundesrecht.BrKons` carries what a lookup needs:
 | `Aenderung` | `BGBl. Nr. 532/1993 (NR: GP XVIII RV 1130 AB 1170 …)` | every amending BGBl **with its Regierungsvorlage number and GP** |
 | `Eli` | `…/eli/bgbl/1989/620/P0/NOR11004660` | stable address |
 
-**Consequence for the verification harness.** Because each § version carries
+**Ground truth for an amendment engine.** Because each § version carries
 Inkrafttreten and Außerkrafttreten, the version *before* an amendment and the
-version *after* are both addressable. An engine that applies
-Novellierungsanordnungen can therefore be measured against ground truth for
-every already-promulgated amendment — in GP XXVII alone, 296 of 353 drafts
-became a Regierungsvorlage, most of them enacted. Nothing about this is
-blocked; what remains is enumerating the instruction forms and building the
-harness.
+version *after* are both addressable. The engine that applies
+Novellierungsanordnungen is measured against exactly that
+(`pnpm harness:kons`).
 
 **`Aenderung` is a backwards chain.** The tool currently walks ME → RV → BGBl
 forwards. This field walks it back: from a law in force to the
@@ -279,12 +333,11 @@ am reading".
 **Gotcha, and it is a silent one:** unsupported query parameters are
 **ignored, not rejected**. `Paragraf=9` and `Abkuerzung=GSpG` both returned
 441.147 hits — the entire corpus — with HTTP 200. Always sanity-check the hit
-count against expectations before treating a result as filtered (same failure
-class as the list-142 gap, `§list 142`).
+count against expectations before treating a result as filtered (the same
+failure class as on Parliament's side, §1).
 
-## 2b. RIS OGD API — die übrigen `Bundesrecht`-Anwendungen
+## 2b. RIS OGD API — the other `Bundesrecht` applications
 
-Explored 2026-09-08 while building the amendment engine.
 The complete list is not in the documentation but falls out of an
 error message: an invalid child element makes the endpoint answer with
 **every** application it accepts.
@@ -395,124 +448,71 @@ find the pair.
   therefore slightly coarser than the question "what did *this* amendment
   do".
 
-## 2c. Die amtliche Textgegenüberstellung
+## 2c. The official Textgegenüberstellung
 
-Explored 2026-09-08. The consolidated comparison the accountability layer
-wants to compute **already exists for a large share of drafts**, written by
-the ministry itself.
-
-A `Textgegenüberstellung` is a standard annex to an Austrian
-Ministerialentwurf, regulated by a BKA Rundschreiben of 27.03.2002
-(GZ 600.824/003-V/2/2001): two columns headed **`Geltende Fassung`** and
-**`Vorgeschlagene Fassung`**, the headings repeated on every page, and
-unchanged text between two changes abbreviated as a designation plus three
-dots ("2. bis 26b. …").
-
-**Both publish it; only RIS publishes it as a table.** For XXVIII/ME/125 the
-Parliament document list offers `Textgegenüberstellung` in PDF alone, while
-the RIS `Begut` record has the same annex as Xml, Html, Pdf and often Rtf —
-and that observation was written up as the general rule. It is not one.
-Measured over all 132 GP-XXVIII Ministerialentwürfe on 2026-09-10 (Parliament
-`content.documents[]`, group title `Textgegenüberstellung`, against the joined
-RIS record):
-
-| GP XXVIII, 132 MEs | Parlament: PDF **und** HTML | Parlament: nur PDF | Parlament: nichts |
-|---|---:|---:|---:|
-| RIS-XML lesbar (65) | 64 | 1 | 0 |
-| RIS-XML gerastert (44) | 0 | 44 | 0 |
-| RIS ohne Beilage (23, davon 2 ohne Datensatz) | 9 | 3 | 11 |
-
-Three things follow, and each one contradicts a sentence that was here before:
-
-1. **Parliament offers HTML for 73 of the 121 MEs that have an annex at all** —
-   XXVIII/ME/125 is one of the 48 exceptions, not the rule.
-2. **Every single one of the 44 rasterised RIS annexes is PDF-only at
-   Parliament too.** The HTML twin exists exactly where RIS already has a
-   readable XML table, so Parliament's HTML would buy nothing for the path
-   that needs it most. (Parliament marks the scans in the file name:
-   `imfname_*.pdf` rather than `fname_*.pdf`.)
-3. **11 drafts have an annex at Parliament and none in RIS** — 8 of them with
-   HTML, 3 only as an `imfname_` scan. Reading the annex from RIS alone is
-   therefore right for the *rows* and wrong for the *sentence*: until
-   2026-09-10 those 11 were told "Keine Textgegenüberstellung", which is a
-   statement about RIS dressed up as one about the draft.
-
-Also measured, and worth writing down because §2c has an open item about it:
-**no** GP-XXVIII ME carries two Textgegenüberstellung documents at Parliament.
-The two-annex case below is a RIS-side phenomenon.
-
-**Availability, measured over the 200 drafts published in the last twelve
-months:**
-
-| | |
-|---|---|
-| with a Textgegenüberstellung | 121 (60 %) |
-| of those, offered as XML | 121 (100 %) |
-| of those, XML that is actually a table | 78 (60 %) |
-| XML that is only scanned images (`<binary datatype="gif">`) | 53 (40 %) |
-
-So **roughly 39 % of drafts have a machine-readable official comparison** —
-and "available as XML" is not the same as readable, which is the trap here.
-For the running GP XXVIII specifically the share is higher: of 132 drafts,
-109 carry the annex with XML and **65 of those are readable (49 %)**.
-
-**The "scans" are not scans (2026-09-09).** The 40 % above is a property of
-the RIS *XML* rendering, which rasterises the annex into
-`<binary datatype="gif">`. The **PDF of the very same annex** is Word output
-with a full text layer: across all 44 rasterised GP-XXVIII annexes there is
-not one image XObject, and there are 955 font references. The text was never
-lost — the project was reading the one format that had thrown it away. So the
-readable share for GP XXVIII is not 49 % but **109 of 132 (82 %)**: 65 from
-the XML table (`annex/comparisonRows.ts`) and 44 from the PDF's positioned text
-runs (`annexPdf.ts`, geometry, because a PDF has no row elements and the
-paragraph marker is the only boundary the layout guarantees). Both are on
-the page since 2026-09-09; no draft is refused as "nur ein Scan" any more,
-and of the 23 that stay unavailable 21 carry no annex at all.
-
-**Both paths need the RIS check before anything is shown**
-(`annex/verdict.ts`). Neither is a parse that can be
-trusted on sight: the left column claims to be the standing law, and holding
-that claim against RIS Bundesrecht is the only self-check either path has.
-Measured over the readable XML annexes on 2026-09-09, 86,9 % of paragraphs
-with real prose covered the standing text to 99 % or better and 4,7 % fell
-below 80 %; on the PDF path the same ruler gave 70,2 %. **After that day's
-parser corrections it reads 88,9 % (930 of 1.046 §§ with prose) on the table
-path and 76,1 % (1.421 of 1.867) on the PDF path** (2026-09-10) — the PDF
-path gained six points from the per-page geometry gate, the per-column edges
-and the hyphen rule, and stays the rougher of the
-two. **The table path reads 91,4 % (955 of 1.045) since 2026-09-11**, when
-inline markup stopped being a word boundary on all three sides of the
-comparison at once; the PDF number is unchanged, because a text layer carries
-no markup to begin with. Where the check fails, the row is mis-paired or the ministry quoted a
-superseded version — and the page would otherwise print a word diff over a
-provision the row does not belong to. The name varies:
-`Textgegenüberstellung`, `TGÜ`, `TGG`, and a misspelt
+A `Textgegenüberstellung` is a standard annex to a Ministerialentwurf,
+regulated by a BKA Rundschreiben of 27.03.2002 (GZ 600.824/003-V/2/2001): two
+columns headed **`Geltende Fassung`** and **`Vorgeschlagene Fassung`**, the
+headings repeated on every page, and unchanged text between two changes
+abbreviated as a designation plus three dots ("2. bis 26b. …"). The name
+varies: `Textgegenüberstellung`, `TGÜ`, `TGG` and a misspelt
 `Textgegenbüberstellung`, so matching has to be loose.
 
-**The right column has references too (2026-09-10).** It was called
-unverifiable here — "the law the draft proposes, which exists nowhere else
-yet" — and that is wrong twice over. What the annex shows as *new* must not
+**Where it is published.** Measured over all 132 GP-XXVIII Ministerialentwürfe
+on 2026-09-10 (Parliament `content.documents[]`, group title
+`Textgegenüberstellung`, against the joined RIS record):
+
+| GP XXVIII, 132 MEs | Parliament: PDF **and** HTML | Parliament: PDF only | Parliament: nothing |
+|---|---:|---:|---:|
+| RIS XML readable (65) | 64 | 1 | 0 |
+| RIS XML rasterised (44) | 0 | 44 | 0 |
+| RIS without an annex (23, 2 of them without a record) | 9 | 3 | 11 |
+
+- Parliament offers HTML for 73 of the 121 drafts that have an annex at all.
+- Every one of the 44 rasterised RIS annexes is PDF-only at Parliament too.
+  The HTML twin exists exactly where RIS already has a readable table.
+  Parliament marks scans in the file name: `imfname_*.pdf` rather than
+  `fname_*.pdf`.
+- 11 drafts have an annex at Parliament and none in RIS (8 with HTML, 3 as a
+  scan). "No annex in RIS" is therefore not "no annex".
+- No GP-XXVIII draft carries two Textgegenüberstellung documents at
+  Parliament. In RIS, 2 of 240 records with an annex publish it in parts
+  („(Verordnung)" beside „(Anlagen)", „(Artikel1)" beside „(Artikel 2)"); the
+  monitor reads the parts as one annex (`textComparisonParts`,
+  `ris/risRecord.ts`).
+
+**"Available as XML" is not "readable".** RIS's XML rendering of the annex is
+a real table for about 60 % and a series of images
+(`<binary datatype="gif">`) for the rest: 53 of 121 annexes over the twelve
+months to September 2026, 44 of 109 in GP XXVIII. The **PDF of the same
+annex** is Word output with a full text layer: across all 44 rasterised
+GP-XXVIII annexes there is not one image XObject, and there are 955 font
+references. So the annex is read two ways, from the XML table
+(`annex/comparisonRows.ts`) and from the PDF's positioned text runs
+(`annex/annexPdf.ts`: geometry, because a PDF has no row elements and the
+paragraph marker is the only boundary the layout guarantees). For GP XXVIII
+that made 109 of 132 annexes readable on 2026-09-09; current coverage is in
+`docs/decisions.md`, "The consolidated reading and the annex".
+
+**Neither path is trusted on sight.** The left column claims to be the
+standing law, and holding it against RIS Bundesrecht is the check both paths
+get (`annex/verdict.ts`). Of the paragraphs with real prose, the table path
+covers the standing text to 99 % or better in 91.4 % (955 of 1,045,
+2026-09-11), the PDF path in 76.1 % (1,421 of 1,867, 2026-09-10). Where the
+check fails, the row is mis-paired or the ministry quoted a superseded
+version.
+
+**The right column has references too.** What the annex shows as new must not
 already stand in the § (RIS holds that text), and it must occur in the
-draft's own Gesetzestext, which the very same RIS `Begut` record publishes as
-its `MainDocument` beside the annex — in the Novellierungsanordnungen it
-addresses to *that* § since 2026-09-10, because the whole draft as one
-reference is blind to text dragged out of a neighbouring §. The second one is
-the tighter reference of the two: over 1.145 GP-XXVIII paragraphs with at
-least ten new words, the share found in the draft's text is 100 % at the
-median and 98 % at p10. Both checks matter because containment is
-one-directional — text a parser loses on the left passes the RIS check and is
-then painted green as an addition, which happened in 1.019 of 1.092 injected
-cases (93,3 %); the two rules together catch 567 of those, 51,9 % with the
-whole draft as the reference and 62,1 % (PDF) / 69,5 % (table) with it per §
-— the table figure over 246 injection sites since 2026-09-11, three more than
-the run it was first measured on, because §§ the left check used to fail now
-reach the injection at all.
-A parser detail
-found on the way: the PDF text layer writes RIS's editorial note as
-"(Anm. **:** aufgehoben durch …)", with a space before the colon, so a
-pattern built for the XML spelling leaves it in the column while the standing
-side has dropped it — an asymmetry that reads as the ministry's error and is
-ours.
+draft's own Gesetzestext, which the same RIS `Begut` record publishes as its
+`MainDocument`: in the Novellierungsanordnungen addressed to that §, because
+the whole draft as one reference is blind to text dragged out of a
+neighbouring §. Over 1,145 GP-XXVIII paragraphs with at least ten new words,
+the share found in the draft's text is 100 % at the median and 98 % at p10.
+Both checks are needed because containment is one-directional: text a parser
+loses on the left passes the RIS check and would then be shown as an
+addition.
+
 
 **Structure of the readable ones** (one `<table>`, 153 `<tr>` in the sample):
 
@@ -531,292 +531,54 @@ ours.
 That last point is the valuable part: the author marks what changed, so the
 comparison needs no engine and carries no risk of inventing law text.
 
-**Als Orakel für die Engine (2026-09-09).** Drei
-Dinge, die der Prüfstand auf dem Weg dorthin gelernt hat:
+**What the documents do that a reader must expect** (GP XXVIII, September
+2026; the handling is in `annex/comparisonRows.ts`, `annex/tableElements.ts`,
+`annex/annexPdf.ts` and `annex/annexPdfPages.ts`):
 
-- **Der Rückweg BGBl → Entwurf ist exakt.** `Aenderung` im BrKons nennt die
-  Regierungsvorlage („BGBl. I Nr. 31/2026 (NR: GP XXVIII RV 447 …)"), und das
-  Parlament-JSON der Regierungsvorlage (`/gegenstand/XXVIII/I/447?json=True`)
-  trägt in `content.preconst[]` den Ministerialentwurf (`ityp: "ME"`, `inr`).
-  Von dort zum RIS-Begut-Satz über Titel und Beginn (±21 Tage um das
-  Einlangen). Initiativanträge („IA 951/A") und Ausschussanträge haben keinen
-  Entwurf und damit nie eine Gegenüberstellung — im 54-Novellen-Korpus 25 von
-  54; weitere 9 Regierungsvorlagen haben `preconst: null`.
-- **Regierungsvorlagen tragen die Gegenüberstellung uneinheitlich:** als HTML
-  (518 d.B.), nur als PDF (447 d.B.), gar nicht (531 d.B.). Wer die Deckung
-  des Orakels erhöhen will, muss den Parlaments-Anhang der RV lesen, wo der
-  Entwurf keinen hat — offen.
-- **Der Anhang hat eigene Fehler.** Er ist handgeschrieben: Tippfehler
-  gegenüber dem Gesetzestext desselben Entwurfs („therapeutischem" gegen
-  „therapeutischen"), Platzhalter für die spätere Kundmachungsnummer
-  („BGBl. I Nr. xxx/2025"), eigene Anführungszeichen um Zitate. Ein Vergleich
-  gegen ihn muss das aushalten, und er bestätigt entsprechend weniger, als er
-  könnte — nie mehr.
+- **An omitted passage is not a row that ends in three dots.** On the PDF path
+  a row is a whole paragraph, and many end with an omitted last Absatz. A row
+  is an omission only if it consists of nothing but designations, „bis"/„und",
+  ranges, the placeholder „xx" and dots.
+- **The header pair is not spelled uniformly:** „Geltende Fassung nach
+  Inkrafttreten EuGB-VVG", „Geltender Text"/„Vorgeschlagener Text". One of 126
+  readable XML annexes prints no header at all.
+- **A row need not keep the header's column widths** (`colspan="5"` against
+  `1` in the header, `4` against `3` in the body, in one annex).
+- **Nested tables are mostly tables of the law, not comparisons:** 443 of 458
+  sit inside one column. RIS types such cells `<absatz typ="tabtext…">` and
+  never types a provision that way.
+- **An Anlage ends the sequence of paragraphs** (`typ="anlage"`, or by wording
+  where the markup is missing): rows after it do not belong to the last §.
+- **What a column prints before its first § marker** (table of contents,
+  „E n t w u r f", long title, Promulgationsklausel) has no key the two
+  columns share.
+- **PDF: a page can be rotated in the text matrix while `/Rotate` is 0.**
+- **PDF: the columns are justified, and the right one ends well before the
+  paper's edge** (median 84.8 pt), so whether a line wrapped has to be judged
+  against the column's own measured edge.
+- **PDF: a reprinted table of contents lists paragraphs the annex never
+  prints.** A provision has a body, and a body contains a sentence.
+- **PDF: the text layer writes RIS's editorial note as „(Anm. : aufgehoben
+  durch …)",** with a space before the colon, unlike the XML.
 
-### Was die beiden Parser 2026-09-10 falsch gelesen haben
+**As an oracle for the amendment engine** (2026-09-09):
 
-Gemessen über die **240 Beilagen der GP XXVIII** (400 RIS-Begut-Datensätze,
-Gesetze und Verordnungen; 126 lesbare XML-Tabellen, 114 über die PDF-Geometrie).
-Der RIS-Abgleich (`annex/`) prüft nur Zeilen, die eine
-Paragraphenbezeichnung tragen **und** als „geändert"/„entfällt" angezeigt
-werden — alles andere muss der Parser allein richtig haben. Genau dort lagen
-die fünf Befunde.
-
-| | vorher | nachher |
-|---|---:|---:|
-| Zeilen insgesamt | 21.117 | 15.677 |
-| geändert | 9.335 | 5.904 |
-| neu | 4.799 | 3.244 |
-| entfällt | 1.311 | 838 |
-| als „ausgelassen" verworfen | 3.352 | 2.496 |
-| davon mit einer Änderung darin | **919** | **41** |
-
-- **„Ausgelassen" hieß nur „endet mit drei Punkten".** Der Test las beide
-  Spalten auf ein Schluss-`…` — und auf dem PDF-Weg ist eine Zeile ein ganzer
-  Paragraph, also fiel jeder Paragraph darunter, dessen *letzter* Absatz
-  ausgelassen ist. 919 Zeilen trugen eine echte Änderung und wurden trotzdem
-  verworfen (die UI blendet sie aus, der RIS-Abgleich überspringt sie), während
-  `stats.changed` sie weiterzählte: die GAP-Strategieplan-Anwendungsverordnung
-  verlor so eine Definition von Grünland und einen Satz von 20 % auf 50 %.
-  Jetzt muss die Zeile *ausschließlich* aus Auslassungssyntax bestehen —
-  Bezeichnungen, „bis"/„und", Bindestrich-Bereiche, das Platzhalter-„xx", Punkte
-  —, davor höchstens eine Überschrift von maximal 80 Zeichen und nur, wenn beide
-  Spalten sie gleich drucken. Rest: 41 Zeilen, in denen sich nur die Auslassung
-  selbst unterscheidet („1. bis 59. …" gegen „1. bis 60. …", „..." gegen „…") —
-  vergleichbaren Gesetzestext trägt dort keine Spalte.
-- **PDF: der Vorspann wurde als neues Recht gezeigt.** Was eine Spalte vor
-  ihrem ersten `§`-Marker druckt, bildet eine Einheit ohne Bezeichnung; die
-  beiden Spalten teilen dafür keinen Schlüssel. Aus der rechten allein
-  ausgegeben wurde daraus eine „neu"-Zeile: 134 Zeilen in 62 der 114
-  PDF-Beilagen zeigten Inhaltsverzeichnis, „E n t w u r f", Langtitel oder
-  „Präambel/Promulgationsklausel" als Zusatz des Entwurfs, eine davon 94.000
-  Zeichen lang. Die linke Spalte fiel schon vorher stillschweigend weg — die
-  Asymmetrie war die ganze Behauptung. Beide Seiten fallen jetzt weg und werden
-  gezählt (`AnnexParse.unplaced`, 272 Blöcke im Korpus). Preis: zwei Beilagen
-  liefern damit gar keine Zeilen mehr, darunter eine Verordnung mit genau einer
-  Bestimmung ohne `§`-Marker. Das ist der bewusste Tausch — eine positionelle
-  Paarung wäre geraten, und „neu" für unverändertes Recht ist die schlechtere
-  Fehlerart.
-- **PDF: gedrehte Seiten.** Die UWG-Novelle setzt `/Rotate 0` und dreht
-  stattdessen die *Textmatrix*: jeder Lauf trägt `[0, 9.96, -9.96, 0, x, y]`,
-  die Grundlinie läuft entlang der y-Achse, und „Geltende Fassung" (121, 215)
-  und „Vorgeschlagene Fassung" (121, 537) liegen übereinander statt
-  nebeneinander. `transform[4]`/`[5]` roh gelesen ergab zwei Zeilen
-  geschütteltes Wortmaterial, angezeigt als neues Recht. `annexPdfPages.ts`
-  rechnet jetzt `viewport.transform` (das trägt `/Rotate`) in jede
-  Lauf-Matrix, bestimmt aus deren Grundlinienrichtung die dominante
-  Vierteldrehung der Seite und dreht die Seite in ein aufrechtes Bild zurück
-  (Ursprung unten links, y nach oben — dieselbe Konvention, in der
-  `annexPdf.ts` sortiert und in der jede Fixture geschrieben ist). Aufrechte
-  Seiten kommen unverändert durch. Ergebnis für diese Beilage: 2 Unsinnszeilen
-  → 7 echte Paragraphen (§§ 1, 1a, 2, 7a, 33a, 44, 45).
-- **Dazu ein Tor.** Jede Zeile dieses Wegs wird aus einer Koordinate
-  erschlossen, und am Text selbst wäre nie zu sehen, dass die Koordinaten
-  falsch gelesen wurden: die Wörter sind echt, nur ihre Anordnung ist unsere.
-  Findet sich das vorgeschriebene Kopfpaar auf keiner Zeile als links/rechts,
-  liefert der Parser nichts (`AnnexParse.unreadable`). Es kostet nach der
-  Drehungskorrektur **keine einzige** der 114 Beilagen — vorher hätte es drei
-  gekostet, zwei davon nur wegen der Schreibweise: „Geltende Fassung nach
-  Inkrafttreten EuGB-VVG" und „Geltender Text"/„Vorgeschlagener Text". Die
-  Kopfzeilen werden deshalb über ein Muster erkannt, nicht über
-  Zeichengleichheit. **Ein Bit pro Dokument war das aber**: eine einzelne
-  anders gesetzte Seite in einer sonst geraden Beilage fiel nicht auf. Seit
-  demselben Tag trägt jede Seite ihre eigene Geometrie (`AnnexPage.geometry`
-  aus `uprightRuns`: Läufe, Läufe gegen die Drehung der Seite, schräge Läufe),
-  und `parseAnnexPdf` liest eine Seite nicht, deren Breite um mehr als 1 % von
-  der des Dokuments abweicht, die einen schrägen Lauf trägt oder deren
-  abweichend gedrehte Läufe 5 % überschreiten — `AnnexParse.droppedPages`,
-  heute 0 für alle 114.
-- **XML: verschachtelte Inhaltstabellen wurden zu erfundenen Änderungen.**
-  Der Lift war für den Layout-Fall gebaut — eine Wrapper-Zeile, eine Zelle über
-  die volle Breite, die Gegenüberstellung darin — und feuerte auf *jede*
-  verschachtelte Tabelle. 443 der 458 verschachtelten Tabellen der GP XXVIII
-  sitzen aber in einer Zelle *innerhalb* einer Spalte, und ihre Spalten sind
-  nicht „geltend" und „vorgeschlagen": das Finanzausgleichsgesetz § 11 meldete
-  „Grunderwerbsteuer" → „5,702 0,556 93,742", die Fruchtsaftverordnung 158
-  geänderte Zeilen aus einer „Fruchtnektar aus | Mindestgehalt"-Tabelle, die
-  Universitätsfinanzierungsverordnung 672 aus einer ISCED-Codeliste. Gehoben
-  wird jetzt nur noch, was die Breite deckt (alle anderen Zellen der Zeile
-  leer) oder selbst mit dem Kopfpaar beginnt; alles andere wird als Text in die
-  Zelle geschrieben — Zeilen mit " ", Zellen mit " | " —, steht damit in beiden
-  Spalten und wird vom Wortdiff verglichen. Das Kriterium „Wrapper-Zeile hat
-  genau eine Zelle" wäre zu eng gewesen: das ABGB schreibt
-  `<td colspan="2">…Vergleich…</td><td/>` und verlor damit den neuen § 1159
-  Abs. 6.
-- **XML: eine Zeile muss die Spaltenbreiten des Kopfes nicht einhalten.** Das
-  Verbraucherkreditrechts-Änderungsgesetz 2026 setzt den Kopf `colspan="5"`
-  gegen `colspan="1"` und den Anhang `4` gegen `3`: beide Zellen landeten unter
-  „Geltende Fassung", die rechte Spalte blieb leer, und elf Zeilen wurden als
-  **entfällt** gemeldet, die der Anhang in beiden Spalten gleich druckt. Keine
-  davon trägt eine Paragraphenbezeichnung, der RIS-Abgleich sieht sie also nie.
-  Bleibt eine Seite leer, wird jetzt nach den Breiten der Zeile selbst geteilt.
-- **XML: Kopf fehlt ganz.** Genau eine der 126 lesbaren Beilagen druckt das
-  Kopfpaar nicht (Kurztitel beginnt „Änderung der Universitäts- und
-  Hochschulstatistik-…"). Sie *ist* eine zweispaltige Gegenüberstellung, nur
-  ohne Überschrift; die Spaltenbreiten kommen deshalb aus der häufigsten
-  Zeilenform statt aus einer Annahme, und ein Dokument, dessen Zeilen nicht
-  zwei Zellen breit sind, liefert nichts statt Paaren aus unverwandten Zellen.
-
-Zwei weitere Befunde derselben Runde (2026-09-10, gemessen über die 2.000
-jüngsten RIS-Begut-Datensätze, 403 davon mit lesbarer XML-Beilage — die
-Zahlen in Klammern über die 400 jüngsten, das Fenster der Tabellen oben):
-
-- **XML: eine Datentabelle allein in einer Zelle wurde zur Gegenüberstellung.**
-  Der Lift greift ohne Kopfpaar, wenn eine Zelle die volle Breite deckt — und
-  das muss er, denn so schreibt das ABGB seinen § 1159, und so stehen Artikel-
-  und Abschnittszeilen in mehreren Beilagen. Er feuert auf 73 verschachtelte
-  Tabellen; 18 davon sind aber Tabellen **des Gesetzes**, die zufällig allein
-  in ihrer Zelle stehen, und ihre zwei Spalten wurden als „geltend" gegen
-  „vorgeschlagen" gelesen: die Bildungsdokumentation meldete „Attribut" →
-  „Wert", die Pflanzgutverordnung „Gattung oder Art" → „Schadorganismen", die
-  Hochschul-Curriculaverordnung „Bildungswissenschaftliche Grundlagen" → „10".
-  Bei letzterer besteht die ganze Beilage aus solchen Tabellen: alle 19 Zeilen
-  waren erfunden, sie liefert jetzt nichts und sagt warum. Entschieden wird
-  über die Auszeichnung des RIS, nicht über die Form: `<absatz typ="tabtext…">`
-  ist, wie das RIS Tabellenzellen typisiert, und es typisiert damit nie eine
-  Bestimmung. Alle 18 werden erkannt, keine der 6 echten verschachtelten
-  Gegenüberstellungen — 128 (20) Zeilen weniger, die „geändert" hießen.
-- **Eine Anlage beendet die Paragraphenfolge, sie gliedert sie nicht.** Zeilen
-  ohne eigene Bezeichnung erben den zuletzt geöffneten Paragraphen, und das
-  galt auch über „Anhang" hinweg: im VerKRÄG gingen vierzehn Zeilen des Anhangs
-  als § 14 des Verbraucherbehördenkooperationsgesetzes hinaus, wurden vom
-  RIS-Abgleich einbehalten und der Leserin mit „der geltende Text dieser Stelle
-  steht so nicht im RIS" erklärt — wahr über § 14 und falsch über die Beilage,
-  die das nie behauptet hat. Erkannt wird die Anlage über `typ="anlage"` und,
-  wo die Auszeichnung fehlt (12 Zeilen im Fenster), über die Wortwahl mit
-  derselben Längenschranke wie bei Abschnitt/Hauptstück. Betroffen: 1.982 (951)
-  Zeilen in 168 (61) Anlagen, davon 678 (230) als Änderung gezeigt. Sie tragen
-  jetzt die Anlage als Bezeichnung statt des Paragraphen davor — 522 (213) mit
-  einer Bezeichnung, die das RIS beantworten kann („Anlage 1" → `Anl. 1`); wo
-  die Zeile keine Nummer nennt („Anhang"), bleiben sie ungeprüft, was ihnen
-  zusteht.
-
-Und drei Befunde, die nur den PDF-Weg betreffen (2026-09-10, über die 114
-PDF-Beilagen der GP XXVIII):
-
-- **Die Spaltenkante muss aus der Spalte kommen.** „Diese Zeile ist
-  umbrochen" entschied sich links am Bundsteg und rechts am *Seitenrand* —
-  aber die rechte Spalte endet im Median 84,8 pt vor dem Papierrand, also
-  zählte über den ganzen Korpus keine rechte Zeile als umbrochen. Weil die
-  Übernahme einer Überschrift an der umbrochenen Zeile stoppt, landete eine
-  zweizeilige Paragraphenüberschrift nur in der rechten Spalte: **70
-  Paragraphen zeigten ihre eigene geltende Überschrift als Zusatz des
-  Entwurfs**. Jede Spalte wird jetzt an ihrer eigenen, aus ihren Zeilen
-  gemessenen Kante geprüft, und die Toleranz dafür ist eine eigene Zahl
-  (6 pt gegen 18 pt für den Bundsteg), weil die Beilagen im Blocksatz stehen.
-- **Ein nachgedrucktes Inhaltsverzeichnis liefert Bestimmungen, die es
-  nicht gibt.** Fünf einseitige Zeilen des Korpus waren Einträge zu
-  Paragraphen, die die Beilage nie druckt — vier davon seit Jahren in Geltung
-  (§ 79a Mindestbesteuerungsgesetz, § 13a
-  GAP-Strategieplan-Anwendungsverordnung, § 11 Energie-Control-Gesetz,
-  § 77d BWG) — und gingen als „neu" hinaus. Eine Bestimmung hat einen Körper, und ein Körper enthält einen
-  Satz: eine einseitige Einheit, deren Text nach der Bezeichnung nicht leer
-  ist und kein Satzzeichen trägt, ist ein Inhaltsverzeichnis-Eintrag.
-- **Ein Bindestrich am Zeilenende** darf nur aufgelöst werden, wenn die
-  Zeile, die ihn trägt, bis an die Spaltenkante gelaufen ist; gefragt wurde
-  die Zeile danach. Beide Richtungen waren falsch — „Nachrichten- dienst"
-  blieb getrennt, „Staatsschutz- und" wurde zu „Staatsschutzund". 135 Zeilen
-  über die 114 Beilagen, netto −340 Zeichen von 7,46 Mio.
-
-**Offen: zwei Beilagen-Dokumente pro Datensatz.** 2 der 240 Datensätze mit
-Beilage tragen zwei davon — „Textgegenüberstellung (Verordnung)" +
-„Textgegenüberstellung (Anlagen)" (Methodenverordnung Wasser) und
-„Textgegenüberstellung (Artikel1)" + „Textgegenüberstellung (Artikel 2)"
-(Weinrecht-Sammelverordnung 2026). `ris/begutCorpus.ts` nimmt das erste; die zweite Hälfte
-der Gegenüberstellung wird nicht gezeigt und auch nicht erwähnt. Nicht
-behoben.
-
-## 2. RIS OGD API — `Applikation=Begut`
-
-```
-GET https://data.bka.gv.at/ris/api/v2.6/Bundesrecht?Applikation=Begut&...
-```
-
-`Begut` is a **parameter of the `Bundesrecht` resource**, not its own endpoint. 4,566 documents (as of 2026-08-15), one `OgdDocumentReference` = **one consultation** (not one file).
-
-### Query parameters (complete per the official example form, all verified live)
-
-| Parameter | Values | Purpose |
-|---|---|---|
-| `Suchworte` | free text | full-text search (452 hits for "Klimaschutz") |
-| `Titel` | free text | title search — **matches loosely**, never use as a join |
-| `InBegutachtungAm` | `yyyy-MM-dd` | deadline covers the reference date (2026-08-15: 13 open) |
-| `EinbringendeStelle` | short code (`BMF`, `BKA`, …) | ministry — codes change with every government, **do not hardcode** (the new BMWKMS is already missing from the official list) |
-| `ImRisSeit` | `EinerWoche`…`EinemJahr` | coarse relative interval |
-| `Seitennummer` | 1-based | paging |
-| `DokumenteProSeite` | `Ten`/`Twenty`/`Fifty`/`OneHundred` | max. 100 ⇒ full sync = ~46 requests |
-| `Sortierung.SortedByColumn` | `Kurztitel`/`EinbringendeStelle`/`EndeBegutachtungsfrist` | + `Sortierung.SortDirection=Ascending\|Descending` |
-
-**No from/to date range** on the main endpoint. Incremental sync via the history endpoint:
-
-```bash
-curl -s "https://data.bka.gv.at/ris/api/v2.6/History?Anwendung=Begut&AenderungenVon=2026-08-01&DokumenteProSeite=Ten&Seitennummer=1"
-```
-
-(`AenderungenVon`/`AenderungenBis`, optionally `IncludeDeletedDocuments` — deleted behavior untested.)
-
-### Metadata schema (complete, union over 100 records)
-
-```
-Technisch:   ID, Applikation="Begut", Organ, ImportTimestamp (always xsi:nil)
-Allgemein:   Geaendert (yyyy-MM-dd), DokumentUrl
-Bundesrecht: Kurztitel, Titel,
-             Begut: EinbringendeStelle, BeginnBegutachtungsfrist*, EndeBegutachtungsfrist*,
-                    Abkuerzung (optional), Schlagworte (optional)
-```
-
-\* **The deadline fields are optional** — at least one record has neither, and null sorts first under `EndeBegutachtungsfrist Ascending`. Oldest non-null value: 2002-09-20; practical coverage from ~2004. Historical/closed consultations are retained.
-
-There is **no document-type field** (bill draft vs. regulation draft only derivable from the title) and **no parliament reference whatsoever** (no GP, no ME number, no parlament.gv.at URL — verified by grepping full records).
-
-**The type split, measured 2026-09-17** over all 4.574 records with `classifyRisRecord`: **3.012 Verordnungen (65,9 %)**, 1.527 Gesetze (33,4 %), 35 with no type word in the title (0,8 %). The Verordnungen share sits between 54 % and 75 % in every year since 2016 — Parliament's list 81 therefore knows roughly a third of the pre-parliamentary Begutachtung, and that third is the only part with a Gegenstand, Stellungnahmen and an ME→RV chain.
-
-### Attached documents
-
-`Data.Dokumentliste.ContentReference[]`, `ContentType`:
-
-- `MainDocument` — exactly 1 per record, `Name="Hauptdokument"` = the draft text. Always Html+Pdf+Rtf+Xml.
-- `Letter` — 1 per record, cover letter. **Sometimes PDF only** (4 of 39 in the verification sample).
-- `Material` — Erläuterungen, Textgegenüberstellung, Vorblatt/WFA. Names are ministries' free text ("Vorblatt und WFA", "WFA samt Vorblatt", "TGÜ") — **classify by ContentType, never by name**. The one exception is *within* `Material`, where the name is all there is: `flattenRisRecord` picks the Erläuterungen and the Textgegenüberstellung by loose name patterns, because `Material` covers both.
-- `Attachment` — annexes.
-- `EmbeddedAttachment` — inline images, massive noise (~5,000 per 100 records), filter out early.
-
-Every format incl. Html/Xml is **optional per file**. URL pattern: `https://www.ris.bka.gv.at/Dokumente/Begut/{ID}/{datei}.{ext}` (PDF download verified: 200, `application/pdf`).
-
-**How often each document is actually there** — whole corpus, 4.574 records, 2026-09-17 (`pnpm corpus:verordnungen`, which runs the shipped mapper rather than a second copy of it):
-
-| | Verordnungen (3.012) | Gesetze (1.527) |
-|---|---|---|
-| `MainDocument`, Xml **and** Html | 100 % | 100 % |
-| Erläuterungen | **72,1 %** | 68,2 % |
-| Begleitschreiben (`Letter`) | **79,4 %** | 84,8 % |
-| Textgegenüberstellung | 16,1 % | 44,8 % |
-
-So a Verordnungsentwurf is **not** the thin record it looks like from one
-sample — it carries Erläuterungen slightly *more* often than a
-Gesetzesentwurf. Only the Gegenüberstellung is genuinely rarer, and for a
-sound reason: many Verordnungen are new instruments with no standing text to
-hold against.
-
-**The Begleitschreiben is the Einreichweg, and it is mostly a scan.** For a
-Verordnungsentwurf it is the only published answer to "where do I send my
-Stellungnahme?" — there is no parliamentary form. Reading it out is not
-viable: in a sample of 40 records **34 cover letters had no text layer at
-all** (pure images), and the six readable ones name an individual official's
-work e-mail address. Link the document, do not parse it.
-
-### RIS quirks
-
-- **XML-to-JSON trap:** `ContentReference`, `ContentUrl` etc. are an array for several elements, a **bare object for one**. Every parser needs an as-array normalizer.
-- `Hits` is `{"@pageNumber":"1","@pageSize":"10","#text":"4566"}` — numbers as strings.
-- **Errors arrive as HTTP 200** with an `OgdSearchResult.Error` object (SOAP schema message) — check every response for it. Useful: a deliberately invalid enum value returns the valid values in the error text.
-- Record IDs: new `BEGUT_{GUID}`, old `BEGUT_COO_2026_100_2_{n}` — the "2026" is **not a year**, never parse data out of IDs.
-- **`Begut.Gesetzgebungsperiode` is silently ignored** (verified 2026-09-10): `?Applikation=Begut&Begut.Gesetzgebungsperiode=XXVIII` and the same query without it both return 4.570 hits. Unknown filter keys are dropped without an error — the same trap the Parliament API has (§1), and the reason `assertRowsMatchGp` exists there. Consequence for the record: `scripts/harness/annexPdf.ts` passes that parameter and takes the first four pages, so what it labels "GP XXVIII" is really **the 400 most recent Begut records** (default sort is newest first; their Begutachtungsbeginn runs 2024-04-29 … 2026-09-08, so roughly a quarter of them predate GP XXVIII). Corpus figures quoted from that harness — 240 Beilagen, 126 lesbare XML-Tabellen, 114 PDF — carry that caveat. Numbers about *the 132 Ministerialentwürfe* are joined through Parliament's list 81 instead and are exact.
-- Docs: the HTML help pages are empty ASP.NET boilerplate. The real reference: `data.bka.gv.at/ris/api/v2.6/Content/Examples.zip` (→ `begut.html` with all enums) and the XSDs under `data.bka.gv.at/ris/ogd/v2.6/XSD/`.
-- **License:** the response carries no license field; the data.gv.at dataset "RIS Daten Version 2.6" (Bundeskanzleramt) licenses all distributions **CC-BY 4.0**.
+- **The way back from a BGBl to its draft is exact.** `Aenderung` in BrKons
+  names the Regierungsvorlage („BGBl. I Nr. 31/2026 (NR: GP XXVIII RV 447 …)"),
+  and the Vorlage's detail JSON carries the Ministerialentwurf in
+  `content.preconst[]`. Initiativanträge („IA 951/A") and committee motions
+  have no draft and so never an annex: 25 of 54 in the amendment corpus;
+  another 9 Regierungsvorlagen have `preconst: null`.
+- **Regierungsvorlagen carry the annex inconsistently:** as HTML (518 d.B.),
+  as PDF only (447 d.B.), not at all (531 d.B.).
+- **The annex has errors of its own.** It is written by hand: typos against
+  the law text of the same draft („therapeutischem" against
+  „therapeutischen"), placeholders for the later promulgation number („BGBl. I
+  Nr. xxx/2025"), its own quotation marks around quotes. A comparison against
+  it has to tolerate that, and confirms less than it could, never more.
 
 
-## 2d. EU-Bezug: das Vorblatt-PDF und der EUR-Lex-Cellar (04.11.2026)
+## 2d. EU link: the Vorblatt PDF and the EUR-Lex Cellar (04.11.2026)
 
 **The Vorblatt/WFA has a text layer only in its PDF.** Its RIS XML and HTML
 are page images. It is a `Material` document, found by name
@@ -925,8 +687,7 @@ site only links there and never fetches.
 - **RV → law: fully structured.** `content.status.bgbllinks[]` contains the RIS link with `Dokumentnummer=BGBLA_2024_I_5`. Select the entry via `Abfrage=BgblAuth` in the link, not blindly `[0]` (a second "Kunsttext" entry exists). Bonus: `content.status.description` contains the voting behavior per party.
 - **BGBl → Parliament: fully structured (reverse direction!).** RIS BgblAuth records carry `Gesetzgebungsperiode`, `Regierungsvorlage` (d.B. number), `AusschussberichtNationalrat`, `DatumNationalrat/Bundesrat` — the last leg is an ID join in both directions. ⚠️ BgblAuth search: `Teil=1` is ignored, `hit[0]` is not part-I-first — always select via the ID prefix `BGBLA_{Jahr}_I_` or the Bgblnummer string.
 - **ME → RV (forward): semi-structured.** Only as an href in `stages[].text` — a one-line regex, or more elegantly via the inverted `preconst` edges. Additionally, the evolved text versions (RV/committee/plenary) sit on the ME page under `.content.statements.documents[]`.
-- **RIS Begut ↔ Parliament ME: a constructed join is required** (no shared key). Tested composite key, matched 2/2 cleanly:
-  `BeginnBegutachtungsfrist == ME arrival` (exact in both cases) **+** title prefix match after stripping "Ministerialentwurf betreffend " (Parliament sometimes appends package short names that RIS omits) **+** ministry substring (`"Bundeskanzleramt"` ⊂ `"BKA (Bundeskanzleramt)"`). Title search alone never suffices (2–3 loose hits per search term). **Corpus-tested 2026-09-06 on all 350 MEs of GP XXVII: 337 unique matches, 0 ambiguous, 12 unmatched (all without any RIS record), 25/25 samples verified.** Two corrections from the corpus: `EndeBegutachtungsfrist == Frist` is the *strongest* signal (336/337, no one-sided extension in the whole GP), and Beginn is only exact in 72 % because Parliament's Einlangen lags RIS by 1–14 days. Rule and the reasoning behind its weights: `server/utils/ris/risJoin.ts`; figures: `docs/decisions.md`; artefact `data/ris-me-map-gp27.json`.
+- **RIS Begut ↔ Parliament ME: a constructed join is required** (no shared key): the end of the Frist, its start, the ministry and the title, scored together. Title search alone never suffices (2–3 loose hits per search term), and the start alone does not either (exact in only 72 %, because Parliament's Einlangen lags RIS by 1–14 days). On all 350 MEs of GP XXVII: 337 unique matches, 0 ambiguous, 12 without any RIS record. Rule and the reasoning behind its weights: `server/utils/ris/risJoin.ts`; figures: `docs/decisions.md`; artefact `data/ris-me-map-gp27.json`.
 
 ### How far back the chain actually reaches (measured 18.09.2026)
 
@@ -955,33 +716,39 @@ Three consequences:
 
 ## 4. GDPR findings
 
-Private persons are **fully identifiable on three levels** straight from the API: list 142 (last name, first name in the row), SNME detail (name **plus postal code and town**), list 305 (endorsers with name, postal code, town). Web-form full texts sit inline in the JSON; whether they fall under the CC-BY metadata license or under the full-text exclusion needs legal clarification — **the transport format does not decide the license question.** Our pipeline must enforce the metadata-only/no-names rules; the API does not help.
+Private persons are **fully identifiable on three levels** straight from the
+API: list 142 (last name, first name in the row), the SNME detail (name
+**plus postal code and town**) and list 305 (endorsers with name, postal code
+and town). Web-form statements sit inline in the JSON as full text. The
+transport format decides nothing about what may be republished: the API does
+not help, the pipeline has to enforce the rule itself
+(`server/utils/parliament/privacy.ts`; rules in `docs/decisions.md`,
+Privacy).
 
-**There IS a structural organisation/person flag — corrected 2026-09-16.** This document said the opposite until then, and the classifier was built on name heuristics alone because of it. List 142 column 19 (`feld_name: "TYP"`, hidden, label `"?"`) holds `I` for an institution and `P` for a person. Measured over **106,626 rows, populated on 100 % of them**: GP XXVIII/ME 6,071 (I 2,822 / P 3,249), GP XXVII/ME 100,000 of 235,864 (I 3,739 / P 96,261), GP XXVIII Stellungnahmen zur RV 555 (I 395 / P 160). It agrees with `classifySubmitter` on 96.8 %, 99.7 % and 94.2 %.
+**List 142 has a structural organisation/person flag.** Column 19
+(`feld_name: "TYP"`, hidden, label `"?"`) holds `I` for an institution and
+`P` for a person, populated on all 106,626 rows measured (2026-09-16). It
+records **how the submitter registered, not what the name denotes**, and it
+disagrees with the name in both directions:
 
-What it encodes is **how the submitter registered, not what their name denotes** — which is why the two disagree in both directions, asymmetrically:
+- **Flag `P`, name reads as an organisation:** a person filing behind an
+  organisation's name („<GmbH>; <Vorname Nachname>", „i.A. <Nachname>,
+  <Verband>"). No name heuristic reaches this class.
+- **Flag `I`, name reads as a person:** mostly real institutions whose staff
+  registered that way (Datenschutzrat, KommAustria, Amnesty International).
+- **It is orthogonal to "nicht öffentlich":** non-public statements sit on
+  both sides, so the placeholder string stays the only source for that.
 
-- **Flag `P`, name reads as an organisation** (5 / 24 / 0 rows). Hand-checked: roughly sixteen of the 29 name a real person — `Windland Energieerzeugungs GmbH; <Vorname Nachname>`, `i.A. <Nachname>, <Verband>`, `<Nachname> (für <AG>), <Vorname>`. **The name heuristic cannot reach this class**: the segment that names the submitter is org-shaped and the person stands behind it, so `audit/classifier`'s leak list looks straight past them. The flag never reads the name, so it sees them.
-- **Flag `I`, name reads as a person** (176 / 287 / 30 rows). Mostly real institutions rendered as "Privatperson" — Datenschutzrat, KommAustria, Amnesty International, Austropapier, Naturhistorisches Museum Wien, pro mente OÖ. One instructive case: `Bezirksvorstehung Innere Stadt (1010 Wien)` is hidden because the PLZ-suffix rule reads `(1010 Wien)` as a private person's home town.
-
-**How the monitor uses it (`classifySubmitter`, `server/utils/parliament/privacy.ts`): as a veto, never as authorisation.** `P` suppresses a name the string alone would have published; `I` changes nothing by itself, because publishing on an undocumented upstream column would hand it the hard invariant — one silent flip and the site republishes names. The `I` disagreements are printed as a review queue by `pnpm audit:classifier` and `ORG_ALLOWLIST` is what actually publishes one, by hand. The allowlist therefore outranks the flag, which is the escape hatch for the ~11 organisations per GP whose staff registered privately (`Bundestheater Holding GmbH, BTH`, `Patentanwaltskammer, Österr.`). Two further limits: the flag is **orthogonal to "nicht öffentlich"** (902 non-public rows are `P`, 13 are `I`), so the placeholder string stays the only source of truth there; and column 19 is asserted in `parliament/listHeaders.ts` by its `feld_name`, so a move fails loudly.
-
-Old-vs-new corpus comparison on adoption (2026-09-16, all three corpora): **0 names newly published**, 5 + 24 + 0 rows no longer published.
-
-**What the name heuristic gets wrong, measured (2026-09-15, `scripts/audit/classifier.ts` over all 6,067 GP-XXVIII rows; GP XXVII hits the 100,000-row cap and is COVID-skewed, so only per-item numbers are quoted for it):**
-
-- **Institutions filed as "Privatperson":** at least 334 rows — 221 of them federal ministries in their own short form (`BM f. Finanzen`, `BM f. Justiz`, …), then courts (`Oberlandesgericht Wien; Geschäftsabteilung der Präsidentin`), the Datenschutzbehörde, the FMA, Staats- and Umweltanwaltschaften, and brand-style NGOs without a legal form (`Presseclub Concordia`, `GLOBAL 2000`, `VCÖ`, `WEISSER RING`). A separate cause hid ÖGB, ÖAMTC, SPÖ, ARBÖ: JavaScript's `\b` is ASCII-only, so a word boundary never matches before "Ö". All of these are organisations by pattern now; the cosmetic direction of the error, but for the accountability layer a court's or a ministry's Stellungnahme is exactly the institutional input worth seeing.
-- **Persons published as organisations — the direction that matters:** `Lastname, Firstname; Universität Salzburg`, `Name, Dr.; Rechtsanwalt; … Rechtsanwälte GesbR`, `Name Name, Richterin am Landesgericht …` — a person filing with an affiliation, and the affiliation's keyword won. 239 rows in GP XXVII, 2 in GP XXVIII. Since 2026-09-15 the segment that names the submitter decides (`leadsWithPersonName` in `server/utils/parliament/privacy.ts`), checked before any organisation signal.
-- **Not safe as rules, on the same data:** a bare semicolon (persons file as `Mustermann, Florian; Dr. med. dent.`), all-caps (`MUSTERMANN, PETER`), digits (`Muster, Ma8`), and bare two-word heads that are acronyms (`WU Wien, Institut für …`) or split compounds (`Österreichischer Mieter-, Siedler und Wohnungseigentümerbund`).
+Hence the flag can withhold a name and never publishes one by itself. How
+often it agrees with the classifier is in `docs/decisions.md`, section 2.
 
 ---
 
 ## 5. Open questions
 
-1. ~~Does the RIS↔Parliament composite key scale to corpus level?~~ **Resolved 2026-09-06:** yes — 337/350 on GP XXVII, 0 ambiguous, no one-sided deadline extension observed; 12 MEs have no RIS record at all (BMK transport section 2020–Q1 2021, BMEIA), which the product must show as a state, not an error. See `docs/decisions.md`, Joins.
-2. ~~Type-filter syntax on list 101~~ **Resolved 2026-09-06:** the type filter is `VHG` (or `DOKTYP`) with values such as `VOLKBG`, `E`, `PET`, `BI` — see `docs/research/volksbegehren.md` §5.1.
-3. ~~RSS export of the filter lists~~ **Resolved 2026-09-06:** `GET /Filter/api/filter/rss/{listId}?FIELD=value` honours the same filter dimensions, e.g. `rss/81?AKTIV=J` — see `docs/research/volksbegehren.md` §5.1.
-4. Is `Allgemein.Geaendert` bumped on deadline extensions (is history polling enough)? Does `IncludeDeletedDocuments` return withdrawn drafts?
-5. ~~How to recognize dead MEs (never became an RV)? Watch the `vhg_fertig` field on the ME detail.~~ **Resolved 2026-09-08 — negatively for the field:** `content.vhg_fertig` (and `vhg_fertig_docs`, `process`, `approvalstate`) is `J` / identical on every ME sampled across GP XXVI–XXVIII, running Frist included; nothing upstream marks a draft as dead. What works instead: the GP boundary (a draft stays with its GP; constituent-session dates in `shared/utils/gp.ts`) plus base rates measured with `scripts/corpus/rvLatency.ts` — GP XXVII: 296 of 353 MEs got an RV, median 40 days after Fristende, p90 189 days; **4 of the 61 drafts still without RV at the GP's end got one in GP XXVIII**, linked in the old ME's own stage list (209, 326, 351, 352/ME) — so the stage record does carry cross-GP RVs, and "GP over" must never be rendered as "impossible". GP XXVI: 114 of 163, 14 late RVs of 63.
-6. Rate limits are undocumented; ~40-request sessions ran unthrottled. Test a nightly full sync (Parliament ~1 request via `showAll`, RIS ~46). Occasional 502s observed → plan retry logic.
-7. Semantics of list-81 column 12 "Engagement" (0 everywhere) and `content.status.number` (5 = promulgated?).
+1. Is `Allgemein.Geaendert` bumped on deadline extensions (is history polling
+   enough)? Does `IncludeDeletedDocuments` return withdrawn drafts?
+2. Rate limits are undocumented; ~40-request sessions ran unthrottled, and
+   occasional 502s occur.
+3. Semantics of list-81 column 12 "Engagement" (0 everywhere) and of
+   `content.status.number` (5 = promulgated?).

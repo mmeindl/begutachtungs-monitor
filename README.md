@@ -24,7 +24,7 @@ Wie das Verfahren abläuft und was der Monitor davon zeigt: [So funktioniert's](
 
 - [Why this tool?](docs/why-this-tool.md) — what the monitor adds over the official sites, why it should work, what it does not do
 - [Decisions](docs/decisions.md) — standing rules, the measurements behind the product's claims, rejected alternatives
-- [API exploration](docs/api-exploration.md) — verified reference for the Parliament filter API and RIS OGD API
+- [Upstream APIs](docs/api-exploration.md) — how the interfaces of Parliament, RIS and the EU's Cellar behave: endpoints, field maps and the traps that return a wrong answer without an error
 
 Research memos:
 

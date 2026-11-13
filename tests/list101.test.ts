@@ -23,7 +23,7 @@ describe('mapVorlageRow', () => {
   })
 
   it('reads the date from DATUMSORT, not from the dd.mm.yyyy display column', () => {
-    // The house rule (api-exploration.md §5): the display column is never
+    // The house rule (api-exploration.md §1): the display column is never
     // parsed. Corrupting it must not change the result.
     const row = [...LIST101_ROW]
     row[4] = 'Unsinn'
