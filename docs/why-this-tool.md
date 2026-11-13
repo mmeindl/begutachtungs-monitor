@@ -119,6 +119,42 @@ a deadline is extended — plus an RSS feed of new consultations
 (`/feed.xml`) for any feed reader. No account, no e-mail address, no
 tracking.
 
+## Why it should work
+
+Four mechanisms, in ascending order of importance.
+
+1. **Standstill becomes visible at no cost.** Journalists, members of
+   parliament and organisations that filed a Stellungnahme already ask what
+   became of a draft. The monitor gives them the answer without a day of
+   research; it does not replace them.
+2. **Base rates across many procedures.** How often drafts change after the
+   Begutachtung, how long each station takes, how often a Begutachtung is
+   skipped: figures across hundreds of procedures are the evidence a debate
+   about a duty to respond to statements needs.
+3. **Feedback to the people who took part, in both directions.** A tool that
+   only counts what went nowhere would teach that taking part is pointless.
+   Ministries do amend drafts after the Begutachtung, routinely, and nobody
+   can currently see it. Showing where a draft changed is what makes the next
+   Stellungnahme worth writing, which is why changes are shown as prominently
+   as standstill.
+4. **A modest anticipatory effect.** Institutions that know their changes are
+   read behave slightly more carefully. Real, small, and not what the tool is
+   built on.
+
+The pattern behind all four: a transparency tool has an effect when someone
+acts on what it shows. On its own it changes nothing.
+
+## Lineage
+
+OffenesParlament.at (Forum Informationsfreiheit) covered Ministerialentwürfe
+in Begutachtung with a scraper and e-mail alerts. It never left beta and has
+been offline for years; its repository
+([BSD-2-Clause](https://github.com/Forum-Informationsfreiheit/OffenesParlament))
+was archived in April 2026. The monitor rebuilds that slice on the official
+APIs. New are the accountability layer, the Länder and the EU origin of a
+draft. The lesson taken from the predecessor is operational: no database, no
+accounts, nothing that needs tending every week.
+
 ## What the monitor does not do yet (roadmap, in order)
 
 1. **Consultations on Verordnungsentwürfe** — see difference 5. The larger
