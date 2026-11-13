@@ -1,199 +1,144 @@
-# Why this tool? — What the monitor adds over parlament.gv.at
+# Why this tool?
 
-Everything the Begutachtungs-Monitor shows comes from official sources: the
-Austrian Parliament's own filter interfaces and the RIS Open-Government-Data
-API of the Bundeskanzleramt. **The licence differs per source**, and the site
-states which applies where (`/impressum#imp-license`): the RIS data — draft
-texts, Textgegenüberstellung, Bundesrecht — is CC BY 4.0, as are the
-Parliament datasets for the stations *after* the consultation; the
-Begutachtungsverfahren itself is expressly excluded from open-data reuse by
-Parliament's own licence page, which is one reason this tool stays
-metadata-only there.
+Everything the Begutachtungs-Monitor shows comes from official sources:
+Parliament, the federal legal information system (RIS), the nine Länder and
+the EU's publications office. It replaces none of them.
 
-The full texts of all documents live upstream — this project does not replace
-parlament.gv.at and does not want to.
+The difference is the question each site answers. **The official sites are
+archives**: everything is on record, organised per item, built for people who
+already know the procedure and its vocabulary. **The monitor is a lens**: it
+answers one question, *what became of this draft and of the public's input?*,
+for people who do not work in the building: citizens, journalists, NGOs and
+the people who filed a Stellungnahme.
 
-The difference is the question each site answers. **parlament.gv.at is an
-archive**: everything is on record, organized per item (Gegenstand), built
-for people who already know the procedure and its vocabulary. **The monitor
-is a lens**: it answers one question — *what became of the public's input?* —
-for people who don't work in the building: citizens, journalists, NGOs,
-submitters.
+It answers in both directions, and shows where a draft changed as prominently
+as where nothing happened.
 
-In one sentence: *the Parliament archives; the monitor answers — in both
-directions, showing where input changed a draft just as prominently as where
-it did not.*
-
-## The concrete differences
-
-Verified 2026-08-23 against a real procedure (8/ME, XXVIII. GP — the
-"Bundestrojaner" package, and 88/ME, the VAT reduction with 707 statements).
-Differences 1 (comparison) and 5 (the two sources) were added later and rest
-on their own corpus measurements (for the join and its gaps:
-`docs/ris-join.md`).
+## What the monitor adds
 
 ### 1. The whole chain on one page
 
-On parlament.gv.at, a Ministerialentwurf's page mentions the resulting
-Regierungsvorlage only as a row inside the procedural-history table, and the
-promulgated law (BGBl) does not appear on the ME page at all — it is only
-linked from the RV's own page. Answering "what became of this draft?" is a
-multi-page navigation that requires knowing the hops exist.
+On parlament.gv.at a Ministerialentwurf's page mentions the resulting
+Regierungsvorlage only as a row in the procedural history, and the
+promulgated law does not appear there at all. Answering "what became of this
+draft?" takes several pages and the knowledge that the hops exist.
 
-The monitor shows the full chain — Ministerialentwurf → Regierungsvorlage →
-Bundesgesetzblatt (with the RIS link) — on one page, labeled in plain
-language, for every consultation where it exists. Where no RV exists, it says
-so explicitly; a draft that went nowhere is part of the answer too.
+The monitor shows the chain on one page, in plain language: Begutachtung,
+Regierungsvorlage, the versions in Parliament, the Bundesgesetzblatt. Where a
+station does not exist, it says so; where it could not find out, it says that
+instead.
 
-Since September 2026 it also shows *what* changed between the first two
-stations: a paragraph-by-paragraph comparison of the draft against the
-Regierungsvorlage, aligned by heading rather than by number so a merely
-renumbered § compares as unchanged — plus the ministry's own
-Textgegenüberstellung, which says what the law reads today and what the draft
-would make of it, on the same page for the drafts that carry one. Both are
-rendered inline, one passage with the changed words marked; a side-by-side
-mode and expandable context are on the roadmap below. What is not compared
-yet are the stations *after* the Regierungsvorlage, where a consultation
-result can still be undone.
+### 2. What changed, section by section
 
-### 2. Statement aggregation
+No official site compares two versions of a draft. The monitor compares any
+two stations of a procedure, paragraph by paragraph, inline or side by side,
+aligned by heading so that a merely renumbered § reads as unchanged. Beside a
+changed paragraph stands the ministry's own reasoning for it, taken from the
+Erläuterungen (attached for 76 % of the paragraphs measured).
 
-Parliament lists submissions as a raw, paginated list — for 88/ME that is
-707 entries. There is no count by submitter type, no extraction of which
-organisations took part, and no ranking by endorsements ("Zustimmungen").
+This matters after the Regierungsvorlage too: 52 of 91 drafts of the current
+period were changed again in Parliament.
 
-The monitor aggregates: total counts, the split between organisations,
-private persons, and non-public submissions, and the most-endorsed
-organisations at a glance — deliberately privacy-preserving (organisations
-are named; private persons appear only in aggregate, never by name; full
-texts are never copied and remain on parlament.gv.at).
+### 3. How the law would read
 
-### 3. Audience and legibility
+A draft that amends a law is a list of instructions ("in § 5 Abs. 2 wird das
+Wort … ersetzt"). The monitor shows the resulting text of the changed
+paragraphs, but only where the ministry's own Textgegenüberstellung confirms
+it. Of 108 paragraphs confirmed that way and later enacted, none deviated
+from the enacted text. What cannot be confirmed is listed as not shown, with
+the reason.
 
-The upstream filter UI is insider tooling: procedure jargon, no deadline
-emphasis, no stable, shareable, plain-language page per consultation. The
-monitor leads with what a non-insider needs — open consultations, days until
-the deadline, what the draft is about in plain terms — on clean URLs that a
-journalist can cite or an NGO can send to its members, with accessibility
-(aiming at WCAG AAA) and zero tracking.
+### 4. Statements, counted
 
-### 4. The cross-procedure view
+Parliament lists statements as a paginated list; one draft had 707 entries.
+The monitor counts them, separates organisations from private persons and
+non-public statements, and sorts by endorsements. Private persons appear only
+as a count, never by name. Statement texts stay where they are: linked, never
+copied.
 
-Everything upstream is organized per Gegenstand. Questions across
-procedures — "how many consultations are open right now?", "how often do
-drafts change after Begutachtung, per ministry, across hundreds of
-procedures?" — are structurally impossible to answer there. The monitor's
-dashboard is that view; the base-rate statistics are on the roadmap and are
-the evidence layer this project ultimately exists for.
+### 5. Two federal sources, and the gap between them
 
-### 5. Two official sources, and the gaps between them
+A federal consultation is published in two places: at Parliament (the
+procedure) and in RIS (the texts). Neither list is complete. Across the whole
+XXVII. period, 12 of 350 Ministerialentwürfe have no RIS record
+(`docs/ris-join.md`). Consultations on draft ordinances appear in RIS only
+and make up about two thirds of its consultation records. Anyone watching one
+source misses consultations, and neither source says when.
 
-An Austrian consultation is published in two places: at Parliament (the
-procedure — arrival, deadline, statements, the later stations) and in the
-RIS `Begut` application of the Bundeskanzleramt (the texts — draft,
-Erläuterungen, Textgegenüberstellung). Neither list is complete. Measured
-across the whole XXVII. legislative period: **12 of 350 Ministerialentwürfe
-have no RIS record at all**, and one RIS draft bill has no Parliament item in
-that window (it was published twelve days before the period ended, so it may
-belong to the next one). Anyone watching a single source will eventually miss
-a consultation, and neither source says when that happens.
+The monitor reads both, joins them, and says per draft which source knows it.
 
-The monitor reads both, joins them on a tested composite key
-(`docs/ris-join.md`) and says per consultation which source knows it — "im
-RIS nicht veröffentlicht" is a displayed state, not an error. The join is
-also what puts the ministry's own Textgegenüberstellung on the page.
+### 6. The Länder
 
-**One gap is still open and worth naming here:** RIS also publishes
-consultations on **Verordnungsentwürfe**, which never reach Parliament's list
-— in the XXVII. window 624 of them against 342 draft bills. Until they are
-covered (roadmap below), "currently open" on this site means *draft bills*,
-not every consultation running in the country.
+Each of the nine Länder publishes its drafts on its own site, in its own
+format. The monitor lists them beside the federal ones, with deadlines and,
+where a Land publishes them, statements, the comparison and the promulgated
+law. The Länder differ widely in what they publish; where a Land does not
+publish a document, the page names that as the reason.
 
-### 6. Subscription without accounts
+### 7. Where a draft comes from
 
-Following consultations upstream means re-checking the filter page; there
-is no subscribable calendar of consultation deadlines. The monitor offers
-one (`/kalender.ics`, webcal): every Begutachtungsfrist lands in the
-calendar people already use, as an all-day event that updates itself when
-a deadline is extended — plus an RSS feed of new consultations
-(`/feed.xml`) for any feed reader. No account, no e-mail address, no
-tracking.
+Many drafts carry out EU law, and many Länder drafts carry out a federal law.
+The monitor shows which EU act a draft transposes and, starting from the act,
+which federal and Länder drafts carry it out.
+
+### 8. Laws that had no Begutachtung
+
+A consultation site shows only what was consulted. The monitor also lists the
+laws that were passed without one: 57 of 205 federal laws of the current
+period, and 8 more with a consultation by the committee only.
+
+### 9. Finding and following without an account
+
+- Full-text search across the documents of all running consultations.
+- A calendar subscription (`/kalender.ics`) that puts every deadline into the
+  calendar people already use, and a feed of new consultations (`/feed.xml`),
+  each also per Land.
+- No account, no e-mail address, no tracking, no cookies.
+
+The figures above and how they were measured: `docs/decisions.md`, section 2.
 
 ## Why it should work
-
-Four mechanisms, in ascending order of importance.
 
 1. **Standstill becomes visible at no cost.** Journalists, members of
    parliament and organisations that filed a Stellungnahme already ask what
    became of a draft. The monitor gives them the answer without a day of
    research; it does not replace them.
 2. **Base rates across many procedures.** How often drafts change after the
-   Begutachtung, how long each station takes, how often a Begutachtung is
-   skipped: figures across hundreds of procedures are the evidence a debate
-   about a duty to respond to statements needs.
-3. **Feedback to the people who took part, in both directions.** A tool that
-   only counts what went nowhere would teach that taking part is pointless.
-   Ministries do amend drafts after the Begutachtung, routinely, and nobody
-   can currently see it. Showing where a draft changed is what makes the next
-   Stellungnahme worth writing, which is why changes are shown as prominently
-   as standstill.
-4. **A modest anticipatory effect.** Institutions that know their changes are
-   read behave slightly more carefully. Real, small, and not what the tool is
-   built on.
+   Begutachtung, how long each station takes, how often there is no
+   Begutachtung at all: such figures are the evidence a debate about a duty
+   to respond to statements needs.
+3. **Feedback to the people who took part.** A tool that only counted what
+   went nowhere would teach that taking part is pointless. Ministries do
+   amend drafts after the Begutachtung, routinely, and nobody could see it.
+   Showing where a draft changed is what makes the next Stellungnahme worth
+   writing.
 
-The pattern behind all four: a transparency tool has an effect when someone
-acts on what it shows. On its own it changes nothing.
+A transparency tool has an effect when someone acts on what it shows. On its
+own it changes nothing.
 
-## Lineage
+## Where it comes from
 
 OffenesParlament.at (Forum Informationsfreiheit) covered Ministerialentwürfe
 in Begutachtung with a scraper and e-mail alerts. It never left beta and has
-been offline for years; its repository
-([BSD-2-Clause](https://github.com/Forum-Informationsfreiheit/OffenesParlament))
+been offline for years; its
+[repository](https://github.com/Forum-Informationsfreiheit/OffenesParlament)
 was archived in April 2026. The monitor rebuilds that slice on the official
-APIs. New are the accountability layer, the Länder and the EU origin of a
-draft. The lesson taken from the predecessor is operational: no database, no
-accounts, nothing that needs tending every week.
+interfaces and adds what follows the consultation.
 
-## What the monitor does not do yet (roadmap, in order)
+## What it does not do
 
-1. **Consultations on Verordnungsentwürfe** — see difference 5. The larger
-   half by count, published in RIS only, and invisible here today.
-2. **The Erläuterungen beside the paragraph they explain** — the ministry's
-   reasoning is linked as a document and not read. Its besonderer Teil is
-   written per amendment instruction ("Zu Z 4 (§ 54c …)"), i.e. addressed at
-   exactly the units the comparison already builds, so it can stand next to
-   them instead of in a separate PDF. This is the step that turns "what
-   changed" into "why, according to the ministry" — and it is what makes a
-   relevance decision possible without reading the whole package.
-3. **Comparison beyond the Regierungsvorlage** — committee version, plenary
-   version, promulgated law. The same engine with different inputs; the
-   late, wholesale amendment is the classic way a consultation result
-   disappears, and nobody watches that seam.
-4. **Reading modes for the comparison** — a side-by-side mode next to the
-   inline one, and unchanged passages expandable where they stand instead of
-   only through the filter. A wholly rewritten § is where inline reads
-   worst, and that is exactly the § worth reading.
-5. **E-mail deadline alerts** — the predecessor's (OffenesParlament.at)
-   most-loved feature. The account-free tier already exists (see
-   difference 6); e-mail needs persistence and consent flows and comes
-   with grant funding.
-6. **Base rates across procedures** — the statistical layer described above.
-7. **Statement-corpus synthesis** (clustering/summarizing large statement
-   corpora) — stage 2, only with a research partner. The reason is not the
-   open-data licence: Parliament does not hold the rights to the statements,
-   so no licence of theirs could cover them either way. It is the authors'
-   own copyright — a Stellungnahme belongs to the chamber, Land, NGO or
-   person who wrote it — that puts machine reading of the corpus under the
-   § 42h UrhG text-and-data-mining exception, and its research variant is
-   the one that cannot be signed away in terms of use.
+- **E-mail alerts.** They need stored addresses and consent, and someone to
+  operate them. The calendar and the feed are the substitute.
+- **A statistics view across procedures.** The base rates are measured and
+  published in `docs/decisions.md`; on the site a draft's share of changed
+  provisions is set against its period, and there is no page of its own yet.
+- **Summaries of what the statements say.** The monitor counts statements and
+  links them; it does not read them.
+- **Announced consultations.** No source lists a consultation before it
+  starts.
+- **Other countries.** Austria is the first; Germany is next.
+- **Judge.** No scores, no rankings by outcome, and no figure presented as
+  the effect of a Stellungnahme.
 
-## Non-goals
-
-- Replacing or mirroring parlament.gv.at — links lead upstream everywhere;
-  the full texts of drafts and statements are read there.
-- Publishing anything about private individuals beyond aggregate counts.
-- Scoring or shaming: the monitor tracks outcomes in both directions. Where
-  ministries amend drafts after consultation — which happens routinely — the
-  monitor makes that visible with the same prominence as input that went
-  nowhere.
+Which licence applies to which source is stated on the site:
+[Impressum](https://begutachtungs-monitor.at/impressum#imp-license).

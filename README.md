@@ -22,7 +22,7 @@ Wie das Verfahren abläuft und was der Monitor davon zeigt: [So funktioniert's](
 
 ## Documentation (English)
 
-- [Why this tool?](docs/why-this-tool.md) — what the monitor adds over parlament.gv.at, roadmap, non-goals
+- [Why this tool?](docs/why-this-tool.md) — what the monitor adds over the official sites, why it should work, what it does not do
 - [Decisions](docs/decisions.md) — standing rules, the measurements behind the product's claims, rejected alternatives
 - [API exploration](docs/api-exploration.md) — verified reference for the Parliament filter API and RIS OGD API
 - [RIS-Join and diff layer](docs/ris-join.md) — how Parliament's drafts are matched to their RIS texts, and the section-level comparison built on it
