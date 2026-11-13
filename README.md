@@ -1,6 +1,6 @@
 # Begutachtungs-Monitor
 
-Ein quelloffenes Werkzeug für das österreichische Begutachtungsverfahren: laufende Begutachtungen, Fristen, Stellungnahmen – und die Frage, was aus dem Entwurf danach geworden ist.
+Ein quelloffenes Werkzeug, das die Gesetzgebung in Österreich nachverfolgbar macht: Entwürfe in Begutachtung, Fristen, Stellungnahmen – die Frage, was aus dem Entwurf danach geworden ist – und die Gesetze, die ohne Begutachtung beschlossen wurden.
 
 Wer heute eine Stellungnahme schreibt, sieht nicht, ob sie etwas bewirkt hat. Ministerien ändern ihre Entwürfe nach der Begutachtung oft – nur sichtbar ist es nirgends. Das soll sich ändern.
 
@@ -8,7 +8,7 @@ Wer heute eine Stellungnahme schreibt, sieht nicht, ob sie etwas bewirkt hat. Mi
 
 ## Was der Monitor heute kann
 
-- **[Entwürfe in Begutachtung](https://begutachtungs-monitor.at/entwuerfe)** – Ministerialentwürfe des Bundes und Begutachtungsentwürfe aller neun Länder, mit Frist und Zahl der Stellungnahmen.
+- **[Entwürfe und Gesetze](https://begutachtungs-monitor.at/entwuerfe)** – alle Entwürfe einer Gesetzgebungsperiode, in Begutachtung und abgeschlossen, Gesetzes- wie Verordnungsentwürfe, für den Bund und alle neun Länder, mit Frist und Zahl der Stellungnahmen – und die Gesetze, zu denen kein Entwurf in Begutachtung bekannt ist.
 - **Was danach geschah** – je Entwurf der Weg über Regierungsvorlage und Beschluss bis zum Bundesgesetzblatt, und Paragraph für Paragraph, was sich zwischen Entwurf und Regierungsvorlage geändert hat.
 - **Wie das Gesetz danach lauten würde** – die Lesefassung der geänderten Paragraphen, gezeigt nur dort, wo die Textgegenüberstellung des Ressorts sie bestätigt.
 - **EU-Bezug** – ob ein Entwurf EU-Recht umsetzt, und welchen Rechtsakt.
@@ -18,7 +18,7 @@ Wie das Verfahren abläuft und was der Monitor davon zeigt: [So funktioniert's](
 
 ---
 
-*An open-source monitor for Austria's pre-parliamentary law consultation stage (Begutachtungsverfahren): running consultations at federal and state level, deadlines, statements — and what became of each draft afterwards, down to the individual section.*
+*An open-source tool that makes lawmaking in Austria traceable: drafts in consultation (Begutachtung) at federal and state level, deadlines, statements, what became of each draft afterwards, down to the individual section — and the laws that were passed without a consultation.*
 
 ## Documentation (English)
 
