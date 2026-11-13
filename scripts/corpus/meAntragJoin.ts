@@ -20,7 +20,7 @@
  * as „ohne Begutachtung" — Parliament's Rechts-, Legislativ- und
  * Wissenschaftlicher Dienst described the route in 2024 (Fachdossier
  * 31.10.2024: 19 of the 93 motions of one session;
- * `docs/begutachtung-uebersprungen.md` §4b).
+ * `docs/research/begutachtung-uebersprungen.md` §4b).
  *
  * In the data this route does not exist. A Ministerialentwurf's `stages` do
  * carry a successor pointer, but measured over GP XXVIII all 96 pointers

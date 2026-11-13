@@ -477,7 +477,7 @@ const korrMitSchwachen = skipped.length - bestaetigt.length - schwach.length
  *
  * List 142, `BEZUG_ITYP` = A (motions) or I (Regierungsvorlagen). The column
  * carrying the referenced Gegenstand is found by its header, not by an index
- * — see the column trap in §2 of `docs/begutachtung-uebersprungen.md`. */
+ * — see the column trap in §2 of `docs/research/begutachtung-uebersprungen.md`. */
 /* TWO TRAPS, walked into once each on 16.09.2026:
  *
  * 1. `GP_CODE` is the period of the STELLUNGNAHME, `BEZUG_GP_CODE` that of

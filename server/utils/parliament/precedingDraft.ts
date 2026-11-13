@@ -13,7 +13,7 @@
  * keine Seite dafür", never „es gab keine Begutachtung" — and the second
  * is exactly what the row used to say.
  *
- * WHAT IS CHECKED. The same cross-check `begutachtung-uebersprungen.md`
+ * WHAT IS CHECKED. The same cross-check `docs/research/begutachtung-uebersprungen.md`
  * §2 once ran offline: list 81 of the same GP, title comparison, and only
  * drafts that began before the Vorlage arrived. If it finds a plausible
  * draft, the row says nothing; if it finds none, „ohne Begutachtung" has

@@ -63,7 +63,7 @@ needs no ministerial draft, and it is not a Regierungsvorlage, so it is
 invisible to the 27 % figure entirely.
 
 The same effect was already visible in the amendment-engine corpus
-(`api-exploration.md` §2a): 25 of 54 sampled Novellen came via
+(`docs/api-exploration.md` §2a): 25 of 54 sampled Novellen came via
 Initiativantrag or Ausschussantrag.
 
 So the unit here is the **BGBl I number** — of the laws that actually
@@ -399,7 +399,7 @@ silent. `showAll` is capped at 100,000 rows with no marker (GP XXVII reports
 the *statement* while `BEZUG_GP_CODE` is the period of the bill it belongs to.
 Together those two produced 30 laws / 679 statements for GP XXVIII where the
 correct query gives 43 / 960, and roughly half the true total for GP XXVII.
-Both traps are now written up in `api-exploration.md` §1.
+Both traps are now written up in `docs/api-exploration.md` §1.
 
 The distribution is extreme and worth seeing. GP XXVIII: the
 Waffengesetz-Novelle alone has 466, the Fachhochschulgesetz 78, a
@@ -482,7 +482,7 @@ it files; § 23b statements, where nobody is obliged to; and Petitionen/BI,
 where a committee notes it, three times in four.
 
 It is deliberately **not** a work package, for the reason
-`docs/volksbegehren.md` gives: there is no successor document. Even the 4–5 %
+`docs/research/volksbegehren.md` gives: there is no successor document. Even the 4–5 %
 that move produce Petition → Ausschussbericht → perhaps an Entschließung, and
 no two versions of a text to compare. The accountability core — *what became of
 the input, § by §* — has nothing to bite on. One objection from the
@@ -631,7 +631,7 @@ this dataset would make it trivially easy to build.
 - **A Ministerialentwurf's `stages` carry a forward pointer to its successor**
   — "Regierungsvorlage (186 d.B.)" with a `/gegenstand/…` href, plus the end
   of the Begutachtungsfrist as text. Useful beyond this memo: it is a second,
-  independent path for the ME→RV join in `ris-join.md`, which today works off
+  independent path for the ME→RV join in `docs/ris-join.md`, which today works off
   the Regierungsvorlage's `preconst`. **But it only ever points at a
   Regierungsvorlage** (96/96 on GP XXVIII) — a draft that resurfaces as an
   Initiativantrag has no forward link at all.

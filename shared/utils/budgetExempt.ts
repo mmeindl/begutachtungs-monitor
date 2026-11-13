@@ -1,6 +1,6 @@
 /**
  * Laws that skip the Begutachtung BY DESIGN — the budget procedure — and may
- * therefore never be called „ohne Begutachtung" (docs/begutachtung-uebersprungen.md
+ * therefore never be called „ohne Begutachtung" (docs/research/begutachtung-uebersprungen.md
  * §3).
  *
  * One table for the measurement (`scripts/corpus/begutachtungSkipped.ts`)

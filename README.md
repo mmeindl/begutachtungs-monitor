@@ -29,9 +29,9 @@ Wie das Verfahren abläuft und was der Monitor davon zeigt: [So funktioniert's](
 
 Research memos:
 
-- [How much legislation never sees a Begutachtung?](docs/begutachtung-uebersprungen.md)
-- [Has anyone tried to reform the Begutachtungsverfahren?](docs/begutachtung-reformvorschlaege.md)
-- [Volksbegehren](docs/volksbegehren.md) — could the monitor track Volksbegehren too? Verdict, data paths, and an outcome table for all 81
+- [How much legislation never sees a Begutachtung?](docs/research/begutachtung-uebersprungen.md)
+- [Has anyone tried to reform the Begutachtungsverfahren?](docs/research/begutachtung-reformvorschlaege.md)
+- [Volksbegehren](docs/research/volksbegehren.md) — could the monitor track Volksbegehren too? Verdict, data paths, and an outcome table for all 81
 
 ## Development
 

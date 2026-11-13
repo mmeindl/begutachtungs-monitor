@@ -134,7 +134,7 @@ export interface OpenVorlage {
   statementCount: number | null
   /**
    * The Begutachtung this Vorlage came out of — three states, because two are
-   * not enough (`docs/begutachtung-uebersprungen.md`).
+   * not enough (`docs/research/begutachtung-uebersprungen.md`).
    *
    * Until 18.09.2026 this was `draft: … | null`, and `null` had to mean two
    * things at once: „we have no page for it" and „there was no Begutachtung".

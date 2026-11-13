@@ -356,7 +356,7 @@ const gpOptions = computed(() => (availableGps.value.length ? availableGps.value
  * place. The draft behind it is already a row — station „Regierungsvorlage",
  * chip „Zweite Runde". What this fetch adds are the Vorlagen with NO draft
  * behind them (about a quarter,
- * `docs/begutachtung-uebersprungen.md`): they have no row that could carry
+ * `docs/research/begutachtung-uebersprungen.md`): they have no row that could carry
  * them, so they become one themselves (`openVorlagen`).
  *
  * Two earlier attempts put them in a section under the list, and both failed

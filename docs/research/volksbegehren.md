@@ -173,7 +173,7 @@ curl -s "https://www.parlament.gv.at/Filter/api/filter/rss/101?VHG=VOLKBG&GP_COD
 curl -s "https://www.parlament.gv.at/Filter/api/filter/rss/81?AKTIV=J"
 ```
 
-This resolves two open questions in `api-exploration.md` §5 — the list-101
+This resolves two open questions in `docs/api-exploration.md` §5 — the list-101
 type vocabulary (`VHG`/`DOKTYP` values such as `VOLKBG`, `E`, `PET`, `BI`)
 and the RSS URL scheme.
 
@@ -229,7 +229,7 @@ curl -s "https://data.bka.gv.at/ris/api/v2.6/Bundesrecht?Applikation=BgblAuth&Bg
 
 How this compares with the monitor's own joins: ME→RV is fully structured
 (`preconst[]` on the Regierungsvorlage, href on the ME page;
-`api-exploration.md` §3), and the open RIS Begut ↔ Parliament ME join
+`docs/api-exploration.md` §3), and the open RIS Begut ↔ Parliament ME join
 at least has candidate keys, because both records
 describe the same document with the same dates. The Entschließung → bill hop
 has neither a key nor candidate keys: different documents, months or years
@@ -382,8 +382,8 @@ exists. What to
 take from this research now:
 
 1. **The argument, both ways.** The procedure ends in Kenntnisnahme 47 times out of 47, and the wins that do happen — Don't smoke, Tierschutz 2021 — are invisible in that record; a Begründungspflicht would make both visible. That is the strongest empirical illustration available that a respond-or-explain rule needs the *explain* part. Use it in the September/October conversations together with the Regierungsprogramm's Begutachtung commitment (§8).
-2. **The API by-products.** The list-101 type vocabulary (`VHG`/`DOKTYP` values such as `VOLKBG`, `E`, `PET`, `BI`) and the RSS URL scheme close two open questions in `api-exploration.md` §5. And Volksbegehren, Regierungsvorlagen, Anträge, Petitionen and Bürgerinitiativen share one detail structure; the ME→RV layer needs that parser branch regardless — build it generically and Volksbegehren become a type, not a project.
-3. **The text-mining technique.** ME→RV needs no help (structured, `api-exploration.md` §3) and the open RIS↔ME join is a metadata problem the full-text endpoint does not touch. Where §5.4 could pay off in the Begutachtung work is the next accountability question: do the Erläuterungen of a Regierungsvorlage or the Ausschussbericht acknowledge the consultation input at all ("im Begutachtungsverfahren wurde eingewendet …", organisation names)? Test it there.
+2. **The API by-products.** The list-101 type vocabulary (`VHG`/`DOKTYP` values such as `VOLKBG`, `E`, `PET`, `BI`) and the RSS URL scheme close two open questions in `docs/api-exploration.md` §5. And Volksbegehren, Regierungsvorlagen, Anträge, Petitionen and Bürgerinitiativen share one detail structure; the ME→RV layer needs that parser branch regardless — build it generically and Volksbegehren become a type, not a project.
+3. **The text-mining technique.** ME→RV needs no help (structured, `docs/api-exploration.md` §3) and the open RIS↔ME join is a metadata problem the full-text endpoint does not touch. Where §5.4 could pay off in the Begutachtung work is the next accountability question: do the Erläuterungen of a Regierungsvorlage or the Ausschussbericht acknowledge the consultation input at all ("im Begutachtungsverfahren wurde eingewendet …", organisation names)? Test it there.
 
 If someone asks for a Volksbegehren view after the conversations, (b)+(c)
 for the 47 post-2018 cases is bounded work with honest wins to show (Don't

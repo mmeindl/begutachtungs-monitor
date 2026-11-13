@@ -108,7 +108,7 @@ export interface GegenstandResponse {
      * it came from (`ityp: 'ME'`). **Not a universal field:** 126 d.B. carries
      * no `preconst` key at all, so its absence is not proof that no
      * Begutachtung happened; cross-check against list 81
-     * (`docs/begutachtung-uebersprungen.md` §2).
+     * (`docs/research/begutachtung-uebersprungen.md` §2).
      */
     preconst?: { gp_code?: string | null; ityp?: string | null; inr?: number | string | null }[] | null
   } | null

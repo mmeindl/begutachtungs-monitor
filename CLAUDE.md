@@ -1,7 +1,8 @@
 # CLAUDE.md
 
 Rules, measurements and rejected alternatives: `docs/decisions.md`. Read the
-relevant section before changing an area.
+relevant section before changing an area. Research memos that answer one
+question once go to `docs/research/`.
 
 ## What this is
 

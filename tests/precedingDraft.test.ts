@@ -8,7 +8,7 @@
  * generic Sammelnovelle must not slip through although the shorter title is
  * wholly contained in it (the false hit that decides the choice of Jaccard
  * over containment — 293 d.B. against 38/ME in GP XXVIII,
- * `docs/begutachtung-uebersprungen.md` §2).
+ * `docs/research/begutachtung-uebersprungen.md` §2).
  */
 import { describe, expect, it } from 'vitest'
 import type { DraftSummary } from '../shared/types'

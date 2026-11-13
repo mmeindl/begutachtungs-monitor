@@ -2,7 +2,7 @@
  * Which federal laws of one Gesetzgebungsperiode reached the
  * Bundesgesetzblatt without a Begutachtung — the rows behind the chip „Ohne
  * Begutachtung" on `/entwuerfe` (,
- * docs/begutachtung-uebersprungen.md).
+ * docs/research/begutachtung-uebersprungen.md).
  *
  * PURE MODULE — relative imports only, so vitest and the measurement script
  * (`scripts/corpus/ohneBegutachtung.ts`) run the same classification.
