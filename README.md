@@ -26,12 +26,6 @@ Wie das Verfahren abläuft und was der Monitor davon zeigt: [So funktioniert's](
 - [Decisions](docs/decisions.md) — standing rules, the measurements behind the product's claims, rejected alternatives
 - [Upstream APIs](docs/api-exploration.md) — how the interfaces of Parliament, RIS and the EU's Cellar behave: endpoints, field maps and the traps that return a wrong answer without an error
 
-Research memos:
-
-- [How much legislation never sees a Begutachtung?](docs/research/begutachtung-uebersprungen.md)
-- [Has anyone tried to reform the Begutachtungsverfahren?](docs/research/begutachtung-reformvorschlaege.md)
-- [Volksbegehren](docs/research/volksbegehren.md) — could the monitor track Volksbegehren too? Verdict, data paths, and an outcome table for all 81
-
 ## Development
 
 Nuxt 4 (Vue 3, TypeScript), Tailwind, pnpm. No database, no accounts: the site reads the Parliament and RIS APIs and caches what it derives.
