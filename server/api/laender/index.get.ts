@@ -11,8 +11,9 @@
  * Always every Land: the reader's choice is applied on the page, so one
  * cached answer serves every choice.
  */
-import type { LaenderResponse } from '#shared/types'
+import type { LandConsultation, LaenderResponse, LandConsultationRow } from '#shared/types'
 import { gpWindow } from '#shared/utils/gp'
+import { landDraftPath } from '#shared/utils/laender'
 import { firstQueryValue } from '#shared/utils/queryParams'
 import { readLaender, readLaenderInWindow } from '../../utils/laender/sources'
 import { requirePlausibleGp } from '../../utils/http/params'
@@ -22,11 +23,18 @@ import { landNumberOf } from '../../utils/eu/euMap'
 
 const STATUSES = ['open', 'closed', 'all'] as const
 
+/** Each row with its page (`LandConsultationRow`). */
+const withPath = (items: readonly LandConsultation[]): LandConsultationRow[] =>
+  items.map((d) => ({ ...d, path: landDraftPath(d.land, d.id) }))
+
 export default defineEventHandler(async (event): Promise<LaenderResponse> => {
   const query = getQuery(event)
   const gpParam = firstQueryValue(query.gp)
   const statusParam = firstQueryValue(query.status)
-  if (gpParam === undefined && statusParam === undefined) return readLaender()
+  if (gpParam === undefined && statusParam === undefined) {
+    const { items, sources } = await readLaender()
+    return { items: withPath(items), sources }
+  }
 
   const status = (STATUSES as readonly string[]).includes(statusParam ?? 'all') ? (statusParam ?? 'all') as typeof STATUSES[number] : null
   if (!status) throw createError({ statusCode: 400, statusMessage: 'Ungültiger Status' })
@@ -48,5 +56,5 @@ export default defineEventHandler(async (event): Promise<LaenderResponse> => {
         return eu === undefined ? d : { ...d, eu }
       })
     : items
-  return { items: withEu, sources, undated, gp, availableGps: listAvailableGps(currentGp), euAvailable: markers !== null }
+  return { items: withPath(withEu), sources, undated, gp, availableGps: listAvailableGps(currentGp), euAvailable: markers !== null }
 })

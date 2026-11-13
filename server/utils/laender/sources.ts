@@ -1206,11 +1206,22 @@ export function withLandActiveOn(items: LandConsultation[], day: string = todayI
 }
 
 /**
+ * What the readers return: `LaenderResponse` before the API adds each
+ * row's `path` (`server/api/laender/index.get.ts`) — the services that read
+ * the Länder here need no page path.
+ */
+export interface LaenderRead {
+  items: LandConsultation[]
+  sources: LandSourceState[]
+  undated?: LaenderResponse['undated']
+}
+
+/**
  * Every Land the monitor reads. Only RUNNING Begutachtungen leave here:
  * Wien and Oberösterreich keep expired entries on their lists, and the
  * lists have no view for closed Länder drafts yet (`TODO.md` 5L).
  */
-export async function readLaender(): Promise<LaenderResponse> {
+export async function readLaender(): Promise<LaenderRead> {
   const results = await Promise.allSettled(LAND_CODES.map((land) => READERS[land].current()))
   const items: LandConsultation[] = []
   const sources: LandSourceState[] = LAND_CODES.map((land, i) => {
@@ -1246,7 +1257,7 @@ export async function readLaenderInWindow(
   status: 'open' | 'closed' | 'all',
   /** The Länder to read; one for a Land's own feed (`feed.xml?quelle=`). */
   lands: readonly LandCode[] = LAND_CODES,
-): Promise<Pick<LaenderResponse, 'items' | 'sources' | 'undated'>> {
+): Promise<Required<LaenderRead>> {
   const results = await Promise.allSettled(lands.map(async (land) => {
     const reader = READERS[land]
     return withLgblSearch(land, withLandActiveOn(await (status === 'open' && reader.open ? reader.open() : reader.all())))

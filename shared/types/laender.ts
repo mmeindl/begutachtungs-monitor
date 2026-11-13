@@ -168,8 +168,18 @@ export interface LandSourceState {
   listUrl: string
 }
 
+/**
+ * A row of `/api/laender`: the draft and the monitor's page of it
+ * (`landDraftPath`). The path is on the wire so a client outside the app —
+ * the page prewarm on the server — needs no copy of `LAND_SLUG`; its copy
+ * knew five Länder when there were nine (13.11.2026).
+ */
+export interface LandConsultationRow extends LandConsultation {
+  path: string
+}
+
 export interface LaenderResponse {
-  items: LandConsultation[]
+  items: LandConsultationRow[]
   /** Every Land the monitor reads, in display order, readable or not. */
   sources: LandSourceState[]
   /** In period mode (`?gp`, `?status`): the period used as the time window. */
