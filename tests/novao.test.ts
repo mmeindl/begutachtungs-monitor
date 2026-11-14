@@ -371,6 +371,24 @@ describe('renumbering (2026-09-09)', () => {
   it('refuses several new designations it cannot pair', () => {
     expect(parseInstruction('Die §§ 5 und 9 erhalten die Bezeichnungen "§ 6." und "§ 10."').ops).toHaveLength(0)
   })
+
+  it('reads „die nachfolgenden Absätze" as the units behind the one just deleted (58/ME XXVIII)', () => {
+    // The clause names no unit; it inherited the deleted Abs. 1 and renamed
+    // that one Absatz to five designations.
+    const parsed = parseInstruction('In § 7 entfällt Abs. 1; die nachfolgenden Absätze erhalten die Absatzbezeichnungen "(1)" bis "(5)".')
+    expect(parsed.reason).toBeNull()
+    expect(parsed.ops[1]).toMatchObject({ kind: 'renumber', target: { para: '§ 7', abs: '1', siblings: [] }, to: '(1)', toLast: '(5)', following: true })
+    // „nachfolgend" is relative to one deleted unit, and to nothing else.
+    expect(parseInstruction('In § 7 entfallen Abs. 1 und 2; die nachfolgenden Absätze erhalten die Absatzbezeichnungen "(1)" bis "(4)".').reason).toMatch(/nachfolgenden/)
+    expect(parseInstruction('In § 7 entfällt Z 1; die nachfolgenden Absätze erhalten die Absatzbezeichnungen "(1)" bis "(4)".').reason).toMatch(/nachfolgenden/)
+  })
+
+  it('reads an enumeration marked „(neu)" at every member, and refuses a mixed one (58/ME XXVIII)', () => {
+    // The step stopped at the first „(neu)" and the line ran on Abs. 3 alone.
+    expect(op('In § 7 Abs. 3 (neu) und 4 (neu) wird der Verweis "Abs. 1 bis 3" jeweils durch den Verweis "Abs. 1 und 2" ersetzt.')).toMatchObject({ target: { abs: '3', siblings: ['4'] } })
+    expect(parseInstruction('In § 7 Abs. 3 (neu) und 4 wird das Wort "a" durch das Wort "b" ersetzt.').ops).toHaveLength(0)
+    expect(parseInstruction('In § 7 Abs. 3 und 4 (neu) wird das Wort "a" durch das Wort "b" ersetzt.').ops).toHaveLength(0)
+  })
 })
 
 describe('what "jeweils" means (2026-09-09)', () => {

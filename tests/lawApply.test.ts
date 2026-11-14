@@ -705,6 +705,30 @@ describe('renumbering (2026-09-09)', () => {
     expect(out.paragraphs[0]!.children[0]!.children.map((c) => `${c.id}:${c.text}`)).toEqual(['1:eins', '2:drei', '3:neu vier', '4:fünf'])
   })
 
+  it('closes up the gap behind a deleted Absatz with „die nachfolgenden Absätze", only where the count fits (58/ME XXVIII)', () => {
+    // Straßenfahrzeug-Beschaffungsgesetz § 7: Abs. 1 goes, Abs. 2 to 6 become (1) to (5).
+    const seven = (n: number): StandingLaw => ({ paragraphs: [para('7', 'Berichterstattung', Array.from({ length: n }, (_, i) => `Text ${i + 1}.`))] })
+    const line = 'In § 7 entfällt Abs. 1; die nachfolgenden Absätze erhalten die Absatzbezeichnungen "(1)" bis "(5)".'
+    const { law: out, results } = run(seven(6), instr(line), instr('In § 7 Abs. 3 (neu) und 4 (neu) wird das Wort "Text" jeweils durch das Wort "Satz" ersetzt.'))
+    expect(results.map((r) => r.applied)).toEqual([true, true, true])
+    expect(out.paragraphs[0]!.children.map((c) => `${c.id}:${c.text}`)).toEqual(['1:Text 2.', '2:Text 3.', '3:Satz 4.', '4:Satz 5.', '5:Text 6.'])
+    // Seven Absätze leave six behind Abs. 1 — five designations do not fit,
+    // and none of them moves; the § is then refused for the failed line
+    // (`refusedUnits`), as for any renumbering whose count does not fit.
+    const tooMany = run(seven(7), instr(line)).results
+    expect(tooMany[1]!.applied).toBe(false)
+    expect(tooMany[1]!.reason).toMatch(/6 Einheiten, 5 neue Bezeichnungen/)
+  })
+
+  it('refuses „die nachfolgenden" where the designations do not count in order', () => {
+    const l: StandingLaw = { paragraphs: [para('7', 'B', ['Eins.', 'Zwei.', 'Drei.'])] }
+    l.paragraphs[0]!.children[2]!.id = '2a'
+    l.paragraphs[0]!.children[1]!.id = '3'
+    const { results } = run(l, instr('In § 7 entfällt Abs. 1; die nachfolgenden Absätze erhalten die Absatzbezeichnungen "(1)" bis "(2)".'))
+    expect(results[1]!.applied).toBe(false)
+    expect(results[1]!.reason).toMatch(/nicht aufsteigend/)
+  })
+
   it('refuses a "(neu)" address when no renumbering in that § went through', () => {
     // LMSVG § 107: the standing § had no Z 9, the renumbering was refused,
     // and "Z 6 (neu)" would have landed on the old Z 6.

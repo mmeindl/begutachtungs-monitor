@@ -481,7 +481,18 @@ function siblingsAfter(rest: string, first: string, level: EnumLevel = 'abs'): {
   // also „1 und 2 und 3" — which is how `parseAddressList` hands back „Abs. 1,
   // Abs. 2 und Abs. 3" after cutting it at every comma, and the old pattern
   // read two of the three (26.09.2026).
-  const step = new RegExp(`^\\s*(,|und|sowie|bis)\\s*${des ? `${des}?` : ''}(${id})(?![\\p{L}\\p{N}])`, 'u')
+  //
+  // „In § 7 Abs. 3 (neu) und 4 (neu) wird …" (58/ME XXVIII): the new
+  // numbering marked at every member. The step stopped at the first „(neu)",
+  // and the line ran on Abs. 3 alone — half an instruction, reported as
+  // applied (14.11.2026). Read only where the first member and every sibling
+  // carry it alike; „Abs. 3 (neu) und 4" mixes two numberings in one
+  // address and is refused.
+  const NEU = String.raw`\s*\(neu\)`
+  const marked = new RegExp(`^${NEU}`, 'u').test(rest)
+  const member = (neu: boolean): RegExp => new RegExp(`^${marked ? NEU : ''}\\s*(,|und|sowie|bis)\\s*${des ? `${des}?` : ''}(${id})(?![\\p{L}\\p{N}])${neu ? `(?=${NEU})` : `(?!${NEU})`}`, 'u')
+  const step = member(marked)
+  const mixed = member(!marked)
   const ids: string[] = []
   let at = 0
   let previous = first
@@ -502,7 +513,9 @@ function siblingsAfter(rest: string, first: string, level: EnumLevel = 'abs'): {
     previous = next
     at += m[0].length
   }
+  if (mixed.test(rest.slice(at))) return null
   if (ids.length === 0) return { ids: [], consumed: 0 }
+  if (marked) at += new RegExp(`^${NEU}`, 'u').exec(rest.slice(at))![0].length
   if (OWN_COMPONENT_RE.test(rest.slice(at))) return null
   return { ids, consumed: at }
 }
@@ -1088,7 +1101,21 @@ export type NovaoOp =
    * "Der bisherige § 10 erhält die Paragrafenbezeichnung „§ 11.“"; with
    * `toLast`, a run: "die Z 5 bis 9 erhalten die Ziffernbezeichnungen „4.“ bis „8.“"
    */
-  | { kind: 'renumber'; target: NovaoAddress; to: string; toLast: string | null }
+  | {
+    kind: 'renumber'
+    target: NovaoAddress
+    to: string
+    toLast: string | null
+    /**
+     * „In § 7 entfällt Abs. 1; die nachfolgenden Absätze erhalten die
+     * Absatzbezeichnungen ‚(1)' bis ‚(5)'" (`FOLLOWING_UNITS_RE`): `target`
+     * is the unit the clause before deleted, and the units renumbered are
+     * every unit of its level behind it — which ones only the standing text
+     * can say, so the applier counts them (`followingUnits` in
+     * `kons/lawApply.ts`).
+     */
+    following?: true
+  }
   /** "§ 5 wird wie folgt geändert:" — a heading over sub-instructions */
   | { kind: 'container'; target: NovaoAddress }
   /** "Im Inhaltsverzeichnis …" — derivable from the text, never applied */
@@ -1505,6 +1532,18 @@ const END_MARK_RE = /\b(nach|vor)\s+(?:dem|der)\s+(Punkt|Strichpunkt|Beistrich|D
 const END_MARK_REV_RE = /\bam\s+Ende\s+(?:der|des)\s+(?:Z(?:iffer)?\s*\d+[a-z]*|lit\.\s*[a-z]{1,2}|Abs(?:\.|atzes)\s*\d+[a-z]*)\s+(nach|vor)\s+(?:dem|der)\s+(Punkt|Strichpunkt|Beistrich|Doppelpunkt)\b/i
 /** „der nachfolgende Halbsatz entfällt" — the Halbsatz behind a mark the clause before has replaced. */
 const FOLLOWING_HALBSATZ_GONE_RE = /^(?:der|die)\s+(?:nachfolgende|darauf\s*folgende|danach\s+folgende)\s+Halbs(?:atz|ätze)\s+(?:entfällt|entfallen)\.?$/i
+/**
+ * „die nachfolgenden Absätze erhalten die Absatzbezeichnungen ‚(1)' bis
+ * ‚(5)'" — the units behind the one the clause before deleted close up the
+ * gap (58/ME XXVIII, Straßenfahrzeug-Beschaffungsgesetz § 7). The clause
+ * names no unit of its own, so it inherited the deleted Abs. 1 and renamed
+ * that one Absatz to five designations: refused as „Nicht im geltenden
+ * Text" until 14.11.2026. Only as a run („bis"), because a count is what the
+ * standing text can check.
+ */
+const FOLLOWING_UNITS_RE = /^(?:die|alle)\s+(?:nachfolgenden|darauf\s*folgenden|danach\s+folgenden)\s+(?:bisherigen\s+)?(Absätze|Ziffern|Litterae)\s+erhalten\s+die\s+(?:Absatz|Ziffern|Litera)bezeichnungen\s+"([^"]+)"\s+bis\s+"([^"]+)"\s*\.?$/i
+const FOLLOWING_LEVEL: Record<string, 'abs' | 'z' | 'lit'> = { absätze: 'abs', ziffern: 'z', litterae: 'lit' }
+
 /** „Im Inhaltsverzeichnis …" — also as „Inhaltverzeichnis", which the Bankwesengesetz prints. */
 const TOC_RE = /^(?:Im |Das |Die |In dem )?Inhalts?verzeichnis\b/i
 /** The table of contents named anywhere in a clause, in every case („des Inhaltsverzeichnisses"). */
@@ -2580,6 +2619,19 @@ export function parseInstruction(raw: string, inherited?: NovaoAddress | null): 
     const before = ops.at(-1)
     if (FOLLOWING_HALBSATZ_GONE_RE.test(part.trim()) && before?.kind === 'replacePhrase' && (before.from === ';' || before.from === ',') && before.to === '.' && !before.everywhere && !before.atEnd) {
       ops[ops.length - 1] = { ...before, truncate: true }
+      continue
+    }
+    // „In § 7 entfällt Abs. 1; die nachfolgenden Absätze erhalten die
+    // Absatzbezeichnungen ‚(1)' bis ‚(5)'": only behind the deletion of
+    // exactly one unit of the level the clause names — „nachfolgend" is
+    // relative to it, and behind anything else (an insertion, a list) it
+    // could mean more than one place.
+    const following = FOLLOWING_UNITS_RE.exec(part.trim())
+    if (following) {
+      const level = FOLLOWING_LEVEL[following[1]!.toLowerCase()]!
+      if (before?.kind === 'delete' && before.target.level === level && before.target.siblings.length === 0 && !before.target.heading && before.target.satz === null) {
+        ops.push({ kind: 'renumber', target: { ...before.target, raw: part }, to: following[2]!, toLast: following[3]!, following: true })
+      } else reasons.push('„die nachfolgenden" ohne vorangehenden Wegfall genau einer Einheit')
       continue
     }
     const seen = new Set<string>()

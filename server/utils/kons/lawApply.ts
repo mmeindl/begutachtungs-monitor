@@ -2379,9 +2379,16 @@ function renumberBatch(law: StandingLaw, batch: readonly Pick<Instruction, 'op' 
   const moves: { node: LawNode; id: string; level: NodeLevel; siblings: LawNode[]; para: string; schedule: boolean; address: NovaoAddress; host: LawNode | null }[] = []
   for (const { op } of batch) {
     if (op.kind !== 'renumber') return 'keine Umbenennung'
-    const ids = [deepestId(op.target), ...op.target.siblings]
     const nodes: LawNode[] = []
-    for (const id of ids) {
+    if (op.following) {
+      const found = followingUnits(law, op.target)
+      if (typeof found === 'string') return found
+      nodes.push(...found)
+      // The units close up the gap the deletion left, or the numbers do not
+      // fit: „entfällt Abs. 1; … ‚(1)' bis ‚(5)'" starts at the Abs. that went.
+      if (op.to.replace(/[^\w]/g, '') !== deepestId(op.target)) return `„die nachfolgenden" beginnen nicht bei ${deepestId(op.target)}`
+    }
+    for (const id of op.following ? [] : [deepestId(op.target), ...op.target.siblings]) {
       // The kind with the number (`findParagraph`), as everywhere a § is looked up.
       const node = op.target.level === 'para' ? findParagraph(law, op.target, id) : resolveTarget(law, op.target, id)
       if (!node) return `Nicht im geltenden Text: ${op.target.raw.slice(0, 60)}`
@@ -2450,6 +2457,52 @@ function renumberBatch(law: StandingLaw, batch: readonly Pick<Instruction, 'op' 
     else if (m.level !== 'para') arriveUnit(law, m.node)
   }
   return null
+}
+
+/**
+ * „die nachfolgenden Absätze" behind „In § 7 entfällt Abs. 1" (`following`
+ * in `kons/novao.ts`): every unit of the deleted one's level that stands
+ * behind it in the same host — Abs. 2 to 6 of the Straßenfahrzeug-
+ * Beschaffungsgesetz § 7, five units for „(1)" bis „(5)" (58/ME XXVIII).
+ *
+ * The deleted unit is gone by the time this runs (the clause before took
+ * it), so „behind it" is read off the designations, and only where they
+ * leave no doubt: every unit of that level in the host numbered, in
+ * ascending order, and the deleted number itself no longer among them.
+ * Anything else is refused — the count `renumberBatch` then holds against
+ * the new designations is the whole check, and it only means something on a
+ * sequence that is unambiguous.
+ */
+function followingUnits(law: StandingLaw, target: NovaoAddress): LawNode[] | string {
+  const level = target.level
+  if (level !== 'abs' && level !== 'z' && level !== 'lit') return '„die nachfolgenden" — Ebene nicht unterhalb des Paragraphen'
+  const hostAddress: NovaoAddress = level === 'abs'
+    ? { ...target, abs: null, z: null, lit: null, level: 'para' }
+    : level === 'z'
+      ? { ...target, z: null, lit: null, level: target.abs !== null ? 'abs' : 'para' }
+      : { ...target, lit: null, level: target.z !== null ? 'z' : target.abs !== null ? 'abs' : 'para' }
+  const host = hostAddress.level === 'para' ? findParagraph(law, hostAddress) : resolveTarget(law, hostAddress)
+  if (!host) return `Nicht im geltenden Text: ${target.raw.slice(0, 60)}`
+  const units = host.children.filter((c) => c.level === level)
+  const anchor = designationOrder(deepestId(target))
+  const order = units.map((u) => designationOrder(u.id))
+  if (anchor === null || order.some((o) => o === null)) return '„die nachfolgenden" — Bezeichnungen nicht aufzählbar'
+  for (let i = 1; i < order.length; i++) if (compareOrder(order[i - 1]!, order[i]!) >= 0) return '„die nachfolgenden" — Bezeichnungen nicht aufsteigend'
+  if (order.some((o) => compareOrder(o!, anchor) === 0)) return `„die nachfolgenden" — ${deepestId(target)} steht noch im Text`
+  const behind = units.filter((_, i) => compareOrder(order[i]!, anchor) > 0)
+  if (behind.length === 0) return `„die nachfolgenden" — keine Einheit hinter ${deepestId(target)}`
+  return behind
+}
+
+/** „3a" → [3, "a"], „c" → [0, "c"]: a designation in the order a law counts it, or null. */
+function designationOrder(id: string): [number, string] | null {
+  const numbered = /^(\d+)([a-z]*)$/.exec(id)
+  if (numbered) return [Number(numbered[1]), numbered[2]!]
+  return /^[a-z]{1,2}$/.test(id) ? [0, id] : null
+}
+
+function compareOrder(a: readonly [number, string], b: readonly [number, string]): number {
+  return a[0] - b[0] || a[1].length - b[1].length || (a[1] < b[1] ? -1 : a[1] > b[1] ? 1 : 0)
 }
 
 /** The word a schedule's designation opens with — „Anl." in RIS, „Anlage" or „Anhang" in a payload. */
