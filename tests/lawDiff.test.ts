@@ -1004,7 +1004,7 @@ describe('pairSameInstruction — dieselbe Anordnung, neu adressiert', () => {
 
     expect(summarizeDiff(units)).toMatchObject({ total: 3, unchanged: 1, changed: 1, inserted: 1, removed: 0 })
     const moved = units.find((u) => u.change === 'changed')!
-    expect(moved).toMatchObject({ fromId: 'Z2', id: 'Z3', editorial: false })
+    expect(moved).toMatchObject({ fromId: 'Z2', id: 'Z3', editorial: false, readdressed: true })
     expect(moved.segments!.filter((s) => s.type !== 'equal').map((s) => s.text.trim())).toEqual(['Abs. 1'])
   })
 

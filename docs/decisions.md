@@ -309,7 +309,9 @@ change belongs here.
   0,60 and 0,83, and below 0,6 12 of 47 are other instructions (table at
   the constant). The unit is the Vorlage's with the draft's Ziffer in
   `fromId` („Z 24 → Z 25"), so the Begründung joins each side under its own
-  number and the share counts it once. Moved: 9 / 12 / 6 pairs in GP XXVI /
+  number and the share counts it once. Where that join finds nothing, the
+  unit keeps what the § join found for its halves (`readdressed`, same §§ on
+  both sides): no paired unit ends with less Begründung than before. Moved: 9 / 12 / 6 pairs in GP XXVI /
   XXVII / XXVIII; one share (3/ME XXVI, 52,0 → 51,8 %, the pair is
   editorial), no base rate.
 - **A changed cross-reference is editorial only where this comparison itself

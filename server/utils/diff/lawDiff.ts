@@ -987,6 +987,7 @@ function readdressed(r: LawDiffUnit, i: LawDiffUnit, renumbered: ReadonlyMap<str
     editorial: isEditorialChange(diff.segments, { renumbered }),
     fromText: r.fromText,
     segments: diff.segments,
+    readdressed: true,
   }
 }
 

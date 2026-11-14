@@ -920,3 +920,25 @@ describe('parseExplanationsHtml — „Zu den Z …" als Überschrift', () => {
     expect(out.gaps).toEqual({})
   })
 })
+
+// A readdressed instruction keeps what the § join found for its halves
+// (14.11.2026): pairing must never take a Begründung away.
+describe('compareReasoning — die neu adressierte Anordnung behält die Begründung ihrer Hälften', () => {
+  // 69/ME XXVIII Z 26 → Z 27: the Vorlage heads § 24's Ziffern „23 bis 26",
+  // its text numbers them 24 to 27 — Z 27 has no passage under its number.
+  const lone = { ...z('Z27', 'Z26', '§ 24 Abs. 1 lit. f entfällt.'), fromText: '§ 24 lit. f entfällt.' }
+  const before = () => erl('Zu Z 1, 14, 24 bis 27 (§ 1, § 10 Abs. 1 und § 24 lit. a, d, e und der Entfall von lit. f):', 'Die Strafbestimmungen.')
+  const after = () => erl('Zu Z 1, 13, 23 bis 26 (§ 1, § 10 Abs. 1 und § 24 Abs. 1 lit. a, d, e und der Entfall von lit. f):', 'Die Strafbestimmungen, nach der Begutachtung ergänzt.')
+
+  it('gibt der gepaarten Einheit die Begründung ihres §, wo die Ziffer keine findet (69/ME XXVIII Z 26 → Z 27)', () => {
+    const out = compareReasoning([{ ...lone, readdressed: true }], before(), after())
+    expect(out.entries[out.units['Gesetz|Z27|changed']!]).toMatchObject({ basis: 'paragraph', label: '§ 24', changed: true })
+    expect(out.gaps).toEqual({})
+  })
+
+  it('tut es nur für die gepaarte Einheit', () => {
+    const out = compareReasoning([lone], before(), after())
+    expect(out.units['Gesetz|Z27|changed']).toBeUndefined()
+    expect(out.gaps['Gesetz|Z27|changed']).toBe('unread')
+  })
+})

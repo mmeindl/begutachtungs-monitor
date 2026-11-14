@@ -264,6 +264,12 @@ export interface LawDiffUnit {
    * Erläuterungen head it in the draft's words (02.10.2026).
    */
   fromArticle?: string
+  /**
+   * A removed and an inserted instruction the comparison read as one,
+   * readdressed (`pairSameInstruction`, 14.11.2026) — so the Begründung join
+   * can fall back to what it found for either half (`compareReasoning`).
+   */
+  readdressed?: true
   /** Unit id on the later side of the pair (or the earlier one, for removed units): "§5", "Z3" */
   id: string
   /** The same unit's id on the earlier side; differs from `id` after renumbering */

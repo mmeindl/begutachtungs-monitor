@@ -1215,11 +1215,37 @@ export function compareReasoning(units: readonly LawDiffUnit[], before: HtmlExpl
       attach(unit, side === 'before' ? found : me, side === 'after' ? found : rv, side)
     }
   }
+  // A readdressed instruction (`pairSameInstruction`) was two units until
+  // the comparison read it as one, and each half went the § join as an
+  // inserted or removed instruction. Where the Ziffer join gives the one
+  // unit nothing, it keeps what the § join gives — read off the Vorlage's
+  // text first, then the draft's — so pairing never takes a Begründung away:
+  // 69/ME XXVIII Z 26 → Z 27, whose documents number § 24's Ziffern
+  // differently, kept the § 24 passage its halves had (14.11.2026). Only
+  // where both sides' instructions edit the same §§; last, so it takes the
+  // ceiling from nothing shown before.
+  const byKey = new Map(units.map((u) => [diffUnitKey(u), u]))
+  for (const unit of units) {
+    if (!unit.readdressed || f.out.units[diffUnitKey(unit)]) continue
+    const draftParas = read.paragraphIds(unit, 'before')
+    const billParas = read.paragraphIds(unit, 'after')
+    if (draftParas.size === 0 || draftParas.size !== billParas.size || [...draftParas].some((x) => !billParas.has(x))) continue
+    for (const half of [{ ...unit, change: 'inserted' as const, fromText: null }, { ...unit, change: 'removed' as const, toText: null }]) {
+      // A real unit under the half's key keeps its own entry.
+      if (byKey.has(diffUnitKey(half))) continue
+      joinAtParagraph(f, [half], ambiguous, me.all, rv.all, { before: me.byArticle, after: rv.byArticle }, read)
+      const key = f.out.units[diffUnitKey(half)]
+      if (!key) continue
+      Reflect.deleteProperty(f.out.units, diffUnitKey(half))
+      f.out.units[diffUnitKey(unit)] = key
+      break
+    }
+  }
+
   // Only what stayed without an entry — a unit `offsetPassage` recovered has
   // its Begründung. „Not found" is a claim about the document, so it stands
   // only where the document's text names the change nowhere (`namesChange`).
   const gaps: Record<string, ReasoningGap> = {}
-  const byKey = new Map(units.map((u) => [diffUnitKey(u), u]))
   for (const [key, gap] of Object.entries(gapOf)) {
     if (f.out.units[key]) continue
     const unit = byKey.get(key)!
