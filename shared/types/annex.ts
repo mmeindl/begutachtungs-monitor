@@ -11,7 +11,7 @@ import type { LawUnitChange } from './lawDiff'
  * nothing of them — a § the draft changes simply had no Lesefassung, with
  * no way to tell „withheld" from „never looked at".
  *
- * The sentences belong in `app/utils/konsNotes.ts`, not here: they are copy
+ * The sentences belong in `app/utils/lesefassung.ts`, not here: they are copy
  * with tests, not a type definition.
  */
 export type ConsolidatedWithheldCause =

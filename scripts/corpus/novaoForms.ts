@@ -1,6 +1,6 @@
 #!/usr/bin/env vite-node
 /**
- * Coverage report for the Novellierungsanordnung grammar (server/utils/novao.ts)
+ * Coverage report for the Novellierungsanordnung grammar (server/utils/kons/novao.ts)
  * over the corpus harvested by `scripts/corpus/novao.ts`.
  *
  * Usage:  npx vite-node scripts/corpus/novaoForms.ts [cacheDir] [--samples N]
