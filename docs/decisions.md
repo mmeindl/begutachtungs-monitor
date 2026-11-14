@@ -17,6 +17,13 @@ git show ris-join-archive-2026-11:docs/ris-join.md
 The story of a change belongs in its commit message. A rule that outlives the
 change belongs here.
 
+**What an entry holds:** the rule, one reason, and a pointer to the code or
+the measurement. What a change moved (counts before and after), the
+calibration of a threshold and the history of a bug stay in the commit
+message or at the constant. A figure enters section 2 where the product or a
+rule stands on it, never as the delta of one fix. A rejected alternative
+gets an entry of its own only where it carries a reason the rule does not.
+
 ## 1. Standing rules
 
 ### Foundations
@@ -24,6 +31,12 @@ change belongs here.
 - **Boring, low-ops tech.** No database, no accounts: the Nitro server is a
   caching proxy in front of the official APIs. The predecessor
   (OffenesParlament.at) died in operation, not in construction.
+- **Anyone can run a copy for under €100 a year,** without the maintainer
+  and without an organisation behind it: a successor must be able to take
+  over on one domain and one small server. So no recurring paid service
+  beyond those two, one domain for all countries (a country is a path
+  segment), and the public address comes from configuration. Anything that
+  needs a recurring bill is a layer the core runs without.
 - **No third-party resources at runtime.** No web fonts, no icon or script
   CDN, no analytics service, no cookies. Hosting only with EU-owned
   providers, not the EU regions of US hyperscalers (CLOUD Act). The
