@@ -708,6 +708,45 @@ describe('compareReasoning — eine Seite zählt ihre Ziffern versetzt (02.10.20
   })
 })
 
+describe('compareReasoning — die Passage unter der Nachbarnummer (14.11.2026)', () => {
+  // 54/ME XXVIII: the Vorlage prints „Zu Z 12" twice, and from there every
+  // heading is one behind its instruction. The draft numbers right.
+  const units = [
+    z('Z12', 'Z10', 'Nach § 80a wird folgender § 80b samt Überschrift eingefügt: Strafbestimmungen …'),
+    z('Z13', 'Z11', 'Dem § 82 wird folgender Abs. 29 angefügt: "(29) …"'),
+    z('Z14', 'Z12', 'Nach § 82i wird folgender § 82j samt Überschrift eingefügt: Übergangsbestimmung …'),
+  ]
+  const before = () => erl('Zu Z 10 (§ 80b samt Überschrift):', 'Strafen.', 'Zu Z 11 (§ 82 Abs. 29):', 'Inkrafttreten.', 'Zu Z 12 (§ 82j samt Überschrift):', 'Übergang.')
+  const after = () => erl('Zu Z 12 (§ 80b samt Überschrift):', 'Strafen, nach der Begutachtung.', 'Zu Z 12 (§ 82 Abs. 29):', 'Inkrafttreten.', 'Zu Z 13 (§ 82j samt Überschrift):', 'Übergang.')
+
+  it('gibt Z 13 und Z 14 die Passage, die die Vorlage eine Nummer früher führt', () => {
+    const out = compareReasoning(units, before(), after())
+
+    expect(out.entries[out.units['Gesetz|Z13|changed']!]).toMatchObject({ label: 'Zu Z 12 (§ 82 Abs. 29):', changed: false })
+    expect(out.entries[out.units['Gesetz|Z14|changed']!]).toMatchObject({ label: 'Zu Z 13 (§ 82j samt Überschrift):', changed: false })
+    expect(out.fallbacks['Gesetz|Z14|changed']).toBe('offset')
+    // Z 12 keeps its own passage, and none is shown twice.
+    expect(out.entries[out.units['Gesetz|Z12|changed']!]).toMatchObject({ label: 'Zu Z 12 (§ 80b samt Überschrift):', changed: true })
+  })
+
+  it('bleibt ohne Begründung, wo ein Zeuge fehlt', () => {
+    // The Vorlage has no „Zu Z 13" of its own, and the draft names another §
+    // for Z 11: the documents disagree which change it is.
+    const disagree = erl('Zu Z 10 (§ 80b samt Überschrift):', 'Strafen.', 'Zu Z 11 (§ 83):', 'Anderes.', 'Zu Z 12 (§ 82j samt Überschrift):', 'Übergang.')
+    const gap = erl('Zu Z 12 (§ 80b samt Überschrift):', 'Strafen.', 'Zu Z 12 (§ 82 Abs. 29):', 'Inkrafttreten.', 'Zu Z 14 (§ 82j samt Überschrift):', 'Übergang.')
+    expect(compareReasoning(units, before(), gap).units['Gesetz|Z13|changed']).toBeDefined()
+    expect(compareReasoning(units, disagree, gap).units['Gesetz|Z13|changed']).toBeUndefined()
+    // A second change to § 82 in the same law: the § no longer points at one unit.
+    const twice = [...units, z('Z15', 'Z13', 'In § 82 Abs. 3 wird "a" durch "b" ersetzt.')]
+    expect(compareReasoning(twice, before(), after()).units['Gesetz|Z13|changed']).toBeUndefined()
+    // The neighbour's passage names a § this unit does not amend: nothing (168/ME XXVII Z 29 on § 30).
+    const other = [z('Z29', 'Z29', 'In § 30 wird im Einleitungsteil das Wort "Es" ersetzt.'), z('Z30', 'Z30', 'Nach § 30 wird folgender § 30a samt Überschrift eingefügt: …')]
+    const out = compareReasoning(other, erl('Zu Z 29 (§ 30a):', 'Neu.', 'Zu Z 31 (§ 31):', 'Anderes.'), erl('Zu Z 29 (§ 30 Einleitungsteil):', 'Klar.', 'Zu Z 30 (§ 30a):', 'Neu.'))
+    expect(out.units['Gesetz|Z29|changed']).toBeUndefined()
+    expect(out.fallbacks['Gesetz|Z29|changed']).toBe('misnumbered')
+  })
+})
+
 describe('compareReasoning — Unterpassagen unter einer nach § betitelten Überschrift (02.10.2026)', () => {
   it('nimmt im §-Join die Unterpassagen ohne eigenen § mit (4/ME XXVIII, § 267a UGB)', () => {
     // Neither document titles by Ziffer: the whole draft goes the § join, and

@@ -64,6 +64,9 @@
  * document's only passage to a Ziffer names another § than the instruction
  * amends, and the other document's names the right one, the first is another
  * Ziffer's passage (24/ME XXVIII Z 47), and the pair is not compared.
+ * The right passage is looked for under the neighbouring number, and taken
+ * only where the §§ witness that it is this change's (`offsetPassage`,
+ * 14.11.2026: 54/ME XXVIII Z 13 and Z 14).
  *
  * THE § JOIN. One comparison per Paragraph, `units` pointing there.
  *
@@ -825,23 +828,106 @@ interface FoundPassages {
  * same §§ on both sides, so our reading of it is not what differs; and the
  * other side's passages all name a § it does amend.
  */
-function misnumbered(unit: LawDiffUnit, me: FoundPassages, rv: FoundPassages, read: Readings): boolean {
+function misnumbered(unit: LawDiffUnit, me: FoundPassages, rv: FoundPassages, read: Readings): Side | null {
   const own = read.paragraphIds(unit, 'before')
   const ownAfter = read.paragraphIds(unit, 'after')
-  if (own.size === 0 || own.size !== ownAfter.size || [...own].some((x) => !ownAfter.has(x))) return false
-  const bases = new Set([...own].map(paragraphBase))
-  // A slip drops a letter („§ 124" for § 124b); one that adds a letter to
-  // the § the instruction amends names another §: „Zu Z 13 (§ 82j samt
-  // Überschrift):" in 54/ME XXVIII's Vorlage is the passage of its Z 14,
-  // which inserts § 82j, not of Z 13 on § 82 Abs. 29 (02.10.2026).
-  const slip = (id: string) => (own.has(paragraphBase(id)) ? id === paragraphBase(id) : bases.has(paragraphBase(id)))
+  if (own.size === 0 || own.size !== ownAfter.size || [...own].some((x) => !ownAfter.has(x))) return null
+  const slip = slipOf(own)
   const misfit = (f: FoundPassages, side: Side) => {
     if (f.byParagraph || f.passages.length !== 1) return false
     const p = f.doc.special[f.passages[0]!]!
     return p.ziffern.length === 1 && p.paragraphs.length > 0 && !fitsParagraphs(p, unit, side, read) && !p.paragraphs.some((x) => slip(explanationParaId(x) ?? ''))
   }
-  const fits = (f: FoundPassages, side: Side) => !f.byParagraph && f.passages.every((i) => f.doc.special[i]!.paragraphs.length > 0 && fitsParagraphs(f.doc.special[i]!, unit, side, read))
-  return (misfit(me, 'before') && fits(rv, 'after')) || (misfit(rv, 'after') && fits(me, 'before'))
+  if (misfit(me, 'before') && fitsAll(rv, unit, 'after', read)) return 'before'
+  if (misfit(rv, 'after') && fitsAll(me, unit, 'before', read)) return 'after'
+  return null
+}
+
+/**
+ * Whether a § a heading names is a slip for one the instruction amends —
+ * read the same by `misnumbered` and `offsetPassage`. A slip drops a letter
+ * („§ 124" for § 124b, 61/ME XXVIII); one that adds a letter to the § the
+ * instruction amends names another §: „Zu Z 13 (§ 82j samt Überschrift):" in
+ * 54/ME XXVIII's Vorlage is the passage of its Z 14, which inserts § 82j,
+ * not of Z 13 on § 82 Abs. 29 (02.10.2026).
+ */
+function slipOf(own: ReadonlySet<string>): (id: string) => boolean {
+  const bases = new Set([...own].map(paragraphBase))
+  return (id) => (own.has(paragraphBase(id)) ? id === paragraphBase(id) : bases.has(paragraphBase(id)))
+}
+
+/** Every passage a side found for the unit names a § and one the unit amends — that document's §§ agree with the instruction. */
+function fitsAll(f: FoundPassages, unit: LawDiffUnit, side: Side, read: Readings): boolean {
+  return !f.byParagraph && f.passages.length > 0 && f.passages.every((i) => f.doc.special[i]!.paragraphs.length > 0 && fitsParagraphs(f.doc.special[i]!, unit, side, read))
+}
+
+/**
+ * The passage a document counting its Ziffern off gives the unit under the
+ * NEIGHBOURING number (14.11.2026) — or null. 54/ME XXVIII's Vorlage prints
+ * „Zu Z 12" twice: „Zu Z 12 (§ 80b samt Überschrift):", the right one, and
+ * „Zu Z 12 (§ 82 Abs. 29):", which explains Z 13; from there every heading is
+ * one behind, and „Zu Z 13 (§ 82j samt Überschrift):" explains Z 14. Until
+ * now Z 13 and Z 14 got nothing (`misnumbered`, the passage of the other
+ * number being turned away), because taking the neighbour's passage on its
+ * number alone would be guessing the offset.
+ *
+ * The number is one witness; it is taken only with four more, all read off
+ * the documents and none off a guess:
+ *
+ *  1. the passage names one Ziffer, one before or after the unit's on this
+ *     side, and §§ — every one of which this unit amends, letter for letter
+ *     (no slip: „§ 82" is not § 82j);
+ *  2. it is not the passage of the unit that carries that number: that unit
+ *     exists, amends none of its §§ and shares no number with them, and no
+ *     unit was given the passage by its own number;
+ *  3. no other unit of the same law on this side amends one of its §§ — the
+ *     § points at this unit and no other;
+ *  4. the other document's passages to the unit name a § it amends
+ *     (`fitsAll`) — the second document agrees which change this is.
+ *
+ * Exactly one candidate, or none. Where the witnesses disagree, the unit
+ * keeps no Begründung, as before.
+ */
+function offsetPassage(side: ZifferSide, unit: LawDiffUnit, used: ReadonlySet<number>, units: readonly LawDiffUnit[], read: Readings): number | null {
+  const { ziffer, article } = unitZiffer(unit, side.side)
+  if (!ziffer || !/^\d+$/.test(ziffer)) return null
+  const own = read.paragraphIds(unit, side.side)
+  if (own.size === 0) return null
+  const sameLawAs = (u: LawDiffUnit) =>
+    side.mode === 'title' ? unitTitle(u, side.side) === unitTitle(unit, side.side) : side.mode === 'single' || unitZiffer(u, side.side).article === article
+  const others = units.filter((u) => u !== unit && existsOn(u, side.side) && sameLawAs(u))
+  const found: number[] = []
+  for (const n of [Number(ziffer) - 1, Number(ziffer) + 1]) {
+    if (n < 1) continue
+    const key = primaryKey(unit, side, String(n))
+    if (!key) continue
+    const holders = side.units.get(key) ?? []
+    if (holders.length !== 1 || holders[0] === unit) continue
+    const holder = holders[0]!
+    const holderIds = read.paragraphIds(holder, side.side)
+    const holderSlip = slipOf(holderIds)
+    for (const i of side.byZiffer.get(key) ?? []) {
+      const p = side.doc.special[i]!
+      if (used.has(i) || p.ziffern.length !== 1 || p.paragraphs.length === 0) continue
+      const ids = p.paragraphs.map((x) => explanationParaId(x) ?? '')
+      if (!ids.every((id) => own.has(id))) continue // 1
+      if (holderIds.size === 0 || ids.some((id) => holderIds.has(id) || holderSlip(id))) continue // 2
+      if (others.some((u) => ids.some((id) => read.paragraphIds(u, side.side).has(id)))) continue // 3
+      found.push(i)
+    }
+  }
+  return found.length === 1 ? found[0]! : null
+}
+
+/** The unit's first key on a side, at another Ziffer — by Artikel, or the single law's, or its title's. */
+function primaryKey(unit: LawDiffUnit, side: ZifferSide, ziffer: string): string | null {
+  const { article } = unitZiffer(unit, side.side)
+  if (side.mode === 'single') return zifferKey(null, ziffer)
+  if (side.mode === 'title') {
+    const title = unitTitle(unit, side.side)
+    return title ? titleZifferKey(title, ziffer) : null
+  }
+  return article ? zifferKey(article, ziffer) : null
 }
 
 /**
@@ -852,9 +938,11 @@ function misnumbered(unit: LawDiffUnit, me: FoundPassages, rv: FoundPassages, re
  * took it; `paragraphTitled` — compared, but one side or both explain it in
  * a passage titled by its § alone; `none` — one side explains it by neither
  * its Ziffer nor its §; `misnumbered` — both explain it, but one document's
- * passage to its Ziffer is about another § (`misnumbered`).
+ * passage to its Ziffer is about another § (`misnumbered`); `offset` —
+ * compared or shown with the passage one document prints under the
+ * neighbouring number (`offsetPassage`).
  */
-export type ZifferFallback = 'scope' | 'oneSided' | 'paragraphTitled' | 'none' | 'misnumbered'
+export type ZifferFallback = 'scope' | 'oneSided' | 'paragraphTitled' | 'none' | 'misnumbered' | 'offset'
 
 export interface ReasoningComparisonAtZiffer extends ReasoningComparison {
   /** Units of the Ziffer join that are not plainly Ziffer against Ziffer, and where they went. */
@@ -978,6 +1066,52 @@ export function compareReasoning(units: readonly LawDiffUnit[], before: HtmlExpl
       .map((i) => doc.special[i]!.heading)
       .join(' · ')
 
+  /** Passage indices a unit was given on each side — `offsetPassage` takes none of them. */
+  const used: Record<Side, Set<number>> = { before: new Set(), after: new Set() }
+  /**
+   * The entry for a unit with passages on both sides — compared where both
+   * cover the same units, shown without a verdict where not. `offset` names
+   * the side whose passage `offsetPassage` found under the neighbouring
+   * number: that passage covers this unit and no other (its own number's unit
+   * is not it, witness 2), whatever its number says.
+   */
+  const attach = (unit: LawDiffUnit, me: { passages: number[]; byParagraph: boolean }, rv: { passages: number[]; byParagraph: boolean }, offset: Side | null) => {
+    const self = new Set([diffUnitKey(unit)])
+    const a = offset === 'before' ? self : cover(z!.before, me.passages)
+    const b = offset === 'after' ? self : cover(z!.after, rv.passages)
+    if (!sameScope(a, b)) {
+      fallbacks[diffUnitKey(unit)] = 'scope'
+      scopes.push({ unit: diffUnitKey(unit), before: [...a], after: [...b] })
+      // Shown, not compared: the reader gets the Vorlage's Begründung to
+      // this change, and no verdict the two texts cannot carry.
+      fill(f, unit, `N ${sorted(me.passages).join('+')}|${sorted(rv.passages).join('+')}`, () => ({
+        basis: 'ziffer',
+        label: headingsOf(after, rv.passages),
+        a: textOf(before, me.passages),
+        b: textOf(after, rv.passages),
+        uncompared: { fromHeading: headingsOf(before, me.passages) },
+      }))
+    } else {
+      const key = `Z ${sorted(me.passages).join('+')}|${sorted(rv.passages).join('+')}`
+      const byParagraphOnly = me.byParagraph && rv.byParagraph
+      fill(f, unit, key, () => ({
+        basis: byParagraphOnly ? 'paragraph' : 'ziffer',
+        label: byParagraphOnly ? (read.addressed(unit) ?? '') : headingsOf(after, rv.passages),
+        a: textOf(before, me.passages),
+        b: textOf(after, rv.passages),
+      }))
+      // A heading with no text and no sub-passage under it explains as little as none.
+      if (!f.out.units[diffUnitKey(unit)]) fallbacks[diffUnitKey(unit)] = 'none'
+      else if (offset) fallbacks[diffUnitKey(unit)] = 'offset'
+      else if (me.byParagraph || rv.byParagraph) fallbacks[diffUnitKey(unit)] = 'paragraphTitled'
+    }
+    if (!f.out.units[diffUnitKey(unit)]) return
+    for (const i of me.passages) used.before.add(i)
+    for (const i of rv.passages) used.after.add(i)
+  }
+  /** Units one document explains under no number of its own, or under another §'s — for `offsetPassage`, after every other join. */
+  const offsets: { unit: LawDiffUnit; me: { passages: number[]; byParagraph: boolean }; rv: { passages: number[]; byParagraph: boolean }; side: Side }[] = []
+
   const atParagraph: LawDiffUnit[] = []
   const oneSided: LawDiffUnit[] = []
   const ownParagraph: LawDiffUnit[] = []
@@ -1004,6 +1138,9 @@ export function compareReasoning(units: readonly LawDiffUnit[], before: HtmlExpl
     const rv = passagesOf(z.after, unit)
     if (!me.passages.length || !rv.passages.length) {
       fallbacks[diffUnitKey(unit)] = 'none'
+      // One document explains it under its own number, the other under none
+      // of its own: perhaps under the neighbour's (`offsetPassage`), below.
+      if (me.passages.length || rv.passages.length) offsets.push({ unit, me, rv, side: me.passages.length ? 'after' : 'before' })
       continue
     }
     // Found on one side through the other document's numbering: then the
@@ -1019,38 +1156,15 @@ export function compareReasoning(units: readonly LawDiffUnit[], before: HtmlExpl
       continue
     }
     // One side's own passage is about another § than the other side's: that
-    // document numbers its Ziffern off its own text (`misnumbered`).
-    if (misnumbered(unit, { doc: before, ...me }, { doc: after, ...rv }, read)) {
+    // document numbers its Ziffern off its own text (`misnumbered`) — and
+    // perhaps explains this change under the neighbouring number, below.
+    const misfit = misnumbered(unit, { doc: before, ...me }, { doc: after, ...rv }, read)
+    if (misfit) {
       fallbacks[diffUnitKey(unit)] = 'misnumbered'
+      offsets.push({ unit, me, rv, side: misfit })
       continue
     }
-    const a = cover(z.before, me.passages)
-    const b = cover(z.after, rv.passages)
-    if (!sameScope(a, b)) {
-      fallbacks[diffUnitKey(unit)] = 'scope'
-      scopes.push({ unit: diffUnitKey(unit), before: [...a], after: [...b] })
-      // Shown, not compared: the reader gets the Vorlage's Begründung to
-      // this change, and no verdict the two texts cannot carry.
-      fill(f, unit, `N ${sorted(me.passages).join('+')}|${sorted(rv.passages).join('+')}`, () => ({
-        basis: 'ziffer',
-        label: headingsOf(after, rv.passages),
-        a: textOf(before, me.passages),
-        b: textOf(after, rv.passages),
-        uncompared: { fromHeading: headingsOf(before, me.passages) },
-      }))
-      continue
-    }
-    const key = `Z ${sorted(me.passages).join('+')}|${sorted(rv.passages).join('+')}`
-    const byParagraphOnly = me.byParagraph && rv.byParagraph
-    fill(f, unit, key, () => ({
-      basis: byParagraphOnly ? 'paragraph' : 'ziffer',
-      label: byParagraphOnly ? (read.addressed(unit) ?? '') : headingsOf(after, rv.passages),
-      a: textOf(before, me.passages),
-      b: textOf(after, rv.passages),
-    }))
-    // A heading with no text and no sub-passage under it explains as little as none.
-    if (!f.out.units[diffUnitKey(unit)]) fallbacks[diffUnitKey(unit)] = 'none'
-    else if (me.byParagraph || rv.byParagraph) fallbacks[diffUnitKey(unit)] = 'paragraphTitled'
+    attach(unit, me, rv, null)
   }
 
   // The § join, unique numbers first (see `compareReasoningByParagraph`):
@@ -1064,6 +1178,20 @@ export function compareReasoning(units: readonly LawDiffUnit[], before: HtmlExpl
   // Last, so a new law's §§ never take the ceiling from an entry the layer
   // showed before they had one.
   joinOwnParagraph(f, units, ownParagraph, before, after, read)
+  // Last of all, so a recovered passage never takes the ceiling from an
+  // entry shown before, and every passage some unit has under its own
+  // number is known (`offsetPassage`, witness 2). The other side's passages
+  // must name a § the unit amends (witness 4).
+  if (z) {
+    for (const { unit, me, rv, side } of offsets) {
+      const other = side === 'before' ? { doc: after, ...rv } : { doc: before, ...me }
+      if (!fitsAll(other, unit, side === 'before' ? 'after' : 'before', read)) continue
+      const i = offsetPassage(z[side], unit, used[side], units, read)
+      if (i === null) continue
+      const found = { passages: [i], byParagraph: false }
+      attach(unit, side === 'before' ? found : me, side === 'after' ? found : rv, side)
+    }
+  }
   return { ...finish(f.out), fallbacks, routes: { ziffer: zifferRoute, paragraph: atParagraph.length, ownParagraph: ownParagraph.length }, guarded: [...guarded.values()], scopes }
 }
 

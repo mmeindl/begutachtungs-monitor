@@ -283,6 +283,14 @@ change belongs here.
   never by package size (§12.33, §12.40).
 - **The ministry's reasoning is attached to a § only where the law key is
   certain.** A wrong reasoning at a § is worse than none (§12.30).
+- **A Begründung printed under the neighbouring Ziffer is attached only with
+  witnesses beyond the number** (`offsetPassage`, 14.11.2026): every § the
+  passage names is one this change amends, the change that carries that
+  number amends none of them, no other change of the law amends them, and
+  the other document's passage names the same §. Missing one, the change
+  keeps no Begründung. Over GP XXVI–XXVIII it brought back 3, 11 and 4
+  changes, all read, none lost (`pnpm corpus:aenderungsrate -- --gp X
+  --ziffer --against`).
 
 - **The reasoning comparison runs only ME → RV, and only where both sides
   give a reasoning.** „Unchanged" means the same words in the same order; no
