@@ -366,7 +366,11 @@ change belongs here.
   Anything else stays a stretch held whole. A unit missing from RIS that the
   annex skips silently cannot be told from one repealed long ago, since the
   annex names nothing there; fault class „Lücke-beide" measures that blind
-  spot, and it is not held to the 95 % floor (14.11.2026).
+  spot, and it is not held to the 95 % floor (14.11.2026). Accepted as a
+  blind spot, not a gap to close: the §§ it misses were confirmed before the
+  reading existed, so the reading costs nothing there, and closing it would
+  need a third source for the units of a § that no upstream offers. A drop
+  of the class below its 3 of 16 is still worth reading.
 - **What the instruments cannot prove:** the annex oracle and fault injection
   do not show the output is free of error. Only the BGBl test bench (RIS
   after entry into force) has ground truth (§12.12c).
