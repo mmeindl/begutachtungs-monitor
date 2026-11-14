@@ -14,10 +14,12 @@ import {
   chainUnlinkedBodyDe,
   chainUnlinkedHeadlineDe,
   rvStationView,
+  namedInRvExplanationDe,
+  namedInRvHeadlineDe,
   relatedGpSuffixDe,
   type VorlageOutcomeState,
 } from '../app/utils/outcomes'
-import { RV_LATENCY_CONTEXT_DAYS } from '../app/utils/deadlines'
+import { RV_LATENCY_CONTEXT_DAYS } from '../shared/utils/rvLatency'
 import type { DraftDetail } from '../shared/types'
 import { todayIso } from '../shared/utils/format'
 import { GP_STARTS, gpEndedOn, romanToInt } from '../shared/utils/gp'
@@ -205,6 +207,7 @@ describe('rvStationView', () => {
   it('is all off without a draft', () => {
     expect(rvStationView(null, NOTHING)).toEqual({
       showOutcome: false,
+      named: null,
       lapsed: false,
       chainUnlinked: false,
       viaAntrag: false,
@@ -300,6 +303,49 @@ describe('rvStationView', () => {
     ])
     expect(full.counted).toBe(true)
     expect(full.showOutcome).toBe(true)
+  })
+
+  /* „In 298 d.B. genannt" (14.11.2026): 44/ME XXVIII, whose Kopftuchverbot
+   * 298 d.B. carries while Parliament links the Vorlage to 54/ME. */
+  const named298 = {
+    rv: { gp: 'XXVIII', inr: 298, citation: '298 d.B.', url: 'https://www.parlament.gv.at/gegenstand/XXVIII/I/298', date: '2025-11-18' },
+    explanationsUrl: 'https://www.parlament.gv.at/dokument/XXVIII/I/298/fnameorig_1722549.html',
+    quote: 'Stärkung der Selbstbestimmung von unmündigen Mädchen an Schulen mittels Einführung eines Kopftuchverbots.',
+    daysAfterFrist: 26,
+    linkedDrafts: [{ gp: 'XXVIII', inr: 54, citation: '54/ME', title: 'Schulunterrichtsgesetz, Pflichtschulerhaltungs-Grundsatzgesetz u.a., Änderung' }],
+  }
+
+  it('replaces the verdict, its context and the base rate where another draft\'s Vorlage names the draft', () => {
+    const handoff = { date: '2025-10-27', recipient: 'das Bundesministerium für Bildung' }
+    const v = rvStationView(draft({ deadline: daysAgo(400), namedInRv: named298, handoff }), NOTHING)
+    expect(v.named).toBe(named298)
+    expect(v.noRvVerdict).toBeNull()
+    expect(v.context).toBeNull()
+    expect(v.noRvBaseRate).toBeNull()
+    // No „Beim Ressort": the draft is not waiting there any more.
+    expect(v.facts).toEqual([{ key: 'stand', title: 'Stand', text: 'In 298 d.B. genannt' }])
+    expect(v.showOutcome).toBe(true)
+  })
+
+  it('shows no „genannt" beside a Vorlage, an Antrag route or a period without links', () => {
+    expect(rvStationView(draft({ namedInRv: named298, enactment: enactment() }), NOTHING).named).toBeNull()
+    expect(rvStationView(draft({ namedInRv: named298, antragPath: antragPath(0.9) }), NOTHING).named).toBeNull()
+    expect(rvStationView(draft({ namedInRv: named298, chainCoverage: 'unknown' }), NOTHING).named).toBeNull()
+  })
+
+  it('words the explanation by the drafts Parliament links the Vorlage to', () => {
+    const one = namedInRvExplanationDe(named298)
+    expect(one.linkedLead).toBe('Das Parlament verknüpft die Vorlage mit einem anderen Entwurf:')
+    expect(one.merge).toBe('Ein Ministerium kann mehrere Entwürfe in einer Vorlage zusammenführen; das Parlament führt dann nur einen davon an.')
+    expect(one.noComparison).toBe('Einen Paragraphenvergleich zeigen wir hier nicht, weil die Vorlage auch den Inhalt des anderen Entwurfs enthält.')
+    expect(one.onwardLead).toBe('Wie es mit der Vorlage weiterging, steht beim Entwurf')
+    const none = namedInRvExplanationDe({ ...named298, linkedDrafts: [] })
+    expect(none.linkedLead).toBeNull()
+    expect(none.merge).not.toMatch(/nur einen davon/)
+    const two = namedInRvExplanationDe({ ...named298, linkedDrafts: [...named298.linkedDrafts, { ...named298.linkedDrafts[0]!, inr: 55, citation: '55/ME' }] })
+    expect(two.linkedLead).toBe('Das Parlament verknüpft die Vorlage mit anderen Entwürfen:')
+    expect(two.onwardLead).toBe('Wie es mit der Vorlage weiterging, steht bei den Entwürfen')
+    expect(namedInRvHeadlineDe(named298)).toBe('Die Regierungsvorlage 298 d.B. nennt das Vorhaben dieses Entwurfs.')
   })
 
   it('counts only where a count row stands', () => {

@@ -273,6 +273,41 @@ gets an entry of its own only where it carries a reason the rule does not.
 - **A Länder § comparison runs only against a promulgation the Land itself
   names,** never against our own title search, even with one candidate: it
   fails when the right promulgation lies outside the window (§12.44).
+- **„In 298 d.B. genannt": a draft Parliament links to no Vorlage, whose
+  title the Erläuterungen of another draft's Vorlage name** (14.11.2026,
+  `server/utils/parliament/namedInRv.ts`). Parliament's links are not the
+  complete list of what became of a draft: a ministry can fold one draft
+  into the Vorlage of another, which Parliament then links to that one
+  only (44/ME XXVIII, the Kopftuchverbot, in 298 d.B., linked to 54/ME).
+  A positive from a constructed join, so shown with the sentence that
+  carries it and a link to the document. All six conditions or no state:
+  1. closed, no linked Vorlage, the period's links exist
+     (`mayClaimOutcome`), no Initiativantrag route (`antragPath`, whole or
+     in part), no same-title successor;
+  2. a title core — normalised, without a leading „Bundes(verfassungs)gesetz
+     zur/über …/mit dem" and a trailing „, Änderung"/„-Novelle …" — of at
+     least 25 characters that is not a list of laws ending in „u.a.";
+  3. the core verbatim on word boundaries inside one paragraph of the
+     Erläuterungen of a Vorlage of the same period not linked to the draft
+     (a group named „Erläuterungen", else one that carries them under
+     another name, „Vorblatt, WFA, Erläuterungen");
+  4. that Vorlage came after the Frist and at most `RV_LATENCY_CONTEXT_DAYS`
+     (180) later;
+  5. exactly one Vorlage in that window names it — a PDF-only Erläuterung
+     in the window is read to rule out the second witness, and one that
+     cannot be read refuses the state;
+  6. the sentence is a witness: it does not call the draft a pending
+     „Entwurf"/„Begutachtung" before naming it, and where the title amends
+     a law (the core is the law's name) it says the Vorlage takes the text
+     up („aufgenommen", „übernommen", „einbezogen", „integriert", …).
+  Conditions 1–5 were the rule as decided; the corpus run accepted two
+  wrong drafts under them (16/ME and 24/ME XXVI, below), and the sixth was
+  added for them. A partially built index claims nothing; the draft then
+  says what it said before. The state is its own: no § comparison, no
+  Parlament or Bundesgesetzblatt station on the draft's bar (hollow, they
+  read as still ahead of this draft while the Vorlage went on without it),
+  and the base rates are not re-measured — they count Parliament's links,
+  so 93/ME XXVII stands among the 57 drafts of GP XXVII without a Vorlage.
 
 ### Comparisons
 
@@ -620,6 +655,10 @@ Ministerialentwurf, RV = Regierungsvorlage.
 | Drafts open at the end of the period that got an RV in the next | XXVII 4 of 61, XXVI 14 of 63 | (§12.10) |
 | Expired drafts without an RV that became law as an Initiativantrag | 42 of 140 | GP XXVI–XXVIII, text overlap ≥ 0.6 · 30.09.2026 (§12.10) |
 | Such motions filed while the Frist was still running | 8 of 31 | GP XXVII and XXVIII (§12.10) |
+| Drafts without a linked RV whose title another draft's RV names („genannt") | XXVIII 1 (44/ME → 298 d.B., +26 d), XXVII 1 (93/ME → 945 d.B., +104 d), XXVI 0 | 32, 14 and 26 candidates, every Vorlage of the period read · `pnpm corpus:rv-genannt` · 14.11.2026 |
+| Title hits the rule rejects | XXVIII 1 (138/ME before the Frist); XXVII 4 (125, 126/ME past the window; 205, 228/ME Antrag route — 228 also +196 d); XXVI 7 (16/ME cross-reference, 24/ME law name, 140/ME Antrag, 34, 141, 143, 164/ME before the Frist) | same run |
+| Vorlagen whose Erläuterungen are a PDF only | XXVIII 9 of 131, XXVII 21 of 365, XXVI 8 of 117 (budget laws mostly) | same run |
+| Cold „genannt" index, production build, 320 MB heap, empty document disk | GP XXVII 3 s after its station map (181 Erläuterungen read), RSS 198 → 233 MB; GP XXVIII 17 s with its station map, peak 251 MB | 14.11.2026 |
 | Words of the ministry's reasoning changed ME → RV | median 8.9 %; Besonderer Teil 10.5 %, Allgemeiner Teil 3.9 % | 64 pairs, GP XXVIII · 22.09.2026 (§12.10b) |
 
 ### The consolidated reading and the annex
@@ -779,6 +818,21 @@ circular of 10.12.2015).
   Parliament only governing parties appear.
 
 ### Joins and comparisons
+
+- **Weakening „Seit Ende der Begutachtungsfrist … liegt keine
+  Regierungsvorlage vor" on every draft** because a few drafts were folded
+  into another's Vorlage (14.11.2026). The verdict is true of Parliament's
+  record for the other drafts; where a Vorlage names a draft, the page says
+  that instead (`namedInRv.ts`).
+- **„Aufgegangen in" / „zusammengeführt mit" as the state.** What the
+  evidence shows is that a Vorlage's Erläuterungen name the draft's title,
+  not how much of the draft the Vorlage carries; „genannt" is the weakest
+  state it supports, and the quote lets the reader judge the rest.
+- **The title witness alone** (conditions 1–5 without the sentence guard).
+  Over GP XXVI–XXVIII it accepted four drafts, two wrongly: 16/ME XXVI,
+  which 68 d.B. names as „des dzt. in Begutachtung befindlichen Entwurfs",
+  and 24/ME XXVI („Einkommensteuergesetz 1988, Änderung"), whose core is
+  only the heading „Zum Einkommensteuergesetz 1988:" in 190 d.B.
 
 - **Building the station map from the Vorlage via `preconst`.** A missing
   pointer would become a false „keine Regierungsvorlage" (§12.26).

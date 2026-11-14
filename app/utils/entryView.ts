@@ -57,6 +57,7 @@ import { promulgationState } from '#shared/utils/promulgation'
 import { RIS_KIND_LABEL } from '#shared/utils/risConsultations'
 import { LAND_NAME, landDraftPath, landLawName, landLawPath, landPublisherDe, landShortTitle } from '#shared/utils/laender'
 import { euLeadOf } from './euRecht'
+import { namedInRvShortDe } from './outcomes'
 import { vorlagePath } from '#shared/utils/procedureRoot'
 
 /**
@@ -236,7 +237,7 @@ function endedState(deadline: string | null, label: string): EntryState {
  * owed to its `whitespace-nowrap` alone.
  */
 function outcomeState(
-  o: { rvCitation: string | null; bgblNumber: string | null },
+  o: { rvCitation: string | null; bgblNumber: string | null; namedInRvCitation?: string },
   deadline: string | null,
 ): EntryState {
   if (o.bgblNumber) {
@@ -255,6 +256,12 @@ function outcomeState(
       actionable: false,
     }
   }
+  /* No Vorlage of its own, and the Erläuterungen of another draft's Vorlage
+   * name its title (`NamedInRv`, 14.11.2026): the Vorlage is a Fundstelle
+   * of a kind, but the label carries it — „genannt" without the citation
+   * would not say where — and line 2 keeps the Fristende, as on „bisher
+   * keine": the draft's own clock is still what the row dates. */
+  if (o.namedInRvCitation) return endedState(deadline, namedInRvShortDe(o.namedInRvCitation))
   return endedState(deadline, 'Bisher keine Regierungsvorlage')
 }
 
@@ -378,7 +385,7 @@ function chainStationDate(chain: DraftChain): string | null | undefined {
 }
 
 /** What the homepage's outcome rows say about a draft — `ClosedOutcome`'s own half. */
-type OutcomeFacts = Pick<ClosedOutcome, 'rvCitation' | 'bgblNumber' | 'rvDate' | 'bgblDate'>
+type OutcomeFacts = Pick<ClosedOutcome, 'rvCitation' | 'bgblNumber' | 'rvDate' | 'bgblDate' | 'namedInRvCitation'>
 
 /**
  * The mark on a Ministerialentwurf row, from the same three sources its

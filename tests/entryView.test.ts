@@ -228,6 +228,15 @@ describe('Zone 4 — Stand', () => {
       })
   })
 
+  /* 44/ME XXVIII (14.11.2026): no Vorlage of its own, and 298 d.B. names it.
+   * The list row reads it off the chain, the homepage's off the outcome. */
+  it('says „In 298 d.B. genannt" where another draft\'s Vorlage names the draft', () => {
+    const chain = { station: 'begutachtung' as const, rvCitation: null, rvDate: null, bgblNumber: null, filingOpen: false, namedInRvCitation: '298 d.B.' }
+    expect(viewOfDraft(draft({ chain })).state).toMatchObject({ label: 'In 298 d.B. genannt', detail: 'Frist endete am 31.08.2025', actionable: false })
+    expect(viewOfOutcome({ ...draft(), rvCitation: null, bgblNumber: null, namedInRvCitation: '298 d.B.' } as ClosedOutcome).state)
+      .toMatchObject({ label: 'In 298 d.B. genannt' })
+  })
+
   /* Without a chain that was read, the row says what it can evidence — not
    * that no Vorlage exists. */
   it('claims no missing Vorlage when the chain was never read', () => {

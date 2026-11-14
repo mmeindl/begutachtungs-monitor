@@ -11,8 +11,8 @@ import {
   isWithinNewWindow,
   NEW_ARRIVAL_DAYS,
   noRvVerdictDe,
-  RV_LATENCY_CONTEXT_DAYS,
 } from '../app/utils/deadlines'
+import { RV_LATENCY_CONTEXT_DAYS } from '../shared/utils/rvLatency'
 import { todayIso } from '../shared/utils/format'
 
 /**

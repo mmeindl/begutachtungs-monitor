@@ -146,6 +146,25 @@ describe('stations — how long the Frist ran', () => {
   })
 })
 
+describe('a draft another Vorlage names (14.11.2026)', () => {
+  const named = {
+    rv: { gp: 'XXVIII', inr: 298, citation: '298 d.B.', url: 'https://www.parlament.gv.at/gegenstand/XXVIII/I/298', date: '2025-11-18' },
+    explanationsUrl: 'https://www.parlament.gv.at/dokument/XXVIII/I/298/fnameorig_1722549.html',
+    quote: 'Stärkung der Selbstbestimmung von unmündigen Mädchen an Schulen mittels Einführung eines Kopftuchverbots.',
+    daysAfterFrist: 26,
+    linkedDrafts: [{ gp: 'XXVIII', inr: 54, citation: '54/ME', title: 'Schulunterrichtsgesetz, Pflichtschulerhaltungs-Grundsatzgesetz u.a., Änderung' }],
+  }
+  const d = () => draft({ enactment: null, active: false, gpEnded: false, antragPath: null, namedInRv: named })
+  it('heads the card with the Vorlage, not with „Bisher keine"', () => {
+    expect(procedureStatusDe(d())).toBe('In 298 d.B. genannt')
+  })
+  it('ends the bar at the Regierungsvorlage, whose row names it', () => {
+    const list = stations(d())
+    expect(list.map((s) => s.id)).toEqual(['entwurf', 'begutachtung', 'rv'])
+    expect(list.at(-1)).toMatchObject({ state: 'done', facts: ['in 298 d.B. genannt'], comparison: null })
+  })
+})
+
 describe('procedureStatusDe — the card\'s one-line answer', () => {
   it('names the end of the chain where it was reached', () => {
     expect(procedureStatusDe(draft())).toBe('Gesetz geworden')

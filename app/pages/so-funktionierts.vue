@@ -38,7 +38,7 @@ import { LAND_CODES, LAND_NAME } from '#shared/utils/laender'
 import { COVERAGE_ROWS, LAND_COVERAGE } from '#shared/utils/laenderCoverage'
 import { EDITORIAL_BADGE_DEFINITION } from '#shared/utils/lawStations'
 import { SECOND_ROUND_WINDOW } from '~/utils/spine'
-import { RV_LATENCY_CONTEXT_DAYS } from '~/utils/deadlines'
+import { RV_LATENCY_CONTEXT_DAYS } from '#shared/utils/rvLatency'
 import { rvBaseRateFor } from '~/utils/outcomes'
 
 usePageSeo({
@@ -867,6 +867,21 @@ const waitMonths = Math.round(RV_LATENCY_CONTEXT_DAYS / 30.44)
         wartet, wie lange er schon wartet. Ein Urteil ist das
         nicht: Auch nach {{ waitMonths }} Monaten kommt noch etwa jede zehnte
         Vorlage.
+      </p>
+      <!-- „In 298 d.B. genannt" (14.11.2026, server/utils/parliament/namedInRv.ts):
+           the method link of that state lands here. -->
+      <p id="genannt" class="scroll-mt-6">
+        Manchmal führt ein Ministerium einen Entwurf in die Regierungsvorlage
+        eines anderen über, und das Parlament verknüpft die Vorlage nur mit
+        dem anderen. Nennen die Erläuterungen einer Vorlage den Titel des
+        Entwurfs, steht er hier als „genannt“ – mit dem Satz aus den
+        Erläuterungen, damit man es nachprüfen kann. Das gilt nur, wenn genau
+        eine Vorlage den Titel nennt, binnen {{ waitMonths }} Monaten nach
+        Fristende; nennt der Titel nur ein Gesetz, muss der Satz sagen, dass
+        die Vorlage den Entwurf aufnimmt. Einen Paragraphenvergleich gibt es
+        dann nicht: Die Vorlage enthält auch den Inhalt des anderen Entwurfs,
+        und welcher Teil auf welchen zurückgeht, lässt sich nicht verlässlich
+        trennen.
       </p>
     </ProseSection>
 

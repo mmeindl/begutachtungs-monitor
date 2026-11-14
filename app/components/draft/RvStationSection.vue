@@ -4,7 +4,16 @@ import type { DraftDetail, RvStatementsResponse, TraceLink } from '#shared/types
 import type { RvStationView } from '~/utils/outcomes'
 import { antragUrl } from '#shared/utils/antragPath'
 import { bgblShort, formatDateDe } from '#shared/utils/format'
-import { changeShareRateFor, earlyVorlageWhenDe, relatedGpSuffixDe, tabledBeforeFristEnd } from '~/utils/outcomes'
+import {
+  changeShareRateFor,
+  earlyVorlageWhenDe,
+  namedInRvExplanationDe,
+  namedInRvHeadlineDe,
+  namedInRvSourceDe,
+  relatedGpSuffixDe,
+  tabledBeforeFristEnd,
+} from '~/utils/outcomes'
+import { parliamentDocumentSource } from '#shared/utils/provenance'
 import { PARLIAMENT_HISTORY_SOURCES } from '~/utils/spine'
 import { beilageOfUrl, blgNrDe, citeLineDe } from '#shared/utils/citations'
 
@@ -79,10 +88,19 @@ const waitSlot = computed(() => `after-${props.view.facts.some((f) => f.key === 
  * describes the period, not this draft. */
 const credit = computed(() => {
   const v = props.view
+  if (v.named) return { own: 'Abgleich der Titel', method: '/so-funktionierts#genannt' }
   if (v.counted) return { own: 'Zählung', method: '/so-funktionierts#vergleich' }
   if (v.noRvBaseRate) return { own: `Vergleichswerte (${gpNameDe(v.noRvBaseRate.gp)})`, method: '/so-funktionierts#wartezeit' }
   return null
 })
+
+/* „In 298 d.B. genannt" (14.11.2026): the quote is the Vorlage's
+ * Erläuterungen — a free work, the Vorlage's station — beside the Verlauf
+ * the frame rests on, and the match of title and sentence is ours. */
+const sources = computed(() =>
+  props.view.named ? [...PARLIAMENT_HISTORY_SOURCES, parliamentDocumentSource('Erläuterungen', 'rv')] : PARLIAMENT_HISTORY_SOURCES,
+)
+const namedText = computed(() => (props.view.named ? namedInRvExplanationDe(props.view.named) : null))
 </script>
 
 <template>
@@ -194,9 +212,42 @@ const credit = computed(() => {
         </FactList>
         <!-- No link: the frame's first fact is the Vorlage. The counts
              are the comparison's, ours (`useVorlageOutcome`). -->
+        <!-- Another draft's Vorlage names this one: what it says, in its
+             own words, and why the station ends here. Under the frame —
+             the frame carries the state, never prose — and before the
+             credit line, which names the quote's source too. -->
+        <div v-if="view.named && namedText" class="mt-4 space-y-4">
+          <p class="font-medium text-ink">{{ namedInRvHeadlineDe(view.named) }}</p>
+          <div>
+            <p class="text-sm text-ink-secondary">Aus ihren Erläuterungen:</p>
+            <blockquote class="mt-2 border-l-2 border-hairline pl-3">„{{ view.named.quote }}“</blockquote>
+            <p class="mt-2 text-sm">
+              <ExternalLink :href="view.named.explanationsUrl" class="link-inline">{{ namedInRvSourceDe(view.named) }}</ExternalLink>
+            </p>
+          </div>
+          <p class="text-sm text-ink-secondary">
+            <template v-if="namedText.linkedLead">
+              {{ namedText.linkedLead }}
+              <template v-for="(l, i) in view.named.linkedDrafts" :key="`${l.gp}-${l.inr}`"><template v-if="i > 0">; </template><NuxtLink
+                :to="`/entwuerfe/${l.gp}/${l.inr}`"
+                class="link-inline"
+              >{{ l.citation }}</NuxtLink>{{ relatedGpSuffixDe(l.gp, draft.gp) }}, {{ l.title }}</template>.
+            </template>
+            {{ namedText.merge }} {{ namedText.noComparison }} {{ namedText.onwardLead }}
+            <template v-if="view.named.linkedDrafts.length">
+              <template v-for="(l, i) in view.named.linkedDrafts" :key="`on-${l.gp}-${l.inr}`"><template v-if="i > 0">, </template><NuxtLink
+                :to="`/entwuerfe/${l.gp}/${l.inr}`"
+                class="link-inline"
+              >{{ l.citation }}</NuxtLink></template>.
+            </template>
+            <template v-else>
+              <ExternalLink :href="view.named.rv.url" class="link-inline">Regierungsvorlage {{ view.named.rv.citation }}</ExternalLink>.
+            </template>
+          </p>
+        </div>
         <SectionCredits
           v-if="view.facts.length"
-          :sources="PARLIAMENT_HISTORY_SOURCES"
+          :sources="sources"
           :marked="false"
           :own="credit?.own"
           :method="credit?.method"

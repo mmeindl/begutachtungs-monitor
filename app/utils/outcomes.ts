@@ -13,8 +13,9 @@
  * never a verdict. "4 von 61" says how likely a late Regierungsvorlage is;
  * it does not say the draft failed.
  */
-import type { DraftDetail } from '#shared/types'
-import { RV_LATENCY_CONTEXT_DAYS, noRvVerdictDe } from './deadlines'
+import type { DraftDetail, NamedInRv } from '#shared/types'
+import { noRvVerdictDe } from './deadlines'
+import { RV_LATENCY_CONTEXT_DAYS } from '#shared/utils/rvLatency'
 import { carriesDraft } from '#shared/utils/antragPath'
 // Explicit: `draftStations.ts` is a pure module and stays out of the
 // auto-imports, so that server map and vitest run the same functions.
@@ -263,6 +264,74 @@ export function gpEndedBodyDe(gp: string): string {
   return `${period[0]!.toUpperCase()}${period.slice(1)} wurden ${r.rvInLaterGp} von ${openAtEnd} solcher Entwürfe später noch als Regierungsvorlage eingebracht.`
 }
 
+/* ------------------------------------------------------------------ *
+ * „In 298 d.B. genannt" (14.11.2026)
+ * ------------------------------------------------------------------ */
+
+/**
+ * The state's short form, wherever „Bisher keine Regierungsvorlage" would
+ * stand for the draft: the list row, the procedure card's headline, the
+ * station's „Stand". The Vorlage is named, never „aufgegangen" or
+ * „zusammengeführt": the Erläuterungen name the draft's title, which is
+ * what we can show — not how much of the draft the Vorlage carries
+ * (`server/utils/parliament/namedInRv.ts`).
+ */
+export function namedInRvShortDe(rvCitation: string): string {
+  return `In ${rvCitation} genannt`
+}
+
+/** The bar's row under „Regierungsvorlage" — the same words, lower case, as every row there. */
+export function namedInRvFactDe(rvCitation: string): string {
+  return `in ${rvCitation} genannt`
+}
+
+/** The station's headline: the Vorlage, and what it does — it names the draft's Vorhaben. */
+export function namedInRvHeadlineDe(n: NamedInRv): string {
+  return `Die Regierungsvorlage ${n.rv.citation} nennt das Vorhaben dieses Entwurfs.`
+}
+
+/** The link under the quote. */
+export function namedInRvSourceDe(n: NamedInRv): string {
+  return `Erläuterungen, ${n.rv.citation}`
+}
+
+/**
+ * Why the station ends here — the links Parliament keeps, how a Vorlage
+ * comes to carry two drafts, why no § comparison follows, and where the
+ * story goes on. In parts, so the page can make the citations links.
+ *
+ * The decided copy is for the common case, one linked draft (298 d.B. →
+ * 54/ME). Where the facts differ the words follow them: with several linked
+ * drafts all are named and Parliament names „nur einen Teil"; with none the
+ * first sentence goes, „nur einen davon" would be false, and the last
+ * sentence points to the Vorlage on parlament.gv.at.
+ */
+export function namedInRvExplanationDe(n: NamedInRv): {
+  /** „Das Parlament verknüpft …:" before the linked drafts; null where it links none. */
+  linkedLead: string | null
+  /** Merge, no comparison, and the lead of the onward pointer, which the page completes with links. */
+  merge: string
+  noComparison: string
+  onwardLead: string
+} {
+  const k = n.linkedDrafts.length
+  if (k === 0) {
+    return {
+      linkedLead: null,
+      merge: 'Ein Ministerium kann mehrere Entwürfe in einer Vorlage zusammenführen.',
+      noComparison: 'Einen Paragraphenvergleich zeigen wir hier nicht, weil nicht belegt ist, welcher Teil der Vorlage auf diesen Entwurf zurückgeht.',
+      onwardLead: 'Wie es mit der Vorlage weiterging, steht auf ihrer Seite beim Parlament:',
+    }
+  }
+  const one = k === 1
+  return {
+    linkedLead: one ? 'Das Parlament verknüpft die Vorlage mit einem anderen Entwurf:' : 'Das Parlament verknüpft die Vorlage mit anderen Entwürfen:',
+    merge: `Ein Ministerium kann mehrere Entwürfe in einer Vorlage zusammenführen; das Parlament führt dann nur ${one ? 'einen' : 'einen Teil'} davon an.`,
+    noComparison: `Einen Paragraphenvergleich zeigen wir hier nicht, weil die Vorlage auch den Inhalt ${one ? 'des anderen Entwurfs' : 'der anderen Entwürfe'} enthält.`,
+    onwardLead: one ? 'Wie es mit der Vorlage weiterging, steht beim Entwurf' : 'Wie es mit der Vorlage weiterging, steht bei den Entwürfen',
+  }
+}
+
 /** What the ME→RV comparison has delivered so far — the values of
  *  `useVorlageOutcome`, read only for whether they are there. */
 export interface VorlageOutcomeState {
@@ -285,6 +354,8 @@ export interface RvFact {
 export interface RvStationView {
   /** Whether „Die Regierungsvorlage" renders at all. */
   showOutcome: boolean
+  /** Another draft's Vorlage names this draft (`NamedInRv`): the station quotes it instead of a verdict. */
+  named: NamedInRv | null
   /** The GP ended without a Vorlage. */
   lapsed: boolean
   /** The period records no draft→Vorlage link at all. */
@@ -314,6 +385,7 @@ export function rvStationView(d: DraftDetail | null | undefined, vorlage: Vorlag
   if (!d) {
     return {
       showOutcome: false,
+      named: null,
       lapsed: false,
       chainUnlinked: false,
       viaAntrag: false,
@@ -357,7 +429,15 @@ export function rvStationView(d: DraftDetail | null | undefined, vorlage: Vorlag
    * and still a law (`AntragPathNote`). */
   const viaAntrag = carriesDraft(d.antragPath)
 
-  const noRvVerdict = viaAntrag
+  /* Fifth state, beside them: no Vorlage of its own, and another draft's
+   * Vorlage names this one in its Erläuterungen. The server lets it through
+   * only where none of the four above applies (`mayBeNamed`); it replaces
+   * the verdict, its context and the base rate — the draft is no longer
+   * waiting, and it is counted neither with the drafts that got a Vorlage
+   * nor with those that did not. */
+  const named = !d.enactment && !d.active && !viaAntrag && !chainUnlinked ? (d.namedInRv ?? null) : null
+
+  const noRvVerdict = viaAntrag || named
     ? null
     : chainUnlinked
       ? chainUnlinkedHeadlineDe(d.gp)
@@ -381,7 +461,7 @@ export function rvStationView(d: DraftDetail | null | undefined, vorlage: Vorlag
    * many drafts of the last closed GP got their Regierungsvorlage and how
    * fast. Numbers, so the reader can weigh the silence without the page
    * weighing it for them. */
-  const noRvBaseRate = lapsed || chainUnlinked || viaAntrag ? null : rvBaseRateFor(d.gp)
+  const noRvBaseRate = lapsed || chainUnlinked || viaAntrag || named ? null : rvBaseRateFor(d.gp)
 
   /* The station frame. The verdict is the row; what explains it (`context`,
    * the base rate, the Antrag's matching) stands under the frame. */
@@ -400,13 +480,15 @@ export function rvStationView(d: DraftDetail | null | undefined, vorlage: Vorlag
     if (d.enactment.furtherRv.length) facts.push({ key: 'weitere', title: 'Außerdem aus dem Entwurf hervorgegangen' })
   } else if (!d.active) {
     if (viaAntrag) facts.push({ key: 'antrag', title: 'Eingebracht' })
+    else if (named) facts.push({ key: 'stand', title: 'Stand', text: namedInRvShortDe(named.rv.citation) })
     else facts.push({ key: 'stand', title: 'Stand', text: noRvVerdict ?? 'Bisher keine Regierungsvorlage.' })
     // Where the ministry's clock starts (05.10.2026): the bar's row said
     // „seit … beim Ressort" and the station below did not. Not once the GP
     // is over — the Begutachtung's „Übermittelt" row carries the date then
     // (`handoffFact` on the page), and „beim Ressort" would claim a wait
     // the period's end has closed.
-    if (!viaAntrag && !d.gpEnded && d.handoff?.date) {
+    // Not beside „genannt" either: the draft is no longer waiting there.
+    if (!viaAntrag && !named && !d.gpEnded && d.handoff?.date) {
       facts.push({ key: 'ressort', title: 'Beim Ressort', text: `seit ${formatDateDe(d.handoff.date)}` })
     }
     if (d.successor) facts.push({ key: 'nachfolger', title: 'Gleichlautender späterer Entwurf' })
@@ -414,6 +496,7 @@ export function rvStationView(d: DraftDetail | null | undefined, vorlage: Vorlag
 
   return {
     showOutcome,
+    named,
     lapsed,
     chainUnlinked,
     viaAntrag,

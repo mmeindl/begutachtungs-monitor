@@ -50,6 +50,7 @@ import type { SourceEntry } from '#shared/utils/provenance'
 import { LAND_NAME } from '#shared/utils/laender'
 import { fristClassLineDe, fristRangeDe, fristSpanDe } from './deadlines'
 import { landLawBegutachtungFacts } from './landLaw'
+import { namedInRvFactDe, namedInRvShortDe } from './outcomes'
 
 export type StationId = 'entwurf' | 'begutachtung' | 'rv' | 'parlament' | 'bgbl'
 
@@ -269,6 +270,10 @@ export function procedureStatusDe(d: DraftDetail, today: string = todayIso()): s
   // and still a law — matched by wording, so the headline names the route
   // it rests on instead of reading like the Vorlage's „Gesetz geworden".
   if (carriesDraft(d.antragPath)) return 'Gesetz geworden – als Initiativantrag'
+  // Another draft's Vorlage names this one (14.11.2026): no longer „bisher
+  // keine", and not „Gesetz geworden" either — what became of that Vorlage
+  // is the other draft's story, and its page tells it.
+  if (d.namedInRv) return namedInRvShortDe(d.namedInRv.rv.citation)
   // Word for word the homepage chip's (OutcomeChip), and deliberately NOT
   // "Beim Ressort – bisher keine Regierungsvorlage": the marked row two
   // lines below already reads "bisher keine · seit 29.06.2026 beim
@@ -288,8 +293,16 @@ export function procedureStatusDe(d: DraftDetail, today: string = todayIso()): s
  * ONLY AN EVIDENCED OUTCOME GOES TO THE TOP. „Bisher nicht kundgemacht"
  * would be the obvious counter-direction and is NOT said here: the
  * Ministerialentwurf may claim „Bisher keine Regierungsvorlage" because
- * Parliament's list is complete, while a Verordnung's Kundmachung is found
- * through a constructed key that hits 84,2 % (92,3 % for older Fristen).
+ * Parliament's own record links a draft to its Vorlage and the period's
+ * links are checked to exist (`mayClaimOutcome`), while a Verordnung's
+ * Kundmachung is found through a constructed key that hits 84,2 % (92,3 %
+ * for older Fristen). Those links are not the complete list of what became
+ * of a draft (14.11.2026): a ministry can fold a draft into the Vorlage of
+ * another, which Parliament then links to that one only — 44/ME XXVIII in
+ * 298 d.B. Where the Vorlage's Erläuterungen name the draft's title, the
+ * page says so instead (`NamedInRv`); where they do not, the absence is
+ * still Parliament's record, and „bisher keine" stays the weakest true
+ * statement.
  * Every twelfth headline would be wrong, in the direction that sounds like an
  * accusation. The row in the card text still states the negative finding, but
  * as what it is: information about our search.
@@ -807,6 +820,11 @@ export function stations(d: DraftDetail, ctx: StationContext = {}, today: string
    *  and moves no station. */
   const viaAntrag = !e && !d.active && carriesDraft(d.antragPath) ? d.antragPath : null
 
+  /** Another draft's Vorlage names this one (`NamedInRv`); the server lets it
+   *  through only where there is no Vorlage, no Antrag route and the Frist
+   *  is over. */
+  const named = !e && !viaAntrag ? (d.namedInRv ?? null) : null
+
   /** The RV's date with its distance to the Fristende as an apposition —
    *  one fact, not two, so the row does not grow a third middot. */
   const latency = e ? afterFristDe(d.deadline, e.rvDate, d.arrivedAt) : null
@@ -871,7 +889,7 @@ export function stations(d: DraftDetail, ctx: StationContext = {}, today: string
     {
       id: 'rv',
       name: 'Regierungsvorlage',
-      state: e ? 'done' : d.active ? 'open' : d.gpEnded || viaAntrag ? 'never' : 'current',
+      state: e || named ? 'done' : d.active ? 'open' : d.gpEnded || viaAntrag ? 'never' : 'current',
       // "bisher keine" is temporal, never accusatory (framing rule), and it
       // is only claimed once the Frist has ended — while it runs the
       // Vorlage is simply not due yet. Once the GP itself is over the
@@ -883,17 +901,24 @@ export function stations(d: DraftDetail, ctx: StationContext = {}, today: string
           ? ['ausstehend']
           : viaAntrag
             ? ['keine – als Initiativantrag eingebracht']
-            : d.gpEnded
-              ? ['keine – GP beendet']
-              : kept(
-                  'bisher keine',
-                  d.handoff?.date ? `seit ${formatDateDe(d.handoff.date)} beim Ressort` : null,
-                ),
+            : named
+              ? [namedInRvFactDe(named.rv.citation)]
+              : d.gpEnded
+                ? ['keine – GP beendet']
+                : kept(
+                    'bisher keine',
+                    d.handoff?.date ? `seit ${formatDateDe(d.handoff.date)} beim Ressort` : null,
+                  ),
       comparison: e
         ? { id: 'begutachtung', question: 'Was sich nach der Begutachtung geändert hat' }
         : null,
     },
-    ...laterStations(d, today),
+    /* A draft another Vorlage names ends its bar here (14.11.2026): drawn
+     * hollow, Parlament and Bundesgesetzblatt read as still ahead of THIS
+     * draft, while the Vorlage that carries it went on without it — its
+     * stations are the linked draft's, and the Regierungsvorlage section
+     * says where they stand. */
+    ...(named ? [] : laterStations(d, today)),
   ]
 }
 
