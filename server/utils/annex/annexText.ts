@@ -182,6 +182,13 @@ const CITATION_JOINER_RE = /\bzu\b/i
  * Measured against every RIS label of the cached corpus (2026-09-11): none is
  * unreadable here, so the exactness costs no coverage.
  *
+ * **Null whenever anything stands beside the designation: rejected**
+ * (2026-09-11). Of 11.169 annex rows with a designation, 555 carry a
+ * remainder, and 434 of those are schedule headings with their title
+ * („Anlage 1 Mindestgliederung Bilanz“) whose key is right. The rule would
+ * discard many correct keys to prevent a handful of wrong ones. On the RIS
+ * side none of 1.959 distinct labels carries a remainder.
+ *
  * Null for a text carrying no designation at all.
  */
 export function designationKey(text: string): string | null {

@@ -76,6 +76,11 @@ export function articlePairs(from: readonly LawUnit[], to: readonly LawUnit[]): 
   const via = new Map<string | null, ArticlePairVia>()
   const usedTo = new Set<ArticleRef>()
   const result = () => [...map].map(([f, t]) => ({ from: f, to: t, via: via.get(f)! }))
+  // One Artikel on each side: paired without a name check, on purpose. In
+  // GP XXVIII that saves 4 pairs (3 drafts whose Artikel carries no title,
+  // and 71/ME, short title against long title at a similarity of 0,222) and
+  // pairs no foreign law; a floor of 0,5 on the name would lose 71/ME
+  // (measured 2026-09-23). Only a wrong RIS↔ME join could fool it.
   if (fromArts.length === 1 && toArts.length === 1) {
     map.set(fromArts[0]!.article, toArts[0]!.article)
     via.set(fromArts[0]!.article, 'only')

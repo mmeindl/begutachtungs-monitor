@@ -341,7 +341,15 @@ const HEADING_ABOVE_RE = /(?:(Zwischen|Abschnitts|Unterabschnitts|Gliederungs|Te
  */
 const ALSO_HEADING_RE = /samt\s+(?:der\s+|den\s+)?Überschrift(?:en)?/i
 
-/** Quoted spans are operands, never addresses — "…den Ausdruck 'Abs. 1 Z 1 bis 5'…". */
+/**
+ * Quoted spans are operands, never addresses — "…den Ausdruck 'Abs. 1 Z 1 bis 5'…".
+ *
+ * Only "…" is masked. Guillemets (»…«) are not, measured and rejected
+ * (2026-09-11, GP XXVIII): 8 instructions use them, masking changes the
+ * addressing of 4, and 2 of those get worse — two whole instructions stand
+ * inside guillemets and would lose their §. The ME→RV comparison shares this
+ * function, so the change would reach it too.
+ */
 function maskQuotes(t: string): string {
   return t.replace(/"[^"]*"/g, '""')
 }

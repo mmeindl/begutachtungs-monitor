@@ -147,6 +147,12 @@ the gap, so "0 rows" was indistinguishable from "0 Stellungnahmen". Parliament
 rebuilt the index. The only cross-check is the counter in list 81. The
 monitor therefore throws rather than caching a zero and keeps the last good
 aggregation on disk (`server/utils/parliament/lastgood.ts`).
+If the stored aggregation ever does not suffice, the route to rebuild without
+the list is a date-bounded sweep over the SNME items
+(`/gegenstand/{GP}/SNME/{inr}`): each carries its parent in its citation
+(`476/SN-88/ME`), which makes a few hundred requests where a full sweep would
+take several thousand. Noted during the outage, never built and not verified
+against the live API.
 
 ### SNME detail — a Stellungnahme as its own item
 

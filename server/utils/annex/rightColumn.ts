@@ -509,6 +509,12 @@ export interface RightColumnCheck {
  *   (R-neu 184 → 64 catches, below the 76 of the whole-draft bag), because a
  *   § with little new text of its own is exactly where an injected sentence
  *   dominates the share.
+ * - **A semantic cleanup of the word diff** (merging runs, as diff tools do
+ *   for display) to win the 29 boundary misses: they do not come from a
+ *   confetti diff. The LCS fuses the lost sentence with genuinely new words
+ *   into one stretch that is too long (13 lost tokens in a stretch of 35),
+ *   and merging runs lengthens it further. Such a cleanup can be argued for
+ *   display, never for the check (2026-09-10).
  *
  * The **per-§ reference** itself is no longer among them: it shipped on
  * 2026-09-10 (`draftBags`), together with the two things that keep it honest

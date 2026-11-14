@@ -92,9 +92,16 @@
  * 2026-09-11; rule 2 stood at 7 and 0 with the
  * whole-draft reference; of the extra ones, the seventeenth is the one the better
  * addressing of 2026-09-11 uncovered (Obstweinverordnung § 13, whose right
- * column carries the start of the next Novellierungsanordnung — whether our
- * line reading or the annex's print put it there, the PDF decides; the R-neu
- * fault, found unstaged in the corpus), the eighteenth the one the shared
+ * column carries the start of the next Novellierungsanordnung. The PDF has
+ * decided: that annex prints the draft's instructions in its right column
+ * („4. § 13 samt Überschrift lautet: …“) instead of the proposed version,
+ * under a proper header pair — 1 of 114 PDF annexes of GP XXVIII, 15 of 685
+ * rows (2026-09-11). Our share is the row boundary alone: the PDF reader cuts
+ * rows only at a § sign, so the start of the next instruction lands in the §
+ * above. Cutting rows at an instruction number would mend it and touches
+ * every annex, so it waits for a corpus measurement; until then the gate
+ * withholds the § and gives the true reason; this is the R-neu fault, found
+ * unstaged in the corpus), the eighteenth the one the shared
  * markup rule handed from the left check to rule 2 (MPBV § 11, below).
  *
  * **The populations keep growing, and that is the point of re-running it.**

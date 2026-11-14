@@ -199,6 +199,10 @@ export const getGegenstand = defineCachedFunction(
  * request time (not in the mapper) so the day boundary is never frozen into
  * the cache. All consumers of `active` (dashboard, status filter, detail
  * CTA) read the same reconciled state this way.
+ *
+ * One direction only: a guard for the opposite drift (AKTIV = N while the
+ * Frist is still in the future) was measured and not built — no such row in
+ * three periods (2026-09-23).
  */
 export function reconcileActive(item: DraftSummary): DraftSummary {
   if (!item.active || item.deadline === null) return item

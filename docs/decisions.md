@@ -139,6 +139,16 @@ change belongs here.
 - **The Gegenstand half and the RIS half of the corpus are never pooled into
   one total** and never share a schema with invented empty fields (§12.19,
   §12.28).
+- **Rankings order objects, never actors.** The framing rule binds tone,
+  completeness and conclusion; it does not forbid saying who issued a draft.
+  Ruled out are a figure that counts only failures, a ranking that invites
+  „the worst", and a conclusion the data does not carry.
+- **The length of a Frist is flagged only at both edges:** „Kurze Frist"
+  under 21 days, „Volle Frist" from 42. Never a flag against the six-week
+  norm alone: it would stand on most pages and work as a blame counter
+  (`app/utils/deadlines.ts`, `fristClassOf`).
+- **A number on the homepage and the same number on the page it links to
+  agree.** Every change to a filter is checked against it.
 
 ### Ohne Begutachtung
 
@@ -276,6 +286,13 @@ change belongs here.
   (§12.10).
 - **Dead-draft copy says „selten", never „nicht mehr möglich":** a draft can
   still get its Regierungsvorlage in the next period (§12.10).
+- **The § comparison reads the draft's text from Parliament's HTML first and
+  the RIS XML only where that is missing.** Parser symmetry: Regierungsvorlage,
+  Ausschuss and Plenum exist only as Parliament HTML, and a draft read from
+  XML against a Vorlage read from HTML yields differences the format made
+  (§12.33). This is the reverse of the Textgegenüberstellung, which reads RIS
+  first for the licence; this order does not move either while the licence
+  question is open (`readDraftUnits` in `server/utils/diff/lawDiffService.ts`).
 
 ### The consolidated reading (Lesefassung) and the annex
 
@@ -330,6 +347,11 @@ change belongs here.
   read every item that moves.** Zeros measured on tuning data are in-sample.
 - **Report per-draft figures (median, share of drafts)** over pooled
   percentages, which a few large laws dominate (§12.12).
+- **Figures about windows, claims and joins are measured on a production
+  build with cold caches** (`pnpm build`, then the built server), never on
+  the dev server: its derived cache keeps entries from before a code change,
+  and the RIS stock grows between two runs, so two such figures can
+  contradict each other.
 
 ### Länder
 
@@ -427,6 +449,8 @@ The code names the EU rules D1 to D7; this is where they are defined
 - **A sheet holds rows or one object with a job of its own, never prose.**
 - **Every multi-colour categorical palette passes the palette validator;**
   text never carries the data colour.
+- **What a control changes sits at it or below it, never above.** Stable
+  headings, selectors in the section head, the source line as a footnote.
 
 ### Operations
 
@@ -662,6 +686,9 @@ circular of 10.12.2015).
   draft request took ~0.8 s idle and the same during one station-map build;
   only several fan-outs at once add 0.5–2 s (12.11.2026). Not built until a
   slow Parliament shows a queue in practice.
+- **Our own copy of the law in force** (for a page per law). RIS holds the
+  text and `FassungVom` serves every reference date; a copy would be a sync
+  job with no gain.
 
 ### Privacy
 
@@ -681,6 +708,10 @@ circular of 10.12.2015).
 - **Measuring a weight or effect of statements on a Vorlage.** Committee
   changes are common with or without statements (§12.14).
 - **A per-party scorecard or „laws X voted against" filter** (§12.34).
+- **A party axis.** The sources carry no party; „blocking" is not observable
+  (a Begutachtung without a Vorlage covers coalition disputes, elections,
+  changed EU law, merged drafts and rightly withdrawn ones); and before
+  Parliament only governing parties appear.
 
 ### Joins and comparisons
 
@@ -709,6 +740,15 @@ circular of 10.12.2015).
 - **A threshold on the new period's age for carrying over open deadlines.**
   Every threshold would have been wrong at one of the last two changes
   (§12.36).
+- **„Geltendes Recht → Ministerialentwurf" as a pair in the station chooser.**
+  It would be an apply, not a diff: a Novelle is a list of instructions to
+  carry out, current law is a text plus a reference date that moves per
+  station, and an omnibus draft would have as many left sides as laws. The
+  exact answer is already on the page: the ministry's Textgegenüberstellung,
+  the reading version confirmed against it, and the list of laws the draft
+  would amend, linked to RIS (17.09.2026).
+- **A „date" class for a change of a date written with a month name.** 0 of
+  97 such units change only the date (23.09.2026).
 
 ### Interface
 
@@ -757,3 +797,16 @@ circular of 10.12.2015).
   `/entwuerfe/<land>/lgbl/<year>/<nr>`.
 - **„Upcoming" Begutachtungen** have no verified data source: the Parliament
   API knows a consultation only once it starts.
+- **Outcome claims in periods with partial linkage.** `chainCoverageOf`
+  silences outcome claims only where no draft of a closed period links
+  beyond the Begutachtung. Where only some do, a missing link cannot be told
+  from a draft that stalled: sampled at eight drafts per period, links first
+  appear in GP XVIII (3 of 8) and are reliable from GP XX (7 of 8;
+  `docs/api-exploration.md`, „Both corpora are well populated from GP XVI
+  on"). In between, „keine Regierungsvorlage" may be an archive gap. The
+  code has no period floor for it.
+- **Cutting the rows of a PDF annex at the number of a
+  Novellierungsanordnung.** It would mend the annexes that print instructions
+  in their right column (1 of 114 in GP XXVIII) and touches every annex, so
+  it waits for a measurement over the corpus
+  (`scripts/harness/faultInjection.ts`).
