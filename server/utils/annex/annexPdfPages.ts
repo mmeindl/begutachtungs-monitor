@@ -185,6 +185,8 @@ export interface Spelling {
   spaced: boolean[]
   /** …and right after it. */
   spacedAfter: boolean[]
+  /** …and how many spaces any operation set between it and the character before. */
+  apart: number[]
 }
 
 /**
@@ -196,6 +198,8 @@ export function spellingOf(fnArray: readonly number[], argsArray: readonly unkno
   const op: number[] = []
   const spaced: boolean[] = []
   const spacedAfter: boolean[] = []
+  const apart: number[] = []
+  let spaces = 0
   fnArray.forEach((fn, i) => {
     const glyphs = fn === showText ? (argsArray[i] as unknown[] | undefined)?.[0] : null
     if (!Array.isArray(glyphs)) return
@@ -208,6 +212,7 @@ export function spellingOf(fnArray: readonly number[], argsArray: readonly unkno
       const text = repair(unicode)
       if (!text.trim()) {
         space = true
+        spaces++
         if (op.length > first) spacedAfter[op.length - 1] = true
         continue
       }
@@ -216,11 +221,13 @@ export function spellingOf(fnArray: readonly number[], argsArray: readonly unkno
         op.push(i)
         spaced.push(k === 0 && space)
         spacedAfter.push(false)
+        apart.push(k === 0 ? spaces : 0)
       }
       space = false
+      spaces = 0
     }
   })
-  return { chars, op, spaced, spacedAfter }
+  return { chars, op, spaced, spacedAfter, apart }
 }
 
 /**
@@ -236,9 +243,14 @@ export function spellingOf(fnArray: readonly number[], argsArray: readonly unkno
  * with no space between them, and stays where the document set one —
  * „lit. a b" and „a, b und c" are set with spaces and keep them, and a run's
  * ordinary words are never touched (26.10.2026). Where the operation changes,
- * the glyphs say nothing, and the space stays — unless German never sets one
- * there: after an opening quotation mark or bracket, before a closing one or
- * a stop.
+ * the space stays — unless German never sets one there: after an opening
+ * quotation mark or bracket, before a closing one or a stop; or the two
+ * characters stand in a row the document shows to be letter-spaced
+ * (`spacedRows`) and no operation set a space between them. RIS sets the
+ * hyphen of „B l e i b - w e g - S i g n a l" and the Fugen-s of
+ * „S c h i f f f a h r t s" as operations of their own (14.11.2026). A word
+ * typed with a space glyph after each letter is read by its spacing
+ * (`typedRows`).
  *
  * The run's characters have to stand in the page's glyphs as they are, and
  * read alike wherever they stand; otherwise the run comes back as it was.
@@ -262,18 +274,85 @@ export function spelledOut(text: string, spelling: Spelling): string {
   const needle = chars.join('')
   let read: string | null = null
   for (let at = spelling.chars.indexOf(needle); needle && at >= 0; at = spelling.chars.indexOf(needle, at + 1)) {
+    const sameOp = (k: number) => spelling.op[at + k] === spelling.op[at + k - 1]
+    // A row of single characters is letter-spaced where one operation sets two of them with no space between.
+    const spread = spacedRows(alone, (k) => sameOp(k) && !spelling.spaced[at + k])
+    const typed = typedRows(chars, gap, (k) => spelling.apart[at + k] ?? 0, sameOp)
     let out = chars[0]!
     for (let k = 1; k < chars.length; k++) {
+      if (typed[k - 1] && typed[k]) {
+        out += chars[k]
+        continue
+      }
       const spacing = gap[k] && (alone[k - 1] || alone[k])
-      const joined = spelling.op[at + k] === spelling.op[at + k - 1]
+      const joined = sameOp(k)
         ? !spelling.spaced[at + k]
-        : !spelling.spacedAfter[at + k - 1] && !spelling.spaced[at + k] && (OPENS_RE.test(chars[k - 1]!) || CLOSES_RE.test(chars[k]!))
+        : !spelling.spacedAfter[at + k - 1] && !spelling.spaced[at + k] && (OPENS_RE.test(chars[k - 1]!) || CLOSES_RE.test(chars[k]!) || (spread[k - 1]! && spread[k]! && !spelling.apart[at + k]))
       out += (gap[k] && !(spacing && joined) ? ' ' : '') + chars[k]
     }
     if (read !== null && read !== out) return text
     read = out
   }
   return read === null ? text : `${lead}${read}${trail}`
+}
+
+/**
+ * Per character: whether it stands in a row of single characters (`alone`)
+ * that the document shows to be letter-spaced — one operation sets two of
+ * them with no space between (`joinedInOp`). „2 Z 2" in „Abs 2 Z 2" is a
+ * row of single characters too, each set by an operation of its own: it
+ * is not shown to be anything, and keeps its spaces.
+ */
+function spacedRows(alone: readonly boolean[], joinedInOp: (k: number) => boolean): boolean[] {
+  const out = alone.map(() => false)
+  for (let start = 0; start < alone.length; start++) {
+    if (!alone[start]) continue
+    let end = start
+    while (end + 1 < alone.length && alone[end + 1]) end++
+    let shown = false
+    for (let k = start + 1; k <= end && !shown; k++) shown = joinedInOp(k)
+    for (let k = start; k <= end; k++) out[k] = shown
+    start = end
+  }
+  return out
+}
+
+/**
+ * Per character: whether it stands in a word typed with a space after each
+ * letter — Kärnten's „A b s c h n i t t" and „E r n e n n u n g s e r f o r
+ * d e r n i s s e :". The document sets a space glyph between the letters,
+ * so the glyphs alone do not tell the word apart from „lit. a b c"; what
+ * does is the spacing: one space between each two letters, and on either
+ * side something else — the run's edge, two spaces, a sign that is no
+ * letter, or another text operation where the word's own letters share
+ * one. At least four letters, and not in the alphabet's order — „lit. a b
+ * c d" lists letters. A stop right after the word goes with it.
+ */
+const TYPED_MIN = 4
+function typedRows(chars: readonly string[], gap: readonly boolean[], spacesBefore: (k: number) => number, sameOp: (k: number) => boolean): boolean[] {
+  const out = chars.map(() => false)
+  // A letter alone between spaces, or between a space and a quotation mark, bracket or stop.
+  const opensAt = (k: number) => k === 0 || gap[k]! || OPENS_RE.test(chars[k - 1]!)
+  const closesAt = (k: number) => k === chars.length - 1 || gap[k + 1]! || CLOSES_RE.test(chars[k + 1]!)
+  const letter = chars.map((c, k) => /\p{L}/u.test(c) && opensAt(k) && closesAt(k))
+  for (let start = 0; start < chars.length; start++) {
+    if (!letter[start]) continue
+    let end = start
+    while (end + 1 < chars.length && letter[end + 1] && spacesBefore(end + 1) === 1) end++
+    let oneOp = true
+    for (let k = start + 1; k <= end; k++) oneOp &&= sameOp(k)
+    const apart = (k: number, outside: number) => spacesBefore(k) >= 2 || !/\p{L}/u.test(chars[outside]!) || (oneOp && !sameOp(k))
+    const opens = start === 0 || apart(start, start - 1)
+    const closes = end === chars.length - 1 || apart(end + 1, end + 1)
+    const word = chars.slice(start, end + 1).map((c) => c.toLowerCase())
+    const listed = word.every((c, k) => k === 0 || c.localeCompare(word[k - 1]!, 'de') > 0)
+    if (word.length >= TYPED_MIN && !listed && opens && closes) {
+      for (let k = start; k <= end; k++) out[k] = true
+      if (end + 1 < chars.length && CLOSES_RE.test(chars[end + 1]!) && spacesBefore(end + 1) <= 1) out[end + 1] = true
+    }
+    start = end
+  }
+  return out
 }
 
 /**

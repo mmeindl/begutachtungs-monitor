@@ -1280,6 +1280,32 @@ describe('a letter-spaced word (RIS 707EA278, 26.10.2026)', () => {
     expect(spelledOut('lit. a b c und d', page('gemäß lit. a b c und d'))).toBe('lit. a b c und d')
     expect(spelledOut('V e r b o t', page('Gebot'))).toBe('V e r b o t')
   })
+
+  // The operations as the RIS PDFs set them (captured 14.11.2026): the dash
+  // and the Fugen-s stand in operations of their own, with no space glyph.
+  it('joins a dash or a letter in an operation of its own, inside a letter-spaced word', () => {
+    expect(spelledOut('B l e i b - w e g - S i g n a l', page('Bleib', '-', 'weg', '-', 'Signal'))).toBe('Bleib-weg-Signal')
+    expect(spelledOut('19. „ B o d e n s e e – S c h i f f f a h r t s – O r d n u n g “ :', page('19. ', '„', 'Bodensee', '–', 'Schifffahrt', 's', '–', 'Ordnung', '“', ':')))
+      .toBe('19. „Bodensee–Schifffahrts–Ordnung“:')
+    // The Ergänzungsstrich keeps the space the document set after it.
+    expect(spelledOut('7. „ W a t t - o d e r T a g e s f a h r t “ :', page('7. ', '„', 'Watt', '- ', 'oder Tagesfahrt', '“', ':'))).toBe('7. „Watt- oder Tagesfahrt“:')
+  })
+
+  it('keeps the spaces of single characters no operation shows to be letter-spaced', () => {
+    // A Word document sets „Abs 2 Z 2" token by token, no space glyph between.
+    expect(spelledOut('Abs 2 Z 2', page('Abs', '2', 'Z', '2'))).toBe('Abs 2 Z 2')
+  })
+
+  // Kärnten types a heading with a space after each letter (ktn-1003-2021-21,
+  // ktn-1037-2021-73): one space between the letters, two around the word.
+  it('reads a word typed with a space after each letter', () => {
+    expect(spelledOut('5. A b s c h n i t t', page('5.  A b s c h n i t t'))).toBe('5. Abschnitt')
+    expect(spelledOut('6.1 E r n e n n u n g s e r f o r d e r n i s s e :', page('6.1 E r n e n n u n g s e r f o r d e r n i s s e :  ')))
+      .toBe('6.1 Ernennungserfordernisse:')
+    // Single spaces all along: the word cannot be told from its neighbours.
+    expect(spelledOut('von v i e r Wochen', page('von v i e r Wochen'))).toBe('von v i e r Wochen')
+    expect(spelledOut('lit. a b c d', page('lit. a b c d'))).toBe('lit. a b c d')
+  })
 })
 
 describe('sameTypesetting — when several PDFs are one annex (26.09.2026)', () => {
