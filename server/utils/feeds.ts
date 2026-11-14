@@ -383,7 +383,8 @@ export function buildSitemap(
     // `/weitere-entwuerfe` 301s into it and a sitemap must not advertise a
     // redirect.
     `${siteUrl}/entwuerfe`,
-    `${siteUrl}/so-funktionierts`,
+    `${siteUrl}/wege`,
+    `${siteUrl}/datenlage`,
     `${siteUrl}/ueber`,
     `${siteUrl}/impressum`,
     `${siteUrl}/datenschutz`,

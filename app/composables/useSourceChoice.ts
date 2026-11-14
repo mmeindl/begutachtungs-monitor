@@ -54,6 +54,13 @@ export function useSourceChoice(): {
   const fromRoute = () => parseSourceList(typeof route.query[SOURCE_PARAM] === 'string' ? route.query[SOURCE_PARAM] as string : null)
   const chosen = useState<SourceCode[]>('source-choice', () => fromRoute() ?? parseSourceList(cookie.value) ?? [...DEFAULT_SOURCES])
 
+  // An address that names its sources wins over a choice made earlier in
+  // the session: `useState` reads the route only the first time, so a link
+  // followed inside the app (`/wege` into a Länder list) kept the old choice
+  // under an address that named another.
+  const named = fromRoute()
+  if (named && formatSourceList(named) !== formatSourceList(chosen.value)) chosen.value = named
+
   // Back and Forward between two addresses that name different sources.
   watch(() => route.query[SOURCE_PARAM], () => {
     const next = fromRoute()

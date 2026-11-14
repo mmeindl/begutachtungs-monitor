@@ -32,13 +32,17 @@ import { useLateFetch } from '~/composables/useLateFetch'
 export function useDraftHalves(filters: {
   art: Ref<ArtFilter>
   gp: Ref<string>
+  /** The span that applies (`useDraftFilters`). */
+  span: DraftFilters['span']
+  /** What the Länder half is asked for — a GP or a Land's own period. */
+  laenderSpan: DraftFilters['laenderSpan']
   query: DraftFilters['query']
   /** The Bund is among the reader's sources (`useSourceChoice`, 22.10.2026). */
   bund: Ref<boolean>
   /** A chosen Land can join this view (the page decides, `landUnavailable`). */
   wantsLaender: Ref<boolean>
 }) {
-  const { art, gp, query, bund, wantsLaender } = filters
+  const { art, gp, span, laenderSpan, query, bund, wantsLaender } = filters
 
   /**
    * WHICH HALVES THIS `art` ASKS FOR — the filter decides the REQUEST, not
@@ -57,10 +61,11 @@ export function useDraftHalves(filters: {
    * words, so „Gesetzesentwürfe" ships four records, not 210. Under „Alle
    * Arten" it goes without `art`, the records of kind `unbestimmt` included.
    */
-  /* The chip's two Art values (`vorlage`, `antrag`) are no draft kind: the
-   * halves read them as „Alle Arten" (`draftKindArt`). */
+  /* The Arts of „Ohne Entwurf" are no draft kind: the halves read them as
+   * „Alle Arten" (`draftKindArt`). „Andere Entwürfe" (`unbestimmt`,
+   * 14.11.2026) are the RIS half's alone: a Ministerialentwurf is a law draft. */
   const kindArt = computed(() => draftKindArt(art.value))
-  const wantsMe = computed(() => bund.value && kindArt.value !== 'verordnung')
+  const wantsMe = computed(() => bund.value && (kindArt.value === '' || kindArt.value === 'gesetz'))
   const wantsRis = computed(() => bund.value)
   const risQuery = computed(() => (kindArt.value ? { ...query.value, art: kindArt.value } : query.value))
 
@@ -105,10 +110,12 @@ export function useDraftHalves(filters: {
    * so one answer serves every choice. The generous timeout is Salzburg's
    * register, thirteen seconds cold — prewarmed, but a list may not cut it
    * off, or a period would lose Salzburg's closed drafts without a word.
-   * Since 12.11.2026 that budget no longer holds the list (`useLateFetch`). */
+   * Since 12.11.2026 that budget no longer holds the list (`useLateFetch`).
+   * The span since 14.11.2026 as `laenderSpan`: a GP, or the one chosen
+   * Land's own period (`?landtag=`), the key following either. */
   const laenderFetch = useLateFetch<LaenderResponse>(
     '/api/laender',
-    () => ({ gp: query.value.gp, status: query.value.status }),
+    () => ({ ...laenderSpan.value, status: query.value.status }),
     { timeout: 30000, wanted: wantsLaender },
   )
 
@@ -193,7 +200,8 @@ export function useDraftHalves(filters: {
   }
 
   const selectedGp = computed({
-    get: () => gp.value || meData.value?.gp || risData.value?.gp || laenderData.value?.gp || '',
+    /* A Land period's answer names no GP (`landtag`): no GP is selected then. */
+    get: () => span.value.gp || meData.value?.gp || risData.value?.gp || laenderData.value?.gp || '',
     set: (value: string) => {
       gp.value = value
     },

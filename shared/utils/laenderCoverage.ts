@@ -1,8 +1,9 @@
 /**
  * How far the monitor can follow each Land, in one place (25.10.2026): the
- * comparison table on /so-funktionierts and the fold „Wie vollständig die
- * Länder-Entwürfe sind" on the list read these facts, so the two cannot
- * drift apart. Each cell says what the Land publishes, or — where the
+ * blocks on /datenlage and the one-line notice of the lists
+ * (`LandCoverageNote`, `complete`; the fold „Wie vollständig die
+ * Länder-Entwürfe sind" until 14.11.2026) read these facts, so the two
+ * cannot drift apart. Each cell says what the Land publishes, or — where the
  * monitor fills a gap itself — how; never more than was measured
  * (docs/research/laender-luecken.md holds the numbers).
  *
@@ -13,8 +14,8 @@ import type { LandCode } from '../types'
 /**
  * The questions the table answers, one row each, in its order. Cells of
  * two or three words (25.10.2026): with sentences in them the table scrolled
- * sideways even on a desktop and hid two Länder. The sentences are the
- * fold's (`summary`). Since all nine Länder are read (30.10.2026) the page
+ * sideways even on a desktop and hid two Länder. The sentences are
+ * /datenlage's (`summary`). Since all nine Länder are read (30.10.2026) the page
  * shows one block per Land rather than a column — nine columns fit no text
  * column at all.
  */
@@ -34,8 +35,9 @@ export type CoverageRow = (typeof COVERAGE_ROWS)[number]['key']
 export interface LandCoverage {
   cells: Record<CoverageRow, string>
   /**
-   * The fold's line: what the list holds of this Land, and what it does not.
-   * `complete` where the Land shows everything the list needs.
+   * What the list holds of this Land, and what it does not, as /datenlage
+   * says it. `complete` where the Land shows everything the list needs: the
+   * Länder without it are the ones the lists' notice names.
    */
   summary: string
   complete: boolean

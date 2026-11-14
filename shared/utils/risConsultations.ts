@@ -45,7 +45,8 @@ export const RIS_KIND_PLURAL: Record<RisConsultationKind, string> = {
  * `verordnung` is null since 26.09.2026, when its card got a station bar:
  * „erlässt ein Ministerium selbst … geht nicht durch das Parlament" only
  * restated what the three rows show, and the card's link now lands on the
- * fork of /so-funktionierts (`#wege`) that explains it.
+ * overview of all paths that explains it (`/wege`, since 14.11.2026; the
+ * fork of /so-funktionierts before).
  */
 export const RIS_KIND_HINT: Record<RisConsultationKind, string | null> = {
   verordnung: null,

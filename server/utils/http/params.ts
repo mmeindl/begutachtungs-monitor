@@ -10,9 +10,10 @@
  * being addressed.
  */
 import type { H3Event } from 'h3'
-import type { DraftStation, DraftStatus, LawStationId } from '#shared/types'
+import type { DraftStation, DraftStatus, LandCode, LawStationId } from '#shared/types'
 import { DRAFT_STATION_ORDER } from '#shared/utils/draftStations'
 import { GP_RE, isPlausibleGp, parseInr, previousGp } from '#shared/utils/gp'
+import { type DateWindow, type LandPeriodCalendars, LAND_PERIODS, landtagParts, parseLandtag } from '#shared/utils/periodCalendar'
 import {
   DEFAULT_LAW_STATION_PAIR,
   DRAFT_LAW_STATIONS,
@@ -71,6 +72,32 @@ export function requirePlausibleGp(gp: string, currentGp: string): string {
     throw createError({ statusCode: 404, statusMessage: 'Gesetzgebungsperiode nicht gefunden' })
   }
   return gp
+}
+
+/**
+ * `?landtag=sbg-17` — a Land's own period, the Länder endpoints' second way
+ * to name a time span beside `?gp=` (14.11.2026, `shared/utils/periodCalendar.ts`).
+ * Null where the request names none. 400 where it is malformed or comes
+ * together with `gp` (two spans, no answer); 404 for a well-formed period the
+ * calendar does not hold — checked, like `requirePlausibleGp`, BEFORE a
+ * cached function sees the window, so an invented period leaves no entry.
+ */
+export function readLandtagQuery(
+  event: H3Event,
+  calendars: LandPeriodCalendars = LAND_PERIODS,
+): { land: LandCode; id: number; value: string; window: DateWindow } | null {
+  const query = getQuery(event)
+  const raw = firstQueryValue(query.landtag)
+  if (raw === undefined || raw === '') return null
+  if (firstQueryValue(query.gp)) {
+    throw createError({ statusCode: 400, statusMessage: 'Entweder gp oder landtag, nicht beide' })
+  }
+  if (!landtagParts(raw)) {
+    throw createError({ statusCode: 400, statusMessage: 'Ungültige Landtagsperiode (Land und Nummer erwartet, z. B. sbg-17)' })
+  }
+  const period = parseLandtag(raw, calendars)
+  if (!period) throw createError({ statusCode: 404, statusMessage: 'Landtagsperiode nicht gefunden' })
+  return period
 }
 
 /**

@@ -5,6 +5,8 @@
  * (auto-imported; pure module so vitest can import it relatively).
  */
 
+import { formatDateDe } from './format'
+
 /**
  * Valid GP code: a canonical Roman numeral from I to XCIX — never empty,
  * never longer than eight characters (LXXXVIII).
@@ -185,6 +187,24 @@ export function gpYearsDe(gp: string): string | null {
 export function gpInSentenceDe(gp: string): string {
   const years = gpYearsDe(gp)
   return `in der ${gp}. Gesetzgebungsperiode${years ? ` (${years})` : ''}`
+}
+
+/**
+ * „seit 24.10.2024 (GP XXVIII)", „23.10.2019 – 23.10.2024 (GP XXVII)" — an
+ * option of the period filter on /entwuerfe (14.11.2026). The filter is a
+ * TIME SPAN and the GP is the Bund's name for it: the list holds the Länder's
+ * drafts too, which have periods of their own and fall into the span in which
+ * their Begutachtung began. The dates are `gpWindow`'s, both ends inclusive —
+ * the bounds `readLaenderInWindow` filters by (`server/utils/laender/
+ * sources.ts`) — so the label states exactly what the choice does. A period
+ * the calendar does not reach (before XX, or a new one before its row is
+ * added) has no window and no Länder rows there; it is named by its GP alone.
+ */
+export function gpSpanLabelDe(gp: string): string {
+  const w = gpWindow(gp)
+  if (!w) return `GP ${gp}`
+  const span = w.to === null ? `seit ${formatDateDe(w.from)}` : `${formatDateDe(w.from)} – ${formatDateDe(w.to)}`
+  return `${span} (GP ${gp})`
 }
 
 /**

@@ -1,28 +1,56 @@
 <script setup lang="ts">
-import type { DashboardSecondRound, DraftStation, LandCode, LandLawsResponse, LawsWithoutBegutachtung, RisConsultationKind } from '#shared/types'
+import type { AntraegeResponse, StaatsvertraegeResponse, DashboardSecondRound, DraftStation, LandCode, LandLawsResponse, LawsWithoutBegutachtung, RisConsultationKind } from '#shared/types'
 import { LAND_CODES, LAND_NAME, landStationsReason } from '#shared/utils/laender'
 import { formatNumberDe } from '#shared/utils/format'
+import { landtagParts, landtagValue } from '#shared/utils/periodCalendar'
 import {
+  antragRow,
+  treatyRow,
   compareRowsByFrist,
   compareRowsByStatements,
   type DraftListRow,
   draftRows,
 } from '#shared/utils/draftOrder'
+import { antragRouteCitation } from '#shared/utils/antragPath'
 import { viewOfRow } from '~/utils/entryView'
 import {
-  artOptionsFor,
+  type ArtChoice,
+  type ArtSources,
+  antragGapNotes,
+  antragRowsOf,
+  antragStationOf,
+  treatyGapNotes,
+  treatyRowsOf,
+  treatyStationOf,
+  artChoiceOf,
+  artChoiceParams,
+  artSelectFor,
+  artUnavailableBySources,
+  artUnavailableFor,
+  artUnavailableNote,
+  choiceAdmitsBundLaw,
+  choiceAdmitsDraft,
+  choiceAdmitsLandLaw,
+  choiceAdmitsMinisterialentwurf,
+  choiceAdmitsOpenVorlage,
   coherentFilters,
+  draftRowsOf,
+  isOhneChoice,
+  ohneSilentNoteDe,
   OHNE_MINISTRY_REASON,
+  registerReachNote,
   type FilterChipKey,
   SEVERAL_STATIONS,
   type SortKey,
   activeFilterChips,
-  begutachtungGapReason,
   draftCountLabel,
-  ohneArtAllows,
   searchBundHalves,
+  spanOptionsFor,
   stationTabsFor,
+  withoutDraftRequests,
+  withoutDraftRowsOf,
 } from '~/utils/draftFilters'
+import MethodEntwurfsliste from '~/components/method/MethodEntwurfsliste.vue'
 import { cutKeeping } from '~/utils/pagedList'
 import { matchesQuery } from '#shared/utils/textMatch'
 import { MAX_LIST_QUERY_CHARS } from '#shared/utils/queryParams'
@@ -45,7 +73,7 @@ import { MAX_LIST_QUERY_CHARS } from '#shared/utils/queryParams'
 usePageSeo({
   title: 'Entwürfe',
   description:
-    'Alle Entwürfe – Gesetzes- und Verordnungsentwürfe – und die Gesetze, zu denen kein Entwurf in Begutachtung bekannt ist, filterbar nach Art, Status, Gesetzgebungsperiode und Ministerium.',
+    'Alle Entwürfe – Gesetzes- und Verordnungsentwürfe – und die Gesetze, zu denen kein Entwurf in Begutachtung bekannt ist, filterbar nach Bund und Land, Station, Art – mit oder ohne Entwurf –, Zeitraum und Ministerium, nach „Stellungnahme möglich“ und „Setzt EU-Recht um“.',
 })
 
 /**
@@ -91,11 +119,11 @@ const OPEN_UNAVAILABLE: Partial<Record<DraftStation, string>> = {
   bgbl: 'Nach der Kundmachung ist keine Stellungnahme mehr möglich',
 }
 
-/* The Art filter's options and the nouns it shares with the count line live
- * in `app/utils/draftFilters.ts` (`ART_OPTIONS`, `RIS_KIND_TERM`). Under the
- * chip „Ohne Ministerialentwurf" the select offers the item a row came as
- * instead (`artOptionsFor`, 10.11.2026). */
-const artOptions = computed(() => artOptionsFor(begutachtung.value))
+/* The select „Art" — drafts by kind, and „Ohne Entwurf" as a group of its
+ * own since 14.11.2026, in the path graphic's words — and the nouns it
+ * shares with the count line live in `app/utils/draftFilters.ts`
+ * (`ART_CHOICES`, `KIND_TERM`). Its options are built further down, where
+ * the answers that decide which can be offered are read (`artSelect`). */
 
 /**
  * Two orders, and each of them answers a question this page is actually
@@ -133,10 +161,16 @@ const rowComparators: Record<SortKey, (a: DraftListRow, b: DraftListRow, reverse
   stellungnahmen: compareRowsByStatements,
 }
 
+/* Where the rows come from (`useSourceChoice`) — read before the filters
+ * since 14.11.2026: which time spans the list offers depends on it
+ * (`periodViewFor`). The rest of the rule is written further down, where
+ * the Länder rows are built. */
+const { bund, laender: chosenLaender } = useSourceChoice()
+
 /* Filter state, URL binding and the query for both endpoints:
  * `useDraftFilters`, with the pure half in `app/utils/draftFilters.ts`. */
-const filters = useDraftFilters()
-const { statusFilter, art, gp, ministry, q, qDebounced, sort, reversed, stations, eu, begutachtung, query, onNavigate } = filters
+const filters = useDraftFilters({ bund, laender: chosenLaender })
+const { statusFilter, art, gp, landtag, periodView, span, laenderSpan, ministry, q, qDebounced, sort, reversed, stations, eu, begutachtung, query, onNavigate } = filters
 /* Either column turned round by a second click (`SortHeader`, 06.11.2026). */
 const { choose: chooseColumn, selectValue: sortSelect } = useReversibleSort(sort, reversed)
 
@@ -151,11 +185,22 @@ function toggleEu(): void {
   eu.value = eu.value ? '' : 'umsetzung'
 }
 
-/* „Ohne Ministerialentwurf" (chip „Ohne Begutachtung" until 10.11.2026): the chip beside it — see `ohneApplied`. */
-function toggleBegutachtung(): void {
-  if (ohneUnavailable.value) return
-  begutachtung.value = begutachtung.value ? '' : 'ohne'
-}
+/* „Ohne Entwurf" — chip „Ohne Begutachtung" until 10.11.2026, then „Ohne
+ * Ministerialentwurf" with the Bund and „Ohne Begutachtung" for Salzburg alone,
+ * one label from 14.11.2026 (`ohneApplied`): the Bund's term was false with
+ * Länder selected beside it, and „Ohne Begutachtung" is false for the Bund's
+ * Ausschussbegutachtung rows. The same day the chip went into the select
+ * „Art" as the group „Ohne Entwurf" (`ART_CHOICES`): one control for what a
+ * row is, instead of a chip that swapped the select's vocabulary. The option
+ * the select shows is the pair `art` + `begutachtung` (`artChoiceOf`). */
+const chosenArt = computed<ArtChoice>({
+  get: () => artChoiceOf(art.value, begutachtung.value),
+  set: (choice) => {
+    const params = artChoiceParams(choice)
+    begutachtung.value = params.begutachtung
+    art.value = params.art
+  },
+})
 
 /* The station tabs (`stationTabsFor` says how a link naming several
  * stations keeps its set, and why two tabs stand unavailable under
@@ -233,18 +278,19 @@ onNavigate(() => {
  * anyway — every control writes the URL through Vue.
  */
 const moreFilters = computed(
-  () => Number(art.value !== '') + Number(gp.value !== '') + Number(ministry.value !== ''),
+  () => Number(chosenArt.value !== '') + Number(span.value.gp !== '' || span.value.landtag !== '') + Number(ministry.value !== ''),
 )
 const filtersOpen = ref(false)
 
 /** The closed panel's values; `clearChip` is the press that removes each. */
 const activeFilters = computed(() =>
-  activeFilterChips({ status: statusFilter.value, art: art.value, gp: gp.value, ministry: ministry.value }),
+  activeFilterChips({ status: statusFilter.value, art: art.value, begutachtung: begutachtung.value, ...span.value, ministry: ministry.value }, periodView.value),
 )
 const clearChip: Record<FilterChipKey, () => void> = {
   status: () => { statusFilter.value = 'all' },
-  art: () => { art.value = '' },
+  art: () => { chosenArt.value = '' },
   gp: () => { gp.value = '' },
+  landtag: () => { landtag.value = '' },
   ministry: () => { ministry.value = '' },
 }
 
@@ -283,7 +329,6 @@ function chooseSort(key: string) {
  * and a Ressort while the Bund is on. The Art is no reason since
  * 23.10.2026: a Land's draft is a Gesetz or a Verordnung like the Bund's.
  */
-const { bund, laender: chosenLaender } = useSourceChoice()
 /* The stations each Land is followed to: `LAND_FOLLOWED_STATIONS`. */
 function landUnavailableFor(land: LandCode): string | null {
   const byStation = landStationsReason(land, stations.value)
@@ -344,9 +389,40 @@ const ministries = computed(() =>
     : ministriesFetched.value,
 )
 /* Before the first answer the menu is not there yet: the chosen period
- * stands alone meanwhile, or „GP …" where none is chosen and the server
- * has not said which is current — never a blank select. */
-const gpOptions = computed(() => (availableGps.value.length ? availableGps.value : [selectedGp.value]))
+ * stands alone meanwhile, or „Zeitraum …" where none is chosen and the server
+ * has not said which is current — never a blank select.
+ *
+ * Which spans, and how they are named, follows the sources (14.11.2026,
+ * `spanOptionsFor`): the Bund's periods, one Land's own (`?landtag=`), or the
+ * Bund's spans by their dates alone. */
+const spanOptions = computed(() => spanOptionsFor(periodView.value, availableGps.value, selectedGp.value))
+/* The select's one value over both kinds: a Land period's `sbg-17`, else the
+ * GP. In a Land's view nothing chosen is that Land's running period — the
+ * default, as the running GP is the Bund's (`laenderSpanQuery`). */
+const spanSelect = computed<string>({
+  get: () => {
+    const view = periodView.value
+    if (view.mode !== 'land') return selectedGp.value
+    return span.value.landtag || span.value.gp || landtagValue(view.land, view.periods[0]!.id)
+  },
+  set: (value) => {
+    if (landtagParts(value)) {
+      landtag.value = value
+      gp.value = ''
+    } else {
+      selectedGp.value = value
+      landtag.value = ''
+    }
+  },
+})
+/* Whether the span in view is an earlier one than the running span — the
+ * full text knows only what is open today (`useFullTextSearch`). */
+const pastSpan = computed(() => {
+  const view = periodView.value
+  if (view.mode === 'land') return !!span.value.gp || (!!span.value.landtag && span.value.landtag !== landtagValue(view.land, view.periods[0]!.id))
+  const current = availableGps.value[0] ?? ''
+  return !!span.value.gp && !!current && span.value.gp !== current
+})
 
 /**
  * The second open window — and since 18.09.2026 these are rows, not a section.
@@ -369,25 +445,41 @@ const gpOptions = computed(() => (availableGps.value.length ? availableGps.value
  * result is the normal case, and what may be missing must not hold the first
  * paint. Started before the halves are awaited, so the three overlap.
  */
+/* The Länder whose sources carry the statement „ohne Begutachtung" per law: Salzburg. */
+const OHNE_LANDS: readonly LandCode[] = ['sbg']
+const ohneLandsApply = computed(() => applyingLaender.value.some((land) => OHNE_LANDS.includes(land)))
+/* What the sources alone say about the select „Art" — before any answer. */
+const artSources = computed<ArtSources>(() => ({ bund: bund.value, landsApply: landsApply.value, ohneLandsApply: ohneLandsApply.value }))
+/* The option the sources leave chosen: one they rule out filters as „Alle
+ * Arten" (`appliedArt` further down adds the answers' reasons). */
+const artBySources = computed<ArtChoice>(() => (artUnavailableBySources(artSources.value)[chosenArt.value] ? '' : chosenArt.value))
+/* Which of the three late answers this view asks for (`withoutDraftRequests`):
+ * the rows its option shows, and under every option — the four draft options
+ * included — the answers that decide whether an option of „Ohne Entwurf" can
+ * be offered, so that is known before it is chosen. The open Vorlagen decide
+ * nothing and are asked only where they are rows. */
+const requests = computed(() => withoutDraftRequests(artBySources.value, artSources.value))
+const vorlagenWanted = computed(() => requests.value.vorlagen)
 const secondRoundFetch = useFetch<DashboardSecondRound>(
   '/api/dashboard/zweite-runde',
-  { lazy: true, server: false },
+  { lazy: true, server: false, enabled: vorlagenWanted, watch: [vorlagenWanted] },
 )
 
 /**
  * The enacted laws of the period without a Ministerialentwurf —
  * rows of the default list since 10.11.2026, next to the drafts,
- * and what the chip „Ohne Ministerialentwurf" narrows to. Fetched like the
+ * and what the chip „Ohne Entwurf" narrows to. Fetched like the
  * open Vorlagen above: on the client, lazily, so the drafts never wait for
  * them, and for the period in view (the chosen one, else the running one),
  * whenever the Bund is among the sources. An answer that is `pending` or
  * `unread` brings no row and no statement; the drafts stand as they are and
- * the laws join when the answer is complete (`lawsRetries`). The chip's
- * unavailable states come from the same answer (`ohneUnavailable`).
+ * the laws join when the answer is complete (`lawsRetries`). Asked under
+ * every option while the Bund is a source: the same answer decides whether
+ * the options of „Ohne Entwurf" can be offered (`artUnavailable`).
  */
-const lawsWanted = computed(() => bund.value)
+const lawsWanted = computed(() => requests.value.bundLaws)
 const lawsFetch = useFetch<LawsWithoutBegutachtung>('/api/ohne-begutachtung', {
-  query: computed(() => ({ gp: gp.value || undefined })),
+  query: computed(() => ({ gp: span.value.gp || undefined })),
   lazy: true,
   server: false,
   enabled: lawsWanted,
@@ -398,21 +490,57 @@ const lawsFetch = useFetch<LawsWithoutBegutachtung>('/api/ohne-begutachtung', {
  * The Länder's laws without a draft in their register: rows by
  * default, next to the Länder's drafts, for the period in view — fetched
  * like the Bund's laws, on the client and lazily, so the drafts never wait
- * for them; only while a Land applies.
+ * for them; only while a Land applies. The window is the Länder half's
+ * (`laenderSpan`): a GP, or the one chosen Land's own period — Salzburg's
+ * laws under „Ohne Entwurf" answer for the span its drafts are listed in.
+ * Under the draft options only where Salzburg alone decides whether „Ohne
+ * Entwurf" can be offered (`withoutDraftRequests`).
  */
-const landLawsWanted = computed(() => landsApply.value)
+const landLawsWanted = computed(() => requests.value.landLaws)
 const landLawsFetch = useFetch<LandLawsResponse>('/api/laender/gesetze', {
-  query: computed(() => ({ gp: gp.value || undefined })),
+  query: laenderSpan,
   lazy: true,
   server: false,
   enabled: landLawsWanted,
   watch: [landLawsWanted],
 })
 
+/**
+ * Every Initiativantrag of the period in view, with its state — rows only
+ * under „Alle Initiativanträge" (decision 1 of 14.11.2026), asked for only
+ * there and only with the Bund among the sources. On the client and lazily,
+ * as the laws: up to a hundred records are read for the running period.
+ */
+const antraegeWanted = computed(() => bund.value && antragRowsOf(artBySources.value))
+const antraegeFetch = useFetch<AntraegeResponse>('/api/antraege', {
+  query: computed(() => ({ gp: span.value.gp || undefined })),
+  lazy: true,
+  server: false,
+  enabled: antraegeWanted,
+  watch: [antraegeWanted],
+})
+
+/**
+ * Every treaty's Vorlage of the period in view — rows only under
+ * „Staatsverträge" (decision 3 of 14.11.2026), asked for only there and only
+ * with the Bund among the sources. List rows and cached Jahrgänge, no
+ * detail records (`/api/staatsvertraege`).
+ */
+const treatiesWanted = computed(() => bund.value && treatyRowsOf(artBySources.value))
+const treatiesFetch = useFetch<StaatsvertraegeResponse>('/api/staatsvertraege', {
+  query: computed(() => ({ gp: span.value.gp || undefined })),
+  lazy: true,
+  server: false,
+  enabled: treatiesWanted,
+  watch: [treatiesWanted],
+})
+
 await halves.ready
-const { data: secondRound } = await secondRoundFetch
-const { data: lawsData, refresh: refreshLaws } = await lawsFetch
-const { data: landLawsData, refresh: refreshLandLaws } = await landLawsFetch
+const { data: secondRound, error: secondRoundError } = await secondRoundFetch
+const { data: lawsData, error: lawsError, refresh: refreshLaws } = await lawsFetch
+const { data: landLawsData, error: landLawsError, refresh: refreshLandLaws } = await landLawsFetch
+const { data: antraegeData, error: antraegeError } = await antraegeFetch
+const { data: treatiesData, error: treatiesError } = await treatiesFetch
 
 /**
  * `gap: 'pending'`: after a cold start the station maps are still being
@@ -430,8 +558,12 @@ let lawsTimer: ReturnType<typeof setTimeout> | undefined
 const LAWS_UNREAD_RETRY_MS = 60_000
 const LAWS_UNREAD_RETRIES = 3
 let lawsUnreadRetries = 0
+/* A `pending` answer the page will ask again: the laws are on their way, not
+ * absent (`lawsPending`). */
+const lawsRetrying = ref(false)
 watch(lawsData, (laws) => {
   clearTimeout(lawsTimer)
+  lawsRetrying.value = laws?.gap === 'pending' && lawsRetries < LAWS_RETRIES
   if (laws?.gap === 'pending' && lawsRetries < LAWS_RETRIES) {
     lawsRetries++
     lawsTimer = setTimeout(() => void refreshLaws(), LAWS_RETRY_MS)
@@ -440,7 +572,7 @@ watch(lawsData, (laws) => {
     lawsTimer = setTimeout(() => void refreshLaws(), LAWS_UNREAD_RETRY_MS)
   }
 }, { immediate: true })
-watch(gp, () => { lawsRetries = 0; lawsUnreadRetries = 0 })
+watch(span, () => { lawsRetries = 0; lawsUnreadRetries = 0 })
 onUnmounted(() => clearTimeout(lawsTimer))
 
 /* Salzburg's statements wait for the Landtag documents after a cold start
@@ -454,7 +586,7 @@ watch(landLawsData, (laws) => {
   landLawsRetries++
   landLawsTimer = setTimeout(() => void refreshLandLaws(), LAWS_RETRY_MS)
 })
-watch(gp, () => { landLawsRetries = 0 })
+watch(laenderSpan, () => { landLawsRetries = 0 })
 onUnmounted(() => clearTimeout(landLawsTimer))
 
 /**
@@ -493,7 +625,7 @@ const landItems = computed(() => {
       if (item.stage === 'unknown') return false
       return stations.value.includes(item.stage?.station ?? 'begutachtung')
     })
-    .filter((item) => !art.value || item.kind === art.value)
+    .filter((item) => choiceAdmitsDraft(appliedArt.value, item.kind))
     /* „Setzt EU-Recht um": the two markers the fact leads with those words.
      * Without the map (`laenderEuMissing`) the rows stand unfiltered and the
      * note above them says so — a filter that silently drops every Land
@@ -540,31 +672,44 @@ const unreadableLaender = computed(() => {
  * `OpenVorlage` carries none, so the row steps back as soon as one is
  * filtered for. Search: the same word rule as above (`matchesQuery`).
  */
-const openVorlagen = computed(() => {
-  const list = secondRound.value
-  if (!list || !bund.value || statusFilter.value === 'closed' || art.value === 'verordnung' || ministry.value) return []
-  // Under the chip's Art an open Vorlage's row is a Regierungsvorlage.
-  if (!ohneArtAllows(art.value, 'rv')) return []
+/* Whether the view would show them at all — asked before the answer is
+ * there, so the count line can say they are on their way (`vorlagenPending`). */
+const vorlagenInView = computed(() => {
+  if (!bund.value || statusFilter.value === 'closed' || ministry.value) return false
+  /* Only under the Arts that can hold one (`withoutDraftRowsOf`):
+   * „Alle Arten", „Alle ohne Entwurf", „Regierungsvorlagen ohne Entwurf" —
+   * no longer under „Gesetzesentwürfe" since 14.11.2026, a Vorlage without a
+   * draft being no draft. Under the draft options an answer asked for
+   * availability is never shown or announced. */
+  if (!withoutDraftRowsOf(appliedArt.value).vorlagen) return false
   /* „Setzt EU-Recht um": a Vorlage carries no EU fact in the list, so it
    * steps back — unless the Bund's map is missing and the list stands
    * unfiltered anyway (`euUnavailable`). */
-  if (eu.value && !bundEuMissing.value) return []
-  if (stations.value.length && !stations.value.includes('rv')) return []
+  if (eu.value && !bundEuMissing.value) return false
+  if (stations.value.length && !stations.value.includes('rv')) return false
+  /* They are the running period's: an earlier one chosen holds none. */
+  return !pastSpan.value
+})
+const openVorlagen = computed(() => {
+  const list = secondRound.value
+  if (!list || !vorlagenInView.value) return []
   if (selectedGp.value && selectedGp.value !== list.gp) return []
   return list.items
-    // Under „Ohne Ministerialentwurf" only the rows that carry one of its two
+    // Under „Ohne Entwurf" only the rows that carry one of its two
     // notes (`none`, `committee`).
-    .filter((v) => (ohneApplied.value ? v.consultation.kind === 'none' || v.consultation.kind === 'committee' : v.consultation.kind !== 'draft'))
+    .filter((v) => choiceAdmitsOpenVorlage(appliedArt.value, v.consultation.kind, v.kind))
     .filter((v) => matchesQuery(`${v.title} ${v.citation}`, qDebounced.value))
 })
 
 /**
- * „Ohne Ministerialentwurf": the list shows ONLY
- * the procedures without a Ministerialentwurf — the period's enacted laws
- * from `/api/ohne-begutachtung` (station Bundesgesetzblatt) and the open
- * Vorlagen that say „ohne Begutachtung" or „Ausschussbegutachtung" (station
- * Regierungsvorlage). The
- * Ministerialentwürfe, the RIS records and the Länder step back. A
+ * „Ohne Entwurf": the list shows ONLY the procedures no draft preceded.
+ * For the Bund, those without a Ministerialentwurf: the period's enacted
+ * laws from `/api/ohne-begutachtung` (station Bundesgesetzblatt) and the
+ * open Vorlagen that say „ohne Begutachtung" or „Ausschussbegutachtung"
+ * (station Regierungsvorlage). For the Länder, the laws that say „ohne
+ * Begutachtung" — Salzburg's only (`OHNE_LANDS`); the other chosen Länder
+ * are named above the rows (`ohneSilentNote`). Every draft — the
+ * Ministerialentwürfe, the RIS records, the Länder's — steps back. A
  * procedural fact per row, never a ranking.
  *
  * Unavailable — with its reason, keeping its state, like „Stellungnahme
@@ -572,21 +717,64 @@ const openVorlagen = computed(() => {
  * period cannot carry the claim (`LawsWithoutBegutachtung.gap`): then the
  * filter steps back and the list is what it is without it.
  */
-/* The Länder whose sources carry the statement per law: Salzburg. */
-const OHNE_LANDS: readonly LandCode[] = ['sbg']
-const ohneLandsApply = computed(() => applyingLaender.value.some((land) => OHNE_LANDS.includes(land)))
-const ohneUnavailable = computed(() => {
-  if (!bund.value && !ohneLandsApply.value) return 'Nur für Gesetze des Bundes und Salzburgs feststellbar'
-  if (bund.value) return lawsData.value?.available === false ? begutachtungGapReason(lawsData.value.gap) : null
-  // Salzburg alone: its laws' answer decides.
-  const sbg = landLawsData.value?.sources.find((src) => src.land === 'sbg')
-  if (sbg?.state === 'unavailable') return begutachtungGapReason('unread')
-  return sbg?.statements === 'pending' ? begutachtungGapReason('pending') : null
+/**
+ * The options of the select „Art" that cannot be offered here, each with its
+ * reason (14.11.2026, `artUnavailableFor`). What the sources alone rule out
+ * stands disabled on the first render, on the server too: „Andere Entwürfe"
+ * without the Bund, the three Bund-and-Salzburg options of „Ohne Entwurf"
+ * with neither, „Landesgesetze ohne zugeordneten Entwurf" without a Land.
+ * The rest waits for the answers, asked under every option
+ * (`withoutDraftRequests`) — the Bund's laws, else Salzburg's: a period that
+ * cannot carry the claim, an answer not read or a failed fetch. Until an
+ * answer is there the option stays enabled: unknown is not unavailable.
+ * Such an option stands disabled; a link that asks for it keeps it chosen,
+ * the list steps back to „Alle Arten" (`appliedArt`) and one line says why
+ * (`artNote`) — never a silent fallback.
+ */
+const artUnavailable = computed(() => artUnavailableFor(artSources.value, {
+  bundLaws: lawsData.value,
+  bundLawsFailed: !!lawsError.value,
+  sbgLaws: landLawsData.value?.sources.find((src) => src.land === 'sbg'),
+  landLawsFailed: !!landLawsError.value,
+  /* „als Initiativantrag": the Bund's period in view, and whether its rows
+   * carry the chains that name the route — both in the server's render. */
+  gp: span.value.gp || meData.value?.gp || '',
+  chainsMissing: meData.value?.stationsAvailable === false,
+}))
+/* The option that filters: the chosen one, or „Alle Arten" where it cannot. */
+const appliedArt = computed<ArtChoice>(() => (artUnavailable.value[chosenArt.value] ? '' : chosenArt.value))
+/* Which draft halves the applied option shows rows of (`draftRowsOf`): under
+ * „als Initiativantrag" the Ministerialentwürfe alone, those whose row names
+ * the Antrag (`choiceAdmitsMinisterialentwurf`). The other options take every
+ * row their halves bring, as before. */
+const halvesShown = computed(() => draftRowsOf(appliedArt.value))
+const meOfView = computed(() => (searched.value.me ?? []).filter((d) => choiceAdmitsMinisterialentwurf(appliedArt.value, d)))
+const risOfView = computed(() => (halvesShown.value.ris ? (searched.value.ris ?? []) : []))
+const artNote = computed(() => {
+  const reason = artUnavailable.value[chosenArt.value]
+  return reason ? artUnavailableNote(chosenArt.value, reason) : null
 })
-/* Its name says what the rows under it share: no Ministerialentwurf for the
-   Bund's; for Salzburg's alone, no Begutachtung. */
-const ohneLabel = computed(() => (bund.value ? 'Ohne Ministerialentwurf' : 'Ohne Begutachtung'))
-const ohneApplied = computed(() => begutachtung.value === 'ohne' && !ohneUnavailable.value)
+/* „Andere Entwürfe" is offered while the view holds one (`artSelectFor`):
+ * known only where the RIS half came unnarrowed or narrowed to them. */
+const othersInView = computed(() => (searched.value.ris ?? []).some((c) => c.kind === 'unbestimmt'))
+const artSelect = computed(() => artSelectFor({
+  chosen: chosenArt.value,
+  others: othersInView.value,
+  landSelected: landsApply.value,
+  unavailable: artUnavailable.value,
+}))
+/* Any option of the group „Ohne Entwurf" applies: every draft steps back. */
+const ohneApplied = computed(() => isOhneChoice(appliedArt.value))
+/* The chosen Länder whose sources cannot answer the question of „Alle ohne
+ * Entwurf" and its two items: their laws step back (`landLawRows`) as every
+ * draft does, so the page names them instead of letting their rows vanish in
+ * silence. Not under „Landesgesetze ohne zugeordneten Entwurf", which every
+ * Land answers as far as its register reaches (`landLawsBeyondReach`). */
+const ohneSilentLaender = computed(() =>
+  ohneApplied.value && appliedArt.value !== 'ohne-landesgesetz'
+    ? applyingLaender.value.filter((land) => !OHNE_LANDS.includes(land))
+    : [])
+const ohneSilentNote = computed(() => ohneSilentNoteDe(ohneSilentLaender.value))
 
 /* While the chip applies, no Ressort (`coherentFilters`): one chosen before,
  * or carried by a link, is dropped — from the state, and so from the URL. */
@@ -613,14 +801,20 @@ const ministryUnavailable = computed(() =>
  * and under the chip alike; without the Bund, or while the answer
  * is incomplete, none.
  */
+const lawsInView = computed(() => {
+  if (!bund.value) return false
+  if (statusFilter.value === 'open' || ministry.value || eu.value) return false
+  /* Only under the Arts that can hold one (`withoutDraftRowsOf`) — no
+   * longer under „Gesetzesentwürfe" since 14.11.2026: a law is no draft. */
+  if (!withoutDraftRowsOf(appliedArt.value).bundLaws) return false
+  return !stations.value.length || stations.value.includes('bgbl')
+})
 const lawRows = computed(() => {
   const laws = lawsData.value
-  if (!bund.value || !laws?.available) return []
-  if (statusFilter.value === 'open' || art.value === 'verordnung' || ministry.value || eu.value) return []
-  if (stations.value.length && !stations.value.includes('bgbl')) return []
+  if (!lawsInView.value || !laws?.available) return []
   if (selectedGp.value && selectedGp.value !== laws.gp) return []
   return laws.items
-    .filter((l) => ohneArtAllows(art.value, l.item.kind))
+    .filter((l) => choiceAdmitsBundLaw(appliedArt.value, l.item.kind))
     .filter((l) => matchesQuery(`${l.title} ${l.item.citation} ${l.bgblNumber}`, qDebounced.value))
 })
 
@@ -632,31 +826,165 @@ const lawRows = computed(() => {
  * Land chosen, the same word rule. Under the chip only those that say „ohne
  * Begutachtung", by the item they came as where the Art asks for one.
  */
-const landLawRows = computed(() => {
+const landLawsInView = computed(() => {
+  if (!landsApply.value) return false
+  /* „Alle Arten" and the group „Ohne Entwurf" only — no draft kind
+   * (14.11.2026, `withoutDraftRowsOf`). */
+  if (statusFilter.value === 'open' || !withoutDraftRowsOf(appliedArt.value).landLaws) return false
+  if (eu.value && !laenderEuMissing.value) return false
+  return !stations.value.length || stations.value.includes('bgbl')
+})
+/* Every law of the applying Länder for the span in view, before the Art. */
+const landLawsOfView = computed(() => {
   const data = landLawsData.value
-  if (!landsApply.value || !data) return []
-  if (selectedGp.value && selectedGp.value !== data.gp) return []
-  if (statusFilter.value === 'open' || art.value === 'verordnung') return []
-  if (eu.value && !laenderEuMissing.value) return []
-  if (stations.value.length && !stations.value.includes('bgbl')) return []
+  if (!landLawsInView.value || !data) return []
+  /* The answer for the span in view only: a Land period's by its `landtag`,
+   * a GP's by its code. */
+  const asked = laenderSpan.value.landtag
+  if (asked ? data.landtag !== asked : data.landtag || (selectedGp.value && selectedGp.value !== data.gp)) return []
   return data.items
     .filter((l) => applyingLaender.value.includes(l.land))
-    .filter((l) => !ohneApplied.value || l.begutachtung.kind === 'none')
-    .filter((l) => !ohneApplied.value || !art.value || (l.route !== null && ohneArtAllows(art.value, l.route.kind === 'vorlage' ? 'rv' : 'antrag')))
     .filter((l) => matchesQuery(`${l.title} ${l.shortTitle ?? ''} ${l.nr}`, qDebounced.value))
 })
-/* A chosen Land whose drafts came but whose laws could not be read: said, as an unreadable Land is. */
+const landLawRows = computed(() => landLawsOfView.value.filter((l) => choiceAdmitsLandLaw(appliedArt.value, l)))
+/* Under „Landesgesetze ohne zugeordneten Entwurf": the laws left out because
+ * their Land's register does not reach back far enough to rule a draft out —
+ * the plain „Landesgesetz" of the count line. Counted per Land and said
+ * (`registerReachNote`): a gap never reads as an empty result. */
+const landLawsBeyondReach = computed(() => {
+  if (appliedArt.value !== 'ohne-landesgesetz') return {}
+  const counts: Partial<Record<LandCode, number>> = {}
+  for (const l of landLawsOfView.value) if (!choiceAdmitsLandLaw('ohne-landesgesetz', l)) counts[l.land] = (counts[l.land] ?? 0) + 1
+  return counts
+})
+const beyondReachNote = computed(() => registerReachNote(landLawsBeyondReach.value))
+/* A chosen Land whose drafts came but whose laws could not be read: said, as an unreadable Land is —
+ * only while the view would show its laws, as `lawsUnreadable` (a kept answer outlives its fetch). */
 const unreadableLandLaws = computed(() =>
-  landsApply.value && landLawsData.value
+  landLawsInView.value && landLawsData.value
     ? landLawsData.value.sources.filter((src) => src.state === 'unavailable' && applyingLaender.value.includes(src.land) && !unreadableLaender.value.some((u) => u.land === src.land))
     : [])
 
-/* No Art test of its own any more: a half that this `art` excludes was never
- * fetched, and `meData`/`risData` are null for it. */
+/**
+ * The laws on their way (14.11.2026): asked for by the view, but the answer
+ * not there yet — never on the server (`server: false`), so the SSR HTML is
+ * this state — or a `pending` answer the page will ask again
+ * (`lawsRetrying`). Until 14.11.2026 they counted as none, and under „Ohne
+ * Entwurf" the line said „0 Entwürfe" over a list that was only loading. A
+ * failed fetch is no pending: it ends the wait.
+ */
+const lawsPending = computed(() =>
+  lawsInView.value && !lawsError.value && (!lawsData.value || lawsRetrying.value))
+/**
+ * The Bund's laws that did not come (14.11.2026): asked for by the view, but
+ * the fetch failed or the answer says it could not read them — `unread`, or
+ * `pending` once the retries ran out. In the default list they stood out
+ * without a word; now said where an unreadable Land's laws are
+ * (`unreadableLandLaws`). Under „Ohne Entwurf" the chip steps back with the
+ * same reason (`artUnavailable`), and this sentence then stands in the list
+ * it steps back to.
+ */
+const lawsUnreadable = computed(() => {
+  if (!lawsInView.value) return false
+  if (lawsError.value) return true
+  const laws = lawsData.value
+  return laws?.available === false && (laws.gap === 'unread' || (laws.gap === 'pending' && !lawsRetrying.value))
+})
+
+/**
+ * The open Regierungsvorlagen without a draft on their way (14.11.2026), as
+ * the laws are (`lawsPending`): never on the server (`server: false`), so
+ * the SSR HTML is this state. Until then the count line could stand without
+ * them for a moment, and under „Ohne Entwurf" print a total they were
+ * missing from. A failed fetch ends the wait and is said as failed.
+ */
+const vorlagenPending = computed(() => vorlagenInView.value && !secondRoundError.value && !secondRound.value)
+const vorlagenFailed = computed(() => vorlagenInView.value && !!secondRoundError.value)
+/* What the count line is given for them (`draftCountLabel`). */
+const vorlagenForCount = computed(() =>
+  vorlagenPending.value ? 'pending' as const : vorlagenFailed.value ? 'failed' as const : openVorlagen.value)
+
+/* The Länder whose laws are on their way: those the view counts them for —
+ * under the chip only the Länder that can answer it (`OHNE_LANDS`). */
+const landLawsPending = computed<LandCode[]>(() => {
+  if (!landLawsInView.value || landLawsError.value || landLawsData.value) return []
+  return ohneApplied.value && appliedArt.value !== 'ohne-landesgesetz'
+    ? applyingLaender.value.filter((land) => OHNE_LANDS.includes(land))
+    : applyingLaender.value
+})
+/* Rows still to come, from any half or the laws: the list body then shows
+ * its loading state rather than „Keine Entwürfe gefunden", and the search
+ * field names no count. */
+const listPending = computed(() => latePending.value.length > 0)
+/* Every part that joins the list late, by name, while it is on its way: the
+ * halves (`pendingHalves`), the Bund's laws, the Länder's laws and the open
+ * Vorlagen — what `listPending` waits for and the scroll anchor below holds
+ * the reader's place against. */
+/**
+ * The Initiativanträge under „Alle Initiativanträge", under the other
+ * controls as far as they reach: „Stellungnahme möglich" holds the rows
+ * whose own flag said open, „Nicht möglich" the rest; the station tabs by
+ * where each stands (`antragStationOf`); a Ressort or „Setzt EU-Recht um"
+ * leaves them out — they carry neither; the same word rule as every row.
+ * An Antrag whose draft's row already names it (the stated successor of a
+ * Beschluss not promulgated, 2/ME → 416/A) is not listed twice.
+ */
+const antraegeInView = computed(() => antraegeWanted.value && antragRowsOf(appliedArt.value) && !ministry.value && !eu.value)
+const antragItems = computed(() => {
+  const data = antraegeData.value
+  if (!antraegeInView.value || !data) return []
+  if (selectedGp.value && selectedGp.value !== data.gp) return []
+  const named = new Set(meOfView.value.map((d) => antragRouteCitation(d)).filter((c): c is string => c !== null))
+  return data.items
+    .filter((a) => !named.has(a.citation))
+    .filter((a) => statusFilter.value === 'all' || (statusFilter.value === 'open') === (a.state === 'open'))
+    .filter((a) => !stations.value.length || stations.value.includes(antragStationOf(a.state)))
+    .filter((a) => matchesQuery(`${a.title} ${a.citation}`, qDebounced.value))
+})
+const antraegePending = computed(() => antraegeInView.value && !antraegeError.value && !antraegeData.value)
+/* What the count line is given for them (`draftCountLabel`). */
+const antraegeForCount = computed(() =>
+  !antraegeInView.value ? undefined : antraegeError.value ? 'failed' as const : antraegePending.value ? 'pending' as const : antragItems.value.length)
+/* Where they did not come whole: one sentence per gap (`antragGapNotes`). */
+const antragNotes = computed(() => (antraegeInView.value ? antragGapNotes(antraegeData.value) : []))
+
+/* The treaties under „Staatsverträge", under the other controls as far as
+ * they reach: none under „Stellungnahme möglich" — Parliament takes none on
+ * a treaty —, the station tabs by where each stands (`treatyStationOf`), a
+ * Ressort or „Setzt EU-Recht um" leaves them out. */
+const treatiesInView = computed(() => treatiesWanted.value && treatyRowsOf(appliedArt.value) && !ministry.value && !eu.value)
+const treatyItems = computed(() => {
+  const data = treatiesData.value
+  if (!treatiesInView.value || !data) return []
+  if (selectedGp.value && selectedGp.value !== data.gp) return []
+  if (statusFilter.value === 'open') return []
+  return data.items
+    .filter((t) => !stations.value.length || stations.value.includes(treatyStationOf(t.state)))
+    .filter((t) => matchesQuery(`${t.title} ${t.citation}`, qDebounced.value))
+})
+const treatiesPending = computed(() => treatiesInView.value && !treatiesError.value && !treatiesData.value)
+const treatiesForCount = computed(() =>
+  !treatiesInView.value ? undefined : treatiesError.value ? 'failed' as const : treatiesPending.value ? 'pending' as const : treatyItems.value.length)
+const treatyNotes = computed(() => (treatiesInView.value ? treatyGapNotes(treatiesData.value) : []))
+
+const latePending = computed<string[]>(() => [
+  /* Under „als Initiativantrag" the RIS and Länder halves bring no row
+   * (`halvesShown`): not waited for. */
+  ...pendingHalves.value.filter((half) => ohneApplied.value || halvesShown.value[half]),
+  ...(lawsPending.value ? ['laws'] : []),
+  ...(landLawsPending.value.length ? ['landLaws'] : []),
+  ...(vorlagenPending.value ? ['vorlagen'] : []),
+  ...(antraegePending.value ? ['antraege'] : []),
+  ...(treatiesPending.value ? ['treaties'] : []),
+])
+
+/* A half that this `art` excludes was never fetched, and `meData`/`risData`
+ * are null for it; „als Initiativantrag" cuts the halves it asks for
+ * (`meOfView`, `risOfView`; `landItems` by `choiceAdmitsDraft`). */
 const rows = computed<DraftListRow[]>(() =>
   (ohneApplied.value
     ? draftRows([], [], openVorlagen.value, [], [...lawRows.value, ...landLawRows.value])
-    : draftRows(searched.value.me ?? [], searched.value.ris ?? [], openVorlagen.value, landItems.value, [...lawRows.value, ...landLawRows.value]))
+    : [...draftRows(meOfView.value, risOfView.value, openVorlagen.value, landItems.value, [...lawRows.value, ...landLawRows.value]), ...antragItems.value.map(antragRow), ...treatyItems.value.map(treatyRow)])
     .sort((a, b) => rowComparators[sort.value](a, b, reversed.value)),
 )
 
@@ -697,7 +1025,7 @@ const {
   shown: shownEntries,
   more: showMore,
   all: showAll,
-} = usePagedList(entries, LIST_PAGE_SIZE, [query, qDebounced, art, sort, reversed])
+} = usePagedList(entries, LIST_PAGE_SIZE, [query, laenderSpan, qDebounced, art, sort, reversed])
 
 /**
  * A late half's rows sort in (12.11.2026) — once per page load, between
@@ -726,8 +1054,10 @@ function viewportAnchor(): { key: string; top: number } | null {
   return null
 }
 
+/* Every late part, not only the halves (14.11.2026, `latePending`): the
+ * laws and the open Vorlagen sort in between the drafts by Frist too. */
 watch(
-  [entries, () => pendingHalves.value.join()],
+  [entries, () => latePending.value.join()],
   async ([next, nowPending], [before, wasPending]) => {
     const arrived = wasPending.split(',').some((half) => half && !nowPending.split(',').includes(half))
     if (!arrived || next === before) return
@@ -778,14 +1108,14 @@ const {
   fullTextInList,
   fullTextFilteredOut,
   fullTextCorpus,
-} = await useFullTextSearch(filters, availableGps, entries)
+} = await useFullTextSearch(filters, pastSpan, entries)
 
 /* Both are 0 for a half that was not fetched, so the sum is what stands in
  * the list — the search placeholder may name it (never the count line,
  * `draftCountLabel`). Counted after the search (12.11.2026): the endpoints'
  * `total` no longer knows the term. */
-const meTotal = computed(() => searched.value.me?.length ?? 0)
-const risTotal = computed(() => searched.value.ris?.length ?? 0)
+const meTotal = computed(() => meOfView.value.length)
+const risTotal = computed(() => risOfView.value.length)
 /* Drafts and laws apart, never one pooled number: the
    placeholder names both where both stand in the list (10.11.2026). */
 const visibleTotal = computed(() =>
@@ -797,7 +1127,7 @@ const visibleLaws = computed(() => lawRows.value.length + landLawRows.value.leng
 const searchPlaceholder = computed(() => {
   /* No count while a half is on its way (12.11.2026): the number would
    * grow under the reader's cursor. */
-  if (!gateData.value || pendingHalves.value.length) return 'Entwürfe durchsuchen …'
+  if (!gateData.value || listPending.value) return 'Entwürfe durchsuchen …'
   const parts = [
     ...(visibleTotal.value || !visibleLaws.value ? [countLabelDe(visibleTotal.value, 'Entwurf', 'Entwürfen')] : []),
     ...(visibleLaws.value ? [countLabelDe(visibleLaws.value, 'Gesetz', 'Gesetzen')] : []),
@@ -852,7 +1182,8 @@ const chainUnlinkedPeriod = computed(() => meData.value?.chainCoverage === 'unli
 /* Nach der Suche festgestellt (12.11.2026, `searchBundHalves`): die
  * Endpunkte kennen den Suchbegriff nicht mehr. */
 const carriedOverFrom = computed(() =>
-  ohneApplied.value ? null : searched.value.carriedOverFrom,
+  /* A carried-over row is a running Frist: never under „als Initiativantrag". */
+  ohneApplied.value || appliedArt.value === 'als-antrag' ? null : searched.value.carriedOverFrom,
 )
 
 /* The station map costs hundreds of fetches on a cold build and can fail
@@ -885,22 +1216,40 @@ function countByKind(items: readonly { kind: RisConsultationKind }[]) {
 /* The rows by kind, summed over the sources (`draftCountLabel`). A half
  * still on its way is said as such (12.11.2026), never counted: a number
  * that grows a moment later was false in the moment it stood. */
+/* The Art as the count line's empty term reads it: the applied option's. */
+const appliedArtParam = computed(() => artChoiceParams(appliedArt.value).art)
+/* The Länder whose laws the option counts: under „Landesgesetze ohne
+ * zugeordneten Entwurf" every applying Land, under the rest Salzburg. */
+const landLawsCounted = computed(() => (appliedArt.value === 'ohne-landesgesetz' ? landsApply.value : ohneLandsApply.value))
 const countLabel = computed(() =>
   ohneApplied.value
-    ? draftCountLabel({ me: null, vorlagen: openVorlagen.value, ris: null, laterStationsOnly: false, art: art.value, laws: bund.value ? lawRows.value : undefined, landLaws: ohneLandsApply.value ? landLawRows.value : undefined })
+    ? draftCountLabel({
+        me: null,
+        vorlagen: vorlagenForCount.value,
+        ris: null,
+        laterStationsOnly: false,
+        art: appliedArtParam.value,
+        laws: !bund.value || appliedArt.value === 'ohne-landesgesetz' ? undefined : lawsPending.value ? 'pending' : lawRows.value,
+        landLaws: !landLawsCounted.value ? undefined : landLawsPending.value.length ? { pending: landLawsPending.value } : landLawRows.value,
+      })
     : draftCountLabel({
       me: wantsMe.value ? meTotal.value : null,
-      vorlagen: openVorlagen.value,
-      ris: !wantsRis.value
+      vorlagen: vorlagenForCount.value,
+      ris: !wantsRis.value || !halvesShown.value.ris
         ? null
-        : risError.value ? 'failed' : pendingHalves.value.includes('ris') ? 'pending' : countByKind(searched.value.ris ?? []),
+        : risError.value ? 'failed' : pendingHalves.value.includes('ris') ? 'pending' : countByKind(risOfView.value),
       laterStationsOnly: laterStationsOnly.value,
-      art: art.value,
-      laender: !landsApply.value
+      art: appliedArtParam.value,
+      laender: !landsApply.value || !halvesShown.value.laender
         ? null
         : pendingHalves.value.includes('laender') ? { pending: applyingLaender.value } : countByKind(landItems.value),
-      laws: bund.value && lawsData.value?.available ? lawRows.value : undefined,
-      landLaws: landsApply.value && landLawsData.value ? landLawRows.value : undefined,
+      /* The laws as the Länder half: on their way they are said, never
+       * counted (14.11.2026); an answer without rows (`available: false`)
+       * stays out of the line, the chip names its reason. */
+      laws: lawsPending.value ? 'pending' : lawsInView.value && lawsData.value?.available ? lawRows.value : undefined,
+      landLaws: landLawsPending.value.length ? { pending: landLawsPending.value } : landLawsInView.value && landLawsData.value ? landLawRows.value : undefined,
+      antraege: antraegeForCount.value,
+      treaties: treatiesForCount.value,
     }) || (landUnavailable.value ?? ''),
 )
 
@@ -912,8 +1261,8 @@ const countLabel = computed(() =>
 const statementsSortNote = computed(() => {
   if (sort.value !== 'stellungnahmen' || rows.value.every((row) => row.kind === 'me')) return null
   return rows.value.some((row) => row.kind === 'me')
-    ? 'Gereiht sind nur die Ministerialentwürfe – nur bei ihnen zählt die Liste Stellungnahmen. Die übrigen Zeilen stehen dahinter, weiter nach Frist geordnet.'
-    : 'Stellungnahmen zählt die Liste nur bei Ministerialentwürfen – diese Zeilen bleiben nach Frist geordnet.'
+    ? 'Gereiht sind nur die Ministerialentwürfe; die übrigen Zeilen folgen nach Frist.'
+    : 'Diese Zeilen sind nach Frist geordnet: Stellungnahmen zählt die Liste nur bei Ministerialentwürfen.'
 })
 
 /* Selects are TokenSelect (native <select> in token styling with the
@@ -927,7 +1276,7 @@ const statementsSortNote = computed(() => {
         Entwürfe
       </h1>
       <p class="mt-2 text-ink-secondary">
-        Alle Entwürfe einer Gesetzgebungsperiode – in Begutachtung und
+        Alle Entwürfe eines Zeitraums – in Begutachtung und
         abgeschlossen, Gesetzes- wie Verordnungsentwürfe – und die Gesetze, zu
         denen kein Entwurf in Begutachtung bekannt ist.
       </p>
@@ -939,10 +1288,10 @@ const statementsSortNote = computed(() => {
            read it out on each keystroke. -->
       <div class="mt-2">
         <SubscribeLinks :ministry="ministry" />
-        <LaenderCoverageFold :undated-ktn="laenderData?.undated?.ktn" />
-        <!-- The same drafts by EU act, always offered — not only beside
-             „Setzt EU-Recht um" (`EuMapLink`). -->
-        <EuMapLink />
+        <!-- „Wie vollständig die Länder-Entwürfe sind" stood here as a fold
+             until 14.11.2026; it is one line among the state notes now
+             (`LandCoverageNote`). The door to the EU map (`EuMapLink`) went the
+             same day: „EU-Recht" is in the header navigation. -->
       </div>
     </header>
 
@@ -1002,6 +1351,9 @@ const statementsSortNote = computed(() => {
              decide which rows exist at all, the filters below narrow
              them — and the chips stand in the same place on both pages. -->
         <SourceChips :unavailable="sourceUnavailable" />
+        <p v-if="lawsUnreadable" class="text-sm text-ink-muted">
+          Die Gesetze des Bundes ohne Entwurf sind gerade nicht abrufbar.
+        </p>
         <p v-for="s in unreadableLandLaws" :key="`gesetze-${s.land}`" class="text-sm text-ink-muted">
           Die Gesetze {{ s.land === 'w' ? 'Wiens' : `des Landes ${LAND_NAME[s.land]}` }} ohne zugeordneten Entwurf sind gerade nicht abrufbar.
         </p>
@@ -1032,11 +1384,8 @@ const statementsSortNote = computed(() => {
           <ToggleChip :pressed="eu === 'umsetzung'" @toggle="toggleEu">
             Setzt EU-Recht um
           </ToggleChip>
-          <!-- How the procedure began: the same kind of control,
-               off by default, without a count since 10.11.2026. -->
-          <ToggleChip :pressed="begutachtung === 'ohne'" :unavailable="ohneUnavailable" @toggle="toggleBegutachtung">
-            {{ ohneLabel }}
-          </ToggleChip>
+          <!-- „Ohne Entwurf" stood here as a third chip until 14.11.2026;
+               it is a group of the select „Art" now (`ART_CHOICES`). -->
           <!-- Art, period and Ressort stand in the same line from `md`
                up (03.10.2026), each select stating its own value; on a
                phone four selects cannot share a line, so they open with
@@ -1063,26 +1412,51 @@ const statementsSortNote = computed(() => {
                09.11.2026): with two chips beside them the old shared line
                needed ~740 px before the Ressort got any, and the panel —
                flex-1, basis 0 — overflowed the box instead of wrapping.
-               Now 240 + 128 px, and the Ressort fills the rest, so the
-               line ends where the search below ends. -->
+               Now 240 + 288 px, and the Ressort fills the rest, so the
+               line ends where the search below ends. The 288 px hold the
+               longest span label („23.10.2019 – 23.10.2024 (GP XXVII)",
+               230 px of text at 14 px plus the select's 50 px of padding
+               and border, measured 14.11.2026) — and the same 288 px is
+               the whole line of a 320 px phone, where the panel stacks. -->
           <div
             id="filter-more-panel"
             class="w-full gap-2 md:flex md:items-center"
             :class="filtersOpen ? 'grid grid-cols-1' : 'hidden'"
           >
             <div class="min-w-0 md:w-60 md:shrink-0">
-              <label for="filter-art" class="sr-only">Art des Entwurfs</label>
-              <TokenSelect id="filter-art" v-model="art" block>
-                <option v-for="opt in artOptions" :key="opt.value" :value="opt.value">
-                  {{ opt.label }}
-                </option>
+              <label for="filter-art" class="sr-only">Art</label>
+              <!-- Native <optgroup>s through the slot (14.11.2026): „Mit
+                   Entwurf" and „Ohne Entwurf" in the path graphic's words.
+                   An option that cannot be offered stands disabled; its
+                   reason is the note above the rows when a link asks for it
+                   (`artNote`) — a disabled <option> cannot carry one. -->
+              <TokenSelect id="filter-art" v-model="chosenArt" block>
+                <template v-for="group in artSelect" :key="group.label ?? 'alle'">
+                  <optgroup v-if="group.label" :label="group.label">
+                    <option v-for="opt in group.options" :key="opt.value" :value="opt.value" :disabled="opt.disabled">
+                      {{ opt.label }}
+                    </option>
+                  </optgroup>
+                  <template v-else>
+                    <option v-for="opt in group.options" :key="opt.value" :value="opt.value" :disabled="opt.disabled">
+                      {{ opt.label }}
+                    </option>
+                  </template>
+                </template>
               </TokenSelect>
             </div>
-            <div class="min-w-0 md:w-32 md:shrink-0">
-              <label for="filter-gp" class="sr-only">Gesetzgebungsperiode</label>
-              <TokenSelect id="filter-gp" v-model="selectedGp" block>
-                <option v-for="g in gpOptions" :key="g" :value="g">
-                  {{ g ? `GP ${g}` : 'GP …' }}
+            <!-- A time span with a name (14.11.2026): the Bund's GP, one
+                 Land's own period, or the dates alone — the sources decide
+                 (`spanOptionsFor`). The Länder rows fall into it by the day
+                 their Begutachtung began, so every option states the dates
+                 the filter uses instead of a note explaining the rule.
+                 Values: the GP code (`?gp=`), a Land period's `sbg-17`
+                 (`?landtag=`). -->
+            <div class="min-w-0 md:w-72 md:shrink-0">
+              <label for="filter-gp" class="sr-only">Zeitraum</label>
+              <TokenSelect id="filter-gp" v-model="spanSelect" block>
+                <option v-for="opt in spanOptions" :key="opt.value" :value="opt.value">
+                  {{ opt.label }}
                 </option>
               </TokenSelect>
             </div>
@@ -1091,7 +1465,7 @@ const statementsSortNote = computed(() => {
             <div class="min-w-0 md:flex-1">
               <label for="filter-ministry" class="sr-only">Ministerium</label>
               <!-- Off with the Bund: a Land's draft has no Ministerium; and
-                   under the chip „Ohne Ministerialentwurf" its rows carry none. -->
+                   under „Ohne Entwurf" its rows carry none. -->
               <TokenSelect
                 id="filter-ministry"
                 v-model="ministry"
@@ -1164,43 +1538,52 @@ const statementsSortNote = computed(() => {
         </div>
         <!-- Above the rows, like every other statement about what the list is
                doing: read afterwards it is worthless. -->
+        <!-- THE NOTES ABOVE THE ROWS state, they do not explain
+             (14.11.2026, docs/decisions.md „The list's notes"): each says,
+             in one sentence, what is true of the list now and differs from
+             what its controls claim. What a row's label means opens on that
+             row's page, at the term; what the list leaves out by design is
+             its „Methode" at the foot. The paragraphs on what „ohne
+             Begutachtung" rests on (Bund, Salzburg) went that day: to the
+             Vorlage's and the Landesgesetz's pages (`TERMS`), the Budgetgesetze
+             to the Methode. -->
+        <!-- An option of „Art" a link asked for that cannot apply here. -->
+        <p v-if="artNote" class="text-sm text-ink-muted">
+          {{ artNote }}
+        </p>
         <p v-if="carriedOverFrom" class="text-sm text-ink-muted">
           Darunter Entwürfe der {{ carriedOverFrom }}. Gesetzgebungsperiode, deren
-          Begutachtungsfrist noch läuft – eine Frist endet nicht damit, dass eine
-          neue Gesetzgebungsperiode beginnt. Über die Auswahl oben lässt sich
-          jede Periode für sich ansehen.
+          Begutachtungsfrist noch läuft.
         </p>
-        <!-- What the chip's rows have in common and what their two notes
-             mean, once. -->
-        <p v-if="ohneApplied && bund" class="text-sm text-ink-muted">
-          Vor diesen Gesetzen und Vorlagen ist kein Ministerialentwurf in
-          Begutachtung erkennbar – vorgeschrieben ist eine Begutachtung nicht,
-          Stellungnahmen an den Nationalrat sind während des Verfahrens möglich
-          (§ 23b GOG-NR), bei manchen hat der Ausschuss selbst Stellungnahmen
-          eingeholt (Ausschussbegutachtung), und Budgetgesetze sind nicht
-          aufgeführt.
+        <!-- The chosen Länder that cannot answer the question, by name:
+             their laws are gone from the rows, and a gap never reads as an
+             empty result (`ohneSilentLaender`, `landLawsBeyondReach`). -->
+        <p v-if="ohneSilentNote" class="text-sm text-ink-muted">
+          {{ ohneSilentNote }}
         </p>
-        <!-- Salzburg's laws under the chip: what „ohne
-             Begutachtung" rests on there, and that the other Länder cannot
-             say it. -->
-        <p v-if="ohneApplied && ohneLandsApply" class="text-sm text-ink-muted">
-          Bei den Salzburger Landesgesetzen heißt „ohne Begutachtung“: Im
-          Register des Landes steht kein zugeordneter oder ähnlich benannter
-          Entwurf, und die Unterlagen des Landtags berichten über keine
-          Begutachtung; Budgetgesetze sind nicht aufgeführt. Für die anderen
-          Länder lässt sich das aus den verfügbaren Quellen nicht feststellen.
+        <p v-if="beyondReachNote" class="text-sm text-ink-muted">
+          {{ beyondReachNote }}
         </p>
+        <p v-for="note in antragNotes" :key="note" class="text-sm text-ink-muted">
+          {{ note }}
+        </p>
+        <p v-for="note in treatyNotes" :key="note" class="text-sm text-ink-muted">
+          {{ note }}
+        </p>
+        <!-- The applying Länder the list does not hold in full, each linked
+             to its block on /datenlage (`LandCoverageNote`, the homepage's
+             too), Kärnten's undated drafts by their live count. -->
+        <LandCoverageNote :lands="applyingLaender" :undated-ktn="laenderData?.undated?.ktn" />
         <!-- Like the sort caveat below it: a statement about what the list is
                NOT doing stands above the rows — read afterwards it is
                worthless. -->
         <p v-if="stationsUnavailable" class="text-sm text-ink-muted">
-          Wo die Entwürfe stehen, lässt sich gerade nicht abrufen<template
-            v-if="stations.length"
-          > – die Liste ist deshalb <span class="font-medium text-ink">nicht</span>
-            nach Station gefiltert</template>.<template v-if="statusFilter === 'closed'">
-            Hier zählt nur, ob die Frist abgelaufen ist: Zu einzelnen
-            Regierungsvorlagen kann im Nationalrat noch Stellung genommen
-            werden.</template>
+          <template v-if="stations.length">Wo die Entwürfe stehen, ist gerade
+            nicht abrufbar; die Liste ist <span class="font-medium text-ink">nicht</span>
+            nach Station gefiltert.</template><template v-else>Wo die Entwürfe
+            stehen, ist gerade nicht abrufbar.</template><template v-if="statusFilter === 'closed'">
+            „Nicht möglich“ heißt hier nur: Frist abgelaufen – zu einzelnen
+            Regierungsvorlagen ist im Nationalrat noch eine Stellungnahme möglich.</template>
         </p>
         <!-- The EU map's gap, in the stations' register and place: the list
              stands unfiltered and says so (`euUnavailable`). -->
@@ -1208,7 +1591,7 @@ const statementsSortNote = computed(() => {
           Welche Entwürfe<template v-if="euUnavailable === 'bund'"> des Bundes</template><template
             v-else-if="euUnavailable === 'laender'"
           > der Länder</template> EU-Recht umsetzen, ist gerade nicht abrufbar;
-          <template v-if="euUnavailable === 'alle'">die Liste ist danach <span class="font-medium text-ink">nicht</span> gefiltert.</template><template
+          <template v-if="euUnavailable === 'alle'">die Liste ist <span class="font-medium text-ink">nicht</span> danach gefiltert.</template><template
             v-else
           >sie stehen <span class="font-medium text-ink">ungefiltert</span> in der Liste.</template>
         </p>
@@ -1216,13 +1599,12 @@ const statementsSortNote = computed(() => {
                sentence a list without stations would read as if nothing had ever
                become of any of these drafts. -->
         <p v-if="chainUnlinkedPeriod" class="text-sm text-ink-muted">
-          Was aus diesen Entwürfen wurde, ist für diese Gesetzgebungsperiode
-          nicht erfasst – der Bezug zwischen Ministerialentwurf und
-          Regierungsvorlage fehlt im Datenbestand. Die Zeilen zeigen deshalb
-          keine Station; dass es keine Regierungsvorlagen gab, folgt daraus
+          Für diese Gesetzgebungsperiode ist nicht erfasst, welche
+          Regierungsvorlage auf welchen Entwurf folgte, die Zeilen zeigen deshalb
+          keine Station – dass es keine Regierungsvorlagen gab, folgt daraus
           <span class="font-medium text-ink">nicht</span>.<template v-if="stations.length">
-            Nach Station ist hier deshalb auch
-            <span class="font-medium text-ink">nicht</span> gefiltert.</template>
+            Nach Station ist die Liste <span class="font-medium text-ink">nicht</span>
+            gefiltert.</template>
         </p>
         <!-- Only for the combination that leaves NO row: „Verordnungsentwürfe"
              with a station they cannot reach. The tabs no longer offer it
@@ -1233,10 +1615,8 @@ const statementsSortNote = computed(() => {
              the unavailable tabs carry it, and the count line names only
              the kinds that are in the list. -->
         <p v-else-if="stationConflict" class="text-sm text-ink-muted">
-          <span class="font-medium text-ink">Verordnungsentwürfe haben keine
-            Station:</span>
-          Sie führen keinen Gegenstand im Parlament, also auch keine
-          Regierungsvorlage. „Alle Arten" oder
+          <span class="font-medium text-ink">Verordnungsentwürfe erreichen diese
+            Station nicht</span> – „Alle Arten" oder
           <button
             type="button"
             class="tap-target link-inline font-medium"
@@ -1258,10 +1638,9 @@ const statementsSortNote = computed(() => {
           v-if="qDebounced.length >= FULLTEXT_MIN_LEN && !fullTextApplies"
           class="text-sm text-ink-muted"
         >
-          Gesucht ist hier nur in Titel, Zitat, Debattennamen und Ressortkürzel. In
-          den Dokumenten selbst wird nur gesucht, solange eine Begutachtung
-          <span class="font-medium text-ink">läuft</span> – unter diesen Filtern
-          also nicht.
+          Unter diesen Filtern ist <span class="font-medium text-ink">nicht</span>
+          in den Dokumenten gesucht, nur in Titel, Zitat, Debattennamen und
+          Ressortkürzel.
         </p>
       </template>
       <!-- Only the rows hit by the full text TOO carry evidence: the gain
@@ -1276,7 +1655,8 @@ const statementsSortNote = computed(() => {
       <!-- And while the rows that came are none but a half is still on its
            way (12.11.2026): „Keine Entwürfe gefunden" would be a claim the
            late half may falsify a second later. -->
-      <template v-if="!gateData || (!entries.length && pendingHalves.length)" #state>
+      <!-- The laws count as such a half (14.11.2026, `listPending`). -->
+      <template v-if="!gateData || (!entries.length && listPending)" #state>
         <LoadingState
           v-if="gateData || gateStatus === 'pending' || gateStatus === 'idle'"
           label="Entwürfe werden geladen …"
@@ -1337,6 +1717,19 @@ const statementsSortNote = computed(() => {
         />
       </template>
     </EntryList>
+    <!-- NO source line of its own, for the homepage's reason (03.10.2026):
+         rows are facts, not documents, nothing is marked by us here, and the
+         footer's „Datenquellen und Lizenzen im Impressum" link is the page's
+         attribution. But the list's „Methode" (14.11.2026): what it leaves
+         out by design and how a row gets its span — the credit line's last
+         item, alone, so it opens in place as on every other section
+         (`SectionCredits` with no sources and nothing marked). Right under
+         the list it belongs to, above the full-text block. -->
+    <SectionCredits :sources="[]" :marked="false">
+      <template #method>
+        <MethodEntwurfsliste />
+      </template>
+    </SectionCredits>
     <!-- THE SAME FIELD'S SECOND ANSWER. Its
          own section with its own heading, never mixed into the list: the
          list searches a whole Gesetzgebungsperiode by title, this block the
@@ -1398,16 +1791,12 @@ const statementsSortNote = computed(() => {
           <button
             type="button"
             class="tap-target link-inline font-medium"
-            @click="art = ''; ministry = ''"
+            @click="chosenArt = ''; ministry = ''"
           >Alle Arten und Ressorts</button>
           zeigen sie.
         </p>
       </template>
     </section>
 
-    <!-- NO credit line of its own, for the homepage's reason (03.10.2026):
-         rows are facts, not documents, nothing is marked or classified by
-         us here, and the footer's „Datenquellen und Lizenzen im Impressum"
-         link is the page's attribution. -->
   </div>
 </template>

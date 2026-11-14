@@ -39,16 +39,17 @@ const FULLTEXT_DEBOUNCE_MS = 700
 
 export async function useFullTextSearch(
   filters: DraftFilters,
-  /** Newest period first — the first is the running one. */
-  availableGps: Ref<string[]>,
+  /**
+   * The span in view is an earlier one than the running span — a Bund GP or,
+   * with one Land chosen alone, that Land's own period (14.11.2026; the page
+   * knows which calendar names it, `periodViewFor`).
+   */
+  pastSpan: Ref<boolean>,
   /** Every row the list carries under the filters — not only the cut on the
    *  page —, so a draft hit twice stands once. */
   entries: Ref<EntryView[]>,
 ) {
-  const { statusFilter, art, gp, ministry, q, qDebounced, stations, eu } = filters
-
-  /** The running period is the newest one the filters know. */
-  const currentGp = computed(() => availableGps.value[0] ?? '')
+  const { statusFilter, art, ministry, q, qDebounced, stations, eu } = filters
 
   /**
    * Can the full text say anything at all under these filters?
@@ -69,7 +70,7 @@ export async function useFullTextSearch(
    */
   const fullTextApplies = computed(() => {
     if (statusFilter.value === 'closed') return false
-    if (gp.value && currentGp.value && gp.value !== currentGp.value) return false
+    if (pastSpan.value) return false
     if (stations.value.length && !stations.value.includes('begutachtung')) return false
     if (eu.value) return false
     return true
@@ -150,7 +151,7 @@ export async function useFullTextSearch(
     (fullText.value?.hits ?? []).filter((hit) => {
       /* A Ministerialentwurf is a law draft; a RIS record names its kind. */
       const kindArt = draftKindArt(art.value)
-      if (kindArt === 'verordnung' && hit.entry.kind === 'draft') return false
+      if ((kindArt === 'verordnung' || kindArt === 'unbestimmt') && hit.entry.kind === 'draft') return false
       if (kindArt && hit.entry.kind === 'ris' && hit.entry.consultation.kind !== kindArt) return false
       if (ministry.value) {
         const code =

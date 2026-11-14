@@ -8,7 +8,7 @@
  * rewrites the state.
  */
 import type { ComputedRef, Ref } from 'vue'
-import type { DraftStation, DraftStatus } from '#shared/types'
+import type { DraftStation, DraftStatus, LandCode } from '#shared/types'
 import {
   type ArtFilter,
   type BegutachtungFilter,
@@ -22,11 +22,25 @@ import {
   coherentFilters,
 } from '~/utils/draftFilters'
 import { SOURCE_PARAM } from '#shared/utils/laender'
+import { type PeriodView, coherentSpan, laenderSpanQuery, periodViewFor } from '#shared/utils/periodCalendar'
 
 export interface DraftFilters {
   statusFilter: Ref<DraftStatus>
   art: Ref<ArtFilter>
   gp: Ref<string>
+  /** A Land's own period, `sbg-17` (`?landtag=`), or '' — see `span` for what applies. */
+  landtag: Ref<string>
+  /** Which calendar names the span, by the sources (`periodViewFor`, 14.11.2026). */
+  periodView: ComputedRef<PeriodView>
+  /**
+   * The span that APPLIES: `gp` and `landtag` held against the sources
+   * (`coherentSpan`). Read this, never the two refs, for anything that
+   * filters — between a source toggle and the navigation it starts the refs
+   * may still hold a span the control no longer offers.
+   */
+  span: ComputedRef<{ gp: string; landtag: string }>
+  /** What the Länder endpoints are asked for (`laenderSpanQuery`). */
+  laenderSpan: ComputedRef<{ gp?: string; landtag?: string }>
   ministry: Ref<string>
   /** What is in the search box right now. */
   q: Ref<string>
@@ -38,7 +52,7 @@ export interface DraftFilters {
   stations: Ref<DraftStation[]>
   /** „Setzt EU-Recht um" — goes to both Bund endpoints; the Länder rows are filtered on the page. */
   eu: Ref<EuFilter>
-  /** „Ohne Begutachtung" — the page's own filter, no endpoint takes it (`BegutachtungFilter`). */
+  /** „Ohne Entwurf" / „Alle mit Entwurf" — the page's own filter, no endpoint takes it (`BegutachtungFilter`); the select „Art" writes it with `art` (`artChoiceParams`). */
   begutachtung: Ref<BegutachtungFilter>
   query: ComputedRef<ReturnType<typeof draftApiQuery>>
   /** Runs `handler` after a navigation has set the filters from its URL —
@@ -46,15 +60,32 @@ export interface DraftFilters {
   onNavigate: (handler: () => void) => void
 }
 
-export function useDraftFilters(): DraftFilters {
+export function useDraftFilters(sources: {
+  /** The Bund is among the reader's sources (`useSourceChoice`). */
+  bund: Ref<boolean>
+  laender: Ref<LandCode[]>
+}): DraftFilters {
   const route = useRoute()
   const router = useRouter()
 
+  /* Which spans the sources offer (14.11.2026): the Bund's periods, one
+   * Land's own, or the Bund's by their dates (`periodViewFor`). */
+  const periodView = computed(() => periodViewFor(sources.bund.value, sources.laender.value))
+  /* The URL's filters with a span the sources do not offer dropped — the
+   * running span of the calendar in view instead (`coherentSpan`). */
+  const fromQuery = (routeQuery: Record<string, unknown>): DraftFilterValues => {
+    const f = draftFiltersFromQuery(routeQuery)
+    return { ...f, ...coherentSpan(f, periodView.value) }
+  }
+
   // Filter state, initialized from the URL so links are shareable.
-  const initial = draftFiltersFromQuery(route.query)
+  const initial = fromQuery(route.query)
   const statusFilter = ref<DraftStatus>(initial.status)
   const art = ref<ArtFilter>(initial.art)
   const gp = ref(initial.gp)
+  const landtag = ref(initial.landtag)
+  const span = computed(() => coherentSpan({ gp: gp.value, landtag: landtag.value }, periodView.value))
+  const laenderSpan = computed(() => laenderSpanQuery(span.value, periodView.value))
   const ministry = ref(initial.ministry)
   const q = ref(initial.q)
   const qDebounced = ref(initial.q)
@@ -88,7 +119,7 @@ export function useDraftFilters(): DraftFilters {
     draftApiQuery({
       status: statusFilter.value,
       stations: stations.value,
-      gp: gp.value,
+      gp: span.value.gp,
       ministry: ministry.value,
       eu: eu.value,
     }),
@@ -100,7 +131,7 @@ export function useDraftFilters(): DraftFilters {
     status: statusFilter.value,
     stations: stations.value,
     art: art.value,
-    gp: gp.value,
+    ...span.value,
     ministry: ministry.value,
     q: qDebounced.value,
     sort: sort.value,
@@ -109,8 +140,10 @@ export function useDraftFilters(): DraftFilters {
     begutachtung: begutachtung.value,
   })
 
-  /* An Art the new state does not offer reads as „Alle Arten" — the chip
-   * „Ohne Ministerialentwurf" has its own two (`coherentArt`, 10.11.2026). */
+  /* An Art the new state does not pair with reads as „Alle Arten" — the
+   * group „Ohne Entwurf" has Arts of its own (`coherentArt`, 10.11.2026).
+   * The select writes both parameters at once (`artChoiceParams`), so this
+   * only acts on a pair written apart. */
   watch(begutachtung, (b) => { art.value = coherentFilters({ art: art.value, ministry: ministry.value }, b, false).art })
 
   // Keep the URL in sync with the filters (defaults stay out of the URL).
@@ -120,15 +153,28 @@ export function useDraftFilters(): DraftFilters {
     const quellen = route.query[SOURCE_PARAM]
     router.replace({ query: { ...draftUrlQuery(current()), ...(quellen !== undefined ? { [SOURCE_PARAM]: quellen } : {}) } })
   }
-  watch([query, qDebounced, art, sort, reversed, begutachtung], writeUrl)
+  /* The refs, not `query`, which carries the applied `span`: a source
+   * toggle changes `span` at once, before its own navigation has landed, and a write-back
+   * then would carry the old `quellen` over the new. The refs follow once it
+   * has landed (the navigation watcher below), and that writes. */
+  const rawQuery = computed(() =>
+    JSON.stringify([statusFilter.value, stations.value, gp.value, landtag.value, ministry.value, eu.value]))
+  watch([rawQuery, qDebounced, art, sort, reversed, begutachtung], writeUrl)
 
   /* A link whose `art` the state does not offer (`coherentArt`) is read as
    * „Alle Arten" — and the value leaves the URL too, so the address says
-   * what the list shows (10.11.2026). Nothing else is rewritten. */
-  const strayArt = (routeQuery: Record<string, unknown>): boolean =>
-    routeQuery.art !== undefined && draftUrlQuery(draftFiltersFromQuery(routeQuery)).art === undefined
+   * what the list shows (10.11.2026). Since 14.11.2026 the span too: a `gp`
+   * or `landtag` the sources do not offer (`coherentSpan`) — after a source
+   * toggle as well, which is a navigation. And `begutachtung` where it says
+   * nothing or nothing new — `mit` beside a draft kind
+   * (`coherentBegutachtung`, 14.11.2026). Nothing else is rewritten. */
+  const STRAY_KEYS = ['art', 'begutachtung', 'gp', 'landtag'] as const
+  const strayParam = (routeQuery: Record<string, unknown>): boolean => {
+    const url = draftUrlQuery(fromQuery(routeQuery))
+    return STRAY_KEYS.some((key) => routeQuery[key] !== undefined && url[key] === undefined)
+  }
   onMounted(() => {
-    if (strayArt(route.query)) writeUrl()
+    if (strayParam(route.query)) writeUrl()
   })
 
   /**
@@ -150,16 +196,21 @@ export function useDraftFilters(): DraftFilters {
    */
   const navigateHandlers: (() => void)[] = []
   watch(() => route.query, (routeQuery) => {
-    const next = draftFiltersFromQuery(routeQuery)
+    const next = fromQuery(routeQuery)
     if (sameDraftFilters(next, current())) {
-      // Same state, but a stray `art` in the address: take it out.
-      if (strayArt(routeQuery)) writeUrl()
+      /* The refs take the applied span: a span the new sources do not offer
+       * is dropped, not kept to come back with an older selection. */
+      gp.value = next.gp
+      landtag.value = next.landtag
+      // Same state, but a stray `art` or span in the address: take it out.
+      if (strayParam(routeQuery)) writeUrl()
       return
     }
     clearTimeout(qTimer)
     statusFilter.value = next.status
     art.value = next.art
     gp.value = next.gp
+    landtag.value = next.landtag
     ministry.value = next.ministry
     q.value = next.q
     qDebounced.value = next.q
@@ -175,6 +226,10 @@ export function useDraftFilters(): DraftFilters {
     statusFilter,
     art,
     gp,
+    landtag,
+    periodView,
+    span,
+    laenderSpan,
     ministry,
     q,
     qDebounced,

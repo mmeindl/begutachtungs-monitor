@@ -6,6 +6,7 @@ import {
   ministryFilterOptions,
   readGpParam,
   readGpQuery,
+  readLandtagQuery,
   readLawStationPair,
   readListQuery,
   readRisId,
@@ -354,5 +355,30 @@ describe('ministryFilterOptions', () => {
     expect(ministryFilterOptions([])).toEqual([])
     // A row without a code contributes nothing rather than an empty chip.
     expect(ministryFilterOptions([{ ministryCode: '', ministryName: 'Unbekannt' }])).toEqual([])
+  })
+})
+
+/* A Land's own period (14.11.2026), validated against a fixture calendar —
+ * never against dates entered in `LAND_PERIODS`. */
+describe('readLandtagQuery', () => {
+  const calendars = { sbg: [{ id: 17, label: '17. Gesetzgebungsperiode', start: '2023-06-14' }] }
+
+  it('is absent where the request names none', () => {
+    expect(readLandtagQuery(query({}), calendars)).toBeNull()
+    expect(readLandtagQuery(query({ gp: 'XXVIII' }), calendars)).toBeNull()
+  })
+
+  it('reads a period the calendar holds, in either case', () => {
+    expect(readLandtagQuery(query({ landtag: 'SBG-17' }), calendars)).toEqual({
+      land: 'sbg', id: 17, value: 'sbg-17', window: { from: '2023-06-14', to: null },
+    })
+  })
+
+  it('refuses a malformed value or two spans with 400, a period not entered with 404', () => {
+    expect(refusal(() => readLandtagQuery(query({ landtag: 'salzburg' }), calendars))?.statusCode).toBe(400)
+    expect(refusal(() => readLandtagQuery(query({ landtag: 'sbg-17', gp: 'XXVIII' }), calendars))?.statusCode).toBe(400)
+    expect(refusal(() => readLandtagQuery(query({ landtag: 'sbg-16' }), calendars))?.statusCode).toBe(404)
+    // The shipped calendar: a period it does not hold.
+    expect(refusal(() => readLandtagQuery(query({ landtag: 'sbg-99' })))?.statusCode).toBe(404)
   })
 })

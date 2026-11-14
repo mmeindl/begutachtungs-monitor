@@ -1249,7 +1249,8 @@ export function landDraftDate(d: LandConsultation): string | null {
  * The Länder's drafts for a Bund Gesetzgebungsperiode, used as a TIME
  * WINDOW (22.10.2026): a Land has its own legislative periods, so a draft
  * belongs to GP XXVIII when its Begutachtung began between 24.10.2024 and
- * that period's end. The lists say so beside the chips.
+ * that period's end, both bounds inclusive. The list's period select states
+ * these dates (`gpSpanLabelDe`), so keep the two bounds in step.
  */
 export async function readLaenderInWindow(
   window: { from: string; to: string | null },

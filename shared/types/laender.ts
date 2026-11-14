@@ -184,6 +184,8 @@ export interface LaenderResponse {
   sources: LandSourceState[]
   /** In period mode (`?gp`, `?status`): the period used as the time window. */
   gp?: string
+  /** Instead of `gp`, where the request named a Land's own period (`?landtag=sbg-17`, 14.11.2026). */
+  landtag?: string
   /** In period mode: the periods the select offers. */
   availableGps?: string[]
   /**
@@ -549,7 +551,10 @@ export interface LandLawSource {
 
 /** Payload of /api/laender/gesetze?gp=. */
 export interface LandLawsResponse {
+  /** The Bund period used as the window; '' where the request named a Land's own period (`landtag`). */
   gp: string
+  /** The Land period used as the window (`?landtag=sbg-17`, 14.11.2026); absent for a Bund period. */
+  landtag?: string
   /** Every law without a joined draft, kundgemacht in the period's window. Newest first. */
   items: LandLaw[]
   sources: LandLawSource[]

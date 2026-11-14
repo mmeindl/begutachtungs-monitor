@@ -225,7 +225,47 @@ gets an entry of its own only where it carries a reason the rule does not.
   reach decides the wording, not whether a law is a row: before it a plain
   „Landesgesetz", counted under its own term and never added to „ohne
   zugeordneten Entwurf". The Bund's laws without a Ministerialentwurf stand
-  in the default list too; the chip only narrows to them.
+  in the default list too; „Ohne Entwurf" only narrows to them.
+- **„Ohne Entwurf", whatever the sources (14.11.2026).** It holds at both
+  levels (no Ministerialentwurf; no draft in Salzburg's register), and it
+  never switches with the selection: „Ohne Ministerialentwurf" was false
+  beside a Land, „Ohne Begutachtung" false for the Ausschussbegutachtung
+  rows. The precise claim stays on the row. A chosen Land that cannot answer
+  is named above the rows: under it its laws are not shown.
+- **One select „Art", in the path graphic's words** (14.11.2026,
+  `ART_CHOICES`): „Alle Arten"; „Mit Entwurf": Gesetzes-, Verordnungs-,
+  Andere Entwürfe (the last only while the view holds one); „Ohne Entwurf":
+  Alle ohne Entwurf, Regierungsvorlagen ohne Entwurf, Initiativanträge ohne
+  Entwurf, Landesgesetze ohne zugeordneten Entwurf (the last only with a
+  Land). The chip „Ohne Entwurf" went into it; „Gesetzesentwürfe" holds
+  drafts only. The URL did not change: `art` + `begutachtung=ohne`, with
+  `art=andere` and `begutachtung=ohne&art=landesgesetz` added; a mismatched
+  pair drops. „Alle ohne Entwurf" keeps the chip's meaning (Bund and
+  Salzburg's „ohne Begutachtung") and is therefore smaller than its group:
+  the Landesgesetze option takes every Land's law the count line calls
+  „ohne zugeordneten Entwurf", which claims nothing about a Begutachtung,
+  and never a plain „Landesgesetz" before the register's reach (those are
+  counted in a note). An option that cannot apply stands disabled; a link
+  that asks for it gets „Alle Arten" and one note naming the reason. An
+  option's availability is known before it is chosen: what the sources
+  alone rule out (no Bund and no Salzburg, no Land, no Bund for „Andere")
+  is disabled on the first render, server-side too; what only an answer
+  can tell (the Bund's laws, else Salzburg's) is asked for under every
+  option, the four draft options included, and stays enabled until the
+  answer says otherwise — unknown is not unavailable. Under a draft option
+  those answers are never shown, counted or announced, and the open
+  Vorlagen, which decide nothing, are not fetched (`withoutDraftRequests`).
+  „Alle mit Entwurf" (`begutachtung=mit`, first of „Mit Entwurf") is exactly
+  its group's sum: every draft, no row without one; beside a draft kind the
+  parameter drops. „Gesetzesentwürfe, als Initiativantrag eingebracht"
+  (`art=als-antrag`, after „Gesetzesentwürfe") is not part of that sum but
+  a subset of both: the Bund's Ministerialentwürfe whose row says „als
+  Initiativantrag …" (`antragRouteCitation`, the row's own condition). It is
+  the list's one filter on an inferred fact (the wording match of
+  `antragPath.ts`, plus the stated successor of a Beschluss not promulgated),
+  and its rows state the route themselves; outside the periods the table
+  covers, or without the chains, it stands disabled with its reason, never
+  as an empty list.
 - **A Land law's changed laws come from RIS's consolidated Landesrecht,
   filtered by the Landesgesetzblatt** (`Kundmachungsorgannummer`), never from
   an Artikel heading or a title.
@@ -502,6 +542,38 @@ gets an entry of its own only where it carries a reason the rule does not.
 - **Landtag motions name the party only where the committee report does;**
   members named there are never named (§12.61). In Land submitter data only
   unambiguous organisation and authority abbreviations are expanded (§12.64).
+- **The list filters by a time span; the Bund's GP names it** (14.11.2026).
+  The Länder have periods of their own, so a Land's draft falls into the
+  span in which its Begutachtung began, both ends inclusive (`gpWindow`,
+  `readLaenderInWindow`). The select „Zeitraum" states the dates („seit
+  24.10.2024 (GP XXVIII)", `gpSpanLabelDe`) instead of a note explaining
+  the rule; value and `?gp=` stay the GP code. Not per-Land period
+  selectors: ten controls for one question, no verified data on the Länder's
+  periods, and spans that compare with nothing. A Land's own periods may be
+  added per Land once verified.
+- **Which spans the select offers follows the sources; one control, one
+  calendar** (14.11.2026, `shared/utils/periodCalendar.ts`). The Bund among
+  the sources, alone or with Länder: the Bund's periods as above. Exactly one
+  Land and no Bund: that Land's own Landtag periods, named as the Land names
+  them („seit … (17. Gesetzgebungsperiode)"), each from the constituent
+  sitting to the day before the next, the newest open-ended; then the Bund's
+  spans its calendar does not reach back to. Several Länder and no Bund: the
+  Bund's spans by their dates alone — no period name, since none is theirs.
+  A Land whose calendar is empty, or does not reach back to the span, gets
+  the third case: that is the permanent behaviour for an unverified Land, not
+  a stub. A date enters the calendar only with two agreeing sources
+  (`docs/research/landtagsperioden.md`); the server's window, the labels and
+  the tests read the same rows, the tests on fixture calendars. URL: `?gp=`
+  stays the value of every Bund span, dates-only included; a Land period is
+  `?landtag=sbg-17` (Land code, ordinal), read in either case and checked
+  against the calendar. Each applies only in its view; a value the sources do
+  not offer is dropped — from the URL too — and the list falls to the running
+  span of the calendar in view, never an error card and never a filter the
+  control no longer shows. The Länder endpoints take `landtag` in place of
+  `gp` (400 malformed or both, 404 not in the calendar); the Bund's are never
+  asked with it. The chip: „GP XXVIII", „17. GP Salzburg", or the compact
+  dates. The EU overview, the corpus measurements, the Bund's laws and open
+  Vorlagen stay on the Bund's period.
 - **Upstream blocks are respected, not circumvented:** one request per second
   and a two-hour pause after a 403 at Steiermark's firewall; EUR-Lex's bot
   check is not bypassed, only the Cellar is queried (§12.64, §12.66).

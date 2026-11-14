@@ -7,6 +7,8 @@ import {
   gpHasEnded,
   gpInSentenceDe,
   gpNameDe,
+  gpSpanLabelDe,
+  gpWindow,
   gpYearsDe,
   intToRoman,
   isPlausibleGp,
@@ -190,5 +192,18 @@ describe('how a period is named', () => {
     expect(gpInSentenceDe('XXVIII')).toBe('in der XXVIII. Gesetzgebungsperiode (seit Oktober 2024)')
     expect(gpInSentenceDe('XXVII')).toBe('in der XXVII. Gesetzgebungsperiode (2019–2024)')
     expect(gpInSentenceDe('XIV')).toBe('in der XIV. Gesetzgebungsperiode')
+  })
+
+  it('labels a filter option by its span, both ends inclusive, with the GP as its name', () => {
+    expect(gpSpanLabelDe('XXVIII')).toBe('seit 24.10.2024 (GP XXVIII)')
+    expect(gpSpanLabelDe('XXVII')).toBe('23.10.2019 – 23.10.2024 (GP XXVII)')
+    expect(gpSpanLabelDe('XX')).toBe('15.01.1996 – 28.10.1999 (GP XX)')
+    // The span is the window the Länder rows are filtered by.
+    const w = gpWindow('XXVII')!
+    expect(gpSpanLabelDe('XXVII')).toContain(w.to!.split('-').reverse().join('.'))
+  })
+
+  it('names a period the calendar does not reach by its GP alone', () => {
+    expect(gpSpanLabelDe('XIX')).toBe('GP XIX')
   })
 })
