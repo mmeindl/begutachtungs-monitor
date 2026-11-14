@@ -27,7 +27,7 @@ import { landDraftUnits } from './landLawDiff'
 import { headingZiffern, parseLandExplanations, type LandExplanationsParse } from './landExplanations'
 import type { LawUnit } from '../lawtext/lawUnits'
 import { amendedLawsOf } from './landTgu'
-import { draftCandidates, isDraftWithExplanations, landPdfBytes, NOT_A_DRAFT, notADraft, pagesOfBytes, type PagesReader } from './texts/read'
+import { draftByContent, draftCandidates, isDraftWithExplanations, landPdfBytes, NOT_A_DRAFT, notADraft, pagesOfBytes, type PagesReader } from './texts/read'
 import { styledPages } from './texts/styledPages'
 import type { LandDraftRecord } from './texts/stations'
 
@@ -91,7 +91,7 @@ export interface LandExplanationsRead {
    * them: the Erläuterungen' document and, where it is another, the draft.
    */
   pages: Map<string, string[]>
-  /** The draft's own text (`draftCandidates`), where one could be named; its pages are in `pages` when it was read. */
+  /** The draft's own text (`draftCandidates`, `draftByContent`), where one could be named; its pages are in `pages` when it was read. */
   draftUrl: string | null
   /** The draft's PDF was asked for and did not arrive — not an answer about its text. */
   draftFailed: boolean
@@ -117,7 +117,7 @@ export async function readLandExplanations(
   const own = docs.find((d) => /erläuter/i.test(d.title))
   const candidates = draftCandidates(docs)
   const draft = candidates[0] ?? null
-  const draftUrl = draft ? safeExternalUrl(draft.url) : null
+  let draftUrl = draft ? safeExternalUrl(draft.url) : null
   const doc = own ?? draft
   const url = doc ? safeExternalUrl(doc.url) : null
   const done = (response: LandExplanationsResponse, draftFailed = false): LandExplanationsRead => ({ response, pages, draftUrl, draftFailed })
@@ -125,27 +125,40 @@ export async function readLandExplanations(
   const document = { label: own ? doc.title : `${doc.title} (Erläuterungen)`, url }
   const read = HEADINGS_BY_WEIGHT.has(land) ? await styledPages(await bytesOf(url)) : { pages: await pagesOf(url), bold: undefined }
   pages.set(url, read.pages)
+  let draftFailed = false
+  // Among several candidates the draft is the one with law text in it (`draftByContent`): Tirol files its covering letter first.
+  // The Erläuterungen are still read where they were — from the first, where the Land titles none as such.
+  if (candidates.length > 1) {
+    const readOnce = async (u: string): Promise<string[]> => {
+      const got = pages.get(u) ?? (await pagesOf(u))
+      pages.set(u, got)
+      return got
+    }
+    const chosen = await draftByContent(candidates, readOnce).catch(() => {
+      draftFailed = true
+      return null
+    })
+    if (chosen) draftUrl = chosen.url
+  }
   const ofDraft = (draftPages: string[]) => ({ units: landDraftUnits(draftPages), text: draftPages.join('\n') })
   // Erläuterungen in the draft's PDF are none where the one document the Land filed as the draft evidently is none (`notADraft`, `draftSource`).
   // Burgenland files draft and Erläuterungen as one „Entwurf und Erläuterungen": its own, and the draft's too.
-  const inDraft = own && !isDraftWithExplanations(own.title) ? null : ofDraft(read.pages)
+  const inDraft = (own && !isDraftWithExplanations(own.title)) || draftUrl !== url ? null : ofDraft(read.pages)
   if (inDraft && candidates.length === 1 && notADraft(inDraft)) return done(unavailable(NOT_A_DRAFT, publisher, { label: doc.title, url }))
   const parse = parseLandExplanations(read.pages, read.bold, { vorblatt: VORBLATT_AS_GENERAL.has(land) })
 
   // The draft's instructions, for entries that name only Ziffern — none from a draft that is none.
-  let draftFailed = false
   let draftRead = inDraft
-  if (!draftRead && parse && draftUrl) {
-    const draftPages = draftUrl === url
-      ? read.pages
-      : await pagesOf(draftUrl).catch(() => {
-          draftFailed = true
-          return [] as string[]
-        })
+  if (!draftRead && parse && draftUrl && !draftFailed) {
+    const failed = () => {
+      draftFailed = true
+      return [] as string[]
+    }
+    const draftPages = pages.get(draftUrl) ?? (await pagesOf(draftUrl).catch(failed))
     if (!draftFailed) pages.set(draftUrl, draftPages)
     draftRead = ofDraft(draftPages)
   }
-  if (!parse) return done(unavailable('In den Dokumenten des Landes fand der Monitor keine Erläuterungen, die er lesen kann.', publisher, document))
+  if (!parse) return done(unavailable('In den Dokumenten des Landes fand der Monitor keine Erläuterungen, die er lesen kann.', publisher, document), draftFailed)
   const units = draftRead && !(candidates.length === 1 && notADraft(draftRead)) ? draftRead.units : null
 
   const particular = explainedParagraphs(parse, units, amendedLawsOf(detail.draft.title))

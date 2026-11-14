@@ -23,6 +23,8 @@ export interface ReadText {
   text: string
   /** The document the Land files as the draft is evidently none (`notADraft`). */
   notDraft?: true
+  /** The document read, where its content chose another than the source names (`draftByContent`). */
+  document?: LandTextDocument
 }
 
 /** What the page says where a comparison or the Erläuterungen would read a draft that is none (`notADraft`). */
@@ -163,24 +165,60 @@ export function draftCandidates(documents: readonly LandDocument[]): LandDocumen
   return [...candidates.filter((d) => /entwurf/i.test(d.title)), ...candidates.filter((d) => !/entwurf/i.test(d.title))]
 }
 
+/** How many of a draft's candidates are read, at most, to find the one with law text in it (`draftByContent`). */
+export const CONTENT_CANDIDATES = 8
+
 /**
- * The draft's own text, read — and marked where the document is evidently
- * none (`notADraft`), if it is the only one that could be the draft: the
- * Land filed nothing else as it. Beside others the monitor may have taken
- * the wrong one — Tirol files its covering letter as „Entwurf …;
- * Begutachtung" and the Verordnung under its own name — and the page's
- * sentence would not be true.
+ * The draft among several candidates, by what it holds (14.11.2026): where
+ * the reader finds no law text in the first, the first of the next that
+ * holds some — read in order, at most `CONTENT_CANDIDATES`. Where none
+ * does, the first stays, as before. Tirol files its covering letter as
+ * „Entwurf einer Verordnung …; Begutachtung", or as the first of seven
+ * „Dokument", beside the Verordnung („FS ÖRK FV Sillian VO Begutachtung",
+ * „Roppen VO"); of the 17 Tirol Verordnungen of GP XXVIII with several
+ * candidates, 10 read the letter or the Erläuterungen until then. The title
+ * cannot decide: the letter carries the draft's name, the Verordnung an
+ * abbreviation or none. A candidate that fails to be read fails the choice
+ * — a document not read is not one without law text.
+ */
+export async function draftByContent(
+  candidates: readonly LandDocument[],
+  pagesOf: PagesReader = pdfPages,
+): Promise<{ doc: LandDocument; url: string; pages: string[] } | null> {
+  let first: { doc: LandDocument; url: string; pages: string[] } | null = null
+  for (const doc of candidates.slice(0, CONTENT_CANDIDATES)) {
+    const url = safeExternalUrl(doc.url)
+    if (!url) continue
+    const pages = await pagesOf(url)
+    if (landDraftUnits(pages)?.length) return { doc, url, pages }
+    first ??= { doc, url, pages }
+  }
+  return first
+}
+
+/**
+ * The draft's own text, read (`draftByContent`) — and marked where the
+ * document is evidently none (`notADraft`), if it is the only one that
+ * could be the draft: the Land filed nothing else as it. Beside others,
+ * none of which holds law text, the monitor cannot tell which is the
+ * draft, and the page's sentence would not be true.
  */
 export function draftSource(documents: readonly LandDocument[], publisher: string, pagesOf?: PagesReader): TextSource | null {
   const candidates = draftCandidates(documents)
   const doc = candidates[0]
   const url = doc ? safeExternalUrl(doc.url) : null
   if (!doc || !url) return null
+  const document = { label: doc.title, url, publisher }
   return {
-    document: { label: doc.title, url, publisher },
+    document,
     read: async () => {
-      const read = await readPdf(url, pagesOf)
-      return candidates.length === 1 && notADraft(read) ? { ...read, notDraft: true } : read
+      if (candidates.length === 1) {
+        const read = await readPdf(url, pagesOf)
+        return notADraft(read) ? { ...read, notDraft: true } : read
+      }
+      const chosen = (await draftByContent(candidates, pagesOf))!
+      const read: ReadText = { units: landDraftUnits(chosen.pages), text: chosen.pages.join('\n') }
+      return chosen.url === url ? read : { ...read, document: { label: chosen.doc.title, url: chosen.url, publisher } }
     },
   }
 }

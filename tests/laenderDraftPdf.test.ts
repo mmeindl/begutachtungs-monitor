@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest'
 import { lawBlocksFromPdfPages } from '../server/utils/laender/draftPdfLaw'
 import { diffLandDraft, landDraftUnits, lgblUnits, packageChanges } from '../server/utils/laender/landLawDiff'
-import { draftDocument, notADraft } from '../server/utils/laender/texts/read'
+import { draftByContent, draftDocument, draftSource, notADraft } from '../server/utils/laender/texts/read'
 
 /* Pages as the PDF's text layer gives them: one string per page, a line per
    printed line, „Seite n" on top. The texts are built for the rules, each
@@ -256,5 +256,50 @@ describe('draftDocument', () => {
   it('passes over the Land\'s letter that sends the draft out', () => {
     expect(draftDocument([{ title: 'Anschreiben', url: 'a' }, { title: 'Verordnung', url: 'b' }, { title: 'Erläuterungen', url: 'c' }])?.title).toBe('Verordnung')
     expect(draftDocument([{ title: 'Begutachtung - Akt', url: 'a' }, { title: 'Begutachtung VOText', url: 'b' }])?.title).toBe('Begutachtung VOText')
+  })
+})
+
+describe('draftByContent — the draft among several, by what it holds (14.11.2026)', () => {
+  // Tirol t-v8bd158450… (Sillian, 19.10.2026): the covering letter carries
+  // the draft's name, the Verordnung an abbreviation. The texts as the PDFs
+  // give them, the letter shortened and the signature left out.
+  const LETTER = page('Geschäftszahl – beim Antworten bitte angeben', 'RoBau-2-728/9/69-2026', 'Innsbruck, 19.10.2026',
+    'Entwurf einer Verordnung der Landesregierung, mit der eine längere Frist für die zweite Fortschreibung des örtlichen Raumordnungskonzeptes der Marktgemeinde Sillian festgelegt wird; Begutachtung',
+    'Sehr geehrte Damen und Herren!', 'Es wird ersucht, zum angeschlossenen Entwurf bis 16. November 2026 eine Stellungnahme abzugeben.', 'Mit freundlichen Grüßen')
+  const VERORDNUNG = page('E n t w u r f', 'Verordnung der Landesregierung vom ………………, mit der eine längere Frist für die',
+    'zweite Fortschreibung des örtlichen Raumordnungskonzeptes der Marktgemeinde Sillian', 'festgelegt wird',
+    'Aufgrund des § 31d Abs. 1 des Tiroler Raumordnungsgesetzes 2022, LGBl. Nr. 43/2022, zuletzt', 'geändert durch das Gesetz LGBl. Nr. 51/2026, wird verordnet:',
+    '§ 1', 'Fortschreibung, Fristen', '(1) Die Frist für die zweite Fortschreibung des örtlichen Raumordnungskonzeptes der Marktgemeinde', 'Sillian wird mit 13 Jahren festgelegt.',
+    '§ 2', 'Inkrafttreten', 'Diese Verordnung tritt mit dem Ablauf des Tages der Kundmachung in Kraft.')
+  const EB = page('1 von 2', 'Erläuternde Bemerkungen', 'zum Entwurf einer Verordnung der Landesregierung, mit der eine längere Frist für die zweite Fortschreibung festgelegt wird', 'Zu § 1:', 'Die Frist wird verlängert.')
+  const docs = [
+    { title: 'Entwurf einer Verordnung der Landesregierung, mit der eine längere Frist für die zweite Fortschreibung des örtlichen Raumordnungskonzeptes der Marktgemeinde Sillian festgelegt wird; Begutachtung', url: 'https://dokumente.tirol.gv.at/get/brief' },
+    { title: 'FS ÖRK FV Sillian VO Begutachtung', url: 'https://dokumente.tirol.gv.at/get/vo' },
+    { title: 'FS ÖRK FV Sillian EB Begutachtung', url: 'https://dokumente.tirol.gv.at/get/eb' },
+  ]
+  const texts: Record<string, string> = { brief: LETTER, vo: VERORDNUNG, eb: EB }
+  const asked: string[] = []
+  const pagesOf = async (url: string) => {
+    asked.push(url)
+    return [texts[url.split('/').at(-1)!]!]
+  }
+
+  it('takes the document with law text in it, not the letter titled as the draft', async () => {
+    expect((await draftByContent(docs, pagesOf))?.doc.title).toBe('FS ÖRK FV Sillian VO Begutachtung')
+    const read = await draftSource(docs, 'Land Tirol', pagesOf)!.read()
+    expect(read.units?.map((u) => u.id)).toEqual(['§1', '§2'])
+    expect(read.document?.label).toBe('FS ÖRK FV Sillian VO Begutachtung')
+  })
+
+  it('reads no further than the first with law text, and keeps the first where none holds any', async () => {
+    asked.length = 0
+    await draftByContent([docs[1]!, docs[0]!], pagesOf)
+    expect(asked).toEqual(['https://dokumente.tirol.gv.at/get/vo'])
+    expect((await draftByContent([docs[0]!, docs[2]!], pagesOf))?.doc.title).toBe(docs[0]!.title)
+  })
+
+  it('fails where a candidate it has to read fails — a document not read is not one without law text', async () => {
+    const failing = async (url: string) => (url.endsWith('/vo') ? Promise.reject(new Error('503')) : pagesOf(url))
+    await expect(draftByContent(docs, failing)).rejects.toThrow('503')
   })
 })

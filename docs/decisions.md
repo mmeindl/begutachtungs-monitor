@@ -411,7 +411,10 @@ change belongs here.
   text the reader missed (§12.52).
 - **A failed fetch never counts as empty** and refutes nothing (§12.58).
 - **A document a Land files as the draft but that is not one is not read as
-  the draft;** the page says so (§12.63).
+  the draft;** the page says so (§12.63). Among several candidates the
+  content decides, not the title: where the first holds no law text, the
+  first of the next that does is the draft (at most eight read, a failed
+  read fails the choice); where none does, the first stays (14.11.2026).
 - **Landtag motions name the party only where the committee report does;**
   members named there are never named (§12.61). In Land submitter data only
   unambiguous organisation and authority abbreviations are expanded (§12.64).

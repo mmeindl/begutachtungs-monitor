@@ -78,13 +78,14 @@ export async function compareLandTexts(
   const a = sources[from]
   const b = sources[to]
   if (!a || !b) return whole(unavailable(from, to, 'Das Land hat einen der beiden Texte nicht veröffentlicht.'))
-  const docs = { fromDocument: a.document, toDocument: b.document }
   const read = await Promise.all([a.read(), b.read()])
+  // The document read, where the draft's content chose another than its title (`draftByContent`).
+  const docs = { fromDocument: read[0].document ?? a.document, toDocument: read[1].document ?? b.document }
   // What the Land filed as the draft and evidently is none is not read as it (`notADraft`).
   if (read.some((r) => r.notDraft)) return whole(unavailable(from, to, NOT_A_DRAFT, docs))
   const [x, y] = read.map((r) => r.units)
   if (!x?.length || !y?.length) {
-    const missing = !x?.length ? a.document.label : b.document.label
+    const missing = !x?.length ? docs.fromDocument.label : docs.toDocument.label
     return whole(unavailable(from, to, `In „${missing}“ fand der Monitor keinen Gesetzestext, den er Paragraph für Paragraph lesen kann.`, docs))
   }
   const units = diffLandDraft(x, y)
