@@ -384,6 +384,10 @@ interface RecordFacts {
   code: string
   /** The distinct title cores, cut on first use — most records are never scored. */
   cores: readonly string[] | null
+  /** The names the record calls itself by (`bgblNames`), on first use. */
+  names: ReadonlySet<string> | null
+  /** Whether the record amends or repeals (`bgblAmends`), on first use. */
+  amends: boolean | null
 }
 
 const recordFacts = new WeakMap<BgblRecord, RecordFacts>()
@@ -391,7 +395,7 @@ const recordFacts = new WeakMap<BgblRecord, RecordFacts>()
 function factsOf(record: BgblRecord): RecordFacts {
   let facts = recordFacts.get(record)
   if (!facts) {
-    facts = { day: dayNumber(record.datum), code: ministryCodeOf(record.stelle), cores: null }
+    facts = { day: dayNumber(record.datum), code: ministryCodeOf(record.stelle), cores: null, names: null, amends: null }
     recordFacts.set(record, facts)
   }
   return facts
@@ -421,6 +425,146 @@ function distinctCores(...titles: (string | null)[]): string[] {
 
 function coresOf(record: BgblRecord, facts: RecordFacts): readonly string[] {
   return (facts.cores ??= distinctCores(record.kurztitel, record.titel))
+}
+
+/**
+ * A name reduced to what identifies it: letters and digits only, and the
+ * Verordnung's abbreviation suffix in one spelling. Ministries write
+ * „EKB-Investitions-VO" in the draft and RIS promulgates „EKB-InvestitionsV"
+ * (BGBl. II Nr. 194/2023), so a closing „VO" counts as „V".
+ */
+function nameKey(s: string): string {
+  return s
+    .normalize('NFC')
+    .toLowerCase()
+    .replace(/ß/g, 'ss')
+    .replace(/[^a-z0-9äöü]/g, '')
+    .replace(/vo(\d{4})?$/, 'v$1')
+}
+
+/**
+ * An Abkürzung: one word with at least two capitals, a year allowed after
+ * it — „WstVO", „RKS-V", „UStBBKV", „EBP-V 2007". „Ausbildungsordnung" is
+ * none, and that matters: „Metalltechnik – Ausbildungsordnung" sets a dash
+ * where a hyphen belongs, and split there, every Ausbildungsordnung of the
+ * Ressort shared a name with every other — the draft lost its Kundmachung
+ * to the Glasverfahrenstechnik of the same day in the first measurement.
+ */
+const ABBREVIATION_RE = /^[\p{L}\d./-]*\p{Lu}[\p{L}\d./-]*\p{Lu}[\p{L}\d./-]*(?:\s+\d{4})?$/u
+
+/**
+ * What is not a name, although it stands where a name stands: a
+ * description („Änderung der Meldegesetz-Durchführungsverordnung") and a
+ * running number („37. MBA-Verordnung"). Both recur on Kundmachungen of
+ * other content, and each turned a join wrong in the measurement of
+ * 14.11.2026: the Änderung drafted in December 2015 went from its
+ * Kundmachung of February 2016 to the next Änderung of March 2017, under
+ * the same Kurztitel; and the draft of the „37." MBA-Verordnung, a
+ * Sozialmanagement course, was promulgated as the 39th — the 37th is an
+ * Event Management course.
+ *
+ * For the same reason an identical TITLE is no witness (tried and dropped
+ * the same day): the draft „über eine Einbeziehung in die Zusatzversicherung"
+ * of August 2008 carries the title of BGBl. II Nr. 23/2009 word for word, and
+ * its text — the Lawinenwarnkommission of Puchberg — is that of Nr.
+ * 362/2008, „über Einbeziehungen".
+ */
+const DESCRIPTION_RE =
+  /^(?:\d+\.|änderung|aufhebung|verordnung|kundmachung|festsetzung)(?!\p{L})|\s(?:der|des|die|dem|den|das|ein|eine|einer|in|im|über|betreffend|mit|zur|zum|für|von|vom|auf|bei|nach)\s/iu
+
+/** A text, and — where it closes with an Abkürzung — the Abkürzung and the name before it. */
+function namePieces(text: string): string[] {
+  const t = text.trim()
+  const parts = t.split(/\s+[–—-]\s+|,\s+/)
+  const tail = parts[parts.length - 1]!
+  return parts.length > 1 && ABBREVIATION_RE.test(tail) ? [t, tail, parts.slice(0, -1).join(' ')] : [t]
+}
+
+/**
+ * The names a Verordnung calls itself by: its Kurztitel, and what a title
+ * closes with in brackets („… (Tierschutz-Veranstaltungsverordnung –
+ * TSch-VeranstV)"), each also split into name and Abkürzung; descriptions
+ * and running numbers dropped (`DESCRIPTION_RE`), keys from `nameKey`.
+ */
+export function bgblNames(kurztitel: string | null, titel: string | null): Set<string> {
+  const pieces: string[] = kurztitel ? namePieces(kurztitel) : []
+  for (const t of [kurztitel, titel]) {
+    const bracket = /\(([^()]+)\)\s*$/.exec(t ?? '')
+    if (bracket) pieces.push(...namePieces(bracket[1]!))
+  }
+  const out = new Set<string>()
+  for (const piece of pieces) {
+    if (DESCRIPTION_RE.test(piece)) continue
+    const key = nameKey(piece)
+    if (key.length >= 4) out.add(key)
+  }
+  return out
+}
+
+function namesOf(record: BgblRecord, facts: RecordFacts): ReadonlySet<string> {
+  return (facts.names ??= bgblNames(record.kurztitel, record.titel))
+}
+
+/**
+ * Whether a Verordnung amends or repeals another, by the formula of its
+ * title („…, mit der die Lehrberufsliste geändert wird", „zur Änderung der
+ * …", „…-Novelle 2026"). Not `\b`: in a JavaScript pattern „ä" is no word
+ * character, and „\bänderung" never matches.
+ */
+const AMENDS_RE = /(?<!\p{L})(?:(?:geändert|aufgehoben|außer\s+kraft\s+gesetzt)\s+(?:wird|werden)|änderung|aufhebung|novelle)(?!\p{L})/iu
+
+export function bgblAmends(kurztitel: string | null, titel: string | null): boolean {
+  return AMENDS_RE.test(`${kurztitel ?? ''} ${titel ?? ''}`)
+}
+
+function amendsOf(record: BgblRecord, facts: RecordFacts): boolean {
+  return (facts.amends ??= bgblAmends(record.kurztitel, record.titel))
+}
+
+/** The draft's side of the witness, worked out once per draft. */
+interface DraftNames {
+  names: ReadonlySet<string>
+  amends: boolean
+}
+
+/**
+ * The witness before `cont` (14.11.2026): draft and Kundmachung share a
+ * Kurztitel or an Abkürzung (`bgblNames`), and both are of one kind — both
+ * amend, or neither does.
+ *
+ * WHY IT RANKS BEFORE THE SCORE. `cont` reads a Kundmachung that names the
+ * draft's subject as containing it, and an amendment always names the
+ * Verordnung it amends. The draft „Registrierkassensicherheitsverordnung"
+ * (Frist July 2015) scored 1,000 against „Änderung der
+ * Registrierkassensicherheitsverordnung" of August 2016 and 0,900 against
+ * the Verordnung itself, „Registrierkassensicherheitsverordnung, RKSV" of
+ * December 2015 — and the join claimed the amendment. Six drafts went that
+ * way (the RKSV twice, the UStBBKV, the Schulmilch-Beihilfen-Verordnung
+ * 2008, the Einheitliche Betriebsprämie-Verordnung 2007, the
+ * Tierschutz-Veranstaltungsverordnung), and nine more ties between the
+ * Verordnung and its first amendment, or between two Verordnungen of one
+ * day, were refused although the name decides them.
+ *
+ * WHY THE KIND. A Kurztitel can name the Verordnung a draft amends: the
+ * draft „Lehrberufsliste" of 2019 amends the list („mit der die
+ * Lehrberufsliste geändert wird"), and ten months later the list was
+ * promulgated anew under that very Kurztitel. Without the kind the re-issue
+ * would count as the same name.
+ *
+ * WHAT IT CANNOT DO: make a lone wrong near-title lose. A name that differs
+ * is no counter-witness — 188 of 2.647 matches differ in their names and are
+ * mostly right (a year moved on, „2025" → „2026", or a spelling: „PlAblV" for
+ * „PflAV"), so the „EAG-Investitionszuschüsseverordnung-Gas" against the
+ * „-Wasserstoff" draft still rests on the Beginn (`BGBL_WINDOW_DAYS`).
+ *
+ * Only above `BGBL_ACCEPT`: the witness orders candidates, it admits none,
+ * and a weak named candidate must not push a strong one out of first place,
+ * where the threshold would then refuse it.
+ */
+function isNamed(draft: DraftNames, record: BgblRecord, facts: RecordFacts, score: number): boolean {
+  if (score < BGBL_ACCEPT || amendsOf(record, facts) !== draft.amends) return false
+  for (const name of namesOf(record, facts)) if (draft.names.has(name)) return true
+  return false
 }
 
 /**
@@ -478,6 +622,8 @@ export function bgblTitleScore(draft: BgblJoinDraft, record: BgblRecord): number
 interface BgblCandidate {
   record: BgblRecord
   score: number
+  /** Draft and Kundmachung carry the same name, the witness before the score (`isNamed`). */
+  named: boolean
   /** Days between the end of the Frist and the date of issue. */
   days: number
   /** 1 the same Ressort, 0.5 a legal successor, 0 a foreign one. */
@@ -524,6 +670,10 @@ function rankCandidates(draft: BgblJoinDraft, records: readonly BgblRecord[], ve
   const ende = dayNumber(draft.ende)
   const beginn = draft.beginn ? draft.beginn.slice(0, 10) : null
   const lefts = distinctCores(draft.kurztitel, draft.titel)
+  const own: DraftNames = {
+    names: bgblNames(draft.kurztitel, draft.titel),
+    amends: bgblAmends(draft.kurztitel, draft.titel),
+  }
   // `ministryScore` walks the lineage groups for every foreign Stelle; a
   // window holds a few dozen Stellen, not hundreds of them.
   const ministryByCode = new Map<string, number>()
@@ -543,11 +693,12 @@ function rankCandidates(draft: BgblJoinDraft, records: readonly BgblRecord[], ve
     if (verdict && ministry <= 0) continue
     const score = coreScore(lefts, coresOf(record, facts))
     if (score <= 0) continue
-    out.push({ record, score, days, ministry, beforeBeginn })
+    out.push({ record, score, named: isNamed(own, record, facts, score), days, ministry, beforeBeginn })
   }
-  // By score, and on a tie by `timeRank`: if the same text is amended twice,
-  // the first Kundmachung after the Frist is the one from this Begutachtung.
-  return out.sort((a, b) => b.score - a.score || timeRank(a.days) - timeRank(b.days))
+  // The named first (`isNamed`), then by score, and on a tie by `timeRank`:
+  // if the same text is amended twice, the first Kundmachung after the Frist
+  // is the one from this Begutachtung.
+  return out.sort((a, b) => Number(b.named) - Number(a.named) || b.score - a.score || timeRank(a.days) - timeRank(b.days))
 }
 
 /**
@@ -588,7 +739,9 @@ export function bgblVerdict(draft: BgblJoinDraft, records: readonly BgblRecord[]
   // for that. If the two lie close together, the time says nothing either,
   // and then two answers are none; and where the score prefers one and the
   // time the other, there is no answer either.
+  // A rival without the name of a named best is no rival (`isNamed`).
   const unclear = (rival: BgblCandidate) =>
+    rival.named === best.named &&
     best.score - rival.score < BGBL_MARGIN &&
     (Math.abs(rival.days - best.days) < BGBL_TIE_DAYS || timeRank(rival.days) < timeRank(best.days))
   // The rivals are the second — and every Kundmachung from before the Frist,

@@ -252,6 +252,17 @@ change belongs here.
   XXVIII: one month apart, start, ministry and title equal).
 - **Never link a chain by short title** (§12.21). Laws in BGBl I are ordered
   by BGBl number, not by decision date (§12.23).
+- **In the BGBl II join a shared name ranks before the title score**
+  (14.11.2026, `bgblJoin.isNamed`): a Kundmachung that shares the draft's
+  Kurztitel or Abkürzung, and is of the same kind (both amend or neither),
+  is preferred over a higher-scoring one without it — an amendment always
+  names the Verordnung it amends, and `cont` scores it higher than the
+  Verordnung itself. A description („Änderung der …") and a running number
+  („37. MBA-Verordnung") are no names. The witness only orders candidates
+  above `BGBL_ACCEPT`; it admits none. This is not linking by short title
+  across a chain: there is no exact key for a Verordnung, and the witness
+  decides only among candidates the window, the Ressort and the threshold
+  already admit.
 - **A Länder § comparison runs only against a promulgation the Land itself
   names,** never against our own title search, even with one candidate
   (§12.44).
@@ -745,6 +756,14 @@ circular of 10.12.2015).
   entirely non-pairs (§12.32).
 - **One promulgation ↔ one draft per period.** Removes 8 wrong matches and
   hides 20 defensible ones (§12.32).
+- **A different name as a counter-witness in the BGBl II join.** 188 of
+  2,647 matches differ in their names and are mostly right: a year moved on
+  („…verordnung 2025" → „… 2026"), or a spelling („PlAblV" for „PflAV")
+  (14.11.2026).
+- **An identical title as a witness in the BGBl II join.** Descriptive titles
+  recur with other content: the draft „über eine Einbeziehung in die
+  Zusatzversicherung" (2008) carries BGBl. II Nr. 23/2009's title word for
+  word and Nr. 362/2008's text (14.11.2026).
 - **Character similarity for LGBl matching.** The boilerplate („Gesetz, mit
   dem das … geändert wird") dominates; distinguishing words are used
   (§12.43).

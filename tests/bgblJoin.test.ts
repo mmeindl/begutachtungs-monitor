@@ -3,7 +3,9 @@ import {
   BGBL_ACCEPT,
   BGBL_SILENCE_MEANS_SOMETHING_DAYS,
   BGBL_WINDOW_DAYS,
+  bgblAmends,
   bgblCandidates,
+  bgblNames,
   bgblOutcomeState,
   bgblTitleCore,
   bgblTitleScore,
@@ -332,7 +334,9 @@ describe('joinDraftToBgbl — before and after the Frist', () => {
   })
 
   it('refuses where the score prefers the one before the Frist and the time the one after it', () => {
-    const words = 'Abwasseremissionen Fließgewässer Kanalisationen Siedlungsgebiete Einzelobjekte Extremlage Reinigungsanlagen Begrenzung Methoden Anpassung Messwerte Grenzwerte'
+    // A description, not a name (`bgblNames`): neither side is named, and
+    // only score and time are left to disagree.
+    const words = 'Begrenzung von Abwasseremissionen Fließgewässer Kanalisationen Siedlungsgebiete Einzelobjekte Extremlage Reinigungsanlagen Methoden Anpassung Messwerte Grenzwerte'
     const nearTie = draft({ kurztitel: words, titel: null, stelle: bmaw, ende: '2024-07-25' })
     const before = record({ id: 'BEFORE', datum: '2024-07-10', kurztitel: words, titel: null, stelle: bmaw })
     const later = record({ id: 'LATER', datum: '2024-11-02', kurztitel: `${words} Übergangsbestimmungen`, titel: null, stelle: bmaw })
@@ -409,6 +413,215 @@ describe('joinDraftToBgbl — not before the Begutachtung began', () => {
  * gefunden" about a draft for which two had been found — 57 drafts of
  * GP XXII–XXVII.
  */
+describe('bgblVerdict — the same name before the score', () => {
+  const BMF = 'BMF (Bundesministerium für Finanzen)'
+  const BMDW = 'BMDW (Bundesministerium für Digitalisierung und Wirtschaftsstandort)'
+  const BMI = 'BMI (Bundesministerium für Inneres)'
+  const BMBWK = 'BMBWK (Bundesministerium für Bildung, Wissenschaft und Kultur)'
+  const MBA_SOZIAL =
+    'Verordnung der Bundesministerin für Bildung, Wissenschaft und Kultur über die Verleihung der Bezeichnung „Lehrgang universitären Charakters“ sowie über die Festlegung der Bezeichnungen „Akademische Sozialmanagerin“ und „Akademischer Sozialmanager“ und des akademischen Grades „Master of Business Administration (Sozialmanagement)“'
+
+  it('takes the Verordnung itself, not its later amendment that scores higher', () => {
+    // The amendment names the Verordnung, so `cont` gives it 1,000 and the
+    // Verordnung itself only 0,900 (Frist 22.07.2015, 14.11.2026).
+    const rksv = record({
+      id: 'RKSV',
+      nummer: 'BGBl. II Nr. 410/2015',
+      datum: '2015-12-11',
+      kurztitel: 'Registrierkassensicherheitsverordnung, RKSV',
+      titel:
+        'Verordnung des Bundesministers für Finanzen über die technischen Einzelheiten für Sicherheitseinrichtungen in den Registrierkassen und andere, der Datensicherheit dienende Maßnahmen (Registrierkassensicherheitsverordnung, RKSV)',
+      stelle: BMF,
+    })
+    const amendment = record({
+      id: 'AENDERUNG',
+      nummer: 'BGBl. II Nr. 210/2016',
+      datum: '2016-08-03',
+      kurztitel: 'Änderung der Registrierkassensicherheitsverordnung',
+      titel: 'Verordnung des Bundesministers für Finanzen, mit der die Registrierkassensicherheitsverordnung geändert wird',
+      stelle: BMF,
+    })
+    const d = draft({
+      kurztitel: 'Registrierkassensicherheitsverordnung',
+      titel:
+        'Verordnung des Bundesministers für Finanzen über die technischen Einzelheiten für Sicherheitseinrichtungen in den Registrierkassen und andere, der Datensicherheit dienende Maßnahmen (Registrierkassensicherheitsverordnung, RKS-V)',
+      stelle: BMF,
+      beginn: '2015-07-01',
+      ende: '2015-07-22',
+    })
+    expect(bgblTitleScore(d, amendment)).toBeGreaterThan(bgblTitleScore(d, rksv))
+    expect(joinDraftToBgbl(d, [rksv, amendment])?.record.id).toBe('RKSV')
+  })
+
+  it('reads „-VO" and „V" as one Abkürzung (EKB-InvestitionsV)', () => {
+    // The draft of 2023 against its Verordnung, its amendment of 2024 and
+    // a foreign Investitionskostenersatzverordnung — before 22.10.2026 three
+    // candidates tied at 0,900 here.
+    const titel = (abk: string) =>
+      `Verordnung des Bundesministers für Finanzen und der Bundesministerin für Klimaschutz, Umwelt, Energie, Mobilität, Innovation und Technologie über den Absetzbetrag für begünstigte Investitionen im Rahmen der Energiekrisenbeiträge (${abk})`
+    const own = record({ id: 'EKB', nummer: 'BGBl. II Nr. 194/2023', datum: '2023-06-26', kurztitel: 'EKB-InvestitionsV', titel: titel('EKB-InvestitionsV'), stelle: BMF })
+    // The amendment carries the Abkürzung too, but amends: not the same name.
+    const amendment = record({
+      id: 'AENDERUNG',
+      nummer: 'BGBl. II Nr. 244/2024',
+      // Moved to within 60 days of the Verordnung, where the time alone would refuse.
+      datum: '2023-07-20',
+      kurztitel: 'Änderung der Verordnung über den Absetzbetrag für begünstigte Investitionen im Rahmen der Energiekrisenbeiträge',
+      titel:
+        'Verordnung des Bundesministers für Finanzen und der Bundesministerin für Klimaschutz, Umwelt, Energie, Mobilität, Innovation und Technologie zur Änderung der Verordnung über den Absetzbetrag für begünstigte Investitionen im Rahmen der Energiekrisenbeiträge (EKB-InvestitionsV)',
+      stelle: BMF,
+    })
+    const foreign = record({
+      id: 'IKEV',
+      nummer: 'BGBl. II Nr. 140/2023',
+      datum: '2023-05-08',
+      kurztitel: 'Investitionskostenersatzverordnung',
+      titel: 'Verordnung des Bundesministers für Finanzen über den Ersatz der Investitionskosten der Anbieter (Investitionskostenersatzverordnung – IKEV 2023)',
+      stelle: BMF,
+    })
+    const d = draft({ kurztitel: 'EKB-Investitions-VO', titel: titel('EKB-Investitions-VO'), stelle: BMF, beginn: '2023-03-16', ende: '2023-03-30' })
+    expect([...bgblNames(d.kurztitel, d.titel)]).toContain('ekbinvestitionsv')
+    expect(bgblAmends(amendment.kurztitel, amendment.titel)).toBe(true)
+    expect(joinDraftToBgbl(d, [own, amendment, foreign])?.record.id).toBe('EKB')
+  })
+
+  it('does not take a dash for an Abkürzung (Metalltechnik – Ausbildungsordnung)', () => {
+    // Split at the dash, „Ausbildungsordnung" was a name the Glasverfahrenstechnik
+    // of the same day shared.
+    const own = record({
+      id: 'METALL',
+      nummer: 'BGBl. II Nr. 149/2018',
+      datum: '2018-07-05',
+      kurztitel: 'Änderung der Metalltechnik-Ausbildungsordnung',
+      titel: 'Verordnung der Bundesministerin für Digitalisierung und Wirtschaftsstandort, mit der die Metalltechnik-Ausbildungsordnung geändert wird',
+      stelle: BMDW,
+    })
+    const glas = record({
+      id: 'GLAS',
+      nummer: 'BGBl. II Nr. 154/2018',
+      datum: '2018-07-05',
+      kurztitel: 'Glasverfahrenstechnik – Ausbildungsordnung',
+      titel:
+        'Verordnung der Bundesministerin für Digitalisierung und Wirtschaftsstandort über die Berufsausbildung im Lehrberuf Glasverfahrenstechnik (Glasverfahrenstechnik – Ausbildungsordnung)',
+      stelle: BMDW,
+    })
+    const d = draft({
+      kurztitel: 'Metalltechnik – Ausbildungsordnung ',
+      titel: 'Verordnung der Bundesministerin für Digitalisierung und Wirtschaftsstandort, mit der die Metalltechnik – Ausbildungsordnung geändert wird',
+      stelle: BMDW,
+      beginn: '2018-03-22',
+      ende: '2018-04-25',
+    })
+    expect(bgblNames(d.kurztitel, d.titel).has('ausbildungsordnung')).toBe(false)
+    expect(joinDraftToBgbl(d, [glas, own])?.record.id).toBe('METALL')
+  })
+
+  it('does not count a description as a name (Änderung der …)', () => {
+    // The next Änderung, a year later, carries the same Kurztitel.
+    const own = record({
+      id: 'MELDEV',
+      nummer: 'BGBl. II Nr. 50/2016',
+      datum: '2016-02-17',
+      kurztitel: 'Änderung der Meldegesetz-Durchführungsverordnung (MeldeV)',
+      titel: 'Verordnung der Bundesministerin für Inneres, mit der die Meldegesetz-Durchführungsverordnung (MeldeV) geändert wird',
+      stelle: BMI,
+    })
+    const next = record({
+      id: 'NEXT',
+      nummer: 'BGBl. II Nr. 88/2017',
+      datum: '2017-03-31',
+      kurztitel: 'Änderung der Meldegesetz-Durchführungsverordnung',
+      titel: 'Verordnung des Bundesministers für Inneres, mit der die Meldegesetz-Durchführungsverordnung geändert wird',
+      stelle: BMI,
+    })
+    const d = draft({
+      kurztitel: 'Änderung der Meldegesetz-Durchführungsverordnung',
+      titel: 'Verordnung der Bundesministerin für Inneres, mit der die Meldegesetz-Durchführungsverordnung (MeldeV) geändert wird',
+      stelle: BMI,
+      beginn: '2015-11-27',
+      ende: '2015-12-28',
+    })
+    expect(bgblNames(d.kurztitel, d.titel).size).toBe(0)
+    expect(joinDraftToBgbl(d, [next, own])?.record.id).toBe('MELDEV')
+  })
+
+  it('does not count a running number as a name (37. MBA-Verordnung)', () => {
+    // The draft's „37." was promulgated as the 39th; the 37th is another course.
+    const other = record({
+      id: 'MBA37',
+      nummer: 'BGBl. II Nr. 415/2006',
+      datum: '2006-11-09',
+      kurztitel: '37. MBA-Verordnung',
+      titel:
+        'Verordnung der Bundesministerin für Bildung, Wissenschaft und Kultur über die Bezeichnungen „Lehrgang universitären Charakters“, „Akademische Eventmanagerin“, „Akademischer Eventmanager“ und den akademischen Grad „Master of Business Administration (Event Management)“ (37. MBA-Verordnung); Ausbildungslehrgang „Event Management“',
+      stelle: BMBWK,
+    })
+    const own = record({ id: 'MBA39', nummer: 'BGBl. II Nr. 494/2006', datum: '2006-12-21', kurztitel: '39. MBA-Verordnung', titel: MBA_SOZIAL, stelle: BMBWK })
+    const d = draft({ kurztitel: '37. MBA-Verordnung', titel: MBA_SOZIAL, stelle: BMBWK, beginn: '2006-04-26', ende: '2006-05-31' })
+    expect(bgblNames(d.kurztitel, d.titel).size).toBe(0)
+    expect(joinDraftToBgbl(d, [other, own])?.record.id).not.toBe('MBA37')
+  })
+
+  it('does not count the re-issue of the Verordnung an amending draft names (Lehrberufsliste)', () => {
+    const titel =
+      'Verordnung der Bundesministerin für Digitalisierung und Wirtschaftsstandort, mit der die Lehrberufsliste geändert wird und die Ausbildungsordnungen sowie die Prüfungsordnungen für die Lehrberufe Leichtflugzeugbauer, Rauhwarenzurichter und Schiffbauer außer Kraft gesetzt werden'
+    const own = record({
+      id: 'OWN',
+      nummer: 'BGBl. II Nr. 134/2019',
+      datum: '2019-05-27',
+      kurztitel: 'Änderung der Lehrberufsliste und Außerkraftsetzung der Ausbildungsordnungen sowie der Prüfungsordnungen für die Lehrberufe Leichtflugzeugbauer, Rauhwarenzurichter und Schiffbauer',
+      titel,
+      stelle: BMDW,
+    })
+    const reissue = record({
+      id: 'REISSUE',
+      nummer: 'BGBl. II Nr. 41/2020',
+      datum: '2020-02-28',
+      kurztitel: 'Lehrberufsliste',
+      titel: 'Verordnung der Bundesministerin für Digitalisierung und Wirtschaftsstandort, mit der die Lehrberufsliste erlassen wird (Lehrberufsliste)',
+      stelle: BMDW,
+    })
+    const d = draft({ kurztitel: 'Lehrberufsliste', titel, stelle: BMDW, beginn: '2019-03-26', ende: '2019-04-26' })
+    expect([...bgblNames(d.kurztitel, d.titel)]).toEqual([...bgblNames(reissue.kurztitel, reissue.titel)])
+    expect(bgblAmends(d.kurztitel, d.titel)).toBe(true)
+    expect(bgblAmends(reissue.kurztitel, reissue.titel)).toBe(false)
+    expect(joinDraftToBgbl(d, [reissue, own])?.record.id).not.toBe('REISSUE')
+  })
+
+  it('reads „Änderung" although „ä" is no word character to a JavaScript pattern', () => {
+    expect(bgblAmends('Änderung der Honigverordnung', null)).toBe(true)
+    expect(bgblAmends(null, 'Verordnung …, zur Änderung der Verordnung über den Absetzbetrag')).toBe(true)
+    expect(bgblAmends('EAG-Investitionszuschüsseverordnung-Strom-Novelle 2026', null)).toBe(true)
+    expect(bgblAmends('Registrierkassensicherheitsverordnung, RKSV', 'Verordnung … über die technischen Einzelheiten')).toBe(false)
+  })
+
+  it('admits nothing below the threshold: Reisegebühren 2024 shares no name and stays unjoined', () => {
+    // Before 21.10.2026 the ministry's remnant in both titles carried this
+    // pair over the threshold. The draft has no Kurztitel of its own and no
+    // Abkürzung, so the witness has nothing to read; 0,675 is refused.
+    const BMBWF = 'BMBWF (Bundesministerium für Bildung, Wissenschaft und Forschung)'
+    const sch = record({
+      id: 'SCHVRGV',
+      nummer: 'BGBl. II Nr. 135/2024',
+      datum: '2024-05-28',
+      kurztitel: 'Schulveranstaltungen-Reisegebühren-Verordnung 2024',
+      titel:
+        'Verordnung des Bundesministers für Bildung, Wissenschaft und Forschung über die Reisegebühren für die Teilnahme an Schulveranstaltungen (Schulveranstaltungen-Reisegebühren-Verordnung 2024 – SchVRGV)',
+      stelle: BMBWF,
+    })
+    const d = draft({
+      kurztitel: 'Verordnung über die Festsetzung der Reisegebühren für die Teilnahme an Schulveranstaltungen',
+      titel: 'Verordnung des Bundesministers für Bildung, Wissenschaft und Forschung über die Festsetzung der Reisegebühren für die Teilnahme an Schulveranstaltungen',
+      stelle: BMBWF,
+      beginn: '2024-01-31',
+      ende: '2024-02-29',
+    })
+    expect(bgblNames(d.kurztitel, d.titel).size).toBe(0)
+    expect(bgblTitleScore(d, sch)).toBeLessThan(BGBL_ACCEPT)
+    expect(joinDraftToBgbl(d, [sch])).toBeNull()
+  })
+})
+
 describe('bgblVerdict — found but undecided', () => {
   const a = record({ id: 'A', nummer: 'BGBl. II Nr. 50/2026', datum: '2026-03-16' })
   const close = record({ id: 'B', nummer: 'BGBl. II Nr. 60/2026', datum: '2026-04-02' })
