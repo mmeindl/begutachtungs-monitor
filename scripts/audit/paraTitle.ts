@@ -51,10 +51,11 @@ const BASE = `${ORIGIN}/api/drafts/${GP}`
 /**
  * One draft may not take the run down.
  *
- * A cold `/paragraphtitel` does up to 120 RIS lookups and runs past undici's
- * five-minute header timeout; the rejection came from `fetch`, not from
- * `.json()`, so the per-call `.catch()` never saw it and an hour of warming
- * ended in an uncaught TypeError and no report at all (25.09.2026).
+ * A cold `/paragraphtitel` does up to `MAX_HEADINGS` RIS lookups, and a
+ * slow upstream can run it past undici's five-minute header timeout; the
+ * rejection came from `fetch`, not from `.json()`, so the per-call
+ * `.catch()` never saw it and an hour of warming ended in an uncaught
+ * TypeError and no report at all (25.09.2026).
  */
 async function json<T>(url: string, fallback: T, timeoutMs = 15 * 60 * 1000): Promise<T> {
   try {

@@ -594,7 +594,7 @@ Ministerialentwurf, RV = Regierungsvorlage.
 | The ministry's yellow highlighting misses a difference | 1,395 of 8,430 row pairs | 08.09.2026 (§12.13) |
 | Rasterised RIS annexes with a PDF text layer | all 527 | 28.09.2026 (§12.13) |
 | Amendment instructions read completely | 5,584 of 6,576 | 300 drafts · 25.09.2026 (§12.12a) |
-| Speaking names for changed units | 71 %, median 81 % per draft, 0 wrong of 451 | 40 drafts · 30.09.2026 (§12.11) |
+| Speaking names for changed units | 81 % (73 % at the old ceiling of 120 lookups), median 86 % per draft; no wrong heading — the check's only disagreements are its two known law-name false positives and five moving instructions („In § 20 entfällt die Paragraphenbezeichnung …"), named by the § they move into | 40 drafts, production build · 14.11.2026 (§12.11, `pnpm audit:para-title XXVIII 40`) |
 | Omnibus drafts among those with an annex | 59 % | 64 of 109, GP XXVIII (§12.12) |
 
 Drafts without an annex are almost all new laws, which need none (BKA-VD

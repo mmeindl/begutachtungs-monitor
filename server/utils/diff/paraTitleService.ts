@@ -55,8 +55,29 @@ import { DERIVED_CACHE } from '../cache/base'
 import { onlyComplete, type Gathered } from '../cache/gathered'
 import { DERIVED_ANALYSIS_TTL_S } from '../cache/ttl'
 
-/** Ceiling on lookups per draft, so one monster Sammelgesetz cannot hang a request. */
-const MAX_HEADINGS = 120
+/**
+ * Ceiling on § lookups per pair, so a package larger than any measured one
+ * cannot hold a request open for minutes.
+ *
+ * What it protects is time and RIS, not memory: a § document is 6 kB
+ * (median, 22 kB at most over 120), four are in flight, each goes to the
+ * disk cache for 30 days (`kons/konsCache.ts`), and the answer is a map of
+ * headings — 65 kB for 74/ME XXVIII. Cold, 120 lookups took 4.3 s on a dev
+ * server (74/ME, 14.11.2026) and the 108 more of the new ceiling 3.5 s on a
+ * production build, in their own request, which the comparison does not
+ * wait for; the process stayed at 206–246 MB RSS through the six largest
+ * drafts and the 40-draft audit.
+ *
+ * 350 since 14.11.2026, from 120. Distinct (Artikel, §) pairs a draft's
+ * units address — an upper bound on the lookups, since only §§ of a
+ * resolved law are fetched — over GP XXVI–XXVIII (485 compared drafts,
+ * `corpus:aenderungsrate` units): median 13–15, p99 213–232, at most 311
+ * (XXVII 77/ME). At 120, 21 drafts were cut, six in XXVIII (116/ME 213,
+ * 74/ME 195, 58/ME 192, 61/ME 169, 4/ME 165, 30/ME 143); 350 holds every
+ * one, the same headroom the Begründung's ceiling has over the same
+ * outlier class (`MAX_ENTRIES`, `explanations/reasoningDiff.ts`).
+ */
+const MAX_HEADINGS = 350
 const CONCURRENCY = 4
 
 /** The § heading ("Sofortlotterien"), parsed on every call — see `kons/konsCache.ts`. */
