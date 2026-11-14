@@ -6,8 +6,15 @@
  * host, and nothing the files do not hold.
  *
  * Plain tables in the unfilled frame — figures to consult, not an
- * instrument (box grammar). No chart: thirty rows of four numbers read
- * fine as numbers, and a chart would be the one on the site.
+ * instrument (box grammar).
+ *
+ * EVERY DAY SINCE COUNTING BEGAN, in every section (14.11.2026); until
+ * then the last 30 days. With the window open-ended the day table grows by
+ * a row a day, so the page views stand as a chart above it
+ * (`StatistikChart`), and the table opens on two weeks — this one against
+ * the last — with the rest behind `ListMore`. A host still needs
+ * `HERKUNFT_MINDESTENS` visits, now summed over the longer window; kept
+ * at five on purpose, to be raised once a private page shows up.
  */
 import type { StatistikPayload } from '#shared/types'
 import { formatDateDe, formatDateTimeDe, formatDateWeekdayDe, formatNumberDe } from '#shared/utils/format'
@@ -19,6 +26,10 @@ usePageSeo({
 })
 
 const { data, status, error, refresh } = useFetch<StatistikPayload>('/api/statistik', { lazy: true })
+
+/** Two weeks stand, so this week reads against the one before it; the rest behind `ListMore`. */
+const TAGE_STEP = 14
+const tage = usePagedList(() => data.value?.tage ?? [], TAGE_STEP, [])
 
 /** Names for the page classes of `server/utils/zaehlung/klassen.ts`. */
 const KLASSE_NAME: Record<string, string> = {
@@ -61,10 +72,10 @@ const KLASSE_NAME: Record<string, string> = {
       @retry="refresh()"
     >
       <template #default="{ data: stats }">
-        <ProseSection id="stat-tage" heading="Die letzten 30 Tage" first>
+        <ProseSection id="stat-tage" heading="Seitenaufrufe je Tag" first>
           <p v-if="!stats.seit">
-            Noch ist kein Tag gezählt. Die Zahlen erscheinen hier, sobald der
-            erste Tag gespeichert ist.
+            Noch ist kein voller Tag gezählt. Die Zahlen erscheinen hier ab
+            dem Tag nach dem Beginn der Zählung.
           </p>
           <template v-else>
             <p>
@@ -74,33 +85,48 @@ const KLASSE_NAME: Record<string, string> = {
               dazu {{ formatNumberDe(stats.gesamt.feedKalender) }} Abrufe von
               Abonnements und {{ formatNumberDe(stats.gesamt.bots) }} Zugriffe von Programmen.
             </p>
-            <div class="mt-6 overflow-x-auto rounded-xl border border-hairline">
-              <table class="w-full text-sm">
-                <caption class="sr-only">
-                  Seitenaufrufe je Tag, neuester Tag zuerst
-                </caption>
-                <thead class="border-b border-hairline text-left text-ink-muted">
-                  <tr>
-                    <th scope="col" class="px-3 py-2 font-medium">Datum</th>
-                    <th scope="col" class="px-3 py-2 text-right font-medium">Seitenaufrufe</th>
-                    <th scope="col" class="px-3 py-2 text-right font-medium">Abonnements</th>
-                    <th scope="col" class="px-3 py-2 text-right font-medium">Programme</th>
-                  </tr>
-                </thead>
-                <tbody class="divide-y divide-hairline tabular-nums text-ink">
-                  <tr v-for="row in stats.tage" :key="row.tag">
-                    <th scope="row" class="whitespace-nowrap px-3 py-2 text-left font-normal">
-                      {{ formatDateWeekdayDe(row.tag) }}
-                    </th>
-                    <td class="px-3 py-2 text-right font-medium">{{ formatNumberDe(row.seiten) }}</td>
-                    <td class="px-3 py-2 text-right">{{ formatNumberDe(row.feedKalender) }}</td>
-                    <td class="px-3 py-2 text-right text-ink-muted">{{ formatNumberDe(row.bots) }}</td>
-                  </tr>
-                </tbody>
-              </table>
+            <StatistikChart :tage="stats.tage" class="mt-6" />
+            <!-- The frame clips, the table scrolls inside it, so the pager
+                 at the foot stays put while a narrow screen scrolls the
+                 columns. -->
+            <div class="mt-4 overflow-clip rounded-xl border border-hairline">
+              <div class="overflow-x-auto">
+                <table class="w-full text-sm">
+                  <caption class="sr-only">
+                    Seitenaufrufe je Tag, neuester Tag zuerst
+                  </caption>
+                  <thead class="border-b border-hairline text-left text-ink-muted">
+                    <tr>
+                      <th scope="col" class="px-3 py-2 font-medium">Datum</th>
+                      <th scope="col" class="px-3 py-2 text-right font-medium">Seitenaufrufe</th>
+                      <th scope="col" class="px-3 py-2 text-right font-medium">Abonnements</th>
+                      <th scope="col" class="px-3 py-2 text-right font-medium">Programme</th>
+                    </tr>
+                  </thead>
+                  <tbody class="divide-y divide-hairline tabular-nums text-ink">
+                    <tr v-for="row in tage.shown.value" :key="row.tag">
+                      <th scope="row" class="whitespace-nowrap px-3 py-2 text-left font-normal">
+                        {{ formatDateWeekdayDe(row.tag) }}
+                      </th>
+                      <td class="px-3 py-2 text-right font-medium">{{ formatNumberDe(row.seiten) }}</td>
+                      <td class="px-3 py-2 text-right">{{ formatNumberDe(row.feedKalender) }}</td>
+                      <td class="px-3 py-2 text-right text-ink-muted">{{ formatNumberDe(row.bots) }}</td>
+                    </tr>
+                  </tbody>
+                </table>
+              </div>
+              <ListMore
+                :visible="tage.visible.value"
+                :total="stats.tage.length"
+                :step="TAGE_STEP"
+                @more="tage.more()"
+                @all="tage.all()"
+              />
             </div>
             <p class="text-sm">
-              Tage nach UTC. „Abonnements“ sind Abrufe des RSS-Feeds und
+              Tage nach UTC. Der Tag, an dem die Zählung begann, fehlt in
+              allen Zahlen dieser Seite: Sie begann im Lauf des Tages, er ist
+              nur zum Teil gezählt. „Abonnements“ sind Abrufe des RSS-Feeds und
               der Kalenderdateien, die Feedreader und Kalender-Apps von sich
               aus in festen Abständen stellen – sie sind keine Seitenaufrufe
               und darin nicht enthalten. „Programme“ sind Suchmaschinen, Vorschaudienste und
@@ -114,14 +140,14 @@ const KLASSE_NAME: Record<string, string> = {
 
         <ProseSection v-if="stats.seit" id="stat-seiten" heading="Was aufgerufen wird">
           <p>
-            Die letzten 30 Tage nach Art der Seite, darunter die Abrufe des
+            Seit Beginn der Zählung nach Art der Seite, darunter die Abrufe des
             Feeds und der Kalenderdateien. Gezählt wird die Art, nicht die
             Adresse: welcher Entwurf gelesen wurde, steht nirgends.
           </p>
           <div
             v-for="(tabelle, i) in [
-              { kopf: 'Seite', zahl: 'Aufrufe', caption: 'Seitenaufrufe der letzten 30 Tage nach Art der Seite', zeilen: stats.nachSeite },
-              { kopf: 'Abonnement', zahl: 'Abrufe', caption: 'Abrufe von Feed und Kalenderdateien der letzten 30 Tage', zeilen: stats.nachAbo },
+              { kopf: 'Seite', zahl: 'Aufrufe', caption: 'Seitenaufrufe seit Beginn der Zählung nach Art der Seite', zeilen: stats.nachSeite },
+              { kopf: 'Abonnement', zahl: 'Abrufe', caption: 'Abrufe von Feed und Kalenderdateien seit Beginn der Zählung', zeilen: stats.nachAbo },
             ]"
             :key="tabelle.kopf"
             class="overflow-x-auto rounded-xl border border-hairline"
@@ -149,8 +175,8 @@ const KLASSE_NAME: Record<string, string> = {
 
         <ProseSection v-if="stats.seit" id="stat-herkunft" heading="Woher Besuche kommen">
           <p>
-            Die Domains der Seiten, über deren Links Besuche der letzten 30
-            Tage kamen – nur die Domain, ohne Pfad, und erst ab fünf Besuchen,
+            Die Domains der Seiten, über deren Links Besuche seit Beginn der
+            Zählung kamen – nur die Domain, ohne Pfad, und erst ab fünf Besuchen,
             damit ein einzelner Link von einer privaten Seite nicht hier
             erscheint. Besuche ohne solche
             Angabe, etwa über ein Lesezeichen oder eine App, fehlen hier.
@@ -161,7 +187,7 @@ const KLASSE_NAME: Record<string, string> = {
           <div v-else class="mt-6 overflow-x-auto rounded-xl border border-hairline">
             <table class="w-full text-sm">
               <caption class="sr-only">
-                Die häufigsten verweisenden Domains der letzten 30 Tage
+                Die häufigsten verweisenden Domains seit Beginn der Zählung
               </caption>
               <thead class="border-b border-hairline text-left text-ink-muted">
                 <tr>

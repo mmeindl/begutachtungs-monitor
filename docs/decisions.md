@@ -92,7 +92,14 @@ change belongs here.
   official's personal service address (§12.16).
 - **Page views are counted, visitors are not.** Daily sums per page class and
   referring host; no address, no hash, no cookie, no per-request line
-  (§12.65).
+  (§12.65). `/statistik` shows every counted day, in every section
+  (14.11.2026; until then the last 30 days): page views as a chart, by day
+  up to 120 days and by Monday week beyond, over a table that opens on two
+  weeks. The oldest day file is left out of every figure: counting starts
+  inside that day, so it is always cut short (a rule, not a date, so a copy
+  drops its own). A referring host still needs five visits, now summed over
+  the whole history — kept on purpose, and raised once a private page shows
+  up.
 
 ### Framing and what the page may claim
 

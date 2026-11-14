@@ -4,6 +4,15 @@ import { ANDERE, erfasse, leererTag } from '../server/utils/zaehlung/tag'
 
 const tag = leererTag
 
+/** The day counting began: always left out, so every case puts one in front. */
+function start(t: string) {
+  const d = tag(t)
+  erfasse(d, { klasse: 'ueber', bot: false, herkunft: 'start.example' })
+  d.herkunft['start.example'] = HERKUNFT_MINDESTENS
+  d.stand = '2099-01-01T00:00:00.000Z'
+  return d
+}
+
 /** The public summary behind /statistik. */
 describe('fasseZusammen', () => {
   it('sums the window and the totals, newest day first, hosts ranked without „andere“', () => {
@@ -19,7 +28,7 @@ describe('fasseZusammen', () => {
     d1.herkunft['a.example'] = HERKUNFT_MINDESTENS - 1
     d1.herkunft['b.example'] = HERKUNFT_MINDESTENS - 2
     d2.stand = '2026-10-30T12:00:00.000Z'
-    const s = fasseZusammen([d2, d1], new Date('2026-10-30T15:00:00Z'))
+    const s = fasseZusammen([d2, start('2026-10-27'), d1], new Date('2026-10-30T15:00:00Z'))
     expect(s.seit).toBe('2026-10-28')
     expect(s.gesamt).toEqual({ seiten: 2, feedKalender: 2, bots: 1 })
     expect(s.tage).toEqual([
@@ -50,22 +59,41 @@ describe('fasseZusammen', () => {
     expect([...s.nachSeite, ...s.nachAbo].every((r) => r.aufrufe === 0)).toBe(true)
   })
 
+  it('leaves the day counting began out of every figure', () => {
+    const erst = start('2026-10-29')
+    const s = fasseZusammen([erst], new Date('2026-10-29T15:00:00Z'))
+    expect(s).toMatchObject({
+      seit: null, gesamt: { seiten: 0, feedKalender: 0, bots: 0 }, tage: [], herkunft: [], stand: null,
+    })
+    const d = tag('2026-10-30')
+    erfasse(d, { klasse: 'start', bot: false, herkunft: null })
+    const t = fasseZusammen([d, erst], new Date('2026-10-30T15:00:00Z'))
+    expect(t.seit).toBe('2026-10-30')
+    expect(t.gesamt.seiten).toBe(1)
+    expect(t.tage).toHaveLength(1)
+    expect(t.nachSeite.find((r) => r.klasse === 'ueber')!.aufrufe).toBe(0)
+    expect(t.herkunft).toEqual([])
+  })
+
   it('keeps „Andere Seiten“ last however many views it has', () => {
     const d = tag('2026-10-30')
     for (let i = 0; i < 3; i++) erfasse(d, { klasse: 'sonstige', bot: false, herkunft: null })
     erfasse(d, { klasse: 'ueber', bot: false, herkunft: null })
-    const s = fasseZusammen([d], new Date('2026-10-30T15:00:00Z'))
+    const s = fasseZusammen([start('2026-10-29'), d], new Date('2026-10-30T15:00:00Z'))
     expect(s.nachSeite[0]).toEqual({ klasse: 'ueber', aufrufe: 1 })
     expect(s.nachSeite.at(-1)).toEqual({ klasse: 'sonstige', aufrufe: 3 })
   })
 
-  it('leaves days outside the window out of the per-page sums but in the totals', () => {
+  it('reaches back to the first counted day, in the per-page sums too, days between as zero', () => {
     const alt = tag('2026-09-01')
     erfasse(alt, { klasse: 'ueber', bot: false, herkunft: null })
     const neu = tag('2026-10-30')
     erfasse(neu, { klasse: 'ueber', bot: false, herkunft: null })
-    const s = fasseZusammen([alt, neu], new Date('2026-10-30T15:00:00Z'))
+    const s = fasseZusammen([start('2026-08-31'), alt, neu], new Date('2026-10-30T15:00:00Z'))
     expect(s.gesamt.seiten).toBe(2)
-    expect(s.nachSeite.find((r) => r.klasse === 'ueber')).toEqual({ klasse: 'ueber', aufrufe: 1 })
+    expect(s.nachSeite.find((r) => r.klasse === 'ueber')).toEqual({ klasse: 'ueber', aufrufe: 2 })
+    expect(s.tage).toHaveLength(60)
+    expect(s.tage.at(-1)).toEqual({ tag: '2026-09-01', seiten: 1, feedKalender: 0, bots: 0 })
+    expect(s.tage.slice(1, -1).every((r) => r.seiten === 0)).toBe(true)
   })
 })

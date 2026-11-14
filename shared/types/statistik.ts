@@ -19,7 +19,7 @@ export interface StatistikTag {
   bots: number
 }
 
-/** One kind of page (a `Klasse` of `server/utils/zaehlung/klassen.ts`) over the window. */
+/** One kind of page (a `Klasse` of `server/utils/zaehlung/klassen.ts`) since counting began. */
 export interface StatistikSeite {
   klasse: string
   aufrufe: number
@@ -35,13 +35,13 @@ export interface StatistikPayload {
   seit: string | null
   /** The three columns of `StatistikTag`, summed since `seit`. */
   gesamt: { seiten: number; feedKalender: number; bots: number }
-  /** The last 30 days up to today, newest first; a day without a file reads 0. */
+  /** Every day from `seit` up to today, newest first; a day without a file reads 0. */
   tage: StatistikTag[]
-  /** Reader requests per page class over those 30 days, most first (ties in `KLASSEN` order, `sonstige` last), zeros included. */
+  /** Reader requests per page class since `seit`, most first (ties in `KLASSEN` order, `sonstige` last), zeros included. */
   nachSeite: StatistikSeite[]
   /** The same for the feed and calendar classes. */
   nachAbo: StatistikSeite[]
-  /** The 20 most frequent referring hosts over those 30 days. */
+  /** The 20 most frequent referring hosts since `seit`, each with at least `HERKUNFT_MINDESTENS` visits. */
   herkunft: StatistikHerkunft[]
   /** When the newest day file was written, ISO. */
   stand: string | null

@@ -6,7 +6,6 @@ import type { StatistikPayload, StatistikSeite, StatistikTag } from '#shared/typ
 import { KLASSEN, type Klasse } from './klassen'
 import { ANDERE, utcTag, type Tagesstand } from './tag'
 
-export const STATISTIK_TAGE = 30
 export const STATISTIK_HERKUNFT = 20
 /**
  * Visits a referring host needs before it is published: a single link from
@@ -40,9 +39,22 @@ function rangiere(order: readonly Klasse[], counts: ReadonlyMap<string, number>)
     .map(({ klasse, aufrufe }) => ({ klasse, aufrufe }))
 }
 
-/** `days` in any order; `today` is the last day of the window. */
+/**
+ * `days` in any order; `today` is the last day of the window, the first
+ * counted day its first. Every day since counting began (14.11.2026): until
+ * then the window was the last 30 days. The day files are kept, so the
+ * window is what the page chooses to show, not what the server stores.
+ *
+ * THE OLDEST DAY FILE IS LEFT OUT, of every sum (14.11.2026). Counting
+ * starts when a server first runs, somewhere inside a day, so that day is
+ * always cut short — on this site a Friday with hardly a view, the first bar
+ * of the chart reading as „nobody came". A rule, not a date, so a copy run
+ * elsewhere drops its own first day; `seit` is the first full day, and the
+ * page says the starting day is not in the figures.
+ */
 export function fasseZusammen(days: readonly Tagesstand[], today: Date): StatistikPayload {
   const byTag = new Map(days.map((d) => [d.tag, d]))
+  byTag.delete([...byTag.keys()].sort()[0]!)
   const sorted = [...byTag.keys()].sort()
 
   const gesamt = { seiten: 0, feedKalender: 0, bots: 0 }
@@ -57,10 +69,10 @@ export function fasseZusammen(days: readonly Tagesstand[], today: Date): Statist
   const hosts = new Map<string, number>()
   const klassen = new Map<string, number>(KLASSEN.map((k) => [k, 0]))
   const seit = sorted[0] ?? null
-  for (let i = 0; i < STATISTIK_TAGE; i++) {
+  for (let i = 0; seit !== null; i++) {
     const tag = utcTag(new Date(today.getTime() - i * 86_400_000))
     // Days before counting began are not zero, they are unknown.
-    if (seit === null || tag < seit) break
+    if (tag < seit) break
     const d = byTag.get(tag)
     tage.push(zeile(tag, d))
     for (const [h, n] of Object.entries(d?.herkunft ?? {})) hosts.set(h, (hosts.get(h) ?? 0) + n)
@@ -79,6 +91,6 @@ export function fasseZusammen(days: readonly Tagesstand[], today: Date): Statist
     .slice(0, STATISTIK_HERKUNFT)
     .map(([host, aufrufe]) => ({ host, aufrufe }))
 
-  const stand = days.map((d) => d.stand).filter((s): s is string => s !== null).sort().at(-1) ?? null
+  const stand = [...byTag.values()].map((d) => d.stand).filter((s): s is string => s !== null).sort().at(-1) ?? null
   return { seit, gesamt, tage, nachSeite, nachAbo, herkunft, stand }
 }
