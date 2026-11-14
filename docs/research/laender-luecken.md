@@ -103,9 +103,16 @@ Die Länder: Oberösterreich legt sie meist bei (81 %), aber einspaltig mit
 Unter-/Durchstreichung, die nur über die Lage der Linien zu lesen ist;
 Salzburg bei 42 % der Gesetzesentwürfe, zweispaltig; Wien in der
 Entwurfs-PDF, zweispaltig. Wo sie fehlt, gibt es kein „Was ändert der
-Entwurf?". Zurückgehalten werden §§, deren alte Spalte nur die Überschrift
-trägt (alte Salzburger Dienstrechtspakete) — ob das Dokument so druckt, ist
-offen.
+Entwurf?". Zurückgehalten werden §§, deren alte Spalte der Monitor nicht
+wortgleich im RIS findet. Für die alten Salzburger Dienstrechtspakete war das
+der Leser, nicht das Dokument (geklärt 14.11.2026): Salzburg druckt dort
+einen unveränderten Absatz oder eine Ziffer mit der bloßen Bezeichnung,
+„(1) (2) Abs 1 ist nicht anzuwenden, wenn 1. 2. der …" (22320, § 4h L-BG),
+und der Leser las „(1)" und „1." als Wörter. Seither als Auslassung gelesen:
+über 147 Salzburger Entwürfe 53 §§ mehr gezeigt (1.663 → 1.716),
+zurückgehalten 504 → 451. Nur die Überschrift trägt die alte Spalte bei drei
+§§ (32075); die übrigen haben andere Gründe, Salzburgs „(1) unverändert"
+und ein mitkopierter RIS-Fußtext darunter.
 
 **Ziel:** Eine Textgegenüberstellung zu jedem ändernden Entwurf, zweispaltig
 nach der Vorlage des Bundes, als eigenes Dokument.

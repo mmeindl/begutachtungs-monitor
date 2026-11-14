@@ -669,6 +669,57 @@ const BARE_ELISION_RE = new RegExp(BARE_ELISION, 'u')
 /** Whether a text leaves anything out (`ELISION_RE`). */
 const elides = (text: string) => /…|\.\.\./.test(text) || BARE_ELISION_RE.test(text)
 
+/** „(3)", „(3a)", „3.", „3a.", „c)": an Absatz, a Ziffer, a litera — with no word before it that names it („§ 14.", „Abs. 2."). */
+const BARE_DESIGNATION_RE = /(?<!\S)(?<!(?:§|Art\.?|Artikel|Abs\.?|Absatz|Z|Ziffer|lit\.?|Nr\.?)\s+)(?:\((\d+)([a-z]?)\)|(\d+)([a-z]?)\.|([a-z])\))(?:\s+(bis|und)\s+(?:\((\d+)([a-z]?)\)|(\d+)([a-z]?)\.|([a-z])\)))?(?=\s|$)/gu
+
+/** A designation's kind and place: „(3a)" → Absatz 3, a. */
+type Designation = { kind: 'absatz' | 'ziffer' | 'litera'; n: number; x: string }
+
+/** Whether `b` is the designation right after `a`: „(3)" → „(4)" or „(3a)", „(3a)" → „(3b)" or „(4)", „c)" → „d)". */
+function follows(a: Designation, b: Designation): boolean {
+  if (a.kind !== b.kind) return false
+  if (a.kind === 'litera') return b.n === a.n + 1
+  if (b.n === a.n + 1) return b.x === ''
+  return b.n === a.n && b.x !== '' && (a.x === '' ? b.x === 'a' : b.x.charCodeAt(0) === a.x.charCodeAt(0) + 1)
+}
+
+/**
+ * Salzburg's older packages print an Absatz or a Ziffer they leave
+ * unchanged by its designation alone, no „…": „Verbot der
+ * Folgebeschäftigung (1) (2) Abs 1 ist nicht anzuwenden, wenn 1. 2. der
+ * für den letzten Monat … nicht übersteigt; 3. und 4." (22320, § 4h L-BG;
+ * 14.11.2026). Read as words, the missing Abs. 1 and Z 1 put the column
+ * below `STANDS_IN_RIS`, and such §§ were withheld as „nicht wortgleich".
+ * Here such an omission gets its „…": a designation directly followed by
+ * the next one — „(1) (2)", „1. 2." — and a pair or range of them at the
+ * end — „3. und 4.". Nothing else: a sentence's last number before the
+ * next Absatz („… Oö. Straßengesetz 1991. (3)"), „2. a)" and a lone
+ * designation at the end stay words. Only for a document that prints its
+ * omissions so (`bare`, Salzburg): Wien's 2026008 prints the legend of
+ * its marks in the column, and read with this its § 2 came out „changed"
+ * by the legend alone.
+ */
+export function withMarkedOmissions(text: string): string {
+  const of = (m: RegExpMatchArray, at: number): Designation | null => {
+    if (m[at] !== undefined) return { kind: 'absatz', n: Number(m[at]), x: m[at + 1] ?? '' }
+    if (m[at + 2] !== undefined) return { kind: 'ziffer', n: Number(m[at + 2]), x: m[at + 3] ?? '' }
+    if (m[at + 4] !== undefined) return { kind: 'litera', n: m[at + 4]!.charCodeAt(0), x: '' }
+    return null
+  }
+  const found = [...text.matchAll(BARE_DESIGNATION_RE)].map((m) => ({ at: m.index!, end: m.index! + m[0].length, first: of(m, 1)!, last: of(m, 7) ?? of(m, 1)!, span: m[6] !== undefined }))
+  let out = ''
+  let from = 0
+  found.forEach((d, i) => {
+    const next = found[i + 1]
+    const atEnd = text.slice(d.end).trim() === ''
+    const omitted = (next && next.at === d.end + (/^\s+/.exec(text.slice(d.end))?.[0].length ?? 0) && follows(d.last, next.first)) || (atEnd && d.span)
+    if (!omitted || /^\s*(?:…|\.\.\.)/.test(text.slice(d.end))) return
+    out += `${text.slice(from, d.end)} …`
+    from = d.end
+  })
+  return out + text.slice(from)
+}
+
 /** A stretch shorter than this proves nothing either way. */
 const MIN_STRETCH_WORDS = 6
 
@@ -678,7 +729,8 @@ const MIN_STRETCH_WORDS = 6
  * (the heading) — no numbers, § marks or line-break hyphens, which the two
  * print differently. Null where no such run exists.
  */
-export function searchPhrase(text: string): string | null {
+export function searchPhrase(printed: string, bare = false): string | null {
+  const text = bare ? withMarkedOmissions(printed) : printed
   const stretch = text.split(ELISION_RE).map((s) => s.trim()).sort((a, b) => b.length - a.length)[0] ?? ''
   const tokens = stretch.split(/\s+/)
   const plain = (t: string) => /^[„“"]?\p{L}[\p{L}-]*[,.;:“”"]?$/u.test(t) && !/-$/.test(t)
@@ -690,7 +742,8 @@ export function searchPhrase(text: string): string | null {
 }
 
 /** Is the text in force, as printed, nothing but elisions — „(1) bis (4) …", „Allgemeines (1) bis (5)"? Then there is no wording to check. */
-export function onlyElided(text: string): boolean {
+export function onlyElided(printed: string, bare = false): boolean {
+  const text = bare ? withMarkedOmissions(printed) : printed
   return elides(text) && !text.split(ELISION_RE).some((s) => s.trim().split(/\s+/).length >= MIN_STRETCH_WORDS)
 }
 
@@ -701,9 +754,9 @@ export function onlyElided(text: string): boolean {
  * anything in RIS (`MIN_STRETCH_WORDS`): like an elided §, it is checked by
  * its number.
  */
-export function onlyListed(p: Pick<TguParagraph, 'old' | 'neu'>): boolean {
+export function onlyListed(p: Pick<TguParagraph, 'old' | 'neu'>, bare = false): boolean {
   const old = joinLines(p.old)
-  return old !== '' && old === joinLines(p.neu) && !elides(old) && comparableWords(old).length < MIN_STRETCH_WORDS
+  return old !== '' && old === joinLines(p.neu) && !elides(bare ? withMarkedOmissions(old) : old) && comparableWords(old).length < MIN_STRETCH_WORDS
 }
 
 /**
@@ -712,7 +765,8 @@ export function onlyListed(p: Pick<TguParagraph, 'old' | 'neu'>): boolean {
  * least one stretch must be long enough to say so. Without elisions — the
  * Oberösterreich format — this is `shareInRis` on the whole.
  */
-export function standsInRis(text: string, risText: string): boolean {
+export function standsInRis(printed: string, risText: string, bare = false): boolean {
+  const text = bare ? withMarkedOmissions(printed) : printed
   if (!elides(text)) return shareInRis(text, risText) >= STANDS_IN_RIS
   const stretches = text.split(ELISION_RE).map((s) => s.trim()).filter((s) => s.split(/\s+/).length >= MIN_STRETCH_WORDS)
   return stretches.length > 0 && stretches.every((s) => shareInRis(s, risText) >= STANDS_IN_RIS)

@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest'
 import { draftNameOf, kaerntenDated, readableLawName, tirolDated, wienTguStart } from '../server/utils/laender/landTguService'
 import { parseAnnexPdf, type AnnexItem, type AnnexPage } from '../server/utils/annex/annexPdf'
-import { amendedLawOf, amendedLawsOf, columnParagraphs, draftDeletes, joinLines, mergeParagraphs, onlyElided, onlyListed, packageArticles, renamedTo, renumberingsOf, replacementsOf, searchPhrase, shareInRis, STANDS_IN_RIS, standsInRis, tguLines, tguParagraphs, tguUnits, withHeadings, withRenumberings, type Renumbering, type TguLine, type TguPage, type TguParagraph } from '../server/utils/laender/landTgu'
+import { amendedLawOf, amendedLawsOf, columnParagraphs, withMarkedOmissions, draftDeletes, joinLines, mergeParagraphs, onlyElided, onlyListed, packageArticles, renamedTo, renumberingsOf, replacementsOf, searchPhrase, shareInRis, STANDS_IN_RIS, standsInRis, tguLines, tguParagraphs, tguUnits, withHeadings, withRenumberings, type Renumbering, type TguLine, type TguPage, type TguParagraph } from '../server/utils/laender/landTgu'
 
 /** A run at (x, y), each character 5 pt wide; glyph widths equal, so centres fall evenly. */
 function run(s: string, x: number, y: number) {
@@ -644,6 +644,29 @@ describe('finding a § by its own words', () => {
     expect(standsInRis('Leistungsbeurteilung für eine Schulstufe, Feststellungs- und Nachtragsprüfung (1) und (2) ...', heading)).toBe(true)
     expect(onlyElided('Leistungsbeurteilung (1) und (2) …')).toBe(true)
     expect(searchPhrase('Kostenbeiträge (1) bis (5) (6) Die Kostenbeiträge gemäß den Bestimmungen dieses Gesetzes sind jedes Jahr festzusetzen.')).toBe('Kostenbeiträge gemäß den Bestimmungen dieses Gesetzes sind jedes')
+  })
+
+  // Salzburg 22320 (2020), § 4h L-BG: the older packages print an Absatz or
+  // a Ziffer they leave unchanged by its number alone. Read as words, the
+  // missing Abs. 1 and Z 1 put the column below 0.98 of RIS's text and the
+  // § was withheld as „nicht wortgleich" (14.11.2026).
+  it('takes a bare Absatz or Ziffer number as an omission, as Salzburg prints it', () => {
+    const ris = [
+      '<nutzdaten>Verbot der Folgebeschäftigung § 4h (1) Dem Beamten ist es für die Dauer von sechs Monaten nach Auflösung des Dienstverhältnisses untersagt, zu einem Rechtsträger in ein Beschäftigungsverhältnis zu treten. Ein Anspruch auf Ersatz eines weiteren Schadens besteht nicht.',
+      '(2) Abs 1 ist nicht anzuwenden, wenn 1. dadurch das Fortkommen des Beamten unbillig erschwert wird; 2. der für den letzten Monat des Dienstverhältnisses gebührende Monatsbezug das Gehalt eines Beamten der Dienstklasse V Gehaltsstufe 4 nicht übersteigt;',
+      '3. die Dienstbehörde dem Beamten begründeten Anlass zum Austritt gegeben hat; oder 4. die Dienstbehörde das provisorische Dienstverhältnis kündigt. Im RIS seit 16.07.2014</nutzdaten>',
+    ].join(' ')
+    const old = 'Verbot der Folgebeschäftigung (1) (2) Abs 1 ist nicht anzuwenden, wenn 1. 2. der für den letzten Monat des Dienstverhältnisses gebührende Monatsbezug das Gehalt eines Beamten der Dienstklasse V Gehaltsstufe 4 nicht übersteigt; 3. und 4.'
+    expect(standsInRis(old, ris, true)).toBe(true)
+    expect(standsInRis(old.replace('Gehaltsstufe 4', 'Gehaltsstufe 6'), ris, true)).toBe(false)
+    // Only for a document that prints its omissions so (Salzburg).
+    expect(standsInRis(old, ris)).toBe(false)
+    expect(withMarkedOmissions(old)).toBe('Verbot der Folgebeschäftigung (1) … (2) Abs 1 ist nicht anzuwenden, wenn 1. … 2. der für den letzten Monat des Dienstverhältnisses gebührende Monatsbezug das Gehalt eines Beamten der Dienstklasse V Gehaltsstufe 4 nicht übersteigt; 3. und 4. …')
+    expect(withMarkedOmissions('Begriffsbestimmungen Im Sinne dieses Gesetzes gelten als: 1. bis 9. 10. Modellfunktion: Jede Modellstelle')).toContain('1. bis 9. … 10. Modellfunktion')
+    // Not a designation: a § named, a sentence's last number before the next Absatz, „2. a)", one alone at the end.
+    for (const text of ['Kosten-Nutzen-Analyse § 14. (1) Die Errichtung', 'nach dem Oö. Straßengesetz 1991. (3) Im Verfahren', 'hat, 2. a) entgegen § 9 Abs. 1', '5. Geburtsdatum, 6. Sozialversicherungsnummer, 7.', 'Einwohnern 37. (2) Die Einwohnerzahl']) {
+      expect(withMarkedOmissions(text)).toBe(text)
+    }
   })
 
   it('knows a § with nothing but elisions to check', () => {

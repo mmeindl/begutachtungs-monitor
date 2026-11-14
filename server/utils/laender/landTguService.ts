@@ -140,6 +140,8 @@ interface TguRead {
   renumbered?: string[]
   /** Laws the draft puts in place of one in force of the same name (`replacementsOf`). */
   replacements?: { old: string; by: string }[]
+  /** The document prints an omission by the bare designation, „(1) (2) …", „1. 2. …" (`withMarkedOmissions`): Salzburg. */
+  bareOmissions?: true
 }
 
 /**
@@ -380,6 +382,7 @@ async function readSalzburg(detail: LandDraftRecord, draftPagesOf?: PagesReader,
     deletes: (n) => draftDeletes(draftText ?? '', n),
     renumbered: unmapped,
     replacements: replacementsOf(detail.draft.title, draftText ?? ''),
+    bareOmissions: true,
     ...(draftText === null ? { complete: false as const } : {}),
   }
 }
@@ -537,6 +540,7 @@ export async function compareTgu(land: LandCode, detail: LandDraftDetail, draftP
    * new text the reader did not find.
    */
   const why: (LandWithheldReason | undefined)[] = paragraphs.map((p) => (p.unread ? (p.because ?? 'unread') : undefined))
+  const bare = got.bareOmissions === true
 
   /**
    * The law a § belongs to, where RIS confirms the reading of it; null:
@@ -555,7 +559,7 @@ export async function compareTgu(land: LandCode, detail: LandDraftDetail, draftP
       return null
     }
     // A § that only moves, printed by its heading on both sides (`onlyListed`), as well (26.10.2026).
-    if (!p.old.length || onlyElided(joinLines(p.old)) || (p.from && onlyListed(p))) return 'later'
+    if (!p.old.length || onlyElided(joinLines(p.old), bare) || (p.from && onlyListed(p, bare))) return 'later'
     if (!p.neu.length && got.deletes && !got.deletes(p.number)) {
       why[i] = got.complete === false ? 'unchecked' : 'deletion'
       return null
@@ -574,10 +578,10 @@ export async function compareTgu(land: LandCode, detail: LandDraftDetail, draftP
       if (paras === null) unchecked ||= !p.law || law === p.law
       const risUrl = paras?.get(origin)
       const text = risUrl ? await risText(risUrl) : null
-      if (text !== null && standsInRis(old, text)) return law
+      if (text !== null && standsInRis(old, text, bare)) return law
     }
     // Not under any name the draft uses: by its own words (`paragraphByPhrase`).
-    const phrase = searchPhrase(old)
+    const phrase = searchPhrase(old, bare)
     const hit = phrase
       ? await paragraphByPhrase(land, phrase, origin, date).catch(() => {
           unchecked = true
@@ -585,7 +589,7 @@ export async function compareTgu(land: LandCode, detail: LandDraftDetail, draftP
         })
       : null
     const text = hit?.law ? await risText(hit.url) : null
-    if (hit?.law && text !== null && standsInRis(old, text)) return hit.law
+    if (hit?.law && text !== null && standsInRis(old, text, bare)) return hit.law
     if (unchecked) why[i] = 'unchecked'
     return null
   }
@@ -606,7 +610,7 @@ export async function compareTgu(land: LandCode, detail: LandDraftDetail, draftP
         const risUrl = paras?.get(p.from ?? p.number)
         const text = risUrl ? await paragraphText(risUrl).catch(failed(null)) : null
         if (risUrl && text === null) why[i] = 'unchecked'
-        if (text !== null && standsInRis(joinLines(p.old), text)) {
+        if (text !== null && standsInRis(joinLines(p.old), text, bare)) {
           why[i] = undefined
           return law
         }

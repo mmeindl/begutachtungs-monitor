@@ -392,7 +392,10 @@ change belongs here.
 - **Precision before coverage.** A § of a Land's Textgegenüberstellung is
   shown only where RIS confirms its current wording on the document's date
   (≥ 0.98 word match) or the § is new; the rest is withheld and counted
-  (§12.45, §12.52).
+  (§12.45, §12.52). An omission is read as the Land prints it: Salzburg
+  marks an unchanged Absatz or Ziffer by its bare designation („(1) (2) …",
+  „1. 2. …"), read as „…" for Salzburg only, and only where the next
+  designation follows or a pair ends the § (14.11.2026).
 - **A Land's Textgegenüberstellung confirms text, it never supplies it**
   (12.11.2026), as the Bund's annex. A § it shows as changed or new is held
   against the draft's own Gesetzestext with the Bund's thresholds,
@@ -621,6 +624,7 @@ circular of 10.12.2015).
 | Oberösterreich Textgegenüberstellung: §§ confirmed / new / withheld | 1,301 / 239 / 213 | 73 drafts · 22.10.2026 (§12.45) |
 | Salzburg title search against the Land's own link | laws 262 of 267, Verordnungen 355 of 357 | 22.10.2026 (§12.47) |
 | Salzburg drafts that show a comparison | 139 of 151 | 23.10.2026 (§12.52) |
+| Salzburg Textgegenüberstellung: §§ shown / withheld | 1,716 / 451 (1,663 / 504 before bare designations were read as omissions) | 147 drafts, 140 with a comparison · 14.11.2026 |
 | Changed §§ with a per-§ reasoning | Oberösterreich 88 %, Salzburg 65 % | 25 drafts each (§12.53) |
 | Vorblatt carries the EU heading | 94.8 % | 154 ME, GP XXVIII · 04.11.2026 (§12.66) |
 | Vorblatt says „transposes a directive" / any EU link | 27.9 % / 41.6 % | same |
