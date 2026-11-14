@@ -4,20 +4,15 @@ What binds future work and cannot be read off the code: standing rules, the
 measurements that carry the product's claims, and alternatives that were
 tried and rejected.
 
-This file replaces `docs/architecture.md`, a change-by-change log that had
-grown to 15,800 lines. The log is kept in git under the tag
-`architecture-archive-2026-11`; the numbers in parentheses (§12.31) are its
-section numbers:
+The numbers in parentheses (§12.31) are sections of `docs/architecture.md`,
+the change-by-change log this file replaced. It is kept under a tag, as is
+`docs/ris-join.md` (the reasoning behind each weight of the RIS↔Parliament
+join is in `server/utils/ris/risJoin.ts`):
 
 ```sh
 git show architecture-archive-2026-11:docs/architecture.md
+git show ris-join-archive-2026-11:docs/ris-join.md
 ```
-
-`docs/ris-join.md`, the record of the RIS↔Parliament join and of the first
-weeks of the § comparison, was retired the same way on 14.11.2026: its rules
-and figures are below, the reasoning behind each weight is in
-`server/utils/ris/risJoin.ts`, and the document is kept under the tag
-`ris-join-archive-2026-11`.
 
 The story of a change belongs in its commit message. A rule that outlives the
 change belongs here.
@@ -567,7 +562,6 @@ Ministerialentwurf, RV = Regierungsvorlage.
 | Fristende → first RV | median 40 days, p90 189 | GP XXVII (§12.23) |
 | Nationalrat decision → promulgation | median 20 days, p90 29, max 82 | 84 laws, GP XXVIII · 03.10.2026 (§12.21) |
 | Drafts changed again in Parliament after the RV | 52 of 91 | GP XXVIII (§12.18) |
-| Of the 30 most recent laws, never in Begutachtung | 6 | 18.09.2026 (§12.23) |
 | Regierungsvorlagen whose Erläuterungen say what became of the Begutachtung | 0 of 17 | 18 Vorlagen of GP XXVIII sampled, 17 with readable Erläuterungen · 08.09.2026 |
 | Statements on Regierungsvorlagen | 555 on 68 Vorlagen | GP XXVIII · 15.09.2026 (§12.14) |
 | Oral hearings in committee on ME-derived Vorlagen | XXVIII 1 of 79, XXVII 8 of 286 | 26.09.2026 (§12.14) |
@@ -829,6 +823,13 @@ circular of 10.12.2015).
   the legend hides them (§12.17).
 - **Station icons, yellow bars on every section, a wash on the current
   station** (§12.39).
+- **Renaming the path word `/entwuerfe` now.** The address was renamed once
+  already (from `/begutachtungen`), and a restructure with a country segment
+  is planned: rename at most once, then. Candidate for that day:
+  `/verfahren` — a page is one procedure, which holds for drafts that end,
+  laws without a draft and Verordnungen, and the new pages' API already says
+  `verfahren`. `/gesetze` is rejected: most drafts never become one. The
+  address the current word fits worst: `/entwuerfe/<land>/lgbl/<year>/<nr>`.
 
 ## 4. Open questions
 
@@ -841,7 +842,6 @@ circular of 10.12.2015).
   list 81 agree on 336 of 337 deadlines of GP XXVII, so extensions are rare.
 - **One Ministerialentwurf, several Regierungsvorlagen.** The page uses the
   RV whose text Parliament attaches; whether to show every strand is open.
-- **Rate limits of the Parliament API** are undocumented.
 - **Whether a Begutachtung is required at all,** federally or in any Land,
   and in what form. The product's wording („ohne Begutachtung", never
   „übersprungen") does not depend on it, but any public claim beyond it does.
@@ -851,14 +851,6 @@ circular of 10.12.2015).
   Tabakgesetz, after 5/ME). Its own documents do not mention a Begutachtung,
   so the mention rule (above) does not reach it; a draft under another title
   has no safe join yet.
-- **The path word `/entwuerfe`.** Kept on purpose: every page tells the
-  story of one bill, the address was renamed once already (from
-  `/begutachtungen`), and a restructure with a country segment is planned —
-  rename at most once, then. Candidate `/verfahren`: a page is one
-  procedure, which holds for drafts that end, laws without a draft and
-  Verordnungen, and the new pages' API already says `verfahren`. `/gesetze`
-  is rejected: most drafts never become one. The address it fits worst:
-  `/entwuerfe/<land>/lgbl/<year>/<nr>`.
 - **„Upcoming" Begutachtungen** have no verified data source: the Parliament
   API knows a consultation only once it starts.
 - **Outcome claims in periods with partial linkage.** `chainCoverageOf`
