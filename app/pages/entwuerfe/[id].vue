@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import { LONG_TITLE_CLAMP_CHARS, ledeLongTitle } from '~/utils/longTitle'
 import { originTokens, withOrigin } from '~/utils/origin'
 import type { BgblLawsResponse, BgblOutcome, DraftDocument, RisConsultationDetail, RisDocumentFormats } from '#shared/types'
 import type { ComparisonId, StationId } from '~/utils/spine'
@@ -102,6 +103,10 @@ const euTimelineCtx = computed<EuTimelineContext | null>(() => (data.value
         : { date: todayIso(), label: 'Heute' },
     }
   : null))
+
+/* The long title as the lede: what the heading does not already say, clamped when long. */
+const lede = computed(() => (data.value ? ledeLongTitle(data.value.longTitle, data.value.title) : null))
+const ledeClamped = computed(() => (lede.value?.length ?? 0) > LONG_TITLE_CLAMP_CHARS)
 
 /* „Verordnungsentwurf „…"" — what the „Zitieren" buttons name the record as. */
 const citeAs = computed(() => (data.value ? `${RIS_KIND_LABEL[data.value.kind]} „${data.value.title}“` : ''))
@@ -256,10 +261,27 @@ const doorHref = computed(() => {
             </span>
           </template>
           <!-- The long title only when it says more than the heading already
-             does; on a Verordnung it is where the subject matter lives. -->
-          <p v-if="data.longTitle" class="mt-1 text-sm text-ink-secondary">
-            {{ data.longTitle }}
-          </p>
+             does; on a Verordnung it is where the subject matter lives.
+             Without the „(Kurztitel – Abkürzung)" the heading already says,
+             and clamped to three lines above `LONG_TITLE_CLAMP_CHARS`: a
+             Sammelverordnung lists every act it amends, two thousand
+             characters and more (`app/utils/longTitle.ts`, 14.11.2026). The
+             toggle sits under the text it opens; a native <details>, so no
+             hydration is needed, and the clamp lifts by `:has([open])`. -->
+          <div v-if="lede" class="group/lede mt-1">
+            <p
+              class="text-sm text-ink-secondary"
+              :class="ledeClamped && 'line-clamp-3 group-has-[details[open]]/lede:line-clamp-none'"
+            >
+              {{ lede }}
+            </p>
+            <Disclosure v-if="ledeClamped" size="sm" tone="secondary">
+              <template #summary>
+                <span class="group-open:hidden">Ganzen Titel lesen</span>
+                <span class="hidden group-open:inline">Weniger anzeigen</span>
+              </template>
+            </Disclosure>
+          </div>
           <p v-if="data.ministryCode" class="mt-2 text-sm text-ink-secondary">
             <MinistryLinks :ministries="ministryLinks" />
           </p>
