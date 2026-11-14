@@ -74,8 +74,8 @@ change belongs here.
   is a person with an affiliation. A person attached behind an organisation's
   name is cut off; an e.U. counts as a natural person (§12.14).
 - **List 142's institution flag can withhold a name but never publish one on
-  its own.** It records how the submitter registered and also marks law firms
-  under a lawyer's name (§12.14).
+  its own.** It records how the submitter registered and also marks persons
+  and law firms under a lawyer's name (§12.14).
 - **A stored name is held against today's classifier** before it is served:
   a record outlives the rules that wrote it.
 - **A change to `privacy.ts` is validated by a corpus comparison, not by
@@ -123,8 +123,9 @@ change belongs here.
   is an archive gap, not a finding** (§12.27).
 - **„Noch nicht kundgemacht" needs one of two signals:** Parliament's own
   „Keine Kundmachung" stage, or no promulgation 120 days after the decision.
-  A successor is named only through Parliament's own link, never by title
-  (§12.21, §12.33).
+  A successor is named only through Parliament's own link, never by title:
+  every similarity threshold added pairs from different laws (§12.10,
+  §12.21, §12.33).
 - **Not „not promulgated" while time can still explain it.** For ordinances
   „pending" covers the first 180 days (§12.32).
 - **Club votes:** „alle Klubs dafür", never „einstimmig"; no counts derived
@@ -132,7 +133,8 @@ change belongs here.
   stands as a verdict on a § or a Stellungnahme (§12.34).
 - **A failed source says so; it never renders as an empty result.** An empty
   answer names what was searched. „Nothing found" for something unchecked is
-  the most expensive lie the product can tell (§12.13, §12.31).
+  the most expensive lie the product can tell. A failed fetch never counts
+  as empty and refutes nothing (§12.13, §12.31, §12.58).
 - **Pages without a parliamentary Gegenstand show no statement sections,**
   and the count cell says „nicht gezählt", never 0: nobody publishes who
   filed (§12.16, §12.28).
@@ -232,7 +234,8 @@ change belongs here.
   start alone.** Parliament and RIS share no identifier, so a draft is
   matched to its RIS record by dates, ministry and title. The end date is
   equal in 336 of 337 true pairs; the start lags by 1 to 14 days in 28 %,
-  because RIS publishes first; dates and ministry together are not unique. A
+  because RIS publishes first; no one-sided extension occurred in a whole
+  period; dates and ministry together are not unique. A
   change to a weight, a band or the title normalisation keeps the regression
   on both periods green (`tests/risJoin.test.ts`) or raises `RULE_VERSION`
   and regenerates `data/ris-me-map-gp27.json`, whose diff is read row by row:
@@ -257,8 +260,8 @@ change belongs here.
   decides only among candidates the window, the Ressort and the threshold
   already admit.
 - **A Länder § comparison runs only against a promulgation the Land itself
-  names,** never against our own title search, even with one candidate
-  (§12.44).
+  names,** never against our own title search, even with one candidate: it
+  fails when the right promulgation lies outside the window (§12.44).
 
 ### Comparisons
 
@@ -434,7 +437,6 @@ change belongs here.
   „lit.".
 - **„Entfallen" only where the draft says so.** An empty right column can be
   text the reader missed (§12.52).
-- **A failed fetch never counts as empty** and refutes nothing (§12.58).
 - **A document a Land files as the draft but that is not one is not read as
   the draft;** the page says so (§12.63). Among several candidates the
   content decides, not the title: where the first holds no law text, the
@@ -468,7 +470,8 @@ The code names the EU rules D1 to D7; this is where they are defined
 - **D6. Two dates side by side, no verdict:** no „late", no day count, no
   colour, no countdown. The monitor cannot see whether a directive was
   transposed elsewhere, and „overdue" without a possible „on time" is a
-  failure counter.
+  failure counter. No lateness rate either: it would rest on the latest
+  named directive.
 - **D7. Act names come from the Cellar,** not from a lookup table of short
   names.
 - **From EUR-Lex only metadata (CC0) is taken;** acts are linked, the logo is
@@ -687,8 +690,6 @@ circular of 10.12.2015).
   (§12.12).
 - **Withholding a whole law when deviant §§ cluster.** It discarded §§ that
   each passed; it became a note (§12.13).
-- **Fuzzy title matching to find a dead draft's successor.** Every threshold
-  added pairs from different laws (§12.10).
 - **A health endpoint, a dead man's switch, a status page.** Stale data is
   labelled on the page, and a failed prewarm costs seconds (§12.7).
 
@@ -702,8 +703,6 @@ circular of 10.12.2015).
   removed 43 of 70 deadline lines (§12.66).
 - **A short-name lookup table for EU acts.** Solves 0 of 50 act-less drafts,
   and ages (§12.66).
-- **Publishing a lateness rate.** Rests on the latest named directive, and is
-  a blame counter (§12.66).
 - **On the deadline timeline:** an axis from the directive's adoption, a
   broken axis, a written distance („18 months after"), a before/after colour
   (§12.66).
@@ -751,8 +750,6 @@ circular of 10.12.2015).
 
 ### Privacy
 
-- **The list-142 institution flag as permission to publish.** It also marks
-  persons (§12.14).
 - **Extending the e.U. rule to GmbH, AG, OG and KG.** It hid 95 strings,
   among them Flughafen Wien AG (§12.14).
 
@@ -791,17 +788,12 @@ circular of 10.12.2015).
 - **Character similarity for LGBl matching.** The boilerplate („Gesetz, mit
   dem das … geändert wird") dominates; distinguishing words are used
   (§12.43).
-- **Trusting a unique title-search candidate for the Länder diff.** Fails
-  when the right promulgation lies outside the window (§12.44).
 - **A similarity threshold for „redaktionell".** Wrong in both directions:
   of 26 units above 0.95 only 3 were editorial and 13 hid a change of term;
   one unit below it was pure reference shifting.
 - **Quoting what the Regierungsvorlage's Erläuterungen say about the
-  Begutachtung.** They say nothing: 0 of 17. The section would read „nothing
-  here" on almost every draft.
-- **Matching RIS to Parliament on the start of the Frist,** distrusting its
-  end because of one-sided extensions. The corpus showed the opposite: no
-  one-sided extension in a whole period, and the end is the sharpest signal.
+  Begutachtung.** They say nothing (0 of 17, above); the section would read
+  „nothing here" on almost every draft.
 - **Pairing articles by Stammnorm alone.** One BGBl often creates several
   laws, and the cited numbers contain typos (§12.18).
 - **A threshold on the new period's age for carrying over open deadlines.**
