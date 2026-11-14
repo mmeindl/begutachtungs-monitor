@@ -179,6 +179,28 @@ function ownArticleKeys(heading: string): string[] {
   return [...out]
 }
 
+/**
+ * „Zu den Z 22 und 102 (§§ 20 Abs. 5 und 193 Abs. 5):", „Zu den Art. 1 Z 5,
+ * 10 und 15 sowie Art. 4 Z 1 …:" — the plural heading over several Ziffern,
+ * read as the singular „Zu Z 22 und 102 (…)" (14.11.2026), or null.
+ *
+ * The address test (`isAddressHeading`) wants an address right behind „Zu",
+ * so these lines were text of the passage before them: 58/ME XXVIII's Z 102
+ * and 137 had no Begründung, and the page called it absent. Only a Ziffer
+ * list the grammar reads (`ziffernOf`: numbers, ranges, „und") opens a
+ * passage this way; „Zu den §§ …", „Zu den Abs. …" and „Zu den Änderungen
+ * des …" stay what they were — a § or an Absatz heading under a § passage
+ * belongs to it, and the rest is prose. Which change a passage explains is
+ * then decided as for every Ziffer heading: by its number, held to the §§
+ * (`fitsParagraphs`, `misnumbered`).
+ */
+function zuDenZiffern(text: string): string | null {
+  const m = /^Zu\s+den\s+(?=Z\s*\d|Art(?:ikel|\.)?\s*\S+\s+Z\s*\d)/i.exec(text)
+  if (!m) return null
+  const line = `Zu ${text.slice(m[0].length)}`
+  return ziffernOf(line).length ? line : null
+}
+
 /** „Zu Art. X1 (Änderung des …):" — an Artikel heading whatever its number, with the law in brackets. */
 const LAW_HEADING_RE = /^(?:zu\s+)?art(?:ikel)?\b\.?\s*[^\s(]+\s*\(/i
 
@@ -256,38 +278,42 @@ export function parseExplanationsHtml(
       continue
     }
 
-    if (isAddressHeading(text)) {
+    // „Zu den Z 22 und 102 (…):" is read as „Zu Z 22 und 102 (…):", and
+    // printed as the ressort typed it (`zuDenZiffern`).
+    const plural = zuDenZiffern(text)
+    const line = plural ?? text
+    if (isAddressHeading(line)) {
       // „Zu Z 5 (Aggregierung): Durch die Wortfolge …" — the reasoning on
       // the heading line is the passage's first paragraph, and a § it cites
       // is no § the passage is about (`splitHeading`). Everything else is
       // read from the whole line, as before: the Ziffern above all, since a
       // heading that runs on into prose names no instruction (`ziffernOf`).
-      const { address, prose } = splitHeading(text)
+      const { address, prose } = splitHeading(line)
       const paragraphs = headingAddress(address).paragraphs
       // „Zu Art. 7 Abs. 4 der RL …" names no Artikel of this package: the
       // passage stands under the mark above it and leaves that mark alone.
-      const cited = isCitedArticle(text)
+      const cited = isCitedArticle(line)
       let article: string | null
-      if (ownArticleKeys(text).length > 1) {
+      if (ownArticleKeys(line).length > 1) {
         // One passage for several laws: it belongs to none, and the mark
         // above it no longer says which law follows.
         article = null
         mark = null
       } else {
-        const own = cited ? null : leadingArticleKey(text)
+        const own = cited ? null : leadingArticleKey(line)
         if (own) mark = own
         article = own ?? mark
       }
-      const ziffern = ziffernOf(text).map((z) => ({ article: z.article ?? article, ziffer: z.ziffer }))
+      const ziffern = ziffernOf(line).map((z) => ({ article: z.article ?? article, ziffer: z.ziffer }))
       // An Artikel heading of its own — no Ziffer, no § — opens a section,
       // with or without a number the parser can read („Zu Art. X1 (…)").
       // Asked of the whole line, as before the cut: what opens a section
       // stays what it was.
-      if (!cited && ziffern.length === 0 && headingAddress(text).paragraphs.length === 0 && (ARTICLE_HEADING_RE.test(text) || LAW_HEADING_RE.test(text))) {
-        section = sectionOf(text)
-        law = lawOf(text)
+      if (!cited && ziffern.length === 0 && headingAddress(line).paragraphs.length === 0 && (ARTICLE_HEADING_RE.test(line) || LAW_HEADING_RE.test(line))) {
+        section = sectionOf(line)
+        law = lawOf(line)
       }
-      current = { heading: address, paragraphs, text: prose ? [prose] : [], article, ziffern, section, law }
+      current = { heading: plural ? address.replace(/^Zu\s+/i, (zu) => `${zu}den `) : address, paragraphs, text: prose ? [prose] : [], article, ziffern, section, law }
       special.push(current)
       inSpecial = true
       continue

@@ -892,3 +892,31 @@ describe('compareReasoning — warum eine Änderung keine Begründung hat (gaps)
     expect(compareReasoning(units, range, range).gaps['Gesetz|Z102|changed']).toBe('unread')
   })
 })
+
+// „Zu den Z 22 und 102 (…):" is a heading (14.11.2026): read as text, it gave
+// 58/ME XXVIII's Z 102 no Begründung and the passage before it a second one.
+describe('parseExplanationsHtml — „Zu den Z …" als Überschrift', () => {
+  it('liest die Mehrzahl als Ziffernliste und druckt sie, wie das Ressort sie schrieb', () => {
+    const doc = erl('Zu Z 1 (§ 3 Abs. 1):', 'Klarstellung.', 'Zu den Z 22 und 102 (§§ 20 Abs. 5 und 193 Abs. 5):', 'Nachhaltigkeit.', 'Zu den Art. 1 Z 5 bis 7 sowie Art. 4 Z 1 (§ 8):', 'Anpassung.')
+    expect(doc.special.map((p) => [p.heading, p.ziffern.map((z) => `${z.article ?? '–'}:${z.ziffer}`), p.text])).toEqual([
+      ['Zu Z 1 (§ 3 Abs. 1):', ['–:1'], ['Klarstellung.']],
+      ['Zu den Z 22 und 102 (§§ 20 Abs. 5 und 193 Abs. 5):', ['–:22', '–:102'], ['Nachhaltigkeit.']],
+      ['Zu den Art. 1 Z 5 bis 7 sowie Art. 4 Z 1 (§ 8):', ['1:5', '1:6', '1:7', '4:1'], ['Anpassung.']],
+    ])
+  })
+
+  it('lässt „Zu den §§ …", „Zu den Abs. …" und Prosa, was sie waren', () => {
+    const doc = erl('Zu § 6:', 'Allgemeines.', 'Zu den Abs. 1 und 2:', 'Die Absätze.', 'Zu den Änderungen im Zusammenhang mit der Pension:', 'Text.')
+    expect(doc.special.map((p) => p.heading)).toEqual(['Zu § 6:'])
+  })
+
+  it('gibt der Ziffer die Passage, die bisher Text der vorigen war (58/ME XXVIII Z 102)', () => {
+    const units = [z('Z1', 'Z1', 'In § 3 Abs. 1 wird "a" durch "b" ersetzt.'), z('Z102', 'Z102', '§ 193 Abs. 5 lautet: "(5) …"')]
+    const doc = () => erl('Zu Z 1 (§ 3 Abs. 1):', 'Klarstellung.', 'Zu den Z 22 und 102 (§§ 20 Abs. 5 und 193 Abs. 5):', 'Nachhaltigkeit.')
+    const out = compareReasoning(units, doc(), doc())
+    expect(out.entries[out.units['Gesetz|Z102|changed']!]).toMatchObject({ label: 'Zu den Z 22 und 102 (§§ 20 Abs. 5 und 193 Abs. 5):', changed: false })
+    // The passage of Z 1 no longer carries Z 102's text.
+    expect(doc().special[0]!.text).toEqual(['Klarstellung.'])
+    expect(out.gaps).toEqual({})
+  })
+})

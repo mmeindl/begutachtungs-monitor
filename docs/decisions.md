@@ -286,6 +286,17 @@ change belongs here.
   number, a date, a single letter or punctuation; „und" → „oder" is not.
 - **The comparison key may fold typography; the displayed text never does**
   (§12.33).
+- **„Zu den Z 22 und 102 (…):" is a Ziffer heading** (14.11.2026,
+  `zuDenZiffern`): the plural form over a Ziffer list („Z …", „Art. 1 Z …
+  sowie Art. 4 Z …") opens a passage like „Zu Z …", printed as typed; „Zu
+  den §§ …", „Zu den Abs. …" and prose stay text. Read as text, these lines
+  had no passage and lengthened the one before. Over GP XXVI / XXVII /
+  XXVIII 105 / 165 / 323 units gained a Begründung, none lost; the verdicts
+  that moved (3 / 14 / 26 „geändert" → „unverändert" and a few more) all
+  come from that split — the passage before no longer carries its
+  neighbour's text, or a § joined by number now carries the recovered
+  passage. „Zu 15 (§ 6):" without „Z" stays text: whether 15 is a Ziffer
+  the line does not say.
 - **A removed and an inserted instruction become one „geändert" only with
   two witnesses, never the address alone** (14.11.2026,
   `pairSameInstruction`): texts alike at 0,8 or more
