@@ -59,6 +59,14 @@ export interface AmendedLawsResponse {
    *  also mean the draft text was not readable. */
   createsNewLaw: boolean
   laws: AmendedLaw[]
+  /**
+   * Why `laws` is empty where the item does not create law (14.11.2026):
+   * `no-text` — no text document of the item could be read; `unnamed` — the
+   * text was read and names no law the reader could take. Null where a law
+   * is listed or `createsNewLaw` holds. The frame says it instead of
+   * vanishing.
+   */
+  unread: 'no-text' | 'unnamed' | null
 }
 
 /** One law a Bundesgesetzblatt changed or created, as RIS consolidates it. */

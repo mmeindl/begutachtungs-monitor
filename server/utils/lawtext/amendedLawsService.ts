@@ -24,7 +24,7 @@ import { meRoot, rootKey } from '#shared/utils/procedureRoot'
 import type { TextBlock } from './lawUnits'
 import { sameRisStammnorm, stammnormOf, type BgblCitation } from './bgblCitation'
 import { clauseNameOf, isAmendmentClause, type ClauseName } from './draftArticles'
-import { getDraftArticles, getRootDraftArticles } from './draftArticlesService'
+import { getDraftArticles, getMotionTextArticles, getRootDraftArticles, type DraftText } from './draftArticlesService'
 import { getDraftsForGp, getGegenstand } from '../parliament/drafts'
 import { resolveKonsLaw } from '../kons/konsCache'
 import { konsLawUrl } from '../ris/konsLaw'
@@ -69,6 +69,35 @@ function leadingStammnorm(blocks: readonly TextBlock[]): { title: string | null;
 }
 
 /**
+ * A name of the text that says it changes or repeals law, not that it makes
+ * one — in the forms a law names ITSELF: „…, mit dem das B-VG geändert wird",
+ * „Änderung des …", „…-Novelle". Not a bare „Änderung": a new law's title
+ * quotes the EU act it carries out, and that act's title does („…zur Änderung
+ * der Verordnung (EU) 2018/1724", 120/ME XXVIII and 352/ME XXVII, both new
+ * laws, measured 14.11.2026).
+ */
+const AMENDING_NAME_RE = /\bmit (?:dem|der|denen)\b.*\b(?:geändert|abgeändert|novelliert|aufgehoben)\b|^(?:Änderung|Aufhebung|Novellierung)\b|novelle\b/i
+
+/**
+ * Does the text create law rather than amend it? Only on positive evidence
+ * (14.11.2026): no law found, AND no Novellierungsanordnung in the text, AND
+ * no name of it that says it amends or repeals.
+ *
+ * Until then it was „Artikel read, no law found", and a law the reader could
+ * not name became a new one: 53 d.B. XXIV and 51 d.B. XXVII amend the B-VG,
+ * whose Promulgationsklausel cites no Stammnorm („Art. 42 Abs. 2 wird
+ * folgender Satz angefügt:"), and their pages said „neues Gesetz" and
+ * „Geltendes Recht – Keines". Without the evidence the weaker state stands:
+ * the laws could not be read (`unread`).
+ */
+export function createsNewLawFrom(text: DraftText, lawCount: number): boolean {
+  if (lawCount > 0 || text.articles.length === 0) return false
+  if (text.blocks.some((b) => b.kind === 'novao')) return false
+  const names = [...text.articles.map((a) => a.title ?? a.key), ...text.blocks.filter((b) => b.kind === 'title').map((b) => b.text)]
+  return !names.some((n) => n !== null && AMENDING_NAME_RE.test(n))
+}
+
+/**
  * **A failure is not an answer** — the rule `kons/konsCache.ts` states for
  * `resolveKonsLaw` and `annex/annexGuardService.ts` for the annex, and this
  * function is the third place it applies.
@@ -100,7 +129,11 @@ const readAmendedLaws = defineCachedFunction(
     // Ministerialentwurf, the three sections of the draft page read the RIS
     // XML (`lawtext/draftArticlesService.ts`).
     // Without a draft, the item's own first text is the proposal.
-    const { blocks, articles } = isMe ? await getDraftArticles(gp, inr, 'parliament-first') : await getRootDraftArticles(root)
+    let text = isMe ? await getDraftArticles(gp, inr, 'parliament-first') : await getRootDraftArticles(root)
+    // A motion of the Bundesrat that files its text as „Gesetzesantrag" or
+    // „Antrag" instead of „Gesetzestext" (`motionTextOf`, 14.11.2026).
+    if (!isMe && root.ityp === 'I' && text.blocks.length === 0) text = await getMotionTextArticles(root)
+    const { blocks, articles } = text
     let wanted = articles.filter((a) => a.amends).map((a) => ({ title: a.title, bgbl: a.bgbl, clause: a.clause }))
 
     // A single-law Novelle prints no "Artikel" line, and its
@@ -159,7 +192,10 @@ const readAmendedLaws = defineCachedFunction(
     })
     for (const r of results) if (r) laws.push(r)
 
-    return { gp, inr, asOf, createsNewLaw: articles.length > 0 && laws.length === 0, laws }
+    const createsNewLaw = createsNewLawFrom(text, laws.length)
+    // A gap is an answer the page states, not an empty list it falls silent on.
+    const unread = laws.length > 0 || createsNewLaw ? null : blocks.length === 0 ? 'no-text' : 'unnamed'
+    return { gp, inr, asOf, createsNewLaw, laws, unread }
   },
   // `rootKey` keeps a draft's key what it always was.
   { name: 'amended-laws', base: DERIVED_CACHE, getKey: (root: ProcedureRoot) => rootKey(root), maxAge: DERIVED_ANALYSIS_TTL_S, swr: false },

@@ -21,6 +21,34 @@ import { mapDocuments, mapTextEvolution, type RawDocumentGroup } from '../parlia
  */
 export const ANTRAG_TEXT_TITLE = 'Gesetzestext (Arbeitsdokument ParlDion)'
 
+/**
+ * The titles a motion of the Bundesrat gives its own text where it publishes
+ * no „Gesetzestext" (14.11.2026): a GABR13 item, moved by a third of the
+ * Bundesrat's members, files it as „Gesetzesantrag" (154, 155, 1859, 1940
+ * d.B. XXVII) or as „Antrag" beside a separate „Begründung" (627 d.B. XXVI).
+ *
+ * Read only for the laws the text names (`motionTextOf`), never offered as a
+ * station of the § comparison: a „Gesetzesantrag" carries the Begründung
+ * after the text (154 d.B. XXVII), the reason `ANTRAG_TEXT_TITLE` exists.
+ * The law is named before the first instruction, so a Begründung after them
+ * cannot reach that reading (`draftArticles`).
+ */
+export const MOTION_TEXT_TITLES: readonly string[] = ['Gesetzesantrag', 'Antrag']
+
+/**
+ * The HTML of an item's own text under one of `MOTION_TEXT_TITLES`, the
+ * first title that is present winning; null where none is or it is PDF-only.
+ */
+export function motionTextOf(content: { documents?: RawDocumentGroup[] | null }): string | null {
+  const documents = mapDocuments(content.documents)
+  for (const title of MOTION_TEXT_TITLES) {
+    const doc = documents.find((d) => d.title.trim() === title)
+    const html = doc?.formats.find((f) => f.type === 'html' || f.url.endsWith('.html'))?.url
+    if (html) return html
+  }
+  return null
+}
+
 /** One station's published law text, as the comparison can use it. */
 interface ResolvedLawStation {
   id: LawStationId

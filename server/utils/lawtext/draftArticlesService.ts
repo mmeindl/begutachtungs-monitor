@@ -20,7 +20,7 @@ import type { ProcedureRoot } from '#shared/types'
 import { rootKey } from '#shared/utils/procedureRoot'
 import { DERIVED_CACHE } from '../cache/base'
 import { DERIVED_ANALYSIS_TTL_S } from '../cache/ttl'
-import { findLawStations } from '../diff/stationDocuments'
+import { findLawStations, motionTextOf } from '../diff/stationDocuments'
 import { fetchDocument } from '../upstream/fetchDocument'
 import type { TextBlock } from '../lawtext/lawUnits'
 import { parseParliamentHtml } from '../lawtext/parliamentHtml'
@@ -106,6 +106,29 @@ export const getRootDraftArticles = defineCachedFunction(
   },
   {
     name: 'draft-articles-item',
+    base: DERIVED_CACHE,
+    getKey: (root: ProcedureRoot) => rootKey(root),
+    maxAge: DERIVED_ANALYSIS_TTL_S,
+    swr: false,
+  },
+)
+
+/**
+ * The text of a motion of the Bundesrat that publishes no „Gesetzestext" —
+ * its „Gesetzesantrag" or „Antrag" (`motionTextOf`, 14.11.2026) — for the
+ * laws it names and nothing else: the document can carry the Begründung, so
+ * it stays out of `getRootDraftArticles`, whose blocks also feed the annex
+ * guard (`parliament/vorlageTexts.ts`). Empty where there is no such document.
+ */
+export const getMotionTextArticles = defineCachedFunction(
+  async (root: ProcedureRoot): Promise<DraftText> => {
+    const detail = await getGegenstand(root.gp, root.ityp, root.inr)
+    const html = motionTextOf(detail.content ?? {})
+    const blocks = html ? parseParliamentHtml(await fetchDocument(html)) : []
+    return { blocks, articles: draftArticles(blocks) }
+  },
+  {
+    name: 'draft-articles-motion',
     base: DERIVED_CACHE,
     getKey: (root: ProcedureRoot) => rootKey(root),
     maxAge: DERIVED_ANALYSIS_TTL_S,
