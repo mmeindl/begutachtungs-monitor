@@ -14,6 +14,7 @@
  *          npx vite-node scripts/corpus/aenderungsrate.ts -- --gp XXVII --ziffer --save file | --against file [--list]
  *          npx vite-node scripts/corpus/aenderungsrate.ts -- --gp XXVII --pairs | --unpaired
  *          npx vite-node scripts/corpus/aenderungsrate.ts -- --gp XXVIII --phantoms   (lists the phantom pairs)
+ *          npx vite-node scripts/corpus/aenderungsrate.ts -- --gp XXVIII --candidates [--candidates-out file]   (removed × inserted pairs as JSON)
  *
  * WHY THE SHIPPED COMPARISON AND NOT A NEW ONE. A base rate the page cannot
  * reproduce is a second opinion, not a number about the page. So every draft
@@ -72,7 +73,7 @@
  * so a second run makes no request. Concurrency 4 per host.
  */
 import { mkdir, writeFile } from 'node:fs/promises'
-import { readFileSync } from 'node:fs'
+import { readFileSync, writeFileSync } from 'node:fs'
 import { createHash } from 'node:crypto'
 import { join } from 'node:path'
 import type { DraftDocument, LawDiffUnit, LawStationId, LawPackageEntry } from '../../shared/types'
@@ -94,7 +95,7 @@ import { pool } from '../lib/async'
 import { argFlag, argPair } from '../lib/args'
 import { parseExplanationsHtml, passagesByArticleParagraph, passagesByParagraph, type HtmlExplanations, type HtmlPassage } from '../../server/utils/explanations/explanationsHtml'
 import { compareReasoning, compareReasoningByParagraph, passageTexts } from '../../server/utils/explanations/reasoningDiff'
-import { diffTokens } from '../../server/utils/diff/wordDiff'
+import { compareWords, diffTokens, isAddressOnlyDifference, tokenSimilarity } from '../../server/utils/diff/wordDiff'
 import { headingAddress, isAddressHeading, splitHeading } from '../../server/utils/explanations/risExplanations'
 import { addressedParagraphOf, instructionParagraphs } from '../../server/utils/lawtext/instructionAddress'
 import { parseParliamentHtml } from '../../server/utils/lawtext/parliamentHtml'
@@ -1545,6 +1546,7 @@ if (argFlag('reasoning')) await reasoningReport()
 if (argFlag('multi')) await multiReport()
 if (argFlag('pairs')) pairsReport()
 if (argFlag('unpaired')) unpairedReport()
+if (argFlag('candidates')) candidatesReport()
 
 /** The §§ an article's Novellierungsanordnungen address, as a set. */
 function addressesOf(units: readonly LawUnit[], article: string | null): Set<string> {
@@ -1774,4 +1776,37 @@ function unpairedReport(): void {
   console.log(`  Eichung Stammnorm — fremde Artikel: ${strangers.n} · beide mit Stammnorm ${strangers.both} · gleich ${strangers.same} · gleich ohne Teil ${strangers.loose} · davon auch §§ ≥ 80 % (je ≥ 2): ${strangers.withParas}, davon eindeutig zitiert (die Regel paarte sie): ${strangers.unique}`)
   for (const l of strangerParas) console.log(`    §§ ${l}`)
   for (const l of strangerSame) console.log(`    ${l}`)
+}
+
+/**
+ * `--candidates` (14.11.2026, the calibration of
+ * `SAME_INSTRUCTION_SIMILARITY` in `server/utils/diff/lawDiff.ts`): every
+ * removed × inserted unit of one Artikel still left in the shipped
+ * comparison, at a similarity of 0,3 or more, with the §§ each instruction
+ * edits and whether the two differ in the address alone — as JSON
+ * (`<out>/<GP>-candidates.json`, or `--candidates-out file`), to be read pair
+ * by pair, not counted.
+ */
+function candidatesReport(): void {
+  const drafts: unknown[] = []
+  for (const r of results) {
+    const units = parsed.get(r.inr)?.units
+    if (!units || r.bucket < 3) continue
+    const cands: unknown[] = []
+    units.forEach((a, i) => {
+      if (a.change !== 'removed') return
+      const x = compareWords(a.fromText ?? '')
+      units.forEach((b, j) => {
+        if (b.change !== 'inserted' || (a.article ?? '') !== (b.article ?? '')) return
+        const s = tokenSimilarity(x, compareWords(b.toText ?? ''))
+        if (s < 0.3) return
+        cands.push({ i, j, s, addrOnly: isAddressOnlyDifference(diffTokens(a.fromText ?? '', b.toText ?? '').segments), pa: instructionParagraphs(a.fromText ?? ''), pb: instructionParagraphs(b.toText ?? ''), a: spaced(a.fromText).slice(0, 300), b: spaced(b.toText).slice(0, 300) })
+      })
+    })
+    if (!cands.length) continue
+    drafts.push({ inr: r.inr, units: units.map((u) => [u.change[0], u.fromId, u.id, u.article]), cands })
+  }
+  const file = argPair('candidates-out') ?? join(outDir, `${gp}-candidates.json`)
+  writeFileSync(file, JSON.stringify({ gp, drafts }))
+  console.log(`\nKandidaten: ${file}`)
 }

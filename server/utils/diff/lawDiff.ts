@@ -19,7 +19,10 @@
  *      heading is its instruction line, so renumbered Ziffern pair too
  *   2. same article + same id, when at least one side has no heading
  *   3. remaining units of the same article by text similarity ≥ 0.6
- * Everything left is inserted (later side only) or removed (earlier side only).
+ * Everything left is inserted (later side only) or removed (earlier side only)
+ * — but for two passes over the result: the same place reworded
+ * (`diffAtSamePlace`) and the same instruction readdressed
+ * (`pairSameInstruction`).
  */
 import type { LawDiffUnit, LawPackageEntry, LawUnitChange } from '../../../shared/types'
 import type { LawUnit } from '../lawtext/lawUnits'
@@ -742,7 +745,7 @@ export function diffLawPackage(
   const onlyInTo = lawsOf(to, (a) => pairedTo.has(a))
   const onlyInFrom = lawsOf(from, (a) => pairedFrom.has(a))
   return {
-    units: diffAtSamePlace(from.filter(keepFrom), to.filter(keepTo)),
+    units: pairSameInstruction(diffAtSamePlace(from.filter(keepFrom), to.filter(keepTo))),
     lawsOnlyInTo: keepAddedLaws ? [] : onlyInTo,
     lawsOnlyInFrom: keepDroppedLaws ? [] : onlyInFrom,
     addedLaws: keepAddedLaws ? onlyInTo : [],
@@ -832,6 +835,159 @@ export function diffAtSamePlace(from: readonly LawUnit[], to: readonly LawUnit[]
     paired++
   }
   return paired ? diffLawUnits(from, renamed) : first
+}
+
+/**
+ * Below this similarity a removed and an inserted instruction are never one
+ * readdressed instruction (`pairSameInstruction`).
+ *
+ * CALIBRATED BY HAND (14.11.2026) over every removed × inserted instruction
+ * pair of one Artikel left in the shipped ME → RV comparisons of GP
+ * XXVI–XXVIII (`pnpm corpus:aenderungsrate -- --gp X --candidates`), each
+ * pair read — same instruction (genuine) or not — and split by the second
+ * witness, the same §§ (`sameParagraphs`):
+ *
+ *   similarity    with the same §§        without them
+ *                 pairs  genuine/not      pairs  genuine/not
+ *   ≥ 0,95          16     16 / 0            9     8 / 1   (10/ME XXVI Z 30, § 22 → § 19)
+ *   0,90–0,95        9      9 / 0            8     5 / 3   (30/ME XXVIII § 49c → § 49b)
+ *   0,80–0,90        2      2 / 0           12     5 / 7   (74/ME XXVIII „§ 63 entfällt"
+ *                                                           → „§ 4a entfällt", 0,80)
+ *   0,60–0,80        0       —                6     1 / 5   („§ 48 Abs. 10 entfällt"
+ *                                                           → „§ 61 Abs. 7 entfällt")
+ *   0,55–0,60       47     35 / 12           97    not read
+ *   0,50–0,55       67    not read          151    not read
+ *
+ * Two of the „not" without the same §§ are uncertain (184/ME XXVII § 139 →
+ * § 138, 247/ME XXVII § 17 → § 22: perhaps a wrong § corrected, perhaps
+ * another provision) and counted as not: the documents cannot tell.
+ *
+ * Above 0,6 every pair is one the engine's own step 3 refused as differing
+ * in the address alone (`addressOnlyPair`); the same §§ split them cleanly
+ * into readdressed instructions — „§ 24 lit. d" → „§ 24 Abs. 1 lit. d"
+ * (69/ME XXVIII), „Dem § 143 Abs. 57 wird folgender Abs. 58 angefügt" →
+ * „Dem § 143 wird …" (96/ME XXVI) — and other provisions, which stay apart.
+ * The lowest genuine pair stands at 0,833 (69/ME XXVIII Z 26, „§ 24 lit. f
+ * entfällt" → „§ 24 Abs. 1 lit. f entfällt"), the highest with the same §§
+ * below the gap at 0,599 (43/ME XXVII, Anlage 1, where the Vorlage adds a
+ * second Ziffer). Under 0,6 the same §§ no longer decide — 12 of the 47
+ * in 0,55–0,60 are other instructions: „§ 130 Abs. 4 entfällt" against
+ * „§ 130 Abs. 4 lautet: …" (20/ME XXVIII, 0,571), two Inkrafttreten clauses
+ * of one § with different content (74/ME XXVIII Z 521, 0,566), one of three
+ * Ziffern the Vorlage split off (70/ME XXVIII). That is the 75 % the address
+ * alone was measured at (04.10.2026), and a wrong pair there would call a
+ * provision „geändert" that was removed. So 0,8: any value in the empty band
+ * 0,60–0,83 gives the same 27 pairs, and the round one keeps the margin on
+ * the side of precision.
+ */
+export const SAME_INSTRUCTION_SIMILARITY = 0.8
+
+/** The § designations an instruction edits, as a set — or null where it names none or one without a number („Anlage"). */
+function editedParagraphs(text: string | null): Set<string> | null {
+  const paras = instructionParagraphs(text ?? '')
+  if (!paras.length || paras.some((p) => !/\d/.test(p))) return null
+  return new Set(paras)
+}
+
+/** Both instructions edit the same §§, and name them. */
+function sameParagraphs(a: ReadonlySet<string> | null, b: ReadonlySet<string> | null): boolean {
+  return a !== null && b !== null && a.size === b.size && [...a].every((x) => b.has(x))
+}
+
+/**
+ * THE SAME INSTRUCTION, READDRESSED (14.11.2026): a removed and an inserted
+ * Novellierungsanordnung of one Artikel become ONE changed unit, with the
+ * word diff between them, where two witnesses say they are one instruction.
+ *
+ * 69/ME XXVIII is the shape: „§ 24 lit. d lautet: …" (draft Z 24) and „§ 24
+ * Abs. 1 lit. d lautet: …" (Vorlage Z 25), the same text under an address
+ * the Vorlage corrected. The engine refuses the pair on purpose — a
+ * difference in the address alone is what tells „§ 63 entfällt" from „§ 4a
+ * entfällt" (`addressOnlyPair`) — and the page showed „Z 24 entfallen" and
+ * „Z 25 neu" for one instruction, and counted the instruction as gone.
+ *
+ * Paired only with both witnesses, never on the address alone:
+ *  1. the texts alike at `SAME_INSTRUCTION_SIMILARITY` or more (calibrated
+ *     at the constant);
+ *  2. the structure: the same Artikel (as every pair of the engine), the
+ *     same §§ edited (`sameParagraphs` — „§ 24" and „§ 24 Abs. 1" are both
+ *     § 24, „§ 49c" and „§ 49b" are not), each side with exactly this one
+ *     candidate passing both, and no crossing with another such pair.
+ *
+ * Crossing is checked among the new pairs, not against the pairs the engine
+ * made: 6 of the 27 calibrated pairs cross one of those — an instruction the
+ * Vorlage moved elsewhere in the same law (37/ME XXVII Z 60 → Z 70 behind
+ * Z 65–68 → Z 10–26) — and all six are the same instruction.
+ *
+ * The unit is the Vorlage's, the draft's Ziffer in `fromId` — so the page
+ * writes „Z 24 → Z 25" as for every renumbered unit, the Begründung joins
+ * each side under its own Ziffer, and the share counts it once, as changed
+ * (or not at all where the change is merely editorial).
+ */
+export function pairSameInstruction(units: readonly LawDiffUnit[]): LawDiffUnit[] {
+  const removed = units.filter((u) => u.change === 'removed' && /^Z\d/.test(u.fromId ?? u.id))
+  const inserted = units.filter((u) => u.change === 'inserted' && /^Z\d/.test(u.id))
+  if (!removed.length || !inserted.length) return [...units]
+  const read = new Map<LawDiffUnit, { words: string[]; paras: Set<string> | null }>()
+  const of = (u: LawDiffUnit) => {
+    let known = read.get(u)
+    if (!known) {
+      const text = u.change === 'removed' ? u.fromText : u.toText
+      read.set(u, (known = { words: compareWords(text ?? ''), paras: editedParagraphs(text) }))
+    }
+    return known
+  }
+  const candidates: { r: LawDiffUnit; i: LawDiffUnit }[] = []
+  for (const r of removed) {
+    if (!of(r).paras) continue
+    for (const i of inserted) {
+      if ((r.article ?? '') !== (i.article ?? '') || !sameParagraphs(of(r).paras, of(i).paras)) continue
+      if (tokenSimilarity(of(r).words, of(i).words, SAME_INSTRUCTION_SIMILARITY) < SAME_INSTRUCTION_SIMILARITY) continue
+      candidates.push({ r, i })
+    }
+  }
+  const count = (key: (c: { r: LawDiffUnit; i: LawDiffUnit }) => LawDiffUnit) => {
+    const n = new Map<LawDiffUnit, number>()
+    for (const c of candidates) n.set(key(c), (n.get(key(c)) ?? 0) + 1)
+    return n
+  }
+  const perRemoved = count((c) => c.r)
+  const perInserted = count((c) => c.i)
+  const unique = candidates.filter((c) => perRemoved.get(c.r) === 1 && perInserted.get(c.i) === 1)
+  // Removed units stand in the draft's order, inserted ones in the Vorlage's:
+  // two pairs whose order differs between the sides cross.
+  const at = new Map(units.map((u, k) => [u, k]))
+  const crossing = new Set<{ r: LawDiffUnit; i: LawDiffUnit }>()
+  for (const a of unique) {
+    for (const b of unique) {
+      if (a !== b && a.r.article === b.r.article && (at.get(a.r)! - at.get(b.r)!) * (at.get(a.i)! - at.get(b.i)!) < 0) crossing.add(a).add(b)
+    }
+  }
+  const pairs = unique.filter((c) => !crossing.has(c))
+  if (!pairs.length) return [...units]
+  // The renumbering of §§ this comparison established, as `diffLawUnits`
+  // hands it to the badge (`renumberingOf`).
+  const renumbered = renumberingOf(units.flatMap((u) => (u.fromId && (u.change === 'changed' || u.change === 'unchanged') ? [{ fromId: u.fromId, toId: u.id, article: u.article }] : [])))
+  const gone = new Set(pairs.map((p) => p.r))
+  const merged = new Map(pairs.map((p) => [p.i, readdressed(p.r, p.i, renumbered.get(p.i.article ?? ''))]))
+  return units.filter((u) => !gone.has(u)).map((u) => merged.get(u) ?? u)
+}
+
+/** One changed unit of a removed and an inserted one: the Vorlage's, with the draft's side beside it — as `toUnit` builds a pair. */
+function readdressed(r: LawDiffUnit, i: LawDiffUnit, renumbered: ReadonlyMap<string, string> | undefined): LawDiffUnit {
+  const diff = diffTokens(r.fromText ?? '', i.toText ?? '')
+  const { fromArticle } = r
+  return {
+    ...i,
+    fromArticleKey: r.fromArticleKey,
+    ...(fromArticle ? { fromArticle } : {}),
+    fromId: r.fromId,
+    quotedHeading: i.quotedHeading ?? r.quotedHeading,
+    change: 'changed',
+    editorial: isEditorialChange(diff.segments, { renumbered }),
+    fromText: r.fromText,
+    segments: diff.segments,
+  }
 }
 
 /** Two later texts, cut to the laws of the draft — and what was cut. */

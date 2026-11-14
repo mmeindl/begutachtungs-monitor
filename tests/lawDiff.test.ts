@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { alignUnits, articlePairs, diffAtSamePlace, diffLawPackage, diffLawUnits, pairArticles, scopeToDraft, summarizeDiff } from '../server/utils/diff/lawDiff'
+import { alignUnits, articlePairs, diffAtSamePlace, diffLawPackage, diffLawUnits, pairArticles, pairSameInstruction, scopeToDraft, summarizeDiff } from '../server/utils/diff/lawDiff'
 import { normalizeGld, novaoHeading, parseLawUnits, parseLawUnitsFromRis, type LawUnit } from '../server/utils/lawtext/lawUnits'
 import { parseParliamentHtml } from '../server/utils/lawtext/parliamentHtml'
 import { parseRisXml } from '../server/utils/lawtext/risXml'
@@ -984,5 +984,50 @@ describe('a unit with no word to compare (26.10.2026)', () => {
     expect(units.map((x) => [x.fromId, x.id, x.change])).toEqual([[null, '§63', 'inserted'], ['§57a', '§57a', 'removed'], ['§58', '§58', 'unchanged']])
     // Under one heading, or one id, two elided stubs are the same unit as before.
     expect(diffLawUnits([u('§9', 'x', '(1) bis (4) …')], [u('§9', 'x', '(1) bis (4) …')]).map((x) => x.change)).toEqual(['unchanged'])
+  })
+})
+
+// The same instruction under a corrected address (14.11.2026,
+// `pairSameInstruction`): one „geändert", never „entfallen" + „neu".
+describe('pairSameInstruction — dieselbe Anordnung, neu adressiert', () => {
+  const novelle = (...lines: string[]) =>
+    '<html><body><p class=41UeberschrG1>Artikel&nbsp;1</p><p class=43UeberschrG2>&Auml;nderung des Privatschulgesetzes</p>' +
+    lines.map((l, i) => `<p class=21NovAo1>${i + 1}. ${l}</p>`).join('') +
+    '</body></html>'
+  const D = 'd) einen Leiter, eine Lehrperson oder pädagogisches Betreuungspersonal nach der Untersagung dessen bzw. deren Verwendung weiter in dieser Eigenschaft an der Schule bzw. im Schülerheim beschäftigt; oder'
+
+  it('paart „§ 24 lit. d" mit „§ 24 Abs. 1 lit. d" zu einer geänderten Einheit (69/ME XXVIII)', () => {
+    const draft = novelle('In &sect;&nbsp;10 Abs.&nbsp;1 wird das Wort "a" durch das Wort "b" ersetzt.', `&sect;&nbsp;24 lit.&nbsp;d lautet: "${D}"`)
+    const bill = novelle('In &sect;&nbsp;10 Abs.&nbsp;1 wird das Wort "a" durch das Wort "b" ersetzt.', '&sect;&nbsp;12 entf&auml;llt.', `&sect;&nbsp;24 Abs.&nbsp;1 lit.&nbsp;d lautet: "${D}"`)
+
+    const { units } = diffLawPackage(parseLawUnits(draft), parseLawUnits(bill))
+
+    expect(summarizeDiff(units)).toMatchObject({ total: 3, unchanged: 1, changed: 1, inserted: 1, removed: 0 })
+    const moved = units.find((u) => u.change === 'changed')!
+    expect(moved).toMatchObject({ fromId: 'Z2', id: 'Z3', editorial: false })
+    expect(moved.segments!.filter((s) => s.type !== 'equal').map((s) => s.text.trim())).toEqual(['Abs. 1'])
+  })
+
+  it('lässt „§ 63 entfällt" und „§ 4a entfällt" getrennt — ein anderer § ist eine andere Anordnung (74/ME XXVIII)', () => {
+    const draft = novelle('In &sect;&nbsp;10 wird "a" durch "b" ersetzt.', '&sect;&nbsp;63 entf&auml;llt samt &Uuml;berschrift.')
+    const bill = novelle('In &sect;&nbsp;10 wird "a" durch "b" ersetzt.', '&sect;&nbsp;4a entf&auml;llt samt &Uuml;berschrift.')
+
+    expect(summarizeDiff(diffLawPackage(parseLawUnits(draft), parseLawUnits(bill)).units)).toMatchObject({ changed: 0, inserted: 1, removed: 1 })
+  })
+
+  it('paart nicht, wo eine Seite zwei Kandidaten hat oder die Texte sich nicht genug gleichen', () => {
+    const line = (para: string) => `In &sect;&nbsp;${para} wird das Wort "Disziplinarkommission" durch das Wort "Bundesdisziplinarbeh&ouml;rde" ersetzt.`
+    // One draft instruction on § 39, two in the Vorlage on § 39: which one it became the texts cannot say.
+    const draft = novelle('&sect;&nbsp;1 lautet: "(1) Neu."', line('39'))
+    const twice = novelle('&sect;&nbsp;1 lautet: "(1) Neu."', line('39 Z&nbsp;1'), line('39 Z&nbsp;2'))
+    expect(summarizeDiff(diffLawPackage(parseLawUnits(draft), parseLawUnits(twice)).units)).toMatchObject({ changed: 0, inserted: 2, removed: 1 })
+    // The same §, but another change at it: below the threshold.
+    const other = novelle('&sect;&nbsp;1 lautet: "(1) Neu."', 'In &sect;&nbsp;39 Z&nbsp;1 entf&auml;llt der letzte Satz.')
+    expect(summarizeDiff(diffLawPackage(parseLawUnits(draft), parseLawUnits(other)).units)).toMatchObject({ changed: 0, inserted: 1, removed: 1 })
+  })
+
+  it('lässt eine Liste ohne entfallene und neue Einheiten unverändert', () => {
+    const units = diffLawUnits(parseLawUnits(novelle('&sect;&nbsp;1 lautet: "(1) A."')), parseLawUnits(novelle('&sect;&nbsp;1 lautet: "(1) B."')))
+    expect(pairSameInstruction(units)).toEqual(units)
   })
 })

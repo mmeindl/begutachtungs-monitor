@@ -286,6 +286,21 @@ change belongs here.
   number, a date, a single letter or punctuation; „und" → „oder" is not.
 - **The comparison key may fold typography; the displayed text never does**
   (§12.33).
+- **A removed and an inserted instruction become one „geändert" only with
+  two witnesses, never the address alone** (14.11.2026,
+  `pairSameInstruction`): texts alike at 0,8 or more
+  (`SAME_INSTRUCTION_SIMILARITY`) and the same §§ edited, in one Artikel,
+  each side with exactly this one candidate and no crossing with another
+  such pair. „§ 24 lit. d lautet" → „§ 24 Abs. 1 lit. d lautet" is one
+  instruction readdressed; „§ 63 entfällt" → „§ 4a entfällt" stays two.
+  Calibrated by reading every candidate of GP XXVI–XXVIII: 27 of 27 with
+  the same §§ at 0,8 or more are the same instruction, none lies between
+  0,60 and 0,83, and below 0,6 12 of 47 are other instructions (table at
+  the constant). The unit is the Vorlage's with the draft's Ziffer in
+  `fromId` („Z 24 → Z 25"), so the Begründung joins each side under its own
+  number and the share counts it once. Moved: 9 / 12 / 6 pairs in GP XXVI /
+  XXVII / XXVIII; one share (3/ME XXVI, 52,0 → 51,8 %, the pair is
+  editorial), no base rate.
 - **A changed cross-reference is editorial only where this comparison itself
   paired the old and new number.** Never „no word changed" for a change we
   cannot explain (§12.33).
@@ -817,6 +832,11 @@ circular of 10.12.2015).
   exact answer is already on the page: the ministry's Textgegenüberstellung,
   the reading version confirmed against it, and the list of laws the draft
   would amend, linked to RIS (17.09.2026).
+- **Checking a readdressed instruction for crossing against the pairs the
+  engine already made.** 6 of the 27 calibrated pairs cross one — an
+  instruction the Vorlage moved within the law (37/ME XXVII Z 60 → Z 70) —
+  and all six are the same instruction; the same §§ already exclude the
+  wrong ones. Crossing is checked among the new pairs only (14.11.2026).
 - **A „date" class for a change of a date written with a month name.** 0 of
   97 such units change only the date (23.09.2026).
 
