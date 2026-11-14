@@ -1,0 +1,91 @@
+{
+ "content": {
+  "type": "Gesetzesantrag von einem Drittel der Mitglieder des Bundesrates",
+  "title": "Bundesministeriengesetz, Änderung",
+  "zitation": "1940 d.B.",
+  "description": "Gesetzesantrag der Bundesrätinnen und Bundesräte (gekürzt), Kolleginnen und Kollegen vom 16. Februar 2023 betreffend ein Bundesgesetz, mit dem das Bundesministeriengesetz 1986 geändert wird",
+  "gp_code": "XXVII",
+  "ityp": "I",
+  "inr": 1940,
+  "doktyp": "GABR13",
+  "einlangen": "2023-02-20T00:00:00",
+  "statementsstate": "0",
+  "status": {
+   "number": 2,
+   "description": "Verfassungsausschuss: auf <a href=\"/dokument/XXVII/A-VF/1/00900/TO_15761253.html\">Tagesordnung</a> in der <a href=\"/ausschuss/XXVII/A-VF/1/00900?selectedStage=105&selectedSession=25&selectedDate=03102023\">25. Sitzung des Ausschusses</a><br>In der Sitzung vom 3. Oktober 2023 vertagt."
+  },
+  "phase": [
+   {
+    "name": "Einlangen NR",
+    "stages": [
+     {
+      "date": "20.02.2023",
+      "text": "Einlangen im Nationalrat"
+     },
+     {
+      "date": "21.02.2023",
+      "text": "Vorgesehen für den <a href=\"/ausschuss/XXVII/A-VF/1/00900\">Verfassungsausschuss</a>"
+     },
+     {
+      "date": "24.02.2023",
+      "text": "<a href=\"/gegenstand/XXVII/NRSITZ/200\">200. Sitzung des Nationalrates</a>: Mitteilung des Einlangens"
+     }
+    ]
+   },
+   {
+    "name": "Ausschussberatungen NR",
+    "stages": [
+     {
+      "date": "24.02.2023",
+      "text": "<a href=\"/gegenstand/XXVII/NRSITZ/201\">201. Sitzung des Nationalrates</a>: Zuweisung an den <a href=\"/ausschuss/XXVII/A-VF/1/00900\">Verfassungsausschuss</a>"
+     },
+     {
+      "date": "03.10.2023",
+      "text": "Verfassungsausschuss: auf <a href=\"/dokument/XXVII/A-VF/1/00900/TO_15761253.html\">Tagesordnung</a> in der <a href=\"/ausschuss/XXVII/A-VF/1/00900?selectedStage=105&selectedSession=25&selectedDate=03102023\">25. Sitzung des Ausschusses</a><br>In der Sitzung vom 3. Oktober 2023 vertagt."
+     }
+    ]
+   }
+  ],
+  "documents": [
+   {
+    "title": "Gesetzesantrag",
+    "documents": [
+     {
+      "link": "/dokument/XXVII/I/1940/fname_1527656.pdf",
+      "type": "PDF"
+     },
+     {
+      "link": "/dokument/XXVII/I/1940/fnameorig_1527656.html",
+      "type": "HTML"
+     }
+    ]
+   }
+  ],
+  "reference": [
+   {
+    "text": "Bezug zu",
+    "subject": "Bundesministeriengesetz, Änderung",
+    "zitation": "365/A-BR/2023",
+    "url": "/gegenstand/BR/A-BR/365",
+    "art": "B"
+   }
+  ],
+  "statements": {
+   "documents": [
+    {
+     "title": "Gesetzesantrag",
+     "documents": [
+      {
+       "link": "/dokument/XXVII/I/1940/fname_1527656.pdf",
+       "type": "PDF"
+      },
+      {
+       "link": "/dokument/XXVII/I/1940/fnameorig_1527656.html",
+       "type": "HTML"
+      }
+     ]
+    }
+   ]
+  }
+ }
+}

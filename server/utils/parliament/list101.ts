@@ -16,6 +16,7 @@ import { asNumber, asString } from './rowCells'
 // 10 status ('1' = Einlangen im Nationalrat, '2' = in Behandlung,
 //    '3' = zurückverwiesen an den Ausschuss, '5' = erledigt; read live
 //    23.09.2026 — the first and third were unknown until then) ·
+// 11 DOKTYP ('RV', 'BUA', 'RVS', …) ·
 // 14 path to the item's page
 //
 // `Status` is the cheap half of "does this Vorlage still take
@@ -58,6 +59,51 @@ export function mapVorlageRow(row: unknown[]): VorlageRow {
   }
 }
 
+/** Column 11 of list 101: the document type (`DOKTYP`) — „RV", „BUA", … */
+export const DOKTYP_COLUMN = 11
+
+/**
+ * The document types of `I` the period's item list reads (14.11.2026): the
+ * Regierungsvorlage, the committee's motion, the Bundesrat's motions, the
+ * treaty and the Bundesrat's Einspruch. Ausschussberichte (`AUB`) and the
+ * rest of the Verhandlungsgegenstände stay out — `{ GP_CODE }` alone is
+ * 76,000 rows.
+ */
+export const ITEM_DOKTYPES = ['RV', 'BUA', 'GABR', 'GABR13', 'RVS', 'EBR'] as const
+export type ItemDoktyp = (typeof ITEM_DOKTYPES)[number]
+
+/** One row of the period's item list: the Vorlage row and its document type. */
+export interface ItemRow extends VorlageRow {
+  doktyp: ItemDoktyp
+  /** Column 17, `VHG`: the type in finer grain — „RVS15" for an
+   *  Art.-15a-Vereinbarung among the treaties (`DOKTYP` „RVS", whose others
+   *  read „RVS"; 2 of 26 in GP XXVIII, 24 of 105 in XXVII). '' where empty. */
+  vhg: string
+}
+
+/** Column 17 of list 101: `VHG` (`ItemRow.vhg`). */
+export const VHG_COLUMN = 17
+
+/**
+ * The `DOKTYP` of the first row outside `allowed`, or null where every row
+ * is inside — the check that the narrowing gripped. The API ignores a filter
+ * key it does not know, and an answer that ignored `DOKTYP` is every Bericht
+ * of the period; it is refused before it is cached. A row that is no array
+ * answers as `'?'`.
+ */
+export function foreignDoktype(rows: readonly unknown[], allowed: readonly string[]): string | null {
+  for (const row of rows) {
+    const doktyp = Array.isArray(row) ? row[DOKTYP_COLUMN] : undefined
+    if (typeof doktyp !== 'string' || !allowed.includes(doktyp)) return typeof doktyp === 'string' ? doktyp : '?'
+  }
+  return null
+}
+
+/** One row of the item list; call only on rows `foreignDoktype` passed. */
+export function mapItemRow(row: unknown[]): ItemRow {
+  return { ...mapVorlageRow(row), doktyp: row[DOKTYP_COLUMN] as ItemDoktyp, vhg: asString(row[VHG_COLUMN]) }
+}
+
 /**
  * The Klubs list 101 appends to an Antrag's Betreff — „ORF-Gesetz, Änderung
  * (ÖVP, SPÖ, NEOS)" (read 09.11.2026: every one of GP XXVIII's 183
@@ -74,7 +120,25 @@ const CLUB_SUFFIX = /\s*\((?:ÖVP|SPÖ|FPÖ|NEOS|GRÜNE|JETZT|PILZ|STRONACH|BZÖ
  * row says „ohne Begutachtung" too readily; and the row names a procedural
  * fact, not who moved it.
  */
-export function mapAntragRow(row: unknown[]): VorlageRow {
+export function mapAntragRow(row: unknown[]): AntragListRow {
   const v = mapVorlageRow(row)
-  return { ...v, title: v.title.replace(CLUB_SUFFIX, ''), parliamentUrl: absolutizeUrl(asString(row[14])) ?? `${PARLIAMENT_BASE}/gegenstand/${v.gp}/A/${v.inr}` }
+  return {
+    ...v,
+    title: v.title.replace(CLUB_SUFFIX, ''),
+    parliamentUrl: absolutizeUrl(asString(row[14])) ?? `${PARLIAMENT_BASE}/gegenstand/${v.gp}/A/${v.inr}`,
+    voteCarried: row[VOTE_COLUMN] === '1' || row[VOTE_COLUMN] === 1,
+  }
+}
+
+/** Column 31 of list 101: the third-reading vote, `1` where it carried (`docs/api-exploration.md` §101). */
+export const VOTE_COLUMN = 31
+
+/**
+ * An Antrag row: the Vorlage row and whether its third reading carried
+ * (14.11.2026, `/api/antraege`). Only the result, never the clubs' votes
+ * beside it — the list states where an Antrag stands, not who moved or
+ * opposed it. False where the column is empty: no vote yet, or none ever.
+ */
+export interface AntragListRow extends VorlageRow {
+  voteCarried: boolean
 }

@@ -440,7 +440,7 @@ describe('draftRows', () => {
   const ris = risRow('BEGUT_1')
   const rv = vorlageRow('594 d.B.', '2026-09-11')
   const unwrap = (r: DraftListRow) =>
-    (r.kind === 'me' ? r.draft : r.kind === 'ris' ? r.item : r.kind === 'vorlage' ? r.vorlage : r.kind === 'law' ? r.law : r.item)
+    (r.kind === 'me' ? r.draft : r.kind === 'ris' ? r.item : r.kind === 'vorlage' ? r.vorlage : r.kind === 'law' ? r.law : r.kind === 'antrag' ? r.antrag : r.kind === 'treaty' ? r.treaty : r.item)
 
   it('keys each kind the way the entry it becomes is keyed', () => {
     const rows = draftRows([unwrap(me) as DraftSummary], [unwrap(ris) as RisConsultation], [unwrap(rv) as OpenVorlage])

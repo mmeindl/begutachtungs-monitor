@@ -14,8 +14,7 @@ import {
   chainUnlinkedBodyDe,
   chainUnlinkedHeadlineDe,
   rvStationView,
-  namedInRvExplanationDe,
-  namedInRvHeadlineDe,
+  namedInRvNoComparisonDe,
   relatedGpSuffixDe,
   type VorlageOutcomeState,
 } from '../app/utils/outcomes'
@@ -315,15 +314,21 @@ describe('rvStationView', () => {
     linkedDrafts: [{ gp: 'XXVIII', inr: 54, citation: '54/ME', title: 'Schulunterrichtsgesetz, Pflichtschulerhaltungs-Grundsatzgesetz u.a., Änderung' }],
   }
 
-  it('replaces the verdict, its context and the base rate where another draft\'s Vorlage names the draft', () => {
+  it('replaces the verdict and the base rate where another draft\'s Vorlage names the draft', () => {
     const handoff = { date: '2025-10-27', recipient: 'das Bundesministerium für Bildung' }
     const v = rvStationView(draft({ deadline: daysAgo(400), namedInRv: named298, handoff }), NOTHING)
     expect(v.named).toBe(named298)
     expect(v.noRvVerdict).toBeNull()
-    expect(v.context).toBeNull()
+    // The one sentence under the frame: why no comparison follows.
+    expect(v.context).toBe('Einen Paragraphenvergleich zeigen wir hier nicht, weil die Vorlage auch den Inhalt des anderen Entwurfs enthält.')
     expect(v.noRvBaseRate).toBeNull()
-    // No „Beim Ressort": the draft is not waiting there any more.
-    expect(v.facts).toEqual([{ key: 'stand', title: 'Stand', text: 'In 298 d.B. genannt' }])
+    // The quote and the linked draft are rows; no „Beim Ressort": the draft
+    // is not waiting there any more.
+    expect(v.facts).toEqual([
+      { key: 'stand', title: 'Stand', text: 'In 298 d.B. genannt' },
+      { key: 'zitat', title: 'In den Erläuterungen' },
+      { key: 'weiter', title: 'Vorlage verknüpft mit' },
+    ])
     expect(v.showOutcome).toBe(true)
   })
 
@@ -333,19 +338,16 @@ describe('rvStationView', () => {
     expect(rvStationView(draft({ namedInRv: named298, chainCoverage: 'unknown' }), NOTHING).named).toBeNull()
   })
 
-  it('words the explanation by the drafts Parliament links the Vorlage to', () => {
-    const one = namedInRvExplanationDe(named298)
-    expect(one.linkedLead).toBe('Das Parlament verknüpft die Vorlage mit einem anderen Entwurf:')
-    expect(one.merge).toBe('Ein Ministerium kann mehrere Entwürfe in einer Vorlage zusammenführen; das Parlament führt dann nur einen davon an.')
-    expect(one.noComparison).toBe('Einen Paragraphenvergleich zeigen wir hier nicht, weil die Vorlage auch den Inhalt des anderen Entwurfs enthält.')
-    expect(one.onwardLead).toBe('Wie es mit der Vorlage weiterging, steht beim Entwurf')
-    const none = namedInRvExplanationDe({ ...named298, linkedDrafts: [] })
-    expect(none.linkedLead).toBeNull()
-    expect(none.merge).not.toMatch(/nur einen davon/)
-    const two = namedInRvExplanationDe({ ...named298, linkedDrafts: [...named298.linkedDrafts, { ...named298.linkedDrafts[0]!, inr: 55, citation: '55/ME' }] })
-    expect(two.linkedLead).toBe('Das Parlament verknüpft die Vorlage mit anderen Entwürfen:')
-    expect(two.onwardLead).toBe('Wie es mit der Vorlage weiterging, steht bei den Entwürfen')
-    expect(namedInRvHeadlineDe(named298)).toBe('Die Regierungsvorlage 298 d.B. nennt das Vorhaben dieses Entwurfs.')
+  it('words the gap and the onward row by the drafts Parliament links the Vorlage to', () => {
+    expect(namedInRvNoComparisonDe(named298)).toBe('Einen Paragraphenvergleich zeigen wir hier nicht, weil die Vorlage auch den Inhalt des anderen Entwurfs enthält.')
+    const second = { ...named298.linkedDrafts[0]!, inr: 55, citation: '55/ME' }
+    expect(namedInRvNoComparisonDe({ ...named298, linkedDrafts: [...named298.linkedDrafts, second] }))
+      .toBe('Einen Paragraphenvergleich zeigen wir hier nicht, weil die Vorlage auch den Inhalt der anderen Entwürfe enthält.')
+    // Linked to none: no other draft is named, and the row links the Vorlage.
+    const none = { ...named298, linkedDrafts: [] }
+    expect(namedInRvNoComparisonDe(none)).toBe('Einen Paragraphenvergleich zeigen wir hier nicht, weil nicht belegt ist, welcher Teil der Vorlage auf diesen Entwurf zurückgeht.')
+    const v = rvStationView(draft({ deadline: daysAgo(400), namedInRv: none }), NOTHING)
+    expect(v.facts.at(-1)).toEqual({ key: 'weiter', title: 'Weiterer Verlauf' })
   })
 
   it('counts only where a count row stands', () => {

@@ -32,4 +32,13 @@ describe('the opening frame of „Der Entwurf"', () => {
     expect(l.landDocs).toEqual([{ label: 'Erläuterungen', url: 'https://land/erl.pdf' }])
     expect(l.landPublisher).toBe('Land Tirol')
   })
+
+  it('says the laws in force could not be read instead of dropping the row (14.11.2026)', () => {
+    const unread = (u: 'no-text' | 'unnamed') => ({ createsNewLaw: false, laws: [], asOf: '2020-02-14', unread: u }) as unknown as AmendedLawsResponse
+    const v = entwurfFrameView({ laws: unread('unnamed') })
+    expect(v.facts).toEqual([{ key: 'recht-offen', title: 'Geltendes Recht', text: 'Nicht lesbar: Welche Gesetze der Entwurf ändert, ließ sich aus seinem Text nicht lesen.' }])
+    expect(entwurfFrameView({ laws: unread('no-text') }).facts[0]!.text).toMatch(/^Nicht lesbar: Der Monitor fand keinen Gesetzestext/)
+    // No RIS Fassung is linked, so none is credited.
+    expect(entwurfFrameCredits({ laws: unread('unnamed') }, v)).toMatchObject({ items: [], asOf: null })
+  })
 })

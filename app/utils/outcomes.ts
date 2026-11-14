@@ -62,8 +62,9 @@ export interface RvWaitMark {
  * The wait since the Fristende against the period's latency, as `ScaleBar`
  * draws it (`RvWaitBar`, 05.10.2026; a sentence until then, „… 9 von 10
  * davon binnen 6 Monaten nach Fristende", which the reader had to turn into
- * a picture; how many drafts got a Vorlage at all stands on
- * /so-funktionierts#wartezeit, behind the frame's credit line). Counted
+ * a picture; how many drafts got a Vorlage at all stood on
+ * /so-funktionierts#wartezeit until 14.11.2026 and left the site then, kept
+ * in docs/research/wartezeit-bis-regierungsvorlage.md). Counted
  * from the Fristende and not from the handoff, because the base rate is:
  * the handoff is Parliament forwarding the papers a few days later.
  *
@@ -149,7 +150,7 @@ export function changeShareRateFor(gp: string | null | undefined): ChangeShareRa
  * row's title says what is counted, so „im Wortlaut übernommen" — and the
  * qualifier that sentence needed — has nothing left to say. The range is the
  * bar under the row (`ChangeShareBar`); redaktionelle Korrekturen are not
- * counted, which /so-funktionierts#vergleich states.
+ * counted, which the comparison's „Methode" states (`MethodVergleich`).
  */
 export function changeShareValueDe(changed: number, own: number, unitPlural: string): string {
   const noun = own === 1 ? (SINGULAR_DE[unitPlural] ?? unitPlural) : unitPlural
@@ -163,7 +164,8 @@ const SINGULAR_DE: Readonly<Record<string, string>> = { Paragraphen: 'Paragraph'
  * both Erläuterungen the Ressort changed —
  * editorial changes not counted, as in the row above
  * (`substantiveReasoningChanges`). Counted over the passages both versions
- * carry — the restriction stands on /so-funktionierts; the row's footnote
+ * carry — the restriction stands in the comparison's „Methode"
+ * (`MethodVergleich`); the row's footnote
  * names the document.
  */
 export function reasoningShareValueDe(changed: number, compared: number): string {
@@ -258,8 +260,9 @@ export function gpEndedBodyDe(gp: string): string {
   const r = rvBaseRateFor(gp)
   const openAtEnd = r.drafts - r.withRv + r.rvInLaterGp
   // The number alone since 30.09.2026; the rule of thumb around it („nur
-  // selten … häufiger beginnt das Ministerium von vorne") stands on
-  // /so-funktionierts#regierungsvorlage.
+  // selten … häufiger beginnt das Ministerium von vorne") stood on
+  // /so-funktionierts#regierungsvorlage until 14.11.2026 and stands nowhere
+  // since: the number is the evidence.
   const period = gpInSentenceDe(r.gp)
   return `${period[0]!.toUpperCase()}${period.slice(1)} wurden ${r.rvInLaterGp} von ${openAtEnd} solcher Entwürfe später noch als Regierungsvorlage eingebracht.`
 }
@@ -285,51 +288,28 @@ export function namedInRvFactDe(rvCitation: string): string {
   return `in ${rvCitation} genannt`
 }
 
-/** The station's headline: the Vorlage, and what it does — it names the draft's Vorhaben. */
-export function namedInRvHeadlineDe(n: NamedInRv): string {
-  return `Die Regierungsvorlage ${n.rv.citation} nennt das Vorhaben dieses Entwurfs.`
-}
-
-/** The link under the quote. */
+/** The link under the quote, in the frame's „In den Erläuterungen" row. */
 export function namedInRvSourceDe(n: NamedInRv): string {
   return `Erläuterungen, ${n.rv.citation}`
 }
 
 /**
- * Why the station ends here — the links Parliament keeps, how a Vorlage
- * comes to carry two drafts, why no § comparison follows, and where the
- * story goes on. In parts, so the page can make the citations links.
+ * Why no § comparison follows — the station's one sentence under the frame,
+ * where the other states give theirs (`context`). The quote, the Vorlage's
+ * Erläuterungen and the draft Parliament links the Vorlage to are rows of
+ * the frame; how a Vorlage comes to carry two drafts while Parliament links
+ * only one is the definition of „genannt" (`TERMS.genannt`), which
+ * „Methode" opens in the credit line.
  *
- * The decided copy is for the common case, one linked draft (298 d.B. →
- * 54/ME). Where the facts differ the words follow them: with several linked
- * drafts all are named and Parliament names „nur einen Teil"; with none the
- * first sentence goes, „nur einen davon" would be false, and the last
- * sentence points to the Vorlage on parlament.gv.at.
+ * The words follow the facts: with several linked drafts it names „der
+ * anderen Entwürfe"; with none, nothing on Parliament's side says whose
+ * content the Vorlage carries besides, so the reason is that no part of it
+ * is shown to go back to this draft.
  */
-export function namedInRvExplanationDe(n: NamedInRv): {
-  /** „Das Parlament verknüpft …:" before the linked drafts; null where it links none. */
-  linkedLead: string | null
-  /** Merge, no comparison, and the lead of the onward pointer, which the page completes with links. */
-  merge: string
-  noComparison: string
-  onwardLead: string
-} {
+export function namedInRvNoComparisonDe(n: NamedInRv): string {
   const k = n.linkedDrafts.length
-  if (k === 0) {
-    return {
-      linkedLead: null,
-      merge: 'Ein Ministerium kann mehrere Entwürfe in einer Vorlage zusammenführen.',
-      noComparison: 'Einen Paragraphenvergleich zeigen wir hier nicht, weil nicht belegt ist, welcher Teil der Vorlage auf diesen Entwurf zurückgeht.',
-      onwardLead: 'Wie es mit der Vorlage weiterging, steht auf ihrer Seite beim Parlament:',
-    }
-  }
-  const one = k === 1
-  return {
-    linkedLead: one ? 'Das Parlament verknüpft die Vorlage mit einem anderen Entwurf:' : 'Das Parlament verknüpft die Vorlage mit anderen Entwürfen:',
-    merge: `Ein Ministerium kann mehrere Entwürfe in einer Vorlage zusammenführen; das Parlament führt dann nur ${one ? 'einen' : 'einen Teil'} davon an.`,
-    noComparison: `Einen Paragraphenvergleich zeigen wir hier nicht, weil die Vorlage auch den Inhalt ${one ? 'des anderen Entwurfs' : 'der anderen Entwürfe'} enthält.`,
-    onwardLead: one ? 'Wie es mit der Vorlage weiterging, steht beim Entwurf' : 'Wie es mit der Vorlage weiterging, steht bei den Entwürfen',
-  }
+  if (k === 0) return 'Einen Paragraphenvergleich zeigen wir hier nicht, weil nicht belegt ist, welcher Teil der Vorlage auf diesen Entwurf zurückgeht.'
+  return `Einen Paragraphenvergleich zeigen wir hier nicht, weil die Vorlage auch den Inhalt ${k === 1 ? 'des anderen Entwurfs' : 'der anderen Entwürfe'} enthält.`
 }
 
 /** What the ME→RV comparison has delivered so far — the values of
@@ -369,7 +349,7 @@ export interface RvStationView {
   facts: RvFact[]
   /** The frame carries our own counts, so its credit line names them. */
   counted: boolean
-  /** What explains the verdict, under the frame. */
+  /** What explains the verdict, under the frame — for „genannt" why no § comparison follows. */
   context: string | null
 }
 
@@ -432,7 +412,8 @@ export function rvStationView(d: DraftDetail | null | undefined, vorlage: Vorlag
   /* Fifth state, beside them: no Vorlage of its own, and another draft's
    * Vorlage names this one in its Erläuterungen. The server lets it through
    * only where none of the four above applies (`mayBeNamed`); it replaces
-   * the verdict, its context and the base rate — the draft is no longer
+   * the verdict and the base rate, and its context says why no § comparison
+   * follows (`namedInRvNoComparisonDe`) — the draft is no longer
    * waiting, and it is counted neither with the drafts that got a Vorlage
    * nor with those that did not. */
   const named = !d.enactment && !d.active && !viaAntrag && !chainUnlinked ? (d.namedInRv ?? null) : null
@@ -448,14 +429,17 @@ export function rvStationView(d: DraftDetail | null | undefined, vorlage: Vorlag
   /* What explains the verdict, and only where there is one — without it the
    * frame's row says „Bisher keine" and a waiting sentence would only repeat
    * it. The page's version had two more branches for the verdict-less case
-   * („Bisher gibt es keine Regierungsvorlage."), which it never read. */
-  const context = !noRvVerdict
-    ? null
-    : chainUnlinked
-      ? chainUnlinkedBodyDe()
-      : lapsed
-        ? gpEndedBodyDe(d.gp)
-        : 'Ob und wie es weitergeht, ist offen.'
+   * („Bisher gibt es keine Regierungsvorlage."), which it never read.
+   * „Genannt" has no verdict and still one sentence: the gap it leaves. */
+  const context = named
+    ? namedInRvNoComparisonDe(named)
+    : noRvVerdict
+      ? chainUnlinked
+        ? chainUnlinkedBodyDe()
+        : lapsed
+          ? gpEndedBodyDe(d.gp)
+          : 'Ob und wie es weitergeht, ist offen.'
+      : null
 
   /* The base rate under the waiting rows, while the GP still runs: how
    * many drafts of the last closed GP got their Regierungsvorlage and how
@@ -479,9 +463,20 @@ export function rvStationView(d: DraftDetail | null | undefined, vorlage: Vorlag
     }
     if (d.enactment.furtherRv.length) facts.push({ key: 'weitere', title: 'Außerdem aus dem Entwurf hervorgegangen' })
   } else if (!d.active) {
-    if (viaAntrag) facts.push({ key: 'antrag', title: 'Eingebracht' })
-    else if (named) facts.push({ key: 'stand', title: 'Stand', text: namedInRvShortDe(named.rv.citation) })
-    else facts.push({ key: 'stand', title: 'Stand', text: noRvVerdict ?? 'Bisher keine Regierungsvorlage.' })
+    if (viaAntrag) {
+      facts.push({ key: 'antrag', title: 'Eingebracht' })
+    } else if (named) {
+      // The state, then what carries it: the sentence that names the draft
+      // and the document it stands in, and where the Vorlage went on — the
+      // draft Parliament links it to, or, linked to none, the Vorlage itself.
+      // A quote and a link are facts, so they are rows; why no comparison
+      // follows is the sentence under the frame (`context`).
+      facts.push({ key: 'stand', title: 'Stand', text: namedInRvShortDe(named.rv.citation) })
+      facts.push({ key: 'zitat', title: 'In den Erläuterungen' })
+      facts.push({ key: 'weiter', title: named.linkedDrafts.length ? 'Vorlage verknüpft mit' : 'Weiterer Verlauf' })
+    } else {
+      facts.push({ key: 'stand', title: 'Stand', text: noRvVerdict ?? 'Bisher keine Regierungsvorlage.' })
+    }
     // Where the ministry's clock starts (05.10.2026): the bar's row said
     // „seit … beim Ressort" and the station below did not. Not once the GP
     // is over — the Begutachtung's „Übermittelt" row carries the date then

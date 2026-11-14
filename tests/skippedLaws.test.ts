@@ -9,7 +9,7 @@
 import { describe, expect, it } from 'vitest'
 import type { AntragPath } from '../shared/types'
 import type { BgblRecord } from '../server/utils/ris/bgblJoin'
-import { bgblIKey, classifySkippedLaws, isLawOfPeriod, type ParliamentItem, type SkippedLawsInput } from '../server/utils/ris/skippedLaws'
+import { bgblIKey, classifySkippedLaws, isLawOfPeriod, type AusschussantragItem, type ParliamentItem, type SkippedLawsInput } from '../server/utils/ris/skippedLaws'
 import { EXEMPT, budgetExemptReason, exemptReasonFor, isBudgetLawTitle } from '../shared/utils/budgetExempt'
 import { draftSummary } from './helpers/builders'
 
@@ -25,6 +25,7 @@ function record(over: Partial<BgblRecord> = {}): BgblRecord {
     gp: 'XXVIII',
     regierungsvorlagen: [],
     initiativantraege: [667],
+    ausschussberichte: [],
     typ: 'Bundesgesetz',
     datumNationalrat: '2026-02-25',
     ...over,
@@ -211,6 +212,110 @@ describe('classifySkippedLaws — unknown', () => {
 
   it('where RIS names no item at all', () => {
     expect(classOf(input({ records: [record({ initiativantraege: [] })] }))[0]).toEqual({ kind: 'unknown', reason: 'no-item' })
+  })
+})
+
+describe('classifySkippedLaws — a law from a committee\'s motion (decision 2, 14.11.2026)', () => {
+  /* BGBl. I Nr. 156/2024: RIS names no Vorlage and no Antrag, only the
+   * Ausschussbericht 14 — the BUA 14 d.B., „Bezug zu" 14/A. */
+  const law = record({ id: 'BGBLA_2024_I_156', nummer: 'BGBl. I Nr. 156/2024', initiativantraege: [], ausschussberichte: [14], kurztitel: 'Bundesbezügegesetz', titel: 'Bundesgesetz, mit dem das Bundesbezügegesetz geändert wird' })
+  const bua = (related: AusschussantragItem['related'] = [{ gp: 'XXVIII', ityp: 'A', inr: 14, consulted: false }], title = 'Bundesbezügegesetz, Änderung'): AusschussantragItem =>
+    ({ inr: 14, citation: '14 d.B.', title, date: '2024-12-09', related })
+  const buaInput = (over: Partial<SkippedLawsInput> = {}) =>
+    input({ records: [law], antraege: [antrag(14, '2. Dienstrechts-Novelle 2024', '2024-11-20')], ausschussantraege: [bua()], ...over })
+
+  it('becomes a row carried by the Ausschussantrag where every check ran and nothing was consulted', () => {
+    expect(classOf(buaInput())).toEqual([
+      { kind: 'none', item: { kind: 'ausschussantrag', inr: 14, citation: '14 d.B.' }, title: 'Bundesbezügegesetz, Änderung' },
+    ])
+    // A motion with no „Bezug zu" at all is the committee's own text: its own checks decide.
+    expect(classOf(buaInput({ ausschussantraege: [bua([])] }))[0]!.kind).toBe('none')
+  })
+
+  it('says nothing where its „Bezug zu" parent was consulted', () => {
+    // An Antrag in the route table (any share), or one with a part of a consulted text.
+    expect(classOf(buaInput({ antragPaths: { XXVIII: { 42: { ...PATH_460, antrag: { ...PATH_460.antrag, inr: 14, citation: '14/A' } } } } }))[0])
+      .toEqual({ kind: 'unknown', reason: 'related-consulted' })
+    expect(classOf(buaInput({ antragPartial: { XXVIII: [14] } }))[0]).toEqual({ kind: 'unknown', reason: 'related-consulted' })
+    // A Regierungsvorlage a draft's stage record links (365 d.B. → 312 d.B. → XXVIII/32/ME).
+    const toRv = buaInput({ ausschussantraege: [bua([{ gp: 'XXVIII', ityp: 'I', inr: 312 }, { gp: 'XXVIII', ityp: 'GAA', inr: 3 }])], chains: [{ rvLinks: [{ gp: 'XXVIII', inr: 312 }] }] })
+    expect(classOf(toRv)[0]).toEqual({ kind: 'unknown', reason: 'related-consulted' })
+    // A parent whose own record names its draft or shows an Ausschussbegutachtung
+    // (334 d.B. → 310 d.B., 225 Stellen), whatever the stage records link.
+    expect(classOf(buaInput({ ausschussantraege: [bua([{ gp: 'XXVIII', ityp: 'A', inr: 14, consulted: true }])] }))[0])
+      .toEqual({ kind: 'unknown', reason: 'related-consulted' })
+  })
+
+  it('errs towards silence on every other doubt', () => {
+    // The motion's record could not be read.
+    expect(classOf(buaInput({ ausschussantraege: [{ ...bua(), related: undefined }] }))[0]).toEqual({ kind: 'unknown', reason: 'unchecked' })
+    // A parent whose own record was not read.
+    expect(classOf(buaInput({ ausschussantraege: [bua([{ gp: 'XXVIII', ityp: 'A', inr: 14 }])] }))[0]).toEqual({ kind: 'unknown', reason: 'unchecked' })
+    // A parent the period's lists do not hold, or of another period.
+    expect(classOf(buaInput({ antraege: [] }))[0]).toEqual({ kind: 'unknown', reason: 'unchecked' })
+    expect(classOf(buaInput({ ausschussantraege: [bua([{ gp: 'XXVII', ityp: 'A', inr: 14, consulted: false }])] }))[0]).toEqual({ kind: 'unknown', reason: 'unchecked' })
+    // A plausible draft behind the parent, or behind the motion itself.
+    const draft = draftSummary({ title: 'Bundesbezügegesetz, Änderung', arrivedAt: '2024-10-01' })
+    expect(classOf(buaInput({ drafts: [draft] }))[0]).toEqual({ kind: 'unknown', reason: 'preceding-draft' })
+    expect(classOf(buaInput({ drafts: null }))[0]).toEqual({ kind: 'unknown', reason: 'unchecked' })
+    // The budget procedure.
+    expect(classOf(buaInput({ ausschussantraege: [bua(undefined, 'Bundesfinanzgesetz 2029')] }))[0]!.kind).toBe('exempt')
+  })
+
+  it('stays no-item where the report number is no committee\'s motion of the period, and unchecked where the list is unread', () => {
+    expect(classOf(buaInput({ ausschussantraege: [] }))[0]).toEqual({ kind: 'unknown', reason: 'no-item' })
+    expect(classOf(buaInput({ ausschussantraege: null }))[0]).toEqual({ kind: 'unknown', reason: 'unchecked' })
+    expect(classOf(buaInput({ ausschussantraege: undefined }))[0]).toEqual({ kind: 'unknown', reason: 'unchecked' })
+    // A record with no report either: no item, as before.
+    expect(classOf(buaInput({ records: [record({ initiativantraege: [] })] }))[0]).toEqual({ kind: 'unknown', reason: 'no-item' })
+  })
+
+  it('never takes a Vorlage\'s Ausschussbericht for a committee\'s motion', () => {
+    // A law from 300 d.B. whose report number happens to be a BUA number: the Vorlage carries it.
+    const r = record({ regierungsvorlagen: [300], initiativantraege: [], ausschussberichte: [14] })
+    const c = classOf(buaInput({ records: [r], vorlagen: [vorlage(300, 'Glücksspielgesetz, Änderung')] }))[0]
+    expect(c).toMatchObject({ kind: 'none', item: { kind: 'rv', inr: 300 } })
+  })
+})
+
+describe('classifySkippedLaws — a law from a motion of the Bundesrat (14.11.2026)', () => {
+  /* BGBl. I Nr. 44/2015: RIS puts the GABR's number 452 in `Regierungsvorlage`
+   * (and AB 503 beside it); only list 101's DOKTYP says it is no Vorlage. */
+  const law = record({
+    id: 'BGBLA_2015_I_44', nummer: 'BGBl. I Nr. 44/2015', datum: '2015-04-22', gp: 'XXV',
+    kurztitel: 'Änderung des Versicherungsaufsichtsgesetzes 2016', titel: 'Bundesgesetz, mit dem das Versicherungsaufsichtsgesetz 2016 geändert wird',
+    regierungsvorlagen: [452], initiativantraege: [], ausschussberichte: [503], datumNationalrat: '2015-03-25',
+  })
+  const gabr = { inr: 452, citation: '452 d.B.', title: 'Versicherungsaufsichtsgesetz 2016, Änderung', date: '2014-12-19', variant: 'bundesrat' as const }
+  const gabrInput = (over: Partial<SkippedLawsInput> = {}) =>
+    input({ gp: 'XXV', records: [law], vorlagen: [], antraege: [], bundesratsantraege: [gabr], drafts: [draftSummary({ title: 'Umsatzsteuergesetz, Änderung', arrivedAt: '2014-10-01' })], ...over })
+
+  it('is checked like an Antrag and carried by the motion, with who moved it', () => {
+    expect(classOf(gabrInput())).toEqual([
+      { kind: 'none', item: { kind: 'bundesratsantrag', inr: 452, citation: '452 d.B.', variant: 'bundesrat' }, title: 'Versicherungsaufsichtsgesetz 2016, Änderung' },
+    ])
+    expect(classOf(gabrInput({ bundesratsantraege: [{ ...gabr, variant: 'drittel' }] }))[0]).toMatchObject({ item: { kind: 'bundesratsantrag', variant: 'drittel' } })
+  })
+
+  it('runs the same checks: a plausible draft, the budget procedure, a draft\'s link', () => {
+    const draft = draftSummary({ title: 'Versicherungsaufsichtsgesetz 2016, Änderung', arrivedAt: '2014-11-01' })
+    expect(classOf(gabrInput({ drafts: [draft] }))[0]).toEqual({ kind: 'unknown', reason: 'preceding-draft' })
+    expect(classOf(gabrInput({ drafts: null }))[0]).toEqual({ kind: 'unknown', reason: 'unchecked' })
+    expect(classOf(gabrInput({ chains: [{ rvLinks: [{ gp: 'XXV', inr: 452 }] }] }))[0]).toEqual({ kind: 'consulted', via: 'vorlage' })
+    expect(classOf(gabrInput({ records: [{ ...law, kurztitel: 'Bundesfinanzgesetz 2016' }] }))[0]!.kind).toBe('exempt')
+  })
+
+  it('stays unchecked where list 101 does not say what the number is', () => {
+    // Before 14.11.2026: the number is no Vorlage of the list, and nothing else was asked.
+    expect(classOf(gabrInput({ bundesratsantraege: undefined }))[0]).toEqual({ kind: 'unknown', reason: 'unchecked' })
+    expect(classOf(gabrInput({ bundesratsantraege: null }))[0]).toEqual({ kind: 'unknown', reason: 'unchecked' })
+    expect(classOf(gabrInput({ bundesratsantraege: [] }))[0]).toEqual({ kind: 'unknown', reason: 'unchecked' })
+  })
+
+  it('never takes a Vorlage for a motion where both lists hold the number', () => {
+    const c = classOf(gabrInput({ vorlagen: [vorlage(452, 'Versicherungsaufsichtsgesetz 2016, Änderung', '2014-12-19')] }))[0]
+    expect(c).toMatchObject({ kind: 'none', item: { kind: 'rv', inr: 452 } })
+    expect(c).not.toHaveProperty('item.variant')
   })
 })
 

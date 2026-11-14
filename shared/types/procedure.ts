@@ -20,8 +20,67 @@ export interface ProcedureRoot {
   inr: number
 }
 
-/** The two roots without a Begutachtung, as the page's path segment names them. */
-export type VorlageKind = 'vorlage' | 'antrag'
+/**
+ * What an item of type `I` or `A` is, read from its document type (`DOKTYP`)
+ * — the item kinds a law can start from in the Nationalrat (14.11.2026,
+ * `docs/research/umsetzungsplan-weitere-wege.md`): a Regierungsvorlage
+ * (`RV`), a selbständiger Antrag of members (`A`, Art `A`), a committee's
+ * own motion (`BUA`, „Bericht und Antrag"), a motion of the Bundesrat
+ * (`GABR`, `GABR13`) and a treaty (`RVS`). The type alone names none of
+ * them: all but the members' Antrag are `I`.
+ */
+export type ProcedureItemKind = 'regierungsvorlage' | 'initiativantrag' | 'ausschussantrag' | 'bundesratsantrag' | 'staatsvertrag'
+
+/** The page's path segment per item kind (`/entwuerfe/<gp>/<segment>/<nr>`,
+ *  `shared/utils/procedureRoot.ts`). */
+export type VorlageKind = 'vorlage' | 'antrag' | 'ausschussantrag' | 'bundesratsantrag' | 'staatsvertrag'
+
+/** Who moved a `bundesratsantrag`: the Bundesrat (`GABR`) or a third of its
+ *  members (`GABR13`). */
+export type BundesratMotionVariant = 'bundesrat' | 'drittel'
+
+/**
+ * What a `staatsvertrag` item is (14.11.2026): a treaty the Nationalrat
+ * approves (Art. 50 B-VG; list 101's `VHG` „RVS"), promulgated in BGBl. III,
+ * or an agreement between the Bund and the Länder (Art. 15a B-VG; `VHG`
+ * „RVS15"), promulgated in BGBl. I (388 d.B. XXVIII ⇒ I Nr. 16/2026). Both
+ * are `DOKTYP` „RVS". Read off the record's Verlauf, never off its title
+ * (`treatyKindOf`).
+ */
+export type TreatyKind = 'staatsvertrag' | 'vereinbarung-15a'
+
+/** Why Parliament takes no Stellungnahmen on an item kind: `treaty` — a
+ *  treaty's Vorlage (`RVS`). The words are the page's (`FILING_CLOSED_DE`). */
+export type FilingClosedReason = 'treaty'
+
+export type ItemFiling = { possible: true } | { possible: false; reason: FilingClosedReason }
+
+/**
+ * Another item the record names under „Bezug zu" (`content.reference`) — for
+ * a committee's motion the Regierungsvorlage or Antrag it came out of, and
+ * the committee's own motion item (`GAA`). `path` is our page of it, only
+ * where the monitor has one (`pageKindOf`); null otherwise.
+ */
+export interface RelatedItem {
+  gp: string
+  ityp: string
+  inr: number
+  /** Parliament's citation („14/A", „312 d.B."). */
+  citation: string
+  /** Parliament's short title of it; null where none. */
+  title: string | null
+  /** Its kind where the monitor follows it, else null. */
+  kind: ProcedureItemKind | null
+  path: string | null
+  /**
+   * The Ministerialentwurf behind it, which went through the Begutachtung
+   * (14.11.2026): the draft a Regierungsvorlage's record names (`preconst`),
+   * or the one whose text an Antrag carries (`ANTRAG_PATHS`). Null where none
+   * is known — which claims nothing either way. Says nothing about the text
+   * of the item that names this one.
+   */
+  consultedDraft: { gp: string; inr: number; path: string } | null
+}
 
 /**
  * The page of a Regierungsvorlage or selbständiger Antrag that came to the
@@ -32,6 +91,8 @@ export interface VorlageDetail {
   gp: string
   ityp: 'I' | 'A'
   inr: number
+  /** What the item is, from its `DOKTYP` (`pageKindOf`). */
+  itemKind: ProcedureItemKind
   /** „589 d.B.", „1007/A". */
   citation: string
   /** Parliament's short title („Behinderteneinstellungsgesetz, Änderung"). */
@@ -45,6 +106,33 @@ export interface VorlageDetail {
   /** The Ressort that submitted a Vorlage, as Parliament names it
    *  (`names[].ltext`); null on an Antrag or where the record names none. */
   ministry: string | null
+  /** The committee that moved a committee's motion, in the nominative
+   *  („Budgetausschuss"), parsed from the record's description („Bericht und
+   *  Antrag des Budgetausschusses über den Entwurf …"); null on every other
+   *  kind and where the description does not parse. Never the
+   *  Berichterstatter of `names[]`: no deputy is named. */
+  committee: string | null
+  /** Who moved a motion of the Bundesrat (14.11.2026), from its `DOKTYP`:
+   *  the Bundesrat itself (`GABR`, „Gesetzesantrag des Bundesrates") or a
+   *  third of its members (`GABR13`, Parliament's type „Gesetzesantrag von
+   *  einem Drittel der Mitglieder des Bundesrates", § 21 Abs. 6 GO-BR); null
+   *  on every other kind. The members are never named. */
+  variant: BundesratMotionVariant | null
+  /** What a treaty's Vorlage is (`treatyKindOf`, 14.11.2026): a
+   *  Staatsvertrag or an Art.-15a-Vereinbarung; null on every other kind. */
+  treatyKind: TreatyKind | null
+  /**
+   * Whether Parliament takes Stellungnahmen on this kind of item at all.
+   * `possible: false` only where its record refuses them for the kind — a
+   * treaty's Vorlage (`statementsstate` „9 …" on all 169 of GP XXVI–XXVIII,
+   * `pnpm corpus:staatsvertraege`): no door, no statements section, one
+   * sentence in their place (`FILING_CLOSED_DE`). `possible: true` says only
+   * that the kind is not refused; whether the window is open now is
+   * `enactment.filingOpen`.
+   */
+  filing: ItemFiling
+  /** The items the record names under „Bezug zu", in upstream order. */
+  relatedItems: RelatedItem[]
   /** The Klubs of an Antrag's movers, in upstream order, by upstream's own
    *  club names; null on a Vorlage, or where a code could not be named — the
    *  byline then says „von Abgeordneten" without clubs rather than half of

@@ -11,7 +11,7 @@
  * Pure module: no Nuxt auto-imports, so the server list, the client merge
  * and vitest all run the same function.
  */
-import type { DraftSummary, LandConsultation, LandLaw, LawWithoutBegutachtung, OpenVorlage, RisConsultation } from '../types'
+import type { AntragRow, DraftSummary, LandConsultation, LandLaw, LawWithoutBegutachtung, OpenVorlage, RisConsultation, TreatyRow } from '../types'
 
 /**
  * What ordering needs from a row, and nothing else.
@@ -177,6 +177,12 @@ export type DraftListRow =
      Ministerialentwurf, or a Land's without a draft in its
      register — one row kind, told apart by `isLandLaw`. */
   | { kind: 'law'; key: string; law: LawWithoutBegutachtung | LandLaw }
+  /* An Initiativantrag of the option „Alle Initiativanträge" (14.11.2026,
+     `/api/antraege`), whatever its state. */
+  | { kind: 'antrag'; key: string; antrag: AntragRow }
+  /* A treaty's Vorlage of the option „Staatsverträge" (14.11.2026,
+     `/api/staatsvertraege`), whatever its state. */
+  | { kind: 'treaty'; key: string; treaty: TreatyRow }
 
 /**
  * What the list's order asks of a row, whichever kind it is.
@@ -198,6 +204,20 @@ export function rowOrderKey(row: DraftListRow): OrderedDraft {
    * among the closed rows by that day, beside the drafts that became law the
    * same week. */
   if (row.kind === 'law') return { active: false, deadline: null, startedAt: isLandLaw(row.law) ? row.law.date : row.law.bgblDate, title: row.law.title }
+  /* An Antrag has no Frist either: an open one sorts as an open Vorlage
+   * does, among the second round by its Einlangen, ahead of the ones that
+   * take nothing (the rule „open first" of `compareDrafts`); a promulgated
+   * one by its Kundmachung, as a law; the rest by their Einlangen. */
+  if (row.kind === 'antrag') {
+    const a = row.antrag
+    return { active: a.state === 'open', deadline: null, startedAt: a.bgbl?.date ?? (a.date || null), title: a.title }
+  }
+  /* A treaty takes no Stellungnahmen, so never active: by its Kundmachung
+   * once promulgated, as a law; else by its Einlangen. */
+  if (row.kind === 'treaty') {
+    const t = row.treaty
+    return { active: false, deadline: null, startedAt: t.bgbl?.date ?? (t.date || null), title: t.title }
+  }
   return { active: false, deadline: null, startedAt: row.vorlage.date || null, title: row.vorlage.title }
 }
 
@@ -217,6 +237,14 @@ export function landRow(item: LandConsultation): DraftListRow {
 
 export function vorlageRow(vorlage: OpenVorlage): DraftListRow {
   return { kind: 'vorlage', key: `rv-${vorlage.citation}`, vorlage }
+}
+
+export function antragRow(antrag: AntragRow): DraftListRow {
+  return { kind: 'antrag', key: `antrag-${antrag.gp}-${antrag.inr}`, antrag }
+}
+
+export function treatyRow(treaty: TreatyRow): DraftListRow {
+  return { kind: 'treaty', key: `staatsvertrag-${treaty.gp}-${treaty.inr}`, treaty }
 }
 
 /** A Land's law, not the Bund's: only a Land's carries its Land. */

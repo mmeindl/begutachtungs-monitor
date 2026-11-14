@@ -35,9 +35,52 @@ export function pickBgblIForVorlage(
   gp: string,
   rvInr: number,
 ): BgblRecord | null {
+  return pickBgblIForItem(records, gp, { ityp: 'I', inr: rvInr })
+}
+
+/**
+ * The same exact join for an item of either kind (14.11.2026): a Vorlage by
+ * `BgblAuth.Regierungsvorlage`, a selbständiger Antrag by
+ * `BgblAuth.Initiativantrag` („84/A" — RIS names it on BGBl. I Nr. 11/2020,
+ * whose own link at Parliament sits on the Bundesrat's Einspruch, 20 d.B.,
+ * not on the Antrag; read 14.11.2026 on BGBl. I Nr. 11, 41 and 158/2020).
+ * Never a title, never a number of the other kind: Vorlage 84 and Antrag 84
+ * of one period are different bills.
+ */
+export function pickBgblIForItem(
+  records: readonly BgblRecord[],
+  gp: string,
+  item: { ityp: 'I' | 'A'; inr: number },
+): BgblRecord | null {
   let first: BgblRecord | null = null
   for (const r of records) {
-    if (r.teil !== 'Teil1' || r.gp !== gp || !r.regierungsvorlagen.includes(rvInr)) continue
+    const named = item.ityp === 'I' ? r.regierungsvorlagen : r.initiativantraege
+    if (r.teil !== 'Teil1' || r.gp !== gp || !named.includes(item.inr)) continue
+    if (!first || r.datum < first.datum) first = r
+  }
+  return first
+}
+
+/**
+ * The Kundmachung of a treaty's Vorlage (`RVS`, 14.11.2026), or null — the
+ * same exact key as a law's: `Gesetzgebungsperiode` and
+ * `Regierungsvorlage.item`, which RIS writes on Teil III records too
+ * (BGBl. III Nr. 66/2026 ⇒ XXVIII, 119; read 14.11.2026). Teil III for a
+ * Staatsvertrag, Teil I for an Art.-15a-Vereinbarung (388 d.B. XXVIII ⇒
+ * BGBl. I Nr. 16/2026); both Teile are searched, because the key names one
+ * item of the period whichever Teil carries it — a d.B. number is never a
+ * law's and a treaty's at once. Never a title: treaty titles repeat
+ * („Abkommen … über soziale Sicherheit"). The earliest issue wins, as for a
+ * law: a later record naming the Vorlage again is no arrival.
+ */
+export function pickBgblForTreaty(
+  records: readonly BgblRecord[],
+  gp: string,
+  rvInr: number,
+): BgblRecord | null {
+  let first: BgblRecord | null = null
+  for (const r of records) {
+    if ((r.teil !== 'Teil1' && r.teil !== 'Teil3') || r.gp !== gp || !r.regierungsvorlagen.includes(rvInr)) continue
     if (!first || r.datum < first.datum) first = r
   }
   return first

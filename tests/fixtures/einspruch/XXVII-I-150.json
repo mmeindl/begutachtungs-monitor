@@ -1,0 +1,105 @@
+{
+ "content": {
+  "title": "Einspruch des Bundesrates betr. 10. COVID-19-Gesetz",
+  "zitation": "150 d.B.",
+  "gp_code": "XXVII",
+  "ityp": "I",
+  "inr": 150,
+  "doktyp": "EBR",
+  "einlangen": "2020-05-04T00:00:00",
+  "status": {
+   "number": 5,
+   "bgbllinks": [
+    {
+     "title": "Bundesgesetzblatt I Nr. 41/2020",
+     "link": "http://www.ris.bka.gv.at/Dokument.wxe?Abfrage=BgblAuth&Dokumentnummer=BGBLA_2020_I_41"
+    },
+    {
+     "title": "Kunsttext",
+     "link": "http://www.ris.bka.gv.at/Ergebnis.wxe?Abfrage=Bundesnormen&Kundmachungsorgan=BGBl.+I+Nr.&Kundmachungsnummer=41%2f2020&Suchworte=&ReturnUrl=%2fSuchen.wxe%3fQueryID%3dBundesnormen"
+    }
+   ]
+  },
+  "reference": [
+   {
+    "text": "Bezug zu",
+    "zitation": "481/A",
+    "url": "/gegenstand/XXVII/A/481"
+   }
+  ],
+  "phase": [
+   {
+    "name": "Einlangen NR",
+    "stages": [
+     {
+      "date": "04.05.2020",
+      "text": "Einlangen im Nationalrat"
+     },
+     {
+      "date": "06.05.2020",
+      "text": "Vorgesehen für den <a href=\"/ausschuss/XXVII/A-VF/1/00900\">Verfassungsausschuss</a>"
+     }
+    ]
+   },
+   {
+    "name": "Ausschussberatungen NR",
+    "stages": [
+     {
+      "date": "08.05.2020",
+      "text": "<a href=\"/gegenstand/XXVII/NRSITZ/29\">29. Sitzung des Nationalrates</a>: Zuweisung an den <a href=\"/ausschuss/XXVII/A-VF/1/00900\">Verfassungsausschuss</a>"
+     },
+     {
+      "date": "11.05.2020",
+      "text": "Verfassungsausschuss: auf <a href=\"/dokument/XXVII/A-VF/1/00900/TO_04556229.html\">Tagesordnung</a> in der <a href=\"/ausschuss/XXVII/A-VF/1/00900?selectedStage=105&selectedSession=4&selectedDate=11052020\">4. Sitzung des Ausschusses</a>"
+     },
+     {
+      "date": "11.05.2020",
+      "text": "Verfassungsausschuss: Bericht <a href=\"/gegenstand/XXVII/I/176\">176 d.B.</a>"
+     }
+    ]
+   },
+   {
+    "name": "Plenarberatungen NR",
+    "stages": [
+     {
+      "date": "13.05.2020",
+      "text": "Auf der <a href=\"/dokument/XXVII/NRSITZ/30/TO_04556007.html\">Tagesordnung</a> der <a href=\"/gegenstand/XXVII/NRSITZ/30\">30. Sitzung des Nationalrates</a>"
+     },
+     {
+      "date": "13.05.2020",
+      "text": "30. Sitzung des Nationalrates: Debatte"
+     },
+     {
+      "date": "13.05.2020",
+      "text": "30. Sitzung des Nationalrates: Wiederholung des Gesetzesbeschlusses<br>Dafür: ÖVP, GRÜNE, NEOS, dagegen: SPÖ, FPÖ"
+     },
+     {
+      "date": "13.05.2020",
+      "text": "Beschluss im Nationalrat <a href=\"/gegenstand/XXVII/BNR/45\">45/BNR</a>"
+     },
+     {
+      "date": "13.05.2020",
+      "text": "Übermittlung des Beschlusses an den Bundesrat"
+     },
+     {
+      "date": "13.05.2020",
+      "text": "Übermittlung des Beschlusses an BKA durchgeführt"
+     }
+    ]
+   },
+   {
+    "name": "Einlangen BR",
+    "stages": [
+     {
+      "date": "14.05.2020",
+      "text": "Einlangen im Bundesrat"
+     },
+     {
+      "date": "04.06.2020",
+      "text": "<a href=\"/gegenstand/BR/BRSITZ/907\">907. Sitzung</a>: Bekanntgabe des Beharrungsbeschlusses"
+     }
+    ]
+   }
+  ]
+ }
+}

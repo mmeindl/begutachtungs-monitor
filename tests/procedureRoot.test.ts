@@ -13,7 +13,8 @@ import { statementRowMatchesParent } from '../server/utils/parliament/list142'
 import { refineByCommittee } from '../server/utils/ris/skippedLaws'
 import { DRAFT_LAW_STATIONS, LAW_STATION_LABEL, itemLawScope, lawDiffScopeOf, lawDiffSteps } from '../shared/utils/lawStations'
 import { parliamentDocumentSource } from '../shared/utils/provenance'
-import { itypOfKind, meRoot, rootCitation, rootKey, vorlagePath } from '../shared/utils/procedureRoot'
+import { itemKindOfLawItem, itemKindOfSegment, itemPath, itypOfKind, lawItemKindOf, meRoot, rootCitation, rootKey, segmentOfItemKind, vorlagePath } from '../shared/utils/procedureRoot'
+import { beilageCitationDe, buaCitationDe } from '../shared/utils/citations'
 
 /* Live detail JSON of six laws of GP XXVIII without a Begutachtung, cut to
  * what the procedure page reads (tests/fixtures/README.md). */
@@ -43,6 +44,30 @@ describe('identity', () => {
     expect(itypOfKind('antrag')).toBe('A')
     expect(itypOfKind('me')).toBeNull()
     expect(vorlagePath('XXVIII', 'A', 372)).toBe('/entwuerfe/XXVIII/antrag/372')
+  })
+  it('names the kind in the address (14.11.2026)', () => {
+    expect(itypOfKind('ausschussantrag')).toBe('I')
+    expect(itemKindOfSegment('ausschussantrag')).toBe('ausschussantrag')
+    expect(itemKindOfSegment('vorlage')).toBe('regierungsvorlage')
+    expect(itemKindOfSegment('antrag')).toBe('initiativantrag')
+    expect(itemKindOfSegment('regierungsvorlage')).toBeNull()
+    expect(segmentOfItemKind('initiativantrag')).toBe('antrag')
+    expect(itemPath('XXVIII', 'ausschussantrag', 14)).toBe('/entwuerfe/XXVIII/ausschussantrag/14')
+    expect(itypOfKind('bundesratsantrag')).toBe('I')
+    expect(itemPath('XXVII', 'bundesratsantrag', 21)).toBe('/entwuerfe/XXVII/bundesratsantrag/21')
+  })
+  it('maps a law row’s kind to the page’s and back, the Bundesrat’s motion included', () => {
+    for (const k of ['rv', 'antrag', 'ausschussantrag', 'bundesratsantrag'] as const) expect(lawItemKindOf(itemKindOfLawItem(k))).toBe(k)
+    expect(lawItemKindOf('staatsvertrag')).toBeNull()
+  })
+  it('cites a motion of the Bundesrat as its bare Beilage, never as „RV"', () => {
+    expect(beilageCitationDe('452 d.B.', 'XXV')).toBe('452 BlgNR 25. GP')
+    expect(beilageCitationDe('452', 'XXV')).toBe('Gesetzesantrag 452 XXV. GP')
+  })
+  it('cites a committee’s motion as the Bundesgesetzblatt does, never as „RV"', () => {
+    expect(rootCitation({ gp: 'XXVIII', ityp: 'I', inr: 14 })).toBe('14 d.B.')
+    expect(buaCitationDe('14 d.B.', 'XXVIII')).toBe('AB 14 BlgNR 28. GP')
+    expect(buaCitationDe('14', 'XXVIII')).toBe('Ausschussantrag 14 XXVIII. GP')
   })
 })
 

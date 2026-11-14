@@ -17,7 +17,7 @@
  */
 import type { BgblOutcome, RisConsultation } from '#shared/types'
 import { bgblRecordOf, bgblVerdict, bgblVerdictState, isRunningYear, type BgblJoinDraft, type BgblRecord, type BgblVerdict } from './bgblJoin'
-import { pickBgblIForVorlage } from './bgblVorlage'
+import { pickBgblForTreaty, pickBgblIForItem } from './bgblVorlage'
 import { DERIVED_CACHE, DOCUMENT_CACHE } from '../cache/base'
 import { BGBL_RUNNING_STALE_S, PUBLISHED_DOCUMENT_TTL_S } from '../cache/ttl'
 import { staleWithin } from '../cache/stale'
@@ -132,7 +132,7 @@ function fetchBgblPage(key: string): Promise<any> {
  * pages are the same for every Teil (RIS cannot filter by it, see above),
  * so Teil I costs no request Teil II has not already paid.
  */
-async function loadTeilYear(year: number, teil: 'Teil1' | 'Teil2'): Promise<BgblRecord[]> {
+async function loadTeilYear(year: number, teil: 'Teil1' | 'Teil2' | 'Teil3'): Promise<BgblRecord[]> {
   const out: BgblRecord[] = []
   const seen = new Set<string>()
   for (let page = 1; page <= MAX_PAGES; page++) {
@@ -153,6 +153,7 @@ async function loadTeilYear(year: number, teil: 'Teil1' | 'Teil2'): Promise<Bgbl
 
 const loadTeil2Year = (year: number) => loadTeilYear(year, 'Teil2')
 const loadTeil1Year = (year: number) => loadTeilYear(year, 'Teil1')
+const loadTeil3Year = (year: number) => loadTeilYear(year, 'Teil3')
 
 /**
  * Two lifetimes, two functions — the same split as for the pages underneath,
@@ -211,6 +212,32 @@ const getCurrentTeil1Year = defineCachedFunction(loadTeil1Year, {
 
 export function getBgblTeil1Year(year: number): Promise<BgblRecord[]> {
   return stillRunning(year) ? getCurrentTeil1Year(year) : getClosedTeil1Year(year)
+}
+
+/**
+ * Teil III of one year — the Staatsverträge, for the exact join from a
+ * treaty's Vorlage to its Kundmachung (`findBgblForTreaty`, 14.11.2026).
+ * The same Jahrgang pages as Teil I and II, so it costs no request of its
+ * own; about 200 records a year (2020–2025), a tenth of a year's pages.
+ */
+const getClosedTeil3Year = defineCachedFunction(loadTeil3Year, {
+  name: 'bgbl-teil3-jahrgang',
+  base: DERIVED_CACHE,
+  getKey: (year: number) => String(year),
+  maxAge: PUBLISHED_DOCUMENT_TTL_S,
+  swr: false,
+})
+
+const getCurrentTeil3Year = defineCachedFunction(loadTeil3Year, {
+  name: 'bgbl-teil3-jahrgang-laufend',
+  base: DERIVED_CACHE,
+  getKey: (year: number) => String(year),
+  maxAge: CURRENT_YEAR_TTL_S,
+  swr: false,
+})
+
+export function getBgblTeil3Year(year: number): Promise<BgblRecord[]> {
+  return stillRunning(year) ? getCurrentTeil3Year(year) : getClosedTeil3Year(year)
 }
 
 /* eslint-enable @typescript-eslint/no-explicit-any */
@@ -313,7 +340,48 @@ export async function getBgblIssueDate(nummer: string): Promise<string | null> {
  * every display expect that; the address is the one Parliament's own link
  * has, `Dokument.wxe?Abfrage=BgblAuth&Dokumentnummer=…`.
  */
-export async function findBgblIForVorlage(
+export function findBgblIForVorlage(
+  gp: string,
+  rvInr: number,
+  from: string,
+): Promise<{ number: string; datum: string; url: string } | null> {
+  return findBgblIForItem(gp, { ityp: 'I', inr: rvInr }, from)
+}
+
+/**
+ * The same for an item of either kind — a Vorlage or a selbständiger Antrag
+ * (`pickBgblIForItem`, 14.11.2026).
+ */
+export async function findBgblIForItem(
+  gp: string,
+  item: { ityp: 'I' | 'A'; inr: number },
+  from: string,
+): Promise<{ number: string; datum: string; url: string } | null> {
+  const first = Number(from.slice(0, 4))
+  const now = currentYear()
+  if (!Number.isFinite(first) || first > now) return null
+  const years: number[] = []
+  for (let y = first; y <= now; y++) years.push(y)
+  const records = (await Promise.all(years.map((y) => getBgblTeil1Year(y)))).flat()
+  const hit = pickBgblIForItem(records, gp, item)
+  if (!hit) return null
+  return {
+    number: bgblLong(hit.nummer),
+    datum: hit.datum,
+    url: `https://www.ris.bka.gv.at/Dokument.wxe?Abfrage=BgblAuth&Dokumentnummer=${encodeURIComponent(hit.id)}`,
+  }
+}
+
+/**
+ * The Kundmachung of a treaty's Vorlage (`RVS`) from RIS, or null — Teil III
+ * for a Staatsvertrag, Teil I for an Art.-15a-Vereinbarung, by the exact key
+ * of period and Vorlage (`pickBgblForTreaty`); no title is compared. `from`
+ * as for a law: the Beschluss, else the Vorlage's arrival. A treaty can take
+ * a year and more to its Kundmachung (119 d.B. XXVIII: 330 days), so every
+ * Jahrgang from `from` to the running one is read — the cached pages the
+ * other two Teile share.
+ */
+export async function findBgblForTreaty(
   gp: string,
   rvInr: number,
   from: string,
@@ -323,8 +391,8 @@ export async function findBgblIForVorlage(
   if (!Number.isFinite(first) || first > now) return null
   const years: number[] = []
   for (let y = first; y <= now; y++) years.push(y)
-  const records = (await Promise.all(years.map((y) => getBgblTeil1Year(y)))).flat()
-  const hit = pickBgblIForVorlage(records, gp, rvInr)
+  const records = (await Promise.all(years.flatMap((y) => [getBgblTeil1Year(y), getBgblTeil3Year(y)]))).flat()
+  const hit = pickBgblForTreaty(records, gp, rvInr)
   if (!hit) return null
   return {
     number: bgblLong(hit.nummer),

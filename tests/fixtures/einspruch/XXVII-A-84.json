@@ -1,0 +1,135 @@
+{
+ "content": {
+  "title": "Bundeshaftungsobergrenzengesetz, Änderung; EUROFIMA-Gesetz, Aufhebung",
+  "zitation": "84/A",
+  "gp_code": "XXVII",
+  "ityp": "A",
+  "inr": 84,
+  "doktyp": "A",
+  "einlangen": "2019-11-13T00:00:00",
+  "status": {
+   "number": 5,
+   "bgbllinks": []
+  },
+  "phase": [
+   {
+    "name": "Einbringung NR",
+    "stages": [
+     {
+      "date": "13.11.2019",
+      "text": "Einbringung im Nationalrat"
+     },
+     {
+      "date": "13.11.2019",
+      "text": "Übermittlung an den Rechnungshof"
+     },
+     {
+      "date": "13.11.2019",
+      "text": "Vorgesehen für den <a href=\"/ausschuss/XXVII/A-BU/1/00867\">Budgetausschuss</a>"
+     },
+     {
+      "date": "13.11.2019",
+      "text": "<a href=\"/gegenstand/XXVII/NRSITZ/3\">3. Sitzung des Nationalrates</a>: Mitteilung der Einbringung"
+     }
+    ]
+   },
+   {
+    "name": "Ausschussberatungen NR",
+    "stages": [
+     {
+      "date": "13.11.2019",
+      "text": "<a href=\"/gegenstand/XXVII/NRSITZ/4\">4. Sitzung des Nationalrates</a>: Zuweisung an den <a href=\"/ausschuss/XXVII/A-BU/1/00867\">Budgetausschuss</a>"
+     },
+     {
+      "date": "03.12.2019",
+      "text": "Budgetausschuss: auf <a href=\"/dokument/XXVII/A-BU/1/00867/TO_04451106.html\">Tagesordnung</a> in der <a href=\"/ausschuss/XXVII/A-BU/1/00867?selectedStage=105&selectedSession=3&selectedDate=03122019\">3. Sitzung des Ausschusses</a>"
+     },
+     {
+      "date": "03.12.2019",
+      "text": "Budgetausschuss: Bericht <a href=\"/gegenstand/XXVII/I/8\">8 d.B.</a>"
+     }
+    ]
+   },
+   {
+    "name": "Plenarberatungen NR",
+    "stages": [
+     {
+      "date": "11.12.2019",
+      "text": "Auf der <a href=\"/dokument/XXVII/NRSITZ/6/TO_04434021.html\">Tagesordnung</a> der <a href=\"/gegenstand/XXVII/NRSITZ/6\">6. Sitzung des Nationalrates</a>"
+     },
+     {
+      "date": "11.12.2019",
+      "text": "6. Sitzung des Nationalrates: Zweite und dritte Lesung"
+     },
+     {
+      "date": "11.12.2019",
+      "text": "6. Sitzung des Nationalrates: Gesetzesvorschlag in zweiter Lesung <b>angenommen</b><br>Dafür: ÖVP, GRÜNE, NEOS, dagegen: SPÖ, FPÖ"
+     },
+     {
+      "date": "11.12.2019",
+      "text": "6. Sitzung des Nationalrates: Gesetzesvorschlag in dritter Lesung <b>angenommen</b><br>Dafür: ÖVP, GRÜNE, NEOS, dagegen: SPÖ, FPÖ"
+     },
+     {
+      "date": "11.12.2019",
+      "text": "Beschluss im Nationalrat <a href=\"/gegenstand/XXVII/BNR/5\">5/BNR</a>"
+     },
+     {
+      "date": "12.12.2019",
+      "text": "Übermittlung des Beschlusses an den Bundesrat"
+     }
+    ]
+   },
+   {
+    "name": "Einlangen BR",
+    "stages": [
+     {
+      "date": "12.12.2019",
+      "text": "Einlangen im Bundesrat (Frist: 06.02.2020)"
+     },
+     {
+      "date": "12.12.2019",
+      "text": "Mitwirkungsrecht des Bundesrates"
+     }
+    ]
+   },
+   {
+    "name": "Ausschussberatungen BR",
+    "stages": [
+     {
+      "date": "12.12.2019",
+      "text": "Zuweisung an den <a href=\"/ausschuss/BR/A-FI-BR/1/00053\">Finanzausschuss des Bundesrates</a>"
+     },
+     {
+      "date": "17.12.2019",
+      "text": "Finanzausschuss des Bundesrates: auf <a href=\"/dokument/BR/A-FI-BR/1/00053/TO_04463911.html\">Tagesordnung</a> in der <a href=\"/ausschuss/BR/A-FI-BR/1/00053?selectedStage=105&selectedSession=6&selectedDate=17122019\">6. Sitzung des Ausschusses</a>"
+     },
+     {
+      "date": "17.12.2019",
+      "text": "Finanzausschuss des Bundesrates: Bericht <a href=\"/gegenstand/BR/I-BR/10274\">10274/BR d.B.</a>"
+     }
+    ]
+   },
+   {
+    "name": "Plenarberatungen BR",
+    "stages": [
+     {
+      "date": "19.12.2019",
+      "text": "Auf der Tagesordnung der <a href=\"/gegenstand/BR/BRSITZ/899\">899. Sitzung</a>"
+     },
+     {
+      "date": "19.12.2019",
+      "text": "899. Sitzung: Debatte"
+     },
+     {
+      "date": "19.12.2019",
+      "text": "899. Sitzung: Antrag, Einspruch zu erheben, <b>angenommen</b> <a href=\"/gegenstand/XXVII/I/20\">20 d.B.</a><br>mehrstimmig"
+     },
+     {
+      "date": "19.12.2019",
+      "text": "Beschluss im Bundesrat <a href=\"/gegenstand/XXVII/BNR/5\">5/BNR</a>"
+     }
+    ]
+   }
+  ]
+ }
+}

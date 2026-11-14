@@ -39,6 +39,7 @@ import { LAW_STATION_LABEL, LAW_STATION_ORDER } from '#shared/utils/lawStations'
 import { diffLawPackage, scopeToDraft, summarizeDiff } from './lawDiff'
 import { findLawStations, missingStationReason } from './stationDocuments'
 import { parseLawUnits, parseLawUnitsFromRis, type LawUnit } from '../lawtext/lawUnits'
+import { bgblViaObjection } from '../parliament/bundesratObjection'
 import { bundlesOtherDrafts, extractBgblLink, otherBundledDrafts, findComparisonRvLink, findLastRvLink, findRvLinks, parseStages } from '../parliament/detailJson'
 import { getGegenstand } from '../parliament/drafts'
 import { getRisMapForGp } from '../ris/begutCorpus'
@@ -145,7 +146,22 @@ const readLawDiff = defineCachedFunction(
       const rv = rvLink ? await getGegenstand(rvLink.gp, 'I', rvLink.inr) : detail
       bundled = isMe ? bundlesOtherDrafts(rv.content?.preconst, gp, inr) : false
       otherDrafts = isMe ? otherBundledDrafts(rv.content?.preconst, gp, inr) : []
-      const nummer = extractBgblLink(rv.content?.status?.bgbllinks)?.number
+      // Where the Bundesrat objected, Parliament links the Kundmachung on the
+      // Einspruch's own item, not on the law (14.11.2026,
+      // `bgblViaObjection`): after a Beharrungsbeschluss it is the text the
+      // Nationalrat decided, after a changed decision the changed text — the
+      // whole way from the first text to the law either way.
+      // A failed read of the Einspruch is handled like the document's below.
+      let nummer = extractBgblLink(rv.content?.status?.bgbllinks)?.number ?? null
+      if (!nummer) {
+        try {
+          const item: ProcedureRoot = rvLink ? { gp: rvLink.gp, ityp: 'I', inr: rvLink.inr } : root
+          nummer = (await bgblViaObjection(item, rv.content?.phase))?.number ?? null
+        } catch (err) {
+          if (from === 'bgbl' || to === 'bgbl') throw err
+          complete = false
+        }
+      }
       promulgatedAs = nummer ? bgblShort(nummer) : null
       let doc: Awaited<ReturnType<typeof getBgblDocument>> = null
       if (nummer) {

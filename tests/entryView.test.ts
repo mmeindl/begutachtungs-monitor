@@ -73,6 +73,7 @@ const ris = (overrides: Partial<RisConsultation> = {}): RisConsultation => risCo
 
 function vorlage(overrides: Partial<OpenVorlage> = {}): OpenVorlage {
   return {
+    kind: 'regierungsvorlage',
     citation: '594 d.B.',
     title: 'Glücksspielgesetz, Änderung',
     date: '2026-08-05',
@@ -620,6 +621,17 @@ describe('viewOfLaw — a law without a Begutachtung', () => {
     expect(v.to).toBe('/entwuerfe/XXVIII/antrag/667')
     expect(v.href).toBeNull()
     expect(viewOfLaw(law({ item: { kind: 'rv', gp: 'XXVIII', inr: 253, citation: '253 d.B.', parliamentUrl: '' } })).to).toBe('/entwuerfe/XXVIII/vorlage/253')
+  })
+
+  it('names and links a law from a committee\'s motion as an Ausschussantrag (14.11.2026)', () => {
+    const v = viewOfLaw(law({ item: { kind: 'ausschussantrag', gp: 'XXVIII', inr: 14, citation: '14 d.B.', parliamentUrl: 'https://www.parlament.gv.at/gegenstand/XXVIII/I/14' } }))
+    expect(v).toMatchObject({ to: '/entwuerfe/XXVIII/ausschussantrag/14', href: null, kindLabel: 'Ausschussantrag', citation: '14 d.B.', note: 'ohne Begutachtung', ministry: null })
+  })
+
+  it('names and links an open committee\'s motion as what it is', () => {
+    const v = viewOfVorlage(vorlage({ kind: 'ausschussantrag', citation: '365 d.B.', parliamentUrl: 'https://www.parlament.gv.at/gegenstand/XXVIII/I/365', consultation: { kind: 'unknown' }, date: '2025-12-09' }))
+    expect(v).toMatchObject({ to: '/entwuerfe/XXVIII/ausschussantrag/365', kindLabel: 'Ausschussantrag', note: null, newLabel: null })
+    expect(viewOfVorlage(vorlage({ kind: 'ausschussantrag', date: daysAgo(0) })).newLabel).toBe('Neu: Ausschussantrag')
   })
 
   it('states the Kundmachung the way an enacted draft does', () => {

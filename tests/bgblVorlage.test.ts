@@ -47,6 +47,7 @@ const record = (over: Partial<BgblRecord>): BgblRecord => ({
   gp: 'XXVIII',
   regierungsvorlagen: [525],
   initiativantraege: [],
+  ausschussberichte: [],
   typ: 'Bundesgesetz',
   datumNationalrat: '2026-07-07',
   ...over,

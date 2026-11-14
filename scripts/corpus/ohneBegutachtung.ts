@@ -34,8 +34,9 @@ import { previousGp } from '../../shared/utils/gp'
 import { todayIso } from '../../shared/utils/format'
 import { findRvLinks, parseStages, readCommitteeConsultation, type RawPhase, type RawStage } from '../../server/utils/parliament/detailJson'
 import { mapDraftRow } from '../../server/utils/parliament/list81'
-import { mapAntragRow, mapVorlageRow } from '../../server/utils/parliament/list101'
-import { bgblIKey, classifySkippedLaws, refineByCommittee, yearsOfPeriod, type ClassifiedLaw, type ParliamentItem } from '../../server/utils/ris/skippedLaws'
+import { DOKTYP_COLUMN, mapAntragRow, mapVorlageRow } from '../../server/utils/parliament/list101'
+import { parentConsulted, relatedItemsOf, type VorlageContent } from '../../server/utils/parliament/vorlageDetailAssembly'
+import { bgblIKey, classifySkippedLaws, isLawOfPeriod, refineByCommittee, yearsOfPeriod, type AusschussantragItem, type ClassifiedLaw, type ParliamentItem } from '../../server/utils/ris/skippedLaws'
 import { PARLIAMENT, getJson } from '../lib/http'
 import { cachedJson } from '../lib/diskCache'
 import { fetchBgblRecords } from '../lib/corpus'
@@ -78,9 +79,11 @@ if (!years) {
 await mkdir(join(cacheDir, gp), { recursive: true })
 if (prev) await mkdir(join(cacheDir, prev), { recursive: true })
 
-const records = (
-  await Promise.all(years.map((y) => cachedJson(join(cacheDir, `bgbl-${y}.json`), () => fetchBgblRecords(SCRIPT, `${y}-01-01`, `${y}-12-31`))))
-).flat()
+// `-v2` since 14.11.2026: the records carry `ausschussberichte`, which the
+// files cached before did not — a stale file would class every law from a
+// committee's motion as `no-item`. One year at a time: RIS is read paced.
+const records: Awaited<ReturnType<typeof fetchBgblRecords>> = []
+for (const y of years) records.push(...(await cachedJson(join(cacheDir, `bgbl-${y}-v2.json`), () => fetchBgblRecords(SCRIPT, `${y}-01-01`, `${y}-12-31`))))
 
 const list81 = async (period: string): Promise<DraftSummary[]> =>
   ((await cachedJson(join(cacheDir, period, 'list81.json'), () => filterList(81, { GP_CODE: [period] }))).rows ?? []).map(mapDraftRow)
@@ -95,6 +98,35 @@ const vorlagen = ((await cachedJson(join(cacheDir, gp, 'list101-rv.json'), () =>
 const antragRows = (await cachedJson(join(cacheDir, gp, 'list101-a.json'), () => filterList(101, { GP_CODE: [gp], ITYP: ['A'], ART: ['A'] }))).rows ?? []
 if (antragRows.some((r) => r[5] !== 'A')) throw new Error('Liste 101: der ART-Filter hat nicht gegriffen')
 const antraege = antragRows.map(toItem(mapAntragRow))
+
+// The committee motions (`BUA`) the period's laws carry, with their „Bezug
+// zu" — the endpoint's reading (`skippedLawsService.ausschussantraegeOf`).
+const buaRows = (await cachedJson(join(cacheDir, gp, 'list101-bua.json'), () => filterList(101, { GP_CODE: [gp], ITYP: ['I'], DOKTYP: ['BUA'] }))).rows ?? []
+if (buaRows.some((r) => r[DOKTYP_COLUMN] !== 'BUA')) throw new Error('Liste 101: der DOKTYP-Filter hat nicht gegriffen')
+const namedAb = new Set(records.filter((r) => isLawOfPeriod(r, gp) && !r.regierungsvorlagen.length && !r.initiativantraege.length).flatMap((r) => r.ausschussberichte))
+const ausschussantraege: AusschussantragItem[] = await pool(buaRows.map(toItem(mapVorlageRow)).filter((b) => namedAb.has(b.inr)), CONCURRENCY, async (b) => {
+  try {
+    const detail = await cachedJson<{ content?: VorlageContent }>(
+      join(cacheDir, gp, `I-${b.inr}.json`),
+      () => getJson(`${PARLIAMENT}/gegenstand/${gp}/I/${b.inr}?json=True`, http),
+    )
+    const related = []
+    for (const { gp: g, ityp, inr } of relatedItemsOf(detail.content?.reference)) {
+      if (ityp !== 'I' && ityp !== 'A') {
+        related.push({ gp: g, ityp, inr })
+        continue
+      }
+      const parent = await cachedJson<{ content?: VorlageContent }>(
+        join(cacheDir, g, `${ityp}-${inr}.json`),
+        () => getJson(`${PARLIAMENT}/gegenstand/${g}/${ityp}/${inr}?json=True`, http),
+      ).catch(() => null)
+      related.push(parent ? { gp: g, ityp, inr, consulted: parentConsulted(parent.content ?? {}) } : { gp: g, ityp, inr })
+    }
+    return { ...b, related }
+  } catch {
+    return { ...b, related: undefined }
+  }
+})
 
 // The chains' Vorlage links, read like `stationMap.chainOf` reads them.
 const meOf = [...drafts.map((d) => ({ gp, inr: d.inr })), ...draftsBefore.map((d) => ({ gp: prev!, inr: d.inr }))]
@@ -118,7 +150,7 @@ const chains = await pool(unique, CONCURRENCY, async (me) => {
 // 2. The production classification
 // ---------------------------------------------------------------------------
 
-const firstPass = classifySkippedLaws({ gp, records, chains, antragPaths: ANTRAG_PATHS, antragPartial: ANTRAG_PARTIAL, vorlagen, antraege, drafts })
+const firstPass = classifySkippedLaws({ gp, records, chains, antragPaths: ANTRAG_PATHS, antragPartial: ANTRAG_PARTIAL, vorlagen, antraege, drafts, ausschussantraege })
 
 // The committee check (10.11.2026): every `none` against its carrying item's
 // Verlauf, as the endpoint does it (`refineByCommittee`).
@@ -126,7 +158,7 @@ const candidates = firstPass.flatMap((l) => (l.class.kind === 'none' ? [l.class.
 console.error(`Lade ${candidates.length} Detaildatensätze der tragenden Gegenstände …`)
 const consultations = new Map<string, CommitteeConsultation | null | undefined>()
 await pool(candidates, CONCURRENCY, async (item) => {
-  const ityp = item.kind === 'rv' ? 'I' : 'A'
+  const ityp = item.kind === 'antrag' ? 'A' : 'I'
   try {
     const detail = await cachedJson<{ content?: { phase?: RawPhase[] } }>(
       join(cacheDir, gp, `${ityp}-${item.inr}.json`),
@@ -146,7 +178,7 @@ const totals = new Map<string, number>()
 for (const c of classified) totals.set(label(c.class), (totals.get(label(c.class)) ?? 0) + 1)
 
 say(`GP ${gp} — Bundesgesetze laut RIS (Jahrgänge ${years.join(', ')}), gemessen ${todayIso()}`)
-say(`  Eingaben: ${records.length} BGBl-Datensätze, ${drafts.length} + ${draftsBefore.length} Ministerialentwürfe (${gp}${prev ? ` + ${prev}` : ''}, ${unread} nicht lesbar), ${vorlagen.length} Regierungsvorlagen, ${antraege.length} Anträge`)
+say(`  Eingaben: ${records.length} BGBl-Datensätze, ${drafts.length} + ${draftsBefore.length} Ministerialentwürfe (${gp}${prev ? ` + ${prev}` : ''}, ${unread} nicht lesbar), ${vorlagen.length} Regierungsvorlagen, ${antraege.length} Anträge, ${buaRows.length} Ausschussanträge (${ausschussantraege.length} von einem Gesetz getragen, ${ausschussantraege.filter((a) => a.related === undefined).length} nicht lesbar)`)
 const typs = new Map<string, number>()
 for (const r of records) if (r.teil === 'Teil1' && r.gp === gp) typs.set(r.typ ?? '(ohne Typ)', (typs.get(r.typ ?? '(ohne Typ)') ?? 0) + 1)
 say(`  Teil I der Periode nach Typ: ${[...typs].map(([t, n]) => `${t} ${n}`).join(' · ')} — gezählt wird nur „Bundesgesetz"`)
@@ -178,6 +210,24 @@ say(`--- Unbekannt, sagt nichts (${unknown.length}) ---`)
 for (const { record, class: c } of unknown) {
   const items = [...record.regierungsvorlagen.map((n) => `${n} d.B.`), ...record.initiativantraege.map((n) => `${n}/A`)].join(', ') || '—'
   say(`  ${record.nummer.padEnd(20)} ${label(c).padEnd(26)} ${items.padEnd(14)} ${record.kurztitel ?? ''}`)
+}
+
+// Laws from a committee's motion (14.11.2026): every one, read by hand.
+const noItemBefore = classified.filter((c) => !c.record.regierungsvorlagen.length && !c.record.initiativantraege.length && c.class.kind !== 'consulted' && c.class.kind !== 'exempt').length
+const noItemAfter = classified.filter((c) => c.class.kind === 'unknown' && c.class.reason === 'no-item').length
+const buaByInr = new Map(ausschussantraege.map((a) => [a.inr, a]))
+const buaLaws = classified.filter((c) => !c.record.regierungsvorlagen.length && !c.record.initiativantraege.length && c.record.ausschussberichte.some((n) => buaByInr.has(n)))
+say()
+say(`--- Gesetze aus Ausschussanträgen (${buaLaws.length}) — no-item vorher ${noItemBefore}, nachher ${noItemAfter}; Bezug * = Entwurf oder Ausschussbegutachtung im eigenen Datensatz, ? = nicht lesbar ---`)
+const buaTotals = new Map<string, number>()
+for (const c of buaLaws) buaTotals.set(label(c.class), (buaTotals.get(label(c.class)) ?? 0) + 1)
+for (const [k, n] of [...buaTotals].sort((a, b) => b[1] - a[1])) say(`  ${String(n).padStart(4)}  ${k}`)
+for (const { record, class: c } of buaLaws) {
+  const bua = record.ausschussberichte.map((n) => buaByInr.get(n)).find(Boolean)!
+  const related = bua.related === undefined
+    ? '(Bezug unlesbar)'
+    : bua.related.map((r) => `${r.ityp} ${r.inr}${r.gp !== gp ? ` ${r.gp}` : ''}${r.consulted ? '*' : r.consulted === undefined && (r.ityp === 'I' || r.ityp === 'A') ? '?' : ''}`).join(', ') || '(kein Bezug)'
+  say(`  ${record.nummer.padEnd(20)} ${bua.citation.padEnd(10)} ${label(c).padEnd(28)} Bezug: ${related.padEnd(18)} ${bua.title}`)
 }
 
 // ---------------------------------------------------------------------------

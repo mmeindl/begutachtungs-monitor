@@ -1,0 +1,237 @@
+{
+ "content": {
+  "type": "Gesetzesantrag des Bundesrates",
+  "title": "Versicherungsaufsichtsgesetz 2016, Änderung",
+  "zitation": "452 d.B.",
+  "description": "Gesetzesantrag des Bundesrates vom 18. Dezember 2014 betreffend ein Bundesgesetz, mit dem das Versicherungsaufsichtsgesetz 2016 geändert wird",
+  "gp_code": "XXV",
+  "ityp": "I",
+  "inr": 452,
+  "doktyp": "GABR",
+  "einlangen": "2014-12-19T00:00:00",
+  "statementsstate": "0",
+  "status": {
+   "number": 5,
+   "description": "Beschlossen im Bundesrat <a href=\"/gegenstand/XXV/BNR/152\">152/BNR</a><br>mehrstimmig<br>Beschlossen im Nationalrat <a href=\"/gegenstand/XXV/BNR/152\">152/BNR</a>, Dafür: SPÖ, ÖVP, FPÖ, STRONACH, NEOS, dagegen: GRÜNE",
+   "bgbllinks": [
+    {
+     "title": "Bundesgesetzblatt I Nr. 44/2015",
+     "link": "http://www.ris.bka.gv.at/Dokument.wxe?Abfrage=BgblAuth&Dokumentnummer=BGBLA_2015_I_44",
+     "type": "DEFAULT"
+    },
+    {
+     "title": "Kunsttext",
+     "link": "http://www.ris.bka.gv.at/Ergebnis.wxe?Abfrage=Bundesnormen&Kundmachungsorgan=BGBl.+I+Nr.&Kundmachungsnummer=44%2f2015&Suchworte=&ReturnUrl=%2fSuchen.wxe%3fQueryID%3dBundesnormen",
+     "type": "DEFAULT"
+    }
+   ]
+  },
+  "phase": [
+   {
+    "name": "Einlangen NR",
+    "stages": [
+     {
+      "date": "19.12.2014",
+      "text": "Einlangen im Nationalrat"
+     },
+     {
+      "date": "19.12.2014",
+      "text": "Vorgesehen für den <a href=\"/ausschuss/XXV/A-FI/1/00364\">Finanzausschuss</a>"
+     },
+     {
+      "date": "14.01.2015",
+      "text": "<a href=\"/gegenstand/XXV/NRSITZ/57\">57. Sitzung des Nationalrates</a>: Mitteilung des Einlangens"
+     }
+    ]
+   },
+   {
+    "name": "Ausschussberatungen NR",
+    "stages": [
+     {
+      "date": "14.01.2015",
+      "text": "<a href=\"/gegenstand/XXV/NRSITZ/58\">58. Sitzung des Nationalrates</a>: Zuweisung an den <a href=\"/ausschuss/XXV/A-FI/1/00364\">Finanzausschuss</a>"
+     },
+     {
+      "date": "12.03.2015",
+      "text": "Finanzausschuss: auf <a href=\"/dokument/XXV/A-FI/1/00364/TO_02437091.html\">Tagesordnung</a> in der <a href=\"/ausschuss/XXV/A-FI/1/00364?selectedStage=105&selectedSession=11&selectedDate=12032015\">11. Sitzung des Ausschusses</a>"
+     },
+     {
+      "date": "12.03.2015",
+      "text": "Finanzausschuss: Bericht <a href=\"/gegenstand/XXV/I/503\">503 d.B.</a>"
+     }
+    ]
+   },
+   {
+    "name": "Plenarberatungen NR",
+    "stages": [
+     {
+      "date": "25.03.2015",
+      "text": "Auf der <a href=\"/dokument/XXV/NRSITZ/64/TO_02376099.html\">Tagesordnung</a> der <a href=\"/gegenstand/XXV/NRSITZ/64\">64. Sitzung des Nationalrates</a>"
+     },
+     {
+      "date": "25.03.2015",
+      "text": "64. Sitzung des Nationalrates: Zweite und dritte Lesung"
+     },
+     {
+      "date": "25.03.2015",
+      "text": "Wortmeldungen in der Debatte"
+     },
+     {
+      "date": "25.03.2015",
+      "text": "64. Sitzung des Nationalrates: Gesetzesvorschlag in zweiter Lesung <b>angenommen</b><br>Dafür: SPÖ, ÖVP, FPÖ, STRONACH, NEOS, dagegen: GRÜNE"
+     },
+     {
+      "date": "25.03.2015",
+      "text": "64. Sitzung des Nationalrates: Gesetzesvorschlag in dritter Lesung <b>angenommen</b><br>Dafür: SPÖ, ÖVP, FPÖ, STRONACH, NEOS, dagegen: GRÜNE"
+     },
+     {
+      "date": "25.03.2015",
+      "text": "Beschluss im Nationalrat <a href=\"/gegenstand/XXV/BNR/152\">152/BNR</a>"
+     },
+     {
+      "date": "27.03.2015",
+      "text": "Übermittlung des Beschlusses an den Bundesrat"
+     }
+    ]
+   },
+   {
+    "name": "Einlangen BR",
+    "stages": [
+     {
+      "date": "27.03.2015",
+      "text": "Einlangen im Bundesrat (Frist: 22.05.2015)"
+     },
+     {
+      "date": "27.03.2015",
+      "text": "Mitwirkungsrecht des Bundesrates"
+     }
+    ]
+   },
+   {
+    "name": "Ausschussberatungen BR",
+    "stages": [
+     {
+      "date": "27.03.2015",
+      "text": "Zuweisung an den <a href=\"/ausschuss/BR/A-FI-BR/1/00053\">Finanzausschuss des Bundesrates</a>"
+     },
+     {
+      "date": "07.04.2015",
+      "text": "Finanzausschuss des Bundesrates: Bericht <a href=\"/gegenstand/BR/I-BR/9337\">9337/BR d.B.</a>"
+     },
+     {
+      "date": "07.04.2015",
+      "text": "Finanzausschuss des Bundesrates: auf <a href=\"/dokument/BR/A-FI-BR/1/00053/TO_02598771.html\">Tagesordnung</a> in der <a href=\"/ausschuss/BR/A-FI-BR/1/00053?selectedStage=105&selectedSession=10&selectedDate=07042015\">10. Sitzung des Ausschusses</a>"
+     }
+    ]
+   },
+   {
+    "name": "Plenarberatungen BR",
+    "stages": [
+     {
+      "date": "09.04.2015",
+      "text": "Auf der Tagesordnung der <a href=\"/gegenstand/BR/BRSITZ/840\">840. Sitzung</a>"
+     },
+     {
+      "date": "09.04.2015",
+      "text": "(gekürzt)"
+     },
+     {
+      "date": "09.04.2015",
+      "text": "840. Sitzung: Debatte"
+     },
+     {
+      "date": "09.04.2015",
+      "text": "Wortmeldungen in der Debatte"
+     },
+     {
+      "date": "09.04.2015",
+      "text": "840. Sitzung: Antrag, keinen Einspruch zu erheben, <b>angenommen</b><br>mehrstimmig"
+     },
+     {
+      "date": "09.04.2015",
+      "text": "Beschluss im Bundesrat <a href=\"/gegenstand/XXV/BNR/152\">152/BNR</a>"
+     },
+     {
+      "date": "09.04.2015",
+      "text": "Beschluss im Bundesrat <a href=\"/gegenstand/XXV/BNR/152\">152/BNR</a>"
+     }
+    ]
+   }
+  ],
+  "documents": [
+   {
+    "title": "Gesetzestext",
+    "documents": [
+     {
+      "link": "/dokument/XXV/I/452/fname_379198.pdf",
+      "type": "PDF"
+     },
+     {
+      "link": "/dokument/XXV/I/452/fnameorig_379198.html",
+      "type": "HTML"
+     }
+    ]
+   }
+  ],
+  "reference": [
+   {
+    "text": "Bezug zu",
+    "subject": "Versicherungsaufsichtsgesetz 2016, Änderung",
+    "zitation": "209/A-BR/2014",
+    "url": "/gegenstand/BR/A-BR/209",
+    "art": "B"
+   }
+  ],
+  "vote": {
+   "result": [
+    {
+     "text": "SPÖ",
+     "code": "S",
+     "infavor": true
+    },
+    {
+     "text": "ÖVP",
+     "code": "V",
+     "infavor": true
+    },
+    {
+     "text": "FPÖ",
+     "code": "F",
+     "infavor": true
+    },
+    {
+     "text": "GRÜNE",
+     "code": "G",
+     "infavor": false
+    },
+    {
+     "text": "STRONACH",
+     "code": "T",
+     "infavor": true
+    },
+    {
+     "text": "NEOS",
+     "code": "N",
+     "infavor": true
+    }
+   ]
+  },
+  "statements": {
+   "documents": [
+    {
+     "title": "Gesetzestext",
+     "documents": [
+      {
+       "link": "/dokument/XXV/I/452/fname_379198.pdf",
+       "type": "PDF"
+      },
+      {
+       "link": "/dokument/XXV/I/452/fnameorig_379198.html",
+       "type": "HTML"
+      }
+     ]
+    }
+   ]
+  }
+ }
+}

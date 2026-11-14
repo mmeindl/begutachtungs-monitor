@@ -42,13 +42,12 @@
  * a map with such a gap is kept for minutes, not hours (`chainOf`,
  * `INCOMPLETE_MAP_TTL_MS`).
  */
-import type { DraftChain, NoPromulgation } from '#shared/types'
+import type { BundesratObjection, DraftChain, NoPromulgation, TreatyKind } from '#shared/types'
 import { STATUS_AT_BUNDESRAT, STATUS_FINISHED, furtherChain, stationFor } from '#shared/utils/draftStations'
 import { antragPathFor, carriesDraft } from '#shared/utils/antragPath'
 import {
   extractBgblLink,
   findBundesratArrival,
-  findBundesratDecisionDate,
   findHouseDecisionDate,
   findNoPromulgation,
   findRvLinks,
@@ -57,6 +56,8 @@ import {
   parseStages,
 } from './detailJson'
 import { getCurrentGp, getDraftsForGp, getGegenstand, getVorlagenForGp } from './drafts'
+import { treatyKindOf } from './vorlageDetailAssembly'
+import { resolveTreatyBgbl } from './staatsvertraege'
 import type { VorlageRow } from './list101'
 import { mapWithConcurrency } from '../pool'
 import { answerWithinBudget, type Budgeted } from '../http/budget'
@@ -64,7 +65,8 @@ import { DERIVED_CACHE } from '../cache/base'
 import { keepIncompleteFor, type Gathered } from '../cache/gathered'
 import { staleWithin } from '../cache/stale'
 import { DAY_STALE_S } from '../cache/ttl'
-import { findBgblIForVorlage, getBgblIssueDate } from '../ris/bgblService'
+import { findBgblForTreaty, findBgblIForVorlage, getBgblIssueDate } from '../ris/bgblService'
+import { bundesratDecisionOf, objectionBlocksPromulgation, readBundesratObjection } from './bundesratObjection'
 
 /** Six hours: a station moves on the scale of days. Past them the map is
  *  still served, up to a day old (`DAY_STALE_S`), while it rebuilds behind
@@ -203,6 +205,9 @@ async function chainOf(
     let bundesratArrivedAt: string | null = null
     let bundesratDecidedAt: string | null = null
     let notPromulgated: NoPromulgation | null = null
+    let bundesratObjection: BundesratObjection | null = null
+    let treaty: TreatyKind | null = null
+    let treatyLink: ReturnType<typeof extractBgblLink> = null
     let antragCitation: string | undefined
     // False where a read of the Vorlage's side failed — the chain stands on
     // what did answer, and the map is kept only briefly.
@@ -210,7 +215,13 @@ async function chainOf(
     try {
       const rvDetail = await getGegenstand(rv.gp, 'I', rv.inr)
       const phase = rvDetail.content?.phase
-      bgblNumber = extractBgblLink(rvDetail.content?.status?.bgbllinks)?.number ?? null
+      // A treaty's Vorlage (`RVS`, 14.11.2026): its Kundmachung is in BGBl.
+      // III or I, and none is ever overdue — the page's reading too.
+      treaty = treatyKindOf(rvDetail.content)
+      // A treaty's link waits for RIS's key, which wins (`resolveTreatyBgbl`).
+      const link = extractBgblLink(rvDetail.content?.status?.bgbllinks)
+      if (treaty) treatyLink = link
+      else bgblNumber = link?.number ?? null
       /* The same function as the detail page (`draftDetail.ts`), so door and
        * row cannot disagree: a Vorlage that lapsed with its period takes
        * nothing, whatever a stale flag says. Otherwise the flag decides, and
@@ -228,8 +239,18 @@ async function chainOf(
       // so they cost no request.
       decidedAt = findHouseDecisionDate(phase)
       bundesratArrivedAt = findBundesratArrival(phase)
-      bundesratDecidedAt = findBundesratDecisionDate(phase)
       notPromulgated = findNoPromulgation(phase, rv.gp)
+      /* The Bundesrat's Einspruch (14.11.2026, `bundesratObjection.ts`):
+       * the same reader as the detail page, so row and page say the same.
+       * Its „Beschluss im Bundesrat" was the Einspruch, not a Beschluss;
+       * the Kundmachung, where there is one, is linked on the Einspruch's
+       * own item. In the background build, so the period's EBR list is
+       * awaited in full — one call per period, shared by every chain. */
+      const objection = await readBundesratObjection({ gp: rv.gp, ityp: 'I', inr: rv.inr }, phase, currentGp, BGBL_DATE_BUDGET_MS)
+      if (objection && !objection.complete) complete = false
+      bundesratObjection = objection?.objection ?? null
+      bundesratDecidedAt = bundesratDecisionOf(phase, objection)
+      bgblNumber ??= objection?.bgbl?.number ?? null
       /* A Gesetzesbeschluss Parliament records as not promulgated, and the
        * Antrag it names as the text's successor (80 d.B. → 416/A,
        * 03.10.2026). Where that Antrag's own record links a
@@ -279,19 +300,29 @@ async function chainOf(
     let bgblSearch: DraftChain['bgblSearch']
     const decided = decidedAt || row?.status === STATUS_FINISHED || row?.status === STATUS_AT_BUNDESRAT
     const from = decidedAt || row?.date || rv.date
-    // Not where Parliament says this Vorlage's text was not promulgated:
-    // there is no Kundmachung of it to find.
-    if (!bgblNumber && !notPromulgated && decided && from) {
-      const ris = await answerWithinBudget(findBgblIForVorlage(rv.gp, rv.inr, from), BGBL_DATE_BUDGET_MS)
+    // Not where Parliament says this Vorlage's text was not promulgated, nor
+    // while an Einspruch stands undecided: there is no Kundmachung of it to
+    // find.
+    if (!bgblNumber && !notPromulgated && !objectionBlocksPromulgation(bundesratObjection) && decided && from) {
+      const ris = await answerWithinBudget(
+        treaty ? findBgblForTreaty(rv.gp, rv.inr, from) : findBgblIForVorlage(rv.gp, rv.inr, from),
+        BGBL_DATE_BUDGET_MS,
+      )
       if (!ris.answered) complete = false
       else if (ris.value) {
         bgblNumber = ris.value.number
         bgblDate = ris.value.datum
       }
-      // Asked and not found: the key a later, more patient reader asks with.
-      if (!bgblNumber) bgblSearch = { gp: rv.gp, inr: rv.inr, from }
+      // A treaty RIS has no record for: Parliament's link, the page's rule.
+      if (treaty) bgblNumber = resolveTreatyBgbl(ris.answered ? ris.value : null, treatyLink)?.number ?? null
+      // Asked and not found: the key a later, more patient reader asks with
+      // — a law's only: that reader searches Teil I.
+      if (!bgblNumber && !treaty) bgblSearch = { gp: rv.gp, inr: rv.inr, from }
     }
 
+    // A treaty not searched (undecided, or Parliament says no Kundmachung):
+    // its link alone, as on the page.
+    if (treaty && !bgblNumber) bgblNumber = resolveTreatyBgbl(null, treatyLink)?.number ?? null
     const station = stationFor(bgblNumber, row?.status ?? null, decidedAt)
     if (bgblNumber && !bgblDate) {
       const day = await kundmachungDateOf(bgblNumber)
@@ -311,6 +342,8 @@ async function chainOf(
         bundesratArrivedAt,
         bundesratDecidedAt,
         notPromulgated,
+        ...(bundesratObjection ? { bundesratObjection } : {}),
+        ...(treaty ? { treaty } : {}),
         rvLinks: rvLinks.map((l) => ({ gp: l.gp, inr: l.inr })),
         ...(antragCitation ? { antragCitation } : {}),
         ...(bgblSearch ? { bgblSearch } : {}),

@@ -1,0 +1,151 @@
+{
+ "content": {
+  "type": "Bericht und Antrag",
+  "title": "Erneuerbaren-Ausbau-Gesetz, Ökostromgesetz, Änderung",
+  "zitation": "365 d.B.",
+  "description": "Bericht und Antrag des Ausschusses für Wirtschaft, Industrie und Energie über den Entwurf eines Bundesgesetzes, mit dem das Erneuerbaren-Ausbau-Gesetz (EAG) und das Ökostromgesetz 2012 (ÖSG 2012) geändert werden",
+  "gp_code": "XXVIII",
+  "ityp": "I",
+  "inr": 365,
+  "doktyp": "BUA",
+  "einlangen": "2025-12-09T00:00:00",
+  "statementsstate": "1",
+  "status": {
+   "number": 3,
+   "description": "Zurückverwiesen an den <a href=\"/ausschuss/XXVIII/A-WH/1/00940\">Ausschuss für Wirtschaft, Industrie und Energie</a>"
+  },
+  "phase": [
+   {
+    "name": "Einlangen NR",
+    "stages": [
+     {
+      "date": "09.12.2025",
+      "text": "Gesetzesvorschlag enthält Verfassungsbestimmungen"
+     },
+     {
+      "date": "09.12.2025",
+      "text": "Mehrheit von zwei Dritteln der abgegebenen Stimmen erforderlich"
+     },
+     {
+      "date": "09.12.2025",
+      "text": "Einlangen im Nationalrat"
+     }
+    ]
+   },
+   {
+    "name": "Ausschussberatungen NR",
+    "stages": [
+     {
+      "date": "09.12.2025",
+      "text": "<a href=\"/ausschuss/XXVIII/A-WH/1/00940\">Ausschuss für Wirtschaft, Industrie und Energie</a>: Antrag auf Annahme des unveränderten Gesetzesvorschlags<br>Dafür: ÖVP, SPÖ, NEOS, dagegen: FPÖ, GRÜNE"
+     },
+     {
+      "date": "09.12.2025",
+      "text": "Ausschuss für Wirtschaft, Industrie und Energie: Selbständiger Antrag"
+     }
+    ]
+   },
+   {
+    "name": "Plenarberatungen NR",
+    "stages": [
+     {
+      "date": "11.12.2025",
+      "text": "Auf der <a href=\"/dokument/XXVIII/NRSITZ/57/TO_16447541.html\">Tagesordnung</a> der <a href=\"/gegenstand/XXVIII/NRSITZ/57\">57. Sitzung des Nationalrates</a>"
+     },
+     {
+      "date": "11.12.2025",
+      "text": "Wortmeldungen in der Debatte"
+     }
+    ]
+   },
+   {
+    "name": "Ausschussberatungen NR",
+    "stages": [
+     {
+      "date": "11.12.2025",
+      "text": "Zurückverwiesen an den <a href=\"/ausschuss/XXVIII/A-WH/1/00940\">Ausschuss für Wirtschaft, Industrie und Energie</a><br>Dafür: FPÖ, ÖVP, SPÖ, NEOS, GRÜNE, dagegen: -"
+     }
+    ]
+   },
+   {
+    "name": "Plenarberatungen NR",
+    "stages": [
+     {
+      "date": "11.12.2025",
+      "text": "(gekürzt)"
+     }
+    ]
+   }
+  ],
+  "documents": [
+   {
+    "title": "Berichterstattung",
+    "documents": [
+     {
+      "link": "/dokument/XXVIII/I/365/fname_1728639.pdf",
+      "type": "PDF"
+     },
+     {
+      "link": "/dokument/XXVIII/I/365/fnameorig_1728639.html",
+      "type": "HTML"
+     }
+    ]
+   },
+   {
+    "title": "Gesetzestext",
+    "documents": [
+     {
+      "link": "/dokument/XXVIII/I/365/fname_1728640.pdf",
+      "type": "PDF"
+     },
+     {
+      "link": "/dokument/XXVIII/I/365/fnameorig_1728640.html",
+      "type": "HTML"
+     }
+    ]
+   }
+  ],
+  "names": [
+   {
+    "funktext": "Berichterstatterin/Berichterstatter",
+    "frak_code": "V",
+    "ltext": "Ausschuss für Wirtschaft, Industrie und Energie"
+   }
+  ],
+  "reference": [
+   {
+    "text": "Bezug zu",
+    "subject": "Günstiger-Strom-Gesetz",
+    "zitation": "312 d.B.",
+    "url": "/gegenstand/XXVIII/I/312",
+    "art": "B"
+   },
+   {
+    "text": "Bezug zu",
+    "subject": "Erneuerbaren-Ausbau-Gesetz und Ökostromgesetz 2012",
+    "zitation": "3/GAA",
+    "url": "/gegenstand/XXVIII/GAA/3",
+    "art": "B"
+   }
+  ],
+  "vote": null,
+  "preconst": null,
+  "statements": {
+   "documents": [
+    {
+     "title": "Gesetzestext",
+     "documents": [
+      {
+       "link": "/dokument/XXVIII/I/365/fname_1728640.pdf",
+       "type": "PDF"
+      },
+      {
+       "link": "/dokument/XXVIII/I/365/fnameorig_1728640.html",
+       "type": "HTML"
+      }
+     ]
+    }
+   ]
+  }
+ }
+}

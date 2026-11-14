@@ -1,0 +1,83 @@
+{
+ "content": {
+  "type": "Gesetzesantrag des Bundesrates",
+  "title": "Bundesministeriengesetz, Änderung",
+  "zitation": "21 d.B.",
+  "description": "Gesetzesantrag des Bundesrates vom 19. Dezember 2019 betreffend ein Bundesgesetz, mit dem das Bundesministeriengesetz 1986 geändert wird",
+  "gp_code": "XXVII",
+  "ityp": "I",
+  "inr": 21,
+  "doktyp": "GABR",
+  "einlangen": "2019-12-20T00:00:00",
+  "statementsstate": "9 Begutachtung erst ab 1.8.2021 bei dem Doktyp \"GABR\" möglich",
+  "status": {
+   "number": 2,
+   "description": "Zugewiesen an: <a href=\"/ausschuss/XXVII/A-VF/1/00900\">Verfassungsausschuss</a>, Beratungen nicht aufgenommen"
+  },
+  "phase": [
+   {
+    "name": "Einlangen NR",
+    "stages": [
+     {
+      "date": "20.12.2019",
+      "text": "Einlangen im Nationalrat"
+     },
+     {
+      "date": "10.01.2020",
+      "text": "<a href=\"/gegenstand/XXVII/NRSITZ/8\">8. Sitzung des Nationalrates</a>: Mitteilung des Einlangens"
+     },
+     {
+      "date": "10.01.2020",
+      "text": "Vorgesehen für den <a href=\"/ausschuss/XXVII/A-VF/1/00900\">Verfassungsausschuss</a>"
+     }
+    ]
+   },
+   {
+    "name": "Ausschussberatungen NR",
+    "stages": [
+     {
+      "date": "10.01.2020",
+      "text": "<a href=\"/gegenstand/XXVII/NRSITZ/9\">9. Sitzung des Nationalrates</a>: Zuweisung an den <a href=\"/ausschuss/XXVII/A-VF/1/00900\">Verfassungsausschuss</a>"
+     }
+    ]
+   }
+  ],
+  "documents": [
+   {
+    "title": "Gesetzestext",
+    "documents": [
+     {
+      "link": "/dokument/XXVII/I/21/fname_776581.pdf",
+      "type": "PDF"
+     },
+     {
+      "link": "/dokument/XXVII/I/21/fnameorig_776581.html",
+      "type": "HTML"
+     }
+    ]
+   },
+   {
+    "title": "Begründung",
+    "documents": [
+     {
+      "link": "/dokument/XXVII/I/21/fname_777457.pdf",
+      "type": "PDF"
+     },
+     {
+      "link": "/dokument/XXVII/I/21/fnameorig_777457.html",
+      "type": "HTML"
+     }
+    ]
+   }
+  ],
+  "reference": [
+   {
+    "text": "Bezug zu",
+    "subject": "Bundesministeriengesetz 1986, Änderung",
+    "zitation": "269/A-BR/2019",
+    "url": "/gegenstand/BR/A-BR/269",
+    "art": "B"
+   }
+  ]
+ }
+}

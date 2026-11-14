@@ -1,0 +1,158 @@
+{
+ "content": {
+  "title": "Erneuerbares-Gas-Gesetz - EGG",
+  "zitation": "2455 d.B.",
+  "gp_code": "XXVII",
+  "ityp": "I",
+  "inr": 2455,
+  "doktyp": "RV",
+  "einlangen": "2024-02-21T00:00:00",
+  "status": {
+   "number": 5,
+   "bgbllinks": []
+  },
+  "reference": [
+   {
+    "text": "Bezug zu",
+    "zitation": "251/ME",
+    "url": "/gegenstand/XXVII/ME/251"
+   }
+  ],
+  "preconst": [
+   {
+    "gp_code": "XXVII",
+    "ityp": "ME",
+    "inr": 251,
+    "zitation": "251/ME"
+   }
+  ],
+  "phase": [
+   {
+    "name": "Einlangen NR",
+    "stages": [
+     {
+      "date": "21.02.2024",
+      "text": "Einlangen im Nationalrat"
+     },
+     {
+      "date": "21.02.2024",
+      "text": "Gesetzesvorschlag enthält Verfassungsbestimmungen"
+     },
+     {
+      "date": "22.02.2024",
+      "text": "Vorgesehen für den <a href=\"/ausschuss/XXVII/A-WH/1/00903\">Ausschuss für Wirtschaft, Industrie und Energie</a>"
+     },
+     {
+      "date": "28.02.2024",
+      "text": "<a href=\"/gegenstand/XXVII/NRSITZ/252\">252. Sitzung des Nationalrates</a>: Mitteilung des Einlangens"
+     }
+    ]
+   },
+   {
+    "name": "Ausschussberatungen NR",
+    "stages": [
+     {
+      "date": "28.02.2024",
+      "text": "<a href=\"/gegenstand/XXVII/NRSITZ/253\">253. Sitzung des Nationalrates</a>: Zuweisung an den <a href=\"/ausschuss/XXVII/A-WH/1/00903\">Ausschuss für Wirtschaft, Industrie und Energie</a>"
+     },
+     {
+      "date": "26.06.2024",
+      "text": "Ausschuss für Wirtschaft, Industrie und Energie: auf <a href=\"/dokument/XXVII/A-WH/1/00903/TO_15716042.html\">Tagesordnung</a> in der <a href=\"/ausschuss/XXVII/A-WH/1/00903?selectedStage=105&selectedSession=27&selectedDate=26062024\">27. Sitzung des Ausschusses</a>"
+     },
+     {
+      "date": "26.06.2024",
+      "text": "Ausschuss für Wirtschaft, Industrie und Energie: Bericht <a href=\"/gegenstand/XXVII/I/2665\">2665 d.B.</a>"
+     }
+    ]
+   },
+   {
+    "name": "Plenarberatungen NR",
+    "stages": [
+     {
+      "date": "04.07.2024",
+      "text": "Auf der <a href=\"/dokument/XXVII/NRSITZ/272/TO_15714149.html\">Tagesordnung</a> der <a href=\"/gegenstand/XXVII/NRSITZ/272\">272. Sitzung des Nationalrates</a>"
+     },
+     {
+      "date": "04.07.2024",
+      "text": "272. Sitzung des Nationalrates: Gesetzesvorschlag in zweiter Lesung <b>abgelehnt</b><br>Namentliche Abstimmung (Die §§ 1 und 16 des Gesetzentwurfs werden in namentlicher Abstimmung (abgegebene Stimmen: 169; davon Ja-Stimmen: 106, Nein-Stimmen: 63) mangels der erforderlichen Zweidrittelmehrheit abgelehnt.)"
+     },
+     {
+      "date": "04.07.2024",
+      "text": "272. Sitzung des Nationalrates: Gesetzesvorschlag in zweiter Lesung <b>angenommen</b><br>mehrstimmig (Die restlichen Teile des Gesetzentwurfs werden (dafür: V, G bzw. V, G, N) angenommen.)"
+     },
+     {
+      "date": "04.07.2024",
+      "text": "272. Sitzung des Nationalrates: Gesetzesvorschlag in dritter Lesung <b>angenommen</b><br>Dafür: ÖVP, GRÜNE, NEOS, dagegen: SPÖ, FPÖ (Die restlichen Teile des Gesetzentwurfs werden angenommen.)"
+     },
+     {
+      "date": "04.07.2024",
+      "text": "Beschluss im Nationalrat <a href=\"/gegenstand/XXVII/BNR/1015\">1015/BNR</a>"
+     },
+     {
+      "date": "05.07.2024",
+      "text": "Übermittlung des Beschlusses an den Bundesrat"
+     }
+    ]
+   },
+   {
+    "name": "Einlangen BR",
+    "stages": [
+     {
+      "date": "05.07.2024",
+      "text": "Einlangen im Bundesrat (Frist: 30.08.2024)"
+     },
+     {
+      "date": "05.07.2024",
+      "text": "Mitwirkungsrecht des Bundesrates"
+     },
+     {
+      "date": "06.07.2024",
+      "text": "Änderungen gegenüber dem Gesetzentwurf in der Fassung des Nationalrat-Ausschussberichtes (<a href=\"/gegenstand/BR/I-BR/11532\">11532/BR d.B.</a>)"
+     }
+    ]
+   },
+   {
+    "name": "Ausschussberatungen BR",
+    "stages": [
+     {
+      "date": "05.07.2024",
+      "text": "Zuweisung an den <a href=\"/ausschuss/BR/A-WR-BR/1/00312\">Wirtschaftsausschuss des Bundesrates</a>"
+     },
+     {
+      "date": "09.07.2024",
+      "text": "Wirtschaftsausschuss des Bundesrates: auf <a href=\"/dokument/BR/A-WR-BR/1/00312/TO_16198368.html\">Tagesordnung</a> in der <a href=\"/ausschuss/BR/A-WR-BR/1/00312?selectedStage=105&selectedSession=23&selectedDate=09072024\">23. Sitzung des Ausschusses</a>"
+     },
+     {
+      "date": "09.07.2024",
+      "text": "Wirtschaftsausschuss des Bundesrates: Bericht <a href=\"/gegenstand/BR/I-BR/11579\">11579/BR d.B.</a>"
+     }
+    ]
+   },
+   {
+    "name": "Plenarberatungen BR",
+    "stages": [
+     {
+      "date": "10.07.2024",
+      "text": "Auf der Tagesordnung der <a href=\"/gegenstand/BR/BRSITZ/969\">969. Sitzung</a>"
+     },
+     {
+      "date": "10.07.2024",
+      "text": "969. Sitzung: Debatte"
+     },
+     {
+      "date": "10.07.2024",
+      "text": "969. Sitzung: Antrag, Einspruch zu erheben (<a href=\"/gegenstand/BR/GO-BR/2271\">2271/GO-BR/2024</a>)<br><b>angenommen</b>"
+     },
+     {
+      "date": "10.07.2024",
+      "text": "969. Sitzung: Antrag, Einspruch zu erheben, <b>angenommen</b> <a href=\"/gegenstand/XXVII/I/2705\">2705 d.B.</a><br>Einstimmig"
+     },
+     {
+      "date": "10.07.2024",
+      "text": "Beschluss im Bundesrat <a href=\"/gegenstand/XXVII/BNR/1015\">1015/BNR</a>"
+     }
+    ]
+   }
+  ]
+ }
+}

@@ -52,8 +52,12 @@ export function useLateFetch<T>(
     () => `${options.key ? `${options.key}:` : ''}${url}:${JSON.stringify(query())}`,
     () => {
       /* Cast, not `$fetch<T>`: over a `string` URL Nitro's route typing
-       * stays an unresolved conditional for a generic `T`. */
-      const read = $fetch(url, { query: query(), timeout: options.timeout }) as Promise<T>
+       * stays an unresolved conditional for a generic `T` — and past a
+       * number of routes it exceeds the compiler's depth (TS2321, the day
+       * `/api/antraege` was added, 14.11.2026). So `$fetch` is called here
+       * through a plain signature, which skips the route union entirely. */
+      const plainFetch = $fetch as unknown as (request: string, opts: { query: Record<string, unknown>; timeout: number }) => Promise<unknown>
+      const read = plainFetch(url, { query: query(), timeout: options.timeout }) as Promise<T>
       if (!import.meta.server) return read
       return Promise.race([read, new Promise<null>((resolve) => { setTimeout(() => resolve(null), SSR_DEADLINE_MS) })])
     },

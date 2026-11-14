@@ -24,9 +24,10 @@ withDefaults(defineProps<{
   stations: Station[]
   anchors?: Partial<Record<StationId, string>>
   comparisonAnchors?: Partial<Record<ComparisonId, string>>
-  /** Where „Wie funktioniert das Verfahren?" leads. */
+  /** Where „Alle Wege im Überblick" leads: `/wege`, with `?weg=` where the
+   *  page knows its path. */
   howTo?: string
-}>(), { howTo: '/so-funktionierts' })
+}>(), { howTo: '/wege' })
 </script>
 
 <template>
@@ -53,7 +54,13 @@ withDefaults(defineProps<{
            said by this heading in words, and that there are five is said
            by the five rows. The link carries link weight: text-xs
            text-ink-muted was the page's only orientation aid, set to be
-           overlooked. -->
+           overlooked.
+
+           „Alle Wege im Überblick" since 14.11.2026, „Wie funktioniert das
+           Verfahren?" before: the link no longer opens a page explaining
+           this procedure (/so-funktionierts, dissolved) but the matrix of
+           every path a text can take (`/wege`), and the label says where
+           it goes. -->
       <div class="flex flex-wrap items-baseline justify-between gap-x-4 gap-y-1">
         <h2 class="font-sans text-base font-semibold text-ink">
           {{ status }}
@@ -62,7 +69,7 @@ withDefaults(defineProps<{
           :to="howTo"
           class="tap-target text-sm font-medium link-quiet"
         >
-          Wie funktioniert das Verfahren? →
+          Alle Wege im Überblick →
         </NuxtLink>
       </div>
       <SpineRail

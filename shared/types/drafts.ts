@@ -3,6 +3,7 @@ import type { EuMarker } from './eu'
 import type { StatementsSummary } from './statements'
 import type { RisMapRow } from './ris'
 import type { LawStationId } from './lawDiff'
+import type { TreatyKind } from './procedure'
 
 export interface DraftSummary {
   /** Gesetzgebungsperiode, e.g. "XXVIII" */
@@ -84,6 +85,41 @@ export interface NoPromulgation {
   reason: 'formalfehler' | 'unbekannt'
   /** The Antrag the stage says the text was brought in again as, e.g. 416/A. */
   successorAntrag: { gp: string; inr: number; citation: string } | null
+}
+
+/**
+ * The Bundesrat's Einspruch against a Gesetzesbeschluss (Art. 42 B-VG) and
+ * what the Nationalrat did about it — an event inside the station
+ * Parlament, never a station of its own (14.11.2026).
+ *
+ * Read from two records: the law's own Verlauf carries the stage „Antrag,
+ * Einspruch zu erheben, angenommen <EBR>" (`findBundesratObjection`), and
+ * the Einspruch's own item (document type EBR, „20 d.B.") carries what
+ * followed (`readObjectionOutcome`). The vocabulary is the one measured on
+ * every EBR of GP XXII–XXVIII; what it does not cover is `unknown`.
+ */
+export interface BundesratObjection {
+  /** The Bundesrat's sitting that resolved it, ISO; null where the stage is
+   *  undated or the Einspruch is known only from the period's EBR list. */
+  date: string | null
+  /** The Einspruch's own item at Parliament, „20 d.B."; null where its
+   *  number could not be read. */
+  ebr: { citation: string; url: string } | null
+  /**
+   * `beharrung`: the Nationalrat repeated its Beschluss (Art. 42 Abs. 4).
+   * `new-decision`: it adopted a changed text instead.
+   * `pending`: undecided while the Einspruch's period runs.
+   * `lapsed`: undecided, and that period has ended.
+   * `unknown`: the Einspruch's record could not be read, or says something
+   * the reader has no word for (`unknownCause`).
+   */
+  outcome: 'beharrung' | 'new-decision' | 'pending' | 'lapsed' | 'unknown'
+  /** The Nationalrat's decision after the Einspruch, ISO — the
+   *  Beharrungsbeschluss or the changed text; null for the other outcomes. */
+  decidedAt: string | null
+  /** Why `unknown`: the record did not answer (`unread`), or it did and its
+   *  Verlauf matched none of the measured outcomes (`unmapped`). */
+  unknownCause?: 'unread' | 'unmapped'
 }
 
 /** What the stage record says became of a draft. Every field is a fact read
@@ -181,6 +217,22 @@ export interface DraftChain {
    * Antrag as `antragCitation`.
    */
   notPromulgated?: NoPromulgation | null
+  /**
+   * The Bundesrat's Einspruch against the Vorlage's Beschluss, and what
+   * followed it (`BundesratObjection`); same meaning as on `EnactmentInfo`.
+   * Absent or null: none read. Where one stands, `bundesratDecidedAt` is the
+   * Bundesrat's decision on a changed text only — the Einspruch is no
+   * Beschluss of the Bundesrat.
+   */
+  bundesratObjection?: BundesratObjection | null
+  /**
+   * The Vorlage is a treaty's (`DOKTYP` „RVS", `treatyKindOf`; 14.11.2026):
+   * its Kundmachung is looked for in BGBl. III (a Staatsvertrag) or I (an
+   * Art.-15a-Vereinbarung), and no Kundmachung is ever called overdue — a
+   * treaty waits for its ratification (`promulgationOverdue`). Absent or
+   * null: a law's Vorlage, or not read.
+   */
+  treaty?: TreatyKind | null
   /**
    * The Vorlage whose Kundmachung RIS may be asked for, where Parliament's
    * record links none: its period and number, and the earliest day a
@@ -421,6 +473,12 @@ export interface EnactmentInfo {
    */
   houseStatusText: string | null
   /**
+   * The item a Miterledigung names (14.11.2026, `mergedWithOf`): „565 d.B.",
+   * from the status or, where that names none, from the Verlauf. Null or
+   * absent where there is none.
+   */
+  mergedWith?: string | null
+  /**
    * The third-reading vote on the Vorlage NAMED ABOVE, club by club — null
    * while it has not been voted on, and null for the handful of records that
    * carry only upstream's prose vocabulary instead of the club lists
@@ -475,6 +533,24 @@ export interface EnactmentInfo {
    * (03.10.2026).
    */
   successor: { citation: string; url: string; bgblNumber: string | null; bgblRisUrl: string | null } | null
+  /**
+   * The Bundesrat's Einspruch against this Beschluss and what the Nationalrat
+   * did about it (`BundesratObjection`, 14.11.2026). Absent or null: the
+   * record names none, or it could not be read. Where one stands, the BGBl
+   * fields above come from the Einspruch's own item (Parliament links the
+   * Kundmachung there, not on the law) or from RIS by this item, and
+   * `bundesratDecidedAt` is the Bundesrat's decision on a changed text only:
+   * the Einspruch is no Beschluss of the Bundesrat.
+   */
+  bundesratObjection?: BundesratObjection | null
+  /**
+   * The item is a treaty's Vorlage (`DOKTYP` „RVS", 14.11.2026), and which
+   * kind (`treatyKindOf`): its Kundmachung is read from BGBl. III or I
+   * (`findBgblForTreaty`), the Nationalrat approves it rather than deciding
+   * a text, and a missing Kundmachung is „ausstehend", never overdue (decision
+   * 5 of 14.11.2026). Absent or null: a law, or the record was not read.
+   */
+  treaty?: TreatyKind | null
 }
 
 /**

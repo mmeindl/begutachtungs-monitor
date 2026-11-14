@@ -385,6 +385,19 @@ Gesetzesinitiative on its website and accepts statements on it — including on
 Initiativanträge and on Regierungsvorlagen, for as long as the bill is before
 the house. List 142 with `BEZUG_ITYP: "A"` or `"I"` returns them.
 
+**Nachtrag 14.11.2026: „every Gesetzesinitiative" is too broad, and hides
+two kinds.** § 23b Abs. 1 GOG-NR names Vorlagen der Bundesregierung,
+selbständige Anträge von Abgeordneten *oder Ausschüssen*, Gesetzesanträge
+des Bundesrates and Volksbegehren (Abs. 2 adds Petitionen and
+Bürgerinitiativen). Parliament refuses statements on Regierungsvorlagen on
+Staatsverträge („Keine Begutachtung bei dem Doktyp "RVS" möglich"; 0
+statements on 131 such Vorlagen in GP XXVII and XXVIII), and admits them on
+committee motions (type BUA) and on the Bundesrat's motions (type GABR,
+since 01.08.2021). Whether a motion of a third of the Bundesrat's members
+(GABR13) is covered is open. The figures above concern Anträge and
+Vorlagen only and stand. Details: `wege-zu-einer-rechtsnorm.md`, „§ 23b
+GOG-NR: wofür das Fenster gilt".
+
 Measured on the laws this memo calls skipped:
 
 | | laws with statements | statements |

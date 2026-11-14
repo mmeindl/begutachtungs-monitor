@@ -3,6 +3,7 @@ import type { RvStatementsResponse } from '#shared/types'
 import PageSubsection from '~/components/ui/PageSubsection.vue'
 import { countLabelDe, formatDateDe } from '#shared/utils/format'
 import type { SourceEntry } from '#shared/utils/provenance'
+import { SECOND_ROUND_CLAUSE } from '~/utils/spine'
 
 /* `keine-lizenz`, not the station's freie Werke: the RV page excludes
  * „sämtliche Informationen zu Stellungnahmen" from free use and licensing
@@ -36,18 +37,25 @@ const props = defineProps<{
    *  block by the page itself (`DoorButton`, 03.10.2026) — not in here,
    *  because this block renders only once its data has loaded. */
   filingOpen?: boolean
-  /** Whose Stellungnahmen: a Regierungsvorlage's (every draft's) or an
-   *  Antrag's (10.11.2026) — the heading, the link and the credit name it. */
-  item?: 'rv' | 'antrag'
+  /** Whose Stellungnahmen: a Regierungsvorlage's (every draft's), an
+   *  Antrag's (10.11.2026), a committee's motion's or a motion's of the
+   *  Bundesrat (14.11.2026) — the heading, the link and the credit name it. */
+  item?: 'rv' | 'antrag' | 'ausschussantrag' | 'bundesratsantrag'
   /** Without its own heading, for a page whose section heading already says
    *  what this is („Stellungnahmen an den Nationalrat"). */
   bare?: boolean
 }>()
 
-const noun = computed(() => (props.item === 'antrag' ? 'zum Antrag' : 'zur Regierungsvorlage'))
+/** Any item but a Regierungsvorlage: an Antrag of members, a committee's or one from the Bundesrat. */
+const isMotion = computed(() => props.item !== undefined && props.item !== 'rv')
+const noun = computed(() => (props.item === 'ausschussantrag'
+  ? 'zum Ausschussantrag'
+  : props.item === 'bundesratsantrag' ? 'zum Gesetzesantrag' : props.item === 'antrag' ? 'zum Antrag' : 'zur Regierungsvorlage'))
+/** The link's shorter noun: „zur Vorlage" for a Regierungsvorlage. */
+const shortNoun = computed(() => (isMotion.value ? noun.value : 'zur Vorlage'))
 const sources = computed<SourceEntry[]>(() =>
-  props.item === 'antrag'
-    ? [{ what: 'Stellungnahmen zum Antrag', publisher: 'parlament', terms: 'keine-lizenz' }]
+  isMotion.value
+    ? [{ what: `Stellungnahmen ${noun.value}`, publisher: 'parlament', terms: 'keine-lizenz' }]
     : STATEMENTS_SOURCES,
 )
 const wrapper = computed(() => (props.bare ? 'div' : PageSubsection))
@@ -72,13 +80,23 @@ const organisationsOnly = computed(() => Boolean(summary.value) && props.data.un
 
 /* WHERE A STELLUNGNAHME ZUR VORLAGE GOES (Klubs, Ministerium, published at
  * the Gegenstand, no committee procedure — read from sources on 24.09.2026)
- * stood here as a sentence until 03.10.2026.
- * It is a rule of procedure, the same for every Vorlage, and stood word for
- * word on /so-funktionierts#parlament already. Not linked beside the
- * filing button either: there its last clause reads as „filing is
- * pointless", and the publication it names is asked on Parliament's form,
- * at the moment of filing. Whatever replaces it may not grow into a sentence
- * about what statements achieve (framing rule). */
+ * stood here as a sentence until 03.10.2026, then on /so-funktionierts
+ * #parlament. That page was dissolved on 14.11.2026, so the rule is here
+ * once more — beside the list, closed, behind „Was mit ihnen geschieht"
+ * (`TermNote`): a rule of procedure, the same for every Vorlage, that a
+ * reader of the list may ask and nobody has to read. With it the window
+ * (`SECOND_ROUND_CLAUSE`), which otherwise stands only on the door card
+ * while it is open.
+ *
+ * Still not beside the filing button: there „kein eigenes Verfahren"
+ * reads as „filing is pointless", and the publication it names is asked on
+ * Parliament's form, at the moment of filing. Here it stands in one breath
+ * with its exception, the Ausschussbegutachtung. It may not grow into a
+ * sentence about what statements achieve (framing rule).
+ *
+ * The Vorlage's only: read for a Regierungsvorlage, not checked for an
+ * Antrag, whose page says nothing it has not verified. */
+const routeNote = `Stellung nehmen kann jede und jeder ${SECOND_ROUND_CLAUSE}; eine veröffentlichte Frist gibt es nicht. Freigegebene Stellungnahmen gehen an die parlamentarischen Klubs und an das zuständige Ministerium und werden bei der Vorlage veröffentlicht. Ein eigenes Verfahren im Ausschuss sieht die Geschäftsordnung dafür nicht vor – außer der Ausschuss holt selbst Stellungnahmen ein (Ausschussbegutachtung).`
 
 /**
  * UNLESS THE COMMITTEE ASKED (27.09.2026). A committee can call for written
@@ -143,6 +161,16 @@ const consultationSentence = computed<string | null>(() => {
     <p v-if="consultationSentence" class="mt-2 text-sm text-ink-secondary">
       {{ consultationSentence }}
     </p>
+    <!-- The rule of the second window, closed (see `routeNote`): a row of
+         its own, because a `TermNote` sits in a flex row, never in a <p>. -->
+    <div v-if="!isMotion" class="mt-2 flex flex-wrap items-center text-sm text-ink-secondary">
+      <TermNote>
+        Was mit ihnen geschieht
+        <template #note>
+          <p class="max-w-prose hyphens-auto text-sm leading-relaxed text-ink-secondary">{{ routeNote }}</p>
+        </template>
+      </TermNote>
+    </div>
 
     <!-- `v-if`, not `v-else` (30.09.2026): a `v-else` binds to the sibling
          directly above it — then a `total === 0 && filingOpen` paragraph — so a
@@ -164,12 +192,12 @@ const consultationSentence = computed<string | null>(() => {
       >
         <template #footer>
           <p class="flex border-t border-hairline px-4 py-3 text-sm sm:justify-end">
-            <ExternalLink :href="data.rvUrl" class="tap-target font-medium link-quiet">Alle Stellungnahmen {{ item === 'antrag' ? 'zum Antrag' : 'zur Vorlage' }} auf parlament.gv.at</ExternalLink>
+            <ExternalLink :href="data.rvUrl" class="tap-target font-medium link-quiet">Alle Stellungnahmen {{ shortNoun }} auf parlament.gv.at</ExternalLink>
           </p>
         </template>
       </StatementsPanel>
       <p v-else class="mt-3 text-sm">
-        <ExternalLink :href="data.rvUrl" class="tap-target font-medium link-quiet">Alle Stellungnahmen {{ item === 'antrag' ? 'zum Antrag' : 'zur Vorlage' }} auf parlament.gv.at</ExternalLink>
+        <ExternalLink :href="data.rvUrl" class="tap-target font-medium link-quiet">Alle Stellungnahmen {{ shortNoun }} auf parlament.gv.at</ExternalLink>
       </p>
       <!-- The same credit line as under the Begutachtung's list (03.10.2026):
            the rows are Parliament's, the Einordnung and the nameless

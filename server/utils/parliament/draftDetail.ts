@@ -13,11 +13,11 @@ import type {
 import { antragPathFor, carriesDraft } from '#shared/utils/antragPath'
 import { STATUS_AT_BUNDESRAT, STATUS_FINISHED } from '#shared/utils/draftStations'
 import { gpHasEnded, intToRoman, romanToInt } from '#shared/utils/gp'
+import { mergedWithOf } from '#shared/utils/miterledigung'
 import {
   amendedStationsOf,
   extractBgblLink,
   findBundesratArrival,
-  findBundesratDecisionDate,
   findCommitteeReport,
   findHouseDecisionDate,
   findNoPromulgation,
@@ -40,9 +40,12 @@ import {
   requireDraft,
 } from './drafts'
 import { getStatementsWithFallback } from './statements'
+import { bundesratDecisionOf, objectionBlocksPromulgation, readBundesratObjection } from './bundesratObjection'
 import { findRelatedDrafts } from './related'
 import { stripHtmlToText } from './htmlText'
 import { withinBudget } from '../http/budget'
+import { treatyKindOf } from './vorlageDetailAssembly'
+import { resolveTreatyBgbl } from './staatsvertraege'
 
 /**
  * How long a page waits for the RIS join before rendering without it.
@@ -98,9 +101,10 @@ const BGBL_DATE_BUDGET_MS = 2_000
 const NAMED_IN_RV_BUDGET_MS = 2_000
 
 /**
- * The Kundmachung of a Vorlage whose record at Parliament carries no link —
- * from RIS, by the exact key of period and Vorlage (`findBgblIForVorlage`,
- * 03.10.2026) — or null.
+ * The Kundmachung of a Vorlage or Antrag whose record at Parliament carries
+ * no link — from RIS, by the exact key of period and item
+ * (`findBgblIForItem`: `Regierungsvorlage` or `Initiativantrag`, 03.10.2026
+ * and 14.11.2026) — or null.
  *
  * Asked only where a Kundmachung can exist: a „Beschluss im Nationalrat" in
  * the record, or a status that means one (`5`, `4`). Enrichment like the
@@ -109,15 +113,22 @@ const NAMED_IN_RV_BUDGET_MS = 2_000
  * reason given at `getRisMapForGp` below.)
  */
 async function bgblFromRis(
-  rvLink: Pick<RvLink, 'gp' | 'inr' | 'date'>,
-  content: { phase?: RawPhase[] | null; status?: { number?: unknown } | null } | null | undefined,
+  item: Pick<ProcedureRoot, 'gp' | 'ityp' | 'inr'>,
+  date: string | null,
+  content: { doktyp?: string | null; phase?: RawPhase[] | null; status?: { number?: unknown } | null } | null | undefined,
 ): Promise<{ number: string; url: string } | null> {
+  if (item.ityp !== 'I' && item.ityp !== 'A') return null
   const decidedAt = findHouseDecisionDate(content?.phase)
   const status = content?.status?.number == null ? null : String(content.status.number)
   if (!decidedAt && status !== STATUS_FINISHED && status !== STATUS_AT_BUNDESRAT) return null
-  const from = decidedAt ?? rvLink.date
+  const from = decidedAt ?? date
   if (!from) return null
-  return withinBudget(findBgblIForVorlage(rvLink.gp, rvLink.inr, from), RIS_JOIN_BUDGET_MS)
+  // A treaty's Vorlage (`RVS`, 14.11.2026): BGBl. III or I by the same key
+  // (`findBgblForTreaty`); a law's: Teil I.
+  if (item.ityp === 'I' && treatyKindOf(content)) {
+    return withinBudget(findBgblForTreaty(item.gp, item.inr, from), RIS_JOIN_BUDGET_MS)
+  }
+  return withinBudget(findBgblIForItem(item.gp, { ityp: item.ityp, inr: item.inr }, from), RIS_JOIN_BUDGET_MS)
 }
 
 /**
@@ -166,7 +177,15 @@ export async function getDraftOutcome(
     // route the station map takes); otherwise RIS, where one can exist.
     const notPromulgated = findNoPromulgation(rv.content?.phase, rvLink.gp)
     if (!bgblNumber && notPromulgated) bgblNumber = (await successorOf(notPromulgated))?.bgblNumber ?? null
-    else bgblNumber ??= (await bgblFromRis(rvLink, rv.content))?.number ?? null
+    else if (!bgblNumber) {
+      // An Einspruch of the Bundesrat: Parliament links the Kundmachung on
+      // the Einspruch's own item; none can come while it stands undecided.
+      const objection = await readBundesratObjection({ gp: rvLink.gp, ityp: 'I', inr: rvLink.inr }, rv.content?.phase, null, RIS_JOIN_BUDGET_MS)
+      bgblNumber = objection?.bgbl?.number ??
+        (objectionBlocksPromulgation(objection?.objection)
+          ? null
+          : (await bgblFromRis({ gp: rvLink.gp, ityp: 'I', inr: rvLink.inr }, rvLink.date, rv.content))?.number ?? null)
+    }
   } catch {
     // RV enrichment is optional: the RV citation alone is still an answer.
   }
@@ -215,10 +234,16 @@ async function enactmentOf(
  * Begutachtung). The Antrag's record carries the same `phase`, `status`,
  * `vote` and `statements.documents` as a Vorlage's (read live on six of each
  * kind's laws of GP XXVIII, 09.11.2026), so every reader below applies as
- * is. One difference: RIS is asked for a missing Kundmachung only for a
- * Vorlage — `findBgblIForVorlage` is keyed on the Vorlage, and an Antrag
- * has no such key. The item's record is read through the Gegenstand leaf
- * cache, so a caller that fetched it already pays nothing here.
+ * is. RIS is asked for a missing Kundmachung for both kinds since
+ * 14.11.2026: it keys a law by its Antrag too (`BgblAuth.Initiativantrag`,
+ * `findBgblIForItem`). The item's record is read through the Gegenstand
+ * leaf cache, so a caller that fetched it already pays nothing here.
+ *
+ * The Bundesrat's Einspruch (14.11.2026, `readBundesratObjection`): where
+ * the record names one, the Kundmachung comes from the Einspruch's own item
+ * — Parliament links it there —, no Kundmachung is looked for while the
+ * Nationalrat has not decided on it, and the Bundesrat's „Beschluss" of the
+ * law's record is not taken for a Beschluss: it was the Einspruch.
  */
 export async function enactmentOfItem(
   item: ProcedureRoot,
@@ -259,21 +284,37 @@ export async function enactmentOfItem(
     // records the Gesetzesbeschluss as not promulgated — all from the same
     // `phase` record, so they are about the Vorlage the fields above are.
     const phase = rv.content?.phase
+    // A treaty's Vorlage (14.11.2026): its Kundmachung is in BGBl. III or I,
+    // and none is ever overdue (`promulgationOverdue`).
+    enactment.treaty = item.ityp === 'I' ? treatyKindOf(rv.content) : null
     enactment.decidedAt = findHouseDecisionDate(phase)
     enactment.bundesratArrivedAt = findBundesratArrival(phase)
-    enactment.bundesratDecidedAt = findBundesratDecisionDate(phase)
     enactment.notPromulgated = findNoPromulgation(phase, rvLink.gp)
-    enactment.successor = await successorOf(enactment.notPromulgated)
-    // No RIS lookup where Parliament says this text was not promulgated:
-    // there is no Kundmachung of it to find.
-    const bgbl =
-      extractBgblLink(rv.content?.status?.bgbllinks) ??
-      (enactment.notPromulgated || item.ityp !== 'I' ? null : await bgblFromRis(rvLink, rv.content))
+    const [successor, objection] = await Promise.all([
+      successorOf(enactment.notPromulgated),
+      readBundesratObjection(item, phase, currentGp, RIS_JOIN_BUDGET_MS),
+    ])
+    enactment.successor = successor
+    enactment.bundesratObjection = objection?.objection ?? null
+    enactment.bundesratDecidedAt = bundesratDecisionOf(phase, objection)
+    // No RIS lookup where Parliament says this text was not promulgated, or
+    // while an Einspruch stands undecided: there is no Kundmachung of it to
+    // find.
+    // A treaty: RIS's exact key first, Parliament's link only where RIS has
+    // no record (`resolveTreatyBgbl`, the list's rule too).
+    const link = extractBgblLink(rv.content?.status?.bgbllinks)
+    const bgbl = enactment.treaty
+      ? resolveTreatyBgbl(await bgblFromRis(item, rvLink.date, rv.content), link)
+      : link ??
+        objection?.bgbl ??
+        (enactment.notPromulgated || objectionBlocksPromulgation(objection?.objection)
+          ? null
+          : await bgblFromRis(item, rvLink.date, rv.content))
     if (bgbl) {
       enactment.bgblNumber = bgbl.number
       enactment.bgblRisUrl = bgbl.url
       // Its issue date, for the EU timeline's stand (auto-imported from
-      // ../ris/bgblService, as `findBgblIForVorlage` above).
+      // ../ris/bgblService, as `findBgblIForItem` above).
       if (bgbl.number) enactment.bgblDate = await withinBudget(getBgblIssueDate(bgbl.number), BGBL_DATE_BUDGET_MS)
     }
     // An empty array is an answer — „this Vorlage published no changed
@@ -294,6 +335,9 @@ export async function enactmentOfItem(
     enactment.houseStatusText = status?.description
       ? stripHtmlToText(status.description) || null
       : null
+    // A Miterledigung's other item (14.11.2026): from the status, else from
+    // the Verlauf, where the committee's step names it.
+    enactment.mergedWith = mergedWithOf(status?.description, rv.content?.phase)
     // Who voted how, from the same payload — the one fact the page was
     // missing at the end of the chain. The status prose above carries it
     // too, in a sentence we do not print; this is the record behind it.
@@ -306,8 +350,8 @@ export async function enactmentOfItem(
   } catch {
     // RV enrichment is optional: bgblNumber/bgblRisUrl, amendedIn,
     // committeeReport, plenaryAmendments, both status fields, the vote, the
-    // procedure's later dates, notPromulgated and successor stay null,
-    // filingOpen false.
+    // procedure's later dates, notPromulgated, successor and the Einspruch
+    // stay null, filingOpen false.
   }
   return enactment
 }

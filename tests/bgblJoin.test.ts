@@ -30,6 +30,7 @@ function record(over: Partial<BgblRecord> = {}): BgblRecord {
     gp: null,
     regierungsvorlagen: [],
     initiativantraege: [],
+    ausschussberichte: [],
     typ: 'Verordnung',
     datumNationalrat: null,
     ...over,

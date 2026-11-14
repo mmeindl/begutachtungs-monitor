@@ -6,7 +6,9 @@
  * Jahrgänge (the Verordnung join's pages), the station maps of the period
  * and the one before (prewarmed nightly), list 81 and list 101's Vorlagen of
  * the period (every list page reads them) — and one list call of its own,
- * the period's Anträge (`getAntraegeForGp`). No detail call per Gegenstand.
+ * the period's Anträge (`getAntraegeForGp`). No detail call per Gegenstand
+ * but one per committee's motion a law carries (its „Bezug zu", 14.11.2026:
+ * 15 in GP XXVIII, 84 in XXVII) and the committee and mention looks below.
  *
  * A FAILURE IS NOT AN ANSWER, and here it has two forms:
  *  - a source the WHOLE claim stands on — the Jahrgänge, a station map —
@@ -29,10 +31,12 @@ import { keepIncompleteFor, type Gathered } from '../cache/gathered'
 import { staleWithin } from '../cache/stale'
 import { DAY_STALE_S } from '../cache/ttl'
 import { settleWithinBudget } from '../http/budget'
-import { getAntraegeForGp, getDraftsForGp, getGegenstand, getVorlagenForGp } from '../parliament/drafts'
+import { getAntraegeForGp, getDraftsForGp, getGegenstand, getItemsForGp } from '../parliament/drafts'
 import { getStationMapForGp } from '../parliament/stationMap'
 import { getBgblTeil1Year } from './bgblService'
-import { classifySkippedLaws, mentionDocuments, mentionsBegutachtung, refineByCommittee, refineByMention, yearsOfPeriod, type CarryingItem, type ParliamentItem } from './skippedLaws'
+import { classifySkippedLaws, isLawOfPeriod, mentionDocuments, mentionsBegutachtung, refineByCommittee, refineByMention, yearsOfPeriod, type AusschussantragItem, type CarryingItem, type ParliamentItem } from './skippedLaws'
+import type { BgblRecord } from './bgblJoin'
+import { parentConsulted, relatedItemsOf, type VorlageContent } from '../parliament/vorlageDetailAssembly'
 import { mapDocuments, readCommitteeConsultation } from '../parliament/detailJson'
 import { stripHtmlToText } from '../parliament/htmlText'
 import { fetchDocument } from '../upstream/fetchDocument'
@@ -98,6 +102,51 @@ const toItem = (v: { inr: number; citation: string; title: string; date: string 
   date: v.date,
 })
 
+/** The Parliament type of a carrying item: a Vorlage, a committee's motion
+ *  and a motion of the Bundesrat are all `I`. */
+const itypOf = (item: CarryingItem): 'I' | 'A' => (item.kind === 'antrag' ? 'A' : 'I')
+
+/**
+ * The committee motions (`BUA`) the period's laws carry, each with its
+ * „Bezug zu" read from its own record (14.11.2026) — only the motions a law
+ * without a Vorlage and an Antrag names as its Ausschussbericht, so the
+ * reads are one per such law (15 in GP XXVIII, 84 in XXVII) and one per
+ * Vorlage or Antrag it names, through the Gegenstand leaf cache the
+ * committee check and the pages read. A record that cannot be read leaves
+ * `related` (or that parent's `consulted`) undefined: that law says nothing.
+ */
+async function ausschussantraegeOf(gp: string, rows: readonly { inr: number; citation: string; title: string; date: string }[], records: readonly BgblRecord[]) {
+  const named = new Set<number>()
+  for (const r of records) {
+    if (!isLawOfPeriod(r, gp) || r.regierungsvorlagen.length || r.initiativantraege.length) continue
+    for (const inr of r.ausschussberichte) named.add(inr)
+  }
+  const carried = rows.filter((row) => named.has(row.inr))
+  return settleWithinBudget(
+    mapWithConcurrency(carried, COMMITTEE_CONCURRENCY, async (row): Promise<AusschussantragItem> => {
+      try {
+        const content = ((await getGegenstand(gp, 'I', row.inr)).content ?? {}) as VorlageContent
+        // Each parent's own record, one at a time: its draft (`preconst`)
+        // or its committee's consultation silences the motion's law. A
+        // parent that cannot be read stays unread (`consulted` absent).
+        const related = []
+        for (const { gp: g, ityp, inr } of relatedItemsOf(content.reference)) {
+          if (ityp !== 'I' && ityp !== 'A') {
+            related.push({ gp: g, ityp, inr })
+            continue
+          }
+          const parent = await getGegenstand(g, ityp, inr).then((d) => (d.content ?? {}) as VorlageContent, () => null)
+          related.push(parent ? { gp: g, ityp, inr, consulted: parentConsulted(parent) } : { gp: g, ityp, inr })
+        }
+        return { ...toItem(row), related }
+      } catch {
+        return { ...toItem(row), related: undefined }
+      }
+    }),
+    COMMITTEE_BUDGET_MS,
+  )
+}
+
 const buildSkippedLaws = defineCachedFunction(
   async (gp: string): Promise<Gathered<LawsWithoutBegutachtung>> => {
     const currentGp = await getCurrentGp()
@@ -129,11 +178,22 @@ const buildSkippedLaws = defineCachedFunction(
       return unavailable(gp, 'unread', false)
     }
 
-    const [vorlagen, antraege, drafts] = await Promise.all([
-      getVorlagenForGp(gp).then((rows) => rows.map(toItem)).catch(() => null),
+    const [periodItems, antraege, drafts] = await Promise.all([
+      getItemsForGp(gp).catch(() => null),
       getAntraegeForGp(gp).then((rows) => rows.map(toItem)).catch(() => null),
       getDraftsForGp(gp).then((d) => d.items).catch(() => null),
     ])
+    const vorlagen = periodItems ? periodItems.filter((row) => row.doktyp === 'RV').map(toItem) : null
+    // The Bundesrat's motions (14.11.2026): RIS keys their laws like a
+    // Vorlage's, so only the document type tells them apart.
+    const motionOf = (row: Parameters<typeof toItem>[0] & { doktyp: string }) =>
+      ({ ...toItem(row), variant: row.doktyp === 'GABR' ? 'bundesrat' as const : 'drittel' as const })
+    const bundesratsantraege = periodItems
+      ? periodItems.filter((row) => row.doktyp === 'GABR' || row.doktyp === 'GABR13').map(motionOf)
+      : null
+    const buaReading = periodItems ? await ausschussantraegeOf(gp, periodItems.filter((row) => row.doktyp === 'BUA'), records) : null
+    if (buaReading?.state === 'pending') return unavailable(gp, 'pending', false)
+    const ausschussantraege = buaReading?.state === 'answered' ? buaReading.value : null
 
     const classified = classifySkippedLaws({
       gp,
@@ -144,6 +204,8 @@ const buildSkippedLaws = defineCachedFunction(
       vorlagen,
       antraege,
       drafts,
+      ausschussantraege,
+      bundesratsantraege,
     })
 
     // Every `none` against its carrying item's own Verlauf: a committee that
@@ -154,7 +216,7 @@ const buildSkippedLaws = defineCachedFunction(
     const readings = await settleWithinBudget(
       mapWithConcurrency(candidates, COMMITTEE_CONCURRENCY, async (item) => {
         try {
-          const detail = await getGegenstand(gp, item.kind === 'rv' ? 'I' : 'A', item.inr)
+          const detail = await getGegenstand(gp, itypOf(item), item.inr)
           // And the item's own text (12.11.2026): a mention of a
           // Begutachtung silences the law; a document that fails to read is
           // a check that did not run (`refineByMention`).
@@ -180,12 +242,13 @@ const buildSkippedLaws = defineCachedFunction(
     const items: LawWithoutBegutachtung[] = []
     for (const { record, class: c } of refined) {
       if (c.kind !== 'none' && c.kind !== 'committee') continue
-      const ityp = c.item.kind === 'rv' ? 'I' : 'A'
+      const ityp = itypOf(c.item)
       items.push({
         bgblNumber: record.nummer,
         bgblDate: record.datum,
         item: {
           kind: c.item.kind,
+          ...(c.item.variant ? { variant: c.item.variant } : {}),
           gp,
           inr: c.item.inr,
           citation: c.item.citation,
@@ -205,7 +268,8 @@ const buildSkippedLaws = defineCachedFunction(
     // and come back on the next request, from the leaf cache.
     return {
       value: { gp, available: true, gap: null, items },
-      complete: vorlagen !== null && antraege !== null && drafts !== null && !unread,
+      complete: vorlagen !== null && antraege !== null && drafts !== null && ausschussantraege !== null && !unread &&
+        ausschussantraege.every((a) => a.related !== undefined),
       ...(unread ? { pending: true } : {}),
     }
   },

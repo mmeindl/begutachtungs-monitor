@@ -136,7 +136,9 @@ gets an entry of its own only where it carries a reason the rule does not.
   date instead: temporal, not causal (§12.38).
 - **Copy about statements on a Regierungsvorlage says where they go** (the
   Klubs and the ministry) and never what they achieve (§12.14). The window
-  lasts until the Bundesrat decides (§ 23b GOG-NR).
+  lasts through the parliamentary procedure (§ 23b GOG-NR): for a law the
+  Bundesrat does not object to, until its Beschluss. Whether it opens again
+  after an Einspruch is not documented (14.11.2026).
 - **„Bisher keine Regierungsvorlage" only when proven.** An unread chain, a
   missing `preconst` pointer or an exhausted fetch budget shows the weakest
   state the evidence supports. Silence can be repaired, a false accusation
@@ -144,7 +146,11 @@ gets an entry of its own only where it carries a reason the rule does not.
 - **In a closed period where no draft links beyond the Begutachtung, absence
   is an archive gap, not a finding** (§12.27).
 - **„Noch nicht kundgemacht" needs one of two signals:** Parliament's own
-  „Keine Kundmachung" stage, or no promulgation 120 days after the decision.
+  „Keine Kundmachung" stage, or no promulgation 120 days after the final
+  decision — the Bundesrat's Beschluss; after an Einspruch the Nationalrat's
+  Beharrungsbeschluss, or the Bundesrat's Beschluss on a changed text, and
+  no count at all while the Einspruch is undecided (14.11.2026,
+  `finalDecisionOf`).
   A successor is named only through Parliament's own link, never by title:
   every similarity threshold added pairs from different laws (§12.10,
   §12.21, §12.33).
@@ -615,6 +621,146 @@ The code names the EU rules D1 to D7; this is where they are defined
   list's link to it (`EuMapLink`) are gone; the list's filter „Setzt
   EU-Recht um" stays — it combines with the other filters, it is no door.
 
+### Routes to a norm, and what the monitor follows
+
+Settled on 14.11.2026; the facts are in
+`docs/research/wege-zu-einer-rechtsnorm.md`, whose last section
+(„Einschätzung") gives the order to build in. A session that builds a route
+not yet followed, or the EU cycle, starts there.
+
+- **The graphic `/wege` shows every route that exists, the monitor follows
+  fewer.** A route that is not followed stands in the graphic as „nicht im
+  Monitor" with its reason; an instrument that sits beside a norm's path
+  (a Petition, signing a Volksbegehren, the EU's consultations) stands in the
+  block under the table.
+- **A route is followed only when three things hold:** an official,
+  machine-readable source whose reuse is checked and stated in the Impressum;
+  enough cases to matter; and no upkeep that somebody has to carry by hand.
+- **The five stations stay five.** They are the rail of one national norm. A
+  motion enters at the third station, which then carries its name (as
+  „Initiativantrag" does for „Regierungsvorlage"); the Bundesrat's objection
+  and a Volksabstimmung are events inside a station. Whatever does not fit is
+  a different object and gets a rail of its own on a page of its own — an EU
+  act under `/eu-recht`, a Volksbegehren if it is ever followed. No sixth
+  station.
+- **The graphic follows the law, not the code** (14.11.2026). Every cell of
+  `app/utils/wege.ts` names in a comment the provision the memo cites for it;
+  what the memo lists under „Offen" is „je nach Fall" or left out, never a
+  mark. Whether the monitor follows a row is read from the code and named at
+  the row. Rows that are a DRAFT in Begutachtung (a Verordnungsentwurf, a
+  Land's Gesetzesentwurf) keep their blue mark, and a sibling row or a link
+  to `/datenlage#begutachtung-vorgeschrieben` says that the law does not
+  prescribe it everywhere. Routes that pass only „Kundgemacht"
+  (Notverordnung, Wiederverlautbarung, VfGH-Aufhebung) are not rows: nobody
+  can take part on them.
+- **The Bundesrat's Einspruch is an event of the station Parlament**
+  (14.11.2026, `server/utils/parliament/bundesratObjection.ts`). Read from
+  the law's own Verlauf: the stage „Antrag, Einspruch zu erheben,
+  angenommen", in „Plenarberatungen BR", which links the Einspruch's item
+  (type EBR, „20 d.B."). Two traps, both in the tests: „Antrag, keinen
+  Einspruch zu erheben, angenommen" stands on almost every law, and the
+  motions before the stage („Antrag der Bundesräte …, Einspruch zu erheben
+  (…/GO-BR/…) angenommen") carry a GO number, not the EBR; a title is never
+  read — treaty Vorlagen are called „Einspruch der Republik Österreich gegen
+  …". The second witness is the period's EBR list (list 101, `ITYP` I and
+  `DOKTYP` EBR, asserted on every row), each EBR naming its law through
+  „Bezug zu": it supplies the EBR where the stage links none (1105/A →
+  616 d.B.). What followed is read off the EBR's own Verlauf and only in the
+  vocabulary measured on all 35 EBR of GP XXII–XXVIII: „Wiederholung des
+  Gesetzesbeschlusses" or „Bekanntgabe des Beharrungsbeschlusses" is a
+  Beharrungsbeschluss; „Antrag auf Annahme des veränderten
+  Gesetzesvorschlags … angenommen" a changed text; no decision is
+  „pending" while the EBR's period runs and „lapsed" after it; anything
+  else, or an unread record, is „unknown" and says so. The Einspruch is no
+  Beschluss of the Bundesrat: no „Nationalrat und Bundesrat haben
+  beschlossen", no „nicht kundgemacht" while it is undecided. The headline
+  is „Gesetz geworden" where a Kundmachung is found — Parliament links it on
+  the EBR, RIS keys it by the Antrag too (`Initiativantrag`) —, otherwise
+  „Einspruch des Bundesrates", with „– Gesetzgebungsperiode beendet" once
+  lapsed. A row „Bundesrat" says what happened and when, never why. After
+  a changed text nothing calls the first text „unverändert", and an
+  Abänderungsantrag adopted in plenary counts as a change even where no
+  Plenarfassung was published. The EBR's own address leads to its law's
+  page; any other item the monitor does not follow is refused as „Kein
+  Gegenstand, den der Monitor verfolgt", with its page at Parliament, never
+  as „nicht gefunden".
+- **§ 23b GOG-NR covers more than Vorlagen and less than everything.** It
+  names Regierungsvorlagen, Anträge of members and of committees, the
+  Bundesrat's Gesetzesanträge and Volksbegehren (Abs. 1), Petitionen and
+  Bürgerinitiativen (Abs. 2). Parliament admits no Stellungnahme on a
+  Vorlage on a Staatsvertrag (type RVS); whether a motion of a third of the
+  Bundesrat's members is covered is open. So no copy says „jede
+  Gesetzesinitiative", and the statement window of every route the monitor
+  adds is the one already stated for a Vorlage (`SECOND_ROUND_WINDOW`).
+- **A treaty's Kundmachung: RIS's key first, Parliament's link as
+  fallback** (14.11.2026, `resolveTreatyBgbl` in
+  `server/utils/parliament/staatsvertraege.ts`, one function for the page,
+  the station map and the list). The key is the law's: period and Vorlage
+  number (`Gesetzgebungsperiode`, `Regierungsvorlage.item`) on a Teil-III
+  record, or Teil I for an Art.-15a-Vereinbarung (list 101's `VHG` „RVS15";
+  29 of 29 in GP XXVI–XXVIII). It wins because Parliament's link can be
+  wrong: 1041 d.B. XXVII links BGBl. I Nr. 187/2021, the
+  COVID-19-Zweckzuschussgesetz, while RIS keys the Vereinbarung to I Nr.
+  193/2021. The link stands only where RIS has no record (510 d.B. XXVI ⇒
+  III Nr. 128/2019); a disagreement is not shown. No title join. And a
+  treaty never gets the 120-day „nicht kundgemacht" claim (decision 5 of
+  `docs/research/umsetzungsplan-weitere-wege.md`): a Kundmachung follows
+  the ratification, which no date of Parliament's bounds — 42 of the 87
+  promulgated treaties of GP XXVII took more than 120 days, up to 2,023. A
+  missing one is „ausstehend" while the period runs and afterwards only „im
+  RIS bisher nicht verzeichnet", a statement about our search
+  (`pnpm corpus:staatsvertraege`).
+- **Every item of list 101 on a law has a kind, and the kind is read from
+  the `DOKTYP`** (14.11.2026, `pageKindOf`): RV Regierungsvorlage, A
+  Initiativantrag, BUA Ausschussantrag, GABR/GABR13 Gesetzesantrag des
+  Bundesrates / von Mitgliedern des Bundesrates, RVS Staatsvertrag (RVS15
+  Vereinbarung nach Art. 15a B-VG, read from the Verlauf stage). Each has an
+  address that names it (`/entwuerfe/<gp>/ausschussantrag/<n>`, …), and
+  `/vorlage/<n>` 301s there once the type is read. One read per period
+  (`getItemsForGp`, `ITYP` I with these `DOKTYP`s, asserted on every row);
+  never `{ GP_CODE }` alone. A Berichterstatter in `names[]` is never
+  printed; Bundesrat members are never named.
+- **A law from an Ausschussantrag claims „ohne Begutachtung" only under the
+  Antrag's three checks, and stays silent when its „Bezug zu" parent was
+  consulted** (`related-consulted`): a committee motion on a consulted
+  Regierungsvorlage says that it refers to that Vorlage, whose draft went
+  through Begutachtung, never that its text is the consulted one. Measured
+  14.11.2026: of the 15 such laws of GP XXVIII 3 claim it, of the 83 of
+  XXVII 27, each checked against the period's drafts; laws with no carrying
+  item fell from 17 to 2 (XXVIII) and 87 to 4 (XXVII).
+- **A citation carries a prefix only where it is true and established**
+  (RV, AB for a committee motion, IA). A Bundesrat motion is cited by its
+  bare Beilage number („452 BlgNR 25. GP"): the BGBl and RIS file it under
+  „RV" for want of another slot, and copying that would name the government
+  as its author. No invented prefix.
+- **Every Initiativantrag is a row of „Alle Initiativanträge"**
+  (`/api/antraege`, outside „Alle Arten"), except one that carries a
+  consulted draft's text: that is a row of its draft, and its own page names
+  the draft in a row worded by the match (whole text, or „ein Teil"). The
+  states are read per item, never from the list's status column alone: it
+  predicts the Stellungnahme flag in 182 of 183 items of a running period
+  but in 560 of 895 after the period ended. „Stellungnahme möglich" stands
+  only on the item's own flag. A Miterledigung („Miterledigt mit Bericht
+  565 d.B.") is its own outcome on every page and row, never „ohne
+  Beschluss" (15 items in GP XXVII–XXVIII said so before). No club names in
+  rows, no club filter, no counts per club.
+- **„Neues Gesetz" needs positive evidence** (14.11.2026,
+  `createsNewLawFrom`): no law found AND no Novellierungsanordnung AND no
+  name saying it amends or repeals. A law the reader could not name is „nicht
+  lesbar", never „neues Recht"; a text it could not identify (a motion's
+  „Gesetzesantrag" or „Antrag") is a stated gap in the frame, never a
+  missing frame.
+- **Order.** Followed since 14.11.2026: committee motions, motions of the
+  Bundesrat, every Initiativantrag on a law, the Bundesrat's objection as an
+  event, treaties up to BGBl. III. Petitionen and Bürgerinitiativen,
+  Volksbegehren, the regulators' Verordnungen and Verordnungen without a
+  Begutachtung are each decided for themselves; the last waits until a
+  missing draft can be proven (the promulgation match finds about 85 %).
+- **The EU cycle starts with a licence check, not with code:** the reuse
+  terms of the Commission's consultation endpoint (undocumented) and of the
+  register of the European Citizens' Initiative, written up in
+  `docs/research/`. `EU-Recht` stands in the header navigation since
+  14.11.2026 because that page is meant to grow into the cycle.
 
 ### Language models
 
@@ -729,6 +875,7 @@ Ministerialentwurf, RV = Regierungsvorlage.
 | Votes: coalition only / no club against | XXVIII 32 % / 26 %, XXVII 15 % / 36 % | 110 and 361 decided RVs (§12.34) |
 | Largest Begutachtung | XXVII 106,184 statements, XXVIII 846 | (§12.21) |
 | Ordinance, Frist → BGBl II | median 57 days, p90 179, max 538 | 22.10.2026 (§12.32) |
+| Einsprüche of the Bundesrat (EBR items) | XXII 24, XXIII 2, XXIV 0, XXV 1, XXVI 0, XXVII 8, XXVIII 0; of the 35: 29 Beharrungsbeschluss, 1 changed text, 5 undecided at the period's end | list 101 and each EBR's Verlauf · 14.11.2026 |
 
 ### The corpus
 

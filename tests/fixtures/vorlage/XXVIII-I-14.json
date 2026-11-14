@@ -1,0 +1,255 @@
+{
+ "content": {
+  "type": "Bericht und Antrag",
+  "title": "Bundesbezügegesetz, Änderung",
+  "zitation": "14 d.B.",
+  "description": "Bericht und Antrag des Budgetausschusses über den Entwurf eines Bundesgesetzes, mit dem das Bundesbezügegesetz geändert wird",
+  "gp_code": "XXVIII",
+  "ityp": "I",
+  "inr": 14,
+  "doktyp": "BUA",
+  "einlangen": "2024-12-09T00:00:00",
+  "statementsstate": "0",
+  "status": {
+   "number": 5,
+   "description": "Beschlossen im Bundesrat <a href=\"/gegenstand/XXVIII/BNR/7\">7/BNR</a><br>Dafür: ÖVP, SPÖ, OF, dagegen: FPÖ<br>Beschlossen im Nationalrat <a href=\"/gegenstand/XXVIII/BNR/7\">7/BNR</a>, Dafür: ÖVP, SPÖ, NEOS, GRÜNE, dagegen: FPÖ",
+   "bgbllinks": [
+    {
+     "title": "Bundesgesetzblatt I Nr. 156/2024",
+     "link": "http://www.ris.bka.gv.at/Dokument.wxe?Abfrage=BgblAuth&Dokumentnummer=BGBLA_2024_I_156",
+     "type": "DEFAULT"
+    },
+    {
+     "title": "Kunsttext",
+     "link": "http://www.ris.bka.gv.at/Ergebnis.wxe?Abfrage=Bundesnormen&Kundmachungsorgan=BGBl.+I+Nr.&Kundmachungsnummer=156%2f2024&Suchworte=&ReturnUrl=%2fSuchen.wxe%3fQueryID%3dBundesnormen",
+     "type": "DEFAULT"
+    }
+   ]
+  },
+  "phase": [
+   {
+    "name": "Einlangen NR",
+    "stages": [
+     {
+      "date": "09.12.2024",
+      "text": "Einlangen im Nationalrat"
+     }
+    ]
+   },
+   {
+    "name": "Ausschussberatungen NR",
+    "stages": [
+     {
+      "date": "09.12.2024",
+      "text": "Antrag auf Annahme des unveränderten Gesetzesvorschlags<br>Dafür: ÖVP, SPÖ, NEOS, GRÜNE, dagegen: FPÖ"
+     },
+     {
+      "date": "09.12.2024",
+      "text": "<a href=\"/ausschuss/XXVIII/A-BU/1/00907\">Budgetausschuss</a>: Selbständiger Antrag"
+     }
+    ]
+   },
+   {
+    "name": "Plenarberatungen NR",
+    "stages": [
+     {
+      "date": "11.12.2024",
+      "text": "Auf der <a href=\"/dokument/XXVIII/NRSITZ/5/TO_16432632.html\">Tagesordnung</a> der <a href=\"/gegenstand/XXVIII/NRSITZ/5\">5. Sitzung des Nationalrates</a>"
+     },
+     {
+      "date": "11.12.2024",
+      "text": "Wortmeldungen in der Debatte"
+     },
+     {
+      "date": "11.12.2024",
+      "text": "(gekürzt)"
+     },
+     {
+      "date": "11.12.2024",
+      "text": "(gekürzt)"
+     },
+     {
+      "date": "11.12.2024",
+      "text": "5. Sitzung des Nationalrates: Gesetzesvorschlag in zweiter Lesung <b>angenommen</b><br>Dafür: ÖVP, SPÖ, NEOS, GRÜNE, dagegen: FPÖ"
+     },
+     {
+      "date": "11.12.2024",
+      "text": "5. Sitzung des Nationalrates: Gesetzesvorschlag in dritter Lesung <b>angenommen</b><br>Dafür: ÖVP, SPÖ, NEOS, GRÜNE, dagegen: FPÖ"
+     },
+     {
+      "date": "11.12.2024",
+      "text": "Beschluss im Nationalrat <a href=\"/gegenstand/XXVIII/BNR/7\">7/BNR</a>"
+     },
+     {
+      "date": "12.12.2024",
+      "text": "Übermittlung des Beschlusses an den Bundesrat"
+     }
+    ]
+   },
+   {
+    "name": "Einlangen BR",
+    "stages": [
+     {
+      "date": "12.12.2024",
+      "text": "Einlangen im Bundesrat (Frist: 06.02.2025)"
+     },
+     {
+      "date": "12.12.2024",
+      "text": "Mitwirkungsrecht des Bundesrates"
+     }
+    ]
+   },
+   {
+    "name": "Ausschussberatungen BR",
+    "stages": [
+     {
+      "date": "12.12.2024",
+      "text": "Zuweisung an den <a href=\"/ausschuss/BR/A-FI-BR/1/00053\">Finanzausschuss des Bundesrates</a>"
+     },
+     {
+      "date": "17.12.2024",
+      "text": "Finanzausschuss des Bundesrates: Bericht <a href=\"/gegenstand/BR/I-BR/11615\">11615/BR d.B.</a>"
+     },
+     {
+      "date": "17.12.2024",
+      "text": "Finanzausschuss des Bundesrates: auf <a href=\"/dokument/BR/A-FI-BR/1/00053/TO_16456428.html\">Tagesordnung</a> in der <a href=\"/ausschuss/BR/A-FI-BR/1/00053?selectedStage=105&selectedSession=33&selectedDate=17122024\">33. Sitzung des Ausschusses</a>"
+     }
+    ]
+   },
+   {
+    "name": "Plenarberatungen BR",
+    "stages": [
+     {
+      "date": "19.12.2024",
+      "text": "Auf der Tagesordnung der <a href=\"/gegenstand/BR/BRSITZ/973\">973. Sitzung</a>"
+     },
+     {
+      "date": "19.12.2024",
+      "text": "(gekürzt)"
+     },
+     {
+      "date": "19.12.2024",
+      "text": "973. Sitzung: Debatte"
+     },
+     {
+      "date": "19.12.2024",
+      "text": "Wortmeldungen in der Debatte"
+     },
+     {
+      "date": "19.12.2024",
+      "text": "973. Sitzung: Antrag, keinen Einspruch zu erheben, <b>angenommen</b><br>Dafür: ÖVP, SPÖ, OF, dagegen: FPÖ"
+     },
+     {
+      "date": "19.12.2024",
+      "text": "Beschluss im Bundesrat <a href=\"/gegenstand/XXVIII/BNR/7\">7/BNR</a>"
+     }
+    ]
+   }
+  ],
+  "documents": [
+   {
+    "title": "Berichterstattung",
+    "documents": [
+     {
+      "link": "/dokument/XXVIII/I/14/fname_1663017.pdf",
+      "type": "PDF"
+     },
+     {
+      "link": "/dokument/XXVIII/I/14/fnameorig_1663017.html",
+      "type": "HTML"
+     }
+    ]
+   },
+   {
+    "title": "Gesetzestext",
+    "documents": [
+     {
+      "link": "/dokument/XXVIII/I/14/fname_1663018.pdf",
+      "type": "PDF"
+     },
+     {
+      "link": "/dokument/XXVIII/I/14/fnameorig_1663018.html",
+      "type": "HTML"
+     }
+    ]
+   }
+  ],
+  "names": [
+   {
+    "funktext": "Berichterstatterin/Berichterstatter",
+    "frak_code": "V",
+    "ltext": "Budgetausschuss"
+   }
+  ],
+  "reference": [
+   {
+    "text": "Bezug zu",
+    "subject": "2. Dienstrechts-Novelle 2024",
+    "zitation": "14/A",
+    "url": "/gegenstand/XXVIII/A/14",
+    "art": "B"
+   }
+  ],
+  "vote": {
+   "result": [
+    {
+     "text": "FPÖ",
+     "code": "F",
+     "color": "#0052FB",
+     "fraction": 57,
+     "infavor": false
+    },
+    {
+     "text": "ÖVP",
+     "code": "V",
+     "color": "#62C3D0",
+     "fraction": 51,
+     "infavor": true
+    },
+    {
+     "text": "SPÖ",
+     "code": "S",
+     "color": "#FF0000",
+     "fraction": 41,
+     "infavor": true
+    },
+    {
+     "text": "NEOS",
+     "code": "N",
+     "color": "#E3257B",
+     "fraction": 18,
+     "infavor": true
+    },
+    {
+     "text": "GRÜNE",
+     "code": "G",
+     "color": "#69B12E",
+     "fraction": 16,
+     "infavor": true
+    }
+   ],
+   "infavor": true,
+   "code": "fVSNG",
+   "text": "Dafür: V, S, N, G, Dagegen: F",
+   "comment": null
+  },
+  "preconst": null,
+  "statements": {
+   "documents": [
+    {
+     "title": "Gesetzestext",
+     "documents": [
+      {
+       "link": "/dokument/XXVIII/I/14/fname_1663018.pdf",
+       "type": "PDF"
+      },
+      {
+       "link": "/dokument/XXVIII/I/14/fnameorig_1663018.html",
+       "type": "HTML"
+      }
+     ]
+    }
+   ]
+  }
+ }
+}

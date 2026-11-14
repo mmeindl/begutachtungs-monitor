@@ -13,7 +13,7 @@ import { GP_RE, intToRoman, romanToInt } from '#shared/utils/gp'
 import { daysUntil } from '#shared/utils/format'
 import { foldJointDraft } from './draftList'
 import { mapDraftRow } from './list81'
-import { mapAntragRow, mapVorlageRow, type VorlageRow } from './list101'
+import { foreignDoktype, ITEM_DOKTYPES, mapAntragRow, mapItemRow, type AntragListRow, type ItemRow, type VorlageRow } from './list101'
 import {
   assertListHeader,
   assertRowsMatchGp,
@@ -125,29 +125,53 @@ export const getDraftsForGp = defineCachedFunction(
 )
 
 /**
- * Every Regierungsvorlage of one Gesetzgebungsperiode, from list 101 —
- * the candidate pool for "which Vorlagen still take Stellungnahmen".
+ * Every item of type `I` that can start a law's way through the Nationalrat
+ * — and the Bundesrat's Einspruch — of one Gesetzgebungsperiode, from list
+ * 101: `{ GP_CODE, ITYP: ['I'], DOKTYP: ITEM_DOKTYPES }` (GP XXVIII: 175 rows
+ * on 14.11.2026 — 131 RV, 26 RVS, 18 BUA; XXVII: 568). ONE call per period
+ * for every reader of these kinds (14.11.2026); it replaced the
+ * Regierungsvorlagen' own call (`VHG: ['RV']`), whose 131 rows of GP XXVIII
+ * are exactly this list's `RV` rows (compared 14.11.2026).
  *
- * ONE call for the whole period (GP XXVIII: 117 rows, GP XXVII: 365). The
- * `Status` column narrows it to the handful still before the Nationalrat
- * before any detail JSON is fetched; without it this would be one
- * Gegenstand request per Vorlage, which is why the section was not built
- * until the column was found (`docs/api-exploration.md` §101).
+ * Never `{ GP_CODE }` alone: that is the whole Verhandlungsgegenstände list,
+ * 76,000 rows. The API ignores a filter key it does not know, so the
+ * narrowing is asserted on every row, as the period is: a row of another
+ * `DOKTYP` means the filter did not grip, and the answer is refused before
+ * it is cached. The header must still name the columns the mapper reads by
+ * position.
  *
- * Derived, because `mapVorlageRow` is ours. The type filter is asserted the
- * way every other list is: rows must belong to the GP, and the header must
- * still name the columns the mapper reads by position.
+ * Derived, because `mapItemRow` is ours; the cache entry `vorlagen-gp` held
+ * the Vorlagen alone until this day.
  */
-export const getVorlagenForGp = defineCachedFunction(
-  async (gp: string): Promise<VorlageRow[]> => {
-    const res = await fetchFilterList(101, { GP_CODE: [gp], ITYP: ['I'], VHG: ['RV'] })
+export const getItemsForGp = defineCachedFunction(
+  async (gp: string): Promise<ItemRow[]> => {
+    const res = await fetchFilterList(101, { GP_CODE: [gp], ITYP: ['I'], DOKTYP: [...ITEM_DOKTYPES] })
     const rows = res.rows ?? []
     assertRowsMatchGp(rows, gp, 101)
     assertListHeader(101, res)
-    return rows.map(mapVorlageRow)
+    const foreign = foreignDoktype(rows, ITEM_DOKTYPES)
+    if (foreign !== null) {
+      throw createError({ statusCode: 502, statusMessage: `Upstream-Filter hat nicht gegriffen (Liste 101, DOKTYP ${foreign}, GP ${gp})` })
+    }
+    return rows.map(mapItemRow)
   },
-  { name: 'vorlagen-gp', base: DERIVED_CACHE, getKey: (gp: string) => gp, ...staleWithin(UPSTREAM_LIST_TTL_S, LIST_STALE_S) },
+  { name: 'items-gp', base: DERIVED_CACHE, getKey: (gp: string) => gp, ...staleWithin(UPSTREAM_LIST_TTL_S, LIST_STALE_S) },
 )
+
+/**
+ * Every Regierungsvorlage of one Gesetzgebungsperiode — the candidate pool
+ * for "which Vorlagen still take Stellungnahmen". The `RV` rows of the
+ * period's item list (`getItemsForGp`), so the Vorlagen and the other kinds
+ * cost one upstream call between them.
+ *
+ * The `Status` column narrows it to the handful still before the
+ * Nationalrat before any detail JSON is fetched; without it this would be
+ * one Gegenstand request per Vorlage, which is why the section was not
+ * built until the column was found (`docs/api-exploration.md` §101).
+ */
+export async function getVorlagenForGp(gp: string): Promise<VorlageRow[]> {
+  return (await getItemsForGp(gp)).filter((row) => row.doktyp === 'RV')
+}
 
 /**
  * Every selbständiger Antrag on a law of one Gesetzgebungsperiode, from list
@@ -165,7 +189,7 @@ export const getVorlagenForGp = defineCachedFunction(
  * from here and not from RIS.
  */
 export const getAntraegeForGp = defineCachedFunction(
-  async (gp: string): Promise<VorlageRow[]> => {
+  async (gp: string): Promise<AntragListRow[]> => {
     const res = await fetchFilterList(101, { GP_CODE: [gp], ITYP: ['A'], ART: ['A'] })
     const rows = res.rows ?? []
     assertRowsMatchGp(rows, gp, 101)

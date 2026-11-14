@@ -1,0 +1,101 @@
+{
+ "content": {
+  "title": "Einspruch des Bundesrates betr. Bundeshaftungsobergrenzengesetz, Änderung; EUROFIMA-Gesetz, Aufhebung",
+  "zitation": "20 d.B.",
+  "gp_code": "XXVII",
+  "ityp": "I",
+  "inr": 20,
+  "doktyp": "EBR",
+  "einlangen": "2019-12-20T00:00:00",
+  "status": {
+   "number": 5,
+   "bgbllinks": [
+    {
+     "title": "Bundesgesetzblatt I Nr. 11/2020",
+     "link": "http://www.ris.bka.gv.at/Dokument.wxe?Abfrage=BgblAuth&Dokumentnummer=BGBLA_2020_I_11"
+    },
+    {
+     "title": "Kunsttext",
+     "link": "http://www.ris.bka.gv.at/Ergebnis.wxe?Abfrage=Bundesnormen&Kundmachungsorgan=BGBl.+I+Nr.&Kundmachungsnummer=11%2f2020&Suchworte=&ReturnUrl=%2fSuchen.wxe%3fQueryID%3dBundesnormen"
+    }
+   ]
+  },
+  "reference": [
+   {
+    "text": "Bezug zu",
+    "zitation": "84/A",
+    "url": "/gegenstand/XXVII/A/84"
+   }
+  ],
+  "phase": [
+   {
+    "name": "Einlangen NR",
+    "stages": [
+     {
+      "date": "20.12.2019",
+      "text": "Einlangen im Nationalrat"
+     },
+     {
+      "date": "07.01.2020",
+      "text": "Vorgesehen für den <a href=\"/ausschuss/XXVII/A-BU/1/00867\">Budgetausschuss</a>"
+     }
+    ]
+   },
+   {
+    "name": "Ausschussberatungen NR",
+    "stages": [
+     {
+      "date": "10.01.2020",
+      "text": "<a href=\"/gegenstand/XXVII/NRSITZ/8\">8. Sitzung des Nationalrates</a>: Zuweisung an den <a href=\"/ausschuss/XXVII/A-BU/1/00867\">Budgetausschuss</a>"
+     },
+     {
+      "date": "12.02.2020",
+      "text": "Budgetausschuss: auf <a href=\"/dokument/XXVII/A-BU/1/00867/TO_04491150.html\">Tagesordnung</a> in der <a href=\"/ausschuss/XXVII/A-BU/1/00867?selectedStage=105&selectedSession=5&selectedDate=12022020\">5. Sitzung des Ausschusses</a>"
+     },
+     {
+      "date": "12.02.2020",
+      "text": "Budgetausschuss: Bericht <a href=\"/gegenstand/XXVII/I/41\">41 d.B.</a>"
+     }
+    ]
+   },
+   {
+    "name": "Plenarberatungen NR",
+    "stages": [
+     {
+      "date": "27.02.2020",
+      "text": "Auf der <a href=\"/dokument/XXVII/NRSITZ/12/TO_04445805.html\">Tagesordnung</a> der <a href=\"/gegenstand/XXVII/NRSITZ/12\">12. Sitzung des Nationalrates</a>"
+     },
+     {
+      "date": "27.02.2020",
+      "text": "12. Sitzung des Nationalrates: Debatte"
+     },
+     {
+      "date": "27.02.2020",
+      "text": "12. Sitzung des Nationalrates: Wiederholung des Gesetzesbeschlusses<br>Dafür: ÖVP, GRÜNE, NEOS, dagegen: SPÖ, FPÖ"
+     },
+     {
+      "date": "27.02.2020",
+      "text": "Beschluss im Nationalrat <a href=\"/gegenstand/XXVII/BNR/11\">11/BNR</a>"
+     },
+     {
+      "date": "02.03.2020",
+      "text": "Übermittlung des Beschlusses an BKA durchgeführt"
+     }
+    ]
+   },
+   {
+    "name": "Einlangen BR",
+    "stages": [
+     {
+      "date": "28.02.2020",
+      "text": "Einlangen im Bundesrat"
+     },
+     {
+      "date": "12.03.2020",
+      "text": "<a href=\"/gegenstand/BR/BRSITZ/902\">902. Sitzung</a>: Bekanntgabe des Beharrungsbeschlusses"
+     }
+    ]
+   }
+  ]
+ }
+}

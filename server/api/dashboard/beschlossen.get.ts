@@ -22,7 +22,7 @@ import type { DashboardDecided } from '#shared/types'
 import { todayIso } from '#shared/utils/format'
 import { dedupeDraftList } from '../../utils/parliament/draftList'
 import { pickDecided } from '../../utils/parliament/decidedOrder'
-import { promulgationState } from '#shared/utils/promulgation'
+import { objectionUnresolved, promulgationState } from '#shared/utils/promulgation'
 
 /** The list's budget for the station map (`api/drafts/index.get.ts`). */
 const STATION_MAP_BUDGET_MS = 2_500
@@ -49,7 +49,7 @@ export default defineEventHandler(async (): Promise<DashboardDecided> => {
      * kundgemacht"), which this section is not about. */
     total: drafts.filter((d) => {
       const chain = chains[d.inr]
-      return chain?.station === 'parlament' && !chain.filingOpen && !promulgationState(chain, today)
+      return chain?.station === 'parlament' && !chain.filingOpen && !promulgationState(chain, today) && !objectionUnresolved(chain.bundesratObjection)
     }).length,
   }
 })

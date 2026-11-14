@@ -219,7 +219,8 @@ usePageSeo({
             Parlamentsdirektion, Stationen nach der Begutachtung
           </dt>
           <dd>
-            Regierungsvorlagen, Ausschussberichte und Beschlüsse: die
+            Regierungsvorlagen, Anträge von Abgeordneten, Ausschüssen und des
+            Bundesrates, Staatsverträge, Ausschussberichte und Beschlüsse: die
             Ergebnislisten der Filter und der API sowie die Geschichtsseiten,
             ausgenommen alles zu Stellungnahmen –
             <ExternalLink
@@ -234,7 +235,7 @@ usePageSeo({
         </div>
         <div>
           <dt>
-            Parlamentsdirektion, Stellungnahmen zu Regierungsvorlagen
+            Parlamentsdirektion, Stellungnahmen im parlamentarischen Verfahren
           </dt>
           <dd>
             Für diese Daten weist das Parlament keine Open-Data-Lizenz aus:

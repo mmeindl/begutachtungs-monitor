@@ -123,6 +123,20 @@ Two consequences for wording, on the site and anywhere else:
 above rests on the RLW's summary. Read the norm text before relying on the
 detail.
 
+**Nachtrag 14.11.2026: AKG and WKG read.** `wege-zu-einer-rechtsnorm.md`
+(„Begutachtung vor dem Parlament: die Rechtslage") read both in the RIS.
+Each binds more than the federal ministries: § 93 Abs. 2 AKG requires
+„Entwürfe von Gesetzen … vor ihrer Einbringung in die jeweilige gesetzgebende
+Körperschaft" to be sent to the competent Arbeiterkammer, „das gleiche gilt
+für Verordnungen und Kundmachungen" — Bund and Länder alike; § 10 Abs. 1 WKG
+extends the chambers' „Begutachtungsrecht" to Verordnungen „einschließlich
+solcher aus dem Bereich der mittelbaren Bundesverwaltung", to
+Staatsverträge and to Vereinbarungen gemäß Art. 15a B-VG. Both oblige the
+sender to transmit, not to answer. The RLW's „obligations of the federal
+ministries" above is therefore narrower than the norm text; the
+consequences for wording drawn above are not changed by it. § 66c
+Ärztegesetz is still unread.
+
 ## Sources
 
 - RLW Fachinfo, „Wie funktionieren Begutachtungsverfahren zu Gesetzentwürfen?", 03.02.2026 — parlament.gv.at/fachinfos/rlw/Wie-funktionieren-Begutachtungsverfahren-zu-Gesetzentwuerfen

@@ -41,16 +41,18 @@
  * (the amended laws, the Regierungsvorlage's own Stellungnahmen count), so
  * the values are handed in rather than guessed or fetched here.
  */
-import type { BgblOutcome, DraftDetail, EnactmentInfo, HouseVote, LandCode, LandConsultation, LandLaw, LandProcedureStep, LandTextStation, LawStationId, RisConsultation, VorlageDetail } from '#shared/types'
+import type { BgblOutcome, BundesratObjection, DraftDetail, EnactmentInfo, HouseVote, LandCode, LandConsultation, LandLaw, LandProcedureStep, LandTextStation, LawStationId, RisConsultation, VorlageDetail } from '#shared/types'
 import { carriesDraft } from '#shared/utils/antragPath'
+import { isMiterledigt, mergedDe, mergedWithCitation } from '#shared/utils/miterledigung'
 import { bgblShort, formatDateDe, formatNumberDe, fristEndedDe, spanInDays, todayIso } from '#shared/utils/format'
-import { promulgationState } from '#shared/utils/promulgation'
+import { finalDecisionOf, objectionUnresolved, promulgationState } from '#shared/utils/promulgation'
 import { PARLIAMENT_COMPARISON_QUESTION, UPSTREAM_AUSSCHUSS_TITLE, UPSTREAM_PLENUM_TITLE, lawStationPairQuestion } from '#shared/utils/lawStations'
 import type { SourceEntry } from '#shared/utils/provenance'
 import { LAND_NAME } from '#shared/utils/laender'
 import { fristClassLineDe, fristRangeDe, fristSpanDe } from './deadlines'
 import { landLawBegutachtungFacts } from './landLaw'
 import { namedInRvFactDe, namedInRvShortDe } from './outcomes'
+import { CARRIED_PART_FACTS_DE, RELATED_CONSULTED_FACTS_DE, carriedDraftDe, itemCopyDe, relatedConsultedDe, relatedFollowUpDe } from './itemKind'
 
 export type StationId = 'entwurf' | 'begutachtung' | 'rv' | 'parlament' | 'bgbl'
 
@@ -219,6 +221,13 @@ export function enactmentStatusDe(
   today: string = todayIso(),
 ): string {
   const e = d.enactment
+  // The Bundesrat's Einspruch, while the Nationalrat has not decided on it
+  // (14.11.2026): never „beschlossen" in the headline — the Bundesrat did
+  // not decide the text, it objected to it. After a Beharrungsbeschluss or
+  // a changed text the Beschluss stands, and the lines below say where its
+  // Kundmachung is.
+  const objectionHeadline = objectionStatusDe(e)
+  if (objectionHeadline) return objectionHeadline
   // A Gesetzesbeschluss that was not promulgated (03.10.2026): where Parliament's record says so and names a successor
   // that reached the Bundesgesetzblatt, the draft's text did become law —
   // on the route the headline already has words for. Otherwise the gap is
@@ -236,7 +245,8 @@ export function enactmentStatusDe(
   switch (parliamentOutcome(d)) {
     case 'rejected': return 'Im Nationalrat abgelehnt'
     case 'withdrawn': return 'Zurückgezogen'
-    case 'decided': return 'Beschlossen – Kundmachung ausständig'
+    case 'merged': return mergedDe(e.mergedWith ?? mergedWithCitation(e.houseStatusText))
+    case 'decided': return e.treaty ? treatyApprovedStatusDe(e) : 'Beschlossen – Kundmachung ausständig'
     // Sent back to committee and never decided: „Im Parlament" while the
     // Vorlage's period runs, „Ohne Beschluss" once it has ended — the
     // calendar below decides, as for any undecided Vorlage. Until
@@ -263,7 +273,8 @@ export function enactmentStatusDe(
  */
 export function procedureStatusDe(d: DraftDetail, today: string = todayIso()): string {
   const e = d.enactment
-  if (e?.bgblNumber) return 'Gesetz geworden'
+  // A treaty's Kundmachung is no „Gesetz" (14.11.2026, `treatyApprovedStatusDe`).
+  if (e?.bgblNumber) return e.treaty ? 'Kundgemacht' : 'Gesetz geworden'
   if (e) return enactmentStatusDe({ enactment: e, textEvolution: d.textEvolution }, today)
   if (d.active) return 'In Begutachtung'
   // The Antrag route (30.09.2026): no Vorlage,
@@ -326,7 +337,13 @@ export function regulationStatusDe(active: boolean, promulgated: boolean): strin
  * Gesetzesinitiativen"), § 23b Abs. 1 GOG-NR admits Stellungnahmen during
  * the parliamentary procedure, and the form stays open through the
  * Bundesrat's phase (list-101 status 4). The Bundesrat's Beschluss is where
- * that procedure ends for a law it does not object to.
+ * that procedure ends for a law it does not object to. Whether a
+ * Stellungnahme is admitted again after its Einspruch (type EBR) is not
+ * documented (docs/research/wege-zu-einer-rechtsnorm.md, 14.11.2026).
+ *
+ * The same window holds for the Antrag of members or of a committee, the
+ * Bundesrat's Gesetzesantrag and a Volksbegehren (§ 23b Abs. 1), not for a
+ * Vorlage on a Staatsvertrag: Parliament admits none there (type RVS).
  *
  * The full sentence is built from the clause so the two cannot drift apart.
  * Whoever already has a sentence running takes the clause; it reads both
@@ -362,14 +379,25 @@ const carries = (d: Pick<DraftDetail, 'textEvolution'>, prefix: string) =>
  *
  * `amendedIn === null` means the Vorlage's record was unreadable, never that
  * it changed nothing; the mirror is then the best evidence left.
+ *
+ * A SECOND WITNESS FOR THE PLENUM (14.11.2026): an Abänderungsantrag the
+ * Nationalrat adopted in plenary (`plenaryAmendments`, read off the same
+ * record) changed the text, whether or not Parliament published a
+ * Plenarfassung. The Anträge of spring 2020 carry none — 437/A, 440/A and
+ * 484/A each adopted one (AA-38, AA-39, AA-37) — and once their Kundmachung
+ * was read they stood as „Text unverändert beschlossen" above the frame row
+ * that names the motion. The documents decide only what can be compared
+ * (`lastParliamentStation`); the fact may rest on the Verlauf.
  */
 function amendedStations(d: ParliamentFacts): readonly LawStationId[] {
   const fromRv = d.enactment?.amendedIn
-  if (fromRv) return fromRv
-  const mirrored: LawStationId[] = []
-  if (carries(d, AUSSCHUSS)) mirrored.push('ausschuss')
-  if (carries(d, PLENUM)) mirrored.push('plenum')
-  return mirrored
+  const stations: LawStationId[] = fromRv ? [...fromRv] : []
+  if (!fromRv) {
+    if (carries(d, AUSSCHUSS)) stations.push('ausschuss')
+    if (carries(d, PLENUM)) stations.push('plenum')
+  }
+  if (!stations.includes('plenum') && (d.enactment?.plenaryAmendments?.amendments.length ?? 0) > 0) stations.push('plenum')
+  return stations
 }
 
 /**
@@ -419,7 +447,7 @@ export function parliamentTexts(d: Pick<DraftDetail, 'textEvolution'>): LawStati
  * 'decided' says a Beschluss exists; whether it was promulgated is the BGBl
  * link's answer, not this one's, so the caller asks that first.
  */
-export type HouseOutcome = 'rejected' | 'withdrawn' | 'recommitted' | 'decided'
+export type HouseOutcome = 'rejected' | 'withdrawn' | 'recommitted' | 'decided' | 'merged'
 
 /** Upstream's list-101 `Status`: zurückverwiesen an den Ausschuss. */
 const STATUS_RECOMMITTED = '3'
@@ -429,6 +457,10 @@ export function houseOutcomeOf(
   houseStatusText: string | null | undefined,
 ): HouseOutcome | null {
   const text = houseStatusText ?? ''
+  // First: a Miterledigung is no decision on the item, and before
+  // 14.11.2026 it read as „Ohne Beschluss – Gesetzgebungsperiode beendet"
+  // (XXVI/496: „Miterledigt mit Bericht 565 d.B.").
+  if (isMiterledigt(text)) return 'merged'
   if (/abgelehnt/i.test(text)) return 'rejected'
   if (/zurückgezogen/i.test(text)) return 'withdrawn'
   if (/zurückverwiesen/i.test(text) || houseStatus === STATUS_RECOMMITTED) return 'recommitted'
@@ -462,7 +494,16 @@ export function parliamentOutcome(
   const amended = amendedStations(d).length > 0
   // The Kundmachung is the end of the chain and outranks every reading of
   // the status text: what is in the Bundesgesetzblatt was decided.
-  if (e.bgblNumber) return amended ? 'amended' : 'unchanged'
+  if (e.bgblNumber) {
+    // After an Einspruch the Kundmachung carries the text the Nationalrat
+    // decided last (14.11.2026): its own repeated Beschluss — then the
+    // reading above holds —, a changed one, or one we could not read. Only
+    // the first may be called unchanged.
+    const after = e.bundesratObjection?.outcome
+    if (amended || after === 'new-decision') return 'amended'
+    if (after && after !== 'beharrung') return 'decided'
+    return 'unchanged'
+  }
   const house = houseOutcomeOf(e.houseStatus, e.houseStatusText)
   if (house) return house
   if (amended) return 'amended'
@@ -514,6 +555,7 @@ const PARLIAMENT_OUTCOME_DE: Record<NonNullable<ReturnType<typeof parliamentOutc
   decided: 'Der Nationalrat hat den Text beschlossen; die Kundmachung im Bundesgesetzblatt steht aus.',
   rejected: 'Die Regierungsvorlage wurde im Nationalrat abgelehnt.',
   withdrawn: 'Die Regierungsvorlage wurde zurückgezogen.',
+  merged: 'Die Regierungsvorlage wurde mit einem anderen Gegenstand miterledigt, ohne eigenen Beschluss.',
   recommitted: 'Die Regierungsvorlage wurde an den Ausschuss zurückverwiesen.',
   pending: 'Die Regierungsvorlage ist im Nationalrat in Behandlung.',
   lapsed: 'Das Verfahren endete mit der Gesetzgebungsperiode ohne Kundmachung.',
@@ -538,8 +580,19 @@ const PARLIAMENT_OUTCOME_ANTRAG_DE: Record<NonNullable<ReturnType<typeof parliam
   unchanged: 'Der Nationalrat hat den Text des Antrags unverändert beschlossen.',
   rejected: 'Der Antrag wurde im Nationalrat abgelehnt.',
   withdrawn: 'Der Antrag wurde zurückgezogen.',
+  merged: 'Der Antrag wurde mit einem anderen Gegenstand miterledigt, ohne eigenen Beschluss.',
   recommitted: 'Der Antrag wurde an den Ausschuss zurückverwiesen.',
   pending: 'Der Antrag ist im Nationalrat in Behandlung.',
+}
+
+/** Whose text „Im Parlament" speaks of: a Regierungsvorlage, an Antrag of
+ *  members, or a committee's motion (14.11.2026). */
+export type ParliamentItem = 'rv' | 'antrag' | 'ausschussantrag' | 'bundesratsantrag'
+
+/** A committee's motion is „der Antrag" too — of the committee — so it reads
+ *  the Antrag's sentences; none of them names who moved it. */
+function outcomeSentencesOf(item: ParliamentItem): typeof PARLIAMENT_OUTCOME_DE {
+  return item === 'rv' ? PARLIAMENT_OUTCOME_DE : PARLIAMENT_OUTCOME_ANTRAG_DE
 }
 
 function decidedStandDe(e: EnactmentInfo, today: string): string {
@@ -554,7 +607,7 @@ function decidedStandDe(e: EnactmentInfo, today: string): string {
       : sentence
   }
   if (state === 'overdue') {
-    const since = formatDateDe(e.bundesratDecidedAt ?? e.decidedAt ?? '')
+    const since = formatDateDe(finalDecisionOf(e) ?? '')
     return e.bundesratDecidedAt
       ? `Nationalrat und Bundesrat haben den Text beschlossen; kundgemacht ist er seit dem ${since} nicht.`
       : `Der Nationalrat hat den Text beschlossen; kundgemacht ist er seit dem ${since} nicht.`
@@ -565,6 +618,46 @@ function decidedStandDe(e: EnactmentInfo, today: string): string {
     return `Der Nationalrat hat den Text beschlossen; der Bundesrat befasst sich seit ${formatDateDe(e.bundesratArrivedAt)} damit.`
   }
   return PARLIAMENT_OUTCOME_DE.decided
+}
+
+/* ------------------------------------------------------------------ *
+ * Treaties (step 5 of 14.11.2026)
+ *
+ * The Nationalrat approves a Staatsvertrag or an Art.-15a-Vereinbarung
+ * (Art. 50 B-VG; the Verlauf's stage reads „Genehmigung"); its Kundmachung
+ * follows the ratification, which no date of Parliament's bounds — 42 of
+ * the 87 promulgated treaties of GP XXVII took more than 120 days, up to
+ * 2,023 (`pnpm corpus:staatsvertraege`). So a missing one is „ausstehend"
+ * while the period runs and, after it, a statement about our search only.
+ * ------------------------------------------------------------------ */
+
+/** What became of an approved treaty, by its kind (`EnactmentInfo.treaty`). */
+const TREATY_APPROVED_DE: Record<NonNullable<EnactmentInfo['treaty']>, string> = {
+  staatsvertrag: 'Der Nationalrat hat den Staatsvertrag genehmigt.',
+  'vereinbarung-15a': 'Der Nationalrat hat die Vereinbarung genehmigt.',
+}
+
+/** A treaty not (yet) approved: before the house, or the period ended first
+ *  — „ohne Genehmigung", never „ohne Kundmachung", which a treaty's
+ *  ratification decides, not the Nationalrat. */
+const TREATY_OPEN_DE: Record<'pending' | 'lapsed', Record<NonNullable<EnactmentInfo['treaty']>, string>> = {
+  pending: {
+    staatsvertrag: 'Der Staatsvertrag ist im Nationalrat in Behandlung.',
+    'vereinbarung-15a': 'Die Vereinbarung ist im Nationalrat in Behandlung.',
+  },
+  lapsed: {
+    staatsvertrag: 'Das Verfahren endete mit der Gesetzgebungsperiode ohne Genehmigung.',
+    'vereinbarung-15a': 'Das Verfahren endete mit der Gesetzgebungsperiode ohne Genehmigung.',
+  },
+}
+
+/** The Bundesgesetzblatt row of a treaty approved in an ended period whose
+ *  Kundmachung RIS does not list by its key — about the search, not the treaty. */
+const TREATY_UNLISTED_DE = 'im RIS bisher nicht verzeichnet'
+
+/** The card's headline for an approved treaty without a Kundmachung found. */
+function treatyApprovedStatusDe(e: EnactmentInfo): string {
+  return e.rvGpEnded ? `Genehmigt – ${TREATY_UNLISTED_DE}` : 'Genehmigt – Kundmachung ausstehend'
 }
 
 /**
@@ -578,14 +671,116 @@ function decidedStandDe(e: EnactmentInfo, today: string): string {
 export function parliamentStandDe(
   d: ParliamentFacts,
   today: string = todayIso(),
-  /** Whose text it is: a Regierungsvorlage (every draft's) or an Antrag. */
-  item: 'rv' | 'antrag' = 'rv',
+  /** Whose text it is: a Regierungsvorlage (every draft's), an Antrag of
+   *  members or a committee's motion — both of the latter are „der Antrag". */
+  item: ParliamentItem = 'rv',
 ): string {
   const outcome = parliamentOutcome(d) ?? 'lapsed'
   const e = d.enactment
+  if (e?.bundesratObjection) return objectionStandDe(e, outcome, today, item)
+  // A treaty: the Nationalrat approves it, it decides no text of its own
+  // (Art. 50 B-VG) — never „unverändert beschlossen".
+  if (e?.treaty && (outcome === 'decided' || outcome === 'unchanged' || outcome === 'amended')) return TREATY_APPROVED_DE[e.treaty]
+  if (e?.treaty && (outcome === 'pending' || outcome === 'lapsed')) return TREATY_OPEN_DE[outcome][e.treaty]
   return e && (outcome === 'decided' || promulgationState(e, today))
     ? decidedStandDe(e, today)
-    : (item === 'antrag' ? PARLIAMENT_OUTCOME_ANTRAG_DE : PARLIAMENT_OUTCOME_DE)[outcome]
+    : outcomeSentencesOf(item)[outcome]
+}
+
+/* ------------------------------------------------------------------ *
+ * The Bundesrat's Einspruch (14.11.2026)
+ *
+ * An event inside the station Parlament, never a station: the Bundesrat
+ * objects (Art. 42 B-VG), and the Nationalrat repeats its Beschluss, adopts a
+ * changed text, or does not decide before its period ends. Every sentence
+ * below is temporal and factual: what happened and when, never why, and no
+ * party beyond what the vote row already names.
+ * ------------------------------------------------------------------ */
+
+/** The card's headline while the Einspruch stands (`enactmentStatusDe`). */
+const OBJECTION_HEADLINE_DE = {
+  open: 'Einspruch des Bundesrates',
+  lapsed: 'Einspruch des Bundesrates – Gesetzgebungsperiode beendet',
+} as const
+
+/** The few words the rail's Parlament row adds after „Einspruch des
+ *  Bundesrates", per outcome; null adds none. */
+const OBJECTION_FACT_DE: Record<BundesratObjection['outcome'], string | null> = {
+  beharrung: 'Beharrungsbeschluss',
+  'new-decision': 'geänderter Text beschlossen',
+  pending: 'noch nicht entschieden',
+  lapsed: 'GP beendet',
+  unknown: null,
+}
+
+/** The headline where an Einspruch decides it, else null: without a
+ *  Kundmachung, while the Nationalrat has not (readably) decided on it. */
+export function objectionStatusDe(e: EnactmentInfo): string | null {
+  const o = e.bundesratObjection
+  if (!o || e.bgblNumber || !objectionUnresolved(o)) return null
+  return o.outcome === 'lapsed' ? OBJECTION_HEADLINE_DE.lapsed : OBJECTION_HEADLINE_DE.open
+}
+
+/** The rail's words for the event: „Einspruch des Bundesrates" and, where
+ *  known, what followed. */
+export function objectionFactsDe(o: BundesratObjection): string[] {
+  return kept('Einspruch des Bundesrates', OBJECTION_FACT_DE[o.outcome])
+}
+
+/**
+ * The frame row „Bundesrat" of „Im Parlament", in three parts so the
+ * template can link the Einspruch's citation between them: „Der Bundesrat
+ * hat am 19.12.2019 Einspruch erhoben" · „20 d.B." · „; der Nationalrat hat
+ * seinen Beschluss am 27.02.2020 wiederholt (Beharrungsbeschluss)." `text` is
+ * the whole sentence as plain text.
+ */
+export function bundesratRowDe(o: BundesratObjection): {
+  lead: string
+  ebr: { citation: string; url: string } | null
+  tail: string
+  text: string
+} {
+  const lead = o.date ? `Der Bundesrat hat am ${formatDateDe(o.date)} Einspruch erhoben` : 'Der Bundesrat hat Einspruch erhoben'
+  const on = o.decidedAt ? ` am ${formatDateDe(o.decidedAt)}` : ''
+  const tail = o.outcome === 'beharrung'
+    ? `; der Nationalrat hat seinen Beschluss${on} wiederholt (Beharrungsbeschluss).`
+    : o.outcome === 'new-decision'
+      ? `; der Nationalrat hat${on} einen geänderten Text beschlossen.`
+      : o.outcome === 'pending'
+        ? '; der Nationalrat hat darüber noch nicht entschieden.'
+        : o.outcome === 'lapsed'
+          ? '; bis zum Ende der Gesetzgebungsperiode hat der Nationalrat darüber nicht entschieden.'
+          : o.unknownCause === 'unmapped'
+            ? '; was danach geschah, kann der Monitor aus dem Verlauf des Parlaments nicht lesen.'
+            : '; was danach geschah, ist gerade nicht abrufbar.'
+  return { lead, ebr: o.ebr, tail, text: `${lead}${o.ebr ? ` (${o.ebr.citation})` : ''}${tail}` }
+}
+
+/**
+ * The „Stand" row where the Bundesrat objected: what the Nationalrat did
+ * with the text before the Einspruch — never „Nationalrat und Bundesrat
+ * haben beschlossen" —, and the Kundmachung's gap counted from the final
+ * decision (`finalDecisionOf`). The row „Bundesrat" says the rest.
+ */
+function objectionStandDe(
+  e: EnactmentInfo,
+  outcome: NonNullable<ReturnType<typeof parliamentOutcome>>,
+  today: string,
+  item: ParliamentItem,
+): string {
+  const state = promulgationState(e, today)
+  if (state === 'explicit') {
+    return e.notPromulgated?.reason === 'formalfehler'
+      ? 'Der Nationalrat hat den Text beschlossen; kundgemacht wurde er wegen eines Formalfehlers nicht.'
+      : 'Der Nationalrat hat den Text beschlossen; kundgemacht wurde er nicht.'
+  }
+  if (state === 'overdue') {
+    return `Der Nationalrat hat den Text beschlossen; kundgemacht ist er seit dem ${formatDateDe(finalDecisionOf(e) ?? '')} nicht.`
+  }
+  if (outcome === 'unchanged' || outcome === 'amended') {
+    return outcomeSentencesOf(item)[outcome]
+  }
+  return 'Der Nationalrat hat den Text beschlossen.'
 }
 
 /* The credit line under the frames of „Die Regierungsvorlage" and „Im
@@ -639,10 +834,11 @@ export function laterStations(d: LaterStationFacts, today: string = todayIso()):
   /** Terminal: parliament is done with the text, in one direction or the
    *  other, so the station is `done` rather than `current` or `never`. */
   const houseDone =
-    outcome === 'rejected' || outcome === 'withdrawn' || outcome === 'decided'
+    outcome === 'rejected' || outcome === 'withdrawn' || outcome === 'decided' || outcome === 'merged'
   /** No Kundmachung will follow — the one case where the last station is
-   *  unreachable for a reason other than the end of the period. */
-  const noBgblEver = outcome === 'rejected' || outcome === 'withdrawn'
+   *  unreachable for a reason other than the end of the period. A
+   *  Miterledigung too: the item itself is never promulgated. */
+  const noBgblEver = outcome === 'rejected' || outcome === 'withdrawn' || outcome === 'merged'
   /** Whether parliament is still holding the text — orthogonal to WHAT it
    *  did with it, so the two are read separately. By the Vorlage's period:
    *  a carry-over is still in Behandlung after the draft's has ended. */
@@ -661,6 +857,11 @@ export function laterStations(d: LaterStationFacts, today: string = todayIso()):
   /** As in `stations()`: the Initiativantrag route of a draft. */
   const viaAntrag = !e && !d.active && carriesDraft(d.antragPath) ? d.antragPath : null
 
+  /** The Bundesrat's Einspruch (14.11.2026): an event of this station. It
+   *  replaces the outcome word with the event and what followed, and keeps
+   *  the station `current` only while the Nationalrat may still decide. */
+  const objection = e?.bundesratObjection ?? null
+
   return [
     {
       id: 'parlament',
@@ -671,9 +872,11 @@ export function laterStations(d: LaterStationFacts, today: string = todayIso()):
       // says what happened, not when.
       state: !e
         ? viaAntrag ? 'done' : d.gpEnded && !d.active ? 'never' : 'open'
-        : e.bgblNumber || houseDone || unpromulgated
-          ? 'done'
-          : e.rvGpEnded ? 'never' : 'current',
+        : objection && !e.bgblNumber && objection.outcome === 'pending'
+          ? 'current'
+          : e.bgblNumber || houseDone || unpromulgated || objection
+            ? 'done'
+            : e.rvGpEnded ? 'never' : 'current',
       // The outcome word is what happened; `running` is whether it is over.
       // Both are needed, because a text amended in the Ausschuss can still
       // be on its way ("in Behandlung · im Ausschuss geändert") or have died
@@ -692,38 +895,57 @@ export function laterStations(d: LaterStationFacts, today: string = todayIso()):
         // this station has here. `outcome` is null on that route (no
         // Vorlage), so the chain below adds nothing to it.
         ...(viaAntrag ? [`Initiativantrag ${viaAntrag.antrag.citation}`, formatDateDe(viaAntrag.antrag.einlangen)] : []),
+        // The Bundesrat objected: the Beschluss, what it went through, the
+        // event and what followed it, then — after a decision on it — the
+        // Kundmachung's gap, counted from that decision.
+        ...(objection && e
+          ? kept(
+              outcome === 'unchanged' ? 'Text unverändert beschlossen' : 'beschlossen',
+              amended,
+              ...objectionFactsDe(objection),
+              unpromulgated === 'explicit'
+                ? 'nicht kundgemacht'
+                : unpromulgated === 'overdue'
+                  ? `seit ${formatDateDe(finalDecisionOf(e) ?? '')} nicht kundgemacht`
+                  : null,
+            )
+          : []),
         // Decided and not promulgated: the Beschluss and what it went
         // through, then the gap — with its cause and its successor only
         // where Parliament's record names them; otherwise as time alone,
         // counted from the end of the procedure.
-        ...(unpromulgated === 'explicit' && noPromulgation
-          ? kept(
-              'beschlossen',
-              amended,
-              noPromulgation.reason === 'formalfehler' ? 'nicht kundgemacht – Formalfehler' : 'nicht kundgemacht',
-              noPromulgation.successorAntrag
-                ? `neu eingebracht als Initiativantrag ${noPromulgation.successorAntrag.citation}`
-                : null,
-            )
-          : unpromulgated === 'overdue' && e
+        ...(objection
+          ? []
+          : unpromulgated === 'explicit' && noPromulgation
             ? kept(
                 'beschlossen',
                 amended,
-                `seit ${formatDateDe(e.bundesratDecidedAt ?? e.decidedAt ?? '')} nicht kundgemacht`,
+                noPromulgation.reason === 'formalfehler' ? 'nicht kundgemacht – Formalfehler' : 'nicht kundgemacht',
+                noPromulgation.successorAntrag
+                  ? `neu eingebracht als Initiativantrag ${noPromulgation.successorAntrag.citation}`
+                  : null,
               )
-            : outcome === null
-              ? []
-              : outcome === 'unchanged'
-                ? ['Text unverändert beschlossen']
-                : outcome === 'rejected'
-                  ? ['abgelehnt']
-                  : outcome === 'withdrawn'
-                    ? ['zurückgezogen']
-                    : outcome === 'recommitted'
-                      ? ['an den Ausschuss zurückverwiesen']
-                      : outcome === 'decided'
-                        ? kept('beschlossen', amended)
-                        : kept(running, amended)),
+            : unpromulgated === 'overdue' && e
+              ? kept(
+                  'beschlossen',
+                  amended,
+                  `seit ${formatDateDe(finalDecisionOf(e) ?? '')} nicht kundgemacht`,
+                )
+              : outcome === null
+                ? []
+                : outcome === 'unchanged'
+                  ? [e?.treaty ? 'genehmigt' : 'Text unverändert beschlossen']
+                  : outcome === 'rejected'
+                    ? ['abgelehnt']
+                    : outcome === 'withdrawn'
+                      ? ['zurückgezogen']
+                      : outcome === 'merged'
+                        ? [mergedDe(e?.mergedWith ?? mergedWithCitation(e?.houseStatusText)).replace(/^M/, 'm')]
+                        : outcome === 'recommitted'
+                          ? ['an den Ausschuss zurückverwiesen']
+                          : outcome === 'decided'
+                            ? kept(e?.treaty ? 'genehmigt' : 'beschlossen', amended)
+                            : kept(running, amended)),
         voteLine,
       ),
       // Only where a changed text is ON THIS PAGE — `lastParliamentStation`,
@@ -761,40 +983,48 @@ export function laterStations(d: LaterStationFacts, today: string = todayIso()):
       // names, when that Antrag carries a Kundmachung — the number, the route
       // and the document in RIS —, otherwise `never`, with the station before
       // it saying why.
-      ...(unpromulgated === 'explicit'
-        ? successor?.bgblNumber
-          ? {
-              state: 'done' as const,
-              facts: [bgblShort(successor.bgblNumber), `über Initiativantrag ${successor.citation}`],
-              ...(successor.bgblRisUrl
-                ? { source: { lead: null, href: successor.bgblRisUrl, label: 'Kundmachung im RIS' } }
-                : {}),
-            }
-          : { state: 'never' as const, facts: [] }
-        : {
-            state: e?.bgblNumber || viaAntrag
-              ? 'done' as const
-              : noBgblEver
-                ? 'never' as const
-                : outcome === 'decided'
-                  ? 'open' as const
-                  : periodEnded ? 'never' as const : 'open' as const,
-            // "ausstehend" while the chain can still continue; nothing at all
-            // once it cannot, because the station before it already says why.
-            facts: e?.bgblNumber
-              ? [bgblShort(e.bgblNumber)]
-              : viaAntrag
-                ? [bgblShort(viaAntrag.antrag.bgblNumber)]
+      // An Einspruch the Nationalrat let lapse with its period: no
+      // Kundmachung can come, and the Parlament row says why. While it is
+      // undecided the Kundmachung is still ahead („ausstehend", no promise).
+      ...(objection && !e?.bgblNumber && objection.outcome === 'lapsed'
+        ? { state: 'never' as const, facts: [] }
+        : unpromulgated === 'explicit'
+          ? successor?.bgblNumber
+            ? {
+                state: 'done' as const,
+                facts: [bgblShort(successor.bgblNumber), `über Initiativantrag ${successor.citation}`],
+                ...(successor.bgblRisUrl
+                  ? { source: { lead: null, href: successor.bgblRisUrl, label: 'Kundmachung im RIS' } }
+                  : {}),
+              }
+            : { state: 'never' as const, facts: [] }
+          : {
+              state: e?.bgblNumber || viaAntrag
+                ? 'done' as const
                 : noBgblEver
-                  ? []
-                  : unpromulgated === 'overdue'
-                    ? ['nicht kundgemacht']
-                    : outcome === 'decided'
-                      ? ['ausstehend']
-                      : periodEnded
-                        ? []
-                        : ['ausstehend'],
-          }),
+                  ? 'never' as const
+                  : outcome === 'decided'
+                    ? 'open' as const
+                    : periodEnded ? 'never' as const : 'open' as const,
+              // "ausstehend" while the chain can still continue; nothing at all
+              // once it cannot, because the station before it already says why.
+              facts: e?.bgblNumber
+                ? [bgblShort(e.bgblNumber)]
+                : viaAntrag
+                  ? [bgblShort(viaAntrag.antrag.bgblNumber)]
+                  : noBgblEver
+                    ? []
+                    : unpromulgated === 'overdue'
+                      ? ['nicht kundgemacht']
+                      : outcome === 'decided'
+                        // A treaty approved in an ended period: a statement
+                        // about our search, never „nicht kundgemacht"
+                        // (decision 5 of 14.11.2026, `TREATY_UNLISTED_DE`).
+                        ? [e?.treaty && periodEnded ? TREATY_UNLISTED_DE : 'ausstehend']
+                        : periodEnded
+                          ? []
+                          : ['ausstehend'],
+            }),
       comparison: null,
     },
   ]
@@ -928,7 +1158,11 @@ export function stations(d: DraftDetail, ctx: StationContext = {}, today: string
  * once its Vorlage exists (`enactmentStatusDe`).
  */
 export function vorlageStatusDe(d: VorlageDetail, today: string = todayIso()): string {
-  if (d.enactment.bgblNumber) return 'Gesetz geworden'
+  // A Regierungsvorlage, an Antrag, a committee's or the Bundesrat's motion
+  // with a BGBl. I number became a law. A treaty did not — its Kundmachung,
+  // in BGBl. III or (an Art.-15a-Vereinbarung) I, is no „Gesetz" (step 5 of
+  // 14.11.2026).
+  if (d.enactment.bgblNumber) return d.enactment.treaty ? 'Kundgemacht' : 'Gesetz geworden'
   return enactmentStatusDe(d, today)
 }
 
@@ -964,8 +1198,34 @@ function vorlageBegutachtung(d: VorlageDetail): Station {
       c.invited > 0 ? `${formatNumberDe(c.invited)} ${c.invited === 1 ? 'Stelle' : 'Stellen'} angeschrieben` : null,
     ), 'walked')
   }
-  if (d.withoutBegutachtung) return begutachtungStation(['ohne Begutachtung', 'kein Ministerialentwurf'], 'not-walked')
-  return begutachtungStation(['nicht feststellbar', 'ob ein Ministerialentwurf vorausging, ist hier nicht belegt'], 'unknown')
+  // A committee's motion whose parent went through a Begutachtung
+  // (`relatedConsultedDe`, 14.11.2026): the station says that, linking the
+  // draft — never „ohne Begutachtung", never that no draft is evidenced,
+  // and never that the committee's text is the consulted one.
+  const consulted = d.itemKind === 'ausschussantrag' ? relatedConsultedDe(d.relatedItems) : null
+  if (consulted) return { ...begutachtungStation([...RELATED_CONSULTED_FACTS_DE], 'unknown'), followUp: consulted }
+  // An Initiativantrag that carries a consulted draft's text (decision 9 of
+  // 14.11.2026, `carriedDraftDe`): the draft's Begutachtung as reached where
+  // the Antrag carries the draft; „nicht feststellbar" where only a part of
+  // it stands in the draft — the rest may be text nobody consulted.
+  const carried = carriedDraftDe(d)
+  if (carried) {
+    return carried.carries
+      ? { ...begutachtungStation([`Ministerialentwurf ${carried.citation}`], 'walked'), followUp: carried.line }
+      : { ...begutachtungStation([...CARRIED_PART_FACTS_DE], 'unknown'), followUp: carried.line }
+  }
+  const related = d.itemKind === 'ausschussantrag' ? relatedFollowUpDe(d.relatedItems) : null
+  // Only where the list classed the law `none` (`skippedLaws`; for a
+  // committee's motion decision 2 of 14.11.2026) — else „nicht feststellbar".
+  if (d.withoutBegutachtung) {
+    const none = begutachtungStation(['ohne Begutachtung', 'kein Ministerialentwurf'], 'not-walked')
+    return related ? { ...none, followUp: related } : none
+  }
+  const unknown = begutachtungStation(['nicht feststellbar', 'ob ein Ministerialentwurf vorausging, ist hier nicht belegt'], 'unknown')
+  // A committee's motion links what Parliament says it relates to („Bezug
+  // zu": the Regierungsvorlage or Antrag it came out of), where the monitor
+  // has a page for it.
+  return related ? { ...unknown, followUp: related } : unknown
 }
 
 /** What only the page's lazy requests can tell `vorlageStations`. */
@@ -1013,7 +1273,7 @@ function vorlageItemStations(d: VorlageDetail, ctx: VorlageStationContext, today
   return [
     {
       id: 'rv',
-      name: d.ityp === 'I' ? 'Regierungsvorlage' : 'Initiativantrag',
+      name: itemCopyDe(d).word,
       state: 'done',
       facts: kept(d.arrivedAt ? formatDateDe(d.arrivedAt) : d.citation, changes, count),
       comparison: ctx.showsAnnex && !ctx.createsNewLaw ? { id: 'vorschlag', question: 'Was ändert der Entwurf?' } : null,
@@ -1024,7 +1284,7 @@ function vorlageItemStations(d: VorlageDetail, ctx: VorlageStationContext, today
 
 /**
  * The same bar for a Verordnungsentwurf: three stations, the Verordnung path
- * of /so-funktionierts — Entwurf · Begutachtung · Bundesgesetzblatt II.
+ * of `/wege` (`app/utils/wege.ts`) — Entwurf · Begutachtung · Bundesgesetzblatt II.
  *
  * It had no bar until 26.09.2026, and for a reason that held until the
  * 19th: the monitor did not follow a Verordnung past its Frist, and a last
@@ -1330,6 +1590,45 @@ export function landStations(
  * stands on none, the last one it reached. Exactly one per bar — this is
  * what the yellow dot marks.
  */
+/** What one row of the rail says: its visible facts, and the word only a
+ *  screen reader hears where it shows none. */
+export interface RailSpeech {
+  /** Behind a station the text has not reached, so it shows nothing. */
+  silent: boolean
+  facts: string[]
+  /** „ausstehend" or „nicht erreicht" where the row shows no fact — the
+   *  state in words, never the hollow dot alone. */
+  announce: string | null
+}
+
+/**
+ * The rail's display rule (`SpineRail.vue`), pure so it can be tested: only
+ * the NEXT station that has not happened says anything; the ones behind it
+ * fall silent and keep their state in sr-only words.
+ *
+ * A station that WAS reached speaks even behind one that was not — the
+ * Initiativantrag route skips the Vorlage and still reaches the house and
+ * the Bundesgesetzblatt (30.09.2026). And the pale Begutachtung of a law
+ * without a draft (`trail`, 10.11.2026) silences nothing: it is a route the
+ * law did not take, not a station the text is stuck before. Until
+ * 14.11.2026 it did, on every page of a Vorlage or Antrag: the
+ * Bundesgesetzblatt row showed nothing and announced „ausstehend" while the
+ * Parlament row above it said „seit … nicht kundgemacht" — the screen
+ * reader heard a promise the page had withdrawn.
+ */
+export function railSpeech(list: readonly Station[]): RailSpeech[] {
+  const reached = (s: Station) => s.state === 'done' || s.state === 'current'
+  return list.map((s, i) => {
+    const silent = !reached(s) && list.slice(0, i).some((earlier) => !reached(earlier) && !earlier.trail)
+    const facts = silent ? [] : s.facts
+    return {
+      silent,
+      facts,
+      announce: facts.length ? null : s.state === 'open' ? 'ausstehend' : s.state === 'never' ? 'nicht erreicht' : null,
+    }
+  })
+}
+
 export function markedStation(list: Station[]): StationId | null {
   const current = list.find((s) => s.state === 'current')
   if (current) return current.id

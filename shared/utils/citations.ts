@@ -54,6 +54,31 @@ export function rvCitationDe(citation: string, gp: string): string {
 }
 
 /**
+ * A committee's motion („Bericht und Antrag", DOKTYP `BUA`) as the
+ * Bundesgesetzblatt itself cites it: as an Ausschussbericht. BGBl. I Nr.
+ * 156/2024, which 14 d.B. XXVIII. GP became, names its materials „NR: GP
+ * XXVIII AB 14" (read 14.11.2026), so the footnote is „AB 14 BlgNR 28. GP" —
+ * never „RV". Parliament's own citation, „14 d.B.", where that has no answer.
+ */
+export function buaCitationDe(citation: string, gp: string): string {
+  return blgNrDe('AB', citation, gp) ?? `Ausschussantrag ${citation} ${gp}. GP`
+}
+
+/**
+ * A motion of the Bundesrat (DOKTYP `GABR`, `GABR13`) as a Beilage with no
+ * kind in front: „452 BlgNR 25. GP". Parliament cites it „452 d.B."; the
+ * Bundesgesetzblatt it became prints „NR: GP XXV RV 452" (BGBl. I Nr.
+ * 44/2015, read 14.11.2026) — but it is no Regierungsvorlage, and „RV" in
+ * our footnote would say the government brought it in. The bare Beilage
+ * number is the form that is true and that a reader finds the document by.
+ */
+export function beilageCitationDe(citation: string, gp: string): string {
+  const nr = /^(\d+)\s*d\.\s*B\.?$/.exec(citation.trim())?.[1]
+  const period = romanToInt(gp)
+  return nr && period ? `${nr} BlgNR ${period}. GP` : `Gesetzesantrag ${citation} ${gp}. GP`
+}
+
+/**
  * „ErläutRV 297 BlgNR 28. GP, zu Z 4 (Art. II § 1 Abs. 5)" — the passage of
  * the Vorlage's Erläuterungen on one change, under the Ressort's own
  * heading („Zu Z 4 (Art. II § 1 Abs. 5):"). The most exact footnote there

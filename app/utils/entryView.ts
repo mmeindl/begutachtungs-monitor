@@ -38,6 +38,8 @@
  * all read the same mapping.
  */
 import type {
+  AntragRow,
+  AntragState,
   ClosedOutcome,
   DraftChain,
   DraftStation,
@@ -47,18 +49,23 @@ import type {
   LawWithoutBegutachtung,
   OpenVorlage,
   RisConsultation,
+  TreatyRow,
+  TreatyState,
 } from '#shared/types'
 import { aliasesFor } from '#shared/utils/draftAliases'
 import { isLandLaw, type DraftListRow } from '#shared/utils/draftOrder'
 import { DRAFT_STATION_LABEL } from '#shared/utils/draftStations'
 import { type DeadlineTone, deadlineTone, fristClassLineDe, isNewArrival, isWithinNewWindow } from './deadlines'
 import { bgblShort, formatDateDe, formatDateWeekdayDe, fristEndedDe, fristLabel, todayIso } from '#shared/utils/format'
-import { promulgationState } from '#shared/utils/promulgation'
+import { finalDecisionOf, objectionUnresolved, promulgationState } from '#shared/utils/promulgation'
+import { antragRouteCitation } from '#shared/utils/antragPath'
 import { RIS_KIND_LABEL } from '#shared/utils/risConsultations'
 import { LAND_NAME, landDraftPath, landLawName, landLawPath, landPublisherDe, landShortTitle } from '#shared/utils/laender'
 import { euLeadOf } from './euRecht'
 import { namedInRvShortDe } from './outcomes'
-import { vorlagePath } from '#shared/utils/procedureRoot'
+import { itemKindOfLawItem, itemPath } from '#shared/utils/procedureRoot'
+import { ITEM_KIND_DE, itemCopyDe } from './itemKind'
+import { mergedDe } from '#shared/utils/miterledigung'
 
 /**
  * Zone 3 — what was filed in this Verfahren.
@@ -296,8 +303,21 @@ function chainState(chain: DraftChain, deadline: string | null, today: string): 
    * cause belongs to the detail page, and only where Parliament gives one.
    * A successor that reached the Bundesgesetzblatt is not this case — that
    * chain stands at `bgbl`, with the Antrag in zone 2. */
+  /* The Bundesrat's Einspruch, while the Nationalrat has not decided on it
+   * (14.11.2026): the event, dated by the Bundesrat's sitting — the
+   * headline of the page in the row's words, never „beschlossen, nicht
+   * kundgemacht", which no Kundmachung was due for. */
+  const objection = chain.bundesratObjection
+  if (chain.station === 'parlament' && objection && !chain.bgblNumber && objectionUnresolved(objection)) {
+    return {
+      label: objection.outcome === 'lapsed' ? 'Einspruch des Bundesrates – GP beendet' : 'Einspruch des Bundesrates',
+      detail: objection.date ? formatDateDe(objection.date) : chain.rvCitation,
+      tone: 'inactive',
+      actionable: false,
+    }
+  }
   if (chain.station === 'parlament' && promulgationState(chain, today)) {
-    const date = chain.notPromulgated?.date ?? chain.bundesratDecidedAt ?? chain.decidedAt
+    const date = chain.notPromulgated?.date ?? finalDecisionOf(chain)
     return {
       label: 'Beschlossen, nicht kundgemacht',
       detail: date ? formatDateDe(date) : null,
@@ -426,6 +446,9 @@ export function viewOfDraft(
       : draft.chain
         ? chainState(draft.chain, draft.deadline, todayIso())
         : endedState(draft.deadline, 'Begutachtung abgeschlossen')
+  /* The list's option „Gesetzesentwürfe, als Initiativantrag eingebracht"
+   * holds exactly the rows this names (`antragRouteCitation`). */
+  const antrag = antragRouteCitation(draft)
 
   return {
     key: `me-${draft.gp}-${draft.inr}`,
@@ -445,10 +468,7 @@ export function viewOfDraft(
      * the Vorlage route („Kundgemacht") and the station is OUR inference —
      * matched by wording, not read off a pointer (`antragPath.ts`). A
      * procedural fact beside the citation, like „ohne Begutachtung". */
-    note:
-      !draft.active && draft.chain?.antragCitation
-        ? `als Initiativantrag ${draft.chain.antragCitation}`
-        : openFristNote(draft.arrivedAt, draft.deadline, draft.active),
+    note: antrag ? `als Initiativantrag ${antrag}` : openFristNote(draft.arrivedAt, draft.deadline, draft.active),
     eu: euLeadOf(draft.eu),
     newLabel: draftNewLabel(draft, outcome),
     participation: { kind: 'count', count: draft.statementCount },
@@ -557,16 +577,18 @@ function vorlageOf(url: string): { gp: string; inr: number } | null {
 export function viewOfVorlage(v: OpenVorlage): EntryView {
   const c = v.consultation
   // A Vorlage without a draft page has a page of its own since 10.11.2026
-  // (`vorlagePath`) — whatever the evidence
+  // (`itemPath`) — whatever the evidence
   // says about a Begutachtung, which stays the note's business below.
   const own = c.kind === 'draft' ? null : vorlageOf(v.parliamentUrl)
+  // A committee's motion (14.11.2026) is named and linked as what it is.
+  const kind = v.kind
   return {
     key: `rv-${v.citation}`,
-    to: c.kind === 'draft' ? `/entwuerfe/${c.gp}/${c.inr}` : own ? vorlagePath(own.gp, 'I', own.inr) : null,
+    to: c.kind === 'draft' ? `/entwuerfe/${c.gp}/${c.inr}` : own ? itemPath(own.gp, kind, own.inr) : null,
     href: c.kind === 'draft' || own ? null : v.parliamentUrl,
     title: v.title,
     titleFull: v.title,
-    kindLabel: 'Regierungsvorlage',
+    kindLabel: ITEM_KIND_DE[kind].word,
     citation: v.citation,
     ministry: null,
     coMinistries: [],
@@ -577,7 +599,9 @@ export function viewOfVorlage(v: OpenVorlage): EntryView {
     // „Neu: Regierungsvorlage" although zone 2 already says
     // „Regierungsvorlage": the chip names the station, the kind label the
     // document, and the rule has no exception (`stationNewLabel`).
-    newLabel: stationNewLabel('rv', v.date || null),
+    newLabel: kind === 'ausschussantrag'
+      ? (isWithinNewWindow(v.date || null) ? `Neu: ${ITEM_KIND_DE.ausschussantrag.word}` : null)
+      : stationNewLabel('rv', v.date || null),
     participation:
       v.statementCount === null ? { kind: 'unavailable' } : { kind: 'count', count: v.statementCount },
     state: openVorlageState(v.date || null),
@@ -654,11 +678,11 @@ export function viewOfLaw(law: LawWithoutBegutachtung): EntryView {
   return {
     key: `law-${law.bgblNumber}`,
     // Our page of the item since 10.11.2026.
-    to: vorlagePath(law.item.gp, law.item.kind === 'rv' ? 'I' : 'A', law.item.inr),
+    to: itemPath(law.item.gp, itemKindOfLawItem(law.item.kind), law.item.inr),
     href: null,
     title: law.title,
     titleFull: law.title,
-    kindLabel: law.item.kind === 'rv' ? 'Regierungsvorlage' : 'Initiativantrag',
+    kindLabel: itemCopyDe({ itemKind: itemKindOfLawItem(law.item.kind), variant: law.item.variant }).word,
     citation: law.item.citation,
     ministry: null,
     coMinistries: [],
@@ -705,11 +729,112 @@ export function viewOfLandLaw(law: LandLaw): EntryView {
   }
 }
 
+/**
+ * Zone 4 of an Initiativantrag, one label per state (14.11.2026,
+ * `AntragState`) — Parliament's own words where it has them
+ * („Zurückgezogen", „Miterledigt"), and the weakest state the evidence
+ * carries where the record did not come: „in Behandlung", never
+ * „Stellungnahme möglich" without the flag; „erledigt", never „abgelehnt"
+ * without the record. „Kundgemacht" is the law row's (`outcomeState`).
+ */
+const ANTRAG_STATE_DE: Record<Exclude<AntragState, 'promulgated'>, string> = {
+  open: 'Stellungnahme möglich',
+  pending: 'Im Nationalrat in Behandlung',
+  'pending-unverified': 'Im Nationalrat in Behandlung',
+  rejected: 'Im Nationalrat abgelehnt',
+  withdrawn: 'Zurückgezogen',
+  merged: 'Miterledigt',
+  decided: 'Im Nationalrat beschlossen',
+  lapsed: 'Ohne Beschluss – Gesetzgebungsperiode beendet',
+  ended: 'Im Nationalrat erledigt',
+}
+
+/**
+ * An Initiativantrag under „Alle Initiativanträge" (14.11.2026). Zone 2
+ * names it and nothing about a Begutachtung: no check exists for an Antrag
+ * before its law, so no row says „ohne Begutachtung" — and no club, so a
+ * list of motions never reads as a score. Zone 3 stays empty (`unasked`),
+ * as on a law row: the Stellungnahmen are on the Antrag's page. Zone 4 is
+ * loud only where its own flag said open (`actionable`); line 2 dates it by
+ * its Einlangen, a promulgated one by the Fundstelle as every law row.
+ */
+export function viewOfAntrag(a: AntragRow): EntryView {
+  const filed = a.date ? `eingebracht am ${formatDateDe(a.date)}` : null
+  return {
+    key: `antrag-${a.gp}-${a.inr}`,
+    to: itemPath(a.gp, 'initiativantrag', a.inr),
+    href: null,
+    title: a.title,
+    titleFull: a.title,
+    kindLabel: ITEM_KIND_DE.initiativantrag.word,
+    citation: a.citation,
+    ministry: null,
+    coMinistries: [],
+    aliases: [],
+    note: null,
+    eu: null,
+    newLabel: a.state === 'promulgated' && a.bgbl
+      ? stationNewLabel('bgbl', a.bgbl.date)
+      : a.state === 'open' && isWithinNewWindow(a.date || null) ? `Neu: ${ITEM_KIND_DE.initiativantrag.word}` : null,
+    participation: { kind: 'unasked' },
+    state: a.state === 'promulgated' && a.bgbl
+      ? outcomeState({ rvCitation: null, bgblNumber: a.bgbl.number }, null)
+      : a.state === 'open'
+        ? { label: ANTRAG_STATE_DE.open, detail: filed, tone: 'neutral', actionable: true }
+        : a.state === 'merged'
+          // „Mit 1637 d.B. miterledigt": the item it went with, as Parliament cites it.
+          ? { label: mergedDe(a.mergedWith ?? null), detail: filed, tone: 'inactive', actionable: false }
+          : { label: ANTRAG_STATE_DE[a.state === 'promulgated' ? 'decided' : a.state], detail: filed, tone: 'inactive', actionable: false },
+  }
+}
+
+/** A treaty's state as its row says it (14.11.2026) — „ausstehend" while
+ *  the period runs, only a statement about the search after it (decision 5);
+ *  never „nicht kundgemacht", never „Stellungnahme möglich". */
+const TREATY_STATE_DE: Record<Exclude<TreatyState, 'promulgated'>, string> = {
+  pending: 'Im Nationalrat in Behandlung',
+  approved: 'Genehmigt – Kundmachung ausstehend',
+  unlisted: 'Genehmigt – im RIS bisher nicht verzeichnet',
+  lapsed: 'Ohne Beschluss – Gesetzgebungsperiode beendet',
+}
+
+/**
+ * A treaty's Vorlage under „Staatsverträge" (14.11.2026). Zone 2 names its
+ * kind — „Vereinbarung nach Art. 15a B-VG" where list 101 says so —, zone 3
+ * stays empty (`unasked`: Parliament takes no Stellungnahmen on it), zone 4
+ * is never loud; a promulgated one carries its Fundstelle as every law row.
+ */
+export function viewOfTreaty(t: TreatyRow): EntryView {
+  const arrived = t.date ? `eingelangt am ${formatDateDe(t.date)}` : null
+  const kindLabel = itemCopyDe({ itemKind: 'staatsvertrag', treatyKind: t.treatyKind }).word
+  return {
+    key: `staatsvertrag-${t.gp}-${t.inr}`,
+    to: itemPath(t.gp, 'staatsvertrag', t.inr),
+    href: null,
+    title: t.title,
+    titleFull: t.title,
+    kindLabel,
+    citation: t.citation,
+    ministry: null,
+    coMinistries: [],
+    aliases: [],
+    note: null,
+    eu: null,
+    newLabel: t.state === 'promulgated' && t.bgbl ? stationNewLabel('bgbl', t.bgbl.date) : null,
+    participation: { kind: 'unasked' },
+    state: t.state === 'promulgated' && t.bgbl
+      ? outcomeState({ rvCitation: null, bgblNumber: t.bgbl.number }, null)
+      : { label: TREATY_STATE_DE[t.state === 'promulgated' ? 'approved' : t.state], detail: arrived, tone: 'inactive', actionable: false },
+  }
+}
+
 export function viewOfRow(row: DraftListRow): EntryView {
   if (row.kind === 'me') return viewOfDraft(row.draft)
   if (row.kind === 'ris') return viewOfRis(row.item)
   if (row.kind === 'land') return viewOfLand(row.item)
   if (row.kind === 'law') return isLandLaw(row.law) ? viewOfLandLaw(row.law) : viewOfLaw(row.law)
+  if (row.kind === 'antrag') return viewOfAntrag(row.antrag)
+  if (row.kind === 'treaty') return viewOfTreaty(row.treaty)
   return viewOfVorlage(row.vorlage)
 }
 

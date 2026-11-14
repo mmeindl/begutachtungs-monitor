@@ -7,14 +7,13 @@ import { bgblShort, formatDateDe } from '#shared/utils/format'
 import {
   changeShareRateFor,
   earlyVorlageWhenDe,
-  namedInRvExplanationDe,
-  namedInRvHeadlineDe,
   namedInRvSourceDe,
   relatedGpSuffixDe,
   tabledBeforeFristEnd,
 } from '~/utils/outcomes'
 import { parliamentDocumentSource } from '#shared/utils/provenance'
 import { PARLIAMENT_HISTORY_SOURCES } from '~/utils/spine'
+import { TERMS } from '~/utils/terms'
 import { beilageOfUrl, blgNrDe, citeLineDe } from '#shared/utils/citations'
 
 /**
@@ -82,15 +81,24 @@ const earlyVorlageWhen = computed(() => {
 /* The wait's bar stands under the last waiting row: „Beim Ressort" where
  * the handoff is dated, „Stand" where it is not. */
 const waitSlot = computed(() => `after-${props.view.facts.some((f) => f.key === 'ressort') ? 'ressort' : 'stand'}`)
-/* What on the frame is ours: the comparison's counts, or the waiting
- * bar's yardstick — whose population (how many drafts got a Vorlage at
- * all) stands behind „Methode", not under the frame (05.10.2026): it
- * describes the period, not this draft. */
-const credit = computed(() => {
+/* What on the frame is ours, and which „Methode" opens under the credit
+ * line (14.11.2026, `SectionCredits` `#method`; until then links to
+ * /so-funktionierts):
+ *  - `genannt`: the match of title and sentence. „In 298 d.B. genannt" is
+ *    a fact row, not a tag, so its definition (`TERMS`) opens here rather
+ *    than at the word — and with it how a Vorlage comes to carry two
+ *    drafts while Parliament links it to one, which the station's rows
+ *    show and do not explain.
+ *  - `vergleich`: the comparison's counts (`MethodVergleich`).
+ *  - none for the waiting bar's yardstick: its explanation — how many drafts
+ *    of the period got a Vorlage at all — left the site on 14.11.2026 by the
+ *    maintainer's decision (kept in docs/research/wartezeit-bis-regierungsvorlage.md).
+ *    The bar labels its own marks, and the credit still names the period. */
+const credit = computed<{ own: string; method: 'genannt' | 'vergleich' | null } | null>(() => {
   const v = props.view
-  if (v.named) return { own: 'Abgleich der Titel', method: '/so-funktionierts#genannt' }
-  if (v.counted) return { own: 'Zählung', method: '/so-funktionierts#vergleich' }
-  if (v.noRvBaseRate) return { own: `Vergleichswerte (${gpNameDe(v.noRvBaseRate.gp)})`, method: '/so-funktionierts#wartezeit' }
+  if (v.named) return { own: 'Abgleich der Titel', method: 'genannt' }
+  if (v.counted) return { own: 'Zählung', method: 'vergleich' }
+  if (v.noRvBaseRate) return { own: `Vergleichswerte (${gpNameDe(v.noRvBaseRate.gp)})`, method: null }
   return null
 })
 
@@ -100,7 +108,6 @@ const credit = computed(() => {
 const sources = computed(() =>
   props.view.named ? [...PARLIAMENT_HISTORY_SOURCES, parliamentDocumentSource('Erläuterungen', 'rv')] : PARLIAMENT_HISTORY_SOURCES,
 )
-const namedText = computed(() => (props.view.named ? namedInRvExplanationDe(props.view.named) : null))
 </script>
 
 <template>
@@ -195,10 +202,38 @@ const namedText = computed(() => (props.view.named ? namedInRvExplanationDe(prop
           <!-- The win side of the same mechanism: the draft that finds a
                lapsed one also finds the one that took its place. -->
           <!-- How long the draft has waited, against how long the last
-               closed period waited (`RvWaitBar`); whether a Vorlage came
-               at all stands behind the credit line's „Methode". -->
+               closed period waited (`RvWaitBar`), its marks labelled at
+               the bar. -->
           <template v-if="view.noRvBaseRate" #[waitSlot]>
             <RvWaitBar :deadline="draft.deadline" :rate="view.noRvBaseRate" />
+          </template>
+          <!-- „In 298 d.B. genannt" (14.11.2026): another draft's
+               Vorlage names this one. The frame carries the state, never
+               prose — and a quote and a link are facts: the sentence that
+               names the draft with the document it stands in, and the
+               draft Parliament links the Vorlage to, where the Vorlage's
+               way on is told. Why no comparison follows is the sentence
+               under the frame (`view.context`); how a Vorlage comes to
+               carry two drafts is „Methode" in the credit line. -->
+          <template v-if="view.named" #value-zitat>
+            <p>„{{ view.named.quote }}“</p>
+            <p class="mt-1">
+              <ExternalLink :href="view.named.explanationsUrl" class="link-inline">{{ namedInRvSourceDe(view.named) }}</ExternalLink>
+            </p>
+          </template>
+          <template v-if="view.named" #value-weiter>
+            <template v-if="view.named.linkedDrafts.length">
+              <p v-for="l in view.named.linkedDrafts" :key="`${l.gp}-${l.inr}`">
+                <NuxtLink
+                  :to="`/entwuerfe/${l.gp}/${l.inr}`"
+                  class="link-inline"
+                >{{ l.citation }}</NuxtLink>{{ relatedGpSuffixDe(l.gp, draft.gp) }}, {{ l.title }}
+              </p>
+              <p class="mt-1 text-ink-secondary">Dort steht, wie es mit der Vorlage weiterging.</p>
+            </template>
+            <p v-else>
+              <ExternalLink :href="view.named.rv.url" class="link-inline">Regierungsvorlage {{ view.named.rv.citation }}</ExternalLink>
+            </p>
           </template>
           <template v-if="draft.successor" #value-nachfolger>
             <p>
@@ -212,48 +247,22 @@ const namedText = computed(() => (props.view.named ? namedInRvExplanationDe(prop
         </FactList>
         <!-- No link: the frame's first fact is the Vorlage. The counts
              are the comparison's, ours (`useVorlageOutcome`). -->
-        <!-- Another draft's Vorlage names this one: what it says, in its
-             own words, and why the station ends here. Under the frame —
-             the frame carries the state, never prose — and before the
-             credit line, which names the quote's source too. -->
-        <div v-if="view.named && namedText" class="mt-4 space-y-4">
-          <p class="font-medium text-ink">{{ namedInRvHeadlineDe(view.named) }}</p>
-          <div>
-            <p class="text-sm text-ink-secondary">Aus ihren Erläuterungen:</p>
-            <blockquote class="mt-2 border-l-2 border-hairline pl-3">„{{ view.named.quote }}“</blockquote>
-            <p class="mt-2 text-sm">
-              <ExternalLink :href="view.named.explanationsUrl" class="link-inline">{{ namedInRvSourceDe(view.named) }}</ExternalLink>
-            </p>
-          </div>
-          <p class="text-sm text-ink-secondary">
-            <template v-if="namedText.linkedLead">
-              {{ namedText.linkedLead }}
-              <template v-for="(l, i) in view.named.linkedDrafts" :key="`${l.gp}-${l.inr}`"><template v-if="i > 0">; </template><NuxtLink
-                :to="`/entwuerfe/${l.gp}/${l.inr}`"
-                class="link-inline"
-              >{{ l.citation }}</NuxtLink>{{ relatedGpSuffixDe(l.gp, draft.gp) }}, {{ l.title }}</template>.
-            </template>
-            {{ namedText.merge }} {{ namedText.noComparison }} {{ namedText.onwardLead }}
-            <template v-if="view.named.linkedDrafts.length">
-              <template v-for="(l, i) in view.named.linkedDrafts" :key="`on-${l.gp}-${l.inr}`"><template v-if="i > 0">, </template><NuxtLink
-                :to="`/entwuerfe/${l.gp}/${l.inr}`"
-                class="link-inline"
-              >{{ l.citation }}</NuxtLink></template>.
-            </template>
-            <template v-else>
-              <ExternalLink :href="view.named.rv.url" class="link-inline">Regierungsvorlage {{ view.named.rv.citation }}</ExternalLink>.
-            </template>
-          </p>
-        </div>
         <SectionCredits
           v-if="view.facts.length"
           :sources="sources"
           :marked="false"
           :own="credit?.own"
-          :method="credit?.method"
-        />
-        <!-- What explains the frame's verdict: what is open, and how an
-             Initiativantrag was matched. -->
+        >
+          <template v-if="credit?.method === 'genannt'" #method>
+            <p>{{ TERMS.genannt.definition }}</p>
+          </template>
+          <template v-else-if="credit?.method === 'vergleich'" #method>
+            <MethodVergleich />
+          </template>
+        </SectionCredits>
+        <!-- What explains the frame's verdict: what is open, how an
+             Initiativantrag was matched, or for „genannt" why no
+             comparison follows. -->
         <div v-if="!draft.enactment && !draft.active && (view.context || draft.antragPath)" class="mt-4 space-y-2">
           <p v-if="view.context" class="text-sm text-ink-secondary">{{ view.context }}</p>
           <AntragPathNote
@@ -296,8 +305,9 @@ const namedText = computed(() => (props.view.named ? namedInRvExplanationDe(prop
            Where a Stellungnahme goes is neither a sentence nor a link
            here (03.10.2026): the consent to publication is asked on
            Parliament's form, and „kein eigenes Verfahren im Ausschuss"
-           beside the button reads as „filing is pointless" — it stands
-           on /so-funktionierts#parlament, next to its exception. -->
+           beside the button reads as „filing is pointless". It opens
+           beside the list instead, next to its exception (`RvStatements`,
+           „Was mit ihnen geschieht", since 14.11.2026). -->
       <div v-if="filingOpen && draft.enactment">
         <DoorButton :href="draft.enactment.rvUrl">
           Stellungnahme zur Regierungsvorlage abgeben

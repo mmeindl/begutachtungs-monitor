@@ -1,0 +1,128 @@
+{
+ "content": {
+  "title": "Einspruch der Republik Österreich gegen den Beitritt der Islamischen Republik Pakistan zum Übereinkommen zur Befreiung ausländischer öffentlicher Urkunden von der Beglaubigung",
+  "zitation": "1800 d.B.",
+  "gp_code": "XXVII",
+  "ityp": "I",
+  "inr": 1800,
+  "doktyp": "RVS",
+  "einlangen": "2022-11-24T00:00:00",
+  "status": {
+   "number": 5,
+   "bgbllinks": [
+    {
+     "title": "Bundesgesetzblatt III Nr. 79/2023",
+     "link": "http://www.ris.bka.gv.at/Dokument.wxe?Abfrage=BgblAuth&Dokumentnummer=BGBLA_2023_III_79"
+    },
+    {
+     "title": "Kunsttext",
+     "link": "http://www.ris.bka.gv.at/Ergebnis.wxe?Abfrage=Bundesnormen&Kundmachungsorgan=BGBl.+III+Nr.&Kundmachungsnummer=79%2f2023&Suchworte=&ReturnUrl=%2fSuchen.wxe%3fQueryID%3dBundesnormen"
+    }
+   ]
+  },
+  "phase": [
+   {
+    "name": "Einlangen NR",
+    "stages": [
+     {
+      "date": "24.11.2022",
+      "text": "Einlangen im Nationalrat"
+     },
+     {
+      "date": "24.11.2022",
+      "text": "Vorgesehen für den <a href=\"/ausschuss/XXVII/A-AU/1/00884\">Außenpolitischer Ausschuss</a>"
+     }
+    ]
+   },
+   {
+    "name": "Ausschussberatungen NR",
+    "stages": [
+     {
+      "date": "13.12.2022",
+      "text": "<a href=\"/gegenstand/XXVII/NRSITZ/187\">187. Sitzung des Nationalrates</a>: Mitteilung des Einlangens und Zuweisung an den <a href=\"/ausschuss/XXVII/A-AU/1/00884\">Außenpolitischer Ausschuss</a>"
+     },
+     {
+      "date": "23.03.2023",
+      "text": "Außenpolitischer Ausschuss: auf <a href=\"/dokument/XXVII/A-AU/1/00884/TO_14952913.html\">Tagesordnung</a> in der <a href=\"/ausschuss/XXVII/A-AU/1/00884?selectedStage=105&selectedSession=14&selectedDate=23032023\">14. Sitzung des Ausschusses</a>"
+     },
+     {
+      "date": "23.03.2023",
+      "text": "Außenpolitischer Ausschuss: Bericht <a href=\"/gegenstand/XXVII/I/1985\">1985 d.B.</a>"
+     }
+    ]
+   },
+   {
+    "name": "Plenarberatungen NR",
+    "stages": [
+     {
+      "date": "30.03.2023",
+      "text": "Auf der <a href=\"/dokument/XXVII/NRSITZ/207/TO_14615019.html\">Tagesordnung</a> der <a href=\"/gegenstand/XXVII/NRSITZ/207\">207. Sitzung des Nationalrates</a>"
+     },
+     {
+      "date": "30.03.2023",
+      "text": "207. Sitzung des Nationalrates: Genehmigung<br>Dafür: ÖVP, SPÖ, FPÖ, GRÜNE, NEOS, dagegen: -"
+     },
+     {
+      "date": "30.03.2023",
+      "text": "Beschluss im Nationalrat <a href=\"/gegenstand/XXVII/BNR/715\">715/BNR</a>"
+     },
+     {
+      "date": "31.03.2023",
+      "text": "Übermittlung des Beschlusses an den Bundesrat"
+     }
+    ]
+   },
+   {
+    "name": "Einlangen BR",
+    "stages": [
+     {
+      "date": "31.03.2023",
+      "text": "Einlangen im Bundesrat (Frist: 26.05.2023)"
+     },
+     {
+      "date": "31.03.2023",
+      "text": "Mitwirkungsrecht des Bundesrates"
+     }
+    ]
+   },
+   {
+    "name": "Ausschussberatungen BR",
+    "stages": [
+     {
+      "date": "31.03.2023",
+      "text": "Zuweisung an den <a href=\"/ausschuss/BR/A-AA-BR/1/00001\">Ausschuss für auswärtige Angelegenheiten des Bundesrates</a>"
+     },
+     {
+      "date": "12.04.2023",
+      "text": "Ausschuss für auswärtige Angelegenheiten des Bundesrates: auf <a href=\"/dokument/BR/A-AA-BR/1/00001/TO_15579465.html\">Tagesordnung</a> in der <a href=\"/ausschuss/BR/A-AA-BR/1/00001?selectedStage=105&selectedSession=6&selectedDate=12042023\">6. Sitzung des Ausschusses</a>"
+     },
+     {
+      "date": "12.04.2023",
+      "text": "Ausschuss für auswärtige Angelegenheiten des Bundesrates: Bericht <a href=\"/gegenstand/BR/I-BR/11207\">11207/BR d.B.</a>"
+     }
+    ]
+   },
+   {
+    "name": "Plenarberatungen BR",
+    "stages": [
+     {
+      "date": "14.04.2023",
+      "text": "Auf der Tagesordnung der <a href=\"/gegenstand/BR/BRSITZ/952\">952. Sitzung</a>"
+     },
+     {
+      "date": "14.04.2023",
+      "text": "952. Sitzung: Debatte"
+     },
+     {
+      "date": "14.04.2023",
+      "text": "952. Sitzung: Antrag, keinen Einspruch zu erheben, <b>angenommen</b><br>Einstimmig"
+     },
+     {
+      "date": "14.04.2023",
+      "text": "Beschluss im Bundesrat <a href=\"/gegenstand/XXVII/BNR/715\">715/BNR</a>"
+     }
+    ]
+   }
+  ]
+ }
+}

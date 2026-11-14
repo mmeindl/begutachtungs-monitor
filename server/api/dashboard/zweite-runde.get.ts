@@ -1,6 +1,7 @@
 /**
  * GET /api/dashboard/zweite-runde → DashboardSecondRound: the
- * Regierungsvorlagen that are taking Stellungnahmen **right now**.
+ * Regierungsvorlagen — and since 14.11.2026 the committees' own motions
+ * (`BUA`, „Ausschussantrag") — that are taking Stellungnahmen **right now**.
  *
  * Why this exists. Anyone can file on a Vorlage in the Nationalrat the same
  * way they filed on the Ministerialentwurf — same list upstream, same form.
@@ -30,6 +31,10 @@
  */
 import type { DashboardSecondRound, OpenVorlage } from '#shared/types'
 import { budgetExemptReason } from '#shared/utils/budgetExempt'
+import { isFilingOpen, readCommitteeConsultation } from '../../utils/parliament/detailJson'
+import { getCurrentGp, getDraftsForGp, getGegenstand, getItemsForGp } from '../../utils/parliament/drafts'
+import { findPrecedingDraft } from '../../utils/parliament/precedingDraft'
+import { getStatementsForRv } from '../../utils/parliament/statements'
 
 /**
  * Upstream's "still in the parliamentary procedure" (`mapVorlageRow`) —
@@ -49,10 +54,26 @@ import { budgetExemptReason } from '#shared/utils/budgetExempt'
  * four Vorlagen at `4` that day all had their form open. Narrowing on `1`
  * and `2` had kept them out.
  *
+ * `3` since 14.11.2026: 365 d.B. (XXVIII), a committee's motion sent back
+ * to the committee by the plenary, stood at `3` with its form open. No
+ * Regierungsvorlage of GP XXVIII stood at `3` that day; admitted for every
+ * kind all the same, since the flag decides.
+ *
  * Still only a narrowing: `isFilingOpen` is read per item below and is what
  * the section claims. Verify, then display.
  */
-const STATUS_IN_PROCEDURE = new Set(['1', '2', '4'])
+export const STATUS_IN_PROCEDURE: ReadonlySet<string> = new Set(['1', '2', '3', '4'])
+
+/** The document types the section shows: a Regierungsvorlage, a committee's motion. */
+const KIND_OF_DOKTYP: Readonly<Record<string, OpenVorlage['kind']>> = { RV: 'regierungsvorlage', BUA: 'ausschussantrag' }
+
+/** The rows of the period's item list the section reads a record for. Pure. */
+export function secondRoundCandidates<T extends { doktyp: string; status: string }>(rows: readonly T[]): (T & { kind: OpenVorlage['kind'] })[] {
+  return rows.flatMap((row) => {
+    const kind = KIND_OF_DOKTYP[row.doktyp]
+    return kind && STATUS_IN_PROCEDURE.has(row.status) ? [{ ...row, kind }] : []
+  })
+}
 
 /** One row, before the cross-check has decided about the missing pointer. */
 type PendingVorlage = Omit<OpenVorlage, 'consultation'> & {
@@ -61,7 +82,7 @@ type PendingVorlage = Omit<OpenVorlage, 'consultation'> & {
 
 export default defineEventHandler(async (): Promise<DashboardSecondRound> => {
   const gp = await getCurrentGp()
-  const candidates = (await getVorlagenForGp(gp)).filter((v) => STATUS_IN_PROCEDURE.has(v.status))
+  const candidates = secondRoundCandidates(await getItemsForGp(gp))
 
   const resolved = await Promise.all(
     candidates.map(async (v): Promise<PendingVorlage | null> => {
@@ -75,7 +96,7 @@ export default defineEventHandler(async (): Promise<DashboardSecondRound> => {
         // it", never "no Begutachtung happened" — the row then links out, and
         // whether it may also SAY „ohne Begutachtung" is decided below,
         // against list 81 rather than against a missing field.
-        const pre = detail.content?.preconst ?? []
+        const pre = v.kind === 'regierungsvorlage' ? detail.content?.preconst ?? [] : []
         const me = pre.find((p) => p?.ityp === 'ME' && p.gp_code && p.inr != null) ?? null
 
         // The count enriches the row; it must not be able to remove it.
@@ -91,7 +112,13 @@ export default defineEventHandler(async (): Promise<DashboardSecondRound> => {
         // The committee's own consultation, from the same record: such a
         // Vorlage went through a Begutachtung, if not the ministry's.
         const committee = !me && !exempt && readCommitteeConsultation(detail.content?.phase) !== null
+        /* A committee's motion before its law: no check exists
+         * (`skippedLaws` classes laws, decision 2 of 14.11.2026), so its row
+         * says nothing about a Begutachtung — as its page says „nicht
+         * feststellbar" — unless the committee itself consulted. */
+        const unchecked = v.kind === 'ausschussantrag' && !committee
         return {
+          kind: v.kind,
           citation: v.citation,
           title: v.title,
           date: v.date,
@@ -103,7 +130,9 @@ export default defineEventHandler(async (): Promise<DashboardSecondRound> => {
               ? { kind: 'unknown' as const }
               : committee
                 ? { kind: 'committee' as const }
-                : { kind: 'unresolved' as const },
+                : unchecked
+                  ? { kind: 'unknown' as const }
+                  : { kind: 'unresolved' as const },
         }
       } catch {
         // Per-item tolerance, as in the outcomes section: one failing

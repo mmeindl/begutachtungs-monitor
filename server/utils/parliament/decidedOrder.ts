@@ -10,7 +10,7 @@
 import type { ClosedOutcome, DraftChain, DraftSummary } from '../../../shared/types'
 import { HOME_LIST_LENGTH } from '../../../shared/utils/draftOrder'
 import { spanInDays } from '../../../shared/utils/format'
-import { promulgationState } from '../../../shared/utils/promulgation'
+import { objectionUnresolved, promulgationState } from '../../../shared/utils/promulgation'
 
 /*
  * WHAT KEEPS A ROW OUT besides a Kundmachung (03.10.2026): the two signals
@@ -59,6 +59,9 @@ export function pickDecided(
     const age = spanInDays(decidedAt, today)
     if (age === null || age < 0) continue
     if (promulgationState(chain, today)) continue
+    // Nor a Beschluss the Bundesrat objected to, while the Nationalrat has
+    // not decided on the Einspruch (14.11.2026): no Kundmachung is on its way.
+    if (objectionUnresolved(chain.bundesratObjection)) continue
     decided.push({
       decidedAt,
       row: { ...draft, chain, rvCitation: chain.rvCitation, bgblNumber: null, rvDate: chain.rvDate },

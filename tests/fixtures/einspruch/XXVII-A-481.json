@@ -1,0 +1,139 @@
+{
+ "content": {
+  "title": "10. COVID-19-Gesetz",
+  "zitation": "481/A",
+  "gp_code": "XXVII",
+  "ityp": "A",
+  "inr": 481,
+  "doktyp": "A",
+  "einlangen": "2020-04-22T00:00:00",
+  "status": {
+   "number": 5,
+   "bgbllinks": []
+  },
+  "phase": [
+   {
+    "name": "Einbringung NR",
+    "stages": [
+     {
+      "date": "22.04.2020",
+      "text": "Einbringung im Nationalrat"
+     },
+     {
+      "date": "22.04.2020",
+      "text": "Übermittlung an das Bundesministerium für Soziales, Gesundheit, Pflege und Konsumentenschutz"
+     },
+     {
+      "date": "22.04.2020",
+      "text": "Vorgesehen für den <a href=\"/ausschuss/XXVII/A-AS/1/00883\">Ausschuss für Arbeit und Soziales</a>"
+     },
+     {
+      "date": "22.04.2020",
+      "text": "<a href=\"/gegenstand/XXVII/NRSITZ/24\">24. Sitzung des Nationalrates</a>: Mitteilung der Einbringung"
+     }
+    ]
+   },
+   {
+    "name": "Ausschussberatungen NR",
+    "stages": [
+     {
+      "date": "22.04.2020",
+      "text": "<a href=\"/gegenstand/XXVII/NRSITZ/25\">25. Sitzung des Nationalrates</a>: Zuweisung an den <a href=\"/ausschuss/XXVII/A-AS/1/00883\">Ausschuss für Arbeit und Soziales</a>"
+     },
+     {
+      "date": "23.04.2020",
+      "text": "Ausschuss für Arbeit und Soziales: auf <a href=\"/dokument/XXVII/A-AS/1/00883/TO_04544374.html\">Tagesordnung</a> in der <a href=\"/ausschuss/XXVII/A-AS/1/00883?selectedStage=105&selectedSession=5&selectedDate=23042020\">5. Sitzung des Ausschusses</a>"
+     },
+     {
+      "date": "23.04.2020",
+      "text": "Ausschuss für Arbeit und Soziales: Bericht <a href=\"/gegenstand/XXVII/I/123\">123 d.B.</a>"
+     }
+    ]
+   },
+   {
+    "name": "Plenarberatungen NR",
+    "stages": [
+     {
+      "date": "28.04.2020",
+      "text": "Auf der <a href=\"/dokument/XXVII/NRSITZ/27/TO_04445814.html\">Tagesordnung</a> der <a href=\"/gegenstand/XXVII/NRSITZ/27\">27. Sitzung des Nationalrates</a>"
+     },
+     {
+      "date": "28.04.2020",
+      "text": "27. Sitzung des Nationalrates: Zweite und dritte Lesung"
+     },
+     {
+      "date": "28.04.2020",
+      "text": "27. Sitzung des Nationalrates: Gesetzesvorschlag in zweiter Lesung <b>angenommen</b><br>Dafür: ÖVP, GRÜNE, NEOS, dagegen: SPÖ, FPÖ"
+     },
+     {
+      "date": "28.04.2020",
+      "text": "27. Sitzung des Nationalrates: Gesetzesvorschlag in dritter Lesung <b>angenommen</b><br>Dafür: ÖVP, GRÜNE, NEOS, dagegen: SPÖ, FPÖ"
+     },
+     {
+      "date": "28.04.2020",
+      "text": "Beschluss im Nationalrat <a href=\"/gegenstand/XXVII/BNR/31\">31/BNR</a>"
+     },
+     {
+      "date": "29.04.2020",
+      "text": "Übermittlung des Beschlusses an den Bundesrat"
+     }
+    ]
+   },
+   {
+    "name": "Einlangen BR",
+    "stages": [
+     {
+      "date": "29.04.2020",
+      "text": "Einlangen im Bundesrat (Frist: 24.06.2020)"
+     },
+     {
+      "date": "29.04.2020",
+      "text": "Mitwirkungsrecht des Bundesrates"
+     }
+    ]
+   },
+   {
+    "name": "Ausschussberatungen BR",
+    "stages": [
+     {
+      "date": "29.04.2020",
+      "text": "Zuweisung an den <a href=\"/ausschuss/BR/A-AK-BR/1/00311\">Ausschuss für Arbeit, Soziales und Konsumentenschutz des Bundesrates</a>"
+     },
+     {
+      "date": "04.05.2020",
+      "text": "Ausschuss für Arbeit, Soziales und Konsumentenschutz des Bundesrates: auf <a href=\"/dokument/BR/A-AK-BR/1/00311/TO_04554217.html\">Tagesordnung</a> in der <a href=\"/ausschuss/BR/A-AK-BR/1/00311?selectedStage=105&selectedSession=3&selectedDate=04052020\">3. Sitzung des Ausschusses</a>"
+     },
+     {
+      "date": "04.05.2020",
+      "text": "Ausschuss für Arbeit, Soziales und Konsumentenschutz des Bundesrates: Bericht <a href=\"/gegenstand/BR/I-BR/10302\">10302/BR d.B.</a>"
+     }
+    ]
+   },
+   {
+    "name": "Plenarberatungen BR",
+    "stages": [
+     {
+      "date": "04.05.2020",
+      "text": "Auf der Tagesordnung der <a href=\"/gegenstand/BR/BRSITZ/906\">906. Sitzung</a>"
+     },
+     {
+      "date": "04.05.2020",
+      "text": "906. Sitzung: Antrag, Einspruch zu erheben (<a href=\"/gegenstand/BR/GO-BR/1419\">1419/GO-BR/2020</a>)<br><b>angenommen</b><br>mehrstimmig"
+     },
+     {
+      "date": "04.05.2020",
+      "text": "906. Sitzung: Debatte"
+     },
+     {
+      "date": "04.05.2020",
+      "text": "906. Sitzung: Antrag, Einspruch zu erheben, <b>angenommen</b> <a href=\"/gegenstand/XXVII/I/150\">150 d.B.</a><br>mehrstimmig"
+     },
+     {
+      "date": "04.05.2020",
+      "text": "Beschluss im Bundesrat <a href=\"/gegenstand/XXVII/BNR/31\">31/BNR</a>"
+     }
+    ]
+   }
+  ]
+ }
+}

@@ -35,6 +35,9 @@ const props = defineProps<{
   /** The first text of the procedure, where the whole-way comparison starts
    *  (`lawDiffSteps`): the draft by default. */
   origin?: 'me' | 'rv' | 'antrag'
+  /** No whole-way comparison: the page of a committee's motion, whose first
+   *  text the comparison has no name for yet (`NO_COMPARISON_DE`). */
+  withoutComparison?: boolean
 }>()
 
 const base = computed(() => props.apiBase ?? `/api/drafts/${props.gp}/${props.inr}`)
@@ -151,7 +154,7 @@ function bgblCite(number: string | null, risUrl: string | null): string | null {
            passed in by the page. -->
       <slot />
       <LawDiffSection
-        v-if="enactment.bgblNumber"
+        v-if="enactment.bgblNumber && !withoutComparison"
         :gp="gp"
         :inr="inr"
         scope="bgbl"

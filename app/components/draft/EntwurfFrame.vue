@@ -1,9 +1,12 @@
 <script setup lang="ts">
 import type { AmendedLawsResponse, EuRechtResponse, LandBundesrechtResponse } from '#shared/types'
 import { formatDateDe } from '#shared/utils/format'
-import { entwurfFrameCredits, entwurfFrameView } from '~/utils/entwurfFrame'
+import type { Component } from 'vue'
+import { entwurfFrameCredits, entwurfFrameView, type CarriedDraftLine, type EntwurfFrameMethod } from '~/utils/entwurfFrame'
 import type { EuTimelineContext } from '~/utils/euRecht'
 import { BUNDESRECHT_FACT_ANCHOR, EU_FACT_ANCHOR } from '~/utils/origin'
+import MethodBundLand from '~/components/method/MethodBundLand.vue'
+import MethodEuRecht from '~/components/method/MethodEuRecht.vue'
 
 /**
  * The opening frame of „Der Entwurf" — the section's lede, in the unfilled
@@ -27,6 +30,8 @@ const props = defineProps<{
   timeline?: EuTimelineContext | null
   /** A Land's draft: who published the documents read, „Land Tirol". */
   publisher?: string | null
+  /** An Initiativantrag's page: the consulted draft whose text it carries (`carriedDraftDe`). */
+  carried?: CarriedDraftLine | null
 }>()
 
 const LAW_FOLD_AT = 5
@@ -34,11 +39,19 @@ const view = computed(() => entwurfFrameView(props))
 const credits = computed(() => entwurfFrameCredits(props, view.value))
 const euId = EU_FACT_ANCHOR.slice(1)
 const bundId = BUNDESRECHT_FACT_ANCHOR.slice(1)
+/* The method texts the credit line's „Methode" opens, by the id the pure
+   module returns (`entwurfFrameCredits.methods`). */
+const METHOD: Record<EntwurfFrameMethod, Component> = { 'eu-recht': MethodEuRecht, 'bund-land': MethodBundLand }
 </script>
 
 <template>
   <div v-if="view.facts.length">
     <FactList id="recht" :facts="view.facts" class="scroll-mt-6">
+      <template v-if="carried" #value-begutachtet>
+        <p class="mt-1 text-ink-secondary">
+          {{ carried.before }}<NuxtLink :to="carried.link.href" class="link-inline">{{ carried.link.label }}</NuxtLink>{{ carried.after }}
+        </p>
+      </template>
       <template v-if="laws" #value-recht>
         <ul role="list" class="mt-1 space-y-2">
           <li v-for="law in laws.laws.slice(0, LAW_FOLD_AT)" :key="law.title">
@@ -78,11 +91,14 @@ const bundId = BUNDESRECHT_FACT_ANCHOR.slice(1)
       </template>
     </FactList>
     <!-- ONE line for every row: which documents, of whom, which Fassung. -->
-    <SectionCredits :sources="[]" :marked="false" :method="credits.method ?? undefined">
+    <SectionCredits :sources="[]" :marked="false">
       <span v-if="credits.items.length || credits.landDocs.length">Quellen:</span>
       <span v-if="credits.landDocs.length"><template v-for="(doc, i) in credits.landDocs" :key="doc.url + doc.label"><template v-if="i > 0">{{ i === credits.landDocs.length - 1 ? ' und ' : ', ' }}</template><ExternalLink :href="doc.url" class="link-muted">{{ doc.label }}</ExternalLink></template> ({{ credits.landPublisher }})</span>
       <span v-for="item in credits.items" :key="item">{{ item }}</span>
       <span v-if="credits.asOf">Verlinkt in der Fassung vom {{ formatDateDe(credits.asOf) }}</span>
+      <template v-if="credits.methods.length" #method>
+        <component :is="METHOD[m]" v-for="m in credits.methods" :key="m" />
+      </template>
     </SectionCredits>
   </div>
 </template>

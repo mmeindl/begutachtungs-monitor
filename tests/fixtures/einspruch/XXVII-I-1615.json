@@ -1,0 +1,46 @@
+{
+ "content": {
+  "title": "Einspruch des Bundesrates betr. Bundesministeriengesetz-Novelle 2022",
+  "zitation": "1615 d.B.",
+  "gp_code": "XXVII",
+  "ityp": "I",
+  "inr": 1615,
+  "doktyp": "EBR",
+  "einlangen": "2022-06-30T00:00:00",
+  "status": {
+   "number": 2,
+   "bgbllinks": []
+  },
+  "reference": [
+   {
+    "text": "Bezug zu",
+    "zitation": "2597/A",
+    "url": "/gegenstand/XXVII/A/2597"
+   }
+  ],
+  "phase": [
+   {
+    "name": "Einlangen NR",
+    "stages": [
+     {
+      "date": "30.06.2022",
+      "text": "Einlangen im Nationalrat"
+     },
+     {
+      "date": "30.06.2022",
+      "text": "Vorgesehen für den <a href=\"/ausschuss/XXVII/A-VF/1/00900\">Verfassungsausschuss</a>"
+     }
+    ]
+   },
+   {
+    "name": "Ausschussberatungen NR",
+    "stages": [
+     {
+      "date": "06.07.2022",
+      "text": "<a href=\"/gegenstand/XXVII/NRSITZ/167\">167. Sitzung des Nationalrates</a>: Zuweisung an den <a href=\"/ausschuss/XXVII/A-VF/1/00900\">Verfassungsausschuss</a>"
+     }
+    ]
+   }
+  ]
+ }
+}

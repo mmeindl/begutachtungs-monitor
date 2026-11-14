@@ -32,8 +32,9 @@
  *    (`ANTRAG_PARTIAL`, below the table's „belegt" step), a
  *    plausible preceding draft by title (`findPrecedingDraft`, the open
  *    Vorlagen' check), a check that could not run (a list unread, an item
- *    Parliament's list does not hold), or no carrying item at all. Says
- *    nothing, counts nowhere.
+ *    Parliament's list does not hold), a committee's motion whose „Bezug
+ *    zu" parent was consulted (`related-consulted`), or no carrying item at
+ *    all. Says nothing, counts nowhere.
  *  - `none` — everything else. Only these become rows, and only these are
  *    counted.
  *
@@ -79,6 +80,42 @@ export interface ParliamentItem {
   date: string
 }
 
+/** An item a committee's motion names under „Bezug zu" (`relatedItemsOf`). */
+export interface RelatedRef {
+  gp: string
+  /** Parliament's type: `I`, `A`, `GAA`, … — only `I` and `A` are checked. */
+  ityp: string
+  inr: number
+  /**
+   * For an `I` or `A` parent, what its own record says: true where it names
+   * its Ministerialentwurf (`preconst`) or its committee invited written
+   * Stellungnahmen (an Ausschussbegutachtung, `readCommitteeConsultation`);
+   * false where it shows neither; absent where it was not read — then the
+   * check did not run.
+   */
+  consulted?: boolean
+}
+
+/**
+ * One committee's motion (`BUA`, „Bericht und Antrag") of list 101, with the
+ * items its own record names under „Bezug zu" — `undefined` where that record
+ * could not be read: then the check did not run (`unchecked`).
+ */
+export interface AusschussantragItem extends ParliamentItem {
+  related: readonly RelatedRef[] | undefined
+}
+
+/**
+ * One motion of the Bundesrat (`GABR`, or `GABR13` from a third of its
+ * members) of list 101 (14.11.2026). RIS keys the law such a motion became
+ * by its d.B. number in `Regierungsvorlage` (BGBl. I Nr. 44/2015 ⇒ 452,
+ * GABR XXV), and the Bundesgesetzblatt prints „RV 452" — list 101's
+ * document type is what tells it from a Regierungsvorlage.
+ */
+export interface BundesratsantragItem extends ParliamentItem {
+  variant: 'bundesrat' | 'drittel'
+}
+
 /** What the classification reads, gathered by the caller. */
 export interface SkippedLawsInput {
   gp: string
@@ -104,16 +141,41 @@ export interface SkippedLawsInput {
   antraege: readonly ParliamentItem[] | null
   /** List 81 of `gp`; null where unread. */
   drafts: readonly DraftSummary[] | null
+  /**
+   * List 101's committee motions (`BUA`) of `gp` that a record of the period
+   * names as its Ausschussbericht, each with its „Bezug zu"
+   * (14.11.2026); null where the list is unread. Optional: absent means the
+   * caller did not look, and a law that could be one says nothing.
+   */
+  ausschussantraege?: readonly AusschussantragItem[] | null
+  /**
+   * List 101's motions of the Bundesrat of `gp` (14.11.2026); null where the
+   * list is unread. Optional: absent means the caller did not look, and a
+   * law whose `Regierungsvorlage` number is no Vorlage says nothing.
+   */
+  bundesratsantraege?: readonly BundesratsantragItem[] | null
 }
 
 /** The item a row is about — the one whose page it links. */
 export interface CarryingItem {
-  kind: 'rv' | 'antrag'
+  /** A Regierungsvorlage, an Initiativantrag, a committee's own motion
+   *  (`BUA`) or a motion of the Bundesrat (`GABR`/`GABR13`), the last two
+   *  since 14.11.2026. */
+  kind: 'rv' | 'antrag' | 'ausschussantrag' | 'bundesratsantrag'
   inr: number
   citation: string
+  /** Who moved a motion of the Bundesrat; absent on every other kind. */
+  variant?: 'bundesrat' | 'drittel'
 }
 
-export type UnknownReason = 'preceding-draft' | 'partial-text' | 'unchecked' | 'no-item' | 'mentions'
+/**
+ * Why a law says nothing. `related-consulted` (14.11.2026): a law from a
+ * committee's motion whose „Bezug zu" parent — a Regierungsvorlage a draft's
+ * stage record links, or an Antrag that carries a consulted draft's text,
+ * in full or in part — went through a Begutachtung. The committee's text may
+ * be that text, changed or not; nobody here can tell, so nothing is said.
+ */
+export type UnknownReason = 'preceding-draft' | 'partial-text' | 'unchecked' | 'no-item' | 'mentions' | 'related-consulted'
 
 export type SkippedClass =
   | { kind: 'consulted'; via: 'vorlage' | 'bgbl' | 'antrag' }
@@ -178,18 +240,88 @@ function consultedVia(r: BgblRecord, gp: string, idx: ConsultedIndex): 'vorlage'
   return null
 }
 
+/** The period's lists as maps, built once by `classifySkippedLaws`. */
+interface PeriodMaps {
+  vorlagen: Map<number, ParliamentItem> | null
+  antraege: Map<number, ParliamentItem> | null
+  ausschussantraege: Map<number, AusschussantragItem> | null
+  bundesratsantraege: Map<number, BundesratsantragItem> | null
+}
+
+/**
+ * The committee's motion a record without a Vorlage and an Antrag carries:
+ * its Ausschussbericht number, where list 101 says that number is a `BUA` of
+ * the period. RIS keys such a law by that number alone (BGBl. I Nr.
+ * 156/2024 ⇒ 14 d.B.); for every other law the field names the committee's
+ * report on the Vorlage or Antrag, which list 101 does not hold as a `BUA`.
+ * `undefined` where the list is unread and the record names a report: the
+ * check did not run.
+ */
+function ausschussantragOf(r: BgblRecord, maps: PeriodMaps): AusschussantragItem | null | undefined {
+  if (!r.ausschussberichte?.length) return null
+  if (!maps.ausschussantraege) return undefined
+  for (const inr of r.ausschussberichte) {
+    const bua = maps.ausschussantraege.get(inr)
+    if (bua) return bua
+  }
+  return null
+}
+
+/**
+ * Decision 2 of 14.11.2026, „Bezug zu": a committee's motion says nothing
+ * where an item it names went through a Begutachtung or may have — the
+ * Regierungsvorlage a draft's stage record links or whose own record names
+ * its draft, an Antrag in the route table (`ANTRAG_PATHS`, any share) or
+ * with a part of a consulted text (`ANTRAG_PARTIAL`), a parent whose
+ * committee invited Stellungnahmen (an Ausschussbegutachtung is a
+ * Begutachtung: 205 d.B. XXVIII behind 372/A, 334 d.B. behind 310 d.B.), a
+ * parent with a plausible preceding draft by title.
+ * A parent of another period, or one the period's lists do not hold, is a
+ * check that did not run. Errs towards silence throughout. Null where every
+ * parent was checked and none was consulted.
+ */
+function relatedReason(bua: AusschussantragItem, input: SkippedLawsInput, idx: ConsultedIndex, maps: PeriodMaps): UnknownReason | null {
+  if (!bua.related) return 'unchecked'
+  const partial = new Set(input.antragPartial?.[input.gp] ?? [])
+  for (const rel of bua.related) {
+    if (rel.consulted === true) return 'related-consulted'
+    if (rel.ityp === 'I' && idx.vorlagen.has(`${rel.gp}/${rel.inr}`)) return 'related-consulted'
+    if (rel.ityp === 'A' && rel.gp === input.gp && (idx.antraegeOfPeriod.has(rel.inr) || partial.has(rel.inr))) return 'related-consulted'
+  }
+  for (const rel of bua.related) {
+    if (rel.ityp !== 'I' && rel.ityp !== 'A') continue
+    if (rel.consulted === undefined) return 'unchecked'
+    const own = rel.gp === input.gp ? (rel.ityp === 'I' ? maps.vorlagen : maps.antraege)?.get(rel.inr) ?? null : null
+    if (!own || !input.drafts) return 'unchecked'
+    if (findPrecedingDraft(own, input.drafts as DraftSummary[]) !== null) return 'preceding-draft'
+  }
+  return null
+}
+
+/**
+ * A law from a committee's motion (decision 2 of 14.11.2026): the same
+ * checks as an Antrag's — the budget procedure, the title against list 81,
+ * then the committee and mention looks that follow every `none`
+ * (`refineByCommittee`, `refineByMention`) — and silence where its „Bezug
+ * zu" parent was consulted (`relatedReason`).
+ */
+function classifyAusschussantrag(r: BgblRecord, bua: AusschussantragItem, input: SkippedLawsInput, idx: ConsultedIndex, maps: PeriodMaps): SkippedClass {
+  const exempt = budgetExemptReason(input.gp, [{ ityp: 'I', inr: bua.inr }], [r.kurztitel, r.titel, bua.title])
+  if (exempt) return { kind: 'exempt', reason: exempt }
+  const related = relatedReason(bua, input, idx, maps)
+  if (related) return { kind: 'unknown', reason: related }
+  if (!input.drafts) return { kind: 'unknown', reason: 'unchecked' }
+  if (findPrecedingDraft(bua, input.drafts as DraftSummary[]) !== null) return { kind: 'unknown', reason: 'preceding-draft' }
+  return { kind: 'none', item: { kind: 'ausschussantrag', inr: bua.inr, citation: bua.citation }, title: bua.title }
+}
+
 /**
  * One law's class. `idx` and the maps are the period's, built once by
  * `classifySkippedLaws`; exported for nothing else.
  */
-function classifyOne(
-  r: BgblRecord,
-  input: SkippedLawsInput,
-  idx: ConsultedIndex,
-  vorlagen: Map<number, ParliamentItem> | null,
-  antraege: Map<number, ParliamentItem> | null,
-): SkippedClass {
+function classifyOne(r: BgblRecord, input: SkippedLawsInput, idx: ConsultedIndex, maps: PeriodMaps): SkippedClass {
   const { gp } = input
+  const { vorlagen, antraege } = maps
   const via = consultedVia(r, gp, idx)
   if (via) return { kind: 'consulted', via }
 
@@ -197,7 +329,26 @@ function classifyOne(
     ...r.regierungsvorlagen.map((inr) => ({ ityp: 'I' as const, inr })),
     ...r.initiativantraege.map((inr) => ({ ityp: 'A' as const, inr })),
   ]
-  const own = items.map((i) => (i.ityp === 'I' ? vorlagen : antraege)?.get(i.inr) ?? null)
+
+  // The law's RIS record names no Vorlage and no Antrag. Typically a law
+  // from a committee's own motion (`BUA`, open for Stellungnahmen under
+  // § 23b Abs. 1 GOG-NR), which RIS names only as the Ausschussbericht
+  // (14.11.2026); otherwise a record RIS keyed incompletely
+  // (docs/research/wege-zu-einer-rechtsnorm.md). No item: nothing to say.
+  if (!items.length) {
+    const bua = ausschussantragOf(r, maps)
+    if (bua) return classifyAusschussantrag(r, bua, input, idx, maps)
+    const exempt = budgetExemptReason(gp, [], [r.kurztitel, r.titel])
+    if (exempt) return { kind: 'exempt', reason: exempt }
+    return { kind: 'unknown', reason: bua === undefined ? 'unchecked' : 'no-item' }
+  }
+
+  // A `Regierungsvorlage` number that list 101 holds as a motion of the
+  // Bundesrat is one (14.11.2026, BGBl. I Nr. 44/2015 ⇒ 452 d.B. XXV): the
+  // same checks as an Antrag's, and the row names the motion. A number
+  // neither list holds stays a check that did not run.
+  const motion = (i: { ityp: 'I' | 'A'; inr: number }) => (i.ityp === 'I' && !vorlagen?.has(i.inr) ? maps.bundesratsantraege?.get(i.inr) ?? null : null)
+  const own = items.map((i) => (i.ityp === 'I' ? vorlagen?.get(i.inr) ?? motion(i) : antraege?.get(i.inr)) ?? null)
   const exempt = budgetExemptReason(gp, items, [r.kurztitel, r.titel, ...own.map((o) => o?.title)])
   if (exempt) return { kind: 'exempt', reason: exempt }
 
@@ -206,9 +357,6 @@ function classifyOne(
   const partial = new Set(input.antragPartial?.[gp] ?? [])
   if (r.initiativantraege.some((inr) => partial.has(inr))) return { kind: 'unknown', reason: 'partial-text' }
 
-  // No item, no page to link and no title to check — a law from an
-  // Ausschussantrag, or a record RIS keyed incompletely. Nothing to say.
-  if (!items.length) return { kind: 'unknown', reason: 'no-item' }
   // Every item has to be checked: a missing list or a row the list does not
   // hold is a check that did not run, and that never becomes the claim.
   if (!input.drafts || own.some((o) => o === null)) return { kind: 'unknown', reason: 'unchecked' }
@@ -221,9 +369,12 @@ function classifyOne(
   // and the item a reader looks for under the law's name.
   const first = items[0]!
   const carrying = parliament[0]!
+  const brMotion = motion(first)
   return {
     kind: 'none',
-    item: { kind: first.ityp === 'I' ? 'rv' : 'antrag', inr: first.inr, citation: carrying.citation },
+    item: brMotion
+      ? { kind: 'bundesratsantrag', inr: first.inr, citation: carrying.citation, variant: brMotion.variant }
+      : { kind: first.ityp === 'I' ? 'rv' : 'antrag', inr: first.inr, citation: carrying.citation },
     title: carrying.title,
   }
 }
@@ -231,14 +382,18 @@ function classifyOne(
 /** Every federal law of `input.gp` with its class, oldest issue first. */
 export function classifySkippedLaws(input: SkippedLawsInput): ClassifiedLaw[] {
   const idx = consultedIndex(input)
-  const vorlagen = input.vorlagen ? new Map(input.vorlagen.map((v) => [v.inr, v])) : null
-  const antraege = input.antraege ? new Map(input.antraege.map((a) => [a.inr, a])) : null
+  const maps: PeriodMaps = {
+    vorlagen: input.vorlagen ? new Map(input.vorlagen.map((v) => [v.inr, v])) : null,
+    antraege: input.antraege ? new Map(input.antraege.map((a) => [a.inr, a])) : null,
+    ausschussantraege: input.ausschussantraege ? new Map(input.ausschussantraege.map((a) => [a.inr, a])) : null,
+    bundesratsantraege: input.bundesratsantraege ? new Map(input.bundesratsantraege.map((a) => [a.inr, a])) : null,
+  }
   const seen = new Set<string>()
   const out: ClassifiedLaw[] = []
   for (const r of input.records) {
     if (!isLawOfPeriod(r, input.gp) || seen.has(r.id)) continue
     seen.add(r.id)
-    out.push({ record: r, class: classifyOne(r, input, idx, vorlagen, antraege) })
+    out.push({ record: r, class: classifyOne(r, input, idx, maps) })
   }
   return out.sort((a, b) => a.record.datum.localeCompare(b.record.datum) || a.record.nummer.localeCompare(b.record.nummer))
 }

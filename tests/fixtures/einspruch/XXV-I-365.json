@@ -1,0 +1,150 @@
+{
+ "content": {
+  "title": "Bundespflegegeldgesetz, Änderung",
+  "zitation": "365 d.B.",
+  "gp_code": "XXV",
+  "ityp": "I",
+  "inr": 365,
+  "doktyp": "RV",
+  "einlangen": "2014-11-18T00:00:00",
+  "status": {
+   "number": 5,
+   "bgbllinks": []
+  },
+  "reference": [
+   {
+    "text": "Bezug zu",
+    "zitation": "72/ME",
+    "url": "/gegenstand/XXV/ME/72"
+   }
+  ],
+  "preconst": [
+   {
+    "gp_code": "XXV",
+    "ityp": "ME",
+    "inr": 72,
+    "zitation": "72/ME"
+   }
+  ],
+  "phase": [
+   {
+    "name": "Einlangen NR",
+    "stages": [
+     {
+      "date": "18.11.2014",
+      "text": "Einlangen im Nationalrat"
+     },
+     {
+      "date": "18.11.2014",
+      "text": "Vorgesehen für den <a href=\"/ausschuss/XXV/A-AS/1/00360\">Ausschuss für Arbeit und Soziales</a>"
+     },
+     {
+      "date": "19.11.2014",
+      "text": "<a href=\"/gegenstand/XXV/NRSITZ/50\">50. Sitzung des Nationalrates</a>: Mitteilung des Einlangens"
+     }
+    ]
+   },
+   {
+    "name": "Ausschussberatungen NR",
+    "stages": [
+     {
+      "date": "20.11.2014",
+      "text": "<a href=\"/gegenstand/XXV/NRSITZ/51\">51. Sitzung des Nationalrates</a>: Zuweisung an den <a href=\"/ausschuss/XXV/A-AS/1/00360\">Ausschuss für Arbeit und Soziales</a>"
+     },
+     {
+      "date": "03.12.2014",
+      "text": "Ausschuss für Arbeit und Soziales: auf <a href=\"/dokument/XXV/A-AS/1/00360/TO_02335317.html\">Tagesordnung</a> in der <a href=\"/ausschuss/XXV/A-AS/1/00360?selectedStage=105&selectedSession=8&selectedDate=03122014\">8. Sitzung des Ausschusses</a>"
+     },
+     {
+      "date": "03.12.2014",
+      "text": "Ausschuss für Arbeit und Soziales: Bericht <a href=\"/gegenstand/XXV/I/414\">414 d.B.</a>"
+     }
+    ]
+   },
+   {
+    "name": "Plenarberatungen NR",
+    "stages": [
+     {
+      "date": "10.12.2014",
+      "text": "Auf der <a href=\"/dokument/XXV/NRSITZ/53/TO_02261472.html\">Tagesordnung</a> der <a href=\"/gegenstand/XXV/NRSITZ/53\">53. Sitzung des Nationalrates</a>"
+     },
+     {
+      "date": "10.12.2014",
+      "text": "53. Sitzung des Nationalrates: Zweite und dritte Lesung"
+     },
+     {
+      "date": "10.12.2014",
+      "text": "53. Sitzung des Nationalrates: Gesetzesvorschlag in zweiter Lesung <b>angenommen</b><br>Dafür: SPÖ, ÖVP, dagegen: FPÖ, GRÜNE, STRONACH, NEOS"
+     },
+     {
+      "date": "10.12.2014",
+      "text": "53. Sitzung des Nationalrates: Gesetzesvorschlag in dritter Lesung <b>angenommen</b><br>Namentliche Abstimmung (abgegebene Stimmen: 145, davon Ja-Stimmen: 89, Nein-Stimmen: 56 (davon 1 ungültig))"
+     },
+     {
+      "date": "10.12.2014",
+      "text": "Beschluss im Nationalrat <a href=\"/gegenstand/XXV/BNR/107\">107/BNR</a>"
+     },
+     {
+      "date": "11.12.2014",
+      "text": "Übermittlung des Beschlusses an den Bundesrat"
+     }
+    ]
+   },
+   {
+    "name": "Einlangen BR",
+    "stages": [
+     {
+      "date": "11.12.2014",
+      "text": "Einlangen im Bundesrat (Frist: 05.02.2015)"
+     },
+     {
+      "date": "11.12.2014",
+      "text": "Mitwirkungsrecht des Bundesrates"
+     }
+    ]
+   },
+   {
+    "name": "Ausschussberatungen BR",
+    "stages": [
+     {
+      "date": "11.12.2014",
+      "text": "Zuweisung an den <a href=\"/ausschuss/BR/A-AK-BR/1/00311\">Ausschuss für Arbeit, Soziales und Konsumentenschutz des Bundesrates</a>"
+     },
+     {
+      "date": "16.12.2014",
+      "text": "Ausschuss für Arbeit, Soziales und Konsumentenschutz des Bundesrates: auf <a href=\"/dokument/BR/A-AK-BR/1/00311/TO_02465469.html\">Tagesordnung</a> in der <a href=\"/ausschuss/BR/A-AK-BR/1/00311?selectedStage=105&selectedSession=6&selectedDate=16122014\">6. Sitzung des Ausschusses</a>"
+     },
+     {
+      "date": "16.12.2014",
+      "text": "Ausschuss für Arbeit, Soziales und Konsumentenschutz des Bundesrates: Bericht <a href=\"/gegenstand/BR/I-BR/9281\">9281/BR d.B.</a>"
+     }
+    ]
+   },
+   {
+    "name": "Plenarberatungen BR",
+    "stages": [
+     {
+      "date": "18.12.2014",
+      "text": "Auf der Tagesordnung der <a href=\"/gegenstand/BR/BRSITZ/837\">837. Sitzung</a>"
+     },
+     {
+      "date": "18.12.2014",
+      "text": "837. Sitzung: Debatte"
+     },
+     {
+      "date": "18.12.2014",
+      "text": "837. Sitzung: Antrag, Einspruch zu erheben, <b>angenommen</b> <a href=\"/gegenstand/XXV/I/453\">453 d.B.</a><br>mehrstimmig"
+     },
+     {
+      "date": "18.12.2014",
+      "text": "Beschluss im Bundesrat <a href=\"/gegenstand/XXV/BNR/107\">107/BNR</a>"
+     },
+     {
+      "date": "19.12.2014",
+      "text": "Mitteilung des Einspruches an das Bundeskanzleramt"
+     }
+    ]
+   }
+  ]
+ }
+}

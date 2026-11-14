@@ -2,8 +2,8 @@
 import type { DraftDetail, EnactmentInfo, LawStationId } from '#shared/types'
 import type { Fact } from '~/components/ui/FactList.vue'
 import { LAW_STATION_LABEL, lawStationOf } from '#shared/utils/lawStations'
-import { blgNrDe, citeLineDe, rvCitationDe } from '#shared/utils/citations'
-import { PARLIAMENT_HISTORY_SOURCES, parliamentStandDe, voteLineDe, type ParliamentFacts } from '~/utils/spine'
+import { beilageCitationDe, blgNrDe, buaCitationDe, citeLineDe, rvCitationDe } from '#shared/utils/citations'
+import { PARLIAMENT_HISTORY_SOURCES, bundesratRowDe, parliamentStandDe, voteLineDe, type ParliamentFacts, type ParliamentItem } from '~/utils/spine'
 
 /**
  * „Im Parlament" of the draft page (04.10.2026, out of the page).
@@ -22,9 +22,10 @@ const props = defineProps<{
   /** What the section reads of the page's item — a draft's `DraftDetail`, or
    *  the record of a Vorlage or Antrag without a Begutachtung (10.11.2026). */
   draft: ParliamentFacts & Pick<DraftDetail, 'gp' | 'inr'>
-  /** Whose text parliament had: a Regierungsvorlage (every draft's) or an
-   *  Antrag — the frame's sentence and the documents' citation name it. */
-  item?: 'rv' | 'antrag'
+  /** Whose text parliament had: a Regierungsvorlage (every draft's), an
+   *  Antrag or a committee's motion — the frame's sentence and the
+   *  documents' citation name it. */
+  item?: ParliamentItem
   /** The draft's Regierungsvorlage — `draft.enactment`, known to be there. */
   enactment: EnactmentInfo
   /** Parliament published a changed text, so the bar links the comparison
@@ -45,6 +46,14 @@ const props = defineProps<{
  * sentence less rather than a vaguer one. */
 const voteLine = computed(() => voteLineDe(props.enactment.vote))
 
+/* The Bundesrat's Einspruch and what followed (14.11.2026), as one sentence
+ * after the vote it objected to: who did what and when, the Einspruch's own
+ * item linked. Its words are the util's (`bundesratRowDe`). */
+const bundesratRow = computed(() => {
+  const o = props.enactment.bundesratObjection
+  return o ? bundesratRowDe(o) : null
+})
+
 const facts = computed<Fact[]>(() => {
   const e = props.enactment
   return [
@@ -60,6 +69,7 @@ const facts = computed<Fact[]>(() => {
     ...(e.committeeReport ? [{ key: 'ausschuss', title: 'Im Ausschuss' }] : []),
     ...(e.plenaryAmendments?.amendments.length ? [{ key: 'plenum', title: 'Im Plenum' }] : []),
     ...(voteLine.value ? [{ key: 'lesung', title: 'Dritte Lesung', text: `${voteLine.value}.` }] : []),
+    ...(bundesratRow.value ? [{ key: 'bundesrat', title: 'Bundesrat', text: bundesratRow.value.text }] : []),
   ]
 })
 
@@ -75,7 +85,11 @@ const citeAs = computed(() => {
   const e = props.enactment
   if (!e.rvCitation) return undefined
   const gp = /\/gegenstand\/([IVXLC]+)\//.exec(e.rvUrl)?.[1] ?? props.draft.gp
-  // An Antrag is no Beilage: no „BlgNR" form to cite it by.
+  // An Antrag is no Beilage: no „BlgNR" form to cite it by. A committee's
+  // motion is, cited as the Bundesgesetzblatt cites it (`buaCitationDe`).
+  if (props.item === 'ausschussantrag') return buaCitationDe(e.rvCitation, gp)
+  // A motion of the Bundesrat: the bare Beilage, never „RV" (`beilageCitationDe`).
+  if (props.item === 'bundesratsantrag') return beilageCitationDe(e.rvCitation, gp)
   return props.item === 'antrag' ? `Antrag ${e.rvCitation} ${gp}. GP` : rvCitationDe(e.rvCitation, gp)
 })
 
@@ -134,6 +148,9 @@ const documents = computed(() =>
           <template v-if="enactment.plenaryAmendments?.amendments.length" #value-plenum>
             Angenommen: {{ enactment.plenaryAmendments.amendments.length > 1 ? 'Abänderungsanträge' : 'Abänderungsantrag' }}
             <template v-for="(motion, i) in enactment.plenaryAmendments.amendments" :key="motion.url"><template v-if="i > 0">{{ i === enactment.plenaryAmendments.amendments.length - 1 ? ' und ' : ', ' }}</template><ExternalLink :href="motion.url" class="link-inline">{{ motion.label }}</ExternalLink></template><template v-if="enactment.plenaryAmendments.session">, <ExternalLink :href="enactment.plenaryAmendments.session.url" class="link-inline">{{ enactment.plenaryAmendments.session.label }}</ExternalLink></template>
+          </template>
+          <template v-if="bundesratRow?.ebr" #value-bundesrat>
+            {{ bundesratRow.lead }} (<ExternalLink :href="bundesratRow.ebr.url" class="link-inline">{{ bundesratRow.ebr.citation }}</ExternalLink>){{ bundesratRow.tail }}
           </template>
         </FactList>
         <!-- Where the frame's facts come from, under it in the credit line

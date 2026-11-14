@@ -1,4 +1,5 @@
 import type { CommitteeConsultation } from './statements'
+import type { BundesratMotionVariant } from './procedure'
 import type { DraftSummary } from './drafts'
 import type { LandCode, LandConsultation, LandSourceState } from './laender'
 
@@ -129,6 +130,12 @@ export interface DashboardDecided {
  * (the Bundesrat's Beschluss) and has no published Frist.
  */
 export interface OpenVorlage {
+  /**
+   * What the item is (14.11.2026): a Regierungsvorlage, or a committee's own
+   * motion (`BUA`), which takes Stellungnahmen the same way (§ 23b Abs. 1
+   * GOG-NR). Its row names it and links its own page.
+   */
+  kind: 'regierungsvorlage' | 'ausschussantrag'
   /** e.g. "594 d.B." */
   citation: string
   title: string
@@ -185,7 +192,7 @@ export interface DashboardSecondRound {
 
 /**
  * A federal law that reached the Bundesgesetzblatt without a Begutachtung —
- * a row behind the chip „Ohne Begutachtung" on `/entwuerfe`. Its own type, not an `OpenVorlage`: the
+ * a row behind the chip „Ohne Entwurf" on `/entwuerfe`. Its own type, not an `OpenVorlage`: the
  * window for Stellungnahmen is over, the carrying item may be an Antrag, and
  * nothing here is counted (`server/utils/ris/skippedLaws.ts`).
  */
@@ -196,10 +203,16 @@ export interface LawWithoutBegutachtung {
   bgblDate: string
   /** The item the law came to the Nationalrat as — the page the row links. */
   item: {
-    kind: 'rv' | 'antrag'
+    /** A Regierungsvorlage, an Initiativantrag, a committee's own motion
+     *  (`BUA`, „Ausschussantrag", since 14.11.2026) or a motion of the
+     *  Bundesrat (`GABR`/`GABR13`, since 14.11.2026). */
+    kind: 'rv' | 'antrag' | 'ausschussantrag' | 'bundesratsantrag'
+    /** Who moved a motion of the Bundesrat (`VorlageDetail.variant`); absent
+     *  on every other kind. */
+    variant?: BundesratMotionVariant
     gp: string
     inr: number
-    /** „253 d.B.", „408/A". */
+    /** „253 d.B.", „408/A", „14 d.B.". */
     citation: string
     /** `https://www.parlament.gv.at/gegenstand/<GP>/<I|A>/<inr>`. */
     parliamentUrl: string
@@ -209,7 +222,7 @@ export interface LawWithoutBegutachtung {
   /** The day of the Nationalrat's Beschluss, ISO; null where RIS carries none. */
   decidedAt: string | null
   /**
-   * Which of the two classes under the chip „Ohne Ministerialentwurf" the
+   * Which of the two classes under the chip „Ohne Entwurf" the
    * row is (10.11.2026): `none` — no Begutachtung at all, the note „ohne
    * Begutachtung"; `committee` — no draft, but the Nationalrat's committee
    * itself invited written Stellungnahmen, the note „Ausschussbegutachtung".

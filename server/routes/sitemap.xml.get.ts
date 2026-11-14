@@ -7,7 +7,7 @@
  */
 import { gpWindow } from '#shared/utils/gp'
 import { landLawPath } from '#shared/utils/laender'
-import { vorlagePath } from '#shared/utils/procedureRoot'
+import { itemKindOfLawItem, itemPath } from '#shared/utils/procedureRoot'
 import { dedupeDraftList } from '../utils/parliament/draftList'
 
 /** The EU and Bund-zu-Land maps are additions to the sitemap, never its precondition: without them in time, only `/eu-recht`. */
@@ -33,7 +33,7 @@ export default defineEventHandler(async (event) => {
   // the sitemap does not print it, but no caller may inherit the day the
   // cache was filled on. Folded, so a draft two Ressorts sent is one URL.
   const lawPaths = [
-    ...(bundLaws?.available ? bundLaws.items.map((l) => vorlagePath(l.item.gp, l.item.kind === 'rv' ? 'I' : 'A', l.item.inr)) : []),
+    ...(bundLaws?.available ? bundLaws.items.map((l) => itemPath(l.item.gp, itemKindOfLawItem(l.item.kind), l.item.inr)) : []),
     ...(landLaws?.items ?? []).map((l) => landLawPath(l.land, l)),
   ].sort()
   const body = buildSitemap(siteUrl, dedupeDraftList(items), withRisActiveOn(risOnly.items), euActPaths, bundesrechtPaths, lawPaths)

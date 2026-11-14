@@ -1,0 +1,46 @@
+{
+ "content": {
+  "title": "Einspruch des Bundesrates betr. Bundespflegegeldgesetz, Änderung",
+  "zitation": "453 d.B.",
+  "gp_code": "XXV",
+  "ityp": "I",
+  "inr": 453,
+  "doktyp": "EBR",
+  "einlangen": "2014-12-19T00:00:00",
+  "status": {
+   "number": 2,
+   "bgbllinks": []
+  },
+  "reference": [
+   {
+    "text": "Bezug zu",
+    "zitation": "365 d.B.",
+    "url": "/gegenstand/XXV/I/365"
+   }
+  ],
+  "phase": [
+   {
+    "name": "Einlangen NR",
+    "stages": [
+     {
+      "date": "19.12.2014",
+      "text": "Einlangen im Nationalrat"
+     },
+     {
+      "date": "19.12.2014",
+      "text": "Vorgesehen für den <a href=\"/ausschuss/XXV/A-AS/1/00360\">Ausschuss für Arbeit und Soziales</a>"
+     }
+    ]
+   },
+   {
+    "name": "Ausschussberatungen NR",
+    "stages": [
+     {
+      "date": "14.01.2015",
+      "text": "<a href=\"/gegenstand/XXV/NRSITZ/57\">57. Sitzung des Nationalrates</a>: Zuweisung an den <a href=\"/ausschuss/XXV/A-AS/1/00360\">Ausschuss für Arbeit und Soziales</a>"
+     }
+    ]
+   }
+  ]
+ }
+}

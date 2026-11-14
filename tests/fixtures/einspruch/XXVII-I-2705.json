@@ -1,0 +1,46 @@
+{
+ "content": {
+  "title": "Einspruch des Bundesrates betr. Erneuerbares-Gas-Gesetz – EGG",
+  "zitation": "2705 d.B.",
+  "gp_code": "XXVII",
+  "ityp": "I",
+  "inr": 2705,
+  "doktyp": "EBR",
+  "einlangen": "2024-07-11T00:00:00",
+  "status": {
+   "number": 2,
+   "bgbllinks": []
+  },
+  "reference": [
+   {
+    "text": "Bezug zu",
+    "zitation": "2455 d.B.",
+    "url": "/gegenstand/XXVII/I/2455"
+   }
+  ],
+  "phase": [
+   {
+    "name": "Einlangen NR",
+    "stages": [
+     {
+      "date": "11.07.2024",
+      "text": "Einlangen im Nationalrat"
+     },
+     {
+      "date": "12.07.2024",
+      "text": "Vorgesehen für den <a href=\"/ausschuss/XXVII/A-WH/1/00903\">Ausschuss für Wirtschaft, Industrie und Energie</a>"
+     }
+    ]
+   },
+   {
+    "name": "Ausschussberatungen NR",
+    "stages": [
+     {
+      "date": "18.09.2024",
+      "text": "<a href=\"/gegenstand/XXVII/NRSITZ/276\">276. Sitzung des Nationalrates</a>: Zuweisung an den <a href=\"/ausschuss/XXVII/A-WH/1/00903\">Ausschuss für Wirtschaft, Industrie und Energie</a>"
+     }
+    ]
+   }
+  ]
+ }
+}

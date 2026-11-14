@@ -345,6 +345,169 @@ export function findNoPromulgation(
   return null
 }
 
+// ---------------------------------------------------------------------------
+// The Bundesrat's Einspruch (Art. 42 B-VG), 14.11.2026
+// ---------------------------------------------------------------------------
+
+/**
+ * The stage that says the Bundesrat objected, in the law's own Verlauf —
+ * „899. Sitzung: Antrag, Einspruch zu erheben, angenommen <a …/I/20>20
+ * d.B.</a> mehrstimmig" (84/A XXVII). Read on all 35 EBR of GP XXII–XXVIII
+ * (14.11.2026).
+ *
+ * TWO TRAPS, both measured. „Antrag, keinen Einspruch zu erheben,
+ * angenommen" stands on almost every law, so the comma has to sit right
+ * before „Einspruch". And the motions that lead up to it — „Antrag der
+ * Bundesräte …, Einspruch zu erheben (1380/GO-BR/2020) angenommen" — carry
+ * the movers' names and a GO number, never the EBR: only the canonical
+ * stage is read. A title is never read: some treaty Vorlagen are called
+ * „Einspruch der Republik Österreich gegen …".
+ */
+const BR_OBJECTION_STAGE = /^(?:\d+\.\s*Sitzung\s*:\s*)?Antrag, Einspruch zu erheben, angenommen\b/
+/** The Einspruch's own item — a `/gegenstand/<GP>/I/<n>` of type EBR. */
+const EBR_LINK = /^\/gegenstand\/([IVXLC]+)\/I\/(\d+)(?:\/|$)/
+
+/** The Einspruch as the law's own Verlauf states it. */
+export interface ObjectionAnchor {
+  /** The Bundesrat's sitting, ISO; null when undated. */
+  date: string | null
+  /** The EBR item the stage links, or null where it links none. */
+  ebr: { gp: string; inr: number; citation: string; url: string } | null
+}
+
+/**
+ * The Bundesrat's Einspruch against the item's Beschluss, from the phase
+ * „Plenarberatungen BR" — or null. The anchor above, nothing else: a law
+ * without this stage has no Einspruch in its record.
+ */
+export function findBundesratObjection(phases: RawPhase[] | null | undefined): ObjectionAnchor | null {
+  if (!Array.isArray(phases)) return null
+  for (const phase of phases) {
+    if (!BR_PLENARY_PHASE.test((phase?.name ?? '').trim()) || !Array.isArray(phase.stages)) continue
+    for (const stage of phase.stages) {
+      const html = stage?.text ?? ''
+      if (!BR_OBJECTION_STAGE.test(stripHtmlToText(html).trim())) continue
+      const link = extractLinks(html).find((l) => EBR_LINK.test(parliamentPathname(l.url) ?? ''))
+      const m = link ? EBR_LINK.exec(parliamentPathname(link.url) ?? '') : null
+      return {
+        date: parseGermanDate(stage.date) ?? parseIsoDate(stage.date),
+        ebr: link && m?.[1] && m[2]
+          ? { gp: m[1], inr: Number(m[2]), citation: link.label || `${m[2]} d.B.`, url: link.url }
+          : null,
+      }
+    }
+  }
+  return null
+}
+
+/** As much of an EBR item's detail JSON as the outcome reads. */
+export interface EbrContent {
+  doktyp?: string | null
+  phase?: RawPhase[] | null
+  status?: { number?: number | string | null; bgbllinks?: RawBgblLink[] | null } | null
+  reference?: { text?: string | null; zitation?: string | null; url?: string | null }[] | null
+}
+
+/** The document type of the Bundesrat's Einspruch in list 101 and the detail JSON. */
+export const EBR_DOKTYP = 'EBR'
+
+/**
+ * The vocabulary of what followed, as the Einspruch's own Verlauf words it —
+ * measured 14.11.2026 on all 35 EBR items of GP XXII–XXVIII:
+ *  - 29 × „<n>. Sitzung des Nationalrates: Wiederholung des
+ *    Gesetzesbeschlusses" (Plenarberatungen NR), then „Beschluss im
+ *    Nationalrat" and, in the Bundesrat, „Bekanntgabe des
+ *    Beharrungsbeschlusses" — a Beharrungsbeschluss;
+ *  - 1 × „Antrag auf Annahme des veränderten Gesetzesvorschlags … angenommen"
+ *    (616 d.B. XXVII), then a second and third reading and the Bundesrat's
+ *    „Antrag, keinen Einspruch zu erheben" — a changed text;
+ *  - 5 × nothing past „Zuweisung an den …ausschuss", status 2,
+ *    „Beratungen nicht aufgenommen" — undecided.
+ * The canonical stage only: a motion „auf Wiederholung des
+ * Gesetzesbeschlusses (243/GO)" names its movers and could be rejected.
+ */
+const REPETITION_STAGE = /^(?:\d+\.\s*Sitzung des Nationalrates\s*:\s*)?Wiederholung des Gesetzesbeschlusses\b/
+const BEHARRUNG_NOTICE = /\bBekanntgabe des Beharrungsbeschlusses\b/
+const CHANGED_PROPOSAL = /\bAntrag auf Annahme des veränderten Gesetzesvorschlags\b.*\bangenommen\b/
+const STATUS_DONE = '5'
+
+/** What followed the Einspruch, read off the EBR item. */
+export interface ObjectionOutcome {
+  outcome: 'beharrung' | 'new-decision' | 'pending' | 'lapsed' | 'unknown'
+  unknownCause?: 'unread' | 'unmapped'
+  /** The Nationalrat's decision after the Einspruch, ISO. */
+  decidedAt: string | null
+  /** The Bundesrat's decision on a changed text, ISO — the end of the
+   *  procedure for `new-decision`; null otherwise. */
+  bundesratDecidedAt: string | null
+}
+
+/**
+ * What the Nationalrat did about an Einspruch, from the EBR item's record —
+ * null record → `unknown` (`unread`). Only the vocabulary above is mapped;
+ * both signals at once, a second Einspruch in the EBR's own Verlauf, a
+ * decision without one of the measured words, or a finished item with no
+ * decision are `unknown` (`unmapped`). Undecided is `pending` while the
+ * EBR's period runs and `lapsed` once it has ended — the Nationalrat can no
+ * longer take it up (`gpHasEnded`, by the EBR's own period).
+ */
+export function readObjectionOutcome(
+  ebr: EbrContent | null | undefined,
+  ebrGp: string,
+  currentGp: string | null | undefined,
+): ObjectionOutcome {
+  const unknown = (cause: 'unread' | 'unmapped'): ObjectionOutcome =>
+    ({ outcome: 'unknown', unknownCause: cause, decidedAt: null, bundesratDecidedAt: null })
+  if (!ebr) return unknown('unread')
+  if ((ebr.doktyp ?? '').trim() !== EBR_DOKTYP) return unknown('unmapped')
+  const phases = Array.isArray(ebr.phase) ? ebr.phase : []
+  if (findBundesratObjection(phases)) return unknown('unmapped')
+  let repeatedAt: string | null | undefined
+  let changed = false
+  let notice = false
+  for (const phase of phases) {
+    const nrPlenary = NR_PLENARY_PHASE.test((phase?.name ?? '').trim())
+    for (const stage of Array.isArray(phase?.stages) ? phase.stages : []) {
+      const text = stripHtmlToText(stage?.text ?? '').trim()
+      if (BEHARRUNG_NOTICE.test(text)) notice = true
+      if (!nrPlenary) continue
+      if (repeatedAt === undefined && REPETITION_STAGE.test(text)) {
+        repeatedAt = parseGermanDate(stage.date) ?? parseIsoDate(stage.date)
+      }
+      if (CHANGED_PROPOSAL.test(text)) changed = true
+    }
+  }
+  const repeated = repeatedAt !== undefined || notice
+  const nrDecided = findHouseDecisionDate(phases)
+  if (repeated && changed) return unknown('unmapped')
+  if (repeated) return { outcome: 'beharrung', decidedAt: nrDecided ?? repeatedAt ?? null, bundesratDecidedAt: null }
+  if (changed && nrDecided) {
+    return { outcome: 'new-decision', decidedAt: nrDecided, bundesratDecidedAt: findBundesratDecisionDate(phases) }
+  }
+  if (changed || nrDecided) return unknown('unmapped')
+  const status = ebr.status?.number == null ? null : String(ebr.status.number)
+  if (status === STATUS_DONE) return unknown('unmapped')
+  return {
+    outcome: gpHasEnded(ebrGp, currentGp) ? 'lapsed' : 'pending',
+    decidedAt: null,
+    bundesratDecidedAt: null,
+  }
+}
+
+/**
+ * The law an EBR item objects to, from its own record's „Bezug zu"
+ * (`reference`, read on all 35 EBR of GP XXII–XXVIII: one entry each, a
+ * Vorlage „1070 d.B." or an Antrag „84/A") — or null. Never from the title.
+ */
+export function lawOfEbr(reference: EbrContent['reference']): { gp: string; ityp: 'I' | 'A'; inr: number } | null {
+  for (const r of reference ?? []) {
+    if ((r?.text ?? '').trim() !== 'Bezug zu') continue
+    const m = /^\/gegenstand\/([IVXLC]+)\/(I|A)\/(\d+)(?:\/|$)/.exec(parliamentPathname(absolutizeUrl(r.url ?? '') ?? '') ?? '')
+    if (m?.[1] && m[2] && m[3]) return { gp: m[1], ityp: m[2] as 'I' | 'A', inr: Number(m[3]) }
+  }
+  return null
+}
+
 export interface RvLink {
   gp: string
   inr: number

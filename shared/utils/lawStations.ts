@@ -100,8 +100,9 @@ export const UPSTREAM_PLENUM_TITLE = 'Geändert im Plenum'
  * on the same draft page. This is the definition of a label we award
  * ourselves; it has to be identical everywhere or it is not a definition.
  *
- * Since 18.09.2026 the sentence stands in ONE place, /so-funktionierts, and
- * both comparisons link there: a legend repeated on each of roughly a
+ * Since 18.09.2026 the sentence stands in ONE place — /so-funktionierts
+ * until 14.11.2026, since then the term „redaktionell" in `app/utils/terms.ts`,
+ * opened at the tag (`TermNote`) — and both comparisons use it: a legend repeated on each of roughly a
  * thousand pages, for a word that says in German about what it means here,
  * is not worth the page it costs.
  *
@@ -114,8 +115,8 @@ export const UPSTREAM_PLENUM_TITLE = 'Geändert im Plenum'
  * because the Textgegenüberstellung aligns two columns of ONE paragraph, it
  * establishes no renumbering at all, so there the condition is never met.
  * The sentence holds for both comparisons, which is what it is for. Since
- * 22.10.2026 it is the definition under the term „redaktionell“ on
- * /so-funktionierts, not a sentence of the running text — so it no longer
+ * 22.10.2026 it is the definition under the term „redaktionell“ (on
+ * /so-funktionierts until 14.11.2026, `TERMS` since), not a sentence of the running text — so it no longer
  * names the term itself.
  *
  * **And since the same day it says what the rule forgives.** It read „nur

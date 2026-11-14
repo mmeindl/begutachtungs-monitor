@@ -57,7 +57,7 @@
  * in the HTML.
  */
 import type { ComparisonId, Station, StationId } from '~/utils/spine'
-import { markedStation } from '~/utils/spine'
+import { markedStation, railSpeech } from '~/utils/spine'
 
 const props = defineProps<{
   stations: Station[]
@@ -148,15 +148,13 @@ function railOf(s: Station, next: Station): string {
  * yet is not outstanding, it is simply unknown. So the first of them keeps
  * its facts, and that word is often the finding ("bisher keine", "keine –
  * GP beendet"); the ones behind it fall silent, but keep their state in
- * sr-only words (AAA: never shape alone, and a hollow dot is shape).
+ * sr-only words (AAA: never shape alone, and a hollow dot is shape). The
+ * rule itself is `railSpeech`, where it is tested.
  */
+const speech = computed(() => railSpeech(props.stations))
 const rows = computed(() => props.stations.map((s, i) => {
   const reached = (state: string) => state === 'done' || state === 'current'
-  // A station that WAS reached speaks even behind one that was not — the
-  // Initiativantrag route skips the Vorlage and still reaches the house and
-  // the Bundesgesetzblatt (30.09.2026).
-  const silent = !reached(s.state) && props.stations.slice(0, i).some((earlier) => !reached(earlier.state))
-  const facts = silent ? [] : s.facts
+  const { silent, facts, announce } = speech.value[i]!
   const href = s.comparison ? props.comparisonAnchors?.[s.comparison.id] : undefined
   const next = props.stations[i + 1]
   return {
@@ -180,9 +178,7 @@ const rows = computed(() => props.stations.map((s, i) => {
     // would be the only thing it says.
     source: silent ? null : s.source ?? null,
     followUp: silent ? null : s.followUp ?? null,
-    announce: facts.length
-      ? null
-      : s.state === 'open' ? 'ausstehend' : s.state === 'never' ? 'nicht erreicht' : null,
+    announce,
     /* The Begutachtung of a law without a draft (`trail`): a word of its
        own beside the facts, so the three cases differ without the line —
        „nicht erreicht" for a known „ohne Begutachtung", „unbekannt" where

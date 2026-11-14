@@ -33,8 +33,8 @@
  * Pure module: no Nuxt auto-imports, so server, app and vitest read the same
  * table.
  */
-import type { AntragPath } from '../types'
-import { ANTRAG_PATHS } from './antragPathTable'
+import type { AntragPath, DraftChain } from '../types'
+import { ANTRAG_PATHS, ANTRAG_PATHS_MEASURED } from './antragPathTable'
 
 /** From this share of the draft's own Gesetzestext on, the draft took the Antrag route. */
 export const CARRIES_DRAFT_SHARE = 0.5
@@ -44,9 +44,66 @@ export function antragPathFor(gp: string, inr: number): AntragPath | null {
   return ANTRAG_PATHS[gp]?.[inr] ?? null
 }
 
+/**
+ * The periods the table was measured for. Outside them no draft is matched,
+ * so the absence of a path there says nothing — a filter on the route must
+ * say so instead of showing an empty list (`/entwuerfe`, 14.11.2026).
+ */
+export const ANTRAG_PATH_GPS: readonly string[] = Object.keys(ANTRAG_PATHS_MEASURED)
+
+export function antragPathsCover(gp: string): boolean {
+  return ANTRAG_PATH_GPS.includes(gp)
+}
+
+/**
+ * The Antrag a Ministerialentwurf's list row names as the route its text took
+ * („als Initiativantrag 1065/A", `viewOfDraft`), or null — the one condition
+ * the row's words and the list's option „Gesetzesentwürfe, als Initiativantrag
+ * eingebracht" share, so the option holds exactly the rows that say so. Both
+ * routes of `DraftChain.antragCitation`: the inferred one (this table) and the
+ * stated successor of a Beschluss not promulgated.
+ */
+export function antragRouteCitation(d: { active: boolean; chain?: Pick<DraftChain, 'antragCitation'> | null }): string | null {
+  return !d.active && d.chain?.antragCitation ? d.chain.antragCitation : null
+}
+
+/**
+ * The same condition on a draft's own page, which carries no `chain`
+ * (14.11.2026): the path graphic's row „als Initiativantrag eingebracht"
+ * (`wegFor`) must hold the drafts the list's option holds. Both routes, as
+ * `stationMap.ts` sets `antragCitation`: the inferred one (no Vorlage, the
+ * Antrag carries the draft) and the stated successor of a Gesetzesbeschluss
+ * not promulgated whose Antrag links a Kundmachung (2/ME XXVIII → 80 d.B. →
+ * 416/A). Before only the first was asked, so 2/ME's page pointed at the
+ * row of the Regierungsvorlage.
+ */
+export function draftTookAntragRoute(d: {
+  active: boolean
+  antragPath: AntragPath | null | undefined
+  enactment: { bgblNumber: string | null; successor: { bgblNumber: string | null } | null } | null
+}): boolean {
+  if (d.active) return false
+  if (!d.enactment) return carriesDraft(d.antragPath)
+  return !d.enactment.bgblNumber && Boolean(d.enactment.successor?.bgblNumber)
+}
+
 /** Does the Antrag carry most of the draft — may the station move? */
 export function carriesDraft(path: AntragPath | null | undefined): path is AntragPath {
   return Boolean(path && path.draftShare >= CARRIES_DRAFT_SHARE)
+}
+
+/**
+ * The other direction (decision 9 of 14.11.2026): the draft whose text an
+ * Antrag carries in full or in part, for the Antrag's own page — or null.
+ * The table is keyed by the draft's period and the Antrag is of the same
+ * one (`meAntragJoin.ts` joins within a period). Which of the two claims the
+ * page may make is `carriesDraft(path)`.
+ */
+export function draftOfAntrag(gp: string, antragInr: number): { gp: string; inr: number; path: AntragPath } | null {
+  for (const [draftInr, path] of Object.entries(ANTRAG_PATHS[gp] ?? {})) {
+    if (path.antrag.inr === antragInr) return { gp, inr: Number(draftInr), path }
+  }
+  return null
 }
 
 /** The Antrag's page at Parliament. */

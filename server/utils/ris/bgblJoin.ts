@@ -49,7 +49,9 @@ export interface BgblRecord {
    * Gesetzgebungsperiode („XXVIII"), the Regierungsvorlagen it enacts (525
    * for „525 d.B."; empty for a law from an Initiativantrag, and on every
    * Teil-II record) and the day of the Nationalrat's Beschluss, ISO. Null
-   * and empty where RIS carries none.
+   * and empty where RIS carries none. A motion of the Bundesrat (`GABR`)
+   * stands in `Regierungsvorlage` too (BGBl. I Nr. 44/2015 ⇒ 452, read
+   * 14.11.2026); which it is, list 101 decides (`skippedLaws.ts`).
    */
   gp: string | null
   regierungsvorlagen: number[]
@@ -61,6 +63,17 @@ export interface BgblRecord {
    * the list of laws without a Begutachtung (`skippedLaws.ts`).
    */
   initiativantraege: number[]
+  /**
+   * The Nationalrat's Ausschussberichte (`BgblAuth.AusschussberichtNationalrat`,
+   * „14" for 14 d.B.; the same repeatable-field shape). For a law from a
+   * committee's own motion (`BUA`, „Bericht und Antrag") this is the only
+   * field that names its item: RIS puts the motion's d.B. number here and
+   * nothing in `Regierungsvorlage` (BGBl. I Nr. 156/2024 ⇒ 14, read
+   * 14.11.2026). For every other law it is the committee's report on the
+   * Vorlage or Antrag — which item it is, list 101 decides
+   * (`skippedLaws.ts`). Empty where RIS carries none.
+   */
+  ausschussberichte: number[]
   /** `BgblAuth.Typ` — „Bundesgesetz", „Verordnung", …; null where RIS carries none. */
   typ: string | null
   datumNationalrat: string | null
@@ -118,6 +131,7 @@ export function bgblRecordOf(doc: any): BgblRecord | null {
     gp: String(b?.Gesetzgebungsperiode ?? '').trim() || null,
     regierungsvorlagen: vorlagenOf(b?.Regierungsvorlage),
     initiativantraege: antraegeOf(b?.Initiativantrag),
+    ausschussberichte: vorlagenOf(b?.AusschussberichtNationalrat),
     typ: String(b?.Typ ?? '').trim() || null,
     datumNationalrat: String(b?.DatumNationalrat ?? '').slice(0, 10) || null,
   }

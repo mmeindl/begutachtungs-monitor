@@ -11,7 +11,7 @@
 import { describe, expect, it } from 'vitest'
 import type { AntragPath, DraftDetail, DraftSummary } from '../shared/types'
 import { ANTRAG_PATHS } from '../shared/utils/antragPathTable'
-import { CARRIES_DRAFT_SHARE, antragPathFor, antragUrl, carriesDraft } from '../shared/utils/antragPath'
+import { CARRIES_DRAFT_SHARE, antragPathFor, antragUrl, carriesDraft, draftTookAntragRoute } from '../shared/utils/antragPath'
 import { procedureStatusDe, stations } from '../app/utils/spine'
 import { viewOfDraft } from '../app/utils/entryView'
 import { draftSummary } from './helpers/builders'
@@ -123,5 +123,24 @@ describe('the list row on the Antrag route', () => {
       chain: { station: 'bgbl', rvCitation: '594 d.B.', rvDate: null, bgblNumber: PATH.antrag.bgblNumber, filingOpen: false },
     })
     expect(v.note).toBeNull()
+  })
+})
+
+describe('draftTookAntragRoute (the page\'s side of the list option, 14.11.2026)', () => {
+  const enacted = (bgblNumber: string | null, successorBgbl: string | null | undefined) => ({
+    bgblNumber,
+    successor: successorBgbl === undefined ? null : { bgblNumber: successorBgbl },
+  })
+
+  it('takes the inferred route: no Vorlage, the Antrag carries the draft', () => {
+    expect(draftTookAntragRoute({ active: false, antragPath: PATH, enactment: null })).toBe(true)
+    expect(draftTookAntragRoute({ active: true, antragPath: PATH, enactment: null })).toBe(false)
+    expect(draftTookAntragRoute({ active: false, antragPath: { ...PATH, draftShare: 0.3 }, enactment: null })).toBe(false)
+  })
+
+  it('takes the stated route: a Beschluss not promulgated, its successor Antrag promulgated (80 d.B. → 416/A)', () => {
+    expect(draftTookAntragRoute({ active: false, antragPath: null, enactment: enacted(null, 'BGBl. I Nr. 65/2025') })).toBe(true)
+    expect(draftTookAntragRoute({ active: false, antragPath: null, enactment: enacted(null, null) })).toBe(false)
+    expect(draftTookAntragRoute({ active: false, antragPath: null, enactment: enacted('BGBl. I Nr. 1/2025', undefined) })).toBe(false)
   })
 })
