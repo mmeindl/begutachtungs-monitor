@@ -4,7 +4,7 @@
  * Länder-Entwürfe sind" on the list read these facts, so the two cannot
  * drift apart. Each cell says what the Land publishes, or — where the
  * monitor fills a gap itself — how; never more than was measured
- * (outreach/laender-luecken.md holds the numbers).
+ * (docs/research/laender-luecken.md holds the numbers).
  *
  * Pure module (auto-imported; vitest imports it relatively).
  */
