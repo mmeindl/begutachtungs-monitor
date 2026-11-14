@@ -11,7 +11,7 @@
  *    from their first day. Its date is the START of the Begutachtung, and it
  *    is what keeps a draft's page alive after its Frist (measured
  *    22.10.2026: 836 Gesetze, 1.539 Verordnungen, 12 of 12 running drafts
- *    present; `TODO.md` 5L).
+ *    present).
  *  - the STELLUNGNAHMEN of one draft (`/pub/get/attachments/<n>`): the PDFs
  *    the Land published, named after their submitter.
  *

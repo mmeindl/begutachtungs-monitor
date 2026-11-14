@@ -3,8 +3,8 @@
  * How many drafts of one Gesetzgebungsperiode changed after the
  * Begutachtung — the second half of the base rate whose first half
  * („wie viele werden zur Regierungsvorlage") `scripts/corpus/rvLatency.ts`
- * measured into `app/utils/outcomes.ts` (TODO.md Teil 3, „Die erste
- * Basisrate für eine ganze GP").
+ * measured into `app/utils/outcomes.ts`: the first base rate for a whole
+ * period.
  *
  * Usage:   npx vite-node scripts/corpus/aenderungsrate.ts -- --gp XXVII [--out dir] [--show inr]
  *          npx vite-node -c vitest.config.ts scripts/corpus/aenderungsrate.ts -- --gp XXVII
@@ -56,8 +56,8 @@
  * „Changed" is neither a failure nor a success: it says the text moved
  * between the stations, and the page is where the reader sees how.
  *
- * `--reasoning` adds a second question on the same diff units (TODO.md § 5b,
- * „Begründung: das Gesetz zur Passage"): how many Paragraphen the
+ * `--reasoning` adds a second question on the same diff units
+ * („Begründung: das Gesetz zur Passage"): how many Paragraphen the
  * Begründungsvergleich (`explanations/reasoningDiffService.ts`) drops as
  * ambiguous because two Artikel of the draft address the same § number — and
  * how many of them an Artikel key would bring back, because both
@@ -1061,7 +1061,7 @@ async function reasoningReport(): Promise<void> {
 }
 
 /**
- * `--multi` (30.09.2026, TODO.md § 5b „Eine Einheit über mehrere §§"): the
+ * `--multi` (30.09.2026, „Eine Einheit über mehrere §§"): the
  * Novellierungsanordnungen that address several §§ at once („Die §§ 65 bis
  * 68 samt Überschriften lauten", „In § 1 Abs. 1, § 7 Abs. 3 … wird … ersetzt")
  * and carry no single Paragraph since 28.09.2026. How does the Besonderer
@@ -1202,7 +1202,7 @@ function addressesReport(): void {
 }
 
 /**
- * `--ziffer` (01.10.2026, TODO.md § 5b „Begründung an der Ziffer bauen"): the
+ * `--ziffer` (01.10.2026, „Begründung an der Ziffer bauen"): the
  * Begründungsvergleich old against new, side by side, through the shipped
  * functions — `compareReasoningByParagraph` (the § join as it stood until
  * 01.10.2026) and `compareReasoning` (the Ziffer join, with its fallbacks).

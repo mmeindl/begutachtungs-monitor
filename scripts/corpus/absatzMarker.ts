@@ -115,7 +115,7 @@ function ascending(tokens: string[], re: RegExp, valueOf: (m: RegExpExecArray) =
   return out
 }
 
-/** Nur aufsteigende Ziffern ab 1 — der Vorschlag aus `TODO.md` § 5d, ungeprüft. */
+/** Nur aufsteigende Ziffern ab 1 — ein ungeprüfter Vorschlag. */
 function ascendingZiffern(tokens: string[]): Set<number> {
   const out = absatzOnly(tokens)
   for (const i of ascending(tokens, Z_RE, (m) => Number(m[1]), 1)) out.add(i)

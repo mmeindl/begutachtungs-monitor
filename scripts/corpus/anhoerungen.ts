@@ -1,8 +1,7 @@
 /**
  * How often does an Ausschussbericht record a hearing — Expertinnen und
  * Experten, Auskunftspersonen, an „öffentliches Hearing" — and where is that
- * written down? The evidence behind „Anhörungen im Ausschuss an der Station"
- * (TODO.md § 5c).
+ * written down? The evidence behind „Anhörungen im Ausschuss an der Station".
  *
  * The Ausschuss station on a draft page names the committee and its report,
  * and nothing of what the committee heard. 2420 d.B. (XXVII, the

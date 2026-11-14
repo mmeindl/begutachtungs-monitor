@@ -4,8 +4,7 @@
 // drafts offline — Wien after the Beschluss, Niederösterreich and Vorarlberg
 // with the Frist, Tirol after weeks. For those, "was wurde daraus" cannot be
 // answered later from the Land's site at all; every month without a copy is
-// history that is gone. The free slice of the persistence package
-// (TODO.md Teil 4; outreach/foerderantrag.md, Ergänzung 30.10.2026).
+// history that is gone. The free slice of the persistence package.
 //
 // Two layers, in one directory `laender/` under the StateDirectory:
 //

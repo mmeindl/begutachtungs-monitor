@@ -1218,8 +1218,7 @@ export interface LaenderRead {
 
 /**
  * Every Land the monitor reads. Only RUNNING Begutachtungen leave here:
- * Wien and Oberösterreich keep expired entries on their lists, and the
- * lists have no view for closed Länder drafts yet (`TODO.md` 5L).
+ * Wien and Oberösterreich keep expired entries on their lists.
  */
 export async function readLaender(): Promise<LaenderRead> {
   const results = await Promise.allSettled(LAND_CODES.map((land) => READERS[land].current()))

@@ -11,8 +11,12 @@ dist/
 .output/
 .data/
 
-# Internal working docs (strategy, contacts, correspondence) — never public.
-# CLAUDE.md is public since 13.11.2026 and must not name anything from these.
+# Private working docs (to-dos, timeline, outreach and correspondence, grant
+# and Verein papers, legal history) — never public. Everything private lives
+# in `private/`; the three old locations stay ignored so that a file created
+# there by habit cannot be committed. CLAUDE.md is public since 13.11.2026
+# and must not name anything from these.
+private/
 TODO.md
 outreach/
 timeline/
@@ -22,5 +26,3 @@ timeline/
 .cache/
 # The harnesses' opt-in RIS cache (`scripts/lib/harnessCache.ts`, `--cache`)
 .harness-cache/
-# Working document of the September 2026 refactor — private, like the files above
-docs/refactor-plan.md

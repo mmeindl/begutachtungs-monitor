@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 # Restart the app when the draft list hangs — and write down why first.
 #
-# THE CASE IT EXISTS FOR (29.09.2026, TODO.md § 5d). Six hours after a deploy
+# THE CASE IT EXISTS FOR (29.09.2026). Six hours after a deploy
 # every route that needs the draft list (/, /entwuerfe, the draft pages,
 # /api/drafts, /feed.xml, /kalender.ics) hung without end, while /ueber and
 # /api/stations/vorperiode answered in milliseconds. Node sat at 0 % CPU with

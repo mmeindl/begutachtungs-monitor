@@ -35,8 +35,9 @@ Why the tool exists and why it should work: `docs/why-this-tool.md`.
 
 ### Private information is never committed
 
-- `TODO.md` and `outreach/` are gitignored and exist only on the maintainer's
-  machine. They stay that way. Nothing from them is copied into code, docs,
+- `private/` is gitignored and exists only on the maintainer's machine: the
+  to-do list, the timeline, outreach and correspondence, grant and Verein
+  papers. They stay that way. Nothing from them is copied into code, docs,
   comments, commit messages or pull requests.
 - Public files carry the reasoning, never who said it or how: no names, no
   quotes and no paraphrase that identifies the sender of private

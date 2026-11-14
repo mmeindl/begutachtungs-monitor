@@ -22,7 +22,7 @@
 #   rsync -az root@<SERVER_IP>:/var/lib/begutachtungs-monitor/list81/ .cache/list81/
 #   pnpm corpus:list81-drift
 #
-# Started 24.09.2026 for about two weeks (TODO.md Teil 3). To stop it:
+# Started 24.09.2026 for about two weeks. To stop it:
 # `systemctl disable --now begutachtungs-monitor-list81-snapshot.timer` — the
 # unit files stay in git, so a later restart is one deploy away.
 set -euo pipefail
