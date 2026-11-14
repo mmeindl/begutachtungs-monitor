@@ -41,7 +41,7 @@ import { articleBlocks, draftArticles, type ClauseName, type DraftArticle } from
 import { addressesWholeText, createdParagraphs, createdUnits, opAddress } from './novao'
 import { mapWithConcurrency } from '../pool'
 import type { ComparisonRow } from '../annex/comparisonRows'
-import { absatzSequence, annexChangedUnits, oracleVerdict, paragraphRows, rowsByParagraph, someDrawers } from './tguOracle'
+import { absatzSequence, standingUnitsOf, annexChangedUnits, oracleVerdict, paragraphRows, rowsByParagraph, someDrawers } from './tguOracle'
 
 /**
  * Ceilings, not budgets: the same values the two neighbours that read the
@@ -549,7 +549,7 @@ export async function consolidate(
         // With the Absätze as the page displays them, so check 5 can hold the
         // annex's markers against them (`absatzOrderBroken`, 26.10.2026).
         const annex = annexOf(w.article)
-        const report = oracleVerdict(id, before, got, paragraphRows(annex.rows, id, annex.law, origin), absatzSequence(node), beforeNode ? (absatzSequence(beforeNode) ?? null) : null)
+        const report = oracleVerdict(id, before, got, paragraphRows(annex.rows, id, annex.law, origin), absatzSequence(node), beforeNode ? (absatzSequence(beforeNode) ?? null) : null, beforeNode ? standingUnitsOf(beforeNode) : null)
         const gate = gateParagraph({
           refused: refusedIds.has(id),
           plausible: guard.plausible,

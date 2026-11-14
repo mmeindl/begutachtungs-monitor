@@ -348,6 +348,14 @@ change belongs here.
 - **The drift baseline is compared for equality, moves in the same commit as
   the change that moves it, and is never rewritten by CI,** because a
   self-updating baseline absorbs the drift it exists to catch (§12.13).
+- **An omission the annex makes without „…" is read as one only where the
+  standing § proves it:** both columns jump from the same unit to the same
+  later one (or a cell that opens the § starts at a later unit), and the
+  standing § carries exactly the units the two numbers count between them.
+  Anything else stays a stretch held whole. A unit missing from RIS that the
+  annex skips silently cannot be told from one repealed long ago, since the
+  annex names nothing there; fault class „Lücke-beide" measures that blind
+  spot, and it is not held to the 95 % floor (14.11.2026).
 - **What the instruments cannot prove:** the annex oracle and fault injection
   do not show the output is free of error. Only the BGBl test bench (RIS
   after entry into force) has ground truth (§12.12c).
@@ -575,6 +583,7 @@ Ministerialentwurf, RV = Regierungsvorlage.
 | Unrefused but not the law in force | 3.0 % of 1,513 §§ | same |
 | Annex-confirmed §§ that deviate from the enacted text | 0 of 108 | 26.10.2026 (§12.12c) |
 | Fault injection: known error classes caught | ≥ 95 % each | 26.10.2026 (§12.12c) |
+| Silent omission read (`silentOmissions`), GP XXVIII | PDF path: 7 verdicts moved (6 fremd → bestätigt, 1 fremd → widersprochen), table path none; a skipped unit the engine loses caught 16 of 16; one missing from RIS too caught 3 of 16, each miss confirmed without the reading as well; 707EA278 on the page 41 → 54 §§ shown | 14.11.2026 |
 | Changed §§ with an outcome on the page | all 4,463 (ME) and 1,541 (without Gegenstand) | GP XXVIII · 27.10.2026 (§12.12c) |
 | Of those shown | 2,167 and 630 | same |
 | Amending drafts that show at least one § | 111 of 122 | GP XXVIII · 06.10.2026 (§12.12) |

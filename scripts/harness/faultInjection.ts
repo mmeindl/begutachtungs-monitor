@@ -178,7 +178,7 @@ import { fetchParagraphTree } from '../../server/utils/harness/risKonsHistory'
 import { parseTextComparison, type ComparisonRow } from '../../server/utils/annex/comparisonRows'
 import { isScanned } from '../../server/utils/annex/tableCells'
 import { applyNovelle, instructionsFromUnits, renamedOrigins, type StandingLaw } from '../../server/utils/kons/lawApply'
-import { ABSATZ_ORDER_NOTE, KEPT_DELETION_NOTE, absatzSequence, oracleVerdict, paragraphRows, rowsByParagraph, type OracleVerdict } from '../../server/utils/kons/tguOracle'
+import { ABSATZ_ORDER_NOTE, KEPT_DELETION_NOTE, absatzSequence, oracleVerdict, paragraphRows, rowsByParagraph, silentOmissions, standingUnitsOf, type OracleVerdict, type StandingUnits } from '../../server/utils/kons/tguOracle'
 import { segmentUnits } from '../../server/utils/lawtext/lawUnits'
 import { anlageLabelKey, bareParaId } from '../../server/utils/text/designation'
 import { installFetchCache } from '../lib/harnessCache'
@@ -692,6 +692,39 @@ function withoutAbsatz(node: LawNode, id: string): LawNode {
 }
 
 /**
+ * **Lücke** — a unit the annex leaves out WITHOUT its „…", missing
+ * (14.11.2026). 707EA278 prints § 1.02 as „1. … 4. …" in both columns, and
+ * the oracle reads the jump as an omission where the standing § carries the
+ * units between (`silentOmissions`). That reading must not cost a real loss:
+ *
+ * - **Lücke** — the unit dropped from the result alone: the engine lost a
+ *   unit the annex never printed. No text check reads the omitted unit, so
+ *   only the bag of removed words (check 3) and, for Absätze, check 5 can
+ *   say so.
+ * - **Lücke-beide** — the unit dropped from the result AND the standing §:
+ *   the annex assumes a unit RIS does not carry, the 126/ME shape. The jump
+ *   then proves nothing and must not be read (`fremd`).
+ *
+ * The sites are the §§ the oracle confirms with such a jump in a row; before
+ * the reading existed it confirmed none of the §§ the reading moves, which is
+ * why the class was built first — its zero is the measurement that nothing
+ * could be lost then. Each miss is also judged without the reading: a miss
+ * both share is not the reading's.
+ *
+ * 14.11.2026, GP XXVIII, PDF path: Lücke 16 of 16 caught (all by check 3),
+ * Lücke-beide 3 of 16 — the 13 misses are confirmed without the reading too:
+ * the annex names nothing between its two markers, and RIS without the unit
+ * reads exactly like a unit repealed long ago. Table path: no site — its
+ * cells hold one unit each.
+ */
+function withoutUnit(node: LawNode, style: StandingUnits['style'], id: string): LawNode {
+  if (style === 'abs') return { ...node, children: node.children.filter((c) => !(c.level === 'abs' && c.id === id)) }
+  const drop = (n: LawNode): LawNode => ({ ...n, children: n.children.filter((c) => !(c.level === 'z' && c.id === id)) })
+  const abs = node.children.filter((c) => c.level === 'abs')
+  return abs.length === 1 && !abs[0]!.id ? { ...node, children: node.children.map((c) => (c === abs[0] ? drop(c) : c)) } : drop(node)
+}
+
+/**
  * **Datum** — the day of a date the annex prints in a changed row, moved by
  * one: „1. Juli" → „2. Juli". Until 26.10.2026 `stripMarkers` took every
  * „1." for a Ziffer's marker, on both sides, and a result that missed a
@@ -769,8 +802,22 @@ async function injectIntoResults(
       const before = beforeNode ? plainText(beforeNode) : null
       const got = plainText(node)
       const paraRows = paragraphRows(byParagraph, id, lawKey, origin)
-      const report = oracleVerdict(id, before, got, paraRows, absatzSequence(node), beforeNode ? (absatzSequence(beforeNode) ?? null) : null)
+      const standingUnits = beforeNode ? standingUnitsOf(beforeNode) : null
+      const report = oracleVerdict(id, before, got, paraRows, absatzSequence(node), beforeNode ? (absatzSequence(beforeNode) ?? null) : null, standingUnits)
       results.verdicts.set(report.verdict, (results.verdicts.get(report.verdict) ?? 0) + 1)
+      // Every § with a row the annex prints with a silent omission, whatever
+      // its verdict — what the reading can reach at all.
+      const gaps = silentOmissions(paraRows, standingUnits).skipped
+      // Every verdict the reading moves, named — a count cannot be read.
+      const unread = oracleVerdict(id, before, got, paraRows, absatzSequence(node), beforeNode ? (absatzSequence(beforeNode) ?? null) : null)
+      if (unread.verdict !== report.verdict) {
+        results.moved.push(`${cite} § ${id}${lawKey ? ` [${String(lawKey).slice(0, 24)}]` : ''} — ${unread.verdict} → ${report.verdict}${report.note ? ` — ${report.note.slice(0, 100)}` : ''}`)
+        if (argFlag('alarme')) results.moved.push(...silentOmissions(paraRows, standingUnits).rows.filter((r) => r.kind === 'pair').flatMap((r) => [`          geltend      : ${r.current.slice(0, 400)}`, `          vorgeschlagen: ${r.proposed.slice(0, 400)}`]), `          Ergebnis     : ${got.slice(0, 400)}`)
+      }
+      if (gaps.length > 0) {
+        results.silent.set(report.verdict, (results.silent.get(report.verdict) ?? 0) + 1)
+        results.silentSites.push(`${cite} § ${id}${lawKey ? ` [${String(lawKey).slice(0, 24)}]` : ''} — ${report.verdict}, ausgelassen ${gaps.join(', ')}${report.note ? ` — ${report.note.slice(0, 90)}` : ''}`)
+      }
       // Check 5's false-alarm side, like check 4's below: every § it speaks
       // on had passed the other four.
       if (report.note?.startsWith(ABSATZ_ORDER_NOTE)) {
@@ -809,6 +856,21 @@ async function injectIntoResults(
         if (judged.verdict !== 'bestätigt') into.caught++
         if (judged.note?.startsWith(ABSATZ_ORDER_NOTE)) into.byKept++
         else if (judged.verdict === 'bestätigt') into.misses.push(`${cite} § ${id} — Absätze ${(absatzSequence(faulted) ?? []).join(', ')}`)
+      }
+      if (gaps.length > 0 && beforeNode && standingUnits) {
+        const gap = gaps[Math.floor(gaps.length / 2)]!
+        for (const [both, into] of [[false, oracleFaults.Luecke], [true, oracleFaults.LueckeBeide]] as const) {
+          const faulted = withoutUnit(node, standingUnits.style, gap)
+          const faultedBeforeNode = both ? withoutUnit(beforeNode, standingUnits.style, gap) : beforeNode
+          into.tried++
+          const judged = oracleVerdict(id, plainText(faultedBeforeNode), plainText(faulted), paraRows, absatzSequence(faulted), absatzSequence(faultedBeforeNode) ?? null, standingUnitsOf(faultedBeforeNode))
+          if (judged.verdict !== 'bestätigt') into.caught++
+          if (judged.note?.startsWith(ABSATZ_ORDER_NOTE)) into.byKept++
+          // The same fault without the reading: a miss it shares was a miss
+          // before the reading existed, and is not the reading's.
+          const without = oracleVerdict(id, plainText(faultedBeforeNode), plainText(faulted), paraRows, absatzSequence(faulted), absatzSequence(faultedBeforeNode) ?? null).verdict
+          if (judged.verdict === 'bestätigt') into.misses.push(`${cite} § ${id} — ohne ${standingUnits.style === 'abs' ? `(${gap})` : `${gap}.`} von ${gaps.join(', ')}; ohne die Lesart: ${without}`)
+        }
       }
       const dated = dateFault(got, paraRows)
       if (dated) {
@@ -863,13 +925,15 @@ const faults = {
   U: tally('U     fremder Satz beidspaltig gleich'),
 }
 /** The engine's result as the oracle judged it, without any fault. */
-const results = { verdicts: new Map<OracleVerdict, number>(), confirmed: 0, controlMoved: 0, kept: 0, keptAlarms: [] as string[], order: 0, orderAlarms: [] as string[] }
+const results = { verdicts: new Map<OracleVerdict, number>(), silent: new Map<OracleVerdict, number>(), silentSites: [] as string[], moved: [] as string[], confirmed: 0, controlMoved: 0, kept: 0, keptAlarms: [] as string[], order: 0, orderAlarms: [] as string[] }
 const oracleFaults = {
   E: oracleTally('E     eine Einheit zu viel'),
   Ersatz: oracleTally('E-neben alter Text neben dem neuen'),
   Reihe: oracleTally('Reihe zwei Absätze vertauscht'),
   Fehlt: oracleTally('Fehlt Absatz der Auslassung fehlt'),
   Datum: oracleTally('Datum Tag eines Datums verschoben'),
+  Luecke: oracleTally('Lücke ausgelassene Einheit fehlt'),
+  LueckeBeide: oracleTally('Lücke-beide fehlt auch im geltenden'),
 }
 
 const docs: any[] = []
@@ -958,18 +1022,22 @@ for (const fault of [faults.L, faults.Rold, faults.Rnew, faults.U]) {
 // The oracle's side: faults in the engine's RESULT rather than in the annex.
 console.log(`\n  Orakel (kons/tguOracle.ts) über das Ergebnis der Engine, ohne Injektion`)
 for (const [verdict, n] of [...results.verdicts].sort((a, b) => b[1] - a[1])) console.log(`    ${verdict.padEnd(14)}: ${String(n).padStart(5)}`)
+console.log(`    Paragraphen mit Auslassung ohne Zeichen (\`silentOmissions\`): ${[...results.silent].map(([v, n]) => `${v} ${n}`).join(', ') || '0'}`)
+for (const line of results.silentSites) console.log(`      · ${line}`)
+console.log(`    davon mit anderem Urteil als ohne diese Lesart: ${results.moved.length}`)
+for (const line of results.moved) console.log(`      ± ${line}`)
 console.log(`    Prüfung 4 („Gestrichenes steht noch im Ergebnis") meldet ohne Injektion: ${results.kept}`)
 for (const line of results.keptAlarms) console.log(`      + ${line}`)
 console.log(`    Prüfung 5 („Absätze der Beilage nicht so im Ergebnis") meldet ohne Injektion: ${results.order}`)
 for (const line of results.orderAlarms) console.log(`      + ${line}`)
 console.log(`\n  Mit Injektion ins Ergebnis, über ${results.confirmed} bestätigte Paragraphen mit geltendem Text (Kontrolle verschob ${results.controlMoved})`)
-console.log(`  Fehler                                §§   gefangen            davon Prüfung 4 (Reihe, Fehlt: Prüfung 5)`)
-for (const fault of [oracleFaults.E, oracleFaults.Ersatz, oracleFaults.Reihe, oracleFaults.Fehlt, oracleFaults.Datum]) {
+console.log(`  Fehler                                §§   gefangen            davon Prüfung 4 (Reihe, Fehlt, Lücke: Prüfung 5)`)
+for (const fault of [oracleFaults.E, oracleFaults.Ersatz, oracleFaults.Reihe, oracleFaults.Fehlt, oracleFaults.Datum, oracleFaults.Luecke, oracleFaults.LueckeBeide]) {
   const cell = (n: number): string => `${String(n).padStart(6)} (${pct(n, fault.tried)})`
   console.log(`  ${fault.label.padEnd(36)} ${String(fault.tried).padStart(4)}   ${cell(fault.caught)}   ${cell(fault.byKept)}`)
 }
 if (argFlag('misses')) {
-  for (const fault of [oracleFaults.E, oracleFaults.Ersatz, oracleFaults.Reihe, oracleFaults.Fehlt, oracleFaults.Datum]) {
+  for (const fault of [oracleFaults.E, oracleFaults.Ersatz, oracleFaults.Reihe, oracleFaults.Fehlt, oracleFaults.Datum, oracleFaults.Luecke, oracleFaults.LueckeBeide]) {
     for (const line of fault.misses) console.log(`    ${fault.label.slice(0, 8).trim()} durchgelassen: ${line}`)
   }
 }
@@ -986,7 +1054,9 @@ if (argFlag('misses')) {
  */
 const floor = argAssigned('mindestens')
 if (floor !== null) {
-  const short = [oracleFaults.E, oracleFaults.Ersatz, oracleFaults.Reihe, oracleFaults.Fehlt, oracleFaults.Datum]
+  // Not „Lücke-beide": a unit RIS lacks where the annex jumps over it
+  // silently is a blind spot by construction (`withoutUnit`), not a reach.
+  const short = [oracleFaults.E, oracleFaults.Ersatz, oracleFaults.Reihe, oracleFaults.Fehlt, oracleFaults.Datum, oracleFaults.Luecke]
     .filter((f) => f.tried >= 20 && (100 * f.caught) / f.tried < Number(floor))
   for (const f of short) console.log(`  ✗ unter ${floor} %: ${f.label.trim()} — ${f.caught}/${f.tried}`)
   if (short.length) process.exit(1)

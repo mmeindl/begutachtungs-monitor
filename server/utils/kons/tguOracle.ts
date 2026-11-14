@@ -40,6 +40,7 @@ import { punctuationTokens } from '../text/punctuationTokens'
 import { isSchedule, unitKey } from '../text/designation'
 import { bodyText, type LawNode } from '../lawtext/konsTree'
 import { PARAGRAPH_NUMBER } from '../../../shared/utils/paragraphNumber'
+import { expandRange } from './novao'
 
 export type OracleVerdict =
   /** All four containments hold */
@@ -1194,14 +1195,173 @@ export function absatzSequence(node: LawNode): string[] | undefined {
 }
 
 /**
+ * The units a standing § counts at its top level, with the words each opens
+ * with — its numbered Absätze, or, where the § is one unnumbered Absatz over
+ * Ziffern (the Wasserstraßen-Verkehrsordnung writes every § „§ 1.02 … 1. …
+ * 4. …"), those Ziffern. Null for anything else: a § whose top level a marker
+ * cannot name has no omission a marker could leave out.
+ */
+export interface StandingUnits {
+  style: 'abs' | 'z'
+  units: readonly { id: string; opening: string }[]
+}
+
+export function standingUnitsOf(node: LawNode): StandingUnits | null {
+  const abs = node.children.filter((c) => c.level === 'abs')
+  const of = (style: 'abs' | 'z', units: readonly LawNode[]): StandingUnits | null =>
+    units.length > 1 && units.every((u) => u.id) ? { style, units: units.map((u) => ({ id: u.id, opening: key(u.text.split(/\s+/).slice(0, OPENING_WORDS).join(' ')) })) } : null
+  if (abs.length > 0 && abs.every((a) => a.id)) return of('abs', abs)
+  const host = abs.length === 1 && !abs[0]!.id ? abs[0]! : abs.length === 0 ? node : null
+  return host ? of('z', host.children.filter((c) => c.level === 'z')) : null
+}
+
+/** The most words a § heading in front of the first marker may have — `NEXT_HEADING_RE`'s bound. */
+const MAX_HEAD_WORDS = 14
+
+/** How many of a unit's first words have to follow its marker in the geltende column before the marker counts as that unit's. */
+const OPENING_WORDS = 3
+
+/**
+ * A unit's marker where a cell can print one, by style: „(4)" anywhere, „4."
+ * only before a capital, never behind a designator („Abs. 4." is a citation)
+ * and never in front of a group („2. Abschnitt" is a heading).
+ */
+const MARKER_RE: Record<StandingUnits['style'], RegExp> = {
+  abs: /(?<![\p{L}\p{N}])\((\d{1,3}[a-z]?)\)(?=\s)/gu,
+  z: /(?<![\p{L}\p{N}.§]|(?:Abs\.|Z|Nr\.|Art\.|lit\.|Anlage|Anhang|§)\s*)(\d{1,3}[a-z]?)\.(?=\s+\p{Lu})(?!\s+(?:Teil|Hauptst(?:ü|ue)ck|Abschnitt|Unterabschnitt|Kapitel|Titel)\b)/gu,
+}
+
+/**
+ * An omission the annex makes without its „…" — the units between two of
+ * its markers left out, with nothing to say so (14.11.2026).
+ *
+ * 707EA278 (Wasserstraßen-Verkehrsordnung) prints § 1.02 as „1. … 4. …" in
+ * both columns: Z 2 and 3 are unchanged and simply not there. Check 1 holds
+ * the geltende column against the standing text stretch by stretch, cut at
+ * the omission marks, and with no mark the stretch „… besitzt. 4. Der
+ * Schiffsführer …" stands in no standing text: the § came out `fremd`, the
+ * annex starting from another text, and so did 14 more §§ of that draft
+ * printed the same way. (The draft's other `fremd` §§ are other shapes:
+ * group headings stacked over the §, letter-spaced headings, Anlagen.)
+ *
+ * Read as the omission it is, and only where the standing § proves it: both
+ * columns of the row jump from the same unit to the same later one, the
+ * standing § carries exactly the units the two numbers count between them
+ * (1 → 4: Z 2 and 3, no more, no fewer) and neither column prints them, and
+ * in the geltende column each of the two markers is followed by its unit's
+ * own first words (`OPENING_WORDS`) — a date („4. Juli") or a citation is no
+ * marker. Then the units in between are written into both columns as the
+ * chain the annex would have printed („2. bis 3. …"), and every check reads
+ * it as it reads that chain: check 1 and 2 piecewise, check 5 as markers.
+ *
+ * **Why the standing § decides, and what that keeps.** An annex whose base
+ * text lacks the units — the 126/ME shape, where another Artikel was to
+ * insert them first — jumps the same way, and must stay `fremd`. With a unit
+ * of the count missing from the standing text the jump is not read, check 1
+ * sees the stretch whole, and finds it in a standing text only where that
+ * text lacks every unit in between. That last case — RIS without the one
+ * unit a jump skips — no check can tell from a unit repealed long ago, since
+ * the annex names nothing there; it was confirmed before this reading and
+ * still is. A unit the engine drops from its result is still missing from
+ * the result: check 3 counts its words as removed, and for Absätze check 5
+ * names it. Fault injection classes „Lücke" and „Lücke-beide" measure both
+ * (`harness/faultInjection.ts`).
+ */
+// --- Measured surface: exported for tests and harness scripts, not for the app. ---
+export function silentOmissions(rows: readonly ComparisonRow[], standing: StandingUnits | null): { rows: ComparisonRow[]; skipped: string[] } {
+  if (!standing) return { rows: [...rows], skipped: [] }
+  const index = new Map(standing.units.map((u, i) => [u.id, i] as const))
+  const skipped: string[] = []
+  const out = rows.map((row) => {
+    if (row.kind !== 'pair' || !row.current || !row.proposed) return row
+    const current = normalizeText(row.current)
+    const proposed = normalizeText(row.proposed)
+    // In the geltende column a marker counts only before its unit's own
+    // words: that column is the standing text, so a real marker always is.
+    const inCurrent = markersOf(current, standing.style, index).filter((m) => opensWith(current, m, standing.units[index.get(m.id)!]!.opening))
+    const inProposed = markersOf(proposed, standing.style, index)
+    let [cur, pro] = [current, proposed]
+    // Right to left, so an insertion leaves the positions before it valid.
+    for (let k = inCurrent.length - 1; k > 0; k--) {
+      const [a, b] = [inCurrent[k - 1]!, inCurrent[k]!]
+      const [ia, ib] = [index.get(a.id)!, index.get(b.id)!]
+      if (ib <= ia + 1) continue
+      if (/\.\.\.|…/.test(current.slice(a.end, b.at))) continue
+      const j = inProposed.findIndex((m, i) => i > 0 && m.id === b.id && inProposed[i - 1]!.id === a.id)
+      if (j < 0 || /\.\.\.|…/.test(proposed.slice(inProposed[j - 1]!.end, inProposed[j]!.at))) continue
+      // Every number between the two, and nothing else: a standing § with a
+      // hole there (RIS without its Abs. 4) or a unit in between that the
+      // count does not name (an Abs. 2a) is no proof of what the annex left
+      // out — the jump stays unread, as before.
+      const gap = standing.units.slice(ia + 1, ib).map((u) => u.id)
+      const counted = expandRange(a.id, b.id)?.slice(0, -1) ?? null
+      if (counted === null || counted.join('|') !== gap.join('|')) continue
+      const label = (id: string): string => (standing.style === 'abs' ? `(${id})` : `${id}.`)
+      const chain = `${gap.length === 1 ? label(gap[0]!) : `${label(gap[0]!)} bis ${label(gap[gap.length - 1]!)}`} … `
+      cur = cur.slice(0, b.at) + chain + cur.slice(b.at)
+      const at = inProposed[j]!.at
+      pro = pro.slice(0, at) + chain + pro.slice(at)
+      skipped.push(...gap)
+    }
+    // The same at the head of the §: „§ 2.02 Kennzeichen der Kleinfahrzeuge
+    // 2. Das amtliche Kennzeichen …" leaves Z 1 out with nothing before the
+    // first marker but the § and its heading. Counted from the first unit,
+    // and only in a cell that opens the § — its designation in front of the
+    // marker, around it nothing but a heading (no sentence of its own, at
+    // most `MAX_HEAD_WORDS` words). A cell of the table path holds one unit
+    // and opens nothing: its „(3)" is that Absatz, not a jump from a § head,
+    // and read as one it withdrew 256 confirmations in the first run.
+    const [f, g] = [inCurrent[0], inProposed[0]]
+    const iF = f ? index.get(f.id)! : 0
+    if (f && g && g.id === f.id && iF > 0) {
+      const gap = standing.units.slice(0, iF).map((u) => u.id)
+      const counted = gap[0] === '1' ? ['1', ...(expandRange('1', f.id)?.slice(0, -1) ?? [])] : null
+      const isHead = (head: string): boolean => {
+        if (!/§\s*\d/.test(head)) return false
+        const words = head.replace(/§+\s*\S+/g, ' ').trim()
+        return !/[.;:!?…]/.test(words) && words.split(/\s+/).filter(Boolean).length <= MAX_HEAD_WORDS
+      }
+      if (counted?.join('|') === gap.join('|') && isHead(current.slice(0, f.at)) && isHead(proposed.slice(0, g.at))) {
+        const label = (id: string): string => (standing.style === 'abs' ? `(${id})` : `${id}.`)
+        const chain = `${gap.length === 1 ? label(gap[0]!) : `${label(gap[0]!)} bis ${label(gap[gap.length - 1]!)}`} … `
+        // Into the strings already widened at later jumps: the head stands
+        // before all of them, so its position is unchanged.
+        cur = cur.slice(0, f.at) + chain + cur.slice(f.at)
+        pro = pro.slice(0, g.at) + chain + pro.slice(g.at)
+        skipped.push(...gap)
+      }
+    }
+    return cur === current ? row : { ...row, current: cur, proposed: pro }
+  })
+  return { rows: out, skipped }
+}
+
+/** The markers of a cell that name a unit of the standing §, in order — the others are text. */
+function markersOf(cell: string, style: StandingUnits['style'], index: ReadonlyMap<string, number>): { id: string; at: number; end: number }[] {
+  const out: { id: string; at: number; end: number }[] = []
+  for (const m of cell.matchAll(MARKER_RE[style])) if (index.has(m[1]!)) out.push({ id: m[1]!, at: m.index!, end: m.index! + m[0].length })
+  return out
+}
+
+function opensWith(cell: string, marker: { end: number }, opening: string): boolean {
+  return opening !== '' && key(cell.slice(marker.end, marker.end + 200)).startsWith(opening)
+}
+
+/**
  * The oracle's verdict on one §: `before` and `got` as `plainText` gives
  * them (`before` null for a § the draft creates), `rows` the annex rows of
  * that §, and `resultAbsaetze` the result's `absatzSequence` for check 5
  * (`absatzOrderBroken`) — left out by a caller that has no tree, which then
  * gets checks 1 to 4 only. `standingAbsaetze`, the standing §'s, tells an
  * Absatz the engine lost from one the annex assumes and RIS never had.
+ * `standingUnits` (`standingUnitsOf` of the standing §) lets the oracle read
+ * an omission the annex makes without its „…" (`silentOmissions`); left out,
+ * such a row is read as before.
  */
-export function oracleVerdict(id: string, before: string | null, got: string, rows: readonly ComparisonRow[], resultAbsaetze?: readonly string[], standingAbsaetze?: readonly string[] | null): OracleReport {
+export function oracleVerdict(id: string, before: string | null, got: string, rows: readonly ComparisonRow[], resultAbsaetze?: readonly string[], standingAbsaetze?: readonly string[] | null, standingUnits: StandingUnits | null = null): OracleReport {
+  // An omission without its „…", written out where the standing § proves it
+  // (`silentOmissions`) — every check below then reads it as an omission.
+  rows = silentOmissions(rows, standingUnits).rows
   const substantive = rows.filter((r) => r.kind === 'pair' && !r.elided && r.change !== 'unchanged')
   if (substantive.length === 0) return { para: id, verdict: 'stumm', rows: rows.length, note: null }
 

@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { KEPT_DELETION_NOTE, absatzSequence, annexChangedUnits, keptDeletion, oracleVerdict, paraIdOfGld, paragraphRows, rowsByParagraph, someDrawers, stripMarkers } from '../server/utils/kons/tguOracle'
+import { KEPT_DELETION_NOTE, absatzOrderBroken, absatzSequence, annexChangedUnits, keptDeletion, oracleVerdict, paraIdOfGld, paragraphRows, rowsByParagraph, silentOmissions, someDrawers, standingUnitsOf, stripMarkers } from '../server/utils/kons/tguOracle'
 import type { LawNode } from '../server/utils/lawtext/konsTree'
 import type { ComparisonRow } from '../server/utils/annex/comparisonRows'
 
@@ -865,5 +865,62 @@ describe('an omission the annex prints without its „…" (26.10.2026)', () => 
     // „(1) und (2) gelten sinngemäß." opens with the chain and goes on: not an omission.
     const rows = [pair('§ 9. (1) und (2) gelten sinngemäß.', '§ 9. (1) und (2) gelten entsprechend.', '§ 9.')]
     expect(oracleVerdict('9', 'Abs. 1 und 2 gelten sinngemäß.', 'Abs. 1 und 2 gelten entsprechend.', rows)).toMatchObject({ verdict: 'fremd' })
+  })
+})
+
+describe('an omission the annex makes without its „…" (silentOmissions, 14.11.2026)', () => {
+  const unit = (level: 'abs' | 'z', id: string, text: string): LawNode => ({ level, id, marker: level === 'abs' ? `(${id})` : `${id}.`, heading: null, context: [], text, children: [] })
+  // 707EA278, Wasserstraßen-Verkehrsordnung § 1.02: one unnumbered Absatz
+  // over Ziffern, and the annex prints „1. … 4. …" in both columns.
+  const Z = ['Jedes Fahrzeug muss unter der Führung eines Schiffsführers stehen.', 'Jeder Verband muss gleichfalls unter der Führung stehen.', 'Bei Fahrzeugen mit Besatzung bestimmt der Eigentümer den Schiffsführer.', 'Der Schiffsführer ist für die Einhaltung dieser Verordnung verantwortlich.']
+  const wvo = (ids: string[]): LawNode => ({
+    level: 'para', id: '1.02', marker: '§ 1.02', heading: null, context: [], text: '',
+    children: [{ level: 'abs', id: '', marker: '', heading: null, context: [], text: 'Schiffsführer', children: ids.map((id) => unit('z', id, Z[Number(id) - 1]!)) }],
+  })
+  const NEW = 'Bei besonderen Risiken genügt die Berechtigung des Schiffsführers im Steuerhaus.'
+  const row = pair(`§ 1.02 Schiffsführer 1. ${Z[0]} 4. ${Z[3]}`, `§ 1.02 Schiffsführer 1. ${Z[0]} ${NEW} 4. ${Z[3]}`, '§ 1.02')
+  const text = (ids: string[], extra = false): string => `Schiffsführer ${ids.map((id) => `${Z[Number(id) - 1]}${extra && id === '1' ? ` ${NEW}` : ''}`).join(' ')}`
+
+  it('reads the jump as the omission it is where the standing § carries exactly the units between', () => {
+    const standing = wvo(['1', '2', '3', '4'])
+    expect(oracleVerdict('1.02', text(['1', '2', '3', '4']), text(['1', '2', '3', '4'], true), [row])).toMatchObject({ verdict: 'fremd' })
+    expect(oracleVerdict('1.02', text(['1', '2', '3', '4']), text(['1', '2', '3', '4'], true), [row], undefined, null, standingUnitsOf(standing))).toMatchObject({ verdict: 'bestätigt' })
+    expect(silentOmissions([row], standingUnitsOf(standing)).rows[0]).toMatchObject({ current: expect.stringContaining('2. bis 3. … 4.') })
+  })
+
+  it('still sees a unit the engine lost from what the annex left out', () => {
+    const r = oracleVerdict('1.02', text(['1', '2', '3', '4']), text(['1', '3', '4'], true), [row], undefined, null, standingUnitsOf(wvo(['1', '2', '3', '4'])))
+    expect(r.verdict).toBe('widersprochen')
+  })
+
+  it('leaves the jump unread where the standing § does not carry the full count', () => {
+    // RIS without Z 3: the annex may start from a text that has it, or the
+    // unit was repealed — nothing proves which, and the stretch is held whole.
+    const holed = wvo(['1', '2', '4'])
+    expect(silentOmissions([row], standingUnitsOf(holed)).skipped).toEqual([])
+    expect(oracleVerdict('1.02', text(['1', '2', '4']), text(['1', '2', '4'], true), [row], undefined, null, standingUnitsOf(holed))).toMatchObject({ verdict: 'fremd' })
+  })
+
+  it('reads a § printed from a later unit on, only in a cell that opens the §', () => {
+    // § 3.03 of the same draft: „§ 3.03 Tafeln, Flaggen und Wimpel 2. …".
+    const standing = wvo(['1', '2'])
+    const head = pair(`§ 1.02 Schiffsführer 2. ${Z[1]}`, `§ 1.02 Schiffsführer 2. Jeder Verband muss ebenso unter der Führung stehen.`, '§ 1.02')
+    expect(silentOmissions([head], standingUnitsOf(standing)).skipped).toEqual(['1'])
+    // A table-path cell holds one unit and opens nothing.
+    expect(silentOmissions([pair(`2. ${Z[1]}`, '2. Jeder Verband muss ebenso unter der Führung stehen.')], standingUnitsOf(standing)).skipped).toEqual([])
+  })
+
+  it('takes a marker only before its own unit\'s words, so a date or a heading is none', () => {
+    const standing = wvo(['1', '2', '3', '4'])
+    const dated = pair(`§ 1.02 Schiffsführer 1. ${Z[0]} Das gilt ab 4. Juli.`, `§ 1.02 Schiffsführer 1. ${Z[0]} Das gilt ab 4. Juli. Neu.`, '§ 1.02')
+    expect(silentOmissions([dated], standingUnitsOf(standing)).skipped).toEqual([])
+  })
+
+  it('hands check 5 the Absätze between, so a lost one is named (126/ME shape on a silent jump)', () => {
+    const abs = (ids: string[]): LawNode => ({ level: 'para', id: '6', marker: '§ 6.', heading: null, context: [], text: '', children: ids.map((id) => unit('abs', id, `Absatz ${id} hat einen eigenen Text.`)) })
+    const jump = pair('§ 6. (1) Absatz 1 hat einen eigenen Text. (4) Absatz 4 hat einen eigenen Text.', '§ 6. (1) Absatz 1 hat einen eigenen Text. (4) Absatz 4 hat einen neuen Text.', '§ 6.')
+    const { rows } = silentOmissions([jump], standingUnitsOf(abs(['1', '2', '3', '4'])))
+    expect(absatzOrderBroken(rows, ['1', '3', '4'])).toMatchObject({ note: '(2) fehlt im Ergebnis' })
+    expect(absatzOrderBroken(rows, ['1', '2', '3', '4'])).toBeNull()
   })
 })
