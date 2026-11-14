@@ -289,6 +289,8 @@ describe('rvStationView', () => {
     const d = draft({ enactment: enactment() })
     expect(rvStationView(d, NOTHING).facts.map((f) => f.key)).toEqual(['rv'])
     expect(rvStationView(d, { ...NOTHING, sharePending: true }).facts.map((f) => f.key)).toEqual(['rv', 'aenderung'])
+    // Erläuterungen not read: the row stays and says so (14.11.2026).
+    expect(rvStationView(d, { ...NOTHING, explanationsMissing: 'Die Erläuterungen …' }).facts.map((f) => f.key)).toEqual(['rv', 'begruendung'])
     const full = rvStationView(draft({ enactment: enactment([{}]) }), { share: {}, sharePending: false, reasoningStats: null, rvExplanations: {} })
     expect(full.facts).toEqual([
       { key: 'rv', title: 'Eingebracht' },

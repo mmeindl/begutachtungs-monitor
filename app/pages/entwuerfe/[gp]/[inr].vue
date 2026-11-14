@@ -135,6 +135,7 @@ const rvView = computed(() =>
     sharePending: vorlageOutcome.sharePending.value,
     reasoningStats: vorlageOutcome.reasoningStats.value,
     rvExplanations: vorlageOutcome.rvExplanations.value,
+    explanationsMissing: vorlageOutcome.explanationsMissingDe.value,
   }),
 )
 
@@ -656,6 +657,7 @@ const ministryLinks = computed(() => {
             :share-de="vorlageOutcome.shareDe.value"
             :reasoning-de="vorlageOutcome.reasoningDe.value"
             :rv-explanations="vorlageOutcome.rvExplanations.value"
+            :explanations-missing-de="vorlageOutcome.explanationsMissingDe.value"
             :rv-statements="rvStatements"
             :filing-open="windows.vorlage"
           />

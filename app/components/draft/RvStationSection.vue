@@ -31,6 +31,8 @@ const props = defineProps<{
   shareDe: string | null
   reasoningDe: string | null
   rvExplanations: TraceLink | null
+  /** Why the Begründungen could not be compared (`explanationsMissingNote`), or null. */
+  explanationsMissingDe: string | null
   /** The Vorlage's own Stellungnahmen; client-side, absent until loaded. */
   rvStatements: RvStatementsResponse | null | undefined
   /** Parliament takes Stellungnahmen on the Vorlage — the door card's window. */
@@ -142,7 +144,11 @@ const credit = computed(() => {
                frame, because it is an invitation, not a fact. -->
           <template v-if="draft.enactment" #value-begruendung>
             <p v-if="reasoningDe">{{ reasoningDe }}</p>
-            <p v-if="rvExplanations" :class="reasoningDe ? 'mt-1 text-ink-secondary' : ''">
+            <!-- A side's Erläuterungen were not read: said here, once,
+                 where the count would stand (14.11.2026) — the row used to
+                 go missing, and silence read as „nothing to compare". -->
+            <p v-else-if="explanationsMissingDe" class="text-ink-secondary">{{ explanationsMissingDe }}</p>
+            <p v-if="rvExplanations" :class="reasoningDe || explanationsMissingDe ? 'mt-1 text-ink-secondary' : ''">
               In den <ExternalLink :href="rvExplanations.url" class="link-inline">Erläuterungen der Regierungsvorlage</ExternalLink>
               steht oft, ob eine Stellungnahme dahintersteht.
             </p>

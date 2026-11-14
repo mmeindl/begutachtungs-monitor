@@ -286,6 +286,13 @@ change belongs here.
   number, a date, a single letter or punctuation; „und" → „oder" is not.
 - **The comparison key may fold typography; the displayed text never does**
   (§12.33).
+- **Erläuterungen a side has not given us are said, in the Begründung
+  row** (14.11.2026, `explanationsMissingNote`), instead of the row going
+  missing. Parliament's record proves only what it lists, so the sentence
+  is „nicht gelesen" — „liegen nur als PDF vor" or „das Parlament führt sie
+  nicht als eigenes Dokument" —, never „nicht veröffentlicht": a
+  Regierungsvorlage may carry its Erläuterungen inside its one document.
+  GP XXVIII: 13 compared drafts have such a side.
 - **„Zu den Z 22 und 102 (…):" is a Ziffer heading** (14.11.2026,
   `zuDenZiffern`): the plural form over a Ziffer list („Z …", „Art. 1 Z …
   sowie Art. 4 Z …") opens a passage like „Zu Z …", printed as typed; „Zu

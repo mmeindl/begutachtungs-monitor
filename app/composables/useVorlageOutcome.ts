@@ -24,7 +24,7 @@ import type { LawDiffResponse, ReasoningDiffResponse } from '#shared/types'
 import { changeShareNounDe, ownChangeShare } from '#shared/utils/changeShare'
 import { lawDiffKey, lawReasoningKey } from '#shared/utils/lawStations'
 import { changeShareValueDe, reasoningShareValueDe } from '~/utils/outcomes'
-import { substantiveReasoningChanges } from '~/utils/reasoningNotes'
+import { explanationsMissingNote, substantiveReasoningChanges } from '~/utils/reasoningNotes'
 
 export function useVorlageOutcome(source: () => { gp: string; inr: number }, enabled: Ref<boolean>) {
   const { data: diff, status: diffStatus } = useFetch<LawDiffResponse>(
@@ -65,5 +65,8 @@ export function useVorlageOutcome(source: () => { gp: string; inr: number }, ena
     return r ? reasoningShareValueDe(r.changed, r.compared) : null
   })
 
-  return { share, sharePending, reasoningStats, rvExplanations, shareDe, reasoningDe }
+  /** Why no Begründung could be compared, where a side's Erläuterungen were not read (`explanationsMissingNote`). */
+  const explanationsMissingDe = computed(() => explanationsMissingNote(reasoning.value?.explanationsMissing))
+
+  return { share, sharePending, reasoningStats, rvExplanations, shareDe, reasoningDe, explanationsMissingDe }
 }

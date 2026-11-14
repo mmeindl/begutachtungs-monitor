@@ -10,7 +10,7 @@
  * because an unchanged reasoning for a changed text is a statement of its
  * own.
  */
-import type { ReasoningDiffResponse, ReasoningGap } from '#shared/types'
+import type { ExplanationsMissing, ReasoningDiffResponse, ReasoningGap } from '#shared/types'
 
 /**
  * The Begründungen the Ressort changed, as the page counts them: the
@@ -72,4 +72,23 @@ const REASONING_GAP_DE: Record<ReasoningGap, string> = {
 
 export function reasoningGapNote(gap: ReasoningGap | null | undefined): string | null {
   return gap ? REASONING_GAP_DE[gap] : null
+}
+
+/**
+ * The Begründung row when a side's Erläuterungen could not be read
+ * (14.11.2026) — until then the row went missing, and its silence read like
+ * a comparison that had nothing to say. Parliament's record proves only
+ * what it lists, never that nothing was published, so the sentence says
+ * „nicht gelesen" and names what the record shows: an Erläuterungen document
+ * only as PDF, or none listed under that title.
+ */
+const EXPLANATIONS_OF_DE = { me: 'des Entwurfs', rv: 'der Regierungsvorlage' } as const
+
+export function explanationsMissingNote(missing: readonly ExplanationsMissing[] | null | undefined): string | null {
+  if (!missing?.length) return null
+  const sentence = ({ side, kind }: ExplanationsMissing) =>
+    kind === 'pdfOnly'
+      ? `Die Erläuterungen ${EXPLANATIONS_OF_DE[side]} liegen nur als PDF vor und konnten nicht gelesen werden.`
+      : `Erläuterungen ${EXPLANATIONS_OF_DE[side]} konnten nicht gelesen werden: Das Parlament führt sie nicht als eigenes Dokument.`
+  return `${missing.map(sentence).join(' ')} Die Begründungen sind deshalb nicht verglichen.`
 }

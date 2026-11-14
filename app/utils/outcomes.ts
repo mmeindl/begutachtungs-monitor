@@ -270,6 +270,8 @@ export interface VorlageOutcomeState {
   sharePending: boolean
   reasoningStats: unknown
   rvExplanations: unknown
+  /** A side's Erläuterungen were not read — the row says so (`explanationsMissingNote`). */
+  explanationsMissing?: unknown
 }
 
 /** A row of the Regierungsvorlage's station frame; structurally a `Fact`
@@ -392,7 +394,7 @@ export function rvStationView(d: DraftDetail | null | undefined, vorlage: Vorlag
     if (vorlage.share || vorlage.sharePending) {
       facts.push({ key: 'aenderung', title: 'Umgeschrieben oder gestrichen' })
     }
-    if (vorlage.reasoningStats || vorlage.rvExplanations) {
+    if (vorlage.reasoningStats || vorlage.rvExplanations || vorlage.explanationsMissing) {
       facts.push({ key: 'begruendung', title: 'Begründung' })
     }
     if (d.enactment.furtherRv.length) facts.push({ key: 'weitere', title: 'Außerdem aus dem Entwurf hervorgegangen' })

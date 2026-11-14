@@ -28,7 +28,7 @@
  * own, not continued Erläuterungen; for those this service returns nothing
  * rather than comparing something similar.
  */
-import type { LawStationId, ReasoningDiffResponse, TraceLink } from '#shared/types'
+import type { ExplanationsMissing, LawStationId, ReasoningDiffResponse, TraceLink } from '#shared/types'
 import { parseExplanationsHtml, type HtmlExplanations } from './explanationsHtml'
 import { getLawDiff } from '../diff/lawDiffService'
 import { fetchDocument } from '../upstream/fetchDocument'
@@ -38,12 +38,13 @@ import { getGegenstand } from '../parliament/drafts'
 import { compareReasoning } from './reasoningDiff'
 import { DERIVED_ANALYSIS_TTL_S } from '../cache/ttl'
 
-/** One Gegenstand's Erläuterungen document, as HTML — or nothing. */
-async function explanationsDocument(gp: string, ityp: string, inr: number): Promise<TraceLink | null> {
+/** One Gegenstand's Erläuterungen document, as HTML — or why there is none to read (`ExplanationsMissing`). */
+async function explanationsDocument(gp: string, ityp: string, inr: number): Promise<TraceLink | ExplanationsMissing['kind']> {
   const detail = await getGegenstand(gp, ityp, inr)
   const group = mapDocuments(detail.content?.documents).find((d) => /^Erläuterungen$/i.test(d.title.trim()))
-  const url = group?.formats.find((f) => f.type === 'html')?.url
-  return url ? { label: `Erläuterungen (${ityp === 'ME' ? 'Entwurf' : 'Regierungsvorlage'})`, url } : null
+  if (!group) return 'notListed'
+  const url = group.formats.find((f) => f.type === 'html')?.url
+  return url ? { label: `Erläuterungen (${ityp === 'ME' ? 'Entwurf' : 'Regierungsvorlage'})`, url } : 'pdfOnly'
 }
 
 /** The answer without a comparison, with the sentence that says why — or without one. */
@@ -80,19 +81,29 @@ const compareMeToRv = defineCachedFunction(
     const rv = findComparisonRvLink(parseStages(detail.content?.stages), rvText?.html ?? rvText?.fallbackUrl)
     if (!rv) return empty(gp, inr, 'Zu diesem Entwurf gibt es noch keine Regierungsvorlage.')
 
-    const [meDoc, rvDoc] = await Promise.all([
+    const [meFound, rvFound] = await Promise.all([
       explanationsDocument(gp, 'ME', inr),
       explanationsDocument(rv.gp, 'I', rv.inr),
     ])
+    const meDoc = typeof meFound === 'string' ? null : meFound
+    const rvDoc = typeof rvFound === 'string' ? null : rvFound
     if (!meDoc || !rvDoc) {
-      return empty(
-        gp,
-        inr,
-        meDoc
-          ? 'Die Regierungsvorlage veröffentlicht ihre Erläuterungen nicht als HTML; verglichen haben wir sie deshalb nicht.'
-          : 'Der Entwurf veröffentlicht seine Erläuterungen nicht als HTML; verglichen haben wir sie deshalb nicht.',
-        [meDoc, rvDoc].filter((d): d is TraceLink => d !== null),
-      )
+      // Said on the page (`explanationsMissingNote`, 14.11.2026): before, the
+      // Begründung row simply went missing.
+      const explanationsMissing: ExplanationsMissing[] = []
+      if (typeof meFound === 'string') explanationsMissing.push({ side: 'me', kind: meFound })
+      if (typeof rvFound === 'string') explanationsMissing.push({ side: 'rv', kind: rvFound })
+      return {
+        ...empty(
+          gp,
+          inr,
+          meDoc
+            ? 'Die Regierungsvorlage veröffentlicht ihre Erläuterungen nicht als HTML; verglichen haben wir sie deshalb nicht.'
+            : 'Der Entwurf veröffentlicht seine Erläuterungen nicht als HTML; verglichen haben wir sie deshalb nicht.',
+          [meDoc, rvDoc].filter((d): d is TraceLink => d !== null),
+        ),
+        explanationsMissing,
+      }
     }
 
     const [meHtml, rvHtml] = await Promise.all([fetchDocument(meDoc.url), fetchDocument(rvDoc.url)])

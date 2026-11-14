@@ -187,6 +187,19 @@ export interface ReasoningDiffEntry {
  */
 export type ReasoningGap = 'numbering' | 'missingBefore' | 'missingAfter' | 'missingBoth' | 'unread'
 
+/**
+ * A side whose Erläuterungen could not be read (14.11.2026), as Parliament's
+ * record shows it: `pdfOnly` — it lists an „Erläuterungen" document, but not
+ * as HTML; `notListed` — it lists none under that title. Neither proves
+ * that no Erläuterungen were published (a Regierungsvorlage may carry them
+ * inside its one document), so the page says „nicht gelesen", never „nicht
+ * veröffentlicht" (`explanationsMissingNote`).
+ */
+export interface ExplanationsMissing {
+  side: 'me' | 'rv'
+  kind: 'pdfOnly' | 'notListed'
+}
+
 export interface ReasoningDiffResponse {
   gp: string
   inr: number
@@ -218,6 +231,8 @@ export interface ReasoningDiffResponse {
    * Begründung was found. Absent in an answer cached before 14.11.2026.
    */
   gaps?: Record<string, ReasoningGap>
+  /** The side(s) whose Erläuterungen could not be read, and why; absent where both were read. */
+  explanationsMissing?: ExplanationsMissing[]
 }
 
 /**

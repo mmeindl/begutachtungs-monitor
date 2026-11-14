@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { reasoningGapNote, reasoningRateNote, substantiveReasoningChanges } from '../app/utils/reasoningNotes'
+import { explanationsMissingNote, reasoningGapNote, reasoningRateNote, substantiveReasoningChanges } from '../app/utils/reasoningNotes'
 
 const stats = (compared: number, changed: number, editorial = 0) => ({ compared, changed, editorial, uncompared: 0 })
 
@@ -40,5 +40,18 @@ describe('reasoningGapNote', () => {
     expect(reasoningGapNote('missingBoth')).toBe('Begründung: nicht zuzuordnen – in keinem der beiden Dokumente gefunden.')
     expect(reasoningGapNote('unread')).toBe('Begründung: nicht zuzuordnen.')
     expect(reasoningGapNote(undefined)).toBeNull()
+  })
+})
+
+describe('explanationsMissingNote', () => {
+  it('sagt, welche Erläuterungen nicht gelesen wurden — nie „nicht veröffentlicht"', () => {
+    expect(explanationsMissingNote([{ side: 'rv', kind: 'pdfOnly' }])).toBe(
+      'Die Erläuterungen der Regierungsvorlage liegen nur als PDF vor und konnten nicht gelesen werden. Die Begründungen sind deshalb nicht verglichen.',
+    )
+    expect(explanationsMissingNote([{ side: 'me', kind: 'notListed' }, { side: 'rv', kind: 'pdfOnly' }])).toBe(
+      'Erläuterungen des Entwurfs konnten nicht gelesen werden: Das Parlament führt sie nicht als eigenes Dokument. Die Erläuterungen der Regierungsvorlage liegen nur als PDF vor und konnten nicht gelesen werden. Die Begründungen sind deshalb nicht verglichen.',
+    )
+    expect(explanationsMissingNote([])).toBeNull()
+    expect(explanationsMissingNote(undefined)).toBeNull()
   })
 })
