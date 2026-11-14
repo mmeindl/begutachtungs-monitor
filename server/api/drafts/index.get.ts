@@ -9,7 +9,7 @@
  * the same predicate (`shared/utils/searchHaystack.ts`); `q` stays for every
  * other caller.
  */
-import type { DraftSummary, DraftsResponse } from '#shared/types'
+import type { DraftChain, DraftSummary, DraftsResponse, NamedInRv } from '#shared/types'
 import { chainCoverageOf, mayClaimOutcome } from '#shared/utils/draftStations'
 import { gpHasEnded } from '#shared/utils/gp'
 import { ministryFilterOptions, readListQuery, requirePlausibleGp } from '../../utils/http/params'
@@ -22,6 +22,18 @@ import { meKey } from '../../utils/eu/euMapStore'
  *  that a value in between would save, so this is an emergency brake and not
  *  a test of patience. */
 const STATION_MAP_BUDGET_MS = 2_500
+
+/**
+ * The row's chain with the Vorlage that names it (`DraftChain.namedInRvCitation`),
+ * by the same gate as the draft page's (`mayBeNamed`, `draftDetailAssembly.ts`):
+ * a closed draft whose chain names no Vorlage and no Antrag. The index has
+ * already kept out an Antrag route and a successor.
+ */
+function namedChain(item: DraftSummary, chain: DraftChain | undefined, named: Record<number, NamedInRv> | null): DraftChain | undefined {
+  const n = named?.[item.inr]
+  if (!n || !chain || item.active || chain.station !== 'begutachtung' || chain.rvCitation || chain.antragCitation) return chain
+  return { ...chain, namedInRvCitation: n.rv.citation }
+}
 
 export default defineEventHandler(async (event): Promise<DraftsResponse> => {
   const query = readListQuery(event)
@@ -38,7 +50,7 @@ export default defineEventHandler(async (event): Promise<DraftsResponse> => {
    * list 81 throws; the carry-over never throws, and both enrichments fold
    * a failure into `null` (`withinBudget`), so `Promise.all` cannot reject
    * for any of them. */
-  const [{ items: ownItems }, carried, chains, markers] = await Promise.all([
+  const [{ items: ownItems }, carried, chains, markers, named] = await Promise.all([
     getDraftsForGp(gp),
     /* CARRY-OVER, und nur wenn der Aufruf KEINE Periode genannt hat.
      * `?gp=XXVII` ist eine Frage nach einer Periode und wird
@@ -72,6 +84,12 @@ export default defineEventHandler(async (event): Promise<DraftsResponse> => {
      * the period before is not in this map and gets no `eu`, as it gets no
      * chain. */
     euMarkersForList(gp),
+    /* THE „GENANNT" INDEX (`parliament/namedInRvIndex.ts`), the same
+     * construction once more: which closed drafts without a Vorlage another
+     * draft's Vorlage names. Read under the station map's brake; null — not
+     * ready, or not whole — leaves every row as it was, „Bisher keine
+     * Regierungsvorlage" included, exactly as the draft page does. */
+    namedInRvWithin(gp, STATION_MAP_BUDGET_MS),
   ])
 
   /* Folded before anything counts or filters: a draft two ressorts sent
@@ -104,7 +122,7 @@ export default defineEventHandler(async (event): Promise<DraftsResponse> => {
    * und schwächste Behauptung; eine zweite Stationskarte zu bauen wäre für
    * die paar Zeilen ein kalter 35-Sekunden-Lauf. */
   const withChains = speakable
-    ? rows.map((item) => (item.gp === gp ? { ...item, chain: chains[item.inr] } : item))
+    ? rows.map((item) => (item.gp === gp ? { ...item, chain: namedChain(item, chains[item.inr], named) } : item))
     : rows
 
   const items = markers

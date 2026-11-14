@@ -21,12 +21,14 @@ import type {
   DraftSummary,
   EnactmentInfo,
   RelatedDraft,
+  NamedInRv,
   RisMapRow,
   StatementMeta,
   TraceStep,
 } from '../../../shared/types'
 import { antragPathFor } from '../../../shared/utils/antragPath'
 import { chainCoverageOf } from '../../../shared/utils/draftStations'
+import { mayBeNamed } from './namedInRv'
 import { gpEndedOn, gpHasEnded } from '../../../shared/utils/gp'
 import {
   findHandoff,
@@ -80,6 +82,8 @@ export interface DraftDetailInputs {
   /** The Vorlage's half of the outcome; `null` while there is no Vorlage. */
   enactment: EnactmentInfo | null
   related: { predecessor: RelatedDraft | null; successor: RelatedDraft | null }
+  /** The period's „genannt" index (`namedInRvIndex.ts`); null where it was not asked, not ready or not whole. */
+  namedIndex?: Record<number, NamedInRv> | null
 }
 
 export function assembleDraftDetail(input: DraftDetailInputs): DraftDetail {
@@ -110,6 +114,26 @@ export function assembleDraftDetail(input: DraftDetailInputs): DraftDetail {
       null
   }
 
+  const chainCoverage = chainCoverageOf(stationMap ? Object.values(stationMap) : null, gpHasEnded(gp, input.currentGp))
+  // The documented chain wins: a draft with a Vorlage keeps it, even where
+  // the same text ALSO went as an Antrag.
+  const antragPath = enactment ? null : antragPathFor(gp, summary.inr)
+  /* „In 298 d.B. genannt" only where every other state is ruled out by the
+   * draft's own record (`mayBeNamed`) — the index checked the Antrag and the
+   * successor too, but against its own lists, which may be older. */
+  const named = input.namedIndex?.[summary.inr] ?? null
+  const namedInRv =
+    named &&
+    mayBeNamed({
+      active: summary.active,
+      hasRv: Boolean(enactment),
+      coverage: chainCoverage,
+      antragPath,
+      successor: related.successor,
+    })
+      ? named
+      : null
+
   return {
     ...base,
     shortTitle: deriveShortTitle(summary.title),
@@ -124,10 +148,7 @@ export function assembleDraftDetail(input: DraftDetailInputs): DraftDetail {
     risDraft: risMap?.rows.find((r) => r.inr === summary.inr) ?? null,
     gpEnded: gpHasEnded(gp, input.currentGp),
     gpEndedOn: gpEndedOn(gp),
-    chainCoverage: chainCoverageOf(
-      stationMap ? Object.values(stationMap) : null,
-      gpHasEnded(gp, input.currentGp),
-    ),
+    chainCoverage,
     predecessor: related.predecessor,
     successor: related.successor,
     statements: input.statements
@@ -145,9 +166,8 @@ export function assembleDraftDetail(input: DraftDetailInputs): DraftDetail {
           degraded: true,
         },
     enactment,
-    // The documented chain wins: a draft with a Vorlage keeps it, even where
-    // the same text ALSO went as an Antrag.
-    antragPath: enactment ? null : antragPathFor(gp, summary.inr),
+    antragPath,
+    namedInRv,
   }
 }
 

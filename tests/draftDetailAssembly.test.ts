@@ -281,3 +281,27 @@ describe('assembleDraftDetail — the enrichments that may simply be absent', ()
     })).shortTitle).toBe('Ökostromgesetz-Novelle')
   })
 })
+
+describe('assembleDraftDetail — „genannt" (14.11.2026)', () => {
+  const named = {
+    rv: { gp: 'XXVIII', inr: 298, citation: '298 d.B.', url: 'https://www.parlament.gv.at/gegenstand/XXVIII/I/298', date: '2025-11-18' },
+    explanationsUrl: 'https://www.parlament.gv.at/dokument/XXVIII/I/298/fnameorig_1722549.html',
+    quote: 'Stärkung der Selbstbestimmung von unmündigen Mädchen an Schulen mittels Einführung eines Kopftuchverbots.',
+    daysAfterFrist: 26,
+    linkedDrafts: [{ gp: 'XXVIII', inr: 54, citation: '54/ME', title: 'Schulunterrichtsgesetz, Pflichtschulerhaltungs-Grundsatzgesetz u.a., Änderung' }],
+  }
+  const linkedMap = { 1: { station: 'rv' as const, rvCitation: '1 d.B.', rvDate: null, bgblNumber: null, filingOpen: false } }
+
+  it('passes the index entry through for a closed draft without Vorlage in a period whose links exist', () => {
+    const d = assembleDraftDetail(inputs({ summary: draftSummary({ active: false }), stationMap: linkedMap, namedIndex: { [draftSummary().inr]: named } }))
+    expect(d.namedInRv).toBe(named)
+  })
+
+  it('withholds it beside a successor, without the period\'s links, and without the index', () => {
+    const base = { summary: draftSummary({ active: false }), stationMap: linkedMap, namedIndex: { [draftSummary().inr]: named } }
+    const successor = { gp: 'XXVIII', inr: 99, citation: '99/ME', title: 't', arrivedAt: '2026-01-01', deadline: null, hasRv: null }
+    expect(assembleDraftDetail(inputs({ ...base, related: { predecessor: null, successor } })).namedInRv).toBeNull()
+    expect(assembleDraftDetail(inputs({ ...base, stationMap: null })).namedInRv).toBeNull()
+    expect(assembleDraftDetail(inputs({ ...base, namedIndex: null })).namedInRv).toBeNull()
+  })
+})

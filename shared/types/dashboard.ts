@@ -47,6 +47,12 @@ export interface ClosedOutcome extends DraftSummary {
    */
   rvDate?: string | null
   bgblDate?: string | null
+  /**
+   * The Vorlage of another draft that names this one (`NamedInRv`), e.g.
+   * „298 d.B." — only on a row without a Vorlage of its own; absent where
+   * the period's index was not ready (the row then says what it said before).
+   */
+  namedInRvCitation?: string
 }
 
 /**

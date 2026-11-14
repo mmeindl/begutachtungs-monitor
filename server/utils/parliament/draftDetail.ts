@@ -89,6 +89,15 @@ const STATION_MAP_BUDGET_MS = 2_000
 const BGBL_DATE_BUDGET_MS = 2_000
 
 /**
+ * How long the page waits for the period's „genannt" index
+ * (`namedInRvIndex.ts`) — asked only by a closed draft without a Vorlage.
+ * Warm it is a lookup; cold it is the period's Erläuterungen, which the
+ * prewarm reads for the running period. Past the budget the draft shows
+ * what it showed before the index existed, and the build fills the cache.
+ */
+const NAMED_IN_RV_BUDGET_MS = 2_000
+
+/**
  * The Kundmachung of a Vorlage whose record at Parliament carries no link —
  * from RIS, by the exact key of period and Vorlage (`findBgblIForVorlage`,
  * 03.10.2026) — or null.
@@ -363,9 +372,14 @@ export async function getDraftDetail(
   // that before the Vorlage's own detail JSON is fetched. Awaiting the RV
   // leg first and `findRelated` after it made every detail page pay two
   // sequential upstream hops for one answer each.
-  const [enactment, related] = await Promise.all([
+  //
+  // The „genannt" index in the same round, and only where it can matter: a
+  // closed draft whose stage record names no Vorlage. (Auto-imported from
+  // ./namedInRvIndex, as the station map above.)
+  const [enactment, related, namedIndex] = await Promise.all([
     enactmentOf(rvLinks, currentGp),
     findRelated(summary, currentGp, rvLinks.length > 0),
+    rvLinks.length > 0 || summary.active ? Promise.resolve(null) : namedInRvWithin(gp, NAMED_IN_RV_BUDGET_MS),
   ])
 
   // Everything is here; what the page says out of it is
@@ -381,6 +395,7 @@ export async function getDraftDetail(
     stationMap,
     enactment,
     related,
+    namedIndex,
   })
 }
 

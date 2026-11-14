@@ -79,7 +79,7 @@
 # §§. The first visitor of the day pays 12 s for a section that
 # says „lädt"; that is the right one to pay it.
 [Unit]
-Description=Begutachtungs-Monitor: warm the RIS corpus, BGBl volumes, both station maps, the Länder, the EU map and the laws without a draft
+Description=Begutachtungs-Monitor: warm the RIS corpus, BGBl volumes, both station maps, the genannt index, the Länder, the EU map and the laws without a draft
 After=begutachtungs-monitor.service
 Requires=begutachtungs-monitor.service
 # Since 30.09.2026: the pages of the open drafts, in their own unit and
@@ -99,9 +99,9 @@ User=app
 Group=app
 NoNewPrivileges=true
 PrivateTmp=true
-# The unit's own worst case, stated rather than inherited: the ten --max-time
-# budgets below add up to 5.460 s, and deploy.sh blocks on this job.
-TimeoutStartSec=5540
+# The unit's own worst case, stated rather than inherited: the eleven --max-time
+# budgets below add up to 6.060 s, and deploy.sh blocks on this job.
+TimeoutStartSec=6140
 # First, and no curl (12.11.2026): the published documents the app keeps on
 # disk (server/utils/cache/documentDriver.ts) — law texts, § versions,
 # Erläuterungen, closed Bundesgesetzblatt years, upstream payloads only and
@@ -126,6 +126,17 @@ ExecStart=/usr/bin/curl -fsS -o /dev/null --retry 10 --retry-connrefused --retry
 ExecStart=/usr/bin/curl -fsS -o /dev/null --max-time 300 http://127.0.0.1:3000/api/bgbl/teil2
 ExecStart=/usr/bin/curl -fsS -o /dev/null --max-time 120 "http://127.0.0.1:3000/api/ris-drafts?status=open"
 ExecStart=/usr/bin/curl -fsS -o /dev/null --max-time 900 http://127.0.0.1:3000/api/stations/aktuell
+# Since 14.11.2026, right after the station map it reads: the running
+# period's „genannt" index (server/utils/parliament/namedInRvIndex.ts) —
+# which closed drafts without a Vorlage the Erläuterungen of another
+# draft's Vorlage name. The draft page, the list and the homepage read it
+# under a 2-s brake and say „Bisher keine Regierungsvorlage" until it is
+# there. Cold it is one detail JSON per Vorlage inside a candidate's window
+# (the station map has just fetched most of them) and their Erläuterungen,
+# which stay on the document disk for a month; a PDF only where it could be
+# the second witness. The running period only: the previous one builds on
+# its first request and is held a week.
+ExecStart=/usr/bin/curl -fsS -o /dev/null --max-time 600 http://127.0.0.1:3000/api/genannt/aktuell
 ExecStart=/usr/bin/curl -fsS -o /dev/null --max-time 300 "http://127.0.0.1:3000/api/laender?status=all"
 # The homepage's cut of the same Länder lists (30.10.2026): read right after them, it
 # costs the cut and nothing upstream.

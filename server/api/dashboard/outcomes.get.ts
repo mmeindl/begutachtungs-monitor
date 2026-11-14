@@ -21,6 +21,9 @@ import { antragPathFor, carriesDraft } from '#shared/utils/antragPath'
 import { rankByStatements } from '#shared/utils/draftOrder'
 import { getRankedPeriod } from '../../utils/parliament/rankedPeriod'
 
+/** As long as the list waits for the same index (`api/drafts`). */
+const NAMED_IN_RV_BUDGET_MS = 2_500
+
 async function resolveOutcome(item: DraftSummary): Promise<ClosedOutcome | null> {
   try {
     const outcome = await getDraftOutcome(item.gp, item.inr)
@@ -36,6 +39,14 @@ async function resolveOutcome(item: DraftSummary): Promise<ClosedOutcome | null>
         bgblNumber,
         chain: { station: 'bgbl', rvCitation: null, rvDate: null, bgblNumber, filingOpen: false, antragCitation: path.antrag.citation },
       }
+    }
+    /* No Vorlage of its own: another draft's may name it (`NamedInRv`), by
+     * the gate the list and the draft page use — no Antrag route, which
+     * the index has kept out too. Within the list's brake; past it the row
+     * says what it said before. */
+    if (!outcome.rvCitation && !path) {
+      const named = (await namedInRvWithin(item.gp, NAMED_IN_RV_BUDGET_MS))?.[item.inr]
+      if (named) return { ...item, rvCitation: null, bgblNumber: null, namedInRvCitation: named.rv.citation }
     }
     return { ...item, rvCitation: outcome.rvCitation, bgblNumber: outcome.bgblNumber }
   } catch {

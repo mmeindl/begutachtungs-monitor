@@ -67,6 +67,9 @@ const PREWARM_ONLY = [
   // Erläuterungen and the Länder's PDFs at one request a second
   // — a request from outside must never start it.
   /^\/api\/eu-recht\/karte\/?$/,
+  // The „genannt" index: cold it reads the Erläuterungen of a period's
+  // Vorlagen (`parliament/namedInRvIndex.ts`).
+  /^\/api\/genannt(?:\/|$)/,
 ]
 
 export function isPrewarmOnlyPath(path: string): boolean {

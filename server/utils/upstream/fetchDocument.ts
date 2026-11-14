@@ -12,6 +12,7 @@ import {
   UpstreamTooLargeError,
   type UpstreamPolicy,
 } from './fetch'
+import { decodeHtml } from './decodeHtml'
 import { storageKeyOf } from '../cache/key'
 import { DOCUMENT_CACHE } from '../cache/base'
 import { PUBLISHED_DOCUMENT_TTL_S } from '../cache/ttl'
@@ -58,22 +59,9 @@ export const fetchDocument = defineCachedFunction(
       }
       throw createError({ statusCode: 502, statusMessage: 'Dokument nicht abrufbar', cause: err })
     }
-    // Parliament serves Word HTML as windows-1252 or utf-8; the header says which.
+    // Parliament serves Word HTML as windows-1252 or utf-8; the header says which (`decodeHtml`).
     const charset = /charset=([\w-]+)/i.exec(body.contentType ?? '')?.[1]
     return decodeHtml(body.bytes, charset)
   },
   { name: 'law-html', base: DOCUMENT_CACHE, getKey: (url: string) => storageKeyOf(url), maxAge: PUBLISHED_DOCUMENT_TTL_S, swr: false },
 )
-
-function decodeHtml(buf: ArrayBuffer, headerCharset: string | undefined): string {
-  let charset = headerCharset
-  if (!charset) {
-    const head = new TextDecoder('latin1').decode(buf.slice(0, 2048))
-    charset = /charset=["']?([\w-]+)/i.exec(head)?.[1]
-  }
-  try {
-    return new TextDecoder(charset ?? 'utf-8').decode(buf)
-  } catch {
-    return new TextDecoder('utf-8').decode(buf)
-  }
-}

@@ -203,6 +203,35 @@ export interface DraftChain {
    * payload — never „no Vorlage"; that is `rvCitation`'s to say.
    */
   rvLinks?: { gp: string; inr: number }[]
+  /**
+   * The Vorlage that names this draft's title although Parliament links it
+   * to another (`NamedInRv`), e.g. „298 d.B." — set by the list endpoint,
+   * not the station map, and only on a chain without a Vorlage of its own.
+   * Absent: not named, or not asked (the index was not ready). Never a
+   * station: the chain stays at `begutachtung`.
+   */
+  namedInRvCitation?: string
+}
+
+/**
+ * The Regierungsvorlage of ANOTHER draft whose Erläuterungen name this
+ * draft's title — the state „In 298 d.B. genannt" (14.11.2026), between a
+ * linked Vorlage and „bisher keine". AN INFERENCE, like `AntragPath`: no
+ * link of Parliament's connects the two, the Vorlage's own words do, and the
+ * page shows them (`quote`) so the reader can check. The rule and its five
+ * conditions: `server/utils/parliament/namedInRv.ts`.
+ */
+export interface NamedInRv {
+  /** The Vorlage; `date` its Einlangen, ISO. */
+  rv: { gp: string; inr: number; citation: string; url: string; date: string }
+  /** Its Erläuterungen, Parliament's HTML — where the quote stands. */
+  explanationsUrl: string
+  /** The sentence that names the title, as the document has it (≤ 300 characters, cut with „…"). */
+  quote: string
+  /** Fristende → the Vorlage's Einlangen. */
+  daysAfterFrist: number
+  /** The drafts Parliament links the Vorlage to — one, several or none. */
+  linkedDrafts: { gp: string; inr: number; citation: string; title: string }[]
 }
 
 /**
@@ -510,6 +539,11 @@ export interface DraftDetail extends Omit<DraftSummary, 'statementCount'> {
       the wording ties it to a promulgated Antrag (`antragPathFor`); null
       otherwise, and always null beside an `enactment`. */
   antragPath: AntragPath | null
+  /** The Vorlage of another draft that names this one (`NamedInRv`); null
+      where the rule does not hold, where the period's index could not be
+      built whole, and always beside an `enactment`, an `antragPath` or a
+      `successor`. */
+  namedInRv: NamedInRv | null
 }
 
 export type DraftStatus = 'open' | 'closed' | 'all'
