@@ -25,11 +25,17 @@ web UI under **Nameserver → begutachtungs-monitor.at**.
 
 | Type | Name | Value |
 |---|---|---|
-| A | *(apex)* | `85.235.66.11` |
-| AAAA | *(apex)* | `2a03:4000:32:508:38dd:9eff:fe4c:1b66` |
-| A | `www` | `85.235.66.11` |
+| A | *(apex)* | `<SERVER_IP>` |
+| AAAA | *(apex)* | `<SERVER_IPV6>` |
+| A | `www` | `<SERVER_IP>` |
 | MX | *(apex)*, Prio 10 | `smtp-in0.prod0.webspace.bz` |
 | MX | *(apex)*, Prio 20 | `smtp-in1.prod0.webspace.bz` |
+
+The addresses are not written into the repository: `<SERVER_IP>` is what
+`dig +short begutachtungs-monitor.at` returns (`AAAA` for `<SERVER_IPV6>`).
+The commands below reach the box by its host name. Only a box that DNS does
+not point to yet (a fresh one, or the new one during a move) needs its IP,
+from the provider's panel.
 
 `www.` is 301-redirected to the bare domain by Caddy. The zone is
 DNSSEC-signed (INWX automatic signing; keys managed by INWX).
@@ -49,7 +55,7 @@ Managed via the INWX panel → Hosting → *manage* (Froxlor).
   server console (reinstall, rescue system, VNC/screen) at
   [servercontrolpanel.de](https://www.servercontrolpanel.de).
 - **OS:** Ubuntu LTS ·
-  **IPv4** `85.235.66.11` · **IPv6** `2a03:4000:32:508:38dd:9eff:fe4c:1b66`
+  **IPv4** `<SERVER_IP>` · **IPv6** `<SERVER_IPV6>`
 
 ## What runs on it
 
@@ -103,7 +109,7 @@ bootstrap.sh, because their unit files live in git
   in the first ten minutes after a start or while the prewarm runs, ignores
   HTTP errors (a restart does not help when Parliament is down), and stops
   after three restarts in 24 hours — then its unit fails. Added after the
-  hang of 29.09.2026 (TODO.md § 5d); `deploy/bin/watchdog.sh` has the
+  hang of 29.09.2026; `deploy/bin/watchdog.sh` has the
   reasoning.
 - **`begutachtungs-monitor-laender-archive.timer`** — daily 05:40 UTC, keeps
   the app's `/api/laender?status=all` as one gzipped file a day and every
@@ -153,28 +159,28 @@ VPS (the scripts are provider-agnostic).
 
 | Task | Command (from the repo root) |
 |---|---|
-| Deploy | `SERVER=root@85.235.66.11 ./deploy/deploy.sh` — refuses a dirty working tree; `--allow-dirty` ships it anyway, marked `-dirty` in the box's `REVISION` |
-| What runs | `ssh root@85.235.66.11 cat /srv/begutachtungs-monitor/REVISION` |
+| Deploy | `SERVER=root@begutachtungs-monitor.at ./deploy/deploy.sh` — refuses a dirty working tree; `--allow-dirty` ships it anyway, marked `-dirty` in the box's `REVISION` |
+| What runs | `ssh root@begutachtungs-monitor.at cat /srv/begutachtungs-monitor/REVISION` |
 | Uptime: run the probe now | `gh workflow run uptime.yml --repo mmeindl/begutachtungs-monitor` (or the "Run workflow" button in the Actions tab) |
 | Uptime: test the alarm mail | `gh workflow run uptime.yml --repo mmeindl/begutachtungs-monitor -f simulate=down` — opens a `downtime` issue titled "Testalarm" with the @mention (= the e-mail an outage sends); the next scheduled run, at most 30 min later, closes it. First tested 08.09.2026 |
 | Uptime: current state | open issues with label `downtime`: `gh issue list --repo mmeindl/begutachtungs-monitor --label downtime` — none means up. **Trap:** GitHub disables the schedule after 60 days without a commit and mails about it; re-enable in the Actions tab. **Timing:** GitHub's cron is best-effort — after the workflow was first pushed (08.09.2026, 11:35 UTC) the first scheduled run came at 15:17 UTC, six slots later, and runs start ~10 min after their slot. Good enough to catch an outage of hours, not one of minutes |
-| App logs | `ssh root@85.235.66.11 journalctl -u begutachtungs-monitor -f` |
-| Timers: when do they fire | `ssh root@85.235.66.11 'systemctl list-timers begutachtungs-monitor-*'` |
-| Länder archive: start it | after installing the timer on a fresh box, once: `ssh root@85.235.66.11 'systemctl start --no-block begutachtungs-monitor-laender-archive.service'` |
-| Länder archive: is it arriving | `ssh root@85.235.66.11 'ls /var/lib/begutachtungs-monitor/laender/lists/ \| tail -3; du -sh /var/lib/begutachtungs-monitor/laender/docs; journalctl -u begutachtungs-monitor-laender-archive -n 5 --no-pager'` — the last line counts stored, gone and failed documents |
-| Länder archive: pull a copy | `rsync -az root@85.235.66.11:/var/lib/begutachtungs-monitor/laender/ .cache/laender/` |
-| Document disk: size and the disk | `ssh root@85.235.66.11 'du -sh /var/lib/begutachtungs-monitor/documents/nitro/functions/*; df -h /'` — grows with the drafts read in 30 days, emptied of older files nightly |
-| list-81 snapshots: start the series | after installing the timer on a fresh box, once: `ssh root@85.235.66.11 'systemctl start begutachtungs-monitor-list81-snapshot.service'` — the timer itself only waits for its next slot |
-| Watchdog: did it act | `ssh root@85.235.66.11 'journalctl -u begutachtungs-monitor-watchdog --since -7d --no-pager \| grep -E "HANG\|RESTART\|GIVING UP\|route\|report"'` — silence means every probe answered |
-| Watchdog: read a report | `ssh root@85.235.66.11 'ls -la /var/lib/begutachtungs-monitor/reports/'`, then `scp` one and look at `libuv` (open handles) and `javascriptHeap`; kept 30 days |
-| Watchdog: after it gave up | fix the cause, then `ssh root@85.235.66.11 'rm /var/lib/begutachtungs-monitor-watchdog/restarts && systemctl reset-failed begutachtungs-monitor-watchdog'` |
-| Diagnostic report by hand | `ssh root@85.235.66.11 'kill -USR2 $(systemctl show -p MainPID --value begutachtungs-monitor)'` — does not stop the app; the file lands in `/var/lib/begutachtungs-monitor/reports/` |
-| list-81 snapshots: are they arriving | `ssh root@85.235.66.11 'ls -la /var/lib/begutachtungs-monitor/list81/'` — one file per day; a gap means the run failed, and `journalctl -u begutachtungs-monitor-list81-snapshot` says why |
-| list-81 snapshots: read the series | `rsync -az root@85.235.66.11:/var/lib/begutachtungs-monitor/list81/ .cache/list81/ && pnpm corpus:list81-drift` |
-| Page views: read the day files | `rsync -az root@85.235.66.11:/var/lib/begutachtungs-monitor/zaehlung/ .cache/zaehlung/` — one JSON per UTC day; the summary is `/statistik` |
-| list-81 snapshots: stop collecting | `ssh root@85.235.66.11 'systemctl disable --now begutachtungs-monitor-list81-snapshot.timer'` — and take the `enable` line out of [deploy.sh](deploy.sh), or the next deploy turns it back on |
-| Service status | `ssh root@85.235.66.11 'systemctl status begutachtungs-monitor caddy'` |
-| Re-run setup | `scp deploy/bootstrap.sh root@85.235.66.11: && ssh root@85.235.66.11 'DOMAIN=begutachtungs-monitor.at bash bootstrap.sh'` |
+| App logs | `ssh root@begutachtungs-monitor.at journalctl -u begutachtungs-monitor -f` |
+| Timers: when do they fire | `ssh root@begutachtungs-monitor.at 'systemctl list-timers begutachtungs-monitor-*'` |
+| Länder archive: start it | after installing the timer on a fresh box, once: `ssh root@begutachtungs-monitor.at 'systemctl start --no-block begutachtungs-monitor-laender-archive.service'` |
+| Länder archive: is it arriving | `ssh root@begutachtungs-monitor.at 'ls /var/lib/begutachtungs-monitor/laender/lists/ \| tail -3; du -sh /var/lib/begutachtungs-monitor/laender/docs; journalctl -u begutachtungs-monitor-laender-archive -n 5 --no-pager'` — the last line counts stored, gone and failed documents |
+| Länder archive: pull a copy | `rsync -az root@begutachtungs-monitor.at:/var/lib/begutachtungs-monitor/laender/ .cache/laender/` |
+| Document disk: size and the disk | `ssh root@begutachtungs-monitor.at 'du -sh /var/lib/begutachtungs-monitor/documents/nitro/functions/*; df -h /'` — grows with the drafts read in 30 days, emptied of older files nightly |
+| list-81 snapshots: start the series | after installing the timer on a fresh box, once: `ssh root@begutachtungs-monitor.at 'systemctl start begutachtungs-monitor-list81-snapshot.service'` — the timer itself only waits for its next slot |
+| Watchdog: did it act | `ssh root@begutachtungs-monitor.at 'journalctl -u begutachtungs-monitor-watchdog --since -7d --no-pager \| grep -E "HANG\|RESTART\|GIVING UP\|route\|report"'` — silence means every probe answered |
+| Watchdog: read a report | `ssh root@begutachtungs-monitor.at 'ls -la /var/lib/begutachtungs-monitor/reports/'`, then `scp` one and look at `libuv` (open handles) and `javascriptHeap`; kept 30 days |
+| Watchdog: after it gave up | fix the cause, then `ssh root@begutachtungs-monitor.at 'rm /var/lib/begutachtungs-monitor-watchdog/restarts && systemctl reset-failed begutachtungs-monitor-watchdog'` |
+| Diagnostic report by hand | `ssh root@begutachtungs-monitor.at 'kill -USR2 $(systemctl show -p MainPID --value begutachtungs-monitor)'` — does not stop the app; the file lands in `/var/lib/begutachtungs-monitor/reports/` |
+| list-81 snapshots: are they arriving | `ssh root@begutachtungs-monitor.at 'ls -la /var/lib/begutachtungs-monitor/list81/'` — one file per day; a gap means the run failed, and `journalctl -u begutachtungs-monitor-list81-snapshot` says why |
+| list-81 snapshots: read the series | `rsync -az root@begutachtungs-monitor.at:/var/lib/begutachtungs-monitor/list81/ .cache/list81/ && pnpm corpus:list81-drift` |
+| Page views: read the day files | `rsync -az root@begutachtungs-monitor.at:/var/lib/begutachtungs-monitor/zaehlung/ .cache/zaehlung/` — one JSON per UTC day; the summary is `/statistik` |
+| list-81 snapshots: stop collecting | `ssh root@begutachtungs-monitor.at 'systemctl disable --now begutachtungs-monitor-list81-snapshot.timer'` — and take the `enable` line out of [deploy.sh](deploy.sh), or the next deploy turns it back on |
+| Service status | `ssh root@begutachtungs-monitor.at 'systemctl status begutachtungs-monitor caddy'` |
+| Re-run setup | `scp deploy/bootstrap.sh root@begutachtungs-monitor.at: && ssh root@begutachtungs-monitor.at 'DOMAIN=begutachtungs-monitor.at bash bootstrap.sh'` |
 
 ## Renewal calendar
 

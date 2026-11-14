@@ -99,7 +99,7 @@ truth; the steps around it are ordered so that each one fails before it can
 lock you out or take the site down. Run them from the repo root:
 
 ```sh
-S=root@85.235.66.11
+S=root@begutachtungs-monitor.at
 ```
 
 **0. Keep a second SSH session to the box open** until step 3 has passed.
