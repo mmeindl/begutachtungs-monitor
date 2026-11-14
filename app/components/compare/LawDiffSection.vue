@@ -28,7 +28,7 @@ import { readsSideBySide, splitSegments } from '~/utils/diffSides'
 import { displayId, extraHeading, unitName } from '#shared/utils/unitName'
 import { droppedLawsNote, mergedLawsNote, outsideDraftNote } from '~/utils/lawPackage'
 import { lawDiffCredits } from '~/utils/lawDiffCredits'
-import { reasoningRateNote } from '~/utils/reasoningNotes'
+import { reasoningGapNote, reasoningRateNote } from '~/utils/reasoningNotes'
 import {
   LAW_STATION_LABEL,
   PARLIAMENT_COMPARISON_QUESTION,
@@ -129,6 +129,16 @@ function reasoningOf(u: LawDiffUnit): ReasoningDiffEntry | null {
   const key = reasoning.value?.units?.[diffUnitKey(u)]
   const entry = key ? reasoning.value?.entries?.[key] : null
   return entry && (entry.changed || !entry.comparable) ? entry : null
+}
+
+/**
+ * Why a change shows no Begründung although both documents have
+ * Erläuterungen — one line where the disclosure would be, so „none shown"
+ * never reads as „unchanged" (`reasoningGapNote`, 14.11.2026). Never beside
+ * a disclosure: a gap is only ever a change with no entry.
+ */
+function gapOf(u: LawDiffUnit): string | null {
+  return reasoningGapNote(reasoning.value?.gaps?.[diffUnitKey(u)])
 }
 
 /** The sentence above the comparison that explains the disclosures below
@@ -397,7 +407,7 @@ interface UnitView {
 
 type Block =
   /** `split`: this unit reads better as two columns (`readsSideBySide`). */
-  | ({ kind: 'unit'; from: LawDiffSegment[]; to: LawDiffSegment[]; split: boolean; reasoning: ReasoningDiffEntry | null; cite: { text: string; subject: string } | null } & UnitView)
+  | ({ kind: 'unit'; from: LawDiffSegment[]; to: LawDiffSegment[]; split: boolean; reasoning: ReasoningDiffEntry | null; gap: string | null; cite: { text: string; subject: string } | null } & UnitView)
   | { kind: 'context'; units: UnitView[] }
 
 function viewOf(u: LawDiffUnit): UnitView {
@@ -434,6 +444,7 @@ function blocksOf(units: readonly LawDiffUnit[], article: string): { blocks: Blo
       ...splitSegments(u.segments, u.fromText, u.toText),
       split: readsSideBySide(u.segments),
       reasoning: reasoningOf(u),
+      gap: gapOf(u),
       cite: unitCite(u),
     })
     shown++
@@ -718,6 +729,10 @@ const droppedNote = computed(() =>
                         <CiteButton class="-ml-2" :text="reasoningCite(b.reasoning)!" subject="Diese Begründung" />
                       </p>
                     </Disclosure>
+                    <!-- No Begründung could be attached: said in the
+                         disclosure's place and size, without its weight or
+                         chevron — there is nothing to open (14.11.2026). -->
+                    <p v-else-if="b.gap" class="mt-2 text-xs text-ink-secondary">{{ b.gap }}</p>
                   </DiffBody>
                 </div>
               </template>

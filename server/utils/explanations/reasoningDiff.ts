@@ -86,7 +86,7 @@
  * Vorlage, 18/ME: 3 → 6), the § is compared under that pair; measured, 292
  * of the 413 come back. What still cannot be keyed stays out, as before.
  */
-import type { LawDiffUnit, ReasoningDiffEntry } from '../../../shared/types'
+import type { LawDiffUnit, ReasoningDiffEntry, ReasoningGap } from '../../../shared/types'
 import { diffUnitKey } from '../../../shared/utils/diffKey'
 import { displayId, isParagraphUnit } from '../../../shared/utils/unitName'
 import { diffTokens, isEditorialChange, renumberingOf, sameWording } from '../diff/wordDiff'
@@ -953,6 +953,15 @@ export interface ReasoningComparisonAtZiffer extends ReasoningComparison {
   guarded: { unit: string; side: Side; heading: string }[]
   /** For every unit the scope rule left without a verdict, the units each side's passages cover. */
   scopes: { unit: string; before: string[]; after: string[] }[]
+  /**
+   * For the page: every unit of the Ziffer join that ended with no entry,
+   * and why (`ReasoningGap`) — `misnumbered` and the offset without
+   * witnesses as `numbering`, `none` by the side that has nothing, where
+   * that side's text proves it (`namesChange`), else `unread`. A unit the
+   * ceiling (`MAX_ENTRIES`) kept out is not here: its Begründung was found,
+   * and the line would say otherwise.
+   */
+  gaps: Record<string, ReasoningGap>
 }
 
 /**
@@ -982,6 +991,8 @@ export function compareReasoning(units: readonly LawDiffUnit[], before: HtmlExpl
   const ambiguous = ambiguousParagraphs(units, read)
   const f = filling(units)
   const fallbacks: Record<string, ZifferFallback> = {}
+  /** Why a unit of the Ziffer join may end without an entry — kept only where it does (`gaps`). */
+  const gapOf: Record<string, ReasoningGap> = {}
 
   const titled = before.special.some((p) => p.ziffern.length > 0) && after.special.some((p) => p.ziffern.length > 0)
   const z = titled ? { before: zifferSide(units, before, 'before', ambiguous, read), after: zifferSide(units, after, 'after', ambiguous, read) } : null
@@ -1105,7 +1116,14 @@ export function compareReasoning(units: readonly LawDiffUnit[], before: HtmlExpl
       else if (offset) fallbacks[diffUnitKey(unit)] = 'offset'
       else if (me.byParagraph || rv.byParagraph) fallbacks[diffUnitKey(unit)] = 'paragraphTitled'
     }
-    if (!f.out.units[diffUnitKey(unit)]) return
+    if (!f.out.units[diffUnitKey(unit)]) {
+      // No entry although both sides had passages: said by the side whose
+      // passage has no text. With text on both sides it was the ceiling —
+      // the Begründung was found, and no line may say otherwise.
+      const empty = { before: !textOf(before, me.passages), after: !textOf(after, rv.passages) }
+      if (empty.before || empty.after) gapOf[diffUnitKey(unit)] ??= missingGap(empty.before, empty.after)
+      return
+    }
     for (const i of me.passages) used.before.add(i)
     for (const i of rv.passages) used.after.add(i)
   }
@@ -1138,6 +1156,7 @@ export function compareReasoning(units: readonly LawDiffUnit[], before: HtmlExpl
     const rv = passagesOf(z.after, unit)
     if (!me.passages.length || !rv.passages.length) {
       fallbacks[diffUnitKey(unit)] = 'none'
+      gapOf[diffUnitKey(unit)] = missingGap(!me.passages.length, !rv.passages.length)
       // One document explains it under its own number, the other under none
       // of its own: perhaps under the neighbour's (`offsetPassage`), below.
       if (me.passages.length || rv.passages.length) offsets.push({ unit, me, rv, side: me.passages.length ? 'after' : 'before' })
@@ -1153,6 +1172,9 @@ export function compareReasoning(units: readonly LawDiffUnit[], before: HtmlExpl
       !(me.passages.every((i) => fitsParagraphs(before.special[i]!, unit, 'before', read)) && rv.passages.every((i) => fitsParagraphs(after.special[i]!, unit, 'after', read)))
     ) {
       fallbacks[diffUnitKey(unit)] = 'none'
+      // Read in the other document's numbering and about another §: the
+      // two count the change differently.
+      gapOf[diffUnitKey(unit)] = 'numbering'
       continue
     }
     // One side's own passage is about another § than the other side's: that
@@ -1161,6 +1183,7 @@ export function compareReasoning(units: readonly LawDiffUnit[], before: HtmlExpl
     const misfit = misnumbered(unit, { doc: before, ...me }, { doc: after, ...rv }, read)
     if (misfit) {
       fallbacks[diffUnitKey(unit)] = 'misnumbered'
+      gapOf[diffUnitKey(unit)] = 'numbering'
       offsets.push({ unit, me, rv, side: misfit })
       continue
     }
@@ -1192,7 +1215,77 @@ export function compareReasoning(units: readonly LawDiffUnit[], before: HtmlExpl
       attach(unit, side === 'before' ? found : me, side === 'after' ? found : rv, side)
     }
   }
-  return { ...finish(f.out), fallbacks, routes: { ziffer: zifferRoute, paragraph: atParagraph.length, ownParagraph: ownParagraph.length }, guarded: [...guarded.values()], scopes }
+  // Only what stayed without an entry — a unit `offsetPassage` recovered has
+  // its Begründung. „Not found" is a claim about the document, so it stands
+  // only where the document's text names the change nowhere (`namesChange`).
+  const gaps: Record<string, ReasoningGap> = {}
+  const byKey = new Map(units.map((u) => [diffUnitKey(u), u]))
+  for (const [key, gap] of Object.entries(gapOf)) {
+    if (f.out.units[key]) continue
+    const unit = byKey.get(key)!
+    if (gap === 'numbering') {
+      gaps[key] = gap
+      continue
+    }
+    const absent = (side: Side) => !namesChange(side === 'before' ? before : after, unitZiffer(unit, side).ziffer, read.paragraphIds(unit, side))
+    const notBefore = gap !== 'missingAfter' && absent('before')
+    const notAfter = gap !== 'missingBefore' && absent('after')
+    gaps[key] = notBefore || notAfter ? missingGap(notBefore, notAfter) : 'unread'
+  }
+  return { ...finish(f.out), fallbacks, routes: { ziffer: zifferRoute, paragraph: atParagraph.length, ownParagraph: ownParagraph.length }, guarded: [...guarded.values()], scopes, gaps }
+}
+
+/**
+ * Whether a document names a change anywhere it could be explained — a
+ * passage whose heading addresses one of its §§, or any „Zu …" line that
+ * names its Ziffer („Zu den Z 22 und 102 (…):", „Zu Z 19 bis 28 …") or one of
+ * its §§, in a heading or in text a heading the reader did not take as one
+ * was folded into (14.11.2026). The proof of absence behind „nicht
+ * gefunden":
+ *
+ *  - 58/ME XXVIII explains its Z 102 under „Zu den Z 22 und 102 (§§ 20
+ *    Abs. 5 und 193 Abs. 5):", which the reader keeps as text of the passage
+ *    before — „in keinem der beiden Dokumente gefunden" would be false;
+ *  - 34/ME XXVIII explains its Z 15 under „Zu Z 13 (§ 26 Abs. 2):", counting
+ *    otherwise than its text — the passage is there, under another number.
+ *
+ * Any Artikel and any number of the line count, an Absatz's too: a wrong hit
+ * costs the line its reason, never its truth.
+ */
+function namesChange(doc: HtmlExplanations, ziffer: string | null, paras: ReadonlySet<string>): boolean {
+  if (doc.special.some((p) => p.paragraphs.some((x) => paras.has(explanationParaId(x) ?? '')))) return true
+  const lines = [...doc.general, ...doc.special.flatMap((p) => [p.heading, ...p.text])]
+  for (const line of lines) {
+    for (const zu of line.matchAll(ZU_LINE_RE)) {
+      if (ziffer && [...zu[0].matchAll(ZIFFER_LIST_RE)].some((m) => listNames(m[1]!, ziffer))) return true
+      if ([...zu[0].matchAll(PARAGRAPH_LIST_RE)].some((m) => [...paras].some((id) => listNames(m[1]!, id)))) return true
+    }
+  }
+  return false
+}
+
+/** A „Zu …" line up to its colon. */
+const ZU_LINE_RE = /\bZu\s[^:]{1,240}/g
+/** „Z 1, 14, 24 bis 27", „Ziffern 3 und 4" inside it. */
+const ZIFFER_LIST_RE = /\bZ(?:iffern?|\.)?\s+(\d[^():§]*)/g
+/** „§§ 20 Abs. 5 und 193 Abs. 5" inside it — every number up to the bracket. */
+const PARAGRAPH_LIST_RE = /§§?\s*([^():§]*)/g
+
+/** Whether a printed number list („22 und 102", „19 bis 28", „Z 30 bis Z 34", „5a, 6") names `id`; a range by its numbers. */
+function listNames(list: string, id: string): boolean {
+  const n = Number(/^\d+/.exec(id)?.[0])
+  for (const r of list.matchAll(/(\d+[a-z]?)(?:\s*bis\s*(?:Z\s*)?(\d+[a-z]?))?/g)) {
+    const a = r[1]!.toLowerCase()
+    const b = r[2]?.toLowerCase()
+    if (a === id || b === id) return true
+    if (b && Number(/^\d+/.exec(a)?.[0]) <= n && n <= Number(/^\d+/.exec(b)?.[0])) return true
+  }
+  return false
+}
+
+/** The side(s) with no passage, as a `ReasoningGap`. */
+function missingGap(before: boolean, after: boolean): ReasoningGap {
+  return before && after ? 'missingBoth' : before ? 'missingBefore' : 'missingAfter'
 }
 
 /** „§9" → „9", „§5a" → „5a", „§6.01a" → „6.01a" (`PARAGRAPH_NUMBER`); null for anything else — a duplicate number („§9#dup") is refused. */

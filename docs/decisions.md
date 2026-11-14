@@ -302,6 +302,22 @@ change belongs here.
   keeps no Begründung. Over GP XXVI–XXVIII it brought back 3, 11 and 4
   changes, all read, none lost (`pnpm corpus:aenderungsrate -- --gp X
   --ziffer --against`).
+- **A change whose Begründung could not be attached says so, at the
+  change,** where both documents carry Erläuterungen titled by Ziffer
+  (14.11.2026, `ReasoningDiffResponse.gaps`). Without the line it looked
+  like a change whose Begründung was found and left unchanged. The reason is
+  given only where it is proven: „die Erläuterungen zählen die Ziffern
+  anders" where one side's passage to the Ziffer is about another §
+  (`misnumbered`); „im Entwurf / in der Regierungsvorlage / in keinem der
+  beiden Dokumente nicht gefunden" only where that document names neither
+  the Ziffer nor one of the change's §§ in any „Zu …" line or passage heading
+  (`namesChange`). Otherwise the line is „Begründung: nicht zuzuordnen." with
+  no reason: 58/ME XXVIII explains its Z 102 under „Zu den Z 22 und 102 (…)",
+  a line the reader keeps as text, and the unproven „nicht gefunden" would
+  have been false on most such changes (XXVIII: 106 of 124 changed units
+  where the raw text names the Ziffer). Visible lines on changed units, GP
+  XXVI / XXVII / XXVIII: numbering 0 / 6 / 4, not found 24 / 62 / 16,
+  without reason 155 / 408 / 151 (`--ziffer --gaps`).
 
 - **The reasoning comparison runs only ME → RV, and only where both sides
   give a reasoning.** „Unchanged" means the same words in the same order; no

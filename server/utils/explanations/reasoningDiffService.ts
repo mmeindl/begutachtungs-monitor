@@ -109,7 +109,7 @@ const compareMeToRv = defineCachedFunction(
     const diff = await getLawDiff(gp, inr, 'me', 'rv')
     if (!diff.available) return empty(gp, inr, null, sources)
 
-    const { units, entries, stats } = compareReasoning(diff.units, meParsed, rvParsed)
+    const { units, entries, stats, gaps } = compareReasoning(diff.units, meParsed, rvParsed)
     // Shown is shown: an uncompared passage is Begründung on the page too.
     const shown = stats.compared + stats.uncompared > 0
     return {
@@ -121,6 +121,9 @@ const compareMeToRv = defineCachedFunction(
       units,
       entries,
       stats,
+      // At the change, why it has none — both documents are here, so a
+      // change without a Begründung is ours to explain (14.11.2026).
+      gaps,
     }
   },
   {

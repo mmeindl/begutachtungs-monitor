@@ -10,7 +10,7 @@
  * because an unchanged reasoning for a changed text is a statement of its
  * own.
  */
-import type { ReasoningDiffResponse } from '#shared/types'
+import type { ReasoningDiffResponse, ReasoningGap } from '#shared/types'
 
 /**
  * The Begründungen the Ressort changed, as the page counts them: the
@@ -50,4 +50,26 @@ export function reasoningRateNote(stats: ReasoningDiffResponse['stats'] | null |
   if (changed === 0) return `Keine der ${compared} Begründungen hat ${author} geändert.`
   if (changed === compared) return `Alle ${compared} Begründungen hat ${author} geändert.`
   return `${changed} der ${compared} Begründungen hat ${author} geändert.`
+}
+
+/**
+ * The line at a change whose Begründung could not be attached (14.11.2026),
+ * in place of the disclosure a found one opens. Without it, a change with no
+ * disclosure read like one whose Begründung was found and left unchanged —
+ * „kept" where the truth is „we could not tell". Only for changes where both
+ * documents carry Erläuterungen (`ReasoningDiffResponse.gaps`); where one has
+ * none, nothing at the change could be attached in the first place.
+ */
+const REASONING_GAP_DE: Record<ReasoningGap, string> = {
+  numbering: 'Begründung: nicht zuzuordnen – die Erläuterungen zählen die Ziffern anders.',
+  missingBefore: 'Begründung: nicht zuzuordnen – im Entwurf nicht gefunden.',
+  missingAfter: 'Begründung: nicht zuzuordnen – in der Regierungsvorlage nicht gefunden.',
+  missingBoth: 'Begründung: nicht zuzuordnen – in keinem der beiden Dokumente gefunden.',
+  // The documents name the change in a line the reader did not take as a
+  // heading: no reason we could prove, so none is given.
+  unread: 'Begründung: nicht zuzuordnen.',
+}
+
+export function reasoningGapNote(gap: ReasoningGap | null | undefined): string | null {
+  return gap ? REASONING_GAP_DE[gap] : null
 }

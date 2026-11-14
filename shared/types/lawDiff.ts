@@ -172,6 +172,21 @@ export interface ReasoningDiffEntry {
  * `units` maps from `diffUnitKey` to the entry, so as with `paragraphtitel`
  * it is the comparison's own key and not a second alignment problem.
  */
+/**
+ * Why a change has no Begründung although both documents carry Erläuterungen
+ * titled by Ziffer (14.11.2026) — said at the change, because without it the
+ * change looked like one whose Begründung was found and left unchanged:
+ * `numbering` — one document's passage to the change's Ziffer is about
+ * another § (it counts its Ziffern off, `misnumbered`), and no neighbouring
+ * passage could be taken with witnesses (`offsetPassage`); `missingBefore`,
+ * `missingAfter`, `missingBoth` — the draft, the Vorlage, or neither has a
+ * passage under the change's Ziffer or its §, and its text names neither in
+ * any „Zu …" line either (the proof of absence); `unread` — no passage was
+ * found, but the text does name the Ziffer or the § in a line the reader did
+ * not take as a heading, so absence is not proven.
+ */
+export type ReasoningGap = 'numbering' | 'missingBefore' | 'missingAfter' | 'missingBoth' | 'unread'
+
 export interface ReasoningDiffResponse {
   gp: string
   inr: number
@@ -197,6 +212,12 @@ export interface ReasoningDiffResponse {
    * (`comparable: false`).
    */
   stats: { compared: number; changed: number; editorial: number; uncompared: number }
+  /**
+   * `diffUnitKey` → why that change got no Begründung (`ReasoningGap`). Only
+   * changes of the Ziffer join with no entry in `units`: never one whose
+   * Begründung was found. Absent in an answer cached before 14.11.2026.
+   */
+  gaps?: Record<string, ReasoningGap>
 }
 
 /**

@@ -838,3 +838,57 @@ describe('compareReasoning — „redaktionell" wie im Vergleich der Paragraphen
     expect(out.entries['§ 6']).toMatchObject({ changed: true, editorial: false, segments: null })
   })
 })
+
+// At the change, why there is no Begründung (14.11.2026): without a line a
+// change with none looked like one whose Begründung was found unchanged.
+describe('compareReasoning — warum eine Änderung keine Begründung hat (gaps)', () => {
+  it('nennt die Zählung, wo eine Seite die Ziffer einem anderen § gibt (168/ME XXVII Z 29)', () => {
+    const units = [z('Z29', 'Z29', 'In § 30 wird im Einleitungsteil das Wort "Es" ersetzt.'), z('Z30', 'Z30', 'Nach § 30 wird folgender § 30a samt Überschrift eingefügt: …')]
+    const out = compareReasoning(units, erl('Zu Z 29 (§ 30a):', 'Neu.', 'Zu Z 31 (§ 31):', 'Anderes.'), erl('Zu Z 29 (§ 30 Einleitungsteil):', 'Klar.', 'Zu Z 30 (§ 30a):', 'Neu.'))
+
+    expect(out.units['Gesetz|Z29|changed']).toBeUndefined()
+    expect(out.gaps['Gesetz|Z29|changed']).toBe('numbering')
+  })
+
+  it('sagt nichts, wo die Begründung unter der Nachbarnummer gefunden wurde (54/ME XXVIII Z 13 und 14)', () => {
+    const units = [
+      z('Z12', 'Z10', 'Nach § 80a wird folgender § 80b samt Überschrift eingefügt: Strafbestimmungen …'),
+      z('Z13', 'Z11', 'Dem § 82 wird folgender Abs. 29 angefügt: "(29) …"'),
+      z('Z14', 'Z12', 'Nach § 82i wird folgender § 82j samt Überschrift eingefügt: Übergangsbestimmung …'),
+    ]
+    const before = erl('Zu Z 10 (§ 80b samt Überschrift):', 'Strafen.', 'Zu Z 11 (§ 82 Abs. 29):', 'Inkrafttreten.', 'Zu Z 12 (§ 82j samt Überschrift):', 'Übergang.')
+    const after = erl('Zu Z 12 (§ 80b samt Überschrift):', 'Strafen.', 'Zu Z 12 (§ 82 Abs. 29):', 'Inkrafttreten.', 'Zu Z 13 (§ 82j samt Überschrift):', 'Übergang.')
+
+    const out = compareReasoning(units, before, after)
+
+    expect(out.units['Gesetz|Z13|changed']).toBeDefined()
+    expect(out.units['Gesetz|Z14|changed']).toBeDefined()
+    expect(out.gaps).toEqual({})
+  })
+
+  it('nennt die Seite, deren Text die Änderung nirgends nennt', () => {
+    const units = [z('Z1', 'Z1', 'In § 3 Abs. 1 wird "a" durch "b" ersetzt.'), z('Z2', 'Z2', 'Dem § 9 wird folgender Abs. 4 angefügt: "(4) …"')]
+    const before = erl('Zu Z 1 (§ 3 Abs. 1):', 'Klarstellung.')
+    const after = erl('Zu Z 1 (§ 3 Abs. 1):', 'Klarstellung.', 'Zu Z 2 (§ 9 Abs. 4):', 'Inkrafttreten.')
+
+    expect(compareReasoning(units, before, after).gaps).toEqual({ 'Gesetz|Z2|changed': 'missingBefore' })
+    expect(compareReasoning(units, after, before).gaps).toEqual({ 'Gesetz|Z2|changed': 'missingAfter' })
+    expect(compareReasoning(units, before, before).gaps).toEqual({ 'Gesetz|Z2|changed': 'missingBoth' })
+    // Never at a change whose Begründung was found, unchanged or not.
+    expect(compareReasoning(units, after, after).gaps).toEqual({})
+  })
+
+  it('behauptet kein Fehlen, wo der Text die Ziffer oder den § doch nennt (58/ME XXVIII Z 102)', () => {
+    // „Zu den Z 22 und 102 (…):" stands in the document, but not as a
+    // heading the reader takes: the Begründung is there, we could not attach it.
+    const units = [z('Z1', 'Z1', 'In § 3 Abs. 1 wird "a" durch "b" ersetzt.'), z('Z102', 'Z102', '§ 193 Abs. 5 lautet: "(5) …"')]
+    const folded = erl('Zu Z 1 (§ 3 Abs. 1):', 'Klarstellung. Zu den Z 22 und 102 (§§ 20 Abs. 5 und 193 Abs. 5): Nachhaltigkeit.')
+    expect(compareReasoning(units, folded, folded).gaps).toEqual({ 'Gesetz|Z102|changed': 'unread' })
+    // The § alone is enough: the document explains it, under another number.
+    const otherNumber = erl('Zu Z 1 (§ 3 Abs. 1):', 'Klarstellung.', 'Zu Z 101 (§ 193 Abs. 5):', 'Nachhaltigkeit.')
+    expect(compareReasoning(units, otherNumber, otherNumber).gaps['Gesetz|Z102|changed']).toBe('unread')
+    // A range whose end repeats the mark (168/ME XXVII: „Z 30 bis Z 34").
+    const range = erl('Zu Z 1 (§ 3 Abs. 1):', 'Klarstellung. Zu Z 4, Z 100 bis Z 104 (Titel): Neu.')
+    expect(compareReasoning(units, range, range).gaps['Gesetz|Z102|changed']).toBe('unread')
+  })
+})

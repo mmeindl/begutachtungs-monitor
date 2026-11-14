@@ -10,7 +10,7 @@
  *          npx vite-node -c vitest.config.ts scripts/corpus/aenderungsrate.ts -- --gp XXVII
  *          npx vite-node scripts/corpus/aenderungsrate.ts -- --gp XXVII --reasoning [--show-para inr]
  *          npx vite-node scripts/corpus/aenderungsrate.ts -- --gp XXVII --multi | --addresses
- *          npx vite-node scripts/corpus/aenderungsrate.ts -- --gp XXVII --ziffer [--list]
+ *          npx vite-node scripts/corpus/aenderungsrate.ts -- --gp XXVII --ziffer [--list] [--gaps]   (--gaps lists every „nicht zuzuordnen" line)
  *          npx vite-node scripts/corpus/aenderungsrate.ts -- --gp XXVII --ziffer --save file | --against file [--list]
  *          npx vite-node scripts/corpus/aenderungsrate.ts -- --gp XXVII --pairs | --unpaired
  *          npx vite-node scripts/corpus/aenderungsrate.ts -- --gp XXVIII --phantoms   (lists the phantom pairs)
@@ -1218,6 +1218,9 @@ function addressesReport(): void {
 async function zifferReport(): Promise<void> {
   const tally = { uncompared: 0, guarded: 0, multi: 0, multiShown: 0, lost: 0, lostForeign: 0, gained: 0, caught: 0, drafts: 0, titled: 0, oldUnits: 0, newUnits: 0, oldCompared: 0, oldChanged: 0, newCompared: 0, newChanged: 0, zifferRoute: 0, paragraphRoute: 0, ownParagraphRoute: 0, zEntries: 0, pEntries: 0, ceiling: 0 }
   const fallbackTally = new Map<string, number>()
+  /** The line the page prints at a change without Begründung (`gaps`, 14.11.2026), per kind and per change. */
+  const gapTally = new Map<string, number>()
+  const gapLines: string[] = []
   const perDraft: { draft: string; old: number; neu: number }[] = []
   const flips = new Map<string, string[]>()
   let paragraphRouteFlips = 0
@@ -1273,6 +1276,22 @@ async function zifferReport(): Promise<void> {
     })
     const neu = compareReasoning(units, meParsed, rvParsed)
     snapshots[r.inr] = snapshotOf(neu, units, meParsed, rvParsed)
+    for (const u of units) {
+      const gap = neu.gaps[diffUnitKey(u)]
+      if (!gap) continue
+      // Per kind and per change: an unchanged one stands folded away on the page.
+      gapTally.set(`${gap}/${u.change}`, (gapTally.get(`${gap}/${u.change}`) ?? 0) + 1)
+      const zm = (x: string | null) => /^Z(\d+)/.exec(x ?? '')?.[1] ?? null
+      // The passages each document heads with the change's Ziffer, so a
+      // reader of the list can check the line against the documents.
+      const heads = (doc: HtmlExplanations, z: string | null, art: string | null) =>
+        doc.special.filter((p) => z && p.ziffern.some((x) => x.ziffer === z && (!art || !x.article || x.article === art))).map((p) => `«${p.heading.slice(0, 90)}»`).join(' + ') || '–'
+      // And every heading that names a § the change edits, Ziffer or not.
+      const paras = instructionParagraphs(u.toText ?? u.fromText ?? '').map((x) => x.replace(/^§\s*/, ''))
+      const byPara = (doc: HtmlExplanations) =>
+        doc.special.filter((p) => paras.some((x) => new RegExp(String.raw`§\s*${x.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}(?![\da-z])`).test(p.heading))).map((p) => `«${p.heading.slice(0, 70)}»`).slice(0, 3).join(' + ') || '–'
+      gapLines.push(`${gap.padEnd(13)} ${r.inr}/ME ${u.change} ${u.fromArticleKey ?? '–'}:${u.fromId ?? '–'}→${u.articleKey ?? '–'}:${u.id} | ${spaced(u.toText ?? u.fromText).slice(0, 90)}\n        ME ${heads(meParsed, zm(u.fromId), u.fromArticleKey)} · § ${byPara(meParsed)}\n        RV ${heads(rvParsed, zm(u.id), u.articleKey)} · § ${byPara(rvParsed)}`)
+    }
     if (neu.routes.ziffer > 0) tally.titled++
     tally.oldUnits += Object.keys(old.units).length
     tally.newUnits += Object.keys(neu.units).length
@@ -1372,6 +1391,8 @@ async function zifferReport(): Promise<void> {
   console.log(`  (b) verglichene Einträge: alt ${t.oldCompared} → neu ${t.newCompared} · geändert: alt ${t.oldChanged} → neu ${t.newChanged} · gezeigt ohne Vergleich: ${t.uncompared} · Einträge Ziffer ${t.zEntries}, § ${t.pEntries}`)
   console.log(`  Wege: Ziffer-Join ${t.zifferRoute} Einheiten, §-Join von vornherein ${t.paragraphRoute}, §-Einheiten nach eigener Bezeichnung ${t.ownParagraphRoute} · gepaarte Anweisungen über mehrere §§: ${t.multi}, davon mit Begründung ${t.multiShown}`)
   console.log(`  Ziffer-Join ohne Ziffer-Eintrag: ${[...fallbackTally].map(([k, v]) => `${k} ${v}`).join(' · ') || '–'}`)
+  console.log(`  Zeile „Begründung: nicht zuzuordnen" an der Änderung (gaps): ${[...gapTally].sort().map(([k, v]) => `${k} ${v}`).join(' · ') || '–'} · Entwürfe ${new Set(gapLines.map((l) => l.split(' ').filter(Boolean)[1])).size}`)
+  if (argFlag('gaps')) console.log(`\n  [gaps]\n    ${gapLines.sort().join('\n    ')}`)
   {
     const ns = perDraft.map((d) => d.neu)
     const top = [...perDraft].sort((a, b) => b.neu - a.neu).slice(0, 3)

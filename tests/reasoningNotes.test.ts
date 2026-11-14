@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { reasoningRateNote, substantiveReasoningChanges } from '../app/utils/reasoningNotes'
+import { reasoningGapNote, reasoningRateNote, substantiveReasoningChanges } from '../app/utils/reasoningNotes'
 
 const stats = (compared: number, changed: number, editorial = 0) => ({ compared, changed, editorial, uncompared: 0 })
 
@@ -29,5 +29,16 @@ describe('substantiveReasoningChanges', () => {
     expect(reasoningRateNote(stats(12, 1, 1))).toBe('Keine der 12 Begründungen hat das Ressort geändert.')
     expect(reasoningRateNote(stats(1, 1, 1))).toBe('Die Begründung, die in beiden Fassungen steht, hat das Ressort nicht geändert.')
     expect(reasoningRateNote(stats(33, 33, 1))).toBe('32 der 33 Begründungen hat das Ressort geändert.')
+  })
+})
+
+describe('reasoningGapNote', () => {
+  it('sagt an der Änderung, warum keine Begründung steht — mit Grund nur, wo er belegt ist', () => {
+    expect(reasoningGapNote('numbering')).toBe('Begründung: nicht zuzuordnen – die Erläuterungen zählen die Ziffern anders.')
+    expect(reasoningGapNote('missingBefore')).toBe('Begründung: nicht zuzuordnen – im Entwurf nicht gefunden.')
+    expect(reasoningGapNote('missingAfter')).toBe('Begründung: nicht zuzuordnen – in der Regierungsvorlage nicht gefunden.')
+    expect(reasoningGapNote('missingBoth')).toBe('Begründung: nicht zuzuordnen – in keinem der beiden Dokumente gefunden.')
+    expect(reasoningGapNote('unread')).toBe('Begründung: nicht zuzuordnen.')
+    expect(reasoningGapNote(undefined)).toBeNull()
   })
 })
