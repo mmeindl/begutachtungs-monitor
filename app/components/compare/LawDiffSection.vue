@@ -275,6 +275,9 @@ const namedCount = computed(() => Object.keys(paraTitles.value?.titles ?? {}).le
 /** „entfallen" for a whole § that is gone — the one word the two sections
  *  do not share (`diffBadges.ts`). */
 const BADGE_LABEL = badgeLabels('entfallen')
+/* „redaktionell" opens its definition at the row; this comparison's, which
+   follows a renumbering (`app/utils/terms.ts`). */
+const BADGE_TERMS = { editorial: 'redaktionell' } as const
 
 function badgeOf(u: LawDiffUnit): DiffBadge {
   // Server-decided: every changed piece is a citation, number, date or punctuation.
@@ -655,6 +658,7 @@ const droppedNote = computed(() =>
                     :to-text="b.unit.toText"
                     :from-label="fromLabel"
                     :to-label="toLabel"
+                    :terms="BADGE_TERMS"
                   >
                     <!-- What the Ressort says about it — and whether it says
                          so differently after the Begutachtung than before.
@@ -753,7 +757,7 @@ const droppedNote = computed(() =>
              RIS" over two documents left open which came from where, and
              „Parlament (Dokumente: freie Werke)" under ME→RV read as covering
              the draft too. -->
-        <SectionCredits :sources="credits.sources" method="/so-funktionierts#vergleich">
+        <SectionCredits :sources="credits.sources">
           <!-- Grouped by version since 30.09.2026: „Entwurf: Text ·
                Erläuterungen" instead of four links each carrying its version's
                name. The links are there for the reader. -->
@@ -766,6 +770,9 @@ const droppedNote = computed(() =>
                The date stays here, beside the comparison it dates: it changes
                per section, the licence does not. -->
           <span v-if="namedCount">Paragraphenüberschriften{{ paraTitlesTag }}<template v-if="paraTitlesAsOf">: Stand {{ paraTitlesAsOf }}</template></span>
+          <template #method>
+            <MethodVergleich />
+          </template>
         </SectionCredits>
       </template>
     </PageSubsection>

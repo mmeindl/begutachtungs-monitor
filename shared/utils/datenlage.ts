@@ -1,0 +1,779 @@
+/**
+ * What each source publishes for each step of following a law, and why
+ * something is missing — the facts behind /datenlage (14.11.2026).
+ *
+ * The EU, the Bund and the nine Länder side by side. Two readers: someone
+ * who wonders why a page shows a gap, and a Land that is sent the link and
+ * sees its own state beside the others'. So the page describes and never
+ * grades: no totals per source, no order but the levels and the alphabet,
+ * and every missing piece says whose it is. Only a gap of the source is the
+ * source's to close; a gap of the monitor is ours (`DATENLAGE_STATE_META`,
+ * `owner`).
+ *
+ * The Länder's cell texts are `LAND_COVERAGE`'s, imported and never copied:
+ * the lists' notice reads the same facts (`landsIncompleteFor` reads the
+ * states below), and a test holds the two equal. What
+ * this module adds per Land is the machine-readable state and a reason in a
+ * few words, derived from `docs/research/laender-luecken.md`, which says per
+ * gap whether the Land does not publish it or the monitor does not read it.
+ * Where neither that memo nor another measured source settles a cell, its
+ * state is `notSurveyed` — never a guess.
+ *
+ * Bund and EU cells come from `docs/api-exploration.md` (§1 Parliament, §2
+ * RIS Begut, §2c Textgegenüberstellung, §2d Vorblatt and Cellar, §3 the
+ * chain) and from the explanations on /so-funktionierts as of 14.11.2026.
+ *
+ * One step is a fact of LAW, not of publication: „Begutachtung
+ * vorgeschrieben" (`LAW_STEP`, 14.11.2026), from the constitutions as read
+ * in `docs/research/wege-zu-einer-rechtsnorm.md`. Its cells take states of
+ * their own (`DATENLAGE_LAW_STATES`) with no owner: a Land whose
+ * constitution prescribes nothing has no gap, and the lists' notices
+ * (`landsIncompleteFor`) never read this step.
+ *
+ * German copy lives here, beside the keys, so a second language can replace
+ * it without touching the page.
+ *
+ * Pure module (auto-imported; vitest imports it relatively).
+ */
+import type { LandCode } from '../types'
+import { LAND_CODES, LAND_NAME, LAND_SLUG } from './laender'
+import { COVERAGE_ROWS, LAND_COVERAGE, type CoverageRow } from './laenderCoverage'
+
+/**
+ * The state of one cell. Four say what the SOURCE does, two what the
+ * MONITOR does — the distinction the page exists for — and one says that
+ * nobody has looked (`notSurveyed`). No „not applicable": every step exists
+ * at every source read so far, and a state no cell uses would only stand in
+ * the legend. Three more describe the law (`DATENLAGE_LAW_STATES`), for
+ * the one step that asks what the law prescribes: the publication states
+ * do not fit a legal fact, and bending one („published" for „prescribed")
+ * would mix two questions in one word.
+ */
+export type DatenlageState =
+  | 'required'
+  | 'optional'
+  | 'notRequired'
+  | 'published'
+  | 'partial'
+  | 'inferred'
+  | 'notPublished'
+  | 'partlyRead'
+  | 'notRead'
+  | 'notSurveyed'
+
+/** Whose gap a state is: the source's, the monitor's, or nobody's. */
+export type DatenlageGapOwner = 'source' | 'monitor' | null
+
+export interface DatenlageStateMeta {
+  /** The state in words, as a cell shows it. */
+  label: string
+  /** One sentence for the legend. */
+  meaning: string
+  owner: DatenlageGapOwner
+}
+
+/** The order of the groups in the by-step view and of the legend. */
+export const DATENLAGE_STATE_ORDER: readonly DatenlageState[] = [
+  'required',
+  'optional',
+  'notRequired',
+  'published',
+  'partial',
+  'inferred',
+  'notPublished',
+  'partlyRead',
+  'notRead',
+  'notSurveyed',
+]
+
+/** The states of the law step; no other step uses them, and they own no gap. */
+export const DATENLAGE_LAW_STATES: readonly DatenlageState[] = ['required', 'optional', 'notRequired']
+
+export const DATENLAGE_STATE_META: Record<DatenlageState, DatenlageStateMeta> = {
+  required: {
+    label: 'vorgeschrieben',
+    meaning: 'Die Verfassung schreibt die Begutachtung vor.',
+    owner: null,
+  },
+  optional: {
+    label: 'vorgesehen, nicht vorgeschrieben',
+    meaning: 'Die Verfassung sieht sie vor, macht sie aber von einem Beschluss oder von der Bedeutung des Entwurfs abhängig.',
+    owner: null,
+  },
+  notRequired: {
+    label: 'nicht vorgeschrieben',
+    meaning: 'Die Verfassung schreibt sie nicht vor; was darüber hinaus gelesen ist, steht dabei.',
+    owner: null,
+  },
+  published: {
+    label: 'veröffentlicht',
+    meaning: 'Die Quelle veröffentlicht es, und der Monitor liest es.',
+    owner: null,
+  },
+  partial: {
+    label: 'teilweise veröffentlicht',
+    meaning: 'Die Quelle veröffentlicht einen Teil; was fehlt, steht dabei.',
+    owner: 'source',
+  },
+  inferred: {
+    label: 'nicht genannt, vom Monitor erschlossen',
+    meaning: 'Die Quelle nennt es nicht; der Monitor schließt es aus ihren Dokumenten oder sucht es im Rechtsinformationssystem. Die Seite eines Entwurfs sagt dann, dass die Zuordnung unsere ist.',
+    owner: 'source',
+  },
+  notPublished: {
+    label: 'nicht veröffentlicht',
+    meaning: 'Die Quelle veröffentlicht es nicht, oder nicht lange genug, um einem Entwurf zu folgen.',
+    owner: 'source',
+  },
+  partlyRead: {
+    label: 'liest der Monitor teilweise',
+    meaning: 'Die Quelle veröffentlicht es; der Monitor liest bisher nur einen Teil davon.',
+    owner: 'monitor',
+  },
+  notRead: {
+    label: 'liest der Monitor noch nicht',
+    meaning: 'Die Quelle veröffentlicht es; der Monitor liest es noch nicht.',
+    owner: 'monitor',
+  },
+  notSurveyed: {
+    label: 'nicht erhoben',
+    meaning: 'Was die Quelle hier veröffentlicht, ist nicht geprüft. Der Monitor zeigt es nicht.',
+    owner: null,
+  },
+}
+
+/** A step: the Länder table's rows plus two the Länder table does not have. */
+export type DatenlageStep = CoverageRow | 'statementCount' | 'eu' | 'begutachtungRecht'
+
+export interface DatenlageStepInfo {
+  key: DatenlageStep
+  /** The anchor of the step's block in the by-step view. */
+  id: string
+  label: string
+  /** What the step asks of a source, in one sentence. */
+  question: string
+  /**
+   * What would close the gap, from the „Ziel" of the matching gap in
+   * `docs/research/laender-luecken.md` — written for the Länder, because
+   * that memo is about them. Absent where the memo names no target.
+   */
+  target?: string
+}
+
+const coverageLabel = (key: CoverageRow): string =>
+  COVERAGE_ROWS.find((row) => row.key === key)!.label
+
+/** Every step, in procedure order. */
+export const DATENLAGE_STEPS: readonly DatenlageStepInfo[] = [
+  {
+    key: 'verordnungen',
+    id: 'verordnungsentwuerfe',
+    label: coverageLabel('verordnungen'),
+    question: 'Ob die Quelle neben Gesetzesentwürfen auch Verordnungsentwürfe zur Begutachtung veröffentlicht.',
+    // §5 (Oberösterreich) and §6d (Kärnten, Tirol).
+    target: 'Jeder Verordnungsentwurf mit Beginn und Frist als Datum im Registereintrag.',
+  },
+  {
+    key: 'archive',
+    id: 'abgeschlossene',
+    label: coverageLabel('archive'),
+    question: 'Ob ein Entwurf nach dem Ende seiner Begutachtung auffindbar bleibt.',
+    // §1 (Wien) and §6c (Tirol).
+    target: 'Entwürfe bleiben dauerhaft online, in einer Liste der abgeschlossenen Begutachtungen.',
+  },
+  {
+    key: 'tgu',
+    id: 'textgegenueberstellung',
+    label: coverageLabel('tgu'),
+    question: 'Ob dem Entwurf eine Textgegenüberstellung beiliegt – geltende und vorgeschlagene Fassung nebeneinander.',
+    // §3.
+    target: 'Zu jedem ändernden Entwurf eine Textgegenüberstellung, zweispaltig nach der Vorlage des Bundes, als eigenes Dokument.',
+  },
+  {
+    key: 'eu',
+    id: 'eu-bezug',
+    label: 'EU-Bezug',
+    question: 'Ob der Entwurf sagt, dass er EU-Recht umsetzt, und welches; bei der EU: bis wann.',
+  },
+  {
+    key: 'begutachtungRecht',
+    id: 'begutachtung-vorgeschrieben',
+    label: 'Begutachtung vorgeschrieben',
+    // § 93 Abs. 2 AKG and § 10 Abs. 1 WKG bind Bund and Länder alike.
+    question: 'Ob Verfassung oder Gesetz eine öffentliche Begutachtung vorschreiben. Den Kammern sind Entwürfe überall zu übermitteln (§ 93 AKG, § 10 WKG).',
+  },
+  {
+    key: 'frist',
+    id: 'frist',
+    label: coverageLabel('frist'),
+    question: 'Beginn und Ende der Begutachtung, als Datum.',
+    // §6a (Kärnten) and §6d.
+    target: 'Beginn und Ende der Frist als Datum, auch im Archiveintrag.',
+  },
+  {
+    key: 'statements',
+    id: 'stellungnahmen',
+    label: coverageLabel('statements'),
+    question: 'Ob die eingelangten Stellungnahmen öffentlich sind.',
+    // §6.
+    target: 'Die Stellungnahmen von Organisationen vollständig – Namen von Privatpersonen nicht.',
+  },
+  {
+    key: 'statementCount',
+    id: 'zahl-der-stellungnahmen',
+    label: 'Zahl der Stellungnahmen',
+    question: 'Wie viele Stellungnahmen eingelangt sind.',
+    // §6.
+    target: 'Die Zahl der eingelangten Stellungnahmen.',
+  },
+  {
+    key: 'way',
+    id: 'weg',
+    label: coverageLabel('way'),
+    question: 'Welche Regierungsvorlage und welcher Beschluss aus dem Entwurf wurden.',
+    // §2 (Salzburg, Wien) and §6b (Kärnten).
+    target: 'Der Registereintrag nennt die Regierungsvorlage, die aus dem Entwurf wurde.',
+  },
+  {
+    key: 'texts',
+    id: 'texte-im-vergleich',
+    label: coverageLabel('texts'),
+    question: 'Welche späteren Fassungen der Monitor mit dem Entwurf vergleichen kann.',
+  },
+  {
+    key: 'kundmachung',
+    id: 'kundmachung',
+    label: coverageLabel('kundmachung'),
+    question: 'In welchem Gesetzblatt das Ergebnis kundgemacht wurde.',
+    // §2 and §5.
+    target: 'Der Registereintrag nennt nach der Kundmachung das Gesetzblatt.',
+  },
+]
+
+export const DATENLAGE_STEP_KEYS: readonly DatenlageStep[] = DATENLAGE_STEPS.map((s) => s.key)
+
+/** The steps grouped by the stretch of the procedure they belong to. */
+export const DATENLAGE_PHASES: readonly { id: string; label: string; steps: readonly DatenlageStep[] }[] = [
+  { id: 'phase-entwurf', label: 'Der Entwurf', steps: ['verordnungen', 'archive', 'tgu', 'eu'] },
+  { id: 'phase-begutachtung', label: 'Die Begutachtung', steps: ['begutachtungRecht', 'frist', 'statements', 'statementCount'] },
+  { id: 'phase-danach', label: 'Nach der Begutachtung', steps: ['way', 'texts', 'kundmachung'] },
+]
+
+export interface DatenlageCell {
+  /** What the source publishes, in two or three words. */
+  text: string
+  state: DatenlageState
+  /** The reason or the limit, in a few words; absent where `text` says it. */
+  reason?: string
+}
+
+export type DatenlageSourceKey = 'eu' | 'bund' | LandCode
+
+export interface DatenlageSource {
+  key: DatenlageSourceKey
+  /** The block's anchor: `/datenlage?ansicht=quelle#tirol`. */
+  id: string
+  name: string
+  /** One sentence on what the monitor can follow of this source. */
+  summary: string
+  cells: Record<DatenlageStep, DatenlageCell>
+}
+
+/* ------------------------------------------------------------------ */
+/* The Länder                                                          */
+/* ------------------------------------------------------------------ */
+
+type StateAndReason = readonly [DatenlageState, string?]
+
+/* Reasons used by several Länder, worded once. */
+const R = {
+  noStart: 'Beginn nicht genannt',
+  gone: 'Entwurf verschwindet mit Fristende',
+  notNamed: 'das Land nennt sie nicht',
+  formNotRead: 'die Form des Landes liest der Monitor noch nicht',
+  wayOpen: 'der Monitor zeigt ihn nicht; ob das Land ihn nennt, ist offen',
+  textsOpen: 'ohne den Weg keine späteren Fassungen',
+  noCommitteeText: 'kein Ausschusstext veröffentlicht',
+  proseOnly: 'welcher Akt, liest der Monitor dort nicht',
+} as const
+
+/**
+ * The state of each `LAND_COVERAGE` cell, and its reason. The text stays
+ * `LAND_COVERAGE`'s; a „–" there is the Land's gap where the memo says so
+ * (Niederösterreich and Vorarlberg without archive, Wien deleting the
+ * draft), and `notSurveyed` where it does not (Burgenland's and the
+ * Steiermark's way after the Begutachtung).
+ */
+const LAND_STATE: Record<LandCode, Record<CoverageRow, StateAndReason>> = {
+  bgld: {
+    verordnungen: ['published'],
+    archive: ['published'],
+    frist: ['partial', R.noStart],
+    way: ['notSurveyed', R.wayOpen],
+    kundmachung: ['inferred', R.notNamed],
+    tgu: ['notPublished'],
+    texts: ['notSurveyed', R.textsOpen],
+    statements: ['published'],
+  },
+  ktn: {
+    verordnungen: ['published'],
+    archive: ['partial', 'das Archiv nennt weder Beginn noch Frist'],
+    frist: ['partial', 'bei Verordnungen teils nur „vier Wochen ab Zustellung“'],
+    way: ['inferred', 'das Archiv nennt die Vorlage nicht; verknüpft über die Geschäftszahl'],
+    kundmachung: ['inferred', 'das Land nennt sie nicht; gelesen am Beschlussdatum im Titel des Gesetzblatts'],
+    tgu: ['partlyRead', 'rechts stehen Novellierungsanordnungen; was feiner als ein Absatz ändert, zeigt der Monitor nicht'],
+    texts: ['partial', R.noCommitteeText],
+    statements: ['published'],
+  },
+  noe: {
+    verordnungen: ['published'],
+    archive: ['notPublished', R.gone],
+    frist: ['partial', R.noStart],
+    way: ['notPublished', R.gone],
+    kundmachung: ['notPublished', R.gone],
+    tgu: ['notRead', R.formNotRead],
+    texts: ['notPublished', R.gone],
+    statements: ['partial', 'beim Landtag, ohne Verknüpfung zum Entwurf'],
+  },
+  ooe: {
+    verordnungen: ['partial', 'kein Beginn, und nach der Frist nichts mehr'],
+    archive: ['published'],
+    frist: ['published'],
+    way: ['published'],
+    kundmachung: ['partial', 'für Verordnungen nicht genannt'],
+    tgu: ['published'],
+    texts: ['published'],
+    statements: ['published'],
+  },
+  sbg: {
+    verordnungen: ['published'],
+    archive: ['published'],
+    frist: ['partial', 'bei abgeschlossenen nur noch der Beginn'],
+    way: ['inferred', 'das Register nennt die Vorlage nicht; erst nach der Kundmachung über das RIS'],
+    kundmachung: ['inferred', 'das Register nennt das Gesetzblatt nicht'],
+    tgu: ['partial', 'nicht jedem Gesetzesentwurf beigelegt'],
+    texts: ['partial', 'der Ausschussbericht trägt keinen Text'],
+    statements: ['published'],
+  },
+  stmk: {
+    verordnungen: ['notRead', 'der Monitor liest nur die Seite des Landtags'],
+    archive: ['published'],
+    frist: ['published'],
+    way: ['notSurveyed', R.wayOpen],
+    kundmachung: ['inferred', R.notNamed],
+    tgu: ['notRead', R.formNotRead],
+    texts: ['notSurveyed', R.textsOpen],
+    statements: ['published'],
+  },
+  t: {
+    verordnungen: ['partial', 'nur im Informationsregister, ohne Fristfeld'],
+    archive: ['partial', 'die Liste hält einen Entwurf nur Wochen; der Landtag führt ihn nur hinter einem Suchformular'],
+    frist: ['partial', 'Verordnungsentwürfe ohne Frist'],
+    way: ['published'],
+    kundmachung: ['published'],
+    tgu: ['published'],
+    texts: ['partial', R.noCommitteeText],
+    statements: ['published'],
+  },
+  vbg: {
+    verordnungen: ['notPublished', 'die Begutachtungsseite führt nur Gesetzesentwürfe'],
+    archive: ['notPublished', R.gone],
+    frist: ['partial', R.noStart],
+    way: ['notPublished', R.gone],
+    kundmachung: ['notPublished', R.gone],
+    tgu: ['notRead', R.formNotRead],
+    texts: ['notPublished', R.gone],
+    statements: ['notPublished'],
+  },
+  w: {
+    verordnungen: ['published'],
+    archive: ['partial', 'mit dem Beschluss des Landtags vom Netz'],
+    frist: ['published'],
+    way: ['notPublished', 'das Land nennt die Vorlage nicht, und der Entwurf geht vom Netz'],
+    kundmachung: ['inferred', R.notNamed],
+    tgu: ['published'],
+    texts: ['notPublished', 'der Entwurf geht mit dem Beschluss des Landtags vom Netz'],
+    statements: ['published'],
+  },
+}
+
+/**
+ * The two steps `LAND_COVERAGE` does not have. The count: „Wie viele
+ * eingehen, zählt kein Land öffentlich" (/so-funktionierts #laender). The
+ * EU relation: where each Land states it (/so-funktionierts #eu-recht).
+ */
+const LAND_EXTRA: Record<LandCode, Record<'statementCount' | 'eu', DatenlageCell>> = {
+  bgld: {
+    statementCount: { text: 'nicht gezählt', state: 'notPublished' },
+    eu: { text: 'im Vorblatt', state: 'published' },
+  },
+  ktn: {
+    statementCount: { text: 'nicht gezählt', state: 'notPublished' },
+    eu: { text: 'meist im Fließtext', state: 'partlyRead', reason: R.proseOnly },
+  },
+  noe: {
+    statementCount: { text: 'nicht gezählt', state: 'notPublished' },
+    eu: { text: 'unter eigener Überschrift', state: 'partlyRead', reason: 'den Gesetzestext liest der Monitor nicht' },
+  },
+  ooe: {
+    statementCount: { text: 'nicht gezählt', state: 'notPublished' },
+    eu: { text: 'in Abschnitt V und je Bestimmung', state: 'published' },
+  },
+  sbg: {
+    statementCount: { text: 'nicht gezählt', state: 'notPublished' },
+    eu: { text: 'unter eigener Überschrift', state: 'published' },
+  },
+  stmk: {
+    statementCount: { text: 'nicht gezählt', state: 'notPublished' },
+    eu: { text: 'in der Folgenabschätzung', state: 'published' },
+  },
+  t: {
+    statementCount: { text: 'nicht gezählt', state: 'notPublished' },
+    eu: { text: 'meist im Fließtext', state: 'partlyRead', reason: R.proseOnly },
+  },
+  vbg: {
+    statementCount: { text: 'nicht gezählt', state: 'notPublished' },
+    eu: { text: 'unter eigener Überschrift', state: 'published' },
+  },
+  w: {
+    statementCount: { text: 'nicht gezählt', state: 'notPublished' },
+    eu: { text: 'im Vorblatt', state: 'published' },
+  },
+}
+
+/**
+ * What each Landesverfassung prescribes (docs/research/wege-zu-einer-rechtsnorm.md,
+ * „Länder · Begutachtung" and „Landesverordnungen", RIS, Fassung 14.11.2026;
+ * a second source read only for Vorarlberg). Laws first, then Verordnungen,
+ * and the publication of the Stellungnahmen, which only the Steiermark
+ * prescribes. Descriptive: the order is the alphabet's, as everywhere here.
+ */
+const LAND_LAW: Record<LandCode, DatenlageCell> = {
+  // Art. 68 Abs. 4 L-VG Burgenland; Bürgerinnen- und Bürgerbegutachtungsgesetz §§ 6–10
+  // („sollen"); the Stellungnahmen go to the Landtag with the Vorlage (§ 9 Abs. 2).
+  // Verordnungen: not in the L-VG.
+  bgld: {
+    text: 'Gesetzesentwürfe von grundsätzlicher Bedeutung „sollen“ begutachtet werden',
+    state: 'optional',
+    reason: 'Verordnungen: in der Verfassung nicht geregelt',
+  },
+  // Art. 33 K-LVG („sind … einem Begutachtungsverfahren zu unterziehen"), Abs. 3 „jede
+  // Person", four weeks. Verordnungen: not in the K-LVG.
+  ktn: {
+    text: 'für Gesetzesentwürfe',
+    state: 'required',
+    reason: 'Verordnungen: in der Verfassung nicht geregelt',
+  },
+  // Art. 25 NÖ LV (Gesetze, „Bürgerbegutachtung" Abs. 3); Art. 45a (Verordnungen der
+  // Landesregierung „von allgemeiner Bedeutung").
+  noe: {
+    text: 'für Gesetzesentwürfe und Verordnungsentwürfe',
+    state: 'required',
+    reason: 'Verordnungen „von allgemeiner Bedeutung“',
+  },
+  // Art. 58 Oö. L-VG: Bürger-Begutachtung of drafts „von grundsätzlicher Bedeutung", if
+  // the Landesregierung so decides; Art. 61 the same for Verordnungen. A general duty
+  // outside the L-VG: not found, not ruled out (memo „Offen").
+  ooe: {
+    text: 'Gesetzesentwürfe von grundsätzlicher Bedeutung, wenn die Landesregierung es beschließt',
+    state: 'optional',
+    reason: 'Verordnungen ebenso',
+  },
+  // L-VG 1999 silent; § 55 Abs. 7 Landtags-GO presupposes drafts „die von der
+  // Landesregierung zur Begutachtung ausgesandt werden". Outside the constitution:
+  // not found, not ruled out.
+  sbg: {
+    text: 'nicht in der Landesverfassung',
+    state: 'notRequired',
+    reason: 'die Geschäftsordnung des Landtags setzt sie voraus',
+  },
+  // Art. 68 L-VG 2010: Gesetzes- and Verordnungsentwürfe; „Jede Person"; „Die
+  // Stellungnahmen sind zu veröffentlichen." (Abs. 4) — the only Land that says so.
+  stmk: {
+    text: 'für Gesetzesentwürfe und Verordnungsentwürfe',
+    state: 'required',
+    reason: 'die Stellungnahmen sind zu veröffentlichen',
+  },
+  // Art. 36 TLO: required „es sei denn, daß die besondere Dringlichkeit … nicht
+  // zuläßt"; who may comment the TLO does not say. Verordnungen: not in the TLO.
+  t: {
+    text: 'für Gesetzesentwürfe, außer bei besonderer Dringlichkeit',
+    state: 'required',
+    reason: 'Verordnungen: in der Verfassung nicht geregelt',
+  },
+  // Art. 34 L-V: „wird … durchgeführt"; „Jede Person kann … Änderungsvorschläge
+  // erstatten", published on the Land's homepage (Abs. 2). Verordnungen: not in the L-V.
+  vbg: {
+    text: 'für Gesetzesentwürfe',
+    state: 'required',
+    reason: 'Verordnungen: in der Verfassung nicht geregelt',
+  },
+  // WStV silent (RIS full-text search „Begutachtungsverfahren" in Wien: no hit on the
+  // legislative procedure). Outside the WStV: not found, not ruled out.
+  w: {
+    text: 'nicht in der Stadtverfassung',
+    state: 'notRequired',
+  },
+}
+
+function landSource(land: LandCode): DatenlageSource {
+  const coverage = LAND_COVERAGE[land]
+  const cells = { ...LAND_EXTRA[land], begutachtungRecht: LAND_LAW[land] } as Record<DatenlageStep, DatenlageCell>
+  for (const row of COVERAGE_ROWS) {
+    const [state, reason] = LAND_STATE[land][row.key]
+    cells[row.key] = { text: coverage.cells[row.key], state, ...(reason ? { reason } : {}) }
+  }
+  return {
+    key: land,
+    id: LAND_SLUG[land],
+    name: LAND_NAME[land],
+    summary: `${LAND_NAME[land]} ${coverage.summary}`,
+    cells,
+  }
+}
+
+/* ------------------------------------------------------------------ */
+/* Bund and EU                                                         */
+/* ------------------------------------------------------------------ */
+
+const BUND: DatenlageSource = {
+  key: 'bund',
+  id: 'bund',
+  name: 'Bund',
+  summary: 'Der Bund veröffentlicht jeden Entwurf im Rechtsinformationssystem, Gesetzesentwürfe zusätzlich beim Parlament, das jeden weiteren Schritt bis zur Kundmachung führt. Beide Listen haben Lücken; der Monitor liest beide.',
+  cells: {
+    // wege-zu-einer-rechtsnorm.md, „Begutachtung vor dem Parlament: die Rechtslage":
+    // neither the B-VG nor a law prescribes one; its basis are the Rundschreiben of the
+    // Verfassungsdienst (1971, renewed 2008, RLW 03.02.2026). § 9 Abs. 3
+    // WFA-Grundsatz-Verordnung sets the Frist („im Regelfall … mindestens sechs Wochen"),
+    // Abs. 4 counts on Verordnungen without one.
+    begutachtungRecht: {
+      text: 'für Entwürfe der Ministerien nicht durch Verfassung oder Gesetz',
+      state: 'notRequired',
+      reason: 'Grundlage sind Rundschreiben des Verfassungsdienstes; die WFA-Grundsatz-Verordnung regelt die Frist',
+    },
+    // api-exploration §2: 3.012 of 4.574 records are Verordnungen.
+    verordnungen: { text: 'ja, im RIS', state: 'published' },
+    // api-exploration §2: closed consultations are retained, practical coverage from ~2004.
+    archive: { text: 'seit etwa 2004', state: 'published' },
+    // api-exploration §2c; so-funktionierts #gegenueberstellung.
+    tgu: {
+      text: 'zu den meisten Entwürfen',
+      state: 'published',
+      reason: 'im RIS teils nur als Bild; der Monitor liest dann das PDF',
+    },
+    // api-exploration §2d; so-funktionierts #eu-recht.
+    eu: {
+      text: 'im Vorblatt, in festen Sätzen',
+      state: 'published',
+      reason: 'den Akt nennt meist erst der Gesetzestext',
+    },
+    // api-exploration §2 (Beginn/Ende in RIS) and §1 (list 81).
+    frist: { text: 'Beginn und Ende', state: 'published' },
+    // so-funktionierts #ohne-stellungnahmen.
+    statements: {
+      text: 'zu Gesetzesentwürfen, beim Parlament',
+      state: 'partial',
+      reason: 'zu Verordnungen gibt es keine öffentliche Liste',
+    },
+    // api-exploration §1 (list 81, statement count); so-funktionierts #ohne-stellungnahmen.
+    statementCount: {
+      text: 'zu Gesetzesentwürfen',
+      state: 'partial',
+      reason: 'Stellungnahmen zu Verordnungen zählt niemand',
+    },
+    // api-exploration §1 (stages, preconst) and §3.
+    way: {
+      text: 'jeder Schritt, beim Parlament',
+      state: 'published',
+      reason: 'ein Entwurf, der als Antrag weitergeht, trägt keinen Verweis',
+    },
+    // api-exploration §1 (statements.documents); so-funktionierts #vergleich.
+    texts: { text: 'Vorlage, Ausschuss, Plenum, Gesetz', state: 'published' },
+    // api-exploration §3 (bgbllinks); so-funktionierts, step „bundesgesetzblatt-ii".
+    kundmachung: {
+      text: 'für Gesetze vom Parlament genannt',
+      state: 'partial',
+      reason: 'für Verordnungen nennt sie keine Quelle; der Monitor sucht sie über Titel, Ressort und Datum',
+    },
+  },
+}
+
+/** An EU cell nobody has surveyed: the monitor reads no EU procedure yet. */
+const EU_NOT_SURVEYED: DatenlageCell = { text: 'nicht erhoben', state: 'notSurveyed' }
+
+const EU: DatenlageSource = {
+  key: 'eu',
+  id: 'eu',
+  name: 'EU',
+  summary: 'Von der EU liest der Monitor bisher nur den Rechtsakt, den ein Entwurf umsetzt, und dessen Umsetzungsfrist aus EUR-Lex. Das Gesetzgebungsverfahren der EU liest er noch nicht; was es veröffentlicht, ist hier nicht erhoben.',
+  cells: {
+    begutachtungRecht: EU_NOT_SURVEYED,
+    verordnungen: EU_NOT_SURVEYED,
+    archive: EU_NOT_SURVEYED,
+    tgu: EU_NOT_SURVEYED,
+    // api-exploration §2d (Cellar); so-funktionierts #eu-recht.
+    eu: {
+      text: 'Umsetzungsfrist',
+      state: 'partial',
+      reason: 'bei mehreren Daten sagt EUR-Lex nicht, welches die allgemeine Frist ist',
+    },
+    frist: EU_NOT_SURVEYED,
+    statements: EU_NOT_SURVEYED,
+    statementCount: EU_NOT_SURVEYED,
+    way: EU_NOT_SURVEYED,
+    texts: EU_NOT_SURVEYED,
+    // api-exploration §2d (title from the Cellar, ELI link to EUR-Lex).
+    kundmachung: { text: 'Rechtsakt mit Titel, in EUR-Lex', state: 'published' },
+  },
+}
+
+/** Every source in the page's order: the levels top down, then the Länder alphabetically. */
+export const DATENLAGE_SOURCES: readonly DatenlageSource[] = [EU, BUND, ...LAND_CODES.map(landSource)]
+
+/** Each source's entry for one step, grouped by state in `DATENLAGE_STATE_ORDER`; empty groups left out. */
+export function datenlageByState(step: DatenlageStep): { state: DatenlageState; entries: { source: DatenlageSource; cell: DatenlageCell }[] }[] {
+  return DATENLAGE_STATE_ORDER
+    .map((state) => ({
+      state,
+      entries: DATENLAGE_SOURCES
+        .filter((source) => source.cells[step].state === state)
+        .map((source) => ({ source, cell: source.cells[step] })),
+    }))
+    .filter((group) => group.entries.length > 0)
+}
+
+/* ------------------------------------------------------------------ */
+/* Measured figures                                                    */
+/* ------------------------------------------------------------------ */
+
+export interface DatenlageFigure {
+  source: DatenlageSourceKey | 'laender'
+  step: DatenlageStep
+  text: string
+  /** What was counted. */
+  population: string
+  /** When — a day, or the month where the source names only that. */
+  date: string
+}
+
+/**
+ * The measured figures behind the cells, each with its population and day.
+ * They are not re-measured here: re-measure in the named source first.
+ */
+export const DATENLAGE_FIGURES: readonly DatenlageFigure[] = [
+  {
+    // api-exploration §2, „The type split".
+    source: 'bund',
+    step: 'statements',
+    text: '65,9 % der Begutachtungen betreffen Verordnungen; zu ihren Stellungnahmen gibt es keine öffentliche Liste.',
+    population: '4.574 Datensätze im RIS',
+    date: '17.09.2026',
+  },
+  {
+    // api-exploration §2c, „Where it is published".
+    source: 'bund',
+    step: 'tgu',
+    text: '121 haben eine Textgegenüberstellung.',
+    population: '132 Ministerialentwürfe der XXVIII. GP',
+    date: '10.09.2026',
+  },
+  {
+    // so-funktionierts #eu-recht.
+    source: 'bund',
+    step: 'eu',
+    text: 'Bei 43 sagt das Vorblatt, der Entwurf setze eine Richtlinie um (28 %); einen Bezug zum EU-Recht nennen 64 (42 %).',
+    population: '154 Ministerialentwürfe der XXVIII. GP mit Datensatz im RIS',
+    date: '04.11.2026',
+  },
+  {
+    // so-funktionierts, step „bundesgesetzblatt-ii".
+    source: 'bund',
+    step: 'kundmachung',
+    text: 'Der Abgleich findet 85,4 % der Kundmachungen, bei Fristen von vor mehr als einem Jahr 91,1 %.',
+    population: '294 Verordnungsentwürfe seit 2024',
+    date: 'Oktober 2026',
+  },
+  {
+    // api-exploration §2d, „Several dates, unlabelled".
+    source: 'eu',
+    step: 'eu',
+    text: 'Bei 50 nennt EUR-Lex mehrere Daten, ohne zu sagen, welches die allgemeine Frist ist.',
+    population: '168 Richtlinien mit Umsetzungsdatum',
+    date: '04.11.2026',
+  },
+  {
+    // so-funktionierts #eu-recht.
+    source: 'laender',
+    step: 'eu',
+    text: '57 sagen, dass sie EU-Recht umsetzen (12 %), 37 davon mit Akt.',
+    population: '489 Landesentwürfe der XXVIII. GP',
+    date: '04.11.2026',
+  },
+  {
+    // laender-luecken.md, table and §6a/§6b.
+    source: 'ktn',
+    step: 'way',
+    text: 'Die Regierungsvorlage findet der Monitor über die Geschäftszahl bei 108; 27 ohne Vorlage stehen in keinem Zeitraum.',
+    population: '135 Entwürfe seit 2021',
+    date: '23.10.2026',
+  },
+  {
+    // laender-luecken.md, table.
+    source: 'ktn',
+    step: 'kundmachung',
+    text: 'Die Kundmachung findet der Monitor über das Beschlussdatum bei 89.',
+    population: '98 vom Landtag beschlossene Entwürfe',
+    date: '23.10.2026',
+  },
+  {
+    // laender-luecken.md, table („Verordnungen") and §6d.
+    source: 'ktn',
+    step: 'frist',
+    text: 'Die Frist steht bei 14 auf der Seite, bei 9 ist sie aus dem Anschreiben gerechnet, bei 3 fehlt sie.',
+    population: '26 Verordnungsentwürfe',
+    date: '23.10.2026',
+  },
+  {
+    // laender-luecken.md, table.
+    source: 'ooe',
+    step: 'tgu',
+    text: '73 haben eine Textgegenüberstellung.',
+    population: '90 Gesetzesentwürfe',
+    date: '23.10.2026',
+  },
+  {
+    // laender-luecken.md, table and §3 („42 %").
+    source: 'sbg',
+    step: 'tgu',
+    text: '151 haben eine Textgegenüberstellung (42 %).',
+    population: '357 Gesetzesentwürfe',
+    date: '23.10.2026',
+  },
+]
+
+/** The name a figure's source goes by on the page. */
+export function datenlageFigureSourceName(source: DatenlageFigure['source']): string {
+  if (source === 'laender') return 'Länder'
+  return DATENLAGE_SOURCES.find((s) => s.key === source)!.name
+}
+
+export function datenlageStepLabel(step: DatenlageStep): string {
+  return DATENLAGE_STEPS.find((s) => s.key === step)!.label
+}
+
+/* ------------------------------------------------------------------ */
+/* The view in the URL                                                 */
+/* ------------------------------------------------------------------ */
+
+/** `?ansicht=schritt`; without it the page shows the sources, so `/datenlage#tirol` works too. */
+export const DATENLAGE_VIEW_PARAM = 'ansicht'
+
+export type DatenlageView = 'quelle' | 'schritt'
+
+export const DATENLAGE_DEFAULT_VIEW: DatenlageView = 'quelle'
+
+export function parseDatenlageView(value: unknown): DatenlageView {
+  const v = Array.isArray(value) ? value[0] : value
+  return v === 'schritt' ? 'schritt' : DATENLAGE_DEFAULT_VIEW
+}

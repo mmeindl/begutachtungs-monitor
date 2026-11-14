@@ -45,7 +45,12 @@
           <NuxtLink
             to="/impressum#imp-license"
             class="link-muted"
-          >Datenquellen und Lizenzen im Impressum</NuxtLink>. Kein amtliches Angebot.
+          >Datenquellen und Lizenzen im Impressum</NuxtLink>
+          ·
+          <NuxtLink
+            to="/datenlage"
+            class="link-muted"
+          >Datenlage: was die Quellen veröffentlichen</NuxtLink>. Kein amtliches Angebot.
         </p>
         <p>
           <ExternalLink

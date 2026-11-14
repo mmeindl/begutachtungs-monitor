@@ -40,7 +40,7 @@ import { FULL_FRIST_DAYS, fristPeriodFor, fristSpanDe } from '~/utils/deadlines'
  * centring would leave it. Below `sm` the median's basis („XXVIII. GP")
  * drops: past six weeks the two ticks sit a third of a phone apart, and the
  * long term ran into the Regelfall's (4 px at 390 px for 62 days);
- * /so-funktionierts states it. The median is context, never the yardstick:
+ * the „Methode" under the bar states it (`MethodFrist`). The median is context, never the yardstick:
  * half of all drafts lie below it by definition.
  *
  * The median is the one of the period the Frist began in (21.10.2026, „seit

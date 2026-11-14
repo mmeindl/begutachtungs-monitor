@@ -118,10 +118,13 @@ const citation = computed(() => (view.value ? `${view.value.subject ? `${view.va
             </p>
           </template>
 
-          <SectionCredits :sources="[]" :marked="false" method="/so-funktionierts#bund-land">
+          <SectionCredits :sources="[]" :marked="false">
             <span>Quellen:</span>
             <span>Bundesgesetzblatt (RIS)</span>
             <span v-if="page.entries.length">Dokumente der Länder</span>
+            <template #method>
+              <MethodBundLand />
+            </template>
           </SectionCredits>
         </section>
       </template>

@@ -72,6 +72,23 @@ const doorClass = computed(() =>
       </UButton>
       <slot name="actions" />
     </div>
+    <!-- „Was eine Stellungnahme bewirkt" (14.11.2026, until then a section
+         of /so-funktionierts): the design risk behind the mission. A tool
+         that only counts what stayed without consequence proves that taking
+         part is pointless, so the card that asks for a Stellungnahme says,
+         once, that drafts do change after the Begutachtung, and links the
+         evidence — the list, which recomputes itself, sorted by the most
+         Stellungnahmen, every row with what became of its draft.
+
+         NO figure: a rate here ages unnoticed, on a site whose claim is
+         checkability. And no cause: that a text changed says nothing about
+         which Stellungnahme, if any, changed it (framing rule, CLAUDE.md).
+         Only under the Begutachtung's window: the Regierungsvorlage's card
+         (`frist: false`) asks about a text that is past that stage. -->
+    <p v-if="frist" class="mt-3 text-sm text-ink-secondary">
+      Entwürfe ändern sich nach der Begutachtung regelmäßig –
+      <NuxtLink to="/entwuerfe?art=gesetz&sort=stellungnahmen" class="link-inline">was aus früheren Entwürfen wurde</NuxtLink>.
+    </p>
     <slot name="footer" />
   </div>
 </template>

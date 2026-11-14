@@ -11,7 +11,7 @@ steht in `shared/utils/laenderCoverage.ts`.
 ## Alle neun Länder auf einen Blick
 
 Stand 13.11.2026, wörtlich aus `shared/utils/laenderCoverage.ts`: dieselben
-Angaben liest die Seite (`/so-funktionierts` und die Falte „Wie vollständig
+Angaben liest die Seite (`/datenlage` und die Falte „Wie vollständig
 die Länder-Entwürfe sind" an der Liste). Ändert sich dort eine Zelle, gilt die
 Datei, nicht diese Tabelle. „–" heißt: Das Land veröffentlicht es nicht, oder
 der Monitor liest es nicht; die Abschnitte unten sagen je Lücke, welches von

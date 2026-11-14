@@ -10,10 +10,16 @@
  * Slots: `pill-after` beside the pill (the check's state), `lead` between
  * pill and text (a sentence that says how to read it), and the default slot
  * under the text, still inside the gutter (the reasoning drawer).
+ *
+ * `terms`: the pills that open their definition under the row
+ * (`TermNote`), per badge. A map and not a flag, because the sections define
+ * the same word differently — „redaktionell" in the Textgegenüberstellung
+ * cannot follow a renumbering, in the § comparison it can.
  */
 import type { LawDiffSegment, LawUnitChange } from '#shared/types'
 import { absaetze } from '~/utils/absaetze'
 import { BADGE_CLASS, type DiffBadge, GUTTER_CLASS, PILL_CLASS } from '~/utils/diffBadges'
+import type { TermKey } from '~/utils/terms'
 
 const props = defineProps<{
   badge: DiffBadge
@@ -33,7 +39,10 @@ const props = defineProps<{
   unchangedText?: string | null
   fromLabel: string
   toLabel: string
+  terms?: Partial<Record<DiffBadge, TermKey>>
 }>()
+
+const term = computed(() => props.terms?.[props.badge])
 
 /*
  * Every text here in its Absätze, Ziffern and Litera, not as one wall
@@ -54,12 +63,18 @@ const removedBlocks = computed(() => plain(props.fromText))
 
 <template>
   <div class="border-l-2 pl-3" :class="GUTTER_CLASS[badge]">
-    <p class="mb-1 text-sm">
-      <span :class="[PILL_CLASS, BADGE_CLASS[badge]]">
+    <!-- A flex row and not a <p>: a pill with a definition is a <details>,
+         which a paragraph cannot hold, and its note wraps to a line of its
+         own beneath the row (`TermNote`). -->
+    <div class="mb-1 flex flex-wrap items-center gap-y-1 text-sm">
+      <TermNote v-if="term" :term="term">
+        <span :class="[PILL_CLASS, BADGE_CLASS[badge]]">{{ label }}</span>
+      </TermNote>
+      <span v-else :class="[PILL_CLASS, BADGE_CLASS[badge]]">
         {{ label }}
       </span>
       <slot name="pill-after" />
-    </p>
+    </div>
 
     <slot name="lead" />
 

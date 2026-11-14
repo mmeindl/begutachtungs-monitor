@@ -71,6 +71,17 @@ gets an entry of its own only where it carries a reason the rule does not.
 - **The current legislative period is never hardcoded without a fallback
   path.** Units and scripts say `aktuell` and `vorperiode`, because a roman
   numeral in a unit file turns wrong on the day nobody is looking.
+- **An address that goes away keeps working, for good** (14.11.2026). It
+  gets a 301 in `routeRules` (`nuxt.config.ts`) to its nearest successor,
+  never to the homepage, with the date and the reason in a comment; the
+  line is never removed and the slug is never reused. Links in mails,
+  newsletters and podcast notes do not expire. Its class in the page count
+  (`zaehlung/klassen.ts`) stays, labelled „bis <date>" on `/statistik`, for
+  the days already counted; the 301 itself is not counted, the successor's
+  page is. Old anchors are not mapped: the fragment never reaches the
+  server, and a section dissolved into the places it describes has no one
+  target. The move to `viewyourstate.org/at` needs a path-keeping 301 from
+  the old host, under which these rules still apply.
 
 ### Privacy
 
@@ -527,6 +538,11 @@ The code names the EU rules D1 to D7; this is where they are defined
   shown, and unread Länder are not „without" (§12.67).
 - **A reader change that alters a stored finding bumps its reader version in
   the same commit,** or the disk store keeps stale facts (§12.66, §12.67).
+- **The header navigation is the door to `/eu-recht`** (14.11.2026). The
+  homepage's window onto the map („EU-Recht in der Begutachtung") and the
+  list's link to it (`EuMapLink`) are gone; the list's filter „Setzt
+  EU-Recht um" stays — it combines with the other filters, it is no door.
+
 
 ### Language models
 
@@ -562,6 +578,28 @@ The code names the EU rules D1 to D7; this is where they are defined
   text never carries the data colour.
 - **What a control changes sits at it or below it, never above.** Stable
   headings, selectors in the section head, the source line as a footnote.
+- **Help opens in place, below, as a native `<details>`** (14.11.2026). No
+  tooltips, no (i) icons, no popovers, no `title` carrying meaning: the
+  reader meets a term at the tag, and a phone has no hover. Three levels: a
+  term („redaktionell", „nicht gezählt", „kurz") opens its one to three
+  sentences under its own row (`TermNote`); „Methode", the last item of a
+  section's credit line, opens the section's method text under the line
+  (`SectionCredits` `#method`); a gap stays a sentence at its place. A
+  control is never also a disclosure, so filter toggles and the count pills
+  in a group's header button define nothing. Definitions live in
+  `app/utils/terms.ts`, method texts as components in
+  `app/components/method/` — copy out of logic, one place per language.
+- **A list's notes state, they do not explain** (14.11.2026). Above the
+  rows stands only what is true of the list right now and differs from what
+  its controls claim, one sentence each: a source that failed, a filter that
+  could not apply, a Land the list does not hold in full. What a row's label
+  means is explained on that row's page, at the term (`TermNote`); what the
+  list leaves out by design goes into one „Methode" at the list's foot
+  (`SectionCredits` `#method`, `MethodEntwurfsliste`). No „nicht" is
+  weakened, a claim about absence keeps its proof, and two different gaps are
+  never one sentence. The fold „Wie vollständig die Länder-Entwürfe sind" is
+  one line naming the incomplete Länder, each linked to its block on
+  `/datenlage`, shown only when one applies.
 
 ### Operations
 

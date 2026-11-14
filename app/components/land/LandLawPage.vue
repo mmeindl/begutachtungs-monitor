@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import { wegHref } from '~/utils/wege'
 import type { BgblLawsResponse, LandCode, LandLawDetail } from '#shared/types'
 import type { Fact } from '~/components/ui/FactList.vue'
 import type { ComparisonId, StationId } from '~/utils/spine'
@@ -165,8 +166,16 @@ useSeoMeta({
             :stations="stations"
             :anchors="anchors"
             :comparison-anchors="comparisonAnchors"
-            how-to="/so-funktionierts#laender"
-          />
+            :how-to="wegHref('landesgesetz-ohne-entwurf')"
+          >
+            <!-- What the row's „ohne Begutachtung" (Salzburg) or „ohne
+                 zugeordneten Entwurf" rests on, opening in place (14.11.2026,
+                 `TERMS`) — from the list's notes and its fold „Wie
+                 vollständig die Länder-Entwürfe sind". -->
+            <div class="mt-3 flex flex-wrap items-center text-sm text-ink-secondary">
+              <TermNote :term="detail.law.begutachtung.kind === 'none' ? 'ohne-begutachtung-land' : 'ohne-zugeordneten-entwurf'" />
+            </div>
+          </ProcedureCard>
 
           <section id="gesetz" class="page-section scroll-mt-6" aria-labelledby="gesetz-heading">
             <h2 id="gesetz-heading" class="section-heading">Das Gesetz</h2>

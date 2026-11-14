@@ -38,7 +38,8 @@ describe('klassifiziere', () => {
     expect(k('/entwuerfe/?status=open')).toEqual({ klasse: 'entwuerfe' })
     expect(k('/entwuerfe/XXVIII/88')).toEqual({ klasse: 'entwurf-bund' })
     expect(k('/entwuerfe/BEGUT_COO_2026_100_2_1234567')).toEqual({ klasse: 'entwurf-bund' })
-    expect(k('/so-funktionierts')).toEqual({ klasse: 'so-funktionierts' })
+    expect(k('/wege')).toEqual({ klasse: 'wege' })
+    expect(k('/datenlage')).toEqual({ klasse: 'datenlage' })
     expect(k('/ueber')).toEqual({ klasse: 'ueber' })
     expect(k('/impressum')).toEqual({ klasse: 'impressum' })
     expect(k('/datenschutz')).toEqual({ klasse: 'datenschutz' })
@@ -50,6 +51,17 @@ describe('klassifiziere', () => {
     expect(k('/entwuerfe/XXVIII/88/frist.ics', 'text/calendar')).toEqual({ klasse: 'frist-kalender' })
     expect(k('/entwuerfe/salzburg/2026001/frist.ics', 'text/calendar')).toEqual({ klasse: 'frist-kalender' })
     expect(k('/entwuerfe/BEGUT_X/frist.ics', 'text/calendar')).toEqual({ klasse: 'frist-kalender' })
+  })
+
+  it('counts every item page /entwuerfe/<gp>/<kind>/<nr> as vorlage-bund, whatever the kind', () => {
+    expect(k('/entwuerfe/XXVIII/vorlage/589')).toEqual({ klasse: 'vorlage-bund' })
+    expect(k('/entwuerfe/XXVIII/antrag/372')).toEqual({ klasse: 'vorlage-bund' })
+    expect(k('/entwuerfe/XXVIII/ausschussantrag/14')).toEqual({ klasse: 'vorlage-bund' })
+    expect(k('/entwuerfe/XXVIII/staatsvertrag/119')).toEqual({ klasse: 'vorlage-bund' })
+    expect(k('/entwuerfe/XXVIII/Vorlage/589/')).toEqual({ klasse: 'vorlage-bund' })
+    // Three segments the router does not know stay where they were.
+    expect(k('/entwuerfe/XXVIII/me/88')).toEqual({ klasse: 'sonstige' })
+    expect(k('/entwuerfe/XXVIII/88/frist.ics', 'text/calendar')).toEqual({ klasse: 'frist-kalender' })
   })
 
   it('gives each of the nine Länder its code', () => {

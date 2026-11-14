@@ -15,6 +15,8 @@ import type { EuTimelineContext } from '~/utils/euRecht'
 import { bundesrechtCreditItems, withBundesrechtFollowUp } from '~/utils/bundesrecht'
 import { originTokens, withOrigin } from '~/utils/origin'
 import { withoutMainPoints } from '~/utils/kurzinfo'
+import { wegFor, wegHref } from '~/utils/wege'
+import { draftTookAntragRoute } from '#shared/utils/antragPath'
 import { ministryLinkFor } from '~/components/draft/MinistryLinks.vue'
 import { aliasesFor } from '#shared/utils/draftAliases'
 import { citeLineDe, draftCitationDe } from '#shared/utils/citations'
@@ -400,6 +402,7 @@ const ministryLinks = computed(() => {
           <ProcedureCard
             :status="procedureStatusDe(data)"
             :stations="spineStations"
+            :how-to="wegHref(wegFor({ source: 'ministerialentwurf', viaAntrag: draftTookAntragRoute(data) }) ?? 'gesetz')"
             :anchors="stationAnchors"
             :comparison-anchors="comparisonAnchors"
           >
@@ -421,9 +424,12 @@ const ministryLinks = computed(() => {
           <!-- The card's source line names only what the card shows: the
                Bundesgesetzblatt station's Bund-zu-Land line. The
                EU fact moved into „Der Entwurf" with its own line. -->
-          <SectionCredits v-if="bundesrechtCredits.length" :sources="[]" :marked="false" method="/so-funktionierts#bund-land">
+          <SectionCredits v-if="bundesrechtCredits.length" :sources="[]" :marked="false">
             <span>Quellen:</span>
             <span v-for="item in bundesrechtCredits" :key="item">{{ item }}</span>
+            <template #method>
+              <MethodBundLand />
+            </template>
           </SectionCredits>
 
           <!-- Deadline, action and calendar welded into one card: the page's
@@ -629,14 +635,18 @@ const ministryLinks = computed(() => {
                   </template>
                 </FactList>
                 <!-- The bar's median is ours, computed over Parliament's
-                   drafts since 2013; the Regelfall is the regulation's. -->
+                   drafts since 2013; the Regelfall is the regulation's.
+                   „Methode" opens what the Frist is held against
+                   (`MethodFrist`, 14.11.2026). -->
                 <SectionCredits
                   :sources="DRAFT_HISTORY_SOURCES"
                   :marked="false"
                   :own="begutachtungFacts.some((f) => f.key === 'frist') ? 'Median' : undefined"
-                  method="/so-funktionierts#stationen"
                 >
                   <ExternalLink :href="data.parliamentUrl" class="link-muted">Verlauf</ExternalLink>
+                  <template #method>
+                    <MethodFrist />
+                  </template>
                 </SectionCredits>
               </div>
               <DraftStatementsBlock

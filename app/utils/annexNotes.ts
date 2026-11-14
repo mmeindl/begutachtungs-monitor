@@ -66,8 +66,8 @@ const WITHHELD_FINDING: Record<AnnexWithheldCause, string> = {
 }
 /* SHORT SINCE 30.09.2026 — one clause of attribution, not the list of
  * causes. The PDF variants ran to two or three „Das kann daran liegen,
- * dass …" alternatives at every withheld block; the alternatives stand once
- * on /so-funktionierts#gegenueberstellung, and the block links there. What
+ * dass …" alternatives at every withheld block; the alternatives stand once,
+ * in the section's „Methode" (`MethodGegenueberstellung`). What
  * must stay at the block is the attribution itself: on the PDF path our own
  * reading is named first, so the finding never reads as the ministry's
  * fault. */

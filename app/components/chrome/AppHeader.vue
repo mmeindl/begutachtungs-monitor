@@ -1,11 +1,16 @@
 <script setup lang="ts">
 const route = useRoute()
 
-// Four items and capped there — a nav that stays scannable is the IA.
+// Five items and capped there — a nav that stays scannable is the IA. Four
+// until 14.11.2026: EU-Recht joined because it is the product's second list
+// (the same drafts by the act they implement) and the first layer of what
+// the monitor follows, EU → Bund → Länder; it was reachable only from the
+// homepage's last section, which is gone while no map is built.
 const navItems = [
   { label: 'Aktuell', to: '/' },
   { label: 'Entwürfe', to: '/entwuerfe' },
-  { label: "So funktioniert's", to: '/so-funktionierts' },
+  { label: 'EU-Recht', to: '/eu-recht' },
+  { label: 'Wege', to: '/wege' },
   { label: 'Über', to: '/ueber' },
 ] as const
 
@@ -42,7 +47,10 @@ function isActive(to: string): boolean {
              have to: the four labels measure 240 px (30.09.2026), and with
              `gap-x-4` that was 288 px against a 287.95 px column — „Über"
              fell onto a line of its own at 320 px by a rounding error, and
-             the header grew by a third. `gap-x-3` leaves 12 px to spare. -->
+             the header grew by a third. `gap-x-3` leaves 12 px to spare.
+             Five labels since 14.11.2026 („Wege" for „So funktioniert's",
+             plus „EU-Recht"): shorter in sum by estimate, one gap more —
+             not yet measured at 320 px. -->
         <ul class="flex flex-wrap items-center gap-x-3 gap-y-1 sm:gap-x-6">
           <li v-for="item in navItems" :key="item.to">
             <NuxtLink

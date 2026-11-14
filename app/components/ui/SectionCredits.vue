@@ -35,8 +35,16 @@
  * „Methode" closes the line since 02.10.2026, after the marking it explains —
  * where the caption convention puts it („Daten & Methodik"). It stood above
  * as „Wie wir vergleichen" and „Wie wir prüfen", once per section: the
- * licence's pattern again, one claim in several wordings. A section passes
- * its anchor on /so-funktionierts, the component writes the word.
+ * licence's pattern again, one claim in several wordings. The component
+ * writes the word; the section gives the text.
+ *
+ * Since 14.11.2026 „Methode" opens its text in place, beneath the line at
+ * prose width (`#method`, a component from `app/components/method/`), instead
+ * of linking to /so-funktionierts, which is being dissolved. The `method`
+ * anchor prop still links for the sections not yet moved; a section that
+ * gives the slot needs no anchor. That also revises the 18.09.2026 rule
+ * above: a term's definition now stands at the tag (`TermNote`), because the
+ * reader meets the term there, and the method page it pointed to is going.
  *
  * `own` names anything else on the box that is ours rather than the
  * publisher's (02.10.2026): a station frame shows Parliament's facts beside
@@ -53,9 +61,17 @@ const props = withDefaults(defineProps<{
   paired?: boolean
   /** What else on the box is ours, e.g. „Zählung" → „Zählung: Begutachtungs-Monitor". */
   own?: string
-  /** The section's anchor on the method page, e.g. `/so-funktionierts#vergleich`. */
+  /** The section's anchor on the method page, e.g. `/so-funktionierts#vergleich`;
+   *  superseded by the `#method` slot, kept until every section has moved. */
   method?: string
 }>(), { marked: true })
+
+defineSlots<{
+  /** Other people's documents, between the source line and our claims. */
+  default?: () => unknown
+  /** The section's method text; „Methode" opens it beneath the line. */
+  method?: () => unknown
+}>()
 
 const line = computed(() => sourceLineDe(props.sources))
 </script>
@@ -68,6 +84,17 @@ const line = computed(() => sourceLineDe(props.sources))
     <span v-if="own">{{ own }}: Begutachtungs-Monitor</span>
     <span v-if="paired && marked">Zeilenzuordnung und Markierung: Begutachtungs-Monitor</span>
     <span v-else-if="marked">Markierung: Begutachtungs-Monitor</span>
-    <NuxtLink v-if="method" :to="method" class="link-muted">Methode</NuxtLink>
+    <!-- The last item of the line, its text on a line of its own under it
+         (`TermNote`): running text at prose width, in the prose pages' type,
+         not the caption's. -->
+    <TermNote v-if="$slots.method">
+      Methode
+      <template #note>
+        <div class="prose-flow max-w-prose pb-2 text-base">
+          <slot name="method" />
+        </div>
+      </template>
+    </TermNote>
+    <NuxtLink v-else-if="method" :to="method" class="link-muted">Methode</NuxtLink>
   </div>
 </template>

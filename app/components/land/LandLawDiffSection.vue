@@ -519,14 +519,24 @@ const hasUnits = computed(() => units.value.length > 0)
       </ListBox>
       <!-- Whose texts and whose reading: the Land's and the Landtag's PDFs,
            RIS's Kundmachung, and the comparison ours — read from PDFs,
-           which the Bund's drafts are not. -->
-      <SectionCredits :sources="[]" :marked="false" method="/so-funktionierts#laender">
+           which the Bund's drafts are not. „Methode" (14.11.2026, a link to
+           /so-funktionierts#laender before) where there is a method text
+           for the pair: how the Land's Textgegenüberstellung is read, or how
+           the Kundmachung was matched. The steps between (Vorlage,
+           Ausschuss) and a law's before and after have none yet. -->
+      <SectionCredits :sources="[]" :marked="false">
         <span v-for="doc in [data.fromDocument, data.toDocument]" :key="doc?.label">
           <template v-if="doc">
             {{ doc.publisher }}: <ExternalLink v-if="doc.url" :href="doc.url" class="link-muted">{{ doc.label }}</ExternalLink><template v-else>{{ doc.label }}</template>
           </template>
         </span>
         <span>{{ ofDraft ? 'Lesart und Abgleich' : 'Vergleich' }}: Begutachtungs-Monitor</span>
+        <template v-if="ofDraft" #method>
+          <MethodLandGegenueberstellung />
+        </template>
+        <template v-else-if="to === 'lgbl'" #method>
+          <MethodLandKundmachung />
+        </template>
       </SectionCredits>
     </template>
   </PageSubsection>

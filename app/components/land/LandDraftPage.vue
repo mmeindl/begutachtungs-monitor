@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import { wegFor, wegHref } from '~/utils/wege'
 import { originTokens, withOrigin } from '~/utils/origin'
 import type { DraftDocument, LandCode, LandDraftDetail } from '#shared/types'
 import type { Fact } from '~/components/ui/FactList.vue'
@@ -96,6 +97,9 @@ const draft = computed(() => data.value?.draft ?? null)
 /* The row's short name as the heading where the title ends with one; the
    whole title then stands under it, as on the RIS page. */
 const shortTitle = computed(() => (draft.value ? landShortTitle(draft.value.title) : null))
+/** The map card's way out: the overview of all paths, with this draft's own row marked. */
+const wegLink = computed(() => (draft.value ? wegHref(wegFor({ source: 'land', kind: draft.value.kind }) ?? 'landesgesetz') : '/wege'))
+
 const kindLabel = computed(() => (draft.value ? RIS_KIND_LABEL[draft.value.kind] : ''))
 const citeAs = computed(() => (draft.value ? `${kindLabel.value} „${draft.value.title}“ (${landPublisherDe(draft.value)})` : ''))
 
@@ -230,7 +234,7 @@ useSeoMeta({ ogTitle: () => draft.value?.title ?? 'Entwurf', ogType: 'article' }
           :stations="spineStations"
           :anchors="stationAnchors"
           :comparison-anchors="comparisonAnchors"
-          how-to="/so-funktionierts#laender"
+          :how-to="wegLink"
         />
 
         <!-- The one place to act, while the Frist runs — the RIS page's

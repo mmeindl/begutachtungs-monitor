@@ -170,8 +170,7 @@ const [bundItem, eurLexItem] = sourceItemsDe([risSource('Vorblatt'), risSource('
         Jeder Rechtsakt der Europäischen Union, den ein Entwurf dieser
         Gesetzgebungsperiode umsetzt – beim Bund und in den Ländern –, mit seiner
         Umsetzungsfrist und den Entwürfen, die ihn umsetzen. Woher die Angaben
-        stammen und was sie nicht sagen, steht unter
-        <NuxtLink to="/so-funktionierts#eu-recht" class="link-inline">So funktioniert’s</NuxtLink>.
+        stammen und was sie nicht sagen, öffnet „Methode“ unter der Liste.
       </p>
     </header>
 
@@ -330,11 +329,14 @@ const [bundItem, eurLexItem] = sourceItemsDe([risSource('Vorblatt'), risSource('
                 </ListBox>
               </div>
             </FoldSection>
-            <SectionCredits :sources="[]" :marked="false" method="/so-funktionierts#eu-recht">
+            <SectionCredits :sources="[]" :marked="false">
               <span>Quellen:</span>
               <span>{{ bundItem }}</span>
               <span>Dokumente der Länder</span>
               <span>{{ eurLexItem }}</span>
+              <template #method>
+                <MethodEuRecht />
+              </template>
             </SectionCredits>
           </section>
         </template>

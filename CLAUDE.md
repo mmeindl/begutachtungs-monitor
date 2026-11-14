@@ -26,6 +26,10 @@ state – state your view*. Live at https://begutachtungs-monitor.at.
   section.
 - **Next:** Germany. It has no central source for drafts (each ministry
   publishes its own), so expect a source per publisher, as with the Länder.
+- **Also next:** the EU law cycle, and the routes to a norm that `/wege`
+  shows but the monitor does not follow yet. Before building either, read
+  `docs/decisions.md`, "Routes to a norm, and what the monitor follows", and
+  the last section of `docs/research/wege-zu-einer-rechtsnorm.md`.
 - **Therefore:** nothing new hardcodes Austria where configuration would do.
   Countries become path segments (`/at`, `/de`), not separate codebases.
 

@@ -240,6 +240,9 @@ const haystacks = computed(() => {
 /** „entfällt" for a row that falls away — the one word this section does not
  *  share with the § comparison (`diffBadges.ts`). */
 const BADGE_LABEL = badgeLabels('entfällt')
+/* „redaktionell" opens its definition at the row; this section's, which
+   cannot follow a renumbering (`app/utils/terms.ts`). */
+const BADGE_TERMS = { editorial: 'redaktionell-gegenueberstellung' } as const
 
 /**
  * The groups, one per law, and the legend's counts in §§ — the search and
@@ -565,14 +568,18 @@ function withheldReason(cause: AnnexWithheldCause | null): string {
                 :unchanged-text="b.row.current"
                 from-label="Geltende Fassung"
                 to-label="Vorgeschlagene Fassung"
+                :terms="BADGE_TERMS"
               >
                 <!-- The check's state beside the change, as in the law
                      header: identity on the § line above, state here.
                      Confirmed §§ carry nothing — only the exception is
-                     marked, as „nicht gezeigt" is by its notice; the
-                     reasons stand on /so-funktionierts. -->
+                     marked, as „nicht gezeigt" is by its notice. The pill
+                     opens its definition under the row (`TermNote`); the
+                     reason for this law stands under its header pill. -->
                 <template v-if="b.unchecked" #pill-after>
-                  <span :class="['ml-1.5', UNCHECKED_PILL]">nicht geprüft</span>
+                  <TermNote term="nicht-geprueft" class="ml-1.5">
+                    <span :class="UNCHECKED_PILL">nicht geprüft</span>
+                  </TermNote>
                 </template>
                 <!-- Both columns are the annex's own notation and reach
                      differently far: what changed is how much it leaves
@@ -653,7 +660,7 @@ function withheldReason(cause: AnnexWithheldCause | null): string {
            itself came from Parliament. -->
       <p v-if="lesefassungNote" class="mt-3 text-xs text-ink-muted">{{ lesefassungNote }}</p>
 
-      <SectionCredits :sources="sources" :paired="data.readFrom === 'pdf'" method="/so-funktionierts#gegenueberstellung">
+      <SectionCredits :sources="sources" :paired="data.readFrom === 'pdf'">
         <ExternalLink v-if="data.source" :href="data.source.url" class="link-muted">{{ data.source.label }}{{ annexTag }}</ExternalLink>
         <!-- The geltender Text of the Lesefassung, only where one is
              expandable somewhere: RIS text in force, with a Fundstelle of its
@@ -664,6 +671,9 @@ function withheldReason(cause: AnnexWithheldCause | null): string {
           class="link-muted"
         >Geltender Text im RIS</ExternalLink>
         <ExternalLink v-if="newLaws.length && enacted?.source" :href="enacted.source.url" class="link-muted">{{ enacted.source.label }}</ExternalLink>
+        <template #method>
+          <MethodGegenueberstellung />
+        </template>
       </SectionCredits>
     </template>
   </div>

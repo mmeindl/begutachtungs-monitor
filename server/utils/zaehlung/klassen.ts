@@ -12,14 +12,24 @@
  */
 import type { LandCode } from '#shared/types'
 import { LAND_CODES, LAND_SLUG } from '#shared/utils/laender'
+import { itemKindOfSegment } from '#shared/utils/procedureRoot'
 
 export const KLASSEN = [
   'start',
   'entwuerfe',
   'entwurf-bund',
   'entwurf-land',
+  // The page of an item without a Ministerialentwurf,
+  // `/entwuerfe/<gp>/<kind>/<nr>`, whatever the kind (vorlage, antrag,
+  // ausschussantrag, …; decision 10 of 14.11.2026). The days before
+  // 14.11.2026 counted these pages as `sonstige` and stay so.
+  'vorlage-bund',
   'frist-kalender',
   'eu-recht',
+  'wege',
+  'datenlage',
+  // Dissolved on 14.11.2026 (301 to /wege); the class stays for the days
+  // counted before.
   'so-funktionierts',
   'ueber',
   'impressum',
@@ -42,7 +52,8 @@ const FIXED: Record<string, Klasse> = {
   '/': 'start',
   '/entwuerfe': 'entwuerfe',
   '/eu-recht': 'eu-recht',
-  '/so-funktionierts': 'so-funktionierts',
+  '/wege': 'wege',
+  '/datenlage': 'datenlage',
   '/ueber': 'ueber',
   '/impressum': 'impressum',
   '/datenschutz': 'datenschutz',
@@ -100,6 +111,9 @@ export function klassifiziere(path: string, contentType?: string | null): Treffe
     }
     // `/entwuerfe/<id>`: a Bund draft without a Gegenstand at Parliament.
     if (rest.length === 1) return { klasse: 'entwurf-bund' }
+    // `/entwuerfe/<gp>/<kind>/<nr>`: an item's own page, by the segments
+    // the router knows (`itemKindOfSegment`) — the path is lowercased here.
+    if (rest.length === 3 && itemKindOfSegment(rest[1]!) !== null) return { klasse: 'vorlage-bund' }
   }
 
   // The EU map: the overview above, one act's page `/eu-recht/<kind>/<year>/<number>` here.

@@ -188,9 +188,12 @@ const citation = computed(() => (data.value ? euActCiteDe(data.value.act, data.v
             <EntryList :entries="page.restating" />
           </PageSubsection>
 
-          <SectionCredits v-if="credits" :sources="[]" :marked="false" method="/so-funktionierts#eu-recht">
+          <SectionCredits v-if="credits" :sources="[]" :marked="false">
             <span>Quellen:</span>
             <span v-for="item in credits.items" :key="item">{{ item }}</span>
+            <template #method>
+              <MethodEuRecht />
+            </template>
           </SectionCredits>
         </section>
       </template>

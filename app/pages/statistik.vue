@@ -37,8 +37,12 @@ const KLASSE_NAME: Record<string, string> = {
   entwuerfe: 'Liste der Entwürfe',
   'entwurf-bund': 'Entwürfe des Bundes',
   'entwurf-land': 'Entwürfe der Länder',
+  // Counted on their own since 14.11.2026; before, under „Andere Seiten".
+  'vorlage-bund': 'Vorlagen und Anträge ohne Entwurf (seit 14.11.2026)',
   'eu-recht': 'EU-Recht',
-  'so-funktionierts': 'So funktioniert’s',
+  wege: 'Wege',
+  datenlage: 'Datenlage',
+  'so-funktionierts': 'So funktioniert’s (bis 14.11.2026)',
   ueber: 'Über',
   impressum: 'Impressum',
   datenschutz: 'Datenschutz',

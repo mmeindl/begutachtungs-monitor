@@ -14,7 +14,7 @@ Wer heute eine Stellungnahme schreibt, sieht nicht, ob sie etwas bewirkt hat. Mi
 - **EU-Bezug** – ob ein Entwurf EU-Recht umsetzt, und welchen Rechtsakt.
 - **Fristen abonnieren** – als [RSS-Feed](https://begutachtungs-monitor.at/feed.xml) und als [Kalender](https://begutachtungs-monitor.at/kalender.ics), ohne Konto.
 
-Wie das Verfahren abläuft und was der Monitor davon zeigt: [So funktioniert's](https://begutachtungs-monitor.at/so-funktionierts) · Worum es geht: [Über](https://begutachtungs-monitor.at/ueber)
+Welche Wege ein Entwurf nimmt: [Wege](https://begutachtungs-monitor.at/wege) · Was die Quellen veröffentlichen: [Datenlage](https://begutachtungs-monitor.at/datenlage) · Worum es geht: [Über](https://begutachtungs-monitor.at/ueber)
 
 ---
 

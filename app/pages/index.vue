@@ -7,7 +7,6 @@ import type {
   DashboardPayload,
   DashboardSecondRound,
   DraftStation,
-  EuActsResponse,
   LaenderResponse,
   LandCode,
   LandConsultation,
@@ -22,7 +21,6 @@ import { listDe } from '~/utils/geltendeFassung'
 import { gpWindow } from '#shared/utils/gp'
 import { MAX_LIST_QUERY_CHARS } from '#shared/utils/queryParams'
 import { SECOND_ROUND_WINDOW } from '~/utils/spine'
-import { euActsRows, euSourceUnavailable, filterEuActs } from '~/utils/euKarte'
 import { halfState, pendingHalvesLine, type HalfState } from '~/utils/draftFilters'
 import { blockStateLine, settledCount } from '~/utils/lateBlocks'
 import { useLateFetch } from '~/composables/useLateFetch'
@@ -209,7 +207,7 @@ const { data: risOnly, error: risError } = useLateFetch<RisConsultationsResponse
  * while it did (25.10.2026). Since 12.11.2026 a late block like the RIS
  * half (`useLateFetch`) — except where the Bund is unticked: then the
  * Länder are the list, and it shows its loading state until they come. */
-const { chosen: chosenSources, bund, laender: chosenLaender, queryValue: sourcesQuery } = useSourceChoice()
+const { bund, laender: chosenLaender, queryValue: sourcesQuery } = useSourceChoice()
 const wantsLaender = computed(() => chosenLaender.value.length > 0)
 const { data: laender, error: laenderError } = useLateFetch<LaenderResponse>(
   '/api/laender',
@@ -531,25 +529,9 @@ const enactedHref = computed(
 )
 const decidedHref = computed(() => `/entwuerfe?station=parlament&status=closed${sourcesParam.value}`)
 
-/* The EU map's window (06.11.2026): the
- * overview's first rows, in its own order and for the same choice of
- * sources — the five `/eu-recht` opens with, as every section here shows
- * the first rows of the list it links. Client-side: the map is no part of
- * the homepage's first paint, and the section is the page's last.
- *
- * And asked only once the page's end nears the viewport (12.11.2026,
- * `useNearViewportSection`): the whole map for five rows, on a page most
- * readers leave above it. The section exists only with an answer, so a
- * mark of no height stands where it will — at the end, after „Zuletzt
- * Gesetz geworden". */
-const euMark = useTemplateRef<HTMLElement>('euMark')
-const { data: euActs, status: euStatus, execute: executeEu } = useFetch<EuActsResponse>('/api/eu-recht', { lazy: true, server: false, immediate: false })
-useNearViewportSection(euMark, () => void executeEu(), () => euStatus.value !== 'idle')
-const euChosenActs = computed(() => (euActs.value ? filterEuActs(euActs.value.acts, chosenSources.value) : []))
-const euRows = computed(() =>
-  euActs.value ? euActsRows({ ...euActs.value, acts: euChosenActs.value.slice(0, HOME_LIST_LENGTH) }) : [])
-const euUnavailable = computed(() => (euActs.value ? euSourceUnavailable(euActs.value.acts, euActs.value.incomplete) : {}))
-const euHref = computed(() => (sourcesQuery.value ? `/eu-recht?quellen=${sourcesQuery.value}` : '/eu-recht'))
+/* The EU map's window (06.11.2026), the page's last section, went on
+ * 14.11.2026: „EU-Recht" is in the header navigation, which is the door to
+ * `/eu-recht` now (docs/decisions.md, EU law). */
 
 /* „Zuletzt Gesetz geworden" with Länder chosen (30.10.2026). The Bund's
  * sentences below stay as they were for the Bund alone; with a Land the
@@ -628,10 +610,18 @@ function submitSearch() {
            in the middle of the lede, "Regierungsvorlage, Bundesgesetzblatt"
            reads as a glossary link to a definition that does not exist — and
            the reorder took the distance away that an anchor was saving. The
-           sentence still makes the promise; the sections below keep it. -->
+           sentence still makes the promise; the sections below keep it.
+
+           „abgeben kann sie jede und jeder" (14.11.2026) answers „Betrifft
+           mich das?", which stood on /so-funktionierts until that page was
+           dissolved: a reader arriving cold has to learn here, once, that a
+           Stellungnahme needs no organisation, training or form. A clause of
+           the first sentence, not a paragraph: the header already offers the
+           feeds, and the Verordnungen half shows itself in the list below. -->
       <p class="mt-3 text-ink-secondary">
         Laufende Begutachtungen des Bundes und der Länder: Fristen und
-        Stellungnahmen auf einen Blick. Und was danach aus jedem Entwurf wurde
+        Stellungnahmen auf einen Blick – abgeben kann sie jede und jeder, ohne
+        Organisation, juristische Ausbildung oder bestimmte Form. Und was danach aus jedem Entwurf wurde
         – Regierungsvorlage, Beschluss, Gesetzblatt –, soweit Bund und Länder
         es veröffentlichen.
       </p>
@@ -684,9 +674,9 @@ function submitSearch() {
            height on a phone. -->
       <div class="mt-4">
         <SubscribeLinks />
-        <!-- How complete the Länder are (`LaenderCoverageFold`), as on the
-             list: in place of a sentence per gap under the running drafts. -->
-        <LaenderCoverageFold />
+        <!-- „Wie vollständig die Länder-Entwürfe sind" stood here as a fold
+             until 14.11.2026; each list box now names, under its chips, the
+             chosen Länder it does not hold in full (`LandCoverageNote`). -->
       </div>
     </header>
 
@@ -759,6 +749,10 @@ function submitSearch() {
                like every list's controls. -->
           <template #header>
             <SourceChips />
+            <!-- The chosen Länder this list does not hold in full, under the
+                 chips that chose them — true of this list only
+                 (`landsIncompleteFor`, `laufend`). -->
+            <LandCoverageNote :lands="chosenLaender" where="laufend" />
           </template>
           <!-- Until 12.11.2026 the list waited here for every half, because
                the RIS rows sort in between the others by Frist and a list
@@ -1025,6 +1019,9 @@ function submitSearch() {
         <EntryList :entries="decidedEntries" class="mt-4">
           <template #header>
             <SourceChips :unavailable="DECIDED_UNAVAILABLE" />
+            <!-- Only the Länder that can give this box rows; a dashed chip
+                 says the rest (`landsIncompleteFor`, `beschlossen`). -->
+            <LandCoverageNote :lands="applying(DECIDED_UNAVAILABLE)" where="beschlossen" />
           </template>
           <!-- Shown only while the Bund has rows and is unticked: the box
                stays rather than ignore the choice. -->
@@ -1107,6 +1104,7 @@ function submitSearch() {
         <EntryList :entries="enactedEntries" class="mt-4">
           <template #header>
             <SourceChips :unavailable="ENACTED_UNAVAILABLE" />
+            <LandCoverageNote :lands="enactedLaender" where="kundgemacht" />
           </template>
           <template v-if="!enactedEntries.length && enactedLoading" #state>
             <LoadingState label="Kundmachungen werden geladen …" />
@@ -1149,33 +1147,6 @@ function submitSearch() {
             Das Land {{ LAND_NAME[s.land] }} ist gerade nicht abrufbar – seine Kundmachungen fehlen hier.
           </p>
         </template>
-      </section>
-      <!-- The same drafts by EU act: a window onto `/eu-recht`
-           like every section onto its list — its first rows, its chips.
-           Last, a cross-section of every station rather than one of them;
-           gone where no map is built yet, never a promise of rows. -->
-      <div ref="euMark" aria-hidden="true" />
-      <section v-if="euActs?.builtAt && euActs.acts.length" class="page-section" aria-labelledby="eu-heading">
-        <ListHeader
-          id="eu-heading"
-          :to="euHref"
-          noun="Rechtsakte"
-          :total="euChosenActs.length"
-          :visible="euRows.length"
-        >
-          EU-Recht in der Begutachtung
-        </ListHeader>
-        <ListBox class="mt-4">
-          <template #header>
-            <SourceChips :unavailable="euUnavailable" />
-          </template>
-          <p v-if="!euRows.length" class="p-4 text-sm text-ink-muted">
-            Kein Rechtsakt mit einem Entwurf aus dieser Auswahl.
-          </p>
-          <ul v-else role="list" class="divide-y divide-hairline">
-            <EuActRow v-for="row in euRows" :key="row.key" :row="row" />
-          </ul>
-        </ListBox>
       </section>
 
       <!-- NO credit line of its own (03.10.2026, tried and removed within

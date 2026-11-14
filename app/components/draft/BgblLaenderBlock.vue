@@ -36,10 +36,13 @@ const frist = computed(() => (props.line.fristClause ? fristQuoteOf(props.line.f
     <p class="mt-3 text-sm">
       <NuxtLink :to="line.path" class="link-inline">Zum Grundsatzgesetz {{ line.citation }} →</NuxtLink>
     </p>
-    <SectionCredits :sources="[]" :marked="false" method="/so-funktionierts#bund-land">
+    <SectionCredits :sources="[]" :marked="false">
       <span>Quellen:</span>
       <span>Bundesgesetzblatt (RIS)</span>
       <span v-if="entries.length">Dokumente der Länder</span>
+      <template #method>
+        <MethodBundLand />
+      </template>
     </SectionCredits>
   </PageSubsection>
 </template>

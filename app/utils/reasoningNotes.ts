@@ -45,7 +45,8 @@ export function reasoningRateNote(stats: ReasoningDiffResponse['stats'] | null |
   //
   // „…, die in beiden Fassungen stehen" left the plural on 02.10.2026: it
   // shares a paragraph with the pointer to the Erläuterungen now, and the
-  // restriction stands on /so-funktionierts. The singular keeps it — „Die
+  // restriction stands in the comparison's „Methode" (`MethodVergleich`).
+  // The singular keeps it — „Die
   // Begründung" alone would not say which one.
   if (changed === 0) return `Keine der ${compared} Begründungen hat ${author} geändert.`
   if (changed === compared) return `Alle ${compared} Begründungen hat ${author} geändert.`

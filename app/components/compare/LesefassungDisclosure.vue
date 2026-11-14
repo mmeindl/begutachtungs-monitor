@@ -19,16 +19,29 @@ defineProps<{ paragraph: ConsolidatedParagraph }>()
     <template #summary>Ganzer Paragraph danach (nicht amtlich)</template>
     <div class="mt-1 pl-6">
       <!-- „nicht amtlich" stands IN the summary since 30.09.2026, so it is
-           read before the disclosure opens, not after; inside, only the way
-           to how the text is made (RIS in force plus this draft's
+           read before the disclosure opens, not after; inside, only how
+           the text is made (RIS in force plus this draft's
            instructions, confirmed by the ressort's own Gegenüberstellung). -->
       <!-- The text in force it starts from, per § (26.10.2026): the section's
            credit linked the first shown §'s law only, which in a package is
            the wrong law for every other one. -->
-      <p class="flex flex-wrap gap-x-4 gap-y-1 text-xs text-ink-muted">
-        <NuxtLink to="/so-funktionierts#lesefassung" class="link-inline">Wie diese Lesefassung entsteht</NuxtLink>
+      <!-- „Wie diese Lesefassung entsteht" opens its text in place, under
+           this line (14.11.2026; a link to /so-funktionierts#lesefassung
+           before): the `TermNote` of „Methode", not a nested `Disclosure`,
+           because it shares its row with the RIS link and its text wants
+           the whole width beneath the row. A <div>: a <details> cannot
+           sit in a <p>. -->
+      <div class="flex flex-wrap items-center gap-x-4 gap-y-1 text-xs text-ink-muted">
+        <TermNote>
+          Wie diese Lesefassung entsteht
+          <template #note>
+            <div class="prose-flow max-w-prose pb-2 text-sm">
+              <MethodLesefassung />
+            </div>
+          </template>
+        </TermNote>
         <ExternalLink v-if="paragraph.risUrl" :href="paragraph.risUrl" class="link-muted">Geltender Text im RIS</ExternalLink>
-      </p>
+      </div>
       <p v-if="paragraph.headingSegments" class="mt-2 text-sm font-semibold text-ink">
         <DiffText :segments="paragraph.headingSegments" removed-normal-weight />
       </p>

@@ -127,6 +127,12 @@ export default defineNuxtConfig({
         'content-security-policy': 'frame-ancestors \'none\'',
       },
     },
+    // „So funktioniert's" was dissolved on 14.11.2026: its method notes open
+    // under the sections they describe, its definitions at the tags, and
+    // what was left of it is the overview of the paths. The address stood in
+    // the header, the sitemap and the README, so it lands there. The old
+    // anchors (#vergleich, #lesefassung …) have no target any more.
+    '/so-funktionierts': { redirect: { to: '/wege', statusCode: 301 } },
     '/begutachtungen': { redirect: { to: '/entwuerfe', statusCode: 301 } },
     '/begutachtungen/**': { redirect: { to: '/entwuerfe/**', statusCode: 301 } },
     // The Begutachtungen without a Gegenstand had their own list for a few

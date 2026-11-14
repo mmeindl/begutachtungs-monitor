@@ -238,7 +238,7 @@ const { siteUrl } = useRuntimeConfig().public
           Der Textvergleich ist eine Ableitung, keine amtliche Fassung. Bei
           Novellen vergleicht er die Änderungs<em>anweisungen</em>; wie das
           Gesetz danach lautet, zeigt die
-          <NuxtLink to="/so-funktionierts#lesefassung" class="link-inline">Lesefassung</NuxtLink>
+          Lesefassung
           nur für die Paragraphen, die die Textgegenüberstellung des
           Ministeriums bestätigt. Im Zweifel gilt das verlinkte Original.
         </li>

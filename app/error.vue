@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import type { NuxtError } from '#app'
+import { NOT_FOLLOWED_DE, notFollowedOf } from '~/utils/notFollowed'
 
 const props = defineProps<{ error: NuxtError }>()
 
@@ -8,17 +9,27 @@ const is404 = computed(() => props.error?.statusCode === 404)
    keeps one a year). The page existed; the message says why it is gone. */
 const isGone = computed(() => props.error?.statusCode === 410)
 const missing = computed(() => is404.value || isGone.value)
+/* 404 since 14.11.2026 also for an item Parliament has and the monitor does
+   not follow (`notFollowedOf`): the page says so and links the item, never
+   that it does not exist. */
+const notFollowed = computed(() => (is404.value ? notFollowedOf(props.error) : null))
 
 const title = computed(() =>
-  isGone.value ? 'Nicht mehr verfügbar' : is404.value ? 'Seite nicht gefunden' : 'Etwas ist schiefgelaufen',
+  isGone.value
+    ? 'Nicht mehr verfügbar'
+    : notFollowed.value
+      ? NOT_FOLLOWED_DE.title
+      : is404.value ? 'Seite nicht gefunden' : 'Etwas ist schiefgelaufen',
 )
 
 const description = computed(() =>
   isGone.value
     ? ((props.error?.data as { reason?: string } | undefined)?.reason || 'Diese Seite gibt es nicht mehr.')
-    : is404.value
-      ? 'Die angeforderte Seite existiert nicht oder wurde verschoben.'
-      : 'Beim Laden dieser Seite ist ein Fehler aufgetreten.',
+    : notFollowed.value
+      ? NOT_FOLLOWED_DE.text
+      : is404.value
+        ? 'Die angeforderte Seite existiert nicht oder wurde verschoben.'
+        : 'Beim Laden dieser Seite ist ein Fehler aufgetreten.',
 )
 
 useSeoMeta({ title })
@@ -47,6 +58,9 @@ function retry() {
       <h1 class="mt-2 text-2xl font-semibold text-ink">{{ title }}</h1>
       <p class="mt-3 text-sm leading-relaxed text-ink-secondary">
         {{ description }}
+      </p>
+      <p v-if="notFollowed?.parliamentUrl" class="mt-3 text-sm">
+        <ExternalLink :href="notFollowed.parliamentUrl" class="link-inline">{{ NOT_FOLLOWED_DE.link }}</ExternalLink>
       </p>
       <div class="mt-6 flex flex-wrap justify-center gap-2">
         <!-- No reload on a 404 or 410: the page is missing, not merely failing to load -->

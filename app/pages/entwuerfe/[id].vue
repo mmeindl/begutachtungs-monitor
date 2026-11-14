@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import { wegFor, wegHref } from '~/utils/wege'
 import { LONG_TITLE_CLAMP_CHARS, ledeLongTitle } from '~/utils/longTitle'
 import { originTokens, withOrigin } from '~/utils/origin'
 import type { BgblLawsResponse, BgblOutcome, DraftDocument, RisConsultationDetail, RisDocumentFormats } from '#shared/types'
@@ -103,6 +104,12 @@ const euTimelineCtx = computed<EuTimelineContext | null>(() => (data.value
         : { date: todayIso(), label: 'Heute' },
     }
   : null))
+
+/** The map card's way out: the overview of all paths, with this draft's own row marked. */
+const wegLink = computed(() => {
+  const id = data.value ? wegFor({ source: 'ris', kind: data.value.kind }) : null
+  return id ? wegHref(id) : '/wege'
+})
 
 /* The long title as the lede: what the heading does not already say, clamped when long. */
 const lede = computed(() => (data.value ? ledeLongTitle(data.value.longTitle, data.value.title) : null))
@@ -307,11 +314,13 @@ const doorHref = computed(() => {
           :stations="spineStations"
           :anchors="stationAnchors"
           :comparison-anchors="comparisonAnchors"
-          :how-to="stationList.length ? '/so-funktionierts#wege' : '/so-funktionierts'"
+          :how-to="wegLink"
         >
-          <!-- With a bar, the link leads straight to the fork: „why three
-             stations and not five" is answered there, and the card no longer
-             says it itself (the sentence that did went on 26.09.2026). -->
+          <!-- The link leads to the overview of all paths (`/wege`, since
+             14.11.2026): „why three stations and not five" is answered
+             there, and the card no longer says it itself (the sentence that
+             did went on 26.09.2026). Which path to open (`?weg=`) is set
+             where the page is integrated. -->
           <!-- Without a bar the dates are the sentence, and the kind hint
              says why the card has no path to draw. With a bar both go: the
              rows carry the dates, and the Verordnung hint („erlässt ein
@@ -491,13 +500,28 @@ const doorHref = computed(() => {
               </template>
             </FactList>
             <PageSubsection heading="Stellungnahmen">
-              <!-- Why there is no list stands on the explainer (30.09.2026).
-                 In both states: it is as true while the Frist runs, and the
-                 action card above only says where they go. -->
-              <p class="text-sm text-ink-secondary">
-                Die Stellungnahmen werden nicht veröffentlicht&nbsp;–
-                <NuxtLink to="/so-funktionierts#ohne-stellungnahmen" class="link-inline">warum?</NuxtLink>
-              </p>
+              <!-- Why there is no list opens in place (14.11.2026; on
+                 /so-funktionierts#ohne-stellungnahmen from 30.09.2026). In
+                 both states: it is as true while the Frist runs, and the
+                 action card above only says where they go. A row, not a
+                 <p>: the `TermNote` is a <details> and opens beneath it.
+                 The Verordnung's definition names a Verordnung; a Gesetz or
+                 an untyped record of this page gets the same reason without
+                 the word — its Stellungnahme goes to the ministry too (the
+                 card above), and no list of them is published. -->
+              <div class="flex flex-wrap items-center gap-x-1 text-sm text-ink-secondary">
+                <span>Die Stellungnahmen werden nicht veröffentlicht&nbsp;–</span>
+                <TermNote v-if="data.kind === 'verordnung'" term="nicht-gezaehlt-verordnung">warum?</TermNote>
+                <TermNote v-else>
+                  warum?
+                  <template #note>
+                    <p class="max-w-prose hyphens-auto text-sm leading-relaxed text-ink-secondary">
+                      Eine Stellungnahme geht hier direkt an das Ministerium, und
+                      eine öffentliche Liste der Einreichungen gibt es nicht.
+                    </p>
+                  </template>
+                </TermNote>
+              </div>
               <!-- The card's door once more (`DoorButton`). Only with a
                  Begleitschreiben: without one the card's fallback is the RIS
                  record, and a second way to it here is not an action. -->
