@@ -55,14 +55,11 @@ change belongs here.
   100,000 rows. Positional list headers are asserted before anything is
   cached (§12.14).
 - **A paged upstream read fetches its remaining pages together once page 1
-  states the total** (`upstream/pages.ts`, 12.11.2026): four at a time,
-  inside a RIS host's 24 slots. The walk over them stays the loop's — the
-  count check on every page, the breaks, the ceiling — and one failed page
-  fails the read. 95/ME's Textgegenüberstellung, cold, three pages of a
-  law's §§ and twelve of its history: 8.5 s one after another, 3.7 s
-  together. Sequential on purpose, and named in `tests/pages.test.ts`: the
-  Begut corpus (paced) and a Bundesgesetzblatt year (pages of up to 3.6 MB
-  on a 320 MB heap).
+  states the total** (`upstream/pages.ts`): four at a time, inside a RIS
+  host's 24 slots. The count check on every page, the breaks and the ceiling
+  stay the loop's, and one failed page fails the read. Sequential on
+  purpose, and named in `tests/pages.test.ts`: the Begut corpus (paced) and
+  a Bundesgesetzblatt year (pages of up to 3.6 MB on a 320 MB heap).
 - **The current legislative period is never hardcoded without a fallback
   path.** Units and scripts say `aktuell` and `vorperiode`, because a roman
   numeral in a unit file turns wrong on the day nobody is looking.
@@ -92,14 +89,10 @@ change belongs here.
   official's personal service address (§12.16).
 - **Page views are counted, visitors are not.** Daily sums per page class and
   referring host; no address, no hash, no cookie, no per-request line
-  (§12.65). `/statistik` shows every counted day, in every section
-  (14.11.2026; until then the last 30 days): page views as a chart, by day
-  up to 120 days and by Monday week beyond, over a table that opens on two
-  weeks. The oldest day file is left out of every figure: counting starts
-  inside that day, so it is always cut short (a rule, not a date, so a copy
-  drops its own). A referring host still needs five visits, now summed over
-  the whole history — kept on purpose, and raised once a private page shows
-  up.
+  (§12.65). `/statistik` shows every counted day. The oldest day file is
+  left out of every figure: counting starts inside that day, so it is always
+  cut short (a rule, not a date, so a copy drops its own). A referring host
+  is shown only from five visits, summed over the whole history.
 
 ### Framing and what the page may claim
 
@@ -293,34 +286,21 @@ change belongs here.
   nicht als eigenes Dokument" —, never „nicht veröffentlicht": a
   Regierungsvorlage may carry its Erläuterungen inside its one document.
   GP XXVIII: 13 compared drafts have such a side.
-- **„Zu den Z 22 und 102 (…):" is a Ziffer heading** (14.11.2026,
-  `zuDenZiffern`): the plural form over a Ziffer list („Z …", „Art. 1 Z …
-  sowie Art. 4 Z …") opens a passage like „Zu Z …", printed as typed; „Zu
-  den §§ …", „Zu den Abs. …" and prose stay text. Read as text, these lines
-  had no passage and lengthened the one before. Over GP XXVI / XXVII /
-  XXVIII 105 / 165 / 323 units gained a Begründung, none lost; the verdicts
-  that moved (3 / 14 / 26 „geändert" → „unverändert" and a few more) all
-  come from that split — the passage before no longer carries its
-  neighbour's text, or a § joined by number now carries the recovered
-  passage. „Zu 15 (§ 6):" without „Z" stays text: whether 15 is a Ziffer
-  the line does not say.
+- **„Zu den Z 22 und 102 (…):" is a Ziffer heading** (`zuDenZiffern`): the
+  plural form over a Ziffer list („Z …", „Art. 1 Z … sowie Art. 4 Z …")
+  opens a passage like „Zu Z …", printed as typed; „Zu den §§ …", „Zu den
+  Abs. …" and prose stay text. „Zu 15 (§ 6):" without „Z" stays text:
+  whether 15 is a Ziffer the line does not say.
 - **A removed and an inserted instruction become one „geändert" only with
-  two witnesses, never the address alone** (14.11.2026,
-  `pairSameInstruction`): texts alike at 0,8 or more
-  (`SAME_INSTRUCTION_SIMILARITY`) and the same §§ edited, in one Artikel,
-  each side with exactly this one candidate and no crossing with another
-  such pair. „§ 24 lit. d lautet" → „§ 24 Abs. 1 lit. d lautet" is one
-  instruction readdressed; „§ 63 entfällt" → „§ 4a entfällt" stays two.
-  Calibrated by reading every candidate of GP XXVI–XXVIII: 27 of 27 with
-  the same §§ at 0,8 or more are the same instruction, none lies between
-  0,60 and 0,83, and below 0,6 12 of 47 are other instructions (table at
-  the constant). The unit is the Vorlage's with the draft's Ziffer in
-  `fromId` („Z 24 → Z 25"), so the Begründung joins each side under its own
-  number and the share counts it once. Where that join finds nothing, the
-  unit keeps what the § join found for its halves (`readdressed`, same §§ on
-  both sides): no paired unit ends with less Begründung than before. Moved: 9 / 12 / 6 pairs in GP XXVI /
-  XXVII / XXVIII; one share (3/ME XXVI, 52,0 → 51,8 %, the pair is
-  editorial), no base rate.
+  two witnesses, never the address alone** (`pairSameInstruction`): texts
+  alike at 0,8 or more and the same §§ edited, in one Artikel, each side
+  with exactly this one candidate and no crossing with another such pair.
+  „§ 24 lit. d lautet" → „§ 24 Abs. 1 lit. d lautet" is one instruction
+  readdressed; „§ 63 entfällt" → „§ 4a entfällt" stays two. The calibration
+  is at `SAME_INSTRUCTION_SIMILARITY`. The unit is the Vorlage's with the
+  draft's Ziffer in `fromId` („Z 24 → Z 25"), so the Begründung joins each
+  side under its own number and the share counts it once; no paired unit
+  ends with less Begründung than its halves had.
 - **A changed cross-reference is editorial only where this comparison itself
   paired the old and new number.** Never „no word changed" for a change we
   cannot explain (§12.33).
@@ -330,30 +310,20 @@ change belongs here.
 - **The ministry's reasoning is attached to a § only where the law key is
   certain.** A wrong reasoning at a § is worse than none (§12.30).
 - **A Begründung printed under the neighbouring Ziffer is attached only with
-  witnesses beyond the number** (`offsetPassage`, 14.11.2026): every § the
-  passage names is one this change amends, the change that carries that
-  number amends none of them, no other change of the law amends them, and
-  the other document's passage names the same §. Missing one, the change
-  keeps no Begründung. Over GP XXVI–XXVIII it brought back 3, 11 and 4
-  changes, all read, none lost (`pnpm corpus:aenderungsrate -- --gp X
-  --ziffer --against`).
+  witnesses beyond the number** (`offsetPassage`): every § the passage names
+  is one this change amends, the change that carries that number amends none
+  of them, no other change of the law amends them, and the other document's
+  passage names the same §. Missing one, the change keeps no Begründung.
 - **A change whose Begründung could not be attached says so, at the
   change,** where both documents carry Erläuterungen titled by Ziffer
-  (14.11.2026, `ReasoningDiffResponse.gaps`). Without the line it looked
-  like a change whose Begründung was found and left unchanged. The reason is
-  given only where it is proven: „die Erläuterungen zählen die Ziffern
-  anders" where one side's passage to the Ziffer is about another §
-  (`misnumbered`); „im Entwurf / in der Regierungsvorlage / in keinem der
-  beiden Dokumente nicht gefunden" only where that document names neither
-  the Ziffer nor one of the change's §§ in any „Zu …" line or passage heading
-  (`namesChange`). Otherwise the line is „Begründung: nicht zuzuordnen." with
-  no reason: 58/ME XXVIII explains its Z 102 under „Zu den Z 22 und 102 (…)",
-  a line the reader keeps as text, and the unproven „nicht gefunden" would
-  have been false on most such changes (XXVIII: 106 of 124 changed units
-  where the raw text names the Ziffer). Visible lines on changed units, GP
-  XXVI / XXVII / XXVIII: numbering 0 / 6 / 4, not found 24 / 62 / 16,
-  without reason 155 / 408 / 151 (`--ziffer --gaps`).
-
+  (`ReasoningDiffResponse.gaps`). Without the line it looked like a change
+  whose Begründung was found and left unchanged. The reason is given only
+  where it is proven: „die Erläuterungen zählen die Ziffern anders" where
+  one side's passage to the Ziffer is about another § (`misnumbered`);
+  „nicht gefunden" only where that document names neither the Ziffer nor one
+  of the change's §§ in any „Zu …" line or passage heading (`namesChange`).
+  Otherwise the line is „Begründung: nicht zuzuordnen." with no reason: an
+  unproven „nicht gefunden" would have been false on most such changes.
 - **The reasoning comparison runs only ME → RV, and only where both sides
   give a reasoning.** „Unchanged" means the same words in the same order; no
   percentage threshold. Both sides are read with the same parser (§12.10b).
@@ -415,13 +385,11 @@ change belongs here.
   later one (or a cell that opens the § starts at a later unit), and the
   standing § carries exactly the units the two numbers count between them.
   Anything else stays a stretch held whole. A unit missing from RIS that the
-  annex skips silently cannot be told from one repealed long ago, since the
-  annex names nothing there; fault class „Lücke-beide" measures that blind
-  spot, and it is not held to the 95 % floor (14.11.2026). Accepted as a
-  blind spot, not a gap to close: the §§ it misses were confirmed before the
-  reading existed, so the reading costs nothing there, and closing it would
-  need a third source for the units of a § that no upstream offers. A drop
-  of the class below its 3 of 16 is still worth reading.
+  annex skips silently cannot be told from one repealed long ago; fault
+  class „Lücke-beide" measures that blind spot and is not held to the 95 %
+  floor. Accepted as a blind spot, not a gap to close: closing it would need
+  a third source for the units of a § that no upstream offers. A drop of the
+  class below its 3 of 16 is still worth reading.
 - **What the instruments cannot prove:** the annex oracle and fault injection
   do not show the output is free of error. Only the BGBl test bench (RIS
   after entry into force) has ground truth (§12.12c).
@@ -462,9 +430,8 @@ change belongs here.
   loosening thresholds.
 - **The draft reader drops only real division headings:** a Roman numeral
   in capitals with a capitalised title, never one the next word declines
-  („des I. Teiles") or counts („I. Dienstklasse"). Until 12.11.2026 a line
-  opening „lit." read as one and was dropped with everything up to the next
-  opener — law text gone from the Länder comparison and the EU reader.
+  („des I. Teiles") or counts („I. Dienstklasse"), and never a line opening
+  „lit.".
 - **„Entfallen" only where the draft says so.** An empty right column can be
   text the reader missed (§12.52).
 - **A failed fetch never counts as empty** and refutes nothing (§12.58).
@@ -553,12 +520,10 @@ The code names the EU rules D1 to D7; this is where they are defined
   warming before it is pointless; `✔ deployed` means the next visitor finds a
   warm server. A failed prewarm does not fail the deploy.
 - **The consolidated reading is deliberately not prewarmed:** it is fetched
-  on the client, after the Textgegenüberstellung it sits in, and warming it
-  per open draft would make every deploy longer each month. Revised
-  12.11.2026: it is no longer the only section fetched on the client — the
-  Textgegenüberstellung, the Land comparisons, „Im Bundesgesetzblatt" and
-  the § names ask when they come near the viewport
-  (`useNearViewportSection`).
+  on the client, and warming it per open draft would make every deploy
+  longer each month. The Textgegenüberstellung, the Land comparisons, „Im
+  Bundesgesetzblatt" and the § names are fetched on the client too, when
+  they come near the viewport (`useNearViewportSection`).
 - **A cache that pays an upstream round trip or a fan-out is served stale
   while it refreshes, up to a limit named per cache** (`cache/ttl.ts`);
   past the limit a request waits for the fresh value. On a quiet site the
@@ -575,10 +540,8 @@ The code names the EU rules D1 to D7; this is where they are defined
   never a list or search answer, never a Stellungnahme; the names are a
   hard-coded list in `tests/cacheLayers.test.ts`, and the prewarm unit
   deletes files past 32 days. It saves the document fetches after a deploy,
-  not the cold wait of a comparison: 95/ME's Textgegenüberstellung took
-  7.6 s cold before the disk and 8.2 s after a restart with its documents on
-  it, because the wait is RIS's query answers, which stay in memory
-  (12.11.2026).
+  not the cold wait of a comparison: that wait is RIS's query answers, which
+  stay in memory.
 - **Memory:** `--max-old-space-size=320`, `MemoryMax=512M`,
   `MemorySwapMax=0`, so a leak hits V8's clean limit and restarts instead of
   swapping. Measured peak of the deploy sequence: 217 MB (26.10.2026).
@@ -655,7 +618,7 @@ Ministerialentwurf, RV = Regierungsvorlage.
 | Unrefused but not the law in force | 3.0 % of 1,513 §§ | same |
 | Annex-confirmed §§ that deviate from the enacted text | 0 of 108 | 26.10.2026 (§12.12c) |
 | Fault injection: known error classes caught | ≥ 95 % each | 26.10.2026 (§12.12c) |
-| Silent omission read (`silentOmissions`), GP XXVIII | PDF path: 7 verdicts moved (6 fremd → bestätigt, 1 fremd → widersprochen), table path none; a skipped unit the engine loses caught 16 of 16; one missing from RIS too caught 3 of 16, each miss confirmed without the reading as well; 707EA278 on the page 41 → 54 §§ shown | 14.11.2026 |
+| Silent omission read (`silentOmissions`) under fault injection | a skipped unit the engine loses caught 16 of 16; one missing from RIS too caught 3 of 16 | GP XXVIII · 14.11.2026 |
 | Changed §§ with an outcome on the page | all 4,463 (ME) and 1,541 (without Gegenstand) | GP XXVIII · 27.10.2026 (§12.12c) |
 | Of those shown | 2,167 and 630 | same |
 | Amending drafts that show at least one § | 111 of 122 | GP XXVIII · 06.10.2026 (§12.12) |
@@ -666,7 +629,7 @@ Ministerialentwurf, RV = Regierungsvorlage.
 | The ministry's yellow highlighting misses a difference | 1,395 of 8,430 row pairs | 08.09.2026 (§12.13) |
 | Rasterised RIS annexes with a PDF text layer | all 527 | 28.09.2026 (§12.13) |
 | Amendment instructions read completely | 5,584 of 6,576 | 300 drafts · 25.09.2026 (§12.12a) |
-| Speaking names for changed units | 81 % (73 % at the old ceiling of 120 lookups), median 86 % per draft; no wrong heading — the check's only disagreements are its two known law-name false positives and five moving instructions („In § 20 entfällt die Paragraphenbezeichnung …"), named by the § they move into | 40 drafts, production build · 14.11.2026 (§12.11, `pnpm audit:para-title XXVIII 40`) |
+| Speaking names for changed units | 81 %, median 86 % per draft; no wrong heading — the check's only disagreements are its two known law-name false positives and five moving instructions („In § 20 entfällt die Paragraphenbezeichnung …"), named by the § they move into | 40 drafts, production build · 14.11.2026 (§12.11, `pnpm audit:para-title XXVIII 40`) |
 | Omnibus drafts among those with an annex | 59 % | 64 of 109, GP XXVIII (§12.12) |
 
 Drafts without an annex are almost all new laws, which need none (BKA-VD
@@ -679,7 +642,7 @@ circular of 10.12.2015).
 | Oberösterreich Textgegenüberstellung: §§ confirmed / new / withheld | 1,301 / 239 / 213 | 73 drafts · 22.10.2026 (§12.45) |
 | Salzburg title search against the Land's own link | laws 262 of 267, Verordnungen 355 of 357 | 22.10.2026 (§12.47) |
 | Salzburg drafts that show a comparison | 139 of 151 | 23.10.2026 (§12.52) |
-| Salzburg Textgegenüberstellung: §§ shown / withheld | 1,716 / 451 (1,663 / 504 before bare designations were read as omissions) | 147 drafts, 140 with a comparison · 14.11.2026 |
+| Salzburg Textgegenüberstellung: §§ shown / withheld | 1,716 / 451 | 147 drafts, 140 with a comparison · 14.11.2026 |
 | Changed §§ with a per-§ reasoning | Oberösterreich 88 %, Salzburg 65 % | 25 drafts each (§12.53) |
 | Vorblatt carries the EU heading | 94.8 % | 154 ME, GP XXVIII · 04.11.2026 (§12.66) |
 | Vorblatt says „transposes a directive" / any EU link | 27.9 % / 41.6 % | same |
@@ -687,15 +650,14 @@ circular of 10.12.2015).
 | Länder drafts that carry out something federal | about 7 % | 489 drafts · 06.11.2026 (§12.66) |
 | Deadline stated in the Land draft | 2 of about 35 | same |
 | Feed and calendar polls among reader requests | 89 of 186 | 31.10.2026 (§12.65) |
-| Land Textgegenüberstellung, right column found in the draft | 550 of 550 judgeable §§ (549 before the reader fix; the one alarm was our reader's) | 63 documents, Oberösterreich, Salzburg, Tirol, Wien, 1,156 §§ shown, GP XXVIII · 12.11.2026 |
+| Land Textgegenüberstellung, right column found in the draft | 550 of 550 judgeable §§ | 63 documents, Oberösterreich, Salzburg, Tirol, Wien, 1,156 §§ shown, GP XXVIII · 12.11.2026 |
 | The same check under fault injection, caught | another § of the same draft appended 57.8 % (315/545), another draft's sentence 76.4 % (420/550); by design none of a number changed, one word swapped, a sentence dropped (0 of 474 / 549 / 336) | same |
-| Draft reader fix („lit.", declined or counted numerals) | 16 of 1,232 cached Land PDFs changed, 0 lines newly dropped; 0 of 1,005 EU law-text readings changed | 12.11.2026 |
 
 ### Laws without a Begutachtung
 
 | What | Value | Sample, date |
 |---|---|---|
-| Bund laws „ohne Begutachtung" + „Ausschussbegutachtung" | XXVIII 57 + 8, XXVII 320 + 8 (59 and 331 before a mention silenced) | 205 and 923 federal laws · 12.11.2026 |
+| Bund laws „ohne Begutachtung" + „Ausschussbegutachtung" | XXVIII 57 + 8, XXVII 320 + 8 | 205 and 923 federal laws · 12.11.2026 |
 | Bund Initiativanträge with a readable ParlDion Textgegenüberstellung | XXVIII 23 of 44 (11 unreadable, 10 none), XXVII 127 of 293 (73, 93) | enacted laws without a Ministerialentwurf · 12.11.2026 |
 | Bund Vorlagen with a readable Textgegenüberstellung | XXVIII 8 of 21 (12 PDF only, 1 none), XXVII 13 of 35 (13, 9) | same |
 | Salzburg „ohne Begutachtung" | 41 of 452 laws, all Initiativanträge | GP XXV–XXVIII · 10.11.2026 |
