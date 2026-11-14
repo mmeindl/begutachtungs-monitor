@@ -70,7 +70,7 @@ box only through the retrofit in [README.md](README.md) ("Retrofit
   `app`; the deployed commit is in its `REVISION` file), binds
   `127.0.0.1:3000`, restarts on crash and on reboot. Sandboxed since
   2026-10-04 (`ProtectSystem=strict` and friends — writable only
-  `/var/lib/begutachtungs-monitor`), `MemoryMax=512M` and `MemorySwapMax=0` with a 320 MB V8 heap (384 MB and swap allowed until 27.10.2026).
+  `/var/lib/begutachtungs-monitor`), `MemoryMax=704M` (512M until 14.11.2026, see the drop-in `memory.conf`) and `MemorySwapMax=0` with a 320 MB V8 heap (384 MB and swap allowed until 27.10.2026).
 - **Caddy** (official apt repo) — TLS termination + reverse proxy in front
   of the app; Let's Encrypt certificates renew automatically. Sets the
   security headers (HSTS, nosniff, Referrer-Policy, frame denial), drops
@@ -180,6 +180,7 @@ VPS (the scripts are provider-agnostic).
 | Page views: read the day files | `rsync -az root@begutachtungs-monitor.at:/var/lib/begutachtungs-monitor/zaehlung/ .cache/zaehlung/` — one JSON per UTC day; the summary is `/statistik` |
 | list-81 snapshots: stop collecting | `ssh root@begutachtungs-monitor.at 'systemctl disable --now begutachtungs-monitor-list81-snapshot.timer'` — and take the `enable` line out of [deploy.sh](deploy.sh), or the next deploy turns it back on |
 | Service status | `ssh root@begutachtungs-monitor.at 'systemctl status begutachtungs-monitor caddy'` |
+| Memory: is it thrashing | `ssh root@begutachtungs-monitor.at 'CG=/sys/fs/cgroup/system.slice/begutachtungs-monitor.service; cat $CG/memory.pressure; grep -E "^(anon\|file\|workingset_refault_file) " $CG/memory.stat; grep read_bytes /proc/$(systemctl show -p MainPID --value begutachtungs-monitor)/io'` — the alarm is `workingset_refault_file` climbing by millions a day (with `read_bytes` far above what the app reads) or a growing `full` total in `memory.pressure`; `anon` near the ceiling is the other one. `memory.events` `max` alone counts page-cache reclaim and is no alarm |
 | Re-run setup | `scp deploy/bootstrap.sh root@begutachtungs-monitor.at: && ssh root@begutachtungs-monitor.at 'DOMAIN=begutachtungs-monitor.at bash bootstrap.sh'` |
 
 ## Renewal calendar

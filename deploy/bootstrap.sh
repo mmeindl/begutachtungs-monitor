@@ -176,9 +176,11 @@ RestartSec=3
 # MemoryMax caps RAM, not swap, and until 27.10.2026 the app swapped instead
 # (512 MB peak, 385 MB in swap over 34 hours) with a 384 MB heap. Measured
 # under the production sequence: heap peak
-# 217 MB, live ~137 MB. The ~440 MB left over are Caddy, sshd, journald and
-# apt.
-MemoryMax=512M
+# 217 MB, live ~137 MB. 704M since 14.11.2026: under 512M the box thrashed
+# on its own code pages and hung (reasoning and measurements in
+# deploy/systemd/begutachtungs-monitor.service.d/memory.conf, the drop-in
+# that sets the same value on a box bootstrapped earlier).
+MemoryMax=704M
 MemorySwapMax=0
 
 # --- sandbox ---
