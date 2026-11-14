@@ -53,7 +53,14 @@ const corpus = await fetchRisBegutCorpus('corpus/bgbl2')
 // Kundmachung may precede the deadline (BGBL_WINDOW_DAYS), and ends today:
 // nobody knows what comes after that.
 const from = new Date(Date.parse(since) - 40 * 86_400_000).toISOString().slice(0, 10)
-const bgbl = await fetchBgblRecords('corpus/bgbl2', from, today)
+// Year by year: one window holds at most 8.000 records (`fetchBgblRecords`),
+// and the BGBl publishes 1.500–2.000 a year across all Teile.
+const bgbl = []
+for (let y = Number(from.slice(0, 4)); y <= Number(today.slice(0, 4)); y++) {
+  const start = y === Number(from.slice(0, 4)) ? from : `${y}-01-01`
+  const end = y === Number(today.slice(0, 4)) ? today : `${y}-12-31`
+  bgbl.push(...(await fetchBgblRecords('corpus/bgbl2', start, end)))
+}
 const teil2 = bgbl.filter((r) => r.teil === 'Teil2')
 
 interface Row {

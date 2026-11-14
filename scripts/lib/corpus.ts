@@ -121,9 +121,16 @@ export async function fetchBgblRecords(script: string, from: string, to: string)
       out.push(rec)
     }
     process.stderr.write(`\rbgbl: page ${page} · ${out.length}/${hits} records`)
-    if (docs.length < PAGE_SIZE || page * PAGE_SIZE >= hits) break
+    if (docs.length < PAGE_SIZE || page * PAGE_SIZE >= hits) {
+      process.stderr.write('\n')
+      return out
+    }
     await sleep(PAGE_PAUSE_MS)
   }
-  process.stderr.write('\n')
-  return out
+  // The page ceiling ran out before the hits did. Returning what was read
+  // would let a join measurement count the missing years as misses — a
+  // window from 2012 to today was cut at 8.000 records this way, unnoticed
+  // (14.11.2026). Narrow the window, or read it year by year as
+  // `corpus/ohneBegutachtung.ts` does.
+  throw new Error(`BGBl ${from}–${to}: more than ${MAX_PAGES * PAGE_SIZE} records, the window was cut — read it in smaller windows`)
 }
