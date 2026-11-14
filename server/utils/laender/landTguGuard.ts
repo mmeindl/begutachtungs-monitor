@@ -135,10 +135,46 @@ export function installedDesignations(text: string): string[] {
   return [...out]
 }
 
-/** `draftBags`, with each instruction's words also under the §§ its payload prints (`installedDesignations`). */
+/**
+ * Whether an instruction prints its own Ziffer once more outside its
+ * quotes: two instructions under one number. Salzburg 22320 numbers its
+ * Artikel V „1. In § 40 … 2. Im § 74 lautet die Z 1: „…“ 2. In § 79 wird
+ * folgender Abs 19 angefügt: „…“", and the reader, which expects „3.",
+ * keeps the second „2." inside the first: § 79's payload was filed under
+ * § 74 alone (14.11.2026).
+ */
+export function repeatsItsNumber(unit: { id: string; text: string }): boolean {
+  const n = /^Z(\d+[a-z]?)$/.exec(unit.id)?.[1]
+  if (!n) return false
+  // Where an instruction opens: after a quote or a sentence, „2. In § 79", „2. Im § 16" — not „2.2. Im Abs 1" under „2.", not „der 1. Abschnitt", not a list item „1. mit …".
+  const outside = unit.text.replace(/„[^“]*“/g, ' “ ')
+  return new RegExp(`(?:^\\s*|[“”"]\\s*|[.;:]\\s+)${n}\\.\\s+(?:Im|In|Nach|Vor|Dem|Der|Die|Das|Den)\\s+(?:§|Art|Abs|Anlage|Anhang|Inhaltsverzeichnis)`, 'u').test(outside)
+}
+
+/**
+ * `draftBags`, with each instruction's words also under the §§ its payload
+ * prints (`installedDesignations`) — and none under a § where the unit holds
+ * two instructions under one number (`repeatsItsNumber`): which words belong
+ * to which § is then not read, so they go where every § of the law may draw
+ * on them, as an instruction that names no § does. Filed under the first
+ * §, § 79 of 22320 came out „nicht im Entwurf" as soon as § 74 was shown,
+ * although the draft prints its Abs. 19 word for word.
+ */
 export function landDraftBags(blocks: readonly TextBlock[]): DraftBags {
   const bags = draftBags(blocks)
-  for (const unit of draftUnits(blocks)) {
+  const units = draftUnits(blocks)
+  for (const unit of units.filter(repeatsItsNumber)) {
+    const law = bags.byLaw.get(unit.law)
+    const general = bags.general.get(unit.law) ?? new Set<string>()
+    for (const key of unit.paras.map((p) => designationKey(p)).filter((k): k is string => k !== null)) {
+      for (const w of law?.get(key) ?? []) general.add(w)
+      law?.delete(key)
+    }
+    for (const w of draftWordBag(unit.text)) general.add(w)
+    bags.general.set(unit.law, general)
+  }
+  for (const unit of units) {
+    if (repeatsItsNumber(unit)) continue
     const keys = installedDesignations(unit.text).map((d) => designationKey(d)).filter((k): k is string => k !== null)
     if (!keys.length) continue
     const law = bags.byLaw.get(unit.law) ?? new Map<string, Set<string>>()

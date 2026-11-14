@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest'
 import type { LawDiffUnit } from '../shared/types'
 import { lawBlocksFromPdfPages } from '../server/utils/laender/draftPdfLaw'
 import { draftUnits } from '../server/utils/annex/annexDraft'
-import { articleClauses, draftLawKey, guardTguUnits, installedDesignations } from '../server/utils/laender/landTguGuard'
+import { articleClauses, draftLawKey, guardTguUnits, installedDesignations, repeatsItsNumber } from '../server/utils/laender/landTguGuard'
 
 const unit = (over: Partial<LawDiffUnit>): LawDiffUnit => ({
   article: null, articleKey: null, fromArticleKey: null, id: '§5', fromId: '§5', heading: null, quotedHeading: null,
@@ -109,5 +109,36 @@ describe('guardTguUnits', () => {
   it('asks nothing of an unchanged or removed §', () => {
     const guard = guardTguUnits([unit({ change: 'unchanged' }), unit({ change: 'removed', fromText: 'x' })], blocks)
     expect(guard.checks.size).toBe(0)
+  })
+})
+
+// Salzburg 22320, Artikel V (Landesbeamten-Pensionsgesetz): two instructions
+// numbered „2.", read as one unit under § 74. Once § 74 was shown, § 79 came
+// out „nicht im Entwurf" although the draft prints its Abs. 19 word for word.
+describe('two instructions under one number (14.11.2026)', () => {
+  const TWICE = [
+    'Gesetz vom ……, mit dem das Landesbeamten-Pensionsgesetz geändert wird',
+    'Der Salzburger Landtag hat beschlossen:',
+    'Das Landesbeamten-Pensionsgesetz, LGBl Nr 17/2001, wird geändert wie folgt:',
+    '1. § 40 Abs 6 entfällt.',
+    '2. Im § 74 lautet die Z 1:',
+    '„1. Allgemeines bürgerliches Gesetzbuch (ABGB), JGS Nr 946/1811; Gesetz BGBl I Nr 16/2020;“',
+    '2. In § 79 wird folgender Abs 19 angefügt:',
+    '„(19) § 40 Abs 1, 3, 4 und 5 und § 74 in der Fassung des Gesetzes LGBl Nr …/2020 treten mit dem auf die Kundmachung dieses Gesetzes folgenden Monatsersten in Kraft. Mit diesem Zeitpunkt wird auch der Entfall von § 40 Abs 6 wirksam.“',
+  ].join('\n')
+  const b = lawBlocksFromPdfPages([TWICE])!
+
+  it('knows the unit that holds both', () => {
+    expect(draftUnits(b).filter(repeatsItsNumber).map((u) => u.paras)).toEqual([['§ 74']])
+    expect(repeatsItsNumber({ id: 'Z2', text: 'In § 1 werden folgende Änderungen vorgenommen: 2.1. Abs 2 entfällt. 2.2. In Abs 3 Z 1 entfällt der Ausdruck „x“.' })).toBe(false)
+    expect(repeatsItsNumber({ id: 'Z1', text: 'Im Inhaltsverzeichnis entfällt der 1. Abschnitt samt den dazugehörigen Einträgen.' })).toBe(false)
+  })
+
+  it('does not hold the second § to the first one\'s words', () => {
+    const u79 = unit({ id: '§79', fromId: '§79', fromText: '', toText: '(19) § 40 Abs 1, 3, 4 und 5 und § 74 in der Fassung des Gesetzes LGBl Nr …/2020 treten mit dem auf die Kundmachung dieses Gesetzes folgenden Monatsersten in Kraft. Mit diesem Zeitpunkt wird auch der Entfall von § 40 Abs 6 wirksam.', change: 'inserted' })
+    const u74 = unit({ id: '§74', fromId: '§74', fromText: '1. ABGB, JGS Nr 946/1811; Gesetz BGBl I Nr 100/2018;', toText: '1. Allgemeines bürgerliches Gesetzbuch (ABGB), JGS Nr 946/1811; Gesetz BGBl I Nr 16/2020;', change: 'changed' })
+    const g = guardTguUnits([u74, u79], b)
+    expect(g.checks.get(1)?.newWords).toBeGreaterThan(10)
+    expect(g.checks.get(1)?.notInDraft).toBe(false)
   })
 })
