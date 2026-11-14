@@ -97,7 +97,10 @@ gets an entry of its own only where it carries a reason the rule does not.
   official's personal service address (§12.16).
 - **Page views are counted, visitors are not.** Daily sums per page class and
   referring host; no address, no hash, no cookie, no per-request line
-  (§12.65). `/statistik` shows every counted day. The oldest day file is
+  (§12.65). Fetches of the feed and the calendar are counted apart and
+  never added to the page views: readers and calendar apps ask on a timer,
+  and on the first day measured they were 89 of 186 requests (31.10.2026).
+  `/statistik` shows every counted day. The oldest day file is
   left out of every figure: counting starts inside that day, so it is always
   cut short (a rule, not a date, so a copy drops its own). A referring host
   is shown only from five visits, summed over the whole history.
@@ -659,7 +662,6 @@ circular of 10.12.2015).
 | Directives with several unlabelled Cellar dates | 50 of 168 | same |
 | Länder drafts that carry out something federal | about 7 % | 489 drafts · 06.11.2026 (§12.66) |
 | Deadline stated in the Land draft | 2 of about 35 | same |
-| Feed and calendar polls among reader requests | 89 of 186 | 31.10.2026 (§12.65) |
 | Land Textgegenüberstellung, right column found in the draft | 550 of 550 judgeable §§ | 63 documents, Oberösterreich, Salzburg, Tirol, Wien, 1,156 §§ shown, GP XXVIII · 12.11.2026 |
 | The same check under fault injection, caught | another § of the same draft appended 57.8 % (315/545), another draft's sentence 76.4 % (420/550); by design none of a number changed, one word swapped, a sentence dropped (0 of 474 / 549 / 336) | same |
 
