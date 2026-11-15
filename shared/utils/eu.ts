@@ -17,6 +17,26 @@ export const EU_ACT_PATH_WORD: Record<'richtlinie' | 'verordnung' | 'beschluss' 
   rahmenbeschluss: 'rahmenbeschluss',
 }
 
+/**
+ * Where the monitor's EU pages sit. The base flips to `/eu` with the rename
+ * (the plan's step 6), and so it is written HERE ONCE: from now on no other
+ * file writes it as a literal — a page, a link or a route builds its address
+ * through `euPath`.
+ */
+export const EU_BASE_PATH = '/eu-recht'
+
+/**
+ * An address below the EU base: `euPath('richtlinie', 2024, 1069)` →
+ * `/eu-recht/richtlinie/2024/1069`, `euPath()` → the base itself. Each
+ * segment is put in as given — the callers pass path words and numbers,
+ * never a reader's input — and empty ones are dropped, so a slash is never
+ * doubled.
+ */
+export function euPath(...segments: (string | number)[]): string {
+  const parts = segments.map(String).filter((s) => s.length > 0)
+  return parts.length ? `${EU_BASE_PATH}/${parts.join('/')}` : EU_BASE_PATH
+}
+
 const CELEX_LETTER: Record<string, keyof typeof EU_ACT_PATH_WORD> = { L: 'richtlinie', R: 'verordnung', D: 'beschluss', F: 'rahmenbeschluss' }
 const CELEX_RE = /^3(\d{4})([LRDF])(\d{4})$/
 
@@ -26,7 +46,7 @@ export function euActPath(celex: string): string | null {
   if (!m) return null
   const kind = CELEX_LETTER[m[2]!]
   if (!kind) return null
-  return `/eu-recht/${EU_ACT_PATH_WORD[kind]}/${m[1]}/${Number(m[3])}`
+  return euPath(EU_ACT_PATH_WORD[kind], m[1]!, Number(m[3]))
 }
 
 /** `32024L1069` from the three path segments; null for a path that names no act. */

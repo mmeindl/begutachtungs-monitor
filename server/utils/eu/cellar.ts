@@ -51,7 +51,7 @@ export const CELEX_RE = /^3\d{4}[LRDF]\d{4}$/
  * slow one is retried, not waited out; RIS-style retry on every status,
  * because a SPARQL endpoint's 4xx under load is a bad minute, not an answer.
  */
-const CELLAR_POLICY: UpstreamPolicy = {
+export const CELLAR_POLICY: UpstreamPolicy = {
   timeoutMs: 10_000,
   retries: 2,
   backoffMs: (attempt) => 1_000 * attempt,
@@ -62,9 +62,27 @@ const CELLAR_POLICY: UpstreamPolicy = {
   upstreamHostsOnly: true,
 }
 
-/** The SPARQL text for one CELEX. Throws on anything that is not a CELEX. */
-export function transpositionQuery(celex: string): string {
+/**
+ * A language of the Cellar's authority table (`…/authority/language/DEU`):
+ * three capital letters, ISO 639-2/B as the Publications Office writes them.
+ * German today; the English site asks for `ENG`. Validated, because it is
+ * written into the query text as it is.
+ */
+export const CELLAR_LANGUAGE_RE = /^[A-Z]{3}$/
+
+function languageUri(language: string): string {
+  if (!CELLAR_LANGUAGE_RE.test(language)) throw new Error(`Keine Cellar-Sprache: ${language}`)
+  return `http://publications.europa.eu/resource/authority/language/${language}`
+}
+
+/**
+ * The SPARQL text for one CELEX, the title in `language` (German by
+ * default; the default text is the one `CELLAR_QUERY_VERSION` names, so it
+ * stays as it is). Throws on anything that is not a CELEX or a language.
+ */
+export function transpositionQuery(celex: string, language = 'DEU'): string {
   if (!CELEX_RE.test(celex)) throw new Error(`Keine CELEX-Nummer: ${celex}`)
+  const lang = languageUri(language)
   return [
     'PREFIX cdm: <http://publications.europa.eu/ontology/cdm#>',
     'PREFIX owl: <http://www.w3.org/2002/07/owl#>',
@@ -73,11 +91,12 @@ export function transpositionQuery(celex: string): string {
     '  OPTIONAL { ?w cdm:directive_date_transposition ?d }',
     '  OPTIONAL { ?w cdm:work_date_document ?adopted }',
     '  OPTIONAL { ?w cdm:resource_legal_date_entry-into-force ?inforce }',
-    // The German expression's full title — never `expression_title_short`,
-    // which only some acts carry, as a comma list of search aliases.
+    // The expression's full title in the asked language — never
+    // `expression_title_short`, which only some acts carry, as a comma list
+    // of search aliases.
     '  OPTIONAL {',
     '    ?e cdm:expression_belongs_to_work ?w .',
-    '    ?e cdm:expression_uses_language <http://publications.europa.eu/resource/authority/language/DEU> .',
+    `    ?e cdm:expression_uses_language <${lang}> .`,
     '    ?e cdm:expression_title ?title',
     '  }',
     '}',
@@ -85,8 +104,8 @@ export function transpositionQuery(celex: string): string {
 }
 
 /** The GET URL for one CELEX. */
-export function transpositionUrl(celex: string): string {
-  return `${CELLAR_SPARQL}?query=${encodeURIComponent(transpositionQuery(celex))}`
+export function transpositionUrl(celex: string, language = 'DEU'): string {
+  return `${CELLAR_SPARQL}?query=${encodeURIComponent(transpositionQuery(celex, language))}`
 }
 
 /** What the Cellar says about one act. */
@@ -129,13 +148,13 @@ export function parseTranspositionAnswer(answer: SparqlAnswer): TranspositionDat
  * and parses fresh. Throws on a failure: an unreachable Cellar is not „keine
  * Frist", and the caller must not cache it as one.
  */
-export function fetchTranspositionAnswer(celex: string, policy: UpstreamPolicy = CELLAR_POLICY): Promise<SparqlAnswer> {
-  return upstreamJson<SparqlAnswer>(transpositionUrl(celex), policy)
+export function fetchTranspositionAnswer(celex: string, policy: UpstreamPolicy = CELLAR_POLICY, language = 'DEU'): Promise<SparqlAnswer> {
+  return upstreamJson<SparqlAnswer>(transpositionUrl(celex, language), policy)
 }
 
 /** The transposition dates of one act, fetched and read. Throws on a failure, as above. */
-export async function fetchTranspositionDates(celex: string, policy: UpstreamPolicy = CELLAR_POLICY): Promise<TranspositionDates> {
-  return parseTranspositionAnswer(await fetchTranspositionAnswer(celex, policy))
+export async function fetchTranspositionDates(celex: string, policy: UpstreamPolicy = CELLAR_POLICY, language = 'DEU'): Promise<TranspositionDates> {
+  return parseTranspositionAnswer(await fetchTranspositionAnswer(celex, policy, language))
 }
 
 /*
@@ -158,9 +177,14 @@ export async function fetchTranspositionDates(celex: string, policy: UpstreamPol
  *     `oj:L_202302413` alias.
  */
 
-/** The SPARQL text for one act's Amtsblatt reference. Throws on anything that is not a CELEX. */
-export function ojQuery(celex: string): string {
+/**
+ * The SPARQL text for one act's Amtsblatt reference; the first page is the
+ * manifestation's in `language` (German by default). Throws on anything that
+ * is not a CELEX or a language.
+ */
+export function ojQuery(celex: string, language = 'DEU'): string {
   if (!CELEX_RE.test(celex)) throw new Error(`Keine CELEX-Nummer: ${celex}`)
+  const lang = languageUri(language)
   return [
     'PREFIX cdm: <http://publications.europa.eu/ontology/cdm#>',
     'PREFIX owl: <http://www.w3.org/2002/07/owl#>',
@@ -174,7 +198,7 @@ export function ojQuery(celex: string): string {
     '  OPTIONAL { ?w cdm:resource_legal_reference_oj-act ?aref }',
     '  OPTIONAL {',
     '    ?e cdm:expression_belongs_to_work ?w .',
-    '    ?e cdm:expression_uses_language <http://publications.europa.eu/resource/authority/language/DEU> .',
+    `    ?e cdm:expression_uses_language <${lang}> .`,
     '    ?m cdm:manifestation_manifests_expression ?e ; cdm:manifestation_official-journal_part_page_first ?pf',
     '  }',
     '}',
@@ -222,8 +246,8 @@ export function parseOjAnswer(answer: SparqlAnswer): OjAnswer {
 }
 
 /** The Cellar's answer to `ojQuery`, as it arrived. Throws on a failure, as `fetchTranspositionAnswer`. */
-export function fetchOjAnswer(celex: string, policy: UpstreamPolicy = CELLAR_POLICY): Promise<SparqlAnswer> {
-  return upstreamJson<SparqlAnswer>(`${CELLAR_SPARQL}?query=${encodeURIComponent(ojQuery(celex))}`, policy)
+export function fetchOjAnswer(celex: string, policy: UpstreamPolicy = CELLAR_POLICY, language = 'DEU'): Promise<SparqlAnswer> {
+  return upstreamJson<SparqlAnswer>(`${CELLAR_SPARQL}?query=${encodeURIComponent(ojQuery(celex, language))}`, policy)
 }
 
 /** The deadline the page prints and the others for the footnote (rule D3). */

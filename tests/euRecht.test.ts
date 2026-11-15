@@ -745,6 +745,18 @@ describe('parseOjAnswer — where an act was published, for its citation', () =>
     expect(() => parseOjAnswer({} as SparqlAnswer)).toThrow()
     expect(() => ojQuery('2022/2555')).toThrow()
   })
+
+  it('takes the title\'s language as a parameter, German by default, and refuses anything that is no language code', () => {
+    const eng = 'cdm:expression_uses_language <http://publications.europa.eu/resource/authority/language/ENG>'
+    expect(transpositionQuery('32024L1069', 'ENG')).toContain(eng)
+    expect(transpositionQuery('32024L1069', 'ENG')).not.toContain('/language/DEU>')
+    expect(ojQuery('32024L1069', 'ENG')).toContain(eng)
+    expect(transpositionQuery('32024L1069', 'DEU')).toBe(transpositionQuery('32024L1069'))
+    for (const bad of ['deu', 'DE', 'DEUT', 'DEU> . ?x ?y ?z', '']) {
+      expect(() => transpositionQuery('32024L1069', bad), bad).toThrow()
+      expect(() => ojQuery('32024L1069', bad), bad).toThrow()
+    }
+  })
 })
 
 describe('euActTitle — the title as a citation carries it', () => {

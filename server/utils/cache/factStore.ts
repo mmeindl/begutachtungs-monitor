@@ -1,7 +1,10 @@
 /**
- * A period's facts on disk — one file per Gesetzgebungsperiode, one
- * directory per kind of fact: the EU map's (`eu/euMapStore.ts`) and the
- * Bund-zu-Land map's (`bund-land/bundLandStore.ts`).
+ * Facts on disk — one file per key, one directory per kind of fact. The
+ * maps key their files by Gesetzgebungsperiode: the EU map's
+ * (`eu/euMapStore.ts`) and the Bund-zu-Land map's
+ * (`bund-land/bundLandStore.ts`). A store may name another key (`keyPattern`
+ * on `createFactStore`): the EU rail's objects will be kept per act, under
+ * its CELEX, in a later step.
  *
  * WHY THIS EXISTS: the production caches of what we fetch from lists and
  * what we derive are memory, and every restart and every deploy empties
@@ -43,7 +46,7 @@ export interface StoreEntry<F> {
   fact: F
 }
 
-/** One period's file. `P` names the publishers a build could not read whole. */
+/** One key's file — for the maps, one period's. `P` names the publishers a build could not read whole. */
 export interface StoreFile<F, P extends string = string> {
   version: number
   /** When the last build finished, ISO — the act pages' „Stand". Null while the first build runs. */
@@ -84,32 +87,41 @@ export function isFresh<F>(entry: StoreEntry<F> | undefined, fingerprint: string
 export interface FactStore<F, P extends string = string> {
   /** The file version: shape × 1000 + the reader's version. */
   version: number
-  /** An empty file for a period, as the first build starts it. */
+  /** An empty file for a key, as the first build starts it. */
   empty(): StoreFile<F, P>
   /**
-   * The stored file of one period, or null: none yet, unreadable, or of
-   * another version — a file the readers of today would not have written is
-   * dropped whole, never half-trusted.
+   * The stored file of one key (a period for the maps), or null: none yet,
+   * unreadable, of another version — a file the readers of today would not
+   * have written is dropped whole, never half-trusted — or a key the store's
+   * pattern refuses.
    */
-  load(gp: string): Promise<StoreFile<F, P> | null>
+  load(key: string): Promise<StoreFile<F, P> | null>
   /**
-   * Writes one period's file: write-then-rename, so a crash mid-write leaves
+   * Writes one key's file: write-then-rename, so a crash mid-write leaves
    * the previous file and never a truncated one. Never throws — a failing
    * disk costs the next build its head start, not this build its answer.
+   * False, and nothing written, for a key the pattern refuses.
    */
-  save(gp: string, store: StoreFile<F, P>): Promise<boolean>
+  save(key: string, store: StoreFile<F, P>): Promise<boolean>
 }
 
 /** Distinguishes concurrent temp files of the same process. */
 let tmpSeq = 0
 
 /**
- * A store under `<stateDir>/<subdir>/<GP>.json`. `shape` is bumped when the
+ * A store under `<stateDir>/<subdir>/<key>.json`. `shape` is bumped when the
  * FILE's shape changes; `readerVersion` rides along, so one number answers
  * „is this file still what the code would write". `label` names it in the
  * log.
+ *
+ * `keyPattern` says which keys name a file; by default a GP code
+ * (`GP_RE`), as the maps key theirs. THE PATTERN IS THE ONLY GUARD between
+ * a key and the file system: the key is joined into the path as it is,
+ * never sanitized. A custom pattern must therefore be anchored at both ends
+ * (`^…$`) and admit no `/`, `\` or `..` — `/^3\d{4}[LRDF]\d{4}$/`
+ * for a CELEX, never `/\d{4}/`, which `../../x1234` would pass.
  */
-export function createFactStore<F, P extends string = string>(opts: { subdir: string; shape: number; readerVersion: number; label: string }): FactStore<F, P> {
+export function createFactStore<F, P extends string = string>(opts: { subdir: string; shape: number; readerVersion: number; label: string; keyPattern?: RegExp }): FactStore<F, P> {
   const version = opts.shape * 1000 + opts.readerVersion
   const warned = new Set<string>()
   /** A broken data directory is said once per process and operation, not at request rate. */
@@ -118,14 +130,15 @@ export function createFactStore<F, P extends string = string>(opts: { subdir: st
     warned.add(operation)
     console.warn(`[${opts.label}] ${operation} failed — the map is read from scratch until fixed:`, err)
   }
-  /** The file of one period; VALIDATED, never sanitized — null for anything that is no GP code. */
-  const storePath = (gp: string): string | null => (GP_RE.test(gp) ? join(stateDir(opts.subdir), `${gp}.json`) : null)
+  const keyPattern = opts.keyPattern ?? GP_RE
+  /** The file of one key; VALIDATED, never sanitized — null for anything the pattern refuses. */
+  const storePath = (key: string): string | null => (keyPattern.test(key) ? join(stateDir(opts.subdir), `${key}.json`) : null)
 
   return {
     version,
     empty: () => ({ version, builtAt: null, window: null, incomplete: [], entries: {} }),
-    async load(gp) {
-      const file = storePath(gp)
+    async load(key) {
+      const file = storePath(key)
       if (!file) return null
       let raw: string
       try {
@@ -149,8 +162,8 @@ export function createFactStore<F, P extends string = string>(opts: { subdir: st
         return null
       }
     },
-    async save(gp, store) {
-      const file = storePath(gp)
+    async save(key, store) {
+      const file = storePath(key)
       if (!file) return false
       const tmp = `${file}.${process.pid}-${++tmpSeq}.tmp`
       try {
