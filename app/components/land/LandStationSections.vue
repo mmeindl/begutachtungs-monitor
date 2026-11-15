@@ -133,11 +133,14 @@ const reportName = computed(() => {
           <div v-else class="mt-1.5 h-3 w-2/3 animate-pulse rounded bg-hairline motion-reduce:animate-none" aria-hidden="true" />
         </template>
       </FactList>
-      <!-- No „Methode" since 14.11.2026: it linked /so-funktionierts#laender,
-           which never said how these rows count, and the Bund's text
+      <!-- The Land's own „Methode" since 15.11.2026: the Bund's text
            (`MethodVergleich`) holds the share against a period range a
            Land's page does not draw. -->
-      <SectionCredits v-if="rvCounted" :sources="[]" :marked="false" own="Zählung" />
+      <SectionCredits v-if="rvCounted" :sources="[]" :marked="false" own="Zählung">
+        <template v-if="land" #method>
+          <MethodLandVergleich :land="land" />
+        </template>
+      </SectionCredits>
     </div>
     <!-- What changed after the Begutachtung: the draft against the
          Vorlage, the comparison the Bund's drafts lead with. -->

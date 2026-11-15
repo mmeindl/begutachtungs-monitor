@@ -201,6 +201,15 @@ export const LAND_FOLLOWED_STATIONS: Record<LandCode, readonly DraftStation[] | 
   w: ['begutachtung', 'bgbl'],
 }
 
+/**
+ * Whose committee report carries the law text as the committee passed it:
+ * there the page compares the Vorlage with the report, elsewhere with the
+ * Kundmachung (`texts/stations.ts`). Shared since 15.11.2026: the
+ * comparison's „Methode" says which of the two a Land's page does
+ * (`MethodLandVergleich`).
+ */
+export const LAND_REPORT_HAS_TEXT: Partial<Record<LandCode, true>> = { ooe: true }
+
 /** Why a Land has no rows at any of these stations; null where it can have some. */
 export function landStationsReason(land: LandCode, stations: readonly DraftStation[]): string | null {
   const followed = LAND_FOLLOWED_STATIONS[land]

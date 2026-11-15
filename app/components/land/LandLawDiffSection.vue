@@ -521,9 +521,10 @@ const hasUnits = computed(() => units.value.length > 0)
            RIS's Kundmachung, and the comparison ours — read from PDFs,
            which the Bund's drafts are not. „Methode" (14.11.2026, a link to
            /so-funktionierts#laender before) where there is a method text
-           for the pair: how the Land's Textgegenüberstellung is read, or how
-           the Kundmachung was matched. The steps between (Vorlage,
-           Ausschuss) and a law's before and after have none yet. -->
+           for the pair: how the Land's Textgegenüberstellung is read, how
+           the steps after the Begutachtung are compared (15.11.2026), or how
+           the Kundmachung was matched. A law's before and after and an
+           Antrag's way have none yet. -->
       <SectionCredits :sources="[]" :marked="false">
         <span v-for="doc in [data.fromDocument, data.toDocument]" :key="doc?.label">
           <template v-if="doc">
@@ -533,6 +534,13 @@ const hasUnits = computed(() => units.value.length > 0)
         <span>{{ ofDraft ? 'Lesart und Abgleich' : 'Vergleich' }}: Begutachtungs-Monitor</span>
         <template v-if="ofDraft" #method>
           <MethodLandGegenueberstellung />
+        </template>
+        <template v-else-if="from === 'rv' && to === 'lgbl'" #method>
+          <MethodLandVergleich :land="land" />
+          <MethodLandKundmachung />
+        </template>
+        <template v-else-if="(from === 'entwurf' && to === 'rv') || (from === 'rv' && to === 'ausschuss')" #method>
+          <MethodLandVergleich :land="land" />
         </template>
         <template v-else-if="to === 'lgbl'" #method>
           <MethodLandKundmachung />

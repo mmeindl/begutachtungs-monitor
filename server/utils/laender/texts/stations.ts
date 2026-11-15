@@ -17,7 +17,7 @@
  * decided by text (`kundmachung.ts`, `LandStage.certainBy`).
  */
 import type { LandCode, LandDraftDetail, LandTextStation } from '#shared/types'
-import { LAND_NAME } from '#shared/utils/laender'
+import { LAND_NAME, LAND_REPORT_HAS_TEXT } from '#shared/utils/laender'
 import { safeExternalUrl } from '#shared/utils/safeExternalUrl'
 import { lgblXmlUrl } from '../lgblIndex'
 import { draftSource, pdfSource, readLgbl, type PagesReader, type TextSource } from './read'
@@ -28,9 +28,6 @@ export type LandDraftRecord = Omit<LandDraftDetail, 'comparisons'>
 /** Who publishes a Land's Landtag documents, for the credit line. */
 /* Kärnten publishes its Vorlagen and the Landtag's Beschlüsse on the Land's own pages (`kaernten.ts`). */
 const LANDTAG: Record<LandCode, string> = { bgld: 'Burgenländischer Landtag', ktn: 'Land Kärnten', noe: 'NÖ Landtag', ooe: 'Oö. Landtag', sbg: 'Salzburger Landtag', stmk: 'Landtag Steiermark', t: 'Tiroler Landtag', vbg: 'Vorarlberger Landtag', w: 'Wiener Landtag' }
-
-/** Whose committee report carries the law text as the committee passed it. */
-const REPORT_HAS_TEXT: Partial<Record<LandCode, true>> = { ooe: true }
 
 /**
  * „Regierungsvorlage, Beilage 980/2024" from Oberösterreich's step; Salzburg's
@@ -61,7 +58,7 @@ export function textSources(land: LandCode, detail: LandDraftRecord, pagesOf?: P
 
   const report = detail.landtag?.report
   const reportUrl = report?.url ? safeExternalUrl(report.url) : null
-  if (report && reportUrl && REPORT_HAS_TEXT[land]) out.ausschuss = pdfSource(report.label, reportUrl, LANDTAG[land], pagesOf)
+  if (report && reportUrl && LAND_REPORT_HAS_TEXT[land]) out.ausschuss = pdfSource(report.label, reportUrl, LANDTAG[land], pagesOf)
 
   const stage = detail.draft.stage
   if (stage && stage !== 'unknown' && stage.station === 'bgbl' && stage.detail && (stage.via !== 'suche' || stage.certainBy)) {
