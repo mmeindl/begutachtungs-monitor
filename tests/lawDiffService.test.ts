@@ -35,6 +35,13 @@ vi.mock('../server/utils/parliament/drafts', () => ({ getGegenstand: vi.fn() }))
 vi.mock('../server/utils/ris/begutCorpus', () => ({ getRisMapForGp: vi.fn() }))
 vi.mock('../server/utils/ris/bgblService', () => ({ getBgblDocument: vi.fn() }))
 vi.mock('../server/utils/upstream/fetchDocument', () => ({ fetchDocument: vi.fn() }))
+// No objection of the Bundesrat (15.11.2026): the real lookup fetched
+// Parliament's EBR list over the network, 0.6 s online and a timeout on a
+// slow network. The objection has its own tests (`bundesratObjection.test.ts`).
+vi.mock('../server/utils/parliament/bundesratObjection', async (importOriginal) => ({
+  ...(await importOriginal<object>()),
+  bgblViaObjection: vi.fn(async () => null),
+}))
 
 const { getGegenstand } = vi.mocked(await import('../server/utils/parliament/drafts'))
 const { getRisMapForGp } = vi.mocked(await import('../server/utils/ris/begutCorpus'))

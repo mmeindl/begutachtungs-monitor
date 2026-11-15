@@ -35,6 +35,14 @@ vi.mock('../server/utils/parliament/drafts', () => ({
   getCurrentGp: vi.fn(async () => 'XXVIII'),
   getVorlagenForGp: vi.fn(),
 }))
+// No objection of the Bundesrat (15.11.2026): the real reader fetched
+// Parliament's EBR list over the network under a 5 s budget, so each test
+// took half a second online and timed out when the network was slow. The
+// objection has its own tests (`bundesratObjection.test.ts`).
+vi.mock('../server/utils/parliament/bundesratObjection', async (importOriginal) => ({
+  ...(await importOriginal<object>()),
+  readBundesratObjection: vi.fn(async () => null),
+}))
 vi.mock('../server/utils/ris/bgblService', () => ({
   findBgblIForVorlage: vi.fn(async () => null),
   findBgblForTreaty: vi.fn(async () => null),

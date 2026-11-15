@@ -7,7 +7,7 @@ export default defineConfig({
     // The three Nitro auto-imports `server/utils/http/params.ts` is made of
     // (`tests/helpers/nitroGlobals.ts`). Everything else under test is a
     // pure module and ignores them.
-    setupFiles: ['tests/helpers/nitroGlobals.ts'],
+    setupFiles: ['tests/helpers/nitroGlobals.ts', 'tests/helpers/noNetwork.ts'],
   },
   resolve: {
     // Nuxt's alias, for the ONE module that is worth importing across it:
