@@ -1,0 +1,129 @@
+{
+ "results": {
+  "bindings": [
+   {
+    "celex": {
+     "type": "literal",
+     "datatype": "http://www.w3.org/2001/XMLSchema#string",
+     "value": "32024L1346"
+    },
+    "m": {
+     "type": "uri",
+     "value": "http://publications.europa.eu/resource/cellar/2cf525a8-b5f5-4803-96a9-0af0a3a8a600"
+    },
+    "title": {
+     "type": "literal",
+     "xml:lang": "de",
+     "value": "Gesetz zur Änderung des AZR-Gesetzes und weiterer Gesetze infolge der Anpassung des nationalen Rechts an das Gemeinsame Europäische Asylsystem (GEAS-Anpassungsfolgegesetz)"
+    },
+    "type": {
+     "type": "literal",
+     "datatype": "http://www.w3.org/2001/XMLSchema#string",
+     "value": "Gesetz"
+    },
+    "notified": {
+     "type": "literal",
+     "datatype": "http://www.w3.org/2001/XMLSchema#date",
+     "value": "2026-06-12"
+    },
+    "ojnum": {
+     "type": "literal",
+     "datatype": "http://www.w3.org/2001/XMLSchema#string",
+     "value": "112"
+    },
+    "ojdate": {
+     "type": "literal",
+     "datatype": "http://www.w3.org/2001/XMLSchema#date",
+     "value": "2026-04-28"
+    },
+    "doc": {
+     "type": "literal",
+     "datatype": "http://www.w3.org/2001/XMLSchema#date",
+     "value": "2026-04-28"
+    }
+   },
+   {
+    "celex": {
+     "type": "literal",
+     "datatype": "http://www.w3.org/2001/XMLSchema#string",
+     "value": "32024L0299"
+    },
+    "m": {
+     "type": "uri",
+     "value": "http://publications.europa.eu/resource/cellar/5eb5e927-a5a9-47cf-b5e6-c45f2167e564"
+    },
+    "title": {
+     "type": "literal",
+     "xml:lang": "de",
+     "value": "Verordnung zur Änderung der Verordnung über nationale Verpflichtungen zur Reduktion der Emissionen bestimmter Luftschadstoffe"
+    },
+    "type": {
+     "type": "literal",
+     "datatype": "http://www.w3.org/2001/XMLSchema#string",
+     "value": "Verordnung"
+    },
+    "notified": {
+     "type": "literal",
+     "datatype": "http://www.w3.org/2001/XMLSchema#date",
+     "value": "2025-03-05"
+    },
+    "ojnum": {
+     "type": "literal",
+     "datatype": "http://www.w3.org/2001/XMLSchema#string",
+     "value": "61"
+    },
+    "ojdate": {
+     "type": "literal",
+     "datatype": "http://www.w3.org/2001/XMLSchema#date",
+     "value": "2025-02-28"
+    },
+    "doc": {
+     "type": "literal",
+     "datatype": "http://www.w3.org/2001/XMLSchema#date",
+     "value": "2025-02-28"
+    }
+   },
+   {
+    "celex": {
+     "type": "literal",
+     "datatype": "http://www.w3.org/2001/XMLSchema#string",
+     "value": "32024L0299"
+    },
+    "m": {
+     "type": "uri",
+     "value": "http://publications.europa.eu/resource/cellar/169ff364-f009-4dc6-b1ed-c1f5198b01dd"
+    },
+    "title": {
+     "type": "literal",
+     "xml:lang": "de",
+     "value": "Verordnung über nationale Verpflichtungen zur Reduktion der Emissionen bestimmter Luftschadstoffe vom 18. Juli 2018 (BGBl. I S. 1222), die durch Artikel 1 der Verordnung vom 25. Februar 2025 (BGBl. 2025 I Nr. 61) geändert worden ist"
+    },
+    "type": {
+     "type": "literal",
+     "datatype": "http://www.w3.org/2001/XMLSchema#string",
+     "value": "Verordnung"
+    },
+    "notified": {
+     "type": "literal",
+     "datatype": "http://www.w3.org/2001/XMLSchema#date",
+     "value": "2025-03-05"
+    },
+    "ojnum": {
+     "type": "literal",
+     "datatype": "http://www.w3.org/2001/XMLSchema#string",
+     "value": "Jahrgang 2018 Teil 1 Nr. 28"
+    },
+    "ojdate": {
+     "type": "literal",
+     "datatype": "http://www.w3.org/2001/XMLSchema#date",
+     "value": "2018-07-30"
+    },
+    "doc": {
+     "type": "literal",
+     "datatype": "http://www.w3.org/2001/XMLSchema#date",
+     "value": "2018-07-30"
+    }
+   }
+  ]
+ }
+}

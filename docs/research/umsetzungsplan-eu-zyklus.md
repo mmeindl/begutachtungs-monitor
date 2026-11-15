@@ -411,6 +411,34 @@ step 1.
   without an Austrian measure read by hand (transposition may be notified
   late, or not be needed).
 
+**Measured on 15.11.2026** (window 15.11.2024 – 15.11.2028, the Cellar's
+answers kept and cut into `tests/fixtures/eu-umsetzung`):
+
+- 124 directives have a transposition date in the window: 96 of Parliament
+  and Council or the Council, 21 delegated, 7 implementing. For 73 the
+  latest date has passed, for 51 it is to come; 52 carry more than one date.
+- Austria notified 1,264 measures for 80 of them (663 Landesgesetze, 338
+  Bundesgesetze, 172 Verordnungen); the median directive has 2, one has
+  139. 465 measures in 42 directives are older than the directive's year.
+  Every measure has title, kind, day of notification and gazette day; 766
+  an address, 15 of those into the federal intranet (not passed on).
+  Germany notified 252 for 78, without addresses.
+- Against the monitor's map: of the 73 with the date passed, 64 have an
+  Austrian measure and 9 have none — 6 of the 9 delegated or implementing
+  directives of the Commission, 2 of the 9 with a draft in the monitor
+  (Richtlinie (EU) 2024/1069, whose Begutachtung ended on 10.11.2026). Of
+  the 51 to come, 32 have neither a draft nor a measure.
+- 28 directives with the date passed have a notified measure and no draft
+  in the monitor's window: transposed by law older than the window, or
+  notified as covered by existing law.
+
+**Built on 15.11.2026:** the reader only (`server/utils/eu/
+cellarUmsetzung.ts`, three queries as they were run, the parser, the
+types). No service, no route, no page: the wording and the layout are
+the maintainer's to settle first. The measures' answer for Austria is
+1.6 MB, over the Cellar client's ordinary ceiling; the reader has its own
+policy.
+
 ### Not in this plan
 
 The comparison of a proposal's text with the adopted act. Both texts are in

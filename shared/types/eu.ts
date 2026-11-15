@@ -375,3 +375,48 @@ export interface EuRelatedAct {
   /** Implementing drafts OTHER than this one, by publisher. */
   others: { bund: number; laender: number }
 }
+
+/* ------------------------------------------------------------------ *
+ * Directives a country has to transpose (step 7 of the EU cycle)
+ * ------------------------------------------------------------------ */
+
+/**
+ * One national measure a Member State notified to the Commission as
+ * transposing a directive, as the Cellar records the notification. It is
+ * the Member State's CLAIM — a Land law of 1993 is notified for a directive
+ * of 2019 — and never a finding that the directive is transposed.
+ */
+export interface EuNationalMeasure {
+  /** The measure's title as notified; null where the Cellar has none. */
+  title: string | null
+  /** The Member State's own word for the kind: „Bundesgesetz", „Landesgesetz", „Verordnung". */
+  kind: string | null
+  /** The day of the notification to the Commission, ISO. */
+  notified: string | null
+  /** Where it was promulgated: the gazette's name and number as notified, and its day (ISO). */
+  gazette: { name: string | null; number: string | null; date: string | null }
+  /** The measure at its national source (for Austria the RIS), only where the address is public https; null otherwise. */
+  url: string | null
+}
+
+/** The Cellar's form of a directive: of Parliament and Council or the Council, delegated, or implementing. */
+export type EuDirectiveForm = 'richtlinie' | 'delegierte-richtlinie' | 'durchfuehrungsrichtlinie'
+
+/** One directive with a transposition date in the window, and what one Member State notified for it. */
+export interface EuDirectiveToTranspose {
+  celex: string
+  /** The official title in the language asked for; null where the Cellar has none. */
+  title: string | null
+  /** Null where the Cellar's type is none of the three. */
+  form: EuDirectiveForm | null
+  /** The latest transposition date (rule D3). */
+  deadline: string
+  /** The earlier transposition dates, ascending. */
+  otherDates: string[]
+  /**
+   * The Member State's notified measures, by day of notification; empty
+   * where it notified none. Null where the country's answer is missing:
+   * unknown, never printed as „nothing notified".
+   */
+  measures: EuNationalMeasure[] | null
+}

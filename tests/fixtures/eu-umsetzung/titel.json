@@ -1,0 +1,86 @@
+{
+ "results": {
+  "bindings": [
+   {
+    "celex": {
+     "type": "literal",
+     "datatype": "http://www.w3.org/2001/XMLSchema#string",
+     "value": "32024L0299"
+    },
+    "title": {
+     "type": "literal",
+     "xml:lang": "de",
+     "value": "Delegierte Richtlinie (EU) 2024/299 der Kommission vom 27. Oktober 2023 zur Änderung der Richtlinie (EU) 2016/2284 des Europäischen Parlaments und des Rates hinsichtlich der Methode für die Berichterstattung über die Emissionsprognosen für bestimmte Luftschadstoffe"
+    },
+    "type": {
+     "type": "uri",
+     "value": "http://publications.europa.eu/resource/authority/resource-type/DIR_DEL"
+    }
+   },
+   {
+    "celex": {
+     "type": "literal",
+     "datatype": "http://www.w3.org/2001/XMLSchema#string",
+     "value": "32024L1346"
+    },
+    "title": {
+     "type": "literal",
+     "xml:lang": "de",
+     "value": "Richtlinie (EU) 2024/1346 des Europäischen Parlaments und des Rates vom 14. Mai 2024 zur Festlegung von Normen für die Aufnahme von Personen, die internationalen Schutz beantragen"
+    },
+    "type": {
+     "type": "uri",
+     "value": "http://publications.europa.eu/resource/authority/resource-type/DIR"
+    }
+   },
+   {
+    "celex": {
+     "type": "literal",
+     "datatype": "http://www.w3.org/2001/XMLSchema#string",
+     "value": "32024L1760"
+    },
+    "title": {
+     "type": "literal",
+     "xml:lang": "de",
+     "value": "Richtlinie (EU) 2024/1760 des Europäischen Parlaments und des Rates vom 13. Juni 2024 über die Sorgfaltspflichten von Unternehmen im Hinblick auf Nachhaltigkeit und zur Änderung der Richtlinie (EU) 2019/1937 und der Verordnung (EU) 2023/2859 (Text von Bedeutung für den EWR)"
+    },
+    "type": {
+     "type": "uri",
+     "value": "http://publications.europa.eu/resource/authority/resource-type/DIR"
+    }
+   },
+   {
+    "celex": {
+     "type": "literal",
+     "datatype": "http://www.w3.org/2001/XMLSchema#string",
+     "value": "32025L0516"
+    },
+    "title": {
+     "type": "literal",
+     "xml:lang": "de",
+     "value": "Richtlinie (EU) 2025/516 des Rates vom 11. März 2025 zur Änderung der Richtlinie 2006/112/EG in Bezug auf die Mehrwertsteuervorschriften für das digitale Zeitalter"
+    },
+    "type": {
+     "type": "uri",
+     "value": "http://publications.europa.eu/resource/authority/resource-type/DIR"
+    }
+   },
+   {
+    "celex": {
+     "type": "literal",
+     "datatype": "http://www.w3.org/2001/XMLSchema#string",
+     "value": "32024L1069"
+    },
+    "title": {
+     "type": "literal",
+     "xml:lang": "de",
+     "value": "Richtlinie (EU) 2024/1069 des Europäischen Parlaments und des Rates vom 11. April 2024 über den Schutz von Personen, die sich öffentlich beteiligen, vor offensichtlich unbegründeten Klagen oder missbräuchlichen Gerichtsverfahren („strategische Klagen gegen öffentliche Beteiligung“)"
+    },
+    "type": {
+     "type": "uri",
+     "value": "http://publications.europa.eu/resource/authority/resource-type/DIR"
+    }
+   }
+  ]
+ }
+}
