@@ -303,14 +303,18 @@ usePageSeo({
              2011/833/EU, editorial content under CC BY 4.0, the logo not at
              all. What the monitor takes is metadata — dates — and a link:
              no text of an act, no logo. The wording below says exactly that
-             and no more. -->
+             and no more. Since 15.11.2026 the act's procedure joins it: its
+             number, the Commission proposal's number and the dated steps,
+             metadata from the same Cellar. -->
         <div id="imp-eurlex">
           <dt>
             Amt für Veröffentlichungen der Europäischen Union (EUR-Lex, Cellar)
           </dt>
           <dd>
-            Titel, Beschlussdatum und Umsetzungsfrist von EU-Rechtsakten aus
-            dem Cellar und der Link auf
+            Titel, Beschlussdatum, Umsetzungsfrist und Fundstelle im Amtsblatt
+            von EU-Rechtsakten, zum Verfahren eines Rechtsakts dessen Nummer,
+            die Nummer des Vorschlags der Kommission und die Schritte mit
+            ihrem Datum, aus dem Cellar, und der Link auf
             <ExternalLink
               href="https://eur-lex.europa.eu"
               class="link-inline"
