@@ -52,6 +52,7 @@ import { CLUB_NAMES } from '#shared/utils/clubs'
 import { gpSpanLabelDe } from '#shared/utils/gp'
 import { formatDateDe, formatNumberDe } from '#shared/utils/format'
 import type { EntryState, EntryView, SecondCount } from './entryView'
+import { STATEMENT_QUOTE_PARLAMENT, STATEMENT_QUOTE_SOURCE } from './statementQuote'
 
 // ---------------------------------------------------------------------------
 // Shapes the page places
@@ -108,6 +109,9 @@ export interface AnliegenDoorView {
   windowNote: string
   /** Parliament's own words on the Unterstützung, with its source, while that action is offered. */
   supportQuote: { text: string; source: string } | null
+  /** Parliament's own words on what becomes of a Stellungnahme (`statementQuote.ts`),
+   *  while that action is offered; none for a Petition an den Bundesrat, whose form was not read. */
+  statementQuote: { text: string; source: string } | null
 }
 
 export interface AnliegenParticipationView {
@@ -599,6 +603,9 @@ export function anliegenParticipation(d: AnliegenDetail): AnliegenParticipationV
     actions,
     windowNote: anliegenIsBundesrat(d.root.kind) ? WINDOW_NOTE_BR : WINDOW_NOTE,
     supportQuote: supportOpen ? { text: SUPPORT_QUOTE, source: ANLIEGEN_PAGE_DE.source } : null,
+    statementQuote: statementOpen && !anliegenIsBundesrat(d.root.kind)
+      ? { text: STATEMENT_QUOTE_PARLAMENT, source: STATEMENT_QUOTE_SOURCE }
+      : null,
   }
   let closedLine: string | null = null
   if (!door.open) closedLine = vb ? CLOSED_STATEMENT_VB : CLOSED_BOTH

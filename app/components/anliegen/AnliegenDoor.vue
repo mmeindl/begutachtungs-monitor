@@ -11,36 +11,41 @@
  * that (`anliegenParticipation`), and a closed window gets a muted line
  * instead, with no blue anywhere. No Frist and no countdown: the window has
  * none and closes, unannounced, when the item's treatment ends; the note
- * beside the buttons says exactly that.
+ * under the heading says exactly that, for both actions.
  *
- * Parliament's own words on what an Unterstützung is for stand as a quote
- * with Parliament as its source: the monitor says nothing of its own about
- * what taking part achieves (framing rule).
+ * ONE GROUP PER ACTION (15.11.2026): what an action brings, in Parliament's
+ * words (`SourceQuote`), directly above that action's buttons — the
+ * Unterstützung's quote over „Unterstützen", the Stellungnahme's over its
+ * two forms. Two quotes above one row of three buttons left the reader to
+ * pair them. The monitor says nothing of its own about what taking part
+ * achieves (framing rule).
  */
 import type { AnliegenDoorView } from '~/utils/anliegenView'
 
-defineProps<{ door: AnliegenDoorView }>()
+const props = defineProps<{ door: AnliegenDoorView }>()
+
+/* The actions split by what they do; each group renders only with buttons. */
+const groups = computed(() => [
+  { key: 'support', quote: props.door.supportQuote, actions: props.door.actions.filter((a) => a.key === 'support') },
+  { key: 'statement', quote: props.door.statementQuote, actions: props.door.actions.filter((a) => a.key !== 'support') },
+].filter((g) => g.actions.length > 0))
 </script>
 
 <template>
   <div class="mt-6 rounded-xl border border-accent-200 bg-accent-50 p-4">
     <h2 class="font-sans text-base font-semibold text-ink">{{ door.heading }}</h2>
     <p class="mt-2 text-sm text-ink-secondary">{{ door.windowNote }}</p>
-    <!-- Above the buttons (15.11.2026; under them until then): it says what
-         an Unterstützung does — informative only — and a sentence that
-         qualifies an action is read before acting, as on the draft page. -->
-    <figure v-if="door.supportQuote" class="mt-3 text-sm text-ink-secondary">
-      <blockquote>„{{ door.supportQuote.text }}“</blockquote>
-      <figcaption class="mt-1 text-xs text-ink-muted">{{ door.supportQuote.source }}</figcaption>
-    </figure>
-    <div class="mt-3 flex flex-wrap items-center gap-3">
-      <DoorButton
-        v-for="action in door.actions"
-        :key="action.key"
-        :href="action.href"
-      >
-        {{ action.label }}
-      </DoorButton>
+    <div v-for="(group, i) in groups" :key="group.key" :class="i > 0 ? 'mt-5' : ''">
+      <SourceQuote v-if="group.quote" :text="group.quote.text" :source="group.quote.source" />
+      <div class="mt-3 flex flex-wrap items-center gap-3">
+        <DoorButton
+          v-for="action in group.actions"
+          :key="action.key"
+          :href="action.href"
+        >
+          {{ action.label }}
+        </DoorButton>
+      </div>
     </div>
   </div>
 </template>

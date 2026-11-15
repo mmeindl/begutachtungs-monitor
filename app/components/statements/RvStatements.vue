@@ -92,8 +92,12 @@ const summary = computed(() => props.data.summary)
  */
 const organisationsOnly = computed(() => Boolean(summary.value) && props.data.unlisted > 0)
 
-/* WHERE A STELLUNGNAHME ZUR VORLAGE GOES (Klubs, Ministerium, published at
- * the Gegenstand, no committee procedure — read from sources on 24.09.2026)
+/* WHERE A STELLUNGNAHME ZUR VORLAGE GOES (Klubs, published at the
+ * Gegenstand, no committee procedure — read from sources on 24.09.2026).
+ * The ministry went on 15.11.2026: Parliament's general pages name it for
+ * every kind of item, its form on a Regierungsvorlage names the Klubs only,
+ * and the sentence keeps what both say
+ * (`docs/research/stellungnahmen-empfaenger.md`).
  * stood here as a sentence until 03.10.2026, then on /so-funktionierts
  * #parlament. That page was dissolved on 14.11.2026, so the rule is here
  * once more — beside the list, closed, behind „Was mit ihnen geschieht"
@@ -110,7 +114,7 @@ const organisationsOnly = computed(() => Boolean(summary.value) && props.data.un
  *
  * The Vorlage's only: read for a Regierungsvorlage, not checked for an
  * Antrag, whose page says nothing it has not verified. */
-const routeNote = `Stellung nehmen kann jede und jeder ${SECOND_ROUND_CLAUSE}; eine veröffentlichte Frist gibt es nicht. Freigegebene Stellungnahmen gehen an die parlamentarischen Klubs und an das zuständige Ministerium und werden bei der Vorlage veröffentlicht. Ein eigenes Verfahren im Ausschuss sieht die Geschäftsordnung dafür nicht vor – außer der Ausschuss holt selbst Stellungnahmen ein (Ausschussbegutachtung).`
+const routeNote = `Stellung nehmen kann jede und jeder ${SECOND_ROUND_CLAUSE}; eine veröffentlichte Frist gibt es nicht. Freigegebene Stellungnahmen gehen an die parlamentarischen Klubs und werden bei der Vorlage veröffentlicht, die einer Privatperson nur mit ihrer Einwilligung. Ein eigenes Verfahren im Ausschuss sieht die Geschäftsordnung dafür nicht vor – außer der Ausschuss holt selbst Stellungnahmen ein (Ausschussbegutachtung).`
 
 /**
  * UNLESS THE COMMITTEE ASKED (27.09.2026). A committee can call for written

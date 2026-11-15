@@ -3,6 +3,7 @@ import type { AmendedLawsResponse, DraftDetail, RvStatementsResponse } from '#sh
 import type { ComparisonId, StationContext, StationId } from '~/utils/spine'
 import type { Fact } from '~/components/ui/FactList.vue'
 import { fristFact } from '~/utils/deadlines'
+import { STATEMENT_QUOTE_BEGUTACHTUNG, STATEMENT_QUOTE_PARLAMENT, STATEMENT_QUOTE_SOURCE } from '~/utils/statementQuote'
 import {
   SECOND_ROUND_CLAUSE,
   allRoutesLink,
@@ -154,6 +155,12 @@ const windows = computed(() => ({
   begutachtung: Boolean(data.value?.active),
   vorlage: Boolean(data.value?.enactment?.filingOpen),
 }))
+
+/* What a Stellungnahme brings, in the words of Parliament's form, above the
+ * door's buttons (`statementQuote.ts`): the Begutachtung's while its Frist
+ * runs — its pair comes first when both windows are open — else the
+ * Vorlage's. */
+const doorQuote = computed(() => (windows.value.begutachtung ? STATEMENT_QUOTE_BEGUTACHTUNG : STATEMENT_QUOTE_PARLAMENT))
 
 /* Which station sections render after the Begutachtung — each one's `v-if`,
  * named ONCE (04.10.2026). The template and the bar's anchors below read
@@ -490,6 +497,7 @@ const ministryLinks = computed(() => {
                 Maßgeblich ist der {{ formatDateDe(data.deadline) }}: eingebracht
                 wird beim Parlament.</template><template v-else> Eingebracht wird beim Parlament.</template>
             </p>
+            <SourceQuote :text="doorQuote" :source="STATEMENT_QUOTE_SOURCE" />
             <template #after-context>
               <!-- Both windows open: stated as a sequence of facts, not as a
                  verdict on the ministry (framing rule). The reader gets both
@@ -512,7 +520,7 @@ const ministryLinks = computed(() => {
               <StatementFormDoors
                 v-if="windows.vorlage && data.enactment"
                 :item-url="data.enactment.rvUrl"
-                subject="zur Regierungsvorlage"
+                :subject="windows.begutachtung ? 'zur Regierungsvorlage' : undefined"
                 :variant="windows.begutachtung ? 'outline' : 'solid'"
               />
             </template>

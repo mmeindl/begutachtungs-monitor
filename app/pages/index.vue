@@ -833,15 +833,17 @@ function submitSearch() {
         </ListHeader>
         <!-- The first sentence says where a Stellungnahme goes, which is true
              of every row here — Parliament's own description of the window
-             (parlament.gv.at, „Stellung nehmen zu Gesetzesinitiativen"). It
+             (parlament.gv.at, „Stellung nehmen zu Gesetzesinitiativen"),
+             without the ministry since 15.11.2026: Parliament's form on a
+             Regierungsvorlage names the Klubs only
+             (`docs/research/stellungnahmen-empfaenger.md`). It
              said „dort kann der Ausschuss den Text noch ändern" until
              03.10.2026, which stops being true at the Nationalrat's
              Beschluss, while the section now also lists Vorlagen at the
              Bundesrat. -->
         <p class="mt-2 text-sm text-ink-secondary">
           Auch zu einer Regierungsvorlage kann Stellung genommen werden –
-          freigegebene Stellungnahmen gehen an die parlamentarischen Klubs und
-          an das zuständige Ministerium. {{ SECOND_ROUND_WINDOW }}
+          freigegebene Stellungnahmen gehen an die parlamentarischen Klubs. {{ SECOND_ROUND_WINDOW }}
         </p>
         <!-- The column header is NOT called „Entwurf" here: these rows are
              Regierungsvorlagen, and the header is the one place where the list

@@ -8,8 +8,10 @@
  * The rule: `docs/decisions.md`, „A door lands in the form".
  *
  * Each label names the whole action, so it reads alone in a link list.
- * `subject` names the item where a page offers two of these pairs — the
- * draft's and the Regierungsvorlage's — so no two buttons read alike.
+ * `subject` names the item only where a card offers two of these pairs —
+ * the draft's and the Regierungsvorlage's — so no two buttons read alike.
+ * Alone, the card's heading or the section names the item, and the subject
+ * only made the buttons long (15.11.2026).
  * Both buttons share one weight: two equal ways to one action. `variant`
  * steps the pair back as a whole, where a second window's pair stands
  * beside the first's.

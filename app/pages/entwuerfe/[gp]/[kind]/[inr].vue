@@ -2,6 +2,7 @@
 import { wegFor, wegHref } from '~/utils/wege'
 import type { AmendedLawsResponse, RvStatementsResponse, VorlageDetail } from '#shared/types'
 import type { ComparisonId, StationId } from '~/utils/spine'
+import { STATEMENT_QUOTE_SOURCE, statementQuoteFor } from '~/utils/statementQuote'
 import { allRoutesLink, lastParliamentStation, parliamentTexts, vorlageStations, vorlageStatusDe, SECOND_ROUND_CLAUSE } from '~/utils/spine'
 import { citeLineDe } from '#shared/utils/citations'
 import { firstTextNameOf } from '#shared/utils/lawStations'
@@ -74,6 +75,7 @@ const kindCopy = computed(() => itemCopyDe({ itemKind: itemKind.value, variant: 
 /** A treaty's Vorlage (`RVS`, step 5 of 14.11.2026): no Stellungnahmen, no
  *  text comparison, no law in force it changes. */
 const isTreaty = computed(() => itemKind.value === 'staatsvertrag')
+const doorQuote = computed(() => statementQuoteFor(itemKind.value))
 const isCommitteeMotion = computed(() => itemKind.value === 'ausschussantrag')
 /** A motion of the Bundesrat (`GABR`, `GABR13`; 14.11.2026). */
 const isBundesratMotion = computed(() => itemKind.value === 'bundesratsantrag')
@@ -320,6 +322,9 @@ useSeoMeta({
             <p class="mt-2 text-sm text-ink-secondary">
               Ohne Frist – {{ SECOND_ROUND_CLAUSE }}.
             </p>
+            <!-- What a Stellungnahme brings, in Parliament's words; only for
+                 the kinds whose form was read (`statementQuoteFor`). -->
+            <SourceQuote v-if="doorQuote" :text="doorQuote" :source="STATEMENT_QUOTE_SOURCE" />
             <template #actions>
               <StatementFormDoors :item-url="data.parliamentUrl" />
             </template>

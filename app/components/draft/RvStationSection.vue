@@ -309,7 +309,7 @@ const sources = computed(() =>
            beside the list instead, next to its exception (`RvStatements`,
            „Was mit ihnen geschieht", since 14.11.2026). -->
       <div v-if="filingOpen && draft.enactment" class="flex flex-wrap items-center gap-3">
-        <StatementFormDoors :item-url="draft.enactment.rvUrl" subject="zur Regierungsvorlage" />
+        <StatementFormDoors :item-url="draft.enactment.rvUrl" />
       </div>
     </div>
   </section>

@@ -135,7 +135,10 @@ gets an entry of its own only where it carries a reason the rule does not.
   Regierungsvorlage was tabled on or before the Frist, the page shows the
   date instead: temporal, not causal (§12.38).
 - **Copy about statements on a Regierungsvorlage says where they go** (the
-  Klubs and the ministry) and never what they achieve (§12.14). The window
+  Klubs) and never what they achieve (§12.14). The ministry is not named
+  since 15.11.2026: Parliament's general pages name it for every kind of
+  item, its form on a Regierungsvorlage names the Klubs only
+  (`docs/research/stellungnahmen-empfaenger.md`). The window
   lasts through the parliamentary procedure (§ 23b GOG-NR): for a law the
   Bundesrat does not object to, until its Beschluss. Whether it opens again
   after an Einspruch is not documented (14.11.2026).

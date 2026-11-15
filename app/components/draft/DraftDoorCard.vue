@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { fristLabel } from '#shared/utils/format'
+import { daysUntil, fristLabel, formatDateWeekdayDe } from '#shared/utils/format'
 import { deadlineCardClass, deadlineTone } from '~/utils/deadlines'
 
 /**
@@ -14,8 +14,12 @@ import { deadlineCardClass, deadlineTone } from '~/utils/deadlines'
  * `EntryState`) over the whole card, not a chip inside the heading, which
  * broke the sentence and read as bolted on. The words say the urgency, the
  * ground repeats it, so meaning never rides on colour alone. A window
- * without a Frist (the Regierungsvorlage's, on the draft page) has no Frist
- * to tone and keeps the plain card, and brings its own heading (`#heading`).
+ * without a Frist (the Regierungsvorlage's, an Ausschussantrag's) has no
+ * urgency to tone, but it is still a door: it takes the calm tone, the blue
+ * of a Frist not yet close, and brings its own heading (`#heading`). It was
+ * the white card until 15.11.2026, which by the box grammar (`FactList`)
+ * means an instrument one operates, not a place to act — while the
+ * Anliegen's door, equally without a Frist, was already blue.
  *
  * Slots, in the card's order: `heading`; the default slot, the body under
  * it; `after-context`; the button row
@@ -34,10 +38,21 @@ const props = defineProps<{
 /* Decision and sign convention live in app/utils/deadlines.ts, next to
  * the other deadline rules and covered by tests — a flipped sign here would
  * tell a submitter the wrong date. */
+/* The countdown, then the date it counts to (15.11.2026): the days say how
+ * urgent, the date — with its weekday — is what one plans by. Not on the
+ * last day, where „Endet heute" names it, nor without a date. The countdown
+ * stood alone from 30.09.2026, the date being in the bar above; on the
+ * card one acts from, both belong together. */
+const fristHeading = computed(() => {
+  const label = fristLabel(props.deadline, true)
+  const days = daysUntil(props.deadline)
+  return props.deadline && days !== null && days > 0 ? `${label} · bis ${formatDateWeekdayDe(props.deadline)}` : label
+})
+
 const doorClass = computed(() =>
   props.frist
     ? deadlineCardClass(deadlineTone(props.deadline, true))
-    : 'border-hairline bg-surface',
+    : deadlineCardClass('neutral'),
 )
 </script>
 
@@ -45,10 +60,9 @@ const doorClass = computed(() =>
   <div class="mt-6 rounded-xl border p-4" :class="doorClass">
     <!-- A heading, not a paragraph (18.09.2026): this is the only action
          the page offers, and for heading navigation it did not appear in
-         the outline at all. The countdown alone since 30.09.2026: the date
-         stands in the bar directly above. -->
+         the outline at all. Countdown, then date (`fristHeading`). -->
     <h2 class="font-sans text-base font-semibold text-ink">
-      <slot name="heading">{{ fristLabel(deadline, true) }}</slot>
+      <slot name="heading">{{ fristHeading }}</slot>
     </h2>
     <slot />
     <slot name="after-context" />
@@ -73,23 +87,13 @@ const doorClass = computed(() =>
       </UButton>
       <slot name="actions" />
     </div>
-    <!-- „Was eine Stellungnahme bewirkt" (14.11.2026, until then a section
-         of /so-funktionierts): the design risk behind the mission. A tool
-         that only counts what stayed without consequence proves that taking
-         part is pointless, so the card that asks for a Stellungnahme says,
-         once, that drafts do change after the Begutachtung, and links the
-         evidence — the list, which recomputes itself, sorted by the most
-         Stellungnahmen, every row with what became of its draft.
-
-         NO figure: a rate here ages unnoticed, on a site whose claim is
-         checkability. And no cause: that a text changed says nothing about
-         which Stellungnahme, if any, changed it (framing rule, CLAUDE.md).
-         Only under the Begutachtung's window: the Regierungsvorlage's card
-         (`frist: false`) asks about a text that is past that stage. -->
-    <p v-if="frist" class="mt-3 text-sm text-ink-secondary">
-      Entwürfe ändern sich nach der Begutachtung regelmäßig –
-      <NuxtLink to="/entwuerfe?art=gesetz&sort=stellungnahmen" class="link-inline">was aus früheren Entwürfen wurde</NuxtLink>.
-    </p>
+    <!-- No sentence about earlier drafts since 15.11.2026 („Entwürfe ändern
+         sich nach der Begutachtung regelmäßig – was aus früheren Entwürfen
+         wurde", from 14.11.2026): a claim without a figure on the card whose
+         message is the Frist, linking only the list with a sort order. What
+         became of a draft is what the page itself shows, station by station.
+         What filing brings is said above the buttons, in Parliament's words
+         (`SourceQuote`). -->
     <slot name="footer" />
   </div>
 </template>
