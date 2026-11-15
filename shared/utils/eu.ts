@@ -33,6 +33,12 @@ export const EU_BASE_PATH = '/eu-recht'
 export const EU_MEMBER_STATE = 'AUT'
 /** The Member State as a sentence names it. */
 export const EU_MEMBER_STATE_NAME_DE = 'Österreich'
+/**
+ * The title of the EU overview. „EU-Recht in der Begutachtung" until
+ * 15.11.2026: since the page opens with the directives to transpose, also
+ * those no draft names, it is no longer only about the Begutachtung.
+ */
+export const EU_PAGE_TITLE_DE = `EU-Recht in ${EU_MEMBER_STATE_NAME_DE}`
 
 /** How far the list of directives to transpose looks back and ahead from today, in years. */
 export const EU_UMSETZUNG_YEARS = 2

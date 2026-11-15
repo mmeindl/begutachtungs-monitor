@@ -28,7 +28,7 @@
  */
 import type { EuActResponse } from '#shared/types'
 import { euActCiteDe } from '#shared/utils/citations'
-import { euActCelex } from '#shared/utils/eu'
+import { EU_PAGE_TITLE_DE, euActCelex } from '#shared/utils/eu'
 import { todayIso } from '#shared/utils/format'
 import { euActCredits, euActPageView } from '~/utils/euKarte'
 import { euRailView } from '~/utils/euRail'
@@ -121,7 +121,7 @@ const citation = computed(() => (data.value ? euActCiteDe(data.value.act, data.v
   <div class="mx-auto w-full max-w-4xl">
     <template v-if="answer">
       <h1 class="page-title">
-        EU-Recht in der Begutachtung
+        {{ EU_PAGE_TITLE_DE }}
       </h1>
       <EmptyState
         class="mt-10"

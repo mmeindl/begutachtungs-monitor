@@ -58,15 +58,16 @@
  */
 import type { EuActSummary, EuActsResponse } from '#shared/types'
 import { risSource, eurLexSource, sourceItemsDe } from '#shared/utils/provenance'
+import { EU_PAGE_TITLE_DE } from '#shared/utils/eu'
 import { MAX_LIST_QUERY_CHARS } from '#shared/utils/queryParams'
 import { matchesQuery } from '#shared/utils/textMatch'
 import { countLabelDe, todayIso } from '#shared/utils/format'
 import { deadlineDirection, deadlineOrderDe, deadlineReverseOrderDe, deadlineTabOf, euActHaystack, euActsRows, euRestatingRows, euSourceUnavailable, filterEuActs, incompleteNoteDe, restatingFoldHeading, type EuActSort, type EuDeadlineTab } from '~/utils/euKarte'
 
 usePageSeo({
-  title: 'EU-Recht in der Begutachtung',
+  title: EU_PAGE_TITLE_DE,
   description:
-    'Welche Richtlinien und Verordnungen der Europäischen Union die Entwürfe des Bundes und der Länder umsetzen – mit Umsetzungsfrist und den Entwürfen je Rechtsakt.',
+    'Welche Richtlinien der Europäischen Union Österreich umzusetzen hat, was dazu gemeldet ist, und welche Rechtsakte die Entwürfe des Bundes und der Länder umsetzen – mit Umsetzungsfrist und den Entwürfen je Rechtsakt.',
 })
 
 const { data, status, error, refresh } = useFetch<EuActsResponse>('/api/eu-recht', { lazy: true })
@@ -168,7 +169,7 @@ const [bundItem, eurLexItem] = sourceItemsDe([risSource('Vorblatt'), risSource('
          title with its lede in a header. -->
     <header>
       <h1 class="page-title">
-        EU-Recht in der Begutachtung
+        {{ EU_PAGE_TITLE_DE }}
       </h1>
       <p class="mt-2 text-ink-secondary">
         Zuerst die Richtlinien der Europäischen Union, die umzusetzen sind – auch

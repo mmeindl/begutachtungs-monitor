@@ -9,7 +9,9 @@
  * Two small Cellar queries, each cached a day (`cellarService.ts`), joined
  * with the map of drafts. `rows` is null where the Cellar did not answer
  * for the directives; a row's `measures` is null where it did not answer
- * for the notifications; `drafts` is null while no map is built. Each is
+ * for the notifications; `drafts` is null while no map is built or it is
+ * not at hand within the lists' budget (`euMapForList`: a cold map takes
+ * about a minute to assemble, and this list does not wait for it). Each is
  * „unknown", and the page says so.
  */
 import type { EuUmsetzungResponse } from '#shared/types'
@@ -26,7 +28,7 @@ export default defineEventHandler(async (): Promise<EuUmsetzungResponse> => {
   const [directives, counts, map] = await Promise.all([
     directivesToTranspose(window.from, window.to),
     measureCountsOf(EU_MEMBER_STATE, window.from, window.to),
-    getEuMap(gp),
+    euMapForList(gp),
   ])
   return {
     country: EU_MEMBER_STATE,
