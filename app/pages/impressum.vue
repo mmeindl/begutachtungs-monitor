@@ -337,7 +337,10 @@ usePageSeo({
              of the EU cycle): data of an initiative — stage, feedback
              period, number of contributions — read from the portal's own
              JSON addresses; the Commission's legal notice licenses its
-             content CC BY 4.0. Contributions are not read. -->
+             content CC BY 4.0. A contribution's text is never kept. Since
+             step 4 (15.11.2026) the list of contributions is read on demand:
+             organisations named, persons counted (`docs/decisions.md`,
+             „Who gave feedback on the Commission's portal"). -->
         <div id="imp-kommission">
           <dt>
             Europäische Kommission, Portal „Ihre Meinung zählt“
@@ -358,7 +361,13 @@ usePageSeo({
               class="link-inline"
             >rechtlichen Hinweis</ExternalLink> unter CC BY 4.0; der Monitor
             gibt sie gekürzt und in eigener Darstellung wieder. Beiträge
-            selbst übernimmt er nicht, er verlinkt das Portal.
+            selbst übernimmt er nicht, er verlinkt das Portal. Wer sich zu
+            einer Frist geäußert hat, liest der Monitor erst, wenn jemand
+            danach fragt, und höchstens die neuesten 500 Rückmeldungen:
+            Organisationen nennt er mit dem Namen, den das Portal
+            veröffentlicht, Privatpersonen zählt er und nennt sie nicht. Die
+            Namen hält er höchstens sechs Stunden im Arbeitsspeicher und
+            speichert sie nicht.
           </dd>
         </div>
         <!-- The Länder since 22.10.2026 (Salzburg, then Wien and
