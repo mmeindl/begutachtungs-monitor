@@ -11,6 +11,7 @@ import {
   orgRowIndexOfAnchor,
   orgRowsOf,
   STATEMENT_PAGE_SIZE,
+  STATEMENT_SEARCH_MIN,
   submitterLabel,
   submitterName,
 } from '~/utils/statementRows'
@@ -50,10 +51,8 @@ const props = withDefaults(
 /* The page size, shared with a Land's list (`statementRows.ts`). */
 const PAGE_SIZE = STATEMENT_PAGE_SIZE
 
-/* Below this the search field is not offered: on twenty rows the eye is
- * faster than the keyboard, and the field would be a fourth control on a
- * panel that already collapsed three lists into one to lose controls. */
-const SEARCH_MIN = 20
+/* Up to this the search field is not offered (`statementRows.ts`). */
+const SEARCH_MIN = STATEMENT_SEARCH_MIN
 
 /**
  * One list with a filter, not three stacked lists. The panel used to show a

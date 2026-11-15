@@ -791,11 +791,13 @@ The code names the EU rules D1 to D7; this is where they are defined
       a cache. The plan's earlier line (ANONYMOUS shows no organisation)
       is revised.
     - **The text arrives and is dropped at the parser** (plan, decision
-      9): the contribution's text, its attachments, the login, the names
-      and the row's number are not in the parsed row, which has a fixed
-      list of fields; a test feeds all of them and finds none in the
-      output. The page links the portal for the texts. „Statement texts are
-      linked, never fetched or parsed" stays as it is for Parliament.
+      9): the contribution's text, its attachments, the login and the
+      names are not in the parsed row, which has a fixed list of fields; a
+      test feeds all of them and finds none in the output. Each listed
+      contribution links its own page on the portal
+      (`…/initiatives/<initiative>/F<number>_de`, `contributionPageUrl`),
+      where the text is read. „Statement texts are linked, never fetched or
+      parsed" stays as it is for Parliament.
     - **Names in memory only, six hours** (`FEEDBACK_NAMES_TTL_S`, the
       derived mount, memory in dev and production): consent to
       publication can be withdrawn after a window closed, so no name may
@@ -805,18 +807,53 @@ The code names the EU rules D1 to D7; this is where they are defined
       Rückmeldung gegeben hat" under each feedback period with
       contributions reads up to five pages of 100, newest first, through
       the portal's pacer, only when opened — never with the page. Beyond
-      the cap it says „Gelesen sind die neuesten 500 von N Rückmeldungen".
+      the cap it says „Nicht im Monitor: Gelesen sind die neuesten 500 von
+      N Rückmeldungen; …".
       The endpoint answers only for a publication that is a window of the
       initiative named, so it is no proxy for arbitrary numbers.
-    - **Counts and names, no ranking.** Kinds stand in a fixed order, the
-      names alphabetically; nothing is ordered by count, and no figure
-      stands for what a contribution achieved. Rows the portal does not
-      list as published (rejected, anonymised by the sender afterwards)
-      are counted apart, of no kind, never named. Organisations counted
-      without a name are counted per kind, with the reason in one
-      sentence. Rejected: naming every row of an organisation kind (sole
-      traders), the Parliament classifier as witness, and keeping names in
-      the fact store for closed windows.
+    - **One row per contribution, as a list of the Stellungnahmen**
+      (maintainer, 15.11.2026; `EuFeedbackPanel`, words in
+      `app/utils/euFeedback.ts`). A named organisation's contribution is a
+      row: date · name (the link to the contribution on the portal) · kind
+      · country (the portal's ISO code; the monitor keeps no table of
+      country names). An organisation that answered twice stands twice —
+      rows are never merged. The list is the Stellungnahmen panel's
+      grammar, built from its parts: the kinds as tabs with their counts
+      (only kinds with a named row; „Alle" first where there are two or
+      more), the search over the names above twenty rows, ten rows a page
+      with „Alle N", the order by date (newest first, the portal's own;
+      a row without a date last either way) or by name (German collation),
+      each reversible. No order by a count, nothing „most active", and no
+      figure stands for what a contribution achieved. The tabs count the
+      kinds' whole; the chip below them counts within the chosen kind —
+      what a control changes stands below it.
+    - **A counted row keeps no date, no number and no link.** Persons
+      (`EU_CITIZEN`, `NON_EU_CITIZEN`), „Sonstige" (`OTHER` and unknown
+      kinds), organisations counted without a name and rows the portal
+      does not list as published are figures under the list, never rows.
+      The parser builds two shapes: a named row keeps its day and number,
+      a counted row only its kind, whether it is published and its
+      country — so it cannot carry them by mistake, and a test feeds both
+      with a day and a number and finds neither on a counted one. Per
+      country only counts are kept (the citizens per country). Organisations
+      counted without a name are counted per kind, with the reason in one
+      sentence.
+    - **The data knows no country, the view takes one.** The reading and
+      the endpoint carry no member state (no parameter, nothing in the
+      cache key); the view takes the country the page serves, today the
+      configured one (`EU_MEMBER_STATE`), as `euBuergerinitiativeView`
+      does. With it the list offers a chip „Aus <Land>" with its count and
+      the citizens' line says „davon aus <Land>: N"; with none (null)
+      neither exists and nothing is said to be missing.
+    - **Search, filter and order reach only what was read.** At most the
+      newest 500 rows are read, so above the cap the head of the list
+      says so in a „Nicht im Monitor" sentence, above the search — before
+      a reader takes an empty result for an absent organisation.
+    - Rejected: naming every row of an organisation kind (sole traders),
+      the Parliament classifier as witness, keeping names in the fact store
+      for closed windows, and (15.11.2026) one line per organisation with
+      its countries and number of contributions: it merged contributions
+      the reader wants to open one by one.
   - **The windows open on the portal are listed first on `/eu-recht`**
     (15.11.2026, step 3, `EuFensterList`): one request a day for the list,
     one row per window by closing day, tabs by where in the process

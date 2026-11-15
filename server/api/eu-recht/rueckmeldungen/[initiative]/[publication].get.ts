@@ -2,9 +2,11 @@
  * GET /api/eu-recht/rueckmeldungen/:initiative/:publication →
  * EuRueckmeldungenResponse: who gave feedback in one window of an
  * initiative on the Commission's portal „Ihre Meinung zählt" (step 4 of the
- * EU cycle) — counts per kind of sender and the organisations the naming
- * rule allows (`namedOrganisationOf`), never a person's name and never a
- * contribution's text.
+ * EU cycle) — each contribution of an organisation the naming rule allows
+ * (`namedOrganisationOf`) with its day, kind, country and link on the
+ * portal, and counts for the rest; never a person's name, never a
+ * contribution's text, and for a counted row no day, number or link. No
+ * country parameter: the answer is the same for every member state's page.
  *
  * Asked only when a reader opens the fold „Wer Rückmeldung gegeben hat",
  * never with the page: up to five paced requests, 2.5 s apart.

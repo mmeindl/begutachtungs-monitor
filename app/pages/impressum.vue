@@ -365,7 +365,9 @@ usePageSeo({
             einer Frist geäußert hat, liest der Monitor erst, wenn jemand
             danach fragt, und höchstens die neuesten 500 Rückmeldungen:
             Organisationen nennt er mit dem Namen, den das Portal
-            veröffentlicht, Privatpersonen zählt er und nennt sie nicht. Die
+            veröffentlicht, dem Tag ihrer Rückmeldung, ihrer Art und ihrem
+            Land, und verlinkt die Rückmeldung im Portal; Privatpersonen
+            zählt er und nennt sie nicht. Die
             Namen hält er höchstens sechs Stunden im Arbeitsspeicher und
             speichert sie nicht.
           </dd>

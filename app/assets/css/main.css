@@ -325,6 +325,17 @@
 }
 
 /*
+ * The four tracks of the list of who gave feedback on the Commission's
+ * portal (`EuFeedbackRow`, `EuFeedbackPanel`, 15.11.2026): the date's
+ * track of the Stellungnahmen, the name absorbing the slack, the kind (its
+ * longest, „Hochschule oder Forschungseinrichtung", wraps onto two lines)
+ * and the country's three-letter code.
+ */
+@utility feedback-tracks {
+  grid-template-columns: 6rem minmax(8rem, 1fr) 10rem 3rem;
+}
+
+/*
  * `divide-y` for a list whose overflow rows are `hidden` until find-in-page
  * reveals them (StatementsPanel: the organisation list ships whole so the
  * names stay in the SSR HTML, and the rows past the page are folded away

@@ -471,6 +471,23 @@ head over 120 characters is counted). Not done: the Impressum sentence
 (maintainer's). Not verified: the portal's answer to a page number past
 the last.
 
+**The fold became a list, 15.11.2026** (maintainer's decisions; the rule
+amended in `docs/decisions.md`): one row per contribution of a named
+organisation — date, name linked to the contribution on the portal
+(`contributionPageUrl`, `…/initiatives/<id>/F<number>_de`, the address
+checked in a browser), kind, country code — in the grammar of the
+Stellungnahmen (`EuFeedbackPanel`, `EuFeedbackRow`): kinds as tabs with
+counts, the chip „Aus <Land>", search above twenty rows, order by date or
+name, ten a page. The parser keeps day and number on a named row only; a
+counted row is a shape without them (`FEEDBACK_READER_VERSION` 2, the
+cache keyed by initiative and publication, since the links carry the
+initiative). The reading knows no country; the view takes the configured
+member state, or none. Persons, „Sonstige", unnamed organisations and
+unpublished rows stay figures under the list. Not done: the Impressum
+sentence, which does not yet say that each contribution is linked and
+listed with its date, kind and country. Not verified: the panel in a
+browser (no dev server in that session).
+
 ### Step 5 — the European Citizens' Initiative
 
 - A reader of the register with a fixed list of fields: number, title and

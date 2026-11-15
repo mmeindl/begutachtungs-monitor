@@ -57,7 +57,9 @@ describe('who gave feedback, through the service', () => {
     const r = await feedbackOf(13192, 15080)
     expect(r.state).toBe('gelesen')
     if (r.state !== 'gelesen') return
-    expect(r.reading).toMatchObject({ total: 12, read: 12, citizens: 2, other: 2, unpublished: 1 })
+    expect(r.reading).toMatchObject({ total: 14, read: 14, citizens: { count: 2 }, other: 2, unpublished: 1 })
+    // Each contribution linked under the initiative it was asked by.
+    expect(r.reading.contributions[0]).toEqual({ name: 'Siemens AG', type: 'COMPANY', country: 'DEU', date: '2026-11-14', url: 'https://ec.europa.eu/info/law/better-regulation/have-your-say/initiatives/13192/F987654301_de' })
     expect(asked.filter((u) => u.includes('allFeedback'))).toEqual(['https://ec.europa.eu/info/law/better-regulation/api/allFeedback?publicationId=15080&page=0&size=100&language=EN'])
   })
 
@@ -85,11 +87,11 @@ describe('who gave feedback, through the service', () => {
     expect((await feedbackOf(13192, 15080)).state).toBe('gelesen')
   })
 
-  it('caches the reading under the publication alone, and no person and no text with it', async () => {
+  it('caches the reading under the initiative, the publication and the reader\'s version — no country, no person, no text', async () => {
     portal()
     await feedbackOf(13192, 15129)
     const keys = nitroCacheKeys().filter((k) => k.startsWith('eu-portal-rueckmeldungen:'))
-    expect(keys).toEqual(['eu-portal-rueckmeldungen:15129|f1'])
+    expect(keys).toEqual(['eu-portal-rueckmeldungen:13192-15129|f2'])
     // A second opening is served from the cache.
     asked = []
     await feedbackOf(13192, 15129)
@@ -100,7 +102,7 @@ describe('who gave feedback, through the service', () => {
     const record = fixture('initiative-13192') as { publications: Record<string, unknown>[] }
     const empty = { ...record, publications: record.publications.map((p) => (p.id === 15129 ? { ...p, totalFeedback: 0 } : p)) }
     portal({ initiative: () => empty })
-    expect(await feedbackOf(13192, 15129)).toEqual({ state: 'gelesen', reading: { total: 0, read: 0, organisations: [], citizens: 0, other: 0, unpublished: 0 } })
+    expect(await feedbackOf(13192, 15129)).toEqual({ state: 'gelesen', reading: { total: 0, read: 0, contributions: [], kinds: [], citizens: { count: 0, byCountry: {} }, other: 0, unpublished: 0 } })
     expect(asked.some((u) => u.includes('allFeedback'))).toBe(false)
   })
 })

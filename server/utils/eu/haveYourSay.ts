@@ -118,6 +118,19 @@ export function initiativePageUrl(id: number): string {
   return `${PAGES}/${id}_de`
 }
 
+/**
+ * One contribution's page on the portal, German (step 4): the initiative's
+ * page with the contribution's number behind an „F". Opened in a browser on
+ * 15.11.2026: the portal adds the title's slug to the address itself. The
+ * page holds the contribution's text — linked, never fetched. Throws on
+ * anything that is no number.
+ */
+export function contributionPageUrl(initiativeId: number, feedbackId: number): string {
+  if (!Number.isSafeInteger(initiativeId) || initiativeId <= 0) throw new Error(`Keine Initiative: ${initiativeId}`)
+  if (!Number.isSafeInteger(feedbackId) || feedbackId <= 0) throw new Error(`Keine Rückmeldung: ${feedbackId}`)
+  return `${PAGES}/${initiativeId}/F${feedbackId}_de`
+}
+
 type Json = Record<string, unknown>
 const isObject = (v: unknown): v is Json => typeof v === 'object' && v !== null && !Array.isArray(v)
 const text = (v: unknown): string | null => (typeof v === 'string' && v.trim() ? v.trim() : null)

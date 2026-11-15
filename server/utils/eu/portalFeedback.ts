@@ -12,31 +12,48 @@
  * first name and surname (empty where the sender chose to stay anonymous),
  * the contribution's text, its attachments and the sender's login. None of
  * it leaves this module: `rowOf` builds its result from the fields in
- * `FEEDBACK_ROW_FIELDS` and nothing else, and the one place the names are
- * read is the name witness inside `namedOrganisationOf` — compared there,
- * never copied into a returned value, a log or an error. A test feeds a row
- * with all of them and asserts that none of the values survives.
+ * `FEEDBACK_ROW_FIELDS` (and, for a named row, `FEEDBACK_NAMED_ROW_FIELDS`)
+ * and nothing else, and the one place the names are read is the name
+ * witness inside `namedOrganisationOf` — compared there, never copied into
+ * a returned value, a log or an error. A test feeds a row with all of them
+ * and asserts that none of the values survives.
+ *
+ * A NAMED ROW IS A ROW OF THE LIST, A COUNTED ROW A NUMBER (maintainer,
+ * 15.11.2026). A row that names an organisation keeps its day and its
+ * number, so the page can list it and link it on the portal. A counted row
+ * — a person, „Sonstige", an organisation without a name, a row not
+ * published — keeps its kind, whether it is published and its country, and
+ * nothing that could single it out: no day, no number, no link. The two are
+ * two shapes (`FeedbackRow`), so a counted row cannot carry them by
+ * mistake; a test feeds both with a day and a number and finds neither in a
+ * counted row.
  *
  * THE TEXT ARRIVES AND IS DROPPED (decision 9 of the plan). The portal sends
  * a contribution's text in the same row as its metadata; it is never read,
- * parsed, stored or shown. The page links the portal for it.
+ * parsed, stored or shown. The page links the contribution on the portal
+ * for it (`contributionPageUrl`).
+ *
+ * NO COUNTRY. The reading is the same for every member state's page: it
+ * keeps each row's country (and per-country counts of the citizens), and
+ * the view picks the one it serves.
  *
  * WHO IS NAMED is one pure function, `namedOrganisationOf`, and the rule is
  * the maintainer's (15.11.2026). In doubt a sender is a person: any missing
  * or odd field is counted, never named.
  */
-import type { EuFeedbackGroup, EuFeedbackOrganisation, EuFeedbackOrganisationType, EuFeedbackReading } from '../../../shared/types/eu'
+import type { EuFeedbackContribution, EuFeedbackKind, EuFeedbackOrganisationType, EuFeedbackReading } from '../../../shared/types/eu'
 import { EU_FEEDBACK_ORGANISATION_TYPES } from '../../../shared/utils/euPortal'
-import { PORTAL_HOST } from './haveYourSay'
+import { PORTAL_HOST, contributionPageUrl } from './haveYourSay'
 
 const API = `https://${PORTAL_HOST}/info/law/better-regulation/api`
 
 /**
  * Bumped whenever the reader or the naming rule changes: the service caches
  * the reading under it, and a changed rule must not serve names the old one
- * allowed.
+ * allowed. 2 since 15.11.2026: a named row keeps its day and its number,
+ * and the reading lists each contribution with its link.
  */
-export const FEEDBACK_READER_VERSION = 1
+export const FEEDBACK_READER_VERSION = 2
 
 /** One page of the list: the portal caps `size` at 100 (size=500 returned 100 on 15.11.2026). */
 export const FEEDBACK_PAGE_SIZE = 100
@@ -167,33 +184,72 @@ export function namedOrganisationOf(raw: unknown): string | null {
 }
 
 /**
- * Every field of a row the reader takes for its result. The sender's names
- * are read by `namedOrganisationOf` for its comparison alone; the text
- * (`feedback`, `feedbackTextUserLanguage`), `attachments`, `login`, the
- * row's `id` and everything else are not touched.
+ * Every field of a row the reader takes for its result, any row. The
+ * sender's names are read by `namedOrganisationOf` for its comparison
+ * alone; the text (`feedback`, `feedbackTextUserLanguage`), `attachments`,
+ * `login` and everything else are not touched.
  */
 export const FEEDBACK_ROW_FIELDS = ['status', 'userType', 'country'] as const
 
-/** One row as the reader keeps it: its kind, whether it is published, where it is from, and the name only where the rule allows it. */
-export interface FeedbackRow {
+/** What a row that names an organisation keeps besides: its day and its number, for the list and the link. Never read on a counted row. */
+export const FEEDBACK_NAMED_ROW_FIELDS = ['dateFeedback', 'id'] as const
+
+/** A row that names an organisation: a row of the list. Always published, always of an organisation kind (`namedOrganisationOf`). */
+export interface NamedFeedbackRow {
+  named: true
+  type: EuFeedbackOrganisationType
+  /** As `namedOrganisationOf` returns it. */
+  name: string
+  /** ISO alpha-3 („AUT"); null for anything else. */
+  country: string | null
+  /** The day it was given, ISO; null where `dateFeedback` is no date. */
+  date: string | null
+  /** The contribution's number on the portal; null where it is no positive integer — the row is listed then, without a link. */
+  id: number | null
+}
+
+/** A row that is counted: its kind, whether it is published and where it is from — nothing that singles it out. */
+export interface CountedFeedbackRow {
+  named: false
   /** The portal's code of the kind; empty where the row carries none. */
   type: string
   published: boolean
   /** ISO alpha-3 („AUT"); null for anything else. */
   country: string | null
-  /** The organisation's name as the page shows it, only where `namedOrganisationOf` allows it. */
-  name: string | null
 }
 
-/** A row, field by field. Throws on a row that is no object: a changed interface is „not read", never a shorter count. */
+export type FeedbackRow = NamedFeedbackRow | CountedFeedbackRow
+
+const countryOf = (v: unknown): string | null => (typeof v === 'string' && /^[A-Z]{3}$/.test(v) ? v : null)
+
+/** „2026/11/15 18:15:22" → „2026-11-15"; null for anything that is no day of the calendar. */
+export function feedbackDay(v: unknown): string | null {
+  const m = typeof v === 'string' ? /^(\d{4})\/(\d{2})\/(\d{2})(?: \d{2}:\d{2}(?::\d{2})?)?$/.exec(v.trim()) : null
+  if (!m) return null
+  const [y, mo, d] = [Number(m[1]), Number(m[2]), Number(m[3])]
+  const date = new Date(Date.UTC(y, mo - 1, d))
+  if (date.getUTCFullYear() !== y || date.getUTCMonth() !== mo - 1 || date.getUTCDate() !== d) return null
+  return `${m[1]}-${m[2]}-${m[3]}`
+}
+
+/** A contribution's number: a positive integer, nothing else. */
+const feedbackIdOf = (v: unknown): number | null => (typeof v === 'number' && Number.isSafeInteger(v) && v > 0 ? v : null)
+
+/**
+ * A row, field by field. Throws on a row that is no object: a changed
+ * interface is „not read", never a shorter count. The counted shape is
+ * built before the name is known to be allowed, from its three fields
+ * alone, so the day and the number are read only for a named row.
+ */
 export function rowOf(raw: unknown): FeedbackRow {
   if (!isObject(raw)) throw new Error('Portal: Rückmeldung ist kein Objekt')
-  return {
-    type: typeof raw.userType === 'string' ? raw.userType : '',
-    published: raw.status === 'PUBLISHED',
-    country: typeof raw.country === 'string' && /^[A-Z]{3}$/.test(raw.country) ? raw.country : null,
-    name: namedOrganisationOf(raw),
+  const country = countryOf(raw.country)
+  const name = namedOrganisationOf(raw)
+  if (name === null) {
+    return { named: false, type: typeof raw.userType === 'string' ? raw.userType : '', published: raw.status === 'PUBLISHED', country }
   }
+  // `namedOrganisationOf` has proven the kind one of the eight.
+  return { named: true, type: raw.userType as EuFeedbackOrganisationType, name, country, date: feedbackDay(raw.dateFeedback), id: feedbackIdOf(raw.id) }
 }
 
 /** One page of the list, read. */
@@ -223,75 +279,81 @@ export function parseFeedbackPage(answer: unknown): FeedbackPage {
 }
 
 const CITIZENS: ReadonlySet<string> = new Set(['EU_CITIZEN', 'NON_EU_CITIZEN'])
-const collator = new Intl.Collator('de', { sensitivity: 'base' })
 
 /**
- * The rows read, as the page's figures. Every row is in exactly one: a row
- * that is not published counts apart, of no kind; an organisation kind's
- * row in its group (named or not); a citizen in `citizens`; `OTHER` and
- * any kind not known in `other`. Within a kind an organisation is named
- * once, by its name without regard to case, and the names stand
- * alphabetically — no order by count or by anything else.
+ * The rows read, as the page's list and figures. Every row is in exactly
+ * one figure: a row that is not published counts apart, of no kind; an
+ * organisation kind's row in its kind (named or not); a citizen in
+ * `citizens`; `OTHER` and any kind not known in `other`. A named row is
+ * also a contribution of the list, in the portal's order and linked on the
+ * portal under `initiativeId` — never merged with another row of the same
+ * name: two contributions are two rows.
  */
-export function summarize(rows: readonly FeedbackRow[], total: number): EuFeedbackReading {
-  const groups = new Map<EuFeedbackOrganisationType, { count: number; unnamed: number; byName: Map<string, EuFeedbackOrganisation> }>()
-  let citizens = 0
+export function summarize(rows: readonly FeedbackRow[], total: number, initiativeId: number): EuFeedbackReading {
+  const kinds = new Map<EuFeedbackOrganisationType, EuFeedbackKind>()
+  const contributions: EuFeedbackContribution[] = []
+  const citizens = { count: 0, byCountry: {} as Record<string, number> }
   let other = 0
   let unpublished = 0
+  const kindOf = (type: EuFeedbackOrganisationType): EuFeedbackKind => {
+    const known = kinds.get(type)
+    if (known) return known
+    const fresh = { type, count: 0, unnamed: 0 }
+    kinds.set(type, fresh)
+    return fresh
+  }
   for (const row of rows) {
+    if (row.named) {
+      kindOf(row.type).count++
+      contributions.push({ name: row.name, type: row.type, country: row.country, date: row.date, url: row.id === null ? null : contributionPageUrl(initiativeId, row.id) })
+      continue
+    }
     if (!row.published) {
       unpublished++
       continue
     }
     if (CITIZENS.has(row.type)) {
-      citizens++
+      citizens.count++
+      if (row.country) citizens.byCountry[row.country] = (citizens.byCountry[row.country] ?? 0) + 1
       continue
     }
     if (!ORGANISATION_TYPES.has(row.type)) {
       other++
       continue
     }
-    const type = row.type as EuFeedbackOrganisationType
-    const g = groups.get(type) ?? { count: 0, unnamed: 0, byName: new Map() }
-    groups.set(type, g)
-    g.count++
-    if (!row.name) {
-      g.unnamed++
-      continue
-    }
-    const key = row.name.toLocaleLowerCase('de')
-    const known = g.byName.get(key)
-    if (known) {
-      known.rows++
-      if (row.country && !known.countries.includes(row.country)) known.countries.push(row.country)
-    } else {
-      g.byName.set(key, { name: row.name, countries: row.country ? [row.country] : [], rows: 1 })
-    }
+    const kind = kindOf(row.type as EuFeedbackOrganisationType)
+    kind.count++
+    kind.unnamed++
   }
-  const organisations: EuFeedbackGroup[] = EU_FEEDBACK_ORGANISATION_TYPES.flatMap((type) => {
-    const g = groups.get(type)
-    if (!g) return []
-    return [{ type, count: g.count, named: [...g.byName.values()].sort((a, b) => collator.compare(a.name, b.name)), unnamed: g.unnamed }]
-  })
-  return { total: Math.max(total, rows.length), read: rows.length, organisations, citizens, other, unpublished }
+  return {
+    total: Math.max(total, rows.length),
+    read: rows.length,
+    contributions,
+    kinds: EU_FEEDBACK_ORGANISATION_TYPES.flatMap((type) => kinds.get(type) ?? []),
+    citizens,
+    other,
+    unpublished,
+  }
 }
 
 /**
- * The contributions to one publication, page by page through the caller's
- * fetch (the service's paced one; a test's fake): until the answer says it
- * is the last page, or until `FEEDBACK_MAX_ROWS` rows. `total` is the first
- * page's count. A page whose answer names another page number did not
- * honour the parameter: the reading stops there, and the page says how
- * many of how many were read, rather than count a page twice. A page that
- * fails throws, so nothing partial is cached as if it were the whole.
+ * The contributions to one publication of one initiative, page by page
+ * through the caller's fetch (the service's paced one; a test's fake):
+ * until the answer says it is the last page, or until `FEEDBACK_MAX_ROWS`
+ * rows. `total` is the first page's count. A page whose answer names
+ * another page number did not honour the parameter: the reading stops
+ * there, and the page says how many of how many were read, rather than
+ * count a page twice. A page that fails throws, so nothing partial is
+ * cached as if it were the whole. The initiative is asked for nothing; its
+ * number only builds the contributions' links.
  *
- * Not deduplicated across pages: the row's number is not kept. A
- * contribution arriving between two requests (2.5 s apart) shifts one row
+ * Not deduplicated across pages: a counted row keeps no number to compare.
+ * A contribution arriving between two requests (2.5 s apart) shifts one row
  * onto the next page and counts it twice; for a window still open the
  * figures are those of a moment anyway, and the portal's count stands
  * beside them.
  */
-export async function readFeedback(fetchJson: (url: string) => Promise<unknown>, publicationId: number): Promise<EuFeedbackReading> {
+export async function readFeedback(fetchJson: (url: string) => Promise<unknown>, initiativeId: number, publicationId: number): Promise<EuFeedbackReading> {
   const first = parseFeedbackPage(await fetchJson(feedbackUrl(publicationId, 0)))
   if (first.page !== 0) throw new Error('Portal: erste Seite trägt eine andere Nummer')
   const rows = [...first.rows]
@@ -302,10 +364,10 @@ export async function readFeedback(fetchJson: (url: string) => Promise<unknown>,
     rows.push(...next.rows)
     last = next.last
   }
-  return summarize(rows.slice(0, FEEDBACK_MAX_ROWS), first.total)
+  return summarize(rows.slice(0, FEEDBACK_MAX_ROWS), first.total, initiativeId)
 }
 
 /** A reading of a window without a single contribution: the portal's own count says so, and nothing is asked. */
 export function emptyReading(): EuFeedbackReading {
-  return { total: 0, read: 0, organisations: [], citizens: 0, other: 0, unpublished: 0 }
+  return { total: 0, read: 0, contributions: [], kinds: [], citizens: { count: 0, byCountry: {} }, other: 0, unpublished: 0 }
 }

@@ -4,15 +4,21 @@ import type { EuFeedbackReading } from '../shared/types'
 import { EU_FEEDBACK_ORGANISATION_TYPES } from '../shared/utils/euPortal'
 import {
   FEEDBACK_MAX_ROWS,
+  FEEDBACK_NAMED_ROW_FIELDS,
   FEEDBACK_ROW_FIELDS,
   ORGANISATION_NAME_MAX,
+  type FeedbackRow,
+  feedbackDay,
   feedbackUrl,
   namedOrganisationOf,
   parseFeedbackPage,
   readFeedback,
+  rowOf,
   summarize,
 } from '../server/utils/eu/portalFeedback'
-import { euFeedbackView, feedbackFoldsOf } from '../app/utils/euFeedback'
+import { contributionPageUrl } from '../server/utils/eu/haveYourSay'
+import { STATEMENT_PAGE_SIZE, STATEMENT_SEARCH_MIN } from '../app/utils/statementRows'
+import { type EuFeedbackRow, type EuFeedbackSelection, compareFeedbackRows, euFeedbackView, feedbackFoldsOf, feedbackRowsOf, feedbackSetLine, rowsOfKind } from '../app/utils/euFeedback'
 import { fact, withFeedback } from '../app/utils/euRail'
 
 /* Who gave feedback on the Commission's portal (step 4 of the EU cycle).
@@ -164,7 +170,7 @@ describe('the naming rule', () => {
 })
 
 describe('the parser', () => {
-  it('drops everything about the people and the texts: no name, no login, no text, no attachment, no row number', () => {
+  it('drops everything about the people and the texts: no name, no login, no text, no attachment', () => {
     const raw = fixture('feedback-page') as { content: Record<string, unknown>[] }
     const values = raw.content.flatMap((r) => [
       r.firstName,
@@ -172,48 +178,111 @@ describe('the parser', () => {
       r.login,
       r.feedback,
       r.feedbackTextUserLanguage,
-      String(r.id),
       ...(r.attachments as { fileName: string; documentId: string }[]).flatMap((a) => [a.fileName, a.documentId]),
     ]).filter((v): v is string => typeof v === 'string' && v.length > 0)
     // The fixture does carry them — otherwise this test proves nothing.
     expect(values.length).toBeGreaterThan(40)
     const page = parseFeedbackPage(raw)
-    for (const out of [JSON.stringify(page), JSON.stringify(summarize(page.rows, page.total))]) {
+    for (const out of [JSON.stringify(page), JSON.stringify(summarize(page.rows, page.total, 13192)), JSON.stringify(euFeedbackView(summarize(page.rows, page.total, 13192)))]) {
       for (const value of values) expect(out, value).not.toContain(value)
       expect(out).not.toMatch(/login|feedbackText|attachment|firstName|surname|fileName/i)
     }
-    // Each row keeps exactly four fields, and the reader names none of a person's.
-    for (const row of page.rows) expect(Object.keys(row).sort()).toEqual(['country', 'name', 'published', 'type'])
-    expect(FEEDBACK_ROW_FIELDS.some((f) => /name|login|feedback|attach|id/i.test(f))).toBe(false)
+    // Two shapes, each with a fixed list of keys, and none of a person's.
+    for (const row of page.rows) {
+      expect(Object.keys(row).sort()).toEqual(row.named ? ['country', 'date', 'id', 'name', 'named', 'type'] : ['country', 'named', 'published', 'type'])
+    }
+    const fields: readonly string[] = [...FEEDBACK_ROW_FIELDS, ...FEEDBACK_NAMED_ROW_FIELDS]
+    for (const personal of ['firstName', 'surname', 'login', 'feedback', 'feedbackTextUserLanguage', 'attachments']) expect(fields).not.toContain(personal)
   })
 
-  it('reads the fixture into counts and names, every row in exactly one figure', () => {
+  it('keeps a counted row\'s day and number nowhere — structurally: a citizen and an unnamed organisation with both', () => {
+    const citizen = { id: 424242001, dateFeedback: '2019/03/07 11:22:33', status: 'PUBLISHED', userType: 'EU_CITIZEN', publication: 'WITHINFO', firstName: 'Erika', surname: 'Mustermann', country: 'AUT' }
+    const unnamed = { ...NAMED, id: 424242002, dateFeedback: '2018/04/09 01:02:03', companySize: 'MICRO', publication: 'WITHINFO', country: 'AUT' }
+    const unpublished = { ...NAMED, id: 424242003, dateFeedback: '2017/05/11 04:05:06', status: 'REJECTED' }
+    const rows = [citizen, unnamed, unpublished].map(rowOf)
+    expect(rows.every((r) => !r.named)).toBe(true)
+    const outs = [JSON.stringify(rows), JSON.stringify(summarize(rows, 3, 13192))]
+    for (const out of outs) {
+      for (const value of ['424242001', '424242002', '424242003', '2019-03-07', '2019/03/07', '2018-04-09', '2018/04/09', '2017-05-11', '2017/05/11']) expect(out, value).not.toContain(value)
+      expect(out).not.toMatch(/"date"|"id"|"url"|"name"/)
+    }
+    // The same rows, named, keep both: the parser reads them, and only for a named row.
+    const named = rowOf({ ...NAMED, id: 424242004, dateFeedback: '2026/11/15 18:15:22' })
+    expect(named).toEqual({ named: true, type: 'COMPANY', name: 'Siemens AG', country: 'DEU', date: '2026-11-15', id: 424242004 })
+  })
+
+  it('reads the day of a contribution, and nothing that is no day', () => {
+    expect(feedbackDay('2026/11/15 18:15:22')).toBe('2026-11-15')
+    expect(feedbackDay('2026/11/15')).toBe('2026-11-15')
+    expect(feedbackDay('2024/02/29 00:00:00')).toBe('2024-02-29')
+    for (const bad of ['2026/13/40 10:00:00', '2025/02/29 10:00:00', '15.11.2026', '2026-11-15T18:15:22Z', '2026/11/15 garbage', '', null, undefined, 20261115]) {
+      expect(feedbackDay(bad), String(bad)).toBeNull()
+    }
+  })
+
+  it('keeps a named row\'s number only where it is a positive integer, and lists the row without a link otherwise', () => {
+    for (const id of ['987654313', 0, -3, 1.5, null, undefined, Number.MAX_SAFE_INTEGER + 2]) {
+      const row = rowOf({ ...NAMED, id, dateFeedback: '2026/11/15 10:00:00' }) as Extract<FeedbackRow, { named: true }>
+      expect(row.named, String(id)).toBe(true)
+      expect(row.id, String(id)).toBeNull()
+      expect(summarize([row], 1, 13192).contributions[0]!.url).toBeNull()
+    }
+  })
+
+  it('reads the fixture into the list and counts, every row in exactly one figure', () => {
     const page = parseFeedbackPage(fixture('feedback-page'))
-    expect(page).toMatchObject({ page: 0, total: 12, last: true })
-    const r = summarize(page.rows, page.total)
+    expect(page).toMatchObject({ page: 0, total: 14, last: true })
+    const r = summarize(page.rows, page.total, 13192)
+    const link = (id: number) => `https://ec.europa.eu/info/law/better-regulation/have-your-say/initiatives/13192/F${id}_de`
     expect(r).toEqual({
-      total: 12,
-      read: 12,
-      organisations: [
-        { type: 'BUSINESS_ASSOCIATION', count: 1, named: [{ name: 'Wirtschaftskammer Österreich', countries: ['AUT'], rows: 1 }], unnamed: 0 },
-        // Siemens twice (DEU and AUT, two spellings of case): one name, two rows. The micro company and the echoing consultancy are counted.
-        { type: 'COMPANY', count: 4, named: [{ name: 'Siemens AG', countries: ['DEU', 'AUT'], rows: 2 }], unnamed: 2 },
-        { type: 'PUBLIC_AUTHORITY', count: 1, named: [{ name: 'City of Vienna', countries: ['AUT'], rows: 1 }], unnamed: 0 },
-        { type: 'TRADE_UNION', count: 1, named: [{ name: 'European Trade Union Confederation (ETUC)', countries: ['BEL'], rows: 1 }], unnamed: 0 },
+      total: 14,
+      read: 14,
+      // One row per contribution, in the portal's order: Siemens twice, as typed each time — never merged.
+      contributions: [
+        { name: 'Siemens AG', type: 'COMPANY', country: 'DEU', date: '2026-11-14', url: link(987654301) },
+        { name: 'European Trade Union Confederation (ETUC)', type: 'TRADE_UNION', country: 'BEL', date: '2026-11-13', url: link(987654302) },
+        { name: 'City of Vienna', type: 'PUBLIC_AUTHORITY', country: 'AUT', date: '2026-11-12', url: link(987654303) },
+        { name: 'Wirtschaftskammer Österreich', type: 'BUSINESS_ASSOCIATION', country: 'AUT', date: '2026-11-11', url: link(987654304) },
+        { name: 'SIEMENS AG', type: 'COMPANY', country: 'AUT', date: '2026-11-13', url: link(987654312) },
+        // A number that is a string: listed, without a link.
+        { name: 'Bundesarbeitskammer', type: 'TRADE_UNION', country: 'AUT', date: '2026-11-05', url: null },
+        // A day that is no day: listed, without a date.
+        { name: 'Verein Beispielwald', type: 'NGO', country: 'AUT', date: null, url: link(987654314) },
       ],
-      citizens: 2,
+      kinds: [
+        { type: 'BUSINESS_ASSOCIATION', count: 1, unnamed: 0 },
+        // The micro company and the echoing consultancy are counted.
+        { type: 'COMPANY', count: 4, unnamed: 2 },
+        { type: 'NGO', count: 1, unnamed: 0 },
+        { type: 'PUBLIC_AUTHORITY', count: 1, unnamed: 0 },
+        { type: 'TRADE_UNION', count: 2, unnamed: 0 },
+      ],
+      citizens: { count: 2, byCountry: { AUT: 1, CHE: 1 } },
       // OTHER and a kind the monitor does not know.
       other: 2,
       // The rejected row: of no kind, never named.
       unpublished: 1,
     })
-    const sum = r.organisations.reduce((n, g) => n + g.count, 0) + r.citizens + r.other + r.unpublished
+    const sum = r.kinds.reduce((n, k) => n + k.count, 0) + r.citizens.count + r.other + r.unpublished
     expect(sum).toBe(r.read)
+    expect(r.kinds.reduce((n, k) => n + k.count - k.unnamed, 0)).toBe(r.contributions.length)
   })
 
-  it('sorts names alphabetically, German collation, and by nothing else', () => {
-    const rows = ['Zeta AG', 'Österreichische Beispiel GmbH', 'alpha GmbH', 'Beta SE'].flatMap((name, i) => Array.from({ length: i + 1 }, () => ({ type: 'COMPANY', published: true, country: null, name })))
-    expect(summarize(rows, rows.length).organisations[0]!.named.map((o) => o.name)).toEqual(['alpha GmbH', 'Beta SE', 'Österreichische Beispiel GmbH', 'Zeta AG'])
+  it('keeps both invariants on a large mixed reading', () => {
+    const types = ['COMPANY', 'NGO', 'EU_CITIZEN', 'NON_EU_CITIZEN', 'OTHER', 'SOMETHING_NEW', 'TRADE_UNION']
+    const raws = Array.from({ length: 300 }, (_, i) => ({
+      ...NAMED,
+      id: 1000 + i,
+      dateFeedback: '2026/11/01 10:00:00',
+      userType: types[i % types.length],
+      companySize: i % 3 === 0 ? 'MICRO' : 'LARGE',
+      status: i % 11 === 0 ? 'REJECTED' : 'PUBLISHED',
+      country: i % 2 ? 'AUT' : 'ITA',
+    }))
+    const r = summarize(raws.map(rowOf), 300, 13192)
+    expect(r.kinds.reduce((n, k) => n + k.count, 0) + r.citizens.count + r.other + r.unpublished).toBe(r.read)
+    expect(r.kinds.reduce((n, k) => n + k.count - k.unnamed, 0)).toBe(r.contributions.length)
+    expect(Object.values(r.citizens.byCountry).reduce((a, b) => a + b, 0)).toBe(r.citizens.count)
   })
 
   it('throws on what is no page, so a changed interface is „not read", never a shorter count', () => {
@@ -229,6 +298,14 @@ describe('the parser', () => {
     for (const bad of [0, -1, 1.5, Number.NaN, 1_000_000_000]) expect(() => feedbackUrl(bad, 0)).toThrow()
     expect(() => feedbackUrl(15080, -1)).toThrow()
   })
+
+  it('links a contribution on the portal by the initiative and its number, and by nothing else', () => {
+    expect(contributionPageUrl(13192, 987654301)).toBe('https://ec.europa.eu/info/law/better-regulation/have-your-say/initiatives/13192/F987654301_de')
+    for (const bad of [0, -1, 1.5, Number.NaN, Number.MAX_SAFE_INTEGER + 2]) {
+      expect(() => contributionPageUrl(bad, 1)).toThrow()
+      expect(() => contributionPageUrl(13192, bad)).toThrow()
+    }
+  })
 })
 
 describe('the reading, page by page', () => {
@@ -242,7 +319,7 @@ describe('the reading, page by page', () => {
       const n = Math.max(0, Math.min(100, total - from))
       const number = opts.wrongPageFrom !== undefined && page >= opts.wrongPageFrom ? 0 : page
       return {
-        content: Array.from({ length: n }, (_, i) => ({ id: from + i, status: 'PUBLISHED', userType: 'EU_CITIZEN', firstName: 'Erika', surname: 'Mustermann', country: 'AUT', feedback: 'erfunden' })),
+        content: Array.from({ length: n }, (_, i) => ({ id: from + i + 1, dateFeedback: '2026/11/01 10:00:00', status: 'PUBLISHED', userType: 'EU_CITIZEN', firstName: 'Erika', surname: 'Mustermann', country: 'AUT', feedback: 'erfunden' })),
         totalElements: total,
         totalPages: Math.ceil(total / 100),
         number,
@@ -254,28 +331,28 @@ describe('the reading, page by page', () => {
 
   it('stops at 500 rows: five pages, and says how many of how many', async () => {
     const p = portal(2806)
-    const r = await readFeedback(p.fetchJson, 15080)
+    const r = await readFeedback(p.fetchJson, 13192, 15080)
     expect(p.urls.map((u) => new URL(u).searchParams.get('page'))).toEqual(['0', '1', '2', '3', '4'])
-    expect(r).toMatchObject({ total: 2806, read: FEEDBACK_MAX_ROWS, citizens: 500 })
-    expect(euFeedbackView(r).cap).toBe('Gelesen sind die neuesten 500 von 2.806 Rückmeldungen.')
+    expect(r).toMatchObject({ total: 2806, read: FEEDBACK_MAX_ROWS, citizens: { count: 500, byCountry: { AUT: 500 } }, contributions: [] })
+    expect(euFeedbackView(r).cap).toBe('Nicht im Monitor: Gelesen sind die neuesten 500 von 2.806 Rückmeldungen; Suche, Filter und Sortierung reichen nur über sie.')
   })
 
   it('stops at the last page, and has nothing to say about a cap then', async () => {
     const p = portal(137)
-    const r = await readFeedback(p.fetchJson, 15080)
+    const r = await readFeedback(p.fetchJson, 13192, 15080)
     expect(p.urls).toHaveLength(2)
     expect(r).toMatchObject({ total: 137, read: 137 })
     expect(euFeedbackView(r).cap).toBeNull()
     const exact = portal(100)
-    expect(await readFeedback(exact.fetchJson, 15080)).toMatchObject({ total: 100, read: 100 })
+    expect(await readFeedback(exact.fetchJson, 13192, 15080)).toMatchObject({ total: 100, read: 100 })
     expect(exact.urls).toHaveLength(1)
   })
 
   it('stops where a page answers with another number, and counts nothing twice', async () => {
     const p = portal(450, { wrongPageFrom: 2 })
-    const r = await readFeedback(p.fetchJson, 15080)
+    const r = await readFeedback(p.fetchJson, 13192, 15080)
     expect(r).toMatchObject({ total: 450, read: 200 })
-    expect(euFeedbackView(r).cap).toBe('Gelesen sind die neuesten 200 von 450 Rückmeldungen.')
+    expect(euFeedbackView(r).cap).toBe('Nicht im Monitor: Gelesen sind die neuesten 200 von 450 Rückmeldungen; Suche, Filter und Sortierung reichen nur über sie.')
   })
 
   it('throws where a page fails, so nothing partial is cached as the whole', async () => {
@@ -284,32 +361,135 @@ describe('the reading, page by page', () => {
       if (calls++ === 1) throw new Error('HTTP 500')
       return portal(300).fetchJson(url)
     }
-    await expect(readFeedback(failing, 15080)).rejects.toThrow()
+    await expect(readFeedback(failing, 13192, 15080)).rejects.toThrow()
   })
 })
 
-describe('the fold\'s words', () => {
-  const reading: EuFeedbackReading = summarize(parseFeedbackPage(fixture('feedback-page')).rows, 12)
+describe('the fold\'s list and words', () => {
+  const reading: EuFeedbackReading = summarize(parseFeedbackPage(fixture('feedback-page')).rows, 14, 13192)
+  const AT = { code: 'AUT', name: 'Österreich' }
+  const sel = (over: Partial<EuFeedbackSelection> = {}): EuFeedbackSelection => ({ kind: 'alle', country: null, query: '', sort: 'date', reversed: false, ...over })
+  const names = (rows: EuFeedbackRow[]) => rows.map((r) => r.name)
 
-  it('says each kind with its count, names under it, and why some are counted without a name', () => {
-    const v = euFeedbackView(reading)
-    expect(v.lines.map((l) => [l.label, l.count, l.names.map((n) => [n.name, n.countries, n.repeated]), l.note])).toEqual([
-      ['Wirtschaftsverbände', '1, davon 1 genannt', [['Wirtschaftskammer Österreich', 'AUT', null]], null],
-      ['Unternehmen', '4, davon 2 genannt', [['Siemens AG', 'DEU, AUT', '2 Rückmeldungen']], '2 Rückmeldungen ohne Namen gezählt'],
-      ['Behörden', '1, davon 1 genannt', [['City of Vienna', 'AUT', null]], null],
-      ['Gewerkschaften', '1, davon 1 genannt', [['European Trade Union Confederation (ETUC)', 'BEL', null]], null],
-      ['Bürgerinnen und Bürger', '2', [], 'Privatpersonen werden gezählt, nie genannt.'],
-      ['Sonstige', '2', [], 'Ohne Angabe einer Organisationsart; gezählt, nie genannt.'],
+  it('lists one row per contribution with day, kind in the singular, country and the link\'s accessible name', () => {
+    const v = euFeedbackView(reading, AT)
+    expect(v.rows.map((r) => [r.date, r.name, r.kind, r.country, r.url !== null])).toEqual([
+      ['2026-11-14', 'Siemens AG', 'Unternehmen', 'DEU', true],
+      ['2026-11-13', 'European Trade Union Confederation (ETUC)', 'Gewerkschaft', 'BEL', true],
+      ['2026-11-12', 'City of Vienna', 'Behörde', 'AUT', true],
+      ['2026-11-11', 'Wirtschaftskammer Österreich', 'Wirtschaftsverband', 'AUT', true],
+      ['2026-11-13', 'SIEMENS AG', 'Unternehmen', 'AUT', true],
+      ['2026-11-05', 'Bundesarbeitskammer', 'Gewerkschaft', 'AUT', false],
+      [null, 'Verein Beispielwald', 'Nichtregierungsorganisation', 'AUT', true],
     ])
-    expect(v.cap).toBeNull()
+    expect(v.rows[0]!.linkLabel).toBe('Rückmeldung von Siemens AG im Portal der Kommission (neues Fenster)')
+    expect(new Set(v.rows.map((r) => r.key)).size).toBe(v.rows.length)
     expect(v.empty).toBeNull()
-    expect(v.unnamedReason).toMatch(/^Ohne Namen zählt der Monitor Organisationen, hinter deren Namen eine einzelne Person stehen kann: Kleinstunternehmen/)
-    expect(v.unpublished).toBe('Eine weitere Rückmeldung führt das Portal nicht als veröffentlicht; der Monitor zählt sie ohne Art und nennt niemanden.')
+    expect(v.noneNamed).toBeNull()
+    expect(v.cap).toBeNull()
   })
 
-  it('says nothing about unnamed organisations where every one is named, and says when nobody answered', () => {
-    expect(euFeedbackView({ ...reading, organisations: reading.organisations.map((g) => ({ ...g, count: g.count - g.unnamed, unnamed: 0 })) }).unnamedReason).toBeNull()
-    expect(euFeedbackView({ total: 0, read: 0, organisations: [], citizens: 0, other: 0, unpublished: 0 })).toMatchObject({ empty: 'Das Portal verzeichnet zu dieser Frist keine Rückmeldung.', lines: [], cap: null })
+  it('offers „Alle" and every kind with a named row as tabs, in the fixed order, counting named rows only', () => {
+    const v = euFeedbackView(reading, AT)
+    expect(v.tabs.map((t) => [t.value, t.label, t.count])).toEqual([
+      ['alle', 'Alle', 7],
+      ['BUSINESS_ASSOCIATION', 'Wirtschaftsverbände', 1],
+      ['COMPANY', 'Unternehmen', 2],
+      ['NGO', 'Nichtregierungsorganisationen', 1],
+      ['PUBLIC_AUTHORITY', 'Behörden', 1],
+      ['TRADE_UNION', 'Gewerkschaften', 2],
+    ])
+    // A kind whose every row is counted has no tab; one kind alone is its own label, without „Alle".
+    const onlyCompanies = { ...reading, contributions: reading.contributions.filter((c) => c.type === 'COMPANY'), kinds: [{ type: 'COMPANY' as const, count: 4, unnamed: 2 }, { type: 'NGO' as const, count: 3, unnamed: 3 }] }
+    expect(euFeedbackView(onlyCompanies, AT).tabs.map((t) => [t.value, t.count])).toEqual([['COMPANY', 2]])
+  })
+
+  it('offers „Aus <Land>" and says „davon aus <Land>" only with a country in scope, and nothing about it without one', () => {
+    const v = euFeedbackView(reading, AT)
+    expect(v.country).toMatchObject({ code: 'AUT', label: 'Aus Österreich' })
+    expect(v.counted[0]).toBe('2 Bürgerinnen und Bürger, davon aus Österreich: 1')
+    // The configured member state is the default.
+    expect(euFeedbackView(reading).country?.label).toBe('Aus Österreich')
+    const none = euFeedbackView(reading, null)
+    expect(none.country).toBeNull()
+    expect(none.counted[0]).toBe('2 Bürgerinnen und Bürger')
+    expect(JSON.stringify(none)).not.toMatch(/davon aus|"Aus /)
+    // Another country: its own figures out of the same reading; no chip where no organisation is from it, the citizens' 0 still said.
+    const ch = euFeedbackView(reading, { code: 'CHE', name: 'der Schweiz' })
+    expect(ch.country).toBeNull()
+    expect(ch.counted[0]).toBe('2 Bürgerinnen und Bürger, davon aus der Schweiz: 1')
+    expect(euFeedbackView(reading, { code: 'ITA', name: 'Italien' }).counted[0]).toBe('2 Bürgerinnen und Bürger, davon aus Italien: 0')
+  })
+
+  it('combines kind and country, and the chip counts within the kind above it', () => {
+    const { rows } = euFeedbackView(reading, AT)
+    expect(names(feedbackRowsOf(rows, sel({ country: 'AUT' })))).toEqual(['SIEMENS AG', 'City of Vienna', 'Wirtschaftskammer Österreich', 'Bundesarbeitskammer', 'Verein Beispielwald'])
+    expect(names(feedbackRowsOf(rows, sel({ kind: 'COMPANY' })))).toEqual(['Siemens AG', 'SIEMENS AG'])
+    expect(names(feedbackRowsOf(rows, sel({ kind: 'COMPANY', country: 'AUT' })))).toEqual(['SIEMENS AG'])
+    expect(feedbackRowsOf(rows, sel({ kind: 'TRADE_UNION', country: 'DEU' }))).toEqual([])
+    expect(rowsOfKind(rows, 'TRADE_UNION').filter((r) => r.country === 'AUT')).toHaveLength(1)
+    expect(rowsOfKind(rows, 'alle')).toHaveLength(7)
+  })
+
+  it('searches the names alone, folded as the Stellungnahmen panel folds them', () => {
+    const { rows } = euFeedbackView(reading, AT)
+    expect(names(feedbackRowsOf(rows, sel({ query: 'oesterreich' })))).toEqual(['Wirtschaftskammer Österreich'])
+    expect(names(feedbackRowsOf(rows, sel({ query: 'siemens' })))).toEqual(['Siemens AG', 'SIEMENS AG'])
+    expect(names(feedbackRowsOf(rows, sel({ query: 'trade (etuc' })))).toEqual(['European Trade Union Confederation (ETUC)'])
+    // The kind and the country are no part of what is searched; nor is a person.
+    expect(feedbackRowsOf(rows, sel({ query: 'Gewerkschaft' }))).toEqual([])
+    expect(feedbackRowsOf(rows, sel({ query: 'Mustermann' }))).toEqual([])
+    expect(feedbackRowsOf(rows, sel({ query: 'AUT' }))).toEqual([])
+  })
+
+  it('orders by day, newest first, a row without a day last both ways; and by name, German collation; each turned round', () => {
+    const { rows } = euFeedbackView(reading, AT)
+    expect(names(feedbackRowsOf(rows, sel()))).toEqual(['Siemens AG', 'European Trade Union Confederation (ETUC)', 'SIEMENS AG', 'City of Vienna', 'Wirtschaftskammer Österreich', 'Bundesarbeitskammer', 'Verein Beispielwald'])
+    expect(names(feedbackRowsOf(rows, sel({ reversed: true })))).toEqual(['Bundesarbeitskammer', 'Wirtschaftskammer Österreich', 'City of Vienna', 'SIEMENS AG', 'European Trade Union Confederation (ETUC)', 'Siemens AG', 'Verein Beispielwald'])
+    // Same name in two cases: equal under the collation, the newer first.
+    expect(names(feedbackRowsOf(rows, sel({ sort: 'name' })))).toEqual(['Bundesarbeitskammer', 'City of Vienna', 'European Trade Union Confederation (ETUC)', 'Siemens AG', 'SIEMENS AG', 'Verein Beispielwald', 'Wirtschaftskammer Österreich'])
+    expect(names(feedbackRowsOf(rows, sel({ sort: 'name', reversed: true })))).toEqual(['Wirtschaftskammer Österreich', 'Verein Beispielwald', 'Siemens AG', 'SIEMENS AG', 'European Trade Union Confederation (ETUC)', 'City of Vienna', 'Bundesarbeitskammer'])
+    // German collation: an umlaut sorts with its vowel, case does not lead.
+    const mk = (name: string, index: number): EuFeedbackRow => ({ ...rows[0]!, name, index, key: String(index) })
+    const sorted = ['Zeta AG', 'Österreichische Beispiel GmbH', 'alpha GmbH', 'Beta SE'].map(mk).sort((a, b) => compareFeedbackRows(a, b, 'name'))
+    expect(names(sorted)).toEqual(['alpha GmbH', 'Beta SE', 'Österreichische Beispiel GmbH', 'Zeta AG'])
+  })
+
+  it('says what the list is, and how much of it a filter or search shows', () => {
+    expect(feedbackSetLine(7, 7, false)).toBe('7 Rückmeldungen von Organisationen mit Namen')
+    expect(feedbackSetLine(1, 1, false)).toBe('1 Rückmeldung einer Organisation mit Namen')
+    expect(feedbackSetLine(2, 1234, true)).toBe('2 von 1.234 Rückmeldungen von Organisationen mit Namen')
+  })
+
+  it('pages like the Stellungnahmen, and offers the search above the same threshold', () => {
+    expect(STATEMENT_PAGE_SIZE).toBe(10)
+    expect(STATEMENT_SEARCH_MIN).toBe(20)
+  })
+
+  it('counts under the list what is never a row: citizens, Sonstige, each kind\'s rows without a name, the rows not published', () => {
+    const v = euFeedbackView(reading, AT)
+    expect(v.counted).toEqual([
+      '2 Bürgerinnen und Bürger, davon aus Österreich: 1',
+      '2 Rückmeldungen ohne Angabe einer Organisationsart (Sonstige)',
+      '2 Unternehmen',
+      '1 Rückmeldung, die das Portal nicht als veröffentlicht führt',
+    ])
+    expect(v.unnamedReason).toMatch(/^Ohne Namen zählt der Monitor Organisationen, hinter deren Namen eine einzelne Person stehen kann: Kleinstunternehmen/)
+    expect(v.citizensNote).toBe('Privatpersonen werden gezählt, nie genannt.')
+    const one = euFeedbackView({ ...reading, kinds: [{ type: 'PUBLIC_AUTHORITY', count: 2, unnamed: 1 }], citizens: { count: 0, byCountry: {} }, other: 0, unpublished: 0, contributions: reading.contributions.slice(2, 3) }, AT)
+    expect(one.counted).toEqual(['1 Behörde'])
+    expect(one.citizensNote).toBeNull()
+  })
+
+  it('says when nobody answered, and when rows were read but none names an organisation', () => {
+    expect(euFeedbackView({ total: 0, read: 0, contributions: [], kinds: [], citizens: { count: 0, byCountry: {} }, other: 0, unpublished: 0 })).toMatchObject({
+      empty: 'Das Portal verzeichnet zu dieser Frist keine Rückmeldung.', noneNamed: null, rows: [], tabs: [], counted: [], cap: null,
+    })
+    const persons = euFeedbackView({ total: 640, read: 500, contributions: [], kinds: [{ type: 'COMPANY', count: 3, unnamed: 3 }], citizens: { count: 497, byCountry: { AUT: 12 } }, other: 0, unpublished: 0 }, AT)
+    expect(persons).toMatchObject({ empty: null, noneNamed: 'Keine Organisation mit Namen unter den gelesenen Rückmeldungen.', rows: [], tabs: [], country: null })
+    expect(persons.counted).toEqual(['497 Bürgerinnen und Bürger, davon aus Österreich: 12', '3 Unternehmen'])
+    expect(persons.cap).toMatch(/^Nicht im Monitor: Gelesen sind die neuesten 500 von 640/)
+    expect(persons.unnamedReason).not.toBeNull()
   })
 
   it('holds no word of ranking or blame', () => {

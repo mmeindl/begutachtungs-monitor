@@ -22,6 +22,13 @@ import { countLabelDe, formatNumberDe } from '#shared/utils/format'
  * answer. */
 export const STATEMENT_PAGE_SIZE = 10
 
+/* Up to this many rows the search field is not offered: on twenty rows the
+ * eye is faster than the keyboard, and the field would be one more control
+ * on a panel that collapsed three lists into one to lose controls. Shared
+ * with the list of who gave feedback on the Commission's portal
+ * (`EuFeedbackPanel`, 15.11.2026), so the two lists offer it alike. */
+export const STATEMENT_SEARCH_MIN = 20
+
 /**
  * The panel's segments, in the order it offers them — the order of the
  * legend above the list, so a segment sits where the numbers said it would.

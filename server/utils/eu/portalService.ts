@@ -32,7 +32,8 @@
  * fold, up to five pages of the list of contributions to one publication,
  * through the same pacer. The publication must be one of the initiative's
  * windows (`feedbackOf`), so the endpoint is no proxy for any number. The
- * reading holds organisations' names, so it is cached in memory alone
+ * reading holds organisations' names and the links to their contributions
+ * (never a counted row's day, number or link), so it is cached in memory alone
  * (`DERIVED_CACHE`, memory in dev and in production) and for six hours
  * (`FEEDBACK_NAMES_TTL_S`): consent to publication can be withdrawn after
  * a window closed.
@@ -133,15 +134,18 @@ export async function initiativeById(id: number): Promise<{ state: 'gefunden'; i
 }
 
 /**
- * Who gave feedback to one publication, as counts and the organisations the
- * naming rule allows (`readFeedback`) — six hours, in MEMORY ONLY: the
- * derived mount is memory in dev and in production, and this name is on
- * neither list of `tests/cacheLayers.test.ts` that may reach a disk. Keyed
- * by the publication alone; whose it is was proven before the call.
+ * Who gave feedback to one publication, as the contributions of the
+ * organisations the naming rule allows and counts (`readFeedback`) — six
+ * hours, in MEMORY ONLY: the derived mount is memory in dev and in
+ * production, and this name is on neither list of `tests/cacheLayers.test.ts`
+ * that may reach a disk. Keyed by the initiative and the publication — the
+ * initiative builds the contributions' links — and the reader's version;
+ * whose window it is was proven before the call. No country in the key: the
+ * reading knows none.
  */
 const feedbackCached = defineCachedFunction(
-  async (publicationId: number): Promise<EuFeedbackReading> => readFeedback(portalJson, publicationId),
-  { name: 'eu-portal-rueckmeldungen', base: DERIVED_CACHE, getKey: (publicationId: number) => `${publicationId}|f${FEEDBACK_READER_VERSION}`, maxAge: FEEDBACK_NAMES_TTL_S, swr: false },
+  async (initiativeId: number, publicationId: number): Promise<EuFeedbackReading> => readFeedback(portalJson, initiativeId, publicationId),
+  { name: 'eu-portal-rueckmeldungen', base: DERIVED_CACHE, getKey: (initiativeId: number, publicationId: number) => `${initiativeId}-${publicationId}|f${FEEDBACK_READER_VERSION}`, maxAge: FEEDBACK_NAMES_TTL_S, swr: false },
 )
 
 export type FeedbackRead = { state: 'gelesen'; reading: EuFeedbackReading } | { state: 'unbekannt' } | { state: 'ungelesen' }
@@ -163,7 +167,7 @@ export async function feedbackOf(initiativeId: number, publicationId: number): P
   if (!publication) return { state: 'unbekannt' }
   if (publication.feedbackCount === 0) return { state: 'gelesen', reading: emptyReading() }
   try {
-    return { state: 'gelesen', reading: await feedbackCached(publicationId) }
+    return { state: 'gelesen', reading: await feedbackCached(initiativeId, publicationId) }
   } catch {
     return { state: 'ungelesen' }
   }

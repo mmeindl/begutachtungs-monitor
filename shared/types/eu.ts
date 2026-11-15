@@ -601,42 +601,54 @@ export type EuFeedbackOrganisationType =
   | 'ENVIRONMENTAL_ORGANISATION'
   | 'CONSUMER_ORGANISATION'
 
-/** One organisation named among the contributions: its name as the portal publishes it, collapsed and cut, and where it is from. */
-export interface EuFeedbackOrganisation {
-  /** Whitespace collapsed, at most 120 characters (cut with „…": some senders type a description into the field). */
+/**
+ * One contribution of an organisation the naming rule allows, as the list
+ * shows it: one row per contribution, never merged — an organisation that
+ * answered twice stands twice, each with its own date and link.
+ */
+export interface EuFeedbackContribution {
+  /** As the portal publishes it, whitespace collapsed and cut at its head (`namedOrganisationOf`), at most 120 characters. */
   name: string
-  /** ISO 3166 alpha-3 codes as the portal gives them („AUT"), each once, in the order first read; empty where none is valid. */
-  countries: string[]
-  /** How many of the rows read carry this name in this kind; more than one where the organisation answered more than once. */
-  rows: number
+  type: EuFeedbackOrganisationType
+  /** ISO 3166 alpha-3 as the portal gives it („AUT"); null where none is valid. */
+  country: string | null
+  /** The day it was given, ISO; null where the portal's date could not be read. */
+  date: string | null
+  /** The contribution on the portal, German; null where the row carries no valid number. The text is read there, never here. */
+  url: string | null
 }
 
 /** One kind of organisation among the contributions read. */
-export interface EuFeedbackGroup {
+export interface EuFeedbackKind {
   type: EuFeedbackOrganisationType
   /** Every published row of this kind that was read. */
   count: number
-  /** The organisations named, each once, alphabetically — never ordered by anything else. */
-  named: EuFeedbackOrganisation[]
   /** The rows of this kind counted without a name: no witness that no single person stands behind the name. */
   unnamed: number
 }
 
 /**
- * What the monitor read of the contributions to one publication: counts and
- * the organisations it may name — never a text, never a person's name.
- * Every row read is in exactly one figure: the groups' counts, `citizens`,
- * `other` and `unpublished` add up to `read`.
+ * What the monitor read of the contributions to one publication: the
+ * contributions of the organisations it may name, and counts — never a
+ * text, never a person's name, and for a counted row no date, number or
+ * link. KNOWS NO COUNTRY: it is the same for every member state's page; the
+ * view picks the country it serves out of `country` and `byCountry`.
+ *
+ * Every row read is in exactly one figure: the kinds' counts, `citizens`,
+ * `other` and `unpublished` add up to `read`; and the kinds' `count` less
+ * their `unnamed` add up to the number of `contributions`.
  */
 export interface EuFeedbackReading {
   /** How many contributions the portal counts for the publication (`totalElements` of the first page). */
   total: number
   /** How many rows were read: the newest, at most 500 (decision 10). */
   read: number
+  /** The named rows, in the portal's order (newest first). */
+  contributions: EuFeedbackContribution[]
   /** The kinds of organisation with at least one row, in the fixed order of `EU_FEEDBACK_ORGANISATION_TYPES` (`shared/utils/euPortal.ts`). */
-  organisations: EuFeedbackGroup[]
-  /** `EU_CITIZEN` and `NON_EU_CITIZEN`: counted, never named. */
-  citizens: number
+  kinds: EuFeedbackKind[]
+  /** `EU_CITIZEN` and `NON_EU_CITIZEN`: counted, never named — in all, and per country (alpha-3) where the row gives a valid one. */
+  citizens: { count: number; byCountry: Record<string, number> }
   /** `OTHER` and any kind the monitor does not know: counted, never named. */
   other: number
   /** Rows the portal lists with another status than `PUBLISHED` (rejected, anonymised by the sender afterwards): counted apart, of no kind, never named. */
