@@ -112,6 +112,62 @@ describe('lawBlocksFromPdfPages — a Land draft from its PDF', () => {
     }
   })
 
+  it('keeps a cross-reference to a division wrapped onto its own line: running text goes on in lower case (Tirol 2026-135 §§ 7, 86, 15.11.2026)', () => {
+    const passed = lawBlocksFromPdfPages([page('Der Landtag hat beschlossen:', '§ 7', 'Ausschreibung',
+      '(1) Die Ausschreibung darf keine Anmerkungen enthalten, die auf ein bestimmtes Geschlecht schließen lassen. Soweit jedoch Förderungsmaßnahmen nach dem',
+      '4. Unterabschnitt geboten sind, ist in der Ausschreibung darauf hinzuweisen. Weiters sind in der',
+      'Ausschreibung für höhere Verwendungen und Funktionen Frauen zur Bewerbung besonders zu ermuntern.',
+      '(2) Text.')])!
+    const text = passed.map((b) => b.text).join(' ')
+    expect(text).toContain('nach dem 4. Unterabschnitt geboten sind, ist in der Ausschreibung darauf hinzuweisen.')
+    expect(text).toContain('Frauen zur Bewerbung besonders zu ermuntern.')
+    const vorlage = lawBlocksFromPdfPages([page('Der Landtag hat beschlossen:', '§ 86', 'Datenverarbeitung',
+      '(1) Die Gemeinden dürfen folgende Daten verarbeiten, sofern diese Daten für die Erfüllung der ihnen nach dem',
+      '2. Hauptstück dieses Gesetzes obliegenden Aufgaben jeweils erforderlich sind: Identifikationsdaten,',
+      'Erreichbarkeitsdaten, Daten über Aus- und Weiterbildung.',
+      '(2) Text.')])!
+    expect(vorlage.map((b) => b.text).join(' ')).toContain('nach dem 2. Hauptstück dieses Gesetzes obliegenden Aufgaben jeweils erforderlich sind: Identifikationsdaten, Erreichbarkeitsdaten, Daten über Aus- und Weiterbildung.')
+  })
+
+  it('still leaves out a division heading — bare, titled, quoted, in capitals, without a space — and its title lines', () => {
+    for (const heading of ['4. Abschnitt', '1. Abschnitt Dienstrecht und Organisationsrecht', '„2. Teil Gesundheitsbereich', 'V. ABSCHNITT', '2. ABSCHNITT 2. ABSCHNITT', '6.Abschnitt', '3. Hauptstück']) {
+      const blocks = lawBlocksFromPdfPages([page('Der Landtag hat beschlossen:', '§ 1', 'Ziel', 'Dieses Gesetz regelt die Gleichbehandlung.',
+        heading, 'Sonderbestimmungen', '§ 2', 'Geltung', '(1) Text.')])!
+      const text = blocks.map((b) => b.text).join(' | ')
+      expect(text, heading).not.toMatch(/Abschnitt|ABSCHNITT|Teil|Hauptstück|Sonderbestimmungen/)
+      expect(text, heading).toContain('(1) Text.')
+    }
+  })
+
+  it('ends the law at a Vorblatt after it, as at the Erläuterungen (Burgenland 85a6a5d5, 15.11.2026)', () => {
+    for (const heading of ['Vorblatt', 'Vorblatt und Erläuterungen zur Änderung des Steiermärkischen X-Gesetzes']) {
+      const blocks = lawBlocksFromPdfPages([page('Auf Grund des § 22e Bgld. RPG 2019 wird verordnet:',
+        'Die Verordnung, LGBl. Nr. 47/2023, wird wie folgt geändert:', '1. § 1 lautet:', '„§ 1 Allgemeines',
+        '(1) Die Abgabe beträgt 3 000 Euro.“', '2. § 2 entfällt.'),
+      page(heading, 'Problem:', 'Die Abgabe betrifft die überörtliche Raumplanung.', 'Ziel:', 'Eine Bemessungsgrundlage.')])!
+      const text = blocks.map((b) => b.text).join(' | ')
+      expect(text, heading).toContain('2. § 2 entfällt.')
+      expect(text, heading).not.toMatch(/Vorblatt|Problem|Raumplanung|Ziel/)
+    }
+  })
+
+  it('reads on past the word „Vorblatt" in the law\'s own sentences', () => {
+    const blocks = lawBlocksFromPdfPages([page('Der Landtag hat beschlossen:', '§ 1', 'Kosten',
+      '(1) Die Kosten sind wie im', 'Vorblatt zu beziffern; siehe Vorblatt.', '(2) Text.', '§ 2', 'Inkrafttreten', 'Dieses Gesetz tritt in Kraft.')])!
+    const text = blocks.map((b) => b.text).join(' | ')
+    expect(text).toContain('(1) Die Kosten sind wie im Vorblatt zu beziffern; siehe Vorblatt.')
+    expect(text).toContain('Dieses Gesetz tritt in Kraft.')
+  })
+
+  it('reads the law past a Vorblatt in front of it', () => {
+    const blocks = lawBlocksFromPdfPages([page('Vorblatt', 'Problem:', 'Die Abgabe betrifft die Raumplanung.'),
+      page('Der Landtag hat beschlossen:', '§ 1', 'Ziel', 'Dieses Gesetz regelt die Abgabe.', '§ 2', 'Inkrafttreten', 'Dieses Gesetz tritt in Kraft.')])!
+    const text = blocks.map((b) => b.text).join(' | ')
+    expect(text).toContain('Dieses Gesetz regelt die Abgabe.')
+    expect(text).toContain('Dieses Gesetz tritt in Kraft.')
+    expect(text).not.toMatch(/Vorblatt|Problem/)
+  })
+
   it('joins a word split at the line end, and keeps a compound and a suspended part', () => {
     const blocks = lawBlocksFromPdfPages([page('Der Oö. Landtag hat beschlossen:', 'Artikel I', 'Das Oö. X-Gesetz wird wie folgt geändert:',
       '1. Im § 1 wird die Gleich-', 'behandlung im Oö. Agrarrecht-', 'Organisationsgesetz für die Land-', 'und Forstwirtschaft geregelt.')])!

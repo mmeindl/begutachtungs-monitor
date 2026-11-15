@@ -33,7 +33,21 @@ export const NOISE_RE = /^(?:Seite \d+(?: von \d+)?|\d+ von \d+|- ?\d+ ?-|\d+|[A
 /* A Verordnung is issued, not resolved: „Auf Grund des § … wird verordnet:". */
 export const ENACTING_RE = /(?:Landtag hat beschlossen|wird verordnet):?$/
 /** Where it ends, if the PDF goes on: the explanations or the comparison after it. */
-export const AFTER_LAW_RE = /^(?:Erläuterungen|Textgegenüberstellung|[AB]\.\s+(?:Allgemeiner|Besonderer)\s+Teil)\b/
+/* And at a Vorblatt (15.11.2026). Burgenland and Wien print one between the
+   law and its Erläuterungen, and the reader went on into it — its
+   „Problem", „Ziel", „Finanzielle Auswirkungen" read as law, in the Länder
+   comparison, the Textgegenüberstellung guard (Wien) and the EU reader's
+   blocks (Burgenland's Verordnung on the Windkraft- und Photovoltaikabgabe,
+   85a6a5d5). Measured over 697 cached Land PDFs: the word stands on 144
+   lines in 142 of them; 110 lie inside the law as the reader takes it, every
+   one the bare heading „Vorblatt", and none stands before a law the reader
+   finds. In running text it reads „siehe Vorblatt", „im Vorblatt", „auf das
+   Vorblatt" — never at the line's start — so only the heading ends the law:
+   alone on its line, or „Vorblatt und Erläuterungen …" (Steiermark). Old
+   against new over those PDFs: 108 change, each one the law cut at its
+   Vorblatt with every block before it unchanged; the EU reader, which cuts
+   there itself (`landGesetzestext.ts`), reads the same. */
+export const AFTER_LAW_RE = /^(?:Erläuterungen|Textgegenüberstellung|Vorblatt(?:$|\s+und\s+Erläuterungen)|[AB]\.\s+(?:Allgemeiner|Besonderer)\s+Teil)\b/
 
 const ARTICLE_LINE_RE = /^Artikel\s+(?:[IVXL]+|\d+[a-z]?)\.?$/
 /** What an Artikel's title line says — never the amending clause under an untitled Artikel. */
@@ -70,6 +84,22 @@ const OPENS_RE = /^(?:\d+\.\s?\d+\.\s|\d+\s+(?:Im|Dem|Nach|Vor)\s|[„"»]?\d+[a
  * § entries of a table of contents, which RIS sets as `inhaltsvz`.
  */
 const DIVISION_RE = /^[„"»]?(?:\d+[a-z]?|[IVXL]+)\.\s*(?:Abschnitt|Unterabschnitt|Hauptstück|Teil)(?:\s.*)?$/i
+/* Nor a cross-reference wrapped onto its own line (15.11.2026): „… Soweit
+   jedoch Förderungsmaßnahmen nach dem / 4. Unterabschnitt geboten sind, …"
+   (Tirol 2026-135, § 7) took the pattern above for a heading, and the reader
+   dropped it and every line after it up to the next opener — the rest of the
+   Absatz, gone from the Länder comparison and the EU reader. A heading has
+   nothing after the division word, or a title; running text goes on in
+   lower case. A separate test, case-sensitive: under the `i` the pattern
+   above needs for „ABSCHNITT", a case test is none (see 12.11.2026 below).
+   It holds for the Roman pattern below too, which takes „II. Abschnitt bei
+   den Bestimmungen …" for a title. Measured over 692 cached Land PDFs:
+   1.498 lines matched, 1.368 a bare heading, 114 a title (each in capitals
+   or a repeated „2. ABSCHNITT"), 3 instructions kept anyway, and 11 running
+   text — each going on in lower case, none of the headings. Old against new
+   over those PDFs and Tirol 2026-135's two: 7 change, every change text
+   restored, no block lost, no heading kept. */
+const DIVISION_RUNNING_RE = /^[„"»]?(?:\d+[a-z]?|[IVXL]+[a-z]?)\.\s*(?:[Aa]bschnitt|ABSCHNITT|[Uu]nterabschnitt|UNTERABSCHNITT|[Hh]auptstück|HAUPTSTÜCK|[Tt]eil|TEIL)\s+\p{Ll}/u
 /* A Roman numeral and a title on the same line („IVa. Umsetzungshinweis,
    Verweisungen auf das Unionsrecht", „VIIa. ABSCHNITT") — case-sensitive
    (12.11.2026): under the `i` the first pattern needs, „lit. a, …" and „lt.
@@ -83,7 +113,7 @@ const DIVISION_RE = /^[„"»]?(?:\d+[a-z]?|[IVXL]+)\.\s*(?:Abschnitt|Unterabsch
    over 1.232 cached Land PDFs: 16 change, every change law text restored,
    no line dropped that was kept before. */
 const ROMAN_DIVISION_RE = /^[„"»]?[IVXL]+[a-z]?\.\s+(?!(?:Abschnitt|Unterabschnitt|Hauptstück|Teil)e?s\b|Ordnung\b|Dienstklasse\b)\p{Lu}\D*$/u
-const isDivision = (line: string) => DIVISION_RE.test(line) || ROMAN_DIVISION_RE.test(line)
+const isDivision = (line: string) => (DIVISION_RE.test(line) || ROMAN_DIVISION_RE.test(line)) && !DIVISION_RUNNING_RE.test(line)
 const TOC_ENTRY_RE = /^[„"»]?§{1,2}\s*\d+[a-z]*(?:\s+\S|[“"«]?$)/
 
 /** A new law's § designation alone on its line („§ 2"); its title follows. */

@@ -39,8 +39,10 @@
  * it) to the first line that opens what follows a law: the Erläuterungen'
  * title (`TITLE_RE`, `AFTER_LAW_RE`), a Textgegenüberstellung or a Vorblatt
  * (`END_RE`'s document markers — not its clauses, which open a law). The
- * blocks of (1) are cut from this part too: the block reader alone ends at
- * the Erläuterungen and reads a Vorblatt as law.
+ * blocks of (1) are cut from this part too. Until 15.11.2026 the block
+ * reader alone ended at the Erläuterungen and read a Vorblatt as law; it
+ * ends at a Vorblatt's heading now (`AFTER_LAW_RE`), and this part cuts at
+ * the same line.
  */
 import { uniqueActs, type EuAct } from './actCitations'
 import { quotedHintSignal, quotedZiffern, readUmsetzungshinweis, strongestSignal, type LawSignal, type LawWindow, type QuotedHint } from './umsetzungshinweis'
