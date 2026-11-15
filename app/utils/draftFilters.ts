@@ -537,10 +537,24 @@ export function treatyStationOf(state: TreatyState): DraftStation {
   return state === 'promulgated' ? 'bgbl' : 'parlament'
 }
 
-/** The list's one note on the treaties, where the Kundmachungen could not
- *  be read; empty otherwise. */
-export function treatyGapNotes(t: Pick<StaatsvertraegeResponse, 'bgblUnread'> | null | undefined): string[] {
-  return t?.bgblUnread ? ['Ob ein Staatsvertrag kundgemacht ist, ist gerade nicht abrufbar.'] : []
+/**
+ * The list's notes on the treaties: a period that began before the
+ * Bundesgesetzblatt in RIS (`coversFrom`, 15.11.2026) cannot tell from RIS
+ * whether a treaty was promulgated before that day — structural, never
+ * „gerade" —, and the Kundmachungen that could not be read. Empty
+ * otherwise. One sentence for `before` and `straddles` alike: unlike a
+ * law's, a treaty's Kundmachung can come years after its period, so even a
+ * period wholly before the source keeps the later ones.
+ */
+export function treatyGapNotes(t: Pick<StaatsvertraegeResponse, 'bgblUnread'> & Partial<Pick<StaatsvertraegeResponse, 'gp' | 'coversFrom'>> | null | undefined): string[] {
+  if (!t) return []
+  const reach = t.gp && t.coversFrom ? periodAgainstSource(t.gp, t.coversFrom) : null
+  return [
+    ...((reach === 'before' || reach === 'straddles') && t.coversFrom
+      ? [`Ob ein Staatsvertrag vor dem ${formatDateDe(t.coversFrom)} kundgemacht wurde, lässt sich im RIS nicht prüfen: ${bgblReachDe(t.coversFrom)}.`]
+      : []),
+    ...(t.bgblUnread ? ['Ob ein Staatsvertrag kundgemacht ist, ist gerade nicht abrufbar.'] : []),
+  ]
 }
 
 /**

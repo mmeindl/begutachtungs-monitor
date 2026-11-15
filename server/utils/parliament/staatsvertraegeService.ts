@@ -12,21 +12,22 @@
  * A record that does not arrive within the budget leaves its row without
  * the link — `approved`/`unlisted`, the weaker state.
  *
- * Every Jahrgang from the period's first year to today: a treaty's
- * Kundmachung can come years after its approval (2,023 days at most in GP
- * XXVII, `pnpm corpus:staatsvertraege`).
+ * Every Jahrgang from the period's first year to today, none before the
+ * Bundesgesetzblatt in RIS begins (`treatyYearsOfPeriod`); the answer
+ * carries that day as `coversFrom`, and the list says what it leaves open.
  */
 import type { StaatsvertraegeResponse } from '#shared/types'
-import { GP_STARTS, gpHasEnded } from '#shared/utils/gp'
+import { gpHasEnded } from '#shared/utils/gp'
 import { todayIso } from '#shared/utils/format'
 import type { BgblRecord } from '../ris/bgblJoin'
 import { withinBudget } from '../http/budget'
 import { mapWithConcurrency } from '../pool'
 import { extractBgblLink } from './detailJson'
 import { getBgblTeil1Year, getBgblTeil3Year } from '../ris/bgblService'
+import { BGBL_AUTH_FROM } from '../ris/skippedLaws'
 import { getCurrentGp, getGegenstand, getItemsForGp } from './drafts'
 import { TREATY_DOKTYP } from './vorlageDetailAssembly'
-import { compareTreatyRows, needsTreatyLink, treatyRowOf } from './staatsvertraege'
+import { compareTreatyRows, needsTreatyLink, treatyRowOf, treatyYearsOfPeriod } from './staatsvertraege'
 
 /** Detail reads at a time, and how long the list waits for them (`antraegeService`). */
 const READ_CONCURRENCY = 4
@@ -35,10 +36,7 @@ const READ_BUDGET_MS = 20_000
 export async function getStaatsvertraege(gp: string): Promise<StaatsvertraegeResponse> {
   const [rows, currentGp] = await Promise.all([getItemsForGp(gp), getCurrentGp()])
   const running = !gpHasEnded(gp, currentGp) && gp === currentGp
-  const first = Number((GP_STARTS[gp] ?? '').slice(0, 4))
-  const now = Number(todayIso().slice(0, 4))
-  const years: number[] = []
-  if (Number.isFinite(first) && first > 0) for (let y = first; y <= now; y++) years.push(y)
+  const years = treatyYearsOfPeriod(gp, todayIso())
   let records: BgblRecord[] | null
   try {
     records = years.length ? (await Promise.all(years.flatMap((y) => [getBgblTeil1Year(y), getBgblTeil3Year(y)]))).flat() : null
@@ -60,5 +58,5 @@ export async function getStaatsvertraege(gp: string): Promise<StaatsvertraegeRes
   const items = treaties
     .map((row) => treatyRowOf(row, records, running, links.get(row.inr) ?? null))
     .sort(compareTreatyRows)
-  return { gp, running, items, bgblUnread: records === null }
+  return { gp, running, items, bgblUnread: records === null, coversFrom: BGBL_AUTH_FROM }
 }

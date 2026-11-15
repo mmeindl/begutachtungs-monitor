@@ -14,11 +14,12 @@ import { pickBgblForTreaty, pickBgblIForItem } from '../server/utils/ris/bgblVor
 import type { BgblRecord } from '../server/utils/ris/bgblJoin'
 import { promulgationOverdue, promulgationState } from '../shared/utils/promulgation'
 import { mapItemRow } from '../server/utils/parliament/list101'
-import { needsTreatyLink, resolveTreatyBgbl, treatyKindOfVhg, treatyRowOf, treatyStateOf } from '../server/utils/parliament/staatsvertraege'
+import { needsTreatyLink, resolveTreatyBgbl, treatyKindOfVhg, treatyRowOf, treatyStateOf, treatyYearsOfPeriod } from '../server/utils/parliament/staatsvertraege'
+import { BGBL_AUTH_FROM } from '../server/utils/ris/skippedLaws'
 import { laterStations, parliamentStandDe, procedureStatusDe, vorlageStatusDe } from '../app/utils/spine'
 import { filingClosedDe, itemBylineDe, itemCiteAsDe, itemCopyDe } from '../app/utils/itemKind'
 import { viewOfTreaty } from '../app/utils/entryView'
-import { ART_CHOICES, artChoiceLabel, artChoiceOf, coherentArt, draftFiltersFromQuery, draftRowsOf, treatyRowsOf, treatyStationOf } from '../app/utils/draftFilters'
+import { ART_CHOICES, artChoiceLabel, artChoiceOf, coherentArt, draftFiltersFromQuery, draftRowsOf, treatyGapNotes, treatyRowsOf, treatyStationOf } from '../app/utils/draftFilters'
 import { WEGE, wegFor } from '../app/utils/wege'
 
 const phase119 = [
@@ -232,5 +233,26 @@ describe('the list option „Staatsverträge" (decision 3)', () => {
     expect(w.notFollowed).toBeNull()
     expect(w.href).toBe('/entwuerfe?art=staatsvertraege')
     expect(wegFor({ source: 'vorlage', ityp: 'I', withoutBegutachtung: false, itemKind: 'staatsvertrag' })).toBe('staatsvertrag')
+  })
+})
+
+describe('the Bundesgesetzblatt in RIS begins 2004 (15.11.2026)', () => {
+  it('reads no Jahrgang before the source begins, and the later ones of every period', () => {
+    // XXI ended 19.12.2002: its late Kundmachungen can still stand in 2004 and after.
+    expect(treatyYearsOfPeriod('XXI', '2026-11-15')).toEqual(Array.from({ length: 23 }, (_, i) => 2004 + i))
+    expect(treatyYearsOfPeriod('XXII', '2026-11-15')[0]).toBe(2004)
+    expect(treatyYearsOfPeriod('XXVIII', '2026-11-15')).toEqual([2024, 2025, 2026])
+    expect(treatyYearsOfPeriod('XIII', '2026-11-15')).toEqual([])
+  })
+
+  it('says what RIS cannot show for a period that began before it — never „gerade"', () => {
+    const coversFrom = BGBL_AUTH_FROM
+    const reach = 'Ob ein Staatsvertrag vor dem 01.01.2004 kundgemacht wurde, lässt sich im RIS nicht prüfen: Das Bundesgesetzblatt steht im RIS erst ab 2004.'
+    expect(treatyGapNotes({ gp: 'XXI', coversFrom, bgblUnread: false })).toEqual([reach])
+    expect(treatyGapNotes({ gp: 'XXII', coversFrom, bgblUnread: false })).toEqual([reach])
+    expect(treatyGapNotes({ gp: 'XXII', coversFrom, bgblUnread: true })).toEqual([reach, 'Ob ein Staatsvertrag kundgemacht ist, ist gerade nicht abrufbar.'])
+    expect(treatyGapNotes({ gp: 'XXIII', coversFrom, bgblUnread: false })).toEqual([])
+    expect(treatyGapNotes({ gp: 'XXVIII', coversFrom, bgblUnread: true })).toEqual(['Ob ein Staatsvertrag kundgemacht ist, ist gerade nicht abrufbar.'])
+    expect(treatyGapNotes(null)).toEqual([])
   })
 })

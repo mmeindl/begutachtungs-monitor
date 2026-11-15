@@ -12,8 +12,10 @@
  * the station map and the list share.
  */
 import type { TreatyKind, TreatyRow, TreatyState } from '../../../shared/types'
+import { GP_STARTS } from '../../../shared/utils/gp'
 import type { BgblRecord } from '../ris/bgblJoin'
 import { pickBgblForTreaty } from '../ris/bgblVorlage'
+import { BGBL_AUTH_FROM } from '../ris/skippedLaws'
 import type { ItemRow } from './list101'
 
 /** A treaty's Kundmachung and where it was read. */
@@ -51,6 +53,26 @@ export function resolveTreatyBgbl(
   if (ris?.number) return { number: ris.number, url: ris.url ?? null, date: ris.datum ?? null, source: 'ris' }
   if (link?.number) return { number: link.number, url: link.url, date: null, source: 'parliament' }
   return null
+}
+
+/**
+ * The Jahrgänge a period's treaties can be promulgated in: every one from
+ * the year the period convened to today's — a Kundmachung can come years
+ * after the approval (2,023 days at most in GP XXVII, `pnpm
+ * corpus:staatsvertraege`) — but none before the Bundesgesetzblatt in RIS
+ * begins (`BGBL_AUTH_FROM`): such a year reads as empty, not as missing
+ * (15.11.2026). A period that ended before it still reads the years from
+ * then on, where its late Kundmachungen stand. Empty where the calendar has
+ * no row for the period.
+ */
+export function treatyYearsOfPeriod(gp: string, today: string): number[] {
+  const start = GP_STARTS[gp]
+  if (!start) return []
+  const first = Math.max(Number(start.slice(0, 4)), Number(BGBL_AUTH_FROM.slice(0, 4)))
+  const now = Number(today.slice(0, 4))
+  const years: number[] = []
+  for (let y = first; y <= now; y++) years.push(y)
+  return years
 }
 
 /** List 101's `VHG` of an Art.-15a-Vereinbarung (388 d.B. XXVIII). */

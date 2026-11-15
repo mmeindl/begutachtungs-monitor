@@ -52,4 +52,11 @@ export interface StaatsvertraegeResponse {
    * approved treaty reads `approved` or `unlisted` — the list says so.
    */
   bgblUnread: boolean
+  /**
+   * The first day the Bundesgesetzblatt in RIS holds (ISO, `BGBL_AUTH_FROM`);
+   * no earlier Jahrgang is read. A period that began before it cannot say
+   * from RIS whether a treaty was promulgated before that day — structural,
+   * not a failure, and the list says so (`treatyGapNotes`).
+   */
+  coversFrom: string
 }
