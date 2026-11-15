@@ -2,6 +2,11 @@
  * GET /api/eu-recht/akte/:celex?gp= → EuActResponse: one EU act and every
  * draft of the window that names it — those that implement it, those that
  * only restate it, the Länder with none. Two dates and a stand per draft, no verdict (rule D6).
+ * Beside them, from the Cellar per request: the act's Amtsblatt reference
+ * for the „Zitieren" button (`ojReferenceOf`) and its rail — who adopted
+ * it, the procedure from the proposal on, entry into force and application
+ * (`railOf`). Either is null where the Cellar did not answer; the page then
+ * cites without the reference and says the procedure could not be read.
  *
  * 400 for a CELEX that is no act's (`3` + year + L/R/D/F + number), 404 for
  * an act no draft of the map names, 503 while no build has finished — the
@@ -13,7 +18,7 @@ import { withRisActiveOn } from '../../../utils/ris/risRecord'
 import { withLandActiveOn } from '../../../utils/laender/sources'
 import { gpFromParam, readGpQuery, requirePlausibleGp } from '../../../utils/http/params'
 import { actPageOf } from '../../../utils/eu/euMap'
-import { ojReferenceOf } from '../../../utils/eu/cellarService'
+import { ojReferenceOf, railOf } from '../../../utils/eu/cellarService'
 
 /** An act's CELEX: sector 3, year, L(Richtlinie) R(Verordnung) D(Beschluss) F(Rahmenbeschluss), number. */
 const ACT_CELEX_RE = /^3\d{4}[LRDF]\d{4}$/
@@ -27,8 +32,10 @@ export default defineEventHandler(async (event): Promise<EuActResponse> => {
   if (!map) throw createError({ statusCode: 503, statusMessage: 'Die EU-Übersicht wird gerade aufgebaut' })
   const page = actPageOf(map, celex)
   if (!page) throw createError({ statusCode: 404, statusMessage: 'Kein Entwurf nennt diesen Rechtsakt' })
-  // For the „Zitieren" button only; a Cellar that does not answer costs the citation its Amtsblatt reference, never the page.
-  const published = await ojReferenceOf(celex)
+  // Asked side by side, so the page waits for the slower of the two, not both
+  // in turn. A Cellar that does not answer costs the citation its Amtsblatt
+  // reference and the rail its procedure, never the page.
+  const [published, rail] = await Promise.all([ojReferenceOf(celex), railOf(celex)])
   return {
     gp,
     window: map.window,
@@ -39,7 +46,7 @@ export default defineEventHandler(async (event): Promise<EuActResponse> => {
     incomplete: map.incomplete,
     oj: published?.oj ?? null,
     eli: published?.eli ?? null,
-    rail: null,
+    rail,
   }
 })
 

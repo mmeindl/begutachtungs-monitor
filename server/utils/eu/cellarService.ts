@@ -5,7 +5,9 @@
  * one name.
  */
 import { CELEX_RE, CELLAR_QUERY_VERSION, fetchOjAnswer, fetchTranspositionAnswer, parseOjAnswer, parseTranspositionAnswer, type OjAnswer, type SparqlAnswer, type TranspositionDates } from './cellar'
+import { DOSSIER_QUERY_VERSION, fetchDossierAnswer, parseDossierAnswer } from './cellarDossier'
 import { PUBLISHED_DOCUMENT_TTL_S } from '../cache/ttl'
+import type { EuActRail } from '../../../shared/types/eu'
 
 /**
  * At most two Cellar queries in flight, process-wide — the limit the corpus
@@ -67,6 +69,34 @@ export async function ojReferenceOf(celex: string): Promise<OjAnswer | null> {
   if (!CELEX_RE.test(celex)) return null
   try {
     return parseOjAnswer(await fetchOjAnswerCached(celex))
+  } catch {
+    return null
+  }
+}
+
+/**
+ * One act's dossier, as it arrived — a month, like the dates: the
+ * procedure of an act that is published is over, and what the Cellar adds
+ * later (a step it had not recorded yet) waits a month at most. The key
+ * carries the query's version, so a query that asks for more is never
+ * answered from an old cache entry. Only the act's page asks, one query
+ * per page view at most.
+ */
+const fetchDossierAnswerCached = defineCachedFunction(
+  (celex: string): Promise<SparqlAnswer> => inCellarTurn(() => fetchDossierAnswer(celex)),
+  { name: 'eu-cellar-dossier', getKey: (celex: string) => `${celex}|d${DOSSIER_QUERY_VERSION}`, maxAge: PUBLISHED_DOCUMENT_TTL_S, swr: false },
+)
+
+/**
+ * One act's rail — who adopted it, its procedure, since when it is in force
+ * and applies — or null where the Cellar did not answer: a Cellar that does
+ * not answer is not „no procedure", and the page says it could not read
+ * one. Null as well for anything that is no CELEX of an act.
+ */
+export async function railOf(celex: string): Promise<EuActRail | null> {
+  if (!CELEX_RE.test(celex)) return null
+  try {
+    return parseDossierAnswer(await fetchDossierAnswerCached(celex))
   } catch {
     return null
   }
