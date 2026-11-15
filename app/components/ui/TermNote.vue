@@ -28,6 +28,16 @@
  * chevron AFTER the tag, unlike `Disclosure`: the tag is the row's first
  * word and stays aligned with the text under it; the chevron is the
  * affordance, muted.
+ *
+ * THE RULE ON THE LEFT (15.11.2026). Open help text stood bare under its
+ * row and read as the section's own content, with no edge where it ended.
+ * A 4 px rule in `baseline` grey with an indent sets it apart. That is the
+ * GOV.UK „Details" pattern, chosen over a hairline frame because a frame
+ * means "facts to consult" (FactList `frame`) and the note often opens right
+ * under one, and over an (i) icon, which would say nothing the rule doesn't.
+ * 4 px, not 2: the diff gutters and the caveat list use 2 px, so the help
+ * reads as its own thing next to them. The rule is on an inner box so the
+ * spacing around it stays outside the rule.
  */
 import { TERMS, type TermKey } from '~/utils/terms'
 
@@ -54,9 +64,11 @@ const entry = computed(() => (props.term ? TERMS[props.term] : null))
       />
     </summary>
   </details>
-  <div class="order-last mt-1 hidden w-full basis-full [[open]+&]:block">
-    <slot name="note">
-      <p v-if="entry" class="max-w-prose hyphens-auto text-sm leading-relaxed text-ink-secondary">{{ entry.definition }}</p>
-    </slot>
+  <div class="order-last mt-1 hidden w-full basis-full pb-2 [[open]+&]:block">
+    <div class="border-l-4 border-baseline pl-4">
+      <slot name="note">
+        <p v-if="entry" class="max-w-prose hyphens-auto text-sm leading-relaxed text-ink-secondary">{{ entry.definition }}</p>
+      </slot>
+    </div>
   </div>
 </template>

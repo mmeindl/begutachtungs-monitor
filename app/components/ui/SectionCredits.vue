@@ -90,7 +90,7 @@ const line = computed(() => sourceLineDe(props.sources))
     <TermNote v-if="$slots.method">
       Methode
       <template #note>
-        <div class="prose-flow max-w-prose pb-2 text-base">
+        <div class="prose-flow max-w-prose text-base">
           <slot name="method" />
         </div>
       </template>

@@ -997,7 +997,11 @@ memo `docs/research/wege-ausserhalb-der-stationen.md`.
   term („redaktionell", „nicht gezählt", „kurz") opens its one to three
   sentences under its own row (`TermNote`); „Methode", the last item of a
   section's credit line, opens the section's method text under the line
-  (`SectionCredits` `#method`); a gap stays a sentence at its place. A
+  (`SectionCredits` `#method`); a gap stays a sentence at its place. Open
+  help text sits behind a 4 px `baseline` rule on the left, indented
+  (15.11.2026, the GOV.UK „Details" pattern, in `TermNote` for both
+  levels): bare, it read as the section's content. Not a hairline frame,
+  which means facts to consult and stacks under FactList's; no icon. A
   control is never also a disclosure, so filter toggles and the count pills
   in a group's header button define nothing. Definitions live in
   `app/utils/terms.ts`, method texts as components in
