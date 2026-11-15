@@ -11,7 +11,7 @@
  * last stage (14.11.2026). So the course is read from the stages, and this
  * script says which stage texts exist, how often, and how an item ends.
  *
- *     pnpm corpus:anliegen                       # XXV to XXVIII, all Volksbegehren, Bundesrat petitions
+ *     pnpm corpus:anliegen                       # XXII to the running period, all Volksbegehren, Bundesrat petitions
  *     pnpm corpus:anliegen -- --gp XXVIII        # one period's Petitionen and Bürgerinitiativen
  *     pnpm corpus:anliegen -- --kind volksbegehren
  *     pnpm corpus:anliegen -- --lines 40         # how many vocabulary lines per kind
@@ -33,6 +33,9 @@ import { PARLIAMENT, getJson } from '../lib/http'
 import { cachedJson } from '../lib/diskCache'
 import { argPair } from '../lib/args'
 import { pool, sleep } from '../lib/async'
+import { ANLIEGEN_FIRST_LIST_GP, anliegenListGps } from '../../shared/utils/anliegen'
+import { gpOfDay } from '../../shared/utils/gp'
+import { todayIso } from '../../shared/utils/format'
 
 const SCRIPT = 'corpus/anliegen'
 /** One request at a time, and a pause between them. */
@@ -50,7 +53,10 @@ if (onlyKind && !KINDS.includes(onlyKind)) {
 }
 const onlyGp = argPair('gp')
 const lines = Number(argPair('lines') ?? 30)
-const PERIODS = onlyGp ? [onlyGp] : ['XXV', 'XXVI', 'XXVII', 'XXVIII']
+/** The running period, from `GP_STARTS`: the table gains a row when a period convenes. */
+const RUNNING_GP = gpOfDay(todayIso()) ?? ANLIEGEN_FIRST_LIST_GP
+/** The periods the list offers (`ANLIEGEN_FIRST_LIST_GP` to the running one), oldest first. */
+const PERIODS = onlyGp ? [onlyGp] : anliegenListGps(RUNNING_GP).reverse()
 
 interface ListAnswer { count?: number; rows?: unknown[][] }
 interface Stage { date?: string | null; text?: string | null }
@@ -94,7 +100,7 @@ for (const gp of PERIODS) {
     if (!want(kind)) continue
     const rows = await list(101, `l101-${gp}-${ityp}`, { GP_CODE: [gp], ITYP: [ityp] }, (r) => r[0] === gp && r[1] === ityp)
     for (const r of rows) items.push({ gp, ityp, inr: Number(r[2]), kind })
-    if (gp === PERIODS.at(-1)) {
+    if (gp === RUNNING_GP) {
       const part = await list(143, `l143-${gp}-${ityp}`, { GP_CODE: [gp], ITYP: [ityp] }, (r) => r[0] === gp && r[1] === ityp)
       for (const r of part) aktiv.set(`${gp}-${ityp}-${Number(r[2])}`, String(r[23]))
     }
@@ -155,8 +161,8 @@ function shape(text: string): string {
 const stagesOf = (d: Detail | null): Stage[] => (d?.content?.phase ?? []).flatMap((p) => p.stages ?? [])
 const textOf = (d: Detail | null): string => stagesOf(d).map((s) => stripHtmlToText(s.text ?? '')).join(' || ')
 
-/** The running period, as far as this run knows it: the newest period read. */
-const CURRENT_GP = PERIODS.at(-1) ?? 'XXVIII'
+/** The running period, also when `--gp` reads an older one. */
+const CURRENT_GP = RUNNING_GP
 
 /**
  * How an item ended. Petitionen and Bürgerinitiativen through the shipped
