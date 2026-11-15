@@ -35,6 +35,8 @@ import {
   landsIncompleteFor,
   lateHalves,
   ohneSilentNoteDe,
+  ohneUnreadCounts,
+  ohneUnreadNoteDe,
   registerReachNote,
   sameDraftFilters,
   spanOptionsFor,
@@ -983,6 +985,25 @@ describe('the list\'s Land notes (14.11.2026)', () => {
     expect(registerReachNote({})).toBeNull()
     expect(registerReachNote({ w: 3 })).toBe('3 Landesgesetze Wiens stehen hier nicht: Das Register reicht nicht weit genug zurück, um einen Entwurf auszuschließen.')
     expect(registerReachNote({ noe: 1, ktn: 2 })).toMatch(/^3 Landesgesetze der Länder /)
+  })
+  it('says the laws whose „ohne Begutachtung" could not be read instead of dropping them (15.11.2026)', () => {
+    const law = (reason: 'unread' | 'pending' | 'budget' | null, route: 'vorlage' | 'antrag' | null = 'vorlage') => ({
+      land: 'sbg' as const,
+      begutachtung: reason ? { kind: 'silent' as const, reason } : { kind: 'none' as const },
+      registerCovers: false,
+      route: route ? { kind: route } : null,
+    })
+    const laws = [law('unread'), law('pending', 'antrag'), law('budget'), law(null), law('unread', null)]
+    // „Alle ohne Entwurf": both unread ones and the pending one; a decided law or a method's silence is no gap.
+    expect(ohneUnreadCounts('ohne', laws)).toEqual({ sbg: 3 })
+    // Vorlagen and Anträge: the route still decides.
+    expect(ohneUnreadCounts('ohne-vorlage', laws)).toEqual({ sbg: 1 })
+    expect(ohneUnreadCounts('ohne-antrag', laws)).toEqual({ sbg: 1 })
+    // Not where every law is a row, nor under the register's option.
+    for (const c of ['', 'gesetz', 'ohne-landesgesetz'] as const) expect(ohneUnreadCounts(c, laws), c).toEqual({})
+    expect(ohneUnreadNoteDe({})).toBeNull()
+    expect(ohneUnreadNoteDe({ sbg: 1 })).toBe('ob 1 Landesgesetz des Landes Salzburg ohne Begutachtung entstand. Es steht deshalb hier nicht.')
+    expect(ohneUnreadNoteDe({ sbg: 3 })).toBe('ob 3 Landesgesetze des Landes Salzburg ohne Begutachtung entstanden. Sie stehen deshalb hier nicht.')
   })
   it('says the incomplete Länder in one line, linked to their blocks — and nothing with only complete ones', () => {
     expect(landCoverageNote(['bgld', 'sbg', 'ooe'])).toBeNull()

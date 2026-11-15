@@ -1414,6 +1414,42 @@ export function registerReachNote(counts: Partial<Record<LandCode, number>>): st
   return `${countLabelDe(n, 'Landesgesetz', 'Landesgesetze')} ${landGenitiveDe(lands)} ${n === 1 ? 'steht' : 'stehen'} hier nicht: Das Register reicht nicht weit genug zurück, um einen Entwurf auszuschließen.`
 }
 
+/**
+ * Under „Alle ohne Entwurf" and its two items: the laws left out because
+ * the document that would say „ohne Begutachtung" could not be read
+ * (15.11.2026) — `silent` with `unread`, or `pending` once the page stopped
+ * asking again (while it still asks, the Land is „noch geladen",
+ * `landLawsPending`). Until then such a law fell out of the rows without a
+ * word, and the list looked complete. Counted per Land, only where the
+ * option would take the law if it said „ohne Begutachtung" — its route
+ * still decides under Vorlagen and Anträge. Not under „Landesgesetze ohne
+ * zugeordneten Entwurf", which takes a law the register covers whatever its
+ * statement says, and names the rest (`registerReachNote`).
+ */
+export function ohneUnreadCounts(
+  choice: ArtChoice,
+  laws: readonly (Pick<LandLaw, 'land' | 'begutachtung' | 'registerCovers'> & { route: Pick<NonNullable<LandLaw['route']>, 'kind'> | null })[],
+): Partial<Record<LandCode, number>> {
+  const counts: Partial<Record<LandCode, number>> = {}
+  if (!isOhneChoice(choice) || choice === 'ohne-landesgesetz') return counts
+  for (const law of laws) {
+    const b = law.begutachtung
+    if (b.kind !== 'silent' || (b.reason !== 'unread' && b.reason !== 'pending')) continue
+    if (!choiceAdmitsLandLaw(choice, { ...law, begutachtung: { kind: 'none' } })) continue
+    counts[law.land] = (counts[law.land] ?? 0) + 1
+  }
+  return counts
+}
+
+/** Those laws as one gap sentence, without its lead word (`GapNote` sets
+ *  „Gerade nicht abrufbar"). Null where none is. */
+export function ohneUnreadNoteDe(counts: Partial<Record<LandCode, number>>): string | null {
+  const lands = (Object.keys(counts) as LandCode[]).filter((land) => (counts[land] ?? 0) > 0)
+  if (!lands.length) return null
+  const n = lands.reduce((sum, land) => sum + counts[land]!, 0)
+  return `ob ${countLabelDe(n, 'Landesgesetz', 'Landesgesetze')} ${landGenitiveDe(lands)} ohne Begutachtung ${n === 1 ? 'entstand' : 'entstanden'}. ${n === 1 ? 'Es steht' : 'Sie stehen'} deshalb hier nicht.`
+}
+
 /** One piece of the coverage line: plain text, or a Land linked to its block on /datenlage. */
 export type CoverageNotePart = { text: string; href?: string }
 

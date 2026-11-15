@@ -282,7 +282,10 @@ gets an entry of its own only where it carries a reason the rule does not.
   will ask again for (`pending`, or `unread` while its retries last; for
   Salzburg statements still being read) is unknown too: the options stay
   enabled and the list says „noch geladen" under them; only the answer
-  after the last retry disables. Under a draft option
+  after the last retry disables. A Land's law whose „ohne Begutachtung"
+  could not be read (`unread`, or `pending` after the last retry) is not
+  dropped from the group's options in silence: the list counts it per Land
+  in one „Gerade nicht abrufbar" sentence (`ohneUnreadCounts`). Under a draft option
   those answers are never shown, counted or announced, and the open
   Vorlagen, which decide nothing, are not fetched (`withoutDraftRequests`).
   „Alle mit Entwurf" (`begutachtung=mit`, first of „Mit Entwurf") is exactly
@@ -997,7 +1000,6 @@ memo `docs/research/wege-ausserhalb-der-stationen.md`.
   never one sentence. The fold „Wie vollständig die Länder-Entwürfe sind" is
   one line naming the incomplete Länder, each linked to its block on
   `/datenlage`, shown only when one applies.
-
 - **A gap sentence opens with one of four lead words that say whose gap it
   is** (15.11.2026, `shared/utils/gaps.ts`, `GapNote`): „Nicht
   veröffentlicht" (the source does not publish it; the word of

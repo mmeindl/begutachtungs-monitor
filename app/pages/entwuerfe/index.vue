@@ -39,6 +39,8 @@ import {
   draftRowsOf,
   isOhneChoice,
   ohneSilentNoteDe,
+  ohneUnreadCounts,
+  ohneUnreadNoteDe,
   lawsReachNoteDe,
   OHNE_MINISTRY_REASON,
   registerReachNote,
@@ -876,6 +878,13 @@ const landLawsBeyondReach = computed(() => {
   return counts
 })
 const beyondReachNote = computed(() => registerReachNote(landLawsBeyondReach.value))
+/* Under „Ohne Entwurf": the laws whose „ohne Begutachtung" could not be read
+ * (`ohneUnreadCounts`), said instead of dropped — not for a Land still „noch
+ * geladen" (`landLawsPending`), whose wait already says the rows are short. */
+const ohneUnreadNote = computed(() => ohneUnreadNoteDe(ohneUnreadCounts(
+  appliedArt.value,
+  landLawsOfView.value.filter((l) => !landLawsPending.value.includes(l.land)),
+)))
 /* A chosen Land whose drafts came but whose laws could not be read: said, as an unreadable Land is —
  * only while the view would show its laws, as `lawsUnreadable` (a kept answer outlives its fetch). */
 const unreadableLandLaws = computed(() =>
@@ -1618,6 +1627,7 @@ const statementsSortNote = computed(() => {
         <p v-if="beyondReachNote" class="text-sm text-ink-muted">
           {{ beyondReachNote }}
         </p>
+        <GapNote v-if="ohneUnreadNote" kind="unavailable" :text="ohneUnreadNote" class="text-sm text-ink-muted" />
         <p v-for="note in antragNotes" :key="note" class="text-sm text-ink-muted">
           {{ note }}
         </p>
