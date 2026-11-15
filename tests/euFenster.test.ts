@@ -165,7 +165,7 @@ describe('the list on /eu-recht', () => {
     const odd: EuOpenInitiative = { id: 5, reference: null, actType: 'RECOMMENDATION', title: 'English only', titleIsGerman: false, topics: [], windows: [{ stage: 'NEW_STAGE', start: null, end: null }] }
     const v = euFensterView(response([odd]))
     const row = v.tabs!.alle[0]!
-    expect(row).toMatchObject({ act: 'RECOMMENDATION', stage: 'NEW_STAGE', titleNote: 'Titel im Portal nur auf Englisch', tab: null })
+    expect(row).toMatchObject({ act: 'RECOMMENDATION', stage: 'NEW_STAGE', titleNote: 'Das Portal führt den Titel bisher nur auf Englisch', tab: null })
     expect(row.state).toMatchObject({ label: 'Rückmeldung möglich', detail: 'Enddatum im Portal nicht angegeben' })
     expect(v.counts).toEqual({ alle: 1, konsultation: 0, vorschlag: 0, rechtsakt: 0 })
     expect(actTypeDe(null)).toBeNull()
@@ -209,7 +209,7 @@ describe('the initiative\'s page', () => {
     const v = euInitiativeView(closed, TODAY)
     expect(v.title).toBe(closed.titleDe)
     expect(v.actType).toBe('Vorgesehen: Vorschlag für eine Richtlinie')
-    expect(v.status).toBe('Zuletzt: Annahme durch die Kommission, Rückmeldungen bis 29.06.2022')
+    expect(v.status).toBe('Vorschlag liegt vor')
     expect(v.action).toBeNull()
     expect(v.stations.map((s) => [s.id, s.name, !!s.ahead, s.current])).toEqual([
       ['konsultation', 'Konsultation', false, false],
@@ -255,7 +255,7 @@ describe('the initiative\'s page', () => {
     expect(v.stations[1]!.gap).toBe('Das Portal verzeichnet zu diesem Vorhaben noch keinen Vorschlag.')
     expect(JSON.stringify(v.sections[1])).not.toMatch(/[Vv]eröffentlicht/)
     expect(v.status).toBe('Sondierung läuft')
-    expect(v.action?.heading).toBe('Rückmeldung möglich bis 08.01.2027')
+    expect(v.action?.end).toBe('2027-01-08')
   })
 
   it('says past the Commission what the monitor does not follow, and that individuals have no channel at Parliament and Council', () => {
@@ -300,7 +300,8 @@ describe('the initiative\'s page', () => {
     const v = euInitiativeView(open, TODAY)
     expect(v.status).toBe('Sondierung läuft · Öffentliche Konsultation läuft')
     expect(v.action).toEqual({
-      heading: 'Rückmeldung möglich bis 09.02.2027',
+      end: '2027-02-09',
+      heading: null,
       href: open.url,
       label: 'Rückmeldung im Portal der Kommission geben',
       note: 'Rückmeldungen nimmt die Kommission bis 09.02.2027 in ihrem Portal „Ihre Meinung zählt“ entgegen. Der Link führt zur Seite des Vorhabens dort.',

@@ -67,7 +67,7 @@ const DE = {
   identity: 'Vorschlag der Europäischen Kommission',
   heading: 'Der Vorschlag im Verfahren',
   untitled: (reference: string) => `Vorschlag ${reference}`,
-  englishTitle: 'Titel im Cellar nur auf Englisch',
+  englishTitle: 'EUR-Lex führt den Titel bisher nur auf Englisch',
   source: 'Auf EUR-Lex ansehen',
   name: {
     beides: 'Umsetzung und Geltung',
@@ -78,7 +78,9 @@ const DE = {
     actNote: (labels: string[]) => `Laut EUR-Lex: ${labels.join(', ')}.`,
     withdrawn: (d: string) => `Zurückgezogen am ${d}`,
     withdrawnUndated: 'Der Cellar führt den Vorschlag als zurückgezogen',
-    pending: (d: string | null) => (d ? `Anhängig laut EUR-Lex; letzter verzeichneter Schritt am ${d}` : 'Anhängig laut EUR-Lex'),
+    // The heading is the stand alone, as a draft's card says „Gesetz geworden"; the day of the last step is the line under it.
+    pending: 'Anhängig laut EUR-Lex',
+    lastStep: (d: string) => `Letzter verzeichneter Schritt am ${d}.`,
     unclear: (d: string | null) => (d
       ? `Der Cellar gibt für diesen Vorschlag keinen eindeutigen Stand an. Letzter verzeichneter Schritt am ${d}.`
       : 'Der Cellar gibt für diesen Vorschlag keinen eindeutigen Stand an.'),
@@ -117,7 +119,7 @@ export const EU_VORSCHLAG_DE = DE
 
 export interface EuVorschlagView {
   title: string
-  /** „Titel im Cellar nur auf Englisch" where the German title is missing; null otherwise. */
+  /** „EUR-Lex führt den Titel bisher nur auf Englisch" where the German title is missing; null otherwise. */
   titleNote: string | null
   /** „Vorschlag der Europäischen Kommission · COM(2026) 780". */
   identity: string
@@ -213,7 +215,7 @@ function statusOf(stand: EuProposalStand | null, acts: readonly EuProposalAct[])
     case 'zurueckgezogen-undatiert':
       return { status: DE.status.withdrawnUndated, note: null }
     case 'anhaengig':
-      return { status: DE.status.pending(stand.lastStep ? formatDateDe(stand.lastStep) : null), note: null }
+      return { status: DE.status.pending, note: stand.lastStep ? DE.status.lastStep(formatDateDe(stand.lastStep)) : null }
     case 'unklar':
       return { status: DE.heading, note: DE.status.unclear(stand.lastStep ? formatDateDe(stand.lastStep) : null) }
     case 'ohne-verfahren':
@@ -332,7 +334,7 @@ export function euVorschlagView(r: EuVorschlagResponse, today: string): EuVorsch
     identity: `${DE.identity} · ${r.reference}`,
     status,
     statusNote: note,
-    action: open ? { heading: EU_INITIATIVE_DE.status.open(formatDateDe(feedback.feedbackEnd!)), href: c.initiative.url, label: EU_INITIATIVE_DE.action.label, note: EU_INITIATIVE_DE.action.note(formatDateDe(feedback.feedbackEnd!)) } : null,
+    action: open ? { end: feedback.feedbackEnd, heading: null, href: c.initiative.url, label: EU_INITIATIVE_DE.action.label, note: EU_INITIATIVE_DE.action.note(formatDateDe(feedback.feedbackEnd!)) } : null,
     heading: DE.heading,
     stations,
     sections,

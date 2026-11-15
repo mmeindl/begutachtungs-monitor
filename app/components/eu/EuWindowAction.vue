@@ -10,25 +10,27 @@ import type { EuWindowActionView } from '~/utils/euInitiative'
  * initiative and the page of a proposal, so the action reads the same on
  * both.
  *
- * The plain card (`frist: false`): no countdown and no tone on an EU
- * window, as the list of open windows carries none, and without the
- * Begutachtung's sentence about what became of earlier drafts.
+ * THE DRAFT'S DOOR, with its countdown and its tone: the heading counts the
+ * days to the window's last day and the card takes the ground a
+ * Stellungnahme's door has when its Frist is close, so one state reads as
+ * one colour on every detail page. The words say the urgency, the ground
+ * repeats it. Without the Begutachtung's sentence about earlier drafts,
+ * which is about Austrian drafts. Where the portal names no last day there
+ * is nothing to count: the view's own heading stands, on the plain ground.
  */
 defineProps<{ action: EuWindowActionView }>()
 </script>
 
 <template>
-  <DraftDoorCard :frist="false" :deadline="null">
-    <template #heading>
+  <DraftDoorCard frist :deadline="action.end" :filing-href="action.href" :evidence="false">
+    <template v-if="action.heading" #heading>
       {{ action.heading }}
     </template>
     <p class="mt-2 text-sm text-ink-secondary">
       {{ action.note }}
     </p>
-    <template #actions>
-      <DoorButton :href="action.href">
-        {{ action.label }}
-      </DoorButton>
+    <template #filing>
+      {{ action.label }}
     </template>
   </DraftDoorCard>
 </template>

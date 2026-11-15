@@ -26,14 +26,20 @@ import { deadlineCardClass, deadlineTone } from '~/utils/deadlines'
  * — `filing` (the door itself, a `DoorButton` while `filingHref` is set),
  * the .ics button, then `actions`; and `footer` under the row.
  */
-const props = defineProps<{
+const props = withDefaults(defineProps<{
   frist: boolean
   deadline: string | null | undefined
   /** The Frist's .ics; offered while it runs and has a date. */
   icsHref?: string | null
   /** Where the door leads; its label is the `filing` slot. Shown while the Frist runs. */
   filingHref?: string | null
-}>()
+  /**
+   * The Begutachtung's sentence about what became of earlier drafts. Off
+   * for a door that is not a Begutachtung's (an EU feedback window,
+   * 15.11.2026): the evidence it links is about Austrian drafts.
+   */
+  evidence?: boolean
+}>(), { icsHref: undefined, filingHref: undefined, evidence: true })
 
 /* Decision and sign convention live in app/utils/deadlines.ts, next to
  * the other deadline rules and covered by tests — a flipped sign here would

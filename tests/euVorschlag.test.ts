@@ -240,11 +240,12 @@ function response(celex: string, over: Partial<EuVorschlagResponse> = {}): EuVor
 describe('the page of a proposal', () => {
   it('pending, with the feedback period on it open: the stand, the one action, Parliament and Council not yet deciding', () => {
     const v = euVorschlagView(response('52026PC0780', { consultation: OPEN_ON_PROPOSAL }), TODAY)
-    expect(v.status).toBe('Anhängig laut EUR-Lex; letzter verzeichneter Schritt am 19.10.2026')
-    expect(v.statusNote).toBeNull()
+    expect(v.status).toBe('Anhängig laut EUR-Lex')
+    expect(v.statusNote).toBe('Letzter verzeichneter Schritt am 19.10.2026.')
     expect(v.identity).toBe('Vorschlag der Europäischen Kommission · COM(2026) 780')
     expect(v.action).toEqual({
-      heading: 'Rückmeldung möglich bis 09.12.2026',
+      end: '2026-12-09',
+      heading: null,
       href: `${PORTAL}/19000_de`,
       label: 'Rückmeldung im Portal der Kommission geben',
       note: 'Rückmeldungen nimmt die Kommission bis 09.12.2026 in ihrem Portal „Ihre Meinung zählt“ entgegen. Der Link führt zur Seite des Vorhabens dort.',
@@ -279,7 +280,7 @@ describe('the page of a proposal', () => {
   it('flags an English-only title', () => {
     const v = euVorschlagView(response('52026PC0780'), TODAY)
     expect(v.title).toMatch(/^Proposal for a REGULATION/)
-    expect(v.titleNote).toBe('Titel im Cellar nur auf Englisch')
+    expect(v.titleNote).toBe('EUR-Lex führt den Titel bisher nur auf Englisch')
     expect(euVorschlagView(response('52026PC0308'), TODAY).titleNote).toBeNull()
   })
 

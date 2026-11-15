@@ -14,8 +14,8 @@
  * ONE BLUE ELEMENT. While a window is open, a door card under the header card carries the way to
  * the portal's page of the initiative, where the contribution is made —
  * the button a draft's page uses for its Stellungnahme (`EuWindowAction`,
- * shared with a proposal's page) — and the day the window closes. No
- * countdown, no tone (rule D6).
+ * shared with a proposal's page) — with the days left and the tone a
+ * Stellungnahme's door has when its Frist is close.
  *
  * Nothing about a person: the page shows only what `parseInitiative`'s
  * fixed list of fields lets through, never an official's name or address.

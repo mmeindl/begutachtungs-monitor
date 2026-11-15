@@ -763,6 +763,16 @@ The code names the EU rules D1 to D7; this is where they are defined
     the portal while a window is open, and the stations after the
     Commission say in a „Nicht im Monitor" sentence that the monitor does
     not follow it there yet.
+  - **An EU page's action is a draft's door** (15.11.2026,
+    `EuWindowAction` through `DraftDoorCard`): a card of its own directly
+    under the header card, its heading the days left, its ground the tone a
+    Stellungnahme's door takes when the Frist is close. Rule D6 forbids a
+    day count beside a transposition deadline, where it would read as a
+    verdict on a state; a window the reader can still use is the reader's
+    own deadline, and there the count is the point. The header card above
+    says the stand alone („Sondierung läuft", „Vorschlag liegt vor",
+    „Anhängig laut EUR-Lex"), never the days, which stand in the rail. The
+    list of open windows keeps its untoned boxes.
   - **The stand of a proposal: which Cellar flags decide** (15.11.2026,
     step 3, `shared/utils/euVorschlag.ts`, `server/utils/eu/cellarVorschlag.ts`).
     A proposal that left the Commission has a page by its COM number

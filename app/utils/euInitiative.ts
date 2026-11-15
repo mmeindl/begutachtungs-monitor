@@ -62,7 +62,7 @@ const DE = {
   identity: 'Vorhaben der Europäischen Kommission',
   heading: 'Das Vorhaben im Verfahren',
   untitled: (id: number) => `Vorhaben Nr. ${id}`,
-  englishTitle: 'Titel im Portal nur auf Englisch',
+  englishTitle: 'Das Portal führt den Titel bisher nur auf Englisch',
   actType: (words: string) => `Vorgesehen: ${words}`,
   source: 'Im Portal „Ihre Meinung zählt“ ansehen',
   name: {
@@ -71,15 +71,16 @@ const DE = {
     sonstiges: EU_RAIL_DE.portal.stage.ADOPTION_WORKFLOW!,
   },
   status: {
-    open: (end: string) => `Rückmeldung möglich bis ${end}`,
     openNoEnd: 'Rückmeldung möglich',
     // The card's heading while a window is open: the stage that runs. Until when, and where to answer, is the door card's below it — as a draft's card says „In Begutachtung" and its door the Frist.
     running: (stage: string) => `${stage} läuft`,
     runningOnProposal: 'Rückmeldungen zum Vorschlag laufen',
     runningOnDraft: 'Rückmeldungen zum Entwurf eines Rechtsakts laufen',
-    lastUntil: (stage: string, end: string) => `Zuletzt: ${stage}, Rückmeldungen bis ${end}`,
-    lastPublished: (stage: string, day: string) => `Zuletzt: ${stage}, veröffentlicht am ${day}`,
-    last: (stage: string) => `Zuletzt: ${stage}`,
+    // Nothing open: the stand alone, as a draft's card says „Gesetz geworden". The days stand in the rail below.
+    proposal: 'Vorschlag liegt vor',
+    draft: 'Entwurf eines Rechtsakts liegt vor',
+    // The feedback period is over — not a word on whether the Commission has finished with what it received.
+    consulted: 'Konsultation abgeschlossen',
   },
   action: {
     label: 'Rückmeldung im Portal der Kommission geben',
@@ -123,11 +124,19 @@ const DE = {
 export const EU_INITIATIVE_DE = DE
 
 /** The door card of an EU page: its heading (until when), the sentence under it, the button. */
-export interface EuWindowActionView { heading: string; href: string; label: string; note: string }
+export interface EuWindowActionView {
+  /** The window's last day (ISO): the card counts down to it and takes its tone from it, as a draft's door does. Null where the portal names none. */
+  end: string | null
+  /** The heading where there is no day to count down to; null otherwise. */
+  heading: string | null
+  href: string
+  label: string
+  note: string
+}
 
 export interface EuInitiativeView {
   title: string
-  /** „Titel im Portal nur auf Englisch" where the German title is missing; null otherwise. */
+  /** „Das Portal führt den Titel bisher nur auf Englisch" where the German title is missing; null otherwise. */
   titleNote: string | null
   /** „Vorgesehen: Delegierte Verordnung"; null where the portal names no kind. */
   actType: string | null
@@ -187,9 +196,11 @@ function statusOf(i: EuInitiative, today: string): string {
   }
   const last = i.publications.filter(happened).at(-1)
   if (!last) return DE.identity
-  if (last.feedbackEnd) return DE.status.lastUntil(stageDe(last), formatDateDe(last.feedbackEnd))
-  if (last.published) return DE.status.lastPublished(stageDe(last), formatDateDe(last.published))
-  return DE.status.last(stageDe(last))
+  if (last.stage === 'ISC_WORKFLOW') return DE.status.draft
+  // „Vorschlag" only where a proposal is what the initiative foresees; a communication's adoption keeps the portal's word.
+  if (last.stage === 'ADOPTION_WORKFLOW') return trackOf(i.actType) === 'gesetz' ? DE.status.proposal : stageDe(last)
+  if (CONSULTATION_STAGES.has(last.stage) && withPeriod(last)) return DE.status.consulted
+  return stageDe(last)
 }
 
 const station = (id: EuRailStationId, name: string, facts: string[], gap: string | null, ahead = false): EuRailStation =>
@@ -283,7 +294,7 @@ export function euInitiativeView(i: EuInitiative, today: string): EuInitiativeVi
     actType: actTypeDe(i.actType) ? DE.actType(actTypeDe(i.actType)!) : null,
     status: statusOf(i, today),
     // The soonest closing day: two windows open at once closed on the same day in every case of 15.11.2026; where they differ, each section names its own.
-    action: open.length ? { heading: end ? DE.status.open(formatDateDe(end)) : DE.status.openNoEnd, href: i.url, label: DE.action.label, note: DE.action.note(end ? formatDateDe(end) : null) } : null,
+    action: open.length ? { end, heading: end ? null : DE.status.openNoEnd, href: i.url, label: DE.action.label, note: DE.action.note(end ? formatDateDe(end) : null) } : null,
     heading: DE.heading,
     stations,
     sections,

@@ -62,7 +62,7 @@ const DE = {
   } as Readonly<Record<EuFensterTab, string>>,
   tabsLabel: 'Wo im Verfahren',
   column: { title: 'Vorhaben', stage: 'Stadium', act: 'Vorgesehen', end: 'Rückmeldung' },
-  englishTitle: 'Titel im Portal nur auf Englisch',
+  englishTitle: 'Das Portal führt den Titel bisher nur auf Englisch',
   untitled: (id: number) => `Vorhaben Nr. ${id}`,
   said: { stage: 'Stadium', act: 'Vorgesehen' },
   state: {
@@ -94,7 +94,7 @@ export interface EuFensterRowView {
   /** The monitor's page of the initiative. */
   path: string
   title: string
-  /** „Titel im Portal nur auf Englisch" where the German title is missing; null otherwise. */
+  /** „Das Portal führt den Titel bisher nur auf Englisch" where the German title is missing; null otherwise. */
   titleNote: string | null
   /** „Sondierung", „Öffentliche Konsultation", … — the portal's words. */
   stage: string
