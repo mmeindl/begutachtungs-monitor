@@ -304,7 +304,8 @@ describe('the page of a proposal', () => {
     // The portal still calling the period OPEN does not make an action of it.
     const stillOpen: EuConsultation = { ...OPEN_ON_PROPOSAL, reference: 'COM(2022)305', initiative: initiative([{ ...(OPEN_ON_PROPOSAL as { initiative: EuInitiative }).initiative.publications[1]!, reference: 'COM(2022)305' }]) }
     const v = euVorschlagView(response('52022PC0305', { consultation: stillOpen }), TODAY)
-    expect(v.status).toBe('Zurückgezogen am 06.05.2024')
+    // The heading names the state; the day stands at the station.
+    expect(v.status).toBe('Zurückgezogen')
     expect(v.action).toBeNull()
     // The withdrawal ends the rail on a station of its own; „Amtsblatt" and the last station are not drawn.
     expect(v.stations.map((x) => [x.id, x.name, x.current])).toEqual([

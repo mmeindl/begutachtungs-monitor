@@ -792,10 +792,11 @@ The code names the EU rules D1 to D7; this is where they are defined
     (`euProposalPath`). Its dossier carries three flags — pending,
     withdrawn, adopted — that contradict each other in one dossier since
     2019, so no flag decides alone: „Rechtsakt geworden" needs the adopted
-    flag AND an act the dossier produced; „Zurückgezogen am …" needs the
+    flag AND an act the dossier produced; „Zurückgezogen" needs the
     Commission's dated step `WDW_byCOM` (50 of 52 withdrawn dossiers of
-    2019–2024 carry it); the withdrawn flag alone gives „Der Cellar führt
-    den Vorschlag als zurückgezogen", without a day; the pending flag alone
+    2019–2024 carry it), and its day stands at the station, not in the
+    card's heading, which names a state; the withdrawn flag alone gives
+    „Laut EUR-Lex zurückgezogen", without a day; the pending flag alone
     gives „Anhängig laut EUR-Lex" with the day of the last recorded step,
     never „seit N Tagen" (rule D6). Missing or contradicting flags claim
     no stand, and the page says the Cellar gives no clear one. The

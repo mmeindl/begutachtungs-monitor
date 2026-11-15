@@ -12,8 +12,7 @@
  * record — so a proposal reads like the act it may become.
  *
  * THE STAND IS THE CELLAR'S (`euProposalStandOf`): „Rechtsakt geworden",
- * „Zurückgezogen am …", „Anhängig laut EUR-Lex" with the day of the last
- * recorded step, or the sentence that the Cellar gives no clear stand.
+ * „Zurückgezogen", „Anhängig laut EUR-Lex", or the sentence that the Cellar gives no clear stand.
  * Statements about the record, never about the world: „verzeichnet keinen
  * Beschluss", not „hat nicht beschlossen". Dates, no durations (rule D6):
  * no „seit N Tagen", no „überfällig".
@@ -75,7 +74,8 @@ const DE = {
   },
   status: {
     act: (n: number) => (n === 1 ? 'Rechtsakt geworden' : `${n} Rechtsakte geworden`),
-    withdrawn: (d: string) => `Zurückgezogen am ${d}`,
+    // A state, no day: the day of the withdrawal stands at the station.
+    withdrawn: 'Zurückgezogen',
     withdrawnUndated: 'Laut EUR-Lex zurückgezogen',
     // The heading is the stand alone, as a draft's card says „Gesetz geworden"; the day of the last step is the line under it.
     pending: 'Anhängig laut EUR-Lex',
@@ -216,7 +216,7 @@ function statusOf(stand: EuProposalStand | null, acts: readonly EuProposalAct[])
     case 'rechtsakt':
       return DE.status.act(acts.length)
     case 'zurueckgezogen':
-      return DE.status.withdrawn(formatDateDe(stand.date))
+      return DE.status.withdrawn
     case 'zurueckgezogen-undatiert':
       return DE.status.withdrawnUndated
     case 'anhaengig':
