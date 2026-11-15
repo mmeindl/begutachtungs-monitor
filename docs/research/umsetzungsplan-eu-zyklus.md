@@ -42,9 +42,9 @@ the build left this plan, and why:
   own redirects and back links) are untouched and are step 6's.
 - **A section per station, under the station's name.** The rail links
   only into the page; EUR-Lex and the Observatory are linked in the
-  sections. The last station's section („Umsetzung" or „Geltung") holds
-  the Austrian drafts and stands first, as the page's rule „the drafts
-  first" asks; „Vorschlag", the deciding station and „Amtsblatt" follow.
+  sections. The sections stand in the rail's order; the last one („Umsetzung"
+  or „Geltung") holds the Austrian drafts, under „Entwürfe, die sie
+  umsetzen" or, for a regulation or decision, „durchführen".
   Steps 2, 5 and 7 fill these sections and add „Konsultation" with its
   station.
 - **The Legislative Observatory is linked only for procedures from 1994 on

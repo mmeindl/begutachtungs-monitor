@@ -4,7 +4,10 @@
  * — `/eu-recht/richtlinie/2024/1069`,
  * the act's kind, year and number as its citation reads (`euActCelex`).
  *
- * THE DRAFTS FIRST, no text above them. The one caveat, what could not be
+ * THE PAGE FOLLOWS THE ACT'S RAIL (15.11.2026): a section per station, in
+ * the rail's order; the drafts are the last station's section.
+ *
+ * NO TEXT ABOVE THE DRAFTS' LIST. The one caveat, what could not be
  * read, stands in the list box's head as on the overview; the window and
  * the Länder without a draft are the method's, not each act's (06.11.2026). The section opens with the timeline as one chart (`EuTimelineChart`): a
  * lane per draft, all on one track, each lane naming its own band and dot,
@@ -69,12 +72,12 @@ const view = computed(() => (data.value ? euActPageView(data.value) : null))
  * seit"; the Vienna day, so server and client agree.
  *
  * Every station has its section under the station's own name, as on a
- * draft's page. The last station's — „Umsetzung" or „Geltung" — is the
- * section of the drafts and stands first (the page's rule above); the
- * others follow in the rail's order. */
+ * draft's page, in the rail's order: the header card is the page's table
+ * of contents. The last station's — „Umsetzung" or „Geltung" — is the
+ * section of the drafts; the marked station leads there in one step. */
 const rail = computed(() => (data.value ? euRailView(data.value, todayIso()) : null))
 const effect = computed(() => rail.value?.sections.find((s) => s.id === 'wirkung') ?? null)
-const otherSections = computed(() => rail.value?.sections.filter((s) => s.id !== 'wirkung') ?? [])
+const earlierSections = computed(() => rail.value?.sections.filter((s) => s.id !== 'wirkung') ?? [])
 
 /*
  * Two answers that are no failure to retry: an act no draft of the window
@@ -94,8 +97,8 @@ if (import.meta.server && answer.value) {
 usePageSeo({
   title: () => view.value?.title ?? 'EU-Rechtsakt',
   description: () => (view.value
-    ? `${view.value.subject ? `${view.value.title} ${view.value.subject}` : view.value.title}: welche Entwürfe des Bundes und der Länder den Rechtsakt umsetzen, mit ihrer Begutachtung neben der Umsetzungsfrist.`
-    : 'Welche Entwürfe des Bundes und der Länder einen Rechtsakt der Europäischen Union umsetzen.'),
+    ? `${view.value.subject ? `${view.value.title} ${view.value.subject}` : view.value.title}: welche Entwürfe des Bundes und der Länder ${view.value.seoTail}.`
+    : 'Welche Entwürfe des Bundes und der Länder einen Rechtsakt der Europäischen Union umsetzen oder durchführen.'),
 })
 
 /** The head as one line: „Beschlossen am 11.04.2024 · Umsetzungsfrist bis 07.05.2026¹". */
@@ -182,6 +185,40 @@ const citation = computed(() => (data.value ? euActCiteDe(data.value.act, data.v
           </div>
         </div>
 
+        <!-- The stations before the last, each a section under its own name,
+             in the rail's order: the dated steps in the frame of facts one consults
+             (`FactList`'s box grammar), the sentences on what is missing,
+             and the record at its source. -->
+        <section
+          v-for="sec in earlierSections"
+          :id="sec.elementId"
+          :key="sec.id"
+          :aria-labelledby="`${sec.elementId}-heading`"
+          class="page-section scroll-mt-6"
+        >
+          <h2 :id="`${sec.elementId}-heading`" class="section-heading">{{ sec.heading }}</h2>
+          <p v-if="sec.facts.length" class="mt-2 text-sm text-ink-secondary">
+            <FactLine :parts="sec.facts" />
+          </p>
+          <div v-if="sec.rows.length" class="mt-4 rounded-xl border border-hairline px-4">
+            <ol role="list" class="flex flex-col divide-y divide-hairline text-sm text-ink">
+              <li v-for="row in sec.rows" :key="`${row.iso}|${row.label}`" class="flex gap-4 py-3">
+                <time :datetime="row.iso" class="w-24 shrink-0 tabular-nums text-ink-secondary">{{ row.date }}</time>
+                <span class="min-w-0">{{ row.label }}</span>
+              </li>
+            </ol>
+          </div>
+          <p v-for="note in sec.notes" :key="note" class="mt-3 text-sm text-ink-secondary">
+            {{ note }}
+          </p>
+          <p v-for="link in sec.links" :key="link.href" class="mt-3 text-sm">
+            <ExternalLink :href="link.href" class="link-inline">{{ link.label }}</ExternalLink>
+          </p>
+          <SectionCredits v-if="sec.credits.length" :sources="[]" :marked="false">
+            <span v-for="item in sec.credits" :key="item">{{ item }}</span>
+          </SectionCredits>
+        </section>
+
         <!-- The last station's section, under the station's name („Umsetzung"
              or „Geltung"): what the Cellar says of it, then the drafts. -->
         <section :id="effect?.elementId" aria-labelledby="eu-umsetzung-heading" class="page-section scroll-mt-6">
@@ -218,8 +255,7 @@ const citation = computed(() => (data.value ? euActCiteDe(data.value.act, data.v
               {{ page.incomplete }}
             </p>
             <p v-if="!page.entries.length" class="mt-4 text-ink-secondary">
-              Kein Entwurf im Fenster setzt den Rechtsakt neu um; die Entwürfe unten
-              nennen ihn, weil das geltende Recht ihn schon umsetzt.
+              {{ page.noneImplementing }}
             </p>
           </PageSubsection>
 
@@ -235,40 +271,6 @@ const citation = computed(() => (data.value ? euActCiteDe(data.value.act, data.v
             <template #method>
               <MethodEuRecht />
             </template>
-          </SectionCredits>
-        </section>
-
-        <!-- The other stations, each a section under its own name, in the
-             rail's order: the dated steps in the frame of facts one consults
-             (`FactList`'s box grammar), the sentences on what is missing,
-             and the record at its source. -->
-        <section
-          v-for="sec in otherSections"
-          :id="sec.elementId"
-          :key="sec.id"
-          :aria-labelledby="`${sec.elementId}-heading`"
-          class="page-section scroll-mt-6"
-        >
-          <h2 :id="`${sec.elementId}-heading`" class="section-heading">{{ sec.heading }}</h2>
-          <p v-if="sec.facts.length" class="mt-2 text-sm text-ink-secondary">
-            <FactLine :parts="sec.facts" />
-          </p>
-          <div v-if="sec.rows.length" class="mt-4 rounded-xl border border-hairline px-4">
-            <ol role="list" class="flex flex-col divide-y divide-hairline text-sm text-ink">
-              <li v-for="row in sec.rows" :key="`${row.iso}|${row.label}`" class="flex gap-4 py-3">
-                <time :datetime="row.iso" class="w-24 shrink-0 tabular-nums text-ink-secondary">{{ row.date }}</time>
-                <span class="min-w-0">{{ row.label }}</span>
-              </li>
-            </ol>
-          </div>
-          <p v-for="note in sec.notes" :key="note" class="mt-3 text-sm text-ink-secondary">
-            {{ note }}
-          </p>
-          <p v-for="link in sec.links" :key="link.href" class="mt-3 text-sm">
-            <ExternalLink :href="link.href" class="link-inline">{{ link.label }}</ExternalLink>
-          </p>
-          <SectionCredits v-if="sec.credits.length" :sources="[]" :marked="false">
-            <span v-for="item in sec.credits" :key="item">{{ item }}</span>
           </SectionCredits>
         </section>
       </template>

@@ -256,6 +256,10 @@ export interface EuActPageView {
   subject: string | null
   /** „Entwürfe, die sie umsetzen" — the pronoun by the act's gender: die Richtlinie, die Verordnung, der Beschluss. */
   implementingHeading: string
+  /** The sentence where no draft of the window carries the act out anew, in the act's verb. */
+  noneImplementing: string
+  /** What the page's description says the drafts do: „… den Rechtsakt umsetzen, mit ihrer Begutachtung neben der Umsetzungsfrist". */
+  seoTail: string
   eurLexUrl: string
   /** „beschlossen am 11.04.2024", „Umsetzungsfrist bis 07.05.2026¹" — one line, joined by „ · ". */
   head: string[]
@@ -412,10 +416,20 @@ export function euActPageView(r: EuActResponse): EuActPageView {
 
   const entries = r.implementing.map((d) => viewOfRow(d.row))
 
+  // A directive or framework decision is transposed („umsetzen"); a
+  // regulation or decision applies by itself and national law carries it
+  // out („durchführen", the drafts' own word).
+  const transposed = act.kind === 'richtlinie' || act.kind === 'rahmenbeschluss'
   return {
     title: act.label,
     subject: euActSubject(act.title),
-    implementingHeading: `Entwürfe, die ${act.kind === 'beschluss' || act.kind === 'rahmenbeschluss' ? 'ihn' : 'sie'} umsetzen`,
+    implementingHeading: `Entwürfe, die ${act.kind === 'beschluss' || act.kind === 'rahmenbeschluss' ? 'ihn' : 'sie'} ${transposed ? 'umsetzen' : 'durchführen'}`,
+    noneImplementing: transposed
+      ? 'Kein Entwurf im Fenster setzt den Rechtsakt neu um; die Entwürfe unten nennen ihn, weil das geltende Recht ihn schon umsetzt.'
+      : 'Kein Entwurf im Fenster führt den Rechtsakt neu durch; die Entwürfe unten nennen ihn, weil das geltende Recht ihn schon durchführt.',
+    seoTail: transposed
+      ? 'den Rechtsakt umsetzen, mit ihrer Begutachtung neben der Umsetzungsfrist'
+      : 'den Rechtsakt durchführen, mit ihrer Begutachtung',
     eurLexUrl: act.eurLexUrl,
     head,
     footnote: chart?.footnote ? null : footnote,

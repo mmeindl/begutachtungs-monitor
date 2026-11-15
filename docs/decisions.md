@@ -719,8 +719,10 @@ The code names the EU rules D1 to D7; this is where they are defined
     section. A section exists also where it holds one line today, so a
     later step of the EU cycle fills a place that is already there; none
     is empty — it says what the Cellar has or why it has nothing. The
-    last station's section holds the drafts and stands first, the others
-    follow in the rail's order. Rejected: one section „Das Verfahren"
+    sections stand in the rail's order, so the card is the page's table
+    of contents; the last one holds the drafts, which a directive's are
+    said to „umsetzen" and a regulation's or decision's to „durchführen".
+    Rejected: the drafts' section first, against the rail's order. Rejected: one section „Das Verfahren"
     for two stations, and outbound links in the rail.
   - **The Legislative Observatory is linked by rule, not by lookup:**
     procedures from 1994 on, of type COD, CNS or APP; the link says that the

@@ -83,6 +83,12 @@ describe('euActPageView', () => {
     expect(further.chart!.footnote).toBe('¹ Weitere Fristen für einzelne Bestimmungen: 01.01.2025')
     expect(further.footnote).toBeNull()
     const reg = euActPageView(response({ act: { ...response({}).act, kind: 'verordnung', label: 'Verordnung (EU) 2023/1114', transposition: null, adopted: null } }))
+    // A regulation is carried out, not transposed: the drafts' heading, the empty sentence and the description say so.
+    expect(reg.implementingHeading).toBe('Entwürfe, die sie durchführen')
+    expect(reg.noneImplementing).toContain('führt den Rechtsakt neu durch')
+    expect(reg.seoTail).toBe('den Rechtsakt durchführen, mit ihrer Begutachtung')
+    expect(v.noneImplementing).toContain('setzt den Rechtsakt neu um')
+    expect(euActPageView(response({ act: { ...response({}).act, kind: 'beschluss', transposition: null } })).implementingHeading).toBe('Entwürfe, die ihn durchführen')
     expect(reg.head).toEqual(['gilt unmittelbar, keine Umsetzungsfrist'])
   })
 
