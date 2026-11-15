@@ -223,8 +223,10 @@ describe('stations — what parliament did with the Vorlage', () => {
      Vorlage's list: both sources have to give the same answer, or this fix
      would have moved the majority case. */
   it('is identical to the mirror wherever the draft produced one Vorlage', () => {
+    // Not `[[], []]` (14.11.2026): an empty mirror cannot tell a list that
+    // names no change from no list at all, so it no longer stands for
+    // „unverändert" — see the unknown case below.
     const cases: [LawStationId[], string[]][] = [
-      [[], []],
       [['ausschuss'], ['Geändert im Ausschuss']],
       [['plenum'], ['Geändert im Plenum']],
       [['ausschuss', 'plenum'], ['Geändert im Ausschuss', 'Geändert im Plenum']],
@@ -244,6 +246,41 @@ describe('stations — what parliament did with the Vorlage', () => {
   it('falls back to the mirror when the Vorlage could not be read', () => {
     expect(parlament(enacted({ amendedIn: null }, [doc('Geändert im Plenum')])).facts)
       .toEqual(['im Plenum geändert'])
+  })
+
+  /* No text list anywhere (14.11.2026): 306 records of GP XXVII carry none.
+     770 d.B. (/entwuerfe/XXVII/77) read „Text unverändert beschlossen" while
+     its committee report 786 d.B. adopted the text with an
+     Abänderungsantrag. Unknown is „beschlossen", never „unverändert". */
+  describe('where no text list answers', () => {
+    const UNCHANGED = /unverändert/
+    const amendment = { amendments: [{ label: 'AA-38', url: 'https://x/AA-38' }], session: null }
+
+    it('says „beschlossen", for a Regierungsvorlage and for an Antrag', () => {
+      const d = enacted({ amendedIn: null })
+      expect(parliamentOutcome(d)).toBe('decided')
+      expect(parlament(d).facts).toEqual(['beschlossen'])
+      expect(parliamentStandDe(d, '2026-11-14', 'rv')).toBe('Der Nationalrat hat den Text beschlossen.')
+      expect(parliamentStandDe(d, '2026-11-14', 'antrag')).toBe('Der Nationalrat hat den Text beschlossen.')
+      for (const item of ['rv', 'antrag'] as const) expect(parliamentStandDe(d, '2026-11-14', item)).not.toMatch(UNCHANGED)
+    })
+
+    it('still says „im Plenum geändert" where the plenary adopted an Abänderungsantrag, and nothing about the committee', () => {
+      const d = enacted({ amendedIn: null, plenaryAmendments: amendment as never })
+      expect(parliamentOutcome(d)).toBe('amended')
+      expect(parlament(d).facts).toEqual(['im Plenum geändert'])
+      for (const item of ['rv', 'antrag'] as const) {
+        expect(parliamentStandDe(d, '2026-11-14', item)).toBe('Der Text wurde im Parlament weiter geändert.')
+      }
+    })
+
+    it('keeps „Text unverändert beschlossen" where the record has a list that names no change', () => {
+      const d = enacted({ amendedIn: [] })
+      expect(parliamentOutcome(d)).toBe('unchanged')
+      expect(parlament(d).facts).toEqual(['Text unverändert beschlossen'])
+      expect(parliamentStandDe(d, '2026-11-14', 'rv')).toBe('Der Nationalrat hat den Text der Regierungsvorlage unverändert beschlossen.')
+      expect(parliamentStandDe(d, '2026-11-14', 'antrag')).toBe('Der Nationalrat hat den Text des Antrags unverändert beschlossen.')
+    })
   })
 
   /* The comparison is resolved from the draft's own document list
@@ -402,7 +439,8 @@ describe('the four house outcomes on the page', () => {
        of the chain, and no reading of the prose beside it may move the page
        off „Gesetz geworden". */
     const d = draft({
-      enactment: { ...draft().enactment!, houseStatus: '5', houseStatusText: 'Beschlossen im Nationalrat' },
+      // A record with a text list that names no change.
+      enactment: { ...draft().enactment!, houseStatus: '5', houseStatusText: 'Beschlossen im Nationalrat', amendedIn: [] },
     })
     expect(procedureStatusDe(d)).toBe('Gesetz geworden')
     expect(parliamentOutcome(d)).toBe('unchanged')
@@ -505,7 +543,7 @@ describe('the third-reading vote on the Parlament row', () => {
   it('claims nothing where upstream kept no club list, and nothing before the vote', () => {
     expect(voteLineDe(null)).toBeNull()
     expect(voteLineDe(vote([], []))).toBeNull()
-    expect(row(withVote(null)).facts).toEqual(['Text unverändert beschlossen'])
+    expect(row(withVote(null, { amendedIn: [] })).facts).toEqual(['Text unverändert beschlossen'])
   })
 
   it('comes after the amendment, so the row reads in procedural order', () => {
@@ -821,7 +859,13 @@ describe('parliamentStandDe', () => {
   }
 
   it('says unchanged where the Vorlage reached the Bundesgesetzblatt as it was', () => {
-    expect(parliamentStandDe(draft(), TODAY)).toBe('Der Nationalrat hat den Text der Regierungsvorlage unverändert beschlossen.')
+    // „As it was" is a text list that names no change (14.11.2026).
+    const listed = draft({ enactment: { ...draft().enactment!, amendedIn: [] } })
+    expect(parliamentStandDe(listed, TODAY)).toBe('Der Nationalrat hat den Text der Regierungsvorlage unverändert beschlossen.')
+  })
+
+  it('says only „beschlossen" where no text list answers', () => {
+    expect(parliamentStandDe(draft(), TODAY)).toBe('Der Nationalrat hat den Text beschlossen.')
   })
 
   it('says amended where parliament changed the text', () => {

@@ -249,6 +249,43 @@ describe('vorlageStations', () => {
     expect(vorlageStatusDe(open)).toBe('Im Parlament')
     expect(vorlageStations(open)[2]).toMatchObject({ state: 'current', facts: ['in Behandlung'] })
   })
+
+  /* A record without a text list (14.11.2026): 306 of GP XXVII carry no
+     `statements` key, so `amendedStationsOf` gives null and the page's own
+     list is empty. Whether the committee changed the text is unknown —
+     1106/A of GP XXVII read „Text unverändert beschlossen". */
+  describe('where the record carries no text list', () => {
+    const withoutList = (name: string, ityp: 'I' | 'A', inr: number, e: EnactmentInfo): VorlageDetail => {
+      const { statements: _, ...content } = record(name) as VorlageContent & { statements?: unknown }
+      return {
+        ...assembleVorlageDetail({ root: { gp: 'XXVIII', ityp, inr }, content, enactment: e, currentGp: 'XXVIII', withoutBegutachtung: true }),
+        committeeConsultation: null,
+      }
+    }
+    const motion = { session: null, amendments: [{ label: 'AA-24', url: 'https://www.parlament.gv.at/gegenstand/XXVIII/AA/24' }] }
+
+    it('says „beschlossen" for an Antrag and for a Regierungsvorlage, never „unverändert"', () => {
+      const antrag = withoutList('XXVIII-A-372', 'A', 372, enactment({ amendedIn: null }))
+      expect(antrag.textEvolution).toEqual([])
+      expect(vorlageStations(antrag)[2]).toMatchObject({ state: 'done', facts: ['beschlossen'] })
+      expect(parliamentStandDe(antrag, undefined, 'antrag')).toBe('Der Nationalrat hat den Text beschlossen.')
+
+      const rv = withoutList('XXVIII-I-589', 'I', 589, enactment({ rvCitation: '589 d.B.', amendedIn: null }))
+      expect(vorlageStations(rv)[2]).toMatchObject({ state: 'done', facts: ['beschlossen'] })
+      expect(parliamentStandDe(rv, undefined, 'rv')).toBe('Der Nationalrat hat den Text beschlossen.')
+    })
+
+    it('still says „im Plenum geändert" where the plenary adopted an Abänderungsantrag', () => {
+      const antrag = withoutList('XXVIII-A-372', 'A', 372, enactment({ amendedIn: null, plenaryAmendments: motion }))
+      expect(vorlageStations(antrag)[2]).toMatchObject({ facts: ['im Plenum geändert'] })
+    })
+
+    it('keeps „Text unverändert beschlossen" where the list is there and names no change', () => {
+      const rv = withoutList('XXVIII-I-589', 'I', 589, enactment({ rvCitation: '589 d.B.', amendedIn: [] }))
+      expect(vorlageStations(rv)[2]).toMatchObject({ facts: ['Text unverändert beschlossen'] })
+      expect(parliamentStandDe(rv, undefined, 'rv')).toBe('Der Nationalrat hat den Text der Regierungsvorlage unverändert beschlossen.')
+    })
+  })
 })
 
 describe('the committee’s own consultation (10.11.2026)', () => {

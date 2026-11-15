@@ -326,6 +326,24 @@ describe('„unverändert" needs more than a missing Plenarfassung', () => {
     const [parlament] = laterStations({ enactment: withMotion, textEvolution: [], gpEnded: true, active: false, antragPath: null }, TODAY)
     expect(parlament.facts.slice(0, 2)).toEqual(['beschlossen', 'im Plenum geändert'])
   })
+
+  /* A record without a text list (306 of GP XXVII, 14.11.2026): after a
+     Beharrungsbeschluss the text is still not called unchanged — the list
+     that would say so is missing, not empty. */
+  it('a record without a text list is „beschlossen", after a Beharrungsbeschluss too', () => {
+    const e: EnactmentInfo = { ...enactmentFor('XXVII-A-84', A(84), 'XXVII-I-20', 'XXVIII'), amendedIn: null }
+    expect(parliamentOutcome({ enactment: e, textEvolution: [] })).toBe('decided')
+    expect(parliamentStandDe({ enactment: e, textEvolution: [] }, TODAY, 'antrag')).toBe('Der Nationalrat hat den Text beschlossen.')
+    const [parlament] = laterStations({ enactment: e, textEvolution: [], gpEnded: true, active: false, antragPath: null }, TODAY)
+    expect(parlament.facts.slice(0, 3)).toEqual(['beschlossen', 'Einspruch des Bundesrates', 'Beharrungsbeschluss'])
+
+    const withMotion: EnactmentInfo = {
+      ...e,
+      plenaryAmendments: { session: null, amendments: [{ label: 'AA-38', url: 'https://www.parlament.gv.at/gegenstand/XXVII/AA/38' }] },
+    }
+    const [amended] = laterStations({ enactment: withMotion, textEvolution: [], gpEnded: true, active: false, antragPath: null }, TODAY)
+    expect(amended.facts.slice(0, 2)).toEqual(['beschlossen', 'im Plenum geändert'])
+  })
 })
 
 describe('railSpeech — what the screen reader hears is what the row shows', () => {

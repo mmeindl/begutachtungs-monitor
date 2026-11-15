@@ -344,9 +344,12 @@ export async function enactmentOfItem(
       // ../ris/bgblService, as `findBgblIForItem` above).
       if (bgbl.number) enactment.bgblDate = await withinBudget(getBgblIssueDate(bgbl.number), BGBL_DATE_BUDGET_MS)
     }
-    // An empty array is an answer — „this Vorlage published no changed
-    // text" — and null is the absence of one. Only the second lets the
-    // spine fall back to the draft's mirror.
+    // Three cases (14.11.2026): stations where the record's text list names
+    // them; an empty array where a list is there and names neither —
+    // „this Vorlage published no changed text"; null where the record was
+    // unreadable or carries no list at all (306 of GP XXVII, e.g. 770 d.B.,
+    // changed in committee by report 786 d.B.). Only null lets the spine fall
+    // back to the draft's mirror, and without one the change is unknown.
     enactment.amendedIn = amendedStationsOf(rv.content?.statements?.documents)
     // Where the committee's changes are explained — the report it filed,
     // linked from the Verlauf of the same payload.

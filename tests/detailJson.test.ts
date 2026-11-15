@@ -439,12 +439,20 @@ describe('amendedStationsOf', () => {
       .toEqual(['ausschuss', 'plenum'])
   })
 
-  /* An empty array is an answer — "this Vorlage published no changed text" —
-     and it is what lets the page say „Text unverändert beschlossen". */
-  it('answers with an empty list when the Vorlage published no changed text', () => {
+  /* Three cases (14.11.2026): stations where the list names them; an empty
+     array where a list is there and names neither — "this Vorlage published
+     no changed text", the only ground for „Text unverändert beschlossen";
+     null where the record carries no list at all — unknown. 306 records of
+     GP XXVII have no `content.statements` (770 d.B.: changed in committee by
+     report 786 d.B., and the page said „unverändert"). */
+  it('answers with an empty list when the Vorlage\'s list names no changed text', () => {
     expect(amendedStationsOf([group('Gesetzestext')])).toEqual([])
     expect(amendedStationsOf([])).toEqual([])
-    expect(amendedStationsOf(null)).toEqual([])
+  })
+
+  it('answers null, not an empty list, where the record carries no text list', () => {
+    expect(amendedStationsOf(undefined)).toBeNull()
+    expect(amendedStationsOf(null)).toBeNull()
   })
 
   it('never counts the Vorlage\'s own text, nor a document that is not law text', () => {

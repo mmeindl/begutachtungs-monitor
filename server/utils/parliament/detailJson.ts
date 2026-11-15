@@ -888,10 +888,19 @@ const PARLIAMENT_LAW_STATIONS: readonly LawStationId[] = ['ausschuss', 'plenum']
  *
  * Only the two parliamentary stations: the list's first entry is the
  * Vorlage's own Gesetzestext, which is the text those two are changes TO.
+ *
+ * NO LIST IS NO ANSWER (14.11.2026): null where the record carries no text
+ * list at all, an array — empty only where a list was there and named
+ * neither station. 306 records of GP XXVII (promulgated 2019 to early 2022)
+ * have no `content.statements`; read as an empty list, their pages said „Text
+ * unverändert beschlossen". 770 d.B. of GP XXVII: committee report 786 d.B.
+ * adopts the text „unter Berücksichtigung des … Abänderungsantrages", and the
+ * record lists no text (docs/research/plenum-aenderung-ohne-textliste.md).
  */
 export function amendedStationsOf(
   groups: RawDocumentGroup[] | null | undefined,
-): LawStationId[] {
+): LawStationId[] | null {
+  if (!Array.isArray(groups)) return null
   const seen = new Set<LawStationId>()
   for (const version of mapTextEvolution(groups)) {
     if (version.stationId === 'ausschuss' || version.stationId === 'plenum') {

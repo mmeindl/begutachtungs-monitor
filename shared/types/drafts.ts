@@ -447,9 +447,10 @@ export interface EnactmentInfo {
   bgblDate?: string | null
   /**
    * Where the Vorlage NAMED ABOVE published a changed text — `['ausschuss']`,
-   * `['ausschuss', 'plenum']`, or `[]` when it published none. Null when its
-   * record could not be read; only then may the draft's own mirror of that
-   * list answer instead.
+   * `['ausschuss', 'plenum']`, or `[]` when its text list names neither. Null
+   * when its record could not be read or carries no text list at all (306
+   * records of GP XXVII, 14.11.2026) — unknown, never „unchanged"; only then
+   * may the draft's own mirror of that list answer instead.
    *
    * It exists because the mirror belongs to one Vorlage and the BGBl number
    * above to another whenever a draft produced several (ME→RV is 1:n).

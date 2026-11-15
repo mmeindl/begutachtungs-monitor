@@ -387,8 +387,16 @@ const carries = (d: Pick<DraftDetail, 'textEvolution'>, prefix: string) =>
  * changed in committee and in the plenary and promulgated as BGBl. I 50/2025.
  * The bar read the silence and stated „Text unverändert beschlossen".
  *
- * `amendedIn === null` means the Vorlage's record was unreadable, never that
- * it changed nothing; the mirror is then the best evidence left.
+ * THREE CASES, NOT TWO (14.11.2026). `amendedIn` is an array where the
+ * Vorlage's record carries a text list — empty where the list names neither
+ * station, which is the only ground for „unverändert" —, and null where the
+ * record was unreadable or carries no list at all. Then the mirror is the
+ * best evidence left; where it names no parliamentary text either, the
+ * mirror cannot tell a list without changes from no list, and whether the
+ * text changed is unknown (`listed: false`). 306 records of GP XXVII carry no
+ * list: 770 d.B., whose committee report 786 d.B. adopts the text „unter
+ * Berücksichtigung des … Abänderungsantrages", read „Text unverändert
+ * beschlossen" (docs/research/plenum-aenderung-ohne-textliste.md).
  *
  * A SECOND WITNESS FOR THE PLENUM (14.11.2026): an Abänderungsantrag the
  * Nationalrat adopted in plenary (`plenaryAmendments`, read off the same
@@ -397,17 +405,28 @@ const carries = (d: Pick<DraftDetail, 'textEvolution'>, prefix: string) =>
  * 484/A each adopted one (AA-38, AA-39, AA-37) — and once their Kundmachung
  * was read they stood as „Text unverändert beschlossen" above the frame row
  * that names the motion. The documents decide only what can be compared
- * (`lastParliamentStation`); the fact may rest on the Verlauf.
+ * (`lastParliamentStation`); the fact may rest on the Verlauf. It holds in
+ * the unknown case too (267 of 267 where both witnesses exist, 12 of 12 read
+ * where only the Verlauf does); it says nothing about the committee.
  */
-function amendedStations(d: ParliamentFacts): readonly LawStationId[] {
+interface TextChanges {
+  /** The bodies that changed the text, in procedural order. */
+  stations: readonly LawStationId[]
+  /** Whether a text list answered — false: a station missing from
+   *  `stations` may still have changed it. */
+  listed: boolean
+}
+
+function amendedStations(d: ParliamentFacts): TextChanges {
   const fromRv = d.enactment?.amendedIn
   const stations: LawStationId[] = fromRv ? [...fromRv] : []
   if (!fromRv) {
     if (carries(d, AUSSCHUSS)) stations.push('ausschuss')
     if (carries(d, PLENUM)) stations.push('plenum')
   }
+  const listed = Boolean(fromRv) || stations.length > 0
   if (!stations.includes('plenum') && (d.enactment?.plenaryAmendments?.amendments.length ?? 0) > 0) stations.push('plenum')
-  return stations
+  return { stations, listed }
 }
 
 /**
@@ -501,7 +520,8 @@ export function parliamentOutcome(
 ): 'unchanged' | 'amended' | 'pending' | 'lapsed' | HouseOutcome | null {
   const e = d.enactment
   if (!e) return null
-  const amended = amendedStations(d).length > 0
+  const changes = amendedStations(d)
+  const amended = changes.stations.length > 0
   // The Kundmachung is the end of the chain and outranks every reading of
   // the status text: what is in the Bundesgesetzblatt was decided.
   if (e.bgblNumber) {
@@ -512,6 +532,9 @@ export function parliamentOutcome(
     const after = e.bundesratObjection?.outcome
     if (amended || after === 'new-decision') return 'amended'
     if (after && after !== 'beharrung') return 'decided'
+    // No text list to read (14.11.2026, `amendedStations`): a Beschluss, and
+    // nothing said about the text — 'decided', as for the Einspruch above.
+    if (!changes.listed) return 'decided'
     return 'unchanged'
   }
   const house = houseOutcomeOf(e.houseStatus, e.houseStatusText)
@@ -638,6 +661,10 @@ export function mergedStandDe(e: EnactmentInfo, item: ParliamentItem = 'rv'): {
   return { lead, link, tail, text: `${lead}${label}${tail}` }
 }
 
+/** A Beschluss and nothing said about its text — after an Einspruch, and
+ *  where the record carries no text list (14.11.2026, `amendedStations`). */
+const DECIDED_TEXT_DE = 'Der Nationalrat hat den Text beschlossen.'
+
 function decidedStandDe(e: EnactmentInfo, today: string): string {
   const state = promulgationState(e, today)
   if (state === 'explicit') {
@@ -655,6 +682,9 @@ function decidedStandDe(e: EnactmentInfo, today: string): string {
       ? `Nationalrat und Bundesrat haben den Text beschlossen; kundgemacht ist er seit dem ${since} nicht.`
       : `Der Nationalrat hat den Text beschlossen; kundgemacht ist er seit dem ${since} nicht.`
   }
+  // Promulgated, and no text list said whether it changed (`parliamentOutcome`):
+  // the Kundmachung stands in its own station, the text is not judged.
+  if (e.bgblNumber) return DECIDED_TEXT_DE
   // At the Bundesrat: the window is still open there, and this is
   // the step the text is at.
   if ((e.filingOpen || e.houseStatus === '4') && e.bundesratArrivedAt && !e.bundesratDecidedAt) {
@@ -830,7 +860,7 @@ function objectionStandDe(
   if (outcome === 'unchanged' || outcome === 'amended') {
     return outcomeSentencesOf(item)[outcome]
   }
-  return 'Der Nationalrat hat den Text beschlossen.'
+  return DECIDED_TEXT_DE
 }
 
 /* The credit line under the frames of „Die Regierungsvorlage" and „Im
@@ -869,7 +899,7 @@ export function laterStations(d: LaterStationFacts, today: string = todayIso()):
    *  report without a comparison behind it. Read from the Vorlage that
    *  carries the outcome, so the fact and the Kundmachung beside it are
    *  about the same Vorlage. */
-  const changedIn = amendedStations(d)
+  const changedIn = amendedStations(d).stations
   const ausschuss = changedIn.includes('ausschuss')
   const plenum = changedIn.includes('plenum')
   const amended = ausschuss && plenum

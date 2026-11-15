@@ -145,6 +145,15 @@ gets an entry of its own only where it carries a reason the rule does not.
   cannot (§12.21, §12.26, §12.28).
 - **In a closed period where no draft links beyond the Begutachtung, absence
   is an archive gap, not a finding** (§12.27).
+- **„Text unverändert beschlossen" needs a text list that says so**
+  (14.11.2026). 306 records of GP XXVII, promulgated 2019 to early 2022,
+  carry no list of text versions at all; read as an empty list, 226 pages
+  said „unverändert", and three of three committee reports read said the
+  committee had changed the text. No list is unknown (`amendedIn: null`):
+  the draft's own copy of the list answers where it names a changed text,
+  otherwise the page says „beschlossen" and nothing about the text. An
+  Abänderungsantrag adopted in plenary still says „im Plenum geändert"
+  (`docs/research/plenum-aenderung-ohne-textliste.md`).
 - **„Noch nicht kundgemacht" needs one of two signals:** Parliament's own
   „Keine Kundmachung" stage, or no promulgation 120 days after the final
   decision — the Bundesrat's Beschluss; after an Einspruch the Nationalrat's

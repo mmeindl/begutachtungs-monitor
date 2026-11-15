@@ -106,6 +106,13 @@ describe('the Vorlage’s readers apply to an Antrag’s record as is', () => {
     expect(findPlenaryAmendments(a372.phase)?.amendments.map((m) => m.label)).toEqual(['AA-24'])
     expect(amendedStationsOf(a372.statements.documents)).toEqual(['ausschuss', 'plenum'])
   })
+  /* 306 records of GP XXVII carry no `statements` key at all (their documents
+     sit under `documents`): no list, so unknown — never „no changed text"
+     (14.11.2026). */
+  it('reads a record without a text list as unknown, not as unchanged', () => {
+    const { statements: _, ...withoutList } = a372
+    expect(amendedStationsOf((withoutList as { statements?: { documents?: never } }).statements?.documents)).toBeNull()
+  })
   it('reads a namentliche Abstimmung as no club vote, as on a Vorlage', () => {
     expect(parseVote(a372.vote)).toBeNull()
     expect(parseVote(record('XXVIII-A-1007').vote)?.against).toEqual(['GRÜNE'])
