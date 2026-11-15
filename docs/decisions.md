@@ -881,9 +881,11 @@ memo `docs/research/wege-ausserhalb-der-stationen.md`.
   is not read at all.
 - **No stage text is passed through.** The course is typed facts from a
   closed vocabulary; a stage no pattern recognises is counted and the page
-  says that a step could not be read. The committee ends an item in two
-  ways and no third occurred in 616 items: Kenntnisnahme im Ausschuss,
-  Zuweisung an einen Fachausschuss.
+  says that a step could not be read. The committee ends an item in three
+  ways: Kenntnisnahme im Ausschuss, Zuweisung an einen Fachausschuss, and,
+  once in 1,100 items (144/PET XXIV), Übermittlung an die Volksanwaltschaft,
+  which the plenary agrees to. Forwarding to the Bundesregierung occurs
+  nowhere and has no step.
 - **Framing.** The step is named in Parliament's words („zur Kenntnis
   genommen") and no sentence weighs it. No tally of outcomes anywhere, the
   list sorts by the last step and never by outcome, every closed state has
@@ -916,10 +918,21 @@ memo `docs/research/wege-ausserhalb-der-stationen.md`.
 - **The section is called „Anliegen an das Parlament"** since the Bundesrat's
   petitions are in it (one constant, `ANLIEGEN_SECTION_DE`); sentences about
   the Nationalrat keep its name. The address stays `/anliegen`.
-- **The list offers GP XXV to the running period,** the periods the reader
-  was measured on; older Volksbegehren (from XXII) answer by address. In an
-  ended period „Nur offene" is unavailable and says why, and the records
-  take the long TTL of settled periods.
+- **The list offers GP XXII to the running period** (15.11.2026), the
+  periods the reader is measured on. It started at XXV until the older
+  periods were read: there the Sammelbericht is a stage of its own in five
+  spellings („Sammelbericht über die Petitionen Nr. … (N d.B.)"), which the
+  reader did not know on most items. In an ended period „Nur offene" is
+  unavailable and says why, and the records take the long TTL of settled
+  periods.
+- **Members of the Nationalrat are cut from the record too,** not only
+  private persons: their names stand in their own motions („Antrag der
+  Abgeordneten …") and in two titles („überreicht vom Abgeordneten …").
+  Until 15.11.2026 the cached record kept them.
+- **The plenary's vote on the Sammelbericht is the one shown.** On a
+  forwarded item a later vote on the subject committee's report used to
+  overwrite it and misdate the Sammelbericht (19 items of XXV to XXVII).
+  What the plenary did with the subject committee's report is not read.
 - **Licence.** Parliament's datasets „Petitionen" and „Bürgerinitiativen"
   are CC BY 4.0 for the result lists and the items' pages; everything about
   Stellungnahmen is excluded there too. The numbers of Unterstützungen are
@@ -1188,7 +1201,9 @@ circular of 10.12.2015).
 | The two flags against each other and against list 143's `AKTIV` | never differ (44 open, 572 closed); `AKTIV` agrees on 65 of 65 | 616 items; GP XXVIII · 15.11.2026 |
 | When the window closes | closed on exactly the 21 whose Kenntnisnahme the plenary has taken note of; open on all 8 forwarded | 65 items, GP XXVIII · 15.11.2026 |
 | Requests of the committee for a statement | 1,796, addressee free text, 222 with a person behind „;" | 616 items · 15.11.2026 |
-| Stages the reader does not recognise | 7 of 616 Petitionen and Bürgerinitiativen, 4 of 85 Volksbegehren | whole corpus · 15.11.2026 |
+| Stages the reader does not recognise | 2 of 1,100 Petitionen and Bürgerinitiativen of GP XXII–XXVIII („Abstandnahme von der weiteren Verhandlung", „Änderung der Vorlage"), 4 of 85 Volksbegehren | whole corpus · 15.11.2026 |
+| The same before the older shapes were read | XXII 115 of 124 items with an unread stage, XXIII 36 of 66, XXIV 195 of 294 | 15.11.2026 |
+| Names in anything assembled or cached, all periods and kinds | 0 of 1,427 named and 20,179 linked persons | 1,227 records · 15.11.2026 |
 | Erstunterzeichner names in anything assembled or cached | 0 of 300 | 701 records · 15.11.2026 |
 | Names on Bundesrat petitions (members handing in, Berichterstatter, movers) in the reduced record or the detail | 0 of 113, full name or surname | 42 records · 15.11.2026 |
 | Anliegen list, cold | running period 3.8 s (70 + 42 records), GP XXVII 14.6 s (265 + 42); warm under 0.1 s | Parliament answering in about 1 s · 15.11.2026 |

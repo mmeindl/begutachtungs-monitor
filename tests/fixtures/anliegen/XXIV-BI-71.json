@@ -1,0 +1,75 @@
+{
+  "content": {
+    "ityp": "BI",
+    "doktyp": "BI",
+    "title": "Österreich braucht Hufpfleger",
+    "zitation": "71/BI",
+    "einlangen": "2013-09-23T00:00:00",
+    "statementsstate": "0",
+    "approvalstate": "0",
+    "status": {
+      "number": 3,
+      "description": "Verhandlungsgegenstand der nächstfolgenden GP gem. § 21 Abs. 1a GOG (<a href=\"/gegenstand/XXV/BI/30\">30/BI/XXV. GP</a>)"
+    },
+    "phase": [
+      {
+        "name": "Einlangen NR",
+        "stages": [
+          {
+            "date": "23.09.2013",
+            "text": "Einlangen im Nationalrat"
+          }
+        ]
+      },
+      {
+        "name": "Ausschussberatungen NR",
+        "stages": [
+          {
+            "date": "25.09.2013",
+            "text": "Zuweisung an den <a href=\"/ausschuss/XXIV/A-PB/1/00297\">Ausschuss für Petitionen und Bürgerinitiativen</a>"
+          },
+          {
+            "date": "28.10.2013",
+            "text": "Verhandlungsgegenstand der nächstfolgenden GP gem. § 21 Abs. 1a GOG (<a href=\"/gegenstand/XXV/BI/30\">30/BI/XXV. GP</a>)"
+          },
+          {
+            "date": "15.07.2014",
+            "text": "<a href=\"/gegenstand/XXIV/NRSITZ/220\">220. Sitzung des Nationalrates</a>"
+          }
+        ]
+      }
+    ],
+    "documents": [
+      {
+        "title": "Bürgerinitiative  (gescannte datenschutzkonforme Version)",
+        "documents": [
+          {
+            "link": "/dokument/XXIV/BI/71/imfname_325891.pdf",
+            "type": "PDF"
+          }
+        ]
+      },
+      {
+        "title": "Bürgerinitiative (textinterpretierte Version)",
+        "documents": [
+          {
+            "link": "/dokument/XXIV/BI/71/fname_325900.pdf",
+            "type": "PDF"
+          },
+          {
+            "link": "/dokument/XXIV/BI/71/fnameorig_325900.html",
+            "type": "HTML"
+          }
+        ]
+      }
+    ],
+    "names": [
+      {
+        "funktext": "Erstunterzeichnerin/Erstunterzeichner",
+        "name": "Name Platzhalter",
+        "frak_code": null
+      }
+    ],
+    "reference": []
+  }
+}

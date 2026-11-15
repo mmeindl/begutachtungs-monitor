@@ -302,9 +302,38 @@ below is the state before step 4 and is kept for the record.
 - **Privacy on the Bundesrat petitions:** 113 names in the 42 records
   (members handing in, Berichterstatter, movers), none in the reduced
   record or the detail, by full name or surname.
-- **Open:** the period select starts at XXV although Volksbegehren have
-  pages from XXII; the Petitionen and Bürgerinitiativen of XXII to XXIV
-  are not measured yet.
+- **GP XXII to XXIV, measured 15.11.2026** (`pnpm corpus:anliegen -- --gp`,
+  484 Petitionen and Bürgerinitiativen): the reader does not hold there.
+  Most items carry a stage it does not know (73 of 92 Petitionen in XXII,
+  155 of 220 in XXIV), because the Sammelbericht is worded differently
+  („Sammelbericht über die Petitionen Nr. … sowie über die
+  Bürgerinitiativen …" as a stage of its own, with „Auf der Tagesordnung …
+  Miterledigung"), and a third ending occurs once: „Antrag auf Übermittlung
+  an Volksanwaltschaft" (XXIV), which the plenary agreed to. The two flags
+  and list 143 agree there too. So the select starts at XXV for a reason;
+  Volksbegehren of XXII to XXIV have pages and no list. To open these
+  periods the reader needs three shapes: the older Sammelbericht, the
+  Miterledigung, the Übermittlung an die Volksanwaltschaft.
+- **Done the same day:** the reader knows these shapes, and the select
+  starts at XXII. Of 1,100 Petitionen and Bürgerinitiativen of XXII to
+  XXVIII two keep an unread stage; 354, 122 and 1,796 for XXV to XXVIII did
+  not move; 20 older items read by hand against the record are true. Found
+  on the way and fixed: members' names in their own motions were kept in
+  the cached record, and a later plenary vote misdated the Sammelbericht on
+  19 forwarded items. Sweep over all 1,227 cached records: no name
+  survives. Cold list for XXIV (296 rows): 16.9 s, close to the 20 s limit.
+- **Club codes of earlier periods, added 15.11.2026:** B „BZÖ", T
+  „STRONACH", P „PILZ", J „JETZT", each read off a vote record of its
+  time. „A" (no club) stays unknown.
+- **A larger pool does not shorten a cold period.** Eight record reads at a
+  time instead of four changed nothing measurable: 23 to 28 records a
+  second either way, GP XXIV 13 to 17 s, XXVII 13 to 18 s cold; the
+  reader's own work is under 0.1 s for a whole period, and Parliament
+  answers a parallel burst faster than that. Where the rest goes is not
+  found. The pool stays at four. Left as it is: an ended period is cold
+  only for its first visitor after a restart, and late reads fill the
+  cache.
+- **Open:** the corpus script's default periods are still XXV to XXVIII.
 - **Licence, open:** no dataset of Parliament's is named for Volksbegehren;
   the Impressum says how we read it, and the question is noted.
 - **Measured:** GP XXVII (265 items) cold 12 to 15 s, warm under 0.1 s,

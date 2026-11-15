@@ -55,12 +55,20 @@ export function anliegenArrivedInGp(arrivedAt: string | null, gp: string): boole
 }
 
 /**
- * The oldest period the list offers. The reader is measured on GP XXV to
- * XXVIII (`pnpm corpus:anliegen`, 15.11.2026: 616 Petitionen and
- * Bürgerinitiativen); an older period's list would say states nobody checked.
- * A page of an older item still answers (its address is Parliament's).
+ * The oldest period the list offers. The reader is measured on GP XXII to
+ * XXVIII (`pnpm corpus:anliegen -- --gp …`, 15.11.2026: 1,100 Petitionen and
+ * Bürgerinitiativen, one stage unread in XXII and one in XXV, 20 items of
+ * XXII–XXIV read by hand against the record); an older period's list would
+ * say states nobody checked. A page of an older item still answers (its
+ * address is Parliament's).
+ *
+ * It equals `VOLKSBEGEHREN_FIRST_GP` (server/utils/parliament/anliegen.ts)
+ * by measurement, not by definition: that one is where a Volksbegehren's
+ * record starts to carry its course, this one where the reader was checked
+ * over the Petitionen and Bürgerinitiativen. Two constants, so that moving
+ * one does not move the other.
  */
-export const ANLIEGEN_FIRST_LIST_GP = 'XXV'
+export const ANLIEGEN_FIRST_LIST_GP = 'XXII'
 
 /** The periods the list offers, newest first: the running one down to `ANLIEGEN_FIRST_LIST_GP`. */
 export function anliegenListGps(currentGp: string): string[] {
@@ -227,7 +235,8 @@ export function anliegenRootOfHref(href: string | null | undefined): AnliegenRoo
  * Where an item stands, in the order of the evidence: carried into the next
  * period; forwarded to a subject committee (with its report, where one
  * stands — what the plenary did with it is not read); taken note of in the
- * committee; a Volksbegehren taken note of by the Nationalrat; the plenary
+ * committee; to be passed to the Volksanwaltschaft (agreed by the plenary,
+ * or the committee's motion alone); a Volksbegehren taken note of by the Nationalrat; the plenary
  * took note of a report with no disposal read; open in a period that has
  * ended (`periodEnded`, never without it); otherwise in deliberation.
  *
@@ -256,7 +265,21 @@ export function anliegenStateOf(
     if (sc.report) return { kind: 'weitergeleitet-bericht', committee: sc.name, report: sc.report.citation }
     return { kind: 'weitergeleitet', committee: sc.name, date: course.disposal?.date ?? null }
   }
-  if (course.disposal?.kind === 'kenntnisnahme') return { kind: 'kenntnisnahme-ausschuss', date: course.disposal.date }
+  const disposal = course.disposal
+  if (disposal) {
+    switch (disposal.kind) {
+      case 'kenntnisnahme':
+        return { kind: 'kenntnisnahme-ausschuss', date: disposal.date }
+      case 'volksanwaltschaft': {
+        // Agreed only where the plenary's step is the vote on the Übermittlung.
+        const agreed = course.plenary?.kind === 'uebermittlung-zugestimmt'
+        return { kind: 'volksanwaltschaft', date: agreed ? course.plenary!.date : disposal.date, agreed }
+      }
+      case 'zuweisung':
+        // Without a subject committee (never so far): the plenary's step below, else open.
+        break
+    }
+  }
   if (course.plenary) {
     return root.kind === 'volksbegehren' && course.plenary.kind === 'kenntnisnahme'
       ? { kind: 'volksbegehren-kenntnisnahme', date: course.plenary.date }

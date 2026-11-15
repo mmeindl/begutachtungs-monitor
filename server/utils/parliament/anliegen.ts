@@ -26,6 +26,9 @@
  *    adopted, never whom it asks: 222 of 1,796 addressees carry a person
  *    behind a „;", others behind a „*", and some requests go to a person
  *    alone.
+ *  - A media reference („siehe auch <Medium oder Autor> (2006): <Schlagzeile>.
+ *    (N/MED-K/XXII. GP)", 19 on 80/PET XXII) names authors and quotes
+ *    headlines; it is cut to „siehe auch (gekürzt)" before anything keeps it.
  *  - No stage text is returned at all, only the typed facts read off it.
  */
 import type {
@@ -184,15 +187,47 @@ const REQUEST_ADOPTED = /-\s*angenommen\s*$/
 const BR_REPORTER_STAGE = /^(\d+\. Sitzung)\s*:\s*Berichterstattung durch\b/
 const BR_RESOLUTION_STAGE = /^Unselbständiger Entschließungsantrag der Bundesr(?:ä|a)t/
 const BR_RESOLUTION_ADOPTED = /\bangenommen\s*\((\d+\/E-BR\/\d+)\)/
+/** A media reference of GP XXII („siehe auch … (N/MED-K/XXII. GP)"): an author's name and a headline; cut whole, whatever follows „siehe auch". */
+const MEDIA_STAGE = /^siehe auch\b/
+const MEDIA_REDUCED = 'siehe auch (gekürzt)'
+/**
+ * The members' own steps in a sitting of the Nationalrat, which name them
+ * (with `/person/` links): a procedural motion „Antrag der Abgeordneten …
+ * (N/GO)" and an „Unselbständiger Entschließungsantrag der Abgeordneten …".
+ * The reader keeps no fact of either (`IGNORED_IN_SESSION`); the record keeps
+ * the sitting and the kind of step, no name (since 15.11.2026: until then
+ * the Nationalrat's records kept them whole, the Bundesrat's not).
+ */
+const NR_MOTION_STAGE = /^(\d+\.\s*Sitzung des Nationalrates)\s*:\s*Antrag de[rs] Abgeordneten\b.*?(\(\s*\d+\/GO\s*\))/
+/**
+ * „…, überreicht vom Abgeordneten <Name>" — the members who handed a
+ * Petition in, named in its title (64/PET XXII, in list 101 and the record)
+ * and in a sitting's line (11/PET XXII). Shown by club only (decision 6 of
+ * the plan), so the phrase and what follows it go; up to the next tag in a
+ * stage, to the end in a title.
+ */
+const PRESENTER_PHRASE = /,?\s*überreicht vo[mn]\b[^<]*/g
+/** A Petition's title without the members who handed it in (`PRESENTER_PHRASE`). */
+export function anliegenTitleOf(title: string | null | undefined): string {
+  return (title ?? '').replace(PRESENTER_PHRASE, '').trim()
+}
+const NR_RESOLUTION_MOTION_STAGE = /^(\d+\.\s*Sitzung des Nationalrates)\s*:\s*Unselbständiger Entschließungsantrag der Abgeordneten\b/i
 
 /**
  * A stage cut to what may be kept: the addressee of a request for a
- * statement, a Bundesrat's Berichterstatter and the movers of an
- * Entschließungsantrag are replaced, keeping only what the reader reads
- * off the line (adopted or not, the Entschließung's number).
+ * statement, a Bundesrat's Berichterstatter, the movers of an
+ * Entschließungsantrag and a media reference's author and headline are
+ * replaced, keeping only what the reader reads off the line (adopted or
+ * not, the Entschließung's number).
  */
 function reduceStageText(text: string): string {
   const plain = stripHtmlToText(text)
+  if (MEDIA_STAGE.test(plain)) return MEDIA_REDUCED
+  if (/überreicht vo[mn]\b/.test(plain)) return text.replace(PRESENTER_PHRASE, ' (gekürzt)')
+  const motion = NR_MOTION_STAGE.exec(plain)
+  if (motion?.[1] && motion[2]) return `${motion[1]}: Antrag der Abgeordneten (gekürzt) ${motion[2]}`
+  const resolutionMotion = NR_RESOLUTION_MOTION_STAGE.exec(plain)
+  if (resolutionMotion?.[1]) return `${resolutionMotion[1]}: Unselbständiger Entschließungsantrag der Abgeordneten (gekürzt)`
   if (REQUEST_STAGE.test(plain)) {
     const adopted = REQUEST_ADOPTED.test(plain)
     return `Antrag auf Einholung einer Stellungnahme von (gekürzt)${adopted ? ' - <b>angenommen</b>' : ''}`
@@ -210,8 +245,10 @@ function reduceStageText(text: string): string {
  * The record as it may be kept: the keys this module reads, `names[]`
  * reduced to the presenters' function text and club (no name), every stage cut to its date and text (the
  * speakers' table and the protocol anchors beside it go), and the addressee
- * of every request for a statement, a Bundesrat's Berichterstatter and the
- * movers of an Entschließungsantrag replaced (`reduceStageText`) — so no
+ * of every request for a statement, a Bundesrat's Berichterstatter, the
+ * members named in their own motions in either chamber and every media
+ * reference replaced
+ * (`reduceStageText`) — so no
  * name reaches a cache, whatever reads the record next.
  */
 export function reduceAnliegenContent(content: AnliegenContent | null | undefined): AnliegenContent | null {
@@ -223,7 +260,7 @@ export function reduceAnliegenContent(content: AnliegenContent | null | undefine
   return {
     ityp: content.ityp ?? null,
     doktyp: content.doktyp ?? null,
-    title: content.title ?? null,
+    title: content.title == null ? null : anliegenTitleOf(content.title),
     zitation: content.zitation ?? null,
     einlangen: content.einlangen ?? null,
     statementsstate: content.statementsstate ?? null,
@@ -303,10 +340,10 @@ type StageEvent =
   | { t: 'assign'; name: string; frist: string | null }
   | { t: 'sitting'; committee: string; adjourned: boolean }
   | { t: 'entry'; committee: string }
-  | { t: 'disposal'; kind: 'kenntnisnahme' | 'zuweisung'; to: string | null; vote: AnliegenClubVote | null; majorityOnly: boolean }
+  | { t: 'disposal'; kind: AnliegenDisposal['kind']; to: string | null; vote: AnliegenClubVote | null; majorityOnly: boolean }
   | { t: 'sammelbericht'; ref: AnliegenReportRef }
   | { t: 'report'; committee: string; ref: AnliegenReportRef }
-  | { t: 'plenary'; kind: 'bericht-zur-kenntnis' | 'kenntnisnahme'; vote: AnliegenClubVote | null; majorityOnly: boolean }
+  | { t: 'plenary'; kind: AnliegenPlenary['kind']; vote: AnliegenClubVote | null; majorityOnly: boolean }
   | { t: 'first-reading' }
   | { t: 'duty'; which: 'deliberationBy' | 'reportBy'; day: string }
   | { t: 'resolution'; ref: string; adopted: boolean }
@@ -318,13 +355,21 @@ const COMMITTEE_PREFIX = /^([^:]*?(?:ausschu(?:ss|ß)|Ausschu(?:ss|ß))[^:]*?)\s
 const SUBCOMMITTEE = /^Unterausschuss de[rs]\b/
 
 // Lines that are known and carry no fact the course keeps (step 0's
-// vocabulary). Anchored on the whole line: a known line with something
-// after it — „Auf der Tagesordnung der 12. Sitzung des Nationalrates
-// Miterledigung" — is not this line and stays unread.
+// vocabulary, and GP XXII–XXIV's since 15.11.2026). Anchored on the whole
+// line: a known line with something after it is not this line and stays
+// unread.
 const IGNORED_WHOLE: readonly RegExp[] = [
   /^Verhandlungsgegenstand gem\. § 21 Abs\. 1a GOG$/,
   /^Vorgesehen für den .+$/,
-  /^Auf der Tagesordnung der \d+\. Sitzung des Nationalrates$/,
+  // „… Miterledigung": the item dealt with under another item of the
+  // sitting's agenda (49 items, GP XXII–XXV) — the plenary's own step on
+  // the report stands beside it and is read there.
+  /^Auf der Tagesordnung der \d+\. Sitzung des Nationalrates(?: Miterledigung)?$/,
+  // A sitting named and nothing else (5 items, XXIV, dated 15.07.2014, after
+  // the period's end): no step (`NO_STEP`).
+  /^\d+\. Sitzung des Nationalrates$/,
+  // Media references, raw and reduced (`MEDIA_STAGE`): no step.
+  MEDIA_STAGE,
   /^Wortmeldungen in der Debatte$/,
   /^Antrag auf Ausschussbegutachtung der Vorlage \(\d+\/AUA\)$/,
   /^Übermittlung des Beschlusses an .+$/,
@@ -347,6 +392,8 @@ const IGNORED_IN_SESSION: readonly RegExp[] = [
 // After „<Ausschuss>:".
 const IGNORED_IN_COMMITTEE: readonly RegExp[] = [
   /^$/,
+  // The committee's procedure (GP XXII–XXIV, 8 items, also in subject committees).
+  /^Antrag auf Ergänzung der Tagesordnung$/,
   /^Beschlussfassung auf Einholung schriftlicher Stellungnahmen im Rahmen eine[sr] "?Ausschussbegutachtung/,
 ]
 // After „<Ausschuss>:" — a stage of that committee that is no sitting and no report.
@@ -367,6 +414,21 @@ const DISPOSAL_KENNTNIS = /^Antrag, die (?:Petition|parlamentarische Bürgerinit
 // „plenary only" (step 0).
 const DISPOSAL_ZUWEISUNG = /^Ersuchen an (?:den Präsidenten|die Präsidentin) um Zuweisung an den (.+?)(?:\s+(?:mehrstimmig|einstimmig|Einstimmig)\b.*)?$/
 const SAMMELBERICHT = /^Sammelbericht des Ausschusses für Petitionen und Bürgerinitiativen \((\d+\s*d\.B\.)\)$/
+/**
+ * The same report as GP XXII–XXIV word it, the items listed in the line and
+ * the Beilage at its end, all of it one link to „/gegenstand/<GP>/I/<N>":
+ * „Sammelbericht über die Petitionen Nr. 2, 3 … sowie über die
+ * Bürgerinitiativen Nr. 1 … (261 d.B.)", „Sammelbericht des Ausschusses für
+ * Petitionen und Bürgerinitiativen über die Petitionen Nr. …", „SAMMELBERICHT
+ * über die …", „SAMMELBERICHT Petitionen Nr. 2-7, 9 und 13 Bürgerinitiativen
+ * Nr. …", and without the word: „Petitionen Nr. … sowie über die
+ * Bürgerinitiativen Nr. … (1612 d.B.)" (15.11.2026, 1,100 records).
+ */
+const SAMMELBERICHT_LISTED = /^(?:(?:Sammelbericht|SAMMELBERICHT)\s+(?:des Ausschusses für Petitionen und Bürgerinitiativen\s+)?(?:über die\s+)?)?Petitionen Nr\.\s[^()]*\((\d+\s*d\.B\.)\)$/
+/** The third way the committee ended an item (144/PET XXIV, the only one in GP XXII–XXVIII); the line carries no result. */
+const DISPOSAL_VOLKSANWALTSCHAFT = /^Antrag auf Übermittlung an (?:die )?Volksanwaltschaft$/
+/** The plenary's step on it: a vote on the Übermittlung, not on a report. */
+const PLENARY_VOLKSANWALTSCHAFT = /^Antrag, der Übermittlung an die Volksanwaltschaft zuzustimmen, angenommen\b/
 const COMMITTEE_REPORT = /^(?:Miterledigt mit )?Bericht (\d+\s*d\.B\.)(?:\s+und Zu \d+\s*d\.B\.)?$/
 const PLENARY_REPORT = /^(?:Abstimmung:\s*)?Antrag, den (?:ablehnenden )?Ausschussbericht zur Kenntnis zu nehmen[,:]? angenommen\b/
 const PLENARY_REPORT_OLD = /^Antrag auf Kenntnisnahme angenommen\b/
@@ -413,6 +475,7 @@ function classifyStage(html: string): StageEvent {
     const body = head.slice(session[0].length)
     if (IGNORED_IN_SESSION.some((re) => re.test(body))) return { t: 'known' }
     if (PLENARY_REPORT.test(body) || PLENARY_REPORT_OLD.test(body)) return { t: 'plenary', kind: 'bericht-zur-kenntnis', ...readClubVote(full) }
+    if (PLENARY_VOLKSANWALTSCHAFT.test(body)) return { t: 'plenary', kind: 'uebermittlung-zugestimmt', ...readClubVote(full) }
     if (PLENARY_KENNTNIS.test(body)) return { t: 'plenary', kind: 'kenntnisnahme', ...readClubVote(full) }
     if (FIRST_READING.test(body)) return { t: 'first-reading' }
     const resolution = RESOLUTION.exec(body)
@@ -438,7 +501,8 @@ function classifyStage(html: string): StageEvent {
     if (DISPOSAL_KENNTNIS.test(body)) return { t: 'disposal', kind: 'kenntnisnahme', to: null, ...readClubVote(full) }
     const zuweisung = DISPOSAL_ZUWEISUNG.exec(body)
     if (zuweisung?.[1]) return { t: 'disposal', kind: 'zuweisung', to: zuweisung[1].trim(), ...readClubVote(full) }
-    const sammel = SAMMELBERICHT.exec(body)
+    if (DISPOSAL_VOLKSANWALTSCHAFT.test(body)) return { t: 'disposal', kind: 'volksanwaltschaft', to: null, ...readClubVote(full) }
+    const sammel = SAMMELBERICHT.exec(body) ?? SAMMELBERICHT_LISTED.exec(body)
     if (sammel?.[1] && !tail) return { t: 'sammelbericht', ref: reportRef(sammel[1], html) }
     const report = COMMITTEE_REPORT.exec(body)
     if (report?.[1] && !tail) return { t: 'report', committee: name, ref: reportRef(report[1], html) }
@@ -515,9 +579,12 @@ export function carriedFromOf(reference: AnliegenContent['reference']): Anliegen
 function endOf(course: Omit<AnliegenCourse, 'end'>): AnliegenEnd {
   if (course.carriedTo) return 'uebernommen'
   if (course.plenary) return 'plenum'
-  if (course.disposal?.kind === 'kenntnisnahme') return 'kenntnisnahme-ausschuss'
-  if (course.disposal?.kind === 'zuweisung') return 'zuweisung'
-  return 'offen'
+  if (!course.disposal) return 'offen'
+  switch (course.disposal.kind) {
+    case 'kenntnisnahme': return 'kenntnisnahme-ausschuss'
+    case 'zuweisung': return 'zuweisung'
+    case 'volksanwaltschaft': return 'volksanwaltschaft'
+  }
 }
 
 /**
@@ -561,7 +628,7 @@ function foldCourse(content: AnliegenContent | null | undefined, kind: AnliegenK
   let committeeReport: AnliegenReportRef | null = null
   let sammelbericht: AnliegenReportRef | null = null
   const resolutions: AnliegenResolution[] = []
-  const subject = { assignedAt: null as string | null, report: null as AnliegenReportRef | null, entries: 0, sittings: [] as AnliegenSitting[] }
+  const subject = { assignedAt: null as string | null, report: null as AnliegenReportRef | null, reportAt: null as string | null, entries: 0, sittings: [] as AnliegenSitting[] }
   const unreadAt: number[] = []
   const requestAt: number[] = []
 
@@ -610,7 +677,10 @@ function foldCourse(content: AnliegenContent | null | undefined, kind: AnliegenK
         if (theirs) {
           subject.entries++
           if (e.t === 'sitting') subject.sittings.push({ date, adjourned: e.adjourned })
-          if (e.t === 'report') subject.report = e.ref
+          if (e.t === 'report') {
+            subject.report = e.ref
+            subject.reportAt = date
+          }
         } else if (own || named === '') {
           committee = ensureCommittee(committee, e.committee, null)
           committee.name ||= e.committee
@@ -636,6 +706,13 @@ function foldCourse(content: AnliegenContent | null | undefined, kind: AnliegenK
         break
       case 'plenary':
         if (!vb && e.kind === 'kenntnisnahme') unread()
+        else if (vb && e.kind === 'uebermittlung-zugestimmt') unread()
+        // A second step, after the subject committee reported on a forwarded
+        // item, is the plenary's step on THAT report (80/PET XXVII: 1978 d.B.
+        // taken note of 29.03.2023, the Gesundheitsausschuss's 2009 d.B. on
+        // 27.04.): it does not replace the step on the Sammelbericht. What
+        // the plenary did with a subject committee's report is not read.
+        else if (!vb && plenary && subject.reportAt !== null && subject.reportAt > plenary.date) break
         else plenary = { date, kind: e.kind, report: vb ? committeeReport : sammelbericht, vote: e.vote, majorityOnly: e.majorityOnly }
         break
       case 'first-reading':
@@ -647,8 +724,9 @@ function foldCourse(content: AnliegenContent | null | undefined, kind: AnliegenK
         else unread()
         break
       case 'resolution':
-        if (!vb) unread()
-        else if (e.adopted) resolutions.push({ date, ref: e.ref })
+        // On a Petition or a Bürgerinitiative too (10 in GP XXII–XXVIII,
+        // with a Sammelbericht or a subject committee's report).
+        if (e.adopted) resolutions.push({ date, ref: e.ref })
         break
     }
   }
@@ -686,7 +764,7 @@ function foldCourse(content: AnliegenContent | null | undefined, kind: AnliegenK
     firstReading: vb ? firstReading : null,
     duties: vb ? duties : null,
     committeeReport: vb ? committeeReport : null,
-    resolutions: vb ? resolutions : [],
+    resolutions,
     transmission: null,
     withdrawnAt: null,
     documentsWithheld: false,
@@ -893,13 +971,21 @@ function foldBundesratCourse(content: AnliegenContent | null | undefined): { cou
  * petition of 1997 as touched in 2014.
  */
 export function lastStepDate(content: AnliegenContent | null | undefined, kind: AnliegenKind): string | null {
-  if (!anliegenIsBundesrat(kind)) return lastStageDate(content?.phase)
+  const noStep = anliegenIsBundesrat(kind) ? BR_WITHHELD : NO_STEP
   const phase = (content?.phase ?? []).map((p) => ({
     ...p,
-    stages: (p?.stages ?? []).filter((st) => !BR_WITHHELD.test(stripHtmlToText(st?.text ?? ''))),
+    stages: (p?.stages ?? []).filter((st) => !noStep.test(stripHtmlToText(st?.text ?? ''))),
   }))
   return lastStageDate(phase)
 }
+
+/**
+ * Stages of the Nationalrat's kinds that are no step: a media reference
+ * (80/PET XXII has them months after its last step), and a sitting named
+ * with nothing else — „220. Sitzung des Nationalrates" stands on 5 items of
+ * GP XXIV dated 15.07.2014, nine months after that period ended.
+ */
+const NO_STEP = /^(?:siehe auch\b|\d+\. Sitzung des Nationalrates$)/
 
 /**
  * Whether an item that is still `offen` ended with its period. Not in the
@@ -927,7 +1013,7 @@ export function assembleAnliegenDetail(root: AnliegenRoot, content: AnliegenCont
   const course = readAnliegenCourse(content, root.kind)
   return {
     root,
-    title: stripHtmlToText(content.title ?? ''),
+    title: anliegenTitleOf(stripHtmlToText(content.title ?? '')),
     citation: citationOf(root, content.zitation),
     parliamentUrl: anliegenParliamentUrl(root),
     course,

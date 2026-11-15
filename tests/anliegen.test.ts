@@ -109,12 +109,17 @@ describe('anliegenRootOfHref', () => {
 })
 
 describe('the periods the list offers', () => {
-  // XXV, where the reader's measurement starts, up to the running period; nothing older.
-  it('offers the running period down to XXV, and reads `?gp=` against it', async () => {
-    const { anliegenListGps, anliegenListGpOf } = await import('../shared/utils/anliegen')
-    expect(anliegenListGps('XXVIII')).toEqual(['XXVIII', 'XXVII', 'XXVI', 'XXV'])
+  // XXII, where the reader's measurement starts (15.11.2026), up to the running period; nothing older.
+  it('offers the running period down to XXII, and reads `?gp=` against it', async () => {
+    const { anliegenListGps, anliegenListGpOf, ANLIEGEN_FIRST_LIST_GP } = await import('../shared/utils/anliegen')
+    const { VOLKSBEGEHREN_FIRST_GP } = await import('../server/utils/parliament/anliegen')
+    expect(anliegenListGps('XXVIII')).toEqual(['XXVIII', 'XXVII', 'XXVI', 'XXV', 'XXIV', 'XXIII', 'XXII'])
+    // Equal by measurement, two constants on purpose.
+    expect(ANLIEGEN_FIRST_LIST_GP).toBe(VOLKSBEGEHREN_FIRST_GP)
     expect(anliegenListGpOf('XXVII', 'XXVIII')).toBe('XXVII')
-    expect(anliegenListGpOf('XXIV', 'XXVIII')).toBe('')
+    expect(anliegenListGpOf('XXIV', 'XXVIII')).toBe('XXIV')
+    expect(anliegenListGpOf('XXI', 'XXVIII')).toBe('')
+    expect(anliegenListGpOf('XXI', null)).toBe('')
     expect(anliegenListGpOf('XXIX', 'XXVIII')).toBe('')
     expect(anliegenListGpOf('foo', null)).toBe('')
     expect(anliegenListGpOf(['XXVI'], null)).toBe('XXVI')

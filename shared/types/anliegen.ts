@@ -89,12 +89,17 @@ export interface AnliegenCommittee {
 
 /**
  * How the Ausschuss für Petitionen und Bürgerinitiativen ended its
- * deliberation. Two ways occur and no third (616 items, GP XXV–XXVIII):
- * „durch Kenntnisnahme im Ausschuss zu erledigen" and „Ersuchen an den
- * Präsidenten / die Präsidentin um Zuweisung an den …ausschuss".
+ * deliberation. Three ways occur (1,100 items, GP XXII–XXVIII, 15.11.2026):
+ * „durch Kenntnisnahme im Ausschuss zu erledigen", „Ersuchen an den
+ * Präsidenten / die Präsidentin um Zuweisung an den …ausschuss", and once
+ * (144/PET XXIV) „Antrag auf Übermittlung an Volksanwaltschaft",
+ * which the plenary then agreed to (§ 100c Abs. 3 GOG-NR). Forwarding to
+ * the Bundesregierung, which the same paragraph allows, occurs nowhere in
+ * the corpus and has no kind. „Abstandnahme von der weiteren Verhandlung"
+ * (once, XXII) is no kind either: it stays unread and is said so.
  */
 export interface AnliegenDisposal {
-  kind: 'kenntnisnahme' | 'zuweisung'
+  kind: 'kenntnisnahme' | 'zuweisung' | 'volksanwaltschaft'
   date: string
   /** The subject committee's name for a Zuweisung, else null. */
   to: string | null
@@ -120,15 +125,18 @@ export interface AnliegenSubjectCommittee {
 }
 
 /**
- * The plenary's step. For a Petition or a Bürgerinitiative it is always a
- * vote on the committee's Sammelbericht, never on the item
+ * The plenary's step. For a Petition or a Bürgerinitiative it is a vote
+ * on the committee's Sammelbericht, never on the item
  * (`bericht-zur-kenntnis`: „Antrag, den Ausschussbericht zur Kenntnis zu
- * nehmen, angenommen", older „Antrag auf Kenntnisnahme angenommen"); a
- * Volksbegehren is taken note of itself (`kenntnisnahme`).
+ * nehmen, angenommen", older „Antrag auf Kenntnisnahme angenommen"), except
+ * where the committee asked for an Übermittlung an die Volksanwaltschaft:
+ * then the plenary votes on that (`uebermittlung-zugestimmt`: „Antrag, der
+ * Übermittlung an die Volksanwaltschaft zuzustimmen, angenommen", once, GP
+ * XXIV). A Volksbegehren is taken note of itself (`kenntnisnahme`).
  */
 export interface AnliegenPlenary {
   date: string
-  kind: 'bericht-zur-kenntnis' | 'kenntnisnahme'
+  kind: 'bericht-zur-kenntnis' | 'kenntnisnahme' | 'uebermittlung-zugestimmt'
   report: AnliegenReportRef | null
   vote: AnliegenClubVote | null
   majorityOnly: boolean
@@ -142,7 +150,7 @@ export interface AnliegenDuties {
   reportBy: string | null
 }
 
-/** An Entschließung the plenary adopted with a Volksbegehren's report. */
+/** An Entschließung the plenary adopted with a committee's report on the item — a Volksbegehren's, a Sammelbericht, a subject committee's on a forwarded Petition or Bürgerinitiative. */
 export interface AnliegenResolution {
   date: string
   /** „6/AEA" — the motion's number; the resulting E number is not in the stage. */
@@ -150,7 +158,7 @@ export interface AnliegenResolution {
 }
 
 /** Where an item stands at the end of its record, from the stages alone. */
-export type AnliegenEnd = 'kenntnisnahme-ausschuss' | 'zuweisung' | 'plenum' | 'uebernommen' | 'uebermittlung' | 'zurueckgezogen' | 'offen'
+export type AnliegenEnd = 'kenntnisnahme-ausschuss' | 'zuweisung' | 'volksanwaltschaft' | 'plenum' | 'uebernommen' | 'uebermittlung' | 'zurueckgezogen' | 'offen'
 
 /**
  * A Petition an den Bundesrat passed to the administration — „Übermittlung
@@ -197,7 +205,7 @@ export interface AnliegenCourse {
   duties: AnliegenDuties | null
   /** Volksbegehren: „Verfassungsausschuss: Bericht 200 d.B."; Petition an den Bundesrat: „Bericht 7765/BR d.B.". */
   committeeReport: AnliegenReportRef | null
-  /** Volksbegehren and Petition an den Bundesrat: adopted Entschließungen. */
+  /** Adopted Entschließungen: a Volksbegehren's, a Petition an den Bundesrat's, and since 15.11.2026 a Petition's or Bürgerinitiative's (10 in GP XXII–XXVIII). */
   resolutions: AnliegenResolution[]
   /** Petition an den Bundesrat only. */
   transmission: AnliegenTransmission | null
@@ -279,6 +287,13 @@ export type AnliegenState =
   | { kind: 'weitergeleitet'; committee: string; date: string | null }
   | { kind: 'weitergeleitet-bericht'; committee: string; report: string }
   | { kind: 'kenntnisnahme-ausschuss'; date: string }
+  /**
+   * The committee asked for an Übermittlung an die Volksanwaltschaft.
+   * `agreed`: the plenary agreed to it, and `date` is that day; otherwise
+   * only the committee's motion stands, dated by it. What the
+   * Volksanwaltschaft did is not in the record.
+   */
+  | { kind: 'volksanwaltschaft'; date: string; agreed: boolean }
   | { kind: 'volksbegehren-kenntnisnahme'; date: string }
   | { kind: 'bericht-zur-kenntnis'; date: string }
   | { kind: 'ohne-erledigung-periode-beendet' }

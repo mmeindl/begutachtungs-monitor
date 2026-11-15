@@ -1,0 +1,104 @@
+{
+  "content": {
+    "ityp": "PET",
+    "doktyp": "PET",
+    "title": "Bürger zahlen für Behördenfehler",
+    "zitation": "144/PET",
+    "einlangen": "2011-12-05T00:00:00",
+    "statementsstate": "0",
+    "approvalstate": "0",
+    "status": {
+      "number": 4,
+      "description": "Plenarberatungen in der <a href=\"/gegenstand/XXIV/NRSITZ/150\">150. Sitzung des Nationalrates</a>"
+    },
+    "phase": [
+      {
+        "name": "Einlangen NR",
+        "stages": [
+          {
+            "date": "05.12.2011",
+            "text": "Einlangen im Nationalrat"
+          }
+        ]
+      },
+      {
+        "name": "Ausschussberatungen NR",
+        "stages": [
+          {
+            "date": "06.12.2011",
+            "text": "Zuweisung an den <a href=\"/ausschuss/XXIV/A-PB/1/00297\">Ausschuss für Petitionen und Bürgerinitiativen</a>"
+          },
+          {
+            "date": "12.03.2012",
+            "text": "Ausschuss für Petitionen und Bürgerinitiativen: auf <a href=\"/dokument/XXIV/A-PB/1/00297/TO_01845420.html\">Tagesordnung</a> in der <a href=\"/ausschuss/XXIV/A-PB/1/00297?selectedStage=105&selectedSession=16&selectedDate=12032012\">16. Sitzung des Ausschusses</a>"
+          },
+          {
+            "date": "12.03.2012",
+            "text": "Ausschuss für Petitionen und Bürgerinitiativen: Antrag auf Übermittlung an Volksanwaltschaft"
+          },
+          {
+            "date": "12.03.2012",
+            "text": "Ausschuss für Petitionen und Bürgerinitiativen: <a href=\"/gegenstand/XXIV/I/1688\">Sammelbericht des Ausschusses für Petitionen und Bürgerinitiativen über die Petitionen Nr. 63, 66, 67, 69, 73, 98, 104, 112 und 113, 117, 121, 124, 126 und 127, 130 bis 134, 136, 144, 146 und 151 sowie über die Bürgerinitiativen Nr. 32 und 33 (1688 d.B.)</a>"
+          }
+        ]
+      },
+      {
+        "name": "Plenarberatungen NR",
+        "stages": [
+          {
+            "date": "18.01.2012",
+            "text": "<a href=\"/gegenstand/XXIV/NRSITZ/140\">140. Sitzung des Nationalrates</a>: Mitteilung des Einlangens und der Zuweisung an den <a href=\"/ausschuss/XXIV/A-PB/1/00297\">Ausschuss für Petitionen und Bürgerinitiativen</a>"
+          },
+          {
+            "date": "29.03.2012",
+            "text": "Auf der <a href=\"/dokument/XXIV/NRSITZ/150/TO_01768491.html\">Tagesordnung</a> der <a href=\"/gegenstand/XXIV/NRSITZ/150\">150. Sitzung des Nationalrates</a>"
+          },
+          {
+            "date": "29.03.2012",
+            "text": "150. Sitzung des Nationalrates: Debatte"
+          },
+          {
+            "date": "29.03.2012",
+            "text": "Wortmeldungen in der Debatte"
+          },
+          {
+            "date": "29.03.2012",
+            "text": "150. Sitzung des Nationalrates: Antrag, der Übermittlung an die Volksanwaltschaft zuzustimmen, <b>angenommen</b><br>Dafür: SPÖ, ÖVP, GRÜNE, BZÖ, dagegen: FPÖ"
+          }
+        ]
+      }
+    ],
+    "documents": [
+      {
+        "title": "Petition  (gescanntes Original)",
+        "documents": [
+          {
+            "link": "/dokument/XXIV/PET/144/imfname_239215.pdf",
+            "type": "PDF"
+          }
+        ]
+      },
+      {
+        "title": "Petition  (textinterpretierte Version)",
+        "documents": [
+          {
+            "link": "/dokument/XXIV/PET/144/fname_239267.pdf",
+            "type": "PDF"
+          },
+          {
+            "link": "/dokument/XXIV/PET/144/fnameorig_239267.html",
+            "type": "HTML"
+          }
+        ]
+      }
+    ],
+    "names": [
+      {
+        "funktext": "Petition überreicht von",
+        "name": "Name Platzhalter",
+        "frak_code": "B"
+      }
+    ],
+    "reference": []
+  }
+}

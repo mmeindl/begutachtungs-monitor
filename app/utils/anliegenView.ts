@@ -170,6 +170,9 @@ export const ANLIEGEN_PAGE_DE = {
 
 const PB_COMMITTEE = 'Ausschuss für Petitionen und Bürgerinitiativen'
 const PLENARY_REPORT_NOTE = 'Der Nationalrat stimmt über den Bericht des Ausschusses ab, nicht über das einzelne Anliegen.'
+/* Parliament's words: „Antrag auf Übermittlung an Volksanwaltschaft", „Antrag, der Übermittlung an die Volksanwaltschaft zuzustimmen". */
+const VOLKSANWALTSCHAFT_AGREED = 'An die Volksanwaltschaft übermittelt'
+const VOLKSANWALTSCHAFT_MOVED = 'Übermittlung an die Volksanwaltschaft beantragt'
 const WINDOW_NOTE = 'Das Fenster hat keine Frist. Es schließt, wenn die Behandlung im Nationalrat endet.'
 /* Never shown so far: all 42 Petitionen an den Bundesrat are closed (15.11.2026). */
 const WINDOW_NOTE_BR = 'Das Fenster hat keine Frist. Es schließt, wenn die Behandlung im Bundesrat endet.'
@@ -299,6 +302,37 @@ function arrivalStep(d: AnliegenDetail): Step {
   return { id: 'eingebracht', name: vb ? 'Eingelangt' : 'Eingebracht', reached: true, facts }
 }
 
+/** The committee's ending in the rail's words, by kind — every kind its own line, none passed through. */
+function disposalFact(disp: NonNullable<AnliegenDetail['course']['disposal']>): AnliegenFact {
+  switch (disp.kind) {
+    case 'kenntnisnahme': return { text: `Zur Kenntnis genommen am ${formatDateDe(disp.date)}` }
+    case 'zuweisung': return { text: `An den ${disp.to ?? 'Fachausschuss'} weitergeleitet am ${formatDateDe(disp.date)}` }
+    case 'volksanwaltschaft': return { text: `${VOLKSANWALTSCHAFT_MOVED} am ${formatDateDe(disp.date)}` }
+  }
+}
+
+/** The plenary's step on a Petition or a Bürgerinitiative: the Sammelbericht taken note of, or the Übermittlung an die Volksanwaltschaft agreed to. */
+function petitionPlenaryFacts(pl: NonNullable<AnliegenDetail['course']['plenary']>): AnliegenFact[] {
+  switch (pl.kind) {
+    case 'uebermittlung-zugestimmt':
+      // A vote on this item's Übermittlung, not on a report: the clubs are said.
+      return [{ text: `Der Übermittlung an die Volksanwaltschaft am ${formatDateDe(pl.date)} zugestimmt` }, ...voteFacts(pl.vote, pl.majorityOnly)]
+    case 'bericht-zur-kenntnis':
+    case 'kenntnisnahme':
+      return [
+        pl.report
+          ? reportFact('Sammelbericht ', pl.report, ` am ${formatDateDe(pl.date)} zur Kenntnis genommen`)
+          : { text: `Bericht des Ausschusses am ${formatDateDe(pl.date)} zur Kenntnis genommen` },
+        { text: PLENARY_REPORT_NOTE },
+      ]
+  }
+}
+
+/** „Entschließung am 27.04.2023 angenommen (86/AEA)". */
+function resolutionFact(r: AnliegenDetail['course']['resolutions'][number]): AnliegenFact {
+  return { text: `Entschließung am ${formatDateDe(r.date)} angenommen (${r.ref})` }
+}
+
 /** Petition, Bürgerinitiative: Eingebracht · Ausschuss · Erledigung · Nationalrat, and the Fachausschuss after a Zuweisung. */
 function petitionSteps(d: AnliegenDetail): Step[] {
   const { course } = d
@@ -317,33 +351,24 @@ function petitionSteps(d: AnliegenDetail): Step[] {
     id: 'erledigung',
     name: 'Erledigung im Ausschuss',
     reached: disp !== null,
-    facts: disp
-      ? [
-          disp.kind === 'kenntnisnahme'
-            ? { text: `Zur Kenntnis genommen am ${formatDateDe(disp.date)}` }
-            : { text: `An den ${disp.to ?? 'Fachausschuss'} weitergeleitet am ${formatDateDe(disp.date)}` },
-          ...voteFacts(disp.vote, disp.majorityOnly),
-        ]
-      : [],
+    facts: disp ? [disposalFact(disp), ...voteFacts(disp.vote, disp.majorityOnly)] : [],
   }
 
   const pl = course.plenary
+  const sc = course.subjectCommittee
+  // An Entschließung adopted after the plenary's step on the Sammelbericht,
+  // on a forwarded item, came with the subject committee's report (80/PET
+  // XXVII): it stands in that committee's row; every other one in the
+  // Nationalrat's.
+  const withSubject = (r: AnliegenDetail['course']['resolutions'][number]) => sc !== null && pl !== null && r.date > pl.date
   const plenary: Step = {
     id: 'nationalrat',
     name: 'Nationalrat',
     reached: pl !== null,
-    facts: pl
-      ? [
-          pl.report
-            ? reportFact('Sammelbericht ', pl.report, ` am ${formatDateDe(pl.date)} zur Kenntnis genommen`)
-            : { text: `Bericht des Ausschusses am ${formatDateDe(pl.date)} zur Kenntnis genommen` },
-          { text: PLENARY_REPORT_NOTE },
-        ]
-      : [],
+    facts: pl ? [...petitionPlenaryFacts(pl), ...course.resolutions.filter((r) => !withSubject(r)).map(resolutionFact)] : [],
   }
 
   const steps = [arrivalStep(d), committee, disposal]
-  const sc = course.subjectCommittee
   if (!sc) return [...steps, plenary]
 
   const subjectFacts: AnliegenFact[] = []
@@ -356,6 +381,7 @@ function petitionSteps(d: AnliegenDetail): Step[] {
     subjectFacts.push({ text: `zuletzt am ${formatDateDe(sc.lastSitting)} behandelt` })
     if (sc.adjourned) subjectFacts.push({ text: 'vertagt' })
   }
+  subjectFacts.push(...course.resolutions.filter(withSubject).map(resolutionFact))
   const subject: Step = {
     id: 'fachausschuss',
     name: sc.name,
@@ -523,6 +549,7 @@ export function anliegenStateDe(state: AnliegenState): string {
     case 'weitergeleitet': return `An den ${state.committee} weitergeleitet`
     case 'weitergeleitet-bericht': return `An den ${state.committee} weitergeleitet, dort Bericht ${state.report}`
     case 'kenntnisnahme-ausschuss': return 'Im Ausschuss zur Kenntnis genommen'
+    case 'volksanwaltschaft': return state.agreed ? VOLKSANWALTSCHAFT_AGREED : VOLKSANWALTSCHAFT_MOVED
     case 'volksbegehren-kenntnisnahme': return 'Vom Nationalrat zur Kenntnis genommen'
     case 'bericht-zur-kenntnis': return 'Bericht des Ausschusses vom Nationalrat zur Kenntnis genommen'
     case 'ohne-erledigung-periode-beendet': return 'Ohne Erledigung – Gesetzgebungsperiode beendet'
@@ -596,6 +623,13 @@ export function anliegenNotShown(d: AnliegenDetail): AnliegenNotShown[] {
       out.push({
         lead: 'Warum der Ausschuss zur Kenntnis genommen hat:',
         text: 'Der Verlauf nennt den Antrag und die Abstimmung, keinen Grund.',
+      })
+    }
+    // Agreed by the plenary: the record ends there (the Bundesrat's Übermittlung reads the same way).
+    if (d.course.disposal?.kind === 'volksanwaltschaft' && d.course.plenary?.kind === 'uebermittlung-zugestimmt') {
+      out.push({
+        lead: 'Was die Volksanwaltschaft mit dem Anliegen getan hat:',
+        text: 'Der Verlauf des Parlaments endet mit der Übermittlung.',
       })
     }
     if (d.course.committee?.statementRequests.some((r) => r.adopted)) {
@@ -923,6 +957,11 @@ export function anliegenRowStateWordsDe(state: AnliegenState): { short: string; 
       // „Kenntnisnahme im Ausschuss · 26.06.2025" wraps in the box; „erledigt" is
       // the motion's own verb („durch Kenntnisnahme im Ausschuss zu erledigen").
       return { short: 'Im Ausschuss erledigt', label: 'Im Ausschuss zur Kenntnis genommen' }
+    case 'volksanwaltschaft': {
+      // Two lines in the box, the day on the second (`anliegenRowStateParts`).
+      const text = state.agreed ? VOLKSANWALTSCHAFT_AGREED : VOLKSANWALTSCHAFT_MOVED
+      return { short: text, label: text }
+    }
     case 'volksbegehren-kenntnisnahme':
       return { short: 'Zur Kenntnis genommen', label: 'Vom Nationalrat zur Kenntnis genommen' }
     case 'bericht-zur-kenntnis':

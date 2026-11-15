@@ -247,11 +247,12 @@ describe('readAnliegenCourse — the traps of step 0', () => {
   it('counts an unknown line and returns no text of it', () => {
     const c = readAnliegenCourse(record([
       ['01.01.2026', 'Eine Zeile, die niemand kennt: Unbekanntwort'],
-      ['02.01.2026', 'Auf der Tagesordnung der 12. Sitzung des Nationalrates<br>Miterledigung'],
+      // „… Miterledigung" is known since GP XXII–XXIV were read (15.11.2026); this line is not.
+      ['02.01.2026', 'Auf der Tagesordnung der 12. Sitzung des Nationalrates<br>Zurückgestellt'],
     ]), 'petition')
     expect(c.unreadStages).toBe(2)
     expect(JSON.stringify(c)).not.toContain('Unbekanntwort')
-    expect(JSON.stringify(c)).not.toContain('Miterledigung')
+    expect(JSON.stringify(c)).not.toContain('Zurückgestellt')
   })
 
   // A step of the other kind's vocabulary is not this kind's fact.

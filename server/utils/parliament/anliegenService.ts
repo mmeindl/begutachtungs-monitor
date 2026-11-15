@@ -48,6 +48,7 @@ import {
   VOLKSBEGEHREN_FIRST_GP,
   anliegenIsFollowed,
   assembleAnliegenDetail,
+  anliegenTitleOf,
   assertAnliegenContent,
   bundesratRowOf,
   lastStepDate,
@@ -61,7 +62,13 @@ import { mapVorlageRow } from './list101'
 import { mapParticipationRow, type ParticipationRow } from './list143'
 import type { NotFollowedData } from './vorlageDetail'
 
-/** Detail reads at a time — the committee reads' limit, as for the Anträge. */
+/**
+ * Detail reads at a time — the committee reads' limit, as for the Anträge.
+ * Eight was tried on 15.11.2026 and bought nothing: a cold period reads at
+ * 23 to 28 records a second at four and at eight alike (GP XXIV 13 to 17 s,
+ * XXVII 13 to 18 s), with the reader's own work under 0.1 s for a whole
+ * period. The limit is not this pool.
+ */
 const READ_CONCURRENCY = 4
 
 /**
@@ -132,7 +139,8 @@ export const getAnliegenOfKind = defineCachedFunction(
     return rows.map((row): AnliegenListEntry => {
       const v = mapVorlageRow(row)
       const root: AnliegenRoot = { gp, kind, inr: v.inr }
-      return { root, title: v.title, arrivedAt: v.date || null, parliamentUrl: anliegenParliamentUrl(root) }
+      // A member who handed a Petition in is never named, also not in its title (64/PET XXII).
+      return { root, title: anliegenTitleOf(v.title), arrivedAt: v.date || null, parliamentUrl: anliegenParliamentUrl(root) }
     })
   },
   {
@@ -255,8 +263,9 @@ async function readAnliegenRecord(gp: string, ityp: string, inr: number): Promis
 const getAnliegenRecord = defineCachedFunction(readAnliegenRecord, {
   // v2 since 15.11.2026: the reduced record no longer keeps a presenter's
   // name (`reduceAnliegenContent`); entries written before carry it, so
-  // the new name leaves them unread until they expire.
-  name: 'anliegen-gegenstand-v2',
+  // the new name leaves them unread until they expire. v3 the same day:
+  // no member named in a motion or a title, no media reference.
+  name: 'anliegen-gegenstand-v3',
   // Derived, not fetched: the reduction is our code, and an entry written
   // by an older reducer must not outlive it on disk.
   base: DERIVED_CACHE,
@@ -274,7 +283,8 @@ const getAnliegenRecord = defineCachedFunction(readAnliegenRecord, {
  * „Stand nicht gelesen" rows (15.11.2026).
  */
 const getSettledAnliegenRecord = defineCachedFunction(readAnliegenRecord, {
-  name: 'anliegen-gegenstand-settled',
+  // v2 since 15.11.2026: see `anliegen-gegenstand-v3`.
+  name: 'anliegen-gegenstand-settled-v2',
   base: DERIVED_CACHE,
   getKey: (gp: string, ityp: string, inr: number) => `${gp}-${ityp}-${inr}`,
   ...staleWithin(SETTLED_TTL_S, SETTLED_STALE_S),
