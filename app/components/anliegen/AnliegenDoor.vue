@@ -26,6 +26,13 @@ defineProps<{ door: AnliegenDoorView }>()
   <div class="mt-6 rounded-xl border border-accent-200 bg-accent-50 p-4">
     <h2 class="font-sans text-base font-semibold text-ink">{{ door.heading }}</h2>
     <p class="mt-2 text-sm text-ink-secondary">{{ door.windowNote }}</p>
+    <!-- Above the buttons (15.11.2026; under them until then): it says what
+         an Unterstützung does — informative only — and a sentence that
+         qualifies an action is read before acting, as on the draft page. -->
+    <figure v-if="door.supportQuote" class="mt-3 text-sm text-ink-secondary">
+      <blockquote>„{{ door.supportQuote.text }}“</blockquote>
+      <figcaption class="mt-1 text-xs text-ink-muted">{{ door.supportQuote.source }}</figcaption>
+    </figure>
     <div class="mt-3 flex flex-wrap items-center gap-3">
       <DoorButton
         v-for="action in door.actions"
@@ -35,9 +42,5 @@ defineProps<{ door: AnliegenDoorView }>()
         {{ action.label }}
       </DoorButton>
     </div>
-    <figure v-if="door.supportQuote" class="mt-3 text-sm text-ink-secondary">
-      <blockquote>„{{ door.supportQuote.text }}“</blockquote>
-      <figcaption class="mt-1 text-xs text-ink-muted">{{ door.supportQuote.source }}</figcaption>
-    </figure>
   </div>
 </template>
