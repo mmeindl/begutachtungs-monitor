@@ -96,7 +96,7 @@ const fetchDossierAnswerCached = defineCachedFunction(
 export async function railOf(celex: string): Promise<EuActRail | null> {
   if (!CELEX_RE.test(celex)) return null
   try {
-    return parseDossierAnswer(await fetchDossierAnswerCached(celex))
+    return parseDossierAnswer(await fetchDossierAnswerCached(celex), celex)
   } catch {
     return null
   }

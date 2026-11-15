@@ -65,7 +65,7 @@ async function answerOf(celex: string): Promise<SparqlAnswer> {
 }
 
 if (dump !== null) {
-  console.log(JSON.stringify(parseDossierAnswer(await answerOf(dump)), null, 2))
+  console.log(JSON.stringify(parseDossierAnswer(await answerOf(dump), dump), null, 2))
   process.exit(0)
 }
 
@@ -83,7 +83,7 @@ const celexes = [...new Set(Object.values(store.entries ?? {})
 
 const results = await pool(celexes, CELLAR_CONCURRENCY, async (celex) => {
   try {
-    return { celex, rail: parseDossierAnswer(await answerOf(celex)), error: null as string | null }
+    return { celex, rail: parseDossierAnswer(await answerOf(celex), celex), error: null as string | null }
   } catch (err) {
     return { celex, rail: null as EuActRail | null, error: String(err) }
   }

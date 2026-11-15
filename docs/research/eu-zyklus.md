@@ -696,7 +696,11 @@ Zahlen in `docs/decisions.md`):
   2013/0033(NLE) antwortet es mit 404, ebenso für 2016/0224(COD),
   2018/0063(COD) und 2023/0077(COD), die es in Akten „A" und „B" geteilt
   hat („2016/0224A(COD)" gibt es). Der Cellar führt die Nummer ohne den
-  Buchstaben. Die deutsche Adresse (`/oeil/de/`) liefert die englische
+  Buchstaben; die offene Schnittstelle des Parlaments kennt beide Akten,
+  nennt aber nicht den Rechtsakt, in dem eine Akte endete. Für die vier
+  betroffenen Rechtsakte der Karte ist die Akte deshalb im Code
+  festgehalten (`OBSERVATORY_FILE`, je von der Seite der Akte gelesen).
+  Die deutsche Adresse (`/oeil/de/`) liefert die englische
   Seite.
 - Ein Datum des Cellar war falsch: Die Veröffentlichung der Richtlinie (EU)
   2024/884 steht als Ereignis am 19.04.2024, im Amtsblatt und im

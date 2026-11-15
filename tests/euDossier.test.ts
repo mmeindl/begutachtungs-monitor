@@ -143,6 +143,10 @@ describe('parseDossierAnswer — who adopted it and which procedure', () => {
     expect(observatoryUrlOf('2013/0033(NLE)')).toBeNull()
     expect(observatoryUrlOf('2022/0401(APP)')).toBe('https://oeil.europarl.europa.eu/oeil/en/procedure-file?reference=2022%2F0401(APP)')
     expect(observatoryUrlOf(null)).toBeNull()
+    // A split procedure: the link names the file the act came out of.
+    expect(observatoryUrlOf('2016/0224(COD)', '32024R1348')).toBe('https://oeil.europarl.europa.eu/oeil/en/procedure-file?reference=2016%2F0224A(COD)')
+    expect(observatoryUrlOf('2023/0077(COD)', '32024L1711')).toBe('https://oeil.europarl.europa.eu/oeil/en/procedure-file?reference=2023%2F0077B(COD)')
+    expect(observatoryUrlOf('2022/0117(COD)', '32024L1069')).toBe('https://oeil.europarl.europa.eu/oeil/en/procedure-file?reference=2022%2F0117(COD)')
     expect(rail('32013L0059').procedure!.observatoryUrl).toBeNull()
     expect(rail('32000L0078').procedure!.observatoryUrl).toBe('https://oeil.europarl.europa.eu/oeil/en/procedure-file?reference=1999%2F0225(CNS)')
   })

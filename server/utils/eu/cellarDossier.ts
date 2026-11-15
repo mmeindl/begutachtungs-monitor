@@ -140,24 +140,39 @@ const OEIL_PROCEDURE = 'https://oeil.europarl.europa.eu/oeil/en/procedure-file?r
  * page by type. Outside the rule no link is built and the page says nothing
  * about the Observatory: the procedure number stays a fact of its own.
  *
- * KNOWN DEFECT, NOT SOLVED HERE: 178 of the 181 numbers the rule links
- * have a page. The other three — 2016/0224(COD), 2018/0063(COD),
- * 2023/0077(COD), four acts of the map — answer 404, because the
- * Observatory split each into files „A" and „B" („2016/0224A(COD)" exists)
- * and the Cellar carries the number without the letter. Nothing the Cellar
- * says tells a split procedure from another. The European Parliament's
- * documented open-data API knows the procedure under its plain number
- * (`/procedures/2016-0224` answers); asking it is a new source and belongs
- * to the step that states it in the Impressum.
+ * SPLIT PROCEDURES. 178 of the 181 numbers the rule links have a page.
+ * The other three answer 404 under the number the Cellar carries, because
+ * Parliament split each into files „A" and „B" („2016/0224A(COD)") and
+ * the Cellar has no letter. Nothing the Cellar says tells a split
+ * procedure from another, and Parliament's open-data API, which knows both
+ * files, does not name the act a file ended in. So the four acts of the
+ * map are written down in `OBSERVATORY_FILE`, each read on 15.11.2026 from
+ * the file's own page, which names the act. The procedure NUMBER shown
+ * stays the Cellar's; only the link carries the letter. A split procedure
+ * that is not in the table still gets a dead link, so the numbers are
+ * checked again when the map grows.
  */
 export const OBSERVATORY_FIRST_YEAR = 1994
 export const OBSERVATORY_TYPES: readonly string[] = ['COD', 'CNS', 'APP']
 
-/** The Observatory's page for a procedure number „2022/0117(COD)", or null where none can be expected. */
-export function observatoryUrlOf(reference: string | null): string | null {
-  const m = reference ? /^(\d{4})\/\d{4}\(([A-Z]{2,4})\)$/.exec(reference) : null
-  if (!m || Number(m[1]) < OBSERVATORY_FIRST_YEAR || !OBSERVATORY_TYPES.includes(m[2]!)) return null
-  return OEIL_PROCEDURE + encodeURIComponent(reference!)
+/** The file of a split procedure an act came out of, by the act's CELEX. */
+export const OBSERVATORY_FILE: Readonly<Record<string, 'A' | 'B'>> = {
+  '32021L2167': 'A', // 2018/0063A(COD), Kreditdienstleister und Kreditkäufer
+  '32024R1348': 'A', // 2016/0224A(COD), Asylverfahrensverordnung
+  '32024R1747': 'A', // 2023/0077A(COD), Elektrizitätsmarkt: the Verordnung
+  '32024L1711': 'B', // 2023/0077B(COD), Elektrizitätsmarkt: the Richtlinie
+}
+
+/**
+ * The Observatory's page for a procedure number „2022/0117(COD)", or null
+ * where none can be expected. With the act's CELEX, a split procedure's
+ * link names the file the act came out of.
+ */
+export function observatoryUrlOf(reference: string | null, celex?: string): string | null {
+  const m = reference ? /^(\d{4}\/\d{4})\(([A-Z]{2,4})\)$/.exec(reference) : null
+  if (!m || Number(m[1]!.slice(0, 4)) < OBSERVATORY_FIRST_YEAR || !OBSERVATORY_TYPES.includes(m[2]!)) return null
+  const file = (celex && OBSERVATORY_FILE[celex]) || ''
+  return OEIL_PROCEDURE + encodeURIComponent(`${m[1]}${file}(${m[2]})`)
 }
 const EUR_LEX_CELEX = 'https://eur-lex.europa.eu/legal-content/DE/TXT/?uri=CELEX:'
 
@@ -216,7 +231,7 @@ interface DossierRows {
  * answer. An answer without a single row means the Cellar knows no such
  * act — the rail is then all unknown, never „no procedure" with a reason.
  */
-export function parseDossierAnswer(answer: SparqlAnswer): EuActRail {
+export function parseDossierAnswer(answer: SparqlAnswer, celex?: string): EuActRail {
   const bindings = answer?.results?.bindings
   if (!Array.isArray(bindings)) throw new Error('Cellar-Antwort ohne results.bindings')
   const rows = bindings.filter((b): b is Row => !!b && typeof b === 'object')
@@ -280,7 +295,7 @@ export function parseDossierAnswer(answer: SparqlAnswer): EuActRail {
 
   return {
     adoptedBy: adoptedByOf(authors),
-    procedure: dossiers.size ? procedureOf([...dossiers.values()], [...events.values()], unreadEventUris.size) : null,
+    procedure: dossiers.size ? procedureOf([...dossiers.values()], [...events.values()], unreadEventUris.size, celex) : null,
     inForce: earliestOf('EV'),
     // A Beschluss addressed to someone is typed „PE" („Wirksamwerden"), not
     // „EV": 12 of the 13 decisions of the map (15.11.2026).
@@ -296,7 +311,7 @@ export function parseDossierAnswer(answer: SparqlAnswer): EuActRail {
  * most recent procedure's — the one whose number sorts last; a dossier
  * without a number sorts first. Both proposals and the steps of both stay.
  */
-function procedureOf(dossiers: DossierRows[], events: EuProcedureEvent[], otherEvents: number): EuProcedure {
+function procedureOf(dossiers: DossierRows[], events: EuProcedureEvent[], otherEvents: number, celex?: string): EuProcedure {
   const latest = [...dossiers].sort((a, b) => cmp(a.rawReference ?? '', b.rawReference ?? ''))[dossiers.length - 1]!
   const reference = procedureReference(latest.rawReference)
   const proposals = dossiers
@@ -306,7 +321,7 @@ function procedureOf(dossiers: DossierRows[], events: EuProcedureEvent[], otherE
   return {
     reference,
     type: latest.type,
-    observatoryUrl: observatoryUrlOf(reference),
+    observatoryUrl: observatoryUrlOf(reference, celex),
     proposals,
     events: events.sort((a, b) => cmp(a.date, b.date) || cmp(a.code, b.code)),
     otherEvents,

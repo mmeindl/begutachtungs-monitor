@@ -716,9 +716,11 @@ The code names the EU rules D1 to D7; this is where they are defined
   - **The Legislative Observatory is linked by rule, not by lookup:**
     procedures from 1994 on, of type COD, CNS or APP; the link says that the
     page is English, and it is built from the procedure number, never
-    fetched. Open: three procedures the Observatory split into files „A" and
-    „B" answer 404 under their plain number (see the figures); the Cellar
-    does not carry the letter.
+    fetched. Three procedures the Observatory split into files „A" and
+    „B" answer 404 under the plain number the Cellar carries; for their
+    four acts `OBSERVATORY_FILE` names the file. Rejected: asking the
+    European Parliament's API, which knows the files but not the act a
+    file ended in.
   - **The rail adds nothing to the map's build.** One Cellar query per act,
     asked when the act's page is, beside the Amtsblatt reference and cached
     a month like it. No prewarm line, no stored file.
@@ -1308,7 +1310,7 @@ circular of 10.12.2015).
 | Procedures with no decision of Parliament or Council on record | 1 (2023/0077(COD), two acts) | same |
 | Regulations with a typed day of application / with partial days | 38 / 30 of 68 | same |
 | Decisions typed „Wirksamwerden" instead of an entry into force | 12 of 13 | same |
-| Procedure numbers with a page in the Legislative Observatory | 180 of 187; of the 181 the rule links, 178 (dead: 2016/0224(COD), 2018/0063(COD), 2023/0077(COD), split into files A and B) | every number of the map, one request each · 15.11.2026 |
+| Procedure numbers with a page in the Legislative Observatory | 180 of 187; of the 181 the rule links, 178 (the other three, 2016/0224(COD), 2018/0063(COD), 2023/0077(COD), are split into files A and B and linked by `OBSERVATORY_FILE`) | every number of the map, one request each · 15.11.2026 |
 | Rail against the Legislative Observatory: proposal, Parliament, Council, signature | identical in 15 of 18 procedures with a page; in 3 the difference has a named reason (Council position adopted a day before the Observatory dates its publication; an act on two procedures; a consent procedure whose „proposal" the Observatory dates later); 2 of 20 have no page | 20 acts across six procedure types · 15.11.2026 |
 | Land Textgegenüberstellung, right column found in the draft | 550 of 550 judgeable §§ | 63 documents, Oberösterreich, Salzburg, Tirol, Wien, 1,156 §§ shown, GP XXVIII · 12.11.2026 |
 | The same check under fault injection, caught | another § of the same draft appended 57.8 % (315/545), another draft's sentence 76.4 % (420/550); by design none of a number changed, one word swapped, a sentence dropped (0 of 474 / 549 / 336) | same |

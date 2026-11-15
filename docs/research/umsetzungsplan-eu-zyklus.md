@@ -46,14 +46,15 @@ the build left this plan, and why:
 - **The Legislative Observatory is linked only for procedures from 1994 on
   of type COD, CNS or APP,** and the link says the page is English: older
   procedures and some types have no page there.
-- **Known defect: four acts carry a dead Observatory link.** The
+- **Split procedures are linked from a table of four acts.** The
   Observatory split three procedures into files „A" and „B"
   (2016/0224(COD), 2018/0063(COD), 2023/0077(COD)); the plain number the
-  Cellar carries answers 404 there. 178 of the 181 linked numbers are
-  right. The fix needs a second source — the European Parliament's
-  documented API answers under the plain number — and so an entry in the
-  Impressum; it is the maintainer's to decide whether the link ships as it
-  is, waits for that, or goes.
+  Cellar carries answers 404 there. The European Parliament's documented
+  API knows both files but does not name the act a file ended in, so it
+  would have been a new source that still needs a guess. Instead
+  `OBSERVATORY_FILE` names the file per act, each read from the file's own
+  page on 15.11.2026. A split procedure of an act new to the map gets a
+  dead link until it is added.
 - **The Impressum sentence of `#imp-eurlex` is widened on the branch,** and
   names the days of entry into force and of application besides what the
   draft below lists.
