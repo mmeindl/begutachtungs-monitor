@@ -33,13 +33,7 @@ const props = withDefaults(defineProps<{
   icsHref?: string | null
   /** Where the door leads; its label is the `filing` slot. Shown while the Frist runs. */
   filingHref?: string | null
-  /**
-   * The Begutachtung's sentence about what became of earlier drafts. Off
-   * for a door that is not a Begutachtung's (an EU feedback window,
-   * 15.11.2026): the evidence it links is about Austrian drafts.
-   */
-  evidence?: boolean
-}>(), { icsHref: undefined, filingHref: undefined, evidence: true })
+}>(), { icsHref: undefined, filingHref: undefined })
 
 /* Decision and sign convention live in app/utils/deadlines.ts, next to
  * the other deadline rules and covered by tests — a flipped sign here would

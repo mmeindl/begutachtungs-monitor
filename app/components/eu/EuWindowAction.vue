@@ -22,7 +22,7 @@ defineProps<{ action: EuWindowActionView }>()
 </script>
 
 <template>
-  <DraftDoorCard frist :deadline="action.end" :filing-href="action.href" :evidence="false">
+  <DraftDoorCard frist :deadline="action.end" :filing-href="action.href">
     <template v-if="action.heading" #heading>
       {{ action.heading }}
     </template>
