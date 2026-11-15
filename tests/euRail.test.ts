@@ -125,9 +125,10 @@ describe('euRailView', () => {
       observatory: { label: 'Verfahren im Legislative Observatory (englisch)' },
       credits: ['Quelle:', 'Cellar des Amts für Veröffentlichungen der Europäischen Union (Metadaten)'],
     })
-    // The Official Journal is its own station, not a row.
+    // The Official Journal is its own station, not a row; the proposal stands
+    // on its document's day, the Cellar's adoption step a day later aside.
     expect(v.procedure!.rows).toEqual([
-      { date: '28.04.2022', iso: '2022-04-28', label: 'Annahme durch die Kommission' },
+      { date: '27.04.2022', iso: '2022-04-27', label: 'Vorschlag der Kommission COM(2022) 177' },
       { date: '26.10.2022', iso: '2022-10-26', label: 'Stellungnahme des Europäischen Wirtschafts- und Sozialausschusses' },
       { date: '11.07.2023', iso: '2023-07-11', label: 'Beschluss des EP über Änderungen am Legislativvorschlag' },
       { date: '27.02.2024', iso: '2024-02-27', label: 'Standpunkt des EP in erster Lesung' },
@@ -316,12 +317,42 @@ describe('euRailView', () => {
       facts: ['COM(1995) 239 vom 07.06.1995', 'COM(1997) 651 vom 05.12.1997'],
       source: { href: 'https://eur-lex.europa.eu/a' },
     })
+    const labels = v.procedure!.rows.map((r) => `${r.date} ${r.label}`)
+    expect(labels.slice(0, 2)).toEqual(['07.06.1995 Vorschlag der Kommission COM(1995) 239', '05.12.1997 Vorschlag der Kommission COM(1997) 651'])
+    expect(labels.some((l) => l.includes('Annahme durch die Kommission'))).toBe(false)
+  })
+
+  it('puts a proposal before a step of the same day, and one without a number by its name alone', () => {
+    const v = euRailView(response({
+      rail: rail({
+        procedure: procedure({
+          proposals: [{ reference: null, celex: null, date: '2022-10-26', eurLexUrl: null }],
+          events: [{ code: 'OPI_byEESC', date: '2022-10-26' }, { code: 'ADP_byCOM', date: '2022-10-27' }],
+        }),
+      }),
+    }), TODAY)
+    expect(v.procedure!.rows.map((r) => `${r.date} ${r.label}`)).toEqual([
+      '26.10.2022 Vorschlag der Kommission',
+      '26.10.2022 Stellungnahme des Europäischen Wirtschafts- und Sozialausschusses',
+    ])
+  })
+
+  it('keeps the steps of an amended proposal beside the proposal', () => {
+    const v = euRailView(response({
+      rail: rail({ procedure: procedure({ events: [{ code: 'ADP_byCOM', date: '2022-04-28' }, { code: 'ADP_PROPAME_byCOM', date: '2023-01-10' }] }) }),
+    }), TODAY)
+    expect(v.procedure!.rows.map((r) => `${r.date} ${r.label}`)).toEqual([
+      '27.04.2022 Vorschlag der Kommission COM(2022) 177',
+      '10.01.2023 Annahme eines geänderten Vorschlags durch die Kommission',
+    ])
   })
 
   it('dates a proposal without a date by the Commission\'s adoption step, or names it alone', () => {
     const undated = [{ reference: 'COM(2022) 177', celex: '52022PC0177', date: null, eurLexUrl: null }]
     const v = euRailView(response({ rail: rail({ procedure: procedure({ proposals: undated }) }) }), TODAY)
     expect(station(v, 'vorschlag')).toMatchObject({ facts: ['COM(2022) 177 vom 28.04.2022'], source: null })
+    // No proposal carries a day: the Cellar's step stays, in its words.
+    expect(v.procedure!.rows[0]).toEqual({ date: '28.04.2022', iso: '2022-04-28', label: 'Annahme durch die Kommission' })
     const bare = euRailView(response({ rail: rail({ procedure: procedure({ proposals: undated, events: [{ code: 'APR_R1_byCONSIL', date: '2024-03-19' }] }) }) }), TODAY)
     expect(station(bare, 'vorschlag')!.facts).toEqual(['COM(2022) 177'])
   })
@@ -339,6 +370,7 @@ describe('euRailView', () => {
     // A proposal step without a proposal record still dates the station.
     const stepOnly = euRailView(response({ rail: rail({ procedure: procedure({ proposals: [] }) }) }), TODAY)
     expect(station(stepOnly, 'vorschlag')).toMatchObject({ facts: ['28.04.2022'], gap: null, source: null })
+    expect(stepOnly.procedure!.rows[0]!.label).toBe('Annahme durch die Kommission')
   })
 
   it('shows a step once where two codes carry the same label on the same day', () => {
@@ -354,6 +386,7 @@ describe('euRailView', () => {
       }),
     }), TODAY)
     expect(v.procedure!.rows.map((r) => `${r.date} ${r.label}`)).toEqual([
+      '27.04.2022 Vorschlag der Kommission COM(2022) 177',
       '27.02.2024 Standpunkt des EP in erster Lesung',
       '19.03.2024 Billigung des Standpunkts des EP in erster Lesung durch den Rat (Annahme des Gesetzgebungsakts)',
     ])

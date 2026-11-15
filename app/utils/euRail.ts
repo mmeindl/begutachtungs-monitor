@@ -115,6 +115,7 @@ const DE = {
     noInForce: 'Der Cellar nennt kein Datum des Inkrafttretens.',
   },
   proposal: (reference: string, date: string | null) => (date ? `${reference} vom ${date}` : reference),
+  proposalRow: (reference: string | null) => (reference ? `Vorschlag der Kommission ${reference}` : 'Vorschlag der Kommission'),
   parliament: (date: string) => `Parlament ${date}`,
   council: (date: string) => `Rat ${date}`,
   signed: (date: string) => `unterzeichnet ${date}`,
@@ -163,21 +164,45 @@ function lastOf(events: readonly EuProcedureEvent[], role: EuEventRole): EuProce
  * (no „Vorschlag" there). Two codes share one label — Parliament's
  * first-reading position in the old and the new vocabulary — so a row is
  * one (label, day).
+ *
+ * THE PROPOSAL BY ITS DOCUMENT'S DAY (15.11.2026). The section opens with
+ * each dated proposal („Vorschlag der Kommission COM(2022) 177"), on the
+ * day the proposal itself carries — the day the Commission and the
+ * Legislative Observatory cite, and the day the rail's station „Vorschlag"
+ * shows. The Cellar's adoption step is dated apart from it (a day later for
+ * Richtlinie (EU) 2024/1069), so showing both put two days for one proposal
+ * on one page, unexplained. Where a proposal is dated, the steps of role
+ * `proposal` therefore stand aside; where none is (old dossiers such as
+ * 31976L0207, or a step without a proposal record), they stay, in the
+ * Cellar's words. An amended proposal is a step of its own and always
+ * stays. Ascending by day, a proposal before a step of the same day.
  */
 function procedureViewOf(p: EuProcedure, commission: boolean): EuRailProcedureView | null {
   const seen = new Set<string>()
   const rows: EuRailProcedureRow[] = []
+  const add = (iso: string, label: string) => {
+    const key = `${label}|${iso}`
+    if (seen.has(key)) return
+    seen.add(key)
+    rows.push({ date: formatDateDe(iso), iso, label })
+  }
+  const dated = commission ? [] : p.proposals.filter((prop): prop is typeof prop & { date: string } => !!prop.date)
+  const proposalRows = [...dated].sort((a, b) => a.date.localeCompare(b.date))
   const sorted = [...p.events].sort((a, b) => a.date.localeCompare(b.date))
+  let next = 0
   for (const e of sorted) {
     const role = roleOf(e)
     if (!role || role === 'publication') continue
     if (commission && (role === 'proposal' || role === 'amended-proposal')) continue
-    const label = EU_EVENTS[e.code]!.label
-    const key = `${label}|${e.date}`
-    if (seen.has(key)) continue
-    seen.add(key)
-    rows.push({ date: formatDateDe(e.date), iso: e.date, label })
+    if (role === 'proposal' && dated.length) continue
+    // A proposal sorts before a step of the same day.
+    while (next < proposalRows.length && proposalRows[next]!.date <= e.date) {
+      add(proposalRows[next]!.date, DE.proposalRow(proposalRows[next]!.reference))
+      next++
+    }
+    add(e.date, EU_EVENTS[e.code]!.label)
   }
+  for (; next < proposalRows.length; next++) add(proposalRows[next]!.date, DE.proposalRow(proposalRows[next]!.reference))
   if (!rows.length) return null
   const typeLabel = p.type ? EU_PROCEDURE_TYPES[p.type] ?? null : null
   return {
