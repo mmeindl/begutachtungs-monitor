@@ -8,10 +8,16 @@
  * „Erläuternde Bemerkungen" and the „Kunsttext", and „Ende der
  * Begutachtungsfrist: 10. November 2026".
  *
- * WHAT IS MISSING: Verordnungen — the page is the Gesetze's — and anything
- * past the Frist. A draft leaves the page when its Begutachtung ends, and the
- * monitor with it (`VBG_RETENTION`). The start the Land names nowhere, and
- * no Stellungnahmen on this page (`VBG_STATEMENTS_GAP`).
+ * WHAT IS MISSING: Verordnungen — the page is the Gesetze's; whether the Land
+ * publishes Verordnungsentwürfe elsewhere is not checked — and anything past
+ * the Frist. A draft leaves this page when its Begutachtung ends, and the
+ * monitor with it (`VBG_RETENTION`). The Land does not drop it: it keeps a
+ * page per Gesetzesvorhaben („Laufende und kürzlich abgeschlossene
+ * Gesetzesvorhaben") with the draft, the „Externe Stellungnahmen", the
+ * Regierungsvorlage, the Gesetzesbeschluss and the Landesgesetzblatt, which
+ * the monitor does not read yet (docs/research/datenlage-pruefung.md,
+ * 14.11.2026). The start the Land names nowhere, and no Stellungnahmen on
+ * this page (`VBG_STATEMENTS_GAP`).
  *
  * The „Kunsttext" is the Land's Textgegenüberstellung: one column, the law
  * in force with the draft's changes marked in it — its own first line reads
@@ -39,9 +45,9 @@ export const VBG_FORM = `${ORIGIN}/-/stellungnahme-begutachtungsentwurf`
 
 export const VBG_NUMBER_RE = /^\d{4,10}$/
 
-export const VBG_RETENTION = 'Das Land Vorarlberg zeigt einen Entwurf nur, solange seine Begutachtung läuft.'
+export const VBG_RETENTION = 'Die Seite der laufenden Begutachtungen, die der Monitor liest, zeigt einen Entwurf nur bis zum Ende seiner Frist; danach führt ihn das Land Vorarlberg auf der Seite des Gesetzesvorhabens weiter, die der Monitor noch nicht liest.'
 
-export const VBG_STATEMENTS_GAP = 'Auf seiner Seite der laufenden Begutachtungen veröffentlicht das Land keine Stellungnahmen.'
+export const VBG_STATEMENTS_GAP = 'Auf seiner Seite der laufenden Begutachtungen veröffentlicht das Land keine Stellungnahmen. Es veröffentlicht sie auf der Seite des Gesetzesvorhabens, die der Monitor noch nicht liest.'
 
 function text(html: string): string {
   return decodeEntities(html.replace(/<[^>]*>/g, ' ')).replace(/\s+/g, ' ').trim()

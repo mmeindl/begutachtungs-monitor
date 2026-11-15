@@ -108,6 +108,42 @@ describe('datenlage', () => {
     expect(state('eu')).toBe('notSurveyed')
   })
 
+  it('keeps the states datenlage-pruefung.md found against the sources (14.11.2026)', () => {
+    const cell = (key: string, step: string) => DATENLAGE_SOURCES.find((s) => s.key === key)!.cells[step as keyof typeof DATENLAGE_SOURCES[number]['cells']]
+    // Vorarlberg keeps closed drafts, their way and their Stellungnahmen on a page per
+    // Gesetzesvorhaben: the monitor's gap, not the Land's.
+    for (const step of ['archive', 'way', 'kundmachung', 'texts', 'statements']) {
+      expect(cell('vbg', step).state, `vbg/${step}`).toBe('notRead')
+      expect(DATENLAGE_STATE_META[cell('vbg', step).state].owner).toBe('monitor')
+    }
+    expect(cell('vbg', 'verordnungen').state).toBe('notSurveyed')
+    expect(cell('stmk', 'archive').state).toBe('partlyRead')
+    expect(cell('bgld', 'tgu').state).toBe('partial')
+    expect(cell('t', 'kundmachung').state).toBe('partial')
+    expect(cell('ooe', 'frist').state).toBe('partial')
+    expect(cell('bund', 'way').state).toBe('partial')
+    expect(cell('noe', 'statements').state).toBe('notRead')
+    expect(cell('bgld', 'tgu').text).toBe('selten beigelegt')
+    expect(cell('sbg', 'frist').text).toBe('ja, solange sie läuft')
+  })
+
+  it('never calls Vorarlberg\'s closed drafts, way or Stellungnahmen the Land\'s gap (14.11.2026)', () => {
+    const vbg = DATENLAGE_SOURCES.find((s) => s.key === 'vbg')!
+    for (const step of ['archive', 'way', 'kundmachung', 'texts', 'statements'] as const) {
+      expect(DATENLAGE_STATE_META[vbg.cells[step].state].owner, `vbg/${step}`).not.toBe('source')
+      expect(vbg.cells[step].text, `vbg/${step}`).not.toMatch(/^(?:–|nein|nicht auf der Seite)$/)
+    }
+  })
+
+  it('says what is missing wherever a source or the monitor covers only part', () => {
+    for (const source of DATENLAGE_SOURCES) {
+      for (const step of DATENLAGE_STEP_KEYS) {
+        const c = source.cells[step]
+        if (['partial', 'partlyRead', 'notRead'].includes(c.state)) expect(c.reason, `${source.key}/${step}`).toBeTruthy()
+      }
+    }
+  })
+
   it('reads the view from the query, defaulting to the sources', () => {
     expect(parseDatenlageView(undefined)).toBe('quelle')
     expect(parseDatenlageView('schritt')).toBe('schritt')

@@ -161,13 +161,14 @@ export function landLawGroupTitle(title: string): string {
 
 /**
  * What each Land says about publishing the Stellungnahmen it receives, in
- * its own terms; null where its page says nothing (Wien).
+ * its own terms; null where its page says nothing (Wien). Vorarlberg's rule
+ * read 14.11.2026 (docs/research/datenlage-pruefung.md).
  */
 export const LAND_PUBLICATION_NOTE: Record<LandCode, string | null> = {
   bgld: 'Das Land veröffentlicht Stellungnahmen bei den abgeschlossenen Begutachtungen.',
   noe: 'Das Land veröffentlicht die Stellungnahmen auf der Website des NÖ Landtags; die von Privatpersonen mit Namen nur nach deren ausdrücklicher Zustimmung.',
   stmk: 'Das Land veröffentlicht die eingelangten Stellungnahmen beim Entwurf im Landtag.',
-  vbg: null,
+  vbg: 'Das Land veröffentlicht die Stellungnahmen auf seiner Website; die von Privatpersonen nur mit deren Einwilligung.',
   ktn: 'Das Land veröffentlicht die Stellungnahmen nach dem Ende der Begutachtung; die von Privatpersonen nur mit deren Einwilligung, die von Organisationen und öffentlichen Stellen auch ohne.',
   ooe: 'Das Land veröffentlicht die Stellungnahmen, sobald die Regierungsvorlage vorliegt; die von Privatpersonen nur mit deren Einwilligung.',
   sbg: 'Das Land veröffentlicht eine Stellungnahme nur mit Zustimmung derer, die sie einreichen.',
@@ -181,9 +182,12 @@ export const LAND_PUBLICATION_NOTE: Record<LandCode, string | null> = {
  * (`ktnChainOf`); for the other Länder the monitor finds the Kundmachung
  * itself (`matchLgbl`) and nothing in between — so under
  * „Regierungsvorlage" or „Parlament" alone they have no rows to give, and
- * the chip says why. Niederösterreich and Vorarlberg show a draft only while
- * its Begutachtung runs (30.10.2026): nothing of theirs reaches a later
- * station here. Shared by `/entwuerfe` and the homepage's boxes since
+ * the chip says why. Niederösterreich's page and the page Vorarlberg's
+ * reader reads show a draft only while its Begutachtung runs (30.10.2026):
+ * nothing of theirs reaches a later station here. Vorarlberg keeps the draft
+ * on a page per Gesetzesvorhaben, with Vorlage, Beschluss and Gesetzblatt
+ * (docs/research/datenlage-pruefung.md, 14.11.2026); the monitor does not
+ * read those pages yet. Shared by `/entwuerfe` and the homepage's boxes since
  * 30.10.2026, so a chip cannot be open in one and dashed in the other. */
 export const LAND_FOLLOWED_STATIONS: Record<LandCode, readonly DraftStation[] | 'all'> = {
   bgld: ['begutachtung', 'bgbl'],

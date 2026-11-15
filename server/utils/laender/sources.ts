@@ -1131,7 +1131,7 @@ const vorarlberg: LandReader = {
   detail: async (number) => {
     if (!VBG_NUMBER_RE.test(number)) return null
     const draft = (await vbgList()).find((d) => d.id === `vbg-${number}`)
-    if (!draft) throw gone(`${VBG_RETENTION} Unter dieser Nummer führt es keinen Entwurf (mehr).`)
+    if (!draft) throw gone(`${VBG_RETENTION} Auf der Seite der laufenden Begutachtungen steht unter dieser Nummer kein Entwurf (mehr).`)
     return {
       draft: withLandActiveOn([draft])[0]!,
       statements: null,

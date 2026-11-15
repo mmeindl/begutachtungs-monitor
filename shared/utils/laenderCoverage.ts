@@ -51,7 +51,7 @@ export const LAND_COVERAGE: Record<LandCode, LandCoverage> = {
       frist: 'ja, ohne Beginn',
       way: '–',
       kundmachung: 'Suche über den Titel',
-      tgu: 'keine beigelegt',
+      tgu: 'selten beigelegt',
       texts: '–',
       statements: 'nach Fristende',
     },
@@ -89,15 +89,17 @@ export const LAND_COVERAGE: Record<LandCode, LandCoverage> = {
   vbg: {
     cells: {
       verordnungen: 'nicht auf der Seite',
-      archive: 'nein',
+      // datenlage-pruefung.md, read 14.11.2026: the Land keeps these on the page of each
+      // Gesetzesvorhaben, which the monitor does not read yet — its gap, not the Land's.
+      archive: 'nicht gelesen',
       frist: 'ja, ohne Beginn',
-      way: '–',
-      kundmachung: '–',
+      way: 'nicht gelesen',
+      kundmachung: 'nicht gelesen',
       tgu: 'nicht gelesen',
-      texts: '–',
-      statements: 'nicht auf der Seite',
+      texts: 'nicht gelesen',
+      statements: 'nicht gelesen',
     },
-    summary: 'zeigt nur Gesetzesentwürfe, und nur solange ihre Begutachtung läuft; abgeschlossene fehlen, und was aus ihnen wurde, lässt sich hier nicht verfolgen.',
+    summary: 'steht hier nur mit Gesetzesentwürfen, und nur solange ihre Begutachtung läuft: Der Monitor liest die Seite der laufenden Begutachtungen des Landes. Laufende und kürzlich abgeschlossene Gesetzesvorhaben führt das Land auf einer eigenen Seite, mit Stellungnahmen, Regierungsvorlage, Beschluss und Gesetzblatt; diese Seite liest der Monitor noch nicht.',
     complete: false,
   },
   ktn: {
@@ -132,7 +134,7 @@ export const LAND_COVERAGE: Record<LandCode, LandCoverage> = {
     cells: {
       verordnungen: 'ja',
       archive: 'seit 2004',
-      frist: 'ja',
+      frist: 'ja, solange sie läuft',
       way: 'über das RIS',
       kundmachung: 'aus dem Text entschieden',
       tgu: 'wo beigelegt',

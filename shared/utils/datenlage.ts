@@ -16,8 +16,10 @@
  * this module adds per Land is the machine-readable state and a reason in a
  * few words, derived from `docs/research/laender-luecken.md`, which says per
  * gap whether the Land does not publish it or the monitor does not read it.
- * Where neither that memo nor another measured source settles a cell, its
- * state is `notSurveyed` — never a guess.
+ * `docs/research/datenlage-pruefung.md` checked those states against the
+ * Länder's own pages and the lists (14.11.2026); the cells it corrected say
+ * so beside them. Where neither memo nor another measured source settles a
+ * cell, its state is `notSurveyed` — never a guess.
  *
  * Bund and EU cells come from `docs/api-exploration.md` (§1 Parliament, §2
  * RIS Begut, §2c Textgegenüberstellung, §2d Vorblatt and Cellar, §3 the
@@ -295,14 +297,18 @@ const R = {
   textsOpen: 'ohne den Weg keine späteren Fassungen',
   noCommitteeText: 'kein Ausschusstext veröffentlicht',
   proseOnly: 'welcher Akt, liest der Monitor dort nicht',
+  vbgProject: 'auf der Seite des Gesetzesvorhabens, die der Monitor noch nicht liest',
 } as const
 
 /**
  * The state of each `LAND_COVERAGE` cell, and its reason. The text stays
  * `LAND_COVERAGE`'s; a „–" there is the Land's gap where the memo says so
- * (Niederösterreich and Vorarlberg without archive, Wien deleting the
- * draft), and `notSurveyed` where it does not (Burgenland's and the
- * Steiermark's way after the Begutachtung).
+ * (Niederösterreich without archive, Wien deleting the draft) and
+ * `notSurveyed` where nobody has looked (Burgenland's and the Steiermark's
+ * way after the Begutachtung). Where the Land publishes a step on a page the
+ * monitor does not read, the cell says „nicht gelesen", never „–": Vorarlberg
+ * keeps closed drafts, their way and their Stellungnahmen on the page of
+ * each Gesetzesvorhaben (datenlage-pruefung.md, 14.11.2026).
  */
 const LAND_STATE: Record<LandCode, Record<CoverageRow, StateAndReason>> = {
   bgld: {
@@ -311,7 +317,9 @@ const LAND_STATE: Record<LandCode, Record<CoverageRow, StateAndReason>> = {
     frist: ['partial', R.noStart],
     way: ['notSurveyed', R.wayOpen],
     kundmachung: ['inferred', R.notNamed],
-    tgu: ['notPublished'],
+    // datenlage-pruefung.md, measured 14.11.2026: 6 of 130 Gesetzesentwürfe in the period of
+    // GP XXVII (2019–2024) carry one, none of the 111 in the periods of GP XXVI and XXVIII.
+    tgu: ['partial', 'selten beigelegt; die beigelegten liest der Monitor noch nicht'],
     texts: ['notSurveyed', R.textsOpen],
     statements: ['published'],
   },
@@ -329,16 +337,21 @@ const LAND_STATE: Record<LandCode, Record<CoverageRow, StateAndReason>> = {
     verordnungen: ['published'],
     archive: ['notPublished', R.gone],
     frist: ['partial', R.noStart],
-    way: ['notPublished', R.gone],
+    // The Landtag keeps the Vorlage a draft becomes; whether the Land links the two is
+    // what is missing (as in Wien). Unchecked against the Landtag (datenlage-pruefung.md).
+    way: ['notPublished', 'das Land verknüpft den Entwurf nicht mit seiner Vorlage im Landtag'],
     kundmachung: ['notPublished', R.gone],
     tgu: ['notRead', R.formNotRead],
     texts: ['notPublished', R.gone],
-    statements: ['partial', 'beim Landtag, ohne Verknüpfung zum Entwurf'],
+    // datenlage-pruefung.md (14.11.2026): published at the Landtag, so by the legend the
+    // monitor's gap — it cannot tie them to the draft.
+    statements: ['notRead', 'beim Landtag, ohne Verknüpfung zum Entwurf'],
   },
   ooe: {
     verordnungen: ['partial', 'kein Beginn, und nach der Frist nichts mehr'],
     archive: ['published'],
-    frist: ['published'],
+    // datenlage-pruefung.md, measured 14.11.2026: all 7 Verordnungsentwürfe without a start.
+    frist: ['partial', 'Verordnungsentwürfe ohne Beginn'],
     way: ['published'],
     kundmachung: ['partial', 'für Verordnungen nicht genannt'],
     tgu: ['published'],
@@ -356,8 +369,11 @@ const LAND_STATE: Record<LandCode, Record<CoverageRow, StateAndReason>> = {
     statements: ['published'],
   },
   stmk: {
-    verordnungen: ['notRead', 'der Monitor liest nur die Seite des Landtags'],
-    archive: ['published'],
+    // datenlage-pruefung.md, read 14.11.2026: listed with Geschäftszahl, Frist and documents.
+    verordnungen: ['notRead', 'das Land führt sie auf seiner „Plattform Landesrecht“ seit 2008; der Monitor liest nur die Seite des Landtags'],
+    // datenlage-pruefung.md, read 14.11.2026: the Land's „Plattform Landesrecht" keeps
+    // Gesetzesentwürfe from November 2000; June 2015 is where the monitor's reading starts.
+    archive: ['partlyRead', 'das Land führt Gesetzesentwürfe seit November 2000; der Monitor liest die seit Juni 2015'],
     frist: ['published'],
     way: ['notSurveyed', R.wayOpen],
     kundmachung: ['inferred', R.notNamed],
@@ -370,20 +386,28 @@ const LAND_STATE: Record<LandCode, Record<CoverageRow, StateAndReason>> = {
     archive: ['partial', 'die Liste hält einen Entwurf nur Wochen; der Landtag führt ihn nur hinter einem Suchformular'],
     frist: ['partial', 'Verordnungsentwürfe ohne Frist'],
     way: ['published'],
-    kundmachung: ['published'],
+    // datenlage-pruefung.md, measured 14.11.2026: for its 17 Verordnungsentwürfe nobody
+    // names it; the title search finds 3.
+    kundmachung: ['partial', 'für Verordnungen nicht genannt'],
     tgu: ['published'],
     texts: ['partial', R.noCommitteeText],
     statements: ['published'],
   },
+  // datenlage-pruefung.md, read 14.11.2026 (and again the same day): the page the monitor
+  // reads loses a draft at its Frist's end, but the Land keeps a page per Gesetzesvorhaben,
+  // listed under „Laufende und kürzlich abgeschlossene Gesetzesvorhaben"
+  // (vorarlberg.at/laufende-gesetzesvorhaben), with the draft, „Externe Stellungnahmen",
+  // Regierungsvorlage, Gesetzesbeschluss and Landesgesetzblatt. How long „kürzlich"
+  // lasts the Land does not say.
   vbg: {
-    verordnungen: ['notPublished', 'die Begutachtungsseite führt nur Gesetzesentwürfe'],
-    archive: ['notPublished', R.gone],
+    verordnungen: ['notSurveyed', 'die Begutachtungsseite führt nur Gesetzesentwürfe; ob das Land Verordnungsentwürfe anderswo veröffentlicht, ist offen'],
+    archive: ['notRead', 'das Land führt kürzlich abgeschlossene auf der Seite des Gesetzesvorhabens weiter; wie lange, sagt es nicht'],
     frist: ['partial', R.noStart],
-    way: ['notPublished', R.gone],
-    kundmachung: ['notPublished', R.gone],
+    way: ['notRead', `Vorlage und Beschluss stehen ${R.vbgProject}`],
+    kundmachung: ['notRead', `das Gesetzblatt steht ${R.vbgProject}`],
     tgu: ['notRead', R.formNotRead],
-    texts: ['notPublished', R.gone],
-    statements: ['notPublished'],
+    texts: ['notRead', `Vorlage und Beschluss stehen ${R.vbgProject}`],
+    statements: ['notRead', `die von Organisationen stehen ${R.vbgProject}; die von Privatpersonen nur mit Einwilligung`],
   },
   w: {
     verordnungen: ['published'],
@@ -582,11 +606,12 @@ const BUND: DatenlageSource = {
       state: 'partial',
       reason: 'Stellungnahmen zu Verordnungen zählt niemand',
     },
-    // api-exploration §1 (stages, preconst) and §3.
+    // api-exploration §1 (stages, preconst) and §3. `partial` since datenlage-pruefung.md
+    // (14.11.2026): two known gaps of the source, and `published` has none in the legend.
     way: {
       text: 'jeder Schritt, beim Parlament',
-      state: 'published',
-      reason: 'ein Entwurf, der als Antrag weitergeht, trägt keinen Verweis',
+      state: 'partial',
+      reason: 'ein Entwurf, der als Antrag weitergeht, trägt keinen Verweis; von zusammengeführten Entwürfen verknüpft das Parlament nur einen mit der Vorlage',
     },
     // api-exploration §1 (statements.documents); so-funktionierts #vergleich.
     texts: { text: 'Vorlage, Ausschuss, Plenum, Gesetz', state: 'published' },
@@ -749,6 +774,22 @@ export const DATENLAGE_FIGURES: readonly DatenlageFigure[] = [
     text: '151 haben eine Textgegenüberstellung (42 %).',
     population: '357 Gesetzesentwürfe',
     date: '23.10.2026',
+  },
+  {
+    // datenlage-pruefung.md, „Was nicht stimmt" (Burgenland).
+    source: 'bgld',
+    step: 'tgu',
+    text: '6 haben eine Textgegenüberstellung; in den Zeiträumen der XXVI. GP (71) und der XXVIII. GP (40) keiner.',
+    population: '130 Gesetzesentwürfe im Zeitraum der XXVII. GP',
+    date: '14.11.2026',
+  },
+  {
+    // datenlage-pruefung.md, „Was nicht stimmt" (Tirol).
+    source: 't',
+    step: 'kundmachung',
+    text: 'Die Kundmachung findet der Monitor über den Titel bei 3.',
+    population: '17 Verordnungsentwürfe',
+    date: '14.11.2026',
   },
 ]
 
