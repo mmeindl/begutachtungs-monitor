@@ -424,9 +424,13 @@ export function euActPageView(r: EuActResponse): EuActPageView {
     title: act.label,
     subject: euActSubject(act.title),
     implementingHeading: `Entwürfe, die ${act.kind === 'beschluss' || act.kind === 'rahmenbeschluss' ? 'ihn' : 'sie'} ${transposed ? 'umsetzen' : 'durchführen'}`,
-    noneImplementing: transposed
-      ? 'Kein Entwurf im Fenster setzt den Rechtsakt neu um; die Entwürfe unten nennen ihn, weil das geltende Recht ihn schon umsetzt.'
-      : 'Kein Entwurf im Fenster führt den Rechtsakt neu durch; die Entwürfe unten nennen ihn, weil das geltende Recht ihn schon durchführt.',
+    // A directive no draft names at all (its page exists since step 7 of the
+    // EU cycle): the monitor found none — a sentence about its own reading.
+    noneImplementing: !r.restating.length
+      ? 'Der Monitor hat im Fenster dieser Gesetzgebungsperiode keinen Entwurf gefunden, der den Rechtsakt nennt.'
+      : transposed
+        ? 'Kein Entwurf im Fenster setzt den Rechtsakt neu um; die Entwürfe unten nennen ihn, weil das geltende Recht ihn schon umsetzt.'
+        : 'Kein Entwurf im Fenster führt den Rechtsakt neu durch; die Entwürfe unten nennen ihn, weil das geltende Recht ihn schon durchführt.',
     seoTail: transposed
       ? 'den Rechtsakt umsetzen, mit ihrer Begutachtung neben der Umsetzungsfrist'
       : 'den Rechtsakt durchführen, mit ihrer Begutachtung',

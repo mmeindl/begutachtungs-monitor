@@ -87,9 +87,11 @@ describe('euActPageView', () => {
     const reg = euActPageView(response({ act: { ...response({}).act, kind: 'verordnung', label: 'Verordnung (EU) 2023/1114', transposition: null, adopted: null } }))
     // A regulation is carried out, not transposed: the drafts' heading, the empty sentence and the description say so.
     expect(reg.implementingHeading).toBe('Entwürfe, die sie durchführen')
-    expect(reg.noneImplementing).toContain('führt den Rechtsakt neu durch')
+    expect(euActPageView(response({ act: { ...response({}).act, kind: 'verordnung', transposition: null }, restating: [draft({})] })).noneImplementing).toContain('führt den Rechtsakt neu durch')
     expect(reg.seoTail).toBe('den Rechtsakt durchführen, mit ihrer Begutachtung')
-    expect(v.noneImplementing).toContain('setzt den Rechtsakt neu um')
+    // With drafts that only restate it; without any draft the monitor says it found none.
+    expect(euActPageView(response({ implementing: [], restating: [draft({})] })).noneImplementing).toContain('setzt den Rechtsakt neu um')
+    expect(euActPageView(response({ implementing: [], restating: [] })).noneImplementing).toBe('Der Monitor hat im Fenster dieser Gesetzgebungsperiode keinen Entwurf gefunden, der den Rechtsakt nennt.')
     expect(euActPageView(response({ act: { ...response({}).act, kind: 'beschluss', transposition: null } })).implementingHeading).toBe('Entwürfe, die ihn durchführen')
     expect(reg.head).toEqual(['gilt unmittelbar, keine Umsetzungsfrist'])
   })

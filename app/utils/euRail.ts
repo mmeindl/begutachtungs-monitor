@@ -32,6 +32,7 @@
  */
 import type { EuActResponse, EuProcedure, EuProcedureEvent } from '#shared/types'
 import { euOjCiteDe } from '#shared/utils/citations'
+import { EU_MEMBER_STATE_NAME_DE } from '#shared/utils/eu'
 import { EU_EVENTS, EU_PROCEDURE_TYPES, type EuEventRole } from '#shared/utils/euEvents'
 import { formatDateDe } from '#shared/utils/format'
 
@@ -51,14 +52,18 @@ export interface EuRailStation {
   anchor: string
 }
 
-/** One dated step in a station's section. */
+/** One dated row of a section's record: a step of the procedure, or a notified measure. */
 export interface EuRailProcedureRow {
-  /** „27.02.2024". */
+  /** „27.02.2024"; „–" for a measure without a day of notification. */
   date: string
-  /** „2024-02-27", for `<time datetime>`. */
+  /** „2024-02-27", for `<time datetime>`; empty without a day. */
   iso: string
-  /** The Cellar's own label of the step (`EU_EVENTS`). */
+  /** The Cellar's own label of the step (`EU_EVENTS`), or the measure's title as notified. */
   label: string
+  /** A measure only: its kind and where it was promulgated, „Bundesgesetz · BGBl. I Nr. 65/2018 vom 20.08.2018". */
+  detail?: string | null
+  /** A measure only: the measure at its national source, where the address is public. */
+  href?: string | null
 }
 
 /** A link off this site inside a fact: the record at its source, never fetched. */
@@ -178,6 +183,16 @@ const DE = {
   since: (date: string) => `seit ${date}`,
   from: (date: string) => `ab ${date}`,
   record: (n: number) => `Alle gelesenen Schritte des Verfahrens (${n})`,
+  notified: {
+    fact: 'Der Kommission gemeldet',
+    unknown: 'Die Meldungen an die Kommission konnten nicht gelesen werden.',
+    none: `${EU_MEMBER_STATE_NAME_DE} hat der Kommission bisher keine Maßnahme gemeldet.`,
+    some: (n: number) => (n === 1 ? '1 Maßnahme' : `${n} Maßnahmen`),
+    record: (n: number) => `Gemeldete Maßnahmen (${n}), nach dem Tag der Meldung`,
+    untitled: 'Maßnahme ohne Titel',
+    note: `Gemeldet ist, was ${EU_MEMBER_STATE_NAME_DE} der Kommission als Umsetzung genannt hat – auch Gesetze, die älter sind als die Richtlinie. Ob die Richtlinie damit vollständig umgesetzt ist, steht in diesen Daten nicht.`,
+    gazette: (number: string | null, date: string | null) => [number, date ? `vom ${date}` : null].filter(Boolean).join(' '),
+  },
   // Not „eigene Tage": the word reads as a count of days (rule D6).
   partial: (dates: string[]) => `Für einzelne Bestimmungen nennt der Cellar einen eigenen Geltungsbeginn: ${dates.join(', ')}.`,
   source: {
@@ -470,7 +485,41 @@ function sectionOf(st: EuRailStation, r: EuActResponse, rows: ReturnType<typeof 
   }
   // „Umsetzung" / „Geltung": the drafts follow in the section itself.
   const partial = r.rail?.partialApplication ?? []
-  return { ...base, ...framed(effectFacts(r, today), st.gap, partial.length ? [DE.partial(partial.map((d) => formatDateDe(d)))] : []) }
+  const notified = notifiedOf(r)
+  return {
+    ...base,
+    ...framed([...effectFacts(r, today), ...notified.facts], st.gap, partial.length ? [DE.partial(partial.map((d) => formatDateDe(d)))] : []),
+    record: notified.record,
+  }
+}
+
+/**
+ * A directive only: what the Member State notified to the Commission — a
+ * fact of the frame (how many, or that it notified none, or that the
+ * notifications could not be read: three different sentences), and the
+ * measures themselves as the section's folded record, by day of
+ * notification. „Gemeldet", never „umgesetzt": the record's note says what
+ * a notification is.
+ */
+function notifiedOf(r: EuActResponse): { facts: EuSectionFact[]; record: EuSectionRecord | null } {
+  if (!r.memberState) return { facts: [], record: null }
+  const m = r.measures
+  if (m === null) return { facts: [fact('gemeldet', DE.notified.fact, [DE.notified.unknown])], record: null }
+  if (!m.length) return { facts: [fact('gemeldet', DE.notified.fact, [DE.notified.none])], record: null }
+  return {
+    facts: [fact('gemeldet', DE.notified.fact, [DE.notified.some(m.length)])],
+    record: {
+      heading: DE.notified.record(m.length),
+      rows: m.map((x) => ({
+        date: x.notified ? formatDateDe(x.notified) : '–',
+        iso: x.notified ?? '',
+        label: x.title ?? DE.notified.untitled,
+        detail: [x.kind, DE.notified.gazette(x.gazette.number ?? x.gazette.name, x.gazette.date ? formatDateDe(x.gazette.date) : null)].filter(Boolean).join(' · ') || null,
+        href: x.url,
+      })),
+      note: DE.notified.note,
+    },
+  }
 }
 
 /**

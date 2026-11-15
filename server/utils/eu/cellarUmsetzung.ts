@@ -11,7 +11,9 @@
  * the country works on it. Measured on 15.11.2026 for the four years
  * around that day (15.11.2024 – 15.11.2028): 124 directives — 96 of
  * Parliament and Council or the Council, 21 delegated, 7 implementing —
- * 73 with the latest date passed, 51 with it to come.
+ * 72 with the latest date passed, 52 with it that day or to come. A
+ * directive is in the list for ANY date in the window; its deadline is its
+ * latest date, which for 13 lies beyond the window.
  *
  * THREE SMALL QUERIES, EACH AS IT WAS RUN on 15.11.2026, each answered in
  * under a second: the directives of the window with their dates, titles
@@ -59,16 +61,20 @@ function assertWindow(from: string, to: string): void {
   if (!DAY_RE.test(from) || !DAY_RE.test(to) || from > to) throw new Error(`Kein Zeitfenster: ${from} – ${to}`)
 }
 
-const windowPattern = (from: string, to: string) => ` ?w cdm:directive_date_transposition ?d . FILTER(?d >= "${from}"^^xsd:date && ?d <= "${to}"^^xsd:date)
+const windowPattern = (from: string, to: string, v = 'd') => ` ?w cdm:directive_date_transposition ?${v} . FILTER(?${v} >= "${from}"^^xsd:date && ?${v} <= "${to}"^^xsd:date)
  ?w cdm:resource_legal_id_celex ?celex . FILTER(REGEX(STR(?celex),"^3[0-9]{4}L[0-9]{4}$"))`
 
-/** Every directive with a transposition date in the window, with its title (in `language`) and type: one row per (directive, date). */
+/** Every directive with a transposition date in the window, with ALL its dates, its title (in `language`) and type: one row per (directive, date). */
 export function directivesQuery(from: string, to: string, language = 'DEU'): string {
   assertWindow(from, to)
   if (!CELLAR_LANGUAGE_RE.test(language)) throw new Error(`Keine Cellar-Sprache: ${language}`)
+  // `?in` in the window picks the directive; `?d` is every date it has, so
+  // the deadline is the latest one also where that lies beyond the window
+  // (32024L1760: 26.07.2028 in the window, 26.07.2029 the latest).
   return `${PREFIXES}
 SELECT DISTINCT ?celex ?d ?title ?type WHERE {
-${windowPattern(from, to)}
+${windowPattern(from, to, 'in')}
+ ?w cdm:directive_date_transposition ?d .
  OPTIONAL { ?e cdm:expression_belongs_to_work ?w ; cdm:expression_uses_language <http://publications.europa.eu/resource/authority/language/${language}> ; cdm:expression_title ?title }
  OPTIONAL { ?w cdm:work_has_resource-type ?type } }`
 }

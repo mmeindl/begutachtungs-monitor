@@ -415,29 +415,53 @@ step 1.
 answers kept and cut into `tests/fixtures/eu-umsetzung`):
 
 - 124 directives have a transposition date in the window: 96 of Parliament
-  and Council or the Council, 21 delegated, 7 implementing. For 73 the
-  latest date has passed, for 51 it is to come; 52 carry more than one date.
+  and Council or the Council, 21 delegated, 7 implementing. A directive's
+  deadline is its latest date; for 13 that lies beyond the window. For 72
+  it has passed, for 52 it is that day or to come.
 - Austria notified 1,264 measures for 80 of them (663 Landesgesetze, 338
   Bundesgesetze, 172 Verordnungen); the median directive has 2, one has
   139. 465 measures in 42 directives are older than the directive's year.
   Every measure has title, kind, day of notification and gazette day; 766
   an address, 15 of those into the federal intranet (not passed on).
   Germany notified 252 for 78, without addresses.
-- Against the monitor's map: of the 73 with the date passed, 64 have an
+- Against the monitor's map: of the 72 with the date passed, 63 have an
   Austrian measure and 9 have none — 6 of the 9 delegated or implementing
   directives of the Commission, 2 of the 9 with a draft in the monitor
   (Richtlinie (EU) 2024/1069, whose Begutachtung ended on 10.11.2026). Of
-  the 51 to come, 32 have neither a draft nor a measure.
-- 28 directives with the date passed have a notified measure and no draft
-  in the monitor's window: transposed by law older than the window, or
-  notified as covered by existing law.
+  the 52 to come, 33 have neither a draft nor a measure.
+- 31 directives with the date passed have a notified measure and no
+  implementing draft in the monitor's window: transposed by law older than
+  the window, or notified as covered by existing law.
 
-**Built on 15.11.2026:** the reader only (`server/utils/eu/
-cellarUmsetzung.ts`, three queries as they were run, the parser, the
-types). No service, no route, no page: the wording and the layout are
-the maintainer's to settle first. The measures' answer for Austria is
-1.6 MB, over the Cellar client's ordinary ceiling; the reader has its own
-policy.
+**Built on 15.11.2026**, after the maintainer settled the four questions
+(the list first on the EU overview; a row of two sentences; the
+Commission's directives behind a chip that is off; the measures as a count
+in the row and in full on the directive's page):
+
+- Three small Cellar queries, each run that day and answered in under a
+  second, each cached a day (`server/utils/eu/cellarUmsetzung.ts`,
+  `cellarService.ts`): the directives with all their dates, titles and
+  types (158 kB); a country's number of measures per directive (17 kB);
+  one directive's measures (145 kB for the largest). The first reader
+  loaded all of a country's measures at once, 1.6 MB; that is gone.
+- `GET /api/eu-recht/umsetzung` joins them with the map; „unknown" is
+  null, never 0. The act's API answers for a directive no draft names,
+  with a head from the Cellar, and carries the notified measures.
+- `/eu-recht` opens with „Richtlinien, die Österreich umzusetzen hat"
+  (`EuUmsetzungList`), tabs „Frist läuft" and „Abgelaufen" as the list
+  below has them; the map of drafts follows under its own heading. On a
+  directive's page, „Umsetzung" states the count and folds the measures
+  (`EuStationSection`'s record), with the sentence on what a notification
+  is and is not.
+- The Member State (`EU_MEMBER_STATE`) and the window are written once,
+  in `shared/utils/eu.ts`.
+- Not done: no line in the sitemap for directives no draft names; no
+  prewarm (the list's first request after a restart waits for the map);
+  the wording of the list is a first proposal for the maintainer to read.
+- The Impressum sentence of `#imp-eurlex` is widened on the branch by the
+  list of directives and the notified measures (title, kind, day of
+  notification, gazette reference): metadata of the source it already
+  names.
 
 ### Not in this plan
 

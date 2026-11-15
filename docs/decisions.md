@@ -724,6 +724,18 @@ The code names the EU rules D1 to D7; this is where they are defined
     said to „umsetzen" and a regulation's or decision's to „durchführen".
     Rejected: the drafts' section first, against the rail's order. Rejected: one section „Das Verfahren"
     for two stations, and outbound links in the rail.
+  - **The directives a country has to transpose are listed from the
+    Cellar, not from drafts** (15.11.2026): every directive with a
+    transposition date within two years of today, by deadline, also where
+    nobody works on it; each has a page. Beside it stand two observations
+    from two sources — the drafts the monitor found, the measures the
+    Member State notified to the Commission — each in its own sentence
+    and each with its own „unknown" (null, never 0). A notified measure is
+    the Member State's claim, so the word is „gemeldet"; nothing says
+    „umgesetzt", „offen" or „überfällig", no colour, no count or order by
+    what is missing (rule D6). The Commission's delegated and
+    implementing directives stay behind a chip that is off and says how
+    many they are.
   - **The Legislative Observatory is linked by rule, not by lookup:**
     procedures from 1994 on, of type COD, CNS or APP; the link says that the
     page is English, and it is built from the procedure number, never

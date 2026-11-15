@@ -71,6 +71,10 @@ usePageSeo({
 
 const { data, status, error, refresh } = useFetch<EuActsResponse>('/api/eu-recht', { lazy: true })
 
+/* The second list of the page, from the drafts' side; the first is the
+ * directives' (`EuUmsetzungList`). */
+const MAP_HEADING = 'Rechtsakte, die Entwürfe dieser Periode umsetzen'
+
 /* The site's choice of sources, never empty (`useSourceChoice`). */
 const { chosen, bund, toggle } = useSourceChoice()
 
@@ -167,12 +171,18 @@ const [bundItem, eurLexItem] = sourceItemsDe([risSource('Vorblatt'), risSource('
         EU-Recht in der Begutachtung
       </h1>
       <p class="mt-2 text-ink-secondary">
-        Jeder Rechtsakt der Europäischen Union, den ein Entwurf dieser
-        Gesetzgebungsperiode umsetzt – beim Bund und in den Ländern –, mit seiner
-        Umsetzungsfrist und den Entwürfen, die ihn umsetzen. Woher die Angaben
-        stammen und was sie nicht sagen, öffnet „Methode“ unter der Liste.
+        Zuerst die Richtlinien der Europäischen Union, die umzusetzen sind – auch
+        jene, an denen niemand arbeitet. Darunter jeder Rechtsakt, den ein Entwurf
+        dieser Gesetzgebungsperiode umsetzt, beim Bund und in den Ländern. Woher
+        die Angaben stammen und was sie nicht sagen, öffnet „Methode“ unter jeder
+        Liste.
       </p>
     </header>
+
+    <!-- From the directives' side first (step 7 of the EU cycle): what has
+         to be transposed, whether or not a draft exists. Its own fetch and
+         its own states, so neither list waits for the other. -->
+    <EuUmsetzungList />
 
     <FetchGate
       :status="status"
@@ -192,6 +202,7 @@ const [bundItem, eurLexItem] = sourceItemsDe([risSource('Vorblatt'), risSource('
         <template v-else>
           <!-- Without a list, the caveat stands above the empty state; with
                one, in its head, as on `/entwuerfe`. -->
+          <h2 v-if="!allRows.length" class="section-heading page-section">{{ MAP_HEADING }}</h2>
           <p v-if="incomplete && !allRows.length" class="mt-6 text-sm text-ink-muted">
             {{ incomplete }}
           </p>
@@ -200,9 +211,9 @@ const [bundItem, eurLexItem] = sourceItemsDe([risSource('Vorblatt'), risSource('
             class="mt-6"
             title="Kein Entwurf dieser Periode setzt einen Rechtsakt um, den der Monitor kennt."
           />
-          <section v-else aria-labelledby="eu-akte-heading" class="mt-6">
-            <h2 id="eu-akte-heading" class="sr-only">Rechtsakte</h2>
-            <ListBox>
+          <section v-else aria-labelledby="eu-akte-heading" class="page-section">
+            <h2 id="eu-akte-heading" class="section-heading">{{ MAP_HEADING }}</h2>
+            <ListBox class="mt-4">
               <!-- Where the deadline stands, as the box's tabs — the most
                    prominent control belongs to the question the page is
                    about. -->

@@ -23,7 +23,10 @@ describe('the directives of the window', () => {
   })
 
   it('prints the latest date as the deadline and keeps the earlier ones (rule D3)', () => {
-    expect(one('32025L0516')).toMatchObject({ deadline: '2028-07-01', otherDates: ['2025-04-14', '2026-12-31', '2027-01-01', '2028-06-30'] })
+    expect(one('32025L0516')).toMatchObject({ deadline: '2035-01-01', otherDates: ['2025-04-14', '2026-12-31', '2027-01-01', '2028-06-30', '2028-07-01', '2029-06-30', '2029-07-01', '2030-01-01', '2030-06-30', '2030-07-01'] })
+    // In the list for a date in the window, with the latest date as its deadline, also beyond the window.
+    expect(one('32024L1760')).toMatchObject({ deadline: '2029-07-26', otherDates: ['2028-07-26'] })
+    expect(directivesQuery('2024-11-15', '2028-11-15')).toMatch(/\?in >= "2024-11-15"[^]*directive_date_transposition \?d \./)
   })
 
   it('names the form the Cellar gives a directive', () => {

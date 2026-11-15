@@ -52,48 +52,6 @@
     "d": {
      "type": "literal",
      "datatype": "http://www.w3.org/2001/XMLSchema#date",
-     "value": "2027-01-01"
-    },
-    "title": {
-     "type": "literal",
-     "xml:lang": "de",
-     "value": "Richtlinie (EU) 2025/516 des Rates vom 11. März 2025 zur Änderung der Richtlinie 2006/112/EG in Bezug auf die Mehrwertsteuervorschriften für das digitale Zeitalter"
-    },
-    "type": {
-     "type": "uri",
-     "value": "http://publications.europa.eu/resource/authority/resource-type/DIR"
-    }
-   },
-   {
-    "celex": {
-     "type": "literal",
-     "datatype": "http://www.w3.org/2001/XMLSchema#string",
-     "value": "32025L0516"
-    },
-    "d": {
-     "type": "literal",
-     "datatype": "http://www.w3.org/2001/XMLSchema#date",
-     "value": "2028-07-01"
-    },
-    "title": {
-     "type": "literal",
-     "xml:lang": "de",
-     "value": "Richtlinie (EU) 2025/516 des Rates vom 11. März 2025 zur Änderung der Richtlinie 2006/112/EG in Bezug auf die Mehrwertsteuervorschriften für das digitale Zeitalter"
-    },
-    "type": {
-     "type": "uri",
-     "value": "http://publications.europa.eu/resource/authority/resource-type/DIR"
-    }
-   },
-   {
-    "celex": {
-     "type": "literal",
-     "datatype": "http://www.w3.org/2001/XMLSchema#string",
-     "value": "32025L0516"
-    },
-    "d": {
-     "type": "literal",
-     "datatype": "http://www.w3.org/2001/XMLSchema#date",
      "value": "2025-04-14"
     },
     "title": {
@@ -136,7 +94,175 @@
     "d": {
      "type": "literal",
      "datatype": "http://www.w3.org/2001/XMLSchema#date",
+     "value": "2027-01-01"
+    },
+    "title": {
+     "type": "literal",
+     "xml:lang": "de",
+     "value": "Richtlinie (EU) 2025/516 des Rates vom 11. März 2025 zur Änderung der Richtlinie 2006/112/EG in Bezug auf die Mehrwertsteuervorschriften für das digitale Zeitalter"
+    },
+    "type": {
+     "type": "uri",
+     "value": "http://publications.europa.eu/resource/authority/resource-type/DIR"
+    }
+   },
+   {
+    "celex": {
+     "type": "literal",
+     "datatype": "http://www.w3.org/2001/XMLSchema#string",
+     "value": "32025L0516"
+    },
+    "d": {
+     "type": "literal",
+     "datatype": "http://www.w3.org/2001/XMLSchema#date",
      "value": "2028-06-30"
+    },
+    "title": {
+     "type": "literal",
+     "xml:lang": "de",
+     "value": "Richtlinie (EU) 2025/516 des Rates vom 11. März 2025 zur Änderung der Richtlinie 2006/112/EG in Bezug auf die Mehrwertsteuervorschriften für das digitale Zeitalter"
+    },
+    "type": {
+     "type": "uri",
+     "value": "http://publications.europa.eu/resource/authority/resource-type/DIR"
+    }
+   },
+   {
+    "celex": {
+     "type": "literal",
+     "datatype": "http://www.w3.org/2001/XMLSchema#string",
+     "value": "32025L0516"
+    },
+    "d": {
+     "type": "literal",
+     "datatype": "http://www.w3.org/2001/XMLSchema#date",
+     "value": "2028-07-01"
+    },
+    "title": {
+     "type": "literal",
+     "xml:lang": "de",
+     "value": "Richtlinie (EU) 2025/516 des Rates vom 11. März 2025 zur Änderung der Richtlinie 2006/112/EG in Bezug auf die Mehrwertsteuervorschriften für das digitale Zeitalter"
+    },
+    "type": {
+     "type": "uri",
+     "value": "http://publications.europa.eu/resource/authority/resource-type/DIR"
+    }
+   },
+   {
+    "celex": {
+     "type": "literal",
+     "datatype": "http://www.w3.org/2001/XMLSchema#string",
+     "value": "32025L0516"
+    },
+    "d": {
+     "type": "literal",
+     "datatype": "http://www.w3.org/2001/XMLSchema#date",
+     "value": "2029-06-30"
+    },
+    "title": {
+     "type": "literal",
+     "xml:lang": "de",
+     "value": "Richtlinie (EU) 2025/516 des Rates vom 11. März 2025 zur Änderung der Richtlinie 2006/112/EG in Bezug auf die Mehrwertsteuervorschriften für das digitale Zeitalter"
+    },
+    "type": {
+     "type": "uri",
+     "value": "http://publications.europa.eu/resource/authority/resource-type/DIR"
+    }
+   },
+   {
+    "celex": {
+     "type": "literal",
+     "datatype": "http://www.w3.org/2001/XMLSchema#string",
+     "value": "32025L0516"
+    },
+    "d": {
+     "type": "literal",
+     "datatype": "http://www.w3.org/2001/XMLSchema#date",
+     "value": "2029-07-01"
+    },
+    "title": {
+     "type": "literal",
+     "xml:lang": "de",
+     "value": "Richtlinie (EU) 2025/516 des Rates vom 11. März 2025 zur Änderung der Richtlinie 2006/112/EG in Bezug auf die Mehrwertsteuervorschriften für das digitale Zeitalter"
+    },
+    "type": {
+     "type": "uri",
+     "value": "http://publications.europa.eu/resource/authority/resource-type/DIR"
+    }
+   },
+   {
+    "celex": {
+     "type": "literal",
+     "datatype": "http://www.w3.org/2001/XMLSchema#string",
+     "value": "32025L0516"
+    },
+    "d": {
+     "type": "literal",
+     "datatype": "http://www.w3.org/2001/XMLSchema#date",
+     "value": "2030-01-01"
+    },
+    "title": {
+     "type": "literal",
+     "xml:lang": "de",
+     "value": "Richtlinie (EU) 2025/516 des Rates vom 11. März 2025 zur Änderung der Richtlinie 2006/112/EG in Bezug auf die Mehrwertsteuervorschriften für das digitale Zeitalter"
+    },
+    "type": {
+     "type": "uri",
+     "value": "http://publications.europa.eu/resource/authority/resource-type/DIR"
+    }
+   },
+   {
+    "celex": {
+     "type": "literal",
+     "datatype": "http://www.w3.org/2001/XMLSchema#string",
+     "value": "32025L0516"
+    },
+    "d": {
+     "type": "literal",
+     "datatype": "http://www.w3.org/2001/XMLSchema#date",
+     "value": "2030-06-30"
+    },
+    "title": {
+     "type": "literal",
+     "xml:lang": "de",
+     "value": "Richtlinie (EU) 2025/516 des Rates vom 11. März 2025 zur Änderung der Richtlinie 2006/112/EG in Bezug auf die Mehrwertsteuervorschriften für das digitale Zeitalter"
+    },
+    "type": {
+     "type": "uri",
+     "value": "http://publications.europa.eu/resource/authority/resource-type/DIR"
+    }
+   },
+   {
+    "celex": {
+     "type": "literal",
+     "datatype": "http://www.w3.org/2001/XMLSchema#string",
+     "value": "32025L0516"
+    },
+    "d": {
+     "type": "literal",
+     "datatype": "http://www.w3.org/2001/XMLSchema#date",
+     "value": "2030-07-01"
+    },
+    "title": {
+     "type": "literal",
+     "xml:lang": "de",
+     "value": "Richtlinie (EU) 2025/516 des Rates vom 11. März 2025 zur Änderung der Richtlinie 2006/112/EG in Bezug auf die Mehrwertsteuervorschriften für das digitale Zeitalter"
+    },
+    "type": {
+     "type": "uri",
+     "value": "http://publications.europa.eu/resource/authority/resource-type/DIR"
+    }
+   },
+   {
+    "celex": {
+     "type": "literal",
+     "datatype": "http://www.w3.org/2001/XMLSchema#string",
+     "value": "32025L0516"
+    },
+    "d": {
+     "type": "literal",
+     "datatype": "http://www.w3.org/2001/XMLSchema#date",
+     "value": "2035-01-01"
     },
     "title": {
      "type": "literal",
@@ -158,6 +284,27 @@
      "type": "literal",
      "datatype": "http://www.w3.org/2001/XMLSchema#date",
      "value": "2028-07-26"
+    },
+    "title": {
+     "type": "literal",
+     "xml:lang": "de",
+     "value": "Richtlinie (EU) 2024/1760 des Europäischen Parlaments und des Rates vom 13. Juni 2024 über die Sorgfaltspflichten von Unternehmen im Hinblick auf Nachhaltigkeit und zur Änderung der Richtlinie (EU) 2019/1937 und der Verordnung (EU) 2023/2859 (Text von Bedeutung für den EWR)"
+    },
+    "type": {
+     "type": "uri",
+     "value": "http://publications.europa.eu/resource/authority/resource-type/DIR"
+    }
+   },
+   {
+    "celex": {
+     "type": "literal",
+     "datatype": "http://www.w3.org/2001/XMLSchema#string",
+     "value": "32024L1760"
+    },
+    "d": {
+     "type": "literal",
+     "datatype": "http://www.w3.org/2001/XMLSchema#date",
+     "value": "2029-07-26"
     },
     "title": {
      "type": "literal",

@@ -13,7 +13,8 @@
  *   5. the default slot: what the section holds beyond its facts — the
  *      drafts of „Umsetzung", later the feedback of „Konsultation";
  *   6. the dated record, folded, on the sheet a list stands on (`ListBox`),
- *      as „Alle Schritte im Landtag".
+ *      as „Alle Schritte im Landtag": the steps of the procedure, or under
+ *      „Umsetzung" the measures the Member State notified.
  *
  * Every word comes from `euRailView`; this component holds none. A later
  * step of the EU cycle fills these places and adds no layout of its own.
@@ -60,12 +61,17 @@ defineProps<{
           <ListBox class="@container/list">
             <ol class="divide-y divide-hairline text-sm">
               <li
-                v-for="row in section.record.rows"
-                :key="`${row.iso}|${row.label}`"
+                v-for="(row, i) in section.record.rows"
+                :key="`${i}|${row.iso}|${row.label}`"
                 class="grid grid-cols-1 items-baseline gap-x-3 gap-y-0.5 px-4 py-2.5 row-cols:grid-cols-[6rem_minmax(0,1fr)]"
               >
-                <time :datetime="row.iso" class="tabular-nums text-ink-muted">{{ row.date }}</time>
-                <span class="min-w-0 text-ink">{{ row.label }}</span>
+                <time v-if="row.iso" :datetime="row.iso" class="tabular-nums text-ink-muted">{{ row.date }}</time>
+                <span v-else class="text-ink-muted">{{ row.date }}</span>
+                <span class="min-w-0 text-ink">
+                  <ExternalLink v-if="row.href" :href="row.href" class="link-inline">{{ row.label }}</ExternalLink>
+                  <template v-else>{{ row.label }}</template>
+                  <span v-if="row.detail" class="mt-0.5 block text-ink-muted">{{ row.detail }}</span>
+                </span>
               </li>
             </ol>
           </ListBox>
