@@ -1037,7 +1037,7 @@ export function sameDraftFilters(a: DraftFilterValues, b: DraftFilterValues): bo
 /* The value of the tab a multi-station link lands on — no station has it. */
 export const SEVERAL_STATIONS = 'mehrere'
 
-const VERORDNUNG_NO_STATION = 'Verordnungsentwürfe kommen nicht ins Parlament'
+const VERORDNUNG_NO_STATION = 'Verordnungsentwürfe kommen nicht ins Parlament oder in den Landtag'
 
 export interface StationTab {
   value: string

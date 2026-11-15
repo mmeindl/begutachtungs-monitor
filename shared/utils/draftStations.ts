@@ -60,13 +60,22 @@ export const DRAFT_STATION_ORDER: readonly DraftStation[] = ['begutachtung', 'rv
 export const DRAFT_STATION_LABEL: Record<DraftStation, string> = {
   begutachtung: 'Begutachtung',
   rv: 'Regierungsvorlage',
-  parlament: 'Parlament',
+  /* „Parlament / Landtag" since 15.11.2026, for the reason „Kundgemacht"
+   * below gives: the tab holds the Bund's drafts and the Länder's, and in
+   * Austria „das Parlament" is Nationalrat and Bundesrat only. The two words
+   * are the station's names on the draft pages (`spine.ts`); a row, which
+   * knows its source, names one of them (`PARLIAMENT_NAME`). */
+  parlament: 'Parlament / Landtag',
   /* „Kundgemacht" since 22.10.2026, not „Bundesgesetzblatt": the Länder's
    * drafts reach this station too, in their Landesgesetzblatt, and a tab
    * naming the Bund's Gazette over them would be wrong. The state is what
    * both share; the citation under it says which Gazette. */
   bgbl: 'Kundgemacht',
 }
+
+/** The parliament station's name where the source is known: one row, one
+ *  draft page. The list's tab says both (`DRAFT_STATION_LABEL`). */
+export const PARLIAMENT_NAME = { bund: 'Parlament', land: 'Landtag' } as const
 
 /** Furthest wins when a draft produced more than one Vorlage (ME→RV is
  *  1:n): the chain reached the Bundesgesetzblatt even if only one

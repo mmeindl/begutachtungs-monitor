@@ -476,6 +476,16 @@ describe('Zone 2 — Kennung', () => {
     expect(viewOfRis(ris({ startedAt: today, active: true })).newLabel).toBe('Neu: Begutachtung')
     expect(viewOfRis(ris({ startedAt: today, active: false })).newLabel).toBeNull()
   })
+
+  /* The tab says „Parlament / Landtag"; a row knows its source and names one. */
+  it('names the Landtag on a Land row whose draft reached it this week', () => {
+    const land: LandConsultation = {
+      id: 'ooe-2026-16120', land: 'ooe', kind: 'gesetz', title: 'Oö. Gleichbehandlungsgesetz', startedAt: '2026-10-01',
+      deadline: '2026-11-12', url: 'https://www.land-oberoesterreich.gv.at/', documents: [], active: false,
+      stage: { station: 'parlament', label: 'Im Landtag beschlossen', detail: null, date: todayIso() },
+    }
+    expect(viewOfLand(land).newLabel).toBe('Neu: Landtag')
+  })
 })
 
 /* „Neu" at every station (03.10.2026): the mark names the station the row

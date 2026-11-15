@@ -55,7 +55,7 @@ import type {
 } from '#shared/types'
 import { aliasesFor } from '#shared/utils/draftAliases'
 import { isLandLaw, type DraftListRow } from '#shared/utils/draftOrder'
-import { DRAFT_STATION_LABEL } from '#shared/utils/draftStations'
+import { DRAFT_STATION_LABEL, PARLIAMENT_NAME } from '#shared/utils/draftStations'
 import { type DeadlineTone, deadlineTone, fristClassLineDe, isNewArrival, isWithinNewWindow } from './deadlines'
 import { bgblShort, formatDateDe, formatDateWeekdayDe, fristEndedDe, fristLabel, todayIso } from '#shared/utils/format'
 import { finalDecisionOf, objectionUnresolved, promulgationState } from '#shared/utils/promulgation'
@@ -391,11 +391,13 @@ function chainState(chain: DraftChain, deadline: string | null, today: string): 
  * The chip only ever names the current station: a draft whose Vorlage
  * arrived on Monday and was promulgated on Friday says „Neu:
  * Bundesgesetzblatt", not both. The words are the tabs' (`DRAFT_STATION_LABEL`),
- * so the chip and the tab that filters for it say the same thing.
+ * so the chip and the tab that filters for it say the same thing — except
+ * that a row knows its source, so where the tab says „Parlament / Landtag"
+ * the chip names the one it is (`PARLIAMENT_NAME`).
  */
-function stationNewLabel(station: DraftStation | null, date: string | null | undefined): string | null {
+function stationNewLabel(station: DraftStation | null, date: string | null | undefined, level: keyof typeof PARLIAMENT_NAME = 'bund'): string | null {
   if (!station || !isWithinNewWindow(date)) return null
-  return `Neu: ${DRAFT_STATION_LABEL[station]}`
+  return `Neu: ${station === 'parlament' ? PARLIAMENT_NAME[level] : DRAFT_STATION_LABEL[station]}`
 }
 
 /**
@@ -655,7 +657,7 @@ export function viewOfLand(c: LandConsultation): EntryView {
     eu: euLeadOf(c.eu),
     // A station the Land recorded this week, else a Begutachtung that began this week.
     newLabel: c.stage && c.stage !== 'unknown'
-      ? stationNewLabel(c.stage.station, c.stage.date)
+      ? stationNewLabel(c.stage.station, c.stage.date, 'land')
       : begutachtungNewLabel(c.startedAt, c.active),
     // Filed with the Land, counted by nobody — the RIS rows' state.
     participation: { kind: 'unpublished' },

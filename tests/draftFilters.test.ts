@@ -258,13 +258,13 @@ describe('stationTabsFor', () => {
     // The strip does not change shape with the Art filter.
     const tabs = stationTabsFor('verordnung', [])
     expect(tabs.filter((t) => t.disabled).map((t) => t.value)).toEqual(['rv', 'parlament'])
-    expect(tabs.find((t) => t.value === 'rv')?.reason).toBe('Verordnungsentwürfe kommen nicht ins Parlament')
+    expect(tabs.find((t) => t.value === 'rv')?.reason).toBe('Verordnungsentwürfe kommen nicht ins Parlament oder in den Landtag')
     expect(tabs.find((t) => t.value === 'bgbl')?.disabled).toBe(false)
   })
 
   it('names a shared link\'s several stations as a tab of their own', () => {
     const tabs = stationTabsFor('', ['rv', 'parlament'])
-    expect(tabs.at(-1)).toEqual({ value: SEVERAL_STATIONS, label: 'Regierungsvorlage + Parlament' })
+    expect(tabs.at(-1)).toEqual({ value: SEVERAL_STATIONS, label: 'Regierungsvorlage + Parlament / Landtag' })
     expect(stationTabsFor('', ['rv']).some((t) => t.value === SEVERAL_STATIONS)).toBe(false)
   })
 })
