@@ -594,3 +594,117 @@ export type EuConsultation =
   | { state: 'vor-portal'; reference: string }
   | { state: 'kein-vorschlag' }
   | { state: 'ungelesen'; reference: string | null }
+
+/* ------------------------------------------------------------------ *
+ * A proposal of the Commission that left the Commission (step 3)
+ * ------------------------------------------------------------------ */
+
+/**
+ * The three flags the Cellar sets on a proposal's dossier
+ * (`cdm:dossier_pending-proposal`, `…_withdrawn-proposal`,
+ * `…_adopted-proposal`), each as read: true, false, or null where the
+ * dossier carries none. They contradict each other in one dossier since
+ * 2019 (15.11.2026), so they are passed on as they are and only
+ * `euProposalStandOf` decides what they say together.
+ */
+export interface EuProposalFlags {
+  pending: boolean | null
+  withdrawn: boolean | null
+  adopted: boolean | null
+}
+
+/** One dossier a proposal initiated, as the Cellar records it. */
+export interface EuProposalDossier {
+  /**
+   * The procedure, in the act rail's shape (`EuProcedure`): number, type,
+   * the Observatory's page, this proposal, the steps the monitor reads and
+   * how many others. `observatoryUrl` is null for a procedure the
+   * Observatory split into files (`OBSERVATORY_FILE`): the plain number
+   * answers 404 there, and the proposal's page links the acts instead.
+   */
+  procedure: EuProcedure
+  flags: EuProposalFlags
+  /** The day of the Commission's withdrawal (`WDW_byCOM`), ISO; null where the dossier dates none. */
+  withdrawn: string | null
+  /** The day of the last step the Cellar dates on the dossier, of any type, read or not; null where none is dated. */
+  lastStep: string | null
+  /** The CELEX numbers of the acts the dossier produced, ascending. */
+  acts: string[]
+}
+
+/**
+ * A proposal of the Commission as the Cellar records it
+ * (`parseProposalAnswer`). An answer without the proposal is no record at
+ * all: the Cellar does not know the number, and the reader returns null.
+ */
+export interface EuProposalRecord {
+  /** „52026PC0780". */
+  celex: string
+  /** The day on the document (`work_date_document`), ISO; null where none. */
+  date: string | null
+  /** The German title, or the English one where the German is missing; null where neither. */
+  title: string | null
+  /** Whether `title` is the German one; false where the English stands in for it (some fresh proposals). */
+  titleIsGerman: boolean
+  /** Usually one; ascending by procedure number. Empty where the Cellar records no procedure for it. */
+  dossiers: EuProposalDossier[]
+}
+
+/**
+ * Where a proposal stands, from what the Cellar records — a statement about
+ * the record, never about the world (`euProposalStandOf`):
+ *
+ * - `rechtsakt`: the adopted flag, and at least one act the dossier produced;
+ * - `zurueckgezogen`: the Commission's withdrawal, dated;
+ * - `zurueckgezogen-undatiert`: the withdrawn flag alone, no dated step;
+ * - `anhaengig`: the pending flag alone — the Cellar's statement, with the
+ *   day of the last step it records;
+ * - `unklar`: flags missing or contradicting each other — no stand is
+ *   claimed beyond the steps;
+ * - `ohne-verfahren`: the Cellar knows the proposal, but no dossier.
+ */
+export type EuProposalStand =
+  | { kind: 'rechtsakt'; acts: string[] }
+  | { kind: 'zurueckgezogen'; date: string }
+  | { kind: 'zurueckgezogen-undatiert' }
+  | { kind: 'anhaengig'; lastStep: string | null }
+  | { kind: 'unklar'; lastStep: string | null; acts: string[] }
+  | { kind: 'ohne-verfahren' }
+
+/** An act a proposal's dossier produced, with where the monitor shows it. */
+export interface EuProposalAct {
+  celex: string
+  /** „Richtlinie (EU) 2024/1711": the map's own label where the map holds the act, else the form since 2015 from the CELEX, else the CELEX. */
+  label: string
+  /** The monitor's page of the act, only where one exists (in the map, or a directive); null otherwise. */
+  path: string | null
+  /** The act on EUR-Lex, by its CELEX. */
+  eurLexUrl: string
+}
+
+/**
+ * GET /api/eu-recht/vorschlag/:year/:number — one proposal of the
+ * Commission by its COM number, from the Cellar, with the consultation
+ * behind it from the portal. A number the Cellar proves unknown is a 404,
+ * not a state.
+ */
+export interface EuVorschlagResponse {
+  /** „COM(2026) 780", as cited. */
+  reference: string
+  /** „52026PC0780". */
+  celex: string
+  /** The proposal on EUR-Lex. */
+  eurLexUrl: string
+  /** Null where the Cellar did not answer: the page says so, and claims no stand. */
+  proposal: EuProposalRecord | null
+  /** The acts the proposal's dossiers produced, ascending by CELEX; empty where none or not read. */
+  acts: EuProposalAct[]
+  /**
+   * The act's page this address answers 301 to: set only where the dossier
+   * names exactly ONE act and the monitor has its page (`euProposalRedirect`).
+   * With several acts the proposal's page stays and links each.
+   */
+  redirect: string | null
+  /** The consultation behind the proposal on the Commission's portal, by its COM number. */
+  consultation: EuConsultation
+}

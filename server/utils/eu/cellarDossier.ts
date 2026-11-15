@@ -119,7 +119,9 @@ export function fetchDossierAnswer(celex: string, policy: UpstreamPolicy = DOSSI
 // Reading the answer
 // ---------------------------------------------------------------------------
 
-type Row = Record<string, { value?: string } | undefined>
+/** One row of a SPARQL answer, by column. Shared with the reader of a proposal (`cellarVorschlag.ts`). */
+export type SparqlRow = Record<string, { value?: string } | undefined>
+type Row = SparqlRow
 
 const DAY_RE = /^\d{4}-\d{2}-\d{2}$/
 /** „2022/0117/COD", the Cellar's spelling of a procedure number. */
@@ -176,13 +178,18 @@ export function observatoryUrlOf(reference: string | null, celex?: string): stri
 }
 const EUR_LEX_CELEX = 'https://eur-lex.europa.eu/legal-content/DE/TXT/?uri=CELEX:'
 
-const value = (row: Row, key: string): string | null => {
+/** A document on EUR-Lex, German, by its CELEX — built, never fetched. */
+export const eurLexCelexUrl = (celex: string): string => EUR_LEX_CELEX + encodeURIComponent(celex)
+
+/** A column's value, trimmed; null where it is missing or empty. */
+export const value = (row: Row, key: string): string | null => {
   const v = row[key]?.value?.trim()
   return v ? v : null
 }
-const day = (v: string | null): string | null => (v && DAY_RE.test(v.slice(0, 10)) ? v.slice(0, 10) : null)
+/** The ISO day at the head of a value, null for anything else. */
+export const day = (v: string | null): string | null => (v && DAY_RE.test(v.slice(0, 10)) ? v.slice(0, 10) : null)
 /** The last path segment of a URI: `…/corporate-body/EP` → `EP`, `…/procedure/OLP` → `OLP`. */
-const lastSegment = (uri: string | null): string | null => {
+export const lastSegment = (uri: string | null): string | null => {
   if (!uri) return null
   const seg = uri.slice(uri.lastIndexOf('/') + 1)
   return seg || null
@@ -214,8 +221,8 @@ export function procedureReference(raw: string | null): string | null {
   return m ? `${m[1]}/${m[2]}(${m[3]})` : null
 }
 
-/** One dossier's rows, gathered. */
-interface DossierRows {
+/** One dossier's rows, gathered. Shared with the reader of a proposal, which fills it from its own columns. */
+export interface DossierRows {
   /** The Cellar's raw procedure number („2022/0117/COD"), if any row carries one. */
   rawReference: string | null
   type: string | null
@@ -247,8 +254,7 @@ export function parseDossierAnswer(answer: SparqlAnswer, celex?: string): EuActR
     }
     return d
   }
-  const events = new Map<string, EuProcedureEvent>()
-  const unreadEventUris = new Set<string>()
+  const sink: EventSink = { events: new Map(), unread: new Set() }
 
   for (const row of rows) {
     const kind = value(row, 'k')
@@ -274,15 +280,7 @@ export function parseDossierAnswer(answer: SparqlAnswer, celex?: string): EuActR
       const id = value(row, 'b')
       if (uri && id) dossierOf(uri).proposalIds.push({ id, date: day(value(row, 'c')) })
     } else if (kind === 'event') {
-      const code = lastSegment(value(row, 'c'))
-      if (!code) continue
-      if (!isReadEuEvent(code)) {
-        const uri = value(row, 'b')
-        if (uri) unreadEventUris.add(uri)
-        continue
-      }
-      const date = day(value(row, 'd'))
-      if (date) events.set(`${date}|${code}`, { code, date })
+      readEventRow(row, sink)
     }
   }
 
@@ -295,7 +293,7 @@ export function parseDossierAnswer(answer: SparqlAnswer, celex?: string): EuActR
 
   return {
     adoptedBy: adoptedByOf(authors),
-    procedure: dossiers.size ? procedureOf([...dossiers.values()], [...events.values()], unreadEventUris.size, celex) : null,
+    procedure: dossiers.size ? procedureOf([...dossiers.values()], [...sink.events.values()], sink.unread.size, celex) : null,
     inForce: earliestOf('EV'),
     // A Beschluss addressed to someone is typed „PE" („Wirksamwerden"), not
     // „EV": 12 of the 13 decisions of the map (15.11.2026).
@@ -306,12 +304,43 @@ export function parseDossierAnswer(answer: SparqlAnswer, celex?: string): EuActR
 }
 
 /**
+ * Where the steps of a procedure are gathered while the rows are read: the
+ * steps the monitor reads, each (day, type) once, and the URIs of the
+ * others, so each is counted once however many rows repeat it.
+ */
+export interface EventSink {
+  events: Map<string, EuProcedureEvent>
+  unread: Set<string>
+}
+
+/**
+ * One `event` row (b = the step's URI, c = its type, d = its day) into the
+ * sink — one reading of a step for the act's rail and the proposal's page
+ * alike. A type off the allowlist is counted, never shown; a step the
+ * Cellar does not date is not kept. Returns the step's type and day as
+ * read, for a caller that needs every dated step (the proposal's last
+ * recorded one); null for a row without a type.
+ */
+export function readEventRow(row: Row, sink: EventSink): { code: string; date: string | null } | null {
+  const code = lastSegment(value(row, 'c'))
+  if (!code) return null
+  const date = day(value(row, 'd'))
+  if (!isReadEuEvent(code)) {
+    const uri = value(row, 'b')
+    if (uri) sink.unread.add(uri)
+    return { code, date }
+  }
+  if (date) sink.events.set(`${date}|${code}`, { code, date })
+  return { code, date }
+}
+
+/**
  * The procedure from its dossier(s). Where an act hangs on two (Richtlinie
  * 2000/29/EG: 1995/0134 and 1997/0338), the number and type shown are the
  * most recent procedure's — the one whose number sorts last; a dossier
  * without a number sorts first. Both proposals and the steps of both stay.
  */
-function procedureOf(dossiers: DossierRows[], events: EuProcedureEvent[], otherEvents: number, celex?: string): EuProcedure {
+export function procedureOf(dossiers: DossierRows[], events: EuProcedureEvent[], otherEvents: number, celex?: string): EuProcedure {
   const latest = [...dossiers].sort((a, b) => cmp(a.rawReference ?? '', b.rawReference ?? ''))[dossiers.length - 1]!
   const reference = procedureReference(latest.rawReference)
   const proposals = dossiers
@@ -345,5 +374,5 @@ function proposalOf(d: DossierRows): EuProposal | null {
     .find((c) => PROPOSAL_CELEX_RE.test(c)) ?? null
   if (!reference && !celex) return null
   const date = ascendingUnique(d.proposalIds.map((p) => p.date).filter((x): x is string => x !== null))[0] ?? null
-  return { reference, celex, date, eurLexUrl: celex ? EUR_LEX_CELEX + encodeURIComponent(celex) : null }
+  return { reference, celex, date, eurLexUrl: celex ? eurLexCelexUrl(celex) : null }
 }

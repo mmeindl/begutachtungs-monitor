@@ -18,8 +18,13 @@
  * Kommission" for anything else. After the Commission the monitor does
  * not follow an initiative yet: the stations a legal act would still pass
  * stand in the rail, not reached, and each section says so in a gap
- * sentence („Nicht im Monitor"). Pending proposals in the Cellar are a
- * later part of step 3.
+ * sentence („Nicht im Monitor") — unless a publication of the initiative
+ * carries a COM number: then the monitor follows the proposal on a page of
+ * its own (`euProposalPath`), the Commission's station links it, and the
+ * later stations point there instead of saying „Nicht im Monitor". No
+ * redirect from the initiative to the proposal: an initiative can hold
+ * several proposals (102 adoption publications in 87 initiatives,
+ * 15.11.2026).
  *
  * ONE BLUE ELEMENT: at an open window the way to the portal's page of the
  * initiative, where the contribution is made, with the day the window
@@ -28,7 +33,7 @@
  * All German copy of the page lives here. Pure: no Vue.
  */
 import type { EuInitiative, EuPortalPublication } from '#shared/types'
-import { EU_MEMBER_STATE_NAME_DE } from '#shared/utils/eu'
+import { EU_MEMBER_STATE_NAME_DE, euProposalPathOfReference } from '#shared/utils/eu'
 import { formatDateDe } from '#shared/utils/format'
 import { gapDe } from '#shared/utils/gaps'
 import { actTypeDe } from '#shared/utils/euPortal'
@@ -91,6 +96,11 @@ const DE = {
     umsetzung: gapDe('outOfScope', `Die Umsetzung in ${EU_MEMBER_STATE_NAME_DE} verfolgt der Monitor bei diesem Vorhaben noch nicht.`),
     geltung: gapDe('outOfScope', 'Ab wann ein Rechtsakt daraus gilt, verfolgt der Monitor bei diesem Vorhaben noch nicht.'),
   },
+  pointer: {
+    title: 'Verfahren',
+    label: (reference: string) => `Verfahren zu ${reference} im Monitor`,
+    rail: (n: number) => (n === 1 ? 'Wie es weitergeht, zeigt die Seite des Vorschlags.' : 'Wie es weitergeht, zeigen die Seiten der Vorschläge.'),
+  },
   noChannel: 'Bei Parlament und Rat sieht das Verfahren keinen Weg vor, auf dem sich Einzelne zu einem Vorschlag äußern können.',
   unread: 'Das Vorhaben konnte nicht gelesen werden: Das Portal „Ihre Meinung zählt“ der Kommission hat nicht rechtzeitig oder nicht lesbar geantwortet.',
   unreadLink: 'Das Vorhaben im Portal ansehen',
@@ -125,8 +135,8 @@ export interface EuInitiativeView {
   url: string
 }
 
-/** A window is open on a day: the portal says so and its last day has not passed. */
-const isOpen = (p: EuPortalPublication, today: string) => p.feedbackStatus === 'OPEN' && (p.feedbackEnd === null || p.feedbackEnd >= today)
+/** A window is open on a day: the portal says so and its last day has not passed. Shared with a proposal's page. */
+export const isOpen = (p: EuPortalPublication, today: string) => p.feedbackStatus === 'OPEN' && (p.feedbackEnd === null || p.feedbackEnd >= today)
 
 const withPeriod = (p: EuPortalPublication) => p.feedbackEnd !== null
 
@@ -183,6 +193,25 @@ const section = (st: EuRailStation, facts: EuSectionFact[], gap: string | null, 
   ({ id: st.id, elementId: elementIdOf(st.id), heading: st.name, record: null, credits: [...DE.credits], ...framed(facts, gap, notes) })
 
 /**
+ * The proposals of the initiative the monitor has a page for: every
+ * publication whose reference is a COM number („COM(2026)780"), each once,
+ * in the portal's order — as the join to the Cellar is made, by the number
+ * the publication carries and nothing looser.
+ */
+export function proposalsOf(i: EuInitiative): { reference: string; path: string }[] {
+  const out: { reference: string; path: string }[] = []
+  for (const p of i.publications) {
+    const path = euProposalPathOfReference(p.reference)
+    if (path && !out.some((o) => o.path === path)) out.push({ reference: p.reference!.trim(), path })
+  }
+  return out
+}
+
+/** The way to each proposal's page, as facts. */
+const pointerFacts = (proposals: readonly { reference: string; path: string }[]): EuSectionFact[] =>
+  proposals.map((p, n) => fact(`verfahren-${n}`, DE.pointer.title, [{ href: p.path, label: DE.pointer.label(p.reference), internal: true }]))
+
+/**
  * The page of one initiative as words. `today` (ISO, Vienna) decides
  * whether a window is still open — the portal's status alone may be a day
  * old in the cache.
@@ -213,7 +242,8 @@ export function euInitiativeView(i: EuInitiative, today: string): EuInitiativeVi
     ? EU_RAIL_DE.portal.until(isProposalFeedback(p) ? EU_RAIL_DE.portal.proposalFeedback : stageDe(p), formatDateDe(p.feedbackEnd))
     : p.published ? `${stageDe(p)} ${formatDateDe(p.published)}` : stageDe(p))), ownGap, showConsultation && ownPubs.length === 0)
   stations.push(ownStation)
-  sections.push(section(ownStation, [...commissionFacts(ownPubs), ...(showConsultation ? [] : [initiativeFact(i)])], ownGap))
+  const proposals = proposalsOf(i)
+  sections.push(section(ownStation, [...commissionFacts(ownPubs), ...pointerFacts(proposals), ...(showConsultation ? [] : [initiativeFact(i)])], ownGap))
 
   // After the Commission: only a legal act passes these, and the monitor does not follow it there yet.
   if (track !== 'sonstiges') {
@@ -226,9 +256,11 @@ export function euInitiativeView(i: EuInitiative, today: string): EuInitiativeVi
     ]
     after.forEach((a, n) => {
       // As on a draft's rail, only the first station not reached says anything; the sections below say it each.
-      const st = station(a.id, a.name, [], n === 0 && !ownStation.ahead ? DE.notFollowedRail : null, true)
+      // Where the monitor follows a proposal of the initiative, they point to its page instead.
+      const railLine = proposals.length ? DE.pointer.rail(proposals.length) : DE.notFollowedRail
+      const st = station(a.id, a.name, [], n === 0 && !ownStation.ahead ? railLine : null, true)
       stations.push(st)
-      sections.push(section(st, [gapFact(a.gap)], null, a.notes))
+      sections.push(section(st, proposals.length ? pointerFacts(proposals) : [gapFact(a.gap)], null, a.notes))
     })
   }
 

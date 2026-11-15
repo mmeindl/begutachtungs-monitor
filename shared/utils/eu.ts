@@ -89,6 +89,52 @@ export function euInitiativeId(segment: string): number | null {
   return INITIATIVE_ID_RE.test(segment) ? Number(segment) : null
 }
 
+/** The path word of a proposal of the Commission (the plan's „The addresses"). */
+export const EU_PROPOSAL_PATH_WORD = 'vorschlag'
+
+/** The first year a proposal's page is offered for: the Cellar's dossiers are uneven before (`OBSERVATORY_FIRST_YEAR` is 1994). */
+export const EU_PROPOSAL_FIRST_YEAR = 1990
+
+/** A COM number's own number: one to four digits, no leading zero — the canonical address carries no padding. */
+const PROPOSAL_NUMBER_RE = /^[1-9]\d{0,3}$/
+
+/**
+ * `/eu-recht/vorschlag/2026/780` — a proposal of the Commission by its COM
+ * number; null for a year before `EU_PROPOSAL_FIRST_YEAR` or of more than
+ * four digits, and for a number outside 1…9999. The address carries no
+ * padding: COM(2022) 177, not 0177.
+ */
+export function euProposalPath(year: number, number: number): string | null {
+  if (!Number.isInteger(year) || year < EU_PROPOSAL_FIRST_YEAR || year > 9999) return null
+  if (!Number.isInteger(number) || !PROPOSAL_NUMBER_RE.test(String(number))) return null
+  return euPath(EU_PROPOSAL_PATH_WORD, year, number)
+}
+
+/**
+ * Year and number from the two path segments, or null: a year of four
+ * digits between `EU_PROPOSAL_FIRST_YEAR` and next year (`today`, ISO, gives
+ * the year), a number of one to four digits without a leading zero. A
+ * padded number („0780") is null here — the page answers it 301 to the
+ * canonical address, the API 400.
+ */
+export function euProposalAddress(year: string, number: string, today: string): { year: number; number: number } | null {
+  if (!/^\d{4}$/.test(year) || !PROPOSAL_NUMBER_RE.test(number)) return null
+  const y = Number(year)
+  const last = Number(today.slice(0, 4)) + 1
+  if (y < EU_PROPOSAL_FIRST_YEAR || y > last) return null
+  return { year: y, number: Number(number) }
+}
+
+/**
+ * The monitor's page of a proposal from a COM number as the portal or the
+ * Cellar writes it — „COM(2026)780", „COM(2026) 780", „COM (2026) 0780" —;
+ * null for anything else, a composite number („COM(1995) 722 - 3") included.
+ */
+export function euProposalPathOfReference(reference: string | null): string | null {
+  const m = reference ? /^COM\s*\(\s*(\d{4})\s*\)\s*(\d{1,4})$/.exec(reference.trim()) : null
+  return m ? euProposalPath(Number(m[1]), Number(m[2])) : null
+}
+
 const CELEX_LETTER: Record<string, keyof typeof EU_ACT_PATH_WORD> = { L: 'richtlinie', R: 'verordnung', D: 'beschluss', F: 'rahmenbeschluss' }
 const CELEX_RE = /^3(\d{4})([LRDF])(\d{4})$/
 

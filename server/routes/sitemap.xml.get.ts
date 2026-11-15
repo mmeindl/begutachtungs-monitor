@@ -44,6 +44,11 @@ export default defineEventHandler(async (event) => {
     // The initiatives with a window open on the Commission's portal (step 3,
     // 15.11.2026): the page where a reader learns how to take part. Only the
     // open ones — a closed one keeps its page, but nothing lists it any more.
+    // The proposal pages of these windows (`euProposalPath`) are NOT listed:
+    // the list carries only the initiative's own reference, and the join the
+    // monitor proves — a PUBLICATION that carries the COM number — needs a
+    // read of each initiative on the portal, 2.5 s apart, on every sitemap
+    // request. An initiative's page links its proposals' pages.
     // Auto-imported, not imported: the route tests stub it as a global.
     withinBudget(openWindows(), EU_MAP_BUDGET_MS),
   ])

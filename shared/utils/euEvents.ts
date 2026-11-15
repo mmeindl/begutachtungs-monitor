@@ -32,10 +32,14 @@
  * `signature` and `opinion` to the station that carries the decision.
  * `publication` is the Official Journal's own station, which reads its date
  * from the act; the type is listed so that it is not counted as unread.
+ * `withdrawal` is the Commission taking its proposal back: it ends a
+ * proposal's procedure without an act (the page of a proposal,
+ * `cellarVorschlag.ts`).
  */
 export type EuEventRole =
   | 'proposal'
   | 'amended-proposal'
+  | 'withdrawal'
   | 'parliament'
   | 'council'
   | 'conciliation'
@@ -56,6 +60,10 @@ export const EU_EVENTS: Readonly<Record<string, EuEventKind>> = {
   ADP_PROPAME_byCOM: { label: 'Annahme eines geänderten Vorschlags durch die Kommission', role: 'amended-proposal' },
   ADP_PROPLEGAME_byCOM: { label: 'Annahme eines geänderten Vorschlags für einen Rechtsakt durch die Kommission', role: 'amended-proposal' },
   ADP_PROREEX_byCOM: { label: 'Annahme eines überprüften Vorschlags durch die Kommission', role: 'amended-proposal' },
+  // The Commission takes its proposal back. The label is the Cellar's, read from
+  // the authority table on 15.11.2026 like the others. 50 of the 52 withdrawn
+  // dossiers of 2019–2024 carry this step with a day.
+  WDW_byCOM: { label: 'Rücknahme durch die Kommission', role: 'withdrawal' },
 
   // The European Parliament
   ADP_R1_POS_byEP: { label: 'Standpunkt des EP in erster Lesung', role: 'parliament' },

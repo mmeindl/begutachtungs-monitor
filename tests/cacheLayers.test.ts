@@ -67,6 +67,7 @@ const FETCHED: Record<string, string> = {
   'eu-cellar': "the Cellar's SPARQL answer for one CELEX, as it arrived; the transposition dates are read from it fresh on every call",
   'eu-cellar-oj': "the Cellar's SPARQL answer on where one act was published, as it arrived; the Amtsblatt reference is read from it fresh on every call",
   'eu-cellar-dossier': "the Cellar's SPARQL answer on one act's authors, dates and procedure dossier, as it arrived; the rail is read from it fresh on every call",
+  'eu-cellar-vorschlag': "the Cellar's SPARQL answer on one proposal of the Commission — its day, title, dossier flags, steps and the acts it produced — as it arrived; read fresh on every call",
   'eu-cellar-richtlinien': "the Cellar's SPARQL answer on the directives with a transposition date in a window, as it arrived; the list is read from it fresh on every call",
   'eu-cellar-massnahmen-anzahl': "the Cellar's SPARQL answer on how many measures one country notified per directive of a window, as it arrived",
   'eu-cellar-massnahmen': "the Cellar's SPARQL answer on the measures one country notified for one directive, as it arrived; read fresh on every call",
@@ -88,7 +89,7 @@ const FETCHED: Record<string, string> = {
  *  - every search answer (`bgbl-nummer-suche`, `bund-land-suche`,
  *    `eu-bundesrecht`, `eu-landesrecht`) and the Cellar's SPARQL answers
  *    (`eu-cellar`, `eu-cellar-oj`, `eu-cellar-dossier`, `eu-cellar-richtlinien`,
- *    `eu-cellar-massnahmen-anzahl`, `eu-cellar-massnahmen`): an answer given before RIS or the Cellar
+ *    `eu-cellar-massnahmen-anzahl`, `eu-cellar-massnahmen`, `eu-cellar-vorschlag`): an answer given before RIS or the Cellar
  *    knew the act — none, or a partial one — would stand for a month, and no
  *    restart would clear it;
  *  - `bgbl-jahrgang-seite-laufend`: the running year still grows;

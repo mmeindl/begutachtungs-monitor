@@ -13,8 +13,9 @@
  *
  * ONE BLUE ELEMENT. While a window is open, the card carries the way to
  * the portal's page of the initiative, where the contribution is made —
- * the button a draft's page uses for its Stellungnahme (`DoorButton`) —
- * and the day the window closes. No countdown, no tone (rule D6).
+ * the button a draft's page uses for its Stellungnahme (`EuWindowAction`,
+ * shared with a proposal's page) — and the day the window closes. No
+ * countdown, no tone (rule D6).
  *
  * Nothing about a person: the page shows only what `parseInitiative`'s
  * fixed list of fields lets through, never an official's name or address.
@@ -113,16 +114,7 @@ const back = `${euPath()}#eu-fenster`
             <h2 class="font-sans text-base font-semibold text-ink">
               {{ view.status }}
             </h2>
-            <template v-if="view.action">
-              <p class="mt-1 text-sm text-ink-secondary">
-                {{ view.action.note }}
-              </p>
-              <div class="mt-3">
-                <DoorButton :href="view.action.href">
-                  {{ view.action.label }}
-                </DoorButton>
-              </div>
-            </template>
+            <EuWindowAction v-if="view.action" :action="view.action" />
             <EuRail class="mt-4" :stations="view.stations" :label="view.heading" />
           </div>
 

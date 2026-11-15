@@ -43,6 +43,8 @@ defineProps<{
                   <!-- A frame's only sentence may be a gap sentence: its lead word set apart (`GapNote`). -->
                   <GapNote v-if="typeof part === 'string' && !f.title" as="span" :text="part" />
                   <template v-else-if="typeof part === 'string'">{{ part }}</template>
+                  <!-- A page of this site: the proposal's page, an act's page. -->
+                  <NuxtLink v-else-if="part.internal" :to="part.href" class="link-inline">{{ part.label }}</NuxtLink>
                   <ExternalLink v-else :href="part.href" class="link-inline">{{ part.label }}</ExternalLink>
                 </template>
               </span>

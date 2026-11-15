@@ -36,6 +36,10 @@ export const KLASSEN = [
   // The page of an initiative of the Commission's portal,
   // `/eu-recht/initiative/<nr>` (step 3 of the EU cycle, 15.11.2026).
   'eu-initiative',
+  // The page of a proposal of the Commission, `/eu-recht/vorschlag/<year>/<nr>`
+  // (step 3 of the EU cycle, 15.11.2026). Four segments like an act's page,
+  // so it is told apart by its path word before the act rule below.
+  'eu-vorschlag',
   'wege',
   'datenlage',
   // Dissolved on 14.11.2026 (301 to /wege); the class stays for the days
@@ -134,6 +138,8 @@ export function klassifiziere(path: string, contentType?: string | null): Treffe
     return { klasse: 'anliegen-gegenstand' }
   }
 
+  // A proposal of the Commission: `/eu-recht/vorschlag/<year>/<nr>`.
+  if (parts[0] === 'eu-recht' && parts.length === 4 && parts[1] === 'vorschlag') return { klasse: 'eu-vorschlag' }
   // The EU map: the overview above, one act's page `/eu-recht/<kind>/<year>/<number>` here.
   if (parts[0] === 'eu-recht' && parts.length === 4) return { klasse: 'eu-recht' }
   // An initiative of the Commission's portal: `/eu-recht/initiative/<nr>`.

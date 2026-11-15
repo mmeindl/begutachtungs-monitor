@@ -315,10 +315,13 @@ usePageSeo({
             von EU-Rechtsakten, die Tage des Inkrafttretens und des
             Geltungsbeginns, zum Verfahren eines Rechtsakts dessen Nummer,
             die Nummer des Vorschlags der Kommission und die Schritte mit
-            ihrem Datum, die Liste der Richtlinien mit ihren
-            Umsetzungsfristen, und zu einer Richtlinie die Maßnahmen, die
-            Österreich der Kommission als Umsetzung gemeldet hat (Titel, Art,
-            Tag der Meldung, Fundstelle), aus dem Cellar, und der Link auf
+            ihrem Datum, zu einem Vorschlag der Kommission dessen Titel und
+            Datum, sein Verfahren mit dem Stand, den der Cellar dafür angibt,
+            und die Rechtsakte, die daraus hervorgegangen sind, die Liste der
+            Richtlinien mit ihren Umsetzungsfristen, und zu einer Richtlinie
+            die Maßnahmen, die Österreich der Kommission als Umsetzung
+            gemeldet hat (Titel, Art, Tag der Meldung, Fundstelle), aus dem
+            Cellar, und der Link auf
             <ExternalLink
               href="https://eur-lex.europa.eu"
               class="link-inline"

@@ -6,9 +6,10 @@
  */
 import { CELEX_RE, CELLAR_QUERY_VERSION, fetchOjAnswer, fetchTranspositionAnswer, parseOjAnswer, parseTranspositionAnswer, type OjAnswer, type SparqlAnswer, type TranspositionDates } from './cellar'
 import { DOSSIER_QUERY_VERSION, fetchDossierAnswer, parseDossierAnswer } from './cellarDossier'
+import { PROPOSAL_CELEX_RE, PROPOSAL_QUERY_VERSION, fetchProposalAnswer, parseProposalAnswer } from './cellarVorschlag'
 import { UMSETZUNG_QUERY_VERSION, DIRECTIVE_CELEX_RE, actMeasuresQuery, directivesQuery, fetchUmsetzungAnswer, measureCountsQuery, parseActMeasures, parseDirectives, parseMeasureCounts } from './cellarUmsetzung'
 import { DERIVED_ANALYSIS_TTL_S, PUBLISHED_DOCUMENT_TTL_S } from '../cache/ttl'
-import type { EuActRail, EuDirectiveToTranspose, EuNationalMeasure } from '../../../shared/types/eu'
+import type { EuActRail, EuDirectiveToTranspose, EuNationalMeasure, EuProposalRecord } from '../../../shared/types/eu'
 
 /**
  * At most two Cellar queries in flight, process-wide — the limit the corpus
@@ -100,6 +101,35 @@ export async function railOf(celex: string): Promise<EuActRail | null> {
     return parseDossierAnswer(await fetchDossierAnswerCached(celex), celex)
   } catch {
     return null
+  }
+}
+
+/**
+ * One proposal's record, as it arrived — a DAY, not a month like an act's
+ * dossier: a pending procedure moves (a new step, a withdrawal, the act it
+ * produced), and the page states the day of the last recorded step. The
+ * key carries the query's version. A failure throws and so is never
+ * cached; an answer without the proposal (the Cellar does not know the
+ * number) is an answer and is cached like any other.
+ */
+const fetchProposalAnswerCached = defineCachedFunction(
+  (celex: string): Promise<SparqlAnswer> => inCellarTurn(() => fetchProposalAnswer(celex)),
+  { name: 'eu-cellar-vorschlag', getKey: (celex: string) => `${celex}|v${PROPOSAL_QUERY_VERSION}`, maxAge: DERIVED_ANALYSIS_TTL_S, swr: false },
+)
+
+/**
+ * One proposal of the Commission, by its CELEX: the record; `unbekannt`
+ * where the Cellar answered and does not know the number — the one answer
+ * that proves it; `ungelesen` where the Cellar did not answer or answered
+ * in a shape the reader does not know. Never a guess between the last two.
+ */
+export async function proposalOf(celex: string): Promise<{ state: 'gelesen'; record: EuProposalRecord } | { state: 'unbekannt' } | { state: 'ungelesen' }> {
+  if (!PROPOSAL_CELEX_RE.test(celex)) return { state: 'ungelesen' }
+  try {
+    const record = parseProposalAnswer(await fetchProposalAnswerCached(celex), celex)
+    return record ? { state: 'gelesen', record } : { state: 'unbekannt' }
+  } catch {
+    return { state: 'ungelesen' }
   }
 }
 

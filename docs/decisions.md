@@ -763,6 +763,28 @@ The code names the EU rules D1 to D7; this is where they are defined
     the portal while a window is open, and the stations after the
     Commission say in a „Nicht im Monitor" sentence that the monitor does
     not follow it there yet.
+  - **The stand of a proposal: which Cellar flags decide** (15.11.2026,
+    step 3, `shared/utils/euVorschlag.ts`, `server/utils/eu/cellarVorschlag.ts`).
+    A proposal that left the Commission has a page by its COM number
+    (`euProposalPath`). Its dossier carries three flags — pending,
+    withdrawn, adopted — that contradict each other in one dossier since
+    2019, so no flag decides alone: „Rechtsakt geworden" needs the adopted
+    flag AND an act the dossier produced; „Zurückgezogen am …" needs the
+    Commission's dated step `WDW_byCOM` (50 of 52 withdrawn dossiers of
+    2019–2024 carry it); the withdrawn flag alone gives „Der Cellar führt
+    den Vorschlag als zurückgezogen", without a day; the pending flag alone
+    gives „Anhängig laut EUR-Lex" with the day of the last recorded step,
+    never „seit N Tagen" (rule D6). Missing or contradicting flags claim
+    no stand, and the page says the Cellar gives no clear one. The
+    Cellar's field „file-status" is NOT read: PENDING on 22 of the 52
+    withdrawn dossiers, ADOPTED on 6 pending ones. Rejected: reading the
+    pending flag as „still open" on its own. The page's absence sentences
+    are about the record („der Cellar verzeichnet bisher keinen
+    Beschluss"), not the world. One act with a page in the monitor: the
+    proposal's address answers 301 there; several: the page stays and
+    links each. An initiative's page links the page of each proposal one
+    of its publications carries and points its later stations there; it
+    never redirects, as an initiative can hold several proposals.
   - **The Legislative Observatory is linked by rule, not by lookup:**
     procedures from 1994 on, of type COD, CNS or APP; the link says that the
     page is English, and it is built from the procedure number, never

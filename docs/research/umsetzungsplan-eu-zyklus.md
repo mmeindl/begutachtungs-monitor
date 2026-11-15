@@ -375,6 +375,40 @@ added. Not verified: what the portal answers for an unknown number (taken as
 number the answer reports), and the address of an initiative's page on the
 portal in a browser.
 
+**Pending proposals built on 15.11.2026**: the page of a proposal
+(`/eu-recht/vorschlag/<year>/<nr>`, `vorschlag/[year]/[number].get.ts`,
+`cellarVorschlag.ts`, `app/utils/euVorschlag.ts`), the stand rule
+(`shared/utils/euVorschlag.ts`), the page-view class, and the initiative's
+page linking each proposal one of its publications carries. Measured on
+15.11.2026:
+
+- One SPARQL query per proposal, addressed by the proposal's CELEX
+  (`5<year>PC<number padded to four>`) through `owl:sameAs` on the CELEX
+  resource, answers in 0.25 s. The same address as a FILTER on the CELEX
+  literal took 55–90 s.
+- All 11 proposals with an open feedback window that day have a dossier
+  with procedure number, type and dated steps.
+- The dossier's three flags (pending, withdrawn, adopted) contradict each
+  other in one dossier since 2019. The separate field „file-status" says
+  PENDING on 22 of the 52 withdrawn dossiers of 2019–2024 and ADOPTED on 6
+  pending ones; it is not read (docs/decisions.md, „The stand of a
+  proposal").
+- 50 of those 52 withdrawn dossiers carry a dated step `WDW_byCOM`, which
+  dates the withdrawal. Its German label on the page („Rücknahme durch die
+  Kommission") is ours until the Cellar's authority table is read.
+- The German title is missing on some fresh proposals (COM(2026) 780:
+  English only); the English one stands in, flagged on the page.
+
+Against the plan: the address 301s to the act's page only where the
+dossier names exactly one act AND the monitor has that act's page (an act
+of the map, or a directive) — any other act would answer 404 there today,
+so it is linked to EUR-Lex. The open windows' proposal pages are not in
+the sitemap: the join needs a read of each initiative. Not verified: the
+COM number is turned into the CELEX by rule, and the Cellar's identifiers
+disagree with each other now and then on old acts (32013L0059); not
+measured for proposals. A split procedure (2023/0077) gets no Observatory
+link on the proposal's page; its acts' pages link their files.
+
 ### Step 4 — who gave feedback
 
 Changes what the monitor names; built with the maintainer present.

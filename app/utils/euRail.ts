@@ -74,10 +74,15 @@ export interface EuRailProcedureRow {
   href?: string | null
 }
 
-/** A link off this site inside a fact: the record at its source, never fetched. */
+/**
+ * A link inside a fact: the record at its source, never fetched — or, with
+ * `internal`, a page of this site (the proposal's page from an initiative's,
+ * an act's page from a proposal's).
+ */
 export interface EuFactLink {
   href: string
   label: string
+  internal?: true
 }
 
 /** One fact of a section's frame (`FactList`): a name, and under it the fact. */
@@ -267,11 +272,11 @@ export const anchorOf = (id: EuRailStationId) => `#${elementIdOf(id)}`
  * The builder
  * ------------------------------------------------------------------ */
 
-function roleOf(e: EuProcedureEvent): EuEventRole | null {
+export function roleOf(e: EuProcedureEvent): EuEventRole | null {
   return EU_EVENTS[e.code]?.role ?? null
 }
 
-function lastOf(events: readonly EuProcedureEvent[], role: EuEventRole): EuProcedureEvent | null {
+export function lastOf(events: readonly EuProcedureEvent[], role: EuEventRole): EuProcedureEvent | null {
   const found = events.filter((e) => roleOf(e) === role)
   return found.length ? found[found.length - 1]! : null
 }
@@ -298,7 +303,7 @@ function lastOf(events: readonly EuProcedureEvent[], role: EuEventRole): EuProce
  * Cellar's words. An amended proposal is a step of its own and always
  * stays. Ascending by day, a proposal before a step of the same day.
  */
-function procedureRowsOf(p: EuProcedure, commission: boolean): { proposal: EuRailProcedureRow[]; decision: EuRailProcedureRow[] } {
+export function procedureRowsOf(p: EuProcedure, commission: boolean): { proposal: EuRailProcedureRow[]; decision: EuRailProcedureRow[] } {
   const seen = new Set<string>()
   const proposal: EuRailProcedureRow[] = []
   const decision: EuRailProcedureRow[] = []
@@ -370,7 +375,7 @@ const consultedOf = (c: EuConsultation): EuPortalPublication[] =>
  * publications in the 87 initiatives of the map, 15.11.2026); another
  * proposal's period is not this act's.
  */
-const proposalFeedbackOf = (c: EuConsultation | null): EuPortalPublication | null =>
+export const proposalFeedbackOf = (c: EuConsultation | null): EuPortalPublication | null =>
   (c?.state === 'gefunden'
     ? c.initiative.publications.find((p) => p.feedbackEnd !== null && p.stage === 'ADOPTION_WORKFLOW' && p.reference?.replace(/\s+/g, '') === c.reference) ?? null
     : null)
@@ -391,7 +396,7 @@ function consultationGap(c: EuConsultation): string | null {
  * knowing is its own sentence — „im Portal nicht gefunden" is never „keine
  * Konsultation".
  */
-function consultationStation(c: EuConsultation): EuRailStation {
+export function consultationStation(c: EuConsultation): EuRailStation {
   return {
     id: 'konsultation',
     name: DE.name.konsultation,
@@ -420,7 +425,7 @@ export function initiativeFact(initiative: EuInitiative): EuSectionFact {
   return fact('vorhaben', DE.portal.initiative, [DE.portal.initiativeNumber(initiative.id), { href: initiative.url, label: DE.portal.link }])
 }
 
-function consultationFacts(c: EuConsultation): EuSectionFact[] {
+export function consultationFacts(c: EuConsultation): EuSectionFact[] {
   if (c.state !== 'gefunden') return []
   return [...periodFacts(consultedOf(c)), initiativeFact(c.initiative)]
 }
@@ -552,12 +557,22 @@ function proposalFacts(st: EuRailStation, p: EuProcedure | null): EuSectionFact[
  * and the signature. Everything else the monitor reads stands in the record.
  */
 function decisionFacts(r: EuActResponse, p: EuProcedure | null): EuSectionFact[] {
+  return procedureFacts(p, r.rail?.adoptedBy === 'parlament-rat')
+}
+
+/**
+ * The deciding station's facts from a procedure alone — for an act and for
+ * a proposal still pending. `withParliament`: whether Parliament's last
+ * decision is a fact of the frame (where Parliament and Council decide
+ * together); in every other procedure it stands in the record only.
+ */
+export function procedureFacts(p: EuProcedure | null, withParliament: boolean): EuSectionFact[] {
   if (!p) return []
   const typeLabel = p.type ? EU_PROCEDURE_TYPES[p.type] ?? null : null
   const observatory: EuFactLink | null = p.observatoryUrl ? { href: p.observatoryUrl, label: DE.source.observatory } : null
   const candidates: (string | EuFactLink | null)[] = [p.reference, typeLabel, observatory]
   const procedure = candidates.filter((x): x is string | EuFactLink => !!x)
-  const parliament = r.rail?.adoptedBy === 'parlament-rat' ? lastOf(p.events, 'parliament') : null
+  const parliament = withParliament ? lastOf(p.events, 'parliament') : null
   const council = lastOf(p.events, 'council')
   const signed = lastOf(p.events, 'signature')
   return [
