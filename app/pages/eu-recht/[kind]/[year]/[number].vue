@@ -26,7 +26,9 @@
 import type { EuActResponse } from '#shared/types'
 import { euActCiteDe } from '#shared/utils/citations'
 import { euActCelex } from '#shared/utils/eu'
+import { todayIso } from '#shared/utils/format'
 import { euActCredits, euActPageView } from '~/utils/euKarte'
+import { euRailView } from '~/utils/euRail'
 
 definePageMeta({
   // One address per act, as per draft (`/entwuerfe/[gp]/[inr]`): a kind in
@@ -61,6 +63,11 @@ if (!celex) throw createError({ statusCode: 404, statusMessage: 'Rechtsakt nicht
 const { data, status, error, refresh } = await useFetch<EuActResponse>(`/api/eu-recht/akte/${celex}`, { lazy: true })
 
 const view = computed(() => (data.value ? euActPageView(data.value) : null))
+
+/* The act's own rail and the section „Das Verfahren" (15.11.2026), read
+ * from the Cellar (`euRailView`). `today` only decides between „gilt ab"
+ * and „gilt seit"; the Vienna day, so server and client agree. */
+const rail = computed(() => (data.value ? euRailView(data.value, todayIso()) : null))
 
 /*
  * Two answers that are no failure to retry: an act no draft of the window
@@ -153,6 +160,26 @@ const citation = computed(() => (data.value ? euActCiteDe(data.value.act, data.v
           </p>
         </DraftHeader>
 
+        <!-- The act's rail, in the card the national rail opens a draft's
+             page with (`ProcedureCard`): the stations of the act's life, the
+             last one marked — an adopted act is there. -->
+        <div v-if="rail" class="mt-6">
+          <div class="rounded-xl border border-hairline bg-surface p-4">
+            <h2 class="font-sans text-base font-semibold text-ink">
+              {{ rail.heading }}
+            </h2>
+            <p v-if="rail.note" class="mt-1 text-sm text-ink-secondary">
+              {{ rail.note }}
+            </p>
+            <EuRail class="mt-4" :stations="rail.stations" :label="rail.heading" />
+            <!-- Where there is no section „Das Verfahren" to hold it, the
+                 days of single provisions stay with the rail. -->
+            <p v-if="rail.partial && !rail.procedure" class="mt-3 text-sm text-ink-secondary">
+              {{ rail.partial }}
+            </p>
+          </div>
+        </div>
+
         <section aria-labelledby="eu-umsetzung-heading" class="page-section">
           <h2 id="eu-umsetzung-heading" class="section-heading">{{ page.implementingHeading }}</h2>
           <!-- The timeline first, as one chart (`EuTimelineChart`): the drafts
@@ -194,6 +221,37 @@ const citation = computed(() => (data.value ? euActCiteDe(data.value.act, data.v
             <template #method>
               <MethodEuRecht />
             </template>
+          </SectionCredits>
+        </section>
+
+        <!-- The procedure between the institutions, step by step, in the
+             frame of facts one consults (`FactList`'s box grammar). Only
+             where the Cellar gave a step to show: the rail's first two
+             stations link here only then (`euRailView`). -->
+        <section v-if="rail?.procedure" id="eu-verfahren" aria-labelledby="eu-verfahren-heading" class="page-section scroll-mt-6">
+          <h2 id="eu-verfahren-heading" class="section-heading">{{ rail.procedure.heading }}</h2>
+          <p v-if="rail.procedure.facts.length" class="mt-2 text-sm text-ink-secondary">
+            <FactLine :parts="rail.procedure.facts" />
+          </p>
+          <div class="mt-4 rounded-xl border border-hairline px-4">
+            <ol role="list" class="flex flex-col divide-y divide-hairline text-sm text-ink">
+              <li v-for="row in rail.procedure.rows" :key="`${row.iso}|${row.label}`" class="flex gap-4 py-3">
+                <time :datetime="row.iso" class="w-24 shrink-0 tabular-nums text-ink-secondary">{{ row.date }}</time>
+                <span class="min-w-0">{{ row.label }}</span>
+              </li>
+            </ol>
+          </div>
+          <p v-if="rail.procedure.other" class="mt-3 text-sm text-ink-secondary">
+            {{ rail.procedure.other }}
+          </p>
+          <p v-if="rail.partial" class="mt-3 text-sm text-ink-secondary">
+            {{ rail.partial }}
+          </p>
+          <p v-if="rail.procedure.observatory" class="mt-3 text-sm">
+            <ExternalLink :href="rail.procedure.observatory.href" class="link-inline">{{ rail.procedure.observatory.label }}</ExternalLink>
+          </p>
+          <SectionCredits :sources="[]" :marked="false">
+            <span v-for="item in rail.procedure.credits" :key="item">{{ item }}</span>
           </SectionCredits>
         </section>
       </template>
