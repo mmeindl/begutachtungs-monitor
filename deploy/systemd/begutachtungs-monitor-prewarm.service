@@ -99,9 +99,9 @@ User=app
 Group=app
 NoNewPrivileges=true
 PrivateTmp=true
-# The unit's own worst case, stated rather than inherited: the eleven --max-time
-# budgets below add up to 6.060 s, and deploy.sh blocks on this job.
-TimeoutStartSec=6140
+# The unit's own worst case, stated rather than inherited: the twelve --max-time
+# budgets below add up to 6.180 s, and deploy.sh blocks on this job.
+TimeoutStartSec=6260
 # First, and no curl (12.11.2026): the published documents the app keeps on
 # disk (server/utils/cache/documentDriver.ts) — law texts, § versions,
 # Erläuterungen, closed Bundesgesetzblatt years, upstream payloads only and
@@ -182,3 +182,13 @@ ExecStart=/usr/bin/curl -fsS -o /dev/null --max-time 120 http://127.0.0.1:3000/a
 # read at its pace by the Länder call, and a cold Steiermark answers
 # „nicht abrufbar" here within its 2 s budget instead of queueing more pages.
 ExecStart=/usr/bin/curl -fsS -o /dev/null --max-time 300 http://127.0.0.1:3000/api/laender/gesetze
+# Twelfth call since 15.11.2026: the running period's Anliegen an den
+# Nationalrat — the list /anliegen and the homepage's block. Lists 101 and
+# 143, per kind and for the Petitionen an den Bundesrat, side by side; then
+# one detail JSON per item at four at a time, the period's (about 70 in GP
+# XXVIII) first and the Bundesrat's 42 after them, so this one call warms both
+# the list and its Bundesrat tab. The endpoint waits 20 s at most for the
+# whole answer and answers with what came, while the rest go on into the
+# leaf cache (5 s cold with Parliament fast, 15.11.2026). 60 s covers that
+# and a cold `getCurrentGp` (8 s x 3 attempts) in front of it.
+ExecStart=/usr/bin/curl -fsS -o /dev/null --max-time 60 http://127.0.0.1:3000/api/anliegen

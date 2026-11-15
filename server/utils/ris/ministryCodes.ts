@@ -29,6 +29,11 @@ const MINISTRY_LINEAGE: readonly (readonly string[])[] = [
   ['BMSGPK', 'BMASGPK'],
   ['BMAW', 'BMWET', 'BMWKMS', 'BMDW'],
   ['BKA', 'BMEIF'],
+  // Energy went from the BMK to the BMWET (measured 14.11.2026: the draft
+  // „EAG-Investitionszuschüsseverordnung-Strom-Novelle 2025" is the BMK's,
+  // BGBl. II Nr. 76/2025 under the same title the BMWET's). A group of its
+  // own: the BMK's other successors are not the BMWET's kin.
+  ['BMK', 'BMWET'],
 ]
 
 /** "BKA (Bundeskanzleramt)" → "BKA"; two long-name-only variants mapped by hand. */
@@ -46,11 +51,19 @@ export function ministryCodeOf(stelle: string | null): string {
  * `shared/utils/searchHaystack.ts` since 12.11.2026: the search's strike
  * tokens need it, and they are built in the browser now too. */
 
+/**
+ * BOTH sides are spelled the same way before they are compared. Until
+ * 14.11.2026 only `risCode` was: the draft → BGBl. II join passes two RIS
+ * codes, so „BMKOES" on the draft never met „BMKOES" on the Kundmachung, and
+ * two Verordnungen der Bundesregierung (BGBl. II Nr. 214/2024, 215/2024)
+ * counted as a foreign Ressort's.
+ */
 export function ministryScore(meCodes: ReadonlySet<string>, risCode: string): number {
   const rc = SPELLING[risCode] ?? risCode
-  if (meCodes.has(rc)) return 1
+  const own = [...meCodes].map((c) => SPELLING[c] ?? c)
+  if (own.includes(rc)) return 1
   for (const g of MINISTRY_LINEAGE) {
-    if (g.includes(rc) && [...meCodes].some((c) => g.includes(c))) return 0.5
+    if (g.includes(rc) && own.some((c) => g.includes(c))) return 0.5
   }
   return 0
 }

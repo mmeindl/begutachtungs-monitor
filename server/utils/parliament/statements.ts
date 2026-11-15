@@ -326,6 +326,9 @@ function assertInstitutionRows(rows: unknown[][]): void {
   }
 }
 
+/** Every parent list 142 is read for on Parliament's side — all but the draft. */
+export type ItemStatementParentType = Exclude<StatementParentType, 'ME'>
+
 /**
  * The Stellungnahmen on a Regierungsvorlage — the second window for input,
  * on parliament's side, which the monitor did not show until a user pointed
@@ -356,11 +359,12 @@ export function getStatementsForRv(gp: string, inr: number): Promise<RvStatement
 /**
  * The same for a Vorlage or a selbständiger Antrag — the Stellungnahmen to the
  * Nationalrat under § 23b GOG-NR, which an Antrag takes like a Vorlage
- * (10.11.2026). The Vorlage keeps its cache key (`${gp}-${inr}`); the Antrag's
- * carries its type, since the two number spaces overlap.
+ * (10.11.2026) — and for a Petition or Bürgerinitiative (15.11.2026; a
+ * Volksbegehren is an `I`). The Vorlage keeps its cache key (`${gp}-${inr}`);
+ * every other type's carries it, since the number spaces overlap.
  */
 export const getStatementsForItem = defineCachedFunction(
-  async (gp: string, ityp: 'I' | 'A', inr: number): Promise<RvStatements> => {
+  async (gp: string, ityp: ItemStatementParentType, inr: number): Promise<RvStatements> => {
     const body = { BEZUG_GP_CODE: [gp], BEZUG_ITYP: [ityp], BEZUG_INR: [inr] }
     const head = await fetchFilterList(142, body, {}, { all: false })
     const total = countOf(head)
@@ -377,7 +381,7 @@ export const getStatementsForItem = defineCachedFunction(
   {
     name: 'statements-rv',
     base: DERIVED_CACHE,
-    getKey: (gp: string, ityp: 'I' | 'A', inr: number) => (ityp === 'I' ? `${gp}-${inr}` : `${gp}-${ityp}-${inr}`),
+    getKey: (gp: string, ityp: ItemStatementParentType, inr: number) => (ityp === 'I' ? `${gp}-${inr}` : `${gp}-${ityp}-${inr}`),
     maxAge: UPSTREAM_LIST_TTL_S,
     swr: false,
   },

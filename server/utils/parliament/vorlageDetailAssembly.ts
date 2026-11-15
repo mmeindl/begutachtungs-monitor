@@ -10,6 +10,7 @@ import type { BundesratMotionVariant, DraftDocument, EnactmentInfo, ProcedureIte
 import { gpHasEnded } from '../../../shared/utils/gp'
 import { draftOfAntrag } from '../../../shared/utils/antragPath'
 import { itemPath, parliamentItemUrl, rootCitation } from '../../../shared/utils/procedureRoot'
+import { CLUB_NAMES } from '../../../shared/utils/clubs'
 import { mapDocuments, mapTextEvolution, readCommitteeConsultation, type RawDocumentGroup, type RawPhase } from './detailJson'
 import { groupVersionsByStation } from './draftDetailAssembly'
 import { parliamentPathname } from '../../../shared/utils/safeExternalUrl'
@@ -220,21 +221,15 @@ export function ministryOf(names: VorlageContent['names']): string | null {
 }
 
 /**
- * The club codes of this period and the one before, by upstream's own names —
- * the pairs the vote record itself carries (`vote.result[].code` and `.text`,
- * read on every GP-XXVIII law of this page's population). Only the fallback:
- * where the item's own vote names its clubs, those names win; an Antrag
- * decided by namentliche Abstimmung has no club list to read them from
- * (XXVIII 372/A).
- */
-const CLUB_NAMES: Readonly<Record<string, string>> = { V: 'ÖVP', S: 'SPÖ', F: 'FPÖ', N: 'NEOS', G: 'GRÜNE' }
-
-/**
  * The Klubs of an Antrag's movers, once each, in upstream order — or null
  * where any mover's code cannot be named (a club this table does not know):
  * then the byline names no clubs rather than some of them. The movers
  * themselves are never named; the page states who brought the bill in by
  * club, as the vote does.
+ *
+ * `CLUB_NAMES` is only the fallback: where the item's own vote names its
+ * clubs, those names win; an Antrag decided by namentliche Abstimmung has
+ * no club list to read them from (XXVIII 372/A).
  */
 export function moverClubsOf(names: VorlageContent['names'], vote: VorlageContent['vote']): string[] | null {
   const fromVote = new Map<string, string>()

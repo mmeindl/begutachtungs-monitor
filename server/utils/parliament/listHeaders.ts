@@ -98,10 +98,25 @@ const LIST_101_COLUMNS: ColumnExpectation[] = [
   { index: 14, feldName: 'HIS_URL' },
 ]
 
+/**
+ * List 143 — participations in Petitionen, Bürgerinitiativen and
+ * Volksbegehren (`mapParticipationRow`). Observed 2026-11-14.
+ */
+const LIST_143_COLUMNS: ColumnExpectation[] = [
+  { index: 0, feldName: 'GP_CODE' },
+  { index: 1, feldName: 'ITYP' },
+  { index: 2, feldName: 'INR' },
+  { index: 11, feldName: 'DOKTYP' },
+  { index: 19, label: 'Stellungnahmen' },
+  { index: 20, label: 'Unterstützungen' },
+  { index: 23, feldName: 'AKTIV' },
+]
+
 const COLUMNS: Record<number, ColumnExpectation[]> = {
   81: LIST_81_COLUMNS,
   101: LIST_101_COLUMNS,
   142: LIST_142_COLUMNS,
+  143: LIST_143_COLUMNS,
 }
 
 interface HeaderEntry {

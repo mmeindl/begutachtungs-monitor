@@ -1,0 +1,134 @@
+{
+  "content": {
+    "ityp": "BI",
+    "doktyp": "BI",
+    "title": "Zentralmatura verschieben",
+    "zitation": "12/BI",
+    "einlangen": "2013-10-29T00:00:00",
+    "statementsstate": "0",
+    "approvalstate": "0",
+    "status": {
+      "number": 5,
+      "description": "Ausschussbericht <a href=\"/gegenstand/XXV/I/229\">229 d.B.</a> zur Kenntnis genommen"
+    },
+    "phase": [
+      {
+        "name": "Einlangen NR",
+        "stages": [
+          {
+            "date": "29.10.2013",
+            "text": " Verhandlungsgegenstand gem. § 21 Abs. 1a GOG"
+          },
+          {
+            "date": "29.10.2013",
+            "text": "<a href=\"/gegenstand/XXV/NRSITZ/1\">1. Sitzung des Nationalrates</a>: Mitteilung des Einlangens"
+          }
+        ]
+      },
+      {
+        "name": "Ausschussberatungen NR",
+        "stages": [
+          {
+            "date": "17.12.2013",
+            "text": "Zuweisung an den <a href=\"/ausschuss/XXV/A-PB/1/00373\">Ausschuss für Petitionen und Bürgerinitiativen</a>"
+          },
+          {
+            "date": "18.03.2014",
+            "text": "Ausschuss für Petitionen und Bürgerinitiativen: auf <a href=\"/dokument/XXV/A-PB/1/00373/TO_02260047.html\">Tagesordnung</a> in der <a href=\"/ausschuss/XXV/A-PB/1/00373?selectedStage=105&selectedSession=2&selectedDate=18032014\">2. Sitzung des Ausschusses</a><br>Die Sitzung wurde am 18. März 2014 unterbrochen!"
+          },
+          {
+            "date": "25.03.2014",
+            "text": "Ausschuss für Petitionen und Bürgerinitiativen: auf <a href=\"/dokument/XXV/A-PB/1/00373/TO_02275716.html\">Tagesordnung</a> in der <a href=\"/ausschuss/XXV/A-PB/1/00373?selectedStage=105&selectedSession=2&selectedDate=25032014\">2. Sitzung des Ausschusses</a>"
+          },
+          {
+            "date": "25.03.2014",
+            "text": "Ausschuss für Petitionen und Bürgerinitiativen: Beschlussfassung auf Einholung schriftlicher Stellungnahmen im Rahmen eines \"Ausschussbegutachtungsverfahrens\""
+          },
+          {
+            "date": "25.03.2014",
+            "text": "Antrag auf Einholung einer Stellungnahme von (gekürzt) - <b>angenommen</b>"
+          },
+          {
+            "date": "01.07.2014",
+            "text": "Ausschuss für Petitionen und Bürgerinitiativen: auf <a href=\"/dokument/XXV/A-PB/1/00373/TO_02289023.html\">Tagesordnung</a> in der <a href=\"/ausschuss/XXV/A-PB/1/00373?selectedStage=105&selectedSession=3&selectedDate=01072014\">3. Sitzung des Ausschusses</a>"
+          },
+          {
+            "date": "01.07.2014",
+            "text": "Ausschuss für Petitionen und Bürgerinitiativen: Antrag, die parlamentarische Bürgerinitiative durch Kenntnisnahme im Ausschuss zu erledigen<br>mehrstimmig ( dafür: S,V dagegen: F,G,N nicht anwesend: T )"
+          },
+          {
+            "date": "01.07.2014",
+            "text": "Ausschuss für Petitionen und Bürgerinitiativen: <a href=\"/gegenstand/XXV/I/229\">Sammelbericht des Ausschusses für Petitionen und Bürgerinitiativen (229 d.B.)</a>"
+          }
+        ]
+      },
+      {
+        "name": "Plenarberatungen NR",
+        "stages": [
+          {
+            "date": "17.12.2013",
+            "text": "<a href=\"/gegenstand/XXV/NRSITZ/8\">8. Sitzung des Nationalrates</a>: Mitteilung des Einlangens und der Zuweisung an den <a href=\"/ausschuss/XXV/A-PB/1/00373\">Ausschuss für Petitionen und Bürgerinitiativen</a>"
+          },
+          {
+            "date": "25.03.2014",
+            "text": "Antrag auf Ausschussbegutachtung der Vorlage (<a href=\"/gegenstand/XXV/AUA/15\">15/AUA</a>)"
+          },
+          {
+            "date": "09.07.2014",
+            "text": "Auf der <a href=\"/dokument/XXV/NRSITZ/36/TO_02244148.html\">Tagesordnung</a> der <a href=\"/gegenstand/XXV/NRSITZ/36\">36. Sitzung des Nationalrates</a>"
+          },
+          {
+            "date": "09.07.2014",
+            "text": "36. Sitzung des Nationalrates: Debatte"
+          },
+          {
+            "date": "09.07.2014",
+            "text": "Wortmeldungen in der Debatte"
+          },
+          {
+            "date": "09.07.2014",
+            "text": "36. Sitzung des Nationalrates: Antrag, den Ausschussbericht zur Kenntnis zu nehmen, <b>angenommen</b><br>Dafür: SPÖ, ÖVP, GRÜNE, STRONACH, NEOS, dagegen: FPÖ"
+          }
+        ]
+      }
+    ],
+    "documents": [
+      {
+        "title": "Bürgerinitiative  (gescannte datenschutzkonforme Version)",
+        "documents": [
+          {
+            "link": "/dokument/XXV/BI/12/imfname_329384.pdf",
+            "type": "PDF"
+          }
+        ]
+      },
+      {
+        "title": "Bürgerinitiative (textinterpretierte Version)",
+        "documents": [
+          {
+            "link": "/dokument/XXV/BI/12/fname_329467.pdf",
+            "type": "PDF"
+          },
+          {
+            "link": "/dokument/XXV/BI/12/fnameorig_329467.html",
+            "type": "HTML"
+          }
+        ]
+      }
+    ],
+    "names": [
+      {
+        "funktext": "Erstunterzeichnerin/Erstunterzeichner",
+        "name": "(gekürzt)",
+        "frak_code": null
+      }
+    ],
+    "reference": [
+      {
+        "text": "Neuverteilung gem. § 21 Abs. 1a GOG-NR",
+        "zitation": "40/BI",
+        "url": "/gegenstand/XXIV/BI/40"
+      }
+    ]
+  }
+}

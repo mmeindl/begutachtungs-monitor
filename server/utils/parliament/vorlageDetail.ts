@@ -16,6 +16,8 @@ import { getCurrentGp, getDraftsForGp, getGegenstand } from './drafts'
 import { findPrecedingDraft } from './precedingDraft'
 import { assembleVorlageDetail, draftOfPreconst, pageKindOf, relatedItemsOf, relatedWithPages, type VorlageContent } from './vorlageDetailAssembly'
 import { EBR_DOKTYP, findBundesratObjection, lawOfEbr, type EbrContent } from './detailJson'
+import { anliegenPath } from '#shared/utils/anliegen'
+import { VOLKSBEGEHREN_FIRST_GP, volksbegehrenOfVorlage } from './anliegen'
 
 export type VorlageRoot = ProcedureRoot & { ityp: 'I' | 'A' }
 
@@ -31,11 +33,18 @@ const EVIDENCE_BUDGET_MS = 2_000
 /**
  * What a refusal carries besides its status (`requireVorlageItem`): the
  * item's page at Parliament, and — for an Einspruch of the Bundesrat whose
- * law is known — the page that follows that law.
+ * law is known, or a Volksbegehren the monitor follows — the page that
+ * follows it.
  */
 export interface NotFollowedData {
   parliamentUrl: string
   followedAt: string | null
+  /**
+   * For an Anliegen followed only from a period on — a Volksbegehren before
+   * `VOLKSBEGEHREN_FIRST_GP` —, that first period, so the refusal can say
+   * so. Absent on every other refusal.
+   */
+  anliegenFrom?: string
 }
 
 /**
@@ -51,17 +60,25 @@ export interface NotFollowedData {
  * have stays the upstream 404 („Gegenstand nicht gefunden").
  *
  * An Einspruch (type EBR) is followed — as an event on its law's page — so
- * its address leads there (`followedAt`), where the law is known.
+ * its address leads there (`followedAt`), where the law is known. A
+ * Volksbegehren (type VOLKBG) is an Anliegen an das Parlament since
+ * 15.11.2026 and its address leads to that page (`volksbegehrenOfVorlage`);
+ * one before GP XXII is refused, with the period from which they are
+ * followed (`anliegenFrom`).
  */
 export async function requireVorlageItem(root: VorlageRoot): Promise<VorlageContent> {
   const detail = await getGegenstand(root.gp, root.ityp, root.inr)
   const content = (detail.content ?? {}) as VorlageContent
   if (!pageKindOf(root.ityp, content.doktyp)) {
+    const volksbegehren = volksbegehrenOfVorlage(root.gp, root.ityp, root.inr, content.doktyp)
     const data: NotFollowedData = {
       parliamentUrl: parliamentItemUrl(root),
-      followedAt: root.ityp === 'I' && (content.doktyp ?? '').trim() === EBR_DOKTYP
-        ? await lawPathOfEbr(root, content as EbrContent)
-        : null,
+      followedAt: volksbegehren
+        ? (volksbegehren.followed ? anliegenPath(volksbegehren.root) : null)
+        : root.ityp === 'I' && (content.doktyp ?? '').trim() === EBR_DOKTYP
+          ? await lawPathOfEbr(root, content as EbrContent)
+          : null,
+      ...(volksbegehren && !volksbegehren.followed ? { anliegenFrom: VOLKSBEGEHREN_FIRST_GP } : {}),
     }
     throw createError({ statusCode: 404, statusMessage: 'Kein Gegenstand, den der Monitor verfolgt', data })
   }

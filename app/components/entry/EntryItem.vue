@@ -301,6 +301,32 @@ const externalHost = computed(() => {
         <EntryState :state="entry.state" />
       </div>
 
+      <!-- ZONE 3a — a second count, only where the row brings one
+           (`SecondCount`: the Anliegen's Unterstützungen, 15.11.2026). The
+           Stellungnahmen cell's anatomy, one column further left: same
+           `order` as that cell and before it in the DOM, so it stands left
+           of it in the dense row and above it on the card. -->
+      <div v-if="entry.secondCount" class="min-w-0 sm:pe-2.5 md:entry-col-count md:order-1 md:pe-0">
+        <p
+          v-if="entry.secondCount.value.kind === 'count'"
+          class="text-sm font-semibold leading-tight tabular-nums text-ink"
+        >
+          {{ formatNumberDe(entry.secondCount.value.count) }}
+          <span class="font-normal text-ink-secondary md:sr-only">{{
+            entry.secondCount.value.count === 1 ? entry.secondCount.one : entry.secondCount.many
+          }}</span>
+        </p>
+        <p v-else-if="entry.secondCount.value.kind === 'unavailable'" class="text-sm leading-tight text-ink-muted">
+          <span class="md:sr-only">{{ entry.secondCount.many }} </span>nicht abrufbar
+        </p>
+        <!-- Not possible for this kind: an en dash under the column's
+             heading, the words for everyone who cannot see the column; the
+             card has no heading and says it in words. -->
+        <p v-else class="text-sm leading-tight text-ink-secondary">
+          <span class="md:sr-only">{{ entry.secondCount.one }} nicht möglich</span><span class="hidden md:inline" aria-hidden="true">–</span>
+        </p>
+      </div>
+
       <!-- ZONE 3 — Stellungnahmen. Right-aligned tabular digits in a fixed
            column: this is the comparison the product is about, and a number
            that cannot form a column cannot be compared.
@@ -321,13 +347,16 @@ const externalHost = computed(() => {
              there it stands in the column header, once for the whole list.
              Both at once was the first attempt and read as a stutter —
              „Stellungnahmen" fourteen times under a column already called
-             that. The card has no header, so it carries the word itself. -->
+             that. The card has no header, so it carries the word itself.
+             In the dense row the word stays for a screen reader (`sr-only`,
+             15.11.2026): the column header is `aria-hidden`, and beside a
+             second count column a bare number would name nothing. -->
         <p
           v-if="entry.participation.kind === 'count'"
           class="text-sm font-semibold leading-tight tabular-nums text-ink"
         >
           {{ formatNumberDe(entry.participation.count) }}
-          <span class="font-normal text-ink-secondary md:hidden">{{
+          <span class="font-normal text-ink-secondary md:sr-only">{{
             entry.participation.count === 1 ? 'Stellungnahme' : 'Stellungnahmen'
           }}</span>
         </p>
@@ -359,14 +388,14 @@ const externalHost = computed(() => {
           v-else-if="entry.participation.kind === 'unpublished'"
           class="text-sm leading-tight text-ink-secondary"
         >
-          <span class="md:hidden">Stellungnahmen </span>nicht gezählt
+          <span class="md:sr-only">Stellungnahmen </span>nicht gezählt
         </p>
         <!-- The temporary absence, said differently from the permanent one:
              we asked and could not read it. `unasked` (a law without a
              Begutachtung) draws nothing: its Stellungnahmen exist
              and are published, this list just does not count them. -->
         <p v-else-if="entry.participation.kind === 'unavailable'" class="text-sm leading-tight text-ink-muted">
-          <span class="md:hidden">Stellungnahmen </span>nicht abrufbar
+          <span class="md:sr-only">Stellungnahmen </span>nicht abrufbar
         </p>
       </div>
 

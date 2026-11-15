@@ -15,6 +15,9 @@ describe('statementRefFromPageUrl', () => {
     expect(statementRefFromPageUrl('https://www.parlament.gv.at/gegenstand/XXVII/SN/912')).toBe(
       'XXVII/SN/912',
     )
+    // On a Petition and a Bürgerinitiative: SPET and SBI (15.11.2026).
+    expect(statementRefFromPageUrl('https://www.parlament.gv.at/gegenstand/XXVIII/SPET/316')).toBe('XXVIII/SPET/316')
+    expect(statementRefFromPageUrl('https://www.parlament.gv.at/gegenstand/XXVIII/SBI/334')).toBe('XXVIII/SBI/334')
     // Stored URLs carry a trailing slash often enough to matter.
     expect(statementRefFromPageUrl('https://www.parlament.gv.at/gegenstand/XXVII/SN/277139/')).toBe(
       'XXVII/SN/277139',
@@ -40,6 +43,8 @@ describe('parseStatementRef', () => {
   it('accepts what the client sends and normalizes the casing', () => {
     expect(parseStatementRef('XXVIII/SNME/5408')).toEqual({ gp: 'XXVIII', ityp: 'SNME', inr: 5408 })
     expect(parseStatementRef('xxviii/snme/5408')).toEqual({ gp: 'XXVIII', ityp: 'SNME', inr: 5408 })
+    expect(parseStatementRef('XXVIII/SPET/316')).toEqual({ gp: 'XXVIII', ityp: 'SPET', inr: 316 })
+    expect(parseStatementRef('xxviii/sbi/334')).toEqual({ gp: 'XXVIII', ityp: 'SBI', inr: 334 })
   })
 
   /* The shape guard the batch endpoint applies: its job is to refuse input

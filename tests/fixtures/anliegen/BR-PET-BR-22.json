@@ -1,0 +1,68 @@
+{
+  "content": {
+    "ityp": "PET-BR",
+    "doktyp": "PET-BR",
+    "title": "Taxi- und Mietwagenlenker/In Schlepper Ja - Nein",
+    "zitation": "22/PET-BR/2008",
+    "einlangen": "2008-04-24T00:00:00",
+    "statementsstate": "0",
+    "approvalstate": "0",
+    "status": {
+      "number": 5,
+      "description": "Vertagung im Ausschuss"
+    },
+    "phase": [
+      {
+        "name": "Einlangen BR",
+        "stages": [
+          {
+            "date": "24.04.2008",
+            "text": "Einlangen im Bundesrat (Frist: 24.10.2008)"
+          },
+          {
+            "date": "24.04.2008",
+            "text": "<a href=\"/gegenstand/BR/BRSITZ/755\">755. Sitzung</a>: Mitteilung des Einlangens"
+          }
+        ]
+      },
+      {
+        "name": "Ausschussberatungen BR",
+        "stages": [
+          {
+            "date": "20.05.2008",
+            "text": "Zuweisung an den <a href=\"/ausschuss/BR/A-VT-BR/1/00210\">Ausschuss für Verkehr, Innovation und Technologie des Bundesrates</a>"
+          },
+          {
+            "date": "17.06.2008",
+            "text": "Ausschuss für Verkehr, Innovation und Technologie des Bundesrates: auf <a href=\"/dokument/BR/A-VT-BR/1/00210/TO_01351723.html\">Tagesordnung</a> in der <a href=\"/ausschuss/BR/A-VT-BR/1/00210?selectedStage=105&selectedSession=13&selectedDate=17062008\">13. Sitzung des Ausschusses</a>"
+          },
+          {
+            "date": "17.06.2008",
+            "text": "Vertagung im Ausschuss"
+          },
+          {
+            "date": "25.07.2008",
+            "text": "Neu zugewiesen an den <a href=\"/ausschuss/BR/A-BP-BR/1/00272\">Ausschuss für BürgerInnenrechte und Petitionen des Bundesrates</a>"
+          },
+          {
+            "date": "20.11.2008",
+            "text": "Übermittlung der Petition an das Bundesministerium für Justiz, das Bundesministerium für Inneres und das Bundesministerium für Verkehr, Innovation und Technologie"
+          },
+          {
+            "date": "28.08.2014",
+            "text": "Keine Veröffentlichung der Dokumente"
+          }
+        ]
+      }
+    ],
+    "documents": null,
+    "names": [
+      {
+        "funktext": "Petition überreicht von",
+        "name": "Mitglied Platzhalter",
+        "frak_code": "S"
+      }
+    ],
+    "reference": null
+  }
+}

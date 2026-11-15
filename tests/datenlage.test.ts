@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import {
+  DATENLAGE_ANLIEGEN,
   DATENLAGE_FIGURES,
   DATENLAGE_LAW_STATES,
   DATENLAGE_PHASES,
@@ -61,6 +62,23 @@ describe('datenlage', () => {
     expect([...inPhases].sort()).toEqual([...DATENLAGE_STEP_KEYS].sort())
     const anchors = [...DATENLAGE_STEPS.map((s) => s.id), ...DATENLAGE_SOURCES.map((s) => s.id), ...DATENLAGE_PHASES.map((p) => p.id)]
     expect(new Set(anchors).size).toBe(anchors.length)
+  })
+
+  it('gives the Anliegen an das Parlament a block of their own, its anchor unique, every gap with its reason', () => {
+    const anchors = [...DATENLAGE_STEPS.map((s) => s.id), ...DATENLAGE_SOURCES.map((s) => s.id), ...DATENLAGE_PHASES.map((p) => p.id)]
+    expect(anchors).not.toContain(DATENLAGE_ANLIEGEN.id)
+    expect(DATENLAGE_ANLIEGEN.link.href).toBe('/anliegen')
+    expect(DATENLAGE_ANLIEGEN.covered.length).toBeGreaterThan(0)
+    expect(DATENLAGE_ANLIEGEN.sources.join(' ')).toMatch(/Liste 101/)
+    expect(DATENLAGE_ANLIEGEN.sources.join(' ')).toMatch(/Liste 143/)
+    for (const gap of DATENLAGE_ANLIEGEN.notCovered) {
+      expect(gap.what.length).toBeGreaterThan(0)
+      expect(gap.why.length, gap.what).toBeGreaterThan(0)
+    }
+    for (const f of DATENLAGE_ANLIEGEN.figures) {
+      expect(f.population.length).toBeGreaterThan(0)
+      expect(f.date).toMatch(/^\d{2}\.\d{2}\.\d{4}$/)
+    }
   })
 
   it('has a meaning for every state', () => {

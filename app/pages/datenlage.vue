@@ -22,6 +22,8 @@
  * yellow is the highlighter, and neither means a state.
  */
 import {
+  DATENLAGE_ANLIEGEN,
+  DATENLAGE_ANLIEGEN_DE,
   DATENLAGE_DEFAULT_VIEW,
   DATENLAGE_FIGURES,
   DATENLAGE_LAW_STATES,
@@ -185,6 +187,50 @@ function cellText(cell: DatenlageCell): string | undefined {
           </section>
         </section>
       </div>
+    </ProseSection>
+
+    <!-- Anliegen an das Parlament (15.11.2026): an object of its own, not
+         a source of drafts, so no cells — what is covered, from which
+         source, and each gap with its reason, in the sources' grammar. Its
+         figure stands here and not under „Gemessen": that list is keyed by
+         the draft's steps, which an Anliegen does not walk. -->
+    <ProseSection :id="DATENLAGE_ANLIEGEN.id" :heading="DATENLAGE_ANLIEGEN.name">
+      <p>{{ DATENLAGE_ANLIEGEN.summary }}</p>
+      <dl class="mt-4 divide-y divide-hairline border-y border-hairline text-sm">
+        <div class="py-2 sm:grid sm:grid-cols-[11rem_1fr] sm:gap-x-4">
+          <dt class="text-ink-secondary">{{ DATENLAGE_ANLIEGEN_DE.covered }}</dt>
+          <dd class="mt-0.5 sm:mt-0">
+            <span v-for="line in DATENLAGE_ANLIEGEN.covered" :key="line" class="block text-ink">{{ line }}</span>
+          </dd>
+        </div>
+        <div class="py-2 sm:grid sm:grid-cols-[11rem_1fr] sm:gap-x-4">
+          <dt class="text-ink-secondary">{{ DATENLAGE_ANLIEGEN_DE.sources }}</dt>
+          <dd class="mt-0.5 sm:mt-0">
+            <span v-for="line in DATENLAGE_ANLIEGEN.sources" :key="line" class="block text-ink">{{ line }}</span>
+          </dd>
+        </div>
+        <div class="py-2 sm:grid sm:grid-cols-[11rem_1fr] sm:gap-x-4">
+          <dt class="text-ink-secondary">{{ DATENLAGE_ANLIEGEN_DE.notCovered }}</dt>
+          <dd class="mt-0.5 sm:mt-0">
+            <ul class="list-none space-y-2 pl-0">
+              <li v-for="gap in DATENLAGE_ANLIEGEN.notCovered" :key="gap.what">
+                <span class="block text-ink">{{ gap.what }}</span>
+                <span class="block text-ink-secondary">{{ gap.why }}</span>
+              </li>
+            </ul>
+          </dd>
+        </div>
+      </dl>
+      <ul class="mt-4 list-none space-y-3 pl-0 text-sm">
+        <li v-for="figure in DATENLAGE_ANLIEGEN.figures" :key="figure.text">
+          <span class="font-medium text-ink">{{ DATENLAGE_ANLIEGEN_DE.measured }}</span>
+          <span class="block text-ink-secondary">{{ figure.text }}</span>
+          <span class="block text-ink-secondary">{{ figure.population }}, {{ figure.date }}</span>
+        </li>
+      </ul>
+      <p class="mt-4 text-sm">
+        <NuxtLink :to="DATENLAGE_ANLIEGEN.link.href" class="link-inline">{{ DATENLAGE_ANLIEGEN.link.label }}</NuxtLink>
+      </p>
     </ProseSection>
 
     <!-- The measured figures, one compact block: each with what was counted

@@ -89,6 +89,44 @@ describe('mapStatementRow', () => {
     })
   })
 
+  /* The shapes of live rows on a Petition and a Bürgerinitiative (13/PET
+   * and 1/BI of GP XXVIII, read 15.11.2026): the Stellungnahme is `SPET` /
+   * `SBI`, its page sits under that segment, and the bracket behind the
+   * submitter reads „(316/SPET)". Submitters replaced by placeholders. */
+  it('maps a Stellungnahme on a Petition (item type SPET) to its own page', () => {
+    const row = [
+      'XXVIII', 'SPET', 316, null, '24.11.2025', '2025-11-24T12:00:00',
+      '<a href="/gegenstand/XXVIII/SPET/316/" target="_blank">Musterverband Österreich (316/SPET)</a>',
+      'XXVIII', '13', 'PET', '00000020251124', '20251124000000', '0',
+      'Art:\nStellungnahme zu Petition im Nationalrat\n<br />\n',
+      null, '316/SPET', '13/PET', null, '/gegenstand/XXVIII/PET/13', 'I', 27631937, 316, '1',
+    ]
+    expect(mapStatementRow(row)).toEqual({
+      citation: '316/SPET',
+      date: '2025-11-24',
+      submitterKind: 'organisation',
+      submitterName: 'Musterverband Österreich',
+      endorsements: 0,
+      parliamentUrl: 'https://www.parlament.gv.at/gegenstand/XXVIII/SPET/316',
+    })
+  })
+
+  it('maps a person on a Bürgerinitiative (item type SBI) without the name', () => {
+    const row = [
+      'XXVIII', 'SBI', 334, null, '28.08.2025', '2025-08-28T12:00:00',
+      'Mustermann, Maria (334/SBI)',
+      'XXVIII', '1', 'BI', '00000020250828', '20250828000000', '0',
+      'Art:\nStellungnahme zu Bürgerinitiative\n<br />\n',
+      null, '334/SBI', '1/BI', null, '/gegenstand/XXVIII/BI/1', 'P', 25173231, 334, '1',
+    ]
+    expect(mapStatementRow(row)).toMatchObject({
+      citation: '334/SBI',
+      submitterKind: 'person',
+      submitterName: null,
+      parliamentUrl: 'https://www.parlament.gv.at/gegenstand/XXVIII/SBI/334',
+    })
+  })
+
   it('files the three institutions of 313 d.B. as organisations', () => {
     // Real rows, list 142 for XXVIII 313/I (read 2026-09-27): all 21 carry
     // `I` in column 19, and these three were counted as "Privatperson" —
@@ -186,6 +224,27 @@ describe('statementRowMatchesParent', () => {
     expect(statementRowMatchesParent(row, 'XXVII', 'ME', 351)).toBe(true)
   })
 
+  /* A Petition and a Bürgerinitiative are parents like a Vorlage
+   * (15.11.2026); their number spaces overlap each other's and the
+   * Vorlagen', so the type has to decide. */
+  it('matches a Petition or Bürgerinitiative parent by its type', () => {
+    const onBi = [...LIST142_PERSON_ROW]
+    onBi[1] = 'SBI'
+    onBi[7] = 'XXVIII'
+    onBi[8] = '1'
+    onBi[9] = 'BI'
+    onBi[18] = '/gegenstand/XXVIII/BI/1'
+    expect(statementRowMatchesParent(onBi, 'XXVIII', 'BI', 1)).toBe(true)
+    expect(statementRowMatchesParent(onBi, 'XXVIII', 'PET', 1)).toBe(false)
+    expect(statementRowMatchesParent(onBi, 'XXVIII', 'I', 1)).toBe(false)
+
+    const onPet = [...onBi]
+    onPet[9] = 'PET'
+    onPet[18] = '/gegenstand/XXVIII/PET/1'
+    expect(statementRowMatchesParent(onPet, 'XXVIII', 'PET', 1)).toBe(true)
+    expect(statementRowMatchesParent(onPet, 'XXVIII', 'BI', 1)).toBe(false)
+  })
+
   it('tolerates a trailing slash and refuses a missing column', () => {
     const withSlash = [...LIST142_PERSON_ROW]
     withSlash[18] = '/gegenstand/XXVIII/ME/126/'
@@ -253,6 +312,8 @@ describe('pickStatementDocument', () => {
 
   it('builds the page URL for both item types', () => {
     expect(statementPageUrl('XXVII', 'SN', 277139)).toBe('https://www.parlament.gv.at/gegenstand/XXVII/SN/277139')
+    expect(statementPageUrl('XXVIII', 'SPET', 316)).toBe('https://www.parlament.gv.at/gegenstand/XXVIII/SPET/316')
+    expect(statementPageUrl('XXVIII', 'SBI', 334)).toBe('https://www.parlament.gv.at/gegenstand/XXVIII/SBI/334')
   })
 })
 

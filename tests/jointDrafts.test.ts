@@ -79,6 +79,9 @@ beforeEach(() => {
   // The laws without a draft: not built, so none.
   vi.stubGlobal('getLawsWithoutBegutachtung', async () => ({ gp: 'XXVIII', available: false, gap: 'pending', items: [] }))
   vi.stubGlobal('readLandLaws', async () => ({ gp: 'XXVIII', items: [], sources: [], tally: {} }))
+  // The Anliegen of the period: none read, so only `/anliegen`.
+  vi.stubGlobal('getAnliegenForGp', async () => ({ entries: [], unreadKinds: [] }))
+  vi.stubGlobal('getBundesratPetitions', async () => [])
   vi.stubGlobal('withinBudget', <T>(p: Promise<T>) => p)
 })
 

@@ -35,6 +35,7 @@
     "corpus:skipped": "vite-node scripts/corpus/begutachtungSkipped.ts --",
     "corpus:ohne-begutachtung": "vite-node scripts/corpus/ohneBegutachtung.ts --",
     "corpus:antraege": "vite-node scripts/corpus/antraege.ts --",
+    "corpus:anliegen": "vite-node scripts/corpus/anliegen.ts --",
     "corpus:staatsvertraege": "vite-node scripts/corpus/staatsvertraege.ts --",
     "corpus:me-antrag": "vite-node scripts/corpus/meAntragJoin.ts --",
     "corpus:me-antrag-table": "vite-node scripts/corpus/meAntragTable.ts --",

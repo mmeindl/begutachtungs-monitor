@@ -1,0 +1,114 @@
+{
+  "content": {
+    "ityp": "I",
+    "doktyp": "VOLKBG",
+    "title": "Volksbegehren \"ORF-Haushaltsabgabe NEIN“",
+    "zitation": "98 d.B.",
+    "einlangen": "2025-05-28T00:00:00",
+    "statementsstate": "0",
+    "approvalstate": "9 Keine Zustimmung bei dem Doktyp \"VOLKBG\" möglich",
+    "status": {
+      "number": 5,
+      "description": "41. Sitzung des Nationalrates: Kenntnisnahme<br>Dafür: FPÖ, ÖVP, SPÖ, NEOS, GRÜNE, dagegen: -"
+    },
+    "phase": [
+      {
+        "name": "Einlangen NR",
+        "stages": [
+          {
+            "date": "28.05.2025",
+            "text": "Einlangen im Nationalrat"
+          },
+          {
+            "date": "30.05.2025",
+            "text": "Vorgesehen für den <a href=\"/ausschuss/XXVIII/A-VF/1/00938\">Verfassungsausschuss</a>"
+          },
+          {
+            "date": "16.06.2025",
+            "text": "<a href=\"/gegenstand/XXVIII/NRSITZ/30\">30. Sitzung des Nationalrates</a>: Mitteilung des Einlangens"
+          }
+        ]
+      },
+      {
+        "name": "Erste Lesung NR",
+        "stages": [
+          {
+            "date": "16.06.2025",
+            "text": "<a href=\"/gegenstand/XXVIII/NRSITZ/30\">30. Sitzung des Nationalrates</a>: Antrag der Abgeordneten (gekürzt) auf Durchführung einer ersten Lesung (<a href=\"/gegenstand/XXVIII/GO/222\">222/GO</a>)<br><b>angenommen</b><br>Dafür: FPÖ, ÖVP, SPÖ, NEOS, GRÜNE, dagegen: -"
+          },
+          {
+            "date": "11.07.2025",
+            "text": "Auf der <a href=\"/dokument/XXVIII/NRSITZ/39/TO_16447531.html\">Tagesordnung</a> der <a href=\"/gegenstand/XXVIII/NRSITZ/39\">39. Sitzung des Nationalrates</a>"
+          },
+          {
+            "date": "11.07.2025",
+            "text": "Wortmeldungen in der Debatte"
+          },
+          {
+            "date": "11.07.2025",
+            "text": "39. Sitzung des Nationalrates: Erste Lesung"
+          }
+        ]
+      },
+      {
+        "name": "Ausschussberatungen NR",
+        "stages": [
+          {
+            "date": "11.07.2025",
+            "text": "39. Sitzung des Nationalrates: Zuweisung an den <a href=\"/ausschuss/XXVIII/A-VF/1/00938\">Verfassungsausschuss</a>"
+          },
+          {
+            "date": "11.07.2025",
+            "text": "Verfassungsausschuss: Frist für die Aufnahme der Vorberatung: 05.10.2025"
+          },
+          {
+            "date": "11.07.2025",
+            "text": "Verfassungsausschuss: Fristsetzung für Berichterstattung: 05.02.2026"
+          },
+          {
+            "date": "15.09.2025",
+            "text": "Verfassungsausschuss: auf <a href=\"/dokument/XXVIII/A-VF/1/00938/TO_16652442.html\">Tagesordnung</a> in der <a href=\"/ausschuss/XXVIII/A-VF/1/00938?selectedStage=105&selectedSession=7&selectedDate=15092025\">7. Sitzung des Ausschusses</a>"
+          },
+          {
+            "date": "15.09.2025",
+            "text": "Verfassungsausschuss: Bericht <a href=\"/gegenstand/XXVIII/I/200\">200 d.B.</a>"
+          }
+        ]
+      },
+      {
+        "name": "Plenarberatungen NR",
+        "stages": [
+          {
+            "date": "24.09.2025",
+            "text": "Auf der <a href=\"/dokument/XXVIII/NRSITZ/41/TO_16447532.html\">Tagesordnung</a> der <a href=\"/gegenstand/XXVIII/NRSITZ/41\">41. Sitzung des Nationalrates</a>"
+          },
+          {
+            "date": "24.09.2025",
+            "text": "Wortmeldungen in der Debatte"
+          },
+          {
+            "date": "24.09.2025",
+            "text": "41. Sitzung des Nationalrates: Kenntnisnahme<br>Dafür: FPÖ, ÖVP, SPÖ, NEOS, GRÜNE, dagegen: -"
+          }
+        ]
+      }
+    ],
+    "documents": [
+      {
+        "title": "Volksbegehren",
+        "documents": [
+          {
+            "link": "/dokument/XXVIII/I/98/fname_1690036.pdf",
+            "type": "PDF"
+          },
+          {
+            "link": "/dokument/XXVIII/I/98/fnameorig_1690036.html",
+            "type": "HTML"
+          }
+        ]
+      }
+    ],
+    "names": [],
+    "reference": []
+  }
+}

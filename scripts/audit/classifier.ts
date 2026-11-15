@@ -78,8 +78,13 @@ if (typ && rows.some((row) => row[19] !== typ)) throw new Error(`TYP ${typ} did 
 /** Where the first names come from: the run's own `P` rows, fetched apart when `--typ` left them out. */
 const personRows = typ && typ !== 'P' ? ((await fetch142({ TYP: ['P'] })).rows ?? []) : rows
 
-/** The bracketed citation the row appends to the name: "(237/SN-126/ME)", "(277139/SN)". */
-const CITATION_SUFFIX = /\s*\(\d+\/SN(?:-[^)]*)?\)\s*$/
+/**
+ * The bracketed citation the row appends to the name: "(237/SN-126/ME)",
+ * "(277139/SN)", and on a Petition or Bürgerinitiative "(316/SPET)",
+ * "(334/SBI)". Without the last two every person of `--ityp PET` stood in
+ * list 1 and list 2's first-name lexicon was empty (15.11.2026).
+ */
+const CITATION_SUFFIX = /\s*\(\d+\/S(?:N|PET|BI)(?:-[^)]*)?\)\s*$/
 const PLZ_SUFFIX = /\s*\(\d{4,5}\s+[^)]+\)\s*$/
 const COMMA_FORM = /^\p{Lu}[\p{L}'’.-]*(?:\s+(?:\p{Lu}[\p{L}'’.-]*|van|von|der|de|den|zu|ter|le|la))?\s*,\s*\p{Lu}[\p{L}'’.-]*(?:[\s-]\p{Lu}[\p{L}'’.-]*){0,2}$/u
 const TITLE = /(?:^|[\s,])(?:Univ\.-?\s?Prof\.|Dipl\.-?\s?Ing\.|MMag\.a?|Mag\.a?|DDr\.|Dr\.in|Dr\.|Ing\.|Prof\.|DI(?=[\s,]|$)|MSc|BSc|MBA|MA(?=[\s,]|$)|BA(?=[\s,]|$)|PhD|Bakk\.)/

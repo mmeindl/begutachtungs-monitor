@@ -199,6 +199,18 @@ usePageSeo({
         jedem Text auf einer Entwurfsseite steht, aus welcher Quelle er
         stammt; Gliederung und Markierung sind vom Monitor.
       </p>
+      <!-- 15.11.2026: the Länder entries said documents are only linked.
+           The comparisons of a Land's draft read its PDFs (draft text,
+           Erläuterungen, Textgegenüberstellung, the Landtag's Vorlagen:
+           `server/utils/laender/texts/read.ts`, `landExplanations.ts`,
+           `landTgu.ts`) and show passages of them. Said once here, not
+           nine times below. -->
+      <p>
+        Für die Vergleiche auf den Seiten der Landesentwürfe liest der
+        Monitor die Dokumente der Länder und Landtage – Entwurf,
+        Erläuterungen, Textgegenüberstellung, Vorlage – und zeigt daraus
+        die verglichenen Stellen, jeweils mit Link auf das Dokument.
+      </p>
       <dl>
         <div>
           <dt>
@@ -220,17 +232,36 @@ usePageSeo({
           </dt>
           <dd>
             Regierungsvorlagen, Anträge von Abgeordneten, Ausschüssen und des
-            Bundesrates, Staatsverträge, Ausschussberichte und Beschlüsse: die
-            Ergebnislisten der Filter und der API sowie die Geschichtsseiten,
-            ausgenommen alles zu Stellungnahmen –
+            Bundesrates, Staatsverträge, Ausschussberichte und Beschlüsse,
+            samt den Abstimmungen nach Klubs: Ergebnislisten und
+            Geschichtsseiten, ausgenommen alles zu Stellungnahmen –
             <ExternalLink
               href="https://creativecommons.org/licenses/by/4.0/deed.de"
               class="link-inline"
-            >CC BY 4.0</ExternalLink>. Daraus stammt auch, welche Klubs in
-            dritter Lesung dafür und dagegen gestimmt haben. Die Dokumente
-            selbst – Gesetzestexte,
-            Erläuterungen, Ausschuss- und Plenarfassungen – bezeichnet das
-            Parlament als freie Werke, „ohne Lizenzierung frei nutzbar“.
+            >CC BY 4.0</ExternalLink>. Die Dokumente selbst bezeichnet das Parlament als freie
+            Werke, „ohne Lizenzierung frei nutzbar“.
+          </dd>
+        </div>
+        <!-- Anliegen since 15.11.2026. Parliament's dataset pages
+             „Petitionen" and „Bürgerinitiativen" (read 14. and 15.11.2026):
+             result lists and Geschichtsseiten CC BY 4.0, the statements
+             area excluded, documents free works; the Petitionen dataset
+             names both chambers. No dataset is named for Volksbegehren. -->
+        <div>
+          <dt>
+            Parlamentsdirektion, Petitionen, Bürgerinitiativen und Volksbegehren
+          </dt>
+          <dd>
+            Petitionen an den Nationalrat und an den Bundesrat und
+            parlamentarische Bürgerinitiativen, samt der Zahl der
+            Unterstützungen: Ergebnislisten und Geschichtsseiten, ausgenommen
+            alles zu Stellungnahmen –
+            <ExternalLink
+              href="https://creativecommons.org/licenses/by/4.0/deed.de"
+              class="link-inline"
+            >CC BY 4.0</ExternalLink>. Für Volksbegehren führt das Parlament keinen eigenen
+            Datensatz; der Monitor behandelt sie wie die Gegenstände oben.
+            Für die Stellungnahmen gilt der folgende Eintrag.
           </dd>
         </div>
         <div>
@@ -238,14 +269,11 @@ usePageSeo({
             Parlamentsdirektion, Stellungnahmen im parlamentarischen Verfahren
           </dt>
           <dd>
-            Für diese Daten weist das Parlament keine Open-Data-Lizenz aus:
-            „sämtliche Informationen zu Stellungnahmen“ nimmt es von der
-            freien Nutzung und Lizenzierung ausdrücklich aus, aus Gründen
-            des Datenschutzes und des Schutzes von Urheber- und
-            Persönlichkeitsrechten. Der Monitor zeigt daraus Anzahl, Datum
-            und Zustimmungen, die Namen einreichender Organisationen und den
-            Link auf die Stellungnahme. Ob der Ausschluss auch diese Angaben
-            erfasst, ist Teil unserer Frage an die Parlamentsdirektion.
+            Keine Open-Data-Lizenz: Das Parlament nimmt „sämtliche
+            Informationen zu Stellungnahmen“ von der freien Nutzung und
+            Lizenzierung aus. Der Monitor zeigt Anzahl, Datum, Zustimmungen
+            und die Namen einreichender Organisationen und verlinkt die
+            Stellungnahme.
           </dd>
         </div>
         <div>
@@ -253,27 +281,19 @@ usePageSeo({
             Parlamentsdirektion, Begutachtungsverfahren
           </dt>
           <dd>
-            Ministerialentwürfe, Stellungnahmen und Zustimmungen – für diese
-            Daten weist das Parlament keine Open-Data-Lizenz aus; die
-            Stellungnahmen zu Ministerialentwürfen nimmt es von der
-            Weiterverwendung als Open Data ausdrücklich aus. Der
-            Monitor zeigt daraus Metadaten – Fristen, Geschäftszahlen,
-            Anzahl der Einreichungen und die Namen einreichender
-            Organisationen – und die Kurzinformation, die das Parlament zu
-            einem Entwurf veröffentlicht (Ziele, Inhalt, Hauptgesichtspunkte;
-            auf der Entwurfsseite unter „Worum geht es?“).
-            Dazu kommen im Textvergleich der Gesetzestext und die
-            Erläuterungen des Entwurfs in der Fassung, die das Parlament
-            veröffentlicht – Dokumente des Ressorts, die das RIS unter
-            CC BY 4.0 führt. Ob der Ausschluss die Kurzinformation oder
-            diese Dokumente erfasst, ist offen; wir haben die
-            Parlamentsdirektion um Klärung gebeten, wie weit er reicht.
-            Volltexte von Stellungnahmen übernimmt er nicht, sondern
-            verlinkt sie auf
+            Ministerialentwürfe, Stellungnahmen und Zustimmungen: keine
+            Open-Data-Lizenz; die Stellungnahmen nimmt das Parlament von der
+            Weiterverwendung ausdrücklich aus. Der Monitor zeigt Fristen,
+            Geschäftszahlen, die Anzahl der Einreichungen, die Namen
+            einreichender Organisationen und die Kurzinformation des
+            Parlaments zu einem Entwurf; im Textvergleich außerdem
+            Gesetzestext und Erläuterungen in der Fassung des Parlaments –
+            Dokumente des Ressorts, die das RIS unter CC BY 4.0 führt. Die Texte von Stellungnahmen übernimmt der Monitor
+            nicht; er verlinkt sie auf
             <ExternalLink
               href="https://www.parlament.gv.at"
               class="link-inline"
-            >parlament.gv.at</ExternalLink>. Namen von Privatpersonen veröffentlicht er nicht.
+            >parlament.gv.at</ExternalLink>.
           </dd>
         </div>
         <!-- EUR-Lex and the Cellar since 04.11.2026. EUR-Lex's
@@ -289,22 +309,17 @@ usePageSeo({
             Amt für Veröffentlichungen der Europäischen Union (EUR-Lex, Cellar)
           </dt>
           <dd>
-            Für Entwürfe, die EU-Recht umsetzen oder begleiten: die
-            Umsetzungsfrist einer Richtlinie und das Datum ihres Beschlusses,
-            abgefragt aus dem Cellar des Amts für Veröffentlichungen, und der
-            Link auf den Rechtsakt bei
+            Titel, Beschlussdatum und Umsetzungsfrist von EU-Rechtsakten aus
+            dem Cellar und der Link auf
             <ExternalLink
               href="https://eur-lex.europa.eu"
               class="link-inline"
-            >EUR-Lex</ExternalLink>. Das sind Metadaten von EUR-Lex, die das
-            Amt laut seinem
+            >EUR-Lex</ExternalLink> – Metadaten, die das Amt laut seinem
             <ExternalLink
               href="https://eur-lex.europa.eu/content/legal-notice/legal-notice.html?locale=de"
               class="link-inline"
             >rechtlichen Hinweis</ExternalLink> der Public Domain widmet
-            (CC0 1.0); der Monitor nennt die Quelle trotzdem. Texte von
-            Rechtsakten übernimmt er nicht, er verlinkt sie; das
-            EUR-Lex-Logo verwendet er nicht.
+            (CC0 1.0). Die Texte der Rechtsakte verlinkt der Monitor.
           </dd>
         </div>
         <!-- The Länder since 22.10.2026 (Salzburg, then Wien and
@@ -321,15 +336,12 @@ usePageSeo({
             Land Salzburg, Gesetz- und Verordnungsentwürfe in Begutachtung
           </dt>
           <dd>
-            Titel, Beginn und Ende der Begutachtungsfrist aus den Listen auf
+            Titel und Begutachtungsfrist der Entwürfe und die einreichenden
+            Organisationen der Stellungnahmen, von
             <ExternalLink
               href="https://service.salzburg.gv.at/pub/list/gesetz_entw/landesrecht-list"
               class="link-inline"
-            >service.salzburg.gv.at</ExternalLink>, dazu Anzahl und
-            einreichende Organisationen der Stellungnahmen, die das Land
-            veröffentlicht. Eine Open-Data-Lizenz weist das Land für diese
-            Seiten nicht aus. Der Monitor übernimmt weder Entwürfe noch
-            Stellungnahmen, sondern verlinkt sie beim Land.
+            >service.salzburg.gv.at</ExternalLink>. Eine Open-Data-Lizenz weist das Land für diese Seiten nicht aus; Dokumente und Stellungnahmen verlinkt der Monitor beim Land.
           </dd>
         </div>
         <div>
@@ -337,19 +349,18 @@ usePageSeo({
             Stadt Wien, Entwürfe von Landesgesetzen und Verordnungen
           </dt>
           <dd>
-            Titel, Auflagefrist, die zuständige Magistratsabteilung samt
-            Adresse und die einreichenden Organisationen der veröffentlichten
-            Stellungnahmen, von
+            Titel, Auflagefrist, zuständige Magistratsabteilung und die
+            einreichenden Organisationen der Stellungnahmen, von
             <ExternalLink
               href="https://www.wien.gv.at/recht/landesgesetze-entwuerfe"
               class="link-inline"
-            >wien.gv.at</ExternalLink>. Die Stadt stellt diese Seiten unter
+            >wien.gv.at</ExternalLink> –
             <ExternalLink
               href="https://creativecommons.org/licenses/by/4.0/deed.de"
               class="link-inline"
-            >CC BY 4.0</ExternalLink> bereit; ob das auch für die verlinkten
-            Entwürfe und Stellungnahmen gilt, sagen sie nicht. Diese verlinkt
-            der Monitor bei der Stadt.
+            >CC BY 4.0</ExternalLink>. Ob das auch für die verlinkten Entwürfe und
+            Stellungnahmen gilt, sagen die Seiten nicht; der Monitor verlinkt
+            sie bei der Stadt.
           </dd>
         </div>
         <div>
@@ -357,16 +368,14 @@ usePageSeo({
             Land Oberösterreich und Oö. Landtag, Begutachtungsentwürfe
           </dt>
           <dd>
-            Titel, Begutachtungsfrist und Dokumente aus den Listen auf
+            Titel, Begutachtungsfrist, die Kurzinformation des Landes, die
+            einreichenden Organisationen der Stellungnahmen und die Schritte
+            im Landtag, von
             <ExternalLink
               href="https://www.land-oberoesterreich.gv.at/35987.htm"
               class="link-inline"
-            >land-oberoesterreich.gv.at</ExternalLink>, dazu aus dem
-            Landtagsinformationssystem die Kurzinformation des Landes, die
-            einreichenden Organisationen der veröffentlichten Stellungnahmen
-            und die Schritte im Landtag, so wie der Landtag sie verzeichnet.
-            Eine Open-Data-Lizenz weist das Land für diese Seiten nicht aus;
-            Dokumente verlinkt der Monitor beim Land.
+            >land-oberoesterreich.gv.at</ExternalLink> und aus dem
+            Landtagsinformationssystem. Eine Open-Data-Lizenz weist das Land für diese Seiten nicht aus; Dokumente verlinkt der Monitor beim Land.
           </dd>
         </div>
         <div>
@@ -374,18 +383,14 @@ usePageSeo({
             Land Kärnten, Verfassungsdienst, Begutachtungen von Landesgesetzen
           </dt>
           <dd>
-            Titel, Ende der Begutachtungsfrist und Dokumente der laufenden und
-            abgeschlossenen Begutachtungen, die einreichenden Organisationen
-            der veröffentlichten Stellungnahmen sowie Regierungsvorlagen und
-            Gesetzesbeschlüsse des Landtags, von
+            Titel und Begutachtungsfrist der Gesetzes- und
+            Verordnungsentwürfe, die einreichenden Organisationen der
+            Stellungnahmen, Regierungsvorlagen und Gesetzesbeschlüsse des
+            Landtags, von
             <ExternalLink
               href="https://www.ktn.gv.at/Verwaltung/Amt-der-Kaerntner-Landesregierung/Verfassungsdienst/Landesgesetzgebung/akt%5fBeg%5fLG"
               class="link-inline"
-            >ktn.gv.at</ExternalLink>; einem Entwurf zugeordnet über die
-            Geschäftszahl. Dazu die Verordnungsentwürfe unter „Themen A–Z“
-            mit Titel, Frist und Dokumenten, und aus deren Anschreiben das
-            Datum und die Frist. Eine Open-Data-Lizenz weist das Land für
-            diese Seiten nicht aus; Dokumente verlinkt der Monitor beim Land.
+            >ktn.gv.at</ExternalLink>. Eine Open-Data-Lizenz weist das Land für diese Seiten nicht aus; Dokumente verlinkt der Monitor beim Land.
           </dd>
         </div>
         <div>
@@ -393,27 +398,22 @@ usePageSeo({
             Land Tirol und Tiroler Landtag, Gesetzentwürfe in Begutachtung
           </dt>
           <dd>
-            Titel, Fassung und Begutachtungsfrist aus der Liste auf
+            Titel und Begutachtungsfrist von
             <ExternalLink
               href="https://www.tirol.gv.at/buergerservice/landesgesetze-verordnungen-und-richtlinien/gesetzentwuerfe-in-begutachtung/"
               class="link-inline"
-            >tirol.gv.at</ExternalLink>, dazu aus der
+            >tirol.gv.at</ExternalLink>, die einreichenden Organisationen der
+            Stellungnahmen und die Schritte im Landtag aus der
             <ExternalLink
               href="https://lte.tirol.gv.at/public/index.xhtml"
               class="link-inline"
-            >Landtagsevidenz</ExternalLink> die Dokumente, die einreichenden
-            Organisationen der Stellungnahmen und die Schritte im Landtag bis
-            zum Landesgesetzblatt, so wie der Landtag sie verzeichnet. Eine
-            Open-Data-Lizenz weist das Land für diese Seiten nicht aus;
-            Dokumente verlinkt der Monitor auf die Seite des Gegenstands in der
-            Landtagsevidenz. Die Verordnungsentwürfe der Landesregierung aus dem
+            >Landtagsevidenz</ExternalLink>. Eine Open-Data-Lizenz weist das Land für diese Seiten nicht aus; Dokumente verlinkt der Monitor beim Land.
+            Die Verordnungsentwürfe der Landesregierung stammen aus dem
             <ExternalLink
               href="https://www.data.gv.at/datasets?query=%22Verordnungsbegutachtungen+Tirol%22"
               class="link-inline"
-            >Informationsregister auf data.gv.at</ExternalLink>: Titel, Datum der
-            Veröffentlichung, zuständige Abteilung, Dokumente und die einreichenden
-            Organisationen der Stellungnahmen. Ihre Dokumente stellt das Land dort
-            unter CC BY 4.0 bereit.
+            >Informationsregister auf data.gv.at</ExternalLink>; ihre Dokumente stellt das Land dort unter
+            CC BY 4.0 bereit.
           </dd>
         </div>
         <div>
@@ -421,14 +421,12 @@ usePageSeo({
             Land Burgenland, Begutachtungsentwürfe
           </dt>
           <dd>
-            Titel, Ende der Begutachtungsfrist und Dokumente der laufenden und
-            abgeschlossenen Begutachtungen seit 2007 sowie die einreichenden
-            Organisationen der veröffentlichten Stellungnahmen, von
+            Titel und Begutachtungsfrist der Entwürfe seit 2007 und die
+            einreichenden Organisationen der Stellungnahmen, von
             <ExternalLink
               href="https://apps.bgld.gv.at/web/landesrecht.nsf/begutachtungen_aktuell.xsp"
               class="link-inline"
-            >apps.bgld.gv.at</ExternalLink>. Eine Open-Data-Lizenz weist das Land
-            für diese Seiten nicht aus; Dokumente verlinkt der Monitor beim Land.
+            >apps.bgld.gv.at</ExternalLink>. Eine Open-Data-Lizenz weist das Land für diese Seiten nicht aus; Dokumente verlinkt der Monitor beim Land.
           </dd>
         </div>
         <div>
@@ -436,13 +434,12 @@ usePageSeo({
             Land Niederösterreich, Bürgerbegutachtung
           </dt>
           <dd>
-            Titel, Ende der Begutachtungsfrist, Dokumente und die Adresse für
-            Stellungnahmen der laufenden Begutachtungen, von
+            Titel, Begutachtungsfrist und die Adresse für Stellungnahmen der
+            laufenden Begutachtungen, von
             <ExternalLink
               href="https://www.noe.gv.at/noe/Kontakt-Landesverwaltung/Buergerbegutachtung.html"
               class="link-inline"
-            >noe.gv.at</ExternalLink>. Eine Open-Data-Lizenz weist das Land für
-            diese Seiten nicht aus; Dokumente verlinkt der Monitor beim Land.
+            >noe.gv.at</ExternalLink>. Eine Open-Data-Lizenz weist das Land für diese Seiten nicht aus; Dokumente verlinkt der Monitor beim Land.
           </dd>
         </div>
         <div>
@@ -450,17 +447,14 @@ usePageSeo({
             Landtag Steiermark, Begutachtungsverfahren (§ 24 GeoLT iVm Art 68 L-VG)
           </dt>
           <dd>
-            Titel, Beginn und Ende der Begutachtungsfrist, die Dokumente und die
-            einreichenden Organisationen der Stellungnahmen der Entwürfe, die die
-            Landesregierung dem Landtag seit Juni 2015 zur Begutachtung
-            übermittelt hat, aus
+            Titel und Begutachtungsfrist der Entwürfe seit Juni 2015 und die
+            einreichenden Organisationen der Stellungnahmen, aus
             <ExternalLink
               href="https://pallast2.stmk.gv.at/pallast-p/pub/documents?type=BEGUTACHTUNGSVERFAHREN&sort=tssubmit&order=desc"
               class="link-inline"
             >PALLAST</ExternalLink>, dem Dokumentensystem des Landtags. Eine
             Open-Data-Lizenz weist der Landtag für diese Seiten nicht aus;
-            Dokumente verlinkt der Monitor auf die Seite des Entwurfs im
-            Landtag, weil sie dort keine eigene Adresse haben.
+            Dokumente verlinkt der Monitor beim Landtag.
           </dd>
         </div>
         <div>
@@ -468,13 +462,11 @@ usePageSeo({
             Land Vorarlberg, aktuelle Begutachtungsentwürfe
           </dt>
           <dd>
-            Titel, Ende der Begutachtungsfrist und Dokumente der laufenden
-            Begutachtungen, von
+            Titel und Begutachtungsfrist der laufenden Begutachtungen, von
             <ExternalLink
               href="https://vorarlberg.at/-/aktuelle-begutachtungsverfahren"
               class="link-inline"
-            >vorarlberg.at</ExternalLink>. Eine Open-Data-Lizenz weist das Land
-            für diese Seite nicht aus; Dokumente verlinkt der Monitor beim Land.
+            >vorarlberg.at</ExternalLink>. Eine Open-Data-Lizenz weist das Land für diese Seiten nicht aus; Dokumente verlinkt der Monitor beim Land.
           </dd>
         </div>
       </dl>

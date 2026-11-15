@@ -11,6 +11,20 @@ import { PREDATES_FILING_DE, SECOND_ROUND_CLAUSE } from '~/utils/spine'
  * documents rule does not cover. */
 const STATEMENTS_SOURCES: SourceEntry[] = [{ what: 'Stellungnahmen zur Regierungsvorlage', publisher: 'parlament', terms: 'keine-lizenz' }]
 
+type StatementsItem = 'rv' | 'antrag' | 'ausschussantrag' | 'bundesratsantrag' | 'petition' | 'buergerinitiative' | 'volksbegehren' | 'petition-bundesrat'
+
+/** „Stellungnahmen zum Antrag": the heading's, the link's and the credit's noun per item. */
+const STATEMENTS_NOUN_DE: Readonly<Record<StatementsItem, string>> = {
+  rv: 'zur Regierungsvorlage',
+  antrag: 'zum Antrag',
+  ausschussantrag: 'zum Ausschussantrag',
+  bundesratsantrag: 'zum Gesetzesantrag',
+  petition: 'zur Petition',
+  buergerinitiative: 'zur Bürgerinitiative',
+  volksbegehren: 'zum Volksbegehren',
+  'petition-bundesrat': 'zur Petition',
+}
+
 /**
  * The Stellungnahmen filed on the Regierungsvorlage itself.
  *
@@ -39,22 +53,22 @@ const props = defineProps<{
   filingOpen?: boolean
   /** Whose Stellungnahmen: a Regierungsvorlage's (every draft's), an
    *  Antrag's (10.11.2026), a committee's motion's or a motion's of the
-   *  Bundesrat (14.11.2026) — the heading, the link and the credit name it. */
-  item?: 'rv' | 'antrag' | 'ausschussantrag' | 'bundesratsantrag'
+   *  Bundesrat (14.11.2026), or an Anliegen's (15.11.2026) — the heading,
+   *  the link and the credit name it. */
+  item?: StatementsItem
   /** Without its own heading, for a page whose section heading already says
-   *  what this is („Stellungnahmen an den Nationalrat"). */
+   *  what this is („Stellungnahmen an den Nationalrat", „… an den Bundesrat"). */
   bare?: boolean
 }>()
 
-/** Any item but a Regierungsvorlage: an Antrag of members, a committee's or one from the Bundesrat. */
-const isMotion = computed(() => props.item !== undefined && props.item !== 'rv')
-const noun = computed(() => (props.item === 'ausschussantrag'
-  ? 'zum Ausschussantrag'
-  : props.item === 'bundesratsantrag' ? 'zum Gesetzesantrag' : props.item === 'antrag' ? 'zum Antrag' : 'zur Regierungsvorlage'))
+/** A Regierungsvorlage, the default. Everything Vorlage-only below (the
+ *  route note, the source wording) hangs on this, never on a list of the others. */
+const isVorlage = computed(() => (props.item ?? 'rv') === 'rv')
+const noun = computed(() => STATEMENTS_NOUN_DE[props.item ?? 'rv'])
 /** The link's shorter noun: „zur Vorlage" for a Regierungsvorlage. */
-const shortNoun = computed(() => (isMotion.value ? noun.value : 'zur Vorlage'))
+const shortNoun = computed(() => (isVorlage.value ? 'zur Vorlage' : noun.value))
 const sources = computed<SourceEntry[]>(() =>
-  isMotion.value
+  !isVorlage.value
     ? [{ what: `Stellungnahmen ${noun.value}`, publisher: 'parlament', terms: 'keine-lizenz' }]
     : STATEMENTS_SOURCES,
 )
@@ -167,7 +181,7 @@ const consultationSentence = computed<string | null>(() => {
     </p>
     <!-- The rule of the second window, closed (see `routeNote`): a row of
          its own, because a `TermNote` sits in a flex row, never in a <p>. -->
-    <div v-if="!isMotion" class="mt-2 flex flex-wrap items-center text-sm text-ink-secondary">
+    <div v-if="isVorlage" class="mt-2 flex flex-wrap items-center text-sm text-ink-secondary">
       <TermNote>
         Was mit ihnen geschieht
         <template #note>

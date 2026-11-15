@@ -57,6 +57,12 @@ defineProps<{
    */
   lead?: string
   /**
+   * The heading of a second count column before „Stellungnahmen", for rows
+   * that carry `secondCount` — the Anliegen lists' „Unterstützungen"
+   * (15.11.2026). Absent everywhere else, and then no column is drawn.
+   */
+  secondColumn?: string
+  /**
    * Columns whose label orders the list (`SortHeader`, 02.10.2026): the
    * order's key and what it does. Only `/entwuerfe` passes it; every other
    * list keeps plain labels. Below `md` there is no header to carry it, and
@@ -112,6 +118,12 @@ defineEmits<{ 'update:sort': [key: string] }>()
     </div>
     <ColumnHeader v-if="entries.length || $slots.state" :sortable="!!sortable" class="gap-4 md:flex">
       <ColumnLabel :label="lead ?? 'Entwurf'" class="min-w-0 flex-1" />
+      <ColumnLabel
+        v-if="secondColumn"
+        :label="secondColumn"
+        align="end"
+        class="entry-col-count flex justify-end whitespace-nowrap"
+      />
       <!-- One line, and any excess spills LEFT, into the empty gap: the
            label is 121 px against a 112 px column at `md` (128 in 128 at
            `lg`, measured 30.09.2026). The right edge is what has to meet

@@ -40,6 +40,7 @@
 import type { LandCode } from '../types'
 import { LAND_CODES, LAND_NAME, LAND_SLUG } from './laender'
 import { COVERAGE_ROWS, LAND_COVERAGE, type CoverageRow } from './laenderCoverage'
+import { ANLIEGEN_SECTION_DE } from './anliegen'
 
 /**
  * The state of one cell. Four say what the SOURCE does, two what the
@@ -792,6 +793,94 @@ export const DATENLAGE_FIGURES: readonly DatenlageFigure[] = [
     date: '14.11.2026',
   },
 ]
+
+/* ------------------------------------------------------------------ */
+/* Anliegen an das Parlament                                           */
+/* ------------------------------------------------------------------ */
+
+/**
+ * An object of its own beside the drafts (15.11.2026): Petitionen,
+ * Bürgerinitiativen and Volksbegehren walk none of the steps above, so they
+ * get no cells but a block — what is covered, from which source, and what
+ * is not, each with its reason (`docs/research/umsetzungsplan-petitionen-volksbegehren.md`).
+ */
+export interface DatenlageObject {
+  /** The block's anchor: `/datenlage#anliegen`. */
+  id: string
+  name: string
+  summary: string
+  /** The object's own pages. */
+  link: { label: string; href: string }
+  covered: readonly string[]
+  sources: readonly string[]
+  notCovered: readonly { what: string; why: string }[]
+  /** Measured, each with what was counted and when — a description, never a score. */
+  figures: readonly { text: string; population: string; date: string }[]
+}
+
+/** The row labels of an object's block. */
+export const DATENLAGE_ANLIEGEN_DE = {
+  covered: 'Erfasst',
+  sources: 'Quelle',
+  notCovered: 'Nicht erfasst',
+  measured: 'Gemessen',
+} as const
+
+export const DATENLAGE_ANLIEGEN: DatenlageObject = {
+  id: 'anliegen',
+  name: ANLIEGEN_SECTION_DE,
+  summary: 'Petitionen, Bürgerinitiativen und Volksbegehren sind keine Entwürfe und gehen keinen der Schritte oben. Der Monitor folgt ihnen auf eigenen Seiten, solange der Nationalrat oder der Bundesrat sie behandelt.',
+  // The section's path, as `ANLIEGEN_PATH` in `shared/utils/anliegen.ts`.
+  link: { label: `Alle ${ANLIEGEN_SECTION_DE}`, href: '/anliegen' },
+  covered: [
+    'Petitionen und Bürgerinitiativen an den Nationalrat',
+    // The first period: `VOLKSBEGEHREN_FIRST_GP` (`anliegenIsFollowed`); before it the
+    // record carries no course (step 0, all 85 Volksbegehren).
+    'Volksbegehren ab der XXII. Gesetzgebungsperiode, für ihre Zeit im Nationalrat',
+    // Since 15.11.2026: a fourth kind with a rail of its own (`PET-BR`, filed under „BR").
+    'Petitionen an den Bundesrat',
+  ],
+  sources: [
+    'Die Liste der Gegenstände des Parlaments (Liste 101) und der Verlauf jedes Gegenstands',
+    'Die Liste der Beteiligungen des Parlaments (Liste 143): die Zahl der Unterstützungen und der Stellungnahmen',
+  ],
+  notCovered: [
+    {
+      what: 'Unterstützung und Eintragung eines Volksbegehrens, bevor es im Nationalrat einlangt',
+      why: 'Sie liegen beim Bundesministerium für Inneres, ohne Schnittstelle.',
+    },
+    {
+      what: 'Wer eine Bürgerinitiative eingebracht hat',
+      why: 'Die Erstunterzeichnerin oder der Erstunterzeichner ist eine Privatperson und wird nie genannt.',
+    },
+    {
+      what: 'Von wem der Ausschuss Stellungnahmen angefordert hat',
+      why: 'Das Parlament führt das als freien Text, der auch einzelne Personen nennt; der Monitor zeigt nur die Zahl.',
+    },
+    {
+      what: 'Was die Verwaltung mit einer Petition an den Bundesrat getan hat, die ihr übermittelt wurde',
+      why: 'Der Verlauf des Parlaments endet mit der Übermittlung.',
+    },
+    {
+      what: 'Was aus einem Anliegen nach dem Nationalrat wurde',
+      why: 'Keine Quelle verknüpft ein späteres Gesetz mit einer Petition, einer Bürgerinitiative oder einem Volksbegehren.',
+    },
+  ],
+  figures: [
+    {
+      // Step 0 of the plan (`pnpm corpus:anliegen`), 15.11.2026.
+      text: 'Der Ausschuss für Petitionen und Bürgerinitiativen hat 354 durch Kenntnisnahme erledigt und 122 an einen Fachausschuss weitergeleitet.',
+      population: '616 Petitionen und Bürgerinitiativen der XXV. bis XXVIII. GP',
+      date: '15.11.2026',
+    },
+    {
+      // `pnpm corpus:anliegen` and the reader over the 42 cached records: 0 stages unread.
+      text: 'Jeden Eintrag im Verlauf der Petitionen an den Bundesrat ordnet der Monitor einem bekannten Schritt zu.',
+      population: '42 Petitionen an den Bundesrat, die letzte vom April 2024',
+      date: '15.11.2026',
+    },
+  ],
+}
 
 /** The name a figure's source goes by on the page. */
 export function datenlageFigureSourceName(source: DatenlageFigure['source']): string {

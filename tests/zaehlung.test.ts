@@ -64,6 +64,20 @@ describe('klassifiziere', () => {
     expect(k('/entwuerfe/XXVIII/88/frist.ics', 'text/calendar')).toEqual({ klasse: 'frist-kalender' })
   })
 
+  it('counts the list of Anliegen as anliegen, and every item page as anliegen-gegenstand, whatever the kind', () => {
+    expect(k('/anliegen')).toEqual({ klasse: 'anliegen' })
+    expect(k('/anliegen/?art=petition')).toEqual({ klasse: 'anliegen' })
+    expect(k('/anliegen/XXVIII/petition/21')).toEqual({ klasse: 'anliegen-gegenstand' })
+    expect(k('/anliegen/XXVIII/buergerinitiative/5')).toEqual({ klasse: 'anliegen-gegenstand' })
+    expect(k('/anliegen/XXVIII/volksbegehren/98')).toEqual({ klasse: 'anliegen-gegenstand' })
+    expect(k('/anliegen/BR/petition-bundesrat/56')).toEqual({ klasse: 'anliegen-gegenstand' })
+    expect(k('/anliegen/XXVIII/Petition/21/')).toEqual({ klasse: 'anliegen-gegenstand' })
+    // A kind the router does not know, or a path of another depth, stays where it was.
+    expect(k('/anliegen/XXVIII/vorlage/98')).toEqual({ klasse: 'sonstige' })
+    expect(k('/anliegen/XXVIII/petition')).toEqual({ klasse: 'sonstige' })
+    expect(k('/api/anliegen?gp=XXVIII')).toBeNull()
+  })
+
   it('gives each of the nine Länder its code', () => {
     expect(k('/entwuerfe/burgenland/12')).toEqual({ klasse: 'entwurf-land', land: 'bgld' })
     expect(k('/entwuerfe/kaernten/12')).toEqual({ klasse: 'entwurf-land', land: 'ktn' })

@@ -30,7 +30,10 @@
  * hairline frame, not the white card — rows the reader consults, not a
  * tool (box grammar, `FactList`) — one row each: name, level, what one can
  * do, the duty to respond where the law states one, the official page.
- * That the monitor follows none of them, the lede says once.
+ * Which of them the monitor follows, the lede says once; the name of each
+ * of those links to its section (`monitorHref`, 15.11.2026: Petition,
+ * Bürgerinitiative and Volksbegehren under `/anliegen`), the official page
+ * stays beside it as the source.
  *
  * All copy is in `app/utils/wege.ts`.
  */
@@ -219,6 +222,7 @@ const STATION_COL = 'w-px whitespace-nowrap px-3 last:pr-4'
               <span v-if="weg.notFollowed" class="mt-0.5 block text-ink-secondary">
                 <span class="font-medium text-ink">{{ WEGE_COPY.notFollowedPrefix }}</span> · {{ weg.notFollowed }}
               </span>
+              <span v-if="weg.gap" class="mt-0.5 block text-ink-secondary">{{ weg.gap }}</span>
             </th>
             <td v-for="station in WEG_STATIONS" :key="station.id" :class="[ROW_CELL, STATION_COL]" class="text-center">
               <span class="inline-flex h-5 items-center justify-center" aria-hidden="true">
@@ -286,6 +290,7 @@ const STATION_COL = 'w-px whitespace-nowrap px-3 last:pr-4'
                 <span v-if="weg.notFollowed" class="block text-ink-secondary">
                   <span class="font-medium text-ink">{{ WEGE_COPY.notFollowedPrefix }}</span> · {{ weg.notFollowed }}
                 </span>
+                <span v-if="weg.gap" class="block text-ink-secondary">{{ weg.gap }}</span>
               </p>
               <ol class="mt-2 space-y-1 text-sm">
                 <li v-for="station in WEG_STATIONS" :key="station.id" class="flex items-center gap-2">
@@ -320,7 +325,8 @@ const STATION_COL = 'w-px whitespace-nowrap px-3 last:pr-4'
         <ul role="list" class="divide-y divide-hairline text-sm">
           <li v-for="item in WEG_INSTRUMENTS" :key="item.id" class="py-3">
             <p class="text-ink">
-              <span class="font-medium">{{ item.name }}</span>
+              <NuxtLink v-if="item.monitorHref" :to="item.monitorHref" class="link-inline font-medium">{{ item.name }}</NuxtLink>
+              <span v-else class="font-medium">{{ item.name }}</span>
               <span class="text-ink-secondary"> · {{ WEG_INSTRUMENT_LEVEL_LABEL[item.level] }}</span>
             </p>
             <p class="mt-0.5 text-ink-secondary">

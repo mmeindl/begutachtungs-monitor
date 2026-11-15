@@ -23,4 +23,21 @@ describe('ministry codes', () => {
     expect(ministryScore(new Set(['BMK']), 'BMVIT')).toBe(0.5)
     expect(ministryScore(new Set(['BMF']), 'BMK')).toBe(0)
   })
+
+  // The draft → BGBl. II join passes two RIS codes: both sides carry the
+  // spelling without the umlaut, and a ministry is its own (BGBl. II
+  // Nr. 214/2024, 215/2024 were refused as a foreign Ressort's).
+  it('spells both sides alike before comparing', () => {
+    expect(ministryScore(new Set(['BMKOES']), 'BMKOES')).toBe(1)
+    expect(ministryScore(new Set(['BMKOES']), 'BMKÖS')).toBe(1)
+    expect(ministryScore(new Set(['BMKOES']), 'BKA')).toBe(0.5)
+  })
+
+  // Energy moved from the BMK to the BMWET in March 2025 (BGBl. II
+  // Nr. 76/2025); the BMWET is no kin of the BMK's other successors.
+  it('knows the BMK → BMWET move, and only that pair', () => {
+    expect(ministryScore(new Set(['BMK']), 'BMWET')).toBe(0.5)
+    expect(ministryScore(new Set(['BMWET']), 'BMK')).toBe(0.5)
+    expect(ministryScore(new Set(['BMLUK']), 'BMWET')).toBe(0)
+  })
 })

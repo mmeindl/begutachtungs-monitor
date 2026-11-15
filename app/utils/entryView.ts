@@ -92,6 +92,22 @@ export type Participation =
   | { kind: 'unasked' }
 
 /**
+ * A second count column, before the Stellungnahmen — the one the Anliegen
+ * lists need for their Unterstützungen (15.11.2026). Absent on every draft
+ * row, and `EntryList` draws the column only where it is given a heading.
+ * The unit words come with the value, because this file does not know what
+ * is counted. `impossible` is not a missing value but a fact of the kind (a
+ * Volksbegehren takes no Unterstützung in the Nationalrat): an en dash,
+ * never 0.
+ */
+export interface SecondCount {
+  value: { kind: 'count'; count: number } | { kind: 'unavailable' } | { kind: 'impossible' }
+  /** The unit word for one and for many, said on the card and to a screen reader. */
+  one: string
+  many: string
+}
+
+/**
  * Zone 4 — where the Verfahren stands, in two lines: line 1 the state,
  * line 2 what pins it down.
  *
@@ -160,6 +176,8 @@ export interface EntryView {
    */
   newLabel: string | null
   participation: Participation
+  /** The column before the Stellungnahmen, where the list has one (`SecondCount`). */
+  secondCount?: SecondCount
   state: EntryState
 }
 

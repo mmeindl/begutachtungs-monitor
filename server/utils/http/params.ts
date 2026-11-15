@@ -10,7 +10,8 @@
  * being addressed.
  */
 import type { H3Event } from 'h3'
-import type { DraftStation, DraftStatus, LandCode, LawStationId } from '#shared/types'
+import type { AnliegenRoot, DraftStation, DraftStatus, LandCode, LawStationId } from '#shared/types'
+import { BUNDESRAT_SEGMENT, anliegenKindOfSegment, anliegenRootOf } from '#shared/utils/anliegen'
 import { DRAFT_STATION_ORDER } from '#shared/utils/draftStations'
 import { GP_RE, isPlausibleGp, parseInr, previousGp } from '#shared/utils/gp'
 import { type DateWindow, type LandPeriodCalendars, LAND_PERIODS, landtagParts, parseLandtag } from '#shared/utils/periodCalendar'
@@ -41,6 +42,34 @@ export function validateVorlageParams(event: H3Event): { gp: string; ityp: 'I' |
     throw createError({ statusCode: 400, statusMessage: 'Unbekannte Art des Gegenstands (vorlage oder antrag erwartet)' })
   }
   return { gp, ityp, inr }
+}
+
+/**
+ * The root of an Anliegen's page (`/api/anliegen/<gp>/<petition|buergerinitiative|volksbegehren>/<nr>`,
+ * `/api/anliegen/BR/petition-bundesrat/<nr>`):
+ * 400 for a malformed period, kind or number. Whether the monitor follows the
+ * item is the caller's question (`getAnliegenDetail`).
+ */
+export function validateAnliegenParams(event: H3Event): AnliegenRoot {
+  const gp = (getRouterParam(event, 'gp') ?? '').toUpperCase()
+  const segment = (getRouterParam(event, 'kind') ?? '').toLowerCase()
+  const nr = getRouterParam(event, 'nr') ?? ''
+  // „BR" stands for the Bundesrat, which has no period (`BUNDESRAT_SEGMENT`).
+  if (!GP_RE.test(gp) && gp !== BUNDESRAT_SEGMENT) {
+    throw createError({ statusCode: 400, statusMessage: INVALID_GP })
+  }
+  if (!anliegenKindOfSegment(segment)) {
+    throw createError({ statusCode: 400, statusMessage: 'Unbekannte Art des Anliegens (petition, buergerinitiative, volksbegehren oder petition-bundesrat erwartet)' })
+  }
+  const root = anliegenRootOf(gp, segment, nr)
+  if (!root) {
+    // „BR" with a kind of the Nationalrat, or a Petition an den Bundesrat under a period.
+    if (anliegenKindOfSegment(segment) === 'petition-bundesrat' || gp === BUNDESRAT_SEGMENT) {
+      if (parseInr(nr) !== null) throw createError({ statusCode: 400, statusMessage: 'Eine Petition an den Bundesrat steht unter „BR", jede andere Art unter einer Gesetzgebungsperiode' })
+    }
+    throw createError({ statusCode: 400, statusMessage: 'Ungültige Gegenstandsnummer (positive Ganzzahl erwartet)' })
+  }
+  return root
 }
 
 export function validateGpInrParams(event: H3Event): { gp: string; inr: number } {

@@ -14,6 +14,7 @@ import type { DraftSummary, LandCode, LandConsultation, RisConsultation } from '
 import { formatDateDe } from '../../shared/utils/format'
 import { RIS_KIND_LABEL, risFilingNote } from '../../shared/utils/risConsultations'
 import { LAND_NAME, landDraftPath } from '../../shared/utils/laender'
+import { ANLIEGEN_PATH } from '../../shared/utils/anliegen'
 
 /** Draft page URL inside the monitor. */
 function pageUrl(siteUrl: string, item: DraftSummary): string {
@@ -375,6 +376,12 @@ export function buildSitemap(
    * lists are not built in time; never a precondition.
    */
   lawPaths: string[] = [],
+  /**
+   * The pages of the period's Anliegen an das Parlament
+   * (`/anliegen/XXVIII/petition/21`) from the rows of list 101 — empty where
+   * the read failed or came late; the list `/anliegen` stands either way.
+   */
+  anliegenPaths: string[] = [],
 ): string {
   const urls = [
     siteUrl,
@@ -390,6 +397,7 @@ export function buildSitemap(
     `${siteUrl}/datenschutz`,
     `${siteUrl}/statistik`,
     `${siteUrl}/eu-recht`,
+    `${siteUrl}${ANLIEGEN_PATH}`,
     ...euActPaths.map((path) => `${siteUrl}${path}`),
     ...bundesrechtPaths.map((path) => `${siteUrl}${path}`),
     ...items.map((item) => pageUrl(siteUrl, item)),
@@ -398,6 +406,7 @@ export function buildSitemap(
     // these there is no parliament page competing for the result.
     ...risItems.map((item) => risPageUrl(siteUrl, item)),
     ...lawPaths.map((path) => `${siteUrl}${path}`),
+    ...anliegenPaths.map((path) => `${siteUrl}${path}`),
   ]
   return [
     '<?xml version="1.0" encoding="UTF-8"?>',

@@ -21,7 +21,8 @@ import { asNumber, asString } from './rowCells'
 // ---------------------------------------------------------------------------
 // List 142 — Stellungnahmen (23 columns, 0-based)
 // 0 gp · 1 ityp of the Stellungnahme (SNME on a Ministerialentwurf, SN on a
-// Regierungsvorlage) · 2 its INR · 4 date (display) · 5 dateSort (ISO) ·
+// Regierungsvorlage, an Antrag or a Volksbegehren, SPET on a Petition, SBI on
+// a Bürgerinitiative) · 2 its INR · 4 date (display) · 5 dateSort (ISO) ·
 // 6 submitter (HTML <a> or placeholder text) ·
 // 7/8/9 BEZUG_GP_CODE / BEZUG_INR / BEZUG_ITYP — the parent's period, number
 // and item type, i.e. the three keys the request filters by ·
@@ -64,8 +65,19 @@ import { asNumber, asString } from './rowCells'
  */
 export const STATEMENTS_CAP = 5_000
 
-/** The item types a Stellungnahme comes as — also the path segment of its page. */
-export type StatementItemType = 'SNME' | 'SN'
+/**
+ * The item types a Stellungnahme comes as — also the path segment of its page.
+ * `SPET` and `SBI` are the Stellungnahmen on a Petition and a
+ * Bürgerinitiative (read live 15.11.2026: 13/PET and 1/BI of GP XXVIII; a
+ * Volksbegehren's are `SN`, 98 d.B.).
+ */
+export type StatementItemType = 'SNME' | 'SN' | 'SPET' | 'SBI' | 'SPET-BR'
+
+/** The row's column 1 as a page segment; anything unknown is the SNME the monitor started with. */
+function statementItemTypeOf(value: unknown): StatementItemType {
+  const ityp = asString(value)
+  return ityp === 'SN' || ityp === 'SPET' || ityp === 'SBI' || ityp === 'SPET-BR' ? ityp : 'SNME'
+}
 
 export function statementPageUrl(gp: string, ityp: StatementItemType, inr: number): string {
   return `${PARLIAMENT_BASE}/gegenstand/${gp}/${ityp}/${inr}`
@@ -73,8 +85,14 @@ export function statementPageUrl(gp: string, ityp: StatementItemType, inr: numbe
 
 /** The item types list 142 can be filtered by here: a draft, the Vorlage it
  *  became, or a selbständiger Antrag (10.11.2026 — same item type `SN`, same
- *  row shape: XXVIII 372/A answers 466 rows, columns 9 and 18 naming `A`). */
-export type StatementParentType = 'ME' | 'I' | 'A'
+ *  row shape: XXVIII 372/A answers 466 rows, columns 9 and 18 naming `A`),
+ *  and since 15.11.2026 a Petition (`PET`) or Bürgerinitiative (`BI`) — same
+ *  row shape, columns 9 and 18 naming the parent, the Stellungnahme itself
+ *  `SPET` / `SBI`. A Volksbegehren is an `I`. A Petition an den Bundesrat
+ *  (`PET-BR`, period „BR") answers the same way (read live 15.11.2026:
+ *  56/PET-BR, one row, columns 7, 8, 9 „BR", „56", „PET-BR", column 18
+ *  „/gegenstand/BR/PET-BR/56", the Stellungnahme itself `SPET-BR`). */
+export type StatementParentType = 'ME' | 'I' | 'A' | 'PET' | 'BI' | 'PET-BR'
 
 /**
  * Does this row really hang off the parent it was asked for?
@@ -150,17 +168,19 @@ export function pickStatementDocument(
 
 export function mapStatementRow(row: unknown[]): StatementMeta {
   const gp = asString(row[0])
-  // 'SN' is the Stellungnahme on a Regierungsvorlage; everything else is the
-  // SNME the monitor started with — the header check already vouches for
-  // the column, this only keeps the URL well-formed.
-  const ityp: StatementItemType = asString(row[1]) === 'SN' ? 'SN' : 'SNME'
+  // 'SN' is the Stellungnahme on a Regierungsvorlage, 'SPET' / 'SBI' on a
+  // Petition / Bürgerinitiative; everything else is the SNME the monitor
+  // started with — the header check already vouches for the column, this
+  // only keeps the URL well-formed.
+  const ityp = statementItemTypeOf(row[1])
   const snInr = asNumber(row[2])
   const citation = asString(row[15])
 
   // "<a …>Mustermann, Maria (237/SN-126/ME)</a>" → "Mustermann, Maria";
-  // on a Regierungsvorlage the bracket reads "(277139/SN)".
+  // on a Regierungsvorlage the bracket reads "(277139/SN)", on a Petition
+  // "(316/SPET)", on a Bürgerinitiative "(334/SBI)".
   const rawSubmitter = stripHtmlToText(asString(row[6])).replace(
-    /\s*\(\d+\/SN(?:-[^)]*)?\)\s*$/,
+    /\s*\(\d+\/S(?:N|PET|BI)(?:-[^)]*)?\)\s*$/,
     '',
   )
   // Column 19 is upstream's own organisation/person flag (`I`/`P`). It is a

@@ -17,6 +17,7 @@
  * at five on purpose, to be raised once a private page shows up.
  */
 import type { StatistikPayload } from '#shared/types'
+import { ANLIEGEN_SECTION_DE } from '#shared/utils/anliegen'
 import { formatDateDe, formatDateTimeDe, formatDateWeekdayDe, formatNumberDe } from '#shared/utils/format'
 
 usePageSeo({
@@ -39,6 +40,9 @@ const KLASSE_NAME: Record<string, string> = {
   'entwurf-land': 'Entwürfe der Länder',
   // Counted on their own since 14.11.2026; before, under „Andere Seiten".
   'vorlage-bund': 'Vorlagen und Anträge ohne Entwurf (seit 14.11.2026)',
+  // Counted on their own since 15.11.2026; before, under „Andere Seiten".
+  anliegen: `Liste der ${ANLIEGEN_SECTION_DE} (seit 15.11.2026)`,
+  'anliegen-gegenstand': 'Petitionen, Bürgerinitiativen, Volksbegehren und Petitionen an den Bundesrat (seit 15.11.2026)',
   'eu-recht': 'EU-Recht',
   wege: 'Wege',
   datenlage: 'Datenlage',

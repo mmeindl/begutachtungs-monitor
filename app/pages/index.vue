@@ -1150,5 +1150,10 @@ function submitSearch() {
            Impressum" link is the page's attribution — CC BY 4.0 § 3 a (2)
            allows a link to the page carrying it. -->
     </FetchGate>
+
+    <!-- After the drafts' sections, outside their gate (15.11.2026): another
+         object with its own endpoint, so a failed `/api/dashboard` does not
+         take it down, nor it the drafts. -->
+    <AnliegenHomeSection />
   </div>
 </template>

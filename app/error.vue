@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import type { NuxtError } from '#app'
-import { NOT_FOLLOWED_DE, notFollowedOf } from '~/utils/notFollowed'
+import { NOT_FOLLOWED_DE, notFollowedOf, notFollowedVolksbegehrenDe } from '~/utils/notFollowed'
 
 const props = defineProps<{ error: NuxtError }>()
 
@@ -26,7 +26,7 @@ const description = computed(() =>
   isGone.value
     ? ((props.error?.data as { reason?: string } | undefined)?.reason || 'Diese Seite gibt es nicht mehr.')
     : notFollowed.value
-      ? NOT_FOLLOWED_DE.text
+      ? (notFollowed.value.anliegenFrom ? notFollowedVolksbegehrenDe(notFollowed.value.anliegenFrom) : NOT_FOLLOWED_DE.text)
       : is404.value
         ? 'Die angeforderte Seite existiert nicht oder wurde verschoben.'
         : 'Beim Laden dieser Seite ist ein Fehler aufgetreten.',
@@ -38,6 +38,10 @@ useHead({ titleTemplate: '%s · Begutachtungs-Monitor' })
 
 function goHome() {
   clearError({ redirect: '/' })
+}
+
+function goAnliegen() {
+  clearError({ redirect: NOT_FOLLOWED_DE.anliegenLink.href })
 }
 
 function retry() {
@@ -61,6 +65,13 @@ function retry() {
       </p>
       <p v-if="notFollowed?.parliamentUrl" class="mt-3 text-sm">
         <ExternalLink :href="notFollowed.parliamentUrl" class="link-inline">{{ NOT_FOLLOWED_DE.link }}</ExternalLink>
+      </p>
+      <!-- An Anliegen of a period the monitor does not follow (a Volksbegehren
+           before GP XXII): the section where it follows the later ones. A
+           plain link, not NuxtLink: error.vue stands outside the layout, and
+           `clearError` is what leaves the error state. -->
+      <p v-if="notFollowed?.anliegenFrom" class="mt-2 text-sm">
+        <a :href="NOT_FOLLOWED_DE.anliegenLink.href" class="link-inline" @click.prevent="goAnliegen">{{ NOT_FOLLOWED_DE.anliegenLink.label }}</a>
       </p>
       <div class="mt-6 flex flex-wrap justify-center gap-2">
         <!-- No reload on a 404 or 410: the page is missing, not merely failing to load -->

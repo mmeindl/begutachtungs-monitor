@@ -689,8 +689,8 @@ not yet followed, or the EU cycle, starts there.
   „Initiativantrag" does for „Regierungsvorlage"); the Bundesrat's objection
   and a Volksabstimmung are events inside a station. Whatever does not fit is
   a different object and gets a rail of its own on a page of its own — an EU
-  act under `/eu-recht`, a Volksbegehren if it is ever followed. No sixth
-  station.
+  act under `/eu-recht`, a Petition, Bürgerinitiative or Volksbegehren under
+  `/anliegen` („Anliegen an den Nationalrat" below). No sixth station.
 - **The graphic follows the law, not the code** (14.11.2026). Every cell of
   `app/utils/wege.ts` names in a comment the provision the memo cites for it;
   what the memo lists under „Offen" is „je nach Fall" or left out, never a
@@ -826,10 +826,107 @@ not yet followed, or the EU cycle, starts there.
   Novelle before the date that touched only rewritten versions is missed.
 - **Order.** Followed since 14.11.2026: committee motions, motions of the
   Bundesrat, every Initiativantrag on a law, the Bundesrat's objection as an
-  event, treaties up to BGBl. III. Petitionen and Bürgerinitiativen,
-  Volksbegehren, the regulators' Verordnungen and Verordnungen without a
-  Begutachtung are each decided for themselves; the last waits until a
-  missing draft can be proven (the promulgation match finds about 85 %).
+  event, treaties up to BGBl. III. Built on 15.11.2026 as an object of their
+  own: Petitionen, Bürgerinitiativen and Volksbegehren in the Nationalrat.
+  Not followed: the regulators' Verordnungen (no machine-readable source of
+  their consultations; `docs/research/wege-ausserhalb-der-stationen.md`) and
+  Verordnungen without a Begutachtung, which wait until a missing draft can
+  be proven. The promulgation match finds 263 of 304 drafts, and its misses
+  are not an error rate: of 15 old misses read, 7 were promulgated and
+  missed, 5 never were.
+
+### Anliegen an den Nationalrat
+
+Built 15.11.2026; the measurement and the plan are
+`docs/research/umsetzungsplan-petitionen-volksbegehren.md`, the decision
+memo `docs/research/wege-ausserhalb-der-stationen.md`.
+
+- **A different object, not a sixth kind of draft.** A Petition, a
+  parlamentarische Bürgerinitiative and a Volksbegehren need not end in a
+  law and walk none of the five stations. They share no type, list or
+  address with the Entwürfe: `AnliegenRoot`, `/anliegen`,
+  `/anliegen/<gp>/<kind>/<nr>`, a rail of their own. The list read is their
+  own too (three list-101 reads per period, each row asserted against the
+  requested type); `VOLKBG` never joins `getItemsForGp`. No header label;
+  the section is reached from the homepage, `/wege` and the footer.
+- **Why it is built although Parliament shows the same items:** the aim is
+  one place from lawmaking to raising one's voice. The memo recommended
+  linking only; the maintainer decided otherwise (14.11.2026).
+- **The item's own flags open the door, nothing else.** „Unterstützen" and
+  „Stellung nehmen" stand, in blue, only where `approvalstate` and
+  `statementsstate` of that item say open. List 143's `AKTIV` may narrow a
+  list (it agreed on 65 of 65) and never opens a door. `status.number` and
+  `status.description` say nothing about an ending and are not read for
+  one.
+- **There is no Frist, so no calendar and no countdown.** The window closes
+  when the treatment in the Nationalrat ends, unannounced; a forwarded item
+  stays open. A closed item says participation is „nicht möglich".
+- **Never named: the Erstunterzeichner of a Bürgerinitiative** (a private
+  person; dropped in the reader before anything is cached, and a test holds
+  a name against every field), **the member who hands in a Petition** (the
+  club only, as an Initiativantrag shows its movers), **whom the committee
+  asked for a statement** (free text that names persons behind „;", „*" and
+  alone; only the number and the dates). List 305, the supporters by name,
+  is not read at all.
+- **No stage text is passed through.** The course is typed facts from a
+  closed vocabulary; a stage no pattern recognises is counted and the page
+  says that a step could not be read. The committee ends an item in two
+  ways and no third occurred in 616 items: Kenntnisnahme im Ausschuss,
+  Zuweisung an einen Fachausschuss.
+- **Framing.** The step is named in Parliament's words („zur Kenntnis
+  genommen") and no sentence weighs it. No tally of outcomes anywhere, the
+  list sorts by the last step and never by outcome, every closed state has
+  one colour. A vote is „alle Klubs dafür", never „einstimmig": the record
+  gives clubs, not members. The plenary's vote is on the committee's
+  Sammelbericht, never on the item, and the page says so.
+- **What the page says it cannot show:** what became of an Anliegen after
+  the Nationalrat (no source links a later law to it); why the committee
+  took note (the record gives the motion and the vote); Unterstützung and
+  Eintragung of a Volksbegehren before it arrives (Bundesministerium für
+  Inneres, no interface); what a subject committee did where its record
+  carries no entry (34 of 59 forwarded items of GP XXVI and XXVII).
+- **A period's end is said from the period, not from a field.** A
+  Bürgerinitiative is carried over and links its successor; a Petition
+  never is and simply stops.
+- **Volksbegehren from GP XXII on.** Older records are too thin for a true
+  page (15 carry a single stage); the address answers with Parliament's
+  link.
+- **Petitionen to the Bundesrat are a fourth kind with steps of their own**
+  (15.11.2026; 42, none since April 2024), at
+  `/anliegen/BR/petition-bundesrat/<nr>`: the Bundesrat has no periods, so
+  „BR" stands where a period does, and their tab ignores the period select.
+  31 end in „Übermittlung an das Bundeskanzleramt / Bundesministerium", a
+  step the Nationalrat's rail does not have, 10 in a report the Bundesrat
+  takes note of, 1 counts as withdrawn (§ 16 Abs. 5 GO-BR). The addressee
+  is printed only where it matches „das Bundeskanzleramt" or „das
+  Bundesministerium für …"; otherwise „eine Stelle der Bundesverwaltung".
+  What the administration did with a petition is not in the record, and
+  the page says so. Members of the Bundesrat are shown by club only.
+- **The section is called „Anliegen an das Parlament"** since the Bundesrat's
+  petitions are in it (one constant, `ANLIEGEN_SECTION_DE`); sentences about
+  the Nationalrat keep its name. The address stays `/anliegen`.
+- **The list offers GP XXV to the running period,** the periods the reader
+  was measured on; older Volksbegehren (from XXII) answer by address. In an
+  ended period „Nur offene" is unavailable and says why, and the records
+  take the long TTL of settled periods.
+- **Licence.** Parliament's datasets „Petitionen" and „Bürgerinitiativen"
+  are CC BY 4.0 for the result lists and the items' pages; everything about
+  Stellungnahmen is excluded there too. The numbers of Unterstützungen are
+  read as covered, statements are shown as on a Regierungsvorlage. Both
+  readings are ours; the question to the Parlamentsdirektion is still to
+  be asked, and the answer may change what is shown.
+- **No feed in the first release;** later one of its own, dated by
+  Einlangen, so the drafts' feed keeps its meaning.
+- **Every Anliegen endpoint answers within a stated time** (15.11.2026):
+  the list within 20 s for lists and records together, one item within
+  10 s. Before, the list reads had no bound of their own and a slow
+  Parliament cost 40 to 88 s. What is late is said, never guessed: a kind
+  whose list did not arrive is „konnte nicht gelesen werden", a row whose
+  record did not arrive is „Stand nicht gelesen", counts are „nicht
+  abrufbar"; a record that does not arrive is a 504. Late reads still fill
+  the cache, so the next call is complete. Not built: rows first and states
+  after, because the list sorts by the last step and would reorder while
+  loading.
 - **The EU cycle starts with a licence check, not with code:** the reuse
   terms of the Commission's consultation endpoint (undocumented) and of the
   register of the European Citizens' Initiative, written up in
@@ -1071,6 +1168,25 @@ circular of 10.12.2015).
 | First text → Kundmachung comparison shown | Salzburg Initiativantrag 87 of 103, Oberösterreich Beilage 181 of 201 | since 2016 · 10.11.2026 |
 | Land law „Was das Gesetz geändert hat": laws with ≥ 1 § compared / named §§ compared | Burgenland 19 / 86 %, Wien 14 / 77 %, Tirol 17 / 69 %, Niederösterreich 16 / 60 %, Steiermark 18 / 58 %, Oberösterreich 15 / 49 %, Vorarlberg 17 / 43 %, Salzburg 13 / 34 %, Kärnten 10 / 23 % | 20 laws per Land since 2016, 5 per Land checked against the instructions · 12.11.2026 |
 
+### Anliegen an den Nationalrat
+
+| What | Value | Sample, date |
+|---|---|---|
+| Petitionen / Bürgerinitiativen per period | XXV 111 / 121, XXVI 30 / 67, XXVII 148 / 74, XXVIII 29 / 36 | list 101 · 14.11.2026 |
+| How the committee ended an item | 354 Kenntnisnahme im Ausschuss, 122 Zuweisung an einen Fachausschuss, no third way | 616 items, GP XXV–XXVIII · 15.11.2026 |
+| What a subject committee did with a forwarded item | 34 no entry, 15 report, 10 last adjourned | 59 items, GP XXVI and XXVII · 15.11.2026 |
+| The two flags against each other and against list 143's `AKTIV` | never differ (44 open, 572 closed); `AKTIV` agrees on 65 of 65 | 616 items; GP XXVIII · 15.11.2026 |
+| When the window closes | closed on exactly the 21 whose Kenntnisnahme the plenary has taken note of; open on all 8 forwarded | 65 items, GP XXVIII · 15.11.2026 |
+| Requests of the committee for a statement | 1,796, addressee free text, 222 with a person behind „;" | 616 items · 15.11.2026 |
+| Stages the reader does not recognise | 7 of 616 Petitionen and Bürgerinitiativen, 4 of 85 Volksbegehren | whole corpus · 15.11.2026 |
+| Erstunterzeichner names in anything assembled or cached | 0 of 300 | 701 records · 15.11.2026 |
+| Names on Bundesrat petitions (members handing in, Berichterstatter, movers) in the reduced record or the detail | 0 of 113, full name or surname | 42 records · 15.11.2026 |
+| Anliegen list, cold | running period 3.8 s (70 + 42 records), GP XXVII 14.6 s (265 + 42); warm under 0.1 s | Parliament answering in about 1 s · 15.11.2026 |
+| Volksbegehren in the Nationalrat | 85 rows; 59 Kenntnisnahme (11 with an Entschließung), 15 with one stage only (GP X–XVIII) | all periods · 15.11.2026 |
+| Petitionen to the Bundesrat | 42; 31 forwarded to the Bundeskanzleramt or a ministry, 10 report taken note of, 1 withdrawn (§ 16 Abs. 5 GO-BR); no stage unread | all · 15.11.2026 |
+| List 101's date column on these items | the day of arrival on 287 of 287, not the last treatment | GP XXVII and XXVIII · 15.11.2026 |
+| Ordinance drafts matched to a BGBl. II | 263 of 304 (260 before the spelling fix of 14.11.2026) | RIS `Begut` · 14.11.2026 |
+
 ## 3. Rejected alternatives
 
 ### The engine and the annex
@@ -1260,6 +1376,14 @@ circular of 10.12.2015).
   holds for a Ministerialentwurf's documents too, and what covers the
   metadata of the Begutachtung lists. Until answered, the source order of the
   Textgegenüberstellung does not move, and no blanket CC-BY claim is made.
+- **The basis for reading the Länder's documents** (15.11.2026,
+  `docs/research/amtliche-werke-landesdokumente.md`): drafts, Erläuterungen
+  and Vorlagen of a Land are most likely free works (§ 7 Abs. 1 UrhG);
+  statements of third parties are not. Two points rest on our own
+  reasoning and wait for a lawyer: whether a Begutachtungsentwurf counts
+  as an official work, also one that never became law, and whether the
+  database right (§ 76d UrhG) stands against reading a Land's register
+  systematically.
 - **Does list 81 update `Frist` when a Begutachtung is extended?** Forty
   daily snapshots to 02.11.2026 contained no extension to observe; RIS and
   list 81 agree on 336 of 337 deadlines of GP XXVII, so extensions are rare.

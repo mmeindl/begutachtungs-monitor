@@ -1,6 +1,8 @@
 import { describe, expect, it } from 'vitest'
 import { SOURCE_PARAM, parseSourceList } from '../shared/utils/laender'
+import { ANLIEGEN_PATH } from '../shared/utils/anliegen'
 import { artChoiceLabel, artChoiceOf, draftFiltersFromQuery, draftUrlQuery } from '../app/utils/draftFilters'
+import { anliegenArtOf } from '../app/utils/anliegenView'
 import {
   EU_LEAD,
   WEGE,
@@ -15,9 +17,11 @@ import {
   wegHref,
 } from '../app/utils/wege'
 
-/** Every list link on the page: rows, station headers, the EU lead-in. */
+const isAnliegenLink = (href: string | null | undefined) => typeof href === 'string' && href.startsWith(`${ANLIEGEN_PATH}?`)
+
+/** Every link into the list of Entwürfe: rows, station headers, the EU lead-in. */
 const listLinks = [
-  ...WEGE.map((w) => w.href),
+  ...WEGE.map((w) => w.href).filter((h) => !isAnliegenLink(h)),
   ...WEG_STATIONS.map((s) => s.href),
   ...WEGE.map((w) => w.noteLink?.href ?? null).filter((h) => h !== null && h.startsWith('/entwuerfe')),
   EU_LEAD.list.href,
@@ -124,6 +128,36 @@ describe('instruments beside the path', () => {
       expect(i.hrefLabel).toBeTruthy()
     }
     for (const i of WEG_INSTRUMENTS.filter((x) => x.href === null)) expect(i.hrefLabel).toBeNull()
+  })
+})
+
+describe('Anliegen an das Parlament (15.11.2026)', () => {
+  it('the Volksbegehren row is followed for its time in the Nationalrat and says what before it is not', () => {
+    const w = WEGE.find((x) => x.id === 'volksbegehren')!
+    expect(w.notFollowed).toBeNull()
+    expect(w.note).toBe('im Monitor für seine Zeit im Nationalrat')
+    expect(w.gap).toBe('Unterstützung und Eintragung vor dem Einlangen im Nationalrat sind nicht im Monitor.')
+    expect(isAnliegenLink(w.href)).toBe(true)
+    expect(anliegenArtOf(queryOf(w.href!).art)).toBe('volksbegehren')
+  })
+
+  it('only a followed row names a gap', () => {
+    for (const w of WEGE.filter((x) => x.gap !== undefined)) {
+      expect(w.notFollowed, w.id).toBeNull()
+      expect(w.gap!.length, w.id).toBeGreaterThan(0)
+    }
+  })
+
+  it('Petition, Bürgerinitiative and Volksbegehren link to their kind on /anliegen; Parliament’s explainer stays beside them', () => {
+    const followed = WEG_INSTRUMENTS.filter((i) => i.monitorHref !== undefined)
+    expect(followed.map((i) => i.id)).toEqual(['petition', 'buergerinitiative', 'volksbegehren'])
+    for (const i of followed) {
+      expect(isAnliegenLink(i.monitorHref), i.id).toBe(true)
+      expect(Object.keys(queryOf(i.monitorHref!)), i.id).toEqual(['art'])
+      expect(anliegenArtOf(queryOf(i.monitorHref!).art), i.id).toBe(i.id)
+    }
+    expect(WEG_INSTRUMENTS.find((i) => i.id === 'petition')!.href).toMatch(/^https:\/\/www\.parlament\.gv\.at\//)
+    expect(WEG_INSTRUMENTS.find((i) => i.id === 'buergerinitiative')!.href).toMatch(/^https:\/\/www\.parlament\.gv\.at\//)
   })
 })
 

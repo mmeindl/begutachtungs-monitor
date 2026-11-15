@@ -1,4 +1,6 @@
 <script setup lang="ts">
+// Used only in the template: imported explicitly (a template-only helper is not auto-imported at runtime).
+import { ANLIEGEN_PATH, ANLIEGEN_SECTION_DE } from '#shared/utils/anliegen'
 /**
  * A colophon, not a marketing surface. The subscription box that used to sit
  * here was the fifth copy of one invitation, and it carried `mark-wash` — the
@@ -17,6 +19,9 @@
  *     lists, which show facts, not documents — it is the CC-BY attribution
  *     for the RIS rows, which CC BY 4.0 § 3 a (2) expressly allows to be a
  *     link to the page carrying it;
+ *   - „Anliegen an das Parlament" (15.11.2026, `ANLIEGEN_SECTION_DE`) — the section has no header
+ *     label (the five measure the header's width), so the footer is one of
+ *     its three doors, with the homepage block and `/wege`;
  *   - „Kein amtliches Angebot" — the load-bearing line on a .at address about
  *     ministries;
  *   - source code — AGPL § 13 requires offering users the source on network
@@ -50,7 +55,12 @@
           <NuxtLink
             to="/datenlage"
             class="link-muted"
-          >Datenlage: was die Quellen veröffentlichen</NuxtLink>. Kein amtliches Angebot.
+          >Datenlage: was die Quellen veröffentlichen</NuxtLink>
+          ·
+          <NuxtLink
+            :to="ANLIEGEN_PATH"
+            class="link-muted"
+          >{{ ANLIEGEN_SECTION_DE }}</NuxtLink>. Kein amtliches Angebot.
         </p>
         <p>
           <ExternalLink

@@ -30,10 +30,14 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
  * „Musterverband n" for every institution. No submitter is real.
  */
 
+/** Each cached function's options by name, so its key can be asserted. */
+const cacheOptions = new Map<string, { getKey?: (...args: never[]) => string }>()
 vi.stubGlobal(
   'defineCachedFunction',
-  <A extends unknown[], R>(fn: (...args: A) => R) =>
-    (...args: A): R => fn(...args),
+  <A extends unknown[], R>(fn: (...args: A) => R, options?: { name?: string; getKey?: (...args: never[]) => string }) => {
+    if (options?.name) cacheOptions.set(options.name, options)
+    return (...args: A): R => fn(...args)
+  },
 )
 vi.stubGlobal('DERIVED_CACHE', '/derived')
 
@@ -43,7 +47,7 @@ vi.mock('../server/utils/parliament/drafts', () => ({
 }))
 
 const { getDraftsForGp } = vi.mocked(await import('../server/utils/parliament/drafts'))
-const { getStatementsForRv, getStatementsWithFallback } = await import('../server/utils/parliament/statements')
+const { getStatementsForItem, getStatementsForRv, getStatementsWithFallback } = await import('../server/utils/parliament/statements')
 const { STATEMENTS_CAP } = await import('../server/utils/parliament/list142')
 const { loadLastGoodStatements } = await import('../server/utils/parliament/lastgood')
 
@@ -61,11 +65,15 @@ const HEADER_142 = [
 ]
 
 type Typ = 'I' | 'P'
+type ParentType = 'ME' | 'I' | 'PET' | 'BI'
+
+/** The Stellungnahme's own item type on each parent (list 142, column 1). */
+const SN_ITYP: Record<ParentType, string> = { ME: 'SNME', I: 'SN', PET: 'SPET', BI: 'SBI' }
 
 /** One list-142 row of a parent, in the 23 columns `mapStatementRow` reads. */
-function row(gp: string, ityp: 'ME' | 'I', inr: number, n: number, typ: Typ): unknown[] {
-  const snItyp = ityp === 'ME' ? 'SNME' : 'SN'
-  const citation = ityp === 'ME' ? `${n}/SN-${inr}/ME` : `${n}/SN`
+function row(gp: string, ityp: ParentType, inr: number, n: number, typ: Typ): unknown[] {
+  const snItyp = SN_ITYP[ityp]
+  const citation = ityp === 'ME' ? `${n}/SN-${inr}/ME` : `${n}/${snItyp}`
   const submitter = typ === 'I' ? `Musterverband ${n}` : 'Muster, Max'
   const day = String(1 + (n % 28)).padStart(2, '0')
   return [
@@ -91,7 +99,7 @@ interface Parent {
 const parents = new Map<string, Parent>()
 
 /** `institutions` rows flagged I, then `persons` rows flagged P. */
-function parent(gp: string, ityp: 'ME' | 'I', inr: number, institutions: number, persons: number, over: Partial<Parent> = {}): Parent {
+function parent(gp: string, ityp: ParentType, inr: number, institutions: number, persons: number, over: Partial<Parent> = {}): Parent {
   const rows = [
     ...Array.from({ length: institutions }, (_, i) => row(gp, ityp, inr, i + 1, 'I')),
     ...Array.from({ length: persons }, (_, i) => row(gp, ityp, inr, institutions + i + 1, 'P')),
@@ -283,6 +291,46 @@ describe('the Vorlage\'s list', () => {
     expect(result.total).toBe(STATEMENTS_CAP + 18)
     expect(result.items).toHaveLength(17)
     expect(result.unlisted).toBe(STATEMENTS_CAP + 1)
+  })
+})
+
+/* A Petition and a Bürgerinitiative take Stellungnahmen like a Vorlage
+ * (15.11.2026): the same read, the same classifier, a page of their own
+ * type, and a key that names the type so no cache entry changes meaning. */
+describe('the list of a Petition or a Bürgerinitiative', () => {
+  it('reads a Petition whole, persons without a name, each row linked under SPET', async () => {
+    parent('XXVIII', 'PET', 13, 2, 3)
+
+    const result = await getStatementsForItem('XXVIII', 'PET', 13)
+    expect(result).toMatchObject({ total: 5, unlisted: 0 })
+    expect(result.items?.filter((i) => i.submitterKind === 'organisation')).toHaveLength(2)
+    expect(result.items?.filter((i) => i.submitterKind === 'person').every((i) => i.submitterName === null)).toBe(true)
+    expect(result.items?.every((i) => i.parliamentUrl.startsWith('https://www.parlament.gv.at/gegenstand/XXVIII/SPET/'))).toBe(true)
+    expect(result.items?.map((i) => i.submitterName).filter(Boolean)).toEqual(expect.arrayContaining(['Musterverband 1', 'Musterverband 2']))
+  })
+
+  it('reads a Bürgerinitiative under SBI', async () => {
+    parent('XXVIII', 'BI', 1, 0, 1)
+
+    const result = await getStatementsForItem('XXVIII', 'BI', 1)
+    expect(result.total).toBe(1)
+    expect(result.items?.[0]).toMatchObject({ submitterKind: 'person', submitterName: null, citation: '1/SBI' })
+    expect(result.items?.[0]?.parliamentUrl).toBe('https://www.parlament.gv.at/gegenstand/XXVIII/SBI/50001')
+  })
+
+  it('refuses rows of another parent with the same number', async () => {
+    const wrong = parent('XXVIII', 'BI', 7, 1, 1)
+    parents.set('XXVIII/PET/7', wrong)
+
+    await expect(getStatementsForItem('XXVIII', 'PET', 7)).rejects.toMatchObject({ statusCode: 502 })
+  })
+
+  it('keys the Vorlage as before and every other parent by its type', () => {
+    const getKey = cacheOptions.get('statements-rv')?.getKey as ((gp: string, ityp: string, inr: number) => string) | undefined
+    expect(getKey?.('XXVIII', 'I', 98)).toBe('XXVIII-98')
+    expect(getKey?.('XXVIII', 'A', 98)).toBe('XXVIII-A-98')
+    expect(getKey?.('XXVIII', 'PET', 98)).toBe('XXVIII-PET-98')
+    expect(getKey?.('XXVIII', 'BI', 98)).toBe('XXVIII-BI-98')
   })
 })
 

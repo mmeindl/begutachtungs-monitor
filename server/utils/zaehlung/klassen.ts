@@ -12,6 +12,7 @@
  */
 import type { LandCode } from '#shared/types'
 import { LAND_CODES, LAND_SLUG } from '#shared/utils/laender'
+import { anliegenKindOfSegment } from '#shared/utils/anliegen'
 import { itemKindOfSegment } from '#shared/utils/procedureRoot'
 
 export const KLASSEN = [
@@ -24,6 +25,12 @@ export const KLASSEN = [
   // ausschussantrag, …; decision 10 of 14.11.2026). The days before
   // 14.11.2026 counted these pages as `sonstige` and stay so.
   'vorlage-bund',
+  // The list of Anliegen an das Parlament, `/anliegen`, and the page of
+  // one, `/anliegen/<gp>/<kind>/<nr>`, whatever the kind (Petition,
+  // Bürgerinitiative, Volksbegehren). The days before 15.11.2026 counted
+  // these pages as `sonstige` and stay so.
+  'anliegen',
+  'anliegen-gegenstand',
   'frist-kalender',
   'eu-recht',
   'wege',
@@ -51,6 +58,7 @@ export interface Treffer {
 const FIXED: Record<string, Klasse> = {
   '/': 'start',
   '/entwuerfe': 'entwuerfe',
+  '/anliegen': 'anliegen',
   '/eu-recht': 'eu-recht',
   '/wege': 'wege',
   '/datenlage': 'datenlage',
@@ -114,6 +122,13 @@ export function klassifiziere(path: string, contentType?: string | null): Treffe
     // `/entwuerfe/<gp>/<kind>/<nr>`: an item's own page, by the segments
     // the router knows (`itemKindOfSegment`) — the path is lowercased here.
     if (rest.length === 3 && itemKindOfSegment(rest[1]!) !== null) return { klasse: 'vorlage-bund' }
+  }
+
+  // `/anliegen/<gp>/<kind>/<nr>`: an Anliegen's page, by the kind segments
+  // the router knows (`anliegenKindOfSegment`), as for `vorlage-bund` — a
+  // Petition an den Bundesrat's too, `/anliegen/BR/petition-bundesrat/<nr>`.
+  if (parts[0] === 'anliegen' && parts.length === 4 && anliegenKindOfSegment(parts[2]!) !== null) {
+    return { klasse: 'anliegen-gegenstand' }
   }
 
   // The EU map: the overview above, one act's page `/eu-recht/<kind>/<year>/<number>` here.

@@ -1,0 +1,101 @@
+{
+  "content": {
+    "ityp": "PET-BR",
+    "doktyp": "PET-BR",
+    "title": "Bessere Versorgung des ländlichen Raumes mit Breitband-Internet",
+    "zitation": "28/PET-BR/2011",
+    "einlangen": "2011-01-03T00:00:00",
+    "statementsstate": "0",
+    "approvalstate": "0",
+    "status": {
+      "number": 5,
+      "description": "Kenntnisnahme des Berichts angenommen<br><br>Angenommene Entschließung: <a href=\"/gegenstand/BR/E-BR/235\">235/E-BR/2011</a>"
+    },
+    "phase": [
+      {
+        "name": "Einlangen BR",
+        "stages": [
+          {
+            "date": "03.01.2011",
+            "text": "Einlangen im Bundesrat (Frist: 03.07.2011)"
+          },
+          {
+            "date": "03.02.2011",
+            "text": "<a href=\"/gegenstand/BR/BRSITZ/793\">793. Sitzung</a>: Mitteilung des Einlangens"
+          }
+        ]
+      },
+      {
+        "name": "Ausschussberatungen BR",
+        "stages": [
+          {
+            "date": "01.02.2011",
+            "text": "Zuweisung an den <a href=\"/ausschuss/BR/A-BP-BR/1/00272\">Ausschuss für BürgerInnenrechte und Petitionen des Bundesrates</a>"
+          },
+          {
+            "date": "01.02.2011",
+            "text": "Ausschuss für BürgerInnenrechte und Petitionen des Bundesrates: auf <a href=\"/dokument/BR/A-BP-BR/1/00272/TO_01705093.html\">Tagesordnung</a> in der <a href=\"/ausschuss/BR/A-BP-BR/1/00272?selectedStage=105&selectedSession=2&selectedDate=01022011\">2. Sitzung des Ausschusses</a>"
+          },
+          {
+            "date": "01.02.2011",
+            "text": "Vertagung im Ausschuss"
+          },
+          {
+            "date": "03.02.2011",
+            "text": "<a href=\"/gegenstand/BR/BRSITZ/793\">793. Sitzung</a>: Mitteilung des Einlanges und der Zuweisung an den Ausschuss für BürgerInnenrechte und Petitionen des Bundesrates"
+          },
+          {
+            "date": "15.03.2011",
+            "text": "Ausschuss für BürgerInnenrechte und Petitionen des Bundesrates: auf <a href=\"/dokument/BR/A-BP-BR/1/00272/TO_01716586.html\">Tagesordnung</a> in der <a href=\"/ausschuss/BR/A-BP-BR/1/00272?selectedStage=105&selectedSession=3&selectedDate=15032011\">3. Sitzung des Ausschusses</a>"
+          },
+          {
+            "date": "15.03.2011",
+            "text": "Ausschuss für BürgerInnenrechte und Petitionen des Bundesrates: Bericht <a href=\"/gegenstand/BR/I-BR/8463\">8463/BR d.B.</a>"
+          },
+          {
+            "date": "28.08.2014",
+            "text": "Keine Veröffentlichung der Dokumente"
+          }
+        ]
+      },
+      {
+        "name": "Plenarberatungen BR",
+        "stages": [
+          {
+            "date": "17.03.2011",
+            "text": "<a href=\"/gegenstand/BR/BRSITZ/794\">794. Sitzung</a>: Berichterstattung durch die Bundesrätin <a href=\"/person/0\" target=\"_blank\">Berichterstatter Platzhalter</a>"
+          },
+          {
+            "date": "17.03.2011",
+            "text": "Auf der <a href=\"/dokument/BR/BRSITZ/794/TO_01675025.html\">Tagesordnung</a> der 794. Sitzung"
+          },
+          {
+            "date": "17.03.2011",
+            "text": "<a href=\"/gegenstand/BR/BRSITZ/794\">794. Sitzung</a>: Debatte"
+          },
+          {
+            "date": "17.03.2011",
+            "text": "Wortmeldungen in der Debatte"
+          },
+          {
+            "date": "17.03.2011",
+            "text": "Unselbständiger Entschließungsantrag der Bundesräte <a href=\"/person/0\" target=\"_blank\">Antragsteller Platzhalter</a>, <a href=\"/person/0\" target=\"_blank\">Antragsteller Platzhalter</a>, Kolleginnen und Kollegen betreffend <a href=\"/gegenstand/BR/UEA-BR/222\">Ausschreibungsbedingungen der Versteigerung der digitalen Dividende (222/UEA-BR/2011)</a><br><b>angenommen</b> (<a href=\"/gegenstand/BR/E-BR/235\">235/E-BR/2011</a>)<br>Einstimmig"
+          },
+          {
+            "date": "17.03.2011",
+            "text": "Kenntnisnahme des Berichts <b>angenommen</b><br>mehrstimmig"
+          }
+        ]
+      }
+    ],
+    "documents": null,
+    "names": [
+      {
+        "funktext": "Petition überreicht von",
+        "name": "Mitglied Platzhalter",
+        "frak_code": "V"
+      }
+    ],
+    "reference": null
+  }
+}

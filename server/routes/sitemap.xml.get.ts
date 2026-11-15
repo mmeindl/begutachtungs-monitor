@@ -1,10 +1,13 @@
 /**
  * GET /sitemap.xml — static pages plus every detail page of the current GP,
  * from both halves of the Begutachtung: the Ministerialentwürfe and the
- * records that have no Gegenstand at Parliament.
+ * records that have no Gegenstand at Parliament — and, since 15.11.2026, the
+ * pages of the period's Anliegen an das Parlament, and the pages of every
+ * Petition an den Bundesrat (42; they carry no period and do not change).
  * Reuses cached leaves (no extra upstream load); same ETag pattern
  * as /feed.xml. Referenced from public/robots.txt.
  */
+import { anliegenPath } from '#shared/utils/anliegen'
 import { gpWindow } from '#shared/utils/gp'
 import { landLawPath } from '#shared/utils/laender'
 import { itemKindOfLawItem, itemPath } from '#shared/utils/procedureRoot'
@@ -16,7 +19,7 @@ const EU_MAP_BUDGET_MS = 2_500
 export default defineEventHandler(async (event) => {
   const siteUrl = useRuntimeConfig(event).public.siteUrl
   const gp = await getCurrentGp()
-  const [{ items }, risOnly, euMap, bundLandMap, bundLaws, landLaws] = await Promise.all([
+  const [{ items }, risOnly, euMap, bundLandMap, bundLaws, landLaws, anliegen, bundesrat] = await Promise.all([
     getDraftsForGp(gp),
     getRisOnlyForGp(gp),
     withinBudget(getEuMap(gp), EU_MAP_BUDGET_MS),
@@ -25,6 +28,12 @@ export default defineEventHandler(async (event) => {
     // what is not built in time is left out, never waited for.
     withinBudget(getLawsWithoutBegutachtung(gp), EU_MAP_BUDGET_MS),
     withinBudget(readLandLaws(gp, gpWindow(gp)), EU_MAP_BUDGET_MS),
+    // The Anliegen from list 101's rows alone — no detail read per item. A
+    // kind whose read failed, or a read that came late, leaves its pages out;
+    // `/anliegen` itself always stands.
+    withinBudget(getAnliegenForGp(gp), EU_MAP_BUDGET_MS),
+    // The Petitionen an den Bundesrat, from their one list-101 read, on the same terms.
+    withinBudget(getBundesratPetitions().catch(() => null), EU_MAP_BUDGET_MS),
   ])
   // Sorted, so the body — and its ETag — does not move with the map's order.
   const euActPaths = euMap ? Object.values(euMap.acts).map((a) => a.path).sort() : []
@@ -36,7 +45,8 @@ export default defineEventHandler(async (event) => {
     ...(bundLaws?.available ? bundLaws.items.map((l) => itemPath(l.item.gp, itemKindOfLawItem(l.item.kind), l.item.inr)) : []),
     ...(landLaws?.items ?? []).map((l) => landLawPath(l.land, l)),
   ].sort()
-  const body = buildSitemap(siteUrl, dedupeDraftList(items), withRisActiveOn(risOnly.items), euActPaths, bundesrechtPaths, lawPaths)
+  const anliegenPaths = [...(anliegen?.entries ?? []), ...(bundesrat ?? [])].map((e) => anliegenPath(e.root)).sort()
+  const body = buildSitemap(siteUrl, dedupeDraftList(items), withRisActiveOn(risOnly.items), euActPaths, bundesrechtPaths, lawPaths, anliegenPaths)
 
   return respondWithEtag(event, body, 'application/xml; charset=utf-8')
 })

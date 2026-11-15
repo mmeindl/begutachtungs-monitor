@@ -1,0 +1,107 @@
+{
+  "content": {
+    "ityp": "I",
+    "doktyp": "VOLKBG",
+    "title": "Volksbegehren \"Essen nicht wegwerfen!\"",
+    "zitation": "2 d.B.",
+    "einlangen": "2024-10-24T00:00:00",
+    "statementsstate": "0",
+    "approvalstate": "9 Keine Zustimmung bei dem Doktyp \"VOLKBG\" möglich",
+    "status": {
+      "number": 5,
+      "description": "37. Sitzung des Nationalrates: Kenntnisnahme<br>Dafür: FPÖ, ÖVP, SPÖ, NEOS, GRÜNE, dagegen: -"
+    },
+    "phase": [
+      {
+        "name": "Einlangen NR",
+        "stages": [
+          {
+            "date": "24.10.2024",
+            "text": " Verhandlungsgegenstand gem. § 21 Abs. 1a GOG"
+          },
+          {
+            "date": "24.10.2024",
+            "text": "<a href=\"/gegenstand/XXVIII/NRSITZ/1\">1. Sitzung des Nationalrates</a>: Mitteilung des Einlangens"
+          },
+          {
+            "date": "28.10.2024",
+            "text": "Vorgesehen für den <a href=\"/ausschuss/XXVIII/A-UM/1/00937\">Umweltausschuss</a>"
+          }
+        ]
+      },
+      {
+        "name": "Ausschussberatungen NR",
+        "stages": [
+          {
+            "date": "26.02.2025",
+            "text": "<a href=\"/gegenstand/XXVIII/NRSITZ/10\">10. Sitzung des Nationalrates</a>: Zuweisung an den <a href=\"/ausschuss/XXVIII/A-UM/1/00937\">Umweltausschuss</a>"
+          },
+          {
+            "date": "26.02.2025",
+            "text": "Umweltausschuss: Frist für die Aufnahme der Vorberatung: 26.03.2025"
+          },
+          {
+            "date": "26.02.2025",
+            "text": "Umweltausschuss: Fristsetzung für Berichterstattung: 19.09.2025"
+          },
+          {
+            "date": "26.03.2025",
+            "text": "Umweltausschuss: auf <a href=\"/dokument/XXVIII/A-UM/1/00937/TO_16501291.html\">Tagesordnung</a> in der <a href=\"/ausschuss/XXVIII/A-UM/1/00937?selectedStage=105&selectedSession=2&selectedDate=26032025\">2. Sitzung des Ausschusses</a><br>In der Sitzung vom 26. März 2025 vertagt"
+          },
+          {
+            "date": "03.07.2025",
+            "text": "Umweltausschuss: auf <a href=\"/dokument/XXVIII/A-UM/1/00937/TO_16596949.html\">Tagesordnung</a> in der <a href=\"/ausschuss/XXVIII/A-UM/1/00937?selectedStage=105&selectedSession=4&selectedDate=03072025\">4. Sitzung des Ausschusses</a><br>Wiederaufnahme der am 26. März 2025 vertagten Verhandlungen"
+          },
+          {
+            "date": "03.07.2025",
+            "text": "Umweltausschuss: Bericht <a href=\"/gegenstand/XXVIII/I/180\">180 d.B.</a>"
+          }
+        ]
+      },
+      {
+        "name": "Plenarberatungen NR",
+        "stages": [
+          {
+            "date": "10.07.2025",
+            "text": "Auf der <a href=\"/dokument/XXVIII/NRSITZ/37/TO_16447530.html\">Tagesordnung</a> der <a href=\"/gegenstand/XXVIII/NRSITZ/37\">37. Sitzung des Nationalrates</a>"
+          },
+          {
+            "date": "10.07.2025",
+            "text": "Wortmeldungen in der Debatte"
+          },
+          {
+            "date": "10.07.2025",
+            "text": "37. Sitzung des Nationalrates: Kenntnisnahme<br>Dafür: FPÖ, ÖVP, SPÖ, NEOS, GRÜNE, dagegen: -"
+          },
+          {
+            "date": "10.07.2025",
+            "text": "37. Sitzung des Nationalrates: Abstimmung über die dem Auschussbericht beigedruckten Entschließung <a href=\"/gegenstand/XXVIII/AEA/6\">6/AEA</a><br><b>angenommen</b> (<a href=\"/gegenstand/XXVIII/AEA/6\">6/AEA</a>)<br>Dafür: FPÖ, ÖVP, SPÖ, NEOS, GRÜNE, dagegen: -"
+          }
+        ]
+      }
+    ],
+    "documents": [
+      {
+        "title": "Volksbegehren",
+        "documents": [
+          {
+            "link": "/dokument/XXVIII/I/2/fname_1658103.pdf",
+            "type": "PDF"
+          },
+          {
+            "link": "/dokument/XXVIII/I/2/fnameorig_1658103.html",
+            "type": "HTML"
+          }
+        ]
+      }
+    ],
+    "names": [],
+    "reference": [
+      {
+        "text": "Neuverteilung gem. § 21 Abs. 1a GOG-NR",
+        "zitation": "2547 d.B.",
+        "url": "/gegenstand/XXVII/I/2547"
+      }
+    ]
+  }
+}

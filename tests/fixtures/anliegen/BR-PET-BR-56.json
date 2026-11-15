@@ -1,0 +1,70 @@
+{
+  "content": {
+    "ityp": "PET-BR",
+    "doktyp": "PET-BR",
+    "title": "Schutzwege für den Schutz der Gerloser Bevölkerung!",
+    "zitation": "56/PET-BR/2024",
+    "einlangen": "2024-04-05T00:00:00",
+    "statementsstate": "0",
+    "approvalstate": "0",
+    "status": {
+      "number": 5,
+      "description": "Vertagung im Ausschuss<br>Übermittlung der Petition an das Bundesministerium für Klimaschutz, Umwelt, Energie, Mobilität, Innovation und Technologie"
+    },
+    "phase": [
+      {
+        "name": "Einlangen BR",
+        "stages": [
+          {
+            "date": "05.04.2024",
+            "text": "Einlangen im Bundesrat (Frist: 05.10.2024)"
+          }
+        ]
+      },
+      {
+        "name": "Ausschussberatungen BR",
+        "stages": [
+          {
+            "date": "05.04.2024",
+            "text": "Zuweisung an den <a href=\"/ausschuss/BR/A-BP-BR/1/00272\">Ausschuss für BürgerInnenrechte und Petitionen des Bundesrates</a>"
+          },
+          {
+            "date": "24.04.2024",
+            "text": "<a href=\"/gegenstand/BR/BRSITZ/966\">966. Sitzung</a>: Mitteilung des Einlanges und der Zuweisung an den Ausschuss für BürgerInnenrechte und Petitionen des Bundesrates"
+          },
+          {
+            "date": "25.06.2024",
+            "text": "Ausschuss für BürgerInnenrechte und Petitionen des Bundesrates: auf <a href=\"/dokument/BR/A-BP-BR/1/00272/TO_16160646.html\">Tagesordnung</a> in der <a href=\"/ausschuss/BR/A-BP-BR/1/00272?selectedStage=105&selectedSession=8&selectedDate=25062024\">8. Sitzung des Ausschusses</a>"
+          },
+          {
+            "date": "25.06.2024",
+            "text": "Vertagung im Ausschuss"
+          },
+          {
+            "date": "16.10.2024",
+            "text": "Übermittlung der Petition an das Bundesministerium für Klimaschutz, Umwelt, Energie, Mobilität, Innovation und Technologie"
+          }
+        ]
+      }
+    ],
+    "documents": [
+      {
+        "title": "Petition",
+        "documents": [
+          {
+            "link": "/dokument/BR/PET-BR/56/imfname_1621510.pdf",
+            "type": "PDF"
+          }
+        ]
+      }
+    ],
+    "names": [
+      {
+        "funktext": "Petition überreicht von",
+        "name": "Mitglied Platzhalter",
+        "frak_code": "F"
+      }
+    ],
+    "reference": null
+  }
+}

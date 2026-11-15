@@ -34,7 +34,8 @@
  *
  * Pure module: no Nuxt auto-imports, so vitest reads it as it is.
  */
-import type { LandDraftKind, ProcedureItemKind, RisConsultationKind } from '#shared/types'
+import type { AnliegenKind, LandDraftKind, ProcedureItemKind, RisConsultationKind } from '#shared/types'
+import { ANLIEGEN_PATH, ANLIEGEN_SECTION_DE } from '#shared/utils/anliegen'
 import { DRAFT_STATION_LABEL } from '#shared/utils/draftStations'
 import { LAND_CODES, SOURCE_PARAM, formatSourceList } from '#shared/utils/laender'
 import { SECOND_ROUND_CLAUSE, type StationId } from './spine'
@@ -103,10 +104,19 @@ export interface Weg {
   noteLink: { label: string; href: string } | null
   /** Why the monitor does not follow this path; null where it does. */
   notFollowed: string | null
+  /**
+   * What of a followed path the monitor does not show, one sentence — the
+   * part before it reaches the monitor's source. Absent where nothing.
+   */
+  gap?: string
   cells: Record<StationId, WegCell>
   /** The list filtered to this kind; null where the list has no filter for it. */
   href: string | null
 }
+
+/* The list of Anliegen an das Parlament narrowed to one kind — its own
+ * `?art=` (`anliegenArtOf`), open ones first as the list opens. */
+const anliegenListHref = (kind: AnliegenKind): string => `${ANLIEGEN_PATH}?art=${kind}`
 
 export const WEG_LEVEL_LABEL: Record<WegLevel, string> = {
   bund: 'Bund',
@@ -270,18 +280,23 @@ export const WEGE: readonly Weg[] = [
    * Gesetzesantrag (Art. 41 Abs. 2, § 3 Abs. 1 VoBeG 2018), so „kein
    * Gesetzestext" (until 14.11.2026) was only partly true. Kundgemacht
    * `offen`: no law is owed (§ 24 GOG-NR sets deadlines, not an outcome).
-   * Not followed (volksbegehren.md, verdict and § 9): it has no successor
-   * document — what became of it is attribution over years, not a
-   * comparison of texts. Signing one is in the second block. */
+   * Followed since 15.11.2026 for its time in the Nationalrat, as an Anliegen
+   * an den Nationalrat (`/anliegen`, from GP XXII on, `anliegenIsFollowed`):
+   * its course from the Einlangen to the plenary, not what became of it
+   * afterwards — that is attribution over years, which no source links
+   * (volksbegehren.md, verdict and § 9). Unterstützung and Eintragung happen
+   * before, at the Bundesministerium für Inneres, without an interface: the
+   * row's `gap`. Signing one is in the second block. */
   {
     id: 'volksbegehren',
     level: 'bund',
     label: 'Volksbegehren',
-    note: null,
+    note: 'im Monitor für seine Zeit im Nationalrat',
     noteLink: null,
-    notFollowed: 'kein Folgedokument',
+    notFollowed: null,
+    gap: 'Unterstützung und Eintragung vor dem Einlangen im Nationalrat sind nicht im Monitor.',
     cells: row(['entfaellt', 'entfaellt', 'entfaellt', 'stellungnahme', 'offen']),
-    href: null,
+    href: anliegenListHref('volksbegehren'),
   },
   /* `regulationStations`: a ministry's Verordnung that WAS put out for
    * Begutachtung — RIS „Begut" holds only ministries' drafts (4.620 records,
@@ -302,17 +317,21 @@ export const WEGE: readonly Weg[] = [
   /* § 9 Abs. 4 WFA-GV counts on Verordnungen for which „ein
    * Begutachtungsverfahren … nicht vorgesehen ist". Entwurf `offen` (memo:
    * „?"); Kundgemacht BGBl. II (BGBlG § 4 Abs. 1 Z 2). Not followed: that a
-   * Verordnung had no Begutachtung is a claim about absence, and the
-   * monitor's join finds about 85 % of the Kundmachungen of drafts it holds
-   * (decisions.md, „Joins"; /datenlage, „Gemessen") — a Verordnung it finds
-   * no draft for may be one whose draft the join missed. */
+   * Verordnung had no Begutachtung is a claim about absence, and no source
+   * states it — RIS records the drafts that were put out, never that one
+   * was not. The only witness would be our own join of drafts to
+   * Kundmachungen, and it misses real pairs (263 of 304 drafts matched,
+   * 14.11.2026; of 15 old misses read, 7 were promulgated). The reason
+   * named until 15.11.2026, „Kundmachung zu rund 85 % auffindbar", read as
+   * a quality figure of the monitor and said nothing about why
+   * (docs/research/wege-ausserhalb-der-stationen.md, item 4). */
   {
     id: 'verordnung-ohne-begutachtung',
     level: 'bund',
     label: 'Verordnung ohne Begutachtung',
     note: null,
     noteLink: null,
-    notFollowed: 'Kundmachung zu rund 85 % auffindbar',
+    notFollowed: 'keine Quelle belegt, dass die Begutachtung fehlte',
     cells: row(['offen', 'entfaellt', 'entfaellt', 'entfaellt', 'durch']),
     href: null,
   },
@@ -559,6 +578,13 @@ export interface WegInstrument {
   href: string | null
   /** The link's words, the host as the reader will see it. */
   hrefLabel: string | null
+  /**
+   * The monitor's own section for it, where it follows the instrument's
+   * items (15.11.2026: Petition, Bürgerinitiative, Volksbegehren under
+   * `/anliegen`). The name links there; `href` stays beside it as the source.
+   * Absent where the monitor follows none.
+   */
+  monitorHref?: string
 }
 
 /* Parliament's page „Petitionen unterstützen" (memo, „Quellen"): it covers
@@ -619,6 +645,7 @@ export const WEG_INSTRUMENTS: readonly WegInstrument[] = [
     binding: false,
     href: PARLAMENT_PETITIONEN,
     hrefLabel: 'parlament.gv.at',
+    monitorHref: anliegenListHref('petition'),
   },
   /* § 100 Abs. 1 Z 2, Abs. 2 GOG-NR: 500 Austrian citizens from 16, signed
    * by hand; online support and § 23b Abs. 2 as above. Duty as the
@@ -633,11 +660,14 @@ export const WEG_INSTRUMENTS: readonly WegInstrument[] = [
     binding: false,
     href: PARLAMENT_PETITIONEN,
     hrefLabel: 'parlament.gv.at',
+    monitorHref: anliegenListHref('buergerinitiative'),
   },
   /* Art. 41 Abs. 2 B-VG; VoBeG 2018 §§ 3–6 (support online with ID Austria
    * or at the Gemeinde, eight days of Eintragung). Duty: treatment within
    * deadlines (§ 24 GOG-NR), no outcome owed. Its way through the
-   * Nationalrat is a row of the matrix. The memo names no official page. */
+   * Nationalrat is a row of the matrix, and followed under `/anliegen`
+ * (15.11.2026); the support before it is not. The memo names no official
+ * page. */
   {
     id: 'volksbegehren',
     level: 'bund',
@@ -647,6 +677,7 @@ export const WEG_INSTRUMENTS: readonly WegInstrument[] = [
     binding: false,
     href: null,
     hrefLabel: null,
+    monitorHref: anliegenListHref('volksbegehren'),
   },
   /* Art. 43 (an ordinary law, if the Nationalrat so decides or a majority
    * of its members demands it) and Art. 44 Abs. 3 B-VG (a total revision of
@@ -704,7 +735,7 @@ export const WEGE_COPY = {
   notFollowedPrefix: 'nicht im Monitor',
   selected: 'dieser Weg',
   instrumentsHeading: 'Weitere Wege, sich zu äußern',
-  instrumentsLede: 'Neben dem Weg einer Norm, ohne Stationen – der Monitor verfolgt sie nicht.',
+  instrumentsLede: `Neben dem Weg einer Norm, ohne Stationen. Petitionen, Bürgerinitiativen und Volksbegehren im Nationalrat verfolgt der Monitor als ${ANLIEGEN_SECTION_DE}, die übrigen nicht.`,
 } as const
 
 export function isWegId(value: unknown): value is WegId {

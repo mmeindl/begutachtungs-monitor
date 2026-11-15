@@ -1,0 +1,141 @@
+{
+  "content": {
+    "ityp": "PET",
+    "doktyp": "PET",
+    "title": "Koralmbahn-Ticket (Klimaticket Süd)",
+    "zitation": "13/PET",
+    "einlangen": "2025-09-25T00:00:00",
+    "statementsstate": "1",
+    "approvalstate": "1",
+    "status": {
+      "number": 5,
+      "description": "Ausschuss für Petitionen und Bürgerinitiativen: auf <a href=\"/dokument/XXVIII/A-PB/1/00932/TO_16857423.html\">Tagesordnung</a> in der <a href=\"/ausschuss/XXVIII/A-PB/1/00932?selectedStage=105&selectedSession=7&selectedDate=22102026\">7. Sitzung des Ausschusses</a><br>Wiederaufnahme der am 25. Juni 2026 vertagten Verhandlungen"
+    },
+    "phase": [
+      {
+        "name": "Einlangen NR",
+        "stages": [
+          {
+            "date": "25.09.2025",
+            "text": "Einlangen im Nationalrat"
+          },
+          {
+            "date": "25.09.2025",
+            "text": "Vorgesehen für den <a href=\"/ausschuss/XXVIII/A-PB/1/00932\">Ausschuss für Petitionen und Bürgerinitiativen</a>"
+          }
+        ]
+      },
+      {
+        "name": "Ausschussberatungen NR",
+        "stages": [
+          {
+            "date": "26.09.2025",
+            "text": "Zuweisung an den <a href=\"/ausschuss/XXVIII/A-PB/1/00932\">Ausschuss für Petitionen und Bürgerinitiativen</a>"
+          },
+          {
+            "date": "23.10.2025",
+            "text": "Ausschuss für Petitionen und Bürgerinitiativen: auf <a href=\"/dokument/XXVIII/A-PB/1/00932/TO_16500061.html\">Tagesordnung</a> in der <a href=\"/ausschuss/XXVIII/A-PB/1/00932?selectedStage=105&selectedSession=4&selectedDate=23102025\">4. Sitzung des Ausschusses</a>"
+          },
+          {
+            "date": "23.10.2025",
+            "text": "Ausschuss für Petitionen und Bürgerinitiativen: Beschlussfassung auf Einholung schriftlicher Stellungnahmen im Rahmen eines \"Ausschussbegutachtungsverfahrens\""
+          },
+          {
+            "date": "23.10.2025",
+            "text": "Antrag auf Einholung einer Stellungnahme von (gekürzt) - <b>angenommen</b>"
+          },
+          {
+            "date": "23.10.2025",
+            "text": "Antrag auf Einholung einer Stellungnahme von (gekürzt) - <b>angenommen</b>"
+          },
+          {
+            "date": "23.10.2025",
+            "text": "Antrag auf Einholung einer Stellungnahme von (gekürzt) - <b>angenommen</b>"
+          },
+          {
+            "date": "23.10.2025",
+            "text": "Antrag auf Einholung einer Stellungnahme von (gekürzt) - <b>angenommen</b>"
+          },
+          {
+            "date": "09.04.2026",
+            "text": "Ausschuss für Petitionen und Bürgerinitiativen: auf <a href=\"/dokument/XXVIII/A-PB/1/00932/TO_16709526.html\">Tagesordnung</a> in der <a href=\"/ausschuss/XXVIII/A-PB/1/00932?selectedStage=105&selectedSession=5&selectedDate=09042026\">5. Sitzung des Ausschusses</a><br>In der Sitzung vom 9. April 2026 vertagt"
+          },
+          {
+            "date": "25.06.2026",
+            "text": "Ausschuss für Petitionen und Bürgerinitiativen: auf <a href=\"/dokument/XXVIII/A-PB/1/00932/TO_16709531.html\">Tagesordnung</a> in der <a href=\"/ausschuss/XXVIII/A-PB/1/00932?selectedStage=105&selectedSession=6&selectedDate=25062026\">6. Sitzung des Ausschusses</a><br>In der Sitzung vom 25. Juni 2026 vertagt"
+          },
+          {
+            "date": "22.10.2026",
+            "text": "Ausschuss für Petitionen und Bürgerinitiativen: auf <a href=\"/dokument/XXVIII/A-PB/1/00932/TO_16857423.html\">Tagesordnung</a> in der <a href=\"/ausschuss/XXVIII/A-PB/1/00932?selectedStage=105&selectedSession=7&selectedDate=22102026\">7. Sitzung des Ausschusses</a><br>Wiederaufnahme der am 25. Juni 2026 vertagten Verhandlungen"
+          },
+          {
+            "date": "22.10.2026",
+            "text": "Ausschuss für Petitionen und Bürgerinitiativen: Beschlussfassung auf Einholung schriftlicher Stellungnahmen im Rahmen eines \"Ausschussbegutachtungsverfahrens\""
+          },
+          {
+            "date": "22.10.2026",
+            "text": "Antrag auf Einholung einer Stellungnahme von (gekürzt) - <b>angenommen</b>"
+          },
+          {
+            "date": "22.10.2026",
+            "text": "Antrag auf Einholung einer Stellungnahme von (gekürzt) - <b>angenommen</b>"
+          }
+        ]
+      },
+      {
+        "name": "Plenarberatungen NR",
+        "stages": [
+          {
+            "date": "15.10.2025",
+            "text": "<a href=\"/gegenstand/XXVIII/NRSITZ/44\">44. Sitzung des Nationalrates</a>: Mitteilung des Einlangens und der Zuweisung an den <a href=\"/ausschuss/XXVIII/A-PB/1/00932\">Ausschuss für Petitionen und Bürgerinitiativen</a>"
+          },
+          {
+            "date": "23.10.2025",
+            "text": "Antrag auf Ausschussbegutachtung der Vorlage (<a href=\"/gegenstand/XXVIII/AUA/44\">44/AUA</a>)"
+          },
+          {
+            "date": "22.10.2026",
+            "text": "Antrag auf Ausschussbegutachtung der Vorlage (<a href=\"/gegenstand/XXVIII/AUA/101\">101/AUA</a>)"
+          }
+        ]
+      }
+    ],
+    "documents": [
+      {
+        "title": "Petition (gescanntes Original)",
+        "documents": [
+          {
+            "link": "/dokument/XXVIII/PET/13/imfname_1712507.pdf",
+            "type": "PDF"
+          }
+        ]
+      },
+      {
+        "title": "Petition  (textinterpretierte Version)",
+        "documents": [
+          {
+            "link": "/dokument/XXVIII/PET/13/fname_1715507.pdf",
+            "type": "PDF"
+          },
+          {
+            "link": "/dokument/XXVIII/PET/13/fnameorig_1715507.html",
+            "type": "HTML"
+          }
+        ]
+      }
+    ],
+    "names": [
+      {
+        "funktext": "Petition überreicht von",
+        "name": "(gekürzt)",
+        "frak_code": "V"
+      },
+      {
+        "funktext": "Petition überreicht von",
+        "name": "(gekürzt)",
+        "frak_code": "V"
+      }
+    ],
+    "reference": []
+  }
+}

@@ -98,7 +98,7 @@ export default defineEventHandler(async (event) => {
   if (!refs || refs.length === 0 || refs.length > BATCH_MAX) {
     throw createError({
       statusCode: 400,
-      statusMessage: `Erwartet: refs, 1 bis ${BATCH_MAX} Adressen der Form GP/SNME|SN/Nummer`,
+      statusMessage: `Erwartet: refs, 1 bis ${BATCH_MAX} Adressen der Form GP/SNME|SN|SPET|SBI/Nummer`,
     })
   }
 

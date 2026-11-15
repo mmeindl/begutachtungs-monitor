@@ -11,7 +11,10 @@
 import { GP_RE, parseInr } from './gp'
 import { parliamentPathname } from './safeExternalUrl'
 
-export type StatementItemTypeRef = 'SNME' | 'SN'
+/** The page segments of a Stellungnahme (`list142.ts`, `StatementItemType`). */
+export type StatementItemTypeRef = 'SNME' | 'SN' | 'SPET' | 'SBI'
+
+const ITEM_TYPES: readonly string[] = ['SNME', 'SN', 'SPET', 'SBI']
 
 export interface StatementRefParts {
   gp: string
@@ -26,7 +29,7 @@ export interface StatementRefParts {
  * and only on Parliament's host: the same path anywhere else is not one.
  */
 export function statementRefFromPageUrl(pageUrl: string | null | undefined): string | null {
-  const m = /^\/gegenstand\/([IVXLC]+)\/(SNME|SN)\/(\d+)(?:\/|$)/.exec(parliamentPathname(pageUrl) ?? '')
+  const m = /^\/gegenstand\/([IVXLC]+)\/(SNME|SN|SPET|SBI)\/(\d+)(?:\/|$)/.exec(parliamentPathname(pageUrl) ?? '')
   return m ? `${m[1]}/${m[2]}/${m[3]}` : null
 }
 
@@ -38,8 +41,8 @@ export function parseStatementRef(ref: string): StatementRefParts | null {
   const gp = gpRaw.toUpperCase()
   const ityp = itypRaw.toUpperCase()
   if (!GP_RE.test(gp)) return null
-  if (ityp !== 'SNME' && ityp !== 'SN') return null
+  if (!ITEM_TYPES.includes(ityp)) return null
   const inr = parseInr(inrRaw)
   if (inr === null) return null
-  return { gp, ityp, inr }
+  return { gp, ityp: ityp as StatementItemTypeRef, inr }
 }
