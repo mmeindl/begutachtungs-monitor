@@ -12,7 +12,7 @@
  * endpoints validate the same query independently, because a request can
  * arrive without this page.
  */
-import type { AntraegeResponse, AntragRow, AntragState, DraftChain, DraftStation, DraftStatus, DraftsResponse, DraftSummary, LandCode, LandLaw, LandLawSource, LawWithoutBegutachtung, LawsWithoutBegutachtung, LawsWithoutBegutachtungGap, OpenVorlage, RisConsultation, RisConsultationKind, RisConsultationsResponse, StaatsvertraegeResponse, TreatyState } from '#shared/types'
+import type { AntraegeResponse, AntragRow, AntragState, BegutSearchEntry, DraftChain, DraftStation, DraftStatus, DraftsResponse, DraftSummary, LandCode, LandLaw, LandLawSource, LawWithoutBegutachtung, LawsWithoutBegutachtung, LawsWithoutBegutachtungGap, OpenVorlage, RisConsultation, RisConsultationKind, RisConsultationsResponse, StaatsvertraegeResponse, TreatyState } from '#shared/types'
 import { searchDrafts, searchRis } from '#shared/utils/searchHaystack'
 import { DRAFT_STATION_LABEL, DRAFT_STATION_ORDER } from '#shared/utils/draftStations'
 import { countLabelDe, formatDateDe, formatNumberDe } from '#shared/utils/format'
@@ -459,6 +459,26 @@ export function choiceAdmitsDraft(choice: ArtChoice, kind: RisConsultationKind):
   if (choice === '' || choice === 'mit') return true
   if (choice === 'andere') return kind === 'unbestimmt'
   return choice === kind
+}
+
+/**
+ * Whether the full text can hold a row of this option (15.11.2026). It
+ * searches the Bund's running Begutachtungen, so its every hit is a draft in
+ * Begutachtung: never a law without a draft (the group „Ohne Entwurf"), a
+ * treaty, or a draft already brought in as an Initiativantrag (that route is
+ * known only once the Begutachtung is over, `antragRouteCitation`). Under
+ * those options the block „Außerdem im Volltext" showed running drafts the
+ * select excludes; now the full text does not apply there, and the line
+ * above the list says that only the titles were searched.
+ */
+export function fullTextAdmitsChoice(choice: ArtChoice): boolean {
+  return (['gesetz', 'verordnung', 'unbestimmt'] as const).some((kind) => choiceAdmitsDraft(choice, kind))
+}
+
+/** A full-text hit by the applied option: a Ministerialentwurf is a law
+ *  draft, a RIS record names its kind. */
+export function choiceAdmitsSearchHit(choice: ArtChoice, entry: BegutSearchEntry): boolean {
+  return choiceAdmitsDraft(choice, entry.kind === 'draft' ? 'gesetz' : entry.consultation.kind)
 }
 
 /** A Ministerialentwurf: a law draft by kind, and under „als Initiativantrag"

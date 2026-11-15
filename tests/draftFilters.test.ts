@@ -43,8 +43,11 @@ import {
   withoutDraftRowsOf,
   ANTRAG_ROUTE_UNAVAILABLE,
   choiceAdmitsMinisterialentwurf,
+  choiceAdmitsSearchHit,
   draftRowsOf,
+  fullTextAdmitsChoice,
 } from '../app/utils/draftFilters'
+import type { BegutSearchEntry, RisConsultationKind } from '../shared/types'
 import { ANTRAG_PATHS } from '../shared/utils/antragPathTable'
 import { antragPathFor, carriesDraft } from '../shared/utils/antragPath'
 
@@ -907,6 +910,33 @@ describe('the select „Art" (14.11.2026)', () => {
     expect(activeFilterChips({ status: 'all', art: 'andere', gp: '', ministry: '' })).toEqual([{ key: 'art', label: 'Andere Entwürfe' }])
     expect(draftCountLabel({ me: null, vorlagen: [], ris: null, laterStationsOnly: false, art: 'antrag', laws: [] })).toBe('0 Initiativanträge')
     expect(draftCountLabel({ me: null, vorlagen: [], ris: { unbestimmt: 0 }, laterStationsOnly: false, art: 'andere' })).toBe('0 andere Entwürfe')
+  })
+})
+
+describe('the full text under „Art" (15.11.2026)', () => {
+  // Every full-text hit is a running draft of the Bund: a Ministerialentwurf or a RIS record.
+  const me = { kind: 'draft', draft: {} } as BegutSearchEntry
+  const ris = (kind: RisConsultationKind) => ({ kind: 'ris', consultation: { kind } }) as BegutSearchEntry
+
+  it('searches only under the options a running draft can belong to', () => {
+    const searched = ART_CHOICES.filter((c) => fullTextAdmitsChoice(c.value)).map((c) => c.value)
+    expect(searched).toEqual(['', 'mit', 'gesetz', 'verordnung', 'andere'])
+  })
+
+  it('never lets a hit through under „Ohne Entwurf", the Nationalrat group or „als Initiativantrag"', () => {
+    for (const choice of ['ohne', 'ohne-vorlage', 'ohne-antrag', 'ohne-ausschussantrag', 'ohne-landesgesetz', 'als-antrag', 'initiativantraege', 'staatsvertraege'] as const) {
+      for (const entry of [me, ris('gesetz'), ris('verordnung'), ris('unbestimmt')]) {
+        expect(choiceAdmitsSearchHit(choice, entry)).toBe(false)
+      }
+    }
+  })
+
+  it('cuts the hits by draft kind as the list does', () => {
+    expect([me, ris('gesetz'), ris('verordnung'), ris('unbestimmt')].map((e) => choiceAdmitsSearchHit('', e))).toEqual([true, true, true, true])
+    expect([me, ris('gesetz'), ris('verordnung'), ris('unbestimmt')].map((e) => choiceAdmitsSearchHit('mit', e))).toEqual([true, true, true, true])
+    expect([me, ris('gesetz'), ris('verordnung'), ris('unbestimmt')].map((e) => choiceAdmitsSearchHit('gesetz', e))).toEqual([true, true, false, false])
+    expect([me, ris('gesetz'), ris('verordnung'), ris('unbestimmt')].map((e) => choiceAdmitsSearchHit('verordnung', e))).toEqual([false, false, true, false])
+    expect([me, ris('gesetz'), ris('verordnung'), ris('unbestimmt')].map((e) => choiceAdmitsSearchHit('andere', e))).toEqual([false, false, false, true])
   })
 })
 

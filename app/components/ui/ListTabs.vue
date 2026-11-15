@@ -93,9 +93,9 @@ function choose(value: string) {
     <div v-if="collapse" class="py-3 sm:hidden">
       <label :for="selectId" class="sr-only">{{ groupLabel }}</label>
       <TokenSelect :id="selectId" :model-value="model" block @update:model-value="choose">
-        <option v-for="opt in options" :key="opt.value" :value="opt.value" :disabled="opt.disabled">
+        <TokenOption v-for="opt in options" :key="opt.value" :value="opt.value" :disabled="opt.disabled">
           {{ opt.selectLabel ?? opt.label }}{{ opt.count !== undefined ? ` (${formatNumberDe(opt.count)})` : '' }}
-        </option>
+        </TokenOption>
       </TokenSelect>
     </div>
   </div>

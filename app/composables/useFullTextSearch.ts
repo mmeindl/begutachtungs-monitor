@@ -32,7 +32,7 @@ import type { EntryView } from '~/utils/entryView'
 import { splitByListed, viewOfRow } from '~/utils/entryView'
 import { meRow, risRow } from '#shared/utils/draftOrder'
 import type { DraftFilters } from '~/composables/useDraftFilters'
-import { draftKindArt } from '~/utils/draftFilters'
+import { type ArtChoice, choiceAdmitsSearchHit, fullTextAdmitsChoice } from '~/utils/draftFilters'
 
 const FULLTEXT_MIN_LEN = 3
 const FULLTEXT_DEBOUNCE_MS = 700
@@ -48,8 +48,11 @@ export async function useFullTextSearch(
   /** Every row the list carries under the filters — not only the cut on the
    *  page —, so a draft hit twice stands once. */
   entries: Ref<EntryView[]>,
+  /** The option of „Art" that filters the list — the chosen one, or „Alle
+   *  Arten" where it cannot be offered (the page's `appliedArt`). */
+  art: Ref<ArtChoice>,
 ) {
-  const { statusFilter, art, ministry, q, qDebounced, stations, eu } = filters
+  const { statusFilter, ministry, q, qDebounced, stations, eu } = filters
 
   /**
    * Can the full text say anything at all under these filters?
@@ -60,8 +63,11 @@ export async function useFullTextSearch(
    * contradict the filter the reader set. Instead a line above the list says
    * that only the titles were searched here.
    *
-   * Art and Ressort are NOT part of this condition: they exclude no search,
-   * they cut the hits (`fullTextHits`).
+   * Ressort and the draft kinds of „Art" are NOT part of this condition:
+   * they exclude no search, they cut the hits (`fullTextHits`). The options
+   * of „Art" that no running draft can belong to are (15.11.2026,
+   * `fullTextAdmitsChoice`): under „Ohne Entwurf" the block listed running
+   * drafts beneath a list of laws without one.
    *
    * „Setzt EU-Recht um" is (04.11.2026): the hits come from RIS's search
    * and carry no EU fact, so they could not be cut by it — a block of hits
@@ -73,7 +79,7 @@ export async function useFullTextSearch(
     if (pastSpan.value) return false
     if (stations.value.length && !stations.value.includes('begutachtung')) return false
     if (eu.value) return false
-    return true
+    return fullTextAdmitsChoice(art.value)
   })
 
   /**
@@ -149,10 +155,7 @@ export async function useFullTextSearch(
   /** The hits that survive the active filters — Art and Ressort. */
   const fullTextHits = computed<BegutSearchHit[]>(() =>
     (fullText.value?.hits ?? []).filter((hit) => {
-      /* A Ministerialentwurf is a law draft; a RIS record names its kind. */
-      const kindArt = draftKindArt(art.value)
-      if ((kindArt === 'verordnung' || kindArt === 'unbestimmt') && hit.entry.kind === 'draft') return false
-      if (kindArt && hit.entry.kind === 'ris' && hit.entry.consultation.kind !== kindArt) return false
+      if (!choiceAdmitsSearchHit(art.value, hit.entry)) return false
       if (ministry.value) {
         const code =
           hit.entry.kind === 'draft' ? hit.entry.draft.ministryCode : hit.entry.consultation.ministryCode

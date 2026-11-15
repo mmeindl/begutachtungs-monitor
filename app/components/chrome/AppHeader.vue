@@ -49,8 +49,9 @@ function isActive(to: string): boolean {
              fell onto a line of its own at 320 px by a rounding error, and
              the header grew by a third. `gap-x-3` leaves 12 px to spare.
              Five labels since 14.11.2026 („Wege" for „So funktioniert's",
-             plus „EU-Recht"): shorter in sum by estimate, one gap more —
-             not yet measured at 320 px. -->
+             plus „EU-Recht"): measured at a 320 px viewport on 15.11.2026,
+             the five links take 282.6 px of the 288 px column, on one
+             line, 5.4 px to spare. A sixth label will not fit. -->
         <ul class="flex flex-wrap items-center gap-x-3 gap-y-1 sm:gap-x-6">
           <li v-for="item in navItems" :key="item.to">
             <NuxtLink

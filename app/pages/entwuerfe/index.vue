@@ -1125,7 +1125,7 @@ const {
   fullTextInList,
   fullTextFilteredOut,
   fullTextCorpus,
-} = await useFullTextSearch(filters, pastSpan, entries)
+} = await useFullTextSearch(filters, pastSpan, entries, appliedArt)
 
 /* Both are 0 for a half that was not fetched, so the sum is what stands in
  * the list — the search placeholder may name it (never the count line,
@@ -1455,14 +1455,14 @@ const statementsSortNote = computed(() => {
               <TokenSelect id="filter-art" v-model="chosenArt" block>
                 <template v-for="group in artSelect" :key="group.label ?? 'alle'">
                   <optgroup v-if="group.label" :label="group.label">
-                    <option v-for="opt in group.options" :key="opt.value" :value="opt.value" :disabled="opt.disabled">
+                    <TokenOption v-for="opt in group.options" :key="opt.value" :value="opt.value" :disabled="opt.disabled">
                       {{ opt.label }}
-                    </option>
+                    </TokenOption>
                   </optgroup>
                   <template v-else>
-                    <option v-for="opt in group.options" :key="opt.value" :value="opt.value" :disabled="opt.disabled">
+                    <TokenOption v-for="opt in group.options" :key="opt.value" :value="opt.value" :disabled="opt.disabled">
                       {{ opt.label }}
-                    </option>
+                    </TokenOption>
                   </template>
                 </template>
               </TokenSelect>
@@ -1477,9 +1477,9 @@ const statementsSortNote = computed(() => {
             <div class="min-w-0 md:w-72 md:shrink-0">
               <label for="filter-gp" class="sr-only">Zeitraum</label>
               <TokenSelect id="filter-gp" v-model="spanSelect" block>
-                <option v-for="opt in spanOptions" :key="opt.value" :value="opt.value">
+                <TokenOption v-for="opt in spanOptions" :key="opt.value" :value="opt.value">
                   {{ opt.label }}
-                </option>
+                </TokenOption>
               </TokenSelect>
             </div>
             <!-- The Ressort takes the rest of the line, so the filters end
@@ -1494,10 +1494,10 @@ const statementsSortNote = computed(() => {
                 block
                 :unavailable="ministryUnavailable"
               >
-                <option value="">Alle Ministerien</option>
-                <option v-for="m in ministries" :key="m.code" :value="m.code">
+                <TokenOption value="">Alle Ministerien</TokenOption>
+                <TokenOption v-for="m in ministries" :key="m.code" :value="m.code">
                   {{ m.name || m.code }}
-                </option>
+                </TokenOption>
               </TokenSelect>
             </div>
           </div>
@@ -1555,9 +1555,9 @@ const statementsSortNote = computed(() => {
           <div class="flex min-w-0 items-center gap-2 md:hidden">
             <label for="filter-sort" class="shrink-0 text-sm text-ink-secondary">Sortieren</label>
             <TokenSelect id="filter-sort" v-model="sortSelect">
-              <option v-for="opt in sortOptions" :key="opt.value" :value="opt.value">
+              <TokenOption v-for="opt in sortOptions" :key="opt.value" :value="opt.value">
                 {{ opt.label }}
-              </option>
+              </TokenOption>
             </TokenSelect>
           </div>
         </div>

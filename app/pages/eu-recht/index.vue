@@ -240,9 +240,9 @@ const [bundItem, eurLexItem] = sourceItemsDe([risSource('Vorblatt'), risSource('
                   <div class="flex min-w-0 items-center gap-2 md:hidden">
                     <label for="eu-sort" class="shrink-0 text-sm text-ink-secondary">Sortieren</label>
                     <TokenSelect id="eu-sort" v-model="sortSelect">
-                      <option v-for="opt in sortOptions" :key="opt.value" :value="opt.value">
+                      <TokenOption v-for="opt in sortOptions" :key="opt.value" :value="opt.value">
                         {{ opt.label }}
-                      </option>
+                      </TokenOption>
                     </TokenSelect>
                   </div>
                 </div>

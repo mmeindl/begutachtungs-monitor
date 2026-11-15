@@ -389,9 +389,9 @@ const showColumnHeader = computed(() =>
           <div v-if="showSort" class="flex min-w-0 items-center gap-2 row-cols:hidden">
             <label :for="sortId" class="shrink-0 text-sm text-ink-secondary">Sortieren</label>
             <TokenSelect :id="sortId" v-model="sortSelect">
-              <option v-for="opt in sortOptions" :key="opt.value" :value="opt.value">
+              <TokenOption v-for="opt in sortOptions" :key="opt.value" :value="opt.value">
                 {{ opt.label }}
-              </option>
+              </TokenOption>
             </TokenSelect>
           </div>
           <div v-if="showOrgSearch" class="min-w-0 flex-1 basis-60">

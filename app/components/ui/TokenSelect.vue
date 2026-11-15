@@ -1,3 +1,10 @@
+<script lang="ts">
+import type { InjectionKey, Ref } from 'vue'
+
+/** The select's value, for `TokenOption` to mark itself `selected`. */
+export const TOKEN_SELECT_MODEL: InjectionKey<Ref<string>> = Symbol('TokenSelectModel')
+</script>
+
 <script setup lang="ts">
 /**
  * Native <select> in token styling with the page-wide lucide chevron instead
@@ -6,8 +13,16 @@
  * and crashes hydration (Aug 2026). Options come through the slot; the
  * caller labels the control with a <label for> on `id` — an `aria-label`
  * attribute would fall through to the wrapper, not the <select>.
+ *
+ * Options in the slot are `TokenOption`, not a bare <option> (15.11.2026).
+ * Vue's SSR compiler writes `selected` only onto the <option>s that stand in
+ * the same template as the `v-model` <select>; slot content is the caller's
+ * template and never gets it. The server HTML then carried no selection,
+ * and every select showed its first option until hydration — the current period for a link to `?gp=XXVII`. `TokenOption` reads the value
+ * provided here and marks itself.
  */
 const model = defineModel<string>({ required: true })
+provide(TOKEN_SELECT_MODEL, model)
 /**
  * `block` gives the width away to the caller.
  *

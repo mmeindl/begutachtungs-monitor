@@ -131,7 +131,7 @@ useSeoMeta({
           <div class="min-w-0 md:w-72">
             <label for="anliegen-gp" class="sr-only">{{ ANLIEGEN_LIST_DE.periodLabel }}</label>
             <TokenSelect id="anliegen-gp" v-model="gpModel" block>
-              <option v-for="opt in periodOptions" :key="opt.value" :value="opt.value">{{ opt.label }}</option>
+              <TokenOption v-for="opt in periodOptions" :key="opt.value" :value="opt.value">{{ opt.label }}</TokenOption>
             </TokenSelect>
           </div>
         </div>
