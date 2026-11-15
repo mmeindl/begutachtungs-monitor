@@ -99,6 +99,7 @@ describe('the measures on a directive\'s page', () => {
     landsWithout: [],
     measures: [measure({}), measure({ title: null, kind: 'Landesgesetz', notified: null, gazette: { name: null, number: null, date: null }, url: null })],
     memberState: 'AUT',
+    consultation: null,
     oj: null,
     eli: null,
     rail: null,

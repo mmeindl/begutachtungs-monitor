@@ -82,6 +82,9 @@ export const UPSTREAM_HOSTS: ReadonlySet<string> = new Set([
   'pallast2.stmk.gv.at',
   'vorarlberg.at',
   'publications.europa.eu',
+  // The Commission's portal „Ihre Meinung zählt" (15.11.2026): the search by
+  // COM number and one initiative, paced (`server/utils/eu/portalService.ts`).
+  'ec.europa.eu',
 ])
 
 /** Parliament's host — the one `/gegenstand/…` paths are read from. */

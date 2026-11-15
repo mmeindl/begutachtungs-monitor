@@ -30,6 +30,16 @@ import { gpFromParam, readGpQuery, requirePlausibleGp } from '../../../utils/htt
 import { actPageOf } from '../../../utils/eu/euMap'
 import { actMeasuresOf, ojReferenceOf, railOf, transpositionOf } from '../../../utils/eu/cellarService'
 import { directiveHeadOf } from '../../../utils/eu/umsetzung'
+import { consultationOf } from '../../../utils/eu/portalService'
+import { withinBudget } from '../../../utils/http/budget'
+
+/**
+ * How long the page waits for the Commission's portal: its requests are
+ * paced 2.5 s apart and the join can take four. Past the budget the page
+ * says the consultation could not be read; the reading goes on behind it
+ * and is cached, so the next request has it.
+ */
+const PORTAL_BUDGET_MS = 9_000
 
 /** An act's CELEX: sector 3, year, L(Richtlinie) R(Verordnung) D(Beschluss) F(Rahmenbeschluss), number. */
 const ACT_CELEX_RE = /^3\d{4}[LRDF]\d{4}$/
@@ -63,6 +73,7 @@ export default defineEventHandler(async (event): Promise<EuActResponse> => {
     oj: published?.oj ?? null,
     eli: published?.eli ?? null,
     rail,
+    consultation: await consultationFor(rail),
     measures,
     memberState: directive ? EU_MEMBER_STATE : null,
   }
@@ -91,4 +102,15 @@ function activeToday(d: EuActDraft): EuActDraft {
   if (row.kind === 'me') return { ...d, row: { ...row, draft: reconcileActive(row.draft) } }
   if (row.kind === 'ris') return { ...d, row: { ...row, item: withRisActiveOn([row.item])[0]! } }
   return { ...d, row: { ...row, item: withLandActiveOn([row.item])[0]! } }
+}
+
+/**
+ * The consultation behind the act, asked by its proposals' COM numbers.
+ * Null where there is nothing to ask about: an act of the Commission has
+ * no proposal, and without the procedure the proposals are unknown.
+ */
+async function consultationFor(rail: EuActResponse['rail']): Promise<EuActResponse['consultation']> {
+  if (!rail?.procedure || rail.adoptedBy === 'kommission') return null
+  const references = rail.procedure.proposals.map((p) => p.reference)
+  return (await withinBudget(consultationOf(references), PORTAL_BUDGET_MS)) ?? { state: 'ungelesen', reference: null }
 }

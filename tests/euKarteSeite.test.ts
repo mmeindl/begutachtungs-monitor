@@ -66,6 +66,7 @@ describe('euActPageView', () => {
     eli: null,
     rail: null,
     measures: null,
+    consultation: null,
     memberState: null,
     ...over,
   })

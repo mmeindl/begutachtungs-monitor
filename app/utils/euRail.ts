@@ -30,13 +30,13 @@
  * this one file, so a second language replaces it here. Pure: no Vue; the
  * component places what this returns, the tests read it without one.
  */
-import type { EuActResponse, EuProcedure, EuProcedureEvent } from '#shared/types'
+import type { EuActResponse, EuConsultation, EuPortalPublication, EuProcedure, EuProcedureEvent } from '#shared/types'
 import { euOjCiteDe } from '#shared/utils/citations'
 import { EU_MEMBER_STATE_NAME_DE } from '#shared/utils/eu'
 import { EU_EVENTS, EU_PROCEDURE_TYPES, type EuEventRole } from '#shared/utils/euEvents'
 import { formatDateDe } from '#shared/utils/format'
 
-export type EuRailStationId = 'vorschlag' | 'beschluss' | 'amtsblatt' | 'wirkung'
+export type EuRailStationId = 'konsultation' | 'vorschlag' | 'beschluss' | 'amtsblatt' | 'wirkung'
 
 export interface EuRailStation {
   id: EuRailStationId
@@ -136,6 +136,7 @@ export interface EuRailView {
 const DE = {
   heading: 'Der Rechtsakt im Verfahren',
   name: {
+    konsultation: 'Konsultation',
     vorschlag: 'Vorschlag',
     'parlament-rat': 'Parlament und Rat',
     rat: 'Rat',
@@ -185,6 +186,36 @@ const DE = {
     published: 'Im Amtsblatt veröffentlicht',
   },
   furtherDates: 'Weitere Fristen für einzelne Bestimmungen',
+  /**
+   * The Commission's portal „Ihre Meinung zählt". The stage names are the
+   * portal's own German words, read on 15.11.2026 from its text file
+   * (`…/better-regulation/assets/i18n/de.json`; „Fahrpläne" there, the
+   * singular here), as „Rückmeldungen" is its word for contributions.
+   */
+  portal: {
+    stage: {
+      INIT_PLANNED: 'In Vorbereitung',
+      ROADMAP: 'Fahrplan',
+      PLANNING_WORKFLOW: 'Sondierung',
+      OPC_LAUNCHED: 'Öffentliche Konsultation',
+      ISC_WORKFLOW: 'Entwurf eines Rechtsakts',
+      ADOPTION_WORKFLOW: 'Annahme durch die Kommission',
+    } as Readonly<Record<string, string>>,
+    unknownStage: 'Veröffentlichung',
+    until: (label: string, end: string) => `${label} bis ${end}`,
+    period: (from: string | null, to: string) => (from ? `${from} – ${to}` : `bis ${to}`),
+    feedback: (n: number) => (n === 1 ? '1 Rückmeldung' : `${n} Rückmeldungen`),
+    initiative: 'Vorhaben der Kommission',
+    initiativeNumber: (id: number) => `Nr. ${id}`,
+    link: 'im Portal „Ihre Meinung zählt“',
+    proposalFeedback: 'Rückmeldungen zum Vorschlag',
+    noPeriod: 'Das Portal verzeichnet zu diesem Vorhaben vor dem Vorschlag keine Frist für Rückmeldungen.',
+    notFound: (ref: string) => `Im Portal „Ihre Meinung zählt“ der Kommission wurde zu ${ref} kein Vorhaben gefunden.`,
+    beforePortal: (ref: string) => `Das Portal „Ihre Meinung zählt“ der Kommission führt Vorschläge erst ab 2017; ${ref} ist älter.`,
+    noProposal: 'Der Cellar nennt keine Nummer des Vorschlags, nach der im Portal der Kommission gesucht werden könnte.',
+    unread: 'Die Konsultation konnte nicht gelesen werden: Das Portal „Ihre Meinung zählt“ der Kommission hat nicht rechtzeitig oder nicht lesbar geantwortet.',
+    credit: 'Europäische Kommission, Portal „Ihre Meinung zählt“',
+  },
   fact: {
     proposal: 'Vorschlag der Kommission',
     procedure: 'Verfahren',
@@ -318,6 +349,60 @@ function proposalStation(r: EuActResponse): EuRailStation {
     return date ? [date] : []
   })
   return { ...base, facts, gap: facts.length ? null : DE.gap.proposalBare }
+}
+
+/**
+ * What of an initiative belongs to the station „Konsultation": every
+ * publication with a period for feedback BEFORE the proposal — a roadmap,
+ * a Sondierung, a public consultation. The period on the adopted proposal
+ * itself is a fact of the station „Vorschlag".
+ */
+const consultedOf = (c: EuConsultation): EuPortalPublication[] =>
+  (c.state === 'gefunden' ? c.initiative.publications.filter((p) => p.feedbackEnd !== null && p.stage !== 'ADOPTION_WORKFLOW') : [])
+const proposalFeedbackOf = (c: EuConsultation | null): EuPortalPublication | null =>
+  (c?.state === 'gefunden' ? c.initiative.publications.find((p) => p.feedbackEnd !== null && p.stage === 'ADOPTION_WORKFLOW') ?? null : null)
+const stageDe = (p: EuPortalPublication): string => DE.portal.stage[p.stage] ?? DE.portal.unknownStage
+
+function consultationGap(c: EuConsultation): string | null {
+  if (c.state === 'nicht-gefunden') return DE.portal.notFound(c.reference)
+  if (c.state === 'vor-portal') return DE.portal.beforePortal(c.reference)
+  if (c.state === 'kein-vorschlag') return DE.portal.noProposal
+  if (c.state === 'ungelesen') return DE.portal.unread
+  return consultedOf(c).length ? null : DE.portal.noPeriod
+}
+
+/**
+ * Station „Konsultation" (step 2 of the EU cycle): what the Commission
+ * asked the public before its proposal, from its portal. Dates and the
+ * portal's count, nothing about what was said or by whom. Each way of not
+ * knowing is its own sentence — „im Portal nicht gefunden" is never „keine
+ * Konsultation".
+ */
+function consultationStation(c: EuConsultation): EuRailStation {
+  return {
+    id: 'konsultation',
+    name: DE.name.konsultation,
+    current: false,
+    facts: consultedOf(c).map((p) => DE.portal.until(stageDe(p), formatDateDe(p.feedbackEnd!))),
+    gap: consultationGap(c),
+    anchor: anchorOf('konsultation'),
+  }
+}
+
+/** A publication's period and count as the parts of a fact: „04.10.2021 – 10.01.2022", „146 Rückmeldungen". */
+function periodParts(p: EuPortalPublication): string[] {
+  return [
+    DE.portal.period(p.published ? formatDateDe(p.published) : null, formatDateDe(p.feedbackEnd!)),
+    ...(p.feedbackCount !== null ? [DE.portal.feedback(p.feedbackCount)] : []),
+  ]
+}
+
+function consultationFacts(c: EuConsultation): EuSectionFact[] {
+  if (c.state !== 'gefunden') return []
+  return [
+    ...consultedOf(c).map((p, i) => fact(`frist-${i}`, stageDe(p), periodParts(p))),
+    fact('vorhaben', DE.portal.initiative, [DE.portal.initiativeNumber(c.initiative.id), { href: c.initiative.url, label: DE.portal.link }]),
+  ]
 }
 
 /** Station 2: who decided, named from the act's authors (`EuAdoptedBy`). */
@@ -513,7 +598,23 @@ function statusOf(r: EuActResponse, today: string): string | null {
 function sectionOf(st: EuRailStation, r: EuActResponse, rows: ReturnType<typeof procedureRowsOf> | null, today: string): EuRailSection {
   const base = { id: st.id, elementId: elementIdOf(st.id), heading: st.name, record: null, credits: [...DE.credits] }
   const p = r.rail?.procedure ?? null
-  if (st.id === 'vorschlag') return { ...base, ...framed(proposalFacts(st, p), st.gap) }
+  if (st.id === 'konsultation') {
+    const c = r.consultation!
+    const facts = consultationFacts(c)
+    // Found, but no period before the proposal: the initiative is still a fact, the sentence a note under it.
+    return { ...base, ...framed(facts, st.gap), credits: [DE.credits[0], DE.portal.credit] }
+  }
+  if (st.id === 'vorschlag') {
+    const feedback = proposalFeedbackOf(r.consultation)
+    const own = proposalFacts(st, p)
+    if (!feedback || r.consultation?.state !== 'gefunden' || !own.length) return { ...base, ...framed(own, st.gap) }
+    // The feedback period on the adopted proposal, from the portal: a second source under the same frame.
+    return {
+      ...base,
+      ...framed([...own, fact('rueckmeldungen', DE.portal.proposalFeedback, [...periodParts(feedback), { href: r.consultation.initiative.url, label: DE.portal.link }])], st.gap),
+      credits: ['Quellen:', DE.credits[1], DE.portal.credit],
+    }
+  }
   if (st.id === 'beschluss') {
     // The whole record of the procedure the monitor reads, the proposal with it, by day.
     const all = rows ? [...rows.proposal, ...rows.decision].sort((x, y) => x.iso.localeCompare(y.iso)) : []
@@ -578,6 +679,7 @@ export function euRailView(r: EuActResponse, today: string): EuRailView {
   const rows = rail?.procedure ? procedureRowsOf(rail.procedure, commission) : null
 
   const stations = [
+    ...(!commission && r.consultation ? [consultationStation(r.consultation)] : []),
     ...(commission ? [] : [proposalStation(r), decisionStation(r)]),
     journalStation(r),
     effectStation(r, today),

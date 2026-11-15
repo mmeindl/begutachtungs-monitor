@@ -325,6 +325,14 @@ export interface EuActResponse {
   /** The Member State whose notifications `measures` holds, „AUT"; null for an act that is no directive. */
   memberState: string | null
   /**
+   * The consultation behind the act on the Commission's portal, by its
+   * proposal's COM number (`EuConsultation`: found, not found, before the
+   * portal, no proposal to search by, not read). Null for an act of the
+   * Commission and where the procedure itself could not be read: there
+   * is no proposal to ask about.
+   */
+  consultation: EuConsultation | null
+  /**
    * The act's Amtsblatt reference and ELI, for the „Zitieren" button; each
    * null where the Cellar did not answer or has none. Asked per request, not
    * kept in the map: only this page cites (`ojReferenceOf`).
@@ -454,3 +462,62 @@ export interface EuUmsetzungResponse {
   draftsWindow: { from: string; to: string | null }
   incomplete: EuPublisher[]
 }
+
+/* ------------------------------------------------------------------ *
+ * The Commission's portal „Ihre Meinung zählt" (step 2 of the EU cycle)
+ * ------------------------------------------------------------------ */
+
+/**
+ * One publication of an initiative on the portal: a stage at which the
+ * Commission published something, with or without a period for feedback.
+ * A fixed list of fields — the portal's record also names the official
+ * who wrote it, with mail address and telephone number; none of that is
+ * read (`parseInitiative`).
+ */
+export interface EuPortalPublication {
+  /** The portal's stage word: `INIT_PLANNED`, `ROADMAP`, `PLANNING_WORKFLOW`, `OPC_LAUNCHED`, `ISC_WORKFLOW`, `ADOPTION_WORKFLOW`. */
+  stage: string
+  /** The publication's type: `ROADMAP`, `OPC_LAUNCHED`, `PROP_DIR`, `PROP_REG`, … */
+  type: string | null
+  /** Its reference as the portal writes it: „Ares(2021)6011536", „COM(2022)177". */
+  reference: string | null
+  /** The day it was published, ISO. */
+  published: string | null
+  /** The last day of the feedback period, ISO; null where it had none. */
+  feedbackEnd: string | null
+  /** The number of contributions the portal counts; null where it gives none. */
+  feedbackCount: number | null
+  /** `OPEN`, `CLOSED`, `DISABLED`, `UPCOMING` — the portal's word, as it is. */
+  feedbackStatus: string | null
+}
+
+/** An initiative of the Commission as the portal records it. */
+export interface EuInitiative {
+  id: number
+  /** The short title, English: the portal's record carries the translations apart, and they are not read. */
+  title: string | null
+  /** The initiative on the portal, German page. */
+  url: string
+  /** In the portal's order of publication, ascending by day. */
+  publications: EuPortalPublication[]
+}
+
+/**
+ * What the monitor can say about the consultation behind an act, by its
+ * proposal's COM number. Each state is a different sentence on the page:
+ *
+ * - `gefunden`: an initiative whose publications carry exactly that number.
+ * - `nicht-gefunden`: the portal answered, and no initiative carries it —
+ *   „im Portal nicht gefunden", never „keine Konsultation".
+ * - `vor-portal`: the proposal is from before 2017; the portal does not
+ *   hold such proposals (0 of 15 in the sample of 14.11.2026).
+ * - `kein-vorschlag`: the Cellar names no COM number to search by.
+ * - `ungelesen`: no answer, an error status, or a shape the reader does
+ *   not know.
+ */
+export type EuConsultation =
+  | { state: 'gefunden'; reference: string; initiative: EuInitiative }
+  | { state: 'nicht-gefunden'; reference: string }
+  | { state: 'vor-portal'; reference: string }
+  | { state: 'kein-vorschlag' }
+  | { state: 'ungelesen'; reference: string | null }

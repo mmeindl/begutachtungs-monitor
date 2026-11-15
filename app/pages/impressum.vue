@@ -330,6 +330,32 @@ usePageSeo({
             (CC0 1.0). Die Texte der Rechtsakte verlinkt der Monitor.
           </dd>
         </div>
+        <!-- The Commission's portal „Ihre Meinung zählt" (15.11.2026, step 2
+             of the EU cycle): data of an initiative — stage, feedback
+             period, number of contributions — read from the portal's own
+             JSON addresses; the Commission's legal notice licenses its
+             content CC BY 4.0. Contributions are not read. -->
+        <div id="imp-kommission">
+          <dt>
+            Europäische Kommission, Portal „Ihre Meinung zählt“
+          </dt>
+          <dd>
+            Zu Vorhaben und Vorschlägen der Kommission: das Stadium, der
+            Zeitraum, in dem Rückmeldungen möglich sind oder waren, und ihre
+            Zahl, abgefragt vom Portal
+            <ExternalLink
+              href="https://ec.europa.eu/info/law/better-regulation/have-your-say_de"
+              class="link-inline"
+            >„Ihre Meinung zählt“</ExternalLink>. Inhalte der Kommission stehen
+            laut ihrem
+            <ExternalLink
+              href="https://commission.europa.eu/legal-notice_de"
+              class="link-inline"
+            >rechtlichen Hinweis</ExternalLink> unter CC BY 4.0; der Monitor
+            gibt sie gekürzt und in eigener Darstellung wieder. Beiträge
+            selbst übernimmt er nicht, er verlinkt das Portal.
+          </dd>
+        </div>
         <!-- The Länder since 22.10.2026 (Salzburg, then Wien and
              Oberösterreich the same day; Kärnten and Tirol on 23.10.2026;
              Burgenland, Niederösterreich, Steiermark and Vorarlberg on

@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import { euRailView, type EuRailView } from '../app/utils/euRail'
-import type { EuActDraft, EuActHead, EuActRail, EuActResponse, EuProcedure } from '../shared/types/eu'
+import type { EuActDraft, EuActHead, EuActRail, EuActResponse, EuConsultation, EuPortalPublication, EuProcedure } from '../shared/types/eu'
 
 /* The rail of an EU act: the stations of the act's life from the Cellar,
  * dates only (rule D6), every gap a sentence with its reason. */
@@ -70,6 +70,7 @@ const response = (over: Partial<EuActResponse> = {}): EuActResponse => ({
   eli: null,
   rail: rail(),
   measures: null,
+  consultation: null,
   memberState: null,
   incomplete: [],
   ...over,
@@ -181,6 +182,70 @@ describe('euRailView', () => {
   it('names the earlier transposition dates beside the deadline (rule D3)', () => {
     const v = euRailView(response({ act: { ...DIRECTIVE, transposition: { deadline: '2026-05-29', otherDates: ['2025-01-01', '2025-06-01'] } } }), TODAY)
     expect(frame(v, 'wirkung')).toEqual(['Umsetzungsfrist: 29.05.2026', 'Weitere Fristen für einzelne Bestimmungen: 01.01.2025, 01.06.2025'])
+  })
+
+  describe('the station „Konsultation", from the Commission\'s portal', () => {
+    const pub = (over: Partial<EuPortalPublication>): EuPortalPublication => ({ stage: 'OPC_LAUNCHED', type: 'OPC_LAUNCHED', reference: 'X', published: '2021-10-04', feedbackEnd: '2022-01-10', feedbackCount: 146, feedbackStatus: 'CLOSED', ...over })
+    const found = (publications: EuPortalPublication[]): EuConsultation => ({
+      state: 'gefunden',
+      reference: 'COM(2022)177',
+      initiative: { id: 13192, title: 'EU action', url: 'https://ec.europa.eu/info/law/better-regulation/have-your-say/initiatives/13192_de', publications },
+    })
+    const ANTISLAPP = found([
+      pub({ stage: 'INIT_PLANNED', type: 'INIT_PLANNED', published: '2021-09-03', feedbackEnd: null, feedbackCount: 0 }),
+      pub({ stage: 'ROADMAP', type: 'ROADMAP', feedbackEnd: '2021-11-01', feedbackCount: 10 }),
+      pub({}),
+      pub({ stage: 'ADOPTION_WORKFLOW', type: 'PROP_DIR', reference: 'COM(2022)177', published: '2022-04-29', feedbackEnd: '2022-06-29', feedbackCount: 22 }),
+    ])
+
+    it('stands first, with every feedback period before the proposal, in the portal\'s own words', () => {
+      const v = euRailView(response({ consultation: ANTISLAPP }), TODAY)
+      expect(v.stations.map((s) => s.name)).toEqual(['Konsultation', 'Vorschlag', 'Parlament und Rat', 'Amtsblatt', 'Umsetzung'])
+      expect(station(v, 'konsultation')).toMatchObject({ facts: ['Fahrplan bis 01.11.2021', 'Öffentliche Konsultation bis 10.01.2022'], gap: null, anchor: '#eu-konsultation', current: false })
+      expect(frame(v, 'konsultation')).toEqual([
+        'Fahrplan: 04.10.2021 – 01.11.2021, 10 Rückmeldungen',
+        'Öffentliche Konsultation: 04.10.2021 – 10.01.2022, 146 Rückmeldungen',
+        'Vorhaben der Kommission: Nr. 13192, [im Portal „Ihre Meinung zählt“]',
+      ])
+      expect(section(v, 'konsultation')).toMatchObject({ heading: 'Konsultation', notes: [], record: null, credits: ['Quelle:', 'Europäische Kommission, Portal „Ihre Meinung zählt“'] })
+    })
+
+    it('sets the feedback period on the adopted proposal under „Vorschlag", with both sources credited', () => {
+      const v = euRailView(response({ consultation: ANTISLAPP }), TODAY)
+      expect(frame(v, 'vorschlag')).toEqual([
+        'Vorschlag der Kommission: [COM(2022) 177], 27.04.2022',
+        'Rückmeldungen zum Vorschlag: 29.04.2022 – 29.06.2022, 22 Rückmeldungen, [im Portal „Ihre Meinung zählt“]',
+      ])
+      expect(section(v, 'vorschlag').credits).toEqual(['Quellen:', 'Cellar des Amts für Veröffentlichungen der Europäischen Union (Metadaten)', 'Europäische Kommission, Portal „Ihre Meinung zählt“'])
+    })
+
+    it('says each way of not knowing in its own sentence — never „keine Konsultation"', () => {
+      const gap = (c: EuConsultation) => {
+        const v = euRailView(response({ consultation: c }), TODAY)
+        expect(station(v, 'konsultation')!.facts).toEqual([])
+        expect(frame(v, 'konsultation')).toEqual([`–: ${station(v, 'konsultation')!.gap}`])
+        return station(v, 'konsultation')!.gap
+      }
+      expect(gap({ state: 'nicht-gefunden', reference: 'COM(2022)177' })).toBe('Im Portal „Ihre Meinung zählt“ der Kommission wurde zu COM(2022)177 kein Vorhaben gefunden.')
+      expect(gap({ state: 'vor-portal', reference: 'COM(2016)593' })).toBe('Das Portal „Ihre Meinung zählt“ der Kommission führt Vorschläge erst ab 2017; COM(2016)593 ist älter.')
+      expect(gap({ state: 'kein-vorschlag' })).toBe('Der Cellar nennt keine Nummer des Vorschlags, nach der im Portal der Kommission gesucht werden könnte.')
+      expect(gap({ state: 'ungelesen', reference: null })).toMatch(/^Die Konsultation konnte nicht gelesen werden/)
+      for (const c of [{ state: 'nicht-gefunden', reference: 'x' }, { state: 'ungelesen', reference: null }] as EuConsultation[]) {
+        expect(allStrings(euRailView(response({ consultation: c }), TODAY)).join(' ')).not.toMatch(/keine Konsultation/i)
+      }
+    })
+
+    it('keeps the initiative as a fact where it had no feedback period before the proposal', () => {
+      const v = euRailView(response({ consultation: found([pub({ stage: 'ADOPTION_WORKFLOW', type: 'PROP_DIR', reference: 'COM(2022)177' })]) }), TODAY)
+      expect(frame(v, 'konsultation')).toEqual(['Vorhaben der Kommission: Nr. 13192, [im Portal „Ihre Meinung zählt“]'])
+      expect(section(v, 'konsultation').notes).toEqual(['Das Portal verzeichnet zu diesem Vorhaben vor dem Vorschlag keine Frist für Rückmeldungen.'])
+    })
+
+    it('has no such station for an act of the Commission, nor where nothing was asked', () => {
+      expect(euRailView(response({ consultation: null }), TODAY).stations.map((s) => s.id)).toEqual(['vorschlag', 'beschluss', 'amtsblatt', 'wirkung'])
+      const commission = euRailView(response({ act: REGULATION, rail: rail({ adoptedBy: 'kommission', procedure: null }), consultation: ANTISLAPP }), TODAY)
+      expect(commission.stations.map((s) => s.id)).toEqual(['amtsblatt', 'wirkung'])
+    })
   })
 
   it('counts drafts in the right number and says nothing for none', () => {
