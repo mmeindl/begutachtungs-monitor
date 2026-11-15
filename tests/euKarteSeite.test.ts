@@ -64,6 +64,7 @@ describe('euActPageView', () => {
     incomplete: [],
     oj: null,
     eli: null,
+    rail: null,
     ...over,
   })
   const day = (iso: string) => Date.parse(`${iso}T00:00:00Z`) / 86_400_000
