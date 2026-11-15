@@ -12,6 +12,8 @@ import ListBox from '~/components/ui/ListBox.vue'
  * Ministerialentwurf's page has them (22.10.2026): „Regierungsvorlage",
  * „Im Landtag", „Im Landesgesetzblatt" — so each row of the bar lands on a
  * heading with its own name.
+ * A section renders only once its station is reached (`docs/decisions.md`,
+ * „The detail pages").
  *
  * Until the same day the three stood in one section, the Landtag's record
  * as it lists itself. Two reasons took them apart: the Vorlage carries a

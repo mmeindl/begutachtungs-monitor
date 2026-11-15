@@ -5,6 +5,7 @@ import type { Fact } from '~/components/ui/FactList.vue'
 import { fristFact } from '~/utils/deadlines'
 import {
   SECOND_ROUND_CLAUSE,
+  allRoutesLink,
   lastParliamentStation,
   parliamentTexts,
   procedureStatusDe,
@@ -160,6 +161,8 @@ const windows = computed(() => ({
  * by hand, and a paraphrase would have had the bar promise chapters the
  * page did not render. The two parliamentary stations carry the Vorlage
  * they render for, null where they do not render. */
+/* A step not reached gets no section (`docs/decisions.md`, „The detail
+ * pages"): each entry is null until its station has happened. */
 const sections = computed(() => {
   const e = data.value?.enactment ?? null
   return {
@@ -403,7 +406,7 @@ const ministryLinks = computed(() => {
           <ProcedureCard
             :status="procedureStatusDe(data)"
             :stations="spineStations"
-            :how-to="wegHref(wegFor({ source: 'ministerialentwurf', viaAntrag: draftTookAntragRoute(data) }) ?? 'gesetz')"
+            :link="allRoutesLink(wegHref(wegFor({ source: 'ministerialentwurf', viaAntrag: draftTookAntragRoute(data) }) ?? 'gesetz'))"
             :anchors="stationAnchors"
             :comparison-anchors="comparisonAnchors"
           >
@@ -414,13 +417,15 @@ const ministryLinks = computed(() => {
              of the card, so divided from the rail as the card's facts are
              from each other (02.10.2026): without the hairline it read as
              the card's footnote. -->
-            <p v-if="data.predecessor" class="mt-4 border-t border-hairline pt-4 text-sm text-ink-secondary">
-              Ein gleichlautender Entwurf war bereits in Begutachtung:
-              <NuxtLink
-                :to="`/entwuerfe/${data.predecessor.gp}/${data.predecessor.inr}`"
-                class="link-inline"
-              >{{ data.predecessor.citation }}</NuxtLink>{{ relatedGpSuffixDe(data.predecessor.gp, data.gp) }}<template v-if="data.predecessor.deadline">, Frist bis {{ formatDateDe(data.predecessor.deadline) }}</template> – ohne Regierungsvorlage.
-            </p>
+            <template #footer>
+              <p v-if="data.predecessor" class="mt-4 border-t border-hairline pt-4 text-sm text-ink-secondary">
+                Ein gleichlautender Entwurf war bereits in Begutachtung:
+                <NuxtLink
+                  :to="`/entwuerfe/${data.predecessor.gp}/${data.predecessor.inr}`"
+                  class="link-inline"
+                >{{ data.predecessor.citation }}</NuxtLink>{{ relatedGpSuffixDe(data.predecessor.gp, data.gp) }}<template v-if="data.predecessor.deadline">, Frist bis {{ formatDateDe(data.predecessor.deadline) }}</template> – ohne Regierungsvorlage.
+              </p>
+            </template>
           </ProcedureCard>
           <!-- The card's source line names only what the card shows: the
                Bundesgesetzblatt station's Bund-zu-Land line. The

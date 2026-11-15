@@ -3,7 +3,7 @@ import { wegHref } from '~/utils/wege'
 import type { BgblLawsResponse, LandCode, LandLawDetail } from '#shared/types'
 import type { Fact } from '~/components/ui/FactList.vue'
 import type { ComparisonId, StationId } from '~/utils/spine'
-import { landLawStations } from '~/utils/spine'
+import { allRoutesLink, landLawStations } from '~/utils/spine'
 import { LAND_NAME, landLawName, landLawPath } from '#shared/utils/laender'
 import { citeLineDe } from '#shared/utils/citations'
 import { formatDateDe } from '#shared/utils/format'
@@ -166,15 +166,17 @@ useSeoMeta({
             :stations="stations"
             :anchors="anchors"
             :comparison-anchors="comparisonAnchors"
-            :how-to="wegHref('landesgesetz-ohne-entwurf')"
+            :link="allRoutesLink(wegHref('landesgesetz-ohne-entwurf'))"
           >
             <!-- What the row's „ohne Begutachtung" (Salzburg) or „ohne
                  zugeordneten Entwurf" rests on, opening in place (14.11.2026,
                  `TERMS`) — from the list's notes and its fold „Wie
                  vollständig die Länder-Entwürfe sind". -->
-            <div class="mt-3 flex flex-wrap items-center text-sm text-ink-secondary">
-              <TermNote :term="detail.law.begutachtung.kind === 'none' ? 'ohne-begutachtung-land' : 'ohne-zugeordneten-entwurf'" />
-            </div>
+            <template #footer>
+              <div class="mt-3 flex flex-wrap items-center text-sm text-ink-secondary">
+                <TermNote :term="detail.law.begutachtung.kind === 'none' ? 'ohne-begutachtung-land' : 'ohne-zugeordneten-entwurf'" />
+              </div>
+            </template>
           </ProcedureCard>
 
           <section id="gesetz" class="page-section scroll-mt-6" aria-labelledby="gesetz-heading">

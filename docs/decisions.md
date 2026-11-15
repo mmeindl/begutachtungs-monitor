@@ -975,6 +975,60 @@ memo `docs/research/wege-ausserhalb-der-stationen.md`.
   endpoints still accept `q` and answer with the rows the page shows for
   it. The row prints every alias the search reads.
 
+### The detail pages
+
+A detail page is the page of one draft, law, Vorlage or Anliegen. These
+rules hold for all of them; each names the component that carries it, and
+the reasoning in full stands in that component's header comment.
+
+- **One order, top to bottom** (15.09.2026): the header (kind and number,
+  title, sender, the source and „Zitieren"), the state card, the door card
+  while a window for input is open, „Worum geht es?" where the source
+  summarises the item, then one section per
+  station in the stations' order — Der Entwurf, Die Begutachtung, Die
+  Regierungsvorlage, Im Parlament, Im Bundesgesetzblatt. The door card is
+  the one deliberate break with that order: the page's action must not sink
+  below a long comparison (`app/pages/entwuerfe/[gp]/[inr].vue`).
+- **The state card names the state, and nothing stands under its heading**
+  (15.11.2026, `ProcedureCard`). Its heading is the state in a few words
+  („In Begutachtung", „Bisher keine Regierungsvorlage", „Gesetz geworden"):
+  no sentence, no date, no count, no countdown. Beside it, the one way out
+  (the overview of routes on `/wege`). Under it, the rail; after the rail,
+  at most a footer of facts. The component has no slot between heading and
+  rail, so a description there cannot be added; a page without a rail shows
+  the heading alone and says the rest in its sections. One card for every
+  detail page, the Anliegen's included, which brings its own rail.
+- **Five stations, vertical at every width** (15.09.2026, `SpineRail`):
+  Entwurf, Begutachtung, Regierungsvorlage, Parlament, Bundesgesetzblatt,
+  one row each. The station the text is on carries the yellow dot and the
+  wash over its row; nothing else on the rail is yellow. A new fact extends a
+  row's fact line; it adds no row („The five stations stay five", above).
+- **A step not reached gets no section** (15.09.2026). A station's section
+  renders exactly when the station has happened and something to say; until
+  then the station is a row of the rail in plain text, not a link, and the
+  page has no heading for it, no „ausstehend" section and no empty one. The
+  rail's link into a section exists exactly where the section renders (the
+  `sections` and `stationAnchors` computeds of each page; on the Länder
+  pages the conditions in `LandStationSections`).
+- **The door stands twice:** once in the door card at the top, once at the
+  end of the section where the decision to file is made, solid, with the
+  card's label (`DoorButton`). It lands in the form („A door lands in the
+  form", below).
+- **A box says what one does with it** (03.10.2026, the docblock of
+  `FactList`): the accent-washed box is the door you act on, the white card
+  an instrument you operate (state card, comparison, statement tables), the
+  unfilled hairline frame facts to consult, bare text to read.
+- **A comparison opens with its list** (02.10.2026 for the Bund, 23.10.2026
+  for the Länder): no sentence above it repeats what the legend and the
+  group pills count. Only a rare warning that the list may be misread
+  stands above, in `ComparisonCaveats`.
+- **The comparison's left side is the Regierungsvorlage** for every station
+  after it; the Ministerialentwurf is the left side only for the Vorlage
+  itself. Readers compare a law against the Vorlage, and adjacent stations
+  attribute each change to who made it: the ministry after the
+  Begutachtung, Parliament through its amendments. Both ends stay freely
+  selectable.
+
 ### Design and accessibility
 
 - **Two hues, one meaning each.** Blue means „you can do something here",
@@ -1040,10 +1094,6 @@ memo `docs/research/wege-ausserhalb-der-stationen.md`.
   „Begründung: nicht zuzuordnen", the Lesefassung's per-§ reasons, and the
   list's count line, whose clauses already say „gerade nicht abrufbar".
   Before the rule, 192 strings of the site were read and sorted by it.
-
-### Operations
-
-- **The deploy waits for the prewarm.** A restart empties every memory cache, so
 - **A door lands in the form** (15.11.2026). A button that sends the reader
   to file a Stellungnahme leads as close to the form as the source allows,
   never to a page from which the reader must find it. Parliament's page of
@@ -1066,6 +1116,10 @@ memo `docs/research/wege-ausserhalb-der-stationen.md`.
   browser test against an outside site fails for reasons that are not ours.
   Not checked: the Petition an den Bundesrat, which keeps the one
   `formlink`.
+
+### Operations
+
+- **The deploy waits for the prewarm.** A restart empties every memory cache, so
   warming before it is pointless; `✔ deployed` means the next visitor finds a
   warm server. A failed prewarm does not fail the deploy.
 - **The consolidated reading is deliberately not prewarmed:** it is fetched
@@ -1415,6 +1469,23 @@ circular of 10.12.2015).
   the legend hides them (§12.17).
 - **Station icons, yellow bars on every section, a wash on the current
   station** (§12.39).
+- **The stations as a horizontal stepper** (15.09.2026). The German station
+  names hyphenate in the prose column („Regierungsvorla-ge"), and the
+  breakout that bought the width was unwanted itself.
+- **Versions as nodes, stages as arrows.** The Begutachtung, the product's
+  subject, shrank to a connector, and two arrows had nothing observable
+  behind them.
+- **„Geltendes Recht" as a station, Ausschuss and Plenum as two.** The law in
+  force is no step of the procedure (it is a fact of the Entwurf, „ändert 2
+  Gesetze"); readers ask what Parliament did, not which body did it.
+- **A pale halo as the marker of the current station,** a ringed ink dot, a
+  blue „still actionable" wash (03.10.2026). Too weak, or a second meaning
+  for blue.
+- **A dated mark between the stations** (the Umsetzungsfrist, 04.11.2026).
+  It showed order without measure; the EU dates got a time-scaled strip
+  under the EU fact instead.
+- **A sentence under the state card's heading** (15.11.2026). It made the
+  reader read two lines before the answer and repeated the rows.
 - **Renaming the path word `/entwuerfe` now.** The address was renamed once
   already (from `/begutachtungen`), and a restructure with a country segment
   is planned: rename at most once, then. Candidate for that day:

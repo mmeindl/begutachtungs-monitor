@@ -118,22 +118,18 @@ useSeoMeta({
             </template>
           </DraftHeader>
 
-          <!-- The rail: the white card one operates, as `ProcedureCard`, its
-               state as the heading. One weight for every state — success and
-               shelving get one colour (framing rule). -->
-          <div class="mt-6 rounded-xl border border-hairline bg-surface p-4">
-            <div class="flex flex-wrap items-baseline justify-between gap-x-4 gap-y-1">
-              <h2 class="font-sans text-base font-semibold text-ink">{{ view.headline.text }}</h2>
-              <NuxtLink
-                v-if="view.headline.link"
-                :to="view.headline.link.href"
-                class="tap-target text-sm font-medium link-quiet"
-              >
-                {{ view.headline.link.label }} →
-              </NuxtLink>
-            </div>
-            <AnliegenRail class="mt-4" :rows="view.rail" :label="view.railLabel" />
-          </div>
+          <!-- The state card of every detail page (`ProcedureCard`), with
+               the Anliegen's own rail in place of the five stations. One
+               weight for every state — success and shelving get one colour
+               (framing rule). -->
+          <ProcedureCard
+            :status="view.headline.text"
+            :link="view.headline.link ? { to: view.headline.link.href, label: view.headline.link.label } : null"
+          >
+            <template #rail>
+              <AnliegenRail class="mt-4" :rows="view.rail" :label="view.railLabel" />
+            </template>
+          </ProcedureCard>
 
           <!-- The door only on the item's own open flag; closed, one muted
                line and no blue. -->

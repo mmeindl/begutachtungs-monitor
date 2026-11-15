@@ -2,7 +2,7 @@
 import { wegFor, wegHref } from '~/utils/wege'
 import type { AmendedLawsResponse, RvStatementsResponse, VorlageDetail } from '#shared/types'
 import type { ComparisonId, StationId } from '~/utils/spine'
-import { lastParliamentStation, parliamentTexts, vorlageStations, vorlageStatusDe, SECOND_ROUND_CLAUSE } from '~/utils/spine'
+import { allRoutesLink, lastParliamentStation, parliamentTexts, vorlageStations, vorlageStatusDe, SECOND_ROUND_CLAUSE } from '~/utils/spine'
 import { citeLineDe } from '#shared/utils/citations'
 import { firstTextNameOf } from '#shared/utils/lawStations'
 import { GP_RE, parseInr } from '#shared/utils/gp'
@@ -198,6 +198,8 @@ const comparisonAnchors = computed<Partial<Record<ComparisonId, string>>>(() => 
 }))
 
 /* Which station sections render — the bar's anchors read the same. */
+/* A step not reached gets no section (`docs/decisions.md`, „The detail
+ * pages"): each entry is null until its station has happened. */
 const sections = computed(() => {
   const d = data.value
   const e = d?.enactment ?? null
@@ -287,7 +289,7 @@ useSeoMeta({
           <ProcedureCard
             :status="vorlageStatusDe(data)"
             :stations="stationList"
-            :how-to="vorlageWeg"
+            :link="allRoutesLink(vorlageWeg)"
             :anchors="stationAnchors"
             :comparison-anchors="comparisonAnchors"
           >
@@ -297,9 +299,11 @@ useSeoMeta({
                  rows are links, so the term sits under the rail, not in it;
                  only where the rail states a fact („nicht feststellbar"
                  claims none). -->
-            <div v-if="begutachtungTerm" class="mt-3 flex flex-wrap items-center text-sm text-ink-secondary">
-              <TermNote :term="begutachtungTerm" />
-            </div>
+            <template #footer>
+              <div v-if="begutachtungTerm" class="mt-3 flex flex-wrap items-center text-sm text-ink-secondary">
+                <TermNote :term="begutachtungTerm" />
+              </div>
+            </template>
           </ProcedureCard>
 
           <!-- The door while the Nationalrat takes Stellungnahmen, as on the

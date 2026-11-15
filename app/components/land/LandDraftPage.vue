@@ -10,7 +10,7 @@ import { formatDateDe, todayIso } from '#shared/utils/format'
 import type { EuTimelineContext } from '~/utils/euRecht'
 import { fristFact, fristStateDe } from '~/utils/deadlines'
 import type { StationId } from '~/utils/spine'
-import { landStations, landStatusDe } from '~/utils/spine'
+import { allRoutesLink, landStations, landStatusDe } from '~/utils/spine'
 
 /**
  * A Land's draft (22.10.2026), behind `/entwuerfe/<land>/<number>`.
@@ -234,7 +234,7 @@ useSeoMeta({ ogTitle: () => draft.value?.title ?? 'Entwurf', ogType: 'article' }
           :stations="spineStations"
           :anchors="stationAnchors"
           :comparison-anchors="comparisonAnchors"
-          :how-to="wegLink"
+          :link="allRoutesLink(wegLink)"
         />
 
         <!-- The one place to act, while the Frist runs — the RIS page's

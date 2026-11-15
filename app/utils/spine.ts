@@ -263,6 +263,16 @@ export function enactmentStatusDe(
 }
 
 /**
+ * The way out beside the state card's heading on a station page: the
+ * overview of every route a text can take, opened at this page's path where
+ * it knows it (`?weg=`). „Wie funktioniert das Verfahren?" until
+ * 14.11.2026, when the link stopped leading to a page about this procedure.
+ */
+export function allRoutesLink(to: string = '/wege'): { to: string; label: string } {
+  return { to, label: 'Alle Wege im Überblick' }
+}
+
+/**
  * The card's opening line: where the text stands, in one phrase.
  *
  * It replaces the label "Der Text im Verfahren", which named the card

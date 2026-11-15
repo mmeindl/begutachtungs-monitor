@@ -4,12 +4,12 @@ import { LONG_TITLE_CLAMP_CHARS, ledeLongTitle } from '~/utils/longTitle'
 import { originTokens, withOrigin } from '~/utils/origin'
 import type { BgblLawsResponse, BgblOutcome, DraftDocument, RisConsultationDetail, RisDocumentFormats } from '#shared/types'
 import type { ComparisonId, StationId } from '~/utils/spine'
-import { RIS_ID_RE } from '#shared/utils/risConsultations'
+import { RIS_ID_RE, RIS_KIND_HINT } from '#shared/utils/risConsultations'
 import { citeLineDe } from '#shared/utils/citations'
 import type { Fact } from '~/components/ui/FactList.vue'
 import { ministryLinkFor } from '~/components/draft/MinistryLinks.vue'
 import { fristFact, fristStateDe } from '~/utils/deadlines'
-import { regulationStations, regulationStatusDe } from '~/utils/spine'
+import { allRoutesLink, regulationStations, regulationStatusDe } from '~/utils/spine'
 import type { EuTimelineContext } from '~/utils/euRecht'
 import { todayIso } from '#shared/utils/format'
 
@@ -141,7 +141,7 @@ const spineStations = computed(() => withOrigin(stationList.value, originTokens(
    13.10.2026, as there. */
 const fristFacts = computed<Fact[]>(() => {
   const d = data.value
-  if (!d || !d.deadline || !stationList.value.length) return []
+  if (!d || !d.deadline) return []
   return [fristFact(d.startedAt, d.deadline)]
 })
 
@@ -306,38 +306,23 @@ const doorHref = computed(() => {
            Since the BGBl-II match of 19.09.2026 it is followed, so the
            argument had lapsed and the card was the counter the draft page
            dropped on 18.09.2026, standing in for rows it never drew
-           (`regulationStations`). A Gesetz or
-           an untyped record keeps the card in words: neither has a path
-           here that can be read to its end. -->
+           (`regulationStations`). A Gesetz or an untyped record has no
+           path here that can be read to its end: its card is the heading
+           alone. Its dates sentence and kind hint stood under that heading
+           until 15.11.2026 and moved to the sections (`ProcedureCard`, (1)).
+
+           The link leads to the overview of all paths (`/wege`, since
+           14.11.2026): „why three stations and not five" is answered there,
+           and the card no longer says it itself (the sentence that did went
+           on 26.09.2026). Which path to open (`?weg=`) is set where the page
+           is integrated. -->
         <ProcedureCard
           :status="regulationStatusDe(data.active, outcome?.state === 'kundgemacht')"
           :stations="spineStations"
           :anchors="stationAnchors"
           :comparison-anchors="comparisonAnchors"
-          :how-to="wegLink"
-        >
-          <!-- The link leads to the overview of all paths (`/wege`, since
-             14.11.2026): „why three stations and not five" is answered
-             there, and the card no longer says it itself (the sentence that
-             did went on 26.09.2026). Which path to open (`?weg=`) is set
-             where the page is integrated. -->
-          <!-- Without a bar the dates are the sentence, and the kind hint
-             says why the card has no path to draw. With a bar both go: the
-             rows carry the dates, and the Verordnung hint („erlässt ein
-             Ministerium selbst … geht nicht durch das Parlament") only
-             restated what the three rows show — the link above answers it
-             at the fork. The closed Frist and the sentence on the
-             Stellungnahmen moved to „Die Begutachtung" below (03.10.2026),
-             the slot the draft page gives them. -->
-          <p v-if="!stationList.length" class="mt-3 text-sm text-ink-secondary">
-            <template v-if="data.startedAt">
-              In Begutachtung seit {{ formatDateDe(data.startedAt) }}<template v-if="data.deadline">, Frist bis {{ formatDateWeekdayDe(data.deadline) }}</template>.
-            </template>
-            <template v-if="RIS_KIND_HINT[data.kind]">
-              {{ RIS_KIND_HINT[data.kind] }}
-            </template>
-          </p>
-        </ProcedureCard>
+          :link="allRoutesLink(wegLink)"
+        />
 
         <!-- The one place to act, in the slot and the shape the draft page
            uses for its Stellungnahme-CTA. Only while the Frist runs: an
@@ -391,6 +376,15 @@ const doorHref = computed(() => {
         <section id="entwurf" class="page-section scroll-mt-6" aria-labelledby="entwurf-heading">
           <h2 id="entwurf-heading" class="section-heading">Der Entwurf</h2>
           <div class="mt-4 space-y-8">
+            <!-- What kind of record this is, where it is no Verordnung
+               (`RIS_KIND_HINT`). It stood in the state card under the
+               heading until 15.11.2026; the card carries the state and
+               nothing under it (`ProcedureCard`), so the hint opens the
+               section on the draft it describes. The dates it stood with
+               are the Frist fact in „Die Begutachtung". -->
+            <p v-if="RIS_KIND_HINT[data.kind]" class="max-w-prose text-sm text-ink-secondary">
+              {{ RIS_KIND_HINT[data.kind] }}
+            </p>
 
             <!-- The ressort's own comparison, from day one — and on these pages it
                carries more weight than on a Ministerialentwurf's. There is no
