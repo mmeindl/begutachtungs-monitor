@@ -105,7 +105,10 @@ export async function readAndCheck(
     pdf: pdfFallback,
     readFrom,
     droppedPages,
-    boundaryNote: refusal,
+    // The parser's refusal is ours — a check refused the law boundaries —
+    // so it goes out as a „Nicht lesbar" gap. Set here, not in the parser,
+    // whose wording the annex baseline pins.
+    boundaryNote: refusal ? gapDe('unreadable', refusal) : null,
     // Counted over the rows as sent, so the numbers on the page and the
     // rows on the page cannot disagree.
     stats: checked.stats,

@@ -35,8 +35,9 @@
  * GOV.UK „Details" pattern, chosen over a hairline frame because a frame
  * means "facts to consult" (FactList `frame`) and the note often opens right
  * under one, and over an (i) icon, which would say nothing the rule doesn't.
- * 4 px, not 2: the diff gutters and the caveat list use 2 px, so the help
- * reads as its own thing next to them. The rule is on an inner box so the
+ * 4 px, not 2: the diff gutters use 2 px in their colours, so the help reads
+ * as its own thing next to them. The rule means help only (the caveats
+ * above a comparison gave theirs up). It is on an inner box so the
  * spacing around it stays outside the rule.
  */
 import { TERMS, type TermKey } from '~/utils/terms'

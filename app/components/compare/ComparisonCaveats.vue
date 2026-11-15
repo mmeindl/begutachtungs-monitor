@@ -7,9 +7,14 @@
  * as plain text, so the same kind of statement looked like two.
  *
  * Above, not in the credits under the list: a warning that what follows may
- * be wrong belongs before it (TextComparisonSection, 30.09.2026). The rule
- * marks them as qualifications of the result, not as more result. Readable
+ * be wrong belongs before it (TextComparisonSection, 30.09.2026). Readable
  * size: a reader who needs them must not have to squint.
+ *
+ * No rule on the left since 15.11.2026. It marked them as qualifications of
+ * the result, a job the gap lead word does now („Nicht lesbar: …",
+ * `GapNote`), and the left rule belongs to help that opens in place
+ * (`TermNote`) — two bars of slightly different width read as one style
+ * done twice, not as two meanings.
  *
  * A warning that links somewhere is a `<p>` in the slot, after the plain
  * ones (a Land's draft that shares its Kundmachung with another,
@@ -22,7 +27,7 @@ const shown = computed(() => props.notes.filter((n): n is string => Boolean(n)))
 </script>
 
 <template>
-  <div v-if="shown.length || slots.default" class="space-y-1.5 border-l-2 border-hairline pl-3 text-sm text-ink-secondary">
+  <div v-if="shown.length || slots.default" class="space-y-1.5 text-sm text-ink-secondary">
     <GapNote v-for="note in shown" :key="note" :text="note" />
     <slot />
   </div>

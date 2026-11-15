@@ -1001,7 +1001,9 @@ memo `docs/research/wege-ausserhalb-der-stationen.md`.
   help text sits behind a 4 px `baseline` rule on the left, indented
   (15.11.2026, the GOV.UK „Details" pattern, in `TermNote` for both
   levels): bare, it read as the section's content. Not a hairline frame,
-  which means facts to consult and stacks under FactList's; no icon. A
+  which means facts to consult and stacks under FactList's; no icon. The
+  rule means help and nothing else: the warnings above a comparison
+  (`ComparisonCaveats`) lost theirs the same day, their lead word marks them. A
   control is never also a disclosure, so filter toggles and the count pills
   in a group's header button define nothing. Definitions live in
   `app/utils/terms.ts`, method texts as components in
