@@ -9,6 +9,7 @@
  *
  * Auto-imported; pure module so vitest can import it relatively.
  */
+import { gapLabelDe } from './gaps'
 import type { RisConsultation, RisConsultationKind } from '../types'
 import { compareDrafts } from './draftOrder'
 
@@ -71,7 +72,7 @@ export const RIS_KIND_HINT: Record<RisConsultationKind, string | null> = {
 export function risFilingNote(active: boolean): string {
   return active
     ? 'Stellungnahme direkt ans Ministerium'
-    : 'Stellungnahmen nicht veröffentlicht'
+    : gapLabelDe('Stellungnahmen', 'notPublished')
 }
 
 /**

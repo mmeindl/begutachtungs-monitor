@@ -6,6 +6,7 @@
  * go to the Bund's § join (`compareReasoningByParagraph`), which compares
  * only where BOTH sides have one.
  */
+import { gapDe } from '#shared/utils/gaps'
 import type { LandCode, LandDraftDetail, LandReasoningResponse } from '#shared/types'
 import { safeExternalUrl } from '#shared/utils/safeExternalUrl'
 import { DERIVED_CACHE } from '../cache/base'
@@ -47,7 +48,7 @@ export async function compareLandReasoning(land: LandCode, number: string, detai
   const sources = textSources(land, detail)
   const draftUrl = sources.entwurf?.document.url
   const rvUrl = sources.rv?.document.url
-  if (!draftUrl || !rvUrl) return unavailable('Das Land hat einen der beiden Texte nicht veröffentlicht.')
+  if (!draftUrl || !rvUrl) return unavailable(gapDe('notPublished', 'Einen der beiden Texte hat das Land nicht veröffentlicht.'))
   const laws = amendedLawsOf(detail.draft.title)
   // Their own documents, where the Land files them so: the draft's „Erläuterungen", the Vorlage's „Regierungsvorlage, Erläuterungen".
   const docs = detail.draft.documents
@@ -62,7 +63,7 @@ export async function compareLandReasoning(land: LandCode, number: string, detai
   ])
   // What the Land filed as the draft and evidently is none: said as the comparison says it (`notADraft`).
   if (comparison.unavailableReason === NOT_A_DRAFT) return unavailable(NOT_A_DRAFT)
-  if (!before.size || !after.size) return unavailable('In einem der beiden Texte fand der Monitor keine Erläuterungen zu einzelnen Paragraphen.')
+  if (!before.size || !after.size) return unavailable(gapDe('unreadable', 'In einem der beiden Texte fand der Monitor keine Erläuterungen zu einzelnen Paragraphen.'))
   const result = compareReasoningByParagraph(comparison.units, before, after)
   return {
     available: true,

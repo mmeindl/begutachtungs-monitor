@@ -17,6 +17,7 @@
  *
  * @param enabled Whether the draft has both texts (`LandDraftDetail.comparisons`).
  */
+import { splitGap } from '#shared/utils/gaps'
 import type { Ref } from 'vue'
 import type { LandCode, LandLawDiffResponse, LandReasoningResponse } from '#shared/types'
 import { changeShareNounDe, ownChangeShare } from '#shared/utils/changeShare'
@@ -70,6 +71,8 @@ export function useLandVorlageOutcome(source: () => { land: LandCode; number: st
     const stats = r.available ? r.stats : null
     if (stats?.compared) return reasoningShareValueDe(substantiveReasoningChanges(stats), stats.compared)
     // Not compared is said, never left out (24.10.2026): a missing row read as „the reasons did not change".
+    // A gap sentence stands whole: its lead word already says why (`shared/utils/gaps.ts`).
+    if (splitGap(r.unavailableReason)) return r.unavailableReason
     return `nicht verglichen – ${(r.unavailableReason ?? 'die Erläuterungen beider Texte decken keinen gemeinsamen Paragraphen ab.').replace(/^\p{Lu}/u, (c) => c.toLowerCase())}`
   })
 

@@ -6,6 +6,7 @@
  * vocabulary both runtimes share; this one resolves the documents.
  */
 import type { DraftDocument, LawStationId, ProcedureItemType, TreatyKind } from '#shared/types'
+import { gapDe } from '#shared/utils/gaps'
 import { meTextTitleRank, type FirstTextName } from '#shared/utils/lawStations'
 import { mapDocuments, mapTextEvolution, type RawDocumentGroup } from '../parliament/detailJson'
 
@@ -162,11 +163,13 @@ function findItemStations(
 /**
  * Why a station carries nothing to compare — absent and PDF-only are two
  * different answers, and a reader who is told "only a PDF" knows there is a
- * text to open.
+ * text to open. A missing first text is the source's gap (`gapDe`); the
+ * later stations' sentences are states of the procedure and take no lead
+ * word (`shared/utils/gaps.ts`).
  */
 export const MISSING_STATION_REASON: Record<LawStationId, string> = {
-  me: 'Zu diesem Entwurf ist kein Gesetzestext als eigenes Dokument veröffentlicht.',
-  antrag: 'Zu diesem Antrag ist kein Gesetzestext als eigenes Dokument veröffentlicht.',
+  me: gapDe('notPublished', 'Einen Gesetzestext als eigenes Dokument führt das Parlament zu diesem Entwurf nicht.'),
+  antrag: gapDe('notPublished', 'Einen Gesetzestext als eigenes Dokument führt das Parlament zu diesem Antrag nicht.'),
   rv: 'Es liegt noch keine Regierungsvorlage vor, mit der sich der Entwurf vergleichen ließe.',
   ausschuss: 'Der Ausschuss hat keine geänderte Fassung des Gesetzestexts veröffentlicht.',
   plenum: 'Im Plenum wurde keine geänderte Fassung des Gesetzestexts veröffentlicht.',
@@ -175,11 +178,12 @@ export const MISSING_STATION_REASON: Record<LawStationId, string> = {
 
 /**
  * Why a motion of the Bundesrat whose text stands only in its „Gesetzesantrag"
- * or „Antrag" is not compared. Worded to take a lead word later („Nicht im
- * Monitor: …").
+ * or „Antrag" is not compared: our choice, for every such motion.
  */
-export const MOTION_TEXT_NOT_COMPARED_DE =
-  'Den Gesetzesantrag vergleicht der Monitor nicht Paragraph für Paragraph: Das Parlament veröffentlicht seinen Text nicht als eigenes Dokument, sondern im Antrag, der auch die Begründung enthalten kann.'
+export const MOTION_TEXT_NOT_COMPARED_DE = gapDe(
+  'outOfScope',
+  'ein Vergleich des Gesetzesantrags Paragraph für Paragraph. Sein Text steht nur im Antrag, der auch die Begründung enthalten kann.',
+)
 
 /**
  * The reason for an absent station, given what the stage record says.
@@ -216,19 +220,20 @@ export function missingStationReason(
   if (id === 'rv' && first) {
     return motionTextOnly
       ? MOTION_TEXT_NOT_COMPARED_DE
-      : `Zu diesem ${first.label} ist kein Gesetzestext als eigenes Dokument veröffentlicht.`
+      : gapDe('notPublished', `Einen Gesetzestext als eigenes Dokument führt das Parlament zu diesem ${first.label} nicht.`)
   }
   // A treaty's Vorlage (15.11.2026): its text is a Vertragstext, published as
   // such — the gap is the comparison's, which reads Gesetzestexte, and the
   // sentence said so of Parliament instead (79/ME, 97/ME XXVI). The page's
   // BGBl section words the same fact the same way (`treatyComparisonGapDe`).
   if (id === 'rv' && rvLinked && treaty) {
-    return treaty === 'vereinbarung-15a'
-      ? 'Einen Textvergleich vom Entwurf bis zur Regierungsvorlage zeigt der Monitor nicht: Die Vorlage ist eine Vereinbarung nach Art. 15a B-VG, und der Vergleich liest Gesetzestexte, keinen Vertragstext.'
-      : 'Einen Textvergleich vom Entwurf bis zur Regierungsvorlage zeigt der Monitor nicht: Die Vorlage ist ein Staatsvertrag, und der Vergleich liest Gesetzestexte, keinen Vertragstext.'
+    return gapDe(
+      'outOfScope',
+      `ein Textvergleich vom Entwurf bis zur Regierungsvorlage. Die Vorlage ist ${treaty === 'vereinbarung-15a' ? 'eine Vereinbarung nach Art. 15a B-VG' : 'ein Staatsvertrag'}, und der Vergleich liest Gesetzestexte, keinen Vertragstext.`,
+    )
   }
   if (id === 'rv' && rvLinked) {
-    return 'Zur Regierungsvorlage ist kein Gesetzestext als eigenes Dokument veröffentlicht, mit dem sich der Entwurf vergleichen ließe.'
+    return gapDe('notPublished', 'Einen Gesetzestext als eigenes Dokument führt das Parlament zur Regierungsvorlage nicht; ohne ihn gibt es keinen Vergleich.')
   }
   // The same two facts for the Kundmachung (22.10.2026): the Vorlage names
   // its Fundstelle, and RIS has no readable text for it yet — the days
@@ -236,7 +241,7 @@ export function missingStationReason(
   // laws. The table's sentence would deny a Kundmachung the Vorlage itself
   // names.
   if (id === 'bgbl' && promulgatedAs) {
-    return `Kundgemacht als ${promulgatedAs} — das RIS bietet dazu noch keinen Text an, mit dem sich der Entwurf vergleichen ließe.`
+    return gapDe('notPublished', `Kundgemacht als ${promulgatedAs}; den Text bietet das RIS noch nicht an.`)
   }
   return MISSING_STATION_REASON[id]
 }

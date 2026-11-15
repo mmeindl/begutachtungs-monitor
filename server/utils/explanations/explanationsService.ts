@@ -29,6 +29,7 @@
  * kind of parser that keeps changing and must not leave a day-old parse on
  * screen after an edit.
  */
+import { gapDe } from '#shared/utils/gaps'
 import type { ExplanationsResponse, TraceLink } from '#shared/types'
 import { hasReadableText, parseExplanations, type ExplanationsDocument, type ExplanationsPart } from './risExplanations'
 import { explanationsByParagraph } from './explanationsJoin'
@@ -166,18 +167,18 @@ async function read(
   if (!formats?.xml) {
     return whole(empty(
       formats
-        ? 'Die Erläuterungen liegen im RIS nur als Bilddatei vor; auslesen lassen sie sich daraus nicht.'
-        : 'Zu diesem Entwurf sind im RIS keine Erläuterungen veröffentlicht.',
+        ? gapDe('unreadable', 'Die Erläuterungen gibt es im RIS nur als Bilddatei; Text lässt sich daraus nicht lesen.')
+        : gapDe('notPublished', 'Erläuterungen zu diesem Entwurf führt das RIS nicht.'),
       formats ? documentLink(formats) : null,
     ))
   }
   const parsed = parseExplanations(await fetchExplanationsXml(formats.xml))
   if (!hasReadableText(parsed)) {
-    return whole(empty('Die Erläuterungen liegen als Scan vor — im RIS-Dokument stehen Bilder statt Text.', documentLink(formats)))
+    return whole(empty(gapDe('unreadable', 'Die Erläuterungen liegen als Scan vor; im RIS-Dokument stehen Bilder statt Text.'), documentLink(formats)))
   }
   if (!parsed.general) {
     return whole(empty(
-      'Die Erläuterungen dieses Entwurfs heben keinen Allgemeinen Teil hervor. Was das Ressort schreibt, steht im Dokument selbst.',
+      gapDe('unreadable', 'Die Erläuterungen dieses Entwurfs heben keinen Allgemeinen Teil hervor. Was das Ressort schreibt, steht im Dokument selbst.'),
       documentLink(formats),
     ))
   }
@@ -208,8 +209,8 @@ const readExplanations = defineCachedFunction(
     if (!row?.risId) {
       return whole(empty(
         row?.status === 'ambiguous'
-          ? 'Mehrere RIS-Datensätze kommen für diesen Entwurf infrage. Die Erläuterungen aus dem falschen zu zeigen wäre schlechter als keine.'
-          : 'Der Entwurf ließ sich keinem RIS-Dokument zuordnen; nur dort lesen wir die Erläuterungen aus.',
+          ? gapDe('unreadable', 'Mehrere RIS-Datensätze kommen für diesen Entwurf infrage. Die Erläuterungen aus dem falschen zu zeigen wäre schlechter als keine.')
+          : gapDe('unreadable', 'Der Entwurf ließ sich keinem RIS-Dokument zuordnen; nur von dort liest der Monitor die Erläuterungen.'),
       ))
     }
     // Whether the passages below stand at a Paragraph is answered by the

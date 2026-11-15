@@ -722,12 +722,12 @@ function submitSearch() {
         <!-- A chosen Land that could not be read, said like the RIS half
              below: its rows are missing, and the list must not read as if
              that Land had nothing open. -->
-        <p v-for="s in unreadableLaender" :key="s.land" class="mt-2 text-sm text-ink-muted">
-          {{ LAND_NAME[s.land] }} ist gerade nicht abrufbar<template v-if="s.listUrl"> –
+        <GapNote v-for="s in unreadableLaender" :key="s.land" kind="unavailable" class="mt-2 text-sm text-ink-muted">
+          {{ LAND_NAME[s.land] }}<template v-if="s.listUrl"> –
             <ExternalLink :href="s.listUrl" class="link-inline font-medium">beim Land nachsehen</ExternalLink></template>.
-        </p>
-        <p v-if="bund && risState === 'failed'" class="mt-2 text-sm text-ink-muted">
-          Die Verordnungsentwürfe aus dem RIS sind gerade nicht abrufbar –
+        </GapNote>
+        <GapNote v-if="bund && risState === 'failed'" kind="unavailable" class="mt-2 text-sm text-ink-muted">
+          die Verordnungsentwürfe aus dem RIS –
           <NuxtLink
             to="/entwuerfe?art=verordnung&status=open"
             class="link-inline font-medium"
@@ -737,7 +737,7 @@ function submitSearch() {
             href="https://www.ris.bka.gv.at/Begut/"
             class="link-inline font-medium"
           >im RIS nachsehen</ExternalLink>.
-        </p>
+        </GapNote>
 
         <!-- Always the box, since the chips moved into its head (22.10.2026):
              a list that vanished when empty would take the control that
@@ -1031,9 +1031,7 @@ function submitSearch() {
             </p>
           </template>
         </EntryList>
-        <p v-for="s in unreadableRecent" :key="s.land" class="mt-2 text-sm text-ink-muted">
-          Das Land {{ LAND_NAME[s.land] }} ist gerade nicht abrufbar – seine Beschlüsse fehlen hier.
-        </p>
+        <GapNote v-for="s in unreadableRecent" :key="s.land" kind="unavailable" :text="`die Beschlüsse des Landes ${LAND_NAME[s.land]}.`" class="mt-2 text-sm text-ink-muted" />
       </section>
 
       <!-- The end of the chain, and the page's last word on purpose:
@@ -1129,23 +1127,17 @@ function submitSearch() {
               Aus der <template v-if="enactedGp">{{ enactedGp }}. </template>Gesetzgebungsperiode
               ist bisher kein Entwurf im Bundesgesetzblatt kundgemacht worden.
             </p>
-            <p v-else class="p-4 text-sm text-ink-muted">
-              Die Kundmachungen sind derzeit nicht abrufbar.
-            </p>
+            <GapNote v-else kind="unavailable" text="die Kundmachungen." class="p-4 text-sm text-ink-muted" />
           </template>
         </EntryList>
         <!-- One half missing while the other has rows: said, so the list does
              not read as if that half had promulgated nothing. -->
         <template v-if="enactedEntries.length">
-          <p v-if="bund && enactedState === 'failed'" class="mt-2 text-sm text-ink-muted">
-            Die Kundmachungen des Bundes sind gerade nicht abrufbar.
-          </p>
+          <GapNote v-if="bund && enactedState === 'failed'" kind="unavailable" text="die Kundmachungen des Bundes." class="mt-2 text-sm text-ink-muted" />
           <p v-for="line in enactedPendingLines" :key="line" class="mt-2 text-sm text-ink-muted">
             {{ line }}
           </p>
-          <p v-for="s in unreadableRecent" :key="s.land" class="mt-2 text-sm text-ink-muted">
-            Das Land {{ LAND_NAME[s.land] }} ist gerade nicht abrufbar – seine Kundmachungen fehlen hier.
-          </p>
+          <GapNote v-for="s in unreadableRecent" :key="s.land" kind="unavailable" :text="`die Kundmachungen des Landes ${LAND_NAME[s.land]}.`" class="mt-2 text-sm text-ink-muted" />
         </template>
       </section>
 

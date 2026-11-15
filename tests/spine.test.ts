@@ -600,7 +600,7 @@ describe('landStations — a Land\'s draft', () => {
     const list = landStations(land())
     expect(names(list)).toEqual(['Entwurf', 'Begutachtung', 'Landesgesetzblatt'])
     expect(list[1]!.facts).toEqual(['Volle Frist: 6 Wochen', '05.01.–16.02.2026'])
-    expect(list[2]).toMatchObject({ state: 'open', facts: ['verfolgt der Monitor hier noch nicht'] })
+    expect(list[2]).toMatchObject({ state: 'open', facts: ['Nicht im Monitor'] })
     expect(list[2]!.source?.href).toBe('https://www.ris.bka.gv.at/Ergebnis.wxe?Abfrage=LgblAuth&Bundesland=Salzburg')
     expect(landStatusDe(land())).toBe('Begutachtung beendet')
   })
@@ -625,7 +625,7 @@ describe('landStations — a Land\'s draft', () => {
   })
 
   it('says an unreadable record is unreadable, not unfollowed', () => {
-    expect(landStations(land({ stage: 'unknown' }))[2]!.facts).toEqual(['Stand gerade nicht abrufbar'])
+    expect(landStations(land({ stage: 'unknown' }))[2]!.facts).toEqual(['Stand: gerade nicht abrufbar'])
   })
 
   it('leaves a lost Frist blank rather than „keine Frist angegeben"', () => {

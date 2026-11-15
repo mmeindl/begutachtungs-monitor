@@ -24,6 +24,7 @@
  * Land's record of drafts sharing the Kundmachung — goes out, and is not
  * held for the day.
  */
+import { gapDe } from '#shared/utils/gaps'
 import type { LandCode, LandDraftDetail, LandLawDiffResponse, LandTextStation } from '#shared/types'
 import { landDraftPath } from '#shared/utils/laender'
 import { DERIVED_CACHE } from '../cache/base'
@@ -49,7 +50,7 @@ export const LAND_TEXT_PAIRS: readonly (readonly [LandTextStation, LandTextStati
   ['entwurf', 'lgbl'],
 ]
 
-const NOTHING_PAIRS = 'Die beiden Texte haben keinen einzigen Teil gemeinsam — der Monitor zeigt hier keinen Vergleich, statt alles als neu zu melden.'
+const NOTHING_PAIRS = gapDe('unreadable', 'Die beiden Texte haben keinen Teil gemeinsam; statt alles als neu zu melden, zeigt der Monitor keinen Vergleich.')
 
 const emptyStats = { total: 0, unchanged: 0, changed: 0, editorial: 0, inserted: 0, removed: 0 }
 
@@ -77,7 +78,7 @@ export async function compareLandTexts(
   const sources = textSources(land, detail, cachedPdfPages)
   const a = sources[from]
   const b = sources[to]
-  if (!a || !b) return whole(unavailable(from, to, 'Das Land hat einen der beiden Texte nicht veröffentlicht.'))
+  if (!a || !b) return whole(unavailable(from, to, gapDe('notPublished', 'Einen der beiden Texte hat das Land nicht veröffentlicht.')))
   const read = await Promise.all([a.read(), b.read()])
   // The document read, where the draft's content chose another than its title (`draftByContent`).
   const docs = { fromDocument: read[0].document ?? a.document, toDocument: read[1].document ?? b.document }
@@ -86,7 +87,7 @@ export async function compareLandTexts(
   const [x, y] = read.map((r) => r.units)
   if (!x?.length || !y?.length) {
     const missing = !x?.length ? docs.fromDocument.label : docs.toDocument.label
-    return whole(unavailable(from, to, `In „${missing}“ fand der Monitor keinen Gesetzestext, den er Paragraph für Paragraph lesen kann.`, docs))
+    return whole(unavailable(from, to, gapDe('unreadable', `In „${missing}“ fand der Monitor keinen Gesetzestext, den er Paragraph für Paragraph lesen kann.`), docs))
   }
   const units = diffLandDraft(x, y)
   const { added, dropped } = packageChanges(x, y)

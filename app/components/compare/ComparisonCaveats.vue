@@ -23,7 +23,7 @@ const shown = computed(() => props.notes.filter((n): n is string => Boolean(n)))
 
 <template>
   <div v-if="shown.length || slots.default" class="space-y-1.5 border-l-2 border-hairline pl-3 text-sm text-ink-secondary">
-    <p v-for="note in shown" :key="note">{{ note }}</p>
+    <GapNote v-for="note in shown" :key="note" :text="note" />
     <slot />
   </div>
 </template>

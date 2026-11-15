@@ -45,11 +45,9 @@ const foldedParagraphs = computed(() => fold.value.folded.filter((i) => i.kind =
     <p v-if="status === 'pending' || status === 'idle'" class="text-sm text-ink-muted">
       Die Erläuterungen werden geladen …
     </p>
-    <p v-else-if="status === 'error' || !data" class="text-sm text-ink-secondary">
-      Die Erläuterungen sind gerade nicht verfügbar.
-    </p>
+    <GapNote v-else-if="status === 'error' || !data" kind="unavailable" text="die Erläuterungen." class="text-sm text-ink-secondary" />
     <template v-else-if="!data.available || !items.length">
-      <p class="text-sm text-ink-secondary">{{ data.unavailableReason ?? 'Einen allgemeinen Teil der Erläuterungen fand der Monitor nicht.' }}</p>
+      <GapNote :text="data.unavailableReason ?? 'Nicht lesbar: Einen allgemeinen Teil der Erläuterungen fand der Monitor nicht.'" class="text-sm text-ink-secondary" />
       <p v-if="data.document" class="mt-3 text-xs text-ink-muted">
         <ExternalLink :href="data.document.url" class="link-quiet">{{ data.document.label }}</ExternalLink>
       </p>

@@ -10,6 +10,7 @@
  * because an unchanged reasoning for a changed text is a statement of its
  * own.
  */
+import { gapDe } from '#shared/utils/gaps'
 import type { ExplanationsMissing, ReasoningDiffResponse, ReasoningGap } from '#shared/types'
 
 /**
@@ -87,9 +88,11 @@ const EXPLANATIONS_OF_DE = { me: 'des Entwurfs', rv: 'der Regierungsvorlage' } a
 
 export function explanationsMissingNote(missing: readonly ExplanationsMissing[] | null | undefined): string | null {
   if (!missing?.length) return null
+  // „Nicht lesbar", not „Nicht veröffentlicht", for both: the record does
+  // not prove that nothing was published (`shared/utils/gaps.ts`).
   const sentence = ({ side, kind }: ExplanationsMissing) =>
     kind === 'pdfOnly'
-      ? `Die Erläuterungen ${EXPLANATIONS_OF_DE[side]} liegen nur als PDF vor und konnten nicht gelesen werden.`
-      : `Erläuterungen ${EXPLANATIONS_OF_DE[side]} konnten nicht gelesen werden: Das Parlament führt sie nicht als eigenes Dokument.`
-  return `${missing.map(sentence).join(' ')} Die Begründungen sind deshalb nicht verglichen.`
+      ? `Die Erläuterungen ${EXPLANATIONS_OF_DE[side]} gibt es nur als PDF.`
+      : `Erläuterungen ${EXPLANATIONS_OF_DE[side]} führt das Parlament nicht als eigenes Dokument.`
+  return gapDe('unreadable', `${missing.map(sentence).join(' ')} Die Begründungen sind deshalb nicht verglichen.`)
 }

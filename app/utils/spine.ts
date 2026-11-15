@@ -41,6 +41,7 @@
  * (the amended laws, the Regierungsvorlage's own Stellungnahmen count), so
  * the values are handed in rather than guessed or fetched here.
  */
+import { GAP_LEAD_DE, gapLabelDe } from '#shared/utils/gaps'
 import type { BgblOutcome, BundesratObjection, DraftDetail, EnactmentInfo, HouseVote, LandCode, LandConsultation, LandLaw, LandProcedureStep, LandTextStation, LawStationId, RisConsultation, VorlageDetail } from '#shared/types'
 import { carriesDraft } from '#shared/utils/antragPath'
 import { isMiterledigt, mergedDe, mergedWithCitation } from '#shared/utils/miterledigung'
@@ -698,7 +699,7 @@ const TREATY_OPEN_DE: Record<'pending' | 'lapsed', Record<NonNullable<EnactmentI
 const TREATY_UNLISTED_DE = 'im RIS bisher nicht verzeichnet'
 /** A treaty's Kundmachung RIS did not answer for in time (`bgblUnread`) —
  *  the page's words for every gap of the moment („gerade nicht abrufbar"). */
-const TREATY_UNREAD_DE = 'Kundmachung gerade nicht abrufbar'
+const TREATY_UNREAD_DE = gapLabelDe('Kundmachung', 'unavailable')
 
 /** The card's headline for an approved treaty without a Kundmachung found. */
 function treatyApprovedStatusDe(e: EnactmentInfo): string {
@@ -1509,9 +1510,9 @@ function searchedRow(
         source: { lead: null, href: ris, label: 'im RIS nachsehen' },
       }
     case 'nicht-abrufbar':
-      return { state: 'open', facts: ['Stand gerade nicht abrufbar'], source: { lead: null, href: ris, label: 'im RIS nachsehen' } }
+      return { state: 'open', facts: [gapLabelDe('Stand', 'unavailable')], source: { lead: null, href: ris, label: 'im RIS nachsehen' } }
     default:
-      return { state: 'open', facts: ['verfolgt der Monitor hier noch nicht'], source: { lead: null, href: ris, label: 'im RIS nachsehen' } }
+      return { state: 'open', facts: [GAP_LEAD_DE.outOfScope], source: { lead: null, href: ris, label: 'im RIS nachsehen' } }
   }
 }
 

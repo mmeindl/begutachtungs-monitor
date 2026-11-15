@@ -117,7 +117,7 @@ describe('credit line and package notes', () => {
 
 describe('what cannot be compared, and why', () => {
   it('says why a motion\'s first text is missing, without „noch keine Regierungsvorlage"', () => {
-    expect(missingStationReason('rv', true, null, BUA)).toBe('Zu diesem Ausschussantrag ist kein Gesetzestext als eigenes Dokument veröffentlicht.')
+    expect(missingStationReason('rv', true, null, BUA)).toBe('Nicht veröffentlicht: Einen Gesetzestext als eigenes Dokument führt das Parlament zu diesem Ausschussantrag nicht.')
     expect(missingStationReason('rv', true, null, GABR13, true)).toBe(MOTION_TEXT_NOT_COMPARED_DE)
     expect(MOTION_TEXT_NOT_COMPARED_DE).toContain('Begründung')
     // A Vorlage's page keeps its sentence.
@@ -129,7 +129,7 @@ describe('what cannot be compared, and why', () => {
   })
 
   it('names the treaty on the draft page, never a „Gesetz"', () => {
-    expect(treatyComparisonGapDe('vereinbarung-15a')).toBe('Einen Textvergleich vom Entwurf bis zur kundgemachten Vereinbarung zeigt der Monitor nicht: Der Vergleich liest Gesetzestexte, keinen Vertragstext.')
+    expect(treatyComparisonGapDe('vereinbarung-15a')).toBe('Nicht im Monitor: ein Textvergleich vom Entwurf bis zur kundgemachten Vereinbarung. Der Vergleich liest Gesetzestexte, keinen Vertragstext.')
     expect(treatyComparisonGapDe('staatsvertrag')).toContain('zum kundgemachten Staatsvertrag')
   })
 

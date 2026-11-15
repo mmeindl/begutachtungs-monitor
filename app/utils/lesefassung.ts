@@ -15,6 +15,7 @@
  * sentences are here too: they are about what WE could not do, and each one
  * names that — never the ministry.
  */
+import { gapDe, type GapKind } from '#shared/utils/gaps'
 import type { AnnexWithheldCause, ConsolidatedNotRun, ConsolidatedParagraph, ConsolidatedTextResponse, ConsolidatedWithheldCause, ParagraphExplanationView, TextComparisonRow } from '#shared/types'
 import { annexUnitId, explanationKey } from '#shared/utils/explanationKey'
 
@@ -162,16 +163,19 @@ export function lesefassungLine(lesefassung: Lesefassung, designation: string | 
   return `Ganzer ${what}danach nicht gezeigt: ${CAUSE_TEXT[lesefassung.cause]}`
 }
 
-const NOT_RUN_TEXT: Record<ConsolidatedNotRun, string> = {
-  zuordnung: 'Den Eintrag im RIS ordnen wir diesem Entwurf nicht sicher zu.',
-  stichtag: 'Das RIS nennt keinen Beginn der Begutachtung, und ohne ihn wissen wir nicht, welche Fassung der Gesetze der Entwurf ändert.',
-  'kein-xml': 'Den Entwurf gibt es im RIS nicht in der maschinenlesbaren Fassung, aus der allein wir seine Änderungsanweisungen lesen.',
-  'keine-novelle': 'So wie wir den Entwurf lesen, ändert er kein bestehendes Gesetz.',
+/** Why the run did not happen, and whose gap that is (`shared/utils/gaps.ts`). */
+const NOT_RUN: Record<ConsolidatedNotRun, { kind: GapKind; text: string }> = {
+  zuordnung: { kind: 'unreadable', text: 'Den Eintrag im RIS ordnet der Monitor diesem Entwurf nicht sicher zu.' },
+  stichtag: { kind: 'notPublished', text: 'Das RIS nennt keinen Beginn der Begutachtung, und ohne ihn ist nicht klar, welche Fassung der Gesetze der Entwurf ändert.' },
+  'kein-xml': { kind: 'unreadable', text: 'Den Entwurf gibt es im RIS nicht in der maschinenlesbaren Fassung, aus der allein der Monitor seine Änderungsanweisungen liest.' },
+  'keine-novelle': { kind: 'outOfScope', text: 'So wie der Monitor den Entwurf liest, ändert er kein bestehendes Gesetz; ganze Paragraphen setzt er nur für Änderungen zusammen.' },
 }
 
 /** Said once, at the foot of the section, where the run did not happen — null where it did. */
 export function lesefassungNotRunText(response: ConsolidatedTextResponse | null): string | null {
-  return response?.notRun ? `Ganze Paragraphen danach zeigen wir hier nicht: ${NOT_RUN_TEXT[response.notRun]}` : null
+  if (!response?.notRun) return null
+  const { kind, text } = NOT_RUN[response.notRun]
+  return gapDe(kind, `die ganzen Paragraphen danach. ${text}`)
 }
 
 /**

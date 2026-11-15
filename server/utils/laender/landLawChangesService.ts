@@ -11,6 +11,7 @@
  * read. The answer, a few kB per §, is held a week; one that rests on a
  * failed read is not held (`onlyComplete`).
  */
+import { gapDe } from '#shared/utils/gaps'
 import type { LandCode, LandLawDiffResponse } from '#shared/types'
 import { DERIVED_CACHE } from '../cache/base'
 import { onlyComplete, type Gathered } from '../cache/gathered'
@@ -61,19 +62,19 @@ async function unitOf(v: LandKonsVersion): Promise<LawUnit | null> {
  */
 export async function compareLandLawChanges(land: LandCode, nr: string, lgblXmlUrl: string | null, url: string | null, promulgated: string | null): Promise<Gathered<LandLawDiffResponse>> {
   const nummer = lgblNummer(nr)
-  if (!nummer || !lgblXmlUrl) return off('Den Text dieses Landesgesetzblatts konnte der Monitor nicht lesen.')
+  if (!nummer || !lgblXmlUrl) return off(gapDe('unreadable', 'der Text dieses Landesgesetzblatts.'))
   const [{ refs, complete: searchComplete }, lgblXml] = await Promise.all([konsRefsOfLgbl(land, nummer), upstreamText(lgblXmlUrl, TEXT_POLICY)])
   const versions = refs.map(konsVersionOf).filter((v): v is LandKonsVersion => v !== null)
   const news = versions.filter((v) => namesAsLast(v.organ, nummer))
   const repeals = versions.filter((v) => repealedBy(v.organ, nummer))
   if (!news.length && !repeals.length) {
-    return { ...off('Eine konsolidierte Fassung, die dieses Landesgesetzblatt nennt, verzeichnet das RIS nicht.'), complete: searchComplete }
+    return { ...off(gapDe('notPublished', 'Eine konsolidierte Fassung, die dieses Landesgesetzblatt nennt, verzeichnet das RIS nicht.')), complete: searchComplete }
   }
 
   // One version per § and law that is this Landesgesetzblatt's; several (a staged Inkrafttreten) is not one wording.
   const byKey = new Map<string, LandKonsVersion[]>()
   for (const v of [...news, ...repeals]) byKey.set(`${v.gesetzesnummer}|${v.key}`, [...(byKey.get(`${v.gesetzesnummer}|${v.key}`) ?? []), v])
-  if (byKey.size > MAX_PARAGRAPHS) return off(`Dieses Landesgesetzblatt ändert mehr als ${MAX_PARAGRAPHS} Paragraphen; den Vergleich zeigt der Monitor dafür nicht.`)
+  if (byKey.size > MAX_PARAGRAPHS) return off(gapDe('outOfScope', `ein Vergleich für ein Landesgesetzblatt, das mehr als ${MAX_PARAGRAPHS} Paragraphen ändert.`))
 
   const laws = [...new Set(versions.map((v) => v.law))]
   const instructions = lgblInstructedParagraphs(lgblUnits(lgblXml))
@@ -135,7 +136,7 @@ export async function compareLandLawChanges(land: LandCode, nr: string, lgblXmlU
   oldUnits.sort(byOrder)
   newUnits.sort(byOrder)
   if (!oldUnits.length && !newUnits.length) {
-    return { value: { ...off('Keinen Paragraphen dieses Landesgesetzblatts konnte der Monitor sicher vergleichen.').value, withheld }, complete }
+    return { value: { ...off(gapDe('unreadable', 'Keinen Paragraphen dieses Landesgesetzblatts konnte der Monitor sicher vergleichen.')).value, withheld }, complete }
   }
   const units = diffLandDraft(oldUnits, newUnits)
   const s = summarizeDiff(units)

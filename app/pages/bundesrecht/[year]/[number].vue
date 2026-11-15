@@ -60,7 +60,7 @@ const citation = computed(() => (view.value ? `${view.value.subject ? `${view.va
       </h1>
       <EmptyState
         class="mt-10"
-        :title="answer === 'unbekannt' ? 'Unter dieser Nummer kennt der Monitor kein Grundsatzgesetz.' : 'Die Übersicht ist gerade nicht gebaut.'"
+        :title="answer === 'unbekannt' ? 'Unter dieser Nummer kennt der Monitor kein Grundsatzgesetz.' : 'Gerade nicht abrufbar: Die Übersicht wird gerade erstellt.'"
         :description="answer === 'unbekannt' ? 'Weder ein Entwurf der Länder im Fenster dieser Gesetzgebungsperiode noch die Suche im Bundesgesetzblatt nennt es.' : 'Sobald der Monitor die Entwürfe der Länder einmal gelesen hat, steht das Gesetz hier mit seinen Entwürfen.'"
       >
         <NuxtLink to="/entwuerfe" class="link-quiet font-medium">Alle Entwürfe</NuxtLink>

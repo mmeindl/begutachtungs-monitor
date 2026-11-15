@@ -242,7 +242,7 @@ const hasList = computed(() => status.value === 'success' && !!data.value?.avail
  */
 const loadAnnouncement = computed(() => {
   if (status.value === 'pending' || status.value === 'idle') return ''
-  if (status.value === 'error' || !data.value) return 'Der Vergleich ist gerade nicht verfügbar.'
+  if (status.value === 'error' || !data.value) return 'Gerade nicht abrufbar: der Vergleich.'
   if (!data.value.available) return data.value.unavailableReason ?? ''
   const changes = data.value.units.filter((u) => badgeOf(u) !== 'unchanged').length
   return changes
@@ -594,10 +594,8 @@ const objectionNote = computed(() => (scope === 'parlament' && props.changedAfte
         Der Gesetzestext {{ fromGenitive }}
         wird mit dem {{ toGenitive }} verglichen …
       </ListSkeleton>
-      <p v-else-if="status === 'error' || !data" class="mt-3 text-sm text-ink-secondary">
-        Der Vergleich ist gerade nicht verfügbar.
-      </p>
-      <p v-else-if="!data.available" class="mt-3 text-sm text-ink-secondary">{{ data.unavailableReason }}</p>
+      <GapNote v-else-if="status === 'error' || !data" kind="unavailable" text="der Vergleich." class="mt-3 text-sm text-ink-secondary" />
+      <GapNote v-else-if="!data.available" :text="data.unavailableReason" class="mt-3 text-sm text-ink-secondary" />
 
       <template v-else>
         <template v-if="hasList">

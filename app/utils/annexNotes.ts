@@ -13,6 +13,7 @@
  * verdict on the ministry — and where the finding may be OUR reading, it says
  * so first.
  */
+import { gapDe } from '#shared/utils/gaps'
 import type { AnnexWithheldCause, TextComparisonResponse } from '#shared/types'
 
 type ReadFrom = TextComparisonResponse['readFrom']
@@ -126,9 +127,9 @@ export function annexWithheldBlame(cause: AnnexWithheldCause | null, readFrom: R
  */
 export function annexDroppedPagesNote(n: number): string | null {
   if (n === 0) return null
-  return n === 1
-    ? 'Eine Seite des PDF war anders gesetzt als die übrigen und wurde nicht gelesen; was auf ihr steht, fehlt hier.'
-    : `${n} Seiten des PDF waren anders gesetzt als die übrigen und wurden nicht gelesen; was auf ihnen steht, fehlt hier.`
+  return gapDe('unreadable', n === 1
+    ? 'Eine Seite des PDF ist anders gesetzt als die übrigen; was auf ihr steht, fehlt hier.'
+    : `${n} Seiten des PDF sind anders gesetzt als die übrigen; was auf ihnen steht, fehlt hier.`)
 }
 
 /**

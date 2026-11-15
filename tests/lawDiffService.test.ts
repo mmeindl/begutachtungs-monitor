@@ -162,7 +162,7 @@ describe('the Kundmachung does not arrive', () => {
     getBgblDocument.mockResolvedValue(null)
     const diff = await getLawDiff('XXVIII', 1, 'rv', 'bgbl')
     expect(diff.unavailableReason).not.toBe(NOT_PROMULGATED)
-    expect(diff.unavailableReason).toMatch(/^Kundgemacht als BGBl\. I Nr\. 5\/2026/)
+    expect(diff.unavailableReason).toMatch(/^Nicht veröffentlicht: Kundgemacht als BGBl\. I Nr\. 5\/2026/)
     expect(stored()).toEqual(['law-diff:XXVIII-1-rv-bgbl'])
   })
 

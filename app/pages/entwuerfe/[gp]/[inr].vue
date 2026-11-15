@@ -606,7 +606,7 @@ const ministryLinks = computed(() => {
                       :href="data.risDraft.risUrl"
                       class="link-inline"
                     >Derselbe Entwurf im RIS</ExternalLink>
-                    <template v-else>Im RIS ist dieser Entwurf nicht veröffentlicht.</template>
+                    <GapNote v-else as="span" kind="notPublished" text="Diesen Entwurf führt das RIS nicht." />
                   </p>
                 </div>
               </FoldSection>

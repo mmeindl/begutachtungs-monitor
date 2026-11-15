@@ -9,6 +9,7 @@
  * as prominent as the rest — a Vorlage that reports its Begutachtung is an
  * ordinary, ink station.
  */
+import { gapLabelDe } from '#shared/utils/gaps'
 import type { BgblLawsResponse, LandCode, LandLaw } from '#shared/types'
 import { fassungFacts, type FassungFact } from './geltendeFassung'
 
@@ -49,7 +50,7 @@ export function landLawBegutachtungFacts(law: Pick<LandLaw, 'land' | 'route' | '
       switch (b.reason) {
         case 'unsupported':
         case 'register-reach':
-          if (law.registerCovers === null) return unknown('das Register des Landes ist gerade nicht lesbar')
+          if (law.registerCovers === null) return unknown(gapLabelDe('Register des Landes', 'unavailable'))
           return law.registerCovers ? unknown('kein Entwurf im Register des Landes zugeordnet') : beyondReach()
         case 'budget':
           return unknown('Landeshaushaltsgesetz')
@@ -62,7 +63,7 @@ export function landLawBegutachtungFacts(law: Pick<LandLaw, 'land' | 'route' | '
         case 'pending':
           return unknown('die Unterlagen des Landtags werden gerade gelesen')
         case 'unread':
-          return unknown('die Unterlagen des Landtags sind gerade nicht lesbar')
+          return unknown(gapLabelDe('Unterlagen des Landtags', 'unavailable'))
         case 'no-route':
           return unknown('das RIS nennt weder Regierungsvorlage noch Initiativantrag')
       }

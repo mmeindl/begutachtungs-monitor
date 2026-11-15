@@ -62,10 +62,10 @@ describe('annexDroppedPagesNote', () => {
 
   it('agrees in number', () => {
     expect(annexDroppedPagesNote(1)).toBe(
-      'Eine Seite des PDF war anders gesetzt als die übrigen und wurde nicht gelesen; was auf ihr steht, fehlt hier.',
+      'Nicht lesbar: Eine Seite des PDF ist anders gesetzt als die übrigen; was auf ihr steht, fehlt hier.',
     )
     expect(annexDroppedPagesNote(3)).toBe(
-      '3 Seiten des PDF waren anders gesetzt als die übrigen und wurden nicht gelesen; was auf ihnen steht, fehlt hier.',
+      'Nicht lesbar: 3 Seiten des PDF sind anders gesetzt als die übrigen; was auf ihnen steht, fehlt hier.',
     )
   })
 })

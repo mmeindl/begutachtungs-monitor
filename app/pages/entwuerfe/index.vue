@@ -1351,16 +1351,18 @@ const statementsSortNote = computed(() => {
              decide which rows exist at all, the filters below narrow
              them — and the chips stand in the same place on both pages. -->
         <SourceChips :unavailable="sourceUnavailable" />
-        <p v-if="lawsUnreadable" class="text-sm text-ink-muted">
-          Die Gesetze des Bundes ohne Entwurf sind gerade nicht abrufbar.
-        </p>
-        <p v-for="s in unreadableLandLaws" :key="`gesetze-${s.land}`" class="text-sm text-ink-muted">
-          Die Gesetze {{ s.land === 'w' ? 'Wiens' : `des Landes ${LAND_NAME[s.land]}` }} ohne zugeordneten Entwurf sind gerade nicht abrufbar.
-        </p>
-        <p v-for="s in unreadableLaender" :key="s.land" class="text-sm text-ink-muted">
-          {{ LAND_NAME[s.land] }} ist gerade nicht abrufbar<template v-if="s.listUrl"> –
+        <GapNote v-if="lawsUnreadable" kind="unavailable" text="die Gesetze des Bundes ohne Entwurf." class="text-sm text-ink-muted" />
+        <GapNote
+          v-for="s in unreadableLandLaws"
+          :key="`gesetze-${s.land}`"
+          kind="unavailable"
+          :text="'die Gesetze ' + (s.land === 'w' ? 'Wiens' : 'des Landes ' + LAND_NAME[s.land]) + ' ohne zugeordneten Entwurf.'"
+          class="text-sm text-ink-muted"
+        />
+        <GapNote v-for="s in unreadableLaender" :key="s.land" kind="unavailable" class="text-sm text-ink-muted">
+          {{ LAND_NAME[s.land] }}<template v-if="s.listUrl"> –
             <ExternalLink :href="s.listUrl" class="link-inline font-medium">beim Land nachsehen</ExternalLink></template>.
-        </p>
+        </GapNote>
         <div class="flex flex-wrap items-center gap-2">
           <!-- „Was kann ich tun", reduced to its one value that matters:
                the question people arrive with, and the filter
@@ -1480,9 +1482,12 @@ const statementsSortNote = computed(() => {
             </div>
           </div>
         </div>
-        <p v-if="unreadStageCount" class="text-sm text-ink-muted">
-          Bei {{ formatNumberDe(unreadStageCount) }} Länder-{{ unreadStageCount === 1 ? 'Entwurf' : 'Entwürfen' }} war der weitere Weg gerade nicht abrufbar; nach Station sind sie hier nicht eingeordnet.
-        </p>
+        <GapNote
+          v-if="unreadStageCount"
+          kind="unavailable"
+          :text="`der weitere Weg bei ${formatNumberDe(unreadStageCount)} Länder-${unreadStageCount === 1 ? 'Entwurf' : 'Entwürfen'}; nach Station sind sie hier nicht eingeordnet.`"
+          class="text-sm text-ink-muted"
+        />
         <!-- What the closed panel holds, each removable in one press —
              on a phone; from `md` up the selects state it themselves,
              and only the status chip of an old link stands here. -->
@@ -1577,24 +1582,23 @@ const statementsSortNote = computed(() => {
         <!-- Like the sort caveat below it: a statement about what the list is
                NOT doing stands above the rows — read afterwards it is
                worthless. -->
-        <p v-if="stationsUnavailable" class="text-sm text-ink-muted">
-          <template v-if="stations.length">Wo die Entwürfe stehen, ist gerade
-            nicht abrufbar; die Liste ist <span class="font-medium text-ink">nicht</span>
-            nach Station gefiltert.</template><template v-else>Wo die Entwürfe
-            stehen, ist gerade nicht abrufbar.</template><template v-if="statusFilter === 'closed'">
+        <GapNote v-if="stationsUnavailable" kind="unavailable" class="text-sm text-ink-muted">
+          <template v-if="stations.length">wo die Entwürfe stehen; die Liste ist <span class="font-medium text-ink">nicht</span>
+            nach Station gefiltert.</template><template v-else>wo die Entwürfe
+            stehen.</template><template v-if="statusFilter === 'closed'">
             „Nicht möglich“ heißt hier nur: Frist abgelaufen – zu einzelnen
             Regierungsvorlagen ist im Nationalrat noch eine Stellungnahme möglich.</template>
-        </p>
+        </GapNote>
         <!-- The EU map's gap, in the stations' register and place: the list
              stands unfiltered and says so (`euUnavailable`). -->
-        <p v-if="euUnavailable" class="text-sm text-ink-muted">
-          Welche Entwürfe<template v-if="euUnavailable === 'bund'"> des Bundes</template><template
+        <GapNote v-if="euUnavailable" kind="unavailable" class="text-sm text-ink-muted">
+          welche Entwürfe<template v-if="euUnavailable === 'bund'"> des Bundes</template><template
             v-else-if="euUnavailable === 'laender'"
-          > der Länder</template> EU-Recht umsetzen, ist gerade nicht abrufbar;
+          > der Länder</template> EU-Recht umsetzen;
           <template v-if="euUnavailable === 'alle'">die Liste ist <span class="font-medium text-ink">nicht</span> danach gefiltert.</template><template
             v-else
           >sie stehen <span class="font-medium text-ink">ungefiltert</span> in der Liste.</template>
-        </p>
+        </GapNote>
         <!-- The gap is named rather than passed off as a finding: without this
                sentence a list without stations would read as if nothing had ever
                become of any of these drafts. -->
@@ -1665,7 +1669,7 @@ const statementsSortNote = computed(() => {
           v-else
           role="alert"
           title="Daten konnten nicht geladen werden"
-          description="Die Quelle hat gerade nicht geantwortet."
+          description="Gerade nicht abrufbar: Die Quelle hat nicht geantwortet."
         >
           <template #action>
             <UButton color="primary" @click="retry()">Erneut versuchen</UButton>
@@ -1754,10 +1758,7 @@ const statementsSortNote = computed(() => {
       <LoadingState v-if="fullTextPending" label="Im Volltext wird gesucht …" />
       <!-- AN ERROR IS NOT AN ANSWER: „kommt
            nicht vor" would be this product's most expensive lie. -->
-      <p v-else-if="fullTextError" class="mt-3 text-sm text-ink-secondary">
-        Im Volltext konnte gerade nicht gesucht werden – das RIS hat nicht
-        geantwortet. Die Liste oben ist davon nicht betroffen.
-      </p>
+      <GapNote v-else-if="fullTextError" kind="unavailable" text="die Volltextsuche im RIS. Die Liste oben ist davon nicht betroffen." class="mt-3 text-sm text-ink-secondary" />
       <template v-else-if="fullText">
         <EntryList v-if="fullTextExtraEntries.length" :entries="fullTextExtraEntries" :query="qDebounced" class="mt-3">
           <template #evidence="{ entry }">

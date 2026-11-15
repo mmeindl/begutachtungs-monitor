@@ -3,6 +3,7 @@
  * Landesgesetzblatt's XML into the same — the one pair of readers every
  * comparison of a Land's draft goes through (`landLawDiffService`).
  */
+import { gapDe } from '#shared/utils/gaps'
 import type { LandDocument, LandTextDocument } from '#shared/types'
 import { safeExternalUrl } from '#shared/utils/safeExternalUrl'
 import type { LawUnit } from '../../lawtext/lawUnits'
@@ -28,7 +29,7 @@ export interface ReadText {
 }
 
 /** What the page says where a comparison or the Erläuterungen would read a draft that is none (`notADraft`). */
-export const NOT_A_DRAFT = 'Das Land hat als Entwurf ein anderes Dokument veröffentlicht; der Monitor liest es nicht als Entwurf.'
+export const NOT_A_DRAFT = gapDe('notPublished', 'Als Entwurf hat das Land ein anderes Dokument veröffentlicht; der Monitor liest es nicht als Entwurf.')
 
 /** A letter's marks: what a Stellungnahme or a cover letter carries, and no law text does. */
 const LETTER_RE = /Stellungnahme|Sehr geehrte|Mit freundlichen Grüßen|Hochachtungsvoll/

@@ -62,6 +62,6 @@ describe('compareLandTexts — what the Land filed as the draft and is none (26.
     })
     const ofDraft = { ...detail, comparisons: [['entwurf', 'lgbl']] } as unknown as LandDraftDetail
     const got = await compareLandTexts('sbg', ofDraft, 'entwurf', 'lgbl')
-    expect(got.value).toMatchObject({ available: false, unavailableReason: 'Das Land hat als Entwurf ein anderes Dokument veröffentlicht; der Monitor liest es nicht als Entwurf.' })
+    expect(got.value).toMatchObject({ available: false, unavailableReason: 'Nicht veröffentlicht: Als Entwurf hat das Land ein anderes Dokument veröffentlicht; der Monitor liest es nicht als Entwurf.' })
   })
 })

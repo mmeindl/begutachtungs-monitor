@@ -198,9 +198,7 @@ useSeoMeta({
                     <span v-if="fassung.laws.length">Verlinkt in der heute geltenden Fassung</span>
                   </SectionCredits>
                 </div>
-                <p v-else-if="fassungError" class="text-sm text-ink-secondary">
-                  Welche Gesetze es ändert, ist gerade nicht aus dem Rechtsinformationssystem abrufbar.
-                </p>
+                <GapNote v-else-if="fassungError" kind="unavailable" text="welche Gesetze es ändert. Das Rechtsinformationssystem hat nicht geantwortet." class="text-sm text-ink-secondary" />
                 <div v-else class="h-12 animate-pulse rounded-xl bg-hairline motion-reduce:animate-none" aria-hidden="true" />
               </PageSubsection>
               <!-- What the law changed, § by §: the wording before it against
@@ -222,9 +220,7 @@ useSeoMeta({
                   </div>
                 </div>
               </FoldSection>
-              <p v-else-if="!detail.text" class="text-sm text-ink-secondary">
-                Den Text dieses Gesetzes konnte der Monitor gerade nicht aus dem Rechtsinformationssystem lesen; er steht dort unter dem Link oben.
-              </p>
+              <GapNote v-else-if="!detail.text" kind="unavailable" text="der Text dieses Gesetzes; er steht im Rechtsinformationssystem unter dem Link oben." class="text-sm text-ink-secondary" />
               <SectionCredits v-if="detail.text?.length" :sources="[risSource('Gesetzestext')]" :marked="false" />
             </div>
           </section>

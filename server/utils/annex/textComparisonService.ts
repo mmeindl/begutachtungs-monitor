@@ -34,6 +34,7 @@
  * and the section says it is unavailable right now.
  */
 
+import { gapDe } from '#shared/utils/gaps'
 import type { TextComparisonResponse, TraceLink } from '#shared/types'
 import { annexDocumentsOf, annexSourceFor, annexSourceForDraft, NO_ANNEX, offersAnnex, parliamentAnnex, READ_PARLIAMENT_COPY } from './annexSource'
 import { checkAnnexRows } from './gateRows'
@@ -157,10 +158,10 @@ export const getTextComparison = defineCachedFunction(
         // is read. Until 25.10.2026 it said „ungeprüft zeigen wir sie nicht",
         // which stopped being true when unchecked rows began to be shown under
         // a „nicht geprüft" pill (92/ME XXVIII shows all 31 of its rows so).
-        'Die Textgegenüberstellung liegt beim Parlament vor. Diesem Entwurf ließ sich im RIS kein Datensatz eindeutig zuordnen, und ohne ihn lesen wir sie nicht aus – darum ist hier das Dokument des Parlaments verlinkt.',
+        gapDe('unreadable', 'Die Textgegenüberstellung liegt beim Parlament vor. Diesem Entwurf ließ sich im RIS kein Datensatz eindeutig zuordnen, und ohne ihn liest der Monitor sie nicht aus – darum ist hier das Dokument des Parlaments verlinkt.'),
         row?.status === 'ambiguous'
-          ? 'Mehrere RIS-Datensätze kommen für diesen Entwurf infrage. Die Gegenüberstellung aus dem falschen zu zeigen wäre schlechter als keine.'
-          : 'Der Entwurf ließ sich keinem RIS-Dokument zuordnen; nur dort lesen wir die Textgegenüberstellung aus.',
+          ? gapDe('unreadable', 'Mehrere RIS-Datensätze kommen für diesen Entwurf infrage. Die Gegenüberstellung aus dem falschen zu zeigen wäre schlechter als keine.')
+          : gapDe('unreadable', 'Der Entwurf ließ sich keinem RIS-Dokument zuordnen; nur von dort liest der Monitor die Textgegenüberstellung.'),
       )
     }
     const annex = row.textComparison
@@ -178,7 +179,7 @@ export const getTextComparison = defineCachedFunction(
     // RIS record stays beside it for the reader who wants to judge the join.
     if (row.status !== 'matched') {
       const doubt =
-        'Die Zuordnung dieses Entwurfs zum RIS-Datensatz stützt sich nur auf Fristen und Ressort, nicht auf den Titel. ' +
+        'Nicht lesbar: Die Zuordnung dieses Entwurfs zum RIS-Datensatz stützt sich nur auf Fristen und Ressort, nicht auf den Titel. ' +
         'Eine Gegenüberstellung, die zu einem anderen Entwurf gehören kann, wird deshalb nicht angezeigt.'
       const record: TraceLink | null = row.risUrl
         ? { label: `RIS-Datensatz, der infrage kommt${row.risKurztitel ? `: ${row.risKurztitel}` : ''}`, url: row.risUrl }
@@ -220,9 +221,9 @@ export const getTextComparison = defineCachedFunction(
             // tried, and „ließ sich nicht auslesen" would then be a claim
             // about the document that we never tested.
             ? (READ_PARLIAMENT_COPY
-                ? 'Die Textgegenüberstellung liegt beim Parlament vor, im RIS aber nicht — auslesen ließ sie sich nicht.'
-                : 'Die Textgegenüberstellung liegt beim Parlament vor, im RIS aber nicht. Aus dem Dokument des Parlaments lesen wir sie nicht aus: Das Parlament nimmt die Daten des Begutachtungsverfahrens von der Weiterverwendung aus, und solange das ungeklärt ist, verlinken wir sie, statt sie abzudrucken.')
-            : 'Die Textgegenüberstellung liegt beim Parlament vor, im RIS aber nicht. Dort gibt es sie nur als PDF, und aus dem PDF des Parlaments lesen wir sie nicht aus.',
+                ? gapDe('unreadable', 'Die Textgegenüberstellung liegt beim Parlament vor, im RIS aber nicht; auslesen ließ sie sich nicht.')
+                : gapDe('outOfScope', 'Die Textgegenüberstellung liegt beim Parlament vor, im RIS aber nicht. Aus dem Dokument des Parlaments lesen wir sie nicht aus: Das Parlament nimmt die Daten des Begutachtungsverfahrens von der Weiterverwendung aus, und solange das ungeklärt ist, verlinken wir sie, statt sie abzudrucken.'))
+            : gapDe('unreadable', 'Die Textgegenüberstellung liegt beim Parlament vor, im RIS aber nicht, und dort nur als PDF; ein PDF des Parlaments liest der Monitor nicht aus.'),
           null,
           atParliament,
         )

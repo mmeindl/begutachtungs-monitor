@@ -28,6 +28,7 @@
  * own, not continued Erläuterungen; for those this service returns nothing
  * rather than comparing something similar.
  */
+import { gapDe } from '#shared/utils/gaps'
 import type { ExplanationsMissing, LawStationId, ReasoningDiffResponse, TraceLink } from '#shared/types'
 import { parseExplanationsHtml, type HtmlExplanations } from './explanationsHtml'
 import { getLawDiff } from '../diff/lawDiffService'
@@ -98,8 +99,8 @@ const compareMeToRv = defineCachedFunction(
           gp,
           inr,
           meDoc
-            ? 'Die Regierungsvorlage veröffentlicht ihre Erläuterungen nicht als HTML; verglichen haben wir sie deshalb nicht.'
-            : 'Der Entwurf veröffentlicht seine Erläuterungen nicht als HTML; verglichen haben wir sie deshalb nicht.',
+            ? gapDe('unreadable', 'Die Erläuterungen der Regierungsvorlage gibt es nicht als HTML; verglichen sind sie deshalb nicht.')
+            : gapDe('unreadable', 'Die Erläuterungen des Entwurfs gibt es nicht als HTML; verglichen sind sie deshalb nicht.'),
           [meDoc, rvDoc].filter((d): d is TraceLink => d !== null),
         ),
         explanationsMissing,
@@ -114,7 +115,7 @@ const compareMeToRv = defineCachedFunction(
     // still the passage of three instructions.
     const addressed = (doc: HtmlExplanations) => doc.special.some((p) => p.paragraphs.length > 0 || p.ziffern.length > 0)
     if (!addressed(meParsed) && !addressed(rvParsed)) {
-      return empty(gp, inr, 'Die Erläuterungen dieses Entwurfs sind weder nach Ziffern noch nach Paragraphen gegliedert; ein Vergleich an der Änderung ginge daneben.', sources)
+      return empty(gp, inr, gapDe('unreadable', 'Die Erläuterungen dieses Entwurfs sind weder nach Ziffern noch nach Paragraphen gegliedert; ein Vergleich an der Änderung ginge daneben.'), sources)
     }
 
     const diff = await getLawDiff(gp, inr, 'me', 'rv')

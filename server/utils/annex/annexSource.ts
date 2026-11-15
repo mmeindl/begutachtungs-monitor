@@ -28,6 +28,7 @@
  * therefore travels with the source (`publisher`), and the page derives the
  * claim from it (`#shared/utils/provenance`).
  */
+import { gapDe } from '#shared/utils/gaps'
 import type { Publisher, TraceLink } from '#shared/types'
 import type { DraftArticle } from '../lawtext/draftArticles'
 import { mapDocuments } from '../parliament/detailJson'
@@ -182,7 +183,7 @@ async function readRis(parts: readonly RisDocumentUrls[], articles: readonly Dra
   if (!rasterised) {
     const rest = await Promise.all(parts.slice(1).map((p) => (p.xml ? fetchDocument(p.xml) : null)))
     const parsed = parseTextComparison([xml!, ...rest.filter((x): x is string => x !== null && !isScanned(x))], articles)
-    if (parsed.rows.length === 0) return parsed.unreadable ?? 'Die Textgegenüberstellung ließ sich nicht auslesen.'
+    if (parsed.rows.length === 0) return parsed.unreadable ?? gapDe('unreadable', 'Die Textgegenüberstellung ließ sich nicht auslesen.')
     return {
       parsed,
       // The XML table is the ressort's own structure; the PDF below is the
@@ -195,12 +196,12 @@ async function readRis(parts: readonly RisDocumentUrls[], articles: readonly Dra
     }
   }
   const pdfs = parts.map((p) => p.pdf).filter((u): u is string => u !== null)
-  if (pdfs.length === 0) return 'Die Textgegenüberstellung liegt nur als Scan vor, ohne auslesbaren Text.'
+  if (pdfs.length === 0) return gapDe('unreadable', 'Die Textgegenüberstellung liegt nur als Scan vor, ohne auslesbaren Text.')
   // The PDF parse is held under its own name because it answers one thing the
   // table parse cannot: how many pages it refused.
   const fromPdf = await annexFromPdf(pdfs, articles)
-  if (fromPdf === null) return 'Die Textgegenüberstellung ließ sich auch aus dem PDF nicht auslesen.'
-  if (fromPdf.rows.length === 0) return fromPdf.unreadable ?? 'Die Textgegenüberstellung ließ sich nicht auslesen.'
+  if (fromPdf === null) return gapDe('unreadable', 'Die Textgegenüberstellung ließ sich auch aus dem PDF nicht auslesen.')
+  if (fromPdf.rows.length === 0) return fromPdf.unreadable ?? gapDe('unreadable', 'Die Textgegenüberstellung ließ sich nicht auslesen.')
   return {
     parsed: fromPdf,
     // „, aus dem PDF gelesen" went on 30.09.2026; the credit line says

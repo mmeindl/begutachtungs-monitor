@@ -178,14 +178,14 @@ describe('missingStationReason', () => {
   it('names the missing text, not a missing Vorlage, where one is linked', () => {
     const reason = missingStationReason('rv', true)
     expect(reason).not.toMatch(/keine Regierungsvorlage/)
-    expect(reason).toMatch(/Zur Regierungsvorlage ist kein Gesetzestext/)
+    expect(reason).toMatch(/^Nicht veröffentlicht: Einen Gesetzestext als eigenes Dokument führt das Parlament zur Regierungsvorlage nicht/)
   })
 
   // 79/ME XXVI → 331 d.B., an Art.-15a-Vereinbarung (15.11.2026): its text is
   // a „Vertragstext", published as such. The gap is the comparison's.
   it('says a treaty\'s Vorlage is not compared by the monitor, instead of blaming Parliament', () => {
     const agreement = missingStationReason('rv', true, null, null, false, 'vereinbarung-15a')
-    expect(agreement).toMatch(/^Einen Textvergleich vom Entwurf bis zur Regierungsvorlage zeigt der Monitor nicht: Die Vorlage ist eine Vereinbarung nach Art\. 15a B-VG/)
+    expect(agreement).toMatch(/^Nicht im Monitor: ein Textvergleich vom Entwurf bis zur Regierungsvorlage\. Die Vorlage ist eine Vereinbarung nach Art\. 15a B-VG/)
     expect(agreement).not.toMatch(/veröffentlicht/)
     expect(missingStationReason('rv', true, null, null, false, 'staatsvertrag')).toMatch(/Die Vorlage ist ein Staatsvertrag/)
     // Without a linked Vorlage the treaty flag cannot apply.
@@ -201,7 +201,7 @@ describe('missingStationReason', () => {
   it('names the Kundmachung the Vorlage names, where RIS has no text for it yet', () => {
     const reason = missingStationReason('bgbl', true, 'BGBl. I Nr. 5/2026')
     expect(reason).not.toMatch(/nicht als Gesetz kundgemacht/)
-    expect(reason).toMatch(/^Kundgemacht als BGBl\. I Nr\. 5\/2026/)
+    expect(reason).toMatch(/^Nicht veröffentlicht: Kundgemacht als BGBl\. I Nr\. 5\/2026/)
   })
 })
 

@@ -10,6 +10,7 @@
  *
  * Pure module: no Nuxt auto-imports.
  */
+import { gapDe } from '#shared/utils/gaps'
 import type { BundesratMotionVariant, FilingClosedReason, ProcedureItemKind, RelatedItem, TreatyKind, VorlageDetail } from '#shared/types'
 import { beilageCitationDe, buaCitationDe, rvCitationDe } from '#shared/utils/citations'
 import { carriesDraft, draftOfAntrag } from '#shared/utils/antragPath'
@@ -154,7 +155,7 @@ export const NO_COMPARISON_DE: Partial<Record<ProcedureItemKind, string>> = {
   // A treaty: the Nationalrat approves the text, it does not change it
   // (Art. 50 B-VG), and the Vertragstext is no Gesetzestext the comparison
   // reads — in BGBl. III or, for an Art.-15a-Vereinbarung, in BGBl. I.
-  staatsvertrag: 'Einen Textvergleich bis zur Kundmachung zeigt der Monitor für Staatsverträge und Vereinbarungen nach Art. 15a B-VG nicht; die Texte stehen unter „Dokumente“ und auf parlament.gv.at.',
+  staatsvertrag: gapDe('outOfScope', 'ein Textvergleich bis zur Kundmachung, für Staatsverträge und Vereinbarungen nach Art. 15a B-VG. Die Texte stehen unter „Dokumente“ und auf parlament.gv.at.'),
 }
 
 /**
@@ -164,11 +165,11 @@ export const NO_COMPARISON_DE: Partial<Record<ProcedureItemKind, string>> = {
  * law and compared what it could not read — 79/ME XXVI against BGBl. I Nr.
  * 103/2018 showed both Ziffern of the draft as „entfallen", because the
  * Kundmachung is the Vereinbarung's text, not Novellierungsanordnungen.
- * Worded to take a lead word later („Nicht im Monitor: …").
+ * Our scope, for every treaty (`shared/utils/gaps.ts`).
  */
 export function treatyComparisonGapDe(treaty: TreatyKind): string {
   const end = treaty === 'vereinbarung-15a' ? 'zur kundgemachten Vereinbarung' : 'zum kundgemachten Staatsvertrag'
-  return `Einen Textvergleich vom Entwurf bis ${end} zeigt der Monitor nicht: Der Vergleich liest Gesetzestexte, keinen Vertragstext.`
+  return gapDe('outOfScope', `ein Textvergleich vom Entwurf bis ${end}. Der Vergleich liest Gesetzestexte, keinen Vertragstext.`)
 }
 
 /**

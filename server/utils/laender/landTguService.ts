@@ -27,6 +27,7 @@
  * read — RIS, or the draft's own text for the deletion guard — is named as
  * unchecked, and the answer is served but not stored (`gathered.ts`).
  */
+import { gapDe } from '#shared/utils/gaps'
 import type { LandCode, LandDocument, LandDraftDetail, LandLawDiffResponse, LandTextDocument, LandWithheldReason, LawDiffUnit } from '#shared/types'
 import type { LandDraftRecord } from './texts/stations'
 import { safeExternalUrl } from '#shared/utils/safeExternalUrl'
@@ -469,7 +470,7 @@ const readKaernten = readOwn({ publisher: 'Land Kärnten', load: pagesOf, parse:
 // Tirol marks its changes by colour and rule, as Oberösterreich does: its pages need their drawing, not only their text (`tirolTguPages`).
 const readTirol = readOwn({ publisher: 'Land Tirol', load: tirolTguPages, parse: tirolTguReading, dated: tirolDated, guardDeletes: false })
 
-const NO_TGU = 'Das Land hat zu diesem Entwurf keine Textgegenüberstellung veröffentlicht.'
+const NO_TGU = gapDe('notPublished', 'Eine Textgegenüberstellung zu diesem Entwurf hat das Land nicht veröffentlicht.')
 
 /** Where §§ were read and none can be shown. The page names every one under it, with why (`LandWithheldNotes`). */
 const NONE_SHOWN = 'Aus dieser Textgegenüberstellung zeigt der Monitor keinen Paragraphen. Welche Paragraphen die Novelle ändert und warum sie hier fehlen, steht darunter; die Textgegenüberstellung selbst steht unter den Dokumenten.'
@@ -494,7 +495,7 @@ const whole = (value: LandLawDiffResponse): Gathered<LandLawDiffResponse> => ({ 
  */
 export async function compareTgu(land: LandCode, detail: LandDraftDetail, draftPagesOf?: PagesReader, bytesOf: BytesReader = landPdfBytes): Promise<Gathered<LandLawDiffResponse>> {
   const read = READ_TGU[land]
-  if (!read) return whole(unavailable('Die Textgegenüberstellungen dieses Landes liest der Monitor noch nicht.'))
+  if (!read) return whole(unavailable(gapDe('outOfScope', 'Textgegenüberstellungen in der Form dieses Landes. Die des Entwurfs steht unter den Dokumenten.')))
   const got = await read(detail, draftPagesOf, bytesOf)
   if (typeof got === 'string') return whole(unavailable(got))
   const { paragraphs, fromDocument, date } = got
@@ -507,7 +508,7 @@ export async function compareTgu(land: LandCode, detail: LandDraftDetail, draftP
     ...(got.enacted?.length ? { enacted: got.enacted } : {}),
   }
   if (!paragraphs.length) {
-    return whole(unavailable('In der Textgegenüberstellung fand der Monitor keine Paragraphen, die er lesen kann.', { fromDocument, ...beside }))
+    return whole(unavailable(gapDe('unreadable', 'In der Textgegenüberstellung fand der Monitor keine Paragraphen, die er lesen kann.'), { fromDocument, ...beside }))
   }
   // Every § changed in a way the reader does not compose: named, each with
   // why — Kärnten 15193/2025 said „keine Paragraphen, die er lesen kann" and

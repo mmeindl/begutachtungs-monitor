@@ -143,7 +143,7 @@ describe('compareTgu — nothing shown, everything named (25.10.2026)', () => {
   it('says only that it found nothing, where it read no § at all', async () => {
     ktnTguParagraphs.mockReturnValue([])
     const r = (await compareTgu('ktn', detail())).value
-    expect(r).toMatchObject({ available: false, unavailableReason: 'In der Textgegenüberstellung fand der Monitor keine Paragraphen, die er lesen kann.', withheld: [] })
+    expect(r).toMatchObject({ available: false, unavailableReason: 'Nicht lesbar: In der Textgegenüberstellung fand der Monitor keine Paragraphen, die er lesen kann.', withheld: [] })
   })
 })
 

@@ -101,7 +101,7 @@ const loading = computed(() => status.value !== 'error' && !data.value)
  */
 const loadAnnouncement = computed(() => {
   if (loading.value) return ''
-  if (status.value === 'error' || !data.value) return 'Die Erläuterungen sind gerade nicht verfügbar.'
+  if (status.value === 'error' || !data.value) return 'Gerade nicht abrufbar: die Erläuterungen.'
   if (!data.value.available) return data.value.unavailableReason ?? ''
   return 'Erläuterungen geladen.'
 })
@@ -115,12 +115,10 @@ const loadAnnouncement = computed(() => {
       Die Erläuterungen werden geladen …
     </p>
 
-    <p v-else-if="status === 'error' || !data" class="text-sm text-ink-secondary">
-      Die Erläuterungen sind gerade nicht verfügbar.
-    </p>
+    <GapNote v-else-if="status === 'error' || !data" kind="unavailable" text="die Erläuterungen." class="text-sm text-ink-secondary" />
 
     <template v-else-if="!data.available">
-      <p class="text-sm text-ink-secondary">{{ data.unavailableReason }}</p>
+      <GapNote :text="data.unavailableReason" class="text-sm text-ink-secondary" />
       <!-- What we cannot read, a human can: the document is linked even
            when nothing stands here. -->
       <p v-if="data.document" class="mt-3 text-xs text-ink-muted">

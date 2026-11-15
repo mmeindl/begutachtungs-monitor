@@ -34,6 +34,7 @@
 
 import type { LawDiffResponse, LawPackageEntry, LawStationId, LawStationOption, ProcedureRoot, TraceLink, TreatyKind } from '#shared/types'
 import { bgblShort } from '#shared/utils/format'
+import { gapDe } from '#shared/utils/gaps'
 import { meRoot, rootKey } from '#shared/utils/procedureRoot'
 import { LAW_STATION_ORDER, firstTextNameOf, lawStationGenitiveDe, lawStationLabelOf } from '#shared/utils/lawStations'
 import { diffLawPackage, scopeToDraft, summarizeDiff } from './lawDiff'
@@ -260,16 +261,20 @@ const readLawDiff = defineCachedFunction(
       if (!found.has(id)) return answer(missingStationReason(id, rvLinked, promulgatedAs, first, first?.kind === 'bundesratsantrag' && motionTextOf(content) !== null, rvTreaty))
     }
     if (!comparable(from)) {
-      return answer(
+      // A text only as PDF is „nicht lesbar", and the sentence says „nur als
+      // PDF": the source chose the form, the comparison does not read it
+      // (`shared/utils/gaps.ts`).
+      return answer(gapDe(
+        'unreadable',
         from !== 'me'
-          ? `Der Gesetzestext ${lawStationGenitiveDe(from, first)} liegt nur als PDF vor.`
+          ? `Den Gesetzestext ${lawStationGenitiveDe(from, first)} gibt es nur als PDF.`
           : risRowExists
-            ? 'Der Gesetzestext des Entwurfs liegt beim Parlament nur als PDF vor, und das RIS bietet ihn nicht als XML an.'
-            : 'Der Gesetzestext des Entwurfs liegt beim Parlament nur als PDF vor und ist im RIS nicht veröffentlicht.',
-      )
+            ? 'Den Gesetzestext des Entwurfs führt das Parlament nur als PDF, und das RIS bietet ihn nicht als XML an.'
+            : 'Den Gesetzestext des Entwurfs führt das Parlament nur als PDF, das RIS gar nicht.',
+      ))
     }
     if (!comparable(to)) {
-      return answer(`Der Gesetzestext ${lawStationGenitiveDe(to, first)} liegt nur als PDF vor.`)
+      return answer(gapDe('unreadable', `Den Gesetzestext ${lawStationGenitiveDe(to, first)} gibt es nur als PDF.`))
     }
 
     // Each side brings its own format now that the Kundmachung is among the
@@ -337,12 +342,12 @@ const readLawDiff = defineCachedFunction(
       // and the whole later text under „neu" — a claim about the draft the
       // documents do not make.
       return answer(
-        'Die Artikel der beiden Texte ließen sich keinem gemeinsamen Gesetz zuordnen. Ein Vergleich Paragraph für Paragraph würde deshalb jede Bestimmung als entfallen und als neu zeigen.',
+        gapDe('unreadable', 'Die Artikel der beiden Texte ließen sich keinem gemeinsamen Gesetz zuordnen. Ein Vergleich Paragraph für Paragraph würde deshalb jede Bestimmung als entfallen und als neu zeigen.'),
         { fromSource, toSource },
       )
     }
     if (units.length === 0) {
-      return answer('Der Gesetzestext ließ sich nicht in Paragraphen gliedern.', { fromSource, toSource })
+      return answer(gapDe('unreadable', 'Der Gesetzestext ließ sich nicht in Paragraphen gliedern.'), { fromSource, toSource })
     }
     return answer(null, {
       fromSource,

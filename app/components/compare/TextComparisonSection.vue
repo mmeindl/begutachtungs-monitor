@@ -163,7 +163,7 @@ watch([status, data], () => {
  * about the layer below the annex, not about the annex.
  */
 const lesefassungNote = computed(() => {
-  if (consolidatedStatus.value === 'error') return 'Ganze Paragraphen danach sind gerade nicht verfügbar.'
+  if (consolidatedStatus.value === 'error') return 'Gerade nicht abrufbar: die ganzen Paragraphen danach.'
   return lesefassungNotRunText(consolidated.value ?? null)
 })
 
@@ -322,7 +322,7 @@ const matchCount = computed(() => groups.value.reduce((n, g) => n + g.rows.lengt
 const loadAnnouncement = computed(() => {
   if (status.value === 'pending' || status.value === 'idle') return ''
   if (status.value === 'error' || !data.value) {
-    return 'Die Gegenüberstellung ist gerade nicht verfügbar.'
+    return 'Gerade nicht abrufbar: die Gegenüberstellung.'
   }
   if (!data.value.available) return data.value.unavailableReason ?? ''
   return `Gegenüberstellung geladen, ${countLabelDe(matchCount.value, 'Zeile', 'Zeilen')}.`
@@ -386,12 +386,10 @@ function withheldReason(cause: AnnexWithheldCause | null): string {
       Die Textgegenüberstellung wird geladen …
     </ListSkeleton>
 
-    <p v-else-if="status === 'error' || !data" class="text-sm text-ink-secondary">
-      Die Gegenüberstellung ist gerade nicht verfügbar.
-    </p>
+    <GapNote v-else-if="status === 'error' || !data" kind="unavailable" text="die Gegenüberstellung." class="text-sm text-ink-secondary" />
 
     <template v-else-if="!data.available">
-      <p class="text-sm text-ink-secondary">{{ data.unavailableReason }}</p>
+      <GapNote :text="data.unavailableReason" class="text-sm text-ink-secondary" />
       <!-- Unreadable for us is not unreadable for a person: whatever document
            exists gets linked. `source` carries the annex's HTML version at
            Parliament, or the RIS record whose assignment to this draft is in
@@ -658,7 +656,7 @@ function withheldReason(cause: AnnexWithheldCause | null): string {
            02.10.2026). The licence stood here until 01.10.2026, and so did a
            second „CC BY 4.0, RIS" for the text in force wherever the annex
            itself came from Parliament. -->
-      <p v-if="lesefassungNote" class="mt-3 text-xs text-ink-muted">{{ lesefassungNote }}</p>
+      <GapNote v-if="lesefassungNote" :text="lesefassungNote" class="mt-3 text-xs text-ink-muted" />
 
       <SectionCredits :sources="sources" :paired="data.readFrom === 'pdf'">
         <ExternalLink v-if="data.source" :href="data.source.url" class="link-muted">{{ data.source.label }}{{ annexTag }}</ExternalLink>

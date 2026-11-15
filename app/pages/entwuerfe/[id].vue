@@ -366,8 +366,8 @@ const doorHref = computed(() => {
               im Begleitschreiben.
             </template>
             <template v-else>
-              Stellungnahmen gehen hier direkt an das Ministerium; eine
-              Einreichadresse ist nicht veröffentlicht.
+              <GapNote as="span" kind="notPublished" text="eine Einreichadresse." />
+              Stellungnahmen gehen hier direkt an das Ministerium.
             </template>
           </p>
           <!-- Linked, never read out. Measured 2026-09-17 over 40 records:
@@ -510,7 +510,7 @@ const doorHref = computed(() => {
                  the word — its Stellungnahme goes to the ministry too (the
                  card above), and no list of them is published. -->
               <div class="flex flex-wrap items-center gap-x-1 text-sm text-ink-secondary">
-                <span>Die Stellungnahmen werden nicht veröffentlicht&nbsp;–</span>
+                <GapNote as="span" kind="notPublished">die Stellungnahmen&nbsp;–</GapNote>
                 <TermNote v-if="data.kind === 'verordnung'" term="nicht-gezaehlt-verordnung">warum?</TermNote>
                 <TermNote v-else>
                   warum?

@@ -119,7 +119,7 @@ describe('the sentences', () => {
     // A § the draft repeals or moves stands in the annex as struck rows already.
     expect(lesefassungLine({ kind: 'withheld', cause: 'entfaellt' })).toBeNull()
     expect(lesefassungLine({ kind: 'withheld', cause: 'neu-erlassen' })).toBe('Ganzer Paragraph danach nicht gezeigt: Dieses Gesetz erlässt der Entwurf neu, und seinen ganzen Text enthält er selbst; wir setzen nur Änderungen bestehender Gesetze zusammen.')
-    expect(lesefassungNotRunText({ ...response([], []), notRun: 'keine-novelle' })).toMatch(/^Ganze Paragraphen danach zeigen wir hier nicht: So wie wir den Entwurf lesen/)
+    expect(lesefassungNotRunText({ ...response([], []), notRun: 'keine-novelle' })).toMatch(/^Nicht im Monitor: die ganzen Paragraphen danach\. So wie der Monitor den Entwurf liest/)
     expect(lesefassungNotRunText(response([], []))).toBeNull()
   })
 

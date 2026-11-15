@@ -108,7 +108,7 @@ const citation = computed(() => (data.value ? euActCiteDe(data.value.act, data.v
       </h1>
       <EmptyState
         class="mt-10"
-        :title="answer === 'unbekannt' ? 'Zu diesem Rechtsakt kennt der Monitor keinen Entwurf.' : 'Die Karte ist gerade nicht gebaut.'"
+        :title="answer === 'unbekannt' ? 'Zu diesem Rechtsakt kennt der Monitor keinen Entwurf.' : 'Gerade nicht abrufbar: Die Karte wird gerade erstellt.'"
         :description="answer === 'unbekannt' ? 'Kein Entwurf des Bundes oder der Länder im Fenster dieser Gesetzgebungsperiode nennt ihn.' : 'Sobald der Monitor die Entwürfe einmal gelesen hat, steht der Rechtsakt hier mit seinen Entwürfen.'"
       >
         <NuxtLink to="/eu-recht" class="link-quiet font-medium">Alle Rechtsakte</NuxtLink>

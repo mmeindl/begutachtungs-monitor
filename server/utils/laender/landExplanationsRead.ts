@@ -19,6 +19,7 @@
  * entries). Those are read off the draft's own instructions: „3. § 6 Abs 1
  * lautet …" says which § Ziffer 3 changes.
  */
+import { gapDe } from '#shared/utils/gaps'
 import type { LandCode, LandExplanationsResponse } from '#shared/types'
 import { LAND_NAME } from '#shared/utils/laender'
 import { safeExternalUrl } from '#shared/utils/safeExternalUrl'
@@ -121,7 +122,7 @@ export async function readLandExplanations(
   const doc = own ?? draft
   const url = doc ? safeExternalUrl(doc.url) : null
   const done = (response: LandExplanationsResponse, draftFailed = false): LandExplanationsRead => ({ response, pages, draftUrl, draftFailed })
-  if (!doc || !url) return done(unavailable('Das Land hat zu diesem Entwurf keine Erläuterungen veröffentlicht.', publisher))
+  if (!doc || !url) return done(unavailable(gapDe('notPublished', 'Erläuterungen zu diesem Entwurf hat das Land nicht veröffentlicht.'), publisher))
   const document = { label: own ? doc.title : `${doc.title} (Erläuterungen)`, url }
   const read = HEADINGS_BY_WEIGHT.has(land) ? await styledPages(await bytesOf(url)) : { pages: await pagesOf(url), bold: undefined }
   pages.set(url, read.pages)
@@ -158,7 +159,7 @@ export async function readLandExplanations(
     if (!draftFailed) pages.set(draftUrl, draftPages)
     draftRead = ofDraft(draftPages)
   }
-  if (!parse) return done(unavailable('In den Dokumenten des Landes fand der Monitor keine Erläuterungen, die er lesen kann.', publisher, document), draftFailed)
+  if (!parse) return done(unavailable(gapDe('unreadable', 'In den Dokumenten des Landes fand der Monitor keine Erläuterungen, die er lesen kann.'), publisher, document), draftFailed)
   const units = draftRead && !(candidates.length === 1 && notADraft(draftRead)) ? draftRead.units : null
 
   const particular = explainedParagraphs(parse, units, amendedLawsOf(detail.draft.title))

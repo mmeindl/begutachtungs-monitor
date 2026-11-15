@@ -46,10 +46,10 @@ describe('reasoningGapNote', () => {
 describe('explanationsMissingNote', () => {
   it('sagt, welche Erläuterungen nicht gelesen wurden — nie „nicht veröffentlicht"', () => {
     expect(explanationsMissingNote([{ side: 'rv', kind: 'pdfOnly' }])).toBe(
-      'Die Erläuterungen der Regierungsvorlage liegen nur als PDF vor und konnten nicht gelesen werden. Die Begründungen sind deshalb nicht verglichen.',
+      'Nicht lesbar: Die Erläuterungen der Regierungsvorlage gibt es nur als PDF. Die Begründungen sind deshalb nicht verglichen.',
     )
     expect(explanationsMissingNote([{ side: 'me', kind: 'notListed' }, { side: 'rv', kind: 'pdfOnly' }])).toBe(
-      'Erläuterungen des Entwurfs konnten nicht gelesen werden: Das Parlament führt sie nicht als eigenes Dokument. Die Erläuterungen der Regierungsvorlage liegen nur als PDF vor und konnten nicht gelesen werden. Die Begründungen sind deshalb nicht verglichen.',
+      'Nicht lesbar: Erläuterungen des Entwurfs führt das Parlament nicht als eigenes Dokument. Die Erläuterungen der Regierungsvorlage gibt es nur als PDF. Die Begründungen sind deshalb nicht verglichen.',
     )
     expect(explanationsMissingNote([])).toBeNull()
     expect(explanationsMissingNote(undefined)).toBeNull()

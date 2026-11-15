@@ -863,6 +863,25 @@ not yet followed, or the EU cycle, starts there.
   one line naming the incomplete Länder, each linked to its block on
   `/datenlage`, shown only when one applies.
 
+- **A gap sentence opens with one of four lead words that say whose gap it
+  is** (15.11.2026, `shared/utils/gaps.ts`, `GapNote`): „Nicht
+  veröffentlicht" (the source does not publish it; the word of
+  `/datenlage`), „Gerade nicht abrufbar" (no answer just now, no claim
+  about fault), „Nicht lesbar" (this document, our reading failed or a check
+  refused it), „Nicht im Monitor" (our scope or method, for every case of
+  its kind). The lead word is semibold in the text's own ink; no colour, no
+  symbol. A label puts the object first: „Kundmachung: gerade nicht
+  abrufbar". One verb for a failed request, never „derzeit", „verfügbar" or
+  „gerade nicht lesbar"; gap sentences say „der Monitor", not „wir". A state
+  of the procedure („noch keine Regierungsvorlage", „Beschlossen – nicht
+  kundgemacht") is no gap and takes none. A record that lists no document
+  proves no absence: a missing Erläuterungen document is „Nicht lesbar",
+  never „Nicht veröffentlicht". Kept apart on purpose: the verification
+  check's own leads („Nicht geprüft:", „Nicht gezeigt:"), the per-change
+  „Begründung: nicht zuzuordnen", the Lesefassung's per-§ reasons, and the
+  list's count line, whose clauses already say „gerade nicht abrufbar".
+  Inventory of 192 strings read: the artifact „Gap sentence inventory".
+
 ### Operations
 
 - **The deploy waits for the prewarm.** A restart empties every memory cache, so

@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import type { AmendedLaw } from '#shared/types'
 import { lawCiteDe } from '#shared/utils/citations'
+import { gapLabelDe } from '#shared/utils/gaps'
 
 /**
  * One law in force the draft would change, in the Entwurf's station frame:
@@ -44,6 +45,6 @@ const cite = computed(() => {
     <CiteButton v-if="cite" :text="cite" :subject="law.title" />
   </p>
   <p class="mt-0.5 text-xs text-ink-muted">
-    {{ law.bgbl ?? 'Fundstelle der Stammfassung nicht lesbar' }}<template v-if="law.risBgbl"> · im RIS {{ law.risBgbl }}</template><template v-if="law.amendedBy">, zuletzt geändert durch {{ law.amendedBy }}</template>
+    {{ law.bgbl ?? gapLabelDe('Fundstelle der Stammfassung', 'unreadable') }}<template v-if="law.risBgbl"> · im RIS {{ law.risBgbl }}</template><template v-if="law.amendedBy">, zuletzt geändert durch {{ law.amendedBy }}</template>
   </p>
 </template>
