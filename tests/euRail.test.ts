@@ -69,6 +69,8 @@ const response = (over: Partial<EuActResponse> = {}): EuActResponse => ({
   oj: { form: 'act', series: 'L', act: '2024/1069', date: '2024-04-16' },
   eli: null,
   rail: rail(),
+  measures: null,
+  memberState: null,
   incomplete: [],
   ...over,
 })

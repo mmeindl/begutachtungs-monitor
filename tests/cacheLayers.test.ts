@@ -67,6 +67,9 @@ const FETCHED: Record<string, string> = {
   'eu-cellar': "the Cellar's SPARQL answer for one CELEX, as it arrived; the transposition dates are read from it fresh on every call",
   'eu-cellar-oj': "the Cellar's SPARQL answer on where one act was published, as it arrived; the Amtsblatt reference is read from it fresh on every call",
   'eu-cellar-dossier': "the Cellar's SPARQL answer on one act's authors, dates and procedure dossier, as it arrived; the rail is read from it fresh on every call",
+  'eu-cellar-richtlinien': "the Cellar's SPARQL answer on the directives with a transposition date in a window, as it arrived; the list is read from it fresh on every call",
+  'eu-cellar-massnahmen-anzahl': "the Cellar's SPARQL answer on how many measures one country notified per directive of a window, as it arrived",
+  'eu-cellar-massnahmen': "the Cellar's SPARQL answer on the measures one country notified for one directive, as it arrived; read fresh on every call",
   'eu-bundesrecht': "whether Bundesrecht in force on one day names an EU act, from RIS's full-text search; the law as of a past day does not change (D4)",
   'eu-landesrecht': "the same search over one Land's consolidated Landesrecht (LrKons) on one day, as RIS answered it — the hits are read fresh on every call (D4)",
 }
@@ -81,7 +84,8 @@ const FETCHED: Record<string, string> = {
  *  - every list, and `gegenstand`: they move within a day;
  *  - every search answer (`bgbl-nummer-suche`, `bund-land-suche`,
  *    `eu-bundesrecht`, `eu-landesrecht`) and the Cellar's SPARQL answers
- *    (`eu-cellar`, `eu-cellar-oj`, `eu-cellar-dossier`): an answer given before RIS or the Cellar
+ *    (`eu-cellar`, `eu-cellar-oj`, `eu-cellar-dossier`, `eu-cellar-richtlinien`,
+ *    `eu-cellar-massnahmen-anzahl`, `eu-cellar-massnahmen`): an answer given before RIS or the Cellar
  *    knew the act — none, or a partial one — would stand for a month, and no
  *    restart would clear it;
  *  - `bgbl-jahrgang-seite-laufend`: the running year still grows;

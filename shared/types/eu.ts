@@ -315,6 +315,16 @@ export interface EuActResponse {
   /** The Länder with no draft naming the act in the window, in display order. */
   landsWithout: LandCode[]
   /**
+   * A directive only: what the Member State notified to the Commission as
+   * transposing it (`EuNationalMeasure`, its claim), by day of
+   * notification. Empty where it notified nothing; null for any other kind
+   * of act and where the Cellar did not answer — `memberState` tells the
+   * two nulls apart: it is set for a directive.
+   */
+  measures: EuNationalMeasure[] | null
+  /** The Member State whose notifications `measures` holds, „AUT"; null for an act that is no directive. */
+  memberState: string | null
+  /**
    * The act's Amtsblatt reference and ELI, for the „Zitieren" button; each
    * null where the Cellar did not answer or has none. Asked per request, not
    * kept in the map: only this page cites (`ojReferenceOf`).
@@ -402,7 +412,7 @@ export interface EuNationalMeasure {
 /** The Cellar's form of a directive: of Parliament and Council or the Council, delegated, or implementing. */
 export type EuDirectiveForm = 'richtlinie' | 'delegierte-richtlinie' | 'durchfuehrungsrichtlinie'
 
-/** One directive with a transposition date in the window, and what one Member State notified for it. */
+/** One directive with a transposition date in the window, as the Cellar has it. */
 export interface EuDirectiveToTranspose {
   celex: string
   /** The official title in the language asked for; null where the Cellar has none. */
@@ -413,10 +423,34 @@ export interface EuDirectiveToTranspose {
   deadline: string
   /** The earlier transposition dates, ascending. */
   otherDates: string[]
-  /**
-   * The Member State's notified measures, by day of notification; empty
-   * where it notified none. Null where the country's answer is missing:
-   * unknown, never printed as „nothing notified".
-   */
-  measures: EuNationalMeasure[] | null
+}
+
+/**
+ * A row of the list „Richtlinien, die umzusetzen sind": the directive, and
+ * two observations beside it, each from its own source and each possibly
+ * unknown — the drafts the monitor found, and how many measures the country
+ * notified to the Commission. Never joined into a verdict (rule D6).
+ */
+export interface EuUmsetzungRow extends EuDirectiveToTranspose {
+  /** „Richtlinie (EU) 2024/1069", „Delegierte Richtlinie (EU) 2024/1405". */
+  label: string
+  /** The monitor's page of the directive. */
+  path: string
+  /** Drafts of the monitor's window that implement it, by publisher; null where no map is built. */
+  drafts: { bund: number; laender: number } | null
+  /** Measures the country notified; 0 where it notified none; null where the Cellar did not answer. */
+  measures: number | null
+}
+
+/** GET /api/eu-recht/umsetzung — the directives a country has to transpose, by deadline. */
+export interface EuUmsetzungResponse {
+  /** The country whose notifications are counted, as the Cellar names it: „AUT". */
+  country: string
+  /** The days the list covers: a directive is in it where a transposition date lies between them. */
+  window: { from: string; to: string }
+  /** Null where the Cellar did not answer: the page says so, and shows no empty list. */
+  rows: EuUmsetzungRow[] | null
+  /** The monitor's own window for drafts (`gpWindow`), and what its last build could not read. */
+  draftsWindow: { from: string; to: string | null }
+  incomplete: EuPublisher[]
 }

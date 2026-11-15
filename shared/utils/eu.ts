@@ -26,6 +26,32 @@ export const EU_ACT_PATH_WORD: Record<'richtlinie' | 'verordnung' | 'beschluss' 
 export const EU_BASE_PATH = '/eu-recht'
 
 /**
+ * The Member State this site follows, as the Cellar's authority table names
+ * it (`…/authority/country/AUT`). Written HERE ONCE, like the base path: a
+ * second country's site changes this line, not a query.
+ */
+export const EU_MEMBER_STATE = 'AUT'
+/** The Member State as a sentence names it. */
+export const EU_MEMBER_STATE_NAME_DE = 'Österreich'
+
+/** How far the list of directives to transpose looks back and ahead from today, in years. */
+export const EU_UMSETZUNG_YEARS = 2
+
+/**
+ * The window of the list for a day: the same day two years before and
+ * after („2024-11-15" – „2028-11-15" on 15.11.2026). A 29 February becomes
+ * the 28th.
+ */
+export function euUmsetzungWindow(today: string): { from: string; to: string } {
+  const shift = (years: number) => {
+    const [y, m, d] = today.split('-').map(Number) as [number, number, number]
+    const day = m === 2 && d === 29 ? 28 : d
+    return `${y + years}-${String(m).padStart(2, '0')}-${String(day).padStart(2, '0')}`
+  }
+  return { from: shift(-EU_UMSETZUNG_YEARS), to: shift(EU_UMSETZUNG_YEARS) }
+}
+
+/**
  * An address below the EU base: `euPath('richtlinie', 2024, 1069)` →
  * `/eu-recht/richtlinie/2024/1069`, `euPath()` → the base itself. Each
  * segment is put in as given — the callers pass path words and numbers,

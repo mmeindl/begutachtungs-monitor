@@ -65,6 +65,8 @@ describe('euActPageView', () => {
     oj: null,
     eli: null,
     rail: null,
+    measures: null,
+    memberState: null,
     ...over,
   })
   const day = (iso: string) => Date.parse(`${iso}T00:00:00Z`) / 86_400_000

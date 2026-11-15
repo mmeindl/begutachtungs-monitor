@@ -1,0 +1,37 @@
+{
+ "results": {
+  "bindings": [
+   {
+    "m": {
+     "type": "uri",
+     "value": "http://publications.europa.eu/resource/cellar/2cf525a8-b5f5-4803-96a9-0af0a3a8a600"
+    },
+    "title": {
+     "type": "literal",
+     "xml:lang": "de",
+     "value": "Gesetz zur Änderung des AZR-Gesetzes und weiterer Gesetze infolge der Anpassung des nationalen Rechts an das Gemeinsame Europäische Asylsystem (GEAS-Anpassungsfolgegesetz)"
+    },
+    "type": {
+     "type": "literal",
+     "datatype": "http://www.w3.org/2001/XMLSchema#string",
+     "value": "Gesetz"
+    },
+    "notified": {
+     "type": "literal",
+     "datatype": "http://www.w3.org/2001/XMLSchema#date",
+     "value": "2026-06-12"
+    },
+    "ojnum": {
+     "type": "literal",
+     "datatype": "http://www.w3.org/2001/XMLSchema#string",
+     "value": "112"
+    },
+    "ojdate": {
+     "type": "literal",
+     "datatype": "http://www.w3.org/2001/XMLSchema#date",
+     "value": "2026-04-28"
+    }
+   }
+  ]
+ }
+}

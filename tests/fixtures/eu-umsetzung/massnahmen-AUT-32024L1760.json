@@ -1,0 +1,83 @@
+{
+ "results": {
+  "bindings": [
+   {
+    "m": {
+     "type": "uri",
+     "value": "http://publications.europa.eu/resource/cellar/af6469ff-23f6-4a2b-97bf-380116c2e73a"
+    },
+    "title": {
+     "type": "literal",
+     "xml:lang": "de",
+     "value": "Bundesgesetz über die Vergabe von Aufträgen (Bundesvergabegesetz 2018);\nBundesgesetz über die Vergabe von Konzessionsverträgen (Bundesvergabegesetz Konzessionen 2018 – BVergGKonz 2018)"
+    },
+    "type": {
+     "type": "literal",
+     "datatype": "http://www.w3.org/2001/XMLSchema#string",
+     "value": "Bundesgesetz"
+    },
+    "notified": {
+     "type": "literal",
+     "datatype": "http://www.w3.org/2001/XMLSchema#date",
+     "value": "2026-01-19"
+    },
+    "ojname": {
+     "type": "literal",
+     "datatype": "http://www.w3.org/2001/XMLSchema#string",
+     "value": "Bundesgesetzblatt für die Republik Österreich ( BGBl. )"
+    },
+    "ojnum": {
+     "type": "literal",
+     "datatype": "http://www.w3.org/2001/XMLSchema#string",
+     "value": "BGBl. I Nr. 65/2018"
+    },
+    "ojdate": {
+     "type": "literal",
+     "datatype": "http://www.w3.org/2001/XMLSchema#date",
+     "value": "2018-08-20"
+    },
+    "link": {
+     "type": "literal",
+     "datatype": "http://www.w3.org/2001/XMLSchema#anyURI",
+     "value": "https://www.ris.bka.gv.at/Dokumente/BgblAuth/BGBLA_2018_I_65/BGBLA_2018_I_65.pdf"
+    }
+   },
+   {
+    "m": {
+     "type": "uri",
+     "value": "http://publications.europa.eu/resource/cellar/cb9f9b53-93b8-41b6-930e-57a53913cb61"
+    },
+    "title": {
+     "type": "literal",
+     "xml:lang": "de",
+     "value": "Gesetz, mit dem die Dienstordnung 1994, die Besoldungsordnung 1994, die Vertragsbedienstetenordnung 1995, das Wiener Bedienstetengesetz, das Wiener Verwaltungsgericht-Dienstrechtsgesetz, das Stadtrechnungshofgesetz, das Ruhe- und Versorgungsgenusszulagegesetz 1995, das Wiener Bedienstetenschutzgesetz 1998 und das Wiener Hinweisgeberinnen- und Hinweisgeber-Schutzgesetz geändert werden (1. Dienstrechts-Novelle 2026)"
+    },
+    "type": {
+     "type": "literal",
+     "datatype": "http://www.w3.org/2001/XMLSchema#string",
+     "value": "Landesgesetz"
+    },
+    "notified": {
+     "type": "literal",
+     "datatype": "http://www.w3.org/2001/XMLSchema#date",
+     "value": "2026-06-19"
+    },
+    "ojname": {
+     "type": "literal",
+     "datatype": "http://www.w3.org/2001/XMLSchema#string",
+     "value": "Landesgesetzblatt ( LGBl. )"
+    },
+    "ojnum": {
+     "type": "literal",
+     "datatype": "http://www.w3.org/2001/XMLSchema#string",
+     "value": "LGBl. für Wien Nr. 18/202"
+    },
+    "ojdate": {
+     "type": "literal",
+     "datatype": "http://www.w3.org/2001/XMLSchema#date",
+     "value": "2026-06-12"
+    }
+   }
+  ]
+ }
+}

@@ -13,11 +13,13 @@
  * Parliament and Council or the Council, 21 delegated, 7 implementing —
  * 73 with the latest date passed, 51 with it to come.
  *
- * THREE QUERIES, EACH AS IT WAS RUN. The dates of the window; the titles
- * and types of those directives; one country's notified measures. Asking
- * dates and titles at once (GROUP BY with the title OPTIONAL) ran into the
- * Cellar's timeout, so they stay apart. The country is not part of the
- * first two: one answer serves every country's list.
+ * THREE SMALL QUERIES, EACH AS IT WAS RUN on 15.11.2026, each answered in
+ * under a second: the directives of the window with their dates, titles
+ * and types (132 kB); per country, how many measures it notified for each
+ * (17 kB); and one directive's measures in full, asked by the directive's
+ * own page. The list never loads the measures themselves — Austria's for
+ * the whole window are 1.6 MB — only their count. The first query knows no
+ * country: one answer serves every country's list.
  *
  * A NOTIFIED MEASURE IS THE MEMBER STATE'S CLAIM
  * (`cdm:measure_national_implementing_*`). Austria notified 1,264 measures
@@ -41,12 +43,8 @@ import { CELLAR_LANGUAGE_RE, CELLAR_POLICY, CELLAR_SPARQL, deadlineOf, type Spar
 /** Bumped whenever one of the three queries asks for something else. */
 export const UMSETZUNG_QUERY_VERSION = 1
 
-/**
- * One country's measures for a four-year window are a large answer:
- * Austria's was 1.6 MB on 15.11.2026 (1,264 rows of eleven columns). The
- * Cellar's ordinary ceiling of 256 kB would cut it off.
- */
-export const UMSETZUNG_POLICY: UpstreamPolicy = { ...CELLAR_POLICY, timeoutMs: 60_000, maxBytes: 6 * 1024 * 1024 }
+/** One directive can have well over a hundred measures (139 for 32023L2413, 145 kB): above the Cellar client's ordinary ceiling. */
+export const UMSETZUNG_POLICY: UpstreamPolicy = { ...CELLAR_POLICY, maxBytes: 2 * 1024 * 1024 }
 
 const DAY_RE = /^\d{4}-\d{2}-\d{2}$/
 /** A directive's CELEX: sector 3, the year, „L", the number. */
@@ -64,36 +62,41 @@ function assertWindow(from: string, to: string): void {
 const windowPattern = (from: string, to: string) => ` ?w cdm:directive_date_transposition ?d . FILTER(?d >= "${from}"^^xsd:date && ?d <= "${to}"^^xsd:date)
  ?w cdm:resource_legal_id_celex ?celex . FILTER(REGEX(STR(?celex),"^3[0-9]{4}L[0-9]{4}$"))`
 
-/** Every directive with a transposition date in the window, one row per (directive, date). */
-export function deadlinesQuery(from: string, to: string): string {
+/** Every directive with a transposition date in the window, with its title (in `language`) and type: one row per (directive, date). */
+export function directivesQuery(from: string, to: string, language = 'DEU'): string {
   assertWindow(from, to)
-  return `${PREFIXES}
-SELECT DISTINCT ?celex ?d WHERE {
-${windowPattern(from, to)} }`
-}
-
-/** The titles (in `language`) and the Cellar's types of the given directives. */
-export function titlesQuery(celexes: readonly string[], language = 'DEU'): string {
   if (!CELLAR_LANGUAGE_RE.test(language)) throw new Error(`Keine Cellar-Sprache: ${language}`)
-  const bad = celexes.find((c) => !DIRECTIVE_CELEX_RE.test(c))
-  if (bad !== undefined || !celexes.length) throw new Error(`Keine Richtlinie: ${bad ?? '(leer)'}`)
   return `${PREFIXES}
-SELECT DISTINCT ?celex ?title ?type WHERE { VALUES ?celex { ${celexes.map((c) => `"${c}"^^xsd:string`).join(' ')} } ?w cdm:resource_legal_id_celex ?celex ; cdm:directive_date_transposition ?x .
+SELECT DISTINCT ?celex ?d ?title ?type WHERE {
+${windowPattern(from, to)}
  OPTIONAL { ?e cdm:expression_belongs_to_work ?w ; cdm:expression_uses_language <http://publications.europa.eu/resource/authority/language/${language}> ; cdm:expression_title ?title }
  OPTIONAL { ?w cdm:work_has_resource-type ?type } }`
 }
 
-/** What one country notified for the directives of the window, one row per measure (more where a column has two values). */
-export function measuresQuery(country: string, from: string, to: string): string {
-  assertWindow(from, to)
+const countryUri = (country: string): string => {
   if (!CELLAR_COUNTRY_RE.test(country)) throw new Error(`Kein Cellar-Land: ${country}`)
+  return `<http://publications.europa.eu/resource/authority/country/${country}>`
+}
+
+/** How many measures one country notified for each directive of the window; a directive without one has no row. */
+export function measureCountsQuery(country: string, from: string, to: string): string {
+  assertWindow(from, to)
   return `${PREFIXES}
-SELECT DISTINCT ?celex ?m ?title ?type ?notified ?ojname ?ojnum ?ojdate ?link ?ref ?doc WHERE {
+SELECT ?celex (COUNT(DISTINCT ?m) AS ?n) WHERE {
 ${windowPattern(from, to)}
- ?m cdm:measure_national_implementing_implements_resource_legal ?w ; cdm:measure_national_implementing_implemented_by_country <http://publications.europa.eu/resource/authority/country/${country}> .
+ ?m cdm:measure_national_implementing_implements_resource_legal ?w ; cdm:measure_national_implementing_implemented_by_country ${countryUri(country)} . } GROUP BY ?celex`
+}
+
+/** What one country notified for one directive, one row per measure (more where a column has two values). */
+export function actMeasuresQuery(country: string, celex: string): string {
+  if (!DIRECTIVE_CELEX_RE.test(celex)) throw new Error(`Keine Richtlinie: ${celex}`)
+  return `${PREFIXES}
+SELECT DISTINCT ?m ?title ?type ?notified ?ojname ?ojnum ?ojdate ?link WHERE {
+ ?w cdm:resource_legal_id_celex "${celex}"^^xsd:string .
+ ?m cdm:measure_national_implementing_implements_resource_legal ?w ; cdm:measure_national_implementing_implemented_by_country ${countryUri(country)} .
  OPTIONAL { ?m cdm:work_title ?title } OPTIONAL { ?m cdm:measure_national_implementing_type_act ?type } OPTIONAL { ?m cdm:measure_national_implementing_date_notification ?notified }
  OPTIONAL { ?m cdm:measure_national_implementing_name_official_journal ?ojname } OPTIONAL { ?m cdm:measure_national_implementing_number_official_journal ?ojnum } OPTIONAL { ?m cdm:measure_national_implementing_date_official_journal ?ojdate }
- OPTIONAL { ?m cdm:measure_national_implementing_national_website_link ?link } OPTIONAL { ?m cdm:measure_national_implementing_reference_member-state ?ref } OPTIONAL { ?m cdm:work_date_document ?doc } }`
+ OPTIONAL { ?m cdm:measure_national_implementing_national_website_link ?link } }`
 }
 
 /** The Cellar's answer to one of the queries, as it arrived. Throws on a failure: no answer is not „nothing notified". */
@@ -138,63 +141,58 @@ export function publicMeasureUrl(raw: string | null): string | null {
 }
 
 /**
- * The three answers, read into one list, ascending by deadline and then by
- * CELEX — the order of the dates, never of what was notified (rule D6).
- *
- * `measures` may be null: the country's answer is missing. Then every
- * directive comes back with `measures: null` (see the type).
+ * The directives of the window, ascending by deadline and then by CELEX —
+ * the order of the dates, never of what was notified (rule D6).
  */
-export function parseUmsetzung(
-  deadlines: SparqlAnswer,
-  titles: SparqlAnswer,
-  measures: SparqlAnswer | null,
-): EuDirectiveToTranspose[] {
+export function parseDirectives(answer: SparqlAnswer): EuDirectiveToTranspose[] {
   const dates = new Map<string, string[]>()
-  for (const row of rowsOf(deadlines)) {
+  const title = new Map<string, string>()
+  const form = new Map<string, EuDirectiveForm>()
+  for (const row of rowsOf(answer)) {
     const celex = text(row, 'celex')
     const d = day(row, 'd')
     if (!celex || !DIRECTIVE_CELEX_RE.test(celex) || !d) continue
     dates.set(celex, [...(dates.get(celex) ?? []), d])
-  }
-
-  const title = new Map<string, string>()
-  const form = new Map<string, EuDirectiveForm>()
-  for (const row of rowsOf(titles)) {
-    const celex = text(row, 'celex')
-    if (!celex) continue
     const t = text(row, 'title')
     if (t && !title.has(celex)) title.set(celex, t)
     const f = FORMS[text(row, 'type')?.split('/').pop() ?? '']
     if (f && !form.has(celex)) form.set(celex, f)
   }
-
-  // One measure per Cellar URI; where a column has two values the first by sort order stands.
-  const byDirective = new Map<string, Map<string, EuNationalMeasure>>()
-  if (measures) {
-    const sorted = [...rowsOf(measures)].sort((a, b) => cmp(JSON.stringify(a), JSON.stringify(b)))
-    for (const row of sorted) {
-      const celex = text(row, 'celex')
-      const uri = text(row, 'm')
-      if (!celex || !uri) continue
-      const of = byDirective.get(celex) ?? new Map<string, EuNationalMeasure>()
-      byDirective.set(celex, of)
-      if (of.has(uri)) continue
-      of.set(uri, {
-        title: text(row, 'title'),
-        kind: text(row, 'type'),
-        notified: day(row, 'notified'),
-        gazette: { name: text(row, 'ojname'), number: text(row, 'ojnum'), date: day(row, 'ojdate') },
-        url: publicMeasureUrl(text(row, 'link')),
-      })
-    }
-  }
-
   return [...dates.entries()]
-    .map(([celex, ds]) => {
-      const { deadline, otherDates } = deadlineOf(ds)!
-      const own = [...(byDirective.get(celex)?.values() ?? [])].sort((a, b) =>
-        cmp(a.notified ?? '9999', b.notified ?? '9999') || cmp(a.gazette.date ?? '', b.gazette.date ?? '') || cmp(a.title ?? '', b.title ?? ''))
-      return { celex, title: title.get(celex) ?? null, form: form.get(celex) ?? null, deadline, otherDates, measures: measures ? own : null }
-    })
+    .map(([celex, ds]) => ({ celex, title: title.get(celex) ?? null, form: form.get(celex) ?? null, ...deadlineOf(ds)! }))
     .sort((a, b) => cmp(a.deadline, b.deadline) || cmp(a.celex, b.celex))
+}
+
+/** CELEX → the number of measures notified. A directive that is not in the map has none: the query returns no row for it. */
+export function parseMeasureCounts(answer: SparqlAnswer): Map<string, number> {
+  const counts = new Map<string, number>()
+  for (const row of rowsOf(answer)) {
+    const celex = text(row, 'celex')
+    const n = Number(text(row, 'n'))
+    if (celex && Number.isInteger(n) && n > 0) counts.set(celex, n)
+  }
+  return counts
+}
+
+/**
+ * One directive's notified measures, by day of notification. One measure
+ * per Cellar URI; where a column has two values the first by sort order
+ * stands, so the same answer always reads the same.
+ */
+export function parseActMeasures(answer: SparqlAnswer): EuNationalMeasure[] {
+  const byUri = new Map<string, EuNationalMeasure>()
+  const sorted = [...rowsOf(answer)].sort((a, b) => cmp(JSON.stringify(a), JSON.stringify(b)))
+  for (const row of sorted) {
+    const uri = text(row, 'm')
+    if (!uri || byUri.has(uri)) continue
+    byUri.set(uri, {
+      title: text(row, 'title'),
+      kind: text(row, 'type'),
+      notified: day(row, 'notified'),
+      gazette: { name: text(row, 'ojname'), number: text(row, 'ojnum'), date: day(row, 'ojdate') },
+      url: publicMeasureUrl(text(row, 'link')),
+    })
+  }
+  return [...byUri.values()].sort((a, b) =>
+    cmp(a.notified ?? '9999', b.notified ?? '9999') || cmp(a.gazette.date ?? '', b.gazette.date ?? '') || cmp(a.title ?? '', b.title ?? ''))
 }
