@@ -7,17 +7,17 @@
 
   Paragraphs only, without a wrapper: the caller's `prose-flow` styles its
   direct children. Which text the Vorlage is held against after it — the
-  committee's report or the Kundmachung — is the Land's configuration
-  (`LAND_REPORT_HAS_TEXT`), the same fact that decides the pair in
-  `texts/stations.ts`.
+  committee's report or the Kundmachung — and, where not the report, whose
+  gap that is, is the Land's configuration (`LAND_COMMITTEE_TEXT`), the same
+  fact that decides the pair in `texts/stations.ts`.
 -->
 <script setup lang="ts">
 import type { LandCode } from '#shared/types'
-import { LAND_REPORT_HAS_TEXT } from '#shared/utils/laender'
+import { landCommitteeSentenceDe } from '#shared/utils/laender'
 
 const props = defineProps<{ land: LandCode }>()
 
-const reportHasText = computed(() => Boolean(LAND_REPORT_HAS_TEXT[props.land]))
+const committeeSentence = computed(() => landCommitteeSentenceDe(props.land))
 </script>
 
 <template>
@@ -31,16 +31,7 @@ const reportHasText = computed(() => Boolean(LAND_REPORT_HAS_TEXT[props.land]))
     Änderung: PDF und Gesetzblatt setzen sie verschieden.
   </p>
   <p>
-    <template v-if="reportHasText">
-      Was der Ausschuss geändert hat, zeigen wir aus seinem Bericht: Er
-      enthält den Gesetzestext.
-    </template>
-    <template v-else>
-      Was der Ausschuss geändert hat, zeigen wir hier nicht: Den Text des
-      Ausschusses haben wir für dieses Land nicht. Wir vergleichen
-      die Regierungsvorlage mit dem kundgemachten Gesetz; darin steckt dann
-      auch die redaktionelle Bearbeitung für die Kundmachung.
-    </template>
+    {{ committeeSentence }}
     Haben zwei Texte keinen einzigen Teil gemeinsam, zeigen wir keinen
     Vergleich, statt alles als neu zu melden.
   </p>

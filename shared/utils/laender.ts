@@ -202,13 +202,49 @@ export const LAND_FOLLOWED_STATIONS: Record<LandCode, readonly DraftStation[] | 
 }
 
 /**
- * Whose committee report carries the law text as the committee passed it:
- * there the page compares the Vorlage with the report, elsewhere with the
- * Kundmachung (`texts/stations.ts`). Shared since 15.11.2026: the
- * comparison's „Methode" says which of the two a Land's page does
- * (`MethodLandVergleich`).
+ * What a Land's committee leaves the monitor to compare the Vorlage with
+ * (15.11.2026), for every Land whose Vorlage text the monitor reads:
+ *
+ *  - `inReport` — the committee's report carries the law text as the
+ *    committee passed it (Oberösterreich): the page compares the Vorlage
+ *    with the report.
+ *  - `reportWithoutText` — the report is read and carries no law text
+ *    (Salzburg, `texts/salzburgLandtag.ts`).
+ *  - `reportNotRead` — the monitor reads no report of this Land. Tirol's
+ *    Landtag lists a „Bericht und Antrag" with most of its Vorlagen
+ *    (`tirol.ts` sets `report: null`); Kärnten's has no register, and
+ *    whether it publishes its committees' reports is not checked
+ *    (docs/research/landtagsregister.md, „Kärnten"). Never „the Land
+ *    publishes none" without proof.
+ *
+ * Anywhere but `inReport` the page compares the Vorlage with the
+ * Kundmachung. One map for the pair `texts/stations.ts` builds and the
+ * comparison's „Methode" (`MethodLandVergleich`). A Land absent from it has
+ * no Vorlage text the monitor reads; should one reach the „Methode", it
+ * says the weakest, `reportNotRead` (`landCommitteeSentenceDe`).
  */
-export const LAND_REPORT_HAS_TEXT: Partial<Record<LandCode, true>> = { ooe: true }
+export type LandCommitteeText = 'inReport' | 'reportWithoutText' | 'reportNotRead'
+
+export const LAND_COMMITTEE_TEXT: Partial<Record<LandCode, LandCommitteeText>> = {
+  ktn: 'reportNotRead',
+  ooe: 'inReport',
+  sbg: 'reportWithoutText',
+  t: 'reportNotRead',
+}
+
+/** What the Vorlage is held against where the committee's text is not. */
+const AGAINST_KUNDMACHUNG_DE = 'Wir vergleichen die Regierungsvorlage mit dem kundgemachten Gesetz; darin steckt dann auch die redaktionelle Bearbeitung für die Kundmachung.'
+
+/** The „Methode"'s sentence on the committee, one per state: a new state cannot fall through. */
+export const LAND_COMMITTEE_SENTENCE_DE: Record<LandCommitteeText, string> = {
+  inReport: 'Was der Ausschuss geändert hat, zeigen wir aus seinem Bericht: Er enthält den Gesetzestext.',
+  reportWithoutText: `Was der Ausschuss geändert hat, zeigen wir hier nicht: Sein Bericht enthält den Gesetzestext nicht. ${AGAINST_KUNDMACHUNG_DE}`,
+  reportNotRead: `Was der Ausschuss geändert hat, zeigen wir hier nicht: Den Bericht des Ausschusses lesen wir für dieses Land noch nicht. ${AGAINST_KUNDMACHUNG_DE}`,
+}
+
+export function landCommitteeSentenceDe(land: LandCode): string {
+  return LAND_COMMITTEE_SENTENCE_DE[LAND_COMMITTEE_TEXT[land] ?? 'reportNotRead']
+}
 
 /** Why a Land has no rows at any of these stations; null where it can have some. */
 export function landStationsReason(land: LandCode, stations: readonly DraftStation[]): string | null {

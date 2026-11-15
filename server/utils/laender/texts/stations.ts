@@ -17,7 +17,7 @@
  * decided by text (`kundmachung.ts`, `LandStage.certainBy`).
  */
 import type { LandCode, LandDraftDetail, LandTextStation } from '#shared/types'
-import { LAND_NAME, LAND_REPORT_HAS_TEXT } from '#shared/utils/laender'
+import { LAND_COMMITTEE_TEXT, LAND_NAME } from '#shared/utils/laender'
 import { safeExternalUrl } from '#shared/utils/safeExternalUrl'
 import { lgblXmlUrl } from '../lgblIndex'
 import { draftSource, pdfSource, readLgbl, type PagesReader, type TextSource } from './read'
@@ -58,7 +58,7 @@ export function textSources(land: LandCode, detail: LandDraftRecord, pagesOf?: P
 
   const report = detail.landtag?.report
   const reportUrl = report?.url ? safeExternalUrl(report.url) : null
-  if (report && reportUrl && LAND_REPORT_HAS_TEXT[land]) out.ausschuss = pdfSource(report.label, reportUrl, LANDTAG[land], pagesOf)
+  if (report && reportUrl && LAND_COMMITTEE_TEXT[land] === 'inReport') out.ausschuss = pdfSource(report.label, reportUrl, LANDTAG[land], pagesOf)
 
   const stage = detail.draft.stage
   if (stage && stage !== 'unknown' && stage.station === 'bgbl' && stage.detail && (stage.via !== 'suche' || stage.certainBy)) {

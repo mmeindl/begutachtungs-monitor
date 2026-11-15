@@ -296,7 +296,6 @@ const R = {
   formNotRead: 'die Form des Landes liest der Monitor noch nicht',
   wayOpen: 'der Monitor zeigt ihn nicht; ob das Land ihn nennt, ist offen',
   textsOpen: 'ohne den Weg keine späteren Fassungen',
-  noCommitteeText: 'kein Ausschusstext veröffentlicht',
   proseOnly: 'welcher Akt, liest der Monitor dort nicht',
   vbgProject: 'auf der Seite des Gesetzesvorhabens, die der Monitor noch nicht liest',
 } as const
@@ -331,7 +330,10 @@ const LAND_STATE: Record<LandCode, Record<CoverageRow, StateAndReason>> = {
     way: ['inferred', 'das Archiv nennt die Vorlage nicht; verknüpft über die Geschäftszahl'],
     kundmachung: ['inferred', 'das Land nennt sie nicht; gelesen am Beschlussdatum im Titel des Gesetzblatts'],
     tgu: ['partlyRead', 'rechts stehen Novellierungsanordnungen; was feiner als ein Absatz ändert, zeigt der Monitor nicht'],
-    texts: ['partial', R.noCommitteeText],
+    // 15.11.2026: that the Land publishes no committee text was never checked — the reader
+    // reads the Verfassungsdienst's pages only (`LAND_COMMITTEE_TEXT`: `reportNotRead`).
+    // What is published and read is Vorlage and Gesetz; the rest is said as unknown.
+    texts: ['partial', 'ob es einen Text des Ausschusses gibt, ist nicht erhoben'],
     statements: ['published'],
   },
   noe: {
@@ -391,7 +393,12 @@ const LAND_STATE: Record<LandCode, Record<CoverageRow, StateAndReason>> = {
     // names it; the title search finds 3.
     kundmachung: ['partial', 'für Verordnungen nicht genannt'],
     tgu: ['published'],
-    texts: ['partial', R.noCommitteeText],
+    // 15.11.2026, the Landtag's 52 Gegenstände of the type Regierungsvorlage (cached
+    // pages of `tirol.ts`): „Bericht und Antrag" with 38, „Gesetz nach Beschlussfassung
+    // im Landtag" with 20. The reader keeps neither (`report: null`,
+    // `LAND_COMMITTEE_TEXT`). One report read: a page of reasoning, no law text
+    // (docs/research/tirol-beschlusstext.md).
+    texts: ['partlyRead', 'Bericht des Ausschusses und Beschluss des Landtags liest der Monitor noch nicht'],
     statements: ['published'],
   },
   // datenlage-pruefung.md, read 14.11.2026 (and again the same day): the page the monitor
