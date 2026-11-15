@@ -138,3 +138,14 @@ export const SETTLED_TTL_S = 60 * 60 * 24 * 7
  * (`DOCUMENT_CACHE`), which the prewarm unit empties of files past 32 days.
  */
 export const PUBLISHED_DOCUMENT_TTL_S = 60 * 60 * 24 * 30
+
+/**
+ * The organisations that gave feedback on the Commission's portal
+ * (`eu/portalService.ts`, `feedbackOf`): six hours, in memory only
+ * (`DERIVED_CACHE`), never the disk or the fact store. A sender can
+ * withdraw consent to publication after a window has closed, and a name the
+ * portal no longer publishes must leave the monitor within hours, not
+ * outlive a restart. Long enough that a reader who opens the same fold
+ * twice in an evening does not send five more requests to the portal.
+ */
+export const FEEDBACK_NAMES_TTL_S = 60 * 60 * 6

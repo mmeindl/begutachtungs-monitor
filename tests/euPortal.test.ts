@@ -10,15 +10,15 @@ import { PUBLICATION_FIELDS, carriesReference, comReferenceOf, initiativeUrl, pa
 const fixture = (name: string): unknown => JSON.parse(readFileSync(new URL(`./fixtures/eu-portal/${name}.json`, import.meta.url), 'utf8'))
 
 describe('the portal reader', () => {
-  it('reads an initiative as its publications: stage, reference, days, count', () => {
+  it('reads an initiative as its publications: number, stage, reference, days, count', () => {
     const i = parseInitiative(fixture('initiative-13192'))
     expect(i).toMatchObject({ id: 13192, url: 'https://ec.europa.eu/info/law/better-regulation/have-your-say/initiatives/13192_de' })
     expect(i.title).toMatch(/^EU action against abusive litigation/)
     expect(i.publications).toEqual([
-      { stage: 'INIT_PLANNED', type: 'INIT_PLANNED', reference: 'Ares(2021)5351797', published: '2021-09-03', feedbackEnd: null, feedbackCount: 0, feedbackStatus: 'DISABLED' },
-      { stage: 'ROADMAP', type: 'ROADMAP', reference: 'Ares(2021)6011536', published: '2021-10-04', feedbackEnd: '2021-11-01', feedbackCount: 10, feedbackStatus: 'CLOSED' },
-      { stage: 'OPC_LAUNCHED', type: 'OPC_LAUNCHED', reference: 'ANTISLAPP', published: '2021-10-04', feedbackEnd: '2022-01-10', feedbackCount: 146, feedbackStatus: 'CLOSED' },
-      { stage: 'ADOPTION_WORKFLOW', type: 'PROP_DIR', reference: 'COM(2022)177', published: '2022-04-29', feedbackEnd: '2022-06-29', feedbackCount: 22, feedbackStatus: 'CLOSED' },
+      { id: 15015, stage: 'INIT_PLANNED', type: 'INIT_PLANNED', reference: 'Ares(2021)5351797', published: '2021-09-03', feedbackEnd: null, feedbackCount: 0, feedbackStatus: 'DISABLED' },
+      { id: 15129, stage: 'ROADMAP', type: 'ROADMAP', reference: 'Ares(2021)6011536', published: '2021-10-04', feedbackEnd: '2021-11-01', feedbackCount: 10, feedbackStatus: 'CLOSED' },
+      { id: 15080, stage: 'OPC_LAUNCHED', type: 'OPC_LAUNCHED', reference: 'ANTISLAPP', published: '2021-10-04', feedbackEnd: '2022-01-10', feedbackCount: 146, feedbackStatus: 'CLOSED' },
+      { id: 15883, stage: 'ADOPTION_WORKFLOW', type: 'PROP_DIR', reference: 'COM(2022)177', published: '2022-04-29', feedbackEnd: '2022-06-29', feedbackCount: 22, feedbackStatus: 'CLOSED' },
     ])
   })
 

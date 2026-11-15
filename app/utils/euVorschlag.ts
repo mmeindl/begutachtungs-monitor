@@ -44,6 +44,7 @@ import {
   consultationStation,
   elementIdOf,
   fact,
+  feedbackRefOf,
   framed,
   gapFact,
   lastOf,
@@ -52,6 +53,7 @@ import {
   procedureRowsOf,
   proposalFeedbackOf,
   roleOf,
+  withFeedback,
   type EuFactLink,
   type EuRailSection,
   type EuRailStation,
@@ -261,7 +263,7 @@ export function euVorschlagView(r: EuVorschlagResponse, today: string): EuVorsch
     fact('vorschlag', EU_RAIL_DE.fact.proposal, [{ href: r.eurLexUrl, label: r.reference }, ...(date ? [date] : [])]),
     ...amended.map((e, n) => fact(`geaendert-${n}`, EU_EVENTS[e.code]!.label, [formatDateDe(e.date)])),
     ...(feedback && c.state === 'gefunden'
-      ? [fact('rueckmeldungen', EU_RAIL_DE.portal.proposalFeedback, [...periodParts(feedback), { href: c.initiative.url, label: EU_RAIL_DE.portal.link }])]
+      ? [withFeedback(fact('rueckmeldungen', EU_RAIL_DE.portal.proposalFeedback, [...periodParts(feedback), { href: c.initiative.url, label: EU_RAIL_DE.portal.link }]), feedbackRefOf(c.initiative.id, feedback))]
       : []),
   ]
   sections.push(section(vorschlag, framed(proposalFacts, null), feedback ? ['Quellen:', EU_RAIL_DE.credits[1], EU_RAIL_DE.portal.credit] : CELLAR_CREDITS))

@@ -95,6 +95,18 @@ export interface EuSectionFact {
   parts: (string | EuFactLink)[]
   /** The fact is the act's citation: „Zitieren" stands beside it. */
   cite: boolean
+  /** A feedback period with at least one contribution: the window whose senders the fold „Wer Rückmeldung gegeben hat" reads on demand (`euFeedback.ts`). */
+  feedback?: EuFeedbackRef
+}
+
+/**
+ * Which window's contributions a fold reads: the initiative and its
+ * publication, by the portal's numbers — all the page passes to the
+ * endpoint, which proves that the one belongs to the other.
+ */
+export interface EuFeedbackRef {
+  initiative: number
+  publication: number
 }
 
 /** The dated record folded under a section's frame, as „Alle Schritte im Landtag". */
@@ -416,9 +428,22 @@ export function periodParts(p: EuPortalPublication): string[] {
   ]
 }
 
-/** Each period for feedback as a fact under its stage's name: „Öffentliche Konsultation — 04.10.2021 – 10.01.2022, 146 Rückmeldungen". */
-export function periodFacts(publications: readonly EuPortalPublication[], prefix = 'frist'): EuSectionFact[] {
-  return publications.map((p, i) => fact(`${prefix}-${i}`, stageDe(p), periodParts(p)))
+/**
+ * The window behind a period's fact, where there is someone to name or
+ * count: a period with a publication number and at least one contribution
+ * by the portal's count. Null for an empty window and for one whose count
+ * the portal does not give — no fold that can only say „nobody".
+ */
+export function feedbackRefOf(initiativeId: number, p: EuPortalPublication): EuFeedbackRef | null {
+  return p.id && p.feedbackEnd !== null && p.feedbackCount !== null && p.feedbackCount > 0 ? { initiative: initiativeId, publication: p.id } : null
+}
+
+/** A fact with the window its fold reads, where there is one. */
+export const withFeedback = (f: EuSectionFact, ref: EuFeedbackRef | null): EuSectionFact => (ref ? { ...f, feedback: ref } : f)
+
+/** Each period for feedback as a fact under its stage's name: „Öffentliche Konsultation — 04.10.2021 – 10.01.2022, 146 Rückmeldungen" — with the window its fold reads. */
+export function periodFacts(initiativeId: number, publications: readonly EuPortalPublication[], prefix = 'frist'): EuSectionFact[] {
+  return publications.map((p, i) => withFeedback(fact(`${prefix}-${i}`, stageDe(p), periodParts(p)), feedbackRefOf(initiativeId, p)))
 }
 
 /** The initiative itself, with its number and the way to it on the portal. */
@@ -428,7 +453,7 @@ export function initiativeFact(initiative: EuInitiative): EuSectionFact {
 
 export function consultationFacts(c: EuConsultation): EuSectionFact[] {
   if (c.state !== 'gefunden') return []
-  return [...periodFacts(consultedOf(c)), initiativeFact(c.initiative)]
+  return [...periodFacts(c.initiative.id, consultedOf(c)), initiativeFact(c.initiative)]
 }
 
 /** Station 2: who decided, named from the act's authors (`EuAdoptedBy`). */
@@ -647,7 +672,7 @@ function sectionOf(st: EuRailStation, r: EuActResponse, rows: ReturnType<typeof 
     // The feedback period on the adopted proposal, from the portal: a second source under the same frame.
     return {
       ...base,
-      ...framed([...own, fact('rueckmeldungen', DE.portal.proposalFeedback, [...periodParts(feedback), { href: r.consultation.initiative.url, label: DE.portal.link }])], st.gap),
+      ...framed([...own, withFeedback(fact('rueckmeldungen', DE.portal.proposalFeedback, [...periodParts(feedback), { href: r.consultation.initiative.url, label: DE.portal.link }]), feedbackRefOf(r.consultation.initiative.id, feedback))], st.gap),
       credits: ['Quellen:', DE.credits[1], DE.portal.credit],
     }
   }

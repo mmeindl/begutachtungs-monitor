@@ -8,6 +8,7 @@ import { EU_EVENTS } from '../shared/utils/euEvents'
 import { euProposalAddress, euProposalPath, euProposalPathOfReference } from '../shared/utils/eu'
 import { euProposalActs, euProposalLastStep, euProposalRedirect, euProposalStandOf } from '../shared/utils/euVorschlag'
 import { EU_VORSCHLAG_DE, decisionBodyOf, effectKindOf, euVorschlagView } from '../app/utils/euVorschlag'
+import { feedbackFoldsOf } from '../app/utils/euFeedback'
 
 /*
  * Six answers of the Cellar to `proposalQuery`, as the SPARQL endpoint sent
@@ -238,6 +239,23 @@ function response(celex: string, over: Partial<EuVorschlagResponse> = {}): EuVor
 }
 
 describe('the page of a proposal', () => {
+  it('gives the feedback periods their folds: before the proposal, and on it (step 4)', () => {
+    const withIds: EuConsultation = {
+      ...OPEN_ON_PROPOSAL,
+      initiative: initiative([
+        { ...(OPEN_ON_PROPOSAL as Extract<EuConsultation, { state: 'gefunden' }>).initiative.publications[0]!, id: 31001 },
+        { ...(OPEN_ON_PROPOSAL as Extract<EuConsultation, { state: 'gefunden' }>).initiative.publications[1]!, id: 31002 },
+      ]),
+    }
+    const v = euVorschlagView(response('52026PC0780', { consultation: withIds }), TODAY)
+    const folds = (id: string) => feedbackFoldsOf(v.sections.find((s) => s.id === id)!.facts)
+    expect(folds('konsultation')).toEqual([{ key: 'rueckmeldungen-19000-31001', heading: 'Wer Rückmeldung gegeben hat', initiative: 19000, publication: 31001 }])
+    expect(folds('vorschlag')).toEqual([{ key: 'rueckmeldungen-19000-31002', heading: 'Wer Rückmeldung gegeben hat', initiative: 19000, publication: 31002 }])
+    // Without the publication's number (a record built by hand): no fold, the facts unchanged.
+    const without = euVorschlagView(response('52026PC0780', { consultation: OPEN_ON_PROPOSAL }), TODAY)
+    expect(without.sections.flatMap((s) => feedbackFoldsOf(s.facts))).toEqual([])
+  })
+
   it('pending, with the feedback period on it open: the stand, the one action, Parliament and Council not yet deciding', () => {
     const v = euVorschlagView(response('52026PC0780', { consultation: OPEN_ON_PROPOSAL }), TODAY)
     expect(v.status).toBe('Anhängig laut EUR-Lex')

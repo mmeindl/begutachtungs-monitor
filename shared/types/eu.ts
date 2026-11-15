@@ -475,6 +475,13 @@ export interface EuUmsetzungResponse {
  * read (`parseInitiative`).
  */
 export interface EuPortalPublication {
+  /**
+   * The publication's own number on the portal (`id` in its record): the
+   * list of contributions is asked by it (step 4). Null where the record
+   * carries none; optional only for records built by hand (tests) —
+   * `parseInitiative` always sets it (reader version 5, 15.11.2026).
+   */
+  id?: number | null
   /** The portal's stage word: `INIT_PLANNED`, `ROADMAP`, `PLANNING_WORKFLOW`, `OPC_LAUNCHED`, `ISC_WORKFLOW`, `ADOPTION_WORKFLOW`. */
   stage: string
   /** The publication's type: `ROADMAP`, `OPC_LAUNCHED`, `PROP_DIR`, `PROP_REG`, … */
@@ -572,6 +579,78 @@ export interface EuFensterResponse {
 export type EuInitiativeResponse =
   | { state: 'gefunden'; initiative: EuInitiative }
   | { state: 'ungelesen'; id: number; url: string }
+
+/* ------------------------------------------------------------------ *
+ * Who gave feedback (step 4 of the EU cycle)
+ * ------------------------------------------------------------------ */
+
+/**
+ * The eight kinds of organisation a contributor can choose on the portal,
+ * in the portal's own codes — `ACADEMIC_RESEARCH_INSTITTUTION` with the
+ * portal's misspelling, verbatim. Only a row of one of these kinds can name
+ * an organisation (`namedOrganisationOf`, `server/utils/eu/portalFeedback.ts`);
+ * the list in order is `EU_FEEDBACK_ORGANISATION_TYPES` (`shared/utils/euPortal.ts`).
+ */
+export type EuFeedbackOrganisationType =
+  | 'BUSINESS_ASSOCIATION'
+  | 'COMPANY'
+  | 'NGO'
+  | 'PUBLIC_AUTHORITY'
+  | 'ACADEMIC_RESEARCH_INSTITTUTION'
+  | 'TRADE_UNION'
+  | 'ENVIRONMENTAL_ORGANISATION'
+  | 'CONSUMER_ORGANISATION'
+
+/** One organisation named among the contributions: its name as the portal publishes it, collapsed and cut, and where it is from. */
+export interface EuFeedbackOrganisation {
+  /** Whitespace collapsed, at most 120 characters (cut with „…": some senders type a description into the field). */
+  name: string
+  /** ISO 3166 alpha-3 codes as the portal gives them („AUT"), each once, in the order first read; empty where none is valid. */
+  countries: string[]
+  /** How many of the rows read carry this name in this kind; more than one where the organisation answered more than once. */
+  rows: number
+}
+
+/** One kind of organisation among the contributions read. */
+export interface EuFeedbackGroup {
+  type: EuFeedbackOrganisationType
+  /** Every published row of this kind that was read. */
+  count: number
+  /** The organisations named, each once, alphabetically — never ordered by anything else. */
+  named: EuFeedbackOrganisation[]
+  /** The rows of this kind counted without a name: no witness that no single person stands behind the name. */
+  unnamed: number
+}
+
+/**
+ * What the monitor read of the contributions to one publication: counts and
+ * the organisations it may name — never a text, never a person's name.
+ * Every row read is in exactly one figure: the groups' counts, `citizens`,
+ * `other` and `unpublished` add up to `read`.
+ */
+export interface EuFeedbackReading {
+  /** How many contributions the portal counts for the publication (`totalElements` of the first page). */
+  total: number
+  /** How many rows were read: the newest, at most 500 (decision 10). */
+  read: number
+  /** The kinds of organisation with at least one row, in the fixed order of `EU_FEEDBACK_ORGANISATION_TYPES` (`shared/utils/euPortal.ts`). */
+  organisations: EuFeedbackGroup[]
+  /** `EU_CITIZEN` and `NON_EU_CITIZEN`: counted, never named. */
+  citizens: number
+  /** `OTHER` and any kind the monitor does not know: counted, never named. */
+  other: number
+  /** Rows the portal lists with another status than `PUBLISHED` (rejected, anonymised by the sender afterwards): counted apart, of no kind, never named. */
+  unpublished: number
+}
+
+/**
+ * GET /api/eu-recht/rueckmeldungen/:initiative/:publication — who gave
+ * feedback in one window, read when a reader opens the fold. A publication
+ * that is not one of the initiative's windows is a 404, not a state.
+ */
+export type EuRueckmeldungenResponse =
+  | { state: 'gelesen'; reading: EuFeedbackReading }
+  | { state: 'ungelesen' }
 
 /**
  * What the monitor can say about the consultation behind an act, by its

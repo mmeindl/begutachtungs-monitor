@@ -7,6 +7,7 @@
  * Pure module: auto-imported in `app/`, imported relatively by the server
  * and by vitest.
  */
+import type { EuFeedbackOrganisationType } from '../types/eu'
 
 /**
  * The stage names: the portal's own German words, read on 15.11.2026 from
@@ -57,3 +58,24 @@ export function actTypeDe(code: string | null | undefined): string | null {
   if (!code) return null
   return EU_ACT_TYPE_DE[code] ?? code
 }
+
+/**
+ * The eight kinds of organisation a contributor can choose on the portal,
+ * in the portal's codes and in the order the page lists them (a fixed
+ * order, never by count). Only a row of one of these kinds can name an
+ * organisation (`namedOrganisationOf`, `server/utils/eu/portalFeedback.ts`);
+ * `EU_CITIZEN`, `NON_EU_CITIZEN`, `OTHER` and any code not here are
+ * counted and never named. `ACADEMIC_RESEARCH_INSTITTUTION` is the portal's
+ * own misspelling, kept verbatim: it is the code the rows carry (78 of
+ * 1,500 rows read on 15.11.2026).
+ */
+export const EU_FEEDBACK_ORGANISATION_TYPES: readonly EuFeedbackOrganisationType[] = [
+  'BUSINESS_ASSOCIATION',
+  'COMPANY',
+  'NGO',
+  'PUBLIC_AUTHORITY',
+  'ACADEMIC_RESEARCH_INSTITTUTION',
+  'TRADE_UNION',
+  'ENVIRONMENTAL_ORGANISATION',
+  'CONSUMER_ORGANISATION',
+]

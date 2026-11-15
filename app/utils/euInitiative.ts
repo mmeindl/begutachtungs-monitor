@@ -37,7 +37,7 @@ import { euProposalPathOfReference } from '#shared/utils/eu'
 import { formatDateDe } from '#shared/utils/format'
 import { gapDe } from '#shared/utils/gaps'
 import { actTypeDe } from '#shared/utils/euPortal'
-import { EU_RAIL_DE, anchorOf, elementIdOf, fact, framed, initiativeFact, periodFacts, periodParts, stageDe, type EuRailSection, type EuRailStation, type EuRailStationId, type EuSectionFact } from './euRail'
+import { EU_RAIL_DE, anchorOf, elementIdOf, fact, feedbackRefOf, framed, initiativeFact, periodFacts, periodParts, stageDe, withFeedback, type EuRailSection, type EuRailStation, type EuRailStationId, type EuSectionFact } from './euRail'
 
 /** What kind of act the Commission foresees decides the stations after it. */
 type Track = 'gesetz' | 'kommission' | 'sonstiges'
@@ -168,17 +168,17 @@ const isProposalFeedback = (p: EuPortalPublication) => p.stage === 'ADOPTION_WOR
  * its period and count (`periodFacts`); without one, the day it was
  * published; a COM number beside it, where the publication carries one.
  */
-function commissionFacts(pubs: readonly EuPortalPublication[]): EuSectionFact[] {
+function commissionFacts(initiativeId: number, pubs: readonly EuPortalPublication[]): EuSectionFact[] {
   return pubs.flatMap((p, i) => {
     const com = p.reference && /^COM\(/.test(p.reference) ? [fact(`nummer-${i}`, DE.reference, [p.reference])] : []
     if (isProposalFeedback(p)) {
       return [
         ...(p.published ? [fact(`kommission-${i}`, stageDe(p), [`${DE.published.toLowerCase()} am ${formatDateDe(p.published)}`])] : []),
         ...com,
-        fact(`rueckmeldungen-${i}`, EU_RAIL_DE.portal.proposalFeedback, periodParts(p)),
+        withFeedback(fact(`rueckmeldungen-${i}`, EU_RAIL_DE.portal.proposalFeedback, periodParts(p)), feedbackRefOf(initiativeId, p)),
       ]
     }
-    if (withPeriod(p)) return [...periodFacts([p], `kommission-${i}`), ...com]
+    if (withPeriod(p)) return [...periodFacts(initiativeId, [p], `kommission-${i}`), ...com]
     return [fact(`kommission-${i}`, stageDe(p), p.published ? [`${DE.published.toLowerCase()} am ${formatDateDe(p.published)}`] : [DE.published]), ...com]
   })
 }
@@ -244,7 +244,7 @@ export function euInitiativeView(i: EuInitiative, today: string): EuInitiativeVi
     const gap = consulted.length ? null : track === 'gesetz' ? EU_RAIL_DE.portal.noPeriod : DE.noConsultation
     const st = station('konsultation', EU_RAIL_DE.name.konsultation, consulted.map((p) => EU_RAIL_DE.portal.until(stageDe(p), formatDateDe(p.feedbackEnd!))), gap)
     stations.push(st)
-    sections.push(section(st, [...periodFacts(consulted), initiativeFact(i)], gap))
+    sections.push(section(st, [...periodFacts(i.id, consulted), initiativeFact(i)], gap))
   }
 
   const name = track === 'gesetz' ? DE.name.vorschlag : track === 'kommission' ? DE.name.kommission : DE.name.sonstiges
@@ -256,7 +256,7 @@ export function euInitiativeView(i: EuInitiative, today: string): EuInitiativeVi
   stations.push(ownStation)
   const proposals = proposalsOf(i)
   // A section is for a station that is reached, as on a draft's page; a station ahead stands in the rail, with its one line.
-  if (!ownStation.ahead) sections.push(section(ownStation, [...commissionFacts(ownPubs), ...pointerFacts(proposals), ...(showConsultation ? [] : [initiativeFact(i)])], ownGap))
+  if (!ownStation.ahead) sections.push(section(ownStation, [...commissionFacts(i.id, ownPubs), ...pointerFacts(proposals), ...(showConsultation ? [] : [initiativeFact(i)])], ownGap))
 
   // After the Commission: only a legal act passes these, and the monitor does not follow it there yet.
   if (track !== 'sonstiges') {

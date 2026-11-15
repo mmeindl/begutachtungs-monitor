@@ -7,6 +7,7 @@ import { euInitiativeId, euInitiativePath } from '../shared/utils/eu'
 import { actTypeDe, windowStageDe } from '../shared/utils/euPortal'
 import { EU_FENSTER_DE, euFensterView } from '../app/utils/euFenster'
 import { euInitiativeView } from '../app/utils/euInitiative'
+import { feedbackFoldsOf } from '../app/utils/euFeedback'
 
 /* The open windows of the Commission's portal „Ihre Meinung zählt" (step 3
  * of the EU cycle): six rows cut from the answer of 15.11.2026 (49 rows) —
@@ -320,6 +321,22 @@ describe('the initiative\'s page', () => {
     expect(v.stations[1]!.gap).toBe('Das Portal verzeichnet zu diesem Vorhaben noch keinen Entwurf eines Rechtsakts.')
     // The day after it closed, the window is a fact, no action.
     expect(euInitiativeView(open, '2027-02-10').action).toBeNull()
+  })
+
+  it('gives every feedback period with contributions its fold, by the initiative\'s and the publication\'s numbers (step 4)', () => {
+    const v = euInitiativeView(closed, TODAY)
+    // „Konsultation": the Fahrplan (10) and the public consultation (146), each its own fold, each named by its fact.
+    expect(feedbackFoldsOf(v.sections[0]!.facts)).toEqual([
+      { key: 'rueckmeldungen-13192-15129', heading: 'Wer Rückmeldung gegeben hat (Fahrplan)', initiative: 13192, publication: 15129 },
+      { key: 'rueckmeldungen-13192-15080', heading: 'Wer Rückmeldung gegeben hat (Öffentliche Konsultation)', initiative: 13192, publication: 15080 },
+    ])
+    // The Commission's station: the feedback on the proposal (22).
+    expect(feedbackFoldsOf(v.sections[1]!.facts)).toEqual([{ key: 'rueckmeldungen-13192-15883', heading: 'Wer Rückmeldung gegeben hat', initiative: 13192, publication: 15883 }])
+    // The two numbers and nothing else reach the client.
+    for (const f of v.sections.flatMap((s) => s.facts)) if (f.feedback) expect(Object.keys(f.feedback).sort()).toEqual(['initiative', 'publication'])
+    // No fold for a window nobody answered in, nor for one without the publication's number.
+    const quiet: EuInitiative = { ...closed, publications: closed.publications.map((p) => (p.stage === 'ROADMAP' ? { ...p, feedbackCount: 0 } : p.stage === 'OPC_LAUNCHED' ? { ...p, id: null } : p)) }
+    expect(feedbackFoldsOf(euInitiativeView(quiet, TODAY).sections[0]!.facts)).toEqual([])
   })
 
   it('says no duration and no countdown (rule D6)', () => {

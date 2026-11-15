@@ -27,11 +27,22 @@
  * day's cache: a closed window is read again from the portal when its page
  * is asked, so the plan's fact store for once-open initiatives is not
  * built.
+ *
+ * WHO GAVE FEEDBACK (step 4, 15.11.2026): only when a reader opens the
+ * fold, up to five pages of the list of contributions to one publication,
+ * through the same pacer. The publication must be one of the initiative's
+ * windows (`feedbackOf`), so the endpoint is no proxy for any number. The
+ * reading holds organisations' names, so it is cached in memory alone
+ * (`DERIVED_CACHE`, memory in dev and in production) and for six hours
+ * (`FEEDBACK_NAMES_TTL_S`): consent to publication can be withdrawn after
+ * a window closed.
  */
-import type { EuConsultation, EuInitiative } from '../../../shared/types/eu'
-import { DERIVED_ANALYSIS_TTL_S } from '../cache/ttl'
+import type { EuConsultation, EuFeedbackReading, EuInitiative } from '../../../shared/types/eu'
+import { DERIVED_CACHE } from '../cache/base'
+import { DERIVED_ANALYSIS_TTL_S, FEEDBACK_NAMES_TTL_S } from '../cache/ttl'
 import { SitePacer } from '../laender/session'
 import { UpstreamHttpError, upstreamJson } from '../upstream/fetch'
+import { FEEDBACK_READER_VERSION, emptyReading, readFeedback } from './portalFeedback'
 import { PORTAL_FIRST_YEAR, PORTAL_GAP_MS, PORTAL_MAX_WAIT_MS, PORTAL_POLICY, PORTAL_READER_VERSION, PORTAL_SEARCH_HITS, carriesReference, comReferenceOf, initiativeUrl, parseInitiative, parseSearch, readOpenWindows, searchUrl, type PortalOpenWindows, type PortalSearch } from './haveYourSay'
 
 const pacer = new SitePacer(PORTAL_GAP_MS, 0, PORTAL_MAX_WAIT_MS)
@@ -118,5 +129,42 @@ export async function initiativeById(id: number): Promise<{ state: 'gefunden'; i
     return { state: 'gefunden', initiative: await initiativeCached(id) }
   } catch (error) {
     return error instanceof UpstreamHttpError && error.status === 404 ? { state: 'unbekannt' } : { state: 'ungelesen' }
+  }
+}
+
+/**
+ * Who gave feedback to one publication, as counts and the organisations the
+ * naming rule allows (`readFeedback`) — six hours, in MEMORY ONLY: the
+ * derived mount is memory in dev and in production, and this name is on
+ * neither list of `tests/cacheLayers.test.ts` that may reach a disk. Keyed
+ * by the publication alone; whose it is was proven before the call.
+ */
+const feedbackCached = defineCachedFunction(
+  async (publicationId: number): Promise<EuFeedbackReading> => readFeedback(portalJson, publicationId),
+  { name: 'eu-portal-rueckmeldungen', base: DERIVED_CACHE, getKey: (publicationId: number) => `${publicationId}|f${FEEDBACK_READER_VERSION}`, maxAge: FEEDBACK_NAMES_TTL_S, swr: false },
+)
+
+export type FeedbackRead = { state: 'gelesen'; reading: EuFeedbackReading } | { state: 'unbekannt' } | { state: 'ungelesen' }
+
+/**
+ * Who gave feedback in one window of one initiative. The publication must
+ * be a window of that initiative, proven through the initiative's cached
+ * read: an initiative the portal proves unknown, or a number that is none
+ * of its publications with a feedback period, is `unbekannt` (the route's
+ * 404) — so nobody can ask the portal for an arbitrary publication through
+ * the monitor. A window the portal counts no contribution for is answered
+ * from that count, without a request. Every failure is `ungelesen`, never
+ * an empty list. Never throws.
+ */
+export async function feedbackOf(initiativeId: number, publicationId: number): Promise<FeedbackRead> {
+  const owner = await initiativeById(initiativeId)
+  if (owner.state !== 'gefunden') return owner
+  const publication = owner.initiative.publications.find((p) => p.id === publicationId && p.feedbackEnd !== null)
+  if (!publication) return { state: 'unbekannt' }
+  if (publication.feedbackCount === 0) return { state: 'gelesen', reading: emptyReading() }
+  try {
+    return { state: 'gelesen', reading: await feedbackCached(publicationId) }
+  } catch {
+    return { state: 'ungelesen' }
   }
 }

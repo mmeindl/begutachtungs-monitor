@@ -10,8 +10,10 @@
  *      beside a citation;
  *   3. what limits the reading, as short paragraphs under the frame;
  *   4. the credit line under the frame;
- *   5. the default slot: what the section holds beyond its facts — the
- *      drafts of „Umsetzung", later the feedback of „Konsultation";
+ *   5. „Wer Rückmeldung gegeben hat": a fold per feedback window the
+ *      frame shows (`EuFeedbackFold`, step 4), read only when opened;
+ *      then the default slot: what the section holds beyond its facts —
+ *      the drafts of „Umsetzung";
  *   6. the dated record, folded, on the sheet a list stands on (`ListBox`),
  *      as „Alle Schritte im Landtag": the steps of the procedure, or under
  *      „Umsetzung" the measures the Member State notified.
@@ -20,6 +22,8 @@
  * step of the EU cycle fills these places and adds no layout of its own.
  */
 import type { EuRailSection } from '~/utils/euRail'
+// Imported, not auto-imported: a helper used only in the template is not in scope at runtime (CLAUDE.md, „Gotchas").
+import { feedbackFoldsOf } from '~/utils/euFeedback'
 
 defineProps<{
   section: EuRailSection
@@ -56,6 +60,10 @@ defineProps<{
         <SectionCredits v-if="section.credits.length" :sources="[]" :marked="false">
           <span v-for="item in section.credits" :key="item">{{ item }}</span>
         </SectionCredits>
+      </div>
+      <!-- The folds of one section stand together, as one block under the frame. -->
+      <div v-if="section.facts.some((f) => f.feedback)">
+        <EuFeedbackFold v-for="fold in feedbackFoldsOf(section.facts)" :key="fold.key" :fold="fold" />
       </div>
       <slot />
       <FoldSection v-if="section.record" :heading="section.record.heading">

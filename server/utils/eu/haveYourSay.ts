@@ -13,8 +13,10 @@
  * service asks one request at a time, 2.5 s apart — and narrow: three
  * addresses, the search by reference, one initiative, and (step 3,
  * 15.11.2026) the list of every initiative with an open window. The list
- * of contributions (`api/allFeedback`) is never asked: it carries the
- * names of the people who wrote them.
+ * of contributions (`api/allFeedback`) is read by its own module
+ * (`portalFeedback.ts`, step 4) and only when a reader opens „Wer
+ * Rückmeldung gegeben hat": it carries the names of the people who wrote
+ * them, and what it may name is decided there.
  *
  * A FIXED LIST OF FIELDS. An initiative's record names, on every
  * publication, the official who wrote it — `authorName`, `authorSurname`,
@@ -50,9 +52,10 @@ export const PORTAL_PAGE_URL = `https://${PORTAL_HOST}/info/law/better-regulatio
  * Bumped whenever the reader takes other fields: the service caches the
  * parsed initiative and the parsed list. 4 since 15.11.2026: the
  * initiative's German title and its foreseen act type, and the list of
- * open windows.
+ * open windows. 5 the same day: a publication's own number, which the list
+ * of contributions is asked by (step 4).
  */
-export const PORTAL_READER_VERSION = 4
+export const PORTAL_READER_VERSION = 5
 
 /** The portal holds no proposals from before this year (0 of 15 in the sample of 14.11.2026). */
 export const PORTAL_FIRST_YEAR = 2017
@@ -154,13 +157,16 @@ export function parseSearch(answer: unknown): PortalSearch {
  * is touched. Of the initiative itself: `id`, `shortTitle`, the German
  * entry of `initiativeTranslations`, `foreseenActType`.
  */
-export const PUBLICATION_FIELDS = ['frontEndStage', 'type', 'reference', 'publishedDate', 'endDate', 'totalFeedback', 'receivingFeedbackStatus'] as const
+export const PUBLICATION_FIELDS = ['id', 'frontEndStage', 'type', 'reference', 'publishedDate', 'endDate', 'totalFeedback', 'receivingFeedbackStatus'] as const
 
 function publicationOf(raw: unknown): EuPortalPublication | null {
   if (!isObject(raw)) return null
   const stage = text(raw.frontEndStage)
   if (!stage) return null
+  // Nine digits at most, as the monitor's address of the contributions takes them (15883 in the fixture).
+  const id = Number(raw.id)
   return {
+    id: Number.isInteger(id) && id > 0 && id <= 999_999_999 ? id : null,
     stage,
     type: text(raw.type),
     reference: text(raw.reference),

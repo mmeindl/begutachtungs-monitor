@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import { euRailView, type EuRailView } from '../app/utils/euRail'
+import { feedbackFoldsOf } from '../app/utils/euFeedback'
 import type { EuActDraft, EuActHead, EuActRail, EuActResponse, EuConsultation, EuPortalPublication, EuProcedure } from '../shared/types/eu'
 
 /* The rail of an EU act: the stations of the act's life from the Cellar,
@@ -217,6 +218,22 @@ describe('euRailView', () => {
         'Rückmeldungen zum Vorschlag: 29.04.2022 – 29.06.2022, 22 Rückmeldungen, [im Portal „Ihre Meinung zählt“]',
       ])
       expect(section(v, 'vorschlag').credits).toEqual(['Quellen:', 'Cellar des Amts für Veröffentlichungen der Europäischen Union (Metadaten)', 'Europäische Kommission, Portal „Ihre Meinung zählt“'])
+    })
+
+    it('gives each feedback period with contributions a fold, by the initiative\'s and the publication\'s numbers (step 4)', () => {
+      const numbered = found((ANTISLAPP as Extract<EuConsultation, { state: 'gefunden' }>).initiative.publications.map((p, i) => ({ ...p, id: 15000 + i })))
+      const v = euRailView(response({ consultation: numbered }), TODAY)
+      // The INIT_PLANNED publication has no period; the Fahrplan and the consultation each have their fold, the proposal's period its own.
+      expect(feedbackFoldsOf(section(v, 'konsultation').facts).map((f) => [f.heading, f.initiative, f.publication])).toEqual([
+        ['Wer Rückmeldung gegeben hat (Fahrplan)', 13192, 15001],
+        ['Wer Rückmeldung gegeben hat (Öffentliche Konsultation)', 13192, 15002],
+      ])
+      expect(feedbackFoldsOf(section(v, 'vorschlag').facts).map((f) => [f.heading, f.publication])).toEqual([['Wer Rückmeldung gegeben hat', 15003]])
+      // The frame's words do not change with it.
+      expect(frame(v, 'konsultation')).toEqual(frame(euRailView(response({ consultation: ANTISLAPP }), TODAY), 'konsultation'))
+      // Nobody answered: no fold.
+      const quiet = found([pub({ id: 15002, feedbackCount: 0 })])
+      expect(feedbackFoldsOf(section(euRailView(response({ consultation: quiet }), TODAY), 'konsultation').facts)).toEqual([])
     })
 
     it('takes the feedback period of THIS proposal where an initiative holds several', () => {

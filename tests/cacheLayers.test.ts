@@ -228,6 +228,25 @@ describe('the document disk', () => {
     expect(found.some((f) => STATEMENT_NAME.test(f.name))).toBe(true)
   })
 
+  it('never holds who gave feedback on the Commission\'s portal: memory only, six hours at most', () => {
+    // The reading names organisations, and consent to publication can be
+    // withdrawn after a window closed (step 4 of the EU cycle, 15.11.2026):
+    // the derived mount is memory in dev and in production, the fetched one
+    // is a directory in dev.
+    const feedback = found.filter((f) => f.name === 'eu-portal-rueckmeldungen')
+    expect(feedback).toHaveLength(1)
+    expect(feedback[0]!.derived).toBe(true)
+    expect(feedback[0]!.documents).toBe(false)
+    expect(FETCHED['eu-portal-rueckmeldungen']).toBeUndefined()
+    expect(DOCUMENTS).not.toContain('eu-portal-rueckmeldungen')
+    expect(optionsOf(feedback[0]!.options)).toMatch(/\bmaxAge:\s*FEEDBACK_NAMES_TTL_S\b/)
+    const ttl = readFileSync(join(UTILS, 'cache', 'ttl.ts'), 'utf8')
+    expect(/export const FEEDBACK_NAMES_TTL_S = 60 \* 60 \* 6\b/.test(ttl)).toBe(true)
+    // And no other cached function reads the list of contributions.
+    const readers = utilsFiles().filter((f) => readFileSync(join(UTILS, f), 'utf8').includes('readFeedback('))
+    expect(readers.sort()).toEqual([join('eu', 'portalFeedback.ts'), join('eu', 'portalService.ts')].sort())
+  })
+
   it('is cleaned under the directory the driver writes to', () => {
     // The nightly `find … -delete` and the driver must name one directory;
     // a rename on one side would leave the other deleting nothing.

@@ -420,11 +420,21 @@ Changes what the monitor names; built with the maintainer present.
   organisation only when its `userType` is one of the organisation types
   **and** it names an organisation; `EU_CITIZEN`, `NON_EU_CITIZEN`, `OTHER`,
   an unknown type, or a contradiction between type and fields is a person.
-  First name and surname are never read into an object, for any type. A
-  row published as `ANONYMOUS` shows no organisation name either.
-- The organisation name additionally passes the existing classifier
-  (`server/utils/parliament/privacy.ts`, unchanged) as a second witness: a
-  „company" whose name reads as a person's is counted, not named.
+  First name and surname are never read into an object, for any type.
+  ~~A row published as `ANONYMOUS` shows no organisation name either.~~
+  **Changed by the maintainer on 15.11.2026:** an `ANONYMOUS` row of an
+  organisation kind is named like a `WITHINFO` one — the portal's own form
+  publishes an organisation's name either way and withholds only the
+  contact person's.
+- ~~The organisation name additionally passes the existing classifier
+  (`server/utils/parliament/privacy.ts`, unchanged) as a second witness.~~
+  **Changed by the maintainer on 15.11.2026:** the second witness is
+  structural and a name check, not `privacy.ts` (which called 62 % of 934
+  international organisation names a person and missed 3 of the 8 real
+  cases): the size is SMALL, MEDIUM or LARGE or the row carries a
+  Transparency Register number, AND no word of the sender's first name or
+  surname occurs in the organisation's name. All 8 person-bearing names
+  among the 934 were MICRO.
 - Names are held in memory for a short time and never written to the fact
   store: consent to publication can be withdrawn after the window closed.
 - The text of a contribution arrives in the same row as its metadata and
@@ -433,6 +443,32 @@ Changes what the monitor names; built with the maintainer present.
   the text cannot be left unfetched if the names are read (decision 9).
 - Before it ships: every organisation name the page would show for a
   sample of 20 windows is read by hand, as after a change to `privacy.ts`.
+
+**Built on 15.11.2026** (the rule in `docs/decisions.md`, „Who gave
+feedback on the Commission's portal"): the reader
+(`server/utils/eu/portalFeedback.ts` — `namedOrganisationOf`, the one pure
+function of the rule; `parseFeedbackPage` with a fixed list of fields;
+`readFeedback`, at most five pages of 100), the publication's own number in
+the initiative's reader (`PORTAL_READER_VERSION` 5), the service
+(`feedbackOf` in `portalService.ts`: the publication must be a window of the
+initiative, read through the initiative's cache; same pacer; cached six
+hours in the derived mount, memory in dev and production), the route
+`/api/eu-recht/rueckmeldungen/<initiative>/<publication>` (404 for a
+publication that is none of the initiative's windows, `no-store`), and the
+fold „Wer Rückmeldung gegeben hat" (`EuFeedbackFold`, words in
+`app/utils/euFeedback.ts`) under every feedback period with contributions on
+the act's, the proposal's and the initiative's page, read only when opened.
+Against the plan: rows with another status than `PUBLISHED` are counted
+apart, of no kind; the publication mode must be `WITHINFO` or `ANONYMOUS`,
+any other word is counted; a register number needs a digit; accents are
+folded for the name witness (more rows counted, never fewer). The hand
+reading through the built reader was done the same day (27 windows in
+full, 4,537 rows, 2,078 distinct names) and added two conditions: no
+number of five or more digits and no e-mail address in the name, and only
+the head of the field is shown (cut at „;", a web address, „Contact:"; a
+head over 120 characters is counted). Not done: the Impressum sentence
+(maintainer's). Not verified: the portal's answer to a page number past
+the last.
 
 ### Step 5 — the European Citizens' Initiative
 

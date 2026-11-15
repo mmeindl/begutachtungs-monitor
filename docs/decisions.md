@@ -740,7 +740,8 @@ The code names the EU rules D1 to D7; this is where they are defined
     gently** (15.11.2026): its interface is undocumented. Two addresses —
     the search by COM number, as a quoted phrase, and one initiative —
     one request at a time, 2.5 s apart, no retry, only when an act's page
-    asks, cached a day. The list of contributions is never asked. The
+    asks, cached a day. The list of contributions is asked only when a
+    reader opens „Wer Rückmeldung gegeben hat" (step 4, below). The
     parser takes a fixed list of fields; the officials' names, mail
     addresses and telephone numbers in the portal's record reach no
     cache, no API answer and no page, and only what was parsed is cached.
@@ -748,8 +749,74 @@ The code names the EU rules D1 to D7; this is where they are defined
     carries exactly the COM number. „Not found in the portal", „older
     than the portal", „no number to search by" and „not read" are four
     sentences, and none says „keine Konsultation". Rejected: the prewarm
-    of every act of the map, and reading who gave feedback (step 4, with
-    the maintainer).
+    of every act of the map.
+  - **Who gave feedback on the Commission's portal: organisations named,
+    persons counted** (15.11.2026, step 4, rule decided by the maintainer;
+    `server/utils/eu/portalFeedback.ts`, `namedOrganisationOf`). A row of
+    `allFeedback` names an organisation only if it is `PUBLISHED`, its
+    kind is one of the eight organisation kinds (`EU_CITIZEN`,
+    `NON_EU_CITIZEN`, `OTHER` and any unknown kind are counted, never
+    named), it carries a non-empty organisation name, and two witnesses
+    hold: a structural one — the size is SMALL, MEDIUM or LARGE, or the row
+    carries a Transparency Register number — and a name witness — no word
+    of three letters or more of the sender's first name or surname (case
+    and accents ignored) is a word of the organisation's name. In doubt a
+    sender is a person: any missing or odd field is counted. Measured on
+    15.11.2026: 934 distinct organisation names from 26 windows (1,500
+    rows) read by hand; 8 of them carried a person's name, all 8 MICRO —
+    sole traders carry their own name as the business name. The rule names
+    88 % of the organisation rows. `server/utils/parliament/privacy.ts` is
+    not the witness here and is not touched: built for Austrian submitter
+    lines, it called 62 % of these international names a person and
+    missed 3 of the 8 real cases.
+    - **The name must be a name, and only its head is shown.** The reading
+      through the built reader (15.11.2026: 27 windows in full, 4,537
+      rows, 2,078 distinct names shown, each read by hand) found three
+      the first rule let through: a field that held an identity number
+      instead of a name, and two that named a person in a sentence after
+      the name („… Contact: <name>", „…; <name> … is the co-author"), on
+      rows without a sender's name to compare with. Therefore: a field
+      with a number of five or more digits or an e-mail address is
+      counted; the name is cut at the first „;", at a web address and at
+      „Contact:" and its like; and a head of more than 120 characters is a
+      description, counted (13 of the 2,078). What remains possible is a
+      person named inside the head in a form no test knows. Any change to
+      `namedOrganisationOf` is followed by the same reading: every name
+      the rule newly shows, by hand.
+    - **WITHINFO and ANONYMOUS rows are named alike.** For an organisation
+      the portal's own form publishes the organisation's details, its name
+      included, either way; „anonymous" withholds the contact person's
+      name. That person's name is read only for the name witness, inside
+      the one function, and never copied into a result, a log, an error or
+      a cache. The plan's earlier line (ANONYMOUS shows no organisation)
+      is revised.
+    - **The text arrives and is dropped at the parser** (plan, decision
+      9): the contribution's text, its attachments, the login, the names
+      and the row's number are not in the parsed row, which has a fixed
+      list of fields; a test feeds all of them and finds none in the
+      output. The page links the portal for the texts. „Statement texts are
+      linked, never fetched or parsed" stays as it is for Parliament.
+    - **Names in memory only, six hours** (`FEEDBACK_NAMES_TTL_S`, the
+      derived mount, memory in dev and production): consent to
+      publication can be withdrawn after a window closed, so no name may
+      outlive a restart or reach the disk or the fact store. The API answer
+      says `Cache-Control: no-store` for the same reason.
+    - **On demand, at most 500 rows** (plan, decision 10): the fold „Wer
+      Rückmeldung gegeben hat" under each feedback period with
+      contributions reads up to five pages of 100, newest first, through
+      the portal's pacer, only when opened — never with the page. Beyond
+      the cap it says „Gelesen sind die neuesten 500 von N Rückmeldungen".
+      The endpoint answers only for a publication that is a window of the
+      initiative named, so it is no proxy for arbitrary numbers.
+    - **Counts and names, no ranking.** Kinds stand in a fixed order, the
+      names alphabetically; nothing is ordered by count, and no figure
+      stands for what a contribution achieved. Rows the portal does not
+      list as published (rejected, anonymised by the sender afterwards)
+      are counted apart, of no kind, never named. Organisations counted
+      without a name are counted per kind, with the reason in one
+      sentence. Rejected: naming every row of an organisation kind (sole
+      traders), the Parliament classifier as witness, and keeping names in
+      the fact store for closed windows.
   - **The windows open on the portal are listed first on `/eu-recht`**
     (15.11.2026, step 3, `EuFensterList`): one request a day for the list,
     one row per window by closing day, tabs by where in the process
