@@ -69,6 +69,26 @@ export function euPath(...segments: (string | number)[]): string {
   return parts.length ? `${EU_BASE_PATH}/${parts.join('/')}` : EU_BASE_PATH
 }
 
+/** The path word of an initiative of the Commission's portal (the plan's „The addresses"). */
+export const EU_INITIATIVE_PATH_WORD = 'initiative'
+
+/** The portal's numbers are short: 19,517 the highest on 15.11.2026. Nine digits leave room and keep any input bounded. */
+const INITIATIVE_ID_RE = /^[1-9]\d{0,8}$/
+
+/**
+ * `/eu-recht/initiative/13192` — an initiative before a proposal, or a
+ * draft act of the Commission, by the portal's own number; null for
+ * anything that is no such number.
+ */
+export function euInitiativePath(id: number): string | null {
+  return Number.isInteger(id) && INITIATIVE_ID_RE.test(String(id)) ? euPath(EU_INITIATIVE_PATH_WORD, id) : null
+}
+
+/** The portal's number from a path segment: digits only, no leading zero, bounded; null otherwise. */
+export function euInitiativeId(segment: string): number | null {
+  return INITIATIVE_ID_RE.test(segment) ? Number(segment) : null
+}
+
 const CELEX_LETTER: Record<string, keyof typeof EU_ACT_PATH_WORD> = { L: 'richtlinie', R: 'verordnung', D: 'beschluss', F: 'rahmenbeschluss' }
 const CELEX_RE = /^3(\d{4})([LRDF])(\d{4})$/
 

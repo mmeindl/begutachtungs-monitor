@@ -10,10 +10,11 @@
  * loads JSON from its own addresses; no documentation and no word on reuse
  * was found (14.11.2026). The content is the Commission's, CC BY 4.0 by its
  * legal notice and Decision 2011/833/EU. So the reader is gentle — the
- * service asks one request at a time, 2.5 s apart — and narrow: two
- * addresses, the search by reference and one initiative. The list of
- * contributions (`api/allFeedback`) is never asked: it carries the names
- * of the people who wrote them.
+ * service asks one request at a time, 2.5 s apart — and narrow: three
+ * addresses, the search by reference, one initiative, and (step 3,
+ * 15.11.2026) the list of every initiative with an open window. The list
+ * of contributions (`api/allFeedback`) is never asked: it carries the
+ * names of the people who wrote them.
  *
  * A FIXED LIST OF FIELDS. An initiative's record names, on every
  * publication, the official who wrote it — `authorName`, `authorSurname`,
@@ -35,15 +36,23 @@
  * says so; the service turns it into the state `ungelesen`, never into
  * „no consultation".
  */
-import type { EuInitiative, EuPortalPublication } from '../../../shared/types/eu'
+import type { EuInitiative, EuOpenInitiative, EuPortalPublication, EuWindow } from '../../../shared/types/eu'
 import type { UpstreamPolicy } from '../upstream/fetch'
 
 export const PORTAL_HOST = 'ec.europa.eu'
 const API = `https://${PORTAL_HOST}/info/law/better-regulation/brpapi`
 const PAGES = `https://${PORTAL_HOST}/info/law/better-regulation/have-your-say/initiatives`
 
-/** Bumped whenever the reader takes other fields: the service caches the parsed initiative. */
-export const PORTAL_READER_VERSION = 3
+/** The portal's start page, German — the one the Impressum links; where a reader goes when the monitor could not read the portal. */
+export const PORTAL_PAGE_URL = `https://${PORTAL_HOST}/info/law/better-regulation/have-your-say_de`
+
+/**
+ * Bumped whenever the reader takes other fields: the service caches the
+ * parsed initiative and the parsed list. 4 since 15.11.2026: the
+ * initiative's German title and its foreseen act type, and the list of
+ * open windows.
+ */
+export const PORTAL_READER_VERSION = 4
 
 /** The portal holds no proposals from before this year (0 of 15 in the sample of 14.11.2026). */
 export const PORTAL_FIRST_YEAR = 2017
@@ -56,7 +65,8 @@ export const PORTAL_SEARCH_HITS = 3
  * this is the single request: no retry — a 406 is reproducible, and a
  * second request to an undocumented interface is not ours to spend — and a
  * ceiling sized for an initiative (97 kB measured for the largest read,
- * every title in 24 languages).
+ * every title in 24 languages) and for a page of the open windows (193 kB
+ * for 49 initiatives on 15.11.2026, so about 400 kB for a full page of 100).
  */
 export const PORTAL_POLICY: UpstreamPolicy = {
   timeoutMs: 15_000,
@@ -139,7 +149,11 @@ export function parseSearch(answer: unknown): PortalSearch {
   return { ids, total: Math.max(total, ids.length) }
 }
 
-/** Every field of a publication the reader takes. Nothing else of the record is touched. */
+/**
+ * Every field of a publication the reader takes. Nothing else of the record
+ * is touched. Of the initiative itself: `id`, `shortTitle`, the German
+ * entry of `initiativeTranslations`, `foreseenActType`.
+ */
 export const PUBLICATION_FIELDS = ['frontEndStage', 'type', 'reference', 'publishedDate', 'endDate', 'totalFeedback', 'receivingFeedbackStatus'] as const
 
 function publicationOf(raw: unknown): EuPortalPublication | null {
@@ -172,7 +186,180 @@ export function parseInitiative(answer: unknown): EuInitiative {
     .map((p, i) => ({ p, i }))
     .sort((a, b) => (a.p.published ?? '9999').localeCompare(b.p.published ?? '9999') || a.i - b.i)
     .map(({ p }) => p)
-  return { id, title: text(answer.shortTitle), url: initiativePageUrl(id), publications }
+  return {
+    id,
+    title: text(answer.shortTitle),
+    titleDe: germanTitleOf(answer.initiativeTranslations),
+    actType: text(answer.foreseenActType),
+    url: initiativePageUrl(id),
+    publications,
+  }
+}
+
+/**
+ * The German short title among an initiative's translations
+ * (`initiativeTranslations`: `{ field, language, value }`, 24 languages on
+ * 48 of the 49 open initiatives of 15.11.2026, 23 on one; German on all
+ * 49). Only the entry whose field is `SHORT_TITLE` and whose language is
+ * `DE`; null where there is none.
+ */
+function germanTitleOf(translations: unknown): string | null {
+  if (!Array.isArray(translations)) return null
+  for (const t of translations) {
+    if (isObject(t) && t.field === 'SHORT_TITLE' && t.language === 'DE') {
+      const value = text(t.value)
+      if (value) return value
+    }
+  }
+  return null
+}
+
+/* ------------------------------------------------------------------ *
+ * The open windows (step 3 of the EU cycle)
+ * ------------------------------------------------------------------ */
+
+/** How many initiatives one page of the list asks for: every open window fit on one (49 on 15.11.2026). */
+export const OPEN_WINDOWS_PAGE_SIZE = 100
+
+/**
+ * How many pages of the list the service reads at most. Three are 300
+ * open initiatives, six times the count of 15.11.2026; beyond that the list
+ * says how many it read of how many, and the next page waits for a day.
+ */
+export const OPEN_WINDOWS_MAX_PAGES = 3
+
+/**
+ * One page of the list of every initiative with an open window. The
+ * parameter names are the portal's own form fields; `language=DE` changes
+ * nothing in the answer measured (every title comes in every language) and
+ * stays because it is the form's. Page 0 is the address measured on
+ * 15.11.2026, and so it is written without `page`; a further page adds the
+ * parameter by Spring's convention, which is NOT verified — the reader
+ * checks the page number the answer reports instead of trusting it.
+ */
+export function openWindowsUrl(page: number): string {
+  if (!Number.isInteger(page) || page < 0) throw new Error(`Keine Seite: ${page}`)
+  const params = new URLSearchParams({ feedbackStatus: 'OPEN', size: String(OPEN_WINDOWS_PAGE_SIZE), language: 'DE' })
+  if (page > 0) params.set('page', String(page))
+  return `${API}/searchInitiatives?${params}`
+}
+
+/** Every field of a list row the reader takes. Nothing else of the row is touched. */
+export const OPEN_WINDOW_FIELDS = ['id', 'reference', 'foreseenActType', 'shortTitle', 'initiativeTranslations', 'topics', 'currentStatuses'] as const
+/** Every field of a row's status the reader takes. */
+export const OPEN_WINDOW_STATUS_FIELDS = ['frontEndStage', 'receivingFeedbackStatus', 'feedbackStartDate', 'feedbackEndDate'] as const
+
+/** One page of the list, read: its initiatives, and where it stands among the pages. */
+export interface OpenWindowsPage {
+  initiatives: EuOpenInitiative[]
+  /** The page the answer says it is (`number`), 0-based. */
+  page: number
+  /** `totalPages` and `totalElements` as the answer counts them. */
+  totalPages: number
+  total: number
+  /** How many rows the page carried, open windows or not — what „read" counts. */
+  rows: number
+}
+
+/**
+ * A status of a row, as a window — only where the portal says feedback is
+ * `OPEN` (all 53 statuses of 15.11.2026). A status with another word is no
+ * open window and is left out; one without a stage word is no shape the
+ * reader knows.
+ */
+function windowOf(raw: unknown): EuWindow | null {
+  if (!isObject(raw)) throw new Error('Portal: Status ist kein Objekt')
+  const stage = text(raw.frontEndStage)
+  if (!stage) throw new Error('Portal: Status ohne Stadium')
+  if (raw.receivingFeedbackStatus !== 'OPEN') return null
+  return { stage, start: day(raw.feedbackStartDate), end: day(raw.feedbackEndDate) }
+}
+
+function openInitiativeOf(raw: unknown): EuOpenInitiative {
+  if (!isObject(raw)) throw new Error('Portal: Zeile ist kein Objekt')
+  // The id arrives as a JSON number written „18953.0"; `Number` reads it.
+  const id = Number(raw.id)
+  // Nine digits at most, as the monitor's address takes them (`euInitiativePath`; 19,517 the highest on 15.11.2026).
+  if (!Number.isInteger(id) || id <= 0 || id > 999_999_999) throw new Error('Portal: Zeile ohne Nummer')
+  if (!Array.isArray(raw.currentStatuses)) throw new Error('Portal: Zeile ohne Status')
+  const titleDe = germanTitleOf(raw.initiativeTranslations)
+  const topics = Array.isArray(raw.topics) ? raw.topics.flatMap((t) => (isObject(t) && text(t.label) ? [text(t.label)!] : [])) : []
+  return {
+    id,
+    reference: text(raw.reference),
+    actType: text(raw.foreseenActType),
+    title: titleDe ?? text(raw.shortTitle),
+    titleIsGerman: titleDe !== null,
+    topics,
+    windows: raw.currentStatuses.map(windowOf).filter((w): w is EuWindow => w !== null),
+  }
+}
+
+/**
+ * One page of the list of open windows, read field by field
+ * (`OPEN_WINDOW_FIELDS`): the row carries no person, but the rule of the
+ * initiative's reader holds here too — nothing is copied or spread. Throws
+ * on any shape the reader does not know — an answer without its page, a row
+ * without a number or without its statuses — so a changed interface is
+ * „not read", never a shorter list. A row whose statuses hold no open
+ * window (none on 15.11.2026) is left out.
+ */
+export function parseOpenWindows(answer: unknown): OpenWindowsPage {
+  const page = isObject(answer) ? answer.initiativeResultDtoPage : null
+  const content = isObject(page) ? page.content : null
+  if (!isObject(page) || !Array.isArray(content)) throw new Error('Portal: Liste ohne Seite')
+  const initiatives = content.map(openInitiativeOf).filter((i) => i.windows.length > 0)
+  const number = count(page.number) ?? 0
+  const totalPages = count(page.totalPages) ?? number + 1
+  const total = count(page.totalElements) ?? content.length
+  return { initiatives, page: number, totalPages: Math.max(totalPages, number + 1), total: Math.max(total, content.length), rows: content.length }
+}
+
+/** The list as the service keeps it: the initiatives read, and whether the page cap cut it. */
+export interface PortalOpenWindows {
+  initiatives: EuOpenInitiative[]
+  /** How many initiatives were read of how many the portal counts; null where all were. */
+  cut: { read: number; total: number } | null
+}
+
+/**
+ * The whole list, page by page, through the caller's fetch (the service's
+ * paced one; a test's fixture). At most `OPEN_WINDOWS_MAX_PAGES` pages;
+ * an initiative on two pages (the list moving between two requests) is
+ * kept once. A page whose answer names another page number did not honour
+ * the unverified parameter: the reading stops there and says it is cut,
+ * rather than count the first page twice. A page that fails throws, so
+ * nothing partial is cached as if it were the list.
+ */
+export async function readOpenWindows(fetchJson: (url: string) => Promise<unknown>): Promise<PortalOpenWindows> {
+  const first = parseOpenWindows(await fetchJson(openWindowsUrl(0)))
+  if (first.page !== 0) throw new Error('Portal: erste Seite trägt eine andere Nummer')
+  const byId = new Map<number, EuOpenInitiative>()
+  const keep = (p: OpenWindowsPage) => p.initiatives.forEach((i) => byId.has(i.id) || byId.set(i.id, i))
+  keep(first)
+  let rows = first.rows
+  let complete = first.totalPages <= OPEN_WINDOWS_MAX_PAGES
+  for (let p = 1; p < Math.min(first.totalPages, OPEN_WINDOWS_MAX_PAGES); p++) {
+    const next = parseOpenWindows(await fetchJson(openWindowsUrl(p)))
+    if (next.page !== p) {
+      complete = false
+      break
+    }
+    keep(next)
+    rows += next.rows
+  }
+  return {
+    initiatives: [...byId.values()],
+    cut: complete && rows >= first.total ? null : { read: rows, total: first.total },
+  }
+}
+
+/** The windows still open on a day: a list cached since yesterday may hold one that closed. */
+export function windowsOpenOn(initiatives: readonly EuOpenInitiative[], today: string): EuOpenInitiative[] {
+  return initiatives.flatMap((i) => {
+    const windows = i.windows.filter((w) => w.end === null || w.end >= today)
+    return windows.length ? [{ ...i, windows }] : []
+  })
 }
 
 /** Whether one of the initiative's publications carries exactly this COM number — the proof of the join. */

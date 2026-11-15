@@ -44,6 +44,8 @@ const KLASSE_NAME: Record<string, string> = {
   anliegen: `Liste der ${ANLIEGEN_SECTION_DE} (seit 15.11.2026)`,
   'anliegen-gegenstand': 'Petitionen, Bürgerinitiativen, Volksbegehren und Petitionen an den Bundesrat (seit 15.11.2026)',
   'eu-recht': 'EU-Recht',
+  // Counted on their own since 15.11.2026.
+  'eu-initiative': 'Vorhaben der EU-Kommission (seit 15.11.2026)',
   wege: 'Wege',
   datenlage: 'Datenlage',
   'so-funktionierts': 'So funktioniert’s (bis 14.11.2026)',

@@ -40,7 +40,9 @@ defineProps<{
               <span>
                 <template v-for="(part, i) in f.parts" :key="i">
                   <template v-if="i > 0">, </template>
-                  <template v-if="typeof part === 'string'">{{ part }}</template>
+                  <!-- A frame's only sentence may be a gap sentence: its lead word set apart (`GapNote`). -->
+                  <GapNote v-if="typeof part === 'string' && !f.title" as="span" :text="part" />
+                  <template v-else-if="typeof part === 'string'">{{ part }}</template>
                   <ExternalLink v-else :href="part.href" class="link-inline">{{ part.label }}</ExternalLink>
                 </template>
               </span>
@@ -48,9 +50,7 @@ defineProps<{
             </p>
           </template>
         </FactList>
-        <p v-for="note in section.notes" :key="note" class="mt-3 text-sm text-ink-secondary">
-          {{ note }}
-        </p>
+        <GapNote v-for="note in section.notes" :key="note" :text="note" class="mt-3 text-sm text-ink-secondary" />
         <SectionCredits v-if="section.credits.length" :sources="[]" :marked="false">
           <span v-for="item in section.credits" :key="item">{{ item }}</span>
         </SectionCredits>

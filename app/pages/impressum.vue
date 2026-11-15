@@ -340,9 +340,11 @@ usePageSeo({
             Europäische Kommission, Portal „Ihre Meinung zählt“
           </dt>
           <dd>
-            Zu Vorhaben und Vorschlägen der Kommission: das Stadium, der
-            Zeitraum, in dem Rückmeldungen möglich sind oder waren, und ihre
-            Zahl, abgefragt vom Portal
+            Die Liste der Vorhaben, zu denen gerade Rückmeldungen möglich sind,
+            und zu einzelnen Vorhaben und Vorschlägen der Kommission: Titel,
+            das Stadium, die vorgesehene Art des Rechtsakts, der Zeitraum, in
+            dem Rückmeldungen möglich sind oder waren, und ihre Zahl, abgefragt
+            vom Portal
             <ExternalLink
               href="https://ec.europa.eu/info/law/better-regulation/have-your-say_de"
               class="link-inline"

@@ -67,7 +67,7 @@ import { deadlineDirection, deadlineOrderDe, deadlineReverseOrderDe, deadlineTab
 usePageSeo({
   title: EU_PAGE_TITLE_DE,
   description:
-    'Welche Richtlinien der Europäischen Union Österreich umzusetzen hat, was dazu gemeldet ist, und welche Rechtsakte die Entwürfe des Bundes und der Länder umsetzen – mit Umsetzungsfrist und den Entwürfen je Rechtsakt.',
+    'Wozu die Europäische Kommission gerade Rückmeldungen entgegennimmt, welche Richtlinien der Europäischen Union Österreich umzusetzen hat, was dazu gemeldet ist, und welche Rechtsakte die Entwürfe des Bundes und der Länder umsetzen – mit Fristen und den Entwürfen je Rechtsakt.',
 })
 
 const { data, status, error, refresh } = useFetch<EuActsResponse>('/api/eu-recht', { lazy: true })
@@ -172,15 +172,22 @@ const [bundItem, eurLexItem] = sourceItemsDe([risSource('Vorblatt'), risSource('
         {{ EU_PAGE_TITLE_DE }}
       </h1>
       <p class="mt-2 text-ink-secondary">
-        Zuerst die Richtlinien der Europäischen Union, die umzusetzen sind – auch
-        jene, an denen niemand arbeitet. Darunter jeder Rechtsakt, den ein Entwurf
+        Zuerst, wozu die Europäische Kommission gerade Rückmeldungen
+        entgegennimmt. Dann die Richtlinien der Europäischen Union, die
+        umzusetzen sind – auch jene, an denen niemand arbeitet. Darunter jeder
+        Rechtsakt, den ein Entwurf
         dieser Gesetzgebungsperiode umsetzt, beim Bund und in den Ländern. Woher
         die Angaben stammen und was sie nicht sagen, öffnet „Methode“ unter jeder
         Liste.
       </p>
     </header>
 
-    <!-- From the directives' side first (step 7 of the EU cycle): what has
+    <!-- Where one can take part now, first (step 3 of the EU cycle,
+         15.11.2026): the windows open on the Commission's portal. Its own
+         fetch and its own states, like the lists below. -->
+    <EuFensterList />
+
+    <!-- From the directives' side (step 7 of the EU cycle): what has
          to be transposed, whether or not a draft exists. Its own fetch and
          its own states, so neither list waits for the other. -->
     <EuUmsetzungList />

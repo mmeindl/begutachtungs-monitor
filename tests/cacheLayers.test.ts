@@ -72,6 +72,7 @@ const FETCHED: Record<string, string> = {
   'eu-cellar-massnahmen': "the Cellar's SPARQL answer on the measures one country notified for one directive, as it arrived; read fresh on every call",
   'eu-portal-suche': "the ids of the initiatives the Commission's portal found for one COM number — the ids only, read from its answer",
   'eu-portal-initiative': "one initiative of the Commission's portal as the reader's fixed list of fields; the portal's own record, which names officials, is never kept",
+  'eu-portal-offen': "every initiative with an open window on the Commission's portal, as the reader's fixed list of fields — the ids, titles, stages and days only, read from its list",
   'eu-bundesrecht': "whether Bundesrecht in force on one day names an EU act, from RIS's full-text search; the law as of a past day does not change (D4)",
   'eu-landesrecht': "the same search over one Land's consolidated Landesrecht (LrKons) on one day, as RIS answered it — the hits are read fresh on every call (D4)",
 }

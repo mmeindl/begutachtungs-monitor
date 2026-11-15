@@ -39,6 +39,7 @@ import type { AnliegenKind, LandDraftKind, ProcedureItemKind, RisConsultationKin
 import { ANLIEGEN_PATH, ANLIEGEN_SECTION_DE } from '#shared/utils/anliegen'
 import { DRAFT_STATION_LABEL } from '#shared/utils/draftStations'
 import { LAND_CODES, SOURCE_PARAM, formatSourceList } from '#shared/utils/laender'
+import { euPath } from '#shared/utils/eu'
 import { SECOND_ROUND_CLAUSE, type StationId } from './spine'
 
 /**
@@ -586,6 +587,12 @@ export interface WegInstrument {
    * Absent where the monitor follows none.
    */
   monitorHref?: string
+  /**
+   * Where the monitor follows the instrument, inside the site; null where it
+   * does not. The portal's consultations since 15.11.2026 (step 3 of the EU
+   * cycle).
+   */
+  followed: { label: string; href: string } | null
 }
 
 /* Parliament's page „Petitionen unterstützen" (memo, „Quellen"): it covers
@@ -596,7 +603,9 @@ export const WEG_INSTRUMENTS: readonly WegInstrument[] = [
   /* Art. 11 Abs. 3 EUV; COM(2021) 219 („Bessere Rechtsetzung"): calls for
    * evidence, public consultations (twelve weeks), feedback on proposals.
    * A summary report, no answer to the single contribution — no duty here.
-   * The memo names only the portal's undocumented JSON endpoint, no page. */
+   * The memo names only the portal's undocumented JSON endpoint, no page.
+   * Followed since 15.11.2026: every open window is listed on the EU page
+   * (step 3 of the EU cycle), and each initiative's page links the portal. */
   {
     id: 'eu-konsultation',
     level: 'eu',
@@ -606,6 +615,7 @@ export const WEG_INSTRUMENTS: readonly WegInstrument[] = [
     binding: false,
     href: null,
     hrefLabel: null,
+    followed: { label: 'offene Fristen im Monitor', href: `${euPath()}#eu-fenster` },
   },
   /* Art. 11 Abs. 4 EUV; VO (EU) 2019/788 Art. 3 (one million signatories
    * from a quarter of the member states). Art. 15 Abs. 2: the Commission
@@ -620,6 +630,7 @@ export const WEG_INSTRUMENTS: readonly WegInstrument[] = [
     binding: false,
     href: null,
     hrefLabel: null,
+    followed: null,
   },
   /* Art. 227 AEUV: anyone resident in the Union, on a matter that affects
    * them directly. What follows is not checked in the memo. */
@@ -632,6 +643,7 @@ export const WEG_INSTRUMENTS: readonly WegInstrument[] = [
     binding: false,
     href: null,
     hrefLabel: null,
+    followed: null,
   },
   /* § 100 Abs. 1 Z 1 GOG-NR: handed in by a member of the Nationalrat;
    * electronic support on Parliament's page (legal basis not found, memo
@@ -647,6 +659,7 @@ export const WEG_INSTRUMENTS: readonly WegInstrument[] = [
     href: PARLAMENT_PETITIONEN,
     hrefLabel: 'parlament.gv.at',
     monitorHref: anliegenListHref('petition'),
+    followed: null,
   },
   /* § 100 Abs. 1 Z 2, Abs. 2 GOG-NR: 500 Austrian citizens from 16, signed
    * by hand; online support and § 23b Abs. 2 as above. Duty as the
@@ -662,6 +675,7 @@ export const WEG_INSTRUMENTS: readonly WegInstrument[] = [
     href: PARLAMENT_PETITIONEN,
     hrefLabel: 'parlament.gv.at',
     monitorHref: anliegenListHref('buergerinitiative'),
+    followed: null,
   },
   /* Art. 41 Abs. 2 B-VG; VoBeG 2018 §§ 3–6 (support online with ID Austria
    * or at the Gemeinde, eight days of Eintragung). Duty: treatment within
@@ -679,6 +693,7 @@ export const WEG_INSTRUMENTS: readonly WegInstrument[] = [
     href: null,
     hrefLabel: null,
     monitorHref: anliegenListHref('volksbegehren'),
+    followed: null,
   },
   /* Art. 43 (an ordinary law, if the Nationalrat so decides or a majority
    * of its members demands it) and Art. 44 Abs. 3 B-VG (a total revision of
@@ -693,6 +708,7 @@ export const WEG_INSTRUMENTS: readonly WegInstrument[] = [
     binding: true,
     href: null,
     hrefLabel: null,
+    followed: null,
   },
   /* Art. 49b B-VG: on the Nationalrat's decision; the result goes to the
    * Nationalrat and the Bundesregierung. The memo cites no binding effect
@@ -706,6 +722,7 @@ export const WEG_INSTRUMENTS: readonly WegInstrument[] = [
     binding: false,
     href: null,
     hrefLabel: null,
+    followed: null,
   },
   /* The Länder's own instruments, one line (memo, the Länder tables):
    * Volksbegehren, Volksabstimmung, Volksbefragung and petitions as each
@@ -723,6 +740,7 @@ export const WEG_INSTRUMENTS: readonly WegInstrument[] = [
     binding: false,
     href: null,
     hrefLabel: null,
+    followed: null,
   },
 ]
 
@@ -736,7 +754,7 @@ export const WEGE_COPY = {
   notFollowedPrefix: 'nicht im Monitor',
   selected: 'dieser Weg',
   instrumentsHeading: 'Weitere Wege, sich zu äußern',
-  instrumentsLede: `Neben dem Weg einer Norm, ohne Stationen. Petitionen, Bürgerinitiativen und Volksbegehren im Nationalrat verfolgt der Monitor als ${ANLIEGEN_SECTION_DE}, die übrigen nicht.`,
+  instrumentsLede: `Neben dem Weg einer Norm, ohne Stationen. Petitionen, Bürgerinitiativen und Volksbegehren im Nationalrat verfolgt der Monitor als ${ANLIEGEN_SECTION_DE}, die Konsultationen der Kommission unter EU-Recht, die übrigen nicht.`,
 } as const
 
 export function isWegId(value: unknown): value is WegId {

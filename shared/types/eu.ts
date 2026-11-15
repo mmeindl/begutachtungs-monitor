@@ -494,13 +494,84 @@ export interface EuPortalPublication {
 /** An initiative of the Commission as the portal records it. */
 export interface EuInitiative {
   id: number
-  /** The short title, English: the portal's record carries the translations apart, and they are not read. */
+  /** The short title, English, as the record's own `shortTitle`. */
   title: string | null
+  /**
+   * The short title in German, from the record's translations; null where
+   * it carries none. Optional only for records built by hand (tests):
+   * `parseInitiative` always sets it (reader version 4, 15.11.2026).
+   */
+  titleDe?: string | null
+  /** The kind of act the Commission foresees, the portal's code: `PROP_REG`, `REG_DEL`, `COMMUNIC` …; null where it names none. Set by `parseInitiative` like `titleDe`. */
+  actType?: string | null
   /** The initiative on the portal, German page. */
   url: string
   /** In the portal's order of publication, ascending by day. */
   publications: EuPortalPublication[]
 }
+
+/* ------------------------------------------------------------------ *
+ * Open feedback windows on the portal (step 3 of the EU cycle)
+ * ------------------------------------------------------------------ */
+
+/**
+ * One period in which the Commission takes feedback, as the portal's list
+ * of open windows records it on an initiative (`currentStatuses`). An
+ * initiative can have two at once — a Sondierung and a public consultation
+ * launched together (4 of 49 on 15.11.2026) —, each its own window.
+ */
+export interface EuWindow {
+  /** The portal's stage word: `PLANNING_WORKFLOW`, `OPC_LAUNCHED`, `ADOPTION_WORKFLOW`, `ISC_WORKFLOW`, … */
+  stage: string
+  /** The first day of the period, ISO; null where the portal gives none. */
+  start: string | null
+  /** The last day of the period, ISO; null where the portal gives none. */
+  end: string | null
+}
+
+/**
+ * An initiative with at least one open window, read field by field from the
+ * portal's list (`parseOpenWindows`): no description, no unit, no person.
+ */
+export interface EuOpenInitiative {
+  /** The portal's number of the initiative — the monitor's page is `euInitiativePath(id)`. */
+  id: number
+  /** Its reference as the portal writes it: „Ares(2026)7463403", „COM(2026)681". */
+  reference: string | null
+  /** The kind of act the Commission foresees, the portal's code (`EuInitiative.actType`). */
+  actType: string | null
+  /** The short title: German where the portal has it, otherwise its English one. */
+  title: string | null
+  /** Whether `title` is the German translation; false where the English title stands in for it. */
+  titleIsGerman: boolean
+  /** The portal's topics, by their labels as it gives them (English). */
+  topics: string[]
+  /** The open windows, in the portal's order. */
+  windows: EuWindow[]
+}
+
+/** GET /api/eu-recht/fenster — every window open on the portal today. */
+export interface EuFensterResponse {
+  /** Null where the portal could not be read: the page says so, and shows no empty list. */
+  initiatives: EuOpenInitiative[] | null
+  /**
+   * Where the portal counted more initiatives than the monitor reads
+   * (`OPEN_WINDOWS_MAX_PAGES`): how many it read of how many; null where it
+   * read them all.
+   */
+  cut: { read: number; total: number } | null
+  /** The portal's own start page, for the sentence when it could not be read. */
+  portalUrl: string
+}
+
+/**
+ * GET /api/eu-recht/initiative/:id — one initiative of the portal, or the
+ * state that it could not be read (with the portal's page of it). An id the
+ * portal proves unknown is a 404, not a state.
+ */
+export type EuInitiativeResponse =
+  | { state: 'gefunden'; initiative: EuInitiative }
+  | { state: 'ungelesen'; id: number; url: string }
 
 /**
  * What the monitor can say about the consultation behind an act, by its

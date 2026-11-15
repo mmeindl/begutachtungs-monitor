@@ -4,6 +4,7 @@ import type { DraftSummary } from '../shared/types'
 import { firstQueryValue } from '../shared/utils/queryParams'
 import { buildIcsCalendar, buildRssFeed, buildSitemap } from '../server/utils/feeds'
 import { foldJointDraft } from '../server/utils/parliament/draftList'
+import { windowsOpenOn } from '../server/utils/eu/haveYourSay'
 import { draftSummary } from './helpers/builders'
 import type { FakeEvent } from './helpers/nitroGlobals'
 
@@ -85,6 +86,15 @@ beforeEach(() => {
   vi.stubGlobal('getAnliegenForGp', async () => ({ entries: [], unreadKinds: [] }))
   vi.stubGlobal('getBundesratPetitions', async () => [])
   vi.stubGlobal('withinBudget', <T>(p: Promise<T>) => p)
+  // The windows open on the Commission's portal (step 3 of the EU cycle): one open, one closed since the list was read.
+  vi.stubGlobal('openWindows', async () => ({
+    initiatives: [
+      { id: 18953, reference: null, actType: 'PROP_REG', title: 'Offen', titleIsGerman: true, topics: [], windows: [{ stage: 'PLANNING_WORKFLOW', start: '2026-11-13', end: '2099-01-08' }] },
+      { id: 17000, reference: null, actType: 'PROP_REG', title: 'Zu', titleIsGerman: true, topics: [], windows: [{ stage: 'PLANNING_WORKFLOW', start: '2020-01-01', end: '2020-02-01' }] },
+    ],
+    cut: null,
+  }))
+  vi.stubGlobal('windowsOpenOn', windowsOpenOn)
 })
 
 afterEach(() => {
@@ -124,6 +134,9 @@ describe('a jointly issued draft', () => {
     expect(count(xml, `<loc>${SITE}/entwuerfe/XXVIII/302</loc>`)).toBe(1)
     // A directive of the list has its page in the sitemap, also where no draft names it.
     expect(count(xml, `<loc>${SITE}/eu-recht/richtlinie/2024/1069</loc>`)).toBe(1)
+    // An initiative with an open window has its page; one whose window has closed is not listed.
+    expect(count(xml, `<loc>${SITE}/eu-recht/initiative/18953</loc>`)).toBe(1)
+    expect(xml).not.toContain('/eu-recht/initiative/17000')
   })
 
   it('has its calendar file built from the folded row, naming both Ressorts', async () => {

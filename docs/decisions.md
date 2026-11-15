@@ -750,6 +750,19 @@ The code names the EU rules D1 to D7; this is where they are defined
     sentences, and none says „keine Konsultation". Rejected: the prewarm
     of every act of the map, and reading who gave feedback (step 4, with
     the maintainer).
+  - **The windows open on the portal are listed first on `/eu-recht`**
+    (15.11.2026, step 3, `EuFensterList`): one request a day for the list,
+    one row per window by closing day, tabs by where in the process
+    („Konsultation", „Vorschlag", „Entwurf eines Rechtsakts"). No count of
+    contributions in the list and no order but the dates' (rule D6: no „noch
+    N Tage", no colour); the count stands on an initiative's own page, per
+    window. A portal that could not be read is said with the link to the
+    portal, never an empty list, and the feed and calendar (`?quelle=eu`, a
+    source of their own) answer 503 for it. An initiative has a page by the
+    portal's number (`euInitiativePath`); its one blue element is the way to
+    the portal while a window is open, and the stations after the
+    Commission say in a „Nicht im Monitor" sentence that the monitor does
+    not follow it there yet.
   - **The Legislative Observatory is linked by rule, not by lookup:**
     procedures from 1994 on, of type COD, CNS or APP; the link says that the
     page is English, and it is built from the procedure number, never

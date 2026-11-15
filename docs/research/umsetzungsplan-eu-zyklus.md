@@ -364,6 +364,17 @@ The population no longer comes from Austrian drafts.
   contributions. Nothing is deleted when the portal's list no longer
   returns it.
 
+**Open windows built on 15.11.2026** (the pending proposals from the
+Cellar are not): the list on `/eu-recht` (`fenster.get.ts`, `EuFensterList`),
+the initiative's page (`/eu-recht/initiative/<nr>`), `?quelle=eu` in feed and
+calendar, sitemap, page-view class, `/wege`, the Impressum sentence. Against
+the plan: no fact store for once-open initiatives — a closed initiative's
+page reads the portal again when asked, cached a day; the header entry is not
+added. Not verified: what the portal answers for an unknown number (taken as
+404), the `page` parameter beyond the first page (the reader checks the page
+number the answer reports), and the address of an initiative's page on the
+portal in a browser.
+
 ### Step 4 — who gave feedback
 
 Changes what the monitor names; built with the maintainer present.

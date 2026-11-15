@@ -20,12 +20,19 @@
  * four requests (the search, and up to three initiatives to prove the
  * join), once a day per act. The plan's prewarm of every act of the map
  * (about 170 requests) is not built: nobody may ever open most of them.
+ *
+ * THE OPEN WINDOWS (step 3, 15.11.2026): one request a day for the list of
+ * every initiative with an open window (one page of 100 held all 49), and
+ * one per initiative page a reader opens. Nothing is stored beyond the
+ * day's cache: a closed window is read again from the portal when its page
+ * is asked, so the plan's fact store for once-open initiatives is not
+ * built.
  */
 import type { EuConsultation, EuInitiative } from '../../../shared/types/eu'
 import { DERIVED_ANALYSIS_TTL_S } from '../cache/ttl'
 import { SitePacer } from '../laender/session'
-import { upstreamJson } from '../upstream/fetch'
-import { PORTAL_FIRST_YEAR, PORTAL_GAP_MS, PORTAL_MAX_WAIT_MS, PORTAL_POLICY, PORTAL_READER_VERSION, PORTAL_SEARCH_HITS, carriesReference, comReferenceOf, initiativeUrl, parseInitiative, parseSearch, searchUrl, type PortalSearch } from './haveYourSay'
+import { UpstreamHttpError, upstreamJson } from '../upstream/fetch'
+import { PORTAL_FIRST_YEAR, PORTAL_GAP_MS, PORTAL_MAX_WAIT_MS, PORTAL_POLICY, PORTAL_READER_VERSION, PORTAL_SEARCH_HITS, carriesReference, comReferenceOf, initiativeUrl, parseInitiative, parseSearch, readOpenWindows, searchUrl, type PortalOpenWindows, type PortalSearch } from './haveYourSay'
 
 const pacer = new SitePacer(PORTAL_GAP_MS, 0, PORTAL_MAX_WAIT_MS)
 
@@ -69,5 +76,47 @@ export async function consultationOf(proposalReferences: readonly (string | null
     return { state: 'nicht-gefunden', reference: com.text, exhaustive: search.total <= opened.length }
   } catch {
     return { state: 'ungelesen', reference: com.text }
+  }
+}
+
+/**
+ * Every initiative with an open window, as the reader's fixed list of
+ * fields — a day. One key: the list has no parameter but the reader's
+ * version.
+ */
+const openWindowsCached = defineCachedFunction(
+  async (): Promise<PortalOpenWindows> => readOpenWindows(portalJson),
+  { name: 'eu-portal-offen', getKey: () => `p${PORTAL_READER_VERSION}`, maxAge: DERIVED_ANALYSIS_TTL_S, swr: false },
+)
+
+/**
+ * The open windows, or null where the portal could not be read — never an
+ * empty list for a failure: an empty list is the portal's statement that
+ * nothing is open, and only a successful reading may make it. A window
+ * that closed since the list was read is the caller's to drop
+ * (`windowsOpenOn`), by its own day.
+ */
+export async function openWindows(): Promise<PortalOpenWindows | null> {
+  try {
+    return await openWindowsCached()
+  } catch {
+    return null
+  }
+}
+
+/**
+ * One initiative by the portal's number, for its page — the same cached
+ * read and fixed list of fields as the consultation behind an act. Three
+ * answers, as `consultationOf` keeps its states apart: found; `unbekannt`
+ * only where the portal answered 404, the one answer that proves there is
+ * none (not probed against the portal: what it answers for an unknown
+ * number was not measured); `ungelesen` for every other failure. Never
+ * throws.
+ */
+export async function initiativeById(id: number): Promise<{ state: 'gefunden'; initiative: EuInitiative } | { state: 'unbekannt' } | { state: 'ungelesen' }> {
+  try {
+    return { state: 'gefunden', initiative: await initiativeCached(id) }
+  } catch (error) {
+    return error instanceof UpstreamHttpError && error.status === 404 ? { state: 'unbekannt' } : { state: 'ungelesen' }
   }
 }

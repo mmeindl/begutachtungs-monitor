@@ -337,6 +337,10 @@ const STATION_COL = 'w-px whitespace-nowrap px-3 last:pr-4'
                 ·
                 <ExternalLink :href="item.href" class="link-inline">{{ item.hrefLabel }}</ExternalLink>
               </template>
+              <template v-if="item.followed">
+                ·
+                <NuxtLink :to="item.followed.href" class="link-inline">{{ item.followed.label }}</NuxtLink>
+              </template>
             </p>
           </li>
         </ul>

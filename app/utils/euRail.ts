@@ -30,10 +30,11 @@
  * this one file, so a second language replaces it here. Pure: no Vue; the
  * component places what this returns, the tests read it without one.
  */
-import type { EuActResponse, EuConsultation, EuPortalPublication, EuProcedure, EuProcedureEvent } from '#shared/types'
+import type { EuActResponse, EuConsultation, EuInitiative, EuPortalPublication, EuProcedure, EuProcedureEvent } from '#shared/types'
 import { euOjCiteDe } from '#shared/utils/citations'
 import { EU_MEMBER_STATE_NAME_DE } from '#shared/utils/eu'
 import { EU_EVENTS, EU_PROCEDURE_TYPES, type EuEventRole } from '#shared/utils/euEvents'
+import { EU_PORTAL_STAGE_DE } from '#shared/utils/euPortal'
 import { formatDateDe } from '#shared/utils/format'
 
 export type EuRailStationId = 'konsultation' | 'vorschlag' | 'beschluss' | 'amtsblatt' | 'wirkung'
@@ -50,6 +51,13 @@ export interface EuRailStation {
   gap: string | null
   /** The station's section on the page, „#eu-vorschlag": every station has one. */
   anchor: string
+  /**
+   * A station not reached (yet): on an initiative's page the stations after
+   * the Commission, which the monitor does not follow there. Drawn hollow,
+   * the segment into it pale, as `SpineRail` draws an outstanding station.
+   * Never set on an adopted act's rail, where every station was reached.
+   */
+  ahead?: boolean
 }
 
 /** One dated row of a section's record: a step of the procedure, or a notified measure. */
@@ -188,19 +196,12 @@ const DE = {
   furtherDates: 'Weitere Fristen für einzelne Bestimmungen',
   /**
    * The Commission's portal „Ihre Meinung zählt". The stage names are the
-   * portal's own German words, read on 15.11.2026 from its text file
-   * (`…/better-regulation/assets/i18n/de.json`; „Fahrpläne" there, the
-   * singular here), as „Rückmeldungen" is its word for contributions.
+   * portal's own German words (`EU_PORTAL_STAGE_DE`), as „Rückmeldungen"
+   * is its word for contributions.
    */
   portal: {
-    stage: {
-      INIT_PLANNED: 'In Vorbereitung',
-      ROADMAP: 'Fahrplan',
-      PLANNING_WORKFLOW: 'Sondierung',
-      OPC_LAUNCHED: 'Öffentliche Konsultation',
-      ISC_WORKFLOW: 'Entwurf eines Rechtsakts',
-      ADOPTION_WORKFLOW: 'Annahme durch die Kommission',
-    } as Readonly<Record<string, string>>,
+    // Written once in `shared/utils/euPortal.ts` since 15.11.2026: the feeds print them too.
+    stage: EU_PORTAL_STAGE_DE,
     unknownStage: 'Veröffentlichung',
     until: (label: string, end: string) => `${label} bis ${end}`,
     period: (from: string | null, to: string) => (from ? `${from} – ${to}` : `bis ${to}`),
@@ -255,9 +256,12 @@ const DE = {
   credits: ['Quelle:', 'Cellar des Amts für Veröffentlichungen der Europäischen Union (Metadaten)'],
 } as const
 
+/** The rail's words, for the initiative's page (`euInitiative.ts`), which shares the portal's and the stations' words. */
+export const EU_RAIL_DE = DE
+
 /** A station's section element: „eu-vorschlag", „eu-beschluss", „eu-amtsblatt", „eu-wirkung". */
-const elementIdOf = (id: EuRailStationId) => `eu-${id}`
-const anchorOf = (id: EuRailStationId) => `#${elementIdOf(id)}`
+export const elementIdOf = (id: EuRailStationId) => `eu-${id}`
+export const anchorOf = (id: EuRailStationId) => `#${elementIdOf(id)}`
 
 /* ------------------------------------------------------------------ *
  * The builder
@@ -370,7 +374,7 @@ const proposalFeedbackOf = (c: EuConsultation | null): EuPortalPublication | nul
   (c?.state === 'gefunden'
     ? c.initiative.publications.find((p) => p.feedbackEnd !== null && p.stage === 'ADOPTION_WORKFLOW' && p.reference?.replace(/\s+/g, '') === c.reference) ?? null
     : null)
-const stageDe = (p: EuPortalPublication): string => DE.portal.stage[p.stage] ?? DE.portal.unknownStage
+export const stageDe = (p: EuPortalPublication): string => DE.portal.stage[p.stage] ?? DE.portal.unknownStage
 
 function consultationGap(c: EuConsultation): string | null {
   if (c.state === 'nicht-gefunden') return c.exhaustive ? DE.portal.notFound(c.reference) : DE.portal.notFoundAmongFirst(c.reference)
@@ -399,19 +403,26 @@ function consultationStation(c: EuConsultation): EuRailStation {
 }
 
 /** A publication's period and count as the parts of a fact: „04.10.2021 – 10.01.2022", „146 Rückmeldungen". */
-function periodParts(p: EuPortalPublication): string[] {
+export function periodParts(p: EuPortalPublication): string[] {
   return [
     DE.portal.period(p.published ? formatDateDe(p.published) : null, formatDateDe(p.feedbackEnd!)),
     ...(p.feedbackCount !== null ? [DE.portal.feedback(p.feedbackCount)] : []),
   ]
 }
 
+/** Each period for feedback as a fact under its stage's name: „Öffentliche Konsultation — 04.10.2021 – 10.01.2022, 146 Rückmeldungen". */
+export function periodFacts(publications: readonly EuPortalPublication[], prefix = 'frist'): EuSectionFact[] {
+  return publications.map((p, i) => fact(`${prefix}-${i}`, stageDe(p), periodParts(p)))
+}
+
+/** The initiative itself, with its number and the way to it on the portal. */
+export function initiativeFact(initiative: EuInitiative): EuSectionFact {
+  return fact('vorhaben', DE.portal.initiative, [DE.portal.initiativeNumber(initiative.id), { href: initiative.url, label: DE.portal.link }])
+}
+
 function consultationFacts(c: EuConsultation): EuSectionFact[] {
   if (c.state !== 'gefunden') return []
-  return [
-    ...consultedOf(c).map((p, i) => fact(`frist-${i}`, stageDe(p), periodParts(p))),
-    fact('vorhaben', DE.portal.initiative, [DE.portal.initiativeNumber(c.initiative.id), { href: c.initiative.url, label: DE.portal.link }]),
-  ]
+  return [...periodFacts(consultedOf(c)), initiativeFact(c.initiative)]
 }
 
 /** Station 2: who decided, named from the act's authors (`EuAdoptedBy`). */
@@ -491,17 +502,17 @@ function effectStation(r: EuActResponse, today: string): EuRailStation {
   }
 }
 
-const fact = (key: string, title: string | null, parts: (string | EuFactLink)[], cite = false): EuSectionFact => ({ key, title, parts, cite })
+export const fact = (key: string, title: string | null, parts: (string | EuFactLink)[], cite = false): EuSectionFact => ({ key, title, parts, cite })
 
 /** The one sentence that says why a station has nothing to show, as the frame's only row. */
-const gapFact = (gap: string): EuSectionFact => fact('luecke', null, [gap])
+export const gapFact = (gap: string): EuSectionFact => fact('luecke', null, [gap])
 
 /**
  * A section's frame and what stands under it. Where the station has facts,
  * a gap is a paragraph under the frame; where it has none, the gap IS the
  * frame — a section never opens empty.
  */
-function framed(facts: EuSectionFact[], gap: string | null, notes: string[] = []): Pick<EuRailSection, 'facts' | 'notes'> {
+export function framed(facts: EuSectionFact[], gap: string | null, notes: string[] = []): Pick<EuRailSection, 'facts' | 'notes'> {
   if (!facts.length) return { facts: [gapFact(gap ?? DE.gap.unread)], notes }
   return { facts, notes: [...(gap ? [gap] : []), ...notes] }
 }

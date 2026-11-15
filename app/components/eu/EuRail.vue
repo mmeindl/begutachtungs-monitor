@@ -60,27 +60,29 @@ const STATION = [
         class="absolute inset-0 -z-10 rounded-md bg-hover opacity-0 group-hover:opacity-100"
       />
       <!-- Every station of an adopted act was reached: the segment into the
-           next one is ink. The geometry is `SpineRail`'s. -->
+           next one is ink. On an initiative's page the stations after the
+           Commission are not (`ahead`): hollow dot, pale segment, as
+           `SpineRail` draws an outstanding station. The geometry is
+           `SpineRail`'s. -->
       <span
         v-if="i < stations.length - 1"
         aria-hidden="true"
-        class="pointer-events-none absolute -bottom-3.5 left-3.25 top-6.5 z-10 w-0.5 bg-ink"
+        class="pointer-events-none absolute -bottom-3.5 left-3.25 top-6.5 z-10 w-0.5"
+        :class="stations[i + 1]?.ahead ? 'bg-hairline' : 'bg-ink'"
       />
       <span
         aria-hidden="true"
         class="pointer-events-none relative z-10 mt-1.5 box-border size-3 shrink-0 rounded-full border-2"
-        :class="s.current ? 'border-ink bg-mark' : 'border-ink bg-ink'"
+        :class="s.current ? 'border-ink bg-mark' : s.ahead ? 'border-baseline bg-surface' : 'border-ink bg-ink'"
       />
       <div class="min-w-0 text-sm">
-        <p class="font-medium text-ink">
+        <p :class="s.ahead ? 'text-ink-secondary' : 'font-medium text-ink'">
           <a :href="s.anchor" :class="STATION">{{ s.name }}</a>
         </p>
         <p v-if="s.facts.length" class="mt-0.5 leading-snug text-ink">
           <FactLine :parts="s.facts" />
         </p>
-        <p v-if="s.gap" class="mt-0.5 leading-snug text-ink-secondary">
-          {{ s.gap }}
-        </p>
+        <GapNote v-if="s.gap" :text="s.gap" class="mt-0.5 leading-snug text-ink-secondary" />
       </div>
     </li>
   </ol>

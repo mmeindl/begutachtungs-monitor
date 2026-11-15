@@ -129,6 +129,10 @@ describe('instruments beside the path', () => {
     }
     for (const i of WEG_INSTRUMENTS.filter((x) => x.href === null)) expect(i.hrefLabel).toBeNull()
   })
+
+  it('the Commission\'s consultations are the one the monitor follows, linked to the open windows (15.11.2026)', () => {
+    expect(WEG_INSTRUMENTS.filter((i) => i.followed).map((i) => [i.id, i.followed!.href])).toEqual([['eu-konsultation', '/eu-recht#eu-fenster']])
+  })
 })
 
 describe('Anliegen an das Parlament (15.11.2026)', () => {

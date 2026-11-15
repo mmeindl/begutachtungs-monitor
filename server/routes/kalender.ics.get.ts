@@ -6,15 +6,21 @@
  * Calendar apps refresh on a schedule — ETag/304 keeps that cheap.
  *
  * Optional ?quelle=t (or any Land's code): that Land's Fristen instead
- * (`feedSourceOf`, 25.10.2026); without it, the Bund's.
+ * (`feedSourceOf`, 25.10.2026); without it, the Bund's. ?quelle=eu: the
+ * closing days of the windows open on the Commission's portal (15.11.2026),
+ * 503 where the portal could not be read.
  */
 import { LAND_NAME } from '#shared/utils/laender'
 import { dedupeDraftList } from '../utils/parliament/draftList'
-import { feedSourceOf, landFeedItems } from '../utils/laender/feedSource'
+import { euFeedItems, feedSourceOf, landFeedItems } from '../utils/laender/feedSource'
 
 export default defineEventHandler(async (event) => {
   const siteUrl = useRuntimeConfig(event).public.siteUrl
   const source = feedSourceOf(event)
+  if (source === 'eu') {
+    const body = buildIcsCalendar(siteUrl, [], [], [], 'Rückmeldefristen der Europäischen Kommission', await euFeedItems())
+    return respondWithEtag(event, body, 'text/calendar; charset=utf-8')
+  }
   const gp = await getCurrentGp()
   if (source !== 'bund') {
     const body = buildIcsCalendar(siteUrl, [], [], await landFeedItems(source, gp), `Begutachtungsfristen – Land ${LAND_NAME[source]}`)
