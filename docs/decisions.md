@@ -206,6 +206,14 @@ gets an entry of its own only where it carries a reason the rule does not.
   Begutachtung"; a law whose Nationalrat committee itself invited written
   Stellungnahmen is „Ausschussbegutachtung", never both. A period whose
   drafts are not linked to Vorlagen carries no such rows at all.
+- **The source's reach is said as structural, never as „gerade"
+  (15.11.2026).** The Bundesgesetzblatt in RIS begins 01.01.2004
+  (`BGBL_AUTH_FROM`, one constant; answers carry it as `coversFrom`). A
+  period that ended before it answers `gap: 'beforeSource'` (XIV–XXI); one
+  that began before it (XXII) keeps its rows and says the laws promulgated
+  earlier are missing; an Initiativantrag of a period before it says its
+  Kundmachung cannot be checked (`periodAgainstSource`, `lawsReachNoteDe`,
+  `antragGapNotes`).
 - **A mention silences.** Every HTML document of the carrying Gegenstand
   except Gesetzestext and Textgegenüberstellung is read; „Begutacht…"
   anywhere in it makes the law „nicht feststellbar" (no row, no count; the

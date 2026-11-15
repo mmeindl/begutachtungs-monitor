@@ -15,6 +15,7 @@ import {
   artUnavailableFor,
   artUnavailableNote,
   begutachtungGapReason,
+  lawsReachNoteDe,
   choiceAdmitsBundLaw,
   choiceAdmitsDraft,
   choiceAdmitsLandLaw,
@@ -522,6 +523,37 @@ describe('begutachtungGapReason', () => {
     expect(begutachtungGapReason(null)).toBeNull()
     expect(begutachtungGapReason(undefined)).toBeNull()
   })
+
+  it('names the start of the source as the reason for a period before it, from the date of the answer', () => {
+    expect(begutachtungGapReason('beforeSource', '2004-01-01')).toBe(
+      'Das Bundesgesetzblatt steht im RIS erst ab 2004. Für diese Gesetzgebungsperiode lässt sich nicht prüfen, welche Gesetze ohne Begutachtung kundgemacht wurden',
+    )
+    // Without the date, only the claim — never a second copy of it.
+    expect(begutachtungGapReason('beforeSource')).toBe('Für diese Gesetzgebungsperiode lässt sich nicht prüfen, welche Gesetze ohne Begutachtung kundgemacht wurden')
+  })
+})
+
+describe('lawsReachNoteDe', () => {
+  const coversFrom = '2004-01-01'
+
+  it('says the gap of a period wholly before the source, as a sentence', () => {
+    expect(lawsReachNoteDe({ gp: 'XXI', available: false, gap: 'beforeSource', coversFrom })).toBe(
+      'Das Bundesgesetzblatt steht im RIS erst ab 2004. Für diese Gesetzgebungsperiode lässt sich nicht prüfen, welche Gesetze ohne Begutachtung kundgemacht wurden.',
+    )
+  })
+
+  it('keeps the list of a period that began before it, and says which laws it lacks', () => {
+    expect(lawsReachNoteDe({ gp: 'XXII', available: true, gap: null, coversFrom })).toBe(
+      'Gesetze, die vor dem 01.01.2004 kundgemacht wurden, fehlen in dieser Liste: Das Bundesgesetzblatt steht im RIS erst ab 2004.',
+    )
+  })
+
+  it('says nothing where the source holds the whole period, or another gap speaks', () => {
+    expect(lawsReachNoteDe({ gp: 'XXIII', available: true, gap: null, coversFrom })).toBeNull()
+    expect(lawsReachNoteDe({ gp: 'XXVIII', available: true, gap: null, coversFrom })).toBeNull()
+    expect(lawsReachNoteDe({ gp: 'XXII', available: false, gap: 'unread', coversFrom })).toBeNull()
+    expect(lawsReachNoteDe(null)).toBeNull()
+  })
 })
 
 describe('the select „Art" (14.11.2026)', () => {
@@ -759,6 +791,8 @@ describe('the select „Art" (14.11.2026)', () => {
       expect(artUnavailableFor(bundOnly, { bundLaws: { available: true, gap: null } }).ohne).toBeNull()
       // One that cannot, or a failed fetch: disabled, with the gap's reason.
       expect(artUnavailableFor(bundOnly, { bundLaws: { available: false, gap: 'unlinked' } }).ohne).toBe(begutachtungGapReason('unlinked'))
+      // A period before the source: the reason names where it begins, from the answer.
+      expect(artUnavailableFor(bundOnly, { bundLaws: { available: false, gap: 'beforeSource', coversFrom: '2004-01-01' } }).ohne).toMatch(/^Das Bundesgesetzblatt steht im RIS erst ab 2004\./)
       for (const c of OHNE_BUND_SBG) expect(artUnavailableFor(bundOnly, { bundLawsFailed: true })[c]).toBe(begutachtungGapReason('unread'))
       // Where the Bund is a source, Salzburg's answer decides nothing.
       expect(artUnavailableFor({ bund: true, landsApply: true, ohneLandsApply: true }, { sbgLaws: { state: 'unavailable' } }).ohne).toBeNull()
@@ -1010,13 +1044,16 @@ describe('?landtag= (14.11.2026)', () => {
 })
 
 describe('spanOptionsFor', () => {
-  const gps = ['XXVIII', 'XXVII', 'XXVI', 'XIV']
+  // XIII stands for a period the Bund's calendar does not reach (before XIV,
+  // or a new one before its row is added).
+  const gps = ['XXVIII', 'XXVII', 'XXVI', 'XIV', 'XIII']
 
   it('names the Bund\'s periods by dates and GP while the Bund is a source', () => {
     const opts = spanOptionsFor(periodViewFor(true, ['sbg'], FIXTURE), gps, 'XXVIII', FIXTURE)
     expect(opts.map((o) => o.value)).toEqual(gps)
     expect(opts[0]!.label).toBe('seit 24.10.2024 (GP XXVIII)')
-    expect(opts[3]!.label).toBe('GP XIV')
+    expect(opts[3]!.label).toBe('04.11.1975 – 04.06.1979 (GP XIV)')
+    expect(opts[4]!.label).toBe('GP XIII')
   })
 
   it('names the Bund\'s spans by their dates alone for several Länder — and only those with a window', () => {
@@ -1025,6 +1062,7 @@ describe('spanOptionsFor', () => {
       { value: 'XXVIII', label: 'seit 24.10.2024' },
       { value: 'XXVII', label: '23.10.2019 – 23.10.2024' },
       { value: 'XXVI', label: '09.11.2017 – 22.10.2019' },
+      { value: 'XIV', label: '04.11.1975 – 04.06.1979' },
     ])
   })
 
@@ -1041,6 +1079,7 @@ describe('spanOptionsFor', () => {
       { value: 'sbg-16', label: '13.06.2018 – 13.06.2023 (16. Gesetzgebungsperiode)' },
       // XXVI began 09.11.2017, before Salzburg's calendar starts; XXVII and XXVIII do not.
       { value: 'XXVI', label: '09.11.2017 – 22.10.2019' },
+      { value: 'XIV', label: '04.11.1975 – 04.06.1979' },
     ])
   })
 

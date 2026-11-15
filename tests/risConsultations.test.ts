@@ -149,9 +149,10 @@ describe('gpWindow', () => {
   })
 
   it('is null for a period the calendar does not reach', () => {
-    // The monitor reaches back to GP XIV, the verified date table to GP XX.
-    // A guessed boundary would silently move records between periods.
-    expect(gpWindow('XIV')).toBeNull()
+    // The verified date table starts at GP XIV, the oldest period the
+    // monitor has drafts of. A guessed boundary would silently move records
+    // between periods.
+    expect(gpWindow('XIII')).toBeNull()
     expect(gpWindow('nonsense')).toBeNull()
   })
 })

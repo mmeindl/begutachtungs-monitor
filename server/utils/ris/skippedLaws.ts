@@ -49,20 +49,31 @@
  */
 import type { AntragPath, CommitteeConsultation, DraftSummary } from '../../../shared/types'
 import { budgetExemptReason } from '../../../shared/utils/budgetExempt'
-import { GP_STARTS, gpEndedOn } from '../../../shared/utils/gp'
+import { GP_STARTS, gpEndedOn, periodAgainstSource } from '../../../shared/utils/gp'
 import { findPrecedingDraft } from '../parliament/precedingDraft'
 import type { BgblRecord } from './bgblJoin'
+
+/**
+ * The first day the authentic Bundesgesetzblatt in RIS (`BgblAuth`) holds.
+ * Measured 15.11.2026: 0 hits for 1995 and for 2003, 878 for 2004. A year
+ * before it reads as empty, not as missing, so it is never read.
+ */
+export const BGBL_AUTH_FROM = '2004-01-01'
 
 /**
  * The Jahrgänge a period's laws can be issued in: from the year it convened
  * to the year after it ended (a Beschluss of its last weeks is promulgated
  * in the next period), never past the running one. Null where the calendar
- * has no row for the period.
+ * has no row for the period, and for a period that ended before
+ * `BGBL_AUTH_FROM`: its laws are not in the source, and fifty empty years
+ * would answer as „none". A period that only began before it (XXII) keeps
+ * its years, the early ones read as empty.
  */
 export function yearsOfPeriod(gp: string, today: string): number[] | null {
   const start = GP_STARTS[gp]
   if (!start) return null
   const now = Number(today.slice(0, 4))
+  if (periodAgainstSource(gp, BGBL_AUTH_FROM) === 'before') return null
   const end = gpEndedOn(gp)
   const last = Math.min(now, end ? Number(end.slice(0, 4)) + 1 : now)
   const out: number[] = []

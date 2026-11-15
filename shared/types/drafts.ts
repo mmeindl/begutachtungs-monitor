@@ -628,7 +628,7 @@ export interface DraftDetail extends Omit<DraftSummary, 'statementCount'> {
   gpEnded: boolean
   /** Its last day (the day before the next Nationalrat convened, Art. 27
       B-VG); null while it runs, or when the boundary predates the table
-      in shared/utils/gp.ts (before GP XX). */
+      in shared/utils/gp.ts (before GP XIII). */
   gpEndedOn: string | null
   /** Whether this GP's ME→RV links exist at all — the gate on every "no
       Regierungsvorlage" statement this page would otherwise make.

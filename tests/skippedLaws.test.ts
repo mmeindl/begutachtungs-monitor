@@ -9,8 +9,9 @@
 import { describe, expect, it } from 'vitest'
 import type { AntragPath } from '../shared/types'
 import type { BgblRecord } from '../server/utils/ris/bgblJoin'
-import { bgblIKey, classifySkippedLaws, isLawOfPeriod, type AusschussantragItem, type ParliamentItem, type SkippedLawsInput } from '../server/utils/ris/skippedLaws'
+import { BGBL_AUTH_FROM, bgblIKey, classifySkippedLaws, isLawOfPeriod, yearsOfPeriod, type AusschussantragItem, type ParliamentItem, type SkippedLawsInput } from '../server/utils/ris/skippedLaws'
 import { EXEMPT, budgetExemptReason, exemptReasonFor, isBudgetLawTitle } from '../shared/utils/budgetExempt'
+import { periodAgainstSource } from '../shared/utils/gp'
 import { draftSummary } from './helpers/builders'
 
 function record(over: Partial<BgblRecord> = {}): BgblRecord {
@@ -354,5 +355,58 @@ describe('a mention silences (12.11.2026)', () => {
       { kind: 'unknown', reason: 'unchecked' },
       law(3).class,
     ])
+  })
+})
+
+/**
+ * The Jahrgänge a period is read over. RIS's authentic Bundesgesetzblatt
+ * begins on 01.01.2004 (`BGBL_AUTH_FROM`): a period that ended before it has
+ * no years, so the list states a gap instead of reading empty years as „none".
+ */
+describe('yearsOfPeriod', () => {
+  const today = '2026-11-15'
+
+  it('has no years for a period that ended before the source begins', () => {
+    expect(yearsOfPeriod('XIX', today)).toBeNull()
+    expect(yearsOfPeriod('XXI', today)).toBeNull()
+    expect(yearsOfPeriod('XIV', today)).toBeNull()
+  })
+
+  it('keeps the years of a period that only began before it', () => {
+    expect(yearsOfPeriod('XXII', today)).toEqual([2002, 2003, 2004, 2005, 2006, 2007])
+  })
+
+  it('runs from the start to the year after the end, never past the running year', () => {
+    expect(yearsOfPeriod('XXVII', today)).toEqual([2019, 2020, 2021, 2022, 2023, 2024, 2025])
+    expect(yearsOfPeriod('XXVIII', today)).toEqual([2024, 2025, 2026])
+  })
+
+  it('has no years for a period the calendar does not hold', () => {
+    expect(yearsOfPeriod('XIII', today)).toBeNull()
+    expect(yearsOfPeriod('XXIX', today)).toBeNull()
+  })
+})
+
+/**
+ * Where a period stands against the source (15.11.2026): the service answers
+ * `gap: 'beforeSource'` for `before`, and the page notes the missing early
+ * laws for `straddles` (`coversFrom`, `lawsReachNoteDe`).
+ */
+describe('periodAgainstSource with the Bundesgesetzblatt in RIS', () => {
+  it('puts every period that ended before 2004 wholly before the source', () => {
+    for (const gp of ['XIV', 'XIX', 'XX', 'XXI']) expect(periodAgainstSource(gp, BGBL_AUTH_FROM)).toBe('before')
+  })
+
+  it('lets XXII straddle it: begun in December 2002, ended in 2006', () => {
+    expect(periodAgainstSource('XXII', BGBL_AUTH_FROM)).toBe('straddles')
+  })
+
+  it('holds every later period whole, the running one included', () => {
+    for (const gp of ['XXIII', 'XXVII', 'XXVIII']) expect(periodAgainstSource(gp, BGBL_AUTH_FROM)).toBe('within')
+  })
+
+  it('says nothing for a period the calendar does not hold', () => {
+    expect(periodAgainstSource('XIII', BGBL_AUTH_FROM)).toBeNull()
+    expect(periodAgainstSource('XXIX', BGBL_AUTH_FROM)).toBeNull()
   })
 })

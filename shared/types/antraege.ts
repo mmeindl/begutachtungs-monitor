@@ -67,7 +67,16 @@ export interface AntraegeResponse {
   /**
    * The BGBl Jahrgänge could not be read: no row is `promulgated`, and a
    * carried vote reads `decided` — true, but short of the Kundmachung. The
-   * list says so.
+   * list says so. Only a read that failed: a period before `coversFrom` is
+   * no failure and leaves it false.
    */
   bgblUnread: boolean
+  /**
+   * The first day the Bundesgesetzblatt in RIS holds (ISO, `BGBL_AUTH_FROM`):
+   * a period that ended before it cannot say whether an Antrag was
+   * promulgated, one that began before it cannot for its early Anträge
+   * (`periodAgainstSource`). Structural, not a failure — the list says so in
+   * other words than „gerade nicht abrufbar".
+   */
+  coversFrom: string
 }

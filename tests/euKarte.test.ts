@@ -440,7 +440,8 @@ describe('the period a draft\'s related lines come from', () => {
     expect(gpOfDay('2024-10-23')).toBe('XXVII')
     expect(gpOfDay('2021-03-01T00:00:00')).toBe('XXVII')
     expect(gpOfDay('2031-01-01')).toBe('XXVIII')
-    expect(gpOfDay('1995-12-31')).toBeNull()
+    expect(gpOfDay('1995-12-31')).toBe('XIX')
+    expect(gpOfDay('1975-11-03')).toBeNull()
   })
 
   it('takes the map of the Begutachtung\'s own period, not the running one\'s', () => {
@@ -453,7 +454,7 @@ describe('the period a draft\'s related lines come from', () => {
   })
 
   it('has no period before the calendar — no map, no lines', () => {
-    expect(relatedPeriodOf('1990-01-01', 'XXVIII')).toBeNull()
+    expect(relatedPeriodOf('1975-01-01', 'XXVIII')).toBeNull()
   })
 })
 

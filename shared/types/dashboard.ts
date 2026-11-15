@@ -244,9 +244,11 @@ export interface LawWithoutBegutachtung {
  * claim nobody can support. `unread`: a source the check stands on did not
  * answer just now. `pending` (09.11.2026): a station map is still being
  * built after a cold start — the answer changes within a minute, and the
- * page asks again.
+ * page asks again. `beforeSource` (15.11.2026): the period ended before the
+ * first day the source holds (`coversFrom`) — no law of it can be read, now
+ * or later.
  */
-export type LawsWithoutBegutachtungGap = 'unlinked' | 'unread' | 'pending'
+export type LawsWithoutBegutachtungGap = 'unlinked' | 'unread' | 'pending' | 'beforeSource'
 
 /** Payload of /api/ohne-begutachtung. */
 export interface LawsWithoutBegutachtung {
@@ -254,6 +256,14 @@ export interface LawsWithoutBegutachtung {
   /** False: no rows, and `gap` says why — never an empty list passed off as „keine". */
   available: boolean
   gap: LawsWithoutBegutachtungGap | null
+  /**
+   * The first day the source of the laws holds (ISO; the authentic
+   * Bundesgesetzblatt in RIS, `BGBL_AUTH_FROM`). A period that began before
+   * it (`periodAgainstSource`: `straddles`) lacks the laws promulgated
+   * earlier, and the page says so; one that ended before it is
+   * `gap: 'beforeSource'`.
+   */
+  coversFrom: string
   /** Newest Kundmachung first. Only laws whose every check ran and found no draft. */
   items: LawWithoutBegutachtung[]
 }

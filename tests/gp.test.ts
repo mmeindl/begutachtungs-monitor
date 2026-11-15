@@ -7,6 +7,7 @@ import {
   gpHasEnded,
   gpInSentenceDe,
   gpNameDe,
+  gpOfDay,
   gpSpanLabelDe,
   gpWindow,
   gpYearsDe,
@@ -72,23 +73,33 @@ describe('Gesetzgebungsperioden calendar', () => {
     expect(gpEndedOn('XXVII')).toBe('2024-10-23')
     expect(gpEndedOn('XXVI')).toBe('2019-10-22')
     expect(gpEndedOn('XX')).toBe('1999-10-28')
-    // The GP before the first table row still gets its end from that row.
     expect(gpEndedOn('XIX')).toBe('1996-01-14')
+    // The GP before the first table row still gets its end from that row.
+    expect(gpEndedOn('XIII')).toBe('1975-11-03')
   })
 
   it('knows no end for the running GP, for GPs before the table, or for garbage', () => {
     expect(gpEndedOn('XXVIII')).toBeNull()
-    expect(gpEndedOn('XVIII')).toBeNull()
+    expect(gpEndedOn('XII')).toBeNull()
     expect(gpEndedOn('kaputt')).toBeNull()
+  })
+
+  it('reaches back to GP XIV, the oldest period the monitor has drafts of (verified 14.11.2026)', () => {
+    expect(Object.keys(GP_STARTS)[0]).toBe('XIV')
+    expect(gpWindow('XIX')).toEqual({ from: '1994-11-07', to: '1996-01-14' })
+    expect(gpOfDay('1980-01-01')).toBe('XV')
+    expect(gpOfDay('1975-11-04')).toBe('XIV')
+    expect(gpOfDay('1975-11-03')).toBeNull()
   })
 
   it('decides "ended" from the table first, then from the running GP', () => {
     expect(gpHasEnded('XXVII', 'XXVIII')).toBe(true)
     // A stale current-GP fallback cannot hide a boundary the table knows.
     expect(gpHasEnded('XXVII', 'XXVII')).toBe(true)
+    expect(gpHasEnded('XVIII', null)).toBe(true)
     // Before the table: only the running GP can tell.
-    expect(gpHasEnded('XVIII', 'XXVIII')).toBe(true)
-    expect(gpHasEnded('XVIII', null)).toBe(false)
+    expect(gpHasEnded('XII', 'XXVIII')).toBe(true)
+    expect(gpHasEnded('XII', null)).toBe(false)
     // Never "beendet" without evidence.
     expect(gpHasEnded('XXVIII', 'XXVIII')).toBe(false)
     expect(gpHasEnded('XXVIII', null)).toBe(false)
@@ -149,6 +160,8 @@ describe('windowPeriodFor', () => {
     expect(windowPeriodFor('XXVIII')).toBe('XXVIII')
     expect(windowPeriodFor('XXVII')).toBe('XXVII')
     expect(windowPeriodFor('XX')).toBe('XX')
+    expect(windowPeriodFor('XIX')).toBe('XIX')
+    expect(windowPeriodFor('XIV')).toBe('XIV')
   })
 
   it('hands the period that just convened to its predecessor', () => {
@@ -160,10 +173,10 @@ describe('windowPeriodFor', () => {
   })
 
   it('refuses the gaps below the table, where the predecessor has no window either', () => {
-    // GP XIX and older: the monitor reaches back to XIV, but dating records
-    // into a period nobody verified is exactly what must not happen.
-    expect(windowPeriodFor('XIX')).toBeNull()
-    expect(windowPeriodFor('XIV')).toBeNull()
+    // Before GP XIV: dating records into a period nobody verified is
+    // exactly what must not happen.
+    expect(windowPeriodFor('XIII')).toBeNull()
+    expect(windowPeriodFor('XII')).toBeNull()
   })
 
   it('refuses a period two beyond the table, not just the one after it', () => {
@@ -185,13 +198,14 @@ describe('how a period is named', () => {
   it('gives the years where there is room: a closed period by its span, the running one by its start', () => {
     expect(gpYearsDe('XXVII')).toBe('2019–2024')
     expect(gpYearsDe('XXVIII')).toBe('seit Oktober 2024')
-    expect(gpYearsDe('XIV')).toBeNull()
+    expect(gpYearsDe('XIV')).toBe('1975–1979')
+    expect(gpYearsDe('XIII')).toBeNull()
   })
 
   it('puts both in a sentence, and the GP alone where the calendar does not reach', () => {
     expect(gpInSentenceDe('XXVIII')).toBe('in der XXVIII. Gesetzgebungsperiode (seit Oktober 2024)')
     expect(gpInSentenceDe('XXVII')).toBe('in der XXVII. Gesetzgebungsperiode (2019–2024)')
-    expect(gpInSentenceDe('XIV')).toBe('in der XIV. Gesetzgebungsperiode')
+    expect(gpInSentenceDe('XIII')).toBe('in der XIII. Gesetzgebungsperiode')
   })
 
   it('labels a filter option by its span, both ends inclusive, with the GP as its name', () => {
@@ -204,6 +218,7 @@ describe('how a period is named', () => {
   })
 
   it('names a period the calendar does not reach by its GP alone', () => {
-    expect(gpSpanLabelDe('XIX')).toBe('GP XIX')
+    expect(gpSpanLabelDe('XIII')).toBe('GP XIII')
+    expect(gpSpanLabelDe('XIX')).toBe('07.11.1994 – 14.01.1996 (GP XIX)')
   })
 })

@@ -189,6 +189,16 @@ describe('the option „Alle Initiativanträge"', () => {
       'Ob eine Stellungnahme möglich ist, ist bei 2 Initiativanträgen gerade nicht abrufbar.',
     ])
   })
+  it('says a period before the Bundesgesetzblatt in RIS cannot be checked — never „gerade"', () => {
+    const coversFrom = '2004-01-01'
+    expect(antragGapNotes({ gp: 'XXI', coversFrom, bgblUnread: false, items: [{ state: 'decided' }] })).toEqual([
+      'Ob der Antrag kundgemacht wurde, lässt sich für diese Gesetzgebungsperiode nicht prüfen.',
+    ])
+    expect(antragGapNotes({ gp: 'XXII', coversFrom, bgblUnread: false, items: [] })).toEqual([
+      'Ob ein Initiativantrag vor dem 01.01.2004 kundgemacht wurde, lässt sich nicht prüfen: Das Bundesgesetzblatt steht im RIS erst ab 2004.',
+    ])
+    expect(antragGapNotes({ gp: 'XXIII', coversFrom, bgblUnread: false, items: [] })).toEqual([])
+  })
 })
 
 function record(name: string): VorlageContent {

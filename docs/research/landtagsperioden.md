@@ -46,8 +46,8 @@ Protokoll der nnn. Sitzung des Bundesrates.
 | Oberösterreich | „XXIX. Gesetzgebungsperiode“, auf den Protokollseiten auch „29.“ | 4 (XXVI–XXIX) | 4 | – |
 | Salzburg | „17. Gesetzgebungsperiode“ | 6 (12.–17.) | 6 | – |
 | Steiermark | „XIX. Gesetzgebungsperiode“ | 6 (XIV–XIX) | 6 | – |
-| Tirol | „XVIII. Gesetzgebungsperiode“ | 5 (XIV–XVIII) | 4 | XVI indirekt |
-| Vorarlberg | „XXXII. Vorarlberger Landtag“ | 6 (XXVII–XXXII) | 1 | XXVIII strittig, vier indirekt |
+| Tirol | „XVIII. Gesetzgebungsperiode“ | 5 (XIV–XVIII) | 5 | – |
+| Vorarlberg | „XXXII. Vorarlberger Landtag“ | 6 (XXVII–XXXII) | 6 | – |
 | Wien | „22. Wahlperiode“ | 6 (17.–22.) | 6 | – |
 
 Die am 01.01.2004 laufende Periode ist je Land die erste Zeile. In
@@ -204,20 +204,24 @@ Quellen:
 Römische Ziffern, „Gesetzgebungsperiode“ („1. (Konstituierende) Sitzung der
 XVIII. Gesetzgebungsperiode“). Der Landtag führt online nur die Sitzungen der
 XVII. und XVIII. Periode; für die älteren sind die Schreiben des
-Landtagspräsidenten an den Bundesrat die amtliche Quelle.
+Landtagspräsidenten an den Bundesrat die amtliche Quelle. Wo das Protokoll
+des Bundesrates das Schreiben nur als Bild beilegt (BR 821), ist das Bild
+selbst abrufbar und wurde gelesen.
 
 | Periode | Bezeichnung des Landes | konstituierende Sitzung | Wahltag | Quelle 1 | Quelle 2 | Anmerkung |
 |---|---|---|---|---|---|---|
 | XIV | XIV. Gesetzgebungsperiode | 21.10.2003 | 28.09.2003 (ungeprüft) | BR 702 (06.11.2003): „Betreff: Konstituierende Sitzung des Tiroler Landtages am 21. Oktober 2003“ | WP | Vorzeitig beendet: Auflösungsbeschluss 20.03.2008 (Tätigkeitsbericht 2008 des Landesrechnungshofs, Suchauszug). Die WP-Liste zu XIII nennt als Ende „Angelobung des Landtags der XV. Gesetzgebungsperiode am 21. Oktober 2003“, gemeint ist XIV. |
 | XV | XV. Gesetzgebungsperiode | 01.07.2008 | 08.06.2008 (Wikipedia-Spiegel) | BR 758 (22.07.2008): „Konstituierende Sitzung des Tiroler Landtages am 1. Juli 2008“ | WP | – |
-| XVI | XVI. Gesetzgebungsperiode | 24.05.2013 | 28.04.2013 (Wikipedia, Suchauszug) | **indirekt:** Videoarchiv des Landtags 2013, „24.05.2013 – Vormittag“, die erste Sitzung nach der Wahl (davor 14.03.2013, danach 26.06.2013); die Seite benennt die Sitzung nicht | WP | BR 821 (06.06.2013) verzeichnet das Schreiben des Tiroler Landtags, sein Wortlaut ist im Protokoll aber nur als Bild beigelegt und nicht lesbar. |
+| XVI | XVI. Gesetzgebungsperiode | 24.05.2013 | 28.04.2013 (Wikipedia, Suchauszug) | BR 821 (06.06.2013), Schreiben des Landtagspräsidenten vom 24.05.2013 (im Protokoll als Bild beigelegt, das Bild gelesen): „Der Tiroler Landtag hat in seiner 1. (Konstituierenden) Sitzung am 24. Mai 2013 mit sofortiger Wirksamkeit nachstehende Mitglieder sowie Ersatzmitglieder des Bundesrates gewählt“ | WP: „Die erste Sitzung des Tiroler Landtags in dieser Periode fand am 24. Mai 2013 statt.“ | Nachrecherche 14.11.2026, vorher nur indirekt belegt. Eingangsstempel der Parlamentsdirektion ebenfalls 24.05.2013. Das Videoarchiv („24.05.2013 – Vormittag“) passt dazu. |
 | XVII | XVII. Gesetzgebungsperiode | 28.03.2018 | 25.02.2018 (ungeprüft) | Landtag, „Überblick Landtagssitzungen“: erste Sitzung 28. März 2018; Ankündigung „Konstituierende Sitzung der XVII. Gesetzgebungsperiode“, „Mittwoch, 28.03.2018, 10:30 Uhr“ | WP | Vorzeitig beendet: Selbstauflösung 24.06.2022 (WP). |
 | XVIII | XVIII. Gesetzgebungsperiode | 25.10.2022 | 25.09.2022 (WP) | Landtag, „Überblick Landtagssitzungen“: „1. (Konstituierende) Sitzung“ 25. Oktober 2022 | WP | – |
 
 Quellen:
 - BR 702: https://www.parlament.gv.at/dokument/BR/BRSITZ/702/fname_012851.pdf
 - BR 758: https://www.parlament.gv.at/dokument/BR/BRSITZ/758/fname_142684.pdf
-- XVI: https://www.tirol.gv.at/landtag/live/archiv/2013/ ; https://www.tirol.gv.at/landtag/live/archiv/2013/24052013-vormittag/
+- BR 821: https://www.parlament.gv.at/dokument/BR/BRSITZ/821/fnameorig_326333.html (Seite 13, „Einlauf“); das Schreiben als Bild: https://www.parlament.gv.at/dokument/BR/BRSITZ/821/BRSITZ00821__326333_image003.jpg
+- XVI, Videoarchiv: https://www.tirol.gv.at/landtag/live/archiv/2013/ ; https://www.tirol.gv.at/landtag/live/archiv/2013/24052013-vormittag/
+- WP XVI: https://de.wikipedia.org/wiki/Liste_der_Abgeordneten_zum_Tiroler_Landtag_(XVI._Gesetzgebungsperiode)
 - XVII/XVIII: https://www.tirol.gv.at/landtag/sitzungen/landtagssitzungen/ueberblick-landtagssitzungen/ ; https://www.tirol.gv.at/landtag/meldungen/meldung/konstituierende-sitzung-der-xvii-gesetzgebungsperiode/ ; https://www.tirol.gv.at/landtag/meldungen/meldung/1-konstituierende-sitzung-der-xviii-gesetzgebungsperiode/
 - WP: `Liste_der_Abgeordneten_zum_Tiroler_Landtag_(XIV._Gesetzgebungsperiode)` bis `(XVIII._…)`
 
@@ -234,23 +238,34 @@ des Landes. Nach Wikipedia beginnt die Periode laut Art. 16 Abs. 2 der
 Landesverfassung mit dem ersten Zusammentritt des neuen Landtags (nicht im
 Gesetzestext nachgesehen).
 
-Eine Sitzungsliste des Landtags mit den konstituierenden Sitzungen war nicht
-zu finden. Die zweite amtliche Quelle ist deshalb meist die Übersicht
-„Vorarlberger Landesregierungen seit 1945“ des Vorarlberger Landesarchivs
-(Verba volant Nr. 99, Stand 06.11.2024): Sie nennt die Amtszeit jeder
-Landesregierung, die der neue Landtag wählt. Das ist nur ein **indirekter**
-Beleg, und für 2004 widerspricht er dem Landtag selbst (siehe XXVIII).
+Die Sitzungsprotokolle stehen im **Landtagsinformationssystem** (LIS) des
+Landtags, `suche.vorarlberg.at/VLR/vlr_gov.nsf`; die Startadresse leitet auf
+`vorarlberg.at/web/landtag/lis` weiter, die Suchansicht
+(`…/vlr_gov.nsf/alldocs?SearchView&Query=…`) und die Dokumente
+(`…/vlr_gov.nsf/0/<ID>?OpenDocument`, PDF unter `…/0/<ID>/$FILE/…`)
+antworten aber direkt. Jede konstituierende Sitzung ab 1999 ist dort mit
+Protokoll verzeichnet (Nachrecherche 14.11.2026); das Protokoll ist die
+amtliche Quelle 1. Die Übersicht „Vorarlberger Landesregierungen seit 1945“
+des Vorarlberger Landesarchivs (Verba volant Nr. 99, Stand 06.11.2024) war
+vorher der einzige amtliche, aber nur **indirekte** Beleg; für 2004 nennt
+sie einen falschen Tag (siehe XXVIII) und ist für diese Notiz kein Beleg mehr.
 
 | Periode | Bezeichnung des Landes | konstituierende Sitzung | Wahltag | Quelle 1 | Quelle 2 | Anmerkung |
 |---|---|---|---|---|---|---|
-| XXVII | XXVII. Vorarlberger Landtag | 05.10.1999 | **widersprüchlich:** 13.09.1999 (Landesarchiv), 15.09.1999 (WP) | indirekt: Landesarchiv, Regierung „Sausgruber 2“ ab 5. Oktober 1999 | WP: „in der konstituierenden Sitzung am 5. Oktober 1999 angelobt“ | Der Wahltag ist für diese Notiz nicht geklärt. |
-| XXVIII | XXVIII. Vorarlberger Landtag | **strittig:** 05.10.2004 (Landtag), 01.10.2004 (Landesarchiv), 20.09.2004 (WP) | 19.09.2004 (Landesarchiv; WP: „Am Tag zuvor“) | BR 713 (07.10.2004), Schreiben des Landtagspräsidenten vom 05.10.2004: „der XXVIII. Vorarlberger Landtag in seiner 1. Sitzung in diesem Jahr am 05.10.2004“ | Landesarchiv: Regierung „Sausgruber 3“ ab 1. Oktober 2004; WP: „in der konstituierenden Sitzung am 20. September 2004 angelobt“ | Drei Daten, keine zwei stimmen überein. Der 20.09.2004, ein Tag nach der Wahl, ist sehr wahrscheinlich ein Fehler der WP-Liste. Zwischen 01.10. und 05.10. entscheidet erst das Protokoll des Landtags. Nicht im Datenblock. |
-| XXIX | XXIX. Vorarlberger Landtag | 14.10.2009 | 20.09.2009 (Landesarchiv, WP) | indirekt: Landesarchiv, Regierung „Sausgruber 4 / Wallner 1“ ab 14. Oktober 2009 | WP: „in der konstituierenden Sitzung am 14. Oktober 2009 angelobt“ | – |
-| XXX | XXX. Vorarlberger Landtag | 15.10.2014 | 21.09.2014 (Landesarchiv, WP) | indirekt: Landesarchiv, Regierung „Wallner 2“ ab 15. Oktober 2014 | WP: „in der konstituierenden Sitzung am 15. Oktober 2014 angelobt“ | – |
-| XXXI | XXXI. Vorarlberger Landtag | 06.11.2019 | 13.10.2019 (Landesarchiv, WP) | indirekt: Landesarchiv, Regierung „Wallner 3“ ab 6. November 2019 | WP: konstituierende Sitzung „fand am 6. November 2019 statt“ | – |
+| XXVII | XXVII. Vorarlberger Landtag | 05.10.1999 | **widersprüchlich:** 19.09.1999 (Landtagsprotokoll: „Das Vorarlberger Volk hat am 19. September 1999 die Damen und Herren Abgeordneten … gewählt“), 13.09.1999 (Landesarchiv), 15.09.1999 (WP) | Landtag, LIS: „Niederschrift der 1. (Konstituierenden) Sitzung des XXVII. Vorarlberger Landtages am 05.10.1999“; Protokoll: „Konstituierende Sitzung vom 5.10.1999 … Die erste Sitzung des XXVII. Vorarlberger Landtages ist eröffnet.“ | WP: „Die Abgeordneten des 27. Vorarlberger Landtags wurden in der konstituierenden Sitzung am 5. Oktober 1999 angelobt“ | Das LIS führt die Niederschrift in Teilen; gelesen wurde „Teil 2“, der mit der Eröffnung beginnt. Landesarchiv („Sausgruber 2“ ab 5. Oktober 1999) stimmt überein. |
+| XXVIII | XXVIII. Vorarlberger Landtag | 05.10.2004 | 19.09.2004 (Landtagsprotokoll: „am 19. September … gewählt“; Landesarchiv; WP) | Landtag, LIS, Protokoll: „1. (Konstituierende) Sitzung des XXVIII. Vorarlberger Landtages im Jahr 2004 am Dienstag, 05.10.2004, 10.00 Uhr“; Tagesordnung u. a. „3. Wahl der Landesregierung“ | BR 713 (07.10.2004), Schreiben des Landtagspräsidenten vom 05.10.2004: „der XXVIII. Vorarlberger Landtag in seiner 1. Sitzung in diesem Jahr am 05.10.2004“ | **Vorher strittig, jetzt belegt** durch zwei amtliche Quellen. Falsch sind: WP („in der konstituierenden Sitzung am 20. September 2004 angelobt“, ein Tag nach der Wahl) und Landesarchiv („Sausgruber 3“ ab 1. Oktober 2004); die Regierung wurde laut Protokoll erst in der Sitzung vom 05.10. gewählt. Das Protokoll nennt die Frist: Art. 17 der Landesverfassung, „spätestens am dritten Dienstag nach dem Wahltag“. |
+| XXIX | XXIX. Vorarlberger Landtag | 14.10.2009 | 20.09.2009 (Landesarchiv, WP) | Landtag, LIS: „1. (Konstituierende) Sitzung des XXIX. Vorarlberger Landtages im Jahre 2009 am 14.10.2009“; Protokoll: „1. (Konstituierende) LT-Sitzung vom 14.10.2009“ | WP: „in der konstituierenden Sitzung am 14. Oktober 2009 angelobt“ | Vorher nur indirekt belegt. Landesarchiv („Sausgruber 4 / Wallner 1“ ab 14. Oktober 2009) stimmt überein. |
+| XXX | XXX. Vorarlberger Landtag | 15.10.2014 | 21.09.2014 (Landesarchiv, WP) | Landtag, LIS, Protokoll: „1. Sitzung des XXX. Vorarlberger Landtags (Konstituierende Sitzung) Mittwoch, 15. Oktober 2014, 10.00 Uhr“ | WP: „Der XXX. Vorarlberger Landtag wurde in der konstituierenden Sitzung am 15. Oktober 2014 angelobt.“ | Vorher nur indirekt belegt. Landesarchiv („Wallner 2“) stimmt überein. |
+| XXXI | XXXI. Vorarlberger Landtag | 06.11.2019 | 13.10.2019 (Landesarchiv, WP) | Landtag, LIS: „1. (Konstituierende) Sitzung des XXXI. Vorarlberger Landtags am 6. November 2019“; Protokoll: „1. (Konstituierende) Sitzung des XXXI. Vorarlberger Landtags im Jahr 2019 Mittwoch, 6. November, 10.00 Uhr“ | WP: „Die konstituierende Sitzung des Landtags mit der Wahl und Angelobung der Landesregierung Wallner III fand am 6. November 2019 statt.“ | Vorher nur indirekt belegt. Landesarchiv („Wallner 3“) stimmt überein. |
 | XXXII | XXXII. Vorarlberger Landtag | 06.11.2024 | 13.10.2024 (Landesarchiv, WP) | Schreiben der Landtagsdirektion an den Bundesrat, 06.11.2024 (2305/GO-BR/2024): „der XXXII. Vorarlberger Landtag in seiner 1. Sitzung in diesem Jahr am 6. November 2024“; Landesarchiv „Wallner 4“ seit 6. November 2024 | WP | – |
 
 Quellen:
+- LIS, Protokolle der konstituierenden Sitzungen:
+  - XXVII: https://suche.vorarlberg.at/VLR/vlr_gov.nsf/0/F096889DE5F78FE8C125717C003B3E35/$FILE/fromDocFile-438B6068C7A3D0E965257146001CD7BF.pdf
+  - XXVIII: https://suche.vorarlberg.at/VLR/vlr_gov.nsf/0/005D8E750045555BC1258CBA003E4026/$FILE/lt2804-01-Protokoll%20gesamt.pdf
+  - XXIX: https://suche.vorarlberg.at/VLR/vlr_gov.nsf/0/394C37C47836BD18C1258A13004BC6F5/$FILE/1.%20Sitzung%202009.pdf
+  - XXX: https://suche.vorarlberg.at/VLR/vlr_gov.nsf/0/66F4205D68AAD73AC1258137005436A3/$FILE/1028_15_Landesregierung_1.SitzungXXX_Druck.pdf
+  - XXXI: https://suche.vorarlberg.at/VLR/vlr_gov.nsf/0/7924A33ABED926E8C1258743002B124D/$FILE/Druckversion%201.%20Sitzung%20am%206.11.2019.pdf
 - Landesarchiv: https://zenodo.org/records/14167396 (Verba volant Nr. 99, Herausgeber Vorarlberger Landesarchiv)
 - BR 713: https://www.parlament.gv.at/dokument/BR/BRSITZ/713/fnameorig_029479.html
 - 2305/GO-BR/2024: https://www.parlament.gv.at/dokument/BR/GO-BR/2305/imfname_1659821.pdf
@@ -280,6 +295,34 @@ Quellen:
 - Gemeinderat: https://www.wien.gv.at/mdb/gr/2001/ , `…/2005/`, `…/2010/`, `…/2015/`, `…/2020/`, `…/2025/`
 - WP: `Liste_der_Abgeordneten_zum_Wiener_Landtag_und_Mitglieder_des_Wiener_Gemeinderats_(17._Wahlperiode)` bis `(22._…)`
 
+## Bund: Gesetzgebungsperioden XIV bis XIX
+
+**Stand 14.11.2026.** `GP_STARTS` in `shared/utils/gp.ts` beginnt bei XX
+(15.01.1996). Je Periode die Seite der 1. Sitzung des Nationalrats auf
+`parlament.gv.at` (`/gegenstand/<GP>/NRSITZ/1`, Titel „1. Sitzung des
+Nationalrats vom …“) und das gescannte Stenographische Protokoll mit
+`pdftotext` gelesen; jedes nennt im Kopf die Periode, den Tag und als
+Tagesordnung „1. Angelobung der Abgeordneten“ und „2. Wahl des Präsidenten“.
+Die 1. Sitzung einer Periode ist damit ausdrücklich die konstituierende.
+Quelle 2 ist die Tabelle der Gesetzgebungsperioden im WP-Artikel
+„Nationalrat (Österreich)“ (Zeitraum je Periode); ihr Ende ist jeweils der
+Vortag des nächsten Beginns, wie es das Modell annimmt, auch für XIX
+(„07.11.1994 – 14.01.1996“, XX ab 15.01.1996).
+
+| Periode | konstituierende Sitzung | Quelle 1 | Quelle 2 | Anmerkung |
+|---|---|---|---|---|
+| XIV | 04.11.1975 | Parlament, „1. Sitzung des Nationalrats vom 4. November 1975 (1/NRSITZ)“; Protokoll: „1. Sitzung des Nationalrates der Republik Österreich XIV. Gesetzgebungsperiode Dienstag, 4. November 1975“ | WP, Tabellenzeile „XIV. Gesetzgebungsperiode“: „04.11.1975 – 04.06.1979“ | – |
+| XV | 05.06.1979 | Parlament, „1. Sitzung des Nationalrats vom 5. Juni 1979 (1/NRSITZ)“; Protokoll: „… XV. Gesetzgebungsperiode Dienstag, 5. Juni 1979“ (Scan liest „19'19“) | WP, Tabellenzeile „XV. Gesetzgebungsperiode“: „05.06.1979 – 18.05.1983“ | – |
+| XVI | 19.05.1983 | Parlament, „1. Sitzung des Nationalrats vom 19. Mai 1983 (1/NRSITZ)“; Protokoll: „… XVI. Gesetzgebungsperiode Donnerstag, 19. Mai 1983“ | WP, Tabellenzeile „XVI. Gesetzgebungsperiode“: „19.05.1983 – 16.12.1986“ | – |
+| XVII | 17.12.1986 | Parlament, „1. Sitzung des Nationalrats vom 17. Dezember 1986 (1/NRSITZ)“; Protokoll: „… XVII. Gesetzgebungsperiode Mittwoch, 17. Dezember 1986“ | WP, Tabellenzeile „XVII. Gesetzgebungsperiode“: „17.12.1986 – 04.11.1990“ | – |
+| XVIII | 05.11.1990 | Parlament, „1. Sitzung des Nationalrats vom 5. November 1990 (1/NRSITZ)“; Protokoll: „… XVIII. Gesetzgebungsperiode Montag, 5. November 1990“ | WP, Tabellenzeile „XVIII. Gesetzgebungsperiode“: „05.11.1990 – 06.11.1994“ | – |
+| XIX | 07.11.1994 | Parlament, „1. Sitzung des Nationalrats vom 7. November 1994 (1/NRSITZ)“; Protokoll: „… XIX. Gesetzgebungsperiode Montag, 7. November 1994“ | WP, Tabellenzeile „XIX. Gesetzgebungsperiode“: „07.11.1994 – 14.01.1996“ | – |
+
+Quellen:
+- Parlament: https://www.parlament.gv.at/gegenstand/XIV/NRSITZ/1 bis https://www.parlament.gv.at/gegenstand/XIX/NRSITZ/1
+- Protokolle: https://www.parlament.gv.at/dokument/XIV/NRSITZ/1/imfname_148313.pdf ; https://www.parlament.gv.at/dokument/XV/NRSITZ/1/imfname_146583.pdf ; https://www.parlament.gv.at/dokument/XVI/NRSITZ/1/imfname_144026.pdf ; https://www.parlament.gv.at/dokument/XVII/NRSITZ/1/imfname_142765.pdf ; https://www.parlament.gv.at/dokument/XVIII/NRSITZ/1/imfname_160747.pdf ; https://www.parlament.gv.at/dokument/XIX/NRSITZ/1/imfname_160754.pdf
+- WP: https://de.wikipedia.org/wiki/Nationalrat_(Österreich), Tabelle der Gesetzgebungsperioden
+
 ## Was das einfache Modell bricht
 
 - **Vorzeitige Enden** (der Landtag löst sich auf, die Wahl kommt früher):
@@ -305,17 +348,22 @@ Quellen:
 
 | Land | Periode | Problem | was es schließen würde |
 |---|---|---|---|
-| Vorarlberg | XXVIII (2004) | **strittig:** 05.10.2004 (Landtagspräsident an den Bundesrat), 01.10.2004 (Landesarchiv, Amtsbeginn der Regierung), 20.09.2004 (WP). Nicht im Datenblock. | Sitzungsbericht des XXVIII. Landtags 2004 im Landtagsarchiv (`suche.vorarlberg.at/VLR`) oder Anfrage an die Landtagsdirektion |
-| Vorarlberg | XXVII, XXIX, XXX, XXXI | amtlicher Beleg nur **indirekt** (Amtsbeginn der Landesregierung laut Landesarchiv); im Datenblock, weil zwei Quellen übereinstimmen, aber nach dem Befund für 2004 schwächer als die übrigen Zeilen | je das Schreiben des Landtagspräsidenten an den Bundesrat (Protokoll der folgenden Bundesratssitzung) oder der Sitzungsbericht des Landtags |
-| Vorarlberg | XXVII | Wahltag widersprüchlich (13.09. Landesarchiv, 15.09. WP) | nur Gegenprobe; Wahlergebnis des Landes 1999 |
-| Tirol | XVI (2013) | amtlicher Beleg **indirekt:** das Videoarchiv zeigt den 24.05.2013 als erste Sitzung nach der Wahl, ohne sie zu benennen; der Wortlaut des Schreibens an den Bundesrat (BR 821) ist im Protokoll nur als Bild beigelegt | Bild in BR 821 lesen, oder die Tagesordnung der Sitzung in `lte.tirol.gv.at` |
+| Vorarlberg | XXVII | Wahltag widersprüchlich: 19.09.1999 (Protokoll der konstituierenden Sitzung), 13.09. (Landesarchiv), 15.09. (WP). Der Beginn der Periode ist davon nicht berührt. | nur Gegenprobe; Wahlergebnis des Landes 1999 |
 | alle | Wahltage mit „(ungeprüft)“ | nicht abgerufen; nur Gegenprobe | – |
+
+Am 14.11.2026 aus „Offen“ entfernt, weil jetzt direkt amtlich belegt:
+Tirol XVI (Schreiben des Landtagspräsidenten in BR 821, als Bild gelesen),
+Vorarlberg XXVIII (Protokoll des Landtags und BR 713, beide 05.10.2004)
+und Vorarlberg XXVII, XXIX, XXX, XXXI (Protokolle des Landtags im LIS).
 
 ## Vorschlag für die Datenform
 
 Nur Zeilen, deren Beginn zwei übereinstimmende Quellen haben; Vorarlberg
 XXVIII fehlt deshalb. Die Zeilen mit nur indirektem amtlichem Beleg sind
-kommentiert. `land` wie `LAND_CODES` in `shared/utils/laender.ts`; `period`
+kommentiert. (Nachtrag 14.11.2026: Vorarlberg XXVIII ist inzwischen belegt,
+Beginn 05.10.2004, und die kommentierten Zeilen für Tirol XVI und Vorarlberg
+XXVII, XXIX bis XXXI sind jetzt direkt amtlich belegt; der Block unten ist
+noch der Stand davor.) `land` wie `LAND_CODES` in `shared/utils/laender.ts`; `period`
 ist die Ziffer, wie das Land sie schreibt, `noun` und `style` je Land, damit
 die Anzeige („XXIII. Gesetzgebungsperiode“, „22. Wahlperiode“, „XXXII.
 Vorarlberger Landtag“) aus den Daten kommt und nicht aus einer Bedingung im
@@ -377,15 +425,15 @@ const LAND_PERIOD_STARTS = [
 
   { land: 't', period: 'XIV', start: '2003-10-21' },
   { land: 't', period: 'XV', start: '2008-07-01' },
-  { land: 't', period: 'XVI', start: '2013-05-24' }, // amtlich nur indirekt (Videoarchiv), siehe „Offen“
+  { land: 't', period: 'XVI', start: '2013-05-24' },
   { land: 't', period: 'XVII', start: '2018-03-28' },
   { land: 't', period: 'XVIII', start: '2022-10-25' },
 
-  { land: 'vbg', period: 'XXVII', start: '1999-10-05' }, // amtlich nur indirekt (Landesarchiv), siehe „Offen“
-  // XXVIII fehlt: Beginn strittig (05.10. / 01.10. / 20.09.2004), siehe „Offen“
-  { land: 'vbg', period: 'XXIX', start: '2009-10-14' }, // amtlich nur indirekt
-  { land: 'vbg', period: 'XXX', start: '2014-10-15' }, // amtlich nur indirekt
-  { land: 'vbg', period: 'XXXI', start: '2019-11-06' }, // amtlich nur indirekt
+  { land: 'vbg', period: 'XXVII', start: '1999-10-05' },
+  { land: 'vbg', period: 'XXVIII', start: '2004-10-05' },
+  { land: 'vbg', period: 'XXIX', start: '2009-10-14' },
+  { land: 'vbg', period: 'XXX', start: '2014-10-15' },
+  { land: 'vbg', period: 'XXXI', start: '2019-11-06' },
   { land: 'vbg', period: 'XXXII', start: '2024-11-06' },
 
   { land: 'w', period: '17', start: '2001-04-27' },
@@ -412,8 +460,12 @@ verlängern.
   Dateinamen; das Verzeichnis antwortet 403.
 - Tirol: die Broschüre des Landtags und das LGBl-PDF 25/2013 kamen leer bzw.
   als HTML zurück; Sitzungen vor 2018 führt der Landtag nicht.
-- Vorarlberg: keine Sitzungsliste des Landtags gefunden; `vorarlberg.at/-/landtag`
-  gibt 404.
+- Vorarlberg: `vorarlberg.at/-/landtag` gibt 404. Die Sitzungsprotokolle
+  liegen im LIS (`suche.vorarlberg.at/VLR/vlr_gov.nsf`, Suchansicht und
+  Dokumente direkt abrufbar, siehe Vorarlberg); bei der ersten Recherche
+  nicht gefunden.
+- Tirol: das Schreiben in BR 821 ist kein Text, aber als Bilddatei abrufbar
+  (`…/BRSITZ00821__326333_image003.jpg`).
 - Oberösterreich: die Protokoll-PDFs der 1. Sitzung von XXVIII und XXIX sind
   nur über Sitzungs-URLs mit Session-ID verlinkt; gelesen wurde die
   Listenseite, nicht das PDF.

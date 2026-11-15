@@ -54,6 +54,30 @@ describe('the shipped calendar', () => {
       })
     }
   })
+
+  /* A period before a gap would run on into it, so each chain must close
+   * back to its first row: every window ends the day before the next one
+   * begins, and no ordinal is skipped. */
+  const contiguousBackTo = (land: 't' | 'vbg', first: { id: number; start: string }) => {
+    const periods = landPeriodsOf(land)
+    const oldest = periods.at(-1)!
+    expect({ id: oldest.id, start: oldest.start }).toEqual(first)
+    expect(periods.map((p) => p.id)).toEqual(Array.from({ length: periods.length }, (_, i) => periods[0]!.id - i))
+    for (let i = periods.length - 1; i > 0; i--) {
+      const w = landPeriodWindow(land, periods[i]!.id)!
+      const next = new Date(`${w.to}T12:00:00Z`)
+      next.setUTCDate(next.getUTCDate() + 1)
+      expect(next.toISOString().slice(0, 10), `${land}-${periods[i]!.id}`).toBe(periods[i - 1]!.start)
+    }
+  }
+
+  it('holds Tirol without a gap back to XIV (21.10.2003)', () => {
+    contiguousBackTo('t', { id: 14, start: '2003-10-21' })
+  })
+
+  it('holds Vorarlberg without a gap back to the XXVII. Landtag (05.10.1999)', () => {
+    contiguousBackTo('vbg', { id: 27, start: '1999-10-05' })
+  })
 })
 
 describe('a Land period and its window', () => {
@@ -137,8 +161,9 @@ describe('coherentSpan — a span the sources do not offer falls to the running 
   })
 
   it('keeps every GP under the Bund, and only those with a window under the dates', () => {
-    expect(coherentSpan({ gp: 'XIV', landtag: '' }, { mode: 'bund' })).toEqual({ gp: 'XIV', landtag: '' })
-    expect(coherentSpan({ gp: 'XIV', landtag: '' }, { mode: 'dates' })).toEqual({ gp: '', landtag: '' })
+    expect(coherentSpan({ gp: 'XIII', landtag: '' }, { mode: 'bund' })).toEqual({ gp: 'XIII', landtag: '' })
+    expect(coherentSpan({ gp: 'XIII', landtag: '' }, { mode: 'dates' })).toEqual({ gp: '', landtag: '' })
+    expect(coherentSpan({ gp: 'XIV', landtag: '' }, { mode: 'dates' })).toEqual({ gp: 'XIV', landtag: '' })
     expect(coherentSpan({ gp: 'XXVII', landtag: '' }, { mode: 'dates' })).toEqual({ gp: 'XXVII', landtag: '' })
   })
 
@@ -186,6 +211,7 @@ describe('gpsOverlapping', () => {
     expect(gpsOverlapping({ from: '2024-10-24', to: null })).toEqual(['XXVIII'])
     // Both ends inclusive: the last day of XXVII touches it.
     expect(gpsOverlapping({ from: '2024-10-23', to: '2024-10-23' })).toEqual(['XXVII'])
-    expect(gpsOverlapping({ from: '1990-01-01', to: '1995-01-01' })).toEqual([])
+    expect(gpsOverlapping({ from: '1990-01-01', to: '1995-01-01' })).toEqual(['XIX', 'XVIII', 'XVII'])
+    expect(gpsOverlapping({ from: '1970-01-01', to: '1975-11-03' })).toEqual([])
   })
 })

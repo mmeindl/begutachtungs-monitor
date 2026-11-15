@@ -103,16 +103,20 @@ export const LAND_PERIODS: LandPeriodCalendars = {
     { id: 18, label: 'XVIII. Gesetzgebungsperiode', start: '2019-12-17' },
     { id: 19, label: 'XIX. Gesetzgebungsperiode', start: '2024-12-18' },
   ],
-  // XIV–XVI not entered: the start of XVI (2013) has only an indirect
-  // official source, and a period before a gap would run on into it.
   t: [
+    { id: 14, label: 'XIV. Gesetzgebungsperiode', start: '2003-10-21' },
+    { id: 15, label: 'XV. Gesetzgebungsperiode', start: '2008-07-01' },
+    { id: 16, label: 'XVI. Gesetzgebungsperiode', start: '2013-05-24' },
     { id: 17, label: 'XVII. Gesetzgebungsperiode', start: '2018-03-28' },
     { id: 18, label: 'XVIII. Gesetzgebungsperiode', start: '2022-10-25' },
   ],
   // Vorarlberg counts the Landtag itself („XXXII. Vorarlberger Landtag").
-  // Only XXXII: the start of XXVIII (2004) is disputed between three dates
-  // and XXVII, XXIX–XXXI rest on indirect evidence.
   vbg: [
+    { id: 27, label: 'XXVII. Landtag', start: '1999-10-05' },
+    { id: 28, label: 'XXVIII. Landtag', start: '2004-10-05' },
+    { id: 29, label: 'XXIX. Landtag', start: '2009-10-14' },
+    { id: 30, label: 'XXX. Landtag', start: '2014-10-15' },
+    { id: 31, label: 'XXXI. Landtag', start: '2019-11-06' },
     { id: 32, label: 'XXXII. Landtag', start: '2024-11-06' },
   ],
   w: [

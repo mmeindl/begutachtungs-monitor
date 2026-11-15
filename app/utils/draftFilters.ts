@@ -15,8 +15,8 @@
 import type { AntraegeResponse, AntragRow, AntragState, DraftChain, DraftStation, DraftStatus, DraftsResponse, DraftSummary, LandCode, LandLaw, LandLawSource, LawWithoutBegutachtung, LawsWithoutBegutachtung, LawsWithoutBegutachtungGap, OpenVorlage, RisConsultation, RisConsultationKind, RisConsultationsResponse, StaatsvertraegeResponse, TreatyState } from '#shared/types'
 import { searchDrafts, searchRis } from '#shared/utils/searchHaystack'
 import { DRAFT_STATION_LABEL, DRAFT_STATION_ORDER } from '#shared/utils/draftStations'
-import { countLabelDe, formatNumberDe } from '#shared/utils/format'
-import { GP_STARTS, gpSpanLabelDe, gpWindow, intToRoman, isPlausibleGp, romanToInt } from '#shared/utils/gp'
+import { countLabelDe, formatDateDe, formatNumberDe } from '#shared/utils/format'
+import { GP_STARTS, gpSpanLabelDe, gpWindow, intToRoman, isPlausibleGp, periodAgainstSource, romanToInt } from '#shared/utils/gp'
 import {
   type LandPeriodCalendars,
   type PeriodView,
@@ -527,16 +527,30 @@ export function antragStationOf(state: AntragState): DraftStation {
   return state === 'promulgated' ? 'bgbl' : 'parlament'
 }
 
+/** An Antrag of a period that ended before the Bundesgesetzblatt in RIS begins. */
+const ANTRAG_BEFORE_SOURCE = 'Ob der Antrag kundgemacht wurde, lässt sich für diese Gesetzgebungsperiode nicht prüfen.'
+
+/** Anträge of a period that began before it: the early Kundmachungen are not in the source. */
+function antragStraddlesSourceDe(coversFrom: string): string {
+  return `Ob ein Initiativantrag vor dem ${formatDateDe(coversFrom)} kundgemacht wurde, lässt sich nicht prüfen: ${bgblReachDe(coversFrom)}.`
+}
+
 /**
  * The list's one note on the Initiativanträge, where they did not all come
  * whole (14.11.2026): the Kundmachungen unread, or the flag of some still in
  * the house not read in time — then those rows say „in Behandlung" and
  * nothing about a Stellungnahme. Two gaps, two sentences. Empty where none.
  */
-export function antragGapNotes(a: Pick<AntraegeResponse, 'bgblUnread'> & { items: readonly Pick<AntragRow, 'state'>[] } | null | undefined): string[] {
+export function antragGapNotes(a: Pick<AntraegeResponse, 'bgblUnread'> & Partial<Pick<AntraegeResponse, 'gp' | 'coversFrom'>> & { items: readonly Pick<AntragRow, 'state'>[] } | null | undefined): string[] {
   if (!a) return []
   const unverified = a.items.filter((i) => i.state === 'pending-unverified').length
+  /* The source's reach (15.11.2026) is structural, not a failure: a period
+   * before the Bundesgesetzblatt in RIS can never say it, one that began
+   * before it cannot for its early Anträge — neither is „gerade". */
+  const reach = a.gp && a.coversFrom ? periodAgainstSource(a.gp, a.coversFrom) : null
   return [
+    ...(reach === 'before' ? [ANTRAG_BEFORE_SOURCE] : []),
+    ...(reach === 'straddles' && a.coversFrom ? [antragStraddlesSourceDe(a.coversFrom)] : []),
     ...(a.bgblUnread ? ['Ob ein Initiativantrag kundgemacht ist, ist gerade nicht abrufbar.'] : []),
     ...(unverified ? [`Ob eine Stellungnahme möglich ist, ist bei ${countLabelDe(unverified, 'Initiativantrag', 'Initiativanträgen')} gerade nicht abrufbar.`] : []),
   ]
@@ -650,7 +664,7 @@ export function artUnavailableBySources(s: ArtSources): Partial<Record<ArtChoice
 /** The answers that decide what the sources leave open. `undefined`: not
  *  there yet — unknown is not unavailable, so the option stays enabled. */
 export interface ArtAnswers {
-  bundLaws?: Pick<LawsWithoutBegutachtung, 'available' | 'gap'> | null
+  bundLaws?: Pick<LawsWithoutBegutachtung, 'available' | 'gap'> & Partial<Pick<LawsWithoutBegutachtung, 'coversFrom'>> | null
   bundLawsFailed?: boolean
   sbgLaws?: Pick<LandLawSource, 'state' | 'statements'> | null
   landLawsFailed?: boolean
@@ -684,7 +698,7 @@ export function artUnavailableFor(s: ArtSources, a: ArtAnswers): Partial<Record<
   const alsAntrag = bySources['als-antrag'] ?? antragRouteReason(a)
   let ohne: string | null
   if (s.bund) {
-    ohne = a.bundLawsFailed ? begutachtungGapReason('unread') : a.bundLaws?.available === false ? begutachtungGapReason(a.bundLaws.gap) : null
+    ohne = a.bundLawsFailed ? begutachtungGapReason('unread') : a.bundLaws?.available === false ? begutachtungGapReason(a.bundLaws.gap, a.bundLaws.coversFrom) : null
   } else if (a.landLawsFailed || a.sbgLaws?.state === 'unavailable') {
     ohne = begutachtungGapReason('unread')
   } else {
@@ -1256,15 +1270,44 @@ export function draftCountLabel(c: {
  * The chip „Ohne Entwurf"
  * ------------------------------------------------------------------ */
 
-/** Why the period in view carries no such rows — the chip's reason (`ToggleChip`). */
-const BEGUTACHTUNG_GAP_REASON: Record<LawsWithoutBegutachtungGap, string> = {
-  unlinked: 'Für diese Gesetzgebungsperiode ist nicht erfasst, welche Gesetze auf einen Ministerialentwurf zurückgehen',
-  unread: 'Gerade nicht abrufbar',
-  pending: 'Die Daten werden gerade eingelesen – gleich verfügbar',
+/**
+ * Where the Bundesgesetzblatt in RIS begins, as a clause: „Das
+ * Bundesgesetzblatt steht im RIS erst ab 2004" — the year alone where the
+ * source begins with one, else the day. From the answer's `coversFrom`, so
+ * the date has one home (`BGBL_AUTH_FROM`).
+ */
+function bgblReachDe(coversFrom: string): string {
+  const from = coversFrom.endsWith('-01-01') ? coversFrom.slice(0, 4) : `dem ${formatDateDe(coversFrom)}`
+  return `Das Bundesgesetzblatt steht im RIS erst ab ${from}`
 }
 
-export function begutachtungGapReason(gap: LawsWithoutBegutachtungGap | null | undefined): string | null {
-  return gap ? BEGUTACHTUNG_GAP_REASON[gap] : null
+const BEFORE_SOURCE_CLAIM = 'Für diese Gesetzgebungsperiode lässt sich nicht prüfen, welche Gesetze ohne Begutachtung kundgemacht wurden'
+
+/** Why the period in view carries no such rows — the chip's reason (`ToggleChip`).
+ *  `beforeSource` names where the source begins when the answer says it. */
+const BEGUTACHTUNG_GAP_REASON: Record<LawsWithoutBegutachtungGap, (coversFrom: string | undefined) => string> = {
+  unlinked: () => 'Für diese Gesetzgebungsperiode ist nicht erfasst, welche Gesetze auf einen Ministerialentwurf zurückgehen',
+  unread: () => 'Gerade nicht abrufbar',
+  pending: () => 'Die Daten werden gerade eingelesen – gleich verfügbar',
+  beforeSource: (coversFrom) => (coversFrom ? `${bgblReachDe(coversFrom)}. ${BEFORE_SOURCE_CLAIM}` : BEFORE_SOURCE_CLAIM),
+}
+
+export function begutachtungGapReason(gap: LawsWithoutBegutachtungGap | null | undefined, coversFrom?: string): string | null {
+  return gap ? BEGUTACHTUNG_GAP_REASON[gap](coversFrom) : null
+}
+
+/**
+ * The list's sentence on the reach of the Bund's laws (15.11.2026), in the
+ * place of the other gap sentences: a period wholly before the source says
+ * its gap; a period that began before it keeps its rows and says which are
+ * missing. Null where the source holds the whole period, or the answer has
+ * another gap (said elsewhere).
+ */
+export function lawsReachNoteDe(laws: Pick<LawsWithoutBegutachtung, 'gp' | 'available' | 'gap' | 'coversFrom'> | null | undefined): string | null {
+  if (!laws?.coversFrom) return null
+  if (!laws.available) return laws.gap === 'beforeSource' ? `${begutachtungGapReason('beforeSource', laws.coversFrom)}.` : null
+  if (periodAgainstSource(laws.gp, laws.coversFrom) !== 'straddles') return null
+  return `Gesetze, die vor dem ${formatDateDe(laws.coversFrom)} kundgemacht wurden, fehlen in dieser Liste: ${bgblReachDe(laws.coversFrom)}.`
 }
 
 /* ------------------------------------------------------------------ *

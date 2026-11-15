@@ -24,7 +24,7 @@
 import type { CommitteeConsultation, LawWithoutBegutachtung, LawsWithoutBegutachtung, LawsWithoutBegutachtungGap } from '#shared/types'
 import { ANTRAG_PARTIAL, ANTRAG_PATHS } from '#shared/utils/antragPathTable'
 import { chainCoverageOf, mayClaimOutcome } from '#shared/utils/draftStations'
-import { gpHasEnded, previousGp } from '#shared/utils/gp'
+import { gpHasEnded, periodAgainstSource, previousGp } from '#shared/utils/gp'
 import { todayIso } from '#shared/utils/format'
 import { DERIVED_CACHE } from '../cache/base'
 import { keepIncompleteFor, type Gathered } from '../cache/gathered'
@@ -34,7 +34,7 @@ import { settleWithinBudget } from '../http/budget'
 import { getAntraegeForGp, getDraftsForGp, getGegenstand, getItemsForGp } from '../parliament/drafts'
 import { getStationMapForGp } from '../parliament/stationMap'
 import { getBgblTeil1Year } from './bgblService'
-import { classifySkippedLaws, isLawOfPeriod, mentionDocuments, mentionsBegutachtung, refineByCommittee, refineByMention, yearsOfPeriod, type AusschussantragItem, type CarryingItem, type ParliamentItem } from './skippedLaws'
+import { BGBL_AUTH_FROM, classifySkippedLaws, isLawOfPeriod, mentionDocuments, mentionsBegutachtung, refineByCommittee, refineByMention, yearsOfPeriod, type AusschussantragItem, type CarryingItem, type ParliamentItem } from './skippedLaws'
 import type { BgblRecord } from './bgblJoin'
 import { parentConsulted, relatedItemsOf, type VorlageContent } from '../parliament/vorlageDetailAssembly'
 import { mapDocuments, readCommitteeConsultation } from '../parliament/detailJson'
@@ -92,7 +92,7 @@ async function chainsOf(gp: string): Promise<
 }
 
 function unavailable(gp: string, gap: LawsWithoutBegutachtungGap, complete: boolean): Gathered<LawsWithoutBegutachtung> {
-  return { value: { gp, available: false, gap, items: [] }, complete, ...(gap === 'pending' ? { pending: true } : {}) }
+  return { value: { gp, available: false, gap, coversFrom: BGBL_AUTH_FROM, items: [] }, complete, ...(gap === 'pending' ? { pending: true } : {}) }
 }
 
 const toItem = (v: { inr: number; citation: string; title: string; date: string }): ParliamentItem => ({
@@ -149,6 +149,11 @@ async function ausschussantraegeOf(gp: string, rows: readonly { inr: number; cit
 
 const buildSkippedLaws = defineCachedFunction(
   async (gp: string): Promise<Gathered<LawsWithoutBegutachtung>> => {
+    /* A period that ended before the Bundesgesetzblatt in RIS begins: no
+     * law of it is in the source, now or later — said as that, before any
+     * chain is read (15.11.2026; until then it answered `unlinked`, a reason
+     * that was not the one). Stable, so it is kept. */
+    if (periodAgainstSource(gp, BGBL_AUTH_FROM) === 'before') return unavailable(gp, 'beforeSource', true)
     const currentGp = await getCurrentGp()
     const prev = previousGp(gp)
 
@@ -267,7 +272,7 @@ const buildSkippedLaws = defineCachedFunction(
     // a pending answer, not ten minutes — those laws are left out meanwhile
     // and come back on the next request, from the leaf cache.
     return {
-      value: { gp, available: true, gap: null, items },
+      value: { gp, available: true, gap: null, coversFrom: BGBL_AUTH_FROM, items },
       complete: vorlagen !== null && antraege !== null && drafts !== null && ausschussantraege !== null && !unread &&
         ausschussantraege.every((a) => a.related !== undefined),
       ...(unread ? { pending: true } : {}),

@@ -23,14 +23,14 @@
 import type { AntraegeResponse } from '#shared/types'
 import { carriesDraft } from '#shared/utils/antragPath'
 import { ANTRAG_PATHS } from '#shared/utils/antragPathTable'
-import { gpHasEnded } from '#shared/utils/gp'
+import { gpHasEnded, periodAgainstSource } from '#shared/utils/gp'
 import { todayIso } from '#shared/utils/format'
 import { withinBudget } from '../http/budget'
 import { mapWithConcurrency } from '../pool'
 import { pickBgblIForItem } from '../ris/bgblVorlage'
 import { getBgblTeil1Year } from '../ris/bgblService'
 import type { BgblRecord } from '../ris/bgblJoin'
-import { yearsOfPeriod } from '../ris/skippedLaws'
+import { BGBL_AUTH_FROM, yearsOfPeriod } from '../ris/skippedLaws'
 import { antragRowOf, classifyAntrag, compareAntragRows, needsReading, readAntragDetail, type AntragReading } from './antraege'
 import { getAntraegeForGp, getCurrentGp, getGegenstand } from './drafts'
 
@@ -87,5 +87,9 @@ export async function getAntraege(gp: string): Promise<AntraegeResponse> {
       return antragRowOf(row, state, bgbl, reading)
     })
     .sort(compareAntragRows)
-  return { gp, running, items, bgblUnread: records === null }
+  // A period that ended before the Bundesgesetzblatt in RIS begins was
+  // never read: no failure, and the list says it in its own words
+  // (`coversFrom`, 15.11.2026) rather than „gerade nicht abrufbar".
+  const beforeSource = periodAgainstSource(gp, BGBL_AUTH_FROM) === 'before'
+  return { gp, running, items, bgblUnread: records === null && !beforeSource, coversFrom: BGBL_AUTH_FROM }
 }

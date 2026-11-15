@@ -92,15 +92,23 @@ export function romanToInt(roman: string): number | null {
  * First day of each Gesetzgebungsperiode — the konstituierende Sitzung of
  * the Nationalrat. Art. 27 B-VG: a GP lasts until the day the new
  * Nationalrat convenes, so GP n ends the day before GP n+1 starts and no
- * end column is needed. Verified 2026-09-08 against the table of
- * Gesetzgebungsperioden (de.wikipedia.org/wiki/Nationalrat_(Österreich))
+ * end column is needed. XX to XXVIII verified 2026-09-08 against the table
+ * of Gesetzgebungsperioden (de.wikipedia.org/wiki/Nationalrat_(Österreich))
  * and against list 81 itself: last GP XXVII arrival 2024-10-11, first GP
- * XXVIII arrival 2024-12-17. Older GPs are absent on purpose — the monitor
- * reaches back to GP XIV (1979), but a date is only shown where it is
- * verified; `gpEndedOn` returns null there and the page says "beendet"
- * without one. Extend by one row when GP XXIX convenes.
+ * XXVIII arrival 2024-12-17. XIV to XIX verified 2026-11-14 against
+ * Parliament's page and stenographic protocol of the 1. Sitzung of each
+ * period (Angelobung, Wahl des Präsidenten) and the same Wikipedia table
+ * (`docs/research/landtagsperioden.md`, "Bund"). The table starts at XIV,
+ * the oldest period the monitor reaches back to; a date enters only with two
+ * agreeing sources. Extend by one row when GP XXIX convenes.
  */
 export const GP_STARTS: Readonly<Record<string, string>> = {
+  XIV: '1975-11-04',
+  XV: '1979-06-05',
+  XVI: '1983-05-19',
+  XVII: '1986-12-17',
+  XVIII: '1990-11-05',
+  XIX: '1994-11-07',
   XX: '1996-01-15',
   XXI: '1999-10-29',
   XXII: '2002-12-20',
@@ -114,8 +122,9 @@ export const GP_STARTS: Readonly<Record<string, string>> = {
 
 /**
  * Last day of a Gesetzgebungsperiode (ISO date): the day before the next
- * one convened. Null while it runs — and null for GPs before XX, where the
- * table has no successor row; use `gpHasEnded` for the yes/no question.
+ * one convened. Null while it runs, and where the successor has no row
+ * (before XIII; XIII ends the day before XIV); use `gpHasEnded` for the
+ * yes/no question.
  */
 export function gpEndedOn(gp: string): string | null {
   const n = romanToInt(gp)
@@ -143,8 +152,23 @@ export function gpWindow(gp: string): { from: string; to: string | null } | null
 }
 
 /**
+ * Where a period stands against the first day a source holds (`coversFrom`,
+ * ISO): `before` — it ended before that day, so the source holds none of
+ * it; `straddles` — it began before that day and ended on or after it, so
+ * the source holds only its later part; `within` — the source holds all of
+ * it. Null where the calendar has no row for the period. The running
+ * period has no end and is never `before`.
+ */
+export function periodAgainstSource(gp: string, coversFrom: string): 'before' | 'straddles' | 'within' | null {
+  const w = gpWindow(gp)
+  if (!w) return null
+  if (w.to !== null && w.to < coversFrom) return 'before'
+  return w.from < coversFrom ? 'straddles' : 'within'
+}
+
+/**
  * The period whose window holds `day` (ISO, a timestamp is cut to its day):
- * the latest `GP_STARTS` row on or before it. Null before GP XX, where the
+ * the latest `GP_STARTS` row on or before it. Null before GP XIV, where the
  * table does not reach. The day after the newest row falls to that row's
  * period, whose window is open-ended (`gpEndedOn`) — the same answer
  * `windowPeriodFor` gives a period that convened before its row was added.
@@ -197,7 +221,7 @@ export function gpInSentenceDe(gp: string): string {
  * their Begutachtung began. The dates are `gpWindow`'s, both ends inclusive —
  * the bounds `readLaenderInWindow` filters by (`server/utils/laender/
  * sources.ts`) — so the label states exactly what the choice does. A period
- * the calendar does not reach (before XX, or a new one before its row is
+ * the calendar does not reach (before XIV, or a new one before its row is
  * added) has no window and no Länder rows there; it is named by its GP alone.
  */
 export function gpSpanLabelDe(gp: string): string {
@@ -242,10 +266,10 @@ export function previousGp(gp: string): string | null {
  * The condition is exact and self-disabling. An open-ended predecessor
  * window means no successor row exists, so this returns a different code
  * only for the period straight after the newest one in the table, and stops
- * the moment that row is added. A gap further back — GP XIX and older, which
- * the table simply does not reach — fails it and returns null, because there
- * the predecessor has no window either and inventing one would date records
- * into a period nobody verified.
+ * the moment that row is added. A code further back — before GP XIV, which
+ * the table does not reach — fails it and returns null, because there the
+ * predecessor has no window either and inventing one would date records into
+ * a period nobody verified.
  */
 export function windowPeriodFor(gp: string): string | null {
   if (GP_STARTS[gp]) return gp

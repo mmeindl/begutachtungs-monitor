@@ -37,6 +37,7 @@ import {
   draftRowsOf,
   isOhneChoice,
   ohneSilentNoteDe,
+  lawsReachNoteDe,
   OHNE_MINISTRY_REASON,
   registerReachNote,
   type FilterChipKey,
@@ -892,6 +893,22 @@ const lawsUnreadable = computed(() => {
 })
 
 /**
+ * How far the source of the Bund's laws reaches (15.11.2026,
+ * `lawsReachNoteDe`): a period wholly before the Bundesgesetzblatt in RIS
+ * says so, a period that began before it says which laws its list lacks.
+ * Only while the view would show the laws, and not twice: where a chosen
+ * option of „Ohne Entwurf" stepped back, `artNote` already carries the
+ * reason.
+ */
+const lawsReachNote = computed(() => {
+  const laws = lawsData.value
+  if (!lawsInView.value || !laws) return null
+  if (selectedGp.value && selectedGp.value !== laws.gp) return null
+  if (artNote.value && isOhneChoice(chosenArt.value)) return null
+  return lawsReachNoteDe(laws)
+})
+
+/**
  * The open Regierungsvorlagen without a draft on their way (14.11.2026), as
  * the laws are (`lawsPending`): never on the server (`server: false`), so
  * the SSR HTML is this state. Until then the count line could stand without
@@ -1352,6 +1369,9 @@ const statementsSortNote = computed(() => {
              them — and the chips stand in the same place on both pages. -->
         <SourceChips :unavailable="sourceUnavailable" />
         <GapNote v-if="lawsUnreadable" kind="unavailable" text="die Gesetze des Bundes ohne Entwurf." class="text-sm text-ink-muted" />
+        <p v-if="lawsReachNote" class="text-sm text-ink-muted">
+          {{ lawsReachNote }}
+        </p>
         <GapNote
           v-for="s in unreadableLandLaws"
           :key="`gesetze-${s.land}`"
