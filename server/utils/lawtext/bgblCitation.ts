@@ -57,6 +57,32 @@ export interface BgblCitation {
  * wrong law is worse than none, and that is the whole rule of this module.
  */
 const BGBL_RE = /(d?RGBl|BGB[lI]|StGBl|JGS|GBlÖ)(\.?)\s*(?:(?:Nr\.\s*)?(I{1,3})\b\.?\s*)?(?:(Nr|S)\.?\s*)?(\d+\/\d{4})/
+const BGBL_ALL_RE = new RegExp(BGBL_RE.source, 'g')
+
+/**
+ * The Bundesgesetzblatt in its spelling of the 1920s, rewritten to today's
+ * before it is read (14.11.2026): „B. G. Bl. Nr. 368 vom Jahre 1925" is
+ * BGBl. Nr. 368/1925, the Übergangsgesetz as 869 d.B. XXV names it. One
+ * reading each, like the variants above: the periods of the abbreviation
+ * spaced out, and the year written as words after the number („vom Jahre",
+ * „aus dem Jahre", „aus"). The year still has to be four digits.
+ */
+function modernSpelling(text: string): string {
+  return text
+    .replace(/\bB\.\s*G\.\s*Bl\./g, 'BGBl.')
+    .replace(/\b((?:d?RGBl|BGB[lI]|StGBl)\.?\s*(?:I{1,3}\.?\s*)?Nr\.\s*\d+)\s+(?:vom\s+Jahre?|aus\s+dem\s+Jahre?|aus)\s+(\d{4})\b/g, '$1/$2')
+}
+
+/** A match of `BGBL_RE` as the citation `parseBgbl` describes. */
+function citationOf(m: RegExpExecArray | RegExpMatchArray): BgblCitation {
+  // The abbreviation keeps the source's own period; only the impossible
+  // letter is corrected, and the citation marker is given the period that
+  // every organ writes it with. The Teil is never touched — it identifies
+  // the law.
+  const abbr = `${m[1] === 'BGBI' ? 'BGBl' : m[1]}${m[2]}`
+  const organ = [abbr, m[3], m[4] ? `${m[4]}.` : null].filter(Boolean).join(' ')
+  return { organ, nummer: m[5]! }
+}
 
 /**
  * First promulgation citation in a text, or null.
@@ -73,15 +99,8 @@ const BGBL_RE = /(d?RGBl|BGB[lI]|StGBl|JGS|GBlÖ)(\.?)\s*(?:(?:Nr\.\s*)?(I{1,3})
  * "BGBl. I Nr.". The Teil is never touched.
  */
 export function parseBgbl(text: string): BgblCitation | null {
-  const m = BGBL_RE.exec(normalizeText(text))
-  if (!m) return null
-  // The abbreviation keeps the source's own period; only the impossible
-  // letter is corrected, and the citation marker is given the period that
-  // every organ writes it with. The Teil is never touched — it identifies
-  // the law.
-  const abbr = `${m[1] === 'BGBI' ? 'BGBl' : m[1]}${m[2]}`
-  const organ = [abbr, m[3], m[4] ? `${m[4]}.` : null].filter(Boolean).join(' ')
-  return { organ, nummer: m[5]! }
+  const m = BGBL_RE.exec(modernSpelling(normalizeText(text)))
+  return m ? citationOf(m) : null
 }
 
 /**
@@ -95,10 +114,35 @@ export function parseBgbl(text: string): BgblCitation | null {
  * (2026-09-09). A clause whose head names no BGBl has no usable Stammnorm;
  * returning null there is the whole point, because the alternative is a
  * confident wrong answer.
+ *
+ * **„in der Fassung" cites a version — except where a name cites its own
+ * Fundstelle** (14.11.2026). Everything after the phrase was cut off, which
+ * also cut off the Stammnorm of a law whose NAME carries the phrase: „Das
+ * Übergangsgesetz vom 1. Oktober 1920, in der Fassung des B. G. Bl. Nr. 368
+ * vom Jahre 1925, BGBl. Nr. 368/1925, zuletzt geändert …" (869 d.B. XXV) —
+ * the Wiederverlautbarung is named by its Fundstelle and then cited by it.
+ * So a citation after the phrase is still a version, with that one
+ * exception: the same number again, after nothing but a comma. „Das
+ * Sozialversicherungs-Organisationsgesetz in der Fassung des BGBl. I Nr.
+ * 100/2018 wird wie folgt abgeändert" (627 d.B. XXVI) cites a version and
+ * no Stammnorm, and stays null.
  */
 export function stammnormOf(text: string): BgblCitation | null {
-  const head = normalizeText(text).split(/\bzuletzt geändert\b|\bin der Fassung\b|\bgeändert durch\b/i)[0] ?? ''
-  return parseBgbl(head)
+  const head = modernSpelling(normalizeText(text)).split(/\bzuletzt geändert\b|\bgeändert durch\b/i)[0] ?? ''
+  let end = 0
+  let version: string | null = null
+  for (const m of head.matchAll(BGBL_ALL_RE)) {
+    const gap = head.slice(end, m.index)
+    end = m.index! + m[0].length
+    const cited = citationOf(m)
+    if (version === null && /\bin der Fassung\b/i.test(gap)) {
+      version = cited.nummer
+      continue
+    }
+    if (version === null) return cited
+    if (/^\s*,\s*$/.test(gap) && cited.nummer === version) return cited
+  }
+  return null
 }
 
 /**

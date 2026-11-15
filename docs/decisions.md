@@ -772,6 +772,17 @@ not yet followed, or the EU cycle, starts there.
   lesbar", never „neues Recht"; a text it could not identify (a motion's
   „Gesetzesantrag" or „Antrag") is a stated gap in the frame, never a
   missing frame.
+- **A law is named from a title or a clause only by an exact match**
+  (14.11.2026, `titleLaws.ts`, `law-by-name`): where no clause cites a
+  Stammnorm, the title „…, mit dem das X (und das Y) geändert wird" names
+  the laws only if every piece is the Kurztitel or Abkürzung of exactly one
+  consolidated law in RIS — all pieces or none; „Allgemeine
+  Sozialversicherungsgesetz" is not the ASVG, an EU act is never a law of
+  ours. A law found by name carries RIS's own Stammnorm. Rows are merged
+  only when they resolve to the same RIS law, never because two laws share a
+  Stammnorm (FPG, NAG and AsylG 2005 are all BGBl. I Nr. 100/2005; about 30
+  pages had lost rows that way). Measured over 647 frames: 55 changed, each
+  read.
 - **Order.** Followed since 14.11.2026: committee motions, motions of the
   Bundesrat, every Initiativantrag on a law, the Bundesrat's objection as an
   event, treaties up to BGBl. III. Petitionen and Bürgerinitiativen,

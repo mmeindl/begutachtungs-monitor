@@ -357,3 +357,28 @@ describe('a Promulgationsklausel without its „wird" (26.10.2026)', () => {
     expect(isAmendmentClause('§ 2 Abs. 1, wie folgt geändert:')).toBe(false)
   })
 })
+
+describe('a clause „in der Fassung des BGBl. …, wird wie folgt abgeändert" (14.11.2026)', () => {
+  /* 627 d.B. XXVI, a motion of the Bundesrat, as printed. */
+  const SVOG = 'Das Sozialversicherungs-Organisationsgesetz in der Fassung des BGBl. I Nr. 100/2018 wird wie folgt abgeändert:'
+
+  it('is a clause, names its law, and cites no Stammnorm', () => {
+    expect(isAmendmentClause(SVOG)).toBe(true)
+    expect(clauseNameOf(SVOG)).toEqual({ name: 'Sozialversicherungs-Organisationsgesetz', abbreviation: null })
+  })
+
+  it('keeps the name of a clause with its Stammnorm before the version', () => {
+    expect(clauseNameOf('Das Arbeitslosenversicherungsgesetz 1977, BGBl Nr. 609/1977, zuletzt geändert durch das Bundesgesetz BGBl. I Nr. 16/2020, wird wie folgt geändert:')).toEqual({ name: 'Arbeitslosenversicherungsgesetz 1977', abbreviation: null })
+  })
+
+  it('does not take an instruction that changes a word as a clause', () => {
+    expect(isAmendmentClause('1. In Art 1 wird in § 718 Abs. 12 die Jahreszahl "2019" auf "2020" abgeändert.')).toBe(false)
+  })
+})
+
+describe('a clause name ends where the amendment history begins (15.11.2026)', () => {
+  it('names the Mediengesetz, not the sentence up to the amendment\'s Gesetzblatt (146/ME XXVIII)', () => {
+    const clause = 'Das Bundesgesetz vom 12. Juni 1981 über die Presse und andere publizistische Medien (Mediengesetz - MedienG), zuletzt geändert durch das Bundesgesetz, mit dem ein Politische-Werbung-Gesetz erlassen wird sowie das KommAustria-Gesetz und das Mediengesetz geändert werden, BGBl. I Nr. 21/2026, wird wie folgt geändert:'
+    expect(clauseNameOf(clause)).toEqual({ name: 'Mediengesetz', abbreviation: 'MedienG' })
+  })
+})

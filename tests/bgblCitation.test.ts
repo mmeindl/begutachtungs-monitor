@@ -129,3 +129,26 @@ describe('sameRisStammnorm — the draft\'s Teil set by the year (03.10.2026)', 
     expect(sameRisStammnorm(c('BGBl. I Nr.', '10/2013'), c('BGBl. I Nr.', '10/2012'))).toBe(false)
   })
 })
+
+describe('the Bundesgesetzblatt of the 1920s, and a name that cites its own Fundstelle (14.11.2026)', () => {
+  /* 869 d.B. XXV, Artikel 2, as printed. */
+  const UEG_CLAUSE = 'Das Übergangsgesetz vom 1. Oktober 1920, in der Fassung des B. G. Bl. Nr. 368 vom Jahre 1925, BGBl. Nr. 368/1925, zuletzt geändert durch das Bundesgesetz BGBl. I Nr. xxx/20xx, wird wie folgt geändert:'
+
+  it('reads „B. G. Bl. Nr. 368 vom Jahre 1925" as BGBl. Nr. 368/1925', () => {
+    expect(parseBgbl('in der Fassung des B. G. Bl. Nr. 368 vom Jahre 1925')).toEqual({ organ: 'BGBl. Nr.', nummer: '368/1925' })
+    expect(parseBgbl('BGBl. Nr. 368 aus 1925')).toEqual({ organ: 'BGBl. Nr.', nummer: '368/1925' })
+    expect(parseBgbl('StGBl. Nr. 450 aus dem Jahre 1920')).toEqual({ organ: 'StGBl. Nr.', nummer: '450/1920' })
+  })
+
+  it('takes the Stammnorm a Wiederverlautbarung repeats after its name (869 d.B. XXV)', () => {
+    expect(stammnormOf(UEG_CLAUSE)).toEqual({ organ: 'BGBl. Nr.', nummer: '368/1925' })
+  })
+
+  it('still reads a citation after „in der Fassung" as a version, not as the Stammnorm', () => {
+    // 627 d.B. XXVI: a version and no Stammnorm.
+    expect(stammnormOf('Das Sozialversicherungs-Organisationsgesetz in der Fassung des BGBl. I Nr. 100/2018 wird wie folgt abgeändert:')).toBeNull()
+    expect(stammnormOf('Das Bundesgesetz, BGBl. Nr. 1/1990, in der Fassung des Bundesgesetzes BGBl. I Nr. 5/2000, wird wie folgt geändert:')).toEqual({ organ: 'BGBl. Nr.', nummer: '1/1990' })
+    // A second version of the list is no Stammnorm: only the same number repeated is.
+    expect(stammnormOf('Das X in der Fassung der Bundesgesetze BGBl. I Nr. 5/2000, BGBl. I Nr. 6/2001 wird wie folgt geändert:')).toBeNull()
+  })
+})

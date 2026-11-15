@@ -25,11 +25,13 @@ import type { TextBlock } from './lawUnits'
 import { sameRisStammnorm, stammnormOf, type BgblCitation } from './bgblCitation'
 import { clauseNameOf, isAmendmentClause, type ClauseName } from './draftArticles'
 import { getDraftArticles, getMotionTextArticles, getRootDraftArticles, type DraftText } from './draftArticlesService'
+import { lawListOfTitle, lawsOfTitleList, pickLawByName, titleLawName, type NamedRecord, type TitleLawName } from './titleLaws'
 import { getDraftsForGp, getGegenstand } from '../parliament/drafts'
 import { resolveKonsLaw } from '../kons/konsCache'
-import { konsLawUrl } from '../ris/konsLaw'
+import { konsJson, konsLawUrl, konsQuery, konsRefOf } from '../ris/konsLaw'
 import { mapWithConcurrency } from '../pool'
 import { DERIVED_ANALYSIS_TTL_S } from '../cache/ttl'
+import { storageKeyOf } from '../cache/key'
 import { latestAmendmentOf } from '../../../shared/utils/citations'
 
 /**
@@ -51,7 +53,7 @@ const CONCURRENCY = 6
  * a BGBl cited inside a § (a cross-reference) cannot be mistaken for it, and
  * `stammnormOf` returns null for an instruction line, which names no BGBl.
  */
-function leadingStammnorm(blocks: readonly TextBlock[]): { title: string | null; bgbl: BgblCitation; clause: ClauseName | null } | null {
+function leadingStammnorm(blocks: readonly TextBlock[]): WantedLaw | null {
   let title: string | null = null
   for (const b of blocks) {
     if (b.kind === 'section' || b.kind === 'title') {
@@ -60,10 +62,83 @@ function leadingStammnorm(blocks: readonly TextBlock[]): { title: string | null;
     }
     if (isAmendmentClause(b.text)) {
       const bgbl = stammnormOf(b.text)
-      if (bgbl) return { title, bgbl, clause: clauseNameOf(b.text) }
+      if (bgbl) return { title, bgbl, clause: clauseNameOf(b.text), number: null }
     }
     // Past the first real instruction the clause can no longer follow.
     if (b.kind === 'novao') return null
+  }
+  return null
+}
+
+/** A law the text names: from an Artikel, a clause, or its title. */
+interface WantedLaw {
+  title: string | null
+  bgbl: BgblCitation | null
+  clause: ClauseName | null
+  /** „Artikel 3"; null where the title is the text's own (a Novelle without Artikel). */
+  number: string | null
+}
+
+/**
+ * The one law RIS holds under exactly this name on `date`, with its
+ * Stammnorm — `pickLawByName` over one search by title. Null for none, for
+ * two, and where the law is not among the first hundred records the search
+ * returns: a refusal, never a nearer name (`lawtext/titleLaws.ts`).
+ *
+ * A failure is not an answer (`readAmendedLaws` below): `konsJson` throws on
+ * an unreachable RIS and on its error envelope, and nothing here catches.
+ */
+const lawByName = defineCachedFunction(
+  async (name: string, abbreviation: string | null, date: string) => {
+    const body = await konsJson(konsQuery({ Titel: name, 'Fassung.FassungVom': date, DokumenteProSeite: 'OneHundred' }))
+    const refs = body?.OgdSearchResult?.OgdDocumentResults?.OgdDocumentReference
+    const records: NamedRecord[] = []
+    for (const r of Array.isArray(refs) ? refs : refs ? [refs] : []) {
+      const p = konsRefOf(r)
+      const meta = r?.Data?.Metadaten?.Bundesrecht
+      if (!p?.gesetzesnummer || !p.stammnorm) continue
+      records.push({
+        gesetzesnummer: p.gesetzesnummer,
+        kurztitel: typeof meta?.Kurztitel === 'string' ? meta.Kurztitel : '',
+        abkuerzung: typeof meta?.BrKons?.Abkuerzung === 'string' ? meta.BrKons.Abkuerzung : '',
+        stammnorm: p.stammnorm,
+      })
+    }
+    return pickLawByName(records, { name, abbreviation })
+  },
+  {
+    name: 'law-by-name',
+    base: DERIVED_CACHE,
+    getKey: (name: string, abbreviation: string | null, date: string) => storageKeyOf(`${name}|${abbreviation ?? ''}|${date}`),
+    maxAge: DERIVED_ANALYSIS_TTL_S,
+    swr: false,
+  },
+)
+
+const byName = (law: TitleLawName, date: string) => lawByName(law.name, law.abbreviation, date)
+
+/**
+ * The laws the text's own title names (14.11.2026), for a text whose clauses
+ * name none: „Bundesverfassungsgesetz, mit dem das Bundes-Verfassungsgesetz
+ * geändert wird" (51 d.B. XXVII, 53 d.B. XXIV — the B-VG's clause cites no
+ * Stammnorm), or a package whose Artikel open on the instruction (1859 d.B.
+ * XXVII). Each name only where RIS holds a law by exactly it, and the list
+ * only where every name of it does (`lawsOfTitleList`). The title is the
+ * first one before the text's first Artikel or instruction that is of that
+ * shape; a motion prints it twice.
+ */
+async function lawsOfTitle(blocks: readonly TextBlock[], date: string): Promise<WantedLaw[] | null> {
+  for (const b of blocks) {
+    if (b.kind === 'article' || b.kind === 'novao') break
+    if (b.kind !== 'title' && b.kind !== 'section') continue
+    const list = lawListOfTitle(b.text)
+    if (!list) continue
+    const laws = await lawsOfTitleList(list, async (piece) => {
+      const named = titleLawName(piece)
+      const found = named ? await byName(named, date) : null
+      return named && found ? { title: found.kurztitel, bgbl: found.stammnorm, clause: { name: named.name, abbreviation: named.abbreviation }, number: null } : null
+    })
+    if (laws) return laws
   }
   return null
 }
@@ -134,7 +209,7 @@ const readAmendedLaws = defineCachedFunction(
     // „Antrag" instead of „Gesetzestext" (`motionTextOf`, 14.11.2026).
     if (!isMe && root.ityp === 'I' && text.blocks.length === 0) text = await getMotionTextArticles(root)
     const { blocks, articles } = text
-    let wanted = articles.filter((a) => a.amends).map((a) => ({ title: a.title, bgbl: a.bgbl, clause: a.clause }))
+    let wanted: WantedLaw[] = articles.filter((a) => a.amends).map((a) => ({ title: a.title, bgbl: a.bgbl, clause: a.clause, number: a.number }))
 
     // A single-law Novelle prints no "Artikel" line, and its
     // Promulgationsklausel reads as an instruction, so `draftArticles` —
@@ -146,11 +221,31 @@ const readAmendedLaws = defineCachedFunction(
       const fallback = leadingStammnorm(blocks)
       if (fallback) wanted = [fallback]
     }
+    // No clause names a law: the title may (`lawsOfTitle`, 14.11.2026).
+    if (wanted.length === 0 && asOf) wanted = (await lawsOfTitle(blocks, asOf)) ?? []
+
+    // A clause that names the law and cites no Stammnorm the reader can take
+    // („Das Sozialversicherungs-Organisationsgesetz in der Fassung des BGBl.
+    // I Nr. 100/2018 wird wie folgt abgeändert", 627 d.B. XXVI): the law is
+    // looked up by that name, exactly, and its Stammnorm is RIS's.
+    if (asOf) {
+      wanted = await mapWithConcurrency(wanted, CONCURRENCY, async (w, index) => {
+        if (w.bgbl || !w.clause || index >= MAX_LAWS) return w
+        const found = await byName({ name: w.clause.name, abbreviation: w.clause.abbreviation }, asOf)
+        return found ? { ...w, bgbl: found.stammnorm } : w
+      })
+    }
 
     const laws: AmendedLaw[] = []
     const seen = new Set<string>()
     const jobs = wanted.filter((w) => {
-      const key = w.bgbl ? `${w.bgbl.organ} ${w.bgbl.nummer}` : `title:${w.title ?? ''}`
+      // The citation AND the name: one Bundesgesetzblatt creates several laws
+      // (BGBl. I Nr. 100/2005 the FPG 2005, the NAG and the AsylG 2005; 110/2010
+      // the ElWOG 2010 and the E-ControlG), and a key of the number alone kept
+      // the first of them and dropped the others (76/ME and 58/ME XXVII,
+      // 15.11.2026, once their names found their Stammnorm).
+      const name = (w.clause?.name ?? w.title ?? '').toLowerCase()
+      const key = w.bgbl ? `${w.bgbl.organ} ${w.bgbl.nummer}|${name}` : `title:${w.title ?? ''}`
       if (seen.has(key)) return false
       seen.add(key)
       return true
@@ -182,15 +277,32 @@ const readAmendedLaws = defineCachedFunction(
       // it — a link to the right law under the wrong number reads as our
       // error otherwise.
       const held = resolved ? Object.values(resolved.paragraphs).find((p) => p.stammnorm)?.stammnorm ?? null : null
+      // Unresolved, a Novelle without Artikel is named by its clause („Das
+      // Sozialversicherungs-Organisationsgesetz …"), not by its own long
+      // title („Bundesgesetz, mit dem das … abgeändert wird").
+      const named = w.number === null && w.clause ? w.clause.name : w.title
       return {
-        title: resolved?.kurztitel || w.title || cited || 'Unbenanntes Gesetz',
+        title: resolved?.kurztitel || named || cited || 'Unbenanntes Gesetz',
         bgbl: cited,
         risUrl: resolved ? konsLawUrl(resolved.gesetzesnummer, asOf) : null,
         risBgbl: held && w.bgbl && !sameRisStammnorm(held, w.bgbl) ? `${held.organ} ${held.nummer}` : null,
         amendedBy: resolved ? latestAmendmentOf(Object.values(resolved.paragraphs).map((p) => p.kundmachungsorgan)) : null,
       }
     })
-    for (const r of results) if (r) laws.push(r)
+    // One law in RIS is one row, however many Artikel led to it: two Artikel
+    // of 305 d.B. XXVIII cite BGBl. I Nr. 82/2023 under two names and both
+    // resolve to the eEltern-Kind-Pass-Gesetz (15.11.2026) — the dedupe by
+    // number alone, above, used to hide that.
+    const linked = new Set<string>()
+    for (const r of results) {
+      if (!r) continue
+      if (r.risUrl) {
+        const law = /Gesetzesnummer=(\d+)/.exec(r.risUrl)?.[1] ?? r.risUrl
+        if (linked.has(law)) continue
+        linked.add(law)
+      }
+      laws.push(r)
+    }
 
     const createsNewLaw = createsNewLawFrom(text, laws.length)
     // A gap is an answer the page states, not an empty list it falls silent on.

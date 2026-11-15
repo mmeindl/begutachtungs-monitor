@@ -43,7 +43,7 @@ import type { TextBlock } from './lawUnits'
  * would be two sentences) — the confusion that once turned 101/ME into a
  * Novelle.
  */
-const AMENDS_RE = /\b(?:wird|werden)\b[^.;:]{0,80}?\bwie folgt geändert|\bwird geändert\b|\bwerden geändert\b/i
+const AMENDS_RE = /\b(?:wird|werden)\b[^.;:]{0,80}?\bwie folgt (?:ab)?geändert|\bwird geändert\b|\bwerden geändert\b/i
 
 /**
  * Exported so a caller that has to find the clause for itself uses the same
@@ -69,7 +69,7 @@ export function isAmendmentClause(text: string): boolean {
  * (`clauseNameOf`). An instruction names a § and no Gesetzblatt.
  */
 function isVerblessClause(text: string): boolean {
-  return /,\s*wie folgt geändert\s*:?\s*$/i.test(text) && (stammnormOf(text) !== null || clauseNameOf(text) !== null)
+  return /,\s*wie folgt (?:ab)?geändert\s*:?\s*$/i.test(text) && (stammnormOf(text) !== null || clauseNameOf(text) !== null)
 }
 
 /**
@@ -160,10 +160,16 @@ export interface ClauseName {
  * the abbreviation kept instead of dropped.
  */
 export function clauseNameOf(text: string): ClauseName | null {
-  const m = /^(?:Das|Die|Der)\s+(.+?),\s*(?:d?RGBl|BGBl|StGBl|JGS)\b/i.exec(text.replace(/\s+/g, ' ').trim())
+  const m = /^(?:Das|Die|Der)\s+(.+?)(?:,\s*|\s+(?=in der Fassung\b))(?:in der Fassung\b[^,]*?)?(?:d?RGBl|BGBl|StGBl|JGS)\b/i.exec(text.replace(/\s+/g, ' ').trim())
   if (!m) return null
-  const paren = /\(([^()]+?)\)\s*$/.exec(m[1]!)
-  const designation = paren ? paren[1]! : m[1]!
+  // The name ends where the amendment history begins: „Das Bundesgesetz vom
+  // 12. Juni 1981 über die Presse … (Mediengesetz - MedienG), zuletzt geändert
+  // durch das Bundesgesetz, mit dem …, BGBl. I Nr. 21/2026, wird …" cites no
+  // Stammnorm, and the first Gesetzblatt is the amendment's (146/ME XXVIII,
+  // 15.11.2026). The name was the whole sentence up to it.
+  const named = m[1]!.split(/,?\s*\b(?:zuletzt geändert|geändert durch)\b/i)[0]!.trim()
+  const paren = /\(([^()]+?)\)\s*$/.exec(named)
+  const designation = paren ? paren[1]! : named
   const dash = /^(.+?)\s+[-–]\s+(\S+(?:\s+\d{4})?)$/.exec(designation)
   const name = (dash ? dash[1]! : designation).trim()
   return name ? { name, abbreviation: dash ? dash[2]!.trim() : null } : null
