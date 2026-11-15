@@ -85,6 +85,7 @@ const frame = (v: EuRailView, id: string) => section(v, id).facts.map((f) => `${
 const links = (v: EuRailView, id: string) => section(v, id).facts.flatMap((f) => f.parts.filter((x) => typeof x !== 'string'))
 const allStrings = (v: EuRailView): string[] => [
   v.heading,
+  v.status,
   v.note,
   ...v.stations.flatMap((s) => [s.name, s.gap, ...s.facts]),
   ...v.sections.flatMap((s) => [s.heading, ...s.notes, ...s.credits, s.record?.heading, s.record?.note, ...s.facts.flatMap((f) => [f.title, ...f.parts.map((x) => (typeof x === 'string' ? x : x.label))]), ...(s.record?.rows ?? []).flatMap((r) => [r.date, r.label])]),
@@ -158,6 +159,28 @@ describe('euRailView', () => {
     // The drafts stand in the section themselves: their count is not a fact of the frame.
     expect(frame(v, 'wirkung')).toEqual(['Umsetzungsfrist: 07.05.2026'])
     expect(section(v, 'wirkung')).toMatchObject({ record: null, notes: [] })
+  })
+
+  it('heads the card with where the act stands: a date and what it is, never a verdict', () => {
+    const status = (over: Partial<EuActResponse>, today = TODAY) => euRailView(response(over), today).status
+    // A directive: the deadline to come, or the deadline that was — not „abgelaufen", not „nicht umgesetzt".
+    expect(status({}, '2026-05-07')).toBe('Umzusetzen bis 07.05.2026')
+    expect(status({})).toBe('Umsetzungsfrist war der 07.05.2026')
+    expect(status({ act: { ...DIRECTIVE, transposition: null } })).toBe('Im Amtsblatt veröffentlicht')
+    expect(status({ act: { ...DIRECTIVE, transposition: null }, oj: null })).toBeNull()
+    // A regulation: applies, or in force with the day of application to come.
+    expect(status({ act: REGULATION, rail: rail({ inForce: '2024-08-01', applies: '2026-08-02' }) })).toBe('Gilt seit 02.08.2026')
+    expect(status({ act: REGULATION, rail: rail({ inForce: '2024-08-01', applies: '2026-08-02' }) }, '2025-01-01')).toBe('In Kraft seit 01.08.2024, gilt ab 02.08.2026')
+    expect(status({ act: REGULATION, rail: rail({ inForce: '2024-08-01', applies: null }) })).toBe('In Kraft seit 01.08.2024')
+    expect(status({ act: REGULATION, rail: rail({ inForce: '2027-01-01', applies: null }) })).toBe('In Kraft ab 01.01.2027')
+    expect(status({ act: REGULATION, rail: rail({ inForce: null, effective: '2017-01-25' }) })).toBe('Wirksam seit 25.01.2017')
+    expect(status({ act: REGULATION, rail: null, oj: null })).toBeNull()
+    for (const s of [status({}), status({}, '2026-05-07')]) expect(s).not.toMatch(/abgelaufen|überfällig|verspätet|nicht umgesetzt|Tage/i)
+  })
+
+  it('names the earlier transposition dates beside the deadline (rule D3)', () => {
+    const v = euRailView(response({ act: { ...DIRECTIVE, transposition: { deadline: '2026-05-29', otherDates: ['2025-01-01', '2025-06-01'] } } }), TODAY)
+    expect(frame(v, 'wirkung')).toEqual(['Umsetzungsfrist: 29.05.2026', 'Weitere Fristen für einzelne Bestimmungen: 01.01.2025, 01.06.2025'])
   })
 
   it('counts drafts in the right number and says nothing for none', () => {

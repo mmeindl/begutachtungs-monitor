@@ -176,7 +176,7 @@ const citation = computed(() => (data.value ? euActCiteDe(data.value.act, data.v
         <div v-if="rail" class="mt-6">
           <div class="rounded-xl border border-hairline bg-surface p-4">
             <h2 class="font-sans text-base font-semibold text-ink">
-              {{ rail.heading }}
+              {{ rail.status ?? rail.heading }}
             </h2>
             <p v-if="rail.note" class="mt-1 text-sm text-ink-secondary">
               {{ rail.note }}

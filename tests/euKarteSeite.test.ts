@@ -93,17 +93,18 @@ describe('euActPageView', () => {
     expect(euActPageView(response({ implementing: [], restating: [draft({})] })).noneImplementing).toContain('setzt den Rechtsakt neu um')
     expect(euActPageView(response({ implementing: [], restating: [] })).noneImplementing).toBe('Der Monitor hat im Fenster dieser Gesetzgebungsperiode keinen Entwurf gefunden, der den Rechtsakt nennt.')
     expect(euActPageView(response({ act: { ...response({}).act, kind: 'beschluss', transposition: null } })).implementingHeading).toBe('Entwürfe, die ihn durchführen')
-    expect(reg.head).toEqual(['gilt unmittelbar, keine Umsetzungsfrist'])
+    // The head says the adoption only; what the act does stands in the card's heading and the last section.
+    expect(reg.head).toEqual([])
   })
 
-  it('keeps the deadline and its footnote in the head where there is no chart to label them', () => {
+  it('keeps the head to the adoption also where there is no chart: the card and the section „Umsetzung" carry the deadline', () => {
     const cold = euActPageView(response({
       act: { ...response({}).act, transposition: { deadline: '2026-05-29', otherDates: ['2025-01-01'] } },
       implementing: [draft({ stand: null })],
     }))
     expect(cold.chart).toBeNull()
-    expect(cold.head).toEqual(['beschlossen am 11.04.2024', 'Umsetzungsfrist bis 29.05.2026¹'])
-    expect(cold.footnote).toBe('¹ Weitere Fristen für einzelne Bestimmungen: 01.01.2025')
+    expect(cold.head).toEqual(['beschlossen am 11.04.2024'])
+    expect(cold.footnote).toBeNull()
   })
 
   it('puts the act\'s subject from its official title under the citation, none without a title', () => {

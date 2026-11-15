@@ -14,7 +14,7 @@
  *
  * Pure: the pages render what this returns, the tests read it without one.
  */
-import type { EuActHead, EuActDraft, EuActResponse, EuActSummary, EuActsResponse, EuPublisher, EuStand } from '#shared/types'
+import type { EuActDraft, EuActResponse, EuActSummary, EuActsResponse, EuPublisher, EuStand } from '#shared/types'
 import { euActSubject } from '#shared/utils/eu'
 import { formatDateDe } from '#shared/utils/format'
 import { LAND_CODES, LAND_NAME, landShortTitle, type SourceCode } from '#shared/utils/laender'
@@ -56,18 +56,6 @@ export function restatingCountsDe(counts: { bund: number; laender: number }): st
   const parts = [counts.bund > 0 ? `${n(counts.bund)} des Bundes` : null, counts.laender > 0 ? `${n(counts.laender)} der Länder` : null]
     .filter((x): x is string => x !== null)
   return parts.length ? `wiederholt in ${parts.join(' · ')}` : ''
-}
-
-/**
- * The act's deadline in the words of the draft's fact: „Umsetzungsfrist bis
- * 07.05.2026" for a directive with a Cellar date (the latest, rule D3), „gilt
- * unmittelbar, keine Umsetzungsfrist" for a regulation — the method page's
- * „Verordnungen gelten unmittelbar und haben keine Umsetzungsfrist". Null
- * where neither can be said: a directive without a date, a decision.
- */
-function deadlineDe(act: Pick<EuActHead, 'kind' | 'transposition'>): string | null {
-  if (act.transposition) return `Umsetzungsfrist bis ${formatDateDe(act.transposition.deadline)}`
-  return act.kind === 'verordnung' ? 'gilt unmittelbar, keine Umsetzungsfrist' : null
 }
 
 /* ------------------------------------------------------------------ *
@@ -404,15 +392,14 @@ export function euActPageView(r: EuActResponse): EuActPageView {
     }
   }
 
-  /* The head says the deadline only where the chart does not — no lane to
-   * draw (the Bund's stand cold after a restart), or no deadline to label
-   * („gilt unmittelbar"). The adoption stays up there: drawn, it would pull
-   * the track back years and shrink every Begutachtung to a sliver. */
-  const deadline = chart?.deadlines.length ? null : deadlineDe(act)
-  const head = [
-    act.adopted ? `beschlossen am ${formatDateDe(act.adopted)}` : null,
-    deadline ? `${deadline}${t ? note : ''}` : null,
-  ].filter((x): x is string => !!x)
+  /* The head says the adoption and nothing else (15.11.2026). The deadline
+   * stood beside it where the chart did not label it; since the card under
+   * the head opens with where the act stands („Umzusetzen bis …", `euRailView`)
+   * and the section „Umsetzung" keeps the deadline and the further dates
+   * as facts, the head said it a third time. The adoption stays up there:
+   * drawn in the chart, it would pull the track back years and shrink every
+   * Begutachtung to a sliver. */
+  const head = act.adopted ? [`beschlossen am ${formatDateDe(act.adopted)}`] : []
 
   const entries = r.implementing.map((d) => viewOfRow(d.row))
 
@@ -436,7 +423,8 @@ export function euActPageView(r: EuActResponse): EuActPageView {
       : 'den Rechtsakt durchführen, mit ihrer Begutachtung',
     eurLexUrl: act.eurLexUrl,
     head,
-    footnote: chart?.footnote ? null : footnote,
+    // With the deadline gone from the head, its footnote has nothing to hang on there.
+    footnote: null,
     entries,
     said: Object.fromEntries(entries.map((e, i) => [e.key, saidDe(r.implementing[i]!)])),
     chart,

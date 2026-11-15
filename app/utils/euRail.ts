@@ -110,8 +110,18 @@ export interface EuRailSection {
 }
 
 export interface EuRailView {
-  /** „Der Rechtsakt im Verfahren" — the card's heading and the list's accessible name. */
+  /** „Der Rechtsakt im Verfahren" — the list's accessible name; the card's heading where no stand can be said. */
   heading: string
+  /**
+   * The card's heading: where the act stands, as the draft's card says
+   * „Gesetz geworden" (`ProcedureCard`) — „Umzusetzen bis 07.05.2027",
+   * „Gilt seit 01.01.2023". A date and what it is, never a verdict (rule
+   * D6): a passed deadline is „Umsetzungsfrist war der …", not „abgelaufen"
+   * and not „nicht umgesetzt" — whether the Member State transposed in
+   * time is nothing the monitor can see. Null where no date is known; the
+   * card then keeps its name.
+   */
+  status: string | null
   stations: EuRailStation[]
   /** The sentence for an act of the Commission, which has no procedure between the institutions; null otherwise. */
   note: string | null
@@ -165,6 +175,16 @@ const DE = {
   other: (n: number) => (n === 1
     ? 'Der Cellar verzeichnet 1 weiteren Schritt dieses Verfahrens, den der Monitor nicht einzeln zeigt.'
     : `Der Cellar verzeichnet ${n} weitere Schritte dieses Verfahrens, die der Monitor nicht einzeln zeigt.`),
+  status: {
+    transposeBy: (d: string) => `Umzusetzen bis ${d}`,
+    transposedBy: (d: string) => `Umsetzungsfrist war der ${d}`,
+    applies: (d: string, past: boolean) => (past ? `Gilt seit ${d}` : `Gilt ab ${d}`),
+    inForce: (d: string, past: boolean) => (past ? `In Kraft seit ${d}` : `In Kraft ab ${d}`),
+    inForceApplies: (f: string, fPast: boolean, a: string) => `${fPast ? 'In Kraft seit' : 'In Kraft ab'} ${f}, gilt ab ${a}`,
+    effective: (d: string, past: boolean) => (past ? `Wirksam seit ${d}` : `Wirksam ab ${d}`),
+    published: 'Im Amtsblatt veröffentlicht',
+  },
+  furtherDates: 'Weitere Fristen für einzelne Bestimmungen',
   fact: {
     proposal: 'Vorschlag der Kommission',
     procedure: 'Verfahren',
@@ -447,8 +467,14 @@ function decisionFacts(r: EuActResponse, p: EuProcedure | null): EuSectionFact[]
 function effectFacts(r: EuActResponse, today: string): EuSectionFact[] {
   const kind = r.act.kind
   if (kind === 'richtlinie' || kind === 'rahmenbeschluss') {
-    const deadline = r.act.transposition?.deadline ?? null
-    return deadline ? [fact('frist', DE.fact.deadline, [formatDateDe(deadline)])] : []
+    const t = r.act.transposition
+    return t
+      ? [
+          fact('frist', DE.fact.deadline, [formatDateDe(t.deadline)]),
+          // Rule D3: the latest date is the deadline, the earlier ones are named beside it.
+          ...(t.otherDates.length ? [fact('weitere-fristen', DE.furtherDates, t.otherDates.map((d) => formatDateDe(d)))] : []),
+        ]
+      : []
   }
   const rail = r.rail
   const when = (iso: string) => (iso <= today ? DE.since(formatDateDe(iso)) : DE.from(formatDateDe(iso)))
@@ -461,6 +487,26 @@ function effectFacts(r: EuActResponse, today: string): EuSectionFact[] {
     ...(applies && applies !== inForce ? [fact('gilt', DE.fact.applies, [when(applies)])] : []),
     ...(kind === 'verordnung' ? [fact('unmittelbar', DE.fact.direct, [DE.fact.directText])] : []),
   ]
+}
+
+/** The card's heading (`EuRailView.status`). `today` decides between what was and what is to come. */
+function statusOf(r: EuActResponse, today: string): string | null {
+  const kind = r.act.kind
+  if (kind === 'richtlinie' || kind === 'rahmenbeschluss') {
+    const deadline = r.act.transposition?.deadline ?? null
+    if (deadline) return deadline >= today ? DE.status.transposeBy(formatDateDe(deadline)) : DE.status.transposedBy(formatDateDe(deadline))
+    return r.oj ? DE.status.published : null
+  }
+  const rail = r.rail
+  const inForce = rail?.inForce ?? null
+  const effective = inForce ? null : rail?.effective ?? null
+  const applies = rail?.applies && rail.applies !== inForce ? rail.applies : null
+  if (applies && applies <= today) return DE.status.applies(formatDateDe(applies), true)
+  if (applies && inForce) return DE.status.inForceApplies(formatDateDe(inForce), inForce <= today, formatDateDe(applies))
+  if (applies) return DE.status.applies(formatDateDe(applies), false)
+  if (inForce) return DE.status.inForce(formatDateDe(inForce), inForce <= today)
+  if (effective) return DE.status.effective(formatDateDe(effective), effective <= today)
+  return r.oj ? DE.status.published : null
 }
 
 /** The section of a station, in the draft pages' grammar (see the head of this file). */
@@ -540,6 +586,7 @@ export function euRailView(r: EuActResponse, today: string): EuRailView {
 
   return {
     heading: DE.heading,
+    status: statusOf(r, today),
     stations,
     note: commission ? DE.note : null,
     sections: stations.map((st) => sectionOf(st, r, rows, today)),
