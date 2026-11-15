@@ -12,8 +12,11 @@
  *   4. the credit line under the frame;
  *   5. „Wer Rückmeldung gegeben hat": a fold per feedback window the
  *      frame shows (`EuFeedbackFold`, step 4), read only when opened;
- *      then the default slot: what the section holds beyond its facts —
- *      the drafts of „Umsetzung";
+ *      then the door once more (`section.door`, `DoorButton`), while the
+ *      page's door card shows — under who has given feedback, where the
+ *      decision to act is made, as a draft's second door stands under its
+ *      Stellungnahmen; then the default slot: what the section holds
+ *      beyond its facts — the drafts of „Umsetzung";
  *   6. the dated record, folded, on the sheet a list stands on (`ListBox`),
  *      as „Alle Schritte im Landtag": the steps of the procedure, or under
  *      „Umsetzung" the measures the Member State notified.
@@ -64,6 +67,13 @@ defineProps<{
       <!-- The folds of one section stand together, as one block under the frame. -->
       <div v-if="section.facts.some((f) => f.feedback)">
         <EuFeedbackFold v-for="fold in feedbackFoldsOf(section.facts)" :key="fold.key" :fold="fold" />
+      </div>
+      <!-- The card's door once more (`DoorButton`), with the card's label.
+           The view sets it only while the card shows. -->
+      <div v-if="section.door" class="flex flex-wrap items-center gap-3">
+        <DoorButton :href="section.door.href">
+          {{ section.door.label }}
+        </DoorButton>
       </div>
       <slot />
       <FoldSection v-if="section.record" :heading="section.record.heading">

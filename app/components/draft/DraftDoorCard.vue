@@ -26,14 +26,14 @@ import { deadlineCardClass, deadlineTone } from '~/utils/deadlines'
  * — `filing` (the door itself, a `DoorButton` while `filingHref` is set),
  * the .ics button, then `actions`; and `footer` under the row.
  */
-const props = withDefaults(defineProps<{
+const props = defineProps<{
   frist: boolean
   deadline: string | null | undefined
   /** The Frist's .ics; offered while it runs and has a date. */
   icsHref?: string | null
   /** Where the door leads; its label is the `filing` slot. Shown while the Frist runs. */
   filingHref?: string | null
-}>(), { icsHref: undefined, filingHref: undefined })
+}>()
 
 /* Decision and sign convention live in app/utils/deadlines.ts, next to
  * the other deadline rules and covered by tests — a flipped sign here would

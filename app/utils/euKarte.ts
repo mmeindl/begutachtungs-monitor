@@ -394,7 +394,7 @@ export function euActPageView(r: EuActResponse): EuActPageView {
 
   /* The head says the adoption and nothing else (15.11.2026). The deadline
    * stood beside it where the chart did not label it; since the card under
-   * the head opens with where the act stands („Umzusetzen bis …", `euRailView`)
+   * the head opens with where the act stands („Umsetzungsfrist läuft", `euRailView`)
    * and the section „Umsetzung" keeps the deadline and the further dates
    * as facts, the head said it a third time. The adoption stays up there:
    * drawn in the chart, it would pull the track back years and shrink every

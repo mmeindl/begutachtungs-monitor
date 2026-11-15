@@ -4,7 +4,7 @@
  * 2026/780`, by its COM number, with the procedure as far as the Cellar
  * records it and the consultation behind it from the Commission's portal.
  *
- * THE INITIATIVE PAGE'S GRAMMAR. A header card whose heading states the
+ * THE INITIATIVE PAGE'S GRAMMAR. The state card (`ProcedureCard`), its heading the
  * stand, the rail (`EuRail`), a section per station in the rail's order
  * (`EuStationSection`). The stations' and the portal's words are the act
  * page's (`EU_RAIL_DE`), and so are its builders — the consultation, the
@@ -24,9 +24,12 @@
  * und Rat"; consultation, consent and non-legislative procedures (CNS, APP,
  * NLE) → „Rat"; any other → „Verfahren", naming the type.
  *
- * ONE BLUE ELEMENT: while the portal holds an open feedback period on THIS
- * proposal (the publication that carries its COM number), the same action
- * as on an initiative's page (`EuWindowAction`).
+ * THE DOOR: while the portal holds an open feedback period on THIS
+ * proposal (the publication that carries its COM number), the same door
+ * card as on an initiative's page (`EuWindowAction`), with the Commission's
+ * sentence for feedback on a legislative proposal above its button
+ * (`euFeedbackQuote.ts`), and the door once more at the end of
+ * „Vorschlag", the section that holds the period.
  *
  * All German copy of the page lives here. Pure: no Vue.
  */
@@ -36,7 +39,7 @@ import { EU_EVENTS, EU_PROCEDURE_TYPES } from '#shared/utils/euEvents'
 import { euProposalStandOf } from '#shared/utils/euVorschlag'
 import { formatDateDe } from '#shared/utils/format'
 import { gapDe } from '#shared/utils/gaps'
-import { EU_INITIATIVE_DE, isOpen, type EuWindowActionView } from './euInitiative'
+import { EU_INITIATIVE_DE, doorOf, feedbackQuoteOf, isOpen, type EuWindowActionView } from './euInitiative'
 import {
   EU_RAIL_DE,
   anchorOf,
@@ -123,8 +126,7 @@ export interface EuVorschlagView {
   identity: string
   /** The card's heading: the stand. */
   status: string
-  /** A sentence under the heading: the acts, or why no stand can be said; may be a gap sentence. Null where the heading says it all. */
-  /** The one blue element: only while a feedback period on this proposal is open. */
+  /** The door card under the state card: only while a feedback period on this proposal is open. */
   action: EuWindowActionView | null
   heading: string
   stations: EuRailStation[]
@@ -341,12 +343,20 @@ export function euVorschlagView(r: EuVorschlagResponse, today: string): EuVorsch
   // A withdrawn proposal takes no feedback, whatever the portal's status still says.
   const open = feedback && isOpen(feedback, today) && c.state === 'gefunden' && !withdrawn
   const status = statusOf(stand, acts)
+  // The period on THIS proposal (`proposalFeedbackOf`, its COM number): feedback on a legislative proposal by construction, what `isProposalFeedback` means on an initiative's page.
+  const action: EuWindowActionView | null = open
+    ? { end: feedback.feedbackEnd, heading: null, href: c.initiative.url, label: EU_INITIATIVE_DE.action.label, note: null, quote: feedbackQuoteOf([{ stage: feedback.stage, onProposal: true }]) }
+    : null
+  // The door again, at the end of „Vorschlag", which holds the period.
+  const door = doorOf(action)
+  const vorschlagSection = sections.find((sec) => sec.id === 'vorschlag')
+  if (door && vorschlagSection) vorschlagSection.door = door
   return {
     title: record?.title ?? DE.untitled(r.reference),
     titleNote: record?.title && !record.titleIsGerman ? DE.englishTitle : null,
     identity: `${DE.identity} · ${r.reference}`,
     status,
-    action: open ? { end: feedback.feedbackEnd, heading: null, href: c.initiative.url, label: EU_INITIATIVE_DE.action.label, note: EU_INITIATIVE_DE.action.note(formatDateDe(feedback.feedbackEnd!)) } : null,
+    action,
     heading: DE.heading,
     stations,
     sections,

@@ -6,16 +6,17 @@
  * that closed: a closed window stays a page, with what was open, until
  * when, and how many contributions the portal counts.
  *
- * THE ACT PAGE'S GRAMMAR: the detail pages' head (`DraftHeader`), the card
- * whose heading says where the initiative stands, with the rail of its
- * stations (`EuRail`), then a section per station in the rail's order
- * (`EuStationSection`). Every word comes from `euInitiativeView`.
+ * THE DETAIL PAGES' GRAMMAR (`docs/decisions.md`, „The detail pages"): the
+ * head (`DraftHeader`), the state card of every detail page
+ * (`ProcedureCard`) with the EU rail in it (`EuRail`), then a section per
+ * reached station in the rail's order (`EuStationSection`). Every word
+ * comes from `euInitiativeView`.
  *
- * ONE BLUE ELEMENT. While a window is open, a door card under the header card carries the way to
- * the portal's page of the initiative, where the contribution is made —
- * the button a draft's page uses for its Stellungnahme (`EuWindowAction`,
- * shared with a proposal's page) — with the days left and the tone a
- * Stellungnahme's door has when its Frist is close.
+ * THE DOOR STANDS TWICE. While a window is open, a draft's door card under
+ * the state card leads to the portal's page of the initiative, where the
+ * contribution is made (`EuWindowAction`, shared with a proposal's page);
+ * the same door stands once more at the end of the section that holds the
+ * window (`EuRailSection.door`).
  *
  * Nothing about a person: the page shows only what `parseInitiative`'s
  * fixed list of fields lets through, never an official's name or address.
@@ -108,10 +109,14 @@ const back = `${euPath()}#eu-fenster`
             </p>
           </DraftHeader>
 
-          <!-- The card the act page opens with: where it stands, and the rail. -->
-          <EuProcedureCard :status="view.status" :stations="view.stations" :label="view.heading" />
+          <!-- The state card of every detail page, with the EU rail. -->
+          <ProcedureCard :status="view.status">
+            <template #rail>
+              <EuRail class="mt-4" :stations="view.stations" :label="view.heading" />
+            </template>
+          </ProcedureCard>
 
-          <!-- The door: under the header card, where a draft's page has it. -->
+          <!-- The door: under the state card, where a draft's page has it. -->
           <EuWindowAction v-if="view.action" :action="view.action" />
 
           <EuStationSection v-for="sec in view.sections" :key="sec.id" :section="sec" />

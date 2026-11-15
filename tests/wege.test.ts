@@ -11,6 +11,7 @@ import {
   WEG_LEGEND,
   WEG_STATIONS,
   WEG_STATION_ORDER,
+  WEGE_COPY,
   isWegId,
   wegFor,
   wegGroups,
@@ -129,13 +130,6 @@ describe('instruments beside the path', () => {
     }
     for (const i of WEG_INSTRUMENTS.filter((x) => x.href === null)) expect(i.hrefLabel).toBeNull()
   })
-
-  it('the Commission\'s consultations and the European Citizens\' Initiative are the ones the monitor follows, each linked to its list (15.11.2026)', () => {
-    expect(WEG_INSTRUMENTS.filter((i) => i.followed).map((i) => [i.id, i.followed!.href])).toEqual([
-      ['eu-konsultation', '/eu-recht#eu-fenster'],
-      ['eu-buergerinitiative', '/eu-recht#eu-buergerinitiativen'],
-    ])
-  })
 })
 
 describe('Anliegen an das Parlament (15.11.2026)', () => {
@@ -156,7 +150,7 @@ describe('Anliegen an das Parlament (15.11.2026)', () => {
   })
 
   it('Petition, Bürgerinitiative and Volksbegehren link to their kind on /anliegen; Parliament’s explainer stays beside them', () => {
-    const followed = WEG_INSTRUMENTS.filter((i) => i.monitorHref !== undefined)
+    const followed = WEG_INSTRUMENTS.filter((i) => i.monitorHref !== undefined && i.level !== 'eu')
     expect(followed.map((i) => i.id)).toEqual(['petition', 'buergerinitiative', 'volksbegehren'])
     for (const i of followed) {
       expect(isAnliegenLink(i.monitorHref), i.id).toBe(true)
@@ -165,6 +159,19 @@ describe('Anliegen an das Parlament (15.11.2026)', () => {
     }
     expect(WEG_INSTRUMENTS.find((i) => i.id === 'petition')!.href).toMatch(/^https:\/\/www\.parlament\.gv\.at\//)
     expect(WEG_INSTRUMENTS.find((i) => i.id === 'buergerinitiative')!.href).toMatch(/^https:\/\/www\.parlament\.gv\.at\//)
+  })
+
+  it('the instruments the monitor follows are exactly these five: the three Anliegen, and under EU-Recht the Commission\'s consultations and the European Citizens\' Initiative, each linked to its list (15.11.2026)', () => {
+    expect(WEG_INSTRUMENTS.filter((i) => i.monitorHref !== undefined).map((i) => i.id)).toEqual([
+      'eu-konsultation', 'eu-buergerinitiative', 'petition', 'buergerinitiative', 'volksbegehren',
+    ])
+    expect(WEG_INSTRUMENTS.filter((i) => i.level === 'eu' && i.monitorHref).map((i) => [i.id, i.monitorHref])).toEqual([
+      ['eu-konsultation', '/eu-recht#eu-fenster'],
+      ['eu-buergerinitiative', '/eu-recht#eu-buergerinitiativen'],
+    ])
+    // The lede names what the names link to, and nothing else.
+    expect(WEGE_COPY.instrumentsLede).toContain('Petitionen, Bürgerinitiativen und Volksbegehren im Nationalrat')
+    expect(WEGE_COPY.instrumentsLede).toContain('die Konsultationen der Kommission und die Europäischen Bürgerinitiativen unter EU-Recht')
   })
 })
 

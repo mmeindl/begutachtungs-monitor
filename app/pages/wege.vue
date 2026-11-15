@@ -32,8 +32,9 @@
  * do, the duty to respond where the law states one, the official page.
  * Which of them the monitor follows, the lede says once; the name of each
  * of those links to its section (`monitorHref`, 15.11.2026: Petition,
- * Bürgerinitiative and Volksbegehren under `/anliegen`), the official page
- * stays beside it as the source.
+ * Bürgerinitiative and Volksbegehren under `/anliegen`, the Commission's
+ * consultations and the European Citizens' Initiative on the EU page), the
+ * official page stays beside it as the source.
  *
  * All copy is in `app/utils/wege.ts`.
  */
@@ -336,10 +337,6 @@ const STATION_COL = 'w-px whitespace-nowrap px-3 last:pr-4'
               <template v-if="item.href">
                 ·
                 <ExternalLink :href="item.href" class="link-inline">{{ item.hrefLabel }}</ExternalLink>
-              </template>
-              <template v-if="item.followed">
-                ·
-                <NuxtLink :to="item.followed.href" class="link-inline">{{ item.followed.label }}</NuxtLink>
               </template>
             </p>
           </li>

@@ -862,24 +862,57 @@ The code names the EU rules D1 to D7; this is where they are defined
     window. A portal that could not be read is said with the link to the
     portal, never an empty list, and the feed and calendar (`?quelle=eu`, a
     source of their own) answer 503 for it. An initiative has a page by the
-    portal's number (`euInitiativePath`); its one blue element is the way to
-    the portal while a window is open, and the stations after the
-    Commission say in a „Nicht im Monitor" sentence that the monitor does
-    not follow it there yet.
+    portal's number (`euInitiativePath`); its door is the way to the portal
+    while a window is open, and the stations after the Commission say in a
+    „Nicht im Monitor" sentence that the monitor does not follow it there
+    yet.
+  - **An EU page is a detail page** (15.11.2026, rebased onto „The detail
+    pages" the same day; that section's rules hold, they are not restated
+    here). The act's, the proposal's, the initiative's and the Citizens'
+    Initiative's page open with the one state card (`ProcedureCard`), the
+    EU rail passed as its rail (`EuRail`) and the default way out; what
+    stood under the rail of the EU card of its own (`EuProcedureCard`,
+    deleted) — the note on an act of the Commission, the gap sentence on a
+    step of the register the monitor does not know — is the card's footer.
+    The heading says the stand alone („Sondierung läuft", „Vorschlag liegt
+    vor", „Anhängig laut EUR-Lex"); what it rests on stands in the rail.
+    The act's page follows since 16.11.2026: „Umsetzungsfrist läuft",
+    „Umsetzungsfrist beendet", „Gilt", „In Kraft, gilt noch nicht" — no
+    day in the heading, which „Umzusetzen bis 07.05.2027" carried; the day
+    stands at the last station. „Beendet", not „abgelaufen": no word that
+    reads as a verdict on the transposition (rule D6).
+    The list of open windows uses the draft list's box for an open Frist,
+    word for word and tone for tone.
   - **An EU page's action is a draft's door** (15.11.2026,
-    `EuWindowAction` through `DraftDoorCard`): a card of its own directly
-    under the header card, its heading the days left, its ground the tone a
-    Stellungnahme's door takes when the Frist is close. Rule D6 forbids a
-    day count beside a transposition deadline, where it would read as a
-    verdict on a state; a window the reader can still use is the reader's
-    own deadline, and there the count is the point. The header card above
-    says the stand alone („Sondierung läuft", „Vorschlag liegt vor",
-    „Anhängig laut EUR-Lex"), with no explaining line under it and with
-    „Alle Wege im Überblick" on the same line (`EuProcedureCard`, one card
-    for the act's, the proposal's and the initiative's page); what the
-    stand rests on — the acts, the last recorded step, a gap — stands in
-    the rail. The list of open windows uses the draft list's box for an
-    open Frist, word for word and tone for tone.
+    `EuWindowAction` through `DraftDoorCard`), unchanged: its heading the
+    countdown and date („Noch 56 Tage · bis So., 10.01.2027"), its ground
+    the tone a Stellungnahme's door takes when the Frist is close; a window
+    without a last day keeps its own heading. Rule D6 forbids a day count
+    beside a transposition deadline, where it would read as a verdict on a
+    state; a window the reader can still use is the reader's own deadline,
+    and there the count is the point. **No body sentence where the button
+    says it:** the Commission's door has none (the heading says the day,
+    the button the portal); a Citizens' Initiative's keeps one, „Der Link
+    führt zum Sammelsystem der Initiative.", because the system is
+    sometimes the organisers' own site. **Above the button, the
+    Commission's own sentence for the open stage** (`SourceQuote`,
+    `app/utils/euFeedbackQuote.ts`), signed „Europäische Kommission",
+    verbatim from the portal's German page text
+    (`page.initiativeDetails.<stage>.feedbackmessage`, read 15.11.2026):
+    Sondierung, öffentliche Konsultation, Entwurf eines Rechtsakts, and the
+    adoption's sentence only for feedback on a legislative proposal. No
+    quote for any other stage or adoption, none where several windows close
+    on the door's day with different sentences (which window the door is
+    for is then not clear), and none on a Citizens' Initiative's door — no
+    sentence of the register was read. **The door stands twice**
+    (`EuRailSection.door`, set by the view): once more, solid, with the
+    card's label, at the end of the section that holds the window the door
+    counts down to — „Konsultation", or the Commission's own station
+    („Vorschlag", „Rechtsakt der Kommission") for feedback on a proposal or
+    a draft act; „Sammlung" for a Citizens' Initiative — under „Wer
+    Rückmeldung gegeben hat", where the decision is made; only while the
+    card shows and has a button. Two windows on that day in two sections:
+    the later one, where the reading ends.
   - **A station ahead has no section** (15.11.2026, `euVorschlag.ts`,
     `euInitiative.ts`). As on a draft's page, an EU page shows a section
     only for a station that is reached. A station ahead stands in the
@@ -930,9 +963,11 @@ The code names the EU rules D1 to D7; this is where they are defined
       Monitor" sentence under the rail names it, and nothing throws.
     - **The door stands only while the collection runs:** status ONGOING
       and the register's last day not passed by the Vienna day; it counts
-      the days like a draft's door and leads to the German `supportLink`.
-      No link, no button, and a gap sentence says so. The page does not say
-      who may sign (not verified).
+      the days like a draft's door and leads to the German `supportLink`,
+      and stands once more at the end of „Sammlung" („An EU page's action
+      is a draft's door", above). No link, no button, no second door, and a
+      gap sentence says so. The page does not say who may sign (not
+      verified).
     - **Never read, into any object:** `members` and `funding` (personal
       data: names, e-mail addresses), `logo` (excluded by the EU's legal
       notice), and the organisers' own texts — `objectives`, `annexText`,

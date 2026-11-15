@@ -267,10 +267,17 @@ describe('the page of a proposal', () => {
       heading: null,
       href: `${PORTAL}/19000_de`,
       label: 'Rückmeldung im Portal der Kommission geben',
-      note: 'Rückmeldungen nimmt die Kommission bis 09.12.2026 in ihrem Portal „Ihre Meinung zählt“ entgegen. Der Link führt zur Seite des Vorhabens dort.',
+      // No sentence under the heading: the heading says the day, the button the portal.
+      note: null,
+      // Feedback on a legislative proposal: the Commission's sentence for the adoption's stage.
+      quote: {
+        text: 'Alle eingegangenen Rückmeldungen werden von der Europäischen Kommission zusammengefasst und dem Europäischen Parlament und dem Rat vorgelegt, um in die Gesetzgebungsdebatte einfließen zu können.',
+        source: 'Europäische Kommission',
+      },
     })
-    // Exactly one action: no other way off the page is an action, no fact carries one.
-    expect(JSON.stringify(v.sections)).not.toContain('Rückmeldung im Portal der Kommission geben')
+    // One action, standing twice: the card's door once more at the end of „Vorschlag", which holds the period, with the card's label — and no fact carries it.
+    expect(v.sections.filter((x) => x.door).map((x) => [x.id, x.door])).toEqual([['vorschlag', { href: `${PORTAL}/19000_de`, label: 'Rückmeldung im Portal der Kommission geben' }]])
+    expect(JSON.stringify(v.sections.map((x) => x.facts))).not.toContain('Rückmeldung im Portal der Kommission geben')
     expect(v.stations.map((s) => [s.id, s.name, !!s.ahead, s.current])).toEqual([
       ['konsultation', 'Konsultation', false, false],
       ['vorschlag', 'Vorschlag', false, false],
@@ -295,8 +302,10 @@ describe('the page of a proposal', () => {
     expect(v.sections.map((x) => x.id)).toEqual(['konsultation', 'vorschlag', 'beschluss'])
     expect(v.stations[3]!.gap).toBe('EUR-Lex verzeichnet zu diesem Vorschlag noch keinen Rechtsakt.')
     expect(v.stations[4]!.gap).toBeNull()
-    // The day after the period closed, no action.
-    expect(euVorschlagView(response('52026PC0780', { consultation: OPEN_ON_PROPOSAL }), '2026-12-10').action).toBeNull()
+    // The day after the period closed, no action, and no second door either.
+    const closed = euVorschlagView(response('52026PC0780', { consultation: OPEN_ON_PROPOSAL }), '2026-12-10')
+    expect(closed.action).toBeNull()
+    expect(closed.sections.some((x) => x.door)).toBe(false)
   })
 
   it('flags an English-only title', () => {
@@ -308,7 +317,9 @@ describe('the page of a proposal', () => {
 
   it('takes no action from another proposal\'s open period or a call for evidence', () => {
     const other: EuConsultation = { ...OPEN_ON_PROPOSAL, initiative: initiative([{ ...(OPEN_ON_PROPOSAL as { initiative: EuInitiative }).initiative.publications[1]!, reference: 'COM(2026)781' }]) }
-    expect(euVorschlagView(response('52026PC0780', { consultation: other }), TODAY).action).toBeNull()
+    const v = euVorschlagView(response('52026PC0780', { consultation: other }), TODAY)
+    expect(v.action).toBeNull()
+    expect(v.sections.some((x) => x.door)).toBe(false)
   })
 
   it('names the station „Rat" for a procedure the Council decides alone', () => {
@@ -328,6 +339,7 @@ describe('the page of a proposal', () => {
     // The heading names the state; the day stands at the station.
     expect(v.status).toBe('Zurückgezogen')
     expect(v.action).toBeNull()
+    expect(v.sections.some((x) => x.door)).toBe(false)
     // The withdrawal ends the rail on a station of its own; „Amtsblatt" and the last station are not drawn.
     expect(v.stations.map((x) => [x.id, x.name, x.current])).toEqual([
       ['konsultation', 'Konsultation', false],

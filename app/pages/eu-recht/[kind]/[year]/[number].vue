@@ -72,7 +72,7 @@ const view = computed(() => (data.value ? euActPageView(data.value) : null))
  * seit"; the Vienna day, so server and client agree.
  *
  * Every station has its section under the station's own name, as on a
- * draft's page, in the rail's order: the header card is the page's table
+ * draft's page, in the rail's order: the state card is the page's table
  * of contents. The last station's — „Umsetzung" or „Geltung" — is the
  * section of the drafts; the marked station leads there in one step. */
 const rail = computed(() => (data.value ? euRailView(data.value, todayIso()) : null))
@@ -170,15 +170,21 @@ const citation = computed(() => (data.value ? euActCiteDe(data.value.act, data.v
           </p>
         </DraftHeader>
 
-        <!-- The act's rail, in the card the national rail opens a draft's
-             page with (`ProcedureCard`): the stations of the act's life, the
-             last one marked — an adopted act is there. -->
-        <EuProcedureCard v-if="rail" :status="rail.status ?? rail.heading" :stations="rail.stations" :label="rail.heading">
-          <!-- Under the rail, the card's last part: no explaining line stands under the heading. -->
-          <p v-if="rail.note" class="mt-3 text-sm text-ink-secondary">
-            {{ rail.note }}
-          </p>
-        </EuProcedureCard>
+        <!-- The state card of every detail page (`ProcedureCard`), with the
+             act's rail: the stations of the act's life, the last one
+             marked — an adopted act is there. -->
+        <ProcedureCard v-if="rail" :status="rail.status ?? rail.heading">
+          <template #rail>
+            <EuRail class="mt-4" :stations="rail.stations" :label="rail.heading" />
+          </template>
+          <!-- The note on an act of the Commission: the card's footer, under
+               the rail; nothing stands between heading and rail. -->
+          <template #footer>
+            <p v-if="rail.note" class="mt-3 text-sm text-ink-secondary">
+              {{ rail.note }}
+            </p>
+          </template>
+        </ProcedureCard>
 
         <!-- A section per station, in the rail's order and under the
              station's name, each in the draft pages' grammar

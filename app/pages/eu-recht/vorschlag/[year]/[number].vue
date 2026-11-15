@@ -5,14 +5,16 @@
  * cycle, 15.11.2026): its procedure as far as the Cellar records it, and
  * the consultation behind it from the Commission's portal.
  *
- * THE INITIATIVE PAGE'S GRAMMAR: the detail pages' head (`DraftHeader`),
- * the card whose heading states the stand, with the rail (`EuRail`), then
- * a section per station in the rail's order (`EuStationSection`). Every
- * word comes from `euVorschlagView`.
+ * THE DETAIL PAGES' GRAMMAR (`docs/decisions.md`, „The detail pages"): the
+ * head (`DraftHeader`), the state card of every detail page
+ * (`ProcedureCard`) with the EU rail in it (`EuRail`), then a section per
+ * reached station in the rail's order (`EuStationSection`). Every word
+ * comes from `euVorschlagView`.
  *
- * ONE BLUE ELEMENT. While the portal holds an open feedback period on this
- * proposal, the card carries the way to it (`EuWindowAction`), as an
- * initiative's page does.
+ * THE DOOR STANDS TWICE. While the portal holds an open feedback period on
+ * this proposal, a door card under the state card leads to it
+ * (`EuWindowAction`), as on an initiative's page, and the same door stands
+ * once more at the end of „Vorschlag" (`EuRailSection.door`).
  *
  * THE STRONGER ADDRESS WINS. Where the Cellar's dossier names exactly one
  * act the proposal produced and the monitor has that act's page, this
@@ -104,10 +106,14 @@ const back = euPath()
           </p>
         </DraftHeader>
 
-        <!-- The card the act page opens with: the stand, and the rail. -->
-        <EuProcedureCard :status="page.status" :stations="page.stations" :label="page.heading" />
+        <!-- The state card of every detail page, with the EU rail. -->
+        <ProcedureCard :status="page.status">
+          <template #rail>
+            <EuRail class="mt-4" :stations="page.stations" :label="page.heading" />
+          </template>
+        </ProcedureCard>
 
-        <!-- The door: under the header card, where a draft's page has it. -->
+        <!-- The door: under the state card, where a draft's page has it. -->
         <EuWindowAction v-if="page.action" :action="page.action" />
 
         <EuStationSection v-for="sec in page.sections" :key="sec.id" :section="sec" />

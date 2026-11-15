@@ -4,7 +4,7 @@
  * before a proposal, or a draft act of the Commission, by the portal's own
  * number (`/eu-recht/initiative/13192`).
  *
- * THE ACT PAGE'S GRAMMAR. A header card whose heading says where the
+ * THE ACT PAGE'S GRAMMAR. The state card (`ProcedureCard`) saying where the
  * initiative stands, the rail of its stations, a section per station in
  * the rail's order (`EuStationSection`). The words of the portal and of
  * the stations are the act page's (`EU_RAIL_DE`), and so are its builders
@@ -26,9 +26,14 @@
  * several proposals (102 adoption publications in 87 initiatives,
  * 15.11.2026).
  *
- * ONE BLUE ELEMENT: at an open window the way to the portal's page of the
- * initiative, where the contribution is made, with the day the window
- * closes. Dates, no durations (rule D6): no „noch N Tage".
+ * THE DOOR, while a window is open: a draft's door card (`EuWindowAction`)
+ * leading to the portal's page of the initiative, where the contribution
+ * is made, counting down to the window's last day — the reader's own
+ * deadline, where rule D6's ban on day counts does not apply. No sentence
+ * under its heading: the heading says the day, the button the portal.
+ * Above the button the Commission's own sentence for the open stage
+ * (`euFeedbackQuote.ts`), where one was read. The same door stands once
+ * more at the end of the section that holds the window (`EuRailSection.door`).
  *
  * All German copy of the page lives here. Pure: no Vue.
  */
@@ -37,7 +42,8 @@ import { euProposalPathOfReference } from '#shared/utils/eu'
 import { formatDateDe } from '#shared/utils/format'
 import { gapDe } from '#shared/utils/gaps'
 import { actTypeDe } from '#shared/utils/euPortal'
-import { EU_RAIL_DE, anchorOf, elementIdOf, fact, feedbackRefOf, framed, initiativeFact, periodFacts, periodParts, stageDe, withFeedback, type EuRailSection, type EuRailStation, type EuRailStationId, type EuSectionFact } from './euRail'
+import { EU_FEEDBACK_QUOTE_SOURCE, euFeedbackQuoteFor } from './euFeedbackQuote'
+import { EU_RAIL_DE, anchorOf, elementIdOf, fact, feedbackRefOf, framed, initiativeFact, periodFacts, periodParts, stageDe, withFeedback, type EuDoor, type EuRailSection, type EuRailStation, type EuRailStationId, type EuSectionFact } from './euRail'
 
 /** What kind of act the Commission foresees decides the stations after it. */
 type Track = 'gesetz' | 'kommission' | 'sonstiges'
@@ -84,9 +90,6 @@ const DE = {
   },
   action: {
     label: 'Rückmeldung im Portal der Kommission geben',
-    note: (end: string | null) => (end
-      ? `Rückmeldungen nimmt die Kommission bis ${end} in ihrem Portal „Ihre Meinung zählt“ entgegen. Der Link führt zur Seite des Vorhabens dort.`
-      : 'Rückmeldungen nimmt die Kommission in ihrem Portal „Ihre Meinung zählt“ entgegen. Der Link führt zur Seite des Vorhabens dort.'),
   },
   published: 'Veröffentlicht',
   reference: 'Nummer',
@@ -118,7 +121,11 @@ const DE = {
 
 export const EU_INITIATIVE_DE = DE
 
-/** The door card of an EU page: its heading (until when), the sentence under it, the button. */
+/**
+ * The door card of an EU page (`EuWindowAction`, through `DraftDoorCard`):
+ * the heading is the draft door's countdown and date, the button the way
+ * to where the contribution is made.
+ */
 export interface EuWindowActionView {
   /** The window's last day (ISO): the card counts down to it and takes its tone from it, as a draft's door does. Null where the portal names none. */
   end: string | null
@@ -127,9 +134,32 @@ export interface EuWindowActionView {
   /** Where the button leads; null where the source names no address — then no button, and `gap` says why. */
   href: string | null
   label: string
-  note: string
-  /** A gap sentence under the note where the button cannot be offered (a Citizens' Initiative whose register entry names no link to sign); absent otherwise. */
+  /**
+   * The one sentence under the heading, only where it says what the button
+   * cannot (a Citizens' Initiative: the collection system may be the
+   * organisers' own site); null on the Commission's door.
+   */
+  note: string | null
+  /** What giving feedback brings, in the receiving institution's words, above the button (`SourceQuote`); null where no sentence was read. */
+  quote: { text: string; source: string } | null
+  /** A gap sentence where the button cannot be offered (a Citizens' Initiative whose register entry names no link to sign); absent otherwise. */
   gap?: string | null
+}
+
+/** The door again, for the section where the decision to act is made: only with an address to go to. */
+export const doorOf = (action: EuWindowActionView | null): EuDoor | null =>
+  (action?.href ? { href: action.href, label: action.label } : null)
+
+/**
+ * The Commission's sentence over the door: the one for the window the door
+ * counts down to (`euFeedbackQuote.ts`). Where several windows close on
+ * that day and their sentences differ — or one has none — it is not clear
+ * which window the door is for, and there is no quote.
+ */
+export function feedbackQuoteOf(windows: readonly { stage: string; onProposal: boolean }[]): EuWindowActionView['quote'] {
+  const texts = new Set(windows.map((w) => euFeedbackQuoteFor(w.stage, w.onProposal)))
+  const [text] = [...texts]
+  return texts.size === 1 && text ? { text, source: EU_FEEDBACK_QUOTE_SOURCE } : null
 }
 
 export interface EuInitiativeView {
@@ -140,7 +170,7 @@ export interface EuInitiativeView {
   actType: string | null
   /** The card's heading: where the initiative stands. */
   status: string
-  /** The one blue element, a card of its own under the header card: only while a window is open. */
+  /** The door card under the state card: only while a window is open. */
   action: EuWindowActionView | null
   heading: string
   stations: EuRailStation[]
@@ -282,14 +312,33 @@ export function euInitiativeView(i: EuInitiative, today: string): EuInitiativeVi
   current.current = true
 
   const open = i.publications.filter((p) => isOpen(p, today))
+  // The soonest closing day: two windows open at once closed on the same day in every case of 15.11.2026; where they differ, each section names its own.
   const end = open.map((p) => p.feedbackEnd).filter((e): e is string => e !== null).sort()[0] ?? null
+  // The windows the door counts down to: those that close on its day (all open ones where none names a day).
+  const counted = end ? open.filter((p) => p.feedbackEnd === end) : open
+  const action: EuWindowActionView | null = open.length
+    ? {
+        end,
+        heading: end ? null : DE.status.openNoEnd,
+        href: i.url,
+        label: DE.action.label,
+        note: null,
+        quote: feedbackQuoteOf(counted.map((p) => ({ stage: p.stage, onProposal: track === 'gesetz' && isProposalFeedback(p) }))),
+      }
+    : null
+  // The door again, at the end of the section that holds its window: „Konsultation" for a stage before the draft, the Commission's own station otherwise. Two windows in two sections on the same day: the later section, where the reading ends.
+  const door = doorOf(action)
+  if (door) {
+    const ids = new Set(counted.map((p): EuRailStationId => (CONSULTATION_STAGES.has(p.stage) && showConsultation ? 'konsultation' : 'vorschlag')))
+    const target = [...sections].reverse().find((s) => ids.has(s.id))
+    if (target) target.door = door
+  }
   return {
     title: i.titleDe ?? i.title ?? DE.untitled(i.id),
     titleNote: !i.titleDe && i.title ? DE.englishTitle : null,
     actType: actTypeDe(i.actType) ? DE.actType(actTypeDe(i.actType)!) : null,
     status: statusOf(i, today),
-    // The soonest closing day: two windows open at once closed on the same day in every case of 15.11.2026; where they differ, each section names its own.
-    action: open.length ? { end, heading: end ? null : DE.status.openNoEnd, href: i.url, label: DE.action.label, note: DE.action.note(end ? formatDateDe(end) : null) } : null,
+    action,
     heading: DE.heading,
     stations,
     sections,

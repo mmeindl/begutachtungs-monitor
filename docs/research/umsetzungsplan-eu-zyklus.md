@@ -410,6 +410,14 @@ disagree with each other now and then on old acts (32013L0059); not
 measured for proposals. A split procedure (2023/0077) gets no Observatory
 link on the proposal's page; its acts' pages link their files.
 
+Aligned with the detail pages on 15.11.2026: the initiative's and the
+proposal's page open with the state card of every detail page
+(`ProcedureCard`, the EU rail as its rail); the door card carries no
+sentence under its heading, quotes the Commission's own sentence for the
+open stage where one was read (`app/utils/euFeedbackQuote.ts`), and stands
+a second time at the end of the section that holds the window
+(docs/decisions.md, „An EU page's action is a draft's door").
+
 ### Step 4 — who gave feedback
 
 Changes what the monitor names; built with the maintainer present.
@@ -545,6 +553,12 @@ a cold cache took 15 s and carried four of 13 closing days, the rest
 followed in the background within a minute. The reader keeps the count of
 every country, not one Member State's; the page picks the country it
 serves. Not verified: the meaning of `preAnswer` (seen once, ignored).
+
+Aligned with the detail pages on 15.11.2026: the state card is
+`ProcedureCard` with the EU rail, the gap sentence on an unknown step in
+its footer; the door keeps one sentence („Der Link führt zum Sammelsystem
+der Initiative."), carries no quote (no sentence of the register was
+read), and stands a second time at the end of „Sammlung".
 
 ### Step 6 — the move to `/eu`, with the rename
 

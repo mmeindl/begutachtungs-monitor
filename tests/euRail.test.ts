@@ -163,21 +163,21 @@ describe('euRailView', () => {
     expect(section(v, 'wirkung')).toMatchObject({ record: null, notes: [] })
   })
 
-  it('heads the card with where the act stands: a date and what it is, never a verdict', () => {
+  it('heads the card with where the act stands: a state without a date, never a verdict', () => {
     const status = (over: Partial<EuActResponse>, today = TODAY) => euRailView(response(over), today).status
-    // A directive: the deadline to come, or the deadline that was — not „abgelaufen", not „nicht umgesetzt".
-    expect(status({}, '2026-05-07')).toBe('Umzusetzen bis 07.05.2026')
-    expect(status({})).toBe('Umsetzungsfrist war der 07.05.2026')
+    // A directive: the deadline runs, or it is over — not „abgelaufen", not „nicht umgesetzt". The day stands at the last station.
+    expect(status({}, '2026-05-07')).toBe('Umsetzungsfrist läuft')
+    expect(status({})).toBe('Umsetzungsfrist beendet')
     expect(status({ act: { ...DIRECTIVE, transposition: null } })).toBe('Im Amtsblatt veröffentlicht')
     expect(status({ act: { ...DIRECTIVE, transposition: null }, oj: null })).toBeNull()
     // A regulation: applies, or in force with the day of application to come.
-    expect(status({ act: REGULATION, rail: rail({ inForce: '2024-08-01', applies: '2026-08-02' }) })).toBe('Gilt seit 02.08.2026')
-    expect(status({ act: REGULATION, rail: rail({ inForce: '2024-08-01', applies: '2026-08-02' }) }, '2025-01-01')).toBe('In Kraft seit 01.08.2024, gilt ab 02.08.2026')
-    expect(status({ act: REGULATION, rail: rail({ inForce: '2024-08-01', applies: null }) })).toBe('In Kraft seit 01.08.2024')
-    expect(status({ act: REGULATION, rail: rail({ inForce: '2027-01-01', applies: null }) })).toBe('In Kraft ab 01.01.2027')
-    expect(status({ act: REGULATION, rail: rail({ inForce: null, effective: '2017-01-25' }) })).toBe('Wirksam seit 25.01.2017')
+    expect(status({ act: REGULATION, rail: rail({ inForce: '2024-08-01', applies: '2026-08-02' }) })).toBe('Gilt')
+    expect(status({ act: REGULATION, rail: rail({ inForce: '2024-08-01', applies: '2026-08-02' }) }, '2025-01-01')).toBe('In Kraft, gilt noch nicht')
+    expect(status({ act: REGULATION, rail: rail({ inForce: '2024-08-01', applies: null }) })).toBe('In Kraft')
+    expect(status({ act: REGULATION, rail: rail({ inForce: '2027-01-01', applies: null }) })).toBe('Noch nicht in Kraft')
+    expect(status({ act: REGULATION, rail: rail({ inForce: null, effective: '2017-01-25' }) })).toBe('Wirksam')
     expect(status({ act: REGULATION, rail: null, oj: null })).toBeNull()
-    for (const s of [status({}), status({}, '2026-05-07')]) expect(s).not.toMatch(/abgelaufen|überfällig|verspätet|nicht umgesetzt|Tage/i)
+    for (const s of [status({}), status({}, '2026-05-07')]) expect(s).not.toMatch(/abgelaufen|überfällig|verspätet|nicht umgesetzt|Tage|\d/i)
   })
 
   it('names the earlier transposition dates beside the deadline (rule D3)', () => {

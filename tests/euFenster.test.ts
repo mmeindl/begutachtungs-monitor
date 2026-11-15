@@ -264,6 +264,9 @@ describe('the initiative\'s page', () => {
     expect(JSON.stringify(v.sections)).not.toMatch(/[Vv]eröffentlicht/)
     expect(v.status).toBe('Sondierung läuft')
     expect(v.action?.end).toBe('2027-01-08')
+    // The Sondierung's sentence over the door, and the door once more at the end of „Konsultation".
+    expect(v.action?.quote?.text).toBe('Ihr Feedback wird bei der Entwicklung und Erarbeitung dieser Initiative berücksichtigt.')
+    expect(v.sections.find((s) => s.id === 'konsultation')!.door).toEqual({ href: planned.url, label: 'Rückmeldung im Portal der Kommission geben' })
   })
 
   it('says past the Commission, once and in the rail, what the monitor does not follow', () => {
@@ -308,8 +311,13 @@ describe('the initiative\'s page', () => {
       heading: null,
       href: open.url,
       label: 'Rückmeldung im Portal der Kommission geben',
-      note: 'Rückmeldungen nimmt die Kommission bis 09.02.2027 in ihrem Portal „Ihre Meinung zählt“ entgegen. Der Link führt zur Seite des Vorhabens dort.',
+      // No sentence under the heading: the heading says the day, the button the portal.
+      note: null,
+      // Two windows close on the door's day with different sentences: which one the door is for is not clear, so no quote.
+      quote: null,
     })
+    // Both windows are „Konsultation": the door once more at its end, nowhere else.
+    expect(v.sections.filter((s) => s.door).map((s) => s.id)).toEqual(['konsultation'])
     // A delegated act: no „Parlament und Rat", the Commission's station not reached yet.
     expect(v.stations.map((s) => [s.id, s.name, !!s.ahead])).toEqual([
       ['konsultation', 'Konsultation', false],
@@ -319,8 +327,61 @@ describe('the initiative\'s page', () => {
     ])
     expect(v.stations.find((s) => s.current)!.id).toBe('konsultation')
     expect(v.stations[1]!.gap).toBe('Das Portal verzeichnet zu diesem Vorhaben noch keinen Entwurf eines Rechtsakts.')
-    // The day after it closed, the window is a fact, no action.
-    expect(euInitiativeView(open, '2027-02-10').action).toBeNull()
+    // The day after it closed, the window is a fact, no action and no second door.
+    const after = euInitiativeView(open, '2027-02-10')
+    expect(after.action).toBeNull()
+    expect(after.sections.some((s) => s.door)).toBe(false)
+  })
+
+  describe('the door\'s quote and its second place', () => {
+    const url = 'https://ec.europa.eu/info/law/better-regulation/have-your-say/initiatives/20000_de'
+    const pub = (stage: string, feedbackEnd: string, reference: string | null = null) =>
+      ({ stage, type: null, reference, published: '2026-11-03', feedbackEnd, feedbackCount: 0, feedbackStatus: 'OPEN' })
+    const one = (actType: string, ...publications: ReturnType<typeof pub>[]): EuInitiative =>
+      ({ id: 20000, title: 'X', titleDe: 'X', actType, url, publications })
+    const door = { href: url, label: 'Rückmeldung im Portal der Kommission geben' }
+    const placed = (i: EuInitiative) => {
+      const v = euInitiativeView(i, TODAY)
+      return { quote: v.action?.quote ?? null, doors: v.sections.filter((s) => s.door).map((s) => [s.id, s.door]) }
+    }
+
+    it('quotes the Commission\'s own sentence for the open stage, signed „Europäische Kommission"', () => {
+      expect(placed(one('REG_DEL', pub('PLANNING_WORKFLOW', '2027-01-08')))).toEqual({
+        quote: { text: 'Ihr Feedback wird bei der Entwicklung und Erarbeitung dieser Initiative berücksichtigt.', source: 'Europäische Kommission' },
+        doors: [['konsultation', door]],
+      })
+      expect(placed(one('PROP_REG', pub('OPC_LAUNCHED', '2027-01-08')))).toEqual({
+        quote: { text: 'Ihr Feedback wird bei der Entwicklung und Erarbeitung dieser Initiative berücksichtigt. Wir fassen alle eingehenden Rückmeldungen in einem Bericht zusammen und erläutern, wie wir ihnen Rechnung getragen haben.', source: 'Europäische Kommission' },
+        doors: [['konsultation', door]],
+      })
+      // A draft act of the Commission: its own station holds the window.
+      expect(placed(one('REG_DEL', pub('ISC_WORKFLOW', '2027-01-08')))).toEqual({
+        quote: { text: 'Die Rückmeldungen werden bei der Fertigstellung dieser Initiative berücksichtigt.', source: 'Europäische Kommission' },
+        doors: [['vorschlag', door]],
+      })
+      // Feedback on a legislative proposal: the adoption's sentence, in „Vorschlag".
+      expect(placed(one('PROP_REG', pub('ADOPTION_WORKFLOW', '2027-01-08', 'COM(2026)900')))).toEqual({
+        quote: { text: 'Alle eingegangenen Rückmeldungen werden von der Europäischen Kommission zusammengefasst und dem Europäischen Parlament und dem Rat vorgelegt, um in die Gesetzgebungsdebatte einfließen zu können.', source: 'Europäische Kommission' },
+        doors: [['vorschlag', door]],
+      })
+    })
+
+    it('quotes nothing where no sentence was read: an adoption that is no legislative proposal, a stage not in the table', () => {
+      expect(placed(one('REG_DEL', pub('ADOPTION_WORKFLOW', '2027-01-08')))).toEqual({ quote: null, doors: [['vorschlag', door]] })
+      expect(placed(one('COMMUNIC', pub('ADOPTION_WORKFLOW', '2027-01-08')))).toEqual({ quote: null, doors: [['vorschlag', door]] })
+      expect(placed(one('PROP_REG', pub('ROADMAP', '2027-01-08')))).toEqual({ quote: null, doors: [['konsultation', door]] })
+      expect(placed(one('PROP_REG', pub('INIT_PLANNED', '2027-01-08')))).toEqual({ quote: null, doors: [['konsultation', door]] })
+    })
+
+    it('quotes for the window the door counts down to, and places the door at that window\'s section', () => {
+      // The Sondierung closes first: the door counts to it, quotes it and stands at „Konsultation" — not at the draft act's.
+      expect(placed(one('REG_DEL', pub('PLANNING_WORKFLOW', '2026-12-01'), pub('ISC_WORKFLOW', '2027-01-08')))).toEqual({
+        quote: { text: 'Ihr Feedback wird bei der Entwicklung und Erarbeitung dieser Initiative berücksichtigt.', source: 'Europäische Kommission' },
+        doors: [['konsultation', door]],
+      })
+      // Two windows on the same day in two sections, with two sentences: no quote; the door once, in the later section, where the reading ends.
+      expect(placed(one('REG_DEL', pub('PLANNING_WORKFLOW', '2027-01-08'), pub('ISC_WORKFLOW', '2027-01-08')))).toEqual({ quote: null, doors: [['vorschlag', door]] })
+    })
   })
 
   it('gives every feedback period with contributions its fold, by the initiative\'s and the publication\'s numbers (step 4)', () => {

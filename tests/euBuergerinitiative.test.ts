@@ -205,9 +205,13 @@ describe('the page of an initiative', () => {
     expect(v.sections.map((s) => s.id)).toEqual(['registrierung', 'sammlung'])
     expect(v.action).toEqual({
       end: '2027-11-13', heading: null, href: 'https://eci.ec.europa.eu/069/public/?lg=de', label: 'Bürgerinitiative unterstützen',
-      note: 'Unterstützungen werden bis 13.11.2027 gesammelt. Der Link führt zum Sammelsystem der Initiative.', gap: null,
+      // One sentence, the one the button cannot say; the day is the heading's. No quote: no sentence of the register was read.
+      note: 'Der Link führt zum Sammelsystem der Initiative.', quote: null, gap: null,
     })
     const sammlung = v.sections.find((s) => s.id === 'sammlung')!
+    // The door once more at the end of „Sammlung", with the card's label, and nowhere else.
+    expect(v.sections.filter((s) => s.door).map((s) => s.id)).toEqual(['sammlung'])
+    expect(sammlung.door).toEqual({ href: 'https://eci.ec.europa.eu/069/public/?lg=de', label: 'Bürgerinitiative unterstützen' })
     expect(sammlung.facts.map((f) => [f.title, f.parts])).toEqual([
       ['Beginn', ['13.11.2026']],
       ['Ende', ['bis 13.11.2027']],
@@ -221,6 +225,7 @@ describe('the page of an initiative', () => {
   it('has no door once the last day has passed, whatever the cached status says', () => {
     const v = view('ongoing', '2027-11-14')
     expect(v.action).toBeNull()
+    expect(v.sections.some((s) => s.door)).toBe(false)
     expect(v.status).toBe('Sammlung beendet')
     expect(v.stations.find((s) => s.id === 'sammlung')!.facts).toEqual(['begonnen am 13.11.2026', 'beendet am 13.11.2027'])
     // On the last day itself, the door stands.
@@ -229,8 +234,10 @@ describe('the page of an initiative', () => {
 
   it('without a link to sign: no button, a gap sentence', () => {
     const v = euBuergerinitiativeView({ ...details('ongoing'), supportLink: null }, TODAY)
-    expect(v.action).toMatchObject({ href: null, note: 'Unterstützungen werden bis 13.11.2027 gesammelt.' })
+    // No link, no sentence about it: the gap sentence alone, and no second door.
+    expect(v.action).toMatchObject({ href: null, note: null, quote: null })
     expect(splitGap(v.action!.gap)?.lead).toBe('Nicht veröffentlicht')
+    expect(v.sections.some((s) => s.door)).toBe(false)
   })
 
   it('registered, no start set: „Registriert", the collection ahead with one line', () => {

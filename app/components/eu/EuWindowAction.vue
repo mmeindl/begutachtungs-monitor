@@ -2,24 +2,28 @@
 import type { EuWindowActionView } from '~/utils/euInitiative'
 
 /**
- * The door of an EU page while a window is open: a card of its own
- * directly under the header card, in the slot and shape of a draft page's
- * door (`DraftDoorCard`) — the heading says until when, the sentence where,
- * the button (`DoorButton`, the page's one blue element) leads to where the
- * contribution is made: the portal's page of an initiative of the
- * Commission, or the collection system of a European Citizens' Initiative.
- * Shared by the pages of an initiative, a proposal and a Citizens'
- * Initiative, so the action reads the same on all three.
+ * The door of an EU page while a window is open: a draft's door card
+ * (`DraftDoorCard`) directly under the state card — the pages of an
+ * initiative of the Commission, a proposal and a Citizens' Initiative, so
+ * the action reads the same on all three and on every detail page.
  *
- * THE DRAFT'S DOOR, with its countdown and its tone: the heading counts the
- * days to the window's last day and the card takes the ground a
- * Stellungnahme's door has when its Frist is close, so one state reads as
- * one colour on every detail page. The words say the urgency, the ground
- * repeats it. Without the Begutachtung's sentence about earlier drafts,
- * which is about Austrian drafts. Where the source names no last day there
- * is nothing to count: the view's own heading stands, on the plain ground.
- * Where it names no address to go to, there is no button, and a gap
+ * THE DRAFT'S DOOR AS IT IS: the heading is its countdown and date
+ * („Noch 56 Tage · bis So., 10.01.2027"), the ground its tone. Where the
+ * source names no last day there is nothing to count: the view's own
+ * heading stands (`#heading`).
+ *
+ * A body sentence only where it says what the button cannot (as the Land's
+ * card lost „…das Formular des Landes" over a button that said the same):
+ * none on the Commission's door, whose heading says the day and whose
+ * button names the portal; on a Citizens' Initiative's, that the link leads
+ * to its collection system, which is sometimes the organisers' own site.
+ * Above the button, what giving feedback brings in the Commission's own
+ * words (`SourceQuote`, `euFeedbackQuote.ts`), where one was read. Where
+ * the source names no address to go to, there is no button, and a gap
  * sentence says so.
+ *
+ * The same door stands once more at the end of the section where the
+ * decision is made (`EuStationSection`, `EuRailSection.door`).
  */
 defineProps<{ action: EuWindowActionView }>()
 </script>
@@ -29,10 +33,11 @@ defineProps<{ action: EuWindowActionView }>()
     <template v-if="action.heading" #heading>
       {{ action.heading }}
     </template>
-    <p class="mt-2 text-sm text-ink-secondary">
+    <p v-if="action.note" class="mt-2 text-sm text-ink-secondary">
       {{ action.note }}
     </p>
     <GapNote v-if="action.gap" :text="action.gap" class="mt-2 text-sm text-ink-secondary" />
+    <SourceQuote v-if="action.quote && action.href" :text="action.quote.text" :source="action.quote.source" />
     <template #filing>
       {{ action.label }}
     </template>

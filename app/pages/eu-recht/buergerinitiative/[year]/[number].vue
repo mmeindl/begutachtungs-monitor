@@ -5,15 +5,17 @@
  * 15.11.2026). An object of its own with a rail of its own (decision 4 of
  * the plan): no field of the register joins it to a legal act.
  *
- * THE SIBLINGS' GRAMMAR: the detail pages' head (`DraftHeader`), the card
- * whose heading names the state, with the rail (`EuRail`), then a section
- * per reached station (`EuStationSection`). Every word comes from
+ * THE DETAIL PAGES' GRAMMAR (`docs/decisions.md`, „The detail pages"): the
+ * head (`DraftHeader`), the state card of every detail page
+ * (`ProcedureCard`) with the EU rail in it (`EuRail`), then a section per
+ * reached station (`EuStationSection`). Every word comes from
  * `euBuergerinitiativeView`.
  *
- * ONE BLUE ELEMENT. While the collection runs, a door card under the header
- * card leads to where one signs (`EuWindowAction`, shared with the
+ * THE DOOR STANDS TWICE. While the collection runs, a door card under the
+ * state card leads to where one signs (`EuWindowAction`, shared with the
  * Commission's initiatives and proposals), counting the days and taking the
- * draft door's tone.
+ * draft door's tone; the same door stands once more at the end of
+ * „Sammlung" (`EuRailSection.door`).
  *
  * Nothing about a person: the page shows only what `parseEciDetails`'s
  * fixed list of fields lets through — no organiser, no funder, no logo, none
@@ -108,12 +110,19 @@ const back = `${euPath()}#eu-buergerinitiativen`
             </p>
           </DraftHeader>
 
-          <!-- The card the act page opens with: the state, and the rail. -->
-          <EuProcedureCard :status="view.status" :stations="view.stations" :label="view.heading">
-            <GapNote v-if="view.unknownSteps" :text="view.unknownSteps" class="mt-3 text-sm text-ink-secondary" />
-          </EuProcedureCard>
+          <!-- The state card of every detail page, with the EU rail; a step
+               the monitor does not know is said in the footer, under the
+               rail — nothing stands between heading and rail. -->
+          <ProcedureCard :status="view.status">
+            <template #rail>
+              <EuRail class="mt-4" :stations="view.stations" :label="view.heading" />
+            </template>
+            <template #footer>
+              <GapNote v-if="view.unknownSteps" :text="view.unknownSteps" class="mt-3 text-sm text-ink-secondary" />
+            </template>
+          </ProcedureCard>
 
-          <!-- The door: under the header card, where a draft's page has it. -->
+          <!-- The door: under the state card, where a draft's page has it. -->
           <EuWindowAction v-if="view.action" :action="view.action" />
 
           <EuStationSection v-for="sec in view.sections" :key="sec.id" :section="sec" />

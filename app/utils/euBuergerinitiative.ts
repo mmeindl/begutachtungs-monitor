@@ -7,10 +7,15 @@
  * 14.11.2026): no field of the register joins an initiative to a legal act,
  * so it is no station of an act and its page links none.
  *
- * THE SIBLINGS' GRAMMAR. A header card whose heading names the state, the
+ * THE SIBLINGS' GRAMMAR. The state card (`ProcedureCard`) naming the state, the
  * rail (`EuRail`), the door under the card while one can sign, a section per
  * REACHED station (`EuStationSection`), with the act page's builders
- * (`fact`, `framed`).
+ * (`fact`, `framed`). The door stands once more at the end of „Sammlung"
+ * (`EuRailSection.door`). It carries one sentence, that the link leads to
+ * the initiative's collection system — sometimes the organisers' own site,
+ * which the button cannot say — and NO QUOTE: unlike the Commission's
+ * portal (`euFeedbackQuote.ts`), no sentence of the register on what a
+ * signature brings was read.
  *
  * THE STATIONS, read from the register's `progress` — an unordered list of
  * `{ name, active, date, footnoteType }` whose active entry equals the
@@ -66,7 +71,7 @@ import type { EciAnswerLink, EciInitiative, EciProgressStep, EciSupport } from '
 import { EU_MEMBER_STATE_ECI, EU_MEMBER_STATE_NAME_DE } from '#shared/utils/eu'
 import { formatDateDe, formatNumberDe } from '#shared/utils/format'
 import { gapDe } from '#shared/utils/gaps'
-import type { EuWindowActionView } from './euInitiative'
+import { doorOf, type EuWindowActionView } from './euInitiative'
 import { anchorOf, elementIdOf, fact, framed, type EuRailSection, type EuRailStation, type EuRailStationId, type EuSectionFact } from './euRail'
 
 /** The ten step names measured on 15.11.2026 (see the head). Any other is shown nowhere as a station. */
@@ -160,10 +165,8 @@ const DE = {
   action: {
     label: 'Bürgerinitiative unterstützen',
     openNoEnd: 'Unterstützung möglich',
-    note: (end: string | null, link: boolean) => [
-      end ? `Unterstützungen werden bis ${end} gesammelt.` : 'Unterstützungen werden gesammelt.',
-      ...(link ? ['Der Link führt zum Sammelsystem der Initiative.'] : []),
-    ].join(' '),
+    // The one sentence under the heading: what the button cannot say. The day is the heading's.
+    note: 'Der Link führt zum Sammelsystem der Initiative.',
     noLink: gapDe('notPublished', 'Das Register nennt für diese Initiative keinen Link, über den sie unterstützt werden kann.'),
   },
   unread: 'Die Initiative konnte nicht gelesen werden: Das Register der Europäischen Bürgerinitiative hat nicht rechtzeitig oder nicht lesbar geantwortet.',
@@ -190,7 +193,7 @@ export interface EuBuergerinitiativeView {
   identity: string
   /** The card's heading: the state. */
   status: string
-  /** The one blue element: only while the collection runs. */
+  /** The door card under the state card: only while the collection runs. */
   action: EuWindowActionView | null
   heading: string
   stations: EuRailStation[]
@@ -385,21 +388,27 @@ export function euBuergerinitiativeView(i: EciInitiative, today: string, memberS
   const unknown = i.progress.filter((p) => !ECI_KNOWN_STEPS.has(p.name)).map((p) => (p.date ? `„${p.name}“ (${formatDateDe(p.date)})` : `„${p.name}“`))
 
   const end = running ? i.deadline : null
+  const action: EuWindowActionView | null = running
+    ? {
+        end,
+        heading: end ? null : DE.action.openNoEnd,
+        href: i.supportLink,
+        label: DE.action.label,
+        note: i.supportLink ? DE.action.note : null,
+        quote: null,
+        gap: i.supportLink ? null : DE.action.noLink,
+      }
+    : null
+  // The door again, at the end of „Sammlung", where one decides to sign.
+  const door = doorOf(action)
+  const sammlung = sections.find((sec) => sec.id === 'sammlung')
+  if (door && sammlung) sammlung.door = door
   return {
     title: i.title ?? DE.untitled(i.reference),
     titleNote: i.title && !i.titleIsGerman ? DE.originalTitle : null,
     identity: `${DE.identity} · ${i.reference}`,
     status: statusOf(i, deadlinePassed),
-    action: running
-      ? {
-          end,
-          heading: end ? null : DE.action.openNoEnd,
-          href: i.supportLink,
-          label: DE.action.label,
-          note: DE.action.note(end ? formatDateDe(end) : null, i.supportLink !== null),
-          gap: i.supportLink ? null : DE.action.noLink,
-        }
-      : null,
+    action,
     heading: DE.heading,
     stations,
     sections,

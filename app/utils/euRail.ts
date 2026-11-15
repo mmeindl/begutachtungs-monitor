@@ -140,6 +140,19 @@ export interface EuRailSection {
   notes: string[]
   /** The credit line's items under the frame. */
   credits: string[]
+  /**
+   * The door once more, at the end of the section where the decision to
+   * act is made (`DoorButton`, „The door stands twice" in
+   * `docs/decisions.md`): set by the page's view on the section that holds
+   * the open window, only while its door card shows; absent otherwise.
+   */
+  door?: EuDoor | null
+}
+
+/** Where a door leads and its label: the door card's button, word for word. */
+export interface EuDoor {
+  href: string
+  label: string
 }
 
 export interface EuRailView {
@@ -147,12 +160,13 @@ export interface EuRailView {
   heading: string
   /**
    * The card's heading: where the act stands, as the draft's card says
-   * „Gesetz geworden" (`ProcedureCard`) — „Umzusetzen bis 07.05.2027",
-   * „Gilt seit 01.01.2023". A date and what it is, never a verdict (rule
-   * D6): a passed deadline is „Umsetzungsfrist war der …", not „abgelaufen"
-   * and not „nicht umgesetzt" — whether the Member State transposed in
-   * time is nothing the monitor can see. Null where no date is known; the
-   * card then keeps its name.
+   * „Gesetz geworden" (`ProcedureCard`) — „Umsetzungsfrist läuft", „Gilt".
+   * A state in a few words and no date since 16.11.2026 (`docs/decisions.md`,
+   * „The detail pages"): the day stands at the rail's last station. Never a
+   * verdict (rule D6): a passed deadline is „Umsetzungsfrist beendet", not
+   * „abgelaufen" and not „nicht umgesetzt" — whether the Member State
+   * transposed in time is nothing the monitor can see. Null where no date
+   * is known; the card then keeps its name.
    */
   status: string | null
   stations: EuRailStation[]
@@ -210,12 +224,12 @@ const DE = {
     ? 'Der Cellar verzeichnet 1 weiteren Schritt dieses Verfahrens, den der Monitor nicht einzeln zeigt.'
     : `Der Cellar verzeichnet ${n} weitere Schritte dieses Verfahrens, die der Monitor nicht einzeln zeigt.`),
   status: {
-    transposeBy: (d: string) => `Umzusetzen bis ${d}`,
-    transposedBy: (d: string) => `Umsetzungsfrist war der ${d}`,
-    applies: (d: string, past: boolean) => (past ? `Gilt seit ${d}` : `Gilt ab ${d}`),
-    inForce: (d: string, past: boolean) => (past ? `In Kraft seit ${d}` : `In Kraft ab ${d}`),
-    inForceApplies: (f: string, fPast: boolean, a: string) => `${fPast ? 'In Kraft seit' : 'In Kraft ab'} ${f}, gilt ab ${a}`,
-    effective: (d: string, past: boolean) => (past ? `Wirksam seit ${d}` : `Wirksam ab ${d}`),
+    transposeBy: 'Umsetzungsfrist läuft',
+    transposedBy: 'Umsetzungsfrist beendet',
+    applies: (past: boolean) => (past ? 'Gilt' : 'Gilt noch nicht'),
+    inForce: (past: boolean) => (past ? 'In Kraft' : 'Noch nicht in Kraft'),
+    inForceApplies: (fPast: boolean) => (fPast ? 'In Kraft, gilt noch nicht' : 'Noch nicht in Kraft'),
+    effective: (past: boolean) => (past ? 'Wirksam' : 'Noch nicht wirksam'),
     published: 'Im Amtsblatt veröffentlicht',
   },
   furtherDates: 'Weitere Fristen für einzelne Bestimmungen',
@@ -647,18 +661,18 @@ function statusOf(r: EuActResponse, today: string): string | null {
   const kind = r.act.kind
   if (kind === 'richtlinie' || kind === 'rahmenbeschluss') {
     const deadline = r.act.transposition?.deadline ?? null
-    if (deadline) return deadline >= today ? DE.status.transposeBy(formatDateDe(deadline)) : DE.status.transposedBy(formatDateDe(deadline))
+    if (deadline) return deadline >= today ? DE.status.transposeBy : DE.status.transposedBy
     return r.oj ? DE.status.published : null
   }
   const rail = r.rail
   const inForce = rail?.inForce ?? null
   const effective = inForce ? null : rail?.effective ?? null
   const applies = rail?.applies && rail.applies !== inForce ? rail.applies : null
-  if (applies && applies <= today) return DE.status.applies(formatDateDe(applies), true)
-  if (applies && inForce) return DE.status.inForceApplies(formatDateDe(inForce), inForce <= today, formatDateDe(applies))
-  if (applies) return DE.status.applies(formatDateDe(applies), false)
-  if (inForce) return DE.status.inForce(formatDateDe(inForce), inForce <= today)
-  if (effective) return DE.status.effective(formatDateDe(effective), effective <= today)
+  if (applies && applies <= today) return DE.status.applies(true)
+  if (applies && inForce) return DE.status.inForceApplies(inForce <= today)
+  if (applies) return DE.status.applies(false)
+  if (inForce) return DE.status.inForce(inForce <= today)
+  if (effective) return DE.status.effective(effective <= today)
   return r.oj ? DE.status.published : null
 }
 
