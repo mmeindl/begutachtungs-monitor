@@ -1668,8 +1668,8 @@ const statementsSortNote = computed(() => {
         <ListBoxNotice
           v-else
           role="alert"
-          title="Daten konnten nicht geladen werden"
-          description="Gerade nicht abrufbar: Die Quelle hat nicht geantwortet."
+          title="Entwürfe: gerade nicht abrufbar"
+          description="Die Quelle hat nicht geantwortet."
         >
           <template #action>
             <UButton color="primary" @click="retry()">Erneut versuchen</UButton>

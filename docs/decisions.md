@@ -871,7 +871,8 @@ not yet followed, or the EU cycle, starts there.
   refused it), „Nicht im Monitor" (our scope or method, for every case of
   its kind). The lead word is semibold in the text's own ink; no colour, no
   symbol. A label puts the object first: „Kundmachung: gerade nicht
-  abrufbar". One verb for a failed request, never „derzeit", „verfügbar" or
+  abrufbar"; so does the heading of an error box with a retry button
+  („Stellungnahmen: gerade nicht abrufbar", bare where it names nothing). One verb for a failed request, never „derzeit", „verfügbar" or
   „gerade nicht lesbar"; gap sentences say „der Monitor", not „wir". A state
   of the procedure („noch keine Regierungsvorlage", „Beschlossen – nicht
   kundgemacht") is no gap and takes none, nor does a sentence that follows

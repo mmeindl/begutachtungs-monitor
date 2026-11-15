@@ -5,7 +5,7 @@ defineEmits<{
 </script>
 
 <template>
-  <EmptyState role="alert" title="Daten konnten nicht geladen werden">
+  <EmptyState role="alert" title="Gerade nicht abrufbar">
     <UButton color="primary" @click="$emit('retry')">Erneut versuchen</UButton>
   </EmptyState>
 </template>

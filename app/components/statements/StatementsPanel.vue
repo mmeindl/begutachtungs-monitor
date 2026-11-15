@@ -487,7 +487,7 @@ const showColumnHeader = computed(() =>
         <!-- The states inside the sheet are rows of it (`ListBoxNotice`
              says why not `EmptyState` cards). -->
         <LoadingState v-if="status === 'pending'" label="Stellungnahmen werden geladen …" />
-        <ListBoxNotice v-else-if="status === 'error'" role="alert" title="Stellungnahmen konnten nicht geladen werden">
+        <ListBoxNotice v-else-if="status === 'error'" role="alert" title="Stellungnahmen: gerade nicht abrufbar">
           <template #action>
             <UButton color="primary" @click="execute()">Erneut versuchen</UButton>
           </template>
