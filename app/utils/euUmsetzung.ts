@@ -5,10 +5,14 @@
  *
  * TWO OBSERVATIONS, NEVER A VERDICT (rule D6). A row says what the monitor
  * found (drafts of its own window) and what the country notified to the
- * Commission (a count), each in its own sentence and each with its own
- * „unknown". It says no „umgesetzt", „offen" or „überfällig", carries no
- * colour, and the list is never ordered or counted by what is missing: the
- * order is the deadlines', the count is of directives.
+ * Commission (a count), each in a column of its own, as the draft list
+ * keeps its Stellungnahmen, and each with its own „unknown". Three
+ * conditions keep the columns honest: none is a WORD („keiner", „keine"),
+ * never the digit 0, which would read as a score; unknown is „nicht
+ * gelesen", apart from none; and the columns do not sort — the list is
+ * never ordered or counted by what is missing. It says no „umgesetzt",
+ * „offen" or „überfällig" and carries no colour: the order is the
+ * deadlines', the count is of directives.
  *
  * A notified measure is the Member State's claim — Austria notified laws
  * older than the directive for 42 of 124 directives (15.11.2026) — so the
@@ -25,14 +29,28 @@ import type { EntryState } from './entryView'
 
 export type EuUmsetzungTab = 'laufend' | 'abgelaufen'
 
+/** One observation in its column. */
+export interface EuUmsetzungCell {
+  /** „2", or the word for none („keiner") or for unknown („nicht gelesen"). */
+  value: string
+  /** A number stands in ink; a word in muted ink — said by the word too, never by the tone alone. */
+  counted: boolean
+  /** Under a number of drafts, whose they are: „Bund", „Länder", „Bund 1 · Länder 3". */
+  detail: string | null
+  /** The whole observation for a screen reader and for the card below `md`: „Entwürfe im Monitor: 2 (Bund)". */
+  said: string
+}
+
 export interface EuUmsetzungRowView {
   key: string
   label: string
   path: string
   /** What the official title says after the name and date; null without a title. */
   subject: string | null
-  /** The two observations, each a sentence of its own. */
-  observations: string[]
+  /** What the monitor found: the drafts of its window that implement the directive. */
+  drafts: EuUmsetzungCell
+  /** What the country notified to the Commission. */
+  measures: EuUmsetzungCell
   /** The deadline in the lists' state box: grey on every row, a date and nothing else. */
   state: EntryState
   /** A delegated or implementing directive of the Commission: behind the chip, off by default. */
@@ -49,23 +67,18 @@ const DE = {
   tabsLabel: 'Umsetzungsfrist',
   commissionChip: (n: number) => `Richtlinien der Kommission (${n})`,
   commissionChipHint: 'Delegierte Richtlinien und Durchführungsrichtlinien der Kommission, meist Änderungen technischer Anhänge',
+  column: { directive: 'Richtlinie', drafts: 'Entwürfe', measures: 'Gemeldet', deadline: 'Umsetzungsfrist' },
   drafts: {
-    unknown: 'Die Entwürfe sind noch nicht gelesen.',
-    none: 'Der Monitor hat keinen Entwurf gefunden.',
-    some: (bund: number, laender: number) => {
-      const parts = [
-        ...(bund ? [bund === 1 ? '1 Entwurf des Bundes' : `${bund} Entwürfe des Bundes`] : []),
-        ...(laender ? [laender === 1 ? '1 Entwurf der Länder' : `${laender} Entwürfe der Länder`] : []),
-      ]
-      return `Im Monitor: ${parts.join(' und ')}.`
-    },
+    said: 'Entwürfe im Monitor',
+    unknown: 'nicht gelesen',
+    none: 'keiner',
+    whose: (bund: number, laender: number) => (bund && laender ? `Bund ${bund} · Länder ${laender}` : bund ? 'Bund' : 'Länder'),
   },
   measures: {
-    unknown: 'Die Meldungen an die Kommission konnten nicht gelesen werden.',
-    none: `${EU_MEMBER_STATE_NAME_DE} hat der Kommission bisher keine Maßnahme gemeldet.`,
-    some: (n: number) => (n === 1
-      ? `${EU_MEMBER_STATE_NAME_DE} hat der Kommission 1 Maßnahme gemeldet.`
-      : `${EU_MEMBER_STATE_NAME_DE} hat der Kommission ${n} Maßnahmen gemeldet.`),
+    said: 'Der Kommission gemeldet',
+    unknown: 'nicht gelesen',
+    none: 'keine',
+    some: (n: number) => (n === 1 ? '1 Maßnahme' : `${n} Maßnahmen`),
   },
   state: { label: 'Umsetzungsfrist', detail: (d: string) => `bis ${d}` },
   unread: 'Die Liste der Richtlinien konnte nicht gelesen werden: Der Cellar des Amts für Veröffentlichungen hat nicht geantwortet.',
@@ -78,16 +91,26 @@ export const EU_UMSETZUNG_DE = DE
 
 function rowOf(r: EuUmsetzungRow): EuUmsetzungRowView {
   const subject = euActSubject(r.title)
-  const drafts = r.drafts === null
-    ? DE.drafts.unknown
-    : r.drafts.bund + r.drafts.laender === 0 ? DE.drafts.none : DE.drafts.some(r.drafts.bund, r.drafts.laender)
-  const measures = r.measures === null ? DE.measures.unknown : r.measures === 0 ? DE.measures.none : DE.measures.some(r.measures)
+  const word = (said: string, value: string): EuUmsetzungCell => ({ value, counted: false, detail: null, said: `${said}: ${value}` })
+  const n = r.drafts ? r.drafts.bund + r.drafts.laender : 0
+  const whose = r.drafts && n ? DE.drafts.whose(r.drafts.bund, r.drafts.laender) : null
+  const drafts: EuUmsetzungCell = r.drafts === null
+    ? word(DE.drafts.said, DE.drafts.unknown)
+    : n === 0
+      ? word(DE.drafts.said, DE.drafts.none)
+      : { value: String(n), counted: true, detail: whose, said: `${DE.drafts.said}: ${n} (${whose})` }
+  const measures: EuUmsetzungCell = r.measures === null
+    ? word(DE.measures.said, DE.measures.unknown)
+    : r.measures === 0
+      ? word(DE.measures.said, DE.measures.none)
+      : { value: String(r.measures), counted: true, detail: null, said: `${DE.measures.said}: ${DE.measures.some(r.measures)}` }
   return {
     key: r.celex,
     label: r.label,
     path: r.path,
     subject,
-    observations: [drafts, measures],
+    drafts,
+    measures,
     state: { label: DE.state.label, detail: DE.state.detail(formatDateDe(r.deadline)), tone: 'inactive', actionable: false },
     commission: r.form === 'delegierte-richtlinie' || r.form === 'durchfuehrungsrichtlinie',
     haystack: [r.label, subject ?? '', r.celex].join(' '),

@@ -9,7 +9,10 @@
  * The list box of every list (`ListBox`): the deadline as its tabs, the
  * chip and the search in its tool row, the rows whole links
  * (`EuActRow`'s anatomy), the pager at its foot, the credit line with
- * „Methode" under it. The Commission's delegated and implementing
+ * „Methode" under it. The two observations stand in columns of their own,
+ * where the draft list keeps its Stellungnahmen (`entry-col-count`): a
+ * number, or a word for none and for unknown. The columns do not sort.
+ * Below `md` a row is a card and says each observation in words. The Commission's delegated and implementing
  * directives stay behind a chip that is off: they are a quarter of the
  * list and mostly change technical annexes; the chip says how many there
  * are, so leaving them out is said, not silent.
@@ -96,22 +99,30 @@ const shown = computed(() => (query.value ? rows.value : rows.value.slice(0, vis
             <ListBoxNotice v-else-if="!rows.length" :title="DE.empty(tab)" />
             <template v-else>
               <ColumnHeader class="gap-4 md:flex">
-                <ColumnLabel label="Richtlinie" class="min-w-0 flex-1" />
-                <ColumnLabel label="Umsetzungsfrist" align="end" class="entry-col-state flex justify-end" />
+                <ColumnLabel :label="DE.column.directive" class="min-w-0 flex-1" />
+                <ColumnLabel :label="DE.column.drafts" align="end" class="entry-col-count flex justify-end whitespace-nowrap" />
+                <ColumnLabel :label="DE.column.measures" align="end" class="entry-col-count flex justify-end whitespace-nowrap" />
+                <ColumnLabel :label="DE.column.deadline" align="end" class="entry-col-state flex justify-end" />
               </ColumnHeader>
               <ul role="list" class="divide-y divide-hairline">
                 <li v-for="row in shown" :key="row.key">
-                  <NuxtLink :to="row.path" class="group flex flex-col gap-3 px-4 py-3 hover:bg-hover sm:flex-row sm:items-center sm:gap-4">
+                  <NuxtLink :to="row.path" class="group flex flex-col gap-3 px-4 py-3 hover:bg-hover md:flex-row md:items-center md:gap-4">
                     <div class="min-w-0 flex-1">
                       <h3 class="font-medium text-ink group-hover:underline group-hover:decoration-2">{{ row.label }}</h3>
                       <p v-if="row.subject" class="mt-0.5 text-sm text-ink-secondary">
                         {{ row.subject }}
                       </p>
-                      <p v-for="o in row.observations" :key="o" class="mt-0.5 text-sm text-ink-muted">
-                        {{ o }}
+                      <!-- The card says the observations in words; from `md` the columns carry them. -->
+                      <p v-for="cell in [row.drafts, row.measures]" :key="cell.said" class="mt-0.5 text-sm text-ink-muted md:hidden">
+                        {{ cell.said }}
                       </p>
                     </div>
-                    <div class="flex sm:entry-col-state sm:justify-end">
+                    <div v-for="cell in [row.drafts, row.measures]" :key="cell.said" class="hidden md:entry-col-count md:block">
+                      <span class="sr-only">{{ cell.said }}</span>
+                      <span aria-hidden="true" class="block text-sm tabular-nums" :class="cell.counted ? 'font-medium text-ink' : 'text-ink-muted'">{{ cell.value }}</span>
+                      <span v-if="cell.detail" aria-hidden="true" class="block text-xs text-ink-muted">{{ cell.detail }}</span>
+                    </div>
+                    <div class="flex md:entry-col-state md:justify-end">
                       <EntryState :state="row.state" />
                     </div>
                   </NuxtLink>

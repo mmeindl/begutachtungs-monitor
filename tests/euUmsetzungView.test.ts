@@ -41,16 +41,23 @@ describe('euUmsetzungView', () => {
     expect(v.lede).toContain('zwischen 15.11.2024 und 15.11.2028')
   })
 
-  it('says each observation in a sentence of its own', () => {
+  it('sets each observation in its column: a number, or a word for none', () => {
     const one = (over: Partial<EuUmsetzungRow>) => euUmsetzungView(response([row(over)]), TODAY).tabs!.abgelaufen[0]!
-    expect(one({}).observations).toEqual(['Im Monitor: 1 Entwurf des Bundes.', 'Österreich hat der Kommission bisher keine Maßnahme gemeldet.'])
-    expect(one({ drafts: { bund: 2, laender: 3 }, measures: 118 }).observations).toEqual(['Im Monitor: 2 Entwürfe des Bundes und 3 Entwürfe der Länder.', 'Österreich hat der Kommission 118 Maßnahmen gemeldet.'])
-    expect(one({ drafts: { bund: 0, laender: 0 }, measures: 1 }).observations).toEqual(['Der Monitor hat keinen Entwurf gefunden.', 'Österreich hat der Kommission 1 Maßnahme gemeldet.'])
+    expect(one({}).drafts).toEqual({ value: '1', counted: true, detail: 'Bund', said: 'Entwürfe im Monitor: 1 (Bund)' })
+    // None is a word, never the digit 0.
+    expect(one({}).measures).toEqual({ value: 'keine', counted: false, detail: null, said: 'Der Kommission gemeldet: keine' })
+    expect(one({ drafts: { bund: 2, laender: 3 }, measures: 118 })).toMatchObject({
+      drafts: { value: '5', detail: 'Bund 2 · Länder 3', said: 'Entwürfe im Monitor: 5 (Bund 2 · Länder 3)' },
+      measures: { value: '118', counted: true, said: 'Der Kommission gemeldet: 118 Maßnahmen' },
+    })
+    expect(one({ drafts: { bund: 0, laender: 2 }, measures: 1 })).toMatchObject({ drafts: { value: '2', detail: 'Länder' }, measures: { said: 'Der Kommission gemeldet: 1 Maßnahme' } })
+    expect(one({ drafts: { bund: 0, laender: 0 } }).drafts).toEqual({ value: 'keiner', counted: false, detail: null, said: 'Entwürfe im Monitor: keiner' })
   })
 
   it('keeps „unknown" apart from „none"', () => {
     const r = euUmsetzungView(response([row({ drafts: null, measures: null })]), TODAY).tabs!.abgelaufen[0]!
-    expect(r.observations).toEqual(['Die Entwürfe sind noch nicht gelesen.', 'Die Meldungen an die Kommission konnten nicht gelesen werden.'])
+    expect([r.drafts.value, r.measures.value]).toEqual(['nicht gelesen', 'nicht gelesen'])
+    expect([r.drafts.counted, r.measures.counted]).toEqual([false, false])
     expect(euUmsetzungView(response(null), TODAY)).toMatchObject({ tabs: null, commissionCount: 0 })
   })
 
@@ -67,8 +74,8 @@ describe('euUmsetzungView', () => {
       { label: 'Umsetzungsfrist', detail: 'bis 01.01.2028', tone: 'inactive', actionable: false },
       { label: 'Umsetzungsfrist', detail: 'bis 07.05.2026', tone: 'inactive', actionable: false },
     ])
-    for (const s of all.flatMap((r) => [...r.observations, r.state.label, r.state.detail ?? ''])) {
-      expect(s).not.toMatch(/überfällig|verspätet|säumig|nicht umgesetzt|\bumgesetzt\b|offen|Tage|Monate/i)
+    for (const s of all.flatMap((r) => [r.drafts.said, r.measures.said, r.drafts.value, r.measures.value, r.state.label, r.state.detail ?? ''])) {
+      expect(s).not.toMatch(/überfällig|verspätet|säumig|nicht umgesetzt|\bumgesetzt\b|offen|Tage|Monate|^0$/i)
     }
   })
 })

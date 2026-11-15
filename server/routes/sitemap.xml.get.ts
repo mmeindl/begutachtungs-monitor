@@ -8,7 +8,10 @@
  * as /feed.xml. Referenced from public/robots.txt.
  */
 import { anliegenPath } from '#shared/utils/anliegen'
+import { euActPath, euUmsetzungWindow } from '#shared/utils/eu'
+import { todayIso } from '#shared/utils/format'
 import { gpWindow } from '#shared/utils/gp'
+import { directivesToTranspose } from '../utils/eu/cellarService'
 import { landLawPath } from '#shared/utils/laender'
 import { itemKindOfLawItem, itemPath } from '#shared/utils/procedureRoot'
 import { dedupeDraftList } from '../utils/parliament/draftList'
@@ -19,7 +22,8 @@ const EU_MAP_BUDGET_MS = 2_500
 export default defineEventHandler(async (event) => {
   const siteUrl = useRuntimeConfig(event).public.siteUrl
   const gp = await getCurrentGp()
-  const [{ items }, risOnly, euMap, bundLandMap, bundLaws, landLaws, anliegen, bundesrat] = await Promise.all([
+  const umsetzung = euUmsetzungWindow(todayIso())
+  const [{ items }, risOnly, euMap, bundLandMap, bundLaws, landLaws, anliegen, bundesrat, directives] = await Promise.all([
     getDraftsForGp(gp),
     getRisOnlyForGp(gp),
     withinBudget(getEuMap(gp), EU_MAP_BUDGET_MS),
@@ -34,9 +38,16 @@ export default defineEventHandler(async (event) => {
     withinBudget(getAnliegenForGp(gp), EU_MAP_BUDGET_MS),
     // The Petitionen an den Bundesrat, from their one list-101 read, on the same terms.
     withinBudget(getBundesratPetitions().catch(() => null), EU_MAP_BUDGET_MS),
+    // The directives the Member State has to transpose, also those no draft
+    // names: each has a page since 15.11.2026. Only the list's, not every
+    // directive the Cellar knows — a page costs Cellar queries.
+    withinBudget(directivesToTranspose(umsetzung.from, umsetzung.to), EU_MAP_BUDGET_MS),
   ])
   // Sorted, so the body — and its ETag — does not move with the map's order.
-  const euActPaths = euMap ? Object.values(euMap.acts).map((a) => a.path).sort() : []
+  const euActPaths = [...new Set([
+    ...(euMap ? Object.values(euMap.acts).map((a) => a.path) : []),
+    ...(directives ?? []).flatMap((d) => euActPath(d.celex) ?? []),
+  ])].sort()
   const bundesrechtPaths = bundLandMap ? Object.values(bundLandMap.acts).map((a) => `/bundesrecht/${a.bgbl.year}/${a.bgbl.number}`).sort() : []
   // `active` per request, like everywhere (`risRecord.withRisActiveOn`) —
   // the sitemap does not print it, but no caller may inherit the day the
