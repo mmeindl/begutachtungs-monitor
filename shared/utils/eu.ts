@@ -31,6 +31,13 @@ export const EU_BASE_PATH = '/eu-recht'
  * second country's site changes this line, not a query.
  */
 export const EU_MEMBER_STATE = 'AUT'
+/**
+ * The same Member State as the register of the European Citizens'
+ * Initiative codes it (`countryCodeType`: „AT", and „GR" for Greece, not
+ * „EL"; measured 15.11.2026). Beside the Cellar's code, so a second
+ * country's site changes both lines here and nothing else.
+ */
+export const EU_MEMBER_STATE_ECI = 'AT'
 /** The Member State as a sentence names it. */
 export const EU_MEMBER_STATE_NAME_DE = 'Österreich'
 /**
@@ -133,6 +140,46 @@ export function euProposalAddress(year: string, number: string, today: string): 
 export function euProposalPathOfReference(reference: string | null): string | null {
   const m = reference ? /^COM\s*\(\s*(\d{4})\s*\)\s*(\d{1,4})$/.exec(reference.trim()) : null
   return m ? euProposalPath(Number(m[1]), Number(m[2])) : null
+}
+
+/** The path word of a European Citizens' Initiative (the plan's „The addresses"). */
+export const EU_CITIZENS_INITIATIVE_PATH_WORD = 'buergerinitiative'
+
+/** The first year of the register: Regulation (EU) No 211/2011 applied from 1 April 2012. */
+export const EU_CITIZENS_INITIATIVE_FIRST_YEAR = 2012
+
+/** A register number's own number: one to six digits, no leading zero — the register pads it to six („000002"), the address does not. */
+const CITIZENS_INITIATIVE_NUMBER_RE = /^[1-9]\d{0,5}$/
+
+/**
+ * `/eu-recht/buergerinitiative/2022/2` — a European Citizens' Initiative by
+ * its register number, ECI(2022)000002; null for a year before
+ * `EU_CITIZENS_INITIATIVE_FIRST_YEAR` or of more than four digits, and for a
+ * number outside 1…999999. The address carries no padding.
+ */
+export function euCitizensInitiativePath(year: number, number: number): string | null {
+  if (!Number.isInteger(year) || year < EU_CITIZENS_INITIATIVE_FIRST_YEAR || year > 9999) return null
+  if (!Number.isInteger(number) || !CITIZENS_INITIATIVE_NUMBER_RE.test(String(number))) return null
+  return euPath(EU_CITIZENS_INITIATIVE_PATH_WORD, year, number)
+}
+
+/**
+ * Year and number from the two path segments, or null: a year of four
+ * digits between `EU_CITIZENS_INITIATIVE_FIRST_YEAR` and next year (`today`,
+ * ISO, gives the year), a number of one to six digits without a leading
+ * zero. A padded number („000002", as the register writes it) is null here —
+ * the page answers it 301 to the canonical address, the API 400.
+ */
+export function euCitizensInitiativeAddress(year: string, number: string, today: string): { year: number; number: number } | null {
+  if (!/^\d{4}$/.test(year) || !CITIZENS_INITIATIVE_NUMBER_RE.test(number)) return null
+  const y = Number(year)
+  if (y < EU_CITIZENS_INITIATIVE_FIRST_YEAR || y > Number(today.slice(0, 4)) + 1) return null
+  return { year: y, number: Number(number) }
+}
+
+/** „ECI(2022)000002" — the register's own spelling of the number, for the identity line. */
+export function euCitizensInitiativeReference(year: number, number: number): string {
+  return `ECI(${year})${String(number).padStart(6, '0')}`
 }
 
 const CELEX_LETTER: Record<string, keyof typeof EU_ACT_PATH_WORD> = { L: 'richtlinie', R: 'verordnung', D: 'beschluss', F: 'rahmenbeschluss' }

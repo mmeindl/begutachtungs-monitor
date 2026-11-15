@@ -1,0 +1,178 @@
+{
+ "id": 9186,
+ "comRegNum": "ECI(2026)000009",
+ "status": "ONGOING",
+ "latestUpdateDate": "13/11/2026 00:00",
+ "lastCall": false,
+ "registrationDate": "17/07/2026",
+ "deadline": "13/11/2027",
+ "startCollectionDate": "13/11/2026",
+ "partiallyRegistered": false,
+ "linguisticVersions": [
+  {
+   "original": true,
+   "languageCode": "EN",
+   "title": "All On Board - For your right to citizenship without borders",
+   "objectives": "<p>(Text der Organisatoren, für die Testdaten entfernt)</p>",
+   "annexText": "<p>(Text der Organisatoren, für die Testdaten entfernt)</p>",
+   "treaties": "Articles 21 and 25 (TFEU) (EU citizenship); Articles 43, 53 and 62 (Internal market); Articles 165 and 166 (Education and training)",
+   "supportLink": "https://eci.ec.europa.eu/069/public/?lg=en",
+   "commissionDecision": {
+    "celex": "32026D1870",
+    "url": "http://eur-lex.europa.eu/legal-content/EN/TXT/PDF/?uri=CELEX:32026D1870&from=EN"
+   }
+  },
+  {
+   "original": false,
+   "languageCode": "DE",
+   "title": "Alle dabei – Für Ihr Recht auf eine Bürgerschaft ohne Grenzen",
+   "objectives": "<p>(Text der Organisatoren, für die Testdaten entfernt)</p>",
+   "annexText": "<p>(Text der Organisatoren, für die Testdaten entfernt)</p>",
+   "treaties": "Articles 21 and 25 (TFEU) (EU citizenship); Articles 43, 53 and 62 (Internal market); Articles 165 and 166 (Education and training)",
+   "supportLink": "https://eci.ec.europa.eu/069/public/?lg=de",
+   "commissionDecision": {
+    "celex": "32026D1870",
+    "url": "http://eur-lex.europa.eu/legal-content/DE/TXT/PDF/?uri=CELEX:32026D1870&from=DE"
+   }
+  }
+ ],
+ "categories": [
+  {
+   "categoryType": "EDU"
+  },
+  {
+   "categoryType": "EMPL"
+  },
+  {
+   "categoryType": "JUST"
+  }
+ ],
+ "members": [],
+ "progress": [
+  {
+   "name": "REGISTERED",
+   "active": false,
+   "date": "17/07/2026"
+  },
+  {
+   "name": "ONGOING",
+   "active": true,
+   "date": "13/11/2026"
+  }
+ ],
+ "funding": {},
+ "sosReport": {
+  "totalSignatures": 126,
+  "onlineSosUpdateDate": "15/11/2026 23:05",
+  "entry": [
+   {
+    "countryCodeType": "ES",
+    "total": 6
+   },
+   {
+    "countryCodeType": "LU",
+    "total": 0
+   },
+   {
+    "countryCodeType": "SI",
+    "total": 0
+   },
+   {
+    "countryCodeType": "HU",
+    "total": 0
+   },
+   {
+    "countryCodeType": "LT",
+    "total": 3
+   },
+   {
+    "countryCodeType": "LV",
+    "total": 0
+   },
+   {
+    "countryCodeType": "IE",
+    "total": 1
+   },
+   {
+    "countryCodeType": "HR",
+    "total": 0
+   },
+   {
+    "countryCodeType": "DE",
+    "total": 12
+   },
+   {
+    "countryCodeType": "PL",
+    "total": 4
+   },
+   {
+    "countryCodeType": "GR",
+    "total": 3
+   },
+   {
+    "countryCodeType": "AT",
+    "total": 0
+   },
+   {
+    "countryCodeType": "EE",
+    "total": 1
+   },
+   {
+    "countryCodeType": "NL",
+    "total": 0
+   },
+   {
+    "countryCodeType": "PT",
+    "total": 1
+   },
+   {
+    "countryCodeType": "RO",
+    "total": 40
+   },
+   {
+    "countryCodeType": "FI",
+    "total": 4
+   },
+   {
+    "countryCodeType": "SK",
+    "total": 1
+   },
+   {
+    "countryCodeType": "CY",
+    "total": 0
+   },
+   {
+    "countryCodeType": "DK",
+    "total": 0
+   },
+   {
+    "countryCodeType": "CZ",
+    "total": 1
+   },
+   {
+    "countryCodeType": "BG",
+    "total": 0
+   },
+   {
+    "countryCodeType": "BE",
+    "total": 5
+   },
+   {
+    "countryCodeType": "SE",
+    "total": 1
+   },
+   {
+    "countryCodeType": "FR",
+    "total": 10
+   },
+   {
+    "countryCodeType": "IT",
+    "total": 33
+   },
+   {
+    "countryCodeType": "MT",
+    "total": 0
+   }
+  ]
+ }
+}

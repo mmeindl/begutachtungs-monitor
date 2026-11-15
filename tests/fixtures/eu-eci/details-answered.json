@@ -1,0 +1,258 @@
+{
+ "id": 1979,
+ "comRegNum": "ECI(2022)000002",
+ "status": "ANSWERED",
+ "latestUpdateDate": "07/12/2023 10:51",
+ "lastCall": false,
+ "registrationDate": "16/03/2022",
+ "deadline": "",
+ "startCollectionDate": "18/05/2022",
+ "earlyClosureDate": "01/03/2023",
+ "partiallyRegistered": false,
+ "linguisticVersions": [
+  {
+   "original": true,
+   "languageCode": "EN",
+   "title": "Fur Free Europe",
+   "objectives": "<p>(Text der Organisatoren, für die Testdaten entfernt)</p>",
+   "annexText": "<p>(Text der Organisatoren, für die Testdaten entfernt)</p>",
+   "treaties": "Art. 114 TFEU",
+   "supportLink": "https://furfreeeurope.eu",
+   "commissionDecision": {
+    "celex": "32022D0482",
+    "url": "http://eur-lex.europa.eu/legal-content/EN/TXT/PDF/?uri=CELEX:32022D0482&from=EN"
+   }
+  },
+  {
+   "original": false,
+   "languageCode": "DE",
+   "title": "Fur Free Europe (Pelzfreies Europa)",
+   "objectives": "<p>(Text der Organisatoren, für die Testdaten entfernt)</p>",
+   "annexText": "<p>(Text der Organisatoren, für die Testdaten entfernt)</p>",
+   "supportLink": "https://furfreeeurope.eu",
+   "commissionDecision": {
+    "celex": "32022D0482",
+    "url": "http://eur-lex.europa.eu/legal-content/DE/TXT/PDF/?uri=CELEX:32022D0482&from=DE"
+   }
+  }
+ ],
+ "categories": [
+  {
+   "categoryType": "SANTE"
+  },
+  {
+   "categoryType": "EURO"
+  },
+  {
+   "categoryType": "AGRI"
+  }
+ ],
+ "members": [],
+ "progress": [
+  {
+   "name": "REGISTERED",
+   "active": false,
+   "date": "16/03/2022"
+  },
+  {
+   "name": "SUBMITTED",
+   "active": false,
+   "date": "14/06/2023"
+  },
+  {
+   "name": "CLOSED",
+   "active": false,
+   "date": "01/03/2023",
+   "footnoteType": "COLLECTION_EARLY_CLOSURE"
+  },
+  {
+   "name": "VERIFICATION",
+   "active": false,
+   "date": "13/03/2023"
+  },
+  {
+   "name": "ANSWERED",
+   "active": true,
+   "date": "07/12/2023"
+  },
+  {
+   "name": "COLLECTION_START_DATE",
+   "active": false,
+   "date": "18/05/2022"
+  }
+ ],
+ "funding": {},
+ "submission": {
+  "totalSignatures": 1502319,
+  "entry": [
+   {
+    "countryCodeType": "RO",
+    "total": 23160,
+    "afterSubmission": false
+   },
+   {
+    "countryCodeType": "SK",
+    "total": 34946,
+    "afterSubmission": false
+   },
+   {
+    "countryCodeType": "HU",
+    "total": 6515,
+    "afterSubmission": false
+   },
+   {
+    "countryCodeType": "HR",
+    "total": 9362,
+    "afterSubmission": false
+   },
+   {
+    "countryCodeType": "LU",
+    "total": 1912,
+    "afterSubmission": false
+   },
+   {
+    "countryCodeType": "MT",
+    "total": 4131,
+    "afterSubmission": false
+   },
+   {
+    "countryCodeType": "ES",
+    "total": 32615,
+    "afterSubmission": false
+   },
+   {
+    "countryCodeType": "FI",
+    "total": 82067,
+    "afterSubmission": false
+   },
+   {
+    "countryCodeType": "CY",
+    "total": 603,
+    "afterSubmission": false
+   },
+   {
+    "countryCodeType": "LV",
+    "total": 64162,
+    "afterSubmission": false
+   },
+   {
+    "countryCodeType": "DE",
+    "total": 518534,
+    "afterSubmission": false
+   },
+   {
+    "countryCodeType": "AT",
+    "total": 25136,
+    "afterSubmission": false
+   },
+   {
+    "countryCodeType": "LT",
+    "total": 49650,
+    "afterSubmission": false
+   },
+   {
+    "countryCodeType": "SI",
+    "total": 5536,
+    "afterSubmission": false
+   },
+   {
+    "countryCodeType": "FR",
+    "total": 107672,
+    "afterSubmission": false
+   },
+   {
+    "countryCodeType": "NL",
+    "total": 41122,
+    "afterSubmission": false
+   },
+   {
+    "countryCodeType": "PT",
+    "total": 8395,
+    "afterSubmission": false
+   },
+   {
+    "countryCodeType": "PL",
+    "total": 90919,
+    "afterSubmission": false
+   },
+   {
+    "countryCodeType": "DK",
+    "total": 52178,
+    "afterSubmission": false
+   },
+   {
+    "countryCodeType": "SE",
+    "total": 101645,
+    "afterSubmission": false
+   },
+   {
+    "countryCodeType": "CZ",
+    "total": 31722,
+    "afterSubmission": false
+   },
+   {
+    "countryCodeType": "BG",
+    "total": 71444,
+    "afterSubmission": false
+   },
+   {
+    "countryCodeType": "BE",
+    "total": 27753,
+    "afterSubmission": false
+   },
+   {
+    "countryCodeType": "EE",
+    "total": 5808,
+    "afterSubmission": false
+   },
+   {
+    "countryCodeType": "GR",
+    "total": 16713,
+    "afterSubmission": false
+   },
+   {
+    "countryCodeType": "IT",
+    "total": 83164,
+    "afterSubmission": false
+   },
+   {
+    "countryCodeType": "IE",
+    "total": 5455,
+    "afterSubmission": false
+   }
+  ]
+ },
+ "answer": {
+  "id": 10,
+  "decisionDate": "07/12/2023",
+  "links": [
+   {
+    "defaultLanguageCode": "EN",
+    "defaultName": "COMMUNICATION",
+    "defaultLink": "https://citizens-initiative.europa.eu/sites/default/files/2023-12/C_2023_8362_EN.pdf ",
+    "link": [
+     {
+      "languageCode": "EN",
+      "link": "https://eur-lex.europa.eu/legal-content/EN/TXT/?uri=CELEX:52023XC01559"
+     },
+     {
+      "languageCode": "DE",
+      "link": "https://eur-lex.europa.eu/legal-content/DE/TXT/?uri=CELEX:52023XC01559"
+     }
+    ]
+   },
+   {
+    "defaultLanguageCode": "EN",
+    "defaultName": "PRESS_RELEASE",
+    "defaultLink": "https://ec.europa.eu/commission/presscorner/detail/en/ip_23_6251",
+    "link": []
+   },
+   {
+    "defaultLanguageCode": "EN",
+    "defaultName": "FOLLOW_UP",
+    "defaultLink": "https://citizens-initiative.europa.eu/fur-free-europe",
+    "link": []
+   }
+  ]
+ }
+}

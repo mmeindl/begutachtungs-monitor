@@ -1,0 +1,191 @@
+{
+ "id": 8641,
+ "comRegNum": "ECI(2024)000011",
+ "status": "INSUFFICIENT_SUPPORT",
+ "latestUpdateDate": "16/04/2026 00:00",
+ "lastCall": false,
+ "registrationDate": "11/09/2024",
+ "deadline": "",
+ "startCollectionDate": "14/01/2025",
+ "partiallyRegistered": false,
+ "linguisticVersions": [
+  {
+   "original": true,
+   "languageCode": "EN",
+   "title": "PsychedeliCare",
+   "objectives": "<p>(Text der Organisatoren, für die Testdaten entfernt)</p>",
+   "annexText": "<p>(Text der Organisatoren, für die Testdaten entfernt)</p>",
+   "treaties": "Article 168 TFEU",
+   "supportLink": "https://eci.ec.europa.eu/050/public/?lg=en",
+   "commissionDecision": {
+    "celex": "32024D2488",
+    "url": "http://eur-lex.europa.eu/legal-content/EN/TXT/PDF/?uri=CELEX:32024D2488&from=EN"
+   }
+  },
+  {
+   "original": false,
+   "languageCode": "DE",
+   "title": "PsychedeliCare",
+   "objectives": "<p>(Text der Organisatoren, für die Testdaten entfernt)</p>",
+   "annexText": "<p>(Text der Organisatoren, für die Testdaten entfernt)</p>",
+   "treaties": "Article 168 TFEU",
+   "supportLink": "https://eci.ec.europa.eu/050/public/?lg=de",
+   "commissionDecision": {
+    "celex": "32024D2488",
+    "url": "http://eur-lex.europa.eu/legal-content/DE/TXT/PDF/?uri=CELEX:32024D2488&from=DE"
+   }
+  }
+ ],
+ "categories": [
+  {
+   "categoryType": "SANTE"
+  },
+  {
+   "categoryType": "RSH"
+  }
+ ],
+ "members": [],
+ "progress": [
+  {
+   "name": "REGISTERED",
+   "active": false,
+   "date": "11/09/2024"
+  },
+  {
+   "name": "CLOSED",
+   "active": false,
+   "date": "14/01/2026"
+  },
+  {
+   "name": "INSUFFICIENT_SUPPORT",
+   "active": true,
+   "date": "16/04/2026"
+  },
+  {
+   "name": "ONGOING",
+   "active": false,
+   "date": "14/01/2025"
+  },
+  {
+   "name": "COLLECTION_START_DATE",
+   "active": false,
+   "date": "14/01/2025"
+  }
+ ],
+ "funding": {},
+ "sosReport": {
+  "totalSignatures": 74016,
+  "updateDate": "12/01/2026",
+  "onlineSosUpdateDate": "25/01/2026 20:25",
+  "entry": [
+   {
+    "countryCodeType": "PL",
+    "total": 6790
+   },
+   {
+    "countryCodeType": "AT",
+    "total": 1139
+   },
+   {
+    "countryCodeType": "SI",
+    "total": 528
+   },
+   {
+    "countryCodeType": "GR",
+    "total": 880
+   },
+   {
+    "countryCodeType": "IT",
+    "total": 11485
+   },
+   {
+    "countryCodeType": "LT",
+    "total": 497
+   },
+   {
+    "countryCodeType": "NL",
+    "total": 1207
+   },
+   {
+    "countryCodeType": "LU",
+    "total": 305
+   },
+   {
+    "countryCodeType": "DK",
+    "total": 882
+   },
+   {
+    "countryCodeType": "HR",
+    "total": 1115
+   },
+   {
+    "countryCodeType": "EE",
+    "total": 789
+   },
+   {
+    "countryCodeType": "FR",
+    "total": 28671
+   },
+   {
+    "countryCodeType": "MT",
+    "total": 163
+   },
+   {
+    "countryCodeType": "LV",
+    "total": 312
+   },
+   {
+    "countryCodeType": "BG",
+    "total": 197
+   },
+   {
+    "countryCodeType": "PT",
+    "total": 1373
+   },
+   {
+    "countryCodeType": "SE",
+    "total": 1168
+   },
+   {
+    "countryCodeType": "HU",
+    "total": 662
+   },
+   {
+    "countryCodeType": "CY",
+    "total": 53
+   },
+   {
+    "countryCodeType": "ES",
+    "total": 4103
+   },
+   {
+    "countryCodeType": "CZ",
+    "total": 547
+   },
+   {
+    "countryCodeType": "FI",
+    "total": 909
+   },
+   {
+    "countryCodeType": "BE",
+    "total": 2993
+   },
+   {
+    "countryCodeType": "IE",
+    "total": 1304
+   },
+   {
+    "countryCodeType": "DE",
+    "total": 4800
+   },
+   {
+    "countryCodeType": "RO",
+    "total": 813
+   },
+   {
+    "countryCodeType": "SK",
+    "total": 331
+   }
+  ]
+ }
+}

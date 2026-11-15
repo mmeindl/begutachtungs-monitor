@@ -1,0 +1,185 @@
+{
+ "id": 8026,
+ "comRegNum": "ECI(2023)000003",
+ "status": "WITHDRAWN",
+ "latestUpdateDate": "18/09/2024 21:26",
+ "lastCall": false,
+ "registrationDate": "22/03/2023",
+ "deadline": "",
+ "startCollectionDate": "21/09/2023",
+ "partiallyRegistered": false,
+ "linguisticVersions": [
+  {
+   "original": true,
+   "languageCode": "EN",
+   "title": " End The Horse Slaughter Age",
+   "objectives": "<p>(Text der Organisatoren, für die Testdaten entfernt)</p>",
+   "annexText": "<p>(Text der Organisatoren, für die Testdaten entfernt)</p>",
+   "treaties": "TITLE XV  CONSUMER PROTECTION Art. 169  (ex art. 153 TEC), Agricolture and Protection of consumers TITLE I Art. 4, comma 2, Art. 19  (ex art. 13 TEC), Art. 39  (ex art. 33 TEC). ",
+   "supportLink": "https://eci.ec.europa.eu/033/public/?lg=en",
+   "commissionDecision": {
+    "celex": "32023D0694",
+    "url": "http://eur-lex.europa.eu/legal-content/EN/TXT/PDF/?uri=CELEX:32023D0694&from=EN"
+   }
+  },
+  {
+   "original": false,
+   "languageCode": "DE",
+   "title": "End The Horse Slaughter Age – Schluss mit der Schlachtung von Pferden",
+   "objectives": "<p>(Text der Organisatoren, für die Testdaten entfernt)</p>",
+   "annexText": "<p>(Text der Organisatoren, für die Testdaten entfernt)</p>",
+   "supportLink": "https://eci.ec.europa.eu/033/public/?lg=de",
+   "commissionDecision": {
+    "celex": "32023D0694",
+    "url": "http://eur-lex.europa.eu/legal-content/DE/TXT/PDF/?uri=CELEX:32023D0694&from=DE"
+   }
+  }
+ ],
+ "categories": [
+  {
+   "categoryType": "AGRI"
+  },
+  {
+   "categoryType": "SANTE"
+  }
+ ],
+ "members": [],
+ "progress": [
+  {
+   "name": "REGISTERED",
+   "active": false,
+   "date": "22/03/2023"
+  },
+  {
+   "name": "WITHDRAWN",
+   "active": true,
+   "date": "18/09/2024"
+  },
+  {
+   "name": "ONGOING",
+   "active": false,
+   "date": "21/09/2023"
+  },
+  {
+   "name": "COLLECTION_START_DATE",
+   "active": false,
+   "date": "21/09/2023"
+  }
+ ],
+ "funding": {},
+ "sosReport": {
+  "totalSignatures": 15154,
+  "updateDate": "05/08/2024",
+  "onlineSosUpdateDate": "18/09/2024 21:26",
+  "entry": [
+   {
+    "countryCodeType": "CY",
+    "total": 6
+   },
+   {
+    "countryCodeType": "PT",
+    "total": 83
+   },
+   {
+    "countryCodeType": "GR",
+    "total": 119
+   },
+   {
+    "countryCodeType": "MT",
+    "total": 13
+   },
+   {
+    "countryCodeType": "PL",
+    "total": 3809
+   },
+   {
+    "countryCodeType": "ES",
+    "total": 193
+   },
+   {
+    "countryCodeType": "FI",
+    "total": 81
+   },
+   {
+    "countryCodeType": "SK",
+    "total": 70
+   },
+   {
+    "countryCodeType": "FR",
+    "total": 4130
+   },
+   {
+    "countryCodeType": "NL",
+    "total": 127
+   },
+   {
+    "countryCodeType": "EE",
+    "total": 8
+   },
+   {
+    "countryCodeType": "BE",
+    "total": 182
+   },
+   {
+    "countryCodeType": "HU",
+    "total": 42
+   },
+   {
+    "countryCodeType": "SE",
+    "total": 70
+   },
+   {
+    "countryCodeType": "LT",
+    "total": 1041
+   },
+   {
+    "countryCodeType": "AT",
+    "total": 194
+   },
+   {
+    "countryCodeType": "SI",
+    "total": 44
+   },
+   {
+    "countryCodeType": "HR",
+    "total": 57
+   },
+   {
+    "countryCodeType": "DE",
+    "total": 3312
+   },
+   {
+    "countryCodeType": "BG",
+    "total": 84
+   },
+   {
+    "countryCodeType": "RO",
+    "total": 68
+   },
+   {
+    "countryCodeType": "IE",
+    "total": 68
+   },
+   {
+    "countryCodeType": "IT",
+    "total": 1235
+   },
+   {
+    "countryCodeType": "DK",
+    "total": 45
+   },
+   {
+    "countryCodeType": "LU",
+    "total": 23
+   },
+   {
+    "countryCodeType": "LV",
+    "total": 12
+   },
+   {
+    "countryCodeType": "CZ",
+    "total": 38
+   }
+  ]
+ }
+}

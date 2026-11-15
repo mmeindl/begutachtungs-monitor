@@ -370,6 +370,37 @@ usePageSeo({
             speichert sie nicht.
           </dd>
         </div>
+        <!-- The register of the European Citizens' Initiative (15.11.2026,
+             step 5 of the EU cycle): status, days and counts of an
+             initiative, read from the register's own JSON addresses; the
+             EU's legal notice licenses EU content CC BY 4.0, third parties'
+             rights reserved, logos excluded (checked 14.11.2026). Organisers,
+             funders, logos and the organisers' texts are never read
+             (`server/utils/eu/eciRegister.ts`). -->
+        <div id="imp-buergerinitiative">
+          <dt>
+            Europäische Kommission, Register der Europäischen Bürgerinitiative
+          </dt>
+          <dd>
+            Titel, Stand, die Tage der Registrierung, der Sammlung, der
+            Einreichung und der Antwort, die Zahl der Unterstützungen insgesamt
+            und aus Österreich, die Links zum Sammelsystem und zur Antwort der
+            Kommission, abgefragt vom
+            <ExternalLink
+              href="https://citizens-initiative.europa.eu/_de"
+              class="link-inline"
+            >Register</ExternalLink>. Inhalte der Europäischen Union stehen
+            laut ihrem
+            <ExternalLink
+              href="https://european-union.europa.eu/legal-notice_de"
+              class="link-inline"
+            >rechtlichen Hinweis</ExternalLink> unter CC BY 4.0; der Monitor
+            gibt sie gekürzt und in eigener Darstellung wieder. Namen der
+            Organisatorinnen und Organisatoren und der Geldgeber, Logos sowie
+            die Texte der Initiativen übernimmt der Monitor nicht; er verlinkt
+            das Register.
+          </dd>
+        </div>
         <!-- The Länder since 22.10.2026 (Salzburg, then Wien and
              Oberösterreich the same day; Kärnten and Tirol on 23.10.2026;
              Burgenland, Niederösterreich, Steiermark and Vorarlberg on

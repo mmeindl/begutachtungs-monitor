@@ -437,6 +437,12 @@ export function buildSitemap(
    * portal was not read in time.
    */
   euInitiativePaths: string[] = [],
+  /**
+   * The pages of the European Citizens' Initiatives in collection
+   * (`/eu-recht/buergerinitiative/2026/9`, 15.11.2026); empty where the
+   * register was not read in time.
+   */
+  eciPaths: string[] = [],
 ): string {
   const urls = [
     siteUrl,
@@ -455,6 +461,7 @@ export function buildSitemap(
     `${siteUrl}${ANLIEGEN_PATH}`,
     ...euActPaths.map((path) => `${siteUrl}${path}`),
     ...euInitiativePaths.map((path) => `${siteUrl}${path}`),
+    ...eciPaths.map((path) => `${siteUrl}${path}`),
     ...bundesrechtPaths.map((path) => `${siteUrl}${path}`),
     ...items.map((item) => pageUrl(siteUrl, item)),
     // The same reasoning as for the drafts: searching a Verordnung by name

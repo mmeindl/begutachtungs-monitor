@@ -325,9 +325,10 @@ Against the plan above:
   names officials. The test fixture carries placeholders for them.
 - The types of the attached documents and the Commission's summary
   report are not read yet.
-- The initiative's page is linked as `…/initiatives/<id>_de`; that the
-  application opens it without the title in the address is not verified
-  in a browser.
+- The initiative's page is linked as `…/initiatives/<id>_de`. Opened in
+  a browser on 15.11.2026: the application adds the title to the address
+  itself. A single contribution has a page too
+  (`…/initiatives/<id>/F<number>_de`).
 - The portal's entry is in `impressum.vue` on the branch, from the draft
   below.
 
@@ -485,6 +486,49 @@ the last.
   changed.
 - Impressum: the new entry for the register (draft below).
 
+**Built (15.11.2026)** (the rule in `docs/decisions.md`, „The European
+Citizens' Initiative is an object of its own"): the reader
+(`server/utils/eu/eciRegister.ts`, `ECI_READER_VERSION` 1, fixed lists of
+fields), the service (`eciService.ts`: `eciList`, `eciByNumber` with found /
+unknown on a 404 / not read, `eciOpen`; a pacer of its own for
+`register.eci.ec.europa.eu`, cached a day and served stale a second day,
+`ECI_REGISTER_STALE_S`), the routes `/api/eu-recht/buergerinitiativen` and
+`/api/eu-recht/buergerinitiative/<year>/<nr>`, the page
+`/eu-recht/buergerinitiative/<year>/<nr>` (`app/utils/euBuergerinitiative.ts`),
+the list „Jetzt unterstützbar: Europäische Bürgerinitiativen" on
+`/eu-recht` after the open windows (`EuEciList`, `MethodEuEci`), the
+page-view class `eu-buergerinitiative`, the sitemap (the initiatives in
+collection, from the list alone), `/wege` (the instrument is followed), the
+EU summary on `/datenlage`, and the Impressum entry
+`#imp-buergerinitiative`. Measured on the fixtures of 15.11.2026 (the list
+of 136 and eight initiatives, one per status, organisers, funders, logos and
+texts removed): the `progress` vocabulary, now in `docs/decisions.md`.
+
+Against the plan:
+
+- **Objectives are not read.** The plan named „title and objectives"; the
+  objectives and the annex are the organisers' texts, to which the EU's
+  legal notice reserves third parties' rights, so the page links the
+  register for them. Members, funders and logos are not read, as planned.
+- **No fact store.** Like the portal's initiatives, an initiative's page
+  reads the register again when asked, cached a day; nothing is stored on
+  disk beyond the cache.
+- **„One request per initiative that is collecting or changed"** became one
+  per initiative in collection a day: the list carries no deadline, and
+  `latestUpdateDate` is read but not used to skip a read.
+- **The per-country count is kept for the Member State only,** not for
+  every member state; the page never shows the others.
+- **Not in the feed and calendar:** decision 11 names the portal's windows
+  only. Open for the maintainer.
+
+Checked on 15.11.2026 against the live register: its public page of an
+initiative (`…/initiatives/details/<year>/<6 digits>_de`) opens in a
+browser; an unknown number answers 404; the first request for the list on
+a cold cache took 15 s and carried four of 13 closing days, the rest
+followed in the background within a minute. The reader keeps the count of
+every country, not one Member State's; the page picks the country it
+serves. Not verified: the meaning of `preAnswer` (seen once, ignored).
+
 ### Step 6 — the move to `/eu`, with the rename
 
 Part of the maintainer's dated task for the rename, not of this plan's
@@ -600,7 +644,7 @@ are renumbered. It is a project of its own.
 
 ## The Impressum, as drafts
 
-Each is a proposal for the maintainer. The first is in `impressum.vue` on the branch `feat/eu-zyklus` since 15.11.2026; the other two are in no file.
+Each is a proposal for the maintainer. All three are in `impressum.vue` on the branch `feat/eu-zyklus` since 15.11.2026, each in a wording widened when built (`#imp-eurlex`, `#imp-kommission`, `#imp-buergerinitiative`); the drafts below are the plan's.
 
 - **`#imp-eurlex`, with step 1** — after „das Datum ihres Beschlusses":
   „…, der amtliche Titel und die Fundstelle im Amtsblatt, sowie zum
@@ -656,8 +700,9 @@ else on the page depends on it.
 - The address of an initiative's page on the portal: the script builds it
   from an „initiative path" and the language; whether the number alone
   resolves needs a browser.
-- The labels of the Cellar's 85 event types; the vocabulary of the ECI
-  register's `progress`.
+- The labels of the Cellar's 85 event types. (The vocabulary of the ECI
+  register's `progress` was read on 15.11.2026 over 28 initiatives — ten
+  names; it is in `docs/decisions.md` with step 5.)
 - The key from an act of the Commission to its initiative (the C number),
   and from an adopted act to later initiatives about it.
 - `cdm:dossier_withdrawn-proposal`, and what `OP_DATPRO` as a dossier's

@@ -95,6 +95,14 @@ beforeEach(() => {
     cut: null,
   }))
   vi.stubGlobal('windowsOpenOn', windowsOpenOn)
+  // The register of the European Citizens' Initiative (step 5): one in collection, one answered.
+  vi.stubGlobal('eciList', async () => ({
+    entries: [
+      { year: 2026, number: 9, reference: 'ECI(2026)000009', title: 'Offen', titleIsGerman: true, status: 'ONGOING', supporters: 126, updated: null },
+      { year: 2022, number: 2, reference: 'ECI(2022)000002', title: 'Beantwortet', titleIsGerman: true, status: 'ANSWERED', supporters: 1502319, updated: null },
+    ],
+    counts: { requests: null, registered: null, ongoing: 1, answered: 1, successful: null, all: 2 },
+  }))
 })
 
 afterEach(() => {
@@ -137,6 +145,9 @@ describe('a jointly issued draft', () => {
     // An initiative with an open window has its page; one whose window has closed is not listed.
     expect(count(xml, `<loc>${SITE}/eu-recht/initiative/18953</loc>`)).toBe(1)
     expect(xml).not.toContain('/eu-recht/initiative/17000')
+    // A Citizens' Initiative in collection has its page; one that ended is not listed.
+    expect(count(xml, `<loc>${SITE}/eu-recht/buergerinitiative/2026/9</loc>`)).toBe(1)
+    expect(xml).not.toContain('/eu-recht/buergerinitiative/2022/2')
   })
 
   it('has its calendar file built from the folded row, naming both Ressorts', async () => {

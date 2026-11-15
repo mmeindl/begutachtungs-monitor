@@ -67,7 +67,7 @@ import { deadlineDirection, deadlineOrderDe, deadlineReverseOrderDe, deadlineTab
 usePageSeo({
   title: EU_PAGE_TITLE_DE,
   description:
-    'Wozu die Europäische Kommission gerade Rückmeldungen entgegennimmt, welche Richtlinien der Europäischen Union Österreich umzusetzen hat, was dazu gemeldet ist, und welche Rechtsakte die Entwürfe des Bundes und der Länder umsetzen – mit Fristen und den Entwürfen je Rechtsakt.',
+    'Wozu die Europäische Kommission gerade Rückmeldungen entgegennimmt, welche Europäischen Bürgerinitiativen gerade Unterstützungen sammeln, welche Richtlinien der Europäischen Union Österreich umzusetzen hat, was dazu gemeldet ist, und welche Rechtsakte die Entwürfe des Bundes und der Länder umsetzen – mit Fristen und den Entwürfen je Rechtsakt.',
 })
 
 const { data, status, error, refresh } = useFetch<EuActsResponse>('/api/eu-recht', { lazy: true })
@@ -173,7 +173,8 @@ const [bundItem, eurLexItem] = sourceItemsDe([risSource('Vorblatt'), risSource('
       </h1>
       <p class="mt-2 text-ink-secondary">
         Zuerst, wozu die Europäische Kommission gerade Rückmeldungen
-        entgegennimmt. Dann die Richtlinien der Europäischen Union, die
+        entgegennimmt und welche Europäischen Bürgerinitiativen gerade
+        Unterstützungen sammeln. Dann die Richtlinien der Europäischen Union, die
         umzusetzen sind – auch jene, an denen niemand arbeitet. Darunter jeder
         Rechtsakt, den ein Entwurf
         dieser Gesetzgebungsperiode umsetzt, beim Bund und in den Ländern. Woher
@@ -186,6 +187,11 @@ const [bundItem, eurLexItem] = sourceItemsDe([risSource('Vorblatt'), risSource('
          15.11.2026): the windows open on the Commission's portal. Its own
          fetch and its own states, like the lists below. -->
     <EuFensterList />
+
+    <!-- The other way to take part at EU level now (step 5 of the EU cycle,
+         15.11.2026): the European Citizens' Initiatives in collection, from
+         the Commission's register. Its own fetch and its own states. -->
+    <EuEciList />
 
     <!-- From the directives' side (step 7 of the EU cycle): what has
          to be transposed, whether or not a draft exists. Its own fetch and

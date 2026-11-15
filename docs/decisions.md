@@ -862,6 +862,72 @@ The code names the EU rules D1 to D7; this is where they are defined
     last station is reached and says that its content stands with the
     acts. Visitors read „EUR-Lex", not „Cellar", in every sentence of the
     proposal's page; the source credit keeps the Cellar's full name.
+  - **The European Citizens' Initiative is an object of its own, with a
+    rail of its own** (15.11.2026, step 5, decision 4 of the plan;
+    `server/utils/eu/eciRegister.ts`, `eciService.ts`,
+    `app/utils/euBuergerinitiative.ts`). No field of the register joins an
+    initiative to a legal act, so it is no station of an act and its page
+    links none. Address `/eu-recht/buergerinitiative/<year>/<nr>` by the
+    register number (ECI(2022)000002 → `/2022/2`); a padded number answers
+    301. The register (`register.eci.ec.europa.eu`) is read through a
+    pacer of its own, one request at a time, 2.5 s apart, no retry, each
+    answer cached a day and served stale a second day.
+    - **The rail comes from the register's `progress`,** an unordered list
+      whose active entry equals the status. Measured over 28 initiatives:
+      REGISTERED 28, ONGOING 18, COLLECTION_START_DATE 14, CLOSED 10
+      (COLLECTION_EARLY_CLOSURE on 2), VERIFICATION 7, SUBMITTED 5,
+      ANSWERED 4, WITHDRAWN 3, INSUFFICIENT_SUPPORT 3,
+      INSUFFICIENT_SUPPORT_AFTER_VERIFICATION 2 — ten names; a day was
+      missing on 3 of 94 entries. Stations: „Registrierung", „Sammlung"
+      (begun with ONGOING, CLOSED or any later step), „Prüfung"
+      (VERIFICATION), „Einreichung" (SUBMITTED), „Antwort der Kommission"
+      (ANSWERED or an answer); a later step implies the earlier ones. An
+      initiative that ended otherwise ends on a highlighted station of its
+      own with the register's day, and the stations it can never reach are
+      not drawn: „Zurückgezogen" (WITHDRAWN), „Nicht genug Unterstützungen"
+      (both INSUFFICIENT statuses), worded „laut Register", no judgement.
+      The card's heading is the state: „Registriert", „Sammlung läuft",
+      „Sammlung beendet", „In Prüfung", „Eingereicht", „Von der Kommission
+      beantwortet", „Zurückgezogen", „Nicht genug Unterstützungen laut
+      Register". A step name outside the ten is no station; a „Nicht im
+      Monitor" sentence under the rail names it, and nothing throws.
+    - **The door stands only while the collection runs:** status ONGOING
+      and the register's last day not passed by the Vienna day; it counts
+      the days like a draft's door and leads to the German `supportLink`.
+      No link, no button, and a gap sentence says so. The page does not say
+      who may sign (not verified).
+    - **Never read, into any object:** `members` and `funding` (personal
+      data: names, e-mail addresses), `logo` (excluded by the EU's legal
+      notice), and the organisers' own texts — `objectives`, `annexText`,
+      `website`, documents, draft legal acts — to which the notice reserves
+      third parties' rights; also `categories` and `treaties`. The page
+      links the register for the objectives. A test feeds invented
+      organisers, funders and texts and finds none in the parser's result.
+      Stricter than the plan, which named „title and objectives".
+    - **No threshold.** The register gives the total and the count per
+      Member State, never how many a Member State needs nor whether that
+      number is reached. The reader keeps the count of every country the
+      register lists and knows no country itself; the page shows the total
+      and the number of the country it serves (`EU_MEMBER_STATE_ECI`, the
+      view's `memberState`; a page that serves no country shows none) and
+      says once, in a „Nicht im
+      Monitor" sentence, that it shows no threshold. Rejected: computing the
+      thresholds from the regulation's annex — a second source with its own
+      upkeep, and a „reached" mark would read as a verdict.
+    - **The list „Jetzt unterstützbar" orders by the last day of the
+      collection, soonest first, then by number** — the open windows' rule;
+      never by supporters, which would read as a ranking of what is worth
+      signing. The register's count stands in each row as plain text. The
+      list carries no deadline, so the details of each initiative in
+      collection are read one after the other (about 45 s cold for 13); the
+      endpoint waits 8 s for them after the list, and a row without its day
+      stays, with a „Gerade nicht abrufbar" sentence, never dropped.
+    - **The register's public page of an initiative** (`eciPageUrl`,
+      `…/initiatives/details/<year>/<6 digits>_de`) was opened in a browser
+      on 15.11.2026 for one initiative and resolves. An unknown number
+      answered 404 through the built endpoint the same day.
+    - The deadlines are NOT in `/feed.xml` or `/kalender.ics`: decision 11
+      names the open windows of the portal only; open for the maintainer.
   - **The stand of a proposal: which Cellar flags decide** (15.11.2026,
     step 3, `shared/utils/euVorschlag.ts`, `server/utils/eu/cellarVorschlag.ts`).
     A proposal that left the Commission has a page by its COM number

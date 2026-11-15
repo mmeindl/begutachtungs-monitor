@@ -47,6 +47,7 @@ const KLASSE_NAME: Record<string, string> = {
   // Counted on their own since 15.11.2026.
   'eu-initiative': 'Vorhaben der EU-Kommission (seit 15.11.2026)',
   'eu-vorschlag': 'Vorschläge der EU-Kommission (seit 15.11.2026)',
+  'eu-buergerinitiative': 'Europäische Bürgerinitiativen (seit 15.11.2026)',
   wege: 'Wege',
   datenlage: 'Datenlage',
   'so-funktionierts': 'So funktioniert’s (bis 14.11.2026)',

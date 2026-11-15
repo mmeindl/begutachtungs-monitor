@@ -8,7 +8,7 @@
  * as /feed.xml. Referenced from public/robots.txt.
  */
 import { anliegenPath } from '#shared/utils/anliegen'
-import { euActPath, euInitiativePath, euUmsetzungWindow } from '#shared/utils/eu'
+import { euActPath, euCitizensInitiativePath, euInitiativePath, euUmsetzungWindow } from '#shared/utils/eu'
 import { todayIso } from '#shared/utils/format'
 import { gpWindow } from '#shared/utils/gp'
 import { landLawPath } from '#shared/utils/laender'
@@ -22,7 +22,7 @@ export default defineEventHandler(async (event) => {
   const siteUrl = useRuntimeConfig(event).public.siteUrl
   const gp = await getCurrentGp()
   const umsetzung = euUmsetzungWindow(todayIso())
-  const [{ items }, risOnly, euMap, bundLandMap, bundLaws, landLaws, anliegen, bundesrat, directives, windows] = await Promise.all([
+  const [{ items }, risOnly, euMap, bundLandMap, bundLaws, landLaws, anliegen, bundesrat, directives, windows, eci] = await Promise.all([
     getDraftsForGp(gp),
     getRisOnlyForGp(gp),
     withinBudget(getEuMap(gp), EU_MAP_BUDGET_MS),
@@ -51,6 +51,12 @@ export default defineEventHandler(async (event) => {
     // request. An initiative's page links its proposals' pages.
     // Auto-imported, not imported: the route tests stub it as a global.
     withinBudget(openWindows(), EU_MAP_BUDGET_MS),
+    // The European Citizens' Initiatives in collection (step 5, 15.11.2026),
+    // as the open windows are listed: only those one can support now. The
+    // register's list alone, one cached request — the details, which carry
+    // the last day, are the list's on `/eu-recht` and are not read here.
+    // Auto-imported, not imported, as above.
+    withinBudget(eciList(), EU_MAP_BUDGET_MS),
   ])
   // Sorted, so the body — and its ETag — does not move with the map's order.
   const euActPaths = [...new Set([
@@ -59,6 +65,9 @@ export default defineEventHandler(async (event) => {
   ])].sort()
   const euInitiativePaths = windows
     ? [...new Set(windowsOpenOn(windows.initiatives, todayIso()).flatMap((i) => euInitiativePath(i.id) ?? []))].sort()
+    : []
+  const eciPaths = eci
+    ? [...new Set(eci.entries.filter((e) => e.status === 'ONGOING').flatMap((e) => euCitizensInitiativePath(e.year, e.number) ?? []))].sort()
     : []
   const bundesrechtPaths = bundLandMap ? Object.values(bundLandMap.acts).map((a) => `/bundesrecht/${a.bgbl.year}/${a.bgbl.number}`).sort() : []
   // `active` per request, like everywhere (`risRecord.withRisActiveOn`) —
@@ -69,7 +78,7 @@ export default defineEventHandler(async (event) => {
     ...(landLaws?.items ?? []).map((l) => landLawPath(l.land, l)),
   ].sort()
   const anliegenPaths = [...(anliegen?.entries ?? []), ...(bundesrat ?? [])].map((e) => anliegenPath(e.root)).sort()
-  const body = buildSitemap(siteUrl, dedupeDraftList(items), withRisActiveOn(risOnly.items), euActPaths, bundesrechtPaths, lawPaths, anliegenPaths, euInitiativePaths)
+  const body = buildSitemap(siteUrl, dedupeDraftList(items), withRisActiveOn(risOnly.items), euActPaths, bundesrechtPaths, lawPaths, anliegenPaths, euInitiativePaths, eciPaths)
 
   return respondWithEtag(event, body, 'application/xml; charset=utf-8')
 })

@@ -37,8 +37,15 @@ import { EU_EVENTS, EU_PROCEDURE_TYPES, type EuEventRole } from '#shared/utils/e
 import { EU_PORTAL_STAGE_DE } from '#shared/utils/euPortal'
 import { formatDateDe } from '#shared/utils/format'
 
-/** `ruecknahme` only on a proposal's page: the station a withdrawn proposal ends on, in place of „Amtsblatt" and the last one. */
-export type EuRailStationId = 'konsultation' | 'vorschlag' | 'beschluss' | 'amtsblatt' | 'wirkung' | 'ruecknahme'
+/**
+ * `ruecknahme`: the station a withdrawn proposal ends on, in place of
+ * „Amtsblatt" and the last one — and a withdrawn Citizens' Initiative. The
+ * rest of the second line is the rail of a European Citizens' Initiative
+ * (`euBuergerinitiative.ts`), an object of its own and no station of an act.
+ */
+export type EuRailStationId =
+  | 'konsultation' | 'vorschlag' | 'beschluss' | 'amtsblatt' | 'wirkung' | 'ruecknahme'
+  | 'registrierung' | 'sammlung' | 'pruefung' | 'einreichung' | 'antwort' | 'unterstuetzung'
 
 export interface EuRailStation {
   id: EuRailStationId

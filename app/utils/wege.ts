@@ -590,7 +590,7 @@ export interface WegInstrument {
   /**
    * Where the monitor follows the instrument, inside the site; null where it
    * does not. The portal's consultations since 15.11.2026 (step 3 of the EU
-   * cycle).
+   * cycle), the European Citizens' Initiative since the same day (step 5).
    */
   followed: { label: string; href: string } | null
 }
@@ -620,7 +620,10 @@ export const WEG_INSTRUMENTS: readonly WegInstrument[] = [
   /* Art. 11 Abs. 4 EUV; VO (EU) 2019/788 Art. 3 (one million signatories
    * from a quarter of the member states). Art. 15 Abs. 2: the Commission
    * sets out its conclusions „in einer Mitteilung", with reasons, within six
-   * months. The memo names only the register's API, no page. */
+   * months. The memo names only the register's API, no page.
+   * Followed since 15.11.2026: every initiative in collection is listed on
+   * the EU page (step 5 of the EU cycle), and each initiative has a page
+   * with its own rail. */
   {
     id: 'eu-buergerinitiative',
     level: 'eu',
@@ -630,7 +633,7 @@ export const WEG_INSTRUMENTS: readonly WegInstrument[] = [
     binding: false,
     href: null,
     hrefLabel: null,
-    followed: null,
+    followed: { label: 'Initiativen in der Sammlung im Monitor', href: `${euPath()}#eu-buergerinitiativen` },
   },
   /* Art. 227 AEUV: anyone resident in the Union, on a matter that affects
    * them directly. What follows is not checked in the memo. */

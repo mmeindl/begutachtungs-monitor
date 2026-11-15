@@ -1,0 +1,71 @@
+{
+ "id": 228,
+ "comRegNum": "ECI(2018)000006",
+ "status": "INSUFFICIENT_SUPPORT_AFTER_VERIFICATION",
+ "latestUpdateDate": "18/01/2022 00:00",
+ "lastCall": false,
+ "registrationDate": "02/10/2018",
+ "deadline": "",
+ "startCollectionDate": "02/10/2018",
+ "partiallyRegistered": false,
+ "linguisticVersions": [
+  {
+   "original": true,
+   "languageCode": "EN",
+   "title": "Eat ORIGINal! Unmask your food",
+   "objectives": "<p>(Text der Organisatoren, für die Testdaten entfernt)</p>",
+   "treaties": "Article 169 TFEU",
+   "commissionDecision": {
+    "celex": "32018D1304",
+    "url": "http://eur-lex.europa.eu/legal-content/EN/TXT/PDF/?uri=CELEX:32018D1304&from=EN"
+   }
+  },
+  {
+   "original": false,
+   "languageCode": "DE",
+   "title": "Eat ORIGINal! Unmask your food",
+   "objectives": "<p>(Text der Organisatoren, für die Testdaten entfernt)</p>",
+   "treaties": "Artikel 169 AEUV",
+   "commissionDecision": {
+    "celex": "32018D1304",
+    "url": "http://eur-lex.europa.eu/legal-content/DE/TXT/PDF/?uri=CELEX:32018D1304&from=DE"
+   }
+  }
+ ],
+ "categories": [
+  {
+   "categoryType": "AGRI"
+  },
+  {
+   "categoryType": "SANTE"
+  }
+ ],
+ "members": [],
+ "progress": [
+  {
+   "name": "REGISTERED",
+   "active": false,
+   "date": "02/10/2018"
+  },
+  {
+   "name": "CLOSED",
+   "active": false,
+   "date": "02/10/2019"
+  },
+  {
+   "name": "INSUFFICIENT_SUPPORT_AFTER_VERIFICATION",
+   "active": true,
+   "date": "18/01/2022"
+  },
+  {
+   "name": "VERIFICATION",
+   "active": false
+  },
+  {
+   "name": "COLLECTION_START_DATE",
+   "active": false,
+   "date": "02/10/2018"
+  }
+ ],
+ "funding": {}
+}

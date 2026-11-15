@@ -68,6 +68,18 @@ export const DAY_STALE_S = 60 * 60 * 24
 /** The RIS corpus, 46 pages that change a few times a week: two days, so one missed nightly prewarm never makes a visitor pay for it. */
 export const RIS_CORPUS_STALE_S = 60 * 60 * 48
 
+/**
+ * The register of the European Citizens' Initiative (`eu/eciService.ts`):
+ * its list and an initiative's details, each read a day. Two days, a day
+ * past its day: a running count or a status a day older is still the
+ * register's, and the cold reading of the initiatives in collection — the
+ * list and one request per initiative, 2.5 s apart, about 45 s for the 13 of
+ * 15.11.2026 — is then never a visitor's to wait for after a quiet day. The
+ * day an initiative's collection ends is held against today by the reader of
+ * the list, not by this limit.
+ */
+export const ECI_REGISTER_STALE_S = 60 * 60 * 48
+
 /** What does not move once read — a closed year or period, a letter, a decided Kundmachung: a fortnight, a week past its week. */
 export const SETTLED_STALE_S = 60 * 60 * 24 * 14
 

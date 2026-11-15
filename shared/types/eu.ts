@@ -787,3 +787,123 @@ export interface EuVorschlagResponse {
   /** The consultation behind the proposal on the Commission's portal, by its COM number. */
   consultation: EuConsultation
 }
+
+/* ------------------------------------------------------------------ *
+ * The European Citizens' Initiative (step 5 of the EU cycle)
+ * ------------------------------------------------------------------ */
+
+/**
+ * One entry of the register's `progress`, as read: the step's name in the
+ * register's own word (`REGISTERED`, `COLLECTION_START_DATE`, `ONGOING`,
+ * `CLOSED`, `VERIFICATION`, `SUBMITTED`, `ANSWERED`, `WITHDRAWN`,
+ * `INSUFFICIENT_SUPPORT`, `INSUFFICIENT_SUPPORT_AFTER_VERIFICATION`, or one
+ * the monitor does not know), its day (ISO; null where the register gives
+ * none or none that parses), whether it is the active one, and whether the
+ * register marks the collection's early closure on it.
+ */
+export interface EciProgressStep {
+  name: string
+  date: string | null
+  active: boolean
+  earlyClosure: boolean
+}
+
+/** Statements of support as the register counts them: the total, and the number per country by the register's two-letter code. */
+export interface EciSupport {
+  total: number | null
+  /** Every country the register lists („AT": 25136). The reading knows no country; a page shows the entry of the country it serves (`EU_MEMBER_STATE_ECI`), or none. */
+  byCountry: Record<string, number>
+}
+
+/** One link of the Commission's answer: German where the register has a German one, else its default. */
+export interface EciAnswerLink {
+  kind: 'COMMUNICATION' | 'PRESS_RELEASE' | 'FOLLOW_UP'
+  url: string
+  /** The language of the version linked: `DE` where the register lists a German one, else the default's code (`EN` on every link read); null where it names none. */
+  language: string | null
+}
+
+/**
+ * One initiative of the register, read field by field (`parseEciDetails`):
+ * no organiser, no funder, no logo, none of the organisers' texts.
+ */
+export interface EciInitiative {
+  year: number
+  number: number
+  /** „ECI(2022)000002". */
+  reference: string
+  /** The German title; the original-language one where the register has no German version; null where neither. */
+  title: string | null
+  titleIsGerman: boolean
+  /** The register's status word, as it is. */
+  status: string
+  registered: string | null
+  collectionStart: string | null
+  /** The last day of the collection, ISO; the register gives it only while the initiative is ONGOING. */
+  deadline: string | null
+  earlyClosure: string | null
+  /** In the register's order, which is no order: the view sorts by meaning. */
+  progress: EciProgressStep[]
+  /** The German link to sign; null where none or none that is a web address. */
+  supportLink: string | null
+  /** The Commission's decision to register the initiative on EUR-Lex (German, built from its CELEX); null where none. */
+  registrationDecisionUrl: string | null
+  /** The running count (`sosReport`), with the day the register gives for it. */
+  collected: (EciSupport & { asOf: string | null }) | null
+  /** The count handed in with the initiative (`submission`). */
+  submitted: EciSupport | null
+  /** The Commission's answer: its day and its links. */
+  answer: { date: string | null; links: EciAnswerLink[] } | null
+  /** `latestUpdateDate`, the register's own last change, ISO day. */
+  updated: string | null
+  /** The initiative's public page at the register (`eciPageUrl`; opened in a browser for one initiative, 15.11.2026). */
+  registerUrl: string
+}
+
+/** One entry of the register's list, read field by field (`parseEciList`). */
+export interface EciListEntry {
+  year: number
+  number: number
+  reference: string
+  title: string | null
+  titleIsGerman: boolean
+  status: string
+  /** `totalSupporters`, as the register's list counts it. */
+  supporters: number | null
+  updated: string | null
+}
+
+/** The register's own head counts, as its list answer carries them. */
+export interface EciHeadCounts {
+  requests: number | null
+  registered: number | null
+  ongoing: number | null
+  answered: number | null
+  successful: number | null
+  all: number | null
+}
+
+/** An initiative one can support now, with the day its collection ends where its details were read. */
+export interface EciOpenRow extends EciListEntry {
+  deadline: string | null
+  /** `gelesen`: the details answered; `ausstehend`: still being read (a cold start); `ungelesen`: the register did not answer for them. */
+  details: 'gelesen' | 'ausstehend' | 'ungelesen'
+}
+
+/** GET /api/eu-recht/buergerinitiativen — the initiatives in collection today. */
+export interface EuBuergerinitiativenResponse {
+  /** Null where the register's list could not be read: the page says so, and shows no empty list. */
+  initiatives: EciOpenRow[] | null
+  counts: EciHeadCounts | null
+  /** The register's start page, German, for the sentence when it could not be read. */
+  registerUrl: string
+}
+
+/**
+ * GET /api/eu-recht/buergerinitiative/:year/:number — one initiative, or
+ * the state that it could not be read. A number the register proves
+ * unknown is a 404, not a state.
+ */
+export type EuBuergerinitiativeResponse =
+  | { state: 'gefunden'; initiative: EciInitiative }
+  | { state: 'ungelesen'; year: number; number: number; reference: string; url: string }

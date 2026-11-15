@@ -124,9 +124,12 @@ export interface EuWindowActionView {
   end: string | null
   /** The heading where there is no day to count down to; null otherwise. */
   heading: string | null
-  href: string
+  /** Where the button leads; null where the source names no address — then no button, and `gap` says why. */
+  href: string | null
   label: string
   note: string
+  /** A gap sentence under the note where the button cannot be offered (a Citizens' Initiative whose register entry names no link to sign); absent otherwise. */
+  gap?: string | null
 }
 
 export interface EuInitiativeView {
