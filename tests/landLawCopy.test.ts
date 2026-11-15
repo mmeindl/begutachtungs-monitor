@@ -73,6 +73,6 @@ describe('landFassungFacts', () => {
     const { landFassungFacts } = await import('../app/utils/landLaw')
     const empty = { bgbl: 'LGBl. Nr. 1/2026', laws: [], repealed: [] }
     expect(landFassungFacts(empty, '2026-11-01', '2026-11-10')[0]!.text).toMatch(/noch nicht eingearbeitet/)
-    expect(landFassungFacts(empty, '2020-01-01', '2026-11-10')[0]!.text).toBe('Im RIS ist keine konsolidierte Fassung verzeichnet, die dieses Landesgesetzblatt nennt.')
+    expect(landFassungFacts(empty, '2020-01-01', '2026-11-10')[0]!.text).toBe('Nicht veröffentlicht: Eine konsolidierte Fassung, die dieses Landesgesetzblatt nennt, verzeichnet das RIS nicht.')
   })
 })

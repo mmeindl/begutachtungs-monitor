@@ -51,7 +51,7 @@ import { isScanned } from './tableCells'
  * background about the procedure and stands on
  * /so-funktionierts#gegenueberstellung.
  */
-export const NO_ANNEX = 'Zu diesem Entwurf gibt es keine Textgegenüberstellung.'
+export const NO_ANNEX = gapDe('notPublished', 'Eine Textgegenüberstellung hat das Ressort zu diesem Entwurf nicht veröffentlicht.')
 
 /**
  * The annex on Parliament's own document list for this ME, in the formats it

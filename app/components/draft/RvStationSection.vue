@@ -264,7 +264,7 @@ const sources = computed(() =>
              Initiativantrag was matched, or for „genannt" why no
              comparison follows. -->
         <div v-if="!draft.enactment && !draft.active && (view.context || draft.antragPath)" class="mt-4 space-y-2">
-          <p v-if="view.context" class="text-sm text-ink-secondary">{{ view.context }}</p>
+          <GapNote v-if="view.context" :text="view.context" class="text-sm text-ink-secondary" />
           <AntragPathNote
             v-if="draft.antragPath"
             :path="draft.antragPath"

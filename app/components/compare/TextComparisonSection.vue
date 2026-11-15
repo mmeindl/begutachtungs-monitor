@@ -401,9 +401,10 @@ function withheldReason(cause: AnnexWithheldCause | null): string {
       </p>
       <!-- The layer below the annex goes with it, and the page says so
            (26.10.2026): the draft amends §§ we could have read, but nobody
-           confirms our reading of them (`kein-anhang`). -->
+           confirms our reading of them (`kein-anhang`). A consequence of
+           the gap above, so no lead word of its own (`shared/utils/gaps.ts`). -->
       <p v-if="(consolidated?.touched ?? 0) > 0" class="mt-2 text-xs text-ink-muted">
-        Ganze Paragraphen danach zeigen wir deshalb auch nicht: Ohne Gegenüberstellung bestätigt niemand unser Ergebnis.
+        Ganze Paragraphen danach zeigt der Monitor deshalb auch nicht: Ohne Gegenüberstellung bestätigt niemand sein Ergebnis.
       </p>
     </template>
 

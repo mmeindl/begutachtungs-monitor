@@ -874,7 +874,9 @@ not yet followed, or the EU cycle, starts there.
   abrufbar". One verb for a failed request, never „derzeit", „verfügbar" or
   „gerade nicht lesbar"; gap sentences say „der Monitor", not „wir". A state
   of the procedure („noch keine Regierungsvorlage", „Beschlossen – nicht
-  kundgemacht") is no gap and takes none. A record that lists no document
+  kundgemacht") is no gap and takes none, nor does a sentence that follows
+  from a gap already named („Ganze Paragraphen danach zeigt der Monitor
+  deshalb auch nicht …"). A record that lists no document
   proves no absence: a missing Erläuterungen document is „Nicht lesbar",
   never „Nicht veröffentlicht". Kept apart on purpose: the verification
   check's own leads („Nicht geprüft:", „Nicht gezeigt:"), the per-change

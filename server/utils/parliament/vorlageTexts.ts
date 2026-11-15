@@ -14,6 +14,7 @@
  * template (it parses to no rows), and its Begründung stands inside the
  * Initiativantrag document — both open experiments, not approximated.
  */
+import { gapDe } from '#shared/utils/gaps'
 import type { ExplanationsResponse, TextComparisonResponse, TraceLink } from '#shared/types'
 import { rootKey } from '#shared/utils/procedureRoot'
 import { parliamentAnnex } from '../annex/annexSource'
@@ -60,7 +61,7 @@ export const getVorlageTextComparison = defineCachedFunction(
     const twoColumns = parlDion ? parlDionTwoColumns(html) : html
     const parsed = twoColumns ? parseTextComparison(twoColumns, draft.articles) : null
     if (!parsed || parsed.rows.length === 0) {
-      return emptyComparison(who, `Die Textgegenüberstellung ${what} ließ sich nicht auslesen.`, null, annex.pdf)
+      return emptyComparison(who, gapDe('unreadable', `Die Textgegenüberstellung ${what} ließ sich nicht auslesen.`), null, annex.pdf)
     }
     const source = parlDion ? { label: 'Textgegenüberstellung (Arbeitsdokument ParlDion)', url: annex.html.url } : annex.html
     const asOf = detail.content?.einlangen?.slice(0, 10) ?? ''

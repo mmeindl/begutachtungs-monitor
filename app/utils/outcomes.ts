@@ -13,6 +13,7 @@
  * never a verdict. "4 von 61" says how likely a late Regierungsvorlage is;
  * it does not say the draft failed.
  */
+import { gapDe } from '#shared/utils/gaps'
 import type { DraftDetail, NamedInRv } from '#shared/types'
 import { noRvVerdictDe } from './deadlines'
 import { RV_LATENCY_CONTEXT_DAYS } from '#shared/utils/rvLatency'
@@ -308,8 +309,8 @@ export function namedInRvSourceDe(n: NamedInRv): string {
  */
 export function namedInRvNoComparisonDe(n: NamedInRv): string {
   const k = n.linkedDrafts.length
-  if (k === 0) return 'Einen Paragraphenvergleich zeigen wir hier nicht, weil nicht belegt ist, welcher Teil der Vorlage auf diesen Entwurf zurückgeht.'
-  return `Einen Paragraphenvergleich zeigen wir hier nicht, weil die Vorlage auch den Inhalt ${k === 1 ? 'des anderen Entwurfs' : 'der anderen Entwürfe'} enthält.`
+  if (k === 0) return gapDe('outOfScope', 'ein Paragraphenvergleich zu diesem Entwurf. Nicht belegt ist, welcher Teil der Vorlage auf ihn zurückgeht.')
+  return gapDe('outOfScope', `ein Paragraphenvergleich zu diesem Entwurf. Die Vorlage enthält auch den Inhalt ${k === 1 ? 'des anderen Entwurfs' : 'der anderen Entwürfe'}.`)
 }
 
 /** What the ME→RV comparison has delivered so far — the values of

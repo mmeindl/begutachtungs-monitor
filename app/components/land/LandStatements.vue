@@ -87,16 +87,12 @@ const { visible, shown, more, all: showAll } = usePagedList(filtered, STATEMENT_
 
 <template>
   <PageSubsection heading="Stellungnahmen">
-    <p v-if="statementsGap" class="text-sm text-ink-secondary">
-      {{ statementsGap }}
-    </p>
-    <p v-else-if="statements === null" class="text-sm text-ink-secondary">
-      <template v-if="statementsUrl">
-        Gerade nicht abrufbar –
-        <ExternalLink :href="statementsUrl" class="link-inline font-medium">beim Land nachsehen</ExternalLink>.
-      </template>
-      <template v-else>Das Land veröffentlicht zu diesem Entwurf keine Stellungnahmen.</template>
-    </p>
+    <GapNote v-if="statementsGap" :text="statementsGap" class="text-sm text-ink-secondary" />
+    <GapNote v-else-if="statements === null && statementsUrl" kind="unavailable" class="text-sm text-ink-secondary">
+      die Stellungnahmen –
+      <ExternalLink :href="statementsUrl" class="link-inline font-medium">beim Land nachsehen</ExternalLink>.
+    </GapNote>
+    <GapNote v-else-if="statements === null" kind="notPublished" text="Stellungnahmen zu diesem Entwurf veröffentlicht das Land nicht." class="text-sm text-ink-secondary" />
     <p v-else-if="!statements.length" class="text-sm text-ink-secondary">
       <template v-if="active">Bisher keine veröffentlicht.</template>
       <template v-else>Das Land hat zu diesem Entwurf keine Stellungnahmen veröffentlicht.</template>

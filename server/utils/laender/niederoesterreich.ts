@@ -23,6 +23,7 @@
  * must carry its title and „Bürgerbegutachtung bis …" — any other page of
  * the Land's site under the same path is no draft (404, never a page).
  */
+import { gapDe } from '#shared/utils/gaps'
 import type { LandConsultation, LandDocument } from '#shared/types'
 import { safeExternalUrl } from '#shared/utils/safeExternalUrl'
 import { decodeEntities } from '../parliament/htmlText'
@@ -41,7 +42,7 @@ export const NOE_NUMBER_RE = /^[A-Za-z0-9][A-Za-z0-9_().-]{2,119}$/
 
 export const NOE_RETENTION = 'Das Land Niederösterreich zeigt einen Entwurf nur, solange seine Begutachtung läuft.'
 
-export const NOE_STATEMENTS_GAP = 'Das Land veröffentlicht die Stellungnahmen auf der Website des NÖ Landtags, beim Gegenstand, zu dem der Entwurf dort wird. Die Seite des Landes verknüpft den Entwurf nicht mit diesem Gegenstand; deshalb zeigt der Monitor sie hier nicht.'
+export const NOE_STATEMENTS_GAP = gapDe('outOfScope', 'die Stellungnahmen zu diesem Entwurf. Das Land veröffentlicht sie auf der Website des NÖ Landtags, beim Gegenstand, zu dem der Entwurf dort wird; seine eigene Seite verknüpft den Entwurf nicht mit diesem Gegenstand.')
 
 export function noeDraftUrl(number: string): string {
   return `${DIR}${number}.html`

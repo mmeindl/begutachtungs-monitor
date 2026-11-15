@@ -320,7 +320,7 @@ describe('rvStationView', () => {
     expect(v.named).toBe(named298)
     expect(v.noRvVerdict).toBeNull()
     // The one sentence under the frame: why no comparison follows.
-    expect(v.context).toBe('Einen Paragraphenvergleich zeigen wir hier nicht, weil die Vorlage auch den Inhalt des anderen Entwurfs enthält.')
+    expect(v.context).toBe('Nicht im Monitor: ein Paragraphenvergleich zu diesem Entwurf. Die Vorlage enthält auch den Inhalt des anderen Entwurfs.')
     expect(v.noRvBaseRate).toBeNull()
     // The quote and the linked draft are rows; no „Beim Ressort": the draft
     // is not waiting there any more.
@@ -339,13 +339,13 @@ describe('rvStationView', () => {
   })
 
   it('words the gap and the onward row by the drafts Parliament links the Vorlage to', () => {
-    expect(namedInRvNoComparisonDe(named298)).toBe('Einen Paragraphenvergleich zeigen wir hier nicht, weil die Vorlage auch den Inhalt des anderen Entwurfs enthält.')
+    expect(namedInRvNoComparisonDe(named298)).toBe('Nicht im Monitor: ein Paragraphenvergleich zu diesem Entwurf. Die Vorlage enthält auch den Inhalt des anderen Entwurfs.')
     const second = { ...named298.linkedDrafts[0]!, inr: 55, citation: '55/ME' }
     expect(namedInRvNoComparisonDe({ ...named298, linkedDrafts: [...named298.linkedDrafts, second] }))
-      .toBe('Einen Paragraphenvergleich zeigen wir hier nicht, weil die Vorlage auch den Inhalt der anderen Entwürfe enthält.')
+      .toBe('Nicht im Monitor: ein Paragraphenvergleich zu diesem Entwurf. Die Vorlage enthält auch den Inhalt der anderen Entwürfe.')
     // Linked to none: no other draft is named, and the row links the Vorlage.
     const none = { ...named298, linkedDrafts: [] }
-    expect(namedInRvNoComparisonDe(none)).toBe('Einen Paragraphenvergleich zeigen wir hier nicht, weil nicht belegt ist, welcher Teil der Vorlage auf diesen Entwurf zurückgeht.')
+    expect(namedInRvNoComparisonDe(none)).toBe('Nicht im Monitor: ein Paragraphenvergleich zu diesem Entwurf. Nicht belegt ist, welcher Teil der Vorlage auf ihn zurückgeht.')
     const v = rvStationView(draft({ deadline: daysAgo(400), namedInRv: none }), NOTHING)
     expect(v.facts.at(-1)).toEqual({ key: 'weiter', title: 'Weiterer Verlauf' })
   })

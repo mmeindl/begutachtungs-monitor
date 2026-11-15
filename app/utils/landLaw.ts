@@ -9,7 +9,7 @@
  * as prominent as the rest — a Vorlage that reports its Begutachtung is an
  * ordinary, ink station.
  */
-import { gapLabelDe } from '#shared/utils/gaps'
+import { gapDe, gapLabelDe } from '#shared/utils/gaps'
 import type { BgblLawsResponse, LandCode, LandLaw } from '#shared/types'
 import { fassungFacts, type FassungFact } from './geltendeFassung'
 
@@ -85,6 +85,6 @@ export function landFassungFacts(fassung: BgblLawsResponse | null | undefined, k
   const facts = fassungFacts(fassung, 'Gesetze')
   const old = kundgemacht !== null && Date.parse(today) - Date.parse(kundgemacht) > CONSOLIDATION_DAYS * 86_400_000
   return facts.map((f) => (f.key === 'fassung' && f.text && old
-    ? { ...f, text: 'Im RIS ist keine konsolidierte Fassung verzeichnet, die dieses Landesgesetzblatt nennt.' }
+    ? { ...f, text: gapDe('notPublished', 'Eine konsolidierte Fassung, die dieses Landesgesetzblatt nennt, verzeichnet das RIS nicht.') }
     : f))
 }
