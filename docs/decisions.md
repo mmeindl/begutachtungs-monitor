@@ -682,6 +682,48 @@ The code names the EU rules D1 to D7; this is where they are defined
   homepage's window onto the map („EU-Recht in der Begutachtung") and the
   list's link to it (`EuMapLink`) are gone; the list's filter „Setzt
   EU-Recht um" stays — it combines with the other filters, it is no door.
+- **An EU act has a rail of its own, read from the Cellar** (15.11.2026,
+  `server/utils/eu/cellarDossier.ts`, `app/utils/euRail.ts`; facts in
+  `docs/research/eu-zyklus.md`, plan in
+  `docs/research/umsetzungsplan-eu-zyklus.md`). Its stations are „Vorschlag",
+  the station of who decided, „Amtsblatt", and „Umsetzung" (directive,
+  framework decision) or „Geltung" (regulation, decision); „Konsultation"
+  joins in front once the Commission's portal is read. The five national
+  stations are untouched.
+  - **The third station is named from the act's authors in the Cellar,**
+    not from a table of procedure types: Parliament and Council → „Parlament
+    und Rat", the Council alone → „Rat" (measured: all 27 such acts, under
+    four procedure types), the Commission → no such station and no
+    „Vorschlag", with the sentence that the Cellar records no procedure
+    between the institutions for it.
+  - **Only steps on the allowlist are shown** (`shared/utils/euEvents.ts`,
+    31 of the 85 types on the map's dossiers, old and new vocabulary), under
+    the Cellar's own German label. Every other step is counted on the page,
+    never taken for „did not happen".
+  - **The proposal's day is the document's own** (`work_date_document`),
+    which the Legislative Observatory also gives; the Cellar's adoption step
+    is dated a day later in the sample.
+  - **Dates, no durations** (D6 carries over): no time between two steps, no
+    word on whether a deadline has passed. A test holds every string of the
+    rail to that.
+  - **„in Kraft" is the Cellar's date typed EV, „gilt" the one typed MA that
+    is not partial, „wirksam" the one typed PE** (what a Beschluss carries).
+    „gilt unmittelbar in jedem Mitgliedstaat" stands on a regulation only
+    (Art. 288 AEUV).
+  - **A gap names its reason:** the Cellar did not answer; the Cellar links
+    the act to no procedure; the procedure names no proposal; the procedure
+    records no decision of Parliament or Council the monitor reads.
+  - **The Legislative Observatory is linked by rule, not by lookup:**
+    procedures from 1994 on, of type COD, CNS or APP; the link says that the
+    page is English, and it is built from the procedure number, never
+    fetched. Open: three procedures the Observatory split into files „A" and
+    „B" answer 404 under their plain number (see the figures); the Cellar
+    does not carry the letter.
+  - **The rail adds nothing to the map's build.** One Cellar query per act,
+    asked when the act's page is, beside the Amtsblatt reference and cached
+    a month like it. No prewarm line, no stored file.
+  - **Every EU address is built by `euPath`** (`shared/utils/eu.ts`) below
+    one base, `/eu-recht` until the rename moves the acts to `/eu`.
 
 ### Routes to a norm, and what the monitor follows
 
@@ -1260,6 +1302,14 @@ circular of 10.12.2015).
 | Länder drafts that carry out something federal | about 7 % | 489 drafts · 06.11.2026 (§12.66) |
 | The same, by kind | 20 carry out a Grundsatzgesetz, 21 an agreement under Art. 15a B-VG, 37 either (4 both); 4 drafts unread | the same 489 drafts, counted again offline · 15.11.2026 |
 | Deadline stated in the Land draft | 2 of about 35 | same |
+| EU acts of the map by who adopted them | Parliament and Council 167, Council 27, Commission 41 | 235 acts · 15.11.2026 |
+| EU acts with a procedure in the Cellar / with its number / with a dated proposal | 212 / 188 / 191 | same |
+| Acts of Parliament or Council the Cellar links to no procedure | 2 (Verordnung 1182/71, Richtlinie (EU) 2024/825) | same |
+| Procedures with no decision of Parliament or Council on record | 1 (2023/0077(COD), two acts) | same |
+| Regulations with a typed day of application / with partial days | 38 / 30 of 68 | same |
+| Decisions typed „Wirksamwerden" instead of an entry into force | 12 of 13 | same |
+| Procedure numbers with a page in the Legislative Observatory | 180 of 187; of the 181 the rule links, 178 (dead: 2016/0224(COD), 2018/0063(COD), 2023/0077(COD), split into files A and B) | every number of the map, one request each · 15.11.2026 |
+| Rail against the Legislative Observatory: proposal, Parliament, Council, signature | identical in 15 of 18 procedures with a page; in 3 the difference has a named reason (Council position adopted a day before the Observatory dates its publication; an act on two procedures; a consent procedure whose „proposal" the Observatory dates later); 2 of 20 have no page | 20 acts across six procedure types · 15.11.2026 |
 | Land Textgegenüberstellung, right column found in the draft | 550 of 550 judgeable §§ | 63 documents, Oberösterreich, Salzburg, Tirol, Wien, 1,156 §§ shown, GP XXVIII · 12.11.2026 |
 | The same check under fault injection, caught | another § of the same draft appended 57.8 % (315/545), another draft's sentence 76.4 % (420/550); by design none of a number changed, one word swapped, a sentence dropped (0 of 474 / 549 / 336) | same |
 

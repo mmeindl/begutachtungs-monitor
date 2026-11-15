@@ -132,12 +132,23 @@ const OEIL_PROCEDURE = 'https://oeil.europarl.europa.eu/oeil/en/procedure-file?r
 /**
  * Where the Legislative Observatory can be expected to have a page. Its
  * German path answers with the English page anyway, so the link is built
- * with `/en/`; procedures from before 1994 and some types have no page at
- * all — 1990/0292(SYN), 2013/0033(NLE), 1992/0412(COD) and 1988/1016(CNS)
- * answer 404. Both constants come from a measurement of 15.11.2026 that is
- * still being completed and may move. Outside them no link is built, and
- * the page says nothing about the Observatory: the procedure number stays
- * a fact of its own.
+ * with `/en/`. Measured on 15.11.2026 over all 187 procedure numbers of the
+ * map's acts, one request each: procedures from before 1994 have no page
+ * (1988/1016(CNS), 1990/0292(SYN), 1992/0412(COD)), nor has 2013/0033(NLE);
+ * of the two procedures of type SYN and NLE that do have one, the rule
+ * gives up the link (1996/0276(SYN), 2011/0254(NLE)) rather than promise a
+ * page by type. Outside the rule no link is built and the page says nothing
+ * about the Observatory: the procedure number stays a fact of its own.
+ *
+ * KNOWN DEFECT, NOT SOLVED HERE: 178 of the 181 numbers the rule links
+ * have a page. The other three — 2016/0224(COD), 2018/0063(COD),
+ * 2023/0077(COD), four acts of the map — answer 404, because the
+ * Observatory split each into files „A" and „B" („2016/0224A(COD)" exists)
+ * and the Cellar carries the number without the letter. Nothing the Cellar
+ * says tells a split procedure from another. The European Parliament's
+ * documented open-data API knows the procedure under its plain number
+ * (`/procedures/2016-0224` answers); asking it is a new source and belongs
+ * to the step that states it in the Impressum.
  */
 export const OBSERVATORY_FIRST_YEAR = 1994
 export const OBSERVATORY_TYPES: readonly string[] = ['COD', 'CNS', 'APP']
