@@ -1,0 +1,5 @@
+
+{ "head": { "link": [], "vars": ["k", "a", "b", "c", "d", "e", "f"] },
+  "results": { "distinct": false, "ordered": true, "bindings": [
+    { "k": { "type": "literal", "value": "author" }	, "a": { "type": "uri", "value": "http://publications.europa.eu/resource/authority/corporate-body/COM" }},
+    { "k": { "type": "literal", "value": "force" }	, "a": { "type": "literal", "datatype": "http://www.w3.org/2001/XMLSchema#date", "value": "2009-08-22" }	, "b": { "type": "literal", "value": "{EV|http://publications.europa.eu/resource/authority/fd_335/EV}" }	, "c": { "type": "literal", "value": "{DATPUB|http://publications.europa.eu/resource/authority/fd_335/DATPUB} + 7 {V|http://publications.europa.eu/resource/authority/fd_335/V} {ART|http://publications.europa.eu/resource/authority/fd_335/ART} 3" }} ] } }

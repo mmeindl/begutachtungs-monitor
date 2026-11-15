@@ -202,6 +202,90 @@ export type EuOjReference =
   | { form: 'issue'; series: 'L' | 'C'; issue: string; date: string; page: number | null }
   | { form: 'act'; series: 'L' | 'C'; act: string; date: string }
 
+// ---------------------------------------------------------------------------
+// The act's own procedure: what the Cellar records between the Commission's
+// proposal and the Official Journal (docs/research/eu-zyklus.md, 2.1)
+// ---------------------------------------------------------------------------
+
+/**
+ * One step of an act's procedure as the Cellar records it. Only steps whose
+ * type the monitor reads (`EU_EVENTS`, `shared/utils/euEvents.ts`) are ever
+ * put into one; a type that is not on that list is counted
+ * (`EuProcedure.otherEvents`), never shown and never taken for „did not
+ * happen".
+ */
+export interface EuProcedureEvent {
+  /** The Cellar's event type, „ADP_R1_POS_byEP" — the key into `EU_EVENTS`. */
+  code: string
+  /** The day, ISO. A step the Cellar does not date is not kept. */
+  date: string
+}
+
+/** The Commission's proposal a procedure began with. */
+export interface EuProposal {
+  /** „COM(2022) 177", „COM(1995) 722 - 3" — as cited; null where the dossier names no COM document. */
+  reference: string | null
+  /** „52022PC0177"; null where the Cellar links none. */
+  celex: string | null
+  /** The day on the proposal itself (the Cellar's `work_date_document`), ISO; null where unknown. */
+  date: string | null
+  /** The proposal on EUR-Lex, German; built from the CELEX, never fetched. Null without one. */
+  eurLexUrl: string | null
+}
+
+/**
+ * The procedure between the institutions, read from the act's dossier(s) in
+ * the Cellar. One act can hang on two dossiers (Richtlinie 2000/29/EG): then
+ * both proposals stand here and the steps of both, in date order.
+ */
+export interface EuProcedure {
+  /** „2022/0117(COD)"; null where the dossier carries no procedure number. Of the first dossier where there are two. */
+  reference: string | null
+  /** The Cellar's procedure type, „OLP", „COD", „CNS" …; null where it names none. */
+  type: string | null
+  /** The procedure in the European Parliament's Legislative Observatory — built from `reference`, never fetched. */
+  observatoryUrl: string | null
+  proposals: EuProposal[]
+  /** The steps the monitor reads, ascending by day, each (code, day) once. */
+  events: EuProcedureEvent[]
+  /** How many more steps the Cellar records whose type the monitor does not read. */
+  otherEvents: number
+}
+
+/**
+ * Who adopted the act, from its authors in the Cellar — the name of the
+ * rail's third station is read from this, not from a table of procedure
+ * types: Parliament and Council together, the Council alone, or the
+ * Commission (a delegated or implementing act, which has no procedure
+ * between the institutions). `unbekannt` where the authors are none of
+ * these.
+ */
+export type EuAdoptedBy = 'parlament-rat' | 'rat' | 'kommission' | 'unbekannt'
+
+/**
+ * What the act's page needs for its rail beyond the map's head: who
+ * adopted it, the procedure, and since when it is in force and applies.
+ * Dates and identifiers, never a duration (rule D6).
+ */
+export interface EuActRail {
+  adoptedBy: EuAdoptedBy
+  /**
+   * Null where the Cellar links the act to no dossier — for an act of the
+   * Commission the expected answer, for any other a gap the page names.
+   */
+  procedure: EuProcedure | null
+  /** The day the act entered into force (the Cellar's date typed „EV"), ISO; null where it types none. */
+  inForce: string | null
+  /**
+   * The day the act as a whole starts to apply, where the Cellar types one
+   * (a date typed „MA" that is not marked partial); null where it does not.
+   * Often later than `inForce` for a regulation.
+   */
+  applies: string | null
+  /** Days from which single provisions apply (typed „MA", marked partial), ascending. */
+  partialApplication: string[]
+}
+
 /**
  * GET /api/eu-recht/akte/:celex — one act, every draft of the window that
  * names it. Null `builtAt` never occurs here: without a map the endpoint
@@ -227,6 +311,12 @@ export interface EuActResponse {
    */
   oj: EuOjReference | null
   eli: string | null
+  /**
+   * The act's procedure and dates for the rail. Null where the Cellar did
+   * not answer: the page then says the procedure could not be read, never
+   * that there was none.
+   */
+  rail: EuActRail | null
   /**
    * Publishers the last build could not read whole — their drafts may be
    * missing from every list on this page. Said on the page, never hidden.

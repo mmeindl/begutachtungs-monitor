@@ -39,6 +39,7 @@ export default defineEventHandler(async (event): Promise<EuActResponse> => {
     incomplete: map.incomplete,
     oj: published?.oj ?? null,
     eli: published?.eli ?? null,
+    rail: null,
   }
 })
 
