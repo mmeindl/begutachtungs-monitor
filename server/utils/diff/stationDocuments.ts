@@ -5,7 +5,7 @@
  * Named apart from `shared/utils/lawStations.ts`, which holds the station
  * vocabulary both runtimes share; this one resolves the documents.
  */
-import type { DraftDocument, LawStationId, ProcedureItemType } from '#shared/types'
+import type { DraftDocument, LawStationId, ProcedureItemType, TreatyKind } from '#shared/types'
 import { meTextTitleRank, type FirstTextName } from '#shared/utils/lawStations'
 import { mapDocuments, mapTextEvolution, type RawDocumentGroup } from '../parliament/detailJson'
 
@@ -203,6 +203,8 @@ export function missingStationReason(
   /** The motion publishes its text only as „Gesetzesantrag" or „Antrag"
    *  (`motionTextOf`). */
   motionTextOnly = false,
+  /** The linked Vorlage is a treaty's (`treatyKindOf`). */
+  treaty: TreatyKind | null = null,
 ): string {
   // The first text of a committee's or the Bundesrat's motion (14.11.2026).
   // Its record is the item's own, so nothing is „noch nicht" there: the
@@ -215,6 +217,15 @@ export function missingStationReason(
     return motionTextOnly
       ? MOTION_TEXT_NOT_COMPARED_DE
       : `Zu diesem ${first.label} ist kein Gesetzestext als eigenes Dokument veröffentlicht.`
+  }
+  // A treaty's Vorlage (15.11.2026): its text is a Vertragstext, published as
+  // such — the gap is the comparison's, which reads Gesetzestexte, and the
+  // sentence said so of Parliament instead (79/ME, 97/ME XXVI). The page's
+  // BGBl section words the same fact the same way (`treatyComparisonGapDe`).
+  if (id === 'rv' && rvLinked && treaty) {
+    return treaty === 'vereinbarung-15a'
+      ? 'Einen Textvergleich vom Entwurf bis zur Regierungsvorlage zeigt der Monitor nicht: Die Vorlage ist eine Vereinbarung nach Art. 15a B-VG, und der Vergleich liest Gesetzestexte, keinen Vertragstext.'
+      : 'Einen Textvergleich vom Entwurf bis zur Regierungsvorlage zeigt der Monitor nicht: Die Vorlage ist ein Staatsvertrag, und der Vergleich liest Gesetzestexte, keinen Vertragstext.'
   }
   if (id === 'rv' && rvLinked) {
     return 'Zur Regierungsvorlage ist kein Gesetzestext als eigenes Dokument veröffentlicht, mit dem sich der Entwurf vergleichen ließe.'

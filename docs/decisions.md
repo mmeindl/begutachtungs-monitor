@@ -458,9 +458,11 @@ gets an entry of its own only where it carries a reason the rule does not.
   the comparison says so. A treaty's or an Art.-15a-Vereinbarung's
   Kundmachung is a Vertragstext and is never compared, on the item's page
   and on its draft's (`treatyComparisonGapDe`: 79/ME XXVI showed both
-  Ziffern as „entfallen"). After a changed text following the Bundesrat's
-  Einspruch, Parliament's steps say that they end at the first Beschluss
-  (`OBJECTION_STEPS_NOTE_DE`); the whole-way comparison reads the
+  Ziffern as „entfallen"). Nor is its Vorlage: the draft's comparison with
+  it says the gap is the monitor's, not that Parliament published no
+  Gesetzestext (15.11.2026, `missingStationReason`). After a changed text
+  following the Bundesrat's Einspruch, Parliament's steps say that they end
+  at the first Beschluss (`OBJECTION_STEPS_NOTE_DE`); the whole-way comparison reads the
   promulgated text.
 
 ### The consolidated reading (Lesefassung) and the annex
@@ -783,6 +785,15 @@ not yet followed, or the EU cycle, starts there.
   Stammnorm (FPG, NAG and AsylG 2005 are all BGBl. I Nr. 100/2005; about 30
   pages had lost rows that way). Measured over 647 frames: 55 changed, each
   read.
+- **„idF" never names a Novelle published after the reference date**
+  (15.11.2026, `latestAmendmentOf` with `keep`, `amendedByOn`). RIS rewrites
+  some § versions in place, so a version in force on the date can carry a
+  later „zuletzt geändert durch" (eEltern-Kind-Pass-Gesetz on 19.11.2025:
+  BGBl. I Nr. 62/2026). A later year is late outright, a Novelle of the
+  reference year by its issue date; an unknown date gives no „idF". Over
+  XXVII and XXVIII, 176 of about 1,480 rows changed (170 to an older Novelle,
+  6 to none), spot-checked against RIS's full history. Known residue: a
+  Novelle before the date that touched only rewritten versions is missed.
 - **Order.** Followed since 14.11.2026: committee motions, motions of the
   Bundesrat, every Initiativantrag on a law, the Bundesrat's objection as an
   event, treaties up to BGBl. III. Petitionen and Bürgerinitiativen,

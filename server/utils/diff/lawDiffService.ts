@@ -32,7 +32,7 @@
  * not stored (`cache/gathered.ts`).
  */
 
-import type { LawDiffResponse, LawPackageEntry, LawStationId, LawStationOption, ProcedureRoot, TraceLink } from '#shared/types'
+import type { LawDiffResponse, LawPackageEntry, LawStationId, LawStationOption, ProcedureRoot, TraceLink, TreatyKind } from '#shared/types'
 import { bgblShort } from '#shared/utils/format'
 import { meRoot, rootKey } from '#shared/utils/procedureRoot'
 import { LAW_STATION_ORDER, firstTextNameOf, lawStationGenitiveDe, lawStationLabelOf } from '#shared/utils/lawStations'
@@ -42,7 +42,7 @@ import { parseLawUnits, parseLawUnitsFromRis, type LawUnit } from '../lawtext/la
 import { bgblViaObjection } from '../parliament/bundesratObjection'
 import { bundlesOtherDrafts, extractBgblLink, otherBundledDrafts, findComparisonRvLink, findLastRvLink, findRvLinks, parseStages } from '../parliament/detailJson'
 import { getGegenstand } from '../parliament/drafts'
-import { bundesratVariantOf, pageKindOf } from '../parliament/vorlageDetailAssembly'
+import { bundesratVariantOf, pageKindOf, treatyKindOf } from '../parliament/vorlageDetailAssembly'
 import { getRisMapForGp } from '../ris/begutCorpus'
 import { getBgblDocument } from '../ris/bgblService'
 import { DERIVED_CACHE } from '../cache/base'
@@ -238,13 +238,26 @@ const readLawDiff = defineCachedFunction(
     // documents: a Vorlage without an accepted Gesetzestext is not „noch
     // keine Regierungsvorlage" (`missingStationReason`).
     let rvLinked = root.ityp === 'I'
+    let lastRvLink: ReturnType<typeof findLastRvLink> = null
     try {
-      if (isMe) rvLinked = findLastRvLink(parseStages(content.stages)) !== null
+      if (isMe) lastRvLink = findLastRvLink(parseStages(content.stages))
+      if (isMe) rvLinked = lastRvLink !== null
     } catch {
       // An unreadable stage record claims nothing either way.
     }
+    // A linked Vorlage without a Gesetzestext may be a treaty's, whose text
+    // the comparison does not read (`missingStationReason`). Asked only on
+    // that path; a failed read keeps the plain sentence and is not stored.
+    let rvTreaty: TreatyKind | null = null
+    if (lastRvLink && !found.has('rv') && (from === 'rv' || to === 'rv')) {
+      try {
+        rvTreaty = treatyKindOf((await getGegenstand(lastRvLink.gp, 'I', lastRvLink.inr)).content)
+      } catch {
+        complete = false
+      }
+    }
     for (const id of [to, from]) {
-      if (!found.has(id)) return answer(missingStationReason(id, rvLinked, promulgatedAs, first, first?.kind === 'bundesratsantrag' && motionTextOf(content) !== null))
+      if (!found.has(id)) return answer(missingStationReason(id, rvLinked, promulgatedAs, first, first?.kind === 'bundesratsantrag' && motionTextOf(content) !== null, rvTreaty))
     }
     if (!comparable(from)) {
       return answer(

@@ -276,6 +276,24 @@ export function citeLineDe(...parts: (string | null | undefined)[]): string {
 
 const AMENDED_BY = /zuletzt geändert durch\s+(BGBl\.\s+(?:(I{1,3})\s+)?Nr\.\s*(\d+)\/(\d{4}))/
 
+/** One „zuletzt geändert durch" note of a § version: the Novelle it names. */
+export interface LawAmendment {
+  /** „BGBl. I Nr. 50/2024", spaces normalised. */
+  cite: string
+  /** „I", „II", „III", or empty for the BGBl. before 1997. */
+  teil: string
+  nr: number
+  year: number
+}
+
+/** The notes of a law's § versions („BGBl. I Nr. 120/2002 zuletzt geändert durch …"). */
+export function amendmentsOf(organs: readonly (string | null | undefined)[]): LawAmendment[] {
+  return organs.flatMap((organ) => {
+    const m = AMENDED_BY.exec(organ ?? '')
+    return m ? [{ cite: m[1]!.replace(/\s+/g, ' '), teil: m[2] ?? '', nr: Number(m[3]), year: Number(m[4]) }] : []
+  })
+}
+
 /**
  * The law's latest amendment, from the Kundmachungsorgan of its §
  * versions in force („BGBl. I Nr. 120/2002 zuletzt geändert durch BGBl. I
@@ -290,12 +308,19 @@ const AMENDED_BY = /zuletzt geändert durch\s+(BGBl\.\s+(?:(I{1,3})\s+)?Nr\.\s*(
  * is the newer (22.10.2026). The § versions carry no issue date to decide
  * by, so where the newest year holds two Teile there is no „idF" — a
  * citation without it is incomplete, one with the wrong Novelle is wrong.
+ *
+ * **`keep` drops the notes that postdate the reference date** (15.11.2026).
+ * RIS rewrites some § versions in place instead of closing them: the
+ * Inkrafttreten-§ 12 of the eEltern-Kind-Pass-Gesetz is in force since
+ * 30.06.2023, and its version on 19.11.2025 still reads „zuletzt geändert
+ * durch BGBl. I Nr. 62/2026". Such a note names a Novelle the reference
+ * date had not seen; the newest of the other notes is what the law stood in.
  */
-export function latestAmendmentOf(organs: readonly (string | null | undefined)[]): string | null {
-  const amendments = organs.flatMap((organ) => {
-    const m = AMENDED_BY.exec(organ ?? '')
-    return m ? [{ cite: m[1]!.replace(/\s+/g, ' '), teil: m[2] ?? '', nr: Number(m[3]), year: Number(m[4]) }] : []
-  })
+export function latestAmendmentOf(
+  organs: readonly (string | null | undefined)[],
+  keep: (amendment: LawAmendment) => boolean = () => true,
+): string | null {
+  const amendments = amendmentsOf(organs).filter(keep)
   if (amendments.length === 0) return null
   const year = Math.max(...amendments.map((a) => a.year))
   const newest = amendments.filter((a) => a.year === year)

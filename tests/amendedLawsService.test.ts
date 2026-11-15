@@ -21,12 +21,14 @@ vi.stubGlobal('DERIVED_CACHE', 'derived')
 vi.mock('../server/utils/parliament/drafts', () => ({ getDraftsForGp: vi.fn(), getGegenstand: vi.fn() }))
 vi.mock('../server/utils/lawtext/draftArticlesService', () => ({ getDraftArticles: vi.fn(), getRootDraftArticles: vi.fn(), getMotionTextArticles: vi.fn() }))
 vi.mock('../server/utils/kons/konsCache', () => ({ resolveKonsLaw: vi.fn() }))
+vi.mock('../server/utils/ris/bgblService', () => ({ getBgblIssueDate: vi.fn() }))
 // The search by a law's name (14.11.2026): RIS's answer is the boundary, the reading of it is real.
 vi.mock('../server/utils/ris/konsLaw', async (importOriginal) => ({ ...(await importOriginal<object>()), konsJson: vi.fn() }))
 
 const { getDraftsForGp, getGegenstand } = vi.mocked(await import('../server/utils/parliament/drafts'))
 const { getDraftArticles, getRootDraftArticles, getMotionTextArticles } = vi.mocked(await import('../server/utils/lawtext/draftArticlesService'))
 const { resolveKonsLaw } = vi.mocked(await import('../server/utils/kons/konsCache'))
+const { getBgblIssueDate } = vi.mocked(await import('../server/utils/ris/bgblService'))
 const { konsJson } = vi.mocked(await import('../server/utils/ris/konsLaw'))
 
 /** A RIS search by title, one § record per law: [Gesetzesnummer, Kurztitel, Abkürzung, Stammnorm organ, Stammnorm number]. */
@@ -203,6 +205,40 @@ describe('createsNewLaw only on positive evidence (14.11.2026)', () => {
     const r = await getRootAmendedLaws({ gp: 'XXVII', ityp: 'I', inr: 154 })
     expect(r.laws).toMatchObject([{ title: 'Arbeitslosenversicherungsgesetz 1977', bgbl: 'BGBl Nr. 609/1977' }])
     expect(r).toMatchObject({ createsNewLaw: false, unread: null })
+  })
+
+  // RIS rewrites some § versions in place (15.11.2026): the eEltern-Kind-Pass-
+  // Gesetz's § 12, in force since 2023, read „zuletzt geändert durch BGBl. I
+  // Nr. 62/2026" on 19.11.2025. A later year is late outright; a Novelle of
+  // the reference year by its issue date; an unknown date gives no „idF".
+  it('names no Novelle published after the reference date in the „idF"', async () => {
+    getGegenstand.mockResolvedValue({ content: { einlangen: '2020-05-05T00:00:00' } } as never)
+    getRootDraftArticles.mockResolvedValue({ blocks: [], articles: [] } as never)
+    getMotionTextArticles.mockResolvedValue(ALVG_154 as never)
+    const law = (...organs: string[]) => ({
+      gesetzesnummer: '10008407',
+      kurztitel: 'Arbeitslosenversicherungsgesetz 1977',
+      paragraphs: Object.fromEntries(organs.map((o, i) => [`§ ${i + 1}`, { kundmachungsorgan: o }])),
+    }) as never
+    const dates: Record<string, string | null> = { 'BGBl. I Nr. 23/2020': '2020-04-04', 'BGBl. I Nr. 98/2020': '2020-09-17' }
+    getBgblIssueDate.mockImplementation(async (cite: string) => dates[cite] ?? null)
+
+    resolveKonsLaw.mockResolvedValue(law(
+      'BGBl Nr. 609/1977 zuletzt geändert durch BGBl. I Nr. 3/2021',
+      'BGBl Nr. 609/1977 zuletzt geändert durch BGBl. I Nr. 98/2020',
+      'BGBl Nr. 609/1977 zuletzt geändert durch BGBl. I Nr. 23/2020',
+      'BGBl Nr. 609/1977 zuletzt geändert durch BGBl. I Nr. 100/2018',
+    ))
+    expect((await getRootAmendedLaws({ gp: 'XXVII', ityp: 'I', inr: 154 })).laws[0]!.amendedBy).toBe('BGBl. I Nr. 23/2020')
+    expect(getBgblIssueDate).not.toHaveBeenCalledWith('BGBl. I Nr. 3/2021')
+
+    resolveKonsLaw.mockResolvedValue(law(
+      'BGBl Nr. 609/1977 zuletzt geändert durch BGBl. I Nr. 40/2020',
+      'BGBl Nr. 609/1977 zuletzt geändert durch BGBl. I Nr. 100/2018',
+    ))
+    expect((await getRootAmendedLaws({ gp: 'XXVII', ityp: 'I', inr: 154 })).laws[0]!.amendedBy).toBeNull()
+    resolveKonsLaw.mockReset()
+    getBgblIssueDate.mockReset()
   })
 
   it('names the law of a clause „in der Fassung des BGBl. …, wird wie folgt abgeändert" (627 d.B. XXVI), and states a gap where there is no text', async () => {

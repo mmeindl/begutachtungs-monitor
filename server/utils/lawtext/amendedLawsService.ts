@@ -32,7 +32,8 @@ import { konsJson, konsLawUrl, konsQuery, konsRefOf } from '../ris/konsLaw'
 import { mapWithConcurrency } from '../pool'
 import { DERIVED_ANALYSIS_TTL_S } from '../cache/ttl'
 import { storageKeyOf } from '../cache/key'
-import { latestAmendmentOf } from '../../../shared/utils/citations'
+import { getBgblIssueDate } from '../ris/bgblService'
+import { amendmentsOf, latestAmendmentOf } from '../../../shared/utils/citations'
 
 /**
  * How many laws are looked up in RIS — not how many are listed. A
@@ -45,6 +46,23 @@ import { latestAmendmentOf } from '../../../shared/utils/citations'
  * which is how a law RIS cannot resolve already reads (`AmendedLawLine.vue`).
  */
 const MAX_LAWS = 40
+
+/**
+ * The „idF" of a law as it stood on the reference date: the newest
+ * „zuletzt geändert durch" of its § versions in force, without the notes
+ * published after that date (`latestAmendmentOf`, 15.11.2026 — 60 of 1,506
+ * rows of XXVII and XXVIII named a Novelle from a later year). A year decides
+ * the clear cases; a Novelle of the reference year by its issue date. Where
+ * one of those dates cannot be found there is no „idF": a citation without
+ * it is incomplete, one with a later Novelle is wrong.
+ */
+async function amendedByOn(organs: readonly (string | null | undefined)[], asOf: string): Promise<string | null> {
+  const year = Number(asOf.slice(0, 4))
+  const sameYear = [...new Set(amendmentsOf(organs).filter((a) => a.year === year).map((a) => a.cite))]
+  const issued = new Map(await Promise.all(sameYear.map(async (cite) => [cite, await getBgblIssueDate(cite)] as const)))
+  if ([...issued.values()].some((date) => !date)) return null
+  return latestAmendmentOf(organs, (a) => a.year < year || (a.year === year && issued.get(a.cite)! <= asOf))
+}
 const CONCURRENCY = 6
 
 /**
@@ -286,7 +304,7 @@ const readAmendedLaws = defineCachedFunction(
         bgbl: cited,
         risUrl: resolved ? konsLawUrl(resolved.gesetzesnummer, asOf) : null,
         risBgbl: held && w.bgbl && !sameRisStammnorm(held, w.bgbl) ? `${held.organ} ${held.nummer}` : null,
-        amendedBy: resolved ? latestAmendmentOf(Object.values(resolved.paragraphs).map((p) => p.kundmachungsorgan)) : null,
+        amendedBy: resolved && asOf ? await amendedByOn(Object.values(resolved.paragraphs).map((p) => p.kundmachungsorgan), asOf) : null,
       }
     })
     // One law in RIS is one row, however many Artikel led to it: two Artikel

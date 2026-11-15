@@ -175,10 +175,21 @@ describe('missingStationReason', () => {
     expect(missingStationReason('rv', false)).toMatch(/noch keine Regierungsvorlage/)
   })
 
-  it('names the missing text, not a missing Vorlage, where one is linked (XXVI 79/ME „Vertragstext")', () => {
+  it('names the missing text, not a missing Vorlage, where one is linked', () => {
     const reason = missingStationReason('rv', true)
     expect(reason).not.toMatch(/keine Regierungsvorlage/)
     expect(reason).toMatch(/Zur Regierungsvorlage ist kein Gesetzestext/)
+  })
+
+  // 79/ME XXVI → 331 d.B., an Art.-15a-Vereinbarung (15.11.2026): its text is
+  // a „Vertragstext", published as such. The gap is the comparison's.
+  it('says a treaty\'s Vorlage is not compared by the monitor, instead of blaming Parliament', () => {
+    const agreement = missingStationReason('rv', true, null, null, false, 'vereinbarung-15a')
+    expect(agreement).toMatch(/^Einen Textvergleich vom Entwurf bis zur Regierungsvorlage zeigt der Monitor nicht: Die Vorlage ist eine Vereinbarung nach Art\. 15a B-VG/)
+    expect(agreement).not.toMatch(/veröffentlicht/)
+    expect(missingStationReason('rv', true, null, null, false, 'staatsvertrag')).toMatch(/Die Vorlage ist ein Staatsvertrag/)
+    // Without a linked Vorlage the treaty flag cannot apply.
+    expect(missingStationReason('rv', false, null, null, false, 'staatsvertrag')).toBe(MISSING_STATION_REASON.rv)
   })
 
   it('leaves every other station as the table has it', () => {

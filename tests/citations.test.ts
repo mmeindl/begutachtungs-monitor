@@ -58,6 +58,19 @@ describe('latestAmendmentOf — the „idF" of a law citation', () => {
     expect(latestAmendmentOf(['BGBl. I Nr. 77/2020'])).toBeNull()
   })
 
+  // eEltern-Kind-Pass-Gesetz on 19.11.2025 (15.11.2026): RIS rewrote § 12 in
+  // place, so its version in force since 2023 names the Novelle of 2026.
+  it('leaves out the notes `keep` rejects, and the rest decide', () => {
+    const organs = [
+      'BGBl. I Nr. 82/2023 zuletzt geändert durch BGBl. I Nr. 62/2026 ',
+      'BGBl. I Nr. 82/2023 zuletzt geändert durch BGBl. I Nr. 115/2025 ',
+      'BGBl. I Nr. 82/2023',
+    ]
+    expect(latestAmendmentOf(organs)).toBe('BGBl. I Nr. 62/2026')
+    expect(latestAmendmentOf(organs, (a) => a.year < 2026)).toBe('BGBl. I Nr. 115/2025')
+    expect(latestAmendmentOf(organs, (a) => a.year < 2025)).toBeNull()
+  })
+
   it('cites the law with its Stammnorm and, where there is one, its latest Novelle', () => {
     expect(lawCiteDe('Universitätsgesetz 2002', 'BGBl. I Nr. 120/2002', 'BGBl. I Nr. 50/2024', 'https://x')).toBe(
       'Universitätsgesetz 2002, BGBl. I Nr. 120/2002 idF BGBl. I Nr. 50/2024, https://x',
