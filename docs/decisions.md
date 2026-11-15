@@ -1020,7 +1020,7 @@ memo `docs/research/wege-ausserhalb-der-stationen.md`.
   check's own leads („Nicht geprüft:", „Nicht gezeigt:"), the per-change
   „Begründung: nicht zuzuordnen", the Lesefassung's per-§ reasons, and the
   list's count line, whose clauses already say „gerade nicht abrufbar".
-  Inventory of 192 strings read: the artifact „Gap sentence inventory".
+  Before the rule, 192 strings of the site were read and sorted by it.
 
 ### Operations
 
