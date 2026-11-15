@@ -754,8 +754,7 @@ The code names the EU rules D1 to D7; this is where they are defined
     (15.11.2026, step 3, `EuFensterList`): one request a day for the list,
     one row per window by closing day, tabs by where in the process
     („Konsultation", „Vorschlag", „Entwurf eines Rechtsakts"). No count of
-    contributions in the list and no order but the dates' (rule D6: no „noch
-    N Tage", no colour); the count stands on an initiative's own page, per
+    contributions in the list and no order but the dates'; the count stands on an initiative's own page, per
     window. A portal that could not be read is said with the link to the
     portal, never an empty list, and the feed and calendar (`?quelle=eu`, a
     source of their own) answer 503 for it. An initiative has a page by the
@@ -771,8 +770,22 @@ The code names the EU rules D1 to D7; this is where they are defined
     verdict on a state; a window the reader can still use is the reader's
     own deadline, and there the count is the point. The header card above
     says the stand alone („Sondierung läuft", „Vorschlag liegt vor",
-    „Anhängig laut EUR-Lex"), never the days, which stand in the rail. The
-    list of open windows keeps its untoned boxes.
+    „Anhängig laut EUR-Lex"), with no explaining line under it and with
+    „Alle Wege im Überblick" on the same line (`EuProcedureCard`, one card
+    for the act's, the proposal's and the initiative's page); what the
+    stand rests on — the acts, the last recorded step, a gap — stands in
+    the rail. The list of open windows uses the draft list's box for an
+    open Frist, word for word and tone for tone.
+  - **A withdrawn proposal ends on a station „Zurückgezogen"**
+    (15.11.2026): the withdrawal has a day and ends the procedure, so it
+    is the rail's last station, after whatever Parliament and Council
+    still decided, and it carries the highlight. „Amtsblatt" and the last
+    station are not drawn: a hollow station means „still to come", and
+    these never come. The rule „a section per station, even while empty"
+    is for stations a later step fills. Where a proposal became acts, the
+    last station is reached and says that its content stands with the
+    acts. Visitors read „EUR-Lex", not „Cellar", in every sentence of the
+    proposal's page; the source credit keeps the Cellar's full name.
   - **The stand of a proposal: which Cellar flags decide** (15.11.2026,
     step 3, `shared/utils/euVorschlag.ts`, `server/utils/eu/cellarVorschlag.ts`).
     A proposal that left the Commission has a page by its COM number

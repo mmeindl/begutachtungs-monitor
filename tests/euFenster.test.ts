@@ -1,5 +1,5 @@
 import { readFileSync } from 'node:fs'
-import { describe, expect, it } from 'vitest'
+import { afterAll, beforeAll, describe, expect, it, vi } from 'vitest'
 import type { EuFensterResponse, EuInitiative, EuOpenInitiative } from '../shared/types'
 import { OPEN_WINDOWS_MAX_PAGES, OPEN_WINDOW_FIELDS, OPEN_WINDOW_STATUS_FIELDS, openWindowsUrl, parseInitiative, parseOpenWindows, readOpenWindows, windowsOpenOn } from '../server/utils/eu/haveYourSay'
 import { buildIcsCalendar, buildRssFeed, buildSitemap } from '../server/utils/feeds'
@@ -137,6 +137,10 @@ describe('reading the whole list', () => {
 const response = (initiatives: EuOpenInitiative[] | null, cut: EuFensterResponse['cut'] = null): EuFensterResponse => ({ initiatives, cut, portalUrl: 'https://ec.europa.eu/info/law/better-regulation/have-your-say_de' })
 
 describe('the list on /eu-recht', () => {
+  // The state box counts the days to the closing day against the clock.
+  beforeAll(() => { vi.useFakeTimers(); vi.setSystemTime(new Date(`${TODAY}T10:00:00Z`)) })
+  afterAll(() => { vi.useRealTimers() })
+
   const list = parseOpenWindows(fixture('open-windows')).initiatives
 
   it('is one row per window, by closing day, the soonest first', () => {
@@ -149,7 +153,8 @@ describe('the list on /eu-recht', () => {
       path: '/eu-recht/initiative/19295',
       stage: 'Entwurf eines Rechtsakts',
       act: 'Durchführungsverordnung',
-      state: { label: 'Rückmeldung bis', detail: '09.12.2026', tone: 'inactive' },
+      // The draft list's box: the days left, the day with its weekday, the tone of the Frist (the clock is set to TODAY).
+      state: { label: 'Noch 24 Tage', detail: 'bis Mi., 09.12.2026', tone: 'neutral' },
       titleNote: null,
     })
   })
@@ -178,11 +183,11 @@ describe('the list on /eu-recht', () => {
     expect(euFensterView(response(list, { read: 300, total: 320 })).cut).toBe('Das Portal zählt 320 Vorhaben mit offener Frist; der Monitor liest davon die ersten 300.')
   })
 
-  it('says no duration, no countdown and no verdict (rule D6)', () => {
+  it('says no verdict and ranks nothing: the days left are the reader\'s own deadline, as in the draft list', () => {
     // The monitor's words only — the portal's titles are not ours to hold to it.
     const rows = euFensterView(response(list)).tabs!.alle.map(({ title: _t, haystack: _h, ...rest }) => rest)
     const words = JSON.stringify([rows, EU_FENSTER_DE])
-    expect(words).not.toMatch(/\bTage?\b|noch \d|überfällig|abgelaufen|meistdiskutiert|\d+ Rückmeldungen/i)
+    expect(words).not.toMatch(/überfällig|abgelaufen|meistdiskutiert|\d+ Rückmeldungen/i)
   })
 })
 

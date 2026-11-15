@@ -75,37 +75,38 @@ const DE = {
   },
   status: {
     act: (n: number) => (n === 1 ? 'Rechtsakt geworden' : `${n} Rechtsakte geworden`),
-    actNote: (labels: string[]) => `Laut EUR-Lex: ${labels.join(', ')}.`,
     withdrawn: (d: string) => `Zurückgezogen am ${d}`,
-    withdrawnUndated: 'Der Cellar führt den Vorschlag als zurückgezogen',
+    withdrawnUndated: 'Laut EUR-Lex zurückgezogen',
     // The heading is the stand alone, as a draft's card says „Gesetz geworden"; the day of the last step is the line under it.
     pending: 'Anhängig laut EUR-Lex',
-    lastStep: (d: string) => `Letzter verzeichneter Schritt am ${d}.`,
-    unclear: (d: string | null) => (d
-      ? `Der Cellar gibt für diesen Vorschlag keinen eindeutigen Stand an. Letzter verzeichneter Schritt am ${d}.`
-      : 'Der Cellar gibt für diesen Vorschlag keinen eindeutigen Stand an.'),
-    noProcedure: 'Der Cellar verzeichnet zu diesem Vorschlag kein Verfahren zwischen den Organen.',
-    unread: gapDe('unavailable', 'Der Cellar des Amts für Veröffentlichungen hat nicht geantwortet; wo der Vorschlag steht, kann hier nicht gezeigt werden.'),
+    lastStep: (d: string) => `letzter verzeichneter Schritt ${d}`,
+    unclear: 'EUR-Lex gibt für diesen Vorschlag keinen eindeutigen Stand an.',
+    noProcedure: 'EUR-Lex verzeichnet zu diesem Vorschlag kein Verfahren zwischen den Organen.',
+    unread: gapDe('unavailable', 'EUR-Lex hat nicht geantwortet; wo der Vorschlag steht, kann hier nicht gezeigt werden.'),
   },
-  withdrawnFact: (d: string) => `zurückgezogen am ${d}`,
   procedureType: 'Verfahrensart',
-  noDecisionYet: 'Der Cellar verzeichnet zu diesem Vorschlag bisher keinen Beschluss von Parlament oder Rat, den der Monitor liest.',
-  noDecision: 'Der Cellar verzeichnet zu diesem Vorschlag keinen Beschluss von Parlament oder Rat, den der Monitor liest.',
-  unreadProcedure: gapDe('unavailable', 'Der Cellar des Amts für Veröffentlichungen hat nicht geantwortet; das Verfahren kann hier nicht gezeigt werden.'),
+  noDecisionYet: 'EUR-Lex verzeichnet zu diesem Vorschlag bisher keinen Beschluss von Parlament oder Rat, den der Monitor liest.',
+  noDecision: 'EUR-Lex verzeichnet zu diesem Vorschlag keinen Beschluss von Parlament oder Rat, den der Monitor liest.',
+  unreadProcedure: gapDe('unavailable', 'EUR-Lex hat nicht geantwortet; das Verfahren kann hier nicht gezeigt werden.'),
   acts: (n: number) => (n === 1 ? 'Rechtsakt' : 'Rechtsakte'),
+  onActPages: (n: number) => (n === 1 ? 'steht beim Rechtsakt' : 'steht bei den Rechtsakten'),
   actsOnTheirPages: 'Was aus einem Rechtsakt folgt – Umsetzungsfrist, Inkrafttreten, Geltung –, steht beim Rechtsakt selbst.',
-  noActYet: 'Der Cellar verzeichnet zu diesem Vorschlag noch keinen Rechtsakt.',
-  noAct: 'Der Cellar verzeichnet zu diesem Vorschlag keinen Rechtsakt.',
-  withdrawnRail: 'Zurückgezogen; laut Cellar wurde daraus kein Rechtsakt.',
-  withdrawnNoAct: 'Die Kommission hat den Vorschlag zurückgezogen. Der Cellar verzeichnet keinen Rechtsakt, der daraus hervorgegangen ist.',
-  withdrawnUndatedNoAct: 'Der Cellar führt den Vorschlag als zurückgezogen und verzeichnet keinen Rechtsakt, der daraus hervorgegangen ist.',
+  noActYet: 'EUR-Lex verzeichnet zu diesem Vorschlag noch keinen Rechtsakt.',
+  noAct: 'EUR-Lex verzeichnet zu diesem Vorschlag keinen Rechtsakt.',
+  // A withdrawn proposal ends on a station of its own: the withdrawal has a day and ends the procedure, and „Amtsblatt" and the last station, which it can never reach, are not drawn.
+  withdrawn: {
+    name: 'Zurückgezogen',
+    rail: (label: string, d: string) => `${label} am ${d}`,
+    undated: 'laut EUR-Lex, ohne Datum',
+    noAct: 'EUR-Lex verzeichnet keinen Rechtsakt, der aus diesem Vorschlag hervorgegangen ist.',
+  },
   ahead: {
     umsetzung: 'Umzusetzen ist erst ein Rechtsakt, der im Amtsblatt steht.',
     geltung: 'Gelten kann erst ein Rechtsakt, der im Amtsblatt steht.',
     offen: 'Umzusetzen ist oder gilt erst ein Rechtsakt, der im Amtsblatt steht.',
   },
-  unknown: (reference: string) => `Im Cellar des Amts für Veröffentlichungen gibt es keinen Vorschlag ${reference}.`,
-  unknownDescription: 'Der Cellar hat auf die Frage nach dieser Nummer geantwortet, dass er sie nicht kennt.',
+  unknown: (reference: string) => `Auf EUR-Lex gibt es keinen Vorschlag ${reference}.`,
+  unknownDescription: 'EUR-Lex hat auf die Frage nach dieser Nummer geantwortet, dass es sie nicht kennt.',
   back: EU_PAGE_TITLE_DE,
   loading: 'Vorschlag wird geladen …',
   seo: {
@@ -126,7 +127,6 @@ export interface EuVorschlagView {
   /** The card's heading: the stand. */
   status: string
   /** A sentence under the heading: the acts, or why no stand can be said; may be a gap sentence. Null where the heading says it all. */
-  statusNote: string | null
   /** The one blue element: only while a feedback period on this proposal is open. */
   action: EuWindowActionView | null
   heading: string
@@ -205,21 +205,25 @@ const CELLAR_CREDITS = [...EU_RAIL_DE.credits]
 const section = (st: EuRailStation, parts: Pick<EuRailSection, 'facts' | 'notes'>, credits: string[] = CELLAR_CREDITS, record: EuRailSection['record'] = null): EuRailSection =>
   ({ id: st.id, elementId: elementIdOf(st.id), heading: st.name, record, credits: [...credits], ...parts })
 
-function statusOf(stand: EuProposalStand | null, acts: readonly EuProposalAct[]): { status: string; note: string | null } {
-  if (!stand) return { status: DE.heading, note: DE.status.unread }
+/**
+ * The card's heading: the stand and nothing under it. A draft's card
+ * carries no explaining line; what the stand rests on — the acts, the last
+ * recorded step, a gap — stands in the rail below it (15.11.2026).
+ */
+function statusOf(stand: EuProposalStand | null, acts: readonly EuProposalAct[]): string {
+  if (!stand) return DE.heading
   switch (stand.kind) {
     case 'rechtsakt':
-      return { status: DE.status.act(acts.length), note: acts.length ? DE.status.actNote(acts.map((a) => a.label)) : null }
+      return DE.status.act(acts.length)
     case 'zurueckgezogen':
-      return { status: DE.status.withdrawn(formatDateDe(stand.date)), note: null }
+      return DE.status.withdrawn(formatDateDe(stand.date))
     case 'zurueckgezogen-undatiert':
-      return { status: DE.status.withdrawnUndated, note: null }
+      return DE.status.withdrawnUndated
     case 'anhaengig':
-      return { status: DE.status.pending, note: stand.lastStep ? DE.status.lastStep(formatDateDe(stand.lastStep)) : null }
+      return DE.status.pending
     case 'unklar':
-      return { status: DE.heading, note: DE.status.unclear(stand.lastStep ? formatDateDe(stand.lastStep) : null) }
     case 'ohne-verfahren':
-      return { status: DE.heading, note: DE.status.noProcedure }
+      return DE.heading
   }
 }
 
@@ -251,11 +255,9 @@ export function euVorschlagView(r: EuVorschlagResponse, today: string): EuVorsch
   const date = dateIso ? formatDateDe(dateIso) : null
   // Only the period on THIS proposal: the consultation must have been asked by its number.
   const feedback = c.state === 'gefunden' && c.reference === r.reference.replace(/\s+/g, '') ? proposalFeedbackOf(c) : null
-  const withdrawal = stand?.kind === 'zurueckgezogen' ? formatDateDe(stand.date) : null
   const vorschlag = station('vorschlag', EU_RAIL_DE.name.vorschlag, [
     EU_RAIL_DE.proposal(r.reference, date),
     ...(feedback ? [EU_RAIL_DE.portal.until(EU_RAIL_DE.portal.proposalFeedback, formatDateDe(feedback.feedbackEnd!))] : []),
-    ...(withdrawal ? [DE.withdrawnFact(withdrawal)] : []),
   ], null)
   stations.push(vorschlag)
   const amended = (p?.events ?? []).filter((e) => roleOf(e) === 'amended-proposal')
@@ -263,7 +265,6 @@ export function euVorschlagView(r: EuVorschlagResponse, today: string): EuVorsch
   const proposalFacts: EuSectionFact[] = [
     fact('vorschlag', EU_RAIL_DE.fact.proposal, [{ href: r.eurLexUrl, label: r.reference }, ...(date ? [date] : [])]),
     ...amended.map((e, n) => fact(`geaendert-${n}`, EU_EVENTS[e.code]!.label, [formatDateDe(e.date)])),
-    ...(withdrawalEvent ? [fact('ruecknahme', EU_EVENTS[withdrawalEvent.code]!.label, [formatDateDe(withdrawalEvent.date)])] : []),
     ...(feedback && c.state === 'gefunden'
       ? [fact('rueckmeldungen', EU_RAIL_DE.portal.proposalFeedback, [...periodParts(feedback), { href: c.initiative.url, label: EU_RAIL_DE.portal.link }])]
       : []),
@@ -275,12 +276,15 @@ export function euVorschlagView(r: EuVorschlagResponse, today: string): EuVorsch
   const council = p ? lastOf(p.events, 'council') : null
   const signed = p ? lastOf(p.events, 'signature') : null
   const decided = !!(parliament || council)
-  const decisionGap = !record ? DE.unreadProcedure : !p ? DE.status.noProcedure : decided ? null : ended ? DE.noDecision : DE.noDecisionYet
+  const decisionGap = !record ? DE.unreadProcedure : !p ? DE.status.noProcedure : stand?.kind === 'unklar' ? DE.status.unclear : decided ? null : ended ? DE.noDecision : DE.noDecisionYet
+  // The day of the last step the Cellar records, of whatever type: what „Anhängig" rests on.
+  const lastStep = (stand?.kind === 'anhaengig' || stand?.kind === 'unklar') && stand.lastStep ? DE.status.lastStep(formatDateDe(stand.lastStep)) : null
   const beschluss = station('beschluss', BODY_NAME[body], [
     ...(parliament ? [EU_RAIL_DE.parliament(formatDateDe(parliament.date))] : []),
     ...(council ? [EU_RAIL_DE.council(formatDateDe(council.date))] : []),
     ...(signed ? [EU_RAIL_DE.signed(formatDateDe(signed.date))] : []),
     ...(p?.reference ? [p.reference] : []),
+    ...(lastStep ? [lastStep] : []),
   ], decisionGap, !p)
   stations.push(beschluss)
   const typeFact = body === 'andere' && p?.type && !EU_PROCEDURE_TYPES[p.type] ? [fact('verfahrensart', DE.procedureType, [p.type])] : []
@@ -301,23 +305,30 @@ export function euVorschlagView(r: EuVorschlagResponse, today: string): EuVorsch
     ? (acts.every((a) => a.celex[5] === 'L') ? 'umsetzung' : acts.some((a) => a.celex[5] === 'L') ? 'beides' : 'geltung')
     : effectKindOf(record?.title ?? null, c)
   const effectName = kind === 'umsetzung' ? EU_RAIL_DE.name.umsetzung : kind === 'geltung' ? EU_RAIL_DE.name.geltung : kind === 'beides' ? DE.name.beides : DE.name.offen
-  const withdrawnSentence = stand?.kind === 'zurueckgezogen' ? DE.withdrawnNoAct : DE.withdrawnUndatedNoAct
-  const noActSentence = !record ? DE.unreadProcedure : withdrawn ? withdrawnSentence : stand?.kind === 'anhaengig' ? DE.noActYet : DE.noAct
+  const noActSentence = !record ? DE.unreadProcedure : stand?.kind === 'anhaengig' ? DE.noActYet : DE.noAct
 
   if (withActs) {
     const links = fact('rechtsakte', DE.acts(acts.length), acts.map(actLink))
     const amtsblatt = station('amtsblatt', EU_RAIL_DE.name.amtsblatt, acts.map((a) => a.label), null)
-    const wirkung = station('wirkung', effectName, [], null)
+    // The proposal's rail ends where its acts begin: the last station is reached, and says where it is told.
+    const wirkung = station('wirkung', effectName, [DE.onActPages(acts.length)], null)
     stations.push(amtsblatt, wirkung)
     sections.push(section(amtsblatt, framed([links], null)))
     sections.push(section(wirkung, framed([links], null, [DE.actsOnTheirPages])))
+  } else if (withdrawn) {
+    // The procedure's end, in the rail's order of time: after whatever Parliament and Council still decided.
+    const label = withdrawalEvent ? EU_EVENTS[withdrawalEvent.code]!.label : EU_EVENTS.WDW_byCOM!.label
+    const day = stand?.kind === 'zurueckgezogen' ? formatDateDe(stand.date) : null
+    const ende = station('ruecknahme', DE.withdrawn.name, [day ? DE.withdrawn.rail(label, day) : DE.withdrawn.undated], null)
+    stations.push(ende)
+    sections.push(section(ende, framed([fact('ruecknahme', label, [day ?? DE.withdrawn.undated])], null, [DE.withdrawn.noAct])))
   } else {
     const aheadSentence = kind === 'umsetzung' ? DE.ahead.umsetzung : kind === 'geltung' ? DE.ahead.geltung : DE.ahead.offen
-    const amtsblatt = station('amtsblatt', EU_RAIL_DE.name.amtsblatt, [], withdrawn ? DE.withdrawnRail : null, true)
+    const amtsblatt = station('amtsblatt', EU_RAIL_DE.name.amtsblatt, [], null, true)
     const wirkung = station('wirkung', effectName, [], null, true)
     stations.push(amtsblatt, wirkung)
     sections.push(section(amtsblatt, framed([gapFact(noActSentence)], null)))
-    sections.push(section(wirkung, framed([gapFact(withdrawn || !record ? noActSentence : aheadSentence)], null)))
+    sections.push(section(wirkung, framed([gapFact(!record ? noActSentence : aheadSentence)], null)))
   }
 
   // The station the proposal is on: the last one reached that shows something.
@@ -327,13 +338,12 @@ export function euVorschlagView(r: EuVorschlagResponse, today: string): EuVorsch
 
   // A withdrawn proposal takes no feedback, whatever the portal's status still says.
   const open = feedback && isOpen(feedback, today) && c.state === 'gefunden' && !withdrawn
-  const { status, note } = statusOf(stand, acts)
+  const status = statusOf(stand, acts)
   return {
     title: record?.title ?? DE.untitled(r.reference),
     titleNote: record?.title && !record.titleIsGerman ? DE.englishTitle : null,
     identity: `${DE.identity} · ${r.reference}`,
     status,
-    statusNote: note,
     action: open ? { end: feedback.feedbackEnd, heading: null, href: c.initiative.url, label: EU_INITIATIVE_DE.action.label, note: EU_INITIATIVE_DE.action.note(formatDateDe(feedback.feedbackEnd!)) } : null,
     heading: DE.heading,
     stations,

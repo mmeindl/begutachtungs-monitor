@@ -241,7 +241,8 @@ describe('the page of a proposal', () => {
   it('pending, with the feedback period on it open: the stand, the one action, Parliament and Council not yet deciding', () => {
     const v = euVorschlagView(response('52026PC0780', { consultation: OPEN_ON_PROPOSAL }), TODAY)
     expect(v.status).toBe('Anhängig laut EUR-Lex')
-    expect(v.statusNote).toBe('Letzter verzeichneter Schritt am 19.10.2026.')
+    // The card says the stand alone; what it rests on stands in the rail.
+    expect(v.stations[2]!.facts).toContain('letzter verzeichneter Schritt 19.10.2026')
     expect(v.identity).toBe('Vorschlag der Europäischen Kommission · COM(2026) 780')
     expect(v.action).toEqual({
       end: '2026-12-09',
@@ -268,11 +269,11 @@ describe('the page of a proposal', () => {
     const beschluss = v.sections[2]!
     expect(beschluss.facts[0]).toMatchObject({ title: 'Verfahren', parts: ['2026/0307(COD)', 'Ordentliches Gesetzgebungsverfahren', { href: 'https://oeil.europarl.europa.eu/oeil/en/procedure-file?reference=2026%2F0307(COD)', label: 'im Legislative Observatory (englisch)' }] })
     expect(beschluss.notes).toEqual([
-      'Der Cellar verzeichnet zu diesem Vorschlag bisher keinen Beschluss von Parlament oder Rat, den der Monitor liest.',
+      'EUR-Lex verzeichnet zu diesem Vorschlag bisher keinen Beschluss von Parlament oder Rat, den der Monitor liest.',
       'Bei Parlament und Rat sieht das Verfahren keinen Weg vor, auf dem sich Einzelne zu einem Vorschlag äußern können.',
     ])
     expect(beschluss.record).toMatchObject({ heading: 'Alle gelesenen Schritte des Verfahrens (1)', note: 'Der Cellar verzeichnet 1 weiteren Schritt dieses Verfahrens, den der Monitor nicht einzeln zeigt.' })
-    expect(v.sections[3]!.facts[0]!.parts).toEqual(['Der Cellar verzeichnet zu diesem Vorschlag noch keinen Rechtsakt.'])
+    expect(v.sections[3]!.facts[0]!.parts).toEqual(['EUR-Lex verzeichnet zu diesem Vorschlag noch keinen Rechtsakt.'])
     // The day after the period closed, no action.
     expect(euVorschlagView(response('52026PC0780', { consultation: OPEN_ON_PROPOSAL }), '2026-12-10').action).toBeNull()
   })
@@ -305,13 +306,23 @@ describe('the page of a proposal', () => {
     const v = euVorschlagView(response('52022PC0305', { consultation: stillOpen }), TODAY)
     expect(v.status).toBe('Zurückgezogen am 06.05.2024')
     expect(v.action).toBeNull()
-    expect(v.stations[1]!.facts).toContain('zurückgezogen am 06.05.2024')
-    expect(v.sections[1]!.facts.find((f) => f.key === 'ruecknahme')).toMatchObject({ title: 'Rücknahme durch die Kommission', parts: ['06.05.2024'] })
+    // The withdrawal ends the rail on a station of its own; „Amtsblatt" and the last station are not drawn.
+    expect(v.stations.map((x) => [x.id, x.name, x.current])).toEqual([
+      ['konsultation', 'Konsultation', false],
+      ['vorschlag', 'Vorschlag', false],
+      ['beschluss', 'Parlament und Rat', false],
+      ['ruecknahme', 'Zurückgezogen', true],
+    ])
+    expect(v.stations[3]!.facts).toEqual(['Rücknahme durch die Kommission am 06.05.2024'])
+    expect(JSON.stringify(v.stations[1])).not.toMatch(/zurückgezogen/i)
+    expect(v.sections.map((x) => x.heading)).toEqual(['Konsultation', 'Vorschlag', 'Parlament und Rat', 'Zurückgezogen'])
+    expect(v.sections[3]!.facts.map((f) => [f.title, f.parts])).toEqual([['Rücknahme durch die Kommission', ['06.05.2024']]])
+    // Said once on the page.
+    expect(JSON.stringify(v).match(/keinen Rechtsakt/g)).toHaveLength(1)
+    expect(v.sections[3]!.notes).toEqual(['EUR-Lex verzeichnet keinen Rechtsakt, der aus diesem Vorschlag hervorgegangen ist.'])
     // Parliament's position before the withdrawal is a recorded step, shown as on an act's page.
     expect(v.stations[2]!.facts).toContain('Parlament 22.11.2023')
     expect(v.sections[2]!.notes).not.toContain('Bei Parlament und Rat sieht das Verfahren keinen Weg vor, auf dem sich Einzelne zu einem Vorschlag äußern können.')
-    expect(v.stations.find((s) => s.id === 'amtsblatt')!.gap).toBe('Zurückgezogen; laut Cellar wurde daraus kein Rechtsakt.')
-    for (const s of v.sections.slice(3)) expect(s.facts[0]!.parts, s.id).toEqual(['Die Kommission hat den Vorschlag zurückgezogen. Der Cellar verzeichnet keinen Rechtsakt, der daraus hervorgegangen ist.'])
     expect(JSON.stringify(v)).not.toMatch(/Rechtsakt geworden|Rechtsakte geworden|\/eu-recht\/(richtlinie|verordnung)/)
   })
 
@@ -319,21 +330,23 @@ describe('the page of a proposal', () => {
     const r = record('52021PC0890')
     const undated: EuProposalRecord = { ...r, dossiers: r.dossiers.map((d) => ({ ...d, withdrawn: null, procedure: { ...d.procedure, events: d.procedure.events.filter((e) => e.code !== 'WDW_byCOM') } })) }
     const v = euVorschlagView({ ...response('52021PC0890'), proposal: undated }, TODAY)
-    expect(v.status).toBe('Der Cellar führt den Vorschlag als zurückgezogen')
-    expect(v.sections[3]!.facts[0]!.parts).toEqual(['Der Cellar führt den Vorschlag als zurückgezogen und verzeichnet keinen Rechtsakt, der daraus hervorgegangen ist.'])
+    expect(v.status).toBe('Laut EUR-Lex zurückgezogen')
+    expect(v.stations.at(-1)).toMatchObject({ id: 'ruecknahme', facts: ['laut EUR-Lex, ohne Datum'], current: true })
+    expect(v.sections.at(-1)!.facts[0]!.parts).toEqual(['laut EUR-Lex, ohne Datum'])
   })
 
   it('two acts: the page stays and links both', () => {
     const acts = [act('32024L1711', 'Richtlinie (EU) 2024/1711', '/eu-recht/richtlinie/2024/1711'), act('32024R1747', 'Verordnung (EU) 2024/1747', null)]
     const v = euVorschlagView(response('52023PC0148', { acts }), TODAY)
     expect(v.status).toBe('2 Rechtsakte geworden')
-    expect(v.statusNote).toBe('Laut EUR-Lex: Richtlinie (EU) 2024/1711, Verordnung (EU) 2024/1747.')
+    expect(v.stations.at(-1)!.facts).toEqual(['steht bei den Rechtsakten'])
     expect(v.stations.map((s) => [s.id, s.name, !!s.ahead, s.current])).toEqual([
       ['konsultation', 'Konsultation', false, false],
       ['vorschlag', 'Vorschlag', false, false],
       ['beschluss', 'Parlament und Rat', false, false],
-      ['amtsblatt', 'Amtsblatt', false, true],
-      ['wirkung', 'Umsetzung und Geltung', false, false],
+      ['amtsblatt', 'Amtsblatt', false, false],
+      // The highlight is on the last station reached, not on the one before it.
+      ['wirkung', 'Umsetzung und Geltung', false, true],
     ])
     const links = v.sections[3]!.facts[0]!
     expect(links).toMatchObject({ title: 'Rechtsakte' })
@@ -344,13 +357,12 @@ describe('the page of a proposal', () => {
     // The split procedure: no Observatory link under the plain number.
     expect(JSON.stringify(v.sections[2])).not.toContain('oeil.europarl')
     // No decision of Parliament or Council on record (2023/0077(COD), as on its acts' pages).
-    expect(v.sections[2]!.notes[0]).toBe('Der Cellar verzeichnet zu diesem Vorschlag keinen Beschluss von Parlament oder Rat, den der Monitor liest.')
+    expect(v.sections[2]!.notes[0]).toBe('EUR-Lex verzeichnet zu diesem Vorschlag keinen Beschluss von Parlament oder Rat, den der Monitor liest.')
   })
 
   it('says it could not read the Cellar, and claims no stand', () => {
     const v = euVorschlagView({ ...response('52026PC0780'), proposal: null }, TODAY)
     expect(v.status).toBe('Der Vorschlag im Verfahren')
-    expect(v.statusNote).toMatch(/^Gerade nicht abrufbar: Der Cellar/)
     expect(v.title).toBe('Vorschlag COM(2026) 780')
     expect(v.stations.find((s) => s.id === 'beschluss')).toMatchObject({ ahead: true, gap: expect.stringMatching(/^Gerade nicht abrufbar: /) })
     expect(JSON.stringify(v)).not.toMatch(/Anhängig|Zurückgezogen|Rechtsakt geworden|noch keinen Rechtsakt/)
@@ -358,7 +370,7 @@ describe('the page of a proposal', () => {
 
   it('says a proposal without a procedure is one, not that nothing happened', () => {
     const v = euVorschlagView({ ...response('52026PC0780'), proposal: synthetic() }, TODAY)
-    expect(v.statusNote).toBe('Der Cellar verzeichnet zu diesem Vorschlag kein Verfahren zwischen den Organen.')
+    expect(v.stations.find((s) => s.id === 'beschluss')!.gap).toBe('EUR-Lex verzeichnet zu diesem Vorschlag kein Verfahren zwischen den Organen.')
     expect(v.stations.find((s) => s.id === 'beschluss')!.ahead).toBe(true)
   })
 

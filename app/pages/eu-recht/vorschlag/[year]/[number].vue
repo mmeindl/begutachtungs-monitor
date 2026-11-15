@@ -105,13 +105,7 @@ const back = euPath()
         </DraftHeader>
 
         <!-- The card the act page opens with: the stand, and the rail. -->
-        <div class="mt-6 rounded-xl border border-hairline bg-surface p-4">
-          <h2 class="font-sans text-base font-semibold text-ink">
-            {{ page.status }}
-          </h2>
-          <GapNote v-if="page.statusNote" :text="page.statusNote" class="mt-1 text-sm text-ink-secondary" />
-          <EuRail class="mt-4" :stations="page.stations" :label="page.heading" />
-        </div>
+        <EuProcedureCard :status="page.status" :stations="page.stations" :label="page.heading" />
 
         <!-- The door: under the header card, where a draft's page has it. -->
         <EuWindowAction v-if="page.action" :action="page.action" />

@@ -173,17 +173,12 @@ const citation = computed(() => (data.value ? euActCiteDe(data.value.act, data.v
         <!-- The act's rail, in the card the national rail opens a draft's
              page with (`ProcedureCard`): the stations of the act's life, the
              last one marked — an adopted act is there. -->
-        <div v-if="rail" class="mt-6">
-          <div class="rounded-xl border border-hairline bg-surface p-4">
-            <h2 class="font-sans text-base font-semibold text-ink">
-              {{ rail.status ?? rail.heading }}
-            </h2>
-            <p v-if="rail.note" class="mt-1 text-sm text-ink-secondary">
-              {{ rail.note }}
-            </p>
-            <EuRail class="mt-4" :stations="rail.stations" :label="rail.heading" />
-          </div>
-        </div>
+        <EuProcedureCard v-if="rail" :status="rail.status ?? rail.heading" :stations="rail.stations" :label="rail.heading">
+          <!-- Under the rail, the card's last part: no explaining line stands under the heading. -->
+          <p v-if="rail.note" class="mt-3 text-sm text-ink-secondary">
+            {{ rail.note }}
+          </p>
+        </EuProcedureCard>
 
         <!-- A section per station, in the rail's order and under the
              station's name, each in the draft pages' grammar

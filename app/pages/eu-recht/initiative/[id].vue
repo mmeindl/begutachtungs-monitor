@@ -109,12 +109,7 @@ const back = `${euPath()}#eu-fenster`
           </DraftHeader>
 
           <!-- The card the act page opens with: where it stands, and the rail. -->
-          <div class="mt-6 rounded-xl border border-hairline bg-surface p-4">
-            <h2 class="font-sans text-base font-semibold text-ink">
-              {{ view.status }}
-            </h2>
-            <EuRail class="mt-4" :stations="view.stations" :label="view.heading" />
-          </div>
+          <EuProcedureCard :status="view.status" :stations="view.stations" :label="view.heading" />
 
           <!-- The door: under the header card, where a draft's page has it. -->
           <EuWindowAction v-if="view.action" :action="view.action" />

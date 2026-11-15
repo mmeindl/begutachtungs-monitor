@@ -28,7 +28,8 @@
 import type { EuFensterResponse, EuOpenInitiative, EuWindow } from '#shared/types'
 import { euInitiativePath } from '#shared/utils/eu'
 import { actTypeDe, windowStageDe } from '#shared/utils/euPortal'
-import { formatDateDe } from '#shared/utils/format'
+import { formatDateWeekdayDe, fristLabel } from '#shared/utils/format'
+import { deadlineTone } from './deadlines'
 import type { EntryState } from './entryView'
 import { EU_RAIL_DE } from './euRail'
 
@@ -66,7 +67,6 @@ const DE = {
   untitled: (id: number) => `Vorhaben Nr. ${id}`,
   said: { stage: 'Stadium', act: 'Vorgesehen' },
   state: {
-    label: 'Rückmeldung bis',
     open: 'Rückmeldung möglich',
     noEnd: 'Enddatum im Portal nicht angegeben',
   },
@@ -100,7 +100,7 @@ export interface EuFensterRowView {
   stage: string
   /** „Delegierte Verordnung", or the portal's code; null where it names none. */
   act: string | null
-  /** The closing day in the lists' state box: grey on every row, a date and nothing else (rule D6). */
+  /** The closing day in the lists' state box: the days left, the day, and the tone of a Frist that is close — as a draft's row. */
   state: EntryState
   tab: Exclude<EuFensterTab, 'alle'> | null
   /** For the sort: the ISO closing day; '9999' where none. */
@@ -121,9 +121,10 @@ function rowOf(i: EuOpenInitiative, w: EuWindow): EuFensterRowView {
     titleNote: i.title && !i.titleIsGerman ? DE.englishTitle : null,
     stage,
     act,
+    // The draft list's box for an open Frist, word for word and tone for tone (`openState`): one deadline reads the same in every list and on its page's door.
     state: w.end
-      ? { label: DE.state.label, detail: formatDateDe(w.end), tone: 'inactive', actionable: true }
-      : { label: DE.state.open, detail: DE.state.noEnd, tone: 'inactive', actionable: true },
+      ? { label: fristLabel(w.end, true), detail: `bis ${formatDateWeekdayDe(w.end)}`, tone: deadlineTone(w.end, true), actionable: true }
+      : { label: DE.state.open, detail: DE.state.noEnd, tone: 'neutral', actionable: true },
     tab: TAB_OF_STAGE[w.stage] ?? null,
     end: w.end ?? '9999',
     haystack: [title, stage, act ?? '', i.reference ?? '', String(i.id), ...i.topics].join(' '),
