@@ -13,8 +13,10 @@ import {
   artSelectFor,
   artUnavailableBySources,
   artUnavailableFor,
+  artOptionReasonsFor,
   artUnavailableNote,
   begutachtungGapReason,
+  begutachtungGapShort,
   lawsReachNoteDe,
   choiceAdmitsBundLaw,
   choiceAdmitsDraft,
@@ -586,6 +588,9 @@ describe('the select „Art" (14.11.2026)', () => {
     const all = groups.flatMap((g) => g.options)
     expect(all.find((o) => o.value === 'ohne')!.disabled).toBe(true)
     expect(all.find((o) => o.value === 'gesetz')!.disabled).toBe(false)
+    // The reason after the label: a greyed option never stands without a word.
+    expect(all.find((o) => o.value === 'ohne')!.label).toBe('Alle ohne Entwurf – nur für Gesetze des Bundes und Salzburgs feststellbar')
+    expect(all.find((o) => o.value === 'gesetz')!.label).toBe('Gesetzesentwürfe')
     expect(artUnavailableNote('ohne', 'Nur für Gesetze des Bundes und Salzburgs feststellbar'))
       .toBe('„Alle ohne Entwurf“: nur für Gesetze des Bundes und Salzburgs feststellbar; die Liste zeigt deshalb alle Arten.')
   })
@@ -804,6 +809,34 @@ describe('the select „Art" (14.11.2026)', () => {
       expect(artUnavailableFor(sbgOnly, { sbgLaws: { state: 'unavailable' } }).ohne).toBe(begutachtungGapReason('unread'))
       expect(artUnavailableFor(sbgOnly, { landLawsFailed: true }).ohne).toBe(begutachtungGapReason('unread'))
       expect(artUnavailableFor(sbgOnly, { sbgLaws: { state: 'ok', statements: 'pending' } }).ohne).toBe(begutachtungGapReason('pending'))
+    })
+    it('keeps an option enabled while the page will ask again, and lets the last answer decide (15.11.2026)', () => {
+      for (const gap of ['pending', 'unread'] as const) {
+        for (const c of OHNE_BUND_SBG) expect(artUnavailableFor(bundOnly, { bundLaws: { available: false, gap }, bundLawsRetrying: true })[c], `${gap} ${c}`).toBeNull()
+        expect(artUnavailableFor(bundOnly, { bundLaws: { available: false, gap }, bundLawsRetrying: true })['ohne-ausschussantrag'], gap).toBeNull()
+        expect(artUnavailableFor(bundOnly, { bundLaws: { available: false, gap }, bundLawsRetrying: false }).ohne, gap).toBe(begutachtungGapReason(gap))
+      }
+      // Salzburg alone, its statements still being read: the same rule.
+      expect(artUnavailableFor(sbgOnly, { sbgLaws: { state: 'ok', statements: 'pending' }, sbgLawsRetrying: true }).ohne).toBeNull()
+      expect(artUnavailableFor(sbgOnly, { sbgLaws: { state: 'ok', statements: 'pending' }, sbgLawsRetrying: false }).ohne).toBe(begutachtungGapReason('pending'))
+      expect(artUnavailableFor(sbgOnly, { sbgLaws: { state: 'unavailable' }, sbgLawsRetrying: true }).ohne).toBe(begutachtungGapReason('unread'))
+      // A failed fetch is no answer to wait for, retrying or not.
+      expect(artUnavailableFor(bundOnly, { bundLawsFailed: true, bundLawsRetrying: true }).ohne).toBe(begutachtungGapReason('unread'))
+    })
+    it('words the same reasons short for the option labels', () => {
+      const short = (a: Parameters<typeof artOptionReasonsFor>[1]) => artOptionReasonsFor(bundOnly, a).ohne
+      expect(short({ bundLawsFailed: true })).toBe('gerade nicht abrufbar')
+      expect(short({ bundLaws: { available: false, gap: 'unlinked' } })).toBe('für diese GP nicht erfasst')
+      expect(short({ bundLaws: { available: false, gap: 'beforeSource', coversFrom: '2004-01-01' } })).toBe('erst ab 2004 prüfbar')
+      expect(short({ bundLaws: { available: false, gap: 'pending' } })).toBe('wird gerade eingelesen')
+      expect(begutachtungGapShort('beforeSource')).toBe('für diese GP nicht prüfbar')
+      // Same options disabled as the long reasons, in every source mix.
+      const keys = (u: ReturnType<typeof artUnavailableFor>) => (Object.keys(u) as (keyof typeof u)[]).filter((k) => u[k]).sort()
+      for (const s of [bundOnly, sbgOnly, bgldOnly, bundBgld]) {
+        for (const a of [{}, { bundLawsFailed: true }, { bundLaws: { available: false, gap: 'unlinked' as const } }, { landLawsFailed: true }, { gp: 'XX' }, { chainsMissing: true }]) {
+          expect(keys(artOptionReasonsFor(s, a))).toEqual(keys(artUnavailableFor(s, a)))
+        }
+      }
     })
     it('asks under every option for the answers availability needs — and the open Vorlagen only where they are rows', () => {
       for (const c of DRAFT_OPTIONS) {

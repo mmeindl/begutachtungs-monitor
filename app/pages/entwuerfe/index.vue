@@ -15,6 +15,7 @@ import { antragRouteCitation } from '#shared/utils/antragPath'
 import { viewOfRow } from '~/utils/entryView'
 import {
   type ArtChoice,
+  type ArtAnswers,
   type ArtSources,
   antragGapNotes,
   antragRowsOf,
@@ -27,6 +28,7 @@ import {
   artSelectFor,
   artUnavailableBySources,
   artUnavailableFor,
+  artOptionReasonsFor,
   artUnavailableNote,
   choiceAdmitsBundLaw,
   choiceAdmitsDraft,
@@ -564,11 +566,16 @@ let lawsUnreadRetries = 0
 const lawsRetrying = ref(false)
 watch(lawsData, (laws) => {
   clearTimeout(lawsTimer)
-  lawsRetrying.value = laws?.gap === 'pending' && lawsRetries < LAWS_RETRIES
-  if (laws?.gap === 'pending' && lawsRetries < LAWS_RETRIES) {
+  const retryPending = laws?.gap === 'pending' && lawsRetries < LAWS_RETRIES
+  const retryUnread = laws?.gap === 'unread' && lawsUnreadRetries < LAWS_UNREAD_RETRIES
+  /* Both count as on their way (15.11.2026): the options of „Ohne Entwurf"
+     stay enabled (`bundLawsRetrying`) and the list says „noch geladen" —
+     only the answer after the last retry says „nicht abrufbar". */
+  lawsRetrying.value = retryPending || retryUnread
+  if (retryPending) {
     lawsRetries++
     lawsTimer = setTimeout(() => void refreshLaws(), LAWS_RETRY_MS)
-  } else if (laws?.gap === 'unread' && lawsUnreadRetries < LAWS_UNREAD_RETRIES) {
+  } else if (retryUnread) {
     lawsUnreadRetries++
     lawsTimer = setTimeout(() => void refreshLaws(), LAWS_UNREAD_RETRY_MS)
   }
@@ -578,12 +585,17 @@ onUnmounted(() => clearTimeout(lawsTimer))
 
 /* Salzburg's statements wait for the Landtag documents after a cold start
    (`LandLawSource.statements: 'pending'`): asked again as the Bund's laws
-   are, a bounded number of times. */
+   are, a bounded number of times. While a retry is due the statements count
+   as on their way (15.11.2026, `landLawsRetrying`): the options of „Ohne
+   Entwurf" stay enabled and the Land's laws are said „noch geladen" under
+   them (`landLawsPending`), as the Bund's are. */
 let landLawsRetries = 0
 let landLawsTimer: ReturnType<typeof setTimeout> | undefined
+const landLawsRetrying = ref(false)
 watch(landLawsData, (laws) => {
   clearTimeout(landLawsTimer)
-  if (!laws?.sources.some((s) => s.statements === 'pending') || landLawsRetries >= LAWS_RETRIES) return
+  landLawsRetrying.value = !!laws?.sources.some((s) => s.statements === 'pending') && landLawsRetries < LAWS_RETRIES
+  if (!landLawsRetrying.value) return
   landLawsRetries++
   landLawsTimer = setTimeout(() => void refreshLandLaws(), LAWS_RETRY_MS)
 })
@@ -727,21 +739,26 @@ const openVorlagen = computed(() => {
  * The rest waits for the answers, asked under every option
  * (`withoutDraftRequests`) — the Bund's laws, else Salzburg's: a period that
  * cannot carry the claim, an answer not read or a failed fetch. Until an
- * answer is there the option stays enabled: unknown is not unavailable.
- * Such an option stands disabled; a link that asks for it keeps it chosen,
- * the list steps back to „Alle Arten" (`appliedArt`) and one line says why
+ * answer is there the option stays enabled: unknown is not unavailable —
+ * nor is an answer the page will ask again for (`lawsRetrying`, 15.11.2026).
+ * Such an option stands disabled, its reason after its label
+ * (`artOptionReasonsFor`); a link that asks for it keeps it chosen, the list
+ * steps back to „Alle Arten" (`appliedArt`) and one line says why
  * (`artNote`) — never a silent fallback.
  */
-const artUnavailable = computed(() => artUnavailableFor(artSources.value, {
+const artAnswers = computed<ArtAnswers>(() => ({
   bundLaws: lawsData.value,
   bundLawsFailed: !!lawsError.value,
+  bundLawsRetrying: lawsRetrying.value,
   sbgLaws: landLawsData.value?.sources.find((src) => src.land === 'sbg'),
+  sbgLawsRetrying: landLawsRetrying.value,
   landLawsFailed: !!landLawsError.value,
   /* „als Initiativantrag": the Bund's period in view, and whether its rows
    * carry the chains that name the route — both in the server's render. */
   gp: span.value.gp || meData.value?.gp || '',
   chainsMissing: meData.value?.stationsAvailable === false,
 }))
+const artUnavailable = computed(() => artUnavailableFor(artSources.value, artAnswers.value))
 /* The option that filters: the chosen one, or „Alle Arten" where it cannot. */
 const appliedArt = computed<ArtChoice>(() => (artUnavailable.value[chosenArt.value] ? '' : chosenArt.value))
 /* Which draft halves the applied option shows rows of (`draftRowsOf`): under
@@ -762,7 +779,7 @@ const artSelect = computed(() => artSelectFor({
   chosen: chosenArt.value,
   others: othersInView.value,
   landSelected: landsApply.value,
-  unavailable: artUnavailable.value,
+  unavailable: artOptionReasonsFor(artSources.value, artAnswers.value),
 }))
 /* Any option of the group „Ohne Entwurf" applies: every draft steps back. */
 const ohneApplied = computed(() => isOhneChoice(appliedArt.value))
@@ -889,7 +906,7 @@ const lawsUnreadable = computed(() => {
   if (!lawsInView.value) return false
   if (lawsError.value) return true
   const laws = lawsData.value
-  return laws?.available === false && (laws.gap === 'unread' || (laws.gap === 'pending' && !lawsRetrying.value))
+  return laws?.available === false && (laws.gap === 'unread' || laws.gap === 'pending') && !lawsRetrying.value
 })
 
 /**
@@ -922,9 +939,20 @@ const vorlagenForCount = computed(() =>
   vorlagenPending.value ? 'pending' as const : vorlagenFailed.value ? 'failed' as const : openVorlagen.value)
 
 /* The Länder whose laws are on their way: those the view counts them for —
- * under the chip only the Länder that can answer it (`OHNE_LANDS`). */
+ * under the chip only the Länder that can answer it (`OHNE_LANDS`). Once the
+ * answer is there, under the group „Ohne Entwurf" also a Land whose
+ * statements are still being read and asked again (`landLawsRetrying`,
+ * 15.11.2026): its options pick laws by „ohne Begutachtung", which a row
+ * without its statement cannot say yet — until then the list showed the
+ * laws decided so far as if they were all. Under „Alle Arten" every law is
+ * a row either way, so nothing waits there. */
 const landLawsPending = computed<LandCode[]>(() => {
-  if (!landLawsInView.value || landLawsError.value || landLawsData.value) return []
+  if (!landLawsInView.value || landLawsError.value) return []
+  const data = landLawsData.value
+  if (data) {
+    if (!ohneApplied.value || !landLawsRetrying.value) return []
+    return data.sources.filter((s) => s.statements === 'pending' && applyingLaender.value.includes(s.land)).map((s) => s.land)
+  }
   return ohneApplied.value && appliedArt.value !== 'ohne-landesgesetz'
     ? applyingLaender.value.filter((land) => OHNE_LANDS.includes(land))
     : applyingLaender.value
@@ -1449,9 +1477,10 @@ const statementsSortNote = computed(() => {
               <label for="filter-art" class="sr-only">Art</label>
               <!-- Native <optgroup>s through the slot (14.11.2026): „Mit
                    Entwurf" and „Ohne Entwurf" in the path graphic's words.
-                   An option that cannot be offered stands disabled; its
-                   reason is the note above the rows when a link asks for it
-                   (`artNote`) — a disabled <option> cannot carry one. -->
+                   An option that cannot be offered stands disabled and
+                   names its reason after the label (`artSelectFor`); when a
+                   link asks for it, the long reason is the note above the
+                   rows (`artNote`). -->
               <TokenSelect id="filter-art" v-model="chosenArt" block>
                 <template v-for="group in artSelect" :key="group.label ?? 'alle'">
                   <optgroup v-if="group.label" :label="group.label">

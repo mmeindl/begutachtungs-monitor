@@ -83,7 +83,7 @@ export const SECOND_ROUND_FROM = '2021-08-01'
 export function periodPredatesSecondRound(gp: string): boolean {
   const ended = gpEndedOn(gp)
   if (ended) return ended < SECOND_ROUND_FROM
-  // Before GP XX the period table has no row; every such period ended
+  // Before GP XIV the period table has no row; every such period ended
   // decades before 2021.
   const n = romanToInt(gp)
   return n !== null && n < 20

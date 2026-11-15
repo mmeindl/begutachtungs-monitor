@@ -421,9 +421,12 @@ export interface ArtSelectOption {
  * where they can hold a row — „Andere Entwürfe" while the view holds one
  * (`others`), „Landesgesetze ohne zugeordneten Entwurf" while a Land is
  * selected — and always while chosen, so a link never lands on a blank
- * select. An option with a reason (`unavailable`) stands `disabled`: a
- * disabled <option> cannot carry its reason to a screen reader, so the
- * reason is the list's one note when a link asks for it (`artUnavailableNote`).
+ * select. An option with a reason (`unavailable`, the short words of
+ * `artOptionReasonsFor`) stands `disabled` and names the reason after its
+ * label (15.11.2026): a disabled option gives no tooltip a screen reader
+ * announces, and a greyed option without a word read as a broken menu.
+ * Where a link asks for it, the long reason is the list's one note
+ * (`artUnavailableNote`).
  */
 export function artSelectFor(o: {
   chosen: ArtChoice
@@ -433,8 +436,12 @@ export function artSelectFor(o: {
 }): { label: string | null; options: ArtSelectOption[] }[] {
   const shown = (value: ArtChoice) =>
     value === o.chosen || (value === 'andere' ? o.others : value === 'ohne-landesgesetz' ? o.landSelected : true)
-  const option = (c: (typeof ART_CHOICES)[number]): ArtSelectOption =>
-    ({ value: c.value, label: c.label, disabled: !!o.unavailable[c.value] })
+  const option = (c: (typeof ART_CHOICES)[number]): ArtSelectOption => {
+    const reason = o.unavailable[c.value]
+    return reason
+      ? { value: c.value, label: `${c.label} – ${reason.charAt(0).toLowerCase()}${reason.slice(1)}`, disabled: true }
+      : { value: c.value, label: c.label, disabled: false }
+  }
   const groups: { label: string | null; options: ArtSelectOption[] }[] = [
     { label: null, options: ART_CHOICES.filter((c) => c.group === null).map(option) },
   ]
@@ -686,7 +693,15 @@ export function artUnavailableBySources(s: ArtSources): Partial<Record<ArtChoice
 export interface ArtAnswers {
   bundLaws?: Pick<LawsWithoutBegutachtung, 'available' | 'gap'> & Partial<Pick<LawsWithoutBegutachtung, 'coversFrom'>> | null
   bundLawsFailed?: boolean
+  /** The Bund's laws answered `pending` or `unread` and the page will ask
+   *  again (15.11.2026): still unknown, so the options stay enabled — and
+   *  the list says „noch geladen" under them. Only the last answer of the
+   *  retries decides. */
+  bundLawsRetrying?: boolean
   sbgLaws?: Pick<LandLawSource, 'state' | 'statements'> | null
+  /** Salzburg's statements are `pending` and the page will ask again: the
+   *  same as `bundLawsRetrying`, for where Salzburg alone decides. */
+  sbgLawsRetrying?: boolean
   landLawsFailed?: boolean
   /** The Bund's period in view — the chosen one, else the running one the
    *  Ministerialentwürfe answered for; '' while neither is known. */
@@ -698,10 +713,12 @@ export interface ArtAnswers {
 
 /* „als Initiativantrag": a period the route table does not cover, or rows
  * that came without the chain that names the route. */
-function antragRouteReason(a: ArtAnswers): string | null {
+function antragRouteReason(a: ArtAnswers, gapText: GapText): string | null {
   if (a.gp && !antragPathsCover(a.gp)) return ANTRAG_ROUTE_UNAVAILABLE
-  return a.chainsMissing ? begutachtungGapReason('unread') : null
+  return a.chainsMissing ? gapText('unread') : null
 }
+
+type GapText = (gap: LawsWithoutBegutachtungGap | null | undefined, coversFrom?: string) => string | null
 
 /**
  * Every option's reason, the sources' first, then the answers': where the
@@ -710,19 +727,37 @@ function antragRouteReason(a: ArtAnswers): string | null {
  * Salzburg's. A failed fetch is no answer either: „Gerade nicht abrufbar",
  * so the option steps back instead of counting a silent zero. „als
  * Initiativantrag" by the period and the Ministerialentwürfe' chains
- * (`antragRouteReason`).
+ * (`antragRouteReason`). An answer the page will ask again for
+ * (`bundLawsRetrying`) is no answer yet: unknown is not unavailable.
  */
 export function artUnavailableFor(s: ArtSources, a: ArtAnswers): Partial<Record<ArtChoice, string | null>> {
+  return artReasonsWith(s, a, begutachtungGapReason)
+}
+
+/**
+ * The same options with the same reasons, worded short for the option's own
+ * label (`artSelectFor`, 15.11.2026): a disabled <option> carries no
+ * tooltip a screen reader announces, but its text is read. The long reason
+ * stays the note's (`artUnavailableNote`). The sources' reasons are short
+ * already; only the answers' gaps get a short word (`begutachtungGapShort`).
+ */
+export function artOptionReasonsFor(s: ArtSources, a: ArtAnswers): Partial<Record<ArtChoice, string | null>> {
+  return artReasonsWith(s, a, begutachtungGapShort)
+}
+
+function artReasonsWith(s: ArtSources, a: ArtAnswers, gapText: GapText): Partial<Record<ArtChoice, string | null>> {
   const bySources = artUnavailableBySources(s)
   if (bySources.ohne) return bySources
-  const alsAntrag = bySources['als-antrag'] ?? antragRouteReason(a)
+  const alsAntrag = bySources['als-antrag'] ?? antragRouteReason(a, gapText)
   let ohne: string | null
   if (s.bund) {
-    ohne = a.bundLawsFailed ? begutachtungGapReason('unread') : a.bundLaws?.available === false ? begutachtungGapReason(a.bundLaws.gap, a.bundLaws.coversFrom) : null
+    ohne = a.bundLawsFailed
+      ? gapText('unread')
+      : a.bundLaws?.available === false && !a.bundLawsRetrying ? gapText(a.bundLaws.gap, a.bundLaws.coversFrom) : null
   } else if (a.landLawsFailed || a.sbgLaws?.state === 'unavailable') {
-    ohne = begutachtungGapReason('unread')
+    ohne = gapText('unread')
   } else {
-    ohne = a.sbgLaws?.statements === 'pending' ? begutachtungGapReason('pending') : null
+    ohne = a.sbgLaws?.statements === 'pending' && !a.sbgLawsRetrying ? gapText('pending') : null
   }
   return { ...bySources, 'als-antrag': alsAntrag, ohne, 'ohne-vorlage': ohne, 'ohne-antrag': ohne, 'ohne-ausschussantrag': bySources['ohne-ausschussantrag'] ?? ohne }
 }
@@ -1314,6 +1349,19 @@ const BEGUTACHTUNG_GAP_REASON: Record<LawsWithoutBegutachtungGap, (coversFrom: s
 
 export function begutachtungGapReason(gap: LawsWithoutBegutachtungGap | null | undefined, coversFrom?: string): string | null {
   return gap ? BEGUTACHTUNG_GAP_REASON[gap](coversFrom) : null
+}
+
+/* The same gaps in the words an option's label can carry after its name
+ * (`artOptionReasonsFor`): „Alle ohne Entwurf – gerade nicht abrufbar". */
+const BEGUTACHTUNG_GAP_SHORT: Record<LawsWithoutBegutachtungGap, (coversFrom: string | undefined) => string> = {
+  unlinked: () => 'für diese GP nicht erfasst',
+  unread: () => 'gerade nicht abrufbar',
+  pending: () => 'wird gerade eingelesen',
+  beforeSource: (coversFrom) => (coversFrom ? `erst ab ${coversFrom.slice(0, 4)} prüfbar` : 'für diese GP nicht prüfbar'),
+}
+
+export function begutachtungGapShort(gap: LawsWithoutBegutachtungGap | null | undefined, coversFrom?: string): string | null {
+  return gap ? BEGUTACHTUNG_GAP_SHORT[gap](coversFrom) : null
 }
 
 /**

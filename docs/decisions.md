@@ -268,14 +268,21 @@ gets an entry of its own only where it carries a reason the rule does not.
   the Landesgesetze option takes every Land's law the count line calls
   „ohne zugeordneten Entwurf", which claims nothing about a Begutachtung,
   and never a plain „Landesgesetz" before the register's reach (those are
-  counted in a note). An option that cannot apply stands disabled; a link
-  that asks for it gets „Alle Arten" and one note naming the reason. An
+  counted in a note). An option that cannot apply stands disabled and names
+  its reason after its label in short words („– gerade nicht abrufbar"),
+  since a greyed option without a word reads as a broken menu and a
+  disabled option gives a screen reader no tooltip; a link that asks for it
+  gets „Alle Arten" and one note naming the long reason. An
   option's availability is known before it is chosen: what the sources
   alone rule out (no Bund and no Salzburg, no Land, no Bund for „Andere")
   is disabled on the first render, server-side too; what only an answer
   can tell (the Bund's laws, else Salzburg's) is asked for under every
   option, the four draft options included, and stays enabled until the
-  answer says otherwise — unknown is not unavailable. Under a draft option
+  answer says otherwise — unknown is not unavailable. An answer the page
+  will ask again for (`pending`, or `unread` while its retries last; for
+  Salzburg statements still being read) is unknown too: the options stay
+  enabled and the list says „noch geladen" under them; only the answer
+  after the last retry disables. Under a draft option
   those answers are never shown, counted or announced, and the open
   Vorlagen, which decide nothing, are not fetched (`withoutDraftRequests`).
   „Alle mit Entwurf" (`begutachtung=mit`, first of „Mit Entwurf") is exactly
@@ -589,9 +596,10 @@ gets an entry of its own only where it carries a reason the rule does not.
   `readLaenderInWindow`). The select „Zeitraum" states the dates („seit
   24.10.2024 (GP XXVIII)", `gpSpanLabelDe`) instead of a note explaining
   the rule; value and `?gp=` stay the GP code. Not per-Land period
-  selectors: ten controls for one question, no verified data on the Länder's
-  periods, and spans that compare with nothing. A Land's own periods may be
-  added per Land once verified.
+  selectors: ten controls for one question, and spans that compare with
+  nothing. A Land's own periods are offered where one Land is in view alone
+  (next rule); their dates are verified since 14.11.2026
+  (`docs/research/landtagsperioden.md`).
 - **Which spans the select offers follows the sources; one control, one
   calendar** (14.11.2026, `shared/utils/periodCalendar.ts`). The Bund among
   the sources, alone or with Länder: the Bund's periods as above. Exactly one

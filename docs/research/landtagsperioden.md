@@ -358,12 +358,11 @@ und Vorarlberg XXVII, XXIX, XXX, XXXI (Protokolle des Landtags im LIS).
 
 ## Vorschlag für die Datenform
 
-Nur Zeilen, deren Beginn zwei übereinstimmende Quellen haben; Vorarlberg
-XXVIII fehlt deshalb. Die Zeilen mit nur indirektem amtlichem Beleg sind
-kommentiert. (Nachtrag 14.11.2026: Vorarlberg XXVIII ist inzwischen belegt,
-Beginn 05.10.2004, und die kommentierten Zeilen für Tirol XVI und Vorarlberg
-XXVII, XXIX bis XXXI sind jetzt direkt amtlich belegt; der Block unten ist
-noch der Stand davor.) `land` wie `LAND_CODES` in `shared/utils/laender.ts`; `period`
+Nur Zeilen, deren Beginn zwei übereinstimmende Quellen haben, eine davon
+amtlich. Seit 14.11.2026 gilt das für jede Zeile des Blocks: Vorarlberg
+XXVIII (Beginn 05.10.2004), Tirol XVI und Vorarlberg XXVII, XXIX bis XXXI
+sind direkt amtlich belegt und stehen im Kalender
+(`shared/utils/periodCalendar.ts`). `land` wie `LAND_CODES` in `shared/utils/laender.ts`; `period`
 ist die Ziffer, wie das Land sie schreibt, `noun` und `style` je Land, damit
 die Anzeige („XXIII. Gesetzgebungsperiode“, „22. Wahlperiode“, „XXXII.
 Vorarlberger Landtag“) aus den Daten kommt und nicht aus einer Bedingung im
@@ -445,10 +444,11 @@ const LAND_PERIOD_STARTS = [
 ] as const
 ```
 
-Solange Vorarlberg XXVIII fehlt, hat die Reihe für Vorarlberg eine Lücke von
-2004 bis 2009: Ein Entwurf aus dieser Zeit fiele sonst still in XXVII. Der Code
-muss eine fehlende Periode als Lücke führen und benennen, nicht die vorige
-verlängern.
+Die Reihen für Tirol (ab XIV, 21.10.2003) und Vorarlberg (ab XXVII,
+05.10.1999) sind lückenlos. Die Regel bleibt: Fehlt eine Periode, führt und
+benennt der Code sie als Lücke und verlängert nicht die vorige; ein Entwurf
+aus dieser Zeit fiele sonst still in die falsche Periode. Eine Periode vor
+einer Lücke wird deshalb nicht eingetragen.
 
 ## Was nicht erreichbar war
 

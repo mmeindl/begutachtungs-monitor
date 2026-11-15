@@ -19,14 +19,14 @@ beiden.
 
 | Land | Verordnungsentwürfe | Abgeschlossene Begutachtungen | Frist | Weg nach der Begutachtung | Kundmachung | „Was ändert der Entwurf?“ | Texte im Vergleich | Stellungnahmen veröffentlicht |
 |---|---|---|---|---|---|---|---|---|
-| Burgenland | ja | seit 2007 | ja, ohne Beginn | – | Suche über den Titel | keine beigelegt | – | nach Fristende |
+| Burgenland | ja | seit 2007 | ja, ohne Beginn | – | Suche über den Titel | selten beigelegt | – | nach Fristende |
 | Kärnten | ja | seit 2021, ohne Datum | ja, teils gerechnet | Vorlage und Beschluss | über das Beschlussdatum | ganze Paragraphen und Absätze | Vorlage, Gesetz | nach Fristende |
 | Niederösterreich | ja | nein | ja, ohne Beginn | – | – | nicht gelesen | – | beim Landtag |
 | Oberösterreich | ja, ohne Beginn | seit 2020 | ja | jeder Schritt | vom Landtag genannt | ja | Vorlage, Ausschuss, Gesetz | ab der Vorlage |
-| Salzburg | ja | seit 2004 | ja | über das RIS | aus dem Text entschieden | wo beigelegt | Vorlage, Gesetz | mit Zustimmung |
+| Salzburg | ja | seit 2004 | ja, solange sie läuft | über das RIS | aus dem Text entschieden | wo beigelegt | Vorlage, Gesetz | mit Zustimmung |
 | Steiermark | nicht gelesen | seit Juni 2015 | ja | – | Suche über den Titel | nicht gelesen | – | ja |
 | Tirol | ja, ohne Frist | einige Wochen | nur Gesetze | jeder Schritt | vom Landtag genannt | ja | Vorlage, Gesetz | ja |
-| Vorarlberg | nicht auf der Seite | nein | ja, ohne Beginn | – | – | nicht gelesen | – | nicht auf der Seite |
+| Vorarlberg | nicht auf der Seite | nicht gelesen | ja, ohne Beginn | nicht gelesen | nicht gelesen | nicht gelesen | nicht gelesen | nicht gelesen |
 | Wien | ja | höchstens 1 Jahr | ja | – | Suche über den Titel | ja | – | ja |
 
 Was die Liste je Land hält und was nicht:
@@ -38,7 +38,7 @@ Was die Liste je Land hält und was nicht:
 - **Salzburg** zeigt alle Entwürfe seit 2004. Bei abgeschlossenen nennt das Land die Frist nicht mehr, nur den Beginn.
 - **Steiermark** zeigt die Gesetzesentwürfe, die die Landesregierung seit Juni 2015 dem Landtag zur Begutachtung übermittelt hat; ältere fehlen, Verordnungsentwürfe liest der Monitor nicht.
 - **Tirol** führt Gesetzesentwürfe nur einige Wochen auf seiner Liste; ältere fehlen. Verordnungsentwürfe nennen keine Frist.
-- **Vorarlberg** zeigt nur Gesetzesentwürfe, und nur solange ihre Begutachtung läuft; abgeschlossene fehlen, und was aus ihnen wurde, lässt sich hier nicht verfolgen.
+- **Vorarlberg** steht hier nur mit Gesetzesentwürfen, und nur solange ihre Begutachtung läuft: Der Monitor liest die Seite der laufenden Begutachtungen des Landes. Laufende und kürzlich abgeschlossene Gesetzesvorhaben führt das Land auf einer eigenen Seite, mit Stellungnahmen, Regierungsvorlage, Beschluss und Gesetzblatt; diese Seite liest der Monitor noch nicht.
 - **Wien** zeigt einen Entwurf höchstens ein Jahr lang; ältere fehlen, und was aus ihnen wurde, lässt sich nicht verfolgen.
 
 Die folgende Tabelle und die Abschnitte 1–6d gehen für fünf Länder ins
