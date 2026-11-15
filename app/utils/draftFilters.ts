@@ -12,6 +12,7 @@
  * endpoints validate the same query independently, because a request can
  * arrive without this page.
  */
+import { gapDe } from '#shared/utils/gaps'
 import type { AntraegeResponse, AntragRow, AntragState, BegutSearchEntry, DraftChain, DraftStation, DraftStatus, DraftsResponse, DraftSummary, LandCode, LandLaw, LandLawSource, LawWithoutBegutachtung, LawsWithoutBegutachtung, LawsWithoutBegutachtungGap, OpenVorlage, RisConsultation, RisConsultationKind, RisConsultationsResponse, StaatsvertraegeResponse, TreatyState } from '#shared/types'
 import { searchDrafts, searchRis } from '#shared/utils/searchHaystack'
 import { DRAFT_STATION_LABEL, DRAFT_STATION_ORDER } from '#shared/utils/draftStations'
@@ -553,7 +554,7 @@ export function treatyGapNotes(t: Pick<StaatsvertraegeResponse, 'bgblUnread'> & 
     ...((reach === 'before' || reach === 'straddles') && t.coversFrom
       ? [`Ob ein Staatsvertrag vor dem ${formatDateDe(t.coversFrom)} kundgemacht wurde, lässt sich im RIS nicht prüfen: ${bgblReachDe(t.coversFrom)}.`]
       : []),
-    ...(t.bgblUnread ? ['Ob ein Staatsvertrag kundgemacht ist, ist gerade nicht abrufbar.'] : []),
+    ...(t.bgblUnread ? [gapDe('unavailable', 'ob ein Staatsvertrag kundgemacht ist.')] : []),
   ]
 }
 
@@ -569,11 +570,11 @@ export function antragStationOf(state: AntragState): DraftStation {
 }
 
 /** An Antrag of a period that ended before the Bundesgesetzblatt in RIS begins. */
-const ANTRAG_BEFORE_SOURCE = 'Ob der Antrag kundgemacht wurde, lässt sich für diese Gesetzgebungsperiode nicht prüfen.'
+const ANTRAG_BEFORE_SOURCE = gapDe('notPublished', 'Das Bundesgesetzblatt dieser Gesetzgebungsperiode steht nicht im RIS; ob der Antrag kundgemacht wurde, lässt sich deshalb nicht prüfen.')
 
 /** Anträge of a period that began before it: the early Kundmachungen are not in the source. */
 function antragStraddlesSourceDe(coversFrom: string): string {
-  return `Ob ein Initiativantrag vor dem ${formatDateDe(coversFrom)} kundgemacht wurde, lässt sich nicht prüfen: ${bgblReachDe(coversFrom)}.`
+  return gapDe('notPublished', `${bgblReachDe(coversFrom)}; ob ein Initiativantrag vor dem ${formatDateDe(coversFrom)} kundgemacht wurde, lässt sich deshalb nicht prüfen.`)
 }
 
 /**
@@ -592,8 +593,8 @@ export function antragGapNotes(a: Pick<AntraegeResponse, 'bgblUnread'> & Partial
   return [
     ...(reach === 'before' ? [ANTRAG_BEFORE_SOURCE] : []),
     ...(reach === 'straddles' && a.coversFrom ? [antragStraddlesSourceDe(a.coversFrom)] : []),
-    ...(a.bgblUnread ? ['Ob ein Initiativantrag kundgemacht ist, ist gerade nicht abrufbar.'] : []),
-    ...(unverified ? [`Ob eine Stellungnahme möglich ist, ist bei ${countLabelDe(unverified, 'Initiativantrag', 'Initiativanträgen')} gerade nicht abrufbar.`] : []),
+    ...(a.bgblUnread ? [gapDe('unavailable', 'ob ein Initiativantrag kundgemacht ist.')] : []),
+    ...(unverified ? [gapDe('unavailable', `ob eine Stellungnahme möglich ist, bei ${countLabelDe(unverified, 'Initiativantrag', 'Initiativanträgen')}.`)] : []),
   ]
 }
 
@@ -1413,7 +1414,7 @@ function landGenitiveDe(lands: readonly LandCode[]): string {
  */
 export function ohneSilentNoteDe(lands: readonly LandCode[]): string | null {
   if (!lands.length) return null
-  return `Ob ein Landesgesetz ohne Entwurf entstand, lässt sich ${lands.length === 1 ? 'für' : 'für die Länder'} ${listDe(lands.map((land) => LAND_NAME[land]))} nicht feststellen; ${lands.length === 1 ? 'seine' : 'ihre'} Landesgesetze stehen hier nicht.`
+  return gapDe('notPublished', `ob ein Landesgesetz ohne Entwurf entstand, ${lands.length === 1 ? 'für' : 'für die Länder'} ${listDe(lands.map((land) => LAND_NAME[land]))}. ${lands.length === 1 ? 'Seine' : 'Ihre'} Landesgesetze stehen hier nicht.`)
 }
 
 /**

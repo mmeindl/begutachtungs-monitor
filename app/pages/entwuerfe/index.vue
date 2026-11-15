@@ -1621,19 +1621,13 @@ const statementsSortNote = computed(() => {
         <!-- The chosen Länder that cannot answer the question, by name:
              their laws are gone from the rows, and a gap never reads as an
              empty result (`ohneSilentLaender`, `landLawsBeyondReach`). -->
-        <p v-if="ohneSilentNote" class="text-sm text-ink-muted">
-          {{ ohneSilentNote }}
-        </p>
+        <GapNote v-if="ohneSilentNote" :text="ohneSilentNote" class="text-sm text-ink-muted" />
         <p v-if="beyondReachNote" class="text-sm text-ink-muted">
           {{ beyondReachNote }}
         </p>
         <GapNote v-if="ohneUnreadNote" kind="unavailable" :text="ohneUnreadNote" class="text-sm text-ink-muted" />
-        <p v-for="note in antragNotes" :key="note" class="text-sm text-ink-muted">
-          {{ note }}
-        </p>
-        <p v-for="note in treatyNotes" :key="note" class="text-sm text-ink-muted">
-          {{ note }}
-        </p>
+        <GapNote v-for="note in antragNotes" :key="note" :text="note" class="text-sm text-ink-muted" />
+        <GapNote v-for="note in treatyNotes" :key="note" :text="note" class="text-sm text-ink-muted" />
         <!-- The applying Länder the list does not hold in full, each linked
              to its block on /datenlage (`LandCoverageNote`, the homepage's
              too), Kärnten's undated drafts by their live count. -->

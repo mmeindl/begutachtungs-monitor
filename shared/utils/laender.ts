@@ -9,6 +9,7 @@
  *
  * Pure module (auto-imported; vitest imports it relatively).
  */
+import { gapDe } from './gaps'
 import type { DraftStation, LandCode, LandTextStation } from '../types'
 
 /** Display order — the order the chips stand in: alphabetical, as the Länder are listed everywhere. */
@@ -251,8 +252,8 @@ export function landStationsReason(land: LandCode, stations: readonly DraftStati
   const followed = LAND_FOLLOWED_STATIONS[land]
   if (!stations.length || followed === 'all' || stations.some((s) => followed.includes(s))) return null
   return followed.includes('bgbl')
-    ? 'Diese Länder-Entwürfe verfolgt der Monitor nur in Begutachtung und Kundmachung'
-    : 'Diese Länder-Entwürfe zeigt der Monitor nur, solange ihre Begutachtung läuft'
+    ? gapDe('outOfScope', 'was zwischen Begutachtung und Kundmachung mit diesen Länder-Entwürfen geschieht')
+    : gapDe('outOfScope', 'diese Länder-Entwürfe, sobald ihre Begutachtung endet')
 }
 
 /**

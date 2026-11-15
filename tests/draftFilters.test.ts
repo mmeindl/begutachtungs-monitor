@@ -978,8 +978,8 @@ describe('the full text under „Art" (15.11.2026)', () => {
 describe('the list\'s Land notes (14.11.2026)', () => {
   it('names the Länder that cannot answer „Alle ohne Entwurf"', () => {
     expect(ohneSilentNoteDe([])).toBeNull()
-    expect(ohneSilentNoteDe(['noe'])).toBe('Ob ein Landesgesetz ohne Entwurf entstand, lässt sich für Niederösterreich nicht feststellen; seine Landesgesetze stehen hier nicht.')
-    expect(ohneSilentNoteDe(['noe', 'w'])).toMatch(/für die Länder Niederösterreich und Wien nicht feststellen; ihre/)
+    expect(ohneSilentNoteDe(['noe'])).toBe('Nicht veröffentlicht: ob ein Landesgesetz ohne Entwurf entstand, für Niederösterreich. Seine Landesgesetze stehen hier nicht.')
+    expect(ohneSilentNoteDe(['noe', 'w'])).toMatch(/für die Länder Niederösterreich und Wien\. Ihre Landesgesetze/)
   })
   it('counts the laws beyond the register\'s reach', () => {
     expect(registerReachNote({})).toBeNull()

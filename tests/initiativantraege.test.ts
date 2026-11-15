@@ -185,17 +185,17 @@ describe('the option „Alle Initiativanträge"', () => {
   it('states each gap in a sentence of its own', () => {
     expect(antragGapNotes({ bgblUnread: false, items: [{ state: 'open' }] })).toEqual([])
     expect(antragGapNotes({ bgblUnread: true, items: [{ state: 'pending-unverified' }, { state: 'pending-unverified' }] })).toEqual([
-      'Ob ein Initiativantrag kundgemacht ist, ist gerade nicht abrufbar.',
-      'Ob eine Stellungnahme möglich ist, ist bei 2 Initiativanträgen gerade nicht abrufbar.',
+      'Gerade nicht abrufbar: ob ein Initiativantrag kundgemacht ist.',
+      'Gerade nicht abrufbar: ob eine Stellungnahme möglich ist, bei 2 Initiativanträgen.',
     ])
   })
   it('says a period before the Bundesgesetzblatt in RIS cannot be checked — never „gerade"', () => {
     const coversFrom = '2004-01-01'
     expect(antragGapNotes({ gp: 'XXI', coversFrom, bgblUnread: false, items: [{ state: 'decided' }] })).toEqual([
-      'Ob der Antrag kundgemacht wurde, lässt sich für diese Gesetzgebungsperiode nicht prüfen.',
+      'Nicht veröffentlicht: Das Bundesgesetzblatt dieser Gesetzgebungsperiode steht nicht im RIS; ob der Antrag kundgemacht wurde, lässt sich deshalb nicht prüfen.',
     ])
     expect(antragGapNotes({ gp: 'XXII', coversFrom, bgblUnread: false, items: [] })).toEqual([
-      'Ob ein Initiativantrag vor dem 01.01.2004 kundgemacht wurde, lässt sich nicht prüfen: Das Bundesgesetzblatt steht im RIS erst ab 2004.',
+      'Nicht veröffentlicht: Das Bundesgesetzblatt steht im RIS erst ab 2004; ob ein Initiativantrag vor dem 01.01.2004 kundgemacht wurde, lässt sich deshalb nicht prüfen.',
     ])
     expect(antragGapNotes({ gp: 'XXIII', coversFrom, bgblUnread: false, items: [] })).toEqual([])
   })

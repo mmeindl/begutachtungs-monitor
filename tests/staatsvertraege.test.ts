@@ -250,9 +250,9 @@ describe('the Bundesgesetzblatt in RIS begins 2004 (15.11.2026)', () => {
     const reach = 'Ob ein Staatsvertrag vor dem 01.01.2004 kundgemacht wurde, lässt sich im RIS nicht prüfen: Das Bundesgesetzblatt steht im RIS erst ab 2004.'
     expect(treatyGapNotes({ gp: 'XXI', coversFrom, bgblUnread: false })).toEqual([reach])
     expect(treatyGapNotes({ gp: 'XXII', coversFrom, bgblUnread: false })).toEqual([reach])
-    expect(treatyGapNotes({ gp: 'XXII', coversFrom, bgblUnread: true })).toEqual([reach, 'Ob ein Staatsvertrag kundgemacht ist, ist gerade nicht abrufbar.'])
+    expect(treatyGapNotes({ gp: 'XXII', coversFrom, bgblUnread: true })).toEqual([reach, 'Gerade nicht abrufbar: ob ein Staatsvertrag kundgemacht ist.'])
     expect(treatyGapNotes({ gp: 'XXIII', coversFrom, bgblUnread: false })).toEqual([])
-    expect(treatyGapNotes({ gp: 'XXVIII', coversFrom, bgblUnread: true })).toEqual(['Ob ein Staatsvertrag kundgemacht ist, ist gerade nicht abrufbar.'])
+    expect(treatyGapNotes({ gp: 'XXVIII', coversFrom, bgblUnread: true })).toEqual(['Gerade nicht abrufbar: ob ein Staatsvertrag kundgemacht ist.'])
     expect(treatyGapNotes(null)).toEqual([])
   })
 })
