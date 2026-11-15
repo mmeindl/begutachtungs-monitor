@@ -37,7 +37,7 @@ import { EU_EVENTS, EU_PROCEDURE_TYPES } from '#shared/utils/euEvents'
 import { euProposalStandOf } from '#shared/utils/euVorschlag'
 import { formatDateDe } from '#shared/utils/format'
 import { gapDe } from '#shared/utils/gaps'
-import { EU_INITIATIVE_DE, isOpen } from './euInitiative'
+import { EU_INITIATIVE_DE, isOpen, type EuWindowActionView } from './euInitiative'
 import {
   EU_RAIL_DE,
   anchorOf,
@@ -126,7 +126,7 @@ export interface EuVorschlagView {
   /** A sentence under the heading: the acts, or why no stand can be said; may be a gap sentence. Null where the heading says it all. */
   statusNote: string | null
   /** The one blue element: only while a feedback period on this proposal is open. */
-  action: { href: string; label: string; note: string } | null
+  action: EuWindowActionView | null
   heading: string
   stations: EuRailStation[]
   sections: EuRailSection[]
@@ -332,7 +332,7 @@ export function euVorschlagView(r: EuVorschlagResponse, today: string): EuVorsch
     identity: `${DE.identity} · ${r.reference}`,
     status,
     statusNote: note,
-    action: open ? { href: c.initiative.url, label: EU_INITIATIVE_DE.action.label, note: EU_INITIATIVE_DE.action.note(formatDateDe(feedback.feedbackEnd!)) } : null,
+    action: open ? { heading: EU_INITIATIVE_DE.status.open(formatDateDe(feedback.feedbackEnd!)), href: c.initiative.url, label: EU_INITIATIVE_DE.action.label, note: EU_INITIATIVE_DE.action.note(formatDateDe(feedback.feedbackEnd!)) } : null,
     heading: DE.heading,
     stations,
     sections,

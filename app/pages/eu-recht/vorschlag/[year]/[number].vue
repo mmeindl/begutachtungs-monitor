@@ -104,16 +104,17 @@ const back = euPath()
           </p>
         </DraftHeader>
 
-        <!-- The card the act page opens with: the stand, the one action
-             while a feedback period is open, the rail. -->
+        <!-- The card the act page opens with: the stand, and the rail. -->
         <div class="mt-6 rounded-xl border border-hairline bg-surface p-4">
           <h2 class="font-sans text-base font-semibold text-ink">
             {{ page.status }}
           </h2>
           <GapNote v-if="page.statusNote" :text="page.statusNote" class="mt-1 text-sm text-ink-secondary" />
-          <EuWindowAction v-if="page.action" :action="page.action" />
           <EuRail class="mt-4" :stations="page.stations" :label="page.heading" />
         </div>
+
+        <!-- The door: under the header card, where a draft's page has it. -->
+        <EuWindowAction v-if="page.action" :action="page.action" />
 
         <EuStationSection v-for="sec in page.sections" :key="sec.id" :section="sec" />
       </template>

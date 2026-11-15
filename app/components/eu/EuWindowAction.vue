@@ -1,27 +1,34 @@
 <script setup lang="ts">
+import type { EuWindowActionView } from '~/utils/euInitiative'
+
 /**
- * The one blue element of an EU page while a feedback window is open: the
- * sentence until when the Commission takes feedback, and the way to its
- * portal's page, where the contribution is made — the button a draft's page
- * uses for its Stellungnahme (`DoorButton`). Shared by the page of an
- * initiative and the page of a proposal (15.11.2026), so the action reads
- * the same on both. Every word comes from the caller's view; no countdown,
- * no tone (rule D6).
+ * The door of an EU page while a feedback window is open: a card of its own
+ * directly under the header card, in the slot and shape of a draft page's
+ * door (`DraftDoorCard`) — the heading says until when, the sentence where,
+ * the button (`DoorButton`, the page's one blue element) leads to the
+ * portal's page, where the contribution is made. Shared by the page of an
+ * initiative and the page of a proposal, so the action reads the same on
+ * both.
+ *
+ * The plain card (`frist: false`): no countdown and no tone on an EU
+ * window, as the list of open windows carries none, and without the
+ * Begutachtung's sentence about what became of earlier drafts.
  */
-defineProps<{
-  action: { href: string; label: string; note: string }
-}>()
+defineProps<{ action: EuWindowActionView }>()
 </script>
 
 <template>
-  <div>
-    <p class="mt-1 text-sm text-ink-secondary">
+  <DraftDoorCard :frist="false" :deadline="null">
+    <template #heading>
+      {{ action.heading }}
+    </template>
+    <p class="mt-2 text-sm text-ink-secondary">
       {{ action.note }}
     </p>
-    <div class="mt-3">
+    <template #actions>
       <DoorButton :href="action.href">
         {{ action.label }}
       </DoorButton>
-    </div>
-  </div>
+    </template>
+  </DraftDoorCard>
 </template>

@@ -11,7 +11,7 @@
  * stations (`EuRail`), then a section per station in the rail's order
  * (`EuStationSection`). Every word comes from `euInitiativeView`.
  *
- * ONE BLUE ELEMENT. While a window is open, the card carries the way to
+ * ONE BLUE ELEMENT. While a window is open, a door card under the header card carries the way to
  * the portal's page of the initiative, where the contribution is made —
  * the button a draft's page uses for its Stellungnahme (`EuWindowAction`,
  * shared with a proposal's page) — and the day the window closes. No
@@ -108,15 +108,16 @@ const back = `${euPath()}#eu-fenster`
             </p>
           </DraftHeader>
 
-          <!-- The card the act page opens with: where it stands, the one
-               action while a window is open, the rail. -->
+          <!-- The card the act page opens with: where it stands, and the rail. -->
           <div class="mt-6 rounded-xl border border-hairline bg-surface p-4">
             <h2 class="font-sans text-base font-semibold text-ink">
               {{ view.status }}
             </h2>
-            <EuWindowAction v-if="view.action" :action="view.action" />
             <EuRail class="mt-4" :stations="view.stations" :label="view.heading" />
           </div>
+
+          <!-- The door: under the header card, where a draft's page has it. -->
+          <EuWindowAction v-if="view.action" :action="view.action" />
 
           <EuStationSection v-for="sec in view.sections" :key="sec.id" :section="sec" />
         </template>

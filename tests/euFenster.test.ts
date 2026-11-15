@@ -254,7 +254,8 @@ describe('the initiative\'s page', () => {
     expect(v.stations[1]!.facts).toEqual([])
     expect(v.stations[1]!.gap).toBe('Das Portal verzeichnet zu diesem Vorhaben noch keinen Vorschlag.')
     expect(JSON.stringify(v.sections[1])).not.toMatch(/[Vv]eröffentlicht/)
-    expect(v.status).toBe('Rückmeldung möglich bis 08.01.2027')
+    expect(v.status).toBe('Sondierung läuft')
+    expect(v.action?.heading).toBe('Rückmeldung möglich bis 08.01.2027')
   })
 
   it('says past the Commission what the monitor does not follow, and that individuals have no channel at Parliament and Council', () => {
@@ -297,8 +298,9 @@ describe('the initiative\'s page', () => {
       ],
     }
     const v = euInitiativeView(open, TODAY)
-    expect(v.status).toBe('Rückmeldung möglich bis 09.02.2027')
+    expect(v.status).toBe('Sondierung läuft · Öffentliche Konsultation läuft')
     expect(v.action).toEqual({
+      heading: 'Rückmeldung möglich bis 09.02.2027',
       href: open.url,
       label: 'Rückmeldung im Portal der Kommission geben',
       note: 'Rückmeldungen nimmt die Kommission bis 09.02.2027 in ihrem Portal „Ihre Meinung zählt“ entgegen. Der Link führt zur Seite des Vorhabens dort.',

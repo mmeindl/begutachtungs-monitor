@@ -73,6 +73,10 @@ const DE = {
   status: {
     open: (end: string) => `Rückmeldung möglich bis ${end}`,
     openNoEnd: 'Rückmeldung möglich',
+    // The card's heading while a window is open: the stage that runs. Until when, and where to answer, is the door card's below it — as a draft's card says „In Begutachtung" and its door the Frist.
+    running: (stage: string) => `${stage} läuft`,
+    runningOnProposal: 'Rückmeldungen zum Vorschlag laufen',
+    runningOnDraft: 'Rückmeldungen zum Entwurf eines Rechtsakts laufen',
     lastUntil: (stage: string, end: string) => `Zuletzt: ${stage}, Rückmeldungen bis ${end}`,
     lastPublished: (stage: string, day: string) => `Zuletzt: ${stage}, veröffentlicht am ${day}`,
     last: (stage: string) => `Zuletzt: ${stage}`,
@@ -118,6 +122,9 @@ const DE = {
 
 export const EU_INITIATIVE_DE = DE
 
+/** The door card of an EU page: its heading (until when), the sentence under it, the button. */
+export interface EuWindowActionView { heading: string; href: string; label: string; note: string }
+
 export interface EuInitiativeView {
   title: string
   /** „Titel im Portal nur auf Englisch" where the German title is missing; null otherwise. */
@@ -126,8 +133,8 @@ export interface EuInitiativeView {
   actType: string | null
   /** The card's heading: where the initiative stands. */
   status: string
-  /** The one blue element: only while a window is open. */
-  action: { href: string; label: string; note: string } | null
+  /** The one blue element, a card of its own under the header card: only while a window is open. */
+  action: EuWindowActionView | null
   heading: string
   stations: EuRailStation[]
   sections: EuRailSection[]
@@ -175,9 +182,8 @@ function commissionFacts(pubs: readonly EuPortalPublication[]): EuSectionFact[] 
 function statusOf(i: EuInitiative, today: string): string {
   const open = i.publications.filter((p) => isOpen(p, today))
   if (open.length) {
-    // The soonest closing day: two windows open at once closed on the same day in every case of 15.11.2026; where they differ, each section names its own.
-    const ends = open.map((p) => p.feedbackEnd).filter((e): e is string => e !== null).sort()
-    return ends.length ? DE.status.open(formatDateDe(ends[0]!)) : DE.status.openNoEnd
+    const words = open.map((p) => (p.stage === 'ADOPTION_WORKFLOW' ? DE.status.runningOnProposal : p.stage === 'ISC_WORKFLOW' ? DE.status.runningOnDraft : DE.status.running(stageDe(p))))
+    return [...new Set(words)].join(' · ')
   }
   const last = i.publications.filter(happened).at(-1)
   if (!last) return DE.identity
@@ -276,7 +282,8 @@ export function euInitiativeView(i: EuInitiative, today: string): EuInitiativeVi
     titleNote: !i.titleDe && i.title ? DE.englishTitle : null,
     actType: actTypeDe(i.actType) ? DE.actType(actTypeDe(i.actType)!) : null,
     status: statusOf(i, today),
-    action: open.length ? { href: i.url, label: DE.action.label, note: DE.action.note(end ? formatDateDe(end) : null) } : null,
+    // The soonest closing day: two windows open at once closed on the same day in every case of 15.11.2026; where they differ, each section names its own.
+    action: open.length ? { heading: end ? DE.status.open(formatDateDe(end)) : DE.status.openNoEnd, href: i.url, label: DE.action.label, note: DE.action.note(end ? formatDateDe(end) : null) } : null,
     heading: DE.heading,
     stations,
     sections,

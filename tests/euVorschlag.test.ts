@@ -244,6 +244,7 @@ describe('the page of a proposal', () => {
     expect(v.statusNote).toBeNull()
     expect(v.identity).toBe('Vorschlag der Europäischen Kommission · COM(2026) 780')
     expect(v.action).toEqual({
+      heading: 'Rückmeldung möglich bis 09.12.2026',
       href: `${PORTAL}/19000_de`,
       label: 'Rückmeldung im Portal der Kommission geben',
       note: 'Rückmeldungen nimmt die Kommission bis 09.12.2026 in ihrem Portal „Ihre Meinung zählt“ entgegen. Der Link führt zur Seite des Vorhabens dort.',
