@@ -25,7 +25,7 @@ import type { EuConsultation, EuInitiative } from '../../../shared/types/eu'
 import { DERIVED_ANALYSIS_TTL_S } from '../cache/ttl'
 import { SitePacer } from '../laender/session'
 import { upstreamJson } from '../upstream/fetch'
-import { PORTAL_FIRST_YEAR, PORTAL_GAP_MS, PORTAL_MAX_WAIT_MS, PORTAL_POLICY, PORTAL_READER_VERSION, PORTAL_SEARCH_HITS, carriesReference, comReferenceOf, initiativeUrl, parseInitiative, parseSearch, searchUrl } from './haveYourSay'
+import { PORTAL_FIRST_YEAR, PORTAL_GAP_MS, PORTAL_MAX_WAIT_MS, PORTAL_POLICY, PORTAL_READER_VERSION, PORTAL_SEARCH_HITS, carriesReference, comReferenceOf, initiativeUrl, parseInitiative, parseSearch, searchUrl, type PortalSearch } from './haveYourSay'
 
 const pacer = new SitePacer(PORTAL_GAP_MS, 0, PORTAL_MAX_WAIT_MS)
 
@@ -36,7 +36,7 @@ async function portalJson(url: string): Promise<unknown> {
 
 /** The ids a search by COM number found — the ids only, a day. */
 const searchCached = defineCachedFunction(
-  async (comReference: string): Promise<number[]> => parseSearch(await portalJson(searchUrl(comReference))),
+  async (comReference: string): Promise<PortalSearch> => parseSearch(await portalJson(searchUrl(comReference))),
   { name: 'eu-portal-suche', getKey: (comReference: string) => `${comReference}|p${PORTAL_READER_VERSION}`, maxAge: DERIVED_ANALYSIS_TTL_S, swr: false },
 )
 
@@ -57,12 +57,16 @@ export async function consultationOf(proposalReferences: readonly (string | null
   if (!com) return { state: 'kein-vorschlag' }
   if (com.year < PORTAL_FIRST_YEAR) return { state: 'vor-portal', reference: com.text }
   try {
-    const ids = await searchCached(com.text)
-    for (const id of ids.slice(0, PORTAL_SEARCH_HITS)) {
+    const search = await searchCached(com.text)
+    const opened = search.ids.slice(0, PORTAL_SEARCH_HITS)
+    for (const id of opened) {
       const initiative = await initiativeCached(id)
       if (carriesReference(initiative, com.text)) return { state: 'gefunden', reference: com.text, initiative }
     }
-    return { state: 'nicht-gefunden', reference: com.text }
+    // Every hit opened and none carries the number: not in the portal, as far
+    // as its search goes. More hits than opened (COM(2025)106: 75, loosely
+    // matched even as a phrase): nothing is proven about the rest.
+    return { state: 'nicht-gefunden', reference: com.text, exhaustive: search.total <= opened.length }
   } catch {
     return { state: 'ungelesen', reference: com.text }
   }

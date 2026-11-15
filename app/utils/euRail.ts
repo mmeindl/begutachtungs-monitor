@@ -211,6 +211,7 @@ const DE = {
     proposalFeedback: 'Rückmeldungen zum Vorschlag',
     noPeriod: 'Das Portal verzeichnet zu diesem Vorhaben vor dem Vorschlag keine Frist für Rückmeldungen.',
     notFound: (ref: string) => `Im Portal „Ihre Meinung zählt“ der Kommission wurde zu ${ref} kein Vorhaben gefunden.`,
+    notFoundAmongFirst: (ref: string) => `Die Suche im Portal „Ihre Meinung zählt“ der Kommission nach ${ref} ergab mehr Treffer, als der Monitor öffnet; unter den ersten trägt kein Vorhaben diese Nummer.`,
     beforePortal: (ref: string) => `Das Portal „Ihre Meinung zählt“ der Kommission führt Vorschläge erst ab 2017; ${ref} ist älter.`,
     noProposal: 'Der Cellar nennt keine Nummer des Vorschlags, nach der im Portal der Kommission gesucht werden könnte.',
     unread: 'Die Konsultation konnte nicht gelesen werden: Das Portal „Ihre Meinung zählt“ der Kommission hat nicht rechtzeitig oder nicht lesbar geantwortet.',
@@ -359,12 +360,20 @@ function proposalStation(r: EuActResponse): EuRailStation {
  */
 const consultedOf = (c: EuConsultation): EuPortalPublication[] =>
   (c.state === 'gefunden' ? c.initiative.publications.filter((p) => p.feedbackEnd !== null && p.stage !== 'ADOPTION_WORKFLOW') : [])
+/**
+ * The feedback period on THIS proposal: the publication that carries its
+ * COM number. An initiative can hold several proposals (102 adoption
+ * publications in the 87 initiatives of the map, 15.11.2026); another
+ * proposal's period is not this act's.
+ */
 const proposalFeedbackOf = (c: EuConsultation | null): EuPortalPublication | null =>
-  (c?.state === 'gefunden' ? c.initiative.publications.find((p) => p.feedbackEnd !== null && p.stage === 'ADOPTION_WORKFLOW') ?? null : null)
+  (c?.state === 'gefunden'
+    ? c.initiative.publications.find((p) => p.feedbackEnd !== null && p.stage === 'ADOPTION_WORKFLOW' && p.reference?.replace(/\s+/g, '') === c.reference) ?? null
+    : null)
 const stageDe = (p: EuPortalPublication): string => DE.portal.stage[p.stage] ?? DE.portal.unknownStage
 
 function consultationGap(c: EuConsultation): string | null {
-  if (c.state === 'nicht-gefunden') return DE.portal.notFound(c.reference)
+  if (c.state === 'nicht-gefunden') return c.exhaustive ? DE.portal.notFound(c.reference) : DE.portal.notFoundAmongFirst(c.reference)
   if (c.state === 'vor-portal') return DE.portal.beforePortal(c.reference)
   if (c.state === 'kein-vorschlag') return DE.portal.noProposal
   if (c.state === 'ungelesen') return DE.portal.unread

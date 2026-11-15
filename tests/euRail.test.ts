@@ -219,6 +219,16 @@ describe('euRailView', () => {
       expect(section(v, 'vorschlag').credits).toEqual(['Quellen:', 'Cellar des Amts für Veröffentlichungen der Europäischen Union (Metadaten)', 'Europäische Kommission, Portal „Ihre Meinung zählt“'])
     })
 
+    it('takes the feedback period of THIS proposal where an initiative holds several', () => {
+      const two = found([
+        pub({ stage: 'ADOPTION_WORKFLOW', type: 'PROP_REG', reference: 'COM(2022)999', published: '2022-03-01', feedbackEnd: '2022-05-01', feedbackCount: 7 }),
+        pub({ stage: 'ADOPTION_WORKFLOW', type: 'PROP_DIR', reference: 'COM(2022) 177', published: '2022-04-29', feedbackEnd: '2022-06-29', feedbackCount: 22 }),
+      ])
+      expect(frame(euRailView(response({ consultation: two }), TODAY), 'vorschlag')[1]).toBe('Rückmeldungen zum Vorschlag: 29.04.2022 – 29.06.2022, 22 Rückmeldungen, [im Portal „Ihre Meinung zählt“]')
+      const other = found([pub({ stage: 'ADOPTION_WORKFLOW', reference: 'COM(2022)999' })])
+      expect(frame(euRailView(response({ consultation: other }), TODAY), 'vorschlag')).toHaveLength(1)
+    })
+
     it('says each way of not knowing in its own sentence — never „keine Konsultation"', () => {
       const gap = (c: EuConsultation) => {
         const v = euRailView(response({ consultation: c }), TODAY)
@@ -226,11 +236,13 @@ describe('euRailView', () => {
         expect(frame(v, 'konsultation')).toEqual([`–: ${station(v, 'konsultation')!.gap}`])
         return station(v, 'konsultation')!.gap
       }
-      expect(gap({ state: 'nicht-gefunden', reference: 'COM(2022)177' })).toBe('Im Portal „Ihre Meinung zählt“ der Kommission wurde zu COM(2022)177 kein Vorhaben gefunden.')
+      expect(gap({ state: 'nicht-gefunden', reference: 'COM(2022)177', exhaustive: true })).toBe('Im Portal „Ihre Meinung zählt“ der Kommission wurde zu COM(2022)177 kein Vorhaben gefunden.')
+      // More hits than the monitor opens: nothing is claimed about the rest.
+      expect(gap({ state: 'nicht-gefunden', reference: 'COM(2025)106', exhaustive: false })).toBe('Die Suche im Portal „Ihre Meinung zählt“ der Kommission nach COM(2025)106 ergab mehr Treffer, als der Monitor öffnet; unter den ersten trägt kein Vorhaben diese Nummer.')
       expect(gap({ state: 'vor-portal', reference: 'COM(2016)593' })).toBe('Das Portal „Ihre Meinung zählt“ der Kommission führt Vorschläge erst ab 2017; COM(2016)593 ist älter.')
       expect(gap({ state: 'kein-vorschlag' })).toBe('Der Cellar nennt keine Nummer des Vorschlags, nach der im Portal der Kommission gesucht werden könnte.')
       expect(gap({ state: 'ungelesen', reference: null })).toMatch(/^Die Konsultation konnte nicht gelesen werden/)
-      for (const c of [{ state: 'nicht-gefunden', reference: 'x' }, { state: 'ungelesen', reference: null }] as EuConsultation[]) {
+      for (const c of [{ state: 'nicht-gefunden', reference: 'x', exhaustive: true }, { state: 'ungelesen', reference: null }] as EuConsultation[]) {
         expect(allStrings(euRailView(response({ consultation: c }), TODAY)).join(' ')).not.toMatch(/keine Konsultation/i)
       }
     })

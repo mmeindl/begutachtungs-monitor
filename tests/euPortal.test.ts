@@ -39,7 +39,9 @@ describe('the portal reader', () => {
     expect(carriesReference(i, 'COM(2022)177')).toBe(true)
     expect(carriesReference(i, 'COM(2022)17')).toBe(false)
     expect(carriesReference(i, 'COM(2021)177')).toBe(false)
-    expect(parseSearch(fixture('suche-COM-2022-177'))).toEqual([13192, 13194])
+    expect(parseSearch(fixture('suche-COM-2022-177'))).toEqual({ ids: [13192, 13194], total: 2 })
+    // The portal's refusal as a JSON body is no search answer.
+    expect(() => parseSearch({ code: 'not_acceptable', message: 'The feedback is mandatory' })).toThrow()
   })
 
   it('throws on what is no answer', () => {

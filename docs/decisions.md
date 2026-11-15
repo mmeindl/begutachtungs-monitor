@@ -736,6 +736,20 @@ The code names the EU rules D1 to D7; this is where they are defined
     what is missing (rule D6). The Commission's delegated and
     implementing directives stay behind a chip that is off and says how
     many they are.
+  - **The Commission's portal „Ihre Meinung zählt" is read narrowly and
+    gently** (15.11.2026): its interface is undocumented. Two addresses —
+    the search by COM number, as a quoted phrase, and one initiative —
+    one request at a time, 2.5 s apart, no retry, only when an act's page
+    asks, cached a day. The list of contributions is never asked. The
+    parser takes a fixed list of fields; the officials' names, mail
+    addresses and telephone numbers in the portal's record reach no
+    cache, no API answer and no page, and only what was parsed is cached.
+    An initiative belongs to a proposal only when one of its publications
+    carries exactly the COM number. „Not found in the portal", „older
+    than the portal", „no number to search by" and „not read" are four
+    sentences, and none says „keine Konsultation". Rejected: the prewarm
+    of every act of the map, and reading who gave feedback (step 4, with
+    the maintainer).
   - **The Legislative Observatory is linked by rule, not by lookup:**
     procedures from 1994 on, of type COD, CNS or APP; the link says that the
     page is English, and it is built from the procedure number, never

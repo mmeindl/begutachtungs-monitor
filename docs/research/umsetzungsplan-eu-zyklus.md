@@ -284,6 +284,53 @@ The first new source.
   the „nicht gefunden" cases by hand on the portal.
 - Impressum: the new entry for the portal (draft below).
 
+**Built and measured on 15.11.2026.** Through the running reader, every
+act of the map (235), not a sample:
+
+| What the page says | Acts |
+|---|---|
+| no station: an act of the Commission (40), or no procedure read (3) | 43 |
+| the proposal is older than the portal (before 2017) | 94 |
+| the Cellar names no COM number to search by | 8 |
+| initiative found, the join proven by the COM number | 87 |
+| not found | 2 |
+| not read | 1 |
+
+- Of the 90 acts with a proposal from 2017 on, 87 are found. All 87 carry
+  a feedback period on the adopted proposal; 63 a period before it (50
+  roadmaps, 47 public consultations, 11 Sondierungen). Every period is
+  closed.
+- The three others, read by hand on the portal: COM(2017)47 — one hit,
+  the Solvency II review, which does not carry the number: not in the
+  portal as far as its search goes. COM(2025)106 — 75 loosely matched
+  hits even as a phrase, none of the first three carries it: the page
+  says that more hits exist than the monitor opens. COM(2024)497 — the
+  portal answers „not_acceptable" (the 406 of the memo), reproducibly:
+  not read.
+- **The search must be a quoted phrase.** Unquoted, „COM(2022)71"
+  returned 167 initiatives and the right one (12548) was not among the
+  first ten. This also explains part of the memo's finding that
+  `exactMatch` was wrong in 8 of 51 lookups.
+- An initiative can hold several proposals (102 adoption publications in
+  87 initiatives); „Rückmeldungen zum Vorschlag" takes the publication
+  that carries this act's COM number.
+
+Against the plan above:
+
+- **No prewarm and no store.** Only an act's page asks, for that act: at
+  most four requests, a day's cache. The page waits nine seconds for the
+  portal, then says „konnte nicht gelesen werden"; the reading goes on
+  and the next view has it (6 of 235 on a cold first pass).
+- **Only the parsed result is cached,** never the portal's record, which
+  names officials. The test fixture carries placeholders for them.
+- The types of the attached documents and the Commission's summary
+  report are not read yet.
+- The initiative's page is linked as `…/initiatives/<id>_de`; that the
+  application opens it without the title in the address is not verified
+  in a browser.
+- The portal's entry is in `impressum.vue` on the branch, from the draft
+  below.
+
 ### Step 3 — open windows and pending proposals
 
 The population no longer comes from Austrian drafts.

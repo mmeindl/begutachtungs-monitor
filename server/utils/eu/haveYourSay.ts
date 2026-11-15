@@ -43,7 +43,7 @@ const API = `https://${PORTAL_HOST}/info/law/better-regulation/brpapi`
 const PAGES = `https://${PORTAL_HOST}/info/law/better-regulation/have-your-say/initiatives`
 
 /** Bumped whenever the reader takes other fields: the service caches the parsed initiative. */
-export const PORTAL_READER_VERSION = 2
+export const PORTAL_READER_VERSION = 3
 
 /** The portal holds no proposals from before this year (0 of 15 in the sample of 14.11.2026). */
 export const PORTAL_FIRST_YEAR = 2017
@@ -115,18 +115,28 @@ const day = (v: unknown): string | null => {
 }
 const count = (v: unknown): number | null => (typeof v === 'number' && Number.isInteger(v) && v >= 0 ? v : null)
 
+/** A search's hits: the ids on its first page, in its order, and how many hits it counts in all. */
+export interface PortalSearch {
+  ids: number[]
+  /** `totalElements`; where it is more than the ids opened, the search has proven nothing about the rest. */
+  total: number
+}
+
 /**
- * The ids of a search's hits, in its order. `exactMatch` is not read: it
- * was wrong in 8 of 51 lookups. Throws on a shape that is no search answer.
+ * The ids of a search's hits and their total. `exactMatch` is not read: it
+ * was wrong in 8 of 51 lookups. Throws on a shape that is no search answer
+ * — the portal's „not_acceptable" (HTTP 406 as a JSON body) among them.
  */
-export function parseSearch(answer: unknown): number[] {
+export function parseSearch(answer: unknown): PortalSearch {
   const page = isObject(answer) ? answer.initiativeResultDtoPage : null
   const content = isObject(page) ? page.content : null
-  if (!Array.isArray(content)) throw new Error('Portal: Suchantwort ohne Trefferliste')
-  return content.flatMap((hit) => {
+  if (!isObject(page) || !Array.isArray(content)) throw new Error('Portal: Suchantwort ohne Trefferliste')
+  const ids = content.flatMap((hit) => {
     const id = isObject(hit) ? Number(hit.id) : Number.NaN
     return Number.isInteger(id) && id > 0 ? [id] : []
   })
+  const total = count(page.totalElements) ?? ids.length
+  return { ids, total: Math.max(total, ids.length) }
 }
 
 /** Every field of a publication the reader takes. Nothing else of the record is touched. */

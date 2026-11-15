@@ -507,8 +507,10 @@ export interface EuInitiative {
  * proposal's COM number. Each state is a different sentence on the page:
  *
  * - `gefunden`: an initiative whose publications carry exactly that number.
- * - `nicht-gefunden`: the portal answered, and no initiative carries it —
- *   „im Portal nicht gefunden", never „keine Konsultation".
+ * - `nicht-gefunden`: the portal answered, and no initiative the monitor
+ *   opened carries it — „im Portal nicht gefunden", never „keine
+ *   Konsultation". `exhaustive` false: the search counted more hits than
+ *   the monitor opens, so the rest is unread, and the sentence says so.
  * - `vor-portal`: the proposal is from before 2017; the portal does not
  *   hold such proposals (0 of 15 in the sample of 14.11.2026).
  * - `kein-vorschlag`: the Cellar names no COM number to search by.
@@ -517,7 +519,7 @@ export interface EuInitiative {
  */
 export type EuConsultation =
   | { state: 'gefunden'; reference: string; initiative: EuInitiative }
-  | { state: 'nicht-gefunden'; reference: string }
+  | { state: 'nicht-gefunden'; reference: string; exhaustive: boolean }
   | { state: 'vor-portal'; reference: string }
   | { state: 'kein-vorschlag' }
   | { state: 'ungelesen'; reference: string | null }
