@@ -76,6 +76,8 @@ beforeEach(() => {
   // The sitemap's EU pages: no map built, only `/eu-recht`.
   vi.stubGlobal('getEuMap', async () => null)
   vi.stubGlobal('getBundLandMap', async () => null)
+  // The directives to transpose, each with a page of its own (step 7 of the EU cycle).
+  vi.stubGlobal('directivesToTranspose', async () => [{ celex: '32024L1069' }])
   // The laws without a draft: not built, so none.
   vi.stubGlobal('getLawsWithoutBegutachtung', async () => ({ gp: 'XXVIII', available: false, gap: 'pending', items: [] }))
   vi.stubGlobal('readLandLaws', async () => ({ gp: 'XXVIII', items: [], sources: [], tally: {} }))
@@ -120,6 +122,8 @@ describe('a jointly issued draft', () => {
   it('is one sitemap URL', async () => {
     const xml = (await (await handlerOf('routes', 'sitemap.xml.get.ts'))(event())) as string
     expect(count(xml, `<loc>${SITE}/entwuerfe/XXVIII/302</loc>`)).toBe(1)
+    // A directive of the list has its page in the sitemap, also where no draft names it.
+    expect(count(xml, `<loc>${SITE}/eu-recht/richtlinie/2024/1069</loc>`)).toBe(1)
   })
 
   it('has its calendar file built from the folded row, naming both Ressorts', async () => {
