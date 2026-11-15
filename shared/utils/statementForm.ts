@@ -12,8 +12,12 @@
  * Stellungnahmen tab, with the accordions closed — a longer way, never a dead
  * link.
  *
- * Verified for Ministerialentwürfe only. A Regierungsvorlage's page has its
- * own stages; check them before offering these there.
+ * The same stage and parameters on every item type checked in a browser
+ * (15.11.2026): Ministerialentwurf (162/ME), Regierungsvorlage (688 d.B.),
+ * Ausschussantrag (684 d.B.), Petition (21/PET), Bürgerinitiative (7/BI) —
+ * each page's own `formlink` reads `?selectedStage=101&persForm=1#persForm`.
+ * NOT CHECKED: a Petition an den Bundesrat (`PET-BR`); none had an open
+ * window to try. The rule: `docs/decisions.md`, „A door lands in the form".
  */
 
 export type StatementFormKind = 'person' | 'organisation'

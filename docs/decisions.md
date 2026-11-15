@@ -1044,6 +1044,28 @@ memo `docs/research/wege-ausserhalb-der-stationen.md`.
 ### Operations
 
 - **The deploy waits for the prewarm.** A restart empties every memory cache, so
+- **A door lands in the form** (15.11.2026). A button that sends the reader
+  to file a Stellungnahme leads as close to the form as the source allows,
+  never to a page from which the reader must find it. Parliament's page of
+  an item opens on „Übersicht"; its forms sit on the Stellungnahmen tab
+  behind two closed accordions. So every Parliament door is two buttons,
+  „Stellungnahme als Privatperson" and „… für eine Organisation", each
+  opening its form (`?selectedStage=101&persForm=1#persForm`, Parliament's
+  own `formlink`; `&orgForm=1#orgForm`, linked by Parliament nowhere, found
+  by trying), on Ministerialentwurf, Regierungsvorlage, the other items and
+  the Anliegen (`StatementFormDoors`, `statementFormUrl`). A choice instead
+  of an instruction: a sentence above one button, telling the reader to
+  open „Formular für Privatperson", was rejected, it hands Parliament's
+  layout to the reader. The two buttons share one weight; a label names the
+  item where a page carries two pairs („… zur Regierungsvorlage …"). An
+  address that rests on an unofficial parameter must fail into a longer way,
+  never a dead link: without `orgForm` the tab still opens. An address that
+  carries a source's internal ids is read from the source, not written into
+  code: Vorarlberg's form server (`parseVbgFormUrl`), falling back to the
+  page that links it. Checked in a browser on each item type, not in CI: a
+  browser test against an outside site fails for reasons that are not ours.
+  Not checked: the Petition an den Bundesrat, which keeps the one
+  `formlink`.
   warming before it is pointless; `✔ deployed` means the next visitor finds a
   warm server. A failed prewarm does not fail the deploy.
 - **The consolidated reading is deliberately not prewarmed:** it is fetched

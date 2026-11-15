@@ -10,6 +10,7 @@
  */
 import type { AnliegenCourse, AnliegenItemType, AnliegenKind, AnliegenRoot, AnliegenState } from '../types'
 import { GP_RE, gpWindow, intToRoman, parseInr, romanToInt } from './gp'
+import { statementFormUrl, type StatementFormKind } from './statementForm'
 
 /** The section's address; every path of the object starts here. */
 export const ANLIEGEN_PATH = '/anliegen'
@@ -164,12 +165,13 @@ export function anliegenSupportFormUrl(root: AnliegenRoot): string {
 }
 
 /**
- * Parliament's own form for a Stellungnahme to the item — the shape of its
- * `formlink` (stage 101). Only ever offered while the item's own
- * `statementsstate` says open.
+ * Parliament's own form for a Stellungnahme to the item, opened — the
+ * Privatperson's is the shape of its `formlink` (stage 101), the
+ * Organisation's the same with `orgForm` (`statementFormUrl`). Only ever
+ * offered while the item's own `statementsstate` says open.
  */
-export function anliegenStatementFormUrl(root: AnliegenRoot): string {
-  return `${anliegenParliamentUrl(root)}?selectedStage=101&persForm=1#persForm`
+export function anliegenStatementFormUrl(root: AnliegenRoot, kind: StatementFormKind = 'person'): string {
+  return statementFormUrl(anliegenParliamentUrl(root), kind)
 }
 
 /**

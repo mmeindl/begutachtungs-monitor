@@ -317,9 +317,7 @@ useSeoMeta({
               Ohne Frist – {{ SECOND_ROUND_CLAUSE }}.
             </p>
             <template #actions>
-              <DoorButton :href="data.parliamentUrl">
-                Stellungnahme auf parlament.gv.at abgeben
-              </DoorButton>
+              <StatementFormDoors :item-url="data.parliamentUrl" />
             </template>
           </DraftDoorCard>
 

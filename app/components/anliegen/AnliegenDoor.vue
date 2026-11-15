@@ -1,7 +1,10 @@
 <script setup lang="ts">
 /**
  * The door of an Anliegen: Unterstützen and Stellung nehmen, each a button to
- * Parliament's own form (`anliegenSupportFormUrl`, `anliegenStatementFormUrl`).
+ * Parliament's own form (`anliegenSupportFormUrl`, `anliegenStatementFormUrl`),
+ * the Stellungnahme's as two, one per form, each landing in it opened. All
+ * solid: the actions are independent and open at the same time, so none
+ * steps back (15.11.2026; until then the first was solid, the rest outline).
  *
  * The accent-washed box is the one you act on (the box grammar, `FactList`),
  * so it renders only on an open flag of the item's own — the page decides
@@ -25,10 +28,9 @@ defineProps<{ door: AnliegenDoorView }>()
     <p class="mt-2 text-sm text-ink-secondary">{{ door.windowNote }}</p>
     <div class="mt-3 flex flex-wrap items-center gap-3">
       <DoorButton
-        v-for="(action, i) in door.actions"
+        v-for="action in door.actions"
         :key="action.key"
         :href="action.href"
-        :variant="i === 0 ? 'solid' : 'outline'"
       >
         {{ action.label }}
       </DoorButton>

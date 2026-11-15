@@ -504,13 +504,12 @@ const ministryLinks = computed(() => {
                  button it steps back to an outline, first things first. The
                  target is the Vorlage's page, where parliament renders the
                  form — the same way the Begutachtung's button works. -->
-              <DoorButton
+              <StatementFormDoors
                 v-if="windows.vorlage && data.enactment"
-                :href="data.enactment.rvUrl"
+                :item-url="data.enactment.rvUrl"
+                subject="zur Regierungsvorlage"
                 :variant="windows.begutachtung ? 'outline' : 'solid'"
-              >
-                Stellungnahme zur Regierungsvorlage abgeben
-              </DoorButton>
+              />
             </template>
           </DraftDoorCard>
 

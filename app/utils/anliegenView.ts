@@ -101,7 +101,9 @@ export interface AnliegenDoorView {
   /** Whether the door renders at all — only on an open flag of the item's own. */
   open: boolean
   heading: string
-  actions: { key: 'support' | 'statement'; label: string; href: string }[]
+  /** All of one weight: Unterstützen and Stellungnahme are independent ways
+   *  to take part at the same time, and no form is the lesser one. */
+  actions: { key: 'support' | 'statement' | 'statement-organisation'; label: string; href: string }[]
   /** The window's one sentence: no Frist, closes with the item. */
   windowNote: string
   /** Parliament's own words on the Unterstützung, with its source, while that action is offered. */
@@ -577,7 +579,17 @@ export function anliegenParticipation(d: AnliegenDetail): AnliegenParticipationV
   const statementOpen = d.participation.statements === 'open'
   const actions: AnliegenDoorView['actions'] = []
   if (supportOpen) actions.push({ key: 'support', label: 'Unterstützen', href: anliegenSupportFormUrl(d.root) })
-  if (statementOpen) actions.push({ key: 'statement', label: 'Stellung nehmen', href: anliegenStatementFormUrl(d.root) })
+  // Both of Parliament's forms, each opened (`docs/decisions.md`, „A door
+  // lands in the form"). A Petition an den Bundesrat keeps the one, the
+  // `formlink` Parliament gives: `orgForm` is not checked on its pages.
+  if (statementOpen && anliegenIsBundesrat(d.root.kind)) {
+    actions.push({ key: 'statement', label: 'Stellung nehmen', href: anliegenStatementFormUrl(d.root) })
+  } else if (statementOpen) {
+    actions.push(
+      { key: 'statement', label: 'Stellungnahme als Privatperson', href: anliegenStatementFormUrl(d.root, 'person') },
+      { key: 'statement-organisation', label: 'Stellungnahme für eine Organisation', href: anliegenStatementFormUrl(d.root, 'organisation') },
+    )
+  }
   const heading = supportOpen && statementOpen
     ? 'Unterstützung und Stellungnahme möglich'
     : supportOpen ? 'Unterstützung möglich' : 'Stellungnahme möglich'

@@ -84,7 +84,7 @@ import { TIROL_LIST, TIROL_NUMBER_RE, TIROL_VO_NUMBER_RE, TIROL_VO_PAGE, parseTi
 import { BGLD_CURRENT, BGLD_FILING_EMAIL, BGLD_FIRST_YEAR, BGLD_NUMBER_RE, BGLD_ORIGIN, bgldArchiveUrl, bgldNextPage, bgldUnidYear, parseBgldPage, type BgldEntry } from './burgenland'
 import { NOE_FILING_EMAIL, NOE_LIST, NOE_NUMBER_RE, NOE_RETENTION, NOE_STATEMENTS_GAP, noeDraftUrl, parseNoeDraftPage, parseNoeList } from './niederoesterreich'
 import { STMK_LIST, STMK_NUMBER_RE, STMK_ORIGIN, STMK_PACER, STMK_PERIODS, parseStmkDraftPage, parseStmkRows, stmkDraftUrl, stmkListUrl, stmkNumber, stmkPageSizes, stmkPartsOf, stmkRowCount, stmkRowsPostback, type StmkDraft, type StmkPeriod } from './steiermark'
-import { VBG_FORM, VBG_LIST, VBG_NUMBER_RE, VBG_RETENTION, VBG_STATEMENTS_GAP, parseVbgList } from './vorarlberg'
+import { VBG_FORM, VBG_LIST, VBG_NUMBER_RE, VBG_RETENTION, VBG_STATEMENTS_GAP, parseVbgFormUrl, parseVbgList } from './vorarlberg'
 import { LandSourceError } from './gate'
 import { draftKindOfTitle } from './draftKind'
 import { LandSession } from './session'
@@ -1123,6 +1123,16 @@ const steiermark: LandReader = {
 
 const vbgList = async () => parseVbgList(await fetchLandPage(VBG_LIST))
 
+/** The form behind the Land's form page; that page where it cannot be read
+ *  (`parseVbgFormUrl`). A failed fetch costs the door one click, not the draft. */
+const vbgFormUrl = async () => {
+  try {
+    return parseVbgFormUrl(await fetchLandPage(VBG_FORM)) ?? VBG_FORM
+  } catch {
+    return VBG_FORM
+  }
+}
+
 const vorarlberg: LandReader = {
   listUrl: VBG_LIST,
   current: vbgList,
@@ -1137,7 +1147,7 @@ const vorarlberg: LandReader = {
       statements: null,
       statementsUrl: null,
       statementsGap: VBG_STATEMENTS_GAP,
-      filing: { kind: 'form', url: VBG_FORM },
+      filing: { kind: 'form', url: await vbgFormUrl() },
       summary: null,
       procedure: null,
       landtag: null,

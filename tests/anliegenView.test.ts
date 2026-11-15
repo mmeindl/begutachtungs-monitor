@@ -210,7 +210,8 @@ describe('anliegenParticipation — the door', () => {
     expect(p.door.open).toBe(true)
     expect(p.door.actions).toEqual([
       { key: 'support', label: 'Unterstützen', href: 'https://www.parlament.gv.at/gegenstand/XXVIII/PET/13?selectedStage=103&appForm=1#appForm' },
-      { key: 'statement', label: 'Stellung nehmen', href: 'https://www.parlament.gv.at/gegenstand/XXVIII/PET/13?selectedStage=101&persForm=1#persForm' },
+      { key: 'statement', label: 'Stellungnahme als Privatperson', href: 'https://www.parlament.gv.at/gegenstand/XXVIII/PET/13?selectedStage=101&persForm=1#persForm' },
+      { key: 'statement-organisation', label: 'Stellungnahme für eine Organisation', href: 'https://www.parlament.gv.at/gegenstand/XXVIII/PET/13?selectedStage=101&orgForm=1#orgForm' },
     ])
     expect(p.door.windowNote).toBe('Das Fenster hat keine Frist. Es schließt, wenn die Behandlung im Nationalrat endet.')
     expect(p.door.supportQuote?.source).toBe('Parlament')
@@ -245,6 +246,7 @@ describe('anliegenParticipation — the door', () => {
     const root = { gp: 'XXVIII', kind: 'buergerinitiative' as const, inr: 5 }
     expect(anliegenSupportFormUrl(root)).toBe('https://www.parlament.gv.at/gegenstand/XXVIII/BI/5?selectedStage=103&appForm=1#appForm')
     expect(anliegenStatementFormUrl(root)).toBe('https://www.parlament.gv.at/gegenstand/XXVIII/BI/5?selectedStage=101&persForm=1#persForm')
+    expect(anliegenStatementFormUrl(root, 'organisation')).toBe('https://www.parlament.gv.at/gegenstand/XXVIII/BI/5?selectedStage=101&orgForm=1#orgForm')
   })
 })
 

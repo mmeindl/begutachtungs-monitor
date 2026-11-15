@@ -13,7 +13,7 @@ import { LandSourceError } from '../server/utils/laender/gate'
 import { noeDraftUrl, parseNoeDraftPage, parseNoeList } from '../server/utils/laender/niederoesterreich'
 import { LandSiteBlockedError, LandSiteBusyError, SitePacer, documentLink, documentLinkParts } from '../server/utils/laender/session'
 import { STMK_PERIODS, isStmkDocumentUrl, parseStmkDraftPage, parseStmkRows, stmkPageSizes, stmkPartsOf, stmkRowCount, stmkRowsPostback } from '../server/utils/laender/steiermark'
-import { parseVbgList } from '../server/utils/laender/vorarlberg'
+import { parseVbgFormUrl, parseVbgList } from '../server/utils/laender/vorarlberg'
 
 const fx = (name: string) => readFileSync(`tests/fixtures/laender/${name}`, 'utf8')
 
@@ -149,6 +149,19 @@ describe('Vorarlberg', () => {
 
   it('refuses a page without its heading', () => {
     expect(() => parseVbgList('<h1>Seite nicht gefunden</h1>')).toThrow(LandSourceError)
+  })
+
+  // The door lands in the form, not on the page that links it (15.11.2026).
+  it('reads the form behind the Land\'s form page', () => {
+    expect(parseVbgFormUrl(fx('vorarlberg-formular-2026-11-15.html'))).toBe(
+      'https://formulare.vorarlberg.gv.at/formularserver/user/formular.aspx?path=(vlr)&pid=10d9a64b114a42438bc9332eaf9034f4&pn=Bfbedeba3fe654ef0aa295724c213f866&data=%3cpar%3e%3coe%3e%3c/oe%3e%3c/par%3e',
+    )
+  })
+
+  it('takes no other host for the form, and none where the page links none', () => {
+    expect(parseVbgFormUrl('<a href="https://formulare.vorarlberg.gv.at.evil.example/formularserver/x">x</a>')).toBeNull()
+    expect(parseVbgFormUrl('<a href="http://formulare.vorarlberg.gv.at/formularserver/x">x</a>')).toBeNull()
+    expect(parseVbgFormUrl('<a href="https://vorarlberg.at/-/gesetzgebung-prsg">x</a>')).toBeNull()
   })
 })
 

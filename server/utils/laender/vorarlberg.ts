@@ -40,8 +40,39 @@ import { LandSourceError } from './gate'
 const ORIGIN = 'https://vorarlberg.at'
 export const VBG_LIST = `${ORIGIN}/-/aktuelle-begutachtungsverfahren`
 
-/** The Land's form for a Stellungnahme, linked under every draft. */
+/**
+ * The page the Land links under every draft for a Stellungnahme. It is not
+ * the form: it links on to it, one form for every draft, on the Land's form
+ * server (`parseVbgFormUrl`).
+ */
 export const VBG_FORM = `${ORIGIN}/-/stellungnahme-begutachtungsentwurf`
+
+const FORM_HOST = 'formulare.vorarlberg.gv.at'
+
+/**
+ * The form itself, read off `VBG_FORM`'s „Online-Formulare" (15.11.2026):
+ * the door lands in the form, not one page before it (`docs/decisions.md`,
+ * „A door lands in the form"). Read, not written down: the address carries
+ * the form server's ids (`pid`, `pn`), which the Land can change unannounced.
+ * Null when the page links none — the door then stays on `VBG_FORM`, one
+ * click short, never dead.
+ *
+ * The host is checked here, exactly, and not added to `UPSTREAM_HOSTS`: the
+ * server never fetches the form, so the list of what it may be pointed at
+ * stays as it is (the EUR-Lex precedent in `safeExternalUrl.ts`).
+ */
+export function parseVbgFormUrl(html: string): string | null {
+  for (const [, href] of html.matchAll(/<a href="([^"]+)"/g)) {
+    let url: URL
+    try {
+      url = new URL(decodeEntities(href!))
+    } catch {
+      continue
+    }
+    if (url.protocol === 'https:' && url.hostname === FORM_HOST && url.pathname.startsWith('/formularserver/')) return url.href
+  }
+  return null
+}
 
 export const VBG_NUMBER_RE = /^\d{4,10}$/
 

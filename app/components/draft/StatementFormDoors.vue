@@ -1,27 +1,36 @@
 <script setup lang="ts">
 /**
- * The Begutachtung's door as two buttons, one per form Parliament offers
+ * A Parliament door as two buttons, one per form Parliament offers
  * (15.11.2026). Parliament's page hides both forms behind closed accordions
  * on a tab that is not the one it opens on; each button lands in its form,
  * open (`statementFormUrl`). The reader chooses here, where the labels say
  * what the choice is, instead of being told where to click over there.
+ * The rule: `docs/decisions.md`, „A door lands in the form".
  *
  * Each label names the whole action, so it reads alone in a link list.
- * Both solid: two equal ways to one action, neither the lesser one.
+ * `subject` names the item where a page offers two of these pairs — the
+ * draft's and the Regierungsvorlage's — so no two buttons read alike.
+ * Both buttons share one weight: two equal ways to one action. `variant`
+ * steps the pair back as a whole, where a second window's pair stands
+ * beside the first's.
  * No wrapper: the buttons join the row they are placed in.
  */
 import { statementFormUrl } from '#shared/utils/statementForm'
 
-const props = defineProps<{
-  /** The draft's page at Parliament. */
+const props = withDefaults(defineProps<{
+  /** The item's page at Parliament. */
   itemUrl: string
-}>()
+  /** „zur Regierungsvorlage" → „Stellungnahme zur Regierungsvorlage als Privatperson". */
+  subject?: string
+  variant?: 'solid' | 'outline'
+}>(), { subject: undefined, variant: 'solid' })
 
+const lead = computed(() => (props.subject ? `Stellungnahme ${props.subject}` : 'Stellungnahme'))
 const personUrl = computed(() => statementFormUrl(props.itemUrl, 'person'))
 const organisationUrl = computed(() => statementFormUrl(props.itemUrl, 'organisation'))
 </script>
 
 <template>
-  <DoorButton :href="personUrl">Stellungnahme als Privatperson</DoorButton>
-  <DoorButton :href="organisationUrl">Stellungnahme für eine Organisation</DoorButton>
+  <DoorButton :href="personUrl" :variant="variant">{{ lead }} als Privatperson</DoorButton>
+  <DoorButton :href="organisationUrl" :variant="variant">{{ lead }} für eine Organisation</DoorButton>
 </template>

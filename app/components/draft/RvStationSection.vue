@@ -308,10 +308,8 @@ const sources = computed(() =>
            beside the button reads as „filing is pointless". It opens
            beside the list instead, next to its exception (`RvStatements`,
            „Was mit ihnen geschieht", since 14.11.2026). -->
-      <div v-if="filingOpen && draft.enactment">
-        <DoorButton :href="draft.enactment.rvUrl">
-          Stellungnahme zur Regierungsvorlage abgeben
-        </DoorButton>
+      <div v-if="filingOpen && draft.enactment" class="flex flex-wrap items-center gap-3">
+        <StatementFormDoors :item-url="draft.enactment.rvUrl" subject="zur Regierungsvorlage" />
       </div>
     </div>
   </section>
