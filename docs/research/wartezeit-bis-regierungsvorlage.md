@@ -38,6 +38,17 @@ Entwurf, der in der laufenden Gesetzgebungsperiode noch auf seine
 Regierungsvorlage wartet, wie lange er schon wartet (`RvWaitBar`). Ein Urteil
 ist das nicht: Auch nach 6 Monaten kommt noch etwa jede zehnte Vorlage.
 
+## Nicht gemessen: „nur selten" nach dem Ende der Periode
+
+Die Seite „So funktioniert's" sagte bis 14.11.2026: „Endet die
+Gesetzgebungsperiode vorher, wird ein Entwurf nur selten noch eingebracht."
+Der Satz steht nicht mehr auf der Seite, und eine Zahl hatte er nie. Am
+nächsten kommt `rvInLaterGp` (4 Vorlagen in der XXVII., 14 in der XXVI. GP,
+siehe unten), aber der Nenner fehlt: wie viele Entwürfe am Ende ihrer
+Periode noch ohne Vorlage waren. Erst mit ihm ist „selten" eine Aussage,
+die auf die Seite darf. Die Wortwahl für einen solchen Entwurf („selten",
+nie „nicht mehr möglich") regelt `docs/decisions.md`.
+
 ## Für den Jahresbericht
 
 - Die Verteilung je Gesetzgebungsperiode, nicht nur ihre zwei Marken.

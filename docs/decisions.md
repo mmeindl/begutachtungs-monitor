@@ -618,6 +618,19 @@ gets an entry of its own only where it carries a reason the rule does not.
 - **Upstream blocks are respected, not circumvented:** one request per second
   and a two-hour pause after a 403 at Steiermark's firewall; EUR-Lex's bot
   check is not bypassed, only the Cellar is queried (§12.64, §12.66).
+- **A `robots.txt` that excludes everything is a question to the publisher,
+  not a block** (15.11.2026). Tirol's Landtagsevidenz (`lte.tirol.gv.at`)
+  answers `User-agent: *` / `Disallow: /`; the monitor keeps reading it at
+  its usual pace and asks the Landtag. The file is a convention, not a
+  licence term. Where it carries legal weight is the reservation against
+  text and data mining (§ 42h Abs. 6 UrhG), and what is read there is
+  Landtag material, taken to be free official works (§ 7 UrhG); statement
+  texts, where a reservation would bite, are linked and never fetched. Not
+  settled: the database right (§ 76c ff. UrhG). A fetch for a page view is
+  arguably no robot, the prewarm and the scheduled list reads are. A
+  publisher that says no, or a block, ends the reading, and the page then
+  says „nicht abrufbar" with the reason. A new source whose `robots.txt`
+  excludes programs is asked before it ships.
 
 ### EU law and federal law carried out by the Länder
 
@@ -1040,6 +1053,7 @@ circular of 10.12.2015).
 | Vorblatt says „transposes a directive" / any EU link | 27.9 % / 41.6 % | same |
 | Directives with several unlabelled Cellar dates | 50 of 168 | same |
 | Länder drafts that carry out something federal | about 7 % | 489 drafts · 06.11.2026 (§12.66) |
+| The same, by kind | 20 carry out a Grundsatzgesetz, 21 an agreement under Art. 15a B-VG, 37 either (4 both); 4 drafts unread | the same 489 drafts, counted again offline · 15.11.2026 |
 | Deadline stated in the Land draft | 2 of about 35 | same |
 | Land Textgegenüberstellung, right column found in the draft | 550 of 550 judgeable §§ | 63 documents, Oberösterreich, Salzburg, Tirol, Wien, 1,156 §§ shown, GP XXVIII · 12.11.2026 |
 | The same check under fault injection, caught | another § of the same draft appended 57.8 % (315/545), another draft's sentence 76.4 % (420/550); by design none of a number changed, one word swapped, a sentence dropped (0 of 474 / 549 / 336) | same |
