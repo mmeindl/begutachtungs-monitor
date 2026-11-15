@@ -185,94 +185,58 @@ const citation = computed(() => (data.value ? euActCiteDe(data.value.act, data.v
           </div>
         </div>
 
-        <!-- The stations before the last, each a section under its own name,
-             in the rail's order: the dated steps in the frame of facts one consults
-             (`FactList`'s box grammar), the sentences on what is missing,
-             and the record at its source. -->
-        <section
-          v-for="sec in earlierSections"
-          :id="sec.elementId"
-          :key="sec.id"
-          :aria-labelledby="`${sec.elementId}-heading`"
-          class="page-section scroll-mt-6"
-        >
-          <h2 :id="`${sec.elementId}-heading`" class="section-heading">{{ sec.heading }}</h2>
-          <p v-if="sec.facts.length" class="mt-2 text-sm text-ink-secondary">
-            <FactLine :parts="sec.facts" />
-          </p>
-          <div v-if="sec.rows.length" class="mt-4 rounded-xl border border-hairline px-4">
-            <ol role="list" class="flex flex-col divide-y divide-hairline text-sm text-ink">
-              <li v-for="row in sec.rows" :key="`${row.iso}|${row.label}`" class="flex gap-4 py-3">
-                <time :datetime="row.iso" class="w-24 shrink-0 tabular-nums text-ink-secondary">{{ row.date }}</time>
-                <span class="min-w-0">{{ row.label }}</span>
-              </li>
-            </ol>
-          </div>
-          <p v-for="note in sec.notes" :key="note" class="mt-3 text-sm text-ink-secondary">
-            {{ note }}
-          </p>
-          <p v-for="link in sec.links" :key="link.href" class="mt-3 text-sm">
-            <ExternalLink :href="link.href" class="link-inline">{{ link.label }}</ExternalLink>
-          </p>
-          <SectionCredits v-if="sec.credits.length" :sources="[]" :marked="false">
-            <span v-for="item in sec.credits" :key="item">{{ item }}</span>
-          </SectionCredits>
-        </section>
+        <!-- A section per station, in the rail's order and under the
+             station's name, each in the draft pages' grammar
+             (`EuStationSection`). The last one — „Umsetzung" or „Geltung" —
+             holds the drafts. Where the Cellar's answer is missing the rail
+             is still there, so are the sections. -->
+        <template v-if="rail">
+          <EuStationSection v-for="sec in earlierSections" :key="sec.id" :section="sec" :citation="citation" />
+          <EuStationSection v-if="effect" :section="effect">
+            <!-- The drafts first among what the section holds: the timeline
+                 as one chart (`EuTimelineChart`), the drafts side by side
+                 against the one deadline, then the drafts as every list of
+                 drafts shows them (`EntryList`). -->
+            <PageSubsection :heading="page.implementingHeading">
+              <EuTimelineChart v-if="page.chart" :chart="page.chart" />
+              <EntryList v-if="page.entries.length" :entries="page.entries" :class="page.chart ? 'mt-6' : ''">
+                <!-- What could not be read, in the box's head — where the
+                     overview and `/entwuerfe` say it, above the rows it
+                     concerns. -->
+                <template v-if="page.incomplete" #header>
+                  <p class="text-sm text-ink-muted">
+                    {{ page.incomplete }}
+                  </p>
+                </template>
+                <!-- The dates the chart draws, said with the row: the lanes are
+                     hidden from a screen reader, which hears each draft once. -->
+                <template #evidence="{ entry }">
+                  <span v-if="page.said[entry.key]" class="sr-only">{{ page.said[entry.key] }}</span>
+                </template>
+              </EntryList>
+              <p v-if="!page.entries.length && page.incomplete" class="text-sm text-ink-muted">
+                {{ page.incomplete }}
+              </p>
+              <p v-if="!page.entries.length" class="text-ink-secondary" :class="page.incomplete ? 'mt-4' : ''">
+                {{ page.noneImplementing }}
+              </p>
+              <!-- The credit line of the drafts' list, under it. -->
+              <SectionCredits v-if="credits" :sources="[]" :marked="false">
+                <span>Quellen:</span>
+                <span v-for="item in credits.items" :key="item">{{ item }}</span>
+                <template #method>
+                  <MethodEuRecht />
+                </template>
+              </SectionCredits>
+            </PageSubsection>
 
-        <!-- The last station's section, under the station's name („Umsetzung"
-             or „Geltung"): what the Cellar says of it, then the drafts. -->
-        <section :id="effect?.elementId" aria-labelledby="eu-umsetzung-heading" class="page-section scroll-mt-6">
-          <h2 id="eu-umsetzung-heading" class="section-heading">{{ effect?.heading ?? page.implementingHeading }}</h2>
-          <template v-if="effect">
-            <p v-if="effect.facts.length" class="mt-2 text-sm text-ink-secondary">
-              <FactLine :parts="effect.facts" />
-            </p>
-            <p v-for="note in effect.notes" :key="note" class="mt-2 text-sm text-ink-secondary">
-              {{ note }}
-            </p>
-          </template>
-          <PageSubsection :heading="page.implementingHeading" class="mt-6">
-            <!-- The timeline first, as one chart (`EuTimelineChart`): the drafts
-                 side by side against the one deadline. Then the drafts as
-                 every list of drafts shows them (`EntryList`). -->
-            <EuTimelineChart v-if="page.chart" :chart="page.chart" />
-            <EntryList v-if="page.entries.length" :entries="page.entries" class="mt-6">
-              <!-- What could not be read, in the box's head — where the
-                   overview and `/entwuerfe` say it, above the rows it
-                   concerns. -->
-              <template v-if="page.incomplete" #header>
-                <p class="text-sm text-ink-muted">
-                  {{ page.incomplete }}
-                </p>
-              </template>
-              <!-- The dates the chart draws, said with the row: the lanes are
-                   hidden from a screen reader, which hears each draft once. -->
-              <template #evidence="{ entry }">
-                <span v-if="page.said[entry.key]" class="sr-only">{{ page.said[entry.key] }}</span>
-              </template>
-            </EntryList>
-            <p v-if="!page.entries.length && page.incomplete" class="mt-4 text-sm text-ink-muted">
-              {{ page.incomplete }}
-            </p>
-            <p v-if="!page.entries.length" class="mt-4 text-ink-secondary">
-              {{ page.noneImplementing }}
-            </p>
-          </PageSubsection>
-
-          <!-- The same rows as above and on every list (`EntryList`), apart
-               under their heading and without a lane in the chart. -->
-          <PageSubsection v-if="page.restating.length" heading="Weitere Entwürfe, die den Akt im geltenden Umsetzungshinweis nennen" class="mt-8">
-            <EntryList :entries="page.restating" />
-          </PageSubsection>
-
-          <SectionCredits v-if="credits" :sources="[]" :marked="false">
-            <span>Quellen:</span>
-            <span v-for="item in credits.items" :key="item">{{ item }}</span>
-            <template #method>
-              <MethodEuRecht />
-            </template>
-          </SectionCredits>
-        </section>
+            <!-- The same rows as above and on every list (`EntryList`), apart
+                 under their heading and without a lane in the chart. -->
+            <PageSubsection v-if="page.restating.length" heading="Weitere Entwürfe, die den Akt im geltenden Umsetzungshinweis nennen">
+              <EntryList :entries="page.restating" />
+            </PageSubsection>
+          </EuStationSection>
+        </template>
       </template>
     </FetchGate>
   </div>

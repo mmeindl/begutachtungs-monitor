@@ -18,6 +18,14 @@
  * directives nobody transposes yet) fill a place that is already there.
  * No section is empty — it says what the Cellar has, or why it has nothing.
  *
+ * THE SECTIONS SPEAK THE DRAFT PAGES' GRAMMAR (15.11.2026), so an act's
+ * page and a draft's read as one site: a section opens with a frame of
+ * facts (`FactList` — a name, the fact under it, the link inside the
+ * fact); the dated record stands folded under it in a list box, as „Alle
+ * Schritte im Landtag" does; what limits the reading is a short paragraph
+ * under the frame; the credit line closes it. Every later step of the EU
+ * cycle fills these four places and adds no fifth.
+ *
  * All German copy of the rail and of its sections lives in
  * this one file, so a second language replaces it here. Pure: no Vue; the
  * component places what this returns, the tests read it without one.
@@ -53,22 +61,46 @@ export interface EuRailProcedureRow {
   label: string
 }
 
-/** The section of one station: same id, same name, in the rail's words. */
+/** A link off this site inside a fact: the record at its source, never fetched. */
+export interface EuFactLink {
+  href: string
+  label: string
+}
+
+/** One fact of a section's frame (`FactList`): a name, and under it the fact. */
+export interface EuSectionFact {
+  key: string
+  /** The name over the fact, in the station style; null for the one sentence that says why nothing can be shown. */
+  title: string | null
+  /** The fact, in order: plain words and links, set apart by commas. */
+  parts: (string | EuFactLink)[]
+  /** The fact is the act's citation: „Zitieren" stands beside it. */
+  cite: boolean
+}
+
+/** The dated record folded under a section's frame, as „Alle Schritte im Landtag". */
+export interface EuSectionRecord {
+  /** „Alle gelesenen Schritte des Verfahrens (6)". */
+  heading: string
+  rows: EuRailProcedureRow[]
+  /** What the record leaves out, counted; null where it leaves nothing out. */
+  note: string | null
+}
+
+/** The section of one station: same id, same name, in the draft pages' grammar. */
 export interface EuRailSection {
   id: EuRailStationId
   /** The section element's id, „eu-vorschlag"; the station links to it. */
   elementId: string
   /** The station's name, word for word. */
   heading: string
-  /** The line under the heading (`FactLine`); empty where the rows say it. */
-  facts: string[]
-  /** Dated steps, ascending, one row per (label, day); empty for a station without steps. */
-  rows: EuRailProcedureRow[]
-  /** Sentences: what cannot be shown and why, the steps not shown, the days of single provisions. */
+  /** The frame the section opens with; never empty. */
+  facts: EuSectionFact[]
+  /** The dated record under the frame; null for a station without one. */
+  record: EuSectionRecord | null
+  /** Short paragraphs under the frame: what limits the reading. */
   notes: string[]
-  /** The station's own record off this site (EUR-Lex, the Legislative Observatory); linked, never fetched. */
-  links: { href: string; label: string }[]
-  /** The credit line's items; empty where the page's own credit line covers the section. */
+  /** The credit line's items under the frame. */
   credits: string[]
 }
 
@@ -128,11 +160,29 @@ const DE = {
   other: (n: number) => (n === 1
     ? 'Der Cellar verzeichnet 1 weiteren Schritt dieses Verfahrens, den der Monitor nicht einzeln zeigt.'
     : `Der Cellar verzeichnet ${n} weitere Schritte dieses Verfahrens, die der Monitor nicht einzeln zeigt.`),
+  fact: {
+    proposal: 'Vorschlag der Kommission',
+    procedure: 'Verfahren',
+    parliament: 'Parlament',
+    council: 'Rat',
+    signature: 'Unterzeichnung',
+    reference: 'Fundstelle',
+    act: 'Rechtsakt',
+    deadline: 'Umsetzungsfrist',
+    inForce: 'In Kraft',
+    effective: 'Wirksam',
+    applies: 'Gilt',
+    direct: 'Gilt unmittelbar',
+    directText: 'in jedem Mitgliedstaat',
+  },
+  since: (date: string) => `seit ${date}`,
+  from: (date: string) => `ab ${date}`,
+  record: (n: number) => `Alle gelesenen Schritte des Verfahrens (${n})`,
   // Not „eigene Tage": the word reads as a count of days (rule D6).
   partial: (dates: string[]) => `Für einzelne Bestimmungen nennt der Cellar einen eigenen Geltungsbeginn: ${dates.join(', ')}.`,
   source: {
-    proposal: (reference: string | null) => (reference ? `${reference} auf EUR-Lex` : 'Vorschlag auf EUR-Lex'),
-    observatory: 'Verfahren im Legislative Observatory (englisch)',
+    proposal: 'Vorschlag auf EUR-Lex',
+    observatory: 'im Legislative Observatory (englisch)',
     act: 'Rechtsakt auf EUR-Lex',
   },
   credits: ['Quelle:', 'Cellar des Amts für Veröffentlichungen der Europäischen Union (Metadaten)'],
@@ -312,53 +362,115 @@ function effectStation(r: EuActResponse, today: string): EuRailStation {
   }
 }
 
+const fact = (key: string, title: string | null, parts: (string | EuFactLink)[], cite = false): EuSectionFact => ({ key, title, parts, cite })
+
+/** The one sentence that says why a station has nothing to show, as the frame's only row. */
+const gapFact = (gap: string): EuSectionFact => fact('luecke', null, [gap])
+
 /**
- * The section of a station. What the station says in one line the section
- * says in full: the dated steps where there are any (then the line is not
- * repeated above them), the sentences, and the record at its source.
+ * A section's frame and what stands under it. Where the station has facts,
+ * a gap is a paragraph under the frame; where it has none, the gap IS the
+ * frame — a section never opens empty.
  */
-function sectionOf(st: EuRailStation, r: EuActResponse, rows: ReturnType<typeof procedureRowsOf> | null): EuRailSection {
-  const base = { id: st.id, elementId: elementIdOf(st.id), heading: st.name, credits: [...DE.credits] }
-  const gap = st.gap ? [st.gap] : []
-  const p = r.rail?.procedure ?? null
-  if (st.id === 'vorschlag') {
-    const own = rows?.proposal ?? []
-    // The station's line is repeated only where the rows do not say it all:
-    // a proposal without its own day is no row („COM(…)" would be lost).
-    const allDated = (p?.proposals ?? []).every((prop) => prop.date)
-    return {
-      ...base,
-      facts: own.length && allDated ? [] : st.facts,
-      rows: own,
-      notes: gap,
-      links: (p?.proposals ?? []).flatMap((prop) => (prop.eurLexUrl ? [{ href: prop.eurLexUrl, label: DE.source.proposal(prop.reference) }] : [])),
+function framed(facts: EuSectionFact[], gap: string | null, notes: string[] = []): Pick<EuRailSection, 'facts' | 'notes'> {
+  if (!facts.length) return { facts: [gapFact(gap ?? DE.gap.unread)], notes }
+  return { facts, notes: [...(gap ? [gap] : []), ...notes] }
+}
+
+/**
+ * „Vorschlag": each proposal a fact — its number linked to EUR-Lex, then
+ * its day, the same day the station shows; an amended proposal under the
+ * Cellar's own name for the step.
+ */
+function proposalFacts(st: EuRailStation, p: EuProcedure | null): EuSectionFact[] {
+  if (!p) return []
+  const firstProposalEvent = p.events.find((e) => roleOf(e) === 'proposal') ?? null
+  const facts: EuSectionFact[] = []
+  p.proposals.forEach((prop, i) => {
+    const iso = prop.date ?? (i === 0 ? firstProposalEvent?.date ?? null : null)
+    const date = iso ? [formatDateDe(iso)] : []
+    if (prop.reference) {
+      facts.push(fact(`vorschlag-${i}`, DE.fact.proposal, [prop.eurLexUrl ? { href: prop.eurLexUrl, label: prop.reference } : prop.reference, ...date]))
+    } else if (date.length) {
+      facts.push(fact(`vorschlag-${i}`, DE.fact.proposal, [...date, ...(prop.eurLexUrl ? [{ href: prop.eurLexUrl, label: DE.source.proposal }] : [])]))
     }
+  })
+  if (!p.proposals.length && firstProposalEvent) facts.push(fact('vorschlag-0', DE.fact.proposal, [formatDateDe(firstProposalEvent.date)]))
+  // Only where the station shows a proposal at all: an amended proposal alone is no „Vorschlag" shown.
+  if (st.facts.length) {
+    p.events.filter((e) => roleOf(e) === 'amended-proposal').forEach((e, i) => {
+      facts.push(fact(`geaendert-${i}`, EU_EVENTS[e.code]!.label, [formatDateDe(e.date)]))
+    })
   }
+  return facts
+}
+
+/**
+ * The deciding station: the procedure's number and kind with the way to
+ * the Legislative Observatory, then what the station's line says — the
+ * last decision of Parliament and of the Council in the Cellar's words,
+ * and the signature. Everything else the monitor reads stands in the record.
+ */
+function decisionFacts(r: EuActResponse, p: EuProcedure | null): EuSectionFact[] {
+  if (!p) return []
+  const typeLabel = p.type ? EU_PROCEDURE_TYPES[p.type] ?? null : null
+  const observatory: EuFactLink | null = p.observatoryUrl ? { href: p.observatoryUrl, label: DE.source.observatory } : null
+  const candidates: (string | EuFactLink | null)[] = [p.reference, typeLabel, observatory]
+  const procedure = candidates.filter((x): x is string | EuFactLink => !!x)
+  const parliament = r.rail?.adoptedBy === 'parlament-rat' ? lastOf(p.events, 'parliament') : null
+  const council = lastOf(p.events, 'council')
+  const signed = lastOf(p.events, 'signature')
+  return [
+    ...(procedure.length ? [fact('verfahren', DE.fact.procedure, procedure)] : []),
+    ...(parliament ? [fact('parlament', DE.fact.parliament, [EU_EVENTS[parliament.code]!.label, formatDateDe(parliament.date)])] : []),
+    ...(council ? [fact('rat', DE.fact.council, [EU_EVENTS[council.code]!.label, formatDateDe(council.date)])] : []),
+    ...(signed ? [fact('unterzeichnung', DE.fact.signature, [formatDateDe(signed.date)])] : []),
+  ]
+}
+
+/** „Umsetzung": the deadline. „Geltung": since or from when, each day a fact of its own. */
+function effectFacts(r: EuActResponse, today: string): EuSectionFact[] {
+  const kind = r.act.kind
+  if (kind === 'richtlinie' || kind === 'rahmenbeschluss') {
+    const deadline = r.act.transposition?.deadline ?? null
+    return deadline ? [fact('frist', DE.fact.deadline, [formatDateDe(deadline)])] : []
+  }
+  const rail = r.rail
+  const when = (iso: string) => (iso <= today ? DE.since(formatDateDe(iso)) : DE.from(formatDateDe(iso)))
+  const inForce = rail?.inForce ?? null
+  const effective = inForce ? null : rail?.effective ?? null
+  const applies = rail?.applies ?? null
+  return [
+    ...(inForce ? [fact('in-kraft', DE.fact.inForce, [when(inForce)])] : []),
+    ...(effective ? [fact('wirksam', DE.fact.effective, [when(effective)])] : []),
+    ...(applies && applies !== inForce ? [fact('gilt', DE.fact.applies, [when(applies)])] : []),
+    ...(kind === 'verordnung' ? [fact('unmittelbar', DE.fact.direct, [DE.fact.directText])] : []),
+  ]
+}
+
+/** The section of a station, in the draft pages' grammar (see the head of this file). */
+function sectionOf(st: EuRailStation, r: EuActResponse, rows: ReturnType<typeof procedureRowsOf> | null, today: string): EuRailSection {
+  const base = { id: st.id, elementId: elementIdOf(st.id), heading: st.name, record: null, credits: [...DE.credits] }
+  const p = r.rail?.procedure ?? null
+  if (st.id === 'vorschlag') return { ...base, ...framed(proposalFacts(st, p), st.gap) }
   if (st.id === 'beschluss') {
-    const typeLabel = p?.type ? EU_PROCEDURE_TYPES[p.type] ?? null : null
+    // The whole record of the procedure the monitor reads, the proposal with it, by day.
+    const all = rows ? [...rows.proposal, ...rows.decision].sort((x, y) => x.iso.localeCompare(y.iso)) : []
     return {
       ...base,
-      facts: [p?.reference, typeLabel].filter((x): x is string => !!x),
-      rows: rows?.decision ?? [],
-      notes: [...gap, ...(p && p.otherEvents > 0 ? [DE.other(p.otherEvents)] : [])],
-      links: p?.observatoryUrl ? [{ href: p.observatoryUrl, label: DE.source.observatory }] : [],
+      ...framed(decisionFacts(r, p), st.gap),
+      record: all.length ? { heading: DE.record(all.length), rows: all, note: p && p.otherEvents > 0 ? DE.other(p.otherEvents) : null } : null,
     }
   }
   if (st.id === 'amtsblatt') {
-    return { ...base, facts: st.facts, rows: [], notes: gap, links: [{ href: r.act.eurLexUrl, label: DE.source.act }] }
+    const facts = r.oj
+      ? [fact('fundstelle', DE.fact.reference, [{ href: r.act.eurLexUrl, label: euOjCiteDe(r.oj) }], true)]
+      : [gapFact(st.gap ?? DE.gap.noOj), fact('rechtsakt', DE.fact.act, [{ href: r.act.eurLexUrl, label: DE.source.act }])]
+    return { ...base, facts, notes: [] }
   }
-  // „Umsetzung" / „Geltung": the drafts stand in the section themselves, so
-  // their count is not said again; the page's credit line covers it.
-  const n = r.implementing.length
+  // „Umsetzung" / „Geltung": the drafts follow in the section itself.
   const partial = r.rail?.partialApplication ?? []
-  return {
-    ...base,
-    facts: st.facts.filter((f) => n === 0 || f !== DE.drafts(n)),
-    rows: [],
-    notes: [...gap, ...(partial.length ? [DE.partial(partial.map((d) => formatDateDe(d)))] : [])],
-    links: [],
-    credits: [],
-  }
+  return { ...base, ...framed(effectFacts(r, today), st.gap, partial.length ? [DE.partial(partial.map((d) => formatDateDe(d)))] : []) }
 }
 
 /**
@@ -381,6 +493,6 @@ export function euRailView(r: EuActResponse, today: string): EuRailView {
     heading: DE.heading,
     stations,
     note: commission ? DE.note : null,
-    sections: stations.map((st) => sectionOf(st, r, rows)),
+    sections: stations.map((st) => sectionOf(st, r, rows, today)),
   }
 }

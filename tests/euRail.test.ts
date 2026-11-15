@@ -77,12 +77,15 @@ const TODAY = '2026-11-15'
 const station = (v: EuRailView, id: string) => v.stations.find((s) => s.id === id)
 const section = (v: EuRailView, id: string) => v.sections.find((s) => s.id === id)!
 /** The dated steps of the two stations of the procedure, as „day label". */
-const steps = (v: EuRailView) => [...section(v, 'vorschlag').rows, ...section(v, 'beschluss').rows].map((r) => `${r.date} ${r.label}`)
+const steps = (v: EuRailView) => (section(v, 'beschluss').record?.rows ?? []).map((r) => `${r.date} ${r.label}`)
+/** A section's frame as lines „Name: fact", a link as „[label]"; the sentence without a name as „–: …". */
+const frame = (v: EuRailView, id: string) => section(v, id).facts.map((f) => `${f.title ?? '–'}: ${f.parts.map((x) => (typeof x === 'string' ? x : `[${x.label}]`)).join(', ')}`)
+const links = (v: EuRailView, id: string) => section(v, id).facts.flatMap((f) => f.parts.filter((x) => typeof x !== 'string'))
 const allStrings = (v: EuRailView): string[] => [
   v.heading,
   v.note,
   ...v.stations.flatMap((s) => [s.name, s.gap, ...s.facts]),
-  ...v.sections.flatMap((s) => [s.heading, ...s.facts, ...s.notes, ...s.credits, ...s.links.map((l) => l.label), ...s.rows.flatMap((r) => [r.date, r.label])]),
+  ...v.sections.flatMap((s) => [s.heading, ...s.notes, ...s.credits, s.record?.heading, s.record?.note, ...s.facts.flatMap((f) => [f.title, ...f.parts.map((x) => (typeof x === 'string' ? x : x.label))]), ...(s.record?.rows ?? []).flatMap((r) => [r.date, r.label])]),
 ].filter((x): x is string => typeof x === 'string')
 
 describe('euRailView', () => {
@@ -120,36 +123,39 @@ describe('euRailView', () => {
       ['wirkung', 'eu-wirkung', 'Umsetzung'],
     ])
     expect(v.stations.map((s) => s.anchor)).toEqual(v.sections.map((s) => `#${s.elementId}`))
-    // The proposal on its document's day (the Cellar's adoption step a day
-    // later stands aside); the rows say it, so the line above them is empty.
-    expect(section(v, 'vorschlag')).toMatchObject({
-      facts: [],
-      rows: [{ date: '27.04.2022', iso: '2022-04-27', label: 'Vorschlag der Kommission COM(2022) 177' }],
-      notes: [],
-      links: [{ href: 'https://eur-lex.europa.eu/legal-content/DE/TXT/?uri=CELEX:52022PC0177', label: 'COM(2022) 177 auf EUR-Lex' }],
-      credits: ['Quelle:', 'Cellar des Amts für Veröffentlichungen der Europäischen Union (Metadaten)'],
-    })
-    // The Official Journal is its own station, not a row.
-    expect(section(v, 'beschluss')).toMatchObject({
-      facts: ['2022/0117(COD)', 'Ordentliches Gesetzgebungsverfahren'],
+    // Each section opens with a frame of facts, the link inside the fact.
+    expect(frame(v, 'vorschlag')).toEqual(['Vorschlag der Kommission: [COM(2022) 177], 27.04.2022'])
+    expect(links(v, 'vorschlag')).toEqual([{ href: 'https://eur-lex.europa.eu/legal-content/DE/TXT/?uri=CELEX:52022PC0177', label: 'COM(2022) 177' }])
+    expect(section(v, 'vorschlag')).toMatchObject({ record: null, notes: [], credits: ['Quelle:', 'Cellar des Amts für Veröffentlichungen der Europäischen Union (Metadaten)'] })
+    expect(frame(v, 'beschluss')).toEqual([
+      'Verfahren: 2022/0117(COD), Ordentliches Gesetzgebungsverfahren, [im Legislative Observatory (englisch)]',
+      'Parlament: Standpunkt des EP in erster Lesung, 27.02.2024',
+      'Rat: Billigung des Standpunkts des EP in erster Lesung durch den Rat (Annahme des Gesetzgebungsakts), 19.03.2024',
+      'Unterzeichnung: 11.04.2024',
+    ])
+    expect(links(v, 'beschluss')).toEqual([{ href: 'https://oeil.europarl.europa.eu/oeil/en/procedure-file?reference=2022%2F0117(COD)', label: 'im Legislative Observatory (englisch)' }])
+    // The record folded under the frame: every step the monitor reads, the
+    // proposal on its document's day (the Cellar's adoption step a day later
+    // stands aside). The Official Journal is its own station, not a row.
+    expect(section(v, 'beschluss').notes).toEqual([])
+    expect(section(v, 'beschluss').record).toEqual({
+      heading: 'Alle gelesenen Schritte des Verfahrens (6)',
       rows: [
+        { date: '27.04.2022', iso: '2022-04-27', label: 'Vorschlag der Kommission COM(2022) 177' },
         { date: '26.10.2022', iso: '2022-10-26', label: 'Stellungnahme des Europäischen Wirtschafts- und Sozialausschusses' },
         { date: '11.07.2023', iso: '2023-07-11', label: 'Beschluss des EP über Änderungen am Legislativvorschlag' },
         { date: '27.02.2024', iso: '2024-02-27', label: 'Standpunkt des EP in erster Lesung' },
         { date: '19.03.2024', iso: '2024-03-19', label: 'Billigung des Standpunkts des EP in erster Lesung durch den Rat (Annahme des Gesetzgebungsakts)' },
         { date: '11.04.2024', iso: '2024-04-11', label: 'Unterzeichnung durch den Präsidenten des EP und den Präsidenten des Rates' },
       ],
-      notes: ['Der Cellar verzeichnet 16 weitere Schritte dieses Verfahrens, die der Monitor nicht einzeln zeigt.'],
-      links: [{ href: 'https://oeil.europarl.europa.eu/oeil/en/procedure-file?reference=2022%2F0117(COD)', label: 'Verfahren im Legislative Observatory (englisch)' }],
+      note: 'Der Cellar verzeichnet 16 weitere Schritte dieses Verfahrens, die der Monitor nicht einzeln zeigt.',
     })
-    expect(section(v, 'amtsblatt')).toMatchObject({
-      facts: ['ABl. L, 2024/1069, 16.04.2024'],
-      rows: [],
-      notes: [],
-      links: [{ href: DIRECTIVE.eurLexUrl, label: 'Rechtsakt auf EUR-Lex' }],
-    })
-    // The drafts stand in the section themselves: their count is not said again.
-    expect(section(v, 'wirkung')).toMatchObject({ facts: ['Umsetzungsfrist 07.05.2026'], rows: [], notes: [], links: [], credits: [] })
+    // The citation is the link to the act, with „Zitieren" beside it.
+    expect(frame(v, 'amtsblatt')).toEqual(['Fundstelle: [ABl. L, 2024/1069, 16.04.2024]'])
+    expect(section(v, 'amtsblatt').facts[0]).toMatchObject({ cite: true, parts: [{ href: DIRECTIVE.eurLexUrl }] })
+    // The drafts stand in the section themselves: their count is not a fact of the frame.
+    expect(frame(v, 'wirkung')).toEqual(['Umsetzungsfrist: 07.05.2026'])
+    expect(section(v, 'wirkung')).toMatchObject({ record: null, notes: [] })
   })
 
   it('counts drafts in the right number and says nothing for none', () => {
@@ -159,8 +165,8 @@ describe('euRailView', () => {
 
   it('says one further step in the singular', () => {
     const v = euRailView(response({ rail: rail({ procedure: procedure({ otherEvents: 1 }) }) }), TODAY)
-    expect(section(v, 'beschluss').notes).toEqual(['Der Cellar verzeichnet 1 weiteren Schritt dieses Verfahrens, den der Monitor nicht einzeln zeigt.'])
-    expect(section(euRailView(response({ rail: rail({ procedure: procedure({ otherEvents: 0 }) }) }), TODAY), 'beschluss').notes).toEqual([])
+    expect(section(v, 'beschluss').record!.note).toBe('Der Cellar verzeichnet 1 weiteren Schritt dieses Verfahrens, den der Monitor nicht einzeln zeigt.')
+    expect(section(euRailView(response({ rail: rail({ procedure: procedure({ otherEvents: 0 }) }) }), TODAY), 'beschluss').record!.note).toBeNull()
   })
 
   describe('a regulation', () => {
@@ -181,6 +187,7 @@ describe('euRailView', () => {
         anchor: '#eu-wirkung',
       })
       expect(section(v, 'wirkung').notes).toEqual(['Für einzelne Bestimmungen nennt der Cellar einen eigenen Geltungsbeginn: 02.02.2025, 02.08.2025, 02.08.2027.'])
+      expect(frame(v, 'wirkung')).toEqual(['In Kraft: seit 01.08.2024', 'Gilt: ab 02.08.2026', 'Gilt unmittelbar: in jedem Mitgliedstaat'])
     })
 
     it('applies since that day once it has come', () => {
@@ -235,7 +242,8 @@ describe('euRailView', () => {
     const v = euRailView(response({ rail: rail({ procedure: procedure({ reference: '1992/0412(COD)', type: 'COD', observatoryUrl: null }) }) }), TODAY)
     expect(station(v, 'beschluss')).toMatchObject({ gap: null })
     expect(station(v, 'beschluss')!.facts).toContain('1992/0412(COD)')
-    expect(section(v, 'beschluss')).toMatchObject({ facts: ['1992/0412(COD)', 'Mitentscheidungsverfahren'], links: [] })
+    expect(frame(v, 'beschluss')[0]).toBe('Verfahren: 1992/0412(COD), Mitentscheidungsverfahren')
+    expect(links(v, 'beschluss')).toEqual([])
     for (const text of allStrings(v)) expect(text).not.toMatch(/Observatory/)
   })
 
@@ -258,8 +266,9 @@ describe('euRailView', () => {
     expect(v.stations.map((s) => s.name)).toEqual(['Vorschlag', 'Rat', 'Amtsblatt', 'Umsetzung'])
     // Parliament's opinion is a row of the procedure, not the Council's decision.
     expect(station(v, 'beschluss')!.facts).toEqual(['Rat 18.02.2020', '2019/0020(CNS)'])
-    expect(section(v, 'beschluss').facts).toContain('Konsultationsverfahren')
-    expect(section(v, 'beschluss').rows.map((r) => r.label)).toContain('Stellungnahme des Parlaments in 1. Lesung')
+    expect(frame(v, 'beschluss')[0]).toContain('Konsultationsverfahren')
+    expect(steps(v).join('|')).toContain('Stellungnahme des Parlaments in 1. Lesung')
+    expect(frame(v, 'beschluss').some((l) => l.startsWith('Parlament:'))).toBe(false)
   })
 
   it('gives an act of the Commission two stations and the note', () => {
@@ -294,7 +303,8 @@ describe('euRailView', () => {
     expect(station(v, 'amtsblatt')!.gap).toBe('Die Fundstelle im Amtsblatt konnte nicht gelesen werden.')
     // Without the Cellar's answer no absence is claimed.
     expect(station(v, 'wirkung')!.gap).toBe('Die Umsetzungsfrist konnte nicht gelesen werden.')
-    expect(v.sections.map((s) => [s.rows.length, s.notes.length > 0])).toEqual([[0, true], [0, true], [0, true], [0, true]])
+    // No section opens empty: where nothing was read, the reason is the frame.
+    expect(v.sections.map((s) => [s.record, s.facts[0]!.title, typeof s.facts[0]!.parts[0]])).toEqual([[null, null, 'string'], [null, null, 'string'], [null, null, 'string'], [null, null, 'string']])
     expect(v.note).toBeNull()
 
     const reg = euRailView(response({ act: REGULATION, rail: null }), TODAY)
@@ -313,8 +323,9 @@ describe('euRailView', () => {
     const v = euRailView(response({ rail: rail({ procedure: null }) }), TODAY)
     expect(station(v, 'vorschlag')).toMatchObject({ gap: 'Der Cellar verknüpft diesen Rechtsakt mit keinem Verfahren; der Vorschlag kann hier nicht gezeigt werden.', anchor: '#eu-vorschlag' })
     expect(station(v, 'beschluss')).toMatchObject({ name: 'Parlament und Rat', gap: 'Der Cellar verknüpft diesen Rechtsakt mit keinem Verfahren; die Schritte können hier nicht gezeigt werden.', anchor: '#eu-beschluss' })
-    expect(section(v, 'vorschlag')).toMatchObject({ facts: [], rows: [], notes: ['Der Cellar verknüpft diesen Rechtsakt mit keinem Verfahren; der Vorschlag kann hier nicht gezeigt werden.'], links: [] })
-    expect(section(v, 'beschluss')).toMatchObject({ facts: [], rows: [], notes: ['Der Cellar verknüpft diesen Rechtsakt mit keinem Verfahren; die Schritte können hier nicht gezeigt werden.'], links: [] })
+    expect(frame(v, 'vorschlag')).toEqual(['–: Der Cellar verknüpft diesen Rechtsakt mit keinem Verfahren; der Vorschlag kann hier nicht gezeigt werden.'])
+    expect(frame(v, 'beschluss')).toEqual(['–: Der Cellar verknüpft diesen Rechtsakt mit keinem Verfahren; die Schritte können hier nicht gezeigt werden.'])
+    expect(section(v, 'beschluss').record).toBeNull()
   })
 
   it('lists two proposals, each with its own date', () => {
@@ -331,7 +342,8 @@ describe('euRailView', () => {
     expect(station(v, 'vorschlag')).toMatchObject({
       facts: ['COM(1995) 239 vom 07.06.1995', 'COM(1997) 651 vom 05.12.1997'],
     })
-    expect(section(v, 'vorschlag').links[0]).toEqual({ href: 'https://eur-lex.europa.eu/a', label: 'COM(1995) 239 auf EUR-Lex' })
+    expect(links(v, 'vorschlag')[0]).toEqual({ href: 'https://eur-lex.europa.eu/a', label: 'COM(1995) 239' })
+    expect(frame(v, 'vorschlag')).toHaveLength(2)
     const labels = steps(v)
     expect(labels.slice(0, 2)).toEqual(['07.06.1995 Vorschlag der Kommission COM(1995) 239', '05.12.1997 Vorschlag der Kommission COM(1997) 651'])
     expect(labels.some((l) => l.includes('Annahme durch die Kommission'))).toBe(false)
@@ -366,9 +378,10 @@ describe('euRailView', () => {
     const undated = [{ reference: 'COM(2022) 177', celex: '52022PC0177', date: null, eurLexUrl: null }]
     const v = euRailView(response({ rail: rail({ procedure: procedure({ proposals: undated }) }) }), TODAY)
     expect(station(v, 'vorschlag')).toMatchObject({ facts: ['COM(2022) 177 vom 28.04.2022'] })
-    expect(section(v, 'vorschlag').links).toEqual([])
+    expect(links(v, 'vorschlag')).toEqual([])
+    expect(frame(v, 'vorschlag')).toEqual(['Vorschlag der Kommission: COM(2022) 177, 28.04.2022'])
     // No proposal carries a day: the Cellar's step stays, in its words.
-    expect(section(v, 'vorschlag').rows[0]).toEqual({ date: '28.04.2022', iso: '2022-04-28', label: 'Annahme durch die Kommission' })
+    expect(section(v, 'beschluss').record!.rows[0]).toEqual({ date: '28.04.2022', iso: '2022-04-28', label: 'Annahme durch die Kommission' })
     const bare = euRailView(response({ rail: rail({ procedure: procedure({ proposals: undated, events: [{ code: 'APR_R1_byCONSIL', date: '2024-03-19' }] }) }) }), TODAY)
     expect(station(bare, 'vorschlag')!.facts).toEqual(['COM(2022) 177'])
   })
@@ -386,7 +399,8 @@ describe('euRailView', () => {
     // A proposal step without a proposal record still dates the station.
     const stepOnly = euRailView(response({ rail: rail({ procedure: procedure({ proposals: [] }) }) }), TODAY)
     expect(station(stepOnly, 'vorschlag')).toMatchObject({ facts: ['28.04.2022'], gap: null, anchor: '#eu-vorschlag' })
-    expect(section(stepOnly, 'vorschlag').rows[0]!.label).toBe('Annahme durch die Kommission')
+    expect(section(stepOnly, 'beschluss').record!.rows[0]!.label).toBe('Annahme durch die Kommission')
+    expect(frame(stepOnly, 'vorschlag')).toEqual(['Vorschlag der Kommission: 28.04.2022'])
   })
 
   it('shows a step once where two codes carry the same label on the same day', () => {
