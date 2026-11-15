@@ -349,13 +349,9 @@ const hasUnits = computed(() => units.value.length > 0)
     <ListSkeleton v-if="status === 'pending' || status === 'idle'" class="mt-3">
       {{ FROM_LABEL }} und {{ TO_LABEL }} werden verglichen …
     </ListSkeleton>
-    <p v-else-if="status === 'error' || !data" class="text-sm text-ink-secondary">
-      Der Vergleich ist gerade nicht verfügbar.
-    </p>
+    <GapNote v-else-if="status === 'error' || !data" kind="unavailable" text="der Vergleich." class="text-sm text-ink-secondary" />
     <template v-else-if="!data.available">
-      <p class="text-sm text-ink-secondary">
-        {{ data.unavailableReason }}
-      </p>
+      <GapNote :text="data.unavailableReason" class="text-sm text-ink-secondary" />
       <!-- Read, and none of it shown: every § is named all the same, by law
            and with why (25.10.2026) — Kärnten 15193/2025 said „keine
            Paragraphen" and named none of the 21 its Novelle changes. -->

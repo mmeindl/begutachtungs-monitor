@@ -234,7 +234,7 @@ describe('anliegenParticipation — the door', () => {
           const p = anliegenParticipation({ ...d, participation: { support, statements } })
           expect(p.door.actions.map((a) => a.key)).not.toContain('support')
           expect(p.door.supportQuote).toBeNull()
-          expect(p.volksbegehrenLine).toBe('Ein Volksbegehren wird vor dem Einlangen im Nationalrat unterstützt und unterschrieben; das verfolgt der Monitor nicht.')
+          expect(p.volksbegehrenLine).toBe('Nicht im Monitor: Unterstützung und Eintragung, bevor ein Volksbegehren im Nationalrat einlangt.')
         }
       }
     }
@@ -249,11 +249,11 @@ describe('anliegenParticipation — the door', () => {
 })
 
 describe('anliegenCounts and anliegenNotShown', () => {
-  // An unread count is „nicht gelesen", never 0; a Volksbegehren has no Unterstützungen line.
-  it('says „nicht gelesen" for a count that was not read', () => {
+  // An unread count is „nicht lesbar", never 0; a Volksbegehren has no Unterstützungen line.
+  it('says „nicht lesbar" for a count that was not read', () => {
     const none = { statements: null, support: null }
-    expect(anliegenCounts(detail('XXVIII-BI-5', {}, none)).map((c) => c.text)).toEqual(['Unterstützungen: nicht gelesen', 'Stellungnahmen: nicht gelesen'])
-    expect(anliegenCounts(detail('XXVIII-I-98', {}, none)).map((c) => c.text)).toEqual(['Stellungnahmen: nicht gelesen'])
+    expect(anliegenCounts(detail('XXVIII-BI-5', {}, none)).map((c) => c.text)).toEqual(['Unterstützungen: nicht lesbar', 'Stellungnahmen: nicht lesbar'])
+    expect(anliegenCounts(detail('XXVIII-I-98', {}, none)).map((c) => c.text)).toEqual(['Stellungnahmen: nicht lesbar'])
     expect(anliegenCounts(detail('XXVIII-BI-5', {}, { statements: 0, support: 12582 })).map((c) => c.text))
       .toEqual(['Unterstützungen: 12.582', 'Stellungnahmen: 0'])
   })

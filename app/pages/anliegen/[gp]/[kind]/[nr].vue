@@ -141,9 +141,7 @@ useSeoMeta({
           <p v-if="view.participation.closedLine" class="mt-6 max-w-prose text-sm text-ink-muted">
             {{ view.participation.closedLine }}
           </p>
-          <p v-if="view.participation.volksbegehrenLine" class="mt-3 max-w-prose text-sm text-ink-muted">
-            {{ view.participation.volksbegehrenLine }}
-          </p>
+          <GapNote v-if="view.participation.volksbegehrenLine" :text="view.participation.volksbegehrenLine" class="mt-3 max-w-prose text-sm text-ink-muted" />
 
           <section id="beteiligung" class="page-section scroll-mt-6" aria-labelledby="beteiligung-heading">
             <h2 id="beteiligung-heading" class="section-heading">{{ view.countsHeading }}</h2>
@@ -165,10 +163,10 @@ useSeoMeta({
           >
             <h2 id="stellungnahmen-heading" class="section-heading">{{ view.statementsHeading }}</h2>
             <div class="mt-4">
-              <p v-if="statementsError" class="max-w-prose text-sm text-ink-secondary">
+              <GapNote v-if="statementsError" kind="unavailable" class="max-w-prose text-sm text-ink-secondary">
                 {{ ANLIEGEN_PAGE_DE.statementsFailed }}
                 <ExternalLink :href="data.parliamentUrl" class="link-muted">{{ ANLIEGEN_PAGE_DE.statementsFailedLink }}</ExternalLink>.
-              </p>
+              </GapNote>
               <RvStatements
                 v-else-if="statements"
                 :data="statements"
@@ -189,7 +187,7 @@ useSeoMeta({
           >
             <h2 id="dokumente-heading" class="section-heading">{{ ANLIEGEN_PAGE_DE.documentsHeading }}</h2>
             <div class="mt-4">
-              <p v-if="view.documentsNote" class="max-w-prose text-ink-secondary">{{ view.documentsNote }}</p>
+              <GapNote v-if="view.documentsNote" :text="view.documentsNote" class="max-w-prose text-ink-secondary" />
               <DocumentList v-else :documents="data.documents" />
             </div>
           </section>

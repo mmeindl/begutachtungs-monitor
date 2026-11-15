@@ -88,6 +88,11 @@ Why the tool exists and why it should work: `docs/why-this-tool.md`.
   matched or confirmed is listed as such, never dropped and never guessed.
 - A claim about absence ("no Regierungsvorlage yet", "not promulgated") needs
   proof. Without it, show the weakest state the evidence supports.
+- Every gap sentence opens with one of four lead words that say whose gap it
+  is: „Nicht veröffentlicht", „Gerade nicht abrufbar", „Nicht lesbar",
+  „Nicht im Monitor". Write it through `shared/utils/gaps.ts` and render it
+  with `GapNote`; the rule and its exceptions are in `docs/decisions.md`,
+  „A gap sentence opens with one of four lead words".
 
 ### Framing: Nachverfolgung, not a blame counter
 

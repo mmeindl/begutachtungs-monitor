@@ -22,6 +22,8 @@
  *    states of the headline are words of one weight; no colour tells them
  *    apart (framing rule: success and shelving get one colour).
  */
+import { gapDe, gapLabelDe } from '#shared/utils/gaps'
+import { listDe } from './geltendeFassung'
 import type {
   AnliegenClubVote,
   AnliegenCommittee,
@@ -157,10 +159,10 @@ export const ANLIEGEN_PAGE_DE = {
   railLabelBundesrat: 'Die Petition im Bundesrat',
   countsHeading: 'Beteiligung',
   documentsHeading: 'Dokumente',
-  documentsWithheld: 'Die Dokumente dieser Petition veröffentlicht das Parlament nicht.',
+  documentsWithheld: gapDe('notPublished', 'die Dokumente dieser Petition.'),
   statementsHeading: 'Stellungnahmen an den Nationalrat',
   statementsHeadingBundesrat: 'Stellungnahmen an den Bundesrat',
-  statementsFailed: 'Die Stellungnahmen konnten gerade nicht gelesen werden. Sie stehen',
+  statementsFailed: 'die Stellungnahmen. Sie stehen',
   statementsFailedLink: 'auf parlament.gv.at',
   notShownHeading: 'Was diese Seite nicht zeigt',
   source: 'Parlament',
@@ -175,7 +177,7 @@ const BR_COMMITTEE_DEFAULT = 'Ausschuss für BürgerInnenrechte und Petitionen'
 /* An addressee that does not match the strict institutional shape is never passed through (`transmissionAddressees`). */
 const BR_ADDRESSEE_UNKNOWN = 'eine Stelle der Bundesverwaltung'
 const SUPPORT_QUOTE = 'Die elektronische Unterstützung dient der Abbildung der politischen Interessenlage und hat für die Beratungen im Nationalrat informativen Charakter.'
-const VOLKSBEGEHREN_SUPPORT = 'Ein Volksbegehren wird vor dem Einlangen im Nationalrat unterstützt und unterschrieben; das verfolgt der Monitor nicht.'
+const VOLKSBEGEHREN_SUPPORT = gapDe('outOfScope', 'Unterstützung und Eintragung, bevor ein Volksbegehren im Nationalrat einlangt.')
 /* No „mehr": whether an old item ever had the window is not read. */
 const CLOSED_BOTH = 'Unterstützung und Stellungnahme sind nicht möglich.'
 /* A Volksbegehren's `statementsstate` is „0" on 78 and „9 …" on 7 of 85: on
@@ -568,9 +570,9 @@ export function anliegenParticipation(d: AnliegenDetail): AnliegenParticipationV
 // Counts and what the page cannot show
 // ---------------------------------------------------------------------------
 
-/** „Unterstützungen: 24", „Stellungnahmen: 3"; an unread count says „nicht gelesen", never 0. No Unterstützungen for a Volksbegehren. */
+/** „Unterstützungen: 24", „Stellungnahmen: 3"; an unread count says „nicht lesbar" (`gapLabelDe`), never 0. No Unterstützungen for a Volksbegehren. */
 export function anliegenCounts(d: AnliegenDetail): AnliegenCountFact[] {
-  const count = (n: number | null) => (n === null ? 'nicht gelesen' : formatNumberDe(n))
+  const count = (n: number | null) => (n === null ? 'nicht lesbar' : formatNumberDe(n))
   const out: AnliegenCountFact[] = []
   if (d.root.kind !== 'volksbegehren') out.push({ key: 'support', text: `Unterstützungen: ${count(d.counts.support)}` })
   out.push({ key: 'statements', text: `Stellungnahmen: ${count(d.counts.statements)}` })
@@ -713,7 +715,7 @@ export const ANLIEGEN_LIST_DE = {
    * lists' own headings, which `EntryList` draws for every list.
    */
   columns: { lead: 'Anliegen', support: 'Unterstützungen' },
-  vbSupportNote: 'Unterstützt und unterschrieben wird ein Volksbegehren, bevor es im Nationalrat einlangt; das verfolgt der Monitor nicht.',
+  vbSupportNote: VOLKSBEGEHREN_SUPPORT,
 } as const
 
 /**
@@ -725,9 +727,9 @@ export const ANLIEGEN_HOME_DE = {
   lede: 'Petitionen, Bürgerinitiativen und Volksbegehren, die der Nationalrat gerade behandelt.',
   /** What the section's link is „Alle …" of (`ListHeader`). */
   linkNoun: 'Anliegen',
-  failed: `Die ${ANLIEGEN_SECTION_DE} sind gerade nicht abrufbar.`,
+  failed: gapLabelDe(ANLIEGEN_SECTION_DE, 'unavailable'),
   /** The reason, by what failed: Parliament's lists (a 502 of ours), or no answer reached the page. */
-  failedUpstream: 'Die Listen des Parlaments konnten nicht gelesen werden.',
+  failedUpstream: 'Die Listen des Parlaments haben nicht geantwortet.',
   failedNoAnswer: 'Der Monitor hat auf die Abfrage keine Antwort erhalten.',
 } as const
 
@@ -829,7 +831,7 @@ export function anliegenCountLineDe(
   const unknown = ofKind.filter((r) => r.open === null).length
   const total = formatNumberDe(ofKind.length)
   const noun = art === 'alle' ? '' : ` ${ofKind.length === 1 ? ANLIEGEN_KIND_LABEL[art].one : ANLIEGEN_KIND_LABEL[art].many}`
-  const unknownPart = unknown ? `; bei ${formatNumberDe(unknown)} ist die Beteiligung nicht gelesen` : ''
+  const unknownPart = unknown ? `; bei ${formatNumberDe(unknown)} ist die Beteiligung nicht lesbar` : ''
   if (art === 'petition-bundesrat') return `${bundesratCountDe(ofKind, open, onlyOpen && !periodEnded, periodEnded)}${unknownPart}`
   const br = ofKind.filter((r) => anliegenIsBundesrat(r.root.kind)).length
   const period = `in der ${periodDe(gp)}${br ? ` (davon ${formatNumberDe(br)} ${br === 1 ? 'Petition' : 'Petitionen'} an den Bundesrat, nach dem Tag des Einlangens)` : ''}`
@@ -857,11 +859,10 @@ function bundesratCountDe(rows: readonly AnliegenRow[], open: number, onlyOpen: 
   return `${line} – unabhängig vom Zeitraum: der Bundesrat hat keine Gesetzgebungsperioden`
 }
 
-/** „Bürgerinitiativen konnten nicht gelesen werden." — per failed kind within the choice. */
+/** „Gerade nicht abrufbar: die Bürgerinitiativen." — the failed kinds within the choice, one gap sentence. */
 export function anliegenUnreadDe(kinds: readonly AnliegenKind[], art: AnliegenArt): string[] {
-  return kinds
-    .filter((k) => art === 'alle' || k === art)
-    .map((k) => `${ANLIEGEN_KIND_LABEL[k].many} konnten nicht gelesen werden.`)
+  const failed = kinds.filter((k) => art === 'alle' || k === art).map((k) => `die ${ANLIEGEN_KIND_LABEL[k].many}`)
+  return failed.length ? [gapDe('unavailable', `${listDe(failed)}.`)] : []
 }
 
 /**
@@ -875,7 +876,7 @@ export function anliegenEmptyDe(rows: readonly AnliegenRow[], gp: string, art: A
   const ofKind = rows.filter((r) => art === 'alle' || r.root.kind === art)
   if (onlyOpen) {
     if (ofKind.some((r) => r.open === null)) {
-      return { title: 'Ob Unterstützung und Stellungnahme möglich sind, konnte gerade nicht gelesen werden.', note: null }
+      return { title: gapDe('unreadable', 'ob Unterstützung und Stellungnahme möglich sind.'), note: null }
     }
     if (art === 'volksbegehren') {
       return { title: 'Derzeit liegt kein Volksbegehren im Nationalrat, zu dem eine Stellungnahme möglich ist.', note: ANLIEGEN_LIST_DE.vbSupportNote }
@@ -961,7 +962,7 @@ export function anliegenRowStateParts(
   row: Pick<AnliegenRow, 'state' | 'lastStepAt'>,
   form: 'short' | 'label' = 'label',
 ): { text: string; date: string | null } {
-  if (!row.state) return { text: 'Stand nicht gelesen', date: null }
+  if (!row.state) return { text: gapLabelDe('Stand', 'unreadable'), date: null }
   const text = anliegenRowStateWordsDe(row.state)[form]
   const own = 'date' in row.state ? row.state.date : null
   if (own) return { text, date: formatDateDe(own) }
@@ -995,7 +996,7 @@ export function anliegenRowStand(row: AnliegenRow): EntryState {
     }
   }
   if (row.open === null) {
-    return { label: 'Beteiligung nicht gelesen', detail: anliegenRowStateDe(row), tone: 'inactive', actionable: false }
+    return { label: gapLabelDe('Beteiligung', 'unreadable'), detail: anliegenRowStateDe(row), tone: 'inactive', actionable: false }
   }
   const { text, date } = anliegenRowStateParts(row)
   return { label: text, detail: date, tone: 'inactive', actionable: false }

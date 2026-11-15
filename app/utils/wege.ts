@@ -34,6 +34,7 @@
  *
  * Pure module: no Nuxt auto-imports, so vitest reads it as it is.
  */
+import { gapDe } from '#shared/utils/gaps'
 import type { AnliegenKind, LandDraftKind, ProcedureItemKind, RisConsultationKind } from '#shared/types'
 import { ANLIEGEN_PATH, ANLIEGEN_SECTION_DE } from '#shared/utils/anliegen'
 import { DRAFT_STATION_LABEL } from '#shared/utils/draftStations'
@@ -294,7 +295,7 @@ export const WEGE: readonly Weg[] = [
     note: 'im Monitor für seine Zeit im Nationalrat',
     noteLink: null,
     notFollowed: null,
-    gap: 'Unterstützung und Eintragung vor dem Einlangen im Nationalrat sind nicht im Monitor.',
+    gap: gapDe('outOfScope', 'Unterstützung und Eintragung vor dem Einlangen im Nationalrat.'),
     cells: row(['entfaellt', 'entfaellt', 'entfaellt', 'stellungnahme', 'offen']),
     href: anliegenListHref('volksbegehren'),
   },

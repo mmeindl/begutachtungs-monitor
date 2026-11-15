@@ -37,6 +37,7 @@
  * Pure module: no Nuxt auto-imports, so the pages, the components and vitest
  * all read the same mapping.
  */
+import { gapLabelDe } from '#shared/utils/gaps'
 import type {
   AntragRow,
   AntragState,
@@ -671,7 +672,7 @@ export function viewOfLand(c: LandConsultation): EntryView {
           ? { label: c.stage.label, detail: c.stage.detail, tone: 'inactive', actionable: false }
           // The record or the Landesgesetzblatt could not be read just now: not „nothing came after".
           : c.stage === 'unknown' || c.lgblSearch === 'nicht-abrufbar'
-            ? { label: 'Begutachtung abgeschlossen', detail: 'weiterer Weg gerade nicht abrufbar', tone: 'inactive', actionable: false }
+            ? { label: 'Begutachtung abgeschlossen', detail: gapLabelDe('weiterer Weg', 'unavailable'), tone: 'inactive', actionable: false }
             : c.deadline || !c.startedAt
               ? endedState(c.deadline, 'Begutachtung abgeschlossen')
               : { label: 'Begutachtung abgeschlossen', detail: `begonnen am ${formatDateDe(c.startedAt)}`, tone: 'inactive', actionable: false },

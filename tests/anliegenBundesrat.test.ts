@@ -191,7 +191,7 @@ describe('the page of a Petition an den Bundesrat', () => {
   it('says the documents are not published, and lists none', () => {
     const d = detail(28)
     expect(d.documents).toEqual([])
-    expect(anliegenView(d).documentsNote).toBe('Die Dokumente dieser Petition veröffentlicht das Parlament nicht.')
+    expect(anliegenView(d).documentsNote).toBe('Nicht veröffentlicht: die Dokumente dieser Petition.')
   })
 
   // An addressee outside the strict shape is never passed through.

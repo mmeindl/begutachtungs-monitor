@@ -72,7 +72,7 @@ const failedReason = computed(() =>
     >
       <template v-if="data" #header>
         <p v-if="countLine" class="text-sm tabular-nums text-ink-secondary">{{ countLine }}</p>
-        <p v-for="line in rows.length ? unreadLines : []" :key="line" class="text-sm text-ink-muted">{{ line }}</p>
+        <GapNote v-for="line in rows.length ? unreadLines : []" :key="line" :text="line" class="text-sm text-ink-muted" />
       </template>
       <template v-if="state === 'loading' || state === 'failed'" #state>
         <LoadingState v-if="state === 'loading'" :label="ANLIEGEN_LIST_DE.loading" />

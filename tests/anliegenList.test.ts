@@ -125,8 +125,8 @@ describe('the row’s words', () => {
   })
 
   // A record that did not arrive: the row says so, never a guess.
-  it('says „Stand nicht gelesen" without a state', () => {
-    expect(anliegenRowStateDe({ state: null, lastStepAt: null })).toBe('Stand nicht gelesen')
+  it('says „Stand: nicht lesbar" without a state', () => {
+    expect(anliegenRowStateDe({ state: null, lastStepAt: null })).toBe('Stand: nicht lesbar')
   })
 
   // The state in two parts for the Stand box: the words, and what dates them.
@@ -134,7 +134,7 @@ describe('the row’s words', () => {
     expect(anliegenRowStateParts({ state: { kind: 'in-behandlung' }, lastStepAt: '2026-10-22' })).toEqual({ text: 'In Behandlung', date: 'zuletzt 22.10.2026' })
     expect(anliegenRowStateParts({ state: { kind: 'kenntnisnahme-ausschuss', date: '2025-06-26' }, lastStepAt: '2026-10-22' }))
       .toEqual({ text: 'Im Ausschuss zur Kenntnis genommen', date: '26.06.2025' })
-    expect(anliegenRowStateParts({ state: null, lastStepAt: null })).toEqual({ text: 'Stand nicht gelesen', date: null })
+    expect(anliegenRowStateParts({ state: null, lastStepAt: null })).toEqual({ text: 'Stand: nicht lesbar', date: null })
   })
 
   // The open Petition, in the draft rows' anatomy: Kennung, two counts, the blue box.
@@ -181,7 +181,7 @@ describe('the row’s words', () => {
     const w = anliegenRowView(row('petition', 3, { open: false, state: { kind: 'weitergeleitet', committee: 'Bildungsausschuss', date: '2025-04-03' } }))
     expect(w.state).toEqual({ label: 'An einen Fachausschuss weitergeleitet', detail: '03.04.2025', tone: 'inactive', actionable: false })
     expect(anliegenRowView(row('petition', 4, { open: false, state: null, lastStepAt: null })).state)
-      .toEqual({ label: 'Stand nicht gelesen', detail: null, tone: 'inactive', actionable: false })
+      .toEqual({ label: 'Stand: nicht lesbar', detail: null, tone: 'inactive', actionable: false })
   })
 
   // open === null: nothing blue, and the box says the participation was not read.
@@ -189,7 +189,7 @@ describe('the row’s words', () => {
     const v = anliegenRowView(row('buergerinitiative', 2, { open: null, counts: { statements: null, support: null } }))
     expect(v.state.tone).toBe('inactive')
     expect(v.state.actionable).toBe(false)
-    expect(v.state.label).toBe('Beteiligung nicht gelesen')
+    expect(v.state.label).toBe('Beteiligung: nicht lesbar')
     expect(v.state.detail).toBe(anliegenRowStateDe(row('buergerinitiative', 2, { open: null })))
   })
 
@@ -253,10 +253,10 @@ describe('sort, filter and the count line', () => {
   it('names a failed kind and never counts it as 0', () => {
     const rows = [row('petition', 1, { open: true }), row('volksbegehren', 2)]
     expect(anliegenCountLineDe('XXVIII', rows, 'alle', true)).toBe('1 offen von 2 in der XXVIII. Gesetzgebungsperiode')
-    expect(anliegenUnreadDe(['buergerinitiative'], 'alle')).toEqual(['Bürgerinitiativen konnten nicht gelesen werden.'])
+    expect(anliegenUnreadDe(['buergerinitiative'], 'alle')).toEqual(['Gerade nicht abrufbar: die Bürgerinitiativen.'])
     expect(anliegenUnreadDe(['buergerinitiative'], 'petition')).toEqual([])
     expect(anliegenCountLineDe('XXVIII', [row('petition', 1, { open: null })], 'alle', true))
-      .toBe('0 offen von 1 in der XXVIII. Gesetzgebungsperiode; bei 1 ist die Beteiligung nicht gelesen')
+      .toBe('0 offen von 1 in der XXVIII. Gesetzgebungsperiode; bei 1 ist die Beteiligung nicht lesbar')
   })
 
   // Empty states say what was read; an unread participation claims no emptiness.
@@ -266,10 +266,10 @@ describe('sort, filter and the count line', () => {
     expect(anliegenEmptyDe(closed, 'XXVIII', 'buergerinitiative', true).title).toBe('Derzeit ist keine Bürgerinitiative offen.')
     expect(anliegenEmptyDe(closed, 'XXVIII', 'volksbegehren', true)).toEqual({
       title: 'Derzeit liegt kein Volksbegehren im Nationalrat, zu dem eine Stellungnahme möglich ist.',
-      note: 'Unterstützt und unterschrieben wird ein Volksbegehren, bevor es im Nationalrat einlangt; das verfolgt der Monitor nicht.',
+      note: 'Nicht im Monitor: Unterstützung und Eintragung, bevor ein Volksbegehren im Nationalrat einlangt.',
     })
     expect(anliegenEmptyDe([row('petition', 1, { open: null })], 'XXVIII', 'petition', true).title)
-      .toBe('Ob Unterstützung und Stellungnahme möglich sind, konnte gerade nicht gelesen werden.')
+      .toBe('Nicht lesbar: ob Unterstützung und Stellungnahme möglich sind.')
   })
 
   // An unknown `?art=` is „Alle", never an error.

@@ -222,7 +222,7 @@ const STATION_COL = 'w-px whitespace-nowrap px-3 last:pr-4'
               <span v-if="weg.notFollowed" class="mt-0.5 block text-ink-secondary">
                 <span class="font-medium text-ink">{{ WEGE_COPY.notFollowedPrefix }}</span> · {{ weg.notFollowed }}
               </span>
-              <span v-if="weg.gap" class="mt-0.5 block text-ink-secondary">{{ weg.gap }}</span>
+              <GapNote v-if="weg.gap" as="span" :text="weg.gap" class="mt-0.5 block text-ink-secondary" />
             </th>
             <td v-for="station in WEG_STATIONS" :key="station.id" :class="[ROW_CELL, STATION_COL]" class="text-center">
               <span class="inline-flex h-5 items-center justify-center" aria-hidden="true">
@@ -290,7 +290,7 @@ const STATION_COL = 'w-px whitespace-nowrap px-3 last:pr-4'
                 <span v-if="weg.notFollowed" class="block text-ink-secondary">
                   <span class="font-medium text-ink">{{ WEGE_COPY.notFollowedPrefix }}</span> · {{ weg.notFollowed }}
                 </span>
-                <span v-if="weg.gap" class="block text-ink-secondary">{{ weg.gap }}</span>
+                <GapNote v-if="weg.gap" as="span" :text="weg.gap" class="block text-ink-secondary" />
               </p>
               <ol class="mt-2 space-y-1 text-sm">
                 <li v-for="station in WEG_STATIONS" :key="station.id" class="flex items-center gap-2">

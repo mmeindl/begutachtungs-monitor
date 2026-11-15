@@ -136,7 +136,7 @@ useSeoMeta({
           </div>
         </div>
         <p v-if="countLine" class="text-sm tabular-nums text-ink-secondary" aria-live="polite">{{ countLine }}</p>
-        <p v-for="line in unreadLines" :key="line" class="text-sm text-ink-muted">{{ line }}</p>
+        <GapNote v-for="line in unreadLines" :key="line" :text="line" class="text-sm text-ink-muted" />
       </template>
 
       <!-- No rows yet: loading or failure take the rows' place, as on /entwuerfe. -->
@@ -148,8 +148,8 @@ useSeoMeta({
         <ListBoxNotice
           v-else-if="error"
           role="alert"
-          title="Daten konnten nicht geladen werden"
-          description="Die Quelle hat gerade nicht geantwortet."
+          title="Anliegen: gerade nicht abrufbar"
+          description="Die Quelle hat nicht geantwortet."
         >
           <template #action>
             <UButton color="primary" @click="refresh()">Erneut versuchen</UButton>

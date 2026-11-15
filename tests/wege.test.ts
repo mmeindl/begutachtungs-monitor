@@ -136,7 +136,7 @@ describe('Anliegen an das Parlament (15.11.2026)', () => {
     const w = WEGE.find((x) => x.id === 'volksbegehren')!
     expect(w.notFollowed).toBeNull()
     expect(w.note).toBe('im Monitor für seine Zeit im Nationalrat')
-    expect(w.gap).toBe('Unterstützung und Eintragung vor dem Einlangen im Nationalrat sind nicht im Monitor.')
+    expect(w.gap).toBe('Nicht im Monitor: Unterstützung und Eintragung vor dem Einlangen im Nationalrat.')
     expect(isAnliegenLink(w.href)).toBe(true)
     expect(anliegenArtOf(queryOf(w.href!).art)).toBe('volksbegehren')
   })
