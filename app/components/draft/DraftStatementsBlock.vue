@@ -113,10 +113,8 @@ const STATEMENTS_SOURCES: SourceEntry[] = [{ what: 'Stellungnahmen', publisher: 
     </p>
     <!-- The card's door once more, under the list where the decision
          to file is made (`DoorButton`). The card's condition. -->
-    <div v-if="filingOpen" class="mt-4">
-      <DoorButton :href="draft.parliamentUrl">
-        Stellungnahme auf parlament.gv.at abgeben
-      </DoorButton>
+    <div v-if="filingOpen" class="mt-4 flex flex-wrap items-center gap-3">
+      <StatementFormDoors :item-url="draft.parliamentUrl" />
     </div>
   </PageSubsection>
 </template>

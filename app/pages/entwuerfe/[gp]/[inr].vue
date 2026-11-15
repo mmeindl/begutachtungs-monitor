@@ -454,7 +454,6 @@ const ministryLinks = computed(() => {
             :frist="windows.begutachtung"
             :deadline="data.deadline"
             :ics-href="`/entwuerfe/${gp}/${inr}/frist.ics`"
-            :filing-href="data.parliamentUrl"
           >
             <!-- The second window alone: the Begutachtung is over, parliament
                still listens. No date, because upstream publishes none — the
@@ -495,7 +494,11 @@ const ministryLinks = computed(() => {
                 Nationalrat; auch zu ihr ist eine Stellungnahme möglich.
               </p>
             </template>
-            <template #filing>Stellungnahme auf parlament.gv.at abgeben</template>
+            <!-- Two doors, one per Parliament form, each landing in its form
+               opened (`StatementFormDoors`, 15.11.2026). -->
+            <template #primary>
+              <StatementFormDoors :item-url="data.parliamentUrl" />
+            </template>
             <template #actions>
               <!-- Primary when it is the only door; beside the Begutachtung's
                  button it steps back to an outline, first things first. The
