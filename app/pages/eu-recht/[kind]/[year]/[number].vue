@@ -64,10 +64,17 @@ const { data, status, error, refresh } = await useFetch<EuActResponse>(`/api/eu-
 
 const view = computed(() => (data.value ? euActPageView(data.value) : null))
 
-/* The act's own rail and the section „Das Verfahren" (15.11.2026), read
- * from the Cellar (`euRailView`). `today` only decides between „gilt ab"
- * and „gilt seit"; the Vienna day, so server and client agree. */
+/* The act's own rail and a section per station (15.11.2026), read from the
+ * Cellar (`euRailView`). `today` only decides between „gilt ab" and „gilt
+ * seit"; the Vienna day, so server and client agree.
+ *
+ * Every station has its section under the station's own name, as on a
+ * draft's page. The last station's — „Umsetzung" or „Geltung" — is the
+ * section of the drafts and stands first (the page's rule above); the
+ * others follow in the rail's order. */
 const rail = computed(() => (data.value ? euRailView(data.value, todayIso()) : null))
+const effect = computed(() => rail.value?.sections.find((s) => s.id === 'wirkung') ?? null)
+const otherSections = computed(() => rail.value?.sections.filter((s) => s.id !== 'wirkung') ?? [])
 
 /*
  * Two answers that are no failure to retry: an act no draft of the window
@@ -172,42 +179,49 @@ const citation = computed(() => (data.value ? euActCiteDe(data.value.act, data.v
               {{ rail.note }}
             </p>
             <EuRail class="mt-4" :stations="rail.stations" :label="rail.heading" />
-            <!-- Where there is no section „Das Verfahren" to hold it, the
-                 days of single provisions stay with the rail. -->
-            <p v-if="rail.partial && !rail.procedure" class="mt-3 text-sm text-ink-secondary">
-              {{ rail.partial }}
-            </p>
           </div>
         </div>
 
-        <section aria-labelledby="eu-umsetzung-heading" class="page-section">
-          <h2 id="eu-umsetzung-heading" class="section-heading">{{ page.implementingHeading }}</h2>
-          <!-- The timeline first, as one chart (`EuTimelineChart`): the drafts
-               side by side against the one deadline. Then the drafts as
-               every list of drafts shows them (`EntryList`). -->
-          <EuTimelineChart v-if="page.chart" :chart="page.chart" class="mt-4" />
-          <EntryList v-if="page.entries.length" :entries="page.entries" class="mt-6">
-            <!-- What could not be read, in the box's head — where the
-                 overview and `/entwuerfe` say it, above the rows it
-                 concerns. -->
-            <template v-if="page.incomplete" #header>
-              <p class="text-sm text-ink-muted">
-                {{ page.incomplete }}
-              </p>
-            </template>
-            <!-- The dates the chart draws, said with the row: the lanes are
-                 hidden from a screen reader, which hears each draft once. -->
-            <template #evidence="{ entry }">
-              <span v-if="page.said[entry.key]" class="sr-only">{{ page.said[entry.key] }}</span>
-            </template>
-          </EntryList>
-          <p v-if="!page.entries.length && page.incomplete" class="mt-4 text-sm text-ink-muted">
-            {{ page.incomplete }}
-          </p>
-          <p v-if="!page.entries.length" class="mt-4 text-ink-secondary">
-            Kein Entwurf im Fenster setzt den Rechtsakt neu um; die Entwürfe unten
-            nennen ihn, weil das geltende Recht ihn schon umsetzt.
-          </p>
+        <!-- The last station's section, under the station's name („Umsetzung"
+             or „Geltung"): what the Cellar says of it, then the drafts. -->
+        <section :id="effect?.elementId" aria-labelledby="eu-umsetzung-heading" class="page-section scroll-mt-6">
+          <h2 id="eu-umsetzung-heading" class="section-heading">{{ effect?.heading ?? page.implementingHeading }}</h2>
+          <template v-if="effect">
+            <p v-if="effect.facts.length" class="mt-2 text-sm text-ink-secondary">
+              <FactLine :parts="effect.facts" />
+            </p>
+            <p v-for="note in effect.notes" :key="note" class="mt-2 text-sm text-ink-secondary">
+              {{ note }}
+            </p>
+          </template>
+          <PageSubsection :heading="page.implementingHeading" class="mt-6">
+            <!-- The timeline first, as one chart (`EuTimelineChart`): the drafts
+                 side by side against the one deadline. Then the drafts as
+                 every list of drafts shows them (`EntryList`). -->
+            <EuTimelineChart v-if="page.chart" :chart="page.chart" />
+            <EntryList v-if="page.entries.length" :entries="page.entries" class="mt-6">
+              <!-- What could not be read, in the box's head — where the
+                   overview and `/entwuerfe` say it, above the rows it
+                   concerns. -->
+              <template v-if="page.incomplete" #header>
+                <p class="text-sm text-ink-muted">
+                  {{ page.incomplete }}
+                </p>
+              </template>
+              <!-- The dates the chart draws, said with the row: the lanes are
+                   hidden from a screen reader, which hears each draft once. -->
+              <template #evidence="{ entry }">
+                <span v-if="page.said[entry.key]" class="sr-only">{{ page.said[entry.key] }}</span>
+              </template>
+            </EntryList>
+            <p v-if="!page.entries.length && page.incomplete" class="mt-4 text-sm text-ink-muted">
+              {{ page.incomplete }}
+            </p>
+            <p v-if="!page.entries.length" class="mt-4 text-ink-secondary">
+              Kein Entwurf im Fenster setzt den Rechtsakt neu um; die Entwürfe unten
+              nennen ihn, weil das geltende Recht ihn schon umsetzt.
+            </p>
+          </PageSubsection>
 
           <!-- The same rows as above and on every list (`EntryList`), apart
                under their heading and without a lane in the chart. -->
@@ -224,34 +238,37 @@ const citation = computed(() => (data.value ? euActCiteDe(data.value.act, data.v
           </SectionCredits>
         </section>
 
-        <!-- The procedure between the institutions, step by step, in the
-             frame of facts one consults (`FactList`'s box grammar). Only
-             where the Cellar gave a step to show: the rail's first two
-             stations link here only then (`euRailView`). -->
-        <section v-if="rail?.procedure" id="eu-verfahren" aria-labelledby="eu-verfahren-heading" class="page-section scroll-mt-6">
-          <h2 id="eu-verfahren-heading" class="section-heading">{{ rail.procedure.heading }}</h2>
-          <p v-if="rail.procedure.facts.length" class="mt-2 text-sm text-ink-secondary">
-            <FactLine :parts="rail.procedure.facts" />
+        <!-- The other stations, each a section under its own name, in the
+             rail's order: the dated steps in the frame of facts one consults
+             (`FactList`'s box grammar), the sentences on what is missing,
+             and the record at its source. -->
+        <section
+          v-for="sec in otherSections"
+          :id="sec.elementId"
+          :key="sec.id"
+          :aria-labelledby="`${sec.elementId}-heading`"
+          class="page-section scroll-mt-6"
+        >
+          <h2 :id="`${sec.elementId}-heading`" class="section-heading">{{ sec.heading }}</h2>
+          <p v-if="sec.facts.length" class="mt-2 text-sm text-ink-secondary">
+            <FactLine :parts="sec.facts" />
           </p>
-          <div class="mt-4 rounded-xl border border-hairline px-4">
+          <div v-if="sec.rows.length" class="mt-4 rounded-xl border border-hairline px-4">
             <ol role="list" class="flex flex-col divide-y divide-hairline text-sm text-ink">
-              <li v-for="row in rail.procedure.rows" :key="`${row.iso}|${row.label}`" class="flex gap-4 py-3">
+              <li v-for="row in sec.rows" :key="`${row.iso}|${row.label}`" class="flex gap-4 py-3">
                 <time :datetime="row.iso" class="w-24 shrink-0 tabular-nums text-ink-secondary">{{ row.date }}</time>
                 <span class="min-w-0">{{ row.label }}</span>
               </li>
             </ol>
           </div>
-          <p v-if="rail.procedure.other" class="mt-3 text-sm text-ink-secondary">
-            {{ rail.procedure.other }}
+          <p v-for="note in sec.notes" :key="note" class="mt-3 text-sm text-ink-secondary">
+            {{ note }}
           </p>
-          <p v-if="rail.partial" class="mt-3 text-sm text-ink-secondary">
-            {{ rail.partial }}
+          <p v-for="link in sec.links" :key="link.href" class="mt-3 text-sm">
+            <ExternalLink :href="link.href" class="link-inline">{{ link.label }}</ExternalLink>
           </p>
-          <p v-if="rail.procedure.observatory" class="mt-3 text-sm">
-            <ExternalLink :href="rail.procedure.observatory.href" class="link-inline">{{ rail.procedure.observatory.label }}</ExternalLink>
-          </p>
-          <SectionCredits :sources="[]" :marked="false">
-            <span v-for="item in rail.procedure.credits" :key="item">{{ item }}</span>
+          <SectionCredits v-if="sec.credits.length" :sources="[]" :marked="false">
+            <span v-for="item in sec.credits" :key="item">{{ item }}</span>
           </SectionCredits>
         </section>
       </template>

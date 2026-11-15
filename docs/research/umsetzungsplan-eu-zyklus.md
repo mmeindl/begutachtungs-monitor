@@ -40,9 +40,13 @@ the build left this plan, and why:
   config, and step 6 changes one line. The other places that write
   `/eu-recht` (header, feeds, page-view classes, `wege.ts`, the act page's
   own redirects and back links) are untouched and are step 6's.
-- **A section „Das Verfahren" stands under the drafts,** not between the
-  rail and them: the Austrian drafts stay directly under the rail, as the
-  page's rule „the drafts first" asks.
+- **A section per station, under the station's name.** The rail links
+  only into the page; EUR-Lex and the Observatory are linked in the
+  sections. The last station's section („Umsetzung" or „Geltung") holds
+  the Austrian drafts and stands first, as the page's rule „the drafts
+  first" asks; „Vorschlag", the deciding station and „Amtsblatt" follow.
+  Steps 2, 5 and 7 fill these sections and add „Konsultation" with its
+  station.
 - **The Legislative Observatory is linked only for procedures from 1994 on
   of type COD, CNS or APP,** and the link says the page is English: older
   procedures and some types have no page there.

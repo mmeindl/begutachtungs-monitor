@@ -9,7 +9,16 @@
  * took", no word on whether a deadline has passed. A station that cannot be
  * shown says so in a sentence with its reason; it is never left empty.
  *
- * All German copy of the rail and of the section „Das Verfahren" lives in
+ * A SECTION PER STATION, UNDER THE STATION'S NAME (15.11.2026). As on a
+ * draft's page, every station of the rail leads to a section of the page
+ * with the same heading, and what leaves the site (EUR-Lex, the Legislative
+ * Observatory) stands in the section, not in the rail. A section exists
+ * for every station, also where it holds one line today: the later steps
+ * of the EU cycle (the consultation, the proposals still pending, the
+ * directives nobody transposes yet) fill a place that is already there.
+ * No section is empty — it says what the Cellar has, or why it has nothing.
+ *
+ * All German copy of the rail and of its sections lives in
  * this one file, so a second language replaces it here. Pure: no Vue; the
  * component places what this returns, the tests read it without one.
  */
@@ -30,17 +39,11 @@ export interface EuRailStation {
   facts: string[]
   /** Why the station cannot be shown (in full or in part), as a sentence; null where nothing is missing. */
   gap: string | null
-  /**
-   * The section of the page that holds this station, `#eu-verfahren`;
-   * null where the page renders no such section — a link never promises
-   * a section that is not there.
-   */
-  anchor: string | null
-  /** The station's own record off this site (EUR-Lex, the Legislative Observatory); linked, never fetched. */
-  source: { href: string; label: string } | null
+  /** The station's section on the page, „#eu-vorschlag": every station has one. */
+  anchor: string
 }
 
-/** One dated step of the section „Das Verfahren". */
+/** One dated step in a station's section. */
 export interface EuRailProcedureRow {
   /** „27.02.2024". */
   date: string
@@ -50,22 +53,22 @@ export interface EuRailProcedureRow {
   label: string
 }
 
-export interface EuRailProcedureView {
-  /** „Das Verfahren" — the section's h2. */
+/** The section of one station: same id, same name, in the rail's words. */
+export interface EuRailSection {
+  id: EuRailStationId
+  /** The section element's id, „eu-vorschlag"; the station links to it. */
+  elementId: string
+  /** The station's name, word for word. */
   heading: string
-  /** The line over the steps: the procedure number and the type's name, each where the Cellar has it. */
+  /** The line under the heading (`FactLine`); empty where the rows say it. */
   facts: string[]
-  /** The steps the monitor reads, ascending, one row per (label, day). */
+  /** Dated steps, ascending, one row per (label, day); empty for a station without steps. */
   rows: EuRailProcedureRow[]
-  /** „Der Cellar verzeichnet 17 weitere Schritte …" — the steps not shown, counted; null where there are none. */
-  other: string | null
-  /** „2022/0117(COD)"; null where the dossier has no number. */
-  reference: string | null
-  /** „Ordentliches Gesetzgebungsverfahren"; null where the type is unknown to `EU_PROCEDURE_TYPES`. */
-  typeLabel: string | null
-  /** The procedure in the Legislative Observatory, with the link's words; null without one. */
-  observatory: { href: string; label: string } | null
-  /** The credit line's items: the lead word, then the source. */
+  /** Sentences: what cannot be shown and why, the steps not shown, the days of single provisions. */
+  notes: string[]
+  /** The station's own record off this site (EUR-Lex, the Legislative Observatory); linked, never fetched. */
+  links: { href: string; label: string }[]
+  /** The credit line's items; empty where the page's own credit line covers the section. */
   credits: string[]
 }
 
@@ -75,13 +78,8 @@ export interface EuRailView {
   stations: EuRailStation[]
   /** The sentence for an act of the Commission, which has no procedure between the institutions; null otherwise. */
   note: string | null
-  /** The section „Das Verfahren"; null where there is no procedure or no step to show — then the page renders no section. */
-  procedure: EuRailProcedureView | null
-  /**
-   * „Für einzelne Bestimmungen nennt der Cellar einen eigenen Geltungsbeginn: …"; null without such
-   * days. Not „eigene Tage": the word reads as a count of days (rule D6).
-   */
-  partial: string | null
+  /** One section per station, in the rail's order. */
+  sections: EuRailSection[]
 }
 
 /* ------------------------------------------------------------------ *
@@ -90,7 +88,6 @@ export interface EuRailView {
 
 const DE = {
   heading: 'Der Rechtsakt im Verfahren',
-  procedureHeading: 'Das Verfahren',
   name: {
     vorschlag: 'Vorschlag',
     'parlament-rat': 'Parlament und Rat',
@@ -131,19 +128,19 @@ const DE = {
   other: (n: number) => (n === 1
     ? 'Der Cellar verzeichnet 1 weiteren Schritt dieses Verfahrens, den der Monitor nicht einzeln zeigt.'
     : `Der Cellar verzeichnet ${n} weitere Schritte dieses Verfahrens, die der Monitor nicht einzeln zeigt.`),
+  // Not „eigene Tage": the word reads as a count of days (rule D6).
   partial: (dates: string[]) => `Für einzelne Bestimmungen nennt der Cellar einen eigenen Geltungsbeginn: ${dates.join(', ')}.`,
   source: {
-    proposal: 'Vorschlag auf EUR-Lex',
+    proposal: (reference: string | null) => (reference ? `${reference} auf EUR-Lex` : 'Vorschlag auf EUR-Lex'),
     observatory: 'Verfahren im Legislative Observatory (englisch)',
     act: 'Rechtsakt auf EUR-Lex',
   },
   credits: ['Quelle:', 'Cellar des Amts für Veröffentlichungen der Europäischen Union (Metadaten)'],
 } as const
 
-/** The section the rail's last station links to: the drafts that implement the act. */
-const DRAFTS_ANCHOR = '#eu-umsetzung-heading'
-/** The section „Das Verfahren". */
-const PROCEDURE_ANCHOR = '#eu-verfahren'
+/** A station's section element: „eu-vorschlag", „eu-beschluss", „eu-amtsblatt", „eu-wirkung". */
+const elementIdOf = (id: EuRailStationId) => `eu-${id}`
+const anchorOf = (id: EuRailStationId) => `#${elementIdOf(id)}`
 
 /* ------------------------------------------------------------------ *
  * The builder
@@ -159,13 +156,16 @@ function lastOf(events: readonly EuProcedureEvent[], role: EuEventRole): EuProce
 }
 
 /**
- * The section „Das Verfahren": the steps without the Official Journal (its
+ * The dated steps of the two stations of the procedure, each in its
+ * section: the proposals and amended proposals under „Vorschlag", what
+ * Parliament, the Council and the bodies the Treaties ask decided under the
+ * station that carries the decision. Without the Official Journal (its
  * own station) and, for an act of the Commission, without its own adoption
  * (no „Vorschlag" there). Two codes share one label — Parliament's
  * first-reading position in the old and the new vocabulary — so a row is
  * one (label, day).
  *
- * THE PROPOSAL BY ITS DOCUMENT'S DAY (15.11.2026). The section opens with
+ * THE PROPOSAL BY ITS DOCUMENT'S DAY (15.11.2026). „Vorschlag" lists
  * each dated proposal („Vorschlag der Kommission COM(2022) 177"), on the
  * day the proposal itself carries — the day the Commission and the
  * Legislative Observatory cite, and the day the rail's station „Vorschlag"
@@ -177,10 +177,11 @@ function lastOf(events: readonly EuProcedureEvent[], role: EuEventRole): EuProce
  * Cellar's words. An amended proposal is a step of its own and always
  * stays. Ascending by day, a proposal before a step of the same day.
  */
-function procedureViewOf(p: EuProcedure, commission: boolean): EuRailProcedureView | null {
+function procedureRowsOf(p: EuProcedure, commission: boolean): { proposal: EuRailProcedureRow[]; decision: EuRailProcedureRow[] } {
   const seen = new Set<string>()
-  const rows: EuRailProcedureRow[] = []
-  const add = (iso: string, label: string) => {
+  const proposal: EuRailProcedureRow[] = []
+  const decision: EuRailProcedureRow[] = []
+  const add = (iso: string, label: string, rows: EuRailProcedureRow[] = proposal) => {
     const key = `${label}|${iso}`
     if (seen.has(key)) return
     seen.add(key)
@@ -200,21 +201,10 @@ function procedureViewOf(p: EuProcedure, commission: boolean): EuRailProcedureVi
       add(proposalRows[next]!.date, DE.proposalRow(proposalRows[next]!.reference))
       next++
     }
-    add(e.date, EU_EVENTS[e.code]!.label)
+    add(e.date, EU_EVENTS[e.code]!.label, role === 'proposal' || role === 'amended-proposal' ? proposal : decision)
   }
   for (; next < proposalRows.length; next++) add(proposalRows[next]!.date, DE.proposalRow(proposalRows[next]!.reference))
-  if (!rows.length) return null
-  const typeLabel = p.type ? EU_PROCEDURE_TYPES[p.type] ?? null : null
-  return {
-    heading: DE.procedureHeading,
-    facts: [p.reference, typeLabel].filter((x): x is string => !!x),
-    rows,
-    other: p.otherEvents > 0 ? DE.other(p.otherEvents) : null,
-    reference: p.reference,
-    typeLabel,
-    observatory: p.observatoryUrl ? { href: p.observatoryUrl, label: DE.source.observatory } : null,
-    credits: [...DE.credits],
-  }
+  return { proposal, decision }
 }
 
 /**
@@ -225,8 +215,8 @@ function procedureViewOf(p: EuProcedure, commission: boolean): EuRailProcedureVi
  * step belongs to the earlier one, and a second proposal would borrow a day
  * that is not its own.
  */
-function proposalStation(r: EuActResponse, anchor: string | null): EuRailStation {
-  const base = { id: 'vorschlag' as const, name: DE.name.vorschlag, current: false, anchor, source: null }
+function proposalStation(r: EuActResponse): EuRailStation {
+  const base = { id: 'vorschlag' as const, name: DE.name.vorschlag, current: false, anchor: anchorOf('vorschlag') }
   const rail = r.rail
   if (!rail) return { ...base, facts: [], gap: DE.gap.unread }
   const p = rail.procedure
@@ -242,21 +232,15 @@ function proposalStation(r: EuActResponse, anchor: string | null): EuRailStation
     if (prop.reference) return [DE.proposal(prop.reference, date)]
     return date ? [date] : []
   })
-  const href = p.proposals[0]!.eurLexUrl
-  return {
-    ...base,
-    facts,
-    gap: facts.length ? null : DE.gap.proposalBare,
-    source: href ? { href, label: DE.source.proposal } : null,
-  }
+  return { ...base, facts, gap: facts.length ? null : DE.gap.proposalBare }
 }
 
 /** Station 2: who decided, named from the act's authors (`EuAdoptedBy`). */
-function decisionStation(r: EuActResponse, anchor: string | null): EuRailStation {
+function decisionStation(r: EuActResponse): EuRailStation {
   const rail = r.rail
   const adoptedBy = rail?.adoptedBy ?? 'unbekannt'
   const name = adoptedBy === 'parlament-rat' ? DE.name['parlament-rat'] : adoptedBy === 'rat' ? DE.name.rat : DE.name.unbekannt
-  const base = { id: 'beschluss' as const, name, current: false, anchor, source: null }
+  const base = { id: 'beschluss' as const, name, current: false, anchor: anchorOf('beschluss') }
   if (!rail) return { ...base, facts: [], gap: DE.gap.unread }
   const p = rail.procedure
   if (!p) return { ...base, facts: [], gap: DE.gap.unlinkedSteps }
@@ -269,12 +253,7 @@ function decisionStation(r: EuActResponse, anchor: string | null): EuRailStation
     ...(signed ? [DE.signed(formatDateDe(signed.date))] : []),
     ...(p.reference ? [p.reference] : []),
   ]
-  return {
-    ...base,
-    facts,
-    gap: parliament || council ? null : DE.gap.noDecision,
-    source: p.observatoryUrl ? { href: p.observatoryUrl, label: DE.source.observatory } : null,
-  }
+  return { ...base, facts, gap: parliament || council ? null : DE.gap.noDecision }
 }
 
 function journalStation(r: EuActResponse): EuRailStation {
@@ -284,8 +263,7 @@ function journalStation(r: EuActResponse): EuRailStation {
     current: false,
     facts: r.oj ? [euOjCiteDe(r.oj)] : [],
     gap: r.oj ? null : DE.gap.noOj,
-    anchor: null,
-    source: { href: r.act.eurLexUrl, label: DE.source.act },
+    anchor: anchorOf('amtsblatt'),
   }
 }
 
@@ -300,7 +278,7 @@ function effectStation(r: EuActResponse, today: string): EuRailStation {
   const kind = r.act.kind
   const n = r.implementing.length
   const drafts = n > 0 ? [DE.drafts(n)] : []
-  const base = { id: 'wirkung' as const, current: false, anchor: DRAFTS_ANCHOR, source: null }
+  const base = { id: 'wirkung' as const, current: false, anchor: anchorOf('wirkung') }
 
   if (kind === 'richtlinie' || kind === 'rahmenbeschluss') {
     const deadline = r.act.transposition?.deadline ?? null
@@ -335,28 +313,74 @@ function effectStation(r: EuActResponse, today: string): EuRailStation {
 }
 
 /**
- * The act's rail and the section „Das Verfahren", as words. `today` (ISO)
+ * The section of a station. What the station says in one line the section
+ * says in full: the dated steps where there are any (then the line is not
+ * repeated above them), the sentences, and the record at its source.
+ */
+function sectionOf(st: EuRailStation, r: EuActResponse, rows: ReturnType<typeof procedureRowsOf> | null): EuRailSection {
+  const base = { id: st.id, elementId: elementIdOf(st.id), heading: st.name, credits: [...DE.credits] }
+  const gap = st.gap ? [st.gap] : []
+  const p = r.rail?.procedure ?? null
+  if (st.id === 'vorschlag') {
+    const own = rows?.proposal ?? []
+    // The station's line is repeated only where the rows do not say it all:
+    // a proposal without its own day is no row („COM(…)" would be lost).
+    const allDated = (p?.proposals ?? []).every((prop) => prop.date)
+    return {
+      ...base,
+      facts: own.length && allDated ? [] : st.facts,
+      rows: own,
+      notes: gap,
+      links: (p?.proposals ?? []).flatMap((prop) => (prop.eurLexUrl ? [{ href: prop.eurLexUrl, label: DE.source.proposal(prop.reference) }] : [])),
+    }
+  }
+  if (st.id === 'beschluss') {
+    const typeLabel = p?.type ? EU_PROCEDURE_TYPES[p.type] ?? null : null
+    return {
+      ...base,
+      facts: [p?.reference, typeLabel].filter((x): x is string => !!x),
+      rows: rows?.decision ?? [],
+      notes: [...gap, ...(p && p.otherEvents > 0 ? [DE.other(p.otherEvents)] : [])],
+      links: p?.observatoryUrl ? [{ href: p.observatoryUrl, label: DE.source.observatory }] : [],
+    }
+  }
+  if (st.id === 'amtsblatt') {
+    return { ...base, facts: st.facts, rows: [], notes: gap, links: [{ href: r.act.eurLexUrl, label: DE.source.act }] }
+  }
+  // „Umsetzung" / „Geltung": the drafts stand in the section themselves, so
+  // their count is not said again; the page's credit line covers it.
+  const n = r.implementing.length
+  const partial = r.rail?.partialApplication ?? []
+  return {
+    ...base,
+    facts: st.facts.filter((f) => n === 0 || f !== DE.drafts(n)),
+    rows: [],
+    notes: [...gap, ...(partial.length ? [DE.partial(partial.map((d) => formatDateDe(d)))] : [])],
+    links: [],
+    credits: [],
+  }
+}
+
+/**
+ * The act's rail and the section of each station, as words. `today` (ISO)
  * decides only between „ab" and „seit" (in Kraft, wirksam, gilt).
  */
 export function euRailView(r: EuActResponse, today: string): EuRailView {
   const rail = r.rail
   const commission = rail?.adoptedBy === 'kommission'
-  const procedure = rail?.procedure ? procedureViewOf(rail.procedure, commission) : null
-  const anchor = procedure ? PROCEDURE_ANCHOR : null
+  const rows = rail?.procedure ? procedureRowsOf(rail.procedure, commission) : null
 
   const stations = [
-    ...(commission ? [] : [proposalStation(r, anchor), decisionStation(r, anchor)]),
+    ...(commission ? [] : [proposalStation(r), decisionStation(r)]),
     journalStation(r),
     effectStation(r, today),
   ]
   stations[stations.length - 1]!.current = true
 
-  const partialDates = rail?.partialApplication ?? []
   return {
     heading: DE.heading,
     stations,
     note: commission ? DE.note : null,
-    procedure,
-    partial: partialDates.length ? DE.partial(partialDates.map((d) => formatDateDe(d))) : null,
+    sections: stations.map((st) => sectionOf(st, r, rows)),
   }
 }

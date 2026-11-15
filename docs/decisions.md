@@ -713,6 +713,15 @@ The code names the EU rules D1 to D7; this is where they are defined
   - **A gap names its reason:** the Cellar did not answer; the Cellar links
     the act to no procedure; the procedure names no proposal; the procedure
     records no decision of Parliament or Council the monitor reads.
+  - **Every station has a section of the page under the station's own
+    name,** as on a draft's page, and the rail links only to them; what
+    leaves the site (EUR-Lex, the Legislative Observatory) stands in the
+    section. A section exists also where it holds one line today, so a
+    later step of the EU cycle fills a place that is already there; none
+    is empty — it says what the Cellar has or why it has nothing. The
+    last station's section holds the drafts and stands first, the others
+    follow in the rail's order. Rejected: one section „Das Verfahren"
+    for two stations, and outbound links in the rail.
   - **The Legislative Observatory is linked by rule, not by lookup:**
     procedures from 1994 on, of type COD, CNS or APP; the link says that the
     page is English, and it is built from the procedure number, never

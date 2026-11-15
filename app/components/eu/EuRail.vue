@@ -18,9 +18,10 @@
  * that cannot be shown says why in words on its fact line, in secondary
  * ink: text, never colour alone. Dates only (rule D6).
  *
- * A row with an in-page anchor is a stretched link around its name, as in
- * `SpineRail` (see there for the mechanics and the focus ring); the source
- * link sits above the overlay with its own target.
+ * Every row is a stretched link around its name to the station's section
+ * of the page, as in `SpineRail` (see there for the mechanics and the focus
+ * ring). Nothing in the rail leaves the site: the record at its source is
+ * linked in the section.
  */
 import type { EuRailStation } from '~/utils/euRail'
 
@@ -55,7 +56,6 @@ const STATION = [
         class="absolute inset-0 -z-10 rounded-md bg-mark-wash"
       />
       <span
-        v-if="s.anchor"
         aria-hidden="true"
         class="absolute inset-0 -z-10 rounded-md bg-hover opacity-0 group-hover:opacity-100"
       />
@@ -73,17 +73,13 @@ const STATION = [
       />
       <div class="min-w-0 text-sm">
         <p class="font-medium text-ink">
-          <a v-if="s.anchor" :href="s.anchor" :class="STATION">{{ s.name }}</a>
-          <template v-else>{{ s.name }}</template>
+          <a :href="s.anchor" :class="STATION">{{ s.name }}</a>
         </p>
         <p v-if="s.facts.length" class="mt-0.5 leading-snug text-ink">
           <FactLine :parts="s.facts" />
         </p>
         <p v-if="s.gap" class="mt-0.5 leading-snug text-ink-secondary">
           {{ s.gap }}
-        </p>
-        <p v-if="s.source" class="relative z-10 mt-1 leading-snug text-ink-secondary">
-          <ExternalLink :href="s.source.href" class="link-inline">{{ s.source.label }}</ExternalLink>
         </p>
       </div>
     </li>
