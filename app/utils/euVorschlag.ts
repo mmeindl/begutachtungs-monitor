@@ -100,11 +100,6 @@ const DE = {
     undated: 'laut EUR-Lex, ohne Datum',
     noAct: 'EUR-Lex verzeichnet keinen Rechtsakt, der aus diesem Vorschlag hervorgegangen ist.',
   },
-  ahead: {
-    umsetzung: 'Umzusetzen ist erst ein Rechtsakt, der im Amtsblatt steht.',
-    geltung: 'Gelten kann erst ein Rechtsakt, der im Amtsblatt steht.',
-    offen: 'Umzusetzen ist oder gilt erst ein Rechtsakt, der im Amtsblatt steht.',
-  },
   unknown: (reference: string) => `Auf EUR-Lex gibt es keinen Vorschlag ${reference}.`,
   unknownDescription: 'EUR-Lex hat auf die Frage nach dieser Nummer geantwortet, dass es sie nicht kennt.',
   back: EU_PAGE_TITLE_DE,
@@ -323,12 +318,17 @@ export function euVorschlagView(r: EuVorschlagResponse, today: string): EuVorsch
     stations.push(ende)
     sections.push(section(ende, framed([fact('ruecknahme', label, [day ?? DE.withdrawn.undated])], null, [DE.withdrawn.noAct])))
   } else {
-    const aheadSentence = kind === 'umsetzung' ? DE.ahead.umsetzung : kind === 'geltung' ? DE.ahead.geltung : DE.ahead.offen
-    const amtsblatt = station('amtsblatt', EU_RAIL_DE.name.amtsblatt, [], null, true)
+    // Stations ahead stand in the rail only, as on a draft's page: a section
+    // is for a station that is reached. The first one says, once, what the
+    // record holds. The exception is an answer that did not come: then
+    // nobody knows whether the stations are reached, and each section says so.
+    const amtsblatt = station('amtsblatt', EU_RAIL_DE.name.amtsblatt, [], record ? noActSentence : null, true)
     const wirkung = station('wirkung', effectName, [], null, true)
     stations.push(amtsblatt, wirkung)
-    sections.push(section(amtsblatt, framed([gapFact(noActSentence)], null)))
-    sections.push(section(wirkung, framed([gapFact(!record ? noActSentence : aheadSentence)], null)))
+    if (!record) {
+      sections.push(section(amtsblatt, framed([gapFact(noActSentence)], null)))
+      sections.push(section(wirkung, framed([gapFact(noActSentence)], null)))
+    }
   }
 
   // The station the proposal is on: the last one reached that shows something.

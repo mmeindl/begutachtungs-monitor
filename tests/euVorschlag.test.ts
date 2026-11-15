@@ -273,7 +273,10 @@ describe('the page of a proposal', () => {
       'Bei Parlament und Rat sieht das Verfahren keinen Weg vor, auf dem sich Einzelne zu einem Vorschlag äußern können.',
     ])
     expect(beschluss.record).toMatchObject({ heading: 'Alle gelesenen Schritte des Verfahrens (1)', note: 'Der Cellar verzeichnet 1 weiteren Schritt dieses Verfahrens, den der Monitor nicht einzeln zeigt.' })
-    expect(v.sections[3]!.facts[0]!.parts).toEqual(['EUR-Lex verzeichnet zu diesem Vorschlag noch keinen Rechtsakt.'])
+    // Stations ahead have no section, as on a draft's page; the first says in the rail what the record holds.
+    expect(v.sections.map((x) => x.id)).toEqual(['konsultation', 'vorschlag', 'beschluss'])
+    expect(v.stations[3]!.gap).toBe('EUR-Lex verzeichnet zu diesem Vorschlag noch keinen Rechtsakt.')
+    expect(v.stations[4]!.gap).toBeNull()
     // The day after the period closed, no action.
     expect(euVorschlagView(response('52026PC0780', { consultation: OPEN_ON_PROPOSAL }), '2026-12-10').action).toBeNull()
   })
@@ -367,6 +370,9 @@ describe('the page of a proposal', () => {
     expect(v.title).toBe('Vorschlag COM(2026) 780')
     expect(v.stations.find((s) => s.id === 'beschluss')).toMatchObject({ ahead: true, gap: expect.stringMatching(/^Gerade nicht abrufbar: /) })
     expect(JSON.stringify(v)).not.toMatch(/Anhängig|Zurückgezogen|Rechtsakt geworden|noch keinen Rechtsakt/)
+    // Unread is not „ahead": nobody knows whether the stations are reached, so each keeps its section and says so.
+    expect(v.sections.map((x) => x.id)).toEqual(['konsultation', 'vorschlag', 'beschluss', 'amtsblatt', 'wirkung'])
+    for (const x of v.sections.slice(3)) expect(x.facts[0]!.parts[0]).toMatch(/^Gerade nicht abrufbar: /)
   })
 
   it('says a proposal without a procedure is one, not that nothing happened', () => {

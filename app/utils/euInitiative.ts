@@ -33,11 +33,11 @@
  * All German copy of the page lives here. Pure: no Vue.
  */
 import type { EuInitiative, EuPortalPublication } from '#shared/types'
-import { EU_MEMBER_STATE_NAME_DE, euProposalPathOfReference } from '#shared/utils/eu'
+import { euProposalPathOfReference } from '#shared/utils/eu'
 import { formatDateDe } from '#shared/utils/format'
 import { gapDe } from '#shared/utils/gaps'
 import { actTypeDe } from '#shared/utils/euPortal'
-import { EU_RAIL_DE, anchorOf, elementIdOf, fact, framed, gapFact, initiativeFact, periodFacts, periodParts, stageDe, type EuRailSection, type EuRailStation, type EuRailStationId, type EuSectionFact } from './euRail'
+import { EU_RAIL_DE, anchorOf, elementIdOf, fact, framed, initiativeFact, periodFacts, periodParts, stageDe, type EuRailSection, type EuRailStation, type EuRailStationId, type EuSectionFact } from './euRail'
 
 /** What kind of act the Commission foresees decides the stations after it. */
 type Track = 'gesetz' | 'kommission' | 'sonstiges'
@@ -95,17 +95,12 @@ const DE = {
   noAdoptionYet: 'Das Portal verzeichnet zu diesem Vorhaben noch keine Annahme durch die Kommission.',
   noConsultation: 'Das Portal verzeichnet zu diesem Vorhaben vor dem Entwurf keine Frist für Rückmeldungen.',
   notFollowedRail: gapDe('outOfScope', 'Über die Kommission hinaus verfolgt der Monitor dieses Vorhaben noch nicht.'),
-  notFollowed: {
-    beschluss: gapDe('outOfScope', 'Was Parlament und Rat aus einem Vorschlag dieses Vorhabens machen, verfolgt der Monitor noch nicht.'),
-    amtsblatt: gapDe('outOfScope', 'Ob daraus ein Rechtsakt im Amtsblatt der Europäischen Union wird, verfolgt der Monitor bei diesem Vorhaben noch nicht.'),
-    umsetzung: gapDe('outOfScope', `Die Umsetzung in ${EU_MEMBER_STATE_NAME_DE} verfolgt der Monitor bei diesem Vorhaben noch nicht.`),
-    geltung: gapDe('outOfScope', 'Ab wann ein Rechtsakt daraus gilt, verfolgt der Monitor bei diesem Vorhaben noch nicht.'),
-  },
   pointer: {
     title: 'Verfahren',
     label: (reference: string) => `Verfahren zu ${reference} im Monitor`,
     rail: (n: number) => (n === 1 ? 'Wie es weitergeht, zeigt die Seite des Vorschlags.' : 'Wie es weitergeht, zeigen die Seiten der Vorschläge.'),
   },
+  // Said on the proposal's page, at „Parlament und Rat", while the procedure runs.
   noChannel: 'Bei Parlament und Rat sieht das Verfahren keinen Weg vor, auf dem sich Einzelne zu einem Vorschlag äußern können.',
   unread: 'Das Vorhaben konnte nicht gelesen werden: Das Portal „Ihre Meinung zählt“ der Kommission hat nicht rechtzeitig oder nicht lesbar geantwortet.',
   unreadLink: 'Das Vorhaben im Portal ansehen',
@@ -260,24 +255,21 @@ export function euInitiativeView(i: EuInitiative, today: string): EuInitiativeVi
     : p.published ? `${stageDe(p)} ${formatDateDe(p.published)}` : stageDe(p))), ownGap, showConsultation && ownPubs.length === 0)
   stations.push(ownStation)
   const proposals = proposalsOf(i)
-  sections.push(section(ownStation, [...commissionFacts(ownPubs), ...pointerFacts(proposals), ...(showConsultation ? [] : [initiativeFact(i)])], ownGap))
+  // A section is for a station that is reached, as on a draft's page; a station ahead stands in the rail, with its one line.
+  if (!ownStation.ahead) sections.push(section(ownStation, [...commissionFacts(ownPubs), ...pointerFacts(proposals), ...(showConsultation ? [] : [initiativeFact(i)])], ownGap))
 
   // After the Commission: only a legal act passes these, and the monitor does not follow it there yet.
   if (track !== 'sonstiges') {
-    const after: { id: EuRailStationId; name: string; gap: string; notes: string[] }[] = [
-      ...(track === 'gesetz' ? [{ id: 'beschluss' as const, name: EU_RAIL_DE.name['parlament-rat'], gap: DE.notFollowed.beschluss, notes: [DE.noChannel] }] : []),
-      { id: 'amtsblatt', name: EU_RAIL_DE.name.amtsblatt, gap: DE.notFollowed.amtsblatt, notes: [] },
-      isDirective(i.actType)
-        ? { id: 'wirkung', name: EU_RAIL_DE.name.umsetzung, gap: DE.notFollowed.umsetzung, notes: [] }
-        : { id: 'wirkung', name: EU_RAIL_DE.name.geltung, gap: DE.notFollowed.geltung, notes: [] },
+    const after: { id: EuRailStationId; name: string }[] = [
+      ...(track === 'gesetz' ? [{ id: 'beschluss' as const, name: EU_RAIL_DE.name['parlament-rat'] }] : []),
+      { id: 'amtsblatt', name: EU_RAIL_DE.name.amtsblatt },
+      { id: 'wirkung', name: isDirective(i.actType) ? EU_RAIL_DE.name.umsetzung : EU_RAIL_DE.name.geltung },
     ]
     after.forEach((a, n) => {
-      // As on a draft's rail, only the first station not reached says anything; the sections below say it each.
-      // Where the monitor follows a proposal of the initiative, they point to its page instead.
+      // As on a draft's rail, only the first station not reached says anything, and none of them has a section.
+      // Where the monitor follows a proposal of the initiative, the line points to its page; the link stands in the Commission's section.
       const railLine = proposals.length ? DE.pointer.rail(proposals.length) : DE.notFollowedRail
-      const st = station(a.id, a.name, [], n === 0 && !ownStation.ahead ? railLine : null, true)
-      stations.push(st)
-      sections.push(section(st, proposals.length ? pointerFacts(proposals) : [gapFact(a.gap)], null, a.notes))
+      stations.push(station(a.id, a.name, [], n === 0 && !ownStation.ahead ? railLine : null, true))
     })
   }
 

@@ -776,6 +776,15 @@ The code names the EU rules D1 to D7; this is where they are defined
     stand rests on — the acts, the last recorded step, a gap — stands in
     the rail. The list of open windows uses the draft list's box for an
     open Frist, word for word and tone for tone.
+  - **A station ahead has no section** (15.11.2026, `euVorschlag.ts`,
+    `euInitiative.ts`). As on a draft's page, an EU page shows a section
+    only for a station that is reached. A station ahead stands in the
+    rail, hollow, and the first one carries the one line there is to say:
+    what the record holds, where the proposal's page continues, or that
+    the monitor does not follow the initiative further. A station that
+    has not happened is not a gap. The exception is an answer that did not
+    come: then nobody knows whether the station is reached, and its
+    section stays with „Gerade nicht abrufbar".
   - **A withdrawn proposal ends on a station „Zurückgezogen"**
     (15.11.2026): the withdrawal has a day and ends the procedure, so it
     is the rail's last station, after whatever Parliament and Council

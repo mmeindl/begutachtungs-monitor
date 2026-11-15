@@ -258,19 +258,19 @@ describe('the initiative\'s page', () => {
     ])
     expect(v.stations[1]!.facts).toEqual([])
     expect(v.stations[1]!.gap).toBe('Das Portal verzeichnet zu diesem Vorhaben noch keinen Vorschlag.')
-    expect(JSON.stringify(v.sections[1])).not.toMatch(/[Vv]eröffentlicht/)
+    // A station ahead stands in the rail only: sections are for stations reached, as on a draft's page.
+    expect(v.sections.map((s) => s.id)).toEqual(['konsultation'])
+    expect(JSON.stringify(v.sections)).not.toMatch(/[Vv]eröffentlicht/)
     expect(v.status).toBe('Sondierung läuft')
     expect(v.action?.end).toBe('2027-01-08')
   })
 
-  it('says past the Commission what the monitor does not follow, and that individuals have no channel at Parliament and Council', () => {
+  it('says past the Commission, once and in the rail, what the monitor does not follow', () => {
     // Without a COM number on any publication: the monitor follows no proposal of it.
     const noCom: EuInitiative = { ...closed, publications: closed.publications.map((p) => ({ ...p, reference: p.reference?.startsWith('COM') ? null : p.reference })) }
     const v = euInitiativeView(noCom, TODAY)
-    const after = v.sections.slice(2)
-    for (const s of after) expect(s.facts[0]!.parts[0], s.id).toMatch(/^Nicht im Monitor: /)
-    expect(after[0]!.notes).toEqual(['Bei Parlament und Rat sieht das Verfahren keinen Weg vor, auf dem sich Einzelne zu einem Vorschlag äußern können.'])
-    // In the rail only the first station not reached says it.
+    // No section for a station not reached; in the rail only the first one says it.
+    expect(v.sections.map((s) => s.id)).toEqual(['konsultation', 'vorschlag'])
     expect(v.stations.filter((s) => s.gap?.startsWith('Nicht im Monitor')).map((s) => s.id)).toEqual(['beschluss'])
     expect(JSON.stringify(v)).not.toContain('/eu-recht/vorschlag/')
   })
@@ -280,14 +280,12 @@ describe('the initiative\'s page', () => {
     const pointer = { href: '/eu-recht/vorschlag/2022/177', label: 'Verfahren zu COM(2022)177 im Monitor', internal: true }
     // The Commission's station links it ...
     expect(v.sections[1]!.facts.find((f) => f.key === 'verfahren-0')).toMatchObject({ title: 'Verfahren', parts: [pointer] })
-    // ... and the later stations point there instead of „Nicht im Monitor".
-    const after = v.sections.slice(2)
-    for (const s of after) expect(s.facts.map((f) => f.parts), s.id).toEqual([[pointer]])
+    // ... and the first later station says so in the rail, instead of „Nicht im Monitor". None of them has a section.
+    expect(v.sections.map((s) => s.id)).toEqual(['konsultation', 'vorschlag'])
     expect(JSON.stringify(v)).not.toContain('Nicht im Monitor')
     expect(v.stations.find((s) => s.id === 'beschluss')!.gap).toBe('Wie es weitergeht, zeigt die Seite des Vorschlags.')
     // The stations stay drawn as not reached: the initiative's page does not read the Cellar.
     expect(v.stations.slice(2).every((s) => s.ahead)).toBe(true)
-    expect(after[0]!.notes).toEqual(['Bei Parlament und Rat sieht das Verfahren keinen Weg vor, auf dem sich Einzelne zu einem Vorschlag äußern können.'])
   })
 
   it('carries the one action while a window is open: the portal\'s page, and the closing day', () => {
