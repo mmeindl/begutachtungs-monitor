@@ -6,17 +6,17 @@
 import type { RvStatementsResponse } from '#shared/types'
 import { parliamentItemUrl, rootCitation } from '#shared/utils/procedureRoot'
 import { validateVorlageParams } from '../../../../../utils/http/params'
-import { readCommitteeConsultation } from '../../../../../utils/parliament/detailJson'
+import { periodPredatesSecondRound, readCommitteeConsultation, statementsPredateSecondRound } from '../../../../../utils/parliament/detailJson'
 import { requireVorlageItem } from '../../../../../utils/parliament/vorlageDetail'
 
 export default defineEventHandler(async (event): Promise<RvStatementsResponse> => {
   const root = validateVorlageParams(event)
   await requireVorlageItem(root)
-  const [{ total, items, unlisted }, committeeConsultation] = await Promise.all([
+  const [{ total, items, unlisted }, record] = await Promise.all([
     getStatementsForItem(root.gp, root.ityp, root.inr),
     getGegenstand(root.gp, root.ityp, root.inr)
-      .then((d) => readCommitteeConsultation(d.content?.phase))
-      .catch(() => null),
+      .then((d) => ({ committeeConsultation: readCommitteeConsultation(d.content?.phase), predatesFiling: statementsPredateSecondRound(root.gp, d.content) }))
+      .catch(() => ({ committeeConsultation: null, predatesFiling: periodPredatesSecondRound(root.gp) })),
   ])
   return {
     rvCitation: rootCitation(root),
@@ -26,6 +26,7 @@ export default defineEventHandler(async (event): Promise<RvStatementsResponse> =
     items,
     unlisted,
     cap: STATEMENTS_CAP,
-    committeeConsultation,
+    committeeConsultation: record.committeeConsultation,
+    predatesFiling: record.predatesFiling,
   }
 })

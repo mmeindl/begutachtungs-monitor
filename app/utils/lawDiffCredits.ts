@@ -8,7 +8,7 @@
  * (`#shared/utils/provenance`, 02.10.2026).
  */
 import type { LawDiffResponse, LawStationId, Publisher, ReasoningDiffResponse, TraceLink } from '#shared/types'
-import { LAW_STATION_LABEL, type LawStationPair } from '#shared/utils/lawStations'
+import { lawStationLabelOf, type FirstTextName, type LawStationPair } from '#shared/utils/lawStations'
 import { documentSource, mixedPublishers, parliamentDocumentSource, PUBLISHER_NAME_DE, risSource, type SourceEntry } from '#shared/utils/provenance'
 
 /** One compared version in the credit line: its name, its text, its Erläuterungen. */
@@ -56,11 +56,14 @@ export function lawDiffCredits(
   reasoning: ReasoningDiffResponse | null | undefined,
   pair: LawStationPair,
   namedCount: number,
+  /** The first text's own name on the page of a committee's or the
+   *  Bundesrat's motion (`firstTextNameOf`); the station's elsewhere. */
+  first: FirstTextName | null = null,
 ): { sources: SourceEntry[]; sides: LawDiffCreditSide[] } {
   const sources: SourceEntry[] = []
   if (data?.available) {
     for (const side of [{ station: pair.from, publisher: data.fromSource }, { station: pair.to, publisher: data.toSource }]) {
-      if (side.publisher) sources.push(documentSource(LAW_STATION_LABEL[side.station], side.station, side.publisher))
+      if (side.publisher) sources.push(documentSource(lawStationLabelOf(side.station, first), side.station, side.publisher))
       const reasoningName = REASONING_DE[side.station]
       if (reasoningName && reasoningDocFor(reasoning, side.station)) sources.push(parliamentDocumentSource(reasoningName, side.station))
     }
@@ -80,7 +83,7 @@ export function lawDiffCredits(
     const oneBy = by.length === 1 ? by[0]! : null
     return [{
       station,
-      label: `${LAW_STATION_LABEL[station]}${tag(oneBy)}`,
+      label: `${lawStationLabelOf(station, first)}${tag(oneBy)}`,
       text,
       textTag: oneBy ? '' : tag(textBy),
       reasoning: doc,

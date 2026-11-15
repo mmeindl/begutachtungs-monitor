@@ -4,6 +4,7 @@ import type { AmendedLawsResponse, RvStatementsResponse, VorlageDetail } from '#
 import type { ComparisonId, StationId } from '~/utils/spine'
 import { lastParliamentStation, parliamentTexts, vorlageStations, vorlageStatusDe, SECOND_ROUND_CLAUSE } from '~/utils/spine'
 import { citeLineDe } from '#shared/utils/citations'
+import { firstTextNameOf } from '#shared/utils/lawStations'
 import { GP_RE, parseInr } from '#shared/utils/gp'
 import { itemKindOfSegment, itemPath, itypOfKind, segmentOfItemKind, vorlageApiBase } from '#shared/utils/procedureRoot'
 import { NOT_FOLLOWED_DE, notFollowedOf, type NotFollowed } from '~/utils/notFollowed'
@@ -170,6 +171,10 @@ const { data: amendedLaws } = await useFetch<AmendedLawsResponse>(() => `${url.v
 const showsAnnex = computed(() => !isCommitteeMotion.value && !isBundesratMotion.value && !isTreaty.value && !amendedLaws.value?.createsNewLaw)
 /* Why a kind shows no text comparison, where it shows none (`NO_COMPARISON_DE`). */
 const noComparison = computed(() => NO_COMPARISON_DE[itemKind.value] ?? null)
+/* The first text's own name in every comparison on the page — „Ausschussantrag",
+ * „Gesetzesantrag des Bundesrates" —, where its station's („Regierungsvorlage")
+ * would be false (`firstTextNameOf`). */
+const firstText = computed(() => firstTextNameOf({ itemKind: itemKind.value, variant: data.value?.variant }))
 
 const kindWord = computed(() => kindCopy.value.word)
 
@@ -219,8 +224,9 @@ const byline = computed(() => (data.value ? itemBylineDe(data.value) : null))
 const citeAs = computed(() => (data.value ? itemCiteAsDe(data.value) : ''))
 
 /* An Antrag that carries a consulted draft's text: the frame's row naming
- * the draft (decision 9 of 14.11.2026, `carriedDraftDe`); the rail's
- * Begutachtung station says the same (`vorlageStations`). */
+ * the draft (decision 9 of 14.11.2026, `carriedDraftDe`) — the one place
+ * the sentence stands; the rail's Begutachtung station keeps its short fact
+ * (`vorlageStations`). */
 const carriedDraft = computed(() => (data.value ? carriedDraftDe(data.value)?.line ?? null : null))
 
 const filingOpen = computed(() => Boolean(data.value?.enactment.filingOpen))
@@ -343,7 +349,6 @@ useSeoMeta({
                   />
                 </div>
               </FoldSection>
-              <p v-if="noComparison && data.enactment.bgblNumber" class="max-w-prose text-sm text-ink-secondary">{{ noComparison }}</p>
             </div>
           </section>
 
@@ -379,6 +384,7 @@ useSeoMeta({
             :parliament-texts="parliamentTextList"
             :api-base="url"
             :origin="origin"
+            :first-text="firstText"
           />
 
           <BgblStationSection
@@ -389,7 +395,8 @@ useSeoMeta({
             :parliament-texts="parliamentTextList"
             :api-base="url"
             :origin="origin"
-            :without-comparison="Boolean(noComparison)"
+            :first-text="firstText"
+            :comparison-gap="noComparison"
           />
         </article>
       </template>

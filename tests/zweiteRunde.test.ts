@@ -1,4 +1,5 @@
 import { afterEach, describe, expect, it, vi } from 'vitest'
+import type { OpenVorlage } from '../shared/types'
 
 /**
  * `GET /api/dashboard/zweite-runde` (`server/api/dashboard/zweite-runde.get.ts`)
@@ -26,6 +27,7 @@ vi.mock('../server/utils/parliament/statements', () => ({
 
 const { getItemsForGp, getGegenstand } = vi.mocked(await import('../server/utils/parliament/drafts'))
 const { default: handler, secondRoundCandidates, STATUS_IN_PROCEDURE } = await import('../server/api/dashboard/zweite-runde.get')
+const { viewOfVorlage } = await import('../app/utils/entryView')
 
 const row = (inr: number, doktyp: string, status: string, title = `Gegenstand ${inr}`) => ({
   gp: 'XXVIII',
@@ -45,12 +47,24 @@ afterEach(() => {
 describe('the candidates', () => {
   it('admit status 1–4 and the two kinds the section words', () => {
     expect([...STATUS_IN_PROCEDURE].sort()).toEqual(['1', '2', '3', '4'])
-    const rows = [row(365, 'BUA', '3'), row(620, 'RV', '1'), row(14, 'BUA', '5'), row(119, 'RVS', '2'), row(700, 'RV', '3')]
-    expect(secondRoundCandidates(rows).map((r) => `${r.inr} ${r.kind}`)).toEqual(['365 ausschussantrag', '620 regierungsvorlage', '700 regierungsvorlage'])
+    const rows = [row(365, 'BUA', '3'), row(620, 'RV', '1'), row(14, 'BUA', '5'), row(119, 'RVS', '2'), row(700, 'RV', '3'), row(21, 'GABR', '2'), row(22, 'GABR13', '2'), row(23, 'GABR', '5')]
+    expect(secondRoundCandidates(rows).map((r) => `${r.inr} ${r.kind}`)).toEqual(['365 ausschussantrag', '620 regierungsvorlage', '700 regierungsvorlage', '21 bundesratsantrag', '22 bundesratsantrag'])
   })
 })
 
 describe('the rows', () => {
+  it('show an open motion of the Bundesrat by who moved it, claiming nothing about a Begutachtung (14.11.2026)', async () => {
+    getItemsForGp.mockResolvedValue([row(21, 'GABR', '2'), row(22, 'GABR13', '2')] as never)
+    getGegenstand.mockImplementation((async (_gp: string, _ityp: string, inr: number) => ({ content: { statementsstate: inr === 21 ? '1' : '0' } })) as never)
+    const answer = await (handler as unknown as () => Promise<{ items: OpenVorlage[] }>)()
+    // The flag decides: 22's form is closed, so it is no row.
+    expect(answer.items.map((i) => [i.kind, i.variant, i.consultation])).toEqual([['bundesratsantrag', 'bundesrat', { kind: 'unknown' }]])
+    const view = viewOfVorlage(answer.items[0]!)
+    expect(view.kindLabel).toBe('Gesetzesantrag des Bundesrates')
+    expect(view.to).toBe('/entwuerfe/XXVIII/bundesratsantrag/21')
+    expect(viewOfVorlage({ ...answer.items[0]!, variant: 'drittel' }).kindLabel).toBe('Gesetzesantrag von Mitgliedern des Bundesrates')
+  })
+
   it('show an open committee\'s motion at status 3 as an Ausschussantrag, claiming nothing about a Begutachtung', async () => {
     getItemsForGp.mockResolvedValue([row(365, 'BUA', '3', 'Erneuerbaren-Ausbau-Gesetz, Ökostromgesetz, Änderung')] as never)
     getGegenstand.mockResolvedValue({ content: { statementsstate: '1' } } as never)

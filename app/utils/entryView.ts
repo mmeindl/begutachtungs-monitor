@@ -580,15 +580,18 @@ export function viewOfVorlage(v: OpenVorlage): EntryView {
   // (`itemPath`) — whatever the evidence
   // says about a Begutachtung, which stays the note's business below.
   const own = c.kind === 'draft' ? null : vorlageOf(v.parliamentUrl)
-  // A committee's motion (14.11.2026) is named and linked as what it is.
+  // A committee's motion and a motion of the Bundesrat (14.11.2026) are
+  // named and linked as what they are.
   const kind = v.kind
+  const word = itemCopyDe({ itemKind: kind, variant: v.variant ?? null }).word
   return {
     key: `rv-${v.citation}`,
     to: c.kind === 'draft' ? `/entwuerfe/${c.gp}/${c.inr}` : own ? itemPath(own.gp, kind, own.inr) : null,
     href: c.kind === 'draft' || own ? null : v.parliamentUrl,
     title: v.title,
     titleFull: v.title,
-    kindLabel: ITEM_KIND_DE[kind].word,
+    // A motion of the Bundesrat by who moved it (`itemCopyDe`), 14.11.2026.
+    kindLabel: word,
     citation: v.citation,
     ministry: null,
     coMinistries: [],
@@ -599,8 +602,8 @@ export function viewOfVorlage(v: OpenVorlage): EntryView {
     // „Neu: Regierungsvorlage" although zone 2 already says
     // „Regierungsvorlage": the chip names the station, the kind label the
     // document, and the rule has no exception (`stationNewLabel`).
-    newLabel: kind === 'ausschussantrag'
-      ? (isWithinNewWindow(v.date || null) ? `Neu: ${ITEM_KIND_DE.ausschussantrag.word}` : null)
+    newLabel: kind !== 'regierungsvorlage'
+      ? (isWithinNewWindow(v.date || null) ? `Neu: ${word}` : null)
       : stationNewLabel('rv', v.date || null),
     participation:
       v.statementCount === null ? { kind: 'unavailable' } : { kind: 'count', count: v.statementCount },

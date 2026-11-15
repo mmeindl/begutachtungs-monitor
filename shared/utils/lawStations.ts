@@ -12,7 +12,7 @@
  * Pure module: no Nuxt auto-imports, so both the server resolver and the
  * component read one vocabulary.
  */
-import type { LawStationId } from '../types'
+import type { BundesratMotionVariant, LawStationId, ProcedureItemKind } from '../types'
 
 /**
  * Procedural order. A comparison always runs from an earlier station to a
@@ -75,6 +75,90 @@ export const LAW_STATION_LABEL: Record<LawStationId, string> = {
   // Fassung". That the Ministerialentwurf already needs an exception in the
   // same sentence was the warning.
   bgbl: 'Fassung im Bundesgesetzblatt',
+}
+
+/**
+ * The name of the first text on the page of an item that is no
+ * Regierungsvorlage but stands at its station (14.11.2026): a committee's
+ * motion (`BUA`) or a motion of the Bundesrat (`GABR`, `GABR13`). Their
+ * record is of type `I` like a Vorlage's, so their „Gesetzestext" is the
+ * comparison's `rv` station (`findLawStations`) — and every sentence that
+ * named that station „Regierungsvorlage" named the government as the author
+ * of a text it never brought in. Until then the pages showed no comparison.
+ *
+ * The station id stays `rv`: the order, the steps and the URL's `?von=rv`
+ * are the same; only the words change, and they change wherever a
+ * comparison names its sides (`lawStationLabelOf`, `lawStationGenitiveDe`,
+ * `lawStationPairQuestion`, the credit line, the citation, the server's
+ * document labels and reasons).
+ *
+ * Every one of these names is MASCULINE („der Ausschussantrag", „der
+ * Gesetzesantrag"), and the sentences built from them rely on it („am",
+ * „vom", „Der …", „in diesem …"). A feminine or neuter name would need its
+ * own forms here, not a special case at the sentence.
+ *
+ * The words are the item page's (`ITEM_KIND_DE`, `itemCopyDe` in
+ * `app/utils/itemKind.ts`), pinned equal by a test: this module is shared
+ * with the server and cannot import the app's.
+ */
+export interface FirstTextName {
+  /** Which kind — the citation differs (`lawTextCiteDe`). */
+  kind: 'ausschussantrag' | 'bundesratsantrag'
+  /** Nominative, the label: column heads, the credit line, document labels. */
+  label: string
+  /** With its article in the genitive: „der Gesetzestext des Ausschussantrags". */
+  genitive: string
+  /** The short noun of the questions: „am Ausschussantrag", „vom Gesetzesantrag". */
+  noun: string
+}
+
+const AUSSCHUSSANTRAG_TEXT: FirstTextName = {
+  kind: 'ausschussantrag',
+  label: 'Ausschussantrag',
+  genitive: 'des Ausschussantrags',
+  noun: 'Ausschussantrag',
+}
+// A motion of the Bundesrat whose mover is unknown reads as the Bundesrat's
+// own, as the page's title does (`itemCopyDe`).
+const BUNDESRAT_TEXT: FirstTextName = {
+  kind: 'bundesratsantrag',
+  label: 'Gesetzesantrag des Bundesrates',
+  genitive: 'des Gesetzesantrags des Bundesrates',
+  noun: 'Gesetzesantrag',
+}
+// A third of the Bundesrat's members (`GABR13`): never „des Bundesrates".
+const BUNDESRAT_DRITTEL_TEXT: FirstTextName = {
+  kind: 'bundesratsantrag',
+  label: 'Gesetzesantrag von Mitgliedern des Bundesrates',
+  genitive: 'des Gesetzesantrags von Mitgliedern des Bundesrates',
+  noun: 'Gesetzesantrag',
+}
+
+/** The first text's name for an item kind; null where the station's own name
+ *  is right (a Regierungsvorlage, an Antrag, a draft) or no § comparison
+ *  runs (a treaty). */
+export function firstTextNameOf(
+  item: { itemKind: ProcedureItemKind | null | undefined; variant?: BundesratMotionVariant | null } | null | undefined,
+): FirstTextName | null {
+  if (item?.itemKind === 'ausschussantrag') return AUSSCHUSSANTRAG_TEXT
+  if (item?.itemKind === 'bundesratsantrag') return item.variant === 'drittel' ? BUNDESRAT_DRITTEL_TEXT : BUNDESRAT_TEXT
+  return null
+}
+
+/** A station's label on this page: the first text's own name where it has
+ *  one (`firstTextNameOf`), the station's otherwise. */
+export function lawStationLabelOf(id: LawStationId, first?: FirstTextName | null): string {
+  return id === 'rv' && first ? first.label : LAW_STATION_LABEL[id]
+}
+
+/**
+ * The station after „der Gesetzestext …": „des Entwurfs" (the sentence
+ * stands on the draft's own page, `lawPackage.ts`), the first text's
+ * genitive, else „der <label>" — every station label declines so.
+ */
+export function lawStationGenitiveDe(id: LawStationId, first?: FirstTextName | null): string {
+  if (id === 'me') return 'des Entwurfs'
+  return id === 'rv' && first ? first.genitive : `der ${LAW_STATION_LABEL[id]}`
 }
 
 /**
@@ -300,6 +384,23 @@ export const LAW_STEP_LABEL: Partial<Record<LawStationId, string>> = {
 export const PARLIAMENT_COMPARISON_QUESTION = 'Was das Parlament am Text geändert hat'
 
 /**
+ * The one sentence under that heading where the Nationalrat adopted a
+ * changed text after the Bundesrat's Einspruch (`BundesratObjection`
+ * „new-decision", 14.11.2026). The steps read the law's own record, whose
+ * texts end at the first Beschluss; the changed text is filed with the
+ * Einspruch (1105/A XXVII: Einspruch 616 d.B., the changed text in the
+ * committee report 617 d.B.), which no step reads. Said rather than shown
+ * as if the last step were the law: nothing may suggest the first text was
+ * promulgated. The whole-way comparison under „Im Bundesgesetzblatt" reads
+ * the promulgated text and needs no such sentence.
+ *
+ * Worded to take a lead word later („Nicht im Monitor: …"): what is missing
+ * and why, nothing more.
+ */
+export const OBJECTION_STEPS_NOTE_DE =
+  'Den Text, den der Nationalrat nach dem Einspruch des Bundesrates verändert beschlossen hat, vergleichen die Schritte hier nicht: Sie enden beim ersten Beschluss.'
+
+/**
  * The heading over the comparison, phrased as the question the pair answers
  * rather than as the name of a procedure — the wording rule the station bar
  * already follows (`app/utils/spine.ts`).
@@ -326,7 +427,22 @@ const PAIR_QUESTIONS: Readonly<Record<string, string>> = {
   'antrag>bgbl': 'Was sich vom Antrag bis zum Gesetz geändert hat',
 }
 
-export function lawStationPairQuestion(from: LawStationId, to: LawStationId): string {
+/**
+ * The same three questions from a first text with its own name
+ * (`firstTextNameOf`) — the Antrag's wording, with the item's noun.
+ */
+const FIRST_TEXT_QUESTIONS: Readonly<Record<string, (noun: string) => string>> = {
+  'rv>ausschuss': (noun) => `Was der Ausschuss am ${noun} geändert hat`,
+  'rv>plenum': (noun) => `Was das Parlament am ${noun} geändert hat`,
+  'rv>bgbl': (noun) => `Was sich vom ${noun} bis zum Gesetz geändert hat`,
+}
+
+export function lawStationPairQuestion(from: LawStationId, to: LawStationId, first?: FirstTextName | null): string {
+  const named = first ? FIRST_TEXT_QUESTIONS[`${from}>${to}`] : undefined
+  if (named && first) return named(first.noun)
+  if (first && (from === 'rv' || to === 'rv')) {
+    return `Was sich zwischen ${lawStationLabelOf(from, first)} und ${lawStationLabelOf(to, first)} geändert hat`
+  }
   return (
     PAIR_QUESTIONS[`${from}>${to}`] ??
     `Was sich zwischen ${LAW_STATION_LABEL[from]} und ${LAW_STATION_LABEL[to]} geändert hat`

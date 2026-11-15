@@ -6,7 +6,7 @@
  * vocabulary both runtimes share; this one resolves the documents.
  */
 import type { DraftDocument, LawStationId, ProcedureItemType } from '#shared/types'
-import { meTextTitleRank } from '#shared/utils/lawStations'
+import { meTextTitleRank, type FirstTextName } from '#shared/utils/lawStations'
 import { mapDocuments, mapTextEvolution, type RawDocumentGroup } from '../parliament/detailJson'
 
 /**
@@ -174,6 +174,14 @@ export const MISSING_STATION_REASON: Record<LawStationId, string> = {
 }
 
 /**
+ * Why a motion of the Bundesrat whose text stands only in its „Gesetzesantrag"
+ * or „Antrag" is not compared. Worded to take a lead word later („Nicht im
+ * Monitor: …").
+ */
+export const MOTION_TEXT_NOT_COMPARED_DE =
+  'Den Gesetzesantrag vergleicht der Monitor nicht Paragraph für Paragraph: Das Parlament veröffentlicht seinen Text nicht als eigenes Dokument, sondern im Antrag, der auch die Begründung enthalten kann.'
+
+/**
  * The reason for an absent station, given what the stage record says.
  *
  * An absent `rv` station is two different facts. Usually there is no
@@ -185,7 +193,29 @@ export const MISSING_STATION_REASON: Record<LawStationId, string> = {
  * names two sections higher — the
  * false accusation `parliament/stationMap.ts` exists to avoid.
  */
-export function missingStationReason(id: LawStationId, rvLinked: boolean, promulgatedAs: string | null = null): string {
+export function missingStationReason(
+  id: LawStationId,
+  rvLinked: boolean,
+  promulgatedAs: string | null = null,
+  /** The first text's own name on a committee's or the Bundesrat's motion
+   *  (`firstTextNameOf`). */
+  first: FirstTextName | null = null,
+  /** The motion publishes its text only as „Gesetzesantrag" or „Antrag"
+   *  (`motionTextOf`). */
+  motionTextOnly = false,
+): string {
+  // The first text of a committee's or the Bundesrat's motion (14.11.2026).
+  // Its record is the item's own, so nothing is „noch nicht" there: the
+  // record has no Gesetzestext of its own. A motion of the Bundesrat that
+  // files its text as „Gesetzesantrag" or „Antrag" has one — but that
+  // document can carry the Begründung after the text (154 d.B. XXVII), and
+  // no rule has been measured that cuts it off reliably, so it is not read
+  // as the text (`MOTION_TEXT_TITLES`). The sentence says that, and why.
+  if (id === 'rv' && first) {
+    return motionTextOnly
+      ? MOTION_TEXT_NOT_COMPARED_DE
+      : `Zu diesem ${first.label} ist kein Gesetzestext als eigenes Dokument veröffentlicht.`
+  }
   if (id === 'rv' && rvLinked) {
     return 'Zur Regierungsvorlage ist kein Gesetzestext als eigenes Dokument veröffentlicht, mit dem sich der Entwurf vergleichen ließe.'
   }

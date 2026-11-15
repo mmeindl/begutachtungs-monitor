@@ -16,7 +16,7 @@
  * these sentences name the two sides out loud.
  */
 import type { LawDiffResponse, LawPackageEntry, LawStationId } from '#shared/types'
-import { LAW_STATION_LABEL } from '#shared/utils/lawStations'
+import { LAW_STATION_LABEL, type FirstTextName } from '#shared/utils/lawStations'
 
 /** How many law names a sentence lists before it counts the rest. */
 const MAX_NAMES = 3
@@ -39,10 +39,14 @@ export function formatLawList(entries: readonly LawPackageEntry[]): string {
  * The draft is "dieser Entwurf" rather than "der Ministerialentwurf": the
  * sentence stands on the draft's own page, where saying its type back to the
  * reader is noise. The three later stations are all feminine, so they take
- * "die"/"dieser" without a special case.
+ * "die"/"dieser" without a special case. A first text with its own name — a
+ * committee's or the Bundesrat's motion (`FirstTextName`) — is masculine:
+ * "Der Ausschussantrag", "in diesem Ausschussantrag".
  */
-const subject = (id: LawStationId) => (id === 'me' ? 'Der Entwurf' : `Die ${LAW_STATION_LABEL[id]}`)
-const inThis = (id: LawStationId) => (id === 'me' ? 'in diesem Entwurf' : `in dieser ${LAW_STATION_LABEL[id]}`)
+const subject = (id: LawStationId, first: FirstTextName | null) =>
+  id === 'me' ? 'Der Entwurf' : id === 'rv' && first ? `Der ${first.label}` : `Die ${LAW_STATION_LABEL[id]}`
+const inThis = (id: LawStationId, first: FirstTextName | null) =>
+  id === 'me' ? 'in diesem Entwurf' : id === 'rv' && first ? `in diesem ${first.label}` : `in dieser ${LAW_STATION_LABEL[id]}`
 
 type LargerAct = LawDiffResponse['largerAct']
 
@@ -90,12 +94,13 @@ export function mergedLawsNote(
   to: LawStationId,
   act: LargerAct = null,
   bundled: { others: readonly DraftRef[]; gp: string } | null = null,
+  first: FirstTextName | null = null,
 ): string | null {
   if (!laws.length) return null
   const clause =
     laws.length === 1
-      ? `ein weiteres Gesetz, das ${inThis(from)} nicht vorkommt`
-      : `${laws.length} weitere Gesetze, die ${inThis(from)} nicht vorkommen`
+      ? `ein weiteres Gesetz, das ${inThis(from, first)} nicht vorkommt`
+      : `${laws.length} weitere Gesetze, die ${inThis(from, first)} nicht vorkommen`
   // The second sentence explains the mechanism, and the mechanism differs by
   // pair: a Regierungsvorlage bundles several Ministerialentwürfe, while a
   // committee merges and splits Vorlagen already before parliament. Only the
@@ -111,7 +116,7 @@ export function mergedLawsNote(
       : from === 'me' && to === 'rv'
         ? 'Eine Regierungsvorlage fasst häufig mehrere Ministerialentwürfe zusammen; verglichen wird deshalb, was in beiden Texten steht.'
         : 'Im Parlament werden Vorlagen zusammengefasst und geteilt; verglichen wird deshalb, was in beiden Texten steht.'
-  return `${subject(to)} ändert ${clause}: ${formatLawList(laws)}. ${why}`
+  return `${subject(to, first)} ändert ${clause}: ${formatLawList(laws)}. ${why}`
 }
 
 /** Laws the earlier text carried and the later one does not. */
@@ -119,17 +124,18 @@ export function droppedLawsNote(
   laws: readonly LawPackageEntry[],
   from: LawStationId,
   to: LawStationId,
+  first: FirstTextName | null = null,
 ): string | null {
   if (!laws.length) return null
   const one = laws.length === 1
   const clause = one
-    ? `ein Gesetz, das ${inThis(to)} nicht vorkommt`
-    : `${laws.length} Gesetze, die ${inThis(to)} nicht vorkommen`
+    ? `ein Gesetz, das ${inThis(to, first)} nicht vorkommt`
+    : `${laws.length} Gesetze, die ${inThis(to, first)} nicht vorkommen`
   const why =
     from === 'me'
       ? `Ein Entwurf kann in mehrere Regierungsvorlagen münden — möglicherweise ${one ? 'steht es' : 'stehen sie'} in einer anderen.`
       : `Der Text kann im Parlament geteilt worden sein — möglicherweise ${one ? 'steht es' : 'stehen sie'} in einer anderen Vorlage.`
-  return `${subject(from)} ändert ${clause}: ${formatLawList(laws)}. ${why}`
+  return `${subject(from, first)} ändert ${clause}: ${formatLawList(laws)}. ${why}`
 }
 
 /**

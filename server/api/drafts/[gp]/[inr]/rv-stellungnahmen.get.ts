@@ -18,6 +18,7 @@
  */
 import type { RvStatementsResponse } from '#shared/types'
 import { validateGpInrParams } from '../../../../utils/http/params'
+import { periodPredatesSecondRound, statementsPredateSecondRound } from '../../../../utils/parliament/detailJson'
 
 export default defineEventHandler(async (event): Promise<RvStatementsResponse> => {
   const { gp, inr } = validateGpInrParams(event)
@@ -25,14 +26,14 @@ export default defineEventHandler(async (event): Promise<RvStatementsResponse> =
   if (!rv) {
     throw createError({ statusCode: 404, statusMessage: 'Der Entwurf hat keine Regierungsvorlage' })
   }
-  const [{ total, items, unlisted }, committeeConsultation] = await Promise.all([
+  const [{ total, items, unlisted }, record] = await Promise.all([
     getStatementsForRv(rv.gp, rv.inr),
     // The Vorlage's own detail, already in the leaf cache for the page's
     // chain; an unreadable Verlauf claims no consultation rather than failing
-    // the list.
+    // the list, and no reason why none were possible.
     getGegenstand(rv.gp, 'I', rv.inr)
-      .then((d) => readCommitteeConsultation(d.content?.phase))
-      .catch(() => null),
+      .then((d) => ({ committeeConsultation: readCommitteeConsultation(d.content?.phase), predatesFiling: statementsPredateSecondRound(rv.gp, d.content) }))
+      .catch(() => ({ committeeConsultation: null, predatesFiling: periodPredatesSecondRound(rv.gp) })),
   ])
   return {
     rvCitation: rv.label,
@@ -42,6 +43,7 @@ export default defineEventHandler(async (event): Promise<RvStatementsResponse> =
     items,
     unlisted,
     cap: STATEMENTS_CAP,
-    committeeConsultation,
+    committeeConsultation: record.committeeConsultation,
+    predatesFiling: record.predatesFiling,
   }
 })

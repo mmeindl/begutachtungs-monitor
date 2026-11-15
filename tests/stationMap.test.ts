@@ -37,11 +37,12 @@ vi.mock('../server/utils/parliament/drafts', () => ({
 }))
 vi.mock('../server/utils/ris/bgblService', () => ({
   findBgblIForVorlage: vi.fn(async () => null),
+  findBgblForTreaty: vi.fn(async () => null),
   getBgblIssueDate: vi.fn(async () => null),
 }))
 
 const { getDraftsForGp, getGegenstand, getVorlagenForGp } = vi.mocked(await import('../server/utils/parliament/drafts'))
-const { findBgblIForVorlage, getBgblIssueDate } = vi.mocked(await import('../server/utils/ris/bgblService'))
+const { findBgblForTreaty, findBgblIForVorlage, getBgblIssueDate } = vi.mocked(await import('../server/utils/ris/bgblService'))
 const { getStationMapForGp } = await import('../server/utils/parliament/stationMap')
 
 // ---------------------------------------------------------------------------
@@ -235,5 +236,28 @@ describe('a RIS search for a decided Vorlage\'s Kundmachung that does not answer
     vi.setSystemTime(Date.now() + 5 * 60 * MINUTE)
     await getStationMapForGp('XXVIII')
     expect(findBgblIForVorlage).not.toHaveBeenCalled()
+  })
+})
+
+describe('a treaty whose RIS lookup does not answer (14.11.2026)', () => {
+  /** A treaty's Vorlage, approved, with Parliament's link to a Kundmachung. */
+  const TREATY = {
+    content: {
+      doktyp: 'RVS',
+      status: { bgbllinks: [{ title: 'BGBl. III Nr. 128/2019', link: 'https://www.ris.bka.gv.at/Dokument.wxe?Abfrage=BgblAuth&Dokumentnummer=BGBLA_2019_III_128' }] },
+    },
+  }
+  beforeEach(() => {
+    getVorlagenForGp.mockResolvedValue([{ ...VORLAGE, status: '5' }])
+    getGegenstand.mockImplementation((async (_gp: string, ityp: string, inr: number) => (ityp === 'I' ? TREATY : meRecord(inr === WITH_RV.inr))) as never)
+  })
+
+  it('does not take Parliament\'s link for RIS\'s „no record": no number, and the map is kept ten minutes', async () => {
+    findBgblForTreaty.mockRejectedValueOnce(new Error('RIS: The operation was aborted due to timeout'))
+    expect((await getStationMapForGp('XXVIII'))[WITH_RV.inr]).toMatchObject({ bgblNumber: null })
+
+    // RIS answers „no record" on the next build: now the link stands.
+    vi.setSystemTime(Date.now() + 11 * MINUTE)
+    expect((await getStationMapForGp('XXVIII'))[WITH_RV.inr]).toMatchObject({ station: 'bgbl', bgblNumber: 'BGBl. III Nr. 128/2019' })
   })
 })

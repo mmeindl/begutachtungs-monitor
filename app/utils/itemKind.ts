@@ -144,19 +144,31 @@ export function itemCiteAsDe(d: Pick<VorlageDetail, 'itemKind' | 'citation' | 'g
 }
 
 /**
- * Why a committee's motion shows no text comparison yet: the comparison
- * names its first text by the station it stands at, and that station's name
- * is „Regierungsvorlage" (`LAW_STATION_LABEL`) — on this page a false
- * statement. Until the comparison has a name for the committee's text, the
- * page says so instead of showing one.
+ * Why a kind shows no text comparison, in the comparison's place
+ * (`BgblStationSection`). Only a treaty since 14.11.2026: a committee's
+ * motion and a motion of the Bundesrat were listed here while the
+ * comparison could name their first text only „Regierungsvorlage"; it names
+ * it by the kind now (`firstTextNameOf` in `#shared/utils/lawStations`).
  */
 export const NO_COMPARISON_DE: Partial<Record<ProcedureItemKind, string>> = {
-  ausschussantrag: 'Einen Textvergleich vom Ausschussantrag bis zum Gesetz zeigt der Monitor für Ausschussanträge noch nicht; die Texte stehen unter „Dokumente“ und auf parlament.gv.at.',
-  bundesratsantrag: 'Einen Textvergleich vom Gesetzesantrag bis zum Gesetz zeigt der Monitor für Gesetzesanträge aus dem Bundesrat noch nicht; die Texte stehen unter „Dokumente“ und auf parlament.gv.at.',
   // A treaty: the Nationalrat approves the text, it does not change it
   // (Art. 50 B-VG), and the Vertragstext is no Gesetzestext the comparison
   // reads — in BGBl. III or, for an Art.-15a-Vereinbarung, in BGBl. I.
   staatsvertrag: 'Einen Textvergleich bis zur Kundmachung zeigt der Monitor für Staatsverträge und Vereinbarungen nach Art. 15a B-VG nicht; die Texte stehen unter „Dokumente“ und auf parlament.gv.at.',
+}
+
+/**
+ * The same on the page of a Ministerialentwurf whose Vorlage is a treaty's
+ * (`EnactmentInfo.treaty`, 14.11.2026): in place of „Was sich vom Entwurf
+ * bis zum kundgemachten Gesetz geändert hat", which called an agreement a
+ * law and compared what it could not read — 79/ME XXVI against BGBl. I Nr.
+ * 103/2018 showed both Ziffern of the draft as „entfallen", because the
+ * Kundmachung is the Vereinbarung's text, not Novellierungsanordnungen.
+ * Worded to take a lead word later („Nicht im Monitor: …").
+ */
+export function treatyComparisonGapDe(treaty: TreatyKind): string {
+  const end = treaty === 'vereinbarung-15a' ? 'zur kundgemachten Vereinbarung' : 'zum kundgemachten Staatsvertrag'
+  return `Einen Textvergleich vom Entwurf bis ${end} zeigt der Monitor nicht: Der Vergleich liest Gesetzestexte, keinen Vertragstext.`
 }
 
 /**

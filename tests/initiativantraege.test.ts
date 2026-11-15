@@ -234,7 +234,9 @@ describe('an Antrag that carries a consulted draft’s text (decision 9)', () =>
   it('shows the draft’s Begutachtung as reached only where the Antrag carries the draft', () => {
     expect(vorlageStations(antragDetail('XXVII', 2173))[0]).toMatchObject({ state: 'done', facts: ['Ministerialentwurf 164/ME'] })
     expect(vorlageStations(antragDetail('XXVIII', 72))[0]).toMatchObject({ state: 'never', trail: 'unknown', facts: ['nicht feststellbar', 'für den Antrag als Ganzes'] })
-    expect(vorlageStations(antragDetail('XXVIII', 72))[0]!.followUp?.link?.href).toBe('/entwuerfe/XXVIII/6')
+    // The sentence naming the draft is the frame's row, once — not the station's follow-up too.
+    expect(vorlageStations(antragDetail('XXVIII', 72))[0]!.followUp).toBeUndefined()
+    expect(vorlageStations(antragDetail('XXVII', 2173))[0]!.followUp).toBeUndefined()
   })
   it('opens the frame with the row, and credits the match by wording', () => {
     const carried = carriedDraftDe(antragDetail('XXVII', 2173))!.line

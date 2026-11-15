@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import type { BgblLawsResponse, EnactmentInfo, LawStationId } from '#shared/types'
+import type { FirstTextName } from '#shared/utils/lawStations'
 import type { Fact } from '~/components/ui/FactList.vue'
 import { bgblEliUrl, bgblShortDe, citeLineDe } from '#shared/utils/citations'
 import { fassungFacts, fassungSources } from '~/utils/geltendeFassung'
@@ -35,9 +36,14 @@ const props = defineProps<{
   /** The first text of the procedure, where the whole-way comparison starts
    *  (`lawDiffSteps`): the draft by default. */
   origin?: 'me' | 'rv' | 'antrag'
-  /** No whole-way comparison: the page of a committee's motion, whose first
-   *  text the comparison has no name for yet (`NO_COMPARISON_DE`). */
-  withoutComparison?: boolean
+  /** The first text's own name for the comparison, on the page of a
+   *  committee's or the Bundesrat's motion (`firstTextNameOf`). */
+  firstText?: FirstTextName | null
+  /** No whole-way comparison, and the one sentence that says why, in its
+   *  place: a treaty or an Art.-15a-Vereinbarung, whose Vertragstext the
+   *  § comparison does not read (`NO_COMPARISON_DE`,
+   *  `treatyComparisonGapDe`). */
+  comparisonGap?: string | null
 }>()
 
 const base = computed(() => props.apiBase ?? `/api/drafts/${props.gp}/${props.inr}`)
@@ -153,14 +159,18 @@ function bgblCite(number: string | null, risUrl: string | null): string | null {
            names it as its origin: the page's own block for it,
            passed in by the page. -->
       <slot />
+      <!-- Where it cannot run, the sentence that says why stands in its
+           place, under the Kundmachung it would have compared against. -->
+      <p v-if="enactment.bgblNumber && comparisonGap" class="max-w-prose text-sm text-ink-secondary">{{ comparisonGap }}</p>
       <LawDiffSection
-        v-if="enactment.bgblNumber && !withoutComparison"
+        v-else-if="enactment.bgblNumber"
         :gp="gp"
         :inr="inr"
         scope="bgbl"
         :parliament-texts="parliamentTexts"
         :api-base="apiBase"
         :origin="origin"
+        :first-text="firstText"
         deferred
       />
     </div>

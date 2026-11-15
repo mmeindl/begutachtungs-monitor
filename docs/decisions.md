@@ -446,6 +446,22 @@ gets an entry of its own only where it carries a reason the rule does not.
   (§12.33). This is the reverse of the Textgegenüberstellung, which reads RIS
   first for the licence; this order does not move either while the licence
   question is open (`readDraftUnits` in `server/utils/diff/lawDiffService.ts`).
+- **A first text that is no Regierungsvorlage is named by its kind
+  wherever a comparison names it** (14.11.2026, `firstTextNameOf` in
+  `shared/utils/lawStations.ts`): a committee's motion and a motion of the
+  Bundesrat stand at the `rv` station, and label, question, genitive,
+  credit line, citation („AB 14 BlgNR 28. GP", „452 BlgNR 25. GP") and the
+  server's reasons say „Ausschussantrag", „Gesetzesantrag des Bundesrates"
+  or „… von Mitgliedern des Bundesrates". A motion whose text is filed only
+  as „Gesetzesantrag" or „Antrag" is not compared: that document can carry
+  the Begründung, and no measured rule cuts it off (`MOTION_TEXT_TITLES`);
+  the comparison says so. A treaty's or an Art.-15a-Vereinbarung's
+  Kundmachung is a Vertragstext and is never compared, on the item's page
+  and on its draft's (`treatyComparisonGapDe`: 79/ME XXVI showed both
+  Ziffern as „entfallen"). After a changed text following the Bundesrat's
+  Einspruch, Parliament's steps say that they end at the first Beschluss
+  (`OBJECTION_STEPS_NOTE_DE`); the whole-way comparison reads the
+  promulgated text.
 
 ### The consolidated reading (Lesefassung) and the annex
 
@@ -692,6 +708,12 @@ not yet followed, or the EU cycle, starts there.
   Bundesrat's members is covered is open. So no copy says „jede
   Gesetzesinitiative", and the statement window of every route the monitor
   adds is the one already stated for a Vorlage (`SECOND_ROUND_WINDOW`).
+- **Before 01.08.2021 no Stellungnahme was possible, and the page says so**
+  (14.11.2026, `statementsPredateSecondRound`): „Stellungnahmen an den
+  Nationalrat waren erst ab 01.08.2021 möglich." in place of „Keine
+  eingebracht" — on every item of a period that ended before that day (GP
+  XXVI and earlier, whose flag reads „0"), and on a GP-XXVII item only where
+  its flag says „9 Begutachtung erst ab 1.8.2021".
 - **A treaty's Kundmachung: RIS's key first, Parliament's link as
   fallback** (14.11.2026, `resolveTreatyBgbl` in
   `server/utils/parliament/staatsvertraege.ts`, one function for the page,

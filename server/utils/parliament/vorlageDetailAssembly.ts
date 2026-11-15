@@ -8,7 +8,8 @@
  */
 import type { BundesratMotionVariant, DraftDocument, EnactmentInfo, ProcedureItemKind, ProcedureRoot, RelatedItem, TreatyKind, VorlageDetail } from '../../../shared/types'
 import { gpHasEnded } from '../../../shared/utils/gp'
-import { parliamentItemUrl, rootCitation } from '../../../shared/utils/procedureRoot'
+import { draftOfAntrag } from '../../../shared/utils/antragPath'
+import { itemPath, parliamentItemUrl, rootCitation } from '../../../shared/utils/procedureRoot'
 import { mapDocuments, mapTextEvolution, readCommitteeConsultation, type RawDocumentGroup, type RawPhase } from './detailJson'
 import { groupVersionsByStation } from './draftDetailAssembly'
 import { parliamentPathname } from '../../../shared/utils/safeExternalUrl'
@@ -145,6 +146,52 @@ export function relatedItemsOf(reference: VorlageContent['reference']): RelatedI
     items.push({ gp, ityp, inr, citation, title, kind: null, path: null, consultedDraft: null })
   }
   return items
+}
+
+/** How many „Bezug zu" items get their record read for a link. A committee's
+ *  motion names one to three (read on 14, 365, 683 d.B. XXVIII). */
+const RELATED_LOOKUPS = 3
+
+/**
+ * The „Bezug zu" items with our page of each, where the monitor has one: a
+ * Regierungsvorlage (or the draft its record names), an Antrag, a
+ * committee's motion. Their records come from the leaf cache the pages
+ * share, one at a time; one that cannot be read keeps its row unlinked.
+ * Never more than `RELATED_LOOKUPS` reads — the rest stay unlinked.
+ * `read` is `getGegenstand` in production (passed in, so this module stays
+ * pure). The Antrag's draft is `draftOfAntrag`'s, the one lookup the
+ * Antrag's own page reads too (`carriedDraftDe`).
+ */
+export async function relatedWithPages(
+  content: Pick<VorlageContent, 'reference'>,
+  read: (gp: string, ityp: 'I' | 'A', inr: number) => Promise<{ content?: unknown } | null | undefined>,
+): Promise<RelatedItem[]> {
+  const items = relatedItemsOf(content.reference)
+  let lookups = 0
+  const resolved: RelatedItem[] = []
+  for (const item of items) {
+    if ((item.ityp !== 'I' && item.ityp !== 'A') || lookups >= RELATED_LOOKUPS) {
+      resolved.push(item)
+      continue
+    }
+    lookups++
+    try {
+      const rel = ((await read(item.gp, item.ityp, item.inr))?.content ?? {}) as VorlageContent
+      const kind = pageKindOf(item.ityp, rel.doktyp)
+      const draft = kind === 'regierungsvorlage' ? draftOfPreconst(rel.preconst) : null
+      const carried = kind === 'initiativantrag' ? draftOfAntrag(item.gp, item.inr) : null
+      const consulted = draft ?? carried
+      resolved.push({
+        ...item,
+        kind,
+        path: draft ? `/entwuerfe/${draft.gp}/${draft.inr}` : kind ? itemPath(item.gp, kind, item.inr) : null,
+        consultedDraft: consulted ? { gp: consulted.gp, inr: consulted.inr, path: `/entwuerfe/${consulted.gp}/${consulted.inr}` } : null,
+      })
+    } catch {
+      resolved.push(item)
+    }
+  }
+  return resolved
 }
 
 /** The Ministerialentwurf a Vorlage's record names as its predecessor, or null. */

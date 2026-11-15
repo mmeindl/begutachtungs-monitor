@@ -1,9 +1,9 @@
 <script setup lang="ts">
 import type { DraftDetail, EnactmentInfo, LawStationId } from '#shared/types'
 import type { Fact } from '~/components/ui/FactList.vue'
-import { LAW_STATION_LABEL, lawStationOf } from '#shared/utils/lawStations'
+import { LAW_STATION_LABEL, lawStationOf, type FirstTextName } from '#shared/utils/lawStations'
 import { beilageCitationDe, blgNrDe, buaCitationDe, citeLineDe, rvCitationDe } from '#shared/utils/citations'
-import { PARLIAMENT_HISTORY_SOURCES, bundesratRowDe, parliamentStandDe, voteLineDe, type ParliamentFacts, type ParliamentItem } from '~/utils/spine'
+import { PARLIAMENT_HISTORY_SOURCES, bundesratRowDe, mergedStandDe, parliamentOutcome, parliamentStandDe, voteLineDe, type ParliamentFacts, type ParliamentItem } from '~/utils/spine'
 
 /**
  * „Im Parlament" of the draft page (04.10.2026, out of the page).
@@ -37,6 +37,9 @@ const props = defineProps<{
    *  default (`LawDiffSection`). */
   apiBase?: string
   origin?: 'me' | 'rv' | 'antrag'
+  /** The first text's own name for the comparison, on the page of a
+   *  committee's or the Bundesrat's motion (`firstTextNameOf`). */
+  firstText?: FirstTextName | null
 }>()
 
 /* How the clubs voted on it — the same phrase the bar's row carries, here as
@@ -52,6 +55,14 @@ const voteLine = computed(() => voteLineDe(props.enactment.vote))
 const bundesratRow = computed(() => {
   const o = props.enactment.bundesratObjection
   return o ? bundesratRowDe(o) : null
+})
+
+/* A Miterledigung (14.11.2026): the row „Stand" with the item it joined
+ * linked, where the monitor has a page of it (`mergedStandDe`). */
+const mergedRow = computed(() => {
+  if (parliamentOutcome(props.draft) !== 'merged') return null
+  const row = mergedStandDe(props.enactment, props.item)
+  return row.link ? row : null
 })
 
 const facts = computed<Fact[]>(() => {
@@ -149,6 +160,9 @@ const documents = computed(() =>
             Angenommen: {{ enactment.plenaryAmendments.amendments.length > 1 ? 'Abänderungsanträge' : 'Abänderungsantrag' }}
             <template v-for="(motion, i) in enactment.plenaryAmendments.amendments" :key="motion.url"><template v-if="i > 0">{{ i === enactment.plenaryAmendments.amendments.length - 1 ? ' und ' : ', ' }}</template><ExternalLink :href="motion.url" class="link-inline">{{ motion.label }}</ExternalLink></template><template v-if="enactment.plenaryAmendments.session">, <ExternalLink :href="enactment.plenaryAmendments.session.url" class="link-inline">{{ enactment.plenaryAmendments.session.label }}</ExternalLink></template>
           </template>
+          <template v-if="mergedRow?.link" #value-stand>
+            {{ mergedRow.lead }}<NuxtLink :to="mergedRow.link.href" class="link-inline">{{ mergedRow.link.label }}</NuxtLink>{{ mergedRow.tail }}
+          </template>
           <template v-if="bundesratRow?.ebr" #value-bundesrat>
             {{ bundesratRow.lead }} (<ExternalLink :href="bundesratRow.ebr.url" class="link-inline">{{ bundesratRow.ebr.citation }}</ExternalLink>){{ bundesratRow.tail }}
           </template>
@@ -173,6 +187,8 @@ const documents = computed(() =>
         :parliament-texts="parliamentTexts"
         :api-base="apiBase"
         :origin="origin"
+        :first-text="firstText"
+        :changed-after-objection="enactment.bundesratObjection?.outcome === 'new-decision'"
         deferred
       />
       <!-- The versions themselves, folded at the end as under „Der

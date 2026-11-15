@@ -105,6 +105,10 @@ export function lawTextCiteDe(
   document: TraceLink | null | undefined,
   draft: { citation: string; gp: string },
   rvDocument?: TraceLink | null,
+  /** The first text's kind where it is no Regierungsvorlage (`FirstTextName`,
+   *  14.11.2026): a committee's motion cites as „AB" (`buaCitationDe`), a
+   *  motion of the Bundesrat as its bare Beilage (`beilageCitationDe`). */
+  firstKind?: 'ausschussantrag' | 'bundesratsantrag' | null,
 ): { cited: string; url: string } | null {
   if (!document) return null
   const { url } = document
@@ -116,6 +120,8 @@ export function lawTextCiteDe(
   if (station === 'plenum') return null
   const b = beilageOfUrl(url)
   if (!b) return null
+  if (station === 'rv' && firstKind === 'ausschussantrag') return { cited: buaCitationDe(b.citation, b.gp), url }
+  if (station === 'rv' && firstKind === 'bundesratsantrag') return { cited: beilageCitationDe(b.citation, b.gp), url }
   if (station === 'ausschuss') {
     const rv = beilageOfUrl(rvDocument?.url)
     if (rv && rv.citation === b.citation && rv.gp === b.gp) return null

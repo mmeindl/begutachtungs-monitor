@@ -3,7 +3,7 @@ import type { RvStatementsResponse } from '#shared/types'
 import PageSubsection from '~/components/ui/PageSubsection.vue'
 import { countLabelDe, formatDateDe } from '#shared/utils/format'
 import type { SourceEntry } from '#shared/utils/provenance'
-import { SECOND_ROUND_CLAUSE } from '~/utils/spine'
+import { PREDATES_FILING_DE, SECOND_ROUND_CLAUSE } from '~/utils/spine'
 
 /* `keine-lizenz`, not the station's freie Werke: the RV page excludes
  * „sämtliche Informationen zu Stellungnahmen" from free use and licensing
@@ -131,8 +131,12 @@ const consultationSentence = computed<string | null>(() => {
          action card at the top of the page whenever `filingOpen` is true —
          it is the same window (`windows.vorlage`) — and the button once
          more under this block (03.10.2026). -->
+    <!-- Before § 23b GOG-NR (01.08.2021) nobody could file: Parliament's
+         record says so (`predatesFiling`), and „Keine eingebracht" would
+         have read as nobody having bothered. The sentence names what is
+         missing and why, so a lead word can stand before it. -->
     <p v-if="data.total === 0" class="mt-2 text-sm text-ink-secondary">
-      {{ filingOpen ? 'Bisher keine eingebracht.' : 'Keine eingebracht.' }}
+      {{ data.predatesFiling ? PREDATES_FILING_DE : filingOpen ? 'Bisher keine eingebracht.' : 'Keine eingebracht.' }}
     </p>
     <!-- Only where the panel cannot carry the count: above the cap its
          buttons count what was read, not what was filed. The remainder is

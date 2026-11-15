@@ -19,7 +19,7 @@ import type {
   TraceLink,
   TraceStep,
 } from '../../../shared/types'
-import { gpHasEnded } from '../../../shared/utils/gp'
+import { gpEndedOn, gpHasEnded, romanToInt } from '../../../shared/utils/gp'
 import { lawStationOf } from '../../../shared/utils/lawStations'
 import { parliamentPathname, safeExternalUrl } from '../../../shared/utils/safeExternalUrl'
 import { parseGermanDate, parseIsoDate } from './dates'
@@ -50,6 +50,48 @@ export interface RawDocumentGroup {
 export function isFilingOpen(content: { statementsstate?: unknown } | null | undefined): boolean {
   const state = content?.statementsstate
   return state === '1' || state === 1
+}
+
+/**
+ * Whether Parliament's record says Stellungnahmen to the Nationalrat were
+ * not yet possible on the item (14.11.2026): `statementsstate` „9
+ * Begutachtung erst ab 1.8.2021 bei dem Doktyp "A" möglich" (60/A XXVII,
+ * read 14.11.2026) — § 23b GOG-NR in force since 01.08.2021. A treaty's
+ * Vorlage carries a „9" too, for another reason (none are taken on the
+ * kind); only the date's wording counts here. The flag's prose is read for
+ * the reason alone and never printed: everything about Stellungnahmen is
+ * excluded from Parliament's licence.
+ */
+export function filingPredatesSecondRound(content: { statementsstate?: unknown } | null | undefined): boolean {
+  const state = content?.statementsstate
+  return typeof state === 'string' && /^9\b/.test(state.trim()) && /\b1\.8\.2021\b/.test(state)
+}
+
+/** The day § 23b GOG-NR opened Stellungnahmen to the Nationalrat. */
+export const SECOND_ROUND_FROM = '2021-08-01'
+
+/**
+ * Whether an item's Gesetzgebungsperiode ended before 01.08.2021, so no
+ * Stellungnahme to the Nationalrat was ever possible on it — whatever its
+ * flag says (decided by the maintainer, 14.11.2026). Parliament's own flag
+ * gives the reason on later items („9 Begutachtung erst ab 1.8.2021 …",
+ * 60/A XXVII), but items of GP XXVI carry „0" (557 and 496 d.B., read
+ * 14.11.2026), which read as „Keine eingebracht". GP XXVI ended on
+ * 22.10.2019; GP XXVII ran across the date, so its items stay on the flag
+ * alone (`filingPredatesSecondRound`): a procedure there may straddle it.
+ */
+export function periodPredatesSecondRound(gp: string): boolean {
+  const ended = gpEndedOn(gp)
+  if (ended) return ended < SECOND_ROUND_FROM
+  // Before GP XX the period table has no row; every such period ended
+  // decades before 2021.
+  const n = romanToInt(gp)
+  return n !== null && n < 20
+}
+
+/** The page's reading of both (`RvStatementsResponse.predatesFiling`). */
+export function statementsPredateSecondRound(gp: string, content: { statementsstate?: unknown } | null | undefined): boolean {
+  return periodPredatesSecondRound(gp) || filingPredatesSecondRound(content)
 }
 
 /**

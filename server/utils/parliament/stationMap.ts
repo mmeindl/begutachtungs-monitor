@@ -298,6 +298,9 @@ async function chainOf(
      * incomplete, as for the day below (06.11.2026). */
     let bgblDate: string | null = null
     let bgblSearch: DraftChain['bgblSearch']
+    // A treaty's RIS lookup past its budget: Parliament's link is not RIS's
+    // „no record", so it is not used, and the chain is kept briefly.
+    let treatyRisUnanswered = false
     const decided = decidedAt || row?.status === STATUS_FINISHED || row?.status === STATUS_AT_BUNDESRAT
     const from = decidedAt || row?.date || rv.date
     // Not where Parliament says this Vorlage's text was not promulgated, nor
@@ -308,13 +311,15 @@ async function chainOf(
         treaty ? findBgblForTreaty(rv.gp, rv.inr, from) : findBgblIForVorlage(rv.gp, rv.inr, from),
         BGBL_DATE_BUDGET_MS,
       )
-      if (!ris.answered) complete = false
-      else if (ris.value) {
+      if (!ris.answered) {
+        complete = false
+        if (treaty) treatyRisUnanswered = true
+      } else if (ris.value) {
         bgblNumber = ris.value.number
         bgblDate = ris.value.datum
       }
       // A treaty RIS has no record for: Parliament's link, the page's rule.
-      if (treaty) bgblNumber = resolveTreatyBgbl(ris.answered ? ris.value : null, treatyLink)?.number ?? null
+      if (treaty && ris.answered) bgblNumber = resolveTreatyBgbl(ris.value, treatyLink)?.number ?? null
       // Asked and not found: the key a later, more patient reader asks with
       // — a law's only: that reader searches Teil I.
       if (!bgblNumber && !treaty) bgblSearch = { gp: rv.gp, inr: rv.inr, from }
@@ -322,7 +327,7 @@ async function chainOf(
 
     // A treaty not searched (undecided, or Parliament says no Kundmachung):
     // its link alone, as on the page.
-    if (treaty && !bgblNumber) bgblNumber = resolveTreatyBgbl(null, treatyLink)?.number ?? null
+    if (treaty && !bgblNumber && !treatyRisUnanswered) bgblNumber = resolveTreatyBgbl(null, treatyLink)?.number ?? null
     const station = stationFor(bgblNumber, row?.status ?? null, decidedAt)
     if (bgblNumber && !bgblDate) {
       const day = await kundmachungDateOf(bgblNumber)

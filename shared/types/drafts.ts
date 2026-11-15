@@ -3,7 +3,7 @@ import type { EuMarker } from './eu'
 import type { StatementsSummary } from './statements'
 import type { RisMapRow } from './ris'
 import type { LawStationId } from './lawDiff'
-import type { TreatyKind } from './procedure'
+import type { ProcedureItemKind, TreatyKind } from './procedure'
 
 export interface DraftSummary {
   /** Gesetzgebungsperiode, e.g. "XXVIII" */
@@ -404,6 +404,20 @@ export interface PlenaryAmendments {
   amendments: TraceLink[]
 }
 
+/**
+ * The item a Miterledigung joined (`EnactmentInfo.mergedInto`): where
+ * Parliament names a committee's report, `report` is its citation and the
+ * rest is the item the report is on; where it names the item itself,
+ * `report` is null. `path` is our page of the item, only where the monitor
+ * has one.
+ */
+export interface MergedInto {
+  report: string | null
+  citation: string
+  kind: ProcedureItemKind | null
+  path: string | null
+}
+
 /** "Was wurde daraus" — filled once a Regierungsvorlage exists */
 export interface EnactmentInfo {
   /** e.g. "2238 d.B." */
@@ -479,6 +493,14 @@ export interface EnactmentInfo {
    */
   mergedWith?: string | null
   /**
+   * The item behind `mergedWith`, where its record could be read
+   * (14.11.2026, `resolveMergedInto`): an Ausschussbericht („565 d.B.") is
+   * resolved to the item it reports on (its „Hauptgegenstand"), so the page
+   * can link our page of that item. Null or absent: not resolved, and the
+   * citation stands unlinked.
+   */
+  mergedInto?: MergedInto | null
+  /**
    * The third-reading vote on the Vorlage NAMED ABOVE, club by club — null
    * while it has not been voted on, and null for the handful of records that
    * carry only upstream's prose vocabulary instead of the club lists
@@ -551,6 +573,15 @@ export interface EnactmentInfo {
    * 5 of 14.11.2026). Absent or null: a law, or the record was not read.
    */
   treaty?: TreatyKind | null
+  /**
+   * A treaty's Kundmachung could not be told (14.11.2026): RIS was asked by
+   * the treaty's key and did not answer within the budget. RIS's key wins
+   * over Parliament's link (`resolveTreatyBgbl`), so the link is not shown
+   * as if RIS had answered „no record" — the page says „gerade nicht
+   * abrufbar" and the next request asks again. Absent or false: RIS
+   * answered, or was not asked.
+   */
+  bgblUnread?: boolean
 }
 
 /**

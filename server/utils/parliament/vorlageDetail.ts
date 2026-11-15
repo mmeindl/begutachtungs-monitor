@@ -6,8 +6,7 @@
  *
  * Deliberately uncached, like `getDraftDetail`: composition over leaf caches.
  */
-import type { ProcedureItemKind, ProcedureRoot, RelatedItem, VorlageDetail } from '#shared/types'
-import { ANTRAG_PATHS } from '#shared/utils/antragPathTable'
+import type { ProcedureItemKind, ProcedureRoot, VorlageDetail } from '#shared/types'
 import { budgetExemptReason } from '#shared/utils/budgetExempt'
 import { itemPath, lawItemKindOf, parliamentItemUrl, rootCitation, vorlagePath } from '#shared/utils/procedureRoot'
 import { withinBudget } from '../http/budget'
@@ -15,7 +14,7 @@ import { getLawsWithoutBegutachtung } from '../ris/skippedLawsService'
 import { enactmentOfItem } from './draftDetail'
 import { getCurrentGp, getDraftsForGp, getGegenstand } from './drafts'
 import { findPrecedingDraft } from './precedingDraft'
-import { assembleVorlageDetail, draftOfPreconst, pageKindOf, relatedItemsOf, type VorlageContent } from './vorlageDetailAssembly'
+import { assembleVorlageDetail, draftOfPreconst, pageKindOf, relatedItemsOf, relatedWithPages, type VorlageContent } from './vorlageDetailAssembly'
 import { EBR_DOKTYP, findBundesratObjection, lawOfEbr, type EbrContent } from './detailJson'
 
 export type VorlageRoot = ProcedureRoot & { ityp: 'I' | 'A' }
@@ -97,58 +96,6 @@ async function lawPathOfEbr(root: VorlageRoot, content: EbrContent): Promise<str
   return draft ? `/entwuerfe/${draft.gp}/${draft.inr}` : itemPath(law.gp, lawKind, law.inr)
 }
 
-/** How many „Bezug zu" items get their record read for a link. A committee's
- *  motion names one to three (read on 14, 365, 683 d.B. XXVIII). */
-const RELATED_LOOKUPS = 3
-
-/**
- * The „Bezug zu" items with our page of each, where the monitor has one: a
- * Regierungsvorlage (or the draft its record names), an Antrag, a
- * committee's motion. Their records come from the leaf cache the pages
- * share, one at a time; one that cannot be read keeps its row unlinked.
- * Never more than `RELATED_LOOKUPS` reads — the rest stay unlinked.
- */
-async function relatedWithPages(content: VorlageContent): Promise<RelatedItem[]> {
-  const items = relatedItemsOf(content.reference)
-  let lookups = 0
-  const resolved: RelatedItem[] = []
-  for (const item of items) {
-    if ((item.ityp !== 'I' && item.ityp !== 'A') || lookups >= RELATED_LOOKUPS) {
-      resolved.push(item)
-      continue
-    }
-    lookups++
-    try {
-      const rel = ((await getGegenstand(item.gp, item.ityp, item.inr)).content ?? {}) as VorlageContent
-      const kind = pageKindOf(item.ityp, rel.doktyp)
-      const draft = kind === 'regierungsvorlage' ? draftOfPreconst(rel.preconst) : null
-      const carried = kind === 'initiativantrag' ? draftCarriedByAntrag(item.gp, item.inr) : null
-      const consulted = draft ?? carried
-      resolved.push({
-        ...item,
-        kind,
-        path: draft ? `/entwuerfe/${draft.gp}/${draft.inr}` : kind ? itemPath(item.gp, kind, item.inr) : null,
-        consultedDraft: consulted ? { ...consulted, path: `/entwuerfe/${consulted.gp}/${consulted.inr}` } : null,
-      })
-    } catch {
-      resolved.push(item)
-    }
-  }
-  return resolved
-}
-
-/**
- * The draft whose text an Antrag carries in full or in part (`ANTRAG_PATHS`,
- * keyed by the draft's period, the Antrag of the same one — the reading of
- * `skippedLaws.consultedIndex`), or null.
- */
-function draftCarriedByAntrag(gp: string, inr: number): { gp: string; inr: number } | null {
-  for (const [draftInr, path] of Object.entries(ANTRAG_PATHS[gp] ?? {})) {
-    if (path.antrag.inr === inr) return { gp, inr: Number(draftInr) }
-  }
-  return null
-}
-
 /**
  * Whether „ohne Begutachtung" may be said — true only on evidence.
  *
@@ -201,7 +148,7 @@ export async function getVorlageDetail(root: VorlageRoot): Promise<VorlageDetail
     named ? false : evidenceOfNoBegutachtung(root, itemKind, content, Boolean(enactment.bgblNumber)),
     // Only a committee's motion links what it relates to (its parent); the
     // other kinds name nothing on the page yet, so no record is read.
-    itemKind === 'ausschussantrag' ? relatedWithPages(content) : Promise.resolve(relatedItemsOf(content.reference)),
+    itemKind === 'ausschussantrag' ? relatedWithPages(content, getGegenstand) : Promise.resolve(relatedItemsOf(content.reference)),
   ])
   // A parent this page names as consulted outranks the list: the station
   // says so, and „ohne Begutachtung" beside it would contradict it — the

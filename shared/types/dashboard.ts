@@ -133,9 +133,13 @@ export interface OpenVorlage {
   /**
    * What the item is (14.11.2026): a Regierungsvorlage, or a committee's own
    * motion (`BUA`), which takes Stellungnahmen the same way (§ 23b Abs. 1
-   * GOG-NR). Its row names it and links its own page.
+   * GOG-NR). Its row names it and links its own page. A motion of the
+   * Bundesrat (`GABR`, `GABR13`) the same, where its own flag is open.
    */
-  kind: 'regierungsvorlage' | 'ausschussantrag'
+  kind: 'regierungsvorlage' | 'ausschussantrag' | 'bundesratsantrag'
+  /** Who moved a motion of the Bundesrat (`bundesratVariantOf`), for the
+   *  row's word; absent on the other kinds. No member is named. */
+  variant?: BundesratMotionVariant | null
   /** e.g. "594 d.B." */
   citation: string
   title: string

@@ -44,7 +44,7 @@ curl -s -X POST "https://www.parlament.gv.at/Filter/api/filter/data/81?js=eval&s
 
 `AKTIV` (J/N) is **computed server-side from the deadline** — no client-side date arithmetic needed.
 
-Confirmed filter keys: `GP_CODE` (e.g. `["XXVIII"]`), `AKTIV`, `MIN` (ministry short code, e.g. `["BMJ"]`). Presumably the complete set per header `feld_name`: additionally `ITYP`, `INR`, `DOKTYP` (untested).
+Confirmed filter keys: `GP_CODE` (e.g. `["XXVIII"]`), `AKTIV`, `MIN` (ministry short code, e.g. `["BMJ"]`). Presumably the complete set per header `feld_name`: additionally `ITYP`, `INR`, `DOKTYP` — untested on list 81; `ITYP` and `DOKTYP` are verified on list 101 (below, 14.11.2026).
 
 **Row format (18 elements, 0-based):**
 
@@ -191,12 +191,21 @@ curl -s -X POST "https://www.parlament.gv.at/Filter/api/filter/data/101?js=eval&
   -d '{"GP_CODE":["XXVIII"],"ITYP":["A"]}'
 ```
 
+**`DOKTYP` filter — used and verified (14.11.2026).** The production read of a period's items (`getItemsForGp`, `server/utils/parliament/drafts.ts`) is `{GP_CODE, ITYP:["I"], DOKTYP:[…]}` with the values `RV`, `BUA`, `GABR`, `GABR13`, `RVS`, `EBR` (`ITEM_DOKTYPES`, `list101.ts`), and every row's `DOKTYP` (index 11) is asserted against the list asked for. GP XXVIII returned 175 rows: 131 `RV`, 26 `RVS`, 18 `BUA`. Never query `{GP_CODE}` alone: it returns the whole Verhandlungsgegenstände list of the period (about 76,000 rows in GP XXVII, above).
+
+```bash
+  -d '{"GP_CODE":["XXVIII"],"ITYP":["I"],"DOKTYP":["RV","BUA","GABR","GABR13","RVS","EBR"]}'
+```
+
+`VHG` (index 17) refines `RVS`: `RVS15` is an Art.-15a-Vereinbarung, plain `RVS` a Staatsvertrag (2 of 26 in GP XXVIII, 24 of 105 in XXVII; it agreed with the record's Verlauf on all 169 treaties of GP XXVI–XXVIII).
+
 `ART` values: `RV` Regierungsvorlage · `A` selbständiger Antrag on a Bundesgesetz · `A(E)` Entschließungsantrag (a request to the government, never a law) · `AMIN` Ministeranklage. Only `RV` and `A` can reach the Bundesgesetzblatt — the distinction the skipped-consultation base rate rests on (`docs/research/begutachtung-uebersprungen.md`).
 
 **Two columns worth knowing:**
 
 - **`Status` (index 10) ⇔ `statementsstate`.** `2` = still in the house and taking Stellungnahmen, `5` = finished. Verified **117/117** against the detail JSON on GP XXVIII (2026-09-15). That makes "which Regierungsvorlagen currently accept Stellungnahmen" **one list call** instead of a detail fetch per item.
   - **`4` = observed: Nationalrat Beschluss taken, Bundesrat seized** — an inference from 4 cases, not a documented value (GP XXVIII, 2026-10-03: 539, 589, 590 and 592 d.B., each with „Beschluss im Nationalrat" on 2026-09-23 and „Einlangen im Bundesrat" the day after). All four still carry `statementsstate` `"1"`, and that is the rule, not a lag: the window runs until the end of the parliamentary procedure (Parliament's own description; § 23b Abs. 1 GOG-NR), so the equivalence above reads `1`, `2` and `4` = open, `5` = closed. `1` (Einlangen im Nationalrat) and `3` (zurückverwiesen an den Ausschuss) were read live on 2026-09-23 (`server/utils/parliament/list101.ts`).
+- **Index 19, „Stellungnehmen" (the button), on Anträge ⇔ `statementsstate`.** On the Anträge list (`ITYP` A) the column agreed with each item's `statementsstate` in **1,078 of 1,078** Anträge (GP XXVIII 183, XXVII 895; 14.11.2026). The `Status` column did not: it predicts the flag in 182 of 183 items of a running period but in only 560 of 895 after the period ended. The monitor does not read the column yet: the flag is read per item before a row says „Stellungnahme möglich" (`docs/decisions.md`, „Routes to a norm"). If it is ever used, then to narrow, like `Status`.
 - **`Gruppe` (index 30) is null on all 117 rows**, and `THEMEN` (index 22) does not separate procedure classes: the tag "Budget und Finanzen" covers both the Bundesfinanzgesetz 2026 (exempt from Begutachtung by design) and the Anti-Mogelpackungs-Gesetz (ordinary consumer law). There is **no structured signal for "exempt from Begutachtung"** — it has to be curated by hand.
 
 - **`VOTE` … `VOTE_COMMENT` (indices 31–35) carry the third-reading vote, club by club**. The header labels them „Abstimmung 3. Lesung", „Dafür", „Dagegen", „Abstimmungstext", „Abstimmungskommentar"; `VOTE` is `1`/`0` for carried/not, `VOTE_YES`/`VOTE_NO` are JSON arrays of club names (`["ÖVP","SPÖ","NEOS"]`), `VOTE_TEXT` upstream's own summary („Dafür: V, S, N, Dagegen: F, G"). The same record sits in each item's detail JSON under `content.vote` (§3), which is where the monitor reads it — no request of its own, since the RV detail is already fetched for the BGBl link.

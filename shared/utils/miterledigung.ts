@@ -51,3 +51,42 @@ export function mergedWithOf(
   }
   return null
 }
+
+/** The item a Miterledigung names, as Parliament links it — „565 d.B." at
+ *  `/gegenstand/XXVI/I/565`. */
+export interface MergedRef {
+  gp: string
+  ityp: string
+  inr: number
+  citation: string
+}
+
+/** The anchor right after „Miterledigt mit (Bericht)" in Parliament's prose. */
+const MERGED_LINK = /Miterledigt mit (?:Bericht )?<a [^>]*href="[^"]*\/gegenstand\/([IVXLC]+)\/([A-Z]+)\/(\d+)"[^>]*>([^<]+)<\/a>/
+
+function mergedRefIn(text: string | null | undefined): MergedRef | null {
+  const m = MERGED_LINK.exec(text ?? '')
+  if (!m) return null
+  return { gp: m[1]!, ityp: m[2]!, inr: Number(m[3]), citation: m[4]!.replace(/\s+/g, ' ').trim() }
+}
+
+/**
+ * `mergedWithOf`'s item with Parliament's own link to it (14.11.2026), so
+ * the page can read its record and link our page of it: the status first,
+ * then the last Verlauf step that links one — the same order. Null where no
+ * step links the item; the citation alone then stays unlinked.
+ */
+export function mergedWithRefOf(
+  statusText: string | null | undefined,
+  phases: readonly { stages?: readonly { text?: string | null }[] | null }[] | null | undefined,
+): MergedRef | null {
+  if (!isMiterledigt(statusText)) return null
+  const fromStatus = mergedRefIn(statusText)
+  if (fromStatus) return fromStatus
+  const steps = (phases ?? []).flatMap((p) => p.stages ?? [])
+  for (let i = steps.length - 1; i >= 0; i--) {
+    const ref = mergedRefIn(steps[i]?.text)
+    if (ref) return ref
+  }
+  return null
+}

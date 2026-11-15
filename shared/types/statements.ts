@@ -134,6 +134,14 @@ export interface RvStatementsResponse {
    * the rule: GP XXVIII 2 of 79 Vorlagen from a Ministerialentwurf.
    */
   committeeConsultation: CommitteeConsultation | null
+  /**
+   * No Stellungnahme to the Nationalrat was possible on this item
+   * (`statementsPredateSecondRound`: § 23b GOG-NR applies from 01.08.2021):
+   * its period ended before that day, or Parliament's record says so. With `total` 0 the page says that instead of „Keine
+   * eingebracht" — a gap with its reason, never an empty result. False where
+   * the record says otherwise or could not be read.
+   */
+  predatesFiling: boolean
 }
 
 /**

@@ -1,7 +1,8 @@
 /**
  * GET /api/dashboard/zweite-runde → DashboardSecondRound: the
  * Regierungsvorlagen — and since 14.11.2026 the committees' own motions
- * (`BUA`, „Ausschussantrag") — that are taking Stellungnahmen **right now**.
+ * (`BUA`, „Ausschussantrag") and the motions of the Bundesrat (`GABR`,
+ * `GABR13`) — that are taking Stellungnahmen **right now**.
  *
  * Why this exists. Anyone can file on a Vorlage in the Nationalrat the same
  * way they filed on the Ministerialentwurf — same list upstream, same form.
@@ -34,6 +35,7 @@ import { budgetExemptReason } from '#shared/utils/budgetExempt'
 import { isFilingOpen, readCommitteeConsultation } from '../../utils/parliament/detailJson'
 import { getCurrentGp, getDraftsForGp, getGegenstand, getItemsForGp } from '../../utils/parliament/drafts'
 import { findPrecedingDraft } from '../../utils/parliament/precedingDraft'
+import { bundesratVariantOf } from '../../utils/parliament/vorlageDetailAssembly'
 import { getStatementsForRv } from '../../utils/parliament/statements'
 
 /**
@@ -64,8 +66,16 @@ import { getStatementsForRv } from '../../utils/parliament/statements'
  */
 export const STATUS_IN_PROCEDURE: ReadonlySet<string> = new Set(['1', '2', '3', '4'])
 
-/** The document types the section shows: a Regierungsvorlage, a committee's motion. */
-const KIND_OF_DOKTYP: Readonly<Record<string, OpenVorlage['kind']>> = { RV: 'regierungsvorlage', BUA: 'ausschussantrag' }
+/** The document types the section shows: a Regierungsvorlage, a committee's
+ *  motion, and since 14.11.2026 a motion of the Bundesrat or of a third of
+ *  its members (`GABR`, `GABR13`) — whether § 23b GOG-NR covers the second
+ *  is open, so the item's flag decides, as for every row. */
+const KIND_OF_DOKTYP: Readonly<Record<string, OpenVorlage['kind']>> = {
+  RV: 'regierungsvorlage',
+  BUA: 'ausschussantrag',
+  GABR: 'bundesratsantrag',
+  GABR13: 'bundesratsantrag',
+}
 
 /** The rows of the period's item list the section reads a record for. Pure. */
 export function secondRoundCandidates<T extends { doktyp: string; status: string }>(rows: readonly T[]): (T & { kind: OpenVorlage['kind'] })[] {
@@ -116,9 +126,12 @@ export default defineEventHandler(async (): Promise<DashboardSecondRound> => {
          * (`skippedLaws` classes laws, decision 2 of 14.11.2026), so its row
          * says nothing about a Begutachtung — as its page says „nicht
          * feststellbar" — unless the committee itself consulted. */
-        const unchecked = v.kind === 'ausschussantrag' && !committee
+        // A motion of the Bundesrat the same: no check classes it before its law.
+        const unchecked = (v.kind === 'ausschussantrag' || v.kind === 'bundesratsantrag') && !committee
         return {
           kind: v.kind,
+          // Who moved a motion of the Bundesrat, for the row's word — never a member's name.
+          ...(v.kind === 'bundesratsantrag' ? { variant: bundesratVariantOf(v.doktyp) } : {}),
           citation: v.citation,
           title: v.title,
           date: v.date,

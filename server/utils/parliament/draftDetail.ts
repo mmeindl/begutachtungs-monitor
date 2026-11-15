@@ -13,7 +13,7 @@ import type {
 import { antragPathFor, carriesDraft } from '#shared/utils/antragPath'
 import { STATUS_AT_BUNDESRAT, STATUS_FINISHED } from '#shared/utils/draftStations'
 import { gpHasEnded, intToRoman, romanToInt } from '#shared/utils/gp'
-import { mergedWithOf } from '#shared/utils/miterledigung'
+import { mergedWithOf, mergedWithRefOf } from '#shared/utils/miterledigung'
 import {
   amendedStationsOf,
   extractBgblLink,
@@ -43,9 +43,10 @@ import { getStatementsWithFallback } from './statements'
 import { bundesratDecisionOf, objectionBlocksPromulgation, readBundesratObjection } from './bundesratObjection'
 import { findRelatedDrafts } from './related'
 import { stripHtmlToText } from './htmlText'
-import { withinBudget } from '../http/budget'
+import { answerWithinBudget, withinBudget, type Budgeted } from '../http/budget'
 import { treatyKindOf } from './vorlageDetailAssembly'
 import { resolveTreatyBgbl } from './staatsvertraege'
+import { resolveMergedInto } from './mergedInto'
 
 /**
  * How long a page waits for the RIS join before rendering without it.
@@ -129,6 +130,27 @@ async function bgblFromRis(
     return withinBudget(findBgblForTreaty(item.gp, item.inr, from), RIS_JOIN_BUDGET_MS)
   }
   return withinBudget(findBgblIForItem(item.gp, { ityp: item.ityp, inr: item.inr }, from), RIS_JOIN_BUDGET_MS)
+}
+
+/**
+ * A treaty's Kundmachung by RIS's key, where „no answer in time" and „no
+ * record" are NOT the same (14.11.2026): Parliament's link stands only on
+ * the second (`resolveTreatyBgbl`). Null where RIS is not asked — the
+ * treaty is not approved yet, so no Kundmachung can exist; otherwise what
+ * `answerWithinBudget` saw. Same budget as `bgblFromRis`; the lookup runs
+ * on and fills its cache for the next request.
+ */
+async function treatyBgblFromRis(
+  item: Pick<ProcedureRoot, 'gp' | 'inr'>,
+  date: string | null,
+  content: { phase?: RawPhase[] | null; status?: { number?: unknown } | null } | null | undefined,
+): Promise<Budgeted<{ number: string; url: string; datum: string } | null> | null> {
+  const decidedAt = findHouseDecisionDate(content?.phase)
+  const status = content?.status?.number == null ? null : String(content.status.number)
+  if (!decidedAt && status !== STATUS_FINISHED && status !== STATUS_AT_BUNDESRAT) return null
+  const from = decidedAt ?? date
+  if (!from) return null
+  return answerWithinBudget(findBgblForTreaty(item.gp, item.inr, from), RIS_JOIN_BUDGET_MS)
 }
 
 /**
@@ -302,9 +324,14 @@ export async function enactmentOfItem(
     // find.
     // A treaty: RIS's exact key first, Parliament's link only where RIS has
     // no record (`resolveTreatyBgbl`, the list's rule too).
+    // RIS asked and silent past its budget: neither number — the link is
+    // not RIS's „no record" — and the page says the Kundmachung cannot be
+    // told just now (`bgblUnread`).
     const link = extractBgblLink(rv.content?.status?.bgbllinks)
+    const treatyRis = enactment.treaty ? await treatyBgblFromRis(item, rvLink.date, rv.content) : null
+    if (treatyRis && !treatyRis.answered) enactment.bgblUnread = true
     const bgbl = enactment.treaty
-      ? resolveTreatyBgbl(await bgblFromRis(item, rvLink.date, rv.content), link)
+      ? treatyRis && !treatyRis.answered ? null : resolveTreatyBgbl(treatyRis?.value ?? null, link)
       : link ??
         objection?.bgbl ??
         (enactment.notPromulgated || objectionBlocksPromulgation(objection?.objection)
@@ -338,6 +365,11 @@ export async function enactmentOfItem(
     // A Miterledigung's other item (14.11.2026): from the status, else from
     // the Verlauf, where the committee's step names it.
     enactment.mergedWith = mergedWithOf(status?.description, rv.content?.phase)
+    // Its item with our page of it — a report resolved to the item it is on
+    // (`resolveMergedInto`). Only for a Miterledigung; past the budget the
+    // citation stands unlinked, and the reads fill the cache for the next.
+    const mergedRef = mergedWithRefOf(status?.description, rv.content?.phase)
+    if (mergedRef) enactment.mergedInto = await withinBudget(resolveMergedInto(mergedRef, getGegenstand), RIS_JOIN_BUDGET_MS)
     // Who voted how, from the same payload — the one fact the page was
     // missing at the end of the chain. The status prose above carries it
     // too, in a sentence we do not print; this is the record behind it.

@@ -52,7 +52,7 @@ import { LAND_NAME } from '#shared/utils/laender'
 import { fristClassLineDe, fristRangeDe, fristSpanDe } from './deadlines'
 import { landLawBegutachtungFacts } from './landLaw'
 import { namedInRvFactDe, namedInRvShortDe } from './outcomes'
-import { CARRIED_PART_FACTS_DE, RELATED_CONSULTED_FACTS_DE, carriedDraftDe, itemCopyDe, relatedConsultedDe, relatedFollowUpDe } from './itemKind'
+import { CARRIED_PART_FACTS_DE, ITEM_KIND_DE, RELATED_CONSULTED_FACTS_DE, carriedDraftDe, itemCopyDe, relatedConsultedDe, relatedFollowUpDe } from './itemKind'
 
 export type StationId = 'entwurf' | 'begutachtung' | 'rv' | 'parlament' | 'bgbl'
 
@@ -353,6 +353,15 @@ export const SECOND_ROUND_CLAUSE = 'bis zum Beschluss im Bundesrat'
 export const SECOND_ROUND_WINDOW =
   `Eine veröffentlichte Frist gibt es dafür nicht – möglich ${SECOND_ROUND_CLAUSE}.`
 
+/**
+ * Where no Stellungnahme to the Nationalrat could be filed on an item
+ * (`RvStatementsResponse.predatesFiling`, 14.11.2026): § 23b GOG-NR admits
+ * them from 01.08.2021, and Parliament's record of an earlier item says so.
+ * What is missing and why, nothing else — so a fixed lead word can stand
+ * before it.
+ */
+export const PREDATES_FILING_DE = 'Stellungnahmen an den Nationalrat waren erst ab 01.08.2021 möglich.'
+
 /** Upstream's own wording, from the one place that maps it to a station. */
 const AUSSCHUSS = UPSTREAM_AUSSCHUSS_TITLE
 const PLENUM = UPSTREAM_PLENUM_TITLE
@@ -595,6 +604,39 @@ function outcomeSentencesOf(item: ParliamentItem): typeof PARLIAMENT_OUTCOME_DE 
   return item === 'rv' ? PARLIAMENT_OUTCOME_DE : PARLIAMENT_OUTCOME_ANTRAG_DE
 }
 
+/**
+ * The „Stand" row of a Miterledigung (14.11.2026), in three parts so the
+ * template can link the item between them: „Der Antrag wurde mit dem
+ * Ausschussbericht 565 d.B. zur " · „Regierungsvorlage 557 d.B." · „
+ * miterledigt, ohne eigenen Beschluss." The item is linked only where the
+ * monitor has a page of it (`EnactmentInfo.mergedInto`); a report is named
+ * as Parliament names it, and the item it is on beside it. Where nothing
+ * was resolved, the citation alone, unlinked; where none is named, „mit
+ * einem anderen Gegenstand". `text` is the whole sentence as plain text.
+ */
+export function mergedStandDe(e: EnactmentInfo, item: ParliamentItem = 'rv'): {
+  lead: string
+  link: { href: string; label: string } | null
+  tail: string
+  text: string
+} {
+  const subject = item === 'rv' ? 'Die Regierungsvorlage' : 'Der Antrag'
+  const tail = ' miterledigt, ohne eigenen Beschluss.'
+  const m = e.mergedInto
+  const cited = e.mergedWith ?? mergedWithCitation(e.houseStatusText)
+  if (!m) {
+    const lead = `${subject} wurde mit ${cited ?? 'einem anderen Gegenstand'}`
+    return { lead, link: null, tail, text: `${lead}${tail}` }
+  }
+  const label = m.kind ? `${ITEM_KIND_DE[m.kind].word} ${m.citation}` : m.citation
+  const article = m.kind === 'regierungsvorlage' ? (m.report ? 'zur' : 'der') : m.kind ? (m.report ? 'zum' : 'dem') : (m.report ? 'zu' : '')
+  const lead = m.report
+    ? `${subject} wurde mit dem Ausschussbericht ${m.report} ${article} `
+    : `${subject} wurde mit ${article ? `${article} ` : ''}`
+  const link = m.path ? { href: m.path, label } : null
+  return { lead, link, tail, text: `${lead}${label}${tail}` }
+}
+
 function decidedStandDe(e: EnactmentInfo, today: string): string {
   const state = promulgationState(e, today)
   if (state === 'explicit') {
@@ -654,9 +696,15 @@ const TREATY_OPEN_DE: Record<'pending' | 'lapsed', Record<NonNullable<EnactmentI
 /** The Bundesgesetzblatt row of a treaty approved in an ended period whose
  *  Kundmachung RIS does not list by its key — about the search, not the treaty. */
 const TREATY_UNLISTED_DE = 'im RIS bisher nicht verzeichnet'
+/** A treaty's Kundmachung RIS did not answer for in time (`bgblUnread`) —
+ *  the page's words for every gap of the moment („gerade nicht abrufbar"). */
+const TREATY_UNREAD_DE = 'Kundmachung gerade nicht abrufbar'
 
 /** The card's headline for an approved treaty without a Kundmachung found. */
 function treatyApprovedStatusDe(e: EnactmentInfo): string {
+  // RIS did not answer (`bgblUnread`): neither „ausstehend" nor a statement
+  // about our search — the search has no result yet.
+  if (e.bgblUnread) return `Genehmigt – ${TREATY_UNREAD_DE}`
   return e.rvGpEnded ? `Genehmigt – ${TREATY_UNLISTED_DE}` : 'Genehmigt – Kundmachung ausstehend'
 }
 
@@ -682,6 +730,7 @@ export function parliamentStandDe(
   // (Art. 50 B-VG) — never „unverändert beschlossen".
   if (e?.treaty && (outcome === 'decided' || outcome === 'unchanged' || outcome === 'amended')) return TREATY_APPROVED_DE[e.treaty]
   if (e?.treaty && (outcome === 'pending' || outcome === 'lapsed')) return TREATY_OPEN_DE[outcome][e.treaty]
+  if (e && outcome === 'merged') return mergedStandDe(e, item).text
   return e && (outcome === 'decided' || promulgationState(e, today))
     ? decidedStandDe(e, today)
     : outcomeSentencesOf(item)[outcome]
@@ -1020,7 +1069,7 @@ export function laterStations(d: LaterStationFacts, today: string = todayIso()):
                         // A treaty approved in an ended period: a statement
                         // about our search, never „nicht kundgemacht"
                         // (decision 5 of 14.11.2026, `TREATY_UNLISTED_DE`).
-                        ? [e?.treaty && periodEnded ? TREATY_UNLISTED_DE : 'ausstehend']
+                        ? [e?.treaty && e.bgblUnread ? 'gerade nicht abrufbar' : e?.treaty && periodEnded ? TREATY_UNLISTED_DE : 'ausstehend']
                         : periodEnded
                           ? []
                           : ['ausstehend'],
@@ -1207,12 +1256,15 @@ function vorlageBegutachtung(d: VorlageDetail): Station {
   // An Initiativantrag that carries a consulted draft's text (decision 9 of
   // 14.11.2026, `carriedDraftDe`): the draft's Begutachtung as reached where
   // the Antrag carries the draft; „nicht feststellbar" where only a part of
-  // it stands in the draft — the rest may be text nobody consulted.
+  // it stands in the draft — the rest may be text nobody consulted. The
+  // short fact only: the sentence naming the draft is the frame's row
+  // „Ministerialentwurf" (`entwurfFrameView`), and it stood here a second
+  // time until 14.11.2026.
   const carried = carriedDraftDe(d)
   if (carried) {
     return carried.carries
-      ? { ...begutachtungStation([`Ministerialentwurf ${carried.citation}`], 'walked'), followUp: carried.line }
-      : { ...begutachtungStation([...CARRIED_PART_FACTS_DE], 'unknown'), followUp: carried.line }
+      ? begutachtungStation([`Ministerialentwurf ${carried.citation}`], 'walked')
+      : begutachtungStation([...CARRIED_PART_FACTS_DE], 'unknown')
   }
   const related = d.itemKind === 'ausschussantrag' ? relatedFollowUpDe(d.relatedItems) : null
   // Only where the list classed the law `none` (`skippedLaws`; for a

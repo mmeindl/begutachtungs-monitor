@@ -37,6 +37,12 @@ export interface TreatyBgbl {
  * stands (510 d.B. XXVI ⇒ III Nr. 128/2019, a record RIS keys to no
  * Vorlage). The disagreement itself is not shown. One function for the
  * page, the station map and the list, so they cannot say two numbers.
+ *
+ * `ris` null means RIS ANSWERED with no record. A caller whose lookup did
+ * not answer (past its budget, a Jahrgang unread) does not call this: it
+ * shows neither number and says the Kundmachung cannot be told just now
+ * (`EnactmentInfo.bgblUnread`, the list's `bgblUnread`), and its result is
+ * not kept as complete (14.11.2026).
  */
 export function resolveTreatyBgbl(
   ris: { number: string; url?: string | null; datum?: string | null } | null | undefined,
@@ -86,7 +92,9 @@ export function treatyRowOf(
   link: { number: string | null; url: string } | null = null,
 ): TreatyRow {
   const ris = records ? pickBgblForTreaty(records, row.gp, row.inr) : null
-  const hit = resolveTreatyBgbl(ris ? { number: ris.nummer, datum: ris.datum } : null, link)
+  // Unread Jahrgänge are no „RIS has no record": the link waits for RIS's
+  // answer, and the list says why (`bgblUnread`).
+  const hit = records ? resolveTreatyBgbl(ris ? { number: ris.nummer, datum: ris.datum } : null, link) : null
   const date = hit?.date ?? (hit && records ? records.find((r) => r.nummer === shortBgbl(hit.number))?.datum ?? null : null)
   return {
     gp: row.gp,
@@ -106,10 +114,11 @@ function shortBgbl(number: string): string {
   return number.replace(/^Bundesgesetzblatt\b/, 'BGBl.')
 }
 
-/** Whether a row's Kundmachung needs Parliament's link: RIS has no record
- *  for it and the house is done with it. */
+/** Whether a row's Kundmachung needs Parliament's link: RIS answered with
+ *  no record for it and the house is done with it. Unread Jahrgänge are no
+ *  answer — the link is not read then (`treatyRowOf`). */
 export function needsTreatyLink(row: Pick<ItemRow, 'gp' | 'inr' | 'status'>, records: readonly BgblRecord[] | null): boolean {
-  return row.status === STATUS_ERLEDIGT && !(records && pickBgblForTreaty(records, row.gp, row.inr))
+  return row.status === STATUS_ERLEDIGT && records !== null && !pickBgblForTreaty(records, row.gp, row.inr)
 }
 
 /** Newest arrival first, then the higher number — the list's date order. */

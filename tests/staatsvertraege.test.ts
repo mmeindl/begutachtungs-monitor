@@ -145,6 +145,14 @@ describe("one rule for the Kundmachung: RIS's key first, Parliament's link where
     expect(resolveTreatyBgbl(null, null)).toBeNull()
     expect(treatyRowOf(row(510, 'XXVI'), [unkeyed], false, null).state).toBe('unlisted')
   })
+
+  it('unread Jahrgänge are no „RIS has no record": the link is neither read nor used (14.11.2026)', () => {
+    const link = { number: 'Bundesgesetzblatt III Nr. 128/2019', url: 'https://www.ris.bka.gv.at/x' }
+    expect(needsTreatyLink(row(510, 'XXVI'), null)).toBe(false)
+    const t = treatyRowOf(row(510, 'XXVI'), null, false, link)
+    expect(t.bgbl).toBeNull()
+    expect(t.state).not.toBe('promulgated')
+  })
 })
 
 describe('no 120-day rule for a treaty (decision 5)', () => {

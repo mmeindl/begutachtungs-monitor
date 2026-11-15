@@ -30,11 +30,14 @@ import { droppedLawsNote, mergedLawsNote, outsideDraftNote } from '~/utils/lawPa
 import { lawDiffCredits } from '~/utils/lawDiffCredits'
 import { reasoningGapNote, reasoningRateNote } from '~/utils/reasoningNotes'
 import {
-  LAW_STATION_LABEL,
+  OBJECTION_STEPS_NOTE_DE,
   PARLIAMENT_COMPARISON_QUESTION,
+  type FirstTextName,
   type LawDiffScope,
   isLawStationId,
   lawDiffScopeOf,
+  lawStationGenitiveDe,
+  lawStationLabelOf,
   lawStationPairQuestion,
 } from '#shared/utils/lawStations'
 import { mixedPublishers } from '#shared/utils/provenance'
@@ -57,7 +60,17 @@ const props = defineProps<{
    *  without a Begutachtung (10.11.2026); a draft's by default. */
   apiBase?: string
   origin?: 'me' | 'rv' | 'antrag'
+  /** The first text's own name on the page of a committee's or the
+   *  Bundesrat's motion (`firstTextNameOf`, 14.11.2026): its station is
+   *  `rv`, its name is not „Regierungsvorlage". */
+  firstText?: FirstTextName | null
+  /** The Nationalrat adopted a changed text after the Bundesrat's Einspruch
+   *  (`BundesratObjection.outcome` „new-decision"): Parliament's steps end at
+   *  the first Beschluss, and this section says so (`OBJECTION_STEPS_NOTE_DE`). */
+  changedAfterObjection?: boolean
 }>()
+
+const first = props.firstText ?? null
 
 const scope: LawDiffScope = props.scope ?? 'rv'
 /** `#textvergleich` stays the Vorlage's: that anchor is in circulation. */
@@ -174,8 +187,8 @@ const sideCites = computed(() => {
   const draft = { citation: `${props.inr}/ME`, gp: props.gp }
   const rvDocument = d.stations.find((s) => s.id === 'rv')?.document ?? null
   return {
-    from: lawTextCiteDe(d.from, d.fromDocument, draft, rvDocument),
-    to: lawTextCiteDe(d.to, d.toDocument, draft, rvDocument),
+    from: lawTextCiteDe(d.from, d.fromDocument, draft, rvDocument, first?.kind),
+    to: lawTextCiteDe(d.to, d.toDocument, draft, rvDocument, first?.kind),
     // Whether that side's text is divided into Artikel or laws: then a unit without an Artikel cannot be found by its Ziffer.
     fromDivided: dividedText(d.units.filter((u) => u.fromId !== null).map((u) => ({ key: u.fromArticleKey, law: u.fromArticle ?? u.article }))),
     toDivided: dividedText(d.units.filter((u) => u.change !== 'removed').map((u) => ({ key: u.articleKey, law: u.article }))),
@@ -199,7 +212,7 @@ const countsInFrame = computed(() => pair.value.from === 'me' && pair.value.to =
  * What this comparison shows, per document, and one entry per compared
  * version for the credit line (`lawDiffCredits`).
  */
-const credits = computed(() => lawDiffCredits(data.value, reasoning.value, pair.value, namedCount.value))
+const credits = computed(() => lawDiffCredits(data.value, reasoning.value, pair.value, namedCount.value, first))
 const paraTitlesTag = computed(() => (mixedPublishers(credits.value.sources) ? ' (RIS)' : ''))
 const paraTitlesAsOf = computed(() => (paraTitles.value?.asOf ? formatDateDe(paraTitles.value.asOf) : null))
 
@@ -256,13 +269,17 @@ const loadAnnouncement = computed(() => {
  */
 const heading = scope === 'parlament'
   ? PARLIAMENT_COMPARISON_QUESTION
-  : lawStationPairQuestion(scopeDefault.from, scopeDefault.to)
-const fromLabel = computed(() => LAW_STATION_LABEL[pair.value.from])
+  : lawStationPairQuestion(scopeDefault.from, scopeDefault.to, first)
+const fromLabel = computed(() => lawStationLabelOf(pair.value.from, first))
+/* The skeleton's sentence: „Der Gesetzestext des Ausschussantrags wird mit
+   dem der Fassung im Bundesgesetzblatt verglichen …" (`lawStationGenitiveDe`). */
+const fromGenitive = computed(() => lawStationGenitiveDe(pair.value.from, first))
+const toGenitive = computed(() => lawStationGenitiveDe(pair.value.to, first))
 /* A unit the later text numbers otherwise: „§ 13 → § 9", as the Beilage
    (`TextComparisonSection`) and the Länder comparisons write it (26.10.2026)
    — it replaced „(im Entwurf § 13)", so one sign means one thing. */
 const movedFrom = (u: LawDiffUnit) => (u.fromId && u.fromId !== u.id ? displayId(u.fromId) : null)
-const toLabel = computed(() => LAW_STATION_LABEL[pair.value.to])
+const toLabel = computed(() => lawStationLabelOf(pair.value.to, first))
 
 /** The three sources of a name and their order live in `#shared/utils/unitName`. */
 function nameOf(u: LawDiffUnit): string | null {
@@ -508,6 +525,7 @@ const mergedNote = computed(() =>
     pair.value.to,
     data.value?.largerAct ?? null,
     data.value?.otherDrafts?.length ? { others: data.value.otherDrafts, gp: props.gp } : null,
+    first,
   ),
 )
 /**
@@ -530,8 +548,17 @@ const outsideNote = computed(() =>
     : outsideDraftNote(data.value.lawsOutsideDraft, data.value.largerAct),
 )
 const droppedNote = computed(() =>
-  droppedLawsNote(data.value?.lawsOnlyInFrom ?? [], pair.value.from, pair.value.to),
+  droppedLawsNote(data.value?.lawsOnlyInFrom ?? [], pair.value.from, pair.value.to, first),
 )
+/**
+ * After the Bundesrat's Einspruch the Nationalrat adopted a changed text
+ * (14.11.2026): Parliament's steps compare the texts up to the first
+ * Beschluss, and the changed one is no station they can reach — so without
+ * this sentence the last step would read as the text that became law. The
+ * comparison under „Im Bundesgesetzblatt" runs to the promulgated text and
+ * needs none.
+ */
+const objectionNote = computed(() => (scope === 'parlament' && props.changedAfterObjection ? OBJECTION_STEPS_NOTE_DE : null))
 </script>
 
 <template>
@@ -550,7 +577,7 @@ const droppedNote = computed(() =>
              warnings. -->
         <div class="space-y-3">
           <p v-if="reasoningNote && !countsInFrame" class="text-sm text-ink-secondary">{{ reasoningNote }}</p>
-          <ComparisonCaveats :notes="[outsideNote, mergedNote, droppedNote]" />
+          <ComparisonCaveats :notes="[objectionNote, outsideNote, mergedNote, droppedNote]" />
         </div>
       </template>
 
@@ -564,8 +591,8 @@ const droppedNote = computed(() =>
       <!-- Only on the first load: a later step keeps the previous list until
            the next arrives. -->
       <ListSkeleton v-if="status === 'pending' || status === 'idle'" class="mt-3">
-        Der Gesetzestext {{ fromLabel === 'Ministerialentwurf' ? 'des Entwurfs' : `der ${fromLabel}` }}
-        wird mit dem der {{ toLabel }} verglichen …
+        Der Gesetzestext {{ fromGenitive }}
+        wird mit dem {{ toGenitive }} verglichen …
       </ListSkeleton>
       <p v-else-if="status === 'error' || !data" class="mt-3 text-sm text-ink-secondary">
         Der Vergleich ist gerade nicht verfügbar.

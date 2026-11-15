@@ -16,6 +16,7 @@ import { bundesrechtCreditItems, withBundesrechtFollowUp } from '~/utils/bundesr
 import { originTokens, withOrigin } from '~/utils/origin'
 import { withoutMainPoints } from '~/utils/kurzinfo'
 import { wegFor, wegHref } from '~/utils/wege'
+import { treatyComparisonGapDe } from '~/utils/itemKind'
 import { draftTookAntragRoute } from '#shared/utils/antragPath'
 import { ministryLinkFor } from '~/components/draft/MinistryLinks.vue'
 import { aliasesFor } from '#shared/utils/draftAliases'
@@ -680,12 +681,16 @@ const ministryLinks = computed(() => {
             :parliament-texts="parliamentTextList"
           />
 
+          <!-- A treaty's or an Art.-15a-Vereinbarung's Kundmachung is a
+               Vertragstext, which the whole-way comparison cannot read: one
+               sentence in its place (`treatyComparisonGapDe`). -->
           <BgblStationSection
             v-if="sections.bgbl"
             :enactment="sections.bgbl"
             :gp="data.gp"
             :inr="data.inr"
             :parliament-texts="parliamentTextList"
+            :comparison-gap="sections.bgbl.treaty ? treatyComparisonGapDe(sections.bgbl.treaty) : null"
           >
             <BgblLaenderBlock v-if="bundesrechtLine" :line="bundesrechtLine" />
           </BgblStationSection>

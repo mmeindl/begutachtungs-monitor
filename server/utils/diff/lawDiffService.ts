@@ -35,13 +35,14 @@
 import type { LawDiffResponse, LawPackageEntry, LawStationId, LawStationOption, ProcedureRoot, TraceLink } from '#shared/types'
 import { bgblShort } from '#shared/utils/format'
 import { meRoot, rootKey } from '#shared/utils/procedureRoot'
-import { LAW_STATION_LABEL, LAW_STATION_ORDER } from '#shared/utils/lawStations'
+import { LAW_STATION_ORDER, firstTextNameOf, lawStationGenitiveDe, lawStationLabelOf } from '#shared/utils/lawStations'
 import { diffLawPackage, scopeToDraft, summarizeDiff } from './lawDiff'
-import { findLawStations, missingStationReason } from './stationDocuments'
+import { findLawStations, missingStationReason, motionTextOf } from './stationDocuments'
 import { parseLawUnits, parseLawUnitsFromRis, type LawUnit } from '../lawtext/lawUnits'
 import { bgblViaObjection } from '../parliament/bundesratObjection'
 import { bundlesOtherDrafts, extractBgblLink, otherBundledDrafts, findComparisonRvLink, findLastRvLink, findRvLinks, parseStages } from '../parliament/detailJson'
 import { getGegenstand } from '../parliament/drafts'
+import { bundesratVariantOf, pageKindOf } from '../parliament/vorlageDetailAssembly'
 import { getRisMapForGp } from '../ris/begutCorpus'
 import { getBgblDocument } from '../ris/bgblService'
 import { DERIVED_CACHE } from '../cache/base'
@@ -87,6 +88,11 @@ const readLawDiff = defineCachedFunction(
     const detail = await getGegenstand(gp, root.ityp, inr)
     const content = detail.content ?? {}
     const found = findLawStations(content, root.ityp)
+    // The first text's own name where the item is no Regierungsvorlage but
+    // stands at its station — a committee's motion, a motion of the
+    // Bundesrat (`firstTextNameOf`, 14.11.2026): every label and sentence
+    // below names the `rv` station by it.
+    const first = root.ityp === 'I' ? firstTextNameOf({ itemKind: pageKindOf('I', content.doktyp), variant: bundesratVariantOf(content.doktyp) }) : null
 
     // The draft's fallback: Parliament serves a PDF for about a fifth of the
     // GP-XXVII drafts (77 of 353, scripts/corpus/stationen.ts), and the RIS
@@ -187,7 +193,7 @@ const readLawDiff = defineCachedFunction(
       if (id === 'me' && !station.html && risLink) return risLink
       if (id === 'bgbl' && bgblLink) return bgblLink
       const url = station.html ?? station.fallbackUrl
-      return url ? { label: `${LAW_STATION_LABEL[id]}, Gesetzestext`, url } : null
+      return url ? { label: `${lawStationLabelOf(id, first)}, Gesetzestext`, url } : null
     }
 
     // Every station this draft has, comparable or not: the selector has to
@@ -195,7 +201,7 @@ const readLawDiff = defineCachedFunction(
     // "parliament never touched the text".
     const stations: LawStationOption[] = LAW_STATION_ORDER.filter((id) => found.has(id)).map((id) => ({
       id,
-      label: LAW_STATION_LABEL[id],
+      label: lawStationLabelOf(id, first),
       comparable: comparable(id),
       document: documentOf(id),
     }))
@@ -238,19 +244,19 @@ const readLawDiff = defineCachedFunction(
       // An unreadable stage record claims nothing either way.
     }
     for (const id of [to, from]) {
-      if (!found.has(id)) return answer(missingStationReason(id, rvLinked, promulgatedAs))
+      if (!found.has(id)) return answer(missingStationReason(id, rvLinked, promulgatedAs, first, first?.kind === 'bundesratsantrag' && motionTextOf(content) !== null))
     }
     if (!comparable(from)) {
       return answer(
         from !== 'me'
-          ? `Der Gesetzestext der ${LAW_STATION_LABEL[from]} liegt nur als PDF vor.`
+          ? `Der Gesetzestext ${lawStationGenitiveDe(from, first)} liegt nur als PDF vor.`
           : risRowExists
             ? 'Der Gesetzestext des Entwurfs liegt beim Parlament nur als PDF vor, und das RIS bietet ihn nicht als XML an.'
             : 'Der Gesetzestext des Entwurfs liegt beim Parlament nur als PDF vor und ist im RIS nicht veröffentlicht.',
       )
     }
     if (!comparable(to)) {
-      return answer(`Der Gesetzestext der ${LAW_STATION_LABEL[to]} liegt nur als PDF vor.`)
+      return answer(`Der Gesetzestext ${lawStationGenitiveDe(to, first)} liegt nur als PDF vor.`)
     }
 
     // Each side brings its own format now that the Kundmachung is among the
