@@ -119,7 +119,10 @@ const DE = {
   council: (date: string) => `Rat ${date}`,
   signed: (date: string) => `unterzeichnet ${date}`,
   deadline: (date: string) => `Umsetzungsfrist ${date}`,
-  inForce: (date: string) => `in Kraft seit ${date}`,
+  inForceSince: (date: string) => `in Kraft seit ${date}`,
+  inForceFrom: (date: string) => `in Kraft ab ${date}`,
+  effectiveSince: (date: string) => `wirksam seit ${date}`,
+  effectiveFrom: (date: string) => `wirksam ab ${date}`,
   appliesSince: (date: string) => `gilt seit ${date}`,
   appliesFrom: (date: string) => `gilt ab ${date}`,
   direct: 'gilt unmittelbar in jedem Mitgliedstaat',
@@ -130,7 +133,7 @@ const DE = {
   partial: (dates: string[]) => `Für einzelne Bestimmungen nennt der Cellar einen eigenen Geltungsbeginn: ${dates.join(', ')}.`,
   source: {
     proposal: 'Vorschlag auf EUR-Lex',
-    observatory: 'Verfahren im Legislative Observatory',
+    observatory: 'Verfahren im Legislative Observatory (englisch)',
     act: 'Rechtsakt auf EUR-Lex',
   },
   credits: ['Quelle:', 'Cellar des Amts für Veröffentlichungen der Europäischen Union (Metadaten)'],
@@ -286,9 +289,13 @@ function effectStation(r: EuActResponse, today: string): EuRailStation {
 
   const rail = r.rail
   const inForce = rail?.inForce ?? null
+  // A Beschluss addressed to someone takes effect („PE") instead of entering
+  // into force; shown only where no entry into force is typed.
+  const effective = inForce ? null : rail?.effective ?? null
   const applies = rail?.applies ?? null
   const facts = [
-    ...(inForce ? [DE.inForce(formatDateDe(inForce))] : []),
+    ...(inForce ? [inForce <= today ? DE.inForceSince(formatDateDe(inForce)) : DE.inForceFrom(formatDateDe(inForce))] : []),
+    ...(effective ? [effective <= today ? DE.effectiveSince(formatDateDe(effective)) : DE.effectiveFrom(formatDateDe(effective))] : []),
     ...(applies && applies !== inForce ? [applies <= today ? DE.appliesSince(formatDateDe(applies)) : DE.appliesFrom(formatDateDe(applies))] : []),
     // Art. 288 AEUV: a regulation applies directly; a decision binds only whom it names.
     ...(kind === 'verordnung' ? [DE.direct] : []),
@@ -298,13 +305,13 @@ function effectStation(r: EuActResponse, today: string): EuRailStation {
     ...base,
     name: DE.name.geltung,
     facts,
-    gap: !rail ? DE.gap.inForceUnread : inForce ? null : DE.gap.noInForce,
+    gap: !rail ? DE.gap.inForceUnread : inForce || effective ? null : DE.gap.noInForce,
   }
 }
 
 /**
  * The act's rail and the section „Das Verfahren", as words. `today` (ISO)
- * decides only between „gilt ab" and „gilt seit".
+ * decides only between „ab" and „seit" (in Kraft, wirksam, gilt).
  */
 export function euRailView(r: EuActResponse, today: string): EuRailView {
   const rail = r.rail

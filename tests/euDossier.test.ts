@@ -1,17 +1,19 @@
 import { readFileSync, readdirSync } from 'node:fs'
 import { join } from 'node:path'
 import { describe, expect, it } from 'vitest'
-import { DOSSIER_QUERY_VERSION, adoptedByOf, dossierQuery, dossierUrl, parseDossierAnswer, procedureReference } from '../server/utils/eu/cellarDossier'
+import { DOSSIER_QUERY_VERSION, OBSERVATORY_FIRST_YEAR, OBSERVATORY_TYPES, adoptedByOf, dossierQuery, dossierUrl, observatoryUrlOf, parseDossierAnswer, procedureReference } from '../server/utils/eu/cellarDossier'
 import type { SparqlAnswer } from '../server/utils/eu/cellar'
 import { EU_EVENTS } from '../shared/utils/euEvents'
 
 /*
- * Fourteen answers of the Cellar to `dossierQuery`, as the SPARQL endpoint
+ * Sixteen answers of the Cellar to `dossierQuery`, as the SPARQL endpoint
  * sent them (15.11.2026): every procedure type on the map's acts (OLP, COD,
  * CNS, SYN, NLE, APP), two dossiers on one act (2000/29/EG), a proposal in
  * parts (2001/110/EG), a dossier with no procedure number (76/207/EWG),
  * Commission acts with and without a dossier, a joint act with none
- * (2024/825), and the AI Act's staged application. No test touches the
+ * (2024/825), the AI Act's staged application, a Beschluss that takes
+ * effect instead of entering into force (2017/131) and a directive whose
+ * partial day is typed „MA/PART" itself (2009/138). No test touches the
  * network.
  */
 const FIXTURES = join(import.meta.dirname, 'fixtures', 'eu-dossier')
@@ -39,12 +41,13 @@ describe('parseDossierAnswer — the ordinary procedure of today (2024/1069)', (
     expect(r.procedure).toMatchObject({
       reference: '2022/0117(COD)',
       type: 'OLP',
-      observatoryUrl: 'https://oeil.europarl.europa.eu/oeil/de/procedure-file?reference=2022%2F0117(COD)',
+      observatoryUrl: 'https://oeil.europarl.europa.eu/oeil/en/procedure-file?reference=2022%2F0117(COD)',
     })
     expect(r.procedure!.proposals).toEqual([
       { reference: 'COM(2022) 177', celex: '52022PC0177', date: '2022-04-27', eurLexUrl: 'https://eur-lex.europa.eu/legal-content/DE/TXT/?uri=CELEX:52022PC0177' },
     ])
     expect(r.inForce).toBe('2024-05-06')
+    expect(r.effective).toBeNull()
     expect(r.applies).toBeNull()
     expect(r.partialApplication).toEqual([])
   })
@@ -54,6 +57,7 @@ describe('parseDossierAnswer — the ordinary procedure of today (2024/1069)', (
     for (const [code, date] of [
       ['ADP_byCOM', '2022-04-28'],
       ['OPI_byEESC', '2022-10-26'],
+      ['AMEND_byEP', '2023-07-11'],
       ['ADP_R1_POS_byEP', '2024-02-27'],
       ['APR_R1_byCONSIL', '2024-03-19'],
       ['SIGN_byEP_CONSIL', '2024-04-11'],
@@ -63,9 +67,10 @@ describe('parseDossierAnswer — the ordinary procedure of today (2024/1069)', (
     const days = events.map((e) => e.date)
     expect(days).toEqual([...days].sort())
     // Counted by hand from the fixture: ten DIS_byCONSIL, two OPI_R1_byEP_CMT,
-    // and one each of ADP_REP_byEP_CMT, AMEND_byEP, APR_AGRPROV_CONSIL_byEP_CMT,
-    // REF_OF_byEP, REF_toCMT_NGTINST_byEP_PLEN — seventeen distinct events.
-    expect(r.procedure!.otherEvents).toBe(17)
+    // and one each of ADP_REP_byEP_CMT, APR_AGRPROV_CONSIL_byEP_CMT,
+    // REF_OF_byEP, REF_toCMT_NGTINST_byEP_PLEN — sixteen distinct events
+    // (AMEND_byEP is read since 15.11.2026).
+    expect(r.procedure!.otherEvents).toBe(16)
   })
 })
 
@@ -78,9 +83,19 @@ describe('parseDossierAnswer — dates of entry into force and application', () 
     expect(rail('32022R0931')).toMatchObject({ adoptedBy: 'kommission', procedure: null, inForce: '2022-07-07', applies: '2023-01-01' })
   })
 
+  it('reads the day a Beschluss takes effect, typed „PE", and no entry into force (2017/131)', () => {
+    expect(rail('32017D0131')).toMatchObject({ adoptedBy: 'kommission', inForce: null, effective: '2017-01-25', applies: null, partialApplication: [] })
+  })
+
+  it('reads a date typed „MA/PART" itself as a partial day (2009/138)', () => {
+    expect(rail('32009L0138')).toMatchObject({ inForce: '2010-01-06', effective: null, applies: null, partialApplication: ['2016-01-01'] })
+  })
+
   it('takes a partial day for no general one (2024/1499)', () => {
     expect(rail('32024L1499')).toMatchObject({ adoptedBy: 'rat', inForce: '2024-06-18', applies: null, partialApplication: ['2026-06-19'] })
     expect(rail('32024L1499').procedure!.type).toBe('APP')
+    // Parliament's consent, read since 15.11.2026.
+    expect(rail('32024L1499').procedure!.events).toContainEqual({ code: 'DEC_byEP', date: '2024-04-10' })
   })
 })
 
@@ -98,9 +113,9 @@ describe('parseDossierAnswer — who adopted it and which procedure', () => {
     expect(rail('32013L0059')).toMatchObject({ adoptedBy: 'rat', procedure: { reference: '2011/0254(NLE)', type: 'NLE' } })
   })
 
-  it('reads co-decision in the old vocabulary (94/22/EG)', () => {
+  it('reads co-decision in the old vocabulary (94/22/EG), and builds no Observatory link before 1994', () => {
     const r = rail('31994L0022')
-    expect(r).toMatchObject({ adoptedBy: 'parlament-rat', procedure: { reference: '1992/0412(COD)', type: 'COD' } })
+    expect(r).toMatchObject({ adoptedBy: 'parlament-rat', procedure: { reference: '1992/0412(COD)', type: 'COD', observatoryUrl: null } })
     const read = codes('31994L0022')
     for (const code of ['AMEND_R1_byEP', 'OPI_R1_byEP', 'ADP_R1_POS_byEP', 'ADP_COMPOS_byCONSIL', 'AMEND_R2_byEP', 'OPI_R2_byEP', 'APR_R2_byCONSIL', 'SIGN_byEP_CONSIL']) {
       expect(read, code).toContain(code)
@@ -118,6 +133,18 @@ describe('parseDossierAnswer — who adopted it and which procedure', () => {
     expect(adoptedByOf(new Set(['COM', 'MOVE']))).toBe('kommission')
     expect(adoptedByOf(new Set(['EP', 'COM']))).toBe('unbekannt')
     expect(adoptedByOf(new Set())).toBe('unbekannt')
+  })
+
+  it('links the Observatory only where a page can be expected: from 1994, for COD, CNS and APP', () => {
+    expect(OBSERVATORY_FIRST_YEAR).toBe(1994)
+    expect(OBSERVATORY_TYPES).toEqual(['COD', 'CNS', 'APP'])
+    expect(observatoryUrlOf('1993/0450(COD)')).toBeNull()
+    expect(observatoryUrlOf('1994/0001(COD)')).toBe('https://oeil.europarl.europa.eu/oeil/en/procedure-file?reference=1994%2F0001(COD)')
+    expect(observatoryUrlOf('2013/0033(NLE)')).toBeNull()
+    expect(observatoryUrlOf('2022/0401(APP)')).toBe('https://oeil.europarl.europa.eu/oeil/en/procedure-file?reference=2022%2F0401(APP)')
+    expect(observatoryUrlOf(null)).toBeNull()
+    expect(rail('32013L0059').procedure!.observatoryUrl).toBeNull()
+    expect(rail('32000L0078').procedure!.observatoryUrl).toBe('https://oeil.europarl.europa.eu/oeil/en/procedure-file?reference=1999%2F0225(CNS)')
   })
 
   it('writes the procedure number as cited, and nothing for another shape', () => {
@@ -151,7 +178,7 @@ describe('parseDossierAnswer — proposals', () => {
 
 describe('parseDossierAnswer — no answer and broken answers', () => {
   it('reads an act the Cellar does not know as all unknown', () => {
-    expect(parseDossierAnswer({ results: { bindings: [] } })).toEqual({ adoptedBy: 'unbekannt', procedure: null, inForce: null, applies: null, partialApplication: [] })
+    expect(parseDossierAnswer({ results: { bindings: [] } })).toEqual({ adoptedBy: 'unbekannt', procedure: null, inForce: null, effective: null, applies: null, partialApplication: [] })
   })
 
   it('throws on a malformed answer', () => {
@@ -171,7 +198,7 @@ describe('parseDossierAnswer — no answer and broken answers', () => {
 
   it('never puts a step the monitor does not read into a rail, over every fixture', () => {
     const files = readdirSync(FIXTURES).filter((f) => f.endsWith('.json'))
-    expect(files.length).toBe(14)
+    expect(files.length).toBe(16)
     for (const f of files) {
       for (const e of rail(f.replace(/\.json$/, '')).procedure?.events ?? []) expect(Object.hasOwn(EU_EVENTS, e.code), `${f} ${e.code}`).toBe(true)
     }

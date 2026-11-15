@@ -125,6 +125,7 @@ line()
 const withProcedure = read.filter((r) => r.rail.procedure !== null)
 line(`with a procedure: ${withProcedure.length}`)
 line(`  with a procedure reference: ${withProcedure.filter((r) => r.rail.procedure!.reference).length}`)
+line(`  with an Observatory link: ${withProcedure.filter((r) => r.rail.procedure!.observatoryUrl).length}`)
 line(`  with ≥1 proposal: ${withProcedure.filter((r) => r.rail.procedure!.proposals.length > 0).length}`)
 line(`  with a proposal CELEX: ${withProcedure.filter((r) => r.rail.procedure!.proposals.some((p) => p.celex)).length}`)
 line(`  with ≥2 proposals: ${withProcedure.filter((r) => r.rail.procedure!.proposals.length > 1).length}`)
@@ -147,9 +148,10 @@ for (const kind of ['R', 'D', 'L', 'F']) {
   if (!of.length) continue
   const inForce = of.filter((r) => r.rail.inForce).length
   if (kind === 'L') {
-    line(`  ${kind}: ${of.length} acts · inForce ${inForce}`)
+    line(`  ${kind}: ${of.length} acts · inForce ${inForce} · partialApplication ${of.filter((r) => r.rail.partialApplication.length).length}`)
   } else {
-    line(`  ${kind}: ${of.length} acts · inForce ${inForce} · applies ${of.filter((r) => r.rail.applies).length} · partialApplication ${of.filter((r) => r.rail.partialApplication.length).length}`)
+    // `effective` („PE") is what a Beschluss carries instead of an entry into force.
+    line(`  ${kind}: ${of.length} acts · inForce ${inForce} · effective ${of.filter((r) => r.rail.effective).length} · applies ${of.filter((r) => r.rail.applies).length} · partialApplication ${of.filter((r) => r.rail.partialApplication.length).length}`)
   }
 }
 line()

@@ -127,7 +127,27 @@ const PROCEDURE_REF_RE = /^(\d{4})\/(\d{4})\/([A-Z]{2,4})$/
 /** A Commission proposal's CELEX, sector 5 + year + PC + number, „(03)" for a part. */
 const PROPOSAL_CELEX_RE = /^5\d{4}PC\d{4}(\(\d+\))?$/
 
-const OEIL_PROCEDURE = 'https://oeil.europarl.europa.eu/oeil/de/procedure-file?reference='
+const OEIL_PROCEDURE = 'https://oeil.europarl.europa.eu/oeil/en/procedure-file?reference='
+
+/**
+ * Where the Legislative Observatory can be expected to have a page. Its
+ * German path answers with the English page anyway, so the link is built
+ * with `/en/`; procedures from before 1994 and some types have no page at
+ * all — 1990/0292(SYN), 2013/0033(NLE), 1992/0412(COD) and 1988/1016(CNS)
+ * answer 404. Both constants come from a measurement of 15.11.2026 that is
+ * still being completed and may move. Outside them no link is built, and
+ * the page says nothing about the Observatory: the procedure number stays
+ * a fact of its own.
+ */
+export const OBSERVATORY_FIRST_YEAR = 1994
+export const OBSERVATORY_TYPES: readonly string[] = ['COD', 'CNS', 'APP']
+
+/** The Observatory's page for a procedure number „2022/0117(COD)", or null where none can be expected. */
+export function observatoryUrlOf(reference: string | null): string | null {
+  const m = reference ? /^(\d{4})\/\d{4}\(([A-Z]{2,4})\)$/.exec(reference) : null
+  if (!m || Number(m[1]) < OBSERVATORY_FIRST_YEAR || !OBSERVATORY_TYPES.includes(m[2]!)) return null
+  return OEIL_PROCEDURE + encodeURIComponent(reference!)
+}
 const EUR_LEX_CELEX = 'https://eur-lex.europa.eu/legal-content/DE/TXT/?uri=CELEX:'
 
 const value = (row: Row, key: string): string | null => {
@@ -240,15 +260,20 @@ export function parseDossierAnswer(answer: SparqlAnswer): EuActRail {
     }
   }
 
-  const ev = forceDates.filter((f) => f.type === 'EV').map((f) => f.date)
-  const ma = forceDates.filter((f) => f.type === 'MA')
-  const applies = ascendingUnique(ma.filter((f) => !f.comment.includes('MA/PART')).map((f) => f.date))[0] ?? null
-  const partialApplication = ascendingUnique(ma.filter((f) => f.comment.includes('MA/PART')).map((f) => f.date)).filter((d) => d !== applies)
+  const earliestOf = (type: string): string | null => ascendingUnique(forceDates.filter((f) => f.type === type).map((f) => f.date))[0] ?? null
+  // A partial day is typed „MA" with „MA/PART" in its comment — or, on some
+  // older directives (2008/73, 2009/73, 2009/138), typed „MA/PART" itself.
+  const isPartial = (f: { type: string; comment: string }): boolean => f.type === 'MA/PART' || (f.type === 'MA' && f.comment.includes('MA/PART'))
+  const applies = ascendingUnique(forceDates.filter((f) => f.type === 'MA' && !isPartial(f)).map((f) => f.date))[0] ?? null
+  const partialApplication = ascendingUnique(forceDates.filter(isPartial).map((f) => f.date)).filter((d) => d !== applies)
 
   return {
     adoptedBy: adoptedByOf(authors),
     procedure: dossiers.size ? procedureOf([...dossiers.values()], [...events.values()], unreadEventUris.size) : null,
-    inForce: ascendingUnique(ev)[0] ?? null,
+    inForce: earliestOf('EV'),
+    // A Beschluss addressed to someone is typed „PE" („Wirksamwerden"), not
+    // „EV": 12 of the 13 decisions of the map (15.11.2026).
+    effective: earliestOf('PE'),
     applies,
     partialApplication,
   }
@@ -270,7 +295,7 @@ function procedureOf(dossiers: DossierRows[], events: EuProcedureEvent[], otherE
   return {
     reference,
     type: latest.type,
-    observatoryUrl: reference ? OEIL_PROCEDURE + encodeURIComponent(reference) : null,
+    observatoryUrl: observatoryUrlOf(reference),
     proposals,
     events: events.sort((a, b) => cmp(a.date, b.date) || cmp(a.code, b.code)),
     otherEvents,

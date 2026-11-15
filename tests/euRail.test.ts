@@ -30,17 +30,19 @@ const REGULATION: EuActHead = {
 const procedure = (over: Partial<EuProcedure> = {}): EuProcedure => ({
   reference: '2022/0117(COD)',
   type: 'OLP',
-  observatoryUrl: 'https://oeil.secure.europarl.europa.eu/oeil/de/procedure-file?reference=2022/0117(COD)',
+  observatoryUrl: 'https://oeil.europarl.europa.eu/oeil/en/procedure-file?reference=2022%2F0117(COD)',
   proposals: [{ reference: 'COM(2022) 177', celex: '52022PC0177', date: '2022-04-27', eurLexUrl: 'https://eur-lex.europa.eu/legal-content/DE/TXT/?uri=CELEX:52022PC0177' }],
   events: [
     { code: 'ADP_byCOM', date: '2022-04-28' },
     { code: 'OPI_byEESC', date: '2022-10-26' },
+    { code: 'AMEND_byEP', date: '2023-07-11' },
     { code: 'ADP_R1_POS_byEP', date: '2024-02-27' },
     { code: 'APR_R1_byCONSIL', date: '2024-03-19' },
     { code: 'SIGN_byEP_CONSIL', date: '2024-04-11' },
     { code: 'PUB_OJ', date: '2024-04-16' },
   ],
-  otherEvents: 17,
+  // As the Cellar's answer for 2024/1069 reads since AMEND_byEP is read (tests/euDossier.test.ts).
+  otherEvents: 16,
   ...over,
 })
 
@@ -48,6 +50,7 @@ const rail = (over: Partial<EuActRail> = {}): EuActRail => ({
   adoptedBy: 'parlament-rat',
   procedure: procedure(),
   inForce: '2024-05-06',
+  effective: null,
   applies: null,
   partialApplication: [],
   ...over,
@@ -99,7 +102,7 @@ describe('euRailView', () => {
       facts: ['Parlament 27.02.2024', 'Rat 19.03.2024', 'unterzeichnet 11.04.2024', '2022/0117(COD)'],
       gap: null,
       anchor: '#eu-verfahren',
-      source: { label: 'Verfahren im Legislative Observatory' },
+      source: { href: 'https://oeil.europarl.europa.eu/oeil/en/procedure-file?reference=2022%2F0117(COD)', label: 'Verfahren im Legislative Observatory (englisch)' },
     })
     expect(station(v, 'amtsblatt')).toMatchObject({
       facts: ['ABl. L, 2024/1069, 16.04.2024'],
@@ -118,14 +121,15 @@ describe('euRailView', () => {
       facts: ['2022/0117(COD)', 'Ordentliches Gesetzgebungsverfahren'],
       reference: '2022/0117(COD)',
       typeLabel: 'Ordentliches Gesetzgebungsverfahren',
-      other: 'Der Cellar verzeichnet 17 weitere Schritte dieses Verfahrens, die der Monitor nicht einzeln zeigt.',
-      observatory: { label: 'Verfahren im Legislative Observatory' },
+      other: 'Der Cellar verzeichnet 16 weitere Schritte dieses Verfahrens, die der Monitor nicht einzeln zeigt.',
+      observatory: { label: 'Verfahren im Legislative Observatory (englisch)' },
       credits: ['Quelle:', 'Cellar des Amts für Veröffentlichungen der Europäischen Union (Metadaten)'],
     })
     // The Official Journal is its own station, not a row.
     expect(v.procedure!.rows).toEqual([
       { date: '28.04.2022', iso: '2022-04-28', label: 'Annahme durch die Kommission' },
       { date: '26.10.2022', iso: '2022-10-26', label: 'Stellungnahme des Europäischen Wirtschafts- und Sozialausschusses' },
+      { date: '11.07.2023', iso: '2023-07-11', label: 'Beschluss des EP über Änderungen am Legislativvorschlag' },
       { date: '27.02.2024', iso: '2024-02-27', label: 'Standpunkt des EP in erster Lesung' },
       { date: '19.03.2024', iso: '2024-03-19', label: 'Billigung des Standpunkts des EP in erster Lesung durch den Rat (Annahme des Gesetzgebungsakts)' },
       { date: '11.04.2024', iso: '2024-04-11', label: 'Unterzeichnung durch den Präsidenten des EP und den Präsidenten des Rates' },
@@ -183,6 +187,41 @@ describe('euRailView', () => {
       const v = euRailView({ ...reg, rail: rail({ inForce: null }) }, TODAY)
       expect(station(v, 'wirkung')!.gap).toBe('Der Cellar nennt kein Datum des Inkrafttretens.')
     })
+
+    it('enters into force from a day in the future, and since it once it has come', () => {
+      const future = { ...reg, rail: rail({ inForce: '2026-12-01', applies: null }) }
+      expect(station(euRailView(future, TODAY), 'wirkung')!.facts[0]).toBe('in Kraft ab 01.12.2026')
+      expect(station(euRailView(future, '2026-12-01'), 'wirkung')!.facts[0]).toBe('in Kraft seit 01.12.2026')
+    })
+  })
+
+  describe('a decision that takes effect („PE") instead of entering into force', () => {
+    const decision = (over: Partial<EuActRail>) => response({
+      act: { ...REGULATION, celex: '32017D0131', kind: 'beschluss', label: 'Beschluss (EU) 2017/131' },
+      rail: rail({ adoptedBy: 'kommission', procedure: null, inForce: null, ...over }),
+    })
+
+    it('says since when it takes effect, and names no gap', () => {
+      expect(station(euRailView(decision({ effective: '2017-01-25' }), TODAY), 'wirkung')).toMatchObject({ name: 'Geltung', facts: ['wirksam seit 25.01.2017'], gap: null })
+    })
+
+    it('says from when, for a day still to come', () => {
+      expect(station(euRailView(decision({ effective: '2027-01-01' }), TODAY), 'wirkung')!.facts).toEqual(['wirksam ab 01.01.2027'])
+      expect(station(euRailView(decision({ effective: '2027-01-01' }), '2027-01-01'), 'wirkung')!.facts).toEqual(['wirksam seit 01.01.2027'])
+    })
+
+    it('prefers the entry into force where both are typed, and names the gap only where neither is', () => {
+      expect(station(euRailView(decision({ inForce: '2017-01-20', effective: '2017-01-25' }), TODAY), 'wirkung')!.facts).toEqual(['in Kraft seit 20.01.2017'])
+      expect(station(euRailView(decision({ effective: null }), TODAY), 'wirkung')).toMatchObject({ facts: [], gap: 'Der Cellar nennt kein Datum des Inkrafttretens.' })
+    })
+  })
+
+  it('keeps the procedure number where no Observatory page can be expected, and says nothing about the Observatory', () => {
+    const v = euRailView(response({ rail: rail({ procedure: procedure({ reference: '1992/0412(COD)', type: 'COD', observatoryUrl: null }) }) }), TODAY)
+    expect(station(v, 'beschluss')).toMatchObject({ source: null, gap: null })
+    expect(station(v, 'beschluss')!.facts).toContain('1992/0412(COD)')
+    expect(v.procedure).toMatchObject({ reference: '1992/0412(COD)', observatory: null })
+    for (const text of allStrings(v)) expect(text).not.toMatch(/Observatory/)
   })
 
   it('names the Council alone where it adopted a directive', () => {
@@ -330,6 +369,8 @@ describe('euRailView', () => {
       response({ rail: null, oj: null }),
       response({ rail: rail({ procedure: null }) }),
       response({ rail: rail({ procedure: procedure({ otherEvents: 1 }) }) }),
+      response({ act: { ...REGULATION, kind: 'beschluss' }, rail: rail({ inForce: null, effective: '2027-01-01' }) }),
+      response({ act: REGULATION, rail: rail({ inForce: '2027-01-01' }) }),
     ]
     for (const c of cases) {
       for (const text of allStrings(euRailView(c, TODAY))) {

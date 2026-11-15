@@ -312,7 +312,8 @@ usePageSeo({
           </dt>
           <dd>
             Titel, Beschlussdatum, Umsetzungsfrist und Fundstelle im Amtsblatt
-            von EU-Rechtsakten, zum Verfahren eines Rechtsakts dessen Nummer,
+            von EU-Rechtsakten, die Tage des Inkrafttretens und des
+            Geltungsbeginns, zum Verfahren eines Rechtsakts dessen Nummer,
             die Nummer des Vorschlags der Kommission und die Schritte mit
             ihrem Datum, aus dem Cellar, und der Link auf
             <ExternalLink

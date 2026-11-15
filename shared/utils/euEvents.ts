@@ -5,9 +5,9 @@
  * The Cellar types every step of a dossier (`cdm:event_legal_has_type_
  * concept_type_event_legal`); over the 208 dossiers of the map's 231 acts
  * there are 85 types (15.11.2026). Most are transmissions, referrals and
- * committee stages. The rail shows the DECISIONS: the proposal, what
- * Parliament and the Council decided, the opinions the Treaties ask for, the
- * signature. A type that is not in this table is counted on the page („N
+ * committee stages. The rail shows the DECISIONS — 31 types: the proposal,
+ * what Parliament and the Council decided, the opinions the Treaties ask
+ * for, the signature. A type that is not in this table is counted on the page („N
  * weitere Schritte"), never shown and never taken for „did not happen".
  *
  * THE LABELS ARE THE CELLAR'S, read on 15.11.2026 from its authority table
@@ -66,6 +66,11 @@ export const EU_EVENTS: Readonly<Record<string, EuEventKind>> = {
   AMEND_R2_byEP: { label: 'Annahme von Abänderungen am Standpunkt des Rates in erster Lesung durch das EP', role: 'parliament' },
   APR_R2_POS_CONSIL_byEP: { label: 'Billigung des Standpunkts des Rates in erster Lesung durch das EP (Annahme des Gesetzgebungsakts)', role: 'parliament' },
   DEC_R3_byEP: { label: 'Beschluss des Parlaments in 3. Lesung', role: 'parliament' },
+  // Parliament's decision in a consultation or consent procedure (2022/0401(APP),
+  // 10.04.2024 — the rail missed it until 15.11.2026).
+  DEC_byEP: { label: 'Beschluss des EP', role: 'parliament' },
+  // The plenary's decision on amendments before the interinstitutional negotiations.
+  AMEND_byEP: { label: 'Beschluss des EP über Änderungen am Legislativvorschlag', role: 'parliament' },
 
   // The Council
   ADP_R1_POS_byCONSIL: { label: 'Standpunkt des Rates in erster Lesung und Begründung', role: 'council' },

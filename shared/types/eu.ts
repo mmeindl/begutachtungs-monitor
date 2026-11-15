@@ -239,11 +239,19 @@ export interface EuProposal {
  * both proposals stand here and the steps of both, in date order.
  */
 export interface EuProcedure {
-  /** „2022/0117(COD)"; null where the dossier carries no procedure number. Of the first dossier where there are two. */
+  /**
+   * „2022/0117(COD)"; null where the dossier carries no procedure number.
+   * Where an act hangs on two dossiers, that of the procedure whose number
+   * sorts last — the most recent one.
+   */
   reference: string | null
-  /** The Cellar's procedure type, „OLP", „COD", „CNS" …; null where it names none. */
+  /** The Cellar's procedure type, „OLP", „COD", „CNS" …; null where it names none. Of the same dossier as `reference`. */
   type: string | null
-  /** The procedure in the European Parliament's Legislative Observatory — built from `reference`, never fetched. */
+  /**
+   * The procedure in the European Parliament's Legislative Observatory
+   * (English) — built from `reference`, never fetched; null where no page
+   * can be expected (`OBSERVATORY_FIRST_YEAR`, `OBSERVATORY_TYPES`).
+   */
   observatoryUrl: string | null
   proposals: EuProposal[]
   /** The steps the monitor reads, ascending by day, each (code, day) once. */
@@ -276,13 +284,15 @@ export interface EuActRail {
   procedure: EuProcedure | null
   /** The day the act entered into force (the Cellar's date typed „EV"), ISO; null where it types none. */
   inForce: string | null
+  /** The day the act takes effect (the Cellar's date typed „PE", „Wirksamwerden") — what a Beschluss carries instead of an entry into force; ISO, null where the Cellar types none. */
+  effective: string | null
   /**
    * The day the act as a whole starts to apply, where the Cellar types one
    * (a date typed „MA" that is not marked partial); null where it does not.
    * Often later than `inForce` for a regulation.
    */
   applies: string | null
-  /** Days from which single provisions apply (typed „MA", marked partial), ascending. */
+  /** Days from which single provisions apply (typed „MA" and marked partial, or typed „MA/PART"), ascending. */
   partialApplication: string[]
 }
 
