@@ -303,14 +303,25 @@ usePageSeo({
              2011/833/EU, editorial content under CC BY 4.0, the logo not at
              all. What the monitor takes is metadata — dates — and a link:
              no text of an act, no logo. The wording below says exactly that
-             and no more. -->
+             and no more. Since 15.11.2026 the act's procedure joins it: its
+             number, the Commission proposal's number and the dated steps,
+             metadata from the same Cellar. -->
         <div id="imp-eurlex">
           <dt>
             Amt für Veröffentlichungen der Europäischen Union (EUR-Lex, Cellar)
           </dt>
           <dd>
-            Titel, Beschlussdatum und Umsetzungsfrist von EU-Rechtsakten aus
-            dem Cellar und der Link auf
+            Titel, Beschlussdatum, Umsetzungsfrist und Fundstelle im Amtsblatt
+            von EU-Rechtsakten, die Tage des Inkrafttretens und des
+            Geltungsbeginns, zum Verfahren eines Rechtsakts dessen Nummer,
+            die Nummer des Vorschlags der Kommission und die Schritte mit
+            ihrem Datum, zu einem Vorschlag der Kommission dessen Titel und
+            Datum, sein Verfahren mit dem Stand, den der Cellar dafür angibt,
+            und die Rechtsakte, die daraus hervorgegangen sind, die Liste der
+            Richtlinien mit ihren Umsetzungsfristen, und zu einer Richtlinie
+            die Maßnahmen, die Österreich der Kommission als Umsetzung
+            gemeldet hat (Titel, Art, Tag der Meldung, Fundstelle), aus dem
+            Cellar, und der Link auf
             <ExternalLink
               href="https://eur-lex.europa.eu"
               class="link-inline"
@@ -320,6 +331,77 @@ usePageSeo({
               class="link-inline"
             >rechtlichen Hinweis</ExternalLink> der Public Domain widmet
             (CC0 1.0). Die Texte der Rechtsakte verlinkt der Monitor.
+          </dd>
+        </div>
+        <!-- The Commission's portal „Ihre Meinung zählt" (15.11.2026, step 2
+             of the EU cycle): data of an initiative — stage, feedback
+             period, number of contributions — read from the portal's own
+             JSON addresses; the Commission's legal notice licenses its
+             content CC BY 4.0. A contribution's text is never kept. Since
+             step 4 (15.11.2026) the list of contributions is read on demand:
+             organisations named, persons counted (`docs/decisions.md`,
+             „Who gave feedback on the Commission's portal"). -->
+        <div id="imp-kommission">
+          <dt>
+            Europäische Kommission, Portal „Ihre Meinung zählt“
+          </dt>
+          <dd>
+            Die Liste der Vorhaben, zu denen gerade Rückmeldungen möglich sind,
+            und zu einzelnen Vorhaben und Vorschlägen der Kommission: Titel,
+            das Stadium, die vorgesehene Art des Rechtsakts, der Zeitraum, in
+            dem Rückmeldungen möglich sind oder waren, und ihre Zahl, abgefragt
+            vom Portal
+            <ExternalLink
+              href="https://ec.europa.eu/info/law/better-regulation/have-your-say_de"
+              class="link-inline"
+            >„Ihre Meinung zählt“</ExternalLink>. Inhalte der Kommission stehen
+            laut ihrem
+            <ExternalLink
+              href="https://commission.europa.eu/legal-notice_de"
+              class="link-inline"
+            >rechtlichen Hinweis</ExternalLink> unter CC BY 4.0; der Monitor
+            gibt sie gekürzt und in eigener Darstellung wieder. Beiträge
+            selbst übernimmt er nicht, er verlinkt das Portal. Wer sich zu
+            einer Frist geäußert hat, liest der Monitor erst, wenn jemand
+            danach fragt, und zunächst die neuesten 1.000 Rückmeldungen, weitere
+            nur, wenn jemand sie anfordert, höchstens 5.000 je Frist:
+            Organisationen nennt er mit dem Namen, den das Portal
+            veröffentlicht, dem Tag ihrer Rückmeldung, ihrer Art und ihrem
+            Land, und verlinkt die Rückmeldung im Portal; Privatpersonen
+            zählt er und nennt sie nicht. Die
+            Namen hält er höchstens sechs Stunden im Arbeitsspeicher und
+            speichert sie nicht.
+          </dd>
+        </div>
+        <!-- The register of the European Citizens' Initiative (15.11.2026,
+             step 5 of the EU cycle): status, days and counts of an
+             initiative, read from the register's own JSON addresses; the
+             EU's legal notice licenses EU content CC BY 4.0, third parties'
+             rights reserved, logos excluded (checked 14.11.2026). Organisers,
+             funders, logos and the organisers' texts are never read
+             (`server/utils/eu/eciRegister.ts`). -->
+        <div id="imp-buergerinitiative">
+          <dt>
+            Europäische Kommission, Register der Europäischen Bürgerinitiative
+          </dt>
+          <dd>
+            Titel, Stand, die Tage der Registrierung, der Sammlung, der
+            Einreichung und der Antwort, die Zahl der Unterstützungen insgesamt
+            und aus Österreich, die Links zum Sammelsystem und zur Antwort der
+            Kommission, abgefragt vom
+            <ExternalLink
+              href="https://citizens-initiative.europa.eu/_de"
+              class="link-inline"
+            >Register</ExternalLink>. Inhalte der Europäischen Union stehen
+            laut ihrem
+            <ExternalLink
+              href="https://european-union.europa.eu/legal-notice_de"
+              class="link-inline"
+            >rechtlichen Hinweis</ExternalLink> unter CC BY 4.0; der Monitor
+            gibt sie gekürzt und in eigener Darstellung wieder. Namen der
+            Organisatorinnen und Organisatoren und der Geldgeber, Logos sowie
+            die Texte der Initiativen übernimmt der Monitor nicht; er verlinkt
+            das Register.
           </dd>
         </div>
         <!-- The Länder since 22.10.2026 (Salzburg, then Wien and

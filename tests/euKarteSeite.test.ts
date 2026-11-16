@@ -5,6 +5,7 @@ import {
   deadlineReverseOrderDe,
   deadlineTabOf,
   euActComparator,
+  euActOwnDirection,
   euActHaystack,
   euActCredits,
   euActPageView,
@@ -64,6 +65,10 @@ describe('euActPageView', () => {
     incomplete: [],
     oj: null,
     eli: null,
+    rail: null,
+    measures: null,
+    consultation: null,
+    memberState: null,
     ...over,
   })
   const day = (iso: string) => Date.parse(`${iso}T00:00:00Z`) / 86_400_000
@@ -82,17 +87,26 @@ describe('euActPageView', () => {
     expect(further.chart!.footnote).toBe('¹ Weitere Fristen für einzelne Bestimmungen: 01.01.2025')
     expect(further.footnote).toBeNull()
     const reg = euActPageView(response({ act: { ...response({}).act, kind: 'verordnung', label: 'Verordnung (EU) 2023/1114', transposition: null, adopted: null } }))
-    expect(reg.head).toEqual(['gilt unmittelbar, keine Umsetzungsfrist'])
+    // A regulation is carried out, not transposed: the drafts' heading, the empty sentence and the description say so.
+    expect(reg.implementingHeading).toBe('Entwürfe, die sie durchführen')
+    expect(euActPageView(response({ act: { ...response({}).act, kind: 'verordnung', transposition: null }, restating: [draft({})] })).noneImplementing).toContain('führt den Rechtsakt neu durch')
+    expect(reg.seoTail).toBe('den Rechtsakt durchführen, mit ihrer Begutachtung')
+    // With drafts that only restate it; without any draft the monitor says it found none.
+    expect(euActPageView(response({ implementing: [], restating: [draft({})] })).noneImplementing).toContain('setzt den Rechtsakt neu um')
+    expect(euActPageView(response({ implementing: [], restating: [] })).noneImplementing).toBe('Der Monitor hat im Fenster dieser Gesetzgebungsperiode keinen Entwurf gefunden, der den Rechtsakt nennt.')
+    expect(euActPageView(response({ act: { ...response({}).act, kind: 'beschluss', transposition: null } })).implementingHeading).toBe('Entwürfe, die ihn durchführen')
+    // The head says the adoption only; what the act does stands in the card's heading and the last section.
+    expect(reg.head).toEqual([])
   })
 
-  it('keeps the deadline and its footnote in the head where there is no chart to label them', () => {
+  it('keeps the head to the adoption also where there is no chart: the card and the section „Umsetzung" carry the deadline', () => {
     const cold = euActPageView(response({
       act: { ...response({}).act, transposition: { deadline: '2026-05-29', otherDates: ['2025-01-01'] } },
       implementing: [draft({ stand: null })],
     }))
     expect(cold.chart).toBeNull()
-    expect(cold.head).toEqual(['beschlossen am 11.04.2024', 'Umsetzungsfrist bis 29.05.2026¹'])
-    expect(cold.footnote).toBe('¹ Weitere Fristen für einzelne Bestimmungen: 01.01.2025')
+    expect(cold.head).toEqual(['beschlossen am 11.04.2024'])
+    expect(cold.footnote).toBeNull()
   })
 
   it('puts the act\'s subject from its official title under the citation, none without a title', () => {
@@ -266,7 +280,7 @@ describe('laneNameOf', () => {
 })
 
 describe('euActsRows', () => {
-  it('lists each act with its deadline as a grey state box, its counts and the Länder by name', () => {
+  it('lists each act with its deadline as a grey state box, its counts in a column of their own and the Länder by name', () => {
     const r: EuActsResponse = {
       gp: 'XXVIII',
       window: { from: '2024-10-24', to: null },
@@ -279,14 +293,14 @@ describe('euActsRows', () => {
       ],
     }
     expect(euActsRows(r)).toEqual([
-      { key: '32024L1069', label: 'Richtlinie (EU) 2024/1069', path: '/eu-recht/richtlinie/2024/1069', subject: 'über den Schutz von Personen, die sich öffentlich beteiligen', state: { label: 'Umsetzungsfrist', detail: 'bis 07.05.2026', tone: 'inactive', actionable: false }, counts: '1 Entwurf des Bundes · 3 Entwürfe der Länder', lands: ['Oberösterreich', 'Salzburg', 'Wien'] },
-      { key: '32023R1114', label: 'Verordnung (EU) 2023/1114', path: '/eu-recht/verordnung/2023/1114', subject: null, state: { label: 'Gilt unmittelbar', detail: 'keine Umsetzungsfrist', tone: 'inactive', actionable: false }, counts: '2 Entwürfe des Bundes', lands: [] },
+      { key: '32024L1069', label: 'Richtlinie (EU) 2024/1069', path: '/eu-recht/richtlinie/2024/1069', subject: 'über den Schutz von Personen, die sich öffentlich beteiligen', state: { label: 'Umsetzungsfrist', detail: 'bis 07.05.2026', tone: 'inactive', actionable: false }, counts: '1 Entwurf des Bundes · 3 Entwürfe der Länder', lands: ['Oberösterreich', 'Salzburg', 'Wien'], drafts: { value: '4', counted: true, detail: 'Bund 1 · Länder 3', said: '1 Entwurf des Bundes · 3 Entwürfe der Länder (Oberösterreich, Salzburg, Wien)' }, landsLine: 'Länder: Oberösterreich, Salzburg, Wien' },
+      { key: '32023R1114', label: 'Verordnung (EU) 2023/1114', path: '/eu-recht/verordnung/2023/1114', subject: null, state: { label: 'Gilt unmittelbar', detail: 'keine Umsetzungsfrist', tone: 'inactive', actionable: false }, counts: '2 Entwürfe des Bundes', lands: [], drafts: { value: '2', counted: true, detail: 'Bund', said: '2 Entwürfe des Bundes' }, landsLine: null },
     ])
   })
 })
 
 describe('the overview\'s tabs and orders', () => {
-  const act = (celex: string, deadline: string | null, label = celex) => ({ celex, label, transposition: deadline ? { deadline, otherDates: [] } : null })
+  const act = (celex: string, deadline: string | null, label = celex, drafts = 0) => ({ celex, label, transposition: deadline ? { deadline, otherDates: [] } : null, counts: { bund: drafts, laender: 0 } })
 
   it('sorts a deadline today under „Frist läuft", a passed one under „Abgelaufen", none under „Ohne Frist"', () => {
     expect(deadlineTabOf(act('a', '2026-11-06'), '2026-11-06')).toBe('laufend')
@@ -315,6 +329,26 @@ describe('the overview\'s tabs and orders', () => {
     expect([...acts].sort(euActComparator('name', 'ab')).map((a) => a.label)).toEqual(['Richtlinie (EU) 2024/1385', 'Richtlinie (EU) 2024/927', 'Delegierte Richtlinie (EU) 2024/1262'])
   })
 
+  it('orders by drafts, most first, ties in the tab\'s deadline order whichever way the drafts are turned', () => {
+    const acts = [
+      act('few', '2027-01-01', 'few', 1),
+      { ...act('many', '2028-01-01', 'many'), counts: { bund: 1, laender: 4 } },
+      act('tieLate', '2029-01-01', 'tieLate', 3),
+      act('tieSoon', '2026-12-01', 'tieSoon', 3),
+      act('tieNone', null, 'tieNone', 3),
+    ]
+    const order = (dir: 'auf' | 'ab', tie: 'auf' | 'ab') => [...acts].sort(euActComparator('entwuerfe', dir, tie)).map((a) => a.celex)
+    expect(euActOwnDirection('entwuerfe', 'laufend')).toBe('ab')
+    expect(euActOwnDirection('entwuerfe', 'ohne')).toBe('ab')
+    expect(euActOwnDirection('name', 'abgelaufen')).toBe('auf')
+    expect(euActOwnDirection('frist', 'abgelaufen')).toBe('ab')
+    // Bund and Länder together: 5 beats 3.
+    expect(order('ab', 'auf')).toEqual(['many', 'tieSoon', 'tieLate', 'tieNone', 'few'])
+    expect(order('ab', 'ab')).toEqual(['many', 'tieLate', 'tieSoon', 'tieNone', 'few'])
+    // Turned round, the ties keep the tab's order; an act without a deadline stays last among its ties.
+    expect(order('auf', 'auf')).toEqual(['few', 'tieSoon', 'tieLate', 'tieNone', 'many'])
+  })
+
   it('searches the label, the official title and the CELEX', () => {
     expect(euActHaystack({ label: 'Richtlinie (EU) 2022/2555', title: 'Richtlinie … (NIS-2-Richtlinie)', celex: '32022L2555' })).toBe('Richtlinie (EU) 2022/2555 Richtlinie … (NIS-2-Richtlinie) 32022L2555')
   })
@@ -335,9 +369,9 @@ describe('the fold of acts drafts only restate', () => {
 
   it('gives the rows the overview\'s anatomy and order; a directive without a date says „keine bekannt"', () => {
     expect(euRestatingRows({ restatingOnly: restating })).toEqual([
-      { key: '32009L0043', label: 'Richtlinie 2009/43/EG', path: '/eu-recht/richtlinie/2009/43', subject: null, state: { label: 'Umsetzungsfrist', detail: 'bis 30.06.2011', tone: 'inactive', actionable: false }, counts: 'wiederholt in 3 Entwürfen des Bundes · 1 Entwurf der Länder', lands: ['Salzburg'] },
-      { key: '32014L0024', label: 'Richtlinie 2014/24/EU', path: '/eu-recht/richtlinie/2014/24', subject: null, state: { label: 'Umsetzungsfrist', detail: 'keine bekannt', tone: 'inactive', actionable: false }, counts: 'wiederholt in 2 Entwürfen der Länder', lands: ['Burgenland', 'Kärnten'] },
-      { key: '32016R0679', label: 'Verordnung (EU) 2016/679', path: '/eu-recht/verordnung/2016/679', subject: null, state: { label: 'Gilt unmittelbar', detail: 'keine Umsetzungsfrist', tone: 'inactive', actionable: false }, counts: 'wiederholt in 1 Entwurf des Bundes', lands: [] },
+      { key: '32009L0043', label: 'Richtlinie 2009/43/EG', path: '/eu-recht/richtlinie/2009/43', subject: null, state: { label: 'Umsetzungsfrist', detail: 'bis 30.06.2011', tone: 'inactive', actionable: false }, counts: 'wiederholt in 3 Entwürfen des Bundes · 1 Entwurf der Länder', lands: ['Salzburg'], drafts: { value: '4', counted: true, detail: 'Bund 3 · Länder 1', said: 'wiederholt in 3 Entwürfen des Bundes · 1 Entwurf der Länder (Salzburg)' }, landsLine: 'Länder: Salzburg' },
+      { key: '32014L0024', label: 'Richtlinie 2014/24/EU', path: '/eu-recht/richtlinie/2014/24', subject: null, state: { label: 'Umsetzungsfrist', detail: 'keine bekannt', tone: 'inactive', actionable: false }, counts: 'wiederholt in 2 Entwürfen der Länder', lands: ['Burgenland', 'Kärnten'], drafts: { value: '2', counted: true, detail: 'Länder', said: 'wiederholt in 2 Entwürfen der Länder (Burgenland, Kärnten)' }, landsLine: 'Länder: Burgenland, Kärnten' },
+      { key: '32016R0679', label: 'Verordnung (EU) 2016/679', path: '/eu-recht/verordnung/2016/679', subject: null, state: { label: 'Gilt unmittelbar', detail: 'keine Umsetzungsfrist', tone: 'inactive', actionable: false }, counts: 'wiederholt in 1 Entwurf des Bundes', lands: [], drafts: { value: '1', counted: true, detail: 'Bund', said: 'wiederholt in 1 Entwurf des Bundes' }, landsLine: null },
     ])
   })
 

@@ -632,14 +632,15 @@ const BUND: DatenlageSource = {
   },
 }
 
-/** An EU cell nobody has surveyed: the monitor reads no EU procedure yet. */
+/** An EU cell nobody has surveyed for this table. */
 const EU_NOT_SURVEYED: DatenlageCell = { text: 'nicht erhoben', state: 'notSurveyed' }
 
 const EU: DatenlageSource = {
   key: 'eu',
   id: 'eu',
   name: 'EU',
-  summary: 'Von der EU liest der Monitor bisher nur den Rechtsakt, den ein Entwurf umsetzt, und dessen Umsetzungsfrist aus EUR-Lex. Das Gesetzgebungsverfahren der EU liest er noch nicht; was es veröffentlicht, ist hier nicht erhoben.',
+  // Widened on 15.11.2026: the sentence said the monitor read no EU procedure, which the act's rail, the directives to transpose and the portal's open windows had made false; the register of the Citizens' Initiative joined the same day (step 5).
+  summary: 'Von der EU liest der Monitor den Rechtsakt, den ein Entwurf umsetzt, mit Umsetzungsfrist und Verfahren aus EUR-Lex, die Richtlinien, die umzusetzen sind, aus dem Portal „Ihre Meinung zählt“ der Kommission, wozu sie gerade Rückmeldungen entgegennimmt, und aus dem Register der Europäischen Bürgerinitiative, welche Initiativen gerade Unterstützungen sammeln. Was das Gesetzgebungsverfahren der EU darüber hinaus veröffentlicht, ist hier nicht erhoben.',
   cells: {
     begutachtungRecht: EU_NOT_SURVEYED,
     verordnungen: EU_NOT_SURVEYED,

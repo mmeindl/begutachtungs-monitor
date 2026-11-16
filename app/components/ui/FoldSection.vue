@@ -17,7 +17,13 @@
  *
  * `size`: `lg` is a station's sub-section (the h3 of `PageSubsection`),
  * `base` a part of the Kurzinformation, under its own sub-heading.
+ *
+ * `toggle` says whether the fold is now open — for a fold whose content is
+ * read only when a reader opens it.
  */
+const emit = defineEmits<{ toggle: [open: boolean] }>()
+const onToggle = (event: Event) => emit('toggle', (event.target as HTMLDetailsElement).open)
+
 withDefaults(
   defineProps<{
     heading: string
@@ -32,7 +38,7 @@ withDefaults(
 </script>
 
 <template>
-  <details class="group" :open="open || undefined">
+  <details class="group" :open="open || undefined" @toggle="onToggle">
     <summary
       class="-mx-3 flex min-h-target cursor-pointer list-none items-center justify-between gap-3 rounded px-3 py-3 hover:bg-hover [&::-webkit-details-marker]:hidden"
     >

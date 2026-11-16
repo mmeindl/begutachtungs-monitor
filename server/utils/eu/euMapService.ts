@@ -419,6 +419,16 @@ export async function withRelatedOfOwnPeriod(fact: EuRechtResponse, key: string,
 /** How long a list waits for the map — the station map's brake (`/api/drafts`). */
 export const EU_MAP_LIST_BUDGET_MS = 2_500
 
+/**
+ * The map for a list that can stand without it, or null where it is not at
+ * hand within the budget: the list of directives to transpose answers from
+ * the Cellar in under a second, and must not wait a minute for a cold map
+ * to be assembled. The assembly goes on behind it; the next request has it.
+ */
+export function euMapForList(gp: string): Promise<EuMap | null> {
+  return withinBudget(getEuMap(gp), EU_MAP_LIST_BUDGET_MS)
+}
+
 /** The map's markers for a list, by key, or null where the map is not at hand within the budget. */
 export async function euMarkersForList(gp: string): Promise<Map<string, EuMarker | null> | null> {
   const map = await withinBudget(getEuMap(gp), EU_MAP_LIST_BUDGET_MS)

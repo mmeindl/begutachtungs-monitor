@@ -66,6 +66,16 @@ const FETCHED: Record<string, string> = {
     'only, like the search\'s PDFs; production keeps the extracted page texts one layer up, which are derived and small.',
   'eu-cellar': "the Cellar's SPARQL answer for one CELEX, as it arrived; the transposition dates are read from it fresh on every call",
   'eu-cellar-oj': "the Cellar's SPARQL answer on where one act was published, as it arrived; the Amtsblatt reference is read from it fresh on every call",
+  'eu-cellar-dossier': "the Cellar's SPARQL answer on one act's authors, dates and procedure dossier, as it arrived; the rail is read from it fresh on every call",
+  'eu-cellar-vorschlag': "the Cellar's SPARQL answer on one proposal of the Commission — its day, title, dossier flags, steps and the acts it produced — as it arrived; read fresh on every call",
+  'eu-cellar-richtlinien': "the Cellar's SPARQL answer on the directives with a transposition date in a window, as it arrived; the list is read from it fresh on every call",
+  'eu-cellar-massnahmen-anzahl': "the Cellar's SPARQL answer on how many measures one country notified per directive of a window, as it arrived",
+  'eu-cellar-massnahmen': "the Cellar's SPARQL answer on the measures one country notified for one directive, as it arrived; read fresh on every call",
+  'eu-portal-suche': "the ids of the initiatives the Commission's portal found for one COM number — the ids only, read from its answer",
+  'eu-portal-initiative': "one initiative of the Commission's portal as the reader's fixed list of fields; the portal's own record, which names officials, is never kept",
+  'eu-portal-offen': "every initiative with an open window on the Commission's portal, as the reader's fixed list of fields — the ids, titles, stages and days only, read from its list",
+  'eu-eci-liste': "the register of the European Citizens' Initiative's list as the reader's fixed list of fields — number, title, status, count and day per initiative, and the register's head counts; no logo",
+  'eu-eci-initiative': "one initiative of the register as the reader's fixed list of fields; the register's own record, which names organisers and sponsors and carries their texts, is never kept",
   'eu-bundesrecht': "whether Bundesrecht in force on one day names an EU act, from RIS's full-text search; the law as of a past day does not change (D4)",
   'eu-landesrecht': "the same search over one Land's consolidated Landesrecht (LrKons) on one day, as RIS answered it — the hits are read fresh on every call (D4)",
 }
@@ -80,7 +90,8 @@ const FETCHED: Record<string, string> = {
  *  - every list, and `gegenstand`: they move within a day;
  *  - every search answer (`bgbl-nummer-suche`, `bund-land-suche`,
  *    `eu-bundesrecht`, `eu-landesrecht`) and the Cellar's SPARQL answers
- *    (`eu-cellar`, `eu-cellar-oj`): an answer given before RIS or the Cellar
+ *    (`eu-cellar`, `eu-cellar-oj`, `eu-cellar-dossier`, `eu-cellar-richtlinien`,
+ *    `eu-cellar-massnahmen-anzahl`, `eu-cellar-massnahmen`, `eu-cellar-vorschlag`): an answer given before RIS or the Cellar
  *    knew the act — none, or a partial one — would stand for a month, and no
  *    restart would clear it;
  *  - `bgbl-jahrgang-seite-laufend`: the running year still grows;
@@ -217,6 +228,29 @@ describe('the document disk', () => {
     // And the guard on the guard: the pattern does catch the Stellungnahmen
     // caches that exist, so a rename cannot make it a test of nothing.
     expect(found.some((f) => STATEMENT_NAME.test(f.name))).toBe(true)
+  })
+
+  it('never holds who gave feedback on the Commission\'s portal: memory only, six hours at most', () => {
+    // The reading names organisations, and consent to publication can be
+    // withdrawn after a window closed (step 4 of the EU cycle, 15.11.2026):
+    // the derived mount is memory in dev and in production, the fetched one
+    // is a directory in dev.
+    // Two caches since 16.11.2026: page one alone, and the readings built on it — since the same day one entry per
+    // step of five pages („Weitere … lesen", up to fifty), each built on the step before, all under the one name.
+    const feedback = found.filter((f) => f.name.startsWith('eu-portal-rueckmeldungen'))
+    expect(feedback.map((f) => f.name).sort()).toEqual(['eu-portal-rueckmeldungen', 'eu-portal-rueckmeldungen-erste'])
+    for (const f of feedback) {
+      expect(f.derived, f.name).toBe(true)
+      expect(f.documents, f.name).toBe(false)
+      expect(FETCHED[f.name], f.name).toBeUndefined()
+      expect(DOCUMENTS, f.name).not.toContain(f.name)
+      expect(optionsOf(f.options), f.name).toMatch(/\bmaxAge:\s*FEEDBACK_NAMES_TTL_S\b/)
+    }
+    const ttl = readFileSync(join(UTILS, 'cache', 'ttl.ts'), 'utf8')
+    expect(/export const FEEDBACK_NAMES_TTL_S = 60 \* 60 \* 6\b/.test(ttl)).toBe(true)
+    // And no other cached function reads the list of contributions.
+    const readers = utilsFiles().filter((f) => /\b(readFeedback|readFeedbackStep|readFirstFeedbackPage)\(/.test(readFileSync(join(UTILS, f), 'utf8')))
+    expect(readers.sort()).toEqual([join('eu', 'portalFeedback.ts'), join('eu', 'portalService.ts')].sort())
   })
 
   it('is cleaned under the directory the driver writes to', () => {

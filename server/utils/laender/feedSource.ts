@@ -12,6 +12,7 @@ import type { H3Event } from 'h3'
 import type { LandCode, LandConsultation } from '#shared/types'
 import { LAND_CODES } from '#shared/utils/laender'
 import { gpWindow } from '#shared/utils/gp'
+import { firstQueryValue } from '#shared/utils/queryParams'
 
 export function feedSourceOf(event: H3Event): 'bund' | LandCode {
   const value = firstQueryValue(getQuery(event).quelle)

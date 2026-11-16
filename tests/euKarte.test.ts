@@ -3,7 +3,7 @@ import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { afterEach, beforeEach, describe, expect, it } from 'vitest'
 import type { BgblOutcome, DraftChain, DraftSummary, EuActView, EuMarker, EuRechtResponse, LandConsultation } from '../shared/types'
-import { euActCelex, euActPath } from '../shared/utils/eu'
+import { EU_BASE_PATH, euActCelex, euActPath, euPath } from '../shared/utils/eu'
 import { gpOfDay } from '../shared/utils/gp'
 import { OPEN_DRAFT_MAX_AGE_MS, fingerprintOf, isFresh } from '../server/utils/cache/factStore'
 import {
@@ -137,6 +137,15 @@ function inputs(over: Partial<EuMapInputs> = {}): EuMapInputs {
     ...over,
   }
 }
+
+describe('euPath — the one place the EU base is written', () => {
+  it('joins below the base, numbers as written, empty segments dropped', () => {
+    expect(EU_BASE_PATH).toBe('/eu-recht')
+    expect(euPath()).toBe('/eu-recht')
+    expect(euPath('richtlinie', 2024, 1069)).toBe('/eu-recht/richtlinie/2024/1069')
+    expect(euPath('', 'karte')).toBe('/eu-recht/karte')
+  })
+})
 
 describe('euActPath and euActCelex', () => {
   it('builds the act page from a CELEX and reads it back', () => {

@@ -1,0 +1,42 @@
+{
+ "results": {
+  "bindings": [
+   {
+    "celex": {
+     "type": "literal",
+     "datatype": "http://www.w3.org/2001/XMLSchema#string",
+     "value": "32024L0299"
+    },
+    "n": {
+     "type": "literal",
+     "datatype": "http://www.w3.org/2001/XMLSchema#integer",
+     "value": "1"
+    }
+   },
+   {
+    "celex": {
+     "type": "literal",
+     "datatype": "http://www.w3.org/2001/XMLSchema#string",
+     "value": "32024L1760"
+    },
+    "n": {
+     "type": "literal",
+     "datatype": "http://www.w3.org/2001/XMLSchema#integer",
+     "value": "2"
+    }
+   },
+   {
+    "celex": {
+     "type": "literal",
+     "datatype": "http://www.w3.org/2001/XMLSchema#string",
+     "value": "32024L1346"
+    },
+    "n": {
+     "type": "literal",
+     "datatype": "http://www.w3.org/2001/XMLSchema#integer",
+     "value": "118"
+    }
+   }
+  ]
+ }
+}

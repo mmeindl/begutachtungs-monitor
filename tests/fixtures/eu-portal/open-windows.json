@@ -1,0 +1,247 @@
+{
+ "exactMatch": true,
+ "initiativeResultDtoPage": {
+  "content": [
+   {
+    "id": 18953.0,
+    "initiativeStatus": "ACTIVE",
+    "reference": "Ares(2026)7463403",
+    "foreseenActType": "PROP_REG",
+    "shortTitle": "Targeted revision of EU passenger rights for persons with disabilities and reduced mobility",
+    "currentStatuses": [
+     {
+      "frontEndStage": "PLANNING_WORKFLOW",
+      "receivingFeedbackStatus": "OPEN",
+      "feedbackStartDate": "2026/11/13 12:17:31",
+      "feedbackEndDate": "2027/01/08 23:59:59",
+      "isCurrent": true
+     }
+    ],
+    "topics": [
+     {
+      "code": "TRANSPORT",
+      "label": "Transport"
+     }
+    ],
+    "initiativeTranslations": [
+     {
+      "value": "Passagierrechte – gezielte Überarbeitung der Rechtsvorschriften zur besseren Berücksichtigung der Bedürfnisse von Menschen mit Behinderungen und eingeschränkter Mobilität",
+      "language": "DE",
+      "field": "SHORT_TITLE"
+     },
+     {
+      "value": "Passenger rights – targeted revision of rules to better address needs of people with disabilities and reduced mobility",
+      "language": "EN",
+      "field": "SHORT_TITLE"
+     }
+    ]
+   },
+   {
+    "id": 17873.0,
+    "initiativeStatus": "ACTIVE",
+    "reference": "Ares(2026)4109761",
+    "foreseenActType": "REG_DEL",
+    "shortTitle": "Ecodesign requirements on product repairability",
+    "currentStatuses": [
+     {
+      "frontEndStage": "PLANNING_WORKFLOW",
+      "receivingFeedbackStatus": "OPEN",
+      "feedbackStartDate": "2026/11/03 09:36:17",
+      "feedbackEndDate": "2027/02/09 23:59:59",
+      "isCurrent": true
+     },
+     {
+      "frontEndStage": "OPC_LAUNCHED",
+      "receivingFeedbackStatus": "OPEN",
+      "feedbackStartDate": "2026/11/03 09:36:17",
+      "feedbackEndDate": "2027/02/09 23:59:59",
+      "isCurrent": true
+     }
+    ],
+    "topics": [
+     {
+      "code": "ENV",
+      "label": "Environment"
+     }
+    ],
+    "initiativeTranslations": [
+     {
+      "value": "Ökodesign-Anforderungen an die Reparierbarkeit von Produkten",
+      "language": "DE",
+      "field": "SHORT_TITLE"
+     },
+     {
+      "value": "Ecodesign requirements on product repairability",
+      "language": "EN",
+      "field": "SHORT_TITLE"
+     }
+    ]
+   },
+   {
+    "id": 19498.0,
+    "initiativeStatus": "ACTIVE",
+    "reference": "Ares(2026)9620334",
+    "foreseenActType": "PROP_REG",
+    "shortTitle": "EU rules on biobased feedstock in plastic packaging",
+    "currentStatuses": [
+     {
+      "frontEndStage": "OPC_LAUNCHED",
+      "receivingFeedbackStatus": "OPEN",
+      "feedbackStartDate": "2026/10/21 15:51:35",
+      "feedbackEndDate": "2027/01/13 23:59:59",
+      "isCurrent": true
+     }
+    ],
+    "topics": [
+     {
+      "code": "ENV",
+      "label": "Environment"
+     }
+    ],
+    "initiativeTranslations": [
+     {
+      "value": "Kunststoffverpackungen, die biobasierte Rohstoffe enthalten – EU-Vorschriften",
+      "language": "DE",
+      "field": "SHORT_TITLE"
+     },
+     {
+      "value": "Plastic packaging containing biobased feedstock – EU rules",
+      "language": "EN",
+      "field": "SHORT_TITLE"
+     }
+    ]
+   },
+   {
+    "id": 19517.0,
+    "initiativeStatus": "ACTIVE",
+    "reference": "COM(2026)1020",
+    "foreseenActType": "PROP_REG",
+    "shortTitle": "Creation of a European critical communication system",
+    "currentStatuses": [
+     {
+      "frontEndStage": "ADOPTION_WORKFLOW",
+      "receivingFeedbackStatus": "OPEN",
+      "feedbackStartDate": "2026/10/15 16:48:21",
+      "feedbackEndDate": "2027/01/10 23:59:59",
+      "isCurrent": true
+     }
+    ],
+    "topics": [
+     {
+      "code": "ASYL",
+      "label": "Migration and asylum"
+     },
+     {
+      "code": "HOME",
+      "label": "Home affairs"
+     }
+    ],
+    "initiativeTranslations": [
+     {
+      "value": "Katastrophenschutz – Aufbau eines Europäischen Systems für kritische Kommunikation",
+      "language": "DE",
+      "field": "SHORT_TITLE"
+     },
+     {
+      "value": "Civil protection - Creation of a European critical communication system",
+      "language": "EN",
+      "field": "SHORT_TITLE"
+     }
+    ]
+   },
+   {
+    "id": 16414.0,
+    "initiativeStatus": "ACTIVE",
+    "reference": "Ares(2026)433232",
+    "foreseenActType": "REG_DEL",
+    "shortTitle": "Certification methodologies for carbon storage in long-lasting products",
+    "currentStatuses": [
+     {
+      "frontEndStage": "ISC_WORKFLOW",
+      "receivingFeedbackStatus": "OPEN",
+      "feedbackStartDate": "2026/11/12 17:34:31",
+      "feedbackEndDate": "2026/12/10 23:59:59",
+      "isCurrent": true
+     }
+    ],
+    "topics": [
+     {
+      "code": "CLIMA",
+      "label": "Climate action"
+     }
+    ],
+    "initiativeTranslations": [
+     {
+      "value": "Zertifizierungsmethoden für die CO2-Speicherung in langlebigen Produkten",
+      "language": "DE",
+      "field": "SHORT_TITLE"
+     },
+     {
+      "value": "Certification methodologies for carbon storage in long-lasting products",
+      "language": "EN",
+      "field": "SHORT_TITLE"
+     }
+    ]
+   },
+   {
+    "id": 19295.0,
+    "initiativeStatus": "ACTIVE",
+    "reference": "Ares(2026)8740131",
+    "foreseenActType": "REG_IMPL",
+    "shortTitle": "Revision of olive oil conformity checks",
+    "currentStatuses": [
+     {
+      "frontEndStage": "ISC_WORKFLOW",
+      "receivingFeedbackStatus": "OPEN",
+      "feedbackStartDate": "2026/11/11 16:51:00",
+      "feedbackEndDate": "2026/12/09 23:59:59",
+      "isCurrent": true
+     }
+    ],
+    "topics": [
+     {
+      "code": "AGRI",
+      "label": "Agriculture and rural development"
+     }
+    ],
+    "initiativeTranslations": [
+     {
+      "value": "Konformitätskontrollen für Olivenöl – Überarbeitung",
+      "language": "DE",
+      "field": "SHORT_TITLE"
+     },
+     {
+      "value": "Olive oil conformity checks – revision",
+      "language": "EN",
+      "field": "SHORT_TITLE"
+     }
+    ]
+   }
+  ],
+  "pageable": {
+   "pageNumber": 0,
+   "pageSize": 100,
+   "sort": {
+    "sorted": false,
+    "unsorted": true,
+    "empty": true
+   },
+   "offset": 0,
+   "paged": true,
+   "unpaged": false
+  },
+  "totalPages": 1,
+  "totalElements": 6,
+  "last": true,
+  "sort": {
+   "sorted": false,
+   "unsorted": true,
+   "empty": true
+  },
+  "numberOfElements": 6,
+  "size": 100,
+  "number": 0,
+  "first": true,
+  "empty": false
+ }
+}

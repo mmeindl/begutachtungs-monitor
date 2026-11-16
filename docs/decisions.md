@@ -676,12 +676,519 @@ The code names the EU rules D1 to D7; this is where they are defined
 - **Bund → Land is keyed by the promulgation (BGBl. I), not the
   Ministerialentwurf.** Drafts are counted, never Länder; „0 Länder" is never
   shown, and unread Länder are not „without" (§12.67).
+- **The acts list („Rechtsakte, die Entwürfe dieser Periode umsetzen")
+  orders by deadline, by name, or by „Entwürfe"** (16.11.2026,
+  `euActComparator`): the drafts, Bund and Länder together, most first,
+  ties in the tab's deadline order; each reversible. It counts drafts that
+  implement an act, never acts not implemented, so it is no order by what
+  is missing. „Ohne Frist" turns a deadline order into the names
+  (`forcedToName`); the drafts' order stays. The fold of acts drafts only
+  restate follows the main list's order.
 - **A reader change that alters a stored finding bumps its reader version in
   the same commit,** or the disk store keeps stale facts (§12.66, §12.67).
 - **The header navigation is the door to `/eu-recht`** (14.11.2026). The
   homepage's window onto the map („EU-Recht in der Begutachtung") and the
   list's link to it (`EuMapLink`) are gone; the list's filter „Setzt
   EU-Recht um" stays — it combines with the other filters, it is no door.
+- **An EU act has a rail of its own, read from the Cellar** (15.11.2026,
+  `server/utils/eu/cellarDossier.ts`, `app/utils/euRail.ts`; facts in
+  `docs/research/eu-zyklus.md`, plan in
+  `docs/research/umsetzungsplan-eu-zyklus.md`). Its stations are „Vorschlag",
+  the station of who decided, „Amtsblatt", and „Umsetzung" (directive,
+  framework decision) or „Geltung" (regulation, decision); „Konsultation"
+  joins in front once the Commission's portal is read. The five national
+  stations are untouched.
+  - **The third station is named from the act's authors in the Cellar,**
+    not from a table of procedure types: Parliament and Council → „Parlament
+    und Rat", the Council alone → „Rat" (measured: all 27 such acts, under
+    four procedure types), the Commission → no such station and no
+    „Vorschlag", with the sentence that the Cellar records no procedure
+    between the institutions for it.
+  - **Only steps on the allowlist are shown** (`shared/utils/euEvents.ts`,
+    31 of the 85 types on the map's dossiers, old and new vocabulary), under
+    the Cellar's own German label. Every other step is counted on the page,
+    never taken for „did not happen".
+  - **The proposal's day is the document's own** (`work_date_document`),
+    which the Legislative Observatory also gives; the Cellar's adoption step
+    is dated a day later in the sample.
+  - **Dates, no durations** (D6 carries over): no time between two steps, no
+    word on whether a deadline has passed. A test holds every string of the
+    rail to that.
+  - **„in Kraft" is the Cellar's date typed EV, „gilt" the one typed MA that
+    is not partial, „wirksam" the one typed PE** (what a Beschluss carries).
+    „gilt unmittelbar in jedem Mitgliedstaat" stands on a regulation only
+    (Art. 288 AEUV).
+  - **A gap names its reason:** the Cellar did not answer; the Cellar links
+    the act to no procedure; the procedure names no proposal; the procedure
+    records no decision of Parliament or Council the monitor reads.
+  - **Every station has a section of the page under the station's own
+    name,** as on a draft's page, and the rail links only to them; what
+    leaves the site (EUR-Lex, the Legislative Observatory) stands in the
+    section. A section exists also where it holds one line today, so a
+    later step of the EU cycle fills a place that is already there; none
+    is empty — it says what the Cellar has or why it has nothing. The
+    sections stand in the rail's order, so the card is the page's table
+    of contents; the last one holds the drafts, which a directive's are
+    said to „umsetzen" and a regulation's or decision's to „durchführen".
+    Rejected: the drafts' section first, against the rail's order. Rejected: one section „Das Verfahren"
+    for two stations, and outbound links in the rail.
+  - **The directives a country has to transpose are listed from the
+    Cellar, not from drafts** (15.11.2026): every directive with a
+    transposition date within two years of today, by deadline, also where
+    nobody works on it; each has a page. Beside it stand two observations
+    from two sources — the drafts the monitor found, the measures the
+    Member State notified to the Commission — each in its own sentence
+    and each with its own „unknown" (null, never 0). A notified measure is
+    the Member State's claim, so the word is „gemeldet"; nothing says
+    „umgesetzt", „offen" or „überfällig", no colour, no count or order by
+    what is missing (rule D6): the columns „Entwürfe" and „Gemeldet" do not
+    sort. The deadline (in the tab's direction) and the directive's name
+    do, each reversible (16.11.2026, `EU_UMSETZUNG_SORT_COLUMNS`, a test
+    holds the two columns out). The Commission's delegated and
+    implementing directives stay behind a chip that is off and says how
+    many they are.
+  - **The Commission's portal „Ihre Meinung zählt" is read narrowly and
+    gently** (15.11.2026): its interface is undocumented. Two addresses —
+    the search by COM number, as a quoted phrase, and one initiative —
+    one request at a time, 2.5 s apart, no retry, only when an act's page
+    asks, cached a day. The list of contributions is asked only when the
+    block „Wer Rückmeldung gegeben hat" nears the reader's viewport (step 4,
+    below). The
+    parser takes a fixed list of fields; the officials' names, mail
+    addresses and telephone numbers in the portal's record reach no
+    cache, no API answer and no page, and only what was parsed is cached.
+    An initiative belongs to a proposal only when one of its publications
+    carries exactly the COM number. „Not found in the portal", „older
+    than the portal", „no number to search by" and „not read" are four
+    sentences, and none says „keine Konsultation". Rejected: the prewarm
+    of every act of the map.
+  - **Who gave feedback on the Commission's portal: organisations named,
+    persons counted** (15.11.2026, step 4, rule decided by the maintainer;
+    `server/utils/eu/portalFeedback.ts`, `namedOrganisationOf`). A row of
+    `allFeedback` names an organisation only if it is `PUBLISHED`, its
+    kind is one of the eight organisation kinds (`EU_CITIZEN`,
+    `NON_EU_CITIZEN`, `OTHER` and any unknown kind are counted, never
+    named), it carries a non-empty organisation name, and two witnesses
+    hold: a structural one — the size is SMALL, MEDIUM or LARGE, or the row
+    carries a Transparency Register number — and a name witness — no word
+    of three letters or more of the sender's first name or surname (case
+    and accents ignored) is a word of the organisation's name. In doubt a
+    sender is a person: any missing or odd field is counted. Measured on
+    15.11.2026: 934 distinct organisation names from 26 windows (1,500
+    rows) read by hand; 8 of them carried a person's name, all 8 MICRO —
+    sole traders carry their own name as the business name. The rule names
+    88 % of the organisation rows. `server/utils/parliament/privacy.ts` is
+    not the witness here and is not touched: built for Austrian submitter
+    lines, it called 62 % of these international names a person and
+    missed 3 of the 8 real cases.
+    - **The name must be a name, and only its head is shown.** The reading
+      through the built reader (15.11.2026: 27 windows in full, 4,537
+      rows, 2,078 distinct names shown, each read by hand) found three
+      the first rule let through: a field that held an identity number
+      instead of a name, and two that named a person in a sentence after
+      the name („… Contact: <name>", „…; <name> … is the co-author"), on
+      rows without a sender's name to compare with. Therefore: a field
+      with a number of five or more digits or an e-mail address is
+      counted; the name is cut at the first „;", at a web address and at
+      „Contact:" and its like; and a head of more than 120 characters is a
+      description, counted (13 of the 2,078). What remains possible is a
+      person named inside the head in a form no test knows. Any change to
+      `namedOrganisationOf` is followed by the same reading: every name
+      the rule newly shows, by hand.
+    - **WITHINFO and ANONYMOUS rows are named alike.** For an organisation
+      the portal's own form publishes the organisation's details, its name
+      included, either way; „anonymous" withholds the contact person's
+      name. That person's name is read only for the name witness, inside
+      the one function, and never copied into a result, a log, an error or
+      a cache. The plan's earlier line (ANONYMOUS shows no organisation)
+      is revised.
+    - **The text arrives and is dropped at the parser** (plan, decision
+      9): the contribution's text, its attachments, the login and the
+      names are not in the parsed row, which has a fixed list of fields; a
+      test feeds all of them and finds none in the output. Each listed
+      contribution links its own page on the portal
+      (`…/initiatives/<initiative>/F<number>_de`, `contributionPageUrl`),
+      where the text is read. „Statement texts are linked, never fetched or
+      parsed" stays as it is for Parliament.
+    - **Names in memory only, six hours** (`FEEDBACK_NAMES_TTL_S`, the
+      derived mount, memory in dev and production): consent to
+      publication can be withdrawn after a window closed, so no name may
+      outlive a restart or reach the disk or the fact store. The API answer
+      says `Cache-Control: no-store` for the same reason.
+    - **On approach, the newest 1,000; more on request, up to 5,000**
+      (plan, decision 10; steps since 16.11.2026, 1,000 instead of 500
+      since the same day, `EU_FEEDBACK_AUTO_PAGES`): the block „Wer
+      Rückmeldung gegeben hat" under each feedback period with
+      contributions (`EuFeedbackBlock`) reads by itself up to ten pages of
+      100, newest first, through the portal's pacer, once, when it comes
+      near the viewport (`useNearViewportSection`) — never with the page;
+      each window's block asks on its own. The automatic reading is 1,000
+      and not unlimited because requests to the portal and time scale with
+      the window — 2.5 s a page, so 50,000 contributions would be 500
+      requests — and the largest windows are campaigns of persons, who are
+      only counted. An open block, not a fold, since 16.11.2026, as the
+      Stellungnahmen stand on a draft page; the loading line holds its
+      place, and a failed read shows the gap sentence with „Erneut
+      versuchen". Where the portal counts more, the list's first row says
+      „Gelesen sind die neuesten 1.000 von 1.099 Rückmeldungen." beside a
+      button „Weitere 99 lesen" (what remains, at most „Weitere 500
+      lesen"; neutral outline like „Weitere 10 anzeigen", not blue). A
+      press asks for the next step of five pages (`?seiten=15`, 20, … 50),
+      so the portal is asked only when a reader wants the answer; a higher
+      fixed limit was rejected for that reason. While the step is read a
+      progress line stands in the button's place and the list stays usable;
+      the step's reading is swapped in under the reader's tab, chip,
+      search, order and paged rows, and the block's live region says its
+      arrival once. A failed step keeps the list and says „Gerade nicht
+      abrufbar" with „Erneut versuchen" for that step. At fifty pages (5,000
+      rows) with more counted, a „Nicht im Monitor" sentence says how many of
+      how many and that the monitor reads no more for one window; no button.
+      The row stands first in the list box, above the tabs (`ListBox`'s
+      `frame` slot): a step changes the tabs' counts as well as the rows and
+      the closing rows, and what a control changes stands at it or below it.
+      The endpoint answers only for a publication that is a window of the
+      initiative named, so it is no proxy for arbitrary numbers, and only
+      for a step that is a multiple of five pages from 5 to 50 (any other is
+      a 400).
+    - **Page one first, no page twice** (16.11.2026, `feedbackOf`,
+      `feedbackStageOf`, `nextAutomaticStep`): a read of 500 took about
+      12 s, and the rows a reader sees first are page one's anyway (newest
+      first, ten a page). So the block asks for page one first
+      (`?teil=erste` on the one route, state `teilweise`, or `gelesen`
+      where page one is the whole list or the first step is cached), then
+      for the first step (`?seiten=5`) and, where more are counted, the
+      second (`?seiten=10`) — two requests from the client, because one
+      request reads at most five pages (below); a window of 480 or exactly
+      500 asks no second step. Page one is cached in memory apart
+      (`eu-portal-rueckmeldungen-erste`, after the naming rule, six hours)
+      and the first step starts from it, so a window costs the portal one
+      request a page (one more where the list moved meanwhile, below); a
+      request in flight is shared, and every step's six hours count from
+      page one's read. Until the automatic reading is complete, the list
+      shows the named rows read so far newest first and the pager, and
+      nothing that counts, filters or orders — no tabs, chip, search,
+      order, set line or closing rows: over part of the reading they would
+      be wrong and would change under the reader's eyes without their
+      doing. The first step's rows are swapped in under the pager, and the
+      live region says the arrival once, at the end. A line with the
+      spinner stands in the tool row's place; where an automatic step
+      fails, a „Gerade nicht abrufbar" sentence with „Erneut versuchen" for
+      that step alone, the rows kept and the controls still hidden — no
+      count stands over a reading that stopped short. When the automatic
+      reading is complete the controls appear and the rows already paged
+      to stay.
+    - **Each step from the step before, five requests at most**
+      (16.11.2026, `readFeedbackStep`, `feedbackOf`): every step is cached
+      apart under its number of pages (`eu-portal-rueckmeldungen`, key
+      `…-s10|f4`, memory, six hours from page one's read) and starts from
+      the step before it — the first one from page one — asking only for
+      the pages it lacks, never one twice, at most five per request, so a
+      step fits the endpoint's 30 s at the pacer's 2.5 s. Where the step
+      before is gone (six hours past, a restart, or the memory's LRU let it
+      go), the step begins again at page one and holds what five requests
+      reach; the block offers the next step from there. Catching up in one
+      request was rejected: it would break the 30 s and the five requests.
+      A window's steps run one after the other (`serial`), so a step's
+      look-up of the one before never meets it half computed.
+    - **Rows that move between reads** (16.11.2026, `readOlder`,
+      `readNewer`). The list is newest first, so a contribution arriving
+      between two reads pushes every row down by one, and the next page
+      would repeat a row already read; a counted row keeps no number and no
+      day (and must not), so a repeat cannot be recognised afterwards. The
+      guard is the portal's count (`totalElements`), the only field of the
+      answer that says the list moved (`totalPages`, `numberOfElements`,
+      `first`, `last` follow from it; no answer carries a time or a
+      version): the progress keeps the count at page one's read (the
+      anchor) and at the latest read. Grown by k since the anchor, the next
+      row stands k further down: the first rows of its page are repeats and
+      are skipped, after being compared one by one with the rows read last
+      (a named row by its number, a counted row by kind, status and
+      country). A count lower than at the read before, a skip that does
+      not fall on the page, a repeat that does not match, or a named row
+      already read among the kept ones is a misfit: the step reads again
+      from page one, once, within its five requests; a second misfit is
+      „Gerade nicht abrufbar". Once the run is read to its end, the rows
+      that arrived since are taken from the head of a fresh page one and
+      the anchor moves there, so „read" can reach „total". The same rule
+      holds inside the first reading. What it cannot see: a contribution
+      withdrawn below the last row read while another arrives, between two
+      reads — the count stays, and a counted row at the seam is counted
+      twice (a named row is caught by its number). `total` on the page is
+      the latest count.
+    - **One row per contribution, as a list of the Stellungnahmen**
+      (maintainer, 15.11.2026; `EuFeedbackPanel`, words in
+      `app/utils/euFeedback.ts`). A named organisation's contribution is a
+      row: date · name (the link to the contribution on the portal) · kind
+      · country (its German name from the runtime's CLDR data,
+      `countryNameOf`; the monitor keeps only the ISO alpha-3 → alpha-2
+      map). An organisation that answered twice stands twice —
+      rows are never merged. The list is the Stellungnahmen panel's
+      grammar, built from its parts: the kinds as tabs with their counts
+      (every kind with a row read, its unnamed included, and the citizens;
+      „Alle" first where there are two tabs or more or „Sonstige" or rows
+      not published), the search over the names above twenty rows, ten rows
+      a page with „Alle N", the order by date (newest first, the portal's
+      own; a row without a date last either way), by name (German
+      collation) or by Land (the German name, then newest first; a row
+      without a country last either way), each reversible. No order by a count, nothing „most active", and no
+      figure stands for what a contribution achieved. The tabs count the
+      kinds' whole; the chip below them counts within the chosen kind —
+      what a control changes stands below it.
+    - **A counted row keeps no date, no number and no link.** Persons
+      (`EU_CITIZEN`, `NON_EU_CITIZEN`), „Sonstige" (`OTHER` and unknown
+      kinds), organisations counted without a name and rows the portal
+      does not list as published are never named rows (since 16.11.2026
+      they are the list's closing rows, below).
+      The parser builds two shapes: a named row keeps its day and number,
+      a counted row only its kind, whether it is published and its
+      country — so it cannot carry them by mistake, and a test feeds both
+      with a day and a number and finds neither on a counted one. Per
+      country only counts are kept (the citizens per country).
+    - **What is counted closes the list** (16.11.2026, replacing the block
+      „Ohne Namen gezählt" under it). One muted row per figure, no link, no
+      day, no country: a kind's organisations without a name under its
+      tab and in „Alle" („13 weitere Nichtregierungsorganisationen · ohne
+      Namen"), citizens, „Sonstige" and rows not published in „Alle" only.
+      They stand after the last named row and appear once every named row
+      of the tab is shown, as the Stellungnahmen reach their rows without a
+      name by paging; the pager counts named rows. Under the chip or a
+      search they are hidden — nothing in them can match — and the set line
+      counts named rows only. The tabs add up to the rows read. The citizens
+      have a tab of one row per country, by count by default; „Alle" holds
+      them as one row. Under the list one line, „Privatpersonen werden
+      gezählt, nie genannt.", with „Methode" opening who is counted without
+      a name (`MethodEuRueckmeldungen`).
+    - **The data knows no country, the view takes one.** The reading and
+      the endpoint carry no member state (no parameter, nothing in the
+      cache key); the view takes the country the page serves, today the
+      configured one (`EU_MEMBER_STATE`), as `euBuergerinitiativeView`
+      does. With it the list offers a chip „Aus <Land>" with its count
+      within the tab above it (in the citizens' tab, that country's row);
+      with none (null) there is no chip and nothing is said to be missing.
+    - **Search, filter and order reach only what was read.** The newest
+      1,000 rows are read first, so where more are counted the list's first
+      row says how many of how many, above the tabs and the search — before
+      a reader takes an empty result for an absent organisation — and
+      offers the next 500; at 5,000 it says so in a „Nicht im Monitor"
+      sentence.
+    - **The set line only while narrowed** (maintainer, 16.11.2026,
+      `feedbackSetLineVisible`). „4 Rückmeldungen von Organisationen mit
+      Namen" above the column header repeated, unfiltered, what the tabs,
+      the closing rows and the pager say. It stands visibly only while a
+      search or the country chip narrows the list — then it is the result's
+      count, the zero included — and where no organisation is named at all
+      („Keine Organisation mit Namen unter den gelesenen Rückmeldungen."),
+      since the box would hold no word else. A tab alone is no narrowing:
+      its count stands on it. Otherwise the line is `sr-only`, still the
+      polite live region a screen reader hears on a change of tab, chip or
+      query; it mounts anew per reading, so a further step's new count is
+      not said a second time beside the block's one arrival sentence. The
+      phone's order stays in the tool row, which the set line never held.
+    - Rejected: naming every row of an organisation kind (sole traders),
+      the Parliament classifier as witness, keeping names in the fact store
+      for closed windows, and (15.11.2026) one line per organisation with
+      its countries and number of contributions: it merged contributions
+      the reader wants to open one by one.
+  - **The windows open on the portal are listed first on `/eu-recht`**
+    (15.11.2026, step 3, `EuFensterList`): one request a day for the list,
+    one row per window by closing day, tabs by where in the process
+    („Konsultation", „Vorschlag", „Entwurf eines Rechtsakts"). No count of
+    contributions in the list and no order by a count; the count stands on an initiative's own page, per
+    window. The reader may order by closing day (the default, a window
+    without a day last either way) or by title, each reversible
+    (16.11.2026); „Stadium" and „Vorgesehen" do not order — the tabs divide
+    by them. A portal that could not be read is said with the link to the
+    portal, never an empty list. No feed and no calendar of the windows:
+    decided 16.11.2026, the first version of the EU pages has none, it is a
+    ticket of its own (`?quelle=eu` is an unknown source, 404, as any
+    other). An initiative has a page by the
+    portal's number (`euInitiativePath`); its door is the way to the portal
+    while a window is open, and the stations after the Commission say in a
+    „Nicht im Monitor" sentence that the monitor does not follow it there
+    yet.
+  - **An EU page is a detail page** (15.11.2026, rebased onto „The detail
+    pages" the same day; that section's rules hold, they are not restated
+    here). The act's, the proposal's, the initiative's and the Citizens'
+    Initiative's page open with the one state card (`ProcedureCard`), the
+    EU rail passed as its rail (`EuRail`) and the default way out; what
+    stood under the rail of the EU card of its own (`EuProcedureCard`,
+    deleted) — the note on an act of the Commission, the gap sentence on a
+    step of the register the monitor does not know — is the card's footer.
+    The heading says the stand alone („Sondierung läuft", „Vorschlag liegt
+    vor", „Anhängig laut EUR-Lex"); what it rests on stands in the rail.
+    The act's page follows since 16.11.2026: „Umsetzungsfrist läuft",
+    „Umsetzungsfrist beendet", „Gilt", „In Kraft, gilt noch nicht" — no
+    day in the heading, which „Umzusetzen bis 07.05.2027" carried; the day
+    stands at the last station. „Beendet", not „abgelaufen": no word that
+    reads as a verdict on the transposition (rule D6).
+    The list of open windows uses the draft list's box for an open Frist,
+    word for word and tone for tone.
+  - **An EU page's action is a draft's door** (15.11.2026,
+    `EuWindowAction` through `DraftDoorCard`), unchanged: its heading the
+    countdown and date („Noch 56 Tage · bis So., 10.01.2027"), its ground
+    the tone a Stellungnahme's door takes when the Frist is close; a window
+    without a last day keeps its own heading. Rule D6 forbids a day count
+    beside a transposition deadline, where it would read as a verdict on a
+    state; a window the reader can still use is the reader's own deadline,
+    and there the count is the point. **No body sentence where the button
+    says it:** the Commission's door has none (the heading says the day,
+    the button the portal), and a Citizens' Initiative's has none either
+    (16.11.2026: „Der Link führt zum Sammelsystem der Initiative." said
+    what the button and its arrow say). **Above the button, the
+    Commission's own sentence for the open stage** (`SourceQuote`,
+    `app/utils/euFeedbackQuote.ts`), signed „Europäische Kommission",
+    verbatim from the portal's German page text
+    (`page.initiativeDetails.<stage>.feedbackmessage`, read 15.11.2026):
+    Sondierung, öffentliche Konsultation, Entwurf eines Rechtsakts, and the
+    adoption's sentence only for feedback on a legislative proposal. No
+    quote for any other stage or adoption, and where several windows close
+    on the door's day, only what the Commission says of all of them: the
+    Sondierung's sentence is the first of the public consultation's, so
+    that pair quotes it (16.11.2026); sentences that share no such opening
+    give no quote (which window the door is for is then not clear). A Citizens' Initiative's door quotes the three
+    sentences under the heading of the Commission's German home page for
+    the instrument (`EU_ECI_QUOTE`, read 16.11.2026): what a million
+    signatures bring, and that the Commission then decides. **The door stands twice**
+    (`EuRailSection.door`, set by the view): once more, solid, with the
+    card's label, at the end of the section that holds the window the door
+    counts down to — „Konsultation", or the Commission's own station
+    („Vorschlag", „Rechtsakt der Kommission") for feedback on a proposal or
+    a draft act; „Sammlung" for a Citizens' Initiative — under „Wer
+    Rückmeldung gegeben hat", where the decision is made; only while the
+    card shows and has a button. Two windows on that day in two sections:
+    the later one, where the reading ends.
+  - **A station ahead has no section** (15.11.2026, `euVorschlag.ts`,
+    `euInitiative.ts`). As on a draft's page, an EU page shows a section
+    only for a station that is reached. A station ahead stands in the
+    rail, hollow, and the first one carries the one line there is to say:
+    what the record holds, where the proposal's page continues, or that
+    the monitor does not follow the initiative further. A station that
+    has not happened is not a gap. The exception is an answer that did not
+    come: then nobody knows whether the station is reached, and its
+    section stays with „Gerade nicht abrufbar".
+  - **A withdrawn proposal ends on a station „Zurückgezogen"**
+    (15.11.2026): the withdrawal has a day and ends the procedure, so it
+    is the rail's last station, after whatever Parliament and Council
+    still decided, and it carries the highlight. „Amtsblatt" and the last
+    station are not drawn: a hollow station means „still to come", and
+    these never come. The rule „a section per station, even while empty"
+    is for stations a later step fills. Where a proposal became acts, the
+    last station is reached and says that its content stands with the
+    acts. Visitors read „EUR-Lex", not „Cellar", in every sentence of the
+    proposal's page; the source credit keeps the Cellar's full name.
+  - **The European Citizens' Initiative is an object of its own, with a
+    rail of its own** (15.11.2026, step 5, decision 4 of the plan;
+    `server/utils/eu/eciRegister.ts`, `eciService.ts`,
+    `app/utils/euBuergerinitiative.ts`). No field of the register joins an
+    initiative to a legal act, so it is no station of an act and its page
+    links none. Address `/eu-recht/buergerinitiative/<year>/<nr>` by the
+    register number (ECI(2022)000002 → `/2022/2`); a padded number answers
+    301. The register (`register.eci.ec.europa.eu`) is read through a
+    pacer of its own, one request at a time, 2.5 s apart, no retry, each
+    answer cached a day and served stale a second day.
+    - **The rail comes from the register's `progress`,** an unordered list
+      whose active entry equals the status. Measured over 28 initiatives:
+      REGISTERED 28, ONGOING 18, COLLECTION_START_DATE 14, CLOSED 10
+      (COLLECTION_EARLY_CLOSURE on 2), VERIFICATION 7, SUBMITTED 5,
+      ANSWERED 4, WITHDRAWN 3, INSUFFICIENT_SUPPORT 3,
+      INSUFFICIENT_SUPPORT_AFTER_VERIFICATION 2 — ten names; a day was
+      missing on 3 of 94 entries. Stations: „Registrierung", „Sammlung"
+      (begun with ONGOING, CLOSED or any later step), „Prüfung"
+      (VERIFICATION), „Einreichung" (SUBMITTED), „Antwort der Kommission"
+      (ANSWERED or an answer); a later step implies the earlier ones. An
+      initiative that ended otherwise ends on a highlighted station of its
+      own with the register's day, and the stations it can never reach are
+      not drawn: „Zurückgezogen" (WITHDRAWN), „Nicht genug Unterstützungen"
+      (both INSUFFICIENT statuses), worded „laut Register", no judgement.
+      The card's heading is the state: „Registriert", „Sammlung läuft",
+      „Sammlung beendet", „In Prüfung", „Eingereicht", „Von der Kommission
+      beantwortet", „Zurückgezogen", „Nicht genug Unterstützungen laut
+      Register". A step name outside the ten is no station; a „Nicht im
+      Monitor" sentence under the rail names it, and nothing throws.
+    - **The door stands only while the collection runs:** status ONGOING
+      and the register's last day not passed by the Vienna day; it counts
+      the days like a draft's door and leads to the German `supportLink`,
+      and stands once more at the end of „Sammlung" („An EU page's action
+      is a draft's door", above). No link, no button, no second door, and a
+      gap sentence says so. The page does not say who may sign (not
+      verified).
+    - **Never read, into any object:** `members` and `funding` (personal
+      data: names, e-mail addresses), `logo` (excluded by the EU's legal
+      notice), and the organisers' own texts — `objectives`, `annexText`,
+      `website`, documents, draft legal acts — to which the notice reserves
+      third parties' rights; also `categories` and `treaties`. The page
+      links the register for the objectives. A test feeds invented
+      organisers, funders and texts and finds none in the parser's result.
+      Stricter than the plan, which named „title and objectives".
+    - **No threshold.** The register gives the total and the count per
+      Member State, never how many a Member State needs nor whether that
+      number is reached. The reader keeps the count of every country the
+      register lists and knows no country itself; the page shows the total
+      and the number of the country it serves (`EU_MEMBER_STATE_ECI`, the
+      view's `memberState`; a page that serves no country shows none) and
+      says once, in a „Nicht im
+      Monitor" sentence, that it shows no threshold. Rejected: computing the
+      thresholds from the regulation's annex — a second source with its own
+      upkeep, and a „reached" mark would read as a verdict.
+    - **The list „Jetzt unterstützbar" opens by the last day of the
+      collection, soonest first, then by number** — the open windows' rule.
+      Since 16.11.2026 the reader may also order by title or by supporters
+      (most first), each reversible, a row without a day or count last
+      either way: the draft list lets its Stellungnahmen column order its
+      rows, and the count column here is its twin. The list never opens on
+      the supporters' order, which would read as a ranking of what is worth
+      signing. The register's count stands in a column of its own,
+      „Unterstützungen", as the draft list keeps its Stellungnahmen
+      (`EuCountCell`, 16.11.2026; the acts' drafts on `/eu-recht` too), „laut
+      Register" in the frame row and the cell's words, a missing count the
+      word „nicht angegeben", never 0. The
+      list carries no deadline, so the details of each initiative in
+      collection are read one after the other (about 45 s cold for 13); the
+      endpoint waits 8 s for them after the list, and a row without its day
+      stays, with a „Gerade nicht abrufbar" sentence, never dropped.
+    - **The register's public page of an initiative** (`eciPageUrl`,
+      `…/initiatives/details/<year>/<6 digits>_de`) was opened in a browser
+      on 15.11.2026 for one initiative and resolves. An unknown number
+      answered 404 through the built endpoint the same day.
+    - The deadlines are NOT in `/feed.xml` or `/kalender.ics`: decided
+      16.11.2026, the first version of the EU pages has no feed and no
+      calendar; that is a ticket of its own.
+  - **The stand of a proposal: which Cellar flags decide** (15.11.2026,
+    step 3, `shared/utils/euVorschlag.ts`, `server/utils/eu/cellarVorschlag.ts`).
+    A proposal that left the Commission has a page by its COM number
+    (`euProposalPath`). Its dossier carries three flags — pending,
+    withdrawn, adopted — that contradict each other in one dossier since
+    2019, so no flag decides alone: „Rechtsakt geworden" needs the adopted
+    flag AND an act the dossier produced; „Zurückgezogen" needs the
+    Commission's dated step `WDW_byCOM` (50 of 52 withdrawn dossiers of
+    2019–2024 carry it), and its day stands at the station, not in the
+    card's heading, which names a state; the withdrawn flag alone gives
+    „Laut EUR-Lex zurückgezogen", without a day; the pending flag alone
+    gives „Anhängig laut EUR-Lex" with the day of the last recorded step,
+    never „seit N Tagen" (rule D6). Missing or contradicting flags claim
+    no stand, and the page says the Cellar gives no clear one. The
+    Cellar's field „file-status" is NOT read: PENDING on 22 of the 52
+    withdrawn dossiers, ADOPTED on 6 pending ones. Rejected: reading the
+    pending flag as „still open" on its own. The page's absence sentences
+    are about the record („der Cellar verzeichnet bisher keinen
+    Beschluss"), not the world. One act with a page in the monitor: the
+    proposal's address answers 301 there; several: the page stays and
+    links each. An initiative's page links the page of each proposal one
+    of its publications carries and points its later stations there; it
+    never redirects, as an initiative can hold several proposals.
+  - **The Legislative Observatory is linked by rule, not by lookup:**
+    procedures from 1994 on, of type COD, CNS or APP; the link says that the
+    page is English, and it is built from the procedure number, never
+    fetched. Three procedures the Observatory split into files „A" and
+    „B" answer 404 under the plain number the Cellar carries; for their
+    four acts `OBSERVATORY_FILE` names the file. Rejected: asking the
+    European Parliament's API, which knows the files but not the act a
+    file ended in.
+  - **The rail adds nothing to the map's build.** One Cellar query per act,
+    asked when the act's page is, beside the Amtsblatt reference and cached
+    a month like it. No prewarm line, no stored file.
+  - **Every EU address is built by `euPath`** (`shared/utils/eu.ts`) below
+    one base, `/eu-recht` until the rename moves the acts to `/eu`.
 
 ### Routes to a norm, and what the monitor follows
 
@@ -692,13 +1199,39 @@ not yet followed, or the EU cycle, starts there.
 
 - **The graphic `/wege` shows every route that exists, the monitor follows
   fewer.** A route that is not followed stands in the graphic as „nicht im
-  Monitor" with its reason; an instrument that sits beside a norm's path
-  (a Petition, a Bürgerinitiative, the EU's consultations) stands in the
-  block under the table. Each thing stands once (15.11.2026): what is also
-  a route to a norm — a Volksbegehren, in the Bund or a Land, an initiative
-  of Gemeinden or citizens — is a row of the table only, and the row's gap
-  names the step before the route (signing); the block held them a second
-  time and read as a duplicate.
+  Monitor" with its reason. Since 16.11.2026 every followed object has a
+  matrix of its own with the stations of its own rail, names and order read
+  from the rail's code (`WEG_MATRICES`, `WegMatrix`): the national norm
+  (Bund and Länder a matrix each, the same five stations, the last two
+  named „Parlament" and „Bundesgesetzblatt" or „Landtag" and
+  „Landesgesetzblatt" in the header, so no sentence translates one), an
+  EU act (Konsultation · Vorschlag · Parlament und Rat · Amtsblatt ·
+  Umsetzung oder Geltung), a European Citizens' Initiative, an Anliegen an
+  das Parlament (the Nationalrat's three kinds and the Petition an den
+  Bundesrat, whose rail names its last column „Bundesrat"; four columns,
+  since the committee's Erledigung is part of the committee's row); one card, one
+  legend, the blue mark wherever one can take part, each row naming how
+  („Rückmeldung möglich"). The matrices read as
+  one grid (16.11.2026): the first column is „Weg" in each, a bar carries
+  its name and no sentence, and the station columns have one width in
+  every matrix, so all marks stand in five verticals. A header that does
+  not fit breaks between words or at a compound's joint
+  („Regierungs-vorlage", `wegHeaderLabel`), never where the browser
+  guesses, and stands on the bottom line, next to its marks. Five columns
+  are what these rails have, not a rule: a rail with four or six stations
+  gets four or six. Only the instruments
+  the monitor does not follow are a list without stations, „Nicht im
+  Monitor", each with its reason.
+- **Each thing stands once on `/wege`** (15./16.11.2026). What is a route to
+  a norm is a row, and only a row: a Volksbegehren in the Bund or a Land, an
+  initiative of Gemeinden or citizens, and the Volksabstimmung, which sits
+  between the Beschluss and the Kundmachung — a row with no column of its
+  own (no sixth station), its note saying where it falls, its Kundmachung
+  „je nach Fall". The list „Nicht im Monitor" keeps what has no path to a
+  norm or no source: the EP petition (no interface, and the portal refuses
+  programs), the Volksbefragung (one so far, bound to no law), and the
+  Länder's Volksbefragung, petitions and Bürgerrat. A reason says what was
+  found; „Quellen nicht geprüft" stands only where nobody has read them.
 - **A route is followed only when three things hold:** an official,
   machine-readable source whose reuse is checked and stated in the Impressum;
   enough cases to matter; and no upkeep that somebody has to carry by hand.
@@ -1083,6 +1616,27 @@ the reasoning in full stands in that component's header comment.
   in a group's header button define nothing. Definitions live in
   `app/utils/terms.ts`, method texts as components in
   `app/components/method/` — copy out of logic, one place per language.
+- **A list shows its frame while loading; the loading line and the gap
+  sentence stand where the rows will be** (maintainer, 16.11.2026,
+  `ListBoxState`, `listBoxStatusOf`, `EntryList`'s `state`). A section that
+  showed only its heading and a centred spinner far below took the lede,
+  the box and the column header away until the data came. Now everything
+  that does not depend on the data renders at once and stays put: heading,
+  lede, the list box, its column header (plain labels until rows exist),
+  the controls whose content is known without the data, the credit line.
+  A tab with a count is data: the tabs stand as labels without counts,
+  disabled with the loading line as their reason (`EuFensterList`), or,
+  without counts, usable (the choice applies when the rows come); a search
+  over rows that are not there is disabled; a count line waits. In the
+  rows' place, left-aligned like a row, the spinner and the list's own
+  line, `min-h-48` (12rem, about two and a half rows, so the page moves
+  little when the rows come); a failed request takes the same place and
+  height, its words through `GapNote` with the list's „Erneut versuchen".
+  The part that will hold the rows is `aria-busy`; a polite live region
+  outside it says the loading line and, once, the arrival. No fake rows and
+  no grey bars: decoration that carries no information. One piece for every
+  list; a detail page gated as a whole has no frame to show and keeps
+  `FetchGate`.
 - **A list's notes state, they do not explain** (14.11.2026). Above the
   rows stands only what is true of the list right now and differs from what
   its controls claim, one sentence each: a source that failed, a filter that
@@ -1278,6 +1832,14 @@ circular of 10.12.2015).
 | Länder drafts that carry out something federal | about 7 % | 489 drafts · 06.11.2026 (§12.66) |
 | The same, by kind | 20 carry out a Grundsatzgesetz, 21 an agreement under Art. 15a B-VG, 37 either (4 both); 4 drafts unread | the same 489 drafts, counted again offline · 15.11.2026 |
 | Deadline stated in the Land draft | 2 of about 35 | same |
+| EU acts of the map by who adopted them | Parliament and Council 167, Council 27, Commission 41 | 235 acts · 15.11.2026 |
+| EU acts with a procedure in the Cellar / with its number / with a dated proposal | 212 / 188 / 191 | same |
+| Acts of Parliament or Council the Cellar links to no procedure | 2 (Verordnung 1182/71, Richtlinie (EU) 2024/825) | same |
+| Procedures with no decision of Parliament or Council on record | 1 (2023/0077(COD), two acts) | same |
+| Regulations with a typed day of application / with partial days | 38 / 30 of 68 | same |
+| Decisions typed „Wirksamwerden" instead of an entry into force | 12 of 13 | same |
+| Procedure numbers with a page in the Legislative Observatory | 180 of 187; of the 181 the rule links, 178 (the other three, 2016/0224(COD), 2018/0063(COD), 2023/0077(COD), are split into files A and B and linked by `OBSERVATORY_FILE`) | every number of the map, one request each · 15.11.2026 |
+| Rail against the Legislative Observatory: proposal, Parliament, Council, signature | identical in 15 of 18 procedures with a page; in 3 the difference has a named reason (Council position adopted a day before the Observatory dates its publication; an act on two procedures; a consent procedure whose „proposal" the Observatory dates later); 2 of 20 have no page | 20 acts across six procedure types · 15.11.2026 |
 | Land Textgegenüberstellung, right column found in the draft | 550 of 550 judgeable §§ | 63 documents, Oberösterreich, Salzburg, Tirol, Wien, 1,156 §§ shown, GP XXVIII · 12.11.2026 |
 | The same check under fault injection, caught | another § of the same draft appended 57.8 % (315/545), another draft's sentence 76.4 % (420/550); by design none of a number changed, one word swapped, a sentence dropped (0 of 474 / 549 / 336) | same |
 

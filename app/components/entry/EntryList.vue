@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import type { EntryView } from '~/utils/entryView'
+import type { ListBoxStatus } from '~/utils/listState'
 
 /**
  * A list of entries, two densities, one column header — every list on the
@@ -85,9 +86,20 @@ defineProps<{
    * (`stale-fade`, `stale-bar`), so a fast answer does not flicker.
    */
   stale?: boolean
+  /**
+   * The rows on their way or failed to come (16.11.2026, `ListBoxState`):
+   * the loading line or the failure in the rows' place, under the box's
+   * controls and column header, which stand meanwhile. Null once there is
+   * an answer — rows, or the list's own empty state.
+   */
+  state?: ListBoxStatus
+  /** What the live region says when the rows arrived after the loading line. */
+  loaded?: string
+  /** No „Erneut versuchen" beside the failure. */
+  noRetry?: boolean
 }>()
 
-defineEmits<{ 'update:sort': [key: string] }>()
+defineEmits<{ 'update:sort': [key: string]; retry: [] }>()
 </script>
 
 <template>
@@ -116,7 +128,7 @@ defineEmits<{ 'update:sort': [key: string] }>()
     <div class="sticky top-0 z-20 h-0" aria-hidden="true">
       <div class="stale-bar" :data-stale="stale || undefined" />
     </div>
-    <ColumnHeader v-if="entries.length || $slots.state" :sortable="!!sortable" class="gap-4 md:flex">
+    <ColumnHeader v-if="entries.length || $slots.state || state" :sortable="!!sortable" class="gap-4 md:flex">
       <ColumnLabel :label="lead ?? 'Entwurf'" class="min-w-0 flex-1" />
       <ColumnLabel
         v-if="secondColumn"
@@ -146,33 +158,37 @@ defineEmits<{ 'update:sort': [key: string] }>()
       />
     </ColumnHeader>
     <!-- No rows YET: what the sheet says while its rows are on the way or
-         failed to come (23.10.2026). The box, its controls and the column
+         failed to come (23.10.2026; one piece for every list since
+         16.11.2026, `ListBoxState`). The box, its controls and the column
          header stand meanwhile, so a changed filter does not take the
          filters away while it loads. Takes the place of rows and empty
          state alike — „Keine Entwürfe gefunden" would be a claim about an
-         answer that does not exist yet. -->
-    <slot v-if="$slots.state" name="state" />
-    <!-- No rows: the list's own empty state, in the sheet's grammar (a
-         name, the fact under it) instead of a card in the card. -->
-    <slot v-else-if="!entries.length" name="empty" />
-    <component
-      :is="ordered ? 'ol' : 'ul'"
-      v-else
-      class="stale-fade divide-y divide-hairline"
-      :data-stale="stale || undefined"
-      :aria-busy="stale || undefined"
-    >
-      <!-- `data-entry-key`: the row a caller finds again after rows sorted
-           in above it, to hold the reader's place (`/entwuerfe`,
-           12.11.2026). -->
-      <li v-for="entry in entries" :key="entry.key" :data-entry-key="entry.key">
-        <EntryItem :entry="entry" :query="query">
-          <template v-if="$slots.evidence" #evidence>
-            <slot name="evidence" :entry="entry" />
-          </template>
-        </EntryItem>
-      </li>
-    </component>
+         answer that does not exist yet. The `state` slot is for a list
+         that says something else there. -->
+    <ListBoxState :state="state ?? null" :loaded="loaded" :no-retry="noRetry" @retry="$emit('retry')">
+      <slot v-if="$slots.state" name="state" />
+      <!-- No rows: the list's own empty state, in the sheet's grammar (a
+           name, the fact under it) instead of a card in the card. -->
+      <slot v-else-if="!entries.length" name="empty" />
+      <component
+        :is="ordered ? 'ol' : 'ul'"
+        v-else
+        class="stale-fade divide-y divide-hairline"
+        :data-stale="stale || undefined"
+        :aria-busy="stale || undefined"
+      >
+        <!-- `data-entry-key`: the row a caller finds again after rows sorted
+             in above it, to hold the reader's place (`/entwuerfe`,
+             12.11.2026). -->
+        <li v-for="entry in entries" :key="entry.key" :data-entry-key="entry.key">
+          <EntryItem :entry="entry" :query="query">
+            <template v-if="$slots.evidence" #evidence>
+              <slot name="evidence" :entry="entry" />
+            </template>
+          </EntryItem>
+        </li>
+      </component>
+    </ListBoxState>
     <!-- The rows under the list, inside the sheet as a `ListBox`'s foot
          (03.10.2026): the pager stood under the frame on `/entwuerfe` while
          the Stellungnahmen panel carried it in its own. Each row brings its

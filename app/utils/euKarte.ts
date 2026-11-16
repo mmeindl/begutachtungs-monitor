@@ -14,12 +14,13 @@
  *
  * Pure: the pages render what this returns, the tests read it without one.
  */
-import type { EuActHead, EuActDraft, EuActResponse, EuActSummary, EuActsResponse, EuPublisher, EuStand } from '#shared/types'
+import type { EuActDraft, EuActResponse, EuActSummary, EuActsResponse, EuPublisher, EuStand } from '#shared/types'
 import { euActSubject } from '#shared/utils/eu'
 import { formatDateDe } from '#shared/utils/format'
 import { LAND_CODES, LAND_NAME, landShortTitle, type SourceCode } from '#shared/utils/laender'
 import { PUBLISHER_NAME_DE, eurLexSource, parliamentProcedureSource, risSource, type SourceEntry } from '#shared/utils/provenance'
 import { viewOfRow, type EntryState, type EntryView } from './entryView'
+import { countCell, draftsWhoseDe, type EuCountCell } from './euCountCell'
 import { SUPERSCRIPT, dateRangeDe, dayOf, edgeAlign, laneBarOf, type EuChartView } from './euRecht'
 
 /** „Bund" or the Land's name — the list's source chips' words. */
@@ -58,18 +59,6 @@ export function restatingCountsDe(counts: { bund: number; laender: number }): st
   return parts.length ? `wiederholt in ${parts.join(' · ')}` : ''
 }
 
-/**
- * The act's deadline in the words of the draft's fact: „Umsetzungsfrist bis
- * 07.05.2026" for a directive with a Cellar date (the latest, rule D3), „gilt
- * unmittelbar, keine Umsetzungsfrist" for a regulation — the method page's
- * „Verordnungen gelten unmittelbar und haben keine Umsetzungsfrist". Null
- * where neither can be said: a directive without a date, a decision.
- */
-function deadlineDe(act: Pick<EuActHead, 'kind' | 'transposition'>): string | null {
-  if (act.transposition) return `Umsetzungsfrist bis ${formatDateDe(act.transposition.deadline)}`
-  return act.kind === 'verordnung' ? 'gilt unmittelbar, keine Umsetzungsfrist' : null
-}
-
 /* ------------------------------------------------------------------ *
  * The overview
  * ------------------------------------------------------------------ */
@@ -94,9 +83,20 @@ export interface EuActsRowView {
   counts: string
   /** The Länder with an implementing draft, by name, in display order. */
   lands: string[]
+  /**
+   * The drafts in a column of their own, as the draft list keeps its
+   * Stellungnahmen and the directives' list its drafts (`EuCountCell`,
+   * 16.11.2026): the number, whose they are under it, and the counts line
+   * with the Länder as its words — what the card below `md` shows.
+   */
+  drafts: EuCountCell
+  /** „Länder: Oberösterreich, Salzburg" beside the column from `md`; null without a Land. */
+  landsLine: string | null
 }
 
 function actsRowOf(a: EuActSummary, counts: string): EuActsRowView {
+  const lands = a.lands.map((l) => LAND_NAME[l])
+  const said = `${counts}${lands.length ? ` (${lands.join(', ')})` : ''}`
   return {
     key: a.celex,
     label: a.label,
@@ -104,9 +104,14 @@ function actsRowOf(a: EuActSummary, counts: string): EuActsRowView {
     subject: euActSubject(a.title),
     state: actStateOf(a),
     counts,
-    lands: a.lands.map((l) => LAND_NAME[l]),
+    lands,
+    drafts: countCell(a.counts.bund + a.counts.laender, said, draftsWhoseDe(a.counts.bund, a.counts.laender)),
+    landsLine: lands.length ? `Länder: ${lands.join(', ')}` : null,
   }
 }
+
+/** The column's heading over the acts drafts implement, and over those they only restate. */
+export const EU_ACTS_COLUMN_DE = { act: 'Rechtsakt', drafts: 'Entwürfe', restating: 'Wiederholt in', deadline: 'Umsetzungsfrist' } as const
 
 /**
  * The state box's two lines. A directive or framework decision without a
@@ -143,11 +148,35 @@ export function deadlineTabOf(a: Pick<EuActSummary, 'transposition'>, today: str
 
 /**
  * The overview's orders, one per column as on every list (`SortHeader`,
- * 06.11.2026): by deadline, or by the act's name. The tab gives the
- * deadline its own direction (`deadlineDirection`), a second click on the
- * column turns it round, as it turns the names to Z–A.
+ * 06.11.2026): by deadline, by the act's name, or (16.11.2026) by the
+ * number of drafts, Bund and Länder together, most first — ties by the
+ * tab's deadline order. The tab gives the deadline its own direction
+ * (`deadlineDirection`), a second click on the column turns it round, as
+ * it turns the names to Z–A and the drafts to fewest first.
  */
-export type EuActSort = 'frist' | 'name'
+export type EuActSort = 'frist' | 'name' | 'entwuerfe'
+
+/** Each order's own direction before a reversal: names A–Z, drafts most first, the deadline the tab's. */
+export function euActOwnDirection(sort: EuActSort, tab: EuDeadlineTab): 'auf' | 'ab' {
+  return sort === 'name' ? 'auf' : sort === 'entwuerfe' ? 'ab' : deadlineDirection(tab)
+}
+
+/** The overview's sort words: the buttons' order words and the phone's options. */
+export const EU_ACTS_SORT_DE = {
+  label: 'Sortieren',
+  order: {
+    name: ['A–Z', 'Z–A'],
+    drafts: ['meiste zuerst', 'wenigste zuerst'],
+  },
+  options: {
+    deadline: {
+      laufend: ['Nächste Frist zuerst', 'Späteste Frist zuerst'],
+      abgelaufen: ['Zuletzt abgelaufene zuerst', 'Am längsten abgelaufene zuerst'],
+    },
+    drafts: ['Meiste Entwürfe zuerst', 'Wenigste Entwürfe zuerst'],
+    name: ['Name A–Z', 'Name Z–A'],
+  },
+} as const
 
 /** What runs, nearest first; what passed, most recent first. */
 export function deadlineDirection(tab: EuDeadlineTab): 'auf' | 'ab' {
@@ -171,9 +200,10 @@ export function deadlineReverseOrderDe(tab: EuDeadlineTab): string {
 const byName = (a: Pick<EuActSummary, 'label' | 'celex'>, b: Pick<EuActSummary, 'label' | 'celex'>): number =>
   a.label.localeCompare(b.label, 'de', { numeric: true }) || a.celex.localeCompare(b.celex)
 
-/** One order as a comparator, `ab` the names Z–A; acts without a deadline last either way, ties by name A–Z. */
-export function euActComparator(sort: EuActSort, direction: 'auf' | 'ab' = 'auf'): (a: Pick<EuActSummary, 'transposition' | 'label' | 'celex'>, b: Pick<EuActSummary, 'transposition' | 'label' | 'celex'>) => number {
-  if (sort === 'name') return direction === 'auf' ? byName : (a, b) => byName(b, a)
+type ActSortable = Pick<EuActSummary, 'transposition' | 'label' | 'celex' | 'counts'>
+
+/** By deadline in `direction`, acts without one last either way, ties by name A–Z. */
+function byDeadline(direction: 'auf' | 'ab'): (a: ActSortable, b: ActSortable) => number {
   return (a, b) => {
     const da = a.transposition?.deadline ?? null
     const db = b.transposition?.deadline ?? null
@@ -186,17 +216,33 @@ export function euActComparator(sort: EuActSort, direction: 'auf' | 'ab' = 'auf'
   }
 }
 
+/**
+ * One order as a comparator, `ab` the names Z–A and the drafts most first;
+ * acts without a deadline last either way, ties by name A–Z. The drafts'
+ * ties follow the deadline in `tieDirection` — the tab's own, whichever way
+ * the drafts are turned.
+ */
+export function euActComparator(sort: EuActSort, direction: 'auf' | 'ab' = 'auf', tieDirection: 'auf' | 'ab' = 'auf'): (a: ActSortable, b: ActSortable) => number {
+  if (sort === 'name') return direction === 'auf' ? byName : (a, b) => byName(b, a)
+  if (sort === 'entwuerfe') {
+    const tie = byDeadline(tieDirection)
+    const total = (x: ActSortable) => x.counts.bund + x.counts.laender
+    return (a, b) => (direction === 'ab' ? total(b) - total(a) : total(a) - total(b)) || tie(a, b)
+  }
+  return byDeadline(direction)
+}
+
 /** The overview's rows, in the order chosen (`euActComparator`). */
-export function euActsRows(r: Pick<EuActsResponse, 'acts'>, sort: EuActSort = 'frist', direction: 'auf' | 'ab' = 'auf'): EuActsRowView[] {
-  return [...r.acts].sort(euActComparator(sort, direction)).map((a) => actsRowOf(a, countsDe(a.counts)))
+export function euActsRows(r: Pick<EuActsResponse, 'acts'>, sort: EuActSort = 'frist', direction: 'auf' | 'ab' = 'auf', tieDirection: 'auf' | 'ab' = 'auf'): EuActsRowView[] {
+  return [...r.acts].sort(euActComparator(sort, direction, tieDirection)).map((a) => actsRowOf(a, countsDe(a.counts)))
 }
 
 /**
  * The fold's rows under the overview — the acts drafts only restate, the
  * same anatomy and order, the counts as „wiederholt in …" (`restatingCountsDe`).
  */
-export function euRestatingRows(r: Pick<EuActsResponse, 'restatingOnly'>, sort: EuActSort = 'frist', direction: 'auf' | 'ab' = 'auf'): EuActsRowView[] {
-  return [...r.restatingOnly].sort(euActComparator(sort, direction)).map((a) => actsRowOf(a, restatingCountsDe(a.counts)))
+export function euRestatingRows(r: Pick<EuActsResponse, 'restatingOnly'>, sort: EuActSort = 'frist', direction: 'auf' | 'ab' = 'auf', tieDirection: 'auf' | 'ab' = 'auf'): EuActsRowView[] {
+  return [...r.restatingOnly].sort(euActComparator(sort, direction, tieDirection)).map((a) => actsRowOf(a, restatingCountsDe(a.counts)))
 }
 
 /** „Nur in Umsetzungshinweisen wiederholt (12)" — the fold's heading, the count in brackets as the site's folds have it. */
@@ -256,6 +302,10 @@ export interface EuActPageView {
   subject: string | null
   /** „Entwürfe, die sie umsetzen" — the pronoun by the act's gender: die Richtlinie, die Verordnung, der Beschluss. */
   implementingHeading: string
+  /** The sentence where no draft of the window carries the act out anew, in the act's verb. */
+  noneImplementing: string
+  /** What the page's description says the drafts do: „… den Rechtsakt umsetzen, mit ihrer Begutachtung neben der Umsetzungsfrist". */
+  seoTail: string
   eurLexUrl: string
   /** „beschlossen am 11.04.2024", „Umsetzungsfrist bis 07.05.2026¹" — one line, joined by „ · ". */
   head: string[]
@@ -400,25 +450,39 @@ export function euActPageView(r: EuActResponse): EuActPageView {
     }
   }
 
-  /* The head says the deadline only where the chart does not — no lane to
-   * draw (the Bund's stand cold after a restart), or no deadline to label
-   * („gilt unmittelbar"). The adoption stays up there: drawn, it would pull
-   * the track back years and shrink every Begutachtung to a sliver. */
-  const deadline = chart?.deadlines.length ? null : deadlineDe(act)
-  const head = [
-    act.adopted ? `beschlossen am ${formatDateDe(act.adopted)}` : null,
-    deadline ? `${deadline}${t ? note : ''}` : null,
-  ].filter((x): x is string => !!x)
+  /* The head says the adoption and nothing else (15.11.2026). The deadline
+   * stood beside it where the chart did not label it; since the card under
+   * the head opens with where the act stands („Umsetzungsfrist läuft", `euRailView`)
+   * and the section „Umsetzung" keeps the deadline and the further dates
+   * as facts, the head said it a third time. The adoption stays up there:
+   * drawn in the chart, it would pull the track back years and shrink every
+   * Begutachtung to a sliver. */
+  const head = act.adopted ? [`beschlossen am ${formatDateDe(act.adopted)}`] : []
 
   const entries = r.implementing.map((d) => viewOfRow(d.row))
 
+  // A directive or framework decision is transposed („umsetzen"); a
+  // regulation or decision applies by itself and national law carries it
+  // out („durchführen", the drafts' own word).
+  const transposed = act.kind === 'richtlinie' || act.kind === 'rahmenbeschluss'
   return {
     title: act.label,
     subject: euActSubject(act.title),
-    implementingHeading: `Entwürfe, die ${act.kind === 'beschluss' || act.kind === 'rahmenbeschluss' ? 'ihn' : 'sie'} umsetzen`,
+    implementingHeading: `Entwürfe, die ${act.kind === 'beschluss' || act.kind === 'rahmenbeschluss' ? 'ihn' : 'sie'} ${transposed ? 'umsetzen' : 'durchführen'}`,
+    // A directive no draft names at all (its page exists since step 7 of the
+    // EU cycle): the monitor found none — a sentence about its own reading.
+    noneImplementing: !r.restating.length
+      ? 'Der Monitor hat im Fenster dieser Gesetzgebungsperiode keinen Entwurf gefunden, der den Rechtsakt nennt.'
+      : transposed
+        ? 'Kein Entwurf im Fenster setzt den Rechtsakt neu um; die Entwürfe unten nennen ihn, weil das geltende Recht ihn schon umsetzt.'
+        : 'Kein Entwurf im Fenster führt den Rechtsakt neu durch; die Entwürfe unten nennen ihn, weil das geltende Recht ihn schon durchführt.',
+    seoTail: transposed
+      ? 'den Rechtsakt umsetzen, mit ihrer Begutachtung neben der Umsetzungsfrist'
+      : 'den Rechtsakt durchführen, mit ihrer Begutachtung',
     eurLexUrl: act.eurLexUrl,
     head,
-    footnote: chart?.footnote ? null : footnote,
+    // With the deadline gone from the head, its footnote has nothing to hang on there.
+    footnote: null,
     entries,
     said: Object.fromEntries(entries.map((e, i) => [e.key, saidDe(r.implementing[i]!)])),
     chart,

@@ -13,6 +13,7 @@
  */
 import type { StatementMeta, StatementsSummary } from '#shared/types'
 import { countLabelDe, formatNumberDe } from '#shared/utils/format'
+import { gapLabelDe } from '#shared/utils/gaps'
 
 /* Ten, not the panel's old twenty-five: a list of Stellungnahmen sits on a detail page with
  * five other sections — the Ministerialentwurf's panel and, since 23.10.2026,
@@ -21,6 +22,19 @@ import { countLabelDe, formatNumberDe } from '#shared/utils/format'
  * presses on the long lists — the search field and "Alle N anzeigen" both
  * answer. */
 export const STATEMENT_PAGE_SIZE = 10
+
+/* Up to this many rows the search field is not offered: on twenty rows the
+ * eye is faster than the keyboard, and the field would be one more control
+ * on a panel that collapsed three lists into one to lose controls. Shared
+ * with the list of who gave feedback on the Commission's portal
+ * (`EuFeedbackPanel`, 15.11.2026), so the two lists offer it alike. */
+export const STATEMENT_SEARCH_MIN = 20
+
+/** What the Stellungnahmen panel's box says before its rows are in (`ListBoxState`). */
+export const STATEMENTS_LIST_DE = {
+  loading: 'Stellungnahmen werden geladen …',
+  failed: { text: gapLabelDe('Stellungnahmen', 'unavailable') },
+} as const
 
 /**
  * The panel's segments, in the order it offers them — the order of the

@@ -382,6 +382,18 @@ export function buildSitemap(
    * the read failed or came late; the list `/anliegen` stands either way.
    */
   anliegenPaths: string[] = [],
+  /**
+   * The pages of the initiatives with a window open on the Commission's
+   * portal (`/eu-recht/initiative/18953`, 15.11.2026); empty where the
+   * portal was not read in time.
+   */
+  euInitiativePaths: string[] = [],
+  /**
+   * The pages of the European Citizens' Initiatives in collection
+   * (`/eu-recht/buergerinitiative/2026/9`, 15.11.2026); empty where the
+   * register was not read in time.
+   */
+  eciPaths: string[] = [],
 ): string {
   const urls = [
     siteUrl,
@@ -399,6 +411,8 @@ export function buildSitemap(
     `${siteUrl}/eu-recht`,
     `${siteUrl}${ANLIEGEN_PATH}`,
     ...euActPaths.map((path) => `${siteUrl}${path}`),
+    ...euInitiativePaths.map((path) => `${siteUrl}${path}`),
+    ...eciPaths.map((path) => `${siteUrl}${path}`),
     ...bundesrechtPaths.map((path) => `${siteUrl}${path}`),
     ...items.map((item) => pageUrl(siteUrl, item)),
     // The same reasoning as for the drafts: searching a Verordnung by name

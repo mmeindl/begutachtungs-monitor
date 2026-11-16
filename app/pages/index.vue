@@ -24,6 +24,7 @@ import { SECOND_ROUND_WINDOW } from '~/utils/spine'
 import { halfState, pendingHalvesLine, type HalfState } from '~/utils/draftFilters'
 import { blockStateLine, settledCount } from '~/utils/lateBlocks'
 import { useLateFetch } from '~/composables/useLateFetch'
+import { LIST_STATE_DE, type ListBoxStatus } from '~/utils/listState'
 
 /* „Gesetzes- und Verordnungsentwürfe" since 18.09.2026. It said
    „Gesetzesentwürfe" from before the RIS half shipped, and then went on
@@ -349,9 +350,27 @@ const visibleOpenRows = computed(() => openRows.value.slice(0, HOME_LIST_LENGTH)
  */
 const openRisPending = computed(() => bund.value && risState.value === 'loading')
 const openLaenderPending = computed(() => bund.value && laenderState.value === 'loading')
+/** The loading lines of the homepage's list boxes, in the rows' place (`ListBoxState`). */
+const HOME_LIST_DE = {
+  openLoading: 'Offene Entwürfe werden geladen …',
+  enactedLoading: 'Kundmachungen werden geladen …',
+} as const
 const openWaiting = computed(() =>
   (!bund.value && laenderState.value === 'loading') ||
   (!visibleOpenRows.value.length && (openRisPending.value || openLaenderPending.value)))
+/*
+ * The open list's box before it has rows (`ListBoxState`): with the Bund
+ * ticked the dashboard carries the list, so its wait and its failure stand
+ * in the rows' place (`FetchGate`'s rule: pending or idle without data is
+ * loading, a refresh keeps the rows); then the late halves (`openWaiting`).
+ */
+const openState = computed<ListBoxStatus>(() => {
+  if (bund.value && !data.value) {
+    if (status.value === 'pending' || status.value === 'idle') return { loading: HOME_LIST_DE.openLoading }
+    if (error.value) return { failed: { text: LIST_STATE_DE.failed } }
+  }
+  return openWaiting.value ? { loading: HOME_LIST_DE.openLoading } : null
+})
 const openPendingLine = computed(() =>
   pendingHalvesLine(openRisPending.value, openLaenderPending.value ? chosenLaender.value : null))
 const openTotal = computed(() => settledCount(openRows.value.length, [
@@ -680,16 +699,12 @@ function submitSearch() {
       </div>
     </header>
 
-    <FetchGate
-      v-slot="{ data }"
-      :status="status"
-      :error="error"
-      :data="data"
-      loading-label="Daten werden geladen …"
-      state-class="mt-10"
-      @retry="refresh()"
-    >
-      <!-- ONE list, because the question is one: "was läuft gerade, wo kann
+    <!-- No gate over the sections since 16.11.2026 (a list shows its frame
+         while loading): the open list's box stands at once and holds the
+         dashboard's loading line or its failure with „Erneut versuchen"
+         (`openState`); the sections after it come with the answer, as they
+         did. -->
+    <!-- ONE list, because the question is one: "was läuft gerade, wo kann
            ich noch mitreden?". Which official
            register happens to carry a record is plumbing, and plumbing does
            not belong in the page skeleton — it belongs on the row, which is
@@ -699,62 +714,62 @@ function submitSearch() {
            first row was a Frist ending on the 21st while a Verordnung ended
            that same day, below a second heading. Urgency is the one thing
            two lists cannot preserve. -->
-      <section class="page-section" aria-labelledby="open-heading">
-        <ListHeader
-          id="open-heading"
-          :to="openListHref"
-          noun="offenen Entwürfe"
-          :total="openTotal"
-          :visible="visibleOpenRows.length"
-        >
-          Jetzt in Begutachtung
-        </ListHeader>
-        <!-- Directly under the heading, not under the list: this one is
+    <section class="page-section" aria-labelledby="open-heading">
+      <ListHeader
+        id="open-heading"
+        :to="openListHref"
+        noun="offenen Entwürfe"
+        :total="openState ? undefined : openTotal"
+        :visible="visibleOpenRows.length"
+      >
+        Jetzt in Begutachtung
+      </ListHeader>
+      <!-- Directly under the heading, not under the list: this one is
              not provenance but a correction to what the list claims, and a
              reader who learns at the bottom that rows are missing has
              already read it as complete. Rendered only when they are. -->
-        <!-- Names the missing rows by what they are, not by the register
+      <!-- Names the missing rows by what they are, not by the register
              that does not carry them. „Die Entwürfe ohne Gegenstand im
              Parlament" put the site's densest piece of jargon in the one
              state where its gloss below the list was suppressed — the
              gloss only rendered when such a row was present, and this line
              only renders when none is. -->
-        <!-- A chosen Land that could not be read, said like the RIS half
+      <!-- A chosen Land that could not be read, said like the RIS half
              below: its rows are missing, and the list must not read as if
              that Land had nothing open. -->
-        <GapNote v-for="s in unreadableLaender" :key="s.land" kind="unavailable" class="mt-2 text-sm text-ink-muted">
-          {{ LAND_NAME[s.land] }}<template v-if="s.listUrl"> –
-            <ExternalLink :href="s.listUrl" class="link-inline font-medium">beim Land nachsehen</ExternalLink></template>.
-        </GapNote>
-        <GapNote v-if="bund && risState === 'failed'" kind="unavailable" class="mt-2 text-sm text-ink-muted">
-          die Verordnungsentwürfe aus dem RIS –
-          <NuxtLink
-            to="/entwuerfe?art=verordnung&status=open"
-            class="link-inline font-medium"
-          >noch einmal versuchen</NuxtLink>
-          oder
-          <ExternalLink
-            href="https://www.ris.bka.gv.at/Begut/"
-            class="link-inline font-medium"
-          >im RIS nachsehen</ExternalLink>.
-        </GapNote>
+      <GapNote v-for="s in unreadableLaender" :key="s.land" kind="unavailable" class="mt-2 text-sm text-ink-muted">
+        {{ LAND_NAME[s.land] }}<template v-if="s.listUrl"> –
+          <ExternalLink :href="s.listUrl" class="link-inline font-medium">beim Land nachsehen</ExternalLink></template>.
+      </GapNote>
+      <GapNote v-if="bund && risState === 'failed'" kind="unavailable" class="mt-2 text-sm text-ink-muted">
+        die Verordnungsentwürfe aus dem RIS –
+        <NuxtLink
+          to="/entwuerfe?art=verordnung&status=open"
+          class="link-inline font-medium"
+        >noch einmal versuchen</NuxtLink>
+        oder
+        <ExternalLink
+          href="https://www.ris.bka.gv.at/Begut/"
+          class="link-inline font-medium"
+        >im RIS nachsehen</ExternalLink>.
+      </GapNote>
 
-        <!-- Always the box, since the chips moved into its head (22.10.2026):
+      <!-- Always the box, since the chips moved into its head (22.10.2026):
              a list that vanished when empty would take the control that
              could fill it with it. For the same reason the loading state
              stands inside it (`#state`) rather than in its place: a chip
              that blanked the box took itself away until the answer came. -->
-        <EntryList :entries="visibleOpenRows" class="mt-4">
-          <!-- Where the rows come from (`SourceChips`), in the box's head
+      <EntryList :entries="visibleOpenRows" :state="openState" class="mt-4" @retry="refresh()">
+        <!-- Where the rows come from (`SourceChips`), in the box's head
                like every list's controls. -->
-          <template #header>
-            <SourceChips />
-            <!-- The chosen Länder this list does not hold in full, under the
+        <template #header>
+          <SourceChips />
+          <!-- The chosen Länder this list does not hold in full, under the
                  chips that chose them — true of this list only
                  (`landsIncompleteFor`, `laufend`). -->
-            <LandCoverageNote :lands="chosenLaender" where="laufend" />
-          </template>
-          <!-- Until 12.11.2026 the list waited here for every half, because
+          <LandCoverageNote :lands="chosenLaender" where="laufend" />
+        </template>
+        <!-- Until 12.11.2026 the list waited here for every half, because
                the RIS rows sort in between the others by Frist and a list
                drawn from one half reorders when they come. On the server
                that wait was the page's delivery time, so the
@@ -762,38 +777,36 @@ function submitSearch() {
                are said under the box (`openPendingLine`). The skeleton
                stays where nothing could stand yet: the Länder alone, or no
                row at all while a half is pending — never „keine offen". -->
-          <template v-if="openWaiting" #state>
-            <LoadingState label="Offene Entwürfe werden geladen …" />
-          </template>
-          <template #empty>
-            <!-- The no-open moment is exactly the moment to subscribe. Said
+        <template #empty>
+          <!-- The no-open moment is exactly the moment to subscribe. Said
                  only when every chosen half is known to be empty — with the
                  RIS half missing this would be a claim the page cannot make. -->
-            <div v-if="!bund || risOnly" class="p-4">
-              <EmptyState
-                title="Derzeit ist keine Begutachtung offen"
-                description="Neue Entwürfe erscheinen hier, sobald sie zur Begutachtung aufliegen."
-              >
-                <!-- The header's own links (`SubscribeLinks`) rather than a
+          <div v-if="!bund || risOnly" class="p-4">
+            <EmptyState
+              title="Derzeit ist keine Begutachtung offen"
+              description="Neue Entwürfe erscheinen hier, sobald sie zur Begutachtung aufliegen."
+            >
+              <!-- The header's own links (`SubscribeLinks`) rather than a
                      second set built here: one wording for the same three ways
                      to follow, wherever they stand. `leading-7` for the header's
                      reason, the links are `tap-target` boxes in the line. -->
-                <div>
-                  <SubscribeLinks />
-                </div>
-              </EmptyState>
-            </div>
-          </template>
-        </EntryList>
-        <!-- UNDER the box, not above it (12.11.2026): the line goes when the
+              <div>
+                <SubscribeLinks />
+              </div>
+            </EmptyState>
+          </div>
+        </template>
+      </EntryList>
+      <!-- UNDER the box, not above it (12.11.2026): the line goes when the
              rows come, and above the list it would pull the list up with it.
              Where a failed half's line stands above, this one is not a
              correction to the list but a note on its way to completion. -->
-        <p v-if="openPendingLine && !openWaiting" class="mt-2 text-sm text-ink-muted">
-          {{ openPendingLine }}
-        </p>
-      </section>
+      <p v-if="openPendingLine && !openWaiting" class="mt-2 text-sm text-ink-muted">
+        {{ openPendingLine }}
+      </p>
+    </section>
 
+    <template v-if="data">
       <!-- The second window for input, directly under the first. Both
            sections are "you can take part now"; this one exists because the
            Vorlage's door is otherwise invisible unless you happen to open
@@ -1101,13 +1114,10 @@ function submitSearch() {
         <p v-if="bund && noneApply(ENACTED_UNAVAILABLE)" class="mt-2 text-sm text-ink-muted">
           {{ noneApply(ENACTED_UNAVAILABLE) }}
         </p>
-        <EntryList :entries="enactedEntries" class="mt-4">
+        <EntryList :entries="enactedEntries" :state="!enactedEntries.length && enactedLoading ? { loading: HOME_LIST_DE.enactedLoading } : null" class="mt-4">
           <template #header>
             <SourceChips :unavailable="ENACTED_UNAVAILABLE" />
             <LandCoverageNote :lands="enactedLaender" where="kundgemacht" />
-          </template>
-          <template v-if="!enactedEntries.length && enactedLoading" #state>
-            <LoadingState label="Kundmachungen werden geladen …" />
           </template>
           <template #empty>
             <!-- Two different silences, said differently: nothing promulgated
@@ -1151,7 +1161,7 @@ function submitSearch() {
            screenshot; here the footer's „Datenquellen und Lizenzen im
            Impressum" link is the page's attribution — CC BY 4.0 § 3 a (2)
            allows a link to the page carrying it. -->
-    </FetchGate>
+    </template>
 
     <!-- After the drafts' sections, outside their gate (15.11.2026): another
          object with its own endpoint, so a failed `/api/dashboard` does not

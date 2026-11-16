@@ -1,0 +1,211 @@
+{
+ "results": {
+  "bindings": [
+   {
+    "m": {
+     "type": "uri",
+     "value": "http://publications.europa.eu/resource/cellar/0fdb519b-3af3-448a-a385-720ba284d61b"
+    },
+    "title": {
+     "type": "literal",
+     "xml:lang": "de",
+     "value": "Arbeitslosenversicherungsgesetz 1977 (AlVG) in der geltenden Fassung"
+    },
+    "type": {
+     "type": "literal",
+     "datatype": "http://www.w3.org/2001/XMLSchema#string",
+     "value": "Bundesgesetz"
+    },
+    "notified": {
+     "type": "literal",
+     "datatype": "http://www.w3.org/2001/XMLSchema#date",
+     "value": "2026-06-16"
+    },
+    "ojname": {
+     "type": "literal",
+     "datatype": "http://www.w3.org/2001/XMLSchema#string",
+     "value": "Bundesgesetzblatt für die Republik Österreich ( BGBl. )"
+    },
+    "ojnum": {
+     "type": "literal",
+     "datatype": "http://www.w3.org/2001/XMLSchema#string",
+     "value": "609/1977 idF I 118/2025"
+    },
+    "ojdate": {
+     "type": "literal",
+     "datatype": "http://www.w3.org/2001/XMLSchema#date",
+     "value": "1977-12-21"
+    },
+    "link": {
+     "type": "literal",
+     "datatype": "http://www.w3.org/2001/XMLSchema#anyURI",
+     "value": "https://ris.bka.intra.gv.at/GeltendeFassung.wxe?Abfrage=Bundesnormen&Gesetzesnummer=10008407"
+    }
+   },
+   {
+    "m": {
+     "type": "uri",
+     "value": "http://publications.europa.eu/resource/cellar/dc05a357-d7fd-45c1-9b68-4beec82ad291"
+    },
+    "title": {
+     "type": "literal",
+     "xml:lang": "de",
+     "value": "Bundesgesetz über Sicherheit und Gesundheitsschutz bei der Arbeit (ArbeitnehmerInnenschutzgesetz – ASchG) in der geltenden Fassung"
+    },
+    "type": {
+     "type": "literal",
+     "datatype": "http://www.w3.org/2001/XMLSchema#string",
+     "value": "Bundesgesetz"
+    },
+    "notified": {
+     "type": "literal",
+     "datatype": "http://www.w3.org/2001/XMLSchema#date",
+     "value": "2026-06-12"
+    },
+    "ojname": {
+     "type": "literal",
+     "datatype": "http://www.w3.org/2001/XMLSchema#string",
+     "value": "Bundesgesetzblatt für die Republik Österreich ( BGBl. )"
+    },
+    "ojnum": {
+     "type": "literal",
+     "datatype": "http://www.w3.org/2001/XMLSchema#string",
+     "value": "450/1994 idF I 56/2024"
+    },
+    "ojdate": {
+     "type": "literal",
+     "datatype": "http://www.w3.org/2001/XMLSchema#date",
+     "value": "1994-06-17"
+    },
+    "link": {
+     "type": "literal",
+     "datatype": "http://www.w3.org/2001/XMLSchema#anyURI",
+     "value": "https://ris.bka.intra.gv.at/GeltendeFassung.wxe?Abfrage=Bundesnormen&Gesetzesnummer=10008910"
+    }
+   },
+   {
+    "m": {
+     "type": "uri",
+     "value": "http://publications.europa.eu/resource/cellar/770bf0db-e043-462c-84a1-30c3b85548c0"
+    },
+    "title": {
+     "type": "literal",
+     "xml:lang": "de",
+     "value": "Verordnung der Burgenländischen Landesregierung vom 10. September 2019, mit der nähere Regelungen über den Betrieb von Kinder- und Jugendhilfeeinrichtungen getroffen werden (Bgld. Kinder- und Jugendhilfeeinrichtungsverordnung - Bgld. KJHEV), LGBl. Nr. 65/2019, in der Fassung der Verordnung LGBl. Nr. 47/2024"
+    },
+    "type": {
+     "type": "literal",
+     "datatype": "http://www.w3.org/2001/XMLSchema#string",
+     "value": "Verordnung"
+    },
+    "notified": {
+     "type": "literal",
+     "datatype": "http://www.w3.org/2001/XMLSchema#date",
+     "value": "2026-08-13"
+    },
+    "ojname": {
+     "type": "literal",
+     "datatype": "http://www.w3.org/2001/XMLSchema#string",
+     "value": "Landesgesetzblatt ( LGBl. )"
+    },
+    "ojnum": {
+     "type": "literal",
+     "datatype": "http://www.w3.org/2001/XMLSchema#string",
+     "value": "LGBl. Nr. 65/2019"
+    },
+    "ojdate": {
+     "type": "literal",
+     "datatype": "http://www.w3.org/2001/XMLSchema#date",
+     "value": "2019-09-24"
+    },
+    "link": {
+     "type": "literal",
+     "datatype": "http://www.w3.org/2001/XMLSchema#anyURI",
+     "value": "https://www.ris.bka.gv.at/GeltendeFassung.wxe?Abfrage=LrBgld&Gesetzesnummer=20001232"
+    }
+   },
+   {
+    "m": {
+     "type": "uri",
+     "value": "http://publications.europa.eu/resource/cellar/0ea1732f-12d7-4ca3-98e8-ac7b51da18c4"
+    },
+    "title": {
+     "type": "literal",
+     "xml:lang": "de",
+     "value": "Gesetz vom 14. November 2013 über die Hilfen für Familien und Erziehungshilfen für Kinder und Jugendliche (Burgenländisches Kinder- und Jugendhilfegesetz - Bgld. KJHG), LGBl. Nr. 62/2013, in der Fassung des Gesetzes LGBl. Nr. 45/2026"
+    },
+    "type": {
+     "type": "literal",
+     "datatype": "http://www.w3.org/2001/XMLSchema#string",
+     "value": "Landesgesetz"
+    },
+    "notified": {
+     "type": "literal",
+     "datatype": "http://www.w3.org/2001/XMLSchema#date",
+     "value": "2026-08-13"
+    },
+    "ojname": {
+     "type": "literal",
+     "datatype": "http://www.w3.org/2001/XMLSchema#string",
+     "value": "Landesgesetzblatt ( LGBl. )"
+    },
+    "ojnum": {
+     "type": "literal",
+     "datatype": "http://www.w3.org/2001/XMLSchema#string",
+     "value": "LGBl. Nr. 45/2026"
+    },
+    "ojdate": {
+     "type": "literal",
+     "datatype": "http://www.w3.org/2001/XMLSchema#date",
+     "value": "2026-06-03"
+    },
+    "link": {
+     "type": "literal",
+     "datatype": "http://www.w3.org/2001/XMLSchema#anyURI",
+     "value": "https://www.ris.bka.gv.at/GeltendeFassung.wxe?Abfrage=LrBgld&Gesetzesnummer=20000955"
+    }
+   },
+   {
+    "m": {
+     "type": "uri",
+     "value": "http://publications.europa.eu/resource/cellar/29a3a4bf-bbbf-4b55-8e12-ea129d4cdbca"
+    },
+    "title": {
+     "type": "literal",
+     "xml:lang": "de",
+     "value": "Gesetz über die Kinder- und Jugendhilfe (KJH-G), LGBl.Nr. 29/2013 in der Fassung LGBl.Nr. 44/2025"
+    },
+    "type": {
+     "type": "literal",
+     "datatype": "http://www.w3.org/2001/XMLSchema#string",
+     "value": "Landesgesetz"
+    },
+    "notified": {
+     "type": "literal",
+     "datatype": "http://www.w3.org/2001/XMLSchema#date",
+     "value": "2026-08-13"
+    },
+    "ojname": {
+     "type": "literal",
+     "datatype": "http://www.w3.org/2001/XMLSchema#string",
+     "value": "Landesgesetzblatt ( LGBl. )"
+    },
+    "ojnum": {
+     "type": "literal",
+     "datatype": "http://www.w3.org/2001/XMLSchema#string",
+     "value": "LGBl.Nr. 44/2025"
+    },
+    "ojdate": {
+     "type": "literal",
+     "datatype": "http://www.w3.org/2001/XMLSchema#date",
+     "value": "2025-09-04"
+    },
+    "link": {
+     "type": "literal",
+     "datatype": "http://www.w3.org/2001/XMLSchema#anyURI",
+     "value": "https://ris.bka.gv.at/GeltendeFassung.wxe?Abfrage=LrVbg&Gesetzesnummer=20000417"
+    }
+   }
+  ]
+ }
+}

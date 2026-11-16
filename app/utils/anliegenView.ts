@@ -921,6 +921,8 @@ export const ANLIEGEN_LIST_DE = {
    */
   onlyOpenEnded: 'In einer beendeten Gesetzgebungsperiode ist keine Beteiligung mehr möglich.',
   loading: 'Anliegen werden geladen …',
+  /** The list's request failed: in the rows' place, with „Erneut versuchen" (`ListBoxState`). */
+  failed: { text: gapLabelDe('Anliegen', 'unavailable'), description: 'Die Quelle hat nicht geantwortet.' },
   /**
    * The column headings this list adds over its rows (`EntryList`, `lead`
    * and `secondColumn`). „Stellungnahmen" and „Stand" follow them: the draft

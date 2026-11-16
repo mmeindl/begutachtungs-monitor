@@ -1,0 +1,58 @@
+{
+ "id": 9124,
+ "comRegNum": "ECI(2026)000012",
+ "status": "REGISTERED",
+ "latestUpdateDate": "06/10/2026 16:41",
+ "lastCall": false,
+ "registrationDate": "06/10/2026",
+ "deadline": "",
+ "partiallyRegistered": false,
+ "linguisticVersions": [
+  {
+   "original": false,
+   "languageCode": "EN",
+   "title": "Creation of a European Digital Space (.IA) for Sovereign AI Governance",
+   "objectives": "<p>(Text der Organisatoren, für die Testdaten entfernt)</p>",
+   "annexText": "<p>(Text der Organisatoren, für die Testdaten entfernt)</p>",
+   "treaties": "Art. 11 TUE (democracia participativa); Art. 114 TFUE (Mercado Único Digital); Art. 173 TFUE (competitividad); Arts. 174-178 TFUE (cohesión de regiones insulares); Reg. (UE) 2019/517 (precedente .eu)",
+   "supportLink": "https://eci.ec.europa.eu/068/public/?lg=en",
+   "commissionDecision": {
+    "celex": "32026D2308",
+    "url": "http://eur-lex.europa.eu/legal-content/EN/TXT/PDF/?uri=CELEX:32026D2308&from=EN"
+   }
+  },
+  {
+   "original": false,
+   "languageCode": "DE",
+   "title": "Schaffung des europäischen digitalen Raums (.IA) für eine souveräne KI-Governance",
+   "objectives": "<p>(Text der Organisatoren, für die Testdaten entfernt)</p>",
+   "annexText": "<p>(Text der Organisatoren, für die Testdaten entfernt)</p>",
+   "treaties": "Art. 11 TUE (democracia participativa); Art. 114 TFUE (Mercado Único Digital); Art. 173 TFUE (competitividad); Arts. 174-178 TFUE (cohesión de regiones insulares); Reg. (UE) 2019/517 (precedente .eu)",
+   "supportLink": "https://eci.ec.europa.eu/068/public/?lg=de",
+   "commissionDecision": {
+    "celex": "32026D2308",
+    "url": "http://eur-lex.europa.eu/legal-content/DE/TXT/PDF/?uri=CELEX:32026D2308&from=DE"
+   }
+  }
+ ],
+ "categories": [
+  {
+   "categoryType": "RSH"
+  },
+  {
+   "categoryType": "REGIO"
+  },
+  {
+   "categoryType": "DECO"
+  }
+ ],
+ "members": [],
+ "progress": [
+  {
+   "name": "REGISTERED",
+   "active": true,
+   "date": "06/10/2026"
+  }
+ ],
+ "funding": {}
+}

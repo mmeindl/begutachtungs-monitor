@@ -1,0 +1,210 @@
+{
+ "id": 9055,
+ "comRegNum": "ECI(2025)000005",
+ "status": "SUBMITTED",
+ "latestUpdateDate": "12/11/2026 10:41",
+ "lastCall": false,
+ "registrationDate": "25/11/2025",
+ "deadline": "",
+ "startCollectionDate": "13/01/2026",
+ "earlyClosureDate": "15/07/2026",
+ "partiallyRegistered": false,
+ "linguisticVersions": [
+  {
+   "original": true,
+   "languageCode": "EN",
+   "title": "Demand the full suspension of the EU-Israel Association Agreement in view of Israel’s violations of human rights",
+   "objectives": "<p>(Text der Organisatoren, für die Testdaten entfernt)</p>",
+   "annexText": "<p>(Text der Organisatoren, für die Testdaten entfernt)</p>",
+   "treaties": "Article 3 (5) of the Treaty on the European Union (TEU), Article 21 TEU, Article 205 TFEU , Article 207 TFEU ",
+   "supportLink": "https://eci.ec.europa.eu/055/public/?lg=en",
+   "commissionDecision": {
+    "celex": "32025D2460",
+    "url": "http://eur-lex.europa.eu/legal-content/EN/TXT/PDF/?uri=CELEX:32025D2460&from=EN"
+   }
+  },
+  {
+   "original": false,
+   "languageCode": "DE",
+   "title": "Wir fordern angesichts Israels Menschenrechtsverletzungen die vollständige Aussetzung des Assoziierungsabkommens zwischen der EU und Israel",
+   "objectives": "<p>(Text der Organisatoren, für die Testdaten entfernt)</p>",
+   "annexText": "<p>(Text der Organisatoren, für die Testdaten entfernt)</p>",
+   "treaties": "Article 3 (5) of the Treaty on the European Union (TEU), Article 21 TEU, Article 205 TFEU , Article 207 TFEU ",
+   "supportLink": "https://eci.ec.europa.eu/055/public/?lg=de",
+   "commissionDecision": {
+    "celex": "32025D2460",
+    "url": "http://eur-lex.europa.eu/legal-content/DE/TXT/PDF/?uri=CELEX:32025D2460&from=DE"
+   }
+  }
+ ],
+ "members": [],
+ "progress": [
+  {
+   "name": "REGISTERED",
+   "active": false,
+   "date": "25/11/2025"
+  },
+  {
+   "name": "SUBMITTED",
+   "active": true,
+   "date": "12/11/2026"
+  },
+  {
+   "name": "CLOSED",
+   "active": false,
+   "date": "15/07/2026",
+   "footnoteType": "COLLECTION_EARLY_CLOSURE"
+  },
+  {
+   "name": "VERIFICATION",
+   "active": false,
+   "date": "22/07/2026"
+  },
+  {
+   "name": "COLLECTION_START_DATE",
+   "active": false,
+   "date": "13/01/2026"
+  }
+ ],
+ "funding": {},
+ "submission": {
+  "totalSignatures": 1117104,
+  "entry": [
+   {
+    "countryCodeType": "LU",
+    "total": 2326,
+    "afterSubmission": false
+   },
+   {
+    "countryCodeType": "SK",
+    "total": 1917,
+    "afterSubmission": false
+   },
+   {
+    "countryCodeType": "PT",
+    "total": 18289,
+    "afterSubmission": false
+   },
+   {
+    "countryCodeType": "BG",
+    "total": 5339,
+    "afterSubmission": false
+   },
+   {
+    "countryCodeType": "BE",
+    "total": 35317,
+    "afterSubmission": false
+   },
+   {
+    "countryCodeType": "FI",
+    "total": 17262,
+    "afterSubmission": false
+   },
+   {
+    "countryCodeType": "HR",
+    "total": 2563,
+    "afterSubmission": false
+   },
+   {
+    "countryCodeType": "AT",
+    "total": 4897,
+    "afterSubmission": false
+   },
+   {
+    "countryCodeType": "EE",
+    "total": 821,
+    "afterSubmission": false
+   },
+   {
+    "countryCodeType": "DK",
+    "total": 18476,
+    "afterSubmission": false
+   },
+   {
+    "countryCodeType": "CZ",
+    "total": 1935,
+    "afterSubmission": false
+   },
+   {
+    "countryCodeType": "LV",
+    "total": 1038,
+    "afterSubmission": false
+   },
+   {
+    "countryCodeType": "MT",
+    "total": 1111,
+    "afterSubmission": false
+   },
+   {
+    "countryCodeType": "CY",
+    "total": 2271,
+    "afterSubmission": false
+   },
+   {
+    "countryCodeType": "ES",
+    "total": 151821,
+    "afterSubmission": false
+   },
+   {
+    "countryCodeType": "DE",
+    "total": 51779,
+    "afterSubmission": false
+   },
+   {
+    "countryCodeType": "RO",
+    "total": 5890,
+    "afterSubmission": false
+   },
+   {
+    "countryCodeType": "SI",
+    "total": 5082,
+    "afterSubmission": false
+   },
+   {
+    "countryCodeType": "IT",
+    "total": 283863,
+    "afterSubmission": false
+   },
+   {
+    "countryCodeType": "HU",
+    "total": 1512,
+    "afterSubmission": false
+   },
+   {
+    "countryCodeType": "GR",
+    "total": 15806,
+    "afterSubmission": false
+   },
+   {
+    "countryCodeType": "PL",
+    "total": 46975,
+    "afterSubmission": false
+   },
+   {
+    "countryCodeType": "LT",
+    "total": 1227,
+    "afterSubmission": false
+   },
+   {
+    "countryCodeType": "FR",
+    "total": 339479,
+    "afterSubmission": false
+   },
+   {
+    "countryCodeType": "SE",
+    "total": 23637,
+    "afterSubmission": false
+   },
+   {
+    "countryCodeType": "NL",
+    "total": 44939,
+    "afterSubmission": false
+   },
+   {
+    "countryCodeType": "IE",
+    "total": 31532,
+    "afterSubmission": false
+   }
+  ]
+ }
+}

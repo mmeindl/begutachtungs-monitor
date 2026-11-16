@@ -1,0 +1,64 @@
+{
+ "id": 9152,
+ "comRegNum": "ECI(2026)000008",
+ "status": "REGISTERED",
+ "latestUpdateDate": "07/08/2026 16:55",
+ "lastCall": false,
+ "registrationDate": "07/07/2026",
+ "deadline": "",
+ "startCollectionDate": "04/01/2027",
+ "partiallyRegistered": false,
+ "linguisticVersions": [
+  {
+   "original": true,
+   "languageCode": "EN",
+   "title": "Introduction of Unconditional Basic Income (UBI) throughout the EU",
+   "objectives": "<p>(Text der Organisatoren, für die Testdaten entfernt)</p>",
+   "annexText": "<p>(Text der Organisatoren, für die Testdaten entfernt)</p>",
+   "treaties": "Treaty on European Union (TEU) Article 2 Article 3 Treaty on the Functioning of the European Union (TFEU) Article 5 Article 156 Charter of Fundamental Rights of the European Union Article 1 Article 2 Article 6 Article 15 Article 21 Article 34",
+   "supportLink": "https://eci.ec.europa.eu/062/public/?lg=en",
+   "commissionDecision": {
+    "celex": "32026D1798",
+    "url": "http://eur-lex.europa.eu/legal-content/EN/TXT/PDF/?uri=CELEX:32026D1798&from=EN"
+   }
+  },
+  {
+   "original": false,
+   "languageCode": "DE",
+   "title": "Einführung eines bedingungslosen Grundeinkommens (BGE) in der gesamten EU",
+   "objectives": "<p>(Text der Organisatoren, für die Testdaten entfernt)</p>",
+   "annexText": "<p>(Text der Organisatoren, für die Testdaten entfernt)</p>",
+   "treaties": "Treaty on European Union (TEU) Article 2 Article 3 Treaty on the Functioning of the European Union (TFEU) Article 5 Article 156 Charter of Fundamental Rights of the European Union Article 1 Article 2 Article 6 Article 15 Article 21 Article 34",
+   "supportLink": "https://eci.ec.europa.eu/062/public/?lg=de",
+   "commissionDecision": {
+    "celex": "32026D1798",
+    "url": "http://eur-lex.europa.eu/legal-content/DE/TXT/PDF/?uri=CELEX:32026D1798&from=DE"
+   }
+  }
+ ],
+ "categories": [
+  {
+   "categoryType": "DECO"
+  },
+  {
+   "categoryType": "EMPL"
+  },
+  {
+   "categoryType": "ENV"
+  }
+ ],
+ "members": [],
+ "progress": [
+  {
+   "name": "REGISTERED",
+   "active": false,
+   "date": "07/07/2026"
+  },
+  {
+   "name": "COLLECTION_START_DATE",
+   "active": true,
+   "date": "04/01/2027"
+  }
+ ],
+ "funding": {}
+}

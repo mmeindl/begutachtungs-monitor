@@ -2,6 +2,7 @@
 import type { AnliegenListResponse } from '#shared/types'
 import { anliegenListGpOf, anliegenListGps } from '#shared/utils/anliegen'
 import { gpHasEnded } from '#shared/utils/gp'
+import { listBoxStatusOf } from '~/utils/listState'
 import {
   ANLIEGEN_ART_OPTIONS,
   ANLIEGEN_LIST_DE,
@@ -51,6 +52,9 @@ const { data, error, status, refresh } = await useFetch<AnliegenListResponse>('/
   }),
   lazy: true,
 })
+
+/* Loading and failure in the rows' place (`ListBoxState`): the tabs, the chip, the period and the column header stand meanwhile. A refresh keeps the rows. */
+const listState = computed(() => listBoxStatusOf({ status: status.value, error: error.value, hasData: !!data.value }, ANLIEGEN_LIST_DE.loading, ANLIEGEN_LIST_DE.failed))
 
 /* The running period comes with the answer; until then the chosen one
  * stands alone in the select (`anliegenPeriodOptions`). */
@@ -113,7 +117,9 @@ useSeoMeta({
       :entries="shown"
       :lead="ANLIEGEN_LIST_DE.columns.lead"
       :second-column="ANLIEGEN_LIST_DE.columns.support"
+      :state="listState"
       class="mt-6"
+      @retry="refresh()"
     >
       <template #tabs>
         <ListTabs v-model="artModel" :options="[...ANLIEGEN_ART_OPTIONS]" :group-label="ANLIEGEN_LIST_DE.artLabel" collapse />
@@ -139,23 +145,6 @@ useSeoMeta({
         <GapNote v-for="line in unreadLines" :key="line" :text="line" class="text-sm text-ink-muted" />
       </template>
 
-      <!-- No rows yet: loading or failure take the rows' place, as on /entwuerfe. -->
-      <template v-if="!data" #state>
-        <LoadingState
-          v-if="status === 'pending' || status === 'idle'"
-          :label="ANLIEGEN_LIST_DE.loading"
-        />
-        <ListBoxNotice
-          v-else-if="error"
-          role="alert"
-          title="Anliegen: gerade nicht abrufbar"
-          description="Die Quelle hat nicht geantwortet."
-        >
-          <template #action>
-            <UButton color="primary" @click="refresh()">Erneut versuchen</UButton>
-          </template>
-        </ListBoxNotice>
-      </template>
       <template #empty>
         <ListBoxNotice v-if="viewUnread" role="alert" :title="unreadLines.join(' ')" />
         <ListBoxNotice v-else-if="empty" :title="empty.title" :description="empty.note ?? undefined" />
