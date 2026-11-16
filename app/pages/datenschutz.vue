@@ -57,7 +57,8 @@ usePageSeo({
     <ProseSection id="dse-controller" heading="Verantwortlicher" first>
       <address>
         Manuel Meindl<br>
-        Wohnort: Linz, Österreich<br>
+        Steingasse 1<br>
+        4020 Linz, Österreich<br>
         E-Mail:
         <a
           href="mailto:kontakt@begutachtungs-monitor.at"

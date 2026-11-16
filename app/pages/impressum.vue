@@ -13,14 +13,19 @@
  * against our own case. So including Beteiligungsverhältnisse (§ 25 Abs 2)
  * and grundlegende Richtung (§ 25 Abs 4).
  *
- * Why the Wohnort and no postal address: § 25 Abs 2 asks for the Wohnort, not
- * the delivery address. A full address first becomes necessary when
+ * Why the full postal address (since 16.11.2026; before, the Wohnort alone):
+ * § 25 Abs 2 asks only for the Wohnort. A full address becomes necessary when
  *   (a) the ECG applies — funding, donations, advertising; § 5 ECG wants the
  *       geographic address —, or
  *   (b) e-mail notifications arrive: a mailing list is a wiederkehrendes
  *       elektronisches Medium (§ 1 Abs 1 Z 5a lit d) and triggers § 24 Abs 3
  *       MedienG (name AND address).
- * Both are foreseeable, neither has happened.
+ * /ueber has asked for donations since 04.10.2026. Whether voluntary
+ * donations to a private person make the site a service „in der Regel gegen
+ * Entgelt" is not settled; with the address published the question no longer
+ * matters, and (b) and later funding are covered too. The address is the
+ * maintainer's own decision and a deliberate exception to „no personal data
+ * in the repository", like the name here and the IBAN on /ueber.
  *
  * § 25 Abs 1 asks for "ständig leicht und unmittelbar auffindbar": hence the
  * footer link on every page. Not in the main navigation — that is capped at
@@ -48,7 +53,8 @@ usePageSeo({
            back. -->
       <address>
         Manuel Meindl<br>
-        Wohnort: Linz, Österreich<br>
+        Steingasse 1<br>
+        4020 Linz, Österreich<br>
         E-Mail:
         <a
           href="mailto:kontakt@begutachtungs-monitor.at"
