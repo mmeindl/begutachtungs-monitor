@@ -1,8 +1,8 @@
 /**
- * The words of the Commission's portal „Ihre Meinung zählt" that both the
- * pages and the feeds print (15.11.2026): its stages and the kinds of act
- * the Commission foresees. Here once, so `/feed.xml?quelle=eu` and the
- * list on `/eu-recht` cannot name one window two ways.
+ * The words of the Commission's portal „Ihre Meinung zählt" that the pages
+ * print (15.11.2026): its stages and the kinds of act the Commission
+ * foresees. Here once, so the list on `/eu-recht` and an initiative's page
+ * cannot name one window two ways.
  *
  * Pure module: auto-imported in `app/`, imported relatively by the server
  * and by vitest.
@@ -82,13 +82,16 @@ export const EU_FEEDBACK_ORGANISATION_TYPES: readonly EuFeedbackOrganisationType
 
 /**
  * How far the list of contributions to one window is read (16.11.2026,
- * docs/decisions.md, „On approach, the newest 500, more on request"). The
- * portal answers 100 rows a page (it caps `size` there); the first reading
- * is five pages, the newest 500, and each press of „Weitere … lesen" one
- * more step of five pages, up to fifty pages — 5,000 rows a window. The
- * server refuses any other step; the page counts its button's number with
- * them.
+ * docs/decisions.md, „On approach, the newest 1,000; more on request"). The
+ * portal answers 100 rows a page (it caps `size` there); a step is five
+ * pages, 500 rows — what one request to the server reads through the
+ * pacer in its 30 s. The block reads by itself up to `EU_FEEDBACK_AUTO_PAGES`
+ * (ten pages, the newest 1,000: two steps after page one), and each press
+ * of „Weitere … lesen" one more step, up to fifty pages — 5,000 rows a
+ * window. The server refuses any other step; the page counts its button's
+ * number with them. `EU_FEEDBACK_AUTO_PAGES` is a multiple of the step.
  */
 export const EU_FEEDBACK_PAGE_SIZE = 100
 export const EU_FEEDBACK_STEP_PAGES = 5
+export const EU_FEEDBACK_AUTO_PAGES = 10
 export const EU_FEEDBACK_MAX_PAGES = 50

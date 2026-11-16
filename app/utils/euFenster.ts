@@ -99,9 +99,6 @@ const DE = {
   search: 'Offene Fristen durchsuchen',
   count: (n: number) => (n === 1 ? '1 offene Frist' : `${n} offene Fristen`),
   loading: 'Offene Fristen werden geladen …',
-  subscribe: 'Diese Fristen abonnieren:',
-  subscribeCalendar: 'Kalender',
-  subscribeFeed: 'RSS-Feed',
   credits: ['Quelle:', EU_RAIL_DE.portal.credit],
 } as const
 

@@ -1,4 +1,5 @@
 import { readFileSync } from 'node:fs'
+import type { EuRueckmeldungenResponse } from '../shared/types'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { clearNitroCache, nitroCacheKeys, nitroCachedFunction } from './helpers/nitroCache'
 
@@ -29,6 +30,7 @@ vi.mock('../server/utils/upstream/fetch', () => {
 
 const { upstreamJson, UpstreamHttpError } = vi.mocked(await import('../server/utils/upstream/fetch'))
 const { feedbackOf } = await import('../server/utils/eu/portalService')
+const { feedbackMoreOf, nextAutomaticStep } = await import('../app/utils/euFeedback')
 
 const fixture = (name: string): unknown => JSON.parse(readFileSync(new URL(`./fixtures/eu-portal/${name}.json`, import.meta.url), 'utf8'))
 
@@ -325,5 +327,78 @@ describe('who gave feedback, more on request', () => {
     await feedbackOf(13192, 15080, 10)
     const { rowOf } = await import('../server/utils/eu/portalFeedback')
     expect(JSON.stringify(rowOf({ userType: 'EU_CITIZEN', status: 'PUBLISHED', country: 'AUT', firstName: 'Erfunden', surname: 'Beispiel', id: 5, dateFeedback: '2026/11/10 10:00:00' }))).not.toMatch(/Erfunden|Beispiel|date|"id"/)
+  })
+})
+
+/* ------------------------------------------------------------------ *
+ * The automatic reading to 1,000: the block's requests, answered by the service
+ * ------------------------------------------------------------------ */
+
+describe('who gave feedback, read by itself to 1,000', () => {
+  let clock = Date.now() + 1000 * 60 * 60 * 24 * 90
+  beforeEach(() => {
+    clock += 7 * 60 * 60 * 1000
+    vi.useFakeTimers({ toFake: ['Date'] })
+    vi.setSystemTime(clock)
+  })
+  afterEach(() => { vi.useRealTimers() })
+
+  /** What the block asks by itself (`nextAutomaticStep`), each answer from the service: the requests and the last answer. */
+  async function automaticReading() {
+    // What the endpoint answers: `unbekannt` would be its 404, never an answer the block sees.
+    const ask = async (step: 'erste' | number): Promise<EuRueckmeldungenResponse> => {
+      const r = await feedbackOf(13192, 15080, step)
+      if (r.state === 'unbekannt') throw new Error('unbekannt')
+      return r
+    }
+    const requests: (string | number)[] = ['erste']
+    let answer = await ask('erste')
+    for (let next = nextAutomaticStep(answer); next !== null; next = nextAutomaticStep(answer)) {
+      requests.push(next)
+      answer = await ask(next)
+    }
+    return { requests, answer }
+  }
+  const range = (from: number, to: number) => Array.from({ length: to - from }, (_, i) => from + i)
+
+  it.each([
+    { total: 80, requests: ['erste'], pages: 1, read: 80 },
+    { total: 480, requests: ['erste', 5], pages: 5, read: 480 },
+    { total: 500, requests: ['erste', 5], pages: 5, read: 500 },
+    { total: 900, requests: ['erste', 5, 10], pages: 9, read: 900 },
+    { total: 1000, requests: ['erste', 5, 10], pages: 10, read: 1000 },
+  ])('a window of $total: requests $requests, every portal page once', async ({ total, requests, pages, read }) => {
+    sizedPortal(total)
+    const r = await automaticReading()
+    expect(r.requests).toEqual(requests)
+    expect(feedbackPages()).toEqual(range(0, pages))
+    expect(r.answer).toMatchObject({ state: 'gelesen', reading: { read, total } })
+    if (r.answer.state === 'gelesen') expect(feedbackMoreOf(r.answer.reading, r.answer.pages)).toBeNull()
+  })
+
+  it('a window of 2,300: ten pages by itself, then the button reads rows 1,001–1,500', async () => {
+    sizedPortal(2300)
+    const r = await automaticReading()
+    expect(r.requests).toEqual(['erste', 5, 10])
+    expect(feedbackPages()).toEqual(range(0, 10))
+    if (r.answer.state !== 'gelesen') throw new Error(r.answer.state)
+    expect(r.answer).toMatchObject({ pages: 10, reading: { read: 1000, total: 2300 } })
+    const more = feedbackMoreOf(r.answer.reading, r.answer.pages)
+    expect(more).toMatchObject({ kind: 'offer', sentence: 'Gelesen sind die neuesten 1.000 von 2.300 Rückmeldungen.', label: 'Weitere 500 lesen', next: 15 })
+    if (more?.kind !== 'offer') return
+    expect(await feedbackOf(13192, 15080, more.next)).toMatchObject({ state: 'gelesen', pages: 15, reading: { read: 1500 } })
+    expect(feedbackPages()).toEqual(range(0, 15))
+  })
+
+  it('goes on from a reading cached at 500, without reading it again', async () => {
+    sizedPortal(2300)
+    // A server that had the first step of five pages cached, from before.
+    await feedbackOf(13192, 15080, 5)
+    asked = []
+    const r = await automaticReading()
+    // Page one answers with the cached step; the block asks step ten, which reads only the pages it lacks.
+    expect(r.requests).toEqual(['erste', 10])
+    expect(feedbackPages()).toEqual(range(5, 10))
+    expect(r.answer).toMatchObject({ state: 'gelesen', pages: 10, reading: { read: 1000, total: 2300 } })
   })
 })

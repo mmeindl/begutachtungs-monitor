@@ -18,7 +18,7 @@
  * WHAT A CONTROL CHANGES STANDS BELOW IT. The tabs' counts are the kinds'
  * whole, whatever the chip and the search do; the chip counts within the
  * tab above it; the set line and the rows answer to all three. The row
- * „Gelesen sind die neuesten 500 von 599 Rückmeldungen." with „Weitere 99
+ * „Gelesen sind die neuesten 1.000 von 1.099 Rückmeldungen." with „Weitere 99
  * lesen" stands first, above the tabs (16.11.2026, the box's `frame`
  * slot): a further step changes the tabs' counts as well as the rows and
  * the closing rows, and search, filter and order reach only the rows read.
@@ -46,17 +46,19 @@
  * carry no country and no name to match. The citizens' own tab lists them
  * per country, by count.
  *
- * PARTIAL WHILE THE REST IS READ (16.11.2026, `partial`): with page one
- * alone the list shows its named rows newest first and the pager over
- * them, nothing else — no tabs, no chip, no search, no order (the column
- * labels are plain), no set line, no closing rows: a count, an order or a
- * search over one page of five would be wrong and would change under the
- * reader's eyes. In the tool row's place, one line says the rest is being
- * read, or where it failed a gap sentence with „Erneut versuchen"
- * (`retry`). When the whole arrives the controls appear and the rows
- * already paged to stay: the first rows are the same rows in the same
- * order, and the pager is not reset — the tab the list lands on is a
- * computed default (`kind`), not a choice, so it starts no new page.
+ * PARTIAL WHILE THE AUTOMATIC READING RUNS (16.11.2026, `partial`): with
+ * page one, or the first step of 500, the list shows the named rows read
+ * so far newest first and the pager over them, nothing else — no tabs, no
+ * chip, no search, no order (the column labels are plain), no set line, no
+ * closing rows: a count, an order or a search over part of the reading
+ * would be wrong and would change under the reader's eyes. In the tool
+ * row's place, one line says the rest is being read, or where an automatic
+ * step failed a gap sentence with „Erneut versuchen" (`retry`). A step
+ * that arrives in between swaps its rows in, and when the automatic
+ * reading is complete the controls appear; either way the rows already
+ * paged to stay: the first rows are the same rows in the same order, and
+ * the pager is not reset — the tab the list lands on is a computed default
+ * (`kind`), not a choice, so it starts no new page.
  *
  * Every word comes from `euFeedbackView` and `EU_FEEDBACK_DE`
  * (`app/utils/euFeedback.ts`).
@@ -88,7 +90,7 @@ const props = withDefaults(defineProps<{
   reading: EuFeedbackReading
   /** The country the page serves; null on a page that serves none — then no chip. */
   country?: EuFeedbackCountry | null
-  /** Page one alone, the rest still read (`restFailed` false) or failed (true); null for the whole reading. */
+  /** The automatic reading not complete yet: the rest still read (`restFailed` false) or an automatic step failed (true); null once it is complete. */
   partial?: { restFailed: boolean } | null
   /** The first row where the portal counts more than was read (`feedbackMoreOf`); null where everything was read, and while partial. */
   moreRow?: EuFeedbackMore | null
@@ -103,7 +105,7 @@ const view = computed(() => euFeedbackView(props.reading, props.country))
 /*
  * The first tab is where the list lands: „Alle", or the one tab there is.
  * The reader's choice is kept apart from that default, so a reading that
- * changes the tabs (page one, then the whole) changes the default without
+ * changes the tabs (a further step) changes the default without
  * counting as a choice — no new first page. While partial: every named row.
  */
 const chosenKind = ref<EuFeedbackKindTab | null>(null)
@@ -172,7 +174,7 @@ const citizenRows = computed(() => (citizensTab.value
   : []))
 const closingRows = computed(() => (isPartial.value ? [] : closingRowsOf(view.value.closing, { kind: kind.value, country: chipCode.value, query: query.value }, searchActive.value)))
 
-/* The reader's choices start a new first page; the arrival of the whole reading does not. */
+/* The reader's choices start a new first page; the arrival of a reading does not. */
 const resetOn = [chosenKind, fromCountry, query, chosenSort, chosenReversed]
 const { visible, shown, more, all } = usePagedList(rows, STATEMENT_PAGE_SIZE, resetOn)
 const { visible: visibleCitizens, shown: shownCitizens, more: moreCitizens, all: allCitizens } = usePagedList(citizenRows, STATEMENT_PAGE_SIZE, resetOn)
@@ -192,7 +194,7 @@ const setLineVisible = computed(() => feedbackSetLineVisible({ searchActive: sea
 const showSearch = computed(() => !isPartial.value && !citizensTab.value && total.value > STATEMENT_SEARCH_MIN)
 const showSort = computed(() => !isPartial.value && (citizensTab.value ? view.value.citizens.length > 1 : total.value > 1))
 const showChip = computed(() => !isPartial.value && view.value.country !== null)
-/* The whole reading's first row; page one's „100 of 350" is the progress line's to say. */
+/* The complete reading's first row; while partial, „how many of how many" is the progress line's to say. */
 /* `moreRow`, not `more`: the pager's `more()` holds that name. */
 const showMore = computed(() => !isPartial.value && props.moreRow !== null)
 /* The tool row holds the phone's order alone: from row-cols up it would be an empty band. */

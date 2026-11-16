@@ -63,7 +63,7 @@ export const FEEDBACK_READER_VERSION = 4
 /** One page of the list: the portal caps `size` at 100 (size=500 returned 100 on 15.11.2026). */
 export const FEEDBACK_PAGE_SIZE = EU_FEEDBACK_PAGE_SIZE
 
-/** One step of the reading: five pages. The first reading is one step (the newest 500); each „Weitere … lesen" asks for one more. */
+/** One step of the reading: five pages, what one request reads. The block asks two steps by itself (the newest 1,000, `EU_FEEDBACK_AUTO_PAGES`); each „Weitere … lesen" asks for one more. */
 export const FEEDBACK_STEP_PAGES = EU_FEEDBACK_STEP_PAGES
 
 /** At most fifty pages, 5,000 rows, per window: beyond it the page says how many of how many were read, and offers no more. */

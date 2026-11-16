@@ -1,8 +1,11 @@
 import { readFileSync } from 'node:fs'
+import type { H3Event } from 'h3'
+import type { FakeError, FakeEvent } from './helpers/nitroGlobals'
 import { afterAll, beforeAll, describe, expect, it, vi } from 'vitest'
 import type { EuFensterResponse, EuInitiative, EuOpenInitiative } from '../shared/types'
 import { OPEN_WINDOWS_MAX_PAGES, OPEN_WINDOW_FIELDS, OPEN_WINDOW_STATUS_FIELDS, openWindowsUrl, parseInitiative, parseOpenWindows, readOpenWindows, windowsOpenOn } from '../server/utils/eu/haveYourSay'
 import { buildIcsCalendar, buildRssFeed, buildSitemap } from '../server/utils/feeds'
+import { feedSourceOf } from '../server/utils/laender/feedSource'
 import { euInitiativeId, euInitiativePath } from '../shared/utils/eu'
 import { actTypeDe, windowStageDe } from '../shared/utils/euPortal'
 import { EU_FENSTER_DE, euFensterView, sortFensterRows } from '../app/utils/euFenster'
@@ -425,33 +428,27 @@ describe('the initiative\'s page', () => {
   })
 })
 
-describe('feed and calendar of the open windows (?quelle=eu)', () => {
+describe('no feed and no calendar of the open windows (16.11.2026)', () => {
   const SITE = 'https://example.test'
-  const list = parseOpenWindows(fixture('open-windows')).initiatives
+  const sourceOf = (quelle?: string) => {
+    try {
+      return feedSourceOf({ __query: quelle === undefined ? {} : { quelle } } satisfies FakeEvent as unknown as H3Event)
+    } catch (e) {
+      return e
+    }
+  }
 
-  it('is a feed of its own: one item per window, its stage leading, the page here linked', () => {
-    const rss = buildRssFeed(SITE, [], undefined, [], undefined, { items: list })
-    expect(rss).toContain('<title>Begutachtungs-Monitor – Offene Rückmeldefristen der Europäischen Kommission</title>')
-    expect(rss).toContain(`<atom:link href="${SITE}/feed.xml?quelle=eu"`)
-    expect(rss.split('<item>').length - 1).toBe(7)
-    expect(rss).toContain('<guid isPermaLink="false">eu-17873-opc_launched@begutachtungs-monitor.at</guid>')
-    expect(rss).toContain('<guid isPermaLink="false">eu-17873-planning_workflow@begutachtungs-monitor.at</guid>')
-    expect(rss).toContain(`<link>${SITE}/eu-recht/initiative/18953</link>`)
-    expect(rss).toContain('<title>Sondierung: Passagierrechte')
-    expect(rss).toContain('Rückmeldung bis 08.01.2027 · Vorschlag für eine Verordnung · Rückmeldung im Portal')
-    // The Bund's feed stays the Bund's.
-    expect(buildRssFeed(SITE, [])).not.toContain('eu-18953')
+  it('answers ?quelle=eu as any unknown source: 404 „Unbekannte Quelle", as on main', () => {
+    const unknown: FakeError = { statusCode: 404, statusMessage: 'Unbekannte Quelle' }
+    expect(sourceOf('xx')).toEqual(unknown)
+    expect(sourceOf('eu')).toEqual(unknown)
+    expect(sourceOf()).toBe('bund')
+    expect(sourceOf('t')).toBe('t')
   })
 
-  it('puts each window on its closing day in a calendar of its own', () => {
-    const ics = buildIcsCalendar(SITE, [], [], [], 'Rückmeldefristen der Europäischen Kommission', list)
-    expect(ics).toContain('X-WR-CALNAME:Rückmeldefristen der Europäischen Kommission')
-    expect(ics.split('BEGIN:VEVENT').length - 1).toBe(7)
-    expect(ics).toContain('UID:eu-18953-planning_workflow@begutachtungs-monitor.at')
-    expect(ics).toContain('DTSTART;VALUE=DATE:20270108')
-    expect(ics).toContain(`URL:${SITE}/eu-recht/initiative/18953`)
-    // The first event is the soonest closing day.
-    expect(ics.indexOf('UID:eu-19295-')).toBeLessThan(ics.indexOf('UID:eu-18953-'))
+  it('puts no window into the feed or the calendar', () => {
+    expect(buildRssFeed(SITE, [])).not.toMatch(/eu-\d|Kommission/)
+    expect(buildIcsCalendar(SITE, [])).not.toMatch(/eu-\d|Kommission/)
   })
 
   it('lists the open initiatives\' pages in the sitemap', () => {

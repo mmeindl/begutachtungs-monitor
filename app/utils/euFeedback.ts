@@ -31,22 +31,27 @@
  * `euBuergerinitiativeView` does) or null, and only with one is there a
  * chip „Aus <Land>" — without one nothing is said to be missing.
  *
- * THE NEWEST FIRST, THE REST AFTER (16.11.2026). The server answers in two
- * steps: page one of the portal's list (100 contributions, newest first),
- * then the whole reading of up to five pages, about twelve seconds later
- * for 500. The list opens on page one: its named rows newest first and the
- * pager over them — the rows a reader sees first are on page one in any
- * case. Until the whole is in (`feedbackStageOf`), no tabs, no counts, no
- * chip, no search, no order and no closing rows: a count, an order or a
- * search over one page of five would be wrong and would change under the
- * reader's eyes. In the tool row's place one line says the rest is being
- * read, or — where the rest failed — a gap sentence with „Erneut
- * versuchen", the rows kept.
+ * THE NEWEST FIRST, THE REST AFTER (16.11.2026). The block reads by
+ * itself up to the newest 1,000 (`EU_FEEDBACK_AUTO_PAGES`): page one of the
+ * portal's list (100 contributions, newest first), then a step of five
+ * pages (the newest 500, about twelve seconds later), then where more are
+ * counted a second step of five (the newest 1,000) — one request each, so
+ * each fits the server's five paced requests (`nextAutomaticStep`). The
+ * list opens on page one: its named rows newest first and the pager over
+ * them — the rows a reader sees first are on page one in any case; the
+ * first step's rows are swapped in under the pager. Until the automatic
+ * reading is complete (`feedbackStageOf`), no tabs, no counts, no chip, no
+ * search, no order and no closing rows: a count, an order or a search over
+ * part of the reading would be wrong and would change under the reader's
+ * eyes. In the tool row's place one line says the rest is being read, or —
+ * where an automatic step failed — a gap sentence with „Erneut versuchen"
+ * for that step, the rows kept.
  *
- * MORE ON REQUEST (16.11.2026). Where the portal counts more than was read,
- * the list's first row says how many of how many, and a button „Weitere N
- * lesen" asks the server for the next step of five pages (`feedbackMoreOf`)
- * — the portal is asked only when a reader wants the answer, never ahead.
+ * MORE ON REQUEST (16.11.2026). Where the portal counts more than the
+ * automatic reading holds, the list's first row says how many of how many,
+ * and a button „Weitere N lesen" asks the server for the next step of five
+ * pages (`feedbackMoreOf`) — past 1,000 the portal is asked only when a
+ * reader wants the answer, never ahead.
  * While it reads, a progress line stands in the button's place and the list
  * stays as it is; the step's reading is swapped in when it arrives. At
  * 5,000 rows the monitor reads no further, and the row says so as a „Nicht
@@ -68,7 +73,7 @@
 import type { EuFeedbackOrganisationType, EuFeedbackReading, EuRueckmeldungenResponse } from '#shared/types'
 import { countryNameOf } from '#shared/utils/countryNames'
 import { EU_MEMBER_STATE, EU_MEMBER_STATE_NAME_DE } from '#shared/utils/eu'
-import { EU_FEEDBACK_MAX_PAGES, EU_FEEDBACK_PAGE_SIZE, EU_FEEDBACK_STEP_PAGES } from '#shared/utils/euPortal'
+import { EU_FEEDBACK_AUTO_PAGES, EU_FEEDBACK_MAX_PAGES, EU_FEEDBACK_PAGE_SIZE, EU_FEEDBACK_STEP_PAGES } from '#shared/utils/euPortal'
 import { countLabelDe, formatNumberDe } from '#shared/utils/format'
 import { gapDe } from '#shared/utils/gaps'
 import { matchesQuery } from '#shared/utils/textMatch'
@@ -466,56 +471,79 @@ export function citizensSetLine(shown: number, total: number, narrowed: boolean)
 /** Where a fetch of the block stands, as `useLazyFetch` reports it. */
 export type EuFeedbackFetchStatus = 'idle' | 'pending' | 'success' | 'error'
 
+/** Where the step asked last stands — an automatic one or a press of „Weitere … lesen": none asked, on its way, or failed. */
+export type EuFeedbackStepStatus = 'idle' | 'pending' | 'error'
+
+/** The rows the block reads by itself before it offers more (`EU_FEEDBACK_AUTO_PAGES`): the newest 1,000. */
+export const FEEDBACK_AUTO_ROWS = EU_FEEDBACK_AUTO_PAGES * EU_FEEDBACK_PAGE_SIZE
+
 /**
- * What the block shows (16.11.2026, the two steps):
+ * THE AUTOMATIC READING (16.11.2026): after an answer, the step the block
+ * asks next by itself, or null where the automatic reading is complete.
+ * Page one alone (`teilweise`) → the first step (five pages); a step of
+ * fewer pages than `EU_FEEDBACK_AUTO_PAGES` that left rows unread → the
+ * next step (ten pages); everything else — the whole list read, page one
+ * the whole list (`pages` 1, or 0 for no contribution), or the automatic
+ * depth reached — null. So a window of 480 or exactly 500 asks no second
+ * step, and one of 1,000 or more none past ten pages: from there on a
+ * reader asks („Weitere … lesen", `feedbackMoreOf`). A first answer that is
+ * already a cached step of five pages goes on to ten from it. Pure.
+ */
+export function nextAutomaticStep(answer: EuRueckmeldungenResponse | null | undefined): number | null {
+  if (!answer || answer.state === 'ungelesen') return null
+  if (answer.state === 'teilweise') return EU_FEEDBACK_STEP_PAGES
+  const { reading, pages } = answer
+  if (reading.read >= reading.total || pages < EU_FEEDBACK_STEP_PAGES || pages >= EU_FEEDBACK_AUTO_PAGES) return null
+  return pages + EU_FEEDBACK_STEP_PAGES
+}
+
+/**
+ * What the block shows (16.11.2026, the automatic reading):
  * - `waiting`: the block is not reached yet, or page one is on its way — the loading line;
  * - `unread`: page one failed — the gap sentence and „Erneut versuchen";
- * - `partial`: page one is in and the rest is being read (`restFailed` false) or failed (true) —
- *   the named rows newest first and the pager, nothing that counts, filters or orders;
- * - `complete`: a whole reading — the full list; `pages` the step it is (5, 10, … 50; 1 where page
- *   one was the whole list, 0 for a window without a contribution).
+ * - `partial`: page one, or a first step, is in, and the automatic reading goes on to step `next`
+ *   (`restFailed` false) or that step failed (true) — the named rows read so far newest first and
+ *   the pager, nothing that counts, filters or orders;
+ * - `complete`: the automatic reading is done, or a further step is in — the full list; `pages` the
+ *   step it is (5, 10, … 50; 1 where page one was the whole list, 0 for a window without a
+ *   contribution).
  */
 export type EuFeedbackStage =
   | { kind: 'waiting' }
   | { kind: 'unread' }
-  | { kind: 'partial'; reading: EuFeedbackReading; restFailed: boolean }
+  | { kind: 'partial'; reading: EuFeedbackReading; restFailed: boolean; next: number }
   | { kind: 'complete'; reading: EuFeedbackReading; pages: number }
 
 /**
- * Page one's fetch, the first reading's fetch and the latest further step
- * that arrived („Weitere … lesen"), as one stage. A further step replaces
- * the reading only once it is in: while it is read, and where it failed,
- * the list keeps the reading it had. Pure.
+ * Page one's fetch, the latest step that arrived (automatic or „Weitere …
+ * lesen") and where the step asked last stands, as one stage. A step
+ * replaces the reading only once it is in: while it is read, and where it
+ * failed, the list keeps the reading it had. Partial as long as the
+ * reading held asks for another automatic step (`nextAutomaticStep`), so
+ * counts, tabs and search appear once, over the whole automatic reading,
+ * and never change under the reader's eyes without their doing. A failed
+ * automatic step stays partial, with the rows read so far (`restFailed`);
+ * „Erneut versuchen" asks that step again. Pure.
  */
 export function feedbackStageOf(
   first: { status: EuFeedbackFetchStatus; data: EuRueckmeldungenResponse | null | undefined },
-  whole: { status: EuFeedbackFetchStatus; data: EuRueckmeldungenResponse | null | undefined },
-  further: EuRueckmeldungenResponse | null = null,
+  latest: EuRueckmeldungenResponse | null = null,
+  stepStatus: EuFeedbackStepStatus = 'idle',
 ): EuFeedbackStage {
-  const base = baseStageOf(first, whole)
-  if (base.kind === 'complete' && further?.state === 'gelesen') return { kind: 'complete', reading: further.reading, pages: further.pages }
-  return base
+  let held: EuRueckmeldungenResponse
+  if (latest?.state === 'gelesen') held = latest
+  else if (first.status === 'error') return { kind: 'unread' }
+  else if (first.status !== 'success' || !first.data) return { kind: 'waiting' }
+  else held = first.data
+  if (held.state === 'ungelesen') return { kind: 'unread' }
+  const next = nextAutomaticStep(held)
+  if (next === null) return { kind: 'complete', reading: held.reading, pages: held.pages }
+  return { kind: 'partial', reading: held.reading, restFailed: stepStatus === 'error', next }
 }
 
-function baseStageOf(
-  first: { status: EuFeedbackFetchStatus; data: EuRueckmeldungenResponse | null | undefined },
-  whole: { status: EuFeedbackFetchStatus; data: EuRueckmeldungenResponse | null | undefined },
-): EuFeedbackStage {
-  if (whole.status === 'success' && whole.data?.state === 'gelesen') return { kind: 'complete', reading: whole.data.reading, pages: whole.data.pages }
-  if (first.status === 'error') return { kind: 'unread' }
-  if (first.status !== 'success' || !first.data) return { kind: 'waiting' }
-  if (first.data.state === 'ungelesen') return { kind: 'unread' }
-  if (first.data.state === 'gelesen') return { kind: 'complete', reading: first.data.reading, pages: first.data.pages }
-  const restFailed = whole.status === 'error' || (whole.status === 'success' && whole.data?.state !== 'gelesen')
-  return { kind: 'partial', reading: first.data.reading, restFailed }
-}
-
-/** Whether a stage asks for the whole reading: page one is in, partial, and the rest has not been asked yet. */
-export const needsWholeReading = (stage: EuFeedbackStage, wholeStatus: EuFeedbackFetchStatus): boolean =>
-  stage.kind === 'partial' && wholeStatus === 'idle'
-
-/** Where a further step („Weitere … lesen") stands: none asked, on its way, or failed. */
-export type EuFeedbackMoreStatus = 'idle' | 'pending' | 'error'
+/** The automatic step a stage asks for by itself: partial, nothing on its way, nothing failed. „Erneut versuchen" asks a failed one (`retry`). */
+export const automaticStepOf = (stage: EuFeedbackStage, stepStatus: EuFeedbackStepStatus): number | null =>
+  stage.kind === 'partial' && stepStatus === 'idle' ? stage.next : null
 
 /**
  * The list's first row where the portal counts more than was read
@@ -541,7 +569,7 @@ export function moreRowsOf(read: number, total: number): number {
 }
 
 /** The row for a whole reading of `pages` pages (`EuFeedbackStage` complete), and where its next step stands. Pure. */
-export function feedbackMoreOf(reading: EuFeedbackReading, pages: number, status: EuFeedbackMoreStatus = 'idle'): EuFeedbackMore | null {
+export function feedbackMoreOf(reading: EuFeedbackReading, pages: number, status: EuFeedbackStepStatus = 'idle'): EuFeedbackMore | null {
   if (reading.read >= reading.total) return null
   const step = Math.max(EU_FEEDBACK_STEP_PAGES, Math.floor(pages / EU_FEEDBACK_STEP_PAGES) * EU_FEEDBACK_STEP_PAGES)
   if (step >= EU_FEEDBACK_MAX_PAGES || moreRowsOf(reading.read, reading.total) === 0) return { kind: 'cap', gap: DE.cap(reading.read, reading.total) }
@@ -558,10 +586,11 @@ export function feedbackMoreOf(reading: EuFeedbackReading, pages: number, status
  * nothing is said twice — the progress line, which takes the focus from
  * the button, says it.
  */
-export function feedbackAnnouncement(stage: EuFeedbackStage, more: EuFeedbackMoreStatus = 'idle'): string {
+export function feedbackAnnouncement(stage: EuFeedbackStage, more: EuFeedbackStepStatus = 'idle'): string {
   if (stage.kind === 'waiting') return DE.loading
   if (stage.kind === 'unread') return DE.unread
   if (stage.kind === 'partial') return stage.restFailed ? DE.restUnread(stage.reading.read) : DE.partialLoading
   if (more === 'error') return DE.moreUnread(stage.reading.read, stage.reading.total)
-  return stage.pages > EU_FEEDBACK_STEP_PAGES ? DE.moreRead(stage.reading.read, stage.reading.total) : DE.read
+  // The automatic reading's end is „read"; only a step a reader asked for is „further".
+  return stage.pages > EU_FEEDBACK_AUTO_PAGES ? DE.moreRead(stage.reading.read, stage.reading.total) : DE.read
 }

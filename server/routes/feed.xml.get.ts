@@ -13,22 +13,17 @@
  * readers surface a broken subscription over a quiet one.
  *
  * Optional ?quelle=t (or any Land's code) is that Land's feed instead
- * (`feedSourceOf`, 25.10.2026); without it, the Bund's. ?quelle=eu is the
- * windows open on the Commission's portal (15.11.2026), 503 where the
- * portal could not be read.
+ * (`feedSourceOf`, 25.10.2026); without it, the Bund's.
  */
 import { ministryFilterOptions } from '../utils/http/params'
 import { dedupeDraftList } from '../utils/parliament/draftList'
-import { euFeedItems, feedSourceOf, landFeedItems } from '../utils/laender/feedSource'
+import { feedSourceOf, landFeedItems } from '../utils/laender/feedSource'
 
 const RESSORT_RE = /^[A-Za-z]{2,20}$/
 
 export default defineEventHandler(async (event) => {
   const siteUrl = useRuntimeConfig(event).public.siteUrl
   const source = feedSourceOf(event)
-  if (source === 'eu') {
-    return respondWithEtag(event, buildRssFeed(siteUrl, [], undefined, [], undefined, { items: await euFeedItems() }), 'application/rss+xml; charset=utf-8')
-  }
   if (source !== 'bund') {
     const items = await landFeedItems(source, await getCurrentGp())
     return respondWithEtag(event, buildRssFeed(siteUrl, [], undefined, [], { code: source, items }), 'application/rss+xml; charset=utf-8')

@@ -12,10 +12,12 @@ import {
   orgRowsOf,
   STATEMENT_PAGE_SIZE,
   STATEMENT_SEARCH_MIN,
+  STATEMENTS_LIST_DE,
   submitterLabel,
   submitterName,
 } from '~/utils/statementRows'
 import ListBox from '~/components/ui/ListBox.vue'
+import type { ListBoxStatus } from '~/utils/listState'
 
 /**
  * Both rounds of Stellungnahmen render through this panel — the
@@ -345,12 +347,16 @@ const setLine = computed(() => {
   return countLabelDe(segmentTotal.value, 'Stellungnahme', 'Stellungnahmen')
 })
 
-/* Whether the sheet shows rows — the column header stands over rows only. */
+/* Whether the sheet shows rows, or holds their place while they load (16.11.2026, a list shows its frame while loading) — the column header stands over them, plain while loading. */
 const showColumnHeader = computed(() =>
   needsList.value
-    ? status.value !== 'pending' && status.value !== 'error' && visibleItems.value.length > 0
+    ? status.value === 'pending' || (status.value !== 'error' && visibleItems.value.length > 0)
     : renderedOrgRows.value.length > 0,
 )
+/* The list's rows on their way or failed, in the rows' place (`ListBoxState`). */
+const listState = computed<ListBoxStatus>(() => (status.value === 'pending'
+  ? { loading: STATEMENTS_LIST_DE.loading }
+  : status.value === 'error' ? { failed: STATEMENTS_LIST_DE.failed } : null))
 </script>
 
 <template>
@@ -428,9 +434,10 @@ const showColumnHeader = computed(() =>
         Stand der Liste: {{ formatDateTimeDe(listStaleAsOf) }} (die aktuelle ist
         gerade nicht abrufbar).
       </p>
-      <!-- Over rows only: above a loading line, an error or „keine
-           gefunden" it would name columns nothing stands in. -->
-      <StatementColumnHeader v-if="showColumnHeader" v-model:sort="sort" v-model:reversed="sortReversed" :sortable="showSort" />
+      <!-- Over rows and over the loading line that holds their place; not
+           above an error or „keine gefunden", where it would name columns
+           nothing will stand in. Plain labels while loading. -->
+      <StatementColumnHeader v-if="showColumnHeader" v-model:sort="sort" v-model:reversed="sortReversed" :sortable="showSort && status !== 'pending'" />
       <!-- Organisations: from the SSR summary, so they are in the HTML a
            crawler and a find-in-page see — which is what lets an organisation
            find itself on this page. -->
@@ -483,26 +490,22 @@ const showColumnHeader = computed(() =>
 
       <!-- Everything else needs the item list, fetched on the first switch -->
       <template v-else>
-        <!-- The states inside the sheet are rows of it (`ListBoxNotice`
-             says why not `EmptyState` cards). -->
-        <LoadingState v-if="status === 'pending'" label="Stellungnahmen werden geladen …" />
-        <ListBoxNotice v-else-if="status === 'error'" role="alert" title="Stellungnahmen: gerade nicht abrufbar">
-          <template #action>
-            <UButton color="primary" @click="execute()">Erneut versuchen</UButton>
-          </template>
-        </ListBoxNotice>
-        <ul v-else-if="visibleItems.length" class="divide-y divide-hairline">
-          <StatementRow
-            v-for="item in visibleItems"
-            :key="item.parliamentUrl"
-            :date="item.date"
-            :label="submitterLabel(item)"
-            :links="[{ citation: item.citation, href: item.parliamentUrl }]"
-            :submitter="submitterName(item)"
-            :endorsements="item.endorsements"
-          />
-        </ul>
-        <ListBoxNotice v-else title="Keine Stellungnahmen in dieser Auswahl" />
+        <!-- The states inside the sheet are rows of it (`ListBoxState`, one
+             piece for every list). -->
+        <ListBoxState :state="listState" @retry="execute()">
+          <ul v-if="visibleItems.length" class="divide-y divide-hairline">
+            <StatementRow
+              v-for="item in visibleItems"
+              :key="item.parliamentUrl"
+              :date="item.date"
+              :label="submitterLabel(item)"
+              :links="[{ citation: item.citation, href: item.parliamentUrl }]"
+              :submitter="submitterName(item)"
+              :endorsements="item.endorsements"
+            />
+          </ul>
+          <ListBoxNotice v-else title="Keine Stellungnahmen in dieser Auswahl" />
+        </ListBoxState>
       </template>
 
       <ListMore

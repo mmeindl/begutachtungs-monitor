@@ -1,7 +1,7 @@
 import { readFileSync } from 'node:fs'
 import { describe, expect, it } from 'vitest'
 import type { EuFeedbackReading } from '../shared/types'
-import { EU_FEEDBACK_ORGANISATION_TYPES } from '../shared/utils/euPortal'
+import { EU_FEEDBACK_AUTO_PAGES, EU_FEEDBACK_ORGANISATION_TYPES, EU_FEEDBACK_PAGE_SIZE, EU_FEEDBACK_STEP_PAGES } from '../shared/utils/euPortal'
 import {
   FEEDBACK_MAX_ROWS,
   FEEDBACK_NAMED_ROW_FIELDS,
@@ -41,8 +41,11 @@ import {
   feedbackMoreOf,
   feedbackSetLineVisible,
   moreRowsOf,
-  needsWholeReading,
+  automaticStepOf,
+  nextAutomaticStep,
+  FEEDBACK_AUTO_ROWS,
 } from '../app/utils/euFeedback'
+import { formatNumberDe } from '../shared/utils/format'
 import { countryNameOf } from '../shared/utils/countryNames'
 import { splitGap } from '../shared/utils/gaps'
 import { fact, withFeedback } from '../app/utils/euRail'
@@ -626,58 +629,140 @@ describe('the block\'s list and words', () => {
 
   it('reads the portal on approach, never with the page, and keeps one key per window and per step', () => {
     const block = readFileSync(new URL('../app/components/eu/EuFeedbackBlock.vue', import.meta.url), 'utf8')
-    expect(block.match(/server: false,\s*immediate: false/g)).toHaveLength(2)
+    expect(block.match(/server: false,\s*immediate: false/g)).toHaveLength(1)
     expect(block).toMatch(/useNearViewportSection\(root/)
     expect(block).toMatch(/key: `eu-rueckmeldungen-\$\{props\.block\.initiative\}-\$\{props\.block\.publication\}-erste`/)
-    expect(block).toMatch(/key: `eu-rueckmeldungen-\$\{props\.block\.initiative\}-\$\{props\.block\.publication\}-ganz`/)
     expect(block).toMatch(/query: \{ teil: 'erste' \}/)
-    // A further step only on a press, with its number of pages.
+    // Every step — automatic or on a press — with its number of pages, one fetch at a time.
     expect(block).toMatch(/\$fetch<EuRueckmeldungenResponse>\(url\(\), \{ query: \{ seiten: pages \} \}\)/)
+    expect(block).toMatch(/automaticStepOf\(s, stepStatus\.value\)/)
     expect(block).not.toMatch(/<FoldSection/)
   })
 })
 
-describe('the block\'s two steps (feedbackStageOf)', () => {
+describe('the automatic reading to 1,000 (nextAutomaticStep)', () => {
+  const reading = (read: number, total: number): EuFeedbackReading => ({ total, read, contributions: [], kinds: [], citizens: { count: read, byCountry: {} }, other: 0, unpublished: 0 })
+  const gelesen = (read: number, total: number, pages: number) => ({ state: 'gelesen' as const, reading: reading(read, total), pages })
+  const teilweise = (total: number) => ({ state: 'teilweise' as const, reading: reading(100, total), pages: 1 })
+  /** The requests the block makes for a window of `total`, answered as the server answers a window that holds still. */
+  function sequence(total: number): (string | number)[] {
+    const asked: (string | number)[] = ['erste']
+    let answer = total <= 100 ? gelesen(total, total, 1) : teilweise(total)
+    for (let next = nextAutomaticStep(answer); next !== null; next = nextAutomaticStep(answer)) {
+      asked.push(next)
+      answer = gelesen(Math.min(total, next * 100), total, next)
+    }
+    return asked
+  }
+
+  it('is one constant: ten pages, a multiple of the step, the newest 1,000', () => {
+    expect(EU_FEEDBACK_AUTO_PAGES % EU_FEEDBACK_STEP_PAGES).toBe(0)
+    expect(FEEDBACK_AUTO_ROWS).toBe(EU_FEEDBACK_AUTO_PAGES * EU_FEEDBACK_PAGE_SIZE)
+    expect(FEEDBACK_AUTO_ROWS).toBe(1000)
+  })
+
+  it('asks no superfluous step: ≤ 100, ≤ 500, exactly 500, ≤ 1,000, exactly 1,000, more', () => {
+    expect(sequence(80)).toEqual(['erste'])
+    expect(sequence(100)).toEqual(['erste'])
+    expect(sequence(480)).toEqual(['erste', 5])
+    expect(sequence(500)).toEqual(['erste', 5])
+    expect(sequence(501)).toEqual(['erste', 5, 10])
+    expect(sequence(900)).toEqual(['erste', 5, 10])
+    expect(sequence(1000)).toEqual(['erste', 5, 10])
+    expect(sequence(2300)).toEqual(['erste', 5, 10])
+  })
+
+  it('decides the next step from one answer alone', () => {
+    expect(nextAutomaticStep(teilweise(350))).toBe(5)
+    expect(nextAutomaticStep(gelesen(500, 2300, 5))).toBe(10)
+    expect(nextAutomaticStep(gelesen(1000, 2300, 10))).toBeNull()
+    expect(nextAutomaticStep(gelesen(480, 480, 5))).toBeNull()
+    expect(nextAutomaticStep(gelesen(14, 14, 1))).toBeNull()
+    expect(nextAutomaticStep(gelesen(0, 0, 0))).toBeNull()
+    // A step that fell short (a page that answered with another number) goes on: at most one request more.
+    expect(nextAutomaticStep(gelesen(300, 2300, 5))).toBe(10)
+    // A step of ten that had to begin again at page one holds 500: the reader asks from there (`feedbackMoreOf`), the block asks nothing more.
+    expect(nextAutomaticStep(gelesen(500, 2300, 10))).toBeNull()
+    // Further steps are a reader's.
+    expect(nextAutomaticStep(gelesen(1500, 2300, 15))).toBeNull()
+    expect(nextAutomaticStep({ state: 'ungelesen' })).toBeNull()
+    expect(nextAutomaticStep(null)).toBeNull()
+  })
+
+  it('goes on to ten pages where page one was answered from a cached step of five', () => {
+    // A server that had `seiten=5` cached answers `teil=erste` with it (`feedbackOf`).
+    const cached = { status: 'success' as const, data: gelesen(500, 1234, 5) }
+    const s = feedbackStageOf(cached)
+    expect(s).toEqual({ kind: 'partial', reading: reading(500, 1234), restFailed: false, next: 10 })
+    expect(automaticStepOf(s, 'idle')).toBe(10)
+  })
+
+  it('names the automatic depth in the method text and the Impressum by the constant\'s figure', () => {
+    const figure = `zunächst die neuesten ${formatNumberDe(FEEDBACK_AUTO_ROWS)}`
+    const method = readFileSync(new URL('../app/components/method/MethodEuRueckmeldungen.vue', import.meta.url), 'utf8').replace(/\s+/g, ' ')
+    const impressum = readFileSync(new URL('../app/pages/impressum.vue', import.meta.url), 'utf8').replace(/\s+/g, ' ')
+    expect(method).toContain(`${figure} Rückmeldungen, mit „Weitere … lesen“ jeweils bis zu 500 mehr, höchstens 5.000 je Frist`)
+    expect(impressum).toContain(`${figure} Rückmeldungen, weitere nur, wenn jemand sie anfordert, höchstens 5.000 je Frist`)
+  })
+})
+
+describe('the block\'s stages (feedbackStageOf)', () => {
   const reading = (read: number, total: number): EuFeedbackReading => ({ total, read, contributions: [], kinds: [], citizens: { count: read, byCountry: {} }, other: 0, unpublished: 0 })
   const idle = { status: 'idle' as const, data: null }
   const page1 = { status: 'success' as const, data: { state: 'teilweise' as const, reading: reading(100, 350), pages: 1 } }
+  const page1Of = (total: number) => ({ status: 'success' as const, data: { state: 'teilweise' as const, reading: reading(100, total), pages: 1 } })
 
   it('waits until page one is in, and says page one failed as „unread"', () => {
-    expect(feedbackStageOf(idle, idle)).toEqual({ kind: 'waiting' })
-    expect(feedbackStageOf({ status: 'pending', data: null }, idle)).toEqual({ kind: 'waiting' })
-    expect(feedbackStageOf({ status: 'error', data: null }, idle)).toEqual({ kind: 'unread' })
-    expect(feedbackStageOf({ status: 'success', data: { state: 'ungelesen' } }, idle)).toEqual({ kind: 'unread' })
+    expect(feedbackStageOf(idle)).toEqual({ kind: 'waiting' })
+    expect(feedbackStageOf({ status: 'pending', data: null })).toEqual({ kind: 'waiting' })
+    expect(feedbackStageOf({ status: 'error', data: null })).toEqual({ kind: 'unread' })
+    expect(feedbackStageOf({ status: 'success', data: { state: 'ungelesen' } })).toEqual({ kind: 'unread' })
   })
 
-  it('is partial with page one, asks for the whole once, and is complete when it arrives', () => {
-    const partial = feedbackStageOf(page1, idle)
-    expect(partial).toEqual({ kind: 'partial', reading: reading(100, 350), restFailed: false })
-    expect(needsWholeReading(partial, 'idle')).toBe(true)
-    expect(needsWholeReading(feedbackStageOf(page1, { status: 'pending', data: null }), 'pending')).toBe(false)
-    expect(feedbackStageOf(page1, { status: 'success', data: { state: 'gelesen', reading: reading(350, 350), pages: 5 } })).toEqual({ kind: 'complete', reading: reading(350, 350), pages: 5 })
+  it('is partial with page one, asks for the first step once, and is complete when it holds the whole', () => {
+    const partial = feedbackStageOf(page1)
+    expect(partial).toEqual({ kind: 'partial', reading: reading(100, 350), restFailed: false, next: 5 })
+    expect(automaticStepOf(partial, 'idle')).toBe(5)
+    expect(automaticStepOf(feedbackStageOf(page1, null, 'pending'), 'pending')).toBeNull()
+    expect(feedbackStageOf(page1, { state: 'gelesen', reading: reading(350, 350), pages: 5 })).toEqual({ kind: 'complete', reading: reading(350, 350), pages: 5 })
+  })
+
+  it('stays partial over the first step where more are counted, swaps its rows in, and asks the second step', () => {
+    const afterFirst = feedbackStageOf(page1Of(2300), { state: 'gelesen', reading: reading(500, 2300), pages: 5 })
+    // The rows of 500 in, still no counts: partial, the next step ten pages.
+    expect(afterFirst).toEqual({ kind: 'partial', reading: reading(500, 2300), restFailed: false, next: 10 })
+    expect(automaticStepOf(afterFirst, 'idle')).toBe(10)
+    // One line through the whole automatic reading: said once, not after each step.
+    expect(feedbackAnnouncement(afterFirst)).toBe(feedbackAnnouncement(feedbackStageOf(page1Of(2300))))
+    const done = feedbackStageOf(page1Of(2300), { state: 'gelesen', reading: reading(1000, 2300), pages: 10 })
+    expect(done).toEqual({ kind: 'complete', reading: reading(1000, 2300), pages: 10 })
+    // The end of the automatic reading is the arrival, not „further".
+    expect(feedbackAnnouncement(done)).toBe(EU_FEEDBACK_DE.read)
   })
 
   it('is complete at once where page one is the whole list: no second request', () => {
-    const whole = feedbackStageOf({ status: 'success', data: { state: 'gelesen', reading: reading(14, 14), pages: 1 } }, idle)
+    const whole = feedbackStageOf({ status: 'success', data: { state: 'gelesen', reading: reading(14, 14), pages: 1 } })
     expect(whole).toEqual({ kind: 'complete', reading: reading(14, 14), pages: 1 })
-    expect(needsWholeReading(whole, 'idle')).toBe(false)
+    expect(automaticStepOf(whole, 'idle')).toBeNull()
   })
 
-  it('keeps page one\'s rows where the rest failed, and says so with a gap sentence', () => {
-    for (const rest of [{ status: 'error' as const, data: null }, { status: 'success' as const, data: { state: 'ungelesen' as const } }]) {
-      const s = feedbackStageOf(page1, rest)
-      expect(s).toEqual({ kind: 'partial', reading: reading(100, 350), restFailed: true })
-      expect(needsWholeReading(s, rest.status)).toBe(false)
-      expect(splitGap(feedbackAnnouncement(s))?.lead).toBe('Gerade nicht abrufbar')
-      expect(feedbackAnnouncement(s)).toContain('unter den neuesten 100')
-    }
+  it('keeps the rows read so far where an automatic step failed, says so, and retries that step alone', () => {
+    const s = feedbackStageOf(page1, null, 'error')
+    expect(s).toEqual({ kind: 'partial', reading: reading(100, 350), restFailed: true, next: 5 })
+    expect(automaticStepOf(s, 'error')).toBeNull()
+    expect(splitGap(feedbackAnnouncement(s))?.lead).toBe('Gerade nicht abrufbar')
+    expect(feedbackAnnouncement(s)).toContain('unter den neuesten 100')
+    // The second step failed: the 500 stay, still partial, and the retry is step ten.
+    const second = feedbackStageOf(page1Of(2300), { state: 'gelesen', reading: reading(500, 2300), pages: 5 }, 'error')
+    expect(second).toEqual({ kind: 'partial', reading: reading(500, 2300), restFailed: true, next: 10 })
+    expect(feedbackAnnouncement(second)).toContain('unter den neuesten 500')
     // Retried: pending again is the progress line, not the gap.
-    expect(feedbackStageOf(page1, { status: 'pending', data: null })).toMatchObject({ kind: 'partial', restFailed: false })
+    expect(feedbackStageOf(page1, null, 'pending')).toMatchObject({ kind: 'partial', restFailed: false })
   })
 
   it('announces each stage once: loading, the rest still read, the arrival', () => {
     expect(feedbackAnnouncement({ kind: 'waiting' })).toBe(EU_FEEDBACK_DE.loading)
-    expect(feedbackAnnouncement({ kind: 'partial', reading: reading(100, 350), restFailed: false })).toBe('Die übrigen Rückmeldungen werden noch gelesen …')
+    expect(feedbackAnnouncement({ kind: 'partial', reading: reading(100, 350), restFailed: false, next: 5 })).toBe('Die übrigen Rückmeldungen werden noch gelesen …')
     expect(feedbackAnnouncement({ kind: 'complete', reading: reading(350, 350), pages: 5 })).toBe(EU_FEEDBACK_DE.read)
   })
 })
@@ -686,6 +771,8 @@ describe('more on request: the list\'s first row (feedbackMoreOf)', () => {
   const reading = (read: number, total: number): EuFeedbackReading => ({ total, read, contributions: [], kinds: [], citizens: { count: read, byCountry: {} }, other: 0, unpublished: 0 })
 
   it('offers the next step with the real number: what remains, at most 500', () => {
+    // After the automatic reading: the first press reads rows 1,001–1,500.
+    expect(feedbackMoreOf(reading(FEEDBACK_AUTO_ROWS, 3000), EU_FEEDBACK_AUTO_PAGES)).toEqual({ kind: 'offer', sentence: 'Gelesen sind die neuesten 1.000 von 3.000 Rückmeldungen.', label: 'Weitere 500 lesen', next: 15 })
     expect(feedbackMoreOf(reading(500, 599), 5)).toEqual({ kind: 'offer', sentence: 'Gelesen sind die neuesten 500 von 599 Rückmeldungen.', label: 'Weitere 99 lesen', next: 10 })
     expect(feedbackMoreOf(reading(500, 1000), 5)).toMatchObject({ label: 'Weitere 500 lesen', next: 10 })
     expect(feedbackMoreOf(reading(1000, 12_345), 10)).toMatchObject({ sentence: 'Gelesen sind die neuesten 1.000 von 12.345 Rückmeldungen.', label: 'Weitere 500 lesen', next: 15 })
@@ -721,13 +808,14 @@ describe('more on request: the list\'s first row (feedbackMoreOf)', () => {
   })
 
   it('swaps a further step in only once it arrived, and announces its arrival once', () => {
-    const page1 = { status: 'success' as const, data: { state: 'teilweise' as const, reading: reading(100, 1234), pages: 1 } }
-    const whole = { status: 'success' as const, data: { state: 'gelesen' as const, reading: reading(500, 1234), pages: 5 } }
-    expect(feedbackStageOf(page1, whole, null)).toEqual({ kind: 'complete', reading: reading(500, 1234), pages: 5 })
-    const step = feedbackStageOf(page1, whole, { state: 'gelesen', reading: reading(1000, 1234), pages: 10 })
-    expect(step).toEqual({ kind: 'complete', reading: reading(1000, 1234), pages: 10 })
-    expect(feedbackAnnouncement(step)).toBe('Weitere Rückmeldungen sind gelesen, jetzt die neuesten 1.000 von 1.234.')
-    expect(feedbackAnnouncement({ kind: 'complete', reading: reading(1234, 1234), pages: 15 })).toBe('Weitere Rückmeldungen sind gelesen, jetzt alle 1.234.')
+    const page1 = { status: 'success' as const, data: { state: 'teilweise' as const, reading: reading(100, 2300), pages: 1 } }
+    const auto = { state: 'gelesen' as const, reading: reading(1000, 2300), pages: 10 }
+    // While the step is read the list keeps the automatic reading.
+    expect(feedbackStageOf(page1, auto, 'pending')).toEqual({ kind: 'complete', reading: reading(1000, 2300), pages: 10 })
+    const step = feedbackStageOf(page1, { state: 'gelesen', reading: reading(1500, 2300), pages: 15 })
+    expect(step).toEqual({ kind: 'complete', reading: reading(1500, 2300), pages: 15 })
+    expect(feedbackAnnouncement(step)).toBe('Weitere Rückmeldungen sind gelesen, jetzt die neuesten 1.500 von 2.300.')
+    expect(feedbackAnnouncement({ kind: 'complete', reading: reading(2300, 2300), pages: 25 })).toBe('Weitere Rückmeldungen sind gelesen, jetzt alle 2.300.')
     // While a step is read the line stays as it was: nothing is said twice.
     expect(feedbackAnnouncement(step, 'pending')).toBe(feedbackAnnouncement(step))
     expect(splitGap(feedbackAnnouncement(step, 'error'))?.lead).toBe('Gerade nicht abrufbar')

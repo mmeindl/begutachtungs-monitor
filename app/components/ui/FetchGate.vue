@@ -13,6 +13,11 @@
  * The loading state is the `loading` slot where a page has a shape to hold
  * its place (the detail pages' `DraftSkeleton`), the spinner otherwise.
  *
+ * FOR PAGES, NOT FOR LISTS (16.11.2026): a list shows its frame while it
+ * loads — heading, lede, box, column header — and puts the loading line and
+ * the failure where its rows will be (`ListBoxState`). This gate stays for a
+ * page whose whole content is its data (the detail pages, `/statistik`).
+ *
  * The slot hands the data back although the page already holds it, and that
  * is the whole reason this component is generic: `v-else-if="data"` on the
  * page's own element narrowed the type for everything inside it, and 131

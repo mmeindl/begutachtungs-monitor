@@ -59,6 +59,8 @@ import MethodEntwurfsliste from '~/components/method/MethodEntwurfsliste.vue'
 import { cutKeeping } from '~/utils/pagedList'
 import { matchesQuery } from '#shared/utils/textMatch'
 import { MAX_LIST_QUERY_CHARS } from '#shared/utils/queryParams'
+import { gapLabelDe } from '#shared/utils/gaps'
+import type { ListBoxStatus } from '~/utils/listState'
 
 /**
  * Every Begutachtung of a period, in ONE list — Ministerialentwürfe and the
@@ -970,6 +972,24 @@ const landLawsPending = computed<LandCode[]>(() => {
  * its loading state rather than „Keine Entwürfe gefunden", and the search
  * field names no count. */
 const listPending = computed(() => latePending.value.length > 0)
+/** What the list's box says before it has rows (`ListBoxState`). */
+const LIST_DE = {
+  loading: 'Entwürfe werden geladen …',
+  failed: { text: gapLabelDe('Entwürfe', 'unavailable'), description: 'Die Quelle hat nicht geantwortet.' },
+} as const
+/*
+ * The gate's two answers before there are rows, in the sheet's grammar
+ * (`ListBoxState`): `status === pending && !data` as in `FetchGate`, so a
+ * refresh keeps the rows the reader is looking at. And while the rows that
+ * came are none but a half is still on its way (12.11.2026; the laws count
+ * as one since 14.11.2026, `listPending`): „Keine Entwürfe gefunden" would
+ * be a claim the late half may falsify a second later.
+ */
+const listState = computed<ListBoxStatus>(() => {
+  if (gateData.value && (entries.value.length || !listPending.value)) return null
+  if (gateData.value || gateStatus.value === 'pending' || gateStatus.value === 'idle') return { loading: LIST_DE.loading }
+  return { failed: LIST_DE.failed }
+})
 /* Every part that joins the list late, by name, while it is on its way: the
  * halves (`pendingHalves`), the Bund's laws, the Länder's laws and the open
  * Vorlagen — what `listPending` waits for and the scroll anchor below holds
@@ -1375,7 +1395,9 @@ const statementsSortNote = computed(() => {
       :reversed="reversed"
       :query="qDebounced"
       :stale="refreshing"
+      :state="listState"
       @update:sort="chooseSort"
+      @retry="retry()"
     >
       <!-- WHERE IT STANDS as the tabs (02.10.2026): the stations are the
              axis this product is about — what became of a draft — and the
@@ -1705,29 +1727,6 @@ const statementsSortNote = computed(() => {
            a second row for the same draft. -->
       <template #evidence="{ entry }">
         <SearchEvidence :hit="hitByKey.get(entry.key)" />
-      </template>
-      <!-- The gate's two answers before there are rows, in the sheet's
-           grammar: `status === pending && !data` as in `FetchGate`, so a
-           refresh keeps the rows the reader is looking at. -->
-      <!-- And while the rows that came are none but a half is still on its
-           way (12.11.2026): „Keine Entwürfe gefunden" would be a claim the
-           late half may falsify a second later. -->
-      <!-- The laws count as such a half (14.11.2026, `listPending`). -->
-      <template v-if="!gateData || (!entries.length && listPending)" #state>
-        <LoadingState
-          v-if="gateData || gateStatus === 'pending' || gateStatus === 'idle'"
-          label="Entwürfe werden geladen …"
-        />
-        <ListBoxNotice
-          v-else
-          role="alert"
-          title="Entwürfe: gerade nicht abrufbar"
-          description="Die Quelle hat nicht geantwortet."
-        >
-          <template #action>
-            <UButton color="primary" @click="retry()">Erneut versuchen</UButton>
-          </template>
-        </ListBoxNotice>
       </template>
       <!-- Not under a station conflict: the sentence in the head already
            says that the combination itself is empty, and how out. -->

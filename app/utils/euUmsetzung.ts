@@ -96,6 +96,8 @@ const DE = {
     some: (n: number) => (n === 1 ? '1 Maßnahme' : `${n} Maßnahmen`),
   },
   state: { label: 'Umsetzungsfrist', detail: (d: string) => `bis ${d}` },
+  /** While the list is read: in the rows' place (`ListBoxState`). */
+  loading: 'Richtlinien werden geladen …',
   unread: 'Die Liste der Richtlinien konnte nicht gelesen werden: Der Cellar des Amts für Veröffentlichungen hat nicht geantwortet.',
   empty: (tab: EuUmsetzungTab) => `Keine Richtlinie unter „${DE.tab[tab]}“.`,
   count: (n: number) => (n === 1 ? '1 Richtlinie' : `${n} Richtlinien`),

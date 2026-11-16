@@ -37,6 +37,7 @@ import {
 } from '~/utils/anliegenView'
 import { halfState } from '~/utils/draftFilters'
 import { useLateFetch } from '~/composables/useLateFetch'
+import type { ListBoxStatus } from '~/utils/listState'
 
 const { data, error } = useLateFetch<AnliegenListResponse>('/api/anliegen', () => ({}), {
   timeout: 30000,
@@ -52,6 +53,10 @@ const empty = computed(() => (data.value ? anliegenEmptyDe(data.value.rows, data
  * answer; anything else (a timeout, no connection) is that no answer came. */
 const failedReason = computed(() =>
   (error.value as { statusCode?: number } | null)?.statusCode === 502 ? ANLIEGEN_HOME_DE.failedUpstream : ANLIEGEN_HOME_DE.failedNoAnswer)
+/* Loading and failure in the rows' place (`ListBoxState`); the frame stands meanwhile. */
+const listState = computed<ListBoxStatus>(() => (state.value === 'loading'
+  ? { loading: ANLIEGEN_LIST_DE.loading }
+  : state.value === 'failed' ? { failed: { text: ANLIEGEN_HOME_DE.failed, description: failedReason.value } } : null))
 </script>
 
 <template>
@@ -68,20 +73,13 @@ const failedReason = computed(() =>
       :entries="rows"
       :lead="ANLIEGEN_LIST_DE.columns.lead"
       :second-column="ANLIEGEN_LIST_DE.columns.support"
+      :state="listState"
+      no-retry
       class="mt-4"
     >
       <template v-if="data" #header>
         <p v-if="countLine" class="text-sm tabular-nums text-ink-secondary">{{ countLine }}</p>
         <GapNote v-for="line in rows.length ? unreadLines : []" :key="line" :text="line" class="text-sm text-ink-muted" />
-      </template>
-      <template v-if="state === 'loading' || state === 'failed'" #state>
-        <LoadingState v-if="state === 'loading'" :label="ANLIEGEN_LIST_DE.loading" />
-        <ListBoxNotice
-          v-else
-          role="alert"
-          :title="ANLIEGEN_HOME_DE.failed"
-          :description="failedReason"
-        />
       </template>
       <!-- No open row while a kind could not be read: the failure, never
            „kein Anliegen offen" over a list that is missing a part. -->

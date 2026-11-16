@@ -16,10 +16,11 @@
  * portal's list alone (100 contributions, newest first): `teilweise` with
  * the reading of that page — `total` the portal's count, `read` the rows of
  * page one — or `gelesen` where page one is the whole list or the first
- * reading is already cached, so the block asks no second time. `?seiten=N`
+ * step is already cached, so the block goes on from there. `?seiten=N`
  * asks for the reading of N pages, newest first: 5 (the default, also
- * without the parameter — the newest 500), and on a reader's „Weitere …
- * lesen" 10, 15, … up to 50 (5,000 rows). Each step starts from the step
+ * without the parameter — the newest 500) and 10, which the block asks by
+ * itself one after the other (the newest 1,000, `EU_FEEDBACK_AUTO_PAGES`),
+ * and on a reader's „Weitere … lesen" 15, 20, … up to 50 (5,000 rows). Each step starts from the step
  * before it in the cache and asks the portal only for the pages it lacks —
  * no page twice, at most five per answer (`feedbackOf`). Where the step
  * before is no longer cached, the answer begins again at page one and

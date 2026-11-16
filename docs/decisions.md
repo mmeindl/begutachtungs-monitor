@@ -815,20 +815,25 @@ The code names the EU rules D1 to D7; this is where they are defined
       publication can be withdrawn after a window closed, so no name may
       outlive a restart or reach the disk or the fact store. The API answer
       says `Cache-Control: no-store` for the same reason.
-    - **On approach, the newest 500; more on request, up to 5,000** (plan,
-      decision 10; steps since 16.11.2026): the block „Wer Rückmeldung
-      gegeben hat" under each feedback period with contributions
-      (`EuFeedbackBlock`) reads five pages of 100, newest first, through
-      the portal's pacer, once, when it comes near the viewport
-      (`useNearViewportSection`) — never with the page; each window's block
-      asks on its own. An open block, not a fold, since 16.11.2026, as the
+    - **On approach, the newest 1,000; more on request, up to 5,000**
+      (plan, decision 10; steps since 16.11.2026, 1,000 instead of 500
+      since the same day, `EU_FEEDBACK_AUTO_PAGES`): the block „Wer
+      Rückmeldung gegeben hat" under each feedback period with
+      contributions (`EuFeedbackBlock`) reads by itself up to ten pages of
+      100, newest first, through the portal's pacer, once, when it comes
+      near the viewport (`useNearViewportSection`) — never with the page;
+      each window's block asks on its own. The automatic reading is 1,000
+      and not unlimited because requests to the portal and time scale with
+      the window — 2.5 s a page, so 50,000 contributions would be 500
+      requests — and the largest windows are campaigns of persons, who are
+      only counted. An open block, not a fold, since 16.11.2026, as the
       Stellungnahmen stand on a draft page; the loading line holds its
       place, and a failed read shows the gap sentence with „Erneut
       versuchen". Where the portal counts more, the list's first row says
-      „Gelesen sind die neuesten 500 von 599 Rückmeldungen." beside a
+      „Gelesen sind die neuesten 1.000 von 1.099 Rückmeldungen." beside a
       button „Weitere 99 lesen" (what remains, at most „Weitere 500
       lesen"; neutral outline like „Weitere 10 anzeigen", not blue). A
-      press asks for the next step of five pages (`?seiten=10`, 15, … 50),
+      press asks for the next step of five pages (`?seiten=15`, 20, … 50),
       so the portal is asked only when a reader wants the answer; a higher
       fixed limit was rejected for that reason. While the step is read a
       progress line stands in the button's place and the list stays usable;
@@ -845,25 +850,33 @@ The code names the EU rules D1 to D7; this is where they are defined
       initiative named, so it is no proxy for arbitrary numbers, and only
       for a step that is a multiple of five pages from 5 to 50 (any other is
       a 400).
-    - **Two steps, no page twice** (16.11.2026, `feedbackOf`,
-      `feedbackStageOf`): the whole read of 500 took about 12 s, and the
-      rows a reader sees first are page one's anyway (newest first, ten a
-      page). So the block asks for page one first (`?teil=erste` on the one
-      route, state `teilweise`, or `gelesen` where page one is the whole
-      list or the whole reading is cached) and then for the whole. Page one
-      is cached in memory apart (`eu-portal-rueckmeldungen-erste`, after the
-      naming rule, six hours) and the whole read starts from it, so a window
-      costs the portal five requests as before (one more where the list
-      moved meanwhile, below); a request in flight
-      is shared, and the whole reading's six hours count from page one's
-      read. While only page one is in, the list shows its named rows newest
-      first and the pager, and nothing that counts, filters or orders — no
-      tabs, chip, search, order, set line or closing rows: over one page of
-      five they would be wrong and would change under the reader's eyes. A
-      line with the spinner stands in the tool row's place; where the rest
+    - **Page one first, no page twice** (16.11.2026, `feedbackOf`,
+      `feedbackStageOf`, `nextAutomaticStep`): a read of 500 took about
+      12 s, and the rows a reader sees first are page one's anyway (newest
+      first, ten a page). So the block asks for page one first
+      (`?teil=erste` on the one route, state `teilweise`, or `gelesen`
+      where page one is the whole list or the first step is cached), then
+      for the first step (`?seiten=5`) and, where more are counted, the
+      second (`?seiten=10`) — two requests from the client, because one
+      request reads at most five pages (below); a window of 480 or exactly
+      500 asks no second step. Page one is cached in memory apart
+      (`eu-portal-rueckmeldungen-erste`, after the naming rule, six hours)
+      and the first step starts from it, so a window costs the portal one
+      request a page (one more where the list moved meanwhile, below); a
+      request in flight is shared, and every step's six hours count from
+      page one's read. Until the automatic reading is complete, the list
+      shows the named rows read so far newest first and the pager, and
+      nothing that counts, filters or orders — no tabs, chip, search,
+      order, set line or closing rows: over part of the reading they would
+      be wrong and would change under the reader's eyes without their
+      doing. The first step's rows are swapped in under the pager, and the
+      live region says the arrival once, at the end. A line with the
+      spinner stands in the tool row's place; where an automatic step
       fails, a „Gerade nicht abrufbar" sentence with „Erneut versuchen" for
-      the rest alone, the rows kept. When the whole arrives the controls
-      appear and the rows already paged to stay.
+      that step alone, the rows kept and the controls still hidden — no
+      count stands over a reading that stopped short. When the automatic
+      reading is complete the controls appear and the rows already paged
+      to stay.
     - **Each step from the step before, five requests at most**
       (16.11.2026, `readFeedbackStep`, `feedbackOf`): every step is cached
       apart under its number of pages (`eu-portal-rueckmeldungen`, key
@@ -953,7 +966,7 @@ The code names the EU rules D1 to D7; this is where they are defined
       within the tab above it (in the citizens' tab, that country's row);
       with none (null) there is no chip and nothing is said to be missing.
     - **Search, filter and order reach only what was read.** The newest
-      500 rows are read first, so where more are counted the list's first
+      1,000 rows are read first, so where more are counted the list's first
       row says how many of how many, above the tabs and the search — before
       a reader takes an empty result for an absent organisation — and
       offers the next 500; at 5,000 it says so in a „Nicht im Monitor"
@@ -985,8 +998,10 @@ The code names the EU rules D1 to D7; this is where they are defined
     without a day last either way) or by title, each reversible
     (16.11.2026); „Stadium" and „Vorgesehen" do not order — the tabs divide
     by them. A portal that could not be read is said with the link to the
-    portal, never an empty list, and the feed and calendar (`?quelle=eu`, a
-    source of their own) answer 503 for it. An initiative has a page by the
+    portal, never an empty list. No feed and no calendar of the windows:
+    decided 16.11.2026, the first version of the EU pages has none, it is a
+    ticket of its own (`?quelle=eu` is an unknown source, 404, as any
+    other). An initiative has a page by the
     portal's number (`euInitiativePath`); its door is the way to the portal
     while a window is open, and the stations after the Commission say in a
     „Nicht im Monitor" sentence that the monitor does not follow it there
@@ -1135,8 +1150,9 @@ The code names the EU rules D1 to D7; this is where they are defined
       `…/initiatives/details/<year>/<6 digits>_de`) was opened in a browser
       on 15.11.2026 for one initiative and resolves. An unknown number
       answered 404 through the built endpoint the same day.
-    - The deadlines are NOT in `/feed.xml` or `/kalender.ics`: decision 11
-      names the open windows of the portal only; open for the maintainer.
+    - The deadlines are NOT in `/feed.xml` or `/kalender.ics`: decided
+      16.11.2026, the first version of the EU pages has no feed and no
+      calendar; that is a ticket of its own.
   - **The stand of a proposal: which Cellar flags decide** (15.11.2026,
     step 3, `shared/utils/euVorschlag.ts`, `server/utils/eu/cellarVorschlag.ts`).
     A proposal that left the Commission has a page by its COM number
@@ -1573,6 +1589,27 @@ the reasoning in full stands in that component's header comment.
   in a group's header button define nothing. Definitions live in
   `app/utils/terms.ts`, method texts as components in
   `app/components/method/` — copy out of logic, one place per language.
+- **A list shows its frame while loading; the loading line and the gap
+  sentence stand where the rows will be** (maintainer, 16.11.2026,
+  `ListBoxState`, `listBoxStatusOf`, `EntryList`'s `state`). A section that
+  showed only its heading and a centred spinner far below took the lede,
+  the box and the column header away until the data came. Now everything
+  that does not depend on the data renders at once and stays put: heading,
+  lede, the list box, its column header (plain labels until rows exist),
+  the controls whose content is known without the data, the credit line.
+  A tab with a count is data: the tabs stand as labels without counts,
+  disabled with the loading line as their reason (`EuFensterList`), or,
+  without counts, usable (the choice applies when the rows come); a search
+  over rows that are not there is disabled; a count line waits. In the
+  rows' place, left-aligned like a row, the spinner and the list's own
+  line, `min-h-48` (12rem, about two and a half rows, so the page moves
+  little when the rows come); a failed request takes the same place and
+  height, its words through `GapNote` with the list's „Erneut versuchen".
+  The part that will hold the rows is `aria-busy`; a polite live region
+  outside it says the loading line and, once, the arrival. No fake rows and
+  no grey bars: decoration that carries no information. One piece for every
+  list; a detail page gated as a whole has no frame to show and keeps
+  `FetchGate`.
 - **A list's notes state, they do not explain** (14.11.2026). Above the
   rows stands only what is true of the list right now and differs from what
   its controls claim, one sentence each: a source that failed, a filter that

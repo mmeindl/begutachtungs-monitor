@@ -10,9 +10,7 @@
  * readers would surface daily phantom updates). Deterministic bodies are
  * also what make the routes' ETag/304 handling effective.
  */
-import type { DraftSummary, EuOpenInitiative, LandCode, LandConsultation, RisConsultation } from '../../shared/types'
-import { euInitiativePath } from '../../shared/utils/eu'
-import { actTypeDe, windowStageDe } from '../../shared/utils/euPortal'
+import type { DraftSummary, LandCode, LandConsultation, RisConsultation } from '../../shared/types'
 import { formatDateDe } from '../../shared/utils/format'
 import { RIS_KIND_LABEL, risFilingNote } from '../../shared/utils/risConsultations'
 import { LAND_NAME, landDraftPath } from '../../shared/utils/laender'
@@ -172,40 +170,6 @@ function landEntry(siteUrl: string, item: LandConsultation): FeedEntry {
   }
 }
 
-/**
- * The same identity rule for an open window of the Commission's portal
- * (step 3 of the EU cycle, 15.11.2026): the portal's number of the
- * initiative and the window's stage, never our route — one initiative can
- * hold two windows at once (a Sondierung and a public consultation), and
- * each is an entry of its own. The `eu-` prefix keeps it apart.
- */
-const euFeedUid = (id: number, stage: string) => `eu-${id}-${stage.toLowerCase()}@${FEED_UID_DOMAIN}`
-
-/** Where the contribution goes, for a reader who sees the entry without the page behind it. */
-const EU_FILING = 'Rückmeldung im Portal „Ihre Meinung zählt“ der Europäischen Kommission, der Weg steht auf der Seite des Vorhabens'
-
-/** One open window as an entry: its stage leads, as a RIS record's type word does; the closing day is its Frist. */
-function euEntries(siteUrl: string, i: EuOpenInitiative): FeedEntry[] {
-  const title = i.title ?? `Vorhaben Nr. ${i.id}`
-  const act = actTypeDe(i.actType)
-  const path = euInitiativePath(i.id)
-  if (!path) return []
-  return i.windows.map((w) => {
-    const stage = windowStageDe(w.stage)
-    return {
-      uid: euFeedUid(i.id, w.stage),
-      url: `${siteUrl}${path}`,
-      title: `${stage}: ${title}`,
-      meta: [w.end ? `Rückmeldung bis ${formatDateDe(w.end)}` : 'Rückmeldung möglich', ...(act ? [act] : []), EU_FILING].join(' · '),
-      publishedAt: w.start ?? '',
-      deadline: w.end,
-      calendarSummary: `Rückmeldung an die Kommission: ${title} (${stage})`,
-      calendarDescription: [act, EU_FILING].filter(Boolean).join(' – '),
-      tieBreak: `${String(i.id).padStart(9, '0')}-${w.stage}`,
-    }
-  })
-}
-
 // --- Measured surface: exported for tests and harness scripts, not for the app. ---
 /**
  * FNV-1a 64-bit, as two 32-bit halves.
@@ -311,18 +275,11 @@ export function buildRssFeed(
   risItems: RisConsultation[] = [],
   /** A Land's own feed (`?quelle=`, 25.10.2026): its drafts alone, under its name. */
   land?: { code: LandCode; items: LandConsultation[] },
-  /**
-   * The open windows of the Commission's portal (`?quelle=eu`, 15.11.2026,
-   * decision 11 of the EU cycle): a source of its own, never mixed into
-   * the Begutachtungsfristen.
-   */
-  eu?: { items: EuOpenInitiative[] },
 ): string {
   const sorted = [
     ...items.map((i) => draftEntry(siteUrl, i)),
     ...risItems.map((i) => risEntry(siteUrl, i)),
     ...(land?.items ?? []).map((i) => landEntry(siteUrl, i)),
-    ...(eu?.items ?? []).flatMap((i) => euEntries(siteUrl, i)),
   ]
     .sort((a, b) => b.publishedAt.localeCompare(a.publishedAt) || b.tieBreak.localeCompare(a.tieBreak))
     .slice(0, RSS_MAX_ITEMS)
@@ -351,20 +308,16 @@ export function buildRssFeed(
 
   const lastBuild = sorted[0] ? rfc1123(sorted[0].publishedAt) : null
 
-  const channelTitle = eu
-    ? 'Begutachtungs-Monitor – Offene Rückmeldefristen der Europäischen Kommission'
-    : land
-      ? `Begutachtungs-Monitor – Begutachtungen des Landes ${LAND_NAME[land.code]}`
-      : ressort
-        ? `Begutachtungs-Monitor – Begutachtungsverfahren (${ressort.name ?? ressort.code})`
-        : 'Begutachtungs-Monitor – Begutachtungsverfahren des Bundes'
-  const selfUrl = eu
-    ? `${siteUrl}/feed.xml?quelle=eu`
-    : land
-      ? `${siteUrl}/feed.xml?quelle=${land.code}`
-      : ressort
-        ? `${siteUrl}/feed.xml?ressort=${encodeURIComponent(ressort.code)}`
-        : `${siteUrl}/feed.xml`
+  const channelTitle = land
+    ? `Begutachtungs-Monitor – Begutachtungen des Landes ${LAND_NAME[land.code]}`
+    : ressort
+      ? `Begutachtungs-Monitor – Begutachtungsverfahren (${ressort.name ?? ressort.code})`
+      : 'Begutachtungs-Monitor – Begutachtungsverfahren des Bundes'
+  const selfUrl = land
+    ? `${siteUrl}/feed.xml?quelle=${land.code}`
+    : ressort
+      ? `${siteUrl}/feed.xml?ressort=${encodeURIComponent(ressort.code)}`
+      : `${siteUrl}/feed.xml`
 
   return [
     '<?xml version="1.0" encoding="UTF-8"?>',
@@ -376,11 +329,9 @@ export function buildRssFeed(
     // Parliament's half only when the RIS records joined it, and a channel
     // description that names one half is the same wrong claim the homepage
     // heading carried.
-    `    <description>${escapeXml(eu
-      ? 'Vorhaben, zu denen die Europäische Kommission in ihrem Portal „Ihre Meinung zählt“ Rückmeldungen entgegennimmt: Stadium, vorgesehener Rechtsakt und letzter Tag.'
-      : land
-        ? `Neue Begutachtungen des Landes ${LAND_NAME[land.code]} zu Gesetzes- und Verordnungsentwürfen: Fristen und was daraus wurde.`
-        : 'Neue Begutachtungsverfahren zu Gesetzes- und Verordnungsentwürfen des Bundes: Fristen, Stellungnahmen und was daraus wurde.')}</description>`,
+    `    <description>${escapeXml(land
+      ? `Neue Begutachtungen des Landes ${LAND_NAME[land.code]} zu Gesetzes- und Verordnungsentwürfen: Fristen und was daraus wurde.`
+      : 'Neue Begutachtungsverfahren zu Gesetzes- und Verordnungsentwürfen des Bundes: Fristen, Stellungnahmen und was daraus wurde.')}</description>`,
     '    <language>de-at</language>',
     `    <atom:link href="${escapeXml(selfUrl)}" rel="self" type="application/rss+xml"/>`,
     ...(lastBuild ? [`    <lastBuildDate>${lastBuild}</lastBuildDate>`] : []),
@@ -549,19 +500,11 @@ export function buildIcsCalendar(
   landItems: LandConsultation[] = [],
   /** The calendar's name: the Bund's, or a Land's own (`?quelle=`, 25.10.2026). */
   name = 'Begutachtungsfristen',
-  /**
-   * The open windows of the Commission's portal (`?quelle=eu`, 15.11.2026),
-   * each on its closing day. Unlike the Bund's calendar it cannot keep a
-   * past Frist: the portal's list holds only what is open, so a window
-   * leaves the calendar after its last day.
-   */
-  euItems: EuOpenInitiative[] = [],
 ): string {
   const withDeadline = [
     ...items.map((i) => draftEntry(siteUrl, i)),
     ...risItems.map((i) => risEntry(siteUrl, i)),
     ...landItems.map((i) => landEntry(siteUrl, i)),
-    ...euItems.flatMap((i) => euEntries(siteUrl, i)),
   ]
     .filter((e): e is FeedEntry & { deadline: string } => e.deadline !== null)
     .sort((a, b) => a.deadline.localeCompare(b.deadline) || a.tieBreak.localeCompare(b.tieBreak))

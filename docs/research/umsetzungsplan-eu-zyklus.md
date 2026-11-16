@@ -110,7 +110,9 @@ the three split procedures above, which may be why).
     says how many of how many were read.
 11. Open EU windows are a source of their own in `/feed.xml` and
     `/kalender.ics` (`?quelle=eu`), never mixed into the
-    Begutachtungsfristen by default.
+    Begutachtungsfristen by default. **Revised 16.11.2026:** the first
+    version of the EU pages has no feed and no calendar; that is a ticket of
+    its own, and the `?quelle=eu` built on 15.11.2026 is removed.
 12. The path words under the EU base stay German until the site speaks
     English; the address helper is the one place to change then.
 
@@ -357,9 +359,8 @@ The population no longer comes from Austrian drafts.
   act is shown only where a source states it.
 - At Parliament and Council the page says that no channel for individuals
   exists at this stage, and links the procedure.
-- Feed and calendar: open EU windows are a source of their own
-  (`?quelle=eu`), not mixed into the Begutachtungsfristen by default
-  (decision 11).
+- Feed and calendar: none in the first version (decided 16.11.2026,
+  decision 11 revised); a ticket of its own.
 - Sitemap, the page-view classes, the header entry and `wege.ts` follow.
 - A window that closed stays a page: what was open, until when, how many
   contributions. Nothing is deleted when the portal's list no longer
@@ -367,9 +368,9 @@ The population no longer comes from Austrian drafts.
 
 **Open windows built on 15.11.2026** (the pending proposals from the
 Cellar are not): the list on `/eu-recht` (`fenster.get.ts`, `EuFensterList`),
-the initiative's page (`/eu-recht/initiative/<nr>`), `?quelle=eu` in feed and
-calendar, sitemap, page-view class, `/wege`, the Impressum sentence. Against
-the plan: no fact store for once-open initiatives — a closed initiative's
+the initiative's page (`/eu-recht/initiative/<nr>`), sitemap, page-view
+class, `/wege`, the Impressum sentence (`?quelle=eu` in feed and calendar
+too, removed 16.11.2026, decision 11). Against the plan: no fact store for once-open initiatives — a closed initiative's
 page reads the portal again when asked, cached a day; the header entry is not
 added. Not verified: what the portal answers for an unknown number (taken as
 404), the `page` parameter beyond the first page (the reader checks the page
