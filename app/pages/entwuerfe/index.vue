@@ -80,7 +80,7 @@ import type { ListBoxStatus } from '~/utils/listState'
 usePageSeo({
   title: 'Entwürfe',
   description:
-    'Alle Entwürfe – Gesetzes- und Verordnungsentwürfe – und die Gesetze, zu denen kein Entwurf in Begutachtung bekannt ist, filterbar nach Bund und Land, Station, Art – mit oder ohne Entwurf –, Zeitraum und Ministerium, nach „Stellungnahme möglich“ und „Setzt EU-Recht um“.',
+    'Alle Gesetzes- und Verordnungsentwürfe des Bundes und der Länder, in Begutachtung und abgeschlossen, und die Gesetze, zu denen kein Entwurf in Begutachtung bekannt ist – filterbar nach Station, Zeitraum, Ministerium und EU-Bezug.',
 })
 
 /**

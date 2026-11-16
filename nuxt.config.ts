@@ -207,7 +207,7 @@ export default defineNuxtConfig({
         {
           name: 'description',
           content:
-            'Laufende Begutachtungen österreichischer Gesetzes- und Verordnungsentwürfe: Fristen und Stellungnahmen – und danach: Regierungsvorlage, Bundesgesetzblatt.',
+            'Laufende Begutachtungen des Bundes und der Länder: Fristen und Stellungnahmen – und was danach aus jedem Entwurf wurde: Regierungsvorlage, Beschluss, Gesetzblatt.',
         },
       ],
       link: [

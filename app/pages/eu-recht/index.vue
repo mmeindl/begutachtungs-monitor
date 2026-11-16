@@ -71,7 +71,7 @@ import { EU_ACTS_COLUMN_DE, EU_ACTS_SORT_DE, deadlineDirection, deadlineOrderDe,
 usePageSeo({
   title: EU_PAGE_TITLE_DE,
   description:
-    'Wozu die Europäische Kommission gerade Rückmeldungen entgegennimmt, welche Europäischen Bürgerinitiativen gerade Unterstützungen sammeln, welche Richtlinien der Europäischen Union Österreich umzusetzen hat, was dazu gemeldet ist, und welche Rechtsakte die Entwürfe des Bundes und der Länder umsetzen – mit Fristen und den Entwürfen je Rechtsakt.',
+    'Wozu die Europäische Kommission gerade Rückmeldungen entgegennimmt, welche Europäischen Bürgerinitiativen Unterstützungen sammeln, welche Richtlinien Österreich umzusetzen hat – und welche Entwürfe des Bundes und der Länder sie umsetzen.',
 })
 
 const { data, status, error, refresh } = useFetch<EuActsResponse>('/api/eu-recht', { lazy: true })
