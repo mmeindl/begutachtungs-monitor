@@ -24,7 +24,7 @@
  * and a VfGH-Aufhebung (Art. 140 Abs. 5) pass only „Kundgemacht"; the
  * Bundesrat's Einspruch and the Beharrungsbeschluss (Art. 42) are branches
  * inside „Parlament", the Volksabstimmung (Art. 43, 44 Abs. 3) one after it,
- * and it stands in the second block; the Länder's Verordnungen of the
+ * and it stands in the list „Nicht im Monitor"; the Länder's Verordnungen of the
  * Landeshauptmann or a Bezirksverwaltungsbehörde, their Notverordnung (Art.
  * 97 Abs. 3) and their Art. 15a Abs. 2 agreements, where the memo leaves the
  * stations open.
@@ -36,11 +36,13 @@
  */
 import { gapDe } from '#shared/utils/gaps'
 import type { AnliegenKind, LandDraftKind, ProcedureItemKind, RisConsultationKind } from '#shared/types'
-import { ANLIEGEN_PATH, ANLIEGEN_SECTION_DE } from '#shared/utils/anliegen'
+import { ANLIEGEN_PATH } from '#shared/utils/anliegen'
 import { DRAFT_STATION_LABEL } from '#shared/utils/draftStations'
 import { LAND_CODES, SOURCE_PARAM, formatSourceList } from '#shared/utils/laender'
 import { euPath } from '#shared/utils/eu'
 import { SECOND_ROUND_CLAUSE, type StationId } from './spine'
+import { EU_BUERGERINITIATIVE_DE } from './euBuergerinitiative'
+import { EU_RAIL_DE } from './euRail'
 
 /**
  * What a path does at a station.
@@ -115,6 +117,12 @@ export interface Weg {
   /** The list filtered to this kind; null where the list has no filter for it. */
   href: string | null
 }
+
+/* What the monitor does not show of a Volksbegehren: the support before it
+ * arrives (Bundesministerium für Inneres, no interface; volksbegehren.md).
+ * One sentence for both rows that carry it, the national one and the
+ * Anliegen's. */
+const VOLKSBEGEHREN_GAP = gapDe('outOfScope', 'Unterstützung und Eintragung vor dem Einlangen im Nationalrat.')
 
 /* The list of Anliegen an das Parlament narrowed to one kind — its own
  * `?art=` (`anliegenArtOf`), open ones first as the list opens. */
@@ -288,7 +296,8 @@ export const WEGE: readonly Weg[] = [
    * afterwards — that is attribution over years, which no source links
    * (volksbegehren.md, verdict and § 9). Unterstützung and Eintragung happen
    * before, at the Bundesministerium für Inneres, without an interface: the
-   * row's `gap`. Signing one is in the second block. */
+   * row's `gap`. Its time in the Nationalrat, station by station, is a row of
+   * the Anliegen's matrix (`ANLIEGEN_MATRIX`). */
   {
     id: 'volksbegehren',
     level: 'bund',
@@ -296,7 +305,7 @@ export const WEGE: readonly Weg[] = [
     note: 'im Monitor für seine Zeit im Nationalrat',
     noteLink: null,
     notFollowed: null,
-    gap: gapDe('outOfScope', 'Unterstützung und Eintragung vor dem Einlangen im Nationalrat.'),
+    gap: VOLKSBEGEHREN_GAP,
     cells: row(['entfaellt', 'entfaellt', 'entfaellt', 'stellungnahme', 'offen']),
     href: anliegenListHref('volksbegehren'),
   },
@@ -516,21 +525,6 @@ export function wegGroups(): { level: WegLevel; label: string; note: string | nu
   }))
 }
 
-/**
- * The lead-in above the national paths: an EU act a draft carries out.
- * Art. 288 AEUV — a Richtlinie needs a national act (Umsetzung), a
- * Verordnung applies directly and draws accompanying rules. The monitor
- * marks both on a draft (`EuMarker`: `umsetzung`, `flankierend-vo`). It named
- * the Richtlinie alone until 14.11.2026. The list filters only the first
- * (`EuFilter`), so the list link says so.
- */
-export const EU_LEAD = {
-  label: 'EU-Richtlinie, EU-Verordnung',
-  href: '/eu-recht',
-  note: 'Umsetzung einer Richtlinie, begleitende Regeln zu einer Verordnung',
-  list: { label: 'Entwürfe, die EU-Recht umsetzen', href: '/entwuerfe?eu=umsetzung' },
-} as const
-
 /** What a cell says in words — beside the mark, or for a screen reader. */
 export const WEG_CELL_LABEL: Record<WegCell, string> = {
   durch: 'durchläuft',
@@ -542,12 +536,379 @@ export const WEG_CELL_LABEL: Record<WegCell, string> = {
 /** The legend: the marks that need one. The dash speaks for itself. */
 export const WEG_LEGEND: readonly { cell: WegCell; label: string }[] = [
   { cell: 'durch', label: 'Station' },
-  { cell: 'stellungnahme', label: 'Stellungnahme möglich' },
+  // One mark for every way to take part (16.11.2026): a Stellungnahme in the national matrix, a Rückmeldung or an Unterstützung in the others, each row saying which (`WegMatrixRow.takePart`).
+  { cell: 'stellungnahme', label: 'Stellungnahme, Rückmeldung oder Unterstützung möglich' },
   { cell: 'offen', label: 'je nach Fall' },
 ]
 
 /* ------------------------------------------------------------------ */
-/* Beside the path                                                     */
+/* The other objects, each with the stations of its own rail           */
+/* ------------------------------------------------------------------ */
+
+/**
+ * A matrix of `/wege` (16.11.2026): the stations of one rail as columns,
+ * its kinds of path as rows in groups. The national matrix (`WEGE`) is the
+ * first; an EU act, a European Citizens' Initiative and an Anliegen an den
+ * Nationalrat each have their own, because each walks the rail of its own
+ * page and none of them is a sixth station of the national one
+ * (docs/decisions.md, „The five stations stay five"). One page template
+ * draws them all (`WegMatrix`).
+ *
+ * THE STATIONS ARE THE RAILS' (names and order): read from the code that
+ * builds each rail, cited at each matrix, so the graphic and the page agree.
+ * THE CELLS ARE THE LAW'S, as in `WEGE`: every cell names in a comment the
+ * provision or memo passage it stands on; what a memo leaves open is
+ * `offen` or left out, never a mark.
+ */
+export interface WegMatrixStation {
+  id: string
+  label: string
+  /** A list behind the station; null where none. */
+  href: string | null
+}
+
+export interface WegMatrixRow {
+  id: string
+  label: string
+  note: string | null
+  noteLink: { label: string; href: string } | null
+  /** The official page where it is done — only an address a memo names; never guessed. */
+  source?: { label: string; href: string }
+  notFollowed: string | null
+  gap?: string
+  cells: Record<string, WegCell>
+  href: string | null
+  /** What the blue mark means on this row („Rückmeldung möglich"); the national words (`WEG_CELL_LABEL`) where absent. */
+  takePart?: string
+  /** A station's name on this row's own rail where it differs from the column's („Eingelangt" for a Volksbegehren). */
+  stationLabels?: Record<string, string>
+}
+
+export interface WegMatrixGroup {
+  key: string
+  label: string
+  /** What the group's bar adds to its name, as `WEG_LEVEL_NOTE` does. */
+  note: string | null
+  rows: WegMatrixRow[]
+}
+
+export interface WegMatrix {
+  id: string
+  /** The table's caption, for a screen reader. */
+  caption: string
+  /** The head of the rows' column. */
+  pathColumn: string
+  stations: WegMatrixStation[]
+  groups: WegMatrixGroup[]
+}
+
+/** What a cell of a row says in words: its own take-part words for the blue mark, the matrix's otherwise. */
+export function wegCellLabel(row: Pick<WegMatrixRow, 'takePart'>, cell: WegCell): string {
+  return cell === 'stellungnahme' && row.takePart ? row.takePart : WEG_CELL_LABEL[cell]
+}
+
+/** A station's name on one row's rail. */
+export function wegStationLabel(row: Pick<WegMatrixRow, 'stationLabels'>, station: WegMatrixStation): string {
+  return row.stationLabels?.[station.id] ?? station.label
+}
+
+/* Parliament's page „Petitionen unterstützen" (memo, „Quellen"): it covers
+ * Petitionen and Bürgerinitiativen alike. */
+const PARLAMENT_PETITIONEN = 'https://www.parlament.gv.at/beteiligen/unterstuetzen/petitionen'
+const PARLAMENT_SOURCE = { label: 'parlament.gv.at', href: PARLAMENT_PETITIONEN }
+
+/* The windows open on the Commission's portal and the Citizens' Initiatives
+ * in collection, on the EU page (steps 3 and 5 of the EU cycle). */
+const EU_FENSTER_HREF = `${euPath()}#eu-fenster`
+const EU_BUERGERINITIATIVEN_HREF = `${euPath()}#eu-buergerinitiativen`
+
+/** The drafts that carry out an EU act (the list's `EuFilter`: directives only, so the words say so). */
+export const EU_IMPLEMENTING_LIST = { label: 'Entwürfe, die EU-Recht umsetzen', href: '/entwuerfe?eu=umsetzung' } as const
+
+/**
+ * The national matrix as a `WegMatrix`: the five stations, Bund and Länder.
+ */
+export const NATIONAL_MATRIX: WegMatrix = {
+  id: 'national',
+  caption: 'Wege zum Gesetz und zur Verordnung, nach Station',
+  pathColumn: 'Weg',
+  stations: [...WEG_STATIONS],
+  groups: wegGroups().map((g) => ({ key: g.level, label: g.label, note: g.note, rows: g.rows })),
+}
+
+/**
+ * B. An EU act. The columns are the rail of an act's page (`euRailView`,
+ * `app/utils/euRail.ts`; the same names on a proposal's and an initiative's
+ * page, `euVorschlag.ts`, `euInitiative.ts`): „Konsultation", „Vorschlag",
+ * „Parlament und Rat" (station `beschluss`), „Amtsblatt", and the last
+ * station, „Umsetzung" for a directive and „Geltung" for what applies by
+ * itself (`effectStation`) — one column, each row naming its own.
+ * The memo's own proposal for the rail (eu-zyklus.md § 2.4) has the same
+ * five; wege-zu-einer-rechtsnorm.md („Einschätzung", EU) calls the last
+ * „Umsetzungsfrist", the code „Umsetzung" — the code's word stands.
+ */
+const EU_STATIONS: WegMatrixStation[] = [
+  { id: 'konsultation', label: EU_RAIL_DE.name.konsultation, href: null },
+  { id: 'vorschlag', label: EU_RAIL_DE.name.vorschlag, href: null },
+  { id: 'beschluss', label: EU_RAIL_DE.name['parlament-rat'], href: null },
+  { id: 'amtsblatt', label: EU_RAIL_DE.name.amtsblatt, href: null },
+  { id: 'wirkung', label: `${EU_RAIL_DE.name.umsetzung} oder ${EU_RAIL_DE.name.geltung}`, href: null },
+]
+
+const euCells = (konsultation: WegCell, vorschlag: WegCell, beschluss: WegCell, amtsblatt: WegCell, wirkung: WegCell): Record<string, WegCell> =>
+  ({ konsultation, vorschlag, beschluss, amtsblatt, wirkung })
+
+export const EU_MATRIX: WegMatrix = {
+  id: 'eu',
+  caption: 'Wege eines EU-Rechtsakts, nach Station',
+  pathColumn: 'Rechtsakt',
+  stations: EU_STATIONS,
+  groups: [{
+    key: 'eu',
+    label: 'EU-Rechtsakt',
+    note: 'Rückmeldung im Portal „Ihre Meinung zählt“ der Kommission',
+    rows: [
+      /* A directive on a legislative proposal.
+       *  - Konsultation: blue — Art. 11 Abs. 3 EUV, COM(2021) 219: Sondierung
+       *    (call for evidence) and öffentliche Konsultation, „jede Person"
+       *    (wege-zu-einer-rechtsnorm.md, „Wo man sich äußern kann", EU;
+       *    eu-zyklus.md § 3). Not every proposal had one (the portal holds
+       *    proposals from 2017, eu-zyklus.md § 2.4: 29 of 36 found) — the
+       *    blue mark stands for the windows the row holds, as a
+       *    Verordnungsentwurf's Begutachtung does in the national matrix.
+       *  - Vorschlag: blue — the feedback period on the adopted proposal
+       *    (eu-zyklus.md § 3, „Angenommener Vorschlag", jede Person; § 2.4:
+       *    present in all 29 initiatives found).
+       *  - Parlament und Rat: passed, no channel for individuals (eu-zyklus.md
+       *    § 3; the proposal's page says so, `noChannel` in euInitiative.ts).
+       *    Under a special procedure the Council decides alone and the rail
+       *    names the station „Rat" (`decisionStation`); passed either way.
+       *  - Amtsblatt: passed (eu-zyklus.md § 2.4, station 4).
+       *  - Umsetzung: passed — Art. 288 AEUV, a directive needs a national
+       *    act (wege-zu-einer-rechtsnorm.md, „EU"); where a Stellungnahme is
+       *    possible then is the national matrix's, so no mark here. */
+      {
+        id: 'eu-richtlinie',
+        label: 'Richtlinie',
+        note: 'Umsetzung durch Bund oder Land',
+        noteLink: EU_IMPLEMENTING_LIST,
+        notFollowed: null,
+        cells: euCells('stellungnahme', 'stellungnahme', 'durch', 'durch', 'durch'),
+        href: EU_FENSTER_HREF,
+        takePart: 'Rückmeldung möglich',
+        stationLabels: { wirkung: EU_RAIL_DE.name.umsetzung },
+      },
+      /* A regulation on a legislative proposal: the directive's cells, the
+       * last station „Geltung" — Art. 288 AEUV, it applies directly; the
+       * national rules that accompany it are drafts of the national matrix
+       * (wege-zu-einer-rechtsnorm.md, „EU"). Sources of the other cells as
+       * above. */
+      {
+        id: 'eu-verordnung',
+        label: 'Verordnung',
+        note: 'gilt unmittelbar',
+        noteLink: null,
+        notFollowed: null,
+        cells: euCells('stellungnahme', 'stellungnahme', 'durch', 'durch', 'durch'),
+        href: EU_FENSTER_HREF,
+        takePart: 'Rückmeldung möglich',
+        stationLabels: { wirkung: EU_RAIL_DE.name.geltung },
+      },
+      /* A delegated or implementing act of the Commission.
+       *  - Konsultation: `offen` — the initiative's rail shows it only where
+       *    the portal holds a period before the draft (`showConsultation`,
+       *    euInitiative.ts); no memo says such acts have one.
+       *  - Vorschlag: at its place the Commission's own station, „Rechtsakt
+       *    der Kommission" (euInitiative.ts, track `kommission`), with the
+       *    feedback on the draft act: blue — eu-zyklus.md § 3 („Entwurf
+       *    eines delegierten oder Durchführungsrechtsakts", jede Person) and
+       *    wege-zu-einer-rechtsnorm.md („Rückmeldung … zu Entwürfen
+       *    delegierter und Durchführungsrechtsakte"). Its length is open in
+       *    both memos; that it has one is not.
+       *  - Parlament und Rat: none — eu-zyklus.md § 2.4 („hat keine
+       *    Stationen 2 und 3 in dieser Form"); the act's rail omits them
+       *    (`euRailView`, `commission`).
+       *  - Amtsblatt, Umsetzung oder Geltung: passed (`euRailView`, the rail
+       *    of an act of the Commission). */
+      {
+        id: 'eu-kommission',
+        label: 'Rechtsakt der Kommission',
+        note: 'delegiert oder zur Durchführung; Rückmeldung zum Entwurf',
+        noteLink: null,
+        notFollowed: null,
+        cells: euCells('offen', 'stellungnahme', 'entfaellt', 'durch', 'durch'),
+        href: EU_FENSTER_HREF,
+        takePart: 'Rückmeldung möglich',
+        stationLabels: { vorschlag: 'Rechtsakt der Kommission' },
+      },
+    ],
+  }],
+}
+
+/**
+ * C. A European Citizens' Initiative. The columns are its rail
+ * (`EU_BUERGERINITIATIVE_DE.name`, `app/utils/euBuergerinitiative.ts`):
+ * Registrierung · Sammlung · Prüfung · Einreichung · Antwort der Kommission.
+ * The endings that leave the rail („Zurückgezogen", „Nicht genug
+ * Unterstützungen") are no columns: a path that ends there passes no more.
+ */
+const ECI_NAME = EU_BUERGERINITIATIVE_DE.name
+const ECI_STATIONS: WegMatrixStation[] = [
+  { id: 'registrierung', label: ECI_NAME.registrierung, href: null },
+  { id: 'sammlung', label: ECI_NAME.sammlung, href: null },
+  { id: 'pruefung', label: ECI_NAME.pruefung, href: null },
+  { id: 'einreichung', label: ECI_NAME.einreichung, href: null },
+  { id: 'antwort', label: ECI_NAME.antwort, href: null },
+]
+
+export const ECI_MATRIX: WegMatrix = {
+  id: 'eci',
+  caption: 'Weg einer Europäischen Bürgerinitiative, nach Station',
+  pathColumn: 'Initiative',
+  stations: ECI_STATIONS,
+  groups: [{
+    key: 'eci',
+    label: 'Europäische Bürgerinitiative',
+    note: null,
+    rows: [
+      /* Art. 11 Abs. 4 EUV; VO (EU) 2019/788 Art. 3 (memo, „Wo man sich
+       * äußern kann", EU).
+       *  - Registrierung: passed — every initiative in the register is
+       *    registered (REGISTERED on 28 of 28, docs/decisions.md, „The rail
+       *    comes from the register's progress").
+       *  - Sammlung: blue — Unionsbürger support it (memo, same row); the door
+       *    stands while the collection runs (decisions.md, „The door stands
+       *    only while the collection runs").
+       *  - Prüfung, Einreichung, Antwort der Kommission: `offen` — only an
+       *    initiative with a million signatures from a quarter of the Member
+       *    States goes on (Art. 3); measured VERIFICATION 7, SUBMITTED 5,
+       *    ANSWERED 4 of 28 (decisions.md). After a submission the answer is
+       *    owed within six months (Art. 15 Abs. 2): the row's note. */
+      {
+        id: 'eu-buergerinitiative',
+        label: 'Europäische Bürgerinitiative',
+        note: 'unterstützen · die Kommission antwortet binnen sechs Monaten mit Gründen',
+        noteLink: null,
+        notFollowed: null,
+        cells: { registrierung: 'durch', sammlung: 'stellungnahme', pruefung: 'offen', einreichung: 'offen', antwort: 'offen' },
+        href: EU_BUERGERINITIATIVEN_HREF,
+        takePart: 'Unterstützung möglich',
+      },
+    ],
+  }],
+}
+
+/**
+ * D. An Anliegen an den Nationalrat. The columns are the rail of its page
+ * (`petitionSteps`, `volksbegehrenSteps`, `app/utils/anliegenView.ts`):
+ * Eingebracht (a Volksbegehren „Eingelangt") · Erste Lesung · Ausschuss ·
+ * Erledigung im Ausschuss · Nationalrat. The subject committee a Petition or
+ * Bürgerinitiative may be forwarded to („Fachausschuss") is no column: the
+ * rail puts it before or after the Nationalrat as things happened, so no
+ * column order fits both, and the note of the rows says it.
+ *
+ * Where to take part (decisions.md, „Anliegen an den Nationalrat"): the
+ * item's own flags open the door, with no Frist; the window closes when the
+ * treatment in the Nationalrat ends. No source ties the window to one
+ * station, so the blue mark stands at „Ausschuss", where every item is
+ * under treatment, and at no station after it.
+ */
+const ANLIEGEN_STATIONS: WegMatrixStation[] = [
+  { id: 'eingebracht', label: 'Eingebracht', href: null },
+  { id: 'erste-lesung', label: 'Erste Lesung', href: null },
+  { id: 'ausschuss', label: 'Ausschuss', href: null },
+  { id: 'erledigung', label: 'Erledigung im Ausschuss', href: null },
+  { id: 'nationalrat', label: 'Nationalrat', href: null },
+]
+
+/** The station names the rail's code writes, for the test that holds the two together. */
+export const ANLIEGEN_STATION_NAMES = ['Eingebracht', 'Eingelangt', 'Erste Lesung', 'Ausschuss', 'Erledigung im Ausschuss', 'Nationalrat'] as const
+
+const anliegenCells = (eingebracht: WegCell, ersteLesung: WegCell, ausschuss: WegCell, erledigung: WegCell, nationalrat: WegCell): Record<string, WegCell> =>
+  ({ eingebracht, 'erste-lesung': ersteLesung, ausschuss, erledigung, nationalrat })
+
+export const ANLIEGEN_MATRIX: WegMatrix = {
+  id: 'anliegen',
+  caption: 'Wege eines Anliegens an den Nationalrat, nach Station',
+  pathColumn: 'Anliegen',
+  stations: ANLIEGEN_STATIONS,
+  groups: [{
+    key: 'anliegen',
+    label: 'Anliegen an den Nationalrat',
+    note: 'nach einer Zuweisung auch im Fachausschuss',
+    rows: [
+      /* § 100 Abs. 1 Z 1 GOG-NR: handed in by a member of the Nationalrat.
+       *  - Eingebracht: passed (§ 100 Abs. 1 Z 1).
+       *  - Erste Lesung: none — the rail of a Petition has none
+       *    (`petitionSteps`; plan umsetzungsplan-petitionen-volksbegehren.md,
+       *    step 2).
+       *  - Ausschuss für Petitionen und Bürgerinitiativen: blue — electronic
+       *    support on Parliament's page (legal basis not found, memo
+       *    „Offen") and Stellungnahmen during its treatment, § 23b Abs. 2.
+       *  - Erledigung im Ausschuss: passed — a report with one of three
+       *    motions, § 100c Abs. 3.
+       *  - Nationalrat: passed — it takes note of the committee's
+       *    Sammelbericht (decisions.md, „Framing"). */
+      {
+        id: 'anliegen-petition',
+        label: 'Petition',
+        note: 'über Abgeordnete einbringen · der Ausschuss muss berichten',
+        noteLink: null,
+        source: PARLAMENT_SOURCE,
+        notFollowed: null,
+        cells: anliegenCells('durch', 'entfaellt', 'stellungnahme', 'durch', 'durch'),
+        href: anliegenListHref('petition'),
+        takePart: 'Unterstützung und Stellungnahme möglich',
+      },
+      /* § 100 Abs. 1 Z 2, Abs. 2 GOG-NR: 500 Austrian citizens from 16,
+       * signed by hand. Cells and their sources as the Petition's; the first
+       * signatory is informed of the outcome (§ 100d). */
+      {
+        id: 'anliegen-buergerinitiative',
+        label: 'Parlamentarische Bürgerinitiative',
+        note: 'mit 500 Unterschriften einbringen · der Ausschuss muss berichten',
+        noteLink: null,
+        source: PARLAMENT_SOURCE,
+        notFollowed: null,
+        cells: anliegenCells('durch', 'entfaellt', 'stellungnahme', 'durch', 'durch'),
+        href: anliegenListHref('buergerinitiative'),
+        takePart: 'Unterstützung und Stellungnahme möglich',
+      },
+      /* Art. 41 Abs. 2 B-VG; its way to a law is the row `volksbegehren` of
+       * the national matrix, which the note links instead of repeating it.
+       *  - Eingelangt: passed (Art. 41 Abs. 2: „dem Nationalrat zur
+       *    Behandlung vorzulegen").
+       *  - Erste Lesung: `offen` — only on the Nationalrat's decision (§ 69
+       *    GOG-NR, volksbegehren.md § 2); the rail shows it „only where
+       *    held".
+       *  - Ausschuss: blue, a Stellungnahme only — § 23b Abs. 1 GOG-NR; no
+       *    Unterstützung in the Nationalrat (`anliegenParticipation`); the
+       *    deadlines of § 24 GOG-NR.
+       *  - Erledigung im Ausschuss: none — the rail of a Volksbegehren has no
+       *    such step; its committee's report is a fact of „Ausschuss"
+       *    (`volksbegehrenSteps`).
+       *  - Nationalrat: passed — the report is owed to it (§ 24 GOG-NR). */
+      {
+        id: 'anliegen-volksbegehren',
+        label: 'Volksbegehren',
+        note: 'der Nationalrat muss es in Fristen behandeln',
+        noteLink: { label: 'Weg zum Gesetz', href: `${wegHref('volksbegehren')}#weg-volksbegehren` },
+        notFollowed: null,
+        gap: VOLKSBEGEHREN_GAP,
+        cells: anliegenCells('durch', 'offen', 'stellungnahme', 'entfaellt', 'durch'),
+        href: anliegenListHref('volksbegehren'),
+        takePart: 'Stellungnahme möglich',
+        stationLabels: { eingebracht: 'Eingelangt' },
+      },
+    ],
+  }],
+}
+
+/** The matrices of the page, in its order: the national one, then the objects with rails of their own. */
+export const WEG_MATRICES: readonly WegMatrix[] = [NATIONAL_MATRIX, EU_MATRIX, ECI_MATRIX, ANLIEGEN_MATRIX]
+
+/* ------------------------------------------------------------------ */
+/* Not in the monitor: instruments without stations                    */
 /* ------------------------------------------------------------------ */
 
 export type WegInstrumentLevel = 'eu' | 'bund' | 'land'
@@ -559,9 +920,13 @@ export const WEG_INSTRUMENT_LEVEL_LABEL: Record<WegInstrumentLevel, string> = {
 }
 
 /**
- * An instrument beside a norm's path: no station of the matrix, but a way
- * to say something about a law. Source: the memo's „Wo man sich äußern
- * kann", each line's provision in the comment above it.
+ * An instrument the monitor does not follow: a way to say something about
+ * a law, listed without stations. Source: the memo's „Wo man sich äußern
+ * kann", each line's provision in the comment above it; the reason it is
+ * not followed from the memo's „Was sich verfolgen ließe", in the words
+ * the national matrix uses for its rows (`notFollowed`). The followed ones
+ * (the Commission's consultations, the European Citizens' Initiative, the
+ * Petition, the Bürgerinitiative, the Volksbegehren) have matrices above.
  */
 export interface WegInstrument {
   id: string
@@ -573,66 +938,15 @@ export interface WegInstrument {
   duty: string | null
   /** The one instrument whose result decides (the Volksabstimmung). */
   binding: boolean
-  /**
-   * The official place where it is done — only URLs the memo names; null
-   * where it names none, never a guessed address.
-   */
-  href: string | null
-  /** The link's words, the host as the reader will see it. */
-  hrefLabel: string | null
-  /**
-   * The monitor's own section for it, where it follows the instrument's
-   * items (15.11.2026: Petition, Bürgerinitiative, Volksbegehren under
-   * `/anliegen`; the Commission's consultations and the European Citizens'
-   * Initiative on the EU page, steps 3 and 5 of the EU cycle). The name
-   * links there; `href` stays beside it as the source. Absent where the
-   * monitor follows none.
-   */
-  monitorHref?: string
+  /** Why the monitor does not follow it. */
+  notFollowed: string
 }
 
-/* Parliament's page „Petitionen unterstützen" (memo, „Quellen"): it covers
- * Petitionen and Bürgerinitiativen alike. */
-const PARLAMENT_PETITIONEN = 'https://www.parlament.gv.at/beteiligen/unterstuetzen/petitionen'
-
 export const WEG_INSTRUMENTS: readonly WegInstrument[] = [
-  /* Art. 11 Abs. 3 EUV; COM(2021) 219 („Bessere Rechtsetzung"): calls for
-   * evidence, public consultations (twelve weeks), feedback on proposals.
-   * A summary report, no answer to the single contribution — no duty here.
-   * The memo names only the portal's undocumented JSON endpoint, no page.
-   * Followed since 15.11.2026: every open window is listed on the EU page
-   * (step 3 of the EU cycle), and each initiative's page links the portal. */
-  {
-    id: 'eu-konsultation',
-    level: 'eu',
-    name: 'Konsultationen der Kommission („Ihre Meinung zählt“)',
-    act: 'Rückmeldung geben, an Konsultationen teilnehmen',
-    duty: null,
-    binding: false,
-    href: null,
-    hrefLabel: null,
-    monitorHref: `${euPath()}#eu-fenster`,
-  },
-  /* Art. 11 Abs. 4 EUV; VO (EU) 2019/788 Art. 3 (one million signatories
-   * from a quarter of the member states). Art. 15 Abs. 2: the Commission
-   * sets out its conclusions „in einer Mitteilung", with reasons, within six
-   * months. The memo names only the register's API, no page.
-   * Followed since 15.11.2026: every initiative in collection is listed on
-   * the EU page (step 5 of the EU cycle), and each initiative has a page
-   * with its own rail. */
-  {
-    id: 'eu-buergerinitiative',
-    level: 'eu',
-    name: 'Europäische Bürgerinitiative',
-    act: 'unterstützen',
-    duty: 'die Kommission antwortet binnen sechs Monaten mit Gründen',
-    binding: false,
-    href: null,
-    hrefLabel: null,
-    monitorHref: `${euPath()}#eu-buergerinitiativen`,
-  },
   /* Art. 227 AEUV: anyone resident in the Union, on a matter that affects
-   * them directly. What follows is not checked in the memo. */
+   * them directly. What follows is not checked in the memo. Not followed:
+   * its source is „nicht geprüft" (memo, „Was sich verfolgen ließe",
+   * „Petition an das EP"). */
   {
     id: 'eu-petition',
     level: 'eu',
@@ -640,60 +954,14 @@ export const WEG_INSTRUMENTS: readonly WegInstrument[] = [
     act: 'einreichen',
     duty: null,
     binding: false,
-    href: null,
-    hrefLabel: null,
-  },
-  /* § 100 Abs. 1 Z 1 GOG-NR: handed in by a member of the Nationalrat;
-   * electronic support on Parliament's page (legal basis not found, memo
-   * „Offen"); Stellungnahmen during its treatment, § 23b Abs. 2. Duty:
-   * a committee report with one of three motions, § 100c Abs. 3. */
-  {
-    id: 'petition',
-    level: 'bund',
-    name: 'Petition an den Nationalrat',
-    act: 'über Abgeordnete einbringen, online unterstützen',
-    duty: 'der Ausschuss muss berichten',
-    binding: false,
-    href: PARLAMENT_PETITIONEN,
-    hrefLabel: 'parlament.gv.at',
-    monitorHref: anliegenListHref('petition'),
-  },
-  /* § 100 Abs. 1 Z 2, Abs. 2 GOG-NR: 500 Austrian citizens from 16, signed
-   * by hand; online support and § 23b Abs. 2 as above. Duty as the
-   * Petition's (§ 100c Abs. 3); the first signatory is informed of the
-   * outcome (§ 100d). */
-  {
-    id: 'buergerinitiative',
-    level: 'bund',
-    name: 'Parlamentarische Bürgerinitiative',
-    act: 'mit 500 Unterschriften einbringen, online unterstützen',
-    duty: 'der Ausschuss muss berichten',
-    binding: false,
-    href: PARLAMENT_PETITIONEN,
-    hrefLabel: 'parlament.gv.at',
-    monitorHref: anliegenListHref('buergerinitiative'),
-  },
-  /* Art. 41 Abs. 2 B-VG; VoBeG 2018 §§ 3–6 (support online with ID Austria
-   * or at the Gemeinde, eight days of Eintragung). Duty: treatment within
-   * deadlines (§ 24 GOG-NR), no outcome owed. Its way through the
-   * Nationalrat is a row of the matrix, and followed under `/anliegen`
- * (15.11.2026); the support before it is not. The memo names no official
- * page. */
-  {
-    id: 'volksbegehren',
-    level: 'bund',
-    name: 'Volksbegehren',
-    act: 'unterstützen, unterschreiben',
-    duty: 'der Nationalrat muss es in Fristen behandeln',
-    binding: false,
-    href: null,
-    hrefLabel: null,
-    monitorHref: anliegenListHref('volksbegehren'),
+    notFollowed: 'Quellen nicht geprüft',
   },
   /* Art. 43 (an ordinary law, if the Nationalrat so decides or a majority
    * of its members demands it) and Art. 44 Abs. 3 B-VG (a total revision of
    * the constitution always, a partial one on demand of a third of either
-   * chamber). Art. 45: the majority decides — the only binding instrument. */
+   * chamber). Art. 45: the majority decides — the only binding instrument.
+   * Not followed: source „nicht geprüft (BMI)" (memo, „Was sich verfolgen
+   * ließe", „Volksabstimmung, Volksbefragung (Bund)"). */
   {
     id: 'volksabstimmung',
     level: 'bund',
@@ -701,12 +969,11 @@ export const WEG_INSTRUMENTS: readonly WegInstrument[] = [
     act: 'über einen Gesetzesbeschluss abstimmen',
     duty: 'das Ergebnis entscheidet über das Gesetz',
     binding: true,
-    href: null,
-    hrefLabel: null,
+    notFollowed: 'Quellen nicht geprüft',
   },
   /* Art. 49b B-VG: on the Nationalrat's decision; the result goes to the
    * Nationalrat and the Bundesregierung. The memo cites no binding effect
-   * and no duty, so none is said. */
+   * and no duty, so none is said. Not followed: as the Volksabstimmung. */
   {
     id: 'volksbefragung',
     level: 'bund',
@@ -714,8 +981,7 @@ export const WEG_INSTRUMENTS: readonly WegInstrument[] = [
     act: 'befragt werden',
     duty: null,
     binding: false,
-    href: null,
-    hrefLabel: null,
+    notFollowed: 'Quellen nicht geprüft',
   },
   /* The Länder's own instruments, one line (memo, the Länder tables):
    * Volksbegehren, Volksabstimmung, Volksbefragung and petitions as each
@@ -723,7 +989,11 @@ export const WEG_INSTRUMENTS: readonly WegInstrument[] = [
    * of the Landesregierung, Art. 1 Abs. 4 L-V). Duties differ — an answer
    * to a petition within three months in V (Art. 10), an answer in O
    * (Art. 64) and St (Art. 76), reasons from the Landtag after a
-   * Bürgerinitiative in O (Art. 59 Abs. 7) — so the line says „teils". */
+   * Bürgerinitiative in O (Art. 59 Abs. 7) — so the line says „teils".
+   * Not followed: whether the Landtage's systems hold them is „nicht
+   * geprüft" (memo, „Was sich verfolgen ließe", „Anträge, Volksbegehren,
+   * Petitionen in den Landtagen"; the national matrix's Länder rows say
+   * the same). */
   {
     id: 'laender',
     level: 'land',
@@ -731,22 +1001,19 @@ export const WEG_INSTRUMENTS: readonly WegInstrument[] = [
     act: 'je nach Landesverfassung',
     duty: 'teils Pflicht zur Antwort',
     binding: false,
-    href: null,
-    hrefLabel: null,
+    notFollowed: 'Quellen nicht geprüft',
   },
 ]
 
 export const WEGE_COPY = {
   title: 'Der Weg eines Entwurfs',
   description:
-    'Alle Wege, die ein Text zum Gesetz oder zur Verordnung nehmen kann – beim Bund, in den Ländern, ausgehend vom EU-Recht –, Station für Station, und wo eine Stellungnahme möglich ist.',
-  lede: 'Welche Stationen ein Text durchläuft, bis er gilt – und wo Sie Stellung nehmen können.',
-  caption: 'Wege zum Gesetz und zur Verordnung, nach Station',
-  pathColumn: 'Weg',
+    'Alle Wege, die ein Text zum Gesetz oder zur Verordnung nehmen kann – beim Bund, in den Ländern, ausgehend vom EU-Recht –, Station für Station, und wo eine Stellungnahme, eine Rückmeldung oder eine Unterstützung möglich ist.',
+  lede: 'Welche Stationen ein Text durchläuft, bis er gilt – und wo Sie sich beteiligen können.',
   notFollowedPrefix: 'nicht im Monitor',
   selected: 'dieser Weg',
-  instrumentsHeading: 'Weitere Wege, sich zu äußern',
-  instrumentsLede: `Neben dem Weg einer Norm, ohne Stationen. Petitionen, Bürgerinitiativen und Volksbegehren im Nationalrat verfolgt der Monitor als ${ANLIEGEN_SECTION_DE}, die Konsultationen der Kommission und die Europäischen Bürgerinitiativen unter EU-Recht, die übrigen nicht.`,
+  instrumentsHeading: 'Nicht im Monitor',
+  instrumentsLede: 'weitere Wege, sich zu äußern, ohne Stationen',
 } as const
 
 export function isWegId(value: unknown): value is WegId {

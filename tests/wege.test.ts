@@ -1,11 +1,20 @@
+import { readFileSync } from 'node:fs'
 import { describe, expect, it } from 'vitest'
 import { SOURCE_PARAM, parseSourceList } from '../shared/utils/laender'
 import { ANLIEGEN_PATH } from '../shared/utils/anliegen'
 import { artChoiceLabel, artChoiceOf, draftFiltersFromQuery, draftUrlQuery } from '../app/utils/draftFilters'
 import { anliegenArtOf } from '../app/utils/anliegenView'
+import { EU_RAIL_DE } from '../app/utils/euRail'
+import { EU_BUERGERINITIATIVE_DE } from '../app/utils/euBuergerinitiative'
 import {
-  EU_LEAD,
+  ANLIEGEN_MATRIX,
+  ANLIEGEN_STATION_NAMES,
+  ECI_MATRIX,
+  EU_IMPLEMENTING_LIST,
+  EU_MATRIX,
+  NATIONAL_MATRIX,
   WEGE,
+  WEG_MATRICES,
   WEG_IDS,
   WEG_INSTRUMENTS,
   WEG_LEGEND,
@@ -13,6 +22,7 @@ import {
   WEG_STATION_ORDER,
   WEGE_COPY,
   isWegId,
+  wegCellLabel,
   wegFor,
   wegGroups,
   wegHref,
@@ -25,7 +35,7 @@ const listLinks = [
   ...WEGE.map((w) => w.href).filter((h) => !isAnliegenLink(h)),
   ...WEG_STATIONS.map((s) => s.href),
   ...WEGE.map((w) => w.noteLink?.href ?? null).filter((h) => h !== null && h.startsWith('/entwuerfe')),
-  EU_LEAD.list.href,
+  EU_IMPLEMENTING_LIST.href,
 ].filter((href): href is string => href !== null)
 
 /* The parameters `/entwuerfe` reads: its filter contract (`draftUrlQuery`
@@ -100,35 +110,110 @@ describe('wege matrix', () => {
     for (const w of WEGE.filter((x) => x.level === 'land')) expect(w.cells.parlament, w.id).not.toBe('stellungnahme')
   })
 
-  it('the legend names every mark the matrix draws except the self-explaining dash', () => {
-    const drawn = new Set(WEGE.flatMap((w) => Object.values(w.cells)))
+  it('the legend names every mark the matrices draw except the self-explaining dash', () => {
+    const drawn = new Set(WEG_MATRICES.flatMap((m) => m.groups.flatMap((g) => g.rows.flatMap((r) => Object.values(r.cells)))))
     drawn.delete('entfaellt')
     expect(new Set(WEG_LEGEND.map((l) => l.cell))).toEqual(drawn)
   })
 })
 
-describe('instruments beside the path', () => {
-  it('have unique ids, words for what one can do, and EU, Bund, Land in that order', () => {
-    const ids = WEG_INSTRUMENTS.map((i) => i.id)
+const rowsOf = (m: (typeof WEG_MATRICES)[number]) => m.groups.flatMap((g) => g.rows)
+const rowOf = (m: (typeof WEG_MATRICES)[number], id: string) => rowsOf(m).find((r) => r.id === id)!
+
+describe('the matrices with rails of their own (16.11.2026)', () => {
+  it('the national matrix comes first and is the five stations with every row of WEGE', () => {
+    expect(WEG_MATRICES[0]).toBe(NATIONAL_MATRIX)
+    expect(NATIONAL_MATRIX.stations.map((s) => s.id)).toEqual([...WEG_STATION_ORDER])
+    expect(rowsOf(NATIONAL_MATRIX).map((r) => r.id)).toEqual(WEGE.map((w) => w.id))
+  })
+
+  it('every row has a cell for each station of its matrix and passes one for certain; ids are unique across the page', () => {
+    const ids = WEG_MATRICES.flatMap(rowsOf).map((r) => r.id)
     expect(new Set(ids).size).toBe(ids.length)
+    for (const m of WEG_MATRICES) {
+      for (const r of rowsOf(m)) {
+        expect(Object.keys(r.cells).sort(), r.id).toEqual(m.stations.map((s) => s.id).sort())
+        expect(Object.values(r.cells).some((c) => c === 'durch' || c === 'stellungnahme'), r.id).toBe(true)
+      }
+    }
+  })
+
+  it('the EU act\'s columns are the rail\'s stations, by the rail\'s names, in its order', () => {
+    expect(EU_MATRIX.stations.map((s) => s.label)).toEqual([
+      EU_RAIL_DE.name.konsultation, EU_RAIL_DE.name.vorschlag, EU_RAIL_DE.name['parlament-rat'], EU_RAIL_DE.name.amtsblatt,
+      `${EU_RAIL_DE.name.umsetzung} oder ${EU_RAIL_DE.name.geltung}`,
+    ])
+    expect(rowOf(EU_MATRIX, 'eu-richtlinie').stationLabels?.wirkung).toBe('Umsetzung')
+    expect(rowOf(EU_MATRIX, 'eu-verordnung').stationLabels?.wirkung).toBe('Geltung')
+  })
+
+  it('an EU act: Rückmeldung at the Commission\'s windows, none at Parlament und Rat; a Commission act passes neither of them as a proposal', () => {
+    for (const id of ['eu-richtlinie', 'eu-verordnung']) {
+      const r = rowOf(EU_MATRIX, id)
+      expect(r.cells, id).toEqual({ konsultation: 'stellungnahme', vorschlag: 'stellungnahme', beschluss: 'durch', amtsblatt: 'durch', wirkung: 'durch' })
+      expect(wegCellLabel(r, 'stellungnahme')).toBe('Rückmeldung möglich')
+      expect(r.href).toBe('/eu-recht#eu-fenster')
+    }
+    expect(rowOf(EU_MATRIX, 'eu-kommission').cells).toEqual({ konsultation: 'offen', vorschlag: 'stellungnahme', beschluss: 'entfaellt', amtsblatt: 'durch', wirkung: 'durch' })
+    expect(rowOf(EU_MATRIX, 'eu-richtlinie').noteLink).toEqual(EU_IMPLEMENTING_LIST)
+  })
+
+  it('a European Citizens\' Initiative: its rail\'s stations, Unterstützung at „Sammlung", the rest only with a million', () => {
+    const n = EU_BUERGERINITIATIVE_DE.name
+    expect(ECI_MATRIX.stations.map((s) => s.label)).toEqual([n.registrierung, n.sammlung, n.pruefung, n.einreichung, n.antwort])
+    const r = rowOf(ECI_MATRIX, 'eu-buergerinitiative')
+    expect(r.cells).toEqual({ registrierung: 'durch', sammlung: 'stellungnahme', pruefung: 'offen', einreichung: 'offen', antwort: 'offen' })
+    expect(wegCellLabel(r, 'stellungnahme')).toBe('Unterstützung möglich')
+    expect(r.note).toContain('die Kommission antwortet binnen sechs Monaten mit Gründen')
+    expect(r.href).toBe('/eu-recht#eu-buergerinitiativen')
+  })
+
+  it('an Anliegen: the rail\'s station names as its code writes them, and where the three kinds differ', () => {
+    const src = readFileSync(new URL('../app/utils/anliegenView.ts', import.meta.url), 'utf8')
+    for (const name of ANLIEGEN_STATION_NAMES) expect(src, name).toContain(`'${name}'`)
+    expect(ANLIEGEN_MATRIX.stations.map((s) => s.label)).toEqual(['Eingebracht', 'Erste Lesung', 'Ausschuss', 'Erledigung im Ausschuss', 'Nationalrat'])
+    for (const id of ['anliegen-petition', 'anliegen-buergerinitiative']) {
+      const r = rowOf(ANLIEGEN_MATRIX, id)
+      expect(r.cells, id).toEqual({ eingebracht: 'durch', 'erste-lesung': 'entfaellt', ausschuss: 'stellungnahme', erledigung: 'durch', nationalrat: 'durch' })
+      expect(wegCellLabel(r, 'stellungnahme')).toBe('Unterstützung und Stellungnahme möglich')
+      expect(r.source?.href).toMatch(/^https:\/\/www\.parlament\.gv\.at\//)
+    }
+    const vb = rowOf(ANLIEGEN_MATRIX, 'anliegen-volksbegehren')
+    expect(vb.cells).toEqual({ eingebracht: 'durch', 'erste-lesung': 'offen', ausschuss: 'stellungnahme', erledigung: 'entfaellt', nationalrat: 'durch' })
+    expect(wegCellLabel(vb, 'stellungnahme')).toBe('Stellungnahme möglich')
+    expect(vb.stationLabels?.eingebracht).toBe('Eingelangt')
+    // Its way to a law is the national row, linked, not repeated.
+    expect(vb.noteLink?.href).toBe(`${wegHref('volksbegehren')}#weg-volksbegehren`)
+  })
+
+  it('Petition, Bürgerinitiative and Volksbegehren link to their kind on /anliegen', () => {
+    for (const r of rowsOf(ANLIEGEN_MATRIX)) {
+      expect(isAnliegenLink(r.href), r.id).toBe(true)
+      expect(Object.keys(queryOf(r.href!)), r.id).toEqual(['art'])
+      expect(anliegenArtOf(queryOf(r.href!).art), r.id).toBe(r.id.replace('anliegen-', ''))
+    }
+  })
+})
+
+describe('instruments the monitor does not follow', () => {
+  it('are the four without a matrix, with unique ids, words for what one can do, EU, Bund, Land in that order', () => {
+    expect(WEG_INSTRUMENTS.map((i) => i.id)).toEqual(['eu-petition', 'volksabstimmung', 'volksbefragung', 'laender'])
     const order = { eu: 0, bund: 1, land: 2 }
     const levels = WEG_INSTRUMENTS.map((i) => order[i.level])
     expect(levels).toEqual([...levels].sort((a, b) => a - b))
-    for (const i of WEG_INSTRUMENTS) expect(i.act.length, i.id).toBeGreaterThan(0)
+    for (const i of WEG_INSTRUMENTS) {
+      expect(i.act.length, i.id).toBeGreaterThan(0)
+      expect(i.notFollowed.length, i.id).toBeGreaterThan(0)
+    }
   })
 
   it('the Volksabstimmung is the only binding one', () => {
     expect(WEG_INSTRUMENTS.filter((i) => i.binding).map((i) => i.id)).toEqual(['volksabstimmung'])
   })
 
-  it('link only to official https pages, each with its words', () => {
-    for (const i of WEG_INSTRUMENTS.filter((x) => x.href !== null)) {
-      const url = new URL(i.href!)
-      expect(url.protocol).toBe('https:')
-      expect(url.hostname.endsWith('.gv.at') || url.hostname.endsWith('europa.eu'), i.id).toBe(true)
-      expect(i.hrefLabel).toBeTruthy()
-    }
-    for (const i of WEG_INSTRUMENTS.filter((x) => x.href === null)) expect(i.hrefLabel).toBeNull()
+  it('the heading says what the list is, and the lede no longer lists what is followed', () => {
+    expect(WEGE_COPY.instrumentsHeading).toBe('Nicht im Monitor')
+    expect(WEGE_COPY.instrumentsLede).not.toMatch(/Petition|Konsultation|Bürgerinitiativ/)
   })
 })
 
@@ -143,42 +228,16 @@ describe('Anliegen an das Parlament (15.11.2026)', () => {
   })
 
   it('only a followed row names a gap', () => {
-    for (const w of WEGE.filter((x) => x.gap !== undefined)) {
+    for (const w of WEG_MATRICES.flatMap(rowsOf).filter((x) => x.gap !== undefined)) {
       expect(w.notFollowed, w.id).toBeNull()
       expect(w.gap!.length, w.id).toBeGreaterThan(0)
     }
   })
-
-  it('Petition, Bürgerinitiative and Volksbegehren link to their kind on /anliegen; Parliament’s explainer stays beside them', () => {
-    const followed = WEG_INSTRUMENTS.filter((i) => i.monitorHref !== undefined && i.level !== 'eu')
-    expect(followed.map((i) => i.id)).toEqual(['petition', 'buergerinitiative', 'volksbegehren'])
-    for (const i of followed) {
-      expect(isAnliegenLink(i.monitorHref), i.id).toBe(true)
-      expect(Object.keys(queryOf(i.monitorHref!)), i.id).toEqual(['art'])
-      expect(anliegenArtOf(queryOf(i.monitorHref!).art), i.id).toBe(i.id)
-    }
-    expect(WEG_INSTRUMENTS.find((i) => i.id === 'petition')!.href).toMatch(/^https:\/\/www\.parlament\.gv\.at\//)
-    expect(WEG_INSTRUMENTS.find((i) => i.id === 'buergerinitiative')!.href).toMatch(/^https:\/\/www\.parlament\.gv\.at\//)
-  })
-
-  it('the instruments the monitor follows are exactly these five: the three Anliegen, and under EU-Recht the Commission\'s consultations and the European Citizens\' Initiative, each linked to its list (15.11.2026)', () => {
-    expect(WEG_INSTRUMENTS.filter((i) => i.monitorHref !== undefined).map((i) => i.id)).toEqual([
-      'eu-konsultation', 'eu-buergerinitiative', 'petition', 'buergerinitiative', 'volksbegehren',
-    ])
-    expect(WEG_INSTRUMENTS.filter((i) => i.level === 'eu' && i.monitorHref).map((i) => [i.id, i.monitorHref])).toEqual([
-      ['eu-konsultation', '/eu-recht#eu-fenster'],
-      ['eu-buergerinitiative', '/eu-recht#eu-buergerinitiativen'],
-    ])
-    // The lede names what the names link to, and nothing else.
-    expect(WEGE_COPY.instrumentsLede).toContain('Petitionen, Bürgerinitiativen und Volksbegehren im Nationalrat')
-    expect(WEGE_COPY.instrumentsLede).toContain('die Konsultationen der Kommission und die Europäischen Bürgerinitiativen unter EU-Recht')
-  })
 })
 
 describe('wege links into the list', () => {
-  it('lead to /entwuerfe or /eu-recht only', () => {
+  it('lead to /entwuerfe only', () => {
     for (const href of listLinks) expect(href.startsWith('/entwuerfe?'), href).toBe(true)
-    expect(EU_LEAD.href).toBe('/eu-recht')
   })
 
   it('use only parameters the list page reads', () => {
