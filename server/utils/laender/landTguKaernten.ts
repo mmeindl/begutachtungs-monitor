@@ -450,7 +450,7 @@ const REPEAL_RE = /\b(?:tritt|treten)\b.*\baußer\s+Kraft\.$|\b(?:wird|werden)\b
  * with. Every other number out of turn is swallowed as before. Whether a
  * number is missing is decided at the end, in number order.
  */
-export function amendmentsOf(lines: readonly KtnLine[], f: Frame): Amendment[] {
+function amendmentsOf(lines: readonly KtnLine[], f: Frame): Amendment[] {
   const out: Amendment[] = []
   let current: Amendment | null = null
   let open: Instruction | null = null
