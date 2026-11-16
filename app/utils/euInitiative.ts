@@ -99,7 +99,7 @@ const DE = {
   noDraftYet: 'Das Portal verzeichnet zu diesem Vorhaben noch keinen Entwurf eines Rechtsakts.',
   noAdoptionYet: 'Das Portal verzeichnet zu diesem Vorhaben noch keine Annahme durch die Kommission.',
   noConsultation: 'Das Portal verzeichnet zu diesem Vorhaben vor dem Entwurf keine Frist für Rückmeldungen.',
-  notFollowedRail: gapDe('outOfScope', 'Über die Kommission hinaus verfolgt der Monitor dieses Vorhaben noch nicht.'),
+  notFollowedRail: gapDe('outOfScope', 'Nach der Kommission verfolgt der Monitor Vorhaben aus dem Portal noch nicht.'),
   pointer: {
     title: 'Verfahren',
     label: (reference: string) => `Verfahren zu ${reference} im Monitor`,
