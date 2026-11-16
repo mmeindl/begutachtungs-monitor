@@ -693,8 +693,12 @@ not yet followed, or the EU cycle, starts there.
 - **The graphic `/wege` shows every route that exists, the monitor follows
   fewer.** A route that is not followed stands in the graphic as „nicht im
   Monitor" with its reason; an instrument that sits beside a norm's path
-  (a Petition, signing a Volksbegehren, the EU's consultations) stands in the
-  block under the table.
+  (a Petition, a Bürgerinitiative, the EU's consultations) stands in the
+  block under the table. Each thing stands once (15.11.2026): what is also
+  a route to a norm — a Volksbegehren, in the Bund or a Land, an initiative
+  of Gemeinden or citizens — is a row of the table only, and the row's gap
+  names the step before the route (signing); the block held them a second
+  time and read as a duplicate.
 - **A route is followed only when three things hold:** an official,
   machine-readable source whose reuse is checked and stated in the Impressum;
   enough cases to matter; and no upkeep that somebody has to carry by hand.

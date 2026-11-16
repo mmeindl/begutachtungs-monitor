@@ -132,6 +132,15 @@ describe('instruments beside the path', () => {
 })
 
 describe('Anliegen an das Parlament (15.11.2026)', () => {
+  it('a route of the matrix does not stand in the block below a second time', () => {
+    const rowLabels = WEGE.map((w) => w.label)
+    for (const i of WEG_INSTRUMENTS) {
+      expect(WEGE.some((w) => w.id === i.id), i.id).toBe(false)
+      expect(i.name.split(/,\s*/).some((part) => rowLabels.includes(part)), i.id).toBe(false)
+    }
+    expect(WEG_INSTRUMENTS.find((i) => i.id === 'laender')!.name).not.toContain('Volksbegehren')
+  })
+
   it('the Volksbegehren row is followed for its time in the Nationalrat and says what before it is not', () => {
     const w = WEGE.find((x) => x.id === 'volksbegehren')!
     expect(w.notFollowed).toBeNull()
@@ -148,9 +157,9 @@ describe('Anliegen an das Parlament (15.11.2026)', () => {
     }
   })
 
-  it('Petition, Bürgerinitiative and Volksbegehren link to their kind on /anliegen; Parliament’s explainer stays beside them', () => {
+  it('Petition, Petition an den Bundesrat and Bürgerinitiative link to their kind on /anliegen; Parliament’s explainer stays beside them', () => {
     const followed = WEG_INSTRUMENTS.filter((i) => i.monitorHref !== undefined)
-    expect(followed.map((i) => i.id)).toEqual(['petition', 'buergerinitiative', 'volksbegehren'])
+    expect(followed.map((i) => i.id)).toEqual(['petition', 'petition-bundesrat', 'buergerinitiative'])
     for (const i of followed) {
       expect(isAnliegenLink(i.monitorHref), i.id).toBe(true)
       expect(Object.keys(queryOf(i.monitorHref!)), i.id).toEqual(['art'])
@@ -158,6 +167,7 @@ describe('Anliegen an das Parlament (15.11.2026)', () => {
     }
     expect(WEG_INSTRUMENTS.find((i) => i.id === 'petition')!.href).toMatch(/^https:\/\/www\.parlament\.gv\.at\//)
     expect(WEG_INSTRUMENTS.find((i) => i.id === 'buergerinitiative')!.href).toMatch(/^https:\/\/www\.parlament\.gv\.at\//)
+    expect(WEG_INSTRUMENTS.find((i) => i.id === 'petition-bundesrat')!.href).toMatch(/^https:\/\/www\.parlament\.gv\.at\//)
   })
 })
 

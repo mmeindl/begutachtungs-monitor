@@ -265,12 +265,15 @@ export const WEGE: readonly Weg[] = [
    * (`/entwuerfe/<gp>/bundesratsantrag/<nr>`), and a law from one is
    * classed like an Antrag (`skippedLaws.ts`). No link (decision 3 of
    * 14.11.2026): no list option of its own — its rows stand under „Alle
-   * ohne Entwurf", too few for an option. */
+   * ohne Entwurf", too few for an option. Not a link to that list either
+   * (15.11.2026): a name's link leads to its own kind, and the running
+   * period holds none. The note says it is followed, so the missing link
+   * does not read as „nicht im Monitor". */
   {
     id: 'bundesrat-antrag',
     level: 'bund',
     label: 'Gesetzesantrag des Bundesrates',
-    note: 'Antrag eines Drittels: Stellungnahme offen',
+    note: 'im Monitor, ohne eigene Liste; Antrag eines Drittels: Stellungnahme offen',
     noteLink: null,
     notFollowed: null,
     cells: row(['entfaellt', 'entfaellt', 'entfaellt', 'stellungnahme', 'offen']),
@@ -287,7 +290,9 @@ export const WEGE: readonly Weg[] = [
    * afterwards — that is attribution over years, which no source links
    * (volksbegehren.md, verdict and § 9). Unterstützung and Eintragung happen
    * before, at the Bundesministerium für Inneres, without an interface: the
-   * row's `gap`. Signing one is in the second block. */
+   * row's `gap`. The row is the Volksbegehren's only place on the page
+   * (15.11.2026): the block below held it a second time, as the thing one
+   * signs, which the gap already says. */
   {
     id: 'volksbegehren',
     level: 'bund',
@@ -581,7 +586,8 @@ export interface WegInstrument {
   hrefLabel: string | null
   /**
    * The monitor's own section for it, where it follows the instrument's
-   * items (15.11.2026: Petition, Bürgerinitiative, Volksbegehren under
+   * items (15.11.2026: Petition, Petition an den Bundesrat,
+   * Bürgerinitiative under
    * `/anliegen`). The name links there; `href` stays beside it as the source.
    * Absent where the monitor follows none.
    */
@@ -589,7 +595,9 @@ export interface WegInstrument {
 }
 
 /* Parliament's page „Petitionen unterstützen" (memo, „Quellen"): it covers
- * Petitionen and Bürgerinitiativen alike. */
+ * Petitionen and Bürgerinitiativen alike, in the Nationalrat and the
+ * Bundesrat („Sie können eine Petition im Nationalrat oder Bundesrat
+ * unterstützen", read 15.11.2026). */
 const PARLAMENT_PETITIONEN = 'https://www.parlament.gv.at/beteiligen/unterstuetzen/petitionen'
 
 export const WEG_INSTRUMENTS: readonly WegInstrument[] = [
@@ -648,6 +656,24 @@ export const WEG_INSTRUMENTS: readonly WegInstrument[] = [
     hrefLabel: 'parlament.gv.at',
     monitorHref: anliegenListHref('petition'),
   },
+  /* § 25 GO-BR: handed in by a member of the Bundesrat (Abs. 1), assigned
+   * to a committee (Abs. 2); Stellungnahmen during its treatment (Abs. 4).
+   * Online support on the same page of Parliament's as the Nationalrat's
+   * („im Nationalrat oder Bundesrat"). Duty: none to report — a petition
+   * the committee has not reported on within six months goes to the
+   * responsible member of the Bundesregierung „zur geeignet erscheinenden
+   * Veranlassung" (Abs. 3); 31 of the 42 so far ended that way. */
+  {
+    id: 'petition-bundesrat',
+    level: 'bund',
+    name: 'Petition an den Bundesrat',
+    act: 'über ein Mitglied des Bundesrates einbringen, online unterstützen',
+    duty: 'ohne Ausschussbericht binnen sechs Monaten geht sie an das zuständige Regierungsmitglied',
+    binding: false,
+    href: PARLAMENT_PETITIONEN,
+    hrefLabel: 'parlament.gv.at',
+    monitorHref: anliegenListHref('petition-bundesrat'),
+  },
   /* § 100 Abs. 1 Z 2, Abs. 2 GOG-NR: 500 Austrian citizens from 16, signed
    * by hand; online support and § 23b Abs. 2 as above. Duty as the
    * Petition's (§ 100c Abs. 3); the first signatory is informed of the
@@ -662,23 +688,6 @@ export const WEG_INSTRUMENTS: readonly WegInstrument[] = [
     href: PARLAMENT_PETITIONEN,
     hrefLabel: 'parlament.gv.at',
     monitorHref: anliegenListHref('buergerinitiative'),
-  },
-  /* Art. 41 Abs. 2 B-VG; VoBeG 2018 §§ 3–6 (support online with ID Austria
-   * or at the Gemeinde, eight days of Eintragung). Duty: treatment within
-   * deadlines (§ 24 GOG-NR), no outcome owed. Its way through the
-   * Nationalrat is a row of the matrix, and followed under `/anliegen`
- * (15.11.2026); the support before it is not. The memo names no official
- * page. */
-  {
-    id: 'volksbegehren',
-    level: 'bund',
-    name: 'Volksbegehren',
-    act: 'unterstützen, unterschreiben',
-    duty: 'der Nationalrat muss es in Fristen behandeln',
-    binding: false,
-    href: null,
-    hrefLabel: null,
-    monitorHref: anliegenListHref('volksbegehren'),
   },
   /* Art. 43 (an ordinary law, if the Nationalrat so decides or a majority
    * of its members demands it) and Art. 44 Abs. 3 B-VG (a total revision of
@@ -708,16 +717,18 @@ export const WEG_INSTRUMENTS: readonly WegInstrument[] = [
     hrefLabel: null,
   },
   /* The Länder's own instruments, one line (memo, the Länder tables):
-   * Volksbegehren, Volksabstimmung, Volksbefragung and petitions as each
+   * Volksabstimmung, Volksbefragung and petitions as each
    * Landesverfassung has them, the Bürgerrat of Vorarlberg (a guideline
    * of the Landesregierung, Art. 1 Abs. 4 L-V). Duties differ — an answer
    * to a petition within three months in V (Art. 10), an answer in O
    * (Art. 64) and St (Art. 76), reasons from the Landtag after a
-   * Bürgerinitiative in O (Art. 59 Abs. 7) — so the line says „teils". */
+   * Bürgerinitiative in O (Art. 59 Abs. 7) — so the line says „teils".
+   * The Volksbegehren im Land and the Initiative of Gemeinden or citizens
+   * are rows of the matrix and stand only there (15.11.2026). */
   {
     id: 'laender',
     level: 'land',
-    name: 'Volksbegehren, Volksabstimmung, Volksbefragung, Petition, Bürgerrat',
+    name: 'Volksabstimmung, Volksbefragung, Petition, Bürgerrat',
     act: 'je nach Landesverfassung',
     duty: 'teils Pflicht zur Antwort',
     binding: false,
@@ -736,7 +747,7 @@ export const WEGE_COPY = {
   notFollowedPrefix: 'nicht im Monitor',
   selected: 'dieser Weg',
   instrumentsHeading: 'Weitere Wege, sich zu äußern',
-  instrumentsLede: `Neben dem Weg einer Norm, ohne Stationen. Petitionen, Bürgerinitiativen und Volksbegehren im Nationalrat verfolgt der Monitor als ${ANLIEGEN_SECTION_DE}, die übrigen nicht.`,
+  instrumentsLede: `Neben dem Weg einer Norm, ohne Stationen. Petitionen und Bürgerinitiativen im Nationalrat und Petitionen an den Bundesrat verfolgt der Monitor als ${ANLIEGEN_SECTION_DE}, die übrigen nicht.`,
 } as const
 
 export function isWegId(value: unknown): value is WegId {
