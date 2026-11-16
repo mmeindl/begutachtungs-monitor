@@ -146,12 +146,14 @@ describe('a committee’s motion (BUA, 14.11.2026)', () => {
     expect(itemBylineDe({ ...d, committee: null })).toBe('Eingebracht von einem Ausschuss des Nationalrates')
     expect(itemCiteAsDe(d)).toBe('AB 14 BlgNR 28. GP')
   })
-  it('names the station „Ausschussantrag" and the Begutachtung „nicht feststellbar", with the parent linked', () => {
+  it('draws „Regierungsvorlage" pale, enters at „Parlament", and says „nicht feststellbar" for the Begutachtung, with the parent linked', () => {
     const related = [{ gp: 'XXVIII', ityp: 'A', inr: 14, citation: '14/A', title: null, kind: 'initiativantrag' as const, path: '/entwuerfe/XXVIII/antrag/14', consultedDraft: null }]
     const [begutachtung, item] = vorlageStations(bua('XXVIII-I-14', 14, { relatedItems: related }))
     expect(begutachtung).toMatchObject({ state: 'never', trail: 'unknown', facts: ['nicht feststellbar', 'ob ein Ministerialentwurf vorausging, ist hier nicht belegt'] })
     expect(begutachtung!.followUp).toEqual({ before: 'Bezug zu ', link: { href: '/entwuerfe/XXVIII/antrag/14', label: 'Initiativantrag 14/A →' }, after: '' })
-    expect(item!.name).toBe('Ausschussantrag')
+    // A motion has no third station (16.11.2026): pale, with its reason.
+    expect(item).toMatchObject({ id: 'rv', name: 'Regierungsvorlage', state: 'never', trail: 'not-walked', facts: ['keine', 'Antrag eines Ausschusses'] })
+    expect(vorlageStations(bua('XXVIII-I-14', 14))[2]!.facts[0]).toBe('Ausschussantrag')
     // A parent without a page of ours: no line.
     expect(vorlageStations(bua('XXVIII-I-14', 14))[0]!.followUp).toBeUndefined()
   })
@@ -234,20 +236,38 @@ describe('vorlageStations', () => {
     expect(vorlageStations(d({ withoutBegutachtung: false }))[0]).toMatchObject({ state: 'never', trail: 'unknown', facts: ['nicht feststellbar', 'ob ein Ministerialentwurf vorausging, ist hier nicht belegt'] })
     expect(vorlageStations(d())[0]!.trail).toBe('not-walked')
   })
-  it('names the item station by the item; „ohne Begutachtung" no longer stands there', () => {
-    const [, item] = vorlageStations(d(), { statementTotal: 466 })
-    expect(item).toMatchObject({ name: 'Initiativantrag', state: 'done', facts: ['09.07.2025', '466 Stellungnahmen'] })
+  it('draws a motion’s „Regierungsvorlage" pale and lets the motion enter at „Parlament" (16.11.2026)', () => {
+    const [, rv, parlament] = vorlageStations(d(), { statementTotal: 466, amendedLawCount: 1, showsAnnex: true })
+    expect(rv).toMatchObject({ id: 'rv', name: 'Regierungsvorlage', state: 'never', trail: 'not-walked', facts: ['keine', 'Antrag von Abgeordneten'], comparison: null })
+    // The arrival first, what it changes, the house's record, the count last.
+    expect(parlament).toMatchObject({ id: 'parlament', facts: ['Initiativantrag', '09.07.2025', 'ändert 1 Gesetz', 'im Ausschuss und im Plenum geändert', '466 Stellungnahmen'] })
+    expect(parlament!.arrivalComparison).toEqual({ id: 'vorschlag', question: 'Was ändert der Entwurf?' })
+    expect(parlament!.comparison).toMatchObject({ id: 'parlament' })
+    // „ohne Begutachtung" stands on the first station only.
+    expect(JSON.stringify(parlament)).not.toContain('ohne Begutachtung')
+  })
+  it('keeps a Regierungsvorlage’s own third station, named by the item', () => {
+    const rv = assembleVorlageDetail({ root: { gp: 'XXVIII', ityp: 'I', inr: 589 }, content: record('XXVIII-I-589'), enactment: enactment({ rvCitation: '589 d.B.', amendedIn: [] }), currentGp: 'XXVIII', withoutBegutachtung: true })
+    const [, item, parlament] = vorlageStations(rv, { statementTotal: 3 })
+    expect(item).toMatchObject({ id: 'rv', name: 'Regierungsvorlage', state: 'done', facts: ['08.07.2026', '3 Stellungnahmen'] })
+    expect(item!.trail).toBeUndefined()
+    expect(parlament!.facts).toEqual(['Text unverändert beschlossen'])
+  })
+  it('keeps „Parlament" reached for a motion that lapsed with its period', () => {
+    const lapsed = d({ gpEnded: true, enactment: enactment({ bgblNumber: null, houseStatus: '2', houseStatusText: null, amendedIn: [], rvGpEnded: true }) })
+    expect(vorlageStations(lapsed)[2]).toMatchObject({ state: 'done', facts: ['Initiativantrag', '09.07.2025', 'GP beendet'] })
+    expect(vorlageStations(lapsed)[3]).toMatchObject({ state: 'never', facts: [] })
   })
   it('says what a draft’s page says about Parlament and Bundesgesetzblatt', () => {
     const [, , parlament, bgbl] = vorlageStations(d())
-    expect(parlament).toMatchObject({ state: 'done', facts: ['im Ausschuss und im Plenum geändert'] })
+    expect(parlament).toMatchObject({ state: 'done', facts: ['Initiativantrag', '09.07.2025', 'im Ausschuss und im Plenum geändert'] })
     expect(bgbl).toMatchObject({ state: 'done', facts: ['BGBl. I Nr. 56/2025'] })
     expect(vorlageStatusDe(d())).toBe('Gesetz geworden')
   })
   it('heads an open Vorlage’s card as a draft’s page heads its Vorlage', () => {
     const open = d({ enactment: enactment({ bgblNumber: null, houseStatus: '2', houseStatusText: null, amendedIn: [], filingOpen: true }) })
     expect(vorlageStatusDe(open)).toBe('Im Parlament')
-    expect(vorlageStations(open)[2]).toMatchObject({ state: 'current', facts: ['in Behandlung'] })
+    expect(vorlageStations(open)[2]).toMatchObject({ state: 'current', facts: ['Initiativantrag', '09.07.2025', 'in Behandlung'] })
   })
 
   /* A record without a text list (14.11.2026): 306 of GP XXVII carry no
@@ -267,7 +287,7 @@ describe('vorlageStations', () => {
     it('says „beschlossen" for an Antrag and for a Regierungsvorlage, never „unverändert"', () => {
       const antrag = withoutList('XXVIII-A-372', 'A', 372, enactment({ amendedIn: null }))
       expect(antrag.textEvolution).toEqual([])
-      expect(vorlageStations(antrag)[2]).toMatchObject({ state: 'done', facts: ['beschlossen'] })
+      expect(vorlageStations(antrag)[2]).toMatchObject({ state: 'done', facts: ['Initiativantrag', '09.07.2025', 'beschlossen'] })
       expect(parliamentStandDe(antrag, undefined, 'antrag')).toBe('Der Nationalrat hat den Text beschlossen.')
 
       const rv = withoutList('XXVIII-I-589', 'I', 589, enactment({ rvCitation: '589 d.B.', amendedIn: null }))
@@ -277,7 +297,7 @@ describe('vorlageStations', () => {
 
     it('still says „im Plenum geändert" where the plenary adopted an Abänderungsantrag', () => {
       const antrag = withoutList('XXVIII-A-372', 'A', 372, enactment({ amendedIn: null, plenaryAmendments: motion }))
-      expect(vorlageStations(antrag)[2]).toMatchObject({ facts: ['im Plenum geändert'] })
+      expect(vorlageStations(antrag)[2]).toMatchObject({ facts: ['Initiativantrag', '09.07.2025', 'im Plenum geändert'] })
     })
 
     it('keeps „Text unverändert beschlossen" where the list is there and names no change', () => {
@@ -336,8 +356,10 @@ describe('a motion of the Bundesrat (GABR, GABR13; 14.11.2026)', () => {
     expect(officialTitleOf('I', 'Gesetzesantrag der Bundesrätinnen und Bundesräte A, B, Kolleginnen und Kollegen vom 1. März 2023 betreffend ein Bundesgesetz, mit dem X geändert wird'))
       .toBe('Bundesgesetz, mit dem X geändert wird')
     expect(officialTitleOf('I', 'Gesetzesantrag der Bundesrätinnen und Bundesräte A, B betreffend Pensionen')).toBeNull()
-    // The station's name, the variant's word.
-    expect(vorlageStations(d)[1]).toMatchObject({ id: 'rv', name: 'Gesetzesantrag von Mitgliedern des Bundesrates' })
+    // The pale third station's reason and „Parlament"'s first fact, the variant's words.
+    expect(vorlageStations(d)[1]).toMatchObject({ id: 'rv', name: 'Regierungsvorlage', state: 'never', facts: ['keine', 'Antrag von Mitgliedern des Bundesrates'] })
+    expect(vorlageStations(d)[2]!.facts[0]).toBe('Gesetzesantrag von Mitgliedern des Bundesrates')
+    expect(vorlageStations(at('XXVII-I-21', 'XXVII', 21))[1]!.facts).toEqual(['keine', 'Antrag des Bundesrates'])
   })
   it('says “nicht feststellbar” for the Begutachtung, and never claims a window the flag does not open', () => {
     const d = at('XXVII-I-1940', 'XXVII', 1940)

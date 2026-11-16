@@ -174,6 +174,12 @@ const documents = computed(() =>
           <ExternalLink :href="enactment.rvUrl" class="link-muted">Verlauf</ExternalLink>
         </SectionCredits>
       </div>
+      <!-- On a motion's own page (16.11.2026): the motion itself — what it
+           would change, its documents, the Stellungnahmen on it and the door
+           (`ItemOwnBlocks`). A motion enters at this station, so its text
+           stands in this section, after the state and before what
+           Parliament did to it. Empty on every other page. -->
+      <slot name="item" />
       <!-- What the committee and the plenary did to the text, one step
            each (`lawDiffSteps`, 01.10.2026) — the section's content, so it
            comes first, before who voted how. Only where parliament published

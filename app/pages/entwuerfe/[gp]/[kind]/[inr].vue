@@ -9,7 +9,7 @@ import { firstTextNameOf } from '#shared/utils/lawStations'
 import { GP_RE, parseInr } from '#shared/utils/gp'
 import { itemKindOfSegment, itemPath, itypOfKind, segmentOfItemKind, vorlageApiBase } from '#shared/utils/procedureRoot'
 import { NOT_FOLLOWED_DE, notFollowedOf, type NotFollowed } from '~/utils/notFollowed'
-import { NO_COMPARISON_DE, carriedDraftDe, filingClosedDe, filingClosedSourceDe, itemBylineDe, itemCiteAsDe, itemCopyDe } from '~/utils/itemKind'
+import { NO_COMPARISON_DE, carriedDraftDe, itemBylineDe, itemCiteAsDe, itemCopyDe, noRvReasonDe } from '~/utils/itemKind'
 
 /**
  * The page of a law that came to the Nationalrat without a Begutachtung — a
@@ -214,7 +214,10 @@ const stationAnchors = computed<Partial<Record<StationId, string>>>(() => {
   if (!data.value) return {}
   return {
     ...(data.value.committeeConsultation ? { begutachtung: '#stellungnahmen' } : {}),
-    rv: '#entwurf',
+    // A motion's „Regierungsvorlage" is pale (16.11.2026, `noRvReasonDe`):
+    // no section of its own, so no link; its text stands under „Im
+    // Parlament" (`ItemOwnBlocks`), where its row leads.
+    ...(noRvReasonDe(data.value) ? {} : { rv: '#entwurf' }),
     ...(sections.value.parlament ? { parlament: '#parlament' } : {}),
     ...(sections.value.bgbl ? { bgbl: '#bundesgesetzblatt' } : {}),
   }
@@ -330,54 +333,26 @@ useSeoMeta({
             </template>
           </DraftDoorCard>
 
-          <section id="entwurf" class="page-section scroll-mt-6" aria-labelledby="entwurf-heading">
-            <h2 id="entwurf-heading" class="section-heading">Der Entwurf</h2>
+          <!-- One section per station of the rail (16.11.2026,
+               `ItemOwnBlocks`): a Vorlage's or a treaty's own blocks under
+               its station's name; a motion's inside „Im Parlament", where it
+               enters. Until then „Der Entwurf" and „Stellungnahmen an den
+               Nationalrat" stood here on every kind — two sections the rail
+               does not have. `#entwurf` stays the Vorlage's anchor. -->
+          <section v-if="kindCopy.section" id="entwurf" class="page-section scroll-mt-6" aria-labelledby="entwurf-heading">
+            <h2 id="entwurf-heading" class="section-heading">{{ kindCopy.section }}</h2>
             <div class="mt-4 space-y-8">
-              <!-- The law in force it would change, as on the draft page. -->
-              <EntwurfFrame :laws="amendedLaws" :carried="carriedDraft" />
-              <!-- „Zitieren" at a § only for a Vorlage's annex, which cites as
-                   its Beilage; an Antrag's is Parliament's working copy, no
-                   document of the Antrag to cite it by. -->
-              <PageSubsection v-if="showsAnnex" id="gegenueberstellung" heading="Was ändert der Entwurf?">
-                <TextComparisonSection :gp="data.gp" :inr="data.inr" :api-base="url" :cite-as="isAntrag ? undefined : citeAs" without-layers />
-              </PageSubsection>
-              <PageSubsection v-if="itemKind === 'regierungsvorlage'" id="erlaeuterungen" heading="Was das Ressort begründet">
-                <ExplanationsSection :gp="data.gp" :inr="data.inr" :api-base="url" />
-              </PageSubsection>
-              <FoldSection
-                v-if="data.documents.length"
-                :heading="`Dokumente (${data.documents.length})`"
-              >
-                <div class="pb-2">
-                  <DocumentList
-                    :documents="data.documents"
-                    :cite-as="citeAs"
-                    :author="kindCopy.author"
-                  />
-                </div>
-              </FoldSection>
-            </div>
-          </section>
-
-          <!-- Client-side data: the section appears once it is there and says
-               nothing while it is not — an empty heading would read as „none". -->
-          <!-- Where Parliament takes no Stellungnahmen on the kind (a
-               treaty's Vorlage, `ItemFiling`): one sentence and its source
-               in place of the door and the section — a gap is said, never
-               shown as an empty list. -->
-          <p v-if="!data.filing.possible" class="mt-6 max-w-prose text-sm text-ink-secondary">
-            {{ filingClosedDe(data.filing.reason, data.treatyKind) }}
-            <ExternalLink :href="data.parliamentUrl" class="link-muted">{{ filingClosedSourceDe(data.citation) }}</ExternalLink>
-          </p>
-
-          <section v-if="statements && data.filing.possible" id="stellungnahmen" class="page-section scroll-mt-6" aria-labelledby="stellungnahmen-heading">
-            <h2 id="stellungnahmen-heading" class="section-heading">Stellungnahmen an den Nationalrat</h2>
-            <div class="mt-4">
-              <RvStatements
-                :data="statements"
+              <ItemOwnBlocks
+                :item="data"
+                :copy="kindCopy"
+                :api-base="url"
+                :cite-as="citeAs"
+                :amended-laws="amendedLaws"
+                :carried="carriedDraft"
+                :shows-annex="showsAnnex"
+                :statements="statements"
                 :filing-open="filingOpen"
-                :item="parliamentItem"
-                bare
+                :statements-item="parliamentItem"
               />
             </div>
           </section>
@@ -392,7 +367,23 @@ useSeoMeta({
             :api-base="url"
             :origin="origin"
             :first-text="firstText"
-          />
+          >
+            <template v-if="!kindCopy.section" #item>
+              <ItemOwnBlocks
+                :item="data"
+                :copy="kindCopy"
+                :api-base="url"
+                :cite-as="citeAs"
+                :amended-laws="amendedLaws"
+                :carried="carriedDraft"
+                :shows-annex="showsAnnex"
+                :statements="statements"
+                :filing-open="filingOpen"
+                :statements-item="parliamentItem"
+                named-documents
+              />
+            </template>
+          </ParliamentStationSection>
 
           <BgblStationSection
             v-if="sections.bgbl"

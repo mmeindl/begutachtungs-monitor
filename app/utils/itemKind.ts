@@ -16,7 +16,9 @@ import { beilageCitationDe, buaCitationDe, rvCitationDe } from '#shared/utils/ci
 import { carriesDraft, draftOfAntrag } from '#shared/utils/antragPath'
 
 export interface ItemKindCopy {
-  /** The kind as a noun: the identity line, the rail's station, the title. */
+  /** The kind as a noun: the identity line, the title, and on the rail the
+   *  third station of a Vorlage or the first fact of a motion's „Parlament"
+   *  (16.11.2026, `vorlageStations`). */
   word: string
   /** Accusative with article, for „… zitieren" (`CiteButton`). */
   subject: string
@@ -24,18 +26,22 @@ export interface ItemKindCopy {
   zum: string
   /** Whose documents (`DocumentList`): „Die Begründung des …". */
   author: string
+  /** The heading of the item's own section, where it is a station of its
+   *  rail — a Vorlage's or a treaty's third station (16.11.2026). A motion
+   *  has none: it stands under „Im Parlament" (`noRvReasonDe`). */
+  section: string | null
 }
 
 export const ITEM_KIND_DE: Readonly<Record<ProcedureItemKind, ItemKindCopy>> = {
-  regierungsvorlage: { word: 'Regierungsvorlage', subject: 'Die Regierungsvorlage', zum: 'zur Regierungsvorlage', author: 'des Ministeriums' },
-  initiativantrag: { word: 'Initiativantrag', subject: 'Den Antrag', zum: 'zum Antrag', author: 'der Antragsteller:innen' },
-  ausschussantrag: { word: 'Ausschussantrag', subject: 'Den Ausschussantrag', zum: 'zum Ausschussantrag', author: 'des Ausschusses' },
+  regierungsvorlage: { word: 'Regierungsvorlage', subject: 'Die Regierungsvorlage', zum: 'zur Regierungsvorlage', author: 'des Ministeriums', section: 'Die Regierungsvorlage' },
+  initiativantrag: { word: 'Initiativantrag', subject: 'Den Antrag', zum: 'zum Antrag', author: 'der Antragsteller:innen', section: null },
+  ausschussantrag: { word: 'Ausschussantrag', subject: 'Den Ausschussantrag', zum: 'zum Ausschussantrag', author: 'des Ausschusses', section: null },
   // The Bundesrat's own motion (`GABR`); a third's (`GABR13`) reads
   // `BUNDESRAT_DRITTEL_DE` through `itemCopyDe`.
-  bundesratsantrag: { word: 'Gesetzesantrag des Bundesrates', subject: 'Den Gesetzesantrag', zum: 'zum Gesetzesantrag', author: 'des Bundesrates' },
+  bundesratsantrag: { word: 'Gesetzesantrag des Bundesrates', subject: 'Den Gesetzesantrag', zum: 'zum Gesetzesantrag', author: 'des Bundesrates', section: null },
   // A treaty's Vorlage (`RVS`, step 5 of 14.11.2026); an Art.-15a-
   // Vereinbarung reads `VEREINBARUNG_15A_DE` through `itemCopyDe`.
-  staatsvertrag: { word: 'Staatsvertrag', subject: 'Den Staatsvertrag', zum: 'zum Staatsvertrag', author: 'des Ministeriums' },
+  staatsvertrag: { word: 'Staatsvertrag', subject: 'Den Staatsvertrag', zum: 'zum Staatsvertrag', author: 'des Ministeriums', section: 'Der Staatsvertrag' },
 }
 
 /**
@@ -49,6 +55,7 @@ const VEREINBARUNG_15A_DE: ItemKindCopy = {
   subject: 'Die Vereinbarung',
   zum: 'zur Vereinbarung',
   author: 'des Ministeriums',
+  section: 'Die Vereinbarung nach Art. 15a B-VG',
 }
 
 /**
@@ -63,12 +70,35 @@ const BUNDESRAT_DRITTEL_DE: ItemKindCopy = {
   subject: 'Den Gesetzesantrag',
   zum: 'zum Gesetzesantrag',
   author: 'der Antragsteller:innen',
+  section: null,
 }
 
 /** The words for an item, its variant included — what a page and a row say. */
 export function itemCopyDe(d: { itemKind: ProcedureItemKind; variant?: BundesratMotionVariant | null; treatyKind?: TreatyKind | null }): ItemKindCopy {
   if (d.itemKind === 'staatsvertrag' && d.treatyKind === 'vereinbarung-15a') return VEREINBARUNG_15A_DE
   return d.itemKind === 'bundesratsantrag' && d.variant === 'drittel' ? BUNDESRAT_DRITTEL_DE : ITEM_KIND_DE[d.itemKind]
+}
+
+/**
+ * Why a motion has no Regierungsvorlage, as the short reason after „keine"
+ * on its rail's pale third station (16.11.2026, maintainer's decision): a
+ * motion enters at „Parlament", as `/wege` and the list draw it, and the
+ * third station says in a fact and its reason that the route has none —
+ * the grammar of „ohne Begutachtung · kein Ministerialentwurf". Who moved
+ * it, never a verdict. A motion of the Bundesrat whose variant is unknown
+ * says only what both share, as its byline does (`itemBylineDe`). Null for
+ * a Regierungsvorlage and a treaty's Vorlage: they are the third station.
+ */
+export function noRvReasonDe(d: { itemKind: ProcedureItemKind; variant?: BundesratMotionVariant | null }): string | null {
+  switch (d.itemKind) {
+    case 'initiativantrag': return 'Antrag von Abgeordneten'
+    case 'ausschussantrag': return 'Antrag eines Ausschusses'
+    case 'bundesratsantrag':
+      return d.variant === 'drittel'
+        ? 'Antrag von Mitgliedern des Bundesrates'
+        : d.variant === 'bundesrat' ? 'Antrag des Bundesrates' : 'Antrag aus dem Bundesrat'
+    default: return null
+  }
 }
 
 /**

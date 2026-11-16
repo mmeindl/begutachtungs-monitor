@@ -144,6 +144,9 @@ const rows = computed(() => props.stations.map((s, i) => {
   const reached = (state: string) => state === 'done' || state === 'current'
   const { silent, facts, announce } = speech.value[i]!
   const href = s.comparison ? props.comparisonAnchors?.[s.comparison.id] : undefined
+  // A motion's „Was ändert der Entwurf?" on „Parlament" (16.11.2026,
+  // `Station.arrivalComparison`): the same contract, before the station's own.
+  const arrivalHref = s.arrivalComparison ? props.comparisonAnchors?.[s.arrivalComparison.id] : undefined
   const next = props.stations[i + 1]
   return {
     id: s.id,
@@ -162,6 +165,7 @@ const rows = computed(() => props.stations.map((s, i) => {
     href: props.anchors?.[s.id],
     facts,
     comparison: href && s.comparison ? { href, question: s.comparison.question } : null,
+    arrivalComparison: arrivalHref && s.arrivalComparison ? { href: arrivalHref, question: s.arrivalComparison.question } : null,
     // Silent with the facts: a link out of a row that says nothing yet
     // would be the only thing it says.
     source: silent ? null : s.source ?? null,
@@ -255,6 +259,9 @@ const rows = computed(() => props.stations.map((s, i) => {
         </p>
         <!-- Above the row's overlay, so the question keeps its own target,
              its own focus ring and its own destination. -->
+        <p v-if="row.arrivalComparison" class="relative z-10 mt-1 leading-snug">
+          <a :href="row.arrivalComparison.href" :class="LINK">{{ row.arrivalComparison.question }} →</a>
+        </p>
         <p v-if="row.comparison" class="relative z-10 mt-1 leading-snug">
           <a :href="row.comparison.href" :class="LINK">{{ row.comparison.question }} →</a>
         </p>

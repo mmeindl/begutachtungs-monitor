@@ -11,11 +11,14 @@
  * Two wordings, read off the rendered forms on 15.11.2026: the
  * Begutachtung's names the ministry („dem zuständigen Ressort", 162/ME);
  * every form after it names the Klubs only — Regierungsvorlage (688 d.B.),
- * Ausschussantrag (684 d.B.), Petition (21/PET), Bürgerinitiative (7/BI).
+ * Ausschussantrag (684 d.B.), Petition (21/PET), Bürgerinitiative (7/BI),
+ * and an Initiativantrag (684/A, rendered on 16.11.2026: its door had no
+ * quote until then, for want of an open window on the day the others were
+ * read).
  * Left out on purpose: the form's second sentence on publication („Mit Ihrem
  * Einverständnis …"), which the reader decides on the form itself.
  *
- * NOT CHECKED, so no quote: an Initiativantrag, a Gesetzesantrag des
+ * NOT CHECKED, so no quote: a Gesetzesantrag des
  * Bundesrates, a Staatsvertrag, a Petition an den Bundesrat — none had an
  * open window to read (`statementQuoteFor`).
  */
@@ -27,11 +30,11 @@ export const STATEMENT_QUOTE_SOURCE = 'Parlament'
 export const STATEMENT_QUOTE_BEGUTACHTUNG =
   'Ihre Stellungnahme wird den parlamentarischen Klubs und dem zuständigen Ressort für ihre Arbeit zur Verfügung gestellt.'
 
-/** Every form after the Begutachtung that was read: Vorlage, Ausschussantrag, Anliegen. */
+/** Every form after the Begutachtung that was read: Vorlage, Antrag, Ausschussantrag, Anliegen. */
 export const STATEMENT_QUOTE_PARLAMENT =
   'Ihre Stellungnahme wird den parlamentarischen Klubs für ihre Arbeit zur Verfügung gestellt.'
 
-const READ_KINDS: ReadonlySet<ProcedureItemKind> = new Set(['regierungsvorlage', 'ausschussantrag'])
+const READ_KINDS: ReadonlySet<ProcedureItemKind> = new Set(['regierungsvorlage', 'initiativantrag', 'ausschussantrag'])
 
 /** The quote for an item's page after the Begutachtung; null where its form was not read. */
 export function statementQuoteFor(kind: ProcedureItemKind): string | null {

@@ -53,7 +53,7 @@ import { LAND_NAME } from '#shared/utils/laender'
 import { fristClassLineDe, fristRangeDe, fristSpanDe } from './deadlines'
 import { landLawBegutachtungFacts } from './landLaw'
 import { namedInRvFactDe, namedInRvShortDe } from './outcomes'
-import { CARRIED_PART_FACTS_DE, ITEM_KIND_DE, RELATED_CONSULTED_FACTS_DE, carriedDraftDe, itemCopyDe, relatedConsultedDe, relatedFollowUpDe } from './itemKind'
+import { CARRIED_PART_FACTS_DE, ITEM_KIND_DE, RELATED_CONSULTED_FACTS_DE, carriedDraftDe, itemCopyDe, noRvReasonDe, relatedConsultedDe, relatedFollowUpDe } from './itemKind'
 
 export type StationId = 'entwurf' | 'begutachtung' | 'rv' | 'parlament' | 'bgbl'
 
@@ -83,6 +83,13 @@ export interface Station {
    *  where none exists or none can be shown. */
   comparison: { id: ComparisonId; question: string } | null
   /**
+   * The comparison of the text that ARRIVED at this station, where it is
+   * not the station's own (16.11.2026): a motion enters at „Parlament", so
+   * its „Was ändert der Entwurf?" moves there with it and stands before the
+   * station's own question. Absent everywhere else.
+   */
+  arrivalComparison?: { id: ComparisonId; question: string }
+  /**
    * Where the station's own record stands, when that is not on this page:
    * a Verordnung's Kundmachung lives in RIS and nowhere here, so the row
    * links out rather than into a section. `lead` is the sentence the link
@@ -102,7 +109,9 @@ export interface Station {
    * procedure did not pass a Begutachtung (`not-walked`, a known „ohne
    * Begutachtung") or whether nobody can tell (`unknown`, „nicht
    * feststellbar"). Absent: an ordinary station. The rail says it in a
-   * word for screen readers, beside the facts.
+   * word for screen readers, beside the facts. Since 16.11.2026 also on a
+   * motion's Regierungsvorlage (`not-walked`): the route has none, it
+   * enters at „Parlament".
    */
   trail?: 'not-walked' | 'unknown'
 }
@@ -1347,9 +1356,15 @@ export interface VorlageStationContext {
  * is the answer to that fear, and the sentence it replaces said the same
  * fact a second time.
  *
- * The first station keeps the id `rv` for both kinds — the bar's vocabulary
- * (`StationId`) has one slot for the text the Nationalrat receives — and
- * names itself by what the item is.
+ * A Regierungsvorlage (and a treaty's Vorlage) is the station `rv` and names
+ * itself by what the item is. A motion is not (16.11.2026, maintainer's
+ * decision): until then the third station carried its name („Initiativantrag",
+ * „Ausschussantrag"), while `/wege` drew „entfällt" there and the list filed
+ * motions under „Parlament". Now the third station is „Regierungsvorlage",
+ * pale with its reason („keine · Antrag eines Ausschusses", `noRvReasonDe`),
+ * and the motion's arrival — its kind and its Einlangen — is the first fact
+ * of „Parlament", with what the item's row carried (what it changes, its
+ * comparison, the Stellungnahmen count). The same position count as before.
  */
 export function vorlageStations(d: VorlageDetail, ctx: VorlageStationContext = {}, today: string = todayIso()): Station[] {
   return [vorlageBegutachtung(d), ...vorlageItemStations(d, ctx, today)]
@@ -1365,15 +1380,31 @@ function vorlageItemStations(d: VorlageDetail, ctx: VorlageStationContext, today
         : null
   const n = ctx.statementTotal ?? 0
   const count = n === 0 ? null : n === 1 ? '1 Stellungnahme' : `${formatNumberDe(n)} Stellungnahmen`
+  const arrival = d.arrivedAt ? formatDateDe(d.arrivedAt) : d.citation
+  const own = ctx.showsAnnex && !ctx.createsNewLaw ? { id: 'vorschlag' as const, question: 'Was ändert der Entwurf?' } : null
+  const later = laterStations({ enactment: d.enactment, textEvolution: d.textEvolution, gpEnded: d.gpEnded, active: false, antragPath: null }, today)
+  const noRv = noRvReasonDe(d)
+  if (!noRv) {
+    return [
+      { id: 'rv', name: itemCopyDe(d).word, state: 'done', facts: kept(arrival, changes, count), comparison: own },
+      ...later,
+    ]
+  }
+  // A motion (16.11.2026): no Regierungsvorlage, pale with its reason, and
+  // the motion enters at „Parlament" — its kind and Einlangen first, then
+  // what it changes, then the house's record, the count last as on every
+  // row. The station was reached the day the motion arrived, so a motion
+  // that lapsed with its period is `done` there („GP beendet"), not `never`.
+  const [parlament, bgbl] = later
   return [
+    { id: 'rv', name: 'Regierungsvorlage', state: 'never', facts: ['keine', noRv], comparison: null, trail: 'not-walked' },
     {
-      id: 'rv',
-      name: itemCopyDe(d).word,
-      state: 'done',
-      facts: kept(d.arrivedAt ? formatDateDe(d.arrivedAt) : d.citation, changes, count),
-      comparison: ctx.showsAnnex && !ctx.createsNewLaw ? { id: 'vorschlag', question: 'Was ändert der Entwurf?' } : null,
+      ...parlament,
+      state: parlament.state === 'never' || parlament.state === 'open' ? 'done' : parlament.state,
+      facts: kept(itemCopyDe(d).word, arrival, changes, ...parlament.facts, count),
+      ...(own ? { arrivalComparison: own } : {}),
     },
-    ...laterStations({ enactment: d.enactment, textEvolution: d.textEvolution, gpEnded: d.gpEnded, active: false, antragPath: null }, today),
+    bgbl,
   ]
 }
 
