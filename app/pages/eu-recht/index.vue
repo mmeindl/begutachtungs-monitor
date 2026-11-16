@@ -3,10 +3,11 @@
  * The EU map's overview: every EU
  * act that a draft of the window implements, Bund and Länder, with its
  * deadline and how many drafts implement it on each side. Each act links
- * to its page, where the drafts stand on one track.
+ * to its page, where the drafts stand on one track. The header's lede is
+ * one sentence and the link to the EU's ways (`LEDE`, `WEGE_LEAD`).
  *
  * The list on the white sheet of every list of rows (`ListBox`, box
- * grammar): rows you operate — each links, the list folds past twenty
+ * grammar): rows you operate — each links, five stand and the rest fold
  * in the site's idiom (`ListMore`), the chips filter it. Everything that
  * operates on it stands inside the box, the chips in its head per
  * `ListBox`'s rule, the empty selection and the fold at its foot; nothing
@@ -61,19 +62,25 @@
  */
 import type { EuActSummary, EuActsResponse } from '#shared/types'
 import { risSource, eurLexSource, sourceItemsDe } from '#shared/utils/provenance'
-import { EU_PAGE_TITLE_DE, euWegePath } from '#shared/utils/eu'
+import { EU_MEMBER_STATE_NAME_DE, EU_PAGE_TITLE_DE, euWegePath } from '#shared/utils/eu'
 import { MAX_LIST_QUERY_CHARS } from '#shared/utils/queryParams'
 import { matchesQuery } from '#shared/utils/textMatch'
 import { countLabelDe, todayIso } from '#shared/utils/format'
 import { listBoxStatusOf } from '~/utils/listState'
 import { WEGE_PAGES } from '~/utils/wege'
-import { EU_ACTS_COLUMN_DE, EU_ACTS_SORT_DE, deadlineDirection, deadlineOrderDe, euActOwnDirection, deadlineReverseOrderDe, deadlineTabOf, euActHaystack, euActsRows, euRestatingRows, euSourceUnavailable, filterEuActs, incompleteNoteDe, restatingFoldHeading, type EuActSort, type EuDeadlineTab } from '~/utils/euKarte'
+import { EU_OVERVIEW_LIST_INITIAL, EU_OVERVIEW_LIST_STEP, EU_ACTS_COLUMN_DE, EU_ACTS_SORT_DE, deadlineDirection, deadlineOrderDe, euActOwnDirection, deadlineReverseOrderDe, deadlineTabOf, euActHaystack, euActsRows, euRestatingRows, euSourceUnavailable, filterEuActs, incompleteNoteDe, restatingFoldHeading, type EuActSort, type EuDeadlineTab } from '~/utils/euKarte'
 
 usePageSeo({
   title: EU_PAGE_TITLE_DE,
   description:
     'Wozu die Europäische Kommission gerade Rückmeldungen entgegennimmt, welche Europäischen Bürgerinitiativen Unterstützungen sammeln, welche Richtlinien Österreich umzusetzen hat – und welche Entwürfe des Bundes und der Länder sie umsetzen.',
 })
+
+/* The lede: one sentence on what the page holds, and the way to the EU's
+ * ways on a line of its own (16.11.2026). What each list shows, its own
+ * lede says. */
+const LEDE = `Woran man sich in der EU gerade beteiligen kann, und welches EU-Recht ${EU_MEMBER_STATE_NAME_DE} umzusetzen hat.`
+const WEGE_LEAD = 'So entsteht EU-Recht: '
 
 const { data, status, error, refresh } = useFetch<EuActsResponse>('/api/eu-recht', { lazy: true })
 
@@ -160,15 +167,16 @@ const hitsElsewhere = computed(() => {
   return fold ? `Treffer unter „${TAB_LABEL[fold]}“, in „Nur in Umsetzungshinweisen wiederholt“.` : null
 })
 
-/** Twenty stand; the rest behind „Alle N anzeigen" (`ListMore`), in each list — uncut under a query. */
-const STEP = 20
-const visible = ref(STEP)
+/** Five stand, ten a press, as in the page's other lists (`EU_OVERVIEW_LIST_INITIAL`) — uncut under a query. */
+const visible = ref(EU_OVERVIEW_LIST_INITIAL)
 const shown = computed(() => (query.value ? rows.value : rows.value.slice(0, visible.value)))
-const visibleRestating = ref(STEP)
+/** The fold is opened on purpose: twenty stand there, twenty a press. */
+const RESTATING_STEP = 20
+const visibleRestating = ref(RESTATING_STEP)
 /* Another tab or order is a new first page (`usePagedList`'s rule), in both lists. */
 watch([tab, sortChoice, reversed], () => {
-  visible.value = STEP
-  visibleRestating.value = STEP
+  visible.value = EU_OVERVIEW_LIST_INITIAL
+  visibleRestating.value = RESTATING_STEP
 })
 const shownRestating = computed(() => (query.value ? restatingRows.value : restatingRows.value.slice(0, visibleRestating.value)))
 
@@ -190,17 +198,11 @@ const [bundItem, eurLexItem] = sourceItemsDe([risSource('Vorblatt'), risSource('
         {{ EU_PAGE_TITLE_DE }}
       </h1>
       <p class="mt-2 text-ink-secondary">
-        Zuerst, wozu die Europäische Kommission gerade Rückmeldungen
-        entgegennimmt und welche Europäischen Bürgerinitiativen gerade
-        Unterstützungen sammeln. Dann die Richtlinien der Europäischen Union, die
-        umzusetzen sind – auch jene, an denen niemand arbeitet. Darunter jeder
-        Rechtsakt, den ein Entwurf
-        dieser Gesetzgebungsperiode umsetzt, beim Bund und in den Ländern. Woher
-        die Angaben stammen und was sie nicht sagen, öffnet „Methode“ unter jeder
-        Liste. Welche Stationen ein Rechtsakt und eine Bürgerinitiative
-        durchlaufen, zeigen die
-        <!-- The EU's ways (16.11.2026), named by their page's own title. -->
-        <NuxtLink :to="euWegePath()" class="link-inline">{{ WEGE_PAGES.eu.title }}</NuxtLink>.
+        {{ LEDE }}
+      </p>
+      <p class="mt-2 text-ink-secondary">
+        {{ WEGE_LEAD }}<!-- The EU's ways (16.11.2026), named by their page's own title.
+        --><NuxtLink :to="euWegePath()" class="link-inline">{{ WEGE_PAGES.eu.title }}</NuxtLink>
       </p>
     </header>
 
@@ -340,8 +342,9 @@ const [bundItem, eurLexItem] = sourceItemsDe([risSource('Vorblatt'), risSource('
           v-if="!query && rows.length"
           :visible="visible"
           :total="rows.length"
-          :step="STEP"
-          @more="visible += STEP"
+          :initial="EU_OVERVIEW_LIST_INITIAL"
+          :step="EU_OVERVIEW_LIST_STEP"
+          @more="visible += EU_OVERVIEW_LIST_STEP"
           @all="visible = rows.length"
         />
       </ListBox>
@@ -361,8 +364,8 @@ const [bundItem, eurLexItem] = sourceItemsDe([risSource('Vorblatt'), risSource('
               v-if="!query"
               :visible="visibleRestating"
               :total="restatingRows.length"
-              :step="STEP"
-              @more="visibleRestating += STEP"
+              :step="RESTATING_STEP"
+              @more="visibleRestating += RESTATING_STEP"
               @all="visibleRestating = restatingRows.length"
             />
           </ListBox>

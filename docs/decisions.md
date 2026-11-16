@@ -709,6 +709,10 @@ The code names the EU rules D1 to D7; this is where they are defined
   homepage's window onto the map („EU-Recht in der Begutachtung") and the
   list's link to it (`EuMapLink`) are gone; the list's filter „Setzt
   EU-Recht um" stays — it combines with the other filters, it is no door.
+- **`/eu-recht`'s four lists open with five rows and step by ten**
+  (16.11.2026, `EU_OVERVIEW_LIST_INITIAL`): the page is an overview of four
+  lists, so each opens short and all four are in reach. The fold of acts
+  drafts only restate keeps twenty — it is opened on purpose.
 - **An EU act has a rail of its own, read from the Cellar** (15.11.2026,
   `server/utils/eu/cellarDossier.ts`, `app/utils/euRail.ts`; facts in
   `docs/research/eu-zyklus.md`, plan in

@@ -33,7 +33,7 @@ import { countCell, wordCell, type EuCountCell } from './euCountCell'
 
 const DE = {
   heading: 'Jetzt unterstützbar: Europäische Bürgerinitiativen',
-  lede: 'Für diese Europäischen Bürgerinitiativen werden gerade Unterstützungen gesammelt, laut dem Register der Kommission. Jede Zeile führt zur Seite der Initiative hier, mit ihren Stationen, und von dort zum Sammelsystem, in dem man sie unterstützt.',
+  lede: 'Für diese Initiativen werden gerade Unterstützungen gesammelt. Die Seite jeder Initiative führt zum Sammelsystem.',
   column: { title: 'Initiative', supporters: 'Unterstützungen', end: 'Sammlung' },
   sortLabel: 'Sortieren',
   /** The sort button's words, completing its name: „Sammlung: nächstes Ende zuerst". */

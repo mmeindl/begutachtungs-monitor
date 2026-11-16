@@ -23,6 +23,15 @@ import { viewOfRow, type EntryState, type EntryView } from './entryView'
 import { countCell, draftsWhoseDe, type EuCountCell } from './euCountCell'
 import { SUPERSCRIPT, dateRangeDe, dayOf, edgeAlign, laneBarOf, type EuChartView } from './euRecht'
 
+/**
+ * The paging of the overview's four lists (windows, initiatives,
+ * directives, acts; 16.11.2026): five rows stand, each press of
+ * `ListMore` adds ten. The page is an overview of four lists, so each
+ * opens short and all four are in reach. Uncut under a query, as before.
+ */
+export const EU_OVERVIEW_LIST_INITIAL = 5
+export const EU_OVERVIEW_LIST_STEP = 10
+
 /** „Bund" or the Land's name — the list's source chips' words. */
 export function publisherDe(p: EuPublisher): string {
   return p === 'bund' ? 'Bund' : LAND_NAME[p]

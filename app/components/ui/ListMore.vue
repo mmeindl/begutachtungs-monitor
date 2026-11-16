@@ -24,6 +24,8 @@ const props = defineProps<{
   total: number
   /** How many more one press adds. */
   step: number
+  /** How many rows stand before the first press; defaults to `step`. */
+  initial?: number
 }>()
 
 const emit = defineEmits<{ more: []; all: [] }>()
@@ -57,8 +59,9 @@ async function press(action: 'more' | 'all') {
  * removes the button from under the cursor — is the press that most needs
  * saying. So it stays and goes visually silent instead, the way the panel's
  * set line does: "35 von 35 angezeigt" beside no button describes nothing
- * to someone who can see there is nothing left. */
-const pageable = computed(() => props.total > props.step)
+ * to someone who can see there is nothing left. Pageable means more rows
+ * than stand before the first press (`initial`, else `step`). */
+const pageable = computed(() => props.total > (props.initial ?? props.step))
 </script>
 
 <template>

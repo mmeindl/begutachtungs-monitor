@@ -37,6 +37,7 @@ import { todayIso } from '#shared/utils/format'
 import { EU_UMSETZUNG_DE as DE, EU_UMSETZUNG_SORT_COLUMNS as SORTS, euUmsetzungView, sortUmsetzungRows, type EuUmsetzungSort, type EuUmsetzungTab } from '~/utils/euUmsetzung'
 import { reversedOption } from '~/composables/useReversibleSort'
 import { listBoxStatusOf } from '~/utils/listState'
+import { EU_OVERVIEW_LIST_INITIAL as INITIAL, EU_OVERVIEW_LIST_STEP as STEP } from '~/utils/euKarte'
 
 const { data, status, error, refresh } = useFetch<EuUmsetzungResponse>('/api/eu-recht/umsetzung', { lazy: true })
 
@@ -73,9 +74,9 @@ const rows = computed(() => sortUmsetzungRows(
   reversed.value,
 ))
 
-const STEP = 20
-const visible = ref(STEP)
-watch([tab, withCommission, sort, reversed], () => { visible.value = STEP })
+/* Five stand, ten a press (`EU_OVERVIEW_LIST_INITIAL`). */
+const visible = ref(INITIAL)
+watch([tab, withCommission, sort, reversed], () => { visible.value = INITIAL })
 const shown = computed(() => (query.value ? rows.value : rows.value.slice(0, visible.value)))
 </script>
 
@@ -178,6 +179,7 @@ const shown = computed(() => (query.value ? rows.value : rows.value.slice(0, vis
           v-if="!query && rows.length"
           :visible="visible"
           :total="rows.length"
+          :initial="INITIAL"
           :step="STEP"
           @more="visible += STEP"
           @all="visible = rows.length"

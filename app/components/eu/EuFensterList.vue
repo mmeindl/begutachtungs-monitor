@@ -38,6 +38,7 @@ import { EU_FENSTER_DE as DE, EU_FENSTER_TABS, euFensterView, sortFensterRows, t
 import { reversedOption } from '~/composables/useReversibleSort'
 import { GAP_LEAD_DE } from '#shared/utils/gaps'
 import { listBoxStatusOf } from '~/utils/listState'
+import { EU_OVERVIEW_LIST_INITIAL as INITIAL, EU_OVERVIEW_LIST_STEP as STEP } from '~/utils/euKarte'
 
 const { data, status, error, refresh } = useFetch<EuFensterResponse>('/api/eu-recht/fenster', { lazy: true })
 
@@ -78,9 +79,9 @@ const rows = computed(() => sortFensterRows(
   reversed.value,
 ))
 
-const STEP = 20
-const visible = ref(STEP)
-watch([tab, sort, reversed], () => { visible.value = STEP })
+/* Five stand, ten a press (`EU_OVERVIEW_LIST_INITIAL`). */
+const visible = ref(INITIAL)
+watch([tab, sort, reversed], () => { visible.value = INITIAL })
 const shown = computed(() => (query.value ? rows.value : rows.value.slice(0, visible.value)))
 </script>
 
@@ -193,6 +194,7 @@ const shown = computed(() => (query.value ? rows.value : rows.value.slice(0, vis
           v-if="!query && rows.length"
           :visible="visible"
           :total="rows.length"
+          :initial="INITIAL"
           :step="STEP"
           @more="visible += STEP"
           @all="visible = rows.length"

@@ -36,6 +36,7 @@ import type { EuBuergerinitiativenResponse } from '#shared/types'
 import { EU_ECI_LIST_DE as DE, euEciListView, sortEciRows, type EuEciSort } from '~/utils/euEciList'
 import { reversedOption } from '~/composables/useReversibleSort'
 import { listBoxStatusOf } from '~/utils/listState'
+import { EU_OVERVIEW_LIST_INITIAL as INITIAL, EU_OVERVIEW_LIST_STEP as STEP } from '~/utils/euKarte'
 
 const { data, status, error, refresh } = useFetch<EuBuergerinitiativenResponse>('/api/eu-recht/buergerinitiativen', { lazy: true })
 
@@ -60,9 +61,9 @@ const sortOptions = [
 const sortId = useId()
 const rows = computed(() => sortEciRows(view.value?.rows ?? [], sort.value, reversed.value))
 
-const STEP = 20
-const visible = ref(STEP)
-watch([sort, reversed], () => { visible.value = STEP })
+/* Five stand, ten a press (`EU_OVERVIEW_LIST_INITIAL`). */
+const visible = ref(INITIAL)
+watch([sort, reversed], () => { visible.value = INITIAL })
 const shown = computed(() => rows.value.slice(0, visible.value))
 </script>
 
@@ -151,6 +152,7 @@ const shown = computed(() => rows.value.slice(0, visible.value))
           v-if="rows.length"
           :visible="visible"
           :total="rows.length"
+          :initial="INITIAL"
           :step="STEP"
           @more="visible += STEP"
           @all="visible = rows.length"

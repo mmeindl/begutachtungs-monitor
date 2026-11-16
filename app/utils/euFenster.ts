@@ -54,7 +54,7 @@ const TAB_OF_STAGE: Readonly<Record<string, Exclude<EuFensterTab, 'alle'>>> = {
 
 const DE = {
   heading: 'Jetzt offen: Rückmeldung an die Kommission',
-  lede: 'Zu diesen Vorhaben nimmt die Europäische Kommission gerade Rückmeldungen entgegen: zu Plänen vor einem Vorschlag, zu ihren Vorschlägen und zu Entwürfen eigener Rechtsakte. Rückmelden kann man sich im Portal „Ihre Meinung zählt“ der Kommission; jede Zeile führt zur Seite des Vorhabens hier, und von dort ins Portal.',
+  lede: 'Zu diesen Vorhaben nimmt die Europäische Kommission gerade Rückmeldungen entgegen, im Portal „Ihre Meinung zählt“.',
   tab: {
     alle: 'Alle',
     konsultation: EU_RAIL_DE.name.konsultation,
