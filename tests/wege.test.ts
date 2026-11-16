@@ -111,10 +111,18 @@ describe('wege matrix', () => {
     for (const w of WEGE.filter((x) => x.level === 'land')) expect(w.cells.parlament, w.id).not.toBe('stellungnahme')
   })
 
-  it('the legend names every mark the matrices draw except the self-explaining dash', () => {
+  it('the legend names every mark the matrices draw, the dash too', () => {
     const drawn = new Set(WEG_MATRICES.flatMap((m) => m.groups.flatMap((g) => g.rows.flatMap((r) => Object.values(r.cells)))))
-    drawn.delete('entfaellt')
     expect(new Set(WEG_LEGEND.map((l) => l.cell))).toEqual(drawn)
+  })
+
+  it('an Ausschussbegutachtung is drawn in one place: „je nach Fall" at Begutachtung, at both levels (16.11.2026)', () => {
+    for (const id of ['vorlage-ohne-begutachtung', 'antrag-ohne-begutachtung', 'ausschussantrag', 'landtag-antrag']) {
+      const w = WEGE.find((x) => x.id === id)!
+      expect(w.cells.begutachtung, id).toBe('offen')
+    }
+    // The Landtag itself every motion passes.
+    expect(WEGE.find((x) => x.id === 'landtag-antrag')!.cells.parlament).toBe('durch')
   })
 })
 
@@ -176,8 +184,11 @@ describe('the matrices with rails of their own (16.11.2026)', () => {
       const r = rowOf(EU_MATRIX, id)
       expect(r.cells, id).toEqual({ konsultation: 'stellungnahme', vorschlag: 'stellungnahme', beschluss: 'durch', amtsblatt: 'durch', wirkung: 'durch' })
       expect(wegCellLabel(r, 'stellungnahme')).toBe('Rückmeldung möglich')
-      expect(r.href).toBe('/eu-recht#eu-fenster')
     }
+    // The directive's row leads to the directives Austria has to transpose; the open windows stand behind the two stations that carry them.
+    expect(rowOf(EU_MATRIX, 'eu-richtlinie').href).toBe('/eu-recht#eu-umsetzung')
+    expect(rowOf(EU_MATRIX, 'eu-verordnung').href).toBe('/eu-recht#eu-fenster')
+    expect(EU_MATRIX.stations.map((s) => s.href)).toEqual(['/eu-recht#eu-fenster', '/eu-recht#eu-fenster', null, null, null])
     expect(rowOf(EU_MATRIX, 'eu-kommission').cells).toEqual({ konsultation: 'offen', vorschlag: 'stellungnahme', beschluss: 'entfaellt', amtsblatt: 'durch', wirkung: 'durch' })
     expect(rowOf(EU_MATRIX, 'eu-richtlinie').noteLink).toEqual(EU_IMPLEMENTING_LIST)
   })
@@ -220,7 +231,10 @@ describe('the matrices with rails of their own (16.11.2026)', () => {
   it('Petition, Bürgerinitiative, Volksbegehren and Petition an den Bundesrat link to their kind on /anliegen', () => {
     for (const r of rowsOf(ANLIEGEN_MATRIX)) {
       expect(isAnliegenLink(r.href), r.id).toBe(true)
-      expect(Object.keys(queryOf(r.href!)), r.id).toEqual(['art'])
+      // The two kinds of which hardly one is open link the list without „Nur offene" (`alle=1`): their plain link landed on an empty list.
+      const rarelyOpen = ['anliegen-volksbegehren', 'anliegen-petition-bundesrat'].includes(r.id)
+      expect(Object.keys(queryOf(r.href!)), r.id).toEqual(rarelyOpen ? ['art', 'alle'] : ['art'])
+      if (rarelyOpen) expect(queryOf(r.href!).alle, r.id).toBe('1')
       expect(anliegenArtOf(queryOf(r.href!).art), r.id).toBe(r.id.replace('anliegen-', ''))
     }
   })

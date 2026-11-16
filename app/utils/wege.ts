@@ -136,6 +136,11 @@ const VOLKSBEGEHREN_GAP = gapDe('outOfScope', 'Unterstützung und Eintragung vor
 /* The list of Anliegen an das Parlament narrowed to one kind — its own
  * `?art=` (`anliegenArtOf`), open ones first as the list opens. */
 const anliegenListHref = (kind: AnliegenKind): string => `${ANLIEGEN_PATH}?art=${kind}`
+/* The same list without „Nur offene" (`?alle=1`), for the kinds of which
+ * hardly one is open on a given day — a Volksbegehren, a Petition an den
+ * Bundesrat. Their plain link landed on an empty list (measured
+ * 16.11.2026: none open of either), and a row's link should show the kind. */
+const anliegenListAllHref = (kind: AnliegenKind): string => `${anliegenListHref(kind)}&alle=1`
 
 export const WEG_LEVEL_LABEL: Record<WegLevel, string> = {
   bund: 'Bund',
@@ -239,6 +244,10 @@ export const WEGE: readonly Weg[] = [
    * GOG-NR — a circle the committee invites, not the public, so no blue
    * mark), and „ohne Begutachtung" was false for them. The id and the URL
    * value stay (links exist).
+   *  - Begutachtung: `offen` since 16.11.2026, for that
+   *    Ausschussbegutachtung — the mark an Ausschussantrag carries for the
+   *    same thing (§ 40); a dash beside the note „teils mit
+   *    Ausschussbegutachtung" contradicted it.
    *  - Regierungsvorlage, Parlament: § 23b Abs. 1 GOG-NR.
    *  - Kundgemacht: Art. 49 B-VG. */
   {
@@ -248,13 +257,15 @@ export const WEGE: readonly Weg[] = [
     note: 'teils mit Ausschussbegutachtung',
     noteLink: null,
     notFollowed: null,
-    cells: row(['entfaellt', 'entfaellt', 'stellungnahme', 'stellungnahme', 'durch']),
+    cells: row(['entfaellt', 'offen', 'stellungnahme', 'stellungnahme', 'durch']),
     href: '/entwuerfe?begutachtung=ohne&art=vorlage',
   },
   /* The same page for an Initiativantrag (`ityp` 'A'). Art. 41 Abs. 1 B-VG,
    * § 26 Abs. 4 GOG-NR (five members); no Begutachtung: Parliament's
    * research service (RLW, 03.02.2026) — drafts that come from members do
-   * not go into one. Parlament: § 23b Abs. 1 GOG-NR. */
+   * not go into one. Begutachtung `offen` all the same (16.11.2026): a
+   * committee may invite Stellungnahmen (§ 40 Abs. 1 GOG-NR), as the note
+   * says and as the Vorlage's row marks it. Parlament: § 23b Abs. 1 GOG-NR. */
   {
     id: 'antrag-ohne-begutachtung',
     level: 'bund',
@@ -262,7 +273,7 @@ export const WEGE: readonly Weg[] = [
     note: 'von Abgeordneten, teils mit Ausschussbegutachtung',
     noteLink: null,
     notFollowed: null,
-    cells: row(['entfaellt', 'entfaellt', 'entfaellt', 'stellungnahme', 'durch']),
+    cells: row(['entfaellt', 'offen', 'entfaellt', 'stellungnahme', 'durch']),
     href: '/entwuerfe?begutachtung=ohne&art=antrag',
   },
   /* § 27 Abs. 1 GOG-NR: a committee's own motion. Parliament lists it as an
@@ -309,7 +320,8 @@ export const WEGE: readonly Weg[] = [
     id: 'bundesrat-antrag',
     level: 'bund',
     label: 'Gesetzesantrag des Bundesrates',
-    note: 'im Monitor, ohne eigene Liste; Antrag eines Drittels: Stellungnahme offen',
+    // „Stellungnahme offen" read as „possible" (16.11.2026); it is the question that is open.
+    note: 'im Monitor, ohne eigene Liste; beim Antrag eines Drittels ungeklärt, ob eine Stellungnahme möglich ist',
     noteLink: null,
     notFollowed: null,
     cells: row(['entfaellt', 'entfaellt', 'entfaellt', 'stellungnahme', 'offen']),
@@ -337,7 +349,7 @@ export const WEGE: readonly Weg[] = [
     notFollowed: null,
     gap: VOLKSBEGEHREN_GAP,
     cells: row(['entfaellt', 'entfaellt', 'entfaellt', 'stellungnahme', 'offen']),
-    href: anliegenListHref('volksbegehren'),
+    href: anliegenListAllHref('volksbegehren'),
   },
   /* Art. 43 B-VG: on an ordinary law „wenn der Nationalrat es beschließt
    * oder die Mehrheit der Mitglieder des Nationalrates es verlangt", before
@@ -494,7 +506,10 @@ export const WEGE: readonly Weg[] = [
   /* A motion of members or of a committee in the Landtag (every Land's
    * constitution or Geschäftsordnung, memo „Wer einen Gesetzesvorschlag in
    * den Landtag bringt"; Wien's committees not verified). No Begutachtung
-   * before it, no Vorlage. Landtag `offen`: a committee MAY put it out for
+   * before it, no Vorlage. Begutachtung `offen` (in the Landtag's column
+   * until 16.11.2026; moved so that an Ausschussbegutachtung is drawn in
+   * one place at both levels, and the Landtag, which every motion passes,
+   * is a dot): a committee MAY put it out for
    * Begutachtung in four Länder (B Art. 68 Abs. 4, K Art. 33 Abs. 2, O
    * Art. 58 Abs. 2, St Art. 68 Abs. 2), by its own decision, nowhere else
    * by the constitution. Kundgemacht: Art. 97 Abs. 1 B-VG.
@@ -508,7 +523,7 @@ export const WEGE: readonly Weg[] = [
     note: 'Ausschussbegutachtung in Bgld., Ktn., OÖ, Stmk.',
     noteLink: null,
     notFollowed: 'nur das Gesetz daraus',
-    cells: row(['entfaellt', 'entfaellt', 'entfaellt', 'offen', 'durch']),
+    cells: row(['entfaellt', 'offen', 'entfaellt', 'durch', 'durch']),
     href: null,
   },
   /* A Land's Volksbegehren, in all nine (B Art. 30, K Art. 31 Abs. 2, N
@@ -605,12 +620,13 @@ export const WEG_CELL_LABEL: Record<WegCell, string> = {
   offen: 'je nach Fall',
 }
 
-/** The legend: the marks that need one. The dash speaks for itself. */
+/** The legend: every mark the matrices draw, the dash too (16.11.2026) — „speaks for itself" did not hold beside a „?". */
 export const WEG_LEGEND: readonly { cell: WegCell; label: string }[] = [
   { cell: 'durch', label: 'Station' },
   // One mark for every way to take part (16.11.2026): a Stellungnahme in the national matrix, a Rückmeldung or an Unterstützung in the others, each row saying which (`WegMatrixRow.takePart`).
   { cell: 'stellungnahme', label: 'Stellungnahme, Rückmeldung oder Unterstützung möglich' },
   { cell: 'offen', label: 'je nach Fall' },
+  { cell: 'entfaellt', label: 'entfällt' },
 ]
 
 /* ------------------------------------------------------------------ */
@@ -714,6 +730,11 @@ const PARLAMENT_SOURCE = { label: 'parlament.gv.at', href: PARLAMENT_PETITIONEN 
  * in collection, on the EU page (steps 3 and 5 of the EU cycle). */
 const EU_FENSTER_HREF = `${euPath()}#eu-fenster`
 const EU_BUERGERINITIATIVEN_HREF = `${euPath()}#eu-buergerinitiativen`
+/* „Richtlinien, die Österreich umzusetzen hat" (`EuUmsetzungList`): where
+ * the row „Richtlinie" leads since 16.11.2026. The open feedback windows,
+ * where it led before, are the blue cells' matter and stand behind the two
+ * station headers that carry them. */
+const EU_UMSETZUNG_HREF = `${euPath()}#eu-umsetzung`
 
 /** The drafts that carry out an EU act (the list's `EuFilter`: directives only, so the words say so). */
 export const EU_IMPLEMENTING_LIST = { label: 'Entwürfe, die EU-Recht umsetzen', href: '/entwuerfe?eu=umsetzung' } as const
@@ -752,8 +773,8 @@ export const NATIONAL_MATRICES: readonly WegMatrix[] = wegGroups().map((g) => ({
  * „Umsetzungsfrist", the code „Umsetzung" — the code's word stands.
  */
 const EU_STATIONS: WegMatrixStation[] = [
-  { id: 'konsultation', label: EU_RAIL_DE.name.konsultation, href: null },
-  { id: 'vorschlag', label: EU_RAIL_DE.name.vorschlag, href: null },
+  { id: 'konsultation', label: EU_RAIL_DE.name.konsultation, href: EU_FENSTER_HREF },
+  { id: 'vorschlag', label: EU_RAIL_DE.name.vorschlag, href: EU_FENSTER_HREF },
   { id: 'beschluss', label: EU_RAIL_DE.name['parlament-rat'], href: null },
   { id: 'amtsblatt', label: EU_RAIL_DE.name.amtsblatt, href: null },
   { id: 'wirkung', label: `${EU_RAIL_DE.name.umsetzung} oder ${EU_RAIL_DE.name.geltung}`, href: null },
@@ -799,7 +820,7 @@ export const EU_MATRIX: WegMatrix = {
         noteLink: EU_IMPLEMENTING_LIST,
         notFollowed: null,
         cells: euCells('stellungnahme', 'stellungnahme', 'durch', 'durch', 'durch'),
-        href: EU_FENSTER_HREF,
+        href: EU_UMSETZUNG_HREF,
         takePart: 'Rückmeldung möglich',
         stationLabels: { wirkung: EU_RAIL_DE.name.umsetzung },
       },
@@ -1004,7 +1025,7 @@ export const ANLIEGEN_MATRIX: WegMatrix = {
         notFollowed: null,
         gap: VOLKSBEGEHREN_GAP,
         cells: anliegenCells('durch', 'offen', 'stellungnahme', 'durch'),
-        href: anliegenListHref('volksbegehren'),
+        href: anliegenListAllHref('volksbegehren'),
         takePart: 'Stellungnahme möglich',
         stationLabels: { eingebracht: 'Eingelangt' },
       },
@@ -1029,7 +1050,7 @@ export const ANLIEGEN_MATRIX: WegMatrix = {
         source: PARLAMENT_SOURCE,
         notFollowed: null,
         cells: anliegenCells('durch', 'entfaellt', 'stellungnahme', 'offen'),
-        href: anliegenListHref('petition-bundesrat'),
+        href: anliegenListAllHref('petition-bundesrat'),
         takePart: 'Unterstützung und Stellungnahme möglich',
         stationLabels: { nationalrat: 'Bundesrat' },
       },

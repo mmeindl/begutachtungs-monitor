@@ -1222,6 +1222,18 @@ not yet followed, or the EU cycle, starts there.
   gets four or six. Only the instruments
   the monitor does not follow are a list without stations, „Nicht im
   Monitor", each with its reason.
+- **A link on `/wege` shows what its words name, and a mark means one
+  thing** (16.11.2026, after opening every link and reading every cell).
+  A row's link leads to its kind: where hardly one of a kind is open on a
+  given day (Volksbegehren, Petition an den Bundesrat) to the list without
+  „Nur offene", never to an empty one; „Richtlinie" to the directives
+  Austria has to transpose, and the open feedback windows stand behind the
+  two EU stations that carry them. An Ausschussbegutachtung is „je nach
+  Fall" at Begutachtung at both levels, never a dash beside a note that
+  names it and never in the Landtag's column. The legend names every mark,
+  the dash too. Not changed: the header „Parlament" of the Bund leads to
+  the list's tab, which is empty on days when nothing is between Beschluss
+  and Kundmachung.
 - **Each thing stands once on `/wege`** (15./16.11.2026). What is a route to
   a norm is a row, and only a row: a Volksbegehren in the Bund or a Land, an
   initiative of Gemeinden or citizens, and the Volksabstimmung, which sits

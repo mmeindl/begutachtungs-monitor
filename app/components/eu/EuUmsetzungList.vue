@@ -80,7 +80,7 @@ const shown = computed(() => (query.value ? rows.value : rows.value.slice(0, vis
 </script>
 
 <template>
-  <section aria-labelledby="eu-umsetzung-liste-heading" class="page-section">
+  <section id="eu-umsetzung" aria-labelledby="eu-umsetzung-liste-heading" class="page-section scroll-mt-6">
     <h2 id="eu-umsetzung-liste-heading" class="section-heading">{{ DE.heading }}</h2>
     <p v-if="view" class="mt-2 text-ink-secondary">
       {{ view.lede }}
