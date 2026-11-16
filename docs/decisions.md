@@ -701,18 +701,23 @@ The code names the EU rules D1 to D7; this is where they are defined
   ties in the tab's deadline order; each reversible. It counts drafts that
   implement an act, never acts not implemented, so it is no order by what
   is missing. „Ohne Frist" turns a deadline order into the names
-  (`forcedToName`); the drafts' order stays. The fold of acts drafts only
-  restate follows the main list's order.
+  (`forcedToName`); the drafts' order stays.
+- **The acts drafts only restate are a section of their own** (16.11.2026,
+  „Rechtsakte, die Entwürfe nur wiederholt nennen", `EU_RESTATING_DE`),
+  under the map, not a fold in it: a fold read as more of the same list,
+  the impression D4 keeps them out of. The site's chips select them; the
+  map's tabs, order and search stop at its heading. One order
+  (`euRestatingRows`): the map's three tabs in a row, each in its own
+  direction.
 - **A reader change that alters a stored finding bumps its reader version in
   the same commit,** or the disk store keeps stale facts (§12.66, §12.67).
 - **The header navigation is the door to `/eu-recht`** (14.11.2026). The
   homepage's window onto the map („EU-Recht in der Begutachtung") and the
   list's link to it (`EuMapLink`) are gone; the list's filter „Setzt
   EU-Recht um" stays — it combines with the other filters, it is no door.
-- **`/eu-recht`'s four lists open with five rows and step by ten**
-  (16.11.2026, `EU_OVERVIEW_LIST_INITIAL`): the page is an overview of four
-  lists, so each opens short and all four are in reach. The fold of acts
-  drafts only restate keeps twenty — it is opened on purpose.
+- **`/eu-recht`'s five lists open with five rows and step by ten**
+  (16.11.2026, `EU_OVERVIEW_LIST_INITIAL`): the page is an overview of
+  lists, so each opens short and all are in reach.
 - **An EU act has a rail of its own, read from the Cellar** (15.11.2026,
   `server/utils/eu/cellarDossier.ts`, `app/utils/euRail.ts`; facts in
   `docs/research/eu-zyklus.md`, plan in

@@ -1,7 +1,7 @@
 <script setup lang="ts">
 /**
- * One act in the EU overview's lists (`/eu-recht`): the main list and the
- * fold of acts drafts only restate share it, so the two read alike.
+ * One act in the EU overview's lists (`/eu-recht`): the map and the
+ * section of acts drafts only restate share it, so the two read alike.
  *
  * The list row's anatomy (`EntryItem`): the whole row is the link, the
  * label ink and underlined under the pointer, the ground tinted — never a

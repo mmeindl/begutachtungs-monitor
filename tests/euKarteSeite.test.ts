@@ -16,7 +16,6 @@ import {
   incompleteNoteDe,
   laneNameOf,
   restatingCountsDe,
-  restatingFoldHeading,
 } from '../app/utils/euKarte'
 import type { EuActDraft, EuActResponse, EuActsResponse } from '../shared/types/eu'
 import type { LandCode } from '../shared/types/laender'
@@ -368,7 +367,7 @@ describe('the fold of acts drafts only restate', () => {
   })
 
   it('gives the rows the overview\'s anatomy and order; a directive without a date says „keine bekannt"', () => {
-    expect(euRestatingRows({ restatingOnly: restating })).toEqual([
+    expect(euRestatingRows({ restatingOnly: restating }, '2026-11-16')).toEqual([
       { key: '32009L0043', label: 'Richtlinie 2009/43/EG', path: '/eu-recht/richtlinie/2009/43', subject: null, state: { label: 'Umsetzungsfrist', detail: 'bis 30.06.2011', tone: 'inactive', actionable: false }, counts: 'wiederholt in 3 Entwürfen des Bundes · 1 Entwurf der Länder', lands: ['Salzburg'], drafts: { value: '4', counted: true, detail: 'Bund 3 · Länder 1', said: 'wiederholt in 3 Entwürfen des Bundes · 1 Entwurf der Länder (Salzburg)' }, landsLine: 'Länder: Salzburg' },
       { key: '32014L0024', label: 'Richtlinie 2014/24/EU', path: '/eu-recht/richtlinie/2014/24', subject: null, state: { label: 'Umsetzungsfrist', detail: 'keine bekannt', tone: 'inactive', actionable: false }, counts: 'wiederholt in 2 Entwürfen der Länder', lands: ['Burgenland', 'Kärnten'], drafts: { value: '2', counted: true, detail: 'Länder', said: 'wiederholt in 2 Entwürfen der Länder (Burgenland, Kärnten)' }, landsLine: 'Länder: Burgenland, Kärnten' },
       { key: '32016R0679', label: 'Verordnung (EU) 2016/679', path: '/eu-recht/verordnung/2016/679', subject: null, state: { label: 'Gilt unmittelbar', detail: 'keine Umsetzungsfrist', tone: 'inactive', actionable: false }, counts: 'wiederholt in 1 Entwurf des Bundes', lands: [], drafts: { value: '1', counted: true, detail: 'Bund', said: 'wiederholt in 1 Entwurf des Bundes' }, landsLine: null },
@@ -383,8 +382,10 @@ describe('the fold of acts drafts only restate', () => {
     expect(Object.keys(euSourceUnavailable(restating, [])).sort()).toEqual(['noe', 'ooe', 'stmk', 't', 'vbg', 'w'])
   })
 
-  it('names its count in the heading, in brackets', () => {
-    expect(restatingFoldHeading(12)).toBe('Nur in Umsetzungshinweisen wiederholt (12)')
+  it('orders by the map\'s tabs in a row: running nearest first, passed most recent first, none last', () => {
+    const at = (celex: string, deadline: string | null) => ({ ...restating[0]!, celex, label: celex, transposition: deadline ? { deadline, otherDates: [] } : null })
+    const acts = [at('ohne', null), at('alt', '2011-06-30'), at('spaet', '2028-01-01'), at('neu', '2026-01-01'), at('bald', '2026-11-23')] as EuActsResponse['restatingOnly']
+    expect(euRestatingRows({ restatingOnly: acts }, '2026-11-16').map((r) => r.key)).toEqual(['bald', 'spaet', 'neu', 'alt', 'ohne'])
   })
 })
 

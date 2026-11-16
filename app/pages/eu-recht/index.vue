@@ -32,9 +32,9 @@
  *
  * THE SEARCH (06.11.2026), under the chips as on `/entwuerfe`: the label,
  * the official title and the CELEX, by the lists' word rule
- * (`matchesQuery`, `euActHaystack`). Over both lists; the fold opens while
- * it holds a hit, and under a query the lists stand uncut, the rule of every
- * list (whoever searches gets the whole result). Tabs, order and search are
+ * (`matchesQuery`, `euActHaystack`). Over the map's list only; under a
+ * query it stands uncut, the rule of every list (whoever searches gets the
+ * whole result). Tabs, order and search are
  * not in the address: the page has one list, and the chips' `?quellen=` is
  * the choice the site shares.
  *
@@ -54,11 +54,15 @@
  * monitor reads only the Begutachtungen it knows, and an absence is no
  * finding.
  *
- * APART, FOLDED: the acts drafts only restate. An amendment restates the
- * whole Umsetzungshinweis of the law it changes (rule D4), so these are
- * acts transposed before — listed so their pages are reachable, never
- * counted as implemented, and closed by default under the main list. The
- * chips filter them too; the fold goes where the selection leaves none.
+ * APART, A SECTION OF ITS OWN (16.11.2026): the acts drafts only restate.
+ * An amendment restates the whole Umsetzungshinweis of the law it changes
+ * (rule D4), so these are listed so their pages are reachable, never
+ * counted as implemented. Until then a fold under the map's box, which
+ * read as more of the same list. The site's chips select them too — one
+ * choice for the whole site — but the map's tabs, order and search stop
+ * at its heading: one fixed order (`euRestatingRows`), five rows and ten a
+ * press like the page's other lists. The section goes where the selection
+ * leaves none.
  */
 import type { EuActSummary, EuActsResponse } from '#shared/types'
 import { risSource, eurLexSource, sourceItemsDe } from '#shared/utils/provenance'
@@ -68,7 +72,7 @@ import { matchesQuery } from '#shared/utils/textMatch'
 import { countLabelDe, todayIso } from '#shared/utils/format'
 import { listBoxStatusOf } from '~/utils/listState'
 import { WEGE_PAGES } from '~/utils/wege'
-import { EU_OVERVIEW_LIST_INITIAL, EU_OVERVIEW_LIST_STEP, EU_ACTS_COLUMN_DE, EU_ACTS_SORT_DE, deadlineDirection, deadlineOrderDe, euActOwnDirection, deadlineReverseOrderDe, deadlineTabOf, euActHaystack, euActsRows, euRestatingRows, euSourceUnavailable, filterEuActs, incompleteNoteDe, restatingFoldHeading, type EuActSort, type EuDeadlineTab } from '~/utils/euKarte'
+import { EU_OVERVIEW_LIST_INITIAL, EU_OVERVIEW_LIST_STEP, EU_ACTS_COLUMN_DE, EU_ACTS_SORT_DE, deadlineDirection, deadlineOrderDe, euActOwnDirection, deadlineReverseOrderDe, deadlineTabOf, euActHaystack, euActsRows, EU_RESTATING_DE, euRestatingRows, euSourceUnavailable, filterEuActs, incompleteNoteDe, type EuActSort, type EuDeadlineTab } from '~/utils/euKarte'
 
 usePageSeo({
   title: EU_PAGE_TITLE_DE,
@@ -94,7 +98,7 @@ const listState = computed(() => listBoxStatusOf({ status: status.value, error: 
 /* The site's choice of sources, never empty (`useSourceChoice`). */
 const { chosen, bund, toggle } = useSourceChoice()
 
-// A Land whose drafts only restate acts is available too: the chips filter both lists.
+// A Land whose drafts only restate acts is available too: the chips select both lists.
 const sourceUnavailable = computed(() =>
   data.value ? euSourceUnavailable([...data.value.acts, ...data.value.restatingOnly], data.value.incomplete) : {})
 const allRows = computed(() => (data.value ? euActsRows(data.value) : []))
@@ -106,7 +110,6 @@ const query = computed(() => q.value.trim())
 const narrowed = <A extends EuActSummary>(acts: readonly A[]): A[] =>
   filterEuActs(acts, chosen.value).filter((a) => !query.value || matchesQuery(euActHaystack(a), query.value))
 const actsLeft = computed(() => (data.value ? narrowed(data.value.acts) : []))
-const restatingLeft = computed(() => (data.value ? narrowed(data.value.restatingOnly) : []))
 
 /* The tabs, on the main list's acts, and the order; a tab opens in its own order. */
 const today = todayIso()
@@ -150,35 +153,29 @@ const TAB_LABEL: Record<EuDeadlineTab, string> = { laufend: 'Frist läuft', abge
 const TABS = (['laufend', 'abgelaufen', 'ohne'] as const).map((value) => ({ value, label: TAB_LABEL[value] }))
 const inTab = <A extends EuActSummary>(acts: readonly A[]): A[] => acts.filter((a) => deadlineTabOf(a, today) === tab.value)
 const rows = computed(() => euActsRows({ acts: inTab(actsLeft.value) }, sort.value, direction.value, tieDirection.value))
-/* The fold follows the main list's order; under „Entwürfe" its own column („Wiederholt in", drafts too) orders it. */
-const restatingRows = computed(() => euRestatingRows({ restatingOnly: inTab(restatingLeft.value) }, sort.value, direction.value, tieDirection.value))
+/* The acts drafts only restate: the chips alone, in their section's own order. */
+const restatingRows = computed(() => (data.value ? euRestatingRows({ restatingOnly: filterEuActs(data.value.restatingOnly, chosen.value) }, today) : []))
 
 /*
  * Where a search's hits went, when the tab shows none: the tabs carry no
- * counts, so the notice names them — another tab of the main list first,
- * then the fold (the GDPR, restated by many drafts), in this tab or another.
+ * counts, so the notice names them.
  */
 const hitsElsewhere = computed(() => {
   const tabOf = (acts: readonly EuActSummary[]) => (['laufend', 'abgelaufen', 'ohne'] as const).filter((t) => acts.some((a) => deadlineTabOf(a, today) === t))
   const main = tabOf(actsLeft.value)
-  if (main.length) return `Treffer unter ${main.map((t) => `„${TAB_LABEL[t]}“`).join(' und ')}.`
-  if (restatingRows.value.length) return 'Treffer unter „Nur in Umsetzungshinweisen wiederholt“.'
-  const fold = tabOf(restatingLeft.value)[0]
-  return fold ? `Treffer unter „${TAB_LABEL[fold]}“, in „Nur in Umsetzungshinweisen wiederholt“.` : null
+  return main.length ? `Treffer unter ${main.map((t) => `„${TAB_LABEL[t]}“`).join(' und ')}.` : null
 })
 
 /** Five stand, ten a press, as in the page's other lists (`EU_OVERVIEW_LIST_INITIAL`) — uncut under a query. */
 const visible = ref(EU_OVERVIEW_LIST_INITIAL)
 const shown = computed(() => (query.value ? rows.value : rows.value.slice(0, visible.value)))
-/** The fold is opened on purpose: twenty stand there, twenty a press. */
-const RESTATING_STEP = 20
-const visibleRestating = ref(RESTATING_STEP)
-/* Another tab or order is a new first page (`usePagedList`'s rule), in both lists. */
+/* Another tab or order is a new first page (`usePagedList`'s rule). */
 watch([tab, sortChoice, reversed], () => {
   visible.value = EU_OVERVIEW_LIST_INITIAL
-  visibleRestating.value = RESTATING_STEP
 })
-const shownRestating = computed(() => (query.value ? restatingRows.value : restatingRows.value.slice(0, visibleRestating.value)))
+/** The acts drafts only restate: five stand, ten a press, as the page's other lists. */
+const visibleRestating = ref(EU_OVERVIEW_LIST_INITIAL)
+const shownRestating = computed(() => restatingRows.value.slice(0, visibleRestating.value))
 
 /*
  * The credit line, as under a draft's EU fact (`EntwurfFrame`): what the
@@ -254,7 +251,7 @@ const [bundItem, eurLexItem] = sourceItemsDe([risSource('Vorblatt'), risSource('
             type="search"
             :maxlength="MAX_LIST_QUERY_CHARS"
             icon="i-lucide-search"
-            :placeholder="data ? `In ${countLabelDe(filterEuActs([...data.acts, ...data.restatingOnly], chosen).length, 'Rechtsakt', 'Rechtsakten')} suchen …` : 'Rechtsakte durchsuchen …'"
+            :placeholder="data ? `In ${countLabelDe(filterEuActs(data.acts, chosen).length, 'Rechtsakt', 'Rechtsakten')} suchen …` : 'Rechtsakte durchsuchen …'"
             aria-label="Rechtsakte durchsuchen"
             :disabled="!data"
             class="w-full"
@@ -348,29 +345,6 @@ const [bundItem, eurLexItem] = sourceItemsDe([risSource('Vorblatt'), risSource('
           @all="visible = rows.length"
         />
       </ListBox>
-      <!-- The acts drafts only restate (D4): apart, closed, the same rows. -->
-      <FoldSection v-if="restatingRows.length" :heading="restatingFoldHeading(restatingRows.length)" :open="!!query" class="mt-6">
-        <div class="pb-2">
-          <ListBox>
-            <ColumnHeader class="gap-4 md:flex">
-              <ColumnLabel :label="EU_ACTS_COLUMN_DE.act" class="min-w-0 flex-1" />
-              <ColumnLabel :label="EU_ACTS_COLUMN_DE.restating" align="end" class="entry-col-count flex justify-end whitespace-nowrap" />
-              <ColumnLabel :label="EU_ACTS_COLUMN_DE.deadline" align="end" class="entry-col-state flex justify-end" />
-            </ColumnHeader>
-            <ul role="list" class="divide-y divide-hairline">
-              <EuActRow v-for="row in shownRestating" :key="row.key" :row="row" level="h4" />
-            </ul>
-            <ListMore
-              v-if="!query"
-              :visible="visibleRestating"
-              :total="restatingRows.length"
-              :step="RESTATING_STEP"
-              @more="visibleRestating += RESTATING_STEP"
-              @all="visibleRestating = restatingRows.length"
-            />
-          </ListBox>
-        </div>
-      </FoldSection>
       <SectionCredits :sources="[]" :marked="false">
         <span>Quellen:</span>
         <span>{{ bundItem }}</span>
@@ -401,5 +375,39 @@ const [bundItem, eurLexItem] = sourceItemsDe([risSource('Vorblatt'), risSource('
         title="Kein Entwurf dieser Periode setzt einen Rechtsakt um, den der Monitor kennt."
       />
     </template>
+
+    <!-- The acts drafts only restate (D4), a section of its own
+         (16.11.2026): the site's chips select it, the map's tabs, order
+         and search stop at its heading. -->
+    <section v-if="restatingRows.length" aria-labelledby="eu-wiederholt-heading" class="page-section">
+      <h2 id="eu-wiederholt-heading" class="section-heading">{{ EU_RESTATING_DE.heading }}</h2>
+      <p class="mt-2 text-ink-secondary">
+        {{ EU_RESTATING_DE.lede }}
+      </p>
+      <ListBox class="mt-4">
+        <ColumnHeader class="gap-4 md:flex">
+          <ColumnLabel :label="EU_ACTS_COLUMN_DE.act" class="min-w-0 flex-1" />
+          <ColumnLabel :label="EU_ACTS_COLUMN_DE.restating" align="end" class="entry-col-count flex justify-end whitespace-nowrap" />
+          <ColumnLabel :label="EU_ACTS_COLUMN_DE.deadline" align="end" class="entry-col-state flex justify-end" />
+        </ColumnHeader>
+        <ul role="list" class="divide-y divide-hairline">
+          <EuActRow v-for="row in shownRestating" :key="row.key" :row="row" />
+        </ul>
+        <ListMore
+          :visible="visibleRestating"
+          :total="restatingRows.length"
+          :initial="EU_OVERVIEW_LIST_INITIAL"
+          :step="EU_OVERVIEW_LIST_STEP"
+          @more="visibleRestating += EU_OVERVIEW_LIST_STEP"
+          @all="visibleRestating = restatingRows.length"
+        />
+      </ListBox>
+      <SectionCredits :sources="[]" :marked="false">
+        <span>Quellen:</span>
+        <span>{{ bundItem }}</span>
+        <span>Dokumente der Länder</span>
+        <span>{{ eurLexItem }}</span>
+      </SectionCredits>
+    </section>
   </div>
 </template>

@@ -24,10 +24,10 @@ import { countCell, draftsWhoseDe, type EuCountCell } from './euCountCell'
 import { SUPERSCRIPT, dateRangeDe, dayOf, edgeAlign, laneBarOf, type EuChartView } from './euRecht'
 
 /**
- * The paging of the overview's four lists (windows, initiatives,
- * directives, acts; 16.11.2026): five rows stand, each press of
- * `ListMore` adds ten. The page is an overview of four lists, so each
- * opens short and all four are in reach. Uncut under a query, as before.
+ * The paging of the overview's five lists (windows, initiatives,
+ * directives, acts, acts only restated; 16.11.2026): five rows stand, each
+ * press of `ListMore` adds ten. The page is an overview of lists, so each
+ * opens short and all are in reach. Uncut under a query, as before.
  */
 export const EU_OVERVIEW_LIST_INITIAL = 5
 export const EU_OVERVIEW_LIST_STEP = 10
@@ -57,8 +57,8 @@ export function countsDe(counts: { bund: number; laender: number }): string {
 
 /**
  * „wiederholt in 3 Entwürfen des Bundes · 1 Entwurf der Länder" — the
- * counts line of an act only restating drafts name (the overview's fold,
- * `EuActsResponse.restatingOnly`). Drafts, never Länder, as in `countsDe`;
+ * counts line of an act only restating drafts name (its own section under
+ * the map, `EuActsResponse.restatingOnly`). Drafts, never Länder, as in `countsDe`;
  * the dative after „in".
  */
 export function restatingCountsDe(counts: { bund: number; laender: number }): string {
@@ -88,7 +88,7 @@ export interface EuActsRowView {
    * transposed in time is nothing the monitor can see.
    */
   state: EntryState
-  /** „1 Entwurf des Bundes · 3 Entwürfe der Länder" (`countsDe`); in the fold „wiederholt in …" (`restatingCountsDe`). */
+  /** „1 Entwurf des Bundes · 3 Entwürfe der Länder" (`countsDe`); under the acts drafts only restate „wiederholt in …" (`restatingCountsDe`). */
   counts: string
   /** The Länder with an implementing draft, by name, in display order. */
   lands: string[]
@@ -247,16 +247,33 @@ export function euActsRows(r: Pick<EuActsResponse, 'acts'>, sort: EuActSort = 'f
 }
 
 /**
- * The fold's rows under the overview — the acts drafts only restate, the
- * same anatomy and order, the counts as „wiederholt in …" (`restatingCountsDe`).
+ * The section of acts drafts only restate (rule D4), a list of its own
+ * under the map (16.11.2026): an amendment repeats the Umsetzungshinweis
+ * of the law it changes, so these acts are listed to keep their pages
+ * reachable, never counted as implemented. Until then a fold under the
+ * map's box, which read as more of the same list.
  */
-export function euRestatingRows(r: Pick<EuActsResponse, 'restatingOnly'>, sort: EuActSort = 'frist', direction: 'auf' | 'ab' = 'auf', tieDirection: 'auf' | 'ab' = 'auf'): EuActsRowView[] {
-  return [...r.restatingOnly].sort(euActComparator(sort, direction, tieDirection)).map((a) => actsRowOf(a, restatingCountsDe(a.counts)))
-}
+export const EU_RESTATING_DE = {
+  heading: 'Rechtsakte, die Entwürfe nur wiederholt nennen',
+  lede: 'Ein Entwurf, der ein Gesetz ändert, wiederholt dessen Hinweis auf umgesetztes EU-Recht; die Liste darüber zählt diese Rechtsakte deshalb nicht.',
+} as const
 
-/** „Nur in Umsetzungshinweisen wiederholt (12)" — the fold's heading, the count in brackets as the site's folds have it. */
-export function restatingFoldHeading(count: number): string {
-  return `Nur in Umsetzungshinweisen wiederholt (${count})`
+/**
+ * The section's rows, the overview's anatomy, the counts as „wiederholt
+ * in …" (`restatingCountsDe`). No tabs and no order to choose: the three
+ * tabs of the map in a row — what runs, nearest first; what passed, most
+ * recent first; acts without a deadline last — ties by name A–Z.
+ */
+export function euRestatingRows(r: Pick<EuActsResponse, 'restatingOnly'>, today: string): EuActsRowView[] {
+  const rank: Record<EuDeadlineTab, number> = { laufend: 0, abgelaufen: 1, ohne: 2 }
+  const tabs = new Map(r.restatingOnly.map((a) => [a, deadlineTabOf(a, today)]))
+  return [...r.restatingOnly]
+    .sort((a, b) => {
+      const ta = tabs.get(a)!
+      const tb = tabs.get(b)!
+      return rank[ta] - rank[tb] || byDeadline(deadlineDirection(ta))(a, b)
+    })
+    .map((a) => actsRowOf(a, restatingCountsDe(a.counts)))
 }
 
 /**
