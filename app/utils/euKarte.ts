@@ -148,11 +148,35 @@ export function deadlineTabOf(a: Pick<EuActSummary, 'transposition'>, today: str
 
 /**
  * The overview's orders, one per column as on every list (`SortHeader`,
- * 06.11.2026): by deadline, or by the act's name. The tab gives the
- * deadline its own direction (`deadlineDirection`), a second click on the
- * column turns it round, as it turns the names to Z–A.
+ * 06.11.2026): by deadline, by the act's name, or (16.11.2026) by the
+ * number of drafts, Bund and Länder together, most first — ties by the
+ * tab's deadline order. The tab gives the deadline its own direction
+ * (`deadlineDirection`), a second click on the column turns it round, as
+ * it turns the names to Z–A and the drafts to fewest first.
  */
-export type EuActSort = 'frist' | 'name'
+export type EuActSort = 'frist' | 'name' | 'entwuerfe'
+
+/** Each order's own direction before a reversal: names A–Z, drafts most first, the deadline the tab's. */
+export function euActOwnDirection(sort: EuActSort, tab: EuDeadlineTab): 'auf' | 'ab' {
+  return sort === 'name' ? 'auf' : sort === 'entwuerfe' ? 'ab' : deadlineDirection(tab)
+}
+
+/** The overview's sort words: the buttons' order words and the phone's options. */
+export const EU_ACTS_SORT_DE = {
+  label: 'Sortieren',
+  order: {
+    name: ['A–Z', 'Z–A'],
+    drafts: ['meiste zuerst', 'wenigste zuerst'],
+  },
+  options: {
+    deadline: {
+      laufend: ['Nächste Frist zuerst', 'Späteste Frist zuerst'],
+      abgelaufen: ['Zuletzt abgelaufene zuerst', 'Am längsten abgelaufene zuerst'],
+    },
+    drafts: ['Meiste Entwürfe zuerst', 'Wenigste Entwürfe zuerst'],
+    name: ['Name A–Z', 'Name Z–A'],
+  },
+} as const
 
 /** What runs, nearest first; what passed, most recent first. */
 export function deadlineDirection(tab: EuDeadlineTab): 'auf' | 'ab' {
@@ -176,9 +200,10 @@ export function deadlineReverseOrderDe(tab: EuDeadlineTab): string {
 const byName = (a: Pick<EuActSummary, 'label' | 'celex'>, b: Pick<EuActSummary, 'label' | 'celex'>): number =>
   a.label.localeCompare(b.label, 'de', { numeric: true }) || a.celex.localeCompare(b.celex)
 
-/** One order as a comparator, `ab` the names Z–A; acts without a deadline last either way, ties by name A–Z. */
-export function euActComparator(sort: EuActSort, direction: 'auf' | 'ab' = 'auf'): (a: Pick<EuActSummary, 'transposition' | 'label' | 'celex'>, b: Pick<EuActSummary, 'transposition' | 'label' | 'celex'>) => number {
-  if (sort === 'name') return direction === 'auf' ? byName : (a, b) => byName(b, a)
+type ActSortable = Pick<EuActSummary, 'transposition' | 'label' | 'celex' | 'counts'>
+
+/** By deadline in `direction`, acts without one last either way, ties by name A–Z. */
+function byDeadline(direction: 'auf' | 'ab'): (a: ActSortable, b: ActSortable) => number {
   return (a, b) => {
     const da = a.transposition?.deadline ?? null
     const db = b.transposition?.deadline ?? null
@@ -191,17 +216,33 @@ export function euActComparator(sort: EuActSort, direction: 'auf' | 'ab' = 'auf'
   }
 }
 
+/**
+ * One order as a comparator, `ab` the names Z–A and the drafts most first;
+ * acts without a deadline last either way, ties by name A–Z. The drafts'
+ * ties follow the deadline in `tieDirection` — the tab's own, whichever way
+ * the drafts are turned.
+ */
+export function euActComparator(sort: EuActSort, direction: 'auf' | 'ab' = 'auf', tieDirection: 'auf' | 'ab' = 'auf'): (a: ActSortable, b: ActSortable) => number {
+  if (sort === 'name') return direction === 'auf' ? byName : (a, b) => byName(b, a)
+  if (sort === 'entwuerfe') {
+    const tie = byDeadline(tieDirection)
+    const total = (x: ActSortable) => x.counts.bund + x.counts.laender
+    return (a, b) => (direction === 'ab' ? total(b) - total(a) : total(a) - total(b)) || tie(a, b)
+  }
+  return byDeadline(direction)
+}
+
 /** The overview's rows, in the order chosen (`euActComparator`). */
-export function euActsRows(r: Pick<EuActsResponse, 'acts'>, sort: EuActSort = 'frist', direction: 'auf' | 'ab' = 'auf'): EuActsRowView[] {
-  return [...r.acts].sort(euActComparator(sort, direction)).map((a) => actsRowOf(a, countsDe(a.counts)))
+export function euActsRows(r: Pick<EuActsResponse, 'acts'>, sort: EuActSort = 'frist', direction: 'auf' | 'ab' = 'auf', tieDirection: 'auf' | 'ab' = 'auf'): EuActsRowView[] {
+  return [...r.acts].sort(euActComparator(sort, direction, tieDirection)).map((a) => actsRowOf(a, countsDe(a.counts)))
 }
 
 /**
  * The fold's rows under the overview — the acts drafts only restate, the
  * same anatomy and order, the counts as „wiederholt in …" (`restatingCountsDe`).
  */
-export function euRestatingRows(r: Pick<EuActsResponse, 'restatingOnly'>, sort: EuActSort = 'frist', direction: 'auf' | 'ab' = 'auf'): EuActsRowView[] {
-  return [...r.restatingOnly].sort(euActComparator(sort, direction)).map((a) => actsRowOf(a, restatingCountsDe(a.counts)))
+export function euRestatingRows(r: Pick<EuActsResponse, 'restatingOnly'>, sort: EuActSort = 'frist', direction: 'auf' | 'ab' = 'auf', tieDirection: 'auf' | 'ab' = 'auf'): EuActsRowView[] {
+  return [...r.restatingOnly].sort(euActComparator(sort, direction, tieDirection)).map((a) => actsRowOf(a, restatingCountsDe(a.counts)))
 }
 
 /** „Nur in Umsetzungshinweisen wiederholt (12)" — the fold's heading, the count in brackets as the site's folds have it. */

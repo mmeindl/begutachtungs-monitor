@@ -5,7 +5,7 @@ import { OPEN_WINDOWS_MAX_PAGES, OPEN_WINDOW_FIELDS, OPEN_WINDOW_STATUS_FIELDS, 
 import { buildIcsCalendar, buildRssFeed, buildSitemap } from '../server/utils/feeds'
 import { euInitiativeId, euInitiativePath } from '../shared/utils/eu'
 import { actTypeDe, windowStageDe } from '../shared/utils/euPortal'
-import { EU_FENSTER_DE, euFensterView } from '../app/utils/euFenster'
+import { EU_FENSTER_DE, euFensterView, sortFensterRows } from '../app/utils/euFenster'
 import { euInitiativeView, feedbackQuoteOf } from '../app/utils/euInitiative'
 import { feedbackBlocksOf } from '../app/utils/euFeedback'
 
@@ -182,6 +182,21 @@ describe('the list on /eu-recht', () => {
     expect(euFensterView(response(null)).tabs).toBeNull()
     expect(euFensterView(response([])).tabs!.alle).toEqual([])
     expect(euFensterView(response(list, { read: 300, total: 320 })).cut).toBe('Das Portal zählt 320 Vorhaben mit offener Frist; der Monitor liest davon die ersten 300.')
+  })
+
+  it('orders by closing day or by title, each reversible; a window without a day stays last both ways', () => {
+    const w = (id: number, title: string, end: string | null): EuOpenInitiative => ({ id, reference: null, actType: null, title, titleIsGerman: true, topics: [], windows: [{ stage: 'OPC_LAUNCHED', start: null, end }] })
+    const rows = euFensterView(response([w(1, 'Zölle', '2027-02-01'), w(2, 'Änderung der Abfallrichtlinie', null), w(3, 'Bahn', '2026-12-01'), w(4, 'Ozean', '2027-01-01')])).tabs!.alle
+    const ids = (sort: 'ende' | 'titel', reversed: boolean) => sortFensterRows(rows, sort, reversed).map((r) => r.key.split('|')[0])
+    // The view's own order is the closing day's, nearest first.
+    expect(rows.map((r) => r.key.split('|')[0])).toEqual(['3', '4', '1', '2'])
+    expect(ids('ende', false)).toEqual(['3', '4', '1', '2'])
+    expect(ids('ende', true)).toEqual(['1', '4', '3', '2'])
+    // German collation: „Ä" with „A", before „B".
+    expect(ids('titel', false)).toEqual(['2', '3', '4', '1'])
+    expect(ids('titel', true)).toEqual(['1', '4', '3', '2'])
+    // The view's rows are untouched.
+    expect(rows.map((r) => r.key.split('|')[0])).toEqual(['3', '4', '1', '2'])
   })
 
   it('says no verdict and ranks nothing: the days left are the reader\'s own deadline, as in the draft list', () => {

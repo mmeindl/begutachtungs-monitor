@@ -3,8 +3,14 @@
  * „Jetzt unterstützbar: Europäische Bürgerinitiativen" on `/eu-recht`
  * (step 5 of the EU cycle, 15.11.2026): every initiative the register lists
  * in collection today, by the last day of its collection (`euEciListView`,
- * which holds every word and the rule: dates, no order by supporters, no
- * threshold).
+ * which holds every word and the rule: dates first, no threshold).
+ *
+ * The order in the column header (`ColumnLabel`, `useReversibleSort`, as
+ * every list, 16.11.2026): „Sammlung" by the last day (the opening order),
+ * „Initiative" by title, „Unterstützungen" by the register's count — as
+ * the draft list's Stellungnahmen column orders it — each turned round by
+ * a second click; on a phone a select beside the count. A new order is a
+ * new first page.
  *
  * The row grammar of `EuFensterList`: the list box, the rows whole links
  * to the initiative's page here — the way to the collection system is that
@@ -22,15 +28,31 @@
  * dropped).
  */
 import type { EuBuergerinitiativenResponse } from '#shared/types'
-import { EU_ECI_LIST_DE as DE, euEciListView } from '~/utils/euEciList'
+import { EU_ECI_LIST_DE as DE, euEciListView, sortEciRows, type EuEciSort } from '~/utils/euEciList'
+import { reversedOption } from '~/composables/useReversibleSort'
 
 const { data, status, error, refresh } = useFetch<EuBuergerinitiativenResponse>('/api/eu-recht/buergerinitiativen', { lazy: true })
 
 const view = computed(() => (data.value ? euEciListView(data.value) : null))
 
+const sort = ref<EuEciSort>('ende')
+const reversed = ref(false)
+const { choose, selectValue: sortSelect } = useReversibleSort(sort, reversed)
+const sortOptions = [
+  { value: 'ende', label: DE.sortOptions.end },
+  { value: reversedOption('ende'), label: DE.sortOptions.endReversed },
+  { value: 'titel', label: DE.sortOptions.title },
+  { value: reversedOption('titel'), label: DE.sortOptions.titleReversed },
+  { value: 'unterstuetzungen', label: DE.sortOptions.supporters },
+  { value: reversedOption('unterstuetzungen'), label: DE.sortOptions.supportersReversed },
+]
+const sortId = useId()
+const rows = computed(() => sortEciRows(view.value?.rows ?? [], sort.value, reversed.value))
+
 const STEP = 20
 const visible = ref(STEP)
-const shown = computed(() => (view.value?.rows ?? []).slice(0, visible.value))
+watch([sort, reversed], () => { visible.value = STEP })
+const shown = computed(() => rows.value.slice(0, visible.value))
 </script>
 
 <template>
@@ -58,14 +80,42 @@ const shown = computed(() => (view.value?.rows ?? []).slice(0, visible.value))
         <div v-else-if="list.rows" class="mt-4">
           <ListBox>
             <template #header>
-              <p class="text-sm text-ink-muted">
-                {{ DE.count(list.rows.length) }} · {{ DE.countSource }}
-              </p>
+              <!-- The count line, and on a phone the order beside it: from `md` the column header orders. -->
+              <div class="flex flex-wrap items-center justify-between gap-x-4 gap-y-2">
+                <p class="text-sm text-ink-muted">
+                  {{ DE.count(list.rows.length) }} · {{ DE.countSource }}
+                </p>
+                <div v-if="list.rows.length > 1" class="flex min-w-0 items-center gap-2 md:hidden">
+                  <label :for="sortId" class="shrink-0 text-sm text-ink-secondary">{{ DE.sortLabel }}</label>
+                  <TokenSelect :id="sortId" v-model="sortSelect">
+                    <TokenOption v-for="opt in sortOptions" :key="opt.value" :value="opt.value">
+                      {{ opt.label }}
+                    </TokenOption>
+                  </TokenSelect>
+                </div>
+              </div>
             </template>
-            <ColumnHeader class="gap-4 md:flex">
-              <ColumnLabel :label="DE.column.title" class="min-w-0 flex-1" />
-              <ColumnLabel :label="DE.column.supporters" align="end" class="entry-col-count flex justify-end whitespace-nowrap" />
-              <ColumnLabel :label="DE.column.end" align="end" class="entry-col-state flex justify-end" />
+            <ColumnHeader :sortable="list.rows.length > 1" class="gap-4 md:flex">
+              <ColumnLabel
+                :label="DE.column.title"
+                :sort="list.rows.length > 1 ? { order: DE.order.title[0], reverseOrder: DE.order.title[1], active: sort === 'titel', reversed } : null"
+                class="min-w-0 flex-1"
+                @choose="choose('titel')"
+              />
+              <ColumnLabel
+                :label="DE.column.supporters"
+                :sort="list.rows.length > 1 ? { order: DE.order.supporters[0], reverseOrder: DE.order.supporters[1], active: sort === 'unterstuetzungen', reversed } : null"
+                align="end"
+                class="entry-col-count flex justify-end whitespace-nowrap"
+                @choose="choose('unterstuetzungen')"
+              />
+              <ColumnLabel
+                :label="DE.column.end"
+                :sort="list.rows.length > 1 ? { order: DE.order.end[0], reverseOrder: DE.order.end[1], active: sort === 'ende', reversed } : null"
+                align="end"
+                class="entry-col-state flex justify-end"
+                @choose="choose('ende')"
+              />
             </ColumnHeader>
             <ul role="list" class="divide-y divide-hairline">
               <li v-for="row in shown" :key="row.key">

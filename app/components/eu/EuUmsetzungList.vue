@@ -11,7 +11,13 @@
  * (`EuActRow`'s anatomy), the pager at its foot, the credit line with
  * „Methode" under it. The two observations stand in columns of their own,
  * where the draft list keeps its Stellungnahmen (`entry-col-count`): a
- * number, or a word for none and for unknown. The columns do not sort.
+ * number, or a word for none and for unknown. These two columns do not
+ * sort (rule D6): the list is never ordered by what is missing. The
+ * deadline and the directive's name do (`EU_UMSETZUNG_SORT_COLUMNS`,
+ * `useReversibleSort`, 16.11.2026): the deadline in the tab's own
+ * direction — running nearest first, passed most recent first — the name
+ * A–Z, each turned round by a second click; on a phone a select beside the
+ * count. A new order is a new first page, as a new tab is.
  * Below `md` a row is a card and says each observation in words. The Commission's delegated and implementing
  * directives stay behind a chip that is off: they are a quarter of the
  * list and mostly change technical annexes; the chip says how many there
@@ -21,7 +27,8 @@ import type { EuUmsetzungResponse } from '#shared/types'
 import { MAX_LIST_QUERY_CHARS } from '#shared/utils/queryParams'
 import { matchesQuery } from '#shared/utils/textMatch'
 import { todayIso } from '#shared/utils/format'
-import { EU_UMSETZUNG_DE as DE, euUmsetzungView, type EuUmsetzungTab } from '~/utils/euUmsetzung'
+import { EU_UMSETZUNG_DE as DE, EU_UMSETZUNG_SORT_COLUMNS as SORTS, euUmsetzungView, sortUmsetzungRows, type EuUmsetzungSort, type EuUmsetzungTab } from '~/utils/euUmsetzung'
+import { reversedOption } from '~/composables/useReversibleSort'
 
 const { data, status, error, refresh } = useFetch<EuUmsetzungResponse>('/api/eu-recht/umsetzung', { lazy: true })
 
@@ -33,13 +40,29 @@ const withCommission = ref(false)
 const q = ref('')
 const query = computed(() => q.value.trim())
 
-const rows = computed(() => (view.value?.tabs?.[tab.value] ?? [])
-  .filter((r) => withCommission.value || !r.commission)
-  .filter((r) => !query.value || matchesQuery(r.haystack, query.value)))
+const sort = ref<EuUmsetzungSort>('frist')
+const reversed = ref(false)
+const { choose, selectValue: sortSelect } = useReversibleSort(sort, reversed)
+const sortOptions = computed(() => [
+  { value: 'frist', label: DE.sortOptions.deadline[tab.value][0] },
+  { value: reversedOption('frist'), label: DE.sortOptions.deadline[tab.value][1] },
+  { value: 'name', label: DE.sortOptions.name },
+  { value: reversedOption('name'), label: DE.sortOptions.nameReversed },
+])
+const sortId = useId()
+
+const rows = computed(() => sortUmsetzungRows(
+  (view.value?.tabs?.[tab.value] ?? [])
+    .filter((r) => withCommission.value || !r.commission)
+    .filter((r) => !query.value || matchesQuery(r.haystack, query.value)),
+  sort.value,
+  tab.value,
+  reversed.value,
+))
 
 const STEP = 20
 const visible = ref(STEP)
-watch([tab, withCommission], () => { visible.value = STEP })
+watch([tab, withCommission, sort, reversed], () => { visible.value = STEP })
 const shown = computed(() => (query.value ? rows.value : rows.value.slice(0, visible.value)))
 </script>
 
@@ -82,9 +105,20 @@ const shown = computed(() => (query.value ? rows.value : rows.value.slice(0, vis
                 class="w-full"
                 :ui="{ base: 'min-h-target' }"
               />
-              <p class="text-sm text-ink-muted" aria-live="polite">
-                {{ DE.count(rows.length) }}
-              </p>
+              <!-- The count line, and on a phone the order beside it: from `md` the column header orders. -->
+              <div class="flex flex-wrap items-center justify-between gap-x-4 gap-y-2">
+                <p class="text-sm text-ink-muted" aria-live="polite">
+                  {{ DE.count(rows.length) }}
+                </p>
+                <div v-if="rows.length > 1" class="flex min-w-0 items-center gap-2 md:hidden">
+                  <label :for="sortId" class="shrink-0 text-sm text-ink-secondary">{{ DE.sortLabel }}</label>
+                  <TokenSelect :id="sortId" v-model="sortSelect">
+                    <TokenOption v-for="opt in sortOptions" :key="opt.value" :value="opt.value">
+                      {{ opt.label }}
+                    </TokenOption>
+                  </TokenSelect>
+                </div>
+              </div>
             </template>
             <ListBoxNotice
               v-if="!rows.length && query"
@@ -98,11 +132,23 @@ const shown = computed(() => (query.value ? rows.value : rows.value.slice(0, vis
             </ListBoxNotice>
             <ListBoxNotice v-else-if="!rows.length" :title="DE.empty(tab)" />
             <template v-else>
-              <ColumnHeader class="gap-4 md:flex">
-                <ColumnLabel :label="DE.column.directive" class="min-w-0 flex-1" />
+              <!-- „Entwürfe" and „Gemeldet" are plain labels: they order nothing (rule D6). -->
+              <ColumnHeader :sortable="rows.length > 1" class="gap-4 md:flex">
+                <ColumnLabel
+                  :label="DE.column.directive"
+                  :sort="rows.length > 1 ? { order: DE.order.name[0], reverseOrder: DE.order.name[1], active: sort === SORTS.directive, reversed } : null"
+                  class="min-w-0 flex-1"
+                  @choose="choose(SORTS.directive!)"
+                />
                 <ColumnLabel :label="DE.column.drafts" align="end" class="entry-col-count flex justify-end whitespace-nowrap" />
                 <ColumnLabel :label="DE.column.measures" align="end" class="entry-col-count flex justify-end whitespace-nowrap" />
-                <ColumnLabel :label="DE.column.deadline" align="end" class="entry-col-state flex justify-end" />
+                <ColumnLabel
+                  :label="DE.column.deadline"
+                  :sort="rows.length > 1 ? { order: DE.order.deadline[tab][0], reverseOrder: DE.order.deadline[tab][1], active: sort === SORTS.deadline, reversed } : null"
+                  align="end"
+                  class="entry-col-state flex justify-end"
+                  @choose="choose(SORTS.deadline!)"
+                />
               </ColumnHeader>
               <ul role="list" class="divide-y divide-hairline">
                 <li v-for="row in shown" :key="row.key">

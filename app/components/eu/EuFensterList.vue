@@ -13,6 +13,12 @@
  * the credit line with „Methode" under it. Below `md` a row is a card and
  * says stage and act in words.
  *
+ * The order in the column header (`ColumnLabel`, `useReversibleSort`, as
+ * every list): „Rückmeldung" by closing day, „Vorhaben" by title, each
+ * turned round by a second click; on a phone a select beside the count.
+ * „Stadium" and „Vorgesehen" do not order — the tabs divide by them. A new
+ * order is a new first page, as a new tab is.
+ *
  * Three states besides the list, each its own sentence: the portal could
  * not be read (a gap sentence with the link to the portal — never an empty
  * list), the portal lists nothing open today (the portal's statement, only
@@ -21,7 +27,8 @@
 import type { EuFensterResponse } from '#shared/types'
 import { MAX_LIST_QUERY_CHARS } from '#shared/utils/queryParams'
 import { matchesQuery } from '#shared/utils/textMatch'
-import { EU_FENSTER_DE as DE, EU_FENSTER_TABS, euFensterView, type EuFensterTab } from '~/utils/euFenster'
+import { EU_FENSTER_DE as DE, EU_FENSTER_TABS, euFensterView, sortFensterRows, type EuFensterSort, type EuFensterTab } from '~/utils/euFenster'
+import { reversedOption } from '~/composables/useReversibleSort'
 
 const { data, status, error, refresh } = useFetch<EuFensterResponse>('/api/eu-recht/fenster', { lazy: true })
 
@@ -37,7 +44,22 @@ const tabs = computed(() => EU_FENSTER_TABS.map((value) => ({
 const q = ref('')
 const query = computed(() => q.value.trim())
 
-const rows = computed(() => (view.value?.tabs?.[tab.value] ?? []).filter((r) => !query.value || matchesQuery(r.haystack, query.value)))
+const sort = ref<EuFensterSort>('ende')
+const reversed = ref(false)
+const { choose, selectValue: sortSelect } = useReversibleSort(sort, reversed)
+const sortOptions = [
+  { value: 'ende', label: DE.sortOptions.end },
+  { value: reversedOption('ende'), label: DE.sortOptions.endReversed },
+  { value: 'titel', label: DE.sortOptions.title },
+  { value: reversedOption('titel'), label: DE.sortOptions.titleReversed },
+]
+const sortId = useId()
+
+const rows = computed(() => sortFensterRows(
+  (view.value?.tabs?.[tab.value] ?? []).filter((r) => !query.value || matchesQuery(r.haystack, query.value)),
+  sort.value,
+  reversed.value,
+))
 
 /* The source of its own in the feed and the calendar (`?quelle=eu`, decision 11 of the EU cycle), offered where the list is. */
 const { siteUrl } = useRuntimeConfig().public
@@ -46,7 +68,7 @@ const feedUrl = '/feed.xml?quelle=eu'
 
 const STEP = 20
 const visible = ref(STEP)
-watch(tab, () => { visible.value = STEP })
+watch([tab, sort, reversed], () => { visible.value = STEP })
 const shown = computed(() => (query.value ? rows.value : rows.value.slice(0, visible.value)))
 </script>
 
@@ -89,9 +111,20 @@ const shown = computed(() => (query.value ? rows.value : rows.value.slice(0, vis
                 class="w-full"
                 :ui="{ base: 'min-h-target' }"
               />
-              <p class="text-sm text-ink-muted" aria-live="polite">
-                {{ DE.count(rows.length) }}
-              </p>
+              <!-- The count line, and on a phone the order beside it: from `md` the column header orders. -->
+              <div class="flex flex-wrap items-center justify-between gap-x-4 gap-y-2">
+                <p class="text-sm text-ink-muted" aria-live="polite">
+                  {{ DE.count(rows.length) }}
+                </p>
+                <div v-if="rows.length > 1" class="flex min-w-0 items-center gap-2 md:hidden">
+                  <label :for="sortId" class="shrink-0 text-sm text-ink-secondary">{{ DE.sortLabel }}</label>
+                  <TokenSelect :id="sortId" v-model="sortSelect">
+                    <TokenOption v-for="opt in sortOptions" :key="opt.value" :value="opt.value">
+                      {{ opt.label }}
+                    </TokenOption>
+                  </TokenSelect>
+                </div>
+              </div>
             </template>
             <ListBoxNotice v-if="!rows.length && query" :title="DE.noMatch(tab, query)">
               <template #action>
@@ -102,11 +135,22 @@ const shown = computed(() => (query.value ? rows.value : rows.value.slice(0, vis
             </ListBoxNotice>
             <ListBoxNotice v-else-if="!rows.length" :title="DE.empty(tab)" />
             <template v-else>
-              <ColumnHeader class="gap-4 md:flex">
-                <ColumnLabel :label="DE.column.title" class="min-w-0 flex-1" />
+              <ColumnHeader :sortable="rows.length > 1" class="gap-4 md:flex">
+                <ColumnLabel
+                  :label="DE.column.title"
+                  :sort="rows.length > 1 ? { order: DE.order.title[0], reverseOrder: DE.order.title[1], active: sort === 'titel', reversed } : null"
+                  class="min-w-0 flex-1"
+                  @choose="choose('titel')"
+                />
                 <ColumnLabel :label="DE.column.stage" class="w-40 shrink-0" />
                 <ColumnLabel :label="DE.column.act" class="w-48 shrink-0" />
-                <ColumnLabel :label="DE.column.end" align="end" class="entry-col-state flex justify-end" />
+                <ColumnLabel
+                  :label="DE.column.end"
+                  :sort="rows.length > 1 ? { order: DE.order.end[0], reverseOrder: DE.order.end[1], active: sort === 'ende', reversed } : null"
+                  align="end"
+                  class="entry-col-state flex justify-end"
+                  @choose="choose('ende')"
+                />
               </ColumnHeader>
               <ul role="list" class="divide-y divide-hairline">
                 <li v-for="row in shown" :key="row.key">

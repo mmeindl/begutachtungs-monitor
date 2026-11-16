@@ -5,6 +5,7 @@ import {
   deadlineReverseOrderDe,
   deadlineTabOf,
   euActComparator,
+  euActOwnDirection,
   euActHaystack,
   euActCredits,
   euActPageView,
@@ -299,7 +300,7 @@ describe('euActsRows', () => {
 })
 
 describe('the overview\'s tabs and orders', () => {
-  const act = (celex: string, deadline: string | null, label = celex) => ({ celex, label, transposition: deadline ? { deadline, otherDates: [] } : null })
+  const act = (celex: string, deadline: string | null, label = celex, drafts = 0) => ({ celex, label, transposition: deadline ? { deadline, otherDates: [] } : null, counts: { bund: drafts, laender: 0 } })
 
   it('sorts a deadline today under „Frist läuft", a passed one under „Abgelaufen", none under „Ohne Frist"', () => {
     expect(deadlineTabOf(act('a', '2026-11-06'), '2026-11-06')).toBe('laufend')
@@ -326,6 +327,26 @@ describe('the overview\'s tabs and orders', () => {
     const acts = [act('1', null, 'Richtlinie (EU) 2024/1385'), act('2', null, 'Richtlinie (EU) 2024/927'), act('3', null, 'Delegierte Richtlinie (EU) 2024/1262')]
     expect([...acts].sort(euActComparator('name')).map((a) => a.label)).toEqual(['Delegierte Richtlinie (EU) 2024/1262', 'Richtlinie (EU) 2024/927', 'Richtlinie (EU) 2024/1385'])
     expect([...acts].sort(euActComparator('name', 'ab')).map((a) => a.label)).toEqual(['Richtlinie (EU) 2024/1385', 'Richtlinie (EU) 2024/927', 'Delegierte Richtlinie (EU) 2024/1262'])
+  })
+
+  it('orders by drafts, most first, ties in the tab\'s deadline order whichever way the drafts are turned', () => {
+    const acts = [
+      act('few', '2027-01-01', 'few', 1),
+      { ...act('many', '2028-01-01', 'many'), counts: { bund: 1, laender: 4 } },
+      act('tieLate', '2029-01-01', 'tieLate', 3),
+      act('tieSoon', '2026-12-01', 'tieSoon', 3),
+      act('tieNone', null, 'tieNone', 3),
+    ]
+    const order = (dir: 'auf' | 'ab', tie: 'auf' | 'ab') => [...acts].sort(euActComparator('entwuerfe', dir, tie)).map((a) => a.celex)
+    expect(euActOwnDirection('entwuerfe', 'laufend')).toBe('ab')
+    expect(euActOwnDirection('entwuerfe', 'ohne')).toBe('ab')
+    expect(euActOwnDirection('name', 'abgelaufen')).toBe('auf')
+    expect(euActOwnDirection('frist', 'abgelaufen')).toBe('ab')
+    // Bund and Länder together: 5 beats 3.
+    expect(order('ab', 'auf')).toEqual(['many', 'tieSoon', 'tieLate', 'tieNone', 'few'])
+    expect(order('ab', 'ab')).toEqual(['many', 'tieLate', 'tieSoon', 'tieNone', 'few'])
+    // Turned round, the ties keep the tab's order; an act without a deadline stays last among its ties.
+    expect(order('auf', 'auf')).toEqual(['few', 'tieSoon', 'tieLate', 'tieNone', 'many'])
   })
 
   it('searches the label, the official title and the CELEX', () => {

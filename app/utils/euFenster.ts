@@ -11,9 +11,15 @@
  *
  * DATES AND OBSERVATIONS, NO VERDICT (rule D6): the closing day is a date,
  * never „nur noch N Tage", and its box is the same grey on every row. No
- * count of contributions, no „most discussed", no order but the dates'
- * (plan, step 3): a count of contributions beside an open window would
- * read as a ranking of where it is worth writing.
+ * count of contributions, no „most discussed", no order by a count (plan,
+ * step 3): a count of contributions beside an open window would read as a
+ * ranking of where it is worth writing.
+ *
+ * TWO ORDERS, IN THE COLUMN HEADER (16.11.2026, `SortHeader`, as every
+ * list): the closing day, nearest first, and the title („Vorhaben") A–Z,
+ * each reversible (`euFensterComparator`). A window without a closing day
+ * stays last either way. „Stadium" and „Vorgesehen" do not order: the tabs
+ * divide by them.
  *
  * The tabs say where in the process the window sits, in the words the act's
  * rail already uses (`EU_RAIL_DE`): „Konsultation" before any proposal
@@ -63,6 +69,19 @@ const DE = {
   } as Readonly<Record<EuFensterTab, string>>,
   tabsLabel: 'Wo im Verfahren',
   column: { title: 'Vorhaben', stage: 'Stadium', act: 'Vorgesehen', end: 'Rückmeldung' },
+  sortLabel: 'Sortieren',
+  /** The sort button's words, completing its name: „Rückmeldung: nächste zuerst". */
+  order: {
+    end: ['nächste zuerst', 'späteste zuerst'],
+    title: ['A–Z', 'Z–A'],
+  },
+  /** The phone's select, one option per column and direction. */
+  sortOptions: {
+    end: 'Nächste Frist zuerst',
+    endReversed: 'Späteste Frist zuerst',
+    title: 'Vorhaben A–Z',
+    titleReversed: 'Vorhaben Z–A',
+  },
   englishTitle: 'Das Portal führt den Titel bisher nur auf Englisch',
   untitled: (id: number) => `Vorhaben Nr. ${id}`,
   said: { stage: 'Stadium', act: 'Vorgesehen' },
@@ -103,8 +122,8 @@ export interface EuFensterRowView {
   /** The closing day in the lists' state box: the days left, the day, and the tone of a Frist that is close — as a draft's row. */
   state: EntryState
   tab: Exclude<EuFensterTab, 'alle'> | null
-  /** For the sort: the ISO closing day; '9999' where none. */
-  end: string
+  /** For the sort: the ISO closing day; null where none. */
+  end: string | null
   /** What the search reads. */
   haystack: string
 }
@@ -126,9 +145,39 @@ function rowOf(i: EuOpenInitiative, w: EuWindow): EuFensterRowView {
       ? { label: fristLabel(w.end, true), detail: `bis ${formatDateWeekdayDe(w.end)}`, tone: deadlineTone(w.end, true), actionable: true }
       : { label: DE.state.open, detail: DE.state.noEnd, tone: 'neutral', actionable: true },
     tab: TAB_OF_STAGE[w.stage] ?? null,
-    end: w.end ?? '9999',
+    end: w.end ?? null,
     haystack: [title, stage, act ?? '', i.reference ?? '', String(i.id), ...i.topics].join(' '),
   }
+}
+
+/** The list's orders, one per column that orders (`SortHeader`). */
+export type EuFensterSort = 'ende' | 'titel'
+
+const byKey = (a: EuFensterRowView, b: EuFensterRowView): number => a.key.localeCompare(b.key, 'en', { numeric: true })
+
+/**
+ * One order as a comparator. „ende": the closing day, nearest first, turned
+ * round the latest first; a window without a day last either way. „titel":
+ * German collation, A–Z, turned round Z–A. Ties by the portal's number.
+ */
+export function euFensterComparator(sort: EuFensterSort, reversed: boolean): (a: EuFensterRowView, b: EuFensterRowView) => number {
+  if (sort === 'titel') {
+    const byTitle = (a: EuFensterRowView, b: EuFensterRowView) => a.title.localeCompare(b.title, 'de', { numeric: true }) || byKey(a, b)
+    return reversed ? (a, b) => byTitle(b, a) : byTitle
+  }
+  return (a, b) => {
+    if (a.end !== b.end) {
+      if (a.end === null) return 1
+      if (b.end === null) return -1
+      return reversed ? b.end.localeCompare(a.end) : a.end.localeCompare(b.end)
+    }
+    return byKey(a, b)
+  }
+}
+
+/** A tab's rows in the order chosen; a new array, the view's rows untouched. */
+export function sortFensterRows(rows: readonly EuFensterRowView[], sort: EuFensterSort, reversed: boolean): EuFensterRowView[] {
+  return [...rows].sort(euFensterComparator(sort, reversed))
 }
 
 export interface EuFensterView {
@@ -150,7 +199,7 @@ export function euFensterView(r: EuFensterResponse): EuFensterView {
   if (!r.initiatives) return { tabs: null, counts: zero, cut }
   const all = r.initiatives
     .flatMap((i) => i.windows.map((w) => rowOf(i, w)))
-    .sort((a, b) => a.end.localeCompare(b.end) || a.key.localeCompare(b.key, 'en', { numeric: true }))
+    .sort(euFensterComparator('ende', false))
   const tabs: Record<EuFensterTab, EuFensterRowView[]> = {
     alle: all,
     konsultation: all.filter((x) => x.tab === 'konsultation'),

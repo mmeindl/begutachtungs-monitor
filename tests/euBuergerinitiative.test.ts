@@ -5,7 +5,7 @@ import { EU_MEMBER_STATE_ECI, euCitizensInitiativeAddress, euCitizensInitiativeP
 import { splitGap } from '../shared/utils/gaps'
 import { ECI_DETAILS_FIELDS, ECI_LIST_FIELDS, eciDay, eciDetailsUrl, eciListUrl, eciOpenOn, eciPageUrl, parseEciDetails, parseEciList } from '../server/utils/eu/eciRegister'
 import { ECI_KNOWN_STEPS, euBuergerinitiativeView } from '../app/utils/euBuergerinitiative'
-import { EU_ECI_LIST_DE, euEciListView } from '../app/utils/euEciList'
+import { EU_ECI_LIST_DE, euEciListView, sortEciRows } from '../app/utils/euEciList'
 
 /**
  * The European Citizens' Initiative (step 5 of the EU cycle, 15.11.2026):
@@ -373,7 +373,7 @@ const row = (over: Partial<EciOpenRow>): EciOpenRow => ({ year: 2026, number: 1,
 const response = (initiatives: EciOpenRow[] | null): EuBuergerinitiativenResponse => ({ initiatives, counts: null, registerUrl: 'https://citizens-initiative.europa.eu/_de' })
 
 describe('the list of initiatives in collection', () => {
-  it('orders by last day, soonest first, then by number — never by supporters', () => {
+  it('opens by last day, soonest first, then by number — not by supporters', () => {
     const v = euEciListView(response([
       row({ number: 3, deadline: '2027-05-01', supporters: 1_000_000 }),
       row({ number: 1, deadline: '2027-01-01', supporters: 5 }),
@@ -383,6 +383,25 @@ describe('the list of initiatives in collection', () => {
     ]))
     expect(v.rows!.map((r) => r.key)).toEqual(['2026/1', '2026/2', '2026/3', '2025/4', '2026/10'])
     expect(v.rows![0]).toMatchObject({ path: '/eu-recht/buergerinitiative/2026/1', gap: null })
+  })
+
+  it('lets the reader order by last day, title or supporters, each reversible; a missing day or count last both ways', () => {
+    const rows = euEciListView(response([
+      row({ number: 1, title: 'Wasser', deadline: '2027-03-01', supporters: 500 }),
+      row({ number: 2, title: 'Äpfel', deadline: '2027-01-01', supporters: null }),
+      row({ number: 3, title: 'Bienen', deadline: null, details: 'ungelesen', supporters: 9000 }),
+      row({ number: 4, title: 'Meer', deadline: '2027-02-01', supporters: 500 }),
+      row({ number: 5, title: 'Luft', deadline: '2027-01-15', supporters: 0 }),
+    ])).rows!
+    const keys = (sort: 'ende' | 'titel' | 'unterstuetzungen', reversed: boolean) => sortEciRows(rows, sort, reversed).map((r) => r.key.split('/')[1])
+    expect(keys('ende', false)).toEqual(['2', '5', '4', '1', '3'])
+    expect(keys('ende', true)).toEqual(['1', '4', '5', '2', '3'])
+    expect(keys('titel', false)).toEqual(['2', '3', '5', '4', '1'])
+    expect(keys('titel', true)).toEqual(['1', '4', '5', '3', '2'])
+    // Most first; ties by the last day, nearest first; 0 is a count, „nicht angegeben" is not.
+    expect(keys('unterstuetzungen', false)).toEqual(['3', '4', '1', '5', '2'])
+    expect(keys('unterstuetzungen', true)).toEqual(['5', '4', '1', '3', '2'])
+    expect(EU_ECI_LIST_DE.order.supporters).toEqual(['meiste zuerst', 'wenigste zuerst'])
   })
 
   it('carries the count in its own column: the number in ink, „laut Register" in its words, a missing count a word and never 0', () => {

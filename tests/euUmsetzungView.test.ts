@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { euUmsetzungView } from '../app/utils/euUmsetzung'
+import { EU_UMSETZUNG_DE, EU_UMSETZUNG_SORT_COLUMNS, euUmsetzungView, sortUmsetzungRows } from '../app/utils/euUmsetzung'
 import { euRailView } from '../app/utils/euRail'
 import type { EuActResponse, EuNationalMeasure, EuUmsetzungResponse, EuUmsetzungRow } from '../shared/types/eu'
 
@@ -39,6 +39,38 @@ describe('euUmsetzungView', () => {
     expect(v.tabs!.abgelaufen.map((r) => r.key)).toEqual(['b', 'a'])
     expect(v.heading).toBe('Richtlinien, die Österreich umzusetzen hat')
     expect(v.lede).toContain('zwischen 15.11.2024 und 15.11.2028')
+  })
+
+  it('lets the reader order by deadline in the tab\'s direction or by name, each reversible', () => {
+    // In the server's order: by deadline, then CELEX (`cellarUmsetzung.ts`).
+    const v = euUmsetzungView(response([
+      row({ celex: 'd', label: 'Richtlinie (EU) 2023/2', deadline: '2025-01-01' }),
+      row({ celex: 'e', label: 'Richtlinie (EU) 2023/1', deadline: '2026-01-01' }),
+      row({ celex: 'c', label: 'Delegierte Richtlinie (EU) 2025/12', deadline: '2026-12-01' }),
+      row({ celex: 'a', label: 'Richtlinie (EU) 2024/1385', deadline: '2027-03-01' }),
+      row({ celex: 'b', label: 'Richtlinie (EU) 2024/927', deadline: '2028-01-01' }),
+    ]), TODAY)
+    const keys = (tab: 'laufend' | 'abgelaufen', sort: 'frist' | 'name', reversed: boolean) => sortUmsetzungRows(v.tabs![tab], sort, tab, reversed).map((r) => r.key)
+    // The deadline's default is each tab's opening order.
+    expect(keys('laufend', 'frist', false)).toEqual(v.tabs!.laufend.map((r) => r.key))
+    expect(keys('laufend', 'frist', false)).toEqual(['c', 'a', 'b'])
+    expect(keys('laufend', 'frist', true)).toEqual(['b', 'a', 'c'])
+    expect(keys('abgelaufen', 'frist', false)).toEqual(v.tabs!.abgelaufen.map((r) => r.key))
+    expect(keys('abgelaufen', 'frist', false)).toEqual(['e', 'd'])
+    expect(keys('abgelaufen', 'frist', true)).toEqual(['d', 'e'])
+    // Numbers read as numbers: 2024/927 before 2024/1385.
+    expect(keys('laufend', 'name', false)).toEqual(['c', 'b', 'a'])
+    expect(keys('laufend', 'name', true)).toEqual(['a', 'b', 'c'])
+    expect(keys('abgelaufen', 'name', false)).toEqual(['e', 'd'])
+  })
+
+  it('offers no order by the drafts found or the measures notified (rule D6)', () => {
+    expect(Object.keys(EU_UMSETZUNG_SORT_COLUMNS).sort()).toEqual(['deadline', 'directive'])
+    expect(EU_UMSETZUNG_SORT_COLUMNS).not.toHaveProperty('drafts')
+    expect(EU_UMSETZUNG_SORT_COLUMNS).not.toHaveProperty('measures')
+    expect(new Set(Object.values(EU_UMSETZUNG_SORT_COLUMNS))).toEqual(new Set(['frist', 'name']))
+    // Every column the list draws is accounted for: two order, two never do.
+    expect(Object.keys(EU_UMSETZUNG_DE.column).sort()).toEqual(['deadline', 'directive', 'drafts', 'measures'])
   })
 
   it('sets each observation in its column: a number, or a word for none', () => {

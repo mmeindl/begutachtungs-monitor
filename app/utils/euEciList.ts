@@ -4,9 +4,13 @@
  * initiative the register lists in collection today, by the last day of its
  * collection, the soonest first.
  *
- * THE ORDER OF THE OPEN WINDOWS (`euFenster.ts`): by day, then by number —
- * never by the number of supporters, which would read as a ranking of which
- * initiative is worth signing. The count stands in a column of its own,
+ * THE ORDER OF THE OPEN WINDOWS (`euFenster.ts`): by day, then by number,
+ * by default. Three orders in the column header since 16.11.2026
+ * (`euEciComparator`, `SortHeader`, each reversible): the last day, nearest
+ * first; the title A–Z; and the count of supporters, most first — the
+ * reader's choice, as the draft list lets its Stellungnahmen order its
+ * rows, never the list's opening order. A row without a day, or without a
+ * count, stays last either way. The count stands in a column of its own,
  * „Unterstützungen", as the draft list keeps its Stellungnahmen
  * (`EuCountCell`, 16.11.2026): the register's plain figure, with no bar, no
  * share and no threshold — the register gives none per Member State. Its
@@ -31,6 +35,22 @@ const DE = {
   heading: 'Jetzt unterstützbar: Europäische Bürgerinitiativen',
   lede: 'Für diese Europäischen Bürgerinitiativen werden gerade Unterstützungen gesammelt, laut dem Register der Kommission. Jede Zeile führt zur Seite der Initiative hier, mit ihren Stationen, und von dort zum Sammelsystem, in dem man sie unterstützt.',
   column: { title: 'Initiative', supporters: 'Unterstützungen', end: 'Sammlung' },
+  sortLabel: 'Sortieren',
+  /** The sort button's words, completing its name: „Sammlung: nächstes Ende zuerst". */
+  order: {
+    end: ['nächstes Ende zuerst', 'spätestes Ende zuerst'],
+    title: ['A–Z', 'Z–A'],
+    supporters: ['meiste zuerst', 'wenigste zuerst'],
+  },
+  /** The phone's select, one option per column and direction. */
+  sortOptions: {
+    end: 'Nächstes Ende zuerst',
+    endReversed: 'Spätestes Ende zuerst',
+    title: 'Initiative A–Z',
+    titleReversed: 'Initiative Z–A',
+    supporters: 'Meiste Unterstützungen',
+    supportersReversed: 'Wenigste Unterstützungen',
+  },
   originalTitle: 'Titel in der Originalsprache',
   untitled: (reference: string) => `Europäische Bürgerinitiative ${reference}`,
   supporters: (n: number) => `Unterstützungen laut Register: ${formatNumberDe(n)}`,
@@ -68,8 +88,10 @@ export interface EuEciRowView {
   state: EntryState
   /** The gap sentence where the day could not be read; null otherwise. */
   gap: string | null
-  /** For the sort: the ISO last day; '9999' where none. */
-  end: string
+  /** For the sort: the ISO last day; null where none. */
+  end: string | null
+  /** For the sort: the register's count; null where it gives none. */
+  supportersCount: number | null
 }
 
 function rowOf(r: EciOpenRow): EuEciRowView | null {
@@ -87,8 +109,42 @@ function rowOf(r: EciOpenRow): EuEciRowView | null {
       ? { label: fristLabel(r.deadline, true), detail: `bis ${formatDateWeekdayDe(r.deadline)}`, tone: deadlineTone(r.deadline, true), actionable: true }
       : { label: pending ? DE.state.pending : DE.state.unread, detail: null, tone: 'neutral', actionable: true },
     gap: r.deadline ? null : pending ? DE.pending : DE.unreadDay,
-    end: r.deadline ?? '9999',
+    end: r.deadline ?? null,
+    supportersCount: r.supporters,
   }
+}
+
+/** The list's orders, one per column that orders (`SortHeader`). */
+export type EuEciSort = 'ende' | 'titel' | 'unterstuetzungen'
+
+const byKey = (a: EuEciRowView, b: EuEciRowView): number => a.key.localeCompare(b.key, 'en', { numeric: true })
+
+/** A value that may be missing, ordered in `dir` (1 ascending, -1 descending); a missing one last either way. */
+function nullsLast<T extends string | number>(a: T | null, b: T | null, dir: 1 | -1): number {
+  if (a === b) return 0
+  if (a === null) return 1
+  if (b === null) return -1
+  return (a < b ? -1 : 1) * dir
+}
+
+/**
+ * One order as a comparator, `reversed` turning it round. „ende": the last
+ * day, nearest first, then by number. „titel": German collation A–Z, then
+ * by number. „unterstuetzungen": most first, then by the last day, nearest
+ * first, then by number. A missing day or count is last either way.
+ */
+export function euEciComparator(sort: EuEciSort, reversed: boolean): (a: EuEciRowView, b: EuEciRowView) => number {
+  const flip: 1 | -1 = reversed ? -1 : 1
+  if (sort === 'titel') return (a, b) => (a.title.localeCompare(b.title, 'de', { numeric: true }) || byKey(a, b)) * flip
+  if (sort === 'unterstuetzungen') {
+    return (a, b) => nullsLast(a.supportersCount, b.supportersCount, (-1 * flip) as 1 | -1) || nullsLast(a.end, b.end, 1) || byKey(a, b)
+  }
+  return (a, b) => nullsLast(a.end, b.end, flip) || byKey(a, b)
+}
+
+/** The rows in the order chosen; a new array, the view's rows untouched. */
+export function sortEciRows(rows: readonly EuEciRowView[], sort: EuEciSort, reversed: boolean): EuEciRowView[] {
+  return [...rows].sort(euEciComparator(sort, reversed))
 }
 
 export interface EuEciListView {
@@ -101,6 +157,6 @@ export function euEciListView(r: EuBuergerinitiativenResponse): EuEciListView {
   const rows = r.initiatives
     .map(rowOf)
     .filter((x): x is EuEciRowView => x !== null)
-    .sort((a, b) => a.end.localeCompare(b.end) || a.key.localeCompare(b.key, 'en', { numeric: true }))
+    .sort(euEciComparator('ende', false))
   return { rows }
 }
