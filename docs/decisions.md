@@ -210,6 +210,57 @@ gets an entry of its own only where it carries a reason the rule does not.
   (`app/utils/deadlines.ts`, `fristClassOf`).
 - **A number on the homepage and the same number on the page it links to
   agree.** Every change to a filter is checked against it.
+- **An open Vorlage or motion without a draft stands under the tab of its
+  own station** (16.11.2026, `OpenVorlage.station`, `stationFor` on list
+  101's status), as a draft's row does: „Regierungsvorlage" while the
+  Nationalrat has it, „Parlament" once it is decided, at the Bundesrat or
+  sent back to committee. A motion (Ausschussantrag, Gesetzesantrag des
+  Bundesrates, Initiativantrag) stands under „Parlament" from its Einlangen,
+  as `/wege` draws its path („entfällt" at the Regierungsvorlage): the tab
+  „Regierungsvorlage" holds the government's Vorlagen only
+  (`openVorlageStationOf` by the kind, `antragStationOf`; 16.11.2026).
+  Before that day every such row stood under „Regierungsvorlage" (365 d.B. XXVIII, sent back, stood at „Parlament" on
+  its own page). The strip selects one station at most, and the address
+  names one (`parseStations`, 16.11.2026, maintainer's decision): a link
+  naming both tabs, shown as a sixth tab „A + B" and then as two tabs
+  selected at once, was tried that day and removed — no control of the page
+  can produce that state. The homepage's door „Stellung nehmen im Parlament"
+  opens „Parlament / Landtag". Under „Stellungnahme
+  möglich" each of the two tabs alone points to the other with the rows it holds
+  under the same filters („1 weitere unter „Parlament / Landtag“ →",
+  `otherOpenStation`), counted by the same steps as the list's own rows
+  and left out while a part of the count is loading or failed, never
+  „0 weitere". Between the open window and the law a Regierungsvorlage
+  without a draft, an Ausschussantrag and a Gesetzesantrag aus dem
+  Bundesrat are no row of any source (beschlossen, abgelehnt, verfallen);
+  under „Regierungsvorlage" and „Parlament / Landtag" without „Stellungnahme
+  möglich" one „Nicht im Monitor" sentence names them in one line
+  (`withoutDraftGapDe`, 16.11.2026); the states it means and where the
+  Initiativanträge stand are the list's „Methode" (`MethodEntwurfsliste`). 
+- **The homepage: act first, then follow** (16.11.2026, `app/utils/doors.ts`).
+  Four objects take part on their own rails (a draft, an Anliegen, an EU
+  act, a Citizens' Initiative), so the page is not organised along one
+  object's stations. „Jetzt mitreden" holds the doors, the ways of taking
+  part open today (`/wege` made live): the first, „Stellung nehmen zu einem
+  Entwurf", expanded into the open list; the others one row each, with what
+  is open and a link to its list. A door's count stands only once its source
+  answered: loading words while it is on its way, a gap sentence after a
+  failure, „derzeit keine" in words for a true zero, and it is the number
+  the linked list states, from the function that list counts with; where
+  that list prints no single number for the set, the door says „Derzeit
+  möglich" without a number (Stellung nehmen im Parlament: the list splits
+  it by kind). The first door is a section head like the lists under
+  „Was daraus wurde" (ink, „Alle N offenen Entwürfe →" its one way out);
+  the other four are rows a step below it, the label blue and the whole row
+  its target (one link stretched over the row, hover underlines the label),
+  each ending in a blue „→" after its status, always shown.
+  Each of the four rows is bounded by a hairline above and below, so each
+  target shows where it begins and ends; no line above the first door
+  (maintainer, 16.11.2026). „Was daraus
+  wurde" holds the ranking and the newest laws. „Beschlossen, noch nicht
+  kundgemacht" is on `/entwuerfe` only. Doors are data tagged with their
+  jurisdiction (`WEGE_STATE`, `'eu'`), so a country's segment (`/at`) and a
+  second country are configuration.
 
 ### Ohne Begutachtung
 
@@ -1301,7 +1352,18 @@ not yet followed, or the EU cycle, starts there.
   two EU stations that carry them. An Ausschussbegutachtung is „je nach
   Fall" at Begutachtung at both levels, never a dash beside a note that
   names it and never in the Landtag's column. The legend names every mark,
-  the dash too. Not changed: the header „Parlament" of the Bund leads to
+  the dash too. A blue mark links to where that can be done now
+  (16.11.2026, `wegCellHref`): the list of exactly the row's kind at that
+  station with „Stellungnahme möglich" on, written by the list's own query
+  helpers; the Anliegen list of the kind with its open default; the EU's
+  open windows or Citizens' Initiatives. Its name says where it leads
+  („Stellungnahme möglich: Ausschussantrag, Parlament – offene anzeigen",
+  `wegCellLinkName`); on the rails the mark's word is the link. A mark
+  whose kind no view holds open there gets no link, its reason at the row
+  (`openSkip`): „als Initiativantrag" (the route is known only once
+  kundgemacht), the Ausschussantrag (a row under its own option only where
+  „ohne Entwurf" is evidenced, never before its law), the Bundesrat's motion
+  (no option of its own). Not changed: the header „Parlament" of the Bund leads to
   the list's tab, which is empty on days when nothing is between Beschluss
   and Kundmachung.
 - **Each thing stands once among the pages of ways** (15./16.11.2026). What is a route to
@@ -1318,8 +1380,12 @@ not yet followed, or the EU cycle, starts there.
   machine-readable source whose reuse is checked and stated on `/quellen`;
   enough cases to matter; and no upkeep that somebody has to carry by hand.
 - **The five stations stay five.** They are the rail of one national norm. A
-  motion enters at the third station, which then carries its name (as
-  „Initiativantrag" does for „Regierungsvorlage"); the Bundesrat's objection
+  motion has no third station: „Regierungsvorlage" is drawn pale with its
+  reason („keine · Antrag eines Ausschusses", `noRvReasonDe`), and the
+  motion enters at „Parlament", its kind and Einlangen the station's first
+  fact — on its page, in the list and on `/wege` alike (16.11.2026,
+  maintainer's decision; until then the third station carried the motion's
+  name). The Bundesrat's objection
   and a Volksabstimmung are events inside a station. Whatever does not fit is
   a different object and gets a rail of its own on a page of its own — an EU
   act under `/eu-recht`, a Petition, Bürgerinitiative or Volksbegehren under
@@ -1421,7 +1487,12 @@ not yet followed, or the EU cycle, starts there.
   „RV" for want of another slot, and copying that would name the government
   as its author. No invented prefix.
 - **Every Initiativantrag is a row of „Alle Initiativanträge"**
-  (`/api/antraege`, outside „Alle Arten"), except one that carries a
+  (`/api/antraege`, outside „Alle Arten"), and the open ones are rows under
+  „Stellungnahme möglich" with „Alle Arten" too (16.11.2026, maintainer's
+  decision, `antragRowsOf`): that status holds every item one can file on,
+  and the home page's door „Stellung nehmen im Parlament" leads there. An
+  open Antrag sorts as an open Vorlage, by its Einlangen, never ahead for
+  being open (`rowOrderKey`). The exception to „every": one that carries a
   consulted draft's text: that is a row of its draft, and its own page names
   the draft in a row worded by the match (whole text, or „ein Teil"). The
   states are read per item, never from the list's status column alone: it
@@ -1480,8 +1551,9 @@ memo `docs/research/wege-ausserhalb-der-stationen.md`.
   address with the Entwürfe: `AnliegenRoot`, `/anliegen`,
   `/anliegen/<gp>/<kind>/<nr>`, a rail of their own. The list read is their
   own too (three list-101 reads per period, each row asserted against the
-  requested type); `VOLKBG` never joins `getItemsForGp`. No header label;
-  the section is reached from the homepage, `/wege` and the footer.
+  requested type); `VOLKBG` never joins `getItemsForGp`. A header label of
+  its own, „Anliegen" (16.11.2026, for „Aktuell"; the wordmark leads to the
+  homepage), and a door on the homepage; the footer no longer links it.
 - **Why it is built although Parliament shows the same items:** the aim is
   one place from lawmaking to raising one's voice. The memo recommended
   linking only; the maintainer decided otherwise (14.11.2026).
@@ -1625,6 +1697,22 @@ the reasoning in full stands in that component's header comment.
   Regierungsvorlage, Im Parlament, Im Bundesgesetzblatt. The door card is
   the one deliberate break with that order: the page's action must not sink
   below a long comparison (`app/pages/entwuerfe/[gp]/[inr].vue`).
+- **On the page of a Vorlage, an Antrag or a motion the item's own blocks
+  stand in its station's section** (16.11.2026, `ItemOwnBlocks`): what it
+  changes, its documents, the Stellungnahmen on it and the door once more.
+  Under „Die Regierungsvorlage" for a Vorlage (a treaty's under its own
+  name), inside „Im Parlament" for a motion, which enters there. „Der
+  Entwurf" and „Stellungnahmen an den Nationalrat" were sections of these
+  pages until then — two headings their rail has no station for.
+- **A door quotes the receiving institution only where its sentence was
+  read** (`statementQuote.ts`, `euFeedbackQuote.ts`). Read: Parliament's
+  form for a Ministerialentwurf, a Regierungsvorlage, an Initiativantrag
+  (16.11.2026), an Ausschussantrag, a Petition and a Bürgerinitiative; the
+  Commission's portal per stage; the Citizens' Initiative. No quote, because
+  no institution's sentence exists or was read: a Verordnung's and a Land's
+  draft (filed at the ministry or the Land's office, no form), a
+  Gesetzesantrag des Bundesrates and a Petition an den Bundesrat (no open
+  window to read).
 - **The state card names the state, and nothing stands under its heading**
   (15.11.2026, `ProcedureCard`). Its heading is the state in a few words
   („In Begutachtung", „Bisher keine Regierungsvorlage", „Gesetz geworden"):
