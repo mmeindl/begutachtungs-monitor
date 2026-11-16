@@ -167,3 +167,25 @@ export interface VorlageDetail {
    *  draft's page, which tells this Vorlage's story — the page redirects. */
   draftPath: string | null
 }
+
+/**
+ * What a refusal carries besides its status (`requireVorlageItem`): the
+ * item's page at Parliament, and — for an Einspruch of the Bundesrat whose
+ * law is known, or a Volksbegehren the monitor follows — the page that
+ * follows it.
+ *
+ * Here and not beside `requireVorlageItem` (16.11.2026): the Anliegen
+ * service refuses with the same shape, and importing the type from the
+ * Vorlage's service drew that service, and the Nitro auto-imports it
+ * relies on, into every program that reads the Anliegen service.
+ */
+export interface NotFollowedData {
+  parliamentUrl: string
+  followedAt: string | null
+  /**
+   * For an Anliegen followed only from a period on — a Volksbegehren before
+   * `VOLKSBEGEHREN_FIRST_GP` —, that first period, so the refusal can say
+   * so. Absent on every other refusal.
+   */
+  anliegenFrom?: string
+}

@@ -21,7 +21,7 @@
  * list, so every answer is checked against its own `count` and every row
  * against the period and the kind asked for, before anything is cached.
  */
-import type { AnliegenCounts, AnliegenDetail, AnliegenKind, AnliegenListResponse, AnliegenRoot, AnliegenRow, AnliegenState } from '#shared/types'
+import type { AnliegenCounts, AnliegenDetail, AnliegenKind, AnliegenListResponse, AnliegenRoot, AnliegenRow, AnliegenState, NotFollowedData } from '#shared/types'
 import {
   ANLIEGEN_NR_KINDS,
   BUNDESRAT_SEGMENT,
@@ -60,7 +60,6 @@ import {
 } from './anliegen'
 import { mapVorlageRow } from './list101'
 import { mapParticipationRow, type ParticipationRow } from './list143'
-import type { NotFollowedData } from './vorlageDetail'
 
 /**
  * Detail reads at a time — the committee reads' limit, as for the Anträge.

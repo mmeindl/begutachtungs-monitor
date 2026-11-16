@@ -6,7 +6,7 @@
  *
  * Deliberately uncached, like `getDraftDetail`: composition over leaf caches.
  */
-import type { ProcedureItemKind, ProcedureRoot, VorlageDetail } from '#shared/types'
+import type { NotFollowedData, ProcedureItemKind, ProcedureRoot, VorlageDetail } from '#shared/types'
 import { budgetExemptReason } from '#shared/utils/budgetExempt'
 import { itemPath, lawItemKindOf, parliamentItemUrl, rootCitation, vorlagePath } from '#shared/utils/procedureRoot'
 import { withinBudget } from '../http/budget'
@@ -29,23 +29,6 @@ export type VorlageRoot = ProcedureRoot & { ityp: 'I' | 'A' }
  * filling the cache for the next reader.
  */
 const EVIDENCE_BUDGET_MS = 2_000
-
-/**
- * What a refusal carries besides its status (`requireVorlageItem`): the
- * item's page at Parliament, and — for an Einspruch of the Bundesrat whose
- * law is known, or a Volksbegehren the monitor follows — the page that
- * follows it.
- */
-export interface NotFollowedData {
-  parliamentUrl: string
-  followedAt: string | null
-  /**
-   * For an Anliegen followed only from a period on — a Volksbegehren before
-   * `VOLKSBEGEHREN_FIRST_GP` —, that first period, so the refusal can say
-   * so. Absent on every other refusal.
-   */
-  anliegenFrom?: string
-}
 
 /**
  * The item's record — 404 where it is not a Vorlage, a law's Antrag, a
