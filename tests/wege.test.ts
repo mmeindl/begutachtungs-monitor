@@ -462,9 +462,9 @@ describe('one page per jurisdiction (16.11.2026)', () => {
     expect(wegePageRows(eu).map((r) => r.id)).toEqual([...EU_WEG_IDS])
   })
 
-  it('the seam to the EU: one line after the Länder, linking the EU\'s page and the drafts that carry out EU law', () => {
+  it('the seam to the EU: one line that opens the country\'s page, linking the EU\'s page and the drafts that carry out EU law', () => {
     expect(WEG_SEAMS.map((s) => s.id)).toEqual(['eu-recht'])
-    expect(country.blocks.map((b) => (b.kind === 'matrix' ? b.matrix.id : `seam:${b.seam.id}`))).toEqual(['bund', 'land', 'seam:eu-recht', 'anliegen'])
+    expect(country.blocks.map((b) => (b.kind === 'matrix' ? b.matrix.id : `seam:${b.seam.id}`))).toEqual(['seam:eu-recht', 'bund', 'land', 'anliegen'])
     expect(eu.blocks.every((b) => b.kind === 'matrix')).toBe(true)
     const seam = WEG_SEAMS[0]!
     expect(seam.jurisdiction).toBe(WEGE_STATE)

@@ -1240,8 +1240,10 @@ not yet followed, or the EU cycle, starts there.
   the country's page, beside „Entwürfe, die EU-Recht umsetzen"; the header
   „Umsetzung oder Geltung" carries none, as „Geltung" does not cross. On
   the country's page one line of the card, „EU-Recht" with „EU-Richtlinie,
-  EU-Verordnung", stands after the Länder — it enters the Bund's and the
-  Länder's paths alike, so it belongs to neither matrix — and links the
+  EU-Verordnung", opens the page — it enters the Bund's and the
+  Länder's paths alike, so it belongs to neither matrix; a directive exists
+  before the draft that carries it out, so the page reads EU, Bund, Länder,
+  and mirrors the EU's page, which ends with the link here — and links the
   EU's page and the list of drafts that carry out EU law (`WEG_SEAMS`). It
   is a group of the card, not a paragraph above it. `?weg=` selects a row
   only on the page that holds it (`wegSelected`); `wegHref` leads each id to

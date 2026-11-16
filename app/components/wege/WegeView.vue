@@ -18,7 +18,7 @@
  *
  * THE SEAM (16.11.2026): where the other jurisdiction's law enters this
  * page's paths, one line of the card links that page (`WegSeam`): on the
- * country's page the EU's directives and regulations, after the Länder.
+ * country's page the EU's directives and regulations, as its first line.
  * The way back is a row's own note, on the EU's page.
  *
  * „Nicht im Monitor": the instruments the monitor does not follow, without

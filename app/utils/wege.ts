@@ -1242,7 +1242,7 @@ export const WEGE_COPY = {
  * where a law crosses between them. It passes no station of the page, so
  * it is no matrix row: a group of the card with its bar and one line, at
  * the place in the page's order where the other jurisdiction's law enters
- * (`after`, a matrix id). The way back is a row's own note
+ * (`after`, a matrix id, or null where it opens the page). The way back is a row's own note
  * (`WegMatrixRow.noteHref`): on the EU's page the directive's „Umsetzung
  * durch Bund oder Land".
  */
@@ -1250,8 +1250,8 @@ export interface WegSeam {
   id: string
   /** The page that draws this line. */
   jurisdiction: WegeJurisdiction
-  /** The matrix it follows on that page. */
-  after: string
+  /** The matrix it follows on that page; null where it opens the page. */
+  after: string | null
   /** The bar's name. */
   bar: string
   label: string
@@ -1268,16 +1268,21 @@ export interface WegSeam {
  * (Umsetzung), a Verordnung applies directly and draws accompanying rules;
  * the monitor marks both on a draft (`EuMarker`: `umsetzung`,
  * `flankierend-vo`). The list filters only the first (`EuFilter`), so its
- * link says so. It stands after the Länder: it enters the Bund's and the
- * Länder's paths alike, so it belongs to neither matrix, and it closes the
- * part „how a text becomes law" where the EU's matrix stood. The words of
+ * link says so. It enters the Bund's and the Länder's paths alike, so it
+ * belongs to neither matrix. IT OPENS THE PAGE (16.11.2026; for some hours
+ * it stood after the Länder, where the EU's matrix had been): a directive
+ * exists before the draft that carries it out, so the page reads EU, Bund,
+ * Länder, the way a law travels — and mirrors the EU's page, which ends at
+ * „Umsetzung durch Bund oder Land" with the link here. One line costs the
+ * Bund's matrix no screen, which two EU matrices on top would have. Between
+ * two matrices it read as a table that had lost its stations. The words of
  * label and note are the lead line's of 14.11.2026.
  */
 export const WEG_SEAMS: readonly WegSeam[] = [
   {
     id: 'eu-recht',
     jurisdiction: WEGE_STATE,
-    after: 'land',
+    after: null,
     bar: 'EU-Recht',
     label: 'EU-Richtlinie, EU-Verordnung',
     href: WEGE_PATH_OF.eu,
@@ -1336,9 +1341,11 @@ export const WEGE_PAGE_COPY: Record<WegeJurisdiction, Pick<WegePage, 'title' | '
 
 function wegePage(jurisdiction: WegeJurisdiction): WegePage {
   const blocks: WegeBlock[] = []
+  const seamsAfter = (id: string | null) => WEG_SEAMS.filter((s) => s.jurisdiction === jurisdiction && s.after === id)
+  for (const seam of seamsAfter(null)) blocks.push({ kind: 'seam', seam })
   for (const matrix of WEG_MATRICES.filter((m) => m.jurisdiction === jurisdiction)) {
     blocks.push({ kind: 'matrix', matrix })
-    for (const seam of WEG_SEAMS.filter((s) => s.jurisdiction === jurisdiction && s.after === matrix.id)) blocks.push({ kind: 'seam', seam })
+    for (const seam of seamsAfter(matrix.id)) blocks.push({ kind: 'seam', seam })
   }
   return {
     jurisdiction,
