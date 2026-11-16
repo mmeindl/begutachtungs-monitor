@@ -51,9 +51,11 @@ const API = `https://${PORTAL_HOST}/info/law/better-regulation/api`
  * Bumped whenever the reader or the naming rule changes: the service caches
  * the reading under it, and a changed rule must not serve names the old one
  * allowed. 2 since 15.11.2026: a named row keeps its day and its number,
- * and the reading lists each contribution with its link.
+ * and the reading lists each contribution with its link. 3 since 16.11.2026:
+ * the service caches page one apart and the whole reading with the moment
+ * its names were read (`portalService.ts`), a changed cached shape.
  */
-export const FEEDBACK_READER_VERSION = 2
+export const FEEDBACK_READER_VERSION = 3
 
 /** One page of the list: the portal caps `size` at 100 (size=500 returned 100 on 15.11.2026). */
 export const FEEDBACK_PAGE_SIZE = 100
@@ -354,8 +356,31 @@ export function summarize(rows: readonly FeedbackRow[], total: number, initiativ
  * beside them.
  */
 export async function readFeedback(fetchJson: (url: string) => Promise<unknown>, initiativeId: number, publicationId: number): Promise<EuFeedbackReading> {
+  return readFeedbackRest(fetchJson, initiativeId, publicationId, await readFirstFeedbackPage(fetchJson, publicationId))
+}
+
+/**
+ * The first step of the two (16.11.2026): page one alone, read row by row
+ * (`rowOf` has run on every row, so a counted row already keeps no day and
+ * no number). What the service caches to answer before the whole reading
+ * is in, and hands to `readFeedbackRest`, so page one is never asked twice.
+ */
+export async function readFirstFeedbackPage(fetchJson: (url: string) => Promise<unknown>, publicationId: number): Promise<FeedbackPage> {
   const first = parseFeedbackPage(await fetchJson(feedbackUrl(publicationId, 0)))
   if (first.page !== 0) throw new Error('Portal: erste Seite trägt eine andere Nummer')
+  return first
+}
+
+/** Page one alone as a reading: `read` its rows, `total` the portal's count — the whole reading where page one is the last. */
+export function firstPageReading(first: FeedbackPage, initiativeId: number): EuFeedbackReading {
+  return summarize(first.rows.slice(0, FEEDBACK_MAX_ROWS), first.total, initiativeId)
+}
+
+/** Whether page one is all there is to read: the portal says it is the last page. */
+export const isWholeReading = (first: FeedbackPage): boolean => first.last
+
+/** The second step: the pages after the given first one, and the reading of all of them. Asks nothing where page one was the last. */
+export async function readFeedbackRest(fetchJson: (url: string) => Promise<unknown>, initiativeId: number, publicationId: number, first: FeedbackPage): Promise<EuFeedbackReading> {
   const rows = [...first.rows]
   let last = first.last
   for (let p = 1; !last && p < FEEDBACK_MAX_PAGES && rows.length < FEEDBACK_MAX_ROWS; p++) {

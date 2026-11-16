@@ -31,11 +31,23 @@
  * `euBuergerinitiativeView` does) or null, and only with one is there a
  * chip „Aus <Land>" — without one nothing is said to be missing.
  *
+ * THE NEWEST FIRST, THE REST AFTER (16.11.2026). The server answers in two
+ * steps: page one of the portal's list (100 contributions, newest first),
+ * then the whole reading of up to five pages, about twelve seconds later
+ * for 500. The list opens on page one: its named rows newest first and the
+ * pager over them — the rows a reader sees first are on page one in any
+ * case. Until the whole is in (`feedbackStageOf`), no tabs, no counts, no
+ * chip, no search, no order and no closing rows: a count, an order or a
+ * search over one page of five would be wrong and would change under the
+ * reader's eyes. In the tool row's place one line says the rest is being
+ * read, or — where the rest failed — a gap sentence with „Erneut
+ * versuchen", the rows kept.
+ *
  * All German copy of the block lives here, so a second language replaces it
  * here. Pure: no Vue; `EuFeedbackBlock` and `EuFeedbackPanel` place what
  * this returns.
  */
-import type { EuFeedbackOrganisationType, EuFeedbackReading } from '#shared/types'
+import type { EuFeedbackOrganisationType, EuFeedbackReading, EuRueckmeldungenResponse } from '#shared/types'
 import { countryNameOf } from '#shared/utils/countryNames'
 import { EU_MEMBER_STATE, EU_MEMBER_STATE_NAME_DE } from '#shared/utils/eu'
 import { countLabelDe, formatNumberDe } from '#shared/utils/format'
@@ -47,8 +59,12 @@ const DE = {
   heading: 'Wer Rückmeldung gegeben hat',
   headingOf: (title: string) => `Wer Rückmeldung gegeben hat (${title})`,
   /** The one line while the portal is read, beside the spinner and in the live region. */
-  loading: 'Rückmeldungen werden gelesen, eine Seite nach der anderen; das dauert einige Sekunden.',
+  loading: 'Die neuesten Rückmeldungen werden gelesen …',
   read: 'Die Rückmeldungen sind gelesen.',
+  /** While only page one is in: the tool row's place, beside the spinner. */
+  partialLoading: 'Die übrigen Rückmeldungen werden noch gelesen …',
+  /** Where page one came and the rest did not: the rows stay, this stands in the tool row's place. */
+  restUnread: (read: number) => gapDe('unavailable', `Die übrigen Rückmeldungen konnten nicht gelesen werden; gezeigt sind die Organisationen mit Namen unter den neuesten ${formatNumberDe(read)}.`),
   unread: gapDe('unavailable', 'Das Portal „Ihre Meinung zählt“ der Kommission hat die Liste der Rückmeldungen nicht rechtzeitig oder nicht lesbar geliefert.'),
   retry: 'Erneut versuchen',
   empty: 'Das Portal verzeichnet zu dieser Frist keine Rückmeldung.',
@@ -405,4 +421,47 @@ export function feedbackSetLine(shown: number, total: number, narrowed: boolean)
 /** The citizens' tab's set line: how many, and under the chip how many of them. */
 export function citizensSetLine(shown: number, total: number, narrowed: boolean): string {
   return narrowed ? DE.citizensSetOf(shown, total) : DE.citizensSet(total)
+}
+
+/** Where a fetch of the block stands, as `useLazyFetch` reports it. */
+export type EuFeedbackFetchStatus = 'idle' | 'pending' | 'success' | 'error'
+
+/**
+ * What the block shows (16.11.2026, the two steps):
+ * - `waiting`: the block is not reached yet, or page one is on its way — the loading line;
+ * - `unread`: page one failed — the gap sentence and „Erneut versuchen";
+ * - `partial`: page one is in and the rest is being read (`restFailed` false) or failed (true) —
+ *   the named rows newest first and the pager, nothing that counts, filters or orders;
+ * - `complete`: the whole reading — the full list.
+ */
+export type EuFeedbackStage =
+  | { kind: 'waiting' }
+  | { kind: 'unread' }
+  | { kind: 'partial'; reading: EuFeedbackReading; restFailed: boolean }
+  | { kind: 'complete'; reading: EuFeedbackReading }
+
+/** Page one's fetch and the whole reading's fetch, as one stage. Pure. */
+export function feedbackStageOf(
+  first: { status: EuFeedbackFetchStatus; data: EuRueckmeldungenResponse | null | undefined },
+  whole: { status: EuFeedbackFetchStatus; data: EuRueckmeldungenResponse | null | undefined },
+): EuFeedbackStage {
+  if (whole.status === 'success' && whole.data?.state === 'gelesen') return { kind: 'complete', reading: whole.data.reading }
+  if (first.status === 'error') return { kind: 'unread' }
+  if (first.status !== 'success' || !first.data) return { kind: 'waiting' }
+  if (first.data.state === 'ungelesen') return { kind: 'unread' }
+  if (first.data.state === 'gelesen') return { kind: 'complete', reading: first.data.reading }
+  const restFailed = whole.status === 'error' || (whole.status === 'success' && whole.data?.state !== 'gelesen')
+  return { kind: 'partial', reading: first.data.reading, restFailed }
+}
+
+/** Whether a stage asks for the whole reading: page one is in, partial, and the rest has not been asked yet. */
+export const needsWholeReading = (stage: EuFeedbackStage, wholeStatus: EuFeedbackFetchStatus): boolean =>
+  stage.kind === 'partial' && wholeStatus === 'idle'
+
+/** What the block's live region says in a stage: the loading line, the rest still read, the arrival, or a gap sentence. */
+export function feedbackAnnouncement(stage: EuFeedbackStage): string {
+  if (stage.kind === 'waiting') return DE.loading
+  if (stage.kind === 'unread') return DE.unread
+  if (stage.kind === 'partial') return stage.restFailed ? DE.restUnread(stage.reading.read) : DE.partialLoading
+  return DE.read
 }

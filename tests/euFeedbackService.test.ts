@@ -81,7 +81,7 @@ describe('who gave feedback, through the service', () => {
     expect(await feedbackOf(13192, 15080)).toEqual({ state: 'ungelesen' })
     portal({ feedback: () => ({ code: 'not_acceptable' }) })
     expect(await feedbackOf(13192, 15080)).toEqual({ state: 'ungelesen' })
-    expect(nitroCacheKeys().some((k) => k.startsWith('eu-portal-rueckmeldungen:'))).toBe(false)
+    expect(nitroCacheKeys().some((k) => k.startsWith('eu-portal-rueckmeldungen'))).toBe(false)
     // The portal recovers: the next opening reads it.
     portal()
     expect((await feedbackOf(13192, 15080)).state).toBe('gelesen')
@@ -90,8 +90,8 @@ describe('who gave feedback, through the service', () => {
   it('caches the reading under the initiative, the publication and the reader\'s version — no country, no person, no text', async () => {
     portal()
     await feedbackOf(13192, 15129)
-    const keys = nitroCacheKeys().filter((k) => k.startsWith('eu-portal-rueckmeldungen:'))
-    expect(keys).toEqual(['eu-portal-rueckmeldungen:13192-15129|f2'])
+    const keys = nitroCacheKeys().filter((k) => k.startsWith('eu-portal-rueckmeldungen'))
+    expect(keys.sort()).toEqual(['eu-portal-rueckmeldungen-erste:13192-15129|f3', 'eu-portal-rueckmeldungen:13192-15129|f3'])
     // A second opening is served from the cache.
     asked = []
     await feedbackOf(13192, 15129)
@@ -104,5 +104,111 @@ describe('who gave feedback, through the service', () => {
     portal({ initiative: () => empty })
     expect(await feedbackOf(13192, 15129)).toEqual({ state: 'gelesen', reading: { total: 0, read: 0, contributions: [], kinds: [], citizens: { count: 0, byCountry: {} }, other: 0, unpublished: 0 } })
     expect(asked.some((u) => u.includes('allFeedback'))).toBe(false)
+  })
+})
+
+/* ------------------------------------------------------------------ *
+ * Two steps: page one first, then the whole — no page asked twice
+ * ------------------------------------------------------------------ */
+
+/**
+ * A window of 350 contributions, four pages: invented citizens only (counted,
+ * never named), so the pages need no organisation names at all.
+ */
+const TOTAL = 350
+function syntheticPage(page: number): unknown {
+  const size = Math.max(0, Math.min(100, TOTAL - page * 100))
+  return {
+    content: Array.from({ length: size }, () => ({ userType: 'EU_CITIZEN', status: 'PUBLISHED', country: 'AUT', firstName: 'Erfunden', surname: 'Beispiel' })),
+    totalElements: TOTAL,
+    number: page,
+    last: (page + 1) * 100 >= TOTAL,
+  }
+}
+const pageAsked = (url: string) => Number(new URL(url).searchParams.get('page'))
+function multiPagePortal() {
+  portal({ feedback: () => { throw new Error('replaced below') } })
+  upstreamJson.mockImplementation(async (url: string) => {
+    asked.push(url)
+    if (url.includes('/brpapi/groupInitiatives/13192')) return fixture('initiative-13192')
+    if (url.includes('/api/allFeedback')) return syntheticPage(pageAsked(url))
+    throw new Error(`unexpected ${url}`)
+  })
+}
+const feedbackPages = () => asked.filter((u) => u.includes('allFeedback')).map(pageAsked)
+
+describe('who gave feedback, in two steps', () => {
+  // The service remembers for six hours which windows have a whole reading;
+  // each test starts seven hours after the last, so none inherits that memory.
+  let clock = Date.now()
+  beforeEach(() => {
+    clock += 7 * 60 * 60 * 1000
+    vi.useFakeTimers({ toFake: ['Date'] })
+    vi.setSystemTime(clock)
+  })
+  afterEach(() => { vi.useRealTimers() })
+
+  it('answers page one as „teilweise", then the whole from it — every page asked once', async () => {
+    multiPagePortal()
+    const first = await feedbackOf(13192, 15080, 'erste')
+    expect(first.state).toBe('teilweise')
+    if (first.state !== 'teilweise') return
+    expect(first.reading).toMatchObject({ total: 350, read: 100, citizens: { count: 100 } })
+    expect(feedbackPages()).toEqual([0])
+
+    const whole = await feedbackOf(13192, 15080)
+    expect(whole.state).toBe('gelesen')
+    if (whole.state !== 'gelesen') return
+    expect(whole.reading).toMatchObject({ total: 350, read: 350, citizens: { count: 350 } })
+    // Page one came from the cache: four pages in all, each once — what the whole alone asked before.
+    expect(feedbackPages()).toEqual([0, 1, 2, 3])
+
+    // Page one asked again, once the whole is in: the whole, as „gelesen", and nothing asked.
+    const again = await feedbackOf(13192, 15080, 'erste')
+    expect(again).toMatchObject({ state: 'gelesen', reading: { read: 350 } })
+    expect(feedbackPages()).toEqual([0, 1, 2, 3])
+  })
+
+  it('asks every page once when page one and the whole are asked at the same time', async () => {
+    multiPagePortal()
+    const [first, whole, wholeAgain] = await Promise.all([feedbackOf(13192, 15080, 'erste'), feedbackOf(13192, 15080), feedbackOf(13192, 15080)])
+    expect(first).toMatchObject({ state: 'teilweise', reading: { read: 100 } })
+    expect(whole).toMatchObject({ state: 'gelesen', reading: { read: 350 } })
+    expect(wholeAgain).toEqual(whole)
+    expect(feedbackPages().sort()).toEqual([0, 1, 2, 3])
+  })
+
+  it('answers page one as „gelesen" where it holds the whole list, and the whole asks nothing more', async () => {
+    portal()
+    expect(await feedbackOf(13192, 15080, 'erste')).toMatchObject({ state: 'gelesen', reading: { total: 14, read: 14 } })
+    expect(await feedbackOf(13192, 15080)).toMatchObject({ state: 'gelesen', reading: { total: 14, read: 14 } })
+    expect(feedbackPages()).toEqual([0])
+  })
+
+  it('keeps the rule on the cached page one: a counted row keeps no day, no number, no name', async () => {
+    multiPagePortal()
+    await feedbackOf(13192, 15080, 'erste')
+    const cached = JSON.stringify(nitroCacheKeys())
+    expect(cached).toContain('eu-portal-rueckmeldungen-erste:13192-15080|f3')
+    const { readFirstFeedbackPage } = await import('../server/utils/eu/portalFeedback')
+    const page = await readFirstFeedbackPage(async () => syntheticPage(0), 15080)
+    expect(JSON.stringify(page)).not.toMatch(/Erfunden|Beispiel|date|"id"/)
+  })
+
+  it('a failed whole after page one is „ungelesen", caches nothing of the whole, and asks only the rest again', async () => {
+    multiPagePortal()
+    await feedbackOf(13192, 15080, 'erste')
+    upstreamJson.mockImplementation(async (url: string) => {
+      asked.push(url)
+      if (url.includes('/brpapi/groupInitiatives/13192')) return fixture('initiative-13192')
+      if (pageAsked(url) === 2) throw new Error('timeout')
+      return syntheticPage(pageAsked(url))
+    })
+    expect(await feedbackOf(13192, 15080)).toEqual({ state: 'ungelesen' })
+    expect(nitroCacheKeys().some((k) => k.startsWith('eu-portal-rueckmeldungen:'))).toBe(false)
+    multiPagePortal()
+    asked = []
+    expect(await feedbackOf(13192, 15080)).toMatchObject({ state: 'gelesen', reading: { read: 350 } })
+    expect(feedbackPages()).toEqual([1, 2, 3])
   })
 })

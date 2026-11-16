@@ -31,6 +31,18 @@
  * carry no country and no name to match. The citizens' own tab lists them
  * per country, by count.
  *
+ * PARTIAL WHILE THE REST IS READ (16.11.2026, `partial`): with page one
+ * alone the list shows its named rows newest first and the pager over
+ * them, nothing else — no tabs, no chip, no search, no order (the column
+ * labels are plain), no set line, no closing rows: a count, an order or a
+ * search over one page of five would be wrong and would change under the
+ * reader's eyes. In the tool row's place, one line says the rest is being
+ * read, or where it failed a gap sentence with „Erneut versuchen"
+ * (`retry`). When the whole arrives the controls appear and the rows
+ * already paged to stay: the first rows are the same rows in the same
+ * order, and the pager is not reset — the tab the list lands on is a
+ * computed default (`kind`), not a choice, so it starts no new page.
+ *
  * Every word comes from `euFeedbackView` and `EU_FEEDBACK_DE`
  * (`app/utils/euFeedback.ts`).
  */
@@ -59,14 +71,30 @@ const props = withDefaults(defineProps<{
   reading: EuFeedbackReading
   /** The country the page serves; null on a page that serves none — then no chip. */
   country?: EuFeedbackCountry | null
-}>(), { country: () => EU_FEEDBACK_COUNTRY })
+  /** Page one alone, the rest still read (`restFailed` false) or failed (true); null for the whole reading. */
+  partial?: { restFailed: boolean } | null
+}>(), { country: () => EU_FEEDBACK_COUNTRY, partial: null })
+
+defineEmits<{ retry: [] }>()
+
+const isPartial = computed(() => props.partial !== null)
 
 const view = computed(() => euFeedbackView(props.reading, props.country))
 
-/* The first tab is where the list lands: „Alle", or the one tab there is. */
-const kind = ref<EuFeedbackKindTab>(view.value.tabs[0]?.value ?? 'alle')
-watch(() => view.value.tabs, (tabs) => {
-  if (!tabs.some((t) => t.value === kind.value)) kind.value = tabs[0]?.value ?? 'alle'
+/*
+ * The first tab is where the list lands: „Alle", or the one tab there is.
+ * The reader's choice is kept apart from that default, so a reading that
+ * changes the tabs (page one, then the whole) changes the default without
+ * counting as a choice — no new first page. While partial: every named row.
+ */
+const chosenKind = ref<EuFeedbackKindTab | null>(null)
+const kind = computed<EuFeedbackKindTab>({
+  get: () => {
+    if (isPartial.value) return 'alle'
+    const tabs = view.value.tabs
+    return chosenKind.value !== null && tabs.some((t) => t.value === chosenKind.value) ? chosenKind.value : (tabs[0]?.value ?? 'alle')
+  },
+  set: (v) => { chosenKind.value = v },
 })
 const citizensTab = computed(() => kind.value === 'buerger')
 
@@ -74,11 +102,14 @@ const fromCountry = ref(false)
 const chipCode = computed(() => (fromCountry.value && view.value.country ? view.value.country.code : null))
 const query = ref('')
 /* A query that folds to nothing (spaces, a stray hyphen) is not a filter. The citizens' tab has no names to search. */
-const searchActive = computed(() => !citizensTab.value && foldForSearch(query.value).length > 0)
+const searchActive = computed(() => !isPartial.value && !citizensTab.value && foldForSearch(query.value).length > 0)
 
-const sort = ref<EuFeedbackSort>('date')
-const reversed = ref(false)
-const { choose, selectValue } = useReversibleSort(sort, reversed)
+const chosenSort = ref<EuFeedbackSort>('date')
+const chosenReversed = ref(false)
+const { choose, selectValue } = useReversibleSort(chosenSort, chosenReversed)
+/* While partial, the portal's own order, whatever was chosen. */
+const sort = computed<EuFeedbackSort>(() => (isPartial.value ? 'date' : chosenSort.value))
+const reversed = computed(() => !isPartial.value && chosenReversed.value)
 /* In the citizens' tab, whose rows are countries, the name is the Land and the day's place is the count. */
 const citizensSort = computed<EuFeedbackSort>(() => (sort.value === 'name' ? 'country' : sort.value))
 const sortOptions = computed(() => citizensTab.value
@@ -112,7 +143,7 @@ const countryCount = computed(() => {
 
 const rows = computed(() => feedbackRowsOf(view.value.rows, {
   kind: kind.value,
-  country: chipCode.value,
+  country: isPartial.value ? null : chipCode.value,
   query: searchActive.value ? query.value : '',
   sort: sort.value,
   reversed: reversed.value,
@@ -120,9 +151,10 @@ const rows = computed(() => feedbackRowsOf(view.value.rows, {
 const citizenRows = computed(() => (citizensTab.value
   ? citizenRowsOf(view.value.citizens, { country: chipCode.value, sort: citizensSort.value, reversed: reversed.value })
   : []))
-const closingRows = computed(() => closingRowsOf(view.value.closing, { kind: kind.value, country: chipCode.value, query: query.value }, searchActive.value))
+const closingRows = computed(() => (isPartial.value ? [] : closingRowsOf(view.value.closing, { kind: kind.value, country: chipCode.value, query: query.value }, searchActive.value)))
 
-const resetOn = [kind, fromCountry, query, sort, reversed]
+/* The reader's choices start a new first page; the arrival of the whole reading does not. */
+const resetOn = [chosenKind, fromCountry, query, chosenSort, chosenReversed]
 const { visible, shown, more, all } = usePagedList(rows, STATEMENT_PAGE_SIZE, resetOn)
 const { visible: visibleCitizens, shown: shownCitizens, more: moreCitizens, all: allCitizens } = usePagedList(citizenRows, STATEMENT_PAGE_SIZE, resetOn)
 /* After the last named row of the tab, never between pages. */
@@ -137,11 +169,14 @@ const setLine = computed(() => {
 
 /* Offered on the size of the whole list, not of the result: a field that
  * vanished once it narrowed the list would take away the way back. */
-const showSearch = computed(() => !citizensTab.value && total.value > STATEMENT_SEARCH_MIN)
-const showSort = computed(() => (citizensTab.value ? view.value.citizens.length > 1 : total.value > 1))
+const showSearch = computed(() => !isPartial.value && !citizensTab.value && total.value > STATEMENT_SEARCH_MIN)
+const showSort = computed(() => !isPartial.value && (citizensTab.value ? view.value.citizens.length > 1 : total.value > 1))
+const showChip = computed(() => !isPartial.value && view.value.country !== null)
+/* The cap is the whole reading's frame row; page one's „100 of 350" is the progress line's to say. */
+const showCap = computed(() => !isPartial.value && view.value.cap !== null)
 /* The tool row holds the phone's order alone: from row-cols up it would be an empty band. */
-const headerClass = computed(() => (!view.value.cap && !view.value.country && !showSearch.value ? 'row-cols:hidden' : false))
-const showHeader = computed(() => Boolean(view.value.cap || view.value.country || showSearch.value || showSort.value))
+const headerClass = computed(() => (!isPartial.value && !showCap.value && !showChip.value && !showSearch.value ? 'row-cols:hidden' : false))
+const showHeader = computed(() => Boolean(isPartial.value || showCap.value || showChip.value || showSearch.value || showSort.value))
 
 const searchId = useId()
 const sortId = useId()
@@ -153,15 +188,26 @@ const sortId = useId()
     <template v-else>
       <h4 class="sr-only">{{ DE.listHeading }}</h4>
       <ListBox class="@container/list" :header-class="headerClass">
-        <template v-if="view.tabs.length" #tabs>
+        <template v-if="view.tabs.length && !isPartial" #tabs>
           <ListTabs v-model="kind" :options="view.tabs" :group-label="DE.kindsLabel" collapse />
         </template>
         <template v-if="showHeader" #header>
+          <!-- While partial, the tool row's place: the rest is being read, or could not be — the rows stay. Its height reserved, so the controls arrive with little shift. -->
+          <div v-if="partial" class="flex min-h-target flex-wrap items-center gap-3">
+            <template v-if="partial.restFailed">
+              <GapNote :text="DE.restUnread(reading.read)" class="text-sm text-ink-secondary" />
+              <UButton color="primary" @click="$emit('retry')">{{ DE.retry }}</UButton>
+            </template>
+            <p v-else class="flex items-center gap-2.5 text-sm text-ink-secondary">
+              <span class="size-4 shrink-0 animate-spin rounded-full border-2 border-hairline border-t-accent" aria-hidden="true" />
+              <span>{{ DE.partialLoading }}</span>
+            </p>
+          </div>
           <!-- The frame row: what the list does not hold, before anything is searched in it. -->
-          <GapNote v-if="view.cap" :text="view.cap" class="text-sm text-ink-muted" />
-          <div v-if="view.country || showSort || showSearch" class="flex flex-wrap items-center gap-3">
+          <GapNote v-if="showCap && view.cap" :text="view.cap" class="text-sm text-ink-muted" />
+          <div v-if="showChip || showSort || showSearch" class="flex flex-wrap items-center gap-3">
             <ToggleChip
-              v-if="view.country"
+              v-if="showChip && view.country"
               :pressed="fromCountry"
               :unavailable="!fromCountry && countryCount === 0 ? view.country.unavailable : null"
               @toggle="fromCountry = !fromCountry"
@@ -196,7 +242,7 @@ const sortId = useId()
              it is shown: the tabs say „Alle 12", not of what. Polite, so a
              change of tab, chip or query that swaps the rows without
              moving the focus is still heard. -->
-        <p class="px-4 pt-3 text-sm text-ink-muted" aria-live="polite">{{ setLine }}</p>
+        <p v-if="!isPartial" class="px-4 pt-3 text-sm text-ink-muted" aria-live="polite">{{ setLine }}</p>
 
         <!-- The citizens: one row per country, counted. -->
         <template v-if="citizensTab">
@@ -255,6 +301,8 @@ const sortId = useId()
             <!-- Counted, never named: no link, no day, no country — muted, after every named row. -->
             <li v-for="row in shownClosing" :key="row.key" class="px-4 py-2.5 text-sm text-ink-muted">{{ row.label }}</li>
           </ul>
+          <!-- Page one may hold no organisation with a name; the rest may. -->
+          <ListBoxNotice v-else-if="isPartial" :title="DE.noneNamed" />
           <ListBoxNotice v-else-if="searchActive" :title="DE.noMatch" :description="DE.noMatchNote" />
           <ListBoxNotice v-else :title="DE.noneInSelection" />
           <ListMore :visible="visible" :total="rows.length" :step="STATEMENT_PAGE_SIZE" @more="more()" @all="all(rows.length)" />

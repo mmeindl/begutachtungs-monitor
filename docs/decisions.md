@@ -676,6 +676,14 @@ The code names the EU rules D1 to D7; this is where they are defined
 - **Bund → Land is keyed by the promulgation (BGBl. I), not the
   Ministerialentwurf.** Drafts are counted, never Länder; „0 Länder" is never
   shown, and unread Länder are not „without" (§12.67).
+- **The acts list („Rechtsakte, die Entwürfe dieser Periode umsetzen")
+  orders by deadline, by name, or by „Entwürfe"** (16.11.2026,
+  `euActComparator`): the drafts, Bund and Länder together, most first,
+  ties in the tab's deadline order; each reversible. It counts drafts that
+  implement an act, never acts not implemented, so it is no order by what
+  is missing. „Ohne Frist" turns a deadline order into the names
+  (`forcedToName`); the drafts' order stays. The fold of acts drafts only
+  restate follows the main list's order.
 - **A reader change that alters a stored finding bumps its reader version in
   the same commit,** or the disk store keeps stale facts (§12.66, §12.67).
 - **The header navigation is the door to `/eu-recht`** (14.11.2026). The
@@ -733,7 +741,10 @@ The code names the EU rules D1 to D7; this is where they are defined
     and each with its own „unknown" (null, never 0). A notified measure is
     the Member State's claim, so the word is „gemeldet"; nothing says
     „umgesetzt", „offen" or „überfällig", no colour, no count or order by
-    what is missing (rule D6). The Commission's delegated and
+    what is missing (rule D6): the columns „Entwürfe" and „Gemeldet" do not
+    sort. The deadline (in the tab's direction) and the directive's name
+    do, each reversible (16.11.2026, `EU_UMSETZUNG_SORT_COLUMNS`, a test
+    holds the two columns out). The Commission's delegated and
     implementing directives stay behind a chip that is off and says how
     many they are.
   - **The Commission's portal „Ihre Meinung zählt" is read narrowly and
@@ -817,6 +828,24 @@ The code names the EU rules D1 to D7; this is where they are defined
       …".
       The endpoint answers only for a publication that is a window of the
       initiative named, so it is no proxy for arbitrary numbers.
+    - **Two steps, no page twice** (16.11.2026, `feedbackOf`,
+      `feedbackStageOf`): the whole read of 500 took about 12 s, and the
+      rows a reader sees first are page one's anyway (newest first, ten a
+      page). So the block asks for page one first (`?teil=erste` on the one
+      route, state `teilweise`, or `gelesen` where page one is the whole
+      list or the whole reading is cached) and then for the whole. Page one
+      is cached in memory apart (`eu-portal-rueckmeldungen-erste`, after the
+      naming rule, six hours) and the whole read starts from it, so a window
+      costs the portal at most five requests as before; a request in flight
+      is shared, and the whole reading's six hours count from page one's
+      read. While only page one is in, the list shows its named rows newest
+      first and the pager, and nothing that counts, filters or orders — no
+      tabs, chip, search, order, set line or closing rows: over one page of
+      five they would be wrong and would change under the reader's eyes. A
+      line with the spinner stands in the tool row's place; where the rest
+      fails, a „Gerade nicht abrufbar" sentence with „Erneut versuchen" for
+      the rest alone, the rows kept. When the whole arrives the controls
+      appear and the rows already paged to stay.
     - **One row per contribution, as a list of the Stellungnahmen**
       (maintainer, 15.11.2026; `EuFeedbackPanel`, words in
       `app/utils/euFeedback.ts`). A named organisation's contribution is a
@@ -880,8 +909,11 @@ The code names the EU rules D1 to D7; this is where they are defined
     (15.11.2026, step 3, `EuFensterList`): one request a day for the list,
     one row per window by closing day, tabs by where in the process
     („Konsultation", „Vorschlag", „Entwurf eines Rechtsakts"). No count of
-    contributions in the list and no order but the dates'; the count stands on an initiative's own page, per
-    window. A portal that could not be read is said with the link to the
+    contributions in the list and no order by a count; the count stands on an initiative's own page, per
+    window. The reader may order by closing day (the default, a window
+    without a day last either way) or by title, each reversible
+    (16.11.2026); „Stadium" and „Vorgesehen" do not order — the tabs divide
+    by them. A portal that could not be read is said with the link to the
     portal, never an empty list, and the feed and calendar (`?quelle=eu`, a
     source of their own) answer 503 for it. An initiative has a page by the
     portal's number (`euInitiativePath`); its door is the way to the portal
@@ -1012,9 +1044,13 @@ The code names the EU rules D1 to D7; this is where they are defined
       Monitor" sentence, that it shows no threshold. Rejected: computing the
       thresholds from the regulation's annex — a second source with its own
       upkeep, and a „reached" mark would read as a verdict.
-    - **The list „Jetzt unterstützbar" orders by the last day of the
-      collection, soonest first, then by number** — the open windows' rule;
-      never by supporters, which would read as a ranking of what is worth
+    - **The list „Jetzt unterstützbar" opens by the last day of the
+      collection, soonest first, then by number** — the open windows' rule.
+      Since 16.11.2026 the reader may also order by title or by supporters
+      (most first), each reversible, a row without a day or count last
+      either way: the draft list lets its Stellungnahmen column order its
+      rows, and the count column here is its twin. The list never opens on
+      the supporters' order, which would read as a ranking of what is worth
       signing. The register's count stands in a column of its own,
       „Unterstützungen", as the draft list keeps its Stellungnahmen
       (`EuCountCell`, 16.11.2026; the acts' drafts on `/eu-recht` too), „laut

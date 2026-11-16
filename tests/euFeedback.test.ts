@@ -30,8 +30,13 @@ import {
   feedbackRowsOf,
   feedbackSetLine,
   rowsOfKind,
+  EU_FEEDBACK_DE,
+  feedbackAnnouncement,
+  feedbackStageOf,
+  needsWholeReading,
 } from '../app/utils/euFeedback'
 import { countryNameOf } from '../shared/utils/countryNames'
+import { splitGap } from '../shared/utils/gaps'
 import { fact, withFeedback } from '../app/utils/euRail'
 
 /* Who gave feedback on the Commission's portal (step 4 of the EU cycle).
@@ -597,11 +602,58 @@ describe('the block\'s list and words', () => {
     expect(feedbackBlocksOf([fact('frist-0', 'Fahrplan', ['x'])])).toEqual([])
   })
 
-  it('reads the portal on approach, never with the page, and keeps one key per window', () => {
+  it('reads the portal on approach, never with the page, and keeps one key per window and per step', () => {
     const block = readFileSync(new URL('../app/components/eu/EuFeedbackBlock.vue', import.meta.url), 'utf8')
-    expect(block).toMatch(/server: false, immediate: false/)
+    expect(block.match(/server: false,\s*immediate: false/g)).toHaveLength(2)
     expect(block).toMatch(/useNearViewportSection\(root/)
-    expect(block).toMatch(/key: `eu-rueckmeldungen-\$\{props\.block\.initiative\}-\$\{props\.block\.publication\}`/)
+    expect(block).toMatch(/key: `eu-rueckmeldungen-\$\{props\.block\.initiative\}-\$\{props\.block\.publication\}-erste`/)
+    expect(block).toMatch(/key: `eu-rueckmeldungen-\$\{props\.block\.initiative\}-\$\{props\.block\.publication\}-ganz`/)
+    expect(block).toMatch(/query: \{ teil: 'erste' \}/)
     expect(block).not.toMatch(/<FoldSection/)
+  })
+})
+
+describe('the block\'s two steps (feedbackStageOf)', () => {
+  const reading = (read: number, total: number): EuFeedbackReading => ({ total, read, contributions: [], kinds: [], citizens: { count: read, byCountry: {} }, other: 0, unpublished: 0 })
+  const idle = { status: 'idle' as const, data: null }
+  const page1 = { status: 'success' as const, data: { state: 'teilweise' as const, reading: reading(100, 350) } }
+
+  it('waits until page one is in, and says page one failed as „unread"', () => {
+    expect(feedbackStageOf(idle, idle)).toEqual({ kind: 'waiting' })
+    expect(feedbackStageOf({ status: 'pending', data: null }, idle)).toEqual({ kind: 'waiting' })
+    expect(feedbackStageOf({ status: 'error', data: null }, idle)).toEqual({ kind: 'unread' })
+    expect(feedbackStageOf({ status: 'success', data: { state: 'ungelesen' } }, idle)).toEqual({ kind: 'unread' })
+  })
+
+  it('is partial with page one, asks for the whole once, and is complete when it arrives', () => {
+    const partial = feedbackStageOf(page1, idle)
+    expect(partial).toEqual({ kind: 'partial', reading: reading(100, 350), restFailed: false })
+    expect(needsWholeReading(partial, 'idle')).toBe(true)
+    expect(needsWholeReading(feedbackStageOf(page1, { status: 'pending', data: null }), 'pending')).toBe(false)
+    expect(feedbackStageOf(page1, { status: 'success', data: { state: 'gelesen', reading: reading(350, 350) } })).toEqual({ kind: 'complete', reading: reading(350, 350) })
+  })
+
+  it('is complete at once where page one is the whole list: no second request', () => {
+    const whole = feedbackStageOf({ status: 'success', data: { state: 'gelesen', reading: reading(14, 14) } }, idle)
+    expect(whole).toEqual({ kind: 'complete', reading: reading(14, 14) })
+    expect(needsWholeReading(whole, 'idle')).toBe(false)
+  })
+
+  it('keeps page one\'s rows where the rest failed, and says so with a gap sentence', () => {
+    for (const rest of [{ status: 'error' as const, data: null }, { status: 'success' as const, data: { state: 'ungelesen' as const } }]) {
+      const s = feedbackStageOf(page1, rest)
+      expect(s).toEqual({ kind: 'partial', reading: reading(100, 350), restFailed: true })
+      expect(needsWholeReading(s, rest.status)).toBe(false)
+      expect(splitGap(feedbackAnnouncement(s))?.lead).toBe('Gerade nicht abrufbar')
+      expect(feedbackAnnouncement(s)).toContain('unter den neuesten 100')
+    }
+    // Retried: pending again is the progress line, not the gap.
+    expect(feedbackStageOf(page1, { status: 'pending', data: null })).toMatchObject({ kind: 'partial', restFailed: false })
+  })
+
+  it('announces each stage once: loading, the rest still read, the arrival', () => {
+    expect(feedbackAnnouncement({ kind: 'waiting' })).toBe(EU_FEEDBACK_DE.loading)
+    expect(feedbackAnnouncement({ kind: 'partial', reading: reading(100, 350), restFailed: false })).toBe('Die übrigen Rückmeldungen werden noch gelesen …')
+    expect(feedbackAnnouncement({ kind: 'complete', reading: reading(350, 350) })).toBe(EU_FEEDBACK_DE.read)
   })
 })

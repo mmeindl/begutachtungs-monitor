@@ -11,6 +11,15 @@
  * Asked only when the block „Wer Rückmeldung gegeben hat" comes near the
  * reader's viewport (`EuFeedbackBlock`), never with the page: up to five paced requests, 2.5 s apart.
  *
+ * TWO STEPS, ONE ROUTE (16.11.2026). `?teil=erste` asks for page one of the
+ * portal's list alone (100 contributions, newest first): `teilweise` with
+ * the reading of that page — `total` the portal's count, `read` the rows of
+ * page one — or `gelesen` where page one is the whole list or the whole
+ * reading is already cached, so the block asks no second time. Without the
+ * parameter: the whole reading, as before, built on the page one already
+ * read — no page is asked of the portal twice (`feedbackOf`). Any other
+ * value of `teil` is a 400.
+ *
  * 400 for a number that is no portal number (digits, no leading zero, at
  * most nine). 404 where the portal proves the initiative unknown, or where
  * the publication is none of its windows — the endpoint reads only what
@@ -25,7 +34,7 @@
  */
 import type { EuRueckmeldungenResponse } from '#shared/types'
 import { euInitiativeId } from '#shared/utils/eu'
-import { feedbackOf } from '../../../../utils/eu/portalService'
+import { feedbackOf, type FeedbackStep } from '../../../../utils/eu/portalService'
 import { withinBudget } from '../../../../utils/http/budget'
 
 /**
@@ -39,9 +48,12 @@ export default defineEventHandler(async (event): Promise<EuRueckmeldungenRespons
   const initiative = euInitiativeId(getRouterParam(event, 'initiative') ?? '')
   const publication = euInitiativeId(getRouterParam(event, 'publication') ?? '')
   if (initiative === null || publication === null) throw createError({ statusCode: 400, statusMessage: 'Ungültige Nummer' })
+  const teil = getQuery(event).teil
+  if (teil !== undefined && teil !== 'erste') throw createError({ statusCode: 400, statusMessage: 'Ungültiger Teil' })
+  const step: FeedbackStep = teil === 'erste' ? 'erste' : 'ganz'
   setResponseHeader(event, 'cache-control', 'no-store')
-  const read = (await withinBudget(feedbackOf(initiative, publication), FEEDBACK_BUDGET_MS)) ?? { state: 'ungelesen' as const }
+  const read = (await withinBudget(feedbackOf(initiative, publication, step), FEEDBACK_BUDGET_MS)) ?? { state: 'ungelesen' as const }
   if (read.state === 'unbekannt') throw createError({ statusCode: 404, statusMessage: 'Keine Frist für Rückmeldungen mit dieser Nummer bei diesem Vorhaben' })
   if (read.state === 'ungelesen') return { state: 'ungelesen' }
-  return { state: 'gelesen', reading: read.reading }
+  return { state: read.state, reading: read.reading }
 })

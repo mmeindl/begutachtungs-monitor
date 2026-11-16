@@ -659,9 +659,16 @@ export interface EuFeedbackReading {
  * GET /api/eu-recht/rueckmeldungen/:initiative/:publication — who gave
  * feedback in one window, read when its block nears the reader's viewport.
  * A publication that is not one of the initiative's windows is a 404, not a state.
+ *
+ * Two steps (16.11.2026): with `?teil=erste`, page one of the portal's list
+ * alone, as `teilweise` — the same reading built from page one, `total` the
+ * portal's count and `read` the rows of page one — or as `gelesen` where
+ * page one holds the whole list or the whole reading is cached. Without
+ * it, the whole reading (`gelesen`), never `teilweise`.
  */
 export type EuRueckmeldungenResponse =
   | { state: 'gelesen'; reading: EuFeedbackReading }
+  | { state: 'teilweise'; reading: EuFeedbackReading }
   | { state: 'ungelesen' }
 
 /**

@@ -235,17 +235,20 @@ describe('the document disk', () => {
     // withdrawn after a window closed (step 4 of the EU cycle, 15.11.2026):
     // the derived mount is memory in dev and in production, the fetched one
     // is a directory in dev.
-    const feedback = found.filter((f) => f.name === 'eu-portal-rueckmeldungen')
-    expect(feedback).toHaveLength(1)
-    expect(feedback[0]!.derived).toBe(true)
-    expect(feedback[0]!.documents).toBe(false)
-    expect(FETCHED['eu-portal-rueckmeldungen']).toBeUndefined()
-    expect(DOCUMENTS).not.toContain('eu-portal-rueckmeldungen')
-    expect(optionsOf(feedback[0]!.options)).toMatch(/\bmaxAge:\s*FEEDBACK_NAMES_TTL_S\b/)
+    // Two caches since 16.11.2026: page one alone, and the whole reading built on it.
+    const feedback = found.filter((f) => f.name.startsWith('eu-portal-rueckmeldungen'))
+    expect(feedback.map((f) => f.name).sort()).toEqual(['eu-portal-rueckmeldungen', 'eu-portal-rueckmeldungen-erste'])
+    for (const f of feedback) {
+      expect(f.derived, f.name).toBe(true)
+      expect(f.documents, f.name).toBe(false)
+      expect(FETCHED[f.name], f.name).toBeUndefined()
+      expect(DOCUMENTS, f.name).not.toContain(f.name)
+      expect(optionsOf(f.options), f.name).toMatch(/\bmaxAge:\s*FEEDBACK_NAMES_TTL_S\b/)
+    }
     const ttl = readFileSync(join(UTILS, 'cache', 'ttl.ts'), 'utf8')
     expect(/export const FEEDBACK_NAMES_TTL_S = 60 \* 60 \* 6\b/.test(ttl)).toBe(true)
     // And no other cached function reads the list of contributions.
-    const readers = utilsFiles().filter((f) => readFileSync(join(UTILS, f), 'utf8').includes('readFeedback('))
+    const readers = utilsFiles().filter((f) => /\b(readFeedback|readFeedbackRest|readFirstFeedbackPage)\(/.test(readFileSync(join(UTILS, f), 'utf8')))
     expect(readers.sort()).toEqual([join('eu', 'portalFeedback.ts'), join('eu', 'portalService.ts')].sort())
   })
 
