@@ -1114,7 +1114,10 @@ not yet followed, or the EU cycle, starts there.
   fewer.** A route that is not followed stands in the graphic as „nicht im
   Monitor" with its reason. Since 16.11.2026 every followed object has a
   matrix of its own with the stations of its own rail, names and order read
-  from the rail's code (`WEG_MATRICES`, `WegMatrix`): the national norm, an
+  from the rail's code (`WEG_MATRICES`, `WegMatrix`): the national norm
+  (Bund and Länder a matrix each, the same five stations, the last two
+  named „Parlament" and „Bundesgesetzblatt" or „Landtag" and
+  „Landesgesetzblatt" in the header, so no sentence translates one), an
   EU act (Konsultation · Vorschlag · Parlament und Rat · Amtsblatt ·
   Umsetzung oder Geltung), a European Citizens' Initiative, an Anliegen an
   den Nationalrat; one card, one legend, the blue mark wherever one can take
