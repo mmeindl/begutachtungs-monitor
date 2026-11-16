@@ -141,6 +141,20 @@ ExecStart=/usr/bin/curl -fsS -o /dev/null --max-time 300 "http://127.0.0.1:3000/
 # The homepage's cut of the same Länder lists (30.10.2026): read right after them, it
 # costs the cut and nothing upstream.
 ExecStart=/usr/bin/curl -fsS -o /dev/null --max-time 120 http://127.0.0.1:3000/api/dashboard/laender
+# The three lists of /eu-recht that read the Commission (16.11.2026): the
+# open feedback windows of „Ihre Meinung zählt", the European Citizens'
+# Initiatives in collection, the directives to transpose. None was warmed;
+# each answer is kept a day, so the day's first reader paid for it — measured
+# on the production build after a restart: 6.6 s, 8 to 15 s and 2.5 s, and a
+# page rendered on the server waits for the slowest of its lists. Before the
+# EU map, which takes minutes, because they take seconds. With a leading `-`:
+# they read the Commission's services, and a portal or register that does not
+# answer must not stop what follows — the map, the Vorperiode, the Länder's
+# laws. A failed one is retried the next night; until then its list says
+# „Gerade nicht abrufbar" to the reader, as it does today.
+ExecStart=-/usr/bin/curl -fsS -o /dev/null --max-time 120 http://127.0.0.1:3000/api/eu-recht/fenster
+ExecStart=-/usr/bin/curl -fsS -o /dev/null --max-time 180 http://127.0.0.1:3000/api/eu-recht/buergerinitiativen
+ExecStart=-/usr/bin/curl -fsS -o /dev/null --max-time 120 http://127.0.0.1:3000/api/eu-recht/umsetzung
 # Seventh call since 04.11.2026: the EU map —
 # which drafts of the running period implement EU law: the
 # list's token and its filter „Setzt EU-Recht um", the pages under
