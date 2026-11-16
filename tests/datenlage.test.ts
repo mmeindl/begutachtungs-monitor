@@ -1,6 +1,8 @@
 import { describe, expect, it } from 'vitest'
 import {
   DATENLAGE_ANLIEGEN,
+  DATENLAGE_EU,
+  DATENLAGE_OBJECTS,
   DATENLAGE_FIGURES,
   DATENLAGE_LAW_STATES,
   DATENLAGE_PHASES,
@@ -78,6 +80,29 @@ describe('datenlage', () => {
     for (const f of DATENLAGE_ANLIEGEN.figures) {
       expect(f.population.length).toBeGreaterThan(0)
       expect(f.date).toMatch(/^\d{2}\.\d{2}\.\d{4}$/)
+    }
+  })
+
+  it('gives the EU\'s lawmaking a block of its own, and no EU cell says nobody looked where the EU pages show it (16.11.2026)', () => {
+    expect(DATENLAGE_OBJECTS).toEqual([DATENLAGE_EU, DATENLAGE_ANLIEGEN])
+    const anchors = [...DATENLAGE_STEPS.map((s) => s.id), ...DATENLAGE_SOURCES.map((s) => s.id), ...DATENLAGE_PHASES.map((p) => p.id), ...DATENLAGE_OBJECTS.map((o) => o.id)]
+    expect(new Set(anchors).size).toBe(anchors.length)
+    for (const object of DATENLAGE_OBJECTS) {
+      expect(object.covered.length).toBeGreaterThan(0)
+      expect(object.sources.length).toBeGreaterThan(0)
+      for (const gap of object.notCovered) expect(gap.why.length, gap.what).toBeGreaterThan(0)
+      for (const f of object.figures) expect(f.date).toMatch(/^\d{2}\.\d{2}\.\d{4}$/)
+    }
+    const eu = DATENLAGE_SOURCES.find((s) => s.key === 'eu')!
+    // The windows, the feedback and the procedure are on the EU pages: „nicht erhoben" (legend: „Der Monitor zeigt es nicht") would be false.
+    for (const step of ['frist', 'statements', 'statementCount', 'way'] as const) expect(eu.cells[step].state, step).toBe('ownObject')
+    // The state names the block it points to, in the legend and in the cell.
+    expect(DATENLAGE_STATE_META.ownObject.meaning).toContain(DATENLAGE_EU.name)
+    expect(eu.cells.frist.reason).toContain(DATENLAGE_EU.name)
+    expect(eu.summary).toContain(DATENLAGE_EU.name)
+    // Only the EU has an object of its own beside its cells.
+    for (const source of DATENLAGE_SOURCES.filter((s) => s.key !== 'eu')) {
+      for (const step of DATENLAGE_STEP_KEYS) expect(source.cells[step].state, `${source.key}/${step}`).not.toBe('ownObject')
     }
   })
 

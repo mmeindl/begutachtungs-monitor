@@ -41,6 +41,9 @@ import type { LandCode } from '../types'
 import { LAND_CODES, LAND_NAME, LAND_SLUG } from './laender'
 import { COVERAGE_ROWS, LAND_COVERAGE, type CoverageRow } from './laenderCoverage'
 import { ANLIEGEN_SECTION_DE } from './anliegen'
+import { EU_FEEDBACK_AUTO_PAGES, EU_FEEDBACK_MAX_PAGES, EU_FEEDBACK_PAGE_SIZE } from './euPortal'
+import { EU_MEMBER_STATE_NAME_DE, EU_PAGE_TITLE_DE, EU_UMSETZUNG_YEARS, euPath } from './eu'
+import { formatNumberDe } from './format'
 
 /**
  * The state of one cell. Four say what the SOURCE does, two what the
@@ -51,6 +54,14 @@ import { ANLIEGEN_SECTION_DE } from './anliegen'
  * the one step that asks what the law prescribes: the publication states
  * do not fit a legal fact, and bending one („published" for „prescribed")
  * would mix two questions in one word.
+ *
+ * `ownObject` (16.11.2026) is the EU's: its lawmaking does not walk a
+ * draft's steps, and since the EU cycle the monitor reads feedback
+ * windows, feedback and the procedure between the institutions. Those
+ * cells said „nicht erhoben" — whose legend says „Der Monitor zeigt es
+ * nicht" — which the EU pages had made false. They point to the EU's own
+ * block (`DATENLAGE_EU`) instead of bending „Stellungnahmen" and
+ * „Begutachtung" to fit feedback to the Commission.
  */
 export type DatenlageState =
   | 'required'
@@ -62,6 +73,7 @@ export type DatenlageState =
   | 'notPublished'
   | 'partlyRead'
   | 'notRead'
+  | 'ownObject'
   | 'notSurveyed'
 
 /** Whose gap a state is: the source's, the monitor's, or nobody's. */
@@ -86,8 +98,15 @@ export const DATENLAGE_STATE_ORDER: readonly DatenlageState[] = [
   'notPublished',
   'partlyRead',
   'notRead',
+  'ownObject',
   'notSurveyed',
 ]
+
+/** The name of the EU's own block (`DATENLAGE_EU`), which the state `ownObject` points to. */
+const EU_OBJECT_NAME_DE = 'Gesetzgebung der EU'
+
+/** The states that say where this overview stops: another object's block, or nobody has looked. */
+export const DATENLAGE_OUTSIDE_STATES: readonly DatenlageState[] = ['ownObject', 'notSurveyed']
 
 /** The states of the law step; no other step uses them, and they own no gap. */
 export const DATENLAGE_LAW_STATES: readonly DatenlageState[] = ['required', 'optional', 'notRequired']
@@ -137,6 +156,11 @@ export const DATENLAGE_STATE_META: Record<DatenlageState, DatenlageStateMeta> = 
     label: 'liest der Monitor noch nicht',
     meaning: 'Die Quelle veröffentlicht es; der Monitor liest es noch nicht.',
     owner: 'monitor',
+  },
+  ownObject: {
+    label: 'eigenes Verfahren',
+    meaning: `Die Schritte hier sind die eines Entwurfs. Die Gesetzgebung der EU geht andere; was der Monitor davon liest und was nicht, steht unter „${EU_OBJECT_NAME_DE}“.`,
+    owner: null,
   },
   notSurveyed: {
     label: 'nicht erhoben',
@@ -635,16 +659,28 @@ const BUND: DatenlageSource = {
 /** An EU cell nobody has surveyed for this table. */
 const EU_NOT_SURVEYED: DatenlageCell = { text: 'nicht erhoben', state: 'notSurveyed' }
 
+/**
+ * A step of a draft that the EU's lawmaking walks in its own way
+ * (16.11.2026): the cell points to `DATENLAGE_EU`, which says what is read.
+ */
+const EU_OWN_OBJECT: DatenlageCell = {
+  text: 'eigenes Verfahren',
+  state: 'ownObject',
+  reason: `was der Monitor liest, steht unter „${EU_OBJECT_NAME_DE}“`,
+}
+
 const EU: DatenlageSource = {
   key: 'eu',
   id: 'eu',
   name: 'EU',
-  // Widened on 15.11.2026: the sentence said the monitor read no EU procedure, which the act's rail, the directives to transpose and the portal's open windows had made false; the register of the Citizens' Initiative joined the same day (step 5).
-  summary: 'Von der EU liest der Monitor den Rechtsakt, den ein Entwurf umsetzt, mit Umsetzungsfrist und Verfahren aus EUR-Lex, die Richtlinien, die umzusetzen sind, aus dem Portal „Ihre Meinung zählt“ der Kommission, wozu sie gerade Rückmeldungen entgegennimmt, und aus dem Register der Europäischen Bürgerinitiative, welche Initiativen gerade Unterstützungen sammeln. Was das Gesetzgebungsverfahren der EU darüber hinaus veröffentlicht, ist hier nicht erhoben.',
+  // 16.11.2026: the sentence listed what the monitor reads of the EU's own procedure and had fallen behind twice in two days; that list is `DATENLAGE_EU`'s now, and this one says what the cells are about — the act a draft names.
+  summary: `Zu einem Entwurf liest der Monitor von der EU den Rechtsakt, den er umsetzt, mit Titel und Umsetzungsfrist aus EUR-Lex. Die Gesetzgebung der EU selbst geht nicht die Schritte eines Entwurfs; was der Monitor davon liest, steht unter „${EU_OBJECT_NAME_DE}“.`,
   cells: {
+    // Whether the EU's law prescribes a consultation was not read for this table.
     begutachtungRecht: EU_NOT_SURVEYED,
-    verordnungen: EU_NOT_SURVEYED,
-    archive: EU_NOT_SURVEYED,
+    // Draft acts of the Commission open for feedback: the portal's windows (`DATENLAGE_EU`).
+    verordnungen: EU_OWN_OBJECT,
+    archive: EU_OWN_OBJECT,
     tgu: EU_NOT_SURVEYED,
     // api-exploration §2d (Cellar); so-funktionierts #eu-recht.
     eu: {
@@ -652,11 +688,12 @@ const EU: DatenlageSource = {
       state: 'partial',
       reason: 'bei mehreren Daten sagt EUR-Lex nicht, welches die allgemeine Frist ist',
     },
-    frist: EU_NOT_SURVEYED,
-    statements: EU_NOT_SURVEYED,
-    statementCount: EU_NOT_SURVEYED,
-    way: EU_NOT_SURVEYED,
-    texts: EU_NOT_SURVEYED,
+    // The feedback windows, who gave feedback and the procedure between the institutions (steps 1–4 of the EU cycle).
+    frist: EU_OWN_OBJECT,
+    statements: EU_OWN_OBJECT,
+    statementCount: EU_OWN_OBJECT,
+    way: EU_OWN_OBJECT,
+    texts: EU_OWN_OBJECT,
     // api-exploration §2d (title from the Cellar, ELI link to EUR-Lex).
     kundmachung: { text: 'Rechtsakt mit Titel, in EUR-Lex', state: 'published' },
   },
@@ -827,7 +864,7 @@ export interface DatenlageObject {
 }
 
 /** The row labels of an object's block. */
-export const DATENLAGE_ANLIEGEN_DE = {
+export const DATENLAGE_OBJECT_DE = {
   covered: 'Erfasst',
   sources: 'Quelle',
   notCovered: 'Nicht erfasst',
@@ -889,6 +926,92 @@ export const DATENLAGE_ANLIEGEN: DatenlageObject = {
     },
   ],
 }
+
+/**
+ * The EU's lawmaking (16.11.2026): an object of its own, as the Anliegen.
+ * A proposal, an act and a Citizens' Initiative walk their own rails
+ * (`/eu-recht/wege`), so what the monitor reads of them stands here and
+ * not in a draft's cells. Every line names something a page shows or a
+ * reader's header says it does not read:
+ * `server/utils/eu/haveYourSay.ts` and `portalFeedback.ts` (the portal),
+ * `cellarDossier.ts`, `cellarVorschlag.ts` and `cellarUmsetzung.ts`
+ * (EUR-Lex), `eciRegister.ts` (the register), and
+ * `docs/research/umsetzungsplan-eu-zyklus.md` („Not in this plan").
+ * Who is named among those who gave feedback is `/datenschutz#dse-names`'s
+ * to say, not this page's.
+ */
+export const DATENLAGE_EU: DatenlageObject = {
+  id: 'eu-gesetzgebung',
+  name: EU_OBJECT_NAME_DE,
+  summary: 'Ein Vorhaben der Kommission, ein Rechtsakt der EU und eine Europäische Bürgerinitiative sind keine Entwürfe und gehen keinen der Schritte oben. Der Monitor folgt ihnen auf eigenen Seiten.',
+  link: { label: EU_PAGE_TITLE_DE, href: euPath() },
+  covered: [
+    'Vorhaben, zu denen die Kommission gerade Rückmeldungen entgegennimmt, mit Beginn und Ende jeder Frist',
+    'Wer zu einer Frist Rückmeldung gegeben hat',
+    'Vorschläge der Kommission mit ihrem Verfahren zwischen Parlament und Rat',
+    'Rechtsakte, die ein Entwurf umsetzt, mit ihrem Verfahren bis zum Amtsblatt',
+    // `EU_UMSETZUNG_YEARS`; the count of notified measures, never the measures' verdict.
+    `Richtlinien, deren Umsetzungsfrist in den ${EU_UMSETZUNG_YEARS} Jahren vor oder nach heute liegt, und wie viele Maßnahmen ${EU_MEMBER_STATE_NAME_DE} der Kommission dazu gemeldet hat`,
+    `Europäische Bürgerinitiativen von der Registrierung bis zur Antwort der Kommission, mit den Unterstützungen insgesamt und aus ${EU_MEMBER_STATE_NAME_DE}`,
+  ],
+  sources: [
+    'Das Portal „Ihre Meinung zählt“ der Europäischen Kommission: Vorhaben, Fristen und Rückmeldungen',
+    'EUR-Lex: Rechtsakte, Vorschläge, ihr Verfahren und die gemeldeten Maßnahmen',
+    'Das Register der Europäischen Bürgerinitiative',
+  ],
+  notCovered: [
+    {
+      // `euInitiative.ts`, `notFollowedRail`: the rail continues only where a publication carries a COM number (`euProposalPathOfReference`).
+      what: 'Was nach der Kommission aus einem Vorhaben wird, zu dem das Portal keinen Vorschlag nennt',
+      why: 'Der Monitor verknüpft ein Vorhaben nur über die Nummer des Vorschlags mit dem Verfahren in EUR-Lex.',
+    },
+    {
+      // docs/research/eu-zyklus.md, sample of 14.11.2026 (the figure below).
+      what: 'Die Konsultation zu einem Vorschlag von vor 2017',
+      why: 'Im Portal war in der Stichprobe keine zu finden.',
+    },
+    {
+      // `EU_FEEDBACK_MAX_PAGES` × `EU_FEEDBACK_PAGE_SIZE`; what is read unasked is `EU_FEEDBACK_AUTO_PAGES` pages (16.11.2026).
+      what: `Rückmeldungen über die neuesten ${formatNumberDe(EU_FEEDBACK_MAX_PAGES * EU_FEEDBACK_PAGE_SIZE)} je Frist hinaus`,
+      why: `Der Monitor liest zunächst die neuesten ${formatNumberDe(EU_FEEDBACK_AUTO_PAGES * EU_FEEDBACK_PAGE_SIZE)} und weitere nur, wenn jemand sie anfordert.`,
+    },
+    {
+      what: 'Der Text einer Rückmeldung',
+      why: 'Der Monitor liest ihn nicht und verlinkt die Rückmeldung im Portal.',
+    },
+    {
+      // umsetzungsplan-eu-zyklus.md, „Not in this plan".
+      what: 'Der Vergleich eines Vorschlags mit dem beschlossenen Rechtsakt',
+      why: 'Eine amtliche Textgegenüberstellung gibt es nicht; von EUR-Lex liest der Monitor Angaben zum Verfahren, keine Texte.',
+    },
+    {
+      // `cellarUmsetzung.ts`, „A notified measure is the member state's claim".
+      what: 'Ob eine Richtlinie vollständig umgesetzt ist',
+      why: 'Die gemeldeten Maßnahmen sind Angaben des Mitgliedstaats; dass sie vollständig sind, bestätigt die Kommission in diesen Daten nicht.',
+    },
+    {
+      // umsetzungsplan-eu-zyklus.md, step 5: members and funders are never read.
+      what: 'Wer eine Europäische Bürgerinitiative organisiert oder finanziert',
+      why: 'Das Register nennt dazu Personen; der Monitor liest diese Angaben nicht.',
+    },
+    {
+      // `app/utils/wege.ts`, `eu-petition` (petitionen-laender-und-eu.md, 15.11.2026).
+      what: 'Petitionen an das Europäische Parlament',
+      why: 'Das Petitionsportal des Parlaments hat keine Schnittstelle und weist automatische Abfragen ab.',
+    },
+  ],
+  figures: [
+    {
+      // docs/research/eu-zyklus.md, the portal sample: 36 asked from 2017 on, 29 proven; 15 before, none.
+      text: 'Zu 29 fand der Monitor im Portal das Vorhaben; zu keinem von 15 weiteren Vorschlägen aus der Zeit vor 2017.',
+      population: '36 Vorschläge der Kommission ab 2017, eine Stichprobe',
+      date: '14.11.2026',
+    },
+  ],
+}
+
+/** The objects that walk rails of their own, in the page's order: the levels top down. */
+export const DATENLAGE_OBJECTS: readonly DatenlageObject[] = [DATENLAGE_EU, DATENLAGE_ANLIEGEN]
 
 /** The name a figure's source goes by on the page. */
 export function datenlageFigureSourceName(source: DatenlageFigure['source']): string {

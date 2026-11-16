@@ -22,11 +22,12 @@
  * yellow is the highlighter, and neither means a state.
  */
 import {
-  DATENLAGE_ANLIEGEN,
-  DATENLAGE_ANLIEGEN_DE,
   DATENLAGE_DEFAULT_VIEW,
   DATENLAGE_FIGURES,
   DATENLAGE_LAW_STATES,
+  DATENLAGE_OBJECT_DE,
+  DATENLAGE_OBJECTS,
+  DATENLAGE_OUTSIDE_STATES,
   DATENLAGE_PHASES,
   DATENLAGE_SOURCES,
   DATENLAGE_STATE_META,
@@ -45,7 +46,7 @@ import {
 usePageSeo({
   title: 'Datenlage',
   description:
-    'Was die EU, der Bund und die neun Länder zu jedem Schritt eines Entwurfs veröffentlichen – und wo etwas fehlt, ob die Quelle es nicht veröffentlicht oder der Monitor es noch nicht liest.',
+    'Was die EU, der Bund und die neun Länder zu den Schritten veröffentlichen, die der Monitor verfolgt – und wo etwas fehlt, ob die Quelle es nicht veröffentlicht oder der Monitor es noch nicht liest.',
 })
 
 const route = useRoute()
@@ -77,9 +78,10 @@ const stepInfo = (key: DatenlageStep) => stepsById.get(key)!
    law step's states stand apart (14.11.2026): a legal fact is nobody's gap. */
 const legend = [
   { heading: 'Was das Recht vorschreibt', states: DATENLAGE_LAW_STATES },
-  { heading: 'Was die Quelle veröffentlicht', states: DATENLAGE_STATE_ORDER.filter((s) => s !== 'notSurveyed' && !DATENLAGE_LAW_STATES.includes(s) && DATENLAGE_STATE_META[s].owner !== 'monitor') },
+  { heading: 'Was die Quelle veröffentlicht', states: DATENLAGE_STATE_ORDER.filter((s) => !DATENLAGE_OUTSIDE_STATES.includes(s) && !DATENLAGE_LAW_STATES.includes(s) && DATENLAGE_STATE_META[s].owner !== 'monitor') },
   { heading: 'Was der Monitor liest', states: DATENLAGE_STATE_ORDER.filter((s) => DATENLAGE_STATE_META[s].owner === 'monitor') },
-  { heading: 'Was nicht geprüft ist', states: ['notSurveyed'] as const },
+  // 16.11.2026, „Was nicht geprüft ist" until then: the EU's own procedure joined what nobody surveyed.
+  { heading: 'Was diese Übersicht nicht sagt', states: DATENLAGE_OUTSIDE_STATES },
 ]
 
 /** The cell's text, unless it only repeats its state („nicht erhoben"). */
@@ -94,8 +96,8 @@ function cellText(cell: DatenlageCell): string | undefined {
       Datenlage
     </h1>
     <p class="mt-3 leading-relaxed text-ink-secondary">
-      Was die EU, der Bund und die neun Länder zu jedem Schritt eines Entwurfs
-      veröffentlichen. Wo etwas fehlt, steht dabei, warum – und ob die Quelle
+      Was die EU, der Bund und die neun Länder zu den Schritten
+      veröffentlichen, die der Monitor verfolgt. Wo etwas fehlt, steht dabei, warum – und ob die Quelle
       es nicht veröffentlicht oder der Monitor es noch nicht liest.
     </p>
 
@@ -189,31 +191,32 @@ function cellText(cell: DatenlageCell): string | undefined {
       </div>
     </ProseSection>
 
-    <!-- Anliegen an das Parlament (15.11.2026): an object of its own, not
-         a source of drafts, so no cells — what is covered, from which
-         source, and each gap with its reason, in the sources' grammar. Its
-         figure stands here and not under „Gemessen": that list is keyed by
-         the draft's steps, which an Anliegen does not walk. -->
-    <ProseSection :id="DATENLAGE_ANLIEGEN.id" :heading="DATENLAGE_ANLIEGEN.name">
-      <p>{{ DATENLAGE_ANLIEGEN.summary }}</p>
+    <!-- The objects that are no drafts — the EU's lawmaking (16.11.2026)
+         and the Anliegen an das Parlament (15.11.2026): no cells, but what
+         is covered, from which source, and each gap with its reason, in the
+         sources' grammar. Their figures stand here and not under
+         „Gemessen": that list is keyed by the draft's steps, which these
+         objects do not walk. -->
+    <ProseSection v-for="object in DATENLAGE_OBJECTS" :id="object.id" :key="object.id" :heading="object.name">
+      <p>{{ object.summary }}</p>
       <dl class="mt-4 divide-y divide-hairline border-y border-hairline text-sm">
         <div class="py-2 sm:grid sm:grid-cols-[11rem_1fr] sm:gap-x-4">
-          <dt class="text-ink-secondary">{{ DATENLAGE_ANLIEGEN_DE.covered }}</dt>
+          <dt class="text-ink-secondary">{{ DATENLAGE_OBJECT_DE.covered }}</dt>
           <dd class="mt-0.5 sm:mt-0">
-            <span v-for="line in DATENLAGE_ANLIEGEN.covered" :key="line" class="block text-ink">{{ line }}</span>
+            <span v-for="line in object.covered" :key="line" class="block text-ink">{{ line }}</span>
           </dd>
         </div>
         <div class="py-2 sm:grid sm:grid-cols-[11rem_1fr] sm:gap-x-4">
-          <dt class="text-ink-secondary">{{ DATENLAGE_ANLIEGEN_DE.sources }}</dt>
+          <dt class="text-ink-secondary">{{ DATENLAGE_OBJECT_DE.sources }}</dt>
           <dd class="mt-0.5 sm:mt-0">
-            <span v-for="line in DATENLAGE_ANLIEGEN.sources" :key="line" class="block text-ink">{{ line }}</span>
+            <span v-for="line in object.sources" :key="line" class="block text-ink">{{ line }}</span>
           </dd>
         </div>
         <div class="py-2 sm:grid sm:grid-cols-[11rem_1fr] sm:gap-x-4">
-          <dt class="text-ink-secondary">{{ DATENLAGE_ANLIEGEN_DE.notCovered }}</dt>
+          <dt class="text-ink-secondary">{{ DATENLAGE_OBJECT_DE.notCovered }}</dt>
           <dd class="mt-0.5 sm:mt-0">
             <ul class="list-none space-y-2 pl-0">
-              <li v-for="gap in DATENLAGE_ANLIEGEN.notCovered" :key="gap.what">
+              <li v-for="gap in object.notCovered" :key="gap.what">
                 <span class="block text-ink">{{ gap.what }}</span>
                 <span class="block text-ink-secondary">{{ gap.why }}</span>
               </li>
@@ -222,14 +225,14 @@ function cellText(cell: DatenlageCell): string | undefined {
         </div>
       </dl>
       <ul class="mt-4 list-none space-y-3 pl-0 text-sm">
-        <li v-for="figure in DATENLAGE_ANLIEGEN.figures" :key="figure.text">
-          <span class="font-medium text-ink">{{ DATENLAGE_ANLIEGEN_DE.measured }}</span>
+        <li v-for="figure in object.figures" :key="figure.text">
+          <span class="font-medium text-ink">{{ DATENLAGE_OBJECT_DE.measured }}</span>
           <span class="block text-ink-secondary">{{ figure.text }}</span>
           <span class="block text-ink-secondary">{{ figure.population }}, {{ figure.date }}</span>
         </li>
       </ul>
       <p class="mt-4 text-sm">
-        <NuxtLink :to="DATENLAGE_ANLIEGEN.link.href" class="link-inline">{{ DATENLAGE_ANLIEGEN.link.label }}</NuxtLink>
+        <NuxtLink :to="object.link.href" class="link-inline">{{ object.link.label }}</NuxtLink>
       </p>
     </ProseSection>
 
