@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import type { AnliegenDetail, RvStatementsResponse } from '#shared/types'
 import { anliegenApiBase, anliegenKindOfSegment, anliegenRootOf } from '#shared/utils/anliegen'
-import { ANLIEGEN_BACK_DE, ANLIEGEN_LIST_DE, ANLIEGEN_PAGE_DE, anliegenLoadingLabelDe, anliegenView } from '~/utils/anliegenView'
+import { ANLIEGEN_BACK_DE, ANLIEGEN_LIST_DE, ANLIEGEN_PAGE_DE, anliegenLoadingLabelDe, anliegenView, type AnliegenStationSection } from '~/utils/anliegenView'
 import { NOT_FOLLOWED_DE, notFollowedOf, type NotFollowed } from '~/utils/notFollowed'
 
 /**
@@ -16,8 +16,14 @@ import { NOT_FOLLOWED_DE, notFollowedOf, type NotFollowed } from '~/utils/notFol
  * three walks the five stations, so the page has a rail of its own
  * (`AnliegenRail`) and borrows the draft page's grammar, not its components
  * where those take a draft's types. Its order: header, the rail under the
- * one-line state, the door while the item's own flag is open, the counts,
- * the Stellungnahmen, the documents, and what the page cannot show.
+ * one-line state, the door while the item's own flag is open, then ONE
+ * SECTION PER STEP, under the rail row's own name and in its order
+ * (15.11.2026; `anliegenSections`), and last what the page cannot show. The
+ * rail carries each step's summary and links into its section; the section
+ * carries the rest. The Einbringung's section holds the documents and the
+ * Unterstützungen with their door, the committee's the Stellungnahmen with
+ * theirs (`statementsAt`) — each door once more at the end of the section
+ * where one decides to act (docs/decisions.md, „The door stands twice").
  *
  * Every word comes from `anliegenView` (`app/utils/anliegenView.ts`), so a
  * second language replaces that module, not this template.
@@ -67,6 +73,14 @@ watch(error, (e) => {
 
 const view = computed(() => (data.value ? anliegenView(data.value) : null))
 
+/* The door's actions split by section: Unterstützen at the end of the
+ * Einbringung, the Stellungnahme's forms at the end of the Stellungnahmen. */
+const supportActions = computed(() => view.value?.participation.door.actions.filter((a) => a.key === 'support') ?? [])
+const statementActions = computed(() => view.value?.participation.door.actions.filter((a) => a.key !== 'support') ?? [])
+
+/* A section's rows as `FactList` facts; the value is the fact line in the slot. */
+const factsOf = (s: AnliegenStationSection) => s.rows.map((r) => ({ key: r.key, title: r.title }))
+
 /* The Stellungnahmen — client-side and lazy, as on the page of a Vorlage:
  * list 142 must not sit in the SSR path. Registered here only, where it is
  * read, so no other call site shares its options. */
@@ -75,9 +89,10 @@ const { data: statements, error: statementsError } = await useFetch<RvStatements
   server: false,
   enabled: computed(() => Boolean(root.value)),
 })
-/* Shown where it says something the counts above do not: rows, or an open
- * window with none yet. A closed item with none has „Stellungnahmen: 0"
- * above, and whether one was ever possible is not read (`CLOSED_BOTH`). */
+/* Shown where it says something the section's rows do not: rows, or an
+ * open window with none yet. A closed item with none has the row
+ * „Stellungnahmen: 0" instead (`statementsCountRow`), and whether one was
+ * ever possible is not read (`CLOSED_BOTH`). */
 const statementsShown = computed(() => {
   if (statementsError.value) return true
   const s = statements.value
@@ -139,52 +154,71 @@ useSeoMeta({
           </p>
           <GapNote v-if="view.participation.volksbegehrenLine" :text="view.participation.volksbegehrenLine" class="mt-3 max-w-prose text-sm text-ink-muted" />
 
-          <section id="beteiligung" class="page-section scroll-mt-6" aria-labelledby="beteiligung-heading">
-            <h2 id="beteiligung-heading" class="section-heading">{{ view.countsHeading }}</h2>
-            <div class="mt-4">
-              <FactList :facts="view.counts" />
-              <SectionCredits :sources="[]" :marked="false">
-                <span>Quelle: <ExternalLink :href="data.parliamentUrl" class="link-muted">{{ ANLIEGEN_PAGE_DE.source }}</ExternalLink></span>
-              </SectionCredits>
-            </div>
-          </section>
-
-          <!-- The Stellungnahmen as on a Regierungsvorlage: the same panel,
-               the same classification, persons counted and never named. -->
+          <!-- One section per step, under the rail row's name: the rail is the
+               table of contents, the rows here what its summary leaves out. -->
           <section
-            v-if="statementsShown"
-            id="stellungnahmen"
+            v-for="section in view.sections"
+            :id="section.anchor"
+            :key="section.id"
             class="page-section scroll-mt-6"
-            aria-labelledby="stellungnahmen-heading"
+            :aria-labelledby="`${section.anchor}-heading`"
           >
-            <h2 id="stellungnahmen-heading" class="section-heading">{{ view.statementsHeading }}</h2>
-            <div class="mt-4">
-              <GapNote v-if="statementsError" kind="unavailable" class="max-w-prose text-sm text-ink-secondary">
-                {{ ANLIEGEN_PAGE_DE.statementsFailed }}
-                <ExternalLink :href="data.parliamentUrl" class="link-muted">{{ ANLIEGEN_PAGE_DE.statementsFailedLink }}</ExternalLink>.
-              </GapNote>
-              <RvStatements
-                v-else-if="statements"
-                :data="statements"
-                :filing-open="data.participation.statements === 'open'"
-                :item="data.root.kind"
-                bare
-              />
-            </div>
-          </section>
+            <h2 :id="`${section.anchor}-heading`" class="section-heading">{{ section.heading }}</h2>
+            <div class="mt-4 space-y-8">
+              <div v-if="section.rows.length || section.note">
+                <FactList v-if="section.rows.length" :facts="factsOf(section)">
+                  <template v-for="r in section.rows" :key="r.key" #[`value-${r.key}`]>
+                    <p class="leading-snug"><AnliegenFactLine :facts="r.facts" /></p>
+                  </template>
+                </FactList>
+                <!-- An explanation, not a fact: under the facts, quieter. -->
+                <p v-if="section.note" class="max-w-prose text-sm text-ink-secondary" :class="section.rows.length ? 'mt-3' : ''">{{ section.note }}</p>
+                <SectionCredits :sources="[]" :marked="false">
+                  <span>Quelle: <ExternalLink :href="data.parliamentUrl" class="link-muted">{{ ANLIEGEN_PAGE_DE.source }}</ExternalLink></span>
+                </SectionCredits>
+              </div>
 
-          <!-- „Keine Veröffentlichung der Dokumente" (14 Petitionen an den
-               Bundesrat): the section says so and lists none. -->
-          <section
-            v-if="data.documents.length || view.documentsNote"
-            id="dokumente"
-            class="page-section scroll-mt-6"
-            aria-labelledby="dokumente-heading"
-          >
-            <h2 id="dokumente-heading" class="section-heading">{{ ANLIEGEN_PAGE_DE.documentsHeading }}</h2>
-            <div class="mt-4">
-              <GapNote v-if="view.documentsNote" :text="view.documentsNote" class="max-w-prose text-ink-secondary" />
-              <DocumentList v-else :documents="data.documents" />
+              <!-- The item's own documents, with the step that brought it in.
+                   „Keine Veröffentlichung der Dokumente" (14 Petitionen an den
+                   Bundesrat): the sub-section says so and lists none. -->
+              <PageSubsection
+                v-if="section.id === 'eingebracht' && (data.documents.length || view.documentsNote)"
+                id="dokumente"
+                :heading="ANLIEGEN_PAGE_DE.documentsHeading"
+              >
+                <GapNote v-if="view.documentsNote" :text="view.documentsNote" class="max-w-prose text-ink-secondary" />
+                <DocumentList v-else :documents="data.documents" />
+              </PageSubsection>
+
+              <!-- The Stellungnahmen as on a Regierungsvorlage: the same panel,
+                   the same classification, persons counted and never named. -->
+              <PageSubsection
+                v-if="section.id === view.statementsAt && statementsShown"
+                id="stellungnahmen"
+                :heading="view.statementsHeading"
+              >
+                <GapNote v-if="statementsError" kind="unavailable" class="max-w-prose text-sm text-ink-secondary">
+                  {{ ANLIEGEN_PAGE_DE.statementsFailed }}
+                  <ExternalLink :href="data.parliamentUrl" class="link-muted">{{ ANLIEGEN_PAGE_DE.statementsFailedLink }}</ExternalLink>.
+                </GapNote>
+                <RvStatements
+                  v-else-if="statements"
+                  :data="statements"
+                  :filing-open="data.participation.statements === 'open'"
+                  :item="data.root.kind"
+                  bare
+                />
+              </PageSubsection>
+
+              <!-- The door once more, at the end of the section where one
+                   decides (`DoorButton`): Unterstützen with the item, the
+                   Stellungnahme's forms under the Stellungnahmen. -->
+              <div v-if="section.id === 'eingebracht' && supportActions.length" class="flex flex-wrap items-center gap-3">
+                <DoorButton v-for="a in supportActions" :key="a.key" :href="a.href">{{ a.label }}</DoorButton>
+              </div>
+              <div v-if="section.id === view.statementsAt && statementActions.length" class="flex flex-wrap items-center gap-3">
+                <DoorButton v-for="a in statementActions" :key="a.key" :href="a.href">{{ a.label }}</DoorButton>
+              </div>
             </div>
           </section>
 

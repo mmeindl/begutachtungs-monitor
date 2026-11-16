@@ -954,6 +954,20 @@ memo `docs/research/wege-ausserhalb-der-stationen.md`.
   the cache, so the next call is complete. Not built: rows first and states
   after, because the list sorts by the last step and would reorder while
   loading.
+- **The rail is the page's table of contents** (15.11.2026), as on a
+  draft's page. Each row shows a summary, the outcome or the date, plain
+  and without a link of its own, and links to the section of the same name
+  (`anliegenRail`, `anliegenSections`, one step list for both). The section
+  holds the rest: sittings, requests, vote, the report's link, the notes.
+  Before, the rail held every fact and the sections were sorted by kind
+  (Beteiligung, Stellungnahmen, Dokumente), so card and page told the course
+  in two orders. The committee's ending is an event in the committee's row,
+  not a row of its own. A step reached with nothing beyond its summary
+  (the Erste Lesung) gets no section and no link. The Einbringung's section
+  holds the documents, the Unterstützungen and their door; the committee's
+  the Stellungnahmen and theirs, because the statements the committee
+  requests stand in the same list. „Stellungnahmen: 0" is a row only where
+  no table counts them. No „Beteiligung" box.
 - **The EU cycle starts with a licence check, not with code:** the reuse
   terms of the Commission's consultation endpoint (undocumented) and of the
   register of the European Citizens' Initiative, written up in

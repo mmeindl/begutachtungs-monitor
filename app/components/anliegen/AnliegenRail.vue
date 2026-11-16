@@ -15,11 +15,19 @@
  * erreicht"), a reached row is set in weight, and the list is an <ol> with
  * `aria-current="step"` on the current row.
  *
- * The rows are no links: the page has no section per step to lead into. The
- * links inside a fact (the predecessor, a report at Parliament) are ordinary
- * inline links, so no stretched-link overlay is needed.
+ * THE RAIL IS THE PAGE'S TABLE OF CONTENTS (15.11.2026), as on a draft's
+ * page: each row carries a SUMMARY — the outcome or the date, plain — and
+ * links to the section of the same name, where the sittings, the vote, the
+ * report's link and the notes stand. Until then the rail held every fact and
+ * the sections were sorted by kind (Beteiligung, Stellungnahmen, Dokumente),
+ * so the card and the page told the course in two different orders. The
+ * whole row is the target, in SpineRail's stretched-link pattern
+ * (`RAIL_STATION_LINK`); a summary holds no link of its own, so nothing
+ * inside the row competes with it. A row links exactly where the page
+ * renders its section (`anliegenRail`, `href`).
  */
 import type { AnliegenRailRow } from '~/utils/anliegenView'
+import { RAIL_STATION_LINK } from '~/utils/railLink'
 
 const props = defineProps<{
   rows: AnliegenRailRow[]
@@ -51,13 +59,19 @@ const view = computed(() => props.rows.map((row, i) => {
     <li
       v-for="row in view"
       :key="row.id"
-      class="relative -mx-2 flex gap-3 rounded-md px-2 py-2"
+      class="group relative -mx-2 flex gap-3 rounded-md px-2 py-2"
       :aria-current="row.current ? 'step' : undefined"
     >
       <span
         v-if="row.current"
         aria-hidden="true"
         class="absolute inset-0 -z-10 rounded-md bg-mark-wash"
+      />
+      <!-- The hover ground on rows that lead somewhere, as in SpineRail. -->
+      <span
+        v-if="row.href"
+        aria-hidden="true"
+        class="absolute inset-0 -z-10 rounded-md bg-hover opacity-0 group-hover:opacity-100"
       />
       <!-- SpineRail's geometry: the line runs from this dot's lower edge to
            the next one's upper edge, whatever the row's height. -->
@@ -73,13 +87,12 @@ const view = computed(() => props.rows.map((row, i) => {
         :class="row.dot"
       />
       <div class="min-w-0 text-sm">
-        <p :class="row.nameClass">{{ row.name }}</p>
-        <!-- FactLine's grammar: each fact breaks whole, the dot stays at the
-             end of the line it closes. -->
+        <p :class="row.nameClass">
+          <a v-if="row.href" :href="row.href" :class="RAIL_STATION_LINK">{{ row.name }}</a>
+          <template v-else>{{ row.name }}</template>
+        </p>
         <p v-if="row.facts.length" class="mt-0.5 leading-snug" :class="row.factClass">
-          <template v-for="(fact, i) in row.facts" :key="i">
-            <span class="inline-block"><AnliegenFactText :fact="fact" /><template v-if="i < row.facts.length - 1">&nbsp;·</template></span>{{ ' ' }}
-          </template>
+          <AnliegenFactLine :facts="row.facts" />
         </p>
         <p class="sr-only">{{ row.announce }}</p>
       </div>

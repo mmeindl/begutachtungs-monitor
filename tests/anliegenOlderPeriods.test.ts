@@ -24,12 +24,13 @@ import {
 import {
   anliegenHeadline,
   anliegenNotShown,
-  anliegenRail,
   anliegenRowStateDe,
   anliegenRowView,
+  anliegenSections,
   anliegenView,
   factText,
   type AnliegenRailRow,
+  type AnliegenStationSection,
 } from '../app/utils/anliegenView'
 
 const PB = 'Ausschuss für Petitionen und Bürgerinitiativen'
@@ -63,6 +64,11 @@ function rowOf(name: string): AnliegenRow {
 
 function line(row: AnliegenRailRow): string {
   return `${row.name}${row.marked ? '*' : ''} [${row.state}] — ${row.facts.map(factText).join(' · ')}`
+}
+
+/** A section as lines: its heading, then „Title: fact · fact" per row, then „¶ note". */
+function section(s: AnliegenStationSection): string[] {
+  return [`## ${s.heading}`, ...s.rows.map((r) => `${r.title}: ${r.facts.map(factText).join(' · ')}`), ...(s.note ? [`¶ ${s.note}`] : [])]
 }
 
 /** A record of one phase with the given stages. */
@@ -165,9 +171,9 @@ describe('an Entschließung on a Petition or a Bürgerinitiative', () => {
     const d = detail('XXIV-BI-37')
     expect(d.course.unreadStages).toBe(0)
     expect(d.course.resolutions).toEqual([{ date: '2013-01-31', ref: '77/AEA' }])
-    const rail = anliegenRail(d).map(line)
-    expect(rail.find((l) => l.startsWith('Justizausschuss'))).toContain('Entschließung am 31.01.2013 angenommen (77/AEA)')
-    expect(rail.find((l) => l.startsWith('Nationalrat'))).not.toContain('Entschließung')
+    const sections = anliegenSections(d).map(section)
+    expect(sections.find((s) => s[0] === '## Justizausschuss')).toContain('Entschließung: am 31.01.2013 angenommen (77/AEA)')
+    expect(sections.find((s) => s[0] === '## Nationalrat')!.join('\n')).not.toContain('Entschließung')
   })
 
   // With the Sammelbericht, no subject committee: the Nationalrat's row.
@@ -179,7 +185,7 @@ describe('an Entschließung on a Petition or a Bürgerinitiative', () => {
     ], { ityp: 'PET', title: 'Eine Petition' })
     const d = assembleAnliegenDetail({ gp: 'XXII', kind: 'petition', inr: 74 }, c, { statements: null, support: null })
     expect(d.course.unreadStages).toBe(0)
-    expect(anliegenRail(d).map(line).find((l) => l.startsWith('Nationalrat'))).toContain('Entschließung am 21.09.2006 angenommen (62/AEA)')
+    expect(anliegenSections(d).map(section).find((s) => s[0] === '## Nationalrat')).toContain('Entschließung: am 21.09.2006 angenommen (62/AEA)')
   })
 })
 
@@ -223,11 +229,21 @@ describe('the Übermittlung an die Volksanwaltschaft — the committee’s third
     const view = anliegenView(d)
     expect(view.headline).toEqual({ kind: 'volksanwaltschaft', text: 'An die Volksanwaltschaft übermittelt', link: null })
     expect(view.rail.map(line)).toEqual([
+      'Eingebracht [done] — am 05.12.2011',
+      `${PB} [done] — Übermittlung an die Volksanwaltschaft beantragt am 12.03.2012`,
+      'Nationalrat* [done] — Der Übermittlung an die Volksanwaltschaft am 29.03.2012 zugestimmt',
+    ])
+    expect(view.sections.map(section)).toEqual([
       // `frak_code` „B": not in `CLUB_NAMES` (read on GP XXVIII), so no club is named rather than a bare letter.
-      'Eingebracht [done] — am 05.12.2011 · überreicht von einem Mitglied des Nationalrates (BZÖ)',
-      `${PB} [done] — zugewiesen am 06.12.2011 · 1 Sitzung am 12.03.2012`,
-      'Erledigung im Ausschuss [done] — Übermittlung an die Volksanwaltschaft beantragt am 12.03.2012',
-      'Nationalrat* [done] — Der Übermittlung an die Volksanwaltschaft am 29.03.2012 zugestimmt · dafür: SPÖ, ÖVP, GRÜNE, BZÖ · dagegen: FPÖ',
+      ['## Eingebracht', 'Einlangen: am 05.12.2011', 'Überreicht von: einem Mitglied des Nationalrates (BZÖ)', 'Unterstützungen: 12'],
+      [
+        `## ${PB}`,
+        'Beratung: zugewiesen am 06.12.2011 · 1 Sitzung am 12.03.2012',
+        'Erledigung: Übermittlung an die Volksanwaltschaft beantragt am 12.03.2012',
+        'Stellungnahmen: 0',
+      ],
+      // A vote on this item's Übermittlung, not on a report: the clubs, and no note.
+      ['## Nationalrat', 'Beschluss: Der Übermittlung an die Volksanwaltschaft am 29.03.2012 zugestimmt · dafür: SPÖ, ÖVP, GRÜNE, BZÖ · dagegen: FPÖ'],
     ])
     expect(view.notShown).toContainEqual({
       lead: 'Was die Volksanwaltschaft mit dem Anliegen getan hat:',

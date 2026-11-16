@@ -1,6 +1,6 @@
 /**
  * The fourth kind of Anliegen: the Petition an den Bundesrat (15.11.2026).
- * Its address under „BR", its own course (Eingebracht · Ausschuss ·
+ * Its address under „BR", its own course (Eingebracht · Ausschuss with its
  * Erledigung · Bundesrat) read from a closed vocabulary, the strict
  * addressee of an Übermittlung, „Keine Veröffentlichung der Dokumente", no
  * blue door, its list rows, and the privacy sweep over its records.
@@ -36,10 +36,12 @@ import {
   anliegenRail,
   anliegenRowView,
   anliegenRowsInView,
+  anliegenSections,
   anliegenView,
   bundesratRowsInPeriod,
   factText,
   type AnliegenRailRow,
+  type AnliegenStationSection,
 } from '../app/utils/anliegenView'
 
 function content(nr: number): AnliegenContent {
@@ -52,6 +54,11 @@ function detail(nr: number): AnliegenDetail {
 
 function line(row: AnliegenRailRow): string {
   return `${row.name}${row.marked ? '*' : ''} [${row.state}] — ${row.facts.map(factText).join(' · ')}`
+}
+
+/** A section as lines: its heading, then „Title: fact · fact" per row, then „¶ note". */
+function section(s: AnliegenStationSection): string[] {
+  return [`## ${s.heading}`, ...s.rows.map((r) => `${r.title}: ${r.facts.map(factText).join(' · ')}`), ...(s.note ? [`¶ ${s.note}`] : [])]
 }
 
 function row(inr: number, extra: Partial<AnliegenRow> = {}): AnliegenRow {
@@ -121,10 +128,19 @@ describe('the course of a Petition an den Bundesrat — recorded items', () => {
     })
     expect(c.transmission).toEqual({ date: '2024-10-16', to: ['das Bundesministerium für Klimaschutz, Umwelt, Energie, Mobilität, Innovation und Technologie'] })
     expect(c.documentsWithheld).toBe(false)
+    // The Übermittlung ends the record: no Bundesrat row after it.
     expect(anliegenRail(detail(56)).map(line)).toEqual([
-      'Eingebracht [done] — am 05.04.2024 · überreicht von einem Mitglied des Bundesrates (FPÖ)',
-      'Ausschuss für BürgerInnenrechte und Petitionen [done] — zugewiesen am 05.04.2024 · 1 Sitzung am 25.06.2024 · vertagt',
-      'Erledigung* [done] — An das Bundesministerium für Klimaschutz, Umwelt, Energie, Mobilität, Innovation und Technologie übermittelt am 16.10.2024',
+      'Eingebracht [done] — am 05.04.2024',
+      'Ausschuss für BürgerInnenrechte und Petitionen* [done] — An das Bundesministerium für Klimaschutz, Umwelt, Energie, Mobilität, Innovation und Technologie übermittelt am 16.10.2024',
+    ])
+    expect(anliegenSections(detail(56)).map(section)).toEqual([
+      ['## Eingebracht', 'Einlangen: am 05.04.2024', 'Überreicht von: einem Mitglied des Bundesrates (FPÖ)', 'Unterstützungen: 285'],
+      [
+        '## Ausschuss für BürgerInnenrechte und Petitionen',
+        'Beratung: zugewiesen am 05.04.2024 · 1 Sitzung am 25.06.2024 · vertagt',
+        'Erledigung: An das Bundesministerium für Klimaschutz, Umwelt, Energie, Mobilität, Innovation und Technologie übermittelt am 16.10.2024',
+        '¶ Berichtet der Ausschuss nicht binnen sechs Monaten nach der Zuweisung, leitet die Präsidentin oder der Präsident des Bundesrates die Petition an das zuständige Mitglied der Bundesregierung weiter (§ 25 Abs. 3 GO-BR).',
+      ],
     ])
   })
 
@@ -137,8 +153,12 @@ describe('the course of a Petition an den Bundesrat — recorded items', () => {
     expect(c.plenary).toMatchObject({ date: '2011-03-17', kind: 'bericht-zur-kenntnis', vote: null, majorityOnly: true })
     expect(c.resolutions).toEqual([{ date: '2011-03-17', ref: '235/E-BR/2011' }])
     expect(c.documentsWithheld).toBe(true)
-    const rows = anliegenRail(detail(28)).map(line)
-    expect(rows.at(-1)).toBe('Bundesrat* [done] — Bericht 8463/BR d.B. am 17.03.2011 zur Kenntnis genommen · mit Mehrheit · Entschließung angenommen (235/E-BR/2011)')
+    expect(anliegenRail(detail(28)).map(line).at(-1)).toBe('Bundesrat* [done] — Bericht 8463/BR d.B. am 17.03.2011 zur Kenntnis genommen')
+    expect(section(anliegenSections(detail(28)).at(-1)!)).toEqual([
+      '## Bundesrat',
+      'Beschluss: Bericht 8463/BR d.B. am 17.03.2011 zur Kenntnis genommen · mit Mehrheit',
+      'Entschließung: angenommen (235/E-BR/2011)',
+    ])
   })
 
   // 22/PET-BR/2008: assigned anew, three ministries at once, documents withheld.
@@ -148,8 +168,11 @@ describe('the course of a Petition an den Bundesrat — recorded items', () => {
     expect(c.committee?.reassignedFrom).toBe('Ausschuss für Verkehr, Innovation und Technologie des Bundesrates')
     expect(c.committee?.sittings).toEqual([])
     expect(c.transmission?.to).toHaveLength(3)
-    expect(anliegenRail(detail(22)).map(line)[1])
-      .toBe('Ausschuss für BürgerInnenrechte und Petitionen [done] — zuvor dem Ausschuss für Verkehr, Innovation und Technologie zugewiesen · neu zugewiesen am 25.07.2008')
+    expect(anliegenSections(detail(22))[1]!.rows[0]).toEqual({
+      key: 'beratung',
+      title: 'Beratung',
+      facts: [{ text: 'zuvor dem Ausschuss für Verkehr, Innovation und Technologie zugewiesen' }, { text: 'neu zugewiesen am 25.07.2008' }],
+    })
   })
 
   // A stage outside the vocabulary is counted, its text goes nowhere.

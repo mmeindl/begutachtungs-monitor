@@ -2,8 +2,10 @@
  * Step 2 of `docs/research/umsetzungsplan-petitionen-volksbegehren.md`: what
  * the page of an Anliegen says (`app/utils/anliegenView.ts`), built from the
  * recorded items through the real reader (`assembleAnliegenDetail`) — the
- * rail's rows and their order per kind, the headline's branches, the door on
- * the item's own flag, the counts, and the words the page never uses.
+ * rail's rows and their order per kind with each row's summary, the station
+ * sections under the rail's names with the details, the headline's
+ * branches, the door on the item's own flag, the counts, and the words the
+ * page never uses.
  */
 import { readFileSync } from 'node:fs'
 import { describe, expect, it } from 'vitest'
@@ -17,10 +19,12 @@ import {
   anliegenNotShown,
   anliegenParticipation,
   anliegenRail,
+  anliegenSections,
   anliegenView,
   factText,
   voteFacts,
   type AnliegenRailRow,
+  type AnliegenStationSection,
 } from '../app/utils/anliegenView'
 
 const FIXTURES: [name: string, kind: AnliegenKind][] = [
@@ -49,20 +53,47 @@ function line(row: AnliegenRailRow): string {
   return `${row.name}${mark} [${row.state}] — ${row.facts.map(factText).join(' · ')}`
 }
 
+/** A section as lines: its heading, then „Title: fact · fact" per row, then „¶ note". */
+function section(s: AnliegenStationSection): string[] {
+  return [`## ${s.heading}`, ...s.rows.map((r) => `${r.title}: ${r.facts.map(factText).join(' · ')}`), ...(s.note ? [`¶ ${s.note}`] : [])]
+}
+
+const NR_NOTE = '¶ Der Nationalrat stimmt über den Bericht des Ausschusses ab, nicht über das einzelne Anliegen.'
+
 describe('anliegenRail — recorded items', () => {
   // XXVIII/BI/5: carried over from XXVII, Kenntnisnahme im Ausschuss, the
-  // plenary took note of the Sammelbericht. Four rows, all reached, the last marked.
+  // plenary took note of the Sammelbericht. Three rows, all reached, the
+  // last marked; the committee's ending is an event in its row. The rail
+  // carries the summary, the sections the rest, links included.
   it('reads a Kenntnisnahme im Ausschuss that the plenary reported (XXVIII/BI/5)', () => {
-    const rows = anliegenRail(detail('XXVIII-BI-5'))
+    const d = detail('XXVIII-BI-5')
+    const rows = anliegenRail(d)
     expect(rows.map(line)).toEqual([
-      'Eingebracht [done] — aus der XXVII. Gesetzgebungsperiode übernommen (53/BI) · in der XXVIII. Gesetzgebungsperiode seit 24.10.2024 · von mindestens 500 Bürgerinnen und Bürgern eingebracht',
-      'Ausschuss für Petitionen und Bürgerinitiativen [done] — zugewiesen am 26.02.2025 · 2 Sitzungen, zuletzt am 26.06.2025 · 1 Stellungnahme angefordert',
-      'Erledigung im Ausschuss [done] — Zur Kenntnis genommen am 26.06.2025 · dafür: ÖVP, SPÖ, NEOS · dagegen: FPÖ, GRÜNE',
-      'Nationalrat* [done] — Sammelbericht 159 d.B. am 24.09.2025 zur Kenntnis genommen · Der Nationalrat stimmt über den Bericht des Ausschusses ab, nicht über das einzelne Anliegen.',
+      'Eingebracht [done] — aus der XXVII. Gesetzgebungsperiode übernommen',
+      'Ausschuss für Petitionen und Bürgerinitiativen [done] — Zur Kenntnis genommen am 26.06.2025',
+      'Nationalrat* [done] — Sammelbericht 159 d.B. am 24.09.2025 zur Kenntnis genommen',
     ])
-    expect(rows[0]!.facts[0]!.link).toEqual({ href: '/anliegen/XXVII/buergerinitiative/53', label: '53/BI', external: false })
-    expect(rows[3]!.facts[0]!.link).toEqual({ href: 'https://www.parlament.gv.at/gegenstand/XXVIII/I/159', label: '159 d.B.', external: true })
-    expect(anliegenHeadline(detail('XXVIII-BI-5')).text).toBe('Im Ausschuss zur Kenntnis genommen')
+    expect(rows.map((r) => r.href)).toEqual(['#eingebracht', '#ausschuss', '#nationalrat'])
+    // The rail's summaries hold no link: the row itself is the link.
+    expect(rows.flatMap((r) => r.facts).some((f) => f.link)).toBe(false)
+    const sections = anliegenSections(d)
+    expect(sections.map(section)).toEqual([
+      [
+        '## Eingebracht',
+        'Übernommen: aus der XXVII. Gesetzgebungsperiode (53/BI) · in der XXVIII. Gesetzgebungsperiode seit 24.10.2024',
+        'Eingebracht von: mindestens 500 Bürgerinnen und Bürgern',
+        'Unterstützungen: 24',
+      ],
+      [
+        '## Ausschuss für Petitionen und Bürgerinitiativen',
+        'Beratung: zugewiesen am 26.02.2025 · 2 Sitzungen, zuletzt am 26.06.2025 · 1 Stellungnahme angefordert',
+        'Erledigung: Zur Kenntnis genommen am 26.06.2025 · dafür: ÖVP, SPÖ, NEOS · dagegen: FPÖ, GRÜNE',
+      ],
+      ['## Nationalrat', 'Beschluss: Sammelbericht 159 d.B. am 24.09.2025 zur Kenntnis genommen', NR_NOTE],
+    ])
+    expect(sections[0]!.rows[0]!.facts[0]!.link).toEqual({ href: '/anliegen/XXVII/buergerinitiative/53', label: '53/BI', external: false })
+    expect(sections[2]!.rows[0]!.facts[0]!.link).toEqual({ href: 'https://www.parlament.gv.at/gegenstand/XXVIII/I/159', label: '159 d.B.', external: true })
+    expect(anliegenHeadline(d).text).toBe('Im Ausschuss zur Kenntnis genommen')
   })
 
   // XXVIII/BI/1: forwarded to the Bildungsausschuss; the plenary took note of
@@ -70,13 +101,18 @@ describe('anliegenRail — recorded items', () => {
   it('puts the subject committee after the Nationalrat once the plenary took note (XXVIII/BI/1)', () => {
     const d = detail('XXVIII-BI-1')
     const rows = anliegenRail(d)
-    expect(rows.map((r) => r.id)).toEqual(['eingebracht', 'ausschuss', 'erledigung', 'nationalrat', 'fachausschuss'])
+    expect(rows.map((r) => r.id)).toEqual(['eingebracht', 'ausschuss', 'nationalrat', 'fachausschuss'])
     expect(rows.map(line)).toEqual([
-      'Eingebracht [done] — aus der XXVII. Gesetzgebungsperiode übernommen (25/BI) · in der XXVIII. Gesetzgebungsperiode seit 24.10.2024 · von mindestens 500 Bürgerinnen und Bürgern eingebracht',
-      'Ausschuss für Petitionen und Bürgerinitiativen [done] — zugewiesen am 26.02.2025 · 1 Sitzung am 03.04.2025',
-      'Erledigung im Ausschuss [done] — An den Bildungsausschuss weitergeleitet am 03.04.2025 · alle Klubs dafür',
-      'Nationalrat [done] — Sammelbericht 65 d.B. am 24.04.2025 zur Kenntnis genommen · Der Nationalrat stimmt über den Bericht des Ausschusses ab, nicht über das einzelne Anliegen.',
-      'Bildungsausschuss* [current] — zugewiesen am 10.04.2025 · zuletzt am 25.06.2025 behandelt · vertagt',
+      'Eingebracht [done] — aus der XXVII. Gesetzgebungsperiode übernommen',
+      'Ausschuss für Petitionen und Bürgerinitiativen [done] — An den Bildungsausschuss weitergeleitet am 03.04.2025',
+      'Nationalrat [done] — Sammelbericht 65 d.B. am 24.04.2025 zur Kenntnis genommen',
+      'Bildungsausschuss* [current] — zuletzt am 25.06.2025 behandelt',
+    ])
+    // The sections follow the rail's order: the subject committee last.
+    expect(anliegenSections(d).map((s) => s.id)).toEqual(['eingebracht', 'ausschuss', 'nationalrat', 'fachausschuss'])
+    expect(section(anliegenSections(d).at(-1)!)).toEqual([
+      '## Bildungsausschuss',
+      'Beratung: zugewiesen am 10.04.2025 · zuletzt am 25.06.2025 behandelt · vertagt',
     ])
     expect(anliegenHeadline(d).text).toBe('An den Bildungsausschuss weitergeleitet')
   })
@@ -87,16 +123,23 @@ describe('anliegenRail — recorded items', () => {
     const d = detail('XXVIII-BI-1')
     const rows = anliegenRail({ ...d, course: { ...d.course, plenary: null, end: 'zuweisung' } })
     expect(rows.map((r) => `${r.id}:${r.state}`)).toEqual([
-      'eingebracht:done', 'ausschuss:done', 'erledigung:done', 'fachausschuss:current', 'nationalrat:open',
+      'eingebracht:done', 'ausschuss:done', 'fachausschuss:current', 'nationalrat:open',
     ])
+    // A step not reached has no section, and its row no link.
+    expect(rows.find((r) => r.id === 'nationalrat')!.href).toBeNull()
+    expect(anliegenSections({ ...d, course: { ...d.course, plenary: null, end: 'zuweisung' } }).map((s) => s.id))
+      .toEqual(['eingebracht', 'ausschuss', 'fachausschuss'])
   })
 
   // XXV/BI/1: forwarded, and the subject committee has no entry at all.
   it('says that the subject committee has no entry (XXV/BI/1)', () => {
-    const rows = anliegenRail(detail('XXV-BI-1'))
-    expect(line(rows.at(-1)!)).toBe(
-      'Ausschuss für Arbeit und Soziales* [done] — zugewiesen am 26.03.2014 · Im Verlauf des Parlaments steht zu diesem Ausschuss kein Eintrag.',
-    )
+    const d = detail('XXV-BI-1')
+    expect(line(anliegenRail(d).at(-1)!)).toBe('Ausschuss für Arbeit und Soziales* [done] — zugewiesen am 26.03.2014')
+    expect(section(anliegenSections(d).at(-1)!)).toEqual([
+      '## Ausschuss für Arbeit und Soziales',
+      'Beratung: zugewiesen am 26.03.2014',
+      '¶ Im Verlauf des Parlaments steht zu diesem Ausschuss kein Eintrag.',
+    ])
   })
 
   // 13/PET XXVIII: open, in deliberation, adjourned and resumed; two members
@@ -105,19 +148,21 @@ describe('anliegenRail — recorded items', () => {
     const d = detail('XXVIII-PET-13')
     const rows = anliegenRail(d)
     expect(rows.map(line)).toEqual([
-      'Eingebracht [done] — am 25.09.2025 · überreicht von Mitgliedern des Nationalrates (ÖVP)',
-      'Ausschuss für Petitionen und Bürgerinitiativen* [current] — zugewiesen am 26.09.2025 · 4 Sitzungen, zuletzt am 22.10.2026 · 6 Stellungnahmen angefordert',
-      'Erledigung im Ausschuss [open] — ',
+      'Eingebracht [done] — am 25.09.2025',
+      'Ausschuss für Petitionen und Bürgerinitiativen* [current] — zugewiesen am 26.09.2025',
       'Nationalrat [open] — ',
+    ])
+    expect(anliegenSections(d).map(section)).toEqual([
+      ['## Eingebracht', 'Einlangen: am 25.09.2025', 'Überreicht von: Mitgliedern des Nationalrates (ÖVP)', 'Unterstützungen: 24'],
+      ['## Ausschuss für Petitionen und Bürgerinitiativen', 'Beratung: zugewiesen am 26.09.2025 · 4 Sitzungen, zuletzt am 22.10.2026 · 6 Stellungnahmen angefordert'],
     ])
     expect(anliegenHeadline(d).text).toBe('In Behandlung')
   })
 
   // 12/BI XXV: „mehrstimmig ( dafür: S,V … )" is not read into clubs.
   it('says „mit Mehrheit" and names no club for the older vote shape (XXV/BI/12)', () => {
-    const rows = anliegenRail(detail('XXV-BI-12'))
-    const disposal = rows.find((r) => r.id === 'erledigung')!
-    expect(disposal.facts.map(factText)).toEqual(['Zur Kenntnis genommen am 01.07.2014', 'mit Mehrheit'])
+    const committee = anliegenSections(detail('XXV-BI-12')).find((s) => s.id === 'ausschuss')!
+    expect(committee.rows.find((r) => r.key === 'erledigung')!.facts.map(factText)).toEqual(['Zur Kenntnis genommen am 01.07.2014', 'mit Mehrheit'])
   })
 
   // 98 d.B. XXVIII: erste Lesung, the Verfassungsausschuss with both duties,
@@ -127,8 +172,20 @@ describe('anliegenRail — recorded items', () => {
     expect(anliegenRail(d).map(line)).toEqual([
       'Eingelangt [done] — am 28.05.2025',
       'Erste Lesung [done] — am 11.07.2025',
-      'Verfassungsausschuss [done] — zugewiesen am 11.07.2025 · Vorberatung aufzunehmen bis 05.10.2025 · Bericht zu erstatten bis 05.02.2026 · 1 Sitzung am 15.09.2025 · Bericht 200 d.B.',
-      'Nationalrat* [done] — Zur Kenntnis genommen am 24.09.2025 · alle Klubs dafür',
+      'Verfassungsausschuss [done] — Bericht 200 d.B.',
+      'Nationalrat* [done] — Zur Kenntnis genommen am 24.09.2025',
+    ])
+    // The Erste Lesung is a date and nothing more: no section, no link.
+    expect(anliegenRail(d).map((r) => r.href)).toEqual(['#eingebracht', null, '#ausschuss', '#nationalrat'])
+    expect(anliegenSections(d).map(section)).toEqual([
+      ['## Eingelangt', 'Einlangen: am 28.05.2025'],
+      [
+        '## Verfassungsausschuss',
+        'Beratung: zugewiesen am 11.07.2025 · 1 Sitzung am 15.09.2025',
+        'Fristen: Vorberatung aufzunehmen bis 05.10.2025 · Bericht zu erstatten bis 05.02.2026',
+        'Bericht: 200 d.B.',
+      ],
+      ['## Nationalrat', 'Beschluss: Zur Kenntnis genommen am 24.09.2025 · alle Klubs dafür'],
     ])
     expect(anliegenHeadline(d).text).toBe('Vom Nationalrat zur Kenntnis genommen')
   })
@@ -140,11 +197,14 @@ describe('anliegenRail — recorded items', () => {
     const rows = anliegenRail(d)
     expect(rows.map((r) => r.id)).toEqual(['eingebracht', 'ausschuss', 'nationalrat'])
     expect(rows.map(line)).toEqual([
-      'Eingelangt [done] — aus der XXVII. Gesetzgebungsperiode übernommen (2547 d.B.) · in der XXVIII. Gesetzgebungsperiode seit 24.10.2024',
-      'Umweltausschuss [done] — zugewiesen am 26.02.2025 · Vorberatung aufzunehmen bis 26.03.2025 · Bericht zu erstatten bis 19.09.2025 · 2 Sitzungen, zuletzt am 03.07.2025 · Bericht 180 d.B.',
-      'Nationalrat* [done] — Zur Kenntnis genommen am 10.07.2025 · alle Klubs dafür · Entschließung angenommen (6/AEA)',
+      'Eingelangt [done] — aus der XXVII. Gesetzgebungsperiode übernommen',
+      'Umweltausschuss [done] — Bericht 180 d.B.',
+      'Nationalrat* [done] — Zur Kenntnis genommen am 10.07.2025',
     ])
-    expect(rows[0]!.facts[0]!.link?.href).toBe('/anliegen/XXVII/volksbegehren/2547')
+    const sections = anliegenSections(d)
+    expect(section(sections[0]!)).toEqual(['## Eingelangt', 'Übernommen: aus der XXVII. Gesetzgebungsperiode (2547 d.B.) · in der XXVIII. Gesetzgebungsperiode seit 24.10.2024'])
+    expect(sections[0]!.rows[0]!.facts[0]!.link?.href).toBe('/anliegen/XXVII/volksbegehren/2547')
+    expect(section(sections[2]!)).toEqual(['## Nationalrat', 'Beschluss: Zur Kenntnis genommen am 10.07.2025 · alle Klubs dafür', 'Entschließung: angenommen (6/AEA)'])
   })
 
   // Every row says its state in a word; exactly one is marked.
@@ -154,6 +214,37 @@ describe('anliegenRail — recorded items', () => {
       expect(rows.filter((r) => r.marked)).toHaveLength(1)
       for (const r of rows) expect(r.announce).toBe(r.state === 'open' ? 'nicht erreicht' : 'erreicht')
     }
+  })
+
+  // The rail is the table of contents: a row links exactly where a section
+  // renders, under the row's own name.
+  it('links every row to the section of its name, and only those', () => {
+    for (const [name] of FIXTURES) {
+      const d = detail(name)
+      const sections = anliegenSections(d)
+      for (const r of anliegenRail(d)) {
+        const s = sections.find((x) => x.id === r.id)
+        expect(r.href, `${name} ${r.id}`).toBe(s ? `#${s.anchor}` : null)
+        if (s) expect(s.heading).toBe(r.name)
+      }
+    }
+  })
+
+  // The Stellungnahmen stand with the committee; „Stellungnahmen: 0" only
+  // where no table counts them.
+  it('puts the Stellungnahmen in the committee’s section, and their count only where no table says it', () => {
+    const v = anliegenView(detail('XXVIII-BI-5'))
+    expect(v.statementsAt).toBe('ausschuss')
+    const committeeRows = (view: typeof v) => view.sections.find((s) => s.id === 'ausschuss')!.rows.map((r) => r.key)
+    expect(committeeRows(v)).not.toContain('statements')
+    const none = anliegenView(detail('XXVIII-BI-5', {}, { statements: 0, support: 3 }))
+    expect(none.sections.find((s) => s.id === 'ausschuss')!.rows.at(-1)).toEqual({ key: 'statements', title: 'Stellungnahmen', facts: [{ text: '0' }] })
+    // Open with none yet: the table says „Bisher keine eingebracht", no row.
+    const open = anliegenView(detail('XXVIII-PET-13', {}, { statements: 0, support: 3 }))
+    expect(committeeRows(open)).not.toContain('statements')
+    // Before a committee holds the item, the Einbringung's section holds them.
+    const d = detail('XXVIII-PET-13')
+    expect(anliegenView({ ...d, course: { ...d.course, committee: null } }).statementsAt).toBe('eingebracht')
   })
 })
 
@@ -254,10 +345,10 @@ describe('anliegenCounts and anliegenNotShown', () => {
   // An unread count is „nicht lesbar", never 0; a Volksbegehren has no Unterstützungen line.
   it('says „nicht lesbar" for a count that was not read', () => {
     const none = { statements: null, support: null }
-    expect(anliegenCounts(detail('XXVIII-BI-5', {}, none)).map((c) => c.text)).toEqual(['Unterstützungen: nicht lesbar', 'Stellungnahmen: nicht lesbar'])
-    expect(anliegenCounts(detail('XXVIII-I-98', {}, none)).map((c) => c.text)).toEqual(['Stellungnahmen: nicht lesbar'])
-    expect(anliegenCounts(detail('XXVIII-BI-5', {}, { statements: 0, support: 12582 })).map((c) => c.text))
-      .toEqual(['Unterstützungen: 12.582', 'Stellungnahmen: 0'])
+    const text = (d: AnliegenDetail) => anliegenCounts(d).map((c) => `${c.title}: ${c.text}`)
+    expect(text(detail('XXVIII-BI-5', {}, none))).toEqual(['Unterstützungen: nicht lesbar', 'Stellungnahmen: nicht lesbar'])
+    expect(text(detail('XXVIII-I-98', {}, none))).toEqual(['Stellungnahmen: nicht lesbar'])
+    expect(text(detail('XXVIII-BI-5', {}, { statements: 0, support: 12582 }))).toEqual(['Unterstützungen: 12.582', 'Stellungnahmen: 0'])
   })
 
   // Singular and plural of the unread stages; no line where none.
@@ -306,10 +397,11 @@ describe('singular and plural', () => {
     const d = detail('XXVIII-BI-5')
     const c = d.course.committee!
     const one = { ...c, sittings: [{ date: '2025-04-03', adjourned: true }], statementRequests: [{ date: '2025-04-03', adopted: true }, { date: '2025-04-03', adopted: false }] }
-    const facts = anliegenRail({ ...d, course: { ...d.course, committee: one } }).find((r) => r.id === 'ausschuss')!.facts.map(factText)
+    const deliberation = (dd: AnliegenDetail) => anliegenSections(dd).find((s) => s.id === 'ausschuss')!.rows.find((r) => r.key === 'beratung')!.facts.map(factText)
+    const facts = deliberation({ ...d, course: { ...d.course, committee: one } })
     expect(facts).toEqual(['zugewiesen am 26.02.2025', '1 Sitzung am 03.04.2025', 'vertagt', '1 Stellungnahme angefordert'])
     const many = { ...c, sittings: [...c.sittings, { date: '2025-07-01', adjourned: true }] }
-    const manyFacts = anliegenRail({ ...d, course: { ...d.course, committee: many } }).find((r) => r.id === 'ausschuss')!.facts.map(factText)
+    const manyFacts = deliberation({ ...d, course: { ...d.course, committee: many } })
     expect(manyFacts).toEqual(['zugewiesen am 26.02.2025', '3 Sitzungen, zuletzt am 01.07.2025', 'zuletzt vertagt', '1 Stellungnahme angefordert'])
   })
 })
@@ -340,19 +432,19 @@ describe('words the page never uses', () => {
   it('states a Petition’s presenters by club, never by name (XXVIII/PET/13)', () => {
     const d = detail('XXVIII-PET-13')
     const eingebracht = (presenters: AnliegenDetail['presenters']) =>
-      anliegenRail({ ...d, presenters })[0]!.facts.map(factText).filter((f) => f.startsWith('überreicht'))
-    expect(eingebracht([{ club: 'V' }])).toEqual(['überreicht von einem Mitglied des Nationalrates (ÖVP)'])
-    expect(eingebracht([{ club: 'V' }, { club: 'V' }])).toEqual(['überreicht von Mitgliedern des Nationalrates (ÖVP)'])
-    expect(eingebracht([{ club: 'S' }, { club: 'V' }, { club: 'S' }])).toEqual(['überreicht von Mitgliedern des Nationalrates (SPÖ, ÖVP)'])
-    expect(eingebracht([{ club: null }])).toEqual(['überreicht von einem Mitglied des Nationalrates'])
-    expect(eingebracht([{ club: 'Q' }, { club: null }])).toEqual(['überreicht von Mitgliedern des Nationalrates'])
+      anliegenSections({ ...d, presenters })[0]!.rows.filter((r) => r.key === 'presenters').map((r) => `${r.title}: ${r.facts.map(factText).join('')}`)
+    expect(eingebracht([{ club: 'V' }])).toEqual(['Überreicht von: einem Mitglied des Nationalrates (ÖVP)'])
+    expect(eingebracht([{ club: 'V' }, { club: 'V' }])).toEqual(['Überreicht von: Mitgliedern des Nationalrates (ÖVP)'])
+    expect(eingebracht([{ club: 'S' }, { club: 'V' }, { club: 'S' }])).toEqual(['Überreicht von: Mitgliedern des Nationalrates (SPÖ, ÖVP)'])
+    expect(eingebracht([{ club: null }])).toEqual(['Überreicht von: einem Mitglied des Nationalrates'])
+    expect(eingebracht([{ club: 'Q' }, { club: null }])).toEqual(['Überreicht von: Mitgliedern des Nationalrates'])
     expect(eingebracht([])).toEqual([])
   })
 
   // A Bürgerinitiative never names anyone, even with a „Petition überreicht von" entry.
   it('names nobody on a Bürgerinitiative', () => {
     const d = detail('XXVIII-BI-5', { presenters: [{ club: 'V' }] })
-    expect(JSON.stringify(anliegenView(d))).not.toContain('überreicht')
+    expect(JSON.stringify(anliegenView(d))).not.toMatch(/überreicht/i)
   })
 
   // The back link leads to the list of Anliegen (step 3).

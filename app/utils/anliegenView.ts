@@ -16,7 +16,7 @@
  *    the members of the Nationalrat who hand a Petition in are stated by club
  *    only, as an Initiativantrag's movers are (decision 6 of the plan);
  *  - whom the committee asked for a statement: the addressee names persons
- *    (step 0), so the rail counts the requests;
+ *    (step 0), so the committee's section counts the requests;
  *  - „einstimmig": „alle Klubs dafür" (docs/decisions.md, „Club votes");
  *  - a cause, or a verdict on an outcome. Every fact is temporal, and the
  *    states of the headline are words of one weight; no colour tells them
@@ -75,17 +75,56 @@ export interface AnliegenFact {
 /** done: happened. current: the last step reached while the item still runs. open: did not happen (yet). */
 export type AnliegenStepState = 'done' | 'current' | 'open'
 
-export type AnliegenStepId = 'eingebracht' | 'ausschuss' | 'erledigung' | 'nationalrat' | 'fachausschuss' | 'erste-lesung' | 'bundesrat'
+/**
+ * One step of the course. The committee's ending is an event inside the
+ * committee's step, not a step of its own (as the Bundesrat's objection is
+ * an event inside a draft's station), so there is no „Erledigung" row.
+ */
+export type AnliegenStepId = 'eingebracht' | 'ausschuss' | 'nationalrat' | 'fachausschuss' | 'erste-lesung' | 'bundesrat'
 
+/**
+ * A row of the rail: the step's name and its SUMMARY — at most one or two
+ * plain facts, the outcome or the date. Everything else about the step
+ * stands in its section (`AnliegenStationSection`), which the row links to.
+ */
 export interface AnliegenRailRow {
   id: AnliegenStepId
   name: string
   state: AnliegenStepState
   /** The yellow dot: the last step reached. Exactly one per rail. */
   marked: boolean
+  /** The summary: plain facts, no links — the row itself is the link. */
   facts: AnliegenFact[]
+  /** The step's section on the page (`#ausschuss`), exactly where one renders; null otherwise. */
+  href: string | null
   /** The state in a word for a screen reader — never the dot alone. */
   announce: string
+}
+
+/** One fact row of a station section: a name, and the fact line under it (`FactList`). */
+export interface AnliegenSectionRow {
+  key: string
+  title: string
+  facts: AnliegenFact[]
+}
+
+/**
+ * The section of one step reached: the same name as its rail row, so the
+ * rail is the page's table of contents. Its rows carry what the rail's
+ * summary leaves out — the sittings, the vote, the report's link.
+ */
+export interface AnliegenStationSection {
+  id: AnliegenStepId
+  /** The element id the rail row links to. */
+  anchor: string
+  heading: string
+  rows: AnliegenSectionRow[]
+  /**
+   * A sentence that explains the step rather than reports it (what the
+   * plenary votes on, the rule behind an Übermittlung, a committee without
+   * an entry): its own line under the rows. Null where the step has none.
+   */
+  note: string | null
 }
 
 /** The headline's kind is the state's (`anliegenStateOf`). */
@@ -123,7 +162,9 @@ export interface AnliegenParticipationView {
 }
 
 export interface AnliegenCountFact {
-  key: string
+  key: 'support' | 'statements'
+  title: string
+  /** The number, or „nicht lesbar" — never 0 for a count not read. */
   text: string
 }
 
@@ -144,9 +185,16 @@ export interface AnliegenView {
   /** „Keine Veröffentlichung der Dokumente": the documents section says so and lists none; null otherwise. */
   documentsNote: string | null
   rail: AnliegenRailRow[]
+  /** One per step reached that has more to say than its rail row, in the rail's order. */
+  sections: AnliegenStationSection[]
+  /**
+   * The section that holds the Stellungnahmen and the statement door: the
+   * committee's, which reads them; the Einbringung's while no committee
+   * holds the item yet. The window runs until the treatment ends, so on a
+   * forwarded item a late one still stands here (the door's note says so).
+   */
+  statementsAt: AnliegenStepId
   participation: AnliegenParticipationView
-  countsHeading: string
-  counts: AnliegenCountFact[]
   notShownHeading: string
   notShown: AnliegenNotShown[]
   seo: { title: string; description: string; ogTitle: string }
@@ -163,7 +211,6 @@ export const ANLIEGEN_PAGE_DE = {
   parliamentLink: 'Auf parlament.gv.at',
   railLabel: 'Das Anliegen im Nationalrat',
   railLabelBundesrat: 'Die Petition im Bundesrat',
-  countsHeading: 'Beteiligung',
   documentsHeading: 'Dokumente',
   documentsWithheld: gapDe('notPublished', 'die Dokumente dieser Petition.'),
   statementsHeading: 'Stellungnahmen an den Nationalrat',
@@ -185,6 +232,11 @@ const WINDOW_NOTE_BR = 'Das Fenster hat keine Frist. Es schließt, wenn die Beha
 const BR_COMMITTEE_DEFAULT = 'Ausschuss für BürgerInnenrechte und Petitionen'
 /* An addressee that does not match the strict institutional shape is never passed through (`transmissionAddressees`). */
 const BR_ADDRESSEE_UNKNOWN = 'eine Stelle der Bundesverwaltung'
+/* § 25 Abs. 3 GO-BR. The rule, not a claim about the item: 30 of the 31
+ * Übermittlungen came 180 days or more after the Zuweisung, one
+ * (22/PET-BR/2008) 118 days after it and 210 after the Einlangen
+ * (15.11.2026) — why is not in the record. */
+const BR_TRANSMISSION_NOTE = 'Berichtet der Ausschuss nicht binnen sechs Monaten nach der Zuweisung, leitet die Präsidentin oder der Präsident des Bundesrates die Petition an das zuständige Mitglied der Bundesregierung weiter (§ 25 Abs. 3 GO-BR).'
 const SUPPORT_QUOTE = 'Die elektronische Unterstützung dient der Abbildung der politischen Interessenlage und hat für die Beratungen im Nationalrat informativen Charakter.'
 const VOLKSBEGEHREN_SUPPORT = gapDe('outOfScope', 'Unterstützung und Eintragung, bevor ein Volksbegehren im Nationalrat einlangt.')
 /* No „mehr": whether an old item ever had the window is not read. */
@@ -270,42 +322,88 @@ function presentersFact(presenters: AnliegenDetail['presenters'], bundesrat: boo
   // Members of the Bundesrat are never named either, only their club (docs/decisions.md).
   const chamber = bundesrat ? 'Bundesrates' : 'Nationalrates'
   const who = presenters.length === 1 ? `einem Mitglied des ${chamber}` : `Mitgliedern des ${chamber}`
-  return { text: `überreicht von ${who}${clubs.length ? ` (${clubs.join(', ')})` : ''}` }
+  return { text: `${who}${clubs.length ? ` (${clubs.join(', ')})` : ''}` }
 }
 
 // ---------------------------------------------------------------------------
 // The rail
 // ---------------------------------------------------------------------------
 
+/**
+ * One step, in two depths: the SUMMARY the rail shows (the outcome or the
+ * date, plain), and the ROWS its section shows (everything the record says
+ * about the step, with links). `section: false` keeps a step without more
+ * to say than its summary — the Erste Lesung, a date — off the page as a
+ * section, so its rail row is no link (docs/decisions.md, „A step not
+ * reached gets no section", which holds for an empty one too).
+ */
 interface Step {
   id: AnliegenStepId
   name: string
   reached: boolean
-  facts: AnliegenFact[]
+  summary: AnliegenFact[]
+  rows: AnliegenSectionRow[]
+  /** `AnliegenStationSection.note`. */
+  note?: string
+  section: boolean
+}
+
+/** A row only where it has a fact. */
+function row(key: string, title: string, facts: AnliegenFact[]): AnliegenSectionRow[] {
+  return facts.length ? [{ key, title, facts }] : []
+}
+
+function assignedFact(date: string | null, again = false): AnliegenFact[] {
+  return date ? [{ text: `${again ? 'neu zugewiesen' : 'zugewiesen'} am ${formatDateDe(date)}` }] : []
+}
+
+/** The adopted Entschließungen as one row: „am 27.04.2023 angenommen (86/AEA)", or undated „angenommen (6/AEA)". */
+function resolutionRow(resolutions: AnliegenDetail['course']['resolutions'], dated: boolean): AnliegenSectionRow[] {
+  return row(
+    'entschliessungen',
+    resolutions.length === 1 ? 'Entschließung' : 'Entschließungen',
+    resolutions.map((r) => ({ text: dated ? `am ${formatDateDe(r.date)} angenommen (${r.ref})` : `angenommen (${r.ref})` })),
+  )
+}
+
+/** A report's step taken note of, as one phrase: „Bericht 200 d.B. am 24.09.2025 zur Kenntnis genommen". */
+function reportTakenNote(before: string, report: AnliegenReportRef | null, date: string): AnliegenFact {
+  return report
+    ? reportFact(`${before} `, report, ` am ${formatDateDe(date)} zur Kenntnis genommen`)
+    : { text: `Bericht des Ausschusses am ${formatDateDe(date)} zur Kenntnis genommen` }
+}
+
+/** A fact without its link, for the rail: the row is the link, and a second target inside it is not wanted. */
+function plain(f: AnliegenFact): AnliegenFact {
+  return { text: factText(f) }
 }
 
 function arrivalStep(d: AnliegenDetail): Step {
   const { course, root } = d
   const vb = root.kind === 'volksbegehren'
-  const facts: AnliegenFact[] = []
+  const rows: AnliegenSectionRow[] = []
+  let summary: AnliegenFact[] = []
   if (course.carriedFrom) {
     // A carried-over item's Einlangen is the day the new period took it up,
     // not the day it was filed: said as such, after the predecessor.
-    facts.push({
-      text: `aus der ${periodDe(course.carriedFrom.gp)} übernommen (`,
-      link: periodRefLink(course.carriedFrom, root.kind),
-      after: ')',
-    })
-    if (course.arrivedAt) facts.push({ text: `in der ${periodDe(root.gp)} seit ${formatDateDe(course.arrivedAt)}` })
+    rows.push(...row('uebernommen', 'Übernommen', [
+      { text: `aus der ${periodDe(course.carriedFrom.gp)} (`, link: periodRefLink(course.carriedFrom, root.kind), after: ')' },
+      ...(course.arrivedAt ? [{ text: `in der ${periodDe(root.gp)} seit ${formatDateDe(course.arrivedAt)}` }] : []),
+    ]))
+    summary = [{ text: `aus der ${periodDe(course.carriedFrom.gp)} übernommen` }]
   } else if (course.arrivedAt) {
-    facts.push({ text: `am ${formatDateDe(course.arrivedAt)}` })
+    rows.push(...row('einlangen', 'Einlangen', [{ text: `am ${formatDateDe(course.arrivedAt)}` }]))
+    summary = [{ text: `am ${formatDateDe(course.arrivedAt)}` }]
   }
   const presenters = root.kind === 'petition' || root.kind === 'petition-bundesrat'
     ? presentersFact(d.presenters, root.kind === 'petition-bundesrat')
     : null
-  if (presenters) facts.push(presenters)
-  if (root.kind === 'buergerinitiative') facts.push({ text: 'von mindestens 500 Bürgerinnen und Bürgern eingebracht' })
-  return { id: 'eingebracht', name: vb ? 'Eingelangt' : 'Eingebracht', reached: true, facts }
+  if (presenters) rows.push({ key: 'presenters', title: 'Überreicht von', facts: [presenters] })
+  if (root.kind === 'buergerinitiative') rows.push({ key: 'presenters', title: 'Eingebracht von', facts: [{ text: 'mindestens 500 Bürgerinnen und Bürgern' }] })
+  // The Unterstützung is given to the item itself, so its count stands with it.
+  const support = anliegenCounts(d).find((c) => c.key === 'support')
+  if (support) rows.push({ key: 'support', title: support.title, facts: [{ text: support.text }] })
+  return { id: 'eingebracht', name: vb ? 'Eingelangt' : 'Eingebracht', reached: true, summary, rows, section: true }
 }
 
 /** The committee's ending in the rail's words, by kind — every kind its own line, none passed through. */
@@ -325,79 +423,78 @@ function petitionPlenaryFacts(pl: NonNullable<AnliegenDetail['course']['plenary'
       return [{ text: `Der Übermittlung an die Volksanwaltschaft am ${formatDateDe(pl.date)} zugestimmt` }, ...voteFacts(pl.vote, pl.majorityOnly)]
     case 'bericht-zur-kenntnis':
     case 'kenntnisnahme':
-      return [
-        pl.report
-          ? reportFact('Sammelbericht ', pl.report, ` am ${formatDateDe(pl.date)} zur Kenntnis genommen`)
-          : { text: `Bericht des Ausschusses am ${formatDateDe(pl.date)} zur Kenntnis genommen` },
-        { text: PLENARY_REPORT_NOTE },
-      ]
+      return [reportTakenNote('Sammelbericht', pl.report, pl.date)]
   }
 }
 
-/** „Entschließung am 27.04.2023 angenommen (86/AEA)". */
-function resolutionFact(r: AnliegenDetail['course']['resolutions'][number]): AnliegenFact {
-  return { text: `Entschließung am ${formatDateDe(r.date)} angenommen (${r.ref})` }
-}
-
-/** Petition, Bürgerinitiative: Eingebracht · Ausschuss · Erledigung · Nationalrat, and the Fachausschuss after a Zuweisung. */
+/** Petition, Bürgerinitiative: Eingebracht · Ausschuss (with its Erledigung) · Nationalrat, and the Fachausschuss after a Zuweisung. */
 function petitionSteps(d: AnliegenDetail): Step[] {
   const { course } = d
   const c = course.committee
+  const disp = course.disposal
   const committee: Step = {
     id: 'ausschuss',
     name: PB_COMMITTEE,
-    reached: c !== null,
-    facts: c
-      ? [...(c.assignedAt ? [{ text: `zugewiesen am ${formatDateDe(c.assignedAt)}` }] : []), ...sittingFacts(c), ...requestFacts(c)]
-      : [],
-  }
-
-  const disp = course.disposal
-  const disposal: Step = {
-    id: 'erledigung',
-    name: 'Erledigung im Ausschuss',
-    reached: disp !== null,
-    facts: disp ? [disposalFact(disp), ...voteFacts(disp.vote, disp.majorityOnly)] : [],
+    reached: c !== null || disp !== null,
+    // The outcome where there is one, else the day it arrived there.
+    summary: disp ? [disposalFact(disp)] : assignedFact(c?.assignedAt ?? null),
+    rows: [
+      ...row('beratung', 'Beratung', c ? [...assignedFact(c.assignedAt), ...sittingFacts(c), ...requestFacts(c)] : []),
+      ...row('erledigung', 'Erledigung', disp ? [disposalFact(disp), ...voteFacts(disp.vote, disp.majorityOnly)] : []),
+    ],
+    section: true,
   }
 
   const pl = course.plenary
   const sc = course.subjectCommittee
   // An Entschließung adopted after the plenary's step on the Sammelbericht,
   // on a forwarded item, came with the subject committee's report (80/PET
-  // XXVII): it stands in that committee's row; every other one in the
+  // XXVII): it stands in that committee's step; every other one in the
   // Nationalrat's.
   const withSubject = (r: AnliegenDetail['course']['resolutions'][number]) => sc !== null && pl !== null && r.date > pl.date
+  const plenaryFacts = pl ? petitionPlenaryFacts(pl) : []
   const plenary: Step = {
     id: 'nationalrat',
     name: 'Nationalrat',
     reached: pl !== null,
-    facts: pl ? [...petitionPlenaryFacts(pl), ...course.resolutions.filter((r) => !withSubject(r)).map(resolutionFact)] : [],
+    summary: plenaryFacts.slice(0, 1).map(plain),
+    rows: [
+      ...row('beschluss', 'Beschluss', plenaryFacts),
+      ...resolutionRow(course.resolutions.filter((r) => !withSubject(r)), true),
+    ],
+    note: pl && pl.kind !== 'uebermittlung-zugestimmt' ? PLENARY_REPORT_NOTE : undefined,
+    section: true,
   }
 
-  const steps = [arrivalStep(d), committee, disposal]
+  const steps = [arrivalStep(d), committee]
   if (!sc) return [...steps, plenary]
 
-  const subjectFacts: AnliegenFact[] = []
-  if (sc.assignedAt) subjectFacts.push({ text: `zugewiesen am ${formatDateDe(sc.assignedAt)}` })
-  if (sc.noEntry) {
-    subjectFacts.push({ text: 'Im Verlauf des Parlaments steht zu diesem Ausschuss kein Eintrag.' })
-  } else if (sc.report) {
-    subjectFacts.push(reportFact('Bericht ', sc.report))
-  } else if (sc.lastSitting) {
-    subjectFacts.push({ text: `zuletzt am ${formatDateDe(sc.lastSitting)} behandelt` })
-    if (sc.adjourned) subjectFacts.push({ text: 'vertagt' })
+  const deliberation: AnliegenFact[] = [...assignedFact(sc.assignedAt)]
+  if (!sc.noEntry && !sc.report && sc.lastSitting) {
+    deliberation.push({ text: `zuletzt am ${formatDateDe(sc.lastSitting)} behandelt` })
+    if (sc.adjourned) deliberation.push({ text: 'vertagt' })
   }
-  subjectFacts.push(...course.resolutions.filter(withSubject).map(resolutionFact))
+  const report = !sc.noEntry && sc.report ? reportFact('', sc.report) : null
   const subject: Step = {
     id: 'fachausschuss',
     name: sc.name,
     reached: sc.assignedAt !== null || !sc.noEntry,
-    facts: subjectFacts,
+    // The report where there is one, else the last sitting, else the day it arrived.
+    summary: report
+      ? [{ text: `Bericht ${factText(report)}` }]
+      : deliberation.length > 1 ? [deliberation[1]!] : deliberation,
+    rows: [
+      ...row('beratung', 'Beratung', deliberation),
+      ...row('bericht', 'Bericht', report ? [report] : []),
+      ...resolutionRow(course.resolutions.filter(withSubject), true),
+    ],
+    note: sc.noEntry ? 'Im Verlauf des Parlaments steht zu diesem Ausschuss kein Eintrag.' : undefined,
+    section: true,
   }
   // In the order things happened: the plenary takes note of the Sammelbericht
   // that reports the Zuweisung, and the item lives on in the subject committee
   // (1/BI XXVIII). Before that report is taken note of, the subject committee
-  // already holds the item, so its row stands before the plenary's.
+  // already holds the item, so its step stands before the plenary's.
   return pl ? [...steps, plenary, subject] : [...steps, subject, plenary]
 }
 
@@ -406,31 +503,42 @@ function volksbegehrenSteps(d: AnliegenDetail): Step[] {
   const { course } = d
   const steps: Step[] = [arrivalStep(d)]
   if (course.firstReading) {
-    steps.push({ id: 'erste-lesung', name: 'Erste Lesung', reached: true, facts: [{ text: `am ${formatDateDe(course.firstReading)}` }] })
+    const facts = [{ text: `am ${formatDateDe(course.firstReading)}` }]
+    steps.push({ id: 'erste-lesung', name: 'Erste Lesung', reached: true, summary: facts, rows: [], section: false })
   }
   const c = course.committee
-  const facts: AnliegenFact[] = []
-  if (c?.assignedAt) facts.push({ text: `zugewiesen am ${formatDateDe(c.assignedAt)}` })
-  if (course.duties?.deliberationBy) facts.push({ text: `Vorberatung aufzunehmen bis ${formatDateDe(course.duties.deliberationBy)}` })
-  if (course.duties?.reportBy) facts.push({ text: `Bericht zu erstatten bis ${formatDateDe(course.duties.reportBy)}` })
-  if (c) facts.push(...sittingFacts(c), ...requestFacts(c))
-  if (course.committeeReport) facts.push(reportFact('Bericht ', course.committeeReport))
-  steps.push({ id: 'ausschuss', name: c?.name || 'Ausschuss', reached: c !== null, facts })
+  const duties: AnliegenFact[] = []
+  if (course.duties?.deliberationBy) duties.push({ text: `Vorberatung aufzunehmen bis ${formatDateDe(course.duties.deliberationBy)}` })
+  if (course.duties?.reportBy) duties.push({ text: `Bericht zu erstatten bis ${formatDateDe(course.duties.reportBy)}` })
+  const report = course.committeeReport ? reportFact('', course.committeeReport) : null
+  steps.push({
+    id: 'ausschuss',
+    name: c?.name || 'Ausschuss',
+    reached: c !== null,
+    summary: report ? [{ text: `Bericht ${factText(report)}` }] : assignedFact(c?.assignedAt ?? null),
+    rows: [
+      ...row('beratung', 'Beratung', c ? [...assignedFact(c.assignedAt), ...sittingFacts(c), ...requestFacts(c)] : []),
+      ...row('fristen', 'Fristen', duties),
+      ...row('bericht', 'Bericht', report ? [report] : []),
+    ],
+    section: true,
+  })
 
   const pl = course.plenary
-  const plFacts: AnliegenFact[] = []
-  if (pl) {
-    plFacts.push(
-      pl.kind === 'kenntnisnahme'
-        ? { text: `Zur Kenntnis genommen am ${formatDateDe(pl.date)}` }
-        : pl.report
-          ? reportFact('Bericht ', pl.report, ` am ${formatDateDe(pl.date)} zur Kenntnis genommen`)
-          : { text: `Bericht des Ausschusses am ${formatDateDe(pl.date)} zur Kenntnis genommen` },
-      ...voteFacts(pl.vote, pl.majorityOnly),
-    )
-  }
-  for (const r of course.resolutions) plFacts.push({ text: `Entschließung angenommen (${r.ref})` })
-  steps.push({ id: 'nationalrat', name: 'Nationalrat', reached: pl !== null, facts: plFacts })
+  const decision: AnliegenFact | null = pl
+    ? pl.kind === 'kenntnisnahme' ? { text: `Zur Kenntnis genommen am ${formatDateDe(pl.date)}` } : reportTakenNote('Bericht', pl.report, pl.date)
+    : null
+  steps.push({
+    id: 'nationalrat',
+    name: 'Nationalrat',
+    reached: pl !== null,
+    summary: decision ? [plain(decision)] : [],
+    rows: [
+      ...row('beschluss', 'Beschluss', decision && pl ? [decision, ...voteFacts(pl.vote, pl.majorityOnly)] : []),
+      ...resolutionRow(course.resolutions, false),
+    ],
+    section: true,
+  })
   return steps
 }
 
@@ -446,46 +554,54 @@ export function transmissionToDe(to: readonly string[] | null): string {
 }
 
 /**
- * Petition an den Bundesrat: Eingebracht · its committee · Erledigung · the
- * Bundesrat. The Erledigung is the Übermittlung to the administration (31
- * of 42), the committee's report (10), or „gilt als zurückgezogen" (1). The
- * Bundesrat's row stands only where the item could reach it: after a
- * report, or while nothing has ended it — an Übermittlung or a withdrawal
- * ends the record, and an unreached row there would suggest a step owed.
+ * Petition an den Bundesrat: Eingebracht · its committee (with its
+ * Erledigung) · the Bundesrat. The Erledigung is the Übermittlung to the
+ * administration (31 of 42), the committee's report (10), or „gilt als
+ * zurückgezogen" (1). The Bundesrat's row stands only where the item could
+ * reach it: after a report, or while nothing has ended it — an Übermittlung
+ * or a withdrawal ends the record, and an unreached row there would suggest
+ * a step owed.
  */
 function bundesratSteps(d: AnliegenDetail): Step[] {
   const { course } = d
   const c = course.committee
-  const committeeFacts: AnliegenFact[] = []
-  if (c?.reassignedFrom) committeeFacts.push({ text: `zuvor dem ${bundesratCommitteeName(c.reassignedFrom)} zugewiesen` })
-  if (c?.assignedAt) committeeFacts.push({ text: `${c.reassignedFrom ? 'neu zugewiesen' : 'zugewiesen'} am ${formatDateDe(c.assignedAt)}` })
-  if (c) committeeFacts.push(...sittingFacts(c))
-  const committee: Step = { id: 'ausschuss', name: c ? bundesratCommitteeName(c.name) : BR_COMMITTEE_DEFAULT, reached: c !== null, facts: committeeFacts }
+  const deliberation: AnliegenFact[] = []
+  if (c?.reassignedFrom) deliberation.push({ text: `zuvor dem ${bundesratCommitteeName(c.reassignedFrom)} zugewiesen` })
+  if (c) deliberation.push(...assignedFact(c.assignedAt, c.reassignedFrom !== null), ...sittingFacts(c))
 
-  const facts: AnliegenFact[] = []
+  let ending: AnliegenFact | null = null
   if (course.transmission) {
-    facts.push({ text: `An ${transmissionToDe(course.transmission.to)} übermittelt am ${formatDateDe(course.transmission.date)}` })
+    ending = { text: `An ${transmissionToDe(course.transmission.to)} übermittelt am ${formatDateDe(course.transmission.date)}` }
   } else if (course.committeeReport) {
-    facts.push(reportFact('Bericht des Ausschusses ', course.committeeReport))
+    ending = reportFact('Bericht des Ausschusses ', course.committeeReport)
   } else if (course.withdrawnAt) {
-    facts.push({ text: `Gilt seit ${formatDateDe(course.withdrawnAt)} als zurückgezogen (§ 16 Abs. 5 GO-BR)` })
+    ending = { text: `Gilt seit ${formatDateDe(course.withdrawnAt)} als zurückgezogen (§ 16 Abs. 5 GO-BR)` }
   }
-  const disposal: Step = { id: 'erledigung', name: 'Erledigung', reached: facts.length > 0, facts }
+  const committee: Step = {
+    id: 'ausschuss',
+    name: c ? bundesratCommitteeName(c.name) : BR_COMMITTEE_DEFAULT,
+    reached: c !== null || ending !== null,
+    summary: ending ? [plain(ending)] : assignedFact(c?.assignedAt ?? null, c?.reassignedFrom != null),
+    rows: [...row('beratung', 'Beratung', deliberation), ...row('erledigung', 'Erledigung', ending ? [ending] : [])],
+    note: course.transmission ? BR_TRANSMISSION_NOTE : undefined,
+    section: true,
+  }
 
-  const steps = [arrivalStep(d), committee, disposal]
+  const steps = [arrivalStep(d), committee]
   if (course.transmission || course.withdrawnAt) return steps
   const pl = course.plenary
-  const plFacts: AnliegenFact[] = []
-  if (pl) {
-    plFacts.push(
-      pl.report
-        ? reportFact('Bericht ', pl.report, ` am ${formatDateDe(pl.date)} zur Kenntnis genommen`)
-        : { text: `Bericht des Ausschusses am ${formatDateDe(pl.date)} zur Kenntnis genommen` },
-      ...voteFacts(pl.vote, pl.majorityOnly),
-    )
-  }
-  for (const r of course.resolutions) plFacts.push({ text: `Entschließung angenommen (${r.ref})` })
-  return [...steps, { id: 'bundesrat', name: 'Bundesrat', reached: pl !== null, facts: plFacts }]
+  const decision = pl ? reportTakenNote('Bericht', pl.report, pl.date) : null
+  return [...steps, {
+    id: 'bundesrat',
+    name: 'Bundesrat',
+    reached: pl !== null,
+    summary: decision ? [plain(decision)] : [],
+    rows: [
+      ...row('beschluss', 'Beschluss', decision && pl ? [decision, ...voteFacts(pl.vote, pl.majorityOnly)] : []),
+      ...resolutionRow(course.resolutions, false),
+    ],
+    section: true,
+  }]
 }
 
 /** Whether the item still runs in the Nationalrat — then its last step reached is the current one. */
@@ -506,6 +622,26 @@ function stepsOf(d: AnliegenDetail): Step[] {
   }
 }
 
+/** A step has a section when it was reached and says more than its summary; the Einbringung always (its documents). */
+function hasSection(s: Step): boolean {
+  if (s.id === 'eingebracht') return true
+  return s.reached && s.section && (s.rows.length > 0 || s.note !== undefined)
+}
+
+/**
+ * The sections, in the rail's order. Built from the same steps as the rail,
+ * so a row links exactly where a section renders.
+ */
+export function anliegenSections(d: AnliegenDetail): AnliegenStationSection[] {
+  return stepsOf(d).filter(hasSection).map((s) => ({
+    id: s.id,
+    anchor: s.id,
+    heading: s.name,
+    rows: s.rows,
+    note: s.note ?? null,
+  }))
+}
+
 /**
  * The rail. Each row says its state in a word („erreicht", „nicht
  * erreicht"); a row the item did not reach shows nothing else, as SpineRail
@@ -523,7 +659,8 @@ export function anliegenRail(d: AnliegenDetail, headline: AnliegenHeadline = anl
     name: s.name,
     state: !s.reached ? 'open' : i === markedAt && running ? 'current' : 'done',
     marked: i === markedAt,
-    facts: s.reached ? s.facts : [],
+    facts: s.reached ? s.summary : [],
+    href: hasSection(s) ? `#${s.id}` : null,
     announce: s.reached ? 'erreicht' : 'nicht erreicht',
   }))
 }
@@ -616,13 +753,31 @@ export function anliegenParticipation(d: AnliegenDetail): AnliegenParticipationV
 // Counts and what the page cannot show
 // ---------------------------------------------------------------------------
 
-/** „Unterstützungen: 24", „Stellungnahmen: 3"; an unread count says „nicht lesbar" (`gapLabelDe`), never 0. No Unterstützungen for a Volksbegehren. */
+/**
+ * The two counts as fact rows: „Unterstützungen" over „24"; an unread count
+ * says „nicht lesbar", never 0. No Unterstützungen for a Volksbegehren. The
+ * support count stands in the Einbringung's section; the statements count
+ * only where no table states it (`statementsCountRow`).
+ */
 export function anliegenCounts(d: AnliegenDetail): AnliegenCountFact[] {
   const count = (n: number | null) => (n === null ? 'nicht lesbar' : formatNumberDe(n))
   const out: AnliegenCountFact[] = []
-  if (d.root.kind !== 'volksbegehren') out.push({ key: 'support', text: `Unterstützungen: ${count(d.counts.support)}` })
-  out.push({ key: 'statements', text: `Stellungnahmen: ${count(d.counts.statements)}` })
+  if (d.root.kind !== 'volksbegehren') out.push({ key: 'support', title: 'Unterstützungen', text: count(d.counts.support) })
+  out.push({ key: 'statements', title: 'Stellungnahmen', text: count(d.counts.statements) })
   return out
+}
+
+/**
+ * „Stellungnahmen: 0" or „nicht lesbar" as a row, where the page shows no
+ * table that counts them: a closed item without any, or a count not read.
+ * Where there are some, or the window is open, the table's tabs count them
+ * and a row would say it twice.
+ */
+function statementsCountRow(d: AnliegenDetail): AnliegenSectionRow[] {
+  const n = d.counts.statements
+  if (n !== null && (n > 0 || d.participation.statements === 'open')) return []
+  const c = anliegenCounts(d).find((x) => x.key === 'statements')!
+  return [{ key: 'statements', title: c.title, facts: [{ text: c.text }] }]
 }
 
 /** Each gap with its reason (CLAUDE.md, „Say what cannot be shown, and why"). */
@@ -717,6 +872,10 @@ export function anliegenView(d: AnliegenDetail): AnliegenView {
   const headline = anliegenHeadline(d)
   const vb = d.root.kind === 'volksbegehren'
   const br = anliegenIsBundesrat(d.root.kind)
+  const base = anliegenSections(d)
+  const statementsAt: AnliegenStepId = base.some((s) => s.id === 'ausschuss') ? 'ausschuss' : 'eingebracht'
+  const sections = base.map((s) =>
+    s.id === statementsAt ? { ...s, rows: [...s.rows, ...statementsCountRow(d)] } : s)
   return {
     // The Bundesrat has no period: the citation alone, its year in it („56/PET-BR/2024").
     identity: { kind, rest: br ? d.citation : `${d.citation} · ${periodDe(d.root.gp)}` },
@@ -725,9 +884,9 @@ export function anliegenView(d: AnliegenDetail): AnliegenView {
     statementsHeading: br ? ANLIEGEN_PAGE_DE.statementsHeadingBundesrat : ANLIEGEN_PAGE_DE.statementsHeading,
     documentsNote: d.course.documentsWithheld ? ANLIEGEN_PAGE_DE.documentsWithheld : null,
     rail: anliegenRail(d, headline),
+    sections,
+    statementsAt,
     participation: anliegenParticipation(d),
-    countsHeading: ANLIEGEN_PAGE_DE.countsHeading,
-    counts: anliegenCounts(d),
     notShownHeading: ANLIEGEN_PAGE_DE.notShownHeading,
     notShown: anliegenNotShown(d),
     seo: {
