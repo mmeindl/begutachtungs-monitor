@@ -79,7 +79,7 @@
 # §§. The first visitor of the day pays 12 s for a section that
 # says „lädt"; that is the right one to pay it.
 [Unit]
-Description=Begutachtungs-Monitor: warm the RIS corpus, BGBl volumes, both station maps, the genannt index, the Länder, the EU map and the laws without a draft
+Description=Begutachtungs-Monitor: warm the RIS corpus, BGBl volumes, both station maps, the genannt index, the Länder, the EU map, the laws without a draft and the homepage's Parliament doors
 After=begutachtungs-monitor.service
 Requires=begutachtungs-monitor.service
 # Since 30.09.2026: the pages of the open drafts, in their own unit and
@@ -99,9 +99,11 @@ User=app
 Group=app
 NoNewPrivileges=true
 PrivateTmp=true
-# The unit's own worst case, stated rather than inherited: the twelve --max-time
-# budgets below add up to 6.180 s, and deploy.sh blocks on this job.
-TimeoutStartSec=6260
+# The unit's own worst case, stated rather than inherited: the sixteen --max-time
+# budgets below add up to 6.660 s, and deploy.sh blocks on this job. (Recounted
+# 16.11.2026: the three EU lists of the same day had left it at „twelve" and
+# 6.180 s, under the 6.540 s the lines then added up to.)
+TimeoutStartSec=6740
 # First, and no curl (12.11.2026): the published documents the app keeps on
 # disk (server/utils/cache/documentDriver.ts) — law texts, § versions,
 # Erläuterungen, closed Bundesgesetzblatt years, upstream payloads only and
@@ -206,3 +208,18 @@ ExecStart=/usr/bin/curl -fsS -o /dev/null --max-time 300 http://127.0.0.1:3000/a
 # leaf cache (5 s cold with Parliament fast, 15.11.2026). 60 s covers that
 # and a cold `getCurrentGp` (8 s x 3 attempts) in front of it.
 ExecStart=/usr/bin/curl -fsS -o /dev/null --max-time 60 http://127.0.0.1:3000/api/anliegen
+# Since 16.11.2026: the open Vorlagen and motions that take a Stellungnahme —
+# the homepage's door „Stellung nehmen im Parlament" and the rows of
+# /entwuerfe under „Regierungsvorlage" and „Parlament / Landtag". The
+# endpoint has no cache of its own: it reads list 101 (`items-gp`), one
+# detail JSON per candidate (`gegenstand`, both 30 minutes fresh and served
+# up to three hours while they refresh) and each candidate's Stellungnahmen
+# (`statements-rv`, 30 minutes, never served stale), plus list 81 where a
+# row names no draft. Warming those leaves is what helps: about a dozen
+# candidates, cold some seconds, warm milliseconds. So it pays mostly after
+# a deploy, which empties every memory cache; the nightly run's Stellungnahmen
+# are cold again by morning, by design, since their count is a claim about
+# now. After the Anliegen, the homepage's other Parliament door, and with a
+# leading `-`: a failure here must not keep OnSuccess= from rendering the
+# open drafts' pages.
+ExecStart=-/usr/bin/curl -fsS -o /dev/null --max-time 120 http://127.0.0.1:3000/api/dashboard/zweite-runde
