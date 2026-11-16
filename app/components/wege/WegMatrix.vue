@@ -26,7 +26,7 @@
  *
  * All copy is in `app/utils/wege.ts`.
  */
-import { WEGE_COPY, type WegCell, type WegMatrix, wegCellLabel, wegStationLabel } from '~/utils/wege'
+import { WEGE_COPY, type WegCell, type WegMatrix, wegCellLabel, wegHeaderLabel, wegStationLabel } from '~/utils/wege'
 import { WEG_MARK_CLASS, WEG_MARK_GLYPH, WEG_SECTION_BAR } from '~/utils/wegeMarks'
 
 defineProps<{
@@ -42,15 +42,19 @@ const HEAD_CELL = 'sticky top-0 z-10 border-b border-hairline bg-surface py-2 al
 const ROW_CELL = 'border-b border-hairline py-3 align-top'
 /* The selected row (`?weg=`): an ink bar on its left edge, inside the inset. */
 const SELECTED_BAR = 'shadow-[inset_3px_0_0_var(--color-ink)]'
-/* The sticky header's height (one line, measured 14.11.2026) plus air, as
- * scroll margin on every row and link of the matrix — focus and `#weg-…`
- * never land under the header. */
-const ROW_SCROLL = '[&_a]:scroll-mt-14 [&_tr]:scroll-mt-14'
-/* The station columns (14.11.2026): each as wide as its own name on one
- * line plus `px-3` — `w-px` with `whitespace-nowrap` shrinks a column to
- * that — so each mark is centred under its own name; the path column
- * (`w-full`) takes all the rest, and its notes keep one or two lines. */
-const STATION_COL = 'w-px whitespace-nowrap px-3 last:pr-4'
+/* The sticky header's height (two lines since the columns are equal) plus
+ * air, as scroll margin on every row and link of the matrix — focus and
+ * `#weg-…` never land under the header. */
+const ROW_SCROLL = '[&_a]:scroll-mt-20 [&_tr]:scroll-mt-20'
+/* The station columns (16.11.2026): ONE width for every station of every
+ * matrix. Each matrix has five stations and they stand stacked in one
+ * card, so with equal columns (`table-fixed`) every mark of the page lines
+ * up in five verticals; sized by each name, the marks stood a little
+ * elsewhere from table to table. The path column takes the rest. A name
+ * that does not fit breaks onto a second line („Parlament und Rat") or at
+ * the joint of a compound („Regierungs-vorlage", `wegHeaderLabel`),
+ * bottom-aligned (`HEAD_CELL`). */
+const STATION_COL = 'w-30 px-1.5'
 
 /* A cell's mark is shown on the phone's rail with its word only where the dot alone would not say it. */
 const SAID_ON_RAIL = new Set<WegCell>(['stellungnahme', 'offen'])
@@ -63,7 +67,7 @@ const SAID_ON_RAIL = new Set<WegCell>(['stellungnahme', 'offen'])
          sticks, so the rows would show through under it. Each cell carries
          its own hairline instead; the last row leaves the next matrix's
          edge alone. -->
-    <table class="hidden w-full border-separate border-spacing-0 text-sm lg:table [&_tbody:last-child_tr:last-child>*]:border-b-0">
+    <table class="hidden w-full table-fixed border-separate border-spacing-0 text-sm lg:table [&_tbody:last-child_tr:last-child>*]:border-b-0">
       <caption class="sr-only">
         {{ matrix.caption }}
       </caption>
@@ -71,7 +75,7 @@ const SAID_ON_RAIL = new Set<WegCell>(['stellungnahme', 'offen'])
            with `overflow: clip`, which is no scroll container. -->
       <thead>
         <tr>
-          <th scope="col" :class="HEAD_CELL" class="w-full pl-4 pr-4 text-left text-ink-secondary">
+          <th scope="col" :class="HEAD_CELL" class="pl-4 pr-4 text-left text-ink-secondary">
             {{ matrix.pathColumn }}
           </th>
           <th
@@ -79,13 +83,13 @@ const SAID_ON_RAIL = new Set<WegCell>(['stellungnahme', 'offen'])
             :key="station.id"
             scope="col"
             :class="[HEAD_CELL, STATION_COL]"
-            class="text-center text-ink hyphens-none"
+            class="text-center text-ink hyphens-manual"
           >
             <NuxtLink v-if="station.href" :to="station.href" class="link-inline">
-              {{ station.label }}
+              {{ wegHeaderLabel(station.label) }}
             </NuxtLink>
             <template v-else>
-              {{ station.label }}
+              {{ wegHeaderLabel(station.label) }}
             </template>
           </th>
         </tr>

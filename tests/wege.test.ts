@@ -25,6 +25,7 @@ import {
   wegCellLabel,
   wegFor,
   wegGroups,
+  wegHeaderLabel,
   wegHref,
 } from '../app/utils/wege'
 
@@ -126,6 +127,18 @@ describe('the matrices with rails of their own (16.11.2026)', () => {
     expect(NATIONAL_MATRICES.map((m) => m.id)).toEqual(['bund', 'land'])
     for (const m of NATIONAL_MATRICES) expect(m.stations.map((s) => s.id)).toEqual([...WEG_STATION_ORDER])
     expect(NATIONAL_MATRICES.flatMap(rowsOf).map((r) => r.id)).toEqual(WEGE.map((w) => w.id))
+  })
+
+  it('a header breaks a compound only at its joint, and leaves every other name alone (16.11.2026)', () => {
+    expect(wegHeaderLabel('Regierungsvorlage')).toBe('Regierungs\u00ADvorlage')
+    expect(wegHeaderLabel('Landesgesetzblatt')).toBe('Landes\u00ADgesetz\u00ADblatt')
+    expect(wegHeaderLabel('Parlament und Rat')).toBe('Parlament und Rat')
+    // Without the marks the name is the station's own, in every matrix.
+    for (const s of WEG_MATRICES.flatMap((m) => m.stations)) expect(wegHeaderLabel(s.label).replaceAll('\u00AD', '')).toBe(s.label)
+  })
+
+  it('the first column is „Weg" in every matrix: the bar under it names whose ways (16.11.2026)', () => {
+    expect(new Set(WEG_MATRICES.map((m) => m.pathColumn))).toEqual(new Set(['Weg']))
   })
 
   it('each level names its last two stations itself, and no sentence translates a shared header (16.11.2026)', () => {

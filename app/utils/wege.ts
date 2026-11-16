@@ -614,7 +614,7 @@ export interface WegMatrix {
   id: string
   /** The table's caption, for a screen reader. */
   caption: string
-  /** The head of the rows' column. */
+  /** The head of the rows' column: „Weg" in every matrix (16.11.2026) — the bar under it says whose ways. */
   pathColumn: string
   stations: WegMatrixStation[]
   groups: WegMatrixGroup[]
@@ -623,6 +623,25 @@ export interface WegMatrix {
 /** What a cell of a row says in words: its own take-part words for the blue mark, the matrix's otherwise. */
 export function wegCellLabel(row: Pick<WegMatrixRow, 'takePart'>, cell: WegCell): string {
   return cell === 'stellungnahme' && row.takePart ? row.takePart : WEG_CELL_LABEL[cell]
+}
+
+/**
+ * Where a station's name may break in a column header (16.11.2026). The
+ * station columns are equally wide and narrower than the longest names, so
+ * a compound breaks; the browser's own hyphenation chose „Regierungsvor-
+ * lage". The joints are marked here with a soft hyphen (U+00AD) and the
+ * header hyphenates by hand only (`hyphens-manual`), so a name breaks
+ * between its words or not at all. A name not listed has no joint.
+ */
+const SHY = '\u00AD'
+const HEADER_JOINTS: Readonly<Record<string, string>> = {
+  Regierungsvorlage: `Regierungs${SHY}vorlage`,
+  Bundesgesetzblatt: `Bundes${SHY}gesetz${SHY}blatt`,
+  Landesgesetzblatt: `Landes${SHY}gesetz${SHY}blatt`,
+}
+/** A column header's words with their joints marked; any other text unchanged. */
+export function wegHeaderLabel(label: string): string {
+  return label.split(' ').map((w) => HEADER_JOINTS[w] ?? w).join(' ')
 }
 
 /** A station's name on one row's rail. */
@@ -690,12 +709,13 @@ const euCells = (konsultation: WegCell, vorschlag: WegCell, beschluss: WegCell, 
 export const EU_MATRIX: WegMatrix = {
   id: 'eu',
   caption: 'Wege eines EU-Rechtsakts, nach Station',
-  pathColumn: 'Rechtsakt',
+  pathColumn: 'Weg',
   stations: EU_STATIONS,
   groups: [{
     key: 'eu',
     label: 'EU-Rechtsakt',
-    note: 'Rückmeldung im Portal „Ihre Meinung zählt“ der Kommission',
+    // No note (16.11.2026): where one gives feedback is the legend's blue and the rows' link, as in every other bar.
+    note: null,
     rows: [
       /* A directive on a legislative proposal.
        *  - Konsultation: blue — Art. 11 Abs. 3 EUV, COM(2021) 219: Sondierung
@@ -793,7 +813,7 @@ const ECI_STATIONS: WegMatrixStation[] = [
 export const ECI_MATRIX: WegMatrix = {
   id: 'eci',
   caption: 'Weg einer Europäischen Bürgerinitiative, nach Station',
-  pathColumn: 'Initiative',
+  pathColumn: 'Weg',
   stations: ECI_STATIONS,
   groups: [{
     key: 'eci',
@@ -834,7 +854,8 @@ export const ECI_MATRIX: WegMatrix = {
  * Erledigung im Ausschuss · Nationalrat. The subject committee a Petition or
  * Bürgerinitiative may be forwarded to („Fachausschuss") is no column: the
  * rail puts it before or after the Nationalrat as things happened, so no
- * column order fits both, and the note of the rows says it.
+ * column order fits both. It is a fact of the Anliegen that was forwarded
+ * and stands on that Anliegen's page; the graphic does not name it.
  *
  * Where to take part (decisions.md, „Anliegen an den Nationalrat"): the
  * item's own flags open the door, with no Frist; the window closes when the
@@ -859,12 +880,13 @@ const anliegenCells = (eingebracht: WegCell, ersteLesung: WegCell, ausschuss: We
 export const ANLIEGEN_MATRIX: WegMatrix = {
   id: 'anliegen',
   caption: 'Wege eines Anliegens an den Nationalrat, nach Station',
-  pathColumn: 'Anliegen',
+  pathColumn: 'Weg',
   stations: ANLIEGEN_STATIONS,
   groups: [{
     key: 'anliegen',
     label: 'Anliegen an den Nationalrat',
-    note: 'nach einer Zuweisung auch im Fachausschuss',
+    // No note (16.11.2026): a bar carries its name only. The Fachausschuss is a fact of the one Anliegen that was forwarded, shown on its own page.
+    note: null,
     rows: [
       /* § 100 Abs. 1 Z 1 GOG-NR: handed in by a member of the Nationalrat.
        *  - Eingebracht: passed (§ 100 Abs. 1 Z 1).
