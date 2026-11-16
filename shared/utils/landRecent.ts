@@ -1,16 +1,14 @@
 /**
- * The Länder in the homepage's two track sections — „Beschlossen, noch
- * nicht kundgemacht" and „Zuletzt Gesetz geworden" (30.10.2026): which of a
- * Land's drafts each may show, and how they sort in among the Bund's rows.
+ * The Länder in the homepage's „Zuletzt Gesetz geworden" (30.10.2026):
+ * which of a Land's drafts it may show, and how they sort in among the
+ * Bund's rows. „Beschlossen, noch nicht kundgemacht" had its rule here too
+ * (`isDecidedLandLaw`) until it left the homepage on 16.11.2026.
  *
- * PURE MODULE, like `enactedOrder.ts` and `decidedOrder.ts`: each section
- * claims something about every row it shows, and a claim belongs where it
- * can be tested.
+ * PURE MODULE, like `enactedOrder.ts`: the section claims something about
+ * every row it shows, and a claim belongs where it can be tested.
  */
 import type { LandCode, LandConsultation, LandStage } from '../types'
 import { HOME_LIST_LENGTH } from './draftOrder'
-import { spanInDays } from './format'
-import { PROMULGATION_WINDOW_DAYS } from './promulgation'
 
 const stageOf = (d: LandConsultation): LandStage | null =>
   d.stage && d.stage !== 'unknown' ? d.stage : null
@@ -34,22 +32,6 @@ export function isEnactedLandLaw(d: LandConsultation): boolean {
   const s = stageOf(d)
   if (d.active || d.kind !== 'gesetz' || s?.station !== 'bgbl') return false
   return s.via !== 'suche' || s.certainBy !== undefined || s.unique === true
-}
-
-/**
- * Decided by the Landtag, not yet in the Landesgesetzblatt — only where the
- * LAND records both stations. Kärnten's stations are our join of its lists
- * (`joined`): there the Kundmachung may stand in RIS under a title the
- * search missed, so „noch nicht kundgemacht" is not ours to say
- * (`landStatusDe`). And a Beschluss older than `PROMULGATION_WINDOW_DAYS` is
- * no longer a law on its way — the Bund's measure, as the guard against a
- * Kundmachung that is not coming; no Land has given a reason for another.
- */
-export function isDecidedLandLaw(d: LandConsultation, today: string): boolean {
-  const s = stageOf(d)
-  if (d.active || d.kind !== 'gesetz' || s?.station !== 'parlament' || s.joined || s.via === 'suche' || !s.date) return false
-  const age = spanInDays(s.date, today)
-  return age !== null && age >= 0 && age <= PROMULGATION_WINDOW_DAYS
 }
 
 /** The date the station was reached — the Kundmachung's or the Beschluss's. */

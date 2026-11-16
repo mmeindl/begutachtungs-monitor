@@ -35,7 +35,7 @@ export default defineEventHandler(async (): Promise<DashboardPayload> => {
 
   /* Open consultations, deadline ascending (no deadline sorts last) — and
    * ACROSS THE PERIOD BOUNDARY. A Frist that outlives the Wechsel is still a
-   * Frist, and „Jetzt in Begutachtung" claims a moment, not a period.
+   * Frist, and the homepage's open list claims a moment, not a period.
    * Empty in normal operation, measured over four finished
    * periods, so this adds rows only in the weeks where it is the difference
    * between a list and a wrong list.

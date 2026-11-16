@@ -97,6 +97,12 @@ defineProps<{
   loaded?: string
   /** No „Erneut versuchen" beside the failure. */
   noRetry?: boolean
+  /**
+   * The level of each row's title, one below the list's heading: 3 under a
+   * chapter head (h2), 4 under a list heading that is itself an h3 (the
+   * homepage since 16.11.2026, `ListHeader` `level`).
+   */
+  headingLevel?: 3 | 4
 }>()
 
 defineEmits<{ 'update:sort': [key: string]; retry: [] }>()
@@ -181,7 +187,7 @@ defineEmits<{ 'update:sort': [key: string]; retry: [] }>()
              in above it, to hold the reader's place (`/entwuerfe`,
              12.11.2026). -->
         <li v-for="entry in entries" :key="entry.key" :data-entry-key="entry.key">
-          <EntryItem :entry="entry" :query="query">
+          <EntryItem :entry="entry" :query="query" :heading-level="headingLevel">
             <template v-if="$slots.evidence" #evidence>
               <slot name="evidence" :entry="entry" />
             </template>

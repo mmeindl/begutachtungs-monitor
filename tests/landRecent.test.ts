@@ -1,10 +1,10 @@
 import { describe, expect, it } from 'vitest'
 import type { LandConsultation, LandStage } from '../shared/types'
-import { isDecidedLandLaw, isEnactedLandLaw, mergeNewestFirst, newestPerLand } from '../shared/utils/landRecent'
+import { isEnactedLandLaw, mergeNewestFirst, newestPerLand } from '../shared/utils/landRecent'
 
 /**
- * The Länder in the homepage's track sections (`shared/utils/landRecent.ts`):
- * which rows each section may claim, and that merging the Bund's
+ * The Länder in the homepage's „Zuletzt Gesetz geworden"
+ * (`shared/utils/landRecent.ts`): which rows it may claim, and that merging the Bund's
  * Kundmachungen with a Land's never reorders either.
  */
 
@@ -40,25 +40,6 @@ describe('isEnactedLandLaw', () => {
     expect(isEnactedLandLaw(draft({ active: true, stage: kundgemacht() }))).toBe(false)
     expect(isEnactedLandLaw(draft({ stage: kundgemacht({ station: 'parlament' }) }))).toBe(false)
     expect(isEnactedLandLaw(draft({ stage: 'unknown' }))).toBe(false)
-  })
-})
-
-describe('isDecidedLandLaw', () => {
-  const beschlossen = (over: Partial<LandStage> = {}) =>
-    kundgemacht({ station: 'parlament', label: 'Beschlossen – Kundmachung ausständig', detail: null, date: '2026-10-01', ...over })
-
-  it('takes a Beschluss the Land records, within the window', () => {
-    expect(isDecidedLandLaw(draft({ stage: beschlossen() }), '2026-10-30')).toBe(true)
-  })
-
-  it('leaves out our own join, where „noch nicht kundgemacht" is not ours to say', () => {
-    expect(isDecidedLandLaw(draft({ stage: beschlossen({ joined: true }) }), '2026-10-30')).toBe(false)
-  })
-
-  it('leaves out a Beschluss past the window, undated or in the future', () => {
-    expect(isDecidedLandLaw(draft({ stage: beschlossen({ date: '2026-01-01' }) }), '2026-10-30')).toBe(false)
-    expect(isDecidedLandLaw(draft({ stage: beschlossen({ date: null }) }), '2026-10-30')).toBe(false)
-    expect(isDecidedLandLaw(draft({ stage: beschlossen({ date: '2026-11-15' }) }), '2026-10-30')).toBe(false)
   })
 })
 

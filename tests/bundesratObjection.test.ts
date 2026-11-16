@@ -235,7 +235,7 @@ describe('the five laws, as their pages say it', () => {
       'Der Bundesrat hat am 19.12.2019 Einspruch erhoben (20 d.B.); der Nationalrat hat seinen Beschluss am 27.02.2020 wiederholt (Beharrungsbeschluss).',
     )
     expect(rail(vorlageStations(d, {}, TODAY)).slice(2)).toEqual([
-      'Parlament: done [Text unverändert beschlossen · Einspruch des Bundesrates · Beharrungsbeschluss · ÖVP, GRÜNE und NEOS dafür, SPÖ und FPÖ dagegen]',
+      'Parlament: done [Initiativantrag · 13.11.2019 · Text unverändert beschlossen · Einspruch des Bundesrates · Beharrungsbeschluss · ÖVP, GRÜNE und NEOS dafür, SPÖ und FPÖ dagegen]',
       'Bundesgesetzblatt: done [BGBl. I Nr. 11/2020]',
     ])
   })
@@ -271,7 +271,7 @@ describe('the five laws, as their pages say it', () => {
       'Der Bundesrat hat am 29.06.2022 Einspruch erhoben (1615 d.B.); bis zum Ende der Gesetzgebungsperiode hat der Nationalrat darüber nicht entschieden.',
     )
     expect(rail(vorlageStations(d, {}, TODAY)).slice(2)).toEqual([
-      'Parlament: done [beschlossen · Einspruch des Bundesrates · GP beendet · ÖVP, GRÜNE und NEOS dafür, SPÖ und FPÖ dagegen]',
+      'Parlament: done [Initiativantrag · 19.05.2022 · beschlossen · Einspruch des Bundesrates · GP beendet · ÖVP, GRÜNE und NEOS dafür, SPÖ und FPÖ dagegen]',
       'Bundesgesetzblatt: never []',
     ])
   })

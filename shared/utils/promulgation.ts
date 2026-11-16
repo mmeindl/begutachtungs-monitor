@@ -1,9 +1,9 @@
 /**
  * Whether a Gesetzesbeschluss was not promulgated — the one reading of it
- * for the list row (`entryView.ts`), the spine and the page's headline
- * (`spine.ts`), and the homepage's „Im Nationalrat beschlossen"
- * (`decidedOrder.ts`), so none of them can say it differently
- * (03.10.2026).
+ * for the list row (`entryView.ts`) and the spine and the page's headline
+ * (`spine.ts`), so none of them can say it differently (03.10.2026; the
+ * homepage's „Im Nationalrat beschlossen", `decidedOrder.ts`, read it too
+ * until it went on 16.11.2026).
  *
  * TWO SIGNALS, AND THEY ARE NOT THE SAME KIND OF FACT.
  *  - `explicit`: Parliament's record carries the stage „Keine Kundmachung

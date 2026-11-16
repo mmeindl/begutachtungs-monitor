@@ -3,7 +3,7 @@
  * whether it could be read (`utils/laender/sources.ts`).
  *
  * Two modes. Without parameters: the RUNNING Begutachtungen, what the
- * homepage's „Jetzt in Begutachtung" adds. With `gp` or `status`: every
+ * homepage's open list adds. With `gp` or `status`: every
  * draft whose Begutachtung began in that Gesetzgebungsperiode, running and
  * closed, filtered by `status` — what `/entwuerfe` lists beside the Bund's
  * halves. The period is a time window there (`readLaenderInWindow`). Or

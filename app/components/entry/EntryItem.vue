@@ -55,6 +55,8 @@ const props = defineProps<{
    * shows why it is there (`HighlightedText`).
    */
   query?: string | null
+  /** The title's heading level, one below the list's heading (`EntryList`). 3 by default. */
+  headingLevel?: 3 | 4
 }>()
 
 /**
@@ -152,13 +154,14 @@ const externalHost = computed(() => {
            (`main.css`): the row's `<p>` did not, so a
            „Bundesstaatsanwaltschaft" went whole onto a line of its own and the
            row stood a line taller than the card it is (01.10.2026). -->
-      <h3
+      <component
+        :is="headingLevel === 4 ? 'h4' : 'h3'"
         class="font-medium text-ink"
         :class="{ 'group-hover:underline group-hover:decoration-2': isLink }"
         :title="entry.titleFull ?? entry.title"
       >
         <HighlightedText :text="displayTitle" :query="query" /><span v-if="externalHref" aria-hidden="true">&nbsp;↗</span><span v-if="externalHost" class="sr-only"> (auf {{ externalHost }}, neues Fenster)</span>
-      </h3>
+      </component>
 
       <!-- ZONE 2 — Kennung: what kind of thing, which one, from whom. Fixed
            token order, the optional ones last, and NO dates — so the line's

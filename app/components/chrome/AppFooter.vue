@@ -1,6 +1,4 @@
 <script setup lang="ts">
-// Used only in the template: imported explicitly (a template-only helper is not auto-imported at runtime).
-import { ANLIEGEN_PATH, ANLIEGEN_SECTION_DE } from '#shared/utils/anliegen'
 /**
  * A colophon, not a marketing surface. The subscription box that used to sit
  * here was the fifth copy of one invitation, and it carried `mark-wash` — the
@@ -19,9 +17,7 @@ import { ANLIEGEN_PATH, ANLIEGEN_SECTION_DE } from '#shared/utils/anliegen'
  *     lists, which show facts, not documents — it is the CC-BY attribution
  *     for the RIS rows, which CC BY 4.0 § 3 a (2) expressly allows to be a
  *     link to the page carrying it;
- *   - „Anliegen an das Parlament" (15.11.2026, `ANLIEGEN_SECTION_DE`) — the section has no header
- *     label (the five measure the header's width), so the footer is one of
- *     its three doors, with the homepage block and `/wege`;
+ *   - „Datenlage" — what each source publishes, the pages' gaps by source;
  *   - „Kein amtliches Angebot" — the load-bearing line on a .at address about
  *     ministries;
  *   - source code — AGPL § 13 requires offering users the source on network
@@ -38,7 +34,9 @@ import { ANLIEGEN_PATH, ANLIEGEN_SECTION_DE } from '#shared/utils/anliegen'
  * unaltered mirror of the official interface, while not warning about the
  * text comparison, where an error can actually arise. The caveat now stands
  * concretely in the Impressum, the real limits in the status section on
- * /ueber.
+ * /ueber. Nor „Anliegen an das Parlament" (15. to 16.11.2026): it stood here
+ * while the section had no header label; it has one since, and a colophon
+ * repeats no navigation.
  */
 </script>
 
@@ -55,12 +53,7 @@ import { ANLIEGEN_PATH, ANLIEGEN_SECTION_DE } from '#shared/utils/anliegen'
           <NuxtLink
             to="/datenlage"
             class="link-muted"
-          >Datenlage: was die Quellen veröffentlichen</NuxtLink>
-          ·
-          <NuxtLink
-            :to="ANLIEGEN_PATH"
-            class="link-muted"
-          >{{ ANLIEGEN_SECTION_DE }}</NuxtLink>. Kein amtliches Angebot.
+          >Datenlage: was die Quellen veröffentlichen</NuxtLink>. Kein amtliches Angebot.
         </p>
         <p>
           <ExternalLink

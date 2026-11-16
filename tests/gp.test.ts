@@ -148,7 +148,7 @@ describe('previousGp', () => {
 /**
  * Which period's date window answers for a period.
  *
- * This is what keeps the RIS half of „Jetzt in Begutachtung" alive across a
+ * This is what keeps the RIS half of the homepage's open list alive across a
  * Periodenwechsel. Those records carry no GP and are dated into one, so a
  * period without a calendar row gets no records at all — and roughly half of
  * what is open is a Verordnungsentwurf. The rule has to fire for the period

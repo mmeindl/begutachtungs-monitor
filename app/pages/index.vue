@@ -1,12 +1,14 @@
 <script setup lang="ts">
 import type {
-  DashboardDecided,
+  AnliegenListResponse,
   DashboardEnacted,
   DashboardLaender,
   DashboardOutcomes,
   DashboardPayload,
   DashboardSecondRound,
   DraftStation,
+  EuBuergerinitiativenResponse,
+  EuFensterResponse,
   LaenderResponse,
   LandCode,
   LandConsultation,
@@ -15,37 +17,45 @@ import type {
 } from '#shared/types'
 import { LAND_CODES, LAND_NAME, landStationsReason, type SourceCode } from '#shared/utils/laender'
 import { HOME_LIST_LENGTH, compareRowsByFrist, draftRows } from '#shared/utils/draftOrder'
-import { viewOfDraft, viewOfLand, viewOfOutcome, viewOfRow, viewOfVorlage } from '~/utils/entryView'
+import { viewOfDraft, viewOfLand, viewOfOutcome, viewOfRow } from '~/utils/entryView'
 import { landStationDate, mergeNewestFirst } from '#shared/utils/landRecent'
 import { listDe } from '~/utils/geltendeFassung'
 import { gpWindow } from '#shared/utils/gp'
 import { MAX_LIST_QUERY_CHARS } from '#shared/utils/queryParams'
-import { SECOND_ROUND_WINDOW } from '~/utils/spine'
 import { halfState, pendingHalvesLine, type HalfState } from '~/utils/draftFilters'
 import { blockStateLine, settledCount } from '~/utils/lateBlocks'
 import { useLateFetch } from '~/composables/useLateFetch'
 import { LIST_STATE_DE, type ListBoxStatus } from '~/utils/listState'
+import {
+  DOORS,
+  HOME_DE,
+  anliegenDoorAnswer,
+  homeDoorOf,
+  doorStatus,
+  eciDoorAnswer,
+  fensterDoorAnswer,
+  parlamentDoorAnswer,
+  type DoorAnswer,
+  type DoorId,
+} from '~/utils/doors'
 
-/* „Gesetzes- und Verordnungsentwürfe" since 18.09.2026. It said
-   „Gesetzesentwürfe" from before the RIS half shipped, and then went on
-   saying it over a list of which roughly half are Verordnungsentwürfe — in
-   the one sentence that travels with every shared link and is the first
-   thing a newcomer reads. */
-const pageDescription =
-  'Laufende Begutachtungen des Bundes und der Länder: Fristen und Stellungnahmen – und was danach aus jedem Entwurf wurde: Regierungsvorlage, Beschluss, Gesetzblatt.'
+/* The sentence that travels with every shared link (16.11.2026): where one
+   can take part, then what became of a draft — the page's order. Until then
+   it named the Begutachtung alone, the one door the page had. */
+const pageDescription = HOME_DE.description
 
 const { siteUrl } = useRuntimeConfig().public
 
 usePageSeo({
   // The one title that does not follow the template: the home page is what a
-  // search for the name finds, and a result reading „Aktuell · …" says
-  // nothing about what the site is. Name first, then what it watches.
-  title: 'Begutachtungs-Monitor · Laufende Begutachtungen in Österreich',
+  // search for the name finds, and a result reading „Start · …" says
+  // nothing about what the site is. Name first, then what it is for.
+  title: HOME_DE.title,
   description: pageDescription,
 })
-// Homepage shares (the demo case) get the product name, not "Aktuell" — the
+// Homepage shares (the demo case) lead with the product name — the
 // preview's half overridden after `usePageSeo`, as its doc comment says.
-useSeoMeta({ ogTitle: 'Begutachtungs-Monitor' })
+useSeoMeta({ ogTitle: HOME_DE.ogTitle })
 
 useHead({
   titleTemplate: '%s',
@@ -145,38 +155,49 @@ const enactedFetch = useLateFetch<DashboardEnacted>('/api/dashboard/enacted', ()
   key: 'home',
 })
 
-/* „Beschlossen, noch nicht kundgemacht" —
- * server-rendered like the sections around it, and for their reason: it is
- * the accountability layer. It pays no upstream request of its own (list 81
- * and the station map are cached leaves), and its endpoint answers empty
- * rather than wait for a cold map, which hides the section; the 4 s budget
- * only guards against a stalled server. That cold map costs the endpoint
- * its own 2,5 s budget before it answers empty, which is past the server's
- * deadline (`useLateFetch`, 12.11.2026): on a cold server the section is
- * absent from the HTML, as it is during a click, and the browser asks. */
-const decidedFetch = useLateFetch<DashboardDecided>('/api/dashboard/beschlossen', () => ({}), {
-  timeout: 4000,
+/* „Beschlossen, noch nicht kundgemacht" left the homepage on 16.11.2026: it
+ * is a station of one object, and the page is no longer organised along a
+ * draft's stations. The set stays on `/entwuerfe` (the Parlament tab,
+ * `status=closed`); its endpoint went the same day. */
+
+/* THE DOORS' COUNTS (16.11.2026, `app/utils/doors.ts`). Each door after the
+ * first reads the endpoint its own list reads, through `useLateFetch` with
+ * the page's key like every other addition: the server waits two seconds at
+ * most, so no door can hold the render, and a door that missed the deadline
+ * stands in its loading words until the browser has asked again. Each
+ * browser budget is its list's patience, so a slow answer is not called a
+ * failure the list itself would not call one: the Anliegen wait up to 20 s
+ * for lists and records together (`getAnliegenRows`), so 30 s here, as the
+ * homepage's Anliegen section had; the EU's two answer from the portal and
+ * the register, 20 s.
+ *
+ * The open Regierungsvorlagen were asked in the browser only (`server:
+ * false`) while they were a section that could be absent; as a door they
+ * state „derzeit keine" in the HTML when the server had the answer in time. */
+const secondRoundFetch = useLateFetch<DashboardSecondRound>('/api/dashboard/zweite-runde', () => ({}), {
+  timeout: 10000,
   key: 'home',
 })
-
-/* The second window for input: Regierungsvorlagen that are taking
- * Stellungnahmen right now. Client-side and lazy on purpose — unlike the
- * outcomes section this is an ADDITION to the page, not the reason it
- * exists: nothing above it depends on the answer, an empty result is a
- * normal state, and a section that can be absent must never be able to hold
- * the first paint. Costs one list call plus a handful of detail fetches
- * behind the 30-min leaf caches (`/api/dashboard/zweite-runde`). */
-const { data: secondRound } = await useFetch<DashboardSecondRound>(
-  '/api/dashboard/zweite-runde',
-  { lazy: true, server: false },
-)
+const anliegenFetch = useLateFetch<AnliegenListResponse>('/api/anliegen', () => ({}), {
+  timeout: 30000,
+  key: 'home',
+})
+const fensterFetch = useLateFetch<EuFensterResponse>('/api/eu-recht/fenster', () => ({}), {
+  timeout: 20000,
+  key: 'home',
+})
+const eciFetch = useLateFetch<EuBuergerinitiativenResponse>('/api/eu-recht/buergerinitiativen', () => ({}), {
+  timeout: 20000,
+  key: 'home',
+})
 
 /* The Begutachtungen Parliament has no Gegenstand for — mostly
  * Verordnungsentwürfe.
  *
- * SERVER-RENDERED, unlike the section above it, and that is the point. This
- * is not a bonus section: without it "Jetzt in Begutachtung" names a
- * fraction of what is open and says nothing about the rest — 4 of 8 on
+ * SERVER-RENDERED, and that is the point. This is not a bonus block:
+ * without it the open list (the first door, „Stellung nehmen zu einem
+ * Entwurf") names a fraction of what is open and says nothing about the
+ * rest — 4 of 8 on
  * 2026-09-17. A correction to a claim the page makes cannot be the one part
  * of the page that needs JavaScript to appear.
  *
@@ -219,11 +240,11 @@ const { data: laender, error: laenderError } = useLateFetch<LaenderResponse>(
 const { data, error, refresh, status } = await dashboardFetch
 const { data: outcomes, error: outcomesError } = await outcomesFetch
 const { data: enacted, error: enactedError } = await enactedFetch
-const { data: decided, error: decidedError } = await decidedFetch
 
-/* The chosen Länder in the two track sections (30.10.2026): their newest
- * Kundmachungen beside the Bund's, and their Landtag decisions still
- * awaiting one. Asked only when a Land is chosen, like the open list's
+/* The chosen Länder in „Zuletzt Gesetz geworden" (30.10.2026): their newest
+ * Kundmachungen beside the Bund's. (Their Landtag decisions still awaiting
+ * one, the payload's other half, stood under „Beschlossen, noch nicht
+ * kundgemacht" until 16.11.2026.) Asked only when a Land is chosen, like the open list's
  * Länder, and after the Bund's Kundmachungen, because their period is the
  * window the Länder are read over — 0.5 s warm, a cached cut of the
  * lists behind the section's link (`/api/dashboard/laender`).
@@ -248,7 +269,6 @@ const risState = computed(() => halfState(true, risOnly.value, risError.value))
 const laenderState = computed(() => halfState(wantsLaender.value, laender.value, laenderError.value))
 const outcomesState = computed(() => halfState(true, outcomes.value, outcomesError.value))
 const enactedState = computed(() => halfState(true, enacted.value, enactedError.value))
-const decidedState = computed(() => halfState(true, decided.value, decidedError.value))
 const landRecentState = computed(() => halfState(wantsLaender.value, landRecent.value, landRecentError.value))
 
 const unreadableRecent = computed(() => unreadableOf(landRecent.value?.sources, landRecentState.value))
@@ -267,14 +287,9 @@ type SourceReasons = Partial<Record<SourceCode, string | null>>
 const everyLand = (reason: string): SourceReasons => Object.fromEntries(LAND_CODES.map((land) => [land, reason]))
 const atStation = (station: DraftStation): SourceReasons =>
   Object.fromEntries(LAND_CODES.map((land) => [land, landStationsReason(land, [station])]))
-const RV_UNAVAILABLE = everyLand('Stellungnahmen zu Regierungsvorlagen verfolgt der Monitor nur im Nationalrat')
+/* The doors after the first are the Bund's and the EU's and carry no chips
+ * (16.11.2026): their rows are not the choice's to decide. */
 const RANKED_UNAVAILABLE = everyLand('Für die Länder zählt der Monitor keine Stellungnahmen')
-/* Kärnten's stations are our join of its lists (`joined`): the Kundmachung
- * may stand in RIS under a title the search missed (`isDecidedLandLaw`). */
-const DECIDED_UNAVAILABLE: SourceReasons = {
-  ...atStation('parlament'),
-  ktn: 'Ob ein Beschluss in Kärnten schon kundgemacht ist, kann der Monitor nicht sicher sagen',
-}
 const ENACTED_UNAVAILABLE = atStation('bgbl')
 
 /**
@@ -307,7 +322,8 @@ const unreadableLaender = computed(() => unreadableOf(laender.value?.sources, la
 /* The list links carry the choice when it came from the address alone: the
  * cookie would carry it otherwise, a shared link has none. */
 const sourcesParam = computed(() => (sourcesQuery.value ? `&quellen=${sourcesQuery.value}` : ''))
-const openListHref = computed(() => `/entwuerfe?status=open&station=begutachtung${sourcesParam.value}`)
+const openDoor = homeDoorOf('begutachtung')
+const openListHref = computed(() => `${openDoor.href}${sourcesParam.value}`)
 
 /**
  * What is open right now, both kinds, in ONE deadline-ordered list.
@@ -437,9 +453,6 @@ const outcomesLine = computed(() =>
   bund.value && (data.value?.ranked.items ?? []).some((d) => !d.active)
     ? blockStateLine('Was aus den Entwürfen wurde,', 'singular', outcomesState.value)
     : null)
-const visibleSecondRound = computed(
-  () => (bund.value ? secondRound.value?.items.slice(0, HOME_LIST_LENGTH).map(viewOfVorlage) ?? [] : []),
-)
 
 /* Uncapped: the endpoint already delivers `HOME_LIST_LENGTH` rows — the cap
  * sits where the Vorlagen are read from list 101, not here. `?? []` does not
@@ -453,29 +466,6 @@ const enactedMerged = computed(() =>
 )
 const enactedEntries = computed(() =>
   enactedMerged.value.map((m) => (m.from === 'a' ? viewOfOutcome(m.item) : viewOfLand(m.item))))
-
-/* The chain route, not `viewOfOutcome`: the Stand „Im Nationalrat
- * beschlossen" and its date live on the chain (`entryView.chainState`), and
- * the outcome route knows only the Vorlage and the Kundmachung. Uncapped
- * here, like the enacted rows: the endpoint delivers at most
- * `HOME_LIST_LENGTH`. */
-const decidedMerged = computed(() =>
-  mergeNewestFirst(
-    bund.value ? (decided.value?.items ?? []) : [], (o) => o.chain?.decidedAt,
-    chosenOf(landRecent.value?.decided), landStationDate,
-  ).slice(0, HOME_LIST_LENGTH),
-)
-const decidedEntries = computed(() =>
-  decidedMerged.value.map((m) => (m.from === 'a' ? viewOfDraft(m.item) : viewOfLand(m.item))))
-const decidedShowsBund = computed(() => decidedMerged.value.some((m) => m.from === 'a'))
-const decidedShowsLaender = computed(() => decidedMerged.value.some((m) => m.from === 'b'))
-/* No number while one of the two halves it sums is on its way (12.11.2026):
- * the Länder's rows can stand before the Bund's arrive. */
-const decidedTotal = computed(() => settledCount(
-  (bund.value ? (decided.value?.total ?? 0) : 0) +
-  chosenLaender.value.reduce((n, land) => n + (landRecent.value?.decidedTotal[land] ?? 0), 0),
-  [bund.value ? decidedState.value : 'off', landRecentState.value],
-))
 
 /**
  * The Gesetzgebungsperiode each accountability section is counted over,
@@ -546,7 +536,6 @@ const rankedHref = computed(
 const enactedHref = computed(
   () => '/entwuerfe?station=bgbl' + (enactedIsFallback.value ? `&gp=${enactedGp.value}` : '') + sourcesParam.value,
 )
-const decidedHref = computed(() => `/entwuerfe?station=parlament&status=closed${sourcesParam.value}`)
 
 /* The EU map's window (06.11.2026), the page's last section, went on
  * 14.11.2026: „EU-Recht" is in the header navigation, which is the door to
@@ -603,6 +592,29 @@ const enactedLandLine = computed(() => {
   return `${lead} – und die Begutachtung, aus der sie hervorgegangen sind.${blocks}${searched}`
 })
 
+/**
+ * The doors after the first, as rows (16.11.2026): each with where its
+ * block stands (`halfState`) and its answer read by the door's own function
+ * — the one its list counts with (`app/utils/doors.ts`). The Bund's choice
+ * in the chips does not touch them: they are the Bund's and the EU's.
+ */
+const { data: secondRound, error: secondRoundError } = secondRoundFetch
+const { data: anliegen, error: anliegenError } = anliegenFetch
+const { data: fenster, error: fensterError } = fensterFetch
+const { data: eci, error: eciError } = eciFetch
+type DoorBlock = { data: unknown; error: unknown; answer: DoorAnswer | null }
+const doorBlocks: Partial<Record<DoorId, () => DoorBlock>> = {
+  parlament: () => ({ data: secondRound.value, error: secondRoundError.value, answer: secondRound.value ? parlamentDoorAnswer(secondRound.value) : null }),
+  anliegen: () => ({ data: anliegen.value, error: anliegenError.value, answer: anliegen.value ? anliegenDoorAnswer(anliegen.value) : null }),
+  'eu-rueckmeldung': () => ({ data: fenster.value, error: fensterError.value, answer: fenster.value ? fensterDoorAnswer(fenster.value) : null }),
+  'eu-buergerinitiative': () => ({ data: eci.value, error: eciError.value, answer: eci.value ? eciDoorAnswer(eci.value) : null }),
+}
+/* In the module's order; the expanded door is the open list above them. */
+const doorRows = computed(() => DOORS.filter((door) => !door.expanded).map((door) => {
+  const block = doorBlocks[door.id]?.()
+  return { door, status: doorStatus(door, halfState(true, block?.data, block?.error), block?.answer ?? null) }
+}))
+
 /* The way in for whoever arrives with a subject, not a date. A plain GET
  * form onto the list's own `q`, so it works before hydration; with
  * JavaScript the submit becomes a client-side navigation. Bare
@@ -617,10 +629,21 @@ function submitSearch() {
 
 <template>
   <div class="mx-auto w-full max-w-5xl">
+    <!-- ACT FIRST, THEN FOLLOW (16.11.2026). The page was organised along one
+         object's stations — a draft's Begutachtung, its Regierungsvorlage, the
+         Beschluss, the Kundmachung — while four objects with four rails now
+         take part: a draft, an Anliegen an das Parlament, an EU act, a
+         European Citizens' Initiative. So it opens with ONE chapter whose
+         structure is the doors, the ways of taking part that are open today
+         (`/wege` made live, `DOORS` in `app/utils/doors.ts`): the first
+         expanded into the open list, the others one row each with what is
+         open and the list it leads to. Then ONE chapter for the following,
+         the ranking and the newest laws. „Beschlossen, noch nicht
+         kundgemacht" stays on `/entwuerfe`; the lists „Jetzt im Parlament"
+         and „Anliegen an das Parlament" became door rows. -->
     <header>
       <h1 class="page-title">
-        Was passiert in der Begutachtung –<br>
-        und was wird daraus?
+        {{ HOME_DE.h1 }}
       </h1>
       <!-- NO LINK in this sentence, since 18.09.2026. It carried an anchor
            to the accountability section, inherited from the stat tile's
@@ -634,20 +657,23 @@ function submitSearch() {
            „abgeben kann sie jede und jeder" (14.11.2026) answers „Betrifft
            mich das?", which stood on /so-funktionierts until that page was
            dissolved: a reader arriving cold has to learn here, once, that a
-           Stellungnahme needs no organisation, training or form. A clause of
-           the first sentence, not a paragraph: the header already offers the
-           feeds, and the Verordnungen half shows itself in the list below. -->
+           Stellungnahme needs no organisation, training or form. One
+           paragraph, not three: the header already offers the feeds, and the
+           Verordnungen half shows itself in the list below.
+
+           Since 16.11.2026 the first sentence says where in one line —
+           Bund, Länder and EU — and leaves the doors to name themselves
+           below (`HOME_DE.lede`); the claim about who may take part stays
+           with the Stellungnahme, the one it is true of for every door that
+           takes one. -->
       <p class="mt-3 text-ink-secondary">
-        Laufende Begutachtungen des Bundes und der Länder: Fristen und
-        Stellungnahmen auf einen Blick – abgeben kann sie jede und jeder, ohne
-        Organisation, juristische Ausbildung oder bestimmte Form. Und was danach aus jedem Entwurf wurde
-        – Regierungsvorlage, Beschluss, Gesetzblatt –, soweit Bund und Länder
-        es veröffentlichen.
+        {{ HOME_DE.lede.join(' ') }}
       </p>
 
       <!-- On submit, not on input: a page change per keystroke takes the
            cursor out of the word (WCAG 3.2.2). One line in the header, not a
-           hero field — the page's question stays „was wird daraus?". Full
+           hero field — the page's questions are „wo kann ich mitreden?" and
+           „was wird daraus?". Full
            width like the list's field it leads into, on the lede's edges. The
            placeholder cannot count like the list's, the homepage does not
            know the total. -->
@@ -702,181 +728,193 @@ function submitSearch() {
     <!-- No gate over the sections since 16.11.2026 (a list shows its frame
          while loading): the open list's box stands at once and holds the
          dashboard's loading line or its failure with „Erneut versuchen"
-         (`openState`); the sections after it come with the answer, as they
-         did. -->
-    <!-- ONE list, because the question is one: "was läuft gerade, wo kann
-           ich noch mitreden?". Which official
-           register happens to carry a record is plumbing, and plumbing does
-           not belong in the page skeleton — it belongs on the row, which is
-           why both row kinds now lead their meta line with the type word.
+         (`openState`); the doors' rows stand at once with their loading
+         words; „Was daraus wurde" comes with the dashboard's answer. -->
+    <section class="page-section" aria-labelledby="act-heading">
+      <h2 id="act-heading" class="section-heading">
+        {{ HOME_DE.actHeading }}
+      </h2>
+      <!-- The doors are a list: one item per way of taking part, the first
+           expanded into its own list, the others one row each
+           (16.11.2026). The first is a section like the lists under „Was
+           daraus wurde": its heading in ink at `text-xl`, its one way out
+           „Alle N offenen Entwürfe →" on the right. The other four are rows
+           whose heading is a step below it (`text-lg`) and above the 16 px
+           h4 of the list's rows, the label in blue — the row is what you
+           act on, ending in the site's „→". Each of those four rows is bounded by a hairline above
+           and below (maintainer, 16.11.2026), so the reader sees where
+           each target begins and ends; the first door has no line above
+           it, the chapter head is its edge. -->
+      <ul role="list" class="mt-6">
+        <li>
+          <!-- ONE list, because the question is one: "was läuft gerade, wo
+               kann ich noch mitreden?". Which official
+               register happens to carry a record is plumbing, and plumbing does
+               not belong in the page skeleton — it belongs on the row, which is
+               why both row kinds now lead their meta line with the type word.
 
-           The split cost the page its deadline order: on 17.09.2026 the
-           first row was a Frist ending on the 21st while a Verordnung ended
-           that same day, below a second heading. Urgency is the one thing
-           two lists cannot preserve. -->
-    <section class="page-section" aria-labelledby="open-heading">
-      <ListHeader
-        id="open-heading"
-        :to="openListHref"
-        noun="offenen Entwürfe"
-        :total="openState ? undefined : openTotal"
-        :visible="visibleOpenRows.length"
-      >
-        Jetzt in Begutachtung
-      </ListHeader>
-      <!-- Directly under the heading, not under the list: this one is
-             not provenance but a correction to what the list claims, and a
-             reader who learns at the bottom that rows are missing has
-             already read it as complete. Rendered only when they are. -->
-      <!-- Names the missing rows by what they are, not by the register
-             that does not carry them. „Die Entwürfe ohne Gegenstand im
-             Parlament" put the site's densest piece of jargon in the one
-             state where its gloss below the list was suppressed — the
-             gloss only rendered when such a row was present, and this line
-             only renders when none is. -->
-      <!-- A chosen Land that could not be read, said like the RIS half
-             below: its rows are missing, and the list must not read as if
-             that Land had nothing open. -->
-      <GapNote v-for="s in unreadableLaender" :key="s.land" kind="unavailable" class="mt-2 text-sm text-ink-muted">
-        {{ LAND_NAME[s.land] }}<template v-if="s.listUrl"> –
-          <ExternalLink :href="s.listUrl" class="link-inline font-medium">beim Land nachsehen</ExternalLink></template>.
-      </GapNote>
-      <GapNote v-if="bund && risState === 'failed'" kind="unavailable" class="mt-2 text-sm text-ink-muted">
-        die Verordnungsentwürfe aus dem RIS –
-        <NuxtLink
-          to="/entwuerfe?art=verordnung&status=open"
-          class="link-inline font-medium"
-        >noch einmal versuchen</NuxtLink>
-        oder
-        <ExternalLink
-          href="https://www.ris.bka.gv.at/Begut/"
-          class="link-inline font-medium"
-        >im RIS nachsehen</ExternalLink>.
-      </GapNote>
+               The split cost the page its deadline order: on 17.09.2026 the
+               first row was a Frist ending on the 21st while a Verordnung ended
+               that same day, below a second heading. Urgency is the one thing
+               two lists cannot preserve.
 
-      <!-- Always the box, since the chips moved into its head (22.10.2026):
-             a list that vanished when empty would take the control that
-             could fill it with it. For the same reason the loading state
-             stands inside it (`#state`) rather than in its place: a chip
-             that blanked the box took itself away until the answer came. -->
-      <EntryList :entries="visibleOpenRows" :state="openState" class="mt-4" @retry="refresh()">
-        <!-- Where the rows come from (`SourceChips`), in the box's head
-               like every list's controls. -->
-        <template #header>
-          <SourceChips />
-          <!-- The chosen Länder this list does not hold in full, under the
-                 chips that chose them — true of this list only
-                 (`landsIncompleteFor`, `laufend`). -->
-          <LandCoverageNote :lands="chosenLaender" where="laufend" />
-        </template>
-        <!-- Until 12.11.2026 the list waited here for every half, because
-               the RIS rows sort in between the others by Frist and a list
-               drawn from one half reorders when they come. On the server
-               that wait was the page's delivery time, so the
-               Ministerialentwürfe stand now, and the halves on their way
-               are said under the box (`openPendingLine`). The skeleton
-               stays where nothing could stand yet: the Länder alone, or no
-               row at all while a half is pending — never „keine offen". -->
-        <template #empty>
-          <!-- The no-open moment is exactly the moment to subscribe. Said
-                 only when every chosen half is known to be empty — with the
-                 RIS half missing this would be a claim the page cannot make. -->
-          <div v-if="!bund || risOnly" class="p-4">
-            <EmptyState
-              title="Derzeit ist keine Begutachtung offen"
-              description="Neue Entwürfe erscheinen hier, sobald sie zur Begutachtung aufliegen."
-            >
-              <!-- The header's own links (`SubscribeLinks`) rather than a
-                     second set built here: one wording for the same three ways
-                     to follow, wherever they stand. `leading-7` for the header's
-                     reason, the links are `tap-target` boxes in the line. -->
-              <div>
-                <SubscribeLinks />
+               The door's label is the list's heading (16.11.2026); it was
+               „Jetzt in Begutachtung", a stage, under a chapter of its own. -->
+          <ListHeader
+            id="open-heading"
+            :level="3"
+            :to="openListHref"
+            noun="offenen Entwürfe"
+            :total="openState ? undefined : openTotal"
+            :visible="visibleOpenRows.length"
+          >
+            {{ openDoor.label }}
+          </ListHeader>
+          <!-- Directly under the heading, not under the list: this one is
+                 not provenance but a correction to what the list claims, and a
+                 reader who learns at the bottom that rows are missing has
+                 already read it as complete. Rendered only when they are. -->
+          <!-- Names the missing rows by what they are, not by the register
+                 that does not carry them. „Die Entwürfe ohne Gegenstand im
+                 Parlament" put the site's densest piece of jargon in the one
+                 state where its gloss below the list was suppressed — the
+                 gloss only rendered when such a row was present, and this line
+                 only renders when none is. -->
+          <!-- A chosen Land that could not be read, said like the RIS half
+                 below: its rows are missing, and the list must not read as if
+                 that Land had nothing open. -->
+          <GapNote v-for="s in unreadableLaender" :key="s.land" kind="unavailable" class="mt-2 text-sm text-ink-muted">
+            {{ LAND_NAME[s.land] }}<template v-if="s.listUrl"> –
+              <ExternalLink :href="s.listUrl" class="link-inline font-medium">beim Land nachsehen</ExternalLink></template>.
+          </GapNote>
+          <GapNote v-if="bund && risState === 'failed'" kind="unavailable" class="mt-2 text-sm text-ink-muted">
+            die Verordnungsentwürfe aus dem RIS –
+            <NuxtLink
+              to="/entwuerfe?art=verordnung&status=open"
+              class="link-inline font-medium"
+            >noch einmal versuchen</NuxtLink>
+            oder
+            <ExternalLink
+              href="https://www.ris.bka.gv.at/Begut/"
+              class="link-inline font-medium"
+            >im RIS nachsehen</ExternalLink>.
+          </GapNote>
+
+          <!-- Always the box, since the chips moved into its head (22.10.2026):
+                 a list that vanished when empty would take the control that
+                 could fill it with it. For the same reason the loading state
+                 stands inside it (`#state`) rather than in its place: a chip
+                 that blanked the box took itself away until the answer came. -->
+          <EntryList :entries="visibleOpenRows" :state="openState" :heading-level="4" class="mt-4" @retry="refresh()">
+            <!-- Where the rows come from (`SourceChips`), in the box's head
+                   like every list's controls. -->
+            <template #header>
+              <SourceChips />
+              <!-- The chosen Länder this list does not hold in full, under the
+                     chips that chose them — true of this list only
+                     (`landsIncompleteFor`, `laufend`). -->
+              <LandCoverageNote :lands="chosenLaender" where="laufend" />
+            </template>
+            <!-- Until 12.11.2026 the list waited here for every half, because
+                   the RIS rows sort in between the others by Frist and a list
+                   drawn from one half reorders when they come. On the server
+                   that wait was the page's delivery time, so the
+                   Ministerialentwürfe stand now, and the halves on their way
+                   are said under the box (`openPendingLine`). The skeleton
+                   stays where nothing could stand yet: the Länder alone, or no
+                   row at all while a half is pending — never „keine offen". -->
+            <template #empty>
+              <!-- The no-open moment is exactly the moment to subscribe. Said
+                     only when every chosen half is known to be empty — with the
+                     RIS half missing this would be a claim the page cannot make. -->
+              <div v-if="!bund || risOnly" class="p-4">
+                <EmptyState
+                  title="Derzeit ist keine Begutachtung offen"
+                  description="Neue Entwürfe erscheinen hier, sobald sie zur Begutachtung aufliegen."
+                >
+                  <!-- The header's own links (`SubscribeLinks`) rather than a
+                         second set built here: one wording for the same three ways
+                         to follow, wherever they stand. `leading-7` for the header's
+                         reason, the links are `tap-target` boxes in the line. -->
+                  <div>
+                    <SubscribeLinks />
+                  </div>
+                </EmptyState>
               </div>
-            </EmptyState>
+            </template>
+          </EntryList>
+          <!-- UNDER the box, not above it (12.11.2026): the line goes when the
+                 rows come, and above the list it would pull the list up with it.
+                 Where a failed half's line stands above, this one is not a
+                 correction to the list but a note on its way to completion. -->
+          <p v-if="openPendingLine && !openWaiting" class="mt-2 text-sm text-ink-muted">
+            {{ openPendingLine }}
+          </p>
+        </li>
+        <!-- The other doors, one row each (16.11.2026): the label is the way
+             in, in blue — „you can do something here" —, beside it what is
+             open, in the words of the list it leads to, or the loading words,
+             or the gap sentence; a note under it where the label needs one.
+             No tiles, no icons: a row of the list grammar, divided by the
+             hairline. THE WHOLE ROW IS THE TARGET (16.11.2026), with one
+             `<a>`: the label's link is stretched over the row by its
+             `::after` (`relative` on the item), so the count, the note and
+             a gap sentence lie under it while the link's name stays the
+             label — they are read as what they are, not as a link's name.
+             Hovering anywhere underlines the label, the site's one hover
+             state; a bare row takes no ground (main.css, „naked bar/label:
+             text only"); focus rings the label (`:focus-visible`). The notes
+             are text only today; a link in one would need `relative z-10`
+             to stay above the stretched one. `py-3` around a `text-lg` line
+             is 52 px, above `min-h-target`. -->
+        <li
+          v-for="(row, i) in doorRows"
+          :key="row.door.id"
+          class="group relative border-b border-hairline py-3"
+          :class="i === 0 ? 'mt-10 border-t' : ''"
+        >
+          <div class="flex flex-wrap items-baseline justify-between gap-x-4 gap-y-1">
+            <h3 class="text-lg font-semibold">
+              <NuxtLink :to="row.door.href" class="link-quiet after:absolute after:inset-0 group-hover:underline group-hover:decoration-2">
+                {{ row.door.label }}
+              </NuxtLink>
+            </h3>
+            <!-- No „→" on the row (16.11.2026; tried at the row's end and
+                 at the label within the hour): blue, bold, the hover's
+                 underline and the lines around the row already say it leads
+                 somewhere, and a fifth sign was decoration. The status has
+                 the right end. -->
+            <div class="ml-auto flex items-baseline">
+              <GapNote v-if="row.status.kind === 'failed'" :text="row.status.text" class="text-sm text-ink-muted" />
+              <p v-else-if="row.status.kind === 'loading'" class="text-sm text-ink-muted">
+                {{ row.status.text }}
+              </p>
+              <p v-else-if="row.status.text" class="text-sm tabular-nums text-ink-secondary">
+                {{ row.status.text }}
+              </p>
+            </div>
           </div>
-        </template>
-      </EntryList>
-      <!-- UNDER the box, not above it (12.11.2026): the line goes when the
-             rows come, and above the list it would pull the list up with it.
-             Where a failed half's line stands above, this one is not a
-             correction to the list but a note on its way to completion. -->
-      <p v-if="openPendingLine && !openWaiting" class="mt-2 text-sm text-ink-muted">
-        {{ openPendingLine }}
+          <p v-if="row.door.note" class="mt-1 text-sm text-ink-secondary">
+            {{ row.door.note }}
+          </p>
+          <template v-if="row.status.kind === 'answered'">
+            <GapNote v-for="note in row.status.notes" :key="note" :text="note" class="mt-1 text-sm text-ink-muted" />
+          </template>
+        </li>
+      </ul>
+      <p class="mt-4">
+        <NuxtLink :to="HOME_DE.wegeLink.href" class="tap-target text-sm font-medium link-quiet">
+          {{ HOME_DE.wegeLink.label }} →
+        </NuxtLink>
       </p>
     </section>
 
-    <template v-if="data">
-      <!-- The second window for input, directly under the first. Both
-           sections are "you can take part now"; this one exists because the
-           Vorlage's door is otherwise invisible unless you happen to open
-           the right detail page. Hidden entirely when nothing is open — a
-           bonus section, unlike "Jetzt in Begutachtung", which states its
-           emptiness because the product promises that list. -->
-      <section
-        v-if="secondRound?.items.length"
-        class="page-section"
-        aria-labelledby="second-round-heading"
-      >
-        <!-- The filter this section is a window onto is a SECTION on
-             `/entwuerfe`, not a row filter — a Regierungsvorlage is not in
-             Begutachtung and never appears in that list. The anchor is
-             therefore part of the target, and `?status=open` is what makes
-             the section render there at all. -->
-        <ListHeader
-          id="second-round-heading"
-          to="/entwuerfe?status=open&station=rv"
-          noun="Regierungsvorlagen"
-          :total="bund ? secondRound.items.length : undefined"
-          :visible="visibleSecondRound.length"
-        >
-          <!-- Led by the station, „Regierungsvorlage", not by „Zweite
-               Runde" (03.10.2026): the page names its sections in the words
-               the tabs, the spine and the „Neu" chip share.
-               „Zweite Runde" stays the name of the SET, in
-               code and docs. „im Parlament", not „im Nationalrat", since the
-               same day: the window runs through the Bundesrat's phase, and
-               the section lists those Vorlagen too.
-               Shortened to „Jetzt im Parlament" on 22.10.2026, the pair to
-               „Jetzt in Begutachtung": that heading names the stage and lets
-               the section say you can take part, and so does this one — the
-               lede below says a Stellungnahme is possible, and the column
-               header and the link still name the station. -->
-          Jetzt im Parlament
-        </ListHeader>
-        <!-- The first sentence says where a Stellungnahme goes, which is true
-             of every row here — Parliament's own description of the window
-             (parlament.gv.at, „Stellung nehmen zu Gesetzesinitiativen"),
-             without the ministry since 15.11.2026: Parliament's form on a
-             Regierungsvorlage names the Klubs only
-             (`docs/research/stellungnahmen-empfaenger.md`). It
-             said „dort kann der Ausschuss den Text noch ändern" until
-             03.10.2026, which stops being true at the Nationalrat's
-             Beschluss, while the section now also lists Vorlagen at the
-             Bundesrat. -->
-        <p class="mt-2 text-sm text-ink-secondary">
-          Auch zu einer Regierungsvorlage kann Stellung genommen werden –
-          freigegebene Stellungnahmen gehen an die parlamentarischen Klubs. {{ SECOND_ROUND_WINDOW }}
-        </p>
-        <!-- The column header is NOT called „Entwurf" here: these rows are
-             Regierungsvorlagen, and the header is the one place where the list
-             says for itself what stands in it. -->
-        <!-- The chosen Länder cannot give this box a row: said in words
-             (`noneApply`). Above the box while the Bund fills it, inside it
-             where nothing does. -->
-        <p v-if="bund && noneApply(RV_UNAVAILABLE)" class="mt-2 text-sm text-ink-muted">
-          {{ noneApply(RV_UNAVAILABLE) }}
-        </p>
-        <EntryList :entries="visibleSecondRound" lead="Regierungsvorlage" class="mt-4">
-          <template #header>
-            <SourceChips :unavailable="RV_UNAVAILABLE" />
-          </template>
-          <template #empty>
-            <p class="p-4 text-sm text-ink-muted">{{ noneApply(RV_UNAVAILABLE) }}</p>
-          </template>
-        </EntryList>
-      </section>
-
+    <!-- WHAT BECAME OF IT (16.11.2026): one chapter for the following, the
+         ranking and the newest laws, each a list of its own under it. -->
+    <section v-if="data" class="page-section" aria-labelledby="follow-heading">
+      <h2 id="follow-heading" class="section-heading">
+        {{ HOME_DE.followHeading }}
+      </h2>
       <!-- The accountability layer opens HERE, not with the recency list
            below it. On an ordinary day that list is four rows of
            „bisher keine Regierungsvorlage" — ME→RV latency, not shelving —
@@ -888,7 +926,7 @@ function submitSearch() {
            Punktestand. -->
       <section
         v-if="rankedRows.length"
-        class="page-section"
+        class="mt-8"
         aria-labelledby="ranked-heading"
       >
         <!-- The link continues the ranking rather than pointing at the pool
@@ -902,6 +940,7 @@ function submitSearch() {
              23.10.2026. -->
         <ListHeader
           id="ranked-heading"
+          :level="3"
           :to="rankedHref"
           noun="Ministerialentwürfe"
           :total="bund ? data.ranked.total : undefined"
@@ -952,7 +991,7 @@ function submitSearch() {
              chips). A ranked list shows its key by ORDER — the number needs
              alignment, not enlargement. An ordered list, because the order
              carries meaning here. -->
-        <EntryList :entries="rankedShown" ordered class="mt-4">
+        <EntryList :entries="rankedShown" ordered :heading-level="4" class="mt-4">
           <template #header>
             <SourceChips :unavailable="RANKED_UNAVAILABLE" />
           </template>
@@ -965,90 +1004,6 @@ function submitSearch() {
         </p>
       </section>
 
-      <!-- THE ONE STATION WITHOUT A LIST, until 03.10.2026. Between
-           the Nationalrat's Beschluss and the Kundmachung lie three weeks at
-           the median, and in those weeks the decision stood nowhere on this
-           page once the procedure was over: the Regierungsvorlage section
-           above ends with the procedure, „Zuletzt Gesetz geworden" below
-           begins with the Bundesgesetzblatt. After
-           the ranking, the track half now walks the spine's stations in
-           order.
-
-           Hidden when empty, like the Regierungsvorlage section: between
-           plenary blocks nothing is decided and not yet promulgated, and an
-           empty section would announce the calendar, not a fact about any
-           Begutachtung. Its endpoint also answers empty while the station
-           map is cold — it claims something about every row, and without
-           the map it can claim nothing.
-
-           ONE PROCEDURE, ONE PLACE (03.10.2026). While its window is open —
-           through the Bundesrat's phase, until its Beschluss — a decided
-           procedure stands in the act half, as its Vorlage under
-           „Jetzt im Parlament"; it comes
-           here only once nothing can be filed any more (`pickDecided`). So
-           the heading says what this section's rows have in common: the
-           procedure is over, the Kundmachung is not. The link goes to the
-           same set, the Parlament tab without open windows
-           (`status=closed`, a link-only value). -->
-      <section
-        v-if="decided?.items.length || decidedEntries.length"
-        class="page-section"
-        aria-labelledby="decided-heading"
-      >
-        <ListHeader
-          id="decided-heading"
-          :to="decidedHref"
-          noun="beschlossenen Entwürfe"
-          :total="decidedTotal"
-          :visible="decidedEntries.length"
-        >
-          Beschlossen, noch nicht kundgemacht
-        </ListHeader>
-        <!-- The period is named, not pointed at, and taken from the
-             payload like every other section's. The median, though, is a
-             measurement over GP XXVIII: once
-             the next period has laws of its own, re-measure it, or the
-             sentence claims a number nobody took. A fact about the
-             procedure, no verdict on the wait. -->
-        <!-- One sentence per kind of row shown (30.10.2026): the median is
-             the Bund's, measured over its Kundmachungen, and claims nothing
-             about a Land. -->
-        <p class="mt-2 text-sm text-ink-secondary">
-          <template v-if="decidedShowsBund && decided">Das parlamentarische Verfahren ist abgeschlossen, die Kundmachung im
-            Bundesgesetzblatt steht noch aus – in der {{ decided.gp }}.
-            Gesetzgebungsperiode vergingen vom Beschluss im Nationalrat bis dahin
-            im Median rund drei Wochen.</template>
-          <template v-if="decidedShowsLaender"> Bei den Ländern hat der Landtag
-            beschlossen, die Kundmachung im Landesgesetzblatt steht noch aus.</template>
-          Dazu die Begutachtung, aus der der Beschluss hervorgegangen ist.
-        </p>
-        <!-- The chips in this box's head too (30.10.2026): the choice decides
-             its rows, and a control stands at what it changes. One choice for
-             the site, so a toggle here moves the other boxes with it. -->
-        <!-- The chosen Länder cannot give this box a row: said in words
-             (`noneApply`). Above the box while the Bund fills it, inside it
-             where nothing does. -->
-        <p v-if="bund && noneApply(DECIDED_UNAVAILABLE)" class="mt-2 text-sm text-ink-muted">
-          {{ noneApply(DECIDED_UNAVAILABLE) }}
-        </p>
-        <EntryList :entries="decidedEntries" class="mt-4">
-          <template #header>
-            <SourceChips :unavailable="DECIDED_UNAVAILABLE" />
-            <!-- Only the Länder that can give this box rows; a dashed chip
-                 says the rest (`landsIncompleteFor`, `beschlossen`). -->
-            <LandCoverageNote :lands="applying(DECIDED_UNAVAILABLE)" where="beschlossen" />
-          </template>
-          <!-- Shown only while the Bund has rows and is unticked: the box
-               stays rather than ignore the choice. -->
-          <template #empty>
-            <p class="p-4 text-sm text-ink-muted">
-              {{ noneApply(DECIDED_UNAVAILABLE) ?? 'Bei den gewählten Ländern ist derzeit kein Beschluss ohne Kundmachung verzeichnet.' }}
-            </p>
-          </template>
-        </EntryList>
-        <GapNote v-for="s in unreadableRecent" :key="s.land" kind="unavailable" :text="`die Beschlüsse des Landes ${LAND_NAME[s.land]}.`" class="mt-2 text-sm text-ink-muted" />
-      </section>
-
       <!-- The end of the chain, and the page's last word on purpose:
            participation that arrived somewhere. What stood here
            until 18.09.2026 was the most recently CLOSED Begutachtungen —
@@ -1057,7 +1012,7 @@ function submitSearch() {
            Predictable from the date beside it is not an outcome. The
            shelving half has not left the page; it sits above, on the rows
            where the wait has become evidence. -->
-      <section class="page-section" aria-labelledby="enacted-heading">
+      <section class="mt-12" aria-labelledby="enacted-heading">
         <!-- This link pointed at „?status=closed" because the filter „im
              Bundesgesetzblatt" did not exist: it would have needed a station
              per row, which was a work package rather than a link.
@@ -1067,6 +1022,7 @@ function submitSearch() {
              beside it would be the number of all of them. -->
         <ListHeader
           id="enacted-heading"
+          :level="3"
           :to="enactedHref"
           noun="kundgemachten Entwürfe"
         >
@@ -1114,7 +1070,7 @@ function submitSearch() {
         <p v-if="bund && noneApply(ENACTED_UNAVAILABLE)" class="mt-2 text-sm text-ink-muted">
           {{ noneApply(ENACTED_UNAVAILABLE) }}
         </p>
-        <EntryList :entries="enactedEntries" :state="!enactedEntries.length && enactedLoading ? { loading: HOME_LIST_DE.enactedLoading } : null" class="mt-4">
+        <EntryList :entries="enactedEntries" :heading-level="4" :state="!enactedEntries.length && enactedLoading ? { loading: HOME_LIST_DE.enactedLoading } : null" class="mt-4">
           <template #header>
             <SourceChips :unavailable="ENACTED_UNAVAILABLE" />
             <LandCoverageNote :lands="enactedLaender" where="kundgemacht" />
@@ -1161,11 +1117,6 @@ function submitSearch() {
            screenshot; here the footer's „Datenquellen und Lizenzen im
            Impressum" link is the page's attribution — CC BY 4.0 § 3 a (2)
            allows a link to the page carrying it. -->
-    </template>
-
-    <!-- After the drafts' sections, outside their gate (15.11.2026): another
-         object with its own endpoint, so a failed `/api/dashboard` does not
-         take it down, nor it the drafts. -->
-    <AnliegenHomeSection />
+    </section>
   </div>
 </template>

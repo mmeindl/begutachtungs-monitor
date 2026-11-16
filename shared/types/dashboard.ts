@@ -1,7 +1,7 @@
 import type { CommitteeConsultation } from './statements'
 import type { BundesratMotionVariant } from './procedure'
-import type { DraftSummary } from './drafts'
-import type { LandCode, LandConsultation, LandSourceState } from './laender'
+import type { DraftStation, DraftSummary } from './drafts'
+import type { LandConsultation, LandSourceState } from './laender'
 
 export interface DashboardPayload {
   /** The Gesetzgebungsperiode that is RUNNING — what `open` is a list of. */
@@ -95,36 +95,6 @@ export interface DashboardEnacted {
 }
 
 /**
- * Payload of /api/dashboard/beschlossen — "Im Nationalrat beschlossen"
- * (03.10.2026).
- *
- * The rows are Ministerialentwürfe again, with their chain attached: the
- * drafts whose Vorlage the Nationalrat has decided and the Bundesgesetzblatt
- * has not yet carried, newest Beschluss first, at most five
- * (`pickDecided`). EMPTY IS A NORMAL STATE — between plenary blocks, and
- * whenever the station map was not ready in time — and the section then
- * hides rather than saying so.
- */
-export interface DashboardDecided {
-  /**
-   * The running period, and the only one: no fallback to the period before.
-   * A Beschluss from an ended period that never reached the
-   * Bundesgesetzblatt is a different statement from „on its way there".
-   */
-  gp: string
-  items: ClosedOutcome[]
-  /**
-   * The period's drafts at the Parlament station — the set behind the
-   * section's link (`/entwuerfe?station=parlament`), for `ListHeader`'s
-   * number. It exceeds `items` by the cap, by a Beschluss older than the
-   * window or recorded as not promulgated (`promulgationState`), and by a
-   * recommitted Vorlage, which
-   * stands at that station without one.
-   */
-  total: number
-}
-
-/**
  * One Regierungsvorlage that is taking Stellungnahmen right now — the second
  * window for input, which closes with the end of the parliamentary procedure
  * (the Bundesrat's Beschluss) and has no published Frist.
@@ -149,6 +119,20 @@ export interface OpenVorlage {
   parliamentUrl: string
   /** Stellungnahmen filed on the Vorlage so far; null when the count failed. */
   statementCount: number | null
+  /**
+   * Where the item stands, by the rule a draft's chain is placed with
+   * (`stationFor` on list 101's status, 16.11.2026): `rv` while the
+   * Nationalrat has it, `parlament` once it is decided, at the Bundesrat or
+   * sent back to committee — the window runs on through that phase. Until
+   * then the list filed every open item under „Regierungsvorlage", so
+   * 365 d.B. (XXVIII), sent back to committee, stood under one tab in the
+   * list and at „Parlament" on its own page. A row without it stands at
+   * `rv`, as every row did before; read it through `openVorlageStationOf`,
+   * which files a motion (`ausschussantrag`, `bundesratsantrag`) at
+   * `parlament` whatever this field says (16.11.2026): the field is the
+   * status reading, the tab follows the kind's path as `/wege` draws it.
+   */
+  station?: DraftStation
   /**
    * The Begutachtung this Vorlage came out of — three states, because two are
    * not enough (`docs/research/begutachtung-uebersprungen.md`).
@@ -270,7 +254,9 @@ export interface LawsWithoutBegutachtung {
 
 /**
  * Payload of /api/dashboard/laender — the Länder's rows for the homepage's
- * two track sections (30.10.2026, `shared/utils/landRecent.ts`).
+ * „Zuletzt Gesetz geworden" (30.10.2026, `shared/utils/landRecent.ts`). Its
+ * decided half (`decided`, `decidedTotal`) went on 16.11.2026 with the
+ * homepage's „Beschlossen, noch nicht kundgemacht".
  *
  * EVERY LAND, newest first per Land and at most `HOME_LIST_LENGTH` each: the
  * reader's choice is applied on the page, so one cached answer serves every
@@ -280,8 +266,5 @@ export interface DashboardLaender {
   /** The period whose window the Kundmachungen were read over — the enacted section's. */
   gp: string
   enacted: LandConsultation[]
-  decided: LandConsultation[]
-  /** Per Land, every draft decided and not yet promulgated — the section header's number. */
-  decidedTotal: Partial<Record<LandCode, number>>
   sources: LandSourceState[]
 }

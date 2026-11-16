@@ -39,7 +39,7 @@ describe('every list box loads through the one piece', () => {
       'app/components/eu/EuUmsetzungList.vue',
       'app/components/eu/EuFeedbackBlock.vue',
       'app/components/statements/StatementsPanel.vue',
-      'app/components/anliegen/AnliegenHomeSection.vue',
+      'app/pages/index.vue',
       'app/pages/anliegen/index.vue',
       'app/pages/eu-recht/index.vue',
     ]) {

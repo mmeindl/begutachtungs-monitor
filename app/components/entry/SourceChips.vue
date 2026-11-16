@@ -8,10 +8,11 @@ import { SOURCE_CODES, SOURCE_NAME } from '#shared/utils/laender'
  * head is where a list's controls stand (`ListBox`).
  *
  * IN EVERY BOX WHOSE ROWS THE CHOICE DECIDES (30.10.2026): on the homepage
- * „Jetzt in Begutachtung", „Beschlossen, noch nicht kundgemacht" and
- * „Zuletzt Gesetz geworden" — so a list that reacts to the choice always
- * shows it, and a control stands at what it changes. A box whose rows are
- * the Bund's alone (the ranking, the Regierungsvorlagen) carries none.
+ * the open list („Stellung nehmen zu einem Entwurf") and „Zuletzt Gesetz
+ * geworden" (and the ranking, with every Land dashed) — so a list that
+ * reacts to the choice always shows it, and a control stands at what it
+ * changes. The homepage's other doors (16.11.2026) are the Bund's and the
+ * EU's alone and carry none.
  *
  * Checkboxes that ADD to the one list, not a Bund/Länder switch: the
  * question the list answers — where can I still say something, and what is

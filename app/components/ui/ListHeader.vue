@@ -32,6 +32,13 @@ const props = defineProps<{
   total?: number
   /** How many rows the section is showing of it. */
   visible?: number
+  /**
+   * The heading's level. 2 by default, the chapter head; 3 where the list
+   * stands under a chapter of its own (the homepage since 16.11.2026: the
+   * first door under „Jetzt mitreden", the two lists under „Was daraus
+   * wurde"). A sub-heading wears size and weight, not the chapter's bar.
+   */
+  level?: 2 | 3
 }>()
 
 /**
@@ -59,7 +66,10 @@ const label = computed(
 
 <template>
   <div class="flex flex-wrap items-baseline justify-between gap-x-4 gap-y-2">
-    <h2 :id="id" class="section-heading">
+    <h3 v-if="level === 3" :id="id" class="text-xl font-semibold text-ink">
+      <slot />
+    </h3>
+    <h2 v-else :id="id" class="section-heading">
       <slot />
     </h2>
     <!-- Standalone link: quiet at rest, underlined on hover (main.css). -->
