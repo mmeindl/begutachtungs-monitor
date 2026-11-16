@@ -49,6 +49,8 @@ const KLASSE_NAME: Record<string, string> = {
   'eu-vorschlag': 'Vorschläge der EU-Kommission (seit 15.11.2026)',
   'eu-buergerinitiative': 'Europäische Bürgerinitiativen (seit 15.11.2026)',
   wege: 'Wege',
+  // Counted on its own since 16.11.2026; before, the EU's ways stood on `/wege`.
+  'eu-wege': 'Wege der Gesetzgebung in der EU (seit 16.11.2026)',
   datenlage: 'Datenlage',
   // A page of its own since 16.11.2026; before, a section of the Impressum.
   quellen: 'Quellen & Lizenzen (seit 16.11.2026)',

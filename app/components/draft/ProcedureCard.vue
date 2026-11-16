@@ -18,7 +18,8 @@ import { allRoutesLink, type ComparisonId, type Station, type StationId } from '
  *    page that wants to say more says it in a row of the rail or in its
  *    own section below.
  *    Beside the heading, on its line, the one way out (`link`): the
- *    overview of every route (`/wege`), or an Anliegen's successor.
+ *    overview of every route (`/wege`, on an EU page the EU's), or an
+ *    Anliegen's successor.
  * 2. The rail (`#rail`) — the five stations of a draft (`SpineRail`, from
  *    `stations`) by default; an Anliegen passes its own (`AnliegenRail`).
  *    Each station links into the section below that holds it, and each

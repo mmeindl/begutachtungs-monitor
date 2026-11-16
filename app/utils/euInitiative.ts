@@ -46,11 +46,13 @@ import { EU_FEEDBACK_QUOTE_SOURCE, euFeedbackQuoteFor } from './euFeedbackQuote'
 import { EU_RAIL_DE, anchorOf, elementIdOf, fact, feedbackRefOf, framed, initiativeFact, periodFacts, periodParts, stageDe, withFeedback, type EuDoor, type EuRailSection, type EuRailStation, type EuRailStationId, type EuSectionFact } from './euRail'
 
 /** What kind of act the Commission foresees decides the stations after it. */
-type Track = 'gesetz' | 'kommission' | 'sonstiges'
+export type EuInitiativeTrack = 'gesetz' | 'kommission' | 'sonstiges'
+type Track = EuInitiativeTrack
 
 const COMMISSION_ACTS = new Set(['REG_DEL', 'REG_IMPL', 'DIR_DEL', 'DIR_IMPL', 'DEC_DEL', 'DEC_IMPL', 'REG', 'DIR', 'DEC'])
 
-function trackOf(actType: string | null | undefined): Track {
+/** The track of an initiative's rail, from the portal's act type — also what row of the EU's ways it walks (`euWegFor`). */
+export function euInitiativeTrackOf(actType: string | null | undefined): Track {
   if (actType?.startsWith('PROP_')) return 'gesetz'
   if (actType && COMMISSION_ACTS.has(actType)) return 'kommission'
   return 'sonstiges'
@@ -235,7 +237,7 @@ function statusOf(i: EuInitiative, today: string): string {
   if (!last) return DE.identity
   if (last.stage === 'ISC_WORKFLOW') return DE.status.draft
   // „Vorschlag" only where a proposal is what the initiative foresees; a communication's adoption keeps the portal's word.
-  if (last.stage === 'ADOPTION_WORKFLOW') return trackOf(i.actType) === 'gesetz' ? DE.status.proposal : stageDe(last)
+  if (last.stage === 'ADOPTION_WORKFLOW') return euInitiativeTrackOf(i.actType) === 'gesetz' ? DE.status.proposal : stageDe(last)
   if (CONSULTATION_STAGES.has(last.stage) && withPeriod(last)) return DE.status.consulted
   return stageDe(last)
 }
@@ -271,7 +273,7 @@ const pointerFacts = (proposals: readonly { reference: string; path: string }[])
  * old in the cache.
  */
 export function euInitiativeView(i: EuInitiative, today: string): EuInitiativeView {
-  const track = trackOf(i.actType)
+  const track = euInitiativeTrackOf(i.actType)
   const consulted = i.publications.filter((p) => CONSULTATION_STAGES.has(p.stage) && withPeriod(p))
   const own = i.publications.filter((p) => COMMISSION_STAGES.has(p.stage) && happened(p))
   // Anything the monitor has no stage word for still stands, under the Commission's station.

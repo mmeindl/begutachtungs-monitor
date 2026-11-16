@@ -1,6 +1,8 @@
 /**
- * The kinds of path a text can take to a law or a Verordnung, as the
- * matrix on `/wege` draws them: one row per kind, one column per station
+ * The pages „Wege der Gesetzgebung", one per jurisdiction since 16.11.2026
+ * (`WEGE_PAGES`: the country's at `/wege`, the EU's at `euWegePath()`), and
+ * first the kinds of path a text can take to a law or a Verordnung, as the
+ * country's national matrices draw them: one row per kind, one column per station
  * of the rail (`StationId`), and per cell whether the path passes the
  * station, skips it, or whether that depends on the case. Under the matrix,
  * the instruments that stand BESIDE a norm's path and have no stations
@@ -42,14 +44,41 @@
  * Pure module: no Nuxt auto-imports, so vitest reads it as it is.
  */
 import { gapDe } from '#shared/utils/gaps'
-import type { AnliegenKind, LandDraftKind, ProcedureItemKind, RisConsultationKind } from '#shared/types'
 import { ANLIEGEN_PATH } from '#shared/utils/anliegen'
 import { DRAFT_STATION_LABEL } from '#shared/utils/draftStations'
 import { LAND_CODES, SOURCE_PARAM, formatSourceList } from '#shared/utils/laender'
-import { euPath } from '#shared/utils/eu'
+import type { AnliegenKind, EuActHead, EuAdoptedBy, LandDraftKind, ProcedureItemKind, RisConsultationKind } from '#shared/types'
+import { EU_MEMBER_STATE_ECI, EU_MEMBER_STATE_NAME_DE, euPath, euWegePath } from '#shared/utils/eu'
 import { SECOND_ROUND_CLAUSE, type StationId } from './spine'
 import { EU_BUERGERINITIATIVE_DE } from './euBuergerinitiative'
+import { euInitiativeTrackOf } from './euInitiative'
 import { EU_RAIL_DE } from './euRail'
+
+/* ------------------------------------------------------------------ */
+/* One page per jurisdiction (16.11.2026)                              */
+/* ------------------------------------------------------------------ */
+
+/**
+ * Whose ways a matrix, a seam or an instrument shows: the country this
+ * site follows, or the EU. The EU is a jurisdiction of its own, as for its
+ * object pages, so a country's ways and the EU's are two pages, and a
+ * second country later gets a page of its own instead of sharing one.
+ *
+ * The country's id is its code as a path segment will carry it (`/at`, the
+ * plan's step 6), taken from the configured Member State
+ * (`EU_MEMBER_STATE_ECI`, „AT"), never written here.
+ */
+export const WEGE_STATE = EU_MEMBER_STATE_ECI.toLowerCase() as Lowercase<typeof EU_MEMBER_STATE_ECI>
+export type WegeJurisdiction = typeof WEGE_STATE | 'eu'
+
+/** The country's page of ways. It stays at `/wege` until step 6 moves the country's pages below its segment. */
+export const WEGE_PATH = '/wege'
+
+/** Each jurisdiction's page, by its address — the EU's built by the EU address helper, so step 6 moves it with the rest. */
+export const WEGE_PATH_OF: Record<WegeJurisdiction, string> = {
+  [WEGE_STATE]: WEGE_PATH,
+  eu: euWegePath(),
+}
 
 /**
  * What a path does at a station.
@@ -104,6 +133,16 @@ export const WEG_IDS = [
 ] as const
 
 export type WegId = (typeof WEG_IDS)[number]
+
+/**
+ * The rows of the EU's page that an EU object's page can name as its own
+ * (`euWegFor`): an act's three kinds and the Citizens' Initiative. Listed
+ * here, beside the national ids, so `wegHref` knows each row's page without
+ * reading the pages, which are built from rows that call it.
+ */
+export const EU_WEG_IDS = ['eu-richtlinie', 'eu-verordnung', 'eu-kommission', 'eu-buergerinitiative'] as const
+
+export type EuWegId = (typeof EU_WEG_IDS)[number]
 
 export type WegLevel = 'bund' | 'land'
 
@@ -659,6 +698,13 @@ export interface WegMatrixRow {
   id: string
   label: string
   note: string | null
+  /**
+   * The note itself as a link, where its words name what another page
+   * shows — the seam between two jurisdictions' pages, at the row where a
+   * law crosses („Umsetzung durch Bund oder Land" → the country's ways).
+   * Absent where the note is plain text.
+   */
+  noteHref?: string
   noteLink: { label: string; href: string } | null
   /** The official page where it is done — only an address a memo names; never guessed. */
   source?: { label: string; href: string }
@@ -682,6 +728,8 @@ export interface WegMatrixGroup {
 
 export interface WegMatrix {
   id: string
+  /** Whose ways: the page that draws this matrix (`WEGE_PAGES`). */
+  jurisdiction: WegeJurisdiction
   /** The table's caption, for a screen reader. */
   caption: string
   /** The head of the rows' column: „Weg" in every matrix (16.11.2026) — the bar under it says whose ways. */
@@ -751,6 +799,7 @@ const CAPTION_BY_LEVEL: Record<WegLevel, string> = {
 }
 export const NATIONAL_MATRICES: readonly WegMatrix[] = wegGroups().map((g) => ({
   id: g.level,
+  jurisdiction: WEGE_STATE,
   caption: CAPTION_BY_LEVEL[g.level],
   pathColumn: 'Weg',
   stations: WEG_STATIONS.map((s) => ({
@@ -785,6 +834,7 @@ const euCells = (konsultation: WegCell, vorschlag: WegCell, beschluss: WegCell, 
 
 export const EU_MATRIX: WegMatrix = {
   id: 'eu',
+  jurisdiction: 'eu',
   caption: 'Wege eines EU-Rechtsakts, nach Station',
   pathColumn: 'Weg',
   stations: EU_STATIONS,
@@ -812,11 +862,15 @@ export const EU_MATRIX: WegMatrix = {
        *  - Amtsblatt: passed (eu-zyklus.md § 2.4, station 4).
        *  - Umsetzung: passed — Art. 288 AEUV, a directive needs a national
        *    act (wege-zu-einer-rechtsnorm.md, „EU"); where a Stellungnahme is
-       *    possible then is the national matrix's, so no mark here. */
+       *    possible then is the national matrix's, so no mark here.
+       * The seam to the country's page (16.11.2026): the note's own words,
+       * „Umsetzung durch Bund oder Land", link the page that draws the Bund's
+       * and the Länder's ways — the place where the law crosses. */
       {
         id: 'eu-richtlinie',
         label: 'Richtlinie',
         note: 'Umsetzung durch Bund oder Land',
+        noteHref: WEGE_PATH,
         noteLink: EU_IMPLEMENTING_LIST,
         notFollowed: null,
         cells: euCells('stellungnahme', 'stellungnahme', 'durch', 'durch', 'durch'),
@@ -889,6 +943,7 @@ const ECI_STATIONS: WegMatrixStation[] = [
 
 export const ECI_MATRIX: WegMatrix = {
   id: 'eci',
+  jurisdiction: 'eu',
   caption: 'Weg einer Europäischen Bürgerinitiative, nach Station',
   pathColumn: 'Weg',
   stations: ECI_STATIONS,
@@ -958,6 +1013,7 @@ const anliegenCells = (eingebracht: WegCell, ersteLesung: WegCell, ausschuss: We
 
 export const ANLIEGEN_MATRIX: WegMatrix = {
   id: 'anliegen',
+  jurisdiction: WEGE_STATE,
   caption: 'Wege eines Anliegens an das Parlament, nach Station',
   pathColumn: 'Weg',
   stations: ANLIEGEN_STATIONS,
@@ -1058,13 +1114,14 @@ export const ANLIEGEN_MATRIX: WegMatrix = {
   }],
 }
 
-/** The matrices of the page, in its order: the national one, then the objects with rails of their own. */
-/* The page's order (16.11.2026), Austria before the EU within each part:
- * how a text becomes law (Bund, Länder, EU), then how people start
- * something themselves (Anliegen an das Parlament, the European Citizens'
- * Initiative). Until then the Citizens' Initiative stood before the
- * Anliegen, EU before Bund, because it was built beside the EU's matrix. */
-export const WEG_MATRICES: readonly WegMatrix[] = [...NATIONAL_MATRICES, EU_MATRIX, ANLIEGEN_MATRIX, ECI_MATRIX]
+/** Every matrix, each page's in its order: the national ones, then the objects with rails of their own. */
+/* The order on each page (16.11.2026): how a text becomes law, then how
+ * people start something themselves. The country's page: Bund, Länder,
+ * Anliegen an das Parlament; the EU's: an EU act, the European Citizens'
+ * Initiative. Until 16.11.2026 one page held all five, Austria before the
+ * EU within each part; a page draws its own (`jurisdiction`), in this
+ * order. */
+export const WEG_MATRICES: readonly WegMatrix[] = [...NATIONAL_MATRICES, ANLIEGEN_MATRIX, EU_MATRIX, ECI_MATRIX]
 
 /* ------------------------------------------------------------------ */
 /* Not in the monitor: instruments without stations                    */
@@ -1092,6 +1149,8 @@ export const WEG_INSTRUMENT_LEVEL_LABEL: Record<WegInstrumentLevel, string> = {
  */
 export interface WegInstrument {
   id: string
+  /** Whose instrument: the page whose list „Nicht im Monitor" holds it. */
+  jurisdiction: WegeJurisdiction
   level: WegInstrumentLevel
   name: string
   /** What one can do, in two or three words. */
@@ -1114,6 +1173,7 @@ export const WEG_INSTRUMENTS: readonly WegInstrument[] = [
    * and nothing a path could show. */
   {
     id: 'volksbefragung',
+    jurisdiction: WEGE_STATE,
     level: 'bund',
     name: 'Volksbefragung',
     act: 'befragt werden',
@@ -1138,6 +1198,7 @@ export const WEG_INSTRUMENTS: readonly WegInstrument[] = [
    * others, none built — hence „teils geprüft". */
   {
     id: 'laender',
+    jurisdiction: WEGE_STATE,
     level: 'land',
     name: 'Volksbefragung, Petition, Bürgerrat',
     act: 'je nach Landesverfassung',
@@ -1151,6 +1212,7 @@ export const WEG_INSTRUMENTS: readonly WegInstrument[] = [
    * is the portal's list of petitions, the address the memo names. */
   {
     id: 'eu-petition',
+    jurisdiction: 'eu',
     level: 'eu',
     name: 'Petition an das Europäische Parlament',
     act: 'einreichen',
@@ -1162,9 +1224,8 @@ export const WEG_INSTRUMENTS: readonly WegInstrument[] = [
 
 export const WEGE_COPY = {
   // „Der Weg eines Entwurfs" until 16.11.2026: it named two of the page's six blocks. An Anliegen, an EU act and a Citizens' Initiative are no Entwurf.
+  // The name of every jurisdiction's page; its H1 adds where (`WegePage.title`), so the place never becomes part of the name.
   title: 'Wege der Gesetzgebung',
-  description:
-    'Alle Wege, die ein Text zum Gesetz oder zur Verordnung nehmen kann – beim Bund, in den Ländern, ausgehend vom EU-Recht –, Station für Station, und wo eine Stellungnahme, eine Rückmeldung oder eine Unterstützung möglich ist.',
   lede: 'Welche Stationen ein Text durchläuft, bis er gilt – und wo Sie sich beteiligen können.',
   notFollowedPrefix: 'nicht im Monitor',
   selected: 'dieser Weg',
@@ -1172,13 +1233,218 @@ export const WEGE_COPY = {
   instrumentsLede: 'weitere Wege, sich zu äußern, ohne Stationen',
 } as const
 
+/* ------------------------------------------------------------------ */
+/* The seams, and the pages                                            */
+/* ------------------------------------------------------------------ */
+
+/**
+ * A seam: one line of a page that leads to another jurisdiction's page,
+ * where a law crosses between them. It passes no station of the page, so
+ * it is no matrix row: a group of the card with its bar and one line, at
+ * the place in the page's order where the other jurisdiction's law enters
+ * (`after`, a matrix id). The way back is a row's own note
+ * (`WegMatrixRow.noteHref`): on the EU's page the directive's „Umsetzung
+ * durch Bund oder Land".
+ */
+export interface WegSeam {
+  id: string
+  /** The page that draws this line. */
+  jurisdiction: WegeJurisdiction
+  /** The matrix it follows on that page. */
+  after: string
+  /** The bar's name. */
+  bar: string
+  label: string
+  /** The other jurisdiction's page. */
+  href: string
+  note: string
+  noteLink: { label: string; href: string } | null
+}
+
+/**
+ * Where EU law enters the country's ways (16.11.2026; the „EU" lead line
+ * `EU_LEAD` above the national matrix until the EU got a matrix on this
+ * page, the same day). Art. 288 AEUV — a Richtlinie needs a national act
+ * (Umsetzung), a Verordnung applies directly and draws accompanying rules;
+ * the monitor marks both on a draft (`EuMarker`: `umsetzung`,
+ * `flankierend-vo`). The list filters only the first (`EuFilter`), so its
+ * link says so. It stands after the Länder: it enters the Bund's and the
+ * Länder's paths alike, so it belongs to neither matrix, and it closes the
+ * part „how a text becomes law" where the EU's matrix stood. The words of
+ * label and note are the lead line's of 14.11.2026.
+ */
+export const WEG_SEAMS: readonly WegSeam[] = [
+  {
+    id: 'eu-recht',
+    jurisdiction: WEGE_STATE,
+    after: 'land',
+    bar: 'EU-Recht',
+    label: 'EU-Richtlinie, EU-Verordnung',
+    href: WEGE_PATH_OF.eu,
+    note: 'Umsetzung einer Richtlinie, begleitende Regeln zu einer Verordnung',
+    noteLink: EU_IMPLEMENTING_LIST,
+  },
+]
+
+/** A part of a page's card, in the page's order. */
+export type WegeBlock = { kind: 'matrix'; matrix: WegMatrix } | { kind: 'seam'; seam: WegSeam }
+
+/**
+ * One jurisdiction's „Wege der Gesetzgebung" (16.11.2026). Both pages are
+ * drawn by one component (`WegePage`) from this object; a page file only
+ * names its jurisdiction. A third jurisdiction is an id in
+ * `WegeJurisdiction`, an address in `WEGE_PATH_OF`, its words in
+ * `WEGE_PAGE_COPY`, its matrices, seams and instruments tagged with it, and
+ * a page file of three lines.
+ */
+export interface WegePage {
+  jurisdiction: WegeJurisdiction
+  path: string
+  /** The H1 and the search result's title: the name and where („in Österreich"). */
+  title: string
+  lede: string
+  description: string
+  /** The matrices and seams, in the page's order. */
+  blocks: readonly WegeBlock[]
+  /** The list „Nicht im Monitor". */
+  instruments: readonly WegInstrument[]
+}
+
+/**
+ * Each page's words. The place in the H1 tells the two pages apart without
+ * becoming part of the name; the country's comes from the configured
+ * Member State (`EU_MEMBER_STATE_NAME_DE`), as the EU overview's title does.
+ *
+ * The EU's lede is its own: an EU act walks to „Geltung" or „Umsetzung",
+ * the rail's last station, and a Citizens' Initiative is no text that comes
+ * to apply — it ends with the Commission's answer.
+ */
+export const WEGE_PAGE_COPY: Record<WegeJurisdiction, Pick<WegePage, 'title' | 'lede' | 'description'>> = {
+  [WEGE_STATE]: {
+    title: `${WEGE_COPY.title} in ${EU_MEMBER_STATE_NAME_DE}`,
+    lede: WEGE_COPY.lede,
+    description:
+      `Alle Wege, die ein Text in ${EU_MEMBER_STATE_NAME_DE} zum Gesetz oder zur Verordnung nehmen kann – beim Bund und in den Ländern –, und die Wege eines Anliegens an das Parlament: Station für Station, und wo eine Stellungnahme oder eine Unterstützung möglich ist.`,
+  },
+  eu: {
+    title: `${WEGE_COPY.title} in der EU`,
+    lede: 'Welche Stationen ein Rechtsakt der EU bis zur Geltung oder Umsetzung durchläuft und eine Europäische Bürgerinitiative bis zur Antwort der Kommission – und wo Sie sich beteiligen können.',
+    description:
+      'Die Wege eines Rechtsakts der Europäischen Union und einer Europäischen Bürgerinitiative, Station für Station, und wo eine Rückmeldung oder eine Unterstützung möglich ist.',
+  },
+}
+
+function wegePage(jurisdiction: WegeJurisdiction): WegePage {
+  const blocks: WegeBlock[] = []
+  for (const matrix of WEG_MATRICES.filter((m) => m.jurisdiction === jurisdiction)) {
+    blocks.push({ kind: 'matrix', matrix })
+    for (const seam of WEG_SEAMS.filter((s) => s.jurisdiction === jurisdiction && s.after === matrix.id)) blocks.push({ kind: 'seam', seam })
+  }
+  return {
+    jurisdiction,
+    path: WEGE_PATH_OF[jurisdiction],
+    ...WEGE_PAGE_COPY[jurisdiction],
+    blocks,
+    instruments: WEG_INSTRUMENTS.filter((i) => i.jurisdiction === jurisdiction),
+  }
+}
+
+/** Every jurisdiction's page, the country's first. */
+export const WEGE_PAGES: Record<WegeJurisdiction, WegePage> = {
+  [WEGE_STATE]: wegePage(WEGE_STATE),
+  eu: wegePage('eu'),
+}
+
+/** The matrices a page draws. */
+export function wegePageMatrices(page: WegePage): WegMatrix[] {
+  return page.blocks.flatMap((b) => (b.kind === 'matrix' ? [b.matrix] : []))
+}
+
+/** Every row a page draws, in its order. */
+export function wegePageRows(page: WegePage): WegMatrixRow[] {
+  return wegePageMatrices(page).flatMap((m) => m.groups.flatMap((g) => g.rows))
+}
+
+/* The ways to take part the blue mark stands for, in the legend's order. */
+const TAKE_PART_WORDS = ['Stellungnahme', 'Rückmeldung', 'Unterstützung'] as const
+
+/**
+ * A page's legend (16.11.2026): only the marks its matrices draw, and for
+ * the blue mark only the ways to take part its rows name — „Stellungnahme
+ * oder Unterstützung möglich" on the country's page, „Rückmeldung oder
+ * Unterstützung möglich" on the EU's. A legend that names what the page
+ * does not draw sends the reader looking for it.
+ */
+export function wegLegend(page: WegePage): { cell: WegCell; label: string }[] {
+  const rows = wegePageRows(page)
+  const drawn = new Set(rows.flatMap((r) => Object.values(r.cells)))
+  const takePart = rows.filter((r) => Object.values(r.cells).includes('stellungnahme')).map((r) => wegCellLabel(r, 'stellungnahme'))
+  const words = TAKE_PART_WORDS.filter((w) => takePart.some((t) => t.includes(w)))
+  const joined = words.length > 1 ? `${words.slice(0, -1).join(', ')} oder ${words.at(-1)}` : (words[0] ?? '')
+  return WEG_LEGEND
+    .filter((l) => drawn.has(l.cell))
+    .map((l) => (l.cell === 'stellungnahme' && joined ? { ...l, label: `${joined} möglich` } : l))
+}
+
+/**
+ * The row `?weg=` names on a page, or null: only a row the page draws. An
+ * unknown value, or a row of another jurisdiction's page, selects nothing —
+ * an old `/wege?weg=eu-…` included, which no code ever wrote (the national
+ * ids alone were readable before 16.11.2026).
+ */
+export function wegSelected(page: WegePage, value: unknown): string | null {
+  const id = Array.isArray(value) ? value[0] : value
+  return typeof id === 'string' && wegePageRows(page).some((r) => r.id === id) ? id : null
+}
+
 export function isWegId(value: unknown): value is WegId {
   return typeof value === 'string' && (WEG_IDS as readonly string[]).includes(value)
 }
 
-/** The matrix with one row marked: `/wege?weg=…`. */
-export function wegHref(id: WegId): string {
-  return `/wege?weg=${id}`
+/**
+ * The page that holds a row, with the row marked: `/wege?weg=gesetz`,
+ * `/eu-recht/wege?weg=eu-richtlinie`. Each id knows its page from the id
+ * lists, not from the pages (the Anliegen's matrix calls this while the
+ * pages are not built yet).
+ */
+export function wegHref(id: WegId | EuWegId): string {
+  const jurisdiction: WegeJurisdiction = (EU_WEG_IDS as readonly string[]).includes(id) ? 'eu' : WEGE_STATE
+  return `${WEGE_PATH_OF[jurisdiction]}?weg=${id}`
+}
+
+/**
+ * Which row of the EU's page an EU object's page walks, from what the page
+ * already holds; null where none fits for certain.
+ *
+ *  - An act: „Rechtsakt der Kommission" where the Cellar names the
+ *    Commission as its author; a Richtlinie or Verordnung only where it
+ *    names the Parliament and the Council, or the Council — an act whose
+ *    author is unread may be a delegated one, so it marks no row. A
+ *    Beschluss and a Rahmenbeschluss have no row.
+ *  - An initiative of the portal, or the consultation behind a proposal:
+ *    the act the Commission foresees, by the track its own rail takes
+ *    (`euInitiativeTrackOf`) — a proposal for a Richtlinie or Verordnung,
+ *    or an act of the Commission; anything else no row.
+ *
+ * A European Citizens' Initiative needs no facts: its page names its row.
+ */
+export type EuWegFacts =
+  | { source: 'act'; kind: EuActHead['kind']; adoptedBy: EuAdoptedBy | null }
+  | { source: 'portal'; actType: string | null }
+
+export function euWegFor(f: EuWegFacts): EuWegId | null {
+  switch (f.source) {
+    case 'act':
+      if (f.adoptedBy === 'kommission') return 'eu-kommission'
+      if (f.adoptedBy !== 'parlament-rat' && f.adoptedBy !== 'rat') return null
+      return f.kind === 'richtlinie' ? 'eu-richtlinie' : f.kind === 'verordnung' ? 'eu-verordnung' : null
+    case 'portal': {
+      const track = euInitiativeTrackOf(f.actType)
+      if (track === 'kommission') return 'eu-kommission'
+      if (track !== 'gesetz') return null
+      return f.actType === 'PROP_DIR' ? 'eu-richtlinie' : f.actType === 'PROP_REG' ? 'eu-verordnung' : null
+    }
+  }
 }
 
 /**

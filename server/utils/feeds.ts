@@ -15,6 +15,7 @@ import { formatDateDe } from '../../shared/utils/format'
 import { RIS_KIND_LABEL, risFilingNote } from '../../shared/utils/risConsultations'
 import { LAND_NAME, landDraftPath } from '../../shared/utils/laender'
 import { ANLIEGEN_PATH } from '../../shared/utils/anliegen'
+import { euWegePath } from '../../shared/utils/eu'
 
 /** Draft page URL inside the monitor. */
 function pageUrl(siteUrl: string, item: DraftSummary): string {
@@ -410,6 +411,8 @@ export function buildSitemap(
     `${siteUrl}/datenschutz`,
     `${siteUrl}/statistik`,
     `${siteUrl}/eu-recht`,
+    // The EU's „Wege der Gesetzgebung“, a page of its own since 16.11.2026.
+    `${siteUrl}${euWegePath()}`,
     `${siteUrl}${ANLIEGEN_PATH}`,
     ...euActPaths.map((path) => `${siteUrl}${path}`),
     ...euInitiativePaths.map((path) => `${siteUrl}${path}`),

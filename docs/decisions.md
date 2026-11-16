@@ -1216,11 +1216,44 @@ Settled on 14.11.2026; the facts are in
 („Einschätzung") gives the order to build in. A session that builds a route
 not yet followed, or the EU cycle, starts there.
 
-- **The graphic `/wege` shows every route that exists, the monitor follows
+- **One page of ways per jurisdiction** (16.11.2026). The EU is a
+  jurisdiction of its own, as for its object pages, so a country's ways and
+  the EU's are two pages, and a second country gets a page of its own
+  instead of sharing one with Austria. The country's page stays at `/wege`
+  (Bund, Länder, Anliegen an das Parlament; of „Nicht im Monitor" the
+  Volksbefragung and the Länder's instruments); the EU's stands at
+  `euWegePath()`, `/eu-recht/wege` until step 6 moves it to `/eu/wege` with
+  every other EU address (EU-Rechtsakt, Europäische Bürgerinitiative; the
+  Petition an das Europäische Parlament). Both are „Wege der Gesetzgebung";
+  the H1 adds where („in Österreich", from `EU_MEMBER_STATE_NAME_DE`; „in der
+  EU"), so the place never becomes part of the name. The EU's lede is its
+  own: an act walks to „Geltung" or „Umsetzung", and a Citizens' Initiative
+  is no text that comes to apply. One component draws both (`WegeView`)
+  from one object per page (`WegePage` in `app/utils/wege.ts`); every
+  matrix, seam and instrument carries its jurisdiction, and each page's
+  legend names only the marks it draws. A third jurisdiction is an id, an
+  address in `WEGE_PATH_OF`, its words in `WEGE_PAGE_COPY`, its rows tagged,
+  and a page file of three lines.
+- **The seam is a link in both directions, where a law crosses**
+  (16.11.2026), never a generic „see also". On the EU's page the
+  directive's note „Umsetzung durch Bund oder Land" is itself the link to
+  the country's page, beside „Entwürfe, die EU-Recht umsetzen"; the header
+  „Umsetzung oder Geltung" carries none, as „Geltung" does not cross. On
+  the country's page one line of the card, „EU-Recht" with „EU-Richtlinie,
+  EU-Verordnung", stands after the Länder — it enters the Bund's and the
+  Länder's paths alike, so it belongs to neither matrix — and links the
+  EU's page and the list of drafts that carry out EU law (`WEG_SEAMS`). It
+  is a group of the card, not a paragraph above it. `?weg=` selects a row
+  only on the page that holds it (`wegSelected`); `wegHref` leads each id to
+  its page, and the EU object pages' state cards lead to the EU's page with
+  their row where their kind is read (`euWegFor`). An old `/wege?weg=eu-…`
+  selects nothing: no code ever wrote one.
+- **The graphic shows every route that exists, the monitor follows
   fewer.** A route that is not followed stands in the graphic as „nicht im
   Monitor" with its reason. Since 16.11.2026 every followed object has a
   matrix of its own with the stations of its own rail, names and order read
-  from the rail's code (`WEG_MATRICES`, `WegMatrix`): the national norm
+  from the rail's code (`WEG_MATRICES`, `WegMatrix`), each on its
+  jurisdiction's page: the national norm
   (Bund and Länder a matrix each, the same five stations, the last two
   named „Parlament" and „Bundesgesetzblatt" or „Landtag" and
   „Landesgesetzblatt" in the header, so no sentence translates one), an
@@ -1238,16 +1271,17 @@ not yet followed, or the EU cycle, starts there.
   („Regierungs-vorlage", `wegHeaderLabel`), never where the browser
   guesses, and stands on the bottom line, next to its marks. Five columns
   are what these rails have, not a rule: a rail with four or six stations
-  gets four or six. The page is „Wege der Gesetzgebung" (16.11.2026; „Der
-  Weg eines Entwurfs" named two of its six blocks) and runs Austria before
-  the EU within each part: how a text becomes law (Bund, Länder, EU), how
-  people start something themselves (Anliegen, the Citizens' Initiative),
-  then what is not followed, in the same order. Table or rails is the card's question, not the
+  gets four or six. The pages are „Wege der Gesetzgebung" (16.11.2026; „Der
+  Weg eines Entwurfs" named two of the then six blocks) and each runs: how
+  a text becomes law (Bund, Länder; an EU act), how people start something
+  themselves (Anliegen; the Citizens' Initiative), then what is not
+  followed. Until 16.11.2026 one page held both jurisdictions, Austria
+  before the EU within each part. Table or rails is the card's question, not the
   window's (a container query at 50rem, 16.11.2026): the table stays while
   the card holds the five station columns and 200 px for the paths. Only the instruments
   the monitor does not follow are a list without stations, „Nicht im
   Monitor", each with its reason.
-- **A link on `/wege` shows what its words name, and a mark means one
+- **A link on a page of ways shows what its words name, and a mark means one
   thing** (16.11.2026, after opening every link and reading every cell).
   A row's link leads to its kind: where hardly one of a kind is open on a
   given day (Volksbegehren, Petition an den Bundesrat) to the list without
@@ -1259,7 +1293,7 @@ not yet followed, or the EU cycle, starts there.
   the dash too. Not changed: the header „Parlament" of the Bund leads to
   the list's tab, which is empty on days when nothing is between Beschluss
   and Kundmachung.
-- **Each thing stands once on `/wege`** (15./16.11.2026). What is a route to
+- **Each thing stands once among the pages of ways** (15./16.11.2026). What is a route to
   a norm is a row, and only a row: a Volksbegehren in the Bund or a Land, an
   initiative of Gemeinden or citizens, and the Volksabstimmung, which sits
   between the Beschluss and the Kundmachung — a row with no column of its
@@ -1584,7 +1618,9 @@ the reasoning in full stands in that component's header comment.
   (15.11.2026, `ProcedureCard`). Its heading is the state in a few words
   („In Begutachtung", „Bisher keine Regierungsvorlage", „Gesetz geworden"):
   no sentence, no date, no count, no countdown. Beside it, the one way out
-  (the overview of routes on `/wege`). Under it, the rail; after the rail,
+  (the overview of routes of its jurisdiction: `/wege`, or on an EU page
+  the EU's, with the page's row selected where its kind is read). Under it,
+  the rail; after the rail,
   at most a footer of facts. The component has no slot between heading and
   rail, so a description there cannot be added; a page without a rail shows
   the heading alone and says the rest in its sections. One card for every

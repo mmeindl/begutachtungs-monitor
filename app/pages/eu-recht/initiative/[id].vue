@@ -22,9 +22,11 @@
  * fixed list of fields lets through, never an official's name or address.
  */
 import type { EuInitiativeResponse } from '#shared/types'
-import { EU_PAGE_TITLE_DE, euInitiativeId, euPath } from '#shared/utils/eu'
+import { EU_PAGE_TITLE_DE, euInitiativeId, euPath, euWegePath } from '#shared/utils/eu'
 import { todayIso } from '#shared/utils/format'
 import { EU_INITIATIVE_DE as DE, euInitiativeView } from '~/utils/euInitiative'
+import { allRoutesLink } from '~/utils/spine'
+import { euWegFor, wegHref } from '~/utils/wege'
 
 definePageMeta({
   // One address per initiative: a number with leading zeros 301s to the
@@ -62,6 +64,13 @@ usePageSeo({
 })
 
 const back = `${euPath()}#eu-fenster`
+
+/* The state card's way out (16.11.2026): the EU's ways, with the row of the
+ * act the Commission foresees, by the track the rail takes (`euWegFor`). */
+const routesLink = computed(() => {
+  const id = data.value?.state === 'gefunden' ? euWegFor({ source: 'portal', actType: data.value.initiative.actType ?? null }) : null
+  return allRoutesLink(id ? wegHref(id) : euWegePath())
+})
 </script>
 
 <template>
@@ -110,7 +119,7 @@ const back = `${euPath()}#eu-fenster`
           </DraftHeader>
 
           <!-- The state card of every detail page, with the EU rail. -->
-          <ProcedureCard :status="view.status">
+          <ProcedureCard :status="view.status" :link="routesLink">
             <template #rail>
               <EuRail class="mt-4" :stations="view.stations" :label="view.heading" />
             </template>

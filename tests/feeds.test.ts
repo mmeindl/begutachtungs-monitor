@@ -156,6 +156,8 @@ describe('buildSitemap', () => {
   it('lists the EU overview always, and each act page the map knows', () => {
     // Without a map only the overview; with one, every act's page.
     expect(buildSitemap(SITE, [])).toContain(`<loc>${SITE}/eu-recht</loc>`)
+    // The EU's „Wege der Gesetzgebung“ beside the country's (16.11.2026).
+    expect(buildSitemap(SITE, [])).toContain(`<loc>${SITE}/eu-recht/wege</loc>`)
     const xml = buildSitemap(SITE, [], [], ['/eu-recht/richtlinie/2024/1069', '/eu-recht/verordnung/2022/2554'])
     expect(xml).toContain(`<loc>${SITE}/eu-recht/richtlinie/2024/1069</loc>`)
     expect(xml).toContain(`<loc>${SITE}/eu-recht/verordnung/2022/2554</loc>`)

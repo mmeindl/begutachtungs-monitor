@@ -61,11 +61,12 @@
  */
 import type { EuActSummary, EuActsResponse } from '#shared/types'
 import { risSource, eurLexSource, sourceItemsDe } from '#shared/utils/provenance'
-import { EU_PAGE_TITLE_DE } from '#shared/utils/eu'
+import { EU_PAGE_TITLE_DE, euWegePath } from '#shared/utils/eu'
 import { MAX_LIST_QUERY_CHARS } from '#shared/utils/queryParams'
 import { matchesQuery } from '#shared/utils/textMatch'
 import { countLabelDe, todayIso } from '#shared/utils/format'
 import { listBoxStatusOf } from '~/utils/listState'
+import { WEGE_PAGES } from '~/utils/wege'
 import { EU_ACTS_COLUMN_DE, EU_ACTS_SORT_DE, deadlineDirection, deadlineOrderDe, euActOwnDirection, deadlineReverseOrderDe, deadlineTabOf, euActHaystack, euActsRows, euRestatingRows, euSourceUnavailable, filterEuActs, incompleteNoteDe, restatingFoldHeading, type EuActSort, type EuDeadlineTab } from '~/utils/euKarte'
 
 usePageSeo({
@@ -196,7 +197,10 @@ const [bundItem, eurLexItem] = sourceItemsDe([risSource('Vorblatt'), risSource('
         Rechtsakt, den ein Entwurf
         dieser Gesetzgebungsperiode umsetzt, beim Bund und in den Ländern. Woher
         die Angaben stammen und was sie nicht sagen, öffnet „Methode“ unter jeder
-        Liste.
+        Liste. Welche Stationen ein Rechtsakt und eine Bürgerinitiative
+        durchlaufen, zeigen die
+        <!-- The EU's ways (16.11.2026), named by their page's own title. -->
+        <NuxtLink :to="euWegePath()" class="link-inline">{{ WEGE_PAGES.eu.title }}</NuxtLink>.
       </p>
     </header>
 

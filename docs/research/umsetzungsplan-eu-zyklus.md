@@ -570,6 +570,11 @@ schedule.
 - The base flips from `/eu-recht` to `/eu`. `/eu-recht` itself becomes
   `/at/eu-recht`; every address below it answers one 301 to `/eu/…`, with
   no chain through `/at`.
+- The EU's „Wege der Gesetzgebung" (`/eu-recht/wege` since 16.11.2026,
+  built by `euWegePath()`) moves with the base to `/eu/wege`, and the
+  country's `/wege` to `/at/wege` with Austria's other pages
+  (`WEGE_PATH`; the header's „Wege" writes `/wege` too). Its page-view
+  class `eu-wege` and the sitemap follow the helper.
 - The act page's last station becomes one block per country the instance
   covers; Austria's block is today's timeline and rows.
 - A country's facts keep pointing at the EU store; the EU store knows no

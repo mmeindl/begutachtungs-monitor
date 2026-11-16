@@ -25,6 +25,8 @@ import type { EuBuergerinitiativeResponse } from '#shared/types'
 import { EU_CITIZENS_INITIATIVE_PATH_WORD, EU_PAGE_TITLE_DE, euCitizensInitiativeAddress, euCitizensInitiativeReference, euPath } from '#shared/utils/eu'
 import { todayIso } from '#shared/utils/format'
 import { EU_BUERGERINITIATIVE_DE as DE, euBuergerinitiativeView } from '~/utils/euBuergerinitiative'
+import { allRoutesLink } from '~/utils/spine'
+import { wegHref } from '~/utils/wege'
 
 definePageMeta({
   // One address per initiative: a number with leading zeros („000002", as
@@ -65,6 +67,9 @@ usePageSeo({
 })
 
 const back = `${euPath()}#eu-buergerinitiativen`
+
+/* The state card's way out (16.11.2026): the EU's ways, the Citizens' Initiative's row marked. */
+const routesLink = allRoutesLink(wegHref('eu-buergerinitiative'))
 </script>
 
 <template>
@@ -113,7 +118,7 @@ const back = `${euPath()}#eu-buergerinitiativen`
           <!-- The state card of every detail page, with the EU rail; a step
                the monitor does not know is said in the footer, under the
                rail — nothing stands between heading and rail. -->
-          <ProcedureCard :status="view.status">
+          <ProcedureCard :status="view.status" :link="routesLink">
             <template #rail>
               <EuRail class="mt-4" :stations="view.stations" :label="view.heading" />
             </template>

@@ -14,6 +14,7 @@ import type { LandCode } from '#shared/types'
 import { LAND_CODES, LAND_SLUG } from '#shared/utils/laender'
 import { anliegenKindOfSegment } from '#shared/utils/anliegen'
 import { itemKindOfSegment } from '#shared/utils/procedureRoot'
+import { euWegePath } from '#shared/utils/eu'
 
 export const KLASSEN = [
   'start',
@@ -46,6 +47,10 @@ export const KLASSEN = [
   // word before the act rule below.
   'eu-buergerinitiative',
   'wege',
+  // The EU's „Wege der Gesetzgebung“, `euWegePath()` (16.11.2026): a page of
+  // its own, so a class of its own, as each EU page added since 15.11.2026;
+  // `wege` stays the country's page, which held the EU's ways until then.
+  'eu-wege',
   'datenlage',
   // The register of sources and licences, a page of its own since
   // 16.11.2026; before, a section of `/impressum`.
@@ -76,6 +81,7 @@ const FIXED: Record<string, Klasse> = {
   '/anliegen': 'anliegen',
   '/eu-recht': 'eu-recht',
   '/wege': 'wege',
+  [euWegePath()]: 'eu-wege',
   '/datenlage': 'datenlage',
   '/quellen': 'quellen',
   '/ueber': 'ueber',

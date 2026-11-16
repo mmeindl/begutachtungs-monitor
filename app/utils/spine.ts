@@ -267,6 +267,8 @@ export function enactmentStatusDe(
  * overview of every route a text can take, opened at this page's path where
  * it knows it (`?weg=`). „Wie funktioniert das Verfahren?" until
  * 14.11.2026, when the link stopped leading to a page about this procedure.
+ * The overview of the page's jurisdiction (16.11.2026): `/wege` by default,
+ * the EU's (`wegHref`, `euWegePath`) on an EU object's page.
  */
 export function allRoutesLink(to: string = '/wege'): { to: string; label: string } {
   return { to, label: 'Alle Wege im Überblick' }

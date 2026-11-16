@@ -6,27 +6,40 @@ import { artChoiceLabel, artChoiceOf, draftFiltersFromQuery, draftUrlQuery } fro
 import { anliegenArtOf } from '../app/utils/anliegenView'
 import { EU_RAIL_DE } from '../app/utils/euRail'
 import { EU_BUERGERINITIATIVE_DE } from '../app/utils/euBuergerinitiative'
+import { EU_MEMBER_STATE_NAME_DE, euPath, euWegePath } from '../shared/utils/eu'
+import { buildSitemap } from '../server/utils/feeds'
 import {
   ANLIEGEN_MATRIX,
   ANLIEGEN_STATION_NAMES,
   ECI_MATRIX,
   EU_IMPLEMENTING_LIST,
   EU_MATRIX,
+  EU_WEG_IDS,
   NATIONAL_MATRICES,
   WEGE,
+  WEGE_PAGES,
+  WEGE_PATH,
+  WEGE_PATH_OF,
+  WEGE_STATE,
   WEG_MATRICES,
   WEG_IDS,
   WEG_INSTRUMENTS,
   WEG_LEGEND,
+  WEG_SEAMS,
   WEG_STATIONS,
   WEG_STATION_ORDER,
   WEGE_COPY,
+  euWegFor,
   isWegId,
   wegCellLabel,
   wegFor,
   wegGroups,
   wegHeaderLabel,
   wegHref,
+  wegLegend,
+  wegSelected,
+  wegePageMatrices,
+  wegePageRows,
 } from '../app/utils/wege'
 
 const isAnliegenLink = (href: string | null | undefined) => typeof href === 'string' && href.startsWith(`${ANLIEGEN_PATH}?`)
@@ -116,6 +129,17 @@ describe('wege matrix', () => {
     expect(new Set(WEG_LEGEND.map((l) => l.cell))).toEqual(drawn)
   })
 
+  it('each page\'s legend names every mark that page draws and no other (16.11.2026)', () => {
+    for (const page of Object.values(WEGE_PAGES)) {
+      const drawn = new Set(wegePageRows(page).flatMap((r) => Object.values(r.cells)))
+      expect(new Set(wegLegend(page).map((l) => l.cell)), page.path).toEqual(drawn)
+    }
+    // The blue mark names only the ways to take part the page's rows name.
+    const blue = (j: keyof typeof WEGE_PAGES) => wegLegend(WEGE_PAGES[j]).find((l) => l.cell === 'stellungnahme')!.label
+    expect(blue(WEGE_STATE)).toBe('Stellungnahme oder Unterstützung möglich')
+    expect(blue('eu')).toBe('Rückmeldung oder Unterstützung möglich')
+  })
+
   it('an Ausschussbegutachtung is drawn in one place: „je nach Fall" at Begutachtung, at both levels (16.11.2026)', () => {
     for (const id of ['vorlage-ohne-begutachtung', 'antrag-ohne-begutachtung', 'ausschussantrag', 'landtag-antrag']) {
       const w = WEGE.find((x) => x.id === id)!
@@ -132,8 +156,10 @@ const rowOf = (m: (typeof WEG_MATRICES)[number], id: string) => rowsOf(m).find((
 describe('the matrices with rails of their own (16.11.2026)', () => {
   it('the national matrices come first, Bund then Länder, each the five stations, together every row of WEGE', () => {
     expect(WEG_MATRICES.slice(0, 2)).toEqual([...NATIONAL_MATRICES])
-    // Austria before the EU within each part: how a text becomes law, then how people start something themselves.
-    expect(WEG_MATRICES.map((m) => m.id)).toEqual(['bund', 'land', 'eu', 'anliegen', 'eci'])
+    // Each page: how a text becomes law, then how people start something themselves (16.11.2026: one page per jurisdiction).
+    expect(WEG_MATRICES.map((m) => m.id)).toEqual(['bund', 'land', 'anliegen', 'eu', 'eci'])
+    expect(wegePageMatrices(WEGE_PAGES[WEGE_STATE]).map((m) => m.id)).toEqual(['bund', 'land', 'anliegen'])
+    expect(wegePageMatrices(WEGE_PAGES.eu).map((m) => m.id)).toEqual(['eu', 'eci'])
     expect(WEGE_COPY.title).toBe('Wege der Gesetzgebung')
     expect(NATIONAL_MATRICES.map((m) => m.id)).toEqual(['bund', 'land'])
     for (const m of NATIONAL_MATRICES) expect(m.stations.map((s) => s.id)).toEqual([...WEG_STATION_ORDER])
@@ -162,7 +188,7 @@ describe('the matrices with rails of their own (16.11.2026)', () => {
     for (const s of land!.stations.filter((x) => x.href)) expect(s.href).toMatch(/^\/entwuerfe\?station=\w+&quellen=bgld,/)
   })
 
-  it('every row has a cell for each station of its matrix and passes one for certain; ids are unique across the page', () => {
+  it('every row has a cell for each station of its matrix and passes one for certain; ids are unique across the pages', () => {
     const ids = WEG_MATRICES.flatMap(rowsOf).map((r) => r.id)
     expect(new Set(ids).size).toBe(ids.length)
     for (const m of WEG_MATRICES) {
@@ -194,6 +220,9 @@ describe('the matrices with rails of their own (16.11.2026)', () => {
     expect(EU_MATRIX.stations.map((s) => s.href)).toEqual(['/eu-recht#eu-fenster', '/eu-recht#eu-fenster', null, null, null])
     expect(rowOf(EU_MATRIX, 'eu-kommission').cells).toEqual({ konsultation: 'offen', vorschlag: 'stellungnahme', beschluss: 'entfaellt', amtsblatt: 'durch', wirkung: 'durch' })
     expect(rowOf(EU_MATRIX, 'eu-richtlinie').noteLink).toEqual(EU_IMPLEMENTING_LIST)
+    // The seam back (16.11.2026): the note's own words lead to the country's ways.
+    expect(rowOf(EU_MATRIX, 'eu-richtlinie').note).toBe('Umsetzung durch Bund oder Land')
+    expect(rowOf(EU_MATRIX, 'eu-richtlinie').noteHref).toBe(WEGE_PATH)
   })
 
   it('a European Citizens\' Initiative: its rail\'s stations, Unterstützung at „Sammlung", the rest only with a million', () => {
@@ -377,5 +406,136 @@ describe('wegFor', () => {
       expect(isWegId(weg)).toBe(true)
     }
     expect(isWegId('nope')).toBe(false)
+  })
+
+  it('leads every id to the page that holds its row, and that page selects it (16.11.2026)', () => {
+    for (const id of [...WEG_IDS, ...EU_WEG_IDS]) {
+      const url = new URL(wegHref(id), 'https://example.invalid')
+      const pages = Object.values(WEGE_PAGES).filter((p) => wegePageRows(p).some((r) => r.id === id))
+      expect(pages.length, id).toBe(1)
+      expect(url.pathname, id).toBe(pages[0]!.path)
+      expect(wegSelected(pages[0]!, url.searchParams.get('weg')), id).toBe(id)
+    }
+    expect(wegHref('gesetz')).toBe('/wege?weg=gesetz')
+    expect(wegHref('eu-richtlinie')).toBe(`${euWegePath()}?weg=eu-richtlinie`)
+  })
+})
+
+describe('one page per jurisdiction (16.11.2026)', () => {
+  const pages = Object.values(WEGE_PAGES)
+  const country = WEGE_PAGES[WEGE_STATE]
+  const eu = WEGE_PAGES.eu
+
+  it('the country\'s page stays at /wege, the EU\'s is built by the EU address helper', () => {
+    expect(WEGE_STATE).toBe('at')
+    expect(country.path).toBe('/wege')
+    expect(eu.path).toBe(euWegePath())
+    expect(eu.path).toBe(`${euPath()}/wege`)
+    expect(WEGE_PATH_OF).toEqual({ [WEGE_STATE]: country.path, eu: eu.path })
+  })
+
+  it('both are „Wege der Gesetzgebung"; the H1 adds where, the country from configuration', () => {
+    expect(country.title).toBe(`Wege der Gesetzgebung in ${EU_MEMBER_STATE_NAME_DE}`)
+    expect(country.title).toBe('Wege der Gesetzgebung in Österreich')
+    expect(eu.title).toBe('Wege der Gesetzgebung in der EU')
+    for (const p of pages) {
+      expect(p.title.startsWith(WEGE_COPY.title), p.path).toBe(true)
+      expect(p.lede.length, p.path).toBeGreaterThan(0)
+      expect(p.description.length, p.path).toBeGreaterThan(0)
+    }
+    expect(country.lede).toBe(WEGE_COPY.lede)
+    // An ECI is no text that comes to apply: the EU's lede names both objects by their last stations.
+    expect(eu.lede).toMatch(/Rechtsakt/)
+    expect(eu.lede).toMatch(/Bürgerinitiative/)
+  })
+
+  it('every matrix, row and instrument stands on exactly one page', () => {
+    for (const m of WEG_MATRICES) expect(pages.filter((p) => wegePageMatrices(p).includes(m)).length, m.id).toBe(1)
+    for (const r of WEG_MATRICES.flatMap(rowsOf)) expect(pages.filter((p) => wegePageRows(p).includes(r)).length, r.id).toBe(1)
+    for (const i of WEG_INSTRUMENTS) expect(pages.filter((p) => p.instruments.includes(i)).length, i.id).toBe(1)
+    expect(pages.flatMap((p) => p.instruments).length).toBe(WEG_INSTRUMENTS.length)
+  })
+
+  it('the country holds Bund, Länder, Anliegen and its own instruments; the EU its act, the ECI and the EP petition', () => {
+    expect(country.instruments.map((i) => i.id)).toEqual(['volksbefragung', 'laender'])
+    expect(eu.instruments.map((i) => i.id)).toEqual(['eu-petition'])
+    expect(wegePageRows(eu).map((r) => r.id)).toEqual([...EU_WEG_IDS])
+  })
+
+  it('the seam to the EU: one line after the Länder, linking the EU\'s page and the drafts that carry out EU law', () => {
+    expect(WEG_SEAMS.map((s) => s.id)).toEqual(['eu-recht'])
+    expect(country.blocks.map((b) => (b.kind === 'matrix' ? b.matrix.id : `seam:${b.seam.id}`))).toEqual(['bund', 'land', 'seam:eu-recht', 'anliegen'])
+    expect(eu.blocks.every((b) => b.kind === 'matrix')).toBe(true)
+    const seam = WEG_SEAMS[0]!
+    expect(seam.jurisdiction).toBe(WEGE_STATE)
+    expect(seam.href).toBe(eu.path)
+    expect(seam.noteLink).toEqual(EU_IMPLEMENTING_LIST)
+  })
+
+  it('every internal link of a page leads to a page that exists, a row it holds, or a section it has', () => {
+    const anchors: Record<string, Set<string>> = {
+      [euPath()]: new Set(['eu-fenster', 'eu-umsetzung', 'eu-buergerinitiativen']),
+      '/datenlage': new Set(['begutachtung-vorgeschrieben']),
+    }
+    for (const p of pages) {
+      const links = [
+        ...wegePageMatrices(p).flatMap((m) => m.stations.map((s) => s.href)),
+        ...wegePageRows(p).flatMap((r) => [r.href, r.noteHref ?? null, r.noteLink?.href ?? null]),
+        ...p.blocks.flatMap((b) => (b.kind === 'seam' ? [b.seam.href, b.seam.noteLink?.href ?? null] : [])),
+      ].filter((h): h is string => h !== null)
+      for (const href of links) {
+        const url = new URL(href, 'https://example.invalid')
+        const target = pages.find((x) => x.path === url.pathname)
+        if (target) {
+          const weg = url.searchParams.get('weg')
+          if (weg !== null) expect(wegSelected(target, weg), href).toBe(weg)
+          if (url.hash) expect(wegePageRows(target).some((r) => `#weg-${r.id}` === url.hash), href).toBe(true)
+          continue
+        }
+        expect(['/entwuerfe', ANLIEGEN_PATH, '/datenlage', euPath()], href).toContain(url.pathname)
+        if (url.hash) expect(anchors[url.pathname]?.has(url.hash.slice(1)), href).toBe(true)
+      }
+    }
+  })
+
+  it('?weg= selects only a row of the page: an unknown or foreign value selects nothing', () => {
+    expect(wegSelected(country, 'gesetz')).toBe('gesetz')
+    expect(wegSelected(country, ['landesgesetz'])).toBe('landesgesetz')
+    expect(wegSelected(country, 'eu-richtlinie')).toBeNull()
+    expect(wegSelected(eu, 'eu-buergerinitiative')).toBe('eu-buergerinitiative')
+    expect(wegSelected(eu, 'gesetz')).toBeNull()
+    for (const p of pages) {
+      expect(wegSelected(p, 'nope')).toBeNull()
+      expect(wegSelected(p, undefined)).toBeNull()
+      expect(wegSelected(p, null)).toBeNull()
+    }
+  })
+
+  it('the sitemap holds both pages', () => {
+    const SITE = 'https://example.invalid'
+    const xml = buildSitemap(SITE, [])
+    for (const p of pages) expect(xml, p.path).toContain(`<loc>${SITE}${p.path}</loc>`)
+  })
+})
+
+describe('euWegFor', () => {
+  it('an act: its kind where the Cellar names its author; an act of the Commission its own row; nothing unread', () => {
+    expect(euWegFor({ source: 'act', kind: 'richtlinie', adoptedBy: 'parlament-rat' })).toBe('eu-richtlinie')
+    expect(euWegFor({ source: 'act', kind: 'verordnung', adoptedBy: 'rat' })).toBe('eu-verordnung')
+    expect(euWegFor({ source: 'act', kind: 'verordnung', adoptedBy: 'kommission' })).toBe('eu-kommission')
+    expect(euWegFor({ source: 'act', kind: 'richtlinie', adoptedBy: 'unbekannt' })).toBeNull()
+    expect(euWegFor({ source: 'act', kind: 'verordnung', adoptedBy: null })).toBeNull()
+    expect(euWegFor({ source: 'act', kind: 'beschluss', adoptedBy: 'parlament-rat' })).toBeNull()
+    expect(euWegFor({ source: 'act', kind: 'rahmenbeschluss', adoptedBy: 'rat' })).toBeNull()
+  })
+
+  it('an initiative or a proposal\'s consultation: the act the Commission foresees', () => {
+    expect(euWegFor({ source: 'portal', actType: 'PROP_DIR' })).toBe('eu-richtlinie')
+    expect(euWegFor({ source: 'portal', actType: 'PROP_REG' })).toBe('eu-verordnung')
+    expect(euWegFor({ source: 'portal', actType: 'REG_DEL' })).toBe('eu-kommission')
+    expect(euWegFor({ source: 'portal', actType: 'DIR_IMPL' })).toBe('eu-kommission')
+    expect(euWegFor({ source: 'portal', actType: 'PROP_DEC' })).toBeNull()
+    expect(euWegFor({ source: 'portal', actType: 'COMMUNIC' })).toBeNull()
+    expect(euWegFor({ source: 'portal', actType: null })).toBeNull()
   })
 })

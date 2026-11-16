@@ -28,10 +28,12 @@
  */
 import type { EuActResponse } from '#shared/types'
 import { euActCiteDe } from '#shared/utils/citations'
-import { EU_PAGE_TITLE_DE, euActCelex } from '#shared/utils/eu'
+import { EU_PAGE_TITLE_DE, euActCelex, euWegePath } from '#shared/utils/eu'
 import { todayIso } from '#shared/utils/format'
 import { euActCredits, euActPageView } from '~/utils/euKarte'
 import { euRailView } from '~/utils/euRail'
+import { allRoutesLink } from '~/utils/spine'
+import { euWegFor, wegHref } from '~/utils/wege'
 
 definePageMeta({
   // One address per act, as per draft (`/entwuerfe/[gp]/[inr]`): a kind in
@@ -78,6 +80,13 @@ const view = computed(() => (data.value ? euActPageView(data.value) : null))
 const rail = computed(() => (data.value ? euRailView(data.value, todayIso()) : null))
 const effect = computed(() => rail.value?.sections.find((s) => s.id === 'wirkung') ?? null)
 const earlierSections = computed(() => rail.value?.sections.filter((s) => s.id !== 'wirkung') ?? [])
+
+/* The state card's way out (16.11.2026): the EU's ways, with the act's row
+ * marked where its kind and its author are read (`euWegFor`). */
+const routesLink = computed(() => {
+  const id = data.value ? euWegFor({ source: 'act', kind: data.value.act.kind, adoptedBy: data.value.rail?.adoptedBy ?? null }) : null
+  return allRoutesLink(id ? wegHref(id) : euWegePath())
+})
 
 /*
  * Two answers that are no failure to retry: an act no draft of the window
@@ -173,7 +182,7 @@ const citation = computed(() => (data.value ? euActCiteDe(data.value.act, data.v
         <!-- The state card of every detail page (`ProcedureCard`), with the
              act's rail: the stations of the act's life, the last one
              marked — an adopted act is there. -->
-        <ProcedureCard v-if="rail" :status="rail.status ?? rail.heading">
+        <ProcedureCard v-if="rail" :status="rail.status ?? rail.heading" :link="routesLink">
           <template #rail>
             <EuRail class="mt-4" :stations="rail.stations" :label="rail.heading" />
           </template>

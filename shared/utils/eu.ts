@@ -76,6 +76,19 @@ export function euPath(...segments: (string | number)[]): string {
   return parts.length ? `${EU_BASE_PATH}/${parts.join('/')}` : EU_BASE_PATH
 }
 
+/** The path word of the EU's „Wege der Gesetzgebung". */
+export const EU_WEGE_PATH_WORD = 'wege'
+
+/**
+ * `/eu-recht/wege` — the EU's „Wege der Gesetzgebung" (16.11.2026): the EU
+ * is a jurisdiction of its own, so its ways have a page of their own below
+ * the EU base and move with it (step 6), while a country's ways stay on
+ * the country's page.
+ */
+export function euWegePath(): string {
+  return euPath(EU_WEGE_PATH_WORD)
+}
+
 /** The path word of an initiative of the Commission's portal (the plan's „The addresses"). */
 export const EU_INITIATIVE_PATH_WORD = 'initiative'
 

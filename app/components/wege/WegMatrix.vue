@@ -1,10 +1,12 @@
 <script setup lang="ts">
 /**
- * One matrix of `/wege` (16.11.2026, out of the page when the EU act, the
- * European Citizens' Initiative and the Anliegen got matrices of their own,
- * `WEG_MATRICES`): the stations of one rail as columns, its paths as rows
- * under their groups' bars. Drawn inside the page's one card (`ListBox`),
- * which holds the legend once for all of them.
+ * One matrix of a „Wege der Gesetzgebung" page (16.11.2026, out of the page
+ * when the EU act, the European Citizens' Initiative and the Anliegen got
+ * matrices of their own, `WEG_MATRICES`): the stations of one rail as
+ * columns, its paths as rows under their groups' bars. Drawn inside the
+ * page's one card (`ListBox`, in `WegeView`), which holds the legend once
+ * for all of them. A note links where its words name another
+ * jurisdiction's page (`noteHref`, the seam).
  *
  * A real table while the card is wide enough — caption, column and row
  * headers — so a screen reader announces „Begutachtung: Stellungnahme
@@ -133,7 +135,7 @@ const SAID_ON_RAIL = new Set<WegCell>(['stellungnahme', 'offen'])
               {{ row.label }}
             </span>
             <span v-if="row.note || row.source" class="mt-0.5 block text-ink-secondary">
-              {{ row.note }}<template v-if="row.noteLink">
+              <NuxtLink v-if="row.noteHref" :to="row.noteHref" class="link-inline">{{ row.note }}</NuxtLink><template v-else>{{ row.note }}</template><template v-if="row.noteLink">
                 ·
                 <NuxtLink :to="row.noteLink.href" class="link-inline">{{ row.noteLink.label }}</NuxtLink>
               </template><template v-if="row.source">
@@ -189,7 +191,7 @@ const SAID_ON_RAIL = new Set<WegCell>(['stellungnahme', 'offen'])
                 {{ row.label }}
               </span>
               <span v-if="row.note || row.source" class="block text-ink-secondary">
-                {{ row.note }}<template v-if="row.noteLink">
+                <NuxtLink v-if="row.noteHref" :to="row.noteHref" class="link-inline">{{ row.note }}</NuxtLink><template v-else>{{ row.note }}</template><template v-if="row.noteLink">
                   ·
                   <NuxtLink :to="row.noteLink.href" class="link-inline">{{ row.noteLink.label }}</NuxtLink>
                 </template><template v-if="row.source">

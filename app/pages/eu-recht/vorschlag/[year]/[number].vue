@@ -22,9 +22,11 @@
  * acts the page stays and links each.
  */
 import type { EuVorschlagResponse } from '#shared/types'
-import { EU_PAGE_TITLE_DE, EU_PROPOSAL_PATH_WORD, euPath, euProposalAddress } from '#shared/utils/eu'
+import { EU_PAGE_TITLE_DE, EU_PROPOSAL_PATH_WORD, euPath, euProposalAddress, euWegePath } from '#shared/utils/eu'
 import { todayIso } from '#shared/utils/format'
 import { EU_VORSCHLAG_DE as DE, euVorschlagView } from '~/utils/euVorschlag'
+import { allRoutesLink } from '~/utils/spine'
+import { euWegFor, wegHref } from '~/utils/wege'
 
 definePageMeta({
   // One address per proposal: a number with leading zeros („0780", as the
@@ -72,6 +74,15 @@ usePageSeo({
 })
 
 const back = euPath()
+
+/* The state card's way out (16.11.2026): the EU's ways, with the row of the
+ * act the consultation behind the proposal foresees, where the portal names
+ * one (`euWegFor`). */
+const routesLink = computed(() => {
+  const c = data.value?.consultation
+  const id = c?.state === 'gefunden' ? euWegFor({ source: 'portal', actType: c.initiative.actType ?? null }) : null
+  return allRoutesLink(id ? wegHref(id) : euWegePath())
+})
 </script>
 
 <template>
@@ -107,7 +118,7 @@ const back = euPath()
         </DraftHeader>
 
         <!-- The state card of every detail page, with the EU rail. -->
-        <ProcedureCard :status="page.status">
+        <ProcedureCard :status="page.status" :link="routesLink">
           <template #rail>
             <EuRail class="mt-4" :stations="page.stations" :label="page.heading" />
           </template>
