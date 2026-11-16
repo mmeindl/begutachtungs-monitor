@@ -11,7 +11,7 @@
  * stand in the lists' white card (`ListBox`): a tool the reader operates,
  * with the one legend in its head, above the first matrix, and each group
  * as a bar inside it — the matrices' groups and the list „Nicht im Monitor"
- * at one rank (h2 below `lg`). Until then the EU was a lead line over the
+ * at one rank (h2 where the card shows rails). Until then the EU was a lead line over the
  * national matrix, and the instruments beside a norm's path a block of text
  * rows under the card; the followed ones now show their stations, the rest
  * is the card's last section.
@@ -58,7 +58,7 @@ const selected = computed(() => {
     </header>
 
     <!-- One sheet at every width (`ListBox`, the lists' card): the legend in
-         its head, then each matrix — a table from `lg`, rails below it —
+         its head, then each matrix — a table while the card is wide enough, rails below that —
          and last the list of what the monitor does not follow. -->
     <ListBox class="mt-8">
       <!-- The legend in the card's head, above the first column header: it

@@ -6,15 +6,20 @@
  * under their groups' bars. Drawn inside the page's one card (`ListBox`),
  * which holds the legend once for all of them.
  *
- * A real table from `lg` up — caption, column and row headers — so a screen
- * reader announces „Begutachtung: Stellungnahme möglich" per cell. Below
- * `lg` the same rows as one vertical rail each: five columns of German
- * compound names do not fit 320 px, and a table scrolled sideways hides the
- * stations on the right. `lg` and not `md` (14.11.2026): the station names
- * stand on one line, unbroken, and the five columns sized to them take
- * about 550 px — at `md` (card 718 px) that left the paths some 165 px, at
- * `lg` (894 px) they keep about 340. The switch is CSS only; the hidden half
- * is `display: none` and so out of the accessibility tree too. From `lg`
+ * A real table while the card is wide enough — caption, column and row
+ * headers — so a screen reader announces „Begutachtung: Stellungnahme
+ * möglich" per cell. Below that the same rows as one vertical rail each:
+ * five columns of German compound names do not fit 320 px, and a table
+ * scrolled sideways hides the stations on the right.
+ *
+ * THE CARD DECIDES, NOT THE WINDOW (16.11.2026). The switch is a container
+ * query on the matrix's own width: a table from 50rem (800 px), rails
+ * below. The five station columns take 600 px, so at the threshold the
+ * paths keep 200 px, and in the full card (894 px) 294. Until then the
+ * switch stood at the window's `lg` (1024 px), while the card only begins
+ * to shrink below about 944 px: between the two the card had every pixel
+ * the table needs and showed rails. The switch is CSS only; the hidden half
+ * is `display: none` and so out of the accessibility tree too. As a table,
  * each matrix's station row sticks to the top of the window while its rows
  * scroll.
  *
@@ -61,13 +66,14 @@ const SAID_ON_RAIL = new Set<WegCell>(['stellungnahme', 'offen'])
 </script>
 
 <template>
-  <div>
-    <!-- From lg: the matrix. `border-separate`, not `collapse`: a collapsed
+  <!-- The CARD decides between table and rails, not the window (`@container`, 16.11.2026): see the header comment. -->
+  <div class="@container">
+    <!-- From a card of 50rem: the matrix. `border-separate`, not `collapse`: a collapsed
          border belongs to the table and stays behind when the header cell
          sticks, so the rows would show through under it. Each cell carries
          its own hairline instead; the last row leaves the next matrix's
          edge alone. -->
-    <table class="hidden w-full table-fixed border-separate border-spacing-0 text-sm lg:table [&_tbody:last-child_tr:last-child>*]:border-b-0">
+    <table class="hidden w-full table-fixed border-separate border-spacing-0 text-sm @[50rem]:table [&_tbody:last-child_tr:last-child>*]:border-b-0">
       <caption class="sr-only">
         {{ matrix.caption }}
       </caption>
@@ -150,9 +156,9 @@ const SAID_ON_RAIL = new Set<WegCell>(['stellungnahme', 'offen'])
       </tbody>
     </table>
 
-    <!-- Below lg: one rail per path, the groups under the same bars. No
+    <!-- Below it: one rail per path, the groups under the same bars. No
          column header here, so nothing sticks. -->
-    <div class="lg:hidden">
+    <div class="@[50rem]:hidden">
       <section
         v-for="group in matrix.groups"
         :key="group.key"

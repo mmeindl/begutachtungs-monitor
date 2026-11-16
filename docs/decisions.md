@@ -1219,7 +1219,9 @@ not yet followed, or the EU cycle, starts there.
   („Regierungs-vorlage", `wegHeaderLabel`), never where the browser
   guesses, and stands on the bottom line, next to its marks. Five columns
   are what these rails have, not a rule: a rail with four or six stations
-  gets four or six. Only the instruments
+  gets four or six. Table or rails is the card's question, not the
+  window's (a container query at 50rem, 16.11.2026): the table stays while
+  the card holds the five station columns and 200 px for the paths. Only the instruments
   the monitor does not follow are a list without stations, „Nicht im
   Monitor", each with its reason.
 - **A link on `/wege` shows what its words name, and a mark means one
