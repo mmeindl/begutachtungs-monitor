@@ -95,6 +95,12 @@ gets an entry of its own only where it carries a reason the rule does not.
   in three places, and how the Commission's feedback names are held stood
   only inside a licence entry. `/impressum#imp-license` stays as a short
   section, because a fragment cannot be redirected.
+- **The monitor's own texts are CC BY 4.0** (16.11.2026, decided by the
+  maintainer; `/quellen#eigene-texte`): explanations, method texts, the
+  descriptions of routes and of the Datenlage. Not the material of the
+  sources, which keeps its own terms, and not the name or the § mark. The
+  code stays AGPL-3.0-or-later. The grant cannot be withdrawn for what was
+  published under it.
 
 ### Privacy
 

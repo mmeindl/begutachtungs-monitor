@@ -41,7 +41,7 @@ Deployment on a single small server is described in [deploy/](deploy/). Anyone s
 
 ## Licence and sources
 
-The code is licensed under [AGPL-3.0-or-later](LICENSE).
+The code is licensed under [AGPL-3.0-or-later](LICENSE). The monitor's own texts on the site are licensed under [CC BY 4.0](https://creativecommons.org/licenses/by/4.0/); credit "Begutachtungs-Monitor" with a link. Neither covers the material of the official sources, nor the name and the § mark.
 
 The data comes from official sources: the Austrian Parliament ([parlament.gv.at](https://www.parlament.gv.at)), the Federal Legal Information System ([ris.bka.gv.at](https://www.ris.bka.gv.at)), the nine Länder and their parliaments, the Publications Office of the EU (EUR-Lex, Cellar) and the European Commission. The terms differ per source; which licence applies to which dataset is stated at [begutachtungs-monitor.at/quellen](https://begutachtungs-monitor.at/quellen).
 

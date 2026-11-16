@@ -241,8 +241,22 @@ const LAENDER_WITHOUT_LICENCE: { name: string; label: string; href: string }[] =
         <ExternalLink
           href="https://github.com/mmeindl/begutachtungs-monitor"
           class="link-inline"
-        >AGPL-3.0 veröffentlicht</ExternalLink>. Texte dieser Website dürfen
-        unter Nennung der Quelle weiterverwendet werden.
+        >AGPL-3.0 veröffentlicht</ExternalLink>.
+      </p>
+      <!-- 16.11.2026, decided by the maintainer: a licence in place of
+           „dürfen unter Nennung der Quelle weiterverwendet werden", which
+           left open whether a text may be shortened or translated and how
+           to credit it. Only the monitor's own writing: the sources keep
+           their terms, and the name and the § mark are not licensed. A CC
+           grant cannot be withdrawn for what was published under it. -->
+      <p id="eigene-texte">
+        Die eigenen Texte des Monitors – Erklärungen, Methodentexte, die
+        Beschreibung der Wege und der Datenlage – stehen unter
+        <ExternalLink :href="CC_BY" class="link-inline">CC BY 4.0</ExternalLink>.
+        Als Quellenangabe genügt „Begutachtungs-Monitor“ mit einem Link auf
+        die Seite. Das gilt nicht für das Material der amtlichen Quellen, für
+        das die Bedingungen oben gelten, und nicht für den Namen und das
+        Zeichen des Monitors.
       </p>
       <p>
         Wie der Monitor mit Namen aus diesen Quellen umgeht, steht in der
