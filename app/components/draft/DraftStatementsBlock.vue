@@ -108,9 +108,14 @@ const STATEMENTS_SOURCES: SourceEntry[] = [{ what: 'Stellungnahmen', publisher: 
         <NuxtLink to="/datenschutz#dse-names" class="link-muted">Warum ohne Namen</NuxtLink>
       </SectionCredits>
     </template>
-    <p v-else class="text-sm text-ink-secondary">
-      {{ draft.active ? 'Noch keine Stellungnahmen. Die Frist läuft.' : 'Keine Stellungnahmen.' }}
-    </p>
+    <!-- On the list's own sheet (16.11.2026), as `RvStatements`' empty
+         state: the card that would hold the rows holds the sentence. -->
+    <ListBox v-else>
+      <ListBoxNotice
+        :title="draft.active ? 'Noch keine Stellungnahmen' : 'Keine Stellungnahmen'"
+        :description="draft.active ? 'Die Frist läuft.' : undefined"
+      />
+    </ListBox>
     <!-- The card's door once more, under the list where the decision
          to file is made (`DoorButton`). The card's condition. -->
     <div v-if="filingOpen" class="mt-4 flex flex-wrap items-center gap-3">

@@ -153,9 +153,14 @@ const consultationSentence = computed<string | null>(() => {
          record says so (`predatesFiling`), and „Keine eingebracht" would
          have read as nobody having bothered. The sentence names what is
          missing and why, so a lead word can stand before it. -->
-    <p v-if="data.total === 0" class="mt-2 text-sm text-ink-secondary">
-      {{ data.predatesFiling ? PREDATES_FILING_DE : filingOpen ? 'Bisher keine eingebracht.' : 'Keine eingebracht.' }}
-    </p>
+    <!-- On the list's own sheet since 16.11.2026 (`ListBox`,
+         `ListBoxNotice`): where a white card would hold the rows, the card
+         holds the sentence that there are none — a bare line under the
+         heading read as a caption, not as the list's answer. -->
+    <ListBox v-if="data.total === 0" class="mt-4">
+      <ListBoxNotice v-if="data.predatesFiling" :description="PREDATES_FILING_DE" />
+      <ListBoxNotice v-else :title="filingOpen ? 'Bisher keine eingebracht' : 'Keine eingebracht'" />
+    </ListBox>
     <!-- Only where the panel cannot carry the count: above the cap its
          buttons count what was read, not what was filed. The remainder is
          stated as what upstream says it is — not as Privatpersonen,

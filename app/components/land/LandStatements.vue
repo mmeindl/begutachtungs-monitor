@@ -93,14 +93,15 @@ const { visible, shown, more, all: showAll } = usePagedList(filtered, STATEMENT_
       <ExternalLink :href="statementsUrl" class="link-inline font-medium">beim Land nachsehen</ExternalLink>.
     </GapNote>
     <GapNote v-else-if="statements === null" kind="notPublished" text="Stellungnahmen zu diesem Entwurf veröffentlicht das Land nicht." class="text-sm text-ink-secondary" />
-    <p v-else-if="!statements.length" class="text-sm text-ink-secondary">
-      <template v-if="active">Bisher keine veröffentlicht.</template>
-      <template v-else>Das Land hat zu diesem Entwurf keine Stellungnahmen veröffentlicht.</template>
-      <!-- The space as a string: Vue's whitespace condensing drops a leading
-           space inside `<template v-if>` („…veröffentlicht.Das Land …",
-           23.10.2026). -->
-      <template v-if="publicationNote">{{ ` ${publicationNote}` }}</template>
-    </p>
+    <!-- On the list's own sheet (16.11.2026), as the Bund's empty states
+         (`RvStatements`): the card that would hold the rows holds the
+         sentence, and the Land's publication rule under it. -->
+    <ListBox v-else-if="!statements.length">
+      <ListBoxNotice
+        :title="active ? 'Bisher keine veröffentlicht' : 'Das Land hat zu diesem Entwurf keine Stellungnahmen veröffentlicht'"
+        :description="publicationNote ?? undefined"
+      />
+    </ListBox>
     <template v-else>
       <!-- No text above the sheet: the tabs carry the counts, and the Land's
            publication rule only explains an empty list (23.10.2026). -->
