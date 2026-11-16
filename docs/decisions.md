@@ -1207,8 +1207,10 @@ not yet followed, or the EU cycle, starts there.
   „Landesgesetzblatt" in the header, so no sentence translates one), an
   EU act (Konsultation · Vorschlag · Parlament und Rat · Amtsblatt ·
   Umsetzung oder Geltung), a European Citizens' Initiative, an Anliegen an
-  den Nationalrat; one card, one legend, the blue mark wherever one can take
-  part, each row naming how („Rückmeldung möglich"). The matrices read as
+  das Parlament (the Nationalrat's three kinds and the Petition an den
+  Bundesrat, whose rail names two columns its own way); one card, one
+  legend, the blue mark wherever one can take part, each row naming how
+  („Rückmeldung möglich"). The matrices read as
   one grid (16.11.2026): the first column is „Weg" in each, a bar carries
   its name and no sentence, and the station columns have one width in
   every matrix, so all marks stand in five verticals. A header that does
@@ -1219,6 +1221,16 @@ not yet followed, or the EU cycle, starts there.
   gets four or six. Only the instruments
   the monitor does not follow are a list without stations, „Nicht im
   Monitor", each with its reason.
+- **Each thing stands once on `/wege`** (15./16.11.2026). What is a route to
+  a norm is a row, and only a row: a Volksbegehren in the Bund or a Land, an
+  initiative of Gemeinden or citizens, and the Volksabstimmung, which sits
+  between the Beschluss and the Kundmachung — a row with no column of its
+  own (no sixth station), its note saying where it falls, its Kundmachung
+  „je nach Fall". The list „Nicht im Monitor" keeps what has no path to a
+  norm or no source: the EP petition (no interface, and the portal refuses
+  programs), the Volksbefragung (one so far, bound to no law), and the
+  Länder's Volksbefragung, petitions and Bürgerrat. A reason says what was
+  found; „Quellen nicht geprüft" stands only where nobody has read them.
 - **A route is followed only when three things hold:** an official,
   machine-readable source whose reuse is checked and stated in the Impressum;
   enough cases to matter; and no upkeep that somebody has to carry by hand.

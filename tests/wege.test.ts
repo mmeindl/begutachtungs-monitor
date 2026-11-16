@@ -227,8 +227,8 @@ describe('the matrices with rails of their own (16.11.2026)', () => {
 })
 
 describe('instruments the monitor does not follow', () => {
-  it('are the four without a matrix, with unique ids, words for what one can do, EU, Bund, Land in that order', () => {
-    expect(WEG_INSTRUMENTS.map((i) => i.id)).toEqual(['eu-petition', 'volksabstimmung', 'volksbefragung', 'laender'])
+  it('are the three without a matrix, with unique ids, words for what one can do, EU, Bund, Land in that order', () => {
+    expect(WEG_INSTRUMENTS.map((i) => i.id)).toEqual(['eu-petition', 'volksbefragung', 'laender'])
     const order = { eu: 0, bund: 1, land: 2 }
     const levels = WEG_INSTRUMENTS.map((i) => order[i.level])
     expect(levels).toEqual([...levels].sort((a, b) => a - b))
@@ -238,13 +238,36 @@ describe('instruments the monitor does not follow', () => {
     }
   })
 
-  it('the Volksabstimmung is the only binding one', () => {
-    expect(WEG_INSTRUMENTS.filter((i) => i.binding).map((i) => i.id)).toEqual(['volksabstimmung'])
+  it('a route of a matrix does not stand in the list a second time (15./16.11.2026)', () => {
+    // The national rows: the Länder line's „Petition" is the Landtag's, not the Nationalrat's row of that name.
+    const rowLabels = WEGE.map((w) => w.label)
+    for (const i of WEG_INSTRUMENTS) {
+      expect(i.name.split(/,\s*/).some((part) => rowLabels.includes(part)), i.id).toBe(false)
+      expect(i.name, i.id).not.toMatch(/Volksbegehren|Volksabstimmung/)
+    }
+  })
+
+  it('no reason says „nicht geprüft" where the sources were read (petitionen-laender-und-eu.md)', () => {
+    for (const i of WEG_INSTRUMENTS) expect(i.notFollowed, i.id).not.toBe('Quellen nicht geprüft')
+    expect(WEG_INSTRUMENTS.find((i) => i.id === 'eu-petition')!.source?.href).toMatch(/^https:\/\/www\.europarl\.europa\.eu\//)
   })
 
   it('the heading says what the list is, and the lede no longer lists what is followed', () => {
     expect(WEGE_COPY.instrumentsHeading).toBe('Nicht im Monitor')
     expect(WEGE_COPY.instrumentsLede).not.toMatch(/Petition|Konsultation|Bürgerinitiativ/)
+  })
+})
+
+describe('the Volksabstimmung, a station of a law\'s path (16.11.2026)', () => {
+  it('is a row for the Bund and one for the Länder: after the Beschluss, kundgemacht only if accepted, not followed', () => {
+    for (const id of ['gesetz-volksabstimmung', 'landesgesetz-volksabstimmung'] as const) {
+      const w = WEGE.find((x) => x.id === id)!
+      expect(w.cells, id).toEqual({ entwurf: 'offen', begutachtung: 'offen', rv: 'offen', parlament: 'durch', bgbl: 'offen' })
+      expect(w.notFollowed, id).not.toBeNull()
+      expect(w.href, id).toBeNull()
+    }
+    expect(WEGE.find((x) => x.id === 'gesetz-volksabstimmung')!.level).toBe('bund')
+    expect(WEGE.find((x) => x.id === 'landesgesetz-volksabstimmung')!.level).toBe('land')
   })
 })
 

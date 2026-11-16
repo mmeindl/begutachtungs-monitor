@@ -23,14 +23,21 @@
  * Notverordnung (Art. 18 Abs. 3–5 B-VG), the Wiederverlautbarung (Art. 49a)
  * and a VfGH-Aufhebung (Art. 140 Abs. 5) pass only „Kundgemacht"; the
  * Bundesrat's Einspruch and the Beharrungsbeschluss (Art. 42) are branches
- * inside „Parlament", the Volksabstimmung (Art. 43, 44 Abs. 3) one after it,
- * and it stands in the list „Nicht im Monitor"; the Länder's Verordnungen of the
+ * inside „Parlament"; the Länder's Verordnungen of the
  * Landeshauptmann or a Bezirksverwaltungsbehörde, their Notverordnung (Art.
  * 97 Abs. 3) and their Art. 15a Abs. 2 agreements, where the memo leaves the
  * stations open.
  *
  * The German copy lives here and nowhere in the page, so a second language
  * replaces this module's strings and not the template.
+ *
+ * The Volksabstimmung (Art. 43, 44 Abs. 3 B-VG; in the Länder their own
+ * constitutions) is a row since 16.11.2026, once for the Bund and once for
+ * the Länder: it stands between the Beschluss and the Kundmachung, so it
+ * belongs to a law's path, not beside it. It has no column — a sixth
+ * station would be empty in every other row — so the row says it in its
+ * note, and its Kundmachung is `offen` (only if accepted). Until then it
+ * stood in the list „Nicht im Monitor" as an instrument.
  *
  * Pure module: no Nuxt auto-imports, so vitest reads it as it is.
  */
@@ -82,6 +89,7 @@ export const WEG_IDS = [
   'ausschussantrag',
   'bundesrat-antrag',
   'volksbegehren',
+  'gesetz-volksabstimmung',
   'verordnung',
   'verordnung-ohne-begutachtung',
   'regulierungsbehoerde',
@@ -91,6 +99,7 @@ export const WEG_IDS = [
   'landtag-antrag',
   'landes-volksbegehren',
   'landes-initiative',
+  'landesgesetz-volksabstimmung',
   'landesverordnung',
 ] as const
 
@@ -330,6 +339,29 @@ export const WEGE: readonly Weg[] = [
     cells: row(['entfaellt', 'entfaellt', 'entfaellt', 'stellungnahme', 'offen']),
     href: anliegenListHref('volksbegehren'),
   },
+  /* Art. 43 B-VG: on an ordinary law „wenn der Nationalrat es beschließt
+   * oder die Mehrheit der Mitglieder des Nationalrates es verlangt", before
+   * the Beurkundung; Art. 44 Abs. 3: a total revision of the constitution
+   * always, a partial one on demand of a third of either chamber. Art. 45
+   * Abs. 1: the majority decides, so a „no" ends the path (memo, „Gesetz mit
+   * Volksabstimmung", route table: „fehlt").
+   *  - Entwurf, Begutachtung, Regierungsvorlage: `offen` — „wie Herkunft",
+   *    any of the paths above can lead here.
+   *  - Parlament: passed; the vote follows the Beschluss.
+   *  - Kundgemacht: `offen` — only if accepted, then „mit Berufung auf das
+   *    Ergebnis der Volksabstimmung" (Art. 48).
+   * Not followed: two since 1945 (1978 Zwentendorf, 1994 accession to the
+   * EU); a reader for so rare an event would break before the next one. */
+  {
+    id: 'gesetz-volksabstimmung',
+    level: 'bund',
+    label: 'Gesetz mit Volksabstimmung',
+    note: 'nach dem Beschluss, vor der Kundmachung; das Ergebnis entscheidet',
+    noteLink: null,
+    notFollowed: 'zwei seit 1945, zuletzt 1994',
+    cells: row(['offen', 'offen', 'offen', 'durch', 'offen']),
+    href: null,
+  },
   /* `regulationStations`: a ministry's Verordnung that WAS put out for
    * Begutachtung — RIS „Begut" holds only ministries' drafts (4.620 records,
    * memo). Art. 18 Abs. 2 B-VG; Begutachtung possible, not required (§ 9
@@ -515,6 +547,25 @@ export const WEGE: readonly Weg[] = [
     noteLink: null,
     notFollowed: 'Quellen nicht geprüft',
     cells: row(['entfaellt', 'offen', 'entfaellt', 'durch', 'offen']),
+    href: null,
+  },
+  /* A Land's law put to a Volksabstimmung after the Landtag's Beschluss,
+   * in all nine (memo, „Volksbegehren, Volksabstimmung, Volksbefragung"):
+   * on the Landtag's decision everywhere; also on demand of voters or
+   * Gemeinden in B (Art. 33), N (Art. 27), St (Art. 72), T (Art. 39) and V
+   * (Art. 35) — five, which the note counts (Land letters are unreadable,
+   * see the row above). Cells as the Bund's row: `offen` before the Landtag
+   * („wie Herkunft"), Landtag passed, Kundgemacht only if accepted.
+   * Not followed: whether the Länder publish them in a readable form is not
+   * checked. */
+  {
+    id: 'landesgesetz-volksabstimmung',
+    level: 'land',
+    label: 'Landesgesetz mit Volksabstimmung',
+    note: 'nach dem Beschluss; in fünf Ländern auch auf Verlangen der Wahlberechtigten',
+    noteLink: null,
+    notFollowed: 'Quellen nicht geprüft',
+    cells: row(['offen', 'offen', 'offen', 'durch', 'offen']),
     href: null,
   },
   /* A Verordnung of the Landesregierung (Art. 101 Abs. 1, Art. 18 Abs. 2
@@ -1009,7 +1060,10 @@ export const WEG_INSTRUMENT_LEVEL_LABEL: Record<WegInstrumentLevel, string> = {
  * not followed from the memo's „Was sich verfolgen ließe", in the words
  * the national matrix uses for its rows (`notFollowed`). The followed ones
  * (the Commission's consultations, the European Citizens' Initiative, the
- * Petition, the Bürgerinitiative, the Volksbegehren) have matrices above.
+ * Petition, the Petition an den Bundesrat, the Bürgerinitiative, the
+ * Volksbegehren) have matrices above, and so has the Volksabstimmung, a
+ * station of a law's path (16.11.2026). What stays here has no path to a
+ * norm the monitor could draw, or no source to follow it by.
  */
 export interface WegInstrument {
   id: string
@@ -1019,55 +1073,42 @@ export interface WegInstrument {
   act: string
   /** Who must respond, and how — only where the memo cites the duty; null otherwise. */
   duty: string | null
-  /** The one instrument whose result decides (the Volksabstimmung). */
-  binding: boolean
+  /** The official page where it is done — only an address a memo names; never guessed. */
+  source?: { label: string; href: string }
   /** Why the monitor does not follow it. */
   notFollowed: string
 }
 
 export const WEG_INSTRUMENTS: readonly WegInstrument[] = [
   /* Art. 227 AEUV: anyone resident in the Union, on a matter that affects
-   * them directly. What follows is not checked in the memo. Not followed:
-   * its source is „nicht geprüft" (memo, „Was sich verfolgen ließe",
-   * „Petition an das EP"). */
+   * them directly. Not followed (petitionen-laender-und-eu.md, 15.11.2026):
+   * no API and no dataset; the portal answers programs with 403, and the
+   * EP's legal notice forbids circumventing technical measures. The source
+   * is the portal's list of petitions, the address the memo names. */
   {
     id: 'eu-petition',
     level: 'eu',
     name: 'Petition an das Europäische Parlament',
     act: 'einreichen',
     duty: null,
-    binding: false,
-    notFollowed: 'Quellen nicht geprüft',
-  },
-  /* Art. 43 (an ordinary law, if the Nationalrat so decides or a majority
-   * of its members demands it) and Art. 44 Abs. 3 B-VG (a total revision of
-   * the constitution always, a partial one on demand of a third of either
-   * chamber). Art. 45: the majority decides — the only binding instrument.
-   * Not followed: source „nicht geprüft (BMI)" (memo, „Was sich verfolgen
-   * ließe", „Volksabstimmung, Volksbefragung (Bund)"). */
-  {
-    id: 'volksabstimmung',
-    level: 'bund',
-    name: 'Volksabstimmung',
-    act: 'über einen Gesetzesbeschluss abstimmen',
-    duty: 'das Ergebnis entscheidet über das Gesetz',
-    binding: true,
-    notFollowed: 'Quellen nicht geprüft',
+    source: { label: 'europarl.europa.eu', href: 'https://www.europarl.europa.eu/petitions/en/show-petitions' },
+    notFollowed: 'keine Schnittstelle',
   },
   /* Art. 49b B-VG: on the Nationalrat's decision; the result goes to the
    * Nationalrat and the Bundesregierung. The memo cites no binding effect
-   * and no duty, so none is said. Not followed: as the Volksabstimmung. */
+   * and no duty, so none is said. No path to a norm: it asks, it decides
+   * nothing, and it attaches to no law. Not followed: one so far (2013),
+   * and nothing a path could show. */
   {
     id: 'volksbefragung',
     level: 'bund',
     name: 'Volksbefragung',
     act: 'befragt werden',
     duty: null,
-    binding: false,
-    notFollowed: 'Quellen nicht geprüft',
+    notFollowed: 'bisher eine (2013), an kein Gesetz gebunden',
   },
   /* The Länder's own instruments, one line (memo, the Länder tables):
-   * Volksbegehren, Volksabstimmung, Volksbefragung and petitions as each
+   * Volksbefragung and petitions as each
    * Landesverfassung has them, the Bürgerrat of Vorarlberg (a guideline
    * of the Landesregierung, Art. 1 Abs. 4 L-V). Duties differ — an answer
    * to a petition within three months in V (Art. 10), an answer in O
@@ -1076,15 +1117,19 @@ export const WEG_INSTRUMENTS: readonly WegInstrument[] = [
    * Not followed: whether the Landtage's systems hold them is „nicht
    * geprüft" (memo, „Was sich verfolgen ließe", „Anträge, Volksbegehren,
    * Petitionen in den Landtagen"; the national matrix's Länder rows say
-   * the same). */
+   * the same).
+   * The Volksbegehren im Land, the Initiative of Gemeinden or citizens and
+   * the Volksabstimmung are rows of the Länder matrix and stand only there
+   * (16.11.2026). The petitions' sources were read on 15.11.2026
+   * (petitionen-laender-und-eu.md): readable in some Länder, not in
+   * others, none built — hence „teils geprüft". */
   {
     id: 'laender',
     level: 'land',
-    name: 'Volksbegehren, Volksabstimmung, Volksbefragung, Petition, Bürgerrat',
+    name: 'Volksbefragung, Petition, Bürgerrat',
     act: 'je nach Landesverfassung',
     duty: 'teils Pflicht zur Antwort',
-    binding: false,
-    notFollowed: 'Quellen nicht geprüft',
+    notFollowed: 'Quellen je Land, erst teils geprüft',
   },
 ]
 

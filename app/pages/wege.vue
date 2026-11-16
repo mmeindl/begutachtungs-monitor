@@ -18,8 +18,8 @@
  *
  * „Nicht im Monitor": the instruments the monitor does not follow, without
  * stations — name, level, what one can do, the duty to respond where the law
- * states one, and why the monitor does not follow it, in the words the
- * national matrix uses for its rows.
+ * states one, the official page where a memo names one, and why the monitor
+ * does not follow it, in the words the national matrix uses for its rows.
  *
  * `?weg=<id>` marks one row of the national matrix in ink (selection is ink)
  * with `aria-current`, for the draft pages that link here with their path.
@@ -96,7 +96,9 @@ const selected = computed(() => {
             </p>
             <p class="mt-0.5 text-ink-secondary">
               {{ item.act }}<template v-if="item.duty">
-                · <span :class="item.binding && 'font-medium text-ink'">{{ item.duty }}</span>
+                · {{ item.duty }}
+              </template><template v-if="item.source">
+                · <ExternalLink :href="item.source.href" class="link-inline">{{ item.source.label }}</ExternalLink>
               </template>
             </p>
             <p class="mt-0.5 text-ink-secondary">
