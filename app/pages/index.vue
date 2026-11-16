@@ -873,7 +873,7 @@ function submitSearch() {
           class="group relative border-b border-hairline py-3"
           :class="i === 0 ? 'mt-10 border-t' : ''"
         >
-          <div class="flex flex-wrap items-baseline justify-between gap-x-4 gap-y-1">
+          <div class="flex flex-wrap items-center justify-between gap-x-4 gap-y-1">
             <h3 class="text-lg font-semibold">
               <NuxtLink :to="row.door.href" class="link-quiet after:absolute after:inset-0 group-hover:underline group-hover:decoration-2">
                 {{ row.door.label }}
@@ -884,11 +884,21 @@ function submitSearch() {
                  underline and the lines around the row already say it leads
                  somewhere, and a fifth sign was decoration. The status has
                  the right end. -->
-            <div class="ml-auto flex items-baseline">
+            <div class="ml-auto flex items-center">
               <GapNote v-if="row.status.kind === 'failed'" :text="row.status.text" class="text-sm text-ink-muted" />
               <p v-else-if="row.status.kind === 'loading'" class="text-sm text-ink-muted">
                 {{ row.status.text }}
               </p>
+              <!-- Something is open: the list rows' chip, in the calm blue
+                   of a Frist not yet close (16.11.2026, `EntryState`) — the
+                   same statement as „Stellungnahme möglich" in a row, so the
+                   same sign, and all five doors end alike. One line: there
+                   is one fact. Part of the row's link, no target of its own.
+                   „Derzeit kein …" stays plain text: nothing to act on. -->
+              <EntryState
+                v-else-if="row.status.open && row.status.text"
+                :state="{ label: row.status.text, detail: null, tone: 'neutral', actionable: true }"
+              />
               <p v-else-if="row.status.text" class="text-sm tabular-nums text-ink-secondary">
                 {{ row.status.text }}
               </p>

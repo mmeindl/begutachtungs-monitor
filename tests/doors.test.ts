@@ -132,11 +132,11 @@ describe('a door\'s status', () => {
 
 describe('Stellung nehmen im Parlament', () => {
   it('says „Derzeit möglich" where some are open, without a figure: the list behind it prints none for the set', () => {
-    expect(parlamentDoorAnswer({ items: [vorlage('1 d.B.'), vorlage('2 d.B.')] })).toEqual({ text: 'Derzeit möglich', notes: [] })
+    expect(parlamentDoorAnswer({ items: [vorlage('1 d.B.'), vorlage('2 d.B.')] })).toMatchObject({ text: 'Derzeit möglich', notes: [] })
   })
 
   it('says a true zero in words', () => {
-    expect(parlamentDoorAnswer({ items: [] })).toEqual({ text: 'Derzeit zu keiner Vorlage möglich', notes: [] })
+    expect(parlamentDoorAnswer({ items: [] })).toMatchObject({ text: 'Derzeit zu keiner Vorlage möglich', notes: [] })
   })
 })
 
@@ -147,31 +147,31 @@ describe('Anliegen an das Parlament', () => {
       { bundesrat: { rows: [anliegenRow({ inr: 9, kind: 'petition-bundesrat', root: { gp: 'BR', kind: 'petition-bundesrat', inr: 9 }, arrivedAt: '2025-01-10' })], unread: false } },
     )
     const answer = anliegenDoorAnswer(data)
-    expect(answer).toEqual({ text: '3 offen', notes: [] })
+    expect(answer).toMatchObject({ text: '3 offen', notes: [] })
     // The list's own line on arrival: „Alle", „Nur offene".
     expect(anliegenCountLineDe(data.gp, anliegenRowsInView(data, 'alle'), 'alle', true)).toMatch(/^3 offen von 4 /)
   })
 
   it('says a true zero in words, and only then', () => {
-    expect(anliegenDoorAnswer(anliegenList([anliegenRow({ open: false })]))).toEqual({ text: 'Derzeit kein Anliegen offen', notes: [] })
+    expect(anliegenDoorAnswer(anliegenList([anliegenRow({ open: false })]))).toMatchObject({ text: 'Derzeit kein Anliegen offen', notes: [] })
   })
 
   it('claims no zero while a kind could not be read, and names it as the list does', () => {
     const answer = anliegenDoorAnswer(anliegenList([], { unread: { kinds: ['buergerinitiative'] } }))
-    expect(answer).toEqual({ text: null, notes: [`${GAP_LEAD_DE.unavailable}: die Bürgerinitiativen.`] })
+    expect(answer).toMatchObject({ text: null, notes: [`${GAP_LEAD_DE.unavailable}: die Bürgerinitiativen.`] })
   })
 
   it('counts rows whose participation was not read apart, never as closed', () => {
     const answer = anliegenDoorAnswer(anliegenList([anliegenRow({ inr: 1 }), anliegenRow({ inr: 2, open: null })]))
-    expect(answer).toEqual({ text: '1 offen', notes: [`${GAP_LEAD_DE.unreadable}: ob Unterstützung und Stellungnahme möglich sind, bei 1 Anliegen.`] })
+    expect(answer).toMatchObject({ text: '1 offen', notes: [`${GAP_LEAD_DE.unreadable}: ob Unterstützung und Stellungnahme möglich sind, bei 1 Anliegen.`] })
   })
 })
 
 describe('Rückmeldung an die EU-Kommission', () => {
   it('states the list\'s own count line on its first tab', () => {
     const data = fenster([openWindow(1), openWindow(2), openWindow(3)])
-    expect(fensterDoorAnswer(data)).toEqual({ text: EU_FENSTER_DE.count(euFensterView(data).counts.alle), notes: [] })
-    expect(fensterDoorAnswer(data)).toEqual({ text: '3 offene Fristen', notes: [] })
+    expect(fensterDoorAnswer(data)).toMatchObject({ text: EU_FENSTER_DE.count(euFensterView(data).counts.alle), notes: [] })
+    expect(fensterDoorAnswer(data)).toMatchObject({ text: '3 offene Fristen', notes: [] })
   })
 
   it('carries the list\'s note where the page cap cut what was read', () => {
@@ -182,19 +182,33 @@ describe('Rückmeldung an die EU-Kommission', () => {
 
   it('is a failure where the portal could not be read, and a zero in words where it lists none', () => {
     expect(fensterDoorAnswer(fenster(null))).toBe('unread')
-    expect(fensterDoorAnswer(fenster([]))).toEqual({ text: 'Derzeit keine offene Frist', notes: [] })
+    expect(fensterDoorAnswer(fenster([]))).toMatchObject({ text: 'Derzeit keine offene Frist', notes: [] })
   })
 })
 
 describe('Europäische Bürgerinitiative unterstützen', () => {
   it('states the list\'s own count line', () => {
     const data = eci([eciRow(1), eciRow(2)])
-    expect(eciDoorAnswer(data)).toEqual({ text: EU_ECI_LIST_DE.count(euEciListView(data).rows!.length), notes: [] })
-    expect(eciDoorAnswer(data)).toEqual({ text: '2 Initiativen in der Sammlung', notes: [] })
+    expect(eciDoorAnswer(data)).toMatchObject({ text: EU_ECI_LIST_DE.count(euEciListView(data).rows!.length), notes: [] })
+    expect(eciDoorAnswer(data)).toMatchObject({ text: '2 Initiativen in der Sammlung', notes: [] })
   })
 
   it('is a failure where the register could not be read, and a zero in words where it lists none', () => {
     expect(eciDoorAnswer(eci(null))).toBe('unread')
-    expect(eciDoorAnswer(eci([]))).toEqual({ text: 'Derzeit keine Initiative in der Sammlung', notes: [] })
+    expect(eciDoorAnswer(eci([]))).toMatchObject({ text: 'Derzeit keine Initiative in der Sammlung', notes: [] })
+  })
+})
+
+describe('a door\'s `open` flag — whether the row shows the blue chip (16.11.2026)', () => {
+  it('is set exactly where something is open behind the door', () => {
+    const answers = [
+      parlamentDoorAnswer({ items: [] }),
+      anliegenDoorAnswer(anliegenList([anliegenRow({ open: false })])),
+      fensterDoorAnswer(fenster([])),
+      eciDoorAnswer(eci([])),
+    ]
+    for (const a of answers) expect(a).toMatchObject({ open: false })
+    expect(parlamentDoorAnswer({ items: [vorlage('1 d.B.')] })).toMatchObject({ open: true })
+    expect(anliegenDoorAnswer(anliegenList([anliegenRow({ open: true })]))).toMatchObject({ open: true })
   })
 })

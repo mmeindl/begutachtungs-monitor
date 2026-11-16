@@ -174,9 +174,11 @@ export function homeDoorOf(id: DoorId): Door {
  * where its notes are all it can say — the Anliegen while a kind is
  * unread), and the notes the target list shows
  * beside the same count. `unread`: the answer came and says the source
- * could not be read — a failure, never a zero.
+ * could not be read — a failure, never a zero. `open`: something is open
+ * behind the door today, so the row may show its status as the list's blue
+ * chip („you can do something here"); a „Derzeit kein …" stays plain text.
  */
-export type DoorAnswer = { text: string | null; notes: string[] } | 'unread'
+export type DoorAnswer = { text: string | null; notes: string[]; open: boolean } | 'unread'
 
 /**
  * Where a door stands, for the row: on its way, failed (a gap sentence),
@@ -185,7 +187,7 @@ export type DoorAnswer = { text: string | null; notes: string[] } | 'unread'
 export type DoorStatus =
   | { kind: 'loading'; text: string }
   | { kind: 'failed'; text: string }
-  | { kind: 'answered'; text: string | null; notes: string[] }
+  | { kind: 'answered'; text: string | null; notes: string[]; open: boolean }
 
 /** The door's gap sentence: „Gerade nicht abrufbar: die offenen Fristen der Kommission." */
 export function doorFailedDe(door: Door): string {
@@ -203,7 +205,7 @@ export function doorStatus(door: Door, state: HalfState, answer: DoorAnswer | nu
   if (state !== 'ready' || !answer) {
     return { kind: 'loading', text: blockStateLine(door.subject, 'plural', 'loading') ?? '' }
   }
-  return { kind: 'answered', text: answer.text, notes: answer.notes }
+  return { kind: 'answered', text: answer.text, notes: answer.notes, open: answer.open }
 }
 
 /**
@@ -218,7 +220,7 @@ export function doorStatus(door: Door, state: HalfState, answer: DoorAnswer | nu
  * loading — and the zero, the same on both sides, in words too.
  */
 export function parlamentDoorAnswer(r: Pick<DashboardSecondRound, 'items'>): DoorAnswer {
-  return { text: r.items.length ? 'Derzeit möglich' : 'Derzeit zu keiner Vorlage möglich', notes: [] }
+  return { text: r.items.length ? 'Derzeit möglich' : 'Derzeit zu keiner Vorlage möglich', notes: [], open: r.items.length > 0 }
 }
 
 /**
@@ -233,8 +235,8 @@ export function anliegenDoorAnswer(r: AnliegenListResponse): DoorAnswer {
     ...anliegenUnreadDe(unreadKinds, 'alle'),
     ...(unknown ? [gapDe('unreadable', `ob Unterstützung und Stellungnahme möglich sind, bei ${formatNumberDe(unknown)} Anliegen.`)] : []),
   ]
-  if (open) return { text: `${formatNumberDe(open)} offen`, notes }
-  return { text: notes.length ? null : 'Derzeit kein Anliegen offen', notes }
+  if (open) return { text: `${formatNumberDe(open)} offen`, notes, open: true }
+  return { text: notes.length ? null : 'Derzeit kein Anliegen offen', notes, open: false }
 }
 
 /**
@@ -246,12 +248,12 @@ export function fensterDoorAnswer(r: EuFensterResponse): DoorAnswer {
   const view = euFensterView(r)
   if (!view.tabs) return 'unread'
   const notes = view.cut ? [gapDe('outOfScope', view.cut)] : []
-  return { text: view.counts.alle ? EU_FENSTER_DE.count(view.counts.alle) : 'Derzeit keine offene Frist', notes }
+  return { text: view.counts.alle ? EU_FENSTER_DE.count(view.counts.alle) : 'Derzeit keine offene Frist', notes, open: view.counts.alle > 0 }
 }
 
 /** The Citizens' Initiatives in collection: the list's count line (`euEciListView`, `EU_ECI_LIST_DE.count`). */
 export function eciDoorAnswer(r: EuBuergerinitiativenResponse): DoorAnswer {
   const view = euEciListView(r)
   if (!view.rows) return 'unread'
-  return { text: view.rows.length ? EU_ECI_LIST_DE.count(view.rows.length) : 'Derzeit keine Initiative in der Sammlung', notes: [] }
+  return { text: view.rows.length ? EU_ECI_LIST_DE.count(view.rows.length) : 'Derzeit keine Initiative in der Sammlung', notes: [], open: view.rows.length > 0 }
 }
