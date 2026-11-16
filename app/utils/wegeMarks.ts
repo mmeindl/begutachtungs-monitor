@@ -17,5 +17,9 @@ export const WEG_MARK_CLASS: Record<WegCell, string> = {
 export const WEG_MARK_GLYPH: Record<WegCell, string> = { durch: '', stellungnahme: '', entfaellt: '–', offen: '?' }
 
 /* A group's bar inside the card, at both widths: the page's ground as a
- * quiet band between the white rows, the name in the rows' size. */
-export const WEG_SECTION_BAR = 'border-b border-hairline bg-page px-4 py-2 text-left text-sm font-semibold text-ink'
+ * quiet band between the white rows, the name in the rows' size AND in the
+ * rows' typeface (`font-sans`, 16.11.2026): the bar is a `th` in a table
+ * and an `h2` elsewhere, and the base style sets every h2 in the heading
+ * serif — so „Nicht im Monitor" stood in another typeface than the bars
+ * above it. */
+export const WEG_SECTION_BAR = 'border-b border-hairline bg-page px-4 py-2 text-left font-sans text-sm font-semibold text-ink'
