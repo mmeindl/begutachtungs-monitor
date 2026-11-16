@@ -12,7 +12,7 @@ import {
   ECI_MATRIX,
   EU_IMPLEMENTING_LIST,
   EU_MATRIX,
-  NATIONAL_MATRIX,
+  NATIONAL_MATRICES,
   WEGE,
   WEG_MATRICES,
   WEG_IDS,
@@ -121,10 +121,21 @@ const rowsOf = (m: (typeof WEG_MATRICES)[number]) => m.groups.flatMap((g) => g.r
 const rowOf = (m: (typeof WEG_MATRICES)[number], id: string) => rowsOf(m).find((r) => r.id === id)!
 
 describe('the matrices with rails of their own (16.11.2026)', () => {
-  it('the national matrix comes first and is the five stations with every row of WEGE', () => {
-    expect(WEG_MATRICES[0]).toBe(NATIONAL_MATRIX)
-    expect(NATIONAL_MATRIX.stations.map((s) => s.id)).toEqual([...WEG_STATION_ORDER])
-    expect(rowsOf(NATIONAL_MATRIX).map((r) => r.id)).toEqual(WEGE.map((w) => w.id))
+  it('the national matrices come first, Bund then Länder, each the five stations, together every row of WEGE', () => {
+    expect(WEG_MATRICES.slice(0, 2)).toEqual([...NATIONAL_MATRICES])
+    expect(NATIONAL_MATRICES.map((m) => m.id)).toEqual(['bund', 'land'])
+    for (const m of NATIONAL_MATRICES) expect(m.stations.map((s) => s.id)).toEqual([...WEG_STATION_ORDER])
+    expect(NATIONAL_MATRICES.flatMap(rowsOf).map((r) => r.id)).toEqual(WEGE.map((w) => w.id))
+  })
+
+  it('each level names its last two stations itself, and no sentence translates a shared header (16.11.2026)', () => {
+    const [bund, land] = NATIONAL_MATRICES
+    expect(bund!.stations.map((s) => s.label)).toEqual(['Entwurf', 'Begutachtung', 'Regierungsvorlage', 'Parlament', 'Bundesgesetzblatt'])
+    expect(land!.stations.map((s) => s.label)).toEqual(['Entwurf', 'Begutachtung', 'Regierungsvorlage', 'Landtag', 'Landesgesetzblatt'])
+    expect(NATIONAL_MATRICES.flatMap((m) => m.groups.map((g) => g.note))).toEqual([null, null])
+    // A Länder header opens the list with the Länder alone, as the Länder rows do; the Bund's is the plain tab.
+    expect(bund!.stations.map((s) => s.href)).toEqual(WEG_STATIONS.map((s) => s.href))
+    for (const s of land!.stations.filter((x) => x.href)) expect(s.href).toMatch(/^\/entwuerfe\?station=\w+&quellen=bgld,/)
   })
 
   it('every row has a cell for each station of its matrix and passes one for certain; ids are unique across the page', () => {

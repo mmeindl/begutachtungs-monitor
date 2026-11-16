@@ -133,10 +133,28 @@ export const WEG_LEVEL_LABEL: Record<WegLevel, string> = {
   land: 'Länder',
 }
 
-/** What a group's bar adds to its name: the stations' names at that level. */
+/**
+ * What a group's bar adds to its name. Nothing since 16.11.2026: the
+ * Länder's sentence („Parlament ist hier der Landtag, kundgemacht wird im
+ * Landesgesetzblatt") became the Länder matrix's own column names
+ * (`WEG_LEVEL_STATION_LABEL`).
+ */
 export const WEG_LEVEL_NOTE: Record<WegLevel, string | null> = {
   bund: null,
-  land: 'Parlament ist hier der Landtag, kundgemacht wird im Landesgesetzblatt',
+  land: null,
+}
+
+/**
+ * The last two stations by their names at each level (16.11.2026): Bund
+ * and Länder are a matrix each, so the header says „Parlament" and
+ * „Bundesgesetzblatt" over the Bund's rows, „Landtag" and
+ * „Landesgesetzblatt" over the Länder's, and no sentence has to translate
+ * a shared header. The stations are the same five; the list's tab behind
+ * a header keeps its own words („Parlament / Landtag", „Kundgemacht").
+ */
+export const WEG_LEVEL_STATION_LABEL: Record<WegLevel, Partial<Record<StationId, string>>> = {
+  bund: { parlament: 'Parlament', bgbl: 'Bundesgesetzblatt' },
+  land: { parlament: 'Landtag', bgbl: 'Landesgesetzblatt' },
 }
 
 /* Every Land as the only sources: the list's own parameter
@@ -626,15 +644,26 @@ const EU_BUERGERINITIATIVEN_HREF = `${euPath()}#eu-buergerinitiativen`
 export const EU_IMPLEMENTING_LIST = { label: 'Entwürfe, die EU-Recht umsetzen', href: '/entwuerfe?eu=umsetzung' } as const
 
 /**
- * The national matrix as a `WegMatrix`: the five stations, Bund and Länder.
+ * A. The national matrices as `WegMatrix`: the five stations, once for the
+ * Bund and once for the Länder, each under its own header
+ * (`WEG_LEVEL_STATION_LABEL`). A Länder header leads to the list with the
+ * Länder as its only sources, as the Länder rows do.
  */
-export const NATIONAL_MATRIX: WegMatrix = {
-  id: 'national',
-  caption: 'Wege zum Gesetz und zur Verordnung, nach Station',
-  pathColumn: 'Weg',
-  stations: [...WEG_STATIONS],
-  groups: wegGroups().map((g) => ({ key: g.level, label: g.label, note: g.note, rows: g.rows })),
+const CAPTION_BY_LEVEL: Record<WegLevel, string> = {
+  bund: 'Wege zum Bundesgesetz und zur Verordnung des Bundes, nach Station',
+  land: 'Wege zum Landesgesetz und zur Verordnung eines Landes, nach Station',
 }
+export const NATIONAL_MATRICES: readonly WegMatrix[] = wegGroups().map((g) => ({
+  id: g.level,
+  caption: CAPTION_BY_LEVEL[g.level],
+  pathColumn: 'Weg',
+  stations: WEG_STATIONS.map((s) => ({
+    ...s,
+    label: WEG_LEVEL_STATION_LABEL[g.level][s.id] ?? s.label,
+    href: s.href && g.level === 'land' ? `${s.href}&${SOURCE_PARAM}=${LAENDER_SOURCES}` : s.href,
+  })),
+  groups: [{ key: g.level, label: g.label, note: g.note, rows: g.rows }],
+}))
 
 /**
  * B. An EU act. The columns are the rail of an act's page (`euRailView`,
@@ -905,7 +934,7 @@ export const ANLIEGEN_MATRIX: WegMatrix = {
 }
 
 /** The matrices of the page, in its order: the national one, then the objects with rails of their own. */
-export const WEG_MATRICES: readonly WegMatrix[] = [NATIONAL_MATRIX, EU_MATRIX, ECI_MATRIX, ANLIEGEN_MATRIX]
+export const WEG_MATRICES: readonly WegMatrix[] = [...NATIONAL_MATRICES, EU_MATRIX, ECI_MATRIX, ANLIEGEN_MATRIX]
 
 /* ------------------------------------------------------------------ */
 /* Not in the monitor: instruments without stations                    */
