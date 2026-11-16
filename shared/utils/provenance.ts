@@ -93,7 +93,7 @@ export const PUBLISHER_NAME_DE: Record<Publisher, string> = {
  * takes is a date and a link, never an act's text. EUR-Lex's legal notice
  * (read in a browser on 04.11.2026) dedicates EUR-Lex METADATA to the
  * public domain, CC0 1.0 — so the dates carry no claim to clear, and the
- * source is named anyway, as every source here is (`/impressum#imp-eurlex`).
+ * source is named anyway, as every source here is (`/quellen#eurlex`).
  */
 export function eurLexSource(what: string): SourceEntry {
   return { what, publisher: 'eurlex', terms: 'cc0' }

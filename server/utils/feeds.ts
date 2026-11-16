@@ -404,6 +404,7 @@ export function buildSitemap(
     `${siteUrl}/entwuerfe`,
     `${siteUrl}/wege`,
     `${siteUrl}/datenlage`,
+    `${siteUrl}/quellen`,
     `${siteUrl}/ueber`,
     `${siteUrl}/impressum`,
     `${siteUrl}/datenschutz`,

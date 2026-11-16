@@ -8,7 +8,7 @@ import { ANLIEGEN_PATH, ANLIEGEN_SECTION_DE } from '#shared/utils/anliegen'
  * stands on the list, where the need arises.
  *
  * What remains, one reason per line:
- *   - „Datenquellen und Lizenzen im Impressum" — the pointer, no longer the
+ *   - „Quellen und Lizenzen" (`/quellen`, a page of its own since 16.11.2026; before, „… im Impressum") — the pointer, no longer the
  *     naming (03.10.2026). The two sources stood here by name on every page;
  *     they are named where their material actually shows (the draft page's
  *     credit lines, under each section), and what may be claimed per source
@@ -48,9 +48,9 @@ import { ANLIEGEN_PATH, ANLIEGEN_SECTION_DE } from '#shared/utils/anliegen'
       <div class="flex flex-col gap-2 text-sm leading-relaxed text-ink-muted">
         <p>
           <NuxtLink
-            to="/impressum#imp-license"
+            to="/quellen"
             class="link-muted"
-          >Datenquellen und Lizenzen im Impressum</NuxtLink>
+          >Quellen und Lizenzen</NuxtLink>
           ·
           <NuxtLink
             to="/datenlage"
@@ -84,7 +84,7 @@ import { ANLIEGEN_PATH, ANLIEGEN_SECTION_DE } from '#shared/utils/anliegen'
               <NuxtLink
                 to="/impressum"
                 class="tap-target link-muted"
-              >Impressum &amp; Offenlegung</NuxtLink>
+              >Impressum</NuxtLink>
             </li>
             <li>
               <NuxtLink

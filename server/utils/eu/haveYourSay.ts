@@ -45,7 +45,7 @@ export const PORTAL_HOST = 'ec.europa.eu'
 const API = `https://${PORTAL_HOST}/info/law/better-regulation/brpapi`
 const PAGES = `https://${PORTAL_HOST}/info/law/better-regulation/have-your-say/initiatives`
 
-/** The portal's start page, German — the one the Impressum links; where a reader goes when the monitor could not read the portal. */
+/** The portal's start page, German — the one `/quellen` links; where a reader goes when the monitor could not read the portal. */
 export const PORTAL_PAGE_URL = `https://${PORTAL_HOST}/info/law/better-regulation/have-your-say_de`
 
 /**

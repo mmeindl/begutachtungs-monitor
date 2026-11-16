@@ -40,6 +40,7 @@ describe('klassifiziere', () => {
     expect(k('/entwuerfe/BEGUT_COO_2026_100_2_1234567')).toEqual({ klasse: 'entwurf-bund' })
     expect(k('/wege')).toEqual({ klasse: 'wege' })
     expect(k('/datenlage')).toEqual({ klasse: 'datenlage' })
+    expect(k('/quellen')).toEqual({ klasse: 'quellen' })
     expect(k('/ueber')).toEqual({ klasse: 'ueber' })
     expect(k('/impressum')).toEqual({ klasse: 'impressum' })
     expect(k('/datenschutz')).toEqual({ klasse: 'datenschutz' })

@@ -697,12 +697,12 @@ describe('the automatic reading to 1,000 (nextAutomaticStep)', () => {
     expect(automaticStepOf(s, 'idle')).toBe(10)
   })
 
-  it('names the automatic depth in the method text and the Impressum by the constant\'s figure', () => {
+  it('names the automatic depth in the method text and the Datenschutzerklärung by the constant\'s figure', () => {
     const figure = `zunächst die neuesten ${formatNumberDe(FEEDBACK_AUTO_ROWS)}`
     const method = readFileSync(new URL('../app/components/method/MethodEuRueckmeldungen.vue', import.meta.url), 'utf8').replace(/\s+/g, ' ')
-    const impressum = readFileSync(new URL('../app/pages/impressum.vue', import.meta.url), 'utf8').replace(/\s+/g, ' ')
+    const datenschutz = readFileSync(new URL('../app/pages/datenschutz.vue', import.meta.url), 'utf8').replace(/\s+/g, ' ')
     expect(method).toContain(`${figure} Rückmeldungen, mit „Weitere … lesen“ jeweils bis zu 500 mehr, höchstens 5.000 je Frist`)
-    expect(impressum).toContain(`${figure} Rückmeldungen, weitere nur, wenn jemand sie anfordert, höchstens 5.000 je Frist`)
+    expect(datenschutz).toContain(`${figure} Rückmeldungen, weitere nur, wenn jemand sie anfordert, höchstens 5.000 je Frist`)
   })
 })
 

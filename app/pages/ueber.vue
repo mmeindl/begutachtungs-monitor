@@ -5,7 +5,7 @@ import { feedUrlsOf } from '~/composables/useFeedUrls'
 usePageSeo({
   title: 'Über das Projekt',
   description:
-    'Worum es beim Begutachtungs-Monitor geht, wie er funktioniert, woher die Daten stammen und warum Privatpersonen nicht namentlich genannt werden.',
+    'Worum es beim Begutachtungs-Monitor geht, wie er funktioniert, woher die Daten stammen und wo seine Grenzen liegen.',
 })
 
 const { webcalUrl, googleCalUrl, icsDisplayUrl } = useFeedUrls()
@@ -19,19 +19,31 @@ const { siteUrl } = useRuntimeConfig().public
     </h1>
 
     <ProseSection id="about-mission" heading="Worum es geht" first>
+      <!-- 16.11.2026: the section still described the Bund's Begutachtung
+           alone. It follows the order of the monitor's goal: a law through
+           its making, where one can take part, what became of the input,
+           and then the other routes. -->
       <p>
-        Bevor ein Gesetzesentwurf ins Parlament kommt, legen ihn die
-        Ministerien zur öffentlichen Begutachtung auf – jede und jeder kann
-        eine Stellungnahme abgeben. Der Begutachtungs-Monitor macht diese
-        Phase sichtbar: welche Entwürfe gerade offen sind, wann Fristen enden
-        und wie viele Stellungnahmen eingehen.
+        Der Begutachtungs-Monitor folgt einem Gesetz durch seine Entstehung
+        und zeigt, wo man sich beteiligen kann. Er beginnt in der
+        Begutachtung, in der jede und jeder Stellung nehmen kann: welche
+        Entwürfe des Bundes und der neun Länder gerade offen sind, wann die
+        Fristen enden und welche Organisationen Stellung genommen haben.
       </p>
       <p>
-        Genauso wichtig ist der Blick zurück: Was wurde aus dem Input? Der
-        Monitor verfolgt den Weg vom Ministerialentwurf über die
-        Regierungsvorlage bis zur Kundmachung im Bundesgesetzblatt – und
-        zeigt Verfahren mit weiterem Verlauf genauso wie Verfahren ohne.
-        Nachverfolgung, nicht Bewertung.
+        Genauso wichtig ist der Blick zurück: Was wurde aus dem Entwurf und
+        aus den Stellungnahmen? Der Monitor verfolgt den Weg vom Entwurf über
+        die Regierungsvorlage und das Parlament bis zur Kundmachung,
+        vergleicht die Fassungen, wo die Quellen es zulassen, und zeigt
+        Änderungen so deutlich wie Stillstand. Nachverfolgung, nicht
+        Bewertung.
+      </p>
+      <p>
+        Dazu kommen Gesetze, die ohne Begutachtung entstehen, das EU-Recht
+        von der Konsultation der Kommission bis zur Umsetzung in Österreich
+        und die Anliegen an das Parlament: Petitionen, Bürgerinitiativen und
+        Volksbegehren. Alle Wege auf einen Blick zeigt die Seite
+        <NuxtLink to="/wege" class="link-inline">Wege</NuxtLink>.
       </p>
       <!-- Phrased as a question, not as a plan: a question the tool asks
            does not age, a roadmap does. That is exactly what the section
@@ -44,36 +56,33 @@ const { siteUrl } = useRuntimeConfig().public
       </p>
     </ProseSection>
 
+    <!-- 16.11.2026: one job per page. Licences stand on /quellen, the names
+         rule and what the site does not do on /datenschutz, what a source
+         publishes on /datenlage. This section names them and links; it
+         repeats none of them. -->
     <ProseSection id="about-how" heading="Wie es funktioniert">
       <p>
-        Alle Daten stammen aus den amtlichen Schnittstellen des
-        <ExternalLink
-          href="https://www.parlament.gv.at/recherchieren/open-data/"
-          class="link-inline"
-        >österreichischen Parlaments</ExternalLink>
-        und des
-        <ExternalLink
-          href="https://www.ris.bka.gv.at"
-          class="link-inline"
-        >Rechtsinformationssystems des Bundes</ExternalLink>; bis wann eine
-        Richtlinie umzusetzen war, kommt aus
-        <ExternalLink
-          href="https://eur-lex.europa.eu"
-          class="link-inline"
-        >EUR-Lex</ExternalLink>, der Datenbank des Amts für
-        Veröffentlichungen der Europäischen Union. Der Monitor
-        ruft sie bei Bedarf ab und hält sie im Zwischenspeicher –
-        Listen und Verfahrensstände höchstens wenige Stunden,
-        veröffentlichte Texte bis zu 30 Tage; eine eigene Datenbank
-        gibt es nicht. Die
-        Begutachtungen der Länder haben keine solche Schnittstelle: Der
-        Monitor liest sie von den Seiten der Länder selbst, von allen neun –
-        jedes so weit, wie seine Seite es zulässt; die Steiermark von der Seite
-        ihres Landtags. Es gibt keine Konten und kein Tracking; ein Cookie nur,
-        wenn Sie die Quellen der Liste ändern. Seitenaufrufe zählt der Monitor
-        nur als Summe je Tag, ohne IP-Adressen – die Zahlen sind
-        <NuxtLink to="/statistik" class="link-inline">öffentlich</NuxtLink>.
+        Alle Daten stammen aus amtlichen Quellen: vom Parlament, aus dem
+        Rechtsinformationssystem des Bundes, von den Seiten der neun Länder
+        und ihrer Landtage, aus EUR-Lex und von der Europäischen Kommission.
+        Der Monitor ruft sie bei Bedarf ab und hält sie kurz im
+        Zwischenspeicher; eine eigene Datenbank gibt es nicht.
       </p>
+      <ul>
+        <li>
+          <NuxtLink to="/quellen" class="link-inline">Quellen &amp; Lizenzen</NuxtLink>:
+          welche Quelle unter welcher Lizenz steht.
+        </li>
+        <li>
+          <NuxtLink to="/datenlage" class="link-inline">Datenlage</NuxtLink>:
+          was jede Quelle veröffentlicht und was nicht.
+        </li>
+        <li>
+          <NuxtLink to="/datenschutz" class="link-inline">Datenschutz</NuxtLink>:
+          keine Konten, kein Tracking, keine Drittanbieter; Privatpersonen
+          werden gezählt, nie genannt.
+        </li>
+      </ul>
       <!-- Voluntary, and deliberately without the article number: no text
            the site shows about a draft is model-generated, and its own
            copy is reviewed and owned by the Medieninhaber — the human-review
@@ -118,64 +127,6 @@ const { siteUrl } = useRuntimeConfig().public
       </p>
     </ProseSection>
 
-    <ProseSection id="about-license" heading="Daten & Lizenz">
-      <p>
-        Textgegenüberstellungen, geltendes Bundesrecht, das
-        Bundesgesetzblatt und die Erläuterungen der Ressorts stammen aus dem
-        Rechtsinformationssystem des Bundes, die Stationen nach der
-        Begutachtung – Regierungsvorlage, Ausschuss- und Plenarfassung – von
-        der Parlamentsdirektion, deren Ergebnislisten unter
-        <ExternalLink
-          href="https://creativecommons.org/licenses/by/4.0/deed.de"
-          class="link-inline"
-        >CC BY 4.0</ExternalLink>
-        stehen und deren Dokumente das Parlament als freie Werke bezeichnet;
-        die RIS-Daten stehen unter CC BY 4.0.
-        Den Gesetzestext und die Erläuterungen eines Ministerialentwurfs
-        liest der Textvergleich in der Fassung, die das Parlament
-        veröffentlicht; dieselben Dokumente führt das RIS unter CC BY 4.0.
-        Die Umsetzungsfristen von EU-Richtlinien kommen aus EUR-Lex; das
-        sind Metadaten, die das Amt für Veröffentlichungen unter CC0 1.0
-        freigibt – übernommen werden nur Daten und Links.
-      </p>
-      <p>
-        Für das Begutachtungsverfahren selbst – Ministerialentwürfe,
-        Stellungnahmen und Zustimmungen – weist das Parlament keine
-        Open-Data-Lizenz aus. Der Monitor zeigt daraus Metadaten – Fristen,
-        Geschäftszahlen, Anzahl der Einreichungen und die Namen
-        einreichender Organisationen –, die Kurzinformation des Parlaments
-        zum Entwurf („Worum geht es?“) und im Textvergleich den Gesetzestext
-        und die Erläuterungen des Entwurfs. Volltexte von Stellungnahmen
-        übernimmt er nicht, sondern verlinkt sie auf parlament.gv.at; Namen
-        von Privatpersonen veröffentlicht er nicht. Welche Lizenz für
-        welchen Datensatz gilt, steht
-        <NuxtLink
-          to="/impressum#imp-license"
-          class="link-inline"
-        >im Impressum</NuxtLink>.
-      </p>
-    </ProseSection>
-
-    <ProseSection id="about-privacy" heading="Privatpersonen & DSGVO">
-      <p>
-        Stellungnahmen kommen auch von Privatpersonen, die auf
-        parlament.gv.at und auf den Seiten der Länder namentlich erscheinen.
-        Dass Parlament und Länder diese Namen veröffentlichen, ist keine
-        Rechtfertigung, sie systematisch
-        weiterzuverbreiten. Der Monitor nennt deshalb keine Namen von
-        Privatpersonen: Ihre Stellungnahmen stehen hier „Ohne Namen“ und
-        fließen in die Zählungen ein. Organisationen – Kammern, Verbände,
-        Vereine, Ministerien, Unternehmen – werden namentlich genannt. Ist
-        nicht sicher, dass eine Organisation einreicht, steht die
-        Stellungnahme ebenfalls ohne Namen: Unter „Ohne Namen“ stehen also
-        Privatpersonen und manche Organisation, die der Monitor nicht sicher
-        als solche erkennt. Wo ein Land eine Organisation nur abkürzt – das
-        Burgenland schreibt „Stellungnahme AK“ –, schreibt der Monitor den
-        Namen aus, aber nur, wenn die Abkürzung eindeutig ist; sonst steht auch
-        sie ohne Namen.
-      </p>
-    </ProseSection>
-
     <ProseSection id="about-a11y" heading="Barrierefreiheit">
       <p>
         Der Monitor zielt auf WCAG 2.2, Konformitätsstufe AAA: alle
@@ -195,16 +146,6 @@ const { siteUrl } = useRuntimeConfig().public
       </p>
     </ProseSection>
 
-    <ProseSection id="about-sovereignty" heading="Digitale Souveränität">
-      <p>
-        Der Monitor lädt zur Laufzeit keine Ressourcen von Drittanbietern:
-        keine externen Schriften, keine Icon- oder Skript-CDNs, keine
-        Analytik-Dienste. Betrieb und Hosting sind auf europäische, EU-eigene
-        Infrastruktur ausgelegt; die beiden Amtsquellen oben sind
-        österreichische.
-      </p>
-    </ProseSection>
-
     <ProseSection id="about-history" heading="Vorgeschichte">
       <p>
         <ExternalLink
@@ -221,26 +162,18 @@ const { siteUrl } = useRuntimeConfig().public
       </p>
     </ProseSection>
 
-    <!-- Concrete limits rather than a blanket label: the label devalued the
-         metadata, which mirror the official interface unaltered, and warned
-         nobody about the text comparison, where an error can actually arise.
-         Keep it current as the site grows — this list IS the status
-         report. -->
-    <ProseSection id="about-status" heading="Status">
-      <p>
-        Stand: Oktober 2026. Der Monitor läuft im Dauerbetrieb; was er
-        zeigt, stammt unverändert aus der amtlichen Schnittstelle und ist
-        bei jeder Angabe dorthin verlinkt. Drei Grenzen sind derzeit
-        bekannt:
-      </p>
+    <!-- Concrete limits rather than a blanket label (the word „Prototyp"
+         devalued the data and warned nobody about the text comparison,
+         where an error can actually arise). No date and no claim about the
+         rest of the site: both went stale (16.11.2026). -->
+    <ProseSection id="about-status" heading="Grenzen">
       <ul>
         <li>
           Der Textvergleich ist eine Ableitung, keine amtliche Fassung. Bei
           Novellen vergleicht er die Änderungs<em>anweisungen</em>; wie das
-          Gesetz danach lautet, zeigt die
-          Lesefassung
-          nur für die Paragraphen, die die Textgegenüberstellung des
-          Ministeriums bestätigt. Im Zweifel gilt das verlinkte Original.
+          Gesetz danach lautet, zeigt die Lesefassung nur für die
+          Paragraphen, die die Textgegenüberstellung des Ministeriums
+          bestätigt. Im Zweifel gilt das verlinkte Original.
         </li>
         <li>
           Benachrichtigungen gibt es nur als Feed und Kalender, nicht per
@@ -249,31 +182,32 @@ const { siteUrl } = useRuntimeConfig().public
         <li>
           Es wird keine Historie geführt: Fristverlängerungen und das
           Anwachsen der Stellungnahmen sind im Nachhinein nicht ablesbar.
-          Angekündigte, noch nicht gestartete Begutachtungen kennt die
-          Schnittstelle nicht.
+          Angekündigte, noch nicht gestartete Begutachtungen kennen die
+          Quellen nicht.
         </li>
       </ul>
-      <p>
-        Der Begutachtungs-Monitor ist ein unabhängiges Civic-Tech-Vorhaben
-        und steht in keiner Verbindung zum Parlament oder zu
-        Bundesministerien.
-      </p>
     </ProseSection>
 
+    <!-- 16.11.2026: says in so many words who receives the money and that
+         nothing is given for it. The recipient is the Medieninhaber as a
+         private person; no organisation collects for the monitor. The
+         Impressum's „Beteiligungsverhältnisse" says the same; change both
+         together. -->
     <ProseSection id="about-support" heading="Unterstützen">
       <p>
         Der Monitor ist werbefrei und ohne Bezahlschranke; Betrieb und
-        Weiterentwicklung trägt eine Privatperson. Wer das Projekt
-        unterstützen möchte, kann das über
+        Weiterentwicklung trägt Manuel Meindl als Privatperson. Wer das
+        Projekt unterstützen möchte, kann das über
         <ExternalLink
           href="https://liberapay.com/manuelmeindl/donate"
           class="link-inline"
         >Liberapay</ExternalLink>
         tun – oder per Überweisung an Manuel Meindl, IBAN
         <span class="select-all font-medium text-ink">AT59 1501 3002 3104 4157</span>.
-        Beiträge decken Server und Domain, darüber hinaus fließen sie in
-        die Weiterentwicklung. Da hinter dem Projekt keine gemeinnützige
-        Organisation steht, sind Beiträge steuerlich nicht absetzbar.
+        Beiträge sind freiwillige Zuwendungen an ihn persönlich, ohne
+        Gegenleistung: Sie decken Server und Domain, was darüber hinausgeht,
+        fließt in die Weiterentwicklung. Steuerlich absetzbar sind sie
+        nicht.
       </p>
     </ProseSection>
 

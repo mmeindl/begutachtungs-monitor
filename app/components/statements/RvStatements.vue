@@ -232,7 +232,7 @@ const consultationSentence = computed<string | null>(() => {
         :marked="false"
         own="Einordnung der Einbringer:innen"
       >
-        <NuxtLink to="/ueber#about-privacy" class="link-muted">Warum ohne Namen</NuxtLink>
+        <NuxtLink to="/datenschutz#dse-names" class="link-muted">Warum ohne Namen</NuxtLink>
       </SectionCredits>
     </template>
   </component>

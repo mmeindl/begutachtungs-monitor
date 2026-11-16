@@ -141,4 +141,4 @@ interfaces and adds what follows the consultation.
   the effect of a Stellungnahme.
 
 Which licence applies to which source is stated on the site:
-[Impressum](https://begutachtungs-monitor.at/impressum#imp-license).
+[Quellen & Lizenzen](https://begutachtungs-monitor.at/quellen).

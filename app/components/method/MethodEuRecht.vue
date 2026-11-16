@@ -65,7 +65,7 @@
     steht – auf welcher Seite der Frist der Entwurf kam und wie weit davon,
     sieht man dann, ohne dass wir es sagen. Woher die Daten stammen und unter
     welchen Bedingungen, steht
-    <NuxtLink to="/impressum#imp-eurlex" class="link-inline">im Impressum</NuxtLink>.
+    <NuxtLink to="/quellen#eurlex" class="link-inline">unter Quellen &amp; Lizenzen</NuxtLink>.
   </p>
   <p>
     Die Seite

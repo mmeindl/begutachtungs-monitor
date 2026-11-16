@@ -60,7 +60,7 @@ Why the tool exists and why it should work: `docs/why-this-tool.md`.
   `pnpm audit:classifier` and read the old-against-new corpus comparison,
   every newly public name by hand. Tests alone have missed real leaks.
 - **The licence differs per source, and the site says which applies where**
-  (`/impressum#imp-license`, credit lines at the content). RIS open data is
+  (`/quellen`, credit lines at the content). RIS open data is
   CC BY 4.0. On Parliament's side the result lists and API data of the
   stations after the Begutachtung are CC BY, their documents are free works,
   the Begutachtung data itself carries no grant, and everything about
@@ -72,11 +72,20 @@ Why the tool exists and why it should work: `docs/why-this-tool.md`.
   Machine reading of statement texts happens only under the text-and-data-mining
   exception (§ 42h UrhG).
 - **A new source (a Land, a country, a dataset) ships only with its licence
-  checked and stated** in the Impressum.
+  checked and stated** on `/quellen`.
 - **No third-party resources at runtime:** no web fonts, CDN, analytics
   service or cookies. Page views are counted, visitors are not.
-- The legal pages (`/impressum`, `/datenschutz`, the licence wording on
-  `/ueber`) change only with the maintainer.
+- **Every code change, wherever it is made, is held against the legal
+  pages:** `/impressum`, `/datenschutz`, `/quellen` and `/ueber`. If it could
+  make a sentence there untrue or leave something unsaid, read the pages and
+  adjust them in the same change. Typical causes: a new or changed source, a
+  field or a name newly shown or withheld, anything stored, cached or
+  counted, a cookie, a third party, hosting, money, a feature added or
+  removed. Each fact stands on one page (`docs/decisions.md`, "Each of the
+  prose pages has one job").
+- An edit to a legal page is named to the maintainer with its old and new
+  wording, never made in passing. What the pages claim in law (a licence, a
+  legal basis, who is named) changes only with the maintainer's decision.
 
 ### Say what cannot be shown, and why
 

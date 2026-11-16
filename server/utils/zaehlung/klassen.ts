@@ -47,6 +47,9 @@ export const KLASSEN = [
   'eu-buergerinitiative',
   'wege',
   'datenlage',
+  // The register of sources and licences, a page of its own since
+  // 16.11.2026; before, a section of `/impressum`.
+  'quellen',
   // Dissolved on 14.11.2026 (301 to /wege); the class stays for the days
   // counted before.
   'so-funktionierts',
@@ -74,6 +77,7 @@ const FIXED: Record<string, Klasse> = {
   '/eu-recht': 'eu-recht',
   '/wege': 'wege',
   '/datenlage': 'datenlage',
+  '/quellen': 'quellen',
   '/ueber': 'ueber',
   '/impressum': 'impressum',
   '/datenschutz': 'datenschutz',

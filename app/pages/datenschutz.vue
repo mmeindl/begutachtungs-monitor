@@ -24,14 +24,20 @@
  *     storage on the site — grep for localStorage/useCookie before changing
  *     the sentence;
  *   - processors and locations: deploy/infrastructure.md;
- *   - private individuals without names: server/utils/parliament/privacy.ts.
- * Art 14 (data from Parliament) is the part standard texts do not know at
- * all — here it is the actual content.
+ *   - private individuals without names: server/utils/parliament/privacy.ts
+ *     for Parliament and the Länder, `namedOrganisationOf` in
+ *     server/utils/eu/portalFeedback.ts for the Commission's portal (its
+ *     limits and the six hours in memory stood in the Impressum's licence
+ *     entry until 16.11.2026), and docs/decisions.md, „Anliegen an den
+ *     Nationalrat", for who is never named there.
+ * Art 14 (names from the official sources) is the part standard texts do not
+ * know at all — here it is the actual content, in one section (`dse-names`),
+ * which is also where the pages' „Warum ohne Namen" links lead.
  */
 usePageSeo({
   title: 'Datenschutz',
   description:
-    'Welche Daten der Begutachtungs-Monitor verarbeitet: kein Tracking, keine Zugriffsprotokolle, Seitenaufrufe nur als Summe je Tag, ein Cookie nur für die Auswahl der Quellen – und wie mit den Namen aus den Parlamentsdaten umgegangen wird.',
+    'Welche Daten der Begutachtungs-Monitor verarbeitet: kein Tracking, keine Zugriffsprotokolle, Seitenaufrufe nur als Summe je Tag, ein Cookie nur für die Auswahl der Quellen – und warum Privatpersonen nicht namentlich genannt werden.',
 })
 </script>
 
@@ -137,37 +143,27 @@ usePageSeo({
 
     <ProseSection id="dse-none" heading="Was nicht passiert">
       <ul>
+        <li>Kein weiteres Cookie und keine andere Speicherung im Browser.</li>
         <li>
-          Keine weiteren Cookies und keine vergleichbare Speicherung im
-          Browser – außer dem einen Cookie für die Auswahl der Quellen.
+          Kein Tracking, keine Analytik-Dienste, keine Profilbildung, keine
+          automatisierte Entscheidungsfindung.
         </li>
         <li>
-          Keine Analytik-Dienste Dritter, kein Tracking, keine Profilbildung,
-          keine automatisierte Entscheidungsfindung. Gezählt werden nur
-          Seitenaufrufe als Summe je Tag –
-          <a href="#dse-zaehlung" class="link-inline">wie oben beschrieben</a>.
+          Keine Ressourcen von Drittanbietern: keine fremden Schriften, kein
+          CDN, keine eingebetteten Karten, Videos oder Social-Media-Elemente.
         </li>
-        <li>
-          Keine Ressourcen von Drittanbietern: Schriften werden vom eigenen
-          Server geliefert, es gibt kein CDN, keine eingebetteten Karten,
-          Videos oder Social-Media-Elemente. Beim Aufruf einer Seite wird
-          deshalb keine Verbindung zu einem anderen Anbieter aufgebaut.
-        </li>
-        <li>
-          Keine Benutzerkonten und keine Registrierung, daher auch keine
-          Zugangsdaten.
-        </li>
+        <li>Keine Benutzerkonten und keine Registrierung.</li>
         <li>
           Keine Weitergabe von Daten an Dritte und keine Übermittlung in
           Drittstaaten außerhalb der EU.
         </li>
       </ul>
       <p>
-        Die Daten des Parlaments holt der Server selbst. Der Aufruf einer
-        Seite erzeugt also keine Verbindung des Geräts zu
-        parlament.gv.at – dort wird nicht sichtbar, wer welchen Entwurf
-        liest. Erst ein Klick auf einen der Quellenlinks führt dorthin;
-        dann gelten die Bestimmungen der jeweiligen Seite.
+        Die Daten der amtlichen Quellen holt der Server selbst. Der Aufruf
+        einer Seite erzeugt also keine Verbindung des Geräts zu
+        parlament.gv.at oder einer anderen Quelle – dort wird nicht sichtbar,
+        wer welchen Entwurf liest. Erst ein Klick auf einen Quellenlink führt
+        dorthin; dann gelten die Bestimmungen der jeweiligen Seite.
       </p>
     </ProseSection>
 
@@ -199,6 +195,16 @@ usePageSeo({
       </p>
     </ProseSection>
 
+    <ProseSection id="dse-donations" heading="Spenden">
+      <p>
+        Wer per Überweisung spendet, übermittelt Name, IBAN und Betrag an das
+        Konto des Medieninhabers. Diese Angaben stehen nur in seinem
+        Kontoauszug und werden nicht weiterverwendet. Liberapay ist ein
+        eigener Dienst mit eigener Datenschutzerklärung; der Monitor
+        verlinkt ihn nur.
+      </p>
+    </ProseSection>
+
     <ProseSection id="dse-hosting" heading="Hosting">
       <p>
         Die Website läuft auf einem Server der netcup GmbH (Karlsruhe,
@@ -217,61 +223,69 @@ usePageSeo({
       </p>
     </ProseSection>
 
-    <ProseSection id="dse-parliament" heading="Namen aus den Parlamentsdaten">
+    <ProseSection id="dse-names" heading="Namen aus den amtlichen Quellen">
       <p>
-        Der Monitor zeigt Daten, die die Parlamentsdirektion auf
-        parlament.gv.at veröffentlicht, und die Stellungnahmen, die die
-        Länder Burgenland, Kärnten, Oberösterreich, Salzburg, Steiermark, Tirol und
-        Wien zu ihren Entwürfen veröffentlichen. Darin kommen Namen vor:
-        als Einbringer von Stellungnahmen erscheinen dort auch Privatpersonen.
-        Das ist eine Verarbeitung personenbezogener Daten, die nicht bei
-        den Betroffenen selbst erhoben wurden – dafür gilt Art 14 DSGVO.
+        Stellungnahmen kommen auch von Privatpersonen, und die amtlichen
+        Quellen veröffentlichen ihre Namen. Das ist kein Grund, sie
+        weiterzuverbreiten:
+        <strong class="font-semibold text-ink">Der Monitor nennt keine
+          Privatperson.</strong>
+        Ihre Stellungnahmen stehen „Ohne Namen“ und werden gezählt.
       </p>
       <ul>
         <li>
-          <strong class="font-semibold text-ink">Privatpersonen werden
-            nicht namentlich genannt.</strong>
-          Ihre Stellungnahmen erscheinen „Ohne Namen“ und fließen
-          ausschließlich in Zählungen ein. Im Zweifel steht eine
-          Stellungnahme ohne Namen – auch die einer Organisation, die der
-          Monitor nicht sicher als solche erkennt.
+          Im Zweifel steht eine Stellungnahme ohne Namen – auch die einer
+          Organisation, die der Monitor nicht sicher als solche erkennt.
         </li>
         <li>
           Namentlich genannt werden Organisationen – Kammern, Verbände,
-          Vereine, Behörden, Unternehmen – sowie Ministerien als
-          Absender von Entwürfen. Rechtsgrundlage ist Art 6 Abs 1 lit f
-          DSGVO: das öffentliche Interesse an der Nachvollziehbarkeit von
-          Gesetzgebung überwiegt hier, weil es um die Beteiligung an einem
-          öffentlichen Verfahren geht, nicht um private Lebensführung.
+          Vereine, Behörden, Unternehmen – und Ministerien als Absender von
+          Entwürfen. Rechtsgrundlage ist Art 6 Abs 1 lit f DSGVO: das
+          öffentliche Interesse an der Nachvollziehbarkeit von Gesetzgebung
+          überwiegt, weil es um die Beteiligung an einem öffentlichen
+          Verfahren geht, nicht um private Lebensführung.
+        </li>
+        <li>
+          Bei Petitionen und Bürgerinitiativen nennt der Monitor weder, wer
+          sie als Erste oder Erster unterzeichnet hat, noch welche
+          Abgeordneten eine Petition überreichen – nur deren Klub. Die Liste
+          der Unterstützenden liest er nicht.
+        </li>
+        <li>
+          Wer der Europäischen Kommission eine Rückmeldung gegeben hat, liest
+          der Monitor erst, wenn jemand danach fragt: zunächst die neuesten
+          1.000 Rückmeldungen, weitere nur, wenn jemand sie anfordert,
+          höchstens 5.000 je Frist. Die Namen der
+          Organisationen hält er höchstens sechs Stunden im Arbeitsspeicher
+          und speichert sie nicht.
         </li>
         <li>
           Es werden keine Profile gebildet, keine Personen über Verfahren
-          hinweg verknüpft und keine Volltexte von Stellungnahmen
-          gespeichert oder wiedergegeben.
-        </li>
-        <li>
-          Quelle dieser Daten ist die offene Schnittstelle der
-          Parlamentsdirektion, abrufbar unter
-          <ExternalLink
-            href="https://www.parlament.gv.at/recherchieren/open-data/"
-            class="link-inline"
-          >parlament.gv.at/recherchieren/open-data</ExternalLink>, und für
-          die Länder deren eigene Seiten (apps.bgld.gv.at, ktn.gv.at,
-          land-oberoesterreich.gv.at, service.salzburg.gv.at, tirol.gv.at,
-          wien.gv.at) und die Seiten der Landtage Steiermark und Tirol
-          (pallast2.stmk.gv.at, lte.tirol.gv.at). Dieselbe Regel entscheidet
-          dort, ob der Monitor einen Namen nennt.
+          hinweg verknüpft und keine Texte von Stellungnahmen gespeichert
+          oder wiedergegeben.
         </li>
       </ul>
       <p>
-        Wer trotzdem findet, dass ein Name hier nicht stehen sollte,
-        bekommt das ohne Diskussion korrigiert – eine kurze
+        Weil diese Daten nicht bei den Betroffenen erhoben wurden, gilt
+        Art 14 DSGVO. Sie stammen von der Parlamentsdirektion
+        (<ExternalLink
+          href="https://www.parlament.gv.at/recherchieren/open-data/"
+          class="link-inline"
+        >parlament.gv.at</ExternalLink>), von den Seiten der Länder
+        Burgenland, Kärnten, Oberösterreich, Salzburg, Tirol und Wien, der
+        Landtage Steiermark und Tirol und vom Portal „Ihre Meinung zählt“
+        der Europäischen Kommission; die Adressen stehen unter
+        <NuxtLink to="/quellen" class="link-inline">Quellen &amp; Lizenzen</NuxtLink>.
+      </p>
+      <p>
+        Wer findet, dass ein Name hier nicht stehen sollte, bekommt das ohne
+        Diskussion korrigiert – eine kurze
         <a
           href="mailto:kontakt@begutachtungs-monitor.at"
           class="link-inline"
         >E-Mail</a>
-        genügt. Auf parlament.gv.at bleibt der Eintrag davon unberührt;
-        dafür ist die Parlamentsdirektion zuständig.
+        genügt. Bei der Quelle bleibt der Eintrag davon unberührt; dafür ist
+        sie zuständig.
       </p>
     </ProseSection>
 
@@ -300,8 +314,7 @@ usePageSeo({
 
     <ProseSection id="dse-status" heading="Stand">
       <p>
-        30. Oktober 2026. Ändert sich etwas an der Verarbeitung – etwa mit
-        den geplanten E-Mail-Benachrichtigungen zu Fristen –, wird diese
+        16. November 2026. Ändert sich etwas an der Verarbeitung, wird diese
         Erklärung vorher angepasst.
       </p>
     </ProseSection>

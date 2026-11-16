@@ -135,7 +135,7 @@ describe('buildSitemap', () => {
     const xml = buildSitemap(SITE, [], [], [], [], [], ['/anliegen/XXVIII/petition/21', '/anliegen/XXVIII/volksbegehren/98'])
     expect(xml).toContain(`<loc>${SITE}/anliegen/XXVIII/petition/21</loc>`)
     expect(xml).toContain(`<loc>${SITE}/anliegen/XXVIII/volksbegehren/98</loc>`)
-    expect(xml.match(/<loc>/g)).toHaveLength(12)
+    expect(xml.match(/<loc>/g)).toHaveLength(13)
   })
 
   it('lists the static pages plus one loc per consultation', () => {
@@ -144,6 +144,7 @@ describe('buildSitemap', () => {
     expect(xml).toContain(`<loc>${SITE}/entwuerfe</loc>`)
     expect(xml).toContain(`<loc>${SITE}/wege</loc>`)
     expect(xml).toContain(`<loc>${SITE}/datenlage</loc>`)
+    expect(xml).toContain(`<loc>${SITE}/quellen</loc>`)
     expect(xml).not.toContain('so-funktionierts')
     expect(xml).toContain(`<loc>${SITE}/ueber</loc>`)
     expect(xml).toContain(`<loc>${SITE}/impressum</loc>`)
@@ -158,7 +159,7 @@ describe('buildSitemap', () => {
     const xml = buildSitemap(SITE, [], [], ['/eu-recht/richtlinie/2024/1069', '/eu-recht/verordnung/2022/2554'])
     expect(xml).toContain(`<loc>${SITE}/eu-recht/richtlinie/2024/1069</loc>`)
     expect(xml).toContain(`<loc>${SITE}/eu-recht/verordnung/2022/2554</loc>`)
-    expect(xml.match(/<loc>/g)).toHaveLength(12)
+    expect(xml.match(/<loc>/g)).toHaveLength(13)
   })
 
   it('lists each Grundsatzgesetz page the Bund-zu-Land map knows, and no overview', () => {
@@ -166,12 +167,12 @@ describe('buildSitemap', () => {
     const xml = buildSitemap(SITE, [], [], [], ['/bundesrecht/2025/44', '/bundesrecht/2026/2'])
     expect(xml).toContain(`<loc>${SITE}/bundesrecht/2025/44</loc>`)
     expect(xml).toContain(`<loc>${SITE}/bundesrecht/2026/2</loc>`)
-    expect(xml.match(/<loc>/g)).toHaveLength(12)
+    expect(xml.match(/<loc>/g)).toHaveLength(13)
   })
 
   it('yields only the static pages for an empty list, well-formed', () => {
     const xml = buildSitemap(SITE, [])
-    expect(xml.match(/<loc>/g)).toHaveLength(10)
+    expect(xml.match(/<loc>/g)).toHaveLength(11)
     // `/suche` does NOT belong in here any more since 22.09.2026: the page
     // is gone, the field on `/entwuerfe` answers both, and the path
     // 301s there — a sitemap must not advertise a redirect.

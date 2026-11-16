@@ -38,7 +38,8 @@ gets an entry of its own only where it carries a reason the rule does not.
   segment), and the public address comes from configuration. Anything that
   needs a recurring bill is a layer the core runs without.
 - **No third-party resources at runtime.** No web fonts, no icon or script
-  CDN, no analytics service, no cookies. Hosting only with EU-owned
+  CDN, no analytics service, and no cookie but `quellen`, set only when a
+  reader changes the sources of the list. Hosting only with EU-owned
   providers, not the EU regions of US hyperscalers (CLOUD Act). The
   build-time dependency on the npm registry is the documented compromise.
 - **No `v-html` for upstream content.** Everything is reduced to plain text
@@ -82,6 +83,18 @@ gets an entry of its own only where it carries a reason the rule does not.
   server, and a section dissolved into the places it describes has no one
   target. The move to `viewyourstate.org/at` needs a path-keeping 301 from
   the old host, under which these rules still apply.
+
+- **Each of the prose pages has one job, and a fact stands on one of them**
+  (16.11.2026). `/impressum`: the disclosure under § 25 MedienG. `/quellen`:
+  which source is read and under which licence, one entry per source.
+  `/datenschutz`: what is processed, and in `#dse-names` who is named and
+  who is not, for every source. `/datenlage`: what a source publishes.
+  `/ueber`: what the monitor is, its limits, how to subscribe and support.
+  The others link there instead of repeating it: the licences stood on
+  `/ueber` and in the Impressum and had drifted apart, the names rule stood
+  in three places, and how the Commission's feedback names are held stood
+  only inside a licence entry. `/impressum#imp-license` stays as a short
+  section, because a fragment cannot be redirected.
 
 ### Privacy
 
@@ -1247,7 +1260,7 @@ not yet followed, or the EU cycle, starts there.
   Länder's Volksbefragung, petitions and Bürgerrat. A reason says what was
   found; „Quellen nicht geprüft" stands only where nobody has read them.
 - **A route is followed only when three things hold:** an official,
-  machine-readable source whose reuse is checked and stated in the Impressum;
+  machine-readable source whose reuse is checked and stated on `/quellen`;
   enough cases to matter; and no upkeep that somebody has to carry by hand.
 - **The five stations stay five.** They are the rail of one national norm. A
   motion enters at the third station, which then carries its name (as

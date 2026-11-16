@@ -40,7 +40,7 @@ import { eurLexCelexUrl } from './cellarDossier'
 export const ECI_REGISTER_HOST = 'register.eci.ec.europa.eu'
 const API = `https://${ECI_REGISTER_HOST}/core/api/register`
 
-/** The register's public start page, German — the one the Impressum links; where a reader goes when the monitor could not read the register. */
+/** The register's public start page, German — the one `/quellen` links; where a reader goes when the monitor could not read the register. */
 export const ECI_REGISTER_PAGE_URL = 'https://citizens-initiative.europa.eu/_de'
 
 /**

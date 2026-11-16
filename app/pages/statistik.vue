@@ -50,6 +50,8 @@ const KLASSE_NAME: Record<string, string> = {
   'eu-buergerinitiative': 'Europäische Bürgerinitiativen (seit 15.11.2026)',
   wege: 'Wege',
   datenlage: 'Datenlage',
+  // A page of its own since 16.11.2026; before, a section of the Impressum.
+  quellen: 'Quellen & Lizenzen (seit 16.11.2026)',
   'so-funktionierts': 'So funktioniert’s (bis 14.11.2026)',
   ueber: 'Über',
   impressum: 'Impressum',
