@@ -31,9 +31,17 @@
  * legend. `selected` marks one row in ink (selection is ink) with
  * `aria-current`, for the draft pages that link here with their own path.
  *
+ * A blue mark is a link since 16.11.2026 (`wegCellHref`): to where that can
+ * be done now, the list of the row's kind at that station with only the
+ * open ones. The mark stays the mark — same square, same place — and the
+ * link around it is a target of at least 36 px laid over the row without
+ * growing it (`-my-2`, as `tap-target`); its name says where it leads
+ * (`wegCellLinkName`). Hover is the site's one hover state for a link, a
+ * 2 px line under it. On the rails the mark's word is the link.
+ *
  * All copy is in `app/utils/wege.ts`.
  */
-import { WEGE_COPY, type WegCell, type WegMatrix, wegCellLabel, wegHeaderLabel, wegStationLabel } from '~/utils/wege'
+import { WEGE_COPY, type WegCell, type WegMatrix, wegCellHref, wegCellLabel, wegCellLinkName, wegCellLinkRest, wegHeaderLabel, wegStationLabel } from '~/utils/wege'
 import { WEG_MARK_CLASS, WEG_MARK_GLYPH, WEG_SECTION_BAR } from '~/utils/wegeMarks'
 
 defineProps<{
@@ -62,6 +70,13 @@ const ROW_SCROLL = '[&_a]:scroll-mt-20 [&_tr]:scroll-mt-20'
  * the joint of a compound („Regierungs-vorlage", `wegHeaderLabel`),
  * bottom-aligned (`HEAD_CELL`). */
 const STATION_COL = 'w-30 px-1.5'
+
+/* A blue mark's link in the table: a target of at least 36 px (`min-h-target`,
+ * `min-w-9`) that does not grow the row (`-my-2`, as `tap-target`); rounded
+ * for the focus ring. Its hover: a 2 px line under the mark (`MARK_LINK_LINE`),
+ * the hover every link has. */
+const MARK_LINK = 'group/mark -my-2 inline-flex min-h-target min-w-9 items-center justify-center rounded py-2 align-middle'
+const MARK_LINK_LINE = 'absolute bottom-0 left-1/2 h-0.5 w-3.5 -translate-x-1/2 rounded-full group-hover/mark:bg-link'
 
 /* A cell's mark is shown on the phone's rail with its word only where the dot alone would not say it. */
 const SAID_ON_RAIL = new Set<WegCell>(['stellungnahme', 'offen'])
@@ -149,10 +164,23 @@ const SAID_ON_RAIL = new Set<WegCell>(['stellungnahme', 'offen'])
             <GapNote v-if="row.gap" as="span" :text="row.gap" class="mt-0.5 block text-ink-secondary" />
           </th>
           <td v-for="station in matrix.stations" :key="station.id" :class="[ROW_CELL, STATION_COL]" class="text-center">
-            <span class="inline-flex h-5 items-center justify-center" aria-hidden="true">
-              <span :class="WEG_MARK_CLASS[row.cells[station.id]!]">{{ WEG_MARK_GLYPH[row.cells[station.id]!] }}</span>
-            </span>
-            <span class="sr-only">{{ wegCellLabel(row, row.cells[station.id]!) }}</span>
+            <NuxtLink
+              v-if="wegCellHref(row, station.id)"
+              :to="wegCellHref(row, station.id)!"
+              :class="MARK_LINK"
+            >
+              <span class="relative inline-flex h-5 items-center justify-center" aria-hidden="true">
+                <span :class="WEG_MARK_CLASS[row.cells[station.id]!]" />
+                <span :class="MARK_LINK_LINE" />
+              </span>
+              <span class="sr-only">{{ wegCellLinkName(row, station) }}</span>
+            </NuxtLink>
+            <template v-else>
+              <span class="inline-flex h-5 items-center justify-center" aria-hidden="true">
+                <span :class="WEG_MARK_CLASS[row.cells[station.id]!]">{{ WEG_MARK_GLYPH[row.cells[station.id]!] }}</span>
+              </span>
+              <span class="sr-only">{{ wegCellLabel(row, row.cells[station.id]!) }}</span>
+            </template>
           </td>
         </tr>
       </tbody>
@@ -212,7 +240,11 @@ const SAID_ON_RAIL = new Set<WegCell>(['stellungnahme', 'offen'])
                 <span :class="row.cells[station.id] === 'entfaellt' ? 'text-ink-secondary' : 'text-ink'">
                   {{ wegStationLabel(row, station) }}
                 </span>
-                <span v-if="SAID_ON_RAIL.has(row.cells[station.id]!)" class="text-ink-secondary">
+                <!-- The blue mark's word as its link (16.11.2026), the rest of the name for a screen reader. -->
+                <span v-if="wegCellHref(row, station.id)" class="text-ink-secondary">
+                  · <NuxtLink :to="wegCellHref(row, station.id)!" class="link-inline tap-target">{{ wegCellLabel(row, 'stellungnahme') }}<span class="sr-only">{{ wegCellLinkRest(row, station) }}</span></NuxtLink>
+                </span>
+                <span v-else-if="SAID_ON_RAIL.has(row.cells[station.id]!)" class="text-ink-secondary">
                   · {{ wegCellLabel(row, row.cells[station.id]!) }}
                 </span>
                 <span v-else class="sr-only">{{ wegCellLabel(row, row.cells[station.id]!) }}</span>

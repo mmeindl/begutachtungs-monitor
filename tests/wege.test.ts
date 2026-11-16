@@ -2,7 +2,7 @@ import { readFileSync } from 'node:fs'
 import { describe, expect, it } from 'vitest'
 import { SOURCE_PARAM, parseSourceList } from '../shared/utils/laender'
 import { ANLIEGEN_PATH } from '../shared/utils/anliegen'
-import { artChoiceLabel, artChoiceOf, draftFiltersFromQuery, draftUrlQuery } from '../app/utils/draftFilters'
+import { artChoiceLabel, artChoiceOf, draftFiltersFromQuery, draftUrlQuery, stationTabsFor } from '../app/utils/draftFilters'
 import { anliegenArtOf } from '../app/utils/anliegenView'
 import { EU_RAIL_DE } from '../app/utils/euRail'
 import { EU_BUERGERINITIATIVE_DE } from '../app/utils/euBuergerinitiative'
@@ -31,7 +31,9 @@ import {
   WEGE_COPY,
   euWegFor,
   isWegId,
+  wegCellHref,
   wegCellLabel,
+  wegCellLinkName,
   wegFor,
   wegGroups,
   wegHeaderLabel,
@@ -537,5 +539,75 @@ describe('euWegFor', () => {
     expect(euWegFor({ source: 'portal', actType: 'PROP_DEC' })).toBeNull()
     expect(euWegFor({ source: 'portal', actType: 'COMMUNIC' })).toBeNull()
     expect(euWegFor({ source: 'portal', actType: null })).toBeNull()
+  })
+})
+
+describe('every blue mark links to where that can be done now (16.11.2026)', () => {
+  const L = `${SOURCE_PARAM}=bgld,ktn,noe,ooe,sbg,stmk,t,vbg,w`
+  /** Every blue cell of every matrix, as `matrix/row/station → link`. */
+  const links = Object.fromEntries(WEG_MATRICES.flatMap((m) => m.groups.flatMap((g) => g.rows.flatMap((r) =>
+    m.stations.filter((st) => r.cells[st.id] === 'stellungnahme').map((st) => [`${m.id}/${r.id}/${st.id}`, wegCellHref(r, st.id)])))))
+
+  it('pins each link, or none with the reason at the row', () => {
+    expect(links).toEqual({
+      'bund/gesetz/begutachtung': '/entwuerfe?status=open&station=begutachtung&art=gesetz',
+      'bund/gesetz/rv': '/entwuerfe?status=open&station=rv&art=gesetz',
+      'bund/gesetz/parlament': '/entwuerfe?status=open&station=parlament&art=gesetz',
+      // The route is known only once the law is kundgemacht.
+      'bund/gesetz-als-antrag/begutachtung': null,
+      'bund/gesetz-als-antrag/parlament': null,
+      'bund/vorlage-ohne-begutachtung/rv': '/entwuerfe?status=open&station=rv&art=vorlage&begutachtung=ohne',
+      'bund/vorlage-ohne-begutachtung/parlament': '/entwuerfe?status=open&station=parlament&art=vorlage&begutachtung=ohne',
+      // Open Initiativanträge are rows under „Alle Initiativanträge" only.
+      'bund/antrag-ohne-begutachtung/parlament': '/entwuerfe?status=open&station=parlament&art=initiativantraege',
+      // Under its own option an open Ausschussantrag is never a row.
+      'bund/ausschussantrag/parlament': null,
+      // No list option of its own.
+      'bund/bundesrat-antrag/parlament': null,
+      'bund/volksbegehren/parlament': `${ANLIEGEN_PATH}?art=volksbegehren`,
+      'bund/verordnung/begutachtung': '/entwuerfe?status=open&station=begutachtung&art=verordnung',
+      // Not followed.
+      'bund/regulierungsbehoerde/begutachtung': null,
+      'land/landesgesetz/begutachtung': `/entwuerfe?status=open&station=begutachtung&art=gesetz&${L}`,
+      'land/landesverordnung/begutachtung': `/entwuerfe?status=open&station=begutachtung&art=verordnung&${L}`,
+      'anliegen/anliegen-petition/ausschuss': `${ANLIEGEN_PATH}?art=petition`,
+      'anliegen/anliegen-buergerinitiative/ausschuss': `${ANLIEGEN_PATH}?art=buergerinitiative`,
+      'anliegen/anliegen-volksbegehren/ausschuss': `${ANLIEGEN_PATH}?art=volksbegehren`,
+      'anliegen/anliegen-petition-bundesrat/ausschuss': `${ANLIEGEN_PATH}?art=petition-bundesrat`,
+      'eu/eu-richtlinie/konsultation': `${euPath()}#eu-fenster`,
+      'eu/eu-richtlinie/vorschlag': `${euPath()}#eu-fenster`,
+      'eu/eu-verordnung/konsultation': `${euPath()}#eu-fenster`,
+      'eu/eu-verordnung/vorschlag': `${euPath()}#eu-fenster`,
+      'eu/eu-kommission/vorschlag': `${euPath()}#eu-fenster`,
+      'eci/eu-buergerinitiative/sammlung': `${euPath()}#eu-buergerinitiativen`,
+    })
+  })
+  it('links no mark but the blue one', () => {
+    for (const m of WEG_MATRICES) for (const g of m.groups) for (const r of g.rows) for (const st of m.stations) {
+      if (r.cells[st.id] !== 'stellungnahme') expect(wegCellHref(r, st.id)).toBeNull()
+    }
+  })
+  it('writes the address the list writes itself, on a tab the Art leaves open, with the open filter on', () => {
+    for (const href of Object.values(links)) {
+      if (!href?.startsWith('/entwuerfe?')) continue
+      const params = new URLSearchParams(href.split('?')[1])
+      const f = draftFiltersFromQuery(Object.fromEntries(params))
+      expect(f.status).toBe('open')
+      expect(f.stations).toHaveLength(1)
+      expect(stationTabsFor(f.art).find((t) => t.value === f.stations[0])?.disabled).toBeFalsy()
+      const own = new URLSearchParams(draftUrlQuery(f))
+      own.forEach((v, k) => expect(params.get(k)).toBe(v))
+    }
+  })
+  it('names where it leads, the row\'s own words first', () => {
+    const [bund] = NATIONAL_MATRICES
+    const row = bund!.groups[0]!.rows.find((r) => r.id === 'antrag-ohne-begutachtung')!
+    const parlament = bund!.stations.find((s) => s.id === 'parlament')!
+    expect(wegCellLinkName(row, parlament)).toBe('Stellungnahme möglich: Initiativantrag ohne Entwurf, Parlament – offene anzeigen')
+    const eci = ECI_MATRIX.groups[0]!.rows[0]!
+    expect(wegCellLinkName(eci, ECI_MATRIX.stations[1]!)).toBe('Unterstützung möglich: Europäische Bürgerinitiative, Sammlung – offene anzeigen')
+    // A station the row names itself is said once.
+    const kommission = EU_MATRIX.groups[0]!.rows.find((r) => r.id === 'eu-kommission')!
+    expect(wegCellLinkName(kommission, EU_MATRIX.stations[1]!)).toBe('Rückmeldung möglich: Rechtsakt der Kommission – offene anzeigen')
   })
 })

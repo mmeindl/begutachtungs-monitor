@@ -45,11 +45,12 @@
  */
 import { gapDe } from '#shared/utils/gaps'
 import { ANLIEGEN_PATH } from '#shared/utils/anliegen'
-import { DRAFT_STATION_LABEL } from '#shared/utils/draftStations'
+import { DRAFT_STATION_LABEL, DRAFT_STATION_ORDER } from '#shared/utils/draftStations'
 import { LAND_CODES, SOURCE_PARAM, formatSourceList } from '#shared/utils/laender'
-import type { AnliegenKind, EuActHead, EuAdoptedBy, LandDraftKind, ProcedureItemKind, RisConsultationKind } from '#shared/types'
+import type { AnliegenKind, DraftStation, EuActHead, EuAdoptedBy, LandDraftKind, ProcedureItemKind, RisConsultationKind } from '#shared/types'
 import { EU_MEMBER_STATE_ECI, EU_MEMBER_STATE_NAME_DE, euPath, euWegePath } from '#shared/utils/eu'
 import { SECOND_ROUND_CLAUSE, type StationId } from './spine'
+import { draftFiltersFromQuery, draftUrlQuery } from './draftFilters'
 import { EU_BUERGERINITIATIVE_DE } from './euBuergerinitiative'
 import { euInitiativeTrackOf } from './euInitiative'
 import { EU_RAIL_DE } from './euRail'
@@ -75,6 +76,9 @@ export type WegeJurisdiction = typeof WEGE_STATE | 'eu'
 export const WEGE_PATH = '/wege'
 
 /** Each jurisdiction's page, by its address — the EU's built by the EU address helper, so step 6 moves it with the rest. */
+/** The list of drafts, where a national row's blue marks lead (`wegCellHref`). */
+const DRAFTS_LIST_PATH = '/entwuerfe'
+
 export const WEGE_PATH_OF: Record<WegeJurisdiction, string> = {
   [WEGE_STATE]: WEGE_PATH,
   eu: euWegePath(),
@@ -164,6 +168,10 @@ export interface Weg {
   cells: Record<StationId, WegCell>
   /** The list filtered to this kind; null where the list has no filter for it. */
   href: string | null
+  /** Where the blue marks lead, where not the row's own list (`wegCellHref`). */
+  openHref?: string | null
+  /** Blue marks that lead nowhere, each with its reason at the row (`wegCellHref`). */
+  openSkip?: readonly StationId[]
 }
 
 /* What the monitor does not show of a Volksbegehren: the support before it
@@ -275,6 +283,11 @@ export const WEGE: readonly Weg[] = [
     notFollowed: null,
     cells: row(['durch', 'stellungnahme', 'offen', 'stellungnahme', 'durch']),
     href: '/entwuerfe?art=als-antrag',
+    // No link behind either mark (16.11.2026, `wegCellHref`): the list
+    // knows the route only once the law is kundgemacht (`antragRouteCitation`
+    // on an inactive draft, `stationMap.ts`), so no view holds such a draft
+    // open in Begutachtung or at Parlament.
+    openSkip: ['begutachtung', 'parlament'],
   },
   /* `vorlageStations` with `withoutBegutachtung`; the list's option
    * „Regierungsvorlagen ohne Entwurf" (`ART_CHOICES`). Labelled „ohne
@@ -314,6 +327,10 @@ export const WEGE: readonly Weg[] = [
     notFollowed: null,
     cells: row(['entfaellt', 'offen', 'entfaellt', 'stellungnahme', 'durch']),
     href: '/entwuerfe?begutachtung=ohne&art=antrag',
+    // The mark leads to the open Initiativanträge (16.11.2026): they are rows
+    // under „Alle Initiativanträge", which holds them alone (`antragRowsOf`), at „Parlament"
+    // (`antragStationOf`); „Initiativanträge ohne Entwurf" holds their laws.
+    openHref: '/entwuerfe?art=initiativantraege',
   },
   /* § 27 Abs. 1 GOG-NR: a committee's own motion. Parliament lists it as an
    * item of its own (type BUA, 84 in GP XXVII, 18 in XXVIII), and § 23b
@@ -338,6 +355,12 @@ export const WEGE: readonly Weg[] = [
     notFollowed: null,
     cells: row(['entfaellt', 'offen', 'entfaellt', 'stellungnahme', 'durch']),
     href: '/entwuerfe?begutachtung=ohne&art=ausschussantrag',
+    // No link behind the mark (16.11.2026): an open Ausschussantrag is a row
+    // only under „Alle Arten" — under its own option only where „ohne
+    // Entwurf" is evidenced (`choiceAdmitsOpenVorlage`), which no check
+    // gives before the law (`zweite-runde.get.ts`, `unknown`) — so the view
+    // of its kind would stand empty while some are open.
+    openSkip: ['parlament'],
   },
   /* Art. 41 Abs. 1 B-VG; § 21 Abs. 1 and 3 GO-BR. § 23b Abs. 1 GOG-NR names
    * „Gesetzesanträge des Bundesrates" (Parliament: type GABR, open since
@@ -389,6 +412,9 @@ export const WEGE: readonly Weg[] = [
     gap: VOLKSBEGEHREN_GAP,
     cells: row(['entfaellt', 'entfaellt', 'entfaellt', 'stellungnahme', 'offen']),
     href: anliegenListAllHref('volksbegehren'),
+    // The open ones, as the Anliegen list opens (16.11.2026); none on most
+    // days, which that list says in words.
+    openHref: anliegenListHref('volksbegehren'),
   },
   /* Art. 43 B-VG: on an ordinary law „wenn der Nationalrat es beschließt
    * oder die Mehrheit der Mitglieder des Nationalrates es verlangt", before
@@ -716,6 +742,14 @@ export interface WegMatrixRow {
   takePart?: string
   /** A station's name on this row's own rail where it differs from the column's („Eingelangt" for a Volksbegehren). */
   stationLabels?: Record<string, string>
+  /**
+   * The list of open items the row's blue marks lead to (16.11.2026,
+   * `wegCellHref`), where it is not the row's own `href`; null where they
+   * lead nowhere.
+   */
+  openHref?: string | null
+  /** Blue marks that lead nowhere although the row has a list: no view of the list holds that kind open there. Reason at the row. */
+  openSkip?: readonly string[]
 }
 
 export interface WegMatrixGroup {
@@ -767,6 +801,46 @@ export function wegStationLabel(row: Pick<WegMatrixRow, 'stationLabels'>, statio
   return row.stationLabels?.[station.id] ?? station.label
 }
 
+/**
+ * Where a blue mark leads (16.11.2026): to where that can be done now — the
+ * list of exactly the row's kind at that station, „Stellungnahme möglich"
+ * on. A mark means one thing, so only a blue cell links, and only where a
+ * view of the list holds that kind open at that station.
+ *
+ * On the drafts list the link is the row's own (`openHref`, else `href`)
+ * plus the station and the open filter, written by the list's own query
+ * helpers (`draftFiltersFromQuery`, `draftUrlQuery`) so the address is the
+ * one the list writes itself; the sources parameter of a Länder row passes
+ * as it is. Every other list (the Anliegen, the EU's windows and Citizens'
+ * Initiatives) has no station filter: its open items are the station's,
+ * and the link is that list as it is.
+ */
+export function wegCellHref(row: Pick<WegMatrixRow, 'cells' | 'href' | 'openHref' | 'openSkip'>, stationId: string): string | null {
+  if (row.cells[stationId] !== 'stellungnahme' || row.openSkip?.includes(stationId)) return null
+  const base = row.openHref === undefined ? row.href : row.openHref
+  if (!base) return null
+  const [path, search = ''] = base.split('?')
+  if (path !== DRAFTS_LIST_PATH || !(DRAFT_STATION_ORDER as readonly string[]).includes(stationId)) return base
+  const params = new URLSearchParams(search)
+  const filters = draftFiltersFromQuery(Object.fromEntries(params))
+  const own = draftUrlQuery({ ...filters, stations: [stationId as DraftStation], status: 'open' })
+  const source = params.get(SOURCE_PARAM)
+  const query = [...Object.entries(own).map(([k, v]) => `${k}=${v}`), ...(source ? [`${SOURCE_PARAM}=${source}`] : [])]
+  return `${path}?${query.join('&')}`
+}
+
+/** A blue mark's link in words — what it leads to, never the mark alone: „Stellungnahme möglich: Ausschussantrag, Parlament – offene anzeigen". */
+export function wegCellLinkName(row: Pick<WegMatrixRow, 'label' | 'takePart' | 'stationLabels'>, station: WegMatrixStation): string {
+  return `${wegCellLabel(row, 'stellungnahme')}${wegCellLinkRest(row, station)}`
+}
+
+/** The name after the mark's word, where the word is the link's visible text (the rails): „: Ausschussantrag, Parlament – offene anzeigen". */
+export function wegCellLinkRest(row: Pick<WegMatrixRow, 'label' | 'stationLabels'>, station: WegMatrixStation): string {
+  // A station named by the row itself („Rechtsakt der Kommission") is said once.
+  const at = wegStationLabel(row, station)
+  return `: ${at === row.label ? row.label : `${row.label}, ${at}`} – ${WEGE_COPY.openLink}`
+}
+
 /* Parliament's page „Petitionen unterstützen" (memo, „Quellen"): it covers
  * Petitionen and Bürgerinitiativen alike, in the Nationalrat and the
  * Bundesrat („Sie können eine Petition im Nationalrat oder Bundesrat
@@ -775,9 +849,11 @@ const PARLAMENT_PETITIONEN = 'https://www.parlament.gv.at/beteiligen/unterstuetz
 const PARLAMENT_SOURCE = { label: 'parlament.gv.at', href: PARLAMENT_PETITIONEN }
 
 /* The windows open on the Commission's portal and the Citizens' Initiatives
- * in collection, on the EU page (steps 3 and 5 of the EU cycle). */
-const EU_FENSTER_HREF = `${euPath()}#eu-fenster`
-const EU_BUERGERINITIATIVEN_HREF = `${euPath()}#eu-buergerinitiativen`
+ * in collection, on the EU page (steps 3 and 5 of the EU cycle). Exported
+ * for the homepage's doors (`app/utils/doors.ts`, 16.11.2026), which lead
+ * to the same two lists. */
+export const EU_FENSTER_HREF = `${euPath()}#eu-fenster`
+export const EU_BUERGERINITIATIVEN_HREF = `${euPath()}#eu-buergerinitiativen`
 /* „Richtlinien, die Österreich umzusetzen hat" (`EuUmsetzungList`): where
  * the row „Richtlinie" leads since 16.11.2026. The open feedback windows,
  * where it led before, are the blue cells' matter and stand behind the two
@@ -875,6 +951,8 @@ export const EU_MATRIX: WegMatrix = {
         notFollowed: null,
         cells: euCells('stellungnahme', 'stellungnahme', 'durch', 'durch', 'durch'),
         href: EU_UMSETZUNG_HREF,
+        // The marks lead to the open windows, as both station headers do (16.11.2026).
+        openHref: EU_FENSTER_HREF,
         takePart: 'Rückmeldung möglich',
         stationLabels: { wirkung: EU_RAIL_DE.name.umsetzung },
       },
@@ -1082,6 +1160,8 @@ export const ANLIEGEN_MATRIX: WegMatrix = {
         gap: VOLKSBEGEHREN_GAP,
         cells: anliegenCells('durch', 'offen', 'stellungnahme', 'durch'),
         href: anliegenListAllHref('volksbegehren'),
+        // The mark leads to the open ones (16.11.2026), the list's empty state saying when there are none.
+        openHref: anliegenListHref('volksbegehren'),
         takePart: 'Stellungnahme möglich',
         stationLabels: { eingebracht: 'Eingelangt' },
       },
@@ -1107,6 +1187,8 @@ export const ANLIEGEN_MATRIX: WegMatrix = {
         notFollowed: null,
         cells: anliegenCells('durch', 'entfaellt', 'stellungnahme', 'offen'),
         href: anliegenListAllHref('petition-bundesrat'),
+        // The mark leads to the open ones (16.11.2026), the list's empty state saying when there are none.
+        openHref: anliegenListHref('petition-bundesrat'),
         takePart: 'Unterstützung und Stellungnahme möglich',
         stationLabels: { nationalrat: 'Bundesrat' },
       },
@@ -1231,6 +1313,8 @@ export const WEGE_COPY = {
   selected: 'dieser Weg',
   instrumentsHeading: 'Nicht im Monitor',
   instrumentsLede: 'weitere Wege, sich zu äußern, ohne Stationen',
+  // The end of a blue mark's link name (`wegCellLinkName`, 16.11.2026).
+  openLink: 'offene anzeigen',
 } as const
 
 /* ------------------------------------------------------------------ */
