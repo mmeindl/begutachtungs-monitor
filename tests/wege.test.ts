@@ -132,6 +132,9 @@ const rowOf = (m: (typeof WEG_MATRICES)[number], id: string) => rowsOf(m).find((
 describe('the matrices with rails of their own (16.11.2026)', () => {
   it('the national matrices come first, Bund then Länder, each the five stations, together every row of WEGE', () => {
     expect(WEG_MATRICES.slice(0, 2)).toEqual([...NATIONAL_MATRICES])
+    // Austria before the EU within each part: how a text becomes law, then how people start something themselves.
+    expect(WEG_MATRICES.map((m) => m.id)).toEqual(['bund', 'land', 'eu', 'anliegen', 'eci'])
+    expect(WEGE_COPY.title).toBe('Wege der Gesetzgebung')
     expect(NATIONAL_MATRICES.map((m) => m.id)).toEqual(['bund', 'land'])
     for (const m of NATIONAL_MATRICES) expect(m.stations.map((s) => s.id)).toEqual([...WEG_STATION_ORDER])
     expect(NATIONAL_MATRICES.flatMap(rowsOf).map((r) => r.id)).toEqual(WEGE.map((w) => w.id))
@@ -241,9 +244,9 @@ describe('the matrices with rails of their own (16.11.2026)', () => {
 })
 
 describe('instruments the monitor does not follow', () => {
-  it('are the three without a matrix, with unique ids, words for what one can do, EU, Bund, Land in that order', () => {
-    expect(WEG_INSTRUMENTS.map((i) => i.id)).toEqual(['eu-petition', 'volksbefragung', 'laender'])
-    const order = { eu: 0, bund: 1, land: 2 }
+  it('are the three without a matrix, with unique ids, words for what one can do, in the matrices\' order: Bund, Land, EU', () => {
+    expect(WEG_INSTRUMENTS.map((i) => i.id)).toEqual(['volksbefragung', 'laender', 'eu-petition'])
+    const order = { bund: 0, land: 1, eu: 2 }
     const levels = WEG_INSTRUMENTS.map((i) => order[i.level])
     expect(levels).toEqual([...levels].sort((a, b) => a - b))
     for (const i of WEG_INSTRUMENTS) {

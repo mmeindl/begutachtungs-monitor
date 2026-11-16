@@ -1,6 +1,6 @@
 <script setup lang="ts">
 /**
- * „Der Weg eines Entwurfs": every kind of path a text can take, and where a
+ * „Wege der Gesetzgebung" („Der Weg eines Entwurfs" until 16.11.2026): every kind of path a text can take, and where a
  * reader can take part. Replaces the prose of /so-funktionierts#stationen
  * and #wege (14.11.2026), which told two of these paths.
  *

@@ -1238,7 +1238,11 @@ not yet followed, or the EU cycle, starts there.
   („Regierungs-vorlage", `wegHeaderLabel`), never where the browser
   guesses, and stands on the bottom line, next to its marks. Five columns
   are what these rails have, not a rule: a rail with four or six stations
-  gets four or six. Table or rails is the card's question, not the
+  gets four or six. The page is „Wege der Gesetzgebung" (16.11.2026; „Der
+  Weg eines Entwurfs" named two of its six blocks) and runs Austria before
+  the EU within each part: how a text becomes law (Bund, Länder, EU), how
+  people start something themselves (Anliegen, the Citizens' Initiative),
+  then what is not followed, in the same order. Table or rails is the card's question, not the
   window's (a container query at 50rem, 16.11.2026): the table stays while
   the card holds the five station columns and 200 px for the paths. Only the instruments
   the monitor does not follow are a list without stations, „Nicht im

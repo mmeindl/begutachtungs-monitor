@@ -1059,7 +1059,12 @@ export const ANLIEGEN_MATRIX: WegMatrix = {
 }
 
 /** The matrices of the page, in its order: the national one, then the objects with rails of their own. */
-export const WEG_MATRICES: readonly WegMatrix[] = [...NATIONAL_MATRICES, EU_MATRIX, ECI_MATRIX, ANLIEGEN_MATRIX]
+/* The page's order (16.11.2026), Austria before the EU within each part:
+ * how a text becomes law (Bund, Länder, EU), then how people start
+ * something themselves (Anliegen an das Parlament, the European Citizens'
+ * Initiative). Until then the Citizens' Initiative stood before the
+ * Anliegen, EU before Bund, because it was built beside the EU's matrix. */
+export const WEG_MATRICES: readonly WegMatrix[] = [...NATIONAL_MATRICES, EU_MATRIX, ANLIEGEN_MATRIX, ECI_MATRIX]
 
 /* ------------------------------------------------------------------ */
 /* Not in the monitor: instruments without stations                    */
@@ -1099,21 +1104,9 @@ export interface WegInstrument {
   notFollowed: string
 }
 
+/* Bund, Land, EU — the order of the matrices above (16.11.2026; it ran EU,
+ * Bund, Land, against them). */
 export const WEG_INSTRUMENTS: readonly WegInstrument[] = [
-  /* Art. 227 AEUV: anyone resident in the Union, on a matter that affects
-   * them directly. Not followed (petitionen-laender-und-eu.md, 15.11.2026):
-   * no API and no dataset; the portal answers programs with 403, and the
-   * EP's legal notice forbids circumventing technical measures. The source
-   * is the portal's list of petitions, the address the memo names. */
-  {
-    id: 'eu-petition',
-    level: 'eu',
-    name: 'Petition an das Europäische Parlament',
-    act: 'einreichen',
-    duty: null,
-    source: { label: 'europarl.europa.eu', href: 'https://www.europarl.europa.eu/petitions/en/show-petitions' },
-    notFollowed: 'keine Schnittstelle',
-  },
   /* Art. 49b B-VG: on the Nationalrat's decision; the result goes to the
    * Nationalrat and the Bundesregierung. The memo cites no binding effect
    * and no duty, so none is said. No path to a norm: it asks, it decides
@@ -1151,10 +1144,25 @@ export const WEG_INSTRUMENTS: readonly WegInstrument[] = [
     duty: 'teils Pflicht zur Antwort',
     notFollowed: 'Quellen je Land, erst teils geprüft',
   },
+  /* Art. 227 AEUV: anyone resident in the Union, on a matter that affects
+   * them directly. Not followed (petitionen-laender-und-eu.md, 15.11.2026):
+   * no API and no dataset; the portal answers programs with 403, and the
+   * EP's legal notice forbids circumventing technical measures. The source
+   * is the portal's list of petitions, the address the memo names. */
+  {
+    id: 'eu-petition',
+    level: 'eu',
+    name: 'Petition an das Europäische Parlament',
+    act: 'einreichen',
+    duty: null,
+    source: { label: 'europarl.europa.eu', href: 'https://www.europarl.europa.eu/petitions/en/show-petitions' },
+    notFollowed: 'keine Schnittstelle',
+  },
 ]
 
 export const WEGE_COPY = {
-  title: 'Der Weg eines Entwurfs',
+  // „Der Weg eines Entwurfs" until 16.11.2026: it named two of the page's six blocks. An Anliegen, an EU act and a Citizens' Initiative are no Entwurf.
+  title: 'Wege der Gesetzgebung',
   description:
     'Alle Wege, die ein Text zum Gesetz oder zur Verordnung nehmen kann – beim Bund, in den Ländern, ausgehend vom EU-Recht –, Station für Station, und wo eine Stellungnahme, eine Rückmeldung oder eine Unterstützung möglich ist.',
   lede: 'Welche Stationen ein Text durchläuft, bis er gilt – und wo Sie sich beteiligen können.',
