@@ -42,7 +42,7 @@
  * or odd field is counted, never named.
  */
 import type { EuFeedbackContribution, EuFeedbackKind, EuFeedbackOrganisationType, EuFeedbackReading } from '../../../shared/types/eu'
-import { EU_FEEDBACK_ORGANISATION_TYPES } from '../../../shared/utils/euPortal'
+import { EU_FEEDBACK_MAX_PAGES, EU_FEEDBACK_ORGANISATION_TYPES, EU_FEEDBACK_PAGE_SIZE, EU_FEEDBACK_STEP_PAGES } from '../../../shared/utils/euPortal'
 import { PORTAL_HOST, contributionPageUrl } from './haveYourSay'
 
 const API = `https://${PORTAL_HOST}/info/law/better-regulation/api`
@@ -53,16 +53,26 @@ const API = `https://${PORTAL_HOST}/info/law/better-regulation/api`
  * allowed. 2 since 15.11.2026: a named row keeps its day and its number,
  * and the reading lists each contribution with its link. 3 since 16.11.2026:
  * the service caches page one apart and the whole reading with the moment
- * its names were read (`portalService.ts`), a changed cached shape.
+ * its names were read (`portalService.ts`), a changed cached shape. 4 since
+ * 16.11.2026: the reading goes on in steps of five pages on request, and
+ * the service caches each step's progress (`FeedbackProgress`) under its
+ * number of pages.
  */
-export const FEEDBACK_READER_VERSION = 3
+export const FEEDBACK_READER_VERSION = 4
 
 /** One page of the list: the portal caps `size` at 100 (size=500 returned 100 on 15.11.2026). */
-export const FEEDBACK_PAGE_SIZE = 100
+export const FEEDBACK_PAGE_SIZE = EU_FEEDBACK_PAGE_SIZE
 
-/** At most 500 rows per window (decision 10): five pages, newest first. Beyond it the page says how many of how many were read. */
-export const FEEDBACK_MAX_ROWS = 500
-export const FEEDBACK_MAX_PAGES = FEEDBACK_MAX_ROWS / FEEDBACK_PAGE_SIZE
+/** One step of the reading: five pages. The first reading is one step (the newest 500); each „Weitere … lesen" asks for one more. */
+export const FEEDBACK_STEP_PAGES = EU_FEEDBACK_STEP_PAGES
+
+/** At most fifty pages, 5,000 rows, per window: beyond it the page says how many of how many were read, and offers no more. */
+export const FEEDBACK_MAX_PAGES = EU_FEEDBACK_MAX_PAGES
+export const FEEDBACK_MAX_ROWS = FEEDBACK_MAX_PAGES * FEEDBACK_PAGE_SIZE
+
+/** Whether a number of pages is a step the reader may be asked for: 5, 10, … 50. */
+export const isFeedbackStep = (pages: number): boolean =>
+  Number.isInteger(pages) && pages >= FEEDBACK_STEP_PAGES && pages <= FEEDBACK_MAX_PAGES && pages % FEEDBACK_STEP_PAGES === 0
 
 /** The displayed name's ceiling: some senders type a description of a few hundred characters into the field. */
 export const ORGANISATION_NAME_MAX = 120
@@ -339,31 +349,24 @@ export function summarize(rows: readonly FeedbackRow[], total: number, initiativ
 }
 
 /**
- * The contributions to one publication of one initiative, page by page
- * through the caller's fetch (the service's paced one; a test's fake):
- * until the answer says it is the last page, or until `FEEDBACK_MAX_ROWS`
- * rows. `total` is the first page's count. A page whose answer names
- * another page number did not honour the parameter: the reading stops
- * there, and the page says how many of how many were read, rather than
- * count a page twice. A page that fails throws, so nothing partial is
- * cached as if it were the whole. The initiative is asked for nothing; its
- * number only builds the contributions' links.
- *
- * Not deduplicated across pages: a counted row keeps no number to compare.
- * A contribution arriving between two requests (2.5 s apart) shifts one row
- * onto the next page and counts it twice; for a window still open the
- * figures are those of a moment anyway, and the portal's count stands
- * beside them.
+ * The contributions to one publication of one initiative: page one, then
+ * one step (`pages`, five by default — the newest 500), through the
+ * caller's fetch (the service's paced one; a test's fake). The initiative
+ * is asked for nothing; its number only builds the contributions' links.
+ * A page that fails throws, so nothing partial is cached as if it were the
+ * whole.
  */
-export async function readFeedback(fetchJson: (url: string) => Promise<unknown>, initiativeId: number, publicationId: number): Promise<EuFeedbackReading> {
-  return readFeedbackRest(fetchJson, initiativeId, publicationId, await readFirstFeedbackPage(fetchJson, publicationId))
+export async function readFeedback(fetchJson: (url: string) => Promise<unknown>, initiativeId: number, publicationId: number, pages: number = FEEDBACK_STEP_PAGES): Promise<EuFeedbackReading> {
+  const first = await readFirstFeedbackPage(fetchJson, publicationId)
+  const { progress } = await readFeedbackStep(fetchJson, publicationId, progressOfFirstPage(first), pages)
+  return progressReading(progress, initiativeId)
 }
 
 /**
  * The first step of the two (16.11.2026): page one alone, read row by row
  * (`rowOf` has run on every row, so a counted row already keeps no day and
  * no number). What the service caches to answer before the whole reading
- * is in, and hands to `readFeedbackRest`, so page one is never asked twice.
+ * is in, and hands to `readFeedbackStep`, so page one is never asked twice.
  */
 export async function readFirstFeedbackPage(fetchJson: (url: string) => Promise<unknown>, publicationId: number): Promise<FeedbackPage> {
   const first = parseFeedbackPage(await fetchJson(feedbackUrl(publicationId, 0)))
@@ -373,23 +376,167 @@ export async function readFirstFeedbackPage(fetchJson: (url: string) => Promise<
 
 /** Page one alone as a reading: `read` its rows, `total` the portal's count — the whole reading where page one is the last. */
 export function firstPageReading(first: FeedbackPage, initiativeId: number): EuFeedbackReading {
-  return summarize(first.rows.slice(0, FEEDBACK_MAX_ROWS), first.total, initiativeId)
+  return summarize(first.rows, first.total, initiativeId)
 }
 
 /** Whether page one is all there is to read: the portal says it is the last page. */
 export const isWholeReading = (first: FeedbackPage): boolean => first.last
 
-/** The second step: the pages after the given first one, and the reading of all of them. Asks nothing where page one was the last. */
-export async function readFeedbackRest(fetchJson: (url: string) => Promise<unknown>, initiativeId: number, publicationId: number, first: FeedbackPage): Promise<EuFeedbackReading> {
-  const rows = [...first.rows]
-  let last = first.last
-  for (let p = 1; !last && p < FEEDBACK_MAX_PAGES && rows.length < FEEDBACK_MAX_ROWS; p++) {
-    const next = parseFeedbackPage(await fetchJson(feedbackUrl(publicationId, p)))
-    if (next.page !== p) break
-    rows.push(...next.rows)
-    last = next.last
+/**
+ * How far the reading of one window has come: what a step starts from and
+ * what the service caches per step (16.11.2026). Every row has passed the
+ * naming rule (`rowOf`): a counted row keeps no day, no number, no link.
+ */
+export interface FeedbackProgress {
+  /** Every row read, newest first: one unbroken run of the portal's list. */
+  rows: FeedbackRow[]
+  /**
+   * The portal's count at the read the rows' places are measured from: page
+   * one's, or that of a later read of page one which added the rows that
+   * had arrived since (`readFeedbackStep`, „the newest").
+   */
+  anchor: number
+  /** The portal's count at the latest page read — what the page shows as „von N". */
+  total: number
+  /** The step it answers, in pages: 1 for page one alone, then 5, 10, … 50. It holds at most `pages × 100` rows. */
+  pages: number
+}
+
+/** Page one as the progress every reading starts from. */
+export function progressOfFirstPage(first: FeedbackPage): FeedbackProgress {
+  return { rows: [...first.rows], anchor: first.total, total: first.total, pages: 1 }
+}
+
+/** A progress as the page's reading: its rows, the latest count. */
+export function progressReading(progress: FeedbackProgress, initiativeId: number): EuFeedbackReading {
+  return summarize(progress.rows, progress.total, initiativeId)
+}
+
+/** Whether two rows can be the same row of the list: a named row by its number (or, without one, by all it keeps), a counted row by the three things it keeps. */
+function sameRow(a: FeedbackRow, b: FeedbackRow): boolean {
+  if (a.named && b.named) return a.id !== null || b.id !== null ? a.id === b.id : a.name === b.name && a.type === b.type && a.country === b.country && a.date === b.date
+  if (a.named || b.named) return false
+  return a.type === b.type && a.published === b.published && a.country === b.country
+}
+
+const namedIds = (rows: readonly FeedbackRow[]): Set<number> => new Set(rows.flatMap((r) => (r.named && r.id !== null ? [r.id] : [])))
+const repeatsANamedRow = (rows: readonly FeedbackRow[], seen: ReadonlySet<number>): boolean => rows.some((r) => r.named && r.id !== null && seen.has(r.id))
+
+/** What reading one page did to a progress: added its rows, found the list shifted in a way the arithmetic does not explain, or found a page that is not the one asked. */
+type PageOutcome = 'added' | 'misfit' | 'stop'
+
+/**
+ * The next older rows: the page that holds the first row not read yet. The
+ * list is newest first, so a contribution that arrived since the anchor's
+ * read stands above everything read and pushes every row down by one: with
+ * the count grown by k, the row after the last one read stands at
+ * `rows + k`, and the first rows of its page are rows already read. They
+ * are skipped — and compared first, row by row, with the rows read last,
+ * so a skip the arithmetic got wrong is caught where the rows can tell
+ * (a named row by its number, a counted row by kind, status and country).
+ * A count lower than at the read before, a skip that does not fall on the
+ * page, a repeat that does not match, or a named row already read among the
+ * kept ones is a misfit: the caller reads again from page one.
+ */
+async function readOlder(fetchJson: (url: string) => Promise<unknown>, publicationId: number, p: FeedbackProgress): Promise<PageOutcome> {
+  const read = p.rows.length
+  const pageNo = Math.floor((read + p.total - p.anchor) / FEEDBACK_PAGE_SIZE)
+  const page = parseFeedbackPage(await fetchJson(feedbackUrl(publicationId, pageNo)))
+  // A page whose answer names another number did not honour the parameter: stop there rather than count a page twice.
+  if (page.page !== pageNo) return 'stop'
+  if (page.total < p.total) return 'misfit'
+  const skip = read + (page.total - p.anchor) - pageNo * FEEDBACK_PAGE_SIZE
+  if (skip < 0 || skip > read || skip > page.rows.length || (skip === page.rows.length && !page.last)) return 'misfit'
+  for (let i = 0; i < skip; i++) {
+    if (!sameRow(page.rows[i]!, p.rows[read - skip + i]!)) return 'misfit'
   }
-  return summarize(rows.slice(0, FEEDBACK_MAX_ROWS), first.total, initiativeId)
+  const kept = page.rows.slice(skip)
+  if (repeatsANamedRow(kept, namedIds(p.rows))) return 'misfit'
+  p.rows.push(...kept)
+  p.total = page.total
+  return 'added'
+}
+
+/**
+ * The newer rows: once the run from the anchor down is read to its end,
+ * what arrived since stands at the head of page one. They are taken from a
+ * fresh page one — after the rows below them were compared with the head of
+ * what was read — and the anchor moves to that read. More new rows than a
+ * page holds is a misfit.
+ */
+async function readNewer(fetchJson: (url: string) => Promise<unknown>, publicationId: number, p: FeedbackProgress): Promise<PageOutcome> {
+  const page = parseFeedbackPage(await fetchJson(feedbackUrl(publicationId, 0)))
+  if (page.page !== 0) return 'stop'
+  if (page.total < p.total) return 'misfit'
+  const fresh = page.total - p.anchor
+  if (fresh <= 0 || fresh > page.rows.length) return 'misfit'
+  const below = page.rows.slice(fresh)
+  for (let i = 0; i < below.length && i < p.rows.length; i++) {
+    if (!sameRow(below[i]!, p.rows[i]!)) return 'misfit'
+  }
+  const head = page.rows.slice(0, fresh)
+  if (repeatsANamedRow(head, namedIds(p.rows))) return 'misfit'
+  p.rows.unshift(...head)
+  p.anchor = page.total
+  p.total = page.total
+  return 'added'
+}
+
+/** What a step did: the progress it reached, and whether it had to begin again at page one (its names are then newer than the progress it started from). */
+export interface FeedbackStepResult {
+  progress: FeedbackProgress
+  restarted: boolean
+}
+
+/**
+ * ONE STEP (16.11.2026): from a progress, on to `pages` pages' worth of
+ * rows (`pages × 100`, at most 5,000), asking the portal at most `requests`
+ * times (five: one step's pages, so a step fits the endpoint's 30 s at the
+ * pacer's 2.5 s) and never for a page already read unless the list moved.
+ * Older rows first, down the list; where the list is read to its end and
+ * contributions arrived since the anchor, the newer ones from page one.
+ * Stops early at the end of the list, at a page that answers with another
+ * number, or when the requests are used up — the progress then holds fewer
+ * rows than the step's, and the next step goes on from there.
+ *
+ * ROWS THAT MOVE BETWEEN READS. A counted row keeps no number and no day,
+ * so a row read twice cannot be told afterwards; the guard is the portal's
+ * count at each read (`readOlder`, `readNewer`). Where the list moved in a
+ * way the count does not explain, the step begins again from page one,
+ * once, within the same requests; a second misfit throws, and nothing of
+ * the step is cached. What the count cannot see: a contribution withdrawn
+ * below the last row read while another arrives, between two reads — the
+ * count stays, the rows move up by one, and the first row of the next page
+ * is one already read. A named row is caught by its number; a counted row
+ * is counted twice.
+ */
+export async function readFeedbackStep(
+  fetchJson: (url: string) => Promise<unknown>,
+  publicationId: number,
+  from: FeedbackProgress,
+  pages: number,
+  requests: number = FEEDBACK_STEP_PAGES,
+): Promise<FeedbackStepResult> {
+  const target = Math.min(pages, FEEDBACK_MAX_PAGES) * FEEDBACK_PAGE_SIZE
+  let p: FeedbackProgress = { ...from, rows: [...from.rows], pages }
+  let left = requests
+  let restarted = false
+  while (left > 0 && p.rows.length < Math.min(target, p.total)) {
+    const outcome = p.rows.length < p.anchor ? await readOlder(fetchJson, publicationId, p) : await readNewer(fetchJson, publicationId, p)
+    left--
+    if (outcome === 'stop') break
+    if (outcome === 'misfit') {
+      if (restarted) throw new Error('Portal: die Liste der Rückmeldungen hat sich beim Lesen verschoben')
+      // No request left for page one: the rows read so far stand (the misfit page added nothing), and the next step meets the list again.
+      if (left === 0) break
+      restarted = true
+      p = { ...progressOfFirstPage(await readFirstFeedbackPage(fetchJson, publicationId)), pages }
+      left--
+    }
+  }
+  // Newer rows taken at the head may push the step past its rows: the oldest go, and the run stays unbroken.
+  if (p.rows.length > target) p.rows = p.rows.slice(0, target)
+  return { progress: p, restarted }
 }
 
 /** A reading of a window without a single contribution: the portal's own count says so, and nothing is asked. */

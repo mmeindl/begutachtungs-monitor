@@ -25,6 +25,12 @@
  * they are a select on the phone, so the layers read the same at every
  * width and the box need not know which form the tabs took.
  *
+ * A `frame` slot, above the tabs (16.11.2026): a row about the list as a
+ * whole whose control changes the tabs' counts too — the feedback list's
+ * „Gelesen sind … von …" with „Weitere … lesen" (`EuFeedbackPanel`). What
+ * a control changes stands at it or below it, so it cannot sit in the tool
+ * row under the tabs.
+ *
  * A `sr-only` live region inside takes no gap (absolutely positioned
  * children are no flex items).
  *
@@ -50,13 +56,16 @@ defineProps<{
 
 <template>
   <div class="overflow-clip rounded-xl border border-hairline bg-surface">
-    <div v-if="$slots.tabs || $slots.header" class="border-b border-hairline">
-      <div v-if="$slots.tabs" class="px-4">
+    <div v-if="$slots.frame || $slots.tabs || $slots.header" class="border-b border-hairline">
+      <div v-if="$slots.frame" class="flex flex-col gap-3 px-4 py-3">
+        <slot name="frame" />
+      </div>
+      <div v-if="$slots.tabs" class="px-4" :class="$slots.frame && 'border-t border-hairline'">
         <slot name="tabs" />
       </div>
       <!-- The line between tabs and tool row is the tool row's own top edge,
            so a tool row hidden at some width takes it along. -->
-      <div v-if="$slots.header" class="flex flex-col gap-3 px-4 py-3" :class="[$slots.tabs && 'border-t border-hairline', headerClass]">
+      <div v-if="$slots.header" class="flex flex-col gap-3 px-4 py-3" :class="[($slots.tabs || $slots.frame) && 'border-t border-hairline', headerClass]">
         <slot name="header" />
       </div>
     </div>

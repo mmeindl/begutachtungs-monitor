@@ -79,3 +79,16 @@ export const EU_FEEDBACK_ORGANISATION_TYPES: readonly EuFeedbackOrganisationType
   'ENVIRONMENTAL_ORGANISATION',
   'CONSUMER_ORGANISATION',
 ]
+
+/**
+ * How far the list of contributions to one window is read (16.11.2026,
+ * docs/decisions.md, „On approach, the newest 500, more on request"). The
+ * portal answers 100 rows a page (it caps `size` there); the first reading
+ * is five pages, the newest 500, and each press of „Weitere … lesen" one
+ * more step of five pages, up to fifty pages — 5,000 rows a window. The
+ * server refuses any other step; the page counts its button's number with
+ * them.
+ */
+export const EU_FEEDBACK_PAGE_SIZE = 100
+export const EU_FEEDBACK_STEP_PAGES = 5
+export const EU_FEEDBACK_MAX_PAGES = 50

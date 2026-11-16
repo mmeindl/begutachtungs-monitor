@@ -639,9 +639,9 @@ export interface EuFeedbackKind {
  * their `unnamed` add up to the number of `contributions`.
  */
 export interface EuFeedbackReading {
-  /** How many contributions the portal counts for the publication (`totalElements` of the first page). */
+  /** How many contributions the portal counts for the publication (`totalElements` at the latest page read). */
   total: number
-  /** How many rows were read: the newest, at most 500 (decision 10). */
+  /** How many rows were read: the newest — 500 at first, up to 5,000 in steps of 500 on a reader's request. */
   read: number
   /** The named rows, in the portal's order (newest first). */
   contributions: EuFeedbackContribution[]
@@ -660,15 +660,18 @@ export interface EuFeedbackReading {
  * feedback in one window, read when its block nears the reader's viewport.
  * A publication that is not one of the initiative's windows is a 404, not a state.
  *
- * Two steps (16.11.2026): with `?teil=erste`, page one of the portal's list
+ * Steps (16.11.2026): with `?teil=erste`, page one of the portal's list
  * alone, as `teilweise` — the same reading built from page one, `total` the
  * portal's count and `read` the rows of page one — or as `gelesen` where
- * page one holds the whole list or the whole reading is cached. Without
- * it, the whole reading (`gelesen`), never `teilweise`.
+ * page one holds the whole list or the first reading is cached. With
+ * `?seiten=N` (5, the default, 10, … 50), the reading of N pages
+ * (`gelesen`), never `teilweise`. `pages` is the step the answer is: 1 for
+ * page one alone, 0 for a window without a contribution, else N — the next
+ * step the block may ask for is `pages + 5`, up to 50.
  */
 export type EuRueckmeldungenResponse =
-  | { state: 'gelesen'; reading: EuFeedbackReading }
-  | { state: 'teilweise'; reading: EuFeedbackReading }
+  | { state: 'gelesen'; reading: EuFeedbackReading; pages: number }
+  | { state: 'teilweise'; reading: EuFeedbackReading; pages: number }
   | { state: 'ungelesen' }
 
 /**

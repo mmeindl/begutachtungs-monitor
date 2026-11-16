@@ -9,17 +9,32 @@
  * Built from the same parts, not from `StatementsPanel` itself, which is
  * built around Zustimmungen and its „nicht öffentlich" segment: a list box
  * (`ListBox`) with the kinds and the citizens as tabs and their counts
- * (`ListTabs`), the cap as its frame row, the chip „Aus <Land>", the
- * phone's order and the search in its tool row, the set line as its polite
- * live region, the order in the column header (`ColumnLabel`,
+ * (`ListTabs`), how much was read and „Weitere … lesen" as its first row
+ * above the tabs, the chip „Aus <Land>", the phone's order and the search
+ * in its tool row, the set line as its polite live region, the order in the column header (`ColumnLabel`,
  * `useReversibleSort`), ten rows a page with „Alle N" at its foot
  * (`ListMore`, `usePagedList`).
  *
  * WHAT A CONTROL CHANGES STANDS BELOW IT. The tabs' counts are the kinds'
  * whole, whatever the chip and the search do; the chip counts within the
- * tab above it; the set line and the rows answer to all three. The cap
- * stands at the head of the tool row, above the search, because search,
- * filter and order reach only the rows read.
+ * tab above it; the set line and the rows answer to all three. The row
+ * „Gelesen sind die neuesten 500 von 599 Rückmeldungen." with „Weitere 99
+ * lesen" stands first, above the tabs (16.11.2026, the box's `frame`
+ * slot): a further step changes the tabs' counts as well as the rows and
+ * the closing rows, and search, filter and order reach only the rows read.
+ * While the step is read a progress line stands in the button's place and
+ * takes the focus where the button had it; when the step is in, the focus
+ * goes to what stands there then (the next button, „Erneut versuchen", the
+ * ceiling's sentence, or — where everything is read and the row is gone —
+ * the list's heading). The reading is swapped in under the reader's tab,
+ * chip, search, order and paged rows: they are this component's state, and
+ * a new reading resets none of them.
+ *
+ * THE SET LINE ONLY WHILE NARROWED (16.11.2026, `feedbackSetLineVisible`):
+ * visible while a search or the chip narrows the list, and where no
+ * organisation is named at all; otherwise for a screen reader alone. It
+ * mounts anew with each reading (`:key`), so a step's arrival is said once,
+ * by the block's live region, not again by the changed count.
  *
  * COUNTED, NEVER NAMED: a kind's organisations without a name, the
  * citizens, „Sonstige" and rows not published close the list, one muted row
@@ -60,9 +75,11 @@ import {
   euFeedbackView,
   feedbackRowsOf,
   feedbackSetLine,
+  feedbackSetLineVisible,
   rowsOfKind,
   type EuFeedbackCountry,
   type EuFeedbackKindTab,
+  type EuFeedbackMore,
   type EuFeedbackSort,
 } from '~/utils/euFeedback'
 import { reversedOption } from '~/composables/useReversibleSort'
@@ -73,9 +90,11 @@ const props = withDefaults(defineProps<{
   country?: EuFeedbackCountry | null
   /** Page one alone, the rest still read (`restFailed` false) or failed (true); null for the whole reading. */
   partial?: { restFailed: boolean } | null
-}>(), { country: () => EU_FEEDBACK_COUNTRY, partial: null })
+  /** The first row where the portal counts more than was read (`feedbackMoreOf`); null where everything was read, and while partial. */
+  moreRow?: EuFeedbackMore | null
+}>(), { country: () => EU_FEEDBACK_COUNTRY, partial: null, moreRow: null })
 
-defineEmits<{ retry: [] }>()
+const emit = defineEmits<{ retry: []; more: [pages: number] }>()
 
 const isPartial = computed(() => props.partial !== null)
 
@@ -166,28 +185,89 @@ const setLine = computed(() => {
   if (citizensTab.value) return citizensSetLine(citizenRows.value.reduce((n, r) => n + r.count, 0), citizensTotal.value, chipCode.value !== null)
   return feedbackSetLine(rows.value.length, total.value, rows.value.length !== total.value || searchActive.value)
 })
+const setLineVisible = computed(() => feedbackSetLineVisible({ searchActive: searchActive.value, chip: chipCode.value !== null, noneNamed: !citizensTab.value && total.value === 0 }))
 
 /* Offered on the size of the whole list, not of the result: a field that
  * vanished once it narrowed the list would take away the way back. */
 const showSearch = computed(() => !isPartial.value && !citizensTab.value && total.value > STATEMENT_SEARCH_MIN)
 const showSort = computed(() => !isPartial.value && (citizensTab.value ? view.value.citizens.length > 1 : total.value > 1))
 const showChip = computed(() => !isPartial.value && view.value.country !== null)
-/* The cap is the whole reading's frame row; page one's „100 of 350" is the progress line's to say. */
-const showCap = computed(() => !isPartial.value && view.value.cap !== null)
+/* The whole reading's first row; page one's „100 of 350" is the progress line's to say. */
+/* `moreRow`, not `more`: the pager's `more()` holds that name. */
+const showMore = computed(() => !isPartial.value && props.moreRow !== null)
 /* The tool row holds the phone's order alone: from row-cols up it would be an empty band. */
-const headerClass = computed(() => (!isPartial.value && !showCap.value && !showChip.value && !showSearch.value ? 'row-cols:hidden' : false))
-const showHeader = computed(() => Boolean(isPartial.value || showCap.value || showChip.value || showSearch.value || showSort.value))
+const headerClass = computed(() => (!isPartial.value && !showChip.value && !showSearch.value ? 'row-cols:hidden' : false))
+const showHeader = computed(() => Boolean(isPartial.value || showChip.value || showSearch.value || showSort.value))
 
 const searchId = useId()
 const sortId = useId()
+const moreSentenceId = useId()
+
+/*
+ * The focus around „Weitere … lesen". The press replaces the button with
+ * the progress line, which would drop the focus to <body>, where a screen
+ * reader starts over at the top: it goes to the progress line instead. When
+ * the step is in, it goes on to what stands in the row then, or to the
+ * list's heading where the row is gone. Only where the row had the focus:
+ * a click in a browser that does not focus buttons moves nothing.
+ */
+const frameRow = useTemplateRef<HTMLElement>('frameRow')
+const progressLine = useTemplateRef<HTMLElement>('progressLine')
+const listHeading = useTemplateRef<HTMLElement>('listHeading')
+
+async function pressMore(pages: number) {
+  const hadFocus = frameRow.value?.contains(document.activeElement) ?? false
+  emit('more', pages)
+  if (!hadFocus) return
+  await nextTick()
+  progressLine.value?.focus()
+}
+
+watch(() => props.moreRow?.kind ?? null, async (kind, before) => {
+  // Before the DOM changes (`pre`): whether the progress line, about to go, holds the focus.
+  if (before !== 'reading' || kind === 'reading' || !progressLine.value || document.activeElement !== progressLine.value) return
+  await nextTick()
+  const target = frameRow.value?.querySelector<HTMLElement>('button, [data-more-focus]') ?? listHeading.value
+  target?.focus()
+})
 </script>
 
 <template>
   <div>
     <p v-if="view.empty" class="text-sm text-ink-secondary">{{ view.empty }}</p>
     <template v-else>
-      <h4 class="sr-only">{{ DE.listHeading }}</h4>
+      <h4 ref="listHeading" tabindex="-1" class="sr-only">{{ DE.listHeading }}</h4>
       <ListBox class="@container/list" :header-class="headerClass">
+        <!-- First, above the tabs: how much was read, and the way to more. A further step changes the tabs' counts too. -->
+        <template v-if="showMore && moreRow" #frame>
+          <div ref="frameRow" class="flex min-h-target flex-wrap items-center gap-x-4 gap-y-2">
+            <template v-if="moreRow.kind === 'offer'">
+              <p :id="moreSentenceId" class="text-sm text-ink-muted">{{ moreRow.sentence }}</p>
+              <UButton
+                color="neutral"
+                variant="outline"
+                class="min-h-target justify-center tabular-nums"
+                :aria-describedby="moreSentenceId"
+                @click="pressMore(moreRow.next)"
+              >
+                {{ moreRow.label }}
+              </UButton>
+            </template>
+            <template v-else-if="moreRow.kind === 'reading'">
+              <p class="text-sm text-ink-muted">{{ moreRow.sentence }}</p>
+              <!-- In the button's place; focusable only to take the focus from it (`pressMore`). -->
+              <p ref="progressLine" tabindex="-1" class="flex items-center gap-2.5 text-sm text-ink-secondary">
+                <span class="size-4 shrink-0 animate-spin rounded-full border-2 border-hairline border-t-accent" aria-hidden="true" />
+                <span>{{ moreRow.progress }}</span>
+              </p>
+            </template>
+            <template v-else-if="moreRow.kind === 'failed'">
+              <GapNote :text="moreRow.gap" class="text-sm text-ink-secondary" />
+              <UButton color="primary" @click="pressMore(moreRow.next)">{{ moreRow.retry }}</UButton>
+            </template>
+            <GapNote v-else :text="moreRow.gap" tabindex="-1" data-more-focus class="text-sm text-ink-muted" />
+          </div>
+        </template>
         <template v-if="view.tabs.length && !isPartial" #tabs>
           <ListTabs v-model="kind" :options="view.tabs" :group-label="DE.kindsLabel" collapse />
         </template>
@@ -203,8 +283,6 @@ const sortId = useId()
               <span>{{ DE.partialLoading }}</span>
             </p>
           </div>
-          <!-- The frame row: what the list does not hold, before anything is searched in it. -->
-          <GapNote v-if="showCap && view.cap" :text="view.cap" class="text-sm text-ink-muted" />
           <div v-if="showChip || showSort || showSearch" class="flex flex-wrap items-center gap-3">
             <ToggleChip
               v-if="showChip && view.country"
@@ -241,8 +319,11 @@ const sortId = useId()
         <!-- What the list is, and under a filter or a search how much of
              it is shown: the tabs say „Alle 12", not of what. Polite, so a
              change of tab, chip or query that swaps the rows without
-             moving the focus is still heard. -->
-        <p v-if="!isPartial" class="px-4 pt-3 text-sm text-ink-muted" aria-live="polite">{{ setLine }}</p>
+             moving the focus is still heard. Visible only while the search
+             or the chip narrows the list, or where none is named; else for
+             a screen reader alone. Mounted anew per reading, so a further
+             step's new count is not said a second time. -->
+        <p v-if="!isPartial" :key="reading.read" :class="setLineVisible ? 'px-4 pt-3 text-sm text-ink-muted' : 'sr-only'" aria-live="polite">{{ setLine }}</p>
 
         <!-- The citizens: one row per country, counted. -->
         <template v-if="citizensTab">

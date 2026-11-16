@@ -91,7 +91,7 @@ describe('who gave feedback, through the service', () => {
     portal()
     await feedbackOf(13192, 15129)
     const keys = nitroCacheKeys().filter((k) => k.startsWith('eu-portal-rueckmeldungen'))
-    expect(keys.sort()).toEqual(['eu-portal-rueckmeldungen-erste:13192-15129|f3', 'eu-portal-rueckmeldungen:13192-15129|f3'])
+    expect(keys.sort()).toEqual(['eu-portal-rueckmeldungen-erste:13192-15129|f4', 'eu-portal-rueckmeldungen:13192-15129-s5|f4'])
     // A second opening is served from the cache.
     asked = []
     await feedbackOf(13192, 15129)
@@ -102,7 +102,7 @@ describe('who gave feedback, through the service', () => {
     const record = fixture('initiative-13192') as { publications: Record<string, unknown>[] }
     const empty = { ...record, publications: record.publications.map((p) => (p.id === 15129 ? { ...p, totalFeedback: 0 } : p)) }
     portal({ initiative: () => empty })
-    expect(await feedbackOf(13192, 15129)).toEqual({ state: 'gelesen', reading: { total: 0, read: 0, contributions: [], kinds: [], citizens: { count: 0, byCountry: {} }, other: 0, unpublished: 0 } })
+    expect(await feedbackOf(13192, 15129)).toEqual({ state: 'gelesen', reading: { total: 0, read: 0, contributions: [], kinds: [], citizens: { count: 0, byCountry: {} }, other: 0, unpublished: 0 }, pages: 0 })
     expect(asked.some((u) => u.includes('allFeedback'))).toBe(false)
   })
 })
@@ -165,7 +165,7 @@ describe('who gave feedback, in two steps', () => {
 
     // Page one asked again, once the whole is in: the whole, as „gelesen", and nothing asked.
     const again = await feedbackOf(13192, 15080, 'erste')
-    expect(again).toMatchObject({ state: 'gelesen', reading: { read: 350 } })
+    expect(again).toMatchObject({ state: 'gelesen', reading: { read: 350 }, pages: 5 })
     expect(feedbackPages()).toEqual([0, 1, 2, 3])
   })
 
@@ -189,7 +189,7 @@ describe('who gave feedback, in two steps', () => {
     multiPagePortal()
     await feedbackOf(13192, 15080, 'erste')
     const cached = JSON.stringify(nitroCacheKeys())
-    expect(cached).toContain('eu-portal-rueckmeldungen-erste:13192-15080|f3')
+    expect(cached).toContain('eu-portal-rueckmeldungen-erste:13192-15080|f4')
     const { readFirstFeedbackPage } = await import('../server/utils/eu/portalFeedback')
     const page = await readFirstFeedbackPage(async () => syntheticPage(0), 15080)
     expect(JSON.stringify(page)).not.toMatch(/Erfunden|Beispiel|date|"id"/)
@@ -210,5 +210,120 @@ describe('who gave feedback, in two steps', () => {
     asked = []
     expect(await feedbackOf(13192, 15080)).toMatchObject({ state: 'gelesen', reading: { read: 350 } })
     expect(feedbackPages()).toEqual([1, 2, 3])
+  })
+})
+
+/* ------------------------------------------------------------------ *
+ * More on request: steps of five pages, each from the step before
+ * ------------------------------------------------------------------ */
+
+/** A window of `total` contributions, citizens only (counted, never named). */
+function sizedPortal(total: number) {
+  upstreamJson.mockImplementation(async (url: string) => {
+    asked.push(url)
+    if (url.includes('/brpapi/groupInitiatives/13192')) return fixture('initiative-13192')
+    if (url.includes('/api/allFeedback')) {
+      const page = pageAsked(url)
+      const size = Math.max(0, Math.min(100, total - page * 100))
+      return { content: Array.from({ length: size }, () => ({ userType: 'EU_CITIZEN', status: 'PUBLISHED', country: 'AUT', firstName: 'Erfunden', surname: 'Beispiel' })), totalElements: total, number: page, last: (page + 1) * 100 >= total }
+    }
+    throw new Error(`unexpected ${url}`)
+  })
+}
+
+describe('who gave feedback, more on request', () => {
+  let clock = Date.now() + 1000 * 60 * 60 * 24 * 30
+  beforeEach(() => {
+    clock += 7 * 60 * 60 * 1000
+    vi.useFakeTimers({ toFake: ['Date'] })
+    vi.setSystemTime(clock)
+  })
+  afterEach(() => { vi.useRealTimers() })
+
+  it('reads each further step from the step before: the pages it lacks, each once', async () => {
+    sizedPortal(1234)
+    expect(await feedbackOf(13192, 15080, 'erste')).toMatchObject({ state: 'teilweise', pages: 1, reading: { read: 100, total: 1234 } })
+    expect(await feedbackOf(13192, 15080, 5)).toMatchObject({ state: 'gelesen', pages: 5, reading: { read: 500 } })
+    expect(await feedbackOf(13192, 15080, 10)).toMatchObject({ state: 'gelesen', pages: 10, reading: { read: 1000, total: 1234 } })
+    expect(await feedbackOf(13192, 15080, 15)).toMatchObject({ state: 'gelesen', pages: 15, reading: { read: 1234 } })
+    expect(feedbackPages()).toEqual([0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12])
+    // Each step its own entry, in memory, under the reader's version.
+    expect(nitroCacheKeys().filter((k) => k.startsWith('eu-portal-rueckmeldungen:')).sort()).toEqual([
+      'eu-portal-rueckmeldungen:13192-15080-s10|f4',
+      'eu-portal-rueckmeldungen:13192-15080-s15|f4',
+      'eu-portal-rueckmeldungen:13192-15080-s5|f4',
+    ])
+    // Asked again: from the cache, nothing of the portal.
+    asked = []
+    expect(await feedbackOf(13192, 15080, 10)).toMatchObject({ pages: 10, reading: { read: 1000 } })
+    expect(feedbackPages()).toEqual([])
+  })
+
+  it('shares one step asked twice at once, and runs a window\'s steps one after the other', async () => {
+    sizedPortal(1234)
+    const [a, b, c] = await Promise.all([feedbackOf(13192, 15080, 5), feedbackOf(13192, 15080, 10), feedbackOf(13192, 15080, 10)])
+    expect(a).toMatchObject({ pages: 5, reading: { read: 500 } })
+    expect(b).toMatchObject({ pages: 10, reading: { read: 1000 } })
+    expect(c).toEqual(b)
+    expect(feedbackPages()).toEqual([0, 1, 2, 3, 4, 5, 6, 7, 8, 9])
+  })
+
+  it('begins again at page one where the step before is gone, and reads what five requests reach', async () => {
+    sizedPortal(1234)
+    await feedbackOf(13192, 15080, 5)
+    asked = []
+    // Step 15 without step 10 in the cache: page one is cached, so five requests read pages 1–5.
+    expect(await feedbackOf(13192, 15080, 15)).toMatchObject({ state: 'gelesen', pages: 15, reading: { read: 600 } })
+    expect(feedbackPages()).toEqual([1, 2, 3, 4, 5])
+    // The block offers the next step from there, and it goes on below.
+    asked = []
+    expect(await feedbackOf(13192, 15080, 20)).toMatchObject({ pages: 20, reading: { read: 1100 } })
+    expect(feedbackPages()).toEqual([6, 7, 8, 9, 10])
+  })
+
+  it('starts again from page one after six hours counted from page one\'s read, not from the step\'s', async () => {
+    sizedPortal(1234)
+    await feedbackOf(13192, 15080, 'erste')
+    vi.setSystemTime(clock + 5 * 60 * 60 * 1000)
+    await feedbackOf(13192, 15080, 5)
+    await feedbackOf(13192, 15080, 10)
+    asked = []
+    // Five hours and fifty-nine minutes after page one: still served.
+    vi.setSystemTime(clock + (5 * 60 + 59) * 60 * 1000)
+    expect(await feedbackOf(13192, 15080, 10)).toMatchObject({ reading: { read: 1000 } })
+    expect(feedbackPages()).toEqual([])
+    // Six hours and a minute: gone, every step with it — the step asked begins again at page one.
+    vi.setSystemTime(clock + (6 * 60 + 1) * 60 * 1000)
+    expect(await feedbackOf(13192, 15080, 10)).toMatchObject({ pages: 10, reading: { read: 500 } })
+    expect(feedbackPages()).toEqual([0, 1, 2, 3, 4])
+  })
+
+  it('a failed step is „ungelesen", caches nothing of it, and the steps before stand', async () => {
+    sizedPortal(1234)
+    await feedbackOf(13192, 15080, 5)
+    upstreamJson.mockImplementation(async (url: string) => {
+      asked.push(url)
+      if (url.includes('/brpapi/groupInitiatives/13192')) return fixture('initiative-13192')
+      throw new Error('timeout')
+    })
+    expect(await feedbackOf(13192, 15080, 10)).toEqual({ state: 'ungelesen' })
+    expect(nitroCacheKeys().some((k) => k.includes('-s10|'))).toBe(false)
+    sizedPortal(1234)
+    asked = []
+    expect(await feedbackOf(13192, 15080, 10)).toMatchObject({ pages: 10, reading: { read: 1000 } })
+    expect(feedbackPages()).toEqual([5, 6, 7, 8, 9])
+  })
+
+  it('answers no step that is none: only multiples of five up to fifty', async () => {
+    sizedPortal(1234)
+    for (const pages of [0, 3, 7, 55, 1000]) expect(await feedbackOf(13192, 15080, pages), String(pages)).toEqual({ state: 'unbekannt' })
+    expect(feedbackPages()).toEqual([])
+  })
+
+  it('keeps the naming rule on every cached step: a counted row keeps no day, no number, no name', async () => {
+    sizedPortal(1234)
+    await feedbackOf(13192, 15080, 10)
+    const { rowOf } = await import('../server/utils/eu/portalFeedback')
+    expect(JSON.stringify(rowOf({ userType: 'EU_CITIZEN', status: 'PUBLISHED', country: 'AUT', firstName: 'Erfunden', surname: 'Beispiel', id: 5, dateFeedback: '2026/11/10 10:00:00' }))).not.toMatch(/Erfunden|Beispiel|date|"id"/)
   })
 })

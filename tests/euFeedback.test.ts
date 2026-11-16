@@ -5,6 +5,11 @@ import { EU_FEEDBACK_ORGANISATION_TYPES } from '../shared/utils/euPortal'
 import {
   FEEDBACK_MAX_ROWS,
   FEEDBACK_NAMED_ROW_FIELDS,
+  isFeedbackStep,
+  progressOfFirstPage,
+  progressReading,
+  readFeedbackStep,
+  readFirstFeedbackPage,
   FEEDBACK_ROW_FIELDS,
   ORGANISATION_NAME_MAX,
   type FeedbackRow,
@@ -33,6 +38,9 @@ import {
   EU_FEEDBACK_DE,
   feedbackAnnouncement,
   feedbackStageOf,
+  feedbackMoreOf,
+  feedbackSetLineVisible,
+  moreRowsOf,
   needsWholeReading,
 } from '../app/utils/euFeedback'
 import { countryNameOf } from '../shared/utils/countryNames'
@@ -351,8 +359,8 @@ describe('the reading, page by page', () => {
     const p = portal(2806)
     const r = await readFeedback(p.fetchJson, 13192, 15080)
     expect(p.urls.map((u) => new URL(u).searchParams.get('page'))).toEqual(['0', '1', '2', '3', '4'])
-    expect(r).toMatchObject({ total: 2806, read: FEEDBACK_MAX_ROWS, citizens: { count: 500, byCountry: { AUT: 500 } }, contributions: [] })
-    expect(euFeedbackView(r).cap).toBe('Nicht im Monitor: Gelesen sind die neuesten 500 von 2.806 Rückmeldungen; Suche, Filter und Sortierung reichen nur über sie.')
+    expect(r).toMatchObject({ total: 2806, read: 500, citizens: { count: 500, byCountry: { AUT: 500 } }, contributions: [] })
+    expect(feedbackMoreOf(r, 5)).toEqual({ kind: 'offer', sentence: 'Gelesen sind die neuesten 500 von 2.806 Rückmeldungen.', label: 'Weitere 500 lesen', next: 10 })
   })
 
   it('stops at the last page, and has nothing to say about a cap then', async () => {
@@ -360,7 +368,7 @@ describe('the reading, page by page', () => {
     const r = await readFeedback(p.fetchJson, 13192, 15080)
     expect(p.urls).toHaveLength(2)
     expect(r).toMatchObject({ total: 137, read: 137 })
-    expect(euFeedbackView(r).cap).toBeNull()
+    expect(feedbackMoreOf(r, 5)).toBeNull()
     const exact = portal(100)
     expect(await readFeedback(exact.fetchJson, 13192, 15080)).toMatchObject({ total: 100, read: 100 })
     expect(exact.urls).toHaveLength(1)
@@ -370,7 +378,7 @@ describe('the reading, page by page', () => {
     const p = portal(450, { wrongPageFrom: 2 })
     const r = await readFeedback(p.fetchJson, 13192, 15080)
     expect(r).toMatchObject({ total: 450, read: 200 })
-    expect(euFeedbackView(r).cap).toBe('Nicht im Monitor: Gelesen sind die neuesten 200 von 450 Rückmeldungen; Suche, Filter und Sortierung reichen nur über sie.')
+    expect(feedbackMoreOf(r, 5)).toMatchObject({ kind: 'offer', sentence: 'Gelesen sind die neuesten 200 von 450 Rückmeldungen.', label: 'Weitere 250 lesen' })
   })
 
   it('throws where a page fails, so nothing partial is cached as the whole', async () => {
@@ -404,7 +412,7 @@ describe('the block\'s list and words', () => {
     expect(v.rows[0]!.linkLabel).toBe('Rückmeldung von Siemens AG im Portal der Kommission (neues Fenster)')
     expect(new Set(v.rows.map((r) => r.key)).size).toBe(v.rows.length)
     expect(v.empty).toBeNull()
-    expect(v.cap).toBeNull()
+    expect(feedbackMoreOf(reading, 5)).toBeNull()
   })
 
   it('names a country by its German name, and gives the code where it knows none', () => {
@@ -559,6 +567,19 @@ describe('the block\'s list and words', () => {
     ])
   })
 
+  it('shows the set line only while the search or the chip narrows the list, or where none is named', () => {
+    // Unfiltered, and under a tab alone: for a screen reader only — the tabs, the closing rows and the pager say it.
+    expect(feedbackSetLineVisible({ searchActive: false, chip: false, noneNamed: false })).toBe(false)
+    // Narrowed: the result's count, the zero included.
+    expect(feedbackSetLineVisible({ searchActive: true, chip: false, noneNamed: false })).toBe(true)
+    expect(feedbackSetLineVisible({ searchActive: false, chip: true, noneNamed: false })).toBe(true)
+    // No organisation named at all: the box would hold no word else.
+    expect(feedbackSetLineVisible({ searchActive: false, chip: false, noneNamed: true })).toBe(true)
+    const panel = readFileSync(new URL('../app/components/eu/EuFeedbackPanel.vue', import.meta.url), 'utf8')
+    // Still the polite live region, mounted anew per reading so a further step's count is not said twice.
+    expect(panel).toMatch(/<p v-if="!isPartial" :key="reading\.read" :class="setLineVisible \? '[^']+' : 'sr-only'" aria-live="polite">\{\{ setLine \}\}<\/p>/)
+  })
+
   it('says what the list is, how much of it a filter or search shows, and that none is named where none is', () => {
     expect(feedbackSetLine(7, 7, false)).toBe('7 Rückmeldungen von Organisationen mit Namen')
     expect(feedbackSetLine(1, 1, false)).toBe('1 Rückmeldung einer Organisation mit Namen')
@@ -571,17 +592,18 @@ describe('the block\'s list and words', () => {
     expect(STATEMENT_SEARCH_MIN).toBe(20)
   })
 
-  it('says one line under the list, and keeps the cap as the list\'s frame row', () => {
+  it('says one line under the list, and how much was read in the list\'s first row', () => {
     expect(euFeedbackView(reading, AT).note).toBe('Privatpersonen werden gezählt, nie genannt.')
-    const persons = euFeedbackView({ total: 640, read: 500, contributions: [], kinds: [{ type: 'COMPANY', count: 3, unnamed: 3 }], citizens: { count: 497, byCountry: { AUT: 12 } }, other: 0, unpublished: 0 }, AT)
-    expect(persons.cap).toMatch(/^Nicht im Monitor: Gelesen sind die neuesten 500 von 640/)
+    const r640: EuFeedbackReading = { total: 640, read: 500, contributions: [], kinds: [{ type: 'COMPANY', count: 3, unnamed: 3 }], citizens: { count: 497, byCountry: { AUT: 12 } }, other: 0, unpublished: 0 }
+    const persons = euFeedbackView(r640, AT)
+    expect(feedbackMoreOf(r640, 5)).toMatchObject({ kind: 'offer', sentence: 'Gelesen sind die neuesten 500 von 640 Rückmeldungen.', label: 'Weitere 140 lesen' })
     expect(labels(persons.closing)).toEqual(['3 Unternehmen · ohne Namen', '497 Bürgerinnen und Bürger · ohne Namen'])
     expect(persons.tabs.map((t) => [t.value, t.count])).toEqual([['alle', 500], ['COMPANY', 3], ['buerger', 497]])
   })
 
   it('says when nobody answered', () => {
     expect(euFeedbackView({ total: 0, read: 0, contributions: [], kinds: [], citizens: { count: 0, byCountry: {} }, other: 0, unpublished: 0 })).toMatchObject({
-      empty: 'Das Portal verzeichnet zu dieser Frist keine Rückmeldung.', rows: [], tabs: [], closing: [], citizens: [], cap: null,
+      empty: 'Das Portal verzeichnet zu dieser Frist keine Rückmeldung.', rows: [], tabs: [], closing: [], citizens: [],
     })
   })
 
@@ -609,6 +631,8 @@ describe('the block\'s list and words', () => {
     expect(block).toMatch(/key: `eu-rueckmeldungen-\$\{props\.block\.initiative\}-\$\{props\.block\.publication\}-erste`/)
     expect(block).toMatch(/key: `eu-rueckmeldungen-\$\{props\.block\.initiative\}-\$\{props\.block\.publication\}-ganz`/)
     expect(block).toMatch(/query: \{ teil: 'erste' \}/)
+    // A further step only on a press, with its number of pages.
+    expect(block).toMatch(/\$fetch<EuRueckmeldungenResponse>\(url\(\), \{ query: \{ seiten: pages \} \}\)/)
     expect(block).not.toMatch(/<FoldSection/)
   })
 })
@@ -616,7 +640,7 @@ describe('the block\'s list and words', () => {
 describe('the block\'s two steps (feedbackStageOf)', () => {
   const reading = (read: number, total: number): EuFeedbackReading => ({ total, read, contributions: [], kinds: [], citizens: { count: read, byCountry: {} }, other: 0, unpublished: 0 })
   const idle = { status: 'idle' as const, data: null }
-  const page1 = { status: 'success' as const, data: { state: 'teilweise' as const, reading: reading(100, 350) } }
+  const page1 = { status: 'success' as const, data: { state: 'teilweise' as const, reading: reading(100, 350), pages: 1 } }
 
   it('waits until page one is in, and says page one failed as „unread"', () => {
     expect(feedbackStageOf(idle, idle)).toEqual({ kind: 'waiting' })
@@ -630,12 +654,12 @@ describe('the block\'s two steps (feedbackStageOf)', () => {
     expect(partial).toEqual({ kind: 'partial', reading: reading(100, 350), restFailed: false })
     expect(needsWholeReading(partial, 'idle')).toBe(true)
     expect(needsWholeReading(feedbackStageOf(page1, { status: 'pending', data: null }), 'pending')).toBe(false)
-    expect(feedbackStageOf(page1, { status: 'success', data: { state: 'gelesen', reading: reading(350, 350) } })).toEqual({ kind: 'complete', reading: reading(350, 350) })
+    expect(feedbackStageOf(page1, { status: 'success', data: { state: 'gelesen', reading: reading(350, 350), pages: 5 } })).toEqual({ kind: 'complete', reading: reading(350, 350), pages: 5 })
   })
 
   it('is complete at once where page one is the whole list: no second request', () => {
-    const whole = feedbackStageOf({ status: 'success', data: { state: 'gelesen', reading: reading(14, 14) } }, idle)
-    expect(whole).toEqual({ kind: 'complete', reading: reading(14, 14) })
+    const whole = feedbackStageOf({ status: 'success', data: { state: 'gelesen', reading: reading(14, 14), pages: 1 } }, idle)
+    expect(whole).toEqual({ kind: 'complete', reading: reading(14, 14), pages: 1 })
     expect(needsWholeReading(whole, 'idle')).toBe(false)
   })
 
@@ -654,6 +678,235 @@ describe('the block\'s two steps (feedbackStageOf)', () => {
   it('announces each stage once: loading, the rest still read, the arrival', () => {
     expect(feedbackAnnouncement({ kind: 'waiting' })).toBe(EU_FEEDBACK_DE.loading)
     expect(feedbackAnnouncement({ kind: 'partial', reading: reading(100, 350), restFailed: false })).toBe('Die übrigen Rückmeldungen werden noch gelesen …')
-    expect(feedbackAnnouncement({ kind: 'complete', reading: reading(350, 350) })).toBe(EU_FEEDBACK_DE.read)
+    expect(feedbackAnnouncement({ kind: 'complete', reading: reading(350, 350), pages: 5 })).toBe(EU_FEEDBACK_DE.read)
+  })
+})
+
+describe('more on request: the list\'s first row (feedbackMoreOf)', () => {
+  const reading = (read: number, total: number): EuFeedbackReading => ({ total, read, contributions: [], kinds: [], citizens: { count: read, byCountry: {} }, other: 0, unpublished: 0 })
+
+  it('offers the next step with the real number: what remains, at most 500', () => {
+    expect(feedbackMoreOf(reading(500, 599), 5)).toEqual({ kind: 'offer', sentence: 'Gelesen sind die neuesten 500 von 599 Rückmeldungen.', label: 'Weitere 99 lesen', next: 10 })
+    expect(feedbackMoreOf(reading(500, 1000), 5)).toMatchObject({ label: 'Weitere 500 lesen', next: 10 })
+    expect(feedbackMoreOf(reading(1000, 12_345), 10)).toMatchObject({ sentence: 'Gelesen sind die neuesten 1.000 von 12.345 Rückmeldungen.', label: 'Weitere 500 lesen', next: 15 })
+    // A step that fell short (rows moved, or the step before was gone): the label counts what remains, the next step goes on from the one held.
+    expect(feedbackMoreOf(reading(989, 2000), 10)).toMatchObject({ label: 'Weitere 500 lesen', next: 15 })
+    expect(moreRowsOf(4_900, 9_000)).toBe(100)
+    expect(moreRowsOf(500, 501)).toBe(1)
+  })
+
+  it('shows nothing where everything is read', () => {
+    expect(feedbackMoreOf(reading(599, 599), 10)).toBeNull()
+    expect(feedbackMoreOf(reading(14, 14), 1)).toBeNull()
+    expect(feedbackMoreOf(reading(0, 0), 0)).toBeNull()
+  })
+
+  it('puts the progress line in the button\'s place while the step is read, and keeps the sentence', () => {
+    expect(feedbackMoreOf(reading(500, 599), 5, 'pending')).toEqual({ kind: 'reading', sentence: 'Gelesen sind die neuesten 500 von 599 Rückmeldungen.', progress: 'Weitere Rückmeldungen werden gelesen …' })
+  })
+
+  it('says a failed step as „Gerade nicht abrufbar", with „Erneut versuchen" for the same step', () => {
+    const failed = feedbackMoreOf(reading(1000, 1234), 10, 'error')
+    expect(failed).toMatchObject({ kind: 'failed', retry: 'Erneut versuchen', next: 15 })
+    expect(failed?.kind === 'failed' && splitGap(failed.gap)).toMatchObject({ lead: 'Gerade nicht abrufbar', rest: 'Weitere Rückmeldungen konnten nicht gelesen werden; gelesen sind die neuesten 1.000 von 1.234.' })
+  })
+
+  it('stops at fifty pages with a „Nicht im Monitor" sentence and no button', () => {
+    const cap = feedbackMoreOf(reading(5000, 6123), 50)
+    expect(cap?.kind).toBe('cap')
+    expect(cap?.kind === 'cap' && splitGap(cap.gap)).toMatchObject({ lead: 'Nicht im Monitor', rest: 'Gelesen sind die neuesten 5.000 von 6.123 Rückmeldungen; mehr liest der Monitor zu einer Frist nicht, und Suche, Filter und Sortierung reichen nur über sie.' })
+    // The cap whatever status a step had: nothing more is asked.
+    expect(feedbackMoreOf(reading(4989, 6123), 50, 'error')?.kind).toBe('cap')
+    expect(FEEDBACK_MAX_ROWS).toBe(5000)
+  })
+
+  it('swaps a further step in only once it arrived, and announces its arrival once', () => {
+    const page1 = { status: 'success' as const, data: { state: 'teilweise' as const, reading: reading(100, 1234), pages: 1 } }
+    const whole = { status: 'success' as const, data: { state: 'gelesen' as const, reading: reading(500, 1234), pages: 5 } }
+    expect(feedbackStageOf(page1, whole, null)).toEqual({ kind: 'complete', reading: reading(500, 1234), pages: 5 })
+    const step = feedbackStageOf(page1, whole, { state: 'gelesen', reading: reading(1000, 1234), pages: 10 })
+    expect(step).toEqual({ kind: 'complete', reading: reading(1000, 1234), pages: 10 })
+    expect(feedbackAnnouncement(step)).toBe('Weitere Rückmeldungen sind gelesen, jetzt die neuesten 1.000 von 1.234.')
+    expect(feedbackAnnouncement({ kind: 'complete', reading: reading(1234, 1234), pages: 15 })).toBe('Weitere Rückmeldungen sind gelesen, jetzt alle 1.234.')
+    // While a step is read the line stays as it was: nothing is said twice.
+    expect(feedbackAnnouncement(step, 'pending')).toBe(feedbackAnnouncement(step))
+    expect(splitGap(feedbackAnnouncement(step, 'error'))?.lead).toBe('Gerade nicht abrufbar')
+  })
+})
+
+/* ------------------------------------------------------------------ *
+ * Steps, and rows that move between reads
+ * ------------------------------------------------------------------ */
+
+/**
+ * A window that lives: rows newest first, numbered in the order they
+ * arrived, and the window can grow at its head, lose a row anywhere, or
+ * take one in out of order, between any two reads (`before`). Every row is
+ * a citizen, counted — the shape whose repeat the reader cannot recognise
+ * afterwards — and its country carries its number as three letters (a test
+ * device: a valid alpha-3 shape, no real country), so the test can tell
+ * which rows the reading counted, and how often.
+ */
+const code = (n: number) => [Math.floor(n / 676) % 26, Math.floor(n / 26) % 26, n % 26].map((d) => String.fromCharCode(65 + d)).join('')
+function liveWindow(count: number, opts: { named?: boolean } = {}) {
+  let arrived = 0
+  let list: number[] = []
+  const add = (k: number) => { for (let i = 0; i < k; i++) list.unshift(arrived++) }
+  add(count)
+  const asked: number[] = []
+  const w = {
+    asked,
+    before: (_page: number, _call: number) => {},
+    add,
+    /** Withdraws the row at a place of the list (0 = newest). */
+    remove: (index: number) => { list.splice(index, 1) },
+    /** A row that arrives below the head — out of the newest-first order. */
+    insertAt: (index: number) => { list.splice(index, 0, arrived++) },
+    /** The rows as they stand now, newest first. */
+    now: () => [...list],
+    reset: (l: number[]) => { list = l },
+    fetchJson: async (url: string) => {
+      const page = Number(new URL(url).searchParams.get('page'))
+      w.before(page, asked.length)
+      asked.push(page)
+      const slice = list.slice(page * 100, page * 100 + 100)
+      return {
+        content: slice.map((n) => (opts.named
+          ? { id: n + 1, dateFeedback: '2026/11/10 10:00:00', status: 'PUBLISHED', publication: 'WITHINFO', userType: 'COMPANY', companySize: 'LARGE', organization: `Firma ${code(n)} AG`, firstName: '', surname: '', country: 'AUT' }
+          : { userType: 'EU_CITIZEN', status: 'PUBLISHED', country: code(n), firstName: 'Erika', surname: 'Beispiel' })),
+        totalElements: list.length,
+        number: page,
+        last: (page + 1) * 100 >= list.length,
+      }
+    },
+  }
+  return w
+}
+/** Which rows a reading of the citizens counted, and how often each. */
+const countedRows = (r: EuFeedbackReading) => r.citizens.byCountry
+const codes = (ns: number[]) => ns.map(code).sort()
+
+describe('the reading in steps (readFeedbackStep)', () => {
+  it('takes only steps of five pages, up to fifty', () => {
+    expect([5, 10, 25, 50].every(isFeedbackStep)).toBe(true)
+    expect([0, 1, 4, 6, 55, 100, 7.5, Number.NaN].some(isFeedbackStep)).toBe(false)
+  })
+
+  it('goes on from the step before: only the pages it lacks, never one twice, five at most', async () => {
+    const w = liveWindow(1234)
+    const first = progressOfFirstPage(await readFirstFeedbackPage(w.fetchJson, 15080))
+    const five = await readFeedbackStep(w.fetchJson, 15080, first, 5)
+    expect(five.progress.rows).toHaveLength(500)
+    const ten = await readFeedbackStep(w.fetchJson, 15080, five.progress, 10)
+    expect(ten.progress).toMatchObject({ pages: 10, total: 1234 })
+    expect(ten.progress.rows).toHaveLength(1000)
+    expect(w.asked).toEqual([0, 1, 2, 3, 4, 5, 6, 7, 8, 9])
+    const fifteen = await readFeedbackStep(w.fetchJson, 15080, ten.progress, 15)
+    expect(fifteen.progress.rows).toHaveLength(1234)
+    expect(w.asked).toEqual([0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12])
+    const r = progressReading(fifteen.progress, 13192)
+    expect(r).toMatchObject({ read: 1234, total: 1234 })
+    expect(Object.values(countedRows(r)).every((n) => n === 1)).toBe(true)
+    // Asked for no more than five pages in one step, whatever the step's number.
+    const w2 = liveWindow(9000)
+    const from = progressOfFirstPage(await readFirstFeedbackPage(w2.fetchJson, 15080))
+    const far = await readFeedbackStep(w2.fetchJson, 15080, from, 50)
+    expect(w2.asked).toHaveLength(6)
+    expect(far.progress.rows).toHaveLength(600)
+  })
+
+  it('is no guard of nothing: the synthetic window does repeat rows on the next page when it grows', async () => {
+    const w = liveWindow(350)
+    const page0 = (await w.fetchJson('https://x/api/allFeedback?page=0')) as { content: { country: string }[] }
+    w.add(3)
+    const page1 = (await w.fetchJson('https://x/api/allFeedback?page=1')) as { content: { country: string }[] }
+    // The last three rows of page one, read before, open page two now.
+    expect(page1.content.slice(0, 3).map((r) => r.country)).toEqual(page0.content.slice(97).map((r) => r.country))
+  })
+
+  it('counts no row twice and loses none at the seam where the window grows between two pages of one step', async () => {
+    const w = liveWindow(350)
+    w.before = (page, call) => { if (call === 1) w.add(3) }
+    const r = await readFeedback(w.fetchJson, 13192, 15080)
+    // The three new rows too: once the run down the list is read, page one's head gives them.
+    expect(r).toMatchObject({ read: 353, total: 353 })
+    expect(Object.values(countedRows(r)).every((n) => n === 1)).toBe(true)
+    expect(Object.keys(countedRows(r)).sort()).toEqual(codes(w.now()))
+    expect(w.asked).toEqual([0, 1, 2, 3, 0])
+  })
+
+  it('counts no row twice and loses none where the window grew between two steps, and again inside the step', async () => {
+    const w = liveWindow(1234)
+    const first = progressOfFirstPage(await readFirstFeedbackPage(w.fetchJson, 15080))
+    const originals = w.now()
+    const five = await readFeedbackStep(w.fetchJson, 15080, first, 5)
+    // Hours later, seven more; and during the step two more before its third page.
+    w.add(7)
+    w.before = (_page, call) => { if (call === 7) w.add(2) }
+    const ten = await readFeedbackStep(w.fetchJson, 15080, five.progress, 10)
+    const r = progressReading(ten.progress, 13192)
+    expect(r.total).toBe(1243)
+    expect(Object.values(countedRows(r)).every((n) => n === 1)).toBe(true)
+    // An unbroken run of the list as it stood at page one's read, from its head down: none skipped.
+    expect(Object.keys(countedRows(r)).sort()).toEqual(codes(originals.slice(0, r.read)))
+    expect(r.read).toBe(991)
+    // The next step goes on below them, and at the end of the list takes the nine new ones from page one's head.
+    const rest = await readFeedbackStep(w.fetchJson, 15080, ten.progress, 15)
+    const all = progressReading(rest.progress, 13192)
+    expect(all).toMatchObject({ read: 1243, total: 1243 })
+    expect(Object.values(countedRows(all)).every((n) => n === 1)).toBe(true)
+    expect(Object.keys(countedRows(all)).sort()).toEqual(codes(w.now()))
+  })
+
+  it('reads again from page one where the window shrank, once, and counts the list as it stands then', async () => {
+    const w = liveWindow(450)
+    // A contribution withdrawn below the rows read, before page three.
+    w.before = (_page, call) => { if (call === 2) w.remove(400) }
+    const r = await readFeedback(w.fetchJson, 13192, 15080)
+    expect(w.asked.slice(0, 4)).toEqual([0, 1, 2, 0])
+    expect(Object.values(countedRows(r)).every((n) => n === 1)).toBe(true)
+    expect(Object.keys(countedRows(r)).sort()).toEqual(codes(w.now().slice(0, r.read)))
+    expect(r.total).toBe(449)
+  })
+
+  it('reads again from page one where the count fits and the rows do not: one arrived out of order', async () => {
+    const w = liveWindow(450)
+    // Grows by one, but below the seam: the row skipped as a repeat would be a row never read.
+    w.before = (_page, call) => { if (call === 2) w.insertAt(250) }
+    const r = await readFeedback(w.fetchJson, 13192, 15080)
+    expect(w.asked.slice(0, 4)).toEqual([0, 1, 2, 0])
+    expect(Object.values(countedRows(r)).every((n) => n === 1)).toBe(true)
+    expect(Object.keys(countedRows(r)).sort()).toEqual(codes(w.now().slice(0, r.read)))
+  })
+
+  it('throws where the list moves again after the new start: nothing partial is taken for the whole', async () => {
+    const w = liveWindow(450)
+    w.before = (_page, call) => { if (call === 2 || call === 5) w.remove(440) }
+    await expect(readFeedback(w.fetchJson, 13192, 15080)).rejects.toThrow(/verschoben/)
+  })
+
+  it('keeps what fits where no request is left to begin again, and the next step meets the list anew', async () => {
+    const w = liveWindow(1234)
+    const first = progressOfFirstPage(await readFirstFeedbackPage(w.fetchJson, 15080))
+    w.before = (_page, call) => { if (call === 5) w.remove(1200) }
+    // Pages 1–4 fit, the fifth request finds the shrink: four pages' rows stand, nothing of the fifth.
+    const step = await readFeedbackStep(w.fetchJson, 15080, first, 10, 5)
+    expect(step.restarted).toBe(false)
+    expect(step.progress.rows).toHaveLength(500)
+  })
+
+  it('cannot see a withdrawal below the seam paired with an arrival: a counted row is counted twice there, a named one is caught by its number', async () => {
+    const counted = liveWindow(350)
+    counted.before = (_page, call) => { if (call === 2) { counted.remove(300); counted.add(1) } }
+    const r = await readFeedback(counted.fetchJson, 13192, 15080)
+    // The count stayed at 350; the row at the head of page three had been read already.
+    expect(Object.values(countedRows(r)).some((n) => n === 2)).toBe(true)
+
+    const named = liveWindow(350, { named: true })
+    named.before = (_page, call) => { if (call === 2) { named.remove(300); named.add(1) } }
+    const n = await readFeedback(named.fetchJson, 13192, 15080)
+    expect(named.asked.slice(0, 4)).toEqual([0, 1, 2, 0])
+    const names = n.contributions.map((c) => c.name)
+    expect(new Set(names).size).toBe(names.length)
   })
 })

@@ -12,8 +12,9 @@
   <p>
     Die Liste kommt aus dem Portal „Ihre Meinung zählt“ der Europäischen
     Kommission. Der Monitor liest sie, sobald sie auf der Seite erscheint,
-    eine Seite des Portals nach der anderen und höchstens die neuesten 500
-    Rückmeldungen. Organisationen nennt er mit dem Namen, den das Portal
+    eine Seite des Portals nach der anderen: zunächst die neuesten 500
+    Rückmeldungen, mit „Weitere … lesen“ jeweils bis zu 500 mehr, höchstens
+    5.000 je Frist. Organisationen nennt er mit dem Namen, den das Portal
     veröffentlicht, und verlinkt ihre Rückmeldung dort; Texte liest er keine.
   </p>
   <p>

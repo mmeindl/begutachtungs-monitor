@@ -43,6 +43,24 @@
  * read, or — where the rest failed — a gap sentence with „Erneut
  * versuchen", the rows kept.
  *
+ * MORE ON REQUEST (16.11.2026). Where the portal counts more than was read,
+ * the list's first row says how many of how many, and a button „Weitere N
+ * lesen" asks the server for the next step of five pages (`feedbackMoreOf`)
+ * — the portal is asked only when a reader wants the answer, never ahead.
+ * While it reads, a progress line stands in the button's place and the list
+ * stays as it is; the step's reading is swapped in when it arrives. At
+ * 5,000 rows the monitor reads no further, and the row says so as a „Nicht
+ * im Monitor" sentence. The row stands above the tabs: it changes their
+ * counts as well as the rows (what a control changes stands at it or below
+ * it).
+ *
+ * THE SET LINE ONLY WHILE NARROWED (16.11.2026, `feedbackSetLineVisible`).
+ * Unfiltered, „12 Rückmeldungen von Organisationen mit Namen" repeated what
+ * the tabs, the closing rows and the pager say; it stands visibly only
+ * while a search or the country chip narrows the list — then it is the
+ * result's count — and where no organisation is named at all. Otherwise it
+ * is there for a screen reader alone, as before.
+ *
  * All German copy of the block lives here, so a second language replaces it
  * here. Pure: no Vue; `EuFeedbackBlock` and `EuFeedbackPanel` place what
  * this returns.
@@ -50,6 +68,7 @@
 import type { EuFeedbackOrganisationType, EuFeedbackReading, EuRueckmeldungenResponse } from '#shared/types'
 import { countryNameOf } from '#shared/utils/countryNames'
 import { EU_MEMBER_STATE, EU_MEMBER_STATE_NAME_DE } from '#shared/utils/eu'
+import { EU_FEEDBACK_MAX_PAGES, EU_FEEDBACK_PAGE_SIZE, EU_FEEDBACK_STEP_PAGES } from '#shared/utils/euPortal'
 import { countLabelDe, formatNumberDe } from '#shared/utils/format'
 import { gapDe } from '#shared/utils/gaps'
 import { matchesQuery } from '#shared/utils/textMatch'
@@ -69,8 +88,20 @@ const DE = {
   retry: 'Erneut versuchen',
   empty: 'Das Portal verzeichnet zu dieser Frist keine Rückmeldung.',
   noneNamed: 'Keine Organisation mit Namen unter den gelesenen Rückmeldungen.',
-  /** What the monitor does not read, and that search, filter and order reach no further: the list's frame row, at its head. */
-  cap: (read: number, total: number) => gapDe('outOfScope', `Gelesen sind die neuesten ${formatNumberDe(read)} von ${formatNumberDe(total)} Rückmeldungen; Suche, Filter und Sortierung reichen nur über sie.`),
+  /** How much was read where the portal counts more: the list's first row, beside „Weitere … lesen". */
+  readSoFar: (read: number, total: number) => `Gelesen sind die neuesten ${formatNumberDe(read)} von ${formatNumberDe(total)} Rückmeldungen.`,
+  /** The button: how many one press reads — what remains, at most one step. */
+  readMore: (n: number) => `Weitere ${formatNumberDe(n)} lesen`,
+  /** In the button's place while the next step is read, beside the spinner. */
+  moreLoading: 'Weitere Rückmeldungen werden gelesen …',
+  /** Where the next step failed: the list stays, this stands in the row with „Erneut versuchen". */
+  moreUnread: (read: number, total: number) => gapDe('unavailable', `Weitere Rückmeldungen konnten nicht gelesen werden; gelesen sind die neuesten ${formatNumberDe(read)} von ${formatNumberDe(total)}.`),
+  /** The live region, once a further step arrived. */
+  moreRead: (read: number, total: number) => (read >= total
+    ? `Weitere Rückmeldungen sind gelesen, jetzt alle ${formatNumberDe(total)}.`
+    : `Weitere Rückmeldungen sind gelesen, jetzt die neuesten ${formatNumberDe(read)} von ${formatNumberDe(total)}.`),
+  /** At the ceiling of 5,000 rows a window, more counted: what the monitor does not read, and that search, filter and order reach no further. */
+  cap: (read: number, total: number) => gapDe('outOfScope', `Gelesen sind die neuesten ${formatNumberDe(read)} von ${formatNumberDe(total)} Rückmeldungen; mehr liest der Monitor zu einer Frist nicht, und Suche, Filter und Sortierung reichen nur über sie.`),
   listHeading: 'Liste der Rückmeldungen',
   /** What the list is; under a filter or a search how much of it is shown. */
   set: (n: number) => countLabelDe(n, 'Rückmeldung einer Organisation mit Namen', 'Rückmeldungen von Organisationen mit Namen'),
@@ -245,8 +276,6 @@ export interface EuFeedbackTab {
 export interface EuFeedbackView {
   /** The portal's statement that nobody answered; null where someone did. */
   empty: string | null
-  /** Where fewer rows were read than the portal counts: how many of how many, as a gap sentence; null otherwise. */
-  cap: string | null
   /** The contributions, in the portal's order. */
   rows: EuFeedbackRow[]
   /** Every figure counted without a name, as closing rows, in the order „Alle" shows them. */
@@ -322,7 +351,6 @@ export function euFeedbackView(r: EuFeedbackReading, country: EuFeedbackCountry 
   const fromCountry = country !== null && (rows.some((row) => row.country === country.code) || (r.citizens.byCountry[country.code] ?? 0) > 0)
   return {
     empty: r.read === 0 && r.total === 0 ? DE.empty : null,
-    cap: r.read < r.total ? DE.cap(r.read, r.total) : null,
     rows,
     closing,
     citizens,
@@ -418,6 +446,18 @@ export function feedbackSetLine(shown: number, total: number, narrowed: boolean)
   return narrowed ? DE.setOf(shown, total) : DE.set(total)
 }
 
+/**
+ * Whether the set line stands visibly (16.11.2026): only while the search
+ * or the country chip narrows the list — then it is the result's count —
+ * or where no organisation is named at all (the box would hold no word
+ * else). Otherwise it is for a screen reader alone: unfiltered it repeats
+ * what the tabs, the closing rows and the pager say. A tab alone is no
+ * narrowing here: its count stands on the tab.
+ */
+export function feedbackSetLineVisible(s: { searchActive: boolean; chip: boolean; noneNamed: boolean }): boolean {
+  return s.searchActive || s.chip || s.noneNamed
+}
+
 /** The citizens' tab's set line: how many, and under the chip how many of them. */
 export function citizensSetLine(shown: number, total: number, narrowed: boolean): string {
   return narrowed ? DE.citizensSetOf(shown, total) : DE.citizensSet(total)
@@ -432,24 +472,40 @@ export type EuFeedbackFetchStatus = 'idle' | 'pending' | 'success' | 'error'
  * - `unread`: page one failed — the gap sentence and „Erneut versuchen";
  * - `partial`: page one is in and the rest is being read (`restFailed` false) or failed (true) —
  *   the named rows newest first and the pager, nothing that counts, filters or orders;
- * - `complete`: the whole reading — the full list.
+ * - `complete`: a whole reading — the full list; `pages` the step it is (5, 10, … 50; 1 where page
+ *   one was the whole list, 0 for a window without a contribution).
  */
 export type EuFeedbackStage =
   | { kind: 'waiting' }
   | { kind: 'unread' }
   | { kind: 'partial'; reading: EuFeedbackReading; restFailed: boolean }
-  | { kind: 'complete'; reading: EuFeedbackReading }
+  | { kind: 'complete'; reading: EuFeedbackReading; pages: number }
 
-/** Page one's fetch and the whole reading's fetch, as one stage. Pure. */
+/**
+ * Page one's fetch, the first reading's fetch and the latest further step
+ * that arrived („Weitere … lesen"), as one stage. A further step replaces
+ * the reading only once it is in: while it is read, and where it failed,
+ * the list keeps the reading it had. Pure.
+ */
 export function feedbackStageOf(
   first: { status: EuFeedbackFetchStatus; data: EuRueckmeldungenResponse | null | undefined },
   whole: { status: EuFeedbackFetchStatus; data: EuRueckmeldungenResponse | null | undefined },
+  further: EuRueckmeldungenResponse | null = null,
 ): EuFeedbackStage {
-  if (whole.status === 'success' && whole.data?.state === 'gelesen') return { kind: 'complete', reading: whole.data.reading }
+  const base = baseStageOf(first, whole)
+  if (base.kind === 'complete' && further?.state === 'gelesen') return { kind: 'complete', reading: further.reading, pages: further.pages }
+  return base
+}
+
+function baseStageOf(
+  first: { status: EuFeedbackFetchStatus; data: EuRueckmeldungenResponse | null | undefined },
+  whole: { status: EuFeedbackFetchStatus; data: EuRueckmeldungenResponse | null | undefined },
+): EuFeedbackStage {
+  if (whole.status === 'success' && whole.data?.state === 'gelesen') return { kind: 'complete', reading: whole.data.reading, pages: whole.data.pages }
   if (first.status === 'error') return { kind: 'unread' }
   if (first.status !== 'success' || !first.data) return { kind: 'waiting' }
   if (first.data.state === 'ungelesen') return { kind: 'unread' }
-  if (first.data.state === 'gelesen') return { kind: 'complete', reading: first.data.reading }
+  if (first.data.state === 'gelesen') return { kind: 'complete', reading: first.data.reading, pages: first.data.pages }
   const restFailed = whole.status === 'error' || (whole.status === 'success' && whole.data?.state !== 'gelesen')
   return { kind: 'partial', reading: first.data.reading, restFailed }
 }
@@ -458,10 +514,54 @@ export function feedbackStageOf(
 export const needsWholeReading = (stage: EuFeedbackStage, wholeStatus: EuFeedbackFetchStatus): boolean =>
   stage.kind === 'partial' && wholeStatus === 'idle'
 
-/** What the block's live region says in a stage: the loading line, the rest still read, the arrival, or a gap sentence. */
-export function feedbackAnnouncement(stage: EuFeedbackStage): string {
+/** Where a further step („Weitere … lesen") stands: none asked, on its way, or failed. */
+export type EuFeedbackMoreStatus = 'idle' | 'pending' | 'error'
+
+/**
+ * The list's first row where the portal counts more than was read
+ * (16.11.2026), or null where everything was read:
+ * - `offer`: how many of how many, and the button „Weitere N lesen" — N what
+ *   remains, at most one step (500) — that asks for step `next`;
+ * - `reading`: the same sentence, and the progress line in the button's place;
+ * - `failed`: the next step failed — a „Gerade nicht abrufbar" sentence and
+ *   „Erneut versuchen" for step `next`; the list keeps its reading;
+ * - `cap`: fifty pages read and more counted — a „Nicht im Monitor"
+ *   sentence, no button.
+ */
+export type EuFeedbackMore =
+  | { kind: 'offer'; sentence: string; label: string; next: number }
+  | { kind: 'reading'; sentence: string; progress: string }
+  | { kind: 'failed'; gap: string; retry: string; next: number }
+  | { kind: 'cap'; gap: string }
+
+/** How many rows one more step reads at most: what remains, at most five pages, and never past 5,000. */
+export function moreRowsOf(read: number, total: number): number {
+  const step = EU_FEEDBACK_STEP_PAGES * EU_FEEDBACK_PAGE_SIZE
+  return Math.max(0, Math.min(step, total - read, EU_FEEDBACK_MAX_PAGES * EU_FEEDBACK_PAGE_SIZE - read))
+}
+
+/** The row for a whole reading of `pages` pages (`EuFeedbackStage` complete), and where its next step stands. Pure. */
+export function feedbackMoreOf(reading: EuFeedbackReading, pages: number, status: EuFeedbackMoreStatus = 'idle'): EuFeedbackMore | null {
+  if (reading.read >= reading.total) return null
+  const step = Math.max(EU_FEEDBACK_STEP_PAGES, Math.floor(pages / EU_FEEDBACK_STEP_PAGES) * EU_FEEDBACK_STEP_PAGES)
+  if (step >= EU_FEEDBACK_MAX_PAGES || moreRowsOf(reading.read, reading.total) === 0) return { kind: 'cap', gap: DE.cap(reading.read, reading.total) }
+  const next = step + EU_FEEDBACK_STEP_PAGES
+  if (status === 'pending') return { kind: 'reading', sentence: DE.readSoFar(reading.read, reading.total), progress: DE.moreLoading }
+  if (status === 'error') return { kind: 'failed', gap: DE.moreUnread(reading.read, reading.total), retry: DE.retry, next }
+  return { kind: 'offer', sentence: DE.readSoFar(reading.read, reading.total), label: DE.readMore(moreRowsOf(reading.read, reading.total)), next }
+}
+
+/**
+ * What the block's live region says in a stage: the loading line, the rest
+ * still read, the arrival, or a gap sentence. A further step: its arrival
+ * once, or its failure; while it is read the line stays as it was, so
+ * nothing is said twice — the progress line, which takes the focus from
+ * the button, says it.
+ */
+export function feedbackAnnouncement(stage: EuFeedbackStage, more: EuFeedbackMoreStatus = 'idle'): string {
   if (stage.kind === 'waiting') return DE.loading
   if (stage.kind === 'unread') return DE.unread
   if (stage.kind === 'partial') return stage.restFailed ? DE.restUnread(stage.reading.read) : DE.partialLoading
-  return DE.read
+  if (more === 'error') return DE.moreUnread(stage.reading.read, stage.reading.total)
+  return stage.pages > EU_FEEDBACK_STEP_PAGES ? DE.moreRead(stage.reading.read, stage.reading.total) : DE.read
 }

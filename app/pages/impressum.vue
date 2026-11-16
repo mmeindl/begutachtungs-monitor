@@ -363,7 +363,8 @@ usePageSeo({
             gibt sie gekürzt und in eigener Darstellung wieder. Beiträge
             selbst übernimmt er nicht, er verlinkt das Portal. Wer sich zu
             einer Frist geäußert hat, liest der Monitor erst, wenn jemand
-            danach fragt, und höchstens die neuesten 500 Rückmeldungen:
+            danach fragt, und zunächst die neuesten 500 Rückmeldungen, weitere
+            nur, wenn jemand sie anfordert, höchstens 5.000 je Frist:
             Organisationen nennt er mit dem Namen, den das Portal
             veröffentlicht, dem Tag ihrer Rückmeldung, ihrer Art und ihrem
             Land, und verlinkt die Rückmeldung im Portal; Privatpersonen

@@ -815,19 +815,36 @@ The code names the EU rules D1 to D7; this is where they are defined
       publication can be withdrawn after a window closed, so no name may
       outlive a restart or reach the disk or the fact store. The API answer
       says `Cache-Control: no-store` for the same reason.
-    - **On approach, at most 500 rows** (plan, decision 10): the block „Wer
-      Rückmeldung gegeben hat" under each feedback period with
-      contributions (`EuFeedbackBlock`) reads up to five pages of 100,
-      newest first, through the portal's pacer, once, when it comes near
-      the viewport (`useNearViewportSection`) — never with the page; each
-      window's block asks on its own. An open block, not a fold, since
-      16.11.2026, as the Stellungnahmen stand on a draft page; the loading
-      line holds its place, and a failed read shows the gap sentence with
-      „Erneut versuchen". Beyond the cap the list's frame row says
-      „Nicht im Monitor: Gelesen sind die neuesten 500 von N Rückmeldungen;
-      …".
+    - **On approach, the newest 500; more on request, up to 5,000** (plan,
+      decision 10; steps since 16.11.2026): the block „Wer Rückmeldung
+      gegeben hat" under each feedback period with contributions
+      (`EuFeedbackBlock`) reads five pages of 100, newest first, through
+      the portal's pacer, once, when it comes near the viewport
+      (`useNearViewportSection`) — never with the page; each window's block
+      asks on its own. An open block, not a fold, since 16.11.2026, as the
+      Stellungnahmen stand on a draft page; the loading line holds its
+      place, and a failed read shows the gap sentence with „Erneut
+      versuchen". Where the portal counts more, the list's first row says
+      „Gelesen sind die neuesten 500 von 599 Rückmeldungen." beside a
+      button „Weitere 99 lesen" (what remains, at most „Weitere 500
+      lesen"; neutral outline like „Weitere 10 anzeigen", not blue). A
+      press asks for the next step of five pages (`?seiten=10`, 15, … 50),
+      so the portal is asked only when a reader wants the answer; a higher
+      fixed limit was rejected for that reason. While the step is read a
+      progress line stands in the button's place and the list stays usable;
+      the step's reading is swapped in under the reader's tab, chip,
+      search, order and paged rows, and the block's live region says its
+      arrival once. A failed step keeps the list and says „Gerade nicht
+      abrufbar" with „Erneut versuchen" for that step. At fifty pages (5,000
+      rows) with more counted, a „Nicht im Monitor" sentence says how many of
+      how many and that the monitor reads no more for one window; no button.
+      The row stands first in the list box, above the tabs (`ListBox`'s
+      `frame` slot): a step changes the tabs' counts as well as the rows and
+      the closing rows, and what a control changes stands at it or below it.
       The endpoint answers only for a publication that is a window of the
-      initiative named, so it is no proxy for arbitrary numbers.
+      initiative named, so it is no proxy for arbitrary numbers, and only
+      for a step that is a multiple of five pages from 5 to 50 (any other is
+      a 400).
     - **Two steps, no page twice** (16.11.2026, `feedbackOf`,
       `feedbackStageOf`): the whole read of 500 took about 12 s, and the
       rows a reader sees first are page one's anyway (newest first, ten a
@@ -836,7 +853,8 @@ The code names the EU rules D1 to D7; this is where they are defined
       list or the whole reading is cached) and then for the whole. Page one
       is cached in memory apart (`eu-portal-rueckmeldungen-erste`, after the
       naming rule, six hours) and the whole read starts from it, so a window
-      costs the portal at most five requests as before; a request in flight
+      costs the portal five requests as before (one more where the list
+      moved meanwhile, below); a request in flight
       is shared, and the whole reading's six hours count from page one's
       read. While only page one is in, the list shows its named rows newest
       first and the pager, and nothing that counts, filters or orders — no
@@ -846,6 +864,44 @@ The code names the EU rules D1 to D7; this is where they are defined
       fails, a „Gerade nicht abrufbar" sentence with „Erneut versuchen" for
       the rest alone, the rows kept. When the whole arrives the controls
       appear and the rows already paged to stay.
+    - **Each step from the step before, five requests at most**
+      (16.11.2026, `readFeedbackStep`, `feedbackOf`): every step is cached
+      apart under its number of pages (`eu-portal-rueckmeldungen`, key
+      `…-s10|f4`, memory, six hours from page one's read) and starts from
+      the step before it — the first one from page one — asking only for
+      the pages it lacks, never one twice, at most five per request, so a
+      step fits the endpoint's 30 s at the pacer's 2.5 s. Where the step
+      before is gone (six hours past, a restart, or the memory's LRU let it
+      go), the step begins again at page one and holds what five requests
+      reach; the block offers the next step from there. Catching up in one
+      request was rejected: it would break the 30 s and the five requests.
+      A window's steps run one after the other (`serial`), so a step's
+      look-up of the one before never meets it half computed.
+    - **Rows that move between reads** (16.11.2026, `readOlder`,
+      `readNewer`). The list is newest first, so a contribution arriving
+      between two reads pushes every row down by one, and the next page
+      would repeat a row already read; a counted row keeps no number and no
+      day (and must not), so a repeat cannot be recognised afterwards. The
+      guard is the portal's count (`totalElements`), the only field of the
+      answer that says the list moved (`totalPages`, `numberOfElements`,
+      `first`, `last` follow from it; no answer carries a time or a
+      version): the progress keeps the count at page one's read (the
+      anchor) and at the latest read. Grown by k since the anchor, the next
+      row stands k further down: the first rows of its page are repeats and
+      are skipped, after being compared one by one with the rows read last
+      (a named row by its number, a counted row by kind, status and
+      country). A count lower than at the read before, a skip that does
+      not fall on the page, a repeat that does not match, or a named row
+      already read among the kept ones is a misfit: the step reads again
+      from page one, once, within its five requests; a second misfit is
+      „Gerade nicht abrufbar". Once the run is read to its end, the rows
+      that arrived since are taken from the head of a fresh page one and
+      the anchor moves there, so „read" can reach „total". The same rule
+      holds inside the first reading. What it cannot see: a contribution
+      withdrawn below the last row read while another arrives, between two
+      reads — the count stays, and a counted row at the seam is counted
+      twice (a named row is caught by its number). `total` on the page is
+      the latest count.
     - **One row per contribution, as a list of the Stellungnahmen**
       (maintainer, 15.11.2026; `EuFeedbackPanel`, words in
       `app/utils/euFeedback.ts`). A named organisation's contribution is a
@@ -896,10 +952,25 @@ The code names the EU rules D1 to D7; this is where they are defined
       does. With it the list offers a chip „Aus <Land>" with its count
       within the tab above it (in the citizens' tab, that country's row);
       with none (null) there is no chip and nothing is said to be missing.
-    - **Search, filter and order reach only what was read.** At most the
-      newest 500 rows are read, so above the cap the list's frame row
-      says so in a „Nicht im Monitor" sentence, above the search — before
-      a reader takes an empty result for an absent organisation.
+    - **Search, filter and order reach only what was read.** The newest
+      500 rows are read first, so where more are counted the list's first
+      row says how many of how many, above the tabs and the search — before
+      a reader takes an empty result for an absent organisation — and
+      offers the next 500; at 5,000 it says so in a „Nicht im Monitor"
+      sentence.
+    - **The set line only while narrowed** (maintainer, 16.11.2026,
+      `feedbackSetLineVisible`). „4 Rückmeldungen von Organisationen mit
+      Namen" above the column header repeated, unfiltered, what the tabs,
+      the closing rows and the pager say. It stands visibly only while a
+      search or the country chip narrows the list — then it is the result's
+      count, the zero included — and where no organisation is named at all
+      („Keine Organisation mit Namen unter den gelesenen Rückmeldungen."),
+      since the box would hold no word else. A tab alone is no narrowing:
+      its count stands on it. Otherwise the line is `sr-only`, still the
+      polite live region a screen reader hears on a change of tab, chip or
+      query; it mounts anew per reading, so a further step's new count is
+      not said a second time beside the block's one arrival sentence. The
+      phone's order stays in the tool row, which the set line never held.
     - Rejected: naming every row of an organisation kind (sole traders),
       the Parliament classifier as witness, keeping names in the fact store
       for closed windows, and (15.11.2026) one line per organisation with
@@ -1121,7 +1192,15 @@ not yet followed, or the EU cycle, starts there.
   EU act (Konsultation · Vorschlag · Parlament und Rat · Amtsblatt ·
   Umsetzung oder Geltung), a European Citizens' Initiative, an Anliegen an
   den Nationalrat; one card, one legend, the blue mark wherever one can take
-  part, each row naming how („Rückmeldung möglich"). Only the instruments
+  part, each row naming how („Rückmeldung möglich"). The matrices read as
+  one grid (16.11.2026): the first column is „Weg" in each, a bar carries
+  its name and no sentence, and the station columns have one width in
+  every matrix, so all marks stand in five verticals. A header that does
+  not fit breaks between words or at a compound's joint
+  („Regierungs-vorlage", `wegHeaderLabel`), never where the browser
+  guesses, and stands on the bottom line, next to its marks. Five columns
+  are what these rails have, not a rule: a rail with four or six stations
+  gets four or six. Only the instruments
   the monitor does not follow are a list without stations, „Nicht im
   Monitor", each with its reason.
 - **A route is followed only when three things hold:** an official,

@@ -6,8 +6,8 @@
  * (`DraftStatementsBlock`): a heading and the list, no fold (16.11.2026;
  * until then a `FoldSection` read on opening).
  *
- * READ ON APPROACH, NEVER WITH THE PAGE. The server reads up to five pages
- * of the portal's list, 2.5 s apart, so the block asks only when it comes
+ * READ ON APPROACH, NEVER WITH THE PAGE. The server reads five pages of the
+ * portal's list at first, 2.5 s apart, so the block asks only when it comes
  * near the viewport (`useNearViewportSection`), once — a page with three
  * windows asks for each as the reader reaches it. Until then, and while the
  * answer is on its way, the loading line holds the block's place, so the
@@ -24,6 +24,14 @@
  * filters or orders. A failed rest keeps the rows and offers „Erneut
  * versuchen" for the rest alone.
  *
+ * MORE ON REQUEST (16.11.2026): where the portal counts more than was read,
+ * the list offers „Weitere N lesen"; a press asks for the next step of five
+ * pages (`?seiten=10`, 15, … 50) — here, with `$fetch`, one step at a time.
+ * The list keeps its reading while the step is read and where it fails
+ * („Erneut versuchen" asks the same step again); the step's reading is
+ * swapped in when it arrives, and the live region says so once
+ * (`feedbackMoreOf`, `feedbackAnnouncement`).
+ *
  * What was read is the list of `EuFeedbackPanel`; this block holds the
  * states before it. Every word comes from `EU_FEEDBACK_DE`
  * (`app/utils/euFeedback.ts`); this component holds none.
@@ -32,7 +40,17 @@
  * configured member state by default); null on a page that serves none.
  */
 import type { EuRueckmeldungenResponse } from '#shared/types'
-import { EU_FEEDBACK_COUNTRY, EU_FEEDBACK_DE, feedbackAnnouncement, feedbackStageOf, needsWholeReading, type EuFeedbackBlockView, type EuFeedbackCountry } from '~/utils/euFeedback'
+import {
+  EU_FEEDBACK_COUNTRY,
+  EU_FEEDBACK_DE,
+  feedbackAnnouncement,
+  feedbackMoreOf,
+  feedbackStageOf,
+  needsWholeReading,
+  type EuFeedbackBlockView,
+  type EuFeedbackCountry,
+  type EuFeedbackMoreStatus,
+} from '~/utils/euFeedback'
 
 const props = withDefaults(defineProps<{ block: EuFeedbackBlockView; country?: EuFeedbackCountry | null }>(), { country: () => EU_FEEDBACK_COUNTRY })
 
@@ -53,9 +71,14 @@ const whole = useLazyFetch<EuRueckmeldungenResponse>(url, {
 const root = useTemplateRef<HTMLElement>('root')
 useNearViewportSection(root, () => void first.execute(), () => first.status.value !== 'idle')
 
+/* The latest further step that arrived, and where the one asked last stands. Not `useLazyFetch`: its query changes per press, and a watched query would ask on its own. */
+const further = shallowRef<EuRueckmeldungenResponse | null>(null)
+const moreStatus = ref<EuFeedbackMoreStatus>('idle')
+
 const stage = computed(() => feedbackStageOf(
   { status: first.status.value, data: first.data.value },
   { status: whole.status.value, data: whole.data.value },
+  further.value,
 ))
 // Page one in and partial: the rest, once. „Erneut versuchen" under a failed rest asks it again (`retry`).
 watch(stage, (s) => {
@@ -67,8 +90,24 @@ function retry() {
   void (stage.value.kind === 'partial' ? whole.execute() : first.execute())
 }
 
+/** „Weitere N lesen" and „Erneut versuchen" under it: step `pages`, once at a time. A failed answer keeps the reading the list has. */
+async function readMore(pages: number) {
+  if (moreStatus.value === 'pending') return
+  moreStatus.value = 'pending'
+  try {
+    const answer = await $fetch<EuRueckmeldungenResponse>(url(), { query: { seiten: pages } })
+    if (answer.state !== 'gelesen') throw new Error('ungelesen')
+    further.value = answer
+    moreStatus.value = 'idle'
+  } catch {
+    moreStatus.value = 'error'
+  }
+}
+
+const more = computed(() => (stage.value.kind === 'complete' ? feedbackMoreOf(stage.value.reading, stage.value.pages, moreStatus.value) : null))
+
 /** What the live region says: the loading line, that the rest is still read, the arrival, or a gap sentence; nothing before the block is reached. */
-const announcement = computed(() => (first.status.value === 'idle' ? '' : feedbackAnnouncement(stage.value)))
+const announcement = computed(() => (first.status.value === 'idle' ? '' : feedbackAnnouncement(stage.value, moreStatus.value)))
 </script>
 
 <template>
@@ -89,7 +128,9 @@ const announcement = computed(() => (first.status.value === 'idle' ? '' : feedba
         :reading="stage.reading"
         :country="country"
         :partial="stage.kind === 'partial' ? { restFailed: stage.restFailed } : null"
+        :more-row="more"
         @retry="retry()"
+        @more="readMore"
       />
     </PageSubsection>
   </div>

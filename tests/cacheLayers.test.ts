@@ -235,7 +235,8 @@ describe('the document disk', () => {
     // withdrawn after a window closed (step 4 of the EU cycle, 15.11.2026):
     // the derived mount is memory in dev and in production, the fetched one
     // is a directory in dev.
-    // Two caches since 16.11.2026: page one alone, and the whole reading built on it.
+    // Two caches since 16.11.2026: page one alone, and the readings built on it — since the same day one entry per
+    // step of five pages („Weitere … lesen", up to fifty), each built on the step before, all under the one name.
     const feedback = found.filter((f) => f.name.startsWith('eu-portal-rueckmeldungen'))
     expect(feedback.map((f) => f.name).sort()).toEqual(['eu-portal-rueckmeldungen', 'eu-portal-rueckmeldungen-erste'])
     for (const f of feedback) {
@@ -248,7 +249,7 @@ describe('the document disk', () => {
     const ttl = readFileSync(join(UTILS, 'cache', 'ttl.ts'), 'utf8')
     expect(/export const FEEDBACK_NAMES_TTL_S = 60 \* 60 \* 6\b/.test(ttl)).toBe(true)
     // And no other cached function reads the list of contributions.
-    const readers = utilsFiles().filter((f) => /\b(readFeedback|readFeedbackRest|readFirstFeedbackPage)\(/.test(readFileSync(join(UTILS, f), 'utf8')))
+    const readers = utilsFiles().filter((f) => /\b(readFeedback|readFeedbackStep|readFirstFeedbackPage)\(/.test(readFileSync(join(UTILS, f), 'utf8')))
     expect(readers.sort()).toEqual([join('eu', 'portalFeedback.ts'), join('eu', 'portalService.ts')].sort())
   })
 
