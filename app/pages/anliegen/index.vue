@@ -2,6 +2,8 @@
 import type { AnliegenListResponse } from '#shared/types'
 import { anliegenListGpOf, anliegenListGps } from '#shared/utils/anliegen'
 import { gpHasEnded } from '#shared/utils/gp'
+import { MAX_LIST_QUERY_CHARS, firstQueryValue } from '#shared/utils/queryParams'
+import { matchesQuery } from '#shared/utils/textMatch'
 import { listBoxStatusOf } from '~/utils/listState'
 import {
   ANLIEGEN_ART_OPTIONS,
@@ -45,6 +47,16 @@ const route = useRoute()
 
 const art = computed<AnliegenArt>(() => anliegenArtOf(route.query.art))
 
+/* The search term: typed here, read from `?q=` on arrival (a shared link). */
+const q = ref((firstQueryValue(route.query.q) ?? '').slice(0, MAX_LIST_QUERY_CHARS))
+const searchTerm = computed(() => q.value.trim())
+let qTimer: ReturnType<typeof setTimeout> | undefined
+watch(searchTerm, () => {
+  clearTimeout(qTimer)
+  qTimer = setTimeout(() => setQuery({}), 400)
+})
+onBeforeUnmount(() => clearTimeout(qTimer))
+
 const { data, error, status, refresh } = await useFetch<AnliegenListResponse>('/api/anliegen', {
   query: computed(() => {
     const gp = anliegenListGpOf(route.query.gp, null)
@@ -74,6 +86,7 @@ function setQuery(next: { art?: AnliegenArt; onlyOpen?: boolean; gp?: string }) 
   if (a !== 'alle') query.art = a
   if (gp && gp !== currentGp.value) query.gp = gp
   if (!open) query.alle = '1'
+  if (searchTerm.value) query.q = searchTerm.value
   navigateTo({ path: route.path, query }, { replace: true })
 }
 const artModel = computed<AnliegenArt>({ get: () => art.value, set: (v) => setQuery({ art: v }) })
@@ -84,10 +97,17 @@ const gpModel = computed<string>({
 
 const inView = computed(() => (data.value ? anliegenRowsInView(data.value, art.value) : []))
 const sorted = computed(() => sortAnliegenRows(inView.value))
-const views = computed(() => filterAnliegenRows(sorted.value, art.value, onlyOpen.value).map(anliegenRowView))
+const filtered = computed(() => filterAnliegenRows(sorted.value, art.value, onlyOpen.value).map(anliegenRowView))
+/* The search (16.11.2026; the list had none, the draft list and the EU's do):
+ * over what a row shows — title, citation, kind — by the lists' one word
+ * rule (`matchesQuery`). It narrows the rows after kind, period and „Nur
+ * offene"; the count line goes on counting that set, and the matches are
+ * said beside it. In the URL like the other controls (`?q=`), written with
+ * the next control and a moment after typing stops — never per keystroke. */
+const views = computed(() => filtered.value.filter((v) => !searchTerm.value || matchesQuery(`${v.title} ${v.citation ?? ''} ${v.kindLabel ?? ''}`, searchTerm.value)))
 
 const PAGE_STEP = 10
-const { visible, shown, more, all } = usePagedList(views, PAGE_STEP, [art, onlyOpen, chosenGp])
+const { visible, shown, more, all } = usePagedList(views, PAGE_STEP, [art, onlyOpen, chosenGp, searchTerm])
 
 const countLine = computed(() => (data.value ? anliegenCountLineDe(data.value.gp, inView.value, art.value, onlyOpen.value, periodEnded.value) : null))
 const unreadLines = computed(() => (data.value ? anliegenUnreadDe(anliegenUnreadKinds(data.value), art.value) : []))
@@ -141,12 +161,34 @@ useSeoMeta({
             </TokenSelect>
           </div>
         </div>
-        <p v-if="countLine" class="text-sm tabular-nums text-ink-secondary" aria-live="polite">{{ countLine }}</p>
+        <!-- The search on a line of its own, the whole width, after what
+             fixes the set — as on `/entwuerfe`. -->
+        <UInput
+          v-model="q"
+          type="search"
+          :maxlength="MAX_LIST_QUERY_CHARS"
+          icon="i-lucide-search"
+          :placeholder="`${ANLIEGEN_LIST_DE.search} …`"
+          :aria-label="ANLIEGEN_LIST_DE.search"
+          :disabled="!data"
+          class="w-full"
+          :ui="{ base: 'min-h-target' }"
+        />
+        <p v-if="countLine" class="text-sm tabular-nums text-ink-secondary" aria-live="polite">
+          {{ countLine }}<template v-if="searchTerm && filtered.length"> · {{ ANLIEGEN_LIST_DE.matches(views.length, searchTerm) }}</template>
+        </p>
         <GapNote v-for="line in unreadLines" :key="line" :text="line" class="text-sm text-ink-muted" />
       </template>
 
       <template #empty>
         <ListBoxNotice v-if="viewUnread" role="alert" :title="unreadLines.join(' ')" />
+        <ListBoxNotice v-else-if="searchTerm && filtered.length" :title="ANLIEGEN_LIST_DE.noMatch(searchTerm)">
+          <template #action>
+            <button type="button" class="link-inline text-sm" @click="q = ''">
+              {{ ANLIEGEN_LIST_DE.clear }}
+            </button>
+          </template>
+        </ListBoxNotice>
         <ListBoxNotice v-else-if="empty" :title="empty.title" :description="empty.note ?? undefined" />
       </template>
       <template #foot>

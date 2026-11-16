@@ -66,6 +66,10 @@ const DE = {
   unread: 'Die Initiativen konnten nicht gelesen werden: Das Register der Europäischen Bürgerinitiative hat nicht oder nicht lesbar geantwortet. Was dort gesammelt wird, zeigt das Register selbst:',
   registerLink: 'Register der Europäischen Bürgerinitiative',
   none: 'Das Register führt derzeit keine Initiative in der Sammlung.',
+  /** The list's search (16.11.2026), in the words of the windows' list beside it (`EU_FENSTER_DE`). */
+  search: 'Initiativen durchsuchen',
+  noMatch: (q: string) => `Keine Initiative in der Sammlung passt zu „${q}“.`,
+  clear: 'Suche löschen',
   count: (n: number) => (n === 1 ? '1 Initiative in der Sammlung' : `${n} Initiativen in der Sammlung`),
   /** The frame row's second half: whose count the column carries. */
   countSource: 'Unterstützungen laut Register',
@@ -92,6 +96,8 @@ export interface EuEciRowView {
   end: string | null
   /** For the sort: the register's count; null where it gives none. */
   supportersCount: number | null
+  /** What the search reads (16.11.2026): the title as shown and the register's reference. */
+  haystack: string
 }
 
 function rowOf(r: EciOpenRow): EuEciRowView | null {
@@ -111,6 +117,7 @@ function rowOf(r: EciOpenRow): EuEciRowView | null {
     gap: r.deadline ? null : pending ? DE.pending : DE.unreadDay,
     end: r.deadline ?? null,
     supportersCount: r.supporters,
+    haystack: `${r.title ?? DE.untitled(r.reference)} ${r.reference}`,
   }
 }
 

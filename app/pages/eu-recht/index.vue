@@ -154,7 +154,17 @@ const TABS = (['laufend', 'abgelaufen', 'ohne'] as const).map((value) => ({ valu
 const inTab = <A extends EuActSummary>(acts: readonly A[]): A[] => acts.filter((a) => deadlineTabOf(a, today) === tab.value)
 const rows = computed(() => euActsRows({ acts: inTab(actsLeft.value) }, sort.value, direction.value, tieDirection.value))
 /* The acts drafts only restate: the chips alone, in their section's own order. */
-const restatingRows = computed(() => (data.value ? euRestatingRows({ restatingOnly: filterEuActs(data.value.restatingOnly, chosen.value) }, today) : []))
+/* The section's own search (16.11.2026), by the map's word rule
+ * (`euActHaystack`): the map's search stops at this section's heading, and
+ * the list had none. `restatingAll` is what the chips leave — it decides
+ * whether the section stands, so a search without a match keeps the box and
+ * its field. */
+const qRestating = ref('')
+const queryRestating = computed(() => qRestating.value.trim())
+const restatingAll = computed(() => (data.value ? filterEuActs(data.value.restatingOnly, chosen.value) : []))
+const restatingRows = computed(() => euRestatingRows({
+  restatingOnly: restatingAll.value.filter((a) => !queryRestating.value || matchesQuery(euActHaystack(a), queryRestating.value)),
+}, today))
 
 /*
  * Where a search's hits went, when the tab shows none: the tabs carry no
@@ -175,7 +185,7 @@ watch([tab, sortChoice, reversed], () => {
 })
 /** The acts drafts only restate: five stand, ten a press, as the page's other lists. */
 const visibleRestating = ref(EU_OVERVIEW_LIST_INITIAL)
-const shownRestating = computed(() => restatingRows.value.slice(0, visibleRestating.value))
+const shownRestating = computed(() => (queryRestating.value ? restatingRows.value : restatingRows.value.slice(0, visibleRestating.value)))
 
 /*
  * The credit line, as under a draft's EU fact (`EntwurfFrame`): what the
@@ -379,21 +389,41 @@ const [bundItem, eurLexItem] = sourceItemsDe([risSource('Vorblatt'), risSource('
     <!-- The acts drafts only restate (D4), a section of its own
          (16.11.2026): the site's chips select it, the map's tabs, order
          and search stop at its heading. -->
-    <section v-if="restatingRows.length" aria-labelledby="eu-wiederholt-heading" class="page-section">
+    <section v-if="restatingAll.length" aria-labelledby="eu-wiederholt-heading" class="page-section">
       <h2 id="eu-wiederholt-heading" class="section-heading">{{ EU_RESTATING_DE.heading }}</h2>
       <p class="mt-2 text-ink-secondary">
         {{ EU_RESTATING_DE.lede }}
       </p>
       <ListBox class="mt-4">
-        <ColumnHeader class="gap-4 md:flex">
+        <template #header>
+          <UInput
+            v-model="qRestating"
+            type="search"
+            :maxlength="MAX_LIST_QUERY_CHARS"
+            icon="i-lucide-search"
+            :placeholder="`In ${countLabelDe(restatingAll.length, 'Rechtsakt', 'Rechtsakten')} suchen …`"
+            :aria-label="EU_RESTATING_DE.search"
+            class="w-full"
+            :ui="{ base: 'min-h-target' }"
+          />
+        </template>
+        <ColumnHeader v-if="restatingRows.length" class="gap-4 md:flex">
           <ColumnLabel :label="EU_ACTS_COLUMN_DE.act" class="min-w-0 flex-1" />
           <ColumnLabel :label="EU_ACTS_COLUMN_DE.restating" align="end" class="entry-col-count flex justify-end whitespace-nowrap" />
           <ColumnLabel :label="EU_ACTS_COLUMN_DE.deadline" align="end" class="entry-col-state flex justify-end" />
         </ColumnHeader>
-        <ul role="list" class="divide-y divide-hairline">
+        <ListBoxNotice v-if="!restatingRows.length" :title="EU_RESTATING_DE.noMatch(queryRestating)">
+          <template #action>
+            <button type="button" class="link-inline text-sm" @click="qRestating = ''">
+              {{ EU_RESTATING_DE.clear }}
+            </button>
+          </template>
+        </ListBoxNotice>
+        <ul v-else role="list" class="divide-y divide-hairline">
           <EuActRow v-for="row in shownRestating" :key="row.key" :row="row" />
         </ul>
         <ListMore
+          v-if="!queryRestating && restatingRows.length"
           :visible="visibleRestating"
           :total="restatingRows.length"
           :initial="EU_OVERVIEW_LIST_INITIAL"

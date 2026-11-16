@@ -33,6 +33,8 @@
  * where the rows will be. The count line comes with the answer.
  */
 import type { EuBuergerinitiativenResponse } from '#shared/types'
+import { MAX_LIST_QUERY_CHARS } from '#shared/utils/queryParams'
+import { matchesQuery } from '#shared/utils/textMatch'
 import { EU_ECI_LIST_DE as DE, euEciListView, sortEciRows, type EuEciSort } from '~/utils/euEciList'
 import { reversedOption } from '~/composables/useReversibleSort'
 import { listBoxStatusOf } from '~/utils/listState'
@@ -59,12 +61,21 @@ const sortOptions = [
   { value: reversedOption('unterstuetzungen'), label: DE.sortOptions.supportersReversed },
 ]
 const sortId = useId()
-const rows = computed(() => sortEciRows(view.value?.rows ?? [], sort.value, reversed.value))
+/* The search (16.11.2026), as on the windows' list above it: over what a row
+ * says of itself (`haystack`: title, reference, topics), narrowing the rows
+ * the count line counts. The list had none while the two beside it did. */
+const q = ref('')
+const query = computed(() => q.value.trim())
+const rows = computed(() => sortEciRows(
+  (view.value?.rows ?? []).filter((r) => !query.value || matchesQuery(r.haystack, query.value)),
+  sort.value,
+  reversed.value,
+))
 
 /* Five stand, ten a press (`EU_OVERVIEW_LIST_INITIAL`). */
 const visible = ref(INITIAL)
 watch([sort, reversed], () => { visible.value = INITIAL })
-const shown = computed(() => rows.value.slice(0, visible.value))
+const shown = computed(() => (query.value ? rows.value : rows.value.slice(0, visible.value)))
 </script>
 
 <template>
@@ -75,10 +86,21 @@ const shown = computed(() => rows.value.slice(0, visible.value))
     </p>
     <div class="mt-4">
       <ListBox>
-        <template v-if="ready" #header>
+        <template #header>
+          <UInput
+            v-model="q"
+            type="search"
+            :maxlength="MAX_LIST_QUERY_CHARS"
+            icon="i-lucide-search"
+            :placeholder="`${DE.search} …`"
+            :aria-label="DE.search"
+            :disabled="!ready"
+            class="w-full"
+            :ui="{ base: 'min-h-target' }"
+          />
           <!-- The count line, and on a phone the order beside it: from `md` the column header orders. -->
-          <div class="flex flex-wrap items-center justify-between gap-x-4 gap-y-2">
-            <p class="text-sm text-ink-muted">
+          <div v-if="ready" class="flex flex-wrap items-center justify-between gap-x-4 gap-y-2">
+            <p class="text-sm text-ink-muted" aria-live="polite">
               {{ DE.count(rows.length) }} · {{ DE.countSource }}
             </p>
             <div v-if="rows.length > 1" class="flex min-w-0 items-center gap-2 md:hidden">
@@ -122,7 +144,14 @@ const shown = computed(() => rows.value.slice(0, visible.value))
               <ExternalLink :href="data.registerUrl" class="link-inline">{{ DE.registerLink }}</ExternalLink>
             </GapNote>
           </ListBoxNotice>
-          <ListBoxNotice v-else-if="!rows.length" role="status" :title="DE.none" />
+          <ListBoxNotice v-else-if="!view?.rows?.length" role="status" :title="DE.none" />
+          <ListBoxNotice v-else-if="!rows.length" :title="DE.noMatch(query)">
+            <template #action>
+              <button type="button" class="link-inline text-sm" @click="q = ''">
+                {{ DE.clear }}
+              </button>
+            </template>
+          </ListBoxNotice>
           <ul v-else role="list" class="divide-y divide-hairline">
             <li v-for="row in shown" :key="row.key">
               <NuxtLink
@@ -149,7 +178,7 @@ const shown = computed(() => rows.value.slice(0, visible.value))
           </ul>
         </ListBoxState>
         <ListMore
-          v-if="rows.length"
+          v-if="!query && rows.length"
           :visible="visible"
           :total="rows.length"
           :initial="INITIAL"

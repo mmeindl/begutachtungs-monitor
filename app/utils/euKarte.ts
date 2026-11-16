@@ -256,6 +256,10 @@ export function euActsRows(r: Pick<EuActsResponse, 'acts'>, sort: EuActSort = 'f
 export const EU_RESTATING_DE = {
   heading: 'Rechtsakte, die Entwürfe nur wiederholt nennen',
   lede: 'Ein Entwurf, der ein Gesetz ändert, wiederholt dessen Hinweis auf umgesetztes EU-Recht; die Liste darüber zählt diese Rechtsakte deshalb nicht.',
+  /** The section's own search (16.11.2026): the map's stops at this heading. */
+  search: 'Rechtsakte durchsuchen',
+  noMatch: (q: string) => `Kein Rechtsakt dieser Liste passt zu „${q}“.`,
+  clear: 'Suche löschen',
 } as const
 
 /**

@@ -921,6 +921,15 @@ export const ANLIEGEN_LIST_DE = {
    */
   onlyOpenEnded: 'In einer beendeten Gesetzgebungsperiode ist keine Beteiligung mehr möglich.',
   loading: 'Anliegen werden geladen …',
+  /**
+   * The list's search (16.11.2026): over a row's title, citation and kind —
+   * no name stands in any of them (the reader drops them before the cache).
+   * The count line keeps counting the set; the matches are said beside it.
+   */
+  search: 'Anliegen durchsuchen',
+  matches: (n: number, q: string) => `${formatNumberDe(n)} ${n === 1 ? 'passt' : 'passen'} zu „${q}“`,
+  noMatch: (q: string) => `Kein Anliegen dieser Auswahl passt zu „${q}“.`,
+  clear: 'Suche löschen',
   /** The list's request failed: in the rows' place, with „Erneut versuchen" (`ListBoxState`). */
   failed: { text: gapLabelDe('Anliegen', 'unavailable'), description: 'Die Quelle hat nicht geantwortet.' },
   /**
@@ -933,26 +942,20 @@ export const ANLIEGEN_LIST_DE = {
 } as const
 
 /**
- * The homepage's block (step 4 of the plan): the open Anliegen of the
- * running period, newest few, in the list's order and the list's words.
+ * The open Anliegen as the list counts them on arrival (16.11.2026, the
+ * homepage's door): the running period's „Alle" with „Nur offene"
+ * (`anliegenRowsInView`, `filterAnliegenRows`), the same rows the count
+ * line's „N offen" counts. Rows whose participation was not read
+ * (`open === null`) are counted apart, never as closed; the kinds whose list
+ * did not arrive are named (`anliegenUnreadKinds`).
  */
-export const ANLIEGEN_HOME_DE = {
-  heading: ANLIEGEN_LIST_DE.title,
-  lede: 'Petitionen, Bürgerinitiativen und Volksbegehren, die der Nationalrat gerade behandelt.',
-  /** What the section's link is „Alle …" of (`ListHeader`). */
-  linkNoun: 'Anliegen',
-  failed: gapLabelDe(ANLIEGEN_SECTION_DE, 'unavailable'),
-  /** The reason, by what failed: Parliament's lists (a 502 of ours), or no answer reached the page. */
-  failedUpstream: 'Die Listen des Parlaments haben nicht geantwortet.',
-  failedNoAnswer: 'Der Monitor hat auf die Abfrage keine Antwort erhalten.',
-} as const
-
-/** How many open rows the homepage shows. */
-export const ANLIEGEN_HOME_ROWS = 3
-
-/** The homepage's rows: the list's order (`sortAnliegenRows`), open ones only, the first few. */
-export function anliegenHomeRows(rows: readonly AnliegenRow[]): EntryView[] {
-  return filterAnliegenRows(sortAnliegenRows(rows), 'alle', true).slice(0, ANLIEGEN_HOME_ROWS).map(anliegenRowView)
+export function anliegenOpenCount(data: Pick<AnliegenListResponse, 'gp' | 'rows' | 'bundesrat' | 'unread'>): { open: number; unknown: number; unreadKinds: AnliegenKind[] } {
+  const rows = anliegenRowsInView(data, 'alle')
+  return {
+    open: filterAnliegenRows(rows, 'alle', true).length,
+    unknown: rows.filter((r) => r.open === null).length,
+    unreadKinds: anliegenUnreadKinds(data),
+  }
 }
 
 /**
