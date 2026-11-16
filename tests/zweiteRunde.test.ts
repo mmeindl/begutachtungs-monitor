@@ -76,6 +76,8 @@ describe('the rows', () => {
       date: '2025-12-09',
       parliamentUrl: 'https://www.parlament.gv.at/gegenstand/XXVIII/I/365',
       statementCount: 2,
+      // Sent back to committee: „Parlament", as its own page says (16.11.2026).
+      station: 'parlament',
       consultation: { kind: 'unknown' },
     }])
   })
@@ -90,7 +92,9 @@ describe('the rows', () => {
   it('keep a Regierungsvorlage\'s own draft and its kind', async () => {
     getItemsForGp.mockResolvedValue([row(312, 'RV', '2')] as never)
     getGegenstand.mockResolvedValue({ content: { statementsstate: '1', preconst: [{ ityp: 'ME', gp_code: 'XXVIII', inr: 32 }] } } as never)
-    const answer = await (handler as unknown as () => Promise<{ items: { kind: string; consultation: unknown }[] }>)()
+    const answer = await (handler as unknown as () => Promise<{ items: { kind: string; station: string; consultation: unknown }[] }>)()
     expect(answer.items.map((i) => [i.kind, i.consultation])).toEqual([['regierungsvorlage', { kind: 'draft', gp: 'XXVIII', inr: 32 }]])
+    // In Behandlung in the Nationalrat: the Regierungsvorlage's tab.
+    expect(answer.items[0]!.station).toBe('rv')
   })
 })

@@ -12,6 +12,18 @@
     Budgetgesetze führt die Liste nicht unter den Gesetzen ohne Entwurf,
     beim Bund wie in Salzburg: Sie entstehen im Budgetverfahren.
   </p>
+  <!-- What the one-line note above the rows names (`withoutDraftGapDe`,
+       16.11.2026): the states it means, and where the Anträge stand. -->
+  <p>
+    Regierungsvorlagen des Bundes ohne Entwurf, Ausschussanträge und
+    Gesetzesanträge aus dem Bundesrat stehen in der Liste, solange eine
+    Stellungnahme zu ihnen möglich ist, und wieder, sobald ihr Gesetz
+    kundgemacht ist. Dazwischen fehlen sie: beschlossen und noch nicht
+    kundgemacht, abgelehnt, zurückgezogen, miterledigt oder mit der
+    Gesetzgebungsperiode verfallen. Initiativanträge stehen in jedem Stand
+    unter „Alle Initiativanträge“, die offenen auch unter „Stellungnahme
+    möglich“.
+  </p>
   <p>
     Ein Entwurf eines Landes steht in dem Zeitraum, in dem seine
     Begutachtung begann, ein Landesgesetz in dem seiner Kundmachung; beim

@@ -205,12 +205,14 @@ export function rowOrderKey(row: DraftListRow): OrderedDraft {
    * same week. */
   if (row.kind === 'law') return { active: false, deadline: null, startedAt: isLandLaw(row.law) ? row.law.date : row.law.bgblDate, title: row.law.title }
   /* An Antrag has no Frist either: an open one sorts as an open Vorlage
-   * does, among the second round by its Einlangen, ahead of the ones that
-   * take nothing (the rule „open first" of `compareDrafts`); a promulgated
-   * one by its Kundmachung, as a law; the rest by their Einlangen. */
+   * does, by its Einlangen among the rows without a running Frist; a
+   * promulgated one by its Kundmachung, as a law. Never `active`
+   * (16.11.2026): it was while open, which an open Vorlage is not, so under
+   * „Stellungnahme möglich" the 99 open Anträge stood before every Vorlage
+   * and motion, whatever their dates. */
   if (row.kind === 'antrag') {
     const a = row.antrag
-    return { active: a.state === 'open', deadline: null, startedAt: a.bgbl?.date ?? (a.date || null), title: a.title }
+    return { active: false, deadline: null, startedAt: a.bgbl?.date ?? (a.date || null), title: a.title }
   }
   /* A treaty takes no Stellungnahmen, so never active: by its Kundmachung
    * once promulgated, as a law; else by its Einlangen. */

@@ -3,8 +3,8 @@ import { GP_STARTS, intToRoman, romanToInt } from '../shared/utils/gp'
 import { LAND_CODES } from '../shared/utils/laender'
 import { type LandPeriodCalendars, periodViewFor } from '../shared/utils/periodCalendar'
 import {
+  withoutDraftGapDe,
   type DraftFilterValues,
-  SEVERAL_STATIONS,
   ART_CHOICES,
   activeFilterChips,
   artChoiceLabel,
@@ -22,6 +22,7 @@ import {
   choiceAdmitsDraft,
   choiceAdmitsLandLaw,
   choiceAdmitsOpenVorlage,
+  openVorlageStationOf,
   coherentArt,
   coherentBegutachtung,
   coherentFilters,
@@ -41,6 +42,8 @@ import {
   sameDraftFilters,
   spanOptionsFor,
   stationTabsFor,
+  otherOpenStation,
+  otherStationPointerDe,
   unionGps,
   unionMinistries,
   withoutDraftRequests,
@@ -74,7 +77,7 @@ describe('draftFiltersFromQuery', () => {
     expect(
       draftFiltersFromQuery({
         status: 'open',
-        station: 'rv,bgbl',
+        station: 'rv',
         art: 'antrag',
         gp: 'XXVIII',
         ministry: 'BMF',
@@ -86,7 +89,7 @@ describe('draftFiltersFromQuery', () => {
       }),
     ).toEqual({
       status: 'open',
-      stations: ['rv', 'bgbl'],
+      stations: ['rv'],
       art: 'antrag',
       gp: 'XXVIII',
       landtag: '',
@@ -115,11 +118,11 @@ describe('draftFiltersFromQuery', () => {
     expect(draftFiltersFromQuery({})).toEqual(empty)
   })
 
-  it('keeps only the stations the procedure knows, in the order given', () => {
-    expect(draftFiltersFromQuery({ station: 'bgbl, MOND ,Begutachtung' }).stations).toEqual([
-      'bgbl',
-      'begutachtung',
-    ])
+  it('reads one station: the first the address names that the procedure knows (16.11.2026)', () => {
+    expect(draftFiltersFromQuery({ station: ' MOND ,Begutachtung' }).stations).toEqual(['begutachtung'])
+    // An old link naming several opens on its first.
+    expect(draftFiltersFromQuery({ station: 'rv,parlament' }).stations).toEqual(['rv'])
+    expect(draftFiltersFromQuery({ station: 'mond' }).stations).toEqual([])
   })
 
   it('takes the first value of a repeated parameter', () => {
@@ -168,7 +171,7 @@ describe('the round trip', () => {
   const cases: DraftFilterValues[] = [
     empty,
     { ...empty, status: 'open' },
-    { ...empty, stations: ['begutachtung', 'rv'] },
+    { ...empty, stations: ['rv'] },
     { ...empty, art: 'gesetz', gp: 'XXVIII', ministry: 'BMJ' },
     { ...empty, q: 'klimaschutz', sort: 'stellungnahmen' },
     { status: 'closed', stations: ['bgbl'], art: 'verordnung', gp: 'XXVII', landtag: '', ministry: 'BMF', q: 'x', sort: 'stellungnahmen', reversed: true, eu: '', begutachtung: '' },
@@ -249,23 +252,43 @@ describe('draftApiQuery', () => {
 
 describe('stationTabsFor', () => {
   it('offers „Alle" and every station, all available', () => {
-    const tabs = stationTabsFor('', [])
+    const tabs = stationTabsFor('')
     expect(tabs.map((t) => t.value)).toEqual(['', 'begutachtung', 'rv', 'parlament', 'bgbl'])
     expect(tabs.some((t) => t.disabled)).toBe(false)
   })
 
   it('keeps the two stations a Verordnungsentwurf cannot reach in place, unavailable', () => {
     // The strip does not change shape with the Art filter.
-    const tabs = stationTabsFor('verordnung', [])
+    const tabs = stationTabsFor('verordnung')
     expect(tabs.filter((t) => t.disabled).map((t) => t.value)).toEqual(['rv', 'parlament'])
     expect(tabs.find((t) => t.value === 'rv')?.reason).toBe('Verordnungsentwürfe kommen nicht ins Parlament oder in den Landtag')
     expect(tabs.find((t) => t.value === 'bgbl')?.disabled).toBe(false)
   })
+})
+/* The pointer from one of the two Parliament tabs to the other (16.11.2026):
+ * the homepage's door opens on „Regierungsvorlage", and a row at
+ * „Parlament / Landtag" is named with its count instead of a tab that joins
+ * the two. */
+describe('otherOpenStation / otherStationPointerDe', () => {
+  it('points from either Parliament tab to the other, under „Stellungnahme möglich" only', () => {
+    expect(otherOpenStation('open', ['rv'])).toBe('parlament')
+    expect(otherOpenStation('open', ['parlament'])).toBe('rv')
+    expect(otherOpenStation('all', ['rv'])).toBeNull()
+    expect(otherOpenStation('closed', ['parlament'])).toBeNull()
+  })
 
-  it('names a shared link\'s several stations as a tab of their own', () => {
-    const tabs = stationTabsFor('', ['rv', 'parlament'])
-    expect(tabs.at(-1)).toEqual({ value: SEVERAL_STATIONS, label: 'Regierungsvorlage + Parlament / Landtag' })
-    expect(stationTabsFor('', ['rv']).some((t) => t.value === SEVERAL_STATIONS)).toBe(false)
+  it('points nowhere from another station, from several or from none', () => {
+    expect(otherOpenStation('open', ['begutachtung'])).toBeNull()
+    expect(otherOpenStation('open', ['bgbl'])).toBeNull()
+    expect(otherOpenStation('open', ['rv', 'parlament'])).toBeNull()
+    expect(otherOpenStation('open', [])).toBeNull()
+  })
+
+  it('says the count and the other tab\'s label, and nothing for none', () => {
+    expect(otherStationPointerDe(1, 'parlament')).toBe('1 weitere unter „Parlament / Landtag“')
+    expect(otherStationPointerDe(3, 'rv')).toBe('3 weitere unter „Regierungsvorlage“')
+    expect(otherStationPointerDe(1200, 'rv')).toBe('1.200 weitere unter „Regierungsvorlage“')
+    expect(otherStationPointerDe(0, 'rv')).toBeNull()
   })
 })
 
@@ -1018,8 +1041,6 @@ describe('the list\'s Land notes (14.11.2026)', () => {
     // the Steiermark's are not read, Vorarlberg does not list any. A Land
     // that drops a draft at its Frist (Niederösterreich, Wien) is whole here.
     expect(landsIncompleteFor([...LAND_CODES], 'laufend')).toEqual(['stmk', 'vbg'])
-    // Decided in the Landtag: the draft held after its Frist and the way read.
-    expect(landsIncompleteFor(['ooe', 't'], 'beschlossen')).toEqual(['t'])
     // Kundgemacht: Verordnungen read, the draft held, the Kundmachung found.
     expect(landsIncompleteFor(['bgld', 'ktn', 'ooe', 'sbg', 'stmk', 't', 'w'], 'kundgemacht')).toEqual(['ktn', 'ooe', 'stmk', 't', 'w'])
     const text = (parts: ReturnType<typeof landCoverageNote>) => parts!.map((p) => p.text).join('')
@@ -1192,5 +1213,50 @@ describe('the span chip (14.11.2026)', () => {
     expect(activeFilterChips({ ...base, gp: '', landtag: 'w-21' }, periodViewFor(false, ['w'], FIXTURE), FIXTURE)).toEqual([
       { key: 'landtag', label: '21. Wahlperiode Wien' },
     ])
+  })
+})
+
+describe('the station of an open Vorlage (16.11.2026)', () => {
+  it('is the one its endpoint read, and rv where a row carries none', () => {
+    expect(openVorlageStationOf({ kind: 'regierungsvorlage', station: 'parlament' })).toBe('parlament')
+    expect(openVorlageStationOf({ kind: 'regierungsvorlage', station: 'rv' })).toBe('rv')
+    expect(openVorlageStationOf({ kind: 'regierungsvorlage' })).toBe('rv')
+    // A motion stands at „Parlament" from its Einlangen, as /wege draws it (16.11.2026).
+    expect(openVorlageStationOf({ kind: 'ausschussantrag', station: 'rv' })).toBe('parlament')
+    expect(openVorlageStationOf({ kind: 'bundesratsantrag', station: 'rv' })).toBe('parlament')
+    expect(openVorlageStationOf({ kind: 'ausschussantrag' })).toBe('parlament')
+  })
+})
+
+describe('withoutDraftGapDe — the rows without a draft between their window and their law (16.11.2026)', () => {
+  const view = (o: Partial<Parameters<typeof withoutDraftGapDe>[0]> = {}) =>
+    withoutDraftGapDe({ bund: true, status: 'all', stations: ['parlament'], art: '', ministry: '', eu: false, ...o })
+
+  it('names the three kinds under „Parlament / Landtag", in one line', () => {
+    expect(view()).toBe(
+      'Nicht im Monitor: Regierungsvorlagen des Bundes ohne Entwurf, Ausschussanträge und Gesetzesanträge aus dem Bundesrat, die weder für Stellungnahmen offen noch kundgemacht sind.',
+    )
+    expect(view({ status: 'closed', stations: ['rv', 'parlament'] })).toBe(view())
+    expect(view({ art: 'ohne' })).toBe(view())
+  })
+  it('names only the Vorlagen under „Regierungsvorlage", where no motion stands', () => {
+    expect(view({ stations: ['rv'] })).toBe('Nicht im Monitor: Regierungsvorlagen des Bundes ohne Entwurf, die weder für Stellungnahmen offen noch kundgemacht sind.')
+  })
+  it('narrows to the kind of an Art of „Ohne Entwurf"', () => {
+    expect(view({ art: 'ohne-vorlage' })).toMatch(/^Nicht im Monitor: Regierungsvorlagen des Bundes ohne Entwurf, die weder/)
+    expect(view({ art: 'ohne-ausschussantrag' })).toMatch(/^Nicht im Monitor: Ausschussanträge, die weder/)
+    expect(view({ art: 'ohne-ausschussantrag', stations: ['rv'] })).toBeNull()
+  })
+  it('stands nowhere rows are complete or cannot be of these kinds', () => {
+    expect(view({ status: 'open' })).toBeNull()
+    expect(view({ stations: [] })).toBeNull()
+    expect(view({ stations: ['bgbl'] })).toBeNull()
+    expect(view({ stations: ['begutachtung'] })).toBeNull()
+    expect(view({ bund: false })).toBeNull()
+    expect(view({ ministry: 'BMF' })).toBeNull()
+    expect(view({ eu: true })).toBeNull()
+    for (const art of ['mit', 'gesetz', 'als-antrag', 'verordnung', 'andere', 'ohne-antrag', 'ohne-landesgesetz', 'initiativantraege', 'staatsvertraege'] as const) {
+      expect(view({ art })).toBeNull()
+    }
   })
 })

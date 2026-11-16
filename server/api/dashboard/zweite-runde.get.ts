@@ -32,6 +32,7 @@
  */
 import type { DashboardSecondRound, OpenVorlage } from '#shared/types'
 import { budgetExemptReason } from '#shared/utils/budgetExempt'
+import { stationFor } from '#shared/utils/draftStations'
 import { isFilingOpen, readCommitteeConsultation } from '../../utils/parliament/detailJson'
 import { getCurrentGp, getDraftsForGp, getGegenstand, getItemsForGp } from '../../utils/parliament/drafts'
 import { findPrecedingDraft } from '../../utils/parliament/precedingDraft'
@@ -137,6 +138,8 @@ export default defineEventHandler(async (): Promise<DashboardSecondRound> => {
           date: v.date,
           parliamentUrl: v.parliamentUrl,
           statementCount,
+          // The list's status column, as a draft's chain reads it (`stationFor`).
+          station: stationFor(null, v.status),
           consultation: me
             ? { kind: 'draft' as const, gp: String(me.gp_code), inr: Number(me.inr) }
             : exempt

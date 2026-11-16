@@ -8,7 +8,7 @@ import { readFileSync } from 'node:fs'
 import { describe, expect, it } from 'vitest'
 import type { AntragRow, EnactmentInfo, VorlageDetail } from '../shared/types'
 import { draftOfAntrag } from '../shared/utils/antragPath'
-import { antragRow, compareRowsByFrist } from '../shared/utils/draftOrder'
+import { antragRow, compareRowsByFrist, vorlageRow } from '../shared/utils/draftOrder'
 import { antragRowOf, classifyAntrag, compareAntragRows, needsReading, readAntragDetail, readAntragOutcome } from '../server/utils/parliament/antraege'
 import { mapAntragRow } from '../server/utils/parliament/list101'
 import { assembleVorlageDetail, type VorlageContent } from '../server/utils/parliament/vorlageDetailAssembly'
@@ -134,10 +134,14 @@ describe('viewOfAntrag — a row under „Alle Initiativanträge"', () => {
     expect(v.kindLabel).toBe('Initiativantrag')
     expect(v.participation).toEqual({ kind: 'unasked' })
   })
-  it('sorts an open Antrag among the open rows, a closed one by its date', () => {
+  it('sorts an open Antrag as an open Vorlage: by its Einlangen, never ahead for being open (16.11.2026)', () => {
     const open = antragRow(antrag())
     const closed = antragRow(antrag({ inr: 1, state: 'rejected', date: '2026-01-01' }))
-    expect([closed, open].sort((a, b) => compareRowsByFrist(a, b))[0]).toBe(open)
+    // The closed one came in later, so it stands first.
+    expect([open, closed].sort((a, b) => compareRowsByFrist(a, b))[0]).toBe(closed)
+    // Beside an open Vorlage the dates decide, not the kind.
+    const vorlage = vorlageRow({ kind: 'regierungsvorlage', citation: '711 d.B.', title: 'X', date: '2026-11-11', parliamentUrl: 'https://www.parlament.gv.at/gegenstand/XXVIII/I/711', statementCount: 0, consultation: { kind: 'unknown' } })
+    expect([open, vorlage].sort((a, b) => compareRowsByFrist(a, b))[0]).toBe(vorlage)
   })
 })
 
@@ -153,6 +157,11 @@ describe('the option „Alle Initiativanträge"', () => {
     expect(antragRowsOf('')).toBe(false)
     expect(antragRowsOf('ohne')).toBe(false)
     expect(antragRowsOf('initiativantraege')).toBe(true)
+    // The open ones under „Stellungnahme möglich" with „Alle Arten" (16.11.2026).
+    expect(antragRowsOf('', 'open')).toBe(true)
+    expect(antragRowsOf('', 'closed')).toBe(false)
+    expect(antragRowsOf('ohne', 'open')).toBe(false)
+    expect(antragRowsOf('gesetz', 'open')).toBe(false)
     const groups = artSelectFor({ chosen: '', others: false, landSelected: false, unavailable: {} })
     expect(groups.at(-1)).toMatchObject({ label: 'Im Nationalrat', options: [{ value: 'initiativantraege', label: 'Alle Initiativanträge' }, { value: 'staatsvertraege', label: 'Staatsverträge' }] })
   })
@@ -170,8 +179,10 @@ describe('the option „Alle Initiativanträge"', () => {
     expect(artUnavailableBySources({ bund: true, landsApply: false, ohneLandsApply: false }).initiativantraege).toBeNull()
   })
   it('puts each state at its station', () => {
-    expect(antragStationOf('open')).toBe('rv')
-    expect(antragStationOf('pending-unverified')).toBe('rv')
+    // Parlament from its Einlangen, as /wege draws a motion's path (16.11.2026).
+    expect(antragStationOf('open')).toBe('parlament')
+    expect(antragStationOf('pending')).toBe('parlament')
+    expect(antragStationOf('pending-unverified')).toBe('parlament')
     expect(antragStationOf('promulgated')).toBe('bgbl')
     expect(antragStationOf('rejected')).toBe('parlament')
   })
@@ -287,7 +298,10 @@ describe('a Miterledigung is neither a decision nor a lapse (14.11.2026)', () =>
     const d = { ...lapsedTemplate, enactment: { ...lapsedTemplate.enactment, bgblNumber: null, houseStatusText: COMMITTEE, rvGpEnded: true, amendedIn: [] } }
     expect(vorlageStatusDe(d)).toBe('Mit 1637 d.B. miterledigt')
     const parlament = vorlageStations(d).find((s) => s.id === 'parlament')!
-    expect(parlament).toMatchObject({ state: 'done', facts: ['mit 1637 d.B. miterledigt'] })
+    // The motion enters at „Parlament" (16.11.2026): its kind first.
+    expect(parlament.state).toBe('done')
+    expect(parlament.facts[0]).toBe('Initiativantrag')
+    expect(parlament.facts.at(-1)).toBe('mit 1637 d.B. miterledigt')
     expect(vorlageStations(d).find((s) => s.id === 'bgbl')).toMatchObject({ state: 'never', facts: [] })
   })
   it('names the item on the list’s row', () => {

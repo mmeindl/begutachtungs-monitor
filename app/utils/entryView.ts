@@ -225,10 +225,12 @@ function openFristNote(start: string | null, deadline: string | null, active: bo
  *
  * Tone `neutral`: without a Frist there is nothing that could become urgent.
  */
-function openVorlageState(date: string | null): EntryState {
+/* „zum Antrag seit …" for a motion (16.11.2026): a committee's or the
+ * Bundesrat's motion is no Vorlage, and its row said „zur Vorlage". */
+function openVorlageState(date: string | null, motion = false): EntryState {
   return {
     label: 'Stellungnahme möglich',
-    detail: date ? `zur Vorlage seit ${formatDateDe(date)}` : null,
+    detail: date ? `${motion ? 'zum Antrag' : 'zur Vorlage'} seit ${formatDateDe(date)}` : null,
     tone: 'neutral',
     actionable: true,
   }
@@ -628,7 +630,7 @@ export function viewOfVorlage(v: OpenVorlage): EntryView {
       : stationNewLabel('rv', v.date || null),
     participation:
       v.statementCount === null ? { kind: 'unavailable' } : { kind: 'count', count: v.statementCount },
-    state: openVorlageState(v.date || null),
+    state: openVorlageState(v.date || null, kind !== 'regierungsvorlage'),
   }
 }
 

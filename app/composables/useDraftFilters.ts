@@ -8,6 +8,7 @@
  * rewrites the state.
  */
 import type { ComputedRef, Ref } from 'vue'
+import type { LocationQueryRaw } from 'vue-router'
 import type { DraftStation, DraftStatus, LandCode } from '#shared/types'
 import {
   type ArtFilter,
@@ -55,6 +56,13 @@ export interface DraftFilters {
   /** „Ohne Entwurf" / „Alle mit Entwurf" — the page's own filter, no endpoint takes it (`BegutachtungFilter`); the select „Art" writes it with `art` (`artChoiceParams`). */
   begutachtung: Ref<BegutachtungFilter>
   query: ComputedRef<ReturnType<typeof draftApiQuery>>
+  /**
+   * The URL query of the filters as they stand, with `patch` applied — what
+   * the page's own write-back puts in the address, so a link built with it
+   * changes exactly the patched filter and keeps every other (16.11.2026,
+   * the pointer to the other Parliament tab).
+   */
+  urlQueryWith: (patch: Partial<DraftFilterValues>) => LocationQueryRaw
   /** Runs `handler` after a navigation has set the filters from its URL —
    *  for state the page keeps beside them. */
   onNavigate: (handler: () => void) => void
@@ -149,9 +157,12 @@ export function useDraftFilters(sources: {
   // Keep the URL in sync with the filters (defaults stay out of the URL).
   /* `quellen` is not this list's filter but the site's choice of sources
    * (`useSourceChoice`), and the write-back must not drop it. */
-  function writeUrl(): void {
+  function urlQueryWith(patch: Partial<DraftFilterValues>): LocationQueryRaw {
     const quellen = route.query[SOURCE_PARAM]
-    router.replace({ query: { ...draftUrlQuery(current()), ...(quellen !== undefined ? { [SOURCE_PARAM]: quellen } : {}) } })
+    return { ...draftUrlQuery({ ...current(), ...patch }), ...(quellen !== undefined ? { [SOURCE_PARAM]: quellen } : {}) }
+  }
+  function writeUrl(): void {
+    router.replace({ query: urlQueryWith({}) })
   }
   /* The refs, not `query`, which carries the applied `span`: a source
    * toggle changes `span` at once, before its own navigation has landed, and a write-back
@@ -239,6 +250,7 @@ export function useDraftFilters(sources: {
     eu,
     begutachtung,
     query,
+    urlQueryWith,
     onNavigate: (handler) => {
       navigateHandlers.push(handler)
     },

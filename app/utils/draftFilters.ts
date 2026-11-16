@@ -516,12 +516,18 @@ export function draftRowsOf(choice: ArtChoice): { me: boolean; ris: boolean; lae
 }
 
 /**
- * Whether an option shows the Initiativanträge of `/api/antraege` — only
- * „Alle Initiativanträge", which stands outside „Alle Arten" (decision 1 of
- * 14.11.2026): the default list stays as it was.
+ * Whether a view shows the Initiativanträge of `/api/antraege` as rows:
+ * under „Alle Initiativanträge", which stands outside „Alle Arten" (decision
+ * 1 of 14.11.2026: the default list stays as it was) — and, since
+ * 16.11.2026 (maintainer's decision), under „Stellungnahme möglich" with
+ * „Alle Arten", the open ones: that status holds every item a Stellungnahme
+ * can be filed on, and the home page's door „Stellung nehmen im Parlament"
+ * leads there. Without them it showed the eleven open Vorlagen and motions
+ * and left out 99 open Anträge. Not under „Alle ohne Entwurf" and its Arts:
+ * whether a draft preceded an Antrag is known only once it is a law.
  */
-export function antragRowsOf(choice: ArtChoice): boolean {
-  return choice === 'initiativantraege'
+export function antragRowsOf(choice: ArtChoice, status: DraftStatus = 'all'): boolean {
+  return choice === 'initiativantraege' || (choice === '' && status === 'open')
 }
 
 /** Whether an option shows the treaties of `/api/staatsvertraege` — only
@@ -559,13 +565,31 @@ export function treatyGapNotes(t: Pick<StaatsvertraegeResponse, 'bgblUnread'> & 
 }
 
 /**
- * The station an Initiativantrag's row stands at, for the station tabs: the
- * item itself while the house has it (the slot an open Vorlage takes),
- * the Bundesgesetzblatt once promulgated, and Parlament for every end the
+ * The station an open Vorlage's or motion's row stands at, for the station
+ * tabs (16.11.2026). A MOTION — a committee's (`ausschussantrag`) or the
+ * Bundesrat's (`bundesratsantrag`) — stands at „Parlament / Landtag" from its
+ * Einlangen, whatever its status: a motion's path has no Regierungsvorlage,
+ * and `/wege` draws it with „entfällt" there and its mark at Parlament. The
+ * tab „Regierungsvorlage" holds the government's Vorlagen only. A
+ * Regierungsvorlage stands where its endpoint read it from Parliament's
+ * status (`OpenVorlage.station`, `stationFor`), `rv` where a row carries
+ * none. The one rule for these rows: the endpoint's field stays the status
+ * reading, and the kind is decided here.
+ */
+export function openVorlageStationOf(v: Pick<OpenVorlage, 'station' | 'kind'>): DraftStation {
+  if (v.kind !== 'regierungsvorlage') return 'parlament'
+  return v.station ?? 'rv'
+}
+
+/**
+ * The station an Initiativantrag's row stands at, for the station tabs:
+ * Parlament from its Einlangen while the house has it (16.11.2026, as
+ * `/wege` draws the motion's path, and as `openVorlageStationOf` files the
+ * other motions — until then the slot an open Vorlage takes, „Regierungsvorlage"),
+ * the Bundesgesetzblatt once promulgated, and Parlament too for every end the
  * house reached without a Kundmachung.
  */
 export function antragStationOf(state: AntragState): DraftStation {
-  if (state === 'open' || state === 'pending' || state === 'pending-unverified') return 'rv'
   return state === 'promulgated' ? 'bgbl' : 'parlament'
 }
 
@@ -596,6 +620,50 @@ export function antragGapNotes(a: Pick<AntraegeResponse, 'bgblUnread'> & Partial
     ...(a.bgblUnread ? [gapDe('unavailable', 'ob ein Initiativantrag kundgemacht ist.')] : []),
     ...(unverified ? [gapDe('unavailable', `ob eine Stellungnahme möglich ist, bei ${countLabelDe(unverified, 'Initiativantrag', 'Initiativanträgen')}.`)] : []),
   ]
+}
+
+/**
+ * The Bund's items without a Ministerialentwurf that are rows only at the
+ * two ends of their way (16.11.2026): a Regierungsvorlage without a draft, an
+ * Ausschussantrag and a Gesetzesantrag aus dem Bundesrat stand in the list
+ * while a Stellungnahme is possible (`/api/dashboard/zweite-runde`) and once
+ * their law is kundgemacht (`/api/ohne-begutachtung`); in between —
+ * beschlossen and not yet kundgemacht, abgelehnt, zurückgezogen, miterledigt,
+ * verfallen — no source of the list holds them. An Initiativantrag is a row
+ * in every state, but only under „Alle Initiativanträge", and an open one
+ * under „Stellungnahme möglich" (`antragRowsOf`); otherwise under „Alle
+ * Arten" and „Alle ohne Entwurf" only its law. So under the tabs where they would stand — „Parlament / Landtag",
+ * and „Regierungsvorlage" for a Vorlage whose period ended while the
+ * Nationalrat had it — one sentence names them, in one line (16.11.2026);
+ * which states those are and where the Initiativanträge stand is the list's
+ * „Methode" (`MethodEntwurfsliste`). Not under „Stellungnahme
+ * möglich", which holds every open one; not under „Alle" stations, whose
+ * list is the default and whose foot carries the Methode; not under an Art
+ * that cannot hold them, a Ressort or „Setzt EU-Recht um" (they carry
+ * neither, and step back by those filters' own rule); only with the Bund.
+ */
+export function withoutDraftGapDe(v: {
+  bund: boolean
+  status: DraftStatus
+  stations: readonly DraftStation[]
+  art: ArtChoice
+  ministry: string
+  eu: boolean
+}): string | null {
+  if (!v.bund || v.status === 'open' || v.ministry || v.eu || !v.stations.length) return null
+  const atParlament = v.stations.includes('parlament')
+  if (!atParlament && !v.stations.includes('rv')) return null
+  const vorlagen = choiceAdmitsOpenVorlage(v.art, 'none', 'regierungsvorlage')
+  // The motions stand at „Parlament" only (`openVorlageStationOf`).
+  const ausschuss = atParlament && choiceAdmitsOpenVorlage(v.art, 'none', 'ausschussantrag')
+  const bundesrat = atParlament && choiceAdmitsOpenVorlage(v.art, 'none', 'bundesratsantrag')
+  const kinds = [
+    ...(vorlagen ? ['Regierungsvorlagen des Bundes ohne Entwurf'] : []),
+    ...(ausschuss ? ['Ausschussanträge'] : []),
+    ...(bundesrat ? ['Gesetzesanträge aus dem Bundesrat'] : []),
+  ]
+  if (!kinds.length) return null
+  return gapDe('outOfScope', `${listDe(kinds)}, die weder für Stellungnahmen offen noch kundgemacht sind.`)
 }
 
 /** An open item of the second round — a Regierungsvorlage or a committee's
@@ -888,12 +956,22 @@ export interface DraftFilterValues extends DraftQueryFilters {
   reversed: boolean
 }
 
+/**
+ * One station, the first the address names that the procedure knows
+ * (16.11.2026, maintainer's decision). The address carried a list until
+ * then (`station=rv,parlament`), and the strip showed such a set as a sixth
+ * tab „A + B", then as two tabs selected at once — a state no control of the
+ * page could produce. Nothing on the site links several any more; an old
+ * link that does opens on its first station. The filter stays a list in its
+ * type: none or one.
+ */
 function parseStations(v: unknown): DraftStation[] {
   const raw = firstQueryValue(v) ?? ''
   return raw
     .split(',')
     .map((s) => s.trim().toLowerCase())
     .filter((s): s is DraftStation => (DRAFT_STATION_ORDER as readonly string[]).includes(s))
+    .slice(0, 1)
 }
 
 function parseStatus(v: unknown): DraftStatus {
@@ -1035,8 +1113,6 @@ export function sameDraftFilters(a: DraftFilterValues, b: DraftFilterValues): bo
  * ------------------------------------------------------------------ */
 
 /* The value of the tab a multi-station link lands on — no station has it. */
-export const SEVERAL_STATIONS = 'mehrere'
-
 const VERORDNUNG_NO_STATION = 'Verordnungsentwürfe kommen nicht ins Parlament oder in den Landtag'
 
 export interface StationTab {
@@ -1048,27 +1124,53 @@ export interface StationTab {
 }
 
 /**
- * The station tabs, single-select over the filter's list: the URL still
- * carries a list (`station=rv,parlament`), so a link naming several keeps
- * its set and lands on a tab that names them — no tab silently drops a
- * station from a shared link. Choosing a tab narrows to that one.
+ * The station tabs, single-select: „Alle" and one tab per station, never
+ * more (`parseStations`).
  *
  * Under „Verordnungsentwürfe" two tabs cannot hold anything — without a
  * Gegenstand there is no Regierungsvorlage — and stay in place, unavailable,
  * so the strip does not change shape with the Art filter.
  */
-export function stationTabsFor(art: ArtFilter, stations: readonly DraftStation[]): StationTab[] {
-  const tabs: StationTab[] = [
+export function stationTabsFor(art: ArtFilter): StationTab[] {
+  return [
     { value: '', label: 'Alle', selectLabel: 'Alle Stationen' },
     ...DRAFT_STATION_ORDER.map((value) => {
       const noVorlage = art === 'verordnung' && (value === 'rv' || value === 'parlament')
       return { value: value as string, label: DRAFT_STATION_LABEL[value], disabled: noVorlage, reason: noVorlage ? VERORDNUNG_NO_STATION : undefined }
     }),
   ]
-  if (stations.length > 1) {
-    tabs.push({ value: SEVERAL_STATIONS, label: stations.map((st) => DRAFT_STATION_LABEL[st]).join(' + ') })
-  }
-  return tabs
+}
+
+/**
+ * The two tabs a Stellungnahme in Parliament stands under (16.11.2026): an
+ * open Vorlage or motion at „Regierungsvorlage" while the Nationalrat has
+ * it, at „Parlament / Landtag" once it is decided, at the Bundesrat or sent
+ * back, and a motion there from the start (`openVorlageStationOf`; a
+ * draft's row by its chain). A reader on one
+ * of them under „Stellungnahme möglich" would not guess the other holds
+ * more of the same, so the list points there (`otherStationPointerDe`).
+ *
+ * The other of the two, where the view is „Stellungnahme möglich" on
+ * exactly one of them; else null — no pointer under any other station, under
+ * several or none, or without the chip.
+ */
+export function otherOpenStation(status: DraftStatus, stations: readonly DraftStation[]): 'rv' | 'parlament' | null {
+  if (status !== 'open' || stations.length !== 1) return null
+  if (stations[0] === 'rv') return 'parlament'
+  if (stations[0] === 'parlament') return 'rv'
+  return null
+}
+
+/**
+ * The pointer's words: „1 weitere unter „Parlament / Landtag“", the count
+ * being the rows the reader then sees under that tab. „weitere" without a
+ * noun, because the rows are of several kinds (a Ministerialentwurf, a
+ * Vorlage, a committee's motion) and one noun would be false for some.
+ * Null for none: never „0 weitere".
+ */
+export function otherStationPointerDe(n: number, station: DraftStation): string | null {
+  if (n < 1) return null
+  return `${countLabelDe(n, 'weitere', 'weitere')} unter „${DRAFT_STATION_LABEL[station]}“`
 }
 
 /**
@@ -1472,30 +1574,28 @@ export type CoverageNotePart = { text: string; href?: string }
  * What each homepage list holds of the Länder (14.11.2026): the steps of
  * /datenlage (`DATENLAGE_SOURCES`) a Land's row needs to reach that list,
  * and the states under which the Land gives it every such row. Only the
- * lists a Land can feed at all: the second round and the ranking take no
- * Länder rows, and their chips say so for every Land (`RV_UNAVAILABLE`,
- * `RANKED_UNAVAILABLE` on the homepage).
+ * lists a Land can feed at all: the ranking takes no Länder rows, and its
+ * chips say so for every Land (`RANKED_UNAVAILABLE` on the homepage).
  *
- *  - `laufend` („Jetzt in Begutachtung"): the drafts a Land lists while
+ *  - `laufend` (the open list, „Stellung nehmen zu einem Entwurf"): the drafts a Land lists while
  *    their Begutachtung runs — every Land lists its running
  *    Gesetzesentwürfe, so only the Verordnungsentwürfe decide. `partial`
  *    counts as whole HERE: both partial cells (Oberösterreich „kein
  *    Beginn", Tirol „ohne Fristfeld") lack a date, not a running draft,
  *    which stands as long as it is listed (`withLandActiveOn`).
- *  - `beschlossen` („Beschlossen, noch nicht kundgemacht"): Landtag
- *    decisions on a Gesetzesentwurf — the draft must still be held after its
- *    Frist (`archive`) and its way through the Landtag read (`way`).
  *  - `kundgemacht` („Zuletzt Gesetz geworden"): drafts of either kind that
  *    became law — Verordnungsentwürfe read, the draft still held, the
  *    Kundmachung found (`kundmachung`; `inferred` is our finding, and counts).
  *
  * Every other state — partial, not published, (partly) not read, not
  * surveyed — is a gap: the list never claims more than the data shows.
+ *
+ * A third scope, `beschlossen`, served the homepage's „Beschlossen, noch
+ * nicht kundgemacht" until that list left it; removed with it on 16.11.2026.
  */
-export type HomeListScope = 'laufend' | 'beschlossen' | 'kundgemacht'
+export type HomeListScope = 'laufend' | 'kundgemacht'
 const HOME_LIST_STEPS: Record<HomeListScope, { steps: readonly CoverageRow[]; whole: readonly DatenlageState[] }> = {
   laufend: { steps: ['verordnungen'], whole: ['published', 'inferred', 'partial'] },
-  beschlossen: { steps: ['archive', 'way'], whole: ['published', 'inferred'] },
   kundgemacht: { steps: ['verordnungen', 'archive', 'kundmachung'], whole: ['published', 'inferred'] },
 }
 
