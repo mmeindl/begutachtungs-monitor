@@ -1,34 +1,35 @@
 # Begutachtungs-Monitor
 
-Ein quelloffenes Werkzeug, das die Gesetzgebung in Österreich nachverfolgbar macht: Entwürfe in Begutachtung, Fristen, Stellungnahmen – die Frage, was aus dem Entwurf danach geworden ist – und die Gesetze, die ohne Begutachtung beschlossen wurden.
+An open-source tool that follows a law through its making in Austria and shows where people can take part. *View your state – state your view.*
 
-Wer heute eine Stellungnahme schreibt, sieht nicht, ob sie etwas bewirkt hat. Ministerien ändern ihre Entwürfe nach der Begutachtung oft – nur sichtbar ist es nirgends. Das soll sich ändern.
+Before a draft law reaches Parliament, the ministry publishes it for consultation (the *Begutachtung*), and anyone may send a statement (a *Stellungnahme*). Whoever writes one today cannot see whether it changed anything. Ministries often change their drafts after the consultation, but nowhere is that visible. The monitor makes it visible.
 
-**Läuft seit August 2026:** <https://begutachtungs-monitor.at>
+**Live since August 2026:** <https://begutachtungs-monitor.at> (the site is in German; English follows)
 
-## Was der Monitor heute kann
+## What the monitor does today
 
-- **[Entwürfe und Gesetze](https://begutachtungs-monitor.at/entwuerfe)** – alle Entwürfe einer Gesetzgebungsperiode, in Begutachtung und abgeschlossen, Gesetzes- wie Verordnungsentwürfe, für den Bund und alle neun Länder, mit Frist und Zahl der Stellungnahmen – und die Gesetze, zu denen kein Entwurf in Begutachtung bekannt ist.
-- **Was danach geschah** – je Entwurf der Weg über Regierungsvorlage und Beschluss bis zum Bundesgesetzblatt, und Paragraph für Paragraph, was sich zwischen Entwurf und Regierungsvorlage geändert hat.
-- **Wie das Gesetz danach lauten würde** – die Lesefassung der geänderten Paragraphen, gezeigt nur dort, wo die Textgegenüberstellung des Ressorts sie bestätigt.
-- **EU-Bezug** – ob ein Entwurf EU-Recht umsetzt, und welchen Rechtsakt.
-- **Fristen abonnieren** – als [RSS-Feed](https://begutachtungs-monitor.at/feed.xml) und als [Kalender](https://begutachtungs-monitor.at/kalender.ics), ohne Konto.
+- **[Drafts and laws](https://begutachtungs-monitor.at/entwuerfe)**: every draft of a legislative period, in consultation and closed, laws and regulations, for the federal level and all nine states (Länder), with its deadline and the number of statements. Also the laws for which no consulted draft is known.
+- **What happened afterwards**: for each draft, the way through the government bill (Regierungsvorlage) and Parliament's decision to the Federal Law Gazette, and section by section what changed between the draft and the government bill.
+- **How the law would read**: the consolidated text of the changed sections, shown only where the ministry's own comparison document (Textgegenüberstellung) confirms it.
+- **[EU law](https://begutachtungs-monitor.at/eu-recht)**: what the European Commission is taking feedback on now, which directives Austria has to transpose, and which draft carries out which act.
+- **[Requests to Parliament](https://begutachtungs-monitor.at/anliegen)**: petitions, citizens' initiatives and popular initiatives (Volksbegehren), and where one can support them or send a statement now.
+- **Subscribe to deadlines**: as an [RSS feed](https://begutachtungs-monitor.at/feed.xml) and a [calendar](https://begutachtungs-monitor.at/kalender.ics), without an account.
 
-Welche Wege ein Entwurf nimmt: [Wege](https://begutachtungs-monitor.at/wege) · Was die Quellen veröffentlichen: [Datenlage](https://begutachtungs-monitor.at/datenlage) · Worum es geht: [Über](https://begutachtungs-monitor.at/ueber)
+On the site: [the routes a law can take](https://begutachtungs-monitor.at/wege) · [what each source publishes](https://begutachtungs-monitor.at/datenlage) · [sources and licences](https://begutachtungs-monitor.at/quellen) · [about the project](https://begutachtungs-monitor.at/ueber)
 
----
+## What it does not do
 
-*An open-source tool that makes lawmaking in Austria traceable: drafts in consultation (Begutachtung) at federal and state level, deadlines, statements, what became of each draft afterwards, down to the individual section — and the laws that were passed without a consultation.*
+It does not judge drafts, recommend positions or rank ministries. It shows what can be checked: deadlines, counts, documents and the differences between them, each linked to the official source. Changes made after a consultation are shown as clearly as standstill. Private persons who send a statement are counted, never named.
 
-## Documentation (English)
+## Documentation
 
-- [Why this tool?](docs/why-this-tool.md) — what the monitor adds over the official sites, why it should work, what it does not do
-- [Decisions](docs/decisions.md) — standing rules, the measurements behind the product's claims, rejected alternatives
-- [Upstream APIs](docs/api-exploration.md) — how the interfaces of Parliament, RIS and the EU's Cellar behave: endpoints, field maps and the traps that return a wrong answer without an error
+- [Why this tool?](docs/why-this-tool.md): what the monitor adds over the official sites, why it should work, what it does not do
+- [Decisions](docs/decisions.md): standing rules, the measurements behind the product's claims, rejected alternatives
+- [Upstream APIs](docs/api-exploration.md): how the interfaces of Parliament, RIS and the EU's Cellar behave, with endpoints, field maps and the traps that return a wrong answer without an error
 
 ## Development
 
-Nuxt 4 (Vue 3, TypeScript), Tailwind, pnpm. No database, no accounts: the site reads the Parliament and RIS APIs and caches what it derives.
+Nuxt 4 (Vue 3, TypeScript), Tailwind, pnpm. No database and no accounts: the site reads the official sources (Parliament, RIS, the nine Länder, the EU) and caches what it derives.
 
 ```sh
 pnpm install
@@ -36,8 +37,12 @@ pnpm dev      # http://localhost:3000
 pnpm test
 ```
 
-Deployment (a single small VPS) is described in [deploy/](deploy/).
+Deployment on a single small server is described in [deploy/](deploy/). Anyone should be able to run a copy for under €100 a year.
 
----
+## Licence and sources
 
-**Lizenz:** [AGPL-3.0-or-later](LICENSE) · Datenquellen: Republik Österreich – Parlamentsdirektion ([parlament.gv.at](https://www.parlament.gv.at)) und Rechtsinformationssystem des Bundes ([ris.bka.gv.at](https://www.ris.bka.gv.at)), die neun Länder und ihre Landtage, das Amt für Veröffentlichungen der EU (EUR-Lex, Cellar); welche Lizenz für welchen Datensatz gilt, steht auf [begutachtungs-monitor.at/impressum](https://begutachtungs-monitor.at/impressum#imp-license) · **Kontakt:** <kontakt@begutachtungs-monitor.at>
+The code is licensed under [AGPL-3.0-or-later](LICENSE).
+
+The data comes from official sources: the Austrian Parliament ([parlament.gv.at](https://www.parlament.gv.at)), the Federal Legal Information System ([ris.bka.gv.at](https://www.ris.bka.gv.at)), the nine Länder and their parliaments, the Publications Office of the EU (EUR-Lex, Cellar) and the European Commission. The terms differ per source; which licence applies to which dataset is stated at [begutachtungs-monitor.at/quellen](https://begutachtungs-monitor.at/quellen).
+
+**Contact:** <kontakt@begutachtungs-monitor.at>
