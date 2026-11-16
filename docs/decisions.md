@@ -1529,6 +1529,13 @@ circular of 10.12.2015).
   as an official work, also one that never became law, and whether the
   database right (§ 76d UrhG) stands against reading a Land's register
   systematically.
+- **Does a Stellungnahme on a Regierungsvorlage reach the ministry?**
+  (15.11.2026, `docs/research/stellungnahmen-empfaenger.md`) Parliament's
+  general pages say released Stellungnahmen go to the Klubs and the
+  responsible ministry, for every kind of item; its form on a
+  Regierungsvorlage, an Ausschussantrag, a Petition and a Bürgerinitiative
+  names the Klubs only. Until the Parlamentsdirektion answers, the site names
+  the Klubs alone after the Begutachtung.
 - **Does list 81 update `Frist` when a Begutachtung is extended?** Forty
   daily snapshots to 02.11.2026 contained no extension to observe; RIS and
   list 81 agree on 336 of 337 deadlines of GP XXVII, so extensions are rare.

@@ -59,7 +59,11 @@ Gesetzesinitiativen" says where they go:
 > Freigegebene Stellungnahmen werden den parlamentarischen Klubs und dem
 > zuständigen Bundesministerium für ihre Arbeit zur Verfügung gestellt
 
-and they are published with the item. There is no committee procedure for
+and they are published with the item. (Nachtrag 15.11.2026: the form on
+the item names the Klubs only, on a Regierungsvorlage, an Ausschussantrag, a
+Petition and a Bürgerinitiative; only a Ministerialentwurf's names the
+ministry. The site follows the form until Parliament answers:
+`stellungnahmen-empfaenger.md`.) There is no committee procedure for
 them and no duty attached (section 1). How many statements arrive through this
 channel on laws that had no Begutachtung is measured in
 `begutachtung-uebersprungen.md` §4c.
