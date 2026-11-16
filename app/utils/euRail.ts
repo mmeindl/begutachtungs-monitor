@@ -102,7 +102,7 @@ export interface EuSectionFact {
   parts: (string | EuFactLink)[]
   /** The fact is the act's citation: „Zitieren" stands beside it. */
   cite: boolean
-  /** A feedback period with at least one contribution: the window whose senders the fold „Wer Rückmeldung gegeben hat" reads on demand (`euFeedback.ts`). */
+  /** A feedback period with at least one contribution: the window whose senders the block „Wer Rückmeldung gegeben hat" reads on approach (`euFeedback.ts`). */
   feedback?: EuFeedbackRef
 }
 
@@ -462,7 +462,7 @@ export function feedbackRefOf(initiativeId: number, p: EuPortalPublication): EuF
 /** A fact with the window its fold reads, where there is one. */
 export const withFeedback = (f: EuSectionFact, ref: EuFeedbackRef | null): EuSectionFact => (ref ? { ...f, feedback: ref } : f)
 
-/** Each period for feedback as a fact under its stage's name: „Öffentliche Konsultation — 04.10.2021 – 10.01.2022, 146 Rückmeldungen" — with the window its fold reads. */
+/** Each period for feedback as a fact under its stage's name: „Öffentliche Konsultation — 04.10.2021 – 10.01.2022, 146 Rückmeldungen" — with the window its block „Wer Rückmeldung gegeben hat" reads. */
 export function periodFacts(initiativeId: number, publications: readonly EuPortalPublication[], prefix = 'frist'): EuSectionFact[] {
   return publications.map((p, i) => withFeedback(fact(`${prefix}-${i}`, stageDe(p), periodParts(p)), feedbackRefOf(initiativeId, p)))
 }

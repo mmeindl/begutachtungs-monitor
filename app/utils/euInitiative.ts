@@ -153,13 +153,22 @@ export const doorOf = (action: EuWindowActionView | null): EuDoor | null =>
 /**
  * The Commission's sentence over the door: the one for the window the door
  * counts down to (`euFeedbackQuote.ts`). Where several windows close on
- * that day and their sentences differ — or one has none — it is not clear
- * which window the door is for, and there is no quote.
+ * that day, the door quotes only what the Commission says of ALL of them:
+ * their one sentence where they agree, or the sentence one of them
+ * consists of where every other opens with it, word for word — the
+ * Sondierung's is the first sentence of the public consultation's, and
+ * the two often run together (16.11.2026). What only one window promises
+ * (the consultation's report) is then not on the card. Where the
+ * sentences share no such opening, or a window has none, there is no
+ * quote: which window the door is for is not clear.
  */
 export function feedbackQuoteOf(windows: readonly { stage: string; onProposal: boolean }[]): EuWindowActionView['quote'] {
-  const texts = new Set(windows.map((w) => euFeedbackQuoteFor(w.stage, w.onProposal)))
-  const [text] = [...texts]
-  return texts.size === 1 && text ? { text, source: EU_FEEDBACK_QUOTE_SOURCE } : null
+  const texts = [...new Set(windows.map((w) => euFeedbackQuoteFor(w.stage, w.onProposal)))]
+  if (!texts.length || texts.some((t) => !t)) return null
+  const all = texts as string[]
+  // The shortest is the only candidate; another sentence must begin after it, not inside a word.
+  const shared = all.reduce((a, c) => (c.length < a.length ? c : a))
+  return all.every((t) => t === shared || t.startsWith(`${shared} `)) ? { text: shared, source: EU_FEEDBACK_QUOTE_SOURCE } : null
 }
 
 export interface EuInitiativeView {

@@ -740,8 +740,9 @@ The code names the EU rules D1 to D7; this is where they are defined
     gently** (15.11.2026): its interface is undocumented. Two addresses —
     the search by COM number, as a quoted phrase, and one initiative —
     one request at a time, 2.5 s apart, no retry, only when an act's page
-    asks, cached a day. The list of contributions is asked only when a
-    reader opens „Wer Rückmeldung gegeben hat" (step 4, below). The
+    asks, cached a day. The list of contributions is asked only when the
+    block „Wer Rückmeldung gegeben hat" nears the reader's viewport (step 4,
+    below). The
     parser takes a fixed list of fields; the officials' names, mail
     addresses and telephone numbers in the portal's record reach no
     cache, no API answer and no page, and only what was parsed is cached.
@@ -803,50 +804,71 @@ The code names the EU rules D1 to D7; this is where they are defined
       publication can be withdrawn after a window closed, so no name may
       outlive a restart or reach the disk or the fact store. The API answer
       says `Cache-Control: no-store` for the same reason.
-    - **On demand, at most 500 rows** (plan, decision 10): the fold „Wer
+    - **On approach, at most 500 rows** (plan, decision 10): the block „Wer
       Rückmeldung gegeben hat" under each feedback period with
-      contributions reads up to five pages of 100, newest first, through
-      the portal's pacer, only when opened — never with the page. Beyond
-      the cap it says „Nicht im Monitor: Gelesen sind die neuesten 500 von
-      N Rückmeldungen; …".
+      contributions (`EuFeedbackBlock`) reads up to five pages of 100,
+      newest first, through the portal's pacer, once, when it comes near
+      the viewport (`useNearViewportSection`) — never with the page; each
+      window's block asks on its own. An open block, not a fold, since
+      16.11.2026, as the Stellungnahmen stand on a draft page; the loading
+      line holds its place, and a failed read shows the gap sentence with
+      „Erneut versuchen". Beyond the cap the list's frame row says
+      „Nicht im Monitor: Gelesen sind die neuesten 500 von N Rückmeldungen;
+      …".
       The endpoint answers only for a publication that is a window of the
       initiative named, so it is no proxy for arbitrary numbers.
     - **One row per contribution, as a list of the Stellungnahmen**
       (maintainer, 15.11.2026; `EuFeedbackPanel`, words in
       `app/utils/euFeedback.ts`). A named organisation's contribution is a
       row: date · name (the link to the contribution on the portal) · kind
-      · country (the portal's ISO code; the monitor keeps no table of
-      country names). An organisation that answered twice stands twice —
+      · country (its German name from the runtime's CLDR data,
+      `countryNameOf`; the monitor keeps only the ISO alpha-3 → alpha-2
+      map). An organisation that answered twice stands twice —
       rows are never merged. The list is the Stellungnahmen panel's
       grammar, built from its parts: the kinds as tabs with their counts
-      (only kinds with a named row; „Alle" first where there are two or
-      more), the search over the names above twenty rows, ten rows a page
-      with „Alle N", the order by date (newest first, the portal's own;
-      a row without a date last either way) or by name (German collation),
-      each reversible. No order by a count, nothing „most active", and no
+      (every kind with a row read, its unnamed included, and the citizens;
+      „Alle" first where there are two tabs or more or „Sonstige" or rows
+      not published), the search over the names above twenty rows, ten rows
+      a page with „Alle N", the order by date (newest first, the portal's
+      own; a row without a date last either way), by name (German
+      collation) or by Land (the German name, then newest first; a row
+      without a country last either way), each reversible. No order by a count, nothing „most active", and no
       figure stands for what a contribution achieved. The tabs count the
       kinds' whole; the chip below them counts within the chosen kind —
       what a control changes stands below it.
     - **A counted row keeps no date, no number and no link.** Persons
       (`EU_CITIZEN`, `NON_EU_CITIZEN`), „Sonstige" (`OTHER` and unknown
       kinds), organisations counted without a name and rows the portal
-      does not list as published are figures under the list, never rows.
+      does not list as published are never named rows (since 16.11.2026
+      they are the list's closing rows, below).
       The parser builds two shapes: a named row keeps its day and number,
       a counted row only its kind, whether it is published and its
       country — so it cannot carry them by mistake, and a test feeds both
       with a day and a number and finds neither on a counted one. Per
-      country only counts are kept (the citizens per country). Organisations
-      counted without a name are counted per kind, with the reason in one
-      sentence.
+      country only counts are kept (the citizens per country).
+    - **What is counted closes the list** (16.11.2026, replacing the block
+      „Ohne Namen gezählt" under it). One muted row per figure, no link, no
+      day, no country: a kind's organisations without a name under its
+      tab and in „Alle" („13 weitere Nichtregierungsorganisationen · ohne
+      Namen"), citizens, „Sonstige" and rows not published in „Alle" only.
+      They stand after the last named row and appear once every named row
+      of the tab is shown, as the Stellungnahmen reach their rows without a
+      name by paging; the pager counts named rows. Under the chip or a
+      search they are hidden — nothing in them can match — and the set line
+      counts named rows only. The tabs add up to the rows read. The citizens
+      have a tab of one row per country, by count by default; „Alle" holds
+      them as one row. Under the list one line, „Privatpersonen werden
+      gezählt, nie genannt.", with „Methode" opening who is counted without
+      a name (`MethodEuRueckmeldungen`).
     - **The data knows no country, the view takes one.** The reading and
       the endpoint carry no member state (no parameter, nothing in the
       cache key); the view takes the country the page serves, today the
       configured one (`EU_MEMBER_STATE`), as `euBuergerinitiativeView`
-      does. With it the list offers a chip „Aus <Land>" with its count and
-      the citizens' line says „davon aus <Land>: N"; with none (null)
-      neither exists and nothing is said to be missing.
+      does. With it the list offers a chip „Aus <Land>" with its count
+      within the tab above it (in the citizens' tab, that country's row);
+      with none (null) there is no chip and nothing is said to be missing.
     - **Search, filter and order reach only what was read.** At most the
-      newest 500 rows are read, so above the cap the head of the list
+      newest 500 rows are read, so above the cap the list's frame row
       says so in a „Nicht im Monitor" sentence, above the search — before
       a reader takes an empty result for an absent organisation.
     - Rejected: naming every row of an organisation kind (sole traders),
@@ -892,19 +914,23 @@ The code names the EU rules D1 to D7; this is where they are defined
     state; a window the reader can still use is the reader's own deadline,
     and there the count is the point. **No body sentence where the button
     says it:** the Commission's door has none (the heading says the day,
-    the button the portal); a Citizens' Initiative's keeps one, „Der Link
-    führt zum Sammelsystem der Initiative.", because the system is
-    sometimes the organisers' own site. **Above the button, the
+    the button the portal), and a Citizens' Initiative's has none either
+    (16.11.2026: „Der Link führt zum Sammelsystem der Initiative." said
+    what the button and its arrow say). **Above the button, the
     Commission's own sentence for the open stage** (`SourceQuote`,
     `app/utils/euFeedbackQuote.ts`), signed „Europäische Kommission",
     verbatim from the portal's German page text
     (`page.initiativeDetails.<stage>.feedbackmessage`, read 15.11.2026):
     Sondierung, öffentliche Konsultation, Entwurf eines Rechtsakts, and the
     adoption's sentence only for feedback on a legislative proposal. No
-    quote for any other stage or adoption, none where several windows close
-    on the door's day with different sentences (which window the door is
-    for is then not clear), and none on a Citizens' Initiative's door — no
-    sentence of the register was read. **The door stands twice**
+    quote for any other stage or adoption, and where several windows close
+    on the door's day, only what the Commission says of all of them: the
+    Sondierung's sentence is the first of the public consultation's, so
+    that pair quotes it (16.11.2026); sentences that share no such opening
+    give no quote (which window the door is for is then not clear). A Citizens' Initiative's door quotes the three
+    sentences under the heading of the Commission's German home page for
+    the instrument (`EU_ECI_QUOTE`, read 16.11.2026): what a million
+    signatures bring, and that the Commission then decides. **The door stands twice**
     (`EuRailSection.door`, set by the view): once more, solid, with the
     card's label, at the end of the section that holds the window the door
     counts down to — „Konsultation", or the Commission's own station
@@ -989,7 +1015,11 @@ The code names the EU rules D1 to D7; this is where they are defined
     - **The list „Jetzt unterstützbar" orders by the last day of the
       collection, soonest first, then by number** — the open windows' rule;
       never by supporters, which would read as a ranking of what is worth
-      signing. The register's count stands in each row as plain text. The
+      signing. The register's count stands in a column of its own,
+      „Unterstützungen", as the draft list keeps its Stellungnahmen
+      (`EuCountCell`, 16.11.2026; the acts' drafts on `/eu-recht` too), „laut
+      Register" in the frame row and the cell's words, a missing count the
+      word „nicht angegeben", never 0. The
       list carries no deadline, so the details of each initiative in
       collection are read one after the other (about 45 s cold for 13); the
       endpoint waits 8 s for them after the list, and a row without its day
@@ -1046,9 +1076,15 @@ not yet followed, or the EU cycle, starts there.
 
 - **The graphic `/wege` shows every route that exists, the monitor follows
   fewer.** A route that is not followed stands in the graphic as „nicht im
-  Monitor" with its reason; an instrument that sits beside a norm's path
-  (a Petition, signing a Volksbegehren, the EU's consultations) stands in the
-  block under the table.
+  Monitor" with its reason. Since 16.11.2026 every followed object has a
+  matrix of its own with the stations of its own rail, names and order read
+  from the rail's code (`WEG_MATRICES`, `WegMatrix`): the national norm, an
+  EU act (Konsultation · Vorschlag · Parlament und Rat · Amtsblatt ·
+  Umsetzung oder Geltung), a European Citizens' Initiative, an Anliegen an
+  den Nationalrat; one card, one legend, the blue mark wherever one can take
+  part, each row naming how („Rückmeldung möglich"). Only the instruments
+  the monitor does not follow are a list without stations, „Nicht im
+  Monitor", each with its reason.
 - **A route is followed only when three things hold:** an official,
   machine-readable source whose reuse is checked and stated in the Impressum;
   enough cases to matter; and no upkeep that somebody has to carry by hand.

@@ -10,7 +10,9 @@
  * to the initiative's page here — the way to the collection system is that
  * page's one action, not the row's —, the day in the draft list's state box
  * (`EntryState`), the credit line with „Methode" under it. The count of
- * supporters stands as plain text under the title.
+ * supporters stands in its own column „Unterstützungen" between the title
+ * and the day (`EuCountCell`, 16.11.2026), where the draft list keeps its
+ * Stellungnahmen; „laut Register" in the frame row above the column header.
  *
  * Three states besides the list, each its own sentence: the register could
  * not be read (a gap sentence with the link to the register — never an
@@ -57,11 +59,12 @@ const shown = computed(() => (view.value?.rows ?? []).slice(0, visible.value))
           <ListBox>
             <template #header>
               <p class="text-sm text-ink-muted">
-                {{ DE.count(list.rows.length) }}
+                {{ DE.count(list.rows.length) }} · {{ DE.countSource }}
               </p>
             </template>
             <ColumnHeader class="gap-4 md:flex">
               <ColumnLabel :label="DE.column.title" class="min-w-0 flex-1" />
+              <ColumnLabel :label="DE.column.supporters" align="end" class="entry-col-count flex justify-end whitespace-nowrap" />
               <ColumnLabel :label="DE.column.end" align="end" class="entry-col-state flex justify-end" />
             </ColumnHeader>
             <ul role="list" class="divide-y divide-hairline">
@@ -75,11 +78,13 @@ const shown = computed(() => (view.value?.rows ?? []).slice(0, visible.value))
                     <p v-if="row.titleNote" class="mt-0.5 text-sm text-ink-muted">
                       {{ row.titleNote }}
                     </p>
-                    <p v-if="row.supporters" class="mt-0.5 text-sm text-ink-secondary">
-                      {{ row.supporters }}
+                    <!-- The card says the count in words; from `md` the column carries it. -->
+                    <p class="mt-0.5 text-sm text-ink-muted md:hidden">
+                      {{ row.supporters.said }}
                     </p>
                     <GapNote v-if="row.gap" :text="row.gap" class="mt-0.5 text-sm text-ink-secondary" />
                   </div>
+                  <EuCountCell :cell="row.supporters" />
                   <div class="flex md:entry-col-state md:justify-end">
                     <EntryState :state="row.state" />
                   </div>

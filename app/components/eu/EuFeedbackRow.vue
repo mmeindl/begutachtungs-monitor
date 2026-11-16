@@ -2,7 +2,7 @@
 /**
  * One contribution of an organisation on the Commission's portal, in the
  * grammar of a Stellungnahme's row (`StatementRow`): date · name · kind ·
- * country (15.11.2026).
+ * country (15.11.2026; the country by its German name since 16.11.2026).
  *
  * The NAME carries the link here, not a citation: a contribution has no
  * handle of its own to quote, and the name is what a reader looks for. It
@@ -35,9 +35,9 @@ defineProps<{ row: EuFeedbackRow }>()
     <div class="flex flex-wrap items-baseline gap-x-3 gap-y-1 text-sm row-cols:contents">
       <span class="tabular-nums text-ink-muted row-cols:col-start-1 row-cols:row-start-1">{{ formatDateDe(row.date) }}</span>
       <span class="text-ink-secondary hyphens-auto row-cols:col-start-3 row-cols:row-start-1">{{ row.kind }}</span>
-      <span class="tabular-nums text-ink-secondary row-cols:col-start-4 row-cols:row-start-1">
+      <span class="text-ink-secondary hyphens-auto row-cols:col-start-4 row-cols:row-start-1">
         <span class="sr-only">{{ DE.countrySaid }}: </span>
-        <template v-if="row.country">{{ row.country }}</template>
+        <template v-if="row.countryName">{{ row.countryName }}</template>
         <template v-else><span aria-hidden="true">–</span><span class="sr-only">{{ DE.noCountry }}</span></template>
       </span>
     </div>

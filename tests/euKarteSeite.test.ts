@@ -279,7 +279,7 @@ describe('laneNameOf', () => {
 })
 
 describe('euActsRows', () => {
-  it('lists each act with its deadline as a grey state box, its counts and the Länder by name', () => {
+  it('lists each act with its deadline as a grey state box, its counts in a column of their own and the Länder by name', () => {
     const r: EuActsResponse = {
       gp: 'XXVIII',
       window: { from: '2024-10-24', to: null },
@@ -292,8 +292,8 @@ describe('euActsRows', () => {
       ],
     }
     expect(euActsRows(r)).toEqual([
-      { key: '32024L1069', label: 'Richtlinie (EU) 2024/1069', path: '/eu-recht/richtlinie/2024/1069', subject: 'über den Schutz von Personen, die sich öffentlich beteiligen', state: { label: 'Umsetzungsfrist', detail: 'bis 07.05.2026', tone: 'inactive', actionable: false }, counts: '1 Entwurf des Bundes · 3 Entwürfe der Länder', lands: ['Oberösterreich', 'Salzburg', 'Wien'] },
-      { key: '32023R1114', label: 'Verordnung (EU) 2023/1114', path: '/eu-recht/verordnung/2023/1114', subject: null, state: { label: 'Gilt unmittelbar', detail: 'keine Umsetzungsfrist', tone: 'inactive', actionable: false }, counts: '2 Entwürfe des Bundes', lands: [] },
+      { key: '32024L1069', label: 'Richtlinie (EU) 2024/1069', path: '/eu-recht/richtlinie/2024/1069', subject: 'über den Schutz von Personen, die sich öffentlich beteiligen', state: { label: 'Umsetzungsfrist', detail: 'bis 07.05.2026', tone: 'inactive', actionable: false }, counts: '1 Entwurf des Bundes · 3 Entwürfe der Länder', lands: ['Oberösterreich', 'Salzburg', 'Wien'], drafts: { value: '4', counted: true, detail: 'Bund 1 · Länder 3', said: '1 Entwurf des Bundes · 3 Entwürfe der Länder (Oberösterreich, Salzburg, Wien)' }, landsLine: 'Länder: Oberösterreich, Salzburg, Wien' },
+      { key: '32023R1114', label: 'Verordnung (EU) 2023/1114', path: '/eu-recht/verordnung/2023/1114', subject: null, state: { label: 'Gilt unmittelbar', detail: 'keine Umsetzungsfrist', tone: 'inactive', actionable: false }, counts: '2 Entwürfe des Bundes', lands: [], drafts: { value: '2', counted: true, detail: 'Bund', said: '2 Entwürfe des Bundes' }, landsLine: null },
     ])
   })
 })
@@ -348,9 +348,9 @@ describe('the fold of acts drafts only restate', () => {
 
   it('gives the rows the overview\'s anatomy and order; a directive without a date says „keine bekannt"', () => {
     expect(euRestatingRows({ restatingOnly: restating })).toEqual([
-      { key: '32009L0043', label: 'Richtlinie 2009/43/EG', path: '/eu-recht/richtlinie/2009/43', subject: null, state: { label: 'Umsetzungsfrist', detail: 'bis 30.06.2011', tone: 'inactive', actionable: false }, counts: 'wiederholt in 3 Entwürfen des Bundes · 1 Entwurf der Länder', lands: ['Salzburg'] },
-      { key: '32014L0024', label: 'Richtlinie 2014/24/EU', path: '/eu-recht/richtlinie/2014/24', subject: null, state: { label: 'Umsetzungsfrist', detail: 'keine bekannt', tone: 'inactive', actionable: false }, counts: 'wiederholt in 2 Entwürfen der Länder', lands: ['Burgenland', 'Kärnten'] },
-      { key: '32016R0679', label: 'Verordnung (EU) 2016/679', path: '/eu-recht/verordnung/2016/679', subject: null, state: { label: 'Gilt unmittelbar', detail: 'keine Umsetzungsfrist', tone: 'inactive', actionable: false }, counts: 'wiederholt in 1 Entwurf des Bundes', lands: [] },
+      { key: '32009L0043', label: 'Richtlinie 2009/43/EG', path: '/eu-recht/richtlinie/2009/43', subject: null, state: { label: 'Umsetzungsfrist', detail: 'bis 30.06.2011', tone: 'inactive', actionable: false }, counts: 'wiederholt in 3 Entwürfen des Bundes · 1 Entwurf der Länder', lands: ['Salzburg'], drafts: { value: '4', counted: true, detail: 'Bund 3 · Länder 1', said: 'wiederholt in 3 Entwürfen des Bundes · 1 Entwurf der Länder (Salzburg)' }, landsLine: 'Länder: Salzburg' },
+      { key: '32014L0024', label: 'Richtlinie 2014/24/EU', path: '/eu-recht/richtlinie/2014/24', subject: null, state: { label: 'Umsetzungsfrist', detail: 'keine bekannt', tone: 'inactive', actionable: false }, counts: 'wiederholt in 2 Entwürfen der Länder', lands: ['Burgenland', 'Kärnten'], drafts: { value: '2', counted: true, detail: 'Länder', said: 'wiederholt in 2 Entwürfen der Länder (Burgenland, Kärnten)' }, landsLine: 'Länder: Burgenland, Kärnten' },
+      { key: '32016R0679', label: 'Verordnung (EU) 2016/679', path: '/eu-recht/verordnung/2016/679', subject: null, state: { label: 'Gilt unmittelbar', detail: 'keine Umsetzungsfrist', tone: 'inactive', actionable: false }, counts: 'wiederholt in 1 Entwurf des Bundes', lands: [], drafts: { value: '1', counted: true, detail: 'Bund', said: 'wiederholt in 1 Entwurf des Bundes' }, landsLine: null },
     ])
   })
 

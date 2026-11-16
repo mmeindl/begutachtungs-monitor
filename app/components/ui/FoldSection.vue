@@ -19,8 +19,7 @@
  * `base` a part of the Kurzinformation, under its own sub-heading.
  *
  * `toggle` says whether the fold is now open — for a fold whose content is
- * read only when a reader opens it („Wer Rückmeldung gegeben hat",
- * `EuFeedbackFold`, 15.11.2026).
+ * read only when a reader opens it.
  */
 const emit = defineEmits<{ toggle: [open: boolean] }>()
 const onToggle = (event: Event) => emit('toggle', (event.target as HTMLDetailsElement).open)

@@ -62,7 +62,7 @@ import { EU_PAGE_TITLE_DE } from '#shared/utils/eu'
 import { MAX_LIST_QUERY_CHARS } from '#shared/utils/queryParams'
 import { matchesQuery } from '#shared/utils/textMatch'
 import { countLabelDe, todayIso } from '#shared/utils/format'
-import { deadlineDirection, deadlineOrderDe, deadlineReverseOrderDe, deadlineTabOf, euActHaystack, euActsRows, euRestatingRows, euSourceUnavailable, filterEuActs, incompleteNoteDe, restatingFoldHeading, type EuActSort, type EuDeadlineTab } from '~/utils/euKarte'
+import { EU_ACTS_COLUMN_DE, deadlineDirection, deadlineOrderDe, deadlineReverseOrderDe, deadlineTabOf, euActHaystack, euActsRows, euRestatingRows, euSourceUnavailable, filterEuActs, incompleteNoteDe, restatingFoldHeading, type EuActSort, type EuDeadlineTab } from '~/utils/euKarte'
 
 usePageSeo({
   title: EU_PAGE_TITLE_DE,
@@ -310,13 +310,14 @@ const [bundItem, eurLexItem] = sourceItemsDe([risSource('Vorblatt'), risSource('
                      Frist" only the names order — there are no dates. -->
                 <ColumnHeader sortable class="gap-4 md:flex">
                   <ColumnLabel
-                    label="Rechtsakt"
+                    :label="EU_ACTS_COLUMN_DE.act"
                     :sort="{ order: 'A–Z', reverseOrder: 'Z–A', active: sort === 'name', reversed }"
                     class="min-w-0 flex-1"
                     @choose="chooseSort('name')"
                   />
+                  <ColumnLabel :label="EU_ACTS_COLUMN_DE.drafts" align="end" class="entry-col-count flex justify-end whitespace-nowrap" />
                   <ColumnLabel
-                    label="Umsetzungsfrist"
+                    :label="EU_ACTS_COLUMN_DE.deadline"
                     :sort="tab !== 'ohne' ? { order: deadlineOrderDe(tab), reverseOrder: deadlineReverseOrderDe(tab), active: sort === 'frist', reversed } : null"
                     align="end"
                     class="entry-col-state flex justify-end"
@@ -340,6 +341,11 @@ const [bundItem, eurLexItem] = sourceItemsDe([risSource('Vorblatt'), risSource('
             <FoldSection v-if="restatingRows.length" :heading="restatingFoldHeading(restatingRows.length)" :open="!!query" class="mt-6">
               <div class="pb-2">
                 <ListBox>
+                  <ColumnHeader class="gap-4 md:flex">
+                    <ColumnLabel :label="EU_ACTS_COLUMN_DE.act" class="min-w-0 flex-1" />
+                    <ColumnLabel :label="EU_ACTS_COLUMN_DE.restating" align="end" class="entry-col-count flex justify-end whitespace-nowrap" />
+                    <ColumnLabel :label="EU_ACTS_COLUMN_DE.deadline" align="end" class="entry-col-state flex justify-end" />
+                  </ColumnHeader>
                   <ul role="list" class="divide-y divide-hairline">
                     <EuActRow v-for="row in shownRestating" :key="row.key" :row="row" level="h4" />
                   </ul>

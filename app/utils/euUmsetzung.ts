@@ -26,20 +26,12 @@ import type { EuUmsetzungResponse, EuUmsetzungRow } from '#shared/types'
 import { EU_MEMBER_STATE_NAME_DE, euActSubject } from '#shared/utils/eu'
 import { formatDateDe } from '#shared/utils/format'
 import type { EntryState } from './entryView'
+import { countCell, draftsWhoseDe, wordCell, type EuCountCell } from './euCountCell'
 
 export type EuUmsetzungTab = 'laufend' | 'abgelaufen'
 
-/** One observation in its column. */
-export interface EuUmsetzungCell {
-  /** „2", or the word for none („keiner") or for unknown („nicht gelesen"). */
-  value: string
-  /** A number stands in ink; a word in muted ink — said by the word too, never by the tone alone. */
-  counted: boolean
-  /** Under a number of drafts, whose they are: „Bund", „Länder", „Bund 1 · Länder 3". */
-  detail: string | null
-  /** The whole observation for a screen reader and for the card below `md`: „Entwürfe im Monitor: 2 (Bund)". */
-  said: string
-}
+/** One observation in its column (`EuCountCell`): „2", or the word for none („keiner") or for unknown („nicht gelesen"). */
+export type EuUmsetzungCell = EuCountCell
 
 export interface EuUmsetzungRowView {
   key: string
@@ -72,7 +64,7 @@ const DE = {
     said: 'Entwürfe im Monitor',
     unknown: 'nicht gelesen',
     none: 'keiner',
-    whose: (bund: number, laender: number) => (bund && laender ? `Bund ${bund} · Länder ${laender}` : bund ? 'Bund' : 'Länder'),
+    whose: draftsWhoseDe,
   },
   measures: {
     said: 'Der Kommission gemeldet',
@@ -91,19 +83,19 @@ export const EU_UMSETZUNG_DE = DE
 
 function rowOf(r: EuUmsetzungRow): EuUmsetzungRowView {
   const subject = euActSubject(r.title)
-  const word = (said: string, value: string): EuUmsetzungCell => ({ value, counted: false, detail: null, said: `${said}: ${value}` })
+  const word = (said: string, value: string): EuUmsetzungCell => wordCell(value, `${said}: ${value}`)
   const n = r.drafts ? r.drafts.bund + r.drafts.laender : 0
   const whose = r.drafts && n ? DE.drafts.whose(r.drafts.bund, r.drafts.laender) : null
   const drafts: EuUmsetzungCell = r.drafts === null
     ? word(DE.drafts.said, DE.drafts.unknown)
     : n === 0
       ? word(DE.drafts.said, DE.drafts.none)
-      : { value: String(n), counted: true, detail: whose, said: `${DE.drafts.said}: ${n} (${whose})` }
+      : countCell(n, `${DE.drafts.said}: ${n} (${whose})`, whose)
   const measures: EuUmsetzungCell = r.measures === null
     ? word(DE.measures.said, DE.measures.unknown)
     : r.measures === 0
       ? word(DE.measures.said, DE.measures.none)
-      : { value: String(r.measures), counted: true, detail: null, said: `${DE.measures.said}: ${DE.measures.some(r.measures)}` }
+      : countCell(r.measures, `${DE.measures.said}: ${DE.measures.some(r.measures)}`)
   return {
     key: r.celex,
     label: r.label,

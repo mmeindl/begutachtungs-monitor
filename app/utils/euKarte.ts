@@ -20,6 +20,7 @@ import { formatDateDe } from '#shared/utils/format'
 import { LAND_CODES, LAND_NAME, landShortTitle, type SourceCode } from '#shared/utils/laender'
 import { PUBLISHER_NAME_DE, eurLexSource, parliamentProcedureSource, risSource, type SourceEntry } from '#shared/utils/provenance'
 import { viewOfRow, type EntryState, type EntryView } from './entryView'
+import { countCell, draftsWhoseDe, type EuCountCell } from './euCountCell'
 import { SUPERSCRIPT, dateRangeDe, dayOf, edgeAlign, laneBarOf, type EuChartView } from './euRecht'
 
 /** „Bund" or the Land's name — the list's source chips' words. */
@@ -82,9 +83,20 @@ export interface EuActsRowView {
   counts: string
   /** The Länder with an implementing draft, by name, in display order. */
   lands: string[]
+  /**
+   * The drafts in a column of their own, as the draft list keeps its
+   * Stellungnahmen and the directives' list its drafts (`EuCountCell`,
+   * 16.11.2026): the number, whose they are under it, and the counts line
+   * with the Länder as its words — what the card below `md` shows.
+   */
+  drafts: EuCountCell
+  /** „Länder: Oberösterreich, Salzburg" beside the column from `md`; null without a Land. */
+  landsLine: string | null
 }
 
 function actsRowOf(a: EuActSummary, counts: string): EuActsRowView {
+  const lands = a.lands.map((l) => LAND_NAME[l])
+  const said = `${counts}${lands.length ? ` (${lands.join(', ')})` : ''}`
   return {
     key: a.celex,
     label: a.label,
@@ -92,9 +104,14 @@ function actsRowOf(a: EuActSummary, counts: string): EuActsRowView {
     subject: euActSubject(a.title),
     state: actStateOf(a),
     counts,
-    lands: a.lands.map((l) => LAND_NAME[l]),
+    lands,
+    drafts: countCell(a.counts.bund + a.counts.laender, said, draftsWhoseDe(a.counts.bund, a.counts.laender)),
+    landsLine: lands.length ? `Länder: ${lands.join(', ')}` : null,
   }
 }
+
+/** The column's heading over the acts drafts implement, and over those they only restate. */
+export const EU_ACTS_COLUMN_DE = { act: 'Rechtsakt', drafts: 'Entwürfe', restating: 'Wiederholt in', deadline: 'Umsetzungsfrist' } as const
 
 /**
  * The state box's two lines. A directive or framework decision without a

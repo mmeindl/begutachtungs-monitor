@@ -10,8 +10,9 @@
  *      beside a citation;
  *   3. what limits the reading, as short paragraphs under the frame;
  *   4. the credit line under the frame;
- *   5. „Wer Rückmeldung gegeben hat": a fold per feedback window the
- *      frame shows (`EuFeedbackFold`, step 4), read only when opened;
+ *   5. „Wer Rückmeldung gegeben hat": an open block per feedback window
+ *      the frame shows (`EuFeedbackBlock`, step 4), read when it nears
+ *      the viewport;
  *      then the door once more (`section.door`, `DoorButton`), while the
  *      page's door card shows — under who has given feedback, where the
  *      decision to act is made, as a draft's second door stands under its
@@ -26,7 +27,7 @@
  */
 import type { EuRailSection } from '~/utils/euRail'
 // Imported, not auto-imported: a helper used only in the template is not in scope at runtime (CLAUDE.md, „Gotchas").
-import { feedbackFoldsOf } from '~/utils/euFeedback'
+import { feedbackBlocksOf } from '~/utils/euFeedback'
 
 defineProps<{
   section: EuRailSection
@@ -64,10 +65,8 @@ defineProps<{
           <span v-for="item in section.credits" :key="item">{{ item }}</span>
         </SectionCredits>
       </div>
-      <!-- The folds of one section stand together, as one block under the frame. -->
-      <div v-if="section.facts.some((f) => f.feedback)">
-        <EuFeedbackFold v-for="fold in feedbackFoldsOf(section.facts)" :key="fold.key" :fold="fold" />
-      </div>
+      <!-- One block per window, each a sub-section of the section's body. -->
+      <EuFeedbackBlock v-for="block in feedbackBlocksOf(section.facts)" :key="block.key" :block="block" />
       <!-- The card's door once more (`DoorButton`), with the card's label.
            The view sets it only while the card shows. -->
       <div v-if="section.door" class="flex flex-wrap items-center gap-3">

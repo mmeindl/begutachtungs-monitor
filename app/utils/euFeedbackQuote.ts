@@ -20,9 +20,14 @@
  *
  * NO QUOTE, by the drafts' rule (no quote where the text was not read):
  * any stage not below (INIT_PLANNED, ROADMAP, a stage the portal adds
- * later), an adoption that is no legislative proposal — and a European
- * Citizens' Initiative, whose door leads to a collection system: no
- * sentence of the register was read for it.
+ * later) and an adoption that is no legislative proposal.
+ *
+ * THE EUROPEAN CITIZENS' INITIATIVE has its own quote (`EU_ECI_QUOTE`):
+ * the three sentences under the heading of the German home page of the
+ * Commission's site for the instrument (citizens-initiative.europa.eu),
+ * read on 16.11.2026, verbatim and unbroken. They say what a million
+ * signatures bring and promise no more than the Commission does: it
+ * decides what to do.
  */
 
 export const EU_FEEDBACK_QUOTE_SOURCE = 'Europäische Kommission'
@@ -35,6 +40,10 @@ const BY_STAGE: Readonly<Record<string, string>> = {
   /** Entwurf eines Rechtsakts der Kommission. */
   ISC_WORKFLOW: 'Die Rückmeldungen werden bei der Fertigstellung dieser Initiative berücksichtigt.',
 }
+
+/** The door of a European Citizens' Initiative in collection. */
+export const EU_ECI_QUOTE =
+  'Mit einer Europäischen Bürgerinitiative können Sie die EU mitgestalten und die Europäische Kommission auffordern, neue Gesetze vorzuschlagen. Dafür benötigen Sie eine Million gültige Unterschriften. Falls eine Initiative erfolgreich ist, entscheidet die Kommission, welche Maßnahmen sie ergreift.'
 
 /** The adoption's sentence: only for feedback on a legislative proposal. */
 export const EU_FEEDBACK_QUOTE_PROPOSAL =

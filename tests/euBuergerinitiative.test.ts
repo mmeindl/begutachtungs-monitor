@@ -5,7 +5,7 @@ import { EU_MEMBER_STATE_ECI, euCitizensInitiativeAddress, euCitizensInitiativeP
 import { splitGap } from '../shared/utils/gaps'
 import { ECI_DETAILS_FIELDS, ECI_LIST_FIELDS, eciDay, eciDetailsUrl, eciListUrl, eciOpenOn, eciPageUrl, parseEciDetails, parseEciList } from '../server/utils/eu/eciRegister'
 import { ECI_KNOWN_STEPS, euBuergerinitiativeView } from '../app/utils/euBuergerinitiative'
-import { euEciListView } from '../app/utils/euEciList'
+import { EU_ECI_LIST_DE, euEciListView } from '../app/utils/euEciList'
 
 /**
  * The European Citizens' Initiative (step 5 of the EU cycle, 15.11.2026):
@@ -205,8 +205,13 @@ describe('the page of an initiative', () => {
     expect(v.sections.map((s) => s.id)).toEqual(['registrierung', 'sammlung'])
     expect(v.action).toEqual({
       end: '2027-11-13', heading: null, href: 'https://eci.ec.europa.eu/069/public/?lg=de', label: 'Bürgerinitiative unterstützen',
-      // One sentence, the one the button cannot say; the day is the heading's. No quote: no sentence of the register was read.
-      note: 'Der Link führt zum Sammelsystem der Initiative.', quote: null, gap: null,
+      // No sentence of ours: the day is the heading's, the way the button's. Above the button, the Commission's words on what a million signatures bring.
+      note: null,
+      quote: {
+        text: 'Mit einer Europäischen Bürgerinitiative können Sie die EU mitgestalten und die Europäische Kommission auffordern, neue Gesetze vorzuschlagen. Dafür benötigen Sie eine Million gültige Unterschriften. Falls eine Initiative erfolgreich ist, entscheidet die Kommission, welche Maßnahmen sie ergreift.',
+        source: 'Europäische Kommission',
+      },
+      gap: null,
     })
     const sammlung = v.sections.find((s) => s.id === 'sammlung')!
     // The door once more at the end of „Sammlung", with the card's label, and nowhere else.
@@ -377,8 +382,18 @@ describe('the list of initiatives in collection', () => {
       row({ year: 2025, number: 4, deadline: null, details: 'ungelesen' }),
     ]))
     expect(v.rows!.map((r) => r.key)).toEqual(['2026/1', '2026/2', '2026/3', '2025/4', '2026/10'])
-    expect(v.rows![0]).toMatchObject({ path: '/eu-recht/buergerinitiative/2026/1', supporters: 'Unterstützungen laut Register: 5', gap: null })
-    expect(v.rows![2]!.supporters).toBe('Unterstützungen laut Register: 1.000.000')
+    expect(v.rows![0]).toMatchObject({ path: '/eu-recht/buergerinitiative/2026/1', gap: null })
+  })
+
+  it('carries the count in its own column: the number in ink, „laut Register" in its words, a missing count a word and never 0', () => {
+    const v = euEciListView(response([row({ number: 1, supporters: 1_000_000 }), row({ number: 2, supporters: null }), row({ number: 3, supporters: 0 })]))
+    expect(v.rows!.map((r) => r.supporters)).toEqual([
+      { value: '1.000.000', counted: true, detail: null, said: 'Unterstützungen laut Register: 1.000.000' },
+      { value: 'nicht angegeben', counted: false, detail: null, said: 'Unterstützungen laut Register: nicht angegeben' },
+      { value: '0', counted: true, detail: null, said: 'Unterstützungen laut Register: 0' },
+    ])
+    expect(EU_ECI_LIST_DE.column.supporters).toBe('Unterstützungen')
+    expect(EU_ECI_LIST_DE.countSource).toBe('Unterstützungen laut Register')
   })
 
   it('keeps a row whose day is not read, with a gap sentence in place of the day', () => {

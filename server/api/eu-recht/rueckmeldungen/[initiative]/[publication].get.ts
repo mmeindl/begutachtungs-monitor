@@ -8,8 +8,8 @@
  * contribution's text, and for a counted row no day, number or link. No
  * country parameter: the answer is the same for every member state's page.
  *
- * Asked only when a reader opens the fold „Wer Rückmeldung gegeben hat",
- * never with the page: up to five paced requests, 2.5 s apart.
+ * Asked only when the block „Wer Rückmeldung gegeben hat" comes near the
+ * reader's viewport (`EuFeedbackBlock`), never with the page: up to five paced requests, 2.5 s apart.
  *
  * 400 for a number that is no portal number (digits, no leading zero, at
  * most nine). 404 where the portal proves the initiative unknown, or where

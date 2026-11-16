@@ -117,11 +117,7 @@ const shown = computed(() => (query.value ? rows.value : rows.value.slice(0, vis
                         {{ cell.said }}
                       </p>
                     </div>
-                    <div v-for="cell in [row.drafts, row.measures]" :key="cell.said" class="hidden md:entry-col-count md:block">
-                      <span class="sr-only">{{ cell.said }}</span>
-                      <span aria-hidden="true" class="block text-sm tabular-nums" :class="cell.counted ? 'font-medium text-ink' : 'text-ink-muted'">{{ cell.value }}</span>
-                      <span v-if="cell.detail" aria-hidden="true" class="block text-xs text-ink-muted">{{ cell.detail }}</span>
-                    </div>
+                    <EuCountCell v-for="cell in [row.drafts, row.measures]" :key="cell.said" :cell="cell" />
                     <div class="flex md:entry-col-state md:justify-end">
                       <EntryState :state="row.state" />
                     </div>

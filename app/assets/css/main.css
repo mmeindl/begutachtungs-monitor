@@ -329,10 +329,19 @@
  * portal (`EuFeedbackRow`, `EuFeedbackPanel`, 15.11.2026): the date's
  * track of the Stellungnahmen, the name absorbing the slack, the kind (its
  * longest, „Hochschule oder Forschungseinrichtung", wraps onto two lines)
- * and the country's three-letter code.
+ * and the country's German name since 16.11.2026 (the order by Land reads
+ * names; „Vereinigtes Königreich" wraps).
  */
 @utility feedback-tracks {
-  grid-template-columns: 6rem minmax(8rem, 1fr) 10rem 3rem;
+  grid-template-columns: 6rem minmax(8rem, 1fr) 12.5rem 7.5rem;
+}
+
+/*
+ * The citizens' tab of the same list (`EuFeedbackPanel`): a country and how
+ * many from it, the count right-aligned under its header.
+ */
+@utility feedback-citizen-tracks {
+  grid-template-columns: minmax(8rem, 1fr) 7rem;
 }
 
 /*

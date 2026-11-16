@@ -18,7 +18,20 @@ import {
 } from '../server/utils/eu/portalFeedback'
 import { contributionPageUrl } from '../server/utils/eu/haveYourSay'
 import { STATEMENT_PAGE_SIZE, STATEMENT_SEARCH_MIN } from '../app/utils/statementRows'
-import { type EuFeedbackRow, type EuFeedbackSelection, compareFeedbackRows, euFeedbackView, feedbackFoldsOf, feedbackRowsOf, feedbackSetLine, rowsOfKind } from '../app/utils/euFeedback'
+import {
+  type EuFeedbackRow,
+  type EuFeedbackSelection,
+  citizenRowsOf,
+  citizensSetLine,
+  closingRowsOf,
+  compareFeedbackRows,
+  euFeedbackView,
+  feedbackBlocksOf,
+  feedbackRowsOf,
+  feedbackSetLine,
+  rowsOfKind,
+} from '../app/utils/euFeedback'
+import { countryNameOf } from '../shared/utils/countryNames'
 import { fact, withFeedback } from '../app/utils/euRail'
 
 /* Who gave feedback on the Commission's portal (step 4 of the EU cycle).
@@ -365,60 +378,118 @@ describe('the reading, page by page', () => {
   })
 })
 
-describe('the fold\'s list and words', () => {
+describe('the block\'s list and words', () => {
   const reading: EuFeedbackReading = summarize(parseFeedbackPage(fixture('feedback-page')).rows, 14, 13192)
   const AT = { code: 'AUT', name: 'Österreich' }
   const sel = (over: Partial<EuFeedbackSelection> = {}): EuFeedbackSelection => ({ kind: 'alle', country: null, query: '', sort: 'date', reversed: false, ...over })
   const names = (rows: EuFeedbackRow[]) => rows.map((r) => r.name)
+  const labels = (rows: { label: string }[]) => rows.map((r) => r.label)
 
-  it('lists one row per contribution with day, kind in the singular, country and the link\'s accessible name', () => {
+  it('lists one row per contribution with day, kind in the singular, country by its German name and the link\'s accessible name', () => {
     const v = euFeedbackView(reading, AT)
-    expect(v.rows.map((r) => [r.date, r.name, r.kind, r.country, r.url !== null])).toEqual([
-      ['2026-11-14', 'Siemens AG', 'Unternehmen', 'DEU', true],
-      ['2026-11-13', 'European Trade Union Confederation (ETUC)', 'Gewerkschaft', 'BEL', true],
-      ['2026-11-12', 'City of Vienna', 'Behörde', 'AUT', true],
-      ['2026-11-11', 'Wirtschaftskammer Österreich', 'Wirtschaftsverband', 'AUT', true],
-      ['2026-11-13', 'SIEMENS AG', 'Unternehmen', 'AUT', true],
-      ['2026-11-05', 'Bundesarbeitskammer', 'Gewerkschaft', 'AUT', false],
-      [null, 'Verein Beispielwald', 'Nichtregierungsorganisation', 'AUT', true],
+    expect(v.rows.map((r) => [r.date, r.name, r.kind, r.country, r.countryName, r.url !== null])).toEqual([
+      ['2026-11-14', 'Siemens AG', 'Unternehmen', 'DEU', 'Deutschland', true],
+      ['2026-11-13', 'European Trade Union Confederation (ETUC)', 'Gewerkschaft', 'BEL', 'Belgien', true],
+      ['2026-11-12', 'City of Vienna', 'Behörde', 'AUT', 'Österreich', true],
+      ['2026-11-11', 'Wirtschaftskammer Österreich', 'Wirtschaftsverband', 'AUT', 'Österreich', true],
+      ['2026-11-13', 'SIEMENS AG', 'Unternehmen', 'AUT', 'Österreich', true],
+      ['2026-11-05', 'Bundesarbeitskammer', 'Gewerkschaft', 'AUT', 'Österreich', false],
+      [null, 'Verein Beispielwald', 'Nichtregierungsorganisation', 'AUT', 'Österreich', true],
     ])
     expect(v.rows[0]!.linkLabel).toBe('Rückmeldung von Siemens AG im Portal der Kommission (neues Fenster)')
     expect(new Set(v.rows.map((r) => r.key)).size).toBe(v.rows.length)
     expect(v.empty).toBeNull()
-    expect(v.noneNamed).toBeNull()
     expect(v.cap).toBeNull()
   })
 
-  it('offers „Alle" and every kind with a named row as tabs, in the fixed order, counting named rows only', () => {
+  it('names a country by its German name, and gives the code where it knows none', () => {
+    expect(['AUT', 'DEU', 'GBR', 'CZE', 'XKX'].map((c) => countryNameOf(c))).toEqual(['Österreich', 'Deutschland', 'Vereinigtes Königreich', 'Tschechien', 'Kosovo'])
+    expect(countryNameOf('ZZZ')).toBe('ZZZ')
+  })
+
+  it('tabs every kind with a row read and the citizens, counting the unnamed too, so the tabs add up to the rows read', () => {
     const v = euFeedbackView(reading, AT)
     expect(v.tabs.map((t) => [t.value, t.label, t.count])).toEqual([
-      ['alle', 'Alle', 7],
+      ['alle', 'Alle', 14],
       ['BUSINESS_ASSOCIATION', 'Wirtschaftsverbände', 1],
-      ['COMPANY', 'Unternehmen', 2],
+      ['COMPANY', 'Unternehmen', 4],
       ['NGO', 'Nichtregierungsorganisationen', 1],
       ['PUBLIC_AUTHORITY', 'Behörden', 1],
       ['TRADE_UNION', 'Gewerkschaften', 2],
+      ['buerger', 'Bürgerinnen und Bürger', 2],
     ])
-    // A kind whose every row is counted has no tab; one kind alone is its own label, without „Alle".
-    const onlyCompanies = { ...reading, contributions: reading.contributions.filter((c) => c.type === 'COMPANY'), kinds: [{ type: 'COMPANY' as const, count: 4, unnamed: 2 }, { type: 'NGO' as const, count: 3, unnamed: 3 }] }
-    expect(euFeedbackView(onlyCompanies, AT).tabs.map((t) => [t.value, t.count])).toEqual([['COMPANY', 2]])
+    const rest = v.tabs.slice(1).reduce((n, t) => n + t.count, 0) + reading.other + reading.unpublished
+    expect(rest).toBe(v.tabs[0]!.count)
+    // A kind whose every row is counted has a tab too; one tab alone is its own label, without „Alle".
+    const onlyCompanies = { ...reading, read: 4, contributions: reading.contributions.filter((c) => c.type === 'COMPANY'), kinds: [{ type: 'COMPANY' as const, count: 4, unnamed: 2 }], citizens: { count: 0, byCountry: {} }, other: 0, unpublished: 0 }
+    expect(euFeedbackView(onlyCompanies, AT).tabs.map((t) => [t.value, t.count])).toEqual([['COMPANY', 4]])
+    const onlyUnnamed = { ...onlyCompanies, read: 7, contributions: [], kinds: [{ type: 'COMPANY' as const, count: 4, unnamed: 4 }, { type: 'NGO' as const, count: 3, unnamed: 3 }] }
+    expect(euFeedbackView(onlyUnnamed, AT).tabs.map((t) => [t.value, t.count])).toEqual([['alle', 7], ['COMPANY', 4], ['NGO', 3]])
+    // „Sonstige" stand in „Alle" only: one kind and Sonstige still get „Alle".
+    expect(euFeedbackView({ ...onlyCompanies, read: 5, other: 1 }, AT).tabs.map((t) => t.value)).toEqual(['alle', 'COMPANY'])
   })
 
-  it('offers „Aus <Land>" and says „davon aus <Land>" only with a country in scope, and nothing about it without one', () => {
+  it('closes the list with the counted figures: a kind\'s own under its tab, every figure under „Alle", none under the citizens\' tab', () => {
     const v = euFeedbackView(reading, AT)
-    expect(v.country).toMatchObject({ code: 'AUT', label: 'Aus Österreich' })
-    expect(v.counted[0]).toBe('2 Bürgerinnen und Bürger, davon aus Österreich: 1')
+    expect(labels(v.closing)).toEqual([
+      '2 weitere Unternehmen · ohne Namen',
+      '2 Bürgerinnen und Bürger · ohne Namen',
+      '2 sonstige Rückmeldungen · ohne Namen',
+      '1 nicht veröffentlichte Rückmeldung · ohne Namen',
+    ])
+    expect(labels(closingRowsOf(v.closing, sel(), false))).toHaveLength(4)
+    expect(labels(closingRowsOf(v.closing, sel({ kind: 'COMPANY' }), false))).toEqual(['2 weitere Unternehmen · ohne Namen'])
+    expect(closingRowsOf(v.closing, sel({ kind: 'NGO' }), false)).toEqual([])
+    expect(closingRowsOf(v.closing, sel({ kind: 'buerger' }), false)).toEqual([])
+    // Nothing a chip or a search could match: hidden under both.
+    expect(closingRowsOf(v.closing, sel({ country: 'AUT' }), false)).toEqual([])
+    expect(closingRowsOf(v.closing, sel({ query: 'x' }), true)).toEqual([])
+    // A closing row carries no link, no day, no country.
+    for (const row of v.closing) expect(Object.keys(row).sort()).toEqual(['key', 'label', 'of'])
+  })
+
+  it('words a closing row in the singular at one, in the kind\'s gender, and drops „weitere" where the kind has no named row', () => {
+    const r = (kinds: EuFeedbackReading['kinds'], extra: Partial<EuFeedbackReading> = {}): EuFeedbackReading => ({ total: 9, read: 9, contributions: [], kinds, citizens: { count: 0, byCountry: {} }, other: 0, unpublished: 0, ...extra })
+    const named = (type: EuFeedbackReading['kinds'][number]['type']) => ({ name: 'Beispiel', type, country: null, date: null, url: null })
+    const one = (type: EuFeedbackReading['kinds'][number]['type']) => euFeedbackView(r([{ type, count: 2, unnamed: 1 }], { contributions: [named(type)] })).closing[0]!.label
+    expect(one('NGO')).toBe('1 weitere Nichtregierungsorganisation · ohne Namen')
+    expect(one('COMPANY')).toBe('1 weiteres Unternehmen · ohne Namen')
+    expect(one('BUSINESS_ASSOCIATION')).toBe('1 weiterer Wirtschaftsverband · ohne Namen')
+    expect(euFeedbackView(r([{ type: 'NGO', count: 13, unnamed: 13 }])).closing[0]!.label).toBe('13 Nichtregierungsorganisationen · ohne Namen')
+    expect(euFeedbackView(r([{ type: 'NGO', count: 1, unnamed: 1 }])).closing[0]!.label).toBe('1 Nichtregierungsorganisation · ohne Namen')
+    expect(labels(euFeedbackView(r([], { citizens: { count: 1, byCountry: {} }, other: 1, unpublished: 2 })).closing)).toEqual([
+      '1 Bürgerin oder Bürger · ohne Namen',
+      '1 sonstige Rückmeldung · ohne Namen',
+      '2 nicht veröffentlichte Rückmeldungen · ohne Namen',
+    ])
+  })
+
+  it('lists the citizens per country by count, the ones without a country as one row last, and narrows to the chip\'s country', () => {
+    const r: EuFeedbackReading = { total: 9, read: 9, contributions: [], kinds: [], citizens: { count: 9, byCountry: { DEU: 2, AUT: 3, BEL: 2 } }, other: 0, unpublished: 0 }
+    const v = euFeedbackView(r, AT)
+    const rows = (s: Partial<EuFeedbackSelection>) => citizenRowsOf(v.citizens, { country: null, sort: 'date', reversed: false, ...s }).map((c) => `${c.name} ${c.count}`)
+    expect(rows({})).toEqual(['Österreich 3', 'Belgien 2', 'Deutschland 2', 'ohne Angabe eines Landes 2'])
+    expect(rows({ reversed: true })).toEqual(['Belgien 2', 'Deutschland 2', 'Österreich 3', 'ohne Angabe eines Landes 2'])
+    expect(rows({ sort: 'country' })).toEqual(['Belgien 2', 'Deutschland 2', 'Österreich 3', 'ohne Angabe eines Landes 2'])
+    expect(rows({ sort: 'country', reversed: true })).toEqual(['Österreich 3', 'Deutschland 2', 'Belgien 2', 'ohne Angabe eines Landes 2'])
+    expect(rows({ country: 'AUT' })).toEqual(['Österreich 3'])
+    expect(v.citizens.reduce((n, c) => n + c.count, 0)).toBe(9)
+    // The chip exists for a country with citizens only.
+    expect(v.country?.label).toBe('Aus Österreich')
+    expect(citizensSetLine(9, 9, false)).toBe('9 Bürgerinnen und Bürger, nach Land gezählt')
+    expect(citizensSetLine(3, 9, true)).toBe('3 von 9 Bürgerinnen und Bürgern')
+  })
+
+  it('offers „Aus <Land>" only with a country in scope and a row from it, and nothing about it without one', () => {
+    expect(euFeedbackView(reading, AT).country).toMatchObject({ code: 'AUT', label: 'Aus Österreich' })
     // The configured member state is the default.
     expect(euFeedbackView(reading).country?.label).toBe('Aus Österreich')
     const none = euFeedbackView(reading, null)
     expect(none.country).toBeNull()
-    expect(none.counted[0]).toBe('2 Bürgerinnen und Bürger')
-    expect(JSON.stringify(none)).not.toMatch(/davon aus|"Aus /)
-    // Another country: its own figures out of the same reading; no chip where no organisation is from it, the citizens' 0 still said.
-    const ch = euFeedbackView(reading, { code: 'CHE', name: 'der Schweiz' })
-    expect(ch.country).toBeNull()
-    expect(ch.counted[0]).toBe('2 Bürgerinnen und Bürger, davon aus der Schweiz: 1')
-    expect(euFeedbackView(reading, { code: 'ITA', name: 'Italien' }).counted[0]).toBe('2 Bürgerinnen und Bürger, davon aus Italien: 0')
+    expect(JSON.stringify(none)).not.toMatch(/"Aus /)
+    // A country with only a citizen from it has the chip; one with nothing has none.
+    expect(euFeedbackView(reading, { code: 'CHE', name: 'der Schweiz' }).country?.label).toBe('Aus der Schweiz')
+    expect(euFeedbackView(reading, { code: 'ITA', name: 'Italien' }).country).toBeNull()
   })
 
   it('combines kind and country, and the chip counts within the kind above it', () => {
@@ -427,6 +498,7 @@ describe('the fold\'s list and words', () => {
     expect(names(feedbackRowsOf(rows, sel({ kind: 'COMPANY' })))).toEqual(['Siemens AG', 'SIEMENS AG'])
     expect(names(feedbackRowsOf(rows, sel({ kind: 'COMPANY', country: 'AUT' })))).toEqual(['SIEMENS AG'])
     expect(feedbackRowsOf(rows, sel({ kind: 'TRADE_UNION', country: 'DEU' }))).toEqual([])
+    expect(feedbackRowsOf(rows, sel({ kind: 'buerger' }))).toEqual([])
     expect(rowsOfKind(rows, 'TRADE_UNION').filter((r) => r.country === 'AUT')).toHaveLength(1)
     expect(rowsOfKind(rows, 'alle')).toHaveLength(7)
   })
@@ -455,10 +527,38 @@ describe('the fold\'s list and words', () => {
     expect(names(sorted)).toEqual(['alpha GmbH', 'Beta SE', 'Österreichische Beispiel GmbH', 'Zeta AG'])
   })
 
-  it('says what the list is, and how much of it a filter or search shows', () => {
+  it('orders by Land: the German name, then newest first; a row without a country last both ways; only the Land turns round', () => {
+    const { rows } = euFeedbackView(reading, AT)
+    const noCountry: EuFeedbackRow = { ...rows[0]!, key: 'x', index: 99, name: 'Ohne Land e.V.', country: null, countryName: null }
+    const all = [...rows, noCountry]
+    const byLand = (reversed: boolean) => [...all].sort((a, b) => compareFeedbackRows(a, b, 'country', reversed)).map((r) => `${r.countryName ?? '–'}|${r.name}`)
+    expect(byLand(false)).toEqual([
+      'Belgien|European Trade Union Confederation (ETUC)',
+      'Deutschland|Siemens AG',
+      'Österreich|SIEMENS AG',
+      'Österreich|City of Vienna',
+      'Österreich|Wirtschaftskammer Österreich',
+      'Österreich|Bundesarbeitskammer',
+      'Österreich|Verein Beispielwald',
+      '–|Ohne Land e.V.',
+    ])
+    expect(byLand(true)).toEqual([
+      'Österreich|SIEMENS AG',
+      'Österreich|City of Vienna',
+      'Österreich|Wirtschaftskammer Österreich',
+      'Österreich|Bundesarbeitskammer',
+      'Österreich|Verein Beispielwald',
+      'Deutschland|Siemens AG',
+      'Belgien|European Trade Union Confederation (ETUC)',
+      '–|Ohne Land e.V.',
+    ])
+  })
+
+  it('says what the list is, how much of it a filter or search shows, and that none is named where none is', () => {
     expect(feedbackSetLine(7, 7, false)).toBe('7 Rückmeldungen von Organisationen mit Namen')
     expect(feedbackSetLine(1, 1, false)).toBe('1 Rückmeldung einer Organisation mit Namen')
     expect(feedbackSetLine(2, 1234, true)).toBe('2 von 1.234 Rückmeldungen von Organisationen mit Namen')
+    expect(feedbackSetLine(0, 0, false)).toBe('Keine Organisation mit Namen unter den gelesenen Rückmeldungen.')
   })
 
   it('pages like the Stellungnahmen, and offers the search above the same threshold', () => {
@@ -466,30 +566,18 @@ describe('the fold\'s list and words', () => {
     expect(STATEMENT_SEARCH_MIN).toBe(20)
   })
 
-  it('counts under the list what is never a row: citizens, Sonstige, each kind\'s rows without a name, the rows not published', () => {
-    const v = euFeedbackView(reading, AT)
-    expect(v.counted).toEqual([
-      '2 Bürgerinnen und Bürger, davon aus Österreich: 1',
-      '2 Rückmeldungen ohne Angabe einer Organisationsart (Sonstige)',
-      '2 Unternehmen',
-      '1 Rückmeldung, die das Portal nicht als veröffentlicht führt',
-    ])
-    expect(v.unnamedReason).toMatch(/^Ohne Namen zählt der Monitor Organisationen, hinter deren Namen eine einzelne Person stehen kann: Kleinstunternehmen/)
-    expect(v.citizensNote).toBe('Privatpersonen werden gezählt, nie genannt.')
-    const one = euFeedbackView({ ...reading, kinds: [{ type: 'PUBLIC_AUTHORITY', count: 2, unnamed: 1 }], citizens: { count: 0, byCountry: {} }, other: 0, unpublished: 0, contributions: reading.contributions.slice(2, 3) }, AT)
-    expect(one.counted).toEqual(['1 Behörde'])
-    expect(one.citizensNote).toBeNull()
+  it('says one line under the list, and keeps the cap as the list\'s frame row', () => {
+    expect(euFeedbackView(reading, AT).note).toBe('Privatpersonen werden gezählt, nie genannt.')
+    const persons = euFeedbackView({ total: 640, read: 500, contributions: [], kinds: [{ type: 'COMPANY', count: 3, unnamed: 3 }], citizens: { count: 497, byCountry: { AUT: 12 } }, other: 0, unpublished: 0 }, AT)
+    expect(persons.cap).toMatch(/^Nicht im Monitor: Gelesen sind die neuesten 500 von 640/)
+    expect(labels(persons.closing)).toEqual(['3 Unternehmen · ohne Namen', '497 Bürgerinnen und Bürger · ohne Namen'])
+    expect(persons.tabs.map((t) => [t.value, t.count])).toEqual([['alle', 500], ['COMPANY', 3], ['buerger', 497]])
   })
 
-  it('says when nobody answered, and when rows were read but none names an organisation', () => {
+  it('says when nobody answered', () => {
     expect(euFeedbackView({ total: 0, read: 0, contributions: [], kinds: [], citizens: { count: 0, byCountry: {} }, other: 0, unpublished: 0 })).toMatchObject({
-      empty: 'Das Portal verzeichnet zu dieser Frist keine Rückmeldung.', noneNamed: null, rows: [], tabs: [], counted: [], cap: null,
+      empty: 'Das Portal verzeichnet zu dieser Frist keine Rückmeldung.', rows: [], tabs: [], closing: [], citizens: [], cap: null,
     })
-    const persons = euFeedbackView({ total: 640, read: 500, contributions: [], kinds: [{ type: 'COMPANY', count: 3, unnamed: 3 }], citizens: { count: 497, byCountry: { AUT: 12 } }, other: 0, unpublished: 0 }, AT)
-    expect(persons).toMatchObject({ empty: null, noneNamed: 'Keine Organisation mit Namen unter den gelesenen Rückmeldungen.', rows: [], tabs: [], country: null })
-    expect(persons.counted).toEqual(['497 Bürgerinnen und Bürger, davon aus Österreich: 12', '3 Unternehmen'])
-    expect(persons.cap).toMatch(/^Nicht im Monitor: Gelesen sind die neuesten 500 von 640/)
-    expect(persons.unnamedReason).not.toBeNull()
   })
 
   it('holds no word of ranking or blame', () => {
@@ -497,15 +585,23 @@ describe('the fold\'s list and words', () => {
     expect(words).not.toMatch(/aktivst|meiste|Rang|Top|führend|Einfluss|erfolgreich|durchgesetzt/i)
   })
 
-  it('gives each window its own fold, named by its fact only where a section has several', () => {
+  it('gives each window its own block, named by its fact only where a section has several', () => {
     const ref = (publication: number) => ({ initiative: 13192, publication })
-    const one = feedbackFoldsOf([withFeedback(fact('frist-0', 'Fahrplan', ['x']), ref(15129)), fact('vorhaben', 'Vorhaben der Kommission', ['Nr. 13192'])])
+    const one = feedbackBlocksOf([withFeedback(fact('frist-0', 'Fahrplan', ['x']), ref(15129)), fact('vorhaben', 'Vorhaben der Kommission', ['Nr. 13192'])])
     expect(one).toEqual([{ key: 'rueckmeldungen-13192-15129', heading: 'Wer Rückmeldung gegeben hat', initiative: 13192, publication: 15129 }])
-    const two = feedbackFoldsOf([withFeedback(fact('frist-0', 'Fahrplan', ['x']), ref(15129)), withFeedback(fact('frist-1', 'Öffentliche Konsultation', ['y']), ref(15080))])
+    const two = feedbackBlocksOf([withFeedback(fact('frist-0', 'Fahrplan', ['x']), ref(15129)), withFeedback(fact('frist-1', 'Öffentliche Konsultation', ['y']), ref(15080))])
     expect(two.map((f) => [f.heading, f.key])).toEqual([
       ['Wer Rückmeldung gegeben hat (Fahrplan)', 'rueckmeldungen-13192-15129'],
       ['Wer Rückmeldung gegeben hat (Öffentliche Konsultation)', 'rueckmeldungen-13192-15080'],
     ])
-    expect(feedbackFoldsOf([fact('frist-0', 'Fahrplan', ['x'])])).toEqual([])
+    expect(feedbackBlocksOf([fact('frist-0', 'Fahrplan', ['x'])])).toEqual([])
+  })
+
+  it('reads the portal on approach, never with the page, and keeps one key per window', () => {
+    const block = readFileSync(new URL('../app/components/eu/EuFeedbackBlock.vue', import.meta.url), 'utf8')
+    expect(block).toMatch(/server: false, immediate: false/)
+    expect(block).toMatch(/useNearViewportSection\(root/)
+    expect(block).toMatch(/key: `eu-rueckmeldungen-\$\{props\.block\.initiative\}-\$\{props\.block\.publication\}`/)
+    expect(block).not.toMatch(/<FoldSection/)
   })
 })

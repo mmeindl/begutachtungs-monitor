@@ -6,8 +6,8 @@ import { buildIcsCalendar, buildRssFeed, buildSitemap } from '../server/utils/fe
 import { euInitiativeId, euInitiativePath } from '../shared/utils/eu'
 import { actTypeDe, windowStageDe } from '../shared/utils/euPortal'
 import { EU_FENSTER_DE, euFensterView } from '../app/utils/euFenster'
-import { euInitiativeView } from '../app/utils/euInitiative'
-import { feedbackFoldsOf } from '../app/utils/euFeedback'
+import { euInitiativeView, feedbackQuoteOf } from '../app/utils/euInitiative'
+import { feedbackBlocksOf } from '../app/utils/euFeedback'
 
 /* The open windows of the Commission's portal „Ihre Meinung zählt" (step 3
  * of the EU cycle): six rows cut from the answer of 15.11.2026 (49 rows) —
@@ -313,9 +313,13 @@ describe('the initiative\'s page', () => {
       label: 'Rückmeldung im Portal der Kommission geben',
       // No sentence under the heading: the heading says the day, the button the portal.
       note: null,
-      // Two windows close on the door's day with different sentences: which one the door is for is not clear, so no quote.
-      quote: null,
+      // Two windows close on the door's day: the Sondierung's sentence is the first of the consultation's, so the door quotes what holds for both — not the consultation's report.
+      quote: { text: 'Ihr Feedback wird bei der Entwicklung und Erarbeitung dieser Initiative berücksichtigt.', source: 'Europäische Kommission' },
     })
+    // Sentences that share no opening (a consultation and a draft act), or a window without one: no quote.
+    expect(feedbackQuoteOf([{ stage: 'OPC_LAUNCHED', onProposal: false }, { stage: 'ISC_WORKFLOW', onProposal: false }])).toBeNull()
+    expect(feedbackQuoteOf([{ stage: 'PLANNING_WORKFLOW', onProposal: false }, { stage: 'ROADMAP', onProposal: false }])).toBeNull()
+    expect(feedbackQuoteOf([])).toBeNull()
     // Both windows are „Konsultation": the door once more at its end, nowhere else.
     expect(v.sections.filter((s) => s.door).map((s) => s.id)).toEqual(['konsultation'])
     // A delegated act: no „Parlament und Rat", the Commission's station not reached yet.
@@ -387,17 +391,17 @@ describe('the initiative\'s page', () => {
   it('gives every feedback period with contributions its fold, by the initiative\'s and the publication\'s numbers (step 4)', () => {
     const v = euInitiativeView(closed, TODAY)
     // „Konsultation": the Fahrplan (10) and the public consultation (146), each its own fold, each named by its fact.
-    expect(feedbackFoldsOf(v.sections[0]!.facts)).toEqual([
+    expect(feedbackBlocksOf(v.sections[0]!.facts)).toEqual([
       { key: 'rueckmeldungen-13192-15129', heading: 'Wer Rückmeldung gegeben hat (Fahrplan)', initiative: 13192, publication: 15129 },
       { key: 'rueckmeldungen-13192-15080', heading: 'Wer Rückmeldung gegeben hat (Öffentliche Konsultation)', initiative: 13192, publication: 15080 },
     ])
     // The Commission's station: the feedback on the proposal (22).
-    expect(feedbackFoldsOf(v.sections[1]!.facts)).toEqual([{ key: 'rueckmeldungen-13192-15883', heading: 'Wer Rückmeldung gegeben hat', initiative: 13192, publication: 15883 }])
+    expect(feedbackBlocksOf(v.sections[1]!.facts)).toEqual([{ key: 'rueckmeldungen-13192-15883', heading: 'Wer Rückmeldung gegeben hat', initiative: 13192, publication: 15883 }])
     // The two numbers and nothing else reach the client.
     for (const f of v.sections.flatMap((s) => s.facts)) if (f.feedback) expect(Object.keys(f.feedback).sort()).toEqual(['initiative', 'publication'])
     // No fold for a window nobody answered in, nor for one without the publication's number.
     const quiet: EuInitiative = { ...closed, publications: closed.publications.map((p) => (p.stage === 'ROADMAP' ? { ...p, feedbackCount: 0 } : p.stage === 'OPC_LAUNCHED' ? { ...p, id: null } : p)) }
-    expect(feedbackFoldsOf(euInitiativeView(quiet, TODAY).sections[0]!.facts)).toEqual([])
+    expect(feedbackBlocksOf(euInitiativeView(quiet, TODAY).sections[0]!.facts)).toEqual([])
   })
 
   it('says no duration and no countdown (rule D6)', () => {

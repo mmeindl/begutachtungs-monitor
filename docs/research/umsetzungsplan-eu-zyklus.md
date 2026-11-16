@@ -464,7 +464,8 @@ initiative, read through the initiative's cache; same pacer; cached six
 hours in the derived mount, memory in dev and production), the route
 `/api/eu-recht/rueckmeldungen/<initiative>/<publication>` (404 for a
 publication that is none of the initiative's windows, `no-store`), and the
-fold „Wer Rückmeldung gegeben hat" (`EuFeedbackFold`, words in
+fold „Wer Rückmeldung gegeben hat" (`EuFeedbackFold`, since 16.11.2026 the
+open block `EuFeedbackBlock`, read on approach; words in
 `app/utils/euFeedback.ts`) under every feedback period with contributions on
 the act's, the proposal's and the initiative's page, read only when opened.
 Against the plan: rows with another status than `PUBLISHED` are counted

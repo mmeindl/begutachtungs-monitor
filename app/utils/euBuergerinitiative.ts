@@ -11,11 +11,10 @@
  * rail (`EuRail`), the door under the card while one can sign, a section per
  * REACHED station (`EuStationSection`), with the act page's builders
  * (`fact`, `framed`). The door stands once more at the end of „Sammlung"
- * (`EuRailSection.door`). It carries one sentence, that the link leads to
- * the initiative's collection system — sometimes the organisers' own site,
- * which the button cannot say — and NO QUOTE: unlike the Commission's
- * portal (`euFeedbackQuote.ts`), no sentence of the register on what a
- * signature brings was read.
+ * (`EuRailSection.door`). It carries no sentence of ours (the heading
+ * says the day, the button where it leads) and, above the button, the
+ * Commission's own words on what a million signatures bring
+ * (`EU_ECI_QUOTE`, `euFeedbackQuote.ts`).
  *
  * THE STATIONS, read from the register's `progress` — an unordered list of
  * `{ name, active, date, footnoteType }` whose active entry equals the
@@ -71,6 +70,7 @@ import type { EciAnswerLink, EciInitiative, EciProgressStep, EciSupport } from '
 import { EU_MEMBER_STATE_ECI, EU_MEMBER_STATE_NAME_DE } from '#shared/utils/eu'
 import { formatDateDe, formatNumberDe } from '#shared/utils/format'
 import { gapDe } from '#shared/utils/gaps'
+import { EU_ECI_QUOTE, EU_FEEDBACK_QUOTE_SOURCE } from './euFeedbackQuote'
 import { doorOf, type EuWindowActionView } from './euInitiative'
 import { anchorOf, elementIdOf, fact, framed, type EuRailSection, type EuRailStation, type EuRailStationId, type EuSectionFact } from './euRail'
 
@@ -165,8 +165,6 @@ const DE = {
   action: {
     label: 'Bürgerinitiative unterstützen',
     openNoEnd: 'Unterstützung möglich',
-    // The one sentence under the heading: what the button cannot say. The day is the heading's.
-    note: 'Der Link führt zum Sammelsystem der Initiative.',
     noLink: gapDe('notPublished', 'Das Register nennt für diese Initiative keinen Link, über den sie unterstützt werden kann.'),
   },
   unread: 'Die Initiative konnte nicht gelesen werden: Das Register der Europäischen Bürgerinitiative hat nicht rechtzeitig oder nicht lesbar geantwortet.',
@@ -394,8 +392,8 @@ export function euBuergerinitiativeView(i: EciInitiative, today: string, memberS
         heading: end ? null : DE.action.openNoEnd,
         href: i.supportLink,
         label: DE.action.label,
-        note: i.supportLink ? DE.action.note : null,
-        quote: null,
+        note: null,
+        quote: i.supportLink ? { text: EU_ECI_QUOTE, source: EU_FEEDBACK_QUOTE_SOURCE } : null,
         gap: i.supportLink ? null : DE.action.noLink,
       }
     : null

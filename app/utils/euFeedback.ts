@@ -1,31 +1,42 @@
 /**
  * „Wer Rückmeldung gegeben hat" (step 4 of the EU cycle, 15.11.2026): the
- * fold under a section's frame that reads, on demand, who answered in one
- * feedback window on the Commission's portal — a list of the contributions
- * of the organisations the server's naming rule allows
- * (`namedOrganisationOf`, `server/utils/eu/portalFeedback.ts`), one row per
- * contribution with its day, kind and country and the link to it on the
- * portal, and the rest as counts under the list.
+ * block under a section's frame that reads who answered in one feedback
+ * window on the Commission's portal — a list of the contributions of the
+ * organisations the server's naming rule allows (`namedOrganisationOf`,
+ * `server/utils/eu/portalFeedback.ts`), one row per contribution with its
+ * day, kind and country and the link to it on the portal, and everything
+ * counted without a name as closing rows of the same list.
  *
  * THE LIST OF THE STELLUNGNAHMEN, IN ITS GRAMMAR (maintainer, 15.11.2026):
  * kinds as tabs with their counts, the country the page serves as a chip,
- * a search over the names above twenty rows, the order by day or by name in
- * the column header, ten rows a page. Nothing is ordered by count, nothing
- * is „most active", and no figure stands for what a contribution achieved
- * (CLAUDE.md, „Framing"). The texts are not shown: each row links its
- * contribution on the portal.
+ * a search over the names above twenty rows, the order by day, by name or
+ * by Land in the column header, ten rows a page. Nothing is ordered by
+ * count, nothing is „most active", and no figure stands for what a
+ * contribution achieved (CLAUDE.md, „Framing"). The texts are not shown:
+ * each row links its contribution on the portal.
+ *
+ * COUNTED ROWS CLOSE THE LIST (16.11.2026). What is counted without a name
+ * — the organisations of a kind the naming rule does not name, citizens,
+ * „Sonstige", rows the portal does not publish — is one muted row per
+ * figure after the named rows, never a paragraph under the box: a kind's
+ * tab counts its whole (named and unnamed), so the tabs add up to what the
+ * Commission counts, and the rows under a tab add up to the tab. Citizens
+ * have a tab of their own, one row per country, counted; in „Alle" they are
+ * one closing row. A closing row has no link, no day and no country, so no
+ * search and no chip can match it: under either it is not shown, and the
+ * set line, which counts named rows only, never claims it.
  *
  * THE COUNTRY IS THE VIEW'S. The reading knows none; `euFeedbackView` takes
  * the country the page serves (the configured member state by default, as
  * `euBuergerinitiativeView` does) or null, and only with one is there a
- * chip „Aus <Land>" and a „davon aus <Land>" — without one nothing is said
- * to be missing.
+ * chip „Aus <Land>" — without one nothing is said to be missing.
  *
- * All German copy of the fold lives here, so a second language replaces it
- * here. Pure: no Vue; `EuFeedbackFold` and `EuFeedbackPanel` place what
+ * All German copy of the block lives here, so a second language replaces it
+ * here. Pure: no Vue; `EuFeedbackBlock` and `EuFeedbackPanel` place what
  * this returns.
  */
 import type { EuFeedbackOrganisationType, EuFeedbackReading } from '#shared/types'
+import { countryNameOf } from '#shared/utils/countryNames'
 import { EU_MEMBER_STATE, EU_MEMBER_STATE_NAME_DE } from '#shared/utils/eu'
 import { countLabelDe, formatNumberDe } from '#shared/utils/format'
 import { gapDe } from '#shared/utils/gaps'
@@ -35,35 +46,52 @@ import type { EuSectionFact } from './euRail'
 const DE = {
   heading: 'Wer Rückmeldung gegeben hat',
   headingOf: (title: string) => `Wer Rückmeldung gegeben hat (${title})`,
-  loading: 'Rückmeldungen werden gelesen …',
+  /** The one line while the portal is read, beside the spinner and in the live region. */
+  loading: 'Rückmeldungen werden gelesen, eine Seite nach der anderen; das dauert einige Sekunden.',
   read: 'Die Rückmeldungen sind gelesen.',
-  loadingNote: 'Das Portal wird behutsam abgefragt, eine Seite nach der anderen; das dauert einige Sekunden.',
   unread: gapDe('unavailable', 'Das Portal „Ihre Meinung zählt“ der Kommission hat die Liste der Rückmeldungen nicht rechtzeitig oder nicht lesbar geliefert.'),
+  retry: 'Erneut versuchen',
   empty: 'Das Portal verzeichnet zu dieser Frist keine Rückmeldung.',
   noneNamed: 'Keine Organisation mit Namen unter den gelesenen Rückmeldungen.',
-  /** What the monitor does not read, and that search, filter and order reach no further: at the list's head, before a reader relies on a search. */
+  /** What the monitor does not read, and that search, filter and order reach no further: the list's frame row, at its head. */
   cap: (read: number, total: number) => gapDe('outOfScope', `Gelesen sind die neuesten ${formatNumberDe(read)} von ${formatNumberDe(total)} Rückmeldungen; Suche, Filter und Sortierung reichen nur über sie.`),
-  listHeading: 'Liste der Rückmeldungen von Organisationen',
+  listHeading: 'Liste der Rückmeldungen',
   /** What the list is; under a filter or a search how much of it is shown. */
   set: (n: number) => countLabelDe(n, 'Rückmeldung einer Organisation mit Namen', 'Rückmeldungen von Organisationen mit Namen'),
   setOf: (shown: number, n: number) => `${formatNumberDe(shown)} von ${DE.set(n)}`,
-  kindsLabel: 'Rückmeldungen nach Art der Organisation filtern',
+  /** The citizens' tab: what it is, and under the chip how much of it is shown. */
+  citizensSet: (n: number) => `${countLabelDe(n, 'Bürgerin oder Bürger', 'Bürgerinnen und Bürger')}, nach Land gezählt`,
+  citizensSetOf: (shown: number, n: number) => `${formatNumberDe(shown)} von ${countLabelDe(n, 'Bürgerin oder Bürger', 'Bürgerinnen und Bürgern')}`,
+  kindsLabel: 'Rückmeldungen nach Art filtern',
   all: 'Alle',
   allSelect: 'Alle Arten',
+  citizensTab: 'Bürgerinnen und Bürger',
   fromCountry: (country: string) => `Aus ${country}`,
-  fromCountryNone: (country: string) => `Keine Rückmeldung einer Organisation aus ${country} in dieser Art`,
+  fromCountryNone: (country: string) => `Keine Rückmeldung aus ${country} in dieser Art`,
   search: 'Organisation suchen',
   noMatch: 'Keine Organisation gefunden',
   noMatchNote: 'Gesucht wird nur in den Namen der Organisationen; was ohne Namen gezählt ist, findet die Suche nicht.',
   noneInSelection: 'Keine Rückmeldung in dieser Auswahl',
   sortLabel: 'Sortieren',
-  sortOptions: { date: 'Neueste', dateReversed: 'Älteste', name: 'Name A–Z', nameReversed: 'Name Z–A' },
-  column: { date: 'Datum', name: 'Organisation', kind: 'Art', country: 'Land' },
-  order: { date: ['neueste zuerst', 'älteste zuerst'], name: ['A bis Z', 'Z bis A'] } as const,
+  sortOptions: { date: 'Neueste', dateReversed: 'Älteste', name: 'Name A–Z', nameReversed: 'Name Z–A', country: 'Land A–Z', countryReversed: 'Land Z–A' },
+  /** The citizens' tab orders by count: the day's place in the order („date") stands for it there. */
+  citizensSortOptions: { date: 'Meiste zuerst', dateReversed: 'Wenigste zuerst', country: 'Land A–Z', countryReversed: 'Land Z–A' },
+  column: { date: 'Datum', name: 'Organisation', kind: 'Art', country: 'Land', count: 'Anzahl' },
+  order: {
+    date: ['neueste zuerst', 'älteste zuerst'],
+    name: ['A bis Z', 'Z bis A'],
+    country: ['Land A bis Z', 'Land Z bis A'],
+    count: ['meiste zuerst', 'wenigste zuerst'],
+  } as const,
   countrySaid: 'Land',
+  countSaid: 'Anzahl',
   /** A row whose country the portal gives no valid code for. */
   noCountry: 'ohne Angabe',
+  /** The citizens counted without a valid country, as one row of their tab. */
+  citizensNoCountry: 'ohne Angabe eines Landes',
   link: (name: string) => `Rückmeldung von ${name} im Portal der Kommission (neues Fenster)`,
+  /** The one line under the list; „Methode" beside it opens who is counted without a name (`MethodEuRueckmeldungen`). */
+  countedNote: 'Privatpersonen werden gezählt, nie genannt.',
   /**
    * The kinds of organisation: plural on the tabs and in the counts, the
    * singular in a row. OUR translations of the portal's codes: its own
@@ -90,22 +118,29 @@ const DE = {
     ENVIRONMENTAL_ORGANISATION: 'Umweltorganisation',
     CONSUMER_ORGANISATION: 'Verbraucherorganisation',
   } satisfies Record<EuFeedbackOrganisationType, string>,
-  /** The figures under the list: what is counted and never a row. */
-  countedHeading: 'Ohne Namen gezählt',
+  /** „weitere" before one of a kind, in the kind's gender; before several it is „weitere" for every kind. */
+  furtherOne: {
+    BUSINESS_ASSOCIATION: 'weiterer',
+    COMPANY: 'weiteres',
+    NGO: 'weitere',
+    PUBLIC_AUTHORITY: 'weitere',
+    ACADEMIC_RESEARCH_INSTITTUTION: 'weitere',
+    TRADE_UNION: 'weitere',
+    ENVIRONMENTAL_ORGANISATION: 'weitere',
+    CONSUMER_ORGANISATION: 'weitere',
+  } satisfies Record<EuFeedbackOrganisationType, string>,
+  /** The closing rows: what is counted, never named. */
+  unnamed: ' · ohne Namen',
   citizens: (n: number) => countLabelDe(n, 'Bürgerin oder Bürger', 'Bürgerinnen und Bürger'),
-  citizensFrom: (country: string, n: number) => `davon aus ${country}: ${formatNumberDe(n)}`,
-  other: (n: number) => countLabelDe(n, 'Rückmeldung ohne Angabe einer Organisationsart (Sonstige)', 'Rückmeldungen ohne Angabe einer Organisationsart (Sonstige)'),
-  unpublished: (n: number) => countLabelDe(n, 'Rückmeldung, die das Portal nicht als veröffentlicht führt', 'Rückmeldungen, die das Portal nicht als veröffentlicht führt'),
-  citizensNote: 'Privatpersonen werden gezählt, nie genannt.',
-  unnamedReason:
-    'Ohne Namen zählt der Monitor Organisationen, hinter deren Namen eine einzelne Person stehen kann: Kleinstunternehmen und -organisationen ohne Nummer im Transparenzregister und Organisationen, deren Name den Namen der meldenden Person enthält. Ebenso gezählt wird, wo statt eines Namens eine Nummer, eine Adresse oder eine längere Beschreibung steht.',
+  other: (n: number) => countLabelDe(n, 'sonstige Rückmeldung', 'sonstige Rückmeldungen'),
+  unpublished: (n: number) => countLabelDe(n, 'nicht veröffentlichte Rückmeldung', 'nicht veröffentlichte Rückmeldungen'),
 } as const
 
-/** The fold's fixed words, for the component's states. */
+/** The block's fixed words, for the components' states. */
 export const EU_FEEDBACK_DE = DE
 
-/** One fold under a section's frame: the window it reads, and its heading. */
-export interface EuFeedbackFoldView {
+/** One block under a section's frame: the window it reads, and its heading. */
+export interface EuFeedbackBlockView {
   key: string
   heading: string
   initiative: number
@@ -113,12 +148,12 @@ export interface EuFeedbackFoldView {
 }
 
 /**
- * The folds of a section, one per fact that carries a window
- * (`EuSectionFact.feedback`), in the frame's order. One fold is „Wer
+ * The blocks of a section, one per fact that carries a window
+ * (`EuSectionFact.feedback`), in the frame's order. One block is „Wer
  * Rückmeldung gegeben hat"; where a section has several (a Sondierung and a
  * public consultation), each heading names its fact.
  */
-export function feedbackFoldsOf(facts: readonly EuSectionFact[]): EuFeedbackFoldView[] {
+export function feedbackBlocksOf(facts: readonly EuSectionFact[]): EuFeedbackBlockView[] {
   const withWindow = facts.filter((f): f is EuSectionFact & { feedback: NonNullable<EuSectionFact['feedback']> } => !!f.feedback)
   return withWindow.map((f) => ({
     key: `rueckmeldungen-${f.feedback.initiative}-${f.feedback.publication}`,
@@ -137,28 +172,51 @@ export interface EuFeedbackCountry {
 /** The configured member state — today's default of every page (`shared/utils/eu.ts`). */
 export const EU_FEEDBACK_COUNTRY: EuFeedbackCountry = { code: EU_MEMBER_STATE, name: EU_MEMBER_STATE_NAME_DE }
 
-/** A tab of the list: every kind, or one. */
-export type EuFeedbackKindTab = 'alle' | EuFeedbackOrganisationType
+/** A tab of the list: every kind, one kind, or the citizens. */
+export type EuFeedbackKindTab = 'alle' | 'buerger' | EuFeedbackOrganisationType
 
-/** The two orders: by day (the portal's, newest first) and by name. Never by a count. */
-export type EuFeedbackSort = 'date' | 'name'
+/**
+ * The three orders: by day (the portal's, newest first), by name, by Land.
+ * Never by a count of organisations; in the citizens' tab, whose rows are
+ * countries, „date" orders by how many (`citizenRowsOf`).
+ */
+export type EuFeedbackSort = 'date' | 'name' | 'country'
 
 /** One row of the list: one contribution. */
 export interface EuFeedbackRow {
   key: string
-  /** Its place in the portal's order (newest first): the last tie-break of both orders. */
+  /** Its place in the portal's order (newest first): the last tie-break of every order. */
   index: number
   name: string
   type: EuFeedbackOrganisationType
   /** The kind in a row, singular. */
   kind: string
   date: string | null
-  /** ISO alpha-3 as the portal gives it; shown as the code — the monitor keeps no table of country names. */
+  /** ISO alpha-3 as the portal gives it: what the chip compares. */
   country: string | null
+  /** The country's name in German (`countryNameOf`): what the row shows and the order by Land compares. */
+  countryName: string | null
   /** The contribution on the portal; null where the row carries no valid number. */
   url: string | null
   /** The link's accessible name. */
   linkLabel: string
+}
+
+/** A closing row: one figure counted without a name. No link, no day, no country. */
+export interface EuFeedbackClosingRow {
+  key: string
+  /** The kind it belongs to, or „citizens", „other", „unpublished" — which appear in „Alle" only. */
+  of: EuFeedbackOrganisationType | 'citizens' | 'other' | 'unpublished'
+  label: string
+}
+
+/** A row of the citizens' tab: one country and how many from it. */
+export interface EuFeedbackCitizenRow {
+  key: string
+  /** ISO alpha-3; null for the citizens without a valid country. */
+  code: string | null
+  name: string
+  count: number
 }
 
 export interface EuFeedbackTab {
@@ -171,30 +229,30 @@ export interface EuFeedbackTab {
 export interface EuFeedbackView {
   /** The portal's statement that nobody answered; null where someone did. */
   empty: string | null
-  /** Rows were read, but none names an organisation; null otherwise. */
-  noneNamed: string | null
   /** Where fewer rows were read than the portal counts: how many of how many, as a gap sentence; null otherwise. */
   cap: string | null
   /** The contributions, in the portal's order. */
   rows: EuFeedbackRow[]
+  /** Every figure counted without a name, as closing rows, in the order „Alle" shows them. */
+  closing: EuFeedbackClosingRow[]
+  /** The citizens per country, by count (the tab's default order). */
+  citizens: EuFeedbackCitizenRow[]
   /**
-   * The kinds that have a named row, in the fixed order, with how many; „Alle" first
-   * where there are two or more — with one, „Alle" would be that tab
-   * under a second name, and the one tab is the list's label and count.
+   * The kinds with any row read (named or not), in the fixed order, counting
+   * both; then the citizens. „Alle" first, counting every row read, where
+   * there are two tabs or more, or where a closing row stands in „Alle"
+   * only („Sonstige", not published) — with one tab and nothing else,
+   * „Alle" would be that tab under a second name.
    */
   tabs: EuFeedbackTab[]
-  /** The chip „Aus <Land>": only with a country in scope and a named row from it. */
+  /** The chip „Aus <Land>": only with a country in scope and a row (named, or a citizen) from it. */
   country: { code: string; label: string; unavailable: string } | null
-  /** The figures under the list: citizens, Sonstige, each kind's rows without a name, the rows not published. */
-  counted: string[]
-  /** Why organisations are counted without a name — only where one is. */
-  unnamedReason: string | null
-  /** That persons are counted and never named — only where one is. */
-  citizensNote: string | null
+  /** The line under the list. */
+  note: string
 }
 
 /**
- * The reading as the fold's list and words. `country`: the country the
+ * The reading as the block's list and words. `country`: the country the
  * page serves, or null on a page that serves none.
  */
 export function euFeedbackView(r: EuFeedbackReading, country: EuFeedbackCountry | null = EU_FEEDBACK_COUNTRY): EuFeedbackView {
@@ -206,34 +264,55 @@ export function euFeedbackView(r: EuFeedbackReading, country: EuFeedbackCountry 
     kind: DE.kind[c.type],
     date: c.date,
     country: c.country,
+    countryName: c.country ? countryNameOf(c.country) : null,
     url: c.url,
     linkLabel: DE.link(c.name),
   }))
-  const kindTabs: EuFeedbackTab[] = r.kinds
-    .map((k) => ({ value: k.type, label: DE.type[k.type], count: k.count - k.unnamed }))
-    .filter((t) => t.count > 0)
-  const tabs = kindTabs.length > 1 ? [{ value: 'alle' as const, label: DE.all, count: rows.length, selectLabel: DE.allSelect }, ...kindTabs] : kindTabs
-  const fromCountry = country !== null && rows.some((row) => row.country === country.code)
 
-  const counted: string[] = []
-  if (r.citizens.count > 0) {
-    counted.push(country ? `${DE.citizens(r.citizens.count)}, ${DE.citizensFrom(country.name, r.citizens.byCountry[country.code] ?? 0)}` : DE.citizens(r.citizens.count))
+  const closing: EuFeedbackClosingRow[] = []
+  for (const k of r.kinds) {
+    if (k.unnamed <= 0) continue
+    const named = k.count - k.unnamed
+    const noun = countLabelDe(k.unnamed, DE.kind[k.type], DE.type[k.type])
+    // „13 weitere …" after named rows of the kind; without one, „weitere" would point at nothing.
+    const label = named > 0
+      ? `${formatNumberDe(k.unnamed)} ${k.unnamed === 1 ? DE.furtherOne[k.type] : 'weitere'} ${k.unnamed === 1 ? DE.kind[k.type] : DE.type[k.type]}`
+      : noun
+    closing.push({ key: `u-${k.type}`, of: k.type, label: `${label}${DE.unnamed}` })
   }
-  if (r.other > 0) counted.push(DE.other(r.other))
-  for (const k of r.kinds) if (k.unnamed > 0) counted.push(countLabelDe(k.unnamed, DE.kind[k.type], DE.type[k.type]))
-  if (r.unpublished > 0) counted.push(DE.unpublished(r.unpublished))
+  if (r.citizens.count > 0) closing.push({ key: 'u-citizens', of: 'citizens', label: `${DE.citizens(r.citizens.count)}${DE.unnamed}` })
+  if (r.other > 0) closing.push({ key: 'u-other', of: 'other', label: `${DE.other(r.other)}${DE.unnamed}` })
+  if (r.unpublished > 0) closing.push({ key: 'u-unpublished', of: 'unpublished', label: `${DE.unpublished(r.unpublished)}${DE.unnamed}` })
 
-  const empty = r.read === 0 && r.total === 0
+  const withCountry = Object.entries(r.citizens.byCountry).filter(([, n]) => n > 0)
+  const withoutCountry = r.citizens.count - withCountry.reduce((sum, [, n]) => sum + n, 0)
+  const citizens = citizenRowsOf(
+    [
+      ...withCountry.map(([code, count]) => ({ key: `c-${code}`, code, name: countryNameOf(code), count })),
+      ...(withoutCountry > 0 ? [{ key: 'c-none', code: null, name: DE.citizensNoCountry, count: withoutCountry }] : []),
+    ],
+    { country: null, sort: 'date', reversed: false },
+  )
+
+  const otherTabs: EuFeedbackTab[] = [
+    ...r.kinds.filter((k) => k.count > 0).map((k) => ({ value: k.type, label: DE.type[k.type], count: k.count })),
+    ...(r.citizens.count > 0 ? [{ value: 'buerger' as const, label: DE.citizensTab, count: r.citizens.count }] : []),
+  ]
+  const allOnly = r.other > 0 || r.unpublished > 0
+  const tabs = otherTabs.length > 1 || allOnly
+    ? [{ value: 'alle' as const, label: DE.all, count: r.read, selectLabel: DE.allSelect }, ...otherTabs]
+    : otherTabs
+
+  const fromCountry = country !== null && (rows.some((row) => row.country === country.code) || (r.citizens.byCountry[country.code] ?? 0) > 0)
   return {
-    empty: empty ? DE.empty : null,
-    noneNamed: !empty && rows.length === 0 ? DE.noneNamed : null,
+    empty: r.read === 0 && r.total === 0 ? DE.empty : null,
     cap: r.read < r.total ? DE.cap(r.read, r.total) : null,
     rows,
+    closing,
+    citizens,
     tabs,
     country: fromCountry ? { code: country.code, label: DE.fromCountry(country.name), unavailable: DE.fromCountryNone(country.name) } : null,
-    counted,
-    unnamedReason: r.kinds.some((k) => k.unnamed > 0) ? DE.unnamedReason : null,
-    citizensNote: r.citizens.count > 0 ? DE.citizensNote : null,
+    note: DE.countedNote,
   }
 }
 
@@ -249,11 +328,19 @@ export interface EuFeedbackSelection {
 
 const collator = new Intl.Collator('de', { sensitivity: 'base', numeric: true })
 
+/** Newest first, a row without a day after every row with one; ties in the portal's order. */
+function byDay(a: EuFeedbackRow, b: EuFeedbackRow): number {
+  if (!a.date !== !b.date) return a.date ? -1 : 1
+  return (b.date ?? '').localeCompare(a.date ?? '') || a.index - b.index
+}
+
 /**
- * Two orders. By day: newest first, the portal's own order, a row without
+ * Three orders. By day: newest first, the portal's own order, a row without
  * a day last either way (it has no place in a chronology), ties in the
- * portal's order. By name: German collation, A to Z, ties newest first.
- * Turned round, only the chosen key turns.
+ * portal's order. By name: German collation, A to Z, ties newest first. By
+ * Land: the German name of the country, A to Z, a row without a country
+ * last either way, ties newest first. Turned round, only the chosen key
+ * turns.
  */
 export function compareFeedbackRows(a: EuFeedbackRow, b: EuFeedbackRow, sort: EuFeedbackSort, reversed = false): number {
   const sign = reversed ? -1 : 1
@@ -261,15 +348,16 @@ export function compareFeedbackRows(a: EuFeedbackRow, b: EuFeedbackRow, sort: Eu
     if (!a.date !== !b.date) return a.date ? -1 : 1
     return sign * (b.date ?? '').localeCompare(a.date ?? '') || sign * (a.index - b.index)
   }
-  const byName = sign * collator.compare(a.name, b.name)
-  if (byName) return byName
-  if (!a.date !== !b.date) return a.date ? -1 : 1
-  return (b.date ?? '').localeCompare(a.date ?? '') || a.index - b.index
+  if (sort === 'country') {
+    if (!a.countryName !== !b.countryName) return a.countryName ? -1 : 1
+    return sign * collator.compare(a.countryName ?? '', b.countryName ?? '') || byDay(a, b)
+  }
+  return sign * collator.compare(a.name, b.name) || byDay(a, b)
 }
 
-/** The rows of one kind (or all), before the chip and the search: what the chip's count counts. */
+/** The rows of one kind (or all), before the chip and the search: what the chip's count counts. None under the citizens' tab. */
 export const rowsOfKind = (rows: readonly EuFeedbackRow[], kind: EuFeedbackKindTab): EuFeedbackRow[] =>
-  kind === 'alle' ? [...rows] : rows.filter((r) => r.type === kind)
+  kind === 'alle' ? [...rows] : kind === 'buerger' ? [] : rows.filter((r) => r.type === kind)
 
 /** The rows the list shows: kind AND country AND query, in the chosen order. The search reads the name alone, folded as the Stellungnahmen panel folds it (`matchesQuery`). */
 export function feedbackRowsOf(rows: readonly EuFeedbackRow[], sel: EuFeedbackSelection): EuFeedbackRow[] {
@@ -279,7 +367,42 @@ export function feedbackRowsOf(rows: readonly EuFeedbackRow[], sel: EuFeedbackSe
     .sort((a, b) => compareFeedbackRows(a, b, sel.sort, sel.reversed))
 }
 
-/** The list's set line: what it is, and under a filter or a search how much of it is shown. */
+/**
+ * The closing rows under a tab: in „Alle" every figure, in a kind's tab its
+ * own, in the citizens' tab none (its rows are counts already). None under
+ * the chip or a search, which cannot match a row without a name or a
+ * country. Their order is fixed, whatever the order of the named rows.
+ */
+export function closingRowsOf(closing: readonly EuFeedbackClosingRow[], sel: Pick<EuFeedbackSelection, 'kind' | 'country' | 'query'>, searchActive: boolean): EuFeedbackClosingRow[] {
+  if (sel.country !== null || searchActive || sel.kind === 'buerger') return []
+  return sel.kind === 'alle' ? [...closing] : closing.filter((c) => c.of === sel.kind)
+}
+
+/**
+ * The citizens' rows: under the chip only its country. By count („date",
+ * the tab's default: most first, turned round fewest first), ties by name;
+ * by name or Land: the German name, A to Z. The row without a country
+ * stands last in every order — it is no country to rank or to alphabetise.
+ */
+export function citizenRowsOf(rows: readonly EuFeedbackCitizenRow[], sel: Pick<EuFeedbackSelection, 'country' | 'sort' | 'reversed'>): EuFeedbackCitizenRow[] {
+  const sign = sel.reversed ? -1 : 1
+  return rows
+    .filter((r) => sel.country === null || r.code === sel.country)
+    .sort((a, b) => {
+      if (!a.code !== !b.code) return a.code ? -1 : 1
+      const byName = collator.compare(a.name, b.name)
+      if (sel.sort === 'date') return sign * (b.count - a.count) || byName
+      return sign * byName
+    })
+}
+
+/** The list's set line: what it is, and under a filter or a search how much of it is shown. With no named row at all, it says so. */
 export function feedbackSetLine(shown: number, total: number, narrowed: boolean): string {
+  if (total === 0) return DE.noneNamed
   return narrowed ? DE.setOf(shown, total) : DE.set(total)
+}
+
+/** The citizens' tab's set line: how many, and under the chip how many of them. */
+export function citizensSetLine(shown: number, total: number, narrowed: boolean): string {
+  return narrowed ? DE.citizensSetOf(shown, total) : DE.citizensSet(total)
 }

@@ -657,8 +657,8 @@ export interface EuFeedbackReading {
 
 /**
  * GET /api/eu-recht/rueckmeldungen/:initiative/:publication — who gave
- * feedback in one window, read when a reader opens the fold. A publication
- * that is not one of the initiative's windows is a 404, not a state.
+ * feedback in one window, read when its block nears the reader's viewport.
+ * A publication that is not one of the initiative's windows is a 404, not a state.
  */
 export type EuRueckmeldungenResponse =
   | { state: 'gelesen'; reading: EuFeedbackReading }
