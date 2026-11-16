@@ -208,9 +208,16 @@ describe('the matrices with rails of their own (16.11.2026)', () => {
     expect(vb.stationLabels?.eingebracht).toBe('Eingelangt')
     // Its way to a law is the national row, linked, not repeated.
     expect(vb.noteLink?.href).toBe(`${wegHref('volksbegehren')}#weg-volksbegehren`)
+    // The Petition an den Bundesrat (§ 25 GO-BR): its rail's own names for two columns, the plenary only after a report.
+    const br = rowOf(ANLIEGEN_MATRIX, 'anliegen-petition-bundesrat')
+    expect(br.cells).toEqual({ eingebracht: 'durch', 'erste-lesung': 'entfaellt', ausschuss: 'stellungnahme', erledigung: 'durch', nationalrat: 'offen' })
+    expect(br.stationLabels).toEqual({ erledigung: 'Erledigung', nationalrat: 'Bundesrat' })
+    expect(wegCellLabel(br, 'stellungnahme')).toBe('Unterstützung und Stellungnahme möglich')
+    expect(br.source?.href).toMatch(/^https:\/\/www\.parlament\.gv\.at\//)
+    expect(ANLIEGEN_MATRIX.groups[0]!.label).toBe('Anliegen an das Parlament')
   })
 
-  it('Petition, Bürgerinitiative and Volksbegehren link to their kind on /anliegen', () => {
+  it('Petition, Bürgerinitiative, Volksbegehren and Petition an den Bundesrat link to their kind on /anliegen', () => {
     for (const r of rowsOf(ANLIEGEN_MATRIX)) {
       expect(isAnliegenLink(r.href), r.id).toBe(true)
       expect(Object.keys(queryOf(r.href!)), r.id).toEqual(['art'])

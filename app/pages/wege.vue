@@ -7,7 +7,7 @@
  * SEVERAL MATRICES, ONE CARD (16.11.2026). Each object walks the stations of
  * its own rail, so each has a matrix of its own (`WEG_MATRICES`, drawn by
  * `WegMatrix`): the national norm (Bund and Länder, five stations), an EU
- * act, a European Citizens' Initiative, an Anliegen an den Nationalrat. They
+ * act, a European Citizens' Initiative, an Anliegen an das Parlament. They
  * stand in the lists' white card (`ListBox`): a tool the reader operates,
  * with the one legend in its head, above the first matrix, and each group
  * as a bar inside it — the matrices' groups and the list „Nicht im Monitor"

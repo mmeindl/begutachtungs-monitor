@@ -292,12 +292,15 @@ export const WEGE: readonly Weg[] = [
    * (`/entwuerfe/<gp>/bundesratsantrag/<nr>`), and a law from one is
    * classed like an Antrag (`skippedLaws.ts`). No link (decision 3 of
    * 14.11.2026): no list option of its own — its rows stand under „Alle
-   * ohne Entwurf", too few for an option. */
+   * ohne Entwurf", too few for an option. Not a link to that list either
+   * (15.11.2026): a name's link leads to its own kind, and the running
+   * period holds none. The note says it is followed, so the missing link
+   * does not read as „nicht im Monitor". */
   {
     id: 'bundesrat-antrag',
     level: 'bund',
     label: 'Gesetzesantrag des Bundesrates',
-    note: 'Antrag eines Drittels: Stellungnahme offen',
+    note: 'im Monitor, ohne eigene Liste; Antrag eines Drittels: Stellungnahme offen',
     noteLink: null,
     notFollowed: null,
     cells: row(['entfaellt', 'entfaellt', 'entfaellt', 'stellungnahme', 'offen']),
@@ -566,8 +569,8 @@ export const WEG_LEGEND: readonly { cell: WegCell; label: string }[] = [
 /**
  * A matrix of `/wege` (16.11.2026): the stations of one rail as columns,
  * its kinds of path as rows in groups. The national matrix (`WEGE`) is the
- * first; an EU act, a European Citizens' Initiative and an Anliegen an den
- * Nationalrat each have their own, because each walks the rail of its own
+ * first; an EU act, a European Citizens' Initiative and an Anliegen an das
+ * Parlament each have their own, because each walks the rail of its own
  * page and none of them is a sixth station of the national one
  * (docs/decisions.md, „The five stations stay five"). One page template
  * draws them all (`WegMatrix`).
@@ -650,7 +653,9 @@ export function wegStationLabel(row: Pick<WegMatrixRow, 'stationLabels'>, statio
 }
 
 /* Parliament's page „Petitionen unterstützen" (memo, „Quellen"): it covers
- * Petitionen and Bürgerinitiativen alike. */
+ * Petitionen and Bürgerinitiativen alike, in the Nationalrat and the
+ * Bundesrat („Sie können eine Petition im Nationalrat oder Bundesrat
+ * unterstützen", read 15.11.2026). */
 const PARLAMENT_PETITIONEN = 'https://www.parlament.gv.at/beteiligen/unterstuetzen/petitionen'
 const PARLAMENT_SOURCE = { label: 'parlament.gv.at', href: PARLAMENT_PETITIONEN }
 
@@ -848,8 +853,8 @@ export const ECI_MATRIX: WegMatrix = {
 }
 
 /**
- * D. An Anliegen an den Nationalrat. The columns are the rail of its page
- * (`petitionSteps`, `volksbegehrenSteps`, `app/utils/anliegenView.ts`):
+ * D. An Anliegen an das Parlament. The columns are the rail of its page
+ * (`petitionSteps`, `volksbegehrenSteps`, `bundesratSteps` in `anliegenView.ts`):
  * Eingebracht (a Volksbegehren „Eingelangt") · Erste Lesung · Ausschuss ·
  * Erledigung im Ausschuss · Nationalrat. The subject committee a Petition or
  * Bürgerinitiative may be forwarded to („Fachausschuss") is no column: the
@@ -872,19 +877,20 @@ const ANLIEGEN_STATIONS: WegMatrixStation[] = [
 ]
 
 /** The station names the rail's code writes, for the test that holds the two together. */
-export const ANLIEGEN_STATION_NAMES = ['Eingebracht', 'Eingelangt', 'Erste Lesung', 'Ausschuss', 'Erledigung im Ausschuss', 'Nationalrat'] as const
+export const ANLIEGEN_STATION_NAMES = ['Eingebracht', 'Eingelangt', 'Erste Lesung', 'Ausschuss', 'Erledigung im Ausschuss', 'Erledigung', 'Nationalrat', 'Bundesrat'] as const
 
 const anliegenCells = (eingebracht: WegCell, ersteLesung: WegCell, ausschuss: WegCell, erledigung: WegCell, nationalrat: WegCell): Record<string, WegCell> =>
   ({ eingebracht, 'erste-lesung': ersteLesung, ausschuss, erledigung, nationalrat })
 
 export const ANLIEGEN_MATRIX: WegMatrix = {
   id: 'anliegen',
-  caption: 'Wege eines Anliegens an den Nationalrat, nach Station',
+  caption: 'Wege eines Anliegens an das Parlament, nach Station',
   pathColumn: 'Weg',
   stations: ANLIEGEN_STATIONS,
   groups: [{
     key: 'anliegen',
-    label: 'Anliegen an den Nationalrat',
+    // „an das Parlament" since 16.11.2026: the Petition an den Bundesrat is a row.
+    label: 'Anliegen an das Parlament',
     // No note (16.11.2026): a bar carries its name only. The Fachausschuss is a fact of the one Anliegen that was forwarded, shown on its own page.
     note: null,
     rows: [
@@ -950,6 +956,32 @@ export const ANLIEGEN_MATRIX: WegMatrix = {
         href: anliegenListHref('volksbegehren'),
         takePart: 'Stellungnahme möglich',
         stationLabels: { eingebracht: 'Eingelangt' },
+      },
+      /* § 25 GO-BR: handed in by a member of the Bundesrat (Abs. 1),
+       * assigned to its committee (Abs. 2). Its rail (`bundesratSteps`):
+       * Eingebracht · the committee · Erledigung · Bundesrat.
+       *  - Erste Lesung: none.
+       *  - Ausschuss: blue — online support on Parliament's page („im
+       *    Nationalrat oder Bundesrat") and Stellungnahmen during the
+       *    treatment (`anliegenParticipation`, `WINDOW_NOTE_BR`).
+       *  - Erledigung: passed — the committee's report, or, without one
+       *    within six months, the forwarding to the responsible member of
+       *    the Bundesregierung (Abs. 3): 31 of 42 ended so, 10 with a
+       *    report, 1 „gilt als zurückgezogen". Its rail says „Erledigung",
+       *    not „im Ausschuss": the forwarding is the President's act.
+       *  - Bundesrat (the column „Nationalrat"): `offen` — the plenary only
+       *    after a report. */
+      {
+        id: 'anliegen-petition-bundesrat',
+        label: 'Petition an den Bundesrat',
+        note: 'über Mitglieder des Bundesrates einbringen · ohne Bericht binnen sechs Monaten an die Regierung',
+        noteLink: null,
+        source: PARLAMENT_SOURCE,
+        notFollowed: null,
+        cells: anliegenCells('durch', 'entfaellt', 'stellungnahme', 'durch', 'offen'),
+        href: anliegenListHref('petition-bundesrat'),
+        takePart: 'Unterstützung und Stellungnahme möglich',
+        stationLabels: { erledigung: 'Erledigung', nationalrat: 'Bundesrat' },
       },
     ],
   }],
