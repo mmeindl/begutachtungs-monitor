@@ -65,16 +65,23 @@ const selected = computed(() => wegSelected(page.value, route.query.weg))
     <ListBox class="mt-8">
       <!-- The legend in the card's head, above the first column header: it
            scrolls away with the page, the station names stay. Only the
-           marks this page draws (`wegLegend`). -->
+           marks this page draws (`wegLegend`).
+           ONE LINE OVER THE TABLE, ONE ENTRY PER LINE OVER THE RAILS
+           (16.11.2026): the legend switches with the matrices, at the same
+           card width — 48rem here is the card's 50rem less the row's
+           padding. A free flex-wrap broke wherever the text ran out, 2 + 2
+           with the second column at a different x on each line. -->
       <template #header>
-        <ul class="flex flex-wrap gap-x-6 gap-y-2 text-sm text-ink-secondary">
-          <li v-for="item in legend" :key="item.cell" class="inline-flex items-center gap-2">
-            <span class="inline-flex w-4 justify-center" aria-hidden="true">
-              <span :class="WEG_MARK_CLASS[item.cell]">{{ WEG_MARK_GLYPH[item.cell] }}</span>
-            </span>
-            {{ item.label }}
-          </li>
-        </ul>
+        <div class="@container">
+          <ul class="flex flex-col gap-y-2 text-sm text-ink-secondary @[48rem]:flex-row @[48rem]:flex-wrap @[48rem]:gap-x-6">
+            <li v-for="item in legend" :key="item.cell" class="inline-flex items-center gap-2">
+              <span class="inline-flex w-4 justify-center" aria-hidden="true">
+                <span :class="WEG_MARK_CLASS[item.cell]">{{ WEG_MARK_GLYPH[item.cell] }}</span>
+              </span>
+              {{ item.label }}
+            </li>
+          </ul>
+        </div>
       </template>
 
       <template v-for="(block, i) in page.blocks" :key="block.kind === 'matrix' ? block.matrix.id : block.seam.id">
