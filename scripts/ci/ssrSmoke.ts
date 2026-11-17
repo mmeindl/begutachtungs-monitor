@@ -125,9 +125,10 @@ const ROUTES: Route[] = [
   // Liste, und die, die ohne Stationskarte anders rendert.
   { path: '/entwuerfe?gp=XXVII&status=all&station=bgbl', marker: '<title>Entwürfe · Begutachtungs-Monitor</title>' },
   { path: '/ueber', marker: '<title>Über das Projekt · Begutachtungs-Monitor</title>' },
-  { path: '/impressum', marker: '<title>Impressum &amp; Offenlegung · Begutachtungs-Monitor</title>' },
+  { path: '/impressum', marker: '<title>Impressum · Begutachtungs-Monitor</title>' },
   { path: '/datenschutz', marker: '<title>Datenschutz · Begutachtungs-Monitor</title>' },
-  { path: '/so-funktionierts', marker: '<title>So funktioniert&#x27;s · Begutachtungs-Monitor</title>' },
+  { path: '/quellen', marker: '<title>Quellen &amp; Lizenzen · Begutachtungs-Monitor</title>' },
+  { path: '/wege', marker: '<title>Wege der Gesetzgebung in Österreich · Begutachtungs-Monitor</title>' },
   { path: '/feed.xml', marker: '<rss' },
   { path: '/kalender.ics', marker: 'BEGIN:VCALENDAR' },
   { path: '/sitemap.xml', marker: '<urlset' },
