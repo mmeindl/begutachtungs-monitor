@@ -43,6 +43,8 @@ describe('klassifiziere', () => {
     expect(k('/eu-recht/wege')).toEqual({ klasse: 'eu-wege' })
     expect(k('/datenlage')).toEqual({ klasse: 'datenlage' })
     expect(k('/quellen')).toEqual({ klasse: 'quellen' })
+    // The path alone: the search term never reaches the count.
+    expect(k('/suche')).toEqual({ klasse: 'suche' })
     expect(k('/ueber')).toEqual({ klasse: 'ueber' })
     expect(k('/impressum')).toEqual({ klasse: 'impressum' })
     expect(k('/datenschutz')).toEqual({ klasse: 'datenschutz' })

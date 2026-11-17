@@ -36,7 +36,8 @@
  * query it stands uncut, the rule of every list (whoever searches gets the
  * whole result). Tabs, order and search are
  * not in the address: the page has one list, and the chips' `?quellen=` is
- * the choice the site shares.
+ * the choice the site shares. A link's `?q=` (the site search, 17.11.2026)
+ * seeds every field on the page once, on arrival (`useArrivalQuery`).
  *
  * The source chips select rows and change nothing in a row: an act stays
  * where the Bund (ticked) has an implementing draft or any ticked Land does.
@@ -72,7 +73,7 @@ import { matchesQuery } from '#shared/utils/textMatch'
 import { countLabelDe, todayIso } from '#shared/utils/format'
 import { listBoxStatusOf } from '~/utils/listState'
 import { WEGE_PAGES } from '~/utils/wege'
-import { EU_OVERVIEW_LIST_INITIAL, EU_OVERVIEW_LIST_STEP, EU_ACTS_COLUMN_DE, EU_ACTS_SORT_DE, deadlineDirection, deadlineOrderDe, euActOwnDirection, deadlineReverseOrderDe, deadlineTabOf, euActHaystack, euActsRows, EU_RESTATING_DE, euRestatingRows, euSourceUnavailable, filterEuActs, incompleteNoteDe, type EuActSort, type EuDeadlineTab } from '~/utils/euKarte'
+import { EU_MAP_HEADING_DE, EU_OVERVIEW_LIST_INITIAL, EU_OVERVIEW_LIST_STEP, EU_ACTS_COLUMN_DE, EU_ACTS_SORT_DE, deadlineDirection, deadlineOrderDe, euActOwnDirection, deadlineReverseOrderDe, deadlineTabOf, euActHaystack, euActsRows, EU_RESTATING_DE, euRestatingRows, euSourceUnavailable, filterEuActs, incompleteNoteDe, type EuActSort, type EuDeadlineTab } from '~/utils/euKarte'
 
 usePageSeo({
   title: EU_PAGE_TITLE_DE,
@@ -90,7 +91,6 @@ const { data, status, error, refresh } = useFetch<EuActsResponse>('/api/eu-recht
 
 /* The second list of the page, from the drafts' side; the first is the
  * directives' (`EuUmsetzungList`). */
-const MAP_HEADING = 'Rechtsakte, die Entwürfe dieser Periode umsetzen'
 const MAP_LOADING = 'Rechtsakte werden geladen …'
 /* The frame stands at once (a list shows its frame while loading): loading and failure in the rows' place (`ListBoxState`). */
 const listState = computed(() => listBoxStatusOf({ status: status.value, error: error.value, hasData: !!data.value }, MAP_LOADING))
@@ -105,7 +105,9 @@ const allRows = computed(() => (data.value ? euActsRows(data.value) : []))
 const incomplete = computed(() => (data.value ? incompleteNoteDe(data.value.incomplete) : null))
 
 /* The chips, then the search: both narrow the set the tabs divide. */
-const q = ref('')
+/* Seeded by a link's `?q=` (`useArrivalQuery`), as every list on the page. */
+const seeded = useArrivalQuery()
+const q = ref(seeded)
 const query = computed(() => q.value.trim())
 const narrowed = <A extends EuActSummary>(acts: readonly A[]): A[] =>
   filterEuActs(acts, chosen.value).filter((a) => !query.value || matchesQuery(euActHaystack(a), query.value))
@@ -113,7 +115,18 @@ const actsLeft = computed(() => (data.value ? narrowed(data.value.acts) : []))
 
 /* The tabs, on the main list's acts, and the order; a tab opens in its own order. */
 const today = todayIso()
-const tab = ref<EuDeadlineTab>('laufend')
+/* The tab a seeded search opens on (17.11.2026), as `EuUmsetzungList`:
+ * „Frist läuft", unless only „Abgelaufen" holds a hit; derived, so server
+ * and hydration agree, and the reader's own choice wins. „Ohne Frist" is
+ * never opened this way — its order differs (below) — and a hit only there
+ * is named by the notice (`hitsElsewhere`). */
+const tabChosen = ref<EuDeadlineTab | null>(null)
+const seededTab = computed<EuDeadlineTab>(() => {
+  if (!seeded) return 'laufend'
+  const has = (t: EuDeadlineTab) => actsLeft.value.some((a) => deadlineTabOf(a, today) === t)
+  return !has('laufend') && has('abgelaufen') ? 'abgelaufen' : 'laufend'
+})
+const tab = computed<EuDeadlineTab>({ get: () => tabChosen.value ?? seededTab.value, set: (t) => { tabChosen.value = t } })
 const sortChoice = ref<EuActSort>('frist')
 const reversed = ref(false)
 const { choose: chooseSort, selectValue: sortSelect } = useReversibleSort(sortChoice, reversed)
@@ -159,7 +172,7 @@ const rows = computed(() => euActsRows({ acts: inTab(actsLeft.value) }, sort.val
  * the list had none. `restatingAll` is what the chips leave — it decides
  * whether the section stands, so a search without a match keeps the box and
  * its field. */
-const qRestating = ref('')
+const qRestating = ref(seeded)
 const queryRestating = computed(() => qRestating.value.trim())
 const restatingAll = computed(() => (data.value ? filterEuActs(data.value.restatingOnly, chosen.value) : []))
 const restatingRows = computed(() => euRestatingRows({
@@ -236,7 +249,7 @@ const [bundItem, eurLexItem] = sourceItemsDe([risSource('Vorblatt'), risSource('
          answer. A map not built yet, or without an act, keeps its own
          words below instead of the box. -->
     <section v-if="!data || (data.builtAt && allRows.length)" aria-labelledby="eu-akte-heading" class="page-section">
-      <h2 id="eu-akte-heading" class="section-heading">{{ MAP_HEADING }}</h2>
+      <h2 id="eu-akte-heading" class="section-heading">{{ EU_MAP_HEADING_DE }}</h2>
       <ListBox class="mt-4">
         <!-- Where the deadline stands, as the box's tabs — the most
              prominent control belongs to the question the page is
@@ -375,7 +388,7 @@ const [bundItem, eurLexItem] = sourceItemsDe([risSource('Vorblatt'), risSource('
     <template v-else>
       <!-- Without a list, the caveat stands above the empty state; with
            one, in its head, as on `/entwuerfe`. -->
-      <h2 v-if="!allRows.length" class="section-heading page-section">{{ MAP_HEADING }}</h2>
+      <h2 v-if="!allRows.length" class="section-heading page-section">{{ EU_MAP_HEADING_DE }}</h2>
       <p v-if="incomplete && !allRows.length" class="mt-6 text-sm text-ink-muted">
         {{ incomplete }}
       </p>

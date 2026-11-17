@@ -59,7 +59,8 @@ const tabs = computed(() => EU_FENSTER_TABS.map((value) => ({
     : { disabled: true, reason: loadingNow.value ? DE.loading : GAP_LEAD_DE.unavailable }),
   selectLabel: DE.tabSelect[value],
 })))
-const q = ref('')
+/* Seeded by a link's `?q=` (`useArrivalQuery`). */
+const q = ref(useArrivalQuery())
 const query = computed(() => q.value.trim())
 
 const sort = ref<EuFensterSort>('ende')

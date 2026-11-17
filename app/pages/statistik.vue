@@ -54,6 +54,8 @@ const KLASSE_NAME: Record<string, string> = {
   datenlage: 'Datenlage',
   // A page of its own since 16.11.2026; before, a section of the Impressum.
   quellen: 'Quellen & Lizenzen (seit 16.11.2026)',
+  // Counted since 17.11.2026; before, `/suche` redirected and was not counted.
+  suche: 'Suche (seit 17.11.2026)',
   'so-funktionierts': 'So funktioniert’s (bis 14.11.2026)',
   ueber: 'Über',
   impressum: 'Impressum',

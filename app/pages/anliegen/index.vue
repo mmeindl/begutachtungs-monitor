@@ -11,6 +11,7 @@ import {
   anliegenArtOf,
   anliegenCountLineDe,
   anliegenEmptyDe,
+  anliegenHaystack,
   anliegenPeriodOptions,
   anliegenRowView,
   anliegenRowsInView,
@@ -104,7 +105,7 @@ const filtered = computed(() => filterAnliegenRows(sorted.value, art.value, only
  * offene"; the count line goes on counting that set, and the matches are
  * said beside it. In the URL like the other controls (`?q=`), written with
  * the next control and a moment after typing stops — never per keystroke. */
-const views = computed(() => filtered.value.filter((v) => !searchTerm.value || matchesQuery(`${v.title} ${v.citation ?? ''} ${v.kindLabel ?? ''}`, searchTerm.value)))
+const views = computed(() => filtered.value.filter((v) => !searchTerm.value || matchesQuery(anliegenHaystack(v), searchTerm.value)))
 
 const PAGE_STEP = 10
 const { visible, shown, more, all } = usePagedList(views, PAGE_STEP, [art, onlyOpen, chosenGp, searchTerm])

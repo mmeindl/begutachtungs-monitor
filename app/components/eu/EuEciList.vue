@@ -64,7 +64,8 @@ const sortId = useId()
 /* The search (16.11.2026), as on the windows' list above it: over what a row
  * says of itself (`haystack`: title, reference, topics), narrowing the rows
  * the count line counts. The list had none while the two beside it did. */
-const q = ref('')
+/* Seeded by a link's `?q=` (`useArrivalQuery`). */
+const q = ref(useArrivalQuery())
 const query = computed(() => q.value.trim())
 const rows = computed(() => sortEciRows(
   (view.value?.rows ?? []).filter((r) => !query.value || matchesQuery(r.haystack, query.value)),

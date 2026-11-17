@@ -48,10 +48,24 @@ const loadingNow = computed(() => !!listState.value && 'loading' in listState.va
 /* Read: the directives are in. The chip and the count line wait for them — a count is data. */
 const ready = computed(() => !!view.value?.tabs)
 
-const tab = ref<EuUmsetzungTab>('laufend')
-const TABS = (['laufend', 'abgelaufen'] as const).map((value) => ({ value, label: DE.tab[value] }))
 const withCommission = ref(false)
-const q = ref('')
+/* Seeded by a link's `?q=` (`useArrivalQuery`). */
+const seeded = useArrivalQuery()
+const q = ref(seeded)
+/* The tab a seeded search opens on (17.11.2026): „Frist läuft", unless only
+ * „Abgelaufen" holds a hit — the site search counts both, and a link that
+ * opened on an empty tab would read as „nothing here". Derived from the
+ * answer rather than set by a watcher, so the server's render and the
+ * hydrated page agree; the reader's own choice wins from the first press. */
+const tabChosen = ref<EuUmsetzungTab | null>(null)
+const seededTab = computed<EuUmsetzungTab>(() => {
+  const tabs = view.value?.tabs
+  if (!seeded || !tabs) return 'laufend'
+  const hits = (t: EuUmsetzungTab) => tabs[t].some((r) => !r.commission && matchesQuery(r.haystack, seeded))
+  return !hits('laufend') && hits('abgelaufen') ? 'abgelaufen' : 'laufend'
+})
+const tab = computed<EuUmsetzungTab>({ get: () => tabChosen.value ?? seededTab.value, set: (t) => { tabChosen.value = t } })
+const TABS = (['laufend', 'abgelaufen'] as const).map((value) => ({ value, label: DE.tab[value] }))
 const query = computed(() => q.value.trim())
 
 const sort = ref<EuUmsetzungSort>('frist')

@@ -22,6 +22,7 @@ import { landStationDate, mergeNewestFirst } from '#shared/utils/landRecent'
 import { listDe } from '~/utils/geltendeFassung'
 import { gpWindow } from '#shared/utils/gp'
 import { MAX_LIST_QUERY_CHARS } from '#shared/utils/queryParams'
+import { SEARCH_DE } from '~/utils/siteSearch'
 import { halfState, pendingHalvesLine, type HalfState } from '~/utils/draftFilters'
 import { blockStateLine, settledCount } from '~/utils/lateBlocks'
 import { useLateFetch } from '~/composables/useLateFetch'
@@ -615,15 +616,16 @@ const doorRows = computed(() => DOORS.filter((door) => !door.expanded).map((door
   return { door, status: doorStatus(door, halfState(true, block?.data, block?.error), block?.answer ?? null) }
 }))
 
-/* The way in for whoever arrives with a subject, not a date. A plain GET
- * form onto the list's own `q`, so it works before hydration; with
- * JavaScript the submit becomes a client-side navigation. Bare
- * `/entwuerfe?q=` is the state in which the full text applies
- * (`useFullTextSearch`), so no other filter is set. */
+/* The way in for whoever arrives with a subject, not a date: the site
+ * search (`/suche`, 17.11.2026), which answers per list — the drafts, the
+ * Anliegen, the EU's lists. Until then the field led onto `/entwuerfe?q=`
+ * and reached one list in three. A plain GET form, so it works before
+ * hydration; with JavaScript the submit becomes a client-side navigation.
+ * The site's choice of sources travels along, as on every link here. */
 const searchTerm = ref('')
 function submitSearch() {
   const q = searchTerm.value.trim()
-  return navigateTo(q ? { path: '/entwuerfe', query: { q } } : '/entwuerfe')
+  return navigateTo({ path: '/suche', query: { ...(q ? { q } : {}), ...(sourcesQuery.value ? { quellen: sourcesQuery.value } : {}) } })
 }
 </script>
 
@@ -674,11 +676,11 @@ function submitSearch() {
            cursor out of the word (WCAG 3.2.2). One line in the header, not a
            hero field — the page's questions are „wo kann ich mitreden?" and
            „was wird daraus?". Full
-           width like the list's field it leads into, on the lede's edges. The
-           placeholder cannot count like the list's, the homepage does not
-           know the total. -->
+           width like the search page's field it leads into, on the lede's
+           edges, and in its words (`SEARCH_DE.field`). The placeholder names
+           what is searched and counts nothing: the answers come per list. -->
       <form
-        action="/entwuerfe"
+        action="/suche"
         method="get"
         role="search"
         class="mt-6 flex gap-2"
@@ -690,11 +692,12 @@ function submitSearch() {
           type="search"
           :maxlength="MAX_LIST_QUERY_CHARS"
           icon="i-lucide-search"
-          placeholder="In allen Entwürfen suchen …"
-          aria-label="Entwürfe durchsuchen"
+          :placeholder="`${SEARCH_DE.field} …`"
+          :aria-label="SEARCH_DE.field"
           class="min-w-0 flex-1"
           :ui="{ base: 'min-h-target' }"
         />
+        <input v-if="sourcesQuery" type="hidden" name="quellen" :value="sourcesQuery">
         <UButton type="submit" color="neutral" variant="outline" class="min-h-target">
           Suchen
         </UButton>

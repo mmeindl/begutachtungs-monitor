@@ -152,14 +152,9 @@ export default defineNuxtConfig({
     // suffix.
     '/weitere-entwuerfe': { redirect: { to: '/entwuerfe?art=verordnung', statusCode: 301 } },
     '/weitere-entwuerfe/**': { redirect: { to: '/entwuerfe/**', statusCode: 301 } },
-    // `/suche` was its own page from 19. to 22.09.2026. Now that the field
-    // on `/entwuerfe` gives both answers it
-    // would be a second address for the same question — the very thing
-    // abolished there. The 301 stays anyway: the page stood in the sitemap,
-    // and a link is the one thing this project cannot re-issue. `?q=` travels
-    // along, because Nitro appends the query to the target — whoever opens a
-    // shared link sees hits and not an empty field.
-    '/suche': { redirect: { to: '/entwuerfe', statusCode: 301 } },
+    // `/suche` redirected onto `/entwuerfe` from 22.09. to 17.11.2026 and
+    // is the site search again since (`app/pages/suche.vue`): an old
+    // `/suche?q=` link now lands on every list's answer.
     // `/live` was the address behind one Demokratiewoche event (21.10.2026)
     // and redirected into its video room. The event is over; the listing
     // that links it is not ours to change, so the address lands on the

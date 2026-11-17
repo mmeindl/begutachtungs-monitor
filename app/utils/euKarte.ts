@@ -246,6 +246,9 @@ export function euActsRows(r: Pick<EuActsResponse, 'acts'>, sort: EuActSort = 'f
   return [...r.acts].sort(euActComparator(sort, direction, tieDirection)).map((a) => actsRowOf(a, countsDe(a.counts)))
 }
 
+/** The map's list on `/eu-recht`: the acts the drafts of the period implement. */
+export const EU_MAP_HEADING_DE = 'Rechtsakte, die Entwürfe dieser Periode umsetzen'
+
 /**
  * The section of acts drafts only restate (rule D4), a list of its own
  * under the map (16.11.2026): an amendment repeats the Umsetzungshinweis

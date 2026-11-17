@@ -72,7 +72,16 @@ export function useDraftFilters(sources: {
   /** The Bund is among the reader's sources (`useSourceChoice`). */
   bund: Ref<boolean>
   laender: Ref<LandCode[]>
-}): DraftFilters {
+}, options: {
+  /**
+   * Write the filters back into the address (default). Off where another
+   * page reads the list's state from its own URL without owning it — the
+   * site search (`/suche`, 17.11.2026) takes `?q=` and `?quellen=` and must
+   * not have its address rewritten into the list's.
+   */
+  syncUrl?: boolean
+} = {}): DraftFilters {
+  const syncUrl = options.syncUrl ?? true
   const route = useRoute()
   const router = useRouter()
 
@@ -162,6 +171,7 @@ export function useDraftFilters(sources: {
     return { ...draftUrlQuery({ ...current(), ...patch }), ...(quellen !== undefined ? { [SOURCE_PARAM]: quellen } : {}) }
   }
   function writeUrl(): void {
+    if (!syncUrl) return
     router.replace({ query: urlQueryWith({}) })
   }
   /* The refs, not `query`, which carries the applied `span`: a source

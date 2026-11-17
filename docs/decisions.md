@@ -1700,6 +1700,36 @@ memo `docs/research/wege-ausserhalb-der-stationen.md`.
   12.11.2026): one search, one code path, no refetch per term. The
   endpoints still accept `q` and answer with the rows the page shows for
   it. The row prints every alias the search reads.
+- **The site search (`/suche`, 17.11.2026) answers per list, never pooled.**
+  The homepage's field leads there. Groups: Entwürfe und Gesetze, Anliegen,
+  and each of the EU page's five lists. Each group shows its list's own
+  count and first rows and links into the list with the term set. No
+  ranking across groups, no total. Rule and words: `app/utils/siteSearch.ts`.
+  - **A group's rows come from its list's own code,** so the counts are the
+    list's: the draft list through `useDraftList` (moved out of
+    `/entwuerfe` for this; its filters read `/suche`'s address without
+    writing it, `syncUrl: false`), the Anliegen through
+    `anliegenSearchRows` (open and closed, the link carries `alle=1`), the
+    EU lists through their view functions and `haystack`. A count here that
+    differs from the list behind its link is a defect.
+  - **The full text of the running Begutachtungen stays on `/entwuerfe`:**
+    it costs a request to RIS. The drafts group says the list searches it.
+  - **A list that could not be read or is still loading says so on its own
+    line;** only lists that answered can stand in „Nichts gefunden in: …".
+  - **`/eu-recht?q=` seeds every list's field on arrival** and is not
+    written back (`useArrivalQuery`). A list with deadline tabs opens on
+    „Abgelaufen" when only that tab holds a hit. The tab is derived from
+    the answer, not set by a watcher, so the server render and hydration
+    agree.
+  - **The term is never stored:** the page-view count keeps the path alone
+    (class `suche`). Result pages are `noindex`.
+  - Rejected: a scope dropdown beside the field, because it asks for the
+    site's object types before the reader knows them. A dropdown of grouped
+    rows instead of a page, because without JavaScript, without an address
+    and without room for gap lines the answer gets lost. A later dropdown
+    may show the groups' counts as links, with Enter opening the page.
+    `/suche` redirected onto `/entwuerfe` from 22.09. to 17.11.2026: while
+    the drafts were the only list, two addresses answered one question.
 
 ### The detail pages
 

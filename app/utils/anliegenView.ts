@@ -51,6 +51,7 @@ import {
 import { CLUB_NAMES } from '#shared/utils/clubs'
 import { gpSpanLabelDe } from '#shared/utils/gp'
 import { formatDateDe, formatNumberDe } from '#shared/utils/format'
+import { matchesQuery } from '#shared/utils/textMatch'
 import type { EntryState, EntryView, SecondCount } from './entryView'
 import { STATEMENT_QUOTE_PARLAMENT, STATEMENT_QUOTE_SOURCE } from './statementQuote'
 
@@ -1026,6 +1027,25 @@ export function sortAnliegenRows(rows: readonly AnliegenRow[]): AnliegenRow[] {
 /** The rows of the chosen kind, and only the open ones while the toggle is on. `open === null` is not open. */
 export function filterAnliegenRows(rows: readonly AnliegenRow[], art: AnliegenArt, onlyOpen: boolean): AnliegenRow[] {
   return rows.filter((r) => (art === 'alle' || r.root.kind === art) && (!onlyOpen || r.open === true))
+}
+
+/**
+ * What the search reads of a row (16.11.2026): what the row shows — title,
+ * citation, kind. No name stands in any of them (the reader drops them
+ * before the cache). The list and the site search (`/suche`) read the same.
+ */
+export function anliegenHaystack(v: Pick<EntryView, 'title' | 'citation' | 'kindLabel'>): string {
+  return `${v.title} ${v.citation ?? ''} ${v.kindLabel ?? ''}`
+}
+
+/**
+ * The rows the list shows for `?q=…&alle=1` (17.11.2026, the site search):
+ * every kind, open and closed, in the list's order, narrowed by the term.
+ */
+export function anliegenSearchRows(data: Pick<AnliegenListResponse, 'gp' | 'rows' | 'bundesrat'>, q: string): EntryView[] {
+  return filterAnliegenRows(sortAnliegenRows(anliegenRowsInView(data, 'alle')), 'alle', false)
+    .map(anliegenRowView)
+    .filter((v) => !q || matchesQuery(anliegenHaystack(v), q))
 }
 
 /**
