@@ -14,21 +14,60 @@
  * submit is a client-side navigation. The term lives in the address (`?q=`)
  * — the page can be shared and Back returns to it — and is not indexed:
  * result pages of a search are no content of their own.
+ *
+ * THE ANSWERS FOLLOW THE TYPING (17.11.2026), 400 ms after the last
+ * keystroke, as the Anliegen list's search: they change in place and the
+ * cursor stays in the word, so no change of context (WCAG 3.2.2) — which is
+ * why the homepage's field, whose submit leaves the page, keeps its button.
+ * Every group filters what it already holds, so a term costs no request.
+ * The address is replaced, not pushed: Back leaves the page in one step
+ * instead of walking back through the words typed; Enter still pushes, an
+ * act of its own. Below two characters the page shows the hint: one letter
+ * matches half of every list and says nothing.
  */
 import { SOURCE_PARAM } from '#shared/utils/laender'
 import { MAX_LIST_QUERY_CHARS, firstQueryValue } from '#shared/utils/queryParams'
-import { SEARCH_DE } from '~/utils/siteSearch'
+import { SEARCH_DE, SEARCH_MIN_LEN, SEARCH_TYPING_MS } from '~/utils/siteSearch'
 
 const route = useRoute()
 
-const query = computed(() => (firstQueryValue(route.query.q) ?? '').slice(0, MAX_LIST_QUERY_CHARS).trim())
+const termOf = (raw: unknown) => (firstQueryValue(raw) ?? '').slice(0, MAX_LIST_QUERY_CHARS).trim()
+const asked = computed(() => termOf(route.query.q))
+/* The term the answers are for: none below the minimum. */
+const query = computed(() => (asked.value.length >= SEARCH_MIN_LEN ? asked.value : ''))
 const quellen = computed(() => firstQueryValue(route.query[SOURCE_PARAM]))
-const term = ref(query.value)
-watch(query, (q) => { term.value = q })
+const term = ref(asked.value)
+
+function addressFor(q: string) {
+  return { path: '/suche', query: { ...(q ? { q } : {}), ...(quellen.value ? { [SOURCE_PARAM]: quellen.value } : {}) } }
+}
+
+/* What this page wrote last: its own replace coming back through the route
+ * must not overwrite a field the reader has typed on in the meantime. Any
+ * other navigation — Back, a link, the header — sets the field. */
+let written: string | null = null
+watch(asked, (q) => {
+  if (q === written) return
+  term.value = q
+})
+
+let timer: ReturnType<typeof setTimeout> | undefined
+watch(term, (value) => {
+  clearTimeout(timer)
+  const q = value.trim()
+  if (q === asked.value) return
+  timer = setTimeout(() => {
+    written = q
+    void navigateTo(addressFor(q), { replace: true })
+  }, SEARCH_TYPING_MS)
+})
+onBeforeUnmount(() => clearTimeout(timer))
 
 function submit() {
+  clearTimeout(timer)
   const q = term.value.trim()
-  return navigateTo({ path: '/suche', query: { ...(q ? { q } : {}), ...(quellen.value ? { [SOURCE_PARAM]: quellen.value } : {}) } })
+  written = q
+  return navigateTo(addressFor(q))
 }
 
 usePageSeo({

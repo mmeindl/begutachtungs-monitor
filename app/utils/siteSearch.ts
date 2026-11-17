@@ -44,6 +44,10 @@ export interface SearchHit {
 
 /** The rows a group shows before its link into the list. */
 export const SEARCH_HITS_SHOWN = 5
+/** Below this many characters the page shows its hint, no answers (`/suche`). */
+export const SEARCH_MIN_LEN = 2
+/** The pause after the last keystroke before the answers follow (`/suche`). */
+export const SEARCH_TYPING_MS = 400
 
 const count = (n: number) => `${formatNumberDe(n)} Treffer`
 
@@ -53,7 +57,7 @@ export const SEARCH_DE = {
   field: 'Entwürfe, Anliegen und EU-Recht durchsuchen',
   submit: 'Suchen',
   /** Before a term: what one can type. */
-  hint: 'Ein Wort genügt: ein Thema, ein Gesetz oder eine Nummer wie „132/ME“.',
+  hint: 'Ein Wort genügt: ein Thema, ein Gesetz oder eine Nummer wie „132/ME“. Die Treffer erscheinen beim Tippen.',
   count,
   noMatch: (q: string) => `Nichts passt zu „${q}“.`,
   /** The link under a group's rows, into the list with the term set. */
