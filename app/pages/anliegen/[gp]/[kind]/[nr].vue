@@ -149,10 +149,10 @@ useSeoMeta({
           <!-- The door only on the item's own open flag; closed, one muted
                line and no blue. -->
           <AnliegenDoor v-if="view.participation.door.open" :door="view.participation.door" />
-          <p v-if="view.participation.closedLine" class="mt-6 max-w-prose text-sm text-ink-muted">
+          <p v-if="view.participation.closedLine" class="mt-6 text-sm text-ink-muted">
             {{ view.participation.closedLine }}
           </p>
-          <GapNote v-if="view.participation.volksbegehrenLine" :text="view.participation.volksbegehrenLine" class="mt-3 max-w-prose text-sm text-ink-muted" />
+          <GapNote v-if="view.participation.volksbegehrenLine" :text="view.participation.volksbegehrenLine" class="mt-3 text-sm text-ink-muted" />
 
           <!-- One section per step, under the rail row's name: the rail is the
                table of contents, the rows here what its summary leaves out. -->
@@ -172,7 +172,7 @@ useSeoMeta({
                   </template>
                 </FactList>
                 <!-- An explanation, not a fact: under the facts, quieter. -->
-                <p v-if="section.note" class="max-w-prose text-sm text-ink-secondary" :class="section.rows.length ? 'mt-3' : ''">{{ section.note }}</p>
+                <p v-if="section.note" class="text-sm text-ink-secondary" :class="section.rows.length ? 'mt-3' : ''">{{ section.note }}</p>
                 <SectionCredits :sources="[]" :marked="false">
                   <span>Quelle: <ExternalLink :href="data.parliamentUrl" class="link-muted">{{ ANLIEGEN_PAGE_DE.source }}</ExternalLink></span>
                 </SectionCredits>
@@ -186,7 +186,7 @@ useSeoMeta({
                 id="dokumente"
                 :heading="ANLIEGEN_PAGE_DE.documentsHeading"
               >
-                <GapNote v-if="view.documentsNote" :text="view.documentsNote" class="max-w-prose text-ink-secondary" />
+                <GapNote v-if="view.documentsNote" :text="view.documentsNote" class="text-ink-secondary" />
                 <DocumentList v-else :documents="data.documents" />
               </PageSubsection>
 
@@ -197,7 +197,7 @@ useSeoMeta({
                 id="stellungnahmen"
                 :heading="view.statementsHeading"
               >
-                <GapNote v-if="statementsError" kind="unavailable" class="max-w-prose text-sm text-ink-secondary">
+                <GapNote v-if="statementsError" kind="unavailable" class="text-sm text-ink-secondary">
                   {{ ANLIEGEN_PAGE_DE.statementsFailed }}
                   <ExternalLink :href="data.parliamentUrl" class="link-muted">{{ ANLIEGEN_PAGE_DE.statementsFailedLink }}</ExternalLink>.
                 </GapNote>
@@ -224,7 +224,7 @@ useSeoMeta({
 
           <section id="nicht-gezeigt" class="page-section scroll-mt-6" aria-labelledby="nicht-gezeigt-heading">
             <h2 id="nicht-gezeigt-heading" class="section-heading">{{ view.notShownHeading }}</h2>
-            <ul role="list" class="mt-4 max-w-prose list-disc space-y-3 pl-5 text-ink-secondary">
+            <ul role="list" class="mt-4 list-disc space-y-3 pl-5 text-ink-secondary">
               <li v-for="(item, i) in view.notShown" :key="i">
                 <template v-if="item.lead"><span class="font-medium text-ink">{{ item.lead }}</span>{{ ' ' }}</template>
                 <AnliegenFactText :fact="item" />

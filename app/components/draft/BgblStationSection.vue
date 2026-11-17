@@ -161,7 +161,7 @@ function bgblCite(number: string | null, risUrl: string | null): string | null {
       <slot />
       <!-- Where it cannot run, the sentence that says why stands in its
            place, under the Kundmachung it would have compared against. -->
-      <GapNote v-if="enactment.bgblNumber && comparisonGap" :text="comparisonGap" class="max-w-prose text-sm text-ink-secondary" />
+      <GapNote v-if="enactment.bgblNumber && comparisonGap" :text="comparisonGap" class="text-sm text-ink-secondary" />
       <LawDiffSection
         v-else-if="enactment.bgblNumber"
         :gp="gp"

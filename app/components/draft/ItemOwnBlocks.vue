@@ -80,7 +80,7 @@ defineProps<{
   <!-- Where Parliament takes no Stellungnahmen on the kind (a treaty's
        Vorlage, `ItemFiling`): one sentence and its source in place of the
        list and the door — a gap is said, never shown as an empty list. -->
-  <p v-if="!item.filing.possible" class="max-w-prose text-sm text-ink-secondary">
+  <p v-if="!item.filing.possible" class="text-sm text-ink-secondary">
     {{ filingClosedDe(item.filing.reason, item.treatyKind) }}
     <ExternalLink :href="item.parliamentUrl" class="link-muted">{{ filingClosedSourceDe(item.citation) }}</ExternalLink>
   </p>

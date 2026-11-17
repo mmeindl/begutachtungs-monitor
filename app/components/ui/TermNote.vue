@@ -68,7 +68,7 @@ const entry = computed(() => (props.term ? TERMS[props.term] : null))
   <div class="order-last mt-1 hidden w-full basis-full pb-2 [[open]+&]:block">
     <div class="border-l-4 border-baseline pl-4">
       <slot name="note">
-        <p v-if="entry" class="max-w-prose hyphens-auto text-sm leading-relaxed text-ink-secondary">{{ entry.definition }}</p>
+        <p v-if="entry" class="hyphens-auto text-sm leading-relaxed text-ink-secondary">{{ entry.definition }}</p>
       </slot>
     </div>
   </div>

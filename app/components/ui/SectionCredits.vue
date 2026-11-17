@@ -132,7 +132,7 @@ const group = useId()
     <TermNote v-if="$slots.method" :name="group">
       Methode
       <template #note>
-        <div class="prose-flow max-w-prose text-base">
+        <div class="prose-flow text-base">
           <slot name="method" />
         </div>
       </template>
@@ -141,7 +141,7 @@ const group = useId()
     <TermNote v-if="claim" :name="group">
       {{ REPORT_LABEL_DE }}
       <template #note>
-        <p class="max-w-prose text-sm leading-relaxed text-ink-secondary">
+        <p class="text-sm leading-relaxed text-ink-secondary">
           {{ REPORT_LEAD_DE }}
           <a :href="reportHref(claim)" class="link-inline">{{ email }}</a>
         </p>

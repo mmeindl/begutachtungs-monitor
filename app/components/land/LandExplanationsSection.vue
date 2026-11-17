@@ -58,7 +58,7 @@ const foldedParagraphs = computed(() => fold.value.folded.filter((i) => i.kind =
       </p>
       <template v-for="(item, i) in fold.visible" :key="i">
         <h4 v-if="item.kind === 'heading'" class="mt-5 text-sm font-semibold text-ink first:mt-0">{{ item.text }}</h4>
-        <p v-else class="mt-3 max-w-prose leading-relaxed text-ink-secondary first:mt-0">{{ item.text }}</p>
+        <p v-else class="mt-3 leading-relaxed text-ink-secondary first:mt-0">{{ item.text }}</p>
       </template>
       <Disclosure v-if="fold.folded.length" size="sm" tone="ink" class="mt-3">
         <template #summary>
@@ -68,7 +68,7 @@ const foldedParagraphs = computed(() => fold.value.folded.filter((i) => i.kind =
         <div class="pb-2">
           <template v-for="(item, i) in fold.folded" :key="i">
             <h4 v-if="item.kind === 'heading'" class="mt-5 text-sm font-semibold text-ink">{{ item.text }}</h4>
-            <p v-else class="mt-3 max-w-prose leading-relaxed text-ink-secondary">{{ item.text }}</p>
+            <p v-else class="mt-3 leading-relaxed text-ink-secondary">{{ item.text }}</p>
           </template>
         </div>
       </Disclosure>

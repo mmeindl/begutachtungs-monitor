@@ -1806,6 +1806,13 @@ the reasoning in full stands in that component's header comment.
   in a group's header button define nothing. Definitions live in
   `app/utils/terms.ts`, method texts as components in
   `app/components/method/` — copy out of logic, one place per language.
+- **Text runs the full width of its column** (maintainer, 17.11.2026). The
+  page column (`max-w-2xl` … `max-w-5xl` on the page's root) is the only
+  measure; no paragraph, help text, gap sentence, list or method text inside
+  it gets a width of its own (`max-w-prose`, `max-w-md`, `…ch`). A text
+  narrower than the boxes and rules around it leaves a ragged empty band on
+  the right and reads as a layout fault. Boxes that are not text (a card on
+  the error page, a control in a toolbar) may be capped.
 - **A list shows its frame while loading; the loading line and the gap
   sentence stand where the rows will be** (maintainer, 16.11.2026,
   `ListBoxState`, `listBoxStatusOf`, `EntryList`'s `state`). A section that

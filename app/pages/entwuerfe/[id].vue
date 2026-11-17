@@ -382,7 +382,7 @@ const doorHref = computed(() => {
                nothing under it (`ProcedureCard`), so the hint opens the
                section on the draft it describes. The dates it stood with
                are the Frist fact in „Die Begutachtung". -->
-            <p v-if="RIS_KIND_HINT[data.kind]" class="max-w-prose text-sm text-ink-secondary">
+            <p v-if="RIS_KIND_HINT[data.kind]" class="text-sm text-ink-secondary">
               {{ RIS_KIND_HINT[data.kind] }}
             </p>
 
@@ -509,7 +509,7 @@ const doorHref = computed(() => {
                 <TermNote v-else>
                   warum?
                   <template #note>
-                    <p class="max-w-prose hyphens-auto text-sm leading-relaxed text-ink-secondary">
+                    <p class="hyphens-auto text-sm leading-relaxed text-ink-secondary">
                       Eine Stellungnahme geht hier direkt an das Ministerium, und
                       eine öffentliche Liste der Einreichungen gibt es nicht.
                     </p>

@@ -194,7 +194,7 @@ const consultationSentence = computed<string | null>(() => {
       <TermNote>
         Was mit ihnen geschieht
         <template #note>
-          <p class="max-w-prose hyphens-auto text-sm leading-relaxed text-ink-secondary">{{ routeNote }}</p>
+          <p class="hyphens-auto text-sm leading-relaxed text-ink-secondary">{{ routeNote }}</p>
         </template>
       </TermNote>
     </div>

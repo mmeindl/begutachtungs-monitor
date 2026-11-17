@@ -141,7 +141,7 @@ const loadAnnouncement = computed(() => {
           <h4 v-if="item.kind === 'heading'" class="mt-5 text-sm font-semibold text-ink first:mt-0">
             {{ item.text }}
           </h4>
-          <p v-else class="mt-3 max-w-prose leading-relaxed text-ink-secondary first:mt-0">
+          <p v-else class="mt-3 leading-relaxed text-ink-secondary first:mt-0">
             {{ item.text }}
           </p>
         </template>
@@ -165,7 +165,7 @@ const loadAnnouncement = computed(() => {
             <h4 v-if="item.kind === 'heading'" class="mt-5 text-sm font-semibold text-ink">
               {{ item.text }}
             </h4>
-            <p v-else class="mt-3 max-w-prose leading-relaxed text-ink-secondary">
+            <p v-else class="mt-3 leading-relaxed text-ink-secondary">
               {{ item.text }}
             </p>
           </template>
