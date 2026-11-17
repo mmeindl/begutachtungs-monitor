@@ -21,10 +21,10 @@
   </p>
   <p>
     Auch die Erläuterungen beider Fassungen halten wir gegeneinander.
-    Gezählt werden nur Begründungen, die in beiden Fassungen zur selben
-    Änderung stehen, und davon die, in denen das Ressort etwas geändert
-    hat – redaktionelle Änderungen nicht, und auch keine, die nur
-    Satzzeichen, Leerzeichen oder Bindestriche betreffen. Ob
+    Verglichen werden nur Begründungen, die in beiden Fassungen zur selben
+    Änderung stehen. Gezeigt wird eine Begründung an dieser Änderung, wenn
+    das Ressort sie geändert hat; Unterschiede nur in Satzzeichen,
+    Leerzeichen oder Bindestrichen gelten nicht als Änderung. Ob
     eine Änderung auf eine Stellungnahme zurückgeht, sagt keiner der
     beiden Vergleiche.
   </p>

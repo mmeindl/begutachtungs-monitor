@@ -10,6 +10,7 @@ import { displayId, extraHeading, unitName } from '#shared/utils/unitName'
 import { BADGE_CLASS, type DiffBadge, PILL_CLASS, badgeCounts, badgeLabels } from '~/utils/diffBadges'
 import { IN_FORCE_MARK, moveTargets, reachesGroups, renumberedNote, withheldGroups, type Reach } from '~/utils/landWithheld'
 import { annexDroppedPagesNote } from '~/utils/annexNotes'
+import { landReasoningGapNote } from '~/utils/reasoningNotes'
 import { citeLineDe, dividedText, landTextCiteDe, lawUnitCiteDe } from '#shared/utils/citations'
 import { readsSideBySide, splitSegments } from '~/utils/diffSides'
 import ListBox from '~/components/ui/ListBox.vue'
@@ -34,8 +35,8 @@ import LandWithheldNotes from '~/components/land/LandWithheldNotes.vue'
  * NOTHING ABOVE THE LIST but a rare warning (23.10.2026), as on the
  * Ministerialentwurf's page. Three sentences stood there: the counts, which
  * the legend and the groups' pills state already; the Begründungen changed,
- * which for the step after the Begutachtung is a row of the Vorlage's frame
- * now (`useLandVorlageOutcome`), as the Bund's; and the §§ the
+ * which open at their Paragraph (no count anywhere since 17.11.2026, as the
+ * Bund's); and the §§ the
  * Textgegenüberstellung withheld, which its law's group counts („nicht
  * gezeigt") and names when opened. What stays above is what the Bund keeps
  * there too: that what follows may be misread (`ComparisonCaveats`).
@@ -50,8 +51,8 @@ const props = withDefaults(defineProps<{
   citeAs?: string
 }>(), { from: 'entwurf', to: 'lgbl' })
 
-/* Keyed by draft and pair: the Vorlage's frame reads the same request for
-   its counts (`useLandVorlageOutcome`).
+/* Keyed by draft and pair, so two instances never share an answer meant
+   for one of them (`landDiffKey`).
 
    Asked once the section nears the viewport (12.11.2026,
    `useNearViewportSection`): up to five of these stand on one page, and
@@ -106,13 +107,15 @@ function reasonsFor(u: LawDiffUnit) {
    rule: shown where it changed, or where the two group it differently
    (`LawDiffSection.reasoningOf`). */
 const vorlageStep = props.from === 'entwurf' && props.to === 'rv'
-// Shared with the Vorlage's frame, which counts the same Begründungen.
 const reasoning: Ref<LandReasoningResponse | null | undefined> = vorlageStep
   ? useFetch<LandReasoningResponse>(
     () => `/api/laender/${props.land}/${props.number}/begruendung`,
     { key: () => landReasoningKey(props.land, props.number), lazy: true, server: false, dedupe: 'defer' },
   ).data
   : shallowRef(null)
+/* Why no Begründung stands at any change, where the two could not be
+   compared (`landReasoningGapNote`). */
+const reasoningGap = computed(() => (vorlageStep ? landReasoningGapNote(reasoning.value) : null))
 function reasoningOf(u: LawDiffUnit): ReasoningDiffEntry | null {
   if (!vorlageStep) return null
   const key = reasoning.value?.units?.[diffUnitKey(u)]
@@ -376,7 +379,7 @@ const hasUnits = computed(() => units.value.length > 0)
            Begutachtung (2023-16039 and 2024-16064, LGBl. Nr. 95/2024). The
            one sentence that stays above, in the Bund's form for a warning
            that what follows may be misread. -->
-      <ComparisonCaveats v-if="data.sharedWith.length || droppedNote || renumberNote" :notes="[droppedNote, renumberNote]" class="mb-4">
+      <ComparisonCaveats v-if="data.sharedWith.length || droppedNote || renumberNote || reasoningGap" :notes="[droppedNote, renumberNote, reasoningGap]" class="mb-4">
         <p v-if="data.sharedWith.length">
           Dieselbe Kundmachung setzt auch
           <template v-for="(other, i) in data.sharedWith" :key="other.path"><template v-if="i > 0">{{ i === data.sharedWith.length - 1 ? ' und ' : ', ' }}</template>den Entwurf

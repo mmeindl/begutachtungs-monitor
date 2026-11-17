@@ -102,19 +102,6 @@ export function daysSinceFristDe(days: number): string {
 }
 
 /**
- * The value of the card's row „Begründung": how many of the Begründungen in
- * both Erläuterungen the Ressort changed —
- * editorial changes not counted, as in the § comparison's own counts
- * (`substantiveReasoningChanges`). Counted over the passages both versions
- * carry — the restriction stands in the comparison's „Methode"
- * (`MethodVergleich`); the row's footnote
- * names the document.
- */
-export function reasoningShareValueDe(changed: number, compared: number): string {
-  return `${changed} von ${compared} ${compared === 1 ? 'Begründung' : 'Begründungen'} geändert`
-}
-
-/**
  * Was the Regierungsvorlage tabled while the Begutachtung was still running
  * — on or before the day its Frist ended?
  *
@@ -253,15 +240,6 @@ export function namedInRvNoComparisonDe(n: NamedInRv): string {
   return gapDe('outOfScope', `ein Paragraphenvergleich zu diesem Entwurf. Die Vorlage enthält auch den Inhalt ${k === 1 ? 'des anderen Entwurfs' : 'der anderen Entwürfe'}.`)
 }
 
-/** What the ME→RV comparison has delivered so far — the values of
- *  `useVorlageOutcome`, read only for whether they are there. */
-export interface VorlageOutcomeState {
-  reasoningStats: unknown
-  rvExplanations: unknown
-  /** A side's Erläuterungen were not read — the row says so (`explanationsMissingNote`). */
-  explanationsMissing?: unknown
-}
-
 /** A row of the Regierungsvorlage's station frame; structurally a `Fact`
  *  (`FactList`), kept free of the component here. */
 export interface RvFact {
@@ -286,8 +264,6 @@ export interface RvStationView {
   /** The period's base rate, drawn under the waiting rows (`RvWaitBar`). */
   noRvBaseRate: RvBaseRate | null
   facts: RvFact[]
-  /** The frame carries our own counts, so its credit line names them. */
-  counted: boolean
   /** What explains the verdict, under the frame — for „genannt" why no § comparison follows. */
   context: string | null
 }
@@ -300,7 +276,7 @@ export interface RvStationView {
  *
  * Without a draft everything is off; the page renders nothing then anyway.
  */
-export function rvStationView(d: DraftDetail | null | undefined, vorlage: VorlageOutcomeState): RvStationView {
+export function rvStationView(d: DraftDetail | null | undefined): RvStationView {
   if (!d) {
     return {
       showOutcome: false,
@@ -311,7 +287,6 @@ export function rvStationView(d: DraftDetail | null | undefined, vorlage: Vorlag
       noRvVerdict: null,
       noRvBaseRate: null,
       facts: [],
-      counted: false,
       context: null,
     }
   }
@@ -384,21 +359,19 @@ export function rvStationView(d: DraftDetail | null | undefined, vorlage: Vorlag
    * many drafts of the last closed GP got their Regierungsvorlage and how
    * fast. Numbers, so the reader can weigh the silence without the page
    * weighing it for them. */
-  const noRvBaseRate = lapsed || chainUnlinked || viaAntrag || named ? null : rvBaseRateFor(d.gp)
+  // Not with a Vorlage either: nothing waits then, and the frame's credit
+  // line would name „Vergleichswerte" for a bar that is not drawn.
+  const noRvBaseRate = d.enactment || lapsed || chainUnlinked || viaAntrag || named ? null : rvBaseRateFor(d.gp)
 
   /* The station frame. The verdict is the row; what explains it (`context`,
    * the base rate, the Antrag's matching) stands under the frame. */
   const facts: RvFact[] = []
   if (d.enactment) {
     facts.push({ key: 'rv', title: 'Eingebracht' })
-    // The Begründungen's count, as a row (02.10.2026); it appears when the
-    // documents are found — on many drafts they are not. How much of the
-    // text changed is not a row since 17.11.2026: the comparison under the
-    // frame counts it per kind in its legend, and a share in the frame said
-    // the same less exactly.
-    if (vorlage.reasoningStats || vorlage.rvExplanations || vorlage.explanationsMissing) {
-      facts.push({ key: 'begruendung', title: 'Begründung' })
-    }
+    // Nothing from the comparison since 17.11.2026. How much of the text
+    // changed and how many Begründungen were rows here from 02.10.2026; the
+    // comparison under the frame shows both where the reader asks, at the
+    // Paragraph, and says there when the Erläuterungen could not be read.
     if (d.enactment.furtherRv.length) facts.push({ key: 'weitere', title: 'Außerdem aus dem Entwurf hervorgegangen' })
   } else if (!d.active) {
     if (viaAntrag) {
@@ -436,7 +409,6 @@ export function rvStationView(d: DraftDetail | null | undefined, vorlage: Vorlag
     noRvVerdict,
     noRvBaseRate,
     facts,
-    counted: facts.some((f) => f.key === 'begruendung'),
     context,
   }
 }

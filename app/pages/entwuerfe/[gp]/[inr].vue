@@ -128,19 +128,9 @@ const { data: rvStatements } = await useFetch<RvStatementsResponse>(
   { lazy: true, server: false, enabled: hasVorlage, watch: [hasVorlage] },
 )
 
-/* What the Vorlage made of the draft's Begründungen — the row of its
- * station frame that comes from their comparison (`useVorlageOutcome`). */
-const vorlageOutcome = useVorlageOutcome(() => ({ gp: gp.value, inr: inr.value }), hasVorlage)
-
 /* The Regierungsvorlage station, in both outcomes: whether it renders, its
  * frame's rows, and what explains them (`rvStationView`). */
-const rvView = computed(() =>
-  rvStationView(data.value, {
-    reasoningStats: vorlageOutcome.reasoningStats.value,
-    rvExplanations: vorlageOutcome.rvExplanations.value,
-    explanationsMissing: vorlageOutcome.explanationsMissingDe.value,
-  }),
-)
+const rvView = computed(() => rvStationView(data.value))
 
 /* The two windows for input, as booleans the card below reads. Both can be
  * open at once: in GP XXVIII 7 of 91 Regierungsvorlagen arrived before the
@@ -677,9 +667,6 @@ const ministryLinks = computed(() => {
             v-if="sections.rv"
             :draft="data"
             :view="rvView"
-            :reasoning-de="vorlageOutcome.reasoningDe.value"
-            :rv-explanations="vorlageOutcome.rvExplanations.value"
-            :explanations-missing-de="vorlageOutcome.explanationsMissingDe.value"
             :rv-statements="rvStatements"
             :filing-open="windows.vorlage"
           />

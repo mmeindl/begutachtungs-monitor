@@ -1,7 +1,6 @@
 <!--
   How the comparisons after a Land's Begutachtung work — the „Methode" of
-  the Vorlage's frame („Begründung", `LandStationSections`)
-  and of `LandLawDiffSection` from the draft to the Vorlage and from the
+  `LandLawDiffSection` from the draft to the Vorlage and from the
   Vorlage on (15.11.2026). The Land's counterpart of `MethodVergleich`.
 
   Paragraphs only, without a wrapper: the caller's `prose-flow` styles its
@@ -36,8 +35,8 @@ const committeeSentence = computed(() => landCommitteeSentenceDe(props.land))
   </p>
   <p>
     Die Begründungen vergleichen wir, wo beide Fassungen Erläuterungen zu
-    denselben Bestimmungen enthalten; redaktionelle Änderungen zählen
-    dabei nicht. Ob eine Änderung auf eine Stellungnahme zurückgeht, sagt
-    keiner der beiden Vergleiche.
+    denselben Bestimmungen enthalten, und zeigen sie an der Änderung, wenn
+    das Land sie geändert hat. Ob eine Änderung auf eine Stellungnahme
+    zurückgeht, sagt keiner der beiden Vergleiche.
   </p>
 </template>

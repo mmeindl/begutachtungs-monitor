@@ -1,36 +1,7 @@
 import { describe, expect, it } from 'vitest'
-import { explanationsMissingNote, reasoningGapNote, reasoningRateNote, substantiveReasoningChanges } from '../app/utils/reasoningNotes'
+import { explanationsMissingNote, landReasoningGapNote, reasoningGapNote } from '../app/utils/reasoningNotes'
 
-const stats = (compared: number, changed: number, editorial = 0) => ({ compared, changed, editorial, uncompared: 0 })
-
-describe('reasoningRateNote', () => {
-  it('says nothing where no Begründung was compared', () => {
-    expect(reasoningRateNote(null)).toBeNull()
-    expect(reasoningRateNote(stats(0, 0))).toBeNull()
-  })
-
-  it('keeps the restriction in the singular', () => {
-    expect(reasoningRateNote(stats(1, 0))).toBe('Die Begründung, die in beiden Fassungen steht, hat das Ressort nicht geändert.')
-    expect(reasoningRateNote(stats(1, 1))).toBe('Die Begründung, die in beiden Fassungen steht, hat das Ressort geändert.')
-  })
-
-  it('names both numbers in the plural', () => {
-    expect(reasoningRateNote(stats(33, 0))).toBe('Keine der 33 Begründungen hat das Ressort geändert.')
-    expect(reasoningRateNote(stats(33, 33))).toBe('Alle 33 Begründungen hat das Ressort geändert.')
-    expect(reasoningRateNote(stats(33, 16))).toBe('16 der 33 Begründungen hat das Ressort geändert.')
-  })
-})
-
-// The § comparison leaves its „redaktionell" units out of every count
-// (`ownChangeShare`); the Begründungen follow it since 22.10.2026.
-describe('substantiveReasoningChanges', () => {
-  it('zählt redaktionell geänderte Begründungen nicht als geändert', () => {
-    expect(substantiveReasoningChanges(stats(12, 3, 1))).toBe(2)
-    expect(reasoningRateNote(stats(12, 1, 1))).toBe('Keine der 12 Begründungen hat das Ressort geändert.')
-    expect(reasoningRateNote(stats(1, 1, 1))).toBe('Die Begründung, die in beiden Fassungen steht, hat das Ressort nicht geändert.')
-    expect(reasoningRateNote(stats(33, 33, 1))).toBe('32 der 33 Begründungen hat das Ressort geändert.')
-  })
-})
+const stats = (compared: number) => ({ compared, changed: 0, editorial: 0, uncompared: 0 })
 
 describe('reasoningGapNote', () => {
   it('sagt an der Änderung, warum keine Begründung steht — mit Grund nur, wo er belegt ist', () => {
@@ -53,5 +24,28 @@ describe('explanationsMissingNote', () => {
     )
     expect(explanationsMissingNote([])).toBeNull()
     expect(explanationsMissingNote(undefined)).toBeNull()
+  })
+})
+
+describe('landReasoningGapNote (17.11.2026)', () => {
+  it('says nothing while Begründungen were compared, or before the answer', () => {
+    expect(landReasoningGapNote(null)).toBeNull()
+    expect(landReasoningGapNote({ available: true, unavailableReason: null, stats: stats(4) })).toBeNull()
+  })
+
+  it('says that two read texts share no Paragraph', () => {
+    expect(landReasoningGapNote({ available: true, unavailableReason: null, stats: stats(0) })).toBe(
+      'Nicht im Monitor: ein Vergleich der Begründungen. Die Erläuterungen beider Texte decken keinen gemeinsamen Paragraphen ab.',
+    )
+  })
+
+  it('carries the service\'s gap sentence and what follows from it', () => {
+    expect(landReasoningGapNote({ available: false, unavailableReason: 'Nicht lesbar: In einem der beiden Texte fand der Monitor keine Erläuterungen zu einzelnen Paragraphen.', stats: stats(0) })).toBe(
+      'Nicht lesbar: In einem der beiden Texte fand der Monitor keine Erläuterungen zu einzelnen Paragraphen. Die Begründungen sind deshalb nicht verglichen.',
+    )
+  })
+
+  it('leaves a reason that is no gap sentence to the comparison', () => {
+    expect(landReasoningGapNote({ available: false, unavailableReason: 'Zu diesem Entwurf gibt es keine Regierungsvorlage.', stats: stats(0) })).toBeNull()
   })
 })

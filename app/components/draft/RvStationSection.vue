@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { gpNameDe } from '#shared/utils/gp'
-import type { DraftDetail, RvStatementsResponse, TraceLink } from '#shared/types'
+import type { DraftDetail, RvStatementsResponse } from '#shared/types'
 import type { RvStationView } from '~/utils/outcomes'
 import { antragUrl } from '#shared/utils/antragPath'
 import { bgblShort, formatDateDe } from '#shared/utils/format'
@@ -13,7 +13,7 @@ import {
 import { parliamentDocumentSource } from '#shared/utils/provenance'
 import { PARLIAMENT_HISTORY_SOURCES } from '~/utils/spine'
 import { TERMS } from '~/utils/terms'
-import { beilageOfUrl, blgNrDe, citeLineDe } from '#shared/utils/citations'
+import { blgNrDe, citeLineDe } from '#shared/utils/citations'
 
 /**
  * „Die Regierungsvorlage" of the draft page, in both outcomes
@@ -32,21 +32,15 @@ import { beilageOfUrl, blgNrDe, citeLineDe } from '#shared/utils/citations'
 const props = defineProps<{
   draft: DraftDetail
   view: RvStationView
-  /** What the Begründungen's comparison has delivered so far
-   *  (`useVorlageOutcome`): the count as the row prints it. */
-  reasoningDe: string | null
-  rvExplanations: TraceLink | null
-  /** Why the Begründungen could not be compared (`explanationsMissingNote`), or null. */
-  explanationsMissingDe: string | null
   /** The Vorlage's own Stellungnahmen; client-side, absent until loaded. */
   rvStatements: RvStatementsResponse | null | undefined
   /** Parliament takes Stellungnahmen on the Vorlage — the door card's window. */
   filingOpen: boolean
 }>()
 
-/* The Vorlage and its Erläuterungen as a footnote cites them (21.10.2026):
- * „RV 525 BlgNR 28. GP", „ErläutRV 525 BlgNR 28. GP" — the period read off
- * the Vorlage's own address, which may lie after the draft's. */
+/* The Vorlage as a footnote cites it (21.10.2026): „RV 525 BlgNR 28. GP" —
+ * the period read off the Vorlage's own address, which may lie after the
+ * draft's. */
 const rvBeilage = computed(() => {
   const e = props.draft.enactment
   const gp = /\/gegenstand\/([IVXLC]+)\//.exec(e?.rvUrl ?? '')?.[1] ?? props.draft.gp
@@ -57,13 +51,6 @@ const rvCite = computed(() => {
   const cited = b ? blgNrDe('RV', b.citation, b.gp) : null
   return cited && props.draft.enactment ? citeLineDe(cited, props.draft.enactment.rvUrl) : null
 })
-const erlCite = computed(() => {
-  const url = props.rvExplanations?.url
-  const b = beilageOfUrl(url) ?? rvBeilage.value
-  const cited = b ? blgNrDe('ErläutRV', b.citation, b.gp) : null
-  return cited && url ? citeLineDe(cited, url) : null
-})
-
 /* A Vorlage tabled while the Frist still ran says so under „Eingebracht"
  * (`tabledBeforeFristEnd`, 115/ME): when it came, before the comparison
  * shows how little it changed. */
@@ -85,15 +72,13 @@ const waitSlot = computed(() => `after-${props.view.facts.some((f) => f.key === 
  *    than at the word — and with it how a Vorlage comes to carry two
  *    drafts while Parliament links it to one, which the station's rows
  *    show and do not explain.
- *  - `vergleich`: the comparison's counts (`MethodVergleich`).
  *  - none for the waiting bar's yardstick: its explanation — how many drafts
  *    of the period got a Vorlage at all — left the site on 14.11.2026 by the
  *    maintainer's decision (kept in docs/research/wartezeit-bis-regierungsvorlage.md).
  *    The bar labels its own marks, and the credit still names the period. */
-const credit = computed<{ own: string; method: 'genannt' | 'vergleich' | null } | null>(() => {
+const credit = computed<{ own: string; method: 'genannt' | null } | null>(() => {
   const v = props.view
   if (v.named) return { own: 'Abgleich der Titel', method: 'genannt' }
-  if (v.counted) return { own: 'Zählung', method: 'vergleich' }
   if (v.noRvBaseRate) return { own: `Vergleichswerte (${gpNameDe(v.noRvBaseRate.gp)})`, method: null }
   return null
 })
@@ -148,29 +133,6 @@ const sources = computed(() =>
           </template>
           <template v-if="draft.enactment && earlyVorlageWhen" #after-rv>
             <p class="mt-0.5 text-ink-secondary">{{ earlyVorlageWhen }}</p>
-          </template>
-          <!-- Where the Ressort says why — the document, never a cause
-               (framing rule): the Erläuterungen are the Ressort's reasons,
-               and whether a Stellungnahme stood behind a change is what a
-               submitter looks for there. The one sentence left in the
-               frame, because it is an invitation, not a fact. -->
-          <template v-if="draft.enactment" #value-begruendung>
-            <p v-if="reasoningDe">{{ reasoningDe }}</p>
-            <!-- A side's Erläuterungen were not read: said here, once,
-                 where the count would stand (14.11.2026) — the row used to
-                 go missing, and silence read as „nothing to compare". -->
-            <p v-else-if="explanationsMissingDe" class="text-ink-secondary">{{ explanationsMissingDe }}</p>
-            <p v-if="rvExplanations" :class="reasoningDe || explanationsMissingDe ? 'mt-1 text-ink-secondary' : ''">
-              In den <ExternalLink :href="rvExplanations.url" class="link-inline">Erläuterungen der Regierungsvorlage</ExternalLink>
-              steht oft, ob eine Stellungnahme dahintersteht.
-            </p>
-            <!-- Under the sentence, not in it: a control in the middle of a
-                 sentence breaks the sentence. -->
-            <p v-if="erlCite" class="mt-1">
-              <!-- `-ml-2`: alone on its line, the icon aligns with the text above
-                   instead of the ghost button's padding. -->
-              <CiteButton class="-ml-2" :text="erlCite" subject="Die Erläuterungen der Regierungsvorlage" />
-            </p>
           </template>
           <template v-if="draft.enactment?.furtherRv.length" #value-weitere>
             <p>
@@ -232,8 +194,7 @@ const sources = computed(() =>
             </p>
           </template>
         </FactList>
-        <!-- No link: the frame's first fact is the Vorlage. The counts
-             are the comparison's, ours (`useVorlageOutcome`). -->
+        <!-- No link: the frame's first fact is the Vorlage. -->
         <SectionCredits
           v-if="view.facts.length"
           :sources="sources"
@@ -242,9 +203,6 @@ const sources = computed(() =>
         >
           <template v-if="credit?.method === 'genannt'" #method>
             <p>{{ TERMS.genannt.definition }}</p>
-          </template>
-          <template v-else-if="credit?.method === 'vergleich'" #method>
-            <MethodVergleich />
           </template>
         </SectionCredits>
         <!-- What explains the frame's verdict: what is open, how an
@@ -268,9 +226,8 @@ const sources = computed(() =>
            hold the draft against. Before the Vorlage's own Stellungnahmen
            since 01.10.2026: the comparison is what led into this station,
            they are the input to the next one. -->
-      <!-- Deferred (12.11.2026): the comparison and the Begründungen are
-           asked by the frame above anyway (`useVorlageOutcome`), so what
-           waits for the approach is the § names alone. -->
+      <!-- Deferred (12.11.2026): asked once the reader comes near. The
+           frame above asks for nothing of it since 17.11.2026. -->
       <LawDiffSection
         v-if="draft.enactment"
         :gp="draft.gp"

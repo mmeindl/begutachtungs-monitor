@@ -160,6 +160,16 @@ gets an entry of its own only where it carries a reason the rule does not.
   middle half (46–77 % in XXVII) is too wide to place a single draft, and a
   share of three Paragraphen is no measurement. The measure stays in the
   corpus script (`ownChangeShare`, values under „The procedure").
+- **A station frame holds what only it can say:** that the station was
+  reached, when, and its documents. What the comparison under it shows is
+  not repeated above it. The Regierungsvorlage's row „Begründung" went on
+  17.11.2026 for that reason, with the count of changed Begründungen (in
+  the frame and above the other comparisons): a number about the
+  comparison answers no reader's question, which is asked at one Paragraph
+  and answered there, where a changed Begründung opens. The frame's pointer
+  to the Erläuterungen went with it; the credit line under the comparison
+  links them. Before a row is added to a frame, ask whether the comparison
+  could show it instead.
 - **Copy about statements on a Regierungsvorlage says where they go** (the
   Klubs) and never what they achieve (§12.14). The ministry is not named
   since 15.11.2026: Parliament's general pages name it for every kind of
@@ -493,9 +503,9 @@ gets an entry of its own only where it carries a reason the rule does not.
   number, a date, a single letter or punctuation; „und" → „oder" is not.
 - **The comparison key may fold typography; the displayed text never does**
   (§12.33).
-- **Erläuterungen a side has not given us are said, in the Begründung
-  row** (14.11.2026, `explanationsMissingNote`), instead of the row going
-  missing. Parliament's record proves only what it lists, so the sentence
+- **Erläuterungen a side has not given us are said, above the comparison**
+  (14.11.2026, `explanationsMissingNote`; in the frame's Begründung row
+  until 17.11.2026), instead of the Begründungen going missing silently. Parliament's record proves only what it lists, so the sentence
   is „nicht gelesen" — „liegen nur als PDF vor" or „das Parlament führt sie
   nicht als eigenes Dokument" —, never „nicht veröffentlicht": a
   Regierungsvorlage may carry its Erläuterungen inside its one document.

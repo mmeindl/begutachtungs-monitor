@@ -125,8 +125,7 @@ export function landShortTitle(title: string): string | null {
 
 /**
  * The keys of a Land draft page's lazy requests (23.10.2026), as the Bund's
- * (`lawDiffKey`): the Regierungsvorlage's frame counts the Begründungen the
- * comparison under it shows, from one request, and „Was das Land begründet" reads the
+ * (`lawDiffKey`): each comparison reads its own answer, and „Was das Land begründet" reads the
  * Erläuterungen the Textgegenüberstellung shows at its §§, from one request.
  * Without a key Nuxt keys a fetch by its call site — two components asked
  * twice for one document, and one component in four comparisons shared one

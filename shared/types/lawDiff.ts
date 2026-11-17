@@ -160,9 +160,7 @@ export interface ReasoningDiffEntry {
    * Changed, but only in numbers, dates, punctuation or a reference that
    * follows a renumbering of this comparison — the law comparison's own rule
    * (`isEditorialChange`, the badge's definition in `lawStations.ts`), with
-   * the same pill.
-   * Counted as changed nowhere the page counts Begründungen
-   * (`substantiveReasoningChanges`). Never on an entry without `segments`.
+   * the same pill. Never on an entry without `segments`.
    */
   editorial: boolean
 }

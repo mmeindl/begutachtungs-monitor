@@ -28,7 +28,7 @@ import { readsSideBySide, splitSegments } from '~/utils/diffSides'
 import { displayId, extraHeading, unitName } from '#shared/utils/unitName'
 import { droppedLawsNote, mergedLawsNote, outsideDraftNote } from '~/utils/lawPackage'
 import { lawDiffCredits } from '~/utils/lawDiffCredits'
-import { reasoningGapNote, reasoningRateNote } from '~/utils/reasoningNotes'
+import { explanationsMissingNote, reasoningGapNote } from '~/utils/reasoningNotes'
 import {
   OBJECTION_STEPS_NOTE_DE,
   PARLIAMENT_COMPARISON_QUESTION,
@@ -154,9 +154,11 @@ function gapOf(u: LawDiffUnit): string | null {
   return reasoningGapNote(reasoning.value?.gaps?.[diffUnitKey(u)])
 }
 
-/** The sentence above the comparison that explains the disclosures below
- *  it (`reasoningRateNote`). */
-const reasoningNote = computed(() => reasoningRateNote(reasoning.value?.stats))
+/** A side's Erläuterungen were not read: said above the list, once, so a
+ *  change without a Begründung does not read as one whose reasons stayed
+ *  (`explanationsMissingNote`). In the Vorlage's frame until 17.11.2026; the
+ *  gap is this comparison's, so it stands where the Begründungen would. */
+const explanationsNote = computed(() => explanationsMissingNote(reasoning.value?.explanationsMissing))
 
 /* The Vorlage's Erläuterungen as cited, „ErläutRV 297 BlgNR 28. GP" — read
  * off the address of the document the reasoning came from (21.10.2026). */
@@ -204,10 +206,6 @@ function unitCite(u: LawDiffUnit): { text: string; subject: string } | null {
   return cited ? { text: citeLineDe(cited, doc.url), subject: cited.slice(doc.cited.length + 2) } : null
 }
 
-/** ME→RV states its counts in the Regierungsvorlage's station frame
- *  (`useVorlageOutcome`, 02.10.2026), so the comparison under it repeats
- *  none of them. */
-const countsInFrame = computed(() => pair.value.from === 'me' && pair.value.to === 'rv')
 /**
  * What this comparison shows, per document, and one entry per compared
  * version for the credit line (`lawDiffCredits`).
@@ -216,10 +214,9 @@ const credits = computed(() => lawDiffCredits(data.value, reasoning.value, pair.
 const paraTitlesTag = computed(() => (mixedPublishers(credits.value.sources) ? ' (RIS)' : ''))
 const paraTitlesAsOf = computed(() => (paraTitles.value?.asOf ? formatDateDe(paraTitles.value.asOf) : null))
 
-/** The sentences above the list wait for a comparison to stand under: none
- *  on the first load (02.10.2026). Until then the reasoning rate, which often
- *  arrives first, stood alone at the top and the figure pushed in above it
- *  when the diff came. While a later step loads they stay — the previous
+/** The warnings above the list wait for a comparison to stand under: none
+ *  on the first load (02.10.2026). Until then what arrived first stood
+ *  alone at the top and the rest pushed in above it when the diff came. While a later step loads they stay — the previous
  *  data is kept (the watcher above), under „Im Parlament" they do not depend
  *  on the step, and the toggle below them must not jump. */
 const sentencesShown = computed(() => status.value !== 'error' && !!data.value?.available)
@@ -568,17 +565,11 @@ const objectionNote = computed(() => (scope === 'parlament' && props.changedAfte
       <p class="sr-only" role="status">{{ loadAnnouncement }}</p>
 
       <template v-if="sentencesShown">
-        <!-- Above the list only what is specific to THIS comparison. The
-             ME→RV counts — how much changed, against the period's range, and
-             how many Begründungen — and the way to the Erläuterungen stand in
-             the Regierungsvorlage's station frame since 02.10.2026, as rows
-             instead of two paragraphs (`useVorlageOutcome`). What stays: a
-             reasoning rate for a pair the frame does not hold, and the
-             warnings. -->
-        <div class="space-y-3">
-          <p v-if="reasoningNote && !countsInFrame" class="text-sm text-ink-secondary">{{ reasoningNote }}</p>
-          <ComparisonCaveats :notes="[objectionNote, outsideNote, mergedNote, droppedNote]" />
-        </div>
+        <!-- Above the list only the warnings: what the list below may get
+             wrong or cannot show. No count stands here since 17.11.2026 —
+             the legend counts the changes, and a changed Begründung opens at
+             its Paragraph. -->
+        <ComparisonCaveats :notes="[objectionNote, outsideNote, mergedNote, droppedNote, explanationsNote]" />
       </template>
 
       <!-- Without a list the step toggle stands alone where the list would,

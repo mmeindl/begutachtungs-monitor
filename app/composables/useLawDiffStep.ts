@@ -11,8 +11,8 @@
  * NOT async, since 04.10.2026. The three requests were awaited, as they
  * had been in the section's setup — which did nothing on the server, where
  * they are `server: false`, and broke hydration in the browser: the
- * Vorlage's station frame starts the same ME→RV comparison before this
- * section is set up (`useVorlageOutcome`, shared key), so the await held the
+ * Vorlage's station frame then started the same ME→RV comparison before this
+ * section was set up (shared key, until 17.11.2026), so the await held the
  * section until the answer was there and it hydrated with a list the
  * server's HTML did not have. Every draft page with a Vorlage logged the
  * mismatch, in production too. An answer that arrives later reaches the
@@ -83,8 +83,8 @@ export function useLawDiffStep(options: {
   const cacheKeyOf = (key: string) => (options.apiBase ? `${options.apiBase}|${key}` : key)
   const pairQuery = () => `von=${requested.value.from}&bis=${requested.value.to}`
 
-  /* Keyed by draft and pair, so the Regierungsvorlage's station frame, which
-   * reads the same ME→RV count (`useVorlageOutcome`), shares this request — and
+  /* Keyed by draft and pair, so whoever else reads the same comparison shares
+   * this request (the Regierungsvorlage's frame did until 17.11.2026) — and
    * `defer`, because Nuxt's default `cancel` aborts the first caller's request
    * and sends it again (two requests on 11/ME XXVIII, measured 01.10.2026). */
   const diffFetch = useFetch<LawDiffResponse>(
@@ -126,8 +126,6 @@ export function useLawDiffStep(options: {
   const reasoningFetch = useFetch<ReasoningDiffResponse>(
     () => `${base()}/begruendung?${pairQuery()}`,
     {
-      // Shared with the Vorlage's station frame, which counts the same
-      // Begründungen (`useVorlageOutcome`, 02.10.2026).
       key: () => cacheKeyOf(lawReasoningKey(toValue(options.gp), toValue(options.inr), requested.value.from, requested.value.to)),
       lazy: true,
       server: false,
@@ -179,8 +177,7 @@ export function useLawDiffStep(options: {
   function enable() {
     if (enabled.value) return
     enabled.value = true
-    // Not the two the Vorlage's frame has asked already under the shared key
-    // (`useVorlageOutcome`), where the deferred instance is the Vorlage's own
+    // Not the two another caller has already asked under the shared key
     // (12.11.2026): `execute` on an answer that is there asks again. One that
     // is on its way is handed over (`dedupe: 'defer'`).
     if (fetchStatus.value !== 'success') void executeDiff()

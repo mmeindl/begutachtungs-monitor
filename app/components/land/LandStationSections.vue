@@ -4,7 +4,6 @@ import type { Fact } from '~/components/ui/FactList.vue'
 import { citeLineDe } from '#shared/utils/citations'
 import { formatDateDe } from '#shared/utils/format'
 import { afterFristDe } from '~/utils/spine'
-import { useLandVorlageOutcome } from '~/composables/useLandVorlageOutcome'
 import ListBox from '~/components/ui/ListBox.vue'
 
 /**
@@ -66,14 +65,6 @@ const beilage = computed(() => {
   if (ooe) return `Beilage ${ooe}`
   return /(Nr\s+\d+ der Beilagen(?: \([^)]*\))?)/.exec(label)?.[1] ?? null
 })
-/* What the Vorlage made of the draft's Begründungen, as a row of its frame —
-   the Bund's „Begründung", from the request the comparison under the frame
-   reads (`useLandVorlageOutcome`). */
-const vorlageCompared = computed(() => offers('entwurf', 'rv'))
-const { reasoningDe } = useLandVorlageOutcome(
-  () => ({ land: props.land!, number: props.number! }),
-  vorlageCompared,
-)
 const rvFacts = computed<Fact[]>(() => {
   const step = rvStep.value
   if (!step) return []
@@ -84,11 +75,8 @@ const rvFacts = computed<Fact[]>(() => {
       ? [{ key: 'eingelangt', title: props.land === 'ktn' ? 'Beschlossen von der Landesregierung' : 'Eingelangt im Landtag', text: span ? `${formatDateDe(step.date)}, ${span}` : formatDateDe(step.date) }]
       : []),
     ...(step.url ? [{ key: 'vorlage', title: 'Die Vorlage' }] : []),
-    ...(reasoningDe.value ? [{ key: 'begruendung', title: 'Begründung', text: reasoningDe.value }] : []),
   ]
 })
-/* The counts are ours, not the Land's: said under the frame, as the Bund's. */
-const rvCounted = computed(() => rvFacts.value.some((f) => f.key === 'begruendung'))
 const lgblFacts: Fact[] = [{ key: 'kundmachung', title: 'Kundgemacht' }]
 
 /* The frame of „Im Landtag", in „Im Parlament"'s order: where it stands,
@@ -128,14 +116,6 @@ const reportName = computed(() => {
           </ExternalLink>
         </template>
       </FactList>
-      <!-- The Land's own „Methode" since 15.11.2026: where its texts come
-           from and which one stands for the committee differ from the
-           Bund's (`MethodVergleich`). -->
-      <SectionCredits v-if="rvCounted" :sources="[]" :marked="false" own="Zählung">
-        <template v-if="land" #method>
-          <MethodLandVergleich :land="land" />
-        </template>
-      </SectionCredits>
     </div>
     <!-- What changed after the Begutachtung: the draft against the
          Vorlage, the comparison the Bund's drafts lead with. -->
