@@ -51,8 +51,29 @@
  * figures we compute from them, the Frist median or the count of rewritten
  * paragraphs, and „Quelle: Parlament" alone would claim those for Parliament.
  * Same grammar as the marking, in the same place: after the other people's things.
+ *
+ * „Fehler melden" ends the line wherever it names a claim of ours
+ * (17.11.2026): the marking, the pairing, a count, the classification of
+ * who filed. The line has just said that this part is the monitor's and
+ * may therefore be wrong; the place to say so is beside it, not on another
+ * page. A line that only credits publishers gets none: an error in a
+ * source's own data is not ours to correct. The component writes it, as it
+ * writes „Markierung", so no section can forget it. It opens a mail that
+ * already names the page and the claim (`app/utils/contact.ts`). After
+ * „Methode": whoever doubts the marking reads how it was made first. Muted
+ * and not blue-filled, because blue buttons are the doors into lawmaking
+ * and this is a note to the monitor.
+ *
+ * It opens in place, as „Methode" does, and is not itself the mail link
+ * (17.11.2026, the same day): on a machine whose browser has no mail
+ * program behind `mailto:` a click on the bare link did nothing at all, and
+ * said nothing. So the words open one sentence, „Hinweis an" and the
+ * address written out, which is the link; whoever's link opens nothing
+ * reads the address. A second sentence explaining the link and a copy
+ * button stood there briefly and were taken out again as over-explaining.
  */
 import { sourceLineDe, type SourceEntry } from '#shared/utils/provenance'
+import { REPORT_LABEL_DE, REPORT_LEAD_DE } from '~/utils/contact'
 
 const props = withDefaults(defineProps<{
   sources: readonly SourceEntry[]
@@ -74,6 +95,27 @@ defineSlots<{
 }>()
 
 const line = computed(() => sourceLineDe(props.sources))
+
+/** What the line calls ours, in the line's own words; none, no report link. */
+const claim = computed(() => {
+  const claims: string[] = []
+  if (props.own) claims.push(props.own)
+  if (props.paired && props.marked) claims.push('Zeilenzuordnung und Markierung')
+  else if (props.paired) claims.push('Zeilenzuordnung')
+  else if (props.marked) claims.push('Markierung')
+  return claims.join(', ')
+})
+const { email, reportHref } = useContact()
+
+/**
+ * „Methode" and „Fehler melden" share a `name`, so the browser keeps one of
+ * the two open (17.11.2026): both open stacked two grey rules in two text
+ * sizes, the one-line hint hanging under a method text it does not belong
+ * to. Native (`<details name>`), no script; a browser that does not know
+ * the attribute leaves both open, as before. One id per credit line: a page
+ * has several, and they must not close each other.
+ */
+const group = useId()
 </script>
 
 <template>
@@ -87,7 +129,7 @@ const line = computed(() => sourceLineDe(props.sources))
     <!-- The last item of the line, its text on a line of its own under it
          (`TermNote`): running text at prose width, in the prose pages' type,
          not the caption's. -->
-    <TermNote v-if="$slots.method">
+    <TermNote v-if="$slots.method" :name="group">
       Methode
       <template #note>
         <div class="prose-flow max-w-prose text-base">
@@ -96,5 +138,14 @@ const line = computed(() => sourceLineDe(props.sources))
       </template>
     </TermNote>
     <NuxtLink v-else-if="method" :to="method" class="link-muted">Methode</NuxtLink>
+    <TermNote v-if="claim" :name="group">
+      {{ REPORT_LABEL_DE }}
+      <template #note>
+        <p class="max-w-prose text-sm leading-relaxed text-ink-secondary">
+          {{ REPORT_LEAD_DE }}
+          <a :href="reportHref(claim)" class="link-inline">{{ email }}</a>
+        </p>
+      </template>
+    </TermNote>
   </div>
 </template>

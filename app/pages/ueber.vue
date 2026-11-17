@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { LAND_CODES, LAND_NAME } from '#shared/utils/laender'
 import { feedUrlsOf } from '~/composables/useFeedUrls'
+import { REPORT_LABEL_DE } from '~/utils/contact'
 
 usePageSeo({
   title: 'Über das Projekt',
@@ -10,6 +11,7 @@ usePageSeo({
 
 const { webcalUrl, googleCalUrl, icsDisplayUrl } = useFeedUrls()
 const { siteUrl } = useRuntimeConfig().public
+const contact = useContact()
 </script>
 
 <template>
@@ -140,9 +142,9 @@ const { siteUrl } = useRuntimeConfig().public
         Wer dennoch auf eine Barriere
         stößt, hilft dem Projekt mit einem Hinweis an
         <a
-          href="mailto:kontakt@begutachtungs-monitor.at"
+          :href="contact.mailto"
           class="link-inline"
-        >kontakt@begutachtungs-monitor.at</a>.
+        >{{ contact.email }}</a>.
       </p>
     </ProseSection>
 
@@ -211,17 +213,29 @@ const { siteUrl } = useRuntimeConfig().public
       </p>
     </ProseSection>
 
+    <!-- The address and what to do about a mistake (17.11.2026). „Fragen,
+         Hinweise und Feedback" asked nobody in particular; the invitation
+         to work with the project is the footer's first line, on every
+         page. -->
     <ProseSection id="about-contact" heading="Kontakt">
       <p>
-        Fragen, Hinweise und Feedback:
+        Eine Adresse für alles:
         <a
-          href="mailto:kontakt@begutachtungs-monitor.at"
+          :href="contact.mailto"
           class="link-inline"
-        >kontakt@begutachtungs-monitor.at</a>. Fehler und Vorschläge gerne auch als
+        >{{ contact.email }}</a>. Es antwortet Manuel Meindl.
+      </p>
+      <p>
+        Eine Angabe stimmt nicht, ein Paragraph ist falsch zugeordnet, etwas
+        fehlt oder ist schwer zu verstehen: Jeder solche Hinweis hilft, per
+        E-Mail oder als
         <ExternalLink
           href="https://github.com/mmeindl/begutachtungs-monitor/issues"
           class="link-inline"
         >GitHub-Issue</ExternalLink>.
+        Wo der Monitor selbst vergleicht, zählt oder einordnet, steht unter
+        dem Abschnitt „{{ REPORT_LABEL_DE }}“; der Link dort trägt die Seite gleich in
+        die Nachricht ein.
       </p>
     </ProseSection>
   </div>

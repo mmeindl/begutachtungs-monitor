@@ -175,6 +175,7 @@ const rowComparators: Record<SortKey, (a: DraftListRow, b: DraftListRow, reverse
  * since 14.11.2026: which time spans the list offers depends on it
  * (`periodViewFor`). The rest of the rule is written further down, where
  * the Länder rows are built. */
+const contact = useContact()
 const { bund, laender: chosenLaender } = useSourceChoice()
 
 /* Filter state, URL binding and the query for both endpoints:
@@ -1871,7 +1872,7 @@ const statementsSortNote = computed(() => {
                Here it answers a search that found nothing. -->
           <p v-if="qDebounced" class="mt-3 text-ink-secondary">
             Heißt der Entwurf in der Debatte anders? Hinweise an
-            <a href="mailto:kontakt@begutachtungs-monitor.at" class="link-inline">kontakt@begutachtungs-monitor.at</a>
+            <a :href="contact.mailto" class="link-inline">{{ contact.email }}</a>
             – die Suche findet ihn dann auch unter diesem Namen.
           </p>
         </ListBoxNotice>

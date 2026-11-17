@@ -36,6 +36,8 @@ usePageSeo({
   description:
     'Offenlegung nach § 25 Mediengesetz: Medieninhaber, Unternehmensgegenstand, Beteiligungsverhältnisse und grundlegende Richtung des Begutachtungs-Monitors.',
 })
+
+const contact = useContact()
 </script>
 
 <template>
@@ -57,9 +59,9 @@ usePageSeo({
         4020 Linz, Österreich<br>
         E-Mail:
         <a
-          href="mailto:kontakt@begutachtungs-monitor.at"
+          :href="contact.mailto"
           class="link-inline"
-        >kontakt@begutachtungs-monitor.at</a>
+        >{{ contact.email }}</a>
       </address>
       <p>
         Der Begutachtungs-Monitor ist ein privates, nichtkommerzielles
@@ -129,7 +131,7 @@ usePageSeo({
         maßgeblich ist immer die amtliche Quelle, auf die jede Angabe
         verlinkt ist. Hinweise auf Fehler sind willkommen – per
         <a
-          href="mailto:kontakt@begutachtungs-monitor.at"
+          :href="contact.mailto"
           class="link-inline"
         >E-Mail</a>
         oder als

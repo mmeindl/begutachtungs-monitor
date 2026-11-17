@@ -1864,6 +1864,44 @@ the reasoning in full stands in that component's header comment.
   browser test against an outside site fails for reasons that are not ours.
   Not checked: the Petition an den Bundesrat, which keeps the one
   `formlink`.
+- **The monitor asks for a correction where it makes a claim of its own**
+  (17.11.2026). „Fehler melden" ends
+  a section's credit line exactly when the line names something as the
+  monitor's (marking, pairing, a count, the classification of who filed;
+  `SectionCredits`): a line that only credits publishers gets none. It
+  opens in place, as „Methode" does: „Hinweis an" and the address,
+  written out, as a link whose mail names the page and the claim. Not a
+  bare `mailto:` link on the words themselves: that does nothing,
+  silently, where no mail program answers it, and here the reader at
+  least reads the address. Opening it closes „Methode" and the other way
+  round (`<details name>`, one group per credit line). No such line stands under every page: one asking for hints
+  under each draft was removed on 30.09.2026, nobody there had the
+  question. It is a muted item of the line, never the accent box: blue buttons are the doors into lawmaking, and a
+  field beside a draft would be taken for filing a Stellungnahme.
+- **Every page invites people to work with the project, in one line of
+  the footer** (maintainer, 17.11.2026; `AppFooter`, `COOPERATION_DE`):
+  „Am Monitor mitwirken: eine Funktion wünschen, einen Kontakt vermitteln,
+  einen Workshop anfragen" and the address on a line of its own under it,
+  in the text's size above the colophon. On every page, because the
+  readers it is for arrive on a draft's page from a feed or a search and never see the start page. One
+  line and the address, no link to a longer text and no section: four
+  rows in the doors' grammar stood on the start page and on `/ueber` for
+  an hour and were taken back for the simpler line, and under every page they would stand beside the doors into lawmaking
+  and be read as some of them. „Am Monitor", not a bare „Mitmachen": on
+  this site that word means taking part in lawmaking. It names no price
+  and promises nothing. No header label: a sixth does not fit at 320 px
+  (`AppHeader`).
+- **Mail leaves from the reader's program, not from the server**
+  (17.11.2026, `app/utils/contact.ts`). A form needs a sending path with
+  credentials, spam protection without a third party, a failure state and
+  a section of its own in the Datenschutzerklärung. What it would add is a
+  report without a sender's address. Not built until readers are seen to
+  answer the invitations; if built, it sends only to the monitor's own
+  address, never a copy to an address typed in, and does not render where
+  no sending path is configured.
+- **The contact address is configuration**
+  (`runtimeConfig.public.contactEmail`, `useContact`), as the site's
+  address is: no page writes it out.
 
 ### Operations
 

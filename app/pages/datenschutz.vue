@@ -39,6 +39,8 @@ usePageSeo({
   description:
     'Welche Daten der Begutachtungs-Monitor verarbeitet: kein Tracking, keine Zugriffsprotokolle, Seitenaufrufe nur als Summe je Tag, ein Cookie nur für die Auswahl der Quellen – und warum Privatpersonen nicht namentlich genannt werden.',
 })
+
+const contact = useContact()
 </script>
 
 <template>
@@ -61,9 +63,9 @@ usePageSeo({
         4020 Linz, Österreich<br>
         E-Mail:
         <a
-          href="mailto:kontakt@begutachtungs-monitor.at"
+          :href="contact.mailto"
           class="link-inline"
-        >kontakt@begutachtungs-monitor.at</a>
+        >{{ contact.email }}</a>
       </address>
       <p>
         Ein Datenschutzbeauftragter ist nicht bestellt; die Voraussetzungen
@@ -182,7 +184,7 @@ usePageSeo({
 
     <ProseSection id="dse-mail" heading="Kontaktaufnahme per E-Mail">
       <p>
-        Wer an kontakt@begutachtungs-monitor.at schreibt, übermittelt damit
+        Wer an <a :href="contact.mailto" class="link-inline">{{ contact.email }}</a> schreibt, übermittelt damit
         Absenderadresse, Betreff und Inhalt der Nachricht. Diese werden
         ausschließlich zur Beantwortung verwendet. Rechtsgrundlage ist
         Art 6 Abs 1 lit f DSGVO (berechtigtes Interesse an der Beantwortung
@@ -282,7 +284,7 @@ usePageSeo({
         Wer findet, dass ein Name hier nicht stehen sollte, bekommt das ohne
         Diskussion korrigiert – eine kurze
         <a
-          href="mailto:kontakt@begutachtungs-monitor.at"
+          :href="contact.mailto"
           class="link-inline"
         >E-Mail</a>
         genügt. Bei der Quelle bleibt der Eintrag davon unberührt; dafür ist
@@ -298,9 +300,9 @@ usePageSeo({
         auf Grundlage berechtigter Interessen (Art 21 DSGVO). Eine
         formlose Nachricht an
         <a
-          href="mailto:kontakt@begutachtungs-monitor.at"
+          :href="contact.mailto"
           class="link-inline"
-        >kontakt@begutachtungs-monitor.at</a>
+        >{{ contact.email }}</a>
         reicht.
       </p>
       <p>

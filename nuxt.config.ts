@@ -24,8 +24,14 @@ export default defineNuxtConfig({
     },
   },
   runtimeConfig: {
-    // Absolute base for links in RSS/ICS feeds; override via NUXT_PUBLIC_SITE_URL.
-    public: { siteUrl: 'https://begutachtungs-monitor.at' },
+    public: {
+      // Absolute base for links in RSS/ICS feeds; override via NUXT_PUBLIC_SITE_URL.
+      siteUrl: 'https://begutachtungs-monitor.at',
+      // The one address every „schreiben an …" on the site uses
+      // (`useContact`); override via NUXT_PUBLIC_CONTACT_EMAIL. A copy run by
+      // someone else sets its own; no page writes the address out.
+      contactEmail: 'kontakt@begutachtungs-monitor.at',
+    },
   },
   // Nuxt 4.6.4 resolves an unset devServer.host to `{}` — an empty config
   // too — and `nuxt dev` dies on `options.hostname.toLowerCase` (05.11.2026).
