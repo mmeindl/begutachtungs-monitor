@@ -920,23 +920,131 @@ function submitSearch() {
     </section>
 
     <!-- WHAT BECAME OF IT (16.11.2026): one chapter for the following, the
-         ranking and the newest laws, each a list of its own under it. -->
+         newest laws and the ranking, each a list of its own under it. -->
     <section v-if="data" class="page-section" aria-labelledby="follow-heading">
       <h2 id="follow-heading" class="section-heading">
         {{ HOME_DE.followHeading }}
       </h2>
-      <!-- The accountability layer opens HERE, not with the recency list
-           below it. On an ordinary day that list is four rows of
-           „bisher keine Regierungsvorlage" — ME→RV latency, not shelving —
-           and whichever section comes first teaches the reader what the
-           tool is about. These five rows carry both directions with the
-           stakes attached: 707 Stellungnahmen that became a Gesetz, 616
-           that have been waiting since Oktober 2025. Ordered by
-           participation, never by outcome: Nachverfolgung, kein
-           Punktestand. -->
+      <!-- The chapter opens with the end of the chain since 17.11.2026
+           (maintainer): participation that arrived somewhere, and the part
+           of „Was daraus wurde" that changes, after every plenary week,
+           where the ranking below spans the whole period. What stood here
+           until 18.09.2026 was the most recently CLOSED Begutachtungen —
+           four rows whose chip said "bisher keine Regierungsvorlage"
+           because they were two weeks old and the median wait is 40 days.
+           Predictable from the date beside it is not an outcome. The
+           shelving half has not left the page; it sits below, on the rows
+           where the wait has become evidence. -->
+      <section class="mt-8" aria-labelledby="enacted-heading">
+        <!-- This link pointed at „?status=closed" because the filter „im
+             Bundesgesetzblatt" did not exist: it would have needed a station
+             per row, which was a work package rather than a link.
+             The station map exists since 18.09.2026, so the link now
+             points at exactly the set the heading names. Still without a
+             number: the section shows the newest Kundmachungen, and a number
+             beside it would be the number of all of them. -->
+        <ListHeader
+          id="enacted-heading"
+          :level="3"
+          :to="enactedHref"
+          noun="kundgemachten Entwürfe"
+        >
+          Zuletzt Gesetz geworden
+        </ListHeader>
+        <!-- „… – aus welcher Begutachtung" stood in the heading until
+             18.09.2026 and was a duplicate twice over: the sentence below
+             says it in full, and every row names its Ministerialentwurf.
+             The heading states what the section is, the rows answer it.
+
+             The rhythm said out loud, because it is the section's one
+             surprise: this list can stand still for two months and then
+             turn over almost completely. Better read as the institution's
+             calendar than as a stale page. -->
+        <!-- The Blöcke sentence explains why nothing moves here for weeks,
+             and it is the wrong explanation during a fallback: then the list
+             stands still because the period it belongs to is over. So the
+             fallback replaces it rather than adding to it — one reason per
+             state, and the true one. -->
+        <p v-if="enactedLandLine" class="mt-2 text-sm text-ink-secondary">
+          {{ enactedLandLine }}
+        </p>
+        <p v-else class="mt-2 text-sm text-ink-secondary">
+          <template v-if="enactedIsFallback">Aus der {{ currentGp }}.
+            Gesetzgebungsperiode ist noch kein Entwurf kundgemacht. Hier stehen
+            deshalb die jüngsten Kundmachungen im Bundesgesetzblatt aus der
+            {{ enactedGp }}. Gesetzgebungsperiode – und die Begutachtung, aus der
+            sie hervorgegangen sind.</template>
+          <template v-else>Die jüngsten Kundmachungen im Bundesgesetzblatt aus der
+            <template v-if="enactedGp">{{ enactedGp }}. </template>Gesetzgebungsperiode
+            – und die Begutachtung, aus der sie hervorgegangen sind. Der
+            Nationalrat beschließt in Blöcken: zwischen zwei Plenarwochen ändert
+            sich hier nichts.</template>
+        </p>
+        <!-- Same row and the same chip as the ranking below: the object
+             is the Begutachtung, and what became of it goes in the aside.
+
+             ALWAYS THE BOX since the chips stand in its head (30.10.2026),
+             for the open list's reason: a box that vanished while loading or
+             empty would take with it the control that could fill it. So the
+             skeleton and both silences stand inside it. -->
+        <!-- The chosen Länder cannot give this box a row: said in words
+             (`noneApply`). Above the box while the Bund fills it, inside it
+             where nothing does. -->
+        <p v-if="bund && noneApply(ENACTED_UNAVAILABLE)" class="mt-2 text-sm text-ink-muted">
+          {{ noneApply(ENACTED_UNAVAILABLE) }}
+        </p>
+        <EntryList :entries="enactedEntries" :heading-level="4" :state="!enactedEntries.length && enactedLoading ? { loading: HOME_LIST_DE.enactedLoading } : null" class="mt-4">
+          <template #header>
+            <SourceChips :unavailable="ENACTED_UNAVAILABLE" />
+            <LandCoverageNote :lands="enactedLaender" where="kundgemacht" />
+          </template>
+          <template #empty>
+            <!-- Two different silences, said differently: nothing promulgated
+                 yet is a fact about the period, an unreachable endpoint is a
+                 fact about us. -->
+            <!-- Reached only when the period before has nothing either — the
+                 fallback has already run by the time the page sees this. It
+                 names the period rather than saying „dieser":
+                 a demonstrative here points at nothing the reader
+                 can see, and now there are two periods it could mean. -->
+            <p v-if="!bund && noneApply(ENACTED_UNAVAILABLE)" class="p-4 text-sm text-ink-muted">
+              {{ noneApply(ENACTED_UNAVAILABLE) }}
+            </p>
+            <p v-else-if="enactedAnswered && enactedLaender.length" class="p-4 text-sm text-ink-muted">
+              Aus den gewählten Quellen ist in diesem Zeitraum bisher kein Entwurf
+              kundgemacht worden.
+            </p>
+            <p v-else-if="enactedAnswered" class="p-4 text-sm text-ink-muted">
+              Aus der <template v-if="enactedGp">{{ enactedGp }}. </template>Gesetzgebungsperiode
+              ist bisher kein Entwurf im Bundesgesetzblatt kundgemacht worden.
+            </p>
+            <GapNote v-else kind="unavailable" text="die Kundmachungen." class="p-4 text-sm text-ink-muted" />
+          </template>
+        </EntryList>
+        <!-- One half missing while the other has rows: said, so the list does
+             not read as if that half had promulgated nothing. -->
+        <template v-if="enactedEntries.length">
+          <GapNote v-if="bund && enactedState === 'failed'" kind="unavailable" text="die Kundmachungen des Bundes." class="mt-2 text-sm text-ink-muted" />
+          <p v-for="line in enactedPendingLines" :key="line" class="mt-2 text-sm text-ink-muted">
+            {{ line }}
+          </p>
+          <GapNote v-for="s in unreadableRecent" :key="s.land" kind="unavailable" :text="`die Kundmachungen des Landes ${LAND_NAME[s.land]}.`" class="mt-2 text-sm text-ink-muted" />
+        </template>
+      </section>
+
+      <!-- Below the newest laws since 17.11.2026 (maintainer): it spans the
+           whole period and barely moves between visits. These five rows
+           carry both directions with the stakes attached: 707
+           Stellungnahmen that became a Gesetz, 616 that have been waiting
+           since Oktober 2025. Ordered by participation, never by outcome:
+           Nachverfolgung, kein Punktestand. Until 17.11.2026 it opened the
+           chapter, because the list then below it was four rows of
+           „bisher keine Regierungsvorlage" (ME→RV latency, not shelving);
+           that list became the newest laws on 18.09.2026, and the reason
+           went with it. -->
       <section
         v-if="rankedRows.length"
-        class="mt-8"
+        class="mt-12"
         aria-labelledby="ranked-heading"
       >
         <!-- The link continues the ranking rather than pointing at the pool
@@ -1012,111 +1120,6 @@ function submitSearch() {
         <p v-if="outcomesLine" class="mt-2 text-sm text-ink-muted">
           {{ outcomesLine }}
         </p>
-      </section>
-
-      <!-- The end of the chain, and the page's last word on purpose:
-           participation that arrived somewhere. What stood here
-           until 18.09.2026 was the most recently CLOSED Begutachtungen —
-           four rows whose chip said "bisher keine Regierungsvorlage"
-           because they were two weeks old and the median wait is 40 days.
-           Predictable from the date beside it is not an outcome. The
-           shelving half has not left the page; it sits above, on the rows
-           where the wait has become evidence. -->
-      <section class="mt-12" aria-labelledby="enacted-heading">
-        <!-- This link pointed at „?status=closed" because the filter „im
-             Bundesgesetzblatt" did not exist: it would have needed a station
-             per row, which was a work package rather than a link.
-             The station map exists since 18.09.2026, so the link now
-             points at exactly the set the heading names. Still without a
-             number: the section shows the newest Kundmachungen, and a number
-             beside it would be the number of all of them. -->
-        <ListHeader
-          id="enacted-heading"
-          :level="3"
-          :to="enactedHref"
-          noun="kundgemachten Entwürfe"
-        >
-          Zuletzt Gesetz geworden
-        </ListHeader>
-        <!-- „… – aus welcher Begutachtung" stood in the heading until
-             18.09.2026 and was a duplicate twice over: the sentence below
-             says it in full, and every row names its Ministerialentwurf.
-             The heading states what the section is, the rows answer it.
-
-             The rhythm said out loud, because it is the section's one
-             surprise: this list can stand still for two months and then
-             turn over almost completely. Better read as the institution's
-             calendar than as a stale page. -->
-        <!-- The Blöcke sentence explains why nothing moves here for weeks,
-             and it is the wrong explanation during a fallback: then the list
-             stands still because the period it belongs to is over. So the
-             fallback replaces it rather than adding to it — one reason per
-             state, and the true one. -->
-        <p v-if="enactedLandLine" class="mt-2 text-sm text-ink-secondary">
-          {{ enactedLandLine }}
-        </p>
-        <p v-else class="mt-2 text-sm text-ink-secondary">
-          <template v-if="enactedIsFallback">Aus der {{ currentGp }}.
-            Gesetzgebungsperiode ist noch kein Entwurf kundgemacht. Hier stehen
-            deshalb die jüngsten Kundmachungen im Bundesgesetzblatt aus der
-            {{ enactedGp }}. Gesetzgebungsperiode – und die Begutachtung, aus der
-            sie hervorgegangen sind.</template>
-          <template v-else>Die jüngsten Kundmachungen im Bundesgesetzblatt aus der
-            <template v-if="enactedGp">{{ enactedGp }}. </template>Gesetzgebungsperiode
-            – und die Begutachtung, aus der sie hervorgegangen sind. Der
-            Nationalrat beschließt in Blöcken: zwischen zwei Plenarwochen ändert
-            sich hier nichts.</template>
-        </p>
-        <!-- Same row and the same chip as the section above: the object
-             is the Begutachtung, and what became of it goes in the aside.
-
-             ALWAYS THE BOX since the chips stand in its head (30.10.2026),
-             for the open list's reason: a box that vanished while loading or
-             empty would take with it the control that could fill it. So the
-             skeleton and both silences stand inside it. -->
-        <!-- The chosen Länder cannot give this box a row: said in words
-             (`noneApply`). Above the box while the Bund fills it, inside it
-             where nothing does. -->
-        <p v-if="bund && noneApply(ENACTED_UNAVAILABLE)" class="mt-2 text-sm text-ink-muted">
-          {{ noneApply(ENACTED_UNAVAILABLE) }}
-        </p>
-        <EntryList :entries="enactedEntries" :heading-level="4" :state="!enactedEntries.length && enactedLoading ? { loading: HOME_LIST_DE.enactedLoading } : null" class="mt-4">
-          <template #header>
-            <SourceChips :unavailable="ENACTED_UNAVAILABLE" />
-            <LandCoverageNote :lands="enactedLaender" where="kundgemacht" />
-          </template>
-          <template #empty>
-            <!-- Two different silences, said differently: nothing promulgated
-                 yet is a fact about the period, an unreachable endpoint is a
-                 fact about us. -->
-            <!-- Reached only when the period before has nothing either — the
-                 fallback has already run by the time the page sees this. It
-                 names the period rather than saying „dieser":
-                 a demonstrative here points at nothing the reader
-                 can see, and now there are two periods it could mean. -->
-            <p v-if="!bund && noneApply(ENACTED_UNAVAILABLE)" class="p-4 text-sm text-ink-muted">
-              {{ noneApply(ENACTED_UNAVAILABLE) }}
-            </p>
-            <p v-else-if="enactedAnswered && enactedLaender.length" class="p-4 text-sm text-ink-muted">
-              Aus den gewählten Quellen ist in diesem Zeitraum bisher kein Entwurf
-              kundgemacht worden.
-            </p>
-            <p v-else-if="enactedAnswered" class="p-4 text-sm text-ink-muted">
-              Aus der <template v-if="enactedGp">{{ enactedGp }}. </template>Gesetzgebungsperiode
-              ist bisher kein Entwurf im Bundesgesetzblatt kundgemacht worden.
-            </p>
-            <GapNote v-else kind="unavailable" text="die Kundmachungen." class="p-4 text-sm text-ink-muted" />
-          </template>
-        </EntryList>
-        <!-- One half missing while the other has rows: said, so the list does
-             not read as if that half had promulgated nothing. -->
-        <template v-if="enactedEntries.length">
-          <GapNote v-if="bund && enactedState === 'failed'" kind="unavailable" text="die Kundmachungen des Bundes." class="mt-2 text-sm text-ink-muted" />
-          <p v-for="line in enactedPendingLines" :key="line" class="mt-2 text-sm text-ink-muted">
-            {{ line }}
-          </p>
-          <GapNote v-for="s in unreadableRecent" :key="s.land" kind="unavailable" :text="`die Kundmachungen des Landes ${LAND_NAME[s.land]}.`" class="mt-2 text-sm text-ink-muted" />
-        </template>
       </section>
 
       <!-- NO credit line of its own (03.10.2026, tried and removed within

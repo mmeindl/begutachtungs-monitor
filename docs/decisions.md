@@ -257,7 +257,8 @@ gets an entry of its own only where it carries a reason the rule does not.
   Each of the four rows is bounded by a hairline above and below, so each
   target shows where it begins and ends; no line above the first door
   (maintainer, 16.11.2026). „Was daraus
-  wurde" holds the ranking and the newest laws. „Beschlossen, noch nicht
+  wurde" holds the newest laws, then the ranking: what changes after every
+  plenary week above what spans the whole period (maintainer, 17.11.2026). „Beschlossen, noch nicht
   kundgemacht" is on `/entwuerfe` only. Doors are data tagged with their
   jurisdiction (`WEGE_STATE`, `'eu'`), so a country's segment (`/at`) and a
   second country are configuration.
