@@ -11,7 +11,7 @@ import { FULL_FRIST_DAYS, fristPeriodFor, fristSpanDe } from '~/utils/deadlines'
  * had a dot too until the same day; it carried nothing — the start is
  * always zero and always the left edge, where the line begins anyway — and
  * drew the eye away from the value. One dot, one focal point. The anatomy
- * is `ScaleBar`'s since 03.10.2026, shared with `ChangeShareBar`.
+ * is `ScaleBar`'s since 03.10.2026, shared with `RvWaitBar`.
  *
  * No yellow. In the rail yellow is where the procedure stands now — a
  * state that will still move. The Frist's length does not: it is fixed the

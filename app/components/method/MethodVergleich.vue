@@ -20,24 +20,10 @@
     Paragraph für Paragraph.
   </p>
   <p>
-    Wie viel die Regierungsvorlage am Entwurf geändert hat, zählen wir an
-    den Einheiten des Entwurfs – Änderungsanordnungen, auf der Seite kurz
-    „Änderungen“, oder Paragraphen: wie viele davon sie umgeschrieben oder
-    gestrichen hat. Was sie neu hinzufügt, zählt nicht mit, redaktionelle
-    Änderungen auch nicht.
-  </p>
-  <p>
-    Verglichen wird dieser Anteil mit den Entwürfen einer abgeschlossenen
-    Gesetzgebungsperiode – welcher, steht am Balken; „üblich“ heißt die
-    mittlere Hälfte von ihnen, ein Viertel lag darunter, ein Viertel
-    darüber. Kam die Vorlage noch während der Begutachtung, fehlt dieser
-    Vergleich: Die Spanne wurde an Vorlagen gemessen, die danach kamen.
-  </p>
-  <p>
     Auch die Erläuterungen beider Fassungen halten wir gegeneinander.
     Gezählt werden nur Begründungen, die in beiden Fassungen zur selben
     Änderung stehen, und davon die, in denen das Ressort etwas geändert
-    hat – redaktionelle Änderungen wie oben nicht, und auch keine, die nur
+    hat – redaktionelle Änderungen nicht, und auch keine, die nur
     Satzzeichen, Leerzeichen oder Bindestriche betreffen. Ob
     eine Änderung auf eine Stellungnahme zurückgeht, sagt keiner der
     beiden Vergleiche.

@@ -5,7 +5,6 @@ import type { RvStationView } from '~/utils/outcomes'
 import { antragUrl } from '#shared/utils/antragPath'
 import { bgblShort, formatDateDe } from '#shared/utils/format'
 import {
-  changeShareRateFor,
   earlyVorlageWhenDe,
   namedInRvSourceDe,
   relatedGpSuffixDe,
@@ -33,10 +32,8 @@ import { beilageOfUrl, blgNrDe, citeLineDe } from '#shared/utils/citations'
 const props = defineProps<{
   draft: DraftDetail
   view: RvStationView
-  /** What the ME→RV comparison has delivered so far (`useVorlageOutcome`):
-   *  the share for the bar, and the two counts as the rows print them. */
-  share: { share: number } | null
-  shareDe: string | null
+  /** What the Begründungen's comparison has delivered so far
+   *  (`useVorlageOutcome`): the count as the row prints it. */
   reasoningDe: string | null
   rvExplanations: TraceLink | null
   /** Why the Begründungen could not be compared (`explanationsMissingNote`), or null. */
@@ -67,10 +64,9 @@ const erlCite = computed(() => {
   return cited && url ? citeLineDe(cited, url) : null
 })
 
-const shareRate = computed(() => changeShareRateFor(props.draft.gp))
-/* A Vorlage tabled while the Frist still ran is not held against the range:
- * that range was measured on Vorlagen that came after the Begutachtung
- * (`tabledBeforeFristEnd`, 115/ME). When it came stands in the bar's place. */
+/* A Vorlage tabled while the Frist still ran says so under „Eingebracht"
+ * (`tabledBeforeFristEnd`, 115/ME): when it came, before the comparison
+ * shows how little it changed. */
 const earlyVorlageWhen = computed(() => {
   const d = props.draft
   const rvDate = d.enactment?.rvDate
@@ -150,17 +146,8 @@ const sources = computed(() =>
               <CiteButton v-if="rvCite" :text="rvCite" subject="Die Regierungsvorlage" />
             </p>
           </template>
-          <template v-if="draft.enactment" #value-aenderung>
-            <p v-if="shareDe">{{ shareDe }}</p>
-            <div v-else class="mt-1.5 h-3 w-2/3 animate-pulse rounded bg-hairline motion-reduce:animate-none" aria-hidden="true" />
-          </template>
-          <!-- The period's range as a bar; for an early Vorlage when it
-               came instead. While loading the bar's height stays held, so
-               the comparison below does not move when it arrives. -->
-          <template v-if="draft.enactment" #after-aenderung>
-            <p v-if="earlyVorlageWhen && share" class="mt-0.5 text-ink-secondary">{{ earlyVorlageWhen }}</p>
-            <ChangeShareBar v-else-if="share" :share="share.share" :rate="shareRate" />
-            <div v-else-if="!earlyVorlageWhen" class="mt-3 h-13" aria-hidden="true" />
+          <template v-if="draft.enactment && earlyVorlageWhen" #after-rv>
+            <p class="mt-0.5 text-ink-secondary">{{ earlyVorlageWhen }}</p>
           </template>
           <!-- Where the Ressort says why — the document, never a cause
                (framing rule): the Erläuterungen are the Ressort's reasons,

@@ -128,16 +128,14 @@ const { data: rvStatements } = await useFetch<RvStatementsResponse>(
   { lazy: true, server: false, enabled: hasVorlage, watch: [hasVorlage] },
 )
 
-/* What the Vorlage made of the draft — the rows of its station frame that
- * come from the ME→RV comparison (`useVorlageOutcome`, 02.10.2026). */
+/* What the Vorlage made of the draft's Begründungen — the row of its
+ * station frame that comes from their comparison (`useVorlageOutcome`). */
 const vorlageOutcome = useVorlageOutcome(() => ({ gp: gp.value, inr: inr.value }), hasVorlage)
 
 /* The Regierungsvorlage station, in both outcomes: whether it renders, its
  * frame's rows, and what explains them (`rvStationView`). */
 const rvView = computed(() =>
   rvStationView(data.value, {
-    share: vorlageOutcome.share.value,
-    sharePending: vorlageOutcome.sharePending.value,
     reasoningStats: vorlageOutcome.reasoningStats.value,
     rvExplanations: vorlageOutcome.rvExplanations.value,
     explanationsMissing: vorlageOutcome.explanationsMissingDe.value,
@@ -679,8 +677,6 @@ const ministryLinks = computed(() => {
             v-if="sections.rv"
             :draft="data"
             :view="rvView"
-            :share="vorlageOutcome.share.value"
-            :share-de="vorlageOutcome.shareDe.value"
             :reasoning-de="vorlageOutcome.reasoningDe.value"
             :rv-explanations="vorlageOutcome.rvExplanations.value"
             :explanations-missing-de="vorlageOutcome.explanationsMissingDe.value"

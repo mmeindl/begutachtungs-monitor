@@ -149,10 +149,17 @@ gets an entry of its own only where it carries a reason the rule does not.
   name it; open deadlines of the previous period are always carried over
   (§12.35, §12.36).
 - **No change figure is read as the effect of a Stellungnahme.** The ME→RV
-  change rate (~98 %) separates nothing; what carries information is a
-  draft's change share against its period's interquartile range. Where the
-  Regierungsvorlage was tabled on or before the Frist, the page shows the
-  date instead: temporal, not causal (§12.38).
+  change rate (~98 %) separates nothing. Where the Regierungsvorlage was
+  tabled on or before the Frist, the page says so under „Eingebracht":
+  temporal, not causal (§12.38).
+- **How much a station changed is counted once, in its comparison.** The
+  legend counts the units per kind, at every station alike. No share of the
+  draft in the station frame and no bar against the period's range, as the
+  Regierungsvorlage's frame had from 02.10. to 17.11.2026 („Umgeschrieben
+  oder gestrichen"): the row repeated the legend for one station only, the
+  middle half (46–77 % in XXVII) is too wide to place a single draft, and a
+  share of three Paragraphen is no measurement. The measure stays in the
+  corpus script (`ownChangeShare`, values under „The procedure").
 - **Copy about statements on a Regierungsvorlage says where they go** (the
   Klubs) and never what they achieve (§12.14). The ministry is not named
   since 15.11.2026: Parliament's general pages name it for every kind of

@@ -102,68 +102,9 @@ export function daysSinceFristDe(days: number): string {
 }
 
 /**
- * How much of a draft its Regierungsvorlage changed, across a whole closed
- * Gesetzgebungsperiode — the second base rate.
- *
- * Measured with `scripts/corpus/aenderungsrate.ts` through the page's own
- * formula (`ownChangeShare`): per comparable draft, the share of its own
- * units the Vorlage changed in wording or dropped, editorial changes not
- * counted. Hand-copied like the row above, re-run when a GP closes.
- *
- * Why a range and not a yes/no: 280 of 283 comparable drafts of GP XXVII
- * changed at all, so „geändert" separates nothing, while the share runs from
- * a few percent to all of them. The middle half (p25–p75) is what a reader
- * can hold one draft against — a range, not a verdict (framing rule):
- * a large change is not a failure of the draft and a small one no win.
- */
-export interface ChangeShareRate {
-  gp: string
-  /** Comparable drafts (both texts readable, both sides paired) */
-  drafts: number
-  /** Percent, rounded */
-  p25: number
-  median: number
-  p75: number
-}
-
-// --- Measured surface: exported for tests and harness scripts, not for the app. ---
-/** Newest GP first. */
-export const CHANGE_SHARE_RATES: readonly ChangeShareRate[] = [
-  // Re-run 03.10.2026: a law the Ressort dropped from its own bill counts
-  // as dropped (XXVII p75 75 → 77, XXVI p25 34 → 35).
-  { gp: 'XXVII', drafts: 283, p25: 46, median: 63, p75: 77 },
-  { gp: 'XXVI', drafts: 104, p25: 35, median: 50, p75: 73 },
-]
-
-/** The measured row for `gp`, else the newest one — a running GP has no row of its own yet. */
-export function changeShareRateFor(gp: string | null | undefined): ChangeShareRate {
-  return CHANGE_SHARE_RATES.find((r) => r.gp === gp) ?? CHANGE_SHARE_RATES[0]!
-}
-
-/**
- * The value of the Regierungsvorlage card's row „Umgeschrieben oder
- * gestrichen": „193 von 311 Paragraphen des Entwurfs (62 %)".
- *
- * A row since 02.10.2026, not a sentence: two sentences over the comparison
- * — this count with the period's range, and the reasoning rate — changed
- * shape with every draft, and the station frame is where the page states its
- * facts (`FactList`). One form for every count, zero and all included: the
- * row's title says what is counted, so „im Wortlaut übernommen" — and the
- * qualifier that sentence needed — has nothing left to say. The range is the
- * bar under the row (`ChangeShareBar`); redaktionelle Korrekturen are not
- * counted, which the comparison's „Methode" states (`MethodVergleich`).
- */
-export function changeShareValueDe(changed: number, own: number, unitPlural: string): string {
-  const noun = own === 1 ? (SINGULAR_DE[unitPlural] ?? unitPlural) : unitPlural
-  return `${changed} von ${own} ${noun} des Entwurfs (${Math.round((changed / own) * 100)}\u00a0%)`
-}
-
-const SINGULAR_DE: Readonly<Record<string, string>> = { Paragraphen: 'Paragraph', Änderungen: 'Änderung' }
-
-/**
  * The value of the card's row „Begründung": how many of the Begründungen in
  * both Erläuterungen the Ressort changed —
- * editorial changes not counted, as in the row above
+ * editorial changes not counted, as in the § comparison's own counts
  * (`substantiveReasoningChanges`). Counted over the passages both versions
  * carry — the restriction stands in the comparison's „Methode"
  * (`MethodVergleich`); the row's footnote
@@ -177,13 +118,12 @@ export function reasoningShareValueDe(changed: number, compared: number): string
  * Was the Regierungsvorlage tabled while the Begutachtung was still running
  * — on or before the day its Frist ended?
  *
- * Then the period's range is the wrong yardstick. It was measured on drafts
- * whose Vorlage came after the Begutachtung, and set beside a Vorlage the
- * Stellungnahmen could not have shaped, „im Wortlaut" reads as input
- * ignored — the blame reading the framing rule forbids. Measured
+ * Then the page says so (`earlyVorlageWhenDe`): beside a Vorlage the
+ * Stellungnahmen could not have shaped, a comparison with few changes reads
+ * as input ignored — the blame reading the framing rule forbids. Measured
  * 29.09.2026: 7 of 91 drafts with a Vorlage in GP XXVIII (33, 45, 46, 92,
- * 115, 116, 117/ME; median share 0 % against 60 % for the other 84), 1 of
- * 296 in XXVII — so the XXVII range above is not skewed by them.
+ * 115, 116, 117/ME; median change share 0 % against 60 % for the other 84),
+ * 1 of 296 in XXVII.
  *
  * The day of the Fristende counts: a Vorlage tabled that day cannot have
  * taken in what arrived that day either. Same arithmetic as the spine's
@@ -195,14 +135,14 @@ export function tabledBeforeFristEnd(deadline: string | null | undefined, rvDate
 }
 
 /**
- * What stands under the count instead of the range when the Vorlage came
- * before the Fristende: when it came. Temporal, never causal — it says the
+ * What stands under the row „Eingebracht" when the Vorlage came before the
+ * Fristende: when it came. Temporal, never causal — it says the
  * Frist was still running, not that the Stellungnahmen were ignored or could
  * not have reached the Ressort (45/ME's Vorlage came five days before the
  * Fristende, when three of its eleven Stellungnahmen had already arrived).
- * Beside the count it is what keeps a low share from reading as input
- * ignored; the range is left out because it was measured on Vorlagen that
- * came after the Begutachtung (`tabledBeforeFristEnd`).
+ * Above the comparison it is what keeps few changes from reading as input
+ * ignored (`tabledBeforeFristEnd`). Under the change share's row until
+ * 17.11.2026, when that row went.
  */
 export function earlyVorlageWhenDe(dates: { arrivedAt: string | null; deadline: string; rvDate: string }): string {
   const sinceStart = spanInDays(dates.arrivedAt, dates.rvDate)
@@ -316,8 +256,6 @@ export function namedInRvNoComparisonDe(n: NamedInRv): string {
 /** What the ME→RV comparison has delivered so far — the values of
  *  `useVorlageOutcome`, read only for whether they are there. */
 export interface VorlageOutcomeState {
-  share: unknown
-  sharePending: boolean
   reasoningStats: unknown
   rvExplanations: unknown
   /** A side's Erläuterungen were not read — the row says so (`explanationsMissingNote`). */
@@ -453,12 +391,11 @@ export function rvStationView(d: DraftDetail | null | undefined, vorlage: Vorlag
   const facts: RvFact[] = []
   if (d.enactment) {
     facts.push({ key: 'rv', title: 'Eingebracht' })
-    // The comparison's counts, as rows (02.10.2026). The first holds its
-    // place while the comparison loads; the second appears when its
-    // documents are found — on many drafts they are not.
-    if (vorlage.share || vorlage.sharePending) {
-      facts.push({ key: 'aenderung', title: 'Umgeschrieben oder gestrichen' })
-    }
+    // The Begründungen's count, as a row (02.10.2026); it appears when the
+    // documents are found — on many drafts they are not. How much of the
+    // text changed is not a row since 17.11.2026: the comparison under the
+    // frame counts it per kind in its legend, and a share in the frame said
+    // the same less exactly.
     if (vorlage.reasoningStats || vorlage.rvExplanations || vorlage.explanationsMissing) {
       facts.push({ key: 'begruendung', title: 'Begründung' })
     }
@@ -499,7 +436,7 @@ export function rvStationView(d: DraftDetail | null | undefined, vorlage: Vorlag
     noRvVerdict,
     noRvBaseRate,
     facts,
-    counted: facts.some((f) => f.key === 'aenderung' || f.key === 'begruendung'),
+    counted: facts.some((f) => f.key === 'begruendung'),
     context,
   }
 }

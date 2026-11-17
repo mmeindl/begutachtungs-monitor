@@ -1,9 +1,8 @@
 <!--
   How the comparisons after a Land's Begutachtung work — the „Methode" of
-  the Vorlage's frame („Umgeschrieben oder gestrichen", `LandStationSections`)
+  the Vorlage's frame („Begründung", `LandStationSections`)
   and of `LandLawDiffSection` from the draft to the Vorlage and from the
-  Vorlage on (15.11.2026). The Land's counterpart of `MethodVergleich`,
-  without its period range, which is measured on the Bund's drafts only.
+  Vorlage on (15.11.2026). The Land's counterpart of `MethodVergleich`.
 
   Paragraphs only, without a wrapper: the caller's `prose-flow` styles its
   direct children. Which text the Vorlage is held against after it — the
@@ -36,13 +35,9 @@ const committeeSentence = computed(() => landCommitteeSentenceDe(props.land))
     Vergleich, statt alles als neu zu melden.
   </p>
   <p>
-    „Umgeschrieben oder gestrichen“ zählen wir an den Einheiten des
-    Entwurfs: wie viele davon die Regierungsvorlage umgeschrieben oder
-    gestrichen hat. Was sie neu hinzufügt, zählt nicht mit, redaktionelle
-    Änderungen auch nicht. Eine Spanne des Üblichen zeigen wir bei den
-    Ländern nicht: Sie ist nur an Entwürfen des Bundes gemessen. Die
-    Begründungen vergleichen wir, wo beide Fassungen Erläuterungen zu
-    denselben Bestimmungen enthalten. Ob eine Änderung auf eine
-    Stellungnahme zurückgeht, sagt keiner der beiden Vergleiche.
+    Die Begründungen vergleichen wir, wo beide Fassungen Erläuterungen zu
+    denselben Bestimmungen enthalten; redaktionelle Änderungen zählen
+    dabei nicht. Ob eine Änderung auf eine Stellungnahme zurückgeht, sagt
+    keiner der beiden Vergleiche.
   </p>
 </template>

@@ -1,50 +1,37 @@
 /**
  * What the Regierungsvorlage made of the draft, for its station frame
- * (02.10.2026): how much of the text it changed, how many Begründungen, and
- * where its Erläuterungen are.
+ * (02.10.2026): how many Begründungen it changed, and where its
+ * Erläuterungen are.
  *
  * Until then the ME→RV comparison said it in two sentences above its list.
  * They moved into the card because the card is where the page states a
  * station's facts (`FactList`), and the comparison under it now opens with
- * its list.
+ * its list. The other of the two, how much of the text changed, was a row
+ * with a share until 17.11.2026; the comparison's legend counts it per kind,
+ * so the frame no longer repeats it and this no longer reads the § diff.
  *
- * ONE REQUEST EACH. The comparison (`LawDiffSection`) reads the same two
- * responses, so both fetch under the shared keys (`lawDiffKey`, `lawReasoningKey`)
- * and with `dedupe: 'defer'` — Nuxt's default `cancel` aborts the first
- * caller's request and sends it again. Client-side like the comparison: the
- * first request per draft parses two documents, and the page must not wait
- * for that.
+ * ONE REQUEST. The comparison (`LawDiffSection`) reads the same response,
+ * so it is fetched under the shared key (`lawReasoningKey`) and with
+ * `dedupe: 'defer'` — Nuxt's default `cancel` aborts the first caller's
+ * request and sends it again. Client-side like the comparison: the first
+ * request per draft parses two documents, and the page must not wait for
+ * that.
  *
  * @param enabled Whether a Vorlage exists — the endpoints have nothing to
  * compare otherwise. A ref, because after a click the page's draft arrives
  * after this runs (`lazy`, 04.10.2026): read once, it was false for good.
  */
 import type { Ref } from 'vue'
-import type { LawDiffResponse, ReasoningDiffResponse } from '#shared/types'
-import { changeShareNounDe, ownChangeShare } from '#shared/utils/changeShare'
-import { lawDiffKey, lawReasoningKey } from '#shared/utils/lawStations'
-import { changeShareValueDe, reasoningShareValueDe } from '~/utils/outcomes'
+import type { ReasoningDiffResponse } from '#shared/types'
+import { lawReasoningKey } from '#shared/utils/lawStations'
+import { reasoningShareValueDe } from '~/utils/outcomes'
 import { explanationsMissingNote, substantiveReasoningChanges } from '~/utils/reasoningNotes'
 
 export function useVorlageOutcome(source: () => { gp: string; inr: number }, enabled: Ref<boolean>) {
-  const { data: diff, status: diffStatus } = useFetch<LawDiffResponse>(
-    () => `/api/drafts/${source().gp}/${source().inr}/diff?von=me&bis=rv`,
-    { key: () => lawDiffKey(source().gp, source().inr, 'me', 'rv'), lazy: true, server: false, dedupe: 'defer', enabled, watch: [enabled] },
-  )
   const { data: reasoning } = useFetch<ReasoningDiffResponse>(
     () => `/api/drafts/${source().gp}/${source().inr}/begruendung?von=me&bis=rv`,
     { key: () => lawReasoningKey(source().gp, source().inr, 'me', 'rv'), lazy: true, server: false, dedupe: 'defer', enabled, watch: [enabled] },
   )
-
-  /** Null once the comparison is there and has nothing to count. */
-  const share = computed(() => {
-    const d = diff.value
-    if (!d?.available) return null
-    const s = ownChangeShare(d.stats)
-    return s ? { ...s, noun: changeShareNounDe(d.units) } : null
-  })
-  /** Still on its way — the card holds the row's place meanwhile. */
-  const sharePending = computed(() => enabled.value && !diff.value && diffStatus.value !== 'error')
 
   /** Changed as the page counts it, the editorial ones not (`substantiveReasoningChanges`). */
   const reasoningStats = computed(() => {
@@ -55,11 +42,7 @@ export function useVorlageOutcome(source: () => { gp: string; inr: number }, ena
    *  [Entwurf, Regierungsvorlage], and only where both were found. */
   const rvExplanations = computed(() => (reasoning.value?.sources?.length === 2 ? reasoning.value.sources[1] ?? null : null))
 
-  /** The two counts as the frame's rows print them; null while absent. */
-  const shareDe = computed(() => {
-    const s = share.value
-    return s ? changeShareValueDe(s.changed, s.own, s.noun) : null
-  })
+  /** The count as the frame's row prints it; null while absent. */
   const reasoningDe = computed(() => {
     const r = reasoningStats.value
     return r ? reasoningShareValueDe(r.changed, r.compared) : null
@@ -68,5 +51,5 @@ export function useVorlageOutcome(source: () => { gp: string; inr: number }, ena
   /** Why no Begründung could be compared, where a side's Erläuterungen were not read (`explanationsMissingNote`). */
   const explanationsMissingDe = computed(() => explanationsMissingNote(reasoning.value?.explanationsMissing))
 
-  return { share, sharePending, reasoningStats, rvExplanations, shareDe, reasoningDe, explanationsMissingDe }
+  return { reasoningStats, rvExplanations, reasoningDe, explanationsMissingDe }
 }

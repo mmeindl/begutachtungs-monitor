@@ -1,9 +1,13 @@
 /**
  * How much of a draft the Regierungsvorlage changed — the measure behind the
- * base rate, defined once for the page and for
- * the script that measures the rate (`scripts/corpus/aenderungsrate.ts`), so
- * the number on a draft and the number it is compared with cannot mean two
- * things.
+ * base rate, as the script measures it (`scripts/corpus/aenderungsrate.ts`).
+ *
+ * NOT ON THE PAGE since 17.11.2026. Until then the Vorlage's frame printed
+ * the share as a row („Umgeschrieben oder gestrichen") and drew it against
+ * the period's middle half. The row repeated what the comparison's legend
+ * counts per kind, and the range (46–77 %) was too wide to place a single
+ * draft, least of all one of three Paragraphen. The measure stays for the
+ * corpus; the measured values are in `docs/decisions.md`, „The procedure".
  *
  * WHY THIS MEASURE, measured 27.09.2026 over the comparable drafts of GP
  * XXVII and XXVI. „Changed yes/no" separates nothing: 280 of 283 drafts were
@@ -37,15 +41,11 @@ export function ownChangeShare(stats: ChangeCounts): { changed: number; own: num
 }
 
 /**
- * The reader's word for the counted unit: an Änderungsanordnung is an
- * „Änderung" in the sentence (30.09.2026), a § of a new law a Paragraph. A
- * Novelle has no §§ of its own; its units are the numbered amendment
- * instructions (`Z 1`, `Z 2`, …).
+ * Whether the counted units are Änderungsanordnungen: an Änderungsanordnung
+ * is an „Änderung" in the page's words (30.09.2026), a § of a new law a
+ * Paragraph. A Novelle has no §§ of its own; its units are the numbered
+ * amendment instructions (`Z 1`, `Z 2`, …).
  */
 export function isNovelleUnits(units: readonly { id: string }[]): boolean {
   return units.length > 0 && units.every((u) => /^Z\d/.test(u.id))
-}
-
-export function changeShareNounDe(units: readonly { id: string }[]): string {
-  return isNovelleUnits(units) ? 'Änderungen' : 'Paragraphen'
 }

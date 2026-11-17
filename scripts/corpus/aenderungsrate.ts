@@ -734,7 +734,7 @@ console.log(`    Anteil mit Wortänderung/echt neu/entfallen  p10 ${q(robustShar
     .map((x) => x.share)
   const pctOf = (q: number) => Math.round(quantile(shares, q) * 100)
   console.log(`\n  Basisrate (ownChangeShare, verglichene Entwürfe): n ${shares.length}, p25 ${pctOf(0.25)} %, Median ${pctOf(0.5)} %, p75 ${pctOf(0.75)} %`)
-  console.log(`    für app/utils/outcomes.ts: { gp: '${gp}', drafts: ${shares.length}, p25: ${pctOf(0.25)}, median: ${pctOf(0.5)}, p75: ${pctOf(0.75)} }`)
+  console.log(`    für docs/decisions.md („The procedure"): ${gp} ${pctOf(0.25)} / ${pctOf(0.5)} / ${pctOf(0.75)} %, n ${shares.length}`)
 }
 console.log(`\n  ME-Quelle der verglichenen: Parlament ${results.filter((r) => r.stats && r.meSource === 'parlament').length} · RIS ${results.filter((r) => r.stats && r.meSource === 'ris').length}`)
 if (shipped) console.log(`  Kopie ≠ findLawStations: ${results.filter((r) => r.copyMismatch).length + copyMismatches} Abweichungen`)

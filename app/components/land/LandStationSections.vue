@@ -66,11 +66,11 @@ const beilage = computed(() => {
   if (ooe) return `Beilage ${ooe}`
   return /(Nr\s+\d+ der Beilagen(?: \([^)]*\))?)/.exec(label)?.[1] ?? null
 })
-/* What the Vorlage made of the draft, as rows of its frame — the Bund's
-   „Umgeschrieben oder gestrichen" and „Begründung", from the requests the
-   comparison under the frame reads (`useLandVorlageOutcome`). */
+/* What the Vorlage made of the draft's Begründungen, as a row of its frame —
+   the Bund's „Begründung", from the request the comparison under the frame
+   reads (`useLandVorlageOutcome`). */
 const vorlageCompared = computed(() => offers('entwurf', 'rv'))
-const { share, sharePending, shareDe, reasoningDe } = useLandVorlageOutcome(
+const { reasoningDe } = useLandVorlageOutcome(
   () => ({ land: props.land!, number: props.number! }),
   vorlageCompared,
 )
@@ -84,14 +84,11 @@ const rvFacts = computed<Fact[]>(() => {
       ? [{ key: 'eingelangt', title: props.land === 'ktn' ? 'Beschlossen von der Landesregierung' : 'Eingelangt im Landtag', text: span ? `${formatDateDe(step.date)}, ${span}` : formatDateDe(step.date) }]
       : []),
     ...(step.url ? [{ key: 'vorlage', title: 'Die Vorlage' }] : []),
-    // The first holds its place while the comparison loads; both go where
-    // there is nothing to count.
-    ...(share.value || sharePending.value ? [{ key: 'aenderung', title: 'Umgeschrieben oder gestrichen' }] : []),
     ...(reasoningDe.value ? [{ key: 'begruendung', title: 'Begründung', text: reasoningDe.value }] : []),
   ]
 })
 /* The counts are ours, not the Land's: said under the frame, as the Bund's. */
-const rvCounted = computed(() => rvFacts.value.some((f) => f.key === 'aenderung' || f.key === 'begruendung'))
+const rvCounted = computed(() => rvFacts.value.some((f) => f.key === 'begruendung'))
 const lgblFacts: Fact[] = [{ key: 'kundmachung', title: 'Kundgemacht' }]
 
 /* The frame of „Im Landtag", in „Im Parlament"'s order: where it stands,
@@ -130,14 +127,10 @@ const reportName = computed(() => {
             Regierungsvorlage<template v-if="beilage">, {{ beilage }}</template>
           </ExternalLink>
         </template>
-        <template #value-aenderung>
-          <p v-if="shareDe">{{ shareDe }}</p>
-          <div v-else class="mt-1.5 h-3 w-2/3 animate-pulse rounded bg-hairline motion-reduce:animate-none" aria-hidden="true" />
-        </template>
       </FactList>
-      <!-- The Land's own „Methode" since 15.11.2026: the Bund's text
-           (`MethodVergleich`) holds the share against a period range a
-           Land's page does not draw. -->
+      <!-- The Land's own „Methode" since 15.11.2026: where its texts come
+           from and which one stands for the committee differ from the
+           Bund's (`MethodVergleich`). -->
       <SectionCredits v-if="rvCounted" :sources="[]" :marked="false" own="Zählung">
         <template v-if="land" #method>
           <MethodLandVergleich :land="land" />

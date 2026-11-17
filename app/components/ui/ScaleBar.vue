@@ -15,10 +15,10 @@ export interface ScaleMark {
 <script setup lang="ts" generic="M extends ScaleMark">
 /**
  * One value against a yardstick, drawn the one way the page has for it
- * (`FristBar`, `ChangeShareBar`; extracted 03.10.2026, when the two had grown
+ * (`FristBar`, `RvWaitBar`; extracted 03.10.2026, when two bars had grown
  * the same anatomy twice): a hairline track, the ink line up to the value, one
  * filled dot on it — the rail's station grammar turned on its side, the same
- * 12 px dot with its 2 px border. The yardstick is a band behind the line, or
+ * 12 px dot with its 2 px border. The yardstick is
  * ticks across it, and its labels stand in a row under the track.
  *
  * Domain-free on purpose: every position comes in as a percent of the track,
@@ -27,7 +27,7 @@ export interface ScaleMark {
  * centred — the edge rules differ between them, so they are not this
  * component's to guess.
  *
- * Line, dot, band and ticks are decoration (`aria-hidden`); the value above
+ * Line, dot and ticks are decoration (`aria-hidden`); the value above
  * and the labels below are text, so a screen reader loses nothing.
  */
 const props = withDefaults(defineProps<{
@@ -35,8 +35,6 @@ const props = withDefaults(defineProps<{
   value: number
   /** Stands over the dot, centred on it except near either end. */
   valueLabel?: string | null
-  /** A range behind the line, as [from, to] in percent. */
-  band?: [number, number] | null
   /** The labels under the track, filled through the `mark` slot. */
   marks?: M[]
   /**
@@ -103,11 +101,6 @@ const DOT = computed(() => `absolute top-0 box-border size-3 -translate-x-1/2 ro
     </div>
     <div :class="valueLabel ? 'relative mt-1 h-3' : 'relative h-3'" aria-hidden="true">
       <div class="absolute inset-x-0 top-1/2 h-0.5 -translate-y-1/2 bg-hairline" />
-      <div
-        v-if="band"
-        class="absolute top-0 h-3 rounded-sm bg-ink-muted/25"
-        :style="{ left: pct(band[0]), width: pct(band[1] - band[0]) }"
-      />
       <div class="absolute top-1/2 h-0.5 -translate-y-1/2 bg-ink" :style="{ left: pct(from), width: pct(value - from) }" />
       <span
         v-for="mark in ticks"

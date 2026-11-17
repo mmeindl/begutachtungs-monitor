@@ -7,37 +7,25 @@
  * the Land's Begründungen it had changed. The Ministerialentwurf's page
  * moved the same two into the Vorlage's frame on 02.10.2026, as rows, and its
  * comparison opens with its list; a Land's page now does the same, with the
- * same words (`changeShareValueDe`, `reasoningShareValueDe`). Not the
- * period's range under the row: that one is measured on the Bund's drafts.
+ * same words (`reasoningShareValueDe`). The change share's row went on
+ * 17.11.2026, on both pages: the comparison's legend counts the changes per
+ * kind, so this reads the Begründungen only.
  *
- * ONE REQUEST EACH: the comparison (`LandLawDiffSection`) reads the same two
- * responses under the same keys (`landDiffKey`, `landReasoningKey`), with
- * `dedupe: 'defer'` as the Bund's — Nuxt's default `cancel` aborts the first
- * caller's request and sends it again.
+ * ONE REQUEST: the comparison (`LandLawDiffSection`) reads the same
+ * response under the same key (`landReasoningKey`), with `dedupe: 'defer'`
+ * as the Bund's — Nuxt's default `cancel` aborts the first caller's request
+ * and sends it again.
  *
  * @param enabled Whether the draft has both texts (`LandDraftDetail.comparisons`).
  */
 import { splitGap } from '#shared/utils/gaps'
 import type { Ref } from 'vue'
-import type { LandCode, LandLawDiffResponse, LandReasoningResponse } from '#shared/types'
-import { changeShareNounDe, ownChangeShare } from '#shared/utils/changeShare'
-import { landDiffKey, landReasoningKey } from '#shared/utils/laender'
-import { changeShareValueDe, reasoningShareValueDe } from '~/utils/outcomes'
+import type { LandCode, LandReasoningResponse } from '#shared/types'
+import { landReasoningKey } from '#shared/utils/laender'
+import { reasoningShareValueDe } from '~/utils/outcomes'
 import { substantiveReasoningChanges } from '~/utils/reasoningNotes'
 
 export function useLandVorlageOutcome(source: () => { land: LandCode; number: string }, enabled: Ref<boolean>) {
-  const { data: diff, status: diffStatus } = useFetch<LandLawDiffResponse>(
-    () => `/api/laender/${source().land}/${source().number}/vergleich`,
-    {
-      query: { von: 'entwurf', bis: 'rv' },
-      key: () => landDiffKey(source().land, source().number, 'entwurf', 'rv'),
-      lazy: true,
-      server: false,
-      dedupe: 'defer',
-      enabled,
-      watch: [enabled],
-    },
-  )
   const { data: reasoning } = useFetch<LandReasoningResponse>(
     () => `/api/laender/${source().land}/${source().number}/begruendung`,
     {
@@ -50,21 +38,7 @@ export function useLandVorlageOutcome(source: () => { land: LandCode; number: st
     },
   )
 
-  /** Null once the comparison is there and has nothing to count. */
-  const share = computed(() => {
-    const d = diff.value
-    if (!d?.available) return null
-    const s = ownChangeShare(d.stats)
-    return s ? { ...s, noun: changeShareNounDe(d.units) } : null
-  })
-  /** Still on its way — the frame holds the row's place meanwhile. */
-  const sharePending = computed(() => enabled.value && !diff.value && diffStatus.value !== 'error')
-
-  /** The two counts as the frame's rows print them; null while absent. */
-  const shareDe = computed(() => {
-    const s = share.value
-    return s ? changeShareValueDe(s.changed, s.own, s.noun) : null
-  })
+  /** The count as the frame's row prints it; null while absent. */
   const reasoningDe = computed(() => {
     const r = reasoning.value
     if (!r) return null
@@ -76,5 +50,5 @@ export function useLandVorlageOutcome(source: () => { land: LandCode; number: st
     return `nicht verglichen – ${(r.unavailableReason ?? 'die Erläuterungen beider Texte decken keinen gemeinsamen Paragraphen ab.').replace(/^\p{Lu}/u, (c) => c.toLowerCase())}`
   })
 
-  return { share, sharePending, shareDe, reasoningDe }
+  return { reasoningDe }
 }

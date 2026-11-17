@@ -6,8 +6,6 @@ import {
   rvBaseRateFor,
   rvWaitScale,
   daysSinceFristDe,
-  changeShareRateFor,
-  changeShareValueDe,
   reasoningShareValueDe,
   earlyVorlageWhenDe,
   tabledBeforeFristEnd,
@@ -125,27 +123,16 @@ describe('GP-ended copy', () => {
   })
 })
 
-describe("the Regierungsvorlage card's counts (02.10.2026)", () => {
-  it('one form for every count, zero and all included', () => {
-    expect(changeShareValueDe(12, 21, 'Änderungen')).toBe('12 von 21 Änderungen des Entwurfs (57 %)')
-    expect(changeShareValueDe(0, 5, 'Paragraphen')).toBe('0 von 5 Paragraphen des Entwurfs (0 %)')
-    expect(changeShareValueDe(5, 5, 'Paragraphen')).toBe('5 von 5 Paragraphen des Entwurfs (100 %)')
-    expect(changeShareValueDe(1, 1, 'Paragraphen')).toBe('1 von 1 Paragraph des Entwurfs (100 %)')
-  })
-
+describe("the Regierungsvorlage card's count (02.10.2026)", () => {
   it('counts the Begründungen in the singular too', () => {
     expect(reasoningShareValueDe(66, 153)).toBe('66 von 153 Begründungen geändert')
     expect(reasoningShareValueDe(1, 1)).toBe('1 von 1 Begründung geändert')
   })
 
   it('states counts, not a verdict', () => {
-    for (const s of [changeShareValueDe(12, 21, 'Änderungen'), reasoningShareValueDe(0, 4)]) {
+    for (const s of [reasoningShareValueDe(0, 4), reasoningShareValueDe(4, 4)]) {
       expect(s).not.toMatch(/nur|kaum|erfolgreich|ignoriert|Wirkung/)
     }
-  })
-
-  it('holds a running period against the newest closed one', () => {
-    expect(changeShareRateFor('XXVIII').gp).toBe('XXVII')
   })
 })
 
@@ -158,7 +145,7 @@ describe('a Vorlage tabled while the Begutachtung ran (29.09.2026)', () => {
     expect(tabledBeforeFristEnd('2026-06-24', null)).toBe(false)
   })
 
-  it('says when an early Vorlage came, in the bar\'s words', () => {
+  it('says when an early Vorlage came', () => {
     const at = (arrivedAt: string, rvDate: string, deadline: string) => earlyVorlageWhenDe({ arrivedAt, deadline, rvDate })
     expect(at('2026-06-10', '2026-06-10', '2026-06-24')).toBe('Eingebracht noch vor Beginn der Begutachtung') // 115/ME
     expect(at('2026-03-25', '2026-03-24', '2026-04-09')).toBe('Eingebracht noch vor Beginn der Begutachtung') // 92/ME
@@ -199,7 +186,7 @@ describe('rvStationView', () => {
       ...overrides,
     } as unknown as DraftDetail
   }
-  const NOTHING: VorlageOutcomeState = { share: null, sharePending: false, reasoningStats: null, rvExplanations: null }
+  const NOTHING: VorlageOutcomeState = { reasoningStats: null, rvExplanations: null }
   const enactment = (furtherRv: unknown[] = []) => ({ rvCitation: '518 d.B.', furtherRv }) as unknown as DraftDetail['enactment']
   const antragPath = (draftShare: number) => ({ antrag: { citation: '1065/A' }, draftShare }) as unknown as DraftDetail['antragPath']
 
@@ -290,13 +277,11 @@ describe('rvStationView', () => {
   it('lists the Vorlage and the comparison\'s rows as they arrive', () => {
     const d = draft({ enactment: enactment() })
     expect(rvStationView(d, NOTHING).facts.map((f) => f.key)).toEqual(['rv'])
-    expect(rvStationView(d, { ...NOTHING, sharePending: true }).facts.map((f) => f.key)).toEqual(['rv', 'aenderung'])
     // Erläuterungen not read: the row stays and says so (14.11.2026).
     expect(rvStationView(d, { ...NOTHING, explanationsMissing: 'Die Erläuterungen …' }).facts.map((f) => f.key)).toEqual(['rv', 'begruendung'])
-    const full = rvStationView(draft({ enactment: enactment([{}]) }), { share: {}, sharePending: false, reasoningStats: null, rvExplanations: {} })
+    const full = rvStationView(draft({ enactment: enactment([{}]) }), { reasoningStats: null, rvExplanations: {} })
     expect(full.facts).toEqual([
       { key: 'rv', title: 'Eingebracht' },
-      { key: 'aenderung', title: 'Umgeschrieben oder gestrichen' },
       { key: 'begruendung', title: 'Begründung' },
       { key: 'weitere', title: 'Außerdem aus dem Entwurf hervorgegangen' },
     ])
