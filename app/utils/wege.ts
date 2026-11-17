@@ -1324,7 +1324,7 @@ export const WEGE_COPY = {
 /**
  * A seam: one line of a page that leads to another jurisdiction's page,
  * where a law crosses between them. It passes no station of the page, so
- * it is no matrix row: a group of the card with its bar and one line, at
+ * it is no matrix row: a group of the card with its bar and its lines, at
  * the place in the page's order where the other jurisdiction's law enters
  * (`after`, a matrix id, or null where it opens the page). The way back is a row's own note
  * (`WegMatrixRow.noteHref`): on the EU's page the directive's „Umsetzung
@@ -1359,18 +1359,29 @@ export interface WegSeam {
  * Länder, the way a law travels — and mirrors the EU's page, which ends at
  * „Umsetzung durch Bund oder Land" with the link here. One line costs the
  * Bund's matrix no screen, which two EU matrices on top would have. Between
- * two matrices it read as a table that had lost its stations. The words of
- * label and note are the lead line's of 14.11.2026.
+ * two matrices it read as a table that had lost its stations.
+ *
+ * THE LINK IS NAMED AFTER THE PAGE IT OPENS (17.11.2026), in that page's own
+ * H1 (`EU_WEGE_TITLE`). Until then it read „EU-Richtlinie, EU-Verordnung",
+ * the lead line's words of 14.11.2026: two objects, where every other bold
+ * line of the card names a thing that walks the stations beside it — a row
+ * without its stations again. The note says what happens to each in the
+ * country, as a sentence with its own subject, so it is not read as a
+ * description of the EU's page; „wo nötig", since a Verordnung applies
+ * directly and not every one draws rules.
  */
+/** The EU page's H1, and the words of the link that leads to it. */
+const EU_WEGE_TITLE = `${WEGE_COPY.title} in der EU`
+
 export const WEG_SEAMS: readonly WegSeam[] = [
   {
     id: 'eu-recht',
     jurisdiction: WEGE_STATE,
     after: null,
     bar: 'EU-Recht',
-    label: 'EU-Richtlinie, EU-Verordnung',
+    label: EU_WEGE_TITLE,
     href: WEGE_PATH_OF.eu,
-    note: 'Umsetzung einer Richtlinie, begleitende Regeln zu einer Verordnung',
+    note: 'Eine Richtlinie setzen Bund oder Land um, zu einer Verordnung erlassen sie wo nötig begleitende Regeln',
     noteLink: EU_IMPLEMENTING_LIST,
   },
 ]
@@ -1416,7 +1427,7 @@ export const WEGE_PAGE_COPY: Record<WegeJurisdiction, Pick<WegePage, 'title' | '
       `Alle Wege, die ein Text in ${EU_MEMBER_STATE_NAME_DE} zum Gesetz oder zur Verordnung nehmen kann – beim Bund und in den Ländern –, und die Wege eines Anliegens an das Parlament: Station für Station, und wo eine Stellungnahme oder eine Unterstützung möglich ist.`,
   },
   eu: {
-    title: `${WEGE_COPY.title} in der EU`,
+    title: EU_WEGE_TITLE,
     lede: 'Welche Stationen ein Rechtsakt der EU bis zur Geltung oder Umsetzung durchläuft und eine Europäische Bürgerinitiative bis zur Antwort der Kommission – und wo Sie sich beteiligen können.',
     description:
       'Die Wege eines Rechtsakts der Europäischen Union und einer Europäischen Bürgerinitiative, Station für Station, und wo eine Rückmeldung oder eine Unterstützung möglich ist.',

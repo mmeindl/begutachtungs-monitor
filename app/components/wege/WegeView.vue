@@ -91,8 +91,10 @@ const selected = computed(() => wegSelected(page.value, route.query.weg))
           :selected="selected"
           :class="i > 0 && 'border-t border-hairline'"
         />
-        <!-- A seam: a group of the card with its bar and one line, the same
-             at every width — it passes no station, so it has no columns. -->
+        <!-- A seam: a group of the card with its bar and its lines, the same
+             at every width — it passes no station, so it has no columns. The
+             note is a sentence, so its link stands on a line of its own and
+             not behind a „·" as in a matrix row (17.11.2026). -->
         <section
           v-else
           :aria-labelledby="`wege-${block.seam.id}`"
@@ -105,11 +107,9 @@ const selected = computed(() => wegSelected(page.value, route.query.weg))
             <NuxtLink :to="block.seam.href" class="link-inline font-medium">
               {{ block.seam.label }}
             </NuxtLink>
-            <span class="mt-0.5 block text-ink-secondary">
-              {{ block.seam.note }}<template v-if="block.seam.noteLink">
-                ·
-                <NuxtLink :to="block.seam.noteLink.href" class="link-inline">{{ block.seam.noteLink.label }}</NuxtLink>
-              </template>
+            <span class="mt-0.5 block text-ink-secondary">{{ block.seam.note }}</span>
+            <span v-if="block.seam.noteLink" class="mt-0.5 block">
+              <NuxtLink :to="block.seam.noteLink.href" class="link-inline">{{ block.seam.noteLink.label }}</NuxtLink>
             </span>
           </p>
         </section>
