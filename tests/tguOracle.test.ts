@@ -704,6 +704,28 @@ describe('oracleVerdict — structure and numbers (26.10.2026)', () => {
     expect(oracleVerdict('9', old, old, inForce)).toMatchObject({ verdict: 'widersprochen' })
     expect(oracleVerdict('9', old, old.replace('1. Juli', '15. Juli'), inForce)).toMatchObject({ verdict: 'bestätigt' })
   })
+
+  it('sees an ordinal of the text, a year ending a sentence and an Official Journal page (19.11.2026)', () => {
+    // After a determiner a number is an adjective of the noun that follows.
+    expect(stripMarkers('die das 18. Lebensjahr vollendet haben')).toBe('die das 18 Lebensjahr vollendet haben')
+    expect(stripMarkers('gemäß dem 2. Hauptstück')).toBe('gemäß dem 2 Hauptstück')
+    expect(stripMarkers('Der 7. Abschnitt gilt')).toBe('Der 7 Abschnitt gilt')
+    expect(stripMarkers('für das 3. bis 6. und das 12. bis 15. Hauptstück')).toBe('für das 3 bis 6 und das 12 bis 15 Hauptstück')
+    expect(stripMarkers('bis spätestens 31. Dezember 2029.')).toBe('bis spätestens 31 Dezember 2029')
+    expect(stripMarkers('ABl. Nr. L 283 vom 31.10.2017 S. 1.')).toBe('ABl. Nr. L 283 vom 31.10.2017 S. 1')
+    // „1." stays a marker after an article: a list's items can share it.
+    expect(stripMarkers('ist der 1. Handel mit Finanzinstrumenten, 2. die Annahme')).toBe('ist der Handel mit Finanzinstrumenten, die Annahme')
+    expect(stripMarkers('Personen, die 1. Staatsangehörige sind')).toBe('Personen, die Staatsangehörige sind')
+    // Read the same where the annex prints a marker before the determiner and RIS does not.
+    expect(stripMarkers('nachweist, oder 2. das 20. Lebensjahr vollendet hat')).toBe('nachweist, oder das 20 Lebensjahr vollendet hat')
+    expect(stripMarkers('nachweist, oder das 20. Lebensjahr vollendet hat')).toBe('nachweist, oder das 20 Lebensjahr vollendet hat')
+    // APG § 4 (15/ME XXVIII): the draft raises the age from 62 to 63; a
+    // result that kept 62 read exactly like one that made it.
+    const rows = [pair('§ 4. (1) … (2) Abweichend von Abs. 1 kann die Alterspension bereits nach Vollendung des 62. Lebensjahres beansprucht werden.', '§ 4. (1) … (2) Abweichend von Abs. 1 kann die Alterspension bereits nach Vollendung des 63. Lebensjahres beansprucht werden.', '§ 4.')]
+    const standing = 'Eins. Abweichend von Abs. 1 kann die Alterspension bereits nach Vollendung des 62. Lebensjahres beansprucht werden.'
+    expect(oracleVerdict('4', standing, standing, rows)).toMatchObject({ verdict: 'widersprochen' })
+    expect(oracleVerdict('4', standing, standing.replace('62.', '63.'), rows)).toMatchObject({ verdict: 'bestätigt' })
+  })
 })
 
 it('files the previous §\'s elided tail under that §, not as the next one\'s heading', () => {

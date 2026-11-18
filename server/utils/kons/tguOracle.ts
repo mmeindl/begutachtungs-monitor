@@ -433,7 +433,7 @@ export function stripMarkers(t: string): string {
       .replace(PARAGRAPH_MARKER_RE, ' ')
       .replace(/(^|\s)\(\d+[a-z]*\)(?=\s|$)/g, '$1')
       .replace(/(^|\s)(\d+[a-z]*)\.(?=\s|$)/g, (_whole, pre: string, num: string, offset: number, all: string) =>
-        keepsNumber(all.slice(0, offset), all.slice(offset + _whole.length)) ? `${pre}${num}` : pre)
+        keepsNumber(all.slice(0, offset), all.slice(offset + _whole.length), num) ? `${pre}${num}` : pre)
       .replace(/(^|\s)[a-z]{1,2}\)(?=\s)/g, '$1'),
   )
 }
@@ -452,11 +452,48 @@ export function stripMarkers(t: string): string {
  * still goes as the marker it usually is. The dot goes either way, so a
  * number ending the cell reads like the same number inside a sentence.
  */
-function keepsNumber(before: string, after: string): boolean {
-  return MONTH_AFTER_RE.test(after) || CITATION_BEFORE_RE.test(before)
+function keepsNumber(before: string, after: string, num: string): boolean {
+  if (MONTH_AFTER_RE.test(after) || CITATION_BEFORE_RE.test(before) || /^\d{4,}$/.test(num)) return true
+  // „ist der 1. Handel mit Finanzinstrumenten, … 2. die Annahme …" sets a
+  // list's first marker after the article its items share, so „1." stays a
+  // marker after a determiner too. Not decided by whether a „2." follows:
+  // the annex prints the markers and RIS's text does not, so that question
+  // gets two answers for one sentence (19.11.2026, 23 §§ moved).
+  return num !== '1' && (ORDINAL_BEFORE_RE.test(before) || ORDINAL_RANGE_BEFORE_RE.test(before))
 }
 const MONTH_AFTER_RE = /^\s*(?:Jänner|Januar|Feber|Februar|März|April|Mai|Juni|Juli|August|September|Oktober|November|Dezember)(?!\p{L})/u
-const CITATION_BEFORE_RE = /(?:(?<!\p{L})(?:Abs|Art|lit|Nr|Z|Ziff|Pkt|Tz|Rz)\.?|(?<!\p{L})(?:Absatz|Absätze|Artikel|Ziffer|Ziffern|Satz|Sätze|Punkt|Teil|Abschnitt|Hauptstück|Kapitel))\s*$/u
+// „S. 1." is the page of an Official Journal citation („ABl. Nr. L 283 vom
+// 31.10.2017 S. 1."), and only with its stop: „S" alone is no designator.
+const CITATION_BEFORE_RE = /(?:(?<!\p{L})(?:Abs|Art|lit|Nr|Z|Ziff|Pkt|Tz|Rz)\.?|(?<!\p{L})S\.|(?<!\p{L})(?:Absatz|Absätze|Artikel|Ziffer|Ziffern|Satz|Sätze|Punkt|Teil|Abschnitt|Hauptstück|Kapitel))\s*$/u
+/**
+ * An ordinal of the text: „das 18. Lebensjahr", „nach dem 2. Hauptstück",
+ * „am 15. Tag", „der 2. Genehmigungsfreistellungsverordnung", „sein 63.
+ * Lebensjahr" (19.11.2026). An article or a possessive asks for a noun, so
+ * the number after it is an adjective of that noun — „1." excepted, see
+ * `keepsNumber`. Stripped as markers, a draft raising an age read the same
+ * whether the engine carried it out or not: fault class „Zahl" got 44 of 482
+ * changed figures past the oracle on the PDF path and 27 of 295 on the table
+ * path, nearly all of them such ordinals, and one real result was among
+ * them — APG § 4 (15/ME XXVIII), where the draft raises the Korridorpension
+ * from the 62nd to the 63rd year, the engine left the 62 standing and the
+ * oracle confirmed it (the request path withholds that § as refused, so the
+ * page never showed it; the oracle had no part in that).
+ *
+ * Every rule here reads only what stands BEFORE the number, in its own
+ * sentence: that is text both sides share. The annex prints Ziffer markers
+ * and RIS's text does not, so a rule that asked what follows — whether a
+ * „2." comes after a „1." — answered one sentence twice and moved 23 §§ in
+ * the first run.
+ */
+const DETERMINER = String.raw`(?:der|die|das|dem|den|des|am|im|zum|zur|vom|beim|ins|ans|ein|eine|einem|einen|einer|eines|sein|seine|seinem|seinen|seiner|seines|ihr|ihre|ihrem|ihren|ihrer|ihres|jede[mnrs]?)`
+// Whatever stands before the determiner is not asked: the annex prints a
+// marker there that RIS's text does not („oder 2. das 20. Lebensjahr"
+// against „oder das 20. Lebensjahr"), and a rule that read it would judge
+// one sentence twice. „Personen, die 1. Staatsangehörige …" — a relative
+// clause opening a list — is the „1." that stays a marker anyway.
+const ORDINAL_BEFORE_RE = new RegExp(String.raw`(?<!\p{L})${DETERMINER}\s*$`, 'iu')
+/** …and the ordinals that continue one in a range: „das 3. bis 6. und das 12. bis 15. Hauptstück". */
+const ORDINAL_RANGE_BEFORE_RE = new RegExp(String.raw`(?<!\p{L})${DETERMINER}\s+\d+[a-z]*\.(?:\s+(?:bis|und|oder|sowie)\s+\d+[a-z]*\.)*\s+(?:bis|und|oder|sowie)\s*$`, 'iu')
 
 /**
  * Whitespace- and quote-free form for containment: the two sources break

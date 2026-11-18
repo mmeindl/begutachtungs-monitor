@@ -645,6 +645,14 @@ gets an entry of its own only where it carries a reason the rule does not.
   floor. Accepted as a blind spot, not a gap to close: closing it would need
   a third source for the units of a § that no upstream offers. A drop of the
   class below its 3 of 16 is still worth reading.
+- **The oracle's comparison form drops a bare „3." as a Ziffer's marker only
+  where nothing before it says it is a figure** (19.11.2026): kept are a
+  date's day, a citation's number, an ordinal after an article or possessive
+  („das 18. Lebensjahr", „dem 2. Hauptstück"; „1." excepted, since a list
+  can open after the article its items share), four-digit numbers and an
+  Official Journal page („S. 1."). Rules read only the words before the
+  number: the annex prints markers that RIS's text does not, so whatever
+  follows differs between the two sides of one sentence.
 - **What the instruments cannot prove:** the annex oracle and fault injection
   do not show the output is free of error. Only the BGBl test bench (RIS
   after entry into force) has ground truth (§12.12c).
