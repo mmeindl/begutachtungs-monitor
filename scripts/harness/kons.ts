@@ -150,6 +150,15 @@ const dumpFile = argAssigned('dump') ?? null
  *    strikes Abs. 8 is aligned past it because Abs. 8 and Abs. 9 open with
  *    the same words, so check 4 leaves it to check 2, and check 5 does not
  *    ask about an Absatz the result has beyond the annex's last.
+ *
+ * Over `--discover=200`, 857 laws, 5.970 §§: 278 laws with an oracle (77
+ * XML, 201 PDF); XML 173 confirmed, 170 identical, none of the 3 others
+ * shown; PDF 390 confirmed, 377 identical, 0 deviating, 7 of the 13 others
+ * shown — the five above, UVP-G § 3 (RIS's space before a comma again) and
+ * UStG § 21 (BGBl. I Nr. 113/2024, 338/ME XXVII): RIS's standing version types
+ * the closing sentences of Abs. 1 as `<absatz typ="erltext">`, `konsTree`
+ * skips every unmarked erltext block in a § with Absätze as a note, and the
+ * annex prints „(1) bis (5) …" — so the confirmed text lacks law that stands.
  */
 const withOracle = argFlag('oracle')
 /**
