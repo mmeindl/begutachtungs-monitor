@@ -164,6 +164,35 @@ const contact = useContact()
       </p>
     </ProseSection>
 
+    <!-- 18.11.2026: the answer to „how far can I rely on it?", in one place
+         a reader can link. Until then the site said only what the monitor
+         is not (Impressum, footer, „Grenzen"). Three statements, each one
+         the code keeps: what is passed through is the source's; what is
+         derived is ours and says so; a missing assignment proves no
+         absence. The figures stand on /datenlage#gemessen and the legal
+         sentence on /impressum#imp-data; neither is repeated here. -->
+    <ProseSection id="about-reliability" heading="Wie verlässlich die Angaben sind">
+      <p>
+        Fristen, Zahlen und Dokumente übernimmt der Monitor aus den
+        amtlichen Quellen und verlinkt jede Angabe auf ihr Original. Sie
+        sind so vollständig und so richtig wie die Quelle selbst.
+      </p>
+      <p>
+        Was der Monitor selbst ableitet, sagt er dazu: welche
+        Regierungsvorlage und welche Kundmachung zu einem Entwurf gehören,
+        wo die Quelle es nicht nennt, und die Textvergleiche. Eine fehlende
+        Zuordnung heißt, dass der Monitor keine gefunden hat, nicht, dass es
+        keine gibt. Wo etwas fehlt, steht dabei, warum; wie oft die
+        Ableitungen stimmen, ist
+        <NuxtLink to="/datenlage#gemessen" class="link-inline">gemessen</NuxtLink>.
+      </p>
+      <p>
+        Der Monitor ist
+        <NuxtLink to="/impressum#imp-data" class="link-inline">kein amtliches Angebot</NuxtLink>.
+        Wo es darauf ankommt, gilt das verlinkte Original.
+      </p>
+    </ProseSection>
+
     <!-- Concrete limits rather than a blanket label (the word „Prototyp"
          devalued the data and warned nobody about the text comparison,
          where an error can actually arise). No date and no claim about the
