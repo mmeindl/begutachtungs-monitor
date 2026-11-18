@@ -17,6 +17,17 @@ describe('title normalisation', () => {
     expect([...abks]).toEqual(['sanktg 2024'])
   })
 
+  it('takes a dash segment with a comma apart: only what is written like an abbreviation is one', () => {
+    // 149/ME XXVIII: the dash belongs to the law's own name.
+    const own = splitParliamentTitle('Immissionsschutzgesetz – Luft 2027, IG-L 2027')
+    expect(own.core).toBe('Immissionsschutzgesetz; Luft 2027')
+    expect([...own.abks]).toEqual(['ig-l 2027'])
+    // 278/ME XXVII: the abbreviation is followed by more title.
+    const tail = splitParliamentTitle('Kraftfahr-Versicherungsrechts-Änderungsgesetz 2023 – KraftVerÄG 2023, Änderung')
+    expect(tail.core).toBe('Kraftfahr-Versicherungsrechts-Änderungsgesetz 2023; Änderung')
+    expect([...tail.abks]).toEqual(['kraftveräg 2023'])
+  })
+
   it('keeps long dash segments as title text', () => {
     const { core, abks } = splitParliamentTitle('Bundesgesetz über X – Anpassung der Fristen des Gesetzes')
     expect(core).toContain('Anpassung der Fristen')

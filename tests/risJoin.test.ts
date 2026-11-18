@@ -125,6 +125,51 @@ describe('GP XXVIII first live run (07.09.2026)', () => {
   })
 })
 
+describe('a law whose own name carries a dash (149/ME XXVIII, 18.11.2026)', () => {
+  // Same day, same Frist, same ministry: the law and the Verordnung to it.
+  // Parliament's title is „Immissionsschutzgesetz – Luft 2027, IG-L 2027";
+  // read as one abbreviation it matched neither, and the draft stood without
+  // its RIS record while the record stood in the list of drafts without a
+  // Parliament page.
+  const stelle = 'BMLUK (Bundesministerium für Land- und Forstwirtschaft, Klima- und Umweltschutz, Regionen und Wasserwirtschaft)'
+  const ris: RisBegutRecord[] = [
+    {
+      id: 'BEGUT_5392E5A4_C590_4E4E_9DDF_5E57260B8F21',
+      kurztitel: 'IG-L-BKV 2027',
+      titel:
+        'Verordnung des Bundesministers für Land- und Forstwirtschaft, Klima- und Umweltschutz, Regionen und Wasserwirtschaft über die Beurteilung und Kontrolle der Luftqualität zum Immissionsschutzgesetz – Luft 2027',
+      abk: null,
+      stelle,
+      beginn: '2026-10-22',
+      ende: '2026-11-05',
+    },
+    {
+      id: 'BEGUT_4CA1F0F2_538F_415A_80A7_1BBDB18339C7',
+      kurztitel: 'IG-L 2027',
+      titel: 'Bundesgesetz zum Schutz vor Immissionen durch Luftschadstoffe 2027',
+      abk: null,
+      stelle,
+      beginn: '2026-10-22',
+      ende: '2026-11-05',
+    },
+  ]
+  const me: MeListRow = {
+    gp: 'XXVIII',
+    inr: 149,
+    cite: '149/ME',
+    title: 'Immissionsschutzgesetz – Luft 2027, IG-L 2027',
+    ministryCode: 'BMLUK',
+    arrival: '2026-10-22',
+    frist: '2026-11-05',
+  }
+
+  it('matches the law, not the Verordnung beside it', () => {
+    const [row] = joinRisToMe(dedupeMeRows([me]), ris)
+    expect(row!.status).toBe('matched')
+    expect(row!.risId).toBe('BEGUT_4CA1F0F2_538F_415A_80A7_1BBDB18339C7')
+  })
+})
+
 /** REGEN_RIS_MAP=1 pnpm vitest run tests/risJoin.test.ts — rewrites the artefact from the current rule. */
 function writeGp27Artefact(rows: ReturnType<typeof joinRisToMe>, previous: MapFile): void {
   const status: Record<string, number> = {}

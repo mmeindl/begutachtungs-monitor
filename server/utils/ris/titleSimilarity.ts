@@ -18,9 +18,27 @@ const STOP = new Set(
 const ROMAN = new Set(['i', 'ii', 'iii', 'iv', 'v', 'vi', 'vii', 'viii', 'ix', 'x'])
 
 /**
+ * „IG-L 2027", „KraftVerÄG 2023", „SanktG": the first word carries at least
+ * two capitals. „Luft 2027" and „Änderung" carry one and are title words.
+ */
+function looksLikeAbbreviation(piece: string): boolean {
+  const first = piece.split(/\s+/)[0] ?? ''
+  return (first.match(/\p{Lu}/gu) ?? []).length >= 2
+}
+
+/**
  * Parliament appends package abbreviations as " – ABK" segments
  * ("Sanktionengesetz 2024 – SanktG"). Returns the core title and the set of
  * abbreviations (lower-cased).
+ *
+ * A segment with a comma is not one abbreviation (18.11.2026). The dash can
+ * belong to the law's own name, „Immissionsschutzgesetz – Luft 2027, IG-L
+ * 2027", or the abbreviation is followed by more title, „… – KraftVerÄG
+ * 2023, Änderung". Read whole, the first gave the abbreviation „luft 2027,
+ * ig-l 2027", which no RIS record carries: 149/ME XXVIII stood without its
+ * RIS record at 0.695 under a threshold of 0.75. So such a segment is taken
+ * apart at its commas, and only a piece written like an abbreviation is one;
+ * the rest is title. A segment without a comma is read as before.
  */
 export function splitParliamentTitle(title: string): { core: string; abks: Set<string> } {
   const core: string[] = []
@@ -29,7 +47,12 @@ export function splitParliamentTitle(title: string): { core: string; abks: Set<s
     const segs = part.split(/\s[–—]\s/).map((s) => s.trim())
     core.push(segs[0] ?? '')
     for (const s of segs.slice(1)) {
-      if (s.length <= 30 && !/\s(des|der|die|das|und|mit|über)\s/.test(s.toLowerCase())) {
+      if (s.length <= 30 && s.includes(',')) {
+        for (const piece of s.split(',').map((p) => p.trim()).filter(Boolean)) {
+          if (looksLikeAbbreviation(piece)) abks.add(piece.toLowerCase().replace(/\s+/g, ' '))
+          else core.push(piece)
+        }
+      } else if (s.length <= 30 && !/\s(des|der|die|das|und|mit|über)\s/.test(s.toLowerCase())) {
         abks.add(s.toLowerCase().replace(/\s+/g, ' '))
       } else {
         core.push(s)
