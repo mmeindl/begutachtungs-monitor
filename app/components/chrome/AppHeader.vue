@@ -35,8 +35,10 @@ const navItems = [
  * way home. The wordmark measured 238.2 px of the 288 px row at 320 px
  * (17.11.2026): with the 44 px target the gap is `gap-1`, 1.8 px to spare;
  * a wider system serif wraps the wordmark, it never overflows. From `sm`
- * it is the nav's FIRST item, the word beside the icon: the general way in
- * before the lists. Only one of the two is ever displayed.
+ * it is the nav's LAST item, the word alone like the other labels
+ * (18.11.2026; until then the first item, with a magnifier before the
+ * word): the top right is where readers look for a search, and the word
+ * needs no symbol beside it. Only one of the two is ever displayed.
  */
 const SEARCH = { label: 'Suche', to: '/suche' } as const
 
@@ -109,25 +111,6 @@ function isActive(to: string): boolean {
              from 360 px, where nearly every phone starts, it stands with
              17.7 px to spare. Only the 320 px phone keeps `gap-x-2`. -->
         <ul class="flex flex-wrap items-center gap-x-2 gap-y-1 min-[360px]:gap-x-4 sm:gap-x-6">
-          <li class="hidden sm:block">
-            <NuxtLink
-              :to="SEARCH.to"
-              :aria-current="isActive(SEARCH.to) ? 'page' : undefined"
-              class="inline-flex min-h-target items-center rounded-sm text-sm transition-colors"
-              :class="
-                isActive(SEARCH.to)
-                  ? 'text-ink underline decoration-ink decoration-2 underline-offset-8'
-                  : 'text-ink-secondary underline-offset-8 hover:text-ink hover:underline hover:decoration-ink-secondary hover:decoration-2'
-              "
-            >
-              <!-- The underline runs under the icon too (17.11.2026): an
-                   SVG is no text and takes no decoration, so the icon lies
-                   over an em and an en space (U+2003, U+2002 — they do not
-                   collapse), and the line is the text's own, at its offset
-                   and thickness at every target height. -->
-              <span aria-hidden="true" class="relative">&#8195;&#8194;<UIcon name="i-lucide-search" class="absolute top-1/2 left-0 size-4 -translate-y-1/2" /></span>{{ SEARCH.label }}
-            </NuxtLink>
-          </li>
           <li v-for="item in navItems" :key="item.to">
             <!-- Hover is the site's one hover state, the 2 px underline
                  (16.11.2026): the step from secondary ink to ink alone was
@@ -150,6 +133,20 @@ function isActive(to: string): boolean {
               "
             >
               {{ item.label }}
+            </NuxtLink>
+          </li>
+          <li class="hidden sm:block">
+            <NuxtLink
+              :to="SEARCH.to"
+              :aria-current="isActive(SEARCH.to) ? 'page' : undefined"
+              class="inline-flex min-h-target items-center rounded-sm text-sm transition-colors"
+              :class="
+                isActive(SEARCH.to)
+                  ? 'text-ink underline decoration-ink decoration-2 underline-offset-8'
+                  : 'text-ink-secondary underline-offset-8 hover:text-ink hover:underline hover:decoration-ink-secondary hover:decoration-2'
+              "
+            >
+              {{ SEARCH.label }}
             </NuxtLink>
           </li>
         </ul>
