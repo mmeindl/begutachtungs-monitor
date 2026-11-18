@@ -717,6 +717,25 @@ gets an entry of its own only where it carries a reason the rule does not.
   asked with it. The chip: „GP XXVIII", „17. GP Salzburg", or the compact
   dates. The EU overview, the corpus measurements, the Bund's laws and open
   Vorlagen stay on the Bund's period.
+- **A span of the reader's own is one more value of the same select**
+  (18.11.2026, `customSpanOf`). „Eigener Zeitraum …" turns the select's own
+  box into the span as text, the select folded to its chevron beside it; a
+  press opens a calendar in the site's own face (`DateRangeButton`). An
+  open end reads „heute" and stays open.
+  `?von=2026-11-09&bis=2026-11-15`, `bis` optional (open-ended): a link a
+  team shares so everybody reviews the same rows, week by week. While it is
+  set it is the span: no `gp` or `landtag` in the link beside it, and
+  choosing a period drops it. Every half is still fetched per Bund period —
+  the one the span lies in — and the page cuts each row set where the
+  search term cuts it, so counts and pointer count the list. A row falls in
+  by the day the order dates it by (`rowDay`): a draft by the start of its
+  Begutachtung (Einlangen, RIS's Beginn, a Land's `landDraftDate`), a law
+  without a draft by its Kundmachung. A row without a day falls in no span.
+  A span over a Periodenwechsel shows its part in the later period and
+  names the earlier part with a link („Nicht im Monitor"). The full text
+  does not run under it: its hits know no date. Ends written the wrong way
+  round are turned round; a `bis` without `von` is dropped. It opens on the
+  running calendar week, from Monday.
 - **Upstream blocks are respected, not circumvented:** one request per second
   and a two-hour pause after a 403 at Steiermark's firewall; EUR-Lex's bot
   check is not bypassed, only the Cellar is queried (§12.64, §12.66).
@@ -2304,6 +2323,16 @@ circular of 10.12.2015).
 
 ### Interface
 
+- **Date fields beside the period select** (18.11.2026). Two controls on one
+  axis intersect, and „GP XXVII" with „9.–15.11.2026" is an empty list that
+  reads as a finding. The span of the reader's own is a value of the select.
+- **Native date fields for that span** (18.11.2026). The browser's picker
+  cannot be styled or localised by the page (Chrome's came up English) and
+  read as a foreign part.
+- **A span united over several Bund periods** (18.11.2026). Every list
+  endpoint would have to answer for several periods at once; a weekly
+  review never crosses one, so the later part is shown and the earlier
+  linked.
 - **A separate list or route for drafts without a Gegenstand.** One list with
   separate counts (§12.19).
 - **A separate search page.** One question, one address (§12.31).

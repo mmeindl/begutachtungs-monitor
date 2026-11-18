@@ -30,6 +30,15 @@
     Bund zählt die Gesetzgebungsperiode, der das Parlament oder das RIS
     einen Entwurf oder ein Gesetz zuordnet.
   </p>
+  <!-- „Eigener Zeitraum" (18.11.2026, `rowDay`): the day each row is cut by,
+       and the one limit a team splitting its review by weeks needs to know. -->
+  <p>
+    Unter „Eigener Zeitraum“ zählt für jeden Entwurf der Tag, an dem seine
+    Begutachtung begann, für ein Gesetz ohne Entwurf der Tag seiner
+    Kundmachung. Wann ein Entwurf online ging, kennt der Monitor nicht:
+    Meist ist es derselbe Tag, ein Land kann einen Entwurf aber auch später
+    einstellen.
+  </p>
   <p>
     Was jede Quelle veröffentlicht und wie weit der Monitor ihr folgt, steht
     in der <NuxtLink to="/datenlage" class="link-inline">Datenlage</NuxtLink>.

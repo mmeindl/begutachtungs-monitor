@@ -11,6 +11,7 @@ import {
   HOME_LIST_LENGTH,
   lawRow,
   type OrderedDraft,
+  rowDay,
   rowOrderKey,
 } from '../shared/utils/draftOrder'
 
@@ -468,5 +469,27 @@ describe('draftRows', () => {
       [unwrap(soon) as RisConsultation],
     ).sort(compareRowsByFrist)
     expect(sorted.map((r) => r.key)).toEqual(['ris-BALD', 'me-XXVIII-9', 'me-XXVIII-1'])
+  })
+})
+
+describe('rowDay — the day a span of the reader\'s own cuts by (18.11.2026)', () => {
+  it('dates a RIS record by its start, else the end of its Frist', () => {
+    const ris = (startedAt: string | null, deadline: string | null) =>
+      ({ kind: 'ris', key: 'r', item: { startedAt, deadline } } as unknown as DraftListRow)
+    expect(rowDay(ris('2026-11-10', '2026-12-10'))).toBe('2026-11-10')
+    expect(rowDay(ris(null, '2026-12-10'))).toBe('2026-12-10')
+    expect(rowDay(ris(null, null))).toBeNull()
+  })
+
+  it('dates a Land draft as the server places it in a period', () => {
+    const land = (item: object) => ({ kind: 'land', key: 'l', item } as unknown as DraftListRow)
+    expect(rowDay(land({ startedAt: '2026-11-10', deadline: '2026-12-10' }))).toBe('2026-11-10')
+    expect(rowDay(land({ startedAt: null, deadline: null, placedAt: '2026-11-12' }))).toBe('2026-11-12')
+  })
+
+  it('dates every other row as the order does', () => {
+    const me = { kind: 'me', key: 'm', draft: { active: true, deadline: '2026-12-01', arrivedAt: '2026-11-11', title: 'x' } } as unknown as DraftListRow
+    expect(rowDay(me)).toBe(rowOrderKey(me).startedAt)
+    expect(rowDay(me)).toBe('2026-11-11')
   })
 })

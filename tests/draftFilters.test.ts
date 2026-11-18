@@ -64,6 +64,8 @@ const empty: DraftFilterValues = {
   art: '',
   gp: '',
   landtag: '',
+  von: '',
+  bis: '',
   ministry: '',
   q: '',
   sort: 'frist',
@@ -93,6 +95,8 @@ describe('draftFiltersFromQuery', () => {
       art: 'antrag',
       gp: 'XXVIII',
       landtag: '',
+      von: '',
+      bis: '',
       ministry: 'BMF',
       q: 'klima',
       sort: 'stellungnahmen',
@@ -174,12 +178,14 @@ describe('the round trip', () => {
     { ...empty, stations: ['rv'] },
     { ...empty, art: 'gesetz', gp: 'XXVIII', ministry: 'BMJ' },
     { ...empty, q: 'klimaschutz', sort: 'stellungnahmen' },
-    { status: 'closed', stations: ['bgbl'], art: 'verordnung', gp: 'XXVII', landtag: '', ministry: 'BMF', q: 'x', sort: 'stellungnahmen', reversed: true, eu: '', begutachtung: '' },
+    { status: 'closed', stations: ['bgbl'], art: 'verordnung', gp: 'XXVII', landtag: '', von: '', bis: '', ministry: 'BMF', q: 'x', sort: 'stellungnahmen', reversed: true, eu: '', begutachtung: '' },
     { ...empty, reversed: true },
     { ...empty, eu: 'umsetzung' },
     { ...empty, status: 'open', art: 'verordnung', eu: 'umsetzung' },
     { ...empty, begutachtung: 'ohne' },
     { ...empty, begutachtung: 'ohne', stations: ['bgbl'], gp: 'XXVII', q: 'orf' },
+    { ...empty, von: '2026-11-09', bis: '2026-11-15' },
+    { ...empty, von: '2026-11-09', status: 'open', art: 'gesetz' },
   ]
 
   it('reopens the list the link was written from', () => {
@@ -1258,5 +1264,34 @@ describe('withoutDraftGapDe — the rows without a draft between their window an
     for (const art of ['mit', 'gesetz', 'als-antrag', 'verordnung', 'andere', 'ohne-antrag', 'ohne-landesgesetz', 'initiativantraege', 'staatsvertraege'] as const) {
       expect(view({ art })).toBeNull()
     }
+  })
+})
+
+describe('a span of the reader\'s own: ?von=&bis= (18.11.2026)', () => {
+  it('reads two days, and one alone as running to today', () => {
+    expect(draftFiltersFromQuery({ von: '2026-11-09', bis: '2026-11-15' })).toEqual({ ...empty, von: '2026-11-09', bis: '2026-11-15' })
+    expect(draftFiltersFromQuery({ von: '2026-11-09' })).toEqual({ ...empty, von: '2026-11-09' })
+  })
+
+  it('turns two ends round and drops what is no day', () => {
+    expect(draftFiltersFromQuery({ von: '2026-11-15', bis: '2026-11-09' })).toMatchObject({ von: '2026-11-09', bis: '2026-11-15' })
+    expect(draftFiltersFromQuery({ von: '2026-02-31' })).toMatchObject({ von: '', bis: '' })
+    expect(draftFiltersFromQuery({ von: '9.11.2026' })).toMatchObject({ von: '', bis: '' })
+    // A span needs its start: `bis` alone is no span.
+    expect(draftFiltersFromQuery({ bis: '2026-11-15' })).toMatchObject({ von: '', bis: '' })
+    // A broken `bis` leaves the span running.
+    expect(draftFiltersFromQuery({ von: '2026-11-09', bis: 'morgen' })).toMatchObject({ von: '2026-11-09', bis: '' })
+  })
+
+  it('is the span in the link: no period beside it', () => {
+    expect(draftUrlQuery({ ...empty, gp: 'XXVIII', landtag: 'sbg-17', von: '2026-11-09', bis: '2026-11-15' })).toEqual({ von: '2026-11-09', bis: '2026-11-15' })
+    expect(draftUrlQuery({ ...empty, von: '2026-11-09' })).toEqual({ von: '2026-11-09' })
+  })
+
+  it('stands as one chip by its days, never beside a period chip', () => {
+    expect(activeFilterChips({ status: 'all', art: '', gp: 'XXVIII', ministry: '', von: '2026-11-09', bis: '2026-11-15' }))
+      .toEqual([{ key: 'zeitraum', label: '09.11.2026–15.11.2026' }])
+    expect(activeFilterChips({ status: 'all', art: '', gp: 'XXVIII', ministry: '', von: '2026-11-09', bis: '' }))
+      .toEqual([{ key: 'zeitraum', label: 'seit 09.11.2026' }])
   })
 })

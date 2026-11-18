@@ -22,6 +22,7 @@ import type {
   LandStatement,
 } from '#shared/types'
 import { LAND_CODES } from '#shared/utils/laender'
+import { landDraftDate } from '#shared/utils/draftOrder'
 import { todayIso } from '#shared/utils/format'
 import { type UpstreamPolicy, UpstreamHttpError, upstreamText } from '../upstream/fetch'
 import { mapWithConcurrency } from '../pool'
@@ -1245,15 +1246,9 @@ export async function readLaender(): Promise<LaenderRead> {
   }
 }
 
-/**
- * The date that places a Land's draft in a period: the start of its
- * Begutachtung, or — where the Land kept only the end (OÖ's archive and
- * Verordnungen) — the end of its Frist, or — where it kept neither
- * (Kärnten's archive) — the date of the Regierungsvorlage (`placedAt`).
- */
-export function landDraftDate(d: LandConsultation): string | null {
-  return d.startedAt ?? d.deadline ?? d.placedAt ?? null
-}
+/* The date that places a Land's draft in a period: `landDraftDate`, shared
+ * since 18.11.2026 — the list cuts a span of the reader's own by the same
+ * day (`rowDay`). */
 
 /**
  * The Länder's drafts for a Bund Gesetzgebungsperiode, used as a TIME

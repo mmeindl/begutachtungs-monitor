@@ -4,7 +4,13 @@ import {
   LAND_PERIODS,
   type LandPeriodCalendars,
   coherentSpan,
+  customSpanOf,
+  earliestSpanDay,
   gpOfferedIn,
+  inDateWindow,
+  orderedRange,
+  parseIsoDay,
+  weekStartOf,
   gpsOverlapping,
   laenderSpanQuery,
   landPeriodChipDe,
@@ -213,5 +219,60 @@ describe('gpsOverlapping', () => {
     expect(gpsOverlapping({ from: '2024-10-23', to: '2024-10-23' })).toEqual(['XXVII'])
     expect(gpsOverlapping({ from: '1990-01-01', to: '1995-01-01' })).toEqual(['XIX', 'XVIII', 'XVII'])
     expect(gpsOverlapping({ from: '1970-01-01', to: '1975-11-03' })).toEqual([])
+  })
+})
+
+describe('a span of the reader\'s own (18.11.2026)', () => {
+  it('reads only days that exist', () => {
+    expect(parseIsoDay('2026-11-09')).toBe('2026-11-09')
+    expect(parseIsoDay(' 2026-11-09 ')).toBe('2026-11-09')
+    expect(parseIsoDay('2026-02-29')).toBe('')
+    expect(parseIsoDay('2024-02-29')).toBe('2024-02-29')
+    expect(parseIsoDay('09.11.2026')).toBe('')
+    expect(parseIsoDay(undefined)).toBe('')
+  })
+
+  it('orders its ends and needs a start', () => {
+    expect(orderedRange('2026-11-15', '2026-11-09')).toEqual({ von: '2026-11-09', bis: '2026-11-15' })
+    expect(orderedRange('', '2026-11-15')).toEqual({ von: '', bis: '' })
+    expect(orderedRange('2026-11-09', '')).toEqual({ von: '2026-11-09', bis: '' })
+  })
+
+  it('holds both ends, and no row without a day', () => {
+    const w = { from: '2026-11-09', to: '2026-11-15' }
+    expect(inDateWindow('2026-11-09', w)).toBe(true)
+    expect(inDateWindow('2026-11-15', w)).toBe(true)
+    expect(inDateWindow('2026-11-16', w)).toBe(false)
+    expect(inDateWindow('2026-11-08', w)).toBe(false)
+    expect(inDateWindow('2030-01-01', { from: '2026-11-09', to: null })).toBe(true)
+    expect(inDateWindow(null, w)).toBe(false)
+  })
+
+  it('starts the week on its Monday', () => {
+    expect(weekStartOf('2026-11-18')).toBe('2026-11-16')
+    expect(weekStartOf('2026-11-16')).toBe('2026-11-16')
+    expect(weekStartOf('2026-11-15')).toBe('2026-11-09')
+  })
+
+  it('lies in one Bund period and is never clipped inside it', () => {
+    expect(customSpanOf('2026-11-09', '2026-11-15')).toEqual({ gp: 'XXVIII', window: { from: '2026-11-09', to: '2026-11-15' }, cut: null })
+    expect(customSpanOf('2026-11-09', '')).toEqual({ gp: 'XXVIII', window: { from: '2026-11-09', to: null }, cut: null })
+    expect(customSpanOf('2023-03-01', '2023-03-31')).toEqual({ gp: 'XXVII', window: { from: '2023-03-01', to: '2023-03-31' }, cut: null })
+  })
+
+  it('over a Periodenwechsel shows the later part and names the earlier', () => {
+    expect(customSpanOf('2024-10-01', '2024-11-30')).toEqual({
+      gp: 'XXVIII',
+      window: { from: '2024-10-24', to: '2024-11-30' },
+      cut: { from: '2024-10-01', to: '2024-10-23' },
+    })
+    // The cut part, asked for itself, is a span of the period before.
+    expect(customSpanOf('2024-10-01', '2024-10-23')).toEqual({ gp: 'XXVII', window: { from: '2024-10-01', to: '2024-10-23' }, cut: null })
+  })
+
+  it('is none before the calendar, and none without a start', () => {
+    expect(customSpanOf('', '2026-11-15')).toBeNull()
+    expect(customSpanOf('1900-01-01', '1900-12-31')).toBeNull()
+    expect(earliestSpanDay() > '1900-12-31').toBe(true)
   })
 })

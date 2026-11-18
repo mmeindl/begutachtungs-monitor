@@ -27,7 +27,7 @@ import type {
   RisConsultationKind,
 } from '#shared/types'
 import { LAND_CODES, landStationsReason } from '#shared/utils/laender'
-import { landtagValue } from '#shared/utils/periodCalendar'
+import { inDateWindow, landtagValue } from '#shared/utils/periodCalendar'
 import {
   antragRow,
   treatyRow,
@@ -35,6 +35,12 @@ import {
   compareRowsByStatements,
   type DraftListRow,
   draftRows,
+  landRow,
+  lawRow,
+  meRow,
+  risRow,
+  rowDay,
+  vorlageRow,
 } from '#shared/utils/draftOrder'
 import { antragRouteCitation } from '#shared/utils/antragPath'
 import { viewOfRow } from '~/utils/entryView'
@@ -85,7 +91,19 @@ export function useDraftList(filters: DraftFilters, sources: {
   laender: Ref<LandCode[]>
 }) {
   const { bund, laender: chosenLaender } = sources
-  const { statusFilter, art, periodView, span, laenderSpan, ministry, qDebounced, sort, reversed, stations, eu, begutachtung, query, urlQueryWith } = filters
+  const { statusFilter, art, periodView, span, customSpan, laenderSpan, ministry, qDebounced, sort, reversed, stations, eu, begutachtung, query, urlQueryWith } = filters
+
+  /**
+   * A span of the reader's own (`?von=&bis=`, 18.11.2026) cuts every row set
+   * where the search term cuts it, so the counts, the pointer and the
+   * placeholder count what the list shows. The halves are fetched for the
+   * Bund period the span lies in (`customSpan`, `span`); each row stays if
+   * its day lies in the span (`rowDay`). Without such a span every row stays.
+   */
+  function inSpan(row: DraftListRow): boolean {
+    const w = customSpan.value?.window
+    return !w || inDateWindow(rowDay(row), w)
+  }
   /**
    * One comparator per option, so adding an order is a line here rather
    * than another branch inside `rows`. The comparators live in
@@ -434,6 +452,7 @@ export function useDraftList(filters: DraftFilters, sources: {
        * row would read as „no Land implements anything". */
       .filter((item) => !eu.value || laenderEuMissing.value || item.eu === 'umsetzung' || item.eu === 'ueber-umsetzung')
       .filter((item) => matchesQuery(item.title, qDebounced.value))
+      .filter((item) => inSpan(landRow(item)))
   }
   const landItems = computed(() => landItemsAt(stations.value))
   /* The station tabs: a row whose further way could not be read matches no
@@ -509,6 +528,7 @@ export function useDraftList(filters: DraftFilters, sources: {
       // notes (`none`, `committee`).
       .filter((v) => choiceAdmitsOpenVorlage(appliedArt.value, v.consultation.kind, v.kind))
       .filter((v) => matchesQuery(`${v.title} ${v.citation}`, qDebounced.value))
+      .filter((v) => inSpan(vorlageRow(v)))
   }
   const openVorlagen = computed(() => openVorlagenAt(stations.value))
 
@@ -564,8 +584,8 @@ export function useDraftList(filters: DraftFilters, sources: {
    * the Antrag (`choiceAdmitsMinisterialentwurf`). The other options take every
    * row their halves bring, as before. */
   const halvesShown = computed(() => draftRowsOf(appliedArt.value))
-  const meOfView = computed(() => (searched.value.me ?? []).filter((d) => choiceAdmitsMinisterialentwurf(appliedArt.value, d)))
-  const risOfView = computed(() => (halvesShown.value.ris ? (searched.value.ris ?? []) : []))
+  const meOfView = computed(() => (searched.value.me ?? []).filter((d) => choiceAdmitsMinisterialentwurf(appliedArt.value, d) && inSpan(meRow(d))))
+  const risOfView = computed(() => (halvesShown.value.ris ? (searched.value.ris ?? []).filter((item) => inSpan(risRow(item))) : []))
   const artNote = computed(() => {
     const reason = artUnavailable.value[chosenArt.value]
     return reason ? artUnavailableNote(chosenArt.value, reason) : null
@@ -624,6 +644,7 @@ export function useDraftList(filters: DraftFilters, sources: {
     return laws.items
       .filter((l) => choiceAdmitsBundLaw(appliedArt.value, l.item.kind))
       .filter((l) => matchesQuery(`${l.title} ${l.item.citation} ${l.bgblNumber}`, qDebounced.value))
+      .filter((l) => inSpan(lawRow(l)))
   }
   const lawRows = computed(() => lawRowsAt(stations.value))
 
@@ -656,6 +677,7 @@ export function useDraftList(filters: DraftFilters, sources: {
     return data.items
       .filter((l) => applying.includes(l.land))
       .filter((l) => matchesQuery(`${l.title} ${l.shortTitle ?? ''} ${l.nr}`, qDebounced.value))
+      .filter((l) => inSpan(lawRow(l)))
   }
   const landLawsOfView = computed(() => landLawsOfViewAt(stations.value))
   const landLawRowsAt = (st: readonly DraftStation[]) => landLawsOfViewAt(st).filter((l) => choiceAdmitsLandLaw(appliedArt.value, l))
@@ -790,6 +812,7 @@ export function useDraftList(filters: DraftFilters, sources: {
       .filter((a) => statusFilter.value === 'all' || (statusFilter.value === 'open') === (a.state === 'open'))
       .filter((a) => !st.length || st.includes(antragStationOf(a.state)))
       .filter((a) => matchesQuery(`${a.title} ${a.citation}`, qDebounced.value))
+      .filter((a) => inSpan(antragRow(a)))
   }
   const antragItems = computed(() => antragItemsAt(stations.value, meOfView.value))
   const antraegePending = computed(() => antraegeInView.value && !antraegeError.value && !antraegeData.value)
@@ -812,6 +835,7 @@ export function useDraftList(filters: DraftFilters, sources: {
     return data.items
       .filter((t) => !st.length || st.includes(treatyStationOf(t.state)))
       .filter((t) => matchesQuery(`${t.title} ${t.citation}`, qDebounced.value))
+      .filter((t) => inSpan(treatyRow(t)))
   }
   const treatyItems = computed(() => treatyItemsAt(stations.value))
   const treatiesPending = computed(() => treatiesInView.value && !treatiesError.value && !treatiesData.value)
@@ -987,7 +1011,7 @@ export function useDraftList(filters: DraftFilters, sources: {
     if (wantsMe.value && !ohneApplied.value) {
       const data = otherMeData.value
       if (!data || otherMeError.value || otherMeStatus.value !== 'success' || data.stationsAvailable === false) return null
-      me = (searchBundHalves(data, null, qDebounced.value).me ?? []).filter((d) => choiceAdmitsMinisterialentwurf(appliedArt.value, d))
+      me = (searchBundHalves(data, null, qDebounced.value).me ?? []).filter((d) => choiceAdmitsMinisterialentwurf(appliedArt.value, d) && inSpan(meRow(d)))
     }
     const text = otherStationPointerDe(rowsAt(st, me, []).length, other)
     return text ? { text, to: { query: urlQueryWith({ stations: st }) } } : null

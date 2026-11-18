@@ -1,8 +1,8 @@
 <script setup lang="ts">
 import type { DraftStation } from '#shared/types'
 import { LAND_NAME } from '#shared/utils/laender'
-import { formatNumberDe } from '#shared/utils/format'
-import { landtagParts, landtagValue } from '#shared/utils/periodCalendar'
+import { earliestSpanDay, landtagParts, landtagValue, orderedRange, weekStartOf, windowDatesDe } from '#shared/utils/periodCalendar'
+import { formatDateDe, formatNumberDe, todayIso } from '#shared/utils/format'
 import {
   artSelectFor,
   artOptionReasonsFor,
@@ -11,6 +11,8 @@ import {
   type SortKey,
   activeFilterChips,
   spanOptionsFor,
+  CUSTOM_SPAN_OPTION,
+  CUSTOM_SPAN_VALUE,
   stationTabsFor,
 } from '~/utils/draftFilters'
 import { cutKeeping } from '~/utils/pagedList'
@@ -124,7 +126,7 @@ const { bund, laender: chosenLaender } = useSourceChoice()
 /* Filter state, URL binding and the query for both endpoints:
  * `useDraftFilters`, with the pure half in `app/utils/draftFilters.ts`. */
 const filters = useDraftFilters({ bund, laender: chosenLaender })
-const { statusFilter, art, gp, landtag, periodView, span, laenderSpan, ministry, q, qDebounced, sort, reversed, stations, eu, begutachtung, query, onNavigate } = filters
+const { statusFilter, art, gp, landtag, von, bis, customSpan, periodView, span, laenderSpan, ministry, q, qDebounced, sort, reversed, stations, eu, begutachtung, query, urlQueryWith, onNavigate } = filters
 /* Either column turned round by a second click (`SortHeader`, 06.11.2026). */
 const { choose: chooseColumn, selectValue: sortSelect } = useReversibleSort(sort, reversed)
 
@@ -219,13 +221,22 @@ const filtersOpen = ref(false)
 
 /** The closed panel's values; `clearChip` is the press that removes each. */
 const activeFilters = computed(() =>
-  activeFilterChips({ status: statusFilter.value, art: art.value, begutachtung: begutachtung.value, ...span.value, ministry: ministry.value }, periodView.value),
+  activeFilterChips({
+    status: statusFilter.value,
+    art: art.value,
+    begutachtung: begutachtung.value,
+    ...span.value,
+    von: customSpan.value ? von.value : '',
+    bis: customSpan.value ? bis.value : '',
+    ministry: ministry.value,
+  }, periodView.value),
 )
 const clearChip: Record<FilterChipKey, () => void> = {
   status: () => { statusFilter.value = 'all' },
   art: () => { chosenArt.value = '' },
   gp: () => { gp.value = '' },
   landtag: () => { landtag.value = '' },
+  zeitraum: () => { von.value = ''; bis.value = '' },
   ministry: () => { ministry.value = '' },
 }
 
@@ -317,17 +328,32 @@ const ministries = computed(() =>
  * Which spans, and how they are named, follows the sources (14.11.2026,
  * `spanOptionsFor`): the Bund's periods, one Land's own (`?landtag=`), or the
  * Bund's spans by their dates alone. */
-const spanOptions = computed(() => spanOptionsFor(periodView.value, availableGps.value, selectedGp.value))
+/* „Eigener Zeitraum" first (18.11.2026, maintainer's decision): at the end
+ * of some fifteen periods back to 1975 nobody found it. */
+const spanOptions = computed(() => [CUSTOM_SPAN_OPTION, ...spanOptionsFor(periodView.value, availableGps.value, selectedGp.value)])
 /* The select's one value over both kinds: a Land period's `sbg-17`, else the
  * GP. In a Land's view nothing chosen is that Land's running period — the
  * default, as the running GP is the Bund's (`laenderSpanQuery`). */
+/* „Eigener Zeitraum" (18.11.2026) is one more value of the same select: a
+ * span by two dates instead of a period's name, so a period and a span of
+ * the reader's own can never be chosen at once and intersect into an empty
+ * list. Choosing it opens the date fields with the running calendar week;
+ * choosing a period again drops the dates. */
 const spanSelect = computed<string>({
   get: () => {
+    if (customSpan.value) return CUSTOM_SPAN_VALUE
     const view = periodView.value
     if (view.mode !== 'land') return selectedGp.value
     return span.value.landtag || span.value.gp || landtagValue(view.land, view.periods[0]!.id)
   },
   set: (value) => {
+    if (value === CUSTOM_SPAN_VALUE) {
+      bis.value = ''
+      von.value = weekStartOf(todayIso())
+      return
+    }
+    von.value = ''
+    bis.value = ''
     if (landtagParts(value)) {
       landtag.value = value
       gp.value = ''
@@ -336,6 +362,29 @@ const spanSelect = computed<string>({
       landtag.value = ''
     }
   },
+})
+/* The span the calendar hands back (`DateRangeButton`): both ends at once,
+ * `bis` '' for open-ended. Ends the wrong way round are turned round
+ * (`orderedRange`), as a link's are; without a start nothing changes, since
+ * leaving the span is the select's job. */
+const SPAN_MIN_DAY = earliestSpanDay()
+function setSpan(span: { von: string; bis: string }): void {
+  const next = orderedRange(span.von, span.bis)
+  if (!next.von) return
+  von.value = next.von
+  bis.value = next.bis
+}
+/* The part of the span before the period it is shown in (`CustomSpan.cut`):
+ * named and linked, never dropped in silence. */
+const spanCut = computed(() => {
+  const c = customSpan.value
+  if (!c?.cut) return null
+  return {
+    shownFrom: formatDateDe(c.window.from),
+    gp: c.gp,
+    label: windowDatesDe(c.cut),
+    to: { query: urlQueryWith({ von: c.cut.from, bis: c.cut.to ?? '' }) },
+  }
 })
 const artSelect = computed(() => artSelectFor({
   chosen: chosenArt.value,
@@ -475,7 +524,15 @@ const {
   fullTextInList,
   fullTextFilteredOut,
   fullTextCorpus,
-} = await useFullTextSearch(filters, pastSpan, entries, appliedArt)
+} = await useFullTextSearch(
+  filters,
+  /* The full text knows the running Begutachtungen of any date: under a span
+   * of the reader's own its hits would stand beside a list that excludes
+   * them, so only the titles are searched there, and the list says so. */
+  computed(() => pastSpan.value || !!customSpan.value),
+  entries,
+  appliedArt,
+)
 
 const searchPlaceholder = computed(() => {
   /* No count while a half is on its way (12.11.2026): the number would
@@ -662,7 +719,7 @@ const statementsSortNote = computed(() => {
                the whole line of a 320 px phone, where the panel stacks. -->
           <div
             id="filter-more-panel"
-            class="w-full gap-2 md:flex md:items-center"
+            class="w-full gap-2 md:flex md:flex-wrap md:items-center"
             :class="filtersOpen ? 'grid grid-cols-1' : 'hidden'"
           >
             <div class="min-w-0 md:w-60 md:shrink-0">
@@ -694,14 +751,40 @@ const statementsSortNote = computed(() => {
                  their Begutachtung began, so every option states the dates
                  the filter uses instead of a note explaining the rule.
                  Values: the GP code (`?gp=`), a Land period's `sbg-17`
-                 (`?landtag=`). -->
+                 (`?landtag=`).
+                 „Eigener Zeitraum" turns this cell into the range editor in
+                 place (18.11.2026): the span as text in the select's own
+                 face, „16.11.2026 – heute" for an open end, the select
+                 folded to its chevron at the end (`chevronOnly`). A press
+                 on the span opens a calendar in the site's face
+                 (`DateRangeButton`); native date fields came first and
+                 went the same day — the browser's picker cannot be styled
+                 or localised by the page and read as a foreign part. A row
+                 of its own under the selects read as a second filter and
+                 broke the line. The box div always stands and only the
+                 span button comes and goes before the select, so the
+                 select stays the same element and keeps focus when
+                 „Eigener Zeitraum" is picked. The span, its icon and the
+                 chevron fit the 254 px a 320 px phone leaves the box. -->
             <div class="min-w-0 md:w-72 md:shrink-0">
               <label for="filter-gp" class="sr-only">Zeitraum</label>
-              <TokenSelect id="filter-gp" v-model="spanSelect" block>
-                <TokenOption v-for="opt in spanOptions" :key="opt.value" :value="opt.value">
-                  {{ opt.label }}
-                </TokenOption>
-              </TokenSelect>
+              <div
+                class="flex min-w-0"
+                :class="customSpan && 'min-h-target rounded-md border border-baseline bg-surface text-sm text-ink hover:border-hover-edge hover:bg-hover'"
+              >
+                <DateRangeButton
+                  v-if="customSpan"
+                  :von="von"
+                  :bis="bis"
+                  :min="SPAN_MIN_DAY"
+                  @change="setSpan"
+                />
+                <TokenSelect id="filter-gp" v-model="spanSelect" block :chevron-only="!!customSpan">
+                  <TokenOption v-for="opt in spanOptions" :key="opt.value" :value="opt.value">
+                    {{ opt.label }}
+                  </TokenOption>
+                </TokenSelect>
+              </div>
             </div>
             <!-- The Ressort takes the rest of the line, so the filters end
                  where the search below ends; its names are the longest. -->
@@ -723,6 +806,14 @@ const statementsSortNote = computed(() => {
             </div>
           </div>
         </div>
+        <!-- A span over a Periodenwechsel shows its part in the later period
+             (`customSpanOf`); the part before is named and one press away. -->
+        <GapNote v-if="spanCut" kind="outOfScope" class="text-sm text-ink-muted">
+          ein Zeitraum über den Beginn einer Gesetzgebungsperiode hinweg. Die
+          Liste zeigt ihn ab {{ spanCut.shownFrom }}, dem Beginn der
+          {{ spanCut.gp }}. GP; davor:
+          <NuxtLink :to="spanCut.to" class="link-inline font-medium">{{ spanCut.label }}</NuxtLink>.
+        </GapNote>
         <GapNote
           v-if="unreadStageCount"
           kind="unavailable"

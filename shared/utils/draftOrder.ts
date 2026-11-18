@@ -260,6 +260,39 @@ export function lawRow(law: LawWithoutBegutachtung | LandLaw): DraftListRow {
 }
 
 /**
+ * The date that places a Land's draft in a period: the start of its
+ * Begutachtung, or — where the Land kept only the end (OÖ's archive and
+ * Verordnungen) — the end of its Frist, or — where it kept neither
+ * (Kärnten's archive) — the date of the Regierungsvorlage (`placedAt`).
+ * The server places the rows in a Bund period by it (`readLaenderInWindow`),
+ * the list in a span of the reader's own (`rowDay`).
+ */
+export function landDraftDate(d: LandConsultation): string | null {
+  return d.startedAt ?? d.deadline ?? d.placedAt ?? null
+}
+
+/**
+ * The day a row falls into a span of the reader's own by (`?von=&bis=`,
+ * 18.11.2026) — the day the order already dates it by (`rowOrderKey`), so a
+ * span cuts the list where its dates say:
+ *
+ *  - a draft by the start of its Begutachtung: a Ministerialentwurf's
+ *    Einlangen, a RIS record's Beginn der Begutachtungsfrist, a Land's draft
+ *    by `landDraftDate` — the day the server places it in a period by;
+ *  - a law without a draft by its Kundmachung, an Antrag or a treaty by its
+ *    Kundmachung once promulgated and its Einlangen before, an open
+ *    Vorlage by its Einlangen.
+ *
+ * A RIS record without a start falls back to the end of its Frist, as a
+ * Land's draft does. Null for a row with no day at all: it lies in no span.
+ */
+export function rowDay(row: DraftListRow): string | null {
+  if (row.kind === 'land') return landDraftDate(row.item)
+  if (row.kind === 'ris') return row.item.startedAt ?? row.item.deadline
+  return rowOrderKey(row).startedAt
+}
+
+/**
  * The halves merged into one list of rows, UNORDERED — the caller sorts,
  * because the homepage knows one order and `/entwuerfe` two.
  *

@@ -332,3 +332,93 @@ export function gpsOverlapping(w: DateWindow): string[] {
     })
     .sort((a, b) => (romanToInt(b) ?? 0) - (romanToInt(a) ?? 0))
 }
+
+/* ------------------------------------------------------------------ *
+ * A span of the reader's own: `?von=` and `?bis=` (18.11.2026)
+ * ------------------------------------------------------------------ */
+
+/**
+ * The URL parameters of a span of the reader's own — „alle Entwürfe vom 9.
+ * bis 15.11.", a link a team shares so everybody reviews the same rows.
+ * German, as `quellen`, `art`, `landtag`. `bis` is optional: without it the
+ * span runs to today and on.
+ */
+export const VON_PARAM = 'von'
+export const BIS_PARAM = 'bis'
+
+/** A calendar day that exists, as `YYYY-MM-DD`, or '' for anything else (31.02. included). */
+export function parseIsoDay(raw: string | null | undefined): string {
+  const s = (raw ?? '').trim()
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(s)) return ''
+  const d = new Date(`${s}T12:00:00Z`)
+  return !Number.isNaN(d.getTime()) && d.toISOString().slice(0, 10) === s ? s : ''
+}
+
+/** Whether a day lies in a window, both ends inclusive. A row without a day lies in none. */
+export function inDateWindow(day: string | null | undefined, w: DateWindow): boolean {
+  return !!day && day >= w.from && (w.to === null || day <= w.to)
+}
+
+/**
+ * A span of the reader's own, held against the Bund's calendar.
+ *
+ * NO NEW DATA PATH: every half of the list is fetched per Bund period, as
+ * for the select's periods, and the page cuts the rows by their day
+ * (`rowDay`). So a window resolves to ONE period — the newest it touches —
+ * and is clipped to it. A weekly window, and any window inside a period,
+ * is never clipped. One that reaches back over a Periodenwechsel shows its
+ * part in the later period, and `cut` is the part before, which the page
+ * names and links to (it resolves to the period before, and so on back).
+ * Uniting several periods would mean asking every list endpoint for several
+ * at once — rejected while nobody needs a span over a Periodenwechsel.
+ *
+ * Null where no span is chosen, or it lies wholly before the calendar.
+ */
+export interface CustomSpan {
+  /** The Bund period the rows are fetched for. */
+  gp: string
+  /** The days the rows are cut to: the reader's window, clipped to `gp`'s. */
+  window: DateWindow
+  /** The reader's days before `gp` began, which this list does not show; null when none. */
+  cut: DateWindow | null
+}
+
+export function customSpanOf(von: string, bis: string): CustomSpan | null {
+  if (!von) return null
+  const asked: DateWindow = { from: von, to: bis || null }
+  const gp = gpsOverlapping(asked)[0]
+  if (!gp) return null
+  const g = gpWindow(gp)!
+  const from = asked.from < g.from ? g.from : asked.from
+  const to = g.to === null ? asked.to : asked.to === null || asked.to > g.to ? g.to : asked.to
+  return {
+    gp,
+    window: { from, to },
+    cut: asked.from < g.from ? { from: asked.from, to: dayBefore(g.from) } : null,
+  }
+}
+
+/**
+ * `von` and `bis` as the URL may carry them, made one window: each a real
+ * day or '', a `bis` without a `von` dropped (a span needs its start), and two
+ * ends written the wrong way round turned round — the reader meant the days
+ * between them, and an empty list would only say they typed in a hurry.
+ */
+export function orderedRange(von: string, bis: string): { von: string; bis: string } {
+  const a = parseIsoDay(von)
+  const b = parseIsoDay(bis)
+  if (!a) return { von: '', bis: '' }
+  return b && b < a ? { von: b, bis: a } : { von: a, bis: b }
+}
+
+/** The Monday of the week a day lies in — where „Eigener Zeitraum" starts (the review a team splits by calendar weeks). */
+export function weekStartOf(iso: string): string {
+  const d = new Date(`${iso}T12:00:00Z`)
+  d.setUTCDate(d.getUTCDate() - ((d.getUTCDay() + 6) % 7))
+  return d.toISOString().slice(0, 10)
+}
+
+/** The first day the Bund's calendar has a window for: a span of the reader's own cannot start before it. */
+export function earliestSpanDay(): string {
+  return Object.keys(GP_STARTS).map((gp) => gpWindow(gp)?.from).filter((d): d is string => !!d).sort()[0] ?? ''
+}

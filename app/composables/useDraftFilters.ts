@@ -23,7 +23,7 @@ import {
   coherentFilters,
 } from '~/utils/draftFilters'
 import { SOURCE_PARAM } from '#shared/utils/laender'
-import { type PeriodView, coherentSpan, laenderSpanQuery, periodViewFor } from '#shared/utils/periodCalendar'
+import { type CustomSpan, type PeriodView, coherentSpan, customSpanOf, laenderSpanQuery, periodViewFor } from '#shared/utils/periodCalendar'
 
 export interface DraftFilters {
   statusFilter: Ref<DraftStatus>
@@ -31,11 +31,23 @@ export interface DraftFilters {
   gp: Ref<string>
   /** A Land's own period, `sbg-17` (`?landtag=`), or '' — see `span` for what applies. */
   landtag: Ref<string>
+  /** A span of the reader's own (`?von=&bis=`, 18.11.2026): ISO days, '' when unset; `bis` '' runs to today. */
+  von: Ref<string>
+  bis: Ref<string>
+  /**
+   * That span held against the Bund's calendar (`customSpanOf`): the period
+   * its rows are fetched for, the days they are cut to, the part a
+   * Periodenwechsel cuts off. Null while no such span applies.
+   */
+  customSpan: ComputedRef<CustomSpan | null>
   /** Which calendar names the span, by the sources (`periodViewFor`, 14.11.2026). */
   periodView: ComputedRef<PeriodView>
   /**
    * The span that APPLIES: `gp` and `landtag` held against the sources
-   * (`coherentSpan`). Read this, never the two refs, for anything that
+   * (`coherentSpan`) — or, while a span of the reader's own applies, the
+   * Bund period it is fetched for (`customSpan`), so every fetch and every
+   * check of an answer's period works as for a chosen period. Read this,
+   * never the refs, for anything that
    * filters — between a source toggle and the navigation it starts the refs
    * may still hold a span the control no longer offers.
    */
@@ -90,9 +102,12 @@ export function useDraftFilters(sources: {
   const periodView = computed(() => periodViewFor(sources.bund.value, sources.laender.value))
   /* The URL's filters with a span the sources do not offer dropped — the
    * running span of the calendar in view instead (`coherentSpan`). */
+  /* A span of the reader's own the calendar cannot place (wholly before it)
+   * is dropped like a period the sources do not offer. */
   const fromQuery = (routeQuery: Record<string, unknown>): DraftFilterValues => {
     const f = draftFiltersFromQuery(routeQuery)
-    return { ...f, ...coherentSpan(f, periodView.value) }
+    const range = customSpanOf(f.von, f.bis) ? { von: f.von, bis: f.bis } : { von: '', bis: '' }
+    return { ...f, ...coherentSpan(f, periodView.value), ...range }
   }
 
   // Filter state, initialized from the URL so links are shareable.
@@ -101,7 +116,13 @@ export function useDraftFilters(sources: {
   const art = ref<ArtFilter>(initial.art)
   const gp = ref(initial.gp)
   const landtag = ref(initial.landtag)
-  const span = computed(() => coherentSpan({ gp: gp.value, landtag: landtag.value }, periodView.value))
+  const von = ref(initial.von)
+  const bis = ref(initial.bis)
+  const customSpan = computed(() => customSpanOf(von.value, bis.value))
+  const span = computed(() =>
+    customSpan.value
+      ? { gp: customSpan.value.gp, landtag: '' }
+      : coherentSpan({ gp: gp.value, landtag: landtag.value }, periodView.value))
   const laenderSpan = computed(() => laenderSpanQuery(span.value, periodView.value))
   const ministry = ref(initial.ministry)
   const q = ref(initial.q)
@@ -149,6 +170,8 @@ export function useDraftFilters(sources: {
     stations: stations.value,
     art: art.value,
     ...span.value,
+    von: customSpan.value ? von.value : '',
+    bis: customSpan.value ? bis.value : '',
     ministry: ministry.value,
     q: qDebounced.value,
     sort: sort.value,
@@ -179,7 +202,7 @@ export function useDraftFilters(sources: {
    * then would carry the old `quellen` over the new. The refs follow once it
    * has landed (the navigation watcher below), and that writes. */
   const rawQuery = computed(() =>
-    JSON.stringify([statusFilter.value, stations.value, gp.value, landtag.value, ministry.value, eu.value]))
+    JSON.stringify([statusFilter.value, stations.value, gp.value, landtag.value, von.value, bis.value, ministry.value, eu.value]))
   watch([rawQuery, qDebounced, art, sort, reversed, begutachtung], writeUrl)
 
   /* A link whose `art` the state does not offer (`coherentArt`) is read as
@@ -189,7 +212,7 @@ export function useDraftFilters(sources: {
    * toggle as well, which is a navigation. And `begutachtung` where it says
    * nothing or nothing new — `mit` beside a draft kind
    * (`coherentBegutachtung`, 14.11.2026). Nothing else is rewritten. */
-  const STRAY_KEYS = ['art', 'begutachtung', 'gp', 'landtag'] as const
+  const STRAY_KEYS = ['art', 'begutachtung', 'gp', 'landtag', 'von', 'bis'] as const
   const strayParam = (routeQuery: Record<string, unknown>): boolean => {
     const url = draftUrlQuery(fromQuery(routeQuery))
     return STRAY_KEYS.some((key) => routeQuery[key] !== undefined && url[key] === undefined)
@@ -223,6 +246,8 @@ export function useDraftFilters(sources: {
        * is dropped, not kept to come back with an older selection. */
       gp.value = next.gp
       landtag.value = next.landtag
+      von.value = next.von
+      bis.value = next.bis
       // Same state, but a stray `art` or span in the address: take it out.
       if (strayParam(routeQuery)) writeUrl()
       return
@@ -232,6 +257,8 @@ export function useDraftFilters(sources: {
     art.value = next.art
     gp.value = next.gp
     landtag.value = next.landtag
+    von.value = next.von
+    bis.value = next.bis
     ministry.value = next.ministry
     q.value = next.q
     qDebounced.value = next.q
@@ -248,6 +275,9 @@ export function useDraftFilters(sources: {
     art,
     gp,
     landtag,
+    von,
+    bis,
+    customSpan,
     periodView,
     span,
     laenderSpan,

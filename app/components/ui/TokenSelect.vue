@@ -52,6 +52,19 @@ const props = defineProps<{
    * and, through `aria-describedby`, to assistive technology.
    */
   unavailable?: string | null
+  /**
+   * Folds the select to its chevron, a 44 px segment (18.11.2026), for a
+   * caller whose own box shows the value in another form: the Zeitraum on
+   * /entwuerfe, where „Eigener Zeitraum" stands as its two dates. It is a
+   * prop and not a second select so the <select> stays the same element —
+   * keyboard focus stays on it when the reader picks the value that folds
+   * it, and pressing the chevron opens the whole list as before. The
+   * caller's box carries border, background and hover; the segment brings
+   * only the hairline to its left. The label is pushed out of the content
+   * box by the padding, not hidden by colour: Firefox paints the open
+   * list's options in the select's own text colour.
+   */
+  chevronOnly?: boolean
 }>()
 const reasonId = computed(() => (props.id ? `${props.id}-reason` : undefined))
 </script>
@@ -62,21 +75,28 @@ const reasonId = computed(() => (props.id ? `${props.id}-reason` : undefined))
        characters), and its automatic minimum size would otherwise defeat the
        caller's max-width and push the page into horizontal scroll on mobile.
        Callers that are flex items need min-w-0 for the same reason. -->
-  <span class="relative min-w-0 max-w-full" :class="block ? 'flex w-full' : 'inline-flex'">
+  <span
+    class="relative min-w-0 max-w-full"
+    :class="chevronOnly ? 'flex w-11 shrink-0' : block ? 'flex w-full' : 'inline-flex'"
+  >
     <select
       :id="id"
       v-model="model"
       :disabled="disabled || !!unavailable"
       :title="unavailable ?? undefined"
       :aria-describedby="unavailable ? reasonId : undefined"
-      class="min-h-target w-full min-w-0 appearance-none truncate rounded-md border border-baseline bg-surface py-2 pl-3 pr-9 text-sm text-ink hover:border-hover-edge hover:bg-hover disabled:cursor-not-allowed disabled:border-dashed disabled:bg-page disabled:text-ink-muted disabled:hover:bg-page"
+      class="w-full min-w-0 appearance-none truncate text-sm text-ink"
+      :class="chevronOnly
+        ? 'rounded-r-md border-l border-baseline bg-transparent pl-11 pr-0'
+        : 'min-h-target rounded-md border border-baseline bg-surface py-2 pl-3 pr-9 hover:border-hover-edge hover:bg-hover disabled:cursor-not-allowed disabled:border-dashed disabled:bg-page disabled:text-ink-muted disabled:hover:bg-page'"
     >
       <slot />
     </select>
     <span v-if="unavailable" :id="reasonId" class="sr-only">{{ unavailable }}</span>
     <UIcon
       name="i-lucide-chevron-down"
-      class="pointer-events-none absolute right-3 top-1/2 size-4 -translate-y-1/2 text-ink-muted"
+      class="pointer-events-none absolute top-1/2 size-4 -translate-y-1/2 text-ink-muted"
+      :class="chevronOnly ? 'right-3.5' : 'right-3'"
       aria-hidden="true"
     />
   </span>

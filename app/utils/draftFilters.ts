@@ -28,7 +28,11 @@ import {
   landPeriodSpanLabelDe,
   landtagParts,
   landtagValue,
+  orderedRange,
   parseLandtag,
+  windowDatesDe,
+  BIS_PARAM,
+  VON_PARAM,
 } from '#shared/utils/periodCalendar'
 import { LAND_NAME, LAND_SLUG } from '#shared/utils/laender'
 import { LAND_COVERAGE, type CoverageRow } from '#shared/utils/laenderCoverage'
@@ -949,6 +953,14 @@ export interface DraftFilterValues extends DraftQueryFilters {
    * the Bund's endpoints, so not in `DraftQueryFilters`.
    */
   landtag: string
+  /**
+   * A span of the reader's own (`?von=&bis=`, 18.11.2026): two ISO days, the
+   * second '' while it runs to today. While `von` is set it is THE span — no
+   * `gp` or `landtag` goes into the URL beside it (`draftUrlQuery`), and the
+   * period it resolves to is the composable's business (`customSpanOf`).
+   */
+  von: string
+  bis: string
   art: ArtFilter
   begutachtung: BegutachtungFilter
   sort: SortKey
@@ -1040,7 +1052,9 @@ export function draftFiltersFromQuery(
   const parsed = parseBegutachtung(query.begutachtung)
   const art = coherentArt(parseArt(query.art), parsed)
   const begutachtung = coherentBegutachtung(art, parsed)
+  const range = orderedRange(firstQueryValue(query[VON_PARAM]) ?? '', firstQueryValue(query[BIS_PARAM]) ?? '')
   return {
+    ...range,
     landtag: parseLandtagParam(query.landtag, calendars),
     status: parseStatus(query.status),
     stations: parseStations(query.station),
@@ -1084,8 +1098,15 @@ export function draftUrlQuery(f: DraftFilterValues): Record<string, string> {
   if (f.stations.length) query.station = f.stations.join(',')
   const art = coherentArt(f.art, f.begutachtung)
   if (art) query.art = art
-  if (f.gp) query.gp = f.gp
-  if (f.landtag) query.landtag = f.landtag
+  /* A span of the reader's own is the span: the period it is fetched by is
+   * not the reader's choice and stays out of the link. */
+  if (f.von) {
+    query[VON_PARAM] = f.von
+    if (f.bis) query[BIS_PARAM] = f.bis
+  } else {
+    if (f.gp) query.gp = f.gp
+    if (f.landtag) query.landtag = f.landtag
+  }
   if (f.ministry) query.ministry = f.ministry
   if (f.q) query.q = f.q
   if (f.sort !== 'frist') query.sort = f.sort
@@ -1226,6 +1247,16 @@ export function spanOptionsFor(
   ]
 }
 
+/**
+ * The select's first option, in every view (18.11.2026): a span of the
+ * reader's own, by two dates. Not among `spanOptionsFor`'s periods — it names
+ * no span until its dates are set, and the page shows the date fields under
+ * the select while it is chosen. Its value collides with neither a GP (a
+ * Roman numeral) nor a Land period (`sbg-17`).
+ */
+export const CUSTOM_SPAN_VALUE = 'eigen'
+export const CUSTOM_SPAN_OPTION = { value: CUSTOM_SPAN_VALUE, label: 'Eigener Zeitraum …' } as const
+
 /* By code; a name wins over an empty one, whichever half brings it. */
 export function unionMinistries(
   ...halves: (readonly { code: string; name: string }[] | undefined)[]
@@ -1237,7 +1268,7 @@ export function unionMinistries(
   return [...byCode].map(([code, name]) => ({ code, name })).sort((a, b) => a.code.localeCompare(b.code, 'de-AT'))
 }
 
-export type FilterChipKey = 'status' | 'art' | 'gp' | 'landtag' | 'ministry'
+export type FilterChipKey = 'status' | 'art' | 'gp' | 'landtag' | 'zeitraum' | 'ministry'
 
 /**
  * The closed panel's values, each as a chip that removes it. Data, not
@@ -1258,7 +1289,7 @@ export type FilterChipKey = 'status' | 'art' | 'gp' | 'landtag' | 'ministry'
  * compact form („seit 24.10.2024", „23.10.2019–23.10.2024").
  */
 export function activeFilterChips(
-  f: Pick<DraftFilterValues, 'status' | 'art' | 'gp' | 'ministry'> & { landtag?: string; begutachtung?: BegutachtungFilter },
+  f: Pick<DraftFilterValues, 'status' | 'art' | 'gp' | 'ministry'> & { landtag?: string; begutachtung?: BegutachtungFilter; von?: string; bis?: string },
   view: PeriodView = { mode: 'bund' },
   calendars: LandPeriodCalendars = LAND_PERIODS,
 ): { key: FilterChipKey; label: string }[] {
@@ -1268,12 +1299,16 @@ export function activeFilterChips(
    * moved into the select (14.11.2026); one press clears both parameters. */
   const choice = artChoiceOf(f.art, f.begutachtung ?? '')
   if (choice) out.push({ key: 'art', label: artChoiceLabel(choice) })
-  if (f.landtag) {
+  /* A span of the reader's own by its days, as asked — „09.11.2026–15.11.2026",
+   * „seit 09.11.2026" — and no period chip beside it: the period it is
+   * fetched by is not the reader's choice. */
+  if (f.von) out.push({ key: 'zeitraum', label: windowDatesDe({ from: f.von, to: f.bis || null }, true) })
+  else if (f.landtag) {
     const parts = landtagParts(f.landtag)
     const period = parts ? calendars[parts.land]?.find((p) => p.id === parts.id) : undefined
     out.push({ key: 'landtag', label: parts && period ? landPeriodChipDe(parts.land, period) : f.landtag })
   }
-  if (f.gp) out.push({ key: 'gp', label: view.mode === 'bund' ? `GP ${f.gp}` : (gpSpanDatesDe(f.gp, true) ?? `GP ${f.gp}`) })
+  if (f.gp && !f.von) out.push({ key: 'gp', label: view.mode === 'bund' ? `GP ${f.gp}` : (gpSpanDatesDe(f.gp, true) ?? `GP ${f.gp}`) })
   if (f.ministry) out.push({ key: 'ministry', label: f.ministry })
   return out
 }
