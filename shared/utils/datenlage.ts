@@ -742,12 +742,37 @@ export const DATENLAGE_FIGURES: readonly DatenlageFigure[] = [
     date: '17.09.2026',
   },
   {
-    // api-exploration §2c, „Where it is published".
+    // `pnpm corpus:tgu-deckung -- --gp XXVIII`, line „(d) Vereinigung": at Parliament
+    // or in the joined RIS record. 121 of 132 on 10.09.2026 (api-exploration §2c).
     source: 'bund',
     step: 'tgu',
-    text: '121 haben eine Textgegenüberstellung.',
-    population: '132 Ministerialentwürfe der XXVIII. GP',
-    date: '10.09.2026',
+    text: '147 haben eine Textgegenüberstellung.',
+    population: '163 Ministerialentwürfe der XXVIII. GP',
+    date: '18.11.2026',
+  },
+  {
+    // decisions.md, „The monitor's own accuracy and coverage" (`pnpm corpus:tgu-deckung`).
+    source: 'bund',
+    step: 'tgu',
+    text: 'Zu 162 findet der Monitor den Datensatz im RIS, aus dem er Entwurf und Textgegenüberstellung liest – zu einem davon nur über Datum und Ministerium. Einer steht nicht im RIS.',
+    population: '163 Ministerialentwürfe der XXVIII. GP',
+    date: '18.11.2026',
+  },
+  {
+    // decisions.md, „The consolidated reading and the annex" (`pnpm harness:kons -- --discover=60 --sammel --oracle`).
+    source: 'bund',
+    step: 'tgu',
+    text: 'Die Lesefassung, an kundgemachten Gesetzen geprüft: Alle 106 Paragraphen, die der Monitor zeigen würde, sind wortgleich mit dem geltenden Text im RIS. Ohne die Bestätigung durch die Textgegenüberstellung wären es 1.370 von 1.435.',
+    population: '1.752 Paragraphen aus 60 Bundesgesetzblättern',
+    date: '18.11.2026',
+  },
+  {
+    // decisions.md, same table (`scripts/harness/accounting.ts --gp=XXVIII`).
+    source: 'bund',
+    step: 'tgu',
+    text: 'Von 4.701 geänderten Paragraphen zeigt der Monitor 2.267 als Lesefassung; bei jedem anderen steht der Grund.',
+    population: '163 Ministerialentwürfe der XXVIII. GP',
+    date: '18.11.2026',
   },
   {
     // so-funktionierts #eu-recht.

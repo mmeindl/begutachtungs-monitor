@@ -763,6 +763,10 @@ async function verifyLaw(blocks: readonly TextBlock[], article: DraftArticle, ct
     // silently reprinted the plausible subset and the guard looked like it
     // filtered nothing (2026-09-09).
     tally(gateTally, `${plausible ? 'plausibel' : 'unplausibel'}|${oracleKey}|${outcome}|${flags.has('verweigert') ? 'verweigert' : 'ohne Verweigerung'}`)
+    // A confirmed § that is not the RIS text is the row the gate table sums
+    // away („identisch 105" of 108, „abweichend 0"): print it, so the rest
+    // can be read and not only counted (18.11.2026).
+    if (verbose && oracleReport?.verdict === 'bestätigt' && verdict !== 'identisch') console.log(`        ↳ Orakel bestätigt [RIS: ${verdict}]${plausible ? '' : ' (nicht plausibel, wird nicht gezeigt)'}`)
     if (verbose && oracleReport && oracleReport.verdict !== 'stumm' && oracleReport.verdict !== 'bestätigt') {
       console.log(`        ↳ Orakel ${oracleReport.verdict} [RIS: ${verdict}]: ${oracleReport.note ?? ''}`)
       if (argFlag('oracle-debug') && verdict === 'identisch') {

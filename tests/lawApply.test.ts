@@ -161,6 +161,22 @@ describe('parseKonsParagraph', () => {
     expect(node.children[2]!.text).toBe('Für die Mitglieder ist Ersatz zu leisten.')
   })
 
+  // Privatschulgesetz § 30 as RIS serves it (18.11.2026): the version until
+  // 31.12.2026 carries the designation as a heading, the version from
+  // 01.01.2027 as `<gldsym>`. Both are the same §, and neither has a name.
+  it('takes a heading that is only the designation for no heading', () => {
+    const doc = (body: string) => `<risdok><nutzdaten><abschnitt>
+      <absatz typ="erltext" ct="artikel_anlage">§ 30</absatz>${body}
+    </abschnitt></nutzdaten></risdok>`
+    const asHeading = parseKonsParagraph(doc('<ueberschrift typ="para" ct="text" halign="c">§ 30.</ueberschrift><absatz typ="abs" ct="text">Mit der Vollziehung ist der Bundesminister betraut.</absatz>'))!
+    const asSymbol = parseKonsParagraph(doc('<absatz typ="abs" ct="text"><gldsym>§ 30.</gldsym> Mit der Vollziehung ist der Bundesminister betraut.</absatz>'))!
+    expect(asHeading.heading).toBeNull()
+    expect(plainText(asHeading)).toBe(plainText(asSymbol))
+    // A designation with a name after it stays the heading it is.
+    const named = parseKonsParagraph(doc('<ueberschrift typ="para" ct="text">§ 30. Vollziehung</ueberschrift><absatz typ="abs" ct="text">Mit der Vollziehung ist der Bundesminister betraut.</absatz>'))!
+    expect(named.heading).toBe('§ 30. Vollziehung')
+  })
+
   it('reads a RIS BrKons document into the tree', () => {
     const xml = `<risdok><nutzdaten><abschnitt>
       <kzinhalt typ="p"><absatz typ="kz">Bundesrecht konsolidiert</absatz></kzinhalt>

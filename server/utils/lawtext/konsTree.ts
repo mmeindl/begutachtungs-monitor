@@ -75,6 +75,8 @@ const STRIP = [/<kzinhalt[\s\S]*?<\/kzinhalt>/g, /<fzinhalt[\s\S]*?<\/fzinhalt>/
  */
 const BLOCK_RE = /<(ueberschrift|absatz|listelem|schlussteil|schluss|table)\b([^>]*)>([\s\S]*?)<\/\1>/g
 const GLD_RE = /<gldsym>([\s\S]*?)<\/gldsym>/
+/** „§ 30.", „§ 27a", „Art. 5.", „Artikel 12": a designation with no name after it. */
+const DESIGNATION_ONLY_RE = /^(?:§|Art\.|Artikel)\s*\d+[a-z]*\.?$/i
 const SYMBOL_RE = /<symbol\b[^>]*>([\s\S]*?)<\/symbol>/
 /** "(2) " opens an Absatz; "(2a)" and "(2b)" are legal too. */
 const ABS_MARKER_RE = /^\((\d+[a-z]*)\)\s*/
@@ -322,7 +324,13 @@ export function parseKonsParagraph(xml: string): LawNode | null {
       // The § heading is the one marked as such. Letting a group heading
       // stand in for it gave a § the name of the Abschnitt above it — a wrong
       // name, and a wrong name on someone's paragraph is worse than none.
-      if (typ === 'para') heading = text(inner)
+      // A „heading" that is only the designation is none (18.11.2026). RIS
+      // writes „§ 30." as `<gldsym>` in the first Absatz, and in a few older
+      // laws as `<ueberschrift typ="para">` instead — one version of
+      // Privatschulgesetz § 30 this way, the next the other. Taken for the
+      // §'s name it stood in the comparison text of one version only, and a
+      // § replaced word for word read as „halb angewendet".
+      if (typ === 'para') heading = DESIGNATION_ONLY_RE.test(text(inner)) ? null : text(inner)
       else if (root === null) {
         const t = text(inner)
         if (t) context.push(t)

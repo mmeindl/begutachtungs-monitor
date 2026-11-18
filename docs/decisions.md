@@ -426,6 +426,19 @@ gets an entry of its own only where it carries a reason the rule does not.
   on both periods green (`tests/risJoin.test.ts`) or raises `RULE_VERSION`
   and regenerates `data/ris-me-map-gp27.json`, whose diff is read row by row:
   every changed RIS id is a claim.
+- **The RIS Begut list is read whole or the shortfall is said** (18.11.2026).
+  The list sorts by one column, the Frist end, and records that share a day
+  stand in no fixed order between two page requests: where such a day
+  straddles a page boundary, one record comes twice and another not at all.
+  Deduping hid the repeat, and every rebuild lost a different handful: a
+  draft missing from the list, or a Ministerialentwurf without its RIS
+  record. A repeat is the sign. Its day is asked for whole
+  (`InBegutachtungAm`, a few dozen records) and added; what then still
+  falls short of RIS's own count is logged. `begutCollector`
+  (`ris/risRecord.ts`) is the one implementation, for the server and the
+  scripts. Rejected: a second pass in the other direction (47 more requests
+  a day for a loss eleven repair it exactly) and sorting by another column
+  (`Kurztitel` and `EinbringendeStelle` tie far more).
 - **A draft without a RIS record is a state the page shows, not an error.**
   The twelve of GP XXVII are an upstream gap: the transport section of the
   BMK between March 2020 and April 2021, and two drafts of the BMEIA.
@@ -642,6 +655,12 @@ gets an entry of its own only where it carries a reason the rule does not.
   a harness that passes judgement is tested like production code (§12.12a).
 - **Print the requested corpus beside the corpus actually reached;** a shrunk
   corpus looks like a full one (§12.12).
+- **An engine change is measured over the 60 Bundesgesetzblätter the
+  documented figures stand on,** not over a shorter run (18.11.2026). The
+  change of 14.11. to enumerations marked „(neu)" was measured with
+  `--discover=40`, where no class moved; the range „Die §§ 7 bis 9 (neu) …
+  werden ersetzt" stands in the 48th of the 60, and eleven §§ of the
+  IVS-Gesetz that matched the RIS were refused for four days unseen.
 - **Before a parser change, compare old against new over the whole corpus and
   read every item that moves.** Zeros measured on tuning data are in-sample.
 - **Report per-draft figures (median, share of drafts)** over pooled
@@ -2086,6 +2105,7 @@ Ministerialentwurf, RV = Regierungsvorlage.
 |---|---|---|
 | RIS↔ME join, GP XXVII | 337 of 350 matched, 1 weakly, 0 ambiguous, 12 without any RIS record; by hand 25 of 25 sampled matches right, 12 of 12 absences confirmed | 350 Ministerialentwürfe, 966 RIS records in the period · 06.09.2026 |
 | RIS↔ME join, GP XXVIII, first live run | 130 of 132 matched, 1 weakly, 1 without a RIS record | 07.09.2026 |
+| RIS↔ME join, GP XXVIII | 161 of 163 matched, 1 weakly (11/ME), 1 without a RIS record (60/ME). Before the same day's fix 149/ME stood without its record: a dash in the law's own name („Immissionsschutzgesetz – Luft 2027, IG-L 2027") was read as the start of an abbreviation | `pnpm corpus:tgu-deckung -- --gp XXVIII`, 4,621 of 4,621 RIS records read · 18.11.2026 |
 | Ordinance → BGBl II join found | 85.4 %; 91.1 % where the Frist is over a year old | 251/294, 163/179 · 22.10.2026 (§12.32) |
 | Länder LGBl title match (Oberösterreich oracle) | 77 of 83 right, at most 2 wrong | (§12.43) |
 | Oberösterreich draft → promulgation comparable | 83 of 83 | 22.10.2026 (§12.44) |
@@ -2113,14 +2133,15 @@ Ministerialentwurf, RV = Regierungsvorlage.
 
 | What | Value | Sample, date |
 |---|---|---|
-| Engine against RIS after entry into force: identical | 77.9 % | 60 BGBl, 1,744 §§ · 04.10.2026 (§12.12) |
+| Engine against RIS after entry into force: identical | 79.5 % (1,392); 77.9 % on 04.10.2026 | 60 BGBl, 1,752 §§ · 18.11.2026 (§12.12) |
 | Engine's own deviations | 1.3 % (0.7 % among unrefused §§) | same |
-| Unrefused but not the law in force | 3.0 % of 1,513 §§ | same |
-| Annex-confirmed §§ that deviate from the enacted text | 0 of 108 | 26.10.2026 (§12.12c) |
+| Unrefused but not the law in force | 1.4 % (20) of 1,435 §§; 3.0 % (46 of 1,519) on 04.10.2026. Of the 26 that left, 21 are refused now with the same text and 4 became identical: bookkeeping, not accuracy. The 26th was Privatschulgesetz § 30, never wrong (next row) | same |
+| Annex-confirmed §§ against the enacted text | 108 confirmed: 106 identical, 2 incomplete and withheld as implausible, 0 deviating. So all 106 the gate shows are identical. „0 of 108 deviate" (26.10.2026) counted the class „abweichend" alone and summed three §§ away; the third, Privatschulgesetz § 30, was word for word the law and read as „halb angewendet" because RIS gives the designation once as `<ueberschrift typ="para">` and once as `<gldsym>` (`konsTree.ts`) | 18.11.2026 (§12.12c) |
 | Fault injection: known error classes caught | ≥ 95 % each | 26.10.2026 (§12.12c) |
 | Silent omission read (`silentOmissions`) under fault injection | a skipped unit the engine loses caught 16 of 16; one missing from RIS too caught 3 of 16 | GP XXVIII · 14.11.2026 |
-| Changed §§ with an outcome on the page | all 4,463 (ME) and 1,541 (without Gegenstand) | GP XXVIII · 27.10.2026 (§12.12c) |
-| Of those shown | 2,167 and 630 | same |
+| Changed §§ with an outcome on the page | all 4,701 in 163 drafts (ME) and 1,490 in 219 (without Gegenstand); 4,463 and 1,541 on 27.10.2026. The second fell although five drafts came, and none of it is the engine: six drafts left the set (−89; four got a Parliament page as 150/ME to 153/ME, two were lost by the corpus read, next table), eleven came (+38), and on the 208 in both the count stayed 1,452. Reconstructed by running the code of 27.10. offline on the same inputs: 214 drafts, 1,541, 630, the recorded figures. The JSON of an `accounting.ts` run is the per-draft record from now on | GP XXVIII · 18.11.2026 (§12.12c) |
+| Of those shown | 2,267 and 623; 2,167 and 630 on 27.10.2026. Without Gegenstand: −33 with the six that left, +11 with the eleven that came, +15 on the 208 in both (7262426, omissions without „…": 14; 14984f1, letter-spaced words: 1) | same |
+| RIS Begut list read whole | 4,621 of 4,621 with the repair; without it one pass gave 4,602 (19 sent twice, 19 skipped), another 4,614, the dev server's 380 of the 382 in the period | `pnpm corpus:tgu-deckung`, one pass over 47 pages · 18.11.2026 |
 | Amending drafts that show at least one § | 111 of 122 | GP XXVIII · 06.10.2026 (§12.12) |
 | Amending drafts with a readable annex | 121 of 122 | 06.10.2026 (§12.12) |
 | Textgegenüberstellung readable | XXVIII 124 of 139, XXVII 290 of 342 | 27.09.2026 (§12.13) |
