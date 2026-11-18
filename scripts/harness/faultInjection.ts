@@ -153,7 +153,73 @@
  * prints each with its annex rows and the result, because a count cannot be
  * inspected. `--misses` lists what still gets through.
  *
- * Usage:  npx vite-node scripts/harness/faultInjection.ts --gp=XXVIII [--xml] [--limit=N] [--only=8] [--misses] [--alarme]
+ * **And the word classes, since 19.11.2026** — the question asked of the
+ * oracle being whether it notices a result that is wrong by one word, one
+ * figure or one place, where the classes above only ever asked about whole
+ * units. One fault per § and class, at a deterministic site (the middle one
+ * that qualifies), into the same confirmed §§, judged with every argument the
+ * request path passes (`kons/consolidate.ts`):
+ *
+ * - **Wort-weg / Wort-neu / Wort-tausch** — one word dropped, another word of
+ *   the same § put in, or a word replaced by one, inside a stretch a changed
+ *   row prints in its proposed column (`wordGround`: the seven-word window
+ *   around the site stands there, and only once in the result).
+ *   **Wort-weg-Sinn** is the sub-class where the word dropped is one whose
+ *   loss flips or widens the provision (nicht, kein*, nur, auch, oder, und,
+ *   muss/müssen, kann/können, darf/dürfen, ausschließlich).
+ * - **Zahl** — a figure changed by its last digit (amounts, percentages,
+ *   years, ordinals, counts; not a date's day, not a citation's number).
+ * - **Verweis** — the number or letter behind „§", „Abs.", „Z", „lit.",
+ *   „Art." moved by one.
+ * - **Ziffer-Reihe** — two neighbouring Ziffern of one Absatz swapped, both
+ *   printed in changed rows: Reihe one level down, below check 5.
+ * - **Überschrift** — a word of the § heading replaced, where a changed row
+ *   prints the heading as such (before the § symbol, or as a heading row).
+ * - **Ungedruckt-weg / -neu / -Zahl** — the word faults where no changed row
+ *   prints anything: the engine touching text the draft does not touch.
+ *   Check 3's ground. Broken down by whether an unchanged row prints the
+ *   site or nothing does.
+ *
+ * `checkOf` names which of the five checks caught each fault. Before any
+ * change to the oracle (19.11.2026, GP XXVIII, 104 PDF and 137 table drafts):
+ *
+ * | | PDF-Pfad | Tabellenpfad |
+ * |---|---:|---:|
+ * | Wort-weg        | 1365/1377 (99,1 %) | 987/988 (99,9 %) |
+ * | Wort-weg-Sinn   | 1206/1224 (98,5 %) | 854/861 (99,2 %) |
+ * | Wort-neu        | 1375/1377 (99,9 %) | 987/988 (99,9 %) |
+ * | Wort-tausch     | 1375/1377 (99,9 %) | 987/988 (99,9 %) |
+ * | Zahl            |  438/482 (90,9 %)  | 268/295 (90,8 %) |
+ * | Verweis         |  971/972 (99,9 %)  | 642/643 (99,8 %) |
+ * | Ziffer-Reihe    |  268/268 (100 %)   |  40/113 (35,4 %) |
+ * | Überschrift     |  971/1087 (89,3 %) |  44/57 (77,2 %)  |
+ * | Ungedruckt-weg  |  671/1037 (64,7 %) | 569/849 (67,0 %) |
+ * | Ungedruckt-neu  |  251/1037 (24,2 %) | 236/849 (27,8 %) |
+ * | Ungedruckt-Zahl |  480/522 (92,0 %)  | 334/383 (87,2 %) |
+ *
+ * Read: inside a printed stretch check 2 catches nearly everything, because it
+ * wants each stretch as one unbroken run. What it let through were the
+ * places its exceptions reach — the heading stack above a § and the stretch
+ * read as a group heading alone —, figures `stripMarkers` takes for a
+ * Ziffer's marker („das 18. Lebensjahr", „nach dem 2. Hauptstück", a year
+ * ending a sentence) on both sides alike, and on the table path the ORDER of
+ * rows, since every row is looked up from the start of the result. Outside a
+ * printed stretch only check 3 reads, and its bags ask whether a word stands
+ * anywhere in the annex, not where.
+ *
+ * Only the classes at ≥ 95 % on both paths with ≥ 20 tries are held to the
+ * `--mindestens` floor; the others are printed, not floored.
+ *
+ * **Duplicate Absatz numbers are RIS's, not the engine's** (19.11.2026). The
+ * Reihe fault used to swap two Absätze of the same number — Listing Act
+ * § 117 „… 11, 11, …", 2. WaffV § 16 „… 7, 7" — a no-op counted as a miss.
+ * Both pairs stand in RIS's own consolidated text (two Novellen gave the
+ * same number); the one result that holds a number twice where the standing
+ * § did not, EAG § 25c (3), prints it twice in the annex as well — the
+ * draft's own numbering. Such sites are skipped, and every result holding a
+ * number twice is listed with where it came from.
+ *
+ * Usage:  npx vite-node scripts/harness/faultInjection.ts --gp=XXVIII [--xml] [--limit=N] [--only=8] [--misses] [--alarme] [--zeige=<§> [--voll]]
  */
 import { annexParagraphKey, comparableTokens, designationKey } from '../../server/utils/annex/annexText'
 import { PARAGRAPH_THRESHOLD, coverageOfParagraph } from '../../server/utils/annex/coverage'
@@ -178,7 +244,8 @@ import { fetchParagraphTree } from '../../server/utils/harness/risKonsHistory'
 import { parseTextComparison, type ComparisonRow } from '../../server/utils/annex/comparisonRows'
 import { isScanned } from '../../server/utils/annex/tableCells'
 import { applyNovelle, instructionsFromUnits, renamedOrigins, type StandingLaw } from '../../server/utils/kons/lawApply'
-import { ABSATZ_ORDER_NOTE, KEPT_DELETION_NOTE, absatzSequence, oracleVerdict, paragraphRows, rowsByParagraph, silentOmissions, standingUnitsOf, type OracleVerdict, type StandingUnits } from '../../server/utils/kons/tguOracle'
+import { ABSATZ_ORDER_NOTE, KEPT_DELETION_NOTE, absatzSequence, containmentKey, oracleVerdict, paragraphRows, rowsByParagraph, silentOmissions, standingUnitsOf, type OracleReport, type OracleVerdict, type StandingUnits } from '../../server/utils/kons/tguOracle'
+import { printedStretches } from '../../server/utils/annex/elision'
 import { segmentUnits } from '../../server/utils/lawtext/lawUnits'
 import { anlageLabelKey, bareParaId } from '../../server/utils/text/designation'
 import { installFetchCache } from '../lib/harnessCache'
@@ -578,10 +645,14 @@ interface OracleTally {
   caught: number
   /** …of which by the check that asks whether the result holds what the annex strikes */
   byKept: number
+  /** The word classes: which of the five checks caught it (`checkOf`) */
+  byCheck: Map<string, number>
+  /** „Ungedruckt": tried and caught per kind of site */
+  kinds: Map<string, [number, number]>
   misses: string[]
 }
 
-const oracleTally = (label: string): OracleTally => ({ label, tried: 0, caught: 0, byKept: 0, misses: [] })
+const oracleTally = (label: string): OracleTally => ({ label, tried: 0, caught: 0, byKept: 0, byCheck: new Map(), kinds: new Map(), misses: [] })
 
 /**
  * The result with ONE of the engine's deletions undone — the fault class
@@ -673,6 +744,11 @@ function structuralFault(node: LawNode, rows: readonly ComparisonRow[], kind: 'R
     for (let i = 0; i + 1 < node.children.length; i++) {
       const [a, b] = [node.children[i]!, node.children[i + 1]!]
       if (a.level !== 'abs' || b.level !== 'abs' || !printed.has(a.id) || !printed.has(b.id)) continue
+      // Two Absätze of one number swapped are the same sequence: no fault,
+      // and counted as a miss it measured the injector (Listing Act § 117,
+      // „… 11, 11, …", until 19.11.2026). Where a § holds the same number
+      // twice is reported on its own (`results.dupAbs`).
+      if (a.id === b.id || abs.filter((c) => c.id === a.id || c.id === b.id).length > 2) continue
       const children = [...node.children]
       children[i] = b
       children[i + 1] = a
@@ -745,6 +821,314 @@ function dateFault(got: string, rows: readonly ComparisonRow[]): string | null {
   return null
 }
 
+// --- Word faults in the RESULT (19.11.2026) ----------------------------------
+
+/**
+ * How many words on each side of a site have to be printed with it before
+ * the site counts as printed: a seven-word window is a phrase, not a
+ * coincidence, and the run also asks that it stand only once in the result.
+ */
+const SITE_HALF = 3
+
+/** The words whose loss turns a provision into its opposite or widens it. */
+const FLIP_WORDS = new Set(['nicht', 'kein', 'keine', 'keinen', 'keinem', 'keiner', 'keines', 'nur', 'auch', 'oder', 'und', 'muss', 'müssen', 'kann', 'können', 'darf', 'dürfen', 'ausschließlich'])
+
+/** What stands before a number that makes it a citation rather than a figure. */
+const DESIGNATORS = new Set(['§', '§§', 'Abs.', 'Absatz', 'Absätze', 'Abs', 'Z', 'Z.', 'Ziffer', 'Ziffern', 'lit.', 'lit', 'Art.', 'Artikel', 'Nr.', 'Anlage', 'Anhang', 'Satz', 'Teil', 'Abschnitt', 'Hauptstück', 'Kapitel', 'Pkt.', 'Tz.', 'Rz.', 'Unterabschnitt', 'TP', 'Tarifpost', 'sublit.'])
+/** The designators a Verweis fault changes the number behind. */
+const CITATION_HEADS = new Set(['§', '§§', 'Abs.', 'Z', 'lit.', 'Art.'])
+const CHAIN_WORDS = new Set(['bis', 'und', 'oder', 'sowie', 'bzw.'])
+const MONTHS = new Set(['Jänner', 'Januar', 'Feber', 'Februar', 'März', 'April', 'Mai', 'Juni', 'Juli', 'August', 'September', 'Oktober', 'November', 'Dezember'])
+
+/** „36," → „36", „(Abs." → „Abs." — a token as a word, for the vocabularies above. */
+const bare = (token: string): string => token.replace(/^[„"'([]+|["'),;:\]]+$/g, '')
+/** A figure as the text prints it: „2026", „1,5", „30%", „1.000" — never a bracketed marker. */
+const NUMBER_TOKEN_RE = /^(\d+(?:[.,]\d+)*)(%?[),.;:]*)$/
+/** A citation's own id: „5", „5a", „12.", „a", „b)" with its punctuation. */
+const CITATION_ID_RE = /^(\d+[a-z]*|[a-z])([),.;:]*)$/
+
+/** A number changed by one digit, the last one: „2026" → „2027", „1 000" stays a figure. */
+function bumped(digits: string): string {
+  const last = Number(digits[digits.length - 1])
+  return digits.slice(0, -1) + String(last === 9 ? 8 : last + 1)
+}
+
+/**
+ * Where a word fault may go in one confirmed §, and what the annex prints
+ * there — the shared ground of every word class below.
+ *
+ * The result is the string the oracle reads (`plainText`), split at its
+ * single spaces, so a faulted result differs from the confirmed one by the
+ * fault alone. A word is **printed in a changed row** when the seven-word
+ * window around it, in the oracle's own comparison form (`containmentKey`),
+ * stands inside a stretch a changed, non-elided row prints in its proposed
+ * column, and nowhere else in the result — a phrase that stands twice could
+ * be the copy the annex never printed, and a miss there would measure the
+ * injector. A word is **not printed** when no window that contains it stands
+ * in a changed row's stretch in either column, and the window around it is
+ * standing text (in the § the engine started from): text the draft does not
+ * touch.
+ */
+interface WordGround {
+  tokens: string[]
+  gotKey: string
+  printed: (i: number) => boolean
+  unprinted: (i: number) => 'unverändert gedruckt' | 'nicht gedruckt' | null
+  /** The changed row's printed stretch a site stands in — for `--alarme` */
+  stretchAt: (i: number) => string | null
+}
+
+function wordGround(got: string, before: string, rows: readonly ComparisonRow[]): WordGround {
+  const tokens = got.split(' ')
+  const gotKey = containmentKey(got)
+  const beforeKey = containmentKey(before)
+  const stretchesOf = (pick: (r: ComparisonRow) => boolean, column: 'proposed' | 'current'): { raw: string; key: string }[] =>
+    rows.filter((r) => r.kind === 'pair' && !r.elided && pick(r) && r[column])
+      .flatMap((r) => printedStretches(normalizeText(r[column])))
+      .map((raw) => ({ raw, key: containmentKey(raw) }))
+      .filter((s) => s.key !== '')
+  const changedProposed = stretchesOf((r) => r.change !== 'unchanged', 'proposed')
+  const changedAny = [...changedProposed, ...stretchesOf((r) => r.change !== 'unchanged', 'current')]
+  const unchanged = stretchesOf((r) => r.change === 'unchanged', 'proposed')
+  const joined = (list: { key: string }[]): string => list.map((s) => s.key).join('\u0000')
+  const proposedHay = joined(changedProposed)
+  const anyHay = joined(changedAny)
+  const unchangedHay = joined(unchanged)
+  const shortKeys = new Set(changedAny.filter((s) => s.raw.split(/\s+/).length <= 2).map((s) => s.key))
+  const windows = new Map<string, string | null>()
+  const windowKey = (i: number, half: number): string | null => {
+    const id = `${i}/${half}`
+    if (!windows.has(id)) windows.set(id, i - half < 0 || i + half >= tokens.length ? null : containmentKey(tokens.slice(i - half, i + half + 1).join(' ')))
+    return windows.get(id)!
+  }
+  const once = (needle: string): boolean => needle !== '' && gotKey.indexOf(needle) >= 0 && gotKey.indexOf(needle) === gotKey.lastIndexOf(needle)
+  return {
+    tokens,
+    gotKey,
+    printed: (i) => {
+      const k = windowKey(i, SITE_HALF)
+      return k !== null && once(k) && proposedHay.includes(k)
+    },
+    unprinted: (i) => {
+      const k = windowKey(i, SITE_HALF)
+      if (k === null || !once(k) || !beforeKey.includes(k)) return null
+      // Every window that holds the word, wide and narrow, and the word
+      // itself where a changed row prints only one or two: a stretch the
+      // word stands at the edge of would otherwise read as not printed.
+      for (let j = i - SITE_HALF; j <= i + SITE_HALF; j++) {
+        const w = windowKey(j, SITE_HALF)
+        if (w !== null && anyHay.includes(w)) return null
+      }
+      for (let j = i - 1; j <= i + 1; j++) {
+        const w = windowKey(j, 1)
+        if (w !== null && anyHay.includes(w)) return null
+      }
+      if (shortKeys.has(containmentKey(tokens[i]!)) || shortKeys.has(containmentKey(`${tokens[i - 1]} ${tokens[i]}`)) || shortKeys.has(containmentKey(`${tokens[i]} ${tokens[i + 1]}`))) return null
+      return unchangedHay.includes(k) ? 'unverändert gedruckt' : 'nicht gedruckt'
+    },
+    stretchAt: (i) => {
+      const k = windowKey(i, SITE_HALF)
+      return k === null ? null : (changedProposed.find((s) => s.key.includes(k))?.raw ?? null)
+    },
+  }
+}
+
+/** A word of real text — letters, and a comparison form the oracle keeps. */
+const isWord = (token: string): boolean => /\p{L}{2,}/u.test(token) && containmentKey(token) !== ''
+
+/**
+ * Another word of the same §, far from the site: what an engine that put a
+ * payload's word in the wrong place, or kept one of the old wording, leaves.
+ * Taken half the § away and scanned on, so the choice is deterministic.
+ */
+function donorWord(tokens: readonly string[], i: number): string | null {
+  const unlike = new Set([tokens[i - 1], tokens[i], tokens[i + 1]].filter((t): t is string => t !== undefined).map((t) => bare(t).toLowerCase()))
+  for (let k = 0; k < tokens.length; k++) {
+    const t = tokens[(i + Math.floor(tokens.length / 2) + k) % tokens.length]!
+    const word = bare(t)
+    if (/^\p{L}{4,}$/u.test(word) && !unlike.has(word.toLowerCase())) return word
+  }
+  return null
+}
+
+/** Is the number at `i` a citation's — „Abs. 1 bis 3": every one of them? */
+function inCitation(tokens: readonly string[], i: number): boolean {
+  for (let k = i - 1; k >= Math.max(0, i - 6); k--) {
+    const t = tokens[k]!
+    if (DESIGNATORS.has(bare(t)) || DESIGNATORS.has(t)) return true
+    if (!(CITATION_ID_RE.test(t) || NUMBER_TOKEN_RE.test(t) || CHAIN_WORDS.has(t) || t === ',')) return false
+  }
+  return false
+}
+
+/** One word fault: the result with it, and how it reads for `--misses`. */
+interface WordFault {
+  got: string
+  at: number
+  shows: string
+}
+
+const middle = <T>(list: readonly T[]): T | undefined => list[Math.floor(list.length / 2)]
+const excerpt = (tokens: readonly string[], i: number, replaced: string): string =>
+  `…${tokens.slice(Math.max(0, i - 8), i).join(' ')} ${replaced} ${tokens.slice(i + 1, i + 9).join(' ')}…`
+
+/** The result with token `i` replaced (or dropped, for `null`), the rest as it was. */
+function edit(tokens: readonly string[], i: number, by: string | null): string {
+  return [...tokens.slice(0, i), ...(by === null ? [] : [by]), ...tokens.slice(i + 1)].join(' ')
+}
+
+/**
+ * The word classes inside a stretch the annex prints in a changed row —
+ * check 2's ground: it wants every such stretch as one unbroken run of the
+ * result, so a word lost, added or swapped inside one breaks it.
+ *
+ * - **Wort-weg** — one word dropped; **Wort-weg-Sinn** the same where the
+ *   word is one whose loss flips or widens the provision (`FLIP_WORDS`).
+ * - **Wort-neu** — another word of the same § put in.
+ * - **Wort-tausch** — a word replaced by another word of the same §.
+ * - **Zahl** — a figure changed by its last digit: amounts, percentages,
+ *   years, counts; not a date's day (class Datum) and not a citation's number.
+ * - **Verweis** — the number or letter behind „§", „Abs.", „Z", „lit." or
+ *   „Art." moved by one: „§ 5" → „§ 6", „lit. a" → „lit. b".
+ */
+function printedWordFaults(ground: WordGround): Partial<Record<'weg' | 'wegSinn' | 'neu' | 'tausch' | 'zahl' | 'verweis', WordFault>> {
+  const { tokens } = ground
+  const sites = tokens.map((_, i) => i).filter((i) => ground.printed(i))
+  const words = sites.filter((i) => isWord(tokens[i]!))
+  const out: ReturnType<typeof printedWordFaults> = {}
+  const weg = middle(words)
+  if (weg !== undefined) out.weg = { got: edit(tokens, weg, null), at: weg, shows: excerpt(tokens, weg, `[−${tokens[weg]}]`) }
+  const flip = words.find((i) => FLIP_WORDS.has(bare(tokens[i]!).toLowerCase()))
+  if (flip !== undefined) out.wegSinn = { got: edit(tokens, flip, null), at: flip, shows: excerpt(tokens, flip, `[−${tokens[flip]}]`) }
+  const neu = middle(words)
+  const neuWord = neu === undefined ? null : donorWord(tokens, neu)
+  if (neu !== undefined && neuWord) out.neu = { got: edit(tokens, neu, `${neuWord} ${tokens[neu]}`), at: neu, shows: excerpt(tokens, neu, `[+${neuWord}] ${tokens[neu]}`) }
+  const tausch = middle(words)
+  const tauschWord = tausch === undefined ? null : donorWord(tokens, tausch)
+  if (tausch !== undefined && tauschWord) out.tausch = { got: edit(tokens, tausch, tauschWord), at: tausch, shows: excerpt(tokens, tausch, `[${tokens[tausch]}→${tauschWord}]`) }
+  const figures = sites.filter((i) => {
+    const t = tokens[i]!
+    if (!NUMBER_TOKEN_RE.test(t) || inCitation(tokens, i)) return false
+    // A date's day is class Datum's.
+    return !(/^\d{1,2}\.$/.test(t) && MONTHS.has(bare(tokens[i + 1] ?? '')))
+  })
+  const zahl = middle(figures)
+  if (zahl !== undefined) {
+    const [, digits, tail] = NUMBER_TOKEN_RE.exec(tokens[zahl]!)!
+    const by = `${bumped(digits!)}${tail}`
+    out.zahl = { got: edit(tokens, zahl, by), at: zahl, shows: excerpt(tokens, zahl, `[${tokens[zahl]}→${by}]`) }
+  }
+  const cited = sites.filter((i) => i > 0 && CITATION_HEADS.has(tokens[i - 1]!) && CITATION_ID_RE.test(tokens[i]!))
+  const verweis = middle(cited)
+  if (verweis !== undefined) {
+    const [, id, tail] = CITATION_ID_RE.exec(tokens[verweis]!)!
+    const moved = /^\d/.test(id!) ? id!.replace(/^\d+/, (n) => bumped(n)) : id === 'z' ? 'y' : String.fromCharCode(id!.charCodeAt(0) + 1)
+    const by = `${moved}${tail}`
+    out.verweis = { got: edit(tokens, verweis, by), at: verweis, shows: excerpt(tokens, verweis, `[${tokens[verweis]}→${by}]`) }
+  }
+  return out
+}
+
+/**
+ * **Ungedruckt** — the same word faults where the annex prints nothing that
+ * changes: in an Absatz it elides or leaves out, or prints unchanged. The
+ * engine touching text the draft does not touch. Only check 3 (the bags of
+ * removed and inserted words) and, for unchanged rows, nothing else reads
+ * there.
+ */
+function unprintedWordFaults(ground: WordGround): Partial<Record<'weg' | 'neu' | 'zahl', WordFault & { kind: string }>> {
+  const { tokens } = ground
+  const kinds = new Map<number, string>()
+  for (let i = 0; i < tokens.length; i++) {
+    const kind = ground.unprinted(i)
+    if (kind) kinds.set(i, kind)
+  }
+  const sites = [...kinds.keys()]
+  const words = sites.filter((i) => isWord(tokens[i]!))
+  const out: ReturnType<typeof unprintedWordFaults> = {}
+  const weg = middle(words)
+  if (weg !== undefined) out.weg = { got: edit(tokens, weg, null), at: weg, kind: kinds.get(weg)!, shows: excerpt(tokens, weg, `[−${tokens[weg]}]`) }
+  const neuWord = weg === undefined ? null : donorWord(tokens, weg)
+  if (weg !== undefined && neuWord) out.neu = { got: edit(tokens, weg, `${neuWord} ${tokens[weg]}`), at: weg, kind: kinds.get(weg)!, shows: excerpt(tokens, weg, `[+${neuWord}] ${tokens[weg]}`) }
+  const zahl = middle(sites.filter((i) => NUMBER_TOKEN_RE.test(tokens[i]!) && !inCitation(tokens, i) && !(/^\d{1,2}\.$/.test(tokens[i]!) && MONTHS.has(bare(tokens[i + 1] ?? '')))))
+  if (zahl !== undefined) {
+    const [, digits, tail] = NUMBER_TOKEN_RE.exec(tokens[zahl]!)!
+    const by = `${bumped(digits!)}${tail}`
+    out.zahl = { got: edit(tokens, zahl, by), at: zahl, kind: kinds.get(zahl)!, shows: excerpt(tokens, zahl, `[${tokens[zahl]}→${by}]`) }
+  }
+  return out
+}
+
+/**
+ * **Ziffer-Reihe** — two neighbouring Ziffern of one Absatz swapped, both
+ * printed in changed rows: the Reihe fault one level down, where check 5
+ * (Absätze only) does not reach. Built on the tree, markers travelling with
+ * their Ziffern, so the result is one the engine could produce — a new
+ * Ziffer inserted one place off.
+ */
+function zifferSwap(node: LawNode, gotKey: string, rows: readonly ComparisonRow[]): { node: LawNode; shows: string } | null {
+  const hay = rows.filter((r) => r.kind === 'pair' && !r.elided && r.change !== 'unchanged' && r.proposed)
+    .flatMap((r) => printedStretches(normalizeText(r.proposed))).map(containmentKey).join('\u0000')
+  const printed = (z: LawNode): boolean => {
+    const own = containmentKey(z.text)
+    const probe = (own.length >= 15 ? own : containmentKey(plainText(z))).slice(0, 60)
+    return probe.length >= 10 && gotKey.indexOf(probe) === gotKey.lastIndexOf(probe) && hay.includes(probe)
+  }
+  const hosts = [node, ...node.children.filter((c) => c.level === 'abs')]
+  for (const host of hosts) {
+    for (let i = 0; i + 1 < host.children.length; i++) {
+      const [a, b] = [host.children[i]!, host.children[i + 1]!]
+      if (a.level !== 'z' || b.level !== 'z' || a.id === b.id || plainText(a) === plainText(b) || !printed(a) || !printed(b)) continue
+      const swapped = [...host.children]
+      swapped[i] = b
+      swapped[i + 1] = a
+      const faultedHost = { ...host, children: swapped }
+      const faulted = host === node ? faultedHost : { ...node, children: node.children.map((c) => (c === host ? faultedHost : c)) }
+      return { node: faulted, shows: `${host === node ? '' : `Abs. ${host.id} `}Z ${a.id} ↔ Z ${b.id}` }
+    }
+  }
+  return null
+}
+
+/**
+ * **Überschrift** — one word of the § heading replaced by another word of
+ * the §, where the annex prints the heading in a changed row: a heading the
+ * draft rewrites and the engine got wrong.
+ */
+function headingFault(node: LawNode, tokens: readonly string[], rows: readonly ComparisonRow[]): { node: LawNode; shows: string } | null {
+  if (!node.heading) return null
+  const headingKey = containmentKey(node.heading)
+  if (headingKey.length < 4) return null
+  // Printed AS the heading: what a changed row prints before the § symbol
+  // (the PDF path), or a heading row of its own (the table path) — a heading
+  // word that merely recurs in the body is no heading the annex printed.
+  const printedAsHeading = rows.some((r) => {
+    if (r.kind !== 'pair' || r.elided || r.change === 'unchanged' || !r.proposed) return false
+    const text = normalizeText(r.proposed)
+    const symbol = /§+\s*\d+[a-z]*\.?\s/.exec(text)
+    const head = symbol ? text.slice(0, symbol.index) : !r.gld && text.length <= 120 && !/[.;:]$/.test(text) ? text : null
+    return head !== null && containmentKey(head).endsWith(headingKey)
+  })
+  if (!printedAsHeading) return null
+  const words = node.heading.split(' ')
+  const longest = words.reduce((best, w, i) => (bare(w).length > bare(words[best]!).length ? i : best), 0)
+  const donor = donorWord([...words, ...tokens], longest)
+  if (!donor || !/\p{L}/u.test(words[longest]!)) return null
+  const heading = words.map((w, i) => (i === longest ? w.replace(bare(w), donor) : w)).join(' ')
+  return heading === node.heading ? null : { node: { ...node, heading }, shows: `„${node.heading}" → „${heading}"` }
+}
+
+/** Which of the oracle's checks a verdict's note comes from — the columns of the word table. */
+function checkOf(note: string | null): string {
+  if (!note) return '?'
+  if (note.startsWith('Geltende Fassung')) return 'P1'
+  if (note.startsWith('Vorgeschlagene Fassung') || note.startsWith('Gestrichene Fassung')) return 'P2'
+  if (note.startsWith('Engine') || note.startsWith('Wortdiff')) return 'P3'
+  if (note.startsWith(KEPT_DELETION_NOTE)) return 'P4'
+  if (note.startsWith(ABSATZ_ORDER_NOTE)) return 'P5'
+  return '?'
+}
+
 /**
  * The engine on this draft, and the oracle on its result — once as computed,
  * once per fault.
@@ -805,6 +1189,15 @@ async function injectIntoResults(
       const standingUnits = beforeNode ? standingUnitsOf(beforeNode) : null
       const report = oracleVerdict(id, before, got, paraRows, absatzSequence(node), beforeNode ? (absatzSequence(beforeNode) ?? null) : null, standingUnits)
       results.verdicts.set(report.verdict, (results.verdicts.get(report.verdict) ?? 0) + 1)
+      // An Absatz number the result holds twice — and whether the standing §
+      // already held it twice (RIS's text) or the engine made the second one.
+      const twice = (n: LawNode | null): string[] => (n ? absOf(n).filter((a, i, all) => a && all.indexOf(a) !== i) : [])
+      const dup = twice(node)
+      if (dup.length > 0) {
+        const standingDup = twice(beforeNode)
+        const engineMade = dup.filter((a) => !standingDup.includes(a))
+        results.dupAbs.push(`${cite} § ${id}${lawKey ? ` [${String(lawKey).slice(0, 24)}]` : ''} — ${report.verdict}, doppelt (${dup.join(', ')}) ${engineMade.length === 0 ? 'schon im geltenden Text' : `ERST IM ERGEBNIS (${engineMade.join(', ')})`}; geltend: ${beforeNode ? absOf(beforeNode).join(', ') : '—'}; Ergebnis: ${absOf(node).join(', ')}`)
+      }
       // Every § with a row the annex prints with a silent omission, whatever
       // its verdict — what the reading can reach at all.
       const gaps = silentOmissions(paraRows, standingUnits).skipped
@@ -839,6 +1232,16 @@ async function injectIntoResults(
           results.keptAlarms.push(...changed.flatMap((r) => [`          geltend    : ${r.current}`, `          vorgeschlagen: ${r.proposed}`]), `          Ergebnis   : ${got}`)
         }
       }
+      // `--zeige=18` (with `--only`): one § as the oracle sees it, to read a miss.
+      if (argAssigned('zeige') === id) {
+        console.log(`\n  ── § ${id}${lawKey ? ` [${lawKey}]` : ''}: ${report.verdict}${report.note ? ` — ${report.note}` : ''}`)
+        console.log(`     Überschrift: ${node.heading ?? '—'}`)
+        for (const r of paraRows.filter((r) => r.kind === 'pair')) console.log(`     ${r.elided ? 'ausgelassen' : r.change.padEnd(11)}${r.editorial ? ' (red.)' : ''} gld=${r.gld ?? '—'}\n        geltend      : ${r.current.slice(0, argFlag('voll') ? undefined : 600)}\n        vorgeschlagen: ${r.proposed.slice(0, argFlag('voll') ? undefined : 600)}`)
+        console.log(`     geltend : ${(before ?? '—').slice(0, 900)}\n     Ergebnis: ${got.slice(0, 900)}\n`)
+        // The designations RIS's own document prints, beside what the tree made of them.
+        const ref = Object.values(resolved.paragraphs).find((r) => r.id === (origin ?? id))
+        if (ref?.xmlUrl) console.log(`     RIS-Dokument ${ref.xmlUrl}\n       gldsym: ${[...(await getText(ref.xmlUrl)).matchAll(/<gldsym>([^<]*)<\/gldsym>/g)].map((m) => m[1]).join(' ')}\n       Baum  : ${beforeNode ? absOf(beforeNode).join(', ') : '—'}`)
+      }
       if (report.verdict !== 'bestätigt' || before === null) continue
       results.confirmed++
       for (const kind of ['Reihe', 'Fehlt'] as const) {
@@ -872,6 +1275,49 @@ async function injectIntoResults(
           if (judged.verdict === 'bestätigt') into.misses.push(`${cite} § ${id} — ohne ${standingUnits.style === 'abs' ? `(${gap})` : `${gap}.`} von ${gaps.join(', ')}; ohne die Lesart: ${without}`)
         }
       }
+      // The word classes, judged as production judges (`kons/consolidate.ts`):
+      // every argument the request path passes, the standing units included.
+      const standingSeq = beforeNode ? (absatzSequence(beforeNode) ?? null) : null
+      const judgeWord = (into: OracleTally, faultedGot: string, faultedNode: LawNode, shows: string, stretch: string | null, kind?: string): void => {
+        const judged: OracleReport = oracleVerdict(id, before, faultedGot, paraRows, absatzSequence(faultedNode), standingSeq, standingUnits)
+        into.tried++
+        if (kind) into.kinds.set(kind, (into.kinds.get(kind) ?? [0, 0]).map((n, k) => n + (k === 0 ? 1 : judged.verdict !== 'bestätigt' ? 1 : 0)) as [number, number])
+        if (judged.verdict !== 'bestätigt') {
+          into.caught++
+          const check = checkOf(judged.note)
+          into.byCheck.set(check, (into.byCheck.get(check) ?? 0) + 1)
+          return
+        }
+        into.misses.push(`${cite} § ${id}${lawKey ? ` [${String(lawKey).slice(0, 24)}]` : ''}${kind ? ` (${kind})` : ''} — ${shows.slice(0, 220)}`)
+        if (argFlag('alarme')) {
+          if (stretch) into.misses.push(`        Beilage, geänderte Zeile: ${stretch.slice(0, 500)}`)
+          else into.misses.push(...paraRows.filter((r) => r.kind === 'pair' && !r.elided && r.change !== 'unchanged').map((r) => `        vorgeschlagen (${r.change}): ${r.proposed.slice(0, 300)}`))
+        }
+      }
+      const ground = wordGround(got, before, paraRows)
+      const printedFaults = printedWordFaults(ground)
+      for (const [kind, into] of [['weg', oracleFaults.WortWeg], ['wegSinn', oracleFaults.WortWegSinn], ['neu', oracleFaults.WortNeu], ['tausch', oracleFaults.WortTausch], ['zahl', oracleFaults.Zahl], ['verweis', oracleFaults.Verweis]] as const) {
+        const fault = printedFaults[kind]
+        if (fault) judgeWord(into, fault.got, node, fault.shows, ground.stretchAt(fault.at))
+      }
+      const unprintedFaults = unprintedWordFaults(ground)
+      for (const [kind, into] of [['weg', oracleFaults.UngedrucktWeg], ['neu', oracleFaults.UngedrucktNeu], ['zahl', oracleFaults.UngedrucktZahl]] as const) {
+        const fault = unprintedFaults[kind]
+        if (fault) judgeWord(into, fault.got, node, fault.shows, null, fault.kind)
+      }
+      const swapped = zifferSwap(node, ground.gotKey, paraRows)
+      if (swapped) judgeWord(oracleFaults.ZifferReihe, plainText(swapped.node), swapped.node, swapped.shows, null)
+      const reheaded = headingFault(node, ground.tokens, paraRows)
+      if (reheaded) judgeWord(oracleFaults.Ueberschrift, plainText(reheaded.node), reheaded.node, reheaded.shows, null)
+      if (argAssigned('zeige') === id) {
+        for (const [label, faulted] of [['Überschrift', reheaded ? plainText(reheaded.node) : null], ['Ziffer-Reihe', swapped ? plainText(swapped.node) : null], ...Object.entries(printedFaults).map(([k, f]) => [k, f.got] as const), ...Object.entries(unprintedFaults).map(([k, f]) => [`ungedruckt-${k}`, f.got] as const)] as const) {
+          if (!faulted) continue
+          const judged = oracleVerdict(id, before, faulted, paraRows, absatzSequence(node), standingSeq, standingUnits)
+          const at = [...faulted].findIndex((ch, i) => ch !== got[i])
+          console.log(`     ${label}: ${judged.verdict}${judged.note ? ` — ${judged.note}` : ''}\n        …${faulted.slice(Math.max(0, at - 80), at + 80)}…`)
+        }
+      }
+
       const dated = dateFault(got, paraRows)
       if (dated) {
         oracleFaults.Datum.tried++
@@ -925,7 +1371,7 @@ const faults = {
   U: tally('U     fremder Satz beidspaltig gleich'),
 }
 /** The engine's result as the oracle judged it, without any fault. */
-const results = { verdicts: new Map<OracleVerdict, number>(), silent: new Map<OracleVerdict, number>(), silentSites: [] as string[], moved: [] as string[], confirmed: 0, controlMoved: 0, kept: 0, keptAlarms: [] as string[], order: 0, orderAlarms: [] as string[] }
+const results = { verdicts: new Map<OracleVerdict, number>(), silent: new Map<OracleVerdict, number>(), silentSites: [] as string[], moved: [] as string[], confirmed: 0, controlMoved: 0, kept: 0, keptAlarms: [] as string[], order: 0, orderAlarms: [] as string[], dupAbs: [] as string[] }
 const oracleFaults = {
   E: oracleTally('E     eine Einheit zu viel'),
   Ersatz: oracleTally('E-neben alter Text neben dem neuen'),
@@ -934,7 +1380,22 @@ const oracleFaults = {
   Datum: oracleTally('Datum Tag eines Datums verschoben'),
   Luecke: oracleTally('Lücke ausgelassene Einheit fehlt'),
   LueckeBeide: oracleTally('Lücke-beide fehlt auch im geltenden'),
+  WortWeg: oracleTally('Wort-weg ein gedrucktes Wort fehlt'),
+  WortWegSinn: oracleTally('Wort-weg-Sinn nicht/nur/oder … fehlt'),
+  WortNeu: oracleTally('Wort-neu ein Wort des § zu viel'),
+  WortTausch: oracleTally('Wort-tausch ein Wort ersetzt'),
+  Zahl: oracleTally('Zahl letzte Ziffer einer Zahl'),
+  Verweis: oracleTally('Verweis § 5 → § 6, lit. a → b'),
+  ZifferReihe: oracleTally('Ziffer-Reihe zwei Ziffern vertauscht'),
+  Ueberschrift: oracleTally('Überschrift ein Wort ersetzt'),
+  UngedrucktWeg: oracleTally('Ungedruckt-weg Wort fehlt'),
+  UngedrucktNeu: oracleTally('Ungedruckt-neu Wort zu viel'),
+  UngedrucktZahl: oracleTally('Ungedruckt-Zahl Zahl geändert'),
 }
+/** The word classes of 19.11.2026, printed in a table of their own with the check that caught each. */
+const wordClasses = [oracleFaults.WortWeg, oracleFaults.WortWegSinn, oracleFaults.WortNeu, oracleFaults.WortTausch, oracleFaults.Zahl, oracleFaults.Verweis, oracleFaults.ZifferReihe, oracleFaults.Ueberschrift, oracleFaults.UngedrucktWeg, oracleFaults.UngedrucktNeu, oracleFaults.UngedrucktZahl]
+/** The word classes held to `--mindestens`: ≥ 95 % on both paths with ≥ 20 tries when measured. */
+const flooredWordClasses = [oracleFaults.WortWeg, oracleFaults.WortWegSinn, oracleFaults.WortNeu, oracleFaults.WortTausch, oracleFaults.Verweis]
 
 const docs: any[] = []
 for (let page = 1; page <= 4 && docs.length < limit; page++) {
@@ -1036,9 +1497,20 @@ for (const fault of [oracleFaults.E, oracleFaults.Ersatz, oracleFaults.Reihe, or
   const cell = (n: number): string => `${String(n).padStart(6)} (${pct(n, fault.tried)})`
   console.log(`  ${fault.label.padEnd(36)} ${String(fault.tried).padStart(4)}   ${cell(fault.caught)}   ${cell(fault.byKept)}`)
 }
+console.log(`\n  Wortfehler im Ergebnis (19.11.2026), dieselben bestätigten Paragraphen — gefangen von Prüfung 1 bis 5`)
+console.log(`  Fehler                                §§   gefangen               P1     P2     P3     P4     P5`)
+for (const fault of wordClasses) {
+  const by = (check: string): string => String(fault.byCheck.get(check) ?? 0).padStart(6)
+  console.log(`  ${fault.label.padEnd(36)} ${String(fault.tried).padStart(4)}   ${String(fault.caught).padStart(6)} (${pct(fault.caught, fault.tried)})   ${by('P1')} ${by('P2')} ${by('P3')} ${by('P4')} ${by('P5')}`)
+  for (const [kind, [tried, caught]] of fault.kinds) console.log(`      ${kind.padEnd(22)} ${String(tried).padStart(4)}   ${String(caught).padStart(6)} (${pct(caught, tried)})`)
+}
+// An Absatz number held twice: in RIS's own text, or made by the engine —
+// the latter a § the page would show with two Absätze of one number.
+console.log(`\n  Ergebnisse mit einer Absatznummer zweimal: ${results.dupAbs.length}`)
+for (const line of results.dupAbs) console.log(`      · ${line}`)
 if (argFlag('misses')) {
-  for (const fault of [oracleFaults.E, oracleFaults.Ersatz, oracleFaults.Reihe, oracleFaults.Fehlt, oracleFaults.Datum, oracleFaults.Luecke, oracleFaults.LueckeBeide]) {
-    for (const line of fault.misses) console.log(`    ${fault.label.slice(0, 8).trim()} durchgelassen: ${line}`)
+  for (const fault of [oracleFaults.E, oracleFaults.Ersatz, oracleFaults.Reihe, oracleFaults.Fehlt, oracleFaults.Datum, oracleFaults.Luecke, oracleFaults.LueckeBeide, ...wordClasses]) {
+    for (const line of fault.misses) console.log(`    ${line.startsWith('        ') ? '' : `${fault.label.split(' ')[0]} durchgelassen: `}${line}`)
   }
 }
 
@@ -1056,7 +1528,9 @@ const floor = argAssigned('mindestens')
 if (floor !== null) {
   // Not „Lücke-beide": a unit RIS lacks where the annex jumps over it
   // silently is a blind spot by construction (`withoutUnit`), not a reach.
-  const short = [oracleFaults.E, oracleFaults.Ersatz, oracleFaults.Reihe, oracleFaults.Fehlt, oracleFaults.Datum, oracleFaults.Luecke]
+  // Of the word classes only those measured at ≥ 95 % on both paths
+  // (19.11.2026); the rest are printed above, not floored.
+  const short = [oracleFaults.E, oracleFaults.Ersatz, oracleFaults.Reihe, oracleFaults.Fehlt, oracleFaults.Datum, oracleFaults.Luecke, ...flooredWordClasses]
     .filter((f) => f.tried >= 20 && (100 * f.caught) / f.tried < Number(floor))
   for (const f of short) console.log(`  ✗ unter ${floor} %: ${f.label.trim()} — ${f.caught}/${f.tried}`)
   if (short.length) process.exit(1)
