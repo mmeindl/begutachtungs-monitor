@@ -250,7 +250,7 @@ const euTimelineCtx = computed<EuTimelineContext | null>(() => {
 })
 /* The Kurzinformation's „Hauptgesichtspunkte" is, on most drafts, the
  * Allgemeiner Teil of the Erläuterungen in shorter words — and that part
- * stands in „Was das Ressort begründet" further down, from the ministry's own
+ * stands in „Was das Ministerium begründet" further down, from the ministry's own
  * document. Two versions of one text on one page (30.09.2026), so the
  * section goes where the Erläuterungen are there to carry it
  * (`withoutMainPoints`); Ziele and Inhalt stay as the quick overview. Only
@@ -287,7 +287,7 @@ const handoffFact = computed<Fact | null>(() => {
   const h = d?.handoff
   if (!d || !h?.date) return null
   // While no Vorlage exists and the GP runs, the Vorlage's own station says
-  // it — „Beim Ressort" in its frame (`rvStationView`, 05.10.2026), as the
+  // it — „Beim Ministerium" in its frame (`rvStationView`, 05.10.2026), as the
   // bar's row does (`spine.ts`); here the row only repeated it (30.09.2026).
   if (!d.enactment && !d.gpEnded) return null
   return { key: 'uebermittelt', title: 'Übermittelt', text: `${formatDateDe(h.date)} an ${h.recipient}` }
@@ -579,7 +579,7 @@ const ministryLinks = computed(() => {
                 <TextComparisonSection :gp="data.gp" :inr="data.inr" :cite-as="draftCitationDe(data.citation, data.gp)" />
               </PageSubsection>
 
-              <PageSubsection id="erlaeuterungen" heading="Was das Ressort begründet">
+              <PageSubsection id="erlaeuterungen" heading="Was das Ministerium begründet">
                 <ExplanationsSection :gp="data.gp" :inr="data.inr" />
               </PageSubsection>
 

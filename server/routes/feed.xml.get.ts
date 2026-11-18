@@ -30,7 +30,7 @@ export default defineEventHandler(async (event) => {
   }
   const ressortParam = firstQueryValue(getQuery(event).ressort)
   if (ressortParam !== undefined && !RESSORT_RE.test(ressortParam)) {
-    throw createError({ statusCode: 404, statusMessage: 'Unbekanntes Ressort' })
+    throw createError({ statusCode: 404, statusMessage: 'Unbekanntes Ministerium' })
   }
   const code = ressortParam?.toUpperCase()
 

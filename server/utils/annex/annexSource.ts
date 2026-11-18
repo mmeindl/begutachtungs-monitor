@@ -51,7 +51,7 @@ import { isScanned } from './tableCells'
  * background about the procedure and stands on
  * /so-funktionierts#gegenueberstellung.
  */
-export const NO_ANNEX = gapDe('notPublished', 'Eine Textgegenüberstellung hat das Ressort zu diesem Entwurf nicht veröffentlicht.')
+export const NO_ANNEX = gapDe('notPublished', 'Eine Textgegenüberstellung hat das Ministerium zu diesem Entwurf nicht veröffentlicht.')
 
 /**
  * The annex on Parliament's own document list for this ME, in the formats it
@@ -78,8 +78,8 @@ export async function parliamentAnnex(
   const pdf = of('pdf')
   const html = of('html')
   return {
-    pdf: pdf ? { label: 'Textgegenüberstellung des Ressorts beim Parlament (PDF)', url: pdf } : null,
-    html: html ? { label: 'Textgegenüberstellung des Ressorts beim Parlament (HTML)', url: html } : null,
+    pdf: pdf ? { label: 'Textgegenüberstellung des Ministeriums beim Parlament (PDF)', url: pdf } : null,
+    html: html ? { label: 'Textgegenüberstellung des Ministeriums beim Parlament (HTML)', url: html } : null,
   }
 }
 
@@ -189,7 +189,7 @@ async function readRis(parts: readonly RisDocumentUrls[], articles: readonly Dra
       // The XML table is the ressort's own structure; the PDF below is the
       // ressort's text with our reading of its layout on top, and the
       // difference belongs on the page.
-      source: { label: 'Textgegenüberstellung des Ressorts', url: annex.html ?? annex.xml! },
+      source: { label: 'Textgegenüberstellung des Ministeriums', url: annex.html ?? annex.xml! },
       publisher: 'ris',
       readFrom: 'table',
       droppedPages: 0,
@@ -206,7 +206,7 @@ async function readRis(parts: readonly RisDocumentUrls[], articles: readonly Dra
     parsed: fromPdf,
     // „, aus dem PDF gelesen" went on 30.09.2026; the credit line says
     // „Zeilenzuordnung: Begutachtungs-Monitor" for it (`SectionCredits`).
-    source: { label: 'Textgegenüberstellung des Ressorts', url: pdfs[0]! },
+    source: { label: 'Textgegenüberstellung des Ministeriums', url: pdfs[0]! },
     publisher: 'ris',
     readFrom: 'pdf',
     droppedPages: fromPdf.droppedPages,
@@ -260,7 +260,7 @@ async function readBundle(bundles: readonly RisDocumentUrls[], articles: readonl
       parsed,
       // The link opens the whole bundle, Vorblatt first; the label says where
       // in it the rows stand.
-      source: { label: 'Textgegenüberstellung des Ressorts, am Ende der Materialien', url: doc.html ?? doc.xml },
+      source: { label: 'Textgegenüberstellung des Ministeriums, am Ende der Materialien', url: doc.html ?? doc.xml },
       publisher: 'ris',
       readFrom: 'table',
       droppedPages: 0,

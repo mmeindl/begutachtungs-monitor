@@ -869,7 +869,7 @@ export function withoutDraftRequests(choice: ArtChoice, s: ArtSources): { vorlag
 }
 
 /** Why the Ressort select is unavailable under „Ohne Entwurf" (`coherentFilters`). */
-export const OHNE_MINISTRY_REASON = 'Gesetze ohne Entwurf sind keinem Ressort zugeordnet'
+export const OHNE_MINISTRY_REASON = 'Gesetze ohne Entwurf sind keinem Ministerium zugeordnet'
 
 /**
  * The one rule for what „Ohne Entwurf" takes from the

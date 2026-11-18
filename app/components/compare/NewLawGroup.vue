@@ -54,7 +54,7 @@ defineEmits<{ toggle: []; more: [] }>()
       </p>
       <!-- Closed, under the § line, in ink: as at the annex's §. -->
       <Disclosure v-if="explanations.length" size="xs" tone="ink" class="mb-2">
-        <template #summary>Begründung des Ressorts</template>
+        <template #summary>Begründung des Ministeriums</template>
         <ExplanationPassages :passages="explanations" />
       </Disclosure>
       <!-- No gutter: the green rule says „this row is new" against an

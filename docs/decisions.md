@@ -1865,6 +1865,14 @@ the reasoning in full stands in that component's header comment.
   in a group's header button define nothing. Definitions live in
   `app/utils/terms.ts`, method texts as components in
   `app/components/method/` — copy out of logic, one place per language.
+- **The page says „Ministerium", never „Ressort"** (18.11.2026; a RIS
+  draft's page since 30.09.2026). One word per thing: labels said „Ressort"
+  („Begründung des Ressorts", „Beim Ressort") while the running text said
+  „Ministerium", and two words for one body make a reader ask whether they
+  differ. „Ressort" is the administration's word, „Ministerium" the
+  reader's, and the object is a Ministerialentwurf. It stays where a source
+  is quoted in its own words (Parliament's sentence on what happens to a
+  Stellungnahme) and in English comments and identifiers.
 - **A method text is the credit line in full sentences, and it is scanned,
   not read** (18.11.2026, first `MethodGegenueberstellung`, the same day
   all fourteen). A `<dl>` whose terms

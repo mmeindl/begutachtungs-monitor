@@ -1,6 +1,6 @@
 <script setup lang="ts">
 /**
- * „Was das Ressort begründet" — the Erläuterungen's Allgemeiner Teil.
+ * „Was das Ministerium begründet" — the Erläuterungen's Allgemeiner Teil.
  *
  * WHY THIS SECTION EXISTS: a reader's relevance check starts here — skim the
  * Allgemeiner Teil (what is the law for?), then the Gesetzestext or the
@@ -72,7 +72,7 @@ const folded = computed(() => fold.value.folded)
 const foldedParagraphs = computed(() => folded.value.filter((i) => i.kind === 'text').length)
 
 /**
- * „Erläuterungen des Ressorts, Allgemeiner Teil" — the part that was read
+ * „Erläuterungen des Ministeriums, Allgemeiner Teil" — the part that was read
  * from stands in the link, not in a second sentence. The colon is dropped:
  * Ressorts write their heading as „Allgemeiner Teil:", and in a list that is
  * one punctuation mark too many.
@@ -131,7 +131,7 @@ const loadAnnouncement = computed(() => {
            what follows is to be read, the other is a caption (the same rule
            as in the comparison section). -->
       <p v-if="!data.labelled" class="text-sm text-ink-muted">
-        Das Ressort gliedert diese Erläuterungen nicht selbst.<template v-if="data.hasSpecial">
+        Das Ministerium gliedert diese Erläuterungen nicht selbst.<template v-if="data.hasSpecial">
           Wo die Erläuterungen zu den einzelnen Paragraphen beginnen, haben wir
           abgegrenzt.</template>
       </p>

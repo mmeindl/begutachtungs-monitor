@@ -395,7 +395,7 @@ export function rvStationView(d: DraftDetail | null | undefined): RvStationView 
     // the period's end has closed.
     // Not beside „genannt" either: the draft is no longer waiting there.
     if (!viaAntrag && !named && !d.gpEnded && d.handoff?.date) {
-      facts.push({ key: 'ressort', title: 'Beim Ressort', text: `seit ${formatDateDe(d.handoff.date)}` })
+      facts.push({ key: 'ressort', title: 'Beim Ministerium', text: `seit ${formatDateDe(d.handoff.date)}` })
     }
     if (d.successor) facts.push({ key: 'nachfolger', title: 'Gleichlautender späterer Entwurf' })
   }

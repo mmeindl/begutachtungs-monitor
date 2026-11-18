@@ -130,7 +130,7 @@ export const getVorlageExplanations = defineCachedFunction(
     const doc = explanationsDocumentOfHtml(parseExplanationsHtml(text, { generalAsHeaded: true }), labelled)
     if (!doc.general) {
       return emptyExplanations(
-        'Die Erläuterungen dieser Regierungsvorlage heben keinen Allgemeinen Teil hervor. Was das Ressort schreibt, steht im Dokument selbst.',
+        'Die Erläuterungen dieser Regierungsvorlage heben keinen Allgemeinen Teil hervor. Was das Ministerium schreibt, steht im Dokument selbst.',
         document,
       )
     }

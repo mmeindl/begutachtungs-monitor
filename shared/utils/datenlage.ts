@@ -651,7 +651,7 @@ const BUND: DatenlageSource = {
     kundmachung: {
       text: 'für Gesetze vom Parlament genannt',
       state: 'partial',
-      reason: 'für Verordnungen nennt sie keine Quelle; der Monitor sucht sie über Titel, Ressort und Datum',
+      reason: 'für Verordnungen nennt sie keine Quelle; der Monitor sucht sie über Titel, Ministerium und Datum',
     },
   },
 }

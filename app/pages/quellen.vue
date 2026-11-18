@@ -81,7 +81,7 @@ const LAENDER_WITHOUT_LICENCE: { name: string; label: string; href: string }[] =
           <dt>Rechtsinformationssystem des Bundes (Bundeskanzleramt)</dt>
           <dd>
             <ExternalLink :href="CC_BY" class="link-inline">CC BY 4.0</ExternalLink>.
-            Entwurfstexte und Erläuterungen der Ressorts,
+            Entwurfstexte und Erläuterungen der Ministerien,
             Textgegenüberstellungen, geltendes Bundesrecht und das
             Bundesgesetzblatt.
           </dd>
@@ -115,7 +115,7 @@ const LAENDER_WITHOUT_LICENCE: { name: string; label: string; href: string }[] =
             Geschäftszahlen, die Zahl der Einreichungen und Zustimmungen und
             die Kurzinformation des Parlaments zu einem Entwurf. Im
             Textvergleich zeigt er Gesetzestext und Erläuterungen in der
-            Fassung des Parlaments – Dokumente des Ressorts, die das RIS unter
+            Fassung des Parlaments – Dokumente des Ministeriums, die das RIS unter
             CC BY 4.0 führt.
           </dd>
         </div>

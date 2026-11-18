@@ -65,7 +65,7 @@ interface Formats {
  * the source line as „Quelle (CC BY 4.0, RIS)", the refusal in its own
  * sentence — and the label repeated it.
  */
-const RIS_SOURCE = 'Erläuterungen des Ressorts'
+const RIS_SOURCE = 'Erläuterungen des Ministeriums'
 
 function empty(reason: string, document: TraceLink | null = null): ExplanationsResponse {
   return {
@@ -178,7 +178,7 @@ async function read(
   }
   if (!parsed.general) {
     return whole(empty(
-      gapDe('unreadable', 'Die Erläuterungen dieses Entwurfs heben keinen Allgemeinen Teil hervor. Was das Ressort schreibt, steht im Dokument selbst.'),
+      gapDe('unreadable', 'Die Erläuterungen dieses Entwurfs heben keinen Allgemeinen Teil hervor. Was das Ministerium schreibt, steht im Dokument selbst.'),
       documentLink(formats),
     ))
   }

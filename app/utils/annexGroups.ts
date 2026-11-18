@@ -427,7 +427,7 @@ export function annexParas(g: AnnexGroup, { limit, folding, placed }: AnnexParaO
   /*
    * The limit cuts BETWEEN §§ (25.10.2026). It cut between rows, so the §
    * that reached it lost its remaining Absätze, and every § after it was
-   * still printed — heading, „Begründung des Ressorts", „N Stellen
+   * still printed — heading, „Begründung des Ministeriums", „N Stellen
    * unverändert", the withheld notice and the Lesefassung, only without its
    * changes: a § that read as having none. Now a § is printed whole or not
    * at all, and once the limit is reached the rest of the group waits behind

@@ -11,7 +11,7 @@ const MAIN_POINTS_RE = /^Hauptgesichtspunkte\b/
  * heading up to the next one.
  *
  * On most drafts that section is the Allgemeiner Teil of the Erläuterungen
- * in shorter words, and that part stands in „Was das Ressort begründet"
+ * in shorter words, and that part stands in „Was das Ministerium begründet"
  * further down, from the ministry's own document. Two versions of one text
  * on one page (30.09.2026), so the page drops it where the Erläuterungen are
  * there to carry it — a decision the CALLER makes; this only cuts. Ziele and

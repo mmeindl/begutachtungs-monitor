@@ -35,7 +35,7 @@ defineProps<{
     :class="hit.ministryOnly ? 'text-ink-muted' : 'text-ink-secondary'"
   >
     <span class="font-medium" :class="hit.ministryOnly ? 'text-ink-secondary' : 'text-ink'">
-      <template v-if="hit.ministryOnly">Nur im Ressortnamen, </template>{{ hit.place
+      <template v-if="hit.ministryOnly">Nur im Namen des Ministeriums, </template>{{ hit.place
       }}<template v-if="hit.designation">, {{ hit.designation }}</template>:
     </span>
     {{ ' ' }}

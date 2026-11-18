@@ -950,7 +950,7 @@ const statementsSortNote = computed(() => {
         >
           Unter diesen Filtern ist <span class="font-medium text-ink">nicht</span>
           in den Dokumenten gesucht, nur in Titel, Zitat, Debattennamen und
-          Ressortkürzel.
+          Kürzel des Ministeriums.
         </p>
       </template>
       <!-- Only the rows hit by the full text TOO carry evidence: the gain
@@ -974,11 +974,11 @@ const statementsSortNote = computed(() => {
         <ListBoxNotice
           :title="fullTextActive ? undefined : 'Keine Entwürfe gefunden'"
           :description="fullTextActive ? undefined : qDebounced
-            ? 'Dieses Feld durchsucht Titel, Zitat, Debattennamen und Ressortkürzel. Nach dem Ressort filtert „Filter“ daneben.'
+            ? 'Dieses Feld durchsucht Titel, Zitat, Debattennamen und Kürzel des Ministeriums. Nach dem Ministerium filtert „Filter“ daneben.'
             : 'Andere Filter oder einen anderen Suchbegriff versuchen.'"
         >
           <p v-if="fullTextActive" class="text-base text-ink-secondary">
-            Kein Titel, kein Zitat, kein Debattenname und kein Ressortkürzel
+            Kein Titel, kein Zitat, kein Debattenname und kein Kürzel eines Ministeriums
             trägt „{{ qDebounced }}“.
           </p>
           <!-- The one place the question arises (30.09.2026): it stood under
@@ -1070,13 +1070,13 @@ const statementsSortNote = computed(() => {
           <span class="font-medium text-ink">Ausgeblendet:</span>
           {{ countLabelDe(fullTextFilteredOut, 'laufende Begutachtung', 'laufende Begutachtungen') }},
           die „{{ qDebounced }}“ im Volltext
-          {{ fullTextFilteredOut === 1 ? 'führt' : 'führen' }} – Art oder Ressort
+          {{ fullTextFilteredOut === 1 ? 'führt' : 'führen' }} – Art oder Ministerium
           schließen sie aus.
           <button
             type="button"
             class="tap-target link-inline font-medium"
             @click="chosenArt = ''; ministry = ''"
-          >Alle Arten und Ressorts</button>
+          >Alle Arten und Ministerien</button>
           zeigen sie.
         </p>
       </template>

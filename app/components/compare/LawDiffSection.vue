@@ -688,9 +688,9 @@ const objectionNote = computed(() => (scope === 'parlament' && props.changedAfte
                            this change, or — where the Erläuterungen are titled
                            by § — everything they say about the Paragraph. -->
                       <template #summary>
-                        <template v-if="!b.reasoning.comparable">Die Begründung des Ressorts zu dieser Änderung</template>
+                        <template v-if="!b.reasoning.comparable">Die Begründung des Ministeriums zu dieser Änderung</template>
                         <template v-else>
-                          {{ b.reasoning.basis === 'ziffer' ? 'Die Begründung des Ressorts zu dieser Änderung hat sich geändert' : 'Die Begründung des Ressorts zu diesem Paragraphen hat sich geändert' }}
+                          {{ b.reasoning.basis === 'ziffer' ? 'Die Begründung des Ministeriums zu dieser Änderung hat sich geändert' : 'Die Begründung des Ministeriums zu diesem Paragraphen hat sich geändert' }}
                           <!-- Only numbers, dates, punctuation or a reference
                                that follows this comparison's renumbering: the
                                § comparison's „redaktionell", by its rule and

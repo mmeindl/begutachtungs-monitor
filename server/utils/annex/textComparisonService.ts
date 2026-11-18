@@ -182,7 +182,7 @@ export const getTextComparison = defineCachedFunction(
     // RIS record stays beside it for the reader who wants to judge the join.
     if (row.status !== 'matched') {
       const doubt =
-        'Nicht lesbar: Die Zuordnung dieses Entwurfs zum RIS-Datensatz stützt sich nur auf Fristen und Ressort, nicht auf den Titel. ' +
+        'Nicht lesbar: Die Zuordnung dieses Entwurfs zum RIS-Datensatz stützt sich nur auf Fristen und Ministerium, nicht auf den Titel. ' +
         'Eine Gegenüberstellung, die zu einem anderen Entwurf gehören kann, wird deshalb nicht angezeigt.'
       const record: TraceLink | null = row.risUrl
         ? { label: `RIS-Datensatz, der infrage kommt${row.risKurztitel ? `: ${row.risKurztitel}` : ''}`, url: row.risUrl }
@@ -191,7 +191,7 @@ export const getTextComparison = defineCachedFunction(
       if (parl.pdf ?? parl.html) return empty(`${doubt} Beim Parlament liegt sie unter der Nummer dieses Entwurfs.`, record, parl.pdf ?? parl.html)
       return empty(doubt, record, annex?.pdf ? { label: 'Textgegenüberstellung dieses RIS-Datensatzes (PDF)', url: annex.pdf } : null)
     }
-    const pdf: TraceLink | null = annex?.pdf ? { label: 'Textgegenüberstellung des Ressorts (PDF)', url: annex.pdf } : null
+    const pdf: TraceLink | null = annex?.pdf ? { label: 'Textgegenüberstellung des Ministeriums (PDF)', url: annex.pdf } : null
 
     // The annex's Artikel headings mean nothing on their own — an internal
     // Roman division and a real law boundary are typeset alike. The draft's
@@ -270,7 +270,7 @@ export const getRisTextComparison = defineCachedFunction(
     const documents = annexDocumentsOf(detail)
     const parts = documents.parts
     const first = parts[0]
-    const pdf: TraceLink | null = first?.pdf ? { label: 'Textgegenüberstellung des Ressorts (PDF)', url: first.pdf } : null
+    const pdf: TraceLink | null = first?.pdf ? { label: 'Textgegenüberstellung des Ministeriums (PDF)', url: first.pdf } : null
     // An older-name candidate or a bundle is read before this is said:
     // whether it holds a Gegenüberstellung only its content can tell
     // (`annex/olderAnnex.ts`, `annexSection` in `annex/comparisonRows.ts`).

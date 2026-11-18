@@ -50,7 +50,7 @@ const explained = computed(() => unitList([...new Set(props.end.explanations.map
         Dieses Gesetz erlässt der Entwurf neu. Eine bisherige Fassung, der man es gegenüberstellen könnte, gibt es nicht; den ganzen Text enthält der Entwurf selbst.
       </p>
       <p v-else-if="undivided" class="text-sm text-ink-secondary">
-        Die Paragraphen der Gegenüberstellung ließen sich keinem einzelnen Gesetz zuordnen.<template v-if="end.explanations.length"> Was das Ressort zu diesem Gesetz schreibt, steht deshalb hier und nicht am Paragraphen.</template>
+        Die Paragraphen der Gegenüberstellung ließen sich keinem einzelnen Gesetz zuordnen.<template v-if="end.explanations.length"> Was das Ministerium zu diesem Gesetz schreibt, steht deshalb hier und nicht am Paragraphen.</template>
       </p>
       <p v-else class="text-sm text-ink-secondary">
         Zu diesem Gesetz enthält die Gegenüberstellung des Ministeriums keinen Teil.
@@ -65,7 +65,7 @@ const explained = computed(() => unitList([...new Set(props.end.explanations.map
          at a § (`TextComparisonSection`): closed, in ink, the passages
          unaltered under their own headings. -->
     <Disclosure v-if="end.explanations.length" size="xs" tone="ink">
-      <template #summary>Begründung des Ressorts zu {{ explained }}</template>
+      <template #summary>Begründung des Ministeriums zu {{ explained }}</template>
       <ExplanationPassages :passages="end.explanations" />
     </Disclosure>
   </div>

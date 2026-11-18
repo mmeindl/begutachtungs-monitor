@@ -408,7 +408,7 @@ const doorHref = computed(() => {
                the Verordnung records carry them (`pnpm corpus:verordnungen`).
                Still second: its Besonderer Teil hangs at the §§ of the comparison
                above anyway. -->
-            <PageSubsection id="erlaeuterungen" heading="Was das Ressort begründet">
+            <PageSubsection id="erlaeuterungen" heading="Was das Ministerium begründet">
               <ExplanationsSection :ris-id="data.id" />
             </PageSubsection>
 

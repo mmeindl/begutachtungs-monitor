@@ -513,7 +513,7 @@ function withheldReason(cause: AnnexWithheldCause | null): string {
                    `font-medium text-ink` against the `text-ink-muted` of the
                    unchanged rows two lines below. The chevron carries the
                    affordance, as on every other disclosure of this page. -->
-              <template #summary>Begründung des Ressorts</template>
+              <template #summary>Begründung des Ministeriums</template>
               <!-- Indented, without a rule (18.09.2026). A rule on the left
                    means something in this section: it is the coloured gutter
                    marking a row as „geändert" or „neu". A grey gutter on the

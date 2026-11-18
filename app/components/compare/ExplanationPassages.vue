@@ -1,6 +1,6 @@
 <script setup lang="ts">
 /**
- * The Ressort's passages under one „Begründung des Ressorts" disclosure:
+ * The Ressort's passages under one „Begründung des Ministeriums" disclosure:
  * each under its own heading, unaltered and uncut. Indented without a rule —
  * a rule on the left is the gutter that marks a change in these sections
  * (18.09.2026). Written out at three places until 30.10.2026: the annex's §,

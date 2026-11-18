@@ -1,7 +1,7 @@
 <script setup lang="ts">
 /**
  * „Was das Land begründet" — the general part of a Land's Erläuterungen
- * (23.10.2026), as „Was das Ressort begründet" shows the ministry's on the
+ * (23.10.2026), as „Was das Ministerium begründet" shows the ministry's on the
  * Ministerialentwurf's page (`ExplanationsSection`), and for the same reason:
  * a reader's relevance check starts with what the law is for.
  *

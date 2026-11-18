@@ -242,7 +242,7 @@ describe('rvStationView', () => {
     const handoff = { date: '2026-09-22', recipient: 'das Bundesministerium für Justiz' }
     expect(rvStationView(draft({ handoff })).facts).toEqual([
       { key: 'stand', title: 'Stand', text: 'Bisher keine Regierungsvorlage.' },
-      { key: 'ressort', title: 'Beim Ressort', text: 'seit 22.09.2026' },
+      { key: 'ressort', title: 'Beim Ministerium', text: 'seit 22.09.2026' },
     ])
     // The period's end closes the wait; the Begutachtung's row dates it then.
     const ended = rvStationView(draft({ handoff, gp: 'XXVII', gpEnded: true, gpEndedOn: '2024-10-23' }))
@@ -286,7 +286,7 @@ describe('rvStationView', () => {
     // The one sentence under the frame: why no comparison follows.
     expect(v.context).toBe('Nicht im Monitor: ein Paragraphenvergleich zu diesem Entwurf. Die Vorlage enthält auch den Inhalt des anderen Entwurfs.')
     expect(v.noRvBaseRate).toBeNull()
-    // The quote and the linked draft are rows; no „Beim Ressort": the draft
+    // The quote and the linked draft are rows; no „Beim Ministerium": the draft
     // is not waiting there any more.
     expect(v.facts).toEqual([
       { key: 'stand', title: 'Stand', text: 'In 298 d.B. genannt' },

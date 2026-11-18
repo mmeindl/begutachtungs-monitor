@@ -61,7 +61,7 @@ defineProps<{
       without-layers
     />
   </PageSubsection>
-  <PageSubsection v-if="item.itemKind === 'regierungsvorlage'" id="erlaeuterungen" heading="Was das Ressort begründet">
+  <PageSubsection v-if="item.itemKind === 'regierungsvorlage'" id="erlaeuterungen" heading="Was das Ministerium begründet">
     <ExplanationsSection :gp="item.gp" :inr="item.inr" :api-base="apiBase" />
   </PageSubsection>
   <FoldSection

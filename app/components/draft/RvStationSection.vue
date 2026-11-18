@@ -61,7 +61,7 @@ const earlyVorlageWhen = computed(() => {
   return earlyVorlageWhenDe({ arrivedAt: d.arrivedAt, deadline: d.deadline, rvDate })
 })
 
-/* The wait's bar stands under the last waiting row: „Beim Ressort" where
+/* The wait's bar stands under the last waiting row: „Beim Ministerium" where
  * the handoff is dated, „Stand" where it is not. */
 const waitSlot = computed(() => `after-${props.view.facts.some((f) => f.key === 'ressort') ? 'ressort' : 'stand'}`)
 /* What on the frame is ours, and which „Methode" opens under the credit

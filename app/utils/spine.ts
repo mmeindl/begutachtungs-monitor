@@ -308,7 +308,7 @@ export function procedureStatusDe(d: DraftDetail, today: string = todayIso()): s
   // is the other draft's story, and its page tells it.
   if (d.namedInRv) return namedInRvShortDe(d.namedInRv.rv.citation)
   // Word for word the homepage chip's (OutcomeChip), and deliberately NOT
-  // "Beim Ressort – bisher keine Regierungsvorlage": the marked row two
+  // "Beim Ministerium – bisher keine Regierungsvorlage": the marked row two
   // lines below already reads "bisher keine · seit 29.06.2026 beim
   // Ressort", so the longer headline was the same two facts twice, 40px
   // apart. The headline states the finding, the row says since when.
@@ -1238,7 +1238,7 @@ export function stations(d: DraftDetail, ctx: StationContext = {}, today: string
                 ? ['keine – GP beendet']
                 : kept(
                     'bisher keine',
-                    d.handoff?.date ? `seit ${formatDateDe(d.handoff.date)} beim Ressort` : null,
+                    d.handoff?.date ? `seit ${formatDateDe(d.handoff.date)} beim Ministerium` : null,
                   ),
       comparison: e
         ? { id: 'begutachtung', question: 'Was sich nach der Begutachtung geändert hat' }
