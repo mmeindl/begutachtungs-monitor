@@ -99,11 +99,6 @@ useSeoMeta({ robots: () => (query.value ? 'noindex' : undefined) })
           {{ SEARCH_DE.submit }}
         </UButton>
       </form>
-      <!-- The site's choice of sources (`SourceChips`): it decides which
-           drafts and which EU acts there are to find, as on every list. -->
-      <div class="mt-4">
-        <SourceChips />
-      </div>
       <p v-if="!query" class="mt-4 text-sm text-ink-muted">{{ SEARCH_DE.hint }}</p>
     </header>
 

@@ -21,7 +21,8 @@
 import type { EuActSummary } from '#shared/types'
 import { ANLIEGEN_SECTION_DE } from '#shared/utils/anliegen'
 import { EU_PAGE_TITLE_DE } from '#shared/utils/eu'
-import type { SourceCode } from '#shared/utils/laender'
+import { SOURCE_NAME, type SourceCode } from '#shared/utils/laender'
+import { listDe } from './geltendeFassung'
 import { formatNumberDe } from '#shared/utils/format'
 import { matchesQuery } from '#shared/utils/textMatch'
 import type { EntryState, EntryView } from './entryView'
@@ -75,6 +76,12 @@ export const SEARCH_DE = {
   },
   eu: {
     heading: EU_PAGE_TITLE_DE,
+    /**
+     * Under the two act lists: the source chips stand in the drafts' box,
+     * and these lists keep only the acts a chosen source implements — so
+     * they say whose choice applies, never narrowed in silence.
+     */
+    sources: (chosen: readonly SourceCode[]) => `Nach Ihrer Quellenwahl bei den Entwürfen: ${listDe(chosen.map((c) => SOURCE_NAME[c]))}.`,
     list: 'dieser Liste',
     /** The lists without a hit, in one line rather than a box each. */
     noneIn: (headings: readonly string[]) => `Nichts gefunden in: ${headings.join(' · ')}.`,

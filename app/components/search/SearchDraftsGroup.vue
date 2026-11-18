@@ -22,7 +22,7 @@ const route = useRoute()
 const { bund, laender } = useSourceChoice()
 const filters = useDraftFilters({ bund, laender }, { syncUrl: false })
 const list = useDraftList(filters, { bund, laender })
-const { countLabel, entries, gateData, gateStatus, listPending, lawsUnreadable, unreadableLaender, unreadableLandLaws, retry } = list
+const { countLabel, entries, gateData, gateStatus, listPending, lawsUnreadable, sourceUnavailable, unreadableLaender, unreadableLandLaws, retry } = list
 await list.ready
 
 const DE = SEARCH_DE.drafts
@@ -45,6 +45,13 @@ const listLink = computed(() => {
     <h2 id="suche-entwuerfe" class="section-heading">{{ DE.heading }}</h2>
     <ListBox class="mt-4">
       <template #header>
+        <!-- The site's choice of sources (`SourceChips`), first in the box's
+             head as on `/entwuerfe` and the homepage's boxes (17.11.2026;
+             above the whole page until then, where it read as a choice for
+             every answer — the Anliegen and the Commission's lists know
+             none). A Land the view cannot take stands with its reason. The
+             EU's two act lists follow it too and say so. -->
+        <SourceChips :unavailable="sourceUnavailable" />
         <p v-if="gateData" class="text-sm text-ink-muted" aria-live="polite">
           {{ countLabel }}
         </p>

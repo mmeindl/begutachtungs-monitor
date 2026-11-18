@@ -43,6 +43,8 @@ const answers = computed<Answer[]>(() => {
     { group: restating!, loading: loadingOf(akte) },
   ]
 })
+/* The two act lists follow the source chips in the drafts' box (`SEARCH_DE.eu.sources`). */
+const bySources = (g: EuSearchGroup) => g.id === 'akte' || g.id === 'wiederholt'
 const withHits = computed(() => answers.value.filter((a) => a.group.hits?.length))
 const loading = computed(() => answers.value.filter((a) => a.loading))
 const unread = computed(() => answers.value.filter((a) => !a.loading && a.group.hits === null))
@@ -56,7 +58,9 @@ const none = computed(() => answers.value.filter((a) => a.group.hits?.length ===
       <h3 class="font-semibold text-ink">{{ group.heading }}</h3>
       <ListBox class="mt-2">
         <template #header>
-          <p class="text-sm text-ink-muted">{{ SEARCH_DE.count(group.hits!.length) }}</p>
+          <p class="text-sm text-ink-muted">
+            {{ SEARCH_DE.count(group.hits!.length) }}<template v-if="bySources(group)"> · {{ SEARCH_DE.eu.sources(chosen) }}</template>
+          </p>
         </template>
         <SearchHitList :hits="group.hits!.slice(0, SEARCH_HITS_SHOWN)" :query="query" :heading-level="4" />
       </ListBox>
@@ -69,7 +73,9 @@ const none = computed(() => answers.value.filter((a) => a.group.hits?.length ===
     <div class="mt-6 flex flex-col gap-2 text-sm text-ink-muted" aria-live="polite">
       <p v-for="{ group } in loading" :key="group.id">{{ group.heading }}: wird geladen …</p>
       <GapNote v-for="{ group } in unread" :key="group.id" kind="unavailable" :text="`${group.heading}.`" />
-      <p v-if="none.length">{{ SEARCH_DE.eu.noneIn(none.map((a) => a.group.heading)) }}</p>
+      <p v-if="none.length">
+        {{ SEARCH_DE.eu.noneIn(none.map((a) => a.group.heading)) }}<template v-if="none.some((a) => bySources(a.group))">{{ ` ${SEARCH_DE.eu.sources(chosen)}` }}</template>
+      </p>
     </div>
   </section>
 </template>
