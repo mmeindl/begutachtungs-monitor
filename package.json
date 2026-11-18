@@ -13,7 +13,7 @@
     "test": "vitest run",
     "lint": "eslint .",
     "lint:fix": "eslint . --fix",
-    "harness:kons": "vite-node scripts/harness/kons.ts --",
+    "harness:kons": "vite-node -c vitest.config.ts scripts/harness/kons.ts --",
     "harness:me": "vite-node scripts/harness/me.ts --",
     "harness:annex": "vite-node scripts/harness/annexPdf.ts --",
     "harness:fault-injection": "vite-node scripts/harness/faultInjection.ts --",

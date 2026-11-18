@@ -2,8 +2,11 @@
 /**
  * Verification harness for the amendment engine.
  *
- * Usage:  npx vite-node scripts/harness/kons.ts BGBLA_2022_I_187 [Kurztitel]
- *         npx vite-node scripts/harness/kons.ts --discover=12 [--sammel]
+ * Usage:  npx vite-node -c vitest.config.ts scripts/harness/kons.ts BGBLA_2022_I_187 [Kurztitel]
+ *         npx vite-node -c vitest.config.ts scripts/harness/kons.ts --discover=60 --sammel --cache --oracle
+ *
+ * The vitest config carries the `#shared` alias the annex reader needs
+ * (`--oracle`); without `--oracle` the script runs without it too.
  *
  * `--discover=N` takes the N most recent Bundesgesetze that amend exactly one
  * law ("Bundesgesetz, mit dem das X geändert wird") and runs all of them, so
@@ -54,13 +57,15 @@ import { amendedBy, fetchAllVersions, fetchParagraphTree, resolveGesetzesnummer,
 import { extraTokens, isSubsetOfRis, verdictForTrees } from '../../server/utils/harness/applyReport'
 import { guardParagraph, type GuardFlag } from '../../server/utils/kons/applyGuard'
 import { refusedUnits } from '../../server/utils/kons/konsGate'
-import { parseTextComparison, type ComparisonRow } from '../../server/utils/annex/comparisonRows'
-import { isScanned } from '../../server/utils/annex/tableCells'
+import type { ComparisonRow } from '../../server/utils/annex/comparisonRows'
+import type { AnnexSource } from '../../server/utils/annex/annexSource'
+import { DERIVED_CACHE } from '../../server/utils/cache/base'
+import { flattenRisRecord } from '../../server/utils/ris/risRecord'
 import { absatzSequence, standingUnitsOf, oracleVerdict, paragraphRows, rowsByParagraph, stripMarkers, type OracleVerdict } from '../../server/utils/kons/tguOracle'
 import { installFetchCache } from '../lib/harnessCache'
 import { argAssigned, argFlag } from '../lib/args'
 import { PARLIAMENT, risJson as risQuery } from '../lib/http'
-import { asArray, pickTextComparisons } from '../lib/ris'
+import { asArray } from '../lib/ris'
 import { anlageLabelKey, bareParaId, isDivision, isSchedule } from '../../server/utils/text/designation'
 import { appendFileSync, writeFileSync } from 'node:fs'
 
@@ -110,11 +115,83 @@ const dumpFile = argAssigned('dump') ?? null
  * `--oracle` compares every checked paragraph with the Textgegenüberstellung
  * of the Ministerialentwurf the Novelle came from (`tguOracle.ts`). The chain
  * is BGBl → Regierungsvorlage (RIS `Aenderung`) → Ministerialentwurf
- * (Parliament `preconst`) → RIS Begut record (title and Beginn) → annex XML.
- * Initiativanträge and Ausschussanträge have no Ministerialentwurf and drop
- * out; so do drafts without a readable annex.
+ * (Parliament `preconst`) → RIS Begut record (title and Beginn) → the annex
+ * as the page reads it, its XML table or its PDF (see below). Initiativanträge
+ * and Ausschussanträge have no Ministerialentwurf and drop out; so do drafts
+ * without a readable annex.
+ *
+ * **Both annex paths since 19.11.2026**, and the tables say which path each
+ * figure is from. Over `--discover=60 --sammel`, 207 laws, 1.752 §§: the
+ * oracle loads for 132 laws, 43 from the XML table and 89 from the PDF; until
+ * that day the 99 rasterised ones dropped out as „ist ein Scan". The XML lines
+ * are the table as it stood: 108 confirmed, 106 identical, 0 deviating, and
+ * the 2 others implausible, so withheld. The PDF path: 178 confirmed, 173
+ * identical, 0 deviating, 5 others — and 3 of those 5 plausible, so they are
+ * what the gate would SHOW. Over `--discover=120`, 426 laws, 3.423 §§: 216
+ * laws with an oracle (66 XML, 150 PDF); XML 135 confirmed, 132 identical,
+ * 3 others, none shown; PDF 294 confirmed, 287 identical, 7 others, 5 shown.
+ * Read by hand (`--oracle-dump`), the 5 shown are three things:
+ *
+ *  - not the engine, not the oracle: GVG-B § 5 (RIS keeps a space before a
+ *    comma the engine's edit closed) and BAO § 211 (RIS's version for
+ *    BGBl. I Nr. 97/2025 lacks the Abs. 8 that 98/2025, promulgated with it,
+ *    added: the truth is co-amended by another Bundesgesetzblatt);
+ *  - a RIS note read as law text (`lawtext/konsTree.ts`): ASVG § 108 carries
+ *    the list of a numbered footnote („Anm. 2", the valorised amounts) as
+ *    five Schlussteile of Abs. 6, and the Tabakmonopolgesetz § 1 a note
+ *    „(Anm.: … Abs. 3 und 4 aufgehoben …)" that RIS splits over two blocks,
+ *    which the per-block `ANNOTATION_RE` cannot see — the annex elides the
+ *    Absätze they stand in, so no oracle check can;
+ *  - an instruction lost before the engine and an oracle blind to it:
+ *    BVergGVS § 30 (BGBl. I Nr. 8/2026 Art. 3) — „25a." opens a second
+ *    `Z25` in `segmentUnits` and the short real Z 25 („§ 30 Abs. 8 entfällt;
+ *    Abs. 9 erhält die Absatzbezeichnung (8)") is dropped as a
+ *    table-of-contents echo, neither applied nor refused; the annex row that
+ *    strikes Abs. 8 is aligned past it because Abs. 8 and Abs. 9 open with
+ *    the same words, so check 4 leaves it to check 2, and check 5 does not
+ *    ask about an Absatz the result has beyond the annex's last.
  */
 const withOracle = argFlag('oracle')
+/**
+ * The annex is read through the page's own source choice, `annexSourceFor`
+ * (`annex/annexSource.ts`): older-name candidates, bundles, then the named
+ * parts — their XML table where RIS has one, their PDF through
+ * `annexFromPdf` (`annex/annexPdfService.ts`) where RIS rasterised it. Until
+ * 19.11.2026 this script read the XML of the first part only and dropped
+ * every rasterised annex as „ist ein Scan" — 99 of the 142 laws with a
+ * Ministerialentwurf in the 60-BGBl run, so the oracle as the page runs it on
+ * the PDF path had never been held against the enacted law.
+ *
+ * Those modules are Nitro glue: their cached functions are built with
+ * `defineCachedFunction` at module load, and `parliament/drafts.ts` reads the
+ * auto-imported `DERIVED_CACHE`. The identity stands in for the cache, as in
+ * `scripts/corpus/laenderOhneBegutachtung.ts`, so what runs is the read
+ * itself; and the `#shared` alias they import needs the vitest config
+ * (`-c vitest.config.ts`). Loaded only with `--oracle`, so a run without it
+ * needs neither.
+ */
+let annexSourceFor: typeof import('../../server/utils/annex/annexSource').annexSourceFor | null = null
+let annexDocumentsOf: typeof import('../../server/utils/annex/annexSource').annexDocumentsOf | null = null
+let offersAnnex: typeof import('../../server/utils/annex/annexSource').offersAnnex | null = null
+if (withOracle) {
+  Object.assign(globalThis, {
+    defineCachedFunction: <A extends unknown[], T>(fn: (...a: A) => Promise<T>) => fn,
+    DERIVED_CACHE,
+    createError: (input: { statusCode?: number; statusMessage?: string }) => Object.assign(new Error(input.statusMessage ?? 'upstream'), input),
+  })
+  ;({ annexSourceFor, annexDocumentsOf, offersAnnex } = await import('../../server/utils/annex/annexSource'))
+}
+/**
+ * `--oracle-dump=<file>` writes one JSON line per § the oracle CONFIRMED
+ * whose engine text is not the RIS text: the three texts, the annex rows the
+ * oracle read (as `paragraphRows` hands them to it), the path the annex was
+ * read on and the ME's and the BGBl's instruction lines for the §. These are
+ * the §§ the gate table sums away, and each one has to be read by hand to
+ * tell a blind oracle from an incomplete RIS text or an enacted text that is
+ * no longer the draft's (19.11.2026).
+ */
+const oracleDumpFile = argAssigned('oracle-dump') ?? null
+if (oracleDumpFile) writeFileSync(oracleDumpFile, '')
 /**
  * `--refusals=<file>` writes one JSON line per instruction the engine did not
  * carry out, with the **full** line and the reason.
@@ -396,7 +473,18 @@ interface Oracle {
    * for that Artikel rather than pick the first § 5 it finds (`tguOracle.ts`).
    */
   lawKey: string | null | undefined
+  /**
+   * Which of the two readers the annex came through — the RIS table
+   * (`parseTextComparison`) or our geometry over the PDF (`parseAnnexPdf`).
+   * The tables are split by it: the two fail differently, and a pooled
+   * figure would let the XML path vouch for the PDF path.
+   */
+  path: AnnexPath
 }
+
+/** `AnnexSource.readFrom` as the tables name it. */
+type AnnexPath = 'XML' | 'PDF'
+const ANNEX_PATHS: readonly AnnexPath[] = ['XML', 'PDF']
 
 /** Instruction lines by the § they address, normalised for comparison. */
 function linesByParagraph(blocks: readonly TextBlock[]): Map<string, Set<string>> {
@@ -471,27 +559,48 @@ async function loadOracle(gesetzesnummer: string, bgblNumber: string, kundmachun
     .sort((a, b) => Math.abs(days(a.beginn, arrived)) - Math.abs(days(b.beginn, arrived)))
   if (candidates.length === 0) return { note: `kein RIS-Begut-Datensatz zu ${me.zitation ?? me.inr}` }
   const record = candidates[0]!.ref
-  // 4. The annex.
-  const annex = pickTextComparisons(asArray<any>(record?.Data?.Dokumentliste?.ContentReference), (c) => String(c?.Name ?? ''))[0]
-  const xmlUrl = asArray<any>(annex?.Urls?.ContentUrl).find((u) => u?.DataType === 'Xml')?.Url
-  if (!annex) return { note: 'Entwurf ohne Textgegenüberstellung' }
-  if (!xmlUrl) return { note: 'Textgegenüberstellung nur als PDF' }
-  const xml = await getText(xmlUrl)
-  if (isScanned(xml)) return { note: 'Textgegenüberstellung ist ein Scan' }
+  // 4. The annex, as the page reads it: the record's documents as the corpus
+  //    keeps them (`flattenRisRecord`), through the section's source choice
+  //    (`annexSourceFor`) — the XML table where RIS has one, the PDF where it
+  //    rasterised the annex. Where that answers with a sentence, the sentence
+  //    is the page's own and is tallied as it stands.
+  const flat = flattenRisRecord(record)
+  if (!flat) return { note: 'RIS-Begut-Datensatz ohne ID' }
+  const documents = annexDocumentsOf!(flat)
+  if (!offersAnnex!(documents)) return { note: 'Entwurf ohne Textgegenüberstellung' }
   // The annex's own Artikel list is what the draft says it is — the rows are
-  // keyed by it, and `draftArticles` is the one reading of it.
-  const mainRef = asArray<any>(record?.Data?.Dokumentliste?.ContentReference).find((c) => c?.ContentType === 'MainDocument')
-  const mainUrl = asArray<any>(mainRef?.Urls?.ContentUrl).find((u) => u?.DataType === 'Xml')?.Url
+  // keyed by it, and `draftArticles` is the one reading of it. ALL Artikel,
+  // as `consolidate` hands them to the source (`kons/consolidate.ts`).
+  const mainUrl = flat.mainDocument.xml
   const draftBlocks = mainUrl ? parseRisXml(await getText(mainUrl)) : []
-  const rows = parseTextComparison(xml, draftArticles(draftBlocks)).rows
-  if (rows.length === 0) return { note: 'Textgegenüberstellung nicht lesbar' }
+  const source = await readAnnex(flat.id, documents, draftArticles(draftBlocks))
+  if (typeof source === 'string') return { note: source }
+  const rows = source.parsed.rows
+  const path: AnnexPath = source.readFrom === 'pdf' ? 'PDF' : 'XML'
   const meId = String(me.zitation ?? `${me.inr}/ME`)
-  if (!article) return { rows: rowsByParagraph(rows), me: meId, meLines: linesByParagraph(draftBlocks), lawKey: undefined }
+  if (!article) return { rows: rowsByParagraph(rows), me: meId, meLines: linesByParagraph(draftBlocks), lawKey: undefined, path }
   const parts = articleBlocks(draftBlocks).filter((p) => p.article.amends)
   const match = matchArticle(parts.map((p) => p.article), article)
   if (!match) return { note: `Artikel des Entwurfs zu ${article.title ?? article.number ?? '?'} nicht gefunden` }
   const part = parts.find((p) => p.article === match)!
-  return { rows: rowsByParagraph(rows), me: meId, meLines: linesByParagraph(part.blocks), lawKey: match.key }
+  return { rows: rowsByParagraph(rows), me: meId, meLines: linesByParagraph(part.blocks), lawKey: match.key, path }
+}
+
+/**
+ * One read of a record's annex per run. A Sammelnovelle asks for the same
+ * Ministerialentwurf once per Artikel, and the PDF path runs pdf.js and the
+ * geometry each time — the page caches this parse too (`annexFromPdf`,
+ * `DERIVED_CACHE`). The articles are the record's own, so the record id is
+ * the whole key.
+ */
+const annexReads = new Map<string, Promise<AnnexSource | string>>()
+function readAnnex(recordId: string, documents: ReturnType<NonNullable<typeof annexDocumentsOf>>, articles: readonly DraftArticle[]): Promise<AnnexSource | string> {
+  let read = annexReads.get(recordId)
+  if (!read) {
+    read = annexSourceFor!(documents, articles)
+    annexReads.set(recordId, read)
+  }
+  return read
 }
 
 /**
@@ -590,7 +699,7 @@ async function verifyLaw(blocks: readonly TextBlock[], article: DraftArticle, ct
     if ('note' in loaded) tally(oracleNotes, loaded.note)
     else {
       oracle = loaded
-      tally(oracleNotes, 'Orakel geladen')
+      tally(oracleNotes, `Orakel geladen (${loaded.path})`)
     }
   }
 
@@ -745,15 +854,19 @@ async function verifyLaw(blocks: readonly TextBlock[], article: DraftArticle, ct
     // The annex rows of the § as it reads afterwards, and the struck rows of the § it came from.
     const oracleReport = oracle && id ? oracleVerdict(id, beforeText, got, paragraphRows(oracle.rows, id, oracle.lawKey, standingIdOf(id)), absatzSequence(node), beforeNode ? (absatzSequence(beforeNode) ?? null) : null, beforeNode ? standingUnitsOf(beforeNode) : null) : null
     const oracleKey: OracleVerdict | 'kein Orakel' = oracleReport?.verdict ?? 'kein Orakel'
+    // The annex path is the last key part of both tallies below: „—" where
+    // no oracle was loaded for the Novelle.
+    const annexPath: AnnexPath | '—' = oracle && oracleReport ? oracle.path : '—'
     tally(oracleTally, `${oracleKey}|${outcome}|${flags.has('verweigert') ? 'verweigert' : 'ohne Verweigerung'}`)
+    let unchanged: boolean | null = null
     if (oracle && id && bgblLines) {
       const same = (a: Set<string> | undefined, b: Set<string> | undefined): boolean => {
         const x = a ?? new Set<string>()
         const y = b ?? new Set<string>()
         return x.size === y.size && [...x].every((l) => y.has(l))
       }
-      const unchanged = same(oracle.meLines.get(id), bgblLines.get(id))
-      tally(sameTally, `${unchanged ? 'ME=BGBl' : 'ME≠BGBl'}|${oracleKey}|${outcome}`)
+      unchanged = same(oracle.meLines.get(id), bgblLines.get(id))
+      tally(sameTally, `${unchanged ? 'ME=BGBl' : 'ME≠BGBl'}|${oracleKey}|${outcome}|${annexPath}`)
       if (verbose && unchanged && oracleReport && (oracleReport.verdict === 'widersprochen' || oracleReport.verdict === 'fremd')) console.log(`        ↳ Orakel-Fehler? gleiche Anweisungen im ME (${oracle.me}), RIS: ${verdict} — ${oracleReport.note}`)
     }
     const plausible = !flags.has('verweigert') && guard?.plausible !== false
@@ -762,11 +875,39 @@ async function verifyLaw(blocks: readonly TextBlock[], article: DraftArticle, ct
     // stood here carried a second operand that can never be true — so the row
     // silently reprinted the plausible subset and the guard looked like it
     // filtered nothing (2026-09-09).
-    tally(gateTally, `${plausible ? 'plausibel' : 'unplausibel'}|${oracleKey}|${outcome}|${flags.has('verweigert') ? 'verweigert' : 'ohne Verweigerung'}`)
+    tally(gateTally, `${plausible ? 'plausibel' : 'unplausibel'}|${oracleKey}|${outcome}|${flags.has('verweigert') ? 'verweigert' : 'ohne Verweigerung'}|${annexPath}`)
     // A confirmed § that is not the RIS text is the row the gate table sums
     // away („identisch 105" of 108, „abweichend 0"): print it, so the rest
     // can be read and not only counted (18.11.2026).
-    if (verbose && oracleReport?.verdict === 'bestätigt' && verdict !== 'identisch') console.log(`        ↳ Orakel bestätigt [RIS: ${verdict}]${plausible ? '' : ' (nicht plausibel, wird nicht gezeigt)'}`)
+    if (verbose && oracleReport?.verdict === 'bestätigt' && verdict !== 'identisch') console.log(`        ↳ Orakel bestätigt [RIS: ${verdict}, ${annexPath}, ${unchanged === null ? '?' : unchanged ? 'ME=BGBl' : 'ME≠BGBl'}]${plausible ? '' : ' (nicht plausibel, wird nicht gezeigt)'}`)
+    if (oracleDumpFile && oracle && id && oracleReport?.verdict === 'bestätigt' && verdict !== 'identisch') {
+      const rows = paragraphRows(oracle.rows, id, oracle.lawKey, standingIdOf(id))
+      appendFileSync(
+        oracleDumpFile,
+        `${JSON.stringify({
+          bgbl: bgblNumber,
+          article: articleLabel,
+          law: kurztitel,
+          me: oracle.me,
+          label,
+          id,
+          path: oracle.path,
+          verdict,
+          staged,
+          plausible,
+          refused: refusedIds.has(id),
+          guardFlags: guard?.flags ?? [],
+          same: unchanged,
+          before: beforeText,
+          got,
+          expected,
+          truths: truths.map((t) => ({ inkrafttreten: t.ref.inkrafttreten, text: t.text })),
+          rows: rows.map((r) => ({ kind: r.kind, gld: r.gld, para: r.para, change: r.change, elided: r.elided, editorial: r.editorial, current: r.current, proposed: r.proposed })),
+          meLines: [...(oracle.meLines.get(id) ?? [])],
+          bgblLines: [...(bgblLines?.get(id) ?? [])],
+        })}\n`,
+      )
+    }
     if (verbose && oracleReport && oracleReport.verdict !== 'stumm' && oracleReport.verdict !== 'bestätigt') {
       console.log(`        ↳ Orakel ${oracleReport.verdict} [RIS: ${verdict}]: ${oracleReport.note ?? ''}`)
       if (argFlag('oracle-debug') && verdict === 'identisch') {
@@ -914,20 +1055,31 @@ console.log(`    eigene Abweichung    : ${sum((v) => v.cleanDivergent)} (${pct(s
 console.log(`    kein geltender Text  : ${sum((v) => v.cleanNotLaw)} (${pct(sum((v) => v.cleanNotLaw), clean)})  — die Restgefahr eines Gates: Abweichung *und* halb angewendet`)
 {
   const sumKeys = (map: Map<string, number>, pred: (parts: string[]) => boolean): number => [...map].filter(([k]) => pred(k.split('|'))).reduce((n, [, v]) => n + v, 0)
+  // „übrig" is what neither column counts — unvollständig, unverändert and
+  // halb angewendet. The gate's line „bestätigt 108, identisch 106,
+  // abweichend 0" summed two §§ away there; printed, they can be read.
   const line = (name: string, pred: (parts: string[]) => boolean) => {
     const total = sumKeys(gateTally, pred)
     const ident = sumKeys(gateTally, (p) => pred(p) && p[2] === 'identisch')
     const div = sumKeys(gateTally, (p) => pred(p) && p[2] === 'abweichend')
-    console.log(`    ${name.padEnd(46)} ${String(total).padStart(4)}   identisch ${String(ident).padStart(3)}   abweichend ${String(div).padStart(2)} (${pct(div, total)})`)
+    console.log(`    ${name.padEnd(46)} ${String(total).padStart(4)}   identisch ${String(ident).padStart(3)}   abweichend ${String(div).padStart(2)} (${pct(div, total)})   übrig ${total - ident - div}`)
   }
   console.log(`\n  Gate zur Entwurfszeit (Verweigerung + Plausibilität${withOracle ? ' + Textgegenüberstellung' : ''}), gegen die RIS-Wahrheit:`)
   line('alle geprüften Paragraphen', () => true)
   line('ohne Verweigerung', (p) => p[3] === 'ohne Verweigerung')
   line('plausibel (Verweigerung + Signale)', (p) => p[0] === 'plausibel')
   if (withOracle) {
+    // Per annex path: the XML lines are the table this harness printed
+    // before 19.11.2026, when it read no other; the PDF lines are new.
+    for (const path of ANNEX_PATHS) {
+      console.log(`    — Gegenüberstellung aus ${path === 'XML' ? 'der RIS-Tabelle (XML)' : 'dem PDF (Geometrie)'}:`)
+      line('plausibel, Orakel bestätigt', (p) => p[4] === path && p[0] === 'plausibel' && p[1] === 'bestätigt')
+      line('plausibel, Orakel stumm', (p) => p[4] === path && p[0] === 'plausibel' && p[1] === 'stumm')
+      line('plausibel, Orakel widerspricht/fremd', (p) => p[4] === path && p[0] === 'plausibel' && (p[1] === 'widersprochen' || p[1] === 'fremd'))
+      line('Orakel bestätigt, egal ob plausibel', (p) => p[4] === path && p[1] === 'bestätigt')
+    }
+    console.log(`    — beide Wege:`)
     line('plausibel, Orakel bestätigt', (p) => p[0] === 'plausibel' && p[1] === 'bestätigt')
-    line('plausibel, Orakel stumm', (p) => p[0] === 'plausibel' && p[1] === 'stumm')
-    line('plausibel, Orakel widerspricht/fremd', (p) => p[0] === 'plausibel' && (p[1] === 'widersprochen' || p[1] === 'fremd'))
     line('plausibel, kein Orakel für die Novelle', (p) => p[0] === 'plausibel' && p[1] === 'kein Orakel')
     line('Orakel bestätigt, egal ob plausibel', (p) => p[1] === 'bestätigt')
     console.log(`\n  Orakel nach Herkunft der Anweisungen (identische Anweisungen im ME und im BGBl → ein Widerspruch ist ein Fehler des Orakels):`)
@@ -935,10 +1087,13 @@ console.log(`    kein geltender Text  : ${sum((v) => v.cleanNotLaw)} (${pct(sum(
       const total = sumKeys(sameTally, pred)
       const ident = sumKeys(sameTally, (p) => pred(p) && p[2] === 'identisch')
       const div = sumKeys(sameTally, (p) => pred(p) && p[2] === 'abweichend')
-      console.log(`    ${name.padEnd(46)} ${String(total).padStart(4)}   identisch ${String(ident).padStart(3)}   abweichend ${String(div).padStart(2)}`)
+      console.log(`    ${name.padEnd(46)} ${String(total).padStart(4)}   identisch ${String(ident).padStart(3)}   abweichend ${String(div).padStart(2)}   übrig ${total - ident - div}`)
     }
-    for (const origin of ['ME=BGBl', 'ME≠BGBl']) for (const v of ['bestätigt', 'widersprochen', 'fremd', 'stumm']) sameLine(`${origin}, Orakel ${v}`, (p) => p[0] === origin && p[1] === v)
-    console.log(`\n  Orakel je Novelle:`)
+    for (const path of ANNEX_PATHS) {
+      console.log(`    — ${path}:`)
+      for (const origin of ['ME=BGBl', 'ME≠BGBl']) for (const v of ['bestätigt', 'widersprochen', 'fremd', 'stumm']) sameLine(`${origin}, Orakel ${v}`, (p) => p[3] === path && p[0] === origin && p[1] === v)
+    }
+    console.log(`\n  Orakel je Gesetz (Novelle bzw. Artikel einer Sammelnovelle):`)
     for (const [note, n] of [...oracleNotes].sort((a, b) => b[1] - a[1])) console.log(`    ${String(n).padStart(3)}× ${note}`)
   }
 }
