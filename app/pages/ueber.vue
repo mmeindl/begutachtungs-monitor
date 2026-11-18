@@ -180,7 +180,9 @@ const contact = useContact()
       <p>
         Was der Monitor selbst ableitet, sagt er dazu: welche
         Regierungsvorlage und welche Kundmachung zu einem Entwurf gehören,
-        wo die Quelle es nicht nennt, und die Textvergleiche. Eine fehlende
+        wo die Quelle es nicht nennt, und die Textvergleiche. Unter jedem
+        solchen Abschnitt steht, was vom Monitor stammt, und „Methode“ öffnet
+        dort, wie es entsteht. Eine fehlende
         Zuordnung heißt, dass der Monitor keine gefunden hat, nicht, dass es
         keine gibt. Wo etwas fehlt, steht dabei, warum; wie oft die
         Ableitungen stimmen, ist
