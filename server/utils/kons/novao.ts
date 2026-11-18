@@ -513,7 +513,23 @@ function siblingsAfter(rest: string, first: string, level: EnumLevel = 'abs'): {
     previous = next
     at += m[0].length
   }
-  if (mixed.test(rest.slice(at))) return null
+  const other = mixed.exec(rest.slice(at))
+  if (other) {
+    // One „(neu)" behind a range marks the range, not its last member: „Die
+    // §§ 7 bis 9 (neu) samt Überschriften werden durch folgende §§ 7 bis 14
+    // ersetzt" (IVS-Gesetz, BGBl. I Nr. 24/2026). Read as the range it was
+    // before the rule above took it for a mixed address and eleven §§ that
+    // matched the RIS were refused (18.11.2026). The „(neu)" stays in the
+    // rest, as it did then. Anything after the range that enumerates on is
+    // not guessed at.
+    if (marked || other[1] !== 'bis') return null
+    const range = expandRange(previous, other[2]!)
+    if (range === null) return null
+    ids.push(...range)
+    at += other[0].length
+    const behind = rest.slice(at).replace(new RegExp(`^${NEU}`, 'u'), '')
+    if (member(true).test(behind) || member(false).test(behind)) return null
+  }
   if (ids.length === 0) return { ids: [], consumed: 0 }
   if (marked) at += new RegExp(`^${NEU}`, 'u').exec(rest.slice(at))![0].length
   if (OWN_COMPONENT_RE.test(rest.slice(at))) return null

@@ -383,6 +383,15 @@ describe('renumbering (2026-09-09)', () => {
     expect(parseInstruction('In § 7 entfällt Z 1; die nachfolgenden Absätze erhalten die Absatzbezeichnungen "(1)" bis "(4)".').reason).toMatch(/nachfolgenden/)
   })
 
+  it('reads one „(neu)" behind a range as the range (IVS-Gesetz, BGBl. I Nr. 24/2026)', () => {
+    // Taken for a mixed address since 14.11.2026: eleven §§ that matched the
+    // RIS were refused, in a law beyond the 40 Bundesgesetzblätter measured.
+    expect(op('Die §§ 18 bis 20 (neu) samt Überschriften lauten:')).toMatchObject({ kind: 'replace', target: { para: '§ 18', siblings: ['19', '20'] } })
+    expect(op('Die §§ 7 bis 9 (neu) samt Überschriften werden durch folgende §§ 7 bis 14 samt Überschriften ersetzt:')).toMatchObject({ target: { para: '§ 7', siblings: ['8', '9'] } })
+    // What enumerates on behind the range is not guessed at.
+    expect(parseInstruction('In § 7 Abs. 3 bis 5 (neu) und 7 wird das Wort "a" durch das Wort "b" ersetzt.').ops).toHaveLength(0)
+  })
+
   it('reads an enumeration marked „(neu)" at every member, and refuses a mixed one (58/ME XXVIII)', () => {
     // The step stopped at the first „(neu)" and the line ran on Abs. 3 alone.
     expect(op('In § 7 Abs. 3 (neu) und 4 (neu) wird der Verweis "Abs. 1 bis 3" jeweils durch den Verweis "Abs. 1 und 2" ersetzt.')).toMatchObject({ target: { abs: '3', siblings: ['4'] } })
