@@ -391,9 +391,11 @@ watch(() => props.moreRow?.kind ?? null, async (kind, before) => {
           <ListMore :visible="visible" :total="rows.length" :step="STATEMENT_PAGE_SIZE" @more="more()" @all="all(rows.length)" />
         </template>
       </ListBox>
-      <!-- The one line under the list; „Methode" opens who is counted without a name. -->
+      <!-- „Methode" alone under the list: it opens who is counted without a
+           name. A line „Privatpersonen werden gezählt, nie genannt." stood
+           beside it until 18.11.2026; the rows without a name show that
+           already, and the method's lead line says it. -->
       <SectionCredits :sources="[]" :marked="false">
-        <span>{{ view.note }}</span>
         <template #method>
           <MethodEuRueckmeldungen />
         </template>

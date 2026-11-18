@@ -143,7 +143,6 @@ const DE = {
   citizensNoCountry: 'ohne Angabe eines Landes',
   link: (name: string) => `Rückmeldung von ${name} im Portal der Kommission (neues Fenster)`,
   /** The one line under the list; „Methode" beside it opens who is counted without a name (`MethodEuRueckmeldungen`). */
-  countedNote: 'Privatpersonen werden gezählt, nie genannt.',
   /**
    * The kinds of organisation: plural on the tabs and in the counts, the
    * singular in a row. OUR translations of the portal's codes: its own
@@ -297,8 +296,6 @@ export interface EuFeedbackView {
   tabs: EuFeedbackTab[]
   /** The chip „Aus <Land>": only with a country in scope and a row (named, or a citizen) from it. */
   country: { code: string; label: string; unavailable: string } | null
-  /** The line under the list. */
-  note: string
 }
 
 /**
@@ -361,7 +358,6 @@ export function euFeedbackView(r: EuFeedbackReading, country: EuFeedbackCountry 
     citizens,
     tabs,
     country: fromCountry ? { code: country.code, label: DE.fromCountry(country.name), unavailable: DE.fromCountryNone(country.name) } : null,
-    note: DE.countedNote,
   }
 }
 

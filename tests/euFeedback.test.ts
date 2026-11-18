@@ -595,8 +595,7 @@ describe('the block\'s list and words', () => {
     expect(STATEMENT_SEARCH_MIN).toBe(20)
   })
 
-  it('says one line under the list, and how much was read in the list\'s first row', () => {
-    expect(euFeedbackView(reading, AT).note).toBe('Privatpersonen werden gezählt, nie genannt.')
+  it('says how much was read in the list\'s first row', () => {
     const r640: EuFeedbackReading = { total: 640, read: 500, contributions: [], kinds: [{ type: 'COMPANY', count: 3, unnamed: 3 }], citizens: { count: 497, byCountry: { AUT: 12 } }, other: 0, unpublished: 0 }
     const persons = euFeedbackView(r640, AT)
     expect(feedbackMoreOf(r640, 5)).toMatchObject({ kind: 'offer', sentence: 'Gelesen sind die neuesten 500 von 640 Rückmeldungen.', label: 'Weitere 140 lesen' })

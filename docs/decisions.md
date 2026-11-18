@@ -1081,9 +1081,11 @@ The code names the EU rules D1 to D7; this is where they are defined
       search they are hidden — nothing in them can match — and the set line
       counts named rows only. The tabs add up to the rows read. The citizens
       have a tab of one row per country, by count by default; „Alle" holds
-      them as one row. Under the list one line, „Privatpersonen werden
-      gezählt, nie genannt.", with „Methode" opening who is counted without
-      a name (`MethodEuRueckmeldungen`).
+      them as one row. Under the list „Methode" alone, opening who is
+      counted without a name (`MethodEuRueckmeldungen`); the line
+      „Privatpersonen werden gezählt, nie genannt." beside it went on
+      18.11.2026 as over-explaining: the rows without a name show it, and
+      the method's lead line says it.
     - **The data knows no country, the view takes one.** The reading and
       the endpoint carry no member state (no parameter, nothing in the
       cache key); the view takes the country the page serves, today the
