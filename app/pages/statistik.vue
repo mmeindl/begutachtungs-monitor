@@ -39,24 +39,25 @@ const KLASSE_NAME: Record<string, string> = {
   'entwurf-bund': 'Entwürfe des Bundes',
   'entwurf-land': 'Entwürfe der Länder',
   // Counted on their own since 14.11.2026; before, under „Andere Seiten".
-  'vorlage-bund': 'Vorlagen und Anträge ohne Entwurf (seit 14.11.2026)',
+  'vorlage-bund': 'Vorlagen und Anträge ohne Entwurf',
   // Counted on their own since 15.11.2026; before, under „Andere Seiten".
-  anliegen: `Liste der ${ANLIEGEN_SECTION_DE} (seit 15.11.2026)`,
-  'anliegen-gegenstand': 'Petitionen, Bürgerinitiativen, Volksbegehren und Petitionen an den Bundesrat (seit 15.11.2026)',
+  anliegen: `Liste der ${ANLIEGEN_SECTION_DE}`,
+  'anliegen-gegenstand': 'Petitionen, Bürgerinitiativen, Volksbegehren und Petitionen an den Bundesrat',
   'eu-recht': 'EU-Recht',
   // Counted on their own since 15.11.2026.
-  'eu-initiative': 'Vorhaben der EU-Kommission (seit 15.11.2026)',
-  'eu-vorschlag': 'Vorschläge der EU-Kommission (seit 15.11.2026)',
-  'eu-buergerinitiative': 'Europäische Bürgerinitiativen (seit 15.11.2026)',
+  'eu-initiative': 'Vorhaben der EU-Kommission',
+  'eu-vorschlag': 'Vorschläge der EU-Kommission',
+  'eu-buergerinitiative': 'Europäische Bürgerinitiativen',
   wege: 'Wege',
   // Counted on its own since 16.11.2026; before, the EU's ways stood on `/wege`.
-  'eu-wege': 'Wege der Gesetzgebung in der EU (seit 16.11.2026)',
+  'eu-wege': 'Wege der Gesetzgebung in der EU',
   datenlage: 'Datenlage',
   // A page of its own since 16.11.2026; before, a section of the Impressum.
-  quellen: 'Quellen & Lizenzen (seit 16.11.2026)',
+  quellen: 'Quellen & Lizenzen',
   // Counted since 17.11.2026; before, `/suche` redirected and was not counted.
-  suche: 'Suche (seit 17.11.2026)',
-  'so-funktionierts': 'So funktioniert’s (bis 14.11.2026)',
+  suche: 'Suche',
+  // A page until 14.11.2026; its counts stay, the row stands in the lighter gray.
+  'so-funktionierts': 'So funktioniert’s',
   ueber: 'Über',
   impressum: 'Impressum',
   datenschutz: 'Datenschutz',
@@ -66,6 +67,13 @@ const KLASSE_NAME: Record<string, string> = {
   kalender: 'Fristen-Kalender (kalender.ics)',
   'frist-kalender': 'Frist eines Entwurfs (.ics)',
 }
+
+/**
+ * Page classes whose pages no longer exist. Their counts stay in the sums,
+ * the row stands in the muted gray; when each class was counted lives in
+ * the comments above, not on the page.
+ */
+const KLASSE_ENTFALLEN = new Set(['so-funktionierts'])
 </script>
 
 <template>
@@ -182,8 +190,17 @@ const KLASSE_NAME: Record<string, string> = {
                 </tr>
               </thead>
               <tbody class="divide-y divide-hairline tabular-nums text-ink">
-                <tr v-for="row in tabelle.zeilen" :key="row.klasse">
-                  <th scope="row" class="px-3 py-2 text-left font-normal">{{ KLASSE_NAME[row.klasse] ?? row.klasse }}</th>
+                <tr
+                  v-for="row in tabelle.zeilen"
+                  :key="row.klasse"
+                  :class="KLASSE_ENTFALLEN.has(row.klasse) && 'text-ink-muted'"
+                >
+                  <th scope="row" class="px-3 py-2 text-left font-normal">
+                    {{ KLASSE_NAME[row.klasse] ?? row.klasse }}<span
+                      v-if="KLASSE_ENTFALLEN.has(row.klasse)"
+                      class="sr-only"
+                    > (gibt es nicht mehr)</span>
+                  </th>
                   <td class="px-3 py-2 text-right">{{ formatNumberDe(row.aufrufe) }}</td>
                 </tr>
               </tbody>
