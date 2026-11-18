@@ -4,28 +4,47 @@
   `LesefassungDisclosure` (14.11.2026; until then
   /so-funktionierts#lesefassung).
 
-  Paragraphs only, without a wrapper: the caller's `prose-flow` styles its
-  direct children.
+  A `<dl>` in the caller's `prose-flow`, each term the answer itself
+  (docs/decisions.md, „A method text is the credit line in full sentences").
 -->
 <template>
-  <p>
-    Das ist keine amtliche Fassung: Wir nehmen den geltenden Text aus dem RIS
-    und wenden die Anweisungen des Entwurfs darauf an. Gezeigt wird das
-    Ergebnis nur, wo die Gegenüberstellung des Ministeriums es stützt: Was sie
-    als geltend abdruckt, muss so im RIS stehen, was sie als neu abdruckt, in
-    unserem Ergebnis – und die Absätze, die sie nennt, in derselben
-    Reihenfolge. Unser Ergebnis darf auch nichts ändern, was sie nicht zeigt.
-    Weil die Gegenüberstellung oft nur Auszüge druckt, kann sie nur
-    bestätigen, was sie abdruckt.
-  </p>
-  <p>
-    Wo wir die Lesefassung nicht zeigen, steht am Paragraphen, warum: etwa
-    weil sich eine Anweisung des Entwurfs nicht sicher anwenden ließ, weil
-    unser Ergebnis von der Beilage abweicht, weil wir das Gesetz oder den
-    Paragraphen im RIS nicht fanden oder weil die Beilage an dieser Stelle
-    nichts zeigt, woran sich unser Ergebnis prüfen ließe. Paragraphen, die der
-    Entwurf ändert, zu denen wir in der Beilage aber keine Gegenüberstellung
-    fanden, nennen wir am Ende ihres Gesetzes. Fehlt die Lesefassung, heißt
-    das also nie, dass der Paragraph gleich bleibt.
-  </p>
+  <dl>
+    <div>
+      <dt>Keine amtliche Fassung</dt>
+      <dd>
+        Wir nehmen den geltenden Text aus dem RIS und wenden die Anweisungen
+        des Entwurfs darauf an.
+      </dd>
+    </div>
+    <div>
+      <dt>Gezeigt nur, wo die Gegenüberstellung des Ministeriums sie stützt</dt>
+      <dd>
+        <ul>
+          <li>Was sie als geltend abdruckt, steht so im RIS.</li>
+          <li>Was sie als neu abdruckt, steht in unserem Ergebnis.</li>
+          <li>Die Absätze, die sie nennt, stehen in derselben Reihenfolge.</li>
+          <li>Unser Ergebnis ändert nichts, was sie nicht zeigt.</li>
+        </ul>
+        Weil die Gegenüberstellung oft nur Auszüge druckt, kann sie nur
+        bestätigen, was sie abdruckt.
+      </dd>
+    </div>
+    <div>
+      <dt>Fehlt die Lesefassung, steht am Paragraphen, warum</dt>
+      <dd>
+        Etwa weil sich eine Anweisung des Entwurfs nicht sicher anwenden ließ,
+        weil unser Ergebnis von der Beilage abweicht, weil wir das Gesetz oder
+        den Paragraphen im RIS nicht fanden oder weil die Beilage an dieser
+        Stelle nichts zeigt, woran sich unser Ergebnis prüfen ließe. Fehlt die
+        Lesefassung, heißt das nie, dass der Paragraph gleich bleibt.
+      </dd>
+    </div>
+    <div>
+      <dt>Paragraphen ohne Gegenüberstellung stehen am Ende ihres Gesetzes</dt>
+      <dd>
+        Das sind Paragraphen, die der Entwurf ändert, zu denen wir in der
+        Beilage aber keine Gegenüberstellung fanden.
+      </dd>
+    </div>
+  </dl>
 </template>

@@ -671,7 +671,14 @@ function withheldReason(cause: AnnexWithheldCause | null): string {
         >Geltender Text im RIS</ExternalLink>
         <ExternalLink v-if="newLaws.length && enacted?.source" :href="enacted.source.url" class="link-muted">{{ enacted.source.label }}</ExternalLink>
         <template #method>
-          <MethodGegenueberstellung />
+          <!-- Whose document: the server says it for an item's (`annexOf`);
+               a draft's is the ministry's annex. -->
+          <MethodGegenueberstellung
+            :kind="data.annexOf ?? (apiBase ? 'item' : 'entwurf')"
+            :publisher="data.publisher"
+            :as-of="data.verification?.asOf ?? null"
+            :paired="data.readFrom === 'pdf'"
+          />
         </template>
       </SectionCredits>
     </template>

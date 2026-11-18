@@ -75,7 +75,11 @@ export const getVorlageTextComparison = defineCachedFunction(
       // Its (GP, Nummer) is a draft's too: the verification is cached under the root.
       rootKey(root),
     )
-    return typeof out === 'string' ? emptyComparison(who, out, null, annex.pdf) : out
+    if (typeof out === 'string') return emptyComparison(who, out, null, annex.pdf)
+    // Whose document it is, for the „Methode": by the document read, and
+    // unsaid for an Antrag whose annex is not Parliament's working copy.
+    const annexOf = parlDion ? 'parldion' : root.ityp === 'A' ? undefined : 'vorlage'
+    return annexOf ? { ...out, annexOf } : out
   },
   { name: 'text-comparison-item', base: DERIVED_CACHE, getKey: (root: VorlageRoot) => rootKey(root), maxAge: DERIVED_ANALYSIS_TTL_S, swr: false },
 )

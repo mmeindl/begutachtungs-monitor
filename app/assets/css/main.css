@@ -550,6 +550,22 @@
     font-weight: var(--font-weight-semibold);
     color: var(--color-ink);
   }
+
+  /* A short list inside a definition — the checks of a method text
+     (18.11.2026): the bullets of the page's own lists, set closer. */
+  :where(& > dl dd > ul) {
+    margin-top: calc(var(--spacing) * 1);
+    list-style-type: disc;
+    padding-left: calc(var(--spacing) * 5);
+  }
+
+  :where(& > dl dd > ul > li + li) {
+    margin-top: calc(var(--spacing) * 1);
+  }
+
+  :where(& > dl dd > ul > li)::marker {
+    color: var(--color-ink-muted);
+  }
 }
 
 /*

@@ -35,7 +35,7 @@ defineProps<{ paragraph: ConsolidatedParagraph }>()
         <TermNote>
           Wie diese Lesefassung entsteht
           <template #note>
-            <div class="prose-flow pb-2 text-sm">
+            <div class="prose-flow pb-2 text-sm [&_dt]:font-medium">
               <MethodLesefassung />
             </div>
           </template>

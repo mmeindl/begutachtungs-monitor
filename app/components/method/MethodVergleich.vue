@@ -3,29 +3,54 @@
   `LawDiffSection`, opened under its credit line (14.11.2026; until then
   /so-funktionierts#vergleich).
 
-  Paragraphs only, without a wrapper: the caller's `prose-flow` styles its
-  direct children. „redaktionell" is not defined here; its pill opens the
-  definition at the row (`TermNote`, `app/utils/terms.ts`).
+  A `<dl>` in the caller's `prose-flow`, each term the answer itself
+  (docs/decisions.md, „A method text is the credit line in full sentences").
+  „redaktionell" is not defined here; its pill opens the definition at the
+  row (`TermNote`, `app/utils/terms.ts`).
 -->
 <template>
-  <p>
-    Nach der Begutachtung vergleichen wir die Texte selbst, Schritt für
-    Schritt: den Entwurf mit der Regierungsvorlage, im Parlament die
-    Regierungsvorlage mit der Fassung des Ausschusses und diese mit der
-    des Plenums – so steht bei jedem Vergleich fest, wer geändert hat.
-    Beim Bundesgesetzblatt halten wir den ganzen Weg gegeneinander, vom
-    Entwurf bis zum kundgemachten Gesetz. Ein Gesetz, das ein bestehendes ändert,
-    besteht aus nummerierten Änderungsanordnungen (Z&nbsp;1, Z&nbsp;2&nbsp;…) – verglichen
-    wird dann Anordnung für Anordnung. Ein neues Gesetz vergleichen wir
-    Paragraph für Paragraph.
-  </p>
-  <p>
-    Auch die Erläuterungen beider Fassungen halten wir gegeneinander.
-    Verglichen werden nur Begründungen, die in beiden Fassungen zur selben
-    Änderung stehen. Gezeigt wird eine Begründung an dieser Änderung, wenn
-    das Ressort sie geändert hat; Unterschiede nur in Satzzeichen,
-    Leerzeichen oder Bindestrichen gelten nicht als Änderung. Ob
-    eine Änderung auf eine Stellungnahme zurückgeht, sagt keiner der
-    beiden Vergleiche.
-  </p>
+  <dl>
+    <div>
+      <dt>Den Vergleich machen wir selbst</dt>
+      <dd>
+        Nach der Begutachtung halten wir die veröffentlichten Texte
+        gegeneinander und markieren, was sich geändert hat.
+      </dd>
+    </div>
+    <div>
+      <dt>Verglichen wird Schritt für Schritt</dt>
+      <dd>
+        Der Entwurf mit der Regierungsvorlage, im Parlament die
+        Regierungsvorlage mit der Fassung des Ausschusses und diese mit der
+        des Plenums. So steht bei jedem Vergleich fest, wer geändert hat. Beim
+        Bundesgesetzblatt halten wir den ganzen Weg gegeneinander, vom Entwurf
+        bis zum kundgemachten Gesetz.
+      </dd>
+    </div>
+    <div>
+      <dt>Anordnung für Anordnung oder Paragraph für Paragraph</dt>
+      <dd>
+        Ein Gesetz, das ein bestehendes ändert, besteht aus nummerierten
+        Änderungsanordnungen (Z&nbsp;1, Z&nbsp;2&nbsp;…); verglichen wird dann
+        Anordnung für Anordnung. Ein neues Gesetz vergleichen wir Paragraph
+        für Paragraph.
+      </dd>
+    </div>
+    <div>
+      <dt>Auch die Begründungen vergleichen wir</dt>
+      <dd>
+        Verglichen werden nur Begründungen, die in beiden Fassungen zur selben
+        Änderung stehen. Gezeigt wird eine Begründung an dieser Änderung, wenn
+        das Ministerium sie geändert hat; Unterschiede nur in Satzzeichen,
+        Leerzeichen oder Bindestrichen gelten nicht als Änderung.
+      </dd>
+    </div>
+    <div>
+      <dt>Warum sich etwas geändert hat, sagt kein Vergleich</dt>
+      <dd>
+        Ob eine Änderung auf eine Stellungnahme zurückgeht, sagt keiner der
+        beiden Vergleiche.
+      </dd>
+    </div>
+  </dl>
 </template>

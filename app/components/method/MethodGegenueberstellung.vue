@@ -3,58 +3,129 @@
   checked — the „Methode" of `TextComparisonSection`, opened under its credit
   line (14.11.2026; until then /so-funktionierts#gegenueberstellung).
 
-  Paragraphs only, without a wrapper: the caller's `prose-flow` styles its
-  direct children. „redaktionell" and „nicht geprüft" are not defined here;
-  their pills open the definition at the row (`TermNote`,
-  `app/utils/terms.ts`). „nicht gezeigt" is: its only pill is a count in the
-  law's header button, and a control is never also a disclosure. How the
-  Lesefassung is made opens at the Lesefassung (`MethodLesefassung`).
+  THE CREDIT LINE IN FULL SENTENCES (18.11.2026). The line above it is the
+  method in shorthand: „Quelle: RIS · Textgegenüberstellung des Ministeriums ·
+  Markierung: Begutachtungs-Monitor". This text says the same in the same
+  order, and each term's heading is the answer itself, so the bold lines
+  alone give the method. It was six paragraphs of running text before, with
+  the two Rundschreiben that prescribe the annex, the exception for a wording
+  an instruction inserts, and a pointer to another section's „Methode": true,
+  and nothing a reader needs to read the comparison.
+
+  IT VARIES WITH THE DOCUMENT, because the section stands on four kinds of
+  page and the old text was only true on two of them: a draft's annex is the
+  ministry's and is checked at the start of the Begutachtungsfrist; a
+  Regierungsvorlage without a Begutachtung has the ressort's annex and an
+  Antrag the Parlamentsdirektion's working copy, both checked at the day they
+  reached Parliament. The line on our own row pairing shows only where this
+  comparison was read from the PDF.
+
+  A `<dl>` in the caller's `prose-flow`, which styles terms and spacing.
+  „redaktionell" and „nicht geprüft" are not defined here; their pills open
+  the definition at the row (`TermNote`, `app/utils/terms.ts`). „nicht
+  gezeigt" is: its only pill is a count in the law's header button, and a
+  control is never also a disclosure. How the Lesefassung is made opens at
+  the Lesefassung (`MethodLesefassung`).
 -->
+<script setup lang="ts">
+import { formatDateDe } from '#shared/utils/format'
+import type { Publisher } from '#shared/types'
+
+/** Whose document: a draft's annex, a Vorlage's, Parliament's working copy to an Antrag, or an item's document of neither kind. */
+type Kind = 'entwurf' | 'vorlage' | 'parldion' | 'item'
+
+const props = defineProps<{
+  kind: Kind
+  /** Who published the copy that was read: the credit line's „Quelle: RIS" as a sentence. */
+  publisher: Publisher
+  /** The day whose RIS text the left column was held against; null where RIS gave none. */
+  asOf: string | null
+  /** The rows were paired by us, from the PDF's page layout. */
+  paired: boolean
+}>()
+
+const BOTH_COLUMNS = 'links die geltende Fassung, rechts die vorgeschlagene. Wir übernehmen beide Spalten Wort für Wort.'
+
+const COPY: Record<Kind, { author: string; origin: string; item: string; day: string }> = {
+  entwurf: {
+    author: 'Der Text ist vom Ministerium',
+    origin: `Das Ministerium legt dem Entwurf eine Textgegenüberstellung bei: ${BOTH_COLUMNS}`,
+    item: 'des Entwurfs',
+    day: 'Beginn der Begutachtungsfrist',
+  },
+  vorlage: {
+    author: 'Der Text ist vom Ministerium',
+    origin: `Das Ministerium legt der Regierungsvorlage eine Textgegenüberstellung bei: ${BOTH_COLUMNS}`,
+    item: 'der Regierungsvorlage',
+    day: 'Einlangen im Parlament',
+  },
+  parldion: {
+    author: 'Der Text ist von der Parlamentsdirektion',
+    origin:
+      'Sie erstellt zum Antrag ein Arbeitsdokument in drei Spalten: die geltende Fassung, die Anweisungen des Antrags und die Fassung, die sich daraus ergibt. Wir zeigen die erste und die dritte, Wort für Wort.',
+    item: 'des Antrags',
+    day: 'Einlangen im Parlament',
+  },
+  item: {
+    author: 'Der Text ist nicht von uns',
+    origin: `Er stammt aus der Textgegenüberstellung, die dem Antrag beiliegt: ${BOTH_COLUMNS}`,
+    item: 'des Antrags',
+    day: 'Einlangen im Parlament',
+  },
+}
+
+/** Where the copy that was read stands; EUR-Lex publishes no annex. */
+const PUBLISHED: Partial<Record<Publisher, string>> = {
+  ris: 'Veröffentlicht ist sie im Rechtsinformationssystem des Bundes (RIS).',
+  parlament: 'Veröffentlicht ist sie auf der Website des Parlaments.',
+}
+
+const copy = computed(() => COPY[props.kind])
+</script>
+
 <template>
-  <p>
-    Zu den meisten Entwürfen legt das Ministerium eine Textgegenüberstellung
-    bei: links die geltende Fassung, rechts die vorgeschlagene, in der Form,
-    die ein Rundschreiben des Bundeskanzleramts vom 27.03.2002 vorschreibt.
-    Der Text hier stammt aus diesem Dokument des Ministeriums, Wort für Wort.
-    Verlangt wird die Gegenüberstellung, wo ein Entwurf geltendes Recht ändert
-    (Rundschreiben des Verfassungsdienstes vom 10.12.2015); ein Entwurf, der
-    ein neues Gesetz schafft, hat nichts gegenüberzustellen.
-  </p>
-  <p>
-    Von uns stammt die Markierung: Wir vergleichen die beiden Spalten Wort für
-    Wort und heben hervor, was wegfällt und was dazukommt. Dieselbe Markierung
-    und dieselben Abzeichen trägt der Vergleich nach der Begutachtung, Entwurf
-    gegen Regierungsvorlage; wie er zählt, sagt dort seine „Methode“.
-  </p>
-  <p>
-    Die linke Spalte behauptet, das geltende Recht zu sein – und das lässt
-    sich nachsehen. Wir halten sie gegen den Text im RIS Bundesrecht, und zwar
-    zum Beginn der Begutachtungsfrist: das ist der Stand, den das Ministerium
-    beim Schreiben vor sich hatte.
-  </p>
-  <p>
-    Auch die rechte Spalte prüfen wir: Was dort als neu markiert ist, darf im
-    geltenden Paragraphen nicht schon stehen – sonst fehlt links Text, und der
-    Entwurf wirkt umfangreicher, als er ist. Ausgenommen ist ein Wortlaut, den
-    eine Anweisung des Entwurfs genau so an diese Stelle einfügt, auch wenn er
-    anderswo im Paragraphen schon steht. Und es muss in den
-    Novellierungsanordnungen vorkommen, die der Entwurf für diesen Paragraphen
-    trifft.
-  </p>
-  <p>
-    Bestätigte Paragraphen bleiben ohne Hinweis, ebenso neu eingefügte: Sie
-    haben keinen geltenden Text und brauchen keine Prüfung. Geht eine der drei
-    Prüfungen nicht auf, zeigen wir keinen Vergleich statt eines falschen: Der
-    Kopf des Gesetzes zählt den Paragraphen als „nicht gezeigt“, und an seiner
-    Stelle steht, welche Prüfung es war. Was sich dort ändert, sagt die
-    Beilage des Ministeriums, die unter der Gegenüberstellung verlinkt ist.
-  </p>
-  <p>
-    Bei einem Teil der Entwürfe veröffentlicht das RIS die Beilage nur als
-    Bild. Dann lesen wir das PDF des Ministeriums und erschließen aus dem
-    Seitenlayout, welche Zeile links zu welcher Zeile rechts gehört. Der Text
-    ist auch dort der des Ministeriums – die Zuordnung ist unsere, und sie
-    kann danebenliegen; die Quellenzeile nennt sie dann als unsere. Ein „nicht
-    gezeigt“ kann dort auch an unserer Zuordnung liegen.
-  </p>
+  <dl>
+    <div>
+      <dt>{{ copy.author }}</dt>
+      <dd>{{ copy.origin }} {{ PUBLISHED[publisher] }}</dd>
+    </div>
+    <div>
+      <dt>Die Markierung ist von uns</dt>
+      <dd>
+        Wir vergleichen die beiden Fassungen Wort für Wort und heben hervor,
+        was wegfällt und was dazukommt.
+      </dd>
+    </div>
+    <div>
+      <dt>Geprüft gegen das geltende Recht im RIS</dt>
+      <dd>
+        Einen Paragraphen zeigen wir nur, wenn drei Dinge stimmen:
+        <ul>
+          <li>
+            Die linke Spalte entspricht dem Gesetzestext im RIS, wie er am
+            {{ asOf ? formatDateDe(asOf) : 'Stichtag' }} galt ({{ copy.day }}).
+          </li>
+          <li>Was rechts als neu markiert ist, steht nicht schon im Gesetz.</li>
+          <li>Was rechts als neu markiert ist, steht auch im Gesetzestext {{ copy.item }}.</li>
+        </ul>
+      </dd>
+    </div>
+    <div>
+      <dt>„Nicht gezeigt“ heißt: Eine Prüfung ging nicht auf</dt>
+      <dd>
+        Dann zeigen wir lieber keinen Vergleich als einen falschen. An der
+        Stelle des Paragraphen steht der Grund. Was sich dort ändert, steht im
+        Dokument selbst, das unter der Gegenüberstellung verlinkt ist.
+      </dd>
+    </div>
+    <div v-if="paired">
+      <dt>Die Zeilenzuordnung ist von uns</dt>
+      <dd>
+        Das RIS veröffentlicht diese Textgegenüberstellung nur als Bild. Wir
+        lesen deshalb das PDF des Ministeriums und ordnen selbst zu, welche
+        Zeile links zu welcher rechts gehört. Dabei können wir uns irren; auch
+        ein „nicht gezeigt“ kann daran liegen.
+      </dd>
+    </div>
+  </dl>
 </template>

@@ -1865,6 +1865,20 @@ the reasoning in full stands in that component's header comment.
   in a group's header button define nothing. Definitions live in
   `app/utils/terms.ts`, method texts as components in
   `app/components/method/` — copy out of logic, one place per language.
+- **A method text is the credit line in full sentences, and it is scanned,
+  not read** (18.11.2026, first `MethodGegenueberstellung`, the same day
+  all fourteen). A `<dl>` whose terms
+  are the answers themselves („Der Text ist vom Ministerium", „Die Markierung
+  ist von uns"), in the order of the line above it, so the bold lines alone
+  give the method. Set in the help size with the terms in medium weight:
+  at body size and semibold they read as headings of the page and competed
+  with the section heading below. It says what a reader needs to read this section: whose
+  text, what is ours, how it is checked, what a withheld row means. Why a
+  document exists in law, exceptions inside a check and pointers to other
+  sections stay out. Where a section stands on several kinds of page, the
+  text varies with the document shown (author, reference date) and a caveat
+  appears only where it applies; a sentence true on one page and false on
+  another is the fault this replaced.
 - **Text runs the full width of its column** (maintainer, 17.11.2026). The
   page column (`max-w-2xl` … `max-w-5xl` on the page's root) is the only
   measure; no paragraph, help text, gap sentence, list or method text inside

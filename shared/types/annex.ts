@@ -298,6 +298,15 @@ export interface TextComparisonResponse {
    */
   readFrom: 'table' | 'pdf' | null
   /**
+   * Whose document the rows come from, where it is not a draft's annex: the
+   * ressort's annex to a Regierungsvorlage, or the Parlamentsdirektion's
+   * three-column working copy to an Antrag. The „Methode" names the author
+   * in its first line (`MethodGegenueberstellung`), and the author follows
+   * the document, not the page: absent for a draft (the ministry's annex)
+   * and wherever the item's document is neither of the two.
+   */
+  annexOf?: 'vorlage' | 'parldion'
+  /**
    * Pages of the annex PDF whose geometry the parse could not vouch for and
    * therefore did not read (`isProven` in `server/utils/annex/annexPdf.ts`):
    * a page set to another width than the rest of the document, one carrying a

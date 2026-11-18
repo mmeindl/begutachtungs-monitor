@@ -127,12 +127,14 @@ const group = useId()
     <span v-if="paired && marked">Zeilenzuordnung und Markierung: Begutachtungs-Monitor</span>
     <span v-else-if="marked">Markierung: Begutachtungs-Monitor</span>
     <!-- The last item of the line, its text on a line of its own under it
-         (`TermNote`): running text at prose width, in the prose pages' type,
-         not the caption's. -->
+         (`TermNote`). In the help size (`text-sm`, as a term's definition)
+         and its terms in medium weight, not `prose-flow`'s semibold
+         (18.11.2026): at body size and semibold the terms read as headings
+         of the page and competed with the section heading that follows. -->
     <TermNote v-if="$slots.method" :name="group">
       Methode
       <template #note>
-        <div class="prose-flow text-base">
+        <div class="prose-flow text-sm [&_dt]:font-medium">
           <slot name="method" />
         </div>
       </template>
