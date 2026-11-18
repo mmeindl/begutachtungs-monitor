@@ -219,7 +219,10 @@
  * draft's own numbering. Such sites are skipped, and every result holding a
  * number twice is listed with where it came from.
  *
- * Usage:  npx vite-node scripts/harness/faultInjection.ts --gp=XXVIII [--xml] [--limit=N] [--only=8] [--misses] [--alarme] [--zeige=<§> [--voll]]
+ * `--urteile` prints every verdict on a line of its own, so two runs of an
+ * oracle change can be compared § by § with `diff` rather than by totals.
+ *
+ * Usage:  npx vite-node scripts/harness/faultInjection.ts --gp=XXVIII [--xml] [--limit=N] [--only=8] [--misses] [--alarme] [--urteile] [--zeige=<§> [--voll]]
  */
 import { annexParagraphKey, comparableTokens, designationKey } from '../../server/utils/annex/annexText'
 import { PARAGRAPH_THRESHOLD, coverageOfParagraph } from '../../server/utils/annex/coverage'
@@ -1149,7 +1152,7 @@ async function injectIntoResults(
   const byParagraph = rowsByParagraph(rows)
   for (const { blocks, article } of articleBlocks(draftBlocks).filter((p) => p.article.amends)) {
     const units = segmentUnits(blocks).filter((u) => u.blocks.some((b) => b.kind === 'novao'))
-    const { instructions } = instructionsFromUnits(units)
+    const { instructions, refused: grammarRefused } = instructionsFromUnits(units)
     if (instructions.length === 0) continue
     const resolved = await lawOf(article.key)
     if (!resolved) continue
@@ -1173,7 +1176,8 @@ async function injectIntoResults(
       if (tree) paragraphs.push(tree)
     }
     const law: StandingLaw = { paragraphs }
-    const { law: after, renamed } = applyNovelle(law, instructions)
+    const applied = applyNovelle(law, instructions)
+    const { law: after, renamed } = applied
     // Paired as the page pairs them (`kons/consolidate.ts`): a renumbered §
     // against the standing § it came from.
     const originOf = renamedOrigins(renamed)
@@ -1189,6 +1193,9 @@ async function injectIntoResults(
       const standingUnits = beforeNode ? standingUnitsOf(beforeNode) : null
       const report = oracleVerdict(id, before, got, paraRows, absatzSequence(node), beforeNode ? (absatzSequence(beforeNode) ?? null) : null, standingUnits)
       results.verdicts.set(report.verdict, (results.verdicts.get(report.verdict) ?? 0) + 1)
+      // `--urteile`: every verdict on a line of its own, so two runs of an
+      // oracle change can be compared § by § (`diff`), not by their totals.
+      if (argFlag('urteile')) console.log(`URTEIL ${cite} § ${id}${lawKey ? ` [${String(lawKey).slice(0, 40)}]` : ''} — ${report.verdict}${report.note ? ` — ${report.note.slice(0, 120)}` : ''}`)
       // An Absatz number the result holds twice — and whether the standing §
       // already held it twice (RIS's text) or the engine made the second one.
       const twice = (n: LawNode | null): string[] => (n ? absOf(n).filter((a, i, all) => a && all.indexOf(a) !== i) : [])
@@ -1238,6 +1245,27 @@ async function injectIntoResults(
         console.log(`     Überschrift: ${node.heading ?? '—'}`)
         for (const r of paraRows.filter((r) => r.kind === 'pair')) console.log(`     ${r.elided ? 'ausgelassen' : r.change.padEnd(11)}${r.editorial ? ' (red.)' : ''} gld=${r.gld ?? '—'}\n        geltend      : ${r.current.slice(0, argFlag('voll') ? undefined : 600)}\n        vorgeschlagen: ${r.proposed.slice(0, argFlag('voll') ? undefined : 600)}`)
         console.log(`     geltend : ${(before ?? '—').slice(0, 900)}\n     Ergebnis: ${got.slice(0, 900)}\n`)
+        // Where a stretch stops matching: the longest prefix of its comparison
+        // form the text holds, and what follows on each side.
+        for (const r of paraRows.filter((r) => r.kind === 'pair' && !r.elided && r.change !== 'unchanged')) {
+          for (const [label, cell, text] of [['geltend', r.current, before ?? ''], ['vorgeschlagen', r.proposed, got]] as const) {
+            for (const stretch of printedStretches(normalizeText(cell))) {
+              const k = containmentKey(stretch)
+              const hay = containmentKey(text)
+              if (k === '' || hay.includes(k)) continue
+              let n = 0
+              while (n < k.length && hay.includes(k.slice(0, n + 1))) n++
+              const at = hay.indexOf(k.slice(0, n))
+              console.log(`     Bruch ${label}: …${k.slice(Math.max(0, n - 40), n)}‖ Beilage: ${k.slice(n, n + 40)} | Text: ${n > 0 ? hay.slice(at + n, at + n + 40) : '—'}`)
+            }
+          }
+        }
+        // The draft's instructions that name this §: as the units read, as the
+        // engine applied them, and those the grammar could not read.
+        const names = (line: string): boolean => new RegExp(`§\\s*${id.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}(?![\\da-z])`).test(normalizeText(line))
+        for (const u of units) if (names(u.blocks.map((b) => b.text).join(' '))) console.log(`     Anordnung: ${u.blocks.map((b) => b.text).join(' ').slice(0, 400)}`)
+        for (const r of applied.results) if (names(r.line)) console.log(`     angewendet=${r.applied}${r.reason ? ` (${r.reason})` : ''}: ${r.line.slice(0, 160)}`)
+        for (const r of grammarRefused) if (names(r.line)) console.log(`     ungelesen: ${r.reason} — ${r.line.slice(0, 160)}`)
         // The designations RIS's own document prints, beside what the tree made of them.
         const ref = Object.values(resolved.paragraphs).find((r) => r.id === (origin ?? id))
         if (ref?.xmlUrl) console.log(`     RIS-Dokument ${ref.xmlUrl}\n       gldsym: ${[...(await getText(ref.xmlUrl)).matchAll(/<gldsym>([^<]*)<\/gldsym>/g)].map((m) => m[1]).join(' ')}\n       Baum  : ${beforeNode ? absOf(beforeNode).join(', ') : '—'}`)
