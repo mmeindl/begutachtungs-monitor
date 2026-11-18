@@ -238,6 +238,15 @@ describe('a span of the reader\'s own (18.11.2026)', () => {
     expect(orderedRange('2026-11-09', '')).toEqual({ von: '2026-11-09', bis: '' })
   })
 
+  // No day after today: a later end is an open one, a later start no span; today itself stays a fixed end.
+  it('holds a link\'s span to today', () => {
+    const today = '2026-11-18'
+    expect(orderedRange('2026-11-09', '2026-11-30', today)).toEqual({ von: '2026-11-09', bis: '' })
+    expect(orderedRange('2026-11-09', '2026-11-18', today)).toEqual({ von: '2026-11-09', bis: '2026-11-18' })
+    expect(orderedRange('2026-11-19', '', today)).toEqual({ von: '', bis: '' })
+    expect(orderedRange('2026-12-01', '2026-11-10', today)).toEqual({ von: '2026-11-10', bis: '' })
+  })
+
   it('holds both ends, and no row without a day', () => {
     const w = { from: '2026-11-09', to: '2026-11-15' }
     expect(inDateWindow('2026-11-09', w)).toBe(true)

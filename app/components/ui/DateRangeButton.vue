@@ -47,14 +47,16 @@ type Range = { start: DateValue | undefined; end: DateValue | undefined }
 const open = ref(false)
 const draft = shallowRef<Range>({ start: undefined, end: undefined })
 const minValue = computed(() => (props.min ? parseDate(props.min) : undefined))
+/* No day after today: every day a list cuts by lies in the past, so a later
+ * one could only hold nothing (`orderedRange`). Today is the last day, and
+ * „Bis heute" keeps the end open beyond it. */
+const maxValue = computed(() => parseDate(todayIso()))
 
 /* What the calendar shows when it opens: the span as it stands, an open end
- * running to today (or to the start, should the start lie ahead). */
+ * running to today (a start never lies ahead, `orderedRange`). */
 function currentRange(): Range {
   const start = parseDate(props.von)
-  if (props.bis) return { start, end: parseDate(props.bis) }
-  const today = parseDate(todayIso())
-  return { start, end: today.compare(start) < 0 ? start : today }
+  return { start, end: parseDate(props.bis || todayIso()) }
 }
 watch(open, (isOpen) => {
   if (isOpen) draft.value = currentRange()
@@ -101,6 +103,7 @@ const endLabel = computed(() => (props.bis ? formatDateDe(props.bis) : COPY.toda
         size="lg"
         color="neutral"
         :min-value="minValue"
+        :max-value="maxValue"
         initial-focus
         :ui="{
           root: 'text-ink',

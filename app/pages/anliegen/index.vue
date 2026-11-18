@@ -3,11 +3,17 @@ import type { AnliegenListResponse } from '#shared/types'
 import { anliegenListGpOf, anliegenListGps } from '#shared/utils/anliegen'
 import { gpHasEnded } from '#shared/utils/gp'
 import { MAX_LIST_QUERY_CHARS, firstQueryValue } from '#shared/utils/queryParams'
+import { todayIso } from '#shared/utils/format'
+import { BIS_PARAM, VON_PARAM, weekStartOf } from '#shared/utils/periodCalendar'
+import { CUSTOM_SPAN_OPTION, CUSTOM_SPAN_VALUE } from '~/utils/draftFilters'
 import { matchesQuery } from '#shared/utils/textMatch'
 import { listBoxStatusOf } from '~/utils/listState'
 import {
   ANLIEGEN_ART_OPTIONS,
   ANLIEGEN_LIST_DE,
+  ANLIEGEN_SPAN_MIN_DAY,
+  anliegenCustomSpanOf,
+  anliegenRowsInSpan,
   anliegenArtOf,
   anliegenCountLineDe,
   anliegenEmptyDe,
@@ -34,7 +40,7 @@ import {
  * count of outcomes anywhere (docs/decisions.md, „Framing"). One colour for
  * every closed state; blue only for the item's own open window.
  *
- * The controls live in the URL (`?art=`, `?gp=`, `?alle=1`) and stand in the
+ * The controls live in the URL (`?art=`, `?gp=` or `?von=&bis=`, `?alle=1`) and stand in the
  * list's head, above the rows they narrow; they change nothing above
  * themselves — the heading names the section, not the period. One question
  * per control: „Art" the kind, „Zeitraum" the Gesetzgebungsperiode (as on
@@ -58,9 +64,16 @@ watch(searchTerm, () => {
 })
 onBeforeUnmount(() => clearTimeout(qTimer))
 
+/* A span of the reader's own (`?von=&bis=`, 18.11.2026, as on /entwuerfe):
+ * one more value of the „Zeitraum" select. Its rows are fetched for the one
+ * period it lies in and cut by the day each arrived (`anliegenRowsInSpan`);
+ * while it is set, no `gp` stands beside it in the link. */
+const custom = computed(() =>
+  anliegenCustomSpanOf(firstQueryValue(route.query[VON_PARAM]) ?? '', firstQueryValue(route.query[BIS_PARAM]) ?? ''))
+
 const { data, error, status, refresh } = await useFetch<AnliegenListResponse>('/api/anliegen', {
   query: computed(() => {
-    const gp = anliegenListGpOf(route.query.gp, null)
+    const gp = custom.value ? anliegenListGpOf(custom.value.span.gp, null) : anliegenListGpOf(route.query.gp, null)
     return gp ? { gp } : {}
   }),
   lazy: true,
@@ -72,31 +85,69 @@ const listState = computed(() => listBoxStatusOf({ status: status.value, error: 
 /* The running period comes with the answer; until then the chosen one
  * stands alone in the select (`anliegenPeriodOptions`). */
 const currentGp = computed(() => data.value?.currentGp ?? null)
-const chosenGp = computed(() => anliegenListGpOf(route.query.gp, currentGp.value))
-const periodOptions = computed(() => anliegenPeriodOptions(currentGp.value ? anliegenListGps(currentGp.value) : [], chosenGp.value))
+const chosenGp = computed(() => anliegenListGpOf(custom.value?.span.gp ?? route.query.gp, currentGp.value))
+/* „Eigener Zeitraum" first, as on /entwuerfe. */
+const periodOptions = computed(() => [CUSTOM_SPAN_OPTION, ...anliegenPeriodOptions(currentGp.value ? anliegenListGps(currentGp.value) : [], chosenGp.value)])
 /* Ended: the period the rows are of lies before the running one. Never
  * without the server's word on which is running. */
 const periodEnded = computed(() => (data.value ? gpHasEnded(data.value.gp, data.value.currentGp) : false))
 const onlyOpen = computed(() => !periodEnded.value && route.query.alle !== '1')
 
-function setQuery(next: { art?: AnliegenArt; onlyOpen?: boolean; gp?: string }) {
+type QueryChange = { art?: AnliegenArt; onlyOpen?: boolean; gp?: string; span?: { von: string; bis: string } | null }
+/** The list's address with one change — what `setQuery` goes to and a link to a variant carries. */
+function queryWith(next: QueryChange): Record<string, string> {
   const a = next.art ?? art.value
   const open = next.onlyOpen ?? route.query.alle !== '1'
+  const span = next.span !== undefined ? next.span : custom.value
   const gp = next.gp ?? chosenGp.value
   const query: Record<string, string> = {}
   if (a !== 'alle') query.art = a
-  if (gp && gp !== currentGp.value) query.gp = gp
+  if (span?.von) {
+    query[VON_PARAM] = span.von
+    if (span.bis) query[BIS_PARAM] = span.bis
+  } else if (gp && gp !== currentGp.value) query.gp = gp
   if (!open) query.alle = '1'
   if (searchTerm.value) query.q = searchTerm.value
-  navigateTo({ path: route.path, query }, { replace: true })
+  return query
+}
+function setQuery(next: QueryChange) {
+  navigateTo({ path: route.path, query: queryWith(next) }, { replace: true })
 }
 const artModel = computed<AnliegenArt>({ get: () => art.value, set: (v) => setQuery({ art: v }) })
+/* Choosing „Eigener Zeitraum" opens on the running calendar week, from
+ * Monday; choosing a period drops the dates. */
 const gpModel = computed<string>({
-  get: () => chosenGp.value || currentGp.value || '',
-  set: (v) => setQuery({ gp: v }),
+  get: () => (custom.value ? CUSTOM_SPAN_VALUE : chosenGp.value || currentGp.value || ''),
+  set: (v) => (v === CUSTOM_SPAN_VALUE
+    ? setQuery({ span: { von: weekStartOf(todayIso()), bis: '' } })
+    : setQuery({ gp: v, span: null })),
 })
+/* The calendar hands back both ends at once (`DateRangeButton`). */
+function setSpan(span: { von: string; bis: string }): void {
+  const next = anliegenCustomSpanOf(span.von, span.bis)
+  if (next) setQuery({ span: next })
+}
+/* The part of the span before the period it is shown in, named and linked
+ * (`SpanCutNote`). Not on the Bundesrat's tab: it is cut by the reader's own
+ * days, unclipped. */
+const spanCut = computed(() => {
+  const c = custom.value?.span
+  if (!c?.cut || art.value === 'petition-bundesrat') return null
+  return { span: { ...c, cut: c.cut }, to: { query: queryWith({ span: { von: c.cut.from, bis: c.cut.to ?? '' } }) } }
+})
+/* A link's span the list moved or could not place is written back, so the
+ * address says what the list shows. */
+watch(custom, (c) => {
+  if (import.meta.server) return
+  const von = firstQueryValue(route.query[VON_PARAM]) ?? ''
+  const bis = firstQueryValue(route.query[BIS_PARAM]) ?? ''
+  if (!von && !bis) return
+  if (!c || c.von !== von || c.bis !== bis || route.query.gp !== undefined) setQuery({ span: c })
+}, { immediate: true })
 
-const inView = computed(() => (data.value ? anliegenRowsInView(data.value, art.value) : []))
+const inPeriod = computed(() => (data.value ? anliegenRowsInView(data.value, art.value) : []))
+const inSpan = computed(() => (custom.value ? anliegenRowsInSpan(inPeriod.value, custom.value, art.value) : null))
+const inView = computed(() => inSpan.value?.rows ?? inPeriod.value)
 const sorted = computed(() => sortAnliegenRows(inView.value))
 const filtered = computed(() => filterAnliegenRows(sorted.value, art.value, onlyOpen.value).map(anliegenRowView))
 /* The search (16.11.2026; the list had none, the draft list and the EU's do):
@@ -108,14 +159,14 @@ const filtered = computed(() => filterAnliegenRows(sorted.value, art.value, only
 const views = computed(() => filtered.value.filter((v) => !searchTerm.value || matchesQuery(anliegenHaystack(v), searchTerm.value)))
 
 const PAGE_STEP = 10
-const { visible, shown, more, all } = usePagedList(views, PAGE_STEP, [art, onlyOpen, chosenGp, searchTerm])
+const { visible, shown, more, all } = usePagedList(views, PAGE_STEP, [art, onlyOpen, chosenGp, custom, searchTerm])
 
-const countLine = computed(() => (data.value ? anliegenCountLineDe(data.value.gp, inView.value, art.value, onlyOpen.value, periodEnded.value) : null))
+const countLine = computed(() => (data.value ? anliegenCountLineDe(data.value.gp, inView.value, art.value, onlyOpen.value, periodEnded.value, inSpan.value) : null))
 const unreadLines = computed(() => (data.value ? anliegenUnreadDe(anliegenUnreadKinds(data.value), art.value) : []))
 /* A kind in view could not be read — the chosen one, or any under „Alle":
  * its failure stands, never „keine". */
 const viewUnread = computed(() => unreadLines.value.length > 0)
-const empty = computed(() => (data.value && !viewUnread.value ? anliegenEmptyDe(inView.value, data.value.gp, art.value, onlyOpen.value) : null))
+const empty = computed(() => (data.value && !viewUnread.value ? anliegenEmptyDe(inView.value, data.value.gp, art.value, onlyOpen.value, inSpan.value?.window ?? null) : null))
 
 useSeoMeta({
   title: ANLIEGEN_LIST_DE.title,
@@ -154,14 +205,20 @@ useSeoMeta({
           >
             {{ ANLIEGEN_LIST_DE.onlyOpen }}
           </ToggleChip>
-          <!-- The period, as on /entwuerfe (`?gp=`, `gpSpanLabelDe`). -->
-          <div class="min-w-0 md:w-72">
-            <label for="anliegen-gp" class="sr-only">{{ ANLIEGEN_LIST_DE.periodLabel }}</label>
-            <TokenSelect id="anliegen-gp" v-model="gpModel" block>
-              <TokenOption v-for="opt in periodOptions" :key="opt.value" :value="opt.value">{{ opt.label }}</TokenOption>
-            </TokenSelect>
-          </div>
+          <!-- The period, as on /entwuerfe (`?gp=`, `gpSpanLabelDe`), and
+               a span of the reader's own (`?von=&bis=`, `SpanSelect`). -->
+          <SpanSelect
+            id="anliegen-gp"
+            v-model="gpModel"
+            :label="ANLIEGEN_LIST_DE.periodLabel"
+            :options="periodOptions"
+            :span="custom ? { von: custom.von, bis: custom.bis } : null"
+            :min="ANLIEGEN_SPAN_MIN_DAY"
+            class="min-w-0 md:w-72"
+            @span="setSpan"
+          />
         </div>
+        <SpanCutNote v-if="spanCut" :span="spanCut.span" :to="spanCut.to" class="text-sm text-ink-muted" />
         <!-- The search on a line of its own, the whole width, after what
              fixes the set — as on `/entwuerfe`. -->
         <UInput

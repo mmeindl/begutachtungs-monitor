@@ -735,7 +735,17 @@ gets an entry of its own only where it carries a reason the rule does not.
   names the earlier part with a link („Nicht im Monitor"). The full text
   does not run under it: its hits know no date. Ends written the wrong way
   round are turned round; a `bis` without `von` is dropped. It opens on the
-  running calendar week, from Monday.
+  running calendar week, from Monday. No day after today: every day a list
+  cuts by lies in the past, so the calendar ends with today, a link's later
+  `bis` becomes the open end and a later `von` no span (`orderedRange`).
+  Today itself stays a fixed end, so a shared link keeps its days.
+  Every list with a „Zeitraum" offers it and draws it through one component
+  (`SpanSelect`, the Periodenwechsel note `SpanCutNote`): /entwuerfe and
+  /anliegen. On /anliegen a row falls in by the day it arrived (`arrivedAt`)
+  and the count line says „eingelangt"; the calendar starts with
+  `ANLIEGEN_FIRST_LIST_GP`, and a link's earlier start moves there. The tab
+  „Petitionen an den Bundesrat" is cut by the reader's days unclipped, since
+  the Bundesrat has no period.
 - **Upstream blocks are respected, not circumvented:** one request per second
   and a two-hour pause after a 403 at Steiermark's firewall; EUR-Lex's bot
   check is not bypassed, only the Cellar is queried (§12.64, §12.66).

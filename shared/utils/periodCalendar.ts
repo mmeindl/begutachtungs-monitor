@@ -20,7 +20,7 @@
  * the tests run on fixture calendars and never on dates entered here.
  */
 import type { LandCode } from '../types'
-import { formatDateDe } from './format'
+import { formatDateDe, todayIso } from './format'
 import { GP_STARTS, gpWindow, romanToInt } from './gp'
 import { LAND_CODES, LAND_NAME } from './laender'
 
@@ -403,12 +403,21 @@ export function customSpanOf(von: string, bis: string): CustomSpan | null {
  * day or '', a `bis` without a `von` dropped (a span needs its start), and two
  * ends written the wrong way round turned round — the reader meant the days
  * between them, and an empty list would only say they typed in a hurry.
+ *
+ * No day after today (18.11.2026): every day a list cuts by — a
+ * Begutachtung's start, an Anliegen's arrival, a Kundmachung — lies in the
+ * past, so an end after today says nothing an open end does not, and is
+ * made open („heute"; today itself stays a fixed end, so a shared link
+ * keeps its days); a later start holds nothing at all and is no span. The
+ * calendar offers no such day either (`DateRangeButton`).
  */
-export function orderedRange(von: string, bis: string): { von: string; bis: string } {
+export function orderedRange(von: string, bis: string, today: string = todayIso()): { von: string; bis: string } {
   const a = parseIsoDay(von)
   const b = parseIsoDay(bis)
   if (!a) return { von: '', bis: '' }
-  return b && b < a ? { von: b, bis: a } : { von: a, bis: b }
+  const [start, end] = b && b < a ? [b, a] : [a, b]
+  if (start > today) return { von: '', bis: '' }
+  return { von: start, bis: end && end <= today ? end : '' }
 }
 
 /** The Monday of the week a day lies in — where „Eigener Zeitraum" starts (the review a team splits by calendar weeks). */

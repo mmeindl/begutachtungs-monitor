@@ -10,8 +10,11 @@ import type { AnliegenDetail, AnliegenKind, AnliegenRow, AnliegenState } from '.
 import { anliegenStateOf } from '../shared/utils/anliegen'
 import { assembleAnliegenDetail, lastStageDate, type AnliegenContent } from '../server/utils/parliament/anliegen'
 import {
+  ANLIEGEN_SPAN_MIN_DAY,
   anliegenArtOf,
   anliegenCountLineDe,
+  anliegenCustomSpanOf,
+  anliegenRowsInSpan,
   anliegenEmptyDe,
   anliegenHeadline,
   anliegenRowStateDe,
@@ -278,5 +281,50 @@ describe('sort, filter and the count line', () => {
     expect(anliegenArtOf('foo')).toBe('alle')
     expect(anliegenArtOf(undefined)).toBe('alle')
     expect(anliegenArtOf(['petition'])).toBe('petition')
+  })
+})
+
+describe('a span of the reader\'s own on /anliegen (?von=&bis=, 18.11.2026)', () => {
+  // The list reaches back to GP XXII: a start before it moves there, a span wholly before it is none.
+  it('holds the span to the periods the list offers', () => {
+    expect(anliegenCustomSpanOf('2026-11-09', '2026-11-15')).toMatchObject({ von: '2026-11-09', bis: '2026-11-15', span: { gp: 'XXVIII', cut: null } })
+    expect(anliegenCustomSpanOf('2026-11-15', '2026-11-09')).toMatchObject({ von: '2026-11-09', bis: '2026-11-15' })
+    expect(anliegenCustomSpanOf('1990-01-01', '')?.von).toBe(ANLIEGEN_SPAN_MIN_DAY)
+    expect(anliegenCustomSpanOf('1990-01-01', '1991-01-01')).toBeNull()
+    expect(anliegenCustomSpanOf('', '2026-11-09')).toBeNull()
+  })
+
+  // Rows fall in by the day they arrived; a row without a day falls in none and is counted.
+  it('cuts by the day of arrival and counts the rows without one', () => {
+    const span = anliegenCustomSpanOf('2026-11-09', '')!
+    const rows = [
+      row('petition', 1, { arrivedAt: '2026-11-08' }),
+      row('petition', 2, { arrivedAt: '2026-11-09', open: true }),
+      row('buergerinitiative', 3, { arrivedAt: '2026-11-12' }),
+      row('petition', 4, { arrivedAt: null }),
+    ]
+    const cut = anliegenRowsInSpan(rows, span, 'alle')
+    expect(cut.rows.map((r) => r.root.inr)).toEqual([2, 3])
+    expect(cut.undated).toBe(1)
+    expect(anliegenCountLineDe('XXVIII', cut.rows, 'alle', false, false, cut))
+      .toBe('2 eingelangt seit 09.11.2026 (1 Anliegen ohne Tag des Einlangens steht in keinem Zeitraum), 1 davon offen')
+    expect(anliegenRowsInSpan(rows, span, 'buergerinitiative').undated).toBe(0)
+  })
+
+  // Over a Periodenwechsel the list's tabs are clipped to the later period; the Bundesrat's is not.
+  it('clips to the period, except on the Bundesrat\'s tab', () => {
+    const span = anliegenCustomSpanOf('2024-10-01', '2024-10-31')!
+    expect(span.span.cut).toEqual({ from: '2024-10-01', to: '2024-10-23' })
+    const rows = [row('petition-bundesrat', 1, { arrivedAt: '2024-10-02' })]
+    expect(anliegenRowsInSpan(rows, span, 'alle').rows).toEqual([])
+    expect(anliegenRowsInSpan(rows, span, 'petition-bundesrat').rows).toHaveLength(1)
+  })
+
+  // An empty span names its days, never „derzeit" or a period.
+  it('words the empty list by the span\'s days', () => {
+    const w = { from: '2026-11-09', to: '2026-11-15' }
+    expect(anliegenEmptyDe([], 'XXVIII', 'alle', false, w).title).toBe('Zwischen 09.11.2026 und 15.11.2026 ist kein Anliegen eingelangt.')
+    expect(anliegenEmptyDe([], 'XXVIII', 'petition', true, w).title).toBe('Zwischen 09.11.2026 und 15.11.2026 ist keine offene Petition eingelangt.')
+    expect(anliegenEmptyDe([], 'XXVIII', 'alle', false, { from: '2026-11-02', to: null }).title).toBe('Seit 02.11.2026 ist kein Anliegen eingelangt.')
   })
 })

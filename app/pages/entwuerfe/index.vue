@@ -1,8 +1,8 @@
 <script setup lang="ts">
 import type { DraftStation } from '#shared/types'
 import { LAND_NAME } from '#shared/utils/laender'
-import { earliestSpanDay, landtagParts, landtagValue, orderedRange, weekStartOf, windowDatesDe } from '#shared/utils/periodCalendar'
-import { formatDateDe, formatNumberDe, todayIso } from '#shared/utils/format'
+import { earliestSpanDay, landtagParts, landtagValue, orderedRange, weekStartOf } from '#shared/utils/periodCalendar'
+import { formatNumberDe, todayIso } from '#shared/utils/format'
 import {
   artSelectFor,
   artOptionReasonsFor,
@@ -375,16 +375,11 @@ function setSpan(span: { von: string; bis: string }): void {
   bis.value = next.bis
 }
 /* The part of the span before the period it is shown in (`CustomSpan.cut`):
- * named and linked, never dropped in silence. */
+ * named and linked, never dropped in silence (`SpanCutNote`). */
 const spanCut = computed(() => {
   const c = customSpan.value
   if (!c?.cut) return null
-  return {
-    shownFrom: formatDateDe(c.window.from),
-    gp: c.gp,
-    label: windowDatesDe(c.cut),
-    to: { query: urlQueryWith({ von: c.cut.from, bis: c.cut.to ?? '' }) },
-  }
+  return { span: { ...c, cut: c.cut }, to: { query: urlQueryWith({ von: c.cut.from, bis: c.cut.to ?? '' }) } }
 })
 const artSelect = computed(() => artSelectFor({
   chosen: chosenArt.value,
@@ -753,39 +748,17 @@ const statementsSortNote = computed(() => {
                  Values: the GP code (`?gp=`), a Land period's `sbg-17`
                  (`?landtag=`).
                  „Eigener Zeitraum" turns this cell into the range editor in
-                 place (18.11.2026): the span as text in the select's own
-                 face, „16.11.2026 – heute" for an open end, the select
-                 folded to its chevron at the end (`chevronOnly`). A press
-                 on the span opens a calendar in the site's face
-                 (`DateRangeButton`); native date fields came first and
-                 went the same day — the browser's picker cannot be styled
-                 or localised by the page and read as a foreign part. A row
-                 of its own under the selects read as a second filter and
-                 broke the line. The box div always stands and only the
-                 span button comes and goes before the select, so the
-                 select stays the same element and keeps focus when
-                 „Eigener Zeitraum" is picked. The span, its icon and the
-                 chevron fit the 254 px a 320 px phone leaves the box. -->
-            <div class="min-w-0 md:w-72 md:shrink-0">
-              <label for="filter-gp" class="sr-only">Zeitraum</label>
-              <div
-                class="flex min-w-0"
-                :class="customSpan && 'min-h-target rounded-md border border-baseline bg-surface text-sm text-ink hover:border-hover-edge hover:bg-hover'"
-              >
-                <DateRangeButton
-                  v-if="customSpan"
-                  :von="von"
-                  :bis="bis"
-                  :min="SPAN_MIN_DAY"
-                  @change="setSpan"
-                />
-                <TokenSelect id="filter-gp" v-model="spanSelect" block :chevron-only="!!customSpan">
-                  <TokenOption v-for="opt in spanOptions" :key="opt.value" :value="opt.value">
-                    {{ opt.label }}
-                  </TokenOption>
-                </TokenSelect>
-              </div>
-            </div>
+                 place (18.11.2026, `SpanSelect`, shared with /anliegen). -->
+            <SpanSelect
+              id="filter-gp"
+              v-model="spanSelect"
+              label="Zeitraum"
+              :options="spanOptions"
+              :span="customSpan ? { von, bis } : null"
+              :min="SPAN_MIN_DAY"
+              class="min-w-0 md:w-72 md:shrink-0"
+              @span="setSpan"
+            />
             <!-- The Ressort takes the rest of the line, so the filters end
                  where the search below ends; its names are the longest. -->
             <div class="min-w-0 md:flex-1">
@@ -808,12 +781,7 @@ const statementsSortNote = computed(() => {
         </div>
         <!-- A span over a Periodenwechsel shows its part in the later period
              (`customSpanOf`); the part before is named and one press away. -->
-        <GapNote v-if="spanCut" kind="outOfScope" class="text-sm text-ink-muted">
-          ein Zeitraum über den Beginn einer Gesetzgebungsperiode hinweg. Die
-          Liste zeigt ihn ab {{ spanCut.shownFrom }}, dem Beginn der
-          {{ spanCut.gp }}. GP; davor:
-          <NuxtLink :to="spanCut.to" class="link-inline font-medium">{{ spanCut.label }}</NuxtLink>.
-        </GapNote>
+        <SpanCutNote v-if="spanCut" :span="spanCut.span" :to="spanCut.to" class="text-sm text-ink-muted" />
         <GapNote
           v-if="unreadStageCount"
           kind="unavailable"

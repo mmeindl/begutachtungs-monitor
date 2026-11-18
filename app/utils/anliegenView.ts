@@ -40,6 +40,7 @@ import {
   ANLIEGEN_KIND_LABEL,
   ANLIEGEN_PATH,
   ANLIEGEN_SECTION_DE,
+  ANLIEGEN_FIRST_LIST_GP,
   anliegenArrivedInGp,
   anliegenCitation,
   anliegenIsBundesrat,
@@ -49,8 +50,9 @@ import {
   anliegenSupportFormUrl,
 } from '#shared/utils/anliegen'
 import { CLUB_NAMES } from '#shared/utils/clubs'
-import { gpSpanLabelDe } from '#shared/utils/gp'
+import { gpSpanLabelDe, gpWindow } from '#shared/utils/gp'
 import { formatDateDe, formatNumberDe } from '#shared/utils/format'
+import { type CustomSpan, type DateWindow, customSpanOf, inDateWindow, orderedRange, windowDatesDe } from '#shared/utils/periodCalendar'
 import { matchesQuery } from '#shared/utils/textMatch'
 import type { EntryState, EntryView, SecondCount } from './entryView'
 import { STATEMENT_QUOTE_PARLAMENT, STATEMENT_QUOTE_SOURCE } from './statementQuote'
@@ -1062,6 +1064,8 @@ export function anliegenCountLineDe(
   art: AnliegenArt,
   onlyOpen: boolean,
   periodEnded = false,
+  /** A span of the reader's own (`anliegenRowsInSpan`): its days, and the rows of the kind it could not place. */
+  span: { window: DateWindow; undated: number } | null = null,
 ): string {
   const ofKind = rows.filter((r) => art === 'alle' || r.root.kind === art)
   const open = ofKind.filter((r) => r.open === true).length
@@ -1069,9 +1073,16 @@ export function anliegenCountLineDe(
   const total = formatNumberDe(ofKind.length)
   const noun = art === 'alle' ? '' : ` ${ofKind.length === 1 ? ANLIEGEN_KIND_LABEL[art].one : ANLIEGEN_KIND_LABEL[art].many}`
   const unknownPart = unknown ? `; bei ${formatNumberDe(unknown)} ist die Beteiligung nicht lesbar` : ''
-  if (art === 'petition-bundesrat') return `${bundesratCountDe(ofKind, open, onlyOpen && !periodEnded, periodEnded)}${unknownPart}`
-  const br = ofKind.filter((r) => anliegenIsBundesrat(r.root.kind)).length
-  const period = `in der ${periodDe(gp)}${br ? ` (davon ${formatNumberDe(br)} ${br === 1 ? 'Petition' : 'Petitionen'} an den Bundesrat, nach dem Tag des Einlangens)` : ''}`
+  /* A row without a day of arrival falls in no span: said, never dropped in silence. */
+  const undatedPart = span?.undated
+    ? ` (${formatNumberDe(span.undated)} ${span.undated === 1 ? 'Anliegen ohne Tag des Einlangens steht' : 'Anliegen ohne Tag des Einlangens stehen'} in keinem Zeitraum)`
+    : ''
+  if (art === 'petition-bundesrat' && !span) return `${bundesratCountDe(ofKind, open, onlyOpen && !periodEnded, periodEnded)}${unknownPart}`
+  const br = art === 'petition-bundesrat' ? 0 : ofKind.filter((r) => anliegenIsBundesrat(r.root.kind)).length
+  const brPart = br ? ` (davon ${formatNumberDe(br)} ${br === 1 ? 'Petition' : 'Petitionen'} an den Bundesrat${span ? '' : ', nach dem Tag des Einlangens'})` : ''
+  /* Under a span of the reader's own every row is placed by the day it
+   * arrived, and the line says so — the day the span counts by. */
+  const period = `${span ? `eingelangt ${windowDatesDe(span.window)}` : `in der ${periodDe(gp)}`}${brPart}${undatedPart}`
   // An ended period: how many are open is no news there (`onlyOpenEnded`), so
   // the line counts the items and says nothing of an open window.
   if (periodEnded) return `${total}${noun} ${period}`
@@ -1109,12 +1120,29 @@ export function anliegenUnreadDe(kinds: readonly AnliegenKind[], art: AnliegenAr
  * a row could not be read, no emptiness is claimed: the sentence says what
  * could not be read.
  */
-export function anliegenEmptyDe(rows: readonly AnliegenRow[], gp: string, art: AnliegenArt, onlyOpen: boolean): { title: string; note: string | null } {
+export function anliegenEmptyDe(
+  rows: readonly AnliegenRow[],
+  gp: string,
+  art: AnliegenArt,
+  onlyOpen: boolean,
+  /** The days of a span of the reader's own, where one applies. */
+  span: DateWindow | null = null,
+): { title: string; note: string | null } {
   const ofKind = rows.filter((r) => art === 'alle' || r.root.kind === art)
-  if (onlyOpen) {
-    if (ofKind.some((r) => r.open === null)) {
-      return { title: gapDe('unreadable', 'ob Unterstützung und Stellungnahme möglich sind.'), note: null }
+  if (onlyOpen && ofKind.some((r) => r.open === null)) {
+    return { title: gapDe('unreadable', 'ob Unterstützung und Stellungnahme möglich sind.'), note: null }
+  }
+  /* Under a span of the reader's own the sentence names its days, never
+   * „derzeit" or a period: the reader chose the days. */
+  if (span) {
+    const days = span.to === null ? `Seit ${formatDateDe(span.from)}` : `Zwischen ${formatDateDe(span.from)} und ${formatDateDe(span.to)}`
+    const none = onlyOpen ? ANLIEGEN_NONE_OPEN_DE[art] : ANLIEGEN_NONE_DE[art]
+    return {
+      title: `${days} ist ${none} eingelangt.`,
+      note: onlyOpen && art === 'volksbegehren' ? ANLIEGEN_LIST_DE.vbSupportNote : null,
     }
+  }
+  if (onlyOpen) {
     if (art === 'volksbegehren') {
       return { title: 'Derzeit liegt kein Volksbegehren im Nationalrat, zu dem eine Stellungnahme möglich ist.', note: ANLIEGEN_LIST_DE.vbSupportNote }
     }
@@ -1127,8 +1155,70 @@ export function anliegenEmptyDe(rows: readonly AnliegenRow[], gp: string, art: A
     return { title: 'Derzeit ist kein Anliegen offen.', note: null }
   }
   if (art === 'petition-bundesrat') return { title: 'Das Parlament führt keine Petition an den Bundesrat.', note: null }
-  const what = art === 'alle' ? 'kein Anliegen' : art === 'petition' ? 'keine Petition' : art === 'buergerinitiative' ? 'keine Bürgerinitiative' : 'kein Volksbegehren'
-  return { title: `In der ${periodDe(gp)} liegt ${what} vor.`, note: null }
+  return { title: `In der ${periodDe(gp)} liegt ${ANLIEGEN_NONE_DE[art]} vor.`, note: null }
+}
+
+/** „kein Anliegen", „keine Petition" … — the empty sentences' subject, per choice. */
+const ANLIEGEN_NONE_DE: Readonly<Record<AnliegenArt, string>> = {
+  alle: 'kein Anliegen',
+  petition: 'keine Petition',
+  buergerinitiative: 'keine Bürgerinitiative',
+  volksbegehren: 'kein Volksbegehren',
+  'petition-bundesrat': 'keine Petition an den Bundesrat',
+}
+const ANLIEGEN_NONE_OPEN_DE: Readonly<Record<AnliegenArt, string>> = {
+  alle: 'kein offenes Anliegen',
+  petition: 'keine offene Petition',
+  buergerinitiative: 'keine offene Bürgerinitiative',
+  volksbegehren: 'kein offenes Volksbegehren',
+  'petition-bundesrat': 'keine offene Petition an den Bundesrat',
+}
+
+// ---------------------------------------------------------------------------
+// A span of the reader's own (`?von=&bis=`, 18.11.2026, as on /entwuerfe)
+// ---------------------------------------------------------------------------
+
+/** The first day the list's calendar offers: the start of the oldest period it lists (`ANLIEGEN_FIRST_LIST_GP`). */
+export const ANLIEGEN_SPAN_MIN_DAY = gpWindow(ANLIEGEN_FIRST_LIST_GP)?.from ?? ''
+
+/**
+ * `?von=&bis=` as /anliegen applies them: the days held against the Bund's
+ * calendar (`customSpanOf`), so the rows are fetched for the one period the
+ * span lies in, as on /entwuerfe. The list reaches back to
+ * `ANLIEGEN_FIRST_LIST_GP` only: a start before it is moved to that
+ * period's first day — the URL is rewritten with it, so the link says what
+ * the list shows — and a span wholly before it is no span. Null where none
+ * applies.
+ */
+export function anliegenCustomSpanOf(von: string, bis: string): { von: string; bis: string; span: CustomSpan } | null {
+  const asked = orderedRange(von, bis)
+  if (!asked.von || (asked.bis && asked.bis < ANLIEGEN_SPAN_MIN_DAY)) return null
+  const start = asked.von < ANLIEGEN_SPAN_MIN_DAY ? ANLIEGEN_SPAN_MIN_DAY : asked.von
+  const span = customSpanOf(start, asked.bis)
+  return span ? { von: start, bis: asked.bis, span } : null
+}
+
+/**
+ * The rows a span of the reader's own holds: those that arrived within its
+ * days (`arrivedAt`, both ends inclusive) — the one day every Anliegen
+ * carries from Parliament's list, and the day the Petitionen an den
+ * Bundesrat already stand in a period by. The tab „Petitionen an den
+ * Bundesrat" is cut by the reader's own days, unclipped: the Bundesrat has
+ * no period, and its rows come whole. `undated` counts the rows of the
+ * choice without a day, which fall in no span and are said, not dropped.
+ */
+export function anliegenRowsInSpan(
+  rows: readonly AnliegenRow[],
+  span: { von: string; bis: string; span: CustomSpan },
+  art: AnliegenArt,
+): { rows: AnliegenRow[]; window: DateWindow; undated: number } {
+  const window = art === 'petition-bundesrat' ? { from: span.von, to: span.bis || null } : span.span.window
+  const ofKind = rows.filter((r) => art === 'alle' || r.root.kind === art)
+  return {
+    rows: rows.filter((r) => inDateWindow(r.arrivedAt, window)),
+    window,
+    undated: ofKind.filter((r) => !r.arrivedAt).length,
+  }
 }
 
 /**
