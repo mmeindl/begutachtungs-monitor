@@ -50,6 +50,7 @@ const FETCHED: Record<string, string> = {
   'bgbl-jahrgang-seite': 'one page of a CLOSED Bundesgesetzblatt year, as it arrived; that year is finished, so it keeps for a month',
   'bgbl-jahrgang-seite-laufend': 'the same page of the RUNNING year, which still grows — its own name because one cached function carries one maxAge',
   'ris-begut-page': 'one page of the RIS result set, as it arrived — cached in dev only',
+  'ris-begut-open-on': 'the RIS records in Begutachtung on one day, as they arrived — the repair of a day paging broke; cached in dev only',
   'annex-pdf': "the ressort's annex PDF, byte for byte as base64 — cached in dev only",
   'drafts-list': 'list 81 of one GP, exactly as the API answered',
   'parliament-me-config': "the ME list's page configuration, as served",

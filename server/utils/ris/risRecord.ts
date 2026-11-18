@@ -310,6 +310,65 @@ export function risDocumentUrl(id: string): string {
   return `https://www.ris.bka.gv.at/Dokument.wxe?Abfrage=Begut&Dokumentnummer=${encodeURIComponent(id)}`
 }
 
+/**
+ * Collects the corpus page by page and notices what paging lost (18.11.2026).
+ *
+ * The Begut list can be sorted by one column only, and the read sorts by
+ * `EndeBegutachtungsfrist`. Records that share a day stand in no fixed order
+ * between two page requests, so where such a day straddles a page boundary a
+ * record can come on both pages and another on neither. Measured in one pass:
+ * 4.621 documents, 4.602 records, 19 sent twice, each beside a record that
+ * was skipped. Deduping hid the repeat, nothing showed the loss, and every
+ * rebuild lost a different handful: a draft missing from the list, or a
+ * Ministerialentwurf „without a RIS record".
+ *
+ * A repeat is the sign: its day is where a record is missing. The caller
+ * asks RIS for the records in Begutachtung on each such day
+ * (`InBegutachtungAm`, a few dozen records, so no boundary) and adds them
+ * here; in the measured pass that returned all 19. What still falls short
+ * of RIS's own count is for the caller to say aloud (`missing`).
+ */
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+export function begutCollector(flatten: (doc: any) => RisBegutFlat | null = flattenRisRecord) {
+  const byId = new Map<string, RisBegutFlat>()
+  const repeatedDays = new Set<string>()
+  return {
+    /** Adds one page as RIS sent it; a record seen before marks its day. */
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    add(docs: readonly any[]): void {
+      for (const doc of docs) {
+        const flat = flatten(doc)
+        if (!flat) continue
+        if (byId.has(flat.id)) {
+          if (flat.ende) repeatedDays.add(flat.ende)
+        } else byId.set(flat.id, flat)
+      }
+    },
+    /** The days a record was sent twice for, oldest first; empty once asked for. */
+    takeRepeatedDays(): string[] {
+      const days = [...repeatedDays].sort()
+      repeatedDays.clear()
+      return days
+    },
+    get size(): number {
+      return byId.size
+    },
+    /**
+     * The records by their Frist end, in the direction the pages came in,
+     * records without one first or last as RIS sorts them. A stable sort: a
+     * record added by the repair lands on its day, the rest keep their order.
+     */
+    records(direction: 'Ascending' | 'Descending'): RisBegutFlat[] {
+      const sign = direction === 'Ascending' ? 1 : -1
+      return [...byId.values()].sort((a, b) => sign * (a.ende ?? '').localeCompare(b.ende ?? ''))
+    },
+    /** How many records RIS counts that were not read. */
+    missing(hits: number): number {
+      return Math.max(0, hits - byId.size)
+    },
+  }
+}
+
 // Loosely typed: the OGD JSON is generated from XML and not contractual.
 /* eslint-disable @typescript-eslint/no-explicit-any */
 export function flattenRisRecord(doc: any): RisBegutFlat | null {

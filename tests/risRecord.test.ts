@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest'
 import type { RisConsultation } from '../shared/types'
 import {
   asArray,
+  begutCollector,
   flattenRisRecord,
   hasDocument,
   isOpenOn,
@@ -397,5 +398,41 @@ describe('withRisActiveOn', () => {
     expect(items[1]!.active).toBe(true)
     // Unchanged records keep their identity, the way `reconcileActive` does.
     expect(out[0]).toBe(items[0])
+  })
+})
+
+describe('begutCollector: what paging loses (18.11.2026)', () => {
+  // RIS sorts by the Frist end alone; records that share a day stand in no
+  // fixed order between two page requests. One pass of the real list sent 19
+  // records twice and skipped 19 others, every time on a shared day.
+  const doc = (id: string, ende: string | null) => ({
+    Data: { Metadaten: { Technisch: { ID: id }, Bundesrecht: { Kurztitel: id, Begut: ende ? { EndeBegutachtungsfrist: ende } : {} } } },
+  })
+
+  it('names the day of a record sent twice, and takes the skipped record from the day read whole', () => {
+    const collected = begutCollector()
+    collected.add([doc('A', '2026-05-20'), doc('B', '2026-05-26')])
+    // The next page repeats B; C, which shares its day, came on neither.
+    collected.add([doc('B', '2026-05-26'), doc('D', '2026-06-01')])
+    expect(collected.size).toBe(3)
+    expect(collected.missing(4)).toBe(1)
+    expect(collected.takeRepeatedDays()).toEqual(['2026-05-26'])
+    // „In Begutachtung am 26.05." returns the day's records, and others open then.
+    collected.add([doc('B', '2026-05-26'), doc('C', '2026-05-26'), doc('D', '2026-06-01')])
+    expect(collected.missing(4)).toBe(0)
+    // The repair's own repeats mark their days again; the caller asks once,
+    // before it. C stands on its day.
+    expect(collected.takeRepeatedDays()).toEqual(['2026-05-26', '2026-06-01'])
+    expect(collected.records('Ascending').map((r) => r.id)).toEqual(['A', 'B', 'C', 'D'])
+    expect(collected.records('Descending').map((r) => r.id)).toEqual(['D', 'B', 'C', 'A'])
+  })
+
+  it('keeps a record without a Frist end where RIS sorts it, and reports what stays short', () => {
+    const collected = begutCollector()
+    collected.add([doc('N', null), doc('A', '2026-05-20'), doc('N', null)])
+    // A repeat without a day cannot be asked for: nothing to repair with.
+    expect(collected.takeRepeatedDays()).toEqual([])
+    expect(collected.records('Ascending').map((r) => r.id)).toEqual(['N', 'A'])
+    expect(collected.missing(5)).toBe(3)
   })
 })

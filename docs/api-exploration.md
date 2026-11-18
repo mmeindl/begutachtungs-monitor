@@ -276,6 +276,8 @@ GET https://data.bka.gv.at/ris/api/v2.6/Bundesrecht?Applikation=Begut&...
 | `DokumenteProSeite` | `Ten`/`Twenty`/`Fifty`/`OneHundred` | max. 100 ⇒ full sync = ~46 requests |
 | `Sortierung.SortedByColumn` | `Kurztitel`/`EinbringendeStelle`/`EndeBegutachtungsfrist` | + `Sortierung.SortDirection=Ascending\|Descending` |
 
+**Paging is not stable within a sort tie** (measured 18.11.2026). One sort column only, and records with the same `EndeBegutachtungsfrist` change places between two page requests: one pass over 47 pages returned 4,621 documents and 4,602 distinct records, 19 of them twice, each at a page boundary inside a shared day. A full read therefore asks `InBegutachtungAm=<day>` for every day a record came twice for (`begutCollector`, `server/utils/ris/risRecord.ts`); that returned all 19.
+
 **No from/to date range** on the main endpoint. Incremental sync via the history endpoint:
 
 ```bash

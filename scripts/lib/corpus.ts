@@ -6,7 +6,7 @@
  * mapper: what a script counts is then what the site sees, not what a second
  * implementation of the mapper would see.
  */
-import { flattenRisRecord, type RisBegutFlat } from '../../server/utils/ris/risRecord'
+import { begutCollector, type RisBegutFlat } from '../../server/utils/ris/risRecord'
 import { bgblRecordOf, type BgblRecord } from '../../server/utils/ris/bgblJoin'
 import { RIS_API, getJson } from './http'
 import { sleep } from './async'
@@ -53,36 +53,45 @@ export interface RisCorpus {
  * else wants the newest first.
  */
 export async function fetchRisBegutCorpus(script: string, direction: 'Ascending' | 'Descending' = 'Descending'): Promise<RisCorpus> {
-  const seen = new Set<string>()
-  const records: RisBegutFlat[] = []
-  let hits = 0
-  for (let page = 1; page <= MAX_PAGES; page++) {
+  const collected = begutCollector()
+  /** One result page: of the whole list, or of the records in Begutachtung on `openOn`. */
+  const pageOf = async (page: number, openOn?: string): Promise<{ hits: number; docs: unknown[] }> => {
     const params = new URLSearchParams({
       Applikation: 'Begut',
       DokumenteProSeite: 'OneHundred',
       Seitennummer: String(page),
       'Sortierung.SortedByColumn': 'EndeBegutachtungsfrist',
       'Sortierung.SortDirection': direction,
+      ...(openOn ? { InBegutachtungAm: openOn } : {}),
     })
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const result = (await fetchPage(`${RIS_API}?${params}`, script, `Begut-Seite ${page}`) as any)?.OgdSearchResult
+    const result = (await fetchPage(`${RIS_API}?${params}`, script, openOn ? `Begut am ${openOn}, Seite ${page}` : `Begut-Seite ${page}`) as any)?.OgdSearchResult
     if (!result || result.Error) throw new Error(`RIS error on page ${page}`)
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const docs: any[] = [result.OgdDocumentResults?.OgdDocumentReference ?? []].flat()
-    hits = Number(result.OgdDocumentResults?.Hits?.['#text'] ?? 0)
-    for (const doc of docs) {
-      const flat = flattenRisRecord(doc)
-      if (flat && !seen.has(flat.id)) {
-        seen.add(flat.id)
-        records.push(flat)
-      }
-    }
-    process.stderr.write(`\rcorpus: page ${page} · ${records.length}/${hits} records`)
-    if (docs.length < PAGE_SIZE || page * PAGE_SIZE >= hits) break
+    return { hits: Number(result.OgdDocumentResults?.Hits?.['#text'] ?? 0), docs: [result.OgdDocumentResults?.OgdDocumentReference ?? []].flat() }
+  }
+  let hits = 0
+  for (let page = 1; page <= MAX_PAGES; page++) {
+    const res = await pageOf(page)
+    hits = res.hits
+    collected.add(res.docs)
+    process.stderr.write(`\rcorpus: page ${page} · ${collected.size}/${hits} records`)
+    if (res.docs.length < PAGE_SIZE || page * PAGE_SIZE >= hits) break
     await sleep(PAGE_PAUSE_MS)
   }
+  // Paging skips a record wherever it sends another twice; the day of the
+  // repeat is asked for whole (`begutCollector`, `ris/risRecord.ts`).
+  for (const day of collected.takeRepeatedDays()) {
+    for (let page = 1; page <= MAX_PAGES; page++) {
+      await sleep(PAGE_PAUSE_MS)
+      const res = await pageOf(page, day)
+      collected.add(res.docs)
+      if (res.docs.length < PAGE_SIZE || page * PAGE_SIZE >= res.hits) break
+    }
+    process.stderr.write(`\rcorpus: Nachlese ${day} · ${collected.size}/${hits} records`)
+  }
   process.stderr.write('\n')
-  return { hits, records }
+  if (collected.missing(hits) > 0) process.stderr.write(`corpus: ${collected.missing(hits)} von ${hits} Datensätzen fehlen nach der Nachlese\n`)
+  return { hits, records: collected.records(direction) }
 }
 
 /**

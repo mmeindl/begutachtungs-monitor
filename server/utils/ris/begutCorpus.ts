@@ -21,7 +21,7 @@ import {
 // Record shape and flattening live in `risRecord.ts` (pure, so scripts and
 // vitest can run the shipped mapper); both are auto-imported server-side, so
 // nothing is re-exported here.
-import { asArray, flattenRisRecord, risDocumentUrl, type RisBegutFlat } from './risRecord'
+import { asArray, begutCollector, flattenRisRecord, risDocumentUrl, type RisBegutFlat } from './risRecord'
 import { RIS_API_BASE, risJson, sleep, type UpstreamPolicy } from '../upstream/fetch'
 import { unpack } from '../cache/memoryDriver'
 import { staleWithin } from '../cache/stale'
@@ -61,13 +61,14 @@ interface RisBegutCorpus {
 // Loosely typed: the OGD JSON is generated from XML and not contractual.
 /* eslint-disable @typescript-eslint/no-explicit-any */
 
-async function fetchRisPage(page: number): Promise<{ hits: number; docs: any[] }> {
+async function fetchRisPage(page: number, openOn?: string): Promise<{ hits: number; docs: any[] }> {
   const params = new URLSearchParams({
     Applikation: 'Begut',
     DokumenteProSeite: 'OneHundred',
     Seitennummer: String(page),
     'Sortierung.SortedByColumn': 'EndeBegutachtungsfrist',
     'Sortierung.SortDirection': 'Ascending',
+    ...(openOn ? { InBegutachtungAm: openOn } : {}),
   })
   let result: any
   try {
@@ -107,6 +108,30 @@ const risPage = defineCachedFunction(
     shouldBypassCache: () => !import.meta.dev,
   },
 )
+/**
+ * The records in Begutachtung on one day, for the repair of a day paging
+ * broke (`begutCollector`, `ris/risRecord.ts`). Cached like the pages and for
+ * the same reason: re-deriving the corpus in dev costs no network.
+ */
+const risOpenOn = defineCachedFunction(
+  async (day: string): Promise<any[]> => {
+    const docs: any[] = []
+    for (let page = 1; page <= RIS_MAX_PAGES; page++) {
+      await sleep(RIS_PAGE_PAUSE_MS)
+      const res = await fetchRisPage(page, day)
+      docs.push(...res.docs)
+      if (res.docs.length < RIS_PAGE_SIZE || page * RIS_PAGE_SIZE >= res.hits) break
+    }
+    return docs
+  },
+  {
+    name: 'ris-begut-open-on',
+    getKey: (day: string) => day,
+    maxAge: RIS_CORPUS_TTL_S,
+    swr: false,
+    shouldBypassCache: () => !import.meta.dev,
+  },
+)
 /* eslint-enable @typescript-eslint/no-explicit-any */
 
 /**
@@ -119,21 +144,21 @@ const risPage = defineCachedFunction(
  */
 export const getRisBegutCorpus = defineCachedFunction(
   async (): Promise<RisBegutCorpus> => {
-    const seen = new Set<string>()
-    const records: RisBegutFlat[] = []
+    const collected = begutCollector(flattenRisRecord)
     let hits = 0
     for (let page = 1; page <= RIS_MAX_PAGES; page++) {
       const res = await risPage(page)
       hits = res.hits
-      for (const doc of res.docs) {
-        const flat = flattenRisRecord(doc)
-        if (flat && !seen.has(flat.id)) {
-          seen.add(flat.id)
-          records.push(flat)
-        }
-      }
+      collected.add(res.docs)
       if (res.docs.length < RIS_PAGE_SIZE || page * RIS_PAGE_SIZE >= hits) break
     }
+    // Paging skips a record wherever it sends another twice; the day of the
+    // repeat is asked for whole (`begutCollector`).
+    for (const day of collected.takeRepeatedDays()) collected.add(await risOpenOn(day))
+    // What is still short is said, not swallowed: the list of drafts and the
+    // join would otherwise show a gap as an absence.
+    if (collected.missing(hits) > 0) console.warn(`[ris-begut] ${collected.size} von ${hits} Datensätzen gelesen, ${collected.missing(hits)} fehlen nach der Nachlese`)
+    const records = collected.records('Ascending')
     const corpus = { fetchedAt: new Date().toISOString(), hits, records }
     corpusIndex = indexOf(corpus)
     return corpus
