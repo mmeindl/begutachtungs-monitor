@@ -114,6 +114,80 @@ const LIST_OPEN_RE = /<(?:aufzaehlung|[a-z]*liste)\b[^>]*\bebene="(\d+)"/g
 const ANNOTATION_RE = /\(Anm\.?(?:\s|<[^>]+>)*:[^()]*(?:\([^()]*\)[^()]*)*\)/g
 
 /**
+ * **A note RIS splits over two blocks** (19.11.2026). Tabakmonopolgesetz § 1
+ * ends „<i>(Anm.: Abs. 2a bis 2c aufgehoben durch VfGH, BGBl. I Nr.
+ * 111/2015,</i>" in one `<absatz>` and „<i>Abs. 3 und 4 aufgehoben durch
+ * BGBl. I Nr. 110/2023)</i>" in the next. `ANNOTATION_RE` reads one block
+ * and needs the closing bracket, so both halves stood in the Lesefassung of
+ * 61/ME XXVIII as law, oracle-confirmed, because the annex's „…" covered them.
+ * Removed here across at most two block boundaries, the tags kept so the
+ * blocks stay blocks; a note that does not close by then is left as it is.
+ */
+const NOTE_OPEN_RE = /\(\s*Anm\.?(?:\s|<[^>]+>)*:/g
+const TEXT_BLOCK_END_RE = /^<\/(?:absatz|listelem|schlussteil|schluss)>$/
+const STRUCTURE_OPEN_RE = /^<(?:ueberschrift|table)\b/
+function withoutSplitNotes(body: string): string {
+  let out = ''
+  let from = 0
+  for (const m of body.matchAll(NOTE_OPEN_RE)) {
+    if (m.index < from) continue
+    let depth = 0
+    let ends = 0
+    let close = -1
+    for (let i = m.index; i < body.length && i - m.index < 3000; i++) {
+      const ch = body[i]!
+      if (ch === '<') {
+        const end = body.indexOf('>', i)
+        if (end < 0) break
+        const tag = body.slice(i, end + 1)
+        if (STRUCTURE_OPEN_RE.test(tag)) break
+        if (TEXT_BLOCK_END_RE.test(tag)) ends++
+        i = end
+        continue
+      }
+      if (ch === '(') depth++
+      else if (ch === ')' && --depth === 0) {
+        close = i
+        break
+      }
+    }
+    // Within one block it is `ANNOTATION_RE`'s, unclosed it is nobody's.
+    if (close < 0 || ends === 0 || ends > 2) continue
+    out += body.slice(from, m.index) + (body.slice(m.index, close + 1).match(/<[^>]+>/g) ?? []).join('')
+    from = close + 1
+  }
+  return out + body.slice(from)
+}
+
+/**
+ * RIS's footnote apparatus: a rule „(________" or a numbered note „Anm. 1:",
+ * „Anm. 1 (zu Z 346):", and behind it the note's own continuation, set in
+ * italics. ASVG § 108 prints „Anm. 2: tägliche Höchstbeitragsgrundlage" and
+ * then the valorised amounts as five italic `<schlussteil>` blocks („gemäß
+ * BGBl. II Nr. 590/2021 für 2022: 189,00 €"), which stood in the tree as five
+ * Schlussteile of Abs. 6 (19.11.2026). Over the cache, every italic block
+ * between such a note and the next upright one is apparatus: amounts, quoted
+ * Novelle wording, „vgl." references.
+ */
+const FOOTNOTE_RULE_RE = /^\(?\s*_{5,}\s*\)?$/
+const NUMBERED_NOTE_RE = /^\(?\s*Anm\.?\s*\d+[a-z]?\s*(?:\([^)]*\)\s*)?\.?\s*:/
+const OPENS_ITALIC_RE = /^\s*<i>/
+/**
+ * An `erltext` block that is a note, not law, wherever it stands: RIS's
+ * italics, its own „Anm", a footnote („*) Die Kundmachung des Abkommens …",
+ * „<super>1</super>) Die Kundmachung …"), the footnote rule.
+ */
+function erltextNote(inner: string, t: string): boolean {
+  return OPENS_ITALIC_RE.test(inner) || /^\(?\s*Anm\b/.test(t) || /^\*+\s*\d{0,2}\s*\)/.test(t) || /^\d{1,2}[a-z]?\s*\)\s/.test(t) || /_{5,}/.test(t)
+}
+
+/** A line that ends no sentence, directly above a block that opens a numbered Absatz: that Absatz's heading. */
+function headsAbsatz(t: string, next: RegExpExecArray | RegExpMatchArray | undefined): boolean {
+  if (/[.:;,!?]["“”')\]]*$/.test(t) || next === undefined) return false
+  return ABS_MARKER_RE.test(text(next[3]!).replace(/^§+\s*\d+[a-z]*\.?\s*/i, ''))
+}
+
+/**
  * A block's text. `stripMarkup` carries the block/inline distinction, and it
  * is shared with the annex on purpose: this is the text the annex's left
  * column is scored against, so a rule applied to one side alone would be the
@@ -207,6 +281,7 @@ const UNIT_ID_RE = new RegExp(String.raw`(?:§|Art\.?|Artikel|Anl(?:age)?\.?)\s*
 export function parseKonsParagraph(xml: string): LawNode | null {
   let body = xml
   for (const re of STRIP) body = body.replace(re, '')
+  body = withoutSplitNotes(body)
   // A table has no place in the tree (§ → Abs → Z → lit): its cells carry
   // their own `<absatz>` blocks, and read in document order they become
   // Absätze of the §. The whole document used to be dropped for that (NEHG
@@ -304,14 +379,28 @@ export function parseKonsParagraph(xml: string): LawNode | null {
     return found
   }
   let lastItem: { node: LawNode; abs: LawNode; ebene: number | null } | null = null
+  /** Inside RIS's footnote apparatus (`NUMBERED_NOTE_RE`): italic blocks are its continuation. */
+  let footnotes = false
+  /** Closing parts read out of `erltext` (below), to be told from text between list items afterwards. */
+  const fromErltext = new Set<LawNode>()
 
-  for (const m of body.matchAll(BLOCK_RE)) {
+  const blocks = [...body.matchAll(BLOCK_RE)].filter((b) => b[1] === 'table' || /ct="text"/.test(b[2]!))
+  for (const [at, m] of blocks.entries()) {
     const tag = m[1]!
     const attrs = m[2]!
     const inner = m[3]!
     // A `<table>` carries no `ct`, and it is the one block read for its text
     // rather than for its structure.
     if (tag !== 'table' && !/ct="text"/.test(attrs)) continue
+    if (tag !== 'table' && tag !== 'ueberschrift') {
+      const t = text(inner)
+      if (FOOTNOTE_RULE_RE.test(t) || NUMBERED_NOTE_RE.test(t)) {
+        footnotes = true
+        continue
+      }
+      if (footnotes && OPENS_ITALIC_RE.test(inner)) continue
+    }
+    footnotes = false
     if (tag === 'table') {
       sawTable = true
       const t = text(inner)
@@ -393,7 +482,54 @@ export function parseKonsParagraph(xml: string): LawNode | null {
     // with an Absatz marker: 10 such Absätze (two Sparkassengesetz §§ with
     // (10) to (15)), and 4 that repeat a marker the § already has — a list
     // inside a schedule-like §, which stays out.
-    if (typ === 'erltext' && hasAbsaetze && typedAsNote(inner, root)) continue
+    //
+    // **And an unmarked block behind an Absatz is that Absatz's closing
+    // part** (19.11.2026). UStG 1994 § 21 Abs. 1 goes on after its first
+    // block with three `erltext` blocks — „Der Bundesminister für Finanzen
+    // kann durch Verordnung vorsehen, daß … entfällt", the Durchschriften,
+    // the electronic Übermittlung — binding law, and skipped they were
+    // missing from the oracle-confirmed Lesefassung of 338/ME XXVII: the
+    // annex's „(1) bis (5) …" gave no check a word to miss. RIS's newer
+    // converter writes the same sentences of the 2025 version as
+    // `<schlussteil ebene="0">`, which this file has always read as the
+    // Absatz's `schluss`; read that way here, both versions have one shape,
+    // and an instruction that replaces the Absatz takes them along, as it
+    // does a Schlussteil. Notes stay out (`erltextNote`), and so does an
+    // unmarked block before the first Absatz: there it is a heading.
+    //
+    // A bare designation is the next list item, written on a line of its own
+    // where its content opens with a list or a picture: „102." behind Z 101
+    // with its Litera below (KStG § 26c), „n)" behind the `<listelem>` „m)"
+    // (StVO § 54 Abs. 5). Read as the item the `<listelem>` would have
+    // given, where it continues the level of the Absatz's last item; any
+    // other lone designation („23." over Absätze, GewO § 376) has no place
+    // in the tree and stays out, as before.
+    //
+    // So does a line that ends no sentence and stands right above a numbered
+    // Absatz: „Steuerbefreiung und Steuersatz" over UStG § 24 Abs. 6 is that
+    // Absatz's heading, upright `erltext` in the version of 2021 and italic
+    // in that of 2025. A heading inside a § is no law text here
+    // (`ueberschrift` above), and read in one version only it made the
+    // Prüfstand score a § the engine had got right „halb angewendet".
+    if (typ === 'erltext' && hasAbsaetze && notMistypedAbsatz(inner, root)) {
+      const t = text(inner)
+      if (!currentAbs || !t || ABS_MARKER_RE.test(t) || erltextNote(inner, t) || headsAbsatz(t, blocks[at + 1])) continue
+      const z = Z_MARKER_RE.exec(t)
+      const lit = LIT_MARKER_RE.exec(t) ?? LIT_DOT_MARKER_RE.exec(t)
+      if (z || lit) {
+        const level: NodeLevel = z ? 'z' : 'lit'
+        if (lastItem?.abs === currentAbs && lastItem.node.level === level) {
+          const node = makeNode(level, (z ?? lit)![1]!, t, '')
+          ;(level === 'lit' ? (lastChild(currentAbs, 'z') ?? currentAbs) : currentAbs).children.push(node)
+          lastItem = { node, abs: currentAbs, ebene: ebeneAt(m.index) }
+        }
+        continue
+      }
+      const node = makeNode('schluss', 'schluss', '', t)
+      currentAbs.children.push(node)
+      fromErltext.add(node)
+      continue
+    }
     if (typ !== 'abs' && typ !== 'satz' && typ !== '' && typ !== 'erltext') continue
     const gld = GLD_RE.exec(inner)
     const rest = text(gld ? inner.replace(gld[0], ' ') : inner)
@@ -435,16 +571,25 @@ export function parseKonsParagraph(xml: string): LawNode | null {
   // to the first of them and edit the wrong law. Where the designations do
   // not tell the units apart, the refusal is the right answer and stays.
   if (sawTable && root && !uniquelyAddressable(root)) return null
+  // An `erltext` block the list goes on behind is no closing part: „b)
+  // Gebotszeichen." heads the Ziffern of StVO § 52 that follow it, „Tarifpost
+  // 4" the entries of GebG § 33. Filed as the Absatz's `schluss` it would be
+  // the slot „Im Schlussteil" finds (`kons/lawApply.ts`, `sentenceSlots`);
+  // under its own id it is text in its place, and no sentence of that
+  // Absatz is counted across it.
+  for (const node of fromErltext) {
+    const host = root ? lawTextNodes(root).find((n) => n.children.includes(node)) : undefined
+    if (host && host.children.slice(host.children.indexOf(node) + 1).some((c) => c.level !== 'schluss')) node.id = 'zwischentext'
+  }
   return root
 }
 
 /**
- * Whether an `erltext` block in a § with Absätze is the Absatz RIS mistyped
- * rather than a note: it opens with an Absatz marker the § does not carry
- * yet. Named for what it rules out, so the call reads as the skip it
- * guards.
+ * Whether an `erltext` block in a § with Absätze is NOT an Absatz RIS
+ * mistyped: it does not open with an Absatz marker the § lacks yet. Such a
+ * block is a closing part, a note or a heading, decided where it is called.
  */
-function typedAsNote(inner: string, root: LawNode | null): boolean {
+function notMistypedAbsatz(inner: string, root: LawNode | null): boolean {
   const am = /^\((\d+[a-z]?)\)\s/.exec(text(inner))
   return !am || !root || root.children.some((c) => c.level === 'abs' && c.id === am[1])
 }

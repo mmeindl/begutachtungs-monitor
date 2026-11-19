@@ -2053,8 +2053,11 @@ function applyOne(law: StandingLaw, { op, payload, line }: Instruction, renamed:
         // "Dem Abs. 2 wird folgender Satz angefügt" puts the sentence at the
         // end of the Absatz. When the Absatz carries a list, its end is
         // behind the list — the Schlussteil — not the text in front of it.
-        const schluss = [...host.children].reverse().find((c) => c.level === 'schluss')
-        if (schluss) schluss.text = `${schluss.text} ${added}`.replace(/\s+/g, ' ').trim()
+        // Only a Schlussteil that IS the end: a table, or text the list goes
+        // on behind (`zwischentext`, `lawtext/konsTree.ts`), is no place for
+        // the new sentence, which then closes the Absatz on its own.
+        const last = host.children.at(-1)
+        if (last?.level === 'schluss' && last.id === 'schluss') last.text = `${last.text} ${added}`.replace(/\s+/g, ' ').trim()
         else if (host.children.length) host.children.push(makeNode('schluss', 'schluss', '', added))
         else host.text = `${host.text} ${added}`.replace(/\s+/g, ' ').trim()
         return null

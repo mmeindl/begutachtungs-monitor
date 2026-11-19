@@ -323,16 +323,132 @@ describe('parseKonsParagraph', () => {
     expect(plainText(node)).toContain('Die Messdauer hat mindestens sechs Monate zu betragen.')
   })
 
-  // In a § that has proper Absätze the same tag carries something else, and
-  // taking it as text glued it onto the last Absatz — 15 paragraphs the
-  // engine had reproduced exactly then counted as incomplete.
-  it('ignores erltext where the § has Absätze of its own', () => {
-    const xml = `<risdok><nutzdaten><abschnitt>
-      <absatz typ="erltext" ct="artikel_anlage">§ 4</absatz>
-      <absatz typ="abs" ct="text"><gldsym>§ 4.</gldsym> (1) Der Antrag ist schriftlich zu stellen.</absatz>
-      <absatz typ="erltext" ct="text">Angefügter Block, der nicht zum Absatz gehört.</absatz>
+  // UStG 1994 § 21 as RIS serves it (version 2020): Abs. 1 goes on in
+  // `erltext` blocks, binding law the Lesefassung of 338/ME XXVII lacked.
+  // The version of 2025 writes the same sentences as `<schlussteil
+  // ebene="0">`, and both read alike (19.11.2026).
+  const ustg21 = (continuation: string) => `<risdok><nutzdaten><abschnitt>
+      <absatz typ="erltext" ct="artikel_anlage">§ 21</absatz>
+      <absatz typ="abs" ct="text"><gldsym>§ 21.</gldsym> (1) Der Unternehmer hat eine Voranmeldung einzureichen.</absatz>
+      ${continuation}
+      <absatz typ="abs" ct="text">(2) Für Kleinunternehmer gilt das Kalendervierteljahr.</absatz>
     </abschnitt></nutzdaten></risdok>`
-    expect(plainText(parseKonsParagraph(xml)!)).not.toContain('Angefügter Block')
+  it('reads an unmarked erltext block behind an Absatz as its closing part, as RIS later types it', () => {
+    const asErltext = parseKonsParagraph(ustg21('<absatz typ="erltext" ct="text" halign="j">Der Bundesminister für Finanzen kann durch Verordnung vorsehen, daß die Voranmeldung entfällt.</absatz>'))!
+    const asSchlussteil = parseKonsParagraph(ustg21('<schlussteil ebene="0" art="normal" ct="text">Der Bundesminister für Finanzen kann durch Verordnung vorsehen, daß die Voranmeldung entfällt.</schlussteil>'))!
+    expect(plainText(asErltext)).toContain('kann durch Verordnung vorsehen')
+    expect(asErltext.children[0]!.children).toEqual([expect.objectContaining({ level: 'schluss', id: 'schluss' })])
+    expect(plainText(asErltext)).toBe(plainText(asSchlussteil))
+    expect(bodyText(asErltext)).toBe(bodyText(asSchlussteil))
+  })
+
+  it('replaces such an Absatz together with its closing part', () => {
+    const standing: StandingLaw = { paragraphs: [parseKonsParagraph(ustg21('<absatz typ="erltext" ct="text">Der Bundesminister kann vorsehen, daß die Voranmeldung entfällt.</absatz>'))!] }
+    const result = run(standing, instr('§ 21 Abs. 1 lautet:', ['(1) Der Unternehmer hat die Voranmeldung elektronisch einzureichen.']))
+    expect(result.results.every((r) => r.applied)).toBe(true)
+    const text = plainText(result.law.paragraphs[0]!)
+    expect(text).toContain('elektronisch einzureichen')
+    expect(text).not.toContain('Der Bundesminister kann vorsehen')
+    expect(text).toContain('Für Kleinunternehmer')
+  })
+
+  // What `erltext` also carries in a § with Absätze, and what stays out of
+  // the law text: RIS's notes in italics, footnotes („*)", a superscript
+  // number), the footnote rule, and a line that heads the next Absatz
+  // (UStG § 24: „Steuerbefreiung und Steuersatz" over Abs. 6).
+  it('keeps notes, footnotes and headings in erltext out of the law text', () => {
+    const xml = `<risdok><nutzdaten><abschnitt>
+      <absatz typ="erltext" ct="artikel_anlage">§ 24</absatz>
+      <absatz typ="abs" ct="text"><gldsym>§ 24.</gldsym> (1) Der Wiederverkäufer versteuert die Differenz.</absatz>
+      <absatz typ="erltext" ct="text"><i>Italic note of RIS</i></absatz>
+      <absatz typ="erltext" ct="text">*) Die Kundmachung des Abkommens wird später erfolgen.</absatz>
+      <absatz typ="erltext" ct="text"><super>1</super>) Die Kundmachung des Vertrages wird später erfolgen.</absatz>
+      <absatz typ="erltext" ct="text">______________________</absatz>
+      <absatz typ="erltext" ct="text">Steuerbefreiung und Steuersatz</absatz>
+      <absatz typ="abs" ct="text">(6) Die Lieferungen unterliegen dem Normalsteuersatz.</absatz>
+    </abschnitt></nutzdaten></risdok>`
+    const node = parseKonsParagraph(xml)!
+    expect(plainText(node)).toBe('Der Wiederverkäufer versteuert die Differenz. Die Lieferungen unterliegen dem Normalsteuersatz.')
+  })
+
+  // A bare designation is the next list item, written on a line of its own
+  // because its content opens with a list: „102." behind Z 101 with its
+  // Litera (KStG § 26c). A lone designation over Absätze stays out.
+  it('reads a bare designation in erltext as the next list item where it continues the list', () => {
+    const xml = `<risdok><nutzdaten><abschnitt>
+      <absatz typ="erltext" ct="artikel_anlage">§ 26c</absatz>
+      <absatz typ="abs" ct="text"><gldsym>§ 26c.</gldsym></absatz>
+      <liste><ziffernliste ebene="1">
+      <listelem ct="text"><symbol stellen="4">101.</symbol>§ 8 Abs. 2a ist erstmals anzuwenden.</listelem>
+      </ziffernliste></liste>
+      <absatz typ="erltext" ct="text"><tab align="r" />102.</absatz>
+      <liste><literaliste ebene="2">
+      <listelem ct="text"><symbol stellen="2">a)</symbol>§ 22 Abs. 1 tritt mit 1. Jänner 2028 in Kraft.</listelem>
+      </literaliste></liste>
+    </abschnitt></nutzdaten></risdok>`
+    const abs = parseKonsParagraph(xml)!.children[0]!
+    expect(abs.children.map((c) => `${c.level}:${c.id}`)).toEqual(['z:101', 'z:102'])
+    expect(abs.children[1]!.children.map((c) => `${c.level}:${c.id}`)).toEqual(['lit:a'])
+  })
+
+  // „b) Gebotszeichen." heads the Ziffern of StVO § 52 that follow it: text in
+  // its place, but not the Absatz's Schlussteil.
+  it('files an erltext block the list goes on behind as text between items, not as the Schlussteil', () => {
+    const xml = `<risdok><nutzdaten><abschnitt>
+      <absatz typ="erltext" ct="artikel_anlage">§ 52</absatz>
+      <absatz typ="abs" ct="text"><gldsym>§ 52.</gldsym> Die Vorschriftszeichen sind</absatz>
+      <liste><ziffernliste ebene="1">
+      <listelem ct="text"><symbol stellen="2">1.</symbol>„Fahrverbot (in beiden Richtungen)".</listelem>
+      </ziffernliste></liste>
+      <absatz typ="erltext" ct="text">b) Gebotszeichen.</absatz>
+      <liste><ziffernliste ebene="1">
+      <listelem ct="text"><symbol stellen="2">15.</symbol>„Vorgeschriebene Fahrtrichtung".</listelem>
+      </ziffernliste></liste>
+    </abschnitt></nutzdaten></risdok>`
+    const abs = parseKonsParagraph(xml)!.children[0]!
+    expect(abs.children.map((c) => `${c.level}:${c.id}`)).toEqual(['z:1', 'schluss:zwischentext', 'z:15'])
+    const standing: StandingLaw = { paragraphs: [parseKonsParagraph(xml)!] }
+    const result = run(standing, instr('Im Schlussteil des § 52 wird das Wort "Gebotszeichen" durch das Wort "Gebote" ersetzt.'))
+    expect(result.results.some((r) => r.applied)).toBe(false)
+    // A sentence appended to the § closes it behind the list, and does not
+    // join the text between the items.
+    const appended = run({ paragraphs: [parseKonsParagraph(xml)!] }, instr('Dem § 52 wird folgender Satz angefügt:', ['Weitere Zeichen bestimmt die Verordnung.']))
+    const after = appended.law.paragraphs[0]!.children[0]!
+    expect(after.children.map((c) => `${c.level}:${c.id}`)).toEqual(['z:1', 'schluss:zwischentext', 'z:15', 'schluss:schluss'])
+    expect(after.children[1]!.text).toBe('b) Gebotszeichen.')
+  })
+
+  // Tabakmonopolgesetz § 1 as RIS serves it: the note is split over two
+  // blocks, and each half alone escaped `ANNOTATION_RE`.
+  it('strips an editorial note RIS splits over two blocks', () => {
+    const xml = `<risdok><nutzdaten><abschnitt>
+      <absatz typ="erltext" ct="artikel_anlage">§ 1</absatz>
+      <absatz typ="abs" ct="text"><gldsym>§ 1.</gldsym> (1) Tabakerzeugnisse sind Monopolgegenstände.</absatz>
+      <absatz typ="abs" ct="text">(2) Tabakerzeugnisse im Sinne dieses Bundesgesetzes sind Tabakwaren.</absatz>
+      <absatz typ="abs" ct="text"><i>(Anm.: Abs. 2a bis 2c aufgehoben durch VfGH, BGBl. I Nr. 111/2015,</i></absatz>
+      <absatz typ="abs" ct="text"><i>Abs. 3 und 4 aufgehoben durch BGBl. I Nr. 110/2023)</i></absatz>
+    </abschnitt></nutzdaten></risdok>`
+    const node = parseKonsParagraph(xml)!
+    expect(plainText(node)).not.toMatch(/Anm|aufgehoben/)
+    expect(node.children.map((c) => c.id)).toEqual(['1', '2'])
+  })
+
+  // ASVG § 108 as RIS serves it: the footnote rule, numbered notes, and the
+  // note's valorised amounts as italic Schlussteile — read as five
+  // Schlussteile of Abs. 6.
+  it('keeps the footnote apparatus out, its italic continuation included', () => {
+    const xml = `<risdok><nutzdaten><abschnitt>
+      <absatz typ="erltext" ct="artikel_anlage">§ 108</absatz>
+      <absatz typ="abs" ct="text"><gldsym>§ 108.</gldsym> (6) Zur Vervielfachung ist der Betrag heranzuziehen.</absatz>
+      <absatz typ="erltext" ct="text"><i>(___________________</i></absatz>
+      <absatz typ="erltext" ct="text"><i>Anm. 1: Aufwertungszahl vgl. BGBl. II Nr. 590/2021</i></absatz>
+      <absatz typ="erltext" ct="text"><i>Anm. 2: tägliche Höchstbeitragsgrundlage</i></absatz>
+      <liste><schlussteil ebene="1" art="normal" ct="text"><i>gemäß BGBl. II Nr. 590/2021 für 2022: 189,00 €</i></schlussteil>
+      <schlussteil ebene="1" art="normal" ct="text"><i>gemäß BGBl. II Nr. 459/2022 für 2023: 195,00 €)</i></schlussteil></liste>
+    </abschnitt></nutzdaten></risdok>`
+    const node = parseKonsParagraph(xml)!
+    expect(plainText(node)).toBe('Zur Vervielfachung ist der Betrag heranzuziehen.')
+    expect(node.children[0]!.children).toEqual([])
   })
 
   // RIS spells the closing clause of an enumeration two ways, and which one a

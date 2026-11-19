@@ -830,6 +830,14 @@ gets an entry of its own only where it carries a reason the rule does not.
   in five is a trivial difference (a title fragment, a reprinted contents
   line); the sentence stays true there. A part set otherwise that yields
   no row counts its pages as unread (`droppedPages`).
+- **An unmarked `erltext` block behind an Absatz of the standing law is
+  that Absatz's closing part** (19.11.2026), the shape RIS's newer converter
+  gives the same sentences (`<schlussteil ebene="0">`). Skipped, binding
+  sentences were missing from oracle-confirmed Lesefassungen (UStG § 21,
+  BUAG § 13d): an annex row's „…" leaves no check a word to miss. RIS's
+  apparatus stays out: italics, „Anm", footnotes, the footnote rule and the
+  italic blocks behind a numbered note, a note split over two blocks, and a
+  line that heads the next numbered Absatz (`lawtext/konsTree.ts`).
 - **What the instruments cannot prove:** the annex oracle and fault injection
   do not show the output is free of error. Only the BGBl test bench (RIS
   after entry into force) has ground truth (§12.12c).
