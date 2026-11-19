@@ -1036,7 +1036,13 @@ gets an entry of its own only where it carries a reason the rule does not.
   against the Kundmachung and one draft read as HTML and as XML are null
   comparisons, and every residue that is not editorial carries its reason in
   `scripts/harness/stationBaseline.json`. A residue there is a line to
-  explain or fix, never an accepted one.
+  explain or fix, never an accepted one. The Länder's station pairs are
+  held by `scripts/harness/landStations.ts` the same way: an invariant hit
+  read and found to be the documents' own stands in
+  `landStationsAccepted.json` with its reason, and an entry whose hit no
+  longer occurs fails the run as a new hit does (19.11.2026; until then the
+  harness failed on main for two real changes, and the third hit, a
+  reader fault, stood unread among them).
 - **Report per-draft figures (median, share of drafts)** over pooled
   percentages, which a few large laws dominate (§12.12).
 - **Figures about windows, claims and joins are measured on a production

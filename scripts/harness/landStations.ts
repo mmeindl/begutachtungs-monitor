@@ -42,7 +42,17 @@
  *    in a unit's text;
  *  - `Unteranweisung neu`: an instruction shown as new whose text opens
  *    with a sub-instruction's number („1.1. In der Z 6 …").
- * A hit fails the run (exit 1) and is printed with its comparison.
+ * A hit fails the run (exit 1) and is printed with its comparison — unless
+ * `landStationsAccepted.json` names it with the reason it is the documents'
+ * own (19.11.2026: K-TDBG § 10 enumerates in the Landesgesetzblatt what the
+ * draft ran on; the Biber-Verordnung adds Wildregion 5.4). An accepted hit
+ * that no longer occurs fails the run too: the record moves with the
+ * reading in the same commit, as `stationBaseline.json` does.
+ *
+ * Counted beside them, not asserted: the instructions a pair withholds or
+ * names as unread because one side or both did not read what they announce
+ * (`announcedText.ts`, 19.11.2026), per pair in `comparisons.jsonl` and
+ * `--against`.
  *
  * Output: `<dir>/comparisons.jsonl` (one line per pair: state, stats, every
  * unit with its non-equal segments), `<dir>/summary.md`. `--against <dir>`
@@ -85,6 +95,8 @@ const { textSources } = await import('../../server/utils/laender/texts/stations'
 const sha1 = (s: string) => createHash('sha1').update(s).digest('hex')
 const EU = '.cache/eu-laender'
 const OWN_DOCS = '.harness-cache/land-stations-docs'
+/** The invariant hits read and found to be the documents' own, each with why (committed). */
+const ACCEPTED = 'scripts/harness/landStationsAccepted.json'
 mkdirSync(OWN_DOCS, { recursive: true })
 
 // --- Bytes: cached wherever they are, else fetched at 1 request/s ---------
@@ -149,6 +161,9 @@ interface ComparisonLine {
   to: string | null
   stats: LandLawDiffResponse['stats'] | null
   units: UnitLine[]
+  /** Units the comparison withholds, with the reason; and those it shows with their announced text unread (`announcedText.ts`). */
+  withheld: string[]
+  unread: string[]
 }
 const lines: ComparisonLine[] = []
 const segmentsOf = (u: LawDiffUnit): string[] =>
@@ -169,7 +184,7 @@ for (const item of items) {
   if (!pairs.length) continue
   const sources = textSources(item.land, detail, pagesOf)
   for (const [from, to] of pairs as [LandTextStation, LandTextStation][]) {
-    const line: ComparisonLine = { land: item.land, draft: item.id, pair: `${from}→${to}`, state: 'verglichen', reason: null, from: null, to: null, stats: null, units: [] }
+    const line: ComparisonLine = { land: item.land, draft: item.id, pair: `${from}→${to}`, state: 'verglichen', reason: null, from: null, to: null, stats: null, units: [], withheld: [], unread: [] }
     lines.push(line)
     const a = sources[from]
     const b = sources[to]
@@ -189,6 +204,8 @@ for (const item of items) {
       }
       line.stats = value.stats
       line.units = value.units.map((u) => ({ article: u.article, id: u.id, fromId: u.fromId, change: u.change, editorial: !!u.editorial, segments: segmentsOf(u), violations: violations(u) }))
+      line.withheld = value.withheld.map((w) => `${w.law ?? '-'}|${w.id}|${w.reason ?? 'standing'}`)
+      line.unread = (value.unreadAnnounced ?? []).map((w) => `${w.law ?? '-'}|${w.id}`)
     } catch (err) {
       line.state = /nicht im Cache/.test(String(err)) ? 'fehlt' : 'Fehler'
       line.reason = String(err).slice(0, 200)
@@ -217,13 +234,27 @@ for (const [pair, ls] of [...byPair].sort()) {
 out.push('')
 out.push('## Invarianten')
 out.push('')
-const hits = lines.flatMap((l) => l.units.filter((u) => u.violations.length).map((u) => ({ l, u })))
+const allHits = lines.flatMap((l) => l.units.filter((u) => u.violations.length).map((u) => ({ l, u })))
+/* A hit is keyed by what it is, not by where it stands in the output: the invariants, the draft, the pair, the law and the unit. */
+const hitKey = ({ l, u }: { l: ComparisonLine; u: UnitLine }) => `${u.violations.join(', ')} | ${l.draft} ${l.pair} | ${u.article ?? '-'} | ${u.id}`
+const acceptedRecord = JSON.parse(readFileSync(ACCEPTED, 'utf8')) as { note: string; accepted: Record<string, string> }
+const hits = allHits.filter((h) => !(hitKey(h) in acceptedRecord.accepted))
+const accepted = allHits.filter((h) => hitKey(h) in acceptedRecord.accepted)
+/* Only where the run covers the record's drafts: a run limited to one Land or one draft says nothing of the others. */
+const ranDrafts = new Set(lines.map((l) => l.draft))
+const stale = Object.keys(acceptedRecord.accepted).filter((k) => ranDrafts.has(k.split(' | ')[1]!.split(' ')[0]!) && !accepted.some((h) => hitKey(h) === k))
 for (const inv of INVARIANTS) {
   const h = hits.filter((x) => x.u.violations.includes(inv))
-  out.push(`- ${inv}: ${h.length} Einheiten in ${new Set(h.map((x) => `${x.l.draft} ${x.l.pair}`)).size} Vergleichen`)
+  const a = accepted.filter((x) => x.u.violations.includes(inv)).length
+  out.push(`- ${inv}: ${h.length} Einheiten in ${new Set(h.map((x) => `${x.l.draft} ${x.l.pair}`)).size} Vergleichen${a ? ` (dazu ${a} angenommen, landStationsAccepted.json)` : ''}`)
 }
 out.push('')
 for (const { l, u } of hits) out.push(`- [${u.violations.join(', ')}] ${l.draft} ${l.pair} ${u.article ?? '-'} ${u.fromId && u.fromId !== u.id ? `${u.fromId} → ` : ''}${u.id} ${u.change}${u.editorial ? ' (redaktionell)' : ''} ${u.segments.slice(0, 4).join(' | ').slice(0, 300)}`)
+for (const k of stale) out.push(`- [angenommen, tritt nicht mehr auf] ${k} — ${acceptedRecord.accepted[k]}`)
+const withheldUnits = lines.flatMap((l) => l.withheld.filter((w) => w.endsWith('|announced')))
+const unreadUnits = lines.flatMap((l) => l.unread)
+out.push('')
+out.push(`Angekündigter Text nicht gelesen (announcedText.ts): ${withheldUnits.length} Anweisungen zurückgehalten in ${lines.filter((l) => l.withheld.some((w) => w.endsWith('|announced'))).length} Vergleichen, ${unreadUnits.length} gezeigt und als „nicht lesbar" genannt in ${lines.filter((l) => l.unread.length).length} Vergleichen`)
 const errors = lines.filter((l) => l.state === 'Fehler')
 if (errors.length) {
   out.push('')
@@ -251,11 +282,16 @@ if (against) {
     const om = new Map(o.units.map((u) => [unitKey(u), u]))
     const nm = new Map(l.units.map((u) => [unitKey(u), u]))
     const diffs = [...new Set([...om.keys(), ...nm.keys()])].filter((k) => shown(om.get(k)) !== shown(nm.get(k)))
+    // A record from before 19.11.2026 has neither list.
+    const heldOld = new Set([...(o.withheld ?? []), ...(o.unread ?? []).map((w) => `${w}|unread`)])
+    const heldNew = new Set([...l.withheld, ...l.unread.map((w) => `${w}|unread`)])
+    const held = [...heldNew].filter((w) => !heldOld.has(w)).map((w) => `+ ${w}`).concat([...heldOld].filter((w) => !heldNew.has(w)).map((w) => `- ${w}`))
     const stats = (x: ComparisonLine) => (x.stats ? `t${x.stats.total} u${x.stats.unchanged} c${x.stats.changed} e${x.stats.editorial} i${x.stats.inserted} r${x.stats.removed}` : x.state)
-    if (!diffs.length && stats(o) === stats(l)) continue
+    if (!diffs.length && !held.length && stats(o) === stats(l)) continue
     moved++
     out.push(`### ${key(l)}: ${stats(o)} → ${stats(l)}`)
     for (const k of diffs) out.push(`- ${k.replace(/\|/g, ' ')}\n  - alt: ${shown(om.get(k))}\n  - neu: ${shown(nm.get(k))}`)
+    for (const w of held) out.push(`- zurückgehalten/nicht lesbar ${w.replace(/\|/g, ' ')}`)
   }
   out.push('')
   out.push(`Bewegte Vergleiche: ${moved} von ${lines.length}`)
@@ -263,4 +299,4 @@ if (against) {
 writeFileSync(join(outDir, 'summary.md'), out.join('\n'))
 console.log(out.join('\n'))
 if (missing.length) console.log(`\nFehlende PDFs:\n${missing.join('\n')}`)
-process.exit(hits.length ? 1 : 0)
+process.exit(hits.length || stale.length ? 1 : 0)
