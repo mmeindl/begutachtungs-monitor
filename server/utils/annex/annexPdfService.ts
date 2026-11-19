@@ -26,7 +26,7 @@
  * page paid for the PDF twice, because two sections read the same annex
  * (`kons/konsService.ts`, `annex/textComparisonService.ts`).
  */
-import { parseAnnexPdf, sameTypesetting, type AnnexPage, type AnnexParse } from './annexPdf'
+import { parseAnnexParts, type AnnexPage, type AnnexParse } from './annexPdf'
 import { pagesOf } from './annexPdfPages'
 import { DERIVED_CACHE } from '../cache/base'
 import { storageKeyOf } from '../cache/key'
@@ -119,49 +119,15 @@ function articlesKey(articles: readonly DraftArticle[]): string {
  */
 export const annexFromPdf = defineCachedFunction(
   async (urls: readonly string[], articles: readonly DraftArticle[]): Promise<AnnexParse | null> => {
-    // **The parts of one annex are joined as PAGES, before the geometry is
-    // read.** A ressort may publish one draft's Gegenüberstellung in several
-    // PDFs („(Artikel1)" and „(Artikel 2)"), and the parse resolves the law
-    // boundaries against the draft's whole Artikel list. Parsing each file on
-    // its own holds half an annex against all of the draft and refuses it for
-    // skipping a law it never claimed to carry — the same reason
-    // `parseTextComparison` joins its parts before pass 2. Page order is the
-    // order RIS lists the documents in.
-    //
-    // pdf.js reads a damaged file as an *empty* document rather than failing,
-    // so a part with no pages and one with no text on any page both count as
-    // unreadable — a scored run against nothing looks like a result
-    // (`scripts/lib/harnessCache.ts`).
-    const parts: AnnexPage[][] = []
+    // Each part as pages, or null where pdf.js could not open it; how the
+    // parts make one annex — joined, read apart, or refused for a part that
+    // could not be read — is `parseAnnexParts`'s, which the harness calls too.
+    const parts: (AnnexPage[] | null)[] = []
     for (const url of urls) {
       const base64 = await fetchAnnexPdf(url)
-      const pages = await pagesOf(new Uint8Array(Buffer.from(base64, 'base64'))).catch(() => null)
-      if (pages !== null && pages.some((page) => page.items.length > 0)) parts.push(pages)
+      parts.push(await pagesOf(new Uint8Array(Buffer.from(base64, 'base64'))).catch(() => null))
     }
-    const first = parts[0]
-    if (!first) return null
-    // **Joined only where the parts are set alike.** Joined pages are measured
-    // as one document, so a part set otherwise would take the majority and
-    // drop the pages that carry the comparison — which is what the
-    // Methodenverordnung Wasser does with 72 portrait pages of schedules
-    // against 7 landscape pages of Gegenüberstellung (`annexPdf.sameTypesetting`).
-    const annex = parseAnnexPdf(parts.filter((p) => sameTypesetting(first, p)).flat(), articles)
-    // A part set differently is its own document and is read on its own. It
-    // contributes its rows and nothing else: its dropped pages are NOT the
-    // annex's, because `droppedPages` means „pages of this annex whose
-    // geometry we could not vouch for" and a document that is not a
-    // two-column comparison at all is a different statement — the one
-    // `unreadable` already makes. The Anlagen of the Methodenverordnung are
-    // exactly that: a single-column list of methods, no column headings, no
-    // rows.
-    for (const part of parts.filter((p) => !sameTypesetting(first, p))) {
-      const apart = parseAnnexPdf(part, articles)
-      if (apart.rows.length > 0) {
-        annex.rows.push(...apart.rows)
-        annex.droppedPages += apart.droppedPages
-      }
-    }
-    return annex
+    return parseAnnexParts(parts, articles)
   },
   {
     name: 'annex-pdf-parse',

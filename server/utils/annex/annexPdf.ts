@@ -28,6 +28,7 @@ import { notationOnly } from './annexText'
 import { isElisionRangeOnly, isElidedPair } from './elision'
 import { HEADER_CURRENT_RE, HEADER_PROPOSED_RE } from './tableCells'
 import { PARAGRAPH_NUMBER } from '../../../shared/utils/paragraphNumber'
+import { gapDe } from '../../../shared/utils/gaps'
 
 /**
  * One positioned text run, in PDF user space: origin bottom-left, y upward,
@@ -2236,4 +2237,61 @@ export function parseAnnexPdf(pages: readonly AnnexPage[], articles: readonly Dr
   }
   designateAfter(rows)
   return { rows, refusal: resolution.refusal, unplaced: frontMatter + contents, unplacedKinds: { frontMatter, contents }, droppedPages }
+}
+
+/**
+ * The parts of one annex, read as the annex — the one rule the request path
+ * (`annexFromPdf` in `annex/annexPdfService.ts`) and the harness
+ * (`harness/annexPdf.ts`) both call; the harness kept a copy of it by hand
+ * until 19.11.2026. `null` is a part whose PDF could not be opened.
+ *
+ * **Joined as PAGES, before the geometry is read.** A ressort may publish one
+ * draft's Gegenüberstellung in several PDFs („(Artikel1)" and „(Artikel 2)"),
+ * and the parse resolves the law boundaries against the draft's whole Artikel
+ * list: parsed on its own, half an annex is refused for skipping a law it
+ * never claimed to carry. **Joined only where the parts are set alike**
+ * (`sameTypesetting`): a part set otherwise is its own document, read on its
+ * own, and contributes its rows and nothing else — the Methodenverordnung
+ * Wasser's 72 portrait pages of schedules against 7 landscape pages of
+ * Gegenüberstellung.
+ *
+ * **A part that could not be read refuses the whole annex** (19.11.2026).
+ * pdf.js reads a damaged file as an empty document, and such a part used to
+ * be skipped without a word: the laws it carried then had no rows, the page
+ * said „in der Beilage fanden wir zu ihnen keine Gegenüberstellung", and
+ * the Lesefassung withheld them as „anhang-schweigt" — or the parse refused
+ * the package for „überspringt ein Gesetz", blaming the ressort for our
+ * read (measured by blanking one part of each of the 8 multi-part annexes
+ * on this path; none is unreadable today). Without the part the rest cannot
+ * be held against the draft's laws, so nothing is shown and the gap says why.
+ * Null where no part could be read at all, as before.
+ */
+export function parseAnnexParts(parts: readonly (readonly AnnexPage[] | null)[], articles: readonly DraftArticle[] = []): AnnexParse | null {
+  const read = parts.filter((part): part is readonly AnnexPage[] => part !== null && part.some((page) => page.items.length > 0))
+  const first = read[0]
+  if (!first) return null
+  const unread = parts.length - read.length
+  if (unread > 0) {
+    return {
+      rows: [],
+      refusal: null,
+      droppedPages: 0,
+      unreadable: gapDe('unreadable', unread === 1
+        ? `Eines der ${parts.length} Dokumente der Textgegenüberstellung ließ sich nicht auslesen. Ohne es lassen sich die übrigen den Gesetzen des Entwurfs nicht sicher zuordnen; darum zeigt der Monitor die Gegenüberstellung nicht.`
+        : `${unread} der ${parts.length} Dokumente der Textgegenüberstellung ließen sich nicht auslesen. Ohne sie lassen sich die übrigen den Gesetzen des Entwurfs nicht sicher zuordnen; darum zeigt der Monitor die Gegenüberstellung nicht.`),
+    }
+  }
+  const annex = parseAnnexPdf(read.filter((part) => sameTypesetting(first, part)).flat(), articles)
+  // A part set differently contributes its rows and nothing else: its dropped
+  // pages are NOT the annex's, because `droppedPages` means „pages of this
+  // annex whose geometry we could not vouch for", and a document that is no
+  // two-column comparison at all is the statement `unreadable` makes.
+  for (const part of read.filter((p) => !sameTypesetting(first, p))) {
+    const apart = parseAnnexPdf(part, articles)
+    if (apart.rows.length > 0) {
+      annex.rows.push(...apart.rows)
+      annex.droppedPages += apart.droppedPages
+    }
+  }
+  return annex
 }

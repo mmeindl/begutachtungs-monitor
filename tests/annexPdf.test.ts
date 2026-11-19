@@ -1,5 +1,5 @@
 import { describe, expect, expectTypeOf, it } from 'vitest'
-import { columnBoundary, linesFromPage, parseAnnexPdf, sameTypesetting, type AnnexItem, type AnnexLayout, type AnnexPage, type AnnexParse, type PageGeometry } from '../server/utils/annex/annexPdf'
+import { columnBoundary, linesFromPage, parseAnnexParts, parseAnnexPdf, sameTypesetting, type AnnexItem, type AnnexLayout, type AnnexPage, type AnnexParse, type PageGeometry } from '../server/utils/annex/annexPdf'
 import { fromMacRoman, isMacRomanMisread, spelledOut, spellingOf, uprightRuns, type RawRun } from '../server/utils/annex/annexPdfPages'
 import type { DraftArticle } from '../server/utils/lawtext/draftArticles'
 import { draftArticles as draft } from './helpers/builders'
@@ -1398,6 +1398,29 @@ describe('sameTypesetting — when several PDFs are one annex (26.09.2026)', () 
     // A title page in another format must not decide what the document is.
     const doc = [pageOf([], 595), pageOf([], 842), pageOf([], 842), pageOf([], 842)]
     expect(sameTypesetting(doc, [pageOf([], 842)])).toBe(true)
+  })
+})
+
+describe('parseAnnexParts — the parts of one annex (19.11.2026)', () => {
+  const part = () => [headerPage(), page([{ y: 700, left: '§ 1. (1) Die Behörde entscheidet.', right: '§ 1. (1) Das Gericht entscheidet.' }])]
+
+  it('reads the parts that can be read as one annex', () => {
+    expect(parseAnnexParts([part()], ONE_LAW)!.rows).toHaveLength(1)
+  })
+
+  // A damaged part comes out of pdf.js as an empty document. Skipped, its
+  // laws read as absent from the annex — „in der Beilage fanden wir zu ihnen
+  // keine Gegenüberstellung", or the package refused for skipping a law.
+  it('refuses the whole annex where one part could not be read, and says why', () => {
+    for (const unread of [null, [pageOf([])]]) {
+      const parse = parseAnnexParts([part(), unread], ONE_LAW)!
+      expect(parse.rows).toEqual([])
+      expect(parse.unreadable).toMatch(/^Nicht lesbar: Eines der 2 Dokumente der Textgegenüberstellung ließ sich nicht auslesen\./)
+    }
+  })
+
+  it('answers null where no part could be read at all, as before', () => {
+    expect(parseAnnexParts([null, [pageOf([])]], ONE_LAW)).toBeNull()
   })
 })
 

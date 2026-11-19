@@ -28,7 +28,7 @@
  * therefore travels with the source (`publisher`), and the page derives the
  * claim from it (`#shared/utils/provenance`).
  */
-import { gapDe } from '#shared/utils/gaps'
+import { gapDe, splitGap } from '#shared/utils/gaps'
 import type { Publisher, TraceLink } from '#shared/types'
 import type { DraftArticle } from '../lawtext/draftArticles'
 import { mapDocuments } from '../parliament/detailJson'
@@ -182,8 +182,16 @@ async function readRis(parts: readonly RisDocumentUrls[], articles: readonly Dra
   const rasterised = xml === null || isScanned(xml)
   if (!rasterised) {
     const rest = await Promise.all(parts.slice(1).map((p) => (p.xml ? fetchDocument(p.xml) : null)))
-    const parsed = parseTextComparison([xml!, ...rest.filter((x): x is string => x !== null && !isScanned(x))], articles)
-    if (parsed.rows.length === 0) return parsed.unreadable ?? gapDe('unreadable', 'Die Textgegenüberstellung ließ sich nicht auslesen.')
+    // A further part that carries no table — no XML, or a scan — refuses the
+    // whole annex, as an unreadable PDF part does (`parseAnnexParts`): it was
+    // dropped without a word, and its laws then read as absent from the
+    // annex (19.11.2026; no record of the corpus has one today).
+    const unread = rest.filter((x) => x === null || isScanned(x)).length
+    if (unread > 0) {
+      return gapDe('unreadable', `${unread === 1 ? 'Eines' : unread} der ${parts.length} Dokumente der Textgegenüberstellung ${unread === 1 ? 'liegt' : 'liegen'} nicht als Tabelle vor. Ohne ${unread === 1 ? 'es' : 'sie'} lassen sich die übrigen den Gesetzen des Entwurfs nicht sicher zuordnen; darum zeigt der Monitor die Gegenüberstellung nicht.`)
+    }
+    const parsed = parseTextComparison([xml!, ...rest.filter((x): x is string => x !== null)], articles)
+    if (parsed.rows.length === 0) return asGap(parsed.unreadable) ?? gapDe('unreadable', 'Die Textgegenüberstellung ließ sich nicht auslesen.')
     return {
       parsed,
       // The XML table is the ressort's own structure; the PDF below is the
@@ -201,7 +209,7 @@ async function readRis(parts: readonly RisDocumentUrls[], articles: readonly Dra
   // table parse cannot: how many pages it refused.
   const fromPdf = await annexFromPdf(pdfs, articles)
   if (fromPdf === null) return gapDe('unreadable', 'Die Textgegenüberstellung ließ sich auch aus dem PDF nicht auslesen.')
-  if (fromPdf.rows.length === 0) return fromPdf.unreadable ?? gapDe('unreadable', 'Die Textgegenüberstellung ließ sich nicht auslesen.')
+  if (fromPdf.rows.length === 0) return asGap(fromPdf.unreadable) ?? gapDe('unreadable', 'Die Textgegenüberstellung ließ sich nicht auslesen.')
   return {
     parsed: fromPdf,
     // „, aus dem PDF gelesen" went on 30.09.2026; the credit line says
@@ -211,6 +219,18 @@ async function readRis(parts: readonly RisDocumentUrls[], articles: readonly Dra
     readFrom: 'pdf',
     droppedPages: fromPdf.droppedPages,
   }
+}
+
+/**
+ * A parser's reason why nothing could be read, as the page's gap sentence.
+ * The parsers word it without the lead word („Die beiden
+ * Spaltenüberschriften der Beilage waren nicht zu finden …"), and their
+ * wording is pinned by the annex baseline; the lead word is set here, where
+ * the sentence leaves for the page (19.11.2026).
+ */
+function asGap(reason: string | undefined): string | undefined {
+  if (reason === undefined) return undefined
+  return splitGap(reason) ? reason : gapDe('unreadable', reason)
 }
 
 /**
