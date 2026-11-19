@@ -103,7 +103,9 @@ describe('consolidate — §§ the draft changes without naming them one by one 
     ]
     const r = await consolidate(who, blocks, '2026-01-01', sources(rows))
     expect(r.withheld).toEqual([{ id: '5', annexLaw: N, cause: 'neu-erlassen' }])
-    expect(r.paragraphs.map((p) => [p.annexLaw, p.id])).toEqual([[null, '5']])
+    // Under the Novelle's own group, which the gate asked: with no law the
+    // page listed 144/ME's BSFG §§ under „Gesetzestext" (19.11.2026).
+    expect(r.paragraphs.map((p) => [p.annexLaw, p.id])).toEqual([[T, '5']])
     expect(consolidationBalance(r)).toEqual({ balanced: true, missing: 0, twice: [] })
     expect(r.touched).toBe(2)
   })
@@ -145,7 +147,7 @@ describe('consolidate — §§ the draft changes without naming them one by one 
     const r = await consolidate(who, blocks, '2026-01-01', sources(rows))
     expect(r.paragraphs.map((p) => p.id)).toEqual(['6'])
     expect(r.paragraphs[0]!.segments.every((s) => s.type === 'equal')).toBe(true)
-    expect(r.withheld).toEqual([{ id: '5', annexLaw: null, cause: 'entfaellt' }])
+    expect(r.withheld).toEqual([{ id: '5', annexLaw: T, cause: 'entfaellt' }])
     expect(consolidationBalance(r).balanced).toBe(true)
   })
 })

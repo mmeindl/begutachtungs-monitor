@@ -233,8 +233,19 @@ export async function consolidate(
   if (parts.length === 0) return emptyConsolidated(who, 'keine-novelle')
 
   const isPackage = parts.length > 1
-  /** The key the annex is asked with, and the page looks the § up under. */
-  const annexLawOf = (w: ArticleWork): string | null => (isPackage ? w.article.key : null)
+  /** The laws the annex files rows under, once it is read (`annexOf`). */
+  let filedLaws: ReadonlySet<string> = new Set()
+  /**
+   * The key the annex is asked with, and the page looks the § up under: the
+   * Artikel's in a package, and in a single Novelle where the annex files
+   * rows under it — the condition `annexOf` asks by (19.11.2026). Null
+   * there, the page could not tell which of the annex's groups the
+   * Novelle's §§ belong to: 144/ME XXVIII enacts a law beside its one
+   * Novelle, and the BSFG §§ the annex printed without designations were
+   * listed under „Gesetzestext" after the new law's group, not under the
+   * BSFG's own.
+   */
+  const annexLawOf = (w: ArticleWork): string | null => (isPackage || (w.article.key !== null && filedLaws.has(w.article.key)) ? w.article.key : null)
 
   // ALL Artikel are counted, those beyond `MAX_LAWS` included: the
   // denominator on the page is „wie viele Paragraphen ändert dieser
@@ -329,7 +340,7 @@ export async function consolidate(
   // ANOTHER Artikel of the draft: the one Novelle of 144/ME XXVIII has no
   // rows of its own, and its § 1 and § 26 were held against the § 1 and
   // § 26 of the law the draft enacts anew (`anhang-fremd`, 26.10.2026).
-  const filedLaws = new Set([...byParagraph.keys()].map((key) => key.slice(0, key.lastIndexOf('#'))))
+  filedLaws = new Set([...byParagraph.keys()].map((key) => key.slice(0, key.lastIndexOf('#'))))
   const articleKeys = new Set(draftArticles(blocks).flatMap((a) => (a.key === null ? [] : [a.key])))
   const annexes = new Map<DraftArticle, AnnexOf>()
   const annexOf = (article: DraftArticle): AnnexOf => {

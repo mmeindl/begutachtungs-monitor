@@ -640,10 +640,29 @@ export function placeAtParagraphs(
   for (const e of explanations) if (!placedPassages.has(e)) endOf(e.law).explanations.push(e)
   const byGroup = new Map<string, LawEnd>()
   const rest: (LawEnd & { law: string | null })[] = []
+  // What is filed under no law belongs to the one law the draft amends
+  // (a package files every § under its law): in an annex of several groups,
+  // to the one group no outcome claims for a law of its own — the others are
+  // the laws the draft enacts beside it (`neu-erlassen`). 144/ME XXVIII's
+  // BSFG §§ stood under „Gesetzestext" after the new law's group, because
+  // the annex prints the BSFG's rows without a designation and the server
+  // can name no group for them (19.11.2026). Where two groups are unclaimed,
+  // nothing here chooses.
+  const claimed = new Set([...(consolidated?.paragraphs ?? []), ...(consolidated?.withheld ?? [])].flatMap((o) => (o.annexLaw === null ? [] : [o.annexLaw])))
+  const unclaimed = groupKeys.filter((key) => !claimed.has(key))
+  const groupOfNoLaw = groupKeys.length === 1 ? groupKeys[0]! : unclaimed.length === 1 ? unclaimed[0]! : null
   for (const [law, end] of leftovers) {
-    const key = law === null ? (groupKeys.length === 1 ? groupKeys[0]! : null) : (groupKeys.includes(law) ? law : null)
-    if (key !== null) byGroup.set(key, end)
-    else rest.push({ law, ...end })
+    const key = law === null ? groupOfNoLaw : (groupKeys.includes(law) ? law : null)
+    if (key === null) {
+      rest.push({ law, ...end })
+      continue
+    }
+    // Two ends can meet at one group: what is filed under no law and what is
+    // filed under the one group's own. Set one over the other, and the first
+    // was gone from the page — 90EAC582's §§ 4b and 4c, overwritten by two
+    // Begründung passages filed under the law (19.11.2026).
+    const met = byGroup.get(key)
+    byGroup.set(key, met ? { outcomes: [...met.outcomes, ...end.outcomes], explanations: [...met.explanations, ...end.explanations] } : end)
   }
   return { byRow, groupKeys, ends: { byGroup, rest } }
 }

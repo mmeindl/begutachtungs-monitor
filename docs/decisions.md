@@ -739,6 +739,13 @@ gets an entry of its own only where it carries a reason the rule does not.
   annex leaves out (TDBG § 40b: „1. bis 6. …" where the draft changes Z 6)
   costs a correct confirmation; the oracle does not vouch for what the
   ministry does not print.
+- **A § of the Lesefassung names the annex law it was checked against, in a
+  single Novelle too** (19.11.2026), so the page files it under that law's
+  group; with no law, 144/ME XXVIII's BSFG §§ stood under „Gesetzestext"
+  after the group of the law the draft enacts (`annexLawOf` in
+  `kons/consolidate.ts`). Two law ends that meet at one group are merged,
+  never one set over the other: 25 §§ in five drafts vanished from the page
+  that way.
 - **What the instruments cannot prove:** the annex oracle and fault injection
   do not show the output is free of error. Only the BGBl test bench (RIS
   after entry into force) has ground truth (§12.12c).

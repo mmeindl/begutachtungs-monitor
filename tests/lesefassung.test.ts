@@ -75,6 +75,31 @@ describe('placeAtParagraphs — the Lesefassung', () => {
     expect([...placement.ends.byGroup.values()].map((e) => e.outcomes)).toEqual([[{ id: '9', lesefassung: { kind: 'withheld', cause: 'anhang-schweigt' } }]])
   })
 
+  it('keeps what is filed under no law and what is filed under the one group\'s law, both at the group\'s end (19.11.2026)', () => {
+    // 90EAC582: the §§ 4b and 4c (no law) were overwritten by two passages
+    // filed under the law, and vanished from the page.
+    const L = 'Verordnung'
+    const passage = { law: L, para: '9', heading: 'Zu § 9', text: ['Begründung.'] } as unknown as ParagraphExplanationView
+    const { placement } = carried([row('§ 4a.', { law: L })], response([], [held('4a', 'verweigert'), held('4b', 'anhang-schweigt')]), [passage])
+    const end = placement.ends.byGroup.get(L)!
+    expect(end.outcomes.map((o) => o.id)).toEqual(['4b'])
+    expect(end.explanations).toHaveLength(1)
+  })
+
+  it('files what stands under no law under the one group no law of the draft claims (19.11.2026)', () => {
+    // 144/ME XXVIII: a new law beside one Novelle, whose rows the annex
+    // prints without designations — the BSFG §§ stood under „Gesetzestext".
+    const N = 'Neues Gesetz'
+    const B = 'Änderung des Bestehenden Gesetzes'
+    const rows = [row('§ 1.', { law: N }), row(null, { law: B })]
+    const { placement } = carried(rows, response([], [held('1', 'neu-erlassen', N), held('1', 'anhang-schweigt')]))
+    expect(placement.ends.byGroup.get(B)!.outcomes.map((o) => o.id)).toEqual(['1'])
+    expect(placement.ends.rest).toEqual([])
+    // Two groups unclaimed: nothing chooses.
+    const two = carried([row('§ 1.', { law: 'X' }), row(null, { law: B })], response([], [held('7', 'anhang-schweigt')]))
+    expect(two.placement.ends.rest.map((r) => r.outcomes.map((o) => o.id))).toEqual([['7']])
+  })
+
   it('says at a changed § that no instruction names it — and nothing at an editorial one, or before the run answered', () => {
     const rows = [row('§ 1.'), row('§ 2.', { editorial: true }), row('§ 3.', { change: 'unchanged' })]
     expect(carried(rows, response([], [])).at).toEqual([['nicht-gefunden'], [], []])
