@@ -1424,3 +1424,13 @@ describe('addressedUnits — a refused line with an „eingereiht" clause', () =
     expect(parseInstruction('In den §§ 30 bis 33 entfallen die Paragraphenbezeichnungen; die Abs. 3 bis 6 werden nach § 27 Abs. 2 (neu) eingereiht.').ops).toEqual([])
   })
 })
+
+describe('the siblings of a Roman Artikel (20.11.2026)', () => {
+  it('takes the Arabic form its first one takes', () => {
+    const [a] = parseAddressList('Art. I und II entfallen.')!
+    expect(a).toMatchObject({ para: 'Art. 1', siblings: ['2'] })
+    expect(namedParagraphs(parseAddressList('Die Art. II und III samt Bezeichnung entfallen.')![0]!)).toEqual(['Art. 2', 'Art. 3'])
+    // A schedule keeps its numbering as written.
+    expect(namedParagraphs(parseAddressList('Anhang VIII und IX lauten:')![0]!)).toEqual(['Anhang VIII', 'Anhang IX'])
+  })
+})

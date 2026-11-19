@@ -767,7 +767,10 @@ export function parseAddress(text: string, inherited?: NovaoAddress | null): Nov
     // neither counted nor locked (E96EDA1A, 26.10.2026).
     const found = siblingsAfter(schedule ? scope.slice(pm.index + pm[0].length) : tail, pm[1] ?? pm[2] ?? pm[4] ?? '', 'para')
     if (found === null) return null
-    siblings = found.ids
+    // An Artikel's siblings in the form its `para` takes: „Art. I und II"
+    // named „Art. 1" and „Art. II", two spellings no reader joins back
+    // (20.11.2026). A schedule keeps its numbering as written.
+    siblings = pm[2] ? found.ids.map((id) => articleNumberKey(id) ?? id) : found.ids
   }
 
   // The plural sign, as the last signal. „In den §§ 46 Abs. 3 zweiter Satz,
