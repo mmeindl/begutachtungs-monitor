@@ -143,6 +143,17 @@ describe('applyNovelle — safety', () => {
   })
 })
 
+describe('a sentence appended after a deletion (19.11.2026)', () => {
+  // KommAustria-G § 35 Abs. 1 (BGBl. I Nr. 20/2026) in miniature: the new
+  // sentence went behind the inherited „dritter Satz", the old fourth.
+  it('goes to the end of the unit, not behind the sentence that took the number', () => {
+    const standing: StandingLaw = { paragraphs: [para('5', '', ['Satz eins. Satz zwei. Satz drei. Satz vier.'])] }
+    const { law: out, results } = run(standing, instr('In § 5 Abs. 1 entfällt der zweite Satz; folgender Satz wird angefügt:', ['Neuer Satz.']))
+    expect(results.every((r) => r.applied)).toBe(true)
+    expect(plainText(out.paragraphs[0]!)).toBe('Satz eins. Satz drei. Satz vier. Neuer Satz.')
+  })
+})
+
 describe('parseKonsParagraph', () => {
   // KommAustria-Gesetz § 35 as RIS serves it (26.10.2026): Abs. 14 typed as
   // `erltext`, the tag RIS uses for notes — and a note that repeats a

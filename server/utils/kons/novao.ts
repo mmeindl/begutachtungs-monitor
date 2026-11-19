@@ -2468,6 +2468,11 @@ function parseOne(raw: string, inherited: NovaoAddress | null | undefined, whole
   }
 
   if (APPEND_VERB_RE.test(head)) {
+    // „In § 8 Abs. 1 werden an Stelle des dritten Satzes folgende Sätze
+    // angefügt" (66E50E3D): a replacement in the words of an append. Read as
+    // the append, the old third sentence stayed and the new ones followed it.
+    // Refused: which of the two the ressort meant the words do not settle.
+    if (/\ban\s+(?:die\s+)?Stelle\b|\banstelle\b/i.test(maskQuotes(head))) return fail('„An Stelle" … angefügt — Ersetzung oder Anfügung nicht entscheidbar')
     const child = childLevel(payload || whole)
     // „In § 35 wird vor Abs. 2 folgender Abs. 1h angefügt": the place word
     // says where the unit goes, whatever the verb says (`placedBefore`).
@@ -2724,6 +2729,26 @@ export function parseInstruction(raw: string, inherited?: NovaoAddress | null): 
         if (seen.has(key)) continue
         seen.add(key)
         got.push(op)
+      }
+    }
+    // **A sentence handed on to „folgender Satz wird angefügt" names the
+    // place only behind its own end mark** (19.11.2026). „In § 57 Abs. 2
+    // erster Satz wird am Ende der Punkt durch einen Beistrich ersetzt und
+    // folgender Halbsatz angefügt" goes behind sentence 1 (`mergeEndMarks`).
+    // Behind anything else, „angefügt" means the unit's end. After „entfällt
+    // der dritte Satz" the inherited third sentence is the old fourth, and the
+    // new one landed in the middle (KommAustria-G § 35, BGBl. I Nr. 20/2026,
+    // where RIS has it last) — so it goes to the end. After a change inside
+    // that sentence („im zweiten Satz … ersetzt und folgender letzter Satz
+    // angefügt", „… und folgende Sätze nach dem dritten Satz angefügt") the
+    // words do not settle whether the sentence was the place or only the
+    // locator, and the line is refused; behind „letzter" both are the end.
+    if (before && 'target' in before) {
+      for (const [k, op] of got.entries()) {
+        if (op.kind !== 'append' || (op.child !== 'satz' && op.child !== 'halbsatz') || op.target.satz === null || addressKey(op.target) !== addressKey(before.target)) continue
+        if (before.kind === 'replacePhrase' && before.atEnd) continue
+        if (before.kind === 'delete') got[k] = { ...op, target: { ...op.target, satz: null, satzCount: 0, halbsatz: null, level: op.target.lit ? 'lit' : op.target.z ? 'z' : op.target.abs ? 'abs' : 'para' } }
+        else if (op.target.satz !== 'letzter') refusal ??= `Anfügung ${op.child === 'satz' ? 'eines Satzes' : 'eines Halbsatzes'} nach einer Änderung im ${op.target.satz} Satz — Stelle nicht eindeutig`
       }
     }
     if (refusal !== null) reasons.push(refusal)

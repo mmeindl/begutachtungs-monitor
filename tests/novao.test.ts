@@ -1297,3 +1297,26 @@ describe('a deletion that names a part of the unit (19.11.2026)', () => {
     expect(op('In § 7 wird Abs. 3 aufgehoben.')).toMatchObject({ kind: 'delete', target: { abs: '3' } })
   })
 })
+
+describe('the sentence a „folgender Satz wird angefügt" inherits (19.11.2026)', () => {
+  const ops = (line: string) => parseInstruction(line).ops
+  it('appends at the unit end after the named sentence was deleted', () => {
+    const [, append] = ops('In § 35 Abs. 1 entfällt der dritte Satz; folgender Satz wird angefügt:')
+    expect(append).toMatchObject({ kind: 'append', child: 'satz', target: { abs: '1', satz: null, level: 'abs' } })
+  })
+  it('keeps the place behind a replaced end mark', () => {
+    expect(ops('In § 57 Abs. 2 erster Satz wird am Ende der Punkt durch einen Beistrich ersetzt und folgender Halbsatz angefügt:')).toEqual([
+      expect.objectContaining({ kind: 'append', child: 'halbsatz', target: expect.objectContaining({ satz: 'erster' }), endMark: { from: '.', to: ',' } }),
+    ])
+  })
+  it('refuses where the sentence may have been only the locator of a change', () => {
+    expect(parseInstruction('In § 14 Abs. 2 wird im zweiten Satz das Zitat "§ 11" durch das Zitat "§ 11 Abs. 1" ersetzt und folgender letzter Satz angefügt:').reason).toMatch(/Anfügung eines Satzes nach einer Änderung im zweiter Satz/)
+    expect(parseInstruction('In § 33 Abs. 1 wird im zweiten Satz die Wortfolge "a" durch die Wortfolge "b" ersetzt und folgende Sätze nach dem dritten Satz angefügt:').reason).toMatch(/Stelle nicht eindeutig/)
+    // Behind the last sentence both readings are the end.
+    expect(parseInstruction('In § 24g Abs. 1 letzter Satz entfällt das Wort "zu" und folgender Satz wird angefügt:').reason).toBeNull()
+  })
+  it('refuses an append „an Stelle" of a sentence', () => {
+    expect(parseInstruction('In § 8 Abs. 1 werden an Stelle des dritten Satzes folgende Sätze angefügt:').reason).toMatch(/^„An Stelle"/)
+    expect(parseInstruction('In § 16 Abs. 2 werden anstelle des letzten Satzes folgende Sätze angefügt:').reason).toMatch(/^„An Stelle"/)
+  })
+})
