@@ -164,16 +164,51 @@ export function headingParas(heading: string): string[] {
   return [...out]
 }
 
-/** „Zu Z 1 und 3", „Zu den Z 3 bis 5", „Zu Ziffer 2" → 1, 3 / 3, 4, 5 / 2. */
-export function headingZiffern(heading: string): number[] {
+/** „11a" → [11, „a"]: a Ziffer's place in its draft's sequence. */
+const zifferPlace = (z: string): [number, string] => [Number.parseInt(z, 10), /[a-z]*$/.exec(z)![0]]
+/** Whether Ziffer `a` stands before `b`: „3" < „3a" < „4". */
+const zifferBefore = (a: string, b: string) => {
+  const [an, ax] = zifferPlace(a)
+  const [bn, bx] = zifferPlace(b)
+  return an !== bn ? an < bn : ax < bx
+}
+
+/**
+ * „Zu Z 1 und 3", „Zu den Z 3 bis 5", „Zu Ziffer 2", „Zu Z 11a" → „1", „3" /
+ * „3", „4", „5" / „2" / „11a": the Ziffern as the draft numbers them, letter
+ * and all. „11a" is the instruction a later stage slotted in behind 11,
+ * never 11 itself: read as 11, „Zu Z 11a" explained the § Ziffer 11 changes
+ * (19.11.2026). A range takes every Ziffer of `known` — the draft's own, as
+ * its instructions number them — from its first to its last, so „Z 3 bis 5"
+ * holds a „3a"; without them, its whole numbers, and „11a bis 11c" its
+ * letters.
+ */
+export function headingZiffern(heading: string, known: readonly string[] = []): string[] {
   const m = /\bZ(?:iffer)?n?\.?\s*(\d+[a-z]*(?:\s*(?:,|und|bis|sowie)\s*\d+[a-z]*)*)/.exec(heading)
   if (!m) return []
-  const out: number[] = []
+  const out: string[] = []
   const parts = m[1]!.split(/\s*(,|und|sowie)\s*/).filter((p) => !/^(?:,|und|sowie)$/.test(p))
   for (const part of parts) {
-    const range = /^(\d+)[a-z]*\s*bis\s*(\d+)/.exec(part)
-    if (range) for (let n = Number(range[1]); n <= Number(range[2]) && n - Number(range[1]) < 60; n++) out.push(n)
-    else if (/^\d+/.test(part)) out.push(Number(/^\d+/.exec(part)![0]))
+    const range = /^(\d+[a-z]*)\s*bis\s*(\d+[a-z]*)/.exec(part)
+    if (!range) {
+      if (/^\d+/.test(part)) out.push(/^\d+[a-z]*/.exec(part)![0])
+      continue
+    }
+    const [from, to] = [range[1]!, range[2]!]
+    const within = known.filter((z) => !zifferBefore(z, from) && !zifferBefore(to, z))
+    if (within.length) {
+      out.push(...within)
+      continue
+    }
+    const [fn, fx] = zifferPlace(from)
+    const [tn, tx] = zifferPlace(to)
+    if (fn === tn && fx && tx) {
+      for (let c = fx.charCodeAt(0); c <= tx.charCodeAt(0); c++) out.push(`${fn}${String.fromCharCode(c)}`)
+      continue
+    }
+    out.push(from)
+    for (let n = fn + 1; n <= tn && n - fn < 60; n++) out.push(String(n))
+    if (tx && tn > fn) out.push(to)
   }
   return out
 }

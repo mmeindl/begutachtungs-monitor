@@ -1,5 +1,7 @@
 import { describe, expect, it } from 'vitest'
 import { headingParas, headingZiffern, parseLandExplanations } from '../server/utils/laender/landExplanations'
+import { explainedParagraphs } from '../server/utils/laender/landExplanationsRead'
+import type { LawUnit } from '../server/utils/lawtext/lawUnits'
 
 describe('a Land\'s Erläuterungen', () => {
   it('names the §§ of a heading, and no Absatz as one', () => {
@@ -9,8 +11,25 @@ describe('a Land\'s Erläuterungen', () => {
   })
 
   it('reads the Ziffern of a heading that names no §', () => {
-    expect(headingZiffern('Zu Z 1 und 3:')).toEqual([1, 3])
-    expect(headingZiffern('Zu den Z 3 bis 5:')).toEqual([3, 4, 5])
+    expect(headingZiffern('Zu Z 1 und 3:')).toEqual(['1', '3'])
+    expect(headingZiffern('Zu den Z 3 bis 5:')).toEqual(['3', '4', '5'])
+  })
+
+  // 19.11.2026: „Zu Z 11a" was read as 11 and explained the § Ziffer 11 changes.
+  it('keeps a Ziffer\'s letter, and a range takes the lettered Ziffern within it', () => {
+    expect(headingZiffern('Zu Z 11a:')).toEqual(['11a'])
+    expect(headingZiffern('Zu Z 2, 11a und 12:')).toEqual(['2', '11a', '12'])
+    expect(headingZiffern('Zu den Z 3 bis 5:', ['2', '3', '3a', '4', '5', '5a'])).toEqual(['3', '3a', '4', '5'])
+    expect(headingZiffern('Zu Z 11a bis 11c:')).toEqual(['11a', '11b', '11c'])
+    expect(headingZiffern('Zu Z 10 bis 11a:')).toEqual(['10', '11', '11a'])
+  })
+
+  it('files „Zu Z 11a" under the § instruction 11a changes, not the one of 11', () => {
+    const unit = (id: string, heading: string): LawUnit => ({ article: null, articleNumber: null, id, heading, quotedHeadings: [], text: '', blocks: [], stammnorm: null })
+    const units = [unit('Z11', '§ 7 Abs. 2 lautet:'), unit('Z11a', 'Im § 9 Abs. 1 entfällt der zweite Satz.'), unit('Z12', '§ 10 lautet:')]
+    const entry = (heading: string) => ({ article: null, paras: [], heading, text: ['Die Änderung ist redaktionell.'] })
+    const parse = { general: [], labelled: true, particular: [entry('Zu Z 11a:'), entry('Zu Z 11 bis 12:')] }
+    expect(explainedParagraphs(parse, units, ['Salzburger Testgesetz']).map((e) => e.paras)).toEqual([['9'], ['7', '9', '10']])
   })
 
   it('splits the general part from the entries, without the page furniture', () => {

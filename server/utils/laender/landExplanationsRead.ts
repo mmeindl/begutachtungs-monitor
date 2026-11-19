@@ -52,16 +52,18 @@ export function explainedParagraphs(parse: LandExplanationsParse, units: readonl
   const byZiffer = new Map<string, string>()
   for (const u of units ?? []) {
     // „Z11a" under „11a", never under „11": a lettered instruction is its own (`segmentUnits`, 19.11.2026).
-    const n = /^Z(\d+[a-z]?)$/.exec(u.id)?.[1]
+    const n = /^Z(\d+[a-z]*)$/.exec(u.id)?.[1]
     const para = /^§(\d+[a-z]*)/.exec(addressOf(u.heading) ?? '')?.[1]
     // „Artikel II" or — in the Land's own PDFs — „Artikel 2".
     const numbered = /Artikel\s+([IVXL]+|\d+)/.exec(u.articleNumber ?? '')?.[1] ?? 'I'
     const article = /^\d+$/.test(numbered) ? Number(numbered) : romanValue(numbered)
     if (n && para) byZiffer.set(`${article}|${n}`, para)
   }
+  /** The Ziffern the draft's instructions number in one Artikel, for a range („Z 3 bis 5" holds „3a"). */
+  const zifferOf = (article: number) => [...byZiffer.keys()].filter((k) => k.startsWith(`${article}|`)).map((k) => k.slice(k.indexOf('|') + 1))
   return parse.particular.map((e) => {
     const article = e.article ? (/^\d+$/.test(e.article) ? Number(e.article) : romanValue(e.article)) : 1
-    const paras = e.paras.length ? e.paras : [...new Set(headingZiffern(e.heading).map((z) => byZiffer.get(`${article}|${z}`)).filter((p): p is string => Boolean(p)))]
+    const paras = e.paras.length ? e.paras : [...new Set(headingZiffern(e.heading, zifferOf(article)).map((z) => byZiffer.get(`${article}|${z}`)).filter((p): p is string => Boolean(p)))]
     const law = laws.length === 1 ? laws[0]! : (e.article ? laws[article - 1] ?? null : null)
     return { law, paras, heading: e.heading, text: e.text }
   })
