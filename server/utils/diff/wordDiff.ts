@@ -15,6 +15,7 @@
 import type { LawDiffSegment } from '../../../shared/types'
 import { compareToken, displayTokens, isSign } from '../lawtext/normalize'
 import { bareParaId } from '../text/designation'
+import { withoutFigures } from '../../../shared/utils/figureMark'
 
 /** Above this many token pairs the word-level diff is skipped (O(n·m) memory). */
 const MAX_DP_CELLS = 2_500_000
@@ -583,6 +584,9 @@ export function isEditorialChange(segments: readonly LawDiffSegment[] | null, co
   for (let i = 0; i < segments.length; i++) {
     const s = segments[i]!
     if (s.type === 'equal') continue
+    // A run that is nothing but the mark of an image is no changed word: the
+    // image is not compared, and the unit key leaves it out too (`compareKey`).
+    if (withoutFigures(s.text).trim() === '') continue
     sawChange = true
     // A removed run and the inserted run beside it that differ in spacing
     // alone are one word set twice, not a changed word (`spacingOnly`).
@@ -674,6 +678,9 @@ export function isAddressOnlyDifference(segments: readonly LawDiffSegment[] | nu
   for (let i = 0; i < segments.length; i++) {
     const s = segments[i]!
     if (s.type === 'equal') continue
+    // A run that is nothing but the mark of an image is no changed word: the
+    // image is not compared, and the unit key leaves it out too (`compareKey`).
+    if (withoutFigures(s.text).trim() === '') continue
     sawChange = true
     const classes = s.text.split(/\s+/).filter(Boolean).map(classifyToken)
     if (classes.some((c) => c !== 'citation' && c !== 'number' && c !== 'punct')) return false

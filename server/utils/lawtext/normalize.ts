@@ -5,7 +5,7 @@
  * PURE MODULE — relative imports only, so vitest runs it directly.
  */
 import { decodeEntities } from '../parliament/htmlText'
-import { FIGURE_MARK } from '../../../shared/utils/figureMark'
+import { FIGURE_MARK, withoutFigures } from '../../../shared/utils/figureMark'
 
 // ---------------------------------------------------------------------------
 // Text normalisation
@@ -154,7 +154,8 @@ const SPACE_BEFORE_PUNCT_RE = /\s+([.,;:])(?![.…])/g
  * word diff is.
  */
 export function compareKey(t: string): string {
-  const s = foldDotRuns(normalizeText(t))
+  // An image is not compared, so its mark decides nothing (`withoutFigures`).
+  const s = foldDotRuns(normalizeText(withoutFigures(t)))
   // A minus sign is no spacing: „-18" against „18" is a change (19.11.2026).
   return s.replace(/[\s-]+/g, (run, at: number) => (isSign(s, run, at) ? '-' : ''))
 }

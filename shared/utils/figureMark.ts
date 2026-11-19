@@ -29,3 +29,18 @@ const FIGURE_MARK_RE = /\[Abbildung(?::[^\]]*)?\]/
 export function hasFigure(text: string | null | undefined): boolean {
   return Boolean(text && FIGURE_MARK_RE.test(text))
 }
+
+/**
+ * The text with every mark taken out — the form a verdict is decided on
+ * (20.11.2026). The mark says where an image stands, and the image is not
+ * compared, so it must not decide „geändert" either: a Land's draft read
+ * from PDF carries no mark where the Landesgesetzblatt from RIS sets one,
+ * and Salzburg's units came out „geändert" by „+[Abbildung]" alone, under
+ * the note that only the words around it were compared (`compareKey`,
+ * `isEditorialChange`).
+ */
+export function withoutFigures(text: string): string {
+  return text.replace(FIGURE_MARKS_RE, ' ')
+}
+
+const FIGURE_MARKS_RE = new RegExp(FIGURE_MARK_RE.source, 'g')
