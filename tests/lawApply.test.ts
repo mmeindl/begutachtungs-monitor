@@ -1523,7 +1523,7 @@ describe('an Abschnitt is not the § of its number (02.10.2026)', () => {
   // its number puts it — not behind § 2, where the Abschnitt's number sent it.
   it('inserts the §§ an Abschnitt anchors by their number', () => {
     const l: StandingLaw = { paragraphs: [para('2', 'A', ['Zwei.']), para('148', 'B', ['Alt.']), para('149', 'C', ['Neun.'])] }
-    const { law: out, results } = run(l, instr('Nach der Überschrift zum 2. Abschnitt des 15. Teils werden folgende §§ 148a und 148b samt Überschriften eingefügt:', ['§ 148a. Erstens', 'Text a.', '§ 148b. Zweitens', 'Text b.']))
+    const { law: out, results } = run(l, instr('Nach der Überschrift zum 2. Abschnitt des 15. Teils werden folgende §§ 148a und 148b samt Überschriften eingefügt:', [{ text: '§ 148a. Erstens', heading: true }, 'Text a.', { text: '§ 148b. Zweitens', heading: true }, 'Text b.']))
     expect(results[0]!.reason).toBeNull()
     expect(out.paragraphs.map((p) => p.id)).toEqual(['2', '148', '148a', '148b', '149'])
   })
@@ -2751,5 +2751,28 @@ describe('an image in the standing law (19.11.2026)', () => {
     const node = parseKonsParagraph('<risdok><nutzdaten><abschnitt><absatz typ="abs" ct="text"><gldsym>§ 49.</gldsym> (1) Die Steuer beträgt:</absatz><table><tr><td><absatz typ="tabtext" ct="text">Gewinne <b>×</b> Mindeststeuersatz</absatz></td></tr><tr><td><absatz typ="tabtext" ct="text"><binary nr="1" shapetype="is" datatype="png"><src>/Dokumente/Bundesnormen/NOR40258681/hauptdokument.img1is.png</src></binary></absatz></td><td><absatz typ="tabtext" ct="text">angepasste erfasste Steuern</absatz></td></tr></table></abschnitt></nutzdaten></risdok>')!
     expect(plainText(node)).not.toMatch(/Dokumente|\.png/)
     expect(plainText(node)).toContain('[Abbildung]')
+  })
+})
+
+describe('new §§ announced „samt Überschrift" carry it (19.11.2026)', () => {
+  const standing = (): StandingLaw => ({ paragraphs: [para('70', 'Titel', ['Eins.']), para('71', 'Titel', ['Zwei.'])] })
+  const heading = (text: string) => ({ text, heading: true })
+  // AußWG (8708FCC3): § 70a's heading was typed as a group heading upstream
+  // and never reached the payload; the § was shown without it.
+  it('refuses a new § that arrives without the heading the line announces', () => {
+    const lost = ['§ 70a. (1) Verantwortlich ist der Bundesminister.', heading('§ 70b. Übermittlung'), '(1) Die Übermittlung erfolgt.']
+    expect(run(standing(), instr('Nach § 70 werden die folgenden §§ 70a und 70b samt Überschriften eingefügt:', lost)).results[0]!.reason).toBe('samt Überschrift, aber keine Überschrift im neuen Text')
+    const whole = [heading('§ 70a. Verarbeitung'), '(1) Verantwortlich ist der Bundesminister.', heading('§ 70b. Übermittlung'), '(1) Die Übermittlung erfolgt.']
+    expect(run(standing(), instr('Nach § 70 werden die folgenden §§ 70a und 70b samt Überschriften eingefügt:', whole)).results[0]!.applied).toBe(true)
+    // StPO §§ 115f to 115l „samt Überschriften": § 115g stands under 115f's.
+    const shared = [heading('§ 70a. Verarbeitung'), '(1) Verantwortlich ist der Bundesminister.', '§ 70b. (1) Die Übermittlung erfolgt.']
+    expect(run(standing(), instr('Nach § 70 werden die folgenden §§ 70a und 70b samt Überschriften eingefügt:', shared)).results[0]!.applied).toBe(true)
+  })
+
+  it('takes the singular as the first §’s heading, and a division’s heading as none of them', () => {
+    const run2 = [heading('§ 70a. Verarbeitung'), '(1) Eins.', '§ 70b. (1) Zwei.']
+    expect(run(standing(), instr('Nach § 70 werden folgende §§ 70a und 70b samt Überschrift eingefügt:', run2)).results[0]!.applied).toBe(true)
+    expect(run(standing(), instr('Nach § 70 wird folgender § 70a samt Überschrift eingefügt:', ['§ 70a. (1) Eins.'])).results[0]!.reason).toBe('samt Überschrift, aber keine Überschrift im neuen Text')
+    expect(run(standing(), instr('Nach § 70 wird folgender 2a. Abschnitt samt Überschrift eingefügt:', ['§ 70a. (1) Eins.'])).results[0]!.reason).not.toBe('samt Überschrift, aber keine Überschrift im neuen Text')
   })
 })

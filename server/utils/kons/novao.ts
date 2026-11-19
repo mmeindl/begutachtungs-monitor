@@ -3335,6 +3335,23 @@ export function announcesSchedule(line: string): boolean {
   return ANNOUNCES_SCHEDULE_RE.test(normalizeText(line))
 }
 
+const WITH_HEADING_RE = /\b(?:samt|mit|einschließlich)\s+(?:der\s+|den\s+|seiner\s+|ihrer\s+)?Überschrift(?:en)?\b/i
+const DIVISION_BEFORE_RE = /\b(?:(?:Haupt|Unter)?Abschnitts?|Teil|Hauptstück|Kapitel|Titel)\b[^§]*$/i
+
+/**
+ * Whether an insertion of §§ announces their headings — „folgender § 8 samt
+ * Überschrift", „folgende §§ 70a bis 70c samt Überschriften". Not one per §:
+ * a heading may stand over several, and StPO §§ 115g and 115j have none of
+ * their own under „§§ 115f bis 115l samt Überschriften". False where none is
+ * announced, or where it is a division's („folgender vierter Teil samt
+ * Überschrift"), which the standing text does not hold.
+ */
+export function announcesHeading(line: string): boolean {
+  const head = maskQuotes(instructionHead(normalizeText(line)))
+  const m = WITH_HEADING_RE.exec(head)
+  return m !== null && !DIVISION_BEFORE_RE.test(head.slice(Math.max(0, m.index - 60), m.index))
+}
+
 /**
  * The §§ an instruction read by the grammar brings into being, as the draft
  * writes them: the new numbers of a renumbering of §§, the §§ an insertion

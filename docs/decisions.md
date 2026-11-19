@@ -869,6 +869,10 @@ gets an entry of its own only where it carries a reason the rule does not.
   Schlussteil, and only behind the list's last unit with no Schlussteil
   yet. A Schlussteil closes Ziffern or Literae, never Absätze
   (`behindListItem` in `kons/novao.ts`, `kons/lawApply.ts`).
+- **New §§ announced „samt Überschrift(en)" are inserted only where the
+  first one carries a heading** (19.11.2026); one heading may stand over
+  several §§ (StPO §§ 115f to 115l), so not each. A heading of a division
+  („vierter Teil samt Überschrift") does not count (`announcesHeading`).
 - **What the instruments cannot prove:** the annex oracle and fault injection
   do not show the output is free of error. Only the BGBl test bench (RIS
   after entry into force) has ground truth (§12.12c).

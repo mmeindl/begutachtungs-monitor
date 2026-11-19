@@ -20,7 +20,7 @@
 import { childById, lawTextNodes, makeNode, plainText, type LawNode, type NodeLevel } from '../lawtext/konsTree'
 import type { LawUnit } from '../lawtext/lawUnits'
 import { normalizeText } from '../lawtext/normalize'
-import { announcesSchedule, continuesToc, createdParagraphs, createdUnits, expandRange, isTocInstruction, namedParagraphs, opAddress, parseInstruction, tocSequence, type NovaoAddress, type NovaoOp } from './novao'
+import { announcesHeading, announcesSchedule, continuesToc, createdParagraphs, createdUnits, expandRange, isTocInstruction, namedParagraphs, opAddress, parseInstruction, tocSequence, type NovaoAddress, type NovaoOp } from './novao'
 import { bareParaId, isDivision, isSchedule, unitKey } from '../text/designation'
 import { byParagraphOrder } from './konsGate'
 import { PARAGRAPH_NUMBER } from '../../../shared/utils/paragraphNumber'
@@ -2256,6 +2256,14 @@ function applyOne(law: StandingLaw, { op, payload, line }: Instruction, renamed:
         }
         const notAnnounced = missingAnnounced(op.childIds, blocks)
         if (notAnnounced) return notAnnounced
+        // „Nach § 70 werden die folgenden §§ 70a bis 70c samt Überschriften
+        // eingefügt", and § 70a arrived without its heading: RIS typed it as
+        // a group heading („g1min"), so the reader never handed it on, and
+        // the oracle confirmed a § shown without the heading the draft gives
+        // it (AußWG, 8708FCC3, 19.11.2026). The replacement branch refuses
+        // the same; the insertion never looked. Over the first new § only:
+        // one heading may stand over several (StPO §§ 115f to 115l).
+        if (announcesHeading(line) && !blocks[0]!.heading) return 'samt Überschrift, aber keine Überschrift im neuen Text'
         const inserted = blocks.map((p): LawNode => ({ ...p, level: 'para' as const }))
         if (!anchor) {
           if (blocks.length !== op.childIds.length || blocks.some((p, i) => p.id !== op.childIds[i])) return `${op.anchor.para} — die eingefügten Paragraphen sind nicht die angekündigten`
