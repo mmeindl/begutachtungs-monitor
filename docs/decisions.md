@@ -736,6 +736,16 @@ gets an entry of its own only where it carries a reason the rule does not.
   Abschnitt. Refused, at a cost of six lines whose net effect was right
   („Die Überschrift vor § 20 und § 20 entfallen", which also deleted § 20
   twice).
+- **„jeweils" in front of the sentence gives it to every address**
+  (20.11.2026): „In § 14 Abs. 2, … und § 135 Abs. 1 entfällt jeweils der
+  letzte Satz", „In § 15 Abs. 5 und § 16 Abs. 6 lautet jeweils der zweite
+  Satz:". The list is cut at its commas and the sentence stood in the last
+  address only; the others were whole Absätze, deleted until 19.11.2026 and
+  refused since. Only where „jeweils" governs the sentence phrase: in „In
+  § 5 Abs. 1 und § 7 Abs. 2 erster Satz wird jeweils das Wort …" the
+  sentence is the last address's own (`spreadSentence` in `kons/novao.ts`).
+  One replacement text then stands in each sentence; several sentences
+  without „jeweils" stay refused.
 - **„Angefügt" is the unit's end; a sentence the clause before named is the
   place only behind the end mark that clause replaced** (19.11.2026). After
   that sentence's deletion the new one goes to the end; after a change

@@ -1313,6 +1313,19 @@ describe('a deletion that names a part of the unit (19.11.2026)', () => {
     for (const [line, word] of cases) expect(refusal(line), line).toBe(`Teilstreichung („${word}") — keine ganze Einheit`)
   })
 
+  // „jeweils" in front of the sentence: each address takes it (20.11.2026).
+  it('gives „jeweils … der letzte Satz" to every address of the list', () => {
+    const places = (line: string) => parseInstruction(line).ops.map((o) => `${o.kind} ${'target' in o ? `${o.target.para} Abs. ${o.target.abs} ${o.target.satz}` : ''}`)
+    // Strafrechtliches EU-Anpassungsgesetz (EU-JZG)
+    expect(places('In § 14 Abs. 2, § 36 Abs. 1, § 52k Abs. 2, § 53k Abs. 2, § 95 Abs. 4, § 115 Abs. 3 und § 135 Abs. 1 entfällt jeweils der letzte Satz.')).toEqual(
+      ['§ 14 Abs. 2', '§ 36 Abs. 1', '§ 52k Abs. 2', '§ 53k Abs. 2', '§ 95 Abs. 4', '§ 115 Abs. 3', '§ 135 Abs. 1'].map((p) => `delete ${p} letzter`),
+    )
+    expect(places('In § 15 Abs. 5 und § 16 Abs. 6 lautet jeweils der zweite Satz: "Neu."')).toEqual(['replace § 15 Abs. 5 zweiter', 'replace § 16 Abs. 6 zweiter'])
+    // Without „jeweils", and where „jeweils" governs a word, nothing is spread.
+    expect(refusal('In § 5 Abs. 1 und § 7 Abs. 2 entfällt der letzte Satz.')).toMatch(/^Teilstreichung/)
+    expect(places('In § 5 Abs. 1 und § 7 Abs. 2 erster Satz wird jeweils das Wort "a" durch das Wort "b" ersetzt.').map((p) => p.split(' ').at(-1))).toEqual(['null', 'erster'])
+  })
+
   it('still reads a subject that is all address', () => {
     expect(op('§ 4 Abs. 2 Z 2 zweiter Satz entfällt.')).toMatchObject({ kind: 'delete', target: { abs: '2', z: '2', satz: 'zweiter' } })
     expect(op('Die Überschriften zu den §§ 20 bis 43 entfallen.')).toMatchObject({ kind: 'delete', target: { para: '§ 20', heading: true } })

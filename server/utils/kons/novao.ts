@@ -1970,6 +1970,28 @@ function partBeforeVerb(before: string, target: NovaoAddress): string | null {
   return null
 }
 
+/**
+ * **„jeweils" hands the sentence to every address** (20.11.2026). „In § 14
+ * Abs. 2, § 36 Abs. 1, … und § 135 Abs. 1 entfällt jeweils der letzte Satz"
+ * (Strafrechtliches EU-Anpassungsgesetz): the address list is cut at the
+ * commas, and the sentence words stand in the last segment, so only § 135
+ * Abs. 1 read „letzter Satz" — the others were whole Absätze. Before
+ * 19.11.2026 the engine deleted them whole; since then `partStruck` refused
+ * the line. „jeweils" directly in front of the sentence phrase says the
+ * sentence is the object of the verb in each place, so each place without a
+ * sentence of its own takes it. Only then: „In § 5 Abs. 1 und § 7 Abs. 2
+ * erster Satz wird jeweils das Wort …" names a sentence of the last address
+ * alone, with „jeweils" governing the word, and stays as it is.
+ */
+const JEWEILS_SENTENCE_RE = new RegExp(`\\bjeweils\\s+(?:der|die|den|im|in\\s+der)\\s+(?:(?:${ORDINAL_WORD}[rnsm]?|beiden|gesamten?)\\s+){0,2}(?:Satz|Sätze|Halbsatz|Halbsätze|Schlussteil|Schlusssatz|Einleitungsteil|Einleitungssatz)\\b`, 'iu')
+function spreadSentence(head: string, targets: NovaoAddress[] | null): NovaoAddress[] | null {
+  if (!targets || targets.length < 2 || !JEWEILS_SENTENCE_RE.test(maskQuotes(head))) return targets
+  const withSentence = targets.filter(sentenceLevel)
+  if (withSentence.length !== 1 || withSentence[0] !== targets.at(-1)) return targets
+  const { satz, satzCount, halbsatz, level } = withSentence[0]!
+  return targets.map((t) => (sentenceLevel(t) ? t : { ...t, satz, satzCount, halbsatz, level }))
+}
+
 /** A sentence or Halbsatz address, or the append of one: the operations `oneUnitEach` splits. */
 function sentenceLevel(t: NovaoAddress): boolean {
   return t.satz !== null || t.halbsatz !== null
@@ -2223,7 +2245,7 @@ function parseOne(raw: string, inherited: NovaoAddress | null | undefined, whole
   // Nor is the new § of „Der bisherige § 14 wird zu § 22." (`PARA_RENAMED_RE`).
   const paraRenamed = namedAs || quotes.length > 0 ? null : PARA_RENAMED_RE.exec(head)
   const addressText = redundantLocator ? (scope || head).replace(locator[0], `${locator[1]} `) : namedAs ? (scope || head).replace(namedAs[0], 'bezeichnet') : paraRenamed ? (scope || head).replace(paraRenamed[0], '') : scope || head
-  const targets = payloadOnly ? [inherited!] : (parseAddressList(addressText, inherited) ?? (textOp ? sentencePairPlaces(addressText, inherited) : null))
+  const targets = spreadSentence(head, payloadOnly ? [inherited!] : (parseAddressList(addressText, inherited) ?? (textOp ? sentencePairPlaces(addressText, inherited) : null)))
   if (!targets || targets.length === 0) {
     // Name the word rather than report a missing address: „sublit." and the
     // two Strich forms are perfectly readable addresses that this model has no
@@ -2571,7 +2593,9 @@ function parseOne(raw: string, inherited: NovaoAddress | null | undefined, whole
   if (/\blaute[nt]\b|\berhäl?t folgende Fassung\b|\berhalten folgende Fassung\b/i.test(head) || replacedByPayload) {
     // Several §§ with one quoted block: which text belongs to which § is not
     // decidable from the instruction alone.
-    if (targets.length > 1) return fail(`${targets.length} Ziele für eine Neufassung`)
+    // Unless „jeweils" makes it one sentence text for each of them: „In § 5
+    // Abs. 1 und § 7 Abs. 2 lautet jeweils der letzte Satz:" (`spreadSentence`).
+    if (targets.length > 1 && !(targets.every(sentenceLevel) && JEWEILS_RE.test(maskQuotes(head)))) return fail(`${targets.length} Ziele für eine Neufassung`)
     // „In § 5 Abs. 1 und 2 lautet jeweils der letzte Satz:" — the same
     // sentence text in each unit; a unit run over siblings stays one op,
     // because the payload is a block per unit (`lawApply`, `spliceRun`).
