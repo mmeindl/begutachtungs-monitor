@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { consolidate, consolidationBalance, type KonsSources } from '../server/utils/kons/consolidate'
+import { annexKeepsUnit, consolidate, consolidationBalance, type KonsSources } from '../server/utils/kons/consolidate'
 import { parseRisXml } from '../server/utils/lawtext/risXml'
 import type { ComparisonRow } from '../server/utils/annex/comparisonRows'
 import type { KonsLawAtDate } from '../server/utils/ris/konsLaw'
@@ -179,6 +179,51 @@ describe('consolidate — a Verordnung numbered by Kapitel (26.10.2026)', () => 
     expect(r.paragraphs).toEqual([])
     expect(r.withheld.map((w) => [w.id, w.cause])).toEqual([['6.01a', 'verweigert']])
     expect(consolidationBalance(r).balanced).toBe(true)
+  })
+})
+
+describe('consolidate — a repeal held against the annex (19.11.2026)', () => {
+  const T = 'Änderung des Testgesetzes'
+  const blocks = draft(artikel('1', T, '<absatz typ="novao1">1. &sect; 5 entf&auml;llt.</absatz>'))
+  const struck = (current: string): ComparisonRow => ({ ...pair(T, current, '', null), change: 'removed', paraAfter: null })
+
+  it('says our result differs where the Beilage shows the unit still standing', async () => {
+    // 8CA8E8B1: „In der Anlage 2 entfallen die Zeilen betreffend …" read as
+    // the whole Anlage going, while the annex prints it changed.
+    const r = await consolidate(who, blocks, '2026-01-01', sources([pair(T, '§ 5. (1) Eins gilt.', '§ 5. (1) Eins gilt anders.', '§ 5.'), pair(T, '(2) Zwei gilt.', '(2) Zwei gilt.', null, true)]))
+    expect(r.withheld).toEqual([{ id: '5', annexLaw: T, cause: 'anhang-widerspricht' }])
+    expect(consolidationBalance(r).balanced).toBe(true)
+  })
+
+  it('keeps it a repeal where the annex strikes the unit, says it goes, or has no rows for it', async () => {
+    const strikes = [{ ...struck('§ 5. (1) Eins gilt.'), gld: '§ 5.', para: '§ 5.' }, { ...struck('(2) Zwei gilt.'), para: '§ 5.' }]
+    const marker = [pair(T, '§ 5. (1) Eins gilt. (2) Zwei gilt.', '§ 5. (entfällt)', '§ 5.')]
+    const elsewhere = [pair(T, '§ 6. Sechs gilt.', '§ 6. Sechs gilt anders.', '§ 6.')]
+    for (const rows of [strikes, marker, elsewhere]) {
+      const r = await consolidate(who, blocks, '2026-01-01', sources(rows))
+      expect(r.withheld).toEqual([{ id: '5', annexLaw: T, cause: 'entfaellt' }])
+    }
+  })
+})
+
+describe('annexKeepsUnit', () => {
+  const row = (proposed: string, paraAfter: string | null = '§ 5.') => ({ proposed, paraAfter })
+
+  it('reads a repeal in the words the corpus prints it with', () => {
+    expect(annexKeepsUnit([row('§ 63. (entfällt)')])).toBe(false)
+    expect(annexKeepsUnit([row('Verwaltungsübertretungen § 60. (entfällt)')])).toBe(false)
+    expect(annexKeepsUnit([row('Ersatzlos gestrichen.')])).toBe(false)
+    expect(annexKeepsUnit([row('§ 5. Aufgehoben.')])).toBe(false)
+    expect(annexKeepsUnit([row('Anlage 2 (entfällt)')])).toBe(false)
+    expect(annexKeepsUnit([row('')])).toBe(false)
+    expect(annexKeepsUnit([])).toBe(false)
+  })
+
+  it('reads text that stands, an elision included, and ignores what the annex strikes', () => {
+    expect(annexKeepsUnit([row('Anlage 2 (zu § 2) Ersatz von Lehrabschlussprüfungen Abgelegte Lehrabschlussprüfung Ersetzt')])).toBe(true)
+    expect(annexKeepsUnit([row('Anlage 1 [...] [...] [...]')])).toBe(true)
+    expect(annexKeepsUnit([row('§ 5. (1) Eins gilt.'), row('', null)])).toBe(true)
+    expect(annexKeepsUnit([row('§ 5. (1) Eins gilt.', null)])).toBe(false)
   })
 })
 

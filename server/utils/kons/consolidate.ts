@@ -533,9 +533,19 @@ export async function consolidate(
         // instruction was not carried out as written, whatever it reported —
         // not a § RIS lacks (`nicht-im-ris`), which is what the draft does
         // NOT create.
+        //
+        // A repeal is held against the annex like any result (19.11.2026):
+        // where the Beilage shows the unit still standing (`annexKeepsUnit`),
+        // our result is the one that differs, and the page says so. Until
+        // then a vanished unit was `entfaellt` on the engine's word alone,
+        // and the page, which prints no line at a repeal, stood silent beside
+        // the annex rows of an Anlage the engine had dropped whole for
+        // „entfallen die Zeilen betreffend …" (8CA8E8B1, C3F4E0AD).
         if (!node) {
           const created = analysed.some((a) => a.created.has(id))
-          hold(id, refusedIds.has(id) || created ? 'verweigert' : beforeById.has(id) ? 'entfaellt' : inRis.has(labelOf.get(id)!) ? 'nicht-lesbar' : 'nicht-im-ris')
+          const annex = annexOf(w.article)
+          const gone = (): ConsolidatedWithheldCause => (annexKeepsUnit(paragraphRows(annex.rows, id, annex.law)) ? 'anhang-widerspricht' : 'entfaellt')
+          hold(id, refusedIds.has(id) || created ? 'verweigert' : beforeById.has(id) ? gone() : inRis.has(labelOf.get(id)!) ? 'nicht-lesbar' : 'nicht-im-ris')
           continue
         }
         const origin = originOf(id)
@@ -609,6 +619,37 @@ export async function consolidate(
   })
 
   return result()
+}
+
+/**
+ * „§ 63. (entfällt)", „Verwaltungsübertretungen § 60. (entfällt)",
+ * „Ersatzlos gestrichen." — a proposed column that says the unit goes: an
+ * optional heading, an optional designation, an optional heading, then the
+ * word, and nothing after it. The words are the ones the corpus prints at a
+ * repealed unit (141/ME XXVIII, C4F11447) and RIS's own „aufgehoben".
+ */
+const REPEAL_ONLY_RE = /^(?:[^.()]{0,80}?\s)?(?:(?:§+\s*[\w.]+|(?:Anlage|Anhang|Anl\.)(?:\s+[\w/]+)?)\.?\s*)?(?:[^.()]{0,80}?\s)?\(?\s*(?:entfällt|aufgehoben|ersatzlos\s+gestrichen)\s*\.?\s*\)?\.?$/iu
+
+/**
+ * Whether the annex shows a unit still standing after the draft: some row of
+ * it that the annex does not strike (`paraAfter`, `designateAfter` in
+ * `annex/comparisonRows.ts`) carries text in its right column, and that text
+ * is more than the unit's designation and a repeal word („(entfällt)").
+ * An elision („[...]", „…") is text that stands. Rows with their text
+ * emptied (a withheld row on the page) say nothing either way.
+ *
+ * Asked of a unit the engine's result no longer carries (`entfaellt`): a
+ * repeal the annex contradicts is our result against the Beilage, not a
+ * repeal. The engine read „In der Anlage 2 entfallen die Zeilen betreffend
+ * …" as the whole Anlage going (8CA8E8B1, C3F4E0AD), and the page, which
+ * prints no line at a repealed unit because its struck rows say it, stood
+ * silent beside the annex showing the Anlage still there (19.11.2026).
+ * Shared with the Prüfstand (`scripts/harness/accounting.ts`), which holds
+ * the page to it.
+ */
+export function annexKeepsUnit(rows: readonly Pick<ComparisonRow, 'proposed' | 'paraAfter'>[]): boolean {
+  const text = rows.filter((r) => r.paraAfter !== null).map((r) => r.proposed).join(' ').replace(/\s+/g, ' ').trim()
+  return text !== '' && !REPEAL_ONLY_RE.test(text)
 }
 
 /** The key `unitsByKey` holds a node under — a schedule as „Anl. 1", a § by its number. */

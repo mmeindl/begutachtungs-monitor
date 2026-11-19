@@ -31,6 +31,11 @@
  *    cannot find, and that disagreement is a bug in one of the two keys.
  *  - `quelle` — the annex section and the Lesefassung disagree about whether
  *    there is an annex at all: one reads rows, the other none.
+ *  - `entfällt-stehend` — an outcome `entfaellt` at a block whose shown rows
+ *    keep the unit standing (`annexKeepsUnit`). The page prints no line for
+ *    a repeal, trusting the struck rows to say it; where the rows show the
+ *    unit still there, the block is silent about a Lesefassung the engine
+ *    got wrong (8CA8E8B1 Anl. 2, C3F4E0AD Anl. 1, 19.11.2026).
  *  - `obergrenze` — `nicht-geladen` in a draft whose §§ fit the budget
  *    (`KONS_MAX_PARAGRAPHS`). The page's sentence names that ceiling and no
  *    other; 116/ME's 139 §§ stood under it while a ceiling of 40 laws
@@ -48,9 +53,9 @@
 import { writeFileSync } from 'node:fs'
 import type { ConsolidatedTextResponse, DraftsResponse, ExplanationsResponse, RisConsultationsResponse, TextComparisonResponse } from '../../shared/types'
 import { annexUnitId } from '../../shared/utils/explanationKey'
-import { KONS_MAX_PARAGRAPHS, consolidationBalance } from '../../server/utils/kons/consolidate'
+import { KONS_MAX_PARAGRAPHS, annexKeepsUnit, consolidationBalance } from '../../server/utils/kons/consolidate'
 import { showsInstructedChange } from '../../app/utils/lesefassung'
-import { annexParas, groupAnnexRows, placeAtParagraphs } from '../../app/utils/annexGroups'
+import { annexParas, groupAnnexRows, placeAtParagraphs, type ParaPlacement } from '../../app/utils/annexGroups'
 import { argAssigned } from '../lib/args'
 
 const BASE = argAssigned('base') ?? process.env.BASE ?? 'http://localhost:3000'
@@ -157,7 +162,7 @@ async function measure(base: string, citation: string): Promise<DraftReport> {
   const { groups } = groupAnnexRows(annex.rows, { matches: null, hidden: [] })
   for (const g of groups) {
     const { paras } = annexParas(g, { limit: Number.POSITIVE_INFINITY, folding: true, placed: placement.byRow })
-    const rowsOf = new Map<unknown, typeof g.rows>()
+    const rowsOf = new Map<ParaPlacement, typeof g.rows>()
     for (const row of g.rows) {
       const at = placement.byRow.get(row)
       if (at) rowsOf.set(at, [...(rowsOf.get(at) ?? []), row])
@@ -166,8 +171,13 @@ async function measure(base: string, citation: string): Promise<DraftReport> {
       const first = rows[0]!
       const label = `${g.article ? `${g.article}: ` : ''}${first.para ?? '(ohne §)'}`
       const repealed = rows.every((r) => r.change === 'removed')
-      const lesefassungen = (at as { lesefassungen: unknown[] }).lesefassungen
+      const { lesefassungen } = at
       if (ran && lesefassungen.length === 0 && annexUnitId(first.para) && showsInstructedChange(rows) && !repealed) report.failures.push(`stumm: ${label} zeigt eine Änderung und sagt nichts zur Lesefassung`)
+      for (const { lesefassung } of lesefassungen) {
+        if (lesefassung.kind === 'withheld' && lesefassung.cause === 'entfaellt' && annexKeepsUnit(rows.filter((r) => r.check !== 'withheld'))) {
+          report.failures.push(`entfällt-stehend: ${label} — die Beilage zeigt die Einheit danach stehend, die Seite sagt nichts`)
+        }
+      }
     }
     for (const p of paras) {
       const label = `${g.article ? `${g.article}: ` : ''}${p.gld ?? '(ohne §)'}`

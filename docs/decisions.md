@@ -739,6 +739,14 @@ gets an entry of its own only where it carries a reason the rule does not.
   annex leaves out (TDBG § 40b: „1. bis 6. …" where the draft changes Z 6)
   costs a correct confirmation; the oracle does not vouch for what the
   ministry does not print.
+- **A repeal is a result like any other, and the annex can contradict it**
+  (19.11.2026). A unit the engine's result no longer carries is `entfaellt`
+  only where the annex strikes it, says it goes („(entfällt)", „Ersatzlos
+  gestrichen") or has no rows for it; where the annex shows it still
+  standing, it is `anhang-widerspricht`. The page prints no line at a
+  repeal, so a wrong one stood silent beside annex rows that kept the unit
+  (`annexKeepsUnit` in `kons/consolidate.ts`; Prüfstand check
+  `entfällt-stehend`).
 - **The Lesefassung's only load ceiling is the § budget** (19.11.2026).
   `nicht-geladen` says „mehr Paragraphen, als wir für eine Seite laden",
   so it may stand only where the draft's §§ exceed the budget; a ceiling of
