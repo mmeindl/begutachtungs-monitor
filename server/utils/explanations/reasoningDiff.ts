@@ -1586,7 +1586,8 @@ function namesChange(doc: HtmlExplanations, ziffer: string | null, paras: Readon
  * The unit's own Artikel heading counts, and a range heading whose range
  * holds it: 66/ME XXVII explains Artikel 2 to 8 together under „Zu Artikel 2
  * bis 8: Änderung des Schulpflichtgesetzes 1985, …" („redaktionelle
- * Anpassungen der Verweise"). An introduction above passages titled by
+ * Anpassungen der Verweise") — also where the reader folded the heading into
+ * a passage's text (`foldedHeadsArticle`). An introduction above passages titled by
  * Ziffer or § counts too: 226/ME XXVII's Vorlage says under „Zu Art. 2
  * (Änderung des Filmförderungsgesetzes):" that the Novelle „im Übrigen"
  * adjusts the Geschlechterbezeichnungen — the Begründung of the Ziffern no
@@ -1598,19 +1599,51 @@ function namesChange(doc: HtmlExplanations, ziffer: string | null, paras: Readon
  */
 function explainsLawWhole(doc: HtmlExplanations, article: string | null): boolean {
   if (!article) return false
-  return doc.special.some((p) => p.paragraphs.length === 0 && p.ziffern.length === 0 && headsArticle(p, article) && p.text.some((t) => !isSubHeading(t)))
+  return doc.special.some(
+    (p) =>
+      (p.paragraphs.length === 0 && p.ziffern.length === 0 && headsArticle(p, article) && p.text.some((t) => !isSubHeading(t))) ||
+      p.text.some((t, i) => foldedHeadsArticle(t, article) && (hasProseAfterColon(t) || p.text.slice(i + 1).some((x) => !isSubHeading(x)))),
+  )
 }
 
 /** Whether a passage is the Artikel heading of `article` — its own, or a range („Zu Artikel 2 bis 8: …") that holds it. */
 function headsArticle(p: HtmlPassage, article: string): boolean {
   if (!ARTICLE_HEAD_RE.test(p.heading)) return false
   if (p.article === article && p.section?.length === 1 && p.section[0] === article) return true
-  const range = ARTICLE_RANGE_HEAD_RE.exec(p.heading)
+  return rangeHolds(p.heading, article)
+}
+
+/**
+ * An Artikel heading the reader folded into a passage's text, naming
+ * `article` or a range that holds it: 76/ME XXVI's Vorlage explains its
+ * Artikel 9, the Notarversorgungsgesetz, under „Zu den Art. 8 bis 10
+ * (Bundesgesetz zur Überführung …, Notarversorgungsgesetz und Aufhebung …)",
+ * which stands as text of a „Zu Abs. 7 und 8:" before it.
+ */
+function foldedHeadsArticle(line: string, article: string): boolean {
+  if (!/^zu\s/i.test(line)) return false
+  if (rangeHolds(line, article)) return true
+  const own = ARTICLE_OWN_HEAD_RE.exec(line)
+  return own !== null && articleNumberKey(own[1]!) === article
+}
+
+/** Whether a heading's Artikel range („Zu Artikel 2 bis 8") holds `article`. */
+function rangeHolds(heading: string, article: string): boolean {
+  const range = ARTICLE_RANGE_HEAD_RE.exec(heading)
   const from = range ? articleNumberKey(range[1]!) : null
   const to = range ? articleNumberKey(range[2]!) : null
   const n = Number(article)
   return from !== null && to !== null && Number.isInteger(n) && Number(from) <= n && n <= Number(to)
 }
+
+/** Prose after the colon of a line that opens with a heading („Zu Art. 9 (…): Die Notare …"). */
+function hasProseAfterColon(line: string): boolean {
+  const after = line.split(/:\s+/).slice(1).join(': ').trim()
+  return after.length > 0 && !isSubHeading(after)
+}
+
+/** „Zu Art. 9 (…)", „Zu Artikel 9:" — one Artikel, as a heading opens. */
+const ARTICLE_OWN_HEAD_RE = /^zu\s+(?:den\s+)?art(?:ikel|\.)?\s*([0-9]+|[ivxlc]+)\s*(?:\(|:|$)/i
 
 /** „Zu Artikel 2 bis 8", „Zu den Art. 106 bis 122", „Zu Artikel II – IV". */
 const ARTICLE_RANGE_HEAD_RE = /^(?:zu\s+(?:den\s+)?)?art(?:ikeln?|\.)?\s*([0-9]+|[ivxlc]+)\s*(?:bis|–|-)\s*(?:art(?:ikel|\.)?\s*)?([0-9]+|[ivxlc]+)(?![0-9a-z])/i

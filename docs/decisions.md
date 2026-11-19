@@ -627,8 +627,9 @@ gets an entry of its own only where it carries a reason the rule does not.
   „nicht gefunden" only where that document names neither the Ziffer nor one
   of the change's §§ in any „Zu …" line or passage heading (`namesChange`),
   and has no prose at the level of the change's Artikel — under its own
-  Artikel heading, a range heading holding it, or as the introduction above
-  its passages (`explainsLawWhole`: 96/ME XXVIII explains the EStG's § 105a
+  Artikel heading, a range heading holding it (also where the reader folded
+  it into a passage's text), or as the introduction above its passages
+  (`explainsLawWhole`: 96/ME XXVIII explains the EStG's § 105a
   in one block under „Zu Art. 7 (…)"; 226/ME XXVII's introduction says the
   Novelle „im Übrigen" adjusts the Geschlechterbezeichnungen).
   Otherwise the line is „Begründung: nicht zuzuordnen." with no reason: an

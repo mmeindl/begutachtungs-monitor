@@ -994,6 +994,18 @@ describe('compareReasoning — warum eine Änderung keine Begründung hat (gaps)
     expect(compareReasoning(units, draft(`Zu Artikel 2 bis 8: ${SCHPFLG}, …`), bill).gaps).toEqual({ [`${SCHPFLG}|Z4|changed`]: 'unread' })
     expect(compareReasoning(units, draft('Zu Artikel 2 bis 4: Änderung anderer Gesetze'), bill).gaps).toEqual({ [`${SCHPFLG}|Z4|changed`]: 'missingBefore' })
   })
+
+  it('liest eine solche Überschrift auch, wo der Leser sie in den Text einer Passage faltete (76/ME XXVI „Zu den Art. 8 bis 10")', () => {
+    const NVG = 'Notarversorgungsgesetz'
+    const units = [unit('Änderung des ASVG', 'Z1', 'In § 3 wird "a" durch "b" ersetzt.', 'changed', { to: '1' }), unit(NVG, 'Z2', 'In § 55 wird "a" durch "b" ersetzt.', 'changed', { to: '9' })]
+    const draft = erl('Zu Artikel 1 (Änderung des ASVG):', 'Zu Z 1 (§ 3):', 'Klarstellung.', `Zu Artikel 9 (${NVG}):`, 'Zu Z 2 (§ 55):', 'Die Pension.')
+    const range = 'Zu den Art. 8 bis 10 (Bundesgesetz zur Überführung der Versicherungsanstalt des österreichischen Notariates in eine Versorgungsanstalt des österreichischen Notariates, Notarversorgungsgesetz und Aufhebung des Notarversicherungsgesetzes 1972)'
+    const bill = (...tail: string[]) => erl('Zu Artikel 1 (Änderung des ASVG):', 'Zu Z 1 (§ 3):', 'Klarstellung.', 'Zu Abs. 7 und 8:', 'Die Absätze.', ...tail)
+
+    expect(compareReasoning(units, draft, bill(range, 'Die Versorgung der Notare wird neu geordnet.')).gaps).toEqual({ [`${NVG}|Z2|changed`]: 'unread' })
+    // A folded heading with no prose after it explains nothing.
+    expect(compareReasoning(units, draft, bill(range)).gaps).toEqual({ [`${NVG}|Z2|changed`]: 'missingAfter' })
+  })
 })
 
 // „Zu den Z 22 und 102 (…):" is a heading (14.11.2026): read as text, it gave
