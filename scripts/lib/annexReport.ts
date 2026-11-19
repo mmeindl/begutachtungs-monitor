@@ -190,7 +190,7 @@ export function classAFindings(report: AnnexReport, baseline: AnnexBaseline | nu
     // read; any change of the count is class B's (`droppedPages` is one of
     // its fields). Firing on every count, the Methodenverordnung Wasser's 72
     // pages, counted since 19.11.2026, would have held the weekly issue open
-    // for good — an alarm that always rings is no alarm (20.11.2026).
+    // for good — an alarm that always rings is no alarm (19.11.2026).
     const knownShape = baseline?.paths[report.path]?.[d.id]?.droppedPages === d.droppedPages
     if (d.droppedPages > 0 && !knownShape) {
       at(`${d.droppedPages} Seite${d.droppedPages === 1 ? '' : 'n'} der Beilage ${d.droppedPages === 1 ? 'wurde' : 'wurden'} nicht gelesen, weil die Seitengeometrie sich nicht belegen ließ. Am 16.09.2026 war das über GP XXVIII auf beiden Pfaden null — hier steht also eine Gestalt, die der Korpus bis dahin nicht hatte.`, 'form')

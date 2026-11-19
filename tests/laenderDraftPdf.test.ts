@@ -265,7 +265,7 @@ describe('diffLandDraft — the draft against the Landesgesetzblatt', () => {
     expect(packageChanges(single, kundmachung)).toEqual({ added: ['Artikel II Änderung des Oö. Y-Gesetzes'], dropped: [] })
   })
 
-  // Salzburg 33358 (20.11.2026): no „Artikel I" in the draft, and its new
+  // Salzburg 33358 (19.11.2026): no „Artikel I" in the draft, and its new
   // texts differ from the Kundmachung in what the Kundmachung fills in. By
   // whole text they matched none, and stood as removed and inserted.
   it('pairs an unnamed Artikel by its instruction lines where the quoted texts differ in what the Kundmachung fills in', () => {
@@ -434,7 +434,7 @@ describe('draftByContent — the draft among several, by what it holds (14.11.20
   })
 })
 
-// sbg-31605, Salzburg's Glücksspielgesetz (20.11.2026): both the PDFs and
+// sbg-31605, Salzburg's Glücksspielgesetz (19.11.2026): both the PDFs and
 // the Landesgesetzblatt's RIS XML lost the „§" of § 36, and § 38's title
 // runs over two lines. Every one read as a change of the § before.
 describe('a § whose sign is lost, and a title over two lines', () => {

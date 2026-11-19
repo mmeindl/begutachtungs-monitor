@@ -53,7 +53,7 @@ export function repealKey(designation: string): string {
 /**
  * „Die §§ 65, 66 bis 70a und 73 samt Überschriften entfallen.", „Die
  * Anlagen 6, 7 und 10 entfallen.", „Die Anlagen 1 bis 27 sowie 30 entfallen
- * samt Überschriften." (the headings after the verb since 20.11.2026,
+ * samt Überschriften." (the headings after the verb since 19.11.2026,
  * 4D9E1224): a list the grammar refuses
  * („keine auflösbare Adresse", 19.11.2026: GuKG-Novelle 2024, 2. Novelle
  * zur Bäderhygieneverordnung). Read only where the grammar typed nothing,
@@ -72,7 +72,7 @@ const DIVISION_NAME = String.raw`(?:(?:\d+[a-z]?|[IVXL]+)\.\s*(?:Teil|Hauptstüc
  * entfallen.", „Der II. Abschnitt des Teils A entfällt.": the division or
  * divisions are group 1, the division they are qualified by group 2.
  *
- * The plural and the lettered Teil since 20.11.2026: the Seeschifffahrts-
+ * The plural and the lettered Teil since 19.11.2026: the Seeschifffahrts-
  * Verordnung's draft (4D9E1224) repeals 177 §§ by „Die Teile B und C
  * entfallen", „Die Teile J, K und L entfallen" and „Der II. Abschnitt des
  * Teils A entfällt", and none of them was read.
@@ -165,7 +165,7 @@ export function draftRepeals(blocks: readonly TextBlock[], article: DraftArticle
           // this would vouch for a removed § in the 3. Abschnitt of any
           // Hauptstück (19.11.2026). Kept as a pair, it proves a repeal only
           // where the §'s division path holds both (`divisionPath`,
-          // 20.11.2026). „des Gesetzes („Allgemeine Auskunftspflicht")"
+          // 19.11.2026). „des Gesetzes („Allgemeine Auskunftspflicht")"
           // qualifies by the law itself, which holds the division once: no
           // qualifier. A qualifier this cannot read proves nothing.
           const inner = repealedDivisions(division[1]!)
@@ -244,7 +244,7 @@ const kindOfKey = (key: string): string => key.slice(key.indexOf(' ') + 1)
  * list „TEIL B | … | I. ABSCHNITT" over one § shows Teil outside Abschnitt.
  * A heading whose order to a division already taken the law never shows
  * ends the walk, and so does a § the check did not fetch — a division not
- * known is a division not proven. Until 20.11.2026 the walk took the
+ * known is a division not proven. Until 19.11.2026 the walk took the
  * innermost division alone and stopped there: no Teil was ever known, and
  * 177 repealed §§ of 4D9E1224 were withheld as unproven.
  */

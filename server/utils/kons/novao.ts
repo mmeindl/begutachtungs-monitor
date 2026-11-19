@@ -328,7 +328,7 @@ const HEADING_TARGET_RE = /Überschrift(?:en)?\s+(?:zu|des|der|von|zum|im|dieses
  * named by the § below it. Group 1 is set for the heading of a group of §§,
  * which may also be named by the § above it: „Die Abschnittsüberschrift nach
  * § 11 lautet:" read as § 11 and replaced its text by the heading (22e95d18,
- * 20.11.2026).
+ * 19.11.2026).
  */
 const HEADING_ABOVE_RE = /(?:(Zwischen|Abschnitts|Unterabschnitts|Gliederungs|Teil|Hauptstück)(?:überschrift|bezeichnung)(?:en)?\s+(?:vor|nach)|(?<![\p{L}])Überschrift(?:en)?\s+vor)\s+(?:dem\s+)?§/iu
 
@@ -772,7 +772,7 @@ export function parseAddress(text: string, inherited?: NovaoAddress | null): Nov
     if (found === null) return null
     // An Artikel's siblings in the form its `para` takes: „Art. I und II"
     // named „Art. 1" and „Art. II", two spellings no reader joins back
-    // (20.11.2026). A schedule keeps its numbering as written.
+    // (19.11.2026). A schedule keeps its numbering as written.
     siblings = pm[2] ? found.ids.map((id) => articleNumberKey(id) ?? id) : found.ids
   }
 
@@ -1531,7 +1531,7 @@ export function splitCompound(line: string): string[] {
   const masked = line.replace(/"[^"]*"/g, (m) => '\u0000'.repeat(m.length))
   const bounds: number[] = []
   const gapped = new Set<number>()
-  // The verbs once, not every slice against VERB_RE (20.11.2026): a new
+  // The verbs once, not every slice against VERB_RE (19.11.2026): a new
   // law's § read as an instruction (the Begründung's § join) has hundreds of
   // separators, and testing both halves at each was quadratic — 43/ME XXVIII,
   // the EABG, spent three quarters of its Begründungsvergleich of half a
@@ -1941,7 +1941,7 @@ function partStruck(head: string, target: NovaoAddress): string | null {
 }
 
 /**
- * **The struck part named in FRONT of the verb** (20.11.2026). Without an
+ * **The struck part named in FRONT of the verb** (19.11.2026). Without an
  * auxiliary, everything before „entfällt" is the subject, and the subject is
  * the address — or a part of it the address did not read: „Anhang III Teil B
  * Tabelle 2 entfällt" deleted Anhang III, „§ 144 Abs. 2 Posten F. III.
@@ -2004,7 +2004,7 @@ function partBeforeVerb(before: string, target: NovaoAddress): string | null {
 }
 
 /**
- * **„jeweils" hands the sentence to every address** (20.11.2026). „In § 14
+ * **„jeweils" hands the sentence to every address** (19.11.2026). „In § 14
  * Abs. 2, § 36 Abs. 1, … und § 135 Abs. 1 entfällt jeweils der letzte Satz"
  * (Strafrechtliches EU-Anpassungsgesetz): the address list is cut at the
  * commas, and the sentence words stand in the last segment, so only § 135
@@ -3182,7 +3182,7 @@ export function refusedAddresses(raw: string, inherited?: NovaoAddress | null): 
 /**
  * „In den §§ 26 bis 43 entfallen die Paragraphenbezeichnungen; die Abs. 62
  * bis 79 werden nach § 17a Abs. 61 (neu) eingereiht" (116/ME XXVIII, IESG
- * and IEF-Service-GmbH-G; 20.11.2026): two clauses, the second with a verb
+ * and IEF-Service-GmbH-G; 19.11.2026): two clauses, the second with a verb
  * `splitCompound` does not cut at. Read as one address the line named § 26
  * alone, and the `§§` rule above refused it whole, so the annex filed the
  * unit under no §. Cut here, for the address only: the engine's cut stays as
@@ -3643,7 +3643,7 @@ export function addressedUnits(line: string, inherited?: NovaoAddress | null): A
   // Not where only a part was typed: the refused reading of the other part
   // would add §§ its operands cite („… wird der Verweis auf § 24 Abs. 2 …
   // ersetzt" → § 24; 7 of the 31 §§ such a union gained over the corpus,
-  // 20.11.2026), and a wrong § is worse than a missing one.
+  // 19.11.2026), and a wrong § is worse than a missing one.
   if (ops.length === 0) for (const para of refusedAddresses(line, inherited) ?? []) paras.add(para)
   return { paras: [...paras], aliases, reason: paras.size > 0 ? null : (reason ?? NO_PARAGRAPH_ADDRESSED) }
 }

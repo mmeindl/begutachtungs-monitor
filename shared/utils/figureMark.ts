@@ -32,7 +32,7 @@ export function hasFigure(text: string | null | undefined): boolean {
 
 /**
  * The text with every mark taken out — the form a verdict is decided on
- * (20.11.2026). The mark says where an image stands, and the image is not
+ * (19.11.2026). The mark says where an image stands, and the image is not
  * compared, so it must not decide „geändert" either: a Land's draft read
  * from PDF carries no mark where the Landesgesetzblatt from RIS sets one,
  * and Salzburg's units came out „geändert" by „+[Abbildung]" alone, under

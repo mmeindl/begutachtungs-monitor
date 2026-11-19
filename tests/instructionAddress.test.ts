@@ -71,7 +71,7 @@ describe('addressedParagraph', () => {
   })
 })
 
-describe('addressedParagraph — ein § in einem Artikel des Gesetzes (20.11.2026)', () => {
+describe('addressedParagraph — ein § in einem Artikel des Gesetzes (19.11.2026)', () => {
   it('gibt ihm keinen Namen, liest ihn aber für den §-Join der Begründungen (75/ME XXVIII Z 11)', () => {
     const line = 'In Artikel II § 9 entfällt der dritte Absatz.'
     expect(addressedParagraph(line)).toBeNull()

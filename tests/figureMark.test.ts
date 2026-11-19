@@ -21,8 +21,8 @@ describe('the image mark (19.11.2026)', () => {
 
 // The Landesgesetzblatt from RIS sets the mark where the Land's draft, read
 // from PDF, carries none: Salzburg's units came out „geändert" by
-// „+[Abbildung]" alone (sbg-33675 Z 6, 20.11.2026).
-describe('a mark alone makes no change (20.11.2026)', () => {
+// „+[Abbildung]" alone (sbg-33675 Z 6, 19.11.2026).
+describe('a mark alone makes no change (19.11.2026)', () => {
   const u = (text: string): LawUnit => ({ article: 'G', articleNumber: null, id: 'Z6', heading: null, quotedHeadings: [], text, blocks: [], stammnorm: null })
 
   it('leaves the unit unchanged where only one side sets the mark', () => {

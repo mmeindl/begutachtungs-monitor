@@ -96,7 +96,7 @@ const SIGNATURE_TABLE_RE = /<table\b(?:(?!<\/table>)[\s\S])*?(?:Präsident|Lande
 const DIVISION_HEAD_RE = /<ueberschrift typ="(?:g1|g1min|g2|art)"[^>]*>(?!\s*(?:<[^>]+>\s*)*Artikel\b)(?:(?!<\/ueberschrift>)[\s\S])*?\b(?:Abschnitt|Unterabschnitt|Teil|Hauptstück|ABSCHNITT|TEIL|HAUPTSTÜCK)\b(?:(?!<\/ueberschrift>)[\s\S])*<\/ueberschrift>/g
 
 /**
- * A § heading that lost its sign (20.11.2026): Salzburg's LGBl. Nr. 82/2025
+ * A § heading that lost its sign (19.11.2026): Salzburg's LGBl. Nr. 82/2025
  * sets „Spielgeheimnis" and „36" as the two headings of its § 36 — its own
  * table of contents says „§ 36 Spielgeheimnis" — and the bare number read as
  * no §, so § 36 ran into § 35, as on the PDF side (`draftPdfLaw`,
@@ -184,7 +184,7 @@ const SAME_CONTENT_SHARE = 0.5
  * that holds at least half of its instructions word for word, and the most.
  *
  * An instruction counts as word for word where its whole text is, or its
- * instruction line without the quoted text (`heading`, 20.11.2026): the new
+ * instruction line without the quoted text (`heading`, 19.11.2026): the new
  * text of a draft and its Kundmachung differ in what the Kundmachung fills
  * in („LGBl Nr …/2025" → „126/2025") and in typesetting („–" for „-"). Sbg
  * 33358 prints no „Artikel I"; its three instructions matched one of three

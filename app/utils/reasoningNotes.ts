@@ -14,11 +14,11 @@ import type { ExplanationsMissing, LandReasoningResponse, ReasoningDiffResponse,
  * „kept" where the truth is „we could not tell". For every change present on
  * both sides where both documents carry Erläuterungen, whichever join it
  * took (`ReasoningDiffResponse.gaps`, 19.11.2026), and for an inserted or
- * removed one whose own document names it nowhere (20.11.2026); where one
+ * removed one whose own document names it nowhere (19.11.2026); where one
  * has none, nothing at the change could be attached in the first place.
  */
 const REASONING_GAP_DE: Record<ReasoningGap, string> = {
-  // Ours (20.11.2026): the join failed, so the lead word of a reading that
+  // Ours (19.11.2026): the join failed, so the lead word of a reading that
   // failed. Until then every line opened „Begründung: nicht zuzuordnen", an
   // exception to the lead words that left open whose gap it was.
   numbering: gapDe('unreadable', 'die Begründung – die Erläuterungen zählen die Ziffern anders.'),

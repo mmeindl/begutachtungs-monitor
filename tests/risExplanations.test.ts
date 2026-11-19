@@ -211,7 +211,7 @@ describe('explanationsByParagraph — die Passage an ihrem Paragraphen', () => {
     expect(explanationsByParagraph(parsed, pack)).toEqual([{ law: 'GSVG', para: '2', heading: 'Zu Art. 2 Z 1 (§ 2 GSVG) - vgl. Art. 6 DSGVO:', text: ['Nur das GSVG.'] }])
   })
 
-  it('verwirft sie auch kompakt gesetzt, die Ziffer an das Z geschrieben (20.11.2026)', () => {
+  it('verwirft sie auch kompakt gesetzt, die Ziffer an das Z geschrieben (19.11.2026)', () => {
     // Two RIS SV-Novelle Erläuterungen of 2026 write „Art.1 Z22", with no
     // space and no word boundary between „Z" and its number.
     const parsed = besonderer(head('erll', 'Zu Art.1 Z22 bis 24, Art.2 Z8 und 9 sowie Art.3 Z4 (§ 70a ASVG; § 36 GSVG; § 33c BSVG):') + text('Gleichlautend.'))

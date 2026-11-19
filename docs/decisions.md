@@ -667,7 +667,7 @@ gets an entry of its own only where it carries a reason the rule does not.
   reason too (`provesAbsence`: 49/ME XXVIII heads its Inkrafttreten „Zu § 10:").
   Otherwise the line gives no reason: an unproven „nicht gefunden" would
   have been false on most such changes. **Whose gap the line names**
-  (maintainer, 20.11.2026; until then every line opened „Begründung: nicht
+  (maintainer, 19.11.2026; until then every line opened „Begründung: nicht
   zuzuordnen", an exception to the lead words): where the join failed, it is
   ours — „Nicht lesbar: die Begründung – die Erläuterungen zählen die
   Ziffern anders." and, without a proven reason,
@@ -677,7 +677,7 @@ gets an entry of its own only where it carries a reason the rule does not.
   keinen Abschnitt." (der Regierungsvorlage, beider Texte); the line stands
   at its change, so it does not name the change again,
   never „Nicht veröffentlicht", because prose elsewhere may still touch it.
-  An inserted or removed change (20.11.2026) gets the line only where the
+  An inserted or removed change (19.11.2026) gets the line only where the
   one document it stands in proves the absence — the Regierungsvorlage's
   line at an inserted one, the Entwurf's at a removed one; 15 changes of GP XXVIII, silent before. Not
   the unproven line at the 857 others: its own document mostly explains
@@ -758,7 +758,7 @@ gets an entry of its own only where it carries a reason the rule does not.
   consolidation would then report as repealed. Fail-closed: an unseen noun
   is refused, never read (`partStruck` in `kons/novao.ts`). The same holds
   for the subject in front of the verb where no „wird/werden" stands
-  (20.11.2026, `partBeforeVerb`): there every word must be the address's —
+  (19.11.2026, `partBeforeVerb`): there every word must be the address's —
   an opening article or preposition, designator and designation, „in der
   Fassung … BGBl. …", a title in brackets that names no number, the
   sentence or heading word the address read, a division's words only for a
@@ -773,7 +773,7 @@ gets an entry of its own only where it carries a reason the rule does not.
   („Die Überschrift vor § 20 und § 20 entfallen", which also deleted § 20
   twice).
 - **„jeweils" in front of the sentence gives it to every address**
-  (20.11.2026): „In § 14 Abs. 2, … und § 135 Abs. 1 entfällt jeweils der
+  (19.11.2026): „In § 14 Abs. 2, … und § 135 Abs. 1 entfällt jeweils der
   letzte Satz", „In § 15 Abs. 5 und § 16 Abs. 6 lautet jeweils der zweite
   Satz:". The list is cut at its commas and the sentence stood in the last
   address only; the others were whole Absätze, deleted until 19.11.2026 and
@@ -960,7 +960,7 @@ gets an entry of its own only where it carries a reason the rule does not.
   an annex printing instructions, a renumbering paired by its old number);
   the left check confirms such a § because its left column is the law in
   force. A draft that could not be read disarms the rule, as it does rule 2.
-  **A division is proven by the §'s whole division path** (20.11.2026,
+  **A division is proven by the §'s whole division path** (19.11.2026,
   `divisionPath`): walked back over the §§ the check fetched, a heading
   belongs to the § where it is outer to every division already taken, and
   which kind is outer is read from the law's own heading lists („TEIL B | …
@@ -1022,7 +1022,7 @@ gets an entry of its own only where it carries a reason the rule does not.
   stood still, a § is scored under its own number („Art. 1 § 3" is § 3,
   not 1), and the unrefused block sums to its denominator.
 - **A bench keys a unit as the page keys it** (`unitKey`, `unitsByKey`;
-  20.11.2026): a schedule apart from the § of its number, a Roman one by its
+  19.11.2026): a schedule apart from the § of its number, a Roman one by its
   Arabic number. Keyed by the bare number, the BGBl bench let a refused § 8
   lock BVergG Anl. 8 and a refused „Anhang VIII" line lock nothing, and
   scored two refused schedules as unrefused deviations; the ME bench and
@@ -2568,17 +2568,17 @@ Ministerialentwurf, RV = Regierungsvorlage.
 
 | What | Value | Sample, date |
 |---|---|---|
-| Engine against RIS after entry into force: identical | 81.0 % (1,454 of 1,794 on 20.11.2026, after Roman Anhänge were looked up as their Anlage: four schedules became identical, and BVergG 2018 Anl. 8 and BVergG Konzessionen 2018 Anl. 7, misfiled as „unverändert, not refused", are now refused as a whole and leave the score; 80.7 %, 1,450 of 1,796, before that: six §§ of three „lautet jeweils der zweite Satz" lines, read since; 80.4 %, 1,444, on 19.11.2026; 1,439 before the same night's engine fixes, `erltext` read as law text among them). The bench scored 1,752 §§ until 19.11.2026: 45 §§ of laws RIS files as „Art. 1 § 3" were never scored (41 identical), and the same day five §§ whose only line `segmentUnits` had lost became identical (79.5 %, 1,392, before both); 77.9 % on 04.10.2026 | 60 BGBl · 19.11.2026 (§12.12) |
-| Engine's own deviations | 1.1 % (20); 0.5 % (7 of 1,469 on 20.11.2026, since the bench locks a refused schedule as the page does; of 1,475 and 1,476 earlier that day, of 1,470 on 19.11.2026) among unrefused §§ (1.2 % and 0.6 %, 9 of 1,476, before the engine fixes of 19.11.2026). 0.7 % until 19.11.2026, one of them the bench's own: AlVG „Art. 1 § 3" held against the engine's § 1 | same |
-| Unrefused but not the law in force | 0.9 % (13) of 1,469 §§ on 20.11.2026 (of 1,475 and 1,476 earlier that day, of 1,470 on 19.11.2026); KFG § 24 and VBG § 100 are identical since `erltext` is read on both sides. 1.4 % (21) of 1,476 §§ before that, counting since 19.11.2026 the two §§ an instruction named, nothing refused and the engine left (partly) as they stood (KFG § 24, VBG § 100); BVergGVS § 30 identical since its lost line is read; 1.4 % (20 of 1,435) on 18.11.2026; 3.0 % (46 of 1,519) on 04.10.2026. Of the 26 that left, 21 are refused now with the same text and 4 became identical: bookkeeping, not accuracy. The 26th was Privatschulgesetz § 30, never wrong (next row) | same |
-| Annex-confirmed §§ against the enacted text | Table path: 116 confirmed, 114 identical, 2 incomplete and withheld as implausible, 0 deviating, so all 114 the gate shows are identical (107 before typed designations opened their §; 108 and 106 on 18.11.2026, before the lettered Ziffern were read). PDF path, read by the bench since 19.11.2026: 320 confirmed, 318 identical, 0 deviating (319 and 317 before the Absatzbezeichnung lines of 20.11.2026); of the two incomplete, one is plausible and shown, Grundversorgungsgesetz – Bund 2005 § 5 (BGBl. I Nr. 39/2026), which lacks part of the enacted text and adds no word. Both paths, what the gate shows: 430 of 431 identical (429 of 430 and 428 of 429 earlier on 20.11.2026, before a colon inside a quotation stopped cutting the instruction line). „0 of 108 deviate" (26.10.2026) counted the class „abweichend" alone and summed three §§ away; the third, Privatschulgesetz § 30, was word for word the law and read as „halb angewendet" because RIS gives the designation once as `<ueberschrift typ="para">` and once as `<gldsym>` (`konsTree.ts`) | 19.11.2026 (§12.12c) |
+| Engine against RIS after entry into force: identical | 81.0 % (1,454 of 1,794 on 19.11.2026, evening, measured again at main a953024c; after Roman Anhänge were looked up as their Anlage: four schedules became identical, and BVergG 2018 Anl. 8 and BVergG Konzessionen 2018 Anl. 7, misfiled as „unverändert, not refused", are now refused as a whole and leave the score; 80.7 %, 1,450 of 1,796, before that: six §§ of three „lautet jeweils der zweite Satz" lines, read since; 80.4 %, 1,444, in the night to 19.11.2026; 1,439 before that night's engine fixes, `erltext` read as law text among them). The bench scored 1,752 §§ until 19.11.2026: 45 §§ of laws RIS files as „Art. 1 § 3" were never scored (41 identical), and the same day five §§ whose only line `segmentUnits` had lost became identical (79.5 %, 1,392, before both); 77.9 % on 04.10.2026 | 60 BGBl · 19.11.2026 (§12.12) |
+| Engine's own deviations | 1.1 % (20); 0.5 % (7 of 1,469 on the evening of 19.11.2026, since the bench locks a refused schedule as the page does; of 1,475 and 1,476 earlier that day, of 1,470 in the night before) among unrefused §§ (1.2 % and 0.6 %, 9 of 1,476, before the engine fixes of 19.11.2026). 0.7 % until 19.11.2026, one of them the bench's own: AlVG „Art. 1 § 3" held against the engine's § 1 | same |
+| Unrefused but not the law in force | 0.9 % (13) of 1,469 §§ on the evening of 19.11.2026 (of 1,475 and 1,476 earlier that day, of 1,470 in the night before); KFG § 24 and VBG § 100 are identical since `erltext` is read on both sides. 1.4 % (21) of 1,476 §§ before that, counting since 19.11.2026 the two §§ an instruction named, nothing refused and the engine left (partly) as they stood (KFG § 24, VBG § 100); BVergGVS § 30 identical since its lost line is read; 1.4 % (20 of 1,435) on 18.11.2026; 3.0 % (46 of 1,519) on 04.10.2026. Of the 26 that left, 21 are refused now with the same text and 4 became identical: bookkeeping, not accuracy. The 26th was Privatschulgesetz § 30, never wrong (next row) | same |
+| Annex-confirmed §§ against the enacted text | Table path: 116 confirmed, 114 identical, 2 incomplete and withheld as implausible, 0 deviating, so all 114 the gate shows are identical (107 before typed designations opened their §; 108 and 106 on 18.11.2026, before the lettered Ziffern were read). PDF path, read by the bench since 19.11.2026: 320 confirmed, 318 identical, 0 deviating (319 and 317 before the Absatzbezeichnung lines of the afternoon); of the two incomplete, one is plausible and shown, Grundversorgungsgesetz – Bund 2005 § 5 (BGBl. I Nr. 39/2026), which lacks part of the enacted text and adds no word. Both paths, what the gate shows: 430 of 431 identical (429 of 430 and 428 of 429 earlier that day, before a colon inside a quotation stopped cutting the instruction line; the same on the evening's run at main a953024c). „0 of 108 deviate" (26.10.2026) counted the class „abweichend" alone and summed three §§ away; the third, Privatschulgesetz § 30, was word for word the law and read as „halb angewendet" because RIS gives the designation once as `<ueberschrift typ="para">` and once as `<gldsym>` (`konsTree.ts`) | 19.11.2026 (§12.12c) |
 | Fault injection: known error classes caught | ≥ 95 % each | 26.10.2026 (§12.12c) |
 | Fault injection, one word, figure or place in a printed stretch (word dropped, added, swapped, figure, citation, two Ziffern swapped) | 99.3–100 % on both paths; § heading 99.9 % (PDF, 94.8 % before the heading-area fix) and 100 % (table) | GP XXVIII · 19.11.2026 |
 | The same where no changed row prints anything (word dropped / added / figure changed) | 99.0 / 99.7 / 99.6 % (PDF), 99.5 / 99.9 / 99.7 % (table), floored; 65.0 / 23.8 / 95.8 % and 66.7 / 28.0 / 97.1 % while check 3 asked only whether a word stands anywhere in the annex. Withdrawn without injection: 6 of 1,549 PDF and 2 of 1,153 table confirmations, each read (four engine gaps behind a refusal, one result without a heading the annex prints, three correct results the annex prints wrongly: TDBG § 40b, HSG § 7, BD-EG § 38) | GP XXVIII · 19.11.2026 |
 | A struck Absatz put back under its old number (fault class Zurück) | 45 of 45 (PDF), 25 of 25 (table); 41 of 46 and 20 of 25 before checks 4 and 5 read a struck Absatz that opens like the next | GP XXVIII · 19.11.2026 |
 | Silent omission read (`silentOmissions`) under fault injection | a skipped unit the engine loses caught 16 of 16; one missing from RIS too caught 3 of 16 | GP XXVIII · 14.11.2026 |
-| Changed §§ with an outcome on the page | all 4,798 in 164 drafts (ME) on 20.11.2026, no invariant violated, „verloren" included (4,701 in 163 on 18.11.2026); 1,490 in 219 without Gegenstand (18.11.2026, not re-run); 4,463 and 1,541 on 27.10.2026. The second fell although five drafts came, and none of it is the engine: six drafts left the set (−89; four got a Parliament page as 150/ME to 153/ME, two were lost by the corpus read, next table), eleven came (+38), and on the 208 in both the count stayed 1,452. Reconstructed by running the code of 27.10. offline on the same inputs: 214 drafts, 1,541, 630, the recorded figures. The JSON of an `accounting.ts` run is the per-draft record from now on | GP XXVIII · 18.11.2026 (§12.12c) |
-| Of those shown | 2,393 (ME, 20.11.2026: the engine and annex fixes of 18.–20.11.); 2,267 and 623 on 18.11.2026; 2,167 and 630 on 27.10.2026. Without Gegenstand: −33 with the six that left, +11 with the eleven that came, +15 on the 208 in both (7262426, omissions without „…": 14; 14984f1, letter-spaced words: 1) | same |
+| Changed §§ with an outcome on the page | all 4,798 in 164 drafts (ME) on 19.11.2026, no invariant violated, „verloren" included (4,701 in 163 on 18.11.2026); 1,518 in 222 without Gegenstand on 19.11.2026, none violated (1,490 in 219 on 18.11.2026); 4,463 and 1,541 on 27.10.2026. The second fell although five drafts came, and none of it is the engine: six drafts left the set (−89; four got a Parliament page as 150/ME to 153/ME, two were lost by the corpus read, next table), eleven came (+38), and on the 208 in both the count stayed 1,452. Reconstructed by running the code of 27.10. offline on the same inputs: 214 drafts, 1,541, 630, the recorded figures. The JSON of an `accounting.ts` run is the per-draft record from now on | GP XXVIII · 18.11.2026 (§12.12c) |
+| Of those shown | 2,395 and 636 on the evening of 19.11.2026, main a953024c (2,393 at noon, after the engine and annex fixes of 18. and 19.11.); 2,267 and 623 on 18.11.2026; 2,167 and 630 on 27.10.2026. Without Gegenstand: −33 with the six that left, +11 with the eleven that came, +15 on the 208 in both (7262426, omissions without „…": 14; 14984f1, letter-spaced words: 1) | same |
 | RIS Begut list read whole | 4,621 of 4,621 with the repair; without it one pass gave 4,602 (19 sent twice, 19 skipped), another 4,614, the dev server's 380 of the 382 in the period | `pnpm corpus:tgu-deckung`, one pass over 47 pages · 18.11.2026 |
 | Amending drafts that show at least one § | 111 of 122 | GP XXVIII · 06.10.2026 (§12.12) |
 | Amending drafts with a readable annex | 121 of 122 | 06.10.2026 (§12.12) |
@@ -2617,8 +2617,10 @@ circular of 10.12.2015).
 | Decisions typed „Wirksamwerden" instead of an entry into force | 12 of 13 | same |
 | Procedure numbers with a page in the Legislative Observatory | 180 of 187; of the 181 the rule links, 178 (the other three, 2016/0224(COD), 2018/0063(COD), 2023/0077(COD), are split into files A and B and linked by `OBSERVATORY_FILE`) | every number of the map, one request each · 15.11.2026 |
 | Rail against the Legislative Observatory: proposal, Parliament, Council, signature | identical in 15 of 18 procedures with a page; in 3 the difference has a named reason (Council position adopted a day before the Observatory dates its publication; an act on two procedures; a consent procedure whose „proposal" the Observatory dates later); 2 of 20 have no page | 20 acts across six procedure types · 15.11.2026 |
-| Land Textgegenüberstellung, right column found in the draft | 550 of 550 judgeable §§ | 63 documents, Oberösterreich, Salzburg, Tirol, Wien, 1,156 §§ shown, GP XXVIII · 12.11.2026 |
-| The same check under fault injection, caught | another § of the same draft appended 57.8 % (315/545), another draft's sentence 76.4 % (420/550); by design none of a number changed, one word swapped, a sentence dropped (0 of 474 / 549 / 336) | same |
+| Land Textgegenüberstellung, right column found in the draft | 552 of 552 judgeable §§ (550 of 550 on 12.11.2026) | 63 documents, Oberösterreich, Salzburg, Tirol, Wien, 1,160 §§ shown, GP XXVIII · 19.11.2026 |
+| The same check under fault injection, caught | another § of the same draft appended 57.0 % (312/547), another draft's sentence 76.4 % (422/552); by design none of a number changed, one word swapped, a sentence dropped (0 of 476 / 551 / 338): a single misread word or figure in a Land's right column is caught by nothing, where the Bund's engine and oracle catch 99.7 % | same (57.8 % and 76.4 % on 12.11.2026) |
+| Land station pairs: instructions whose announced text a reader did not find in its place (`announcedText.ts`) | withheld 37 in 21 pairs, named „nicht lesbar" 189 in 88 | 372 cached pairs, GP XXVIII · 19.11.2026 |
+| Land station pairs: invariant hits (`landStations.ts`) | `#dup`, running head, sub-instruction as new: 0; „Nur Ziffern neu": 2, both the documents' own (`landStationsAccepted.json`); 3 before the announced-text rule withheld Salzburg 33884 | same |
 
 ### Laws without a Begutachtung
 

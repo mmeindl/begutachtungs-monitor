@@ -315,7 +315,7 @@ describe('annexParas — the Begründung and the Lesefassung of a renumbered §'
   })
 
   // One outcome, one block, and on a tie the block printing the number
-  // before the one reaching it through a renumbering (20.11.2026).
+  // before the one reaching it through a renumbering (19.11.2026).
   it('puts an outcome both blocks find, on a tie, at the block that prints its number', () => {
     const tie = [row('§ 22.', { gld: '§ 22.', current: 'Alt.', proposed: 'Neu.' }), row('§ 14.', { gld: '§ 14.', paraAfter: '§ 22.', current: 'Soweit …', proposed: '§ 22. Soweit …' })]
     const placed = parasOf(tie, {}, [], response(['22'], [])).paras

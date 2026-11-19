@@ -76,7 +76,7 @@ const REFUSED_HEAD_RE = /§\s*\d+[a-z]*\s*\(neu\)|\b(?:vor|nach)\s+(?:dem\s+)?§
  * where the typed reading gives „§ 9" for the same address already: „Art. II
  * § 9 Abs. 3 entfällt." was joined at § 9, while „In Artikel II § 9 entfällt
  * der dritte Absatz.", which the engine refuses since 19.11.2026, lost its §
- * and its Begründung line (75/ME XXVIII Z 11; 20.11.2026). So the join reads
+ * and its Begründung line (75/ME XXVIII Z 11; 19.11.2026). So the join reads
  * it (`AddressUse`).
  */
 const ARTIKEL_PARAGRAPH_RE = /\bArt(?:ikel|\.)\s*[IVXLC\d]+[a-z]?\s+§/i

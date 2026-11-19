@@ -236,7 +236,7 @@ export interface ReasoningDiffResponse {
    * `diffUnitKey` → why that change got no Begründung (`ReasoningGap`):
    * every change present on both sides with no entry in `units` (only the
    * Ziffer join's until 19.11.2026), an inserted or removed one where its own
-   * document proves the absence (20.11.2026), but none the entry ceiling
+   * document proves the absence (19.11.2026), but none the entry ceiling
    * turned away — never one whose Begründung was found. Absent in an answer cached before
    * 14.11.2026.
    */

@@ -219,7 +219,7 @@ describe('annexKeepsUnit', () => {
     expect(annexKeepsUnit([])).toBe(false)
   })
 
-  it('reads a repeal in the other spellings a ressort may use (20.11.2026)', () => {
+  it('reads a repeal in the other spellings a ressort may use (19.11.2026)', () => {
     for (const t of ['§ 63. [entfällt]', '§ 63. – entfällt –', '§§ 63 und 64 entfallen.', '§ 63. (weggefallen)', '§ 63. Gestrichen.', 'Anlage 2 [aufgehoben]']) expect(annexKeepsUnit([row(t)]), t).toBe(false)
     // A unit whose text goes on after the word still stands.
     expect(annexKeepsUnit([row('§ 63. (1) entfällt. (2) Die Frist beträgt drei Wochen.')])).toBe(true)

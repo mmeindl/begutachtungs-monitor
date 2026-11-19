@@ -157,7 +157,7 @@ const NUMBER_THEN_NUMBER_RE = /^\d{1,3}[a-z]?\.\d/
  * clause itself where RIS mistags it as an instruction (92/ME) all follow
  * something else.
  */
-// Also the word orders the corpus carries beside it (20.11.2026, `harness/units.ts`
+// Also the word orders the corpus carries beside it (19.11.2026, `harness/units.ts`
 // listing the unnumbered lines it exempts): „wird geändert wie folgt:", the
 // law named between „wird" and „wie folgt geändert:" („wird die
 // Tierschutz-Veranstaltungsverordnung, BGBl. II Nr. 493/2004, wie folgt
@@ -165,7 +165,7 @@ const NUMBER_THEN_NUMBER_RE = /^\d{1,3}[a-z]?\.\d/
 // (BFG-Novelle 2011):"). Unmatched, the law's only instruction opened no unit
 // and was compared, applied and listed nowhere — 15 instruction lines in 12
 // texts of the harness cache; the census exempts such a line by design.
-// And (20.11.2026, the last four the listing left): RIS's own typo „wird
+// And (19.11.2026, the last four the listing left): RIS's own typo „wird
 // folgt geändert:" (2e78ceb8), and a Verordnung's „… wird verordnet:" that
 // names the Verordnung it changes in its title only (0c2d09a6) — a new
 // Verordnung under the same words opens with its § 1, which RIS does not

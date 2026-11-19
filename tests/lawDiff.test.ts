@@ -155,14 +155,14 @@ describe('a Novellierungsanordnung with no number at all', () => {
     expect(units[0]!.text).toContain('(108) Neuer Text.')
   })
 
-  // 20.11.2026: the clause in the other word orders of the corpus — the
+  // 19.11.2026: the clause in the other word orders of the corpus — the
   // instruction under it opened no unit and stood nowhere (17bb816d,
   // 39e33ba8, 405bbd6b; four Salzburger Landesgesetzblätter).
   it.each([
     'Das X-Gesetz, BGBl. I Nr. 1/2000, zuletzt ge&auml;ndert durch BGBl. I Nr. 2/2001 wird ge&auml;ndert wie folgt:',
     'Auf Grund des Y-Gesetzes wird die X-Verordnung, BGBl. II Nr. 1/2000, wie folgt ge&auml;ndert:',
     'Das X-Gesetz, BGBl. I Nr. 1/2000, wird wie folgt ge&auml;ndert (X-Novelle 2011):',
-    // 20.11.2026: RIS's typo (2e78ceb8), and a Verordnung's „verordnet:" (0c2d09a6).
+    // 19.11.2026: RIS's typo (2e78ceb8), and a Verordnung's „verordnet:" (0c2d09a6).
     'Die X-Verordnung, BGBl. II Nr. 1/2000, wird folgt ge&auml;ndert:',
     'Auf Grund des &sect; 5 des Y-Gesetzes wird verordnet:',
   ])('opens it under „%s"', (text) => {
@@ -171,7 +171,7 @@ describe('a Novellierungsanordnung with no number at all', () => {
     expect(units[0]!.text).toContain('(1) Neuer Text.')
   })
 
-  // 20.11.2026: a clause set before the Artikel heading (bfa0c3f4), and an
+  // 19.11.2026: a clause set before the Artikel heading (bfa0c3f4), and an
   // Artikel named „Änderung des …" with no clause at all (9aa88c41).
   it('opens it under a clause above the Artikel heading, and under an Artikel named for the change', () => {
     const across = parseLawUnitsFromRis(ris(clause, '<ueberschrift typ="g1">Artikel I</ueberschrift>', '<absatz typ="novao1">&sect; 3 wird um folgenden Abs. 6 erg&auml;nzt:</absatz>', '<absatz typ="abs">"(6) Neu."</absatz>'))

@@ -1205,8 +1205,8 @@ describe('compareReasoning — die Zeile auch außerhalb des Ziffer-Joins (19.11
 })
 
 // An inserted or removed change stood silent where its Begründung could not
-// be attached: the gap line was for changes on both sides (20.11.2026).
-describe('compareReasoning — die Zeile an einer eingefügten oder entfallenen Änderung (20.11.2026)', () => {
+// be attached: the gap line was for changes on both sides (19.11.2026).
+describe('compareReasoning — die Zeile an einer eingefügten oder entfallenen Änderung (19.11.2026)', () => {
   const removed = (id: string, line: string): LawDiffUnit => ({ ...z(id, id, line, 'removed'), toText: null })
   const inserted = (id: string, line: string): LawDiffUnit => ({ ...z(id, null, line, 'inserted'), fromText: null })
 

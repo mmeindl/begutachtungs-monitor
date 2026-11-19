@@ -334,7 +334,7 @@ interface EntryInput {
 function fill(f: Filling, unit: LawDiffUnit, key: string, make: () => EntryInput): void {
   if (f.skipped.has(key)) return
   if (!f.out.entries[key]) {
-    // The texts before the ceiling (20.11.2026): a unit the ceiling turns
+    // The texts before the ceiling (19.11.2026): a unit the ceiling turns
     // away keeps silent because its Begründung was found (`capped`), and
     // asked first, the ceiling also took units whose passage had no text.
     const { label, basis, a, b, uncompared } = make()
@@ -1562,7 +1562,7 @@ export function compareReasoning(units: readonly LawDiffUnit[], before: HtmlExpl
     const notAfter = provesAbsence(after, before, unit, 'after', read)
     gaps[key] = notBefore || notAfter ? missingGap(notBefore, notAfter) : 'unread'
   }
-  // An inserted or removed change (20.11.2026) stands in one document only,
+  // An inserted or removed change (19.11.2026) stands in one document only,
   // and only that one can prove it explains nothing: „im Entwurf nicht
   // gefunden" at a change the draft never made would be true of every such
   // change and say nothing. So the line stands where the change's own
@@ -1664,7 +1664,7 @@ interface PassageWords {
 }
 
 /**
- * Read once per passage (20.11.2026). `provesAbsence` asks for every change
+ * Read once per passage (19.11.2026). `provesAbsence` asks for every change
  * the words of every passage of the document, and built them, with a count
  * map, per witness and per candidate: 43/ME XXVIII (164 passages, 73 changes)
  * took 513 ms where it had taken 31 — inside the cached service, on the small

@@ -648,7 +648,7 @@ export function placeAtParagraphs(
    * confirmed text stood under its table-of-contents entry.
    *
    * Before the later one, on a tie, the block that finds the outcome under
-   * the number it prints (20.11.2026): a § the draft renumbers is printed
+   * the number it prints (19.11.2026): a § the draft renumbers is printed
    * under its old number and reaches the outcome of its new one, and where
    * the § that holds that number afterwards is printed as long, „the later
    * one" could be the renumbered block — the outcome of § 22 at the old
@@ -730,7 +730,7 @@ export function placeAtParagraphs(
     byGroup.set(key, met ? { outcomes: [...met.outcomes, ...end.outcomes], explanations: [...met.explanations, ...end.explanations] } : end)
   }
   // Every outcome the server sent stands at a block or at its law's end
-  // (20.11.2026, `scripts/harness/accounting.ts`, „verloren"): one a block
+  // (19.11.2026, `scripts/harness/accounting.ts`, „verloren"): one a block
   // took but no block shows is lost to the page. Taken on purpose and shown
   // nowhere: the old number a renumbered § vacated, which its struck rows
   // say (above).

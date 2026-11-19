@@ -38,7 +38,7 @@ export const scoredKey = (label: string): string | null => harnessKey(label.repl
  * (`anlageLabelKey`), and a schedule by its number as the page fetches it
  * (`addressedLabels`, `unitKey`): „Anhang VIII" is RIS's „Anl. 8". Folded
  * alone it was „Anl. VIII", a label RIS never carries, and the ME bench and
- * the fault injection loaded no Roman schedule (20.11.2026).
+ * the fault injection loaded no Roman schedule (19.11.2026).
  */
 export const loadKey = (label: string): string => (isSchedule(label) ? (unitKey(label) ?? anlageLabelKey(label)) : anlageLabelKey(label))
 

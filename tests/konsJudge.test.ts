@@ -76,7 +76,7 @@ describe('matchArticle: the draft Artikel of the same law', () => {
 })
 
 describe('loadKey', () => {
-  // 20.11.2026: folded alone, „Anhang VIII" was „Anl. VIII", a label RIS
+  // 19.11.2026: folded alone, „Anhang VIII" was „Anl. VIII", a label RIS
   // never carries — the ME bench and the fault injection loaded no Roman schedule.
   it('meets RIS’s label for a Roman Anhang, and leaves the rest as anlageLabelKey', () => {
     expect(loadKey('Anhang VIII')).toBe(loadKey('Anl. 8'))

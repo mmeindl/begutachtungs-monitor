@@ -1291,7 +1291,7 @@ async function injectIntoResults(
         wanted.add(loadKey(address.para))
         // Keyed as the page keys it (`unitKey`): „Anhang VIII" is „Anl. 8",
         // never § 8. By the bare number a schedule was scored against the §
-        // of its number, and a Roman one not at all (20.11.2026).
+        // of its number, and a Roman one not at all (19.11.2026).
         const id = isDivision(address.para) ? null : unitKey(address.para)
         if (id) touched.add(id)
       }

@@ -43,24 +43,24 @@ describe('draftRepeals', () => {
   it('reads whole divisions, innermost first', () => {
     const r = draftRepeals(draftOf('7. Der 9. Teil entfällt.', '3. Der 4a. Abschnitt entfällt.', '12. Der 5. Abschnitt samt Überschrift entfällt.'), article())
     expect([...r.divisions].sort()).toEqual(['4a. abschnitt', '5. abschnitt', '9. teil'])
-    // The singular heading in a list too (IKT-Schulverordnung, 20.11.2026: „Überschriften?" read „Überschrifte").
+    // The singular heading in a list too (IKT-Schulverordnung, 19.11.2026: „Überschriften?" read „Überschrifte").
     expect([...draftRepeals(draftOf('2. § 7 samt Überschrift entfällt.', '3. Die §§ 8 und 9 samt Überschrift entfallen.'), article()).paragraphs].sort()).toEqual(['§ 7', '§ 8', '§ 9'])
   })
 
-  it('keeps a division qualified by another as a pair, never as the division alone (19./20.11.2026)', () => {
+  it('keeps a division qualified by another as a pair, never as the division alone (19.11.2026)', () => {
     // Keyed „3. abschnitt", it vouched for the 3. Abschnitt of every Hauptstück.
     const r = draftRepeals(draftOf('6. Der 3. Abschnitt des 6. Hauptstücks entfällt.', '7. Der II. Abschnitt des Teils A entfällt.'), article())
     expect(r.divisions.size).toBe(0)
     expect(r.qualified).toEqual([['3. abschnitt', '6. hauptstück'], ['ii. abschnitt', 'a. teil']])
   })
 
-  // Seeschifffahrts-Verordnung, 4D9E1224 (20.11.2026): 177 repealed §§ withheld.
+  // Seeschifffahrts-Verordnung, 4D9E1224 (19.11.2026): 177 repealed §§ withheld.
   it('reads lettered Teile and a plural list of divisions', () => {
     const r = draftRepeals(draftOf('8. Die Teile B und C entfallen.', '11. Die Teile J, K und L entfallen.', '12. Der Teil M entfällt.'), article())
     expect([...r.divisions].sort()).toEqual(['b. teil', 'c. teil', 'j. teil', 'k. teil', 'l. teil', 'm. teil'])
   })
 
-  it('reads a division qualified by the law itself as the division (20.11.2026)', () => {
+  it('reads a division qualified by the law itself as the division (19.11.2026)', () => {
     const r = draftRepeals(draftOf('2. Der 1. Abschnitt des Gesetzes ( "Allgemeine Auskunftspflicht" ) entfällt.', '3. Der 3. Abschnitt des Bundesgesetzes entfällt.'), article())
     expect([...r.divisions].sort()).toEqual(['1. abschnitt', '3. abschnitt'])
   })

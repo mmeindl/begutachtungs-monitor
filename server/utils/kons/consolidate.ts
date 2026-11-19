@@ -628,7 +628,7 @@ export async function consolidate(
  * word, and nothing after it. The words are the ones the corpus prints at a
  * repealed unit (141/ME XXVIII, C4F11447) and RIS's own „aufgehoben".
  *
- * And the spellings a ressort may set instead (20.11.2026): in square
+ * And the spellings a ressort may set instead (19.11.2026): in square
  * brackets or between dashes („[entfällt]", „– entfällt –"), the plural, „gestrichen",
  * „weggefallen". None stands in GP XXVIII's annexes (census of every unit
  * whose proposed column is short and holds a repeal word: one match, and

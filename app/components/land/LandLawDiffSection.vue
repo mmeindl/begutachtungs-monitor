@@ -511,7 +511,7 @@ const hasUnits = computed(() => units.value.length > 0)
                   </template>
                   <div v-if="!b.reasoning.comparable || !b.reasoning.segments" class="pb-2 pl-6">
                     <!-- The word diff's ceiling is a gap of the monitor's, said as the
-                         comparison above says it (`DiffBody`, 20.11.2026). -->
+                         comparison above says it (`DiffBody`, 19.11.2026). -->
                     <GapNote v-if="b.reasoning.comparable" class="mb-2 text-xs text-ink-secondary" :text="NO_WORD_DIFF_DE" />
                     <p v-else class="mb-2 text-xs text-ink-muted">Entwurf und Regierungsvorlage fassen die Begründung zu dieser Änderung verschieden zusammen; verglichen wird sie deshalb nicht.</p>
                     <SideBySide :from-label="FROM_LABEL" :to-label="TO_LABEL">

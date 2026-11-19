@@ -185,7 +185,7 @@ function joinLines(a: string, b: string): string {
 }
 
 /**
- * A § whose sign the PDF lost (20.11.2026): Salzburg's Glücksspielgesetz
+ * A § whose sign the PDF lost (19.11.2026): Salzburg's Glücksspielgesetz
  * prints „Spielgeheimnis" / „§ 36" like every § around it, and the text
  * layer holds „Spielgeheimnis" / „36". Kept as text, the heading and the
  * number ran into § 35 („… jährlich zu berichten. Spielgeheimnis 36"), and
@@ -429,7 +429,7 @@ export function lawBlocksFromPdfPages(pages: readonly string[]): TextBlock[] | n
         // division and its title), the last contents entry is no title
         // („Anlage 4 Datenübermittlung" over § 1 of 16110).
         const adjacent = lastLineAt === i - 1
-        // A title over two lines (20.11.2026): „Verarbeitung personenbezogener
+        // A title over two lines (19.11.2026): „Verarbeitung personenbezogener
         // Daten durch den Konzessionsinhaber, Beschränkung des Zu-" / „gangs zu
         // personenbezogenen Daten" / „§ 38" (sbg-31605). Taken back by its
         // last line alone, the § before ended in „… Beschränkung des Zu" and

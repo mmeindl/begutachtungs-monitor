@@ -1309,7 +1309,7 @@ describe('a deletion that names a part of the unit (19.11.2026)', () => {
   })
 
   // The subject in front of the verb is the address — or a part of it the
-  // address did not read (20.11.2026). Each line is from the corpus, and each
+  // address did not read (19.11.2026). Each line is from the corpus, and each
   // was carried out as the deletion of the unit in brackets.
   it('refuses a struck part named in front of the verb, with no auxiliary', () => {
     const cases: [string, string][] = [
@@ -1328,7 +1328,7 @@ describe('a deletion that names a part of the unit (19.11.2026)', () => {
     for (const [line, word] of cases) expect(refusal(line), line).toBe(`Teilstreichung („${word}") — keine ganze Einheit`)
   })
 
-  // „jeweils" in front of the sentence: each address takes it (20.11.2026).
+  // „jeweils" in front of the sentence: each address takes it (19.11.2026).
   it('gives „jeweils … der letzte Satz" to every address of the list', () => {
     const places = (line: string) => parseInstruction(line).ops.map((o) => `${o.kind} ${'target' in o ? `${o.target.para} Abs. ${o.target.abs} ${o.target.satz}` : ''}`)
     // Strafrechtliches EU-Anpassungsgesetz (EU-JZG)
@@ -1429,7 +1429,7 @@ describe('Roman schedules in an enumeration (19.11.2026)', () => {
 
 // „… entfallen die Paragraphenbezeichnungen; die Abs. … werden nach § 17a …
 // eingereiht" (116/ME XXVIII, IESG and IEF-Service-GmbH-G): refused as a
-// Teilstreichung, the line still names its §§ (20.11.2026).
+// Teilstreichung, the line still names its §§ (19.11.2026).
 describe('addressedUnits — a refused line with an „eingereiht" clause', () => {
   it('names the §§ of both clauses', () => {
     const units = addressedUnits('In den §§ 30 bis 33 entfallen die Paragraphenbezeichnungen; die Abs. 3 bis 6 werden nach § 27 Abs. 2 (neu) eingereiht.')
@@ -1440,7 +1440,7 @@ describe('addressedUnits — a refused line with an „eingereiht" clause', () =
   })
 })
 
-describe('the siblings of a Roman Artikel (20.11.2026)', () => {
+describe('the siblings of a Roman Artikel (19.11.2026)', () => {
   it('takes the Arabic form its first one takes', () => {
     const [a] = parseAddressList('Art. I und II entfallen.')!
     expect(a).toMatchObject({ para: 'Art. 1', siblings: ['2'] })
@@ -1450,7 +1450,7 @@ describe('the siblings of a Roman Artikel (20.11.2026)', () => {
   })
 })
 
-describe('the heading of a division named by the § above it (20.11.2026)', () => {
+describe('the heading of a division named by the § above it (19.11.2026)', () => {
   // 22e95d18: read as § 11, the heading replaced the §'s text.
   it('refuses „Die Abschnittsüberschrift nach § 11 lautet:" instead of replacing § 11', () => {
     for (const line of ['Die Abschnittsüberschrift nach § 11 lautet:', 'Die Abschnittsüberschrift nach § 11 „5. Abschnitt Durchführung“ lautet:']) {
@@ -1461,7 +1461,7 @@ describe('the heading of a division named by the § above it (20.11.2026)', () =
   })
 })
 
-describe('a colon inside a quotation (20.11.2026)', () => {
+describe('a colon inside a quotation (19.11.2026)', () => {
   // BVergG 2018 Anhang VIII Z 3, BGBl. I Nr. 8/2026: cut at „http:", the
   // head held no verb and the line was refused.
   it('reads the verb behind a quoted URL', () => {

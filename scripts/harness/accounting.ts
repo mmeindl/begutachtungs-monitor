@@ -45,7 +45,7 @@
  *    unit still there, the block is silent about a Lesefassung the engine
  *    got wrong (8CA8E8B1 Anl. 2, C3F4E0AD Anl. 1, 19.11.2026).
  *  - `verloren` — an outcome of the server that a block took and no block
- *    shows, nor the end of its law (`placeAtParagraphs`, `lost`; 20.11.2026).
+ *    shows, nor the end of its law (`placeAtParagraphs`, `lost`; 19.11.2026).
  *    Zero by construction today; a vacated old number is said by its struck
  *    rows and is no loss.
  *  - `obergrenze` — `nicht-geladen` in a draft whose §§ fit the budget
