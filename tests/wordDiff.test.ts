@@ -340,3 +340,58 @@ describe('renumberingOf', () => {
     expect([...map.get('')!]).toEqual([['3', '4']])
   })
 })
+
+describe('diffTokens past the ceiling, for a caller that only shows the diff (19.11.2026)', () => {
+  /** n distinct words, „w0 w1 …", with some replaced. */
+  const text = (n: number, replace: (i: number) => string | null = () => null) =>
+    Array.from({ length: n }, (_, i) => replace(i) ?? `w${i}`).join(' ')
+  const changed = (segments: { type: string; text: string }[] | null) => (segments ?? []).filter((s) => s.type !== 'equal').map((s) => `${s.type === 'removed' ? '-' : '+'}${s.text}`)
+  /** The earlier and the later text the runs spell out. */
+  const sides = (segments: { type: string; text: string }[]) => ({
+    from: segments.filter((s) => s.type !== 'inserted').map((s) => s.text).join(' '),
+    to: segments.filter((s) => s.type !== 'removed').map((s) => s.text).join(' '),
+  })
+  /** An independent LCS length, row by row. */
+  const lcs = (a: string[], b: string[]) => {
+    let prev = new Array(b.length + 1).fill(0)
+    for (const x of a) {
+      const row = [0]
+      for (let j = 1; j <= b.length; j++) row[j] = x === b[j - 1] ? prev[j - 1] + 1 : Math.max(prev[j], row[j - 1])
+      prev = row
+    }
+    return prev[b.length]
+  }
+
+  it('marks the one changed word of a long unit, where the ceiling showed none (80/ME Z 13)', () => {
+    // 2.002 words a side and four changed: past MAX_DP_CELLS the page drew both versions whole.
+    const a = text(2000)
+    const b = text(2000, (i) => (i === 1234 ? 'Fernabsatzvertrag' : null))
+    expect(diffTokens(a, b).segments).toBeNull()
+    const d = diffTokens(a, b, { beyondCeiling: true })
+    expect(changed(d.segments)).toEqual(['-w1234', '+Fernabsatzvertrag'])
+    expect(sides(d.segments!)).toEqual({ from: a, to: b })
+    expect(d.similarity).toBeCloseTo(1999 / 2000, 6)
+  })
+
+  it('aligns a middle too large for the matrix in linear memory, optimally, removed words first', () => {
+    // Every 40th word replaced and every 97th dropped: the common start and end are short,
+    // so the middle stays above MAX_DP_CELLS and goes through Hirschberg's split.
+    const a = text(2400)
+    const b = text(2400, (i) => (i % 97 === 5 ? '' : i % 40 === 7 ? `neu${i}` : null)).replace(/ {2,}/g, ' ')
+    const d = diffTokens(a, b, { beyondCeiling: true })
+    expect(d.segments).not.toBeNull()
+    expect(sides(d.segments!)).toEqual({ from: a, to: b })
+    const equalWords = d.segments!.filter((s) => s.type === 'equal').reduce((n, s) => n + s.text.split(' ').length, 0)
+    expect(equalWords).toBe(lcs(a.split(' '), b.split(' ')))
+    // Inside a run between two equal words, never an inserted word before a removed one.
+    for (let k = 1; k < d.segments!.length; k++) expect(d.segments![k - 1]!.type === 'inserted' && d.segments![k]!.type === 'removed').toBe(false)
+  })
+
+  it('still stops where even the linear path would take too long, and only on request goes past the matrix', () => {
+    const a = text(6000)
+    const b = text(6000, (i) => `x${i}`)
+    expect(diffTokens(a, b, { beyondCeiling: true }).segments).toBeNull()
+    // Below the ceiling the option changes nothing.
+    expect(diffTokens('Die Frist beträgt sechs Wochen.', 'Die Frist beträgt acht Wochen.', { beyondCeiling: true })).toEqual(diffTokens('Die Frist beträgt sechs Wochen.', 'Die Frist beträgt acht Wochen.'))
+  })
+})

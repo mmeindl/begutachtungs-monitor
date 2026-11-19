@@ -1031,3 +1031,23 @@ describe('pairSameInstruction — dieselbe Anordnung, neu adressiert', () => {
     expect(pairSameInstruction(units)).toEqual(units)
   })
 })
+
+describe('a long § past the word diff ceiling (19.11.2026)', () => {
+  // 80/ME XXVIII Z 13: 2.002 words a side and four changed. Past MAX_DP_CELLS the
+  // page drew both versions whole, every word struck and inserted, with no sentence.
+  const body = (changedWord: string) => Array.from({ length: 2100 }, (_, i) => (i === 1500 ? changedWord : `wort${i}`)).join(' ')
+  const unit = (text: string): LawUnit => ({ article: null, articleNumber: null, id: '§1', heading: null, quotedHeadings: [], text, blocks: [], stammnorm: null })
+
+  it('marks only the changed word where the § comparison asks for it, and the Länder keep the ceiling', () => {
+    const from = [unit(body('Fernabsatzvertrags'))]
+    const to = [unit(body('Fernabsatzvertrag'))]
+    const shown = diffLawPackage(from, to, { beyondCeiling: true }).units[0]!
+    expect(shown.change).toBe('changed')
+    expect(shown.segments!.filter((s) => s.type !== 'equal')).toEqual([
+      { type: 'removed', text: 'Fernabsatzvertrags' },
+      { type: 'inserted', text: 'Fernabsatzvertrag' },
+    ])
+    // Without the option — the Länder's comparison, whose guard decides on the segments.
+    expect(diffAtSamePlace(from, to)[0]!.segments).toBeNull()
+  })
+})

@@ -166,7 +166,7 @@ function pairInput(d: Draft, from: LawStationId, to: LawStationId) {
     t = scoped.to
   }
   const keepAddedLaws = from === 'me' && to === 'rv' && d.bundled === false
-  return { f, t, options: { keepAddedLaws, keepDroppedLaws: keepAddedLaws && d.rvCount === 1 } }
+  return { f, t, options: { keepAddedLaws, keepDroppedLaws: keepAddedLaws && d.rvCount === 1, beyondCeiling: true } }
 }
 
 interface Record_ {
@@ -199,6 +199,8 @@ const risXmlOf = async (inr: number): Promise<string | null> => {
   return risMap.get(inr) ?? null
 }
 
+/** How long each pair's comparison took — the cost of the word diff past its ceiling shows here. */
+const slow: { pair: string; ms: number }[] = []
 /** The pieces of every changed unit, kept in memory for the lines that moved against a baseline. */
 const piecesOf = new Map<string, string[]>()
 const record: Record_ = { gp, drafts: 0, pairs: 0, breaches: [], symmetry: [], commencementLeftOut: 0, ceiling: [], residues: [], verdicts: {} }
@@ -219,13 +221,15 @@ for (const inr of numbers) {
       if (!isLawStationPair(from, to) || !d.stations.get(from)?.length || !d.stations.get(to)?.length) continue
       const pair = `${inr}/ME ${from}>${to}`
       const { f, t, options } = pairInput(d, from, to)
+      const started = performance.now()
       const diff = diffLawPackage(f, t, options)
+      slow.push({ pair, ms: performance.now() - started })
       if (diff.unpaired) continue
       record.pairs++
       const whole = completeness(f, t, diff, isCommencementArticle)
       record.commencementLeftOut += whole.commencementLeftOut.reduce((n, c) => n + c.units, 0)
       for (const b of [...reconstructionBreaches(diff.units), ...whole.breaches]) record.breaches.push({ ...b, pair })
-      const back = diffLawPackage(t, f, { keepAddedLaws: options.keepDroppedLaws, keepDroppedLaws: options.keepAddedLaws })
+      const back = diffLawPackage(t, f, { keepAddedLaws: options.keepDroppedLaws, keepDroppedLaws: options.keepAddedLaws, beyondCeiling: true })
       for (const b of symmetryBreaches(diff, back)) record.symmetry.push({ ...b, pair })
       for (const u of diff.units) {
         if (u.change === 'changed') {
@@ -250,7 +254,7 @@ for (const inr of numbers) {
   // Null comparison 2: one draft, two readers.
   const html = d.stations.get('me')
   if (html?.length && d.meFromRis?.length) {
-    const diff = diffLawPackage(html, d.meFromRis)
+    const diff = diffLawPackage(html, d.meFromRis, { beyondCeiling: true })
     if (diff.unpaired) record.residues.push({ kind: 'html-xml', pair: `${inr}/ME html>xml`, residue: { unit: '(ganzer Text)', change: 'changed', editorial: false, pieces: ['kein Artikel gepaart'], ceiling: false } })
     else for (const residue of residuesOf(diff.units)) record.residues.push({ kind: 'html-xml', pair: `${inr}/ME html>xml`, residue })
   }
@@ -279,6 +283,8 @@ for (const kind of ['parlament-bgbl', 'html-xml'] as const) {
 }
 console.log(`\n── 4. Wortdiff am Deckel (keine Markierung möglich): ${record.ceiling.length}`)
 for (const c of record.ceiling) console.log(`   ${c.pair} ${c.unit} (${c.fromWords}/${c.toWords} Wörter)`)
+const slowest = slow.sort((x, y) => y.ms - x.ms).slice(0, 5)
+console.log(`\n── Dauer: die langsamsten Paare (diffLawPackage) — ${slowest.map((x) => `${x.pair} ${Math.round(x.ms)} ms`).join(' · ')}`)
 
 if (jsonPath) {
   writeFileSync(jsonPath, `${JSON.stringify(record, null, 1)}\n`)

@@ -18,6 +18,13 @@ import { bareParaId } from '../text/designation'
 
 /** Above this many token pairs the word-level diff is skipped (O(n·m) memory). */
 const MAX_DP_CELLS = 2_500_000
+/**
+ * How far `beyondCeiling` goes (`diffTokens`): token pairs of the part that
+ * is left once the common start and end are taken off. Linear memory, so
+ * the bound is time — about two passes over the cells, a fifth of a second
+ * at this size on the measured units.
+ */
+const MAX_LINEAR_CELLS = 30_000_000
 
 // ---------------------------------------------------------------------------
 // Token diff (LCS)
@@ -104,24 +111,95 @@ export interface TokenDiff {
   segments: LawDiffSegment[] | null
 }
 
-/** Longest-common-subsequence diff over word tokens; similarity = 2·lcs/(n+m). */
-export function diffTokens(aText: string, bText: string): TokenDiff {
+export interface DiffOptions {
+  /**
+   * Past `MAX_DP_CELLS`, still compute the word diff — the common start and
+   * end taken off, the rest aligned in linear memory (`wideOps`) — up to
+   * `MAX_LINEAR_CELLS`.
+   *
+   * **For the § comparison, which only SHOWS the diff (19.11.2026).** Past
+   * the ceiling it drew both versions whole, every word struck or inserted,
+   * with no sentence: 80/ME XXVIII Z 13 (2.002 words a side) read as a
+   * rewrite where four words changed („Fernabsatzvertrags" →
+   * „Fernabsatzvertrag", „xx" → „25"), 32/ME § 6 (5.183 words) where three
+   * did, and the second one pinned that rewrite on the Plenum. 33 changed
+   * units over the station pairs of GP XXVIII (`scripts/harness/station.ts`).
+   *
+   * Off for every caller that DECIDES on the segments — the oracle, the
+   * plausibility guard, the Lesefassung, the annex rows, the Länder's §
+   * comparison, whose guard runs the annex's rule on its units: there a
+   * missing diff is a refusal („Wortdiff zu groß", `unprüfbar`,
+   * `REASON_TOO_LONG`), and turning it into a diff would open their gates on
+   * units nobody has measured them on.
+   */
+  beyondCeiling?: boolean
+}
+
+/** One step of an alignment: both words equal, a word of the earlier text removed, one of the later inserted. */
+const EQUAL = 0
+const REMOVED = 1
+const INSERTED = 2
+
+/**
+ * Longest-common-subsequence diff over word tokens; similarity = 2·lcs/(n+m).
+ * Below `MAX_DP_CELLS` one full matrix; above it nothing, or with
+ * `beyondCeiling` the wider path (`DiffOptions`).
+ */
+export function diffTokens(aText: string, bText: string, options: DiffOptions = {}): TokenDiff {
   const a = words(aText)
   const b = words(bText)
   const n = a.compare.length
   const m = b.compare.length
   if (n === 0 && m === 0) return { similarity: 1, segments: [] }
-  if (n * m > MAX_DP_CELLS) return { similarity: bagSimilarity(a.compare, b.compare), segments: null }
+  if (n * m > MAX_DP_CELLS) {
+    const wide = options.beyondCeiling ? wideOps(a.compare, b.compare) : null
+    if (!wide) return { similarity: bagSimilarity(a.compare, b.compare), segments: null }
+    return { similarity: (2 * wide.lcs) / (n + m), segments: segmentsOf(wide.ops, a, b) }
+  }
+  const { ops, lcs } = dpOps(a.compare, b.compare)
+  return { similarity: (2 * lcs) / (n + m), segments: segmentsOf(ops, a, b) }
+}
 
-  // dp[i][j] = LCS length of a[i..] and b[j..]
+/**
+ * The full LCS matrix and its walk — the alignment below the ceiling.
+ * `dp[i][j]` is the LCS length of `a[i..]` and `b[j..]`; the walk removes
+ * before it inserts where both keep the length, so a replaced run reads old
+ * words first.
+ */
+function dpOps(a: readonly string[], b: readonly string[]): { ops: Uint8Array; lcs: number } {
+  const n = a.length
+  const m = b.length
   const width = m + 1
   const dp = new Uint16Array((n + 1) * width)
   for (let i = n - 1; i >= 0; i--) {
     for (let j = m - 1; j >= 0; j--) {
-      dp[i * width + j] = a.compare[i] === b.compare[j] ? dp[(i + 1) * width + j + 1]! + 1 : Math.max(dp[(i + 1) * width + j]!, dp[i * width + j + 1]!)
+      dp[i * width + j] = a[i] === b[j] ? dp[(i + 1) * width + j + 1]! + 1 : Math.max(dp[(i + 1) * width + j]!, dp[i * width + j + 1]!)
     }
   }
-  const lcs = dp[0]!
+  const ops = new Uint8Array(n + m)
+  let k = 0
+  let i = 0
+  let j = 0
+  while (i < n && j < m) {
+    if (a[i] === b[j]) {
+      ops[k++] = EQUAL
+      i++
+      j++
+    } else if (dp[(i + 1) * width + j]! >= dp[i * width + j + 1]!) {
+      ops[k++] = REMOVED
+      i++
+    } else {
+      ops[k++] = INSERTED
+      j++
+    }
+  }
+  while (i++ < n) ops[k++] = REMOVED
+  while (j++ < m) ops[k++] = INSERTED
+  return { ops: ops.subarray(0, k), lcs: dp[0]! }
+}
+
+/** The runs a walk describes, each word in the form the reader is shown (`Words`). */
+function segmentsOf(ops: Uint8Array, a: Words, b: Words): LawDiffSegment[] {
   const segments: LawDiffSegment[] = []
   const emit = (type: LawDiffSegment['type'], word: string) => {
     const last = segments[segments.length - 1]
@@ -130,22 +208,128 @@ export function diffTokens(aText: string, bText: string): TokenDiff {
   }
   let i = 0
   let j = 0
-  while (i < n && j < m) {
-    if (a.compare[i] === b.compare[j]) {
-      emit('equal', a.display[i]!)
-      i++
+  for (const op of ops) {
+    if (op === EQUAL) {
+      emit('equal', a.display[i++]!)
       j++
-    } else if (dp[(i + 1) * width + j]! >= dp[i * width + j + 1]!) {
-      emit('removed', a.display[i]!)
-      i++
-    } else {
-      emit('inserted', b.display[j]!)
-      j++
-    }
+    } else if (op === REMOVED) emit('removed', a.display[i++]!)
+    else emit('inserted', b.display[j++]!)
   }
-  while (i < n) emit('removed', a.display[i++]!)
-  while (j < m) emit('inserted', b.display[j++]!)
-  return { similarity: (2 * lcs) / (n + m), segments }
+  return segments
+}
+
+/**
+ * The alignment past the ceiling, or null past `MAX_LINEAR_CELLS`.
+ *
+ * The common start and end are equal by construction — an LCS can always
+ * take them — so they are taken off first, and on the measured units that
+ * is nearly all of it: 80/ME Z 13 keeps a middle of 720 × 720 words, 32/ME
+ * § 6 one of about thirty. A middle under `MAX_DP_CELLS` goes through the
+ * matrix (`dpOps`); a larger one through Hirschberg's split (`linearOps`),
+ * which needs two rows instead of the matrix. Either way a replaced run reads
+ * its removed words before its inserted ones, as below the ceiling.
+ */
+function wideOps(a: readonly string[], b: readonly string[]): { ops: Uint8Array; lcs: number } | null {
+  const n = a.length
+  const m = b.length
+  let head = 0
+  while (head < n && head < m && a[head] === b[head]) head++
+  let tail = 0
+  while (tail < n - head && tail < m - head && a[n - 1 - tail] === b[m - 1 - tail]) tail++
+  const midA = a.slice(head, n - tail)
+  const midB = b.slice(head, m - tail)
+  const cells = midA.length * midB.length
+  if (cells > MAX_LINEAR_CELLS) return null
+  const middle = cells <= MAX_DP_CELLS ? dpOps(midA, midB) : linearOps(midA, midB)
+  // A fresh array is all zeros, and zero is EQUAL: the head and the tail.
+  const ops = new Uint8Array(head + middle.ops.length + tail)
+  ops.set(middle.ops, head)
+  return { ops, lcs: head + middle.lcs + tail }
+}
+
+/** LCS lengths of `a` against every prefix of `b` (forward) or every suffix (backward), in one row. */
+function lcsRow(a: readonly string[], a0: number, a1: number, b: readonly string[], b0: number, b1: number, backward: boolean): Int32Array {
+  const m = b1 - b0
+  let prev = new Int32Array(m + 1)
+  let row = new Int32Array(m + 1)
+  for (let s = 0; s < a1 - a0; s++) {
+    const x = backward ? a[a1 - 1 - s] : a[a0 + s]
+    for (let t = 1; t <= m; t++) {
+      const y = backward ? b[b1 - t] : b[b0 + t - 1]
+      row[t] = x === y ? prev[t - 1]! + 1 : Math.max(prev[t]!, row[t - 1]!)
+    }
+    const spent = prev
+    prev = row
+    row = spent
+    row[0] = 0
+  }
+  return prev
+}
+
+/**
+ * Hirschberg's alignment: split the earlier text in half, find where the
+ * later one splits so the two halves' LCS lengths add up to the whole, and
+ * recurse — the same optimum as the matrix in memory linear in the texts.
+ * Small pieces go through the matrix. Every replaced run is then put in the
+ * matrix's order, removed words first.
+ */
+function linearOps(a: readonly string[], b: readonly string[]): { ops: Uint8Array; lcs: number } {
+  const out: number[] = []
+  let lcs = 0
+  const solve = (a0: number, a1: number, b0: number, b1: number): void => {
+    const n = a1 - a0
+    const m = b1 - b0
+    if (n === 0 || m === 0) {
+      for (let k = 0; k < n; k++) out.push(REMOVED)
+      for (let k = 0; k < m; k++) out.push(INSERTED)
+      return
+    }
+    // A single word on either side, or a small piece: the matrix. The single
+    // word matters for termination too — halving one word leaves it whole.
+    if (n <= 1 || m <= 1 || n * m <= 250_000) {
+      const piece = dpOps(a.slice(a0, a1), b.slice(b0, b1))
+      for (const op of piece.ops) out.push(op)
+      lcs += piece.lcs
+      return
+    }
+    const mid = a0 + (n >> 1)
+    const forward = lcsRow(a, a0, mid, b, b0, b1, false)
+    const backward = lcsRow(a, mid, a1, b, b0, b1, true)
+    let split = 0
+    let best = -1
+    for (let t = 0; t <= m; t++) {
+      const score = forward[t]! + backward[m - t]!
+      if (score > best) {
+        best = score
+        split = t
+      }
+    }
+    solve(a0, mid, b0, b0 + split)
+    solve(mid, a1, b0 + split, b1)
+  }
+  solve(0, a.length, 0, b.length)
+  // Removed before inserted inside every run between two equal words.
+  const ops = new Uint8Array(out.length)
+  let k = 0
+  let at = 0
+  while (at < out.length) {
+    if (out[at] === EQUAL) {
+      ops[k++] = EQUAL
+      at++
+      continue
+    }
+    let removed = 0
+    let inserted = 0
+    while (at < out.length && out[at] !== EQUAL) {
+      if (out[at] === REMOVED) removed++
+      else inserted++
+      at++
+    }
+    ops.fill(REMOVED, k, k + removed)
+    ops.fill(INSERTED, k + removed, k + removed + inserted)
+    k += removed + inserted
+  }
+  return { ops, lcs }
 }
 
 /**

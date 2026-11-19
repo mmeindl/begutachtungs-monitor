@@ -336,7 +336,9 @@ const readLawDiff = defineCachedFunction(
       // An unreadable stage record proves nothing; the law stays named, not shown.
     }
     const keepDroppedLaws = keepAddedLaws && rvCount === 1
-    const { units, lawsOnlyInTo, lawsOnlyInFrom, addedLaws, droppedLaws, unpaired } = diffLawPackage(fromUnits, toUnits, { keepAddedLaws, keepDroppedLaws })
+    // `beyondCeiling`: a long § is shown with its changed words marked, not
+    // struck and inserted whole (`DiffOptions`, 19.11.2026).
+    const { units, lawsOnlyInTo, lawsOnlyInFrom, addedLaws, droppedLaws, unpaired } = diffLawPackage(fromUnits, toUnits, { keepAddedLaws, keepDroppedLaws, beyondCeiling: true })
     if (unpaired) {
       // Showing the units here would put the whole draft under „entfallen"
       // and the whole later text under „neu" — a claim about the draft the

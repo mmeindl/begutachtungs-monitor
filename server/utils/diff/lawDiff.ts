@@ -31,7 +31,7 @@ import { articleNameTokens, jaccardSimilarity } from '../lawtext/lawNames'
 import { leadingArticleKey } from '../text/designation'
 import { sameStammnormCited, type BgblCitation } from '../lawtext/bgblCitation'
 import { instructionParagraphs } from '../lawtext/instructionAddress'
-import { compareWords, diffTokens, isAddressOnlyDifference, isEditorialChange, renumberingOf, tokenSimilarity, type TokenDiff } from './wordDiff'
+import { compareWords, diffTokens, isAddressOnlyDifference, isEditorialChange, renumberingOf, tokenSimilarity, type DiffOptions, type TokenDiff } from './wordDiff'
 import { PARAGRAPH_NUMBER } from '../../../shared/utils/paragraphNumber'
 
 // ---------------------------------------------------------------------------
@@ -623,7 +623,7 @@ function removedUnit(u: LawUnit, articles: ReadonlyMap<string | null, string | n
  * Units of both texts → one list in reading order of the LATER version, with
  * removed units placed where they stood in the earlier one.
  */
-export function diffLawUnits(from: readonly LawUnit[], to: readonly LawUnit[]): LawDiffUnit[] {
+export function diffLawUnits(from: readonly LawUnit[], to: readonly LawUnit[], words: DiffOptions = {}): LawDiffUnit[] {
   const { pairs, onlyFrom, onlyTo, articles } = alignUnits(from, to)
   const toPartner = new Map(pairs.map((p) => [p.to, p.from]))
   // The renumbering THIS comparison established (`renumberingOf`).
@@ -656,7 +656,7 @@ export function diffLawUnits(from: readonly LawUnit[], to: readonly LawUnit[]): 
     if (compareKey(m.text) === compareKey(r.text)) {
       out.push(toUnit('unchanged', m, r, null))
     } else {
-      out.push(toUnit('changed', m, r, diffTokens(m.text, r.text), renumbered.get(r.article ?? '')))
+      out.push(toUnit('changed', m, r, diffTokens(m.text, r.text, words), renumbered.get(r.article ?? '')))
     }
   }
   flushRemovedBefore(null)
@@ -736,14 +736,21 @@ function lawsOf(units: readonly LawUnit[], keep: (article: string) => boolean): 
  *
  * `keepDroppedLaws` is the same for the earlier side: a law the Ressort took
  * out of its own bill. The caller decides when that is known.
+ *
+ * `beyondCeiling` lets the word diff of a changed unit go past
+ * `MAX_DP_CELLS` (`DiffOptions` in `wordDiff.ts`). The Bund's § comparison
+ * sets it, because it only shows the segments; the Länder's does not, since
+ * their guard runs the annex's right-column rule on them
+ * (`laender/landTguGuard.ts`, `guardRow`), which a long § has never reached.
  */
 export function diffLawPackage(
   from: readonly LawUnit[],
   to: readonly LawUnit[],
-  { keepAddedLaws = false, keepDroppedLaws = false }: { keepAddedLaws?: boolean; keepDroppedLaws?: boolean } = {},
+  { keepAddedLaws = false, keepDroppedLaws = false, beyondCeiling = false }: { keepAddedLaws?: boolean; keepDroppedLaws?: boolean; beyondCeiling?: boolean } = {},
 ): LawPackageDiff {
+  const words: DiffOptions = { beyondCeiling }
   const map = pairArticles(from, to)
-  if (map.size === 0) return { units: diffAtSamePlace(from, to), lawsOnlyInTo: [], lawsOnlyInFrom: [], addedLaws: [], droppedLaws: [], unpaired: from.length > 0 && to.length > 0 }
+  if (map.size === 0) return { units: diffAtSamePlace(from, to, words), lawsOnlyInTo: [], lawsOnlyInFrom: [], addedLaws: [], droppedLaws: [], unpaired: from.length > 0 && to.length > 0 }
   const pairedFrom = new Set(map.keys())
   const pairedTo = new Set(map.values())
   const keepFrom = (u: LawUnit) => keepDroppedLaws || u.article === null || pairedFrom.has(u.article)
@@ -751,7 +758,7 @@ export function diffLawPackage(
   const onlyInTo = lawsOf(to, (a) => pairedTo.has(a))
   const onlyInFrom = lawsOf(from, (a) => pairedFrom.has(a))
   return {
-    units: pairSameInstruction(diffAtSamePlace(from.filter(keepFrom), to.filter(keepTo))),
+    units: pairSameInstruction(diffAtSamePlace(from.filter(keepFrom), to.filter(keepTo), words), words),
     lawsOnlyInTo: keepAddedLaws ? [] : onlyInTo,
     lawsOnlyInFrom: keepDroppedLaws ? [] : onlyInFrom,
     addedLaws: keepAddedLaws ? onlyInTo : [],
@@ -811,8 +818,8 @@ function wordContainment(a: readonly string[], b: readonly string[]): number {
  * heading) pairs. Measured on the Länder first, then for
  * the Bund.
  */
-export function diffAtSamePlace(from: readonly LawUnit[], to: readonly LawUnit[]): LawDiffUnit[] {
-  const first = diffLawUnits(from, to)
+export function diffAtSamePlace(from: readonly LawUnit[], to: readonly LawUnit[], words: DiffOptions = {}): LawDiffUnit[] {
+  const first = diffLawUnits(from, to, words)
   const key = (u: LawDiffUnit, address: string) => `${u.articleKey ?? u.fromArticleKey ?? ''}|${address}`
   const removed = new Map<string, LawDiffUnit[]>()
   const inserted = new Map<string, LawDiffUnit[]>()
@@ -840,7 +847,7 @@ export function diffAtSamePlace(from: readonly LawUnit[], to: readonly LawUnit[]
     renamed[at]!.heading = a.heading
     paired++
   }
-  return paired ? diffLawUnits(from, renamed) : first
+  return paired ? diffLawUnits(from, renamed, words) : first
 }
 
 /**
@@ -930,7 +937,7 @@ function sameParagraphs(a: ReadonlySet<string> | null, b: ReadonlySet<string> | 
  * each side under its own Ziffer, and the share counts it once, as changed
  * (or not at all where the change is merely editorial).
  */
-export function pairSameInstruction(units: readonly LawDiffUnit[]): LawDiffUnit[] {
+export function pairSameInstruction(units: readonly LawDiffUnit[], words: DiffOptions = {}): LawDiffUnit[] {
   const removed = units.filter((u) => u.change === 'removed' && /^Z\d/.test(u.fromId ?? u.id))
   const inserted = units.filter((u) => u.change === 'inserted' && /^Z\d/.test(u.id))
   if (!removed.length || !inserted.length) return [...units]
@@ -975,13 +982,13 @@ export function pairSameInstruction(units: readonly LawDiffUnit[]): LawDiffUnit[
   // hands it to the badge (`renumberingOf`).
   const renumbered = renumberingOf(units.flatMap((u) => (u.fromId && (u.change === 'changed' || u.change === 'unchanged') ? [{ fromId: u.fromId, toId: u.id, article: u.article }] : [])))
   const gone = new Set(pairs.map((p) => p.r))
-  const merged = new Map(pairs.map((p) => [p.i, readdressed(p.r, p.i, renumbered.get(p.i.article ?? ''))]))
+  const merged = new Map(pairs.map((p) => [p.i, readdressed(p.r, p.i, renumbered.get(p.i.article ?? ''), words)]))
   return units.filter((u) => !gone.has(u)).map((u) => merged.get(u) ?? u)
 }
 
 /** One changed unit of a removed and an inserted one: the Vorlage's, with the draft's side beside it — as `toUnit` builds a pair. */
-function readdressed(r: LawDiffUnit, i: LawDiffUnit, renumbered: ReadonlyMap<string, string> | undefined): LawDiffUnit {
-  const diff = diffTokens(r.fromText ?? '', i.toText ?? '')
+function readdressed(r: LawDiffUnit, i: LawDiffUnit, renumbered: ReadonlyMap<string, string> | undefined, words: DiffOptions): LawDiffUnit {
+  const diff = diffTokens(r.fromText ?? '', i.toText ?? '', words)
   const { fromArticle } = r
   return {
     ...i,
