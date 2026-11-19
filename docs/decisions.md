@@ -845,6 +845,25 @@ gets an entry of its own only where it carries a reason the rule does not.
   seven times in ten. A sub-unit anchored only to a whole § („Nach § 18c …
   Abs. 1a") is refused, since a § need not list its units in order
   (`kons/lawApply.ts`).
+- **A unit deletion is carried out only where every noun its verb governs
+  belongs to the address** (19.11.2026): a designation the target carries,
+  the sentence or heading the address read, a place word's noun, and what
+  follows „samt/einschließlich". Any other noun names a part of the unit
+  („die Zeilen betreffend …", „die Überschrift", „der dritte Absatz"), and
+  the line is refused rather than carried out on the whole unit, which the
+  consolidation would then report as repealed. Fail-closed: an unseen noun
+  is refused, never read (`partStruck` in `kons/novao.ts`).
+- **„Angefügt" is the unit's end; a sentence the clause before named is the
+  place only behind the end mark that clause replaced** (19.11.2026). After
+  that sentence's deletion the new one goes to the end; after a change
+  inside it, and for „an Stelle des N. Satzes … angefügt", the line is
+  refused: the words do not settle the place (`parseInstruction` in
+  `kons/novao.ts`).
+- **New text the payload parser could not read as a unit is not appended,
+  and neither is a picture** (19.11.2026). A line left as a heading below
+  the § („c. Telefonnummer", a lone „42.") is read by no renderer and no
+  check; a picture's file path would stand as law text. Both refused, as a
+  table is (`kons/lawApply.ts`).
 - **What the instruments cannot prove:** the annex oracle and fault injection
   do not show the output is free of error. Only the BGBl test bench (RIS
   after entry into force) has ground truth (§12.12c).
