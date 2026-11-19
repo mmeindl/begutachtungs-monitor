@@ -760,6 +760,11 @@ gets an entry of its own only where it carries a reason the rule does not.
   prints one schedule for that law. Read as the first number anywhere, all
   Roman schedules of a law shared one outcome (58/ME XXVIII: one at eleven
   Anhänge) (`shared/utils/scheduleNumber.ts`).
+- **One outcome stands at one block** (19.11.2026): where a unit is printed
+  as two blocks (a table of contents with § symbols, a schedule in two
+  parts), at the one that prints most of it, the later on a tie; the other
+  says nothing, not even „nicht gefunden" (`placeAtParagraphs`; Prüfstand
+  check `doppelt`).
 - **A § of the Lesefassung names the annex law it was checked against, in a
   single Novelle too** (19.11.2026), so the page files it under that law's
   group; with no law, 144/ME XXVIII's BSFG §§ stood under „Gesetzestext"

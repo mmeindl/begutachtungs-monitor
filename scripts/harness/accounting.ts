@@ -24,13 +24,21 @@
  *  - `stumm` — a § block of the annex that shows a change the draft would
  *    have to instruct, and says nothing about the Lesefassung. Zero by
  *    construction today (`nicht-gefunden`); a regression would bring it
- *    back silently, and this is where it shows.
+ *    back silently, and this is where it shows. A block whose unit's
+ *    outcome stands at another block of the unit is not silent
+ *    (`ParaPlacement.outcomeElsewhere`, one outcome per block).
  *  - `ortlos` — a § the gate CONFIRMED that no block of the annex takes.
  *    The page still shows it, at the end of its law (`UnplacedLesefassung`),
  *    so nothing is lost — but the oracle found rows for it that the page
  *    cannot find, and that disagreement is a bug in one of the two keys.
  *  - `quelle` — the annex section and the Lesefassung disagree about whether
  *    there is an annex at all: one reads rows, the other none.
+ *  - `doppelt` — one outcome of the server placed at more than one block
+ *    (19.11.2026). Each § has one outcome, and the page may say it once: a
+ *    second placement repeats a reason, or a confirmed text, at a block that
+ *    is not that § (24/ME XXVIII: BSFG § 40 under its table-of-contents
+ *    entry and under § 40 itself), and a schedule's outcome stood at every
+ *    numbered schedule of its law (58/ME: one at eleven Anhänge).
  *  - `entfällt-stehend` — an outcome `entfaellt` at a block whose shown rows
  *    keep the unit standing (`annexKeepsUnit`). The page prints no line for
  *    a repeal, trusting the struck rows to say it; where the rows show the
@@ -54,7 +62,7 @@ import { writeFileSync } from 'node:fs'
 import type { ConsolidatedTextResponse, DraftsResponse, ExplanationsResponse, RisConsultationsResponse, TextComparisonResponse } from '../../shared/types'
 import { annexUnitId } from '../../shared/utils/explanationKey'
 import { KONS_MAX_PARAGRAPHS, annexKeepsUnit, consolidationBalance } from '../../server/utils/kons/consolidate'
-import { showsInstructedChange } from '../../app/utils/lesefassung'
+import { showsInstructedChange, type Lesefassung } from '../../app/utils/lesefassung'
 import { annexParas, groupAnnexRows, placeAtParagraphs, type ParaPlacement } from '../../app/utils/annexGroups'
 import { argAssigned } from '../lib/args'
 
@@ -160,6 +168,8 @@ async function measure(base: string, citation: string): Promise<DraftReport> {
   // (61/ME, EStG § 70). Grouped by the placement each row maps to, which is
   // one per block (`placeAtParagraphs`).
   const { groups } = groupAnnexRows(annex.rows, { matches: null, hidden: [] })
+  /** Each server outcome (by the object `outcomeIndex` hands every block it is placed at) and the blocks it stands at. */
+  const blocksOf = new Map<Lesefassung, string[]>()
   for (const g of groups) {
     const { paras } = annexParas(g, { limit: Number.POSITIVE_INFINITY, folding: true, placed: placement.byRow })
     const rowsOf = new Map<ParaPlacement, typeof g.rows>()
@@ -172,11 +182,14 @@ async function measure(base: string, citation: string): Promise<DraftReport> {
       const label = `${g.article ? `${g.article}: ` : ''}${first.para ?? '(ohne §)'}`
       const repealed = rows.every((r) => r.change === 'removed')
       const { lesefassungen } = at
-      if (ran && lesefassungen.length === 0 && annexUnitId(first.para) && showsInstructedChange(rows) && !repealed) report.failures.push(`stumm: ${label} zeigt eine Änderung und sagt nichts zur Lesefassung`)
+      if (ran && lesefassungen.length === 0 && !at.outcomeElsewhere && annexUnitId(first.para) && showsInstructedChange(rows) && !repealed) report.failures.push(`stumm: ${label} zeigt eine Änderung und sagt nichts zur Lesefassung`)
       for (const { lesefassung } of lesefassungen) {
         if (lesefassung.kind === 'withheld' && lesefassung.cause === 'entfaellt' && annexKeepsUnit(rows.filter((r) => r.check !== 'withheld'))) {
           report.failures.push(`entfällt-stehend: ${label} — die Beilage zeigt die Einheit danach stehend, die Seite sagt nichts`)
         }
+        // By identity: `outcomeIndex` hands out each outcome's own object, and
+        // what the page makes up itself (`nicht-gefunden`) is new per block.
+        blocksOf.set(lesefassung, [...(blocksOf.get(lesefassung) ?? []), label])
       }
     }
     for (const p of paras) {
@@ -186,6 +199,11 @@ async function measure(base: string, citation: string): Promise<DraftReport> {
         if (l.lesefassung.kind === 'shown' && p.blocks.some((b) => b.kind === 'withheld')) report.twoVerdicts.push(label)
       }
     }
+  }
+  for (const [lesefassung, labels] of blocksOf) {
+    if (labels.length < 2) continue
+    const what = lesefassung.kind === 'shown' ? 'bestätigter §' : `Ergebnis (${lesefassung.cause})`
+    report.failures.push(`doppelt: ein ${what} an ${labels.length} Blöcken — ${labels.join(' | ')}`)
   }
   return report
 }

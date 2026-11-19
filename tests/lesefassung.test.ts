@@ -101,6 +101,20 @@ describe('placeAtParagraphs — the Lesefassung', () => {
     expect(carried([row('Anhang 2', { gld: null })], response([], [held('Anl.', 'verweigert')])).at).toEqual([['verweigert']])
   })
 
+  it('places each outcome at one block: the one that prints most of the unit, the later on a tie (19.11.2026)', () => {
+    // 24/ME XXVIII: the table of contents carries the § symbol, and the
+    // confirmed BSFG § 40 stood under its entry and under § 40 itself.
+    const toc = [row('§ 39.'), row('§ 40.')]
+    const body = [row('§ 39.'), row('§ 40.'), row('§ 40.', { gld: null }), row('§ 40.', { gld: null })]
+    const { placement, at } = carried([...toc, ...body], response([shown('40')], [held('39', 'anhang-fremd')]))
+    expect(at).toEqual([[], [], ['anhang-fremd'], ['40']])
+    // The entries say nothing, not even „nicht gefunden": their outcome stands below.
+    expect(placement.byRow.get(toc[1]!)!.outcomeElsewhere).toBe(true)
+    // A schedule printed in two parts (7A7FB366): at the larger part.
+    const parts = [row('Anlage 2', { gld: null }), row('Anlage 2', { gld: null }), row('Anlage 2, Anhang A', { gld: null })]
+    expect(carried(parts, response([], [held('Anl. 2', 'verweigert')])).at).toEqual([['verweigert'], []])
+  })
+
   it('keeps what is filed under no law and what is filed under the one group\'s law, both at the group\'s end (19.11.2026)', () => {
     // 90EAC582: the §§ 4b and 4c (no law) were overwritten by two passages
     // filed under the law, and vanished from the page.

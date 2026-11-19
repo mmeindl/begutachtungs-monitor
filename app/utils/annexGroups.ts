@@ -299,6 +299,12 @@ export interface PlacedLesefassung {
 export interface ParaPlacement {
   explanations: ParagraphExplanationView[]
   lesefassungen: PlacedLesefassung[]
+  /**
+   * The block's unit has an outcome, and it stands at another block of the
+   * same unit (one outcome, one block) — why this one says nothing about the
+   * Lesefassung, and not even „nicht gefunden".
+   */
+  outcomeElsewhere: boolean
 }
 
 export interface AnnexParaOptions {
@@ -582,7 +588,11 @@ export function placeAtParagraphs(
   }
   const placedPassages = new Set<ParagraphExplanationView>()
 
-  const byRow = new Map<TextComparisonRow, ParaPlacement>()
+  /**
+   * Each block's own finds first, the placement after: one outcome found at
+   * several blocks stands at one of them (below).
+   */
+  const blocks: { rows: readonly TextComparisonRow[]; matched: ParagraphExplanationView[]; found: PlacedLesefassung[]; standsAfter: string | null }[] = []
   for (const g of groups) {
     const runs = paragraphRuns(g.rows)
     const addressed = addressedParagraphs(runs)
@@ -592,7 +602,7 @@ export function placeAtParagraphs(
       const matched = ps.flatMap((p) => lookUp(first.law, p, passagesAt, (xs) => xs.length > 0) ?? [])
       for (const e of matched) placedPassages.add(e)
 
-      const lesefassungen: PlacedLesefassung[] = []
+      const found: PlacedLesefassung[] = []
       if (outcomes) {
         // The § that keeps the run's number first (2/ME's § 2 also opens the
         // new § 1a, and stays § 2), then the others, each under the number
@@ -600,9 +610,9 @@ export function placeAtParagraphs(
         const keeps = (p: (typeof ps)[number]): boolean => p.after !== null && explanationParaId(p.after) === explanationParaId(p.own)
         for (const p of [...ps.filter(keeps), ...ps.filter((p) => !keeps(p))]) {
           const hit = lookUp(first.law, p, (law, para) => outcomes.at(law, para), (o) => o !== null)
-          if (!hit || hit.outcomes.every((o) => lesefassungen.some((l) => l.lesefassung === o.lesefassung))) continue
+          if (!hit || hit.outcomes.every((o) => found.some((l) => l.lesefassung === o.lesefassung))) continue
           outcomes.take(hit.outcomes)
-          lesefassungen.push({ designation: p.after ?? p.own, lesefassung: hit.lesefassung })
+          found.push({ designation: p.after ?? p.own, lesefassung: hit.lesefassung })
           // A § this block shows under a new number leaves its old one
           // behind: the number is vacated (`entfaellt`), or another § holds
           // it — and that one is placed at its own block.
@@ -611,24 +621,50 @@ export function placeAtParagraphs(
             if (old && old.lesefassung.kind === 'withheld' && old.lesefassung.cause === 'entfaellt') outcomes.take(old.outcomes)
           }
         }
-        // A § the annex shows changing, of which the Lesefassung knows
-        // nothing: the draft's instructions, as we read them, name no such §.
-        // Only at a § or a schedule — the Lesefassung is kept per unit, and
-        // rows before the first designation (a heading, the table of
-        // contents) are none. And only where a § of the block stands after
-        // the draft: a repealed one is struck rows that say it already, and
-        // where a new § took its number, that one's outcome is the new §'s
-        // (51/ME XXVIII: the old §§ 5, 6, 8, 10 to 13 and 16).
-        // Named by the number it stands under afterwards: 20/ME XXVIII's old
-        // § 82 is § 83, and „§ 82" belongs to the old § 81 beside it.
-        const standsAfter = ps.find((p) => p.after !== null)?.after ?? null
-        if (lesefassungen.length === 0 && standsAfter !== null && annexUnitId(standsAfter) && showsInstructedChange(run.rows)) {
-          lesefassungen.push({ designation: standsAfter, lesefassung: { kind: 'withheld', cause: 'nicht-gefunden' } })
-        }
       }
-      const placement: ParaPlacement = { explanations: distinctPassages(matched), lesefassungen }
-      for (const row of run.rows) byRow.set(row, placement)
+      blocks.push({ rows: run.rows, matched, found, standsAfter: ps.find((p) => p.after !== null)?.after ?? null })
     }
+  }
+
+  /*
+   * ONE OUTCOME, ONE BLOCK (19.11.2026). A unit the annex prints as two
+   * blocks finds its outcome at both: a table of contents whose entries carry
+   * the § symbol (24/ME XXVIII: the confirmed Lesefassung of BSFG § 40 stood
+   * under the entry „§ 40. Bericht über die Fördermaßnahmen" and under § 40
+   * itself), a schedule printed in two parts („Anlage 2" and „Anlage 2,
+   * Anhang A", 7A7FB366). It stands at the block that prints most of the
+   * unit, and on a tie at the later one: an entry of the table of contents is
+   * one row, and it comes first. Taking the first block instead left the
+   * body § empty, and there the page said „nicht gefunden" of a § whose
+   * confirmed text stood under its table-of-contents entry.
+   */
+  const home = new Map<Lesefassung, number>()
+  for (const [i, b] of blocks.entries()) {
+    for (const { lesefassung } of b.found) {
+      const at = home.get(lesefassung)
+      if (at === undefined || b.rows.length >= blocks[at]!.rows.length) home.set(lesefassung, i)
+    }
+  }
+  const byRow = new Map<TextComparisonRow, ParaPlacement>()
+  for (const [i, b] of blocks.entries()) {
+    const lesefassungen = b.found.filter((l) => home.get(l.lesefassung) === i)
+    const elsewhere = lesefassungen.length < b.found.length
+    // A § the annex shows changing, of which the Lesefassung knows
+    // nothing: the draft's instructions, as we read them, name no such §.
+    // Only at a § or a schedule — the Lesefassung is kept per unit, and
+    // rows before the first designation (a heading, the table of
+    // contents) are none. And only where a § of the block stands after
+    // the draft: a repealed one is struck rows that say it already, and
+    // where a new § took its number, that one's outcome is the new §'s
+    // (51/ME XXVIII: the old §§ 5, 6, 8, 10 to 13 and 16).
+    // Named by the number it stands under afterwards: 20/ME XXVIII's old
+    // § 82 is § 83, and „§ 82" belongs to the old § 81 beside it.
+    // Never where the unit's outcome stands at another of its blocks.
+    if (outcomes && b.found.length === 0 && b.standsAfter !== null && annexUnitId(b.standsAfter) && showsInstructedChange(b.rows)) {
+      lesefassungen.push({ designation: b.standsAfter, lesefassung: { kind: 'withheld', cause: 'nicht-gefunden' } })
+    }
+    const placement: ParaPlacement = { explanations: distinctPassages(b.matched), lesefassungen, outcomeElsewhere: elsewhere }
+    for (const row of b.rows) byRow.set(row, placement)
   }
 
   // What no block took, per law; then per group of the annex, or after the
