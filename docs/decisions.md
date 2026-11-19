@@ -739,6 +739,11 @@ gets an entry of its own only where it carries a reason the rule does not.
   annex leaves out (TDBG § 40b: „1. bis 6. …" where the draft changes Z 6)
   costs a correct confirmation; the oracle does not vouch for what the
   ministry does not print.
+- **The Lesefassung's only load ceiling is the § budget** (19.11.2026).
+  `nicht-geladen` says „mehr Paragraphen, als wir für eine Seite laden",
+  so it may stand only where the draft's §§ exceed the budget; a ceiling of
+  40 laws withheld 139 §§ of 116/ME XXVIII under that sentence while 289
+  §§ fit. Prüfstand check `obergrenze`.
 - **A § of the Lesefassung names the annex law it was checked against, in a
   single Novelle too** (19.11.2026), so the page files it under that law's
   group; with no law, 144/ME XXVIII's BSFG §§ stood under „Gesetzestext"

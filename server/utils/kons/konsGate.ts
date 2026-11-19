@@ -45,7 +45,8 @@ import { PARAGRAPH_NUMBER } from '../../../shared/utils/paragraphNumber'
  * - `verweigert` — at least one instruction on this § could not be carried
  *   out safely.
  * - `nicht-geladen` — our own ceiling, not the engine's verdict: a
- *   Sammelgesetz names more laws and §§ than one page may load. A cause of
+ *   Sammelgesetz changes more §§ than one page may load (`KONS_MAX_PARAGRAPHS`
+ *   in `kons/consolidate.ts`; there is no ceiling on laws). A cause of
  *   its own, because the balance under the list would otherwise report our
  *   limit as a refusal by the engine — the very confusion this whole module
  *   is written against.

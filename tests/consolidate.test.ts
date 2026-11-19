@@ -181,3 +181,18 @@ describe('consolidate — a Verordnung numbered by Kapitel (26.10.2026)', () => 
     expect(consolidationBalance(r).balanced).toBe(true)
   })
 })
+
+describe('consolidate — no ceiling on laws (19.11.2026)', () => {
+  // 116/ME XXVIII amends 65 laws in 289 §§: a ceiling of 40 laws withheld the
+  // §§ of Artikel 42 onward as „more §§ than we load", under the budget.
+  const title = (n: number) => `Änderung des Testgesetzes ${n}`
+  const blocks = draft(Array.from({ length: 41 }, (_, i) => `<ueberschrift typ="g1">Artikel ${i + 1}</ueberschrift><ueberschrift typ="g2">${title(i + 1)}</ueberschrift><absatz typ="promkleinlsatz">Das Testgesetz ${i + 1}, BGBl. I Nr. ${i + 1}/2000, wird wie folgt ge&auml;ndert:</absatz><absatz typ="novao1">1. Dem &sect; 5 wird folgender Abs. 3 angef&uuml;gt:</absatz><absatz typ="abs">&bdquo;(3) Drei gilt.&ldquo;</absatz>`).join(''))
+  const rows = Array.from({ length: 41 }, (_, i) => [pair(title(i + 1), '§ 5. (1) bis (2) …', '§ 5. (1) bis (2) …', '§ 5.', true), pair(title(i + 1), '', '(3) Drei gilt.', null)]).flat()
+
+  it('runs the 41st law like the first', async () => {
+    const r = await consolidate(who, blocks, '2026-01-01', { ...sources(rows), resolveLaw: async (_organ, nummer) => ({ ...LAW, gesetzesnummer: `2000${nummer}` }) })
+    expect(r.touched).toBe(41)
+    expect(r.withheld).toEqual([])
+    expect(r.paragraphs).toHaveLength(41)
+  })
+})

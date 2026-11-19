@@ -31,6 +31,10 @@
  *    cannot find, and that disagreement is a bug in one of the two keys.
  *  - `quelle` — the annex section and the Lesefassung disagree about whether
  *    there is an annex at all: one reads rows, the other none.
+ *  - `obergrenze` — `nicht-geladen` in a draft whose §§ fit the budget
+ *    (`KONS_MAX_PARAGRAPHS`). The page's sentence names that ceiling and no
+ *    other; 116/ME's 139 §§ stood under it while a ceiling of 40 laws
+ *    withheld them (19.11.2026).
  *
  * Everything else is counted, not failed: the causes per §, the §§ the
  * draft amends that the annex does not show (`unplaced`), the §§ the annex
@@ -44,7 +48,7 @@
 import { writeFileSync } from 'node:fs'
 import type { ConsolidatedTextResponse, DraftsResponse, ExplanationsResponse, RisConsultationsResponse, TextComparisonResponse } from '../../shared/types'
 import { annexUnitId } from '../../shared/utils/explanationKey'
-import { consolidationBalance } from '../../server/utils/kons/consolidate'
+import { KONS_MAX_PARAGRAPHS, consolidationBalance } from '../../server/utils/kons/consolidate'
 import { showsInstructedChange } from '../../app/utils/lesefassung'
 import { annexParas, groupAnnexRows, placeAtParagraphs } from '../../app/utils/annexGroups'
 import { argAssigned } from '../lib/args'
@@ -117,6 +121,8 @@ async function measure(base: string, citation: string): Promise<DraftReport> {
 
   const balance = consolidationBalance(kons)
   if (!balance.balanced) report.failures.push(`balance: ${balance.missing} ohne Ergebnis, doppelt: ${balance.twice.join(' ')}`)
+  const unloaded = report.causes['nicht-geladen'] ?? 0
+  if (unloaded > 0 && kons.touched <= KONS_MAX_PARAGRAPHS) report.failures.push(`obergrenze: ${unloaded} §§ „nicht geladen", obwohl ${kons.touched} geänderte §§ unter ${KONS_MAX_PARAGRAPHS} liegen`)
 
   if (!annex?.available) {
     // No annex on the page: every § the draft amends is `kein-anhang` — any

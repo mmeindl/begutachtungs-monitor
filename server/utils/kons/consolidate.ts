@@ -44,19 +44,29 @@ import type { ComparisonRow } from '../annex/comparisonRows'
 import { absatzSequence, standingUnitsOf, annexChangedUnits, oracleVerdict, paragraphRows, rowsByParagraph, someDrawers } from './tguOracle'
 
 /**
- * Ceilings, not budgets: the same values the two neighbours that read the
- * same documents already use — `MAX_LAWS` in `lawtext/amendedLawsService.ts`
- * and `MAX_PARAGRAPHS` in `annex/verdict.ts`, whose annex check fetches the
- * very § documents this module does, out of the same cache
- * (`fetchParagraphXml`). Until 06.10.2026 they stood at 12 and 80, and 80
- * cut off the eleven largest drafts of GP XXVIII: 815 of 3.914 changed §§
- * were never looked at, for no reason but the ceiling. What raising them
- * costs is CPU on the first request of the day, not RIS calls — the
- * Gegenüberstellung above has fetched those documents already — and this
- * section is fetched lazily, so the page never waits for it.
+ * A ceiling, not a budget: the value the neighbour that reads the same
+ * documents already uses — `MAX_PARAGRAPHS` in `annex/verdict.ts`, whose
+ * annex check fetches the very § documents this module does, out of the same
+ * cache (`fetchParagraphXml`). Until 06.10.2026 it stood at 80 and cut off
+ * the eleven largest drafts of GP XXVIII: 815 of 3.914 changed §§ were never
+ * looked at, for no reason but the ceiling. What raising it costs is CPU on
+ * the first request of the day, not RIS calls — the Gegenüberstellung above
+ * has fetched those documents already — and this section is fetched lazily,
+ * so the page never waits for it. Exported under a name of its own, for the
+ * Prüfstand: two auto-imports of one name resolve to one of them silently.
+ *
+ * **No ceiling on laws** (19.11.2026). A second one, 40 laws, stood here
+ * beside it, said to mirror `lawtext/amendedLawsService.ts` — which bounds
+ * the cold lookups of the law list, not a fetch of § documents. It withheld
+ * 139 of the 289 §§ of 116/ME XXVIII, Artikel 42 onward, under the page's
+ * sentence for this ceiling („mehr Paragraphen, als wir für eine Seite
+ * laden"), which was false: 289 §§ fit the budget. The annex check reads the
+ * same laws with no law ceiling; the 25 more law lookups are cached RIS
+ * calls it has made already. 49 of the 139 now pass the gate, the other 90
+ * carry the engine's or the gate's own cause. `nicht-geladen` is this budget
+ * alone, and the Prüfstand holds it to that (`obergrenze`).
  */
-const MAX_LAWS = 40
-const MAX_PARAGRAPHS = 500
+export const KONS_MAX_PARAGRAPHS = 500
 const CONCURRENCY = 4
 
 /**
@@ -152,7 +162,6 @@ interface AnnexOf {
 
 /** One Artikel of the draft, read purely: what it instructs and which §§ it addresses. */
 interface ArticleWork {
-  index: number
   article: DraftArticle
   instructions: Instruction[]
   refused: RefusedInstruction[]
@@ -247,7 +256,7 @@ export async function consolidate(
    */
   const annexLawOf = (w: ArticleWork): string | null => (isPackage || (w.article.key !== null && filedLaws.has(w.article.key)) ? w.article.key : null)
 
-  // ALL Artikel are counted, those beyond `MAX_LAWS` included: the
+  // ALL Artikel are counted, those the budget cuts off included: the
   // denominator on the page is „wie viele Paragraphen ändert dieser
   // Entwurf", not "how many did we look at".
   //
@@ -256,7 +265,7 @@ export async function consolidate(
   // ORDER, and only last fetch side by side. Which §§ the limit cuts off is
   // a statement on the page; it must not depend on which Artikel finishes
   // first.
-  const works = parts.flatMap(({ blocks: part, article }, index): ArticleWork[] => {
+  const works = parts.flatMap(({ blocks: part, article }): ArticleWork[] => {
     const units = segmentUnits(part).filter((u) => u.blocks.some((b) => b.kind === 'novao'))
     const { instructions, refused } = instructionsFromUnits(units)
     if (instructions.length + refused.length === 0) return []
@@ -267,7 +276,7 @@ export async function consolidate(
     // The RIS labels beside the denominator, and from the same pure step:
     // a law divided into Artikel files its § 3 as „Art. 2 § 3", and null
     // here means two addressed §§ would collide under one id.
-    return [{ index, article, instructions, refused, addressed: addressedParagraphs(instructions, refused), labels: addressedLabels(instructions, refused), locked: new Set<string>() }]
+    return [{ article, instructions, refused, addressed: addressedParagraphs(instructions, refused), labels: addressedLabels(instructions, refused), locked: new Set<string>() }]
   })
   /**
    * The §§ of a law the draft enacts anew that the annex shows changing
@@ -367,8 +376,7 @@ export async function consolidate(
 
   const workable: ArticleWork[] = []
   for (const w of works) {
-    if (w.index >= MAX_LAWS) withhold(w, w.addressed, 'nicht-geladen')
-    else if (undivided && w.article.key !== null) withhold(w, w.addressed, 'anhang-ungeteilt')
+    if (undivided && w.article.key !== null) withhold(w, w.addressed, 'anhang-ungeteilt')
     else workable.push(w)
   }
 
@@ -433,7 +441,7 @@ export async function consolidate(
   })
 
   // The allotment, pure and in order — before the fetching, not inside it.
-  const budget = { left: MAX_PARAGRAPHS }
+  const budget = { left: KONS_MAX_PARAGRAPHS }
   const jobs = resolved.flatMap((r) => {
     if (r.kind === 'failed') {
       withhold(r.w, r.w.addressed, r.cause)
