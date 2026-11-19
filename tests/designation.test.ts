@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { anlageLabelKey, articleKeysNamed, articleNumberKey, bareParaId, leadingArticleKey } from '../server/utils/text/designation'
+import { anlageLabelKey, articleKeysNamed, articleNumberKey, bareParaId, leadingArticleKey, unitKey } from '../server/utils/text/designation'
 
 describe('bareParaId', () => {
   it('reads the number out of a designation, whatever the kind', () => {
@@ -69,5 +69,26 @@ describe('articleKeysNamed', () => {
 
   it('does not read the letters inside a word as an Artikel', () => {
     expect(articleKeysNamed('Zu Z 2 (§ 3 Startart 5)')).toEqual([])
+  })
+})
+
+describe('unitKey — a schedule keeps its own number (19.11.2026)', () => {
+  it('reads it right after the word, a Roman one in Arabic as RIS files it', () => {
+    expect(unitKey('Anlage 2')).toBe('Anl. 2')
+    expect(unitKey('Anhang XIV')).toBe('Anl. 14')
+    expect(unitKey('Anlage II zu § 3')).toBe('Anl. 2')
+    expect(unitKey('Anl. 4a')).toBe('Anl. 4a')
+  })
+
+  it('keeps a letter, and a numeral it cannot read, as a key of its own — never the bare „Anl."', () => {
+    expect(unitKey('Anlage A')).toBe('Anl. A')
+    expect(unitKey('Anlage C')).toBe('Anl. C')
+    expect(unitKey('Anhang IVX')).toBe('Anl. IVX')
+  })
+
+  it('is the bare „Anl." only for a schedule without a number, whatever the label cites after it', () => {
+    expect(unitKey('Anhang')).toBe('Anl.')
+    expect(unitKey('Anlage zu § 5')).toBe('Anl.')
+    expect(unitKey('§ 5')).toBe('5')
   })
 })

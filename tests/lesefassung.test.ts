@@ -41,6 +41,13 @@ describe('annexUnitId', () => {
     expect(annexUnitId('§ 54c.')).toBe('54c')
     expect(annexUnitId('Anlage 1 (zu § 6)')).toBe('anl. 1')
     expect(annexUnitId('Anhang')).toBe('anl.')
+    // A schedule's own number, Roman in Arabic as the engine and RIS key it
+    // (19.11.2026): every one of them was the bare „anl." before.
+    expect(annexUnitId('Anhang XIV')).toBe('anl. 14')
+    expect(annexUnitId('ANHANG I')).toBe('anl. 1')
+    expect(annexUnitId('Anlage A')).toBe('anl. a')
+    expect(annexUnitId('Anhang IVX')).toBe('anl. ivx')
+    expect(annexUnitId('Anlage zu Art. II')).toBe('anl.')
     // Anchored: a row that merely mentions an Anlage opens none.
     expect(annexUnitId('Abschnitt 3')).toBeNull()
     expect(annexUnitId('Verweis auf Anlage 2')).toBeNull()
@@ -49,9 +56,16 @@ describe('annexUnitId', () => {
 
 describe('outcomeIndex', () => {
   it('finds a single-law draft\'s § under a row that carries a law, and the unnumbered schedule at the numbered one', () => {
-    const index = outcomeIndex(response([shown('4'), shown('Anl.')], []))!
+    const index = outcomeIndex(response([shown('4'), shown('Anl.')], []), () => true)!
     expect(index.at('Änderung des Testgesetzes', '§ 4.')).toMatchObject({ lesefassung: { kind: 'shown' } })
     expect(index.at('Änderung des Testgesetzes', 'Anlage 2')).toMatchObject({ lesefassung: { kind: 'shown' } })
+  })
+
+  it('takes the unnumbered schedule for a numbered one only where the law has one (19.11.2026)', () => {
+    // 571847EF: the refusal of the unnumbered „Anlage" also stood at the
+    // law's Anhänge 2 and 4, which no instruction touches.
+    expect(outcomeIndex(response([], [held('Anl.', 'verweigert')]))!.at(null, 'Anhang 2')).toBeNull()
+    expect(outcomeIndex(response([], [held('Anl.', 'verweigert')]), () => true)!.at(null, 'Anhang 2')).toMatchObject({ lesefassung: { cause: 'verweigert' } })
   })
 
   it('says „ungeteilt" where an undivided annex leaves a number two laws share', () => {
@@ -73,6 +87,18 @@ describe('placeAtParagraphs — the Lesefassung', () => {
     expect(at).toEqual([['1'], ['anhang-widerspricht'], ['verweigert']])
     // The schedule found its block: looked up through `explanationParaId` it never did.
     expect([...placement.ends.byGroup.values()].map((e) => e.outcomes)).toEqual([[{ id: '9', lesefassung: { kind: 'withheld', cause: 'anhang-schweigt' } }]])
+  })
+
+  it('gives each Roman schedule its own outcome, and the unnumbered one only to a law\'s only schedule (19.11.2026)', () => {
+    // 58/ME XXVIII: one „Anl." outcome stood at eleven Anhänge of the BVergG
+    // 2018; 12732B03: „Anlage I" and „Anlage II" shared one refusal.
+    const roman = [row('Anlage I', { gld: null }), row('Anlage II', { gld: null })]
+    expect(carried(roman, response([shown('Anl. 1')], [held('Anl. 2', 'verweigert')])).at).toEqual([['Anl. 1'], ['verweigert']])
+    const two = [row('Anhang 2', { gld: null }), row('Anhang 4', { gld: null, change: 'unchanged' })]
+    const { placement, at } = carried(two, response([], [held('Anl.', 'verweigert')]))
+    expect(at).toEqual([['nicht-gefunden'], []])
+    expect([...placement.ends.byGroup.values()].map((e) => e.outcomes.map((o) => o.id))).toEqual([['Anl.']])
+    expect(carried([row('Anhang 2', { gld: null })], response([], [held('Anl.', 'verweigert')])).at).toEqual([['verweigert']])
   })
 
   it('keeps what is filed under no law and what is filed under the one group\'s law, both at the group\'s end (19.11.2026)', () => {

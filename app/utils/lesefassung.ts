@@ -71,7 +71,11 @@ export interface OutcomeIndex {
    *     one anyway;
    *  3. the unnumbered schedule („Anl.") at the law's numbered one: an
    *     instruction „des Anhangs" can only mean a law's only schedule, and the
-   *     annex prints its number;
+   *     annex prints its number — so only where the annex prints one schedule
+   *     for that law (`soleSchedule`). Without that condition the one outcome
+   *     stood at every numbered schedule of a law: the refusal of 571847EF's
+   *     unnumbered „Anlage" also at its Anhänge 2 and 4, which no instruction
+   *     touches (19.11.2026);
    *  4. a block without a law in a package — the annex does not divide its
    *     laws (`boundaryNote`): the § number alone, which only says something
    *     where a single law of the package has such a §, and otherwise says
@@ -84,7 +88,12 @@ export interface OutcomeIndex {
   untaken(): Outcome[]
 }
 
-export function outcomeIndex(response: ConsolidatedTextResponse | null): OutcomeIndex | null {
+/**
+ * `soleSchedule` says for a law (as the annex rows name it) whether its annex
+ * prints exactly one schedule — the condition of lookup 3. Without it, no
+ * block takes the unnumbered „Anl.", and it stands at the end of its law.
+ */
+export function outcomeIndex(response: ConsolidatedTextResponse | null, soleSchedule: (law: string | null) => boolean = () => false): OutcomeIndex | null {
   if (!response || response.notRun) return null
   const all: Outcome[] = [
     ...response.paragraphs.map((p): Outcome => ({ id: p.id, law: p.annexLaw, lesefassung: { kind: 'shown', paragraph: p } })),
@@ -105,7 +114,7 @@ export function outcomeIndex(response: ConsolidatedTextResponse | null): Outcome
       if (!unit) return null
       const found = byKey.get(explanationKey(law, unit)) ??
         (law !== null ? byKey.get(explanationKey(null, unit)) : undefined) ??
-        (unit.startsWith('anl. ') ? (byKey.get(explanationKey(law, 'anl.')) ?? byKey.get(explanationKey(null, 'anl.'))) : undefined)
+        (unit.startsWith('anl. ') && soleSchedule(law) ? (byKey.get(explanationKey(law, 'anl.')) ?? byKey.get(explanationKey(null, 'anl.'))) : undefined)
       if (found) return { lesefassung: found.lesefassung, outcomes: [found] }
       if (law !== null) return null
       const candidates = (byUnit.get(unit) ?? []).filter((o) => o.law !== null)

@@ -12,6 +12,9 @@
  * builds). They differ on purpose.
  */
 import { PARAGRAPH_NUMBER } from '../../../shared/utils/paragraphNumber'
+import { romanNumberKey, scheduleNumber } from '../../../shared/utils/scheduleNumber'
+
+export { romanNumeral as romanOf } from '../../../shared/utils/scheduleNumber'
 
 const NUMBER_RE = new RegExp(`(${PARAGRAPH_NUMBER})`)
 
@@ -80,6 +83,11 @@ export function isDivision(label: string | null | undefined): boolean {
  * the Prüfstand on 26.09.2026 and is the same one this key exists to close
  * everywhere else.
  *
+ * A schedule's number is its own, read right after its word, a Roman one in
+ * Arabic as RIS files it (`scheduleNumber`): „Anhang XIV" is „Anl. 14". Read
+ * as the first number anywhere it was none, and every Roman- or
+ * letter-numbered schedule of a law shared the bare „Anl." (19.11.2026).
+ *
  * „Anl." without a number is the form an instruction uses when the law has
  * exactly one schedule („Z 1 lit. n des Anhangs"). It is a key of its own on
  * purpose: which schedule it is, is the standing text's answer, and the two
@@ -90,8 +98,8 @@ export function unitKey(label: string | null): string | null {
   // „Abschnitt 4" is not § 4: a failed instruction on the Abschnitt locked
   // § 4 at the gate under the bare number (01.10.2026).
   if (isDivision(label)) return label.replace(/\s+/g, ' ').trim()
-  const id = bareParaId(label)
-  if (!isSchedule(label)) return id
+  if (!isSchedule(label)) return bareParaId(label)
+  const id = scheduleNumber(label)
   return id === null ? 'Anl.' : `Anl. ${id}`
 }
 
@@ -111,41 +119,13 @@ export function unitKey(label: string | null): string | null {
  * spelling is accepted: „IIII" and „VX" are no numerals and come back null
  * rather than as 4 and 5.
  */
-const ROMAN: readonly (readonly [string, number])[] = [
-  ['M', 1000], ['CM', 900], ['D', 500], ['CD', 400], ['C', 100], ['XC', 90],
-  ['L', 50], ['XL', 40], ['X', 10], ['IX', 9], ['V', 5], ['IV', 4], ['I', 1],
-]
-
-export function romanOf(n: number): string {
-  let out = ''
-  let rest = n
-  for (const [symbol, value] of ROMAN) {
-    while (rest >= value) {
-      out += symbol
-      rest -= value
-    }
-  }
-  return out
-}
-
 export function articleNumberKey(numeral: string): string | null {
   const t = numeral.trim()
   if (/^\d+$/.test(t)) {
     const n = Number(t)
     return n > 0 ? String(n) : null
   }
-  const upper = t.toUpperCase()
-  if (!/^[IVXLCDM]+$/.test(upper)) return null
-  let value = 0
-  let rest = upper
-  for (const [symbol, amount] of ROMAN) {
-    while (rest.startsWith(symbol)) {
-      value += amount
-      rest = rest.slice(symbol.length)
-    }
-  }
-  if (rest.length > 0 || value === 0) return null
-  return romanOf(value) === upper ? String(value) : null
+  return romanNumberKey(t)
 }
 
 /**

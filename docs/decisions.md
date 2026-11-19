@@ -752,6 +752,14 @@ gets an entry of its own only where it carries a reason the rule does not.
   so it may stand only where the draft's §§ exceed the budget; a ceiling of
   40 laws withheld 139 §§ of 116/ME XXVIII under that sentence while 289
   §§ fit. Prüfstand check `obergrenze`.
+- **A schedule is keyed by its own number, a Roman one in Arabic**
+  (19.11.2026): „Anhang XIV" is „Anl. 14" on the engine's side and the
+  page's, because RIS files every schedule so; a letter or an unreadable
+  numeral keeps a key of its own. The bare „Anl." means a law's only
+  schedule, and the page gives it to a numbered block only where the annex
+  prints one schedule for that law. Read as the first number anywhere, all
+  Roman schedules of a law shared one outcome (58/ME XXVIII: one at eleven
+  Anhänge) (`shared/utils/scheduleNumber.ts`).
 - **A § of the Lesefassung names the annex law it was checked against, in a
   single Novelle too** (19.11.2026), so the page files it under that law's
   group; with no law, 144/ME XXVIII's BSFG §§ stood under „Gesetzestext"

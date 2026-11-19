@@ -556,7 +556,18 @@ export function placeAtParagraphs(
 ): { byRow: Map<TextComparisonRow, ParaPlacement>; groupKeys: string[]; ends: { byGroup: Map<string, LawEnd>; rest: (LawEnd & { law: string | null })[] } } {
   const { groups } = groupAnnexRows(rows, { matches: null, hidden: [] })
   const groupKeys = groups.map((g) => g.key)
-  const outcomes = outcomeIndex(consolidated)
+  // The schedules the annex prints per law, by the unit each block stands
+  // for: the unnumbered „Anl." of an instruction means one only where there
+  // is one (`outcomeIndex`, lookup 3).
+  const schedulesOf = new Map<string | null, Set<string>>()
+  for (const g of groups) {
+    for (const run of paragraphRuns(g.rows)) {
+      const { law, para } = run.rows[0]!
+      const unit = annexUnitId(para)
+      if (unit?.startsWith('anl.')) schedulesOf.set(law, (schedulesOf.get(law) ?? new Set()).add(unit))
+    }
+  }
+  const outcomes = outcomeIndex(consolidated, (law) => schedulesOf.get(law)?.size === 1)
 
   // The passages under the key the section looks them up by: the law the
   // Erläuterungen file them under, and the bare §.

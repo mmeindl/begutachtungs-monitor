@@ -16,10 +16,10 @@
  * these are named differently again, law first, like the younger of the two.
  */
 import { PARAGRAPH_NUMBER } from './paragraphNumber'
+import { scheduleNumber } from './scheduleNumber'
 
 /** „§ 6.01a" at the start of a designation, its number read as every reader reads it (`PARAGRAPH_NUMBER`). */
 const DESIGNATION_RE = new RegExp(String.raw`^\s*§+\s*(${PARAGRAPH_NUMBER})`, 'i')
-const NUMBER_RE = new RegExp(String.raw`(${PARAGRAPH_NUMBER})`, 'i')
 
 /**
  * Designation → number: „§ 54c." from the annex's Gliederungssymbol and
@@ -55,18 +55,20 @@ export function explanationParaId(designation: string | null): string | null {
  * The Lesefassung's own reading, apart from `explanationParaId`, because the
  * two answer for a schedule differently: a Begründung passage is keyed by
  * Paragraph only, while the engine keys a schedule as a unit of its own
- * (`unitKey` in `server/utils/text/designation.ts` — kind and first number).
- * Looked up through `explanationParaId`, every confirmed schedule found no §
- * block and was never rendered (26.10.2026). Anchored at the start like the
- * oracle's `paraIdOfGld`: a row that merely mentions an Anlage opens none.
+ * (`unitKey` in `server/utils/text/designation.ts` — kind and its own
+ * number, `scheduleNumber`: „Anhang XIV" → „anl. 14", as the engine and RIS
+ * key it). Looked up through `explanationParaId`, every confirmed schedule
+ * found no § block and was never rendered (26.10.2026). Anchored at the
+ * start like the oracle's `paraIdOfGld`: a row that merely mentions an
+ * Anlage opens none.
  */
 export function annexUnitId(designation: string | null): string | null {
   const t = (designation ?? '').trim()
   const para = explanationParaId(t)
   if (para) return para
   if (!/^(?:Anlage|Anhang|Anl\.?)(?!\p{L})/iu.test(t)) return null
-  const n = NUMBER_RE.exec(t)
-  return n ? `anl. ${n[1]!.toLowerCase()}` : 'anl.'
+  const n = scheduleNumber(t)
+  return n ? `anl. ${n.toLowerCase()}` : 'anl.'
 }
 
 /** Law and Paragraph as one key. The empty law is a real value. */
