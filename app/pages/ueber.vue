@@ -207,7 +207,7 @@ const contact = useContact()
         <li>
           Der Textvergleich ist eine Ableitung, keine amtliche Fassung. Bei
           Novellen vergleicht er die Änderungs<em>anweisungen</em>; wie das
-          Gesetz danach lautet, zeigt die Lesefassung nur für die
+          Gesetz danach lautet, zeigt der Monitor nur für die
           Paragraphen, die die Textgegenüberstellung des Ministeriums
           bestätigt. Im Zweifel gilt das verlinkte Original. Welche Fehler
           seine Prüfungen fangen und welche nicht, steht unter

@@ -1,6 +1,7 @@
 <!--
-  How the Lesefassung („Ganzer Paragraph danach (nicht amtlich)") is made —
-  opened in place under the line „Wie diese Lesefassung entsteht" in
+  How the Lesefassung („Ganzer Paragraph in der vorgeschlagenen Fassung
+  (nicht amtlich)") is made —
+  opened in place under the line „Wie dieser Text entsteht" in
   `LesefassungDisclosure` (14.11.2026; until then
   /so-funktionierts#lesefassung).
 
@@ -30,13 +31,13 @@
       </dd>
     </div>
     <div>
-      <dt>Fehlt die Lesefassung, steht am Paragraphen, warum</dt>
+      <dt>Fehlt dieser Text, steht am Paragraphen, warum</dt>
       <dd>
         Etwa weil sich eine Anweisung des Entwurfs nicht sicher anwenden ließ,
         weil unser Ergebnis von der Beilage abweicht, weil wir das Gesetz oder
         den Paragraphen im RIS nicht fanden oder weil die Beilage an dieser
-        Stelle nichts zeigt, woran sich unser Ergebnis prüfen ließe. Fehlt die
-        Lesefassung, heißt das nie, dass der Paragraph gleich bleibt.
+        Stelle nichts zeigt, woran sich unser Ergebnis prüfen ließe. Fehlt dieser
+        Text, heißt das nie, dass der Paragraph gleich bleibt.
       </dd>
     </div>
     <div>

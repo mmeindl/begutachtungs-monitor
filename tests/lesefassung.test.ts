@@ -179,12 +179,12 @@ describe('placeAtParagraphs — the Lesefassung', () => {
 
 describe('the sentences', () => {
   it('names what we could not do, at the § and once for the section', () => {
-    expect(lesefassungLine({ kind: 'withheld', cause: 'anhang-widerspricht' })).toBe('Ganzer Paragraph danach nicht gezeigt: Unser Ergebnis weicht von der Beilage ab.')
-    expect(lesefassungLine({ kind: 'withheld', cause: 'verweigert' }, '§ 1a.')).toMatch(/^Ganzer § 1a danach nicht gezeigt: /)
+    expect(lesefassungLine({ kind: 'withheld', cause: 'anhang-widerspricht' })).toBe('Ganzer Paragraph in der vorgeschlagenen Fassung nicht gezeigt: Unser Ergebnis weicht von der Beilage ab.')
+    expect(lesefassungLine({ kind: 'withheld', cause: 'verweigert' }, '§ 1a.')).toMatch(/^Ganzer § 1a in der vorgeschlagenen Fassung nicht gezeigt: /)
     // A § the draft repeals or moves stands in the annex as struck rows already.
     expect(lesefassungLine({ kind: 'withheld', cause: 'entfaellt' })).toBeNull()
-    expect(lesefassungLine({ kind: 'withheld', cause: 'neu-erlassen' })).toBe('Ganzer Paragraph danach nicht gezeigt: Dieses Gesetz erlässt der Entwurf neu, und seinen ganzen Text enthält er selbst; wir setzen nur Änderungen bestehender Gesetze zusammen.')
-    expect(lesefassungNotRunText({ ...response([], []), notRun: 'keine-novelle' })).toMatch(/^Nicht im Monitor: die ganzen Paragraphen danach\. So wie der Monitor den Entwurf liest/)
+    expect(lesefassungLine({ kind: 'withheld', cause: 'neu-erlassen' })).toBe('Ganzer Paragraph in der vorgeschlagenen Fassung nicht gezeigt: Dieses Gesetz erlässt der Entwurf neu, und seinen ganzen Text enthält er selbst; wir setzen nur Änderungen bestehender Gesetze zusammen.')
+    expect(lesefassungNotRunText({ ...response([], []), notRun: 'keine-novelle' })).toMatch(/^Nicht im Monitor: die ganzen Paragraphen in der vorgeschlagenen Fassung\. So wie der Monitor den Entwurf liest/)
     expect(lesefassungNotRunText(response([], []))).toBeNull()
   })
 

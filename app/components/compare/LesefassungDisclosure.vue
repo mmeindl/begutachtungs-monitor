@@ -1,7 +1,14 @@
 <script setup lang="ts">
 /**
- * „Ganzer Paragraph danach (nicht amtlich)" — one § of our own Lesefassung,
- * folded.
+ * „Ganzer Paragraph in der vorgeschlagenen Fassung (nicht amtlich)" — one
+ * § of our own Lesefassung, folded.
+ *
+ * The name (19.11.2026; „Ganzer Paragraph danach" since 30.09.2026): the
+ * word of the column above it, „Vorgeschlagene Fassung", which is also the
+ * ministries' own heading of that column. „danach" meant „after the change
+ * above" only where it stood under one; read anywhere else, it was „the
+ * next paragraph". „Ganzer" says what differs from that column, which
+ * prints extracts.
  *
  * Its own component since 26.10.2026, because it now stands in two places:
  * under the § of the Textgegenüberstellung it was checked against, and — for
@@ -16,7 +23,7 @@ defineProps<{ paragraph: ConsolidatedParagraph }>()
 
 <template>
   <Disclosure size="xs" tone="ink">
-    <template #summary>Ganzer Paragraph danach (nicht amtlich)</template>
+    <template #summary>Ganzer Paragraph in der vorgeschlagenen Fassung (nicht amtlich)</template>
     <div class="mt-1 pl-6">
       <!-- „nicht amtlich" stands IN the summary since 30.09.2026, so it is
            read before the disclosure opens, not after; inside, only how
@@ -25,7 +32,8 @@ defineProps<{ paragraph: ConsolidatedParagraph }>()
       <!-- The text in force it starts from, per § (26.10.2026): the section's
            credit linked the first shown §'s law only, which in a package is
            the wrong law for every other one. -->
-      <!-- „Wie diese Lesefassung entsteht" opens its text in place, under
+      <!-- „Wie dieser Text entsteht" („… diese Lesefassung …" until
+           19.11.2026: a lawyer's word the summary no longer uses) opens its text in place, under
            this line (14.11.2026; a link to /so-funktionierts#lesefassung
            before): the `TermNote` of „Methode", not a nested `Disclosure`,
            because it shares its row with the RIS link and its text wants
@@ -33,7 +41,7 @@ defineProps<{ paragraph: ConsolidatedParagraph }>()
            sit in a <p>. -->
       <div class="flex flex-wrap items-center gap-x-4 gap-y-1 text-xs text-ink-muted">
         <TermNote>
-          Wie diese Lesefassung entsteht
+          Wie dieser Text entsteht
           <template #note>
             <div class="prose-flow pb-2 text-sm [&_dt]:font-medium">
               <MethodLesefassung />

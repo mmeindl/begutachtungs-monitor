@@ -28,7 +28,7 @@ const sources = [risSource('Geltender Text'), risSource('Entwurf'), risSource('T
 
 <template>
   <figure class="mt-6">
-    <ol class="isolate flex list-none flex-col gap-6 pl-0" aria-label="Ein Paragraph auf dem Weg zur Lesefassung">
+    <ol class="isolate flex list-none flex-col gap-6 pl-0" aria-label="Die Schritte vom geltenden Text zur vorgeschlagenen Fassung">
       <li v-for="(step, i) in steps" :key="step.key" class="relative flex gap-3">
         <!-- From this dot's lower edge (6 + 12 px) to the next one's upper
              edge, across the gap-6 (24 + 6 px), as in the rails. -->
@@ -71,7 +71,7 @@ const sources = [risSource('Geltender Text'), risSource('Entwurf'), risSource('T
             </dl>
             <p v-else class="text-ink">
               Bestätigt: Beim Entwurf {{ ex.draft.citation }} steht unter {{ ex.para }}
-              „Ganzer Paragraph danach (nicht amtlich)“.
+              „Ganzer Paragraph in der vorgeschlagenen Fassung (nicht amtlich)“.
               <NuxtLink :to="ex.draft.href" class="link-inline">Zum Entwurf</NuxtLink>
             </p>
           </div>

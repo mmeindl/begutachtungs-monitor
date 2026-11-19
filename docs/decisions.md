@@ -740,6 +740,14 @@ gets an entry of its own only where it carries a reason the rule does not.
   (§12.12).
 - **Refusing beats coverage.** An instruction is never applied in part; every
   target is resolved before any is written (§12.12).
+- **Its name is „Ganzer Paragraph in der vorgeschlagenen Fassung (nicht
+  amtlich)"** (19.11.2026), on the fold and in every sentence about it: the
+  word of the column above it, which the ministries print over that column
+  too; „Ganzer" says what differs from the column, which prints extracts.
+  A name the reader meets in one place has to hold wherever it is repeated
+  (`LesefassungDisclosure.vue`). Inside the fold it is „dieser Text", and
+  „Lesefassung" stays a word of the code and the docs: a lawyer's term the
+  reader has met nowhere on the page.
 - **An unmarked `erltext` block behind an Absatz of the standing law is
   that Absatz's closing part** (19.11.2026), the shape RIS's newer converter
   gives the same sentences (`<schlussteil ebene="0">`). Skipped, binding
@@ -2422,8 +2430,8 @@ the reasoning in full stands in that component's header comment.
   „gerade nicht lesbar"; gap sentences say „der Monitor", not „wir". A state
   of the procedure („noch keine Regierungsvorlage", „Beschlossen – nicht
   kundgemacht") is no gap and takes none, nor does a sentence that follows
-  from a gap already named („Ganze Paragraphen danach zeigt der Monitor
-  deshalb auch nicht …"). A record that lists no document
+  from a gap already named („Ganze Paragraphen in der vorgeschlagenen
+  Fassung zeigt der Monitor deshalb auch nicht …"). A record that lists no document
   proves no absence: a missing Erläuterungen document is „Nicht lesbar",
   never „Nicht veröffentlicht". Kept apart on purpose: the verification
   check's own leads („Nicht geprüft:", „Nicht gezeigt:"), the Lesefassung's
@@ -2862,6 +2870,11 @@ circular of 10.12.2015).
 
 ### Interface
 
+- **„Ganzer Paragraph danach"** (30.09. to 19.11.2026). „danach" meant
+  „after the change above" only under one; on `/genauigkeit` and in the gap
+  sentences it read as „the next paragraph". „So würde der ganze Paragraph
+  lauten" was understood but tied to nothing on the page, and the gap
+  sentences built on it went clumsy.
 - **Date fields beside the period select** (18.11.2026). Two controls on one
   axis intersect, and „GP XXVII" with „9.–15.11.2026" is an empty list that
   reads as a finding. The span of the reader's own is a value of the select.

@@ -33,7 +33,7 @@ export interface GenauigkeitRecord {
   /** The Gesetzgebungsperiode the drafts are from. */
   gp: string
 
-  /** „Ganzer Paragraph danach": our own consolidated text, gated by the ministry's annex. */
+  /** „Ganzer Paragraph in der vorgeschlagenen Fassung": our own consolidated text, gated by the ministry's annex. */
   lesefassung: {
     /**
      * The bench (`kons.ts --oracle`): enacted amendments, their instructions

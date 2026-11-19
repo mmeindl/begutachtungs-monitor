@@ -165,7 +165,7 @@ watch([status, data], () => {
  * about the layer below the annex, not about the annex.
  */
 const lesefassungNote = computed(() => {
-  if (consolidatedStatus.value === 'error') return 'Gerade nicht abrufbar: die ganzen Paragraphen danach.'
+  if (consolidatedStatus.value === 'error') return 'Gerade nicht abrufbar: die ganzen Paragraphen in der vorgeschlagenen Fassung.'
   return lesefassungNotRunText(consolidated.value ?? null)
 })
 
@@ -415,7 +415,7 @@ function withheldReason(cause: AnnexWithheldCause | null): string {
            confirms our reading of them (`kein-anhang`). A consequence of
            the gap above, so no lead word of its own (`shared/utils/gaps.ts`). -->
       <p v-if="(consolidated?.touched ?? 0) > 0" class="mt-2 text-xs text-ink-muted">
-        Ganze Paragraphen danach zeigt der Monitor deshalb auch nicht: Ohne Gegenüberstellung bestätigt niemand sein Ergebnis.
+        Ganze Paragraphen in der vorgeschlagenen Fassung zeigt der Monitor deshalb auch nicht: Ohne Gegenüberstellung bestätigt niemand sein Ergebnis.
       </p>
     </template>
 

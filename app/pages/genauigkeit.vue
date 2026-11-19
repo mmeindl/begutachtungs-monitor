@@ -71,9 +71,13 @@ function rowsOf(art: GenauigkeitArt): { key: keyof typeof GENAUIGKEIT_ROW_DE; li
 
     <ProseSection id="weg" heading="Ein Paragraph auf dem Weg" first>
       <p>
-        Am Beispiel des ganzen Paragraphen danach, wie der Monitor ihn aus
-        drei Teilen zusammensetzt. An jedem Schritt steht, wo ein Fehler
-        hineinkommen kann und was der Monitor dann tut.
+        Auf der Seite eines Entwurfs zeigt der Monitor unter einem
+        geänderten Paragraphen den ganzen Paragraphen in der vorgeschlagenen
+        Fassung: so, wie er lautet, wenn der Entwurf unverändert Gesetz wird.
+        Hier ist an einem echten Beispiel zu sehen, wie der Monitor ihn aus
+        dem geltenden Text und der Änderungsanweisung des Entwurfs bildet und
+        an der Textgegenüberstellung des Ministeriums prüft. An jedem Schritt
+        steht, wo ein Fehler hineinkommen kann und was der Monitor dann tut.
       </p>
       <GenauigkeitWeg />
     </ProseSection>
@@ -114,7 +118,8 @@ function rowsOf(art: GenauigkeitArt): { key: keyof typeof GENAUIGKEIT_ROW_DE; li
         Von {{ formatNumberDe(funnel.changed) }} Paragraphen, die die
         {{ formatNumberDe(funnel.drafts) }} Ministerialentwürfe der
         {{ GENAUIGKEIT.gp }}. Gesetzgebungsperiode ändern, zeigt der Monitor
-        {{ formatNumberDe(funnel.shown) }} als ganzen Paragraphen danach. Bei
+        bei {{ formatNumberDe(funnel.shown) }} den ganzen Paragraphen in der
+        vorgeschlagenen Fassung. Bei
         jedem anderen steht am Paragraphen, warum nicht – hier mit dem Satz,
         der dort steht.
       </p>
@@ -125,8 +130,8 @@ function rowsOf(art: GenauigkeitArt): { key: keyof typeof GENAUIGKEIT_ROW_DE; li
         </figcaption>
       </figure>
       <p class="mt-6">
-        Fehlt der ganze Paragraph danach, heißt das nie, dass er gleich
-        bleibt: Was der Entwurf an ihm ändert, zeigt die
+        Fehlt der ganze Paragraph in der vorgeschlagenen Fassung, heißt das
+        nie, dass er gleich bleibt: Was der Entwurf an ihm ändert, zeigt die
         Textgegenüberstellung darüber, soweit sie es abdruckt.
       </p>
       <p>

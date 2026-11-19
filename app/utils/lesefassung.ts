@@ -4,7 +4,8 @@
  *
  * The server accounts for every § the draft amends: shown, or withheld with
  * its cause (`server/utils/kons/consolidate.ts`). Until 26.10.2026 the page
- * heard only of the shown ones, and a § without „Ganzer Paragraph danach"
+ * heard only of the shown ones, and a § without „Ganzer Paragraph in der vorgeschlagenen
+ * Fassung"
  * could mean eight different things, none of them said. The outcomes are
  * placed at the § blocks by `placeAtParagraphs` (`annexGroups.ts`), the same
  * pass that places the Begründung, under the designation a § carries after
@@ -174,7 +175,7 @@ export function lesefassungCauseText(cause: LesefassungCause): string {
 export function lesefassungLine(lesefassung: Lesefassung, designation: string | null = null): string | null {
   if (lesefassung.kind !== 'withheld' || lesefassung.cause === 'entfaellt') return null
   const what = designation ? `${designation.replace(/\.$/, '')} ` : 'Paragraph '
-  return `Ganzer ${what}danach nicht gezeigt: ${CAUSE_TEXT[lesefassung.cause]}`
+  return `Ganzer ${what}in der vorgeschlagenen Fassung nicht gezeigt: ${CAUSE_TEXT[lesefassung.cause]}`
 }
 
 /** Why the run did not happen, and whose gap that is (`shared/utils/gaps.ts`). */
@@ -189,7 +190,7 @@ const NOT_RUN: Record<ConsolidatedNotRun, { kind: GapKind; text: string }> = {
 export function lesefassungNotRunText(response: ConsolidatedTextResponse | null): string | null {
   if (!response?.notRun) return null
   const { kind, text } = NOT_RUN[response.notRun]
-  return gapDe(kind, `die ganzen Paragraphen danach. ${text}`)
+  return gapDe(kind, `die ganzen Paragraphen in der vorgeschlagenen Fassung. ${text}`)
 }
 
 /**
@@ -254,4 +255,4 @@ export function mergesIntoNotice(lesefassung: Lesefassung | null, annexCause: An
 }
 
 /** The sentence the annex notice then ends with. */
-export const NOTICE_LESEFASSUNG_TOO = 'Den ganzen Paragraphen danach zeigen wir deshalb auch nicht.'
+export const NOTICE_LESEFASSUNG_TOO = 'Den ganzen Paragraphen in der vorgeschlagenen Fassung zeigen wir deshalb auch nicht.'

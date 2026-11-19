@@ -89,7 +89,7 @@ export const GENAUIGKEIT_WEG: readonly WegSchritt[] = [
     key: 'gezeigt',
     title: 'Gezeigt – oder nicht',
     who: null,
-    text: 'Geht jede Prüfung auf, steht unter dem Paragraphen „Ganzer Paragraph danach (nicht amtlich)“. Geht eine nicht auf, steht dort der Grund.',
+    text: 'Geht jede Prüfung auf, steht unter dem Paragraphen „Ganzer Paragraph in der vorgeschlagenen Fassung (nicht amtlich)“. Geht eine nicht auf, steht dort der Grund.',
     risk: null,
   },
 ]
@@ -241,7 +241,7 @@ export function genauigkeitArten(r: GenauigkeitRecord = GENAUIGKEIT): Genauigkei
   return [
     {
       id: 'lesefassung',
-      heading: 'Ganzer Paragraph danach',
+      heading: 'Ganzer Paragraph in der vorgeschlagenen Fassung',
       where:
         'Unter einem Paragraphen der Textgegenüberstellung, aufzuklappen: der Paragraph, wie er nach dem Entwurf lauten würde. Ihn setzt der Monitor selbst zusammen, aus dem geltenden Text im RIS und den Anweisungen des Entwurfs.',
       against:
