@@ -1337,3 +1337,22 @@ describe('„nach der Z 3 folgender Satz angefügt" (19.11.2026)', () => {
     expect([satz.target.satz, satz.behind]).toEqual(['zweiter', undefined])
   })
 })
+
+describe('Roman schedules in an enumeration (19.11.2026)', () => {
+  // 58/ME XXVIII: Anhang IX was named by no reading, and its annex block said
+  // the instruction was not found; 150/ME counted Anlagen II and IV, not III.
+  it('reads a Roman sibling, an announced plural and a Roman run', () => {
+    const both = parseInstruction('Anhang VIII und IX lauten:').ops[0] as Extract<NovaoOp, { kind: 'replace' }>
+    expect([both.target.para, both.target.siblings]).toEqual(['Anhang VIII', ['IX']])
+    expect(createdUnits('Anhang VIII wird durch folgende Anhänge VIII und IX ersetzt:')).toEqual(['Anhang VIII', 'Anhang IX'])
+    expect(createdUnits('Nach Anlage I zu Art. II werden folgende Anlagen II bis IV zu Art. II angefügt:')).toEqual(['Anlage II', 'Anlage III', 'Anlage IV'])
+    expect(mentionedUnits('Nach Anlage I zu Art. II werden folgende Anlagen II bis IV zu Art. II angefügt:')).toContain('Anlage III')
+  })
+
+  it('keeps Arabic schedules and Literae as they were', () => {
+    const arabic = parseInstruction('Anlage 2 und 3 lauten:').ops[0] as Extract<NovaoOp, { kind: 'replace' }>
+    expect(arabic.target.siblings).toEqual(['3'])
+    const lit = parseInstruction('In § 21c Z 1 lit. i und v entfällt das Wort „und".').ops[0] as Extract<NovaoOp, { kind: 'deletePhrase' }>
+    expect([lit.target.lit, lit.target.siblings]).toEqual(['i', ['v']])
+  })
+})

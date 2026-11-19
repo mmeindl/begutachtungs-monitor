@@ -20,7 +20,7 @@
  * comes back as `null` with a reason, and stays an instruction on screen.
  */
 import { normalizeText, stripQuotes } from '../lawtext/normalize'
-import { articleNumberKey, bareParaId } from '../text/designation'
+import { articleNumberKey, bareParaId, romanOf } from '../text/designation'
 import { PARAGRAPH_NUMBER } from '../../../shared/utils/paragraphNumber'
 
 // ---------------------------------------------------------------------------
@@ -437,6 +437,19 @@ export function expandRange(from: string, to: string): string[] | null {
   return null
 }
 
+const ROMAN_RE = /^[IVXLCDM]+$/
+
+/**
+ * „II bis IV" → „III", „IV": a run of canonical Roman numerals, as
+ * `expandRange` gives an Arabic one. Null for anything else.
+ */
+function romanRange(from: string, to: string): string[] | null {
+  if (!ROMAN_RE.test(from) || !ROMAN_RE.test(to)) return null
+  const [a, b] = [articleNumberKey(from), articleNumberKey(to)]
+  const numbers = a && b ? expandRange(a, b) : null
+  return numbers && numbers.map((n) => romanOf(Number(n)))
+}
+
 /**
  * A component marker directly behind an enumerated number — the signal that
  * the number is a *paragraph* of its own and not a sibling of the component
@@ -475,7 +488,12 @@ const OWN_COMPONENT_RE = /^\s*(?:Abs(?:\.|atz)|Z(?:iff(?:er)?)?\b|lit(?:\.|era))
  * half an application („Verweigern schlägt Deckung").
  */
 function siblingsAfter(rest: string, first: string, level: EnumLevel = 'abs'): { ids: string[]; consumed: number } | null {
-  const id = ENUM_ID[level]
+  // „Anhang VIII und IX lauten", „Art. II und III": a Roman first number
+  // takes Roman siblings. Read with the Arabic pattern the IX was no sibling,
+  // and the line named Anhang VIII alone (58/ME XXVIII, 19.11.2026).
+  const roman = level === 'para' && ROMAN_RE.test(first)
+  const id = roman ? '[IVXLCDM]+' : ENUM_ID[level]
+  const run = (from: string, to: string): string[] | null => (roman ? romanRange(from, to) : expandRange(from, to))
   const des = ENUM_DESIGNATOR[level]
   // One sibling at a time, behind any of the separators: „1, 2 und 5", but
   // also „1 und 2 und 3" — which is how `parseAddressList` hands back „Abs. 1,
@@ -506,7 +524,7 @@ function siblingsAfter(rest: string, first: string, level: EnumLevel = 'abs'): {
     // Litera „im" — and ends the enumeration in front of it.
     if (level === 'lit' && next.length === 2 && next[0] !== next[1]) break
     if (m[1] === 'bis') {
-      const range = expandRange(previous, next)
+      const range = run(previous, next)
       if (range === null) return null
       ids.push(...range)
     } else ids.push(next)
@@ -523,7 +541,7 @@ function siblingsAfter(rest: string, first: string, level: EnumLevel = 'abs'): {
     // rest, as it did then. Anything after the range that enumerates on is
     // not guessed at.
     if (marked || other[1] !== 'bis') return null
-    const range = expandRange(previous, other[2]!)
+    const range = run(previous, other[2]!)
     if (range === null) return null
     ids.push(...range)
     at += other[0].length
@@ -3041,7 +3059,8 @@ function scheduleList(text: string, anchored = false): string[] {
         ranged = previous !== null
         continue
       }
-      const run = ranged && previous !== null ? expandRange(previous, n[1]!) : null
+      // „Anlagen II bis IV": the Roman run too, or III went uncounted.
+      const run = ranged && previous !== null ? (expandRange(previous, n[1]!) ?? romanRange(previous, n[1]!)) : null
       for (const id of run ?? [n[1]!]) out.push(`${kind} ${id}`)
       previous = n[1]!
       ranged = false
@@ -3295,7 +3314,7 @@ function trailingAddressList(raw: string): string[] {
 }
 
 /** „folgende §§ 44 bis 52", „als neue Anlage 5": where an insertion announces the units it creates. */
-const ANNOUNCEMENT_RE = /(?<![\p{L}])(?:folgende[rnms]?|nachstehende[rnms]?|als)\s+(?:neue[rnms]?\s+)?(?=§|Anlage|Anhang)/giu
+const ANNOUNCEMENT_RE = /(?<![\p{L}])(?:folgende[rnms]?|nachstehende[rnms]?|als)\s+(?:neue[rnms]?\s+)?(?=§|Anlage|Anh[aä]ng)/giu
 
 /** The units an insertion clause announces behind „folgende" — read up to where the announcement ends. */
 function announcedUnits(masked: string): string[] {
