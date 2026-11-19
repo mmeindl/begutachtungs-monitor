@@ -24,6 +24,7 @@
  * unit.
  */
 import type { TextBlock } from '../lawtext/lawUnits'
+import { RUNS_ON_RE } from './landTgu'
 
 /** Running header and footer lines of the Land's draft template. */
 /* Tirol's running head is its Geschäftszahl and version: „VD-173/2-2026 Fassung vom 9. März 2026" (23.10.2026). */
@@ -307,6 +308,23 @@ export function lawBlocksFromPdfPages(pages: readonly string[]): TextBlock[] | n
     // after it (16110: the Oö. Energieeffizienzgesetz beside two Novellen).
     if (!amending) {
       const bare = BARE_PARAGRAPH_RE.exec(line)
+      /* A § the sentence above cites, wrapped onto a line of its own — „…
+         entsprechen den Aufnahmevoraussetzungen gemäß" / „§ 8." (Salzburg
+         34234, § 81 Abs. 2; 19.11.2026) — is the sentence's end, not a §:
+         opened, it split § 81 into a § 81 „entfallen" and a „§ 8#dup"
+         rewritten as § 81 on the page, though draft and Vorlage print the
+         same § 81. Only where the line directly above runs on (`RUNS_ON_RE`,
+         the Textgegenüberstellung's test): a § title above its „§ 1" ends in
+         a noun. No test of the number's order — a table of contents echoed
+         before the law numbers below the § before it too, and refused it
+         swallowed the law's real §§ (two Salzburg Grundverkehrsgesetz
+         drafts). Measured over 922 cached law PDFs: 34234 alone changes. */
+      if (bare && para !== null && lastLineAt === i - 1 && lastLine !== null && RUNS_ON_RE.test(lastLine)) {
+        para = joinLines(para, line)
+        lastLine = line
+        lastLineAt = i
+        continue
+      }
       if (bare) {
         // A § whose only line was taken for its title has none: that line
         // was its text — „§ 1 / Das … Gesetz … wird … aufgehoben." of a

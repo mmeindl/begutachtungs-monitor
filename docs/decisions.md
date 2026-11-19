@@ -892,6 +892,11 @@ gets an entry of its own only where it carries a reason the rule does not.
   in capitals with a capitalised title, never one the next word declines
   („des I. Teiles") or counts („I. Dienstklasse"), and never a line opening
   „lit.".
+- **A bare „§ 8." after a line that runs on is the sentence's end, not a
+  §** (19.11.2026, `RUNS_ON_RE` in `landTgu.ts`, used by `draftPdfLaw.ts`):
+  a citation the column wrapped („… gemäß" / „§ 8.") split the § it stands
+  in. No test of the number's order: a contents list echoed before the law
+  numbers below the § before it too.
 - **„Entfallen" only where the draft says so.** An empty right column can be
   text the reader missed (§12.52).
 - **A document a Land files as the draft but that is not one is not read as

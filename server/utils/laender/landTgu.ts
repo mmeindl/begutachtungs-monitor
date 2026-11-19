@@ -257,8 +257,8 @@ const RENUMBERED_RE = /^§\s*(\d+[a-z]*)\.?\s*§\s*(\d+[a-z]*)\.?$/
  * (CE-Konformitätskennzeichnung)", and opens nothing.
  */
 const ANNEX_RE = /^[„"“]?\s*((?:Anlage|Anhang)\s+(?:\d+|[IVXL]+)[a-z]?)$/
-/** A line that ends mid-sentence: in a word that wants the next one, or a comma. */
-const RUNS_ON_RE = /(?:^|\s)(?:bis|und|oder|sowie|bzw\.|des|der|dem|den|die|das|im|in|zum|zur|vom|von|für|mit|nach|gemäß|laut|siehe|über|auf|aus|bei|an|gegen|ohne)$|,$/
+/** A line that ends mid-sentence: in a word that wants the next one, or a comma. Shared with the draft reader (`draftPdfLaw.ts`). */
+export const RUNS_ON_RE = /(?:^|\s)(?:bis|und|oder|sowie|bzw\.|des|der|dem|den|die|das|im|in|zum|zur|vom|von|für|mit|nach|gemäß|laut|siehe|über|auf|aus|bei|an|gegen|ohne)$|,$/
 /**
  * „2. Hauptstück", „III. Teil", „7b. Abschnitt": the next division's
  * heading, which closes the § above it. Only where the word ends there, at a

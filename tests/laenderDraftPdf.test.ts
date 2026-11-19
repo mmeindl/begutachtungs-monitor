@@ -188,6 +188,19 @@ describe('lawBlocksFromPdfPages — a Land draft from its PDF', () => {
     ])
     expect(units[0]!.article).toBe('Landesgesetz über die Jagd')
   })
+
+  it('reads a § cited at a line\'s end and wrapped onto its own line as the sentence\'s end, not a § (Salzburg 34234 § 81, 19.11.2026)', () => {
+    const lines = (...cut: string[]) => [page('Gesetz vom …… über das Dienstrecht', 'Der Salzburger Landtag hat beschlossen:', 'Dienstbeginn', '§ 81',
+      '(1) Das Dienstverhältnis beginnt mit der erstmaligen Ernennung durch die Landesregierung.', ...cut,
+      '(3) Im Ernennungsbescheid sind die Modellstelle und die Planstelle anzuführen.', 'Abweichungen', '§ 82', '(1) Für Beamtinnen gilt Abweichendes.')]
+    const wrapped = landDraftUnits(lines('(2) Die Erfordernisse für die erstmalige Ernennung entsprechen den Aufnahmevoraussetzungen gemäß', '§ 8.'))!
+    const whole = landDraftUnits(lines('(2) Die Erfordernisse für die erstmalige Ernennung entsprechen den Aufnahmevoraussetzungen gemäß § 8.'))!
+    expect(wrapped.map((u) => u.id)).toEqual(['§81', '§82'])
+    expect(wrapped.map((u) => u.text)).toEqual(whole.map((u) => u.text))
+    expect(diffLandDraft(wrapped, whole).map((u) => `${u.id} ${u.change}`)).toEqual(['§81 unchanged', '§82 unchanged'])
+    // A § title above its „§ 1" ends in a noun: still a §.
+    expect(landDraftUnits([page('Der Salzburger Landtag hat beschlossen:', 'Ziel', '§ 1', 'Dieses Gesetz regelt das Dienstrecht.', 'Begriffsbestimmungen', '§ 2', '(1) Text.')])!.map((u) => u.id)).toEqual(['§1', '§2'])
+  })
 })
 
 describe('diffLandDraft — the draft against the Landesgesetzblatt', () => {
